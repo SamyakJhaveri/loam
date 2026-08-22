@@ -130,6 +130,48 @@ write_state() {
       echo "base:$p:${STATE_BASES[$p]}"
     done
   } > "${STATE_FILE}.tmp" && mv "${STATE_FILE}.tmp" "$STATE_FILE"
+
+  # C1 (Codex Critical): keep every base blob reachable so `git gc --prune=now`
+  # cannot delete it and drop the changed path back to the legacy overwrite
+  # prompt (which can erase a hub-only generalization). Rebuild ONE ref
+  # refs/agent-sync/bases pointing at a tree of the STATE_BASES blobs.
+  # refs/agent-sync/* lives outside refs/heads and refs/tags, so a plain
+  # `git push` never sends it to the public hub remote; it exists only to keep
+  # the base blobs reachable for gc. Every step warns and returns 0 on failure:
+  # write_state runs from the EXIT trap and must never abort the scan.
+  # STATE_BASES is `declare -A` but never assigned, so `${#STATE_BASES[@]}` trips
+  # `set -u` when empty; the `[*]+x` alternate form is the set-u-safe emptiness
+  # test (yields "x" only when at least one key is set).
+  if [ -n "${STATE_BASES[*]+x}" ]; then
+    local base_index base_tree
+    # A fresh, NON-existent index path: git creates it. An empty pre-created file
+    # (e.g. from mktemp) is rejected as a corrupt index ("index file smaller than
+    # expected"). WORKDIR is a private mktemp -d, so a fixed name is safe here.
+    base_index="$WORKDIR/base-index"
+    rm -f "$base_index"
+    if ! { for p in "${!STATE_BASES[@]}"; do
+             printf '100644 %s\t%s\n' "${STATE_BASES[$p]}" "$p"
+           done; } | GIT_INDEX_FILE="$base_index" \
+             git -C "$HUB_REPO" update-index --index-info 2>/dev/null; then
+      echo "  warning: could not stage base blobs for refs/agent-sync/bases" >&2
+      rm -f "$base_index"
+      return 0
+    fi
+    # --missing-ok: a stale STATE_BASES sha whose blob is gone must not abort the
+    # tree write (test_base_missing_blob.sh seeds exactly such a sha).
+    if base_tree=$(GIT_INDEX_FILE="$base_index" \
+         git -C "$HUB_REPO" write-tree --missing-ok 2>/dev/null); then
+      git -C "$HUB_REPO" update-ref refs/agent-sync/bases "$base_tree" 2>/dev/null \
+        || echo "  warning: could not update refs/agent-sync/bases" >&2
+    else
+      echo "  warning: could not write base tree for refs/agent-sync/bases" >&2
+    fi
+    rm -f "$base_index"
+  else
+    # No bases recorded: drop the ref so gc can reclaim any orphaned blobs.
+    git -C "$HUB_REPO" update-ref -d refs/agent-sync/bases 2>/dev/null || true
+  fi
+  return 0
 }
 
 # Record the PROJECT content of $1 as the merge base for next time (R2): write
@@ -143,6 +185,7 @@ record_base() {
   fi
   # Only store a real 40-hex blob sha; never let an empty/garbled value become a
   # `base:<path>:` line that the EXIT trap would persist (Codex High).
+  # loam is a SHA-1 repository; a SHA-256 hub (64-hex) is out of scope (Codex M2, declined 2026-08-22).
   if [[ "$sha" =~ ^[0-9a-f]{40}$ ]]; then
     STATE_BASES["$1"]="$sha"
   else
@@ -201,7 +244,10 @@ if [ "$BOOTSTRAP_BASES" -eq 1 ]; then
     rel="${pf#"$PROJECT_CLAUDE"}"
     bootstrap_excluded "$rel" && continue
     [ -f "$HUB_PLUGIN$rel" ] || continue
-    if [ -n "${STATE_BASES[$rel]:-}" ]; then
+    # A recorded base whose blob is still present counts as already present; a
+    # base whose blob is missing (pruned by gc, or a stale/crafted sha) is
+    # RE-RECORDED so bootstrap repairs it instead of trusting the dead value (C1).
+    if [ -n "${STATE_BASES[$rel]:-}" ] && base_blob_present "${STATE_BASES[$rel]}"; then
       bs_present=$((bs_present + 1))
       continue
     fi
