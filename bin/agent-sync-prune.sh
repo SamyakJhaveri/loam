@@ -22,6 +22,7 @@ MANIFEST_TSV="$PROJECT_ROOT/.claude/reference/portability-manifest.tsv"
 [ -f "$MANIFEST_TSV" ] || { echo "Error: $MANIFEST_TSV missing - the manifest is the authority; refusing to prune without it." >&2; exit 1; }
 
 offered=0 deleted=0
+# shellcheck disable=SC2034  # kind/requires are read to keep the TSV columns aligned; only verdict/reason are printed
 while IFS=$'\t' read -r path kind verdict reason requires; do
   [ "$path" = "path" ] && continue      # header
   [ -z "$path" ] && continue
