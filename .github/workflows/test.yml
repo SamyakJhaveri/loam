@@ -23,5 +23,8 @@ jobs:
           git config --global user.name "CI"
           git config --global user.email "ci@loam"
 
+      - name: agent-sync engine tests
+        run: bin/agent-sync-tests/run-all.sh
+
       - name: Verify template
         run: bin/verify-template.sh
