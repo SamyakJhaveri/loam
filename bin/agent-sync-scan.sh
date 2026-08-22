@@ -684,41 +684,59 @@ if [ "$TOTAL_APPROVED" -eq 0 ]; then
   exit 0
 fi
 
-# 7. Apply approved adds + overwrite-changes via rsync --files-from.
+# install_file <src> <dst> <rel>: install one file atomically. H3 (Codex High):
+# a bulk rsync could leave earlier files installed with no ledger record when a
+# later one fails, and a direct cp can truncate the destination on an I/O error.
+# Copy to a temp file in the SAME directory as the destination (so the rename is
+# atomic on one filesystem), preserving the mode with cp -p (hook scripts must
+# stay +x), then mv -f into place. Each step is guarded so any failure removes
+# the temp file, reports the path, and exits 1 - never relying on set -e, which
+# would skip the cleanup and message. The EXIT trap then persists the ledger with
+# only the items recorded so far. The temp name starts with .sync-install. so a
+# leftover can never collide with a real path (none is left on success).
+install_file() {
+  local src="$1" dst="$2" rel="$3" dstdir tmp
+  dstdir="$(dirname "$dst")"
+  mkdir -p "$dstdir" || { echo "Error: install failed for $rel" >&2; exit 1; }
+  tmp="$(mktemp "$dstdir/.sync-install.XXXXXX")" || { echo "Error: install failed for $rel" >&2; exit 1; }
+  if ! cp -p "$src" "$tmp" || ! mv -f "$tmp" "$dst"; then
+    rm -f "$tmp"
+    echo "Error: install failed for $rel" >&2
+    exit 1
+  fi
+}
+
+# 7. Apply approved adds + overwrite-changes, one file at a time.
 NONEMPTY=()
 for p in "${APPROVED_ADDS[@]:-}" "${APPROVED_CHANGES[@]:-}"; do
   [ -n "$p" ] && NONEMPTY+=("$p")
 done
 
 # High 1 (Codex): record synced:/base: per item, IMMEDIATELY after that item is
-# installed - never in a single deferred pass - so a mid-batch cp/git rm abort
-# leaves every earlier success already recorded. rsync installs the adds/changes
-# atomically (it returns success only when the whole list transferred), so their
-# records are written right after it returns; merged and pruned items are
-# recorded one at a time inside their own loops. The EXIT trap then persists the
-# ledger even on an abort.
-if [ "${#NONEMPTY[@]}" -gt 0 ]; then
-  TMPLIST=$(mktemp "$WORKDIR/files.XXXXXX")
-  printf '%s\n' "${NONEMPTY[@]}" > "$TMPLIST"
-  # Accepted residual (lead ruling): a bulk rsync can install several files
-  # before failing on a later one; on that abort none of them are recorded. Rerun
-  # `agent-sync-scan.sh --bootstrap-bases` afterward to re-record bases for any
-  # shared identical path, then re-scan.
-  rsync -a --files-from="$TMPLIST" "$PROJECT_CLAUDE" "$HUB_PLUGIN"
-  rm -f "$TMPLIST"
-  # rsync succeeded for the whole list: record each installed path now.
-  for p in "${NONEMPTY[@]}"; do
-    STATE_DECISIONS["$p"]="synced:$CURRENT_SESSION"
-    record_base "$p"
-  done
-fi
+# installed - never in a single deferred pass - so a mid-batch install/git rm
+# abort leaves every earlier success already recorded. H3 closes OD-13c: each
+# item installs atomically via install_file, so a later failure can never leave
+# an earlier item installed-but-unrecorded. Merged and pruned items are recorded
+# one at a time inside their own loops. The EXIT trap then persists the ledger
+# even on an abort.
+for p in "${NONEMPTY[@]:-}"; do
+  [ -z "${p:-}" ] && continue
+  install_file "$PROJECT_CLAUDE$p" "$HUB_PLUGIN$p" "$p"
+  STATE_DECISIONS["$p"]="synced:$CURRENT_SESSION"
+  record_base "$p"
+done
 
-# Merged results are installed by direct copy - NEVER rsync, which would
-# re-overwrite the hub copy with the raw project file and discard the merge.
-# Record each right after its own cp succeeds.
+# Merged results are installed via install_file too (never rsync, which would
+# re-overwrite the hub copy with the raw project file and discard the merge).
+# install_file's cp -p would otherwise carry the mktemp temp's 0600 mode, so
+# first match the merged result's mode to the PROJECT file's (portable across
+# BSD/GNU stat). Record each right after its own install succeeds.
 for p in "${MERGED_PATHS[@]:-}"; do
   [ -z "${p:-}" ] && continue
-  cp "${MERGED_TMP[$p]}" "$HUB_PLUGIN$p"
+  merged_mode=$(stat -f '%Lp' "$PROJECT_CLAUDE$p" 2>/dev/null \
+    || stat -c '%a' "$PROJECT_CLAUDE$p" 2>/dev/null || echo 644)
+  chmod "$merged_mode" "${MERGED_TMP[$p]}" 2>/dev/null || true
+  install_file "${MERGED_TMP[$p]}" "$HUB_PLUGIN$p" "$p"
   STATE_DECISIONS["$p"]="synced:$CURRENT_SESSION"
   record_base "$p"
   rm -f "${MERGED_TMP[$p]}"
