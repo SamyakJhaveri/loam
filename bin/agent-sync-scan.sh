@@ -190,6 +190,9 @@ if [ "$BOOTSTRAP_BASES" -eq 1 ]; then
   # R5 is a state-only pass: it must not create the hub tree (Codex Medium).
   [ -d "$HUB_PLUGIN" ] || {
     echo "Error: hub plugin tree not found at $HUB_PLUGIN; nothing to bootstrap." >&2
+    # R5 no-bump holds even on this error path: the EXIT trap's write_state must
+    # not advance the session, so pin it to PRIOR before exiting.
+    CURRENT_SESSION="$PRIOR_SESSION"
     exit 1
   }
   bs_recorded=0
