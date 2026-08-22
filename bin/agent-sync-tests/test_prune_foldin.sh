@@ -23,9 +23,12 @@ echo "bonly" > "$HUB_SETUP/$BONLY"
   git -c user.email=t@t -c user.name=t add -A && \
   git -c user.email=t@t -c user.name=t commit -q -m init)
 
-# Project: has keep (identical, no change), lacks gone and bonly.
-mkdir -p "$TMP/proj/.claude"
+# Project: has keep (identical, no change), lacks gone and bonly. A manifest
+# marks both retired paths 'travels' so the folded prune (H2) still offers them.
+mkdir -p "$TMP/proj/.claude/reference"
 echo "keep" > "$TMP/proj/.claude/keep.md"
+printf 'skills/gone\t-\ttravels\nskills/bonly\t-\ttravels\n' \
+  > "$TMP/proj/.claude/reference/portability-manifest.tsv"
 (cd "$TMP/proj" && git init -q && \
   git -c user.email=t@t -c user.name=t add -A && \
   git -c user.email=t@t -c user.name=t commit -q -m init)

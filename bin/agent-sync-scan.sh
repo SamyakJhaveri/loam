@@ -304,6 +304,43 @@ project_unchanged_since_base() {
   [ "$(git hash-object "$PROJECT_CLAUDE$path")" = "$base_sha" ]
 }
 
+# Portability manifest guard (2026-08-02). The manifest classifies every asset
+# as travels/stays/rework; anything marked "stays" must never be offered to the
+# hub — the hub is a curated subset, and an additive project→hub sync is
+# otherwise a one-way ratchet toward the project's dialect.
+MANIFEST_TSV="$PROJECT_ROOT/.claude/reference/portability-manifest.tsv"
+manifest_verdict() {
+  # Longest-prefix match: "skills/codex-review/SKILL.md" matches row "skills/codex-review".
+  local path="$1" probe
+  [ -f "$MANIFEST_TSV" ] || { echo ""; return; }
+  probe="$path"
+  while [ -n "$probe" ] && [ "$probe" != "." ]; do
+    local v
+    v=$(awk -F'\t' -v p="$probe" '$1 == p { print $3; exit }' "$MANIFEST_TSV")
+    if [ -n "$v" ]; then echo "$v"; return; fi
+    probe="$(dirname "$probe")"
+  done
+  echo ""
+}
+
+# Filter to paths that need prompting (not silently-skipped by state or manifest).
+# Fail-closed when a manifest exists (Codex review 2026-08-02): only 'travels'
+# paths may be offered. 'stays' is project-local by declaration; 'rework' is
+# project-hardcoded and must be generalized before it may enter the hub; a
+# path with NO verdict is unclassified (plans, transcripts, __pycache__, ...)
+# and is exactly the noise an additive sync must not offer. Without a manifest
+# (other projects), behavior is unchanged: everything is offered.
+SKIPPED_STAYS=0; SKIPPED_REWORK=0; SKIPPED_UNKNOWN=0
+manifest_allows() {
+  [ -f "$MANIFEST_TSV" ] || return 0
+  case "$(manifest_verdict "$1")" in
+    travels) return 0 ;;
+    stays)   SKIPPED_STAYS=$((SKIPPED_STAYS+1));   return 1 ;;
+    rework)  SKIPPED_REWORK=$((SKIPPED_REWORK+1)); return 1 ;;
+    *)       SKIPPED_UNKNOWN=$((SKIPPED_UNKNOWN+1)); return 1 ;;
+  esac
+}
+
 # R6 prune fold-in: collect hub files whose project source is gone. A candidate
 # has a synced: OR base: ledger record, its hub copy still exists, its project
 # source does not, and it is not suppressed by a prior never/defer. Collected
@@ -318,6 +355,17 @@ consider_prune() {
   [ -f "$HUB_PLUGIN$p" ] || return          # nothing in the hub to prune
   [ -e "$PROJECT_CLAUDE$p" ] && return       # project source still exists
   should_prompt "$p" || return               # suppressed by a prior never/defer
+  # H2 (Codex High): a folded prune must carry an explicit 'travels' verdict,
+  # matching bin/agent-sync-prune.sh's manifest gate. A retired stays/rework/
+  # unclassified path - or ANY path when there is no manifest at all - is
+  # withheld (fail closed), so a curated hub-only generalization is never
+  # offered for deletion. Not counted in the SKIPPED_* adds/changes tallies.
+  local prune_verdict
+  prune_verdict="$(manifest_verdict "$p")"
+  if [ "$prune_verdict" != travels ]; then
+    echo "  prune withheld (manifest verdict '${prune_verdict:-unclassified}', not travels): $p" >&2
+    return
+  fi
   PRUNE_CANDIDATES+=("$p")
 }
 for p in "${!STATE_DECISIONS[@]}"; do
@@ -395,43 +443,6 @@ prompt_for() {
       STATE_DECISIONS["$path"]="defer:$ask_at"
       return 1
       ;;
-  esac
-}
-
-# Portability manifest guard (2026-08-02). The manifest classifies every asset
-# as travels/stays/rework; anything marked "stays" must never be offered to the
-# hub — the hub is a curated subset, and an additive project→hub sync is
-# otherwise a one-way ratchet toward the project's dialect.
-MANIFEST_TSV="$PROJECT_ROOT/.claude/reference/portability-manifest.tsv"
-manifest_verdict() {
-  # Longest-prefix match: "skills/codex-review/SKILL.md" matches row "skills/codex-review".
-  local path="$1" probe
-  [ -f "$MANIFEST_TSV" ] || { echo ""; return; }
-  probe="$path"
-  while [ -n "$probe" ] && [ "$probe" != "." ]; do
-    local v
-    v=$(awk -F'\t' -v p="$probe" '$1 == p { print $3; exit }' "$MANIFEST_TSV")
-    if [ -n "$v" ]; then echo "$v"; return; fi
-    probe="$(dirname "$probe")"
-  done
-  echo ""
-}
-
-# Filter to paths that need prompting (not silently-skipped by state or manifest).
-# Fail-closed when a manifest exists (Codex review 2026-08-02): only 'travels'
-# paths may be offered. 'stays' is project-local by declaration; 'rework' is
-# project-hardcoded and must be generalized before it may enter the hub; a
-# path with NO verdict is unclassified (plans, transcripts, __pycache__, ...)
-# and is exactly the noise an additive sync must not offer. Without a manifest
-# (other projects), behavior is unchanged: everything is offered.
-SKIPPED_STAYS=0; SKIPPED_REWORK=0; SKIPPED_UNKNOWN=0
-manifest_allows() {
-  [ -f "$MANIFEST_TSV" ] || return 0
-  case "$(manifest_verdict "$1")" in
-    travels) return 0 ;;
-    stays)   SKIPPED_STAYS=$((SKIPPED_STAYS+1));   return 1 ;;
-    rework)  SKIPPED_REWORK=$((SKIPPED_REWORK+1)); return 1 ;;
-    *)       SKIPPED_UNKNOWN=$((SKIPPED_UNKNOWN+1)); return 1 ;;
   esac
 }
 
