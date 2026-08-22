@@ -52,7 +52,12 @@ if [ -n "$HUB_DIRTY" ]; then
 fi
 
 # Load state file (associative array path → decision-string).
+# STATE_BASES holds the three-way merge base: base:<path>:<sha> records the
+# blob sha of the PROJECT content at the last sync or bootstrap (Wave 1, R1).
+# It is a SEPARATE record from synced: because the legacy synced: parser splits
+# on the last colon for the session number; a 4-field record would break it.
 declare -A STATE_DECISIONS
+declare -A STATE_BASES
 PRIOR_SESSION=0
 if [ -f "$STATE_FILE" ]; then
   while IFS= read -r line; do
@@ -68,6 +73,12 @@ if [ -f "$STATE_FILE" ]; then
         path="${rest%:*}"
         ask_at="${rest##*:}"
         STATE_DECISIONS["$path"]="defer:$ask_at"
+        ;;
+      base:*)
+        rest="${line#base:}"
+        path="${rest%:*}"
+        base_sha="${rest##*:}"
+        STATE_BASES["$path"]="$base_sha"
         ;;
       synced:*)
         rest="${line#synced:}"
@@ -121,7 +132,17 @@ write_state() {
         synced:*) echo "synced:$p:${dec#synced:}" ;;
       esac
     done
+    for p in "${!STATE_BASES[@]}"; do
+      echo "base:$p:${STATE_BASES[$p]}"
+    done
   } > "${STATE_FILE}.tmp" && mv "${STATE_FILE}.tmp" "$STATE_FILE"
+}
+
+# Record the PROJECT content of $1 as the merge base for next time (R2): write
+# its blob into the hub object store and remember the sha. Content-addressed, so
+# the value is the same whether computed before or after the file is installed.
+record_base() {
+  STATE_BASES["$1"]=$(git -C "$HUB_REPO" hash-object -w "$PROJECT_CLAUDE$1")
 }
 
 if [ -z "$CHANGES" ]; then
@@ -352,10 +373,16 @@ echo "  ${#PROMPT_CHANGES[@]} changed files to ask about (${#CHANGED_PATHS[@]} t
 APPROVED_ADDS=()
 for path in "${PROMPT_ADDS[@]:-}"; do
   [ -z "${path:-}" ] && continue
-  if prompt_for "Add" "$path"; then APPROVED_ADDS+=("$path"); fi
+  if prompt_for "Add" "$path"; then
+    APPROVED_ADDS+=("$path")
+    # Record the merged/copied-in PROJECT content as the base for next time (R2).
+    record_base "$path"
+  fi
 done
 
 APPROVED_CHANGES=()
+MERGED_PATHS=()
+declare -A MERGED_TMP
 if [ "${#PROMPT_CHANGES[@]}" -gt 0 ]; then
   echo "CAUTION: hub copies in this plugin are GENERALIZED variants (de-projectized" >&2
   echo "paths, different gate thresholds). Overwriting one reverts that generalization." >&2
@@ -363,28 +390,78 @@ if [ "${#PROMPT_CHANGES[@]}" -gt 0 ]; then
 fi
 for path in "${PROMPT_CHANGES[@]:-}"; do
   [ -z "${path:-}" ] && continue
-  if prompt_for "Update" "$path"; then APPROVED_CHANGES+=("$path"); fi
+  base_sha="${STATE_BASES[$path]:-}"
+  handled=0
+  # Clean-merge regime (R3): the path has a recorded base, the base blob still
+  # exists in the hub object store, AND the three-way merge is clean. Every
+  # other outcome (no base, pruned blob, or a non-clean merge) falls through to
+  # the legacy overwrite prompt below.
+  if [ -n "$base_sha" ] && git -C "$HUB_REPO" cat-file -e "$base_sha" 2>/dev/null; then
+    base_tmp=$(mktemp)
+    git -C "$HUB_REPO" cat-file blob "$base_sha" > "$base_tmp"
+    merged_tmp=$(mktemp)
+    set +e
+    git merge-file --stdout -L hub -L base -L project \
+      "$HUB_PLUGIN$path" "$base_tmp" "$PROJECT_CLAUDE$path" > "$merged_tmp"
+    mrc=$?
+    set -e
+    rm -f "$base_tmp"
+    if [ "$mrc" -eq 0 ]; then
+      handled=1
+      # Clean three-way merge: hub generalization and project edit coexist.
+      printf 'Merge %s: clean three-way merge (hub generalization kept, project edit applied)\n' "$path" >&2
+      diff -u "$HUB_PLUGIN$path" "$merged_tmp" >&2 || true
+      if prompt_for "Merge" "$path"; then
+        MERGED_PATHS+=("$path")
+        MERGED_TMP["$path"]="$merged_tmp"
+        record_base "$path"
+      else
+        rm -f "$merged_tmp"
+      fi
+    else
+      rm -f "$merged_tmp"
+    fi
+  fi
+  # Legacy overwrite fallthrough (default defer): no base, pruned blob, or a
+  # non-clean merge. Record a base on y so the path joins the merge regime next
+  # time (R4).
+  if [ "$handled" -eq 0 ]; then
+    if prompt_for "Update" "$path"; then
+      APPROVED_CHANGES+=("$path")
+      record_base "$path"
+    fi
+  fi
 done
 
 # Persist updated state regardless of whether anything was approved.
 write_state
 
-TOTAL_APPROVED=$(( ${#APPROVED_ADDS[@]} + ${#APPROVED_CHANGES[@]} ))
+TOTAL_APPROVED=$(( ${#APPROVED_ADDS[@]} + ${#APPROVED_CHANGES[@]} + ${#MERGED_PATHS[@]} ))
 if [ "$TOTAL_APPROVED" -eq 0 ]; then
   echo "Nothing approved — exiting."
   exit 0
 fi
 
-# 7. Apply approved adds + changes via rsync --files-from.
+# 7. Apply approved adds + overwrite-changes via rsync --files-from.
 NONEMPTY=()
 for p in "${APPROVED_ADDS[@]:-}" "${APPROVED_CHANGES[@]:-}"; do
   [ -n "$p" ] && NONEMPTY+=("$p")
 done
 
-TMPLIST=$(mktemp)
-printf '%s\n' "${NONEMPTY[@]}" > "$TMPLIST"
-rsync -a --files-from="$TMPLIST" "$PROJECT_CLAUDE" "$HUB_PLUGIN"
-rm -f "$TMPLIST"
+if [ "${#NONEMPTY[@]}" -gt 0 ]; then
+  TMPLIST=$(mktemp)
+  printf '%s\n' "${NONEMPTY[@]}" > "$TMPLIST"
+  rsync -a --files-from="$TMPLIST" "$PROJECT_CLAUDE" "$HUB_PLUGIN"
+  rm -f "$TMPLIST"
+fi
+
+# Merged results are installed by direct copy - NEVER rsync, which would
+# re-overwrite the hub copy with the raw project file and discard the merge.
+for p in "${MERGED_PATHS[@]:-}"; do
+  [ -z "${p:-}" ] && continue
+  cp "${MERGED_TMP[$p]}" "$HUB_PLUGIN$p"
+  rm -f "${MERGED_TMP[$p]}"
+done
 
 # 8. Show resulting git status in hub
 echo "---"
@@ -407,7 +484,7 @@ esac
 #     (.sync-state) MUST NOT be swept into the sync commit.
 DATE=$(date -u +%Y-%m-%d)
 HUB_RELPATHS=()
-for p in "${APPROVED_ADDS[@]:-}" "${APPROVED_CHANGES[@]:-}"; do
+for p in "${APPROVED_ADDS[@]:-}" "${APPROVED_CHANGES[@]:-}" "${MERGED_PATHS[@]:-}"; do
   [ -n "$p" ] && HUB_RELPATHS+=("cultivation/marketplace/sam-cc-setup/$p")
 done
 
