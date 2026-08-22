@@ -78,6 +78,27 @@ fi
 declare -A STATE_DECISIONS
 declare -A STATE_BASES
 PRIOR_SESSION=0
+
+# H1 (Codex High): reject a crafted .sync-state key before it can drive any
+# filesystem or git operation. A key like ../../../README.md escapes the plugin
+# root - consider_prune resolves it to a file OUTSIDE the tree and an approved
+# prune git-rm's it there. Reject empty, absolute (leading /), any . or ..
+# path component, and an embedded newline/carriage-return. Returns 0 if safe.
+state_path_ok() {
+  local p="$1"
+  [ -n "$p" ] || return 1
+  case "$p" in
+    /*) return 1 ;;
+  esac
+  case "/$p/" in
+    *"/../"*|*"/./"*) return 1 ;;
+  esac
+  case "$p" in
+    *$'\n'*|*$'\r'*) return 1 ;;
+  esac
+  return 0
+}
+
 if [ -f "$STATE_FILE" ]; then
   while IFS= read -r line; do
     [ -z "$line" ] && continue
@@ -85,18 +106,21 @@ if [ -f "$STATE_FILE" ]; then
       session=*) PRIOR_SESSION="${line#session=}" ;;
       never:*)
         path="${line#never:}"
+        state_path_ok "$path" || { echo "warning: ignoring malformed .sync-state key: $path" >&2; continue; }
         STATE_DECISIONS["$path"]="never"
         ;;
       defer:*)
         rest="${line#defer:}"
         path="${rest%:*}"
         ask_at="${rest##*:}"
+        state_path_ok "$path" || { echo "warning: ignoring malformed .sync-state key: $path" >&2; continue; }
         STATE_DECISIONS["$path"]="defer:$ask_at"
         ;;
       base:*)
         rest="${line#base:}"
         path="${rest%:*}"
         base_sha="${rest##*:}"
+        state_path_ok "$path" || { echo "warning: ignoring malformed .sync-state key: $path" >&2; continue; }
         # Ignore a malformed base: line with an empty sha (defensive).
         [ -n "$base_sha" ] && STATE_BASES["$path"]="$base_sha"
         ;;
@@ -104,6 +128,7 @@ if [ -f "$STATE_FILE" ]; then
         rest="${line#synced:}"
         path="${rest%:*}"
         at_session="${rest##*:}"
+        state_path_ok "$path" || { echo "warning: ignoring malformed .sync-state key: $path" >&2; continue; }
         STATE_DECISIONS["$path"]="synced:$at_session"
         ;;
     esac
@@ -750,6 +775,9 @@ done
 PRUNED_PATHS=()
 for p in "${PRUNE_APPROVED[@]:-}"; do
   [ -z "${p:-}" ] && continue
+  # H1 second line of defense: a crafted key cannot reach here after the parser
+  # guard drops it, but the git-rm is destructive so re-check before it.
+  state_path_ok "$p" || { echo "  prune skipped (malformed state key): $p" >&2; continue; }
   hub_rel="cultivation/marketplace/sam-cc-setup/$p"
   if git -C "$HUB_REPO" ls-files --error-unmatch -- "$hub_rel" >/dev/null 2>&1; then
     git -C "$HUB_REPO" rm -r --quiet "$hub_rel"
