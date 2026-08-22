@@ -169,8 +169,13 @@ RSYNC_EXCLUDES=(
 
 # Helper: write current state back to disk.
 write_state() {
-  {
-    echo "session=$CURRENT_SESSION"
+  # C4 (Codex pass 2 Critical): return 1 on a genuine failure to persist the
+  # ledger or the base ref, so the normal-path callers can abort BEFORE the
+  # commit; a normal run returns 0. The EXIT-trap caller uses `|| true`.
+  local rc=0
+  # Explicit if/else, NOT `if ! group > tmp && mv` (that binds as
+  # `(! group>tmp) && mv`, so mv never runs on the success path).
+  if { echo "session=$CURRENT_SESSION"
     for p in "${!STATE_DECISIONS[@]}"; do
       local dec="${STATE_DECISIONS[$p]}"
       case "$dec" in
@@ -182,7 +187,13 @@ write_state() {
     for p in "${!STATE_BASES[@]}"; do
       echo "base:$p:${STATE_BASES[$p]}"
     done
-  } > "${STATE_FILE}.tmp" && mv "${STATE_FILE}.tmp" "$STATE_FILE"
+     } > "${STATE_FILE}.tmp" && mv "${STATE_FILE}.tmp" "$STATE_FILE"; then
+    :   # state written
+  else
+    echo "  warning: could not write $STATE_FILE" >&2
+    rm -f "${STATE_FILE}.tmp" 2>/dev/null || true
+    rc=1
+  fi
 
   # C1 (Codex Critical): keep every base blob reachable so `git gc --prune=now`
   # cannot delete it and drop the changed path back to the legacy overwrite
@@ -190,8 +201,7 @@ write_state() {
   # refs/agent-sync/bases pointing at a tree of the STATE_BASES blobs.
   # refs/agent-sync/* lives outside refs/heads and refs/tags, so a plain
   # `git push` never sends it to the public hub remote; it exists only to keep
-  # the base blobs reachable for gc. Every step warns and returns 0 on failure:
-  # write_state runs from the EXIT trap and must never abort the scan.
+  # the base blobs reachable for gc. Every step warns and sets rc=1 on failure.
   # STATE_BASES is `declare -A` but never assigned, so `${#STATE_BASES[@]}` trips
   # `set -u` when empty; the `[*]+x` alternate form is the set-u-safe emptiness
   # test (yields "x" only when at least one key is set).
@@ -207,24 +217,26 @@ write_state() {
            done; } | GIT_INDEX_FILE="$base_index" \
              git -C "$HUB_REPO" update-index --index-info 2>/dev/null; then
       echo "  warning: could not stage base blobs for refs/agent-sync/bases" >&2
-      rm -f "$base_index"
-      return 0
-    fi
+      rc=1
     # --missing-ok: a stale STATE_BASES sha whose blob is gone must not abort the
     # tree write (test_base_missing_blob.sh seeds exactly such a sha).
-    if base_tree=$(GIT_INDEX_FILE="$base_index" \
+    elif base_tree=$(GIT_INDEX_FILE="$base_index" \
          git -C "$HUB_REPO" write-tree --missing-ok 2>/dev/null); then
-      git -C "$HUB_REPO" update-ref refs/agent-sync/bases "$base_tree" 2>/dev/null \
-        || echo "  warning: could not update refs/agent-sync/bases" >&2
+      if ! git -C "$HUB_REPO" update-ref refs/agent-sync/bases "$base_tree" 2>/dev/null; then
+        echo "  warning: could not update refs/agent-sync/bases" >&2
+        rc=1
+      fi
     else
       echo "  warning: could not write base tree for refs/agent-sync/bases" >&2
+      rc=1
     fi
     rm -f "$base_index"
   else
     # No bases recorded: drop the ref so gc can reclaim any orphaned blobs.
+    # Best-effort: a missing ref is the desired end state, so never fail on it.
     git -C "$HUB_REPO" update-ref -d refs/agent-sync/bases 2>/dev/null || true
   fi
-  return 0
+  return "$rc"
 }
 
 # Record the PROJECT content of $1 as the merge base for next time (R2): write
@@ -273,7 +285,7 @@ bootstrap_excluded() {
 # with an empty state. Registered here, after write_state is defined.
 WORKDIR=$(mktemp -d)
 cleanup() {
-  [ "${STATE_LOADED:-0}" -eq 1 ] && write_state
+  [ "${STATE_LOADED:-0}" -eq 1 ] && { write_state || true; }   # cleanup must never abort
   rm -rf "$WORKDIR"
 }
 trap cleanup EXIT
@@ -308,7 +320,7 @@ if [ "$BOOTSTRAP_BASES" -eq 1 ]; then
     bs_recorded=$((bs_recorded + 1))
   done < <(find "$PROJECT_CLAUDE" -type f)
   CURRENT_SESSION="$PRIOR_SESSION"   # never bump the session on a bootstrap
-  write_state
+  write_state || { echo "Error: could not persist .sync-state or refs/agent-sync/bases; hub left uncommitted" >&2; exit 1; }
   echo "bootstrap: $bs_recorded bases recorded, $bs_present already present"
   exit 0
 fi
@@ -438,7 +450,7 @@ CHANGES=$(echo "$RSYNC_DIFF" | grep -E '^(>f|<f|cf|hf)' || true)
 # retired files to prune. The message and behavior here are unchanged.
 if [ -z "$CHANGES" ] && [ "${#PRUNE_CANDIDATES[@]}" -eq 0 ]; then
   echo "No changes — hub is in sync with project."
-  write_state
+  write_state || { echo "Error: could not persist .sync-state or refs/agent-sync/bases; hub left uncommitted" >&2; exit 1; }
   exit 0
 fi
 
@@ -720,7 +732,7 @@ done
 TOTAL_APPROVED=$(( ${#APPROVED_ADDS[@]} + ${#APPROVED_CHANGES[@]} + ${#MERGED_PATHS[@]} + ${#PRUNE_APPROVED[@]} ))
 if [ "$TOTAL_APPROVED" -eq 0 ]; then
   # Persist defer/never decisions and any no-op base advances, then stop.
-  write_state
+  write_state || { echo "Error: could not persist .sync-state or refs/agent-sync/bases; hub left uncommitted" >&2; exit 1; }
   echo "Nothing approved — exiting."
   exit 0
 fi
@@ -824,7 +836,7 @@ done
 
 # Persist the ledger now that installs and prunes have happened (the EXIT trap
 # also persists it, so a mid-batch abort still records the completed items).
-write_state
+write_state || { echo "Error: could not persist .sync-state or refs/agent-sync/bases; hub left uncommitted" >&2; exit 1; }
 
 # 8. Show resulting git status in hub
 echo "---"
