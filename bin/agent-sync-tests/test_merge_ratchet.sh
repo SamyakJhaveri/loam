@@ -7,7 +7,7 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 SYNC_SH="$SCRIPT_DIR/../agent-sync-scan.sh"
 TMP="$(mktemp -d)"
-trap "rm -rf '$TMP'" EXIT
+trap 'rm -rf "$TMP"' EXIT
 
 HUB_SETUP="$TMP/hub/cultivation/marketplace/sam-cc-setup"
 REL="skills/foo/SKILL.md"
@@ -47,23 +47,24 @@ set -e
 
 HUB_FILE="$HUB_SETUP/$REL"
 
+# Assertion rc: the scan succeeded.
+if [ "$rc" -ne 0 ]; then echo "FAIL: scan exit $rc"; echo "output: $output"; exit 1; fi
+
 # Assertion 0: the clean-merge path was taken (not legacy overwrite, not conflict).
 if ! echo "$output" | grep -q 'clean three-way merge'; then
   echo "FAIL: clean three-way merge header not shown"
   echo "rc=$rc"; echo "output: $output"; exit 1
 fi
 
-# Assertion 1: hub copy carries BOTH the generalization and the new project edit.
-if ! grep -q 'GENERALIZED' "$HUB_FILE"; then
-  echo "FAIL: hub copy lost the hub-only generalization"; cat "$HUB_FILE"; exit 1
-fi
-if ! grep -q 'PROJECTEDIT' "$HUB_FILE"; then
-  echo "FAIL: hub copy did not gain the project edit"; cat "$HUB_FILE"; exit 1
-fi
-
-# Assertion 2: no conflict markers in the merged hub copy.
-if grep -q '<<<<<<<' "$HUB_FILE"; then
-  echo "FAIL: hub copy contains conflict markers"; cat "$HUB_FILE"; exit 1
+# Assertion 1: the hub copy is EXACTLY the expected merge - the hub-only
+# generalization on line 1 and the project edit on the last line, in order,
+# nothing duplicated or reordered (a token grep would miss such corruption; a
+# conflict marker would also fail this compare).
+EXPECT="$TMP/expected.txt"
+printf 'alpha GENERALIZED\nbeta\ngamma\ndelta PROJECTEDIT\n' > "$EXPECT"
+if ! cmp -s "$EXPECT" "$HUB_FILE"; then
+  echo "FAIL: hub copy is not the exact expected merge"
+  echo "--- expected ---"; cat "$EXPECT"; echo "--- got ---"; cat "$HUB_FILE"; exit 1
 fi
 
 # Assertion 3: a fresh base: line records the project content as the new base.

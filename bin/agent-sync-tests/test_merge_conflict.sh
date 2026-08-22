@@ -8,7 +8,7 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 SYNC_SH="$SCRIPT_DIR/../agent-sync-scan.sh"
 TMP="$(mktemp -d)"
-trap "rm -rf '$TMP'" EXIT
+trap 'rm -rf "$TMP"' EXIT
 
 HUB_SETUP="$TMP/hub/cultivation/marketplace/sam-cc-setup"
 REL="skills/foo/SKILL.md"
@@ -50,10 +50,23 @@ output=$(printf '\n' | SAM_CC_HUB_REPO="$TMP/hub" bash "$SYNC_SH" 2>&1)
 rc=$?
 set -e
 
+# Assertion rc: the scan succeeded.
+if [ "$rc" -ne 0 ]; then echo "FAIL: scan exit $rc"; echo "output: $output"; exit 1; fi
+
 # Assertion 1: a Conflict was surfaced (not a clean merge, not a bare Update).
 if ! echo "$output" | grep -q 'Conflict'; then
   echo "FAIL: no Conflict header in output"
   echo "rc=$rc"; echo "output: $output"; exit 1
+fi
+
+# Assertion 1b: the fallback used the legacy overwrite prompt (R3), i.e. the
+# "Update <path> to hub" prompt appears and the clean-merge "Merge <path> to hub"
+# prompt does not.
+if ! echo "$output" | grep -q "Update $REL to hub"; then
+  echo "FAIL: conflict did not fall back to the legacy Update prompt"; echo "$output"; exit 1
+fi
+if echo "$output" | grep -q "Merge $REL to hub"; then
+  echo "FAIL: a conflict was offered as a clean Merge"; echo "$output"; exit 1
 fi
 
 # Assertion 2: hub copy unchanged byte-for-byte (not auto-installed).

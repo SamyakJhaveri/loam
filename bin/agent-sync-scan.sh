@@ -101,7 +101,11 @@ CURRENT_SESSION=$((PRIOR_SESSION + 1))
 # Resolve the project and hub trees (shared by bootstrap and the scan below).
 PROJECT_CLAUDE="$PROJECT_ROOT/.claude/"
 HUB_PLUGIN="$HUB_REPO/cultivation/marketplace/sam-cc-setup/"
-mkdir -p "$HUB_PLUGIN"
+
+# All temp files live under one directory removed by a single EXIT trap, so a
+# base, merge, or file-list temp never leaks on an error or signal (Codex Low).
+WORKDIR=$(mktemp -d)
+trap 'rm -rf "$WORKDIR"' EXIT
 
 RSYNC_EXCLUDES=(
   --exclude=audit.log
@@ -135,6 +139,13 @@ record_base() {
   STATE_BASES["$1"]=$(git -C "$HUB_REPO" hash-object -w "$PROJECT_CLAUDE$1")
 }
 
+# Is $1 a base sha that resolves to a BLOB in the hub object store? cat-file -e
+# accepts any object type, but the merge needs a blob; a commit/tree sha (or a
+# pruned blob) must be treated as no-base (Codex Medium).
+base_blob_present() {
+  [ "$(git -C "$HUB_REPO" cat-file -t "$1" 2>/dev/null)" = blob ]
+}
+
 # Should the relative path be skipped for bootstrap? Honors the same RSYNC_EXCLUDES
 # patterns and always skips the state file itself.
 bootstrap_excluded() {
@@ -153,6 +164,11 @@ bootstrap_excluded() {
 # that already have one. Never prompts, never copies, touches only .sync-state,
 # and does not bump the session counter.
 if [ "$BOOTSTRAP_BASES" -eq 1 ]; then
+  # R5 is a state-only pass: it must not create the hub tree (Codex Medium).
+  [ -d "$HUB_PLUGIN" ] || {
+    echo "Error: hub plugin tree not found at $HUB_PLUGIN; nothing to bootstrap." >&2
+    exit 1
+  }
   bs_recorded=0
   bs_present=0
   while IFS= read -r pf; do
@@ -171,6 +187,10 @@ if [ "$BOOTSTRAP_BASES" -eq 1 ]; then
   echo "bootstrap: $bs_recorded bases recorded, $bs_present already present"
   exit 0
 fi
+
+# The normal scan may create the hub plugin dir on a first sync; bootstrap must
+# not (see above), so the mkdir lives below the bootstrap exit path.
+mkdir -p "$HUB_PLUGIN"
 
 # Helper: should we prompt for this path? Returns 0 (prompt) or 1 (skip silently).
 should_prompt() {
@@ -196,7 +216,7 @@ project_unchanged_since_base() {
   local path="$1" base_sha
   base_sha="${STATE_BASES[$path]:-}"
   [ -n "$base_sha" ] || return 1
-  git -C "$HUB_REPO" cat-file -e "$base_sha" 2>/dev/null || return 1
+  base_blob_present "$base_sha" || return 1
   [ "$(git hash-object "$PROJECT_CLAUDE$path")" = "$base_sha" ]
 }
 
@@ -270,14 +290,16 @@ done <<< "$CHANGES"
 
 PROJ_NAME=$(basename "$PROJECT_ROOT")
 
-# Helper: prompt user, record decision into state, return 0 if approved.
+# Helper: prompt user, record the NEGATIVE decision into state, return 0 if
+# approved. A y approval is NOT recorded here: synced:/base: are written only
+# after the file is successfully installed (High 1, Codex), so a failed install
+# never leaves a synced ledger entry. defer/never persist regardless.
 prompt_for() {
   local action="$1" path="$2"
   printf "%s %s to hub? [y=sync now / d=defer (default) / n=never] " "$action" "$path" >&2
   local resp; read -r resp || resp=""
   case "$resp" in
     y|Y|yes|YES|sync)
-      STATE_DECISIONS["$path"]="synced:$CURRENT_SESSION"
       return 0
       ;;
     n|N|never|NEVER)
@@ -460,8 +482,6 @@ for path in "${PROMPT_ADDS[@]:-}"; do
   [ -z "${path:-}" ] && continue
   if prompt_for "Add" "$path"; then
     APPROVED_ADDS+=("$path")
-    # Record the merged/copied-in PROJECT content as the base for next time (R2).
-    record_base "$path"
   fi
 done
 
@@ -481,10 +501,10 @@ for path in "${PROMPT_CHANGES[@]:-}"; do
   # exists in the hub object store, AND the three-way merge is clean. Every
   # other outcome (no base, pruned blob, or a non-clean merge) falls through to
   # the legacy overwrite prompt below.
-  if [ -n "$base_sha" ] && git -C "$HUB_REPO" cat-file -e "$base_sha" 2>/dev/null; then
-    base_tmp=$(mktemp)
+  if [ -n "$base_sha" ] && base_blob_present "$base_sha"; then
+    base_tmp=$(mktemp "$WORKDIR/base.XXXXXX")
     git -C "$HUB_REPO" cat-file blob "$base_sha" > "$base_tmp"
-    merged_tmp=$(mktemp)
+    merged_tmp=$(mktemp "$WORKDIR/merged.XXXXXX")
     set +e
     git merge-file --stdout -L hub -L base -L project \
       "$HUB_PLUGIN$path" "$base_tmp" "$PROJECT_CLAUDE$path" > "$merged_tmp"
@@ -509,7 +529,6 @@ for path in "${PROMPT_CHANGES[@]:-}"; do
       if prompt_for "Merge" "$path"; then
         MERGED_PATHS+=("$path")
         MERGED_TMP["$path"]="$merged_tmp"
-        record_base "$path"
       else
         rm -f "$merged_tmp"
       fi
@@ -533,51 +552,39 @@ for path in "${PROMPT_CHANGES[@]:-}"; do
       diff -u "$HUB_PLUGIN$path" "$PROJECT_CLAUDE$path" >&2 || true
       if prompt_for "Update" "$path"; then
         APPROVED_CHANGES+=("$path")
-        record_base "$path"
       fi
     fi
   fi
   # Legacy overwrite fallthrough (default defer): no base or a pruned base blob.
-  # Record a base on y so the path joins the merge regime next time (R4).
   if [ "$handled" -eq 0 ]; then
     if prompt_for "Update" "$path"; then
       APPROVED_CHANGES+=("$path")
-      record_base "$path"
     fi
   fi
 done
 
 # R6 prune fold-in: offer to delete each retired hub file (project source gone).
 # Reads from STDIN like the other prompts (prune.sh reads /dev/tty, which is why
-# it cannot be tested and is not reused verbatim). On y, git rm stages the
-# deletion and the path's synced/base records are dropped; d/n record defer/never
-# exactly as prompt_for does.
-PRUNED_PATHS=()
+# it cannot be tested and is not reused verbatim). Only the y/d/n DECISION is
+# collected here; the git rm is applied later, after a preflight, so a mid-loop
+# failure cannot leave some deletions staged with their records still present
+# (High 3, Codex). d/n record defer/never exactly as prompt_for does.
+PRUNE_APPROVED=()
 for p in "${PRUNE_CANDIDATES[@]:-}"; do
   [ -z "${p:-}" ] && continue
   printf "Delete %s from hub? [y=delete now / d=defer (default) / n=never] " "$p" >&2
   read -r presp || presp=""
   case "$presp" in
-    y|Y|yes|YES)
-      git -C "$HUB_REPO" rm -r --quiet "cultivation/marketplace/sam-cc-setup/$p"
-      unset 'STATE_DECISIONS[$p]'
-      unset 'STATE_BASES[$p]'
-      PRUNED_PATHS+=("$p")
-      ;;
-    n|N|never|NEVER)
-      STATE_DECISIONS["$p"]="never"
-      ;;
-    *)
-      STATE_DECISIONS["$p"]="defer:$((CURRENT_SESSION + DEFER_SESSIONS))"
-      ;;
+    y|Y|yes|YES) PRUNE_APPROVED+=("$p") ;;
+    n|N|never|NEVER) STATE_DECISIONS["$p"]="never" ;;
+    *) STATE_DECISIONS["$p"]="defer:$((CURRENT_SESSION + DEFER_SESSIONS))" ;;
   esac
 done
 
-# Persist updated state regardless of whether anything was approved.
-write_state
-
-TOTAL_APPROVED=$(( ${#APPROVED_ADDS[@]} + ${#APPROVED_CHANGES[@]} + ${#MERGED_PATHS[@]} + ${#PRUNED_PATHS[@]} ))
+TOTAL_APPROVED=$(( ${#APPROVED_ADDS[@]} + ${#APPROVED_CHANGES[@]} + ${#MERGED_PATHS[@]} + ${#PRUNE_APPROVED[@]} ))
 if [ "$TOTAL_APPROVED" -eq 0 ]; then
+  # Persist defer/never decisions and any no-op base advances, then stop.
+  write_state
   echo "Nothing approved — exiting."
   exit 0
 fi
@@ -589,7 +596,7 @@ for p in "${APPROVED_ADDS[@]:-}" "${APPROVED_CHANGES[@]:-}"; do
 done
 
 if [ "${#NONEMPTY[@]}" -gt 0 ]; then
-  TMPLIST=$(mktemp)
+  TMPLIST=$(mktemp "$WORKDIR/files.XXXXXX")
   printf '%s\n' "${NONEMPTY[@]}" > "$TMPLIST"
   rsync -a --files-from="$TMPLIST" "$PROJECT_CLAUDE" "$HUB_PLUGIN"
   rm -f "$TMPLIST"
@@ -603,10 +610,46 @@ for p in "${MERGED_PATHS[@]:-}"; do
   rm -f "${MERGED_TMP[$p]}"
 done
 
+# High 1 (Codex): record synced:/base: ONLY now, after the file is installed, so
+# a failed rsync/cp never leaves a synced ledger entry for a file that is not in
+# the hub. The base is the PROJECT content that was copied or merged in.
+for p in "${APPROVED_ADDS[@]:-}" "${APPROVED_CHANGES[@]:-}" "${MERGED_PATHS[@]:-}"; do
+  [ -z "${p:-}" ] && continue
+  STATE_DECISIONS["$p"]="synced:$CURRENT_SESSION"
+  record_base "$p"
+done
+
+# High 3 (Codex): apply prune deletions now, each preflighted so git rm cannot
+# fail mid-loop. A candidate whose hub copy is not tracked (e.g. never committed)
+# is skipped, not aborted. Ledger records drop only for deletions that succeed.
+PRUNED_PATHS=()
+for p in "${PRUNE_APPROVED[@]:-}"; do
+  [ -z "${p:-}" ] && continue
+  hub_rel="cultivation/marketplace/sam-cc-setup/$p"
+  if git -C "$HUB_REPO" ls-files --error-unmatch -- "$hub_rel" >/dev/null 2>&1; then
+    git -C "$HUB_REPO" rm -r --quiet "$hub_rel"
+    unset 'STATE_DECISIONS[$p]'
+    unset 'STATE_BASES[$p]'
+    PRUNED_PATHS+=("$p")
+  else
+    echo "  prune skipped (not tracked in hub): $p" >&2
+  fi
+done
+
+# Persist the ledger now that installs and prunes have actually happened.
+write_state
+
 # 8. Show resulting git status in hub
 echo "---"
 echo "Hub status after apply:"
 git -C "$HUB_REPO" status --short
+
+# Nothing actually reached the hub (e.g. every approved prune was untracked).
+if [ "${#APPROVED_ADDS[@]}" -eq 0 ] && [ "${#APPROVED_CHANGES[@]}" -eq 0 ] \
+   && [ "${#MERGED_PATHS[@]}" -eq 0 ] && [ "${#PRUNED_PATHS[@]}" -eq 0 ]; then
+  echo "Nothing was applied to the hub — nothing to commit."
+  exit 0
+fi
 
 # 9. Prompt commit + push (default Y).
 printf "Commit synced files? [Y/n] " >&2
@@ -627,11 +670,6 @@ HUB_RELPATHS=()
 for p in "${APPROVED_ADDS[@]:-}" "${APPROVED_CHANGES[@]:-}" "${MERGED_PATHS[@]:-}"; do
   [ -n "$p" ] && HUB_RELPATHS+=("cultivation/marketplace/sam-cc-setup/$p")
 done
-
-if [ "${#HUB_RELPATHS[@]}" -eq 0 ] && [ "${#PRUNED_PATHS[@]}" -eq 0 ]; then
-  echo "Internal error: TOTAL_APPROVED>0 but no hub relpaths to commit." >&2
-  exit 1
-fi
 
 # Stage adds/changes/merges (scoped). Pruned paths are already staged as
 # deletions by git rm, so they need no add (git add on a removed path errors).
