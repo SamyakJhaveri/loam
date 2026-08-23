@@ -23,11 +23,11 @@ Self-preference research says a reviewer that can recognize the author's reasoni
 1. Resolve `$ARGUMENTS` to the artifact path. If empty, ask for it; never guess.
 2. Build the agent prompt with ONLY:
    - the artifact path(s) to read;
-   - the hard constraints the solution must satisfy (rulings, repo laws, immutability rules) stated as bare facts;
+   - the hard constraints the solution must satisfy, stated as bare facts;
    - the repo's reuse surfaces worth searching (existing scripts, helpers, tests).
    NEVER include: why the approach was chosen, the planning conversation, prior review verdicts, or your own opinion of the artifact.
 3. Spawn the `elegance-reviewer` agent with that prompt. Run it in the background if a correctness review is running in parallel; the two must not see each other's output before both finish.
-4. When the report returns: archive it under `.claude/codex-reviews/YYYY-MM-DD-elegance-<slug>.md` (same shelf as the other review transcripts), then present the ranked counter-proposals to the user for adopt/reject rulings. Adopted counters are recorded where the artifact's decisions live (rulings block, plan addendum, or ticket), never silently applied.
+4. When the report returns: archive it under `.claude/codex-reviews/YYYY-MM-DD-elegance-<slug>.md` (same shelf as the other review transcripts), then present the ranked counter-proposals to the user for adopt/reject rulings. Adopted counters are recorded where the artifact's decisions live (the repository's documented decision location, or the reviewed artifact itself), never silently applied.
 
 ## Design rationale
 

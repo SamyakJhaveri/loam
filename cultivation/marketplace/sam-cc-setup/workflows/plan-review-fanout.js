@@ -126,7 +126,7 @@ const R1 = PREAMBLE + "\nYOUR LENS — REPOSITORY RULES (canonical checklist ite
 "(b) If the plan inlines a 'binding repo rules' section, are those restatements ACCURATE? Cross-check each restated rule against the actual rule file it claims to restate, including any commit gate, sandbox artifact, and commit/merge mechanics.\n" +
 "For each violation or inaccurate restatement, cite the specific rule file:line and the corrective action."
 
-const R2 = PREAMBLE + "\nYOUR LENS — OVER-ENGINEERING / SCOPE (canonical checklist item 3). Prefer the smallest change that completely satisfies the controlling plan.\n" +
+const R2 = PREAMBLE + "\nYOUR LENS — OVER-ENGINEERING / SCOPE (canonical checklist item 3). Prefer the smallest change that completely satisfies the reviewed plan.\n" +
 "For each task/phase ask: is this the simplest change that achieves the plan's stated goal, or is it gold-plating — unnecessary abstractions, premature generalization, new files that could be avoided, flexibility nobody asked for, broad sweeps where a targeted change suffices? If the plan bundles a genuinely-critical task together with deferrable nice-to-haves, say so and recommend narrowing to the critical core. If the plan re-litigates work a prior triage/decision doc in the repo already deferred, flag it (cite the doc).\n" +
 "Flag every instance of scope that exceeds the plan's own stated objective."
 
