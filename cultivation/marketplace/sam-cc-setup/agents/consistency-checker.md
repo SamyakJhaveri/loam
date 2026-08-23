@@ -1,6 +1,6 @@
 ---
 name: consistency-checker
-description: "Cross-checks documentation against code. Detects stale claims in CLAUDE.md, contradictions between agent tables and actual files, and undocumented changes. Use in post-session validation Wave 3. Returns structured PASS/FAIL. Reports every finding, most severe first."
+description: "Cross-checks documentation against code. Detects stale claims in CLAUDE.md, contradictions between agent tables and actual files, missing rules-table entries, competing controlling-plan claims, and undocumented changes. Use in the project's post-session validation pass. Returns structured PASS/FAIL. Reports every finding, most severe first."
 tools: Bash, Read, Glob, Grep
 model: sonnet
 permissionMode: dontAsk
@@ -95,44 +95,31 @@ if [ -n "$CHANGED_SCRIPTS" ]; then
 fi
 ```
 
-## Check 6: eval-batcher.md Kernel List vs KNOWN_FAIL Specs
-
-Verify that KNOWN_FAIL specs are excluded from eval-batcher's eligible lists:
-```bash
-KNOWN_FAIL_SPECS="kmeans-cuda kmeans-opencl nn-opencl hybridsort-cuda mummergpu-cuda mummergpu-omp"
-for spec in $KNOWN_FAIL_SPECS; do
-    if grep -q "$spec" .claude/agents/eval-batcher.md; then
-        echo "WARNING: $spec appears in eval-batcher eligibility list but is KNOWN_FAIL"
-    fi
-done
-```
-
-## Check 7: Single Controlling Work Order
+## Check 6: Single Controlling Work Order
 
 Exactly one file (`CLAUDE.md`) may name a work-order filename as controlling.
 Every other mention must *defer* to `CLAUDE.md` rather than restate a filename.
-This check exists because on 2026-07-28 three different documents each called
-themselves controlling, while the plan that actually covered the current week was
-named by nothing.
+This check exists because multiple documents once each called themselves controlling,
+while the plan that actually covered the current work was named by nothing.
 
 ```bash
-# 7a. CLAUDE.md must name EXACTLY ONE controlling work order, and it must exist.
+# 6a. CLAUDE.md must name EXACTLY ONE controlling work order, and it must exist.
 # sed, not `grep -oP`: PCRE mode is a GNU-grep feature and this project also runs on macOS.
 WO=$(sed -n 's/.*Controlling work order: `\([^`]*\)`.*/\1/p' CLAUDE.md)
 N=$(printf '%s\n' "$WO" | grep -c .)
 [ "$N" -eq 1 ] || echo "FAIL: CLAUDE.md names $N controlling work orders, expected exactly 1"
 [ "$N" -ne 1 ] || [ -f "$WO" ] || echo "FAIL: controlling work order does not exist on disk: $WO"
 
-# 7b. No other routing doc may name a work-order FILENAME as controlling.
+# 6b. No other routing doc may name a work-order FILENAME as controlling.
 # The awk strips the "file:line:" prefix before pattern-matching, because grep -rn
 # echoes the path and files NAMED *MASTER_EXECUTION_PLAN* would otherwise self-match.
 # SCOPE: root *.md is included deliberately. HANDOFF.md sat outside an earlier version
 # of this scope and kept naming a second "binding" plan for days, unnoticed - which is
 # the exact failure this check exists to catch.
-# CLAUDE.md is excluded: it is the single source of truth 7a already checked, so
+# CLAUDE.md is excluded: it is the single source of truth 6a already checked, so
 # including it here would flag the one line that is supposed to exist.
 grep -rn -iE 'controlling|binding|authoritative|master plan' \
-     *.md AGENTS.md rebuttal/*.md */CONTEXT.md .claude/rules/*.md .claude/plans/*.md 2>/dev/null \
+     *.md AGENTS.md */CONTEXT.md .claude/rules/*.md .claude/plans/*.md .claude/plans/*.html 2>/dev/null \
   | grep -v '^CLAUDE\.md:' \
   | awk '{ c=$0; sub(/^[^:]*:[0-9]+:/,"",c);
            if (c ~ /EXECUTION_WORKORDER|MASTER_EXECUTION_PLAN|EXECUTION_PLAN_|PHASED_PLAN|\.claude\/plans\//) print }' \
@@ -144,21 +131,21 @@ grep -rn -iE 'controlling|binding|authoritative|master plan' \
       head -20 "$f" | grep -q 'HISTORICAL RECORD' || echo "$f:$l:$rest"
     done
 # Any surviving line is a violation: report it as file:line.
-# Do NOT add a line-level `grep -v superseded` here. rebuttal/CONTEXT.md:15 mentions
+# Do NOT add a line-level `grep -v superseded` here. A CONTEXT.md may mention
 # superseded archives in its Skip column, so that filter silently swallows real
 # violations on that exact line. Mark a dead doc with a `HISTORICAL RECORD` banner
 # instead - that phrase is the exemption, and it has to be written deliberately.
 ```
 
-FAIL if 7a fails, or if 7b prints any line. A document banner-marked
+FAIL if 6a fails, or if 6b prints any line. A document banner-marked
 `HISTORICAL RECORD`, or a line deferring to `CLAUDE.md`, is not a violation.
 
-**Known limits, stated so nobody mistakes this for airtight.** 7b is keyword- and
+**Known limits, stated so nobody mistakes this for airtight.** 6b is keyword- and
 line-oriented. A doc that asserts authority using none of the four keywords, names a
 plan file matching none of the five patterns, or splits the claim across two lines,
 passes. It catches recurrence of the observed failure mode, not every possible one.
 
-## Check 8: Generated-outputs registry is intact
+## Check 7: Generated-outputs registry is intact
 
 `.claude/hooks/generated-file-guard.sh` fails open on infrastructure problems, so a
 registry that has rotted disables protection silently. This is the check that notices.
@@ -167,8 +154,8 @@ registry that has rotted disables protection silently. This is the check that no
 python3 scripts/check_generated_registry.py
 ```
 
-FAIL if it exits non-zero. Run with `--uncovered` to see which tracked files under
-`results/analysis/` and `results/augmentation/` no row covers yet; that list is
+FAIL if it exits non-zero. Run with `--uncovered` to see which tracked files in the
+generated-output directories the registry names no row covers yet; that list is
 advisory (a coverage worklist), not a failure.
 
 ## Output Format
@@ -191,17 +178,14 @@ CONSISTENCY CHECK: PASS/FAIL
 [5] Session coverage:         PASS/WARN
     [if WARN: changed files that may need doc updates]
 
-[6] Eval-batcher eligibility: PASS/FAIL
-    [if FAIL: KNOWN_FAIL spec in eligible list]
-
-[7] Single controlling plan:  PASS/FAIL
+[6] Single controlling plan:  PASS/FAIL
     [if FAIL: file:line of each doc naming a work-order filename instead of deferring]
 
-[8] Generated-outputs registry: PASS/FAIL
+[7] Generated-outputs registry: PASS/FAIL
     [if FAIL: the FAIL lines from scripts/check_generated_registry.py]
 
 VERDICT: PASS/FAIL
-(FAIL on: missing entries in CLAUDE.md tables, KNOWN_FAIL in eval list,
+(FAIL on: missing entries in CLAUDE.md tables,
  more than one doc naming a controlling work order, a rotted registry)
 (WARN on: doc updates that may be needed — advisory)
 ```
