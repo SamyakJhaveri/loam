@@ -572,14 +572,34 @@ fi
 # shape instead: an all-'+' run after ">f" is a brand-new file; any other
 # non-space run is a changed file. Width-independent, so it works under
 # either rsync implementation.
+# Item 6 (Codex p5 High, reshaped): rsync itemizes a control character in a filename
+# as `\#ooo` (three octal digits) on BOTH GNU and BSD rsync, so an embedded LF cannot
+# split the itemize line - but the captured string then names no real file and would
+# resolve wrongly if fed to compute_base/install_file. Refuse any candidate that
+# fails state_path_ok OR carries an rsync `\#ooo` escape, at capture, so ADDED_PATHS
+# and CHANGED_PATHS only ever hold safe paths (one choke point covering prompt, hash,
+# install and state).
+candidate_ok() {
+  local p="$1"
+  state_path_ok "$p" || return 1
+  case "$p" in
+    *'\#'[0-7][0-7][0-7]*) return 1 ;;
+  esac
+  return 0
+}
+
 ADDED_PATHS=()
 CHANGED_PATHS=()
 while IFS= read -r line; do
   [ -z "$line" ] && continue
   if [[ "$line" =~ ^\>f\++\ (.*)$ ]]; then
-    ADDED_PATHS+=("${BASH_REMATCH[1]}")
+    cand="${BASH_REMATCH[1]}"
+    if candidate_ok "$cand"; then ADDED_PATHS+=("$cand")
+    else echo "warning: ignoring unsafe candidate path: $cand" >&2; fi
   elif [[ "$line" =~ ^\>f[^+\ ][^\ ]*\ (.*)$ ]]; then
-    CHANGED_PATHS+=("${BASH_REMATCH[1]}")
+    cand="${BASH_REMATCH[1]}"
+    if candidate_ok "$cand"; then CHANGED_PATHS+=("$cand")
+    else echo "warning: ignoring unsafe candidate path: $cand" >&2; fi
   fi
 done <<< "$CHANGES"
 
