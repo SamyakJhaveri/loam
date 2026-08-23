@@ -352,8 +352,39 @@ if [ "$BOOTSTRAP_BASES" -eq 1 ]; then
   exit 0
 fi
 
+# reject_symlink_path <rel>: C5 (Codex pass 2 Critical) + item 1 (Codex pass 4
+# Critical). install_file's mkdir -p, mktemp and cp - and the normal scan's
+# `mkdir -p "$HUB_PLUGIN"` below - would FOLLOW a committed hub symlink ancestor
+# (e.g. `cultivation -> ../outside`) and write OUTSIDE the plugin tree. Walk every
+# cumulative component of $rel under HUB_PLUGIN and refuse if any EXISTING one is
+# a symlink (`[ -L ]` tests the link itself, never follows it). A fresh path,
+# whose components do not exist yet, passes cleanly. Defined here, above the
+# plugin-root mkdir, so bash has bound it before the first call (functions bind at
+# definition time); install_file and the prune loop below call it too.
+reject_symlink_path() {
+  # Walk from the HUB ROOT (Codex pass 3 Critical): cultivation/, marketplace/
+  # and sam-cc-setup/ themselves could be symlinks, not only the components
+  # below the plugin root. The message names the component relative to the
+  # plugin root when it lies below it.
+  local rel="$1" prefix="" remainder="${HUB_PLUGIN_REL}$1" component shown
+  while [ -n "$remainder" ]; do
+    component="${remainder%%/*}"
+    if [ "$component" = "$remainder" ]; then remainder=""; else remainder="${remainder#*/}"; fi
+    [ -z "$component" ] && continue
+    prefix="${prefix:+$prefix/}$component"
+    if [ -L "$HUB_REPO/$prefix" ]; then
+      shown="${prefix#"$HUB_PLUGIN_REL"}"
+      echo "Error: install failed for $rel (symlink in destination path: $shown)" >&2
+      exit 1
+    fi
+  done
+}
+
 # The normal scan may create the hub plugin dir on a first sync; bootstrap must
 # not (see above), so the mkdir lives below the bootstrap exit path.
+# Item 1 (Codex pass 4 Critical): check the plugin-root ancestry BEFORE the mkdir,
+# or a symlinked ancestor redirects the dir creation outside the hub.
+reject_symlink_path ""
 mkdir -p "$HUB_PLUGIN"
 
 # Helper: should we prompt for this path? Returns 0 (prompt) or 1 (skip silently).
@@ -762,31 +793,6 @@ if [ "$TOTAL_APPROVED" -eq 0 ]; then
   echo "Nothing approved — exiting."
   exit 0
 fi
-
-# reject_symlink_path <rel>: C5 (Codex pass 2 Critical). install_file's mkdir -p,
-# mktemp and cp would FOLLOW a committed hub symlink ancestor (e.g. a symlink
-# `skills -> ../../../outside`) and write OUTSIDE the plugin tree. Walk every
-# cumulative component of $rel under HUB_PLUGIN and refuse if any EXISTING one is
-# a symlink (`[ -L ]` tests the link itself, never follows it). A fresh path,
-# whose components do not exist yet, passes cleanly.
-reject_symlink_path() {
-  # Walk from the HUB ROOT (Codex pass 3 Critical): cultivation/, marketplace/
-  # and sam-cc-setup/ themselves could be symlinks, not only the components
-  # below the plugin root. The message names the component relative to the
-  # plugin root when it lies below it.
-  local rel="$1" prefix="" remainder="${HUB_PLUGIN_REL}$1" component shown
-  while [ -n "$remainder" ]; do
-    component="${remainder%%/*}"
-    if [ "$component" = "$remainder" ]; then remainder=""; else remainder="${remainder#*/}"; fi
-    [ -z "$component" ] && continue
-    prefix="${prefix:+$prefix/}$component"
-    if [ -L "$HUB_REPO/$prefix" ]; then
-      shown="${prefix#"$HUB_PLUGIN_REL"}"
-      echo "Error: install failed for $rel (symlink in destination path: $shown)" >&2
-      exit 1
-    fi
-  done
-}
 
 # install_file <src> <dst> <rel>: install one file atomically. H3 (Codex High):
 # a bulk rsync could leave earlier files installed with no ledger record when a
