@@ -95,4 +95,43 @@ done
 if grep -qF "$TRAV" "$HUBB/.sync-state"; then echo "FAIL(B): traversal key persisted"; cat "$HUBB/.sync-state"; exit 1; fi
 if grep -qF "/etc/passwd" "$HUBB/.sync-state"; then echo "FAIL(B): absolute key persisted"; cat "$HUBB/.sync-state"; exit 1; fi
 
+# ---- Leg C: a carriage-return-bearing key (ruling 4 + A2) ----
+# `read -r` ends a line at the newline, so an embedded \n can never appear INSIDE a
+# key read from .sync-state - the newline is unreachable. A carriage return IS
+# reachable: a .sync-state written with CRLF line endings leaves a trailing \r on
+# each key (read -r strips the \n but keeps the \r). state_path_ok's `*$'\r'*` clause
+# must reject it: warning printed, key dropped, and NOT re-emitted by the next
+# write_state. (RED per A2 is demonstrate-by-removal: temporarily delete the
+# `|*$'\r'*` alternative from state_path_ok at scan.sh:112 - never committed.)
+HUBC="$TMP/hubC"; SETUPC="$HUBC/cultivation/marketplace/sam-cc-setup"
+mkdir -p "$SETUPC/skills/foo"
+echo "foo" > "$SETUPC/skills/foo/SKILL.md"
+(cd "$HUBC" && git init -q && \
+  git -c user.email=t@t -c user.name=t add -A && \
+  git -c user.email=t@t -c user.name=t commit -q -m init)
+
+mkdir -p "$TMP/projC/.claude/skills/foo"
+echo "foo" > "$TMP/projC/.claude/skills/foo/SKILL.md"
+(cd "$TMP/projC" && git init -q && \
+  git -c user.email=t@t -c user.name=t add -A && \
+  git -c user.email=t@t -c user.name=t commit -q -m init)
+
+# A never: record whose key carries a trailing CR (CRLF line ending).
+printf 'session=1\nnever:crlf/victim.md\r\n' > "$HUBC/.sync-state"
+
+cd "$TMP/projC"
+set +e
+outC=$(printf 'n\n' | SAM_CC_HUB_REPO="$HUBC" bash "$SYNC_SH" 2>&1)
+rcC=$?
+set -e
+if [ "$rcC" -ne 0 ]; then echo "FAIL(C): scan exit $rcC"; echo "$outC"; exit 1; fi
+if ! echo "$outC" | grep -qF "ignoring malformed .sync-state key: crlf/victim.md"; then
+  echo "FAIL(C): no malformed-key warning for the carriage-return key"; echo "$outC"; exit 1; fi
+# The key is dropped, so no record for it survives in the rewritten ledger...
+if grep -qF "crlf/victim.md" "$HUBC/.sync-state"; then
+  echo "FAIL(C): the carriage-return key was re-emitted"; cat -v "$HUBC/.sync-state"; exit 1; fi
+# ...and no carriage return leaks into the rewritten .sync-state at all.
+if LC_ALL=C grep -q $'\r' "$HUBC/.sync-state"; then
+  echo "FAIL(C): a carriage return survived into the rewritten .sync-state"; cat -v "$HUBC/.sync-state"; exit 1; fi
+
 echo "PASS: test_crafted_state_path"
