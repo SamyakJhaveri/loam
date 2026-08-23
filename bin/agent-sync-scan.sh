@@ -266,23 +266,26 @@ write_state() {
   return "$rc"
 }
 
-# Record the PROJECT content of $1 as the merge base for next time (R2): write
-# its blob into the hub object store and remember the sha. Content-addressed, so
-# the value is the same whether computed before or after the file is installed.
-record_base() {
+# compute_base <rel>: write the PROJECT content of $1 into the hub object store and
+# echo its validated 40-hex blob sha on stdout; return 1 (with an Error) on any
+# failure - a hash-object error OR a non-40-hex result. Callers compute the base
+# BEFORE install so a failure fails the item (Error + exit 1) instead of recording a
+# synced: line with no merge base, which the next scan would resolve by a destructive
+# overwrite (ruling 2 / A3, Codex pass-4 High). Content-addressed, so the value is
+# the same whether computed before or after the file is installed.
+# loam is a SHA-1 repository; a SHA-256 hub (64-hex) is out of scope (Codex M2, declined 2026-08-22).
+compute_base() {
   local sha
   if ! sha=$(git -C "$HUB_REPO" hash-object -w "$PROJECT_CLAUDE$1" 2>/dev/null); then
-    echo "  warning: hash-object failed for $1; base left unchanged" >&2
+    echo "  Error: hash-object failed for $1; no merge base recorded" >&2
+    return 1
+  fi
+  if [[ "$sha" =~ ^[0-9a-f]{40}$ ]]; then
+    printf '%s\n' "$sha"
     return 0
   fi
-  # Only store a real 40-hex blob sha; never let an empty/garbled value become a
-  # `base:<path>:` line that the EXIT trap would persist (Codex High).
-  # loam is a SHA-1 repository; a SHA-256 hub (64-hex) is out of scope (Codex M2, declined 2026-08-22).
-  if [[ "$sha" =~ ^[0-9a-f]{40}$ ]]; then
-    STATE_BASES["$1"]="$sha"
-  else
-    echo "  warning: hash-object gave no valid sha for $1; base left unchanged" >&2
-  fi
+  echo "  Error: hash-object gave no valid sha for $1; no merge base recorded" >&2
+  return 1
 }
 
 # Is $1 a base sha that resolves to a BLOB in the hub object store? cat-file -e
@@ -343,8 +346,16 @@ if [ "$BOOTSTRAP_BASES" -eq 1 ]; then
       bs_present=$((bs_present + 1))
       continue
     fi
-    record_base "$rel"
-    bs_recorded=$((bs_recorded + 1))
+    if bsha=$(compute_base "$rel"); then
+      STATE_BASES["$rel"]="$bsha"
+      bs_recorded=$((bs_recorded + 1))
+    else
+      # A3: fail closed - never count the failed path; pin CURRENT_SESSION to PRIOR
+      # so the EXIT trap does not advance the ledger, then exit re-runnably.
+      echo "Error: could not record a base for $rel; bootstrap aborted (re-runnable)" >&2
+      CURRENT_SESSION="$PRIOR_SESSION"
+      exit 1
+    fi
   done < <(find "$PROJECT_CLAUDE" -type f)
   CURRENT_SESSION="$PRIOR_SESSION"   # never bump the session on a bootstrap
   write_state || { echo "Error: could not persist .sync-state or refs/agent-sync/bases; hub left uncommitted" >&2; exit 1; }
@@ -725,7 +736,13 @@ for path in "${PROMPT_CHANGES[@]:-}"; do
       # synced:, or commit.
       if cmp -s "$merged_tmp" "$HUB_PLUGIN$path"; then
         rm -f "$merged_tmp"
-        record_base "$path"
+        # No-op base advance: on a compute failure (A3) warn and record nothing, so
+        # the next scan simply re-offers the path (nothing was installed here).
+        if nb=$(compute_base "$path"); then
+          STATE_BASES["$path"]="$nb"
+        else
+          echo "  warning: base not advanced for $path; it will be re-offered next scan" >&2
+        fi
         continue
       fi
       # Clean three-way merge: hub generalization and project edit coexist.
@@ -849,9 +866,16 @@ done
 # even on an abort.
 for p in "${NONEMPTY[@]:-}"; do
   [ -z "${p:-}" ] && continue
+  # Compute the base BEFORE install (ruling 2): a hash-object failure fails the item
+  # here, so no synced: line is ever written without a matching base:.
+  if ! base_sha=$(compute_base "$p"); then
+    echo "Error: aborting before install of $p (no merge base)" >&2
+    exit 1
+  fi
   install_file "$PROJECT_CLAUDE$p" "$HUB_PLUGIN$p" "$p"
+  # Assign synced: and base: together, only AFTER install_file returns.
   STATE_DECISIONS["$p"]="synced:$CURRENT_SESSION"
-  record_base "$p"
+  STATE_BASES["$p"]="$base_sha"
 done
 
 # Merged results are installed via install_file too (never rsync, which would
@@ -861,6 +885,12 @@ done
 # BSD/GNU stat). Record each right after its own install succeeds.
 for p in "${MERGED_PATHS[@]:-}"; do
   [ -z "${p:-}" ] && continue
+  # Compute the base BEFORE install (ruling 2); compute_base hashes the PROJECT
+  # blob, the same base value as the plain install path.
+  if ! base_sha=$(compute_base "$p"); then
+    echo "Error: aborting before install of merged $p (no merge base)" >&2
+    exit 1
+  fi
   # GNU stat treats -f as --file-system (it prints a multi-line dump, not the
   # mode), so -f must run AFTER -c; BSD stat has no -c and falls through to -f.
   merged_mode=$(stat -c '%a' "$PROJECT_CLAUDE$p" 2>/dev/null \
@@ -868,7 +898,7 @@ for p in "${MERGED_PATHS[@]:-}"; do
   chmod "$merged_mode" "${MERGED_TMP[$p]}" 2>/dev/null || true
   install_file "${MERGED_TMP[$p]}" "$HUB_PLUGIN$p" "$p"
   STATE_DECISIONS["$p"]="synced:$CURRENT_SESSION"
-  record_base "$p"
+  STATE_BASES["$p"]="$base_sha"
   rm -f "${MERGED_TMP[$p]}"
 done
 
