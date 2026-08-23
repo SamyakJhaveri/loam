@@ -28,12 +28,14 @@ DEFER_SESSIONS="${SAM_CC_DEFER_SESSIONS:-4}"
   echo "Error: SAM_CC_DEFER_SESSIONS must be a decimal number of 1 to 6 digits (got '$DEFER_SESSIONS')" >&2
   exit 1
 }
-# Ledger counters (session=, defer ask_at) are accepted only below a ceiling
-# that keeps every value the scan can DERIVE from them re-readable: a session
-# < 900000000 advances to at most 900000000, and ask_at = session +
-# DEFER_SESSIONS (<= 999999) stays below 999999999. A value at or past the
-# ceiling is treated as malformed (Codex pass 3 Medium: the old 9-digit check
-# let 999999999 advance to a 10-digit value that the next run rejected).
+# Ledger counters (session=, defer ask_at) must stay strictly below a ceiling so
+# every value the scan DERIVES from them next run is still re-readable. counter_ok
+# rejects anything >= 900000000. This bounds the STORED value; the DERIVED values
+# (CURRENT_SESSION = session + 1, and the next ask_at = CURRENT_SESSION +
+# DEFER_SESSIONS) are validated at derivation time (just below the CURRENT_SESSION
+# assignment) and the run is REFUSED - never rolled over - if either would cross the
+# ceiling (Codex pass 4 Medium: the old code let session 899999999 advance to
+# 900000000, which the next run then rejected, silently dropping the ledger).
 counter_ok() {
   [[ "$1" =~ ^[0-9]{1,9}$ ]] && [ "$1" -lt 900000000 ]
 }
@@ -170,6 +172,18 @@ STATE_LOADED=1
 # 10# forces base-10 so a validated leading-zero count (e.g. 08) never trips the
 # octal parser; PRIOR_SESSION is guaranteed decimal by the session=* guard above.
 CURRENT_SESSION=$((10#$PRIOR_SESSION + 1))
+# Ceiling guard (ruling 3 + A1): both CURRENT_SESSION and the largest ask_at a defer
+# could derive this run (CURRENT_SESSION + DEFER_SESSIONS) must stay below the
+# counter ceiling, or the NEXT run's counter_ok would reject them and silently drop
+# the ledger. Refuse at derivation - never roll over. Pin CURRENT_SESSION back to
+# PRIOR so the EXIT trap persists the UNCHANGED session, then exit re-runnably. The
+# guard is UNGATED (applies to bootstrap too, per lead ruling): a bootstrap at the
+# ceiling refuses with the same Error and writes nothing, and the PRIOR pin holds.
+if ! counter_ok "$CURRENT_SESSION" || ! counter_ok "$((CURRENT_SESSION + DEFER_SESSIONS))"; then
+  echo "Error: session counter at the ceiling: next session $CURRENT_SESSION, a defer would reach ask_at $((CURRENT_SESSION + DEFER_SESSIONS)); both must stay below 900000000. Refusing to advance without rewriting .sync-state; clear it to reset the counter." >&2
+  CURRENT_SESSION="$PRIOR_SESSION"
+  exit 1
+fi
 
 # Resolve the project and hub trees (shared by bootstrap and the scan below).
 PROJECT_CLAUDE="$PROJECT_ROOT/.claude/"
