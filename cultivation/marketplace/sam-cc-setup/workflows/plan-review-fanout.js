@@ -122,11 +122,11 @@ const G3 = PREAMBLE + "\nYOUR LENS — CODEBASE GROUNDING #3: the plan's RATIONA
 // ---- Checklist lenses (plan-reviewer agent: Read/Glob/Grep/WebSearch) ----
 const R1 = PREAMBLE + "\nYOUR LENS — REPOSITORY RULES (canonical checklist item 2).\n" +
 "Read .claude/rules/*.md and CLAUDE.md. Then check TWO things separately:\n" +
-"(a) Does the plan CONFORM to these rules — workflow ordering (implement -> /validate -> commit -> /codex-review); ask-before-broad-sweeps; never-cite-from-memory; results/ immutable; atomic commits; plan-vs-execute; the /validate gate mechanics?\n" +
-"(b) If the plan inlines a 'binding repo rules' section, are those restatements ACCURATE? Cross-check each against the actual rule file — especially the /validate sentinel behavior (snapshot blind to untracked; Edit/Write deletes the sentinel; bare git commit; user runs via the ! prefix), --group harness vs survey for tests, the pre-commit gate, the MPI/git 'Operation not permitted' sandbox artifact, and any commit/merge mechanics.\n" +
+"(a) Does the plan CONFORM to these rules — workflow ordering (implement -> the project's validation gate -> commit -> independent review); ask-before-broad-sweeps; never-cite-from-memory; immutable data directories; atomic commits; plan-vs-execute; the validation gate's mechanics?\n" +
+"(b) If the plan inlines a 'binding repo rules' section, are those restatements ACCURATE? Cross-check each restated rule against the actual rule file it claims to restate, including any commit gate, sandbox artifact, and commit/merge mechanics.\n" +
 "For each violation or inaccurate restatement, cite the specific rule file:line and the corrective action."
 
-const R2 = PREAMBLE + "\nYOUR LENS — OVER-ENGINEERING / SCOPE (canonical checklist item 3). The repo warns that Opus tends to over-engineer; session-guardrails.md demands the simplest solution.\n" +
+const R2 = PREAMBLE + "\nYOUR LENS — OVER-ENGINEERING / SCOPE (canonical checklist item 3). Prefer the smallest change that completely satisfies the controlling plan.\n" +
 "For each task/phase ask: is this the simplest change that achieves the plan's stated goal, or is it gold-plating — unnecessary abstractions, premature generalization, new files that could be avoided, flexibility nobody asked for, broad sweeps where a targeted change suffices? If the plan bundles a genuinely-critical task together with deferrable nice-to-haves, say so and recommend narrowing to the critical core. If the plan re-litigates work a prior triage/decision doc in the repo already deferred, flag it (cite the doc).\n" +
 "Flag every instance of scope that exceeds the plan's own stated objective."
 
@@ -139,7 +139,7 @@ const R4 = PREAMBLE + "\nYOUR LENS — COMPLETENESS (canonical checklist item 5)
 "Flag any task missing files, action, or verification; note where appropriate abstraction is fine."
 
 const R5 = PREAMBLE + "\nYOUR LENS — ORDERING & DEPENDENCIES (canonical checklist item 6).\n" +
-"Check sequencing: are prerequisites done before dependents (e.g., a sync/setup step before anything that reads the synced state)? Are the repo's known ordering hazards correctly encoded (no Edit/Write between /validate and commit; stage untracked before /validate; the bare-git-commit + user-runs-via-! mechanics; switch OFF the PR branch before gh pr merge --delete-branch; atomic commits vs the fail-CLOSED gate)? Are parallel lanes genuinely file-disjoint? Can each phase be verified independently before the next, or are there circular deps?\n" +
+"Check sequencing: are prerequisites done before dependents (e.g., a sync/setup step before anything that reads the synced state)? Are the repo's known ordering hazards correctly encoded (any validation-gate-before-commit rule and what invalidates the gate; switching off the PR branch before gh pr merge --delete-branch; atomic commits against a fail-closed gate)? Are parallel lanes genuinely file-disjoint? Can each phase be verified independently before the next, or are there circular deps?\n" +
 "Flag circular dependencies, steps that cannot be tested in isolation, and any ordering hazard the plan omits."
 
 const E1 = PREAMBLE + "\n<elegance_gate> MANDATORY. Do not treat as a formality.\n" +
