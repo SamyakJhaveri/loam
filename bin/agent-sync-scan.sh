@@ -355,6 +355,22 @@ bootstrap_excluded() {
   return 1
 }
 
+# candidate_ok <path>: reject a candidate that fails state_path_ok OR carries an
+# rsync `\#ooo` control-char escape (three octal digits). Used at two capture points:
+# the bootstrap find loop below (item 8, Codex p6) and the rsync categorize loop
+# (item 6, Codex p5). rsync escapes a control char in an itemized name as `\#ooo`
+# (both GNU and BSD), so an LF cannot split the itemize line but the captured string
+# names no real file; a bootstrap `find -print0` name instead carries a REAL newline,
+# which state_path_ok's `*$'\n'*` clause rejects. Defined here, above both loops.
+candidate_ok() {
+  local p="$1"
+  state_path_ok "$p" || return 1
+  case "$p" in
+    *'\#'[0-7][0-7][0-7]*) return 1 ;;
+  esac
+  return 0
+}
+
 # One EXIT trap covers both concerns: it persists the ledger (so per-item
 # records survive even a mid-batch cp/git rm abort) and removes all temp files
 # (base/merge/file-list) so none leak on an error or signal. The write_state is
@@ -382,8 +398,11 @@ if [ "$BOOTSTRAP_BASES" -eq 1 ]; then
   }
   bs_recorded=0
   bs_present=0
-  while IFS= read -r pf; do
+  while IFS= read -r -d '' pf; do
     rel="${pf#"$PROJECT_CLAUDE"}"
+    # Item 8 (Codex p6 High): validate the rel read from `find -print0` before use -
+    # a newline-named file is caught by state_path_ok's `*$'\n'*` clause in candidate_ok.
+    candidate_ok "$rel" || { echo "warning: ignoring unsafe candidate path: $rel" >&2; continue; }
     bootstrap_excluded "$rel" && continue
     [ -f "$HUB_PLUGIN$rel" ] || continue
     # A recorded base whose blob is still present counts as already present; a
@@ -403,7 +422,7 @@ if [ "$BOOTSTRAP_BASES" -eq 1 ]; then
       CURRENT_SESSION="$PRIOR_SESSION"
       exit 1
     fi
-  done < <(find "$PROJECT_CLAUDE" -type f)
+  done < <(find "$PROJECT_CLAUDE" -type f -print0)
   CURRENT_SESSION="$PRIOR_SESSION"   # never bump the session on a bootstrap
   write_state || { echo "Error: could not persist .sync-state or refs/agent-sync/bases; hub left uncommitted" >&2; exit 1; }
   echo "bootstrap: $bs_recorded bases recorded, $bs_present already present"
@@ -578,22 +597,6 @@ fi
 # shape instead: an all-'+' run after ">f" is a brand-new file; any other
 # non-space run is a changed file. Width-independent, so it works under
 # either rsync implementation.
-# Item 6 (Codex p5 High, reshaped): rsync itemizes a control character in a filename
-# as `\#ooo` (three octal digits) on BOTH GNU and BSD rsync, so an embedded LF cannot
-# split the itemize line - but the captured string then names no real file and would
-# resolve wrongly if fed to compute_base/install_file. Refuse any candidate that
-# fails state_path_ok OR carries an rsync `\#ooo` escape, at capture, so ADDED_PATHS
-# and CHANGED_PATHS only ever hold safe paths (one choke point covering prompt, hash,
-# install and state).
-candidate_ok() {
-  local p="$1"
-  state_path_ok "$p" || return 1
-  case "$p" in
-    *'\#'[0-7][0-7][0-7]*) return 1 ;;
-  esac
-  return 0
-}
-
 ADDED_PATHS=()
 CHANGED_PATHS=()
 while IFS= read -r line; do
