@@ -116,6 +116,19 @@ state_path_ok() {
   return 0
 }
 
+# Item 5 (Codex p5 Critical): a .sync-state that is a symlink (the `[ -f ]` read
+# below follows it) or a directory is not a valid ledger; refuse both shapes up
+# front so no read or write ever touches an unexpected target. This runs before
+# STATE_LOADED=1 and before the EXIT trap is registered, so nothing is persisted on
+# this abort.
+if [ -L "$STATE_FILE" ]; then
+  echo "Error: $STATE_FILE is a symlink, not a regular file; refusing to read or write it. Remove it and re-run." >&2
+  exit 1
+fi
+if [ -d "$STATE_FILE" ]; then
+  echo "Error: $STATE_FILE is a directory, not a regular file; refusing to read or write it. Remove it and re-run." >&2
+  exit 1
+fi
 if [ -f "$STATE_FILE" ]; then
   while IFS= read -r line; do
     [ -z "$line" ] && continue
@@ -213,7 +226,20 @@ write_state() {
   fi
   # Explicit if/else, NOT `if ! group > tmp && mv` (that binds as
   # `(! group>tmp) && mv`, so mv never runs on the success path).
-  if [ -n "$state_tmp" ] && { echo "session=$CURRENT_SESSION"
+  # Item 5 (Codex p5 Critical): `mv -f "$tmp" "$STATE_FILE"` onto a DIRECTORY or a
+  # SYMLINK-to-directory moves the temp INTO it (or through it) and returns 0 - no
+  # readable ledger, yet a commit could proceed, and a symlink writes OUTSIDE the
+  # hub. Refuse both shapes BEFORE the mv (rm temp, rc=1 so the normal path aborts
+  # before the commit); after the mv, require a regular, non-symlink file (guards a
+  # mid-run TOCTOU plant). The parse-time guard above already refuses a bad shape
+  # present at start; this covers one appearing during the run.
+  if [ -n "$state_tmp" ] && { [ -L "$STATE_FILE" ] || [ -d "$STATE_FILE" ]; }; then
+    local shape=symlink
+    [ -L "$STATE_FILE" ] || shape=directory
+    echo "  Error: $STATE_FILE is a $shape, not a regular file; refusing to write the ledger" >&2
+    rm -f "$state_tmp" 2>/dev/null || true
+    rc=1
+  elif [ -n "$state_tmp" ] && { echo "session=$CURRENT_SESSION"
     for p in "${!STATE_DECISIONS[@]}"; do
       local dec="${STATE_DECISIONS[$p]}"
       case "$dec" in
@@ -225,8 +251,9 @@ write_state() {
     for p in "${!STATE_BASES[@]}"; do
       echo "base:$p:${STATE_BASES[$p]}"
     done
-     } > "$state_tmp" && mv -f "$state_tmp" "$STATE_FILE"; then
-    :   # state written
+     } > "$state_tmp" && mv -f "$state_tmp" "$STATE_FILE" \
+       && [ -f "$STATE_FILE" ] && ! [ -L "$STATE_FILE" ]; then
+    :   # state written and verified a regular, non-symlink file
   else
     [ -n "$state_tmp" ] && { echo "  warning: could not write $STATE_FILE" >&2; rm -f "$state_tmp" 2>/dev/null || true; }
     rc=1
