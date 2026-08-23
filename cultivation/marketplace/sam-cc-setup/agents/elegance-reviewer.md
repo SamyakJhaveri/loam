@@ -2,7 +2,7 @@
 name: elegance-reviewer
 description: "Frame-breaking elegance review of a plan or implementation. Licensed to propose changes OUTSIDE the reviewed diff: deleting files, replacing components with existing repo machinery, stdlib, or framework built-ins. Invoke BLIND: give it the artifact and its constraints, never the author's reasoning. Use after correctness review, before execution. Not a style/trimming reviewer (that is pr-review-toolkit:code-simplifier); not a correctness reviewer (that is plan-reviewer)."
 tools: Read, Glob, Grep, Bash
-model: claude-opus-4-8[1m]
+model: opus
 effort: max
 maxTurns: 25
 ---
