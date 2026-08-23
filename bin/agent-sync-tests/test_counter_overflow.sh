@@ -94,4 +94,32 @@ if echo "$o5" | grep -qF "session counter at the ceiling"; then echo "FAIL(5): s
 if ! grep -qx 'session=899999998' "$T5/hub/.sync-state"; then echo "FAIL(5): session not advanced to 899999998"; cat "$T5/hub/.sync-state"; rm -rf "$T5"; exit 1; fi
 rm -rf "$T5"
 
+# Codex p5 Medium (item 7): SAM_CC_DEFER_SESSIONS with leading zeros (08, 000008)
+# passes the 1-6 digit regex but bare `$(( ... + DEFER_SESSIONS ))` parses it as
+# invalid octal ("value too great for base"). Canonicalizing with 10# once after
+# validation makes it decimal-safe; the derived ask_at is the decimal sum.
+
+# ---- Leg 6: DEFER_SESSIONS=08 canonicalized (no octal-parse error; ask_at decimal) ----
+T6="$(mktemp -d)"; mk_repo_pair "$T6"
+echo new > "$T6/proj/.claude/skills/new.md"
+(cd "$T6/proj" && git -c user.email=t@t -c user.name=t add -A && git -c user.email=t@t -c user.name=t commit -q -m addnew)
+cd "$T6/proj"
+set +e; o6=$(printf 'd\n' | SAM_CC_DEFER_SESSIONS=08 SAM_CC_HUB_REPO="$T6/hub" bash "$SYNC_SH" 2>&1); r6=$?; set -e
+if [ "$r6" -ne 0 ]; then echo "FAIL(6): scan exit $r6"; echo "$o6"; rm -rf "$T6"; exit 1; fi
+if echo "$o6" | grep -qiF "value too great for base"; then echo "FAIL(6): octal-parse error on DEFER_SESSIONS=08"; echo "$o6"; rm -rf "$T6"; exit 1; fi
+# CURRENT_SESSION = 0 + 1 = 1; ask_at = 1 + 8 (decimal) = 9.
+if ! grep -qx 'defer:skills/new.md:9' "$T6/hub/.sync-state"; then echo "FAIL(6): defer ask_at is not the decimal sum 9"; cat "$T6/hub/.sync-state"; rm -rf "$T6"; exit 1; fi
+rm -rf "$T6"
+
+# ---- Leg 7: DEFER_SESSIONS=000008 likewise ----
+T7="$(mktemp -d)"; mk_repo_pair "$T7"
+echo new > "$T7/proj/.claude/skills/new.md"
+(cd "$T7/proj" && git -c user.email=t@t -c user.name=t add -A && git -c user.email=t@t -c user.name=t commit -q -m addnew)
+cd "$T7/proj"
+set +e; o7=$(printf 'd\n' | SAM_CC_DEFER_SESSIONS=000008 SAM_CC_HUB_REPO="$T7/hub" bash "$SYNC_SH" 2>&1); r7=$?; set -e
+if [ "$r7" -ne 0 ]; then echo "FAIL(7): scan exit $r7"; echo "$o7"; rm -rf "$T7"; exit 1; fi
+if echo "$o7" | grep -qiF "value too great for base"; then echo "FAIL(7): octal-parse error on DEFER_SESSIONS=000008"; echo "$o7"; rm -rf "$T7"; exit 1; fi
+if ! grep -qx 'defer:skills/new.md:9' "$T7/hub/.sync-state"; then echo "FAIL(7): defer ask_at is not the decimal sum 9"; cat "$T7/hub/.sync-state"; rm -rf "$T7"; exit 1; fi
+rm -rf "$T7"
+
 echo "PASS: test_counter_overflow"

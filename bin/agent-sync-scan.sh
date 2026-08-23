@@ -28,6 +28,12 @@ DEFER_SESSIONS="${SAM_CC_DEFER_SESSIONS:-4}"
   echo "Error: SAM_CC_DEFER_SESSIONS must be a decimal number of 1 to 6 digits (got '$DEFER_SESSIONS')" >&2
   exit 1
 }
+# Item 7 (Codex p5 Medium): the regex above accepts leading zeros (08, 000008), but
+# bare `$(( ... + DEFER_SESSIONS ))` parses those as invalid octal ("value too great
+# for base"). Canonicalize to base-10 ONCE here, before any arithmetic use (the
+# ceiling guard below, prompt_for's ask_at, the prune-loop ask_at). The regex
+# guarantees a 1-6 digit decimal, so 10# never fails.
+DEFER_SESSIONS=$((10#$DEFER_SESSIONS))
 # Ledger counters (session=, defer ask_at) must stay strictly below a ceiling so
 # every value the scan DERIVES from them next run is still re-readable. counter_ok
 # rejects anything >= 900000000. This bounds the STORED value; the DERIVED values
