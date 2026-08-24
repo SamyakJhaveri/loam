@@ -22,6 +22,7 @@ mkdir -p "$HUB_SETUP"
 echo "bracket" > "$HUB_SETUP/$GLOB"
 echo "one"     > "$HUB_SETUP/$SIBLING"
 (cd "$TMP/hub" && git init -q && \
+  git config user.email t@t && git config user.name t && \
   git -c user.email=t@t -c user.name=t add -A && \
   git -c user.email=t@t -c user.name=t commit -q -m init)
 
@@ -42,9 +43,11 @@ printf 'a[1].md\t-\ttravels\n' > "$TMP/proj/.claude/reference/portability-manife
 
 cd "$TMP/proj"
 
-# Run scan: y = delete the a[1].md candidate, n = do not commit (inspect index).
+# Run scan: y = delete the a[1].md candidate, then commit (EOF defaults commit=Y,
+# push=N). H2 group 3: a declined commit now rolls the prune back, so the deletion
+# lands only after a commit - this run commits and we inspect HEAD.
 set +e
-output=$(printf 'y\nn\n' | SAM_CC_HUB_REPO="$TMP/hub" bash "$SYNC_SH" 2>&1)
+output=$(printf 'y\n' | SAM_CC_HUB_REPO="$TMP/hub" bash "$SYNC_SH" 2>&1)
 rc=$?
 set -e
 
@@ -56,25 +59,20 @@ if ! echo "$output" | grep -qF "Delete $GLOB from hub?"; then
   echo "FAIL: no Delete prompt for $GLOB"; echo "output: $output"; exit 1
 fi
 
-STAGED=$(git -C "$TMP/hub" diff --cached --name-status)
-
-# Assertion 2: the offered file a[1].md is staged as deleted.
-if ! printf '%s\n' "$STAGED" | awk -F'\t' -v p="$REL_PFX/$GLOB" '$1=="D" && $2==p {f=1} END{exit !f}'; then
-  echo "FAIL: a[1].md not staged as deleted"; echo "$STAGED"; exit 1
+# Assertion 2: the offered file a[1].md was committed as a deletion (absent from HEAD).
+if git -C "$TMP/hub" cat-file -e "HEAD:$REL_PFX/$GLOB" 2>/dev/null; then
+  echo "FAIL: a[1].md still at HEAD (deletion not committed)"; exit 1
 fi
 
-# Assertion 3 (the RED): the never-offered sibling a1.md must NOT appear in the
-# staged changes at all, must still exist, and must still be tracked at HEAD.
-# Pre-fix the bare wildmatch pathspec sweeps it into the deletion.
-if printf '%s\n' "$STAGED" | awk -F'\t' -v p="$REL_PFX/$SIBLING" '$2==p{f=1} END{exit !f}'; then
-  echo "FAIL: hub-only sibling a1.md was swept into the staged changes (bare glob pathspec)"
-  echo "$STAGED"; exit 1
-fi
+# Assertion 3 (the H1 guarantee): the never-offered sibling a1.md must be
+# untouched - still on disk and still tracked at HEAD. Pre-fix the bare wildmatch
+# pathspec swept it into the deletion (committing would drop it from HEAD too);
+# :(literal) confines the delete to a[1].md.
 if [ ! -f "$HUB_SETUP/$SIBLING" ]; then
   echo "FAIL: hub-only sibling a1.md was removed from the working tree"; exit 1
 fi
 if ! git -C "$TMP/hub" cat-file -e "HEAD:$REL_PFX/$SIBLING" 2>/dev/null; then
-  echo "FAIL: hub-only sibling a1.md no longer at HEAD"; exit 1
+  echo "FAIL: hub-only sibling a1.md no longer at HEAD (swept by the glob pathspec)"; exit 1
 fi
 
 echo "PASS: test_prune_glob_pathspec"

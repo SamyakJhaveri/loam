@@ -20,6 +20,7 @@ printf 'alpha\nbeta\ngamma\ndelta\n' > "$BASE"
 mkdir -p "$HUB_SETUP/skills/foo"
 printf 'alpha GENERALIZED\nbeta\ngamma\ndelta\n' > "$HUB_SETUP/$REL"
 (cd "$TMP/hub" && git init -q && \
+  git config user.email t@t && git config user.name t && \
   git -c user.email=t@t -c user.name=t add -A && \
   git -c user.email=t@t -c user.name=t commit -q -m init)
 
@@ -43,9 +44,11 @@ BASE_SHA=$(git -C "$TMP/hub" hash-object -w "$BASE")
 
 cd "$TMP/proj"
 
-# Run scan: y = accept the merge, n = do not commit.
+# Run scan: y = accept the merge, then commit (EOF defaults commit=Y, push=N).
+# H2 group 3: a declined commit now rolls the merge back, so the merged content
+# and the advanced base: land only after a commit - this run commits.
 set +e
-output=$(printf 'y\nn\n' | SAM_CC_HUB_REPO="$TMP/hub" bash "$SYNC_SH" 2>&1)
+output=$(printf 'y\n' | SAM_CC_HUB_REPO="$TMP/hub" bash "$SYNC_SH" 2>&1)
 rc=$?
 set -e
 

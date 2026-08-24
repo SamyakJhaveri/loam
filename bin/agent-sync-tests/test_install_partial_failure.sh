@@ -1,11 +1,12 @@
 #!/usr/bin/env bash
 # test_install_partial_failure.sh
-# Codex High H3: adds/changes install per-item via install_file (temp file in the
-# destination dir, atomic rename), recording synced:+base: right after each
-# success. A mid-batch install failure prints "Error: install failed for <path>"
-# and aborts with exit 1, leaving earlier items installed AND recorded, later
-# items neither installed nor recorded, and no leftover .sync-install.* temp
-# file. cp -p keeps the executable bit.
+# Codex High H3 + H2 (group 3): adds/changes install per-item via install_file
+# (temp file in the destination dir, atomic rename). A mid-batch install failure
+# prints "Error: install failed for <path>" and aborts with exit 1. Under H2
+# pending-quarantine (A1) the synced:/base: records are held in PENDING_* and only
+# written after a successful commit, so a mid-batch abort leaves earlier items
+# INSTALLED-BUT-UNRECORDED (not recorded), later items neither installed nor
+# recorded, and no leftover .sync-install.* temp file. cp -p keeps the +x bit.
 #
 # Failure injection: the hub has a regular FILE at skills/b. This does NOT make
 # the current bulk rsync fail - rsync -a recovers by DELETING the file and
@@ -62,10 +63,12 @@ if ! echo "$out" | grep -q "Error: install failed for $B"; then
   echo "FAIL: missing mandated 'Error: install failed for $B' message"; echo "$out"; exit 1
 fi
 
-# a installed and recorded (synced + base).
+# a installed (install writes to the worktree) but NOT recorded: H2 pending-
+# quarantine (A1) discards the pending synced:/base: on a mid-batch abort, so a is
+# installed-but-unrecorded (surfaced by the dirty-hub warning, healed by --bootstrap-bases).
 if [ ! -f "$HUB_SETUP/$A" ]; then echo "FAIL: a not installed"; echo "$out"; exit 1; fi
-if ! grep -q "synced:$A:" "$STATE"; then echo "FAIL: no synced: record for a"; cat "$STATE"; exit 1; fi
-if ! grep -q "base:$A:" "$STATE"; then echo "FAIL: no base: record for a"; cat "$STATE"; exit 1; fi
+if grep -q "synced:$A:" "$STATE"; then echo "FAIL: a recorded synced: despite mid-batch abort (A1: expected installed-but-unrecorded)"; cat "$STATE"; exit 1; fi
+if grep -q "base:$A:" "$STATE"; then echo "FAIL: a recorded base: despite mid-batch abort (A1: expected installed-but-unrecorded)"; cat "$STATE"; exit 1; fi
 
 # +x leg: a arrived executable.
 if [ ! -x "$HUB_SETUP/$A" ]; then echo "FAIL: a lost its executable bit"; exit 1; fi

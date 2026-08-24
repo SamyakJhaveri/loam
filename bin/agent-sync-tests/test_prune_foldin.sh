@@ -20,6 +20,7 @@ echo "keep"  > "$HUB_SETUP/keep.md"
 echo "gone"  > "$HUB_SETUP/$GONE"
 echo "bonly" > "$HUB_SETUP/$BONLY"
 (cd "$TMP/hub" && git init -q && \
+  git config user.email t@t && git config user.name t && \
   git -c user.email=t@t -c user.name=t add -A && \
   git -c user.email=t@t -c user.name=t commit -q -m init)
 
@@ -44,9 +45,11 @@ BONLY_SHA=$(printf 'bonly\n' | git -C "$TMP/hub" hash-object -w --stdin)
 cd "$TMP/proj"
 STATE="$TMP/hub/.sync-state"
 
-# Run scan: y = delete each of the two candidates, n = do not commit.
+# Run scan: y = delete each candidate, then commit (EOF defaults commit=Y,
+# push=N). H2 group 3: a declined commit now rolls the prune back, so the
+# deletions land only after a commit - this run commits.
 set +e
-output=$(printf 'y\ny\nn\n' | SAM_CC_HUB_REPO="$TMP/hub" bash "$SYNC_SH" 2>&1)
+output=$(printf 'y\ny\n' | SAM_CC_HUB_REPO="$TMP/hub" bash "$SYNC_SH" 2>&1)
 rc=$?
 set -e
 
@@ -60,14 +63,14 @@ for rel in "$GONE" "$BONLY"; do
   fi
 done
 
-# Assertion 2: both hub files are gone, staged as deleted (D), records dropped.
+# Assertion 2: both hub files are gone, committed as deletions (absent from HEAD),
+# records dropped (the pending prune-unset is applied after the commit succeeds).
 for rel in "$GONE" "$BONLY"; do
   if [ -f "$HUB_SETUP/$rel" ]; then
     echo "FAIL: hub file still present after y: $rel"; echo "output: $output"; exit 1
   fi
-  if ! git -C "$TMP/hub" status --porcelain | grep -qE "^D.*$rel"; then
-    echo "FAIL: deletion not staged (D) in hub: $rel"
-    git -C "$TMP/hub" status --porcelain; exit 1
+  if git -C "$TMP/hub" cat-file -e "HEAD:cultivation/marketplace/sam-cc-setup/$rel" 2>/dev/null; then
+    echo "FAIL: deletion not committed in hub (still at HEAD): $rel"; exit 1
   fi
   if grep -q "$rel" "$STATE"; then
     echo "FAIL: record for $rel still in .sync-state"; cat "$STATE"; exit 1

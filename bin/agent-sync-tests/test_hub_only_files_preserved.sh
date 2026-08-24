@@ -6,15 +6,15 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 SYNC_SH="$SCRIPT_DIR/../agent-sync-scan.sh"
 TMP="$(mktemp -d)"
-trap "rm -rf '$TMP'" EXIT
+trap 'rm -rf "$TMP"' EXIT
 
 # Hub has foo + gone (curated set). Project has foo (matches) + bar (new).
 mkdir -p "$TMP/hub/cultivation/marketplace/sam-cc-setup/skills/foo" \
          "$TMP/hub/cultivation/marketplace/sam-cc-setup/skills/gone"
 echo "foo content" > "$TMP/hub/cultivation/marketplace/sam-cc-setup/skills/foo/SKILL.md"
 echo "gone content" > "$TMP/hub/cultivation/marketplace/sam-cc-setup/skills/gone/SKILL.md"
-(cd "$TMP/hub" && git init -q && git add -A && \
-  git -c user.email=t@t -c user.name=t commit -q -m init)
+(cd "$TMP/hub" && git init -q && git config user.email t@t && git config user.name t && \
+  git add -A && git -c user.email=t@t -c user.name=t commit -q -m init)
 
 mkdir -p "$TMP/proj/.claude/skills/foo" "$TMP/proj/.claude/skills/bar"
 echo "foo content" > "$TMP/proj/.claude/skills/foo/SKILL.md"
@@ -22,10 +22,11 @@ echo "bar content" > "$TMP/proj/.claude/skills/bar/SKILL.md"
 (cd "$TMP/proj" && git init -q && git add -A && \
   git -c user.email=t@t -c user.name=t commit -q -m init)
 
-# Sync — approve bar, decline commit
+# Sync — approve bar, commit (EOF defaults commit=Y, push=N). H2 group 3: an
+# approved add lands only after a commit, so this run commits to prove bar synced.
 cd "$TMP/proj"
 set +e
-output=$(printf 'y\nn\n' | SAM_CC_HUB_REPO="$TMP/hub" bash "$SYNC_SH" 2>&1)
+output=$(printf 'y\n' | SAM_CC_HUB_REPO="$TMP/hub" bash "$SYNC_SH" 2>&1)
 rc=$?
 set -e
 cd - >/dev/null

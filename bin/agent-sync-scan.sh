@@ -955,13 +955,16 @@ for p in "${APPROVED_ADDS[@]:-}" "${APPROVED_CHANGES[@]:-}"; do
   [ -n "$p" ] && NONEMPTY+=("$p")
 done
 
-# High 1 (Codex): record synced:/base: per item, IMMEDIATELY after that item is
-# installed - never in a single deferred pass - so a mid-batch install/git rm
-# abort leaves every earlier success already recorded. H3 closes OD-13c: each
-# item installs atomically via install_file, so a later failure can never leave
-# an earlier item installed-but-unrecorded. Merged and pruned items are recorded
-# one at a time inside their own loops. The EXIT trap then persists the ledger
-# even on an abort.
+# H2 (group 3, pending-quarantine - lead A1): installs and prune git-rms happen
+# now so the commit prompt shows a real diff, but the ledger records they imply
+# are held in PENDING_* and applied to STATE only AFTER the hub commit succeeds.
+# A declined commit rolls the hub back and leaves STATE untouched, so the ledger
+# is byte-identical for the affected paths and the next scan re-offers them. This
+# supersedes the former per-item-record rationale: a mid-batch CRASH (not a
+# decline) now leaves installed-but-unrecorded files, surfaced by the dirty-hub
+# warning and healed by --bootstrap-bases. Bootstrap and the merge no-op base
+# advance stay exempt (state-only by design) and write STATE_BASES directly.
+declare -A PENDING_SYNCED PENDING_BASES PENDING_PRUNE_UNSET
 for p in "${NONEMPTY[@]:-}"; do
   [ -z "${p:-}" ] && continue
   # Compute the base BEFORE install (ruling 2): a hash-object failure fails the item
@@ -971,9 +974,9 @@ for p in "${NONEMPTY[@]:-}"; do
     exit 1
   fi
   install_file "$PROJECT_CLAUDE$p" "$HUB_PLUGIN$p" "$p"
-  # Assign synced: and base: together, only AFTER install_file returns.
-  STATE_DECISIONS["$p"]="synced:$CURRENT_SESSION"
-  STATE_BASES["$p"]="$base_sha"
+  # Quarantine synced:/base: (H2); promoted into STATE only after the commit succeeds.
+  PENDING_SYNCED["$p"]="$CURRENT_SESSION"
+  PENDING_BASES["$p"]="$base_sha"
 done
 
 # Merged results are installed via install_file too (never rsync, which would
@@ -995,14 +998,15 @@ for p in "${MERGED_PATHS[@]:-}"; do
     || stat -f '%Lp' "$PROJECT_CLAUDE$p" 2>/dev/null || echo 644)
   chmod "$merged_mode" "${MERGED_TMP[$p]}" 2>/dev/null || true
   install_file "${MERGED_TMP[$p]}" "$HUB_PLUGIN$p" "$p"
-  STATE_DECISIONS["$p"]="synced:$CURRENT_SESSION"
-  STATE_BASES["$p"]="$base_sha"
+  PENDING_SYNCED["$p"]="$CURRENT_SESSION"   # H2: promoted post-commit
+  PENDING_BASES["$p"]="$base_sha"
   rm -f "${MERGED_TMP[$p]}"
 done
 
 # High 3 (Codex): apply prune deletions now, each preflighted so git rm cannot
 # fail mid-loop. A candidate whose hub copy is not tracked (e.g. never committed)
-# is skipped, not aborted. Each successful deletion drops its records right away.
+# is skipped, not aborted. H2: the record erasure is quarantined in
+# PENDING_PRUNE_UNSET and applied to STATE only after the commit succeeds.
 PRUNED_PATHS=()
 for p in "${PRUNE_APPROVED[@]:-}"; do
   [ -z "${p:-}" ] && continue
@@ -1017,16 +1021,16 @@ for p in "${PRUNE_APPROVED[@]:-}"; do
   # key and is silently ignored; the :(literal) magic prefix is the fix.)
   if git -C "$HUB_REPO" ls-files --error-unmatch -- ":(literal)$hub_rel" >/dev/null 2>&1; then
     git -C "$HUB_REPO" rm -r --quiet -- ":(literal)$hub_rel"
-    unset 'STATE_DECISIONS[$p]'
-    unset 'STATE_BASES[$p]'
+    PENDING_PRUNE_UNSET["$p"]=1   # H2: erase the record only after the commit succeeds
     PRUNED_PATHS+=("$p")
   else
     echo "  prune skipped (not tracked in hub): $p" >&2
   fi
 done
 
-# Persist the ledger now that installs and prunes have happened (the EXIT trap
-# also persists it, so a mid-batch abort still records the completed items).
+# Persist defer/never decisions and any no-op base advances now (the batch's
+# synced:/base: records are quarantined in PENDING_* and written only after the
+# commit succeeds; the EXIT trap also persists this partial state on an abort).
 write_state || { echo "Error: could not persist .sync-state or refs/agent-sync/bases; hub left uncommitted" >&2; exit 1; }
 
 # 8. Show resulting git status in hub
@@ -1041,12 +1045,34 @@ if [ "${#APPROVED_ADDS[@]}" -eq 0 ] && [ "${#APPROVED_CHANGES[@]}" -eq 0 ] \
   exit 0
 fi
 
+# rollback_path <rel>: on a declined commit, restore one hub path to its pre-scan
+# state. A path present in HEAD (a change, a merge, or a just-git-rm'd prune) is
+# checked out from HEAD - restoring the worktree AND unstaging any staged deletion;
+# a path absent from HEAD (a newly installed add) is removed. :(literal) so a glob
+# name cannot wildmatch a sibling; the HEAD:<path> lookup is already a literal path.
+rollback_path() {
+  local p="$1" hub_rel="cultivation/marketplace/sam-cc-setup/$1"
+  if git -C "$HUB_REPO" cat-file -e "HEAD:$hub_rel" 2>/dev/null; then
+    git -C "$HUB_REPO" checkout HEAD -- ":(literal)$hub_rel" 2>/dev/null || true
+  else
+    rm -f "$HUB_PLUGIN$p"
+  fi
+}
+
 # 9. Prompt commit + push (default Y).
 printf "Commit synced files? [Y/n] " >&2
 read -r commit_resp || commit_resp=""
 case "$commit_resp" in
   n|N|no|NO)
-    echo "Skipped commit. Hub working tree has changes you can review."
+    # H2 decline = surgical rollback (lead R2(iii)): restore exactly the paths this
+    # run touched so the hub returns to its pre-scan state; PENDING_* is discarded
+    # (never promoted), so the ledger stays byte-identical and the next scan
+    # re-offers. Scoped per-path so pre-existing hub WIP is untouched.
+    for rbp in "${APPROVED_ADDS[@]:-}" "${APPROVED_CHANGES[@]:-}" "${MERGED_PATHS[@]:-}" "${PRUNED_PATHS[@]:-}"; do
+      [ -z "${rbp:-}" ] && continue
+      rollback_path "$rbp"
+    done
+    echo "Declined - hub restored, nothing kept; re-run to apply."
     exit 0
     ;;
 esac
@@ -1070,6 +1096,23 @@ if [ "${#HUB_RELPATHS[@]}" -gt 0 ]; then
   git -C "$HUB_REPO" add -- "${HUB_RELPATHS[@]}"
 fi
 git -C "$HUB_REPO" commit -m "sync: from $PROJ_NAME on $DATE"
+# Commit succeeded: promote the quarantined records into the ledger, then persist
+# (H2). Until here STATE held no synced:/base: for this batch, so a decline or a
+# crash before this point could never leave a false-synced record (also removes
+# the H6 residue: an empty-index commit failure aborts before this promotion).
+if [ -n "${PENDING_SYNCED[*]+x}" ]; then
+  for pp in "${!PENDING_SYNCED[@]}"; do
+    STATE_DECISIONS["$pp"]="synced:${PENDING_SYNCED[$pp]}"
+    STATE_BASES["$pp"]="${PENDING_BASES[$pp]}"
+  done
+fi
+if [ -n "${PENDING_PRUNE_UNSET[*]+x}" ]; then
+  for pp in "${!PENDING_PRUNE_UNSET[@]}"; do
+    unset 'STATE_DECISIONS[$pp]'
+    unset 'STATE_BASES[$pp]'
+  done
+fi
+write_state || { echo "Error: could not persist .sync-state after commit; ledger and hub HEAD may disagree - re-run with --bootstrap-bases" >&2; exit 1; }
 # Push is outward-facing and the hub is a general-purpose repo — separate confirm.
 printf "Push %s to its origin now? [y/N] " "$HUB_REPO" >&2
 read -r push_resp || push_resp=""

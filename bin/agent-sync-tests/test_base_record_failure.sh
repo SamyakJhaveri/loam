@@ -54,10 +54,12 @@ set -e
 
 # Sanity only (both engines exit non-zero: post-fix aborts at zzz; pre-fix at git add).
 if [ "$rc" -eq 0 ]; then echo "FAIL(1): scan exited 0; expected a non-zero fail-closed abort"; echo "$out"; exit 1; fi
-# Earlier item genuinely recorded IN THIS BATCH (resolves option A): aaa installed + synced: + base:.
+# Earlier item installed but NOT recorded (H2 pending-quarantine, A1 supersedes the
+# former option-A per-item recording): a mid-batch abort discards the pending
+# synced:/base:, so aaa is installed-but-unrecorded (healed by --bootstrap-bases).
 if [ ! -e "$HS/skills/aaa/SKILL.md" ]; then echo "FAIL(1): earlier item skills/aaa was not installed"; echo "$out"; exit 1; fi
-if ! grep -qE "^synced:skills/aaa/SKILL.md:" "$STATE"; then echo "FAIL(1): earlier item skills/aaa has no synced: record"; cat "$STATE"; exit 1; fi
-if ! grep -qE "^base:skills/aaa/SKILL.md:" "$STATE"; then echo "FAIL(1): earlier item skills/aaa has no base: record"; cat "$STATE"; exit 1; fi
+if grep -qE "^synced:skills/aaa/SKILL.md:" "$STATE"; then echo "FAIL(1): skills/aaa recorded synced: despite mid-batch abort (A1: expected installed-but-unrecorded)"; cat "$STATE"; exit 1; fi
+if grep -qE "^base:skills/aaa/SKILL.md:" "$STATE"; then echo "FAIL(1): skills/aaa recorded base: despite mid-batch abort (A1: expected installed-but-unrecorded)"; cat "$STATE"; exit 1; fi
 # Discriminator 1 (install): pre-fix installs zzz before the swallowed failure.
 if [ -e "$HS/skills/zzz" ]; then echo "FAIL(1): skills/zzz was installed despite the failure"; exit 1; fi
 # Discriminator 2 (ledger - the exact regression): pre-fix writes synced:zzz with no base:zzz.
