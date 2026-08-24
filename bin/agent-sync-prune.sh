@@ -38,7 +38,9 @@ while IFS=$'\t' read -r path kind verdict reason requires; do
   read -r ans </dev/tty || ans=""
   case "$ans" in
     [yY]|[yY][eE][sS])
-      git -C "$HUB_REPO" rm -r --quiet "cultivation/marketplace/sam-cc-setup/$path"
+      # H1 / L1: :(literal) so a glob metachar in a manifest path (a[1].md) cannot
+      # wildmatch and delete an unrelated hub file the y/N prompt never named.
+      git -C "$HUB_REPO" rm -r --quiet -- ":(literal)cultivation/marketplace/sam-cc-setup/$path"
       deleted=$((deleted+1))
       echo "  deleted (staged in hub; commit in $HUB_REPO)"
       ;;

@@ -983,8 +983,12 @@ for p in "${PRUNE_APPROVED[@]:-}"; do
   state_path_ok "$p" || { echo "  prune skipped (malformed state key): $p" >&2; continue; }
   reject_symlink_path "$p"   # C5: no symlink ancestor may redirect the git rm
   hub_rel="cultivation/marketplace/sam-cc-setup/$p"
-  if git -C "$HUB_REPO" ls-files --error-unmatch -- "$hub_rel" >/dev/null 2>&1; then
-    git -C "$HUB_REPO" rm -r --quiet "$hub_rel"
+  # H1: prefix every ledger-derived pathspec with :(literal) so a glob metachar
+  # in the name (a[1].md) cannot wildmatch and sweep an unrelated hub file into
+  # the ls-files match or the git rm. (`-c core.literalPathspecs` is not a real
+  # key and is silently ignored; the :(literal) magic prefix is the fix.)
+  if git -C "$HUB_REPO" ls-files --error-unmatch -- ":(literal)$hub_rel" >/dev/null 2>&1; then
+    git -C "$HUB_REPO" rm -r --quiet -- ":(literal)$hub_rel"
     unset 'STATE_DECISIONS[$p]'
     unset 'STATE_BASES[$p]'
     PRUNED_PATHS+=("$p")
@@ -1026,7 +1030,10 @@ esac
 DATE=$(date -u +%Y-%m-%d)
 HUB_RELPATHS=()
 for p in "${APPROVED_ADDS[@]:-}" "${APPROVED_CHANGES[@]:-}" "${MERGED_PATHS[@]:-}"; do
-  [ -n "$p" ] && HUB_RELPATHS+=("cultivation/marketplace/sam-cc-setup/$p")
+  # H1: :(literal) so the scoped stage cannot wildmatch a glob-named path onto an
+  # unrelated dirty hub WIP sibling and sweep it into the sync commit (defeating
+  # the no-contamination guarantee above).
+  [ -n "$p" ] && HUB_RELPATHS+=(":(literal)cultivation/marketplace/sam-cc-setup/$p")
 done
 
 # Stage adds/changes/merges (scoped). Pruned paths are already staged as
