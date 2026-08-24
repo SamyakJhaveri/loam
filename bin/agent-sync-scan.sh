@@ -100,6 +100,11 @@ fi
 # on the last colon for the session number; a 4-field record would break it.
 declare -A STATE_DECISIONS
 declare -A STATE_BASES
+# M2: prune decisions live in their OWN namespace so a prune 'd'/'n' never
+# overwrites the sync decision slot (STATE_DECISIONS). Serialized as
+# prune-defer:/prune-never: records; read by prune_should_prompt, written by the
+# prune prompt loop.
+declare -A STATE_PRUNE_DECISIONS
 PRIOR_SESSION=0
 
 # H1 (Codex High): reject a crafted .sync-state key before it can drive any
@@ -181,6 +186,22 @@ if [ -f "$STATE_FILE" ]; then
         state_path_ok "$path" || { echo "warning: ignoring malformed .sync-state key: $path" >&2; continue; }
         STATE_DECISIONS["$path"]="synced:$at_session"
         ;;
+      prune-never:*)
+        # M2: a namespaced prune decision. Cannot collide with never:* above -
+        # that pattern requires the line to START with never:, and this starts
+        # with prune-never:.
+        path="${line#prune-never:}"
+        state_path_ok "$path" || { echo "warning: ignoring malformed .sync-state key: $path" >&2; continue; }
+        STATE_PRUNE_DECISIONS["$path"]="never"
+        ;;
+      prune-defer:*)
+        rest="${line#prune-defer:}"
+        path="${rest%:*}"
+        ask_at="${rest##*:}"
+        state_path_ok "$path" || { echo "warning: ignoring malformed .sync-state key: $path" >&2; continue; }
+        counter_ok "$ask_at" || { echo "warning: ignoring malformed .sync-state key: $path" >&2; continue; }
+        STATE_PRUNE_DECISIONS["$path"]="defer:$ask_at"
+        ;;
     esac
   done < "$STATE_FILE"
 fi
@@ -256,6 +277,13 @@ write_state() {
     done
     for p in "${!STATE_BASES[@]}"; do
       echo "base:$p:${STATE_BASES[$p]}"
+    done
+    for p in "${!STATE_PRUNE_DECISIONS[@]}"; do
+      local pdec="${STATE_PRUNE_DECISIONS[$p]}"
+      case "$pdec" in
+        never) echo "prune-never:$p" ;;
+        defer:*) echo "prune-defer:$p:${pdec#defer:}" ;;
+      esac
     done
      } > "$state_tmp" && mv -f "$state_tmp" "$STATE_FILE" \
        && [ -f "$STATE_FILE" ] && ! [ -L "$STATE_FILE" ]; then
@@ -479,6 +507,23 @@ should_prompt() {
   esac
 }
 
+# M2: the prune analogue of should_prompt, reading the SEPARATE prune namespace so
+# a prune defer/never never touches the sync decision slot. Returns 0 (offer the
+# prune) or 1 (suppressed by a prior prune defer/never).
+prune_should_prompt() {
+  local path="$1"
+  local prior="${STATE_PRUNE_DECISIONS[$path]:-}"
+  case "$prior" in
+    never) return 1 ;;
+    defer:*)
+      local ask_at="${prior#defer:}"
+      [ "$CURRENT_SESSION" -lt "$ask_at" ] && return 1
+      return 0
+      ;;
+    *) return 0 ;;
+  esac
+}
+
 # Critical-1 (Codex): a changed candidate whose project content still equals its
 # recorded base has NOT changed since the last sync - the hub-vs-project delta is
 # only the hub's own generalization, so it must not be re-offered. Returns 0
@@ -564,11 +609,16 @@ PRUNE_CANDIDATES=()
 declare -A _prune_seen
 consider_prune() {
   local p="$1"
-  [ -n "${_prune_seen[$p]:-}" ] && return
+  [ -n "${_prune_seen[$p]:-}" ] && return 0
   _prune_seen[$p]=1
-  [ -f "$HUB_PLUGIN$p" ] || return          # nothing in the hub to prune
-  [ -e "$PROJECT_CLAUDE$p" ] && return       # project source still exists
-  should_prompt "$p" || return               # suppressed by a prior never/defer
+  # consider_prune is a COLLECTOR (appends to PRUNE_CANDIDATES), not a predicate:
+  # every early exit returns 0 so a "no candidate" outcome never propagates a
+  # non-zero status that set -e would treat as an abort in the enumeration loop
+  # below. (M2 exposed this: a suppressed-but-still-synced path is now enumerated
+  # for the first time, so prune_should_prompt's `|| return` must not leak 1.)
+  [ -f "$HUB_PLUGIN$p" ] || return 0        # nothing in the hub to prune
+  [ -e "$PROJECT_CLAUDE$p" ] && return 0     # project source still exists
+  prune_should_prompt "$p" || return 0       # M2: suppressed by a prior PRUNE defer/never
   # H2 (Codex High): a folded prune must carry an explicit 'travels' verdict,
   # matching bin/agent-sync-prune.sh's manifest gate. A retired stays/rework/
   # unclassified path - or ANY path when there is no manifest at all - is
@@ -578,7 +628,7 @@ consider_prune() {
   prune_verdict="$(manifest_verdict "$p")"
   if [ "$prune_verdict" != travels ]; then
     echo "  prune withheld (manifest verdict '${prune_verdict:-unclassified}', not travels): $p" >&2
-    return
+    return 0
   fi
   PRUNE_CANDIDATES+=("$p")
 }
@@ -888,7 +938,9 @@ done
 # it cannot be tested and is not reused verbatim). Only the y/d/n DECISION is
 # collected here; the git rm is applied later, after a preflight, so a mid-loop
 # failure cannot leave some deletions staged with their records still present
-# (High 3, Codex). d/n record defer/never exactly as prompt_for does.
+# (High 3, Codex). M2: d/n record into the PRUNE namespace (STATE_PRUNE_DECISIONS),
+# never the sync slot, so a kept/deferred prune cannot suppress a later sync of the
+# same path and a base-less synced record keeps its route into prune candidacy.
 PRUNE_APPROVED=()
 for p in "${PRUNE_CANDIDATES[@]:-}"; do
   [ -z "${p:-}" ] && continue
@@ -896,8 +948,8 @@ for p in "${PRUNE_CANDIDATES[@]:-}"; do
   read -r presp || presp=""
   case "$presp" in
     y|Y|yes|YES) PRUNE_APPROVED+=("$p") ;;
-    n|N|never|NEVER) STATE_DECISIONS["$p"]="never" ;;
-    *) STATE_DECISIONS["$p"]="defer:$((CURRENT_SESSION + DEFER_SESSIONS))" ;;
+    n|N|never|NEVER) STATE_PRUNE_DECISIONS["$p"]="never" ;;
+    *) STATE_PRUNE_DECISIONS["$p"]="defer:$((CURRENT_SESSION + DEFER_SESSIONS))" ;;
   esac
 done
 
