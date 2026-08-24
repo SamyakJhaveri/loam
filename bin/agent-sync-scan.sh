@@ -529,6 +529,32 @@ manifest_allows() {
   esac
 }
 
+# H3: a hub-gitignored approved path is refused by `git add` at commit time, and
+# under set -e that aborts the WHOLE batch - no file commits, the non-ignored ones
+# are left staged, and the next scan wedges on the C2 staged-index guard. Detect
+# such a path here, BEFORE install, and skip it. The predicate is
+# check-ignore-matched AND not already tracked: `git add` never refuses a TRACKED
+# file that matches an ignore rule, so only an untracked one is the hazard.
+# check-ignore takes a LITERAL pathname (it rejects the :(literal) magic with
+# rc=128 and does not glob its arg), so it gets the plain hub-relpath; only rc==0
+# counts as matched (rc=1 not-ignored, rc=128 error both fail safe as no-skip).
+# The tracked-check reuses the :(literal) prefix used elsewhere.
+SKIPPED_HUBIGNORE=0
+hub_ignored_untracked() {
+  local rel="cultivation/marketplace/sam-cc-setup/$1"
+  git -C "$HUB_REPO" check-ignore -q -- "$rel" 2>/dev/null || return 1
+  git -C "$HUB_REPO" ls-files --error-unmatch -- ":(literal)$rel" >/dev/null 2>&1 && return 1
+  return 0
+}
+# Returns 0 (skip this path) when the hub would refuse it, printing the reason
+# unconditionally (a manifestless consumer still needs the preflight visible).
+hub_ignore_skip() {
+  hub_ignored_untracked "$1" || return 1
+  echo "  skipped (matches a hub .gitignore rule; git add -f in the hub or adjust the hub .gitignore, then re-run): $1" >&2
+  SKIPPED_HUBIGNORE=$((SKIPPED_HUBIGNORE+1))
+  return 0
+}
+
 # R6 prune fold-in: collect hub files whose project source is gone. A candidate
 # has a synced: OR base: ledger record, its hub copy still exists, its project
 # source does not, and it is not suppressed by a prior never/defer. Collected
@@ -743,6 +769,7 @@ for path in "${ADDED_PATHS[@]:-}"; do
   [ -z "${path:-}" ] && continue
   manifest_allows "$path" || continue
   deps_satisfied "$path" || continue
+  hub_ignore_skip "$path" && continue   # H3: refuse a hub-gitignored path before install
   should_prompt "$path" && PROMPT_ADDS+=("$path")
 done
 PROMPT_CHANGES=()
@@ -750,12 +777,13 @@ for path in "${CHANGED_PATHS[@]:-}"; do
   [ -z "${path:-}" ] && continue
   manifest_allows "$path" || continue
   deps_satisfied "$path" || continue
+  hub_ignore_skip "$path" && continue   # H3: refuse a hub-gitignored path before install
   should_prompt "$path" || continue
   project_unchanged_since_base "$path" && continue   # Critical-1: no-op, suppress
   PROMPT_CHANGES+=("$path")
 done
 if [ -f "$MANIFEST_TSV" ]; then
-  echo "  manifest guard: $SKIPPED_STAYS 'stays', $SKIPPED_REWORK 'rework' (generalize first), $SKIPPED_UNKNOWN unclassified, $SKIPPED_DEPS dep-withheld paths"
+  echo "  manifest guard: $SKIPPED_STAYS 'stays', $SKIPPED_REWORK 'rework' (generalize first), $SKIPPED_UNKNOWN unclassified, $SKIPPED_DEPS dep-withheld, $SKIPPED_HUBIGNORE hub-gitignored paths"
 fi
 
 echo "Sync from $PROJ_NAME (session $CURRENT_SESSION):"
