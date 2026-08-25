@@ -21,6 +21,11 @@ PROJECT_ROOT="$(git rev-parse --show-toplevel 2>/dev/null)" || {
   exit 1
 }
 HUB_REPO="${SAM_CC_HUB_REPO:-$HOME/Desktop/loam}"
+# M7 + TOCTOU (group 12): the symlink-sensitive steps bash cannot do no-follow live
+# in this helper, located next to the engine. The sync now hard-depends on python3.
+SAFE_IO="$(cd "$(dirname "${BASH_SOURCE[0]:-$0}")" && pwd)/agent-sync-safe-io.py"
+command -v python3 >/dev/null 2>&1 || { echo "Error: python3 is required (the no-follow safe-io helper)." >&2; exit 1; }
+[ -f "$SAFE_IO" ] || { echo "Error: safe-io helper not found at $SAFE_IO; cannot run safely." >&2; exit 1; }
 DEFER_SESSIONS="${SAM_CC_DEFER_SESSIONS:-4}"
 # H5 (Codex pass 2 High): the defer counter feeds Bash arithmetic; bound it to a
 # 1-9 digit decimal (<= 999999999) so it can never overflow or inject.
@@ -60,8 +65,17 @@ if [ ! -d "$HUB_REPO/.git" ]; then
   exit 1
 fi
 
-# 2. Verify project's .claude/ is committed
-if [ -n "$(git -C "$PROJECT_ROOT" status --porcelain .claude 2>/dev/null)" ]; then
+# 2. Verify project's .claude/ is committed.
+# M7 (group 12): when .claude is a SYMLINK (loam's own .claude -> seed/.claude
+# layout), `git status --porcelain .claude` statuses only the symlink blob, so a
+# dirty file under the target is invisible while rsync's trailing-slash source
+# follows the link and would promote it. Resolve the symlink and status the TARGET
+# (the helper refuses a target that escapes the repo).
+if ! CLAUDE_PATHSPEC=$(python3 "$SAFE_IO" resolve-claude "$PROJECT_ROOT"); then
+  echo "Error: could not resolve the project's .claude path safely; refusing to sync." >&2
+  exit 1
+fi
+if [ -n "$(git -C "$PROJECT_ROOT" status --porcelain -- "$CLAUDE_PATHSPEC" 2>/dev/null)" ]; then
   echo "Error: Project's .claude/ has uncommitted changes. Commit or stash before syncing." >&2
   exit 1
 fi
@@ -633,8 +647,14 @@ reject_symlink_path() {
 # not (see above), so the mkdir lives below the bootstrap exit path.
 # Item 1 (Codex pass 4 Critical): check the plugin-root ancestry BEFORE the mkdir,
 # or a symlinked ancestor redirects the dir creation outside the hub.
-reject_symlink_path ""
-mkdir -p "$HUB_PLUGIN"
+# TOCTOU (group 12): create the plugin root through the no-follow helper too, so a
+# component turning into a symlink (e.g. cultivation -> ../outside) between the
+# reject_symlink_path check and the mkdir cannot redirect the creation outside.
+reject_symlink_path ""   # defense-in-depth pre-check (retained per critic)
+if ! python3 "$SAFE_IO" mkdir "$HUB_REPO" "$HUB_PLUGIN_REL"; then
+  echo "Error: could not create the hub plugin directory safely." >&2
+  exit 1
+fi
 
 # Helper: should we prompt for this path? Returns 0 (prompt) or 1 (skip silently).
 should_prompt() {
@@ -1202,31 +1222,22 @@ fi
 # only the items recorded so far. The temp name starts with .sync-install. so a
 # leftover can never collide with a real path (none is left on success).
 install_file() {
-  local src="$1" dst="$2" rel="$3" dstdir tmp
-  reject_symlink_path "$rel"   # C5: no symlink ancestor may redirect the write
-  # H4 (Codex High): refuse to install over a directory. `mv -f "$tmp" "$dst"`
-  # would move the temp file INTO an existing directory and return 0, so the scan
-  # would record a phantom synced:/base: and could commit a stray .sync-install.*
-  # file. Fail closed before the copy.
+  local src="$1" dst="$2" rel="$3"
+  reject_symlink_path "$rel"   # C5 defense-in-depth pre-check (retained per critic)
+  # H4 (Codex High): refuse to install over a directory (defense-in-depth; the
+  # helper also refuses this atomically).
   if [ -d "$dst" ]; then
     echo "Error: install failed for $rel (destination is a directory)" >&2
     exit 1
   fi
-  dstdir="$(dirname "$dst")"
-  mkdir -p "$dstdir" || { echo "Error: install failed for $rel" >&2; exit 1; }
-  tmp="$(mktemp "$dstdir/.sync-install.XXXXXX")" || { echo "Error: install failed for $rel" >&2; exit 1; }
-  if ! cp -p "$src" "$tmp" || ! mv -f "$tmp" "$dst"; then
-    rm -f "$tmp"
+  # TOCTOU (group 12): the create+write goes through the no-follow helper - it
+  # descends each hub component with openat(O_NOFOLLOW), refusing any symlink, then
+  # writes a private temp and renames it through the final dir fd. This CLOSES the
+  # check-then-act race reject_symlink_path alone cannot (walkthrough OD-10c). It
+  # preserves the source mode (cp -p semantics) and leaves no stray temp on failure.
+  # The HUB_REPO-relative path is HUB_PLUGIN_REL + rel (dst == HUB_REPO/that).
+  if ! python3 "$SAFE_IO" install "$HUB_REPO" "$HUB_PLUGIN_REL$rel" "$src"; then
     echo "Error: install failed for $rel" >&2
-    exit 1
-  fi
-  # H4 belt-and-suspenders: a TOCTOU race could make $dst a directory after the
-  # pre-check, so the mv would land inside it; require a regular file at $dst.
-  # On that race the temp was moved to $dst/<tempname>, so clean up there too -
-  # never leave a stray .sync-install.* the sync commit could sweep up.
-  if [ ! -f "$dst" ]; then
-    rm -f "$tmp" "$dst/$(basename "$tmp")"
-    echo "Error: install failed for $rel (destination is a directory)" >&2
     exit 1
   fi
 }
