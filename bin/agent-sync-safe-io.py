@@ -162,9 +162,72 @@ def cmd_install(hub_root, rel, src):
         os.close(root_fd)
 
 
+def cmd_chmod(hub_root, rel, mode_str):
+    # CX-4: no-follow mode change. scan.sh's mode propagation did `chmod` after a
+    # separate symlink check, so a component swapped to a symlink in the gap made
+    # chmod FOLLOW and change an outside file (the OD-10c TOCTOU class). Descend the
+    # parents no-follow, open the FINAL component O_RDONLY|O_NOFOLLOW (a symlink
+    # raises ELOOP and is refused - os.chmod(follow_symlinks=False) would instead
+    # act on the link itself), then fchmod through that fd so check and act share
+    # one fd chain.
+    comps = _split(rel)
+    dir_comps, base = comps[:-1], comps[-1]
+    try:
+        mode = int(mode_str, 8)
+    except ValueError:
+        _die("invalid mode (want octal): " + mode_str)
+    root_fd = _open_dir(hub_root)
+    opened = []
+    try:
+        dir_fd, opened = _descend(root_fd, dir_comps, create=False) if dir_comps else (root_fd, [])
+        try:
+            fd = os.open(base, os.O_RDONLY | os.O_NOFOLLOW, dir_fd=dir_fd)
+        except OSError as e:
+            _die("refusing to chmod a symlink or missing target '%s' (%s)" % (rel, e.strerror))
+        try:
+            os.fchmod(fd, mode)
+        except OSError as e:
+            _die("cannot chmod %s (%s)" % (rel, e.strerror))
+        finally:
+            os.close(fd)
+    finally:
+        for f in opened:
+            if f != root_fd:
+                os.close(f)
+        os.close(root_fd)
+
+
+def cmd_unlink(hub_root, rel):
+    # CX-4: no-follow removal, for scan.sh's decline-rollback of a HEAD-absent add
+    # and its untracked-prune cleanup (both were plain `rm -f`, which follows a
+    # symlink swapped into an ancestor component). _descend refuses a symlink parent
+    # (the load-bearing guard); os.unlink via the dir fd never follows the final
+    # component. A missing target is success (rm -f semantics); a directory is
+    # refused.
+    comps = _split(rel)
+    dir_comps, base = comps[:-1], comps[-1]
+    root_fd = _open_dir(hub_root)
+    opened = []
+    try:
+        dir_fd, opened = _descend(root_fd, dir_comps, create=False) if dir_comps else (root_fd, [])
+        try:
+            os.unlink(base, dir_fd=dir_fd)
+        except FileNotFoundError:
+            pass  # rm -f semantics: already gone is success
+        except OSError as e:
+            # A directory (EISDIR on Linux, EPERM on macOS) or any other error is a
+            # clean refusal, never a traceback.
+            _die("cannot unlink %s (%s)" % (rel, e.strerror))
+    finally:
+        for f in opened:
+            if f != root_fd:
+                os.close(f)
+        os.close(root_fd)
+
+
 def main(argv):
     if len(argv) < 2:
-        _die("usage: agent-sync-safe-io.py <resolve-claude|mkdir|install> ...")
+        _die("usage: agent-sync-safe-io.py <resolve-claude|mkdir|install|chmod|unlink> ...")
     cmd = argv[1]
     if cmd == "resolve-claude":
         if len(argv) != 3:
@@ -178,6 +241,14 @@ def main(argv):
         if len(argv) != 5:
             _die("usage: install <hub_root> <rel> <src>")
         cmd_install(argv[2], argv[3], argv[4])
+    elif cmd == "chmod":
+        if len(argv) != 5:
+            _die("usage: chmod <hub_root> <rel> <octal_mode>")
+        cmd_chmod(argv[2], argv[3], argv[4])
+    elif cmd == "unlink":
+        if len(argv) != 4:
+            _die("usage: unlink <hub_root> <rel>")
+        cmd_unlink(argv[2], argv[3])
     else:
         _die("unknown subcommand: " + cmd)
 

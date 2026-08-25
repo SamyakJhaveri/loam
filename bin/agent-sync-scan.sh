@@ -1357,7 +1357,11 @@ for p in "${PRUNE_APPROVED[@]:-}"; do
     # Untracked hub copy (H5 + R2(i) amendment): rm the leftover and clear its
     # stale ledger record immediately (state-only). Persisted by write_state below;
     # kept even on a declined batch (nothing committed to roll back).
-    rm -f "$HUB_PLUGIN$p"
+    # CX-4: no-follow removal via the helper; a refusal (symlink swapped into an
+    # ancestor) surfaces and is non-fatal. Clearing the stale record is correct
+    # regardless - an untracked copy has no committed blob to lose.
+    python3 "$SAFE_IO" unlink "$HUB_REPO" "$HUB_PLUGIN_REL$p" \
+      || echo "  warning: could not remove untracked hub copy $p (left in place)" >&2
     unset 'STATE_DECISIONS[$p]'
     unset 'STATE_BASES[$p]'
     UNTRACKED_PRUNED+=("$p")
@@ -1414,7 +1418,10 @@ for p in "${APPROVED_MODES[@]:-}"; do
   pmode=$(stat -c '%a' "$PROJECT_CLAUDE$p" 2>/dev/null \
     || stat -f '%Lp' "$PROJECT_CLAUDE$p" 2>/dev/null || echo "")
   if [ -n "$pmode" ]; then
-    chmod "$pmode" "$HUB_PLUGIN$p" || echo "  warning: chmod failed for $p" >&2
+    # CX-4: no-follow chmod via the helper - a component swapped to a symlink after
+    # reject_symlink_path must not let chmod follow it and change an outside file.
+    python3 "$SAFE_IO" chmod "$HUB_REPO" "$HUB_PLUGIN_REL$p" "$pmode" \
+      || echo "  warning: chmod failed for $p" >&2
   fi
 done
 
@@ -1453,7 +1460,10 @@ rollback_path() {
   if git -C "$HUB_REPO" cat-file -e "HEAD:$hub_rel" 2>/dev/null; then
     git -C "$HUB_REPO" checkout HEAD -- ":(literal)$hub_rel" 2>/dev/null || true
   else
-    rm -f "$HUB_PLUGIN$p"
+    # CX-4: no-follow removal of a HEAD-absent add. A refusal (a symlink swapped
+    # into an ancestor) surfaces and is non-fatal - the file is left, not followed.
+    python3 "$SAFE_IO" unlink "$HUB_REPO" "$HUB_PLUGIN_REL$p" \
+      || echo "  warning: could not remove $p (left in place)" >&2
   fi
 }
 
