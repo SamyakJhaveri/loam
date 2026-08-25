@@ -547,6 +547,50 @@ cleanup() {
 }
 trap cleanup EXIT
 
+# 8b Item 2: enumerate only git-TRACKED project files. Both enumeration paths
+# below walk the filesystem (rsync --dry-run over $PROJECT_CLAUDE, and the
+# bootstrap `find`), so a project file that is not committed would be offered as
+# an add / recorded as a base. The hub mirrors COMMITTED project state, so build
+# the set of tracked paths (relative to the .claude tree) ONCE here and gate both
+# loops on it.
+#
+# Why this is exactly "exclude gitignored" and CANNOT drop a legitimately-new
+# uncommitted file: the :86 guard above already REFUSES the whole run when
+# `git status --porcelain -- :(literal).claude ...` reports anything, and porcelain
+# reports untracked files as `??` - but it OMITS ignored files. So the only
+# not-tracked file that can ever reach these loops is a gitignored one; an
+# untracked-non-ignored file has already aborted the run upstream. (Guarded by the
+# tripwire test test_untracked_nonignored_refused.sh - if :86 is ever loosened,
+# that test fails and this safety argument must be revisited.)
+#
+# CLAUDE_PATHSPEC is the RESOLVED, project-relative .claude prefix from
+# resolve-claude (`.claude`, or a symlink target e.g. `seed/.claude`); using it
+# (not literal `.claude`) makes ls-files list the REAL tracked files even when
+# .claude is a symlink, and stripping "$CLAUDE_PATHSPEC/" yields the same rel form
+# both loops produce (no leading slash, relative to the .claude tree). :(literal)
+# per 8a R1 so a glob-y dir name is matched literally. ls-files -z is written to a
+# temp file and read with `read -r -d ''` because command substitution cannot hold
+# NUL. PROJECT_ROOT is a git toplevel (verified at :19), so this never runs against
+# a non-repo; an ls-files failure fails CLOSED (pin the session to PRIOR so the
+# EXIT trap does not advance the ledger, then exit) rather than enumerating blindly.
+declare -A PROJECT_TRACKED
+tracked_list="$WORKDIR/tracked.list"
+if ! git -C "$PROJECT_ROOT" ls-files -z -- ":(literal)$CLAUDE_PATHSPEC" > "$tracked_list" 2>/dev/null; then
+  echo "Error: could not list git-tracked files under $CLAUDE_PATHSPEC; refusing to enumerate untracked project files (re-runnable)." >&2
+  CURRENT_SESSION="$PRIOR_SESSION"
+  exit 1
+fi
+while IFS= read -r -d '' _tf; do
+  PROJECT_TRACKED["${_tf#"$CLAUDE_PATHSPEC/"}"]=1
+done < "$tracked_list"
+
+# project_tracked <rel>: is a candidate path (relative to the .claude tree, no
+# leading slash - the form both enumeration loops produce) a COMMITTED project
+# file? Fail closed: an untracked/gitignored path is not in the set, so not offered.
+project_tracked() {
+  [ -n "${PROJECT_TRACKED[$1]:-}" ]
+}
+
 # --bootstrap-bases (R5): record a base for every regular file present in BOTH
 # trees at the same relative path, using the PROJECT blob sha, skipping paths
 # that already have one. Never prompts, never copies, touches only .sync-state,
@@ -572,6 +616,7 @@ if [ "$BOOTSTRAP_BASES" -eq 1 ]; then
   bs_recorded=0
   bs_present=0
   bs_differing=()
+  bs_skipped_untracked=0   # 8b Item 2: gitignored project files not based
   # M8-b: enumerate to a temp file so find's exit status is checkable - a process
   # substitution `done < <(find ...)` hides it, so an unreadable subtree (or any
   # other find error) yielded a partial bootstrap that exited 0. Abort
@@ -587,6 +632,11 @@ if [ "$BOOTSTRAP_BASES" -eq 1 ]; then
     # Item 8 (Codex p6 High): validate the rel read from `find -print0` before use -
     # a newline-named file is caught by state_path_ok's `*$'\n'*` clause in candidate_ok.
     candidate_ok "$rel" || { echo "warning: ignoring unsafe candidate path: $rel" >&2; continue; }
+    # 8b Item 2: base only git-tracked project files (a gitignored file present in
+    # both trees would otherwise get a base). Counted for one post-loop summary,
+    # never per-file (bootstrap is the bulk unattended path - a per-file line
+    # would be spam, but a swallowed skip is exactly 8a's failure class).
+    project_tracked "$rel" || { bs_skipped_untracked=$((bs_skipped_untracked + 1)); continue; }
     bootstrap_excluded "$rel" && continue
     [ -f "$HUB_PLUGIN$rel" ] || continue
     # A recorded base whose blob is still present counts as already present; a
@@ -633,6 +683,11 @@ if [ "$BOOTSTRAP_BASES" -eq 1 ]; then
     for dp in "${bs_differing[@]}"; do echo "  differs: $dp" >&2; done
     echo "  These differences are now treated as intentional hub-side state. If a path carries an un-synced project improvement, resolve it by hand (sync it via a scan) before relying on the merge." >&2
   fi
+  # 8b Item 2: one stderr summary line for gitignored files skipped by the
+  # tracked-only filter. N>0 only, silent at N==0 so bootstrap's quiet-success
+  # output is byte-identical for the common case (no bootstrap test churn).
+  [ "$bs_skipped_untracked" -gt 0 ] \
+    && echo "bootstrap: $bs_skipped_untracked gitignored project file(s) not based (not git-tracked; commit them to sync)" >&2
   echo "bootstrap: $bs_recorded bases recorded, $bs_present already present"
   exit 0
 fi
@@ -890,26 +945,40 @@ match_itemize() {
 ADDED_PATHS=()
 CHANGED_PATHS=()
 MODE_PATHS=()
+# 8b Item 2: gitignored project files dropped by the tracked-only filter. The
+# unsafe-path warning still takes precedence (a bad path is reported, not counted
+# here); a safe-but-untracked path is counted for one post-loop summary.
+skipped_untracked=0
 while IFS= read -r line; do
   [ -z "$line" ] && continue
   match_itemize "$line"
   case "$MATCH_KIND" in
     add)
-      if candidate_ok "$MATCH_PATH"; then ADDED_PATHS+=("$MATCH_PATH")
-      else echo "warning: ignoring unsafe candidate path: $MATCH_PATH" >&2; fi ;;
+      if ! candidate_ok "$MATCH_PATH"; then echo "warning: ignoring unsafe candidate path: $MATCH_PATH" >&2
+      elif ! project_tracked "$MATCH_PATH"; then skipped_untracked=$((skipped_untracked + 1))
+      else ADDED_PATHS+=("$MATCH_PATH"); fi ;;
     change)
-      if candidate_ok "$MATCH_PATH"; then CHANGED_PATHS+=("$MATCH_PATH")
-      else echo "warning: ignoring unsafe candidate path: $MATCH_PATH" >&2; fi ;;
+      if ! candidate_ok "$MATCH_PATH"; then echo "warning: ignoring unsafe candidate path: $MATCH_PATH" >&2
+      elif ! project_tracked "$MATCH_PATH"; then skipped_untracked=$((skipped_untracked + 1))
+      else CHANGED_PATHS+=("$MATCH_PATH"); fi ;;
     mode)
       # M5: a mode-only change (content identical, permissions differ).
-      if candidate_ok "$MATCH_PATH"; then MODE_PATHS+=("$MATCH_PATH")
-      else echo "warning: ignoring unsafe candidate path: $MATCH_PATH" >&2; fi ;;
+      if ! candidate_ok "$MATCH_PATH"; then echo "warning: ignoring unsafe candidate path: $MATCH_PATH" >&2
+      elif ! project_tracked "$MATCH_PATH"; then skipped_untracked=$((skipped_untracked + 1))
+      else MODE_PATHS+=("$MATCH_PATH"); fi ;;
     *)
       # R4 floor: a transfer line this scan cannot categorize (an unexpected
       # itemize shape, or a <f/cf/hf type not handled) is surfaced, never dropped.
       echo "warning: unparsed rsync itemize line (not synced; report if a real file is missing): $line" >&2 ;;
   esac
 done <<< "$CHANGES"
+# 8b Item 2: one stderr summary line, never per-file (per-path here would be spam;
+# 8a's failure history is swallowed skips, so it must stay visible). N>0 only, and
+# silent at N==0 - this runs after the "No changes" early-exit above, so the
+# no-change path is unaffected either way, but silence-at-zero keeps a
+# changes-present run that skips nothing byte-identical too.
+[ "$skipped_untracked" -gt 0 ] \
+  && echo "Skipped $skipped_untracked gitignored project file(s) (not git-tracked; commit them to sync)." >&2
 
 PROJ_NAME=$(basename "$PROJECT_ROOT")
 
