@@ -589,6 +589,17 @@ trap cleanup EXIT
 # tripwire test test_untracked_nonignored_refused.sh - if :86 is ever loosened,
 # that test fails and this safety argument must be revisited.)
 #
+# H7 (Codex round 2) - LIMITATION, recorded not fixed. The "mirrors COMMITTED
+# project state" claim above is the INTENT, not a guarantee this code enforces.
+# These checks (and the :86 guard) are POINT-IN-TIME: they validate the worktree
+# once, but bases and promoted files are later read from the LIVE worktree path. So
+# a file edited AFTER the guard runs (e.g. during an interactive prompt) or one
+# rewritten by a clean/smudge filter can still be installed from the worktree with
+# bytes DIFFERING from the committed blob. Closing this would require materializing
+# every file and mode from a pinned source commit/tree; that redesign is DEFERRED
+# (candidate for Ticket 9), not done here - rebuilding install-from-tree on a
+# push-adjacent engine at close is riskier than recording the gap (lead ruling H7).
+#
 # CLAUDE_PATHSPEC is the RESOLVED, project-relative .claude prefix from
 # resolve-claude (`.claude`, or a symlink target e.g. `seed/.claude`); using it
 # (not literal `.claude`) makes ls-files list the REAL tracked files even when
