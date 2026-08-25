@@ -42,7 +42,11 @@ cd "$SELF_REPO" || die "cannot enter the script repository: $SELF_REPO"
 # closed - refuse on any git error (matches bin/agent-sync-scan.sh, 76ad1c5).
 BRANCH="$(git branch --show-current)" || die "cannot read current branch"
 [[ "$BRANCH" == "main" ]] || die "releases must be created from main"
-set +e; PORCELAIN="$(git status --porcelain)"; PORCELAIN_RC=$?; set -e
+# --untracked-files=all (reuses bin/agent-sync-scan.sh M3, 5b7a1a5): a repo-level
+# status.showUntrackedFiles=no would otherwise blind this check, letting an
+# untracked non-ignored file influence the worktree gate, stay out of the tag,
+# and reach the push. Force full untracked reporting.
+set +e; PORCELAIN="$(git status --porcelain --untracked-files=all)"; PORCELAIN_RC=$?; set -e
 [[ "$PORCELAIN_RC" -eq 0 ]] || die "git status failed (exit $PORCELAIN_RC); refusing to release"
 [[ -z "$PORCELAIN" ]] || die "working tree is dirty — commit or stash first"
 set +e; EXISTING_TAG="$(git tag -l "v$VERSION")"; TAG_RC=$?; set -e
@@ -62,6 +66,12 @@ set +e; VTAGS="$(git ls-files -v)"; VTAGS_RC=$?; set -e
 if grep -qvE '^H ' <<<"$VTAGS"; then
   die "a tracked file is marked assume-unchanged or skip-worktree, so its committed state cannot be trusted; refusing to release. Clear it (git update-index --no-assume-unchanged / --no-skip-worktree). Offending: $(grep -vE '^H ' <<<"$VTAGS" | tr '\n' ' ')"
 fi
+
+# Capture the validated HEAD before the gates run (R4-H2). A concurrent CLEAN
+# commit during the gates moves HEAD but is invisible to a branch/status/tag
+# recheck, so we record the parent here and require the identical HEAD below,
+# pinning the release commit to exactly this validated state.
+HEAD_BEFORE_GATES="$(git rev-parse HEAD)" || die "cannot read HEAD; refusing to release"
 
 # Hub CI gate: refuse to cut a release while any hub health check is red. This
 # runs BEFORE any mutation (the VERSION write at Step 1) and before the
@@ -84,15 +94,22 @@ else
   warn "bin/ip-sweep.sh not present — skipping IP gate"
 fi
 
-# Re-verify the pre-flight invariants immediately before mutating (C2). The gates
-# above (hub-ci, ip-sweep) take time, and a gate side-effect or a concurrent
-# process could have staged content, moved off main, or created the tag in that
-# window. Any drift -> refuse; never commit into a repo that changed under us.
+# Re-verify ALL pre-flight invariants immediately before mutating (C2 + R4-H2).
+# The gates take time; a gate side-effect or a concurrent process could have
+# staged content, moved off main, created the tag, made a CLEAN commit, or set
+# assume-unchanged in that window. Re-check every guard, including HEAD (a clean
+# commit only shows here) and the whole-repo ls-files -v (a gate could set
+# assume-unchanged mid-run); status inherits --untracked-files=all. Any drift ->
+# refuse; never commit into a repo that changed under us.
 [[ "$(git branch --show-current)" == "main" ]] || die "branch changed during pre-flight; refusing to release"
-set +e; PORCELAIN2="$(git status --porcelain)"; PORCELAIN2_RC=$?; set -e
+[[ "$(git rev-parse HEAD)" == "$HEAD_BEFORE_GATES" ]] || die "HEAD moved during the pre-flight gates (a concurrent commit); refusing to release"
+set +e; PORCELAIN2="$(git status --porcelain --untracked-files=all)"; PORCELAIN2_RC=$?; set -e
 [[ "$PORCELAIN2_RC" -eq 0 && -z "$PORCELAIN2" ]] || die "working tree/index changed during the pre-flight gates; refusing to release"
 set +e; EXISTING_TAG2="$(git tag -l "v$VERSION")"; TAG2_RC=$?; set -e
 [[ "$TAG2_RC" -eq 0 && -z "$EXISTING_TAG2" ]] || die "tag v$VERSION appeared during pre-flight; refusing to release"
+set +e; VTAGS2="$(git ls-files -v)"; VTAGS2_RC=$?; set -e
+[[ "$VTAGS2_RC" -eq 0 ]] || die "git ls-files -v failed (exit $VTAGS2_RC) during recheck; refusing to release"
+grep -qvE '^H ' <<<"$VTAGS2" && die "a tracked file became assume-unchanged or skip-worktree during the pre-flight gates; refusing to release. Offending: $(grep -vE '^H ' <<<"$VTAGS2" | tr '\n' ' ')"
 
 # Step 1: Update VERSION file
 info "updating VERSION to $VERSION"
@@ -100,7 +117,13 @@ echo "$VERSION" > VERSION
 
 # Step 2: Commit (identity hard-pinned — see header). Scoped to `-- VERSION` so
 # only that file can ever land in a release commit, whatever else may be staged.
+# Pin the parent (R4-H2): re-assert HEAD immediately before the commit so the
+# release commit is built on exactly the validated HEAD. The VERSION write and
+# `git add` above do not move HEAD, so this narrows the recheck->commit window; a
+# residual pin->commit microwindow remains (git commit has no atomic parent-pin),
+# the same tiny known gap as C2.
 git add VERSION
+[[ "$(git rev-parse HEAD)" == "$HEAD_BEFORE_GATES" ]] || die "HEAD moved before the release commit; refusing to release"
 git -c user.name="$NOREPLY_NAME" -c user.email="$NOREPLY_EMAIL" \
   commit -m "release: v$VERSION" -- VERSION
 
