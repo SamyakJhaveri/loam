@@ -23,6 +23,28 @@ MANIFEST_TSV="$PROJECT_ROOT/.claude/reference/portability-manifest.tsv"
 [ -d "$HUB_REPO/.git" ] || { echo "Error: hub repo not found at $HUB_REPO." >&2; exit 1; }
 [ -f "$MANIFEST_TSV" ] || { echo "Error: $MANIFEST_TSV missing - the manifest is the authority; refusing to prune without it." >&2; exit 1; }
 
+# CX-1 (Critical): a manifest-row path is untrusted. A 'travels' row that escapes
+# the plugin root (../../../AGENTS.md) resolves hub_path to a file OUTSIDE the
+# plugin tree (the hub root), and the git rm below would stage that unrelated
+# file's deletion - one the y/N prompt never named. Validate the row path BEFORE
+# building any filesystem path or git pathspec from it. Mirrors agent-sync-scan.sh
+# state_path_ok (minus the ledger-only TAB clause: prune.sh keys nothing by
+# project identity): reject empty, absolute, any '.'/'..' component, CR, LF.
+manifest_path_ok() {
+  local p="$1"
+  [ -n "$p" ] || return 1
+  case "$p" in
+    /*) return 1 ;;
+  esac
+  case "/$p/" in
+    *"/../"*|*"/./"*) return 1 ;;
+  esac
+  case "$p" in
+    *$'\n'*|*$'\r'*) return 1 ;;
+  esac
+  return 0
+}
+
 offered=0 deleted=0 withheld=0
 # The manifest is read on fd 3, NOT stdin: the y/N answer is read from stdin below
 # (option b), so the outer loop must not hold stdin open on the manifest file.
@@ -30,6 +52,11 @@ offered=0 deleted=0 withheld=0
 while IFS=$'\t' read -r path kind verdict reason requires <&3; do
   [ "$path" = "path" ] && continue      # header
   [ -z "$path" ] && continue
+  # CX-1: refuse a traversal/absolute row before it can drive any fs path or pathspec.
+  if ! manifest_path_ok "$path"; then
+    echo "  prune withheld (unsafe manifest path: $path)" >&2
+    continue
+  fi
   hub_path="$HUB_PLUGIN/$path"
   src_path="$PROJECT_ROOT/.claude/$path"
   [ -e "$hub_path" ] || continue        # nothing in hub to prune
