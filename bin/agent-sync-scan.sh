@@ -1585,6 +1585,20 @@ fi
 # The reset is guarded (a prune-only batch has empty HUB_RELPATHS, and a bare
 # `git reset --` would mixed-reset the ENTIRE index) and || true so it cannot
 # abort the rollback under set -e; prunes are restored by rollback_path itself.
+
+# Wave 3 (8b Item 1): a SOFT provenance reminder. Every promoted change is meant
+# to get one line in cultivation/marketplace/UPGRADING.md (WHAT changed and WHY).
+# Detect whether this batch touched UPGRADING.md: a non-empty `git status
+# --porcelain` for it means it is staged OR unstaged in the hub. UPGRADING.md sits
+# OUTSIDE the sam-cc-setup plugin tree, so it is never among this run's approved
+# paths - the git-status probe is the only meaningful signal. Captured BEFORE the
+# commit as a defensive choice; the realistic signal is an unstaged edit, which a
+# no-pathspec `git commit` never consumes, and C2 already refuses a pre-staged hub
+# index. The reminder is printed only after a SUCCESSFUL commit below: it never
+# gates, never blocks, never changes the exit code, never suppresses the commit.
+upgrading_touched=1
+[ -z "$(git -C "$HUB_REPO" status --porcelain -- ":(literal)cultivation/marketplace/UPGRADING.md" 2>/dev/null)" ] \
+  && upgrading_touched=0
 if ! git -C "$HUB_REPO" commit -m "sync: from $PROJ_NAME on $DATE"; then
   cf_rb_ok=0
   if [ "${#HUB_RELPATHS[@]}" -gt 0 ]; then
@@ -1625,6 +1639,13 @@ if [ -n "${PENDING_PRUNE_UNSET[*]+x}" ]; then
   done
 fi
 write_state || { echo "Error: could not persist .sync-state after commit; ledger and hub HEAD may disagree - re-run with --bootstrap-bases" >&2; exit 1; }
+# Wave 3 (8b Item 1): the soft provenance reminder fires here - after a real
+# commit, before the push prompt - so it always implies a promotion just landed.
+# Reminder only (stderr, advisory class): never a gate, never blocks, never
+# changes the exit code. Silent when UPGRADING.md was touched in this batch.
+if [ "$upgrading_touched" -eq 0 ]; then
+  echo "Reminder: cultivation/marketplace/UPGRADING.md was not updated in this batch. Consider adding a provenance line (WHAT changed and WHY) for the promoted change(s)." >&2
+fi
 # Push is outward-facing and the hub is a general-purpose repo — separate confirm.
 printf "Push %s to its origin now? [y/N] " "$HUB_REPO" >&2
 read -r push_resp || push_resp=""
