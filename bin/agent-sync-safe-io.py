@@ -26,9 +26,10 @@ interpolated). Three subcommands:
 import os
 import stat
 import sys
+from typing import NoReturn
 
 
-def _die(msg):
+def _die(msg) -> NoReturn:
     sys.stderr.write("agent-sync-safe-io: " + msg + "\n")
     sys.exit(1)
 
@@ -181,10 +182,17 @@ def cmd_chmod(hub_root, rel, mode_str):
     try:
         dir_fd, opened = _descend(root_fd, dir_comps, create=False) if dir_comps else (root_fd, [])
         try:
-            fd = os.open(base, os.O_RDONLY | os.O_NOFOLLOW, dir_fd=dir_fd)
+            # O_NONBLOCK: opening a FIFO read-only would otherwise block until a
+            # writer appears (round 2) - with it the open returns immediately and
+            # the fstat check below rejects the non-regular file.
+            fd = os.open(base, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK, dir_fd=dir_fd)
         except OSError as e:
             _die("refusing to chmod a symlink or missing target '%s' (%s)" % (rel, e.strerror))
         try:
+            # Round 2: only a REGULAR file may be chmod'd - a directory or FIFO
+            # raced into the path must be refused, not mode-changed.
+            if not stat.S_ISREG(os.fstat(fd).st_mode):
+                _die("refusing to chmod a non-regular file '%s'" % rel)
             os.fchmod(fd, mode)
         except OSError as e:
             _die("cannot chmod %s (%s)" % (rel, e.strerror))

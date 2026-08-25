@@ -1248,6 +1248,16 @@ drop_dirty_approved() {   # $1 = name of an approved-path array; drop dirty-hub 
       if [ -n "${MERGED_TMP[$_p]:-}" ]; then rm -f "${MERGED_TMP[$_p]}"; unset 'MERGED_TMP[$_p]'; fi
       continue
     fi
+    # Round-2: `git diff` ignores UNTRACKED files, so an existing untracked hub
+    # copy at this path is pre-scan work the diff check cannot see - installing
+    # over it and later rolling back (checkout misses it; the HEAD-absent branch
+    # unlinks it) would destroy it. Refuse it the same way.
+    if ! git -C "$HUB_REPO" ls-files --error-unmatch -- ":(literal)${HUB_PLUGIN_REL}$_p" >/dev/null 2>&1 \
+       && [ -e "$HUB_PLUGIN$_p" ]; then
+      echo "  skipped ($_p exists UNTRACKED in the hub - commit or remove it, then re-run)" >&2
+      if [ -n "${MERGED_TMP[$_p]:-}" ]; then rm -f "${MERGED_TMP[$_p]}"; unset 'MERGED_TMP[$_p]'; fi
+      continue
+    fi
     _kept+=("$_p")
   done
   _arr=("${_kept[@]}")
@@ -1357,15 +1367,18 @@ for p in "${PRUNE_APPROVED[@]:-}"; do
     # Untracked hub copy (H5 + R2(i) amendment): rm the leftover and clear its
     # stale ledger record immediately (state-only). Persisted by write_state below;
     # kept even on a declined batch (nothing committed to roll back).
-    # CX-4: no-follow removal via the helper; a refusal (symlink swapped into an
-    # ancestor) surfaces and is non-fatal. Clearing the stale record is correct
-    # regardless - an untracked copy has no committed blob to lose.
-    python3 "$SAFE_IO" unlink "$HUB_REPO" "$HUB_PLUGIN_REL$p" \
-      || echo "  warning: could not remove untracked hub copy $p (left in place)" >&2
-    unset 'STATE_DECISIONS[$p]'
-    unset 'STATE_BASES[$p]'
-    UNTRACKED_PRUNED+=("$p")
-    echo "  pruned untracked hub copy: removed $p and cleared its stale ledger record" >&2
+    # CX-4: no-follow removal via the helper. Round-2: clear the record and report
+    # the prune ONLY on a successful unlink - clearing on failure would leave the
+    # file in place with its only route into prune candidacy erased, so the same
+    # leftover could never be offered again.
+    if python3 "$SAFE_IO" unlink "$HUB_REPO" "$HUB_PLUGIN_REL$p"; then
+      unset 'STATE_DECISIONS[$p]'
+      unset 'STATE_BASES[$p]'
+      UNTRACKED_PRUNED+=("$p")
+      echo "  pruned untracked hub copy: removed $p and cleared its stale ledger record" >&2
+    else
+      echo "  warning: could not remove untracked hub copy $p (left in place; ledger record kept so it re-offers)" >&2
+    fi
   fi
 done
 
@@ -1412,18 +1425,25 @@ done
 # base/synced record: content is unchanged, git tracks the mode, and the next
 # scan sees hub mode == project mode. Staged/rolled-back/counted below alongside
 # the other approved actions; git checkout HEAD on decline restores the old mode.
+_kept_modes=()
 for p in "${APPROVED_MODES[@]:-}"; do
   [ -z "${p:-}" ] && continue
   reject_symlink_path "$p"   # C5: no symlink ancestor may redirect the chmod
   pmode=$(stat -c '%a' "$PROJECT_CLAUDE$p" 2>/dev/null \
     || stat -f '%Lp' "$PROJECT_CLAUDE$p" 2>/dev/null || echo "")
-  if [ -n "$pmode" ]; then
-    # CX-4: no-follow chmod via the helper - a component swapped to a symlink after
-    # reject_symlink_path must not let chmod follow it and change an outside file.
-    python3 "$SAFE_IO" chmod "$HUB_REPO" "$HUB_PLUGIN_REL$p" "$pmode" \
-      || echo "  warning: chmod failed for $p" >&2
+  # CX-4: no-follow chmod via the helper - a component swapped to a symlink after
+  # reject_symlink_path must not let chmod follow it and change an outside file.
+  # Round 2: a refused/failed chmod DROPS the path from the approved set - it must
+  # not be staged (a raced replacement could be swept in recursively) or rolled
+  # back; the mode difference simply re-offers on the next scan.
+  if [ -n "$pmode" ] && python3 "$SAFE_IO" chmod "$HUB_REPO" "$HUB_PLUGIN_REL$p" "$pmode"; then
+    _kept_modes+=("$p")
+  else
+    echo "  skipped mode change for $p (safe chmod refused or failed; re-run after fixing)" >&2
   fi
 done
+APPROVED_MODES=()
+[ "${#_kept_modes[@]}" -gt 0 ] && APPROVED_MODES=("${_kept_modes[@]}")
 
 # (Approved prunes were applied BEFORE the installs above - see the prune loop
 # just after the PENDING_* declaration. High 3 / H5 / M6 dir->file, group 5.)
@@ -1458,13 +1478,48 @@ fi
 rollback_path() {
   local p="$1" hub_rel="cultivation/marketplace/sam-cc-setup/$1"
   if git -C "$HUB_REPO" cat-file -e "HEAD:$hub_rel" 2>/dev/null; then
-    git -C "$HUB_REPO" checkout HEAD -- ":(literal)$hub_rel" 2>/dev/null || true
+    # Round 2: a checkout failure must be REPORTED, not swallowed - the callers
+    # decide whether to claim a complete restore. Return nonzero on failure
+    # (every caller guards the call, so set -e never aborts mid-rollback).
+    if ! git -C "$HUB_REPO" checkout HEAD -- ":(literal)$hub_rel" 2>/dev/null; then
+      echo "  warning: could not restore $p from HEAD" >&2
+      return 1
+    fi
   else
     # CX-4: no-follow removal of a HEAD-absent add. A refusal (a symlink swapped
     # into an ancestor) surfaces and is non-fatal - the file is left, not followed.
-    python3 "$SAFE_IO" unlink "$HUB_REPO" "$HUB_PLUGIN_REL$p" \
-      || echo "  warning: could not remove $p (left in place)" >&2
+    if ! python3 "$SAFE_IO" unlink "$HUB_REPO" "$HUB_PLUGIN_REL$p"; then
+      echo "  warning: could not remove $p (left in place)" >&2
+      return 1
+    fi
   fi
+  return 0
+}
+
+# rollback_batch: restore every path this run touched (shared by the decline path
+# and the commit-failure path). Round 2: returns nonzero if ANY per-path rollback
+# failed, so the caller can verify residue and report honestly instead of
+# unconditionally claiming the hub was restored.
+rollback_batch() {
+  local _rb_failed=0 rbp
+  for rbp in "${APPROVED_ADDS[@]:-}" "${APPROVED_CHANGES[@]:-}" "${MERGED_PATHS[@]:-}" "${APPROVED_MODES[@]:-}" "${PRUNED_PATHS[@]:-}"; do
+    [ -z "${rbp:-}" ] && continue
+    rollback_path "$rbp" || _rb_failed=1
+  done
+  return "$_rb_failed"
+}
+
+# scoped_residue: porcelain status restricted to the paths this run touched
+# (:(literal) pathspecs, all five sets). Empty output = the hub really is back to
+# its pre-scan state for this run's paths.
+scoped_residue() {
+  local _sp=() rbp
+  for rbp in "${APPROVED_ADDS[@]:-}" "${APPROVED_CHANGES[@]:-}" "${MERGED_PATHS[@]:-}" "${APPROVED_MODES[@]:-}" "${PRUNED_PATHS[@]:-}"; do
+    [ -z "${rbp:-}" ] && continue
+    _sp+=(":(literal)cultivation/marketplace/sam-cc-setup/$rbp")
+  done
+  [ "${#_sp[@]}" -eq 0 ] && return 0
+  git -C "$HUB_REPO" status --porcelain -- "${_sp[@]}" 2>/dev/null
 }
 
 # 9. Prompt commit + push (default Y).
@@ -1475,11 +1530,18 @@ case "$commit_resp" in
     # H2 decline = surgical rollback (lead R2(iii)): restore exactly the paths this
     # run touched so the hub returns to its pre-scan state; PENDING_* is discarded
     # (never promoted), so the ledger stays byte-identical and the next scan
-    # re-offers. Scoped per-path so pre-existing hub WIP is untouched.
-    for rbp in "${APPROVED_ADDS[@]:-}" "${APPROVED_CHANGES[@]:-}" "${MERGED_PATHS[@]:-}" "${APPROVED_MODES[@]:-}" "${PRUNED_PATHS[@]:-}"; do
-      [ -z "${rbp:-}" ] && continue
-      rollback_path "$rbp"
-    done
+    # re-offers. Scoped per-path so pre-existing hub WIP is untouched. Round 2:
+    # claim a restore only if the rollback really completed - otherwise print the
+    # residue and how to finish by hand.
+    decline_rb_ok=0
+    rollback_batch || decline_rb_ok=1
+    decline_residue="$(scoped_residue)"
+    if [ "$decline_rb_ok" -ne 0 ] || [ -n "$decline_residue" ]; then
+      echo "Declined, but the rollback is INCOMPLETE - residue on this run's paths:" >&2
+      printf '%s\n' "$decline_residue" >&2
+      echo "Finish by hand: cd $HUB_REPO && git reset -- <path> && git checkout HEAD -- <path> (no sync records were added)." >&2
+      exit 1
+    fi
     echo "Declined - hub restored, nothing kept; re-run to apply."
     if [ "${#UNTRACKED_PRUNED[@]}" -gt 0 ]; then
       echo "Kept (state-only, not part of the declined commit): removed these untracked hub copies and cleared their stale ledger records: ${UNTRACKED_PRUNED[*]}"
@@ -1516,14 +1578,21 @@ fi
 # `git reset --` would mixed-reset the ENTIRE index) and || true so it cannot
 # abort the rollback under set -e; prunes are restored by rollback_path itself.
 if ! git -C "$HUB_REPO" commit -m "sync: from $PROJ_NAME on $DATE"; then
+  cf_rb_ok=0
   if [ "${#HUB_RELPATHS[@]}" -gt 0 ]; then
-    git -C "$HUB_REPO" reset -q -- "${HUB_RELPATHS[@]}" || true
+    git -C "$HUB_REPO" reset -q -- "${HUB_RELPATHS[@]}" || cf_rb_ok=1
   fi
-  for rbp in "${APPROVED_ADDS[@]:-}" "${APPROVED_CHANGES[@]:-}" "${MERGED_PATHS[@]:-}" "${APPROVED_MODES[@]:-}" "${PRUNED_PATHS[@]:-}"; do
-    [ -z "${rbp:-}" ] && continue
-    rollback_path "$rbp"
-  done
-  echo "Error: hub commit failed; rolled back this run's staged changes. Nothing was committed and no sync records were added. Fix the hub commit failure, then re-run to re-offer." >&2
+  rollback_batch || cf_rb_ok=1
+  # Round 2: verify before claiming success - a failed reset/checkout/unlink can
+  # leave staged or worktree residue that would wedge the next scan at C2.
+  cf_residue="$(scoped_residue)"
+  if [ "$cf_rb_ok" -ne 0 ] || [ -n "$cf_residue" ]; then
+    echo "Error: hub commit failed and the rollback is INCOMPLETE - residue on this run's paths:" >&2
+    printf '%s\n' "$cf_residue" >&2
+    echo "Finish by hand: cd $HUB_REPO && git reset -- <path> && git checkout HEAD -- <path>. No sync records were added." >&2
+  else
+    echo "Error: hub commit failed; rolled back this run's staged changes. Nothing was committed and no sync records were added. Fix the hub commit failure, then re-run to re-offer." >&2
+  fi
   exit 1
 fi
 # Commit succeeded: promote the quarantined records into the ledger, then persist
