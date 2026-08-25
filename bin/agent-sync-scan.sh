@@ -435,8 +435,28 @@ if [ "$BOOTSTRAP_BASES" -eq 1 ]; then
     CURRENT_SESSION="$PRIOR_SESSION"
     exit 1
   }
+  # M8-a: a missing project .claude/ (usually the wrong cwd) must abort
+  # re-runnably, not fail open with "0 bases recorded" plus a written state file.
+  # Mirror the compute_base failure path: pin the session to PRIOR so the EXIT
+  # trap does not advance the ledger, then exit non-zero.
+  [ -d "$PROJECT_CLAUDE" ] || {
+    echo "Error: project .claude tree not found at $PROJECT_CLAUDE; nothing to bootstrap (wrong cwd?)." >&2
+    CURRENT_SESSION="$PRIOR_SESSION"
+    exit 1
+  }
   bs_recorded=0
   bs_present=0
+  bs_differing=()
+  # M8-b: enumerate to a temp file so find's exit status is checkable - a process
+  # substitution `done < <(find ...)` hides it, so an unreadable subtree (or any
+  # other find error) yielded a partial bootstrap that exited 0. Abort
+  # re-runnably instead. -name .git -prune keeps H6 (never walk a nested .git).
+  bootstrap_list="$WORKDIR/bootstrap.list"
+  if ! find "$PROJECT_CLAUDE" -name .git -prune -o -type f -print0 > "$bootstrap_list"; then
+    echo "Error: enumerating $PROJECT_CLAUDE failed (unreadable subtree?); bootstrap aborted (re-runnable)" >&2
+    CURRENT_SESSION="$PRIOR_SESSION"
+    exit 1
+  fi
   while IFS= read -r -d '' pf; do
     rel="${pf#"$PROJECT_CLAUDE"}"
     # Item 8 (Codex p6 High): validate the rel read from `find -print0` before use -
@@ -451,9 +471,28 @@ if [ "$BOOTSTRAP_BASES" -eq 1 ]; then
       bs_present=$((bs_present + 1))
       continue
     fi
+    # M1: an active synced:/defer: decision is a pending user choice; recording a
+    # base here would cancel it (the next scan sees project==base and suppresses
+    # the offer forever). Skip + warn, leaving the decision and its route intact.
+    # Decision-check ONLY (no content gate): a hub-ahead generalization and a
+    # project-ahead drift are content-indistinguishable, so a cmp gate would break
+    # the designed generalization bootstrap (lead ruling REVISED, group 8). This
+    # runs before compute_base so it blocks both a fresh record and the C1
+    # dead-base re-record.
+    case "${STATE_DECISIONS[$rel]:-}" in
+      synced:*|defer:*)
+        echo "  bootstrap skipped ($rel: an active ${STATE_DECISIONS[$rel]%%:*} decision exists; sync it via a scan)" >&2
+        continue
+        ;;
+    esac
     if bsha=$(compute_base "$rel"); then
       STATE_BASES["$rel"]="$bsha"
       bs_recorded=$((bs_recorded + 1))
+      # Warning (messaging only - never gates the record): a based path whose hub
+      # and project content differ is now treated as intentional hub-side state.
+      # Fires on both the fresh record and the C1 dead-base re-record (both reach
+      # here). Collected now, named in one loud post-loop summary.
+      cmp -s "$PROJECT_CLAUDE$rel" "$HUB_PLUGIN$rel" || bs_differing+=("$rel")
     else
       # A3: fail closed - never count the failed path; pin CURRENT_SESSION to PRIOR
       # so the EXIT trap does not advance the ledger, then exit re-runnably.
@@ -461,9 +500,14 @@ if [ "$BOOTSTRAP_BASES" -eq 1 ]; then
       CURRENT_SESSION="$PRIOR_SESSION"
       exit 1
     fi
-  done < <(find "$PROJECT_CLAUDE" -name .git -prune -o -type f -print0)   # H6: never walk a nested .git
+  done < "$bootstrap_list"
   CURRENT_SESSION="$PRIOR_SESSION"   # never bump the session on a bootstrap
   write_state || { echo "Error: could not persist .sync-state or refs/agent-sync/bases; hub left uncommitted" >&2; exit 1; }
+  if [ "${#bs_differing[@]}" -gt 0 ]; then
+    echo "warning: bootstrap recorded a base for ${#bs_differing[@]} path(s) whose hub and project content DIFFER:" >&2
+    for dp in "${bs_differing[@]}"; do echo "  differs: $dp" >&2; done
+    echo "  These differences are now treated as intentional hub-side state. If a path carries an un-synced project improvement, resolve it by hand (sync it via a scan) before relying on the merge." >&2
+  fi
   echo "bootstrap: $bs_recorded bases recorded, $bs_present already present"
   exit 0
 fi
