@@ -235,6 +235,11 @@ RSYNC_EXCLUDES=(
   --exclude=.validation_passed
   --exclude=settings.local.json
   --exclude='*.local.*'
+  # H6: never sync a nested .git (a vendored repo under .claude/). Slashless, so
+  # it matches a .git file or dir at any depth and rsync does not descend into an
+  # excluded dir, so its internals are excluded too. Does not match .gitignore/
+  # .gitattributes (those are not named exactly ".git").
+  --exclude=.git
 )
 
 # Helper: write current state back to disk.
@@ -396,6 +401,12 @@ candidate_ok() {
   case "$p" in
     *'\#'[0-7][0-7][0-7]*) return 1 ;;
   esac
+  # H6: reject any path with a .git component (a nested repo's internals, or a
+  # bare .git gitlink file) so it is never enumerated, installed, or based. The
+  # /.../ wrap catches a leading (.git/...) or trailing (.../.git) component.
+  case "/$p/" in
+    */.git/*) return 1 ;;
+  esac
   return 0
 }
 
@@ -450,7 +461,7 @@ if [ "$BOOTSTRAP_BASES" -eq 1 ]; then
       CURRENT_SESSION="$PRIOR_SESSION"
       exit 1
     fi
-  done < <(find "$PROJECT_CLAUDE" -type f -print0)
+  done < <(find "$PROJECT_CLAUDE" -name .git -prune -o -type f -print0)   # H6: never walk a nested .git
   CURRENT_SESSION="$PRIOR_SESSION"   # never bump the session on a bootstrap
   write_state || { echo "Error: could not persist .sync-state or refs/agent-sync/bases; hub left uncommitted" >&2; exit 1; }
   echo "bootstrap: $bs_recorded bases recorded, $bs_present already present"
