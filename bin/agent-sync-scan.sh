@@ -687,7 +687,7 @@ if [ "$BOOTSTRAP_BASES" -eq 1 ]; then
   # tracked-only filter. N>0 only, silent at N==0 so bootstrap's quiet-success
   # output is byte-identical for the common case (no bootstrap test churn).
   [ "$bs_skipped_untracked" -gt 0 ] \
-    && echo "bootstrap: $bs_skipped_untracked gitignored project file(s) not based (not git-tracked; commit them to sync)" >&2
+    && echo "bootstrap: $bs_skipped_untracked gitignored project file(s) not based (not git-tracked; track it in the project to sync)" >&2
   echo "bootstrap: $bs_recorded bases recorded, $bs_present already present"
   exit 0
 fi
@@ -978,7 +978,7 @@ done <<< "$CHANGES"
 # no-change path is unaffected either way, but silence-at-zero keeps a
 # changes-present run that skips nothing byte-identical too.
 [ "$skipped_untracked" -gt 0 ] \
-  && echo "Skipped $skipped_untracked gitignored project file(s) (not git-tracked; commit them to sync)." >&2
+  && echo "Skipped $skipped_untracked gitignored project file(s) (not git-tracked; track it in the project to sync)." >&2
 
 PROJ_NAME=$(basename "$PROJECT_ROOT")
 
