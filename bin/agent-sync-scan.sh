@@ -91,8 +91,18 @@ fi
 # ever exclude gitignored files). Refuse fail-CLOSED on ANY nonzero status, with a
 # message DISTINCT from the dirty-tree one, before the -n refusal (and before the
 # Item 2 ls-files guard below). Tripwire: test_claude_status_failure_refused.sh.
+#
+# M3 (Codex round 2): force `--untracked-files=all` so a repo-level
+# `status.showUntrackedFiles=no` cannot configure this guard blind. Without it,
+# status hides untracked non-ignored files, the guard passes, and Item 2's filter
+# drops such a file while miscounting it "gitignored" - defeating the A4 argument
+# that this guard refuses every untracked non-ignored path. This guard has now been
+# wrong THREE ways, one per review round: the call-site options loosened (Item 2's
+# original leg), the command failing outright (H4), and the command succeeding
+# while configured blind (M3). Only the first was visible from reading the guard in
+# isolation. M3 tripwire leg: test_untracked_nonignored_refused.sh.
 set +e
-claude_porcelain=$(git -C "$PROJECT_ROOT" status --porcelain -- ":(literal).claude" ":(literal)$CLAUDE_PATHSPEC" 2>/dev/null)
+claude_porcelain=$(git -C "$PROJECT_ROOT" status --porcelain --untracked-files=all -- ":(literal).claude" ":(literal)$CLAUDE_PATHSPEC" 2>/dev/null)
 claude_status_rc=$?
 set -e
 if [ "$claude_status_rc" -ne 0 ]; then

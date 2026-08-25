@@ -66,4 +66,17 @@ assert_refused() {  # $1 = label, $2... = scan args
 assert_refused "scan"
 assert_refused "bootstrap" --bootstrap-bases
 
+# M3 (Codex round 2): a repo-level `status.showUntrackedFiles=no` must NOT be able
+# to configure this guard blind. With it set, a plain `git status --porcelain`
+# hides the untracked file, so :86 would pass and Item 2's filter would drop the
+# file while miscounting it "gitignored" - defeating the A4 argument. The guard
+# forces `--untracked-files=all`, so the refusal must still fire on BOTH paths.
+git config status.showUntrackedFiles no
+# Sanity: the config really does hide it from a plain status (the hole M3 closes).
+if [ -n "$(git status --porcelain -- ':(literal).claude')" ]; then
+  echo "FIXTURE-BUG(m3): status.showUntrackedFiles=no should hide the untracked file from plain status"; git status --porcelain -- ':(literal).claude'; exit 1
+fi
+assert_refused "scan (showUntrackedFiles=no)"
+assert_refused "bootstrap (showUntrackedFiles=no)" --bootstrap-bases
+
 echo "PASS: test_untracked_nonignored_refused"
