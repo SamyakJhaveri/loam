@@ -600,6 +600,28 @@ while IFS= read -r -d '' _tf; do
   PROJECT_TRACKED["${_tf#"$CLAUDE_PATHSPEC/"}"]=1
 done < "$tracked_list"
 
+# H5 (Codex round 1): ls-files MEMBERSHIP proves a path is tracked, not that its
+# worktree bytes are COMMITTED. A tracked file marked --assume-unchanged (a
+# lowercase ls-files -v tag) or skip-worktree (S) is HIDDEN from git status, so the
+# :86 guard does not refuse, yet its worktree bytes can differ from the index and
+# would be promoted UNCOMMITTED. Refuse fail-CLOSED if any entry under the .claude
+# tree carries a tag other than H (cached). Cheap guard: Codex proposed a per-blob
+# and per-mode index comparison; matching the non-H ls-files tag closes the same
+# hole in a few lines. Runs before the bootstrap block, so one guard covers both
+# the scan and --bootstrap-bases paths. Tripwire: test_assume_unchanged_refused.sh.
+vtags_list="$WORKDIR/tracked-v.list"
+if ! git -C "$PROJECT_ROOT" ls-files -v -- ":(literal)$CLAUDE_PATHSPEC" > "$vtags_list" 2>/dev/null; then
+  echo "Error: could not read the git index flags under $CLAUDE_PATHSPEC; refusing to sync (re-runnable)." >&2
+  CURRENT_SESSION="$PRIOR_SESSION"
+  exit 1
+fi
+if grep -qvE '^H ' "$vtags_list"; then
+  echo "Error: a file under $CLAUDE_PATHSPEC is marked assume-unchanged or skip-worktree, so its committed state cannot be trusted; refusing to sync. Clear the bit (git update-index --no-assume-unchanged / --no-skip-worktree) and re-run. Offending entries:" >&2
+  grep -vE '^H ' "$vtags_list" | sed 's/^/  /' >&2
+  CURRENT_SESSION="$PRIOR_SESSION"
+  exit 1
+fi
+
 # project_tracked <rel>: is a candidate path (relative to the .claude tree, no
 # leading slash - the form both enumeration loops produce) a COMMITTED project
 # file? Fail closed: an untracked/gitignored path is not in the set, so not offered.
