@@ -781,7 +781,7 @@ consider_prune() {
   # below. (M2 exposed this: a suppressed-but-still-synced path is now enumerated
   # for the first time, so prune_should_prompt's `|| return` must not leak 1.)
   [ -f "$HUB_PLUGIN$p" ] || return 0        # nothing in the hub to prune
-  [ -e "$PROJECT_CLAUDE$p" ] && return 0     # project source still exists
+  [ -f "$PROJECT_CLAUDE$p" ] && return 0     # M6: a regular project FILE (not a dir) shields the hub file
   prune_should_prompt "$p" || return 0       # M2: suppressed by a prior PRUNE defer/never
   # H2 (Codex High): a folded prune must carry an explicit 'travels' verdict,
   # matching bin/agent-sync-prune.sh's manifest gate. A retired stays/rework/
