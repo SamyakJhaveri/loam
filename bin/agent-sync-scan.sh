@@ -199,7 +199,10 @@ if [ -d "$STATE_FILE" ]; then
   exit 1
 fi
 if [ -f "$STATE_FILE" ]; then
-  while IFS= read -r line; do
+  # L2: `|| [ -n "$line" ]` processes a final line with no trailing newline (a hand
+  # edit) - otherwise read returns non-zero at EOF-without-delimiter, the body never
+  # runs for it, and the next write_state rewrites the ledger without it (erased).
+  while IFS= read -r line || [ -n "$line" ]; do
     [ -z "$line" ] && continue
     case "$line" in
       session=*)
@@ -248,15 +251,26 @@ if [ -f "$STATE_FILE" ]; then
         if [ "$REC_SCOPE" = other ]; then
           RETAINED_LINES+=("$line")
           # Feed the other project's base blob sha into the bases ref (M3 + C1) so
-          # gc cannot prune it; the last colon-field is the sha.
-          sha="${line##*:}"; [ -n "$sha" ] && RETAINED_BASE_SHAS+=("$sha")
+          # gc cannot prune it; the last colon-field is the sha. L3: only a 40-hex sha
+          # may enter the tree (update-index --index-info rejects an abbreviated one,
+          # wedging write_state); the LINE is still retained verbatim above, so no
+          # other-project record is lost.
+          sha="${line##*:}"; [[ "$sha" =~ ^[0-9a-f]{40}$ ]] && RETAINED_BASE_SHAS+=("$sha")
           continue
         fi
         path="${REC_BODY%:*}"
         base_sha="${REC_BODY##*:}"
         state_path_ok "$path" || { echo "warning: ignoring malformed .sync-state key: $path" >&2; continue; }
-        # Ignore a malformed base: line with an empty sha (defensive).
-        [ -n "$base_sha" ] && STATE_BASES["$path"]="$base_sha"
+        # L3: validate 40-hex at parse (mirror compute_base). An abbreviated or
+        # non-hex base sha resolves via cat-file (base_blob_present passes) but
+        # update-index --index-info rejects it, wedging every write_state; DROP it
+        # (warn) so the run proceeds and --bootstrap-bases re-records a valid base
+        # via its existing missing-base path (STATE_BASES unset -> compute_base).
+        if [[ "$base_sha" =~ ^[0-9a-f]{40}$ ]]; then
+          STATE_BASES["$path"]="$base_sha"
+        else
+          echo "warning: ignoring malformed .sync-state base sha (not 40-hex): $path" >&2
+        fi
         ;;
       synced:*)
         classify_rest "${line#synced:}"
