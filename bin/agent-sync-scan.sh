@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
-# sync.sh — sync project's .claude/ INTO the loam repo's cultivation/marketplace/sam-cc-setup/.
+# sync.sh - sync project's .claude/ INTO the loam repo's cultivation/marketplace/sam-cc-setup/.
 # Invoked by the /sync-to-hub skill (or directly for testing).
 #
 # Direction: project → hub, ADDITIVE ONLY.
 # The hub is the curated master set. Files that exist in hub but not in the
-# project are NEVER touched — projects are allowed to be a subset of hub.
+# project are NEVER touched - projects are allowed to be a subset of hub.
 # Only NEW or CHANGED files are candidates for sync, and each one is presented
 # to the user with a 3-way prompt: y=sync now, d=defer (default), n=never.
 #
@@ -106,7 +106,7 @@ fi
 HUB_DIRTY=$(git -C "$HUB_REPO" status --porcelain 2>/dev/null \
   | grep -v -E ' \.sync-state$' || true)
 if [ "$BOOTSTRAP_BASES" -eq 0 ] && [ -n "$HUB_DIRTY" ]; then
-  echo "Warning: Hub has uncommitted changes — sync may overwrite WIP." >&2
+  echo "Warning: Hub has uncommitted changes - sync may overwrite WIP." >&2
   printf "Continue? [y/N] " >&2
   read -r response || response=""
   case "$response" in
@@ -780,7 +780,7 @@ project_unchanged_since_base() {
 
 # Portability manifest guard (2026-08-02). The manifest classifies every asset
 # as travels/stays/rework; anything marked "stays" must never be offered to the
-# hub — the hub is a curated subset, and an additive project→hub sync is
+# hub - the hub is a curated subset, and an additive project→hub sync is
 # otherwise a one-way ratchet toward the project's dialect.
 MANIFEST_TSV="$PROJECT_ROOT/.claude/reference/portability-manifest.tsv"
 manifest_verdict() {
@@ -905,7 +905,7 @@ CHANGES=$(echo "$RSYNC_DIFF" | grep -E '^(>f|<f|cf|hf)|^\.f[^ ]*p' || true)
 # Exit early only when there is genuinely nothing to do: no adds/changes AND no
 # retired files to prune. The message and behavior here are unchanged.
 if [ -z "$CHANGES" ] && [ "${#PRUNE_CANDIDATES[@]}" -eq 0 ]; then
-  echo "No changes — hub is in sync with project."
+  echo "No changes - hub is in sync with project."
   write_state || { echo "Error: could not persist .sync-state or refs/agent-sync/bases; hub left uncommitted" >&2; exit 1; }
   exit 0
 fi
@@ -1142,9 +1142,9 @@ if [ -f "$MANIFEST_TSV" ]; then
 fi
 
 echo "Sync from $PROJ_NAME (session $CURRENT_SESSION):"
-echo "  ${#PROMPT_ADDS[@]} new files to ask about (${#ADDED_PATHS[@]} total — others suppressed by prior decisions)"
-echo "  ${#PROMPT_CHANGES[@]} changed files to ask about (${#CHANGED_PATHS[@]} total — others suppressed by prior decisions)"
-echo "  ${#PROMPT_MODES[@]} mode-only changes to ask about (${#MODE_PATHS[@]} total — others suppressed by prior decisions)"
+echo "  ${#PROMPT_ADDS[@]} new files to ask about (${#ADDED_PATHS[@]} total - others suppressed by prior decisions)"
+echo "  ${#PROMPT_CHANGES[@]} changed files to ask about (${#CHANGED_PATHS[@]} total - others suppressed by prior decisions)"
+echo "  ${#PROMPT_MODES[@]} mode-only changes to ask about (${#MODE_PATHS[@]} total - others suppressed by prior decisions)"
 
 # 6. Prompt only the non-suppressed entries.
 APPROVED_ADDS=()
@@ -1339,7 +1339,7 @@ TOTAL_APPROVED=$(( ${#APPROVED_ADDS[@]} + ${#APPROVED_CHANGES[@]} + ${#MERGED_PA
 if [ "$TOTAL_APPROVED" -eq 0 ]; then
   # Persist defer/never decisions and any no-op base advances, then stop.
   write_state || { echo "Error: could not persist .sync-state or refs/agent-sync/bases; hub left uncommitted" >&2; exit 1; }
-  echo "Nothing approved — exiting."
+  echo "Nothing approved - exiting."
   exit 0
 fi
 
@@ -1534,7 +1534,7 @@ if [ "${#APPROVED_ADDS[@]}" -eq 0 ] && [ "${#APPROVED_CHANGES[@]}" -eq 0 ] \
   if [ "${#UNTRACKED_PRUNED[@]}" -gt 0 ]; then
     echo "Only untracked cleanups were applied (state-only, already persisted); nothing to commit."
   else
-    echo "Nothing was applied to the hub — nothing to commit."
+    echo "Nothing was applied to the hub - nothing to commit."
   fi
   exit 0
 fi
@@ -1715,7 +1715,7 @@ write_state || { echo "Error: could not persist .sync-state after commit; ledger
 if [ "$upgrading_touched" -eq 0 ]; then
   echo "Reminder: cultivation/marketplace/UPGRADING.md was not updated in this batch. Consider adding a provenance line (WHAT changed and WHY) for the promoted change(s)." >&2
 fi
-# Push is outward-facing and the hub is a general-purpose repo — separate confirm.
+# Push is outward-facing and the hub is a general-purpose repo - separate confirm.
 printf "Push %s to its origin now? [y/N] " "$HUB_REPO" >&2
 read -r push_resp || push_resp=""
 case "$push_resp" in
