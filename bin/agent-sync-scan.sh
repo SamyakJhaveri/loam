@@ -1007,7 +1007,7 @@ for p in "${APPROVED_ADDS[@]:-}" "${APPROVED_CHANGES[@]:-}"; do
   [ -n "$p" ] && NONEMPTY+=("$p")
 done
 
-# H2 (group 3, pending-quarantine - lead A1): installs and prune git-rms happen
+# H2 (group 3, pending-quarantine - lead A1): prune git-rms and installs happen
 # now so the commit prompt shows a real diff, but the ledger records they imply
 # are held in PENDING_* and applied to STATE only AFTER the hub commit succeeds.
 # A declined commit rolls the hub back and leaves STATE untouched, so the ledger
@@ -1017,6 +1017,60 @@ done
 # warning and healed by --bootstrap-bases. Bootstrap and the merge no-op base
 # advance stay exempt (state-only by design) and write STATE_BASES directly.
 declare -A PENDING_SYNCED PENDING_BASES PENDING_PRUNE_UNSET
+
+# High 3 / H5 / M6 (group 5): apply approved prune deletions BEFORE the installs,
+# so a git rm that empties a hub directory frees the path for a file install there
+# (M6 dir->file), and a non-clean hub copy is handled before any install runs.
+# Three cases:
+#   - clean tracked copy: git rm (staged); the record erasure is quarantined in
+#     PENDING_PRUNE_UNSET and applied to STATE only after the commit succeeds (H2);
+#     rolled back on decline.
+#   - modified tracked copy (unstaged local edits): REFUSE and warn, keep it (lead
+#     R2(i)). git rm would crash "local modifications" under set -e, and a forced
+#     rm would let the decline rollback (checkout HEAD) discard the WIP. Re-offered
+#     until the user resolves the hub WIP. Not staged, not recorded.
+#   - untracked copy (a stale ledger record with no committed hub blob): rm the
+#     leftover and drop its ledger record NOW (state-only, R2(i) amendment) - an
+#     untracked rm stages nothing so it can never reach a commit, and quarantining
+#     it would strand the cleanup at the "nothing to commit" exit. Kept even on a
+#     declined batch; the decline message enumerates these.
+PRUNED_PATHS=()
+UNTRACKED_PRUNED=()
+for p in "${PRUNE_APPROVED[@]:-}"; do
+  [ -z "${p:-}" ] && continue
+  # H1 second line of defense: re-check the state key before the destructive rm.
+  state_path_ok "$p" || { echo "  prune skipped (malformed state key): $p" >&2; continue; }
+  reject_symlink_path "$p"   # C5: no symlink ancestor may redirect the git rm
+  hub_rel="cultivation/marketplace/sam-cc-setup/$p"
+  # H1: :(literal) on every ledger-derived pathspec so a glob metachar in the name
+  # (a[1].md) cannot wildmatch a sibling into the ls-files match, the diff check,
+  # or the git rm. (`-c core.literalPathspecs` is not a real key; the magic prefix
+  # is the fix.)
+  if git -C "$HUB_REPO" ls-files --error-unmatch -- ":(literal)$hub_rel" >/dev/null 2>&1; then
+    # Tracked. H5: refuse a copy with unstaged local edits. The C2 guard (:75)
+    # guarantees a clean index at start, so a non-clean git diff here means
+    # unstaged local modifications; git rm would crash and a forced rm would let a
+    # declined rollback discard the WIP. Skip per-path (no staged residue); the
+    # prune re-offers until the user resolves the hub WIP.
+    if ! git -C "$HUB_REPO" diff --quiet -- ":(literal)$hub_rel"; then
+      echo "  prune skipped ($p has local edits in the hub - commit or discard them, then re-run)" >&2
+      continue
+    fi
+    git -C "$HUB_REPO" rm -r --quiet -- ":(literal)$hub_rel"
+    PENDING_PRUNE_UNSET["$p"]=1   # H2: erase the record only after the commit succeeds
+    PRUNED_PATHS+=("$p")
+  else
+    # Untracked hub copy (H5 + R2(i) amendment): rm the leftover and clear its
+    # stale ledger record immediately (state-only). Persisted by write_state below;
+    # kept even on a declined batch (nothing committed to roll back).
+    rm -f "$HUB_PLUGIN$p"
+    unset 'STATE_DECISIONS[$p]'
+    unset 'STATE_BASES[$p]'
+    UNTRACKED_PRUNED+=("$p")
+    echo "  pruned untracked hub copy: removed $p and cleared its stale ledger record" >&2
+  fi
+done
+
 for p in "${NONEMPTY[@]:-}"; do
   [ -z "${p:-}" ] && continue
   # Compute the base BEFORE install (ruling 2): a hash-object failure fails the item
@@ -1055,30 +1109,8 @@ for p in "${MERGED_PATHS[@]:-}"; do
   rm -f "${MERGED_TMP[$p]}"
 done
 
-# High 3 (Codex): apply prune deletions now, each preflighted so git rm cannot
-# fail mid-loop. A candidate whose hub copy is not tracked (e.g. never committed)
-# is skipped, not aborted. H2: the record erasure is quarantined in
-# PENDING_PRUNE_UNSET and applied to STATE only after the commit succeeds.
-PRUNED_PATHS=()
-for p in "${PRUNE_APPROVED[@]:-}"; do
-  [ -z "${p:-}" ] && continue
-  # H1 second line of defense: a crafted key cannot reach here after the parser
-  # guard drops it, but the git-rm is destructive so re-check before it.
-  state_path_ok "$p" || { echo "  prune skipped (malformed state key): $p" >&2; continue; }
-  reject_symlink_path "$p"   # C5: no symlink ancestor may redirect the git rm
-  hub_rel="cultivation/marketplace/sam-cc-setup/$p"
-  # H1: prefix every ledger-derived pathspec with :(literal) so a glob metachar
-  # in the name (a[1].md) cannot wildmatch and sweep an unrelated hub file into
-  # the ls-files match or the git rm. (`-c core.literalPathspecs` is not a real
-  # key and is silently ignored; the :(literal) magic prefix is the fix.)
-  if git -C "$HUB_REPO" ls-files --error-unmatch -- ":(literal)$hub_rel" >/dev/null 2>&1; then
-    git -C "$HUB_REPO" rm -r --quiet -- ":(literal)$hub_rel"
-    PENDING_PRUNE_UNSET["$p"]=1   # H2: erase the record only after the commit succeeds
-    PRUNED_PATHS+=("$p")
-  else
-    echo "  prune skipped (not tracked in hub): $p" >&2
-  fi
-done
+# (Approved prunes were applied BEFORE the installs above - see the prune loop
+# just after the PENDING_* declaration. High 3 / H5 / M6 dir->file, group 5.)
 
 # Persist defer/never decisions and any no-op base advances now (the batch's
 # synced:/base: records are quarantined in PENDING_* and written only after the
@@ -1093,7 +1125,11 @@ git -C "$HUB_REPO" status --short
 # Nothing actually reached the hub (e.g. every approved prune was untracked).
 if [ "${#APPROVED_ADDS[@]}" -eq 0 ] && [ "${#APPROVED_CHANGES[@]}" -eq 0 ] \
    && [ "${#MERGED_PATHS[@]}" -eq 0 ] && [ "${#PRUNED_PATHS[@]}" -eq 0 ]; then
-  echo "Nothing was applied to the hub — nothing to commit."
+  if [ "${#UNTRACKED_PRUNED[@]}" -gt 0 ]; then
+    echo "Only untracked cleanups were applied (state-only, already persisted); nothing to commit."
+  else
+    echo "Nothing was applied to the hub — nothing to commit."
+  fi
   exit 0
 fi
 
@@ -1125,6 +1161,9 @@ case "$commit_resp" in
       rollback_path "$rbp"
     done
     echo "Declined - hub restored, nothing kept; re-run to apply."
+    if [ "${#UNTRACKED_PRUNED[@]}" -gt 0 ]; then
+      echo "Kept (state-only, not part of the declined commit): removed these untracked hub copies and cleared their stale ledger records: ${UNTRACKED_PRUNED[*]}"
+    fi
     exit 0
     ;;
 esac
