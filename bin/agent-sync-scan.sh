@@ -710,7 +710,11 @@ if [ "$RSYNC_STATUS" -ne 0 ]; then
   exit 1
 fi
 
-CHANGES=$(echo "$RSYNC_DIFF" | grep -E '^(>f|<f|cf|hf)' || true)
+# M5: also keep attribute-only mode lines (`.f...p...`: a content-identical file
+# whose permissions differ). Both openrsync and GNU rsync emit these for a
+# perms-only diff; dropping them left a hub hook dead at 644 AND made the
+# early-exit below spuriously report "No changes" when only a mode differed.
+CHANGES=$(echo "$RSYNC_DIFF" | grep -E '^(>f|<f|cf|hf)|^\.f[^ ]*p' || true)
 
 # Exit early only when there is genuinely nothing to do: no adds/changes AND no
 # retired files to prune. The message and behavior here are unchanged.
@@ -741,6 +745,12 @@ match_itemize() {
     MATCH_KIND=add; MATCH_PATH="${BASH_REMATCH[1]}"
   elif [[ "$line" =~ ^\>f[^+\ ][^\ ]*\ (.*)$ ]]; then
     MATCH_KIND=change; MATCH_PATH="${BASH_REMATCH[1]}"
+  elif [[ "$line" =~ ^\.f[^\ ]*p[^\ ]*\ (.*)$ ]]; then
+    # M5: a `.f` (content-identical) line carrying a `p` in the attribute field is
+    # a mode-only change. Width-independent (openrsync's short field and GNU's
+    # YXcstpoguax both work): the `p` is matched anywhere in the non-space attr
+    # run, which stops at the space before the path.
+    MATCH_KIND=mode; MATCH_PATH="${BASH_REMATCH[1]}"
   else
     MATCH_KIND=none; MATCH_PATH=""
   fi
@@ -748,6 +758,7 @@ match_itemize() {
 
 ADDED_PATHS=()
 CHANGED_PATHS=()
+MODE_PATHS=()
 while IFS= read -r line; do
   [ -z "$line" ] && continue
   match_itemize "$line"
@@ -757,6 +768,10 @@ while IFS= read -r line; do
       else echo "warning: ignoring unsafe candidate path: $MATCH_PATH" >&2; fi ;;
     change)
       if candidate_ok "$MATCH_PATH"; then CHANGED_PATHS+=("$MATCH_PATH")
+      else echo "warning: ignoring unsafe candidate path: $MATCH_PATH" >&2; fi ;;
+    mode)
+      # M5: a mode-only change (content identical, permissions differ).
+      if candidate_ok "$MATCH_PATH"; then MODE_PATHS+=("$MATCH_PATH")
       else echo "warning: ignoring unsafe candidate path: $MATCH_PATH" >&2; fi ;;
     *)
       # R4 floor: a transfer line this scan cannot categorize (an unexpected
@@ -909,6 +924,19 @@ for path in "${CHANGED_PATHS[@]:-}"; do
   project_unchanged_since_base "$path" && continue   # Critical-1: no-op, suppress
   PROMPT_CHANGES+=("$path")
 done
+# M5: mode-only changes are gated like PROMPT_CHANGES EXCEPT project_unchanged_since_base
+# - a mode-only change is content-identical by definition, so that suppression would
+# drop every one. should_prompt READS the sync slot (a content never:/defer: suppresses
+# the mode too, intentionally) but this pipeline NEVER writes it, so no M2 collision.
+PROMPT_MODES=()
+for path in "${MODE_PATHS[@]:-}"; do
+  [ -z "${path:-}" ] && continue
+  manifest_allows "$path" || continue
+  deps_satisfied "$path" || continue
+  hub_ignore_skip "$path" && continue
+  should_prompt "$path" || continue
+  PROMPT_MODES+=("$path")
+done
 if [ -f "$MANIFEST_TSV" ]; then
   echo "  manifest guard: $SKIPPED_STAYS 'stays', $SKIPPED_REWORK 'rework' (generalize first), $SKIPPED_UNKNOWN unclassified, $SKIPPED_DEPS dep-withheld, $SKIPPED_HUBIGNORE hub-gitignored paths"
 fi
@@ -916,6 +944,7 @@ fi
 echo "Sync from $PROJ_NAME (session $CURRENT_SESSION):"
 echo "  ${#PROMPT_ADDS[@]} new files to ask about (${#ADDED_PATHS[@]} total — others suppressed by prior decisions)"
 echo "  ${#PROMPT_CHANGES[@]} changed files to ask about (${#CHANGED_PATHS[@]} total — others suppressed by prior decisions)"
+echo "  ${#PROMPT_MODES[@]} mode-only changes to ask about (${#MODE_PATHS[@]} total — others suppressed by prior decisions)"
 
 # 6. Prompt only the non-suppressed entries.
 APPROVED_ADDS=()
@@ -1010,6 +1039,24 @@ for path in "${PROMPT_CHANGES[@]:-}"; do
   fi
 done
 
+# M5: mode-only changes. Content is identical, so there is no merge/overwrite - a
+# plain y/N (default N) that records NOTHING (advisor8a option a: writing a
+# defer/never here would reintroduce the M2 sync-slot collision this ticket just
+# fixed). A declined mode change simply re-offers next scan.
+APPROVED_MODES=()
+for path in "${PROMPT_MODES[@]:-}"; do
+  [ -z "${path:-}" ] && continue
+  pmode=$(stat -c '%a' "$PROJECT_CLAUDE$path" 2>/dev/null \
+    || stat -f '%Lp' "$PROJECT_CLAUDE$path" 2>/dev/null || echo "")
+  hmode=$(stat -c '%a' "$HUB_PLUGIN$path" 2>/dev/null \
+    || stat -f '%Lp' "$HUB_PLUGIN$path" 2>/dev/null || echo "")
+  printf "Sync mode of %s to hub (%s -> %s)? [y/N] " "$path" "$hmode" "$pmode" >&2
+  read -r mresp || mresp=""
+  case "$mresp" in
+    y|Y|yes|YES) APPROVED_MODES+=("$path") ;;
+  esac
+done
+
 # R6 prune fold-in: offer to delete each retired hub file (project source gone).
 # Reads from STDIN like the other prompts (prune.sh reads /dev/tty, which is why
 # it cannot be tested and is not reused verbatim). Only the y/d/n DECISION is
@@ -1030,7 +1077,7 @@ for p in "${PRUNE_CANDIDATES[@]:-}"; do
   esac
 done
 
-TOTAL_APPROVED=$(( ${#APPROVED_ADDS[@]} + ${#APPROVED_CHANGES[@]} + ${#MERGED_PATHS[@]} + ${#PRUNE_APPROVED[@]} ))
+TOTAL_APPROVED=$(( ${#APPROVED_ADDS[@]} + ${#APPROVED_CHANGES[@]} + ${#MERGED_PATHS[@]} + ${#APPROVED_MODES[@]} + ${#PRUNE_APPROVED[@]} ))
 if [ "$TOTAL_APPROVED" -eq 0 ]; then
   # Persist defer/never decisions and any no-op base advances, then stop.
   write_state || { echo "Error: could not persist .sync-state or refs/agent-sync/bases; hub left uncommitted" >&2; exit 1; }
@@ -1186,6 +1233,21 @@ for p in "${MERGED_PATHS[@]:-}"; do
   rm -f "${MERGED_TMP[$p]}"
 done
 
+# M5: apply approved mode-only changes - the content is identical, so chmod the
+# hub copy to the project's mode (portable stat, the merged-mode idiom above). No
+# base/synced record: content is unchanged, git tracks the mode, and the next
+# scan sees hub mode == project mode. Staged/rolled-back/counted below alongside
+# the other approved actions; git checkout HEAD on decline restores the old mode.
+for p in "${APPROVED_MODES[@]:-}"; do
+  [ -z "${p:-}" ] && continue
+  reject_symlink_path "$p"   # C5: no symlink ancestor may redirect the chmod
+  pmode=$(stat -c '%a' "$PROJECT_CLAUDE$p" 2>/dev/null \
+    || stat -f '%Lp' "$PROJECT_CLAUDE$p" 2>/dev/null || echo "")
+  if [ -n "$pmode" ]; then
+    chmod "$pmode" "$HUB_PLUGIN$p" || echo "  warning: chmod failed for $p" >&2
+  fi
+done
+
 # (Approved prunes were applied BEFORE the installs above - see the prune loop
 # just after the PENDING_* declaration. High 3 / H5 / M6 dir->file, group 5.)
 
@@ -1201,7 +1263,8 @@ git -C "$HUB_REPO" status --short
 
 # Nothing actually reached the hub (e.g. every approved prune was untracked).
 if [ "${#APPROVED_ADDS[@]}" -eq 0 ] && [ "${#APPROVED_CHANGES[@]}" -eq 0 ] \
-   && [ "${#MERGED_PATHS[@]}" -eq 0 ] && [ "${#PRUNED_PATHS[@]}" -eq 0 ]; then
+   && [ "${#MERGED_PATHS[@]}" -eq 0 ] && [ "${#APPROVED_MODES[@]}" -eq 0 ] \
+   && [ "${#PRUNED_PATHS[@]}" -eq 0 ]; then
   if [ "${#UNTRACKED_PRUNED[@]}" -gt 0 ]; then
     echo "Only untracked cleanups were applied (state-only, already persisted); nothing to commit."
   else
@@ -1233,7 +1296,7 @@ case "$commit_resp" in
     # run touched so the hub returns to its pre-scan state; PENDING_* is discarded
     # (never promoted), so the ledger stays byte-identical and the next scan
     # re-offers. Scoped per-path so pre-existing hub WIP is untouched.
-    for rbp in "${APPROVED_ADDS[@]:-}" "${APPROVED_CHANGES[@]:-}" "${MERGED_PATHS[@]:-}" "${PRUNED_PATHS[@]:-}"; do
+    for rbp in "${APPROVED_ADDS[@]:-}" "${APPROVED_CHANGES[@]:-}" "${MERGED_PATHS[@]:-}" "${APPROVED_MODES[@]:-}" "${PRUNED_PATHS[@]:-}"; do
       [ -z "${rbp:-}" ] && continue
       rollback_path "$rbp"
     done
@@ -1251,7 +1314,7 @@ esac
 #     (.sync-state) MUST NOT be swept into the sync commit.
 DATE=$(date -u +%Y-%m-%d)
 HUB_RELPATHS=()
-for p in "${APPROVED_ADDS[@]:-}" "${APPROVED_CHANGES[@]:-}" "${MERGED_PATHS[@]:-}"; do
+for p in "${APPROVED_ADDS[@]:-}" "${APPROVED_CHANGES[@]:-}" "${MERGED_PATHS[@]:-}" "${APPROVED_MODES[@]:-}"; do
   # H1: :(literal) so the scoped stage cannot wildmatch a glob-named path onto an
   # unrelated dirty hub WIP sibling and sweep it into the sync commit (defeating
   # the no-contamination guarantee above).
