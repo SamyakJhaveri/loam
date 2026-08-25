@@ -36,10 +36,18 @@ SELF_REPO="$(git -C "$SELF_DIR" rev-parse --show-toplevel 2>/dev/null)"
 [[ -n "$SELF_REPO" ]] || die "cannot locate the script repository (is bin/release.sh inside a git repo?)"
 cd "$SELF_REPO" || die "cannot enter the script repository: $SELF_REPO"
 
-# Pre-flight
-[[ "$(git branch --show-current)" == "main" ]] || die "releases must be created from main"
-[[ -z "$(git status --porcelain)" ]] || die "working tree is dirty — commit or stash first"
-git tag -l "v$VERSION" | grep -q . && die "tag v$VERSION already exists"
+# Pre-flight. Each git query is captured with its exit status checked: a FAILED
+# git command prints nothing, and a bare `[[ -z "$(...)" ]]` or `| grep -q` would
+# read that empty output as a clean tree / an absent tag and mutate anyway. Fail
+# closed - refuse on any git error (matches bin/agent-sync-scan.sh, 76ad1c5).
+BRANCH="$(git branch --show-current)" || die "cannot read current branch"
+[[ "$BRANCH" == "main" ]] || die "releases must be created from main"
+set +e; PORCELAIN="$(git status --porcelain)"; PORCELAIN_RC=$?; set -e
+[[ "$PORCELAIN_RC" -eq 0 ]] || die "git status failed (exit $PORCELAIN_RC); refusing to release"
+[[ -z "$PORCELAIN" ]] || die "working tree is dirty — commit or stash first"
+set +e; EXISTING_TAG="$(git tag -l "v$VERSION")"; TAG_RC=$?; set -e
+[[ "$TAG_RC" -eq 0 ]] || die "git tag query failed (exit $TAG_RC); refusing to release"
+[[ -z "$EXISTING_TAG" ]] || die "tag v$VERSION already exists"
 
 # Hub CI gate: refuse to cut a release while any hub health check is red. This
 # runs BEFORE any mutation (the VERSION write at Step 1) and before the
@@ -56,14 +64,25 @@ else
   warn "bin/ip-sweep.sh not present — skipping IP gate"
 fi
 
+# Re-verify the pre-flight invariants immediately before mutating (C2). The gates
+# above (hub-ci, ip-sweep) take time, and a gate side-effect or a concurrent
+# process could have staged content, moved off main, or created the tag in that
+# window. Any drift -> refuse; never commit into a repo that changed under us.
+[[ "$(git branch --show-current)" == "main" ]] || die "branch changed during pre-flight; refusing to release"
+set +e; PORCELAIN2="$(git status --porcelain)"; PORCELAIN2_RC=$?; set -e
+[[ "$PORCELAIN2_RC" -eq 0 && -z "$PORCELAIN2" ]] || die "working tree/index changed during the pre-flight gates; refusing to release"
+set +e; EXISTING_TAG2="$(git tag -l "v$VERSION")"; TAG2_RC=$?; set -e
+[[ "$TAG2_RC" -eq 0 && -z "$EXISTING_TAG2" ]] || die "tag v$VERSION appeared during pre-flight; refusing to release"
+
 # Step 1: Update VERSION file
 info "updating VERSION to $VERSION"
 echo "$VERSION" > VERSION
 
-# Step 2: Commit (identity hard-pinned — see header)
+# Step 2: Commit (identity hard-pinned — see header). Scoped to `-- VERSION` so
+# only that file can ever land in a release commit, whatever else may be staged.
 git add VERSION
 git -c user.name="$NOREPLY_NAME" -c user.email="$NOREPLY_EMAIL" \
-  commit -m "release: v$VERSION"
+  commit -m "release: v$VERSION" -- VERSION
 
 # Step 3: Tag (tagger identity hard-pinned — annotated tags record a tagger line)
 git -c user.name="$NOREPLY_NAME" -c user.email="$NOREPLY_EMAIL" \

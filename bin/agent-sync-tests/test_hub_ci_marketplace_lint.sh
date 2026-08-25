@@ -21,7 +21,7 @@ mkdir -p "$TMP/bin" "$TMP/cultivation/marketplace/sam-cc-setup/hooks"
 cp "$REAL_BIN/hub-ci.sh" "$TMP/bin/hub-ci.sh"
 cp "$REAL_BIN/lib.sh"    "$TMP/bin/lib.sh"
 # verify-template and the hub hook test both pass, so Check 3 is isolated.
-printf '#!/usr/bin/env bash\nexit 0\n' > "$TMP/bin/verify-template.sh"
+printf '#!/usr/bin/env bash\necho \"ALL OK\"\nexit 0\n' > "$TMP/bin/verify-template.sh"
 printf 'import sys\nsys.exit(0)\n'      > "$TMP/cultivation/marketplace/sam-cc-setup/hooks/test_ok.py"
 LINT="$TMP/bin/lint-skill-descriptions.sh"
 

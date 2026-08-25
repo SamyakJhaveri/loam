@@ -54,6 +54,11 @@ if [[ "$vt_rc" -ne 0 ]]; then
 elif grep -q '^SKIP:' <<<"$vt_out"; then
   vt_skips="$(grep '^SKIP:' <<<"$vt_out" | tr '\n' ' ')"
   record_fail "verify-template SKIPPED a check (missing tool); strict release gate refuses: ${vt_skips}"
+elif ! grep -qx 'ALL OK' <<<"$vt_out"; then
+  # Same discipline as Check 3: require verify-template's own completion marker.
+  # It prints "ALL OK" as its last line only after every invariant passed, so an
+  # exit-0 run without it did not run to completion - do not record it green.
+  record_fail "verify-template exited 0 without its 'ALL OK' completion marker (did not run to completion)"
 else
   record_ok "verify-template"
 fi
@@ -110,11 +115,19 @@ if ! grep -qE '^Total warnings: [0-9]+' <<<"$lint_out"; then
   # is a linter that died before scanning (usage error, crash, set -euo abort,
   # missing target), not a clean pass - fail closed rather than fail open.
   record_fail "lint-descriptions (marketplace) died before completion (no 'Total warnings' marker; run: bin/lint-skill-descriptions.sh marketplace)"
-elif [[ "$lint_rc" -eq 0 ]]; then
-  record_ok "lint-descriptions (marketplace): 0 warnings"
 else
-  warn_n="$(grep -oE '^Total warnings: [0-9]+' <<<"$lint_out" | grep -oE '[0-9]+$')"
-  record_ok "lint-descriptions (marketplace): warn-only, ${warn_n} warnings"
+  # Validate the linter's (exit code, count) CONTRACT, not just the marker: it
+  # exits 0 iff count==0 and exits 1 iff count>0. Accept ONLY those two pairings;
+  # any other (exit 0 with warnings, exit 1 with none, a crash after the marker)
+  # is a contract violation, so fail the gate.
+  lint_n="$(grep -oE '^Total warnings: [0-9]+' <<<"$lint_out" | grep -oE '[0-9]+$' | head -1)"
+  if [[ "$lint_rc" -eq 0 && "$lint_n" -eq 0 ]]; then
+    record_ok "lint-descriptions (marketplace): 0 warnings"
+  elif [[ "$lint_rc" -eq 1 && "$lint_n" -gt 0 ]]; then
+    record_ok "lint-descriptions (marketplace): warn-only, ${lint_n} warnings"
+  else
+    record_fail "lint-descriptions (marketplace) inconsistent result (exit ${lint_rc}, count ${lint_n}); refusing"
+  fi
 fi
 
 # --- Report ----------------------------------------------------------------
