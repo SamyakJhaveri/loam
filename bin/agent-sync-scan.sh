@@ -1519,7 +1519,10 @@ scoped_residue() {
     _sp+=(":(literal)cultivation/marketplace/sam-cc-setup/$rbp")
   done
   [ "${#_sp[@]}" -eq 0 ] && return 0
-  git -C "$HUB_REPO" status --porcelain -- "${_sp[@]}" 2>/dev/null
+  # Round 3: keep git's stderr visible - a failing probe must be diagnosable. The
+  # callers guard this call, so a probe failure reports as unverifiable instead
+  # of aborting under set -e before the INCOMPLETE branch.
+  git -C "$HUB_REPO" status --porcelain -- "${_sp[@]}"
 }
 
 # 9. Prompt commit + push (default Y).
@@ -1535,7 +1538,12 @@ case "$commit_resp" in
     # residue and how to finish by hand.
     decline_rb_ok=0
     rollback_batch || decline_rb_ok=1
-    decline_residue="$(scoped_residue)"
+    # Round 3: a bare $(scoped_residue) assignment aborts under set -e if the
+    # status probe itself fails - before the INCOMPLETE branch could report.
+    if ! decline_residue=$(scoped_residue); then
+      decline_rb_ok=1
+      decline_residue="(could not verify scoped residue - inspect the hub by hand)"
+    fi
     if [ "$decline_rb_ok" -ne 0 ] || [ -n "$decline_residue" ]; then
       echo "Declined, but the rollback is INCOMPLETE - residue on this run's paths:" >&2
       printf '%s\n' "$decline_residue" >&2
@@ -1585,7 +1593,12 @@ if ! git -C "$HUB_REPO" commit -m "sync: from $PROJ_NAME on $DATE"; then
   rollback_batch || cf_rb_ok=1
   # Round 2: verify before claiming success - a failed reset/checkout/unlink can
   # leave staged or worktree residue that would wedge the next scan at C2.
-  cf_residue="$(scoped_residue)"
+  # Round 3: guard the capture - a failed probe reports as unverifiable, never
+  # aborts under set -e before the INCOMPLETE branch.
+  if ! cf_residue=$(scoped_residue); then
+    cf_rb_ok=1
+    cf_residue="(could not verify scoped residue - inspect the hub by hand)"
+  fi
   if [ "$cf_rb_ok" -ne 0 ] || [ -n "$cf_residue" ]; then
     echo "Error: hub commit failed and the rollback is INCOMPLETE - residue on this run's paths:" >&2
     printf '%s\n' "$cf_residue" >&2

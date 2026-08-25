@@ -76,3 +76,52 @@ if grep -Eq "^synced:.*[[:space:]]$CHG:" "$TMP/hub/.sync-state" 2>/dev/null; the
 fi
 
 echo "PASS: test_commit_failure_incomplete_rollback"
+
+# ---- Leg 2 (round 3): the residue PROBE itself fails - the INCOMPLETE branch
+# must still report (with an unverifiable placeholder), not die under set -e.
+# Injection: the rejecting hook makes the whole .git unreadable, so the reset,
+# the rollback checkout, and the scoped status probe all fail.
+HUB2_SETUP="$TMP/hub2/cultivation/marketplace/sam-cc-setup"
+mkdir -p "$HUB2_SETUP/skills/x"
+echo "keep" > "$HUB2_SETUP/keep.md"
+echo "hub version" > "$HUB2_SETUP/skills/x/exist.md"
+(cd "$TMP/hub2" && git init -q && \
+  git config user.email t@t && git config user.name t && \
+  git add -A && git commit -q -m init)
+echo "session=3" > "$TMP/hub2/.sync-state"
+HOOK2="$TMP/hub2/.git/hooks/pre-commit"
+cat > "$HOOK2" << EOH
+#!/bin/sh
+chmod 0000 "$TMP/hub2/.git/objects"
+echo "pre-commit hook: rejecting" >&2
+exit 1
+EOH
+chmod +x "$HOOK2"
+
+mkdir -p "$TMP/proj2/.claude/skills/x" "$TMP/proj2/.claude/reference"
+echo "project version" > "$TMP/proj2/.claude/skills/x/exist.md"
+printf 'skills/x\t-\ttravels\n' > "$TMP/proj2/.claude/reference/portability-manifest.tsv"
+(cd "$TMP/proj2" && git init -q && \
+  git -c user.email=t@t -c user.name=t add -A && \
+  git -c user.email=t@t -c user.name=t commit -q -m init)
+
+cd "$TMP/proj2"
+set +e
+out2=$(printf 'y\ny\n' | SAM_CC_HUB_REPO="$TMP/hub2" bash "$SYNC_SH" 2>&1)
+rc2=$?
+set -e
+chmod -R u+rwx "$TMP/hub2"
+
+if [ "$rc2" -eq 0 ]; then echo "FAIL(2): scan exited 0"; echo "$out2"; exit 1; fi
+# The INCOMPLETE branch must have fired (not a silent set -e death before it).
+if ! echo "$out2" | grep -q "rollback is INCOMPLETE"; then
+  echo "FAIL(2): probe failure killed the scan before the INCOMPLETE report"; echo "$out2"; exit 1
+fi
+if ! echo "$out2" | grep -q "could not verify scoped residue"; then
+  echo "FAIL(2): no unverifiable-residue placeholder"; echo "$out2"; exit 1
+fi
+if ! echo "$out2" | grep -q "Finish by hand"; then
+  echo "FAIL(2): no manual recovery guidance"; echo "$out2"; exit 1
+fi
+
+echo "PASS: test_commit_failure_incomplete_rollback (both legs)"
