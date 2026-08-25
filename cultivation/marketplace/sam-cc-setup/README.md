@@ -76,6 +76,7 @@ A change earns its place in the hub through a fixed loop.
    Approve the files that should travel; the scan commits them into the hub.
 2. **Run the hub checks.**
    Run `bin/hub-ci.sh` from the hub root: the hub promotion gate.
+   It requires `shellcheck` and `copier` (or `uvx`) on the machine: `verify-template.sh` silently skips those checks when they are absent, and the gate refuses a skipped check, so a box without them cannot pass the gate at all.
    It runs three checks every time and prints one OK or FAIL line for each:
    `bin/verify-template.sh` (renders both Copier flavors, seed skill lint, schema),
    every hub hook test found under `cultivation/marketplace/sam-cc-setup/**/test_*.py` (discovered, not hardcoded, each run as `python3 <file>`),
