@@ -83,7 +83,23 @@ fi
 # retarget (and a dirty real .claude dir); the resolved target still catches a
 # dirty file under the symlink target. :(literal) per R1; when .claude is not a
 # symlink resolve-claude prints `.claude`, so the two pathspecs coincide (harmless).
-if [ -n "$(git -C "$PROJECT_ROOT" status --porcelain -- ":(literal).claude" ":(literal)$CLAUDE_PATHSPEC" 2>/dev/null)" ]; then
+# H4 (Codex round 1): capture the status OUTPUT and EXIT CODE separately. The old
+# `[ -n "$(git status ... 2>/dev/null)" ]` discarded the exit code, so a FAILED
+# git status (e.g. a corrupt index) yielded "" and the -n test read the tree as
+# CLEAN - a fail-OPEN on the very guard Item 2's tracked-only safety argument rests
+# on (this guard refuses every untracked non-ignored path, so the filter can only
+# ever exclude gitignored files). Refuse fail-CLOSED on ANY nonzero status, with a
+# message DISTINCT from the dirty-tree one, before the -n refusal (and before the
+# Item 2 ls-files guard below). Tripwire: test_claude_status_failure_refused.sh.
+set +e
+claude_porcelain=$(git -C "$PROJECT_ROOT" status --porcelain -- ":(literal).claude" ":(literal)$CLAUDE_PATHSPEC" 2>/dev/null)
+claude_status_rc=$?
+set -e
+if [ "$claude_status_rc" -ne 0 ]; then
+  echo "Error: could not check the project's .claude for uncommitted changes (git status exit $claude_status_rc); refusing to sync." >&2
+  exit 1
+fi
+if [ -n "$claude_porcelain" ]; then
   echo "Error: Project's .claude/ has uncommitted changes. Commit or stash before syncing." >&2
   exit 1
 fi
