@@ -72,14 +72,16 @@ worse than none.
 A change earns its place in the hub through a fixed loop.
 
 1. **Sync a batch from a project.**
-   Run `bin/agent-sync.sh scan` from a project with `.claude/` work worth keeping.
+   The scan tool ships in a loam hub clone, not in this plugin, so run it by its hub path.
+   The hub clone defaults to `~/Desktop/loam` (override with `SAM_CC_HUB_REPO`).
+   From a project with `.claude/` work worth keeping, with that project as your working directory, run `~/Desktop/loam/bin/agent-sync.sh scan`.
    Approve the files that should travel; the scan commits them into the hub.
 2. **Run the hub checks.**
    Run `bin/hub-ci.sh` from the hub root: the hub promotion gate.
    It requires `shellcheck` and `copier` (or `uvx`) on the machine: `verify-template.sh` silently skips those checks when they are absent, and the gate refuses a skipped check, so a box without them cannot pass the gate at all.
    It runs three checks every time and prints one OK or FAIL line for each:
    `bin/verify-template.sh` (renders both Copier flavors, seed skill lint, schema),
-   every hub hook test found under `cultivation/marketplace/sam-cc-setup/**/test_*.py` (discovered, not hardcoded, each run as `python3 <file>`),
+   every git-tracked `test_*.py` under `cultivation/marketplace/sam-cc-setup/` (discovered via `git ls-files`, not hardcoded, each run as `python3 <file>`),
    and `bin/lint-skill-descriptions.sh marketplace`.
    The third check is warn-only: marketplace holds third-party vendored skills, so its warnings are surfaced with a count but do not fail the gate; only a linter that dies before its `Total warnings: N` completion marker hard-fails.
    The gate runs all three even when one fails, and exits nonzero if any required check failed.

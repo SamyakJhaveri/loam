@@ -70,7 +70,8 @@ This applies to anyone who runs `/sync-to-hub` or `bin/agent-sync.sh` against a 
 
 ### What you must do
 
-Run `bin/agent-sync.sh scan --bootstrap-bases` once from each project that already has files in the hub.
+Run `~/Desktop/loam/bin/agent-sync.sh scan --bootstrap-bases` once from each project that already has files in the hub, with that project as your working directory.
+The scan tool lives in your loam hub clone (`~/Desktop/loam` by default, or `$SAM_CC_HUB_REPO`), not in the project.
 This records the bases, so files you synced before the upgrade stop being re-offered as changes.
 Run it again after any crash mid-batch: it re-records any file that was installed but whose base was never written.
 
