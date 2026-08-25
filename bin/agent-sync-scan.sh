@@ -1009,14 +1009,31 @@ for path in "${PROMPT_CHANGES[@]:-}"; do
         rm -f "$merged_tmp"
       fi
     elif [ "$mrc" -eq 255 ]; then
-      # Operational error (High 2, Codex): git merge-file returns 255 when it
-      # cannot complete - e.g. an unreadable input file - which is NOT a content
-      # conflict and must never be offered a destructive overwrite. Skip the path
-      # safely: warn and continue, with no prompt and no state change.
+      # git merge-file returns 255 for two distinct reasons: an operational error
+      # (an unreadable input) OR binary inputs it cannot three-way. M4: a binary
+      # asset with a base record was skipped forever here. Distinguish the two with
+      # AFFIRMATIVE binary evidence, not mere readability - a readable non-binary
+      # 255 must stay a safe skip (High 2, Codex), so the overwrite needs positive
+      # proof. Readability gates FIRST so grep never runs on an unreadable file
+      # (grep -Iq exits 2 there, which the `!` would misread as "binary").
       handled=1
       rm -f "$merged_tmp"
-      printf 'Merge error %s: git merge-file failed (exit %s); skipped\n' "$path" "$mrc" >&2
-      continue
+      if [ -r "$HUB_PLUGIN$path" ] && [ -r "$PROJECT_CLAUDE$path" ] \
+         && { ! LC_ALL=C grep -Iq . "$HUB_PLUGIN$path" || ! LC_ALL=C grep -Iq . "$PROJECT_CLAUDE$path"; }; then
+        # Binary: no line merge exists, but the update is still deliverable. Fall
+        # through to the legacy overwrite prompt (handled=0), NOT the conflict
+        # branch below (whose diff would dump binary). On y the overwrite installs
+        # and compute_base re-records the base per R2.
+        printf 'Binary %s: cannot three-way merge; offering a full overwrite\n' "$path" >&2
+        handled=0
+      else
+        # Operational error (High 2, Codex): an unreadable input (or an unexpected
+        # readable-but-text 255). NOT a content conflict; never offer a destructive
+        # overwrite. Skip safely. Message kept BYTE-IDENTICAL - test_merge_error_skips
+        # asserts this exact string.
+        printf 'Merge error %s: git merge-file failed (exit %s); skipped\n' "$path" "$mrc" >&2
+        continue
+      fi
     else
       # Conflict (mrc in 1..254): base present, but hub and project diverge on the
       # same lines. Never auto-install; surface both versions, then take the
