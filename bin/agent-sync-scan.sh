@@ -684,19 +684,41 @@ fi
 # shape instead: an all-'+' run after ">f" is a brand-new file; any other
 # non-space run is a changed file. Width-independent, so it works under
 # either rsync implementation.
+# H4 (ruling R4): parse each itemize line byte-wise. macOS openrsync escapes bytes
+# 0x80-0x9F as \#ooo mid-UTF-8, so an itemize line for a non-ASCII name is invalid
+# UTF-8; under a UTF-8 locale bash [[ =~ ]] fails BOTH regexes and the line is
+# dropped with no output - the file is silently unsyncable on the Mac while it
+# syncs on Linux. match_itemize sets a local LC_ALL=C so the match is byte-wise
+# (restored on return, so candidate_ok below runs under the normal locale and its
+# \#ooo reject still fires); it returns MATCH_KIND (add/change/none) + MATCH_PATH.
+match_itemize() {
+  local LC_ALL=C line="$1"
+  if [[ "$line" =~ ^\>f\++\ (.*)$ ]]; then
+    MATCH_KIND=add; MATCH_PATH="${BASH_REMATCH[1]}"
+  elif [[ "$line" =~ ^\>f[^+\ ][^\ ]*\ (.*)$ ]]; then
+    MATCH_KIND=change; MATCH_PATH="${BASH_REMATCH[1]}"
+  else
+    MATCH_KIND=none; MATCH_PATH=""
+  fi
+}
+
 ADDED_PATHS=()
 CHANGED_PATHS=()
 while IFS= read -r line; do
   [ -z "$line" ] && continue
-  if [[ "$line" =~ ^\>f\++\ (.*)$ ]]; then
-    cand="${BASH_REMATCH[1]}"
-    if candidate_ok "$cand"; then ADDED_PATHS+=("$cand")
-    else echo "warning: ignoring unsafe candidate path: $cand" >&2; fi
-  elif [[ "$line" =~ ^\>f[^+\ ][^\ ]*\ (.*)$ ]]; then
-    cand="${BASH_REMATCH[1]}"
-    if candidate_ok "$cand"; then CHANGED_PATHS+=("$cand")
-    else echo "warning: ignoring unsafe candidate path: $cand" >&2; fi
-  fi
+  match_itemize "$line"
+  case "$MATCH_KIND" in
+    add)
+      if candidate_ok "$MATCH_PATH"; then ADDED_PATHS+=("$MATCH_PATH")
+      else echo "warning: ignoring unsafe candidate path: $MATCH_PATH" >&2; fi ;;
+    change)
+      if candidate_ok "$MATCH_PATH"; then CHANGED_PATHS+=("$MATCH_PATH")
+      else echo "warning: ignoring unsafe candidate path: $MATCH_PATH" >&2; fi ;;
+    *)
+      # R4 floor: a transfer line this scan cannot categorize (an unexpected
+      # itemize shape, or a <f/cf/hf type not handled) is surfaced, never dropped.
+      echo "warning: unparsed rsync itemize line (not synced; report if a real file is missing): $line" >&2 ;;
+  esac
 done <<< "$CHANGES"
 
 PROJ_NAME=$(basename "$PROJECT_ROOT")
