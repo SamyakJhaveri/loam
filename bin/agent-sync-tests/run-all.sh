@@ -5,6 +5,14 @@
 # bin/verify-template.sh so the agent-sync engine suite cannot silently rot (M1).
 set -uo pipefail
 
+# L4: the runner must not inherit the engine's own knobs from the caller's
+# environment - an exported SAM_CC_DEFER_SESSIONS (e.g. via verify-template.sh
+# invariant 3b) or SAM_CC_HUB_REPO would skew or break individual tests, a false RED
+# for a developer who legitimately exports one. Each test sets what it needs on its
+# own invocation, so scrub every SAM_CC_* knob before the loop. `"${!SAM_CC_@}"` is
+# set-u-safe (expands to nothing when none are set).
+for _v in "${!SAM_CC_@}"; do unset "$_v"; done
+
 DIR="$(cd "$(dirname "$0")" && pwd)"
 passed=0
 failed=0

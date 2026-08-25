@@ -14,6 +14,14 @@ T=$(printf '\t')   # ledger project-id delimiter (M3)
 # root-bypass and no sha-prefix lottery. Only that one blob fails; every other object
 # write (different prefix) still works, so git add / commit run normally for them.
 set -uo pipefail
+# (8a-16) Pin author+committer DATE so every fixture commit/tree/blob sha is
+# deterministic: poison() plants a file at .git/objects/${sha:0:2}, and with a
+# floating date the init commit sha was timestamp-random, so ~1/256 the target blob
+# prefix collided with an existing object dir and PROBE-BUG false-failed the suite
+# (the group-5 flaky finding). Identity is already fixed via -c below; pinning the
+# date removes the last nondeterminism so the collision is deterministically absent.
+export GIT_AUTHOR_DATE="@1700000000 +0000"
+export GIT_COMMITTER_DATE="@1700000000 +0000"
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 SYNC_SH="$SCRIPT_DIR/../agent-sync-scan.sh"
 TMP="$(mktemp -d)"
