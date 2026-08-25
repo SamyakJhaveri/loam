@@ -11,11 +11,14 @@
 #   1. verify-template.sh   - renders both copier flavors, seed lint, schema.
 #   2. hub hook tests       - every test_*.py shipped with the hub plugin.
 #   3. lint-skill-descriptions.sh marketplace - hub skill descriptions.
-#      Marketplace is third-party vendored skills, so its lint is warn-only:
-#      a warn-only nonzero exit is reported OK with the warning count SURFACED
-#      (never silently swallowed); a hard error (a FAIL line or a crash) fails
-#      the gate. Seed descriptions are already hard-gated inside
-#      verify-template.sh, so this runs marketplace only - no double-run of seed.
+#      Marketplace is third-party vendored skills, so its lint is warn-only. The
+#      linter's completion marker "Total warnings: N" is the discriminator: when
+#      it is present the linter scanned every skill, so the warnings are advisory
+#      and the check reports OK with the count SURFACED (never silently swallowed);
+#      when it is absent the linter died before completing (usage error, crash,
+#      set -euo abort, missing target), which hard-fails the gate. Seed
+#      descriptions are already hard-gated inside verify-template.sh, so this runs
+#      marketplace only - no double-run of seed.
 
 set -uo pipefail
 

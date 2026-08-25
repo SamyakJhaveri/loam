@@ -32,6 +32,12 @@ VERSION="${1:-}"
 [[ -z "$(git status --porcelain)" ]] || die "working tree is dirty — commit or stash first"
 git tag -l "v$VERSION" | grep -q . && die "tag v$VERSION already exists"
 
+# Hub CI gate: refuse to cut a release while any hub health check is red. This
+# runs BEFORE any mutation (the VERSION write at Step 1) and before the
+# commit/tag/push, so a red gate stops the release with zero side effects.
+info "running hub-ci gate"
+bash "$(dirname "$0")/hub-ci.sh" || die "hub-ci failed - refusing to release (run: bin/hub-ci.sh)"
+
 # IP gate (defense-in-depth): if the private-dev sweep is present, it must pass
 # in strict mode before we publish. Absent (e.g. public clone) → skip loudly.
 if [[ -x "$(dirname "$0")/ip-sweep.sh" ]]; then
