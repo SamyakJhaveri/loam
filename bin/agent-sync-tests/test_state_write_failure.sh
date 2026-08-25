@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+T=$(printf '\t')   # ledger project-id delimiter (M3)
 # test_state_write_failure.sh
 # Codex pass 2 Critical C4: a failed .sync-state / refs/agent-sync/bases write
 # must stop the scan before it commits, so files are never committed with their
@@ -59,7 +60,7 @@ set +e; out3=$(printf 'y\n' | SAM_CC_HUB_REPO="$H3" bash "$SYNC_SH" 2>&1); rc3=$
 if [ "$rc3" -ne 0 ]; then echo "FAIL(3): scan exit $rc3"; echo "$out3"; rm -rf "$T3"; exit 1; fi
 if [ "$(cat "$T3/victim.txt")" != "victim" ]; then echo "FAIL(3): state write followed the planted .sync-state.tmp symlink and overwrote the victim"; rm -rf "$T3"; exit 1; fi
 if [ -L "$H3/.sync-state" ]; then echo "FAIL(3): .sync-state became a symlink (the planted temp was renamed into place)"; rm -rf "$T3"; exit 1; fi
-if ! grep -qx 'session=1' "$H3/.sync-state"; then echo "FAIL(3): state not written"; rm -rf "$T3"; exit 1; fi
+if ! grep -qE "^session:[^$T]*${T}1\$" "$H3/.sync-state"; then echo "FAIL(3): state not written"; rm -rf "$T3"; exit 1; fi
 rm -rf "$T3"
 
 echo "PASS: test_state_write_failure"

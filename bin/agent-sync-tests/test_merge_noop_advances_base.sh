@@ -5,6 +5,7 @@
 # offered: the base advances to the project's content, nothing is installed,
 # prompted, or committed, and the hub copy is untouched. Codex Critical 2.
 set -euo pipefail
+T=$(printf '\t')   # ledger project-id delimiter (M3)
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 SYNC_SH="$SCRIPT_DIR/../agent-sync-scan.sh"
@@ -62,7 +63,7 @@ fi
 
 # Assertion 4: base advanced to the project content.
 WANT=$(git hash-object "$TMP/proj/.claude/$REL")
-if ! grep -qE "^base:$REL:$WANT\$" "$TMP/hub/.sync-state"; then
+if ! grep -qE "^base:[^$T]*${T}$REL:$WANT\$" "$TMP/hub/.sync-state"; then
   echo "FAIL: base not advanced to project content ($WANT)"; cat "$TMP/hub/.sync-state"; exit 1
 fi
 

@@ -2,11 +2,12 @@
 # test_never_persists.sh
 # Verifies that "never" suppresses prompts forever (until state cleared).
 set -euo pipefail
+T=$(printf '\t')   # ledger project-id delimiter (M3)
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 SYNC_SH="$SCRIPT_DIR/../agent-sync-scan.sh"
 TMP="$(mktemp -d)"
-trap "rm -rf '$TMP'" EXIT
+trap 'rm -rf "$TMP"' EXIT
 
 # Hub
 mkdir -p "$TMP/hub/cultivation/marketplace/sam-cc-setup/skills/foo"
@@ -29,7 +30,7 @@ cd "$TMP/proj"
 set +e
 printf 'n\nn\n' | SAM_CC_HUB_REPO="$TMP/hub" bash "$SYNC_SH" >/dev/null 2>&1
 set -e
-if ! grep -q '^never:skills/bar/SKILL.md$' "$TMP/hub/.sync-state"; then
+if ! grep -qE "^never:[^$T]*${T}skills/bar/SKILL.md\$" "$TMP/hub/.sync-state"; then
   echo "FAIL (Run 1): never entry missing"
   echo "state file:"; cat "$TMP/hub/.sync-state"
   exit 1

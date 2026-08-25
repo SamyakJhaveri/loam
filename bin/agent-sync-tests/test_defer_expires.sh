@@ -3,6 +3,7 @@
 # Verifies that after the defer threshold (default 4 sessions), the file is
 # re-prompted on the next sync run.
 set -euo pipefail
+T=$(printf '\t')   # ledger project-id delimiter (M3)
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 SYNC_SH="$SCRIPT_DIR/../agent-sync-scan.sh"
@@ -33,7 +34,7 @@ printf '\nn\n' | SAM_CC_HUB_REPO="$TMP/hub" SAM_CC_DEFER_SESSIONS=2 \
   bash "$SYNC_SH" >/dev/null 2>&1
 set -e
 # Confirm state recorded with ask_again=3 (current session 1 + 2 = 3)
-if ! grep -qE '^defer:skills/bar/SKILL.md:3$' "$TMP/hub/.sync-state"; then
+if ! grep -qE "^defer:[^$T]*${T}skills/bar/SKILL.md:3\$" "$TMP/hub/.sync-state"; then
   echo "FAIL (Run 1): defer entry missing or wrong threshold"
   echo "state file:"; cat "$TMP/hub/.sync-state"
   exit 1

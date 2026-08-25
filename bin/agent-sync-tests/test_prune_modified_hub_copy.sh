@@ -8,6 +8,7 @@
 # the decline-path data loss group 3 closed). The file and its record are kept and
 # the prune re-offers until the user resolves the hub WIP.
 set -euo pipefail
+T=$(printf '\t')   # ledger project-id delimiter (M3)
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 SYNC_SH="$SCRIPT_DIR/../agent-sync-scan.sh"
@@ -74,7 +75,7 @@ if ! grep -qF "LOCAL WIP EDIT" "$HUB_SETUP/$GONE"; then
 fi
 
 # Assertion 4: the ledger record survives (so the prune re-offers next run).
-if ! grep -qF "synced:$GONE" "$TMP/hub/.sync-state"; then
+if ! grep -qE "synced:[^$T]*${T}$GONE" "$TMP/hub/.sync-state"; then
   echo "FAIL: record for $GONE was dropped despite the refusal"; cat "$TMP/hub/.sync-state"; exit 1
 fi
 

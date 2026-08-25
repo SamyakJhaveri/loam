@@ -8,6 +8,7 @@
 # re-recorded. The operational-error skip (unreadable input) is preserved by
 # test_merge_error_skips.sh (re-run separately).
 set -euo pipefail
+T=$(printf '\t')   # ledger project-id delimiter (M3)
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 SYNC_SH="$SCRIPT_DIR/../agent-sync-scan.sh"
@@ -63,7 +64,7 @@ if ! cmp -s "$HUB_SETUP/$REL" "$TMP/proj/.claude/$REL"; then
 fi
 
 # Assertion 5: the base was re-recorded to the new project blob (R2).
-if ! grep -qE "^base:$REL:$PROJ_SHA\$" "$TMP/hub/.sync-state"; then
+if ! grep -qE "^base:[^$T]*${T}$REL:$PROJ_SHA\$" "$TMP/hub/.sync-state"; then
   echo "FAIL: base not re-recorded to the project blob after overwrite"; cat "$TMP/hub/.sync-state"; exit 1
 fi
 

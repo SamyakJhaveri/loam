@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+T=$(printf '\t')   # ledger project-id delimiter (M3)
 # test_base_record_failure.sh
 # Codex pass-4 High (item 2): a failed `hash-object -w` must NOT be swallowed. The
 # base is computed BEFORE install; a compute failure fails the item, so no synced:
@@ -58,13 +59,13 @@ if [ "$rc" -eq 0 ]; then echo "FAIL(1): scan exited 0; expected a non-zero fail-
 # former option-A per-item recording): a mid-batch abort discards the pending
 # synced:/base:, so aaa is installed-but-unrecorded (healed by --bootstrap-bases).
 if [ ! -e "$HS/skills/aaa/SKILL.md" ]; then echo "FAIL(1): earlier item skills/aaa was not installed"; echo "$out"; exit 1; fi
-if grep -qE "^synced:skills/aaa/SKILL.md:" "$STATE"; then echo "FAIL(1): skills/aaa recorded synced: despite mid-batch abort (A1: expected installed-but-unrecorded)"; cat "$STATE"; exit 1; fi
-if grep -qE "^base:skills/aaa/SKILL.md:" "$STATE"; then echo "FAIL(1): skills/aaa recorded base: despite mid-batch abort (A1: expected installed-but-unrecorded)"; cat "$STATE"; exit 1; fi
+if grep -qE "^synced:[^$T]*${T}skills/aaa/SKILL.md:" "$STATE"; then echo "FAIL(1): skills/aaa recorded synced: despite mid-batch abort (A1: expected installed-but-unrecorded)"; cat "$STATE"; exit 1; fi
+if grep -qE "^base:[^$T]*${T}skills/aaa/SKILL.md:" "$STATE"; then echo "FAIL(1): skills/aaa recorded base: despite mid-batch abort (A1: expected installed-but-unrecorded)"; cat "$STATE"; exit 1; fi
 # Discriminator 1 (install): pre-fix installs zzz before the swallowed failure.
 if [ -e "$HS/skills/zzz" ]; then echo "FAIL(1): skills/zzz was installed despite the failure"; exit 1; fi
 # Discriminator 2 (ledger - the exact regression): pre-fix writes synced:zzz with no base:zzz.
-if grep -qE "^synced:skills/zzz/SKILL.md:" "$STATE"; then echo "FAIL(1): synced: written for the failed path (base-less synced regression)"; cat "$STATE"; exit 1; fi
-if grep -qE "^base:skills/zzz/SKILL.md:" "$STATE"; then echo "FAIL(1): base: written for the failed path"; cat "$STATE"; exit 1; fi
+if grep -qE "^synced:[^$T]*${T}skills/zzz/SKILL.md:" "$STATE"; then echo "FAIL(1): synced: written for the failed path (base-less synced regression)"; cat "$STATE"; exit 1; fi
+if grep -qE "^base:[^$T]*${T}skills/zzz/SKILL.md:" "$STATE"; then echo "FAIL(1): base: written for the failed path"; cat "$STATE"; exit 1; fi
 # Discriminator 3 (Error text): post-fix aborts BEFORE install; pre-fix never prints this.
 if ! echo "$out" | grep -qF "aborting before install of skills/zzz/SKILL.md"; then echo "FAIL(1): no pre-install abort Error for skills/zzz"; echo "$out"; exit 1; fi
 if ! echo "$out" | grep -qF "hash-object failed for skills/zzz/SKILL.md"; then echo "FAIL(1): no hash-object failure Error for skills/zzz"; echo "$out"; exit 1; fi
@@ -96,7 +97,7 @@ if [ "$rc2" -ne 1 ]; then echo "FAIL(2): expected exit 1, got $rc2"; echo "$out2
 if ! echo "$out2" | grep -qF "hash-object failed for skills/shared/SKILL.md"; then echo "FAIL(2): no hash-object failure Error for skills/shared"; echo "$out2"; exit 1; fi
 if ! echo "$out2" | grep -qF "bootstrap aborted"; then echo "FAIL(2): no bootstrap-aborted Error"; echo "$out2"; exit 1; fi
 if echo "$out2" | grep -q 'bootstrap:'; then echo "FAIL(2): a success report was printed on failure"; echo "$out2"; exit 1; fi
-if ! grep -qx 'session=5' "$STATE2"; then echo "FAIL(2): session not pinned to PRIOR"; cat "$STATE2"; exit 1; fi
-if grep -qE "^base:skills/shared/SKILL.md:" "$STATE2"; then echo "FAIL(2): base recorded for the failed path"; cat "$STATE2"; exit 1; fi
+if ! grep -qE "^session:[^$T]*${T}5\$" "$STATE2"; then echo "FAIL(2): session not pinned to PRIOR"; cat "$STATE2"; exit 1; fi
+if grep -qE "^base:[^$T]*${T}skills/shared/SKILL.md:" "$STATE2"; then echo "FAIL(2): base recorded for the failed path"; cat "$STATE2"; exit 1; fi
 
 echo "PASS: test_base_record_failure"

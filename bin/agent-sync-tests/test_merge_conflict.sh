@@ -4,6 +4,7 @@
 # true conflict: scan must NOT auto-install, must surface "Conflict", and must
 # default to defer, leaving the hub copy untouched.
 set -euo pipefail
+T=$(printf '\t')   # ledger project-id delimiter (M3)
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 SYNC_SH="$SCRIPT_DIR/../agent-sync-scan.sh"
@@ -76,7 +77,7 @@ if ! cmp -s "$TMP/hub_orig" "$HUB_FILE"; then
 fi
 
 # Assertion 3: a defer decision was recorded for the path.
-if ! grep -qE "^defer:$REL:[0-9]+\$" "$TMP/hub/.sync-state"; then
+if ! grep -qE "^defer:[^$T]*${T}$REL:[0-9]+\$" "$TMP/hub/.sync-state"; then
   echo "FAIL: no defer record for $REL"
   echo "state file:"; cat "$TMP/hub/.sync-state"; exit 1
 fi

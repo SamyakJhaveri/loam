@@ -107,6 +107,25 @@ declare -A STATE_BASES
 declare -A STATE_PRUNE_DECISIONS
 PRIOR_SESSION=0
 
+# M3 (group 11): the ledger is shared by multiple source projects, so records are
+# keyed by project identity. PROJ_ID is the project's absolute (symlink-resolved)
+# git toplevel; the TAB after it delimits the identity from the path. A TAB in the
+# identity would corrupt that split, so refuse one (git toplevel never contains a
+# TAB or newline in practice, but fail closed).
+TAB=$'\t'
+PROJ_ID="$PROJECT_ROOT"
+case "$PROJ_ID" in
+  *"$TAB"*|*$'\n'*)
+    echo "Error: project path contains a tab or newline; cannot key the ledger by it: $PROJ_ID" >&2
+    exit 1 ;;
+esac
+# Records belonging to OTHER projects are loaded into neither STATE_* array; they
+# are retained verbatim (RETAINED_LINES) and re-emitted unchanged by write_state,
+# and their base blob shas (RETAINED_BASE_SHAS) are staged into refs/agent-sync/bases
+# so `git gc` cannot prune another project's base out from under it (M3 + C1).
+RETAINED_LINES=()
+RETAINED_BASE_SHAS=()
+
 # H1 (Codex High): reject a crafted .sync-state key before it can drive any
 # filesystem or git operation. A key like ../../../README.md escapes the plugin
 # root - consider_prune resolves it to a file OUTSIDE the tree and an approved
@@ -124,7 +143,32 @@ state_path_ok() {
   case "$p" in
     *$'\n'*|*$'\r'*) return 1 ;;
   esac
+  # M3 (group 11): a TAB is the project-identity delimiter in the ledger, so a
+  # real path must never contain one - that keeps "keypart has a TAB" an
+  # unambiguous "this record is project-prefixed" test in the parser.
+  case "$p" in
+    *"$TAB"*) return 1 ;;
+  esac
   return 0
+}
+
+# classify_rest <rest-after-type-prefix> (M3, group 11): decide whether a ledger
+# record belongs to THIS project and strip its identity prefix. Sets REC_SCOPE and
+# REC_BODY. A prefixed record splits on the FIRST tab into <projid> + <body>;
+# projid==PROJ_ID -> mine (REC_BODY = body). A different projid -> other (the
+# caller retains the raw line verbatim). No tab -> a legacy un-prefixed record,
+# ADOPTED by this project (R5): mine, REC_BODY = the whole rest.
+classify_rest() {
+  local rest="$1"
+  if [[ "$rest" == *"$TAB"* ]]; then
+    if [ "${rest%%"$TAB"*}" = "$PROJ_ID" ]; then
+      REC_SCOPE=mine; REC_BODY="${rest#*"$TAB"}"
+    else
+      REC_SCOPE=other; REC_BODY=""
+    fi
+  else
+    REC_SCOPE=mine; REC_BODY="$rest"
+  fi
 }
 
 # Item 5 (Codex p5 Critical): a .sync-state that is a symlink (the `[ -f ]` read
@@ -145,25 +189,39 @@ if [ -f "$STATE_FILE" ]; then
     [ -z "$line" ] && continue
     case "$line" in
       session=*)
+        # Legacy GLOBAL session counter (pre-M3): adopted as THIS project's on the
+        # next write_state (R5). C3 (Codex Critical): the value feeds arithmetic, so
+        # accept only a decimal count; anything else warns and leaves PRIOR_SESSION=0.
         sess="${line#session=}"
-        # C3 (Codex Critical): the session value feeds `$((PRIOR_SESSION + 1))`,
-        # where a crafted `a[$(cmd)]` runs the command on older bash. Accept only
-        # a decimal count; anything else warns and leaves PRIOR_SESSION=0.
         if counter_ok "$sess"; then
           PRIOR_SESSION="$sess"
         else
           echo "warning: ignoring malformed .sync-state session: $sess" >&2
         fi
         ;;
+      session:*)
+        # Per-project session (M3): session:<projid>\t<N>. Mine sets PRIOR_SESSION;
+        # another project's counter is retained verbatim, never consumed here.
+        classify_rest "${line#session:}"
+        if [ "$REC_SCOPE" = other ]; then RETAINED_LINES+=("$line"); continue; fi
+        if counter_ok "$REC_BODY"; then
+          PRIOR_SESSION="$REC_BODY"
+        else
+          echo "warning: ignoring malformed .sync-state session: $REC_BODY" >&2
+        fi
+        ;;
       never:*)
-        path="${line#never:}"
+        classify_rest "${line#never:}"
+        if [ "$REC_SCOPE" = other ]; then RETAINED_LINES+=("$line"); continue; fi
+        path="$REC_BODY"
         state_path_ok "$path" || { echo "warning: ignoring malformed .sync-state key: $path" >&2; continue; }
         STATE_DECISIONS["$path"]="never"
         ;;
       defer:*)
-        rest="${line#defer:}"
-        path="${rest%:*}"
-        ask_at="${rest##*:}"
+        classify_rest "${line#defer:}"
+        if [ "$REC_SCOPE" = other ]; then RETAINED_LINES+=("$line"); continue; fi
+        path="${REC_BODY%:*}"
+        ask_at="${REC_BODY##*:}"
         state_path_ok "$path" || { echo "warning: ignoring malformed .sync-state key: $path" >&2; continue; }
         # C3: ask_at feeds `[ "$CURRENT_SESSION" -lt "$ask_at" ]` (arithmetic), so
         # a non-decimal counter is malformed and could smuggle a subscript on
@@ -172,17 +230,25 @@ if [ -f "$STATE_FILE" ]; then
         STATE_DECISIONS["$path"]="defer:$ask_at"
         ;;
       base:*)
-        rest="${line#base:}"
-        path="${rest%:*}"
-        base_sha="${rest##*:}"
+        classify_rest "${line#base:}"
+        if [ "$REC_SCOPE" = other ]; then
+          RETAINED_LINES+=("$line")
+          # Feed the other project's base blob sha into the bases ref (M3 + C1) so
+          # gc cannot prune it; the last colon-field is the sha.
+          sha="${line##*:}"; [ -n "$sha" ] && RETAINED_BASE_SHAS+=("$sha")
+          continue
+        fi
+        path="${REC_BODY%:*}"
+        base_sha="${REC_BODY##*:}"
         state_path_ok "$path" || { echo "warning: ignoring malformed .sync-state key: $path" >&2; continue; }
         # Ignore a malformed base: line with an empty sha (defensive).
         [ -n "$base_sha" ] && STATE_BASES["$path"]="$base_sha"
         ;;
       synced:*)
-        rest="${line#synced:}"
-        path="${rest%:*}"
-        at_session="${rest##*:}"
+        classify_rest "${line#synced:}"
+        if [ "$REC_SCOPE" = other ]; then RETAINED_LINES+=("$line"); continue; fi
+        path="${REC_BODY%:*}"
+        at_session="${REC_BODY##*:}"
         state_path_ok "$path" || { echo "warning: ignoring malformed .sync-state key: $path" >&2; continue; }
         STATE_DECISIONS["$path"]="synced:$at_session"
         ;;
@@ -190,14 +256,17 @@ if [ -f "$STATE_FILE" ]; then
         # M2: a namespaced prune decision. Cannot collide with never:* above -
         # that pattern requires the line to START with never:, and this starts
         # with prune-never:.
-        path="${line#prune-never:}"
+        classify_rest "${line#prune-never:}"
+        if [ "$REC_SCOPE" = other ]; then RETAINED_LINES+=("$line"); continue; fi
+        path="$REC_BODY"
         state_path_ok "$path" || { echo "warning: ignoring malformed .sync-state key: $path" >&2; continue; }
         STATE_PRUNE_DECISIONS["$path"]="never"
         ;;
       prune-defer:*)
-        rest="${line#prune-defer:}"
-        path="${rest%:*}"
-        ask_at="${rest##*:}"
+        classify_rest "${line#prune-defer:}"
+        if [ "$REC_SCOPE" = other ]; then RETAINED_LINES+=("$line"); continue; fi
+        path="${REC_BODY%:*}"
+        ask_at="${REC_BODY##*:}"
         state_path_ok "$path" || { echo "warning: ignoring malformed .sync-state key: $path" >&2; continue; }
         counter_ok "$ask_at" || { echo "warning: ignoring malformed .sync-state key: $path" >&2; continue; }
         STATE_PRUNE_DECISIONS["$path"]="defer:$ask_at"
@@ -271,24 +340,32 @@ write_state() {
     echo "  Error: $STATE_FILE is a $shape, not a regular file; refusing to write the ledger" >&2
     rm -f "$state_tmp" 2>/dev/null || true
     rc=1
-  elif [ -n "$state_tmp" ] && { echo "session=$CURRENT_SESSION"
+  elif [ -n "$state_tmp" ] && { echo "session:$PROJ_ID$TAB$CURRENT_SESSION"
     for p in "${!STATE_DECISIONS[@]}"; do
       local dec="${STATE_DECISIONS[$p]}"
       case "$dec" in
-        never) echo "never:$p" ;;
-        defer:*) echo "defer:$p:${dec#defer:}" ;;
-        synced:*) echo "synced:$p:${dec#synced:}" ;;
+        never) echo "never:$PROJ_ID$TAB$p" ;;
+        defer:*) echo "defer:$PROJ_ID$TAB$p:${dec#defer:}" ;;
+        synced:*) echo "synced:$PROJ_ID$TAB$p:${dec#synced:}" ;;
       esac
     done
     for p in "${!STATE_BASES[@]}"; do
-      echo "base:$p:${STATE_BASES[$p]}"
+      echo "base:$PROJ_ID$TAB$p:${STATE_BASES[$p]}"
     done
     for p in "${!STATE_PRUNE_DECISIONS[@]}"; do
       local pdec="${STATE_PRUNE_DECISIONS[$p]}"
       case "$pdec" in
-        never) echo "prune-never:$p" ;;
-        defer:*) echo "prune-defer:$p:${pdec#defer:}" ;;
+        never) echo "prune-never:$PROJ_ID$TAB$p" ;;
+        defer:*) echo "prune-defer:$PROJ_ID$TAB$p:${pdec#defer:}" ;;
       esac
+    done
+    # M3: other projects' records, re-emitted byte-for-byte (never adopted or dropped).
+    # `|| continue` (not `&& echo`) so the loop's exit status is 0 even when the
+    # array is empty (the `:-` gives one empty iteration) - otherwise the command
+    # group returns non-zero and write_state falsely reports a write failure.
+    for rl in "${RETAINED_LINES[@]:-}"; do
+      [ -n "$rl" ] || continue
+      echo "$rl"
     done
      } > "$state_tmp" && mv -f "$state_tmp" "$STATE_FILE" \
        && [ -f "$STATE_FILE" ] && ! [ -L "$STATE_FILE" ]; then
@@ -308,7 +385,7 @@ write_state() {
   # STATE_BASES is `declare -A` but never assigned, so `${#STATE_BASES[@]}` trips
   # `set -u` when empty; the `[*]+x` alternate form is the set-u-safe emptiness
   # test (yields "x" only when at least one key is set).
-  if [ -n "${STATE_BASES[*]+x}" ]; then
+  if [ -n "${STATE_BASES[*]+x}" ] || [ "${#RETAINED_BASE_SHAS[@]}" -gt 0 ]; then
     local base_index base_tree
     # A fresh, NON-existent index path: git creates it. An empty pre-created file
     # (e.g. from mktemp) is rejected as a corrupt index ("index file smaller than
@@ -318,9 +395,21 @@ write_state() {
     # Codex pass 3 High: a base whose blob is gone (stale or pruned sha) must
     # not enter the tree - a reachable tree with a missing blob fails git fsck.
     # The ledger line is kept; --bootstrap-bases re-records it.
+    # M3: the tree entry is NAMED BY THE BLOB SHA, not by the path. Two projects
+    # can hold DIFFERENT base blobs for the SAME path; keying by path would collide
+    # in --index-info (one overwrites the other) and gc would prune the dropped
+    # blob. A blob-sha name is TAB-free (never breaks the --index-info format) and
+    # unique per distinct blob, so every project's base stays reachable. This
+    # stages both this project's bases (STATE_BASES) and other projects' retained
+    # base blobs (RETAINED_BASE_SHAS).
     if ! { for p in "${!STATE_BASES[@]}"; do
              base_blob_present "${STATE_BASES[$p]}" || continue
-             printf '100644 %s\t%s\n' "${STATE_BASES[$p]}" "$p"
+             printf '100644 %s\t%s\n' "${STATE_BASES[$p]}" "${STATE_BASES[$p]}"
+           done
+           for rsha in "${RETAINED_BASE_SHAS[@]:-}"; do
+             [ -n "$rsha" ] || continue
+             base_blob_present "$rsha" || continue
+             printf '100644 %s\t%s\n' "$rsha" "$rsha"
            done; } | GIT_INDEX_FILE="$base_index" \
              git -C "$HUB_REPO" update-index --index-info 2>/dev/null; then
       echo "  warning: could not stage base blobs for refs/agent-sync/bases" >&2

@@ -4,6 +4,7 @@
 # hub, using the PROJECT blob sha, without prompting, copying, editing any file
 # but .sync-state, or bumping the session counter. It is idempotent.
 set -euo pipefail
+T=$(printf '\t')   # ledger project-id delimiter (M3)
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 SYNC_SH="$SCRIPT_DIR/../agent-sync-scan.sh"
@@ -48,18 +49,18 @@ if [ "$nbase" -ne 2 ]; then echo "FAIL: expected 2 base lines, got $nbase"; cat 
 
 for rel in skills/same/SKILL.md skills/diff/SKILL.md; do
   want=$(git hash-object "$TMP/proj/.claude/$rel")
-  if ! grep -qE "^base:$rel:$want\$" "$STATE"; then
+  if ! grep -qE "^base:[^$T]*${T}$rel:$want\$" "$STATE"; then
     echo "FAIL: base for $rel not project sha $want"; cat "$STATE"; exit 1
   fi
 done
 
-if grep -qE '^base:skills/(hubonly|projonly)/' "$STATE"; then
+if grep -qE "^base:[^$T]*${T}skills/(hubonly|projonly)/" "$STATE"; then
   echo "FAIL: a non-shared path got a base"; cat "$STATE"; exit 1
 fi
 
 if echo "$out1" | grep -q 'to hub?'; then echo "FAIL: bootstrap emitted a sync prompt"; echo "$out1"; exit 1; fi
 
-if ! grep -q '^session=5$' "$STATE"; then echo "FAIL: session counter changed"; cat "$STATE"; exit 1; fi
+if ! grep -qE "^session:[^$T]*${T}5\$" "$STATE"; then echo "FAIL: session counter changed"; cat "$STATE"; exit 1; fi
 
 dirty=$(git -C "$TMP/hub" status --porcelain | grep -v -E ' \.sync-state$' || true)
 if [ -n "$dirty" ]; then echo "FAIL: hub tree dirty beyond .sync-state:"; echo "$dirty"; exit 1; fi

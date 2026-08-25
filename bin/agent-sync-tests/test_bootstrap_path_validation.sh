@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+T=$(printf '\t')   # ledger project-id delimiter (M3)
 # test_bootstrap_path_validation.sh
 # Codex p6 High (item 8): the bootstrap loop read `find` output by newline, so a
 # project file whose name contains a newline was split into two bogus rels (silently
@@ -37,9 +38,9 @@ if ! echo "$out" | grep -qF 'ignoring unsafe candidate path: skills/a'; then
 # Exactly one base recorded, and it is the normal shared file.
 nbase=$(grep -c '^base:' "$STATE")
 if [ "$nbase" -ne 1 ]; then echo "FAIL: expected exactly 1 base, got $nbase"; cat -v "$STATE"; exit 1; fi
-if ! grep -q '^base:skills/normal.md:' "$STATE"; then echo "FAIL: normal.md base not recorded"; cat -v "$STATE"; exit 1; fi
+if ! grep -qE "^base:[^$T]*${T}skills/normal.md:" "$STATE"; then echo "FAIL: normal.md base not recorded"; cat -v "$STATE"; exit 1; fi
 # No base line other than the normal file (no split-fragment or newline-key base).
-if grep -a '^base:' "$STATE" | grep -vq '^base:skills/normal.md:'; then
+if grep -a '^base:' "$STATE" | grep -vqE "^base:[^$T]*${T}skills/normal.md:"; then
   echo "FAIL: a malformed base line was recorded"; cat -v "$STATE"; exit 1; fi
 
 echo "PASS: test_bootstrap_path_validation"

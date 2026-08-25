@@ -3,6 +3,7 @@
 # The ratchet fix: a hub-only generalization and an unrelated project edit both
 # survive a sync when a three-way merge base is recorded. The point of Wave 1.
 set -euo pipefail
+T=$(printf '\t')   # ledger project-id delimiter (M3)
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 SYNC_SH="$SCRIPT_DIR/../agent-sync-scan.sh"
@@ -85,7 +86,7 @@ fi
 
 # Assertion 3: a fresh base: line records the project content as the new base.
 EXPECT_SHA=$(git hash-object "$TMP/proj/.claude/$REL")
-if ! grep -qE "^base:$REL:$EXPECT_SHA\$" "$TMP/hub/.sync-state"; then
+if ! grep -qE "^base:[^$T]*${T}$REL:$EXPECT_SHA\$" "$TMP/hub/.sync-state"; then
   echo "FAIL: .sync-state missing fresh base line for project content ($EXPECT_SHA)"
   echo "state file:"; cat "$TMP/hub/.sync-state"; exit 1
 fi

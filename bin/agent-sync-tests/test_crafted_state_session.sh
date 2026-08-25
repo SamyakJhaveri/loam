@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+T=$(printf '\t')   # ledger project-id delimiter (M3)
 # test_crafted_state_session.sh
 # Codex Critical C3: the session= value and a defer counter from .sync-state
 # reach bash arithmetic - $((PRIOR_SESSION+1)) (line 141) and
@@ -36,7 +37,7 @@ if ! echo "$out1" | grep -qF "warning: ignoring malformed .sync-state session: 7
   echo "FAIL(1): no malformed-session warning"; echo "$out1"; rm -rf "$T1"; exit 1; fi
 if ! echo "$out1" | grep -qF "warning: ignoring malformed .sync-state key: skills/x/SKILL.md"; then
   echo "FAIL(1): no malformed-key warning for the defer record"; echo "$out1"; rm -rf "$T1"; exit 1; fi
-if ! grep -qx 'session=1' "$S1"; then echo "FAIL(1): session not reset to 1 (current writes 50)"; cat "$S1"; rm -rf "$T1"; exit 1; fi
+if ! grep -qE "^session:[^$T]*${T}1\$" "$S1"; then echo "FAIL(1): session not reset to 1 (current writes 50)"; cat "$S1"; rm -rf "$T1"; exit 1; fi
 if grep -q 'defer:' "$S1"; then echo "FAIL(1): malformed defer record persisted"; cat "$S1"; rm -rf "$T1"; exit 1; fi
 rm -rf "$T1"
 
@@ -54,7 +55,7 @@ if [ "$rc2" -ne 0 ]; then echo "FAIL(2): fixed scan must not abort on a crafted 
 if [ -e "$MARK" ]; then echo "FAIL(2): session injection executed (marker created)"; echo "$out2"; rm -rf "$T2"; exit 1; fi
 if ! echo "$out2" | grep -qF "warning: ignoring malformed .sync-state session:"; then
   echo "FAIL(2): no malformed-session warning"; echo "$out2"; rm -rf "$T2"; exit 1; fi
-if ! grep -qx 'session=1' "$S2"; then echo "FAIL(2): session not reset to 1"; cat "$S2"; rm -rf "$T2"; exit 1; fi
+if ! grep -qE "^session:[^$T]*${T}1\$" "$S2"; then echo "FAIL(2): session not reset to 1"; cat "$S2"; rm -rf "$T2"; exit 1; fi
 rm -rf "$T2"
 
 echo "PASS: test_crafted_state_session"

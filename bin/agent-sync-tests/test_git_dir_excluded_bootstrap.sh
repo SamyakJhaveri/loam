@@ -5,6 +5,7 @@
 # .git and candidate_ok rejects a .git component, so a vendored repo present in
 # both trees records bases only for the legit files.
 set -euo pipefail
+T=$(printf '\t')   # ledger project-id delimiter (M3)
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 SYNC_SH="$SCRIPT_DIR/../agent-sync-scan.sh"
@@ -43,7 +44,7 @@ set -e
 if [ "$rc" -ne 0 ]; then echo "FAIL: bootstrap exit $rc"; echo "$out"; exit 1; fi
 
 # Assertion 1 (RED): no base recorded for any .git/... path.
-if grep -qE "^base:vendored/\.git/" "$STATE" 2>/dev/null; then
+if grep -qE "^base:[^$T]*${T}vendored/\.git/" "$STATE" 2>/dev/null; then
   echo "FAIL: bootstrap recorded a base for a .git path"; grep "\.git" "$STATE"; exit 1
 fi
 if grep -qF ".git/" "$STATE" 2>/dev/null; then
@@ -52,7 +53,7 @@ fi
 
 # Assertion 2: bases WERE recorded for the legit files.
 for rel in keep.md vendored/tool.md; do
-  if ! grep -qE "^base:$rel:" "$STATE" 2>/dev/null; then
+  if ! grep -qE "^base:[^$T]*${T}$rel:" "$STATE" 2>/dev/null; then
     echo "FAIL: no base recorded for the legit file $rel"; cat "$STATE"; exit 1
   fi
 done

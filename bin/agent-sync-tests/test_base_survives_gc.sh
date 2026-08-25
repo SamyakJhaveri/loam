@@ -6,6 +6,7 @@
 # back to the legacy overwrite. Leg 2: --bootstrap-bases re-records a base whose
 # blob is missing (a stale sha) rather than trusting the stale value.
 set -euo pipefail
+T=$(printf '\t')   # ledger project-id delimiter (M3)
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 SYNC_SH="$SCRIPT_DIR/../agent-sync-scan.sh"
@@ -116,7 +117,7 @@ set -e
 if [ "$brc2" -ne 0 ]; then echo "FAIL: leg2 bootstrap exit $brc2"; echo "$bout2"; exit 1; fi
 
 # Assertion 5: the base line now carries the REAL blob sha, not the stale one.
-if ! grep -qE "^base:$REL2:$REAL_SHA\$" "$TMP2/hub/.sync-state"; then
+if ! grep -qE "^base:[^$T]*${T}$REL2:$REAL_SHA\$" "$TMP2/hub/.sync-state"; then
   echo "FAIL: stale base not re-recorded to $REAL_SHA"; cat "$TMP2/hub/.sync-state"; exit 1
 fi
 if grep -q "$BOGUS" "$TMP2/hub/.sync-state"; then

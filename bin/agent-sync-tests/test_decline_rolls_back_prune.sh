@@ -7,6 +7,7 @@
 # commit must ROLL BACK the deletion (restore the file, clean index) and keep the
 # ledger record, so the next scan re-offers the prune.
 set -euo pipefail
+T=$(printf '\t')   # ledger project-id delimiter (M3)
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 SYNC_SH="$SCRIPT_DIR/../agent-sync-scan.sh"
@@ -64,7 +65,7 @@ if [ -n "$(git -C "$TMP/hub" diff --cached --name-only)" ]; then
 fi
 
 # Assertion 3 (RED): the ledger record survives (not erased before the commit).
-if ! grep -q "synced:$GONE" "$STATE" 2>/dev/null; then
+if ! grep -qE "synced:[^$T]*${T}$GONE" "$STATE" 2>/dev/null; then
   echo "FAIL: declined prune erased the ledger record (orphan)"; cat "$STATE"; exit 1
 fi
 

@@ -6,6 +6,7 @@
 # The warning fires on BOTH the fresh compute_base record AND the C1 dead-base
 # re-record. A converged path is based and NOT named.
 set -euo pipefail
+T=$(printf '\t')   # ledger project-id delimiter (M3)
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 SYNC_SH="$SCRIPT_DIR/../agent-sync-scan.sh"
@@ -47,7 +48,7 @@ if [ "$rc" -ne 0 ]; then echo "FAIL: bootstrap exit $rc"; echo "$out"; exit 1; f
 # Assertion 1: the differing paths are STILL based (M1 never gates on content).
 for rel in skills/drift/S.md skills/dead/S.md skills/conv/S.md; do
   want=$(git hash-object "$TMP/proj/.claude/$rel")
-  if ! grep -qE "^base:$rel:$want\$" "$STATE"; then
+  if ! grep -qE "^base:[^$T]*${T}$rel:$want\$" "$STATE"; then
     echo "FAIL: differing/converged path $rel was not based to the project sha"; cat "$STATE"; exit 1
   fi
 done

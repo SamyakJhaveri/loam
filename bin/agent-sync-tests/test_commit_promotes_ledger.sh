@@ -6,6 +6,7 @@
 # must ADVANCE base: to the new project blob. Guards a broken pending->STATE
 # promotion, which would silently lose a record (R5).
 set -euo pipefail
+T=$(printf '\t')   # ledger project-id delimiter (M3)
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 SYNC_SH="$SCRIPT_DIR/../agent-sync-scan.sh"
@@ -42,13 +43,13 @@ set -e
 if [ "$rc1" -ne 0 ]; then echo "FAIL: leg 1 exit $rc1"; echo "$out1"; exit 1; fi
 
 # Both records promoted into the ledger after the commit.
-if ! grep -q "^synced:$ADD:" "$STATE"; then echo "FAIL: no synced: record after commit"; cat "$STATE"; exit 1; fi
-if ! grep -q "^base:$ADD:" "$STATE"; then echo "FAIL: no base: record after commit"; cat "$STATE"; exit 1; fi
+if ! grep -qE "^synced:[^$T]*${T}$ADD:" "$STATE"; then echo "FAIL: no synced: record after commit"; cat "$STATE"; exit 1; fi
+if ! grep -qE "^base:[^$T]*${T}$ADD:" "$STATE"; then echo "FAIL: no base: record after commit"; cat "$STATE"; exit 1; fi
 # The add reached HEAD.
 if ! git -C "$TMP/hub" cat-file -e "HEAD:$REL_PFX/$ADD" 2>/dev/null; then
   echo "FAIL: committed add not at HEAD"; exit 1; fi
 
-base1=$(grep "^base:$ADD:" "$STATE" | head -1 | sed 's/^base:.*://')
+base1=$(grep -E "^base:[^$T]*${T}$ADD:" "$STATE" | head -1 | sed 's/^base:.*://')
 
 # Leg 2: change the project file, commit it, sync + COMMIT the change.
 echo "v2 changed" > "$TMP/proj/.claude/$ADD"
@@ -59,7 +60,7 @@ rc2=$?
 set -e
 if [ "$rc2" -ne 0 ]; then echo "FAIL: leg 2 exit $rc2"; echo "$out2"; exit 1; fi
 
-base2=$(grep "^base:$ADD:" "$STATE" | head -1 | sed 's/^base:.*://')
+base2=$(grep -E "^base:[^$T]*${T}$ADD:" "$STATE" | head -1 | sed 's/^base:.*://')
 expect=$(git -C "$TMP/hub" hash-object "$TMP/proj/.claude/$ADD")
 if [ "$base2" = "$base1" ]; then echo "FAIL: base: did not advance after the committed change"; echo "base1=$base1 base2=$base2"; exit 1; fi
 if [ "$base2" != "$expect" ]; then echo "FAIL: base: did not advance to the new project blob"; echo "base2=$base2 expect=$expect"; exit 1; fi
