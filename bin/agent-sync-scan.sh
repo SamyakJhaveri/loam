@@ -1703,6 +1703,21 @@ fi
 # no-pathspec `git commit` never consumes, and C2 already refuses a pre-staged hub
 # index. The reminder is printed only after a SUCCESSFUL commit below: it never
 # gates, never blocks, never changes the exit code, never suppresses the commit.
+#
+# M2 (Codex round 1) - DECISION, not a bug. This probe treats ANY non-empty
+# UPGRADING.md status as "touched", so it cannot tell an in-run provenance edit
+# from an unrelated stale edit already present at scan start (e.g. a co-author's
+# in-flight doc change). Four cases: clean+unchanged -> nag (right); clean+edited
+# -> silent (right); dirty+edited -> silent (right); dirty+UNCHANGED -> AMBIGUOUS.
+# Case 4 may be the provenance line added just before running sync, or unrelated
+# dirt - nothing in the file state distinguishes them - and we DELIBERATELY choose
+# silence there. A false negative costs one missing UPGRADING line that a human
+# reading the file later catches; a false positive nags someone who just did the
+# right thing, and a nudge that fires at compliant users is trained away within a
+# week, after which it no longer helps in case 1 where it is the sole safeguard.
+# Codex proposed capturing UPGRADING.md's state at scan start and comparing at
+# commit to "fix" case 4; that flips case 4 to a nag and is rejected for exactly
+# that reason (lead ruling A9). So the probe is intentionally left as-is.
 upgrading_touched=1
 [ -z "$(git -C "$HUB_REPO" status --porcelain -- ":(literal)cultivation/marketplace/UPGRADING.md" 2>/dev/null)" ] \
   && upgrading_touched=0
