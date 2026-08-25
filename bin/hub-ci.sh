@@ -63,34 +63,46 @@ else
   record_ok "verify-template"
 fi
 
-# --- Check 2: hub hook tests (discovered, not hardcoded) --------------------
-# Discovery must fail LOUD. A missing plugin dir, an unreadable tree, or zero
-# discovered tests are all broken checkouts, not quiet days - so validate the
-# dir, run `find` with its exit status CHECKED (a process substitution hides it),
-# and record_fail (never warn) on a discovery error or on zero tests.
-HUB_PLUGIN="$REPO_ROOT/cultivation/marketplace/sam-cc-setup"
-if [[ ! -d "$HUB_PLUGIN" ]]; then
-  record_fail "hub plugin dir missing: ${HUB_PLUGIN#"$REPO_ROOT"/} (broken checkout)"
+# --- Check 2: hub hook tests (git-TRACKED, not just on disk) ----------------
+# hub-ci validates the live WORKTREE, but release.sh tags/pushes COMMITTED
+# objects, so the gate must run only git-tracked tests: a gitignored or untracked
+# test_*.py would run here yet never ship in the tag (and the mirror - the gate
+# could pass on a test the tag omits). So discovery is by `git ls-files`, not a
+# filesystem `find`, reusing the tracked-enumeration shape from
+# bin/agent-sync-scan.sh (8b, 075e7ae). ls-files reads the index. Discovery must
+# fail LOUD: a non-repo, an ls-files error, a missing dir, or zero tracked tests
+# are all broken states, never a quiet pass. `find` cannot see trackedness, so
+# it is gone. (The clean/smudge case - a filter rewriting content on checkout -
+# is NOT covered here; that needs the isolated-HEAD checkout, a Ticket 9 residual.)
+HUB_PLUGIN_REL="cultivation/marketplace/sam-cc-setup"
+HUB_PLUGIN="$REPO_ROOT/$HUB_PLUGIN_REL"
+if ! git -C "$REPO_ROOT" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+  # A distinct, accurate message: tracked discovery is a NEW precondition, so a
+  # missing repo must not surface as "no tests found" and send someone hunting.
+  record_fail "hub-ci must run inside a git repository to validate tracked content, but $REPO_ROOT is not one"
+elif [[ ! -d "$HUB_PLUGIN" ]]; then
+  record_fail "hub plugin dir missing: $HUB_PLUGIN_REL (broken checkout)"
 else
   hook_list="$(mktemp)"
-  if find "$HUB_PLUGIN" -name 'test_*.py' -print0 2>/dev/null > "$hook_list"; then
-    sort -z "$hook_list" -o "$hook_list"
+  if git -C "$REPO_ROOT" ls-files -z -- ":(literal)$HUB_PLUGIN_REL" 2>/dev/null > "$hook_list"; then
+    tracked_tests="$(mktemp)"
+    grep -zE '/test_[^/]*\.py$' "$hook_list" 2>/dev/null | sort -z > "$tracked_tests" || true
     hook_tests_found=0
-    while IFS= read -r -d '' test_file; do
+    while IFS= read -r -d '' rel; do
       hook_tests_found=$((hook_tests_found + 1))
-      rel="${test_file#"$REPO_ROOT"/}"
       info "running hub hook test: $rel"
-      if python3 "$test_file" >/dev/null 2>&1; then
+      if python3 "$REPO_ROOT/$rel" >/dev/null 2>&1; then
         record_ok "hook-test $rel"
       else
         record_fail "hook-test $rel (run: python3 $rel)"
       fi
-    done < "$hook_list"
+    done < "$tracked_tests"
+    rm -f "$tracked_tests"
     if [[ "$hook_tests_found" -eq 0 ]]; then
-      record_fail "no hub hook tests discovered under $HUB_PLUGIN/**/test_*.py (broken checkout)"
+      record_fail "no git-tracked hub hook tests discovered under $HUB_PLUGIN_REL/**/test_*.py (broken checkout)"
     fi
   else
-    record_fail "hub hook test discovery failed (find error under $HUB_PLUGIN)"
+    record_fail "hub hook test discovery failed (git ls-files error under $HUB_PLUGIN_REL)"
   fi
   rm -f "$hook_list"
 fi

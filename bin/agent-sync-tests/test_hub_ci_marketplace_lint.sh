@@ -26,6 +26,9 @@ printf 'import sys\nsys.exit(0)\n'      > "$TMP/cultivation/marketplace/sam-cc-s
 LINT="$TMP/bin/lint-skill-descriptions.sh"
 
 run_hubci() {
+  # hub-ci discovers git-TRACKED hook tests: index the fixture first (setup only).
+  git -C "$TMP" init -q 2>/dev/null || true
+  git -C "$TMP" add -A
   set +e
   out="$(bash "$TMP/bin/hub-ci.sh" 2>&1)"
   rc=$?

@@ -21,7 +21,7 @@ build() { # $1 = verify-template body
   printf 'import sys\nsys.exit(0)\n' > "$TMP/cultivation/marketplace/sam-cc-setup/hooks/test_ok.py"
   chmod +x "$TMP/bin/"*.sh
 }
-run() { set +e; out="$(bash "$TMP/bin/hub-ci.sh" 2>&1)"; rc=$?; set -e; }
+run() { git -C "$TMP" init -q 2>/dev/null || true; git -C "$TMP" add -A; set +e; out="$(bash "$TMP/bin/hub-ci.sh" 2>&1)"; rc=$?; set -e; }
 
 # --- NEGATIVE: verify-template SKIPPED a check -> gate must FAIL --------------
 build '#!/usr/bin/env bash

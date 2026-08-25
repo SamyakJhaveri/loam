@@ -31,7 +31,10 @@ chmod +x "$TMP/bin/"*.sh
 HOOKS="$TMP/cultivation/marketplace/sam-cc-setup/hooks"
 
 run_hubci() {
-  # Echoes combined output; sets global rc.
+  # Echoes combined output; sets global rc. hub-ci discovers git-TRACKED hook
+  # tests, so index the current fixture tree before each run (setup only).
+  git -C "$TMP" init -q 2>/dev/null || true
+  git -C "$TMP" add -A
   set +e
   out="$(bash "$TMP/bin/hub-ci.sh" 2>&1)"
   rc=$?

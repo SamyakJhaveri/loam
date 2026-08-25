@@ -22,6 +22,9 @@ printf '#!/usr/bin/env bash\necho "ALL OK"\nexit 0\n' > "$TMP/bin/verify-templat
 printf '#!/usr/bin/env bash\necho "nothing to do"\nexit 0\n' > "$TMP/bin/lint-skill-descriptions.sh"
 printf 'import sys\nsys.exit(0)\n' > "$TMP/cultivation/marketplace/sam-cc-setup/hooks/test_ok.py"
 chmod +x "$TMP/bin/"*.sh
+# hub-ci discovers git-TRACKED hook tests: index the fixture first (setup only).
+git -C "$TMP" init -q 2>/dev/null || true
+git -C "$TMP" add -A
 set +e; out="$(bash "$TMP/bin/hub-ci.sh" 2>&1)"; rc=$?; set -e
 if [ "$rc" -eq 0 ]; then
   echo "FAIL legA: hub-ci exited 0 on a marker-less rc==0 linter (fail-open)"; echo "$out"; exit 1

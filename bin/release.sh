@@ -49,9 +49,29 @@ set +e; EXISTING_TAG="$(git tag -l "v$VERSION")"; TAG_RC=$?; set -e
 [[ "$TAG_RC" -eq 0 ]] || die "git tag query failed (exit $TAG_RC); refusing to release"
 [[ -z "$EXISTING_TAG" ]] || die "tag v$VERSION already exists"
 
+# assume-unchanged / skip-worktree guard (reuses bin/agent-sync-scan.sh H5,
+# 72c7b5d). `git status` above is BLIND to a tracked file marked
+# --assume-unchanged (lowercase ls-files -v tag) or skip-worktree (S): its
+# worktree bytes can diverge from the committed bytes the tag will publish, and
+# the hub-ci gate below validates the worktree. Refuse if any tracked path
+# carries a non-`H` tag. Scope is the WHOLE repo (no pathspec) because the tag
+# ships the whole tree - unlike H5, which scoped to .claude because the sync only
+# promotes that subtree. ls-files failure fails closed.
+set +e; VTAGS="$(git ls-files -v)"; VTAGS_RC=$?; set -e
+[[ "$VTAGS_RC" -eq 0 ]] || die "git ls-files -v failed (exit $VTAGS_RC); refusing to release"
+if grep -qvE '^H ' <<<"$VTAGS"; then
+  die "a tracked file is marked assume-unchanged or skip-worktree, so its committed state cannot be trusted; refusing to release. Clear it (git update-index --no-assume-unchanged / --no-skip-worktree). Offending: $(grep -vE '^H ' <<<"$VTAGS" | tr '\n' ' ')"
+fi
+
 # Hub CI gate: refuse to cut a release while any hub health check is red. This
 # runs BEFORE any mutation (the VERSION write at Step 1) and before the
 # commit/tag/push, so a red gate stops the release with zero side effects.
+# NOTE: hub-ci validates the live WORKTREE. The tracked-only discovery in hub-ci
+# and the assume-unchanged guard just above close the two reachable ways the
+# worktree can diverge from the committed objects the tag publishes (an untracked
+# file running in the gate; an assume-unchanged file hidden from the clean check).
+# A clean/smudge filter that rewrites content on checkout is NOT covered - that
+# residual needs the gate to run against an isolated checkout of HEAD (Ticket 9).
 info "running hub-ci gate"
 bash "$SELF_DIR/hub-ci.sh" || die "hub-ci failed - refusing to release (run: bin/hub-ci.sh)"
 

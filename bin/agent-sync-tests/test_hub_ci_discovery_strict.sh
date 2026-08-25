@@ -19,7 +19,7 @@ base() { # build bin/ with all OTHER checks passing; caller sets up the plugin t
   printf '#!/usr/bin/env bash\necho "Total warnings: 0"\necho "ALL OK"\nexit 0\n' > "$TMP/bin/lint-skill-descriptions.sh"
   chmod +x "$TMP/bin/"*.sh
 }
-run() { set +e; out="$(bash "$TMP/bin/hub-ci.sh" 2>&1)"; rc=$?; set -e; }
+run() { git -C "$TMP" init -q 2>/dev/null || true; git -C "$TMP" add -A; set +e; out="$(bash "$TMP/bin/hub-ci.sh" 2>&1)"; rc=$?; set -e; }
 
 # --- leg1: plugin dir missing entirely -> FAIL ------------------------------
 base   # no cultivation/ at all
