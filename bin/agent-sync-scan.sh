@@ -1225,6 +1225,37 @@ for p in "${PRUNE_CANDIDATES[@]:-}"; do
   esac
 done
 
+# CX-3 (Codex round 1): refuse an approved path whose hub copy carries PRE-SCAN
+# uncommitted edits. If the user continued past the global dirty-hub warning
+# (:100), installing over that WIP and then rolling back on decline via
+# rollback_path's `git checkout HEAD` would DESTROY the pre-scan WIP while the
+# decline message claims "hub restored". Drop such a path HERE - after every
+# approval prompt and before anything touches the hub - so it never enters the
+# install loops, the rollback set, the commit set, TOTAL_APPROVED, or PENDING_*.
+# Mirrors the group-5 modified-prune skip (the prune loop keeps its own guard at
+# the tracked-prune branch); this also closes the group-5-noted clobber-on-commit.
+# The C2 guard (:89) guarantees a clean index, so unstaged edits are the only
+# possible dirtiness. APPROVED_ADDS are NOT filtered: an add's hub path is absent
+# (else rsync classifies it a change/mode), so it is always clean and its rollback
+# is an rm of the just-installed file - no pre-existing WIP to lose.
+drop_dirty_approved() {   # $1 = name of an approved-path array; drop dirty-hub paths in place
+  local -n _arr="$1"
+  local _kept=() _p
+  for _p in "${_arr[@]}"; do
+    [ -z "$_p" ] && continue
+    if ! git -C "$HUB_REPO" diff --quiet -- ":(literal)${HUB_PLUGIN_REL}$_p"; then
+      echo "  skipped ($_p has uncommitted edits in the hub - commit or discard them, then re-run)" >&2
+      if [ -n "${MERGED_TMP[$_p]:-}" ]; then rm -f "${MERGED_TMP[$_p]}"; unset 'MERGED_TMP[$_p]'; fi
+      continue
+    fi
+    _kept+=("$_p")
+  done
+  _arr=("${_kept[@]}")
+}
+drop_dirty_approved APPROVED_CHANGES
+drop_dirty_approved MERGED_PATHS
+drop_dirty_approved APPROVED_MODES
+
 TOTAL_APPROVED=$(( ${#APPROVED_ADDS[@]} + ${#APPROVED_CHANGES[@]} + ${#MERGED_PATHS[@]} + ${#APPROVED_MODES[@]} + ${#PRUNE_APPROVED[@]} ))
 if [ "$TOTAL_APPROVED" -eq 0 ]; then
   # Persist defer/never decisions and any no-op base advances, then stop.
