@@ -1506,7 +1506,26 @@ done
 if [ "${#HUB_RELPATHS[@]}" -gt 0 ]; then
   git -C "$HUB_REPO" add -- "${HUB_RELPATHS[@]}"
 fi
-git -C "$HUB_REPO" commit -m "sync: from $PROJ_NAME on $DATE"
+# CX-5: a commit FAILURE (rejecting hook, identity misconfig) is not a decline -
+# git add has already staged this run's paths. Left alone, that residue wedges the
+# next scan at the C2 staged-index guard with no matching ledger records (the
+# synced:/base: promotion below never ran). Unstage the scoped adds first -
+# rollback_path's no-follow unlink removes a HEAD-absent add from the worktree but
+# cannot unstage it - then run the same scoped rollback the decline path uses.
+# The reset is guarded (a prune-only batch has empty HUB_RELPATHS, and a bare
+# `git reset --` would mixed-reset the ENTIRE index) and || true so it cannot
+# abort the rollback under set -e; prunes are restored by rollback_path itself.
+if ! git -C "$HUB_REPO" commit -m "sync: from $PROJ_NAME on $DATE"; then
+  if [ "${#HUB_RELPATHS[@]}" -gt 0 ]; then
+    git -C "$HUB_REPO" reset -q -- "${HUB_RELPATHS[@]}" || true
+  fi
+  for rbp in "${APPROVED_ADDS[@]:-}" "${APPROVED_CHANGES[@]:-}" "${MERGED_PATHS[@]:-}" "${APPROVED_MODES[@]:-}" "${PRUNED_PATHS[@]:-}"; do
+    [ -z "${rbp:-}" ] && continue
+    rollback_path "$rbp"
+  done
+  echo "Error: hub commit failed; rolled back this run's staged changes. Nothing was committed and no sync records were added. Fix the hub commit failure, then re-run to re-offer." >&2
+  exit 1
+fi
 # Commit succeeded: promote the quarantined records into the ledger, then persist
 # (H2). Until here STATE held no synced:/base: for this batch, so a decline or a
 # crash before this point could never leave a false-synced record (also removes
