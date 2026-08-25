@@ -85,10 +85,18 @@ elif [[ ! -d "$HUB_PLUGIN" ]]; then
 else
   hook_list="$(mktemp)"
   if git -C "$REPO_ROOT" ls-files -z -- ":(literal)$HUB_PLUGIN_REL" 2>/dev/null > "$hook_list"; then
-    tracked_tests="$(mktemp)"
-    grep -zE '/test_[^/]*\.py$' "$hook_list" 2>/dev/null | sort -z > "$tracked_tests" || true
+    # Read the checked ls-files NUL stream DIRECTLY and filter by basename glob -
+    # no `grep | sort` pipeline (whose `|| true` used to swallow a partial-pipeline
+    # failure and let the gate pass on an INCOMPLETE tracked-test list, R5-H1).
+    # ls-files output is already NUL-delimited and sorted, so this stays
+    # deterministic and runs EVERY tracked test or fails the enclosing ls-files
+    # check; there is no middle state.
     hook_tests_found=0
     while IFS= read -r -d '' rel; do
+      case "${rel##*/}" in
+        test_*.py) ;;
+        *) continue ;;
+      esac
       hook_tests_found=$((hook_tests_found + 1))
       info "running hub hook test: $rel"
       if python3 "$REPO_ROOT/$rel" >/dev/null 2>&1; then
@@ -96,8 +104,7 @@ else
       else
         record_fail "hook-test $rel (run: python3 $rel)"
       fi
-    done < "$tracked_tests"
-    rm -f "$tracked_tests"
+    done < "$hook_list"
     if [[ "$hook_tests_found" -eq 0 ]]; then
       record_fail "no git-tracked hub hook tests discovered under $HUB_PLUGIN_REL/**/test_*.py (broken checkout)"
     fi

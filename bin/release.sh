@@ -127,14 +127,22 @@ git add VERSION
 git -c user.name="$NOREPLY_NAME" -c user.email="$NOREPLY_EMAIL" \
   commit -m "release: v$VERSION" -- VERSION
 
-# Step 3: Tag (tagger identity hard-pinned — annotated tags record a tagger line)
-git -c user.name="$NOREPLY_NAME" -c user.email="$NOREPLY_EMAIL" \
-  tag -a "v$VERSION" -m "Release v$VERSION"
+# Capture the release commit's object id (R5-H2). Its parent is the validated
+# HEAD_BEFORE_GATES (pinned above), and every later step targets this exact
+# object rather than a branch name like HEAD, which a concurrent commit could move.
+RELEASE_COMMIT="$(git rev-parse HEAD)" || die "cannot read the release commit id; refusing to release"
 
-# Step 4: Push
-info "pushing commit and tag"
-git push origin HEAD
-git push origin "v$VERSION"
+# Step 3: Tag the EXPLICIT commit object (tagger identity hard-pinned — annotated
+# tags record a tagger line), not the mutable HEAD.
+git -c user.name="$NOREPLY_NAME" -c user.email="$NOREPLY_EMAIL" \
+  tag -a "v$VERSION" -m "Release v$VERSION" "$RELEASE_COMMIT"
+
+# Step 4: Publish the commit and tag in ONE atomic push (R5-H2 + R5-H3). Pushing
+# the explicit RELEASE_COMMIT object to main (not HEAD) fixes the mutable target,
+# and --atomic makes the branch and tag land together or not at all, so a partial
+# public release (branch pushed, tag failed) cannot happen.
+info "pushing commit and tag (atomic)"
+git push --atomic origin "${RELEASE_COMMIT}:refs/heads/main" "refs/tags/v$VERSION"
 
 ok "released v$VERSION"
 echo "Copier users can now: copier copy --trust --vcs-ref v$VERSION gh:samyakjhaveri/loam ./my-project"
