@@ -40,28 +40,54 @@ record_ok()   { REPORT+=("OK    $1"); }
 record_fail() { REPORT+=("FAIL  $1"); FAILED=1; }
 
 # --- Check 1: verify-template.sh -------------------------------------------
+# verify-template.sh SKIPS a check (prints a "SKIP:" line and still exits 0) when
+# a tool it needs is absent - shellcheck, or copier/uvx for the render tests.
+# That is a reasonable convenience for a hand dev-run, but hub-ci is the RELEASE
+# gate: a check that was skipped is a check that did NOT run, so here a SKIP is a
+# failure, not a pass. Capture the output (never discard it) and refuse on any
+# `^SKIP:` line, naming it so the operator learns which dependency is missing.
 info "running verify-template.sh (renders both copier flavors)"
-if bash "$SCRIPT_DIR/verify-template.sh" >/dev/null 2>&1; then
-  record_ok "verify-template"
-else
+vt_out="$(bash "$SCRIPT_DIR/verify-template.sh" 2>&1)"
+vt_rc=$?
+if [[ "$vt_rc" -ne 0 ]]; then
   record_fail "verify-template (run: bin/verify-template.sh)"
+elif grep -q '^SKIP:' <<<"$vt_out"; then
+  vt_skips="$(grep '^SKIP:' <<<"$vt_out" | tr '\n' ' ')"
+  record_fail "verify-template SKIPPED a check (missing tool); strict release gate refuses: ${vt_skips}"
+else
+  record_ok "verify-template"
 fi
 
 # --- Check 2: hub hook tests (discovered, not hardcoded) --------------------
+# Discovery must fail LOUD. A missing plugin dir, an unreadable tree, or zero
+# discovered tests are all broken checkouts, not quiet days - so validate the
+# dir, run `find` with its exit status CHECKED (a process substitution hides it),
+# and record_fail (never warn) on a discovery error or on zero tests.
 HUB_PLUGIN="$REPO_ROOT/cultivation/marketplace/sam-cc-setup"
-hook_tests_found=0
-while IFS= read -r -d '' test_file; do
-  hook_tests_found=$((hook_tests_found + 1))
-  rel="${test_file#"$REPO_ROOT"/}"
-  info "running hub hook test: $rel"
-  if python3 "$test_file" >/dev/null 2>&1; then
-    record_ok "hook-test $rel"
+if [[ ! -d "$HUB_PLUGIN" ]]; then
+  record_fail "hub plugin dir missing: ${HUB_PLUGIN#"$REPO_ROOT"/} (broken checkout)"
+else
+  hook_list="$(mktemp)"
+  if find "$HUB_PLUGIN" -name 'test_*.py' -print0 2>/dev/null > "$hook_list"; then
+    sort -z "$hook_list" -o "$hook_list"
+    hook_tests_found=0
+    while IFS= read -r -d '' test_file; do
+      hook_tests_found=$((hook_tests_found + 1))
+      rel="${test_file#"$REPO_ROOT"/}"
+      info "running hub hook test: $rel"
+      if python3 "$test_file" >/dev/null 2>&1; then
+        record_ok "hook-test $rel"
+      else
+        record_fail "hook-test $rel (run: python3 $rel)"
+      fi
+    done < "$hook_list"
+    if [[ "$hook_tests_found" -eq 0 ]]; then
+      record_fail "no hub hook tests discovered under $HUB_PLUGIN/**/test_*.py (broken checkout)"
+    fi
   else
-    record_fail "hook-test $rel (run: python3 $rel)"
+    record_fail "hub hook test discovery failed (find error under $HUB_PLUGIN)"
   fi
-done < <(find "$HUB_PLUGIN" -name 'test_*.py' -print0 2>/dev/null | sort -z)
-if [[ "$hook_tests_found" -eq 0 ]]; then
-  warn "no hub hook tests discovered under $HUB_PLUGIN/**/test_*.py"
+  rm -f "$hook_list"
 fi
 
 # --- Check 3: lint-skill-descriptions.sh marketplace (warn-only) -----------
@@ -79,13 +105,16 @@ fi
 info "running lint-skill-descriptions.sh marketplace"
 lint_out="$(bash "$SCRIPT_DIR/lint-skill-descriptions.sh" marketplace 2>&1)"
 lint_rc=$?
-if [[ "$lint_rc" -eq 0 ]]; then
-  record_ok "lint-descriptions (marketplace)"
-elif grep -qE '^Total warnings: [0-9]+' <<<"$lint_out"; then
+if ! grep -qE '^Total warnings: [0-9]+' <<<"$lint_out"; then
+  # Require the completion marker on BOTH exit paths. A rc==0 WITHOUT the marker
+  # is a linter that died before scanning (usage error, crash, set -euo abort,
+  # missing target), not a clean pass - fail closed rather than fail open.
+  record_fail "lint-descriptions (marketplace) died before completion (no 'Total warnings' marker; run: bin/lint-skill-descriptions.sh marketplace)"
+elif [[ "$lint_rc" -eq 0 ]]; then
+  record_ok "lint-descriptions (marketplace): 0 warnings"
+else
   warn_n="$(grep -oE '^Total warnings: [0-9]+' <<<"$lint_out" | grep -oE '[0-9]+$')"
   record_ok "lint-descriptions (marketplace): warn-only, ${warn_n} warnings"
-else
-  record_fail "lint-descriptions (marketplace) died before completion (run: bin/lint-skill-descriptions.sh marketplace)"
 fi
 
 # --- Report ----------------------------------------------------------------

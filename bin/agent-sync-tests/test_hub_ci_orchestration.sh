@@ -21,9 +21,11 @@ trap 'rm -rf "$TMP"' EXIT
 mkdir -p "$TMP/bin" "$TMP/cultivation/marketplace/sam-cc-setup/hooks"
 cp "$REAL_BIN/hub-ci.sh" "$TMP/bin/hub-ci.sh"
 cp "$REAL_BIN/lib.sh"    "$TMP/bin/lib.sh"
-# Stub the two heavy sub-scripts so orchestration is tested in isolation.
+# Stub the two heavy sub-scripts so orchestration is tested in isolation. The
+# lint stub emits the "Total warnings: N" completion marker the real linter
+# always prints, which hub-ci requires as proof the linter actually ran.
 printf '#!/usr/bin/env bash\nexit 0\n'            > "$TMP/bin/verify-template.sh"
-printf '#!/usr/bin/env bash\necho "ALL OK"\nexit 0\n' > "$TMP/bin/lint-skill-descriptions.sh"
+printf '#!/usr/bin/env bash\necho "Total warnings: 0"\necho "ALL OK"\nexit 0\n' > "$TMP/bin/lint-skill-descriptions.sh"
 chmod +x "$TMP/bin/"*.sh
 
 HOOKS="$TMP/cultivation/marketplace/sam-cc-setup/hooks"

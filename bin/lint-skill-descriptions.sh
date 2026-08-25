@@ -17,6 +17,11 @@ case "$SCOPE" in
   *)           echo "Usage: $(basename "$0") [seed|marketplace|all]" >&2; exit 1;;
 esac
 
+# A missing search dir is a broken tree, not an empty scan: fail loud (exit 2) so a caller cannot read "0 warnings" as success.
+for _d in "${SEARCH_DIRS[@]}"; do
+  [ -d "$_d" ] || { echo "ERROR: search directory not found: $_d" >&2; exit 2; }
+done
+
 while IFS= read -r skill_file; do
   frontmatter=$(extract_frontmatter "$skill_file")
   name=$(echo "$frontmatter" | grep -m1 '^name:' | sed 's/name: *//' | tr -d '"' || true)
