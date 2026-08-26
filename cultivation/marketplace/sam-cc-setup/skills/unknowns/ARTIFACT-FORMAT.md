@@ -1,6 +1,6 @@
 # Artifact format
 
-A self-contained `.html` file. Not styling advice — three structural rules, each of which
+A self-contained `.html` file. Not styling advice - three structural rules, each of which
 Markdown cannot satisfy.
 
 ## 1. The prompt sits at the top, the output below it
@@ -14,7 +14,7 @@ Anyone opening it six weeks later can see what was asked, not just what was prod
 ## 2. It ends by writing the reader's reply for them
 
 This is the reusable idea, and the easiest one to miss. Across Thariq's eleven artifacts the
-recurring device is not the visuals — it is that reacting to the artifact *produces a
+recurring device is not the visuals - it is that reacting to the artifact *produces a
 pasteable message*:
 
 - **steal/skip chips** on each design direction
@@ -37,10 +37,10 @@ link back to the exact section that was skimmed.
 
 - **Self-contained.** Inline the CSS and JS, embed images as data URIs. No CDN, no external
   fonts. It must open from `file://` with no network.
-- **Both themes.** Support `prefers-color-scheme` — these get read at night.
+- **Both themes.** Support `prefers-color-scheme` - these get read at night.
 - **Wide content scrolls inside its own container**, never the page body.
-- **Write it where the work is.** Local file for anything touching unpublished research;
-  publish only what is meant to leave the project.
+- **Write it where the work is.** Local file for anything touching unpublished or sensitive
+  work; publish only what is meant to leave the project.
 
 ## When NOT to use one
 

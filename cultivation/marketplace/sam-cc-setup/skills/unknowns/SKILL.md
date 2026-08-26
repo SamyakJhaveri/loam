@@ -1,6 +1,6 @@
 ---
 name: unknowns
-description: Surface what you do not know before prompting, log deviations during implementation, and verify understanding after. Use before starting in an unfamiliar area, when you cannot describe what you want, when a long-horizon task came back wrong, when a plan needs stress-testing, and before merging a change you have not fully read. Emits HTML artifacts that carry the prompt and the output together.
+description: "Surface what you do not know before prompting, log deviations during implementation, and verify understanding after. Use before starting in an unfamiliar area, when you cannot describe what you want, when a long-horizon task came back wrong, when a plan needs stress-testing, and before merging a change you have not fully read. Emits HTML artifacts that carry the prompt and the output together. NOT for small changes where a one-line answer or a diff already resolves the unknown - running every technique on those is over-production."
 ---
 
 # Finding your unknowns
@@ -16,13 +16,13 @@ map; the codebase and its real constraints are the territory. The gap between th
 > ability to clarify its unknowns."
 > "Reducing and planning for your unknowns is *the skill* of agentic coding."
 
-## The precondition — do this first or the rest underperforms
+## The precondition - do this first or the rest underperforms
 
 > "The most important part of this process is to give Claude context about your starting
 > point. For example, tell it where you are in your thought process; disclose your
 > experience with the problem and codebase; and let it work with you like a thought partner."
 
-## The two-sided failure — read before deciding how much to specify
+## The two-sided failure - read before deciding how much to specify
 
 > "If you are too specific, Claude will follow your instructions even when a pivot may be
 > more appropriate. If you are too vague, Claude will often make choices and assumptions
@@ -63,10 +63,10 @@ Most techniques below exist to convert the bottom-right cell into anything else.
 > understand my unknown unknowns about color grading, so that I can prompt better?
 
 Note the second shape: **teach-me**, not give-me-options. In the worked example, asking for
-variations to pick from *failed first* — "I realized that I didn't know what 'good' looked
-like" — and was replaced by asking to be taught the vocabulary.
+variations to pick from *failed first* - "I realized that I didn't know what 'good' looked
+like" - and was replaced by asking to be taught the vocabulary.
 
-### 2. Brainstorms and prototypes — for unknown knowns
+### 2. Brainstorms and prototypes - for unknown knowns
 
 > I want a dashboard for this data but I have no visual taste and don't know what's
 > possible. Make me an HTML page with 4 wildly different design directions so I can react
@@ -86,7 +86,7 @@ like" — and was replaced by asking to be taught the vocabulary.
 
 Order by **architectural blast radius**, not by document order.
 
-### 4. References — source code beats everything
+### 4. References - source code beats everything
 
 > "the absolute best reference is *source code*"
 
@@ -96,7 +96,7 @@ Order by **architectural blast radius**, not by document order.
 Before porting, have it prove comprehension: a semantics map of matched excerpts, gotcha
 notes and edge-case tables. Do not accept a port whose reference reading was never shown.
 
-### 5. Implementation plans — ordered by likelihood of change
+### 5. Implementation plans - ordered by likelihood of change
 
 > Write an implementation plan in HTML, but lead with the decisions I'm most likely to tweak
 > with: data model changes, new type interfaces, and anything user-facing. Bury the
@@ -112,10 +112,11 @@ notes and edge-case tables. Do not accept a port whose reference reading was nev
 The file is **temporary** and belongs to one build. Implementation itself starts in a **new
 session**, with the plan and prototype artifacts passed in as attachments.
 
-**Why this matters here specifically.** On 2026-07-30 a dwt2d evidence card was promoted
-from scratch to the committed repo card, and only the favourable of two control figures
-survived the promotion. A self-critic pass caught it. A Deviations log is the mechanism that
-would have caught it at the moment of the drop instead of after.
+**Why this matters.** A common failure is not fabrication but silent loss: when work is
+promoted from a scratch file to a committed artifact, a number or one of two control results
+can be dropped in transit, and only the favourable half survives. A self-critic pass catches
+that after the fact; a Deviations log is the mechanism that catches it at the moment of the
+drop instead.
 
 See `IMPLEMENTATION-NOTES.md` in this skill for the format.
 
@@ -128,7 +129,7 @@ See `IMPLEMENTATION-NOTES.md` in this skill for the format.
 > Package the prototype, the spec, and the implementation notes into a single doc I can drop
 > in Slack to get buy-in. Lead with the demo GIF.
 
-### Quizzes — the merge gate
+### Quizzes - the merge gate
 
 > I want to make sure I understand everything that's happened in this change. Give me a HTML
 > report on the changes for me to read and understand with context, intuition, what was
@@ -151,7 +152,7 @@ not know is the over-production this skill warns about elsewhere. See `ARTIFACT-
 "When NOT to use one".
 
 The reusable pattern is not the styling. It is that **the artifact ends by writing the
-user's reply for them** — steal/skip chips, resonate checkboxes, a self-filling reply
+user's reply for them** - steal/skip chips, resonate checkboxes, a self-filling reply
 template. The output of reacting is a pasteable message, not a decision the user then has to
 compose. See `ARTIFACT-FORMAT.md`.
 

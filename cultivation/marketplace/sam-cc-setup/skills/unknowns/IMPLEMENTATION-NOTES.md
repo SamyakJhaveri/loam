@@ -1,4 +1,4 @@
-# implementation-notes.md — the Deviations log
+# implementation-notes.md - the Deviations log
 
 Temporary, one per build, deleted or archived when the work merges. Not a design doc and
 not a status report: it is a record of every point where reality differed from the plan.
@@ -15,27 +15,27 @@ Three parts, and all three matter:
 3. **Keep going** - for deviations that are reversible and inside the stated scope. The log
    is what makes not-stopping safe, and it only covers that much. **Stop and ask** when the
    conservative option would still change a published number, alter an architecture or an
-   interface, touch anything under the artifact freeze, or cost more to undo than to confirm.
-   A Deviations entry is not consent.
+   interface, touch a frozen or already-released artifact, or cost more to undo than to
+   confirm. A Deviations entry is not consent.
 
 ## Format
 
 ```markdown
-# Implementation notes — <what is being built>
+# Implementation notes - <what is being built>
 Plan: <path to the plan or prototype this implements>
 Started: <date>
 
 ## Deviations
 
-### D1 — <one line: what the plan said vs what was done>
+### D1 - <one line: what the plan said vs what was done>
 **Plan said:** <verbatim from the plan>
-**Reality:** <what was actually found — file:line, command output, the measurement>
+**Reality:** <what was actually found - file:line, command output, the measurement>
 **Chose:** <the conservative option>
 **Rejected:** <the other option, and why it was less conservative>
 **Costs:** <what this deviation makes worse, or "none identified">
 **Needs a decision from the owner?** yes / no
 
-### D2 — ...
+### D2 - ...
 
 ## Open questions
 - <anything that could not be resolved conservatively>
@@ -44,22 +44,20 @@ Started: <date>
 ## The rule that exists because of a real incident
 
 **Every measurement taken during the build goes in, not only the ones that support the
-result.** On 2026-07-30 a dwt2d evidence card was promoted from a scratch card to the
-committed repo card, and only the favourable of two control figures survived the promotion.
-A self-critic pass caught it afterwards. Nothing was fabricated — a number was simply
-dropped in transit, which is the more common failure and the harder one to see.
+result.** The failure this guards against is silent loss, not fabrication: work gets promoted
+from a scratch file to a committed artifact, and only the favourable of two control results
+survives the move. A self-critic pass may catch it afterwards - but nothing was fabricated, a
+number was simply dropped in transit, which is the more common failure and the harder to see.
 
 So: if you ran two controls, both go in the log. If a number moved when you re-ran it, both
 values go in the log with the reason. A Deviations log that contains only the deviations you
 were comfortable with is worse than none, because it looks like diligence.
 
-
-
 ## When to promote an entry out of the log
 
 An entry graduates when it is no longer about this build:
 
-- It contradicts a documented fact → fix the doc and cite the log entry.
-- It will recur → it is a lint rule, a CI step, or a test, per the automation lever. Do not
-  leave a recurring class in a temporary file.
-- It changes a published number → it goes to the owner before anything ships.
+- It contradicts a documented fact -> fix the doc and cite the log entry.
+- It will recur -> it becomes a lint rule, a CI step, or a test. Do not leave a recurring
+  class in a temporary file.
+- It changes a published number -> it goes to the owner before anything ships.
