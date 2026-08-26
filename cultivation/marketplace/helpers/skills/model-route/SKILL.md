@@ -1,26 +1,26 @@
 ---
 name: model-route
-description: Advisor for selecting optimal Claude model tier (Opus/Sonnet/Haiku) for a specific task. Use before launching an agent team, before a multi-file refactor, or when deciding whether to switch from Opus to Haiku for transactional work (commits, formatting). Analyzes reasoning depth, blast radius, domain expertise, output length, correctness cost.
-auto-activate: false
+description: "Advisor for selecting an optimal model tier (Opus/Sonnet/Haiku) for a specific task. Use before launching an agent team, before a multi-file refactor, or when deciding whether to drop from Opus to Haiku for transactional work (commits, formatting). Analyzes reasoning depth, blast radius, domain expertise, output length, correctness cost. NOT for switching models mid-task once work is underway - it advises the allocation before you start."
 ---
 
 # Model Route Advisor
 
-Recommend the optimal Claude model for a given task based on Osmani's multi-model
-routing principle. Analyzes task complexity, token budget, and parallelization
-opportunities to suggest the best model allocation.
+Recommend the optimal model for a given task based on a multi-model routing principle.
+Analyzes task complexity, token budget, and parallelization opportunities to suggest the
+best model allocation across the Opus / Sonnet / Haiku tiers (use tier aliases, not pinned
+model ids - the alias resolves to whatever the current lineup maps that tier to).
 
 **Trigger:** When user types `/model-route` or `/model-route "<task description>"`
 
 ## Arguments
 
-- `$ARGUMENTS` — optional task description in quotes. If omitted, prompt the user
+- `$ARGUMENTS` - optional task description in quotes. If omitted, prompt the user
   to describe what they want to do.
 
 ## Policy Context
 
-Check your project's CLAUDE.md for any model selection policy. The routing
-recommendation is advisory — it shows what the optimal allocation WOULD be under a
+Check your project's CLAUDE.md for any model-selection policy. The routing
+recommendation is advisory - it shows what the optimal allocation WOULD be under a
 cost-optimized policy. The user decides whether to follow it or stick with their
 preferred model.
 
@@ -33,9 +33,9 @@ preferred model.
 - Complex debugging across multiple files
 - Security review or adversarial analysis
 - Planning and plan-reviewer verification
-- Paper writing, scientific argumentation
-- Interpreting eval results or research claims
-- Self-critic and validation waves
+- Technical writing that must argue a position precisely
+- Interpreting results or research claims
+- Self-critic and validation passes
 - Any task where a wrong answer is expensive to fix
 
 **Token estimate:** 10K-50K per task (high reasoning depth)
@@ -74,9 +74,12 @@ Parse the task description and classify it along these dimensions:
 |-----------|-----|------|
 | **Reasoning depth** | Mechanical, pattern-following | Novel, requires inference |
 | **Blast radius** | Single file, reversible | Multi-file, hard to undo |
-| **Domain expertise** | Generic programming | HPC/CUDA/research-specific |
+| **Domain expertise** | Generic programming | Specialized or domain-specific |
 | **Output length** | Short (< 500 tokens) | Long (> 2K tokens) |
 | **Correctness cost** | Easy to verify, cheap to retry | Hard to verify, expensive if wrong |
+
+Route to the strongest tier a task's hardest dimension demands: when reasoning depth,
+blast radius, or correctness cost is High, prefer Opus even if the other dimensions are Low.
 
 ### Step 2: Generate Recommendation
 
@@ -85,12 +88,12 @@ Present the recommendation in this format:
 ```
 === MODEL ROUTE: <task summary> ===
 
-Recommended: <MODEL> (<tier>)
+Recommended: <TIER>
 
 Reasoning:
-  - <dimension 1>: <assessment> -> <model implication>
-  - <dimension 2>: <assessment> -> <model implication>
-  - <dimension 3>: <assessment> -> <model implication>
+  - <dimension 1>: <assessment> -> <tier implication>
+  - <dimension 2>: <assessment> -> <tier implication>
+  - <dimension 3>: <assessment> -> <tier implication>
 
 Token estimate: ~<N>K tokens
 Cost estimate: ~$<X.XX> (at current pricing)
@@ -119,8 +122,8 @@ If the task sits at a boundary between tiers:
 
 ```
 Alternative approaches:
-  a) <Model A>: <tradeoff> (e.g., "Opus for safety, +$0.50")
-  b) <Model B>: <tradeoff> (e.g., "Haiku for speed, risk of shallow analysis")
+  a) <Tier A>: <tradeoff> (e.g., "Opus for safety, +$0.50")
+  b) <Tier B>: <tradeoff> (e.g., "Haiku for speed, risk of shallow analysis")
   c) <Split>: <tradeoff> (e.g., "Opus for planning + Sonnet for implementation")
 ```
 
@@ -128,16 +131,16 @@ Alternative approaches:
 
 Override the general matrix based on your project's needs. Examples:
 
-| Task | Suggested Model | Reason |
+| Task | Suggested Tier | Reason |
 |------|----------------|--------|
 | Architecture decisions | Opus | Wrong decisions are expensive to fix |
-| Paper / scientific writing | Opus | Deep reasoning required |
+| Technical / scientific writing | Opus | Deep reasoning required |
 | Commit + push | Haiku | Mechanical git operations |
-| `/validate` waves | Opus | Self-critic requires adversarial reasoning |
-| `/catchup` briefing | Haiku | Mechanical: run git commands, format output |
+| Validation / self-critic passes | Opus | Adversarial reasoning required |
+| Session-bootstrap briefing | Haiku | Mechanical: run git commands, format output |
 | Boilerplate generation | Sonnet | Pattern-following, no deep reasoning |
 
 ## Context Management
 
-This skill is pure analysis — no file reads, no subagents, no bash commands.
+This skill is pure analysis - no file reads, no subagents, no bash commands.
 It analyzes the task description and produces a recommendation. Total output: ~20 lines.
