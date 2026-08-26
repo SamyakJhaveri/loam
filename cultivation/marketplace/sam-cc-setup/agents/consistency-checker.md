@@ -20,37 +20,64 @@ CHANGED=$(git diff --name-only HEAD; git diff --cached --name-only)
 
 ## Check 1: CLAUDE.md Agent Table vs Actual Agent Files
 
-Count actual agent files vs CLAUDE.md claimed count:
-```bash
-ACTUAL_AGENTS=$(ls .claude/agents/*.md 2>/dev/null | wc -l | tr -d ' ')
-# Extract claimed count from CLAUDE.md prose (e.g. "16 agents")
-CLAIMED_AGENTS=$(grep -oE '[0-9]+ agents' CLAUDE.md | head -1 | grep -oE '[0-9]+' || echo "unknown")
-echo "Actual agents: $ACTUAL_AGENTS | CLAUDE.md claims: $CLAIMED_AGENTS agents"
-if [ "$CLAIMED_AGENTS" != "unknown" ] && [ "$ACTUAL_AGENTS" != "$CLAIMED_AGENTS" ]; then
-    echo "MISMATCH: update the agent count in CLAUDE.md from $CLAIMED_AGENTS to $ACTUAL_AGENTS"
-fi
-```
+Conditional: only projects that maintain an agent table in CLAUDE.md are checked.
+Detect that by whether ANY agent name already appears in CLAUDE.md; if none do,
+the project keeps no such table, so report SKIP rather than flagging every agent.
 
-For each file in `.claude/agents/*.md`, verify its agent name appears in CLAUDE.md agents table:
 ```bash
-for f in .claude/agents/*.md; do
-    name=$(grep '^name:' "$f" | head -1 | sed 's/name: *//')
-    if [ -n "$name" ] && ! grep -q "$name" CLAUDE.md; then
-        echo "MISSING from CLAUDE.md agents table: $name"
+if ! ls .claude/agents/*.md >/dev/null 2>&1; then
+    echo "SKIP Check 1: no .claude/agents/ directory"
+else
+    FOUND=0
+    for f in .claude/agents/*.md; do
+        name=$(grep '^name:' "$f" | head -1 | sed 's/name: *//')
+        [ -n "$name" ] && grep -q "$name" CLAUDE.md && FOUND=1
+    done
+    if [ "$FOUND" -eq 0 ]; then
+        echo "SKIP Check 1: CLAUDE.md maintains no agent table"
+    else
+        # Optional count spot-check (e.g. "16 agents")
+        ACTUAL_AGENTS=$(ls .claude/agents/*.md 2>/dev/null | wc -l | tr -d ' ')
+        CLAIMED_AGENTS=$(grep -oE '[0-9]+ agents' CLAUDE.md | head -1 | grep -oE '[0-9]+' || echo "unknown")
+        if [ "$CLAIMED_AGENTS" != "unknown" ] && [ "$ACTUAL_AGENTS" != "$CLAIMED_AGENTS" ]; then
+            echo "MISMATCH: update the agent count in CLAUDE.md from $CLAIMED_AGENTS to $ACTUAL_AGENTS"
+        fi
+        # Each agent name must appear in the table
+        for f in .claude/agents/*.md; do
+            name=$(grep '^name:' "$f" | head -1 | sed 's/name: *//')
+            if [ -n "$name" ] && ! grep -q "$name" CLAUDE.md; then
+                echo "MISSING from CLAUDE.md agents table: $name"
+            fi
+        done
     fi
-done
+fi
 ```
 
 ## Check 2: CLAUDE.md Skills Table vs Actual Skill Files
 
-For each directory in `.claude/skills/*/`:
+Conditional, same shape as Check 1: SKIP unless CLAUDE.md maintains a skills table
+(detected by at least one skill name already appearing in it).
+
 ```bash
-for d in .claude/skills/*/; do
-    skill=$(basename "$d")
-    if ! grep -qi "$skill" CLAUDE.md; then
-        echo "MISSING from CLAUDE.md skills table: $skill"
+if ! ls -d .claude/skills/*/ >/dev/null 2>&1; then
+    echo "SKIP Check 2: no .claude/skills/ directory"
+else
+    FOUND=0
+    for d in .claude/skills/*/; do
+        skill=$(basename "$d")
+        grep -qi "$skill" CLAUDE.md && FOUND=1
+    done
+    if [ "$FOUND" -eq 0 ]; then
+        echo "SKIP Check 2: CLAUDE.md maintains no skills table"
+    else
+        for d in .claude/skills/*/; do
+            skill=$(basename "$d")
+            if ! grep -qi "$skill" CLAUDE.md; then
+                echo "MISSING from CLAUDE.md skills table: $skill"
+            fi
+        done
     fi
-done
+fi
 ```
 
 ## Check 3: Rules Routing Table vs Actual Rules Files
@@ -78,13 +105,13 @@ For each file changed in this session, check if related docs need updating:
 # If a new agent was added (.claude/agents/*.md added)
 NEW_AGENTS=$(git diff --name-only HEAD | grep '^\.claude/agents/')
 if [ -n "$NEW_AGENTS" ]; then
-    echo "New agents added — verify CLAUDE.md agents table is updated"
+    echo "New agents added - verify CLAUDE.md agents table is updated"
 fi
 
 # If a new skill was added (.claude/skills/*/SKILL.md)
 NEW_SKILLS=$(git diff --name-only HEAD | grep '^\.claude/skills/')
 if [ -n "$NEW_SKILLS" ]; then
-    echo "New skills added — verify CLAUDE.md skills table is updated"
+    echo "New skills added - verify CLAUDE.md skills table is updated"
 fi
 
 # If a Python script in scripts/ was changed
@@ -147,27 +174,34 @@ passes. It catches recurrence of the observed failure mode, not every possible o
 
 ## Check 7: Generated-outputs registry is intact
 
-`.claude/hooks/generated-file-guard.sh` fails open on infrastructure problems, so a
-registry that has rotted disables protection silently. This is the check that notices.
+Conditional: only runs when the project ships a generated-outputs registry checker.
+Such a checker guards a generated-file hook that fails open on infrastructure
+problems, so a registry that has rotted disables protection silently, and this is
+the check that notices. A project without that machinery reports SKIP, not FAIL.
 
 ```bash
-python3 scripts/check_generated_registry.py
+REG_CHECK=scripts/check_generated_registry.py
+if [ ! -f "$REG_CHECK" ]; then
+    echo "SKIP Check 7: no generated-outputs registry checker at $REG_CHECK"
+else
+    python3 "$REG_CHECK"
+fi
 ```
 
-FAIL if it exits non-zero. Run with `--uncovered` to see which tracked files in the
-generated-output directories the registry names no row covers yet; that list is
-advisory (a coverage worklist), not a failure.
+FAIL if the checker runs and exits non-zero. Run it with `--uncovered` to see which
+tracked files in the generated-output directories no registry row covers yet; that
+list is advisory (a coverage worklist), not a failure.
 
 ## Output Format
 
 ```
 CONSISTENCY CHECK: PASS/FAIL
 
-[1] CLAUDE.md agent table:    PASS/FAIL
-    [if FAIL: agent names missing from table]
+[1] CLAUDE.md agent table:    PASS/FAIL/SKIP
+    [if FAIL: agent names missing from table; SKIP: project keeps no agent table]
 
-[2] CLAUDE.md skills table:   PASS/FAIL
-    [if FAIL: skill names missing from table]
+[2] CLAUDE.md skills table:   PASS/FAIL/SKIP
+    [if FAIL: skill names missing from table; SKIP: project keeps no skills table]
 
 [3] CLAUDE.md rules table:    PASS/FAIL
     [if FAIL: rule files missing from table]
@@ -181,11 +215,12 @@ CONSISTENCY CHECK: PASS/FAIL
 [6] Single controlling plan:  PASS/FAIL
     [if FAIL: file:line of each doc naming a work-order filename instead of deferring]
 
-[7] Generated-outputs registry: PASS/FAIL
-    [if FAIL: the FAIL lines from scripts/check_generated_registry.py]
+[7] Generated-outputs registry: PASS/FAIL/SKIP
+    [if FAIL: the FAIL lines from the registry checker; SKIP: project ships no checker]
 
 VERDICT: PASS/FAIL
-(FAIL on: missing entries in CLAUDE.md tables,
+(FAIL on: missing entries in a CLAUDE.md table the project maintains,
  more than one doc naming a controlling work order, a rotted registry)
-(WARN on: doc updates that may be needed — advisory)
+(WARN on: doc updates that may be needed - advisory)
+(SKIP is not a failure: a check whose machinery the project lacks is reported SKIP)
 ```
