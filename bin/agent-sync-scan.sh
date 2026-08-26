@@ -952,6 +952,10 @@ done
 # existing symlink guards (-d follows links, hence the -L screen).
 TYPE_CONFLICT_ADDS=()
 for _rel in "${!PROJECT_TRACKED[@]}"; do
+  # CI-p1 round-3 High 1: the collector must honor the same skip set the rsync
+  # walk enforces (audit.log, settings.local.json, *.local.*, ...) - otherwise a
+  # tracked local-settings file colliding with a hub directory becomes offerable.
+  bootstrap_excluded "$_rel" && continue
   [ -d "$HUB_PLUGIN$_rel" ] && [ ! -L "$HUB_PLUGIN$_rel" ] || continue
   { [ -e "$PROJECT_CLAUDE$_rel" ] || [ -L "$PROJECT_CLAUDE$_rel" ]; } || continue
   [ -d "$PROJECT_CLAUDE$_rel" ] && [ ! -L "$PROJECT_CLAUDE$_rel" ] && continue
@@ -1470,6 +1474,28 @@ fi
 # would skip the cleanup and message. The EXIT trap then persists the ledger with
 # only the items recorded so far. The temp name starts with .sync-install. so a
 # leftover can never collide with a real path (none is left on success).
+# CI-p1 round-3 High 2: an install abort AFTER prunes were staged left the hub
+# index dirty, so the next scan refused on the staged-index guard (a wedge that
+# needed manual unstaging; reachable on any platform once collisions are offered).
+# On abort, restore exactly this run's staged prune deletions - checkout from HEAD
+# unstages and restores each - and say so. Installed items keep their recorded
+# ledger entries BY DESIGN (the mid-batch persistence drill); the pruned items'
+# quarantined ledger unsets die with the run, so every restored prune re-offers
+# on the next scan.
+restore_staged_prunes_on_abort() {
+  local rbp restored=0
+  for rbp in "${PRUNED_PATHS[@]:-}"; do
+    [ -z "${rbp:-}" ] && continue
+    if git -C "$HUB_REPO" checkout HEAD -- ":(literal)$HUB_PLUGIN_REL$rbp" 2>/dev/null; then
+      restored=$((restored + 1))
+    else
+      echo "  warning: could not restore staged prune $rbp; unstage it by hand before the next scan" >&2
+    fi
+  done
+  [ "$restored" -gt 0 ] && echo "Aborted mid-install: restored $restored staged prune deletion(s) so the next scan is not blocked; re-run to re-offer them." >&2
+  return 0
+}
+
 install_file() {
   local src="$1" dst="$2" rel="$3"
   reject_symlink_path "$rel"   # C5 defense-in-depth pre-check (retained per critic)
@@ -1477,6 +1503,7 @@ install_file() {
   # helper also refuses this atomically).
   if [ -d "$dst" ]; then
     echo "Error: install failed for $rel (destination is a directory)" >&2
+    restore_staged_prunes_on_abort
     exit 1
   fi
   # TOCTOU (group 12): the create+write goes through the no-follow helper - it
@@ -1487,6 +1514,7 @@ install_file() {
   # The HUB_REPO-relative path is HUB_PLUGIN_REL + rel (dst == HUB_REPO/that).
   if ! python3 "$SAFE_IO" install "$HUB_REPO" "$HUB_PLUGIN_REL$rel" "$src"; then
     echo "Error: install failed for $rel" >&2
+    restore_staged_prunes_on_abort
     exit 1
   fi
 }
