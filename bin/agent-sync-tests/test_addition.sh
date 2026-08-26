@@ -6,7 +6,7 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 SYNC_SH="$SCRIPT_DIR/../agent-sync-scan.sh"
 TMP="$(mktemp -d)"
-trap "rm -rf '$TMP'" EXIT
+trap 'rm -rf "$TMP"' EXIT
 
 # Helper: build a fresh hub with foo skill committed
 build_hub() {
@@ -14,8 +14,8 @@ build_hub() {
   rm -rf "$hub"
   mkdir -p "$hub/cultivation/marketplace/sam-cc-setup/skills/foo"
   echo "foo content" > "$hub/cultivation/marketplace/sam-cc-setup/skills/foo/SKILL.md"
-  (cd "$hub" && git init -q && git add -A && \
-    git -c user.email=t@t -c user.name=t commit -q -m init)
+  (cd "$hub" && git init -q && git config user.email t@t && git config user.name t && \
+    git add -A && git -c user.email=t@t -c user.name=t commit -q -m init)
 }
 
 # Build project once: foo (matches hub) + bar (new)
@@ -25,11 +25,13 @@ echo "bar content" > "$TMP/proj/.claude/skills/bar/SKILL.md"
 (cd "$TMP/proj" && git init -q && git add -A && \
   git -c user.email=t@t -c user.name=t commit -q -m init)
 
-# RUN A: user approves bar addition (y), declines commit (n)
+# RUN A: user approves bar addition (y), commits (EOF defaults commit=Y, push=N).
+# H2 group 3: a declined commit now rolls the add back, so an approved add lands
+# only after a commit - this run commits to prove it landed.
 build_hub "$TMP/hub"
 cd "$TMP/proj"
 set +e
-output_a=$(printf 'y\nn\n' | SAM_CC_HUB_REPO="$TMP/hub" bash "$SYNC_SH" 2>&1)
+output_a=$(printf 'y\n' | SAM_CC_HUB_REPO="$TMP/hub" bash "$SYNC_SH" 2>&1)
 rc_a=$?
 set -e
 cd - >/dev/null

@@ -14,7 +14,7 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 SYNC_SH="$SCRIPT_DIR/../agent-sync-scan.sh"
 TMP="$(mktemp -d)"
-trap "rm -rf '$TMP'" EXIT
+trap 'rm -rf "$TMP"' EXIT
 
 # Run sync.sh declining every prompt; capture output AND assert exit 0.
 # (A post-diagnostic crash must fail the test, not hide behind `|| true`.)

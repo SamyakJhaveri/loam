@@ -17,7 +17,27 @@ case "$SCOPE" in
   *)           echo "Usage: $(basename "$0") [seed|marketplace|all]" >&2; exit 1;;
 esac
 
-while IFS= read -r skill_file; do
+# The "Total warnings: N" marker is load-bearing (hub-ci trusts it as proof the
+# linter scanned), so it must print only after a COMPLETE discovery. Each
+# requested root must exist AND hold at least one SKILL.md - a missing, empty, or
+# partial root is a broken tree, not a clean 0-warning run - so fail closed
+# (exit 2) BEFORE the marker.
+for _d in "${SEARCH_DIRS[@]}"; do
+  [ -d "$_d" ] || { echo "ERROR: search directory not found: $_d" >&2; exit 2; }
+  [ -n "$(find "$_d" -name SKILL.md -print -quit 2>/dev/null)" ] || { echo "ERROR: no SKILL.md under $_d (partial or empty scan)" >&2; exit 2; }
+done
+
+# Enumerate every SKILL.md to a NUL-delimited file with find's exit status
+# CHECKED (a process substitution would hide a discovery error and still let the
+# marker print below).
+skill_list="$(mktemp)"
+if ! find "${SEARCH_DIRS[@]}" -name "SKILL.md" -print0 2>/dev/null > "$skill_list"; then
+  echo "ERROR: SKILL.md discovery failed under: ${SEARCH_DIRS[*]}" >&2
+  rm -f "$skill_list"; exit 2
+fi
+sort -z "$skill_list" -o "$skill_list"
+
+while IFS= read -r -d '' skill_file; do
   frontmatter=$(extract_frontmatter "$skill_file")
   name=$(echo "$frontmatter" | grep -m1 '^name:' | sed 's/name: *//' | tr -d '"' || true)
   if [ -z "$name" ]; then
@@ -73,7 +93,8 @@ if len(parts) >= 3:
     echo "WARN [$name]: description under 30 chars ($desc_len)"
     WARN=$((WARN + 1))
   fi
-done < <(find "${SEARCH_DIRS[@]}" -name "SKILL.md" 2>/dev/null | sort)
+done < "$skill_list"
+rm -f "$skill_list"
 
 echo ""
 echo "Total warnings: $WARN"

@@ -6,7 +6,7 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 SYNC_SH="$SCRIPT_DIR/../agent-sync-scan.sh"
 TMP="$(mktemp -d)"
-trap "rm -rf '$TMP'" EXIT
+trap 'rm -rf "$TMP"' EXIT
 
 # Build identical content in both project and hub
 mkdir -p "$TMP/proj/.claude/skills/foo" "$TMP/hub/cultivation/marketplace/sam-cc-setup/skills/foo"

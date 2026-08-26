@@ -55,6 +55,10 @@ else
   echo "SKIP: shellcheck not installed"
 fi
 
+# --- Invariant 3b: agent-sync engine tests ----------------------------------
+bash "$SCRIPT_DIR/agent-sync-tests/run-all.sh" >/dev/null || fail "agent-sync engine tests failed (run: bin/agent-sync-tests/run-all.sh)"
+pass "agent-sync engine tests"
+
 # --- Invariant 4: agentskills.io schema (name + description present) --------
 SKILL_ERRORS=0
 while IFS= read -r -d '' skill; do

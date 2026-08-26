@@ -66,3 +66,82 @@ touching anything that exists, and prints how to undo everything it wrote.
 Semver in `.claude-plugin/plugin.json`. Behaviour changes (enforcement model, check
 sets) bump minor at least - enforcement that silently changes across machines is
 worse than none.
+
+## The release loop
+
+A change earns its place in the hub through a fixed loop.
+
+1. **Sync a batch from a project.**
+   The scan tool ships in a loam hub clone, not in this plugin, so run it by its hub path.
+   The hub clone defaults to `~/Desktop/loam` (override with `SAM_CC_HUB_REPO`).
+   From a project with `.claude/` work worth keeping, with that project as your working directory, run `~/Desktop/loam/bin/agent-sync.sh scan`.
+   Approve the files that should travel; the scan commits them into the hub.
+2. **Run the hub checks.**
+   Run `bin/hub-ci.sh` from the hub root: the hub promotion gate.
+   It requires `shellcheck` and `copier` (or `uvx`) on the machine: `verify-template.sh` silently skips those checks when they are absent, and the gate refuses a skipped check, so a box without them cannot pass the gate at all.
+   It runs three checks every time and prints one OK or FAIL line for each:
+   `bin/verify-template.sh` (renders both Copier flavors, seed skill lint, schema),
+   every git-tracked `test_*.py` under `cultivation/marketplace/sam-cc-setup/` (discovered via `git ls-files`, not hardcoded, each run as `python3 <file>`),
+   and `bin/lint-skill-descriptions.sh marketplace`.
+   The third check is warn-only: marketplace holds third-party vendored skills, so its warnings are surfaced with a count but do not fail the gate; only a linter that dies before its `Total warnings: N` completion marker hard-fails.
+   The gate runs all three even when one fails, and exits nonzero if any required check failed.
+   `bin/hub-ci.sh` is runnable standalone, and `bin/release.sh` calls it in pre-flight, after the tag-exists check and before the `VERSION` write, so a red gate refuses the release with nothing left behind.
+3. **Record why the change traveled.**
+   Add one line to `cultivation/marketplace/UPGRADING.md` (see its provenance rule).
+4. **Cut the release.**
+   Run `bin/release.sh <version>`.
+   It updates the top-level `VERSION` file, commits and tags under the public identity, and pushes.
+5. **Consumers update.**
+   A repo that installed these plugins from the marketplace runs `/plugin update`.
+   A repo rendered from the Copier template re-renders with the tag `release.sh` prints:
+   `copier copy --trust --vcs-ref vX.Y.Z gh:samyakjhaveri/loam ./my-project`.
+
+## What a release bumps, and what it does not
+
+`bin/release.sh` writes only the top-level `VERSION` file.
+That file is the Copier template version.
+
+It does not touch either per-plugin version field:
+
+- `cultivation/marketplace/.claude-plugin/marketplace.json` carries a `version` per plugin (present on 7 of the 12 plugins).
+- each plugin's own `.claude-plugin/plugin.json` carries its own `version`.
+
+These plugin versions are maintained by hand today.
+Nothing checks that they agree with each other, with `VERSION`, or with what actually changed.
+Do not read this section as describing a gate: there is none.
+
+Observed drift at the time of writing:
+`VERSION` is `1.1.0`,
+`UPGRADING.md` banners "marketplace v1.2.0",
+and `sam-cc-setup` is `0.3.0` in both `marketplace.json` and its `plugin.json`.
+This is recorded as an open item for the maintainer, not reconciled here.
+
+The drift traces to a bypass, not a forgotten field.
+The `v1.2.0` release did not go through `bin/release.sh`.
+The tag objects show it:
+
+```
+git for-each-ref --format='%(refname:short) %(objecttype)' refs/tags
+v1.0.0 tag
+v1.1.0 tag
+v1.2.0 commit
+```
+
+`release.sh` creates annotated tags (`git tag -a`), which are `tag` objects.
+`v1.2.0` points straight at a `commit`: it is a lightweight tag, which `release.sh` cannot produce.
+So `VERSION` still reads `1.1.0` because the script that writes it was never run for `v1.2.0`.
+Nothing detects a bypass: the checklist below helps only someone who actually runs `release.sh`.
+
+### Before you run bin/release.sh
+
+For every plugin whose content changed in this batch:
+
+1. Bump its `version` in `cultivation/marketplace/.claude-plugin/marketplace.json`.
+2. Bump the same `version` in that plugin's `.claude-plugin/plugin.json`.
+3. Keep the two numbers equal.
+4. Add the `UPGRADING.md` provenance line for the change.
+5. Run `bin/hub-ci.sh`.
+6. Then run `bin/release.sh <version>`.
+
+A plugin whose content did not change keeps its current version.
+Bumping a version that ships identical content misleads every consumer running `/plugin update`.

@@ -1,6 +1,6 @@
 ---
 name: session-critique
-description: Use when a session's implementation work is complete and needs adversarial critique and code quality review before committing. Triggers — after multi-file changes, after feature implementation, before final commit on significant work, when independent review of own work is needed. NOT for single-file trivial edits (use /validate directly) or standard code review without fixes (use /multi-review).
+description: Use when a session's implementation work is complete and needs adversarial critique and code quality review before committing. Triggers - after multi-file changes, after feature implementation, before final commit on significant work, when independent review of own work is needed. NOT for single-file trivial edits (run the project's validation gate directly) or a standard code review without fix authority.
 auto-activate: false
 ---
 ultrathink
@@ -14,15 +14,15 @@ only the fixes the user authorizes.
 
 - Session produced multi-file changes that should be stress-tested
 - You want adversarial self-critique + code quality review before committing
-- Changes span documentation, skills, specs, or cross-cutting concerns
+- Changes span documentation, skills, configs, or cross-cutting concerns
 - You need independent verification that nothing was missed or mis-stated
 
 ## When NOT to use
 
-- Single-file trivial edit — run `/validate` directly
-- Standard code review without fix authority — use `/multi-review`
-- Only need diff/security/schema checks — use `/validate quick`
-- Work is not yet complete — finish implementation first
+- Single-file trivial edit - run the project's validation gate directly
+- Standard code review without fix authority - use a plain code-review pass
+- Only need quick diff/security/schema checks - run the fast validation gate
+- Work is not yet complete - finish implementation first
 
 ## Decision Authority
 
@@ -69,7 +69,7 @@ Cost: ~45-55% of all-Opus equivalent
 
 1. `TeamCreate(team_name="session-critique")`
 2. Create tasks with `TaskCreate` for each work unit
-3. Spawn advisor (Opus) FIRST — use `advisor-prompt.md` from `/agent-team` skill
+3. Spawn advisor (Opus) FIRST - use `advisor-prompt.md` from the `agent-team` skill
 4. Wait for "ADVISOR READY"
 5. Spawn workers with filled prompts from [teammates.md](teammates.md)
 6. Every `Agent` call MUST include `team_name`
@@ -116,8 +116,12 @@ Lead reverts any out-of-scope changes:
 git diff --stat HEAD
 git checkout HEAD -- <any-out-of-scope-file>
 ```
+Revert only files this session's workers touched. A file that was already dirty
+before the critique started belongs to the user - surface it, never checkout over it.
+To make that checkable, record `git status --porcelain` output when the critique
+starts (Phase A); that snapshot defines "already dirty".
 Presents final summary of all applied fixes to user.
-User runs `/validate` and commits at their own discretion.
+User runs the project's validation gate and commits at their own discretion.
 
 ## Report Format (each worker sends to lead after Phase A)
 
@@ -142,9 +146,9 @@ User runs `/validate` and commits at their own discretion.
 | Teammates edit out-of-scope files | Explicit bucket ownership + lead reverts in Phase D |
 | Advisor makes final calls instead of user | Decision authority rule: advisor recommends, user decides |
 | Workers skip advisor consultation | Section 7 protocol: brief before starting, consult at decision points |
-| Lead commits without user running /validate | Phase D hands back — user owns validation and commit |
+| Lead commits without user running the validation gate | Phase D hands back - user owns validation and commit |
 
-## Red Flags — STOP and Escalate to User
+## Red Flags - STOP and Escalate to User
 
 - Worker editing a file before Phase B approval
 - Worker dismissing a finding as "not worth fixing" without escalating

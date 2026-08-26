@@ -3,11 +3,12 @@
 # Verifies that a deferred file is silently skipped on a subsequent sync run
 # (no prompt) until the defer threshold expires.
 set -euo pipefail
+T=$(printf '\t')   # ledger project-id delimiter (M3)
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 SYNC_SH="$SCRIPT_DIR/../agent-sync-scan.sh"
 TMP="$(mktemp -d)"
-trap "rm -rf '$TMP'" EXIT
+trap 'rm -rf "$TMP"' EXIT
 
 # Hub: foo committed
 mkdir -p "$TMP/hub/cultivation/marketplace/sam-cc-setup/skills/foo"
@@ -42,7 +43,7 @@ fi
 if [ ! -f "$TMP/hub/.sync-state" ]; then
   echo "FAIL (Run 1): state file $TMP/hub/.sync-state not created"; exit 1
 fi
-if ! grep -q '^defer:skills/bar/SKILL.md:' "$TMP/hub/.sync-state"; then
+if ! grep -qE "^defer:[^$T]*${T}skills/bar/SKILL.md:" "$TMP/hub/.sync-state"; then
   echo "FAIL (Run 1): defer entry missing for skills/bar/SKILL.md"
   echo "state file:"; cat "$TMP/hub/.sync-state"
   exit 1
