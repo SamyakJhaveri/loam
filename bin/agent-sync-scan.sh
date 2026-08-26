@@ -956,7 +956,7 @@ for _rel in "${!PROJECT_TRACKED[@]}"; do
   # walk enforces (audit.log, settings.local.json, *.local.*, ...) - otherwise a
   # tracked local-settings file colliding with a hub directory becomes offerable.
   bootstrap_excluded "$_rel" && continue
-  [ -d "$HUB_PLUGIN$_rel" ] && [ ! -L "$HUB_PLUGIN$_rel" ] || continue
+  if [ ! -d "$HUB_PLUGIN$_rel" ] || [ -L "$HUB_PLUGIN$_rel" ]; then continue; fi
   { [ -e "$PROJECT_CLAUDE$_rel" ] || [ -L "$PROJECT_CLAUDE$_rel" ]; } || continue
   [ -d "$PROJECT_CLAUDE$_rel" ] && [ ! -L "$PROJECT_CLAUDE$_rel" ] && continue
   # Every detected collision is excluded from the rsync walk FIRST (Codex CI-p1
@@ -1501,7 +1501,7 @@ restore_staged_prunes_on_abort() {
   # losslessly before the children come back.
   for rbp in "${TYPE_CONFLICT_ADDS[@]:-}"; do
     [ -z "${rbp:-}" ] && continue
-    [ -f "$HUB_PLUGIN$rbp" ] && [ ! -L "$HUB_PLUGIN$rbp" ] || continue
+    if [ ! -f "$HUB_PLUGIN$rbp" ] || [ -L "$HUB_PLUGIN$rbp" ]; then continue; fi
     git -C "$HUB_REPO" cat-file -e "HEAD:$HUB_PLUGIN_REL$rbp" 2>/dev/null && continue
     python3 "$SAFE_IO" unlink "$HUB_REPO" "$HUB_PLUGIN_REL$rbp" 2>/dev/null \
       || echo "  warning: could not remove installed collision file $rbp" >&2
