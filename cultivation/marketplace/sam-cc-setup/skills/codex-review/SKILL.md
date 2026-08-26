@@ -1,6 +1,6 @@
 ---
 name: codex-review
-description: "Second-opinion review of the current diff via the Codex CLI, read-only. Use when you want an independent adversarial review of a diff from a different model before merging. Manual only. NOT a replacement for /multi-review or /validate; Codex never edits — findings are advisory and Claude applies any fixes."
+description: "Second-opinion review of the current diff via the Codex CLI, read-only. Use when you want an independent adversarial review of a diff from a different model before merging. Manual only. NOT for replacing your project's own diff-review or validation gate; Codex never edits - findings are advisory and Claude applies any fixes."
 argument-hint: "[optional diff scope, e.g. main...HEAD or HEAD~3; defaults to main...HEAD]"
 ---
 
@@ -8,24 +8,24 @@ argument-hint: "[optional diff scope, e.g. main...HEAD or HEAD~3; defaults to ma
 
 Run the current diff past the **Codex CLI** as an independent reviewer (a different model,
 fresh context) and triage its findings. Codex runs in a pinned **read-only** sandbox and
-**never edits the checkout** — it only reports. Claude saves a transcript under
-`.claude/codex-reviews/` (gitignored) and applies any fixes.
+**never edits the checkout** - it only reports. Claude saves a transcript under
+`.claude/codex-reviews/` (gitignore it) and applies any fixes.
 
 **Trigger:** user types `/codex-review [scope]`. It deliberately does NOT carry
-`disable-model-invocation: true`: that flag currently *also* blocks the `/codex-review` slash
+`disable-model-invocation: true`: that flag currently also blocks the `/codex-review` slash
 command itself (anthropics/claude-code#26251, dup #38969), so the "Manual only" scoping in the
-description is what keeps it from auto-firing. The CLI-cosmetic `auto-activate` field has been removed.
+description is what keeps it from auto-firing.
 
 ## Single-writer rule (mandatory)
 
 Codex must never write to a checkout Claude is using (one checkout = one writer; two
-writers race on the same working tree). The read-only sandbox enforces this — do
+writers race on the same working tree). The read-only sandbox enforces this - do
 NOT relax `--sandbox read-only` to `workspace-write` (the repo config default is
 workspace-write, which would violate this rule). Findings come back as text; Claude edits.
 
 ## Workflow
 
-### Step 1 — Scope the diff
+### Step 1 - Scope the diff
 
 ```bash
 SCOPE="${ARGUMENTS:-main...HEAD}"      # $ARGUMENTS if provided, else the branch diff
@@ -89,23 +89,20 @@ git --no-pager diff "$SCOPE" --stat    # confirm there is something to review
 
 If the diff is empty, stop and report "nothing to review for `<scope>`".
 
-### Step 2 — Run Codex (read-only, diff piped via stdin)
+### Step 2 - Run Codex (read-only, diff piped via stdin)
 
 Pipe the diff on **stdin** (Codex appends it as a `<stdin>` block) so a large diff never
 hits the shell argument-length limit. The Codex sandbox stays read-only, and the effort floor
-(`model="gpt-5.6-sol"`, `model_reasoning_effort=high`) is pinned explicitly because this is a reasoning-heavy review
-(don't rely on the ambient default). `-o` writes **only the final agent message** to `$OUT` (the
-doc-recommended capture); unlike the old `| tee`, nothing is echoed to the terminal — streamed
-reasoning goes to stderr and is dropped — so read the verdict from `$OUT` in Step 3.
+(`model_reasoning_effort=high`) is pinned explicitly because this is a reasoning-heavy review
+(don't rely on the ambient default). `-o` writes **only the final agent message** to `$OUT`;
+nothing is echoed to the terminal - streamed reasoning goes to stderr and is dropped - so read
+the verdict from `$OUT` in Step 3.
 
-**Model policy (user standing order):** default to `gpt-5.6-sol` at `high`, or `gpt-5.6-terra` at
-`xhigh` when you want the deeper pass. Terra/xhigh is materially slower — run it in the
-background rather than blocking on a foreground timeout.
-
-Valid model ids (verified 2026-08-02 against developers.openai.com): `gpt-5.6-sol` (frontier),
-`gpt-5.6-terra` (cheaper, strong), `gpt-5.6-luna` (high-volume). This line said `gpt-terra`
-until 2026-08-02 — not a real model, so the escalation path silently failed.
-Valid `model_reasoning_effort` values: `none, low, medium, high, xhigh, max`.
+**Model policy:** default to the frontier Codex model (`gpt-5.6-sol`) at `high`, or step up to
+a deeper-reasoning tier at `xhigh` when you want the stronger pass. The deeper pass is
+materially slower - run it in the background rather than blocking on a foreground timeout.
+Valid `model_reasoning_effort` values: `none, low, medium, high, xhigh, max`. Confirm the
+current Codex model ids against your provider before pinning one.
 
 ```bash
 mkdir -p .claude/codex-reviews
@@ -116,12 +113,12 @@ git --no-pager diff "$SCOPE" | codex exec --sandbox read-only \
   -c model="gpt-5.6-sol" -c model_reasoning_effort=high -o "$OUT" \
   "You are a second-opinion code reviewer. Review the diff in the <stdin> block against \
 the current repository (you may read files read-only for context). Respond in <=60 lines: \
-first line a single verdict — SHIP, FIX FIRST, or REWORK — then findings grouped under \
+first line a single verdict - SHIP, FIX FIRST, or REWORK - then findings grouped under \
 Critical / High / Medium / Low, each with file:line and a one-line fix. Omit empty groups. \
 Be terse; no preamble."
 ```
 
-### Step 3 — Triage back into the session
+### Step 3 - Triage back into the session
 
 - Read the verdict block from `$OUT` (Codex prints nothing inline with `-o`).
 - Treat findings as **advisory**: Claude decides which to act on, then applies fixes in the
@@ -131,6 +128,6 @@ Be terse; no preamble."
 
 ## What NOT to do
 
-- Don't run Codex with a writable sandbox (`workspace-write` / `danger-full-access`) — read-only only.
-- Don't let Codex apply fixes — it reviews, Claude edits (single-writer).
-- Not a pipeline gate: `/codex-review` complements `/validate` and `/multi-review`, it does not replace them.
+- Don't run Codex with a writable sandbox (`workspace-write` / `danger-full-access`) - read-only only.
+- Don't let Codex apply fixes - it reviews, Claude edits (single-writer).
+- Not a pipeline gate: `/codex-review` complements your project's own review and validation gates, it does not replace them.
