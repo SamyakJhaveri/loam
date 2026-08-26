@@ -118,6 +118,8 @@ git checkout HEAD -- <any-out-of-scope-file>
 ```
 Revert only files this session's workers touched. A file that was already dirty
 before the critique started belongs to the user - surface it, never checkout over it.
+To make that checkable, record `git status --porcelain` output when the critique
+starts (Phase A); that snapshot defines "already dirty".
 Presents final summary of all applied fixes to user.
 User runs the project's validation gate and commits at their own discretion.
 

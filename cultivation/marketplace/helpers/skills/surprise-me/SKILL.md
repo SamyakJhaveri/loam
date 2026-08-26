@@ -20,7 +20,8 @@ The output is a short ranked table of ideas plus one already-executed proof, nev
    unused capabilities the owner has not asked for yet (scheduled monitors, browser verification of
    rendered pages, multi-agent document QA, published dashboards, cross-model review panels) - list
    the ones that serve the goal, each as a concrete offer with a cost. When the work belongs to
-   another session's plan, file the ideas in that plan, not only in chat. The best surprises are
+   another session's plan, target that plan for the step-7 filing rather than leaving
+   the ideas only in chat. The best surprises are
    recombinations of assets already on disk.
 3. **Generate only ideas the judge can verify.** An idea that requires the reader to trust us is
    worth less than one they can re-run. Prefer: quoting reproducible evidence verbatim, running a

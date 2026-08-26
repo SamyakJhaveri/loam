@@ -79,10 +79,11 @@ Claude Code keeps optional per-project memory at `~/.claude/projects/<project>/m
 indexed by a `MEMORY.md` file. Check it only if it exists:
 
 ```bash
-# Resolve this project's memory dir (Claude Code slugifies the PROJECT ROOT path,
-# so resolve the root rather than the cwd, which may be a subdirectory)
+# Resolve this project's memory dir. Claude Code slugifies the PROJECT ROOT path
+# (resolve the root, not the cwd) by replacing EVERY non-alphanumeric character
+# with '-' - underscores and spaces included, not just '/'.
 ROOT=$(git rev-parse --show-toplevel 2>/dev/null || pwd)
-MEMORY_DIR="$HOME/.claude/projects/$(printf '%s' "$ROOT" | sed 's#/#-#g')/memory"
+MEMORY_DIR="$HOME/.claude/projects/$(printf '%s' "$ROOT" | sed 's#[^a-zA-Z0-9]#-#g')/memory"
 if [ -f "$MEMORY_DIR/MEMORY.md" ]; then
   ls -lt "$MEMORY_DIR"/*.md 2>/dev/null | head -10
 else

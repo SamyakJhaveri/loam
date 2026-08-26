@@ -59,19 +59,21 @@ Conditional, same shape as Check 1: SKIP unless CLAUDE.md maintains a skills tab
 (detected by at least one skill name already appearing in it).
 
 ```bash
-if ! ls -d .claude/skills/*/ >/dev/null 2>&1; then
+if ! ls .claude/skills/*/SKILL.md >/dev/null 2>&1; then
     echo "SKIP Check 2: no .claude/skills/ directory"
 else
+    # Enumerate real skills only (directories holding a SKILL.md); support
+    # bundles without one are not skills and must not produce findings.
     FOUND=0
-    for d in .claude/skills/*/; do
-        skill=$(basename "$d")
+    for s in .claude/skills/*/SKILL.md; do
+        skill=$(basename "$(dirname "$s")")
         grep -qi "$skill" CLAUDE.md && FOUND=1
     done
     if [ "$FOUND" -eq 0 ]; then
         echo "SKIP Check 2: CLAUDE.md maintains no skills table"
     else
-        for d in .claude/skills/*/; do
-            skill=$(basename "$d")
+        for s in .claude/skills/*/SKILL.md; do
+            skill=$(basename "$(dirname "$s")")
             if ! grep -qi "$skill" CLAUDE.md; then
                 echo "MISSING from CLAUDE.md skills table: $skill"
             fi
@@ -82,18 +84,28 @@ fi
 
 ## Check 3: Rules Routing Table vs Actual Rules Files
 
-Conditional, same shape as Checks 1 and 2: SKIP when the project keeps no rules directory.
+Conditional, same shape as Checks 1 and 2: SKIP when the project keeps no rules
+directory, and SKIP when CLAUDE.md maintains no rules table (no rule filename
+appears in it at all).
 
 ```bash
 if ! ls .claude/rules/*.md >/dev/null 2>&1; then
     echo "SKIP Check 3: no .claude/rules/ directory"
 else
+    FOUND=0
     for f in .claude/rules/*.md; do
-        name=$(basename "$f")
-        if ! grep -q "$name" CLAUDE.md; then
-            echo "MISSING from CLAUDE.md rules table: $name"
-        fi
+        grep -q "$(basename "$f")" CLAUDE.md && FOUND=1
     done
+    if [ "$FOUND" -eq 0 ]; then
+        echo "SKIP Check 3: CLAUDE.md maintains no rules table"
+    else
+        for f in .claude/rules/*.md; do
+            name=$(basename "$f")
+            if ! grep -q "$name" CLAUDE.md; then
+                echo "MISSING from CLAUDE.md rules table: $name"
+            fi
+        done
+    fi
 fi
 ```
 
@@ -159,6 +171,7 @@ fi
 # the exact failure this check exists to catch.
 # CLAUDE.md is excluded: it is the single source of truth 6a already checked, so
 # including it here would flag the one line that is supposed to exist.
+if [ "$N" -gt 0 ]; then
 grep -rn -iE 'controlling|binding|authoritative|master plan' \
      *.md AGENTS.md */CONTEXT.md .claude/rules/*.md .claude/plans/*.md .claude/plans/*.html 2>/dev/null \
   | grep -v '^CLAUDE\.md:' \
@@ -171,6 +184,7 @@ grep -rn -iE 'controlling|binding|authoritative|master plan' \
       # and still flag every line below it. Same bug class as the `superseded` filter.
       head -20 "$f" | grep -q 'HISTORICAL RECORD' || echo "$f:$l:$rest"
     done
+fi
 # Any surviving line is a violation: report it as file:line.
 # Do NOT add a line-level `grep -v superseded` here. A CONTEXT.md may mention
 # superseded archives in its Skip column, so that filter silently swallows real

@@ -96,7 +96,7 @@ Reasoning:
   - <dimension 3>: <assessment> -> <tier implication>
 
 Token estimate: ~<N>K tokens
-Cost estimate: ~$<X.XX> (at current pricing)
+Cost estimate: ~$<X.XX> (only if current rates are known; this skill does no lookups - omit otherwise)
 
 Project policy: see CLAUDE.md (this recommendation is advisory)
 ```

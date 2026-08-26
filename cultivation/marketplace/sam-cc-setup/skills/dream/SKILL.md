@@ -27,9 +27,11 @@ does not resolve - Phase 4 edits and deletes files under it, so an unset or wron
 ```bash
 # Claude Code keeps per-project memory at ~/.claude/projects/<project>/memory/,
 # where <project> is the slugified path of the PROJECT ROOT (not the cwd).
+# Slugification replaces EVERY non-alphanumeric character with '-', not just '/'
+# (underscores and spaces in the path become dashes too).
 ROOT=$(git rev-parse --show-toplevel 2>/dev/null || pwd)
-MEMORY_DIR="$HOME/.claude/projects/$(printf '%s' "$ROOT" | sed 's#/#-#g')/memory"
-[ -d "$MEMORY_DIR" ] || { echo "STOP: no memory directory at $MEMORY_DIR"; }
+MEMORY_DIR="$HOME/.claude/projects/$(printf '%s' "$ROOT" | sed 's#[^a-zA-Z0-9]#-#g')/memory"
+[ -d "$MEMORY_DIR" ] || { echo "STOP: no memory directory at $MEMORY_DIR" >&2; exit 1; }
 ```
 
 ```
