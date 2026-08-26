@@ -1101,6 +1101,15 @@ for _rel in "${TYPE_CONFLICT_ADDS[@]:-}"; do
   ADDED_PATHS+=("$_rel")
 done
 
+# CI-p1 round 4: prompt and apply order was array-iteration order (rsync itemize
+# order plus assoc-array walks), which varies by platform and bash build. Sort
+# every candidate set byte-wise so runs are deterministic and testable; no
+# within-phase ordering dependency exists (prunes still apply before installs).
+[ "${#ADDED_PATHS[@]}" -gt 0 ] && mapfile -t ADDED_PATHS < <(printf '%s\n' "${ADDED_PATHS[@]}" | LC_ALL=C sort)
+[ "${#CHANGED_PATHS[@]}" -gt 0 ] && mapfile -t CHANGED_PATHS < <(printf '%s\n' "${CHANGED_PATHS[@]}" | LC_ALL=C sort)
+[ "${#MODE_PATHS[@]}" -gt 0 ] && mapfile -t MODE_PATHS < <(printf '%s\n' "${MODE_PATHS[@]}" | LC_ALL=C sort)
+[ "${#PRUNE_CANDIDATES[@]}" -gt 0 ] && mapfile -t PRUNE_CANDIDATES < <(printf '%s\n' "${PRUNE_CANDIDATES[@]}" | LC_ALL=C sort)
+
 PROJ_NAME=$(basename "$PROJECT_ROOT")
 
 # Helper: prompt user, record the NEGATIVE decision into state, return 0 if
@@ -1484,6 +1493,19 @@ fi
 # on the next scan.
 restore_staged_prunes_on_abort() {
   local rbp restored=0
+  # Phase 1 (Codex round-4 High): an ALREADY-INSTALLED collision Add from this
+  # run occupies a path that was a directory in HEAD, so the checkout of its
+  # pruned children below would fail and leave the deletion staged (the wedge,
+  # again). Such a file is HEAD-absent and its pending ledger record dies with
+  # this run (quarantine), so a no-follow unlink restores the pre-scan shape
+  # losslessly before the children come back.
+  for rbp in "${TYPE_CONFLICT_ADDS[@]:-}"; do
+    [ -z "${rbp:-}" ] && continue
+    [ -f "$HUB_PLUGIN$rbp" ] && [ ! -L "$HUB_PLUGIN$rbp" ] || continue
+    git -C "$HUB_REPO" cat-file -e "HEAD:$HUB_PLUGIN_REL$rbp" 2>/dev/null && continue
+    python3 "$SAFE_IO" unlink "$HUB_REPO" "$HUB_PLUGIN_REL$rbp" 2>/dev/null \
+      || echo "  warning: could not remove installed collision file $rbp" >&2
+  done
   for rbp in "${PRUNED_PATHS[@]:-}"; do
     [ -z "${rbp:-}" ] && continue
     if git -C "$HUB_REPO" checkout HEAD -- ":(literal)$HUB_PLUGIN_REL$rbp" 2>/dev/null; then
