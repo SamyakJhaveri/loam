@@ -1,19 +1,19 @@
 ---
 name: reflect
-description: Structured post-task reflection — surprises, pattern proposals, prompt improvements, gotchas to record. Use at the end of a significant session, after a debugging marathon, or when patterns emerged that should update CLAUDE.md or .claude/rules/.
+description: Structured post-task reflection - surprises, pattern proposals, prompt improvements, gotchas to record. Use at the end of a significant session, after a debugging marathon, or when patterns emerged that should update CLAUDE.md or .claude/rules/. NOT for mid-task status notes or routine single-file edits.
 ---
 
 # Structured Reflection
 
 After completing a significant task, generate a structured reflection capturing
 surprises, patterns, and gotchas for future sessions. Inspired by Addy Osmani's
-REFLECTION.md pattern — turning tacit knowledge into durable project memory.
+REFLECTION.md pattern - turning tacit knowledge into durable project memory.
 
 **Trigger:** When user types `/reflect` or `/reflect <topic>`
 
 ## Arguments
 
-- `$ARGUMENTS` — optional topic string (e.g., `opencl-fix`, `eval-batch-failures`).
+- `$ARGUMENTS` - optional topic string (e.g., `auth-refresh-fix`, `flaky-test-hunt`).
   If omitted, the topic is derived from the most recent git diff or conversation context.
 
 ## Prerequisites
@@ -44,7 +44,7 @@ git diff --name-only HEAD
 If there are uncommitted changes, use `git diff HEAD` to understand the substance.
 If changes are already committed, use `git diff HEAD~3..HEAD` to see recent work.
 
-**Also read the conversation context** — identify moments of surprise, course corrections,
+**Also read the conversation context** - identify moments of surprise, course corrections,
 failed approaches, or non-obvious decisions made during the session.
 
 ### Phase 2: Derive Topic
@@ -52,9 +52,9 @@ failed approaches, or non-obvious decisions made during the session.
 If `$ARGUMENTS` provides a topic, use it directly (slugified for the filename).
 
 If no topic is provided, derive one from:
-1. The most-changed directory or file pattern (e.g., `eval-pipeline`, `spec-fixes`)
-2. The nature of the work (e.g., `debugging`, `new-feature`, `augmentation`)
-3. The primary insight or surprise (e.g., `opencl-kernel-only-discovery`)
+1. The most-changed directory or file pattern (e.g., `api-layer`, `config-fixes`)
+2. The nature of the work (e.g., `debugging`, `new-feature`, `refactor`)
+3. The primary insight or surprise (e.g., `cache-invalidation-discovery`)
 
 The topic should be 2-4 words, hyphenated, descriptive.
 
@@ -72,19 +72,19 @@ Write a structured reflection with exactly these four sections:
 - Identify ONE concrete pattern or convention that should be codified
 - Specify exactly where it should go: `CLAUDE.md`, a specific `.claude/rules/` file, or a new rule file
 - Write the proposed text (ready to copy-paste into the target file)
-- Explain WHY this pattern matters — what failure does it prevent?
+- Explain WHY this pattern matters - what failure does it prevent?
 
 #### Section 3: Prompt Improvement
 - Identify ONE way the task prompt (or session setup) could have been better
 - Was context missing? Were instructions ambiguous? Did exploration waste tokens?
 - Write the improved prompt fragment (concrete, not abstract)
-- This helps Samyak write better prompts for future sessions
+- This helps the user write better prompts for future sessions
 
 #### Section 4: Gotcha Discovered
 - Document ONE non-obvious issue found during the session
 - Include: the symptom, the root cause, and the fix (or workaround)
 - If it's already in the project's gotcha log, note that and suggest any updates needed
-- If it's NEW, flag it explicitly: "NEW GOTCHA — not yet documented"
+- If it's NEW, flag it explicitly: "NEW GOTCHA - not yet documented"
 
 ### Phase 4: Write Output
 
