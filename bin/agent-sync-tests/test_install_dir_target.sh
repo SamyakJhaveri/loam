@@ -34,8 +34,8 @@ if ! echo "$out" | grep -qF "Error: install failed for $REL (destination is a di
   echo "FAIL: missing the directory-destination error message"; echo "$out"; exit 1; fi
 if find "$TMP/hub" -name '.sync-install.*' | grep -q .; then
   echo "FAIL: leftover .sync-install.* under hub"; find "$TMP/hub" -name '.sync-install.*'; exit 1; fi
-if [ -f "$STATE" ] && grep -qE "^(synced|base):$REL:" "$STATE"; then
-  echo "FAIL: phantom ledger record for $REL"; cat "$STATE"; exit 1; fi
+if [ -f "$STATE" ] && grep -qF "$REL" "$STATE"; then
+  echo "FAIL: ledger mentions $REL"; cat "$STATE"; exit 1; fi
 if [ ! -d "$HUB_SETUP/$REL" ] || [ ! -f "$HUB_SETUP/$REL/inner.txt" ]; then
   echo "FAIL: hub directory at $REL was damaged"; exit 1; fi
 

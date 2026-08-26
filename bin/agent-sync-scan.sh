@@ -939,6 +939,56 @@ for p in "${!STATE_BASES[@]}"; do
   consider_prune "$p"
 done
 
+# CI-p1 (PR #1, Linux GNU rsync divergence): GNU rsync's --dry-run EXITS 23
+# ("cannot delete non-empty directory") when a tracked project FILE collides with
+# a hub DIRECTORY at the same path, killing the scan at the fail-closed rc check
+# below; macOS openrsync tolerates the same collision and itemizes the file, which
+# is why the suite was green locally and red on the ubuntu runner. Behavior must
+# not depend on which rsync is installed: detect the collision here, offer each
+# such file as a normal Add candidate (the per-item install still refuses while
+# the directory exists, and a prune approved in the same run empties it first -
+# test_prune_dir_to_file), and exclude the path from the rsync walk so neither
+# implementation ever sees the conflict. Symlinked hub paths are left to the
+# existing symlink guards (-d follows links, hence the -L screen).
+TYPE_CONFLICT_ADDS=()
+for _rel in "${!PROJECT_TRACKED[@]}"; do
+  [ -d "$HUB_PLUGIN$_rel" ] && [ ! -L "$HUB_PLUGIN$_rel" ] || continue
+  { [ -e "$PROJECT_CLAUDE$_rel" ] || [ -L "$PROJECT_CLAUDE$_rel" ]; } || continue
+  [ -d "$PROJECT_CLAUDE$_rel" ] && [ ! -L "$PROJECT_CLAUDE$_rel" ] && continue
+  # Every detected collision is excluded from the rsync walk FIRST (Codex CI-p1
+  # Medium: an unsafe or symlink path must not fall back to the engine-dependent
+  # rsync failure). Filter metacharacters are escaped so the exclusion is literal
+  # (Codex CI-p1 High: a bare `a[1]` pattern would exclude the unrelated `a1`
+  # while leaving the real collision visible to rsync).
+  # rsync honors backslash escapes ONLY when the pattern contains a wildcard
+  # (*, ?, [ - rsync(1) FILTER NOTES), so escape exactly then; a name whose only
+  # special byte is ] or \ is already literal and must NOT be escaped (Codex
+  # round-2 High). LC_ALL=C keeps sed byte-wise so a non-UTF-8 name cannot abort
+  # the scan (round-2 Medium). Residual, recorded: a name with an embedded
+  # newline defeats $(...) and the exclude will not match - the scan then fails
+  # CLOSED on the rsync rc check below (loud abort, no data path).
+  case "$_rel" in
+    *[\*\?\[]*) _esc=$(printf '%s' "$_rel" | LC_ALL=C sed 's/[[*?\\]/\\&/g') ;;
+    *) _esc="$_rel" ;;
+  esac
+  RSYNC_EXCLUDES+=("--exclude=/$_esc")
+  if [ -L "$PROJECT_CLAUDE$_rel" ]; then
+    # Codex CI-p1 High: a tracked source SYMLINK never becomes an Add - the
+    # installer opens the path, which follows the link and would promote the
+    # TARGET's bytes (possibly from outside the project). Pre-collision scans
+    # never offered symlinks either (`>L` itemize lines fall to the unparsed
+    # warning), so a deterministic skip preserves that contract.
+    echo "warning: skipping $_rel (project source is a symlink colliding with a hub directory; resolve manually)" >&2
+    continue
+  fi
+  [ -f "$PROJECT_CLAUDE$_rel" ] || { echo "warning: skipping $_rel (unsupported source file type at a hub-directory collision)" >&2; continue; }
+  if ! candidate_ok "$_rel"; then
+    echo "warning: ignoring unsafe candidate path: $_rel" >&2
+    continue
+  fi
+  TYPE_CONFLICT_ADDS+=("$_rel")
+done
+
 # 4. Compute additive diff via rsync --dry-run (no --delete).
 # --checksum forces content comparison (slower but accurate). Without it,
 # rsync uses size+mtime, which produces false-positive prompts for files
@@ -963,7 +1013,7 @@ CHANGES=$(echo "$RSYNC_DIFF" | grep -E '^(>f|<f|cf|hf)|^\.f[^ ]*p' || true)
 
 # Exit early only when there is genuinely nothing to do: no adds/changes AND no
 # retired files to prune. The message and behavior here are unchanged.
-if [ -z "$CHANGES" ] && [ "${#PRUNE_CANDIDATES[@]}" -eq 0 ]; then
+if [ -z "$CHANGES" ] && [ "${#PRUNE_CANDIDATES[@]}" -eq 0 ] && [ "${#TYPE_CONFLICT_ADDS[@]}" -eq 0 ]; then
   echo "No changes - hub is in sync with project."
   write_state || { echo "Error: could not persist .sync-state or refs/agent-sync/bases; hub left uncommitted" >&2; exit 1; }
   exit 0
@@ -1038,6 +1088,14 @@ done <<< "$CHANGES"
 # changes-present run that skips nothing byte-identical too.
 [ "$skipped_untracked" -gt 0 ] \
   && echo "Skipped $skipped_untracked gitignored project file(s) (not git-tracked; track it in the project to sync)." >&2
+
+# CI-p1: append the detected file-vs-directory collisions as Add candidates. They
+# never entered the rsync walk (excluded above), so no double-count is possible;
+# candidate_ok already ran and membership in PROJECT_TRACKED holds by construction.
+for _rel in "${TYPE_CONFLICT_ADDS[@]:-}"; do
+  [ -n "${_rel:-}" ] || continue
+  ADDED_PATHS+=("$_rel")
+done
 
 PROJ_NAME=$(basename "$PROJECT_ROOT")
 
