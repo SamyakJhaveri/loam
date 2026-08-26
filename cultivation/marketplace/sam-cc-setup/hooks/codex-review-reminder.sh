@@ -38,11 +38,13 @@ except Exception:
 " <<< "$INPUT" 2>/dev/null || echo "")
 
 # Once-per-session gate. A missing session_id (older protocol version or a malformed
-# payload) falls back to a once-per-day marker rather than firing on every call.
+# payload) falls back to a once-per-day-PER-REPO marker rather than firing on every
+# call (a global daily marker would let one repo's reminder suppress every other's).
 if [ -n "$SESSION_ID" ]; then
     SHOWN_MARKER="${TMPDIR:-/tmp}/.codex_review_reminder_shown_${SESSION_ID}"
 else
-    SHOWN_MARKER="${TMPDIR:-/tmp}/.codex_review_reminder_shown_$(date -u +%Y-%m-%d)"
+    REPO_KEY=$(git rev-parse --show-toplevel 2>/dev/null | cksum | cut -d' ' -f1)
+    SHOWN_MARKER="${TMPDIR:-/tmp}/.codex_review_reminder_shown_${REPO_KEY:-norepo}_$(date -u +%Y-%m-%d)"
 fi
 
 if [ -f "$SHOWN_MARKER" ]; then
@@ -56,7 +58,9 @@ if ! grep -qE '(^|[;&|[:space:]])git([[:space:]]+-C[[:space:]]+[^[:space:]]+)?[[
     exit 0
 fi
 
-PROJECT_ROOT="$(git rev-parse --show-toplevel 2>/dev/null)" || exit 0
+# Resolve the repo the commit targets: honor a `git -C <path> commit`, else the cwd.
+CPATH=$(sed -nE 's/.*(^|[;&|[:space:]])git[[:space:]]+-C[[:space:]]+([^[:space:]]+)[[:space:]]+commit.*/\2/p' <<< "$COMMAND" | head -1)
+PROJECT_ROOT="$(git ${CPATH:+-C "$CPATH"} rev-parse --show-toplevel 2>/dev/null)" || exit 0
 SENTINEL="$PROJECT_ROOT/.codex_review_done"
 REMINDER_JSON='{"hookSpecificOutput":{"hookEventName":"PreToolUse","additionalContext":"Codex review reminder: You have not run a Codex review in this session. Before committing, consider running:\n\n  /codex-review\n\nAfter the review completes, write the sentinel from the project root: touch .codex_review_done\nTo skip this reminder, touch .codex_review_done from the project root."}}'
 

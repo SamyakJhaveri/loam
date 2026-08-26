@@ -35,7 +35,7 @@ violations. Reports findings for Bucket A. Fixes ONLY after user approval.
 - `systematic-debugging` - if a finding needs root-cause investigation before the
   fix is obvious
 
-### Subagents to spawn (parallel)
+### Subagents to spawn (parallel; whichever of these agent types the project or its plugins ship - skip absent ones)
 
 - `diff-reviewer` agent - scan git diff for regressions, partial
   implementations, accidental file changes
@@ -73,7 +73,7 @@ Reports findings for Bucket B + CLAUDE.md. Fixes ONLY after user approval.
 - `test-driven-development` - same before/after verification
 - `systematic-debugging` - same root-cause protocol
 
-### Subagents to spawn (parallel)
+### Subagents to spawn (parallel; whichever of these agent types the project or its plugins ship - skip absent ones)
 
 - `code-simplifier` agent - find duplication, dead code, over-engineering,
   unclear names

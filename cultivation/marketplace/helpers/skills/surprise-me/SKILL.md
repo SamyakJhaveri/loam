@@ -33,8 +33,9 @@ The output is a short ranked table of ideas plus one already-executed proof, nev
    Three to six ideas; kill the rest.
 6. **Execute the cheapest read-only idea in the same turn** (a grep sweep, a framing sentence, a
    control run in a scratch dir) and report its first result alongside the table. Proof beats proposal.
-7. **File the survivors.** Append the table to the project's active plan document so the ideas outlive
-   the session, each with when/owner/cost/deliverable filled in.
+7. **File the survivors.** Propose appending the table to the project's active plan document so the
+   ideas outlive the session, each with when/owner/cost/deliverable filled in; the append itself
+   waits for the owner's go (critical rule 3).
 
 ## Scale modes
 

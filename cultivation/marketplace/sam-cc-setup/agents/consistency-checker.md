@@ -82,13 +82,19 @@ fi
 
 ## Check 3: Rules Routing Table vs Actual Rules Files
 
+Conditional, same shape as Checks 1 and 2: SKIP when the project keeps no rules directory.
+
 ```bash
-for f in .claude/rules/*.md; do
-    name=$(basename "$f")
-    if ! grep -q "$name" CLAUDE.md; then
-        echo "MISSING from CLAUDE.md rules table: $name"
-    fi
-done
+if ! ls .claude/rules/*.md >/dev/null 2>&1; then
+    echo "SKIP Check 3: no .claude/rules/ directory"
+else
+    for f in .claude/rules/*.md; do
+        name=$(basename "$f")
+        if ! grep -q "$name" CLAUDE.md; then
+            echo "MISSING from CLAUDE.md rules table: $name"
+        fi
+    done
+fi
 ```
 
 ## Check 4: Documented Counts vs Reality
@@ -130,14 +136,22 @@ This check exists because multiple documents once each called themselves control
 while the plan that actually covered the current work was named by nothing.
 
 ```bash
-# 6a. CLAUDE.md must name EXACTLY ONE controlling work order, and it must exist.
-# sed, not `grep -oP`: PCRE mode is a GNU-grep feature and this project also runs on macOS.
+# 6a. If CLAUDE.md uses the convention at all, it must name EXACTLY ONE controlling
+# work order, and that file must exist. A project that never declares one has not
+# adopted the convention: report SKIP for the whole check (6b's filename patterns
+# only mean something inside the convention).
+# sed, not `grep -oP`: PCRE mode is a GNU-grep feature and macOS grep lacks it.
 WO=$(sed -n 's/.*Controlling work order: `\([^`]*\)`.*/\1/p' CLAUDE.md)
 N=$(printf '%s\n' "$WO" | grep -c .)
-[ "$N" -eq 1 ] || echo "FAIL: CLAUDE.md names $N controlling work orders, expected exactly 1"
-[ "$N" -ne 1 ] || [ -f "$WO" ] || echo "FAIL: controlling work order does not exist on disk: $WO"
+if [ "$N" -eq 0 ]; then
+    echo "SKIP Check 6: CLAUDE.md declares no controlling work order (convention not adopted)"
+else
+    [ "$N" -eq 1 ] || echo "FAIL: CLAUDE.md names $N controlling work orders, expected exactly 1"
+    [ "$N" -ne 1 ] || [ -f "$WO" ] || echo "FAIL: controlling work order does not exist on disk: $WO"
+fi
 
-# 6b. No other routing doc may name a work-order FILENAME as controlling.
+# 6b. Runs only when 6a did not SKIP. No other routing doc may name a work-order
+# FILENAME as controlling.
 # The awk strips the "file:line:" prefix before pattern-matching, because grep -rn
 # echoes the path and files NAMED *MASTER_EXECUTION_PLAN* would otherwise self-match.
 # SCOPE: root *.md is included deliberately. HANDOFF.md sat outside an earlier version
@@ -164,8 +178,9 @@ grep -rn -iE 'controlling|binding|authoritative|master plan' \
 # instead - that phrase is the exemption, and it has to be written deliberately.
 ```
 
-FAIL if 6a fails, or if 6b prints any line. A document banner-marked
-`HISTORICAL RECORD`, or a line deferring to `CLAUDE.md`, is not a violation.
+SKIP if the project declares no controlling work order. Otherwise FAIL if 6a fails,
+or if 6b prints any line. A document banner-marked `HISTORICAL RECORD`, or a line
+deferring to `CLAUDE.md`, is not a violation.
 
 **Known limits, stated so nobody mistakes this for airtight.** 6b is keyword- and
 line-oriented. A doc that asserts authority using none of the four keywords, names a
@@ -203,8 +218,8 @@ CONSISTENCY CHECK: PASS/FAIL
 [2] CLAUDE.md skills table:   PASS/FAIL/SKIP
     [if FAIL: skill names missing from table; SKIP: project keeps no skills table]
 
-[3] CLAUDE.md rules table:    PASS/FAIL
-    [if FAIL: rule files missing from table]
+[3] CLAUDE.md rules table:    PASS/FAIL/SKIP
+    [if FAIL: rule files missing from table; SKIP: no rules directory]
 
 [4] Documented counts:        PASS/WARN
     [if WARN: claimed counts differ from reality]
@@ -212,8 +227,9 @@ CONSISTENCY CHECK: PASS/FAIL
 [5] Session coverage:         PASS/WARN
     [if WARN: changed files that may need doc updates]
 
-[6] Single controlling plan:  PASS/FAIL
-    [if FAIL: file:line of each doc naming a work-order filename instead of deferring]
+[6] Single controlling plan:  PASS/FAIL/SKIP
+    [if FAIL: file:line of each doc naming a work-order filename instead of deferring;
+     SKIP: the project declares no controlling work order]
 
 [7] Generated-outputs registry: PASS/FAIL/SKIP
     [if FAIL: the FAIL lines from the registry checker; SKIP: project ships no checker]

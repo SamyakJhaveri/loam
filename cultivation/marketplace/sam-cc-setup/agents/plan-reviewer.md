@@ -52,6 +52,11 @@ plan passes or fails.
    independently before the next? Flag circular dependencies and steps that could
    fail and leave things in a bad state. Is there a recovery path if a step fails
    halfway?
+7. **Assumptions, edge cases, and risk.** What is the plan taking for granted
+   without stating it? What inputs or states could break it? Any security risk
+   the plan introduces (injection, path traversal, data exposure, secrets in
+   logs or commits)? Name each one; an unstated assumption the executor cannot
+   check is a finding, not a footnote.
 
 ## Elegance Gate (mandatory, after the checklist, before writing output)
 

@@ -20,10 +20,19 @@ sessions orient quickly.
 
 ## Configuration
 
-```
+Resolve the memory directory FIRST, as a real step, and refuse to proceed if it
+does not resolve - Phase 4 edits and deletes files under it, so an unset or wrong
+`MEMORY_DIR` must stop the run before any phase:
+
+```bash
 # Claude Code keeps per-project memory at ~/.claude/projects/<project>/memory/,
-# where <project> is the slugified project path. Resolve it, never hardcode:
-#   MEMORY_DIR="$HOME/.claude/projects/$(pwd | sed 's#/#-#g')/memory"
+# where <project> is the slugified path of the PROJECT ROOT (not the cwd).
+ROOT=$(git rev-parse --show-toplevel 2>/dev/null || pwd)
+MEMORY_DIR="$HOME/.claude/projects/$(printf '%s' "$ROOT" | sed 's#/#-#g')/memory"
+[ -d "$MEMORY_DIR" ] || { echo "STOP: no memory directory at $MEMORY_DIR"; }
+```
+
+```
 INDEX_FILE=MEMORY.md
 INDEX_MAX_LINES=200
 INDEX_MAX_SIZE=25KB

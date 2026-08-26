@@ -52,25 +52,27 @@ sufficient.
 
 ## Process
 
-1. If the `authoring-context-docs` skill is available, invoke it and read its Part 2.
+1. If `<subdir>/CONTEXT.md` already exists, STOP and tell the user: this skill
+   authors new routing files only (edit an existing one directly).
+2. If the `authoring-context-docs` skill is available, invoke it and read its Part 2.
    Otherwise use the inlined anatomy above.
-2. Walk the target subdirectory: enumerate files, identify workflow boundaries (e.g.,
+3. Walk the target subdirectory: enumerate files, identify workflow boundaries (e.g.,
    `output/`, `intermediate/`, `raw/`, `tests/`), note dominant file types.
-3. Classify the dominant tasks performed in this area. If unclear from the file inventory,
+4. Classify the dominant tasks performed in this area. If unclear from the file inventory,
    **ask the user before drafting** - do not invent tasks.
-4. Ask the user: "What does successful work in this area look like? (One verifiable sentence.)"
+5. Ask the user: "What does successful work in this area look like? (One verifiable sentence.)"
    Include their answer as a `Done looks like:` line at the end of "The Process" section.
-5. Identify which skills (from the project's `.claude/skills/` or installed plugins) wire to
+6. Identify which skills (from the project's `.claude/skills/` or installed plugins) wire to
    this area and under what trigger condition. If none, omit the Skills table; do not fill
    it with placeholders.
-6. Identify reference files this area should explicitly **Skip** - older directories, raw data
+7. Identify reference files this area should explicitly **Skip** - older directories, raw data
    already summarized, sibling areas with overlapping content. The Skip column must be
    non-empty for at least one task row.
-7. Draft `<subdir>/CONTEXT.md` with the six required sections in the order above.
-8. Target 25-80 lines. If the area genuinely needs more, split into multiple CONTEXT.md files
+8. Draft `<subdir>/CONTEXT.md` with the six required sections in the order above.
+9. Target 25-80 lines. If the area genuinely needs more, split into multiple CONTEXT.md files
    for distinct sub-areas rather than bloating one.
-9. Print the drafted CONTEXT.md to the user as a diff/preview.
-10. Ask the user to review before writing to disk. On approval, write to `<subdir>/CONTEXT.md`.
+10. Print the drafted CONTEXT.md to the user as a diff/preview.
+11. Ask the user to review before writing to disk. On approval, write to `<subdir>/CONTEXT.md`.
 
 ## Must NOT include
 

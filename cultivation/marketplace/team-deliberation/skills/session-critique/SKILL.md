@@ -116,6 +116,8 @@ Lead reverts any out-of-scope changes:
 git diff --stat HEAD
 git checkout HEAD -- <any-out-of-scope-file>
 ```
+Revert only files this session's workers touched. A file that was already dirty
+before the critique started belongs to the user - surface it, never checkout over it.
 Presents final summary of all applied fixes to user.
 User runs the project's validation gate and commits at their own discretion.
 

@@ -1,7 +1,7 @@
 ---
 name: codex-review
 description: "Second-opinion review of the current diff via the Codex CLI, read-only. Use when you want an independent adversarial review of a diff from a different model before merging. Manual only. NOT for replacing your project's own diff-review or validation gate; Codex never edits - findings are advisory and Claude applies any fixes."
-argument-hint: "[optional diff scope, e.g. main...HEAD or HEAD~3; defaults to main...HEAD]"
+argument-hint: "[optional diff scope, e.g. main...HEAD or HEAD~3; defaults to the default branch ...HEAD]"
 ---
 
 # Codex Second-Opinion Review
@@ -28,7 +28,10 @@ workspace-write, which would violate this rule). Findings come back as text; Cla
 ### Step 1 - Scope the diff
 
 ```bash
-SCOPE="${ARGUMENTS:-main...HEAD}"      # $ARGUMENTS if provided, else the branch diff
+# Default scope is <default-branch>...HEAD; resolve the default branch instead of
+# assuming `main` (repos on master/trunk would otherwise fail here).
+DEFAULT_BRANCH=$(git symbolic-ref --short refs/remotes/origin/HEAD 2>/dev/null | sed 's#^origin/##')
+SCOPE="${ARGUMENTS:-${DEFAULT_BRANCH:-main}...HEAD}"   # $ARGUMENTS if provided, else the branch diff
 BRANCH=$(git rev-parse --abbrev-ref HEAD)
 set -o pipefail
 
