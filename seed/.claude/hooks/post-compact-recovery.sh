@@ -19,11 +19,14 @@ echo "=== CONTEXT RECOVERY ===" >&2
 echo "Project: $PROJECT_ROOT" >&2
 echo "Branch: $(git -C "$PROJECT_ROOT" branch --show-current 2>/dev/null || echo 'detached')" >&2
 
-# Show known issues if file exists
-if [ -f "$PROJECT_ROOT/.claude/rules/known-issues.md" ]; then
-    ISSUE_COUNT=$(grep -c '^\s*-' "$PROJECT_ROOT/.claude/rules/known-issues.md" 2>/dev/null || echo "0")
-    echo "Known issues: $ISSUE_COUNT entries (see .claude/rules/known-issues.md)" >&2
-fi
+# Show known issues if a known-issues rule exists (current name first, legacy name as fallback)
+for KI in "$PROJECT_ROOT/.claude/rules/reassess-rewrite-known-issues.md" "$PROJECT_ROOT/.claude/rules/known-issues.md"; do
+    if [ -f "$KI" ]; then
+        ISSUE_COUNT=$(grep -c '^\s*-' "$KI" 2>/dev/null || echo "0")
+        echo "Known issues: $ISSUE_COUNT entries (see ${KI#"$PROJECT_ROOT"/})" >&2
+        break
+    fi
+done
 
 # Dynamic: count files in key directories
 for dir in results tests src; do

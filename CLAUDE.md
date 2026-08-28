@@ -2,6 +2,11 @@
 
 This repo IS a Copier template AND a Claude Code project. The `.claude/` symlink points to `seed/.claude/`, so the same config that ships to bootstrapped projects activates here.
 
+**REBUILD EPOCH (since 2026-08-28, commit 317b961):** the harness was deliberately gutted to a baseline.
+`reassess-`/`rewrite-` filename prefixes mark assets awaiting a keep/remove/rewrite verdict.
+The decision ledger is `docs/specs/rebuild-ledger.md`; the template is non-functional on main until the rebuild lands (the last release tag keeps serving Copier users).
+Deleted files remain readable via `git show 317b961^:<old-path>`.
+
 User preferences:
 - Challenge assumptions or offer corrections anytime
 - Point out flaws in proposed questions or solutions
@@ -10,14 +15,11 @@ User preferences:
 ## How to use
 
 ```bash
-# Bootstrap a new project
+# Bootstrap a new project (resolves the last release TAG, not main)
 uvx copier copy --trust gh:samyakjhaveri/loam ./my-project
 
 # Pull template updates into an existing project
 cd my-project && uvx copier update --trust
-
-# Promote a project-built skill back to this template
-template-sync promote --layer generic .claude/skills/<name>/SKILL.md
 ```
 
 ## Layout
@@ -30,54 +32,29 @@ template-sync promote --layer generic .claude/skills/<name>/SKILL.md
 | `seed/*.jinja`           | Copier-rendered files (CLAUDE.md, AGENTS.md, README.md, etc.) |
 | `.claude → seed/.claude` | Symlink for local dev experience |
 | `cultivation/`           | Skill staging: `wip/`, `marketplace/` (cut from default), `retired/` |
-| `soil/`                  | Local-only knowledge base (gitignored) |
+| `soil/`                  | Local-only knowledge base (gitignored; incl. `loam-rebuild-checkpoint/`) |
 | `_archive/`              | Human-only reference docs; not loaded into Claude context |
-| `bin/`                   | `verify-template.sh`, `template-sync.sh`, `lint-skill-descriptions.sh`, `release.sh` |
-| `docs/`                  | Template documentation |
-| `docs/plans/`            | Session plans and handoffs |
-| `docs/specs/`            | Design specifications |
+| `reassess-bin/`          | Parked scripts awaiting ledger verdicts (was `bin/`; `bin/` is empty) |
+| `docs/`                  | Template documentation (partially stale during the rebuild) |
+| `docs/specs/`            | Design specifications + the rebuild ledger |
 | `copier.yml`             | Copier config: `_subdirectory: "seed"`, questions, `_tasks` |
 | `VERSION`                | Semver for releases |
 
 ## Reference Docs (read on demand)
 
 Always loaded:
-- `.claude/rules/workflow.md` — 6-stage session workflow + anti-patterns
-- `.claude/rules/known-issues.md` — recurring gotchas
+- `.claude/rules/reassess-rewrite-known-issues.md` — recurring gotchas (awaiting rewrite)
+- `.claude/rules/architecture.md`
 
 Context-routing:
-- `.claude/rules/L0-budget.md` — when authoring CLAUDE.md
-- `.claude/rules/context-md-anatomy.md` — when authoring CONTEXT.md
-- `.claude/rules/stage-contract.md` — when invoking feature-dev / fix-bug / `/validate`
-- `.claude/rules/layer-triage.md` — when scoping a new task (60/30/10)
-
-Operational:
-- `.claude/rules/scaling-vs-automating.md` — when creating new skills or deciding whether to automate
-- `.claude/rules/naming-conventions.md` — when creating files/directories or authoring CONTEXT.md
-- `.claude/rules/validation-loop.md` — when working on hooks or the `validate` skill
-- `docs/ASSET-LAYERS.md` — when adding or moving assets
-- `docs/BOOTSTRAP.md`, `docs/SYNC.md`, `docs/COPIER.md`, `docs/FLAVORS.md`, `docs/MEMORY.md`
-- plan-reviewer design rationale: deleted in the teardown; read via `git show <teardown-commit>^:seed/plan-reviewer-design.md` when redesigning the plan-reviewer
-
-## Pipeline Gate
-
-`/validate` is this project's Pipeline Gate. Critical ordering:
-
-```
-Implement → /validate (Pipeline Gate) → /commit → /pr (or `/ship`)
-```
-`/session-critique` is optional — invoke it manually when you want adversarial review.
+- `.claude/rules/reassess-context-md-anatomy.md` — when authoring a CONTEXT.md
+- `docs/specs/rebuild-ledger.md` — when deciding any asset's fate
+- `docs/ASSET-LAYERS.md`, `docs/BOOTSTRAP.md`, `docs/SYNC.md`, `docs/COPIER.md`, `docs/FLAVORS.md`, `docs/MEMORY.md` — stale in parts; verify against the tree before trusting
+- plan-reviewer design rationale: deleted in the teardown; read via `git show 317b961^:seed/plan-reviewer-design.md` when redesigning the plan-reviewer
 
 ## Rules when editing this template
 
 - Don't add project-specific content. Everything here is generic or scoped to a flavor.
 - **Hybrid branch policy:** commit directly to main for docs, content, and small fixes; branch + PR for `seed/` behavior changes, hooks, `copier.yml`, and releases.
-- Test changes by running `bin/verify-template.sh`.
 - Skills for ANY project go in `seed/.claude/skills/`. Research-specific go in `seed/_research/skills/`. Cut skills go in `cultivation/marketplace/`.
-
-## Verify before any PR
-
-```bash
-bin/verify-template.sh
-# Expected: ALL OK
-```
+- `reassess-bin/verify-template.sh` is currently BROKEN against the gutted seed; CI repair is a ledger row. Do not tag a release until it passes again.
