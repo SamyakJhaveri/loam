@@ -1,113 +1,125 @@
 # Loam rebuild ledger - keep / remove / rewrite
 
-> Working document for the 2026-08 rebuild epoch.
-> One row per surviving asset. Judged row by row with Samyak; nothing is auto-applied.
-> Markers from the teardown: (kept) = survived unprefixed, (reassess) = user marked for reassessment, (rewrite) = user marked for rewrite.
-> Verdict values: KEEP / REMOVE / REWRITE / PENDING.
-> Every non-pending verdict must carry a citation: an official doc URL or a cliefnotes-wisdom norm_id.
+> Working document for the 2026-08 rebuild epoch. Judged row by row with Samyak; nothing is auto-applied.
+> Markers: (kept) = survived the teardown unprefixed, (reassess)/(rewrite) = Samyak's teardown prefixes.
+> Verdicts here are RECOMMENDATIONS awaiting Samyak's call. Sources:
+> [CC] docs/specs/rebuild-research/research-cc-docs.md (official Claude Code docs, fetched 2026-08-28)
+> [CTX] docs/specs/rebuild-research/research-context-rules.md (Claude 5 context-engineering rules, official Anthropic)
+> [CDX] docs/specs/rebuild-research/research-codex-docs.md (official Codex docs, fetched 2026-08-28)
+> [W:N-xxxx] docs/specs/cliefnotes-wisdom.md normalized claim ids (1,270 raw claims, 64% author-assertions - treat as hypotheses)
+> [GD] gate-diagnosis report 2026-08-28
 
-## Decision criteria (filled from research pass)
+## Decision criteria (from the research pass)
 
-- To be filled from research-context-rules and research-cc-docs findings.
+1. Burden of proof is on KEEPING: Anthropic cut 80%+ of Claude Code's system prompt with no eval loss. [CTX]
+2. "If Claude already does something correctly without the instruction, delete it or convert it to a hook." [CTX, official docs]
+3. One directive, one home. Overlapping layers (rule + skill + prompt) measurably degrade behavior. [CTX] [W:N-0058]
+4. Must-hold-every-time -> hook (deterministic). Judgement call -> prose, once. [CTX]
+5. Skills are priced: descriptions compete for ~1% of context; unused skills starve the useful ones. Every subagent reloads the whole CLAUDE.md + rules hierarchy. [CC]
+6. Verifier is never the author; unbounded adversarial critics over-report by construction. [CTX]
+7. Prefer a native feature over custom machinery that imitates it. [CC]
+
+## Cross-cutting bug found (fix regardless of verdicts)
+
+- `auto-activate:` is NOT a real skill-frontmatter field - zero hits in all 34 doc pages. Loam's tiering convention (13 skills marked `auto-activate: false`) never worked; those skills stayed model-invocable and kept burning listing budget. The real field is `disable-model-invocation: true`. [CC] Applies to every surviving skill and the known-issues entry that codifies the convention.
 
 ## seed/.claude - shipped Claude Code harness
 
-| Asset | Marker | Verdict | Reason / citation |
+| Asset | Marker | Recommendation | Reason / citation |
 |---|---|---|---|
-| skills/auto-phase | kept | PENDING | |
-| skills/reassess-agent-team | reassess | PENDING | native agent teams + workflows may supersede |
-| skills/reassess-align-prompt | reassess | PENDING | |
-| skills/reassess-catchup | reassess | PENDING | overlaps native recaps + /catchup in sam-cc-setup |
-| skills/reassess-critique-swarm | reassess | PENDING | workflows adversarial-verify may supersede |
-| skills/reassess-dream | reassess | PENDING | native auto-dream exists; duplicate in sam-cc-setup |
-| skills/reassess-plan-review-invoke | reassess | PENDING | folds into merged plan-reviewer redesign |
-| skills/reassess-researcher | reassess | PENDING | native /research + deep-research skills exist |
-| skills/reassess-template-sync | reassess | PENDING | pairs with reassess-bin/template-sync.sh |
-| agents/rewrite-plan-reviewer.md | rewrite | REWRITE (decided) | merge with elegance-reviewer into ONE blind review unit; judgement-based prompt; layer TBD (seed vs sam-cc-setup) |
-| agents/rewrite-self-critic.md | rewrite | PENDING | overlaps native /code-review; duplicate in sam-cc-setup |
-| hooks/bash-audit-log.sh | kept | PENDING | writes .claude/audit.log; unbounded growth noted |
-| hooks/concurrent-checkout-guard.sh | kept | PENDING | native worktree support may supersede |
-| hooks/post-compact-recovery.sh | kept | PENDING | native PostCompact behavior improved in Claude 5 era |
-| hooks/rewrite-stop-verify-gate.sh | rewrite | PENDING | currently UNWIRED (pruned in 317b961) - the turn-end gate (git diff --check + ruff + bash -n, blocking) no longer runs ANYWHERE; decide: re-wire under current name, rewrite, or rely on native /goal + plugin evals (gate-diagnosis report 2026-08-28) |
-| settings.json ponytail enablement (lines 9, 11-18) | kept | PENDING (recommend REMOVE) | landmine found by gate-diagnosis: ponytail ships a SubagentStart hook injecting "if the explanation is longer than the code, delete the explanation" into EVERY spawned agent - adversarial to review/report agents; dormant in loam (plugin not installed here) but ships to every seeded project and arms on any /plugin install |
-| rules/architecture.md | kept | PENDING | |
-| rules/reassess-context-md-anatomy.md | reassess | PENDING | |
-| rules/reassess-rewrite-known-issues.md | reassess+rewrite | PENDING | gotcha entries partly stale after teardown |
-| settings.json | kept (pruned) | KEEP | pruned to 3 existing hooks in teardown commit 317b961 |
+| skills/auto-phase | kept | REMOVE | phase-plan executor duplicated by native workflows + /goal (both CONFIRMED) [CC crit.7]; also still references retired /validate + critique gates |
+| skills/reassess-agent-team | reassess | REMOVE | native agent teams + dynamic workflows supersede [CC]; workflows are resumable and keep results out of context |
+| skills/reassess-align-prompt | reassess | REMOVE | written for Opus 4.6/4.8 conventions; Claude 5 guidance is the opposite (judgement, minimal steering) [CTX]; taste-priced per crit.5 |
+| skills/reassess-catchup | reassess | KEEP (slim) | genuinely useful session bootstrap; native recaps cover part but not git/env/memory staleness; deduplicate with sam-cc-setup:catchup - ONE home [crit.3] |
+| skills/reassess-critique-swarm | reassess | REMOVE | fan-out critique is the native workflows adversarial-verify pattern [CC]; unbounded critics over-report [CTX crit.6] |
+| skills/reassess-dream | reassess | REMOVE | native auto-dream + /dream exist [CC]; duplicate also in sam-cc-setup [crit.3] |
+| skills/reassess-plan-review-invoke | reassess | REMOVE | folds into the merged plan-reviewer redesign (see agents row); invoke-wrapper skills are ceremony [CTX] |
+| skills/reassess-researcher | reassess | REMOVE | bundled /deep-research workflow + research skills supersede [CC crit.7] |
+| skills/reassess-template-sync | reassess | DEFER to reassess-bin verdict | thin wrapper over template-sync.sh; follows its script's fate |
+| agents/rewrite-plan-reviewer.md | rewrite | REWRITE (decided) | merge with sam-cc-setup elegance-reviewer into ONE blind review unit: fresh context, sees only plan + criteria, never author reasoning [CTX crit.6]; judgement-based prompt, bounded findings; adversarial PLAN review has NO bundled equivalent [CC] so it earns its place; landing layer per cross-cutting decision 1 |
+| agents/rewrite-self-critic.md | rewrite | REMOVE | diff critique is bundled /code-review's job (background fork, effort-tunable, --fix) [CC crit.7]; unbounded critic [crit.6] |
+| hooks/bash-audit-log.sh | kept | KEEP | deterministic, cheap, useful forensics (proved itself in the gate diagnosis [GD]); log already gitignored |
+| hooks/concurrent-checkout-guard.sh | kept | KEEP (verify) | guards a real race (index.lock); native worktrees reduce but do not remove it; re-verify need once worktree-first workflow lands |
+| hooks/post-compact-recovery.sh | kept | KEEP | deterministic context re-injection after compaction; fixed for renamed rule in 7dce8ea |
+| hooks/rewrite-stop-verify-gate.sh | rewrite | REWRITE -> smaller | keep the deterministic core (git diff --check, ruff, bash -n on changed files = crit.4 territory); drop prose-y verification theater; native /goal covers goal-completion, not lint gates [CC]; currently UNWIRED - decision needed on re-wiring |
+| rules/architecture.md | kept | KEEP (audit content) | survives if each line passes "would removing this cause mistakes?" [CTX] |
+| rules/reassess-context-md-anatomy.md | reassess | REWRITE (slim) | CONTEXT.md routing is the corpus's strongest theme [W:N-0029,N-0030 demo-grade]; but cut to the anatomy + skip-column principle, drop the sizing tables [CTX] |
+| rules/reassess-rewrite-known-issues.md | reassess+rewrite | REWRITE | gotcha log is exactly what CLAUDE.md-layer docs are FOR ("purpose + gotchas") [CTX]; but entries about deleted machinery + the false auto-activate convention must go |
+| settings.json | kept (pruned) | KEEP + 2 edits | pruned in 317b961; EDIT 1: drop ponytail enablement (lines 9, 11-18) - its SubagentStart hook injects "delete the explanation" into every spawned agent; dormant here, armed in any seeded project that installs it [GD]; EDIT 2 candidate: `skillOverrides` to tier skills correctly instead of the fake auto-activate field [CC] |
 
 ## seed/.codex - shipped Codex harness
 
-| Asset | Marker | Verdict | Reason / citation |
+Premise check: "Codex only reads AGENTS.md" is FALSE. Codex today consumes .codex/config.toml, .codex/hooks.json, .codex/agents/*.toml, .codex/rules/*.rules (Starlark), and .agents/skills/ - but ONLY in projects the user marks trusted. [CDX]
+
+| Asset | Marker | Recommendation | Reason / citation |
 |---|---|---|---|
-| config.toml | kept | PENDING | verify against current Codex docs (research-codex-docs) |
-| reassess-hooks.json | reassess | PENDING | Codex hook support unverified |
-| hooks/post-compact-recovery.sh | kept | PENDING | |
-| rules/reassess-default.rules | reassess | PENDING | |
+| config.toml | kept | KEEP + fix 3 defects | layer is real [CDX]; fix: `agents.max_depth` is not a documented key (inert); dangling refs to `.codex/mcp/memory-server.sh` and `.agents/skills/agent-team` (neither ships); `max_threads` is a legacy alias |
+| reassess-hooks.json | reassess | RENAME to hooks.json or REMOVE | Codex discovers `hooks.json` ONLY - current name never loads [CDX]; schema itself is valid and portable |
+| hooks/post-compact-recovery.sh | kept | KEEP | PostCompact is a documented Codex event [CDX] |
+| rules/reassess-default.rules | reassess | KEEP (verify filename discovery) | Starlark execpolicy is the real Codex rules concept [CDX]; filename auto-load undocumented - verify with `codex execpolicy check` |
+| (missing) .agents/skills/ | - | ADD if Codex skills wanted | the ONLY shared-asset location between harnesses (same SKILL.md format) [CDX] |
+| (missing) trust documentation | - | ADD | entire .codex/ layer is inert until the user trusts the project + reviews hooks via /hooks; bootstrap output must say so [CDX] |
 
 ## seed/ root + research overlay
 
-| Asset | Marker | Verdict | Reason / citation |
+| Asset | Marker | Recommendation | Reason / citation |
 |---|---|---|---|
-| CLAUDE.md.jinja | kept | PENDING | rewrite against L0 lean guidance (purpose + gotchas only) |
-| AGENTS.md.jinja | kept | PENDING | align with official AGENTS.md contract |
-| README.md.jinja, pyproject.toml.jinja | kept | PENDING | |
-| _gh_setup.sh | kept | PENDING | |
-| reassess-_apply_research_overlay.sh | reassess | PENDING | research-flavor machinery |
-| reassess-_copier_merge_hooks.py | reassess | PENDING | |
-| _research/ overlay (seed-docs, 1 hook, 2 rules, settings-hooks.json now empty) | reassess | PENDING | does the research flavor still earn its complexity? |
-| copier.yml + flavor machinery | kept | PENDING | |
+| CLAUDE.md.jinja | kept | REWRITE | target: purpose + gotchas + routing table, under 200 lines, per-line removal test [CTX] [W:N-0249,N-0252]; every subagent reloads it [CC] |
+| AGENTS.md.jinja | kept | REWRITE | align with official contract: concatenated root-down, 32 KiB cap, prose has NO other Codex home so Claude-rules content the Codex side needs must fold in here [CDX] |
+| README.md.jinja, pyproject.toml.jinja, _gh_setup.sh | kept | KEEP | mechanical |
+| reassess-_apply_research_overlay.sh + reassess-_copier_merge_hooks.py | reassess | DEFER to flavor decision | follows cross-cutting decision 4 |
+| _research/ overlay | reassess | SLIM or CUT | 32 research skills already deleted in teardown; remaining: 6 seed-docs templates + 1 hook + 2 rules; keep only if research flavor survives [decision 4] |
+| copier.yml | kept | KEEP (simplify with flavor decision) | |
 
 ## reassess-bin/ - parked scripts
 
-| Asset | Marker | Verdict | Reason / citation |
-|---|---|---|---|
-| agent-sync engine (scan/prune/safe-io + 100+ tests) | reassess | PENDING | hub sync machinery; heavy; judged against actual multi-project use |
-| template-sync.sh | reassess | PENDING | |
-| verify-template.sh + test-verify-template.sh | reassess | PENDING | currently broken against gutted seed; CI depends on it |
-| hub-ci.sh | reassess | PENDING | |
-| release.sh | reassess | PENDING | tagging still required for Copier consumers |
-| ip-sweep.sh + check-own-synthesis.py + .ip-terms.example | reassess | PENDING | IP guards; policy decision, not tech |
-| lint-skill-descriptions.sh | reassess | PENDING | |
-| spike-probes.sh | reassess | PENDING | mechanism-spike leftover |
-| lib.sh | reassess | PENDING | follows its dependents |
+| Asset | Recommendation | Reason / citation |
+|---|---|---|
+| verify-template.sh (+test) | REWRITE (smaller) | its frontmatter/JSON checks are superseded by `claude plugin validate` [CC] - BUT that command refuses symlinked .claude dirs, which is loam's exact layout, so a thin wrapper remains needed; render-check via copier stays custom |
+| release.sh | KEEP | tagging remains mandatory for Copier consumers (tags, not HEAD); no native equivalent |
+| ip-sweep.sh + check-own-synthesis.py + .ip-terms.example | KEEP | policy guard, not tech; no native equivalent; cheap |
+| template-sync.sh + agent-sync engine (scan/prune/safe-io + 100+ tests) | DECIDE by usage | heaviest asset in the repo; earns its place ONLY if the hub->projects sync loop is actually exercised across Samyak's projects; if the rebuild makes plugins (seed-skills marketplace) the distribution channel, the plugin path supersedes file-sync [CC crit.7] |
+| hub-ci.sh | FOLLOWS agent-sync | |
+| lint-skill-descriptions.sh | REWRITE (smaller) | superseded in part by `claude plugin validate` + the doc'd YAML rules [CC]; keep only the semantic checks the native tool lacks |
+| spike-probes.sh | REMOVE | mechanism-spike leftover, spike done 2026-07-19 |
+| lib.sh | FOLLOWS its dependents | |
 
 ## CI
 
-| Asset | Marker | Verdict | Reason / citation |
-|---|---|---|---|
-| .github/workflows/test.yml | kept (broken) | REWRITE (decided) | points at deleted bin/ paths; fires on PR only; repair when rebuild shape known |
-| .github/workflows/release.yml | kept | PENDING | fires on tags; re-verify against rebuilt verify tooling |
+| Asset | Recommendation | Reason / citation |
+|---|---|---|
+| test.yml | REWRITE (decided) | repoint at surviving verify tooling once ledger executes; fires on PR only |
+| release.yml | KEEP (re-verify) | tag-gated release remains the Copier contract |
 
 ## cultivation/marketplace - 16 bundles
 
-| Bundle | Verdict | Reason / citation |
+| Bundle | Recommendation | Reason / citation |
 |---|---|---|
-| sam-cc-setup | PENDING | candidate REAL agent layer: 13 agents (incl. plan-reviewer + elegance-reviewer to merge), 12 skills, hook set, plan-review-fanout workflow; overlaps seed/ heavily |
-| sam-superpowers | KEEP (decided) | brainstorming-only as of commit 0d4efa9 |
-| pocock-engineering | PENDING | upstream also installed globally as mattpocock-skills plugin - duplicate? |
-| impeccable | PENDING | was vendored into seed (v4.0.0), seed copy deleted in teardown |
-| team-deliberation | PENDING | native agent teams may supersede |
-| meta-improvement | PENDING | |
-| helpers | PENDING | |
-| business-process | PENDING | |
-| academic-research / gpt-researcher / storm-research / nature-skills | PENDING | research bundles; overlap deep-research skill |
-| code-review-graph | PENDING | native /code-review may supersede |
-| planning-with-files | PENDING | |
-| ui-ux-pro-max / understand-anything | PENDING | |
-| web-frontend-* + deer-flow (git-subdir, disabled) | PENDING | already defaultEnabled:false |
+| sam-cc-setup | KEEP = becomes the agent/skill layer (recommend) | resolves the duplicate-layer problem [crit.3]: seed/ ships the minimal always-on harness; sam-cc-setup carries agents + optional skills as an installable plugin; its 13 agents then absorb the seed/ agent survivors (merged plan-reviewer lands here) |
+| sam-superpowers | KEEP (decided) | brainstorming-only since 0d4efa9 |
+| pocock-engineering | REMOVE | exact duplicate of the globally installed mattpocock-skills plugin [crit.3] |
+| impeccable | DECIDE | seed vendored copy deleted in teardown; native /simplify + design skills cover part; keep bundle only if UI polish workflow is still used |
+| team-deliberation | REMOVE | native agent teams + workflows [CC crit.7] |
+| meta-improvement, helpers, business-process | SLIM | audit per-skill with the listing-budget lens [CC crit.5]; likely few survivors |
+| academic-research, gpt-researcher, storm-research, nature-skills | REMOVE or ARCHIVE | native /deep-research workflow supersedes the research fan-outs [CC]; keep only venue-specific paper tooling if research flavor survives |
+| code-review-graph | REMOVE | bundled /code-review [CC crit.7] |
+| planning-with-files, ui-ux-pro-max, understand-anything | DECIDE by usage | no native supersession claim; judged on actual use |
+| web-frontend-* + deer-flow | KEEP as-is | already defaultEnabled:false; zero context cost until enabled |
 
 ## docs/
 
-| Asset | Verdict | Reason / citation |
+| Asset | Recommendation | Reason / citation |
 |---|---|---|
-| ASSET-LAYERS.md, BOOTSTRAP.md, COPIER.md, FLAVORS.md, SYNC.md, MEMORY.md, VISUAL-OVERVIEW.md, MIGRATION-v3.md, FUTURE-WORK.md, known-failures.md | PENDING | rewrite to match rebuilt structure; several now describe deleted assets |
-| docs/specs/* (8 existing spec docs) | PENDING | archive candidates |
-| CLAUDE.md (root) | REWRITE (decided) | references deleted rules/skills throughout; rewrite after ledger is judged |
+| ASSET-LAYERS, BOOTSTRAP, COPIER, FLAVORS, SYNC, MEMORY, VISUAL-OVERVIEW, MIGRATION-v3, FUTURE-WORK, known-failures | REWRITE after structure lands | several describe deleted assets; rewrite once, against the rebuilt tree, not incrementally |
+| docs/specs/* (8 pre-teardown specs) | ARCHIVE | move to _archive/; superseded by the rebuild |
+| CLAUDE.md (root) | done (interim) | rewritten in 7dce8ea for the epoch; final form after rebuild |
 
-## Cross-cutting decisions (judged with Samyak)
+## Cross-cutting decisions for Samyak
 
-1. Which layer is the real agent/skill layer: seed/ (shipped to every project) vs sam-cc-setup (installable plugin)? Duplicates exist in both.
-2. Plan-reviewer redesign: single merged blind review unit (plan-review checklist judgement + elegance frame-breaking pass, separate contexts, author reasoning withheld). Landing layer per decision 1.
-3. Does the Codex harness survive at all beyond AGENTS.md (pending research-codex-docs)?
-4. Does the research flavor survive as a Copier flavor?
-5. Native replacements to adopt: /code-review, plugin evals, auto-memory/auto-dream, workflows, /goal (each pending CONFIRMED status from research-cc-docs).
+1. LAYERING (recommend: adopt): seed/ = minimal always-on (CLAUDE.md.jinja + 3-4 hooks + 2-3 rules + settings); sam-cc-setup plugin = agents + optional skills; cultivation/marketplace = everything else, install-on-demand. Kills every seed-vs-plugin duplicate [crit.3, crit.5].
+2. PLAN-REVIEWER (decided rewrite): one blind unit = plan-review judgement pass + elegance frame-breaking pass, fresh context, author reasoning withheld, bounded findings. Samyak's found agents fold in as references when shared.
+3. CODEX: keep the .codex layer (it is real) with the 3 defect fixes + trust documentation, or cut to AGENTS.md-only tier 1? [CDX recommends: ship AGENTS.md + .agents/skills by default, .codex/ as documented opt-in]
+4. RESEARCH FLAVOR: survive as Copier flavor, or retire (research bundles nearly all superseded)?
+5. PONYTAIL: remove from shipped settings.json? (recommend yes - subagent-hostile injection [GD])
+6. STOP GATE: re-wire rewrite-stop-verify-gate.sh (slimmed) or leave turn-end unverified?
+7. AGENT-SYNC ENGINE: keep the file-sync hub machinery, or let the plugin marketplace BE the distribution channel?
