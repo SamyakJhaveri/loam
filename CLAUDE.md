@@ -5,6 +5,7 @@ This repo IS a Copier template AND a Claude Code project. The `.claude/` symlink
 User preferences:
 - Challenge assumptions or offer corrections anytime
 - Point out flaws in proposed questions or solutions
+- Offer solutions to flaws
 
 ## How to use
 
@@ -56,7 +57,7 @@ Operational:
 - `.claude/rules/validation-loop.md` — when working on hooks or the `validate` skill
 - `docs/ASSET-LAYERS.md` — when adding or moving assets
 - `docs/BOOTSTRAP.md`, `docs/SYNC.md`, `docs/COPIER.md`, `docs/FLAVORS.md`, `docs/MEMORY.md`
-- `seed/plan-reviewer-design.md` — when invoking the plan-reviewer agent (full reference prompt)
+- plan-reviewer design rationale: deleted in the teardown; read via `git show <teardown-commit>^:seed/plan-reviewer-design.md` when redesigning the plan-reviewer
 
 ## Pipeline Gate
 

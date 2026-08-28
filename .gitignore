@@ -59,6 +59,7 @@ env/
 .codegraphcontext/
 # IP-sweep blocklist — the real term list is private; never commit (template: bin/.ip-terms.example)
 bin/.ip-terms
+reassess-bin/.ip-terms
 
 # Personal reference docs — not part of the template (audit Session C)
 internal_docs/
