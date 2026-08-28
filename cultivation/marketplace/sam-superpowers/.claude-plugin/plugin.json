@@ -1,7 +1,7 @@
 {
   "name": "sam-superpowers",
-  "description": "Fork of obra/superpowers 5.0.7: the 14 core skills (TDD, debugging, collaboration patterns) with the mandatory-gate SessionStart injection replaced by a short judgment-based router. Skills are tools, not gates.",
-  "version": "1.0.0",
+  "description": "Single skill kept from the obra/superpowers 5.0.7 fork: brainstorming (explore intent, requirements, and design before creative work). All other skills, hooks, commands, and agents were removed in the 2026-08 rebuild.",
+  "version": "2.0.0",
   "author": {
     "name": "Samyak Jhaveri",
     "email": "39847642+SamyakJhaveri@users.noreply.github.com"
@@ -9,11 +9,8 @@
   "homepage": "https://github.com/obra/superpowers",
   "license": "MIT",
   "keywords": [
-    "skills",
-    "tdd",
-    "debugging",
-    "collaboration",
-    "best-practices",
-    "workflows"
+    "brainstorming",
+    "design",
+    "requirements"
   ]
 }

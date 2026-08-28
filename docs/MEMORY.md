@@ -14,7 +14,6 @@ Adjacent (not memory, but related):
 
 | Tool | Role |
 |------|------|
-| [Superpowers](https://github.com/obra/superpowers) | Process scaffolding (TDD discipline, brainstorming, journaling). The journal it produces becomes L1/L2 input over time. |
 | [CodeBurn](https://github.com/anthropic-experimental/codeburn) | Cost / token observability. Not a memory layer. |
 
 ## Layer 1 — built-in (always on)
@@ -73,17 +72,6 @@ Semble:
 Both are wired in `.mcp.json` by default. Storage:
 - `.codegraphcontext/` — graph database (gitignored, rebuild with `cgc index .`)
 - Semble indexes are in-memory (no persistent files)
-
-## Adjacent — Superpowers (process scaffolding)
-
-Not a memory layer. Installed as a Claude Code plugin:
-
-```bash
-/plugin marketplace add obra/superpowers
-/plugin install superpowers
-```
-
-Provides the brainstorming, journaling, and TDD-discipline skills that Jesse Vincent's Superpowers framework uses. Worth installing for the journaling skill alone — the entries it writes feed Layer 1 native memory over time.
 
 ## Adjacent — CodeBurn (cost observability)
 

@@ -1,6 +1,6 @@
 {
   "name": "seed-skills",
-  "description": "Optional skill bundles from the Loam. Install on demand \u2014 not shipped to bootstrapped projects by default.",
+  "description": "Optional skill bundles from the Loam. Install on demand — not shipped to bootstrapped projects by default.",
   "owner": {
     "name": "Samyak Jhaveri",
     "email": "39847642+SamyakJhaveri@users.noreply.github.com"
@@ -18,8 +18,8 @@
     },
     {
       "name": "sam-superpowers",
-      "description": "Fork of obra/superpowers 5.0.7: the 14 core skills with the mandatory-gate SessionStart injection replaced by a short judgment-based router",
-      "version": "1.0.0",
+      "description": "Brainstorming only - the single skill kept from the obra/superpowers 5.0.7 fork (2026-08 rebuild)",
+      "version": "2.0.0",
       "source": "./sam-superpowers",
       "author": {
         "name": "Samyak Jhaveri",
@@ -78,7 +78,7 @@
     },
     {
       "name": "web-frontend-anthropics",
-      "description": "Vetted web/UI skills from anthropics/skills, SHA-pinned via git-subdir: web-artifacts-builder (claude.ai bundle.html artifacts), webapp-testing (Playwright UI verification), theme-factory (challenger vs ui-ux-pro-max). Installs DISABLED (defaultEnabled:false) \u2014 enable to trial.",
+      "description": "Vetted web/UI skills from anthropics/skills, SHA-pinned via git-subdir: web-artifacts-builder (claude.ai bundle.html artifacts), webapp-testing (Playwright UI verification), theme-factory (challenger vs ui-ux-pro-max). Installs DISABLED (defaultEnabled:false) — enable to trial.",
       "strict": false,
       "defaultEnabled": false,
       "license": "Apache-2.0",
@@ -97,7 +97,7 @@
     },
     {
       "name": "web-frontend-vercel",
-      "description": "Vetted React/UI skills from vercel-labs/agent-skills, SHA-pinned via git-subdir: react-best-practices, react-view-transitions (view-transition animation), composition-patterns, web-design-guidelines (challenger vs impeccable). Installs DISABLED (defaultEnabled:false) \u2014 enable to trial.",
+      "description": "Vetted React/UI skills from vercel-labs/agent-skills, SHA-pinned via git-subdir: react-best-practices, react-view-transitions (view-transition animation), composition-patterns, web-design-guidelines (challenger vs impeccable). Installs DISABLED (defaultEnabled:false) — enable to trial.",
       "strict": false,
       "defaultEnabled": false,
       "license": "MIT",
@@ -117,10 +117,10 @@
     },
     {
       "name": "web-frontend-find-skills",
-      "description": "Vetted: find-skills (on-demand skill discovery/loader) from vercel-labs/skills, SHA-pinned via git-subdir. Installs DISABLED (defaultEnabled:false) \u2014 enable to trial.",
+      "description": "Vetted: find-skills (on-demand skill discovery/loader) from vercel-labs/skills, SHA-pinned via git-subdir. Installs DISABLED (defaultEnabled:false) — enable to trial.",
       "strict": false,
       "defaultEnabled": false,
-      "license": "Unspecified \u2014 vercel-labs/skills declares no LICENSE",
+      "license": "Unspecified — vercel-labs/skills declares no LICENSE",
       "source": {
         "source": "git-subdir",
         "url": "https://github.com/vercel-labs/skills.git",
@@ -134,7 +134,7 @@
     },
     {
       "name": "web-frontend-taste",
-      "description": "Vetted: design-taste-frontend v2-experimental (challenger vs impeccable; landing pages/portfolios/redesigns only, NOT dashboards/product UI) from Leonxlnx/taste-skill, SHA-pinned via git-subdir. Folder taste-skill maps to install name design-taste-frontend. Installs DISABLED (defaultEnabled:false) \u2014 enable to trial.",
+      "description": "Vetted: design-taste-frontend v2-experimental (challenger vs impeccable; landing pages/portfolios/redesigns only, NOT dashboards/product UI) from Leonxlnx/taste-skill, SHA-pinned via git-subdir. Folder taste-skill maps to install name design-taste-frontend. Installs DISABLED (defaultEnabled:false) — enable to trial.",
       "strict": false,
       "defaultEnabled": false,
       "license": "MIT",
