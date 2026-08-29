@@ -73,17 +73,12 @@ fi
 # pinning the release commit to exactly this validated state.
 HEAD_BEFORE_GATES="$(git rev-parse HEAD)" || die "cannot read HEAD; refusing to release"
 
-# Hub CI gate: refuse to cut a release while any hub health check is red. This
-# runs BEFORE any mutation (the VERSION write at Step 1) and before the
+# Template verification gate: refuse to cut a release while the template is red.
+# Runs BEFORE any mutation (the VERSION write at Step 1) and before the
 # commit/tag/push, so a red gate stops the release with zero side effects.
-# NOTE: hub-ci validates the live WORKTREE. The tracked-only discovery in hub-ci
-# and the assume-unchanged guard just above close the two reachable ways the
-# worktree can diverge from the committed objects the tag publishes (an untracked
-# file running in the gate; an assume-unchanged file hidden from the clean check).
-# A clean/smudge filter that rewrites content on checkout is NOT covered - that
-# residual needs the gate to run against an isolated checkout of HEAD (Ticket 9).
-info "running hub-ci gate"
-bash "$SELF_DIR/hub-ci.sh" || die "hub-ci failed - refusing to release (run: bin/hub-ci.sh)"
+# (Replaced the retired hub-ci gate, 2026-08-29 rebuild.)
+info "running template verification gate"
+bash "$SELF_DIR/verify-template.sh" || die "verify-template failed - refusing to release (run: bin/verify-template.sh)"
 
 # IP gate (defense-in-depth): if the private-dev sweep is present, it must pass
 # in strict mode before we publish. Absent (e.g. public clone) → skip loudly.
