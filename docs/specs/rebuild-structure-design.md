@@ -3,7 +3,7 @@
 > Written 2026-08-29 in the rebuild design session (work-queue step 1).
 > Review verdict: APPROVE_WITH_CHANGES from BOTH blind reviewers (plan-reviewer: 11 findings; elegance-reviewer: 12 findings), all accepted findings folded in below.
 > Review records: rebuild-structure-design-review.md (correctness, cited [P-n]) and rebuild-structure-design-review-elegance.md (elegance, cited [E-n]).
-> Items still needing Samyak's confirmation are marked FLAG.
+> All three FLAG items (MCP cut, baseline-agent cut, clangd cut) were CONFIRMED by Samyak on 2026-08-29; the design below is final.
 > Sources cited as: [CTX Pn] = docs/specs/rebuild-research/research-context-rules.md; [CC] = research-cc-docs.md; [CDX] = research-codex-docs.md; [N-xxxx] = docs/specs/cliefnotes-wisdom.md norm ids; [R-n] = ledger ruling n; [D-n] = session decision n.
 
 ## Scope
@@ -126,7 +126,7 @@ Adopted shape:
 | Stop -> stop-verify-gate.sh | KEEP [R-6] |
 | model `claude-opus-4-8[1m]` | KEEP [R] |
 | `enabledPlugins.pyright-lsp` | KEEP (seed ships pyproject.toml; Python-first) |
-| `enabledPlugins.clangd-lsp` | DELETE + delete the CLAUDE.md paragraph explaining its false positives [CTX P24] [E9]. FLAG: reverse if Samyak seeds C/C++ projects regularly. |
+| `enabledPlugins.clangd-lsp` | DELETE (confirmed) + delete the CLAUDE.md paragraph explaining its false positives [CTX P24] [E9] |
 | `env.CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS` | DELETE (speculative experimental flag in a template default [CTX P24]) |
 | permissions allow/deny/ask lists | KEEP, minus `mcp__sequential-thinking` (allow) and `mcp__drawio` (ask) which follow the MCP verdicts below; the read-only Bash allowlist is deliberate policy |
 | skillOverrides | NOT ADDED (one shipped skill, nothing to tier) |
@@ -160,7 +160,7 @@ Resulting `.codex/` layer: `config.toml` + `rules/default.rules`. Every file rea
 |---|---|
 | memory | DELETE (native auto memory [CC §1] [CTX P8]) |
 | sequential-thinking | DELETE (reasoning scratchpad wrapped around a Claude 5 harness [CTX P18]) |
-| codegraphcontext, semble, drawio | DELETE from the seed default. Nothing names the repeated failure that makes a generic day-one project need a code graph, semantic search, and a diagram editor [CTX P24]; they are Samyak's personal stack and belong in his user-level config, not the template. FLAG: Samyak may keep any of the three; if kept, the settings.json permission entries stay with them. |
+| codegraphcontext, semble, drawio | DELETE from the seed default (confirmed). Nothing names the repeated failure that makes a generic day-one project need a code graph, semantic search, and a diagram editor [CTX P24]; they are Samyak's personal stack and belong in his user-level config, not the template. |
 
 With all five gone, `.mcp.json.jinja` is deleted and the two MCP permission entries in settings.json go with it.
 
@@ -211,7 +211,7 @@ Agents - removed (8):
 | self-critic | native /code-review; unbounded critic [CTX P22] |
 | security-scanner | native /security-review |
 | plan-reviewer, elegance-reviewer | absorbed into the merged unit [R-2] |
-| verify-app, regression-checker | both key off `.claude/baselines.json`, which the seed never ships; overlapping descriptions [CTX P14]; in every fresh project they can only report NO-BASELINE [CTX P24] [E8]. FLAG: if Samyak actively uses the baselines workflow elsewhere, keep exactly ONE of them and ship a baselines.json mechanism with it. |
+| verify-app, regression-checker | both key off `.claude/baselines.json`, which the seed never ships; overlapping descriptions [CTX P14]; in every fresh project they can only report NO-BASELINE [CTX P24] [E8]. Cut confirmed. |
 
 Plugin cleanup (the REAL dangling references [P6]):
 
