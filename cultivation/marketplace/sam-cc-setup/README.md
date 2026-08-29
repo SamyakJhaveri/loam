@@ -18,7 +18,9 @@ installing this plugin there would duplicate skill names.
   runs inside git, where no compound command can outrun it.
 - **A concurrent-checkout guard** that blocks two sessions from racing on one working tree.
 - **Skills:** `plan-review` (blind merged plan review), `tech-selection` (bounded
-  component trade-off records), `validate` (on-demand two-wave deterministic pass),
+  component trade-off records), `surprise-me` (ranked, evidence-backed unsolicited
+  ideas; rehomed from the dissolved helpers bundle), `validate` (on-demand two-wave
+  deterministic pass),
   `codex-review` and `codex-plan-review` (cross-model second opinions - require the
   Codex CLI), `catchup`, `dream`, `align-prompt`, `scaffold-context`, `reflect`,
   `sam_handoff`, `unknowns`, `bootstrap-cc-setup`.

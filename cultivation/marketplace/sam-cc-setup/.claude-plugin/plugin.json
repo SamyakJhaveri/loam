@@ -1,8 +1,8 @@
 {
   "name": "sam-cc-setup",
   "license": "MIT",
-  "version": "0.3.0",
-  "description": "Portable core of Sam's Claude Code setup: native pre-commit hook enforcement (sentinel gate retired 2026-08-14), on-demand /validate, generic review agents, cross-model Codex review skills, and a /bootstrap-cc-setup skill that writes the always-loaded rules layer plugins cannot ship. For repos NOT bootstrapped by the Loam Copier template - a Loam-rendered project already carries most of this in .claude/.",
+  "version": "0.4.0",
+  "description": "Portable core of Sam's Claude Code setup: merged blind plan-reviewer (correctness + elegance in one unit) with /plan-review and the plan-review-fanout workflow, /tech-selection, /surprise-me, on-demand /validate, cross-model Codex review skills, and /bootstrap-cc-setup for the always-loaded rules layer plugins cannot ship.",
   "author": {
     "name": "Samyak Jhaveri",
     "email": "39847642+SamyakJhaveri@users.noreply.github.com"
