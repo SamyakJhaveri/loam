@@ -4,7 +4,6 @@ description: "Review-only architecture reviewer (does NOT edit source). Assesses
 tools: Bash, Read, Glob, Grep
 model: opus
 effort: high
-permissionMode: dontAsk
 maxTurns: 20
 ---
 

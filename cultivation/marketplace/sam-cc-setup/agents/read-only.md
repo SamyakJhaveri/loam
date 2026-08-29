@@ -4,7 +4,6 @@ description: "Maximally-constrained read-only investigator (Boris's 'ReadOnly' p
 tools: Read
 model: sonnet
 effort: high
-permissionMode: dontAsk
 maxTurns: 15
 ---
 

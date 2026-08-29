@@ -4,7 +4,6 @@ description: "Narrow, review-only build-health check (does not edit source) for 
 tools: Bash, Read, Glob, Grep
 model: sonnet
 effort: high
-permissionMode: dontAsk
 maxTurns: 15
 ---
 

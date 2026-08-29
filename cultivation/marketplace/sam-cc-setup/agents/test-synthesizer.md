@@ -3,7 +3,6 @@ name: test-synthesizer
 description: "Writes temporary test scripts for changed code, compiles/runs them, and reports results. Tests Python module imports, spec JSON validity via harness, and shell script syntax. All temp files created in /tmp/ and cleaned up after. Use in post-session validation Wave 2. Returns structured PASS/FAIL. Reports every finding, most severe first."
 tools: Bash, Read, Glob, Grep
 model: sonnet
-permissionMode: dontAsk
 maxTurns: 20
 ---
 
