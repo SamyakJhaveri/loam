@@ -1,64 +1,17 @@
 # Asset layers
 
-Every Claude Code asset (agent / skill / hook / rule) belongs to exactly one of three layers. In v3.0, the layers are simpler than they were under the dual-tree (`.claude/` + `template/.claude/`) regime — there is no separate generic-core mirror; the template's own `.claude/` IS what ships.
+Since the 2026-08 rebuild, every agent asset belongs to exactly one of three layers.
+One directive, one home; a duplicate across layers is a bug.
 
-| Layer | Where it lives in the template | Where it lives in a rendered project |
-|-------|--------------------------------|--------------------------------------|
-| `generic`         | `seed/.claude/<relpath>` | `.claude/<relpath>` (always) |
-| `flavor:research` | `seed/_research/<relpath-stripped>`      | `.claude/<relpath>` (only if `is_research=true` at bootstrap) |
-| `project-local`   | (does not exist in the template)    | `.claude/<relpath>` (added by the project, never promoted up) |
-| `marketplace-candidate` | `cultivation/marketplace/<name>/`         | Not shipped — install post-bootstrap via plugin marketplace |
+| Layer | Lives in | Reaches a project | Context cost |
+|-------|----------|-------------------|--------------|
+| Always-on seed harness | `seed/` (CLAUDE.md/AGENTS.md, 3 hooks, settings, `.codex/`, one shared skill) | Rendered by Copier at bootstrap; updated by `copier update` on new tags | Paid in every session; priced highest |
+| Plugin layer | `cultivation/marketplace/sam-cc-setup/` (agents + optional skills + the plan-review workflow) | Installed as a plugin; updates in place | Skill descriptions only, until invoked |
+| Marketplace bundles | `cultivation/marketplace/<name>/` | Install-on-demand | Zero until enabled |
 
-## How `template-sync` decides the layer
+Rules of thumb:
 
-`template-sync` does not auto-decide. It always asks. The classification is your call. The skill provides a suggestion based on what the asset references:
-
-- LaTeX, BibTeX, citation handling → `flavor:research`
-- Experiments, hypotheses, ablations → `flavor:research`
-- Training loops, model checkpoints, eval suites → `flavor:research`
-- CUDA, OpenMP, MPI, kernel-level code → `flavor:research`
-- References the project's own name from `.copier-answers.yml` → `project-local` (do not promote)
-- Otherwise (general workflow, language-agnostic, applicable to non-research projects) → `generic`
-
-## When to promote into `generic` vs `flavor:research`
-
-Default to the flavor. The generic core stays lean precisely because flavors absorb domain-specific content. An asset belongs in `generic` only if every project — including a fresh greenfield SaaS that has nothing to do with research — would benefit.
-
-Examples of correctly-`generic` assets in v3.0:
-
-- Session bootstrap (`catchup`)
-- Bug-fix workflow (`fix-bug`)
-- Plan reviewer agent
-- Validation Pipeline Gate (`validate`)
-- Multi-reviewer code review (`multi-review`)
-- Memory consolidation (`dream`)
-- The four context-routing rules (`L0-budget`, `context-md-anatomy`, `stage-contract`, `layer-triage`)
-- The SessionStart hook
-- The `catchup` skill (session orientation is universally useful)
-
-Examples of correctly-`flavor:research` assets:
-
-- Paper rebuttal pipeline
-- Hypothesis tree
-- CUDA / OpenMP translator
-- Citation audit
-- Experiment-config validation hook
-
-Note on path-scoped rules: `python.md`, `tech-stack.md`, `architecture.md`, `frontend-design.md` all live in `generic` (`.claude/rules/`). They are path-scoped, so they only load when matching files are touched. A research project with no frontend code never pays the cost of `frontend-design.md`. Path-scoping is the cheaper alternative to a flavor.
-
-## Project-local assets
-
-Assets that only make sense for one project stay in that project's `.claude/` and are never promoted. The promote-time safety scan flags candidates containing the project name or absolute paths. If you intentionally want to promote a localized version (rare), generalize it first — replace local references with placeholders or environment variables.
-
-## `cultivation/marketplace/` — marketplace-candidate layer
-
-A new layer in v3.0. Multiple skills are housed in the marketplace layer during the v3.0 rework (audit traces: skill bloat, false-positive auto-activation, business-process focus, meta-meta function). They live in `cultivation/marketplace/` in the template repo for two reasons:
-
-1. **Reference**: if a future project needs one, copy it back into `.claude/skills/` or install as a plugin.
-2. **Future plugin marketplace**: Phase-4 of the rework wires `cultivation/marketplace/` as an installable plugin marketplace via `.claude-plugin/marketplace.json`. Projects then `/plugin install <name>` on demand rather than carrying every skill at bootstrap.
-
-`cultivation/marketplace/` is outside `seed/` and invisible to Copier.
-
-## The `asset_overrides` field (legacy)
-
-The legacy `template-manifest.json` had an `asset_overrides` map for marking an asset as `project-local` even when its filename matched a `generic` asset. Use under Copier: the equivalent is editing the asset locally in the project; `copier update` will show the diff on the next pull and you choose whether to accept the upstream version or keep yours.
+- A new asset starts in the project that needed it. It moves UP a layer only when a second project needs it (the plugin trigger from the official docs).
+- Anything that must hold every time is a hook in the seed, not prose anywhere.
+- The shared skill location for both harnesses is `seed/.agents/skills/` (Codex reads it directly; Claude Code reads it through a checked-in symlink in `.claude/skills/`).
+- `cultivation/wip/` stages work that has no verdict yet; `cultivation/retired/` keeps what lost one.

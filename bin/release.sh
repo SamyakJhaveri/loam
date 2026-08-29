@@ -28,7 +28,7 @@ VERSION="${1:-}"
 [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || die "version must be semver (e.g., 1.2.3)"
 
 # Operate on the script's OWN repository, not the caller cwd. release.sh runs git
-# against the working directory (branch/status/tag/commit/push), while the hub-ci
+# against the working directory (branch/status/tag/commit/push), while the verify
 # gate is resolved from the script path; without this, an absolute-path invocation
 # from a different repo would validate this repo but tag and push the other one.
 SELF_DIR="$(cd "$(dirname "$0")" && pwd)"
@@ -39,10 +39,10 @@ cd "$SELF_REPO" || die "cannot enter the script repository: $SELF_REPO"
 # Pre-flight. Each git query is captured with its exit status checked: a FAILED
 # git command prints nothing, and a bare `[[ -z "$(...)" ]]` or `| grep -q` would
 # read that empty output as a clean tree / an absent tag and mutate anyway. Fail
-# closed - refuse on any git error (matches bin/agent-sync-scan.sh, 76ad1c5).
+# closed - refuse on any git error.
 BRANCH="$(git branch --show-current)" || die "cannot read current branch"
 [[ "$BRANCH" == "main" ]] || die "releases must be created from main"
-# --untracked-files=all (reuses bin/agent-sync-scan.sh M3, 5b7a1a5): a repo-level
+# --untracked-files=all: a repo-level
 # status.showUntrackedFiles=no would otherwise blind this check, letting an
 # untracked non-ignored file influence the worktree gate, stay out of the tag,
 # and reach the push. Force full untracked reporting.
@@ -53,14 +53,12 @@ set +e; EXISTING_TAG="$(git tag -l "v$VERSION")"; TAG_RC=$?; set -e
 [[ "$TAG_RC" -eq 0 ]] || die "git tag query failed (exit $TAG_RC); refusing to release"
 [[ -z "$EXISTING_TAG" ]] || die "tag v$VERSION already exists"
 
-# assume-unchanged / skip-worktree guard (reuses bin/agent-sync-scan.sh H5,
-# 72c7b5d). `git status` above is BLIND to a tracked file marked
+# assume-unchanged / skip-worktree guard. `git status` above is BLIND to a tracked file marked
 # --assume-unchanged (lowercase ls-files -v tag) or skip-worktree (S): its
 # worktree bytes can diverge from the committed bytes the tag will publish, and
-# the hub-ci gate below validates the worktree. Refuse if any tracked path
+# the verify gate below validates the worktree. Refuse if any tracked path
 # carries a non-`H` tag. Scope is the WHOLE repo (no pathspec) because the tag
-# ships the whole tree - unlike H5, which scoped to .claude because the sync only
-# promotes that subtree. ls-files failure fails closed.
+# ships the whole tree. ls-files failure fails closed.
 set +e; VTAGS="$(git ls-files -v)"; VTAGS_RC=$?; set -e
 [[ "$VTAGS_RC" -eq 0 ]] || die "git ls-files -v failed (exit $VTAGS_RC); refusing to release"
 if grep -qvE '^H ' <<<"$VTAGS"; then
