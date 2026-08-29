@@ -27,16 +27,6 @@
       }
     },
     {
-      "name": "team-deliberation",
-      "description": "Multi-agent deliberation skills (agent-team, council, session-critique)",
-      "version": "0.1.0",
-      "source": "./team-deliberation",
-      "author": {
-        "name": "Samyak Jhaveri",
-        "email": "39847642+SamyakJhaveri@users.noreply.github.com"
-      }
-    },
-    {
       "name": "meta-improvement",
       "description": "Self-healing and meta-improvement skills",
       "version": "0.1.0",
@@ -61,16 +51,6 @@
       "description": "Business process skills (process-optimizer, sop-writer, workflow-mapper, weekly-review)",
       "version": "0.1.0",
       "source": "./business-process",
-      "author": {
-        "name": "Samyak Jhaveri",
-        "email": "39847642+SamyakJhaveri@users.noreply.github.com"
-      }
-    },
-    {
-      "name": "pocock-engineering",
-      "description": "Engineering workflow skills adapted from mattpocock/skills (triage, to-issues, tdd, prototype, diagnose, grill-with-docs, improve-codebase-architecture)",
-      "version": "0.2.0",
-      "source": "./pocock-engineering",
       "author": {
         "name": "Samyak Jhaveri",
         "email": "39847642+SamyakJhaveri@users.noreply.github.com"

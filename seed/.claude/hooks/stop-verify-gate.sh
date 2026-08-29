@@ -1,20 +1,9 @@
 #!/usr/bin/env bash
-# stop-verify-gate.sh — Stop hook: deterministic turn-end verification gate.
-#
-# Implements the best-practices "deterministic gate" rung
-# (https://code.claude.com/docs/en/best-practices → "Give Claude a way to verify
-# its work"): runs fast Layer-1 checks on CHANGED files and blocks the turn from
-# ending until they pass. Complements (does NOT replace) the commit-time
-# pre-commit-gate.sh — this is the fast signal, /validate stays the full one.
-#
-# Triggered by: Stop
-# Blocks by:    exit 2 with evidence on stderr (Claude Code auto-overrides after
-#               8 consecutive blocks). No-ops (exit 0) when nothing relevant changed.
-# Protocol:     reads the JSON envelope on stdin — NOT env vars (see known-issues.md
-#               "hooks receive JSON on stdin, not env vars").
-#
-# Deliberately EXCLUDES mypy/pytest: too slow for every turn-end and already
-# covered by /validate (Wave 2) and the post-edit-test.sh PostToolUse hook.
+# stop-verify-gate.sh - Stop hook: deterministic turn-end verification gate.
+# Fast checks on CHANGED files only: git diff --check, ruff on .py, bash -n on .sh.
+# Blocks the turn with exit 2 + evidence on stderr; no-ops when nothing changed.
+# Reads the JSON envelope on stdin (hooks get JSON on stdin, not env vars).
+# Deliberately excludes slow checks (mypy/pytest) - this is the fast signal only.
 
 set -uo pipefail   # no -e: collect all failures, don't abort on the first
 
@@ -64,8 +53,8 @@ if [ -n "$FAIL" ]; then
     {
         echo "Turn-end verification gate FAILED — fix these before ending the turn:"
         printf '%b\n' "$FAIL"
-        echo "(Fast deterministic checks on changed files only; not the full /validate."
-        echo " Run /validate before commit. To bypass intentionally, disable the Stop hook in .claude/settings.json.)"
+        echo "(Fast deterministic checks on changed files only."
+        echo " To bypass intentionally, disable the Stop hook in .claude/settings.json.)"
     } >&2
     exit 2
 fi

@@ -5,140 +5,37 @@ description: Fast 30s session bootstrap briefing. Use when resuming work after a
 
 # Session Catchup Briefing
 
-Use when resuming work after a break and you need a fast 30-second context refresh:
-just the state of the repo and any in-flight work, no deep exploration.
+Read the state before changing it. Report it; do not act on it.
+Run everything fresh - never answer from cached or remembered state.
+An optional numeric argument sets how many recent commits to show (default 10).
 
-**Trigger:** When user types `/catchup`.
+## Gather
 
-## Iron Law
+1. Git: `git status`, `git log --oneline -<N>`, and `git diff --stat HEAD~<N>` (fall back to the first commit if history is short).
+2. Environment: active tmux sessions (`tmux list-sessions`), python/venv presence if the project uses one.
+3. Memory: list the project's auto-memory directory under `~/.claude/projects/<encoded-cwd>/memory/` by modification time.
+4. Tasks: check the task list for anything left in progress by a previous session.
 
-```
-NO WORK WITHOUT CONTEXT - READ THE STATE BEFORE CHANGING IT
-```
+## Red flags - put these at the TOP of the briefing
 
-## Arguments
+- Uncommitted changes or a detached HEAD.
+- A merge or rebase in progress.
+- Active tmux sessions that may be running long jobs.
+- Memory files untouched for 14+ days.
+- In-progress tasks from a previous session.
 
-- `$ARGUMENTS` - optional: number of recent commits to show (default: 10)
+## Briefing format
 
-## Anti-Rationalization Table
-
-| Excuse | Reality |
-|--------|---------|
-| "I remember what I was doing" | Memory decays; git log doesn't. 30 seconds now saves 30 minutes of confusion later |
-| "I'll figure it out as I go" | Figuring it out mid-task means wasted context window on re-discovery |
-| "Nothing changed since last session" | Verify that claim - auto-merges, hook updates, and background jobs run silently |
-| "I just have a quick fix" | Quick fixes on stale context cause the bugs that take hours to debug |
-
-## Red Flags - STOP and Warn User
-
-- Uncommitted changes in the working tree (risk of losing work or committing stale state)
-- Detached HEAD state (not on a named branch)
-- Memory files older than 14 days with no updates (context may be stale)
-- Active long-running background jobs (tmux sessions, batch runs) that could conflict
-- Merge conflicts or rebase in progress
-
-If any red flag triggers: display it prominently at the TOP of the briefing, before
-the normal status report.
-
-## Workflow
-
-### Phase 1: Git State
-
-Run these commands and capture output - do NOT guess or use cached data:
-
-```bash
-# Current branch and dirty state
-git status
-
-# Recent commits (default 10, or user-specified count)
-git log --oneline -<N>
-
-# Changed files since ~last session (diff stat against 10 commits back)
-git diff --stat HEAD~10 2>/dev/null || git diff --stat "$(git rev-list --max-parents=0 HEAD)"
-```
-
-**Verification gate:** All three commands must execute successfully. If `git status` shows
-an error (not a repo, corrupted index), STOP and report.
-
-### Phase 2: Environment Check
-
-```bash
-# Check for running background sessions (batch jobs, long-running tasks)
-tmux list-sessions 2>/dev/null || echo "No tmux sessions"
-
-# Language runtime, if this project uses one (adjust for the stack)
-python3 --version 2>/dev/null; node --version 2>/dev/null
-```
-
-**Verification gate:** If a session manager shows active sessions, flag them - the user may
-have a long-running job that should not be interrupted.
-
-### Phase 3: Memory Staleness
-
-Claude Code keeps optional per-project memory at `~/.claude/projects/<project>/memory/`,
-indexed by a `MEMORY.md` file. Check it only if it exists:
-
-```bash
-# Resolve this project's memory dir. Claude Code slugifies the PROJECT ROOT path
-# (resolve the root, not the cwd) by replacing EVERY non-alphanumeric character
-# with '-' - underscores and spaces included, not just '/'.
-ROOT=$(git rev-parse --show-toplevel 2>/dev/null || pwd)
-MEMORY_DIR="$HOME/.claude/projects/$(printf '%s' "$ROOT" | sed 's#[^a-zA-Z0-9]#-#g')/memory"
-if [ -f "$MEMORY_DIR/MEMORY.md" ]; then
-  ls -lt "$MEMORY_DIR"/*.md 2>/dev/null | head -10
-else
-  echo "No memory index (memory system not initialized for this project)"
-fi
-```
-
-Flag any memory file not modified in 14+ days as potentially stale. If no `MEMORY.md`
-exists, note that memory is not initialized and move on - it is optional.
-
-### Phase 4: Task State
-
-Run `TaskList` to check for any in-progress or pending tasks from a previous session.
-
-**Verification gate:** If tasks exist from a previous session, display them - they may
-represent interrupted work.
-
-### Phase 5: Compile Briefing
-
-Present a concise bullet-point briefing in this exact format:
+Keep it to one screen. State only - the user decides what to do with it.
 
 ```
 === CATCHUP BRIEFING ===
-
-[RED FLAGS - only if any detected]
-  ! Uncommitted changes: <N> files modified
-  ! Active background session: <session name> (may be running a batch job)
-
-Branch:    <current branch>
-Status:    clean | <N> modified, <N> untracked
-Last commit: <hash> <message> (<relative time>)
-
-Recent activity (last <N> commits):
-  <hash> <message>
-  <hash> <message>
-  ...
-
-Changed files (since HEAD~10):
-  <diffstat summary>
-
-Environment:
-  sessions: <N active | none>
-  runtime:  <version(s) detected>
-
-Memory:
-  <N> files, most recent: <filename> (<date>)   | or: not initialized
-  [Stale: <list of files >14 days old>]
-
-Open tasks:
-  [#<id>] <status> - <subject>
-  ...
-  [or: No open tasks]
-
+[red flags, if any]
+Branch / status / last commit
+Recent commits (N)
+Changed files since HEAD~N (diffstat)
+Environment: tmux / venv / python
+Memory: file count, most recent, stale list
+Open tasks (or: none)
 === END BRIEFING ===
 ```
-
-Keep it tight. The entire briefing should fit in one screen. No explanations, no
-suggestions, no preamble - just the state. The user decides what to do with it.

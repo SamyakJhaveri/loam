@@ -5,16 +5,7 @@
   },
   "enabledPlugins": {
     "pyright-lsp@claude-plugins-official": true,
-    "clangd-lsp@claude-plugins-official": true,
-    "ponytail@ponytail": true
-  },
-  "extraKnownMarketplaces": {
-    "ponytail": {
-      "source": {
-        "source": "github",
-        "repo": "DietrichGebert/ponytail"
-      }
-    }
+    "clangd-lsp@claude-plugins-official": true
   },
   "permissions": {
     "allow": [
@@ -85,6 +76,17 @@
           {
             "type": "command",
             "command": "FILE=$(cat | python3 -c \"import sys,json; d=json.load(sys.stdin); print(d.get('file_path',''))\" 2>/dev/null); if [ -n \"$FILE\" ] && echo \"$FILE\" | grep -qE '\\.py$'; then python3 -m ruff check --fix \"$FILE\" 2>/dev/null || true; fi"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": ".claude/hooks/stop-verify-gate.sh",
+            "timeout": 30
           }
         ]
       }
