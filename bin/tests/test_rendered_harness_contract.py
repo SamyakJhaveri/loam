@@ -188,6 +188,55 @@ class RenderedHarnessContractTest(unittest.TestCase):
         self.assertTrue(any(workflow in item for item in rendered))
         self.assertTrue(any("before" in item for item in rendered))
 
+    def test_commented_workflow_gate_is_inert(self) -> None:
+        self.build_good_fixture()
+        workflow = ".github/workflows/release.yml"
+        self.write(
+            self.source,
+            workflow,
+            "# run: bin/verify-template.sh\n"
+            "uses: softprops/action-gh-release@v2\n",
+        )
+
+        self.assertIn(
+            "FAIL [release-callers]: .github/workflows/release.yml must call "
+            "bin/verify-template.sh",
+            self.rendered_violations(),
+        )
+
+    def test_echoed_workflow_gate_is_inert(self) -> None:
+        self.build_good_fixture()
+        workflow = ".github/workflows/release.yml"
+        self.write(
+            self.source,
+            workflow,
+            "run: echo bin/verify-template.sh\n"
+            "uses: softprops/action-gh-release@v2\n",
+        )
+
+        self.assertIn(
+            "FAIL [release-callers]: .github/workflows/release.yml must call "
+            "bin/verify-template.sh",
+            self.rendered_violations(),
+        )
+
+    def test_inert_workflow_duplicate_does_not_hide_late_gate(self) -> None:
+        self.build_good_fixture()
+        workflow = ".github/workflows/release.yml"
+        self.write(
+            self.source,
+            workflow,
+            "run: echo bin/verify-template.sh\n"
+            "uses: softprops/action-gh-release@v2\n"
+            "run: bin/verify-template.sh\n",
+        )
+
+        self.assertIn(
+            "FAIL [release-callers]: .github/workflows/release.yml must run "
+            "bin/verify-template.sh before softprops/action-gh-release",
+            self.rendered_violations(),
+        )
+
     def test_release_script_runs_gate_before_version_write(self) -> None:
         self.build_good_fixture()
         release_script = "bin/release.sh"
@@ -202,6 +251,52 @@ class RenderedHarnessContractTest(unittest.TestCase):
 
         self.assertTrue(any(release_script in item for item in rendered))
         self.assertTrue(any("before" in item for item in rendered))
+
+    def test_commented_release_script_gate_is_inert(self) -> None:
+        self.build_good_fixture()
+        self.write(
+            self.source,
+            "bin/release.sh",
+            '# bash "$SELF_DIR/verify-template.sh"\n'
+            'echo "$VERSION" > VERSION\n',
+        )
+
+        self.assertIn(
+            'FAIL [release-callers]: bin/release.sh must call bash '
+            '"$SELF_DIR/verify-template.sh"',
+            self.rendered_violations(),
+        )
+
+    def test_echoed_release_script_gate_is_inert(self) -> None:
+        self.build_good_fixture()
+        self.write(
+            self.source,
+            "bin/release.sh",
+            "echo 'bash \"$SELF_DIR/verify-template.sh\"'\n"
+            'echo "$VERSION" > VERSION\n',
+        )
+
+        self.assertIn(
+            'FAIL [release-callers]: bin/release.sh must call bash '
+            '"$SELF_DIR/verify-template.sh"',
+            self.rendered_violations(),
+        )
+
+    def test_inert_release_script_duplicate_does_not_hide_late_gate(self) -> None:
+        self.build_good_fixture()
+        self.write(
+            self.source,
+            "bin/release.sh",
+            "echo 'bash \"$SELF_DIR/verify-template.sh\"'\n"
+            'echo "$VERSION" > VERSION\n'
+            'bash "$SELF_DIR/verify-template.sh"\n',
+        )
+
+        self.assertIn(
+            'FAIL [release-callers]: bin/release.sh must run bash '
+            '"$SELF_DIR/verify-template.sh" before echo "$VERSION" > VERSION',
+            self.rendered_violations(),
+        )
 
     def test_release_caller_failures_accumulate(self) -> None:
         self.build_good_fixture()
@@ -250,8 +345,28 @@ class RenderedHarnessContractTest(unittest.TestCase):
             )
 
         self.assertEqual(1, exit_code)
-        self.assertIn("FAIL [topology]", output.getvalue())
-        self.assertIn(missing, output.getvalue())
+        self.assertEqual(
+            "FAIL [topology]: missing required rendered path: "
+            ".codex/config.toml\n",
+            output.getvalue(),
+        )
+
+    def test_cli_returns_zero_for_clean_fixture(self) -> None:
+        self.build_good_fixture()
+        output = io.StringIO()
+
+        with contextlib.redirect_stdout(output):
+            exit_code = contract.main(
+                [
+                    "--source-root",
+                    str(self.source),
+                    "--rendered-root",
+                    str(self.rendered),
+                ]
+            )
+
+        self.assertEqual(0, exit_code)
+        self.assertEqual("", output.getvalue())
 
 
 if __name__ == "__main__":

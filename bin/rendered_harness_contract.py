@@ -6,6 +6,7 @@ from __future__ import annotations
 import argparse
 import dataclasses
 import pathlib
+import shlex
 from collections.abc import Sequence
 
 
@@ -94,23 +95,68 @@ def _read_text(path: pathlib.Path) -> str | None:
         return None
 
 
-def _check_marker_order(
-    source_root: pathlib.Path,
+def _shell_words(command: str) -> tuple[str, ...]:
+    try:
+        return tuple(shlex.split(command, comments=True, posix=True))
+    except ValueError:
+        return ()
+
+
+def _shell_command_position(content: str | None, marker: str) -> int:
+    if content is None:
+        return -1
+    marker_words = _shell_words(marker)
+    for line_number, line in enumerate(content.splitlines()):
+        words = _shell_words(line)
+        if words[: len(marker_words)] == marker_words:
+            return line_number
+    return -1
+
+
+def _workflow_step_value(line: str, key: str) -> str | None:
+    stripped = line.lstrip()
+    if stripped.startswith("#"):
+        return None
+    if stripped.startswith("- "):
+        stripped = stripped[2:].lstrip()
+    prefix = f"{key}:"
+    if not stripped.startswith(prefix):
+        return None
+    return stripped[len(prefix) :].strip()
+
+
+def _workflow_run_position(content: str | None, marker: str) -> int:
+    if content is None:
+        return -1
+    marker_words = _shell_words(marker)
+    for line_number, line in enumerate(content.splitlines()):
+        value = _workflow_step_value(line, "run")
+        if value is None:
+            continue
+        words = _shell_words(value)
+        if words[: len(marker_words)] == marker_words:
+            return line_number
+    return -1
+
+
+def _workflow_uses_position(content: str | None, marker: str) -> int:
+    if content is None:
+        return -1
+    for line_number, line in enumerate(content.splitlines()):
+        value = _workflow_step_value(line, "uses")
+        if value == marker or (value is not None and value.startswith(f"{marker}@")):
+            return line_number
+    return -1
+
+
+def _check_marker_positions(
     relative_path: str,
     first_marker: str,
     second_marker: str | None,
+    first_position: int,
+    second_position: int | None,
     violations: list[Violation],
 ) -> None:
-    content = _read_text(source_root / relative_path)
-    first_position = -1 if content is None else content.find(first_marker)
-    second_position = (
-        None
-        if second_marker is None
-        else -1
-        if content is None
-        else content.find(second_marker)
-    )
-
     if first_position < 0:
         detail = f"{relative_path} must call {first_marker}"
     elif second_marker is not None and second_position is not None:
@@ -132,25 +178,35 @@ def _check_release_callers(
     source_root: pathlib.Path,
     violations: list[Violation],
 ) -> None:
-    _check_marker_order(
-        source_root,
+    test_workflow = _read_text(source_root / ".github/workflows/test.yml")
+    _check_marker_positions(
         ".github/workflows/test.yml",
         "bin/verify-template.sh",
         None,
+        _workflow_run_position(test_workflow, "bin/verify-template.sh"),
+        None,
         violations,
     )
-    _check_marker_order(
-        source_root,
+
+    release_workflow = _read_text(source_root / ".github/workflows/release.yml")
+    _check_marker_positions(
         ".github/workflows/release.yml",
         "bin/verify-template.sh",
         "softprops/action-gh-release",
+        _workflow_run_position(release_workflow, "bin/verify-template.sh"),
+        _workflow_uses_position(release_workflow, "softprops/action-gh-release"),
         violations,
     )
-    _check_marker_order(
-        source_root,
+
+    release_script = _read_text(source_root / "bin/release.sh")
+    _check_marker_positions(
         "bin/release.sh",
         'bash "$SELF_DIR/verify-template.sh"',
         'echo "$VERSION" > VERSION',
+        _shell_command_position(
+            release_script, 'bash "$SELF_DIR/verify-template.sh"'
+        ),
+        _shell_command_position(release_script, 'echo "$VERSION" > VERSION'),
         violations,
     )
 
