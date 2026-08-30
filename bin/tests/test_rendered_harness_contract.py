@@ -81,13 +81,21 @@ class RenderedHarnessContractTest(unittest.TestCase):
 
     def build_good_fixture(self) -> None:
         source_contents = {
-            ".github/workflows/test.yml": "run: bin/verify-template.sh\n",
+            ".github/workflows/test.yml": (
+                "jobs:\n"
+                "  verify:\n"
+                "    steps:\n"
+                "      - run: bin/verify-template.sh\n"
+            ),
             ".github/workflows/release.yml": (
-                "run: bin/verify-template.sh\n"
-                "uses: softprops/action-gh-release@v2\n"
+                "jobs:\n"
+                "  release:\n"
+                "    steps:\n"
+                "      - run: bin/verify-template.sh\n"
+                "      - uses: softprops/action-gh-release@v2\n"
             ),
             "bin/release.sh": (
-                'bash "$SELF_DIR/verify-template.sh"\n'
+                'bash "$SELF_DIR/verify-template.sh" || die "verification failed"\n'
                 'echo "$VERSION" > VERSION\n'
             ),
         }
@@ -156,7 +164,10 @@ class RenderedHarnessContractTest(unittest.TestCase):
         self.write(
             self.source,
             ".github/workflows/test.yml",
-            "run: a-different-command\n",
+            "jobs:\n"
+            "  verify:\n"
+            "    steps:\n"
+            "      - run: a-different-command\n",
         )
 
         violations = contract.verify_contract(self.source, self.rendered)
@@ -166,7 +177,14 @@ class RenderedHarnessContractTest(unittest.TestCase):
     def test_pull_request_workflow_calls_public_gate(self) -> None:
         self.build_good_fixture()
         workflow = ".github/workflows/test.yml"
-        self.write(self.source, workflow, "run: a-different-command\n")
+        self.write(
+            self.source,
+            workflow,
+            "jobs:\n"
+            "  verify:\n"
+            "    steps:\n"
+            "      - run: a-different-command\n",
+        )
 
         rendered = self.rendered_violations()
 
@@ -179,8 +197,11 @@ class RenderedHarnessContractTest(unittest.TestCase):
         self.write(
             self.source,
             workflow,
-            "uses: softprops/action-gh-release@v2\n"
-            "run: bin/verify-template.sh\n",
+            "jobs:\n"
+            "  release:\n"
+            "    steps:\n"
+            "      - uses: softprops/action-gh-release@v2\n"
+            "      - run: bin/verify-template.sh\n",
         )
 
         rendered = self.rendered_violations()
@@ -194,8 +215,11 @@ class RenderedHarnessContractTest(unittest.TestCase):
         self.write(
             self.source,
             workflow,
-            "# run: bin/verify-template.sh\n"
-            "uses: softprops/action-gh-release@v2\n",
+            "jobs:\n"
+            "  release:\n"
+            "    steps:\n"
+            "      # - run: bin/verify-template.sh\n"
+            "      - uses: softprops/action-gh-release@v2\n",
         )
 
         self.assertIn(
@@ -210,8 +234,11 @@ class RenderedHarnessContractTest(unittest.TestCase):
         self.write(
             self.source,
             workflow,
-            "run: echo bin/verify-template.sh\n"
-            "uses: softprops/action-gh-release@v2\n",
+            "jobs:\n"
+            "  release:\n"
+            "    steps:\n"
+            "      - run: echo bin/verify-template.sh\n"
+            "      - uses: softprops/action-gh-release@v2\n",
         )
 
         self.assertIn(
@@ -226,14 +253,73 @@ class RenderedHarnessContractTest(unittest.TestCase):
         self.write(
             self.source,
             workflow,
-            "run: echo bin/verify-template.sh\n"
-            "uses: softprops/action-gh-release@v2\n"
-            "run: bin/verify-template.sh\n",
+            "jobs:\n"
+            "  release:\n"
+            "    steps:\n"
+            "      - run: echo bin/verify-template.sh\n"
+            "      - uses: softprops/action-gh-release@v2\n"
+            "      - run: bin/verify-template.sh\n",
         )
 
         self.assertIn(
             "FAIL [release-callers]: .github/workflows/release.yml must run "
             "bin/verify-template.sh before softprops/action-gh-release",
+            self.rendered_violations(),
+        )
+
+    def test_workflow_env_run_is_inert(self) -> None:
+        self.build_good_fixture()
+        self.write(
+            self.source,
+            ".github/workflows/release.yml",
+            "jobs:\n"
+            "  release:\n"
+            "    steps:\n"
+            "      - name: Inert environment value\n"
+            "        env:\n"
+            "          run: bin/verify-template.sh\n"
+            "      - uses: softprops/action-gh-release@v2\n"
+            "      - run: bin/verify-template.sh\n",
+        )
+
+        self.assertIn(
+            "FAIL [release-callers]: .github/workflows/release.yml must run "
+            "bin/verify-template.sh before softprops/action-gh-release",
+            self.rendered_violations(),
+        )
+
+    def test_workflow_env_uses_is_inert(self) -> None:
+        self.build_good_fixture()
+        self.write(
+            self.source,
+            ".github/workflows/release.yml",
+            "jobs:\n"
+            "  release:\n"
+            "    steps:\n"
+            "      - name: Inert environment value\n"
+            "        env:\n"
+            "          uses: softprops/action-gh-release@v2\n"
+            "      - run: bin/verify-template.sh\n"
+            "      - uses: softprops/action-gh-release@v2\n",
+        )
+
+        self.assertEqual((), contract.verify_contract(self.source, self.rendered))
+
+    def test_workflow_gate_cannot_suppress_failure(self) -> None:
+        self.build_good_fixture()
+        self.write(
+            self.source,
+            ".github/workflows/release.yml",
+            "jobs:\n"
+            "  release:\n"
+            "    steps:\n"
+            "      - run: bin/verify-template.sh || true\n"
+            "      - uses: softprops/action-gh-release@v2\n",
+        )
+
+        self.assertIn(
+            "FAIL [release-callers]: .github/workflows/release.yml must call "
+            "bin/verify-template.sh",
             self.rendered_violations(),
         )
 
@@ -244,7 +330,7 @@ class RenderedHarnessContractTest(unittest.TestCase):
             self.source,
             release_script,
             'echo "$VERSION" > VERSION\n'
-            'bash "$SELF_DIR/verify-template.sh"\n',
+            'bash "$SELF_DIR/verify-template.sh" || die "verification failed"\n',
         )
 
         rendered = self.rendered_violations()
@@ -289,7 +375,43 @@ class RenderedHarnessContractTest(unittest.TestCase):
             "bin/release.sh",
             "echo 'bash \"$SELF_DIR/verify-template.sh\"'\n"
             'echo "$VERSION" > VERSION\n'
-            'bash "$SELF_DIR/verify-template.sh"\n',
+            'bash "$SELF_DIR/verify-template.sh" || die "verification failed"\n',
+        )
+
+        self.assertIn(
+            'FAIL [release-callers]: bin/release.sh must run bash '
+            '"$SELF_DIR/verify-template.sh" before echo "$VERSION" > VERSION',
+            self.rendered_violations(),
+        )
+
+    def test_release_script_gate_cannot_suppress_failure(self) -> None:
+        self.build_good_fixture()
+        self.write(
+            self.source,
+            "bin/release.sh",
+            'bash "$SELF_DIR/verify-template.sh" || true\n'
+            'echo "$VERSION" > VERSION\n',
+        )
+
+        self.assertIn(
+            'FAIL [release-callers]: bin/release.sh must call bash '
+            '"$SELF_DIR/verify-template.sh"',
+            self.rendered_violations(),
+        )
+
+    def test_heredoc_gate_markers_are_inert(self) -> None:
+        self.build_good_fixture()
+        self.write(
+            self.source,
+            "bin/release.sh",
+            "cat <<UNQUOTED\n"
+            'bash "$SELF_DIR/verify-template.sh"\n'
+            "UNQUOTED\n"
+            "cat <<'QUOTED'\n"
+            'bash "$SELF_DIR/verify-template.sh"\n'
+            "QUOTED\n"
+            'echo "$VERSION" > VERSION\n'
+            'bash "$SELF_DIR/verify-template.sh" || die "verification failed"\n',
         )
 
         self.assertIn(

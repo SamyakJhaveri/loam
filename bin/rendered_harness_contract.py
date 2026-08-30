@@ -102,49 +102,132 @@ def _shell_words(command: str) -> tuple[str, ...]:
         return ()
 
 
-def _shell_command_position(content: str | None, marker: str) -> int:
+def _shell_tokens(command: str) -> tuple[str, ...]:
+    try:
+        lexer = shlex.shlex(command, posix=True, punctuation_chars=";&|<>")
+        return tuple(lexer)
+    except ValueError:
+        return ()
+
+
+def _heredoc_delimiters(command: str) -> tuple[tuple[str, bool], ...]:
+    tokens = _shell_tokens(command)
+    delimiters: list[tuple[str, bool]] = []
+    for index, token in enumerate(tokens[:-1]):
+        if token != "<<":
+            continue
+        delimiter = tokens[index + 1]
+        strip_tabs = delimiter.startswith("-")
+        if strip_tabs:
+            delimiter = delimiter[1:]
+        if delimiter:
+            delimiters.append((delimiter, strip_tabs))
+    return tuple(delimiters)
+
+
+def _active_shell_lines(content: str | None) -> tuple[tuple[int, str], ...]:
     if content is None:
-        return -1
-    marker_words = _shell_words(marker)
+        return ()
+    active_lines: list[tuple[int, str]] = []
+    pending_heredocs: list[tuple[str, bool]] = []
     for line_number, line in enumerate(content.splitlines()):
+        if pending_heredocs:
+            delimiter, strip_tabs = pending_heredocs[0]
+            candidate = line.lstrip("\t") if strip_tabs else line
+            if candidate == delimiter:
+                pending_heredocs.pop(0)
+            continue
+        active_lines.append((line_number, line))
+        pending_heredocs.extend(_heredoc_delimiters(line))
+    return tuple(active_lines)
+
+
+def _shell_command_position(content: str | None, marker: str) -> int:
+    marker_words = _shell_words(marker)
+    for line_number, line in _active_shell_lines(content):
         words = _shell_words(line)
         if words[: len(marker_words)] == marker_words:
             return line_number
     return -1
 
 
-def _workflow_step_value(line: str, key: str) -> str | None:
-    stripped = line.lstrip()
-    if stripped.startswith("#"):
+def _release_gate_position(content: str | None, marker: str) -> int:
+    marker_words = _shell_words(marker)
+    for line_number, line in _active_shell_lines(content):
+        words = _shell_words(line)
+        if (
+            words[: len(marker_words)] == marker_words
+            and words[len(marker_words) : len(marker_words) + 2] == ("||", "die")
+            and len(words) == len(marker_words) + 3
+        ):
+            return line_number
+    return -1
+
+
+def _mapping_value(text: str, key: str) -> str | None:
+    if text.startswith("#"):
         return None
-    if stripped.startswith("- "):
-        stripped = stripped[2:].lstrip()
     prefix = f"{key}:"
-    if not stripped.startswith(prefix):
+    if not text.startswith(prefix):
         return None
-    return stripped[len(prefix) :].strip()
+    return text[len(prefix) :].strip()
+
+
+def _workflow_step_values(
+    content: str | None,
+    key: str,
+) -> tuple[tuple[int, str], ...]:
+    if content is None:
+        return ()
+    values: list[tuple[int, str]] = []
+    steps_indent: int | None = None
+    list_indent: int | None = None
+    for line_number, line in enumerate(content.splitlines()):
+        stripped = line.lstrip(" ")
+        if not stripped or stripped.startswith("#"):
+            continue
+        indent = len(line) - len(stripped)
+
+        if steps_indent is None:
+            if stripped == "steps:" or stripped.startswith("steps: #"):
+                steps_indent = indent
+            continue
+
+        if indent <= steps_indent:
+            steps_indent = None
+            list_indent = None
+            if stripped == "steps:" or stripped.startswith("steps: #"):
+                steps_indent = indent
+            continue
+
+        if list_indent is None:
+            if not stripped.startswith("- "):
+                continue
+            list_indent = indent
+
+        if indent == list_indent and stripped.startswith("- "):
+            value = _mapping_value(stripped[2:].lstrip(), key)
+        elif indent == list_indent + 2:
+            value = _mapping_value(stripped, key)
+        else:
+            value = None
+        if value is not None:
+            values.append((line_number, value))
+    return tuple(values)
 
 
 def _workflow_run_position(content: str | None, marker: str) -> int:
-    if content is None:
-        return -1
     marker_words = _shell_words(marker)
-    for line_number, line in enumerate(content.splitlines()):
-        value = _workflow_step_value(line, "run")
-        if value is None:
-            continue
+    for line_number, value in _workflow_step_values(content, "run"):
         words = _shell_words(value)
-        if words[: len(marker_words)] == marker_words:
+        if words == marker_words:
             return line_number
     return -1
 
 
 def _workflow_uses_position(content: str | None, marker: str) -> int:
-    if content is None:
-        return -1
-    for line_number, line in enumerate(content.splitlines()):
-        value = _workflow_step_value(line, "uses")
-        if value == marker or (value is not None and value.startswith(f"{marker}@")):
+    for line_number, value in _workflow_step_values(content, "uses"):
+        if value == marker or value.startswith(f"{marker}@"):
             return line_number
     return -1
 
@@ -203,7 +286,7 @@ def _check_release_callers(
         "bin/release.sh",
         'bash "$SELF_DIR/verify-template.sh"',
         'echo "$VERSION" > VERSION',
-        _shell_command_position(
+        _release_gate_position(
             release_script, 'bash "$SELF_DIR/verify-template.sh"'
         ),
         _shell_command_position(release_script, 'echo "$VERSION" > VERSION'),
