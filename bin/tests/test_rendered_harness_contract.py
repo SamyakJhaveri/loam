@@ -1228,6 +1228,105 @@ class RenderedHarnessContractTest(unittest.TestCase):
         self.assertEqual("", process.stdout)
         self.assertTrue(process.stderr.startswith("pre-tool-policy: "))
 
+    def test_policy_process_denies_force_push_after_reserved_prefixes(self) -> None:
+        commands = (
+            "! git push --force origin main",
+            "if git push --force origin main; then :; fi",
+            "if false; then :; elif git push --force origin main; then :; fi",
+            "while git push --force origin main; do break; done",
+            "until git push --force origin main; do break; done",
+            "if true; then git push --force origin main; fi",
+            "while true; do git push --force origin main; break; done",
+            "if false; then :; else git push --force origin main; fi",
+            "time git push --force origin main",
+            "time -p git push --force origin main",
+            "time -p -- git push --force origin main",
+        )
+        for command in commands:
+            with self.subTest(command=command):
+                process = self.run_policy(self.policy_payload(command))
+
+                self.assertEqual(0, process.returncode, process.stderr)
+                self.assertNotEqual("", process.stdout)
+                self.assertEqual(POLICY_DENIAL, json.loads(process.stdout))
+                self.assertEqual("", process.stderr)
+
+    def test_policy_process_blocks_invalid_shell_grammar(self) -> None:
+        commands = (
+            "echo safe &&& echo ok",
+            "echo safe ||| echo ok",
+            "echo safe |",
+            "if true; then echo safe",
+            "while true; do echo safe",
+            "(echo safe",
+            "case value in value) echo safe",
+        )
+        for command in commands:
+            with self.subTest(command=command):
+                process = self.run_policy(self.policy_payload(command))
+
+                self.assertEqual(2, process.returncode)
+                self.assertEqual("", process.stdout)
+                self.assertTrue(process.stderr.startswith("pre-tool-policy: "))
+                self.assertLessEqual(len(process.stderr.strip()), 160)
+
+    def test_policy_process_allows_terminal_push_help(self) -> None:
+        for command in (
+            "git push -h --force origin main",
+            "git push --help --force origin main",
+        ):
+            with self.subTest(command=command):
+                process = self.run_policy(self.policy_payload(command))
+
+                self.assertEqual(0, process.returncode, process.stderr)
+                self.assertEqual("", process.stdout)
+                self.assertEqual("", process.stderr)
+
+    def test_policy_process_allows_multiline_function_definitions(self) -> None:
+        functions = (
+            "deploy() {\n  git push --force origin main\n}\n",
+            "deploy()\n{\n  git push --force origin main\n}\n",
+            "function deploy {\n  git push --force origin main\n}\n",
+            "function deploy\n{\n  git push --force origin main\n}\n",
+            (
+                "deploy() {\n"
+                "  printf '%s' '}'\n"
+                "  git push --force origin main\n"
+                "}\n"
+            ),
+        )
+        for command in functions:
+            with self.subTest(command=command):
+                process = self.run_policy(self.policy_payload(command))
+
+                self.assertEqual(0, process.returncode, process.stderr)
+                self.assertEqual("", process.stdout)
+                self.assertEqual("", process.stderr)
+
+    def test_policy_process_denies_push_after_function_definition(self) -> None:
+        commands = (
+            (
+                "deploy() {\n"
+                "  git push --force origin main\n"
+                "}\n"
+                "git push --force origin main\n"
+            ),
+            (
+                "deploy() {\n"
+                "  printf '%s' '{'\n"
+                "}\n"
+                "git push --force origin main\n"
+            ),
+        )
+        for command in commands:
+            with self.subTest(command=command):
+                process = self.run_policy(self.policy_payload(command))
+
+                self.assertEqual(0, process.returncode, process.stderr)
+                self.assertNotEqual("", process.stdout)
+                self.assertEqual(POLICY_DENIAL, json.loads(process.stdout))
+                self.assertEqual("", process.stderr)
+
     def test_codex_hook_wiring_is_exact_and_synchronous(self) -> None:
         hooks_path = BIN_DIR.parent / "seed/.codex/hooks.json"
         self.assertTrue(hooks_path.is_file(), f"missing {hooks_path}")

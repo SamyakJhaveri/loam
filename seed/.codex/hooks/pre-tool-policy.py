@@ -6,6 +6,7 @@ from __future__ import annotations
 import json
 import re
 import shlex
+import subprocess
 import sys
 
 
@@ -25,6 +26,10 @@ _PROTECTED_PUNCTUATION = {
     "|": "\ue002",
     "\n": "\ue003",
     "#": "\ue004",
+    "{": "\ue005",
+    "}": "\ue006",
+    "(": "\ue007",
+    ")": "\ue008",
 }
 _RESTORED_PUNCTUATION = {
     protected: literal for literal, protected in _PROTECTED_PUNCTUATION.items()
@@ -76,6 +81,7 @@ _PUSH_LONG_OPTIONS = {
     "--force",
     "--force-if-includes",
     "--force-with-lease",
+    "--help",
     "--ipv4",
     "--ipv6",
     "--mirror",
@@ -221,12 +227,68 @@ def _segments(command: str) -> tuple[tuple[str, ...], ...]:
                 segments.append(tuple(current))
                 current = []
         else:
-            current.append(
-                "".join(_RESTORED_PUNCTUATION.get(char, char) for char in token)
-            )
+            current.append(token)
     if current:
         segments.append(tuple(current))
-    return tuple(segments)
+    return tuple(
+        tuple(
+            "".join(_RESTORED_PUNCTUATION.get(char, char) for char in token)
+            for token in segment
+        )
+        for segment in _top_level_segments(tuple(segments))
+    )
+
+
+def _function_body_start(segment: tuple[str, ...]) -> int | None:
+    if (
+        len(segment) >= 4
+        and segment[1:4] == ("(", ")", "{")
+    ):
+        return 3
+    if len(segment) < 3 or segment[0] != "function":
+        return None
+    if segment[2] == "{":
+        return 2
+    if len(segment) >= 5 and segment[2:5] == ("(", ")", "{"):
+        return 4
+    return None
+
+
+def _function_header_waits_for_body(segment: tuple[str, ...]) -> bool:
+    return (
+        len(segment) == 3
+        and segment[1:] == ("(", ")")
+    ) or (
+        segment[:1] == ("function",)
+        and (len(segment) == 2 or segment[2:] == ("(", ")"))
+    )
+
+
+def _top_level_segments(
+    segments: tuple[tuple[str, ...], ...],
+) -> tuple[tuple[str, ...], ...]:
+    top_level: list[tuple[str, ...]] = []
+    function_depth = 0
+    waiting_for_body = False
+    for segment in segments:
+        if function_depth:
+            function_depth += segment.count("{") - segment.count("}")
+            function_depth = max(function_depth, 0)
+            continue
+        if waiting_for_body:
+            waiting_for_body = False
+            function_depth = max(segment.count("{") - segment.count("}"), 0)
+            continue
+        body_start = _function_body_start(segment)
+        if body_start is not None:
+            body = segment[body_start:]
+            function_depth = max(body.count("{") - body.count("}"), 0)
+            continue
+        if _function_header_waits_for_body(segment):
+            waiting_for_body = True
+            continue
+        top_level.append(segment)
+    return tuple(top_level)
 
 
 def _strip_assignments(words: list[str]) -> None:
@@ -234,10 +296,21 @@ def _strip_assignments(words: list[str]) -> None:
         words.pop(0)
 
 
-def _unwrap(words: tuple[str, ...]) -> list[str]:
+def _strip_literal_prefixes_and_wrappers(words: tuple[str, ...]) -> list[str]:
     remaining = list(words)
-    while remaining and remaining[0] in {"then", "do", "else"}:
-        remaining.pop(0)
+    prefixes = {"!", "if", "elif", "while", "until", "then", "do", "else"}
+    while remaining:
+        if remaining[0] in prefixes:
+            remaining.pop(0)
+            continue
+        if remaining[0] == "time":
+            remaining.pop(0)
+            if remaining and remaining[0] == "-p":
+                remaining.pop(0)
+            if remaining and remaining[0] == "--":
+                remaining.pop(0)
+            continue
+        break
     _strip_assignments(remaining)
 
     if remaining and remaining[0] == "command":
@@ -271,7 +344,7 @@ def _unwrap(words: tuple[str, ...]) -> list[str]:
 
 
 def _push_arguments(words: tuple[str, ...]) -> tuple[str, ...] | None:
-    remaining = _unwrap(words)
+    remaining = _strip_literal_prefixes_and_wrappers(words)
     if not remaining or remaining.pop(0) != "git":
         return None
 
@@ -341,6 +414,8 @@ def _is_force_push(words: tuple[str, ...]) -> bool:
                 index += 1
                 continue
             canonical, assigned = option
+            if canonical == "--help":
+                return False
             if canonical == "--dry-run":
                 dry_run = True
             elif canonical == "--no-dry-run":
@@ -367,6 +442,8 @@ def _is_force_push(words: tuple[str, ...]) -> bool:
         cluster_index = 0
         while cluster_index < len(cluster):
             option = cluster[cluster_index]
+            if option == "h":
+                return False
             if option == "f":
                 force = True
             elif option == "n":
@@ -402,6 +479,20 @@ def main() -> int:
     command = tool_input.get("command")
     if not isinstance(command, str):
         return _fail("tool_input.command must be a string")
+
+    try:
+        syntax = subprocess.run(
+            ["bash", "-n", "-s"],
+            input=command,
+            text=True,
+            capture_output=True,
+            timeout=10,
+            check=False,
+        )
+    except (OSError, subprocess.TimeoutExpired):
+        return _fail("tool_input.command syntax could not be checked")
+    if syntax.returncode != 0:
+        return _fail("tool_input.command has invalid Bash syntax")
 
     try:
         segments = _segments(command)
