@@ -138,3 +138,11 @@ Premise check: "Codex only reads AGENTS.md" is FALSE. Codex today consumes .code
 5. PONYTAIL: remove from shipped settings.json? (recommend yes - subagent-hostile injection [GD])
 6. STOP GATE: re-wire rewrite-stop-verify-gate.sh (slimmed) or leave turn-end unverified?
 7. AGENT-SYNC ENGINE: keep the file-sync hub machinery, or let the plugin marketplace BE the distribution channel?
+
+## Rebuild executed (2026-08-29, session close-out)
+
+All six work-queue steps of docs/specs/rebuild-session-brief.md are done.
+Structure design + two blind reviews: docs/specs/rebuild-structure-design.md (verdict recorded inside).
+Step 2 merge: one blind plan-reviewer agent (sam-cc-setup) + /plan-review + /tech-selection; blind-reviewed (refagents-merge-review.md).
+Steps 3-5: one prose home via @AGENTS.md import; catchup shared via .agents/skills + symlink; codex layer fixed; MCPs cut; bin/ repopulated; verify-template rewritten and PASSING.
+Step 6: bundles slimmed per slim-audit-bundles.md; CI repointed; docs rewritten; zero reassess-/rewrite- prefixes remain.
