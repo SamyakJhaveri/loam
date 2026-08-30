@@ -801,9 +801,9 @@ class RenderedHarnessContractTest(unittest.TestCase):
         self.write(
             ruff_package,
             "__main__.py",
-            "import os, pathlib, sys\n"
+            "import json, os, pathlib, sys\n"
             "pathlib.Path(os.environ['RUFF_CAPTURE']).write_text("
-            "' '.join(sys.argv[1:]), encoding='utf-8')\n"
+            "json.dumps(sys.argv[1:]), encoding='utf-8')\n"
             "raise SystemExit(int(os.environ.get('RUFF_FAKE_EXIT', '0')))\n",
         )
         capture = pathlib.Path(self.temp_dir.name) / "ruff-capture"
@@ -831,7 +831,10 @@ class RenderedHarnessContractTest(unittest.TestCase):
         process, capture = self.run_ruff_hook(payload)
 
         self.assertEqual(0, process.returncode, process.stderr)
-        self.assertEqual("check --fix -- src/example.py", capture.read_text())
+        self.assertEqual(
+            ["check", "--fix", "--", "src/example.py"],
+            json.loads(capture.read_text()),
+        )
 
     def test_ruff_hook_ignores_irrelevant_payloads(self) -> None:
         for label, payload in (
@@ -852,7 +855,10 @@ class RenderedHarnessContractTest(unittest.TestCase):
         process, capture = self.run_ruff_hook(payload, fake_exit=23)
 
         self.assertEqual(0, process.returncode, process.stderr)
-        self.assertEqual("check --fix -- src/example.py", capture.read_text())
+        self.assertEqual(
+            ["check", "--fix", "--", "src/example.py"],
+            json.loads(capture.read_text()),
+        )
 
     def test_every_required_prose_reference_is_enforced(self) -> None:
         self.build_good_fixture()
