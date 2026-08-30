@@ -66,6 +66,24 @@ FAIL [contract-area]: explanation
 
 It exits nonzero when any failure exists.
 
+The checker exposes one Python interface:
+
+```python
+@dataclass(frozen=True, order=True)
+class Violation:
+    area: str
+    detail: str
+
+def verify_contract(
+    source_root: Path,
+    rendered_root: Path,
+) -> tuple[Violation, ...]:
+    ...
+```
+
+All area-specific functions remain private. The command-line entry point adapts
+this interface to printed failures and an exit status.
+
 ## Contract areas
 
 ### Copier topology
@@ -152,9 +170,12 @@ non-blocking, which preserves the current behavior.
 The generated project gains `.codex/hooks.json` and
 `.codex/hooks/pre-tool-policy.py`.
 
-The hook runs on `PreToolUse` with the exact `Bash` matcher. It reads the command
-from `tool_input.command`. It denies a recognized force push with the current
-Codex hook result:
+The hook runs on `PreToolUse` with the anchored `^Bash$` matcher. Its command is
+`python3 "$(git rev-parse --show-toplevel)/.codex/hooks/pre-tool-policy.py"`.
+Codex runs hook commands from the session directory, so a relative `.codex`
+path is not valid wiring when a session starts in a repository subdirectory.
+The hook reads the shell command from `tool_input.command`. It denies a
+recognized force push with the current Codex hook result:
 
 ```json
 {
@@ -166,16 +187,23 @@ Codex hook result:
 }
 ```
 
-The parser recognizes literal Git commands, Git global options, `command`, and
-`env` with literal assignments. It examines each literal command segment split
-by `;`, `&&`, `||`, or `|`. It denies long force flags, assigned long force
-flags, short `-f`, clustered short flags containing `f`, and plus-prefixed
-refspecs. It does not deny a normal push.
+The parser recognizes literal Git commands, Git global options, bare assignment
+prefixes, `command`, and `env` with literal assignments. It removes shell line
+continuations before lexing. It examines each literal command segment split by
+`;`, `&`, `&&`, `||`, `|`, or an unquoted newline. Shell comments are enabled,
+so text after an unquoted `#` does not create a false block. It denies long
+force flags, assigned long force flags, short `-f`, clustered short flags
+containing `f`, and plus-prefixed refspecs. It does not deny a normal push.
 
 The `Bash` matcher keeps unrelated tools outside this hook. Invalid JSON, a
 non-object envelope, a missing `tool_input`, or a non-string command exits `2`
-with a blocking reason. A valid, unrelated shell command exits `0` without a
-decision.
+with a blocking reason. A wrong or missing `hook_event_name` or `tool_name` also
+exits `2`. Unparseable shell text exits `2`. A valid empty or unrelated shell
+command exits `0` without a decision. Extra envelope fields are accepted for
+forward compatibility.
+
+The hook must remain synchronous. The contract rejects `async: true`, because a
+background hook cannot block the triggering command.
 
 This local hook guarantees only the listed literal command forms. Git aliases,
 shell functions, variable-expanded commands, nested shells, and command
@@ -220,10 +248,12 @@ source copies.
 
 ## Native supplemental checks
 
-When Claude Code is installed, the wrapper validates the main Claude directory,
-the shared skill directory, each plugin root, and supported `agents`, `skills`,
-and `commands` component directories when present. It does not pass a `hooks`
-directory to `claude plugin validate`, because that command requires a plugin or
+When Claude Code is installed, the wrapper validates the main Claude directory
+without strict mode because the validator does not follow its deliberate
+catchup symlink. It validates the real shared skill directory, marketplace,
+each plugin root, and supported `agents`, `skills`, and `commands` component
+directories in strict mode when present. It does not pass a `hooks` directory
+to `claude plugin validate`, because that command requires a plugin or
 marketplace manifest. The checker reads local plugin roots from
 `cultivation/marketplace/.claude-plugin/marketplace.json` and validates hook
 JSON for each declared local plugin. It does not require any plugin by name.
@@ -284,10 +314,26 @@ from more than one area.
 
 The force-push hook receives a table of allowed and denied command strings. The
 table covers direct flags, assigned flags, clustered short flags, plus-prefixed
-refspecs, Git global options, supported wrappers, quoted arguments, literal
-command chains, and malformed hook envelopes. Separate tests record that Git
-aliases, shell functions, expansions, nested shells, and command substitution
-are outside the local guarantee.
+refspecs, Git global options, bare assignments, supported wrappers, quoted
+arguments, all supported segment separators, line continuations, shell
+comments, and malformed hook envelopes. Separate tests record that Git aliases,
+shell functions, expansions, nested shells, and command substitution are
+outside the local guarantee.
+
+Supported wrapper forms include `command --`, `env` with assignments, and
+`/usr/bin/env -i` with assignments. Git global options are classified by whether
+they consume a following value. Concatenated quoted tokens such as `g''it` and
+`p''ush` must be recognized. Quoted or commented force-push text that is only an
+argument to another command must not be blocked.
+
+Tests execute the hook as a process. They do not import parser functions. This
+proves the interpreter command, envelope handling, exit status, standard output,
+standard error, and denial JSON through the same seam Codex uses.
+
+A wiring test initializes a temporary Git repository, places the hook under its
+`.codex` directory, changes into a nested directory, and executes the exact
+configured hook command. The test proves that both an allowed command and a
+denied force push reach the script from that nested working directory.
 
 The Ruff hook receives realistic Claude hook JSON. A temporary executable on
 `PATH` records whether Ruff was invoked. The test does not require Ruff itself.
