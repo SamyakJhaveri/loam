@@ -9,6 +9,7 @@ import stat
 import subprocess
 import sys
 import tempfile
+import textwrap
 import unittest
 
 
@@ -138,6 +139,79 @@ GOOD_RUFF_ADAPTER = (
     "\n' 2>/dev/null\n"
 )
 
+POLICY_SCRIPT = BIN_DIR.parent / "seed/.codex/hooks/pre-tool-policy.py"
+POLICY_DENIAL = {
+    "hookSpecificOutput": {
+        "hookEventName": "PreToolUse",
+        "permissionDecision": "deny",
+        "permissionDecisionReason": (
+            "Force pushes are blocked by repository policy."
+        ),
+    }
+}
+GOOD_CODEX_HOOKS = {
+    "hooks": {
+        "PreToolUse": [
+            {
+                "matcher": "^Bash$",
+                "hooks": [
+                    {
+                        "type": "command",
+                        "command": (
+                            'python3 "$(git rev-parse --show-toplevel)/.codex/'
+                            'hooks/pre-tool-policy.py"'
+                        ),
+                        "timeout": 10,
+                        "statusMessage": "Checking Git push policy",
+                    }
+                ],
+            }
+        ]
+    }
+}
+GOOD_CODEX_CONFIG = """\
+default_permissions = "project-workspace"
+
+[features]
+hooks = true
+multi_agent = true
+
+[agents]
+max_concurrent_threads_per_session = 6
+
+[permissions.project-workspace]
+description = "Workspace editing with project secret-file denies."
+extends = ":workspace"
+
+[permissions.project-workspace.filesystem.":workspace_roots"]
+".env" = "deny"
+".env*" = "deny"
+".env.*" = "deny"
+".envrc" = "deny"
+".envrc.*" = "deny"
+"**/.env" = "deny"
+"**/.env*" = "deny"
+"**/.env.*" = "deny"
+"**/.envrc" = "deny"
+"**/.envrc.*" = "deny"
+"""
+GOOD_CODEX_POLICY = """\
+#!/usr/bin/env python3
+import json
+import sys
+
+payload = json.load(sys.stdin)
+command = payload["tool_input"]["command"]
+if command == "git push --force origin main":
+    print(json.dumps({
+        "hookSpecificOutput": {
+            "hookEventName": "PreToolUse",
+            "permissionDecision": "deny",
+            "permissionDecisionReason": "Force pushes are blocked by repository policy."
+        }
+    }))
+"""
+
 
 class RenderedHarnessContractTest(unittest.TestCase):
     def setUp(self) -> None:
@@ -202,6 +276,12 @@ class RenderedHarnessContractTest(unittest.TestCase):
             "CLAUDE.md": GOOD_CLAUDE_PROSE,
             ".claude/settings.json": json.dumps(GOOD_CLAUDE_SETTINGS),
             ".claude/hooks/ruff-after-edit.sh": GOOD_RUFF_ADAPTER,
+            ".codex/config.toml": GOOD_CODEX_CONFIG,
+            ".codex/hooks.json": json.dumps(GOOD_CODEX_HOOKS),
+            ".codex/hooks/pre-tool-policy.py": GOOD_CODEX_POLICY,
+            ".codex/rules/default.rules": (
+                BIN_DIR.parent / "seed/.codex/rules/default.rules"
+            ).read_text(encoding="utf-8"),
         }
         for relative_path in REQUIRED_RENDERED_PATHS:
             path = self.write(
@@ -957,6 +1037,453 @@ class RenderedHarnessContractTest(unittest.TestCase):
                     f"FAIL [executable-modes]: repository script is not "
                     f"executable: {relative_path}",
                     failures,
+                )
+
+    def policy_payload(self, command: str) -> str:
+        return json.dumps(
+            {
+                "hook_event_name": "PreToolUse",
+                "tool_name": "Bash",
+                "tool_input": {"command": command},
+                "future_field": "accepted",
+            }
+        )
+
+    def run_policy(self, payload: str) -> subprocess.CompletedProcess[str]:
+        self.assertTrue(POLICY_SCRIPT.is_file(), f"missing {POLICY_SCRIPT}")
+        return subprocess.run(
+            [sys.executable, str(POLICY_SCRIPT)],
+            input=payload,
+            text=True,
+            capture_output=True,
+            check=False,
+        )
+
+    def test_policy_process_denies_literal_force_push_forms(self) -> None:
+        commands = (
+            "git push --force origin main",
+            "git push origin main --force",
+            "git push --force=true origin main",
+            "git push --force-with-lease origin main",
+            "git push --force-with-lease=main:abc origin main",
+            "git push --force-with-l origin main",
+            "git push -f origin main",
+            "git push -vf origin main",
+            "git push origin +main",
+            "git push -o --dry-run --force origin main",
+            "git push --push-o --dry-run --force origin main",
+            "git push --dry-run --no-dry-run --force origin main",
+            "git -C repo push --force origin main",
+            "git -c user.name=test push --force origin main",
+            "git --git-dir=.git push --force origin main",
+            "git --git-dir .git push --force origin main",
+            "git --work-tree=. push --force origin main",
+            "git --namespace=team push --force origin main",
+            "git --no-pager push --force origin main",
+            "git -P push --force origin main",
+            "git --no-lazy-fetch push --force origin main",
+            "command -- git push --force origin main",
+            "env MODE=test git push --force origin main",
+            "/usr/bin/env -i MODE=test git push --force origin main",
+            "MODE=test git push --force origin main",
+            "echo safe; git push --force origin main",
+            "echo safe & git push --force origin main",
+            "echo safe && git push --force origin main",
+            "echo safe || git push --force origin main",
+            "echo safe | git push --force origin main",
+            "echo safe |& git push --force origin main",
+            "echo safe\ngit push --force origin main",
+            "echo safe # ignored\ngit push --force origin main",
+            "echo value#text; git push --force origin main",
+            "true\r#word; git push --force origin main",
+            "echo ${value#prefix}; git push --force origin main",
+            "if true; then git push --force origin main; fi",
+            "git push \\\n--force origin main",
+            "git push \\\r\n--force origin main",
+            "'g''it' 'pu''sh' '--for''ce' origin main",
+        )
+        for command in commands:
+            with self.subTest(command=command):
+                process = self.run_policy(self.policy_payload(command))
+
+                self.assertEqual(0, process.returncode, process.stderr)
+                self.assertNotEqual("", process.stdout)
+                self.assertEqual(POLICY_DENIAL, json.loads(process.stdout))
+                self.assertEqual("", process.stderr)
+
+    def test_policy_process_allows_out_of_scope_shell_forms(self) -> None:
+        commands = (
+            "",
+            "git push origin main",
+            "git push --dry-run --force origin main",
+            "git push -o --force origin main",
+            "git push --push-option --force origin main",
+            "git push --push-o --force origin main",
+            "git push --force --no-force origin main",
+            "git push +definitely-not-a-repo main",
+            "git help push --force",
+            "echo safe",
+            "printf '%s' '--force git push'",
+            "echo safe # git push --force origin main",
+            "printf '%s' 'x; git push --force origin main'",
+            "printf '%s' ';' git push --force origin main",
+            "printf '%s' \\; git push --force origin main",
+            r'''printf '%s' "\";" git push --force origin main''',
+            "printf '%s' 'line one\nline two' git push --force origin main",
+            "g push --force origin main",
+            "git publish --force origin main",
+            "my_push() { git push --force origin main; }",
+            "$GIT push --force origin main",
+            "sh -c 'git push --force origin main'",
+            "echo \"$(git push --force origin main)\"",
+            "echo $(git push --force origin main)",
+        )
+        for command in commands:
+            with self.subTest(command=command):
+                process = self.run_policy(self.policy_payload(command))
+
+                self.assertEqual(0, process.returncode, process.stderr)
+                self.assertEqual("", process.stdout)
+                self.assertEqual("", process.stderr)
+
+    def test_policy_process_blocks_malformed_envelopes(self) -> None:
+        malformed = (
+            ("empty input", ""),
+            ("invalid JSON", "{not json"),
+            ("array", "[]"),
+            ("string", '"value"'),
+            ("number", "7"),
+            ("Boolean", "true"),
+            ("null", "null"),
+            (
+                "wrong event",
+                json.dumps(
+                    {
+                        "hook_event_name": "PostToolUse",
+                        "tool_name": "Bash",
+                        "tool_input": {"command": "echo safe"},
+                    }
+                ),
+            ),
+            (
+                "wrong tool",
+                json.dumps(
+                    {
+                        "hook_event_name": "PreToolUse",
+                        "tool_name": "Read",
+                        "tool_input": {"command": "echo safe"},
+                    }
+                ),
+            ),
+            (
+                "missing tool input",
+                json.dumps(
+                    {"hook_event_name": "PreToolUse", "tool_name": "Bash"}
+                ),
+            ),
+            (
+                "non-object tool input",
+                json.dumps(
+                    {
+                        "hook_event_name": "PreToolUse",
+                        "tool_name": "Bash",
+                        "tool_input": [],
+                    }
+                ),
+            ),
+            (
+                "missing command",
+                json.dumps(
+                    {
+                        "hook_event_name": "PreToolUse",
+                        "tool_name": "Bash",
+                        "tool_input": {},
+                    }
+                ),
+            ),
+            (
+                "non-string command",
+                json.dumps(
+                    {
+                        "hook_event_name": "PreToolUse",
+                        "tool_name": "Bash",
+                        "tool_input": {"command": 7},
+                    }
+                ),
+            ),
+        )
+        for label, payload in malformed:
+            with self.subTest(label=label):
+                process = self.run_policy(payload)
+
+                self.assertEqual(2, process.returncode)
+                self.assertEqual("", process.stdout)
+                self.assertTrue(process.stderr.startswith("pre-tool-policy: "))
+                self.assertLessEqual(len(process.stderr.strip()), 160)
+
+    def test_policy_process_blocks_unparseable_shell_text(self) -> None:
+        process = self.run_policy(self.policy_payload("git push 'unterminated"))
+
+        self.assertEqual(2, process.returncode)
+        self.assertEqual("", process.stdout)
+        self.assertTrue(process.stderr.startswith("pre-tool-policy: "))
+
+    def test_codex_hook_wiring_is_exact_and_synchronous(self) -> None:
+        hooks_path = BIN_DIR.parent / "seed/.codex/hooks.json"
+        self.assertTrue(hooks_path.is_file(), f"missing {hooks_path}")
+
+        self.assertEqual(
+            GOOD_CODEX_HOOKS,
+            json.loads(hooks_path.read_text(encoding="utf-8")),
+        )
+
+    def test_codex_hook_wiring_rejects_async_handlers(self) -> None:
+        self.build_good_fixture()
+        hooks = json.loads(json.dumps(GOOD_CODEX_HOOKS))
+        hooks["hooks"]["PreToolUse"][0]["hooks"][0]["async"] = True
+        self.write(self.rendered, ".codex/hooks.json", json.dumps(hooks))
+
+        self.assertTrue(
+            any("FAIL [codex-hooks]" in item for item in self.rendered_violations())
+        )
+
+    def test_exact_hook_command_runs_from_nested_git_directory(self) -> None:
+        hooks_path = BIN_DIR.parent / "seed/.codex/hooks.json"
+        self.assertTrue(hooks_path.is_file(), f"missing {hooks_path}")
+        self.assertTrue(POLICY_SCRIPT.is_file(), f"missing {POLICY_SCRIPT}")
+        hooks = json.loads(hooks_path.read_text(encoding="utf-8"))
+        command = hooks["hooks"]["PreToolUse"][0]["hooks"][0]["command"]
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = pathlib.Path(temp_dir)
+            init = subprocess.run(
+                ["git", "init", str(root)],
+                text=True,
+                capture_output=True,
+                check=False,
+            )
+            self.assertEqual(0, init.returncode, init.stderr)
+            hook = root / ".codex/hooks/pre-tool-policy.py"
+            hook.parent.mkdir(parents=True)
+            hook.write_text(POLICY_SCRIPT.read_text(encoding="utf-8"), encoding="utf-8")
+            nested = root / "one/two"
+            nested.mkdir(parents=True)
+
+            for force, expected_stdout in ((False, ""), (True, POLICY_DENIAL)):
+                with self.subTest(force=force):
+                    payload = self.policy_payload(
+                        "git push --force origin main"
+                        if force
+                        else "git push origin main"
+                    )
+                    process = subprocess.run(
+                        command,
+                        shell=True,
+                        cwd=nested,
+                        input=payload,
+                        text=True,
+                        capture_output=True,
+                        check=False,
+                    )
+
+                    self.assertEqual(0, process.returncode, process.stderr)
+                    if force:
+                        self.assertEqual(expected_stdout, json.loads(process.stdout))
+                    else:
+                        self.assertEqual(expected_stdout, process.stdout)
+                    self.assertEqual("", process.stderr)
+
+    def test_codex_contract_accepts_bounded_config_hooks_and_rules(self) -> None:
+        self.build_good_fixture()
+
+        self.assertEqual((), contract.verify_contract(self.source, self.rendered))
+
+    def test_codex_config_rejects_unknown_root_keys_and_inline_hooks(self) -> None:
+        self.build_good_fixture()
+        for label, content in (
+            (
+                "unknown root",
+                GOOD_CODEX_CONFIG.replace(
+                    "\n[features]",
+                    "\nunknown_owned_key = true\n\n[features]",
+                    1,
+                ),
+            ),
+            ("inline hooks", GOOD_CODEX_CONFIG + '\n[hooks]\nPreToolUse = []\n'),
+        ):
+            with self.subTest(label=label):
+                self.write(
+                    self.rendered,
+                    ".codex/config.toml",
+                    content,
+                )
+
+                self.assertTrue(
+                    any(
+                        "FAIL [codex-config]" in item
+                        for item in self.rendered_violations()
+                    )
+                )
+
+    def test_codex_config_requires_feature_and_agent_contract(self) -> None:
+        self.build_good_fixture()
+        mutations = (
+            ("hooks disabled", "hooks = true", "hooks = false"),
+            ("multi-agent disabled", "multi_agent = true", "multi_agent = false"),
+            (
+                "Boolean agent limit",
+                "max_concurrent_threads_per_session = 6",
+                "max_concurrent_threads_per_session = true",
+            ),
+            (
+                "zero agent limit",
+                "max_concurrent_threads_per_session = 6",
+                "max_concurrent_threads_per_session = 0",
+            ),
+            (
+                "wrong default profile",
+                'default_permissions = "project-workspace"',
+                'default_permissions = ":workspace"',
+            ),
+            ("wrong profile base", 'extends = ":workspace"', 'extends = ":read-only"'),
+        )
+        for label, old, new in mutations:
+            with self.subTest(label=label):
+                self.write(
+                    self.rendered,
+                    ".codex/config.toml",
+                    GOOD_CODEX_CONFIG.replace(old, new, 1),
+                )
+
+                self.assertTrue(
+                    any(
+                        "FAIL [codex-config]" in item
+                        for item in self.rendered_violations()
+                    )
+                )
+
+    def test_codex_config_requires_every_secret_deny_pattern(self) -> None:
+        self.build_good_fixture()
+        patterns = (
+            ".env",
+            ".env*",
+            ".env.*",
+            ".envrc",
+            ".envrc.*",
+            "**/.env",
+            "**/.env*",
+            "**/.env.*",
+            "**/.envrc",
+            "**/.envrc.*",
+        )
+        for pattern in patterns:
+            with self.subTest(pattern=pattern):
+                line = f'"{pattern}" = "deny"\n'
+                self.write(
+                    self.rendered,
+                    ".codex/config.toml",
+                    GOOD_CODEX_CONFIG.replace(line, "", 1),
+                )
+
+                self.assertTrue(
+                    any(
+                        "FAIL [codex-config]" in item
+                        for item in self.rendered_violations()
+                    )
+                )
+
+    def test_codex_rules_reject_non_declarative_syntax(self) -> None:
+        self.build_good_fixture()
+        invalid_rules = (
+            "import os\n",
+            "value = 1\n",
+            'prefix_rule(["git"], decision="allow", justification="x", match=[])\n',
+            textwrap.dedent(
+                """\
+                prefix_rule(
+                    pattern=["git"],
+                    decision="allow",
+                    decision="prompt",
+                    justification="x",
+                    match=[],
+                )
+                """
+            ),
+            'prefix_rule(pattern=["git"], decision="allow", justification="x", match=[], extra=true)\n',
+            'prefix_rule(pattern=make_pattern(), decision="allow", justification="x", match=[])\n',
+            'other_rule(pattern=["git"], decision="allow", justification="x", match=[])\n',
+        )
+        for content in invalid_rules:
+            with self.subTest(content=content):
+                self.write(self.rendered, ".codex/rules/default.rules", content)
+
+                self.assertTrue(
+                    any(
+                        "FAIL [codex-rules]" in item
+                        for item in self.rendered_violations()
+                    )
+                )
+
+    def test_codex_rules_require_literal_fields(self) -> None:
+        self.build_good_fixture()
+        base = textwrap.dedent(
+            """\
+            prefix_rule(
+                pattern=["git"],
+                decision="allow",
+                justification="x",
+                match=[],
+            )
+            """
+        )
+        mutations = (
+            ("missing pattern", "pattern=[\"git\"],\n", ""),
+            ("missing decision", 'decision="allow",\n', ""),
+            ("missing justification", 'justification="x",\n', ""),
+            ("missing match", "match=[],\n", ""),
+        )
+        for label, old, new in mutations:
+            with self.subTest(label=label):
+                self.write(
+                    self.rendered,
+                    ".codex/rules/default.rules",
+                    base.replace(old, new, 1),
+                )
+
+                self.assertTrue(
+                    any(
+                        "FAIL [codex-rules]" in item
+                        for item in self.rendered_violations()
+                    )
+                )
+
+    def test_codex_rules_require_every_policy_family(self) -> None:
+        self.build_good_fixture()
+        required_patterns = (
+            '["cat", "ls", "grep", "rg", "head", "tail", "sed", "echo", "wc", "mkdir"]',
+            '["git", ["status", "log", "diff"]]',
+            '["rm", "-rf"]',
+            '["rm", "-fr"]',
+            '["git", "push", "--force"]',
+            '["git", "push", "--force-with-lease"]',
+            '["git", "reset", "--hard"]',
+            '["git", "push"]',
+        )
+        original = (self.rendered / ".codex/rules/default.rules")
+        rules = original.read_text(encoding="utf-8")
+        for pattern in required_patterns:
+            with self.subTest(pattern=pattern):
+                self.assertIn(pattern, rules)
+                self.write(
+                    self.rendered,
+                    ".codex/rules/default.rules",
+                    rules.replace(pattern, '["removed"]', 1),
+                )
+
+                self.assertTrue(
+                    any(
+                        "FAIL [codex-rules]" in item
+                        for item in self.rendered_violations()
+                    )
                 )
 
     def test_cli_prints_violations_and_returns_nonzero(self) -> None:

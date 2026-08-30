@@ -11,6 +11,9 @@ import os
 import pathlib
 import shlex
 import stat
+import subprocess
+import sys
+import tomllib
 from collections.abc import Sequence
 
 
@@ -62,6 +65,64 @@ CLAUDE_HOOK_ROUTES = {
     "PostToolUse": (("Edit|Write", ".claude/hooks/ruff-after-edit.sh"),),
     "Stop": ((None, ".claude/hooks/stop-verify-gate.sh"),),
 }
+
+CODEX_HOOKS = {
+    "hooks": {
+        "PreToolUse": [
+            {
+                "matcher": "^Bash$",
+                "hooks": [
+                    {
+                        "type": "command",
+                        "command": (
+                            'python3 "$(git rev-parse --show-toplevel)/.codex/'
+                            'hooks/pre-tool-policy.py"'
+                        ),
+                        "timeout": 10,
+                        "statusMessage": "Checking Git push policy",
+                    }
+                ],
+            }
+        ]
+    }
+}
+
+CODEX_POLICY_DENIAL = {
+    "hookSpecificOutput": {
+        "hookEventName": "PreToolUse",
+        "permissionDecision": "deny",
+        "permissionDecisionReason": (
+            "Force pushes are blocked by repository policy."
+        ),
+    }
+}
+
+CODEX_SECRET_DENIES = {
+    ".env": "deny",
+    ".env*": "deny",
+    ".env.*": "deny",
+    ".envrc": "deny",
+    ".envrc.*": "deny",
+    "**/.env": "deny",
+    "**/.env*": "deny",
+    "**/.env.*": "deny",
+    "**/.envrc": "deny",
+    "**/.envrc.*": "deny",
+}
+
+CODEX_REQUIRED_RULES = (
+    (
+        [["cat", "ls", "grep", "rg", "head", "tail", "sed", "echo", "wc", "mkdir"]],
+        "allow",
+    ),
+    (["git", ["status", "log", "diff"]], "allow"),
+    (["rm", "-rf"], "forbidden"),
+    (["rm", "-fr"], "forbidden"),
+    (["git", "push", "--force"], "forbidden"),
+    (["git", "push", "--force-with-lease"], "forbidden"),
+    (["git", "reset", "--hard"], "forbidden"),
+    (["git", "push"], "prompt"),
+)
 
 PROSE_ROUTE_REFERENCES = (
     ("CLAUDE.md", "@AGENTS.md"),
@@ -646,6 +707,286 @@ def _check_claude_hooks(
     return tuple(sorted(script_targets))
 
 
+def _read_json_object(
+    path: pathlib.Path,
+    area: str,
+    violations: list[Violation],
+) -> dict[str, object] | None:
+    if not _path_exists(path):
+        return None
+    content = _read_text(path)
+    if content is None:
+        violations.append(Violation(area, f"{path.name} must be readable"))
+        return None
+    try:
+        value = json.loads(content)
+    except json.JSONDecodeError as error:
+        violations.append(
+            Violation(area, f"{path.name} must contain valid JSON: {error.msg}")
+        )
+        return None
+    if not isinstance(value, dict):
+        violations.append(Violation(area, f"{path.name} must contain a JSON object"))
+        return None
+    return value
+
+
+def _policy_envelope(command: str) -> str:
+    return json.dumps(
+        {
+            "hook_event_name": "PreToolUse",
+            "tool_name": "Bash",
+            "tool_input": {"command": command},
+        }
+    )
+
+
+def _run_codex_policy_probe(
+    policy_path: pathlib.Path,
+    command: str,
+    violations: list[Violation],
+) -> subprocess.CompletedProcess[str] | None:
+    try:
+        return subprocess.run(
+            [sys.executable, str(policy_path)],
+            input=_policy_envelope(command),
+            text=True,
+            capture_output=True,
+            timeout=10,
+            check=False,
+        )
+    except (OSError, subprocess.TimeoutExpired) as error:
+        violations.append(
+            Violation("codex-hooks", f"policy process could not run: {error}")
+        )
+        return None
+
+
+def _check_codex_hooks(
+    rendered_root: pathlib.Path,
+    violations: list[Violation],
+) -> tuple[str, ...]:
+    hooks = _read_json_object(
+        rendered_root / ".codex/hooks.json",
+        "codex-hooks",
+        violations,
+    )
+    if hooks is not None and hooks != CODEX_HOOKS:
+        violations.append(
+            Violation(
+                "codex-hooks",
+                ".codex/hooks.json must contain the exact synchronous Bash policy route",
+            )
+        )
+
+    relative_path = ".codex/hooks/pre-tool-policy.py"
+    policy_path = rendered_root / relative_path
+    if not _is_regular_file_inside_root(policy_path, rendered_root):
+        violations.append(
+            Violation(
+                "codex-hooks",
+                f"policy process must be a regular file inside rendered root: {relative_path}",
+            )
+        )
+        return ()
+
+    normal = _run_codex_policy_probe(policy_path, "git push origin main", violations)
+    if normal is not None and (
+        normal.returncode != 0 or normal.stdout != "" or normal.stderr != ""
+    ):
+        violations.append(
+            Violation("codex-hooks", "policy process must allow a normal Git push silently")
+        )
+
+    force = _run_codex_policy_probe(
+        policy_path,
+        "git push --force origin main",
+        violations,
+    )
+    if force is not None:
+        try:
+            decision = json.loads(force.stdout)
+        except json.JSONDecodeError:
+            decision = None
+        if (
+            force.returncode != 0
+            or force.stderr != ""
+            or decision != CODEX_POLICY_DENIAL
+        ):
+            violations.append(
+                Violation(
+                    "codex-hooks",
+                    "policy process must deny a direct force push with the design result",
+                )
+            )
+    return (relative_path,)
+
+
+def _check_codex_config(
+    rendered_root: pathlib.Path,
+    violations: list[Violation],
+) -> None:
+    relative_path = ".codex/config.toml"
+    path = rendered_root / relative_path
+    if not _path_exists(path):
+        return
+    content = _read_text(path)
+    if content is None:
+        violations.append(Violation("codex-config", f"{relative_path} must be readable"))
+        return
+    try:
+        config = tomllib.loads(content)
+    except tomllib.TOMLDecodeError as error:
+        violations.append(
+            Violation("codex-config", f"{relative_path} must contain valid TOML: {error}")
+        )
+        return
+
+    if set(config) != {"default_permissions", "features", "agents", "permissions"}:
+        violations.append(
+            Violation(
+                "codex-config",
+                "root keys must equal default_permissions, features, agents, and permissions",
+            )
+        )
+    if config.get("default_permissions") != "project-workspace":
+        violations.append(
+            Violation("codex-config", "default_permissions must be project-workspace")
+        )
+
+    features = config.get("features")
+    if features != {"hooks": True, "multi_agent": True}:
+        violations.append(
+            Violation(
+                "codex-config",
+                "features must enable only hooks and multi_agent",
+            )
+        )
+
+    agents = config.get("agents")
+    limit = (
+        agents.get("max_concurrent_threads_per_session")
+        if isinstance(agents, dict)
+        else None
+    )
+    if not isinstance(agents, dict) or set(agents) != {
+        "max_concurrent_threads_per_session"
+    }:
+        violations.append(
+            Violation("codex-config", "agents must contain only the concurrency limit")
+        )
+    if type(limit) is not int or limit <= 0:
+        violations.append(
+            Violation("codex-config", "agent concurrency limit must be a positive integer")
+        )
+
+    expected_profile = {
+        "description": "Workspace editing with project secret-file denies.",
+        "extends": ":workspace",
+        "filesystem": {":workspace_roots": CODEX_SECRET_DENIES},
+    }
+    if config.get("permissions") != {"project-workspace": expected_profile}:
+        violations.append(
+            Violation(
+                "codex-config",
+                "permissions must equal the bounded project-workspace profile",
+            )
+        )
+
+
+def _literal_prefix_rules(
+    content: str,
+    violations: list[Violation],
+) -> tuple[dict[str, object], ...] | None:
+    try:
+        tree = ast.parse(content)
+    except SyntaxError as error:
+        violations.append(
+            Violation("codex-rules", f"default.rules must parse as expressions: {error.msg}")
+        )
+        return None
+
+    rules: list[dict[str, object]] = []
+    required_keywords = {"pattern", "decision", "justification", "match"}
+    for statement in tree.body:
+        if not (
+            isinstance(statement, ast.Expr)
+            and isinstance(statement.value, ast.Call)
+            and isinstance(statement.value.func, ast.Name)
+            and statement.value.func.id == "prefix_rule"
+        ):
+            violations.append(
+                Violation("codex-rules", "default.rules may contain only prefix_rule calls")
+            )
+            return None
+        call = statement.value
+        if call.args:
+            violations.append(
+                Violation("codex-rules", "prefix_rule does not accept positional arguments")
+            )
+            return None
+        names = [keyword.arg for keyword in call.keywords]
+        if None in names or len(names) != len(set(names)) or set(names) != required_keywords:
+            violations.append(
+                Violation(
+                    "codex-rules",
+                    "prefix_rule keywords must equal pattern, decision, justification, and match",
+                )
+            )
+            return None
+        values: dict[str, object] = {}
+        try:
+            for keyword in call.keywords:
+                assert keyword.arg is not None
+                values[keyword.arg] = ast.literal_eval(keyword.value)
+        except (ValueError, TypeError):
+            violations.append(
+                Violation("codex-rules", "prefix_rule values must be literals")
+            )
+            return None
+        if (
+            not isinstance(values["pattern"], list)
+            or not isinstance(values["decision"], str)
+            or not isinstance(values["justification"], str)
+            or not values["justification"]
+            or not isinstance(values["match"], list)
+        ):
+            violations.append(
+                Violation("codex-rules", "prefix_rule literal fields have invalid types")
+            )
+            return None
+        rules.append(values)
+    return tuple(rules)
+
+
+def _check_codex_rules(
+    rendered_root: pathlib.Path,
+    violations: list[Violation],
+) -> None:
+    relative_path = ".codex/rules/default.rules"
+    path = rendered_root / relative_path
+    if not _path_exists(path):
+        return
+    content = _read_text(path)
+    if content is None:
+        violations.append(Violation("codex-rules", f"{relative_path} must be readable"))
+        return
+    rules = _literal_prefix_rules(content, violations)
+    if rules is None:
+        return
+    for pattern, decision in CODEX_REQUIRED_RULES:
+        if not any(
+            rule["pattern"] == pattern and rule["decision"] == decision
+            for rule in rules
+        ):
+            violations.append(
+                Violation(
+                    "codex-rules",
+                    f"missing required {decision} rule for pattern {pattern!r}",
+                )
+            )
+
+
 def _check_prose_routes(
     rendered_root: pathlib.Path,
     violations: list[Violation],
@@ -714,9 +1055,18 @@ def verify_contract(
     _check_topology(source_root, rendered_root, violations)
     _check_release_callers(source_root, violations)
     _check_symlinks(rendered_root, violations)
-    script_targets = _check_claude_hooks(source_root, rendered_root, violations)
+    claude_script_targets = _check_claude_hooks(
+        source_root, rendered_root, violations
+    )
+    codex_script_targets = _check_codex_hooks(rendered_root, violations)
+    _check_codex_config(rendered_root, violations)
+    _check_codex_rules(rendered_root, violations)
     _check_prose_routes(rendered_root, violations)
-    _check_executable_modes(rendered_root, script_targets, violations)
+    _check_executable_modes(
+        rendered_root,
+        claude_script_targets + codex_script_targets,
+        violations,
+    )
     return tuple(sorted(violations))
 
 
