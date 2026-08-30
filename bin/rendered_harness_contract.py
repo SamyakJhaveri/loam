@@ -4,9 +4,13 @@
 from __future__ import annotations
 
 import argparse
+import ast
 import dataclasses
+import json
+import os
 import pathlib
 import shlex
+import stat
 from collections.abc import Sequence
 
 
@@ -48,6 +52,38 @@ FORBIDDEN_RENDERED_PATHS = (
     ".codex/agents",
     ".codex/mcp",
     "_research",
+)
+
+CLAUDE_HOOK_ROUTES = {
+    "PreToolUse": (
+        ("Bash", ".claude/hooks/bash-audit-log.sh"),
+        ("Bash|Edit|Write", ".claude/hooks/concurrent-checkout-guard.sh"),
+    ),
+    "PostToolUse": (("Edit|Write", ".claude/hooks/ruff-after-edit.sh"),),
+    "Stop": ((None, ".claude/hooks/stop-verify-gate.sh"),),
+}
+
+PROSE_ROUTE_REFERENCES = (
+    ("CLAUDE.md", "@AGENTS.md"),
+    ("AGENTS.md", ".codex/"),
+    ("AGENTS.md", ".agents/skills/"),
+    ("CLAUDE.md", ".claude/hooks/stop-verify-gate.sh"),
+    ("CLAUDE.md", "/catchup"),
+    ("CLAUDE.md", ".agents/skills/"),
+    ("CLAUDE.md", "bash-audit-log.sh"),
+    ("CLAUDE.md", "concurrent-checkout-guard.sh"),
+    ("CLAUDE.md", "ruff-after-edit.sh"),
+)
+
+PROSE_ROUTE_TARGETS = (
+    ("CLAUDE.md", "AGENTS.md"),
+    ("AGENTS.md", ".codex"),
+    ("AGENTS.md", ".agents/skills"),
+    ("CLAUDE.md", ".claude/hooks/stop-verify-gate.sh"),
+    ("CLAUDE.md", ".agents/skills/catchup/SKILL.md"),
+    ("CLAUDE.md", ".claude/hooks/bash-audit-log.sh"),
+    ("CLAUDE.md", ".claude/hooks/concurrent-checkout-guard.sh"),
+    ("CLAUDE.md", ".claude/hooks/ruff-after-edit.sh"),
 )
 
 
@@ -294,6 +330,382 @@ def _check_release_callers(
     )
 
 
+def _check_symlinks(
+    rendered_root: pathlib.Path,
+    violations: list[Violation],
+) -> None:
+    relative_path = ".claude/skills/catchup"
+    link = rendered_root / relative_path
+    if not link.is_symlink():
+        violations.append(Violation("symlinks", f"{relative_path} must be a symlink"))
+        return
+
+    try:
+        raw_target = os.readlink(link)
+        root = rendered_root.resolve()
+        resolved_target = link.resolve()
+    except (OSError, RuntimeError) as error:
+        violations.append(
+            Violation("symlinks", f"cannot resolve {relative_path}: {error}")
+        )
+        return
+
+    try:
+        resolved_target.relative_to(root)
+    except ValueError:
+        violations.append(
+            Violation(
+                "symlinks",
+                f"{relative_path} resolves outside rendered root: {raw_target}",
+            )
+        )
+        return
+
+    expected_target = (rendered_root / ".agents/skills/catchup").resolve()
+    if resolved_target != expected_target:
+        violations.append(
+            Violation(
+                "symlinks",
+                f"{relative_path} must resolve to .agents/skills/catchup; "
+                f"found {raw_target}",
+            )
+        )
+        return
+
+    if not (resolved_target / "SKILL.md").is_file():
+        violations.append(
+            Violation(
+                "symlinks",
+                f"{relative_path} target must contain SKILL.md",
+            )
+        )
+
+
+def _read_claude_settings(
+    rendered_root: pathlib.Path,
+    violations: list[Violation],
+) -> dict[str, object] | None:
+    settings_path = rendered_root / ".claude/settings.json"
+    content = _read_text(settings_path)
+    if content is None:
+        violations.append(
+            Violation("claude-hooks", ".claude/settings.json must be readable")
+        )
+        return None
+    try:
+        settings = json.loads(content)
+    except json.JSONDecodeError as error:
+        violations.append(
+            Violation(
+                "claude-hooks",
+                f".claude/settings.json must contain valid JSON: {error.msg}",
+            )
+        )
+        return None
+    if not isinstance(settings, dict):
+        violations.append(
+            Violation(
+                "claude-hooks",
+                ".claude/settings.json must contain a JSON object",
+            )
+        )
+        return None
+    return settings
+
+
+def _command_script_targets(command: str) -> tuple[str, ...]:
+    targets: list[str] = []
+    for word in _shell_words(command):
+        normalized = word[2:] if word.startswith("./") else word
+        if normalized.startswith((".claude/", ".codex/")) and normalized.endswith(
+            (".sh", ".py")
+        ):
+            targets.append(normalized)
+    return tuple(targets)
+
+
+def _is_regular_file_inside_root(
+    path: pathlib.Path,
+    root: pathlib.Path,
+) -> bool:
+    try:
+        resolved_path = path.resolve(strict=True)
+        resolved_path.relative_to(root.resolve())
+    except (OSError, RuntimeError, ValueError):
+        return False
+    return resolved_path.is_file()
+
+
+def _is_get_assignment(
+    statement: ast.stmt,
+    target_name: str,
+    receiver_name: str,
+    key: str,
+) -> bool:
+    if not isinstance(statement, ast.Assign) or len(statement.targets) != 1:
+        return False
+    target = statement.targets[0]
+    call = statement.value
+    if isinstance(call, ast.IfExp):
+        call = call.body
+    return (
+        isinstance(target, ast.Name)
+        and target.id == target_name
+        and isinstance(call, ast.Call)
+        and isinstance(call.func, ast.Attribute)
+        and call.func.attr == "get"
+        and isinstance(call.func.value, ast.Name)
+        and call.func.value.id == receiver_name
+        and len(call.args) == 1
+        and isinstance(call.args[0], ast.Constant)
+        and call.args[0].value == key
+    )
+
+
+def _ruff_reads_nested_file_path(content: str | None) -> bool:
+    if content is None:
+        return False
+    prefix = "python3 -c '\n"
+    suffix = "\n' 2>/dev/null"
+    start = content.find(prefix)
+    if start < 0:
+        return False
+    start += len(prefix)
+    end = content.find(suffix, start)
+    if end < 0:
+        return False
+    try:
+        tree = ast.parse(content[start:end])
+    except SyntaxError:
+        return False
+    return any(
+        _is_get_assignment(statement, "tool_input", "payload", "tool_input")
+        for statement in tree.body
+    ) and any(
+        _is_get_assignment(statement, "file_path", "tool_input", "file_path")
+        for statement in tree.body
+    )
+
+
+def _check_claude_hooks(
+    source_root: pathlib.Path,
+    rendered_root: pathlib.Path,
+    violations: list[Violation],
+) -> tuple[str, ...]:
+    settings = _read_claude_settings(rendered_root, violations)
+    if settings is None:
+        return ()
+
+    hooks = settings.get("hooks")
+    if not isinstance(hooks, dict):
+        violations.append(
+            Violation("claude-hooks", "settings hooks must be a JSON object")
+        )
+        return ()
+
+    expected_events = set(CLAUDE_HOOK_ROUTES)
+    actual_events = set(hooks)
+    if actual_events != expected_events:
+        violations.append(
+            Violation(
+                "claude-hooks",
+                "owned events must equal PreToolUse, PostToolUse, and Stop; "
+                f"found {', '.join(sorted(actual_events)) or 'none'}",
+            )
+        )
+
+    actual_routes: list[tuple[str, str | None, str]] = []
+    script_targets: set[str] = set()
+    for event in sorted(expected_events):
+        routes = hooks.get(event)
+        if not isinstance(routes, list):
+            violations.append(
+                Violation("claude-hooks", f"{event} routes must be a JSON array")
+            )
+            continue
+        for route_index, route in enumerate(routes):
+            if not isinstance(route, dict):
+                violations.append(
+                    Violation(
+                        "claude-hooks",
+                        f"{event} route {route_index} must be a JSON object",
+                    )
+                )
+                continue
+            matcher = route.get("matcher")
+            handlers = route.get("hooks")
+            if not isinstance(handlers, list) or not handlers:
+                violations.append(
+                    Violation(
+                        "claude-hooks",
+                        f"{event} route {route_index} must contain command handlers",
+                    )
+                )
+                continue
+            for handler_index, handler in enumerate(handlers):
+                if (
+                    not isinstance(handler, dict)
+                    or handler.get("type") != "command"
+                    or not isinstance(handler.get("command"), str)
+                    or not handler["command"]
+                ):
+                    violations.append(
+                        Violation(
+                            "claude-hooks",
+                            f"{event} route {route_index} handler {handler_index} "
+                            "must be a command handler",
+                        )
+                    )
+                    continue
+                command = handler["command"]
+                actual_routes.append((event, matcher, command))
+                script_targets.update(_command_script_targets(command))
+                if "ruff" in command and command != ".claude/hooks/ruff-after-edit.sh":
+                    violations.append(
+                        Violation(
+                            "claude-hooks",
+                            "inline Ruff command is forbidden; route through "
+                            ".claude/hooks/ruff-after-edit.sh",
+                        )
+                    )
+
+    expected_routes = [
+        (event, matcher, command)
+        for event, routes in CLAUDE_HOOK_ROUTES.items()
+        for matcher, command in routes
+    ]
+    expected_matchers = sorted(
+        (event, matcher)
+        for event, routes in CLAUDE_HOOK_ROUTES.items()
+        for matcher, _ in routes
+    )
+    actual_matchers = sorted(
+        ((event, matcher) for event, matcher, _ in actual_routes),
+        key=repr,
+    )
+    if actual_matchers != sorted(expected_matchers, key=repr):
+        violations.append(
+            Violation("claude-hooks", "owned matchers do not equal design values")
+        )
+    if sorted(actual_routes, key=repr) != sorted(expected_routes, key=repr):
+        violations.append(
+            Violation(
+                "claude-hooks",
+                "owned command routes must include .claude/hooks/ruff-after-edit.sh",
+            )
+        )
+
+    for relative_path in sorted(script_targets):
+        path = rendered_root / relative_path
+        if not _path_exists(path):
+            violations.append(
+                Violation(
+                    "claude-hooks",
+                    f"repository script target does not exist: {relative_path}",
+                )
+            )
+        elif not _is_regular_file_inside_root(path, rendered_root):
+            violations.append(
+                Violation(
+                    "claude-hooks",
+                    "repository script target must be a regular file inside "
+                    f"rendered root: {relative_path}",
+                )
+            )
+        elif _read_text(path) is None:
+            violations.append(
+                Violation(
+                    "claude-hooks",
+                    f"repository script target must be readable: {relative_path}",
+                )
+            )
+
+    ruff_content = _read_text(rendered_root / ".claude/hooks/ruff-after-edit.sh")
+    source_ruff_content = _read_text(
+        source_root / "seed/.claude/hooks/ruff-after-edit.sh"
+    )
+    if source_ruff_content is None:
+        violations.append(
+            Violation("claude-hooks", "source ruff-after-edit.sh must be readable")
+        )
+    elif ruff_content is not None and ruff_content != source_ruff_content:
+        violations.append(
+            Violation(
+                "claude-hooks",
+                "rendered ruff-after-edit.sh must match the tested source adapter",
+            )
+        )
+    if ruff_content is not None and not _ruff_reads_nested_file_path(ruff_content):
+        violations.append(
+            Violation(
+                "claude-hooks",
+                "ruff-after-edit.sh must read tool_input.file_path",
+            )
+        )
+
+    return tuple(sorted(script_targets))
+
+
+def _check_prose_routes(
+    rendered_root: pathlib.Path,
+    violations: list[Violation],
+) -> None:
+    documents = {
+        document: _read_text(rendered_root / document)
+        for document, _ in PROSE_ROUTE_REFERENCES
+    }
+    for document, reference in PROSE_ROUTE_REFERENCES:
+        content = documents[document]
+        if content is None or reference not in content:
+            violations.append(
+                Violation(
+                    "prose-routes",
+                    f"{document} must reference {reference}",
+                )
+            )
+
+    for document, target in PROSE_ROUTE_TARGETS:
+        if not _path_exists(rendered_root / target):
+            violations.append(
+                Violation(
+                    "prose-routes",
+                    f"{document} route target does not exist: {target}",
+                )
+            )
+
+    claude_content = documents.get("CLAUDE.md")
+    if claude_content is not None and any(
+        "`docs/`" in line and "Add rows here" in line
+        for line in claude_content.splitlines()
+    ):
+        violations.append(
+            Violation(
+                "prose-routes",
+                "CLAUDE.md contains unresolved docs/ placeholder",
+            )
+        )
+
+
+def _check_executable_modes(
+    rendered_root: pathlib.Path,
+    script_targets: Sequence[str],
+    violations: list[Violation],
+) -> None:
+    execute_bits = stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH
+    for relative_path in script_targets:
+        path = rendered_root / relative_path
+        try:
+            mode = path.stat().st_mode
+        except OSError:
+            continue
+        if not mode & execute_bits:
+            violations.append(
+                Violation(
+                    "executable-modes",
+                    f"repository script is not executable: {relative_path}",
+                )
+            )
+
 def verify_contract(
     source_root: pathlib.Path,
     rendered_root: pathlib.Path,
@@ -301,6 +713,10 @@ def verify_contract(
     violations: list[Violation] = []
     _check_topology(source_root, rendered_root, violations)
     _check_release_callers(source_root, violations)
+    _check_symlinks(rendered_root, violations)
+    script_targets = _check_claude_hooks(source_root, rendered_root, violations)
+    _check_prose_routes(rendered_root, violations)
+    _check_executable_modes(rendered_root, script_targets, violations)
     return tuple(sorted(violations))
 
 

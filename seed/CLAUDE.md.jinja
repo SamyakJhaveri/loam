@@ -21,7 +21,7 @@
 
 - The Stop hook (`.claude/hooks/stop-verify-gate.sh`) blocks turn-end on `git diff --check`, ruff, or `bash -n` failures in changed files. Fix the failures instead of fighting the gate.
 - `/catchup` (in `.agents/skills/`, shared with Codex via symlink): session bootstrap briefing.
-- Other hooks: `bash-audit-log.sh` (command forensics log, gitignored), `concurrent-checkout-guard.sh` (blocks two sessions racing one checkout).
+- Other hooks: `bash-audit-log.sh` (command forensics log, gitignored), `concurrent-checkout-guard.sh` (blocks two sessions racing one checkout), and `ruff-after-edit.sh` (auto-fixes changed Python files).
 
 ## Routing (read on demand)
 
@@ -29,4 +29,3 @@
 |----------|----------|
 | `/plan-review <path>` (sam-cc-setup plugin, if installed) | Before executing a non-trivial or hard-to-reverse plan |
 | `scaffold-context` skill (sam-cc-setup plugin, if installed) | Authoring a CONTEXT.md for a subdirectory |
-| `docs/` | (Add rows here as documents accumulate) |

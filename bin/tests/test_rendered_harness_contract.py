@@ -2,8 +2,11 @@ from __future__ import annotations
 
 import contextlib
 import io
+import json
+import os
 import pathlib
 import stat
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -12,7 +15,7 @@ import unittest
 BIN_DIR = pathlib.Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(BIN_DIR))
 
-import rendered_harness_contract as contract
+import rendered_harness_contract as contract  # noqa: E402
 
 
 REQUIRED_SOURCE_PATHS = (
@@ -52,6 +55,87 @@ FORBIDDEN_RENDERED_PATHS = (
     ".codex/agents",
     ".codex/mcp",
     "_research",
+)
+
+CLAUDE_HOOK_PATHS = (
+    ".claude/hooks/bash-audit-log.sh",
+    ".claude/hooks/concurrent-checkout-guard.sh",
+    ".claude/hooks/ruff-after-edit.sh",
+    ".claude/hooks/stop-verify-gate.sh",
+)
+
+GOOD_CLAUDE_SETTINGS = {
+    "hooks": {
+        "PreToolUse": [
+            {
+                "matcher": "Bash",
+                "hooks": [
+                    {
+                        "type": "command",
+                        "command": ".claude/hooks/bash-audit-log.sh",
+                    }
+                ],
+            },
+            {
+                "matcher": "Bash|Edit|Write",
+                "hooks": [
+                    {
+                        "type": "command",
+                        "command": ".claude/hooks/concurrent-checkout-guard.sh",
+                    }
+                ],
+            },
+        ],
+        "PostToolUse": [
+            {
+                "matcher": "Edit|Write",
+                "hooks": [
+                    {
+                        "type": "command",
+                        "command": ".claude/hooks/ruff-after-edit.sh",
+                    }
+                ],
+            }
+        ],
+        "Stop": [
+            {
+                "hooks": [
+                    {
+                        "type": "command",
+                        "command": ".claude/hooks/stop-verify-gate.sh",
+                    }
+                ]
+            }
+        ],
+    }
+}
+
+GOOD_CLAUDE_PROSE = """# CLAUDE.md
+
+@AGENTS.md
+
+- Stop hook: `.claude/hooks/stop-verify-gate.sh`.
+- `/catchup` lives in `.agents/skills/`.
+- Hooks: `bash-audit-log.sh`, `concurrent-checkout-guard.sh`, and `ruff-after-edit.sh`.
+
+| Resource | Use when |
+| --- | --- |
+| `/plan-review <path>` (sam-cc-setup plugin, if installed) | Reviewing a plan |
+| `scaffold-context` skill (sam-cc-setup plugin, if installed) | Writing context |
+"""
+
+GOOD_AGENT_PROSE = """# AGENTS.md
+
+The `.codex/` layer contains Codex configuration.
+Codex-side skills live in `.agents/skills/`.
+"""
+
+GOOD_RUFF_ADAPTER = (
+    "python3 -c '\n"
+    "payload = {}\n"
+    'tool_input = payload.get("tool_input")\n'
+    'file_path = tool_input.get("file_path")'
+    "\n' 2>/dev/null\n"
 )
 
 
@@ -107,9 +191,24 @@ class RenderedHarnessContractTest(unittest.TestCase):
             )
             if relative_path.endswith(".sh"):
                 self.make_executable(path)
+        self.write(
+            self.source,
+            "seed/.claude/hooks/ruff-after-edit.sh",
+            GOOD_RUFF_ADAPTER,
+        )
 
+        rendered_contents = {
+            "AGENTS.md": GOOD_AGENT_PROSE,
+            "CLAUDE.md": GOOD_CLAUDE_PROSE,
+            ".claude/settings.json": json.dumps(GOOD_CLAUDE_SETTINGS),
+            ".claude/hooks/ruff-after-edit.sh": GOOD_RUFF_ADAPTER,
+        }
         for relative_path in REQUIRED_RENDERED_PATHS:
-            path = self.write(self.rendered, relative_path)
+            path = self.write(
+                self.rendered,
+                relative_path,
+                rendered_contents.get(relative_path, "fixture\n"),
+            )
             if "/hooks/" in relative_path:
                 self.make_executable(path)
 
@@ -172,7 +271,10 @@ class RenderedHarnessContractTest(unittest.TestCase):
 
         violations = contract.verify_contract(self.source, self.rendered)
 
-        self.assertEqual({"release-callers", "topology"}, {v.area for v in violations})
+        self.assertEqual(
+            {"prose-routes", "release-callers", "topology"},
+            {v.area for v in violations},
+        )
 
     def test_pull_request_workflow_calls_public_gate(self) -> None:
         self.build_good_fixture()
@@ -449,6 +551,407 @@ class RenderedHarnessContractTest(unittest.TestCase):
                 if any(path in violation.detail for violation in failures)
             },
         )
+
+    def test_catchup_must_be_a_symlink(self) -> None:
+        self.build_good_fixture()
+        catchup = self.rendered / ".claude/skills/catchup"
+        catchup.unlink()
+        catchup.mkdir()
+
+        self.assertIn(
+            "FAIL [symlinks]: .claude/skills/catchup must be a symlink",
+            self.rendered_violations(),
+        )
+
+    def test_catchup_must_resolve_to_shared_skill(self) -> None:
+        self.build_good_fixture()
+        wrong_target = self.rendered / ".agents/skills/wrong"
+        self.write(wrong_target, "SKILL.md")
+        catchup = self.rendered / ".claude/skills/catchup"
+        catchup.unlink()
+        catchup.symlink_to("../../.agents/skills/wrong", target_is_directory=True)
+
+        failures = self.rendered_violations()
+
+        self.assertTrue(any("FAIL [symlinks]" in item for item in failures))
+        self.assertTrue(any(".agents/skills/catchup" in item for item in failures))
+
+    def test_catchup_target_must_contain_skill_file(self) -> None:
+        self.build_good_fixture()
+        (self.rendered / ".agents/skills/catchup/SKILL.md").unlink()
+
+        self.assertIn(
+            "FAIL [symlinks]: .claude/skills/catchup target must contain SKILL.md",
+            self.rendered_violations(),
+        )
+
+    def test_catchup_target_cannot_escape_rendered_root(self) -> None:
+        self.build_good_fixture()
+        outside = self.rendered.parent / "outside-skill"
+        self.write(outside, "SKILL.md")
+        catchup = self.rendered / ".claude/skills/catchup"
+        catchup.unlink()
+        catchup.symlink_to(outside, target_is_directory=True)
+
+        failures = self.rendered_violations()
+
+        self.assertTrue(any("FAIL [symlinks]" in item for item in failures))
+        self.assertTrue(any("outside rendered root" in item for item in failures))
+
+    def test_claude_settings_must_be_an_object(self) -> None:
+        self.build_good_fixture()
+        self.write(self.rendered, ".claude/settings.json", "[]\n")
+
+        self.assertIn(
+            "FAIL [claude-hooks]: .claude/settings.json must contain a JSON object",
+            self.rendered_violations(),
+        )
+
+    def test_claude_settings_must_be_valid_json(self) -> None:
+        self.build_good_fixture()
+        self.write(self.rendered, ".claude/settings.json", "{not json\n")
+
+        failures = self.rendered_violations()
+
+        self.assertTrue(any("FAIL [claude-hooks]" in item for item in failures))
+        self.assertTrue(any("valid JSON" in item for item in failures))
+
+    def test_claude_settings_owned_events_are_exact(self) -> None:
+        self.build_good_fixture()
+        for event, mutation in (
+            ("SessionStart", "add"),
+            ("Stop", "remove"),
+        ):
+            with self.subTest(event=event, mutation=mutation):
+                settings = json.loads(json.dumps(GOOD_CLAUDE_SETTINGS))
+                if mutation == "add":
+                    settings["hooks"][event] = []
+                else:
+                    del settings["hooks"][event]
+                self.write(
+                    self.rendered,
+                    ".claude/settings.json",
+                    json.dumps(settings),
+                )
+
+                failures = self.rendered_violations()
+
+                self.assertTrue(
+                    any("FAIL [claude-hooks]" in item for item in failures)
+                )
+                self.assertTrue(any("owned events" in item for item in failures))
+
+    def test_claude_settings_owned_matchers_are_exact(self) -> None:
+        self.build_good_fixture()
+        settings = json.loads(json.dumps(GOOD_CLAUDE_SETTINGS))
+        settings["hooks"]["PostToolUse"][0]["matcher"] = "Write|Edit"
+        self.write(self.rendered, ".claude/settings.json", json.dumps(settings))
+
+        failures = self.rendered_violations()
+
+        self.assertTrue(any("FAIL [claude-hooks]" in item for item in failures))
+        self.assertTrue(any("owned matchers" in item for item in failures))
+
+    def test_every_owned_handler_must_be_a_command_handler(self) -> None:
+        self.build_good_fixture()
+        settings = json.loads(json.dumps(GOOD_CLAUDE_SETTINGS))
+        settings["hooks"]["Stop"][0]["hooks"][0]["type"] = "prompt"
+        self.write(self.rendered, ".claude/settings.json", json.dumps(settings))
+
+        failures = self.rendered_violations()
+
+        self.assertTrue(any("FAIL [claude-hooks]" in item for item in failures))
+        self.assertTrue(any("command handler" in item for item in failures))
+
+    def test_every_claude_repository_script_target_must_exist(self) -> None:
+        self.build_good_fixture()
+        missing = ".claude/hooks/bash-audit-log.sh"
+        (self.rendered / missing).unlink()
+
+        self.assertIn(
+            f"FAIL [claude-hooks]: repository script target does not exist: {missing}",
+            self.rendered_violations(),
+        )
+
+    def test_claude_repository_script_target_must_stay_inside_rendered_root(self) -> None:
+        self.build_good_fixture()
+        relative_path = ".claude/hooks/bash-audit-log.sh"
+        outside = self.write(self.rendered.parent, "outside-hook.sh", "exit 0\n")
+        self.make_executable(outside)
+        target = self.rendered / relative_path
+        target.unlink()
+        target.symlink_to(outside)
+
+        self.assertIn(
+            f"FAIL [claude-hooks]: repository script target must be a regular "
+            f"file inside rendered root: {relative_path}",
+            self.rendered_violations(),
+        )
+
+    def test_claude_repository_script_target_must_be_a_regular_file(self) -> None:
+        self.build_good_fixture()
+        relative_path = ".claude/hooks/bash-audit-log.sh"
+        target = self.rendered / relative_path
+        target.unlink()
+        target.mkdir()
+
+        self.assertIn(
+            f"FAIL [claude-hooks]: repository script target must be a regular "
+            f"file inside rendered root: {relative_path}",
+            self.rendered_violations(),
+        )
+
+    def test_claude_repository_script_target_must_be_readable(self) -> None:
+        self.build_good_fixture()
+        relative_path = ".claude/hooks/ruff-after-edit.sh"
+        target = self.rendered / relative_path
+        target.chmod(stat.S_IXUSR)
+
+        self.assertIn(
+            f"FAIL [claude-hooks]: repository script target must be readable: "
+            f"{relative_path}",
+            self.rendered_violations(),
+        )
+
+    def test_inline_ruff_command_is_rejected(self) -> None:
+        self.build_good_fixture()
+        settings = json.loads(json.dumps(GOOD_CLAUDE_SETTINGS))
+        settings["hooks"]["PostToolUse"][0]["hooks"][0]["command"] = (
+            "python3 -m ruff check --fix example.py || true"
+        )
+        self.write(self.rendered, ".claude/settings.json", json.dumps(settings))
+
+        failures = self.rendered_violations()
+
+        self.assertTrue(any("FAIL [claude-hooks]" in item for item in failures))
+        self.assertTrue(any("inline Ruff command" in item for item in failures))
+
+    def test_ruff_route_must_use_the_adapter(self) -> None:
+        self.build_good_fixture()
+        settings = json.loads(json.dumps(GOOD_CLAUDE_SETTINGS))
+        settings["hooks"]["PostToolUse"][0]["hooks"][0]["command"] = "true"
+        self.write(self.rendered, ".claude/settings.json", json.dumps(settings))
+
+        failures = self.rendered_violations()
+
+        self.assertTrue(any("FAIL [claude-hooks]" in item for item in failures))
+        self.assertTrue(any("ruff-after-edit.sh" in item for item in failures))
+
+    def test_ruff_route_must_read_nested_file_path(self) -> None:
+        self.build_good_fixture()
+        self.write(
+            self.rendered,
+            ".claude/hooks/ruff-after-edit.sh",
+            "# should read tool_input.file_path\n"
+            'file_path = payload.get("file_path")\n',
+        )
+        self.make_executable(self.rendered / ".claude/hooks/ruff-after-edit.sh")
+
+        failures = self.rendered_violations()
+
+        self.assertTrue(any("FAIL [claude-hooks]" in item for item in failures))
+        self.assertTrue(any("tool_input.file_path" in item for item in failures))
+
+    def test_ruff_route_comments_do_not_prove_nested_file_path_access(self) -> None:
+        self.build_good_fixture()
+        self.write(
+            self.rendered,
+            ".claude/hooks/ruff-after-edit.sh",
+            "#!/usr/bin/env bash\n"
+            '# payload.get("tool_input")\n'
+            '# tool_input.get("file_path")\n'
+            "exit 0\n",
+        )
+        self.make_executable(self.rendered / ".claude/hooks/ruff-after-edit.sh")
+
+        self.assertIn(
+            "FAIL [claude-hooks]: ruff-after-edit.sh must read "
+            "tool_input.file_path",
+            self.rendered_violations(),
+        )
+
+    def test_rendered_ruff_adapter_must_match_tested_source(self) -> None:
+        self.build_good_fixture()
+        self.write(
+            self.rendered,
+            ".claude/hooks/ruff-after-edit.sh",
+            GOOD_RUFF_ADAPTER.replace(
+                "payload = {}\n",
+                "payload = {}\nraise SystemExit(0)\n",
+            ),
+        )
+        self.make_executable(self.rendered / ".claude/hooks/ruff-after-edit.sh")
+
+        self.assertIn(
+            "FAIL [claude-hooks]: rendered ruff-after-edit.sh must match the "
+            "tested source adapter",
+            self.rendered_violations(),
+        )
+
+    def run_ruff_hook(
+        self,
+        payload: str,
+        *,
+        fake_exit: int = 0,
+    ) -> tuple[subprocess.CompletedProcess[str], pathlib.Path]:
+        fake_root = pathlib.Path(self.temp_dir.name) / "fake-pythonpath"
+        ruff_package = fake_root / "ruff"
+        ruff_package.mkdir(parents=True, exist_ok=True)
+        self.write(ruff_package, "__init__.py", "")
+        self.write(
+            ruff_package,
+            "__main__.py",
+            "import os, pathlib, sys\n"
+            "pathlib.Path(os.environ['RUFF_CAPTURE']).write_text("
+            "' '.join(sys.argv[1:]), encoding='utf-8')\n"
+            "raise SystemExit(int(os.environ.get('RUFF_FAKE_EXIT', '0')))\n",
+        )
+        capture = pathlib.Path(self.temp_dir.name) / "ruff-capture"
+        environment = os.environ.copy()
+        environment.update(
+            {
+                "PYTHONPATH": str(fake_root),
+                "RUFF_CAPTURE": str(capture),
+                "RUFF_FAKE_EXIT": str(fake_exit),
+            }
+        )
+        process = subprocess.run(
+            ["bash", str(BIN_DIR.parent / "seed/.claude/hooks/ruff-after-edit.sh")],
+            input=payload,
+            text=True,
+            capture_output=True,
+            env=environment,
+            check=False,
+        )
+        return process, capture
+
+    def test_ruff_hook_fixes_only_nested_python_file_path(self) -> None:
+        payload = json.dumps({"tool_input": {"file_path": "src/example.py"}})
+
+        process, capture = self.run_ruff_hook(payload)
+
+        self.assertEqual(0, process.returncode, process.stderr)
+        self.assertEqual("check --fix -- src/example.py", capture.read_text())
+
+    def test_ruff_hook_ignores_irrelevant_payloads(self) -> None:
+        for label, payload in (
+            ("non-python", json.dumps({"tool_input": {"file_path": "README.md"}})),
+            ("missing", json.dumps({"tool_input": {}})),
+            ("non-string", json.dumps({"tool_input": {"file_path": 7}})),
+            ("malformed", "{not json"),
+        ):
+            with self.subTest(label=label):
+                process, capture = self.run_ruff_hook(payload)
+
+                self.assertEqual(0, process.returncode, process.stderr)
+                self.assertFalse(capture.exists())
+
+    def test_ruff_hook_is_non_blocking_when_ruff_fails(self) -> None:
+        payload = json.dumps({"tool_input": {"file_path": "src/example.py"}})
+
+        process, capture = self.run_ruff_hook(payload, fake_exit=23)
+
+        self.assertEqual(0, process.returncode, process.stderr)
+        self.assertEqual("check --fix -- src/example.py", capture.read_text())
+
+    def test_every_required_prose_reference_is_enforced(self) -> None:
+        self.build_good_fixture()
+        references = (
+            ("CLAUDE.md", "@AGENTS.md"),
+            ("AGENTS.md", ".codex/"),
+            ("AGENTS.md", ".agents/skills/"),
+            ("CLAUDE.md", ".claude/hooks/stop-verify-gate.sh"),
+            ("CLAUDE.md", "/catchup"),
+            ("CLAUDE.md", ".agents/skills/"),
+            ("CLAUDE.md", "bash-audit-log.sh"),
+            ("CLAUDE.md", "concurrent-checkout-guard.sh"),
+            ("CLAUDE.md", "ruff-after-edit.sh"),
+        )
+        original = {
+            document: (self.rendered / document).read_text(encoding="utf-8")
+            for document, _ in references
+        }
+        for document, reference in references:
+            with self.subTest(document=document, reference=reference):
+                self.write(
+                    self.rendered,
+                    document,
+                    original[document].replace(reference, "REMOVED", 1),
+                )
+
+                failures = self.rendered_violations()
+                self.write(self.rendered, document, original[document])
+                self.assertIn(
+                    f"FAIL [prose-routes]: {document} must reference {reference}",
+                    failures,
+                )
+
+    def test_required_prose_route_targets_are_enforced(self) -> None:
+        self.build_good_fixture()
+        targets = (
+            ("CLAUDE.md", "AGENTS.md"),
+            ("AGENTS.md", ".codex"),
+            ("AGENTS.md", ".agents/skills"),
+            ("CLAUDE.md", ".claude/hooks/stop-verify-gate.sh"),
+            ("CLAUDE.md", ".agents/skills/catchup/SKILL.md"),
+            ("CLAUDE.md", ".claude/hooks/bash-audit-log.sh"),
+            ("CLAUDE.md", ".claude/hooks/concurrent-checkout-guard.sh"),
+            ("CLAUDE.md", ".claude/hooks/ruff-after-edit.sh"),
+        )
+        for document, target in targets:
+            with self.subTest(document=document, target=target):
+                path = self.rendered / target
+                parked = self.rendered / f"{target}.parked"
+                path.rename(parked)
+
+                failures = self.rendered_violations()
+                parked.rename(path)
+                self.assertIn(
+                    f"FAIL [prose-routes]: {document} route target does not exist: "
+                    f"{target}",
+                    failures,
+                )
+
+    def test_optional_plugin_routes_do_not_require_targets(self) -> None:
+        self.build_good_fixture()
+
+        failures = [
+            item for item in self.rendered_violations() if "prose-routes" in item
+        ]
+
+        self.assertEqual([], failures)
+
+    def test_unresolved_docs_placeholder_is_rejected(self) -> None:
+        self.build_good_fixture()
+        self.write(
+            self.rendered,
+            "CLAUDE.md",
+            GOOD_CLAUDE_PROSE + "| `docs/` | (Add rows here) |\n",
+        )
+
+        self.assertIn(
+            "FAIL [prose-routes]: CLAUDE.md contains unresolved docs/ placeholder",
+            self.rendered_violations(),
+        )
+
+    def test_every_rendered_claude_hook_must_be_executable(self) -> None:
+        self.build_good_fixture()
+        for relative_path in CLAUDE_HOOK_PATHS:
+            with self.subTest(path=relative_path):
+                path = self.rendered / relative_path
+                original_mode = path.stat().st_mode
+                path.chmod(
+                    original_mode
+                    & ~(stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
+                )
+
+                failures = self.rendered_violations()
+                path.chmod(original_mode)
+                self.assertIn(
+                    f"FAIL [executable-modes]: repository script is not "
+                    f"executable: {relative_path}",
+                    failures,
+                )
 
     def test_cli_prints_violations_and_returns_nonzero(self) -> None:
         self.build_good_fixture()
