@@ -17,15 +17,21 @@ installing this plugin there would duplicate skill names.
   blocked every commit until a sentinel matched, which fought the tool; a native hook
   runs inside git, where no compound command can outrun it.
 - **A concurrent-checkout guard** that blocks two sessions from racing on one working tree.
-- **Skills:** `validate` (on-demand two-wave deterministic pass), `codex-review` and
-  `codex-plan-review` (cross-model second opinions - require the Codex CLI),
-  `reflect`, `sam_handoff`, `unknowns`, `bootstrap-cc-setup`.
-- **Agents:** `diff-reviewer`, `security-scanner`, `code-simplifier`, `consistency-checker`,
-  `test-synthesizer`, `self-critic`, `code-architect`, `build-validator`,
-  `read-only`, plus two baseline-driven skeletons: `verify-app` and `regression-checker`
-  read their expected values from a repo-local `.claude/baselines.json` and report
-  NO-BASELINE rather than inventing numbers when it is absent.
-- **Workflows:** `plan-review-fanout` (grounded adversarial plan review).
+- **Skills:** `plan-review` (blind merged plan review), `tech-selection` (bounded
+  component trade-off records), `surprise-me` (ranked, evidence-backed unsolicited
+  ideas; rehomed from the dissolved helpers bundle), `validate` (on-demand two-wave
+  deterministic pass),
+  `codex-review` and `codex-plan-review` (cross-model second opinions - require the
+  Codex CLI), `catchup`, `dream`, `align-prompt`, `scaffold-context`, `reflect`,
+  `sam_handoff`, `unknowns`, `bootstrap-cc-setup`.
+- **Agents:** `plan-reviewer` (merged 2026-08-29: correctness checklist + elegance
+  gate in ONE blind unit, bounded findings, coverage ledger), `consistency-checker`,
+  `test-synthesizer`, `code-architect`, `build-validator`, `read-only`.
+  Removed 2026-08-29 as natively superseded: `diff-reviewer`, `code-simplifier`,
+  `self-critic` (bundled `/code-review`, `/simplify`), `security-scanner`
+  (`/security-review`), and the baseline skeletons `verify-app` / `regression-checker`
+  (their `.claude/baselines.json` contract never shipped).
+- **Workflows:** `plan-review-fanout` (grounded adversarial plan review, parallel lenses).
 
 ## Opt-in guards (v0.2.0) - dormant until you declare their config
 

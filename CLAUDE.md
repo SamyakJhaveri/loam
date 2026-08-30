@@ -1,11 +1,8 @@
 # CLAUDE.md — Loam
 
-This repo IS a Copier template AND a Claude Code project. The `.claude/` symlink points to `seed/.claude/`, so the same config that ships to bootstrapped projects activates here.
+This repo IS a Copier template AND a Claude Code project. The `.claude/` symlink points to `seed/.claude/`, so the shipped harness activates here too.
 
-**REBUILD EPOCH (since 2026-08-28, commit 317b961):** the harness was deliberately gutted to a baseline.
-`reassess-`/`rewrite-` filename prefixes mark assets awaiting a keep/remove/rewrite verdict.
-The decision ledger is `docs/specs/rebuild-ledger.md`; the template is non-functional on main until the rebuild lands (the last release tag keeps serving Copier users).
-Deleted files remain readable via `git show 317b961^:<old-path>`.
+**REBUILT 2026-08-29** (design: `docs/specs/rebuild-structure-design.md`). The reassess/rewrite epoch is over; no prefixed files remain.
 
 User preferences:
 - Challenge assumptions or offer corrections anytime
@@ -26,35 +23,40 @@ cd my-project && uvx copier update --trust
 
 | Path | Purpose |
 |------|---------|
-| `seed/`                  | Copier `_subdirectory` — ALL deliverables rendered to projects |
-| `seed/.claude/`          | Skills, agents, hooks, rules, settings (shipped to projects) |
-| `seed/_research/`        | Research-flavor overlay (applied when `is_research=true`) |
-| `seed/*.jinja`           | Copier-rendered files (CLAUDE.md, AGENTS.md, README.md, etc.) |
+| `seed/`                  | Copier `_subdirectory` — everything rendered to projects |
+| `seed/.agents/skills/`   | Skills shared by both harnesses (Claude Code reads via symlink) |
+| `seed/.codex/`           | Codex config + execution rules (trust-gated in projects) |
 | `.claude → seed/.claude` | Symlink for local dev experience |
-| `cultivation/`           | Skill staging: `wip/`, `marketplace/` (cut from default), `retired/` |
-| `soil/`                  | Local-only knowledge base (gitignored; incl. `loam-rebuild-checkpoint/`) |
-| `_archive/`              | Human-only reference docs; not loaded into Claude context |
-| `reassess-bin/`          | Parked scripts awaiting ledger verdicts (was `bin/`; `bin/` is empty) |
-| `docs/`                  | Template documentation (partially stale during the rebuild) |
-| `docs/specs/`            | Design specifications + the rebuild ledger |
-| `copier.yml`             | Copier config: `_subdirectory: "seed"`, questions, `_tasks` |
+| `cultivation/marketplace/` | Plugin layer: sam-cc-setup (agents+skills), sam-superpowers, impeccable, bundles |
+| `cultivation/wip/`       | Staging with no verdict yet (gitignored) |
+| `bin/`                   | verify-template.sh, release.sh, ip-sweep set, lib.sh |
+| `docs/`                  | Template documentation |
+| `docs/specs/`            | Design specs + rebuild records |
+| `copier.yml`             | Copier config: `_subdirectory: "seed"`, `_preserve_symlinks`, `_tasks` |
 | `VERSION`                | Semver for releases |
 
-## Reference Docs (read on demand)
+## Gotchas (this repo)
 
-Always loaded:
-- `.claude/rules/reassess-rewrite-known-issues.md` — recurring gotchas (awaiting rewrite)
-- `.claude/rules/architecture.md`
-
-Context-routing:
-- `.claude/rules/reassess-context-md-anatomy.md` — when authoring a CONTEXT.md
-- `docs/specs/rebuild-ledger.md` — when deciding any asset's fate
-- `docs/ASSET-LAYERS.md`, `docs/BOOTSTRAP.md`, `docs/SYNC.md`, `docs/COPIER.md`, `docs/FLAVORS.md`, `docs/MEMORY.md` — stale in parts; verify against the tree before trusting
-- plan-reviewer design rationale: deleted in the teardown; read via `git show 317b961^:seed/plan-reviewer-design.md` when redesigning the plan-reviewer
+- Copier resolves git TAGS, not HEAD. Never tag until `bin/verify-template.sh` passes; use `bin/release.sh <version>`, which gates on it.
+- `claude plugin validate` refuses a symlinked `.claude` and does not follow symlinks — always name the REAL dirs (`seed/.claude`, `seed/.agents/skills`), as verify-template does.
+- Verification greps: case-insensitive and repo-wide (`grep -rni`), or they false-pass.
+- Count skills by `find … -name SKILL.md`, not directory listings.
+- Hook events/matchers are exact strings; a wrong name fails silently (a `PostToolUse`+`Compact` hook sat inert for months).
+- `auto-activate` is not a real skill field; manual-only = `disable-model-invocation: true`.
+- Quote YAML description strings containing colons.
 
 ## Rules when editing this template
 
-- Don't add project-specific content. Everything here is generic or scoped to a flavor.
-- **Hybrid branch policy:** commit directly to main for docs, content, and small fixes; branch + PR for `seed/` behavior changes, hooks, `copier.yml`, and releases.
-- Skills for ANY project go in `seed/.claude/skills/`. Research-specific go in `seed/_research/skills/`. Cut skills go in `cultivation/marketplace/`.
-- `reassess-bin/verify-template.sh` is currently BROKEN against the gutted seed; CI repair is a ledger row. Do not tag a release until it passes again.
+- Don't add project-specific content; everything here is generic.
+- **Hybrid branch policy:** direct-to-main for docs, content, and small fixes; branch + PR for `seed/` behavior changes, hooks, `copier.yml`, and releases.
+- One directive, one home (see `docs/ASSET-LAYERS.md`). Skills for any project go in the sam-cc-setup plugin, not the seed, unless they must ship to every project.
+
+## Reference docs (read on demand)
+
+| File | Read when |
+|------|-----------|
+| `docs/ASSET-LAYERS.md` | Deciding where a new asset lives |
+| `docs/SYNC.md` | Anything about distribution or promotion |
+| `docs/BOOTSTRAP.md`, `docs/COPIER.md` | Bootstrap/update mechanics |
+| `docs/specs/rebuild-structure-design.md` | Why the tree is shaped this way |
+| `docs/specs/rebuild-research/` | The research grounding the rebuild (context rules, harness docs, reference agents) |

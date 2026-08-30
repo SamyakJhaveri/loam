@@ -1,7 +1,7 @@
 export const meta = {
   name: 'plan-review-fanout',
   description: 'Adversarial plan review as a grounded fan-out (canonical plan-reviewer checklist + elegance gate), adversarially verify BLOCK/HIGH findings, converge to APPROVE / APPROVE_WITH_CHANGES / REJECT plus a verbatim revised handoff plan. Pass the plan path as args.',
-  whenToUse: 'Reviewing a plan written in a prior session before execution. Parallel, grounded upgrade of /plan-review-invoke. Invoke: /plan-review-fanout <path-to-plan.md> (the calling session writes the returned revised plan to disk).',
+  whenToUse: 'Reviewing a plan written in a prior session before execution. Parallel, grounded upgrade of the single-agent /plan-review skill. Invoke: /plan-review-fanout <path-to-plan.md> (the calling session writes the returned revised plan to disk).',
   phases: [
     { title: 'Ground', detail: '3 git/Bash agents verify the plan factual/code/reframe claims against the live repo' },
     { title: 'Review', detail: '5 plan-reviewer lenses: repo-rules, over-engineering, missing-decisions, completeness, ordering' },
@@ -153,12 +153,11 @@ log("Fan-out: 3 grounding (git/Bash) + 5 checklist lenses + 1 elegance gate on "
 // order (the off-by-3 class of bug: 3 grounding thunks prefix the 5 review
 // lenses + elegance, so a hardcoded 5-label array over all[0..4] would mislabel
 // grounding failures and never check completeness/ordering/elegance).
-// Do NOT set agentType on these. The plan-reviewer agent declares
-// `tools: Read, Glob, Grep` - an explicit allowlist that excludes
-// StructuredOutput, so a lens run under it cannot emit its schema. That
-// allowlist also makes these prompts unsatisfiable: the preamble tells them to
-// run git/gh and the elegance gate to search the web. The default workflow agent
-// has the full toolset and the prompts already carry each lens.
+// Do NOT set agentType on these. The merged plan-reviewer agent declares
+// `tools: Read, Glob, Grep, Bash, WebSearch` - an explicit allowlist that
+// excludes StructuredOutput, so a lens run under it cannot emit its schema.
+// The default workflow agent has the full toolset and the prompts already
+// carry each lens.
 const findSpecs = [
   { label: "ground:facts",             prompt: G1, phase: "Ground",   schema: FINDINGS, effort: "high" },
   { label: "ground:code+LOC+dup",      prompt: G2, phase: "Ground",   schema: FINDINGS, effort: "high" },

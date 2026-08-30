@@ -2,7 +2,7 @@
 name: scaffold-context
 description: >
   Author a CONTEXT.md routing file for a specified project subdirectory using
-  the canonical ICM anatomy (inlined below; richer if the authoring-context-docs
+  the canonical CONTEXT.md anatomy (inlined below; richer if the authoring-context-docs
   skill is installed). Use when adding a new high-traffic area whose routing logic
   the root CLAUDE.md cannot describe economically. Skip for trivial directories.
   NOT for: editing existing CONTEXT.md files, authoring CLAUDE.md, or documenting project architecture - only new L1 routing files.
@@ -10,9 +10,9 @@ description: >
 
 # scaffold-context
 
-Generate a CONTEXT.md for a specified subdirectory following the canonical ICM
+Generate a CONTEXT.md for a specified subdirectory following the canonical routing-file
 (Information Context Map) anatomy. The skill exists because authoring per-area
-CONTEXT.md files by hand often produces stubs that violate ICM's own constraints -
+CONTEXT.md files by hand often produces stubs that violate the anatomy's own constraints -
 empty Skip columns, vague "Use when needed" triggers, sizes outside the 25-80 line band.
 
 ## When to fire
@@ -20,7 +20,7 @@ empty Skip columns, vague "Use when needed" triggers, sizes outside the 25-80 li
 User names a subdirectory and requests a CONTEXT.md, with phrasings such as:
 - "Author a CONTEXT.md for `src/payments/`"
 - "scaffold-context for `experiments/2026-05-baseline`"
-- "Add ICM routing to `tests/integration/`"
+- "Add CONTEXT.md routing to `tests/integration/`"
 
 Skip if:
 - The subdirectory has fewer than ~5 files and one obvious purpose (over-routing).
@@ -76,7 +76,7 @@ sufficient.
 
 ## Must NOT include
 
-- **Empty stubs.** ICM constraint: CONTEXT.md must be 25-80 lines of real content. Stubs invite
+- **Empty stubs.** Anatomy constraint: CONTEXT.md must be 25-80 lines of real content. Stubs invite
   the model to read them as authoritative when they are not.
 - **Mirrored content from root CLAUDE.md.** If the routing is identical, the subdirectory should
   not have its own CONTEXT.md.

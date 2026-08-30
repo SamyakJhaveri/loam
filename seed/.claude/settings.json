@@ -1,11 +1,7 @@
 {
   "model": "claude-opus-4-8[1m]",
-  "env": {
-    "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1"
-  },
   "enabledPlugins": {
-    "pyright-lsp@claude-plugins-official": true,
-    "clangd-lsp@claude-plugins-official": true
+    "pyright-lsp@claude-plugins-official": true
   },
   "permissions": {
     "allow": [
@@ -20,8 +16,7 @@
       "Bash(sed:*)",
       "Bash(echo:*)",
       "Bash(wc:*)",
-      "Bash(mkdir:*)",
-      "mcp__sequential-thinking"
+      "Bash(mkdir:*)"
     ],
     "deny": [
       "Bash(rm -rf:*)",
@@ -32,8 +27,7 @@
       "Edit(.env*)"
     ],
     "ask": [
-      "Bash(git push:*)",
-      "mcp__drawio"
+      "Bash(git push:*)"
     ]
   },
   "hooks": {
@@ -60,16 +54,6 @@
       }
     ],
     "PostToolUse": [
-      {
-        "matcher": "Compact",
-        "hooks": [
-          {
-            "type": "command",
-            "command": ".claude/hooks/post-compact-recovery.sh",
-            "timeout": 10
-          }
-        ]
-      },
       {
         "matcher": "Edit|Write",
         "hooks": [

@@ -1,6 +1,9 @@
 _min_copier_version: "9.4.0"
 _subdirectory: "seed"
 _templates_suffix: .jinja
+# Render checked-in symlinks (e.g. .claude/skills/catchup -> ../../.agents/skills/catchup)
+# as symlinks instead of dereferencing them.
+_preserve_symlinks: true
 _envops:
   keep_trailing_newline: true
 
@@ -31,9 +34,6 @@ github_repo:
 
 # Post-generation tasks (run in the generated project directory)
 _tasks:
-  # Create seed working directories with .gitkeep
-  - "for dir in archive config files_from_team internal_docs meeting_notes presentations results scripts submission_artifacts submission_docs; do mkdir -p \"$dir\" && touch \"$dir/.gitkeep\"; done"
-
   # Initialize git repo (skip on copier update — .git already exists)
   - "if [ ! -d .git ]; then (git init -b main 2>/dev/null || git init) && git add . && git commit -m 'Initial commit from loam'; fi"
 
