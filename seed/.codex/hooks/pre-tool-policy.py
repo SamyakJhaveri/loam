@@ -19,7 +19,10 @@ _DENIAL = {
         ),
     }
 }
-_ASSIGNMENT = re.compile(r"[A-Za-z_][A-Za-z0-9_]*=.*", re.DOTALL)
+_ASSIGNMENT = re.compile(
+    r"[A-Za-z_][A-Za-z0-9_]*(?:\[[^\]\n]+\])?\+?=.*",
+    re.DOTALL,
+)
 _PROTECTED_PUNCTUATION = {
     ";": "\ue000",
     "&": "\ue001",
@@ -211,13 +214,407 @@ def _protect_quoted_punctuation(command: str) -> str:
     return "".join(protected)
 
 
-def _segments(command: str) -> tuple[tuple[str, ...], ...]:
+def _read_heredoc_delimiter(line: str, start: int) -> tuple[str, int]:
+    delimiter: list[str] = []
+    quote: str | None = None
+    index = start
+    while index < len(line):
+        character = line[index]
+        if quote == "$'":
+            if character == "'":
+                quote = None
+                index += 1
+                continue
+            if character == "\\" and index + 1 < len(line):
+                escaped = line[index + 1]
+                escapes = {
+                    "a": "\a",
+                    "b": "\b",
+                    "e": "\x1b",
+                    "E": "\x1b",
+                    "f": "\f",
+                    "n": "\n",
+                    "r": "\r",
+                    "t": "\t",
+                    "v": "\v",
+                    "\\": "\\",
+                    "'": "'",
+                    '"': '"',
+                }
+                if escaped in escapes:
+                    delimiter.append(escapes[escaped])
+                    index += 2
+                    continue
+                if escaped == "x":
+                    end = index + 2
+                    while end < min(index + 4, len(line)) and line[end] in (
+                        "0123456789abcdefABCDEF"
+                    ):
+                        end += 1
+                    if end == index + 2:
+                        delimiter.append("x")
+                        index += 2
+                    else:
+                        delimiter.append(chr(int(line[index + 2 : end], 16)))
+                        index = end
+                    continue
+                if escaped in "01234567":
+                    end = index + 2
+                    while end < min(index + 5, len(line)) and line[end] in (
+                        "01234567"
+                    ):
+                        end += 1
+                    delimiter.append(chr(int(line[index + 1 : end], 8)))
+                    index = end
+                    continue
+                delimiter.append(escaped)
+                index += 2
+                continue
+            delimiter.append(character)
+            index += 1
+            continue
+        if quote == "'":
+            if character == "'":
+                quote = None
+            else:
+                delimiter.append(character)
+            index += 1
+            continue
+        if quote == '"':
+            if character == '"':
+                quote = None
+                index += 1
+                continue
+            if character == "\\" and index + 1 < len(line):
+                escaped = line[index + 1]
+                if escaped in {'$', '`', '"', "\\", "\n"}:
+                    delimiter.append(escaped)
+                    index += 2
+                    continue
+                delimiter.append(character)
+                index += 1
+                continue
+            delimiter.append(character)
+            index += 1
+            continue
+        if character in " \t\r\n;&|<>()":
+            break
+        if (
+            character == "$"
+            and index + 1 < len(line)
+            and line[index + 1] in {"'", '"'}
+        ):
+            quote = "$'" if line[index + 1] == "'" else '"'
+            index += 2
+            continue
+        if character in {"'", '"'}:
+            quote = character
+            index += 1
+            continue
+        if character == "\\" and index + 1 < len(line):
+            delimiter.append(line[index + 1])
+            index += 2
+            continue
+        delimiter.append(character)
+        index += 1
+    if quote is not None or not delimiter:
+        raise ValueError("invalid heredoc delimiter")
+    return "".join(delimiter), index
+
+
+def _heredoc_declarations(
+    line: str,
+    initial_quote: str | None,
+    initial_arithmetic_depth: int,
+    initial_parameter_depth: int,
+    initial_legacy_arithmetic_depth: int,
+    initial_command_depth: int,
+    initial_command_resumes: tuple[
+        tuple[int, str | None, int, int, int], ...
+    ],
+) -> tuple[
+    tuple[tuple[str, bool], ...],
+    str | None,
+    int,
+    int,
+    int,
+    int,
+    tuple[tuple[int, str | None, int, int, int], ...],
+]:
+    declarations: list[tuple[str, bool]] = []
+    quote = initial_quote
+    arithmetic_depth = initial_arithmetic_depth
+    parameter_depth = initial_parameter_depth
+    legacy_arithmetic_depth = initial_legacy_arithmetic_depth
+    command_depth = initial_command_depth
+    command_resumes = list(initial_command_resumes)
+    word_started = quote is not None
+    index = 0
+    while index < len(line):
+        character = line[index]
+        if quote == "'":
+            if character == "'":
+                quote = None
+            index += 1
+            continue
+        if quote == '"':
+            if line.startswith("$(", index) and not line.startswith("$((", index):
+                command_resumes.append(
+                    (
+                        command_depth,
+                        quote,
+                        arithmetic_depth,
+                        parameter_depth,
+                        legacy_arithmetic_depth,
+                    )
+                )
+                command_depth += 1
+                quote = None
+                arithmetic_depth = 0
+                parameter_depth = 0
+                legacy_arithmetic_depth = 0
+                index += 2
+                continue
+            if character == '"':
+                quote = None
+            elif character == "\\" and index + 1 < len(line):
+                index += 1
+            index += 1
+            continue
+        if arithmetic_depth:
+            if line.startswith("$(", index) and not line.startswith("$((", index):
+                command_resumes.append(
+                    (
+                        command_depth,
+                        quote,
+                        arithmetic_depth,
+                        parameter_depth,
+                        legacy_arithmetic_depth,
+                    )
+                )
+                command_depth += 1
+                arithmetic_depth = 0
+                parameter_depth = 0
+                legacy_arithmetic_depth = 0
+                index += 2
+                continue
+            if character in {"'", '"'}:
+                quote = character
+            elif character == "\\" and index + 1 < len(line):
+                index += 1
+            elif character == "(":
+                arithmetic_depth += 1
+            elif character == ")":
+                arithmetic_depth -= 1
+            index += 1
+            continue
+        if parameter_depth:
+            if line.startswith("$(", index) and not line.startswith("$((", index):
+                command_resumes.append(
+                    (
+                        command_depth,
+                        quote,
+                        arithmetic_depth,
+                        parameter_depth,
+                        legacy_arithmetic_depth,
+                    )
+                )
+                command_depth += 1
+                arithmetic_depth = 0
+                parameter_depth = 0
+                legacy_arithmetic_depth = 0
+                index += 2
+                continue
+            if line.startswith("${", index):
+                parameter_depth += 1
+                index += 2
+                continue
+            if character in {"'", '"'}:
+                quote = character
+            elif character == "\\" and index + 1 < len(line):
+                index += 1
+            elif character == "}":
+                parameter_depth -= 1
+            index += 1
+            continue
+        if legacy_arithmetic_depth:
+            if line.startswith("$(", index) and not line.startswith("$((", index):
+                command_resumes.append(
+                    (
+                        command_depth,
+                        quote,
+                        arithmetic_depth,
+                        parameter_depth,
+                        legacy_arithmetic_depth,
+                    )
+                )
+                command_depth += 1
+                arithmetic_depth = 0
+                parameter_depth = 0
+                legacy_arithmetic_depth = 0
+                index += 2
+                continue
+            if line.startswith("$[", index):
+                legacy_arithmetic_depth += 1
+                index += 2
+                continue
+            if character in {"'", '"'}:
+                quote = character
+            elif character == "\\" and index + 1 < len(line):
+                index += 1
+            elif character == "]":
+                legacy_arithmetic_depth -= 1
+            index += 1
+            continue
+        if line.startswith("$((", index):
+            arithmetic_depth = 2
+            word_started = True
+            index += 3
+            continue
+        if line.startswith("((", index):
+            arithmetic_depth = 2
+            word_started = True
+            index += 2
+            continue
+        if line.startswith("${", index):
+            parameter_depth = 1
+            word_started = True
+            index += 2
+            continue
+        if line.startswith("$[", index):
+            legacy_arithmetic_depth = 1
+            word_started = True
+            index += 2
+            continue
+        if line.startswith("$(", index):
+            command_resumes.append(
+                (
+                    command_depth,
+                    quote,
+                    arithmetic_depth,
+                    parameter_depth,
+                    legacy_arithmetic_depth,
+                )
+            )
+            command_depth += 1
+            arithmetic_depth = 0
+            parameter_depth = 0
+            legacy_arithmetic_depth = 0
+            word_started = True
+            index += 2
+            continue
+        if command_depth and character == "(":
+            command_depth += 1
+            index += 1
+            continue
+        if command_depth and character == ")":
+            command_depth -= 1
+            if command_resumes and command_depth == command_resumes[-1][0]:
+                (
+                    _,
+                    quote,
+                    arithmetic_depth,
+                    parameter_depth,
+                    legacy_arithmetic_depth,
+                ) = command_resumes.pop()
+            index += 1
+            continue
+        if character in {"'", '"'}:
+            quote = character
+            word_started = True
+            index += 1
+            continue
+        if character == "\\" and index + 1 < len(line):
+            word_started = True
+            index += 2
+            continue
+        if character == "#" and not word_started:
+            break
+        if line.startswith("<<<", index):
+            word_started = False
+            index += 3
+            continue
+        if line.startswith("<<", index):
+            index += 2
+            strip_tabs = index < len(line) and line[index] == "-"
+            if strip_tabs:
+                index += 1
+            while index < len(line) and line[index] in " \t":
+                index += 1
+            delimiter, index = _read_heredoc_delimiter(line, index)
+            declarations.append((delimiter, strip_tabs))
+            word_started = True
+            continue
+        if character in " \t\r\n;&|<>()":
+            word_started = False
+        else:
+            word_started = True
+        index += 1
+    return (
+        tuple(declarations),
+        quote,
+        arithmetic_depth,
+        parameter_depth,
+        legacy_arithmetic_depth,
+        command_depth,
+        tuple(command_resumes),
+    )
+
+
+def _mask_heredoc_bodies(command: str) -> str:
     normalized = command.replace("\\\r\n", "").replace("\\\n", "")
-    protected = _protect_quoted_punctuation(normalized)
+    pending: list[tuple[str, bool]] = []
+    masked: list[str] = []
+    lexical_quote: str | None = None
+    lexical_arithmetic_depth = 0
+    lexical_parameter_depth = 0
+    lexical_legacy_arithmetic_depth = 0
+    lexical_command_depth = 0
+    lexical_command_resumes: tuple[
+        tuple[int, str | None, int, int, int], ...
+    ] = ()
+    for line in normalized.splitlines(keepends=True):
+        line_ending = "\n" if line.endswith("\n") else ""
+        content = line[:-1] if line_ending else line
+        if content.endswith("\r"):
+            content = content[:-1]
+        if pending:
+            delimiter, strip_tabs = pending[0]
+            candidate = content.lstrip("\t") if strip_tabs else content
+            if candidate == delimiter:
+                pending.pop(0)
+            masked.append(line_ending)
+            continue
+        masked.append(content + line_ending)
+        (
+            declarations,
+            lexical_quote,
+            lexical_arithmetic_depth,
+            lexical_parameter_depth,
+            lexical_legacy_arithmetic_depth,
+            lexical_command_depth,
+            lexical_command_resumes,
+        ) = _heredoc_declarations(
+            content,
+            lexical_quote,
+            lexical_arithmetic_depth,
+            lexical_parameter_depth,
+            lexical_legacy_arithmetic_depth,
+            lexical_command_depth,
+            lexical_command_resumes,
+        )
+        pending.extend(declarations)
+    if pending:
+        raise ValueError("unterminated heredoc")
+    return "".join(masked)
+
+
+def _segments(command: str) -> tuple[tuple[str, ...], ...]:
+    protected = _protect_quoted_punctuation(command)
     lexer = shlex.shlex(protected, posix=True, punctuation_chars=";&|")
     lexer.commenters = "#"
     lexer.whitespace = " \t"
-    lexer.wordchars += "+" + "".join(_RESTORED_PUNCTUATION)
+    lexer.wordchars += "+[]" + "".join(_RESTORED_PUNCTUATION)
     tokens = tuple(lexer)
     segments: list[tuple[str, ...]] = []
     current: list[str] = []
@@ -300,6 +697,10 @@ def _strip_literal_prefixes_and_wrappers(words: tuple[str, ...]) -> list[str]:
     remaining = list(words)
     prefixes = {"!", "if", "elif", "while", "until", "then", "do", "else"}
     while remaining:
+        before = tuple(remaining)
+        _strip_assignments(remaining)
+        if not remaining:
+            break
         if remaining[0] in prefixes:
             remaining.pop(0)
             continue
@@ -310,35 +711,49 @@ def _strip_literal_prefixes_and_wrappers(words: tuple[str, ...]) -> list[str]:
             if remaining and remaining[0] == "--":
                 remaining.pop(0)
             continue
-        break
-    _strip_assignments(remaining)
-
-    if remaining and remaining[0] == "command":
-        remaining.pop(0)
-        if remaining and remaining[0] == "--":
+        if remaining[0] == "command":
             remaining.pop(0)
-        _strip_assignments(remaining)
-
-    if remaining and remaining[0] in {"env", "/usr/bin/env"}:
-        remaining.pop(0)
-        while remaining:
-            word = remaining[0]
-            if word == "--":
-                remaining.pop(0)
+            while remaining:
+                option = remaining[0]
+                if option == "--":
+                    remaining.pop(0)
+                    break
+                if (
+                    option.startswith("-")
+                    and len(option) > 1
+                    and set(option[1:]) <= {"p", "v", "V"}
+                ):
+                    remaining.pop(0)
+                    if "v" in option or "V" in option:
+                        return []
+                    continue
                 break
-            if word in {"-i", "--ignore-environment"}:
-                remaining.pop(0)
-                continue
-            if word in {"-u", "--unset"}:
-                if len(remaining) < 2:
-                    return []
-                del remaining[:2]
-                continue
-            if word.startswith("--unset=") or _ASSIGNMENT.fullmatch(word):
-                remaining.pop(0)
-                continue
+            continue
+        if remaining[0] in {"env", "/usr/bin/env"}:
+            remaining.pop(0)
+            while remaining:
+                word = remaining[0]
+                if word == "--":
+                    remaining.pop(0)
+                    break
+                if word in {"-", "-i", "--ignore-environment"}:
+                    remaining.pop(0)
+                    continue
+                if word in {"-u", "--unset"}:
+                    if len(remaining) < 2:
+                        return []
+                    del remaining[:2]
+                    continue
+                if word.startswith("-u") and len(word) > 2:
+                    remaining.pop(0)
+                    continue
+                if word.startswith("--unset=") or _ASSIGNMENT.fullmatch(word):
+                    remaining.pop(0)
+                    continue
+                break
+            continue
+        if tuple(remaining) == before:
             break
-        _strip_assignments(remaining)
 
     return remaining
 
@@ -495,7 +910,8 @@ def main() -> int:
         return _fail("tool_input.command has invalid Bash syntax")
 
     try:
-        segments = _segments(command)
+        masked_command = _mask_heredoc_bodies(command)
+        segments = _segments(masked_command)
     except ValueError:
         return _fail("tool_input.command is not valid shell text")
     if any(_is_force_push(segment) for segment in segments):

@@ -1327,6 +1327,159 @@ class RenderedHarnessContractTest(unittest.TestCase):
                 self.assertEqual(POLICY_DENIAL, json.loads(process.stdout))
                 self.assertEqual("", process.stderr)
 
+    def test_policy_process_normalizes_wrappers_to_a_fixed_point(self) -> None:
+        commands = (
+            "command -- time git push --force origin main",
+            "env time git push --force origin main",
+            "/usr/bin/env -i time git push --force origin main",
+            "MODE=check time git push --force origin main",
+            "MODE+=check git push --force origin main",
+            "MODE+=check time git push --force origin main",
+            "MODE[0]=check git push --force origin main",
+            "MODE[0]=check time git push --force origin main",
+            "command -p git push --force origin main",
+            "command -p -p git push --force origin main",
+            "command -pp git push --force origin main",
+            "env - git push --force origin main",
+            "/usr/bin/env - git push --force origin main",
+            "env -uMODE git push --force origin main",
+        )
+        for command in commands:
+            with self.subTest(command=command):
+                process = self.run_policy(self.policy_payload(command))
+
+                self.assertEqual(0, process.returncode, process.stderr)
+                self.assertNotEqual("", process.stdout)
+                self.assertEqual(POLICY_DENIAL, json.loads(process.stdout))
+                self.assertEqual("", process.stderr)
+
+    def test_policy_process_allows_safe_fixed_point_analogs(self) -> None:
+        commands = (
+            "command -- time git --version",
+            "env time git --version",
+            "/usr/bin/env -i time git --version",
+            "MODE=check time git --version",
+            "command -p git --version",
+            "command -v git push --force origin main",
+            "command -V git push --force origin main",
+            "env - git --version",
+            "/usr/bin/env - git --version",
+            "env -uMODE git --version",
+        )
+        for command in commands:
+            with self.subTest(command=command):
+                process = self.run_policy(self.policy_payload(command))
+
+                self.assertEqual(0, process.returncode, process.stderr)
+                self.assertEqual("", process.stdout)
+                self.assertEqual("", process.stderr)
+
+    def test_policy_process_masks_heredoc_data_before_function_depth(self) -> None:
+        allowed = (
+            (
+                "deploy() {\n"
+                "  cat <<EOF\n"
+                "}\n"
+                "EOF\n"
+                "  git push --force origin main\n"
+                "}\n"
+            ),
+            "cat <<EOF\ngit push --force origin main\nEOF\n",
+            "cat <<'EOF'\ngit push --force origin main\nEOF\n",
+            "cat <<$'EOF'\ngit push --force origin main\nEOF\n",
+            "cat <<$\"EOF\"\ngit push --force origin main\nEOF\n",
+            "cat <<$'E\\x4fF'\ngit push --force origin main\nEOF\n",
+            "cat <<-EOF\n\tgit push --force origin main\n\tEOF\n",
+            (
+                "cat <<ONE <<'TWO'\n"
+                "git push --force origin main\n"
+                "ONE\n"
+                "}\n"
+                "TWO\n"
+            ),
+            (
+                "result=\"$(cat <<EOF\n"
+                "\"\n"
+                "git push --force origin main\n"
+                "EOF\n"
+                ")\"\n"
+            ),
+        )
+        for command in allowed:
+            with self.subTest(command=command):
+                process = self.run_policy(self.policy_payload(command))
+
+                self.assertEqual(0, process.returncode, process.stderr)
+                self.assertEqual("", process.stdout)
+                self.assertEqual("", process.stderr)
+
+    def test_policy_process_finds_force_push_after_masked_heredocs(self) -> None:
+        commands = (
+            (
+                "deploy() {\n"
+                "  cat <<EOF\n"
+                "{\n"
+                "EOF\n"
+                "}\n"
+                "git push --force origin main\n"
+            ),
+            (
+                "cat <<EOF\n"
+                "git push --force origin main\n"
+                "EOF\n"
+                "git push --force origin main\n"
+            ),
+            (
+                "printf '%s' 'literal\n"
+                "<<EOF\n"
+                "literal'\n"
+                "git push --force origin main\n"
+                "EOF\n"
+            ),
+            (
+                "printf '%s' \"literal\n"
+                "<<EOF\n"
+                "literal\"\n"
+                "git push --force origin main\n"
+                "EOF\n"
+            ),
+            ": $((1 << 2))\ngit push --force origin main\n2\n",
+            "((1 << 2))\ngit push --force origin main\n2\n",
+            ": ${v:-<<2}\ngit push --force origin main\n2}\n",
+            ": ${v//<</2}\ngit push --force origin main\n/2}\n",
+            ": $[1 << 2]\ngit push --force origin main\n2]\n",
+            (
+                "cat <<$'E\\x4fF'\n"
+                "safe\n"
+                "EOF\n"
+                "git push --force origin main\n"
+            ),
+            (
+                ": ${v:-$(cat <<EOF\n"
+                "f() {\n"
+                "{\n"
+                "EOF\n"
+                ")}\n"
+                "git push --force origin main\n"
+            ),
+            (
+                ": $(( $(cat <<EOF >/dev/null\n"
+                "f() {\n"
+                "{\n"
+                "EOF\n"
+                "echo 1) ))\n"
+                "git push --force origin main\n"
+            ),
+        )
+        for command in commands:
+            with self.subTest(command=command):
+                process = self.run_policy(self.policy_payload(command))
+
+                self.assertEqual(0, process.returncode, process.stderr)
+                self.assertNotEqual("", process.stdout)
+                self.assertEqual(POLICY_DENIAL, json.loads(process.stdout))
+                self.assertEqual("", process.stderr)
+
     def test_codex_hook_wiring_is_exact_and_synchronous(self) -> None:
         hooks_path = BIN_DIR.parent / "seed/.codex/hooks.json"
         self.assertTrue(hooks_path.is_file(), f"missing {hooks_path}")
