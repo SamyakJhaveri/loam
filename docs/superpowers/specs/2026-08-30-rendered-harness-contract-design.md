@@ -1,7 +1,7 @@
 # Rendered Harness Contract Design
 
 **Date:** 2026-08-30
-**Status:** Approved design, pending implementation plan
+**Status:** Approved and independently reviewed, implementation not started
 
 ## Purpose
 
@@ -43,7 +43,9 @@ The deferred findings are:
 
 `bin/verify-template.sh` remains the public entry point. A new Python module,
 `bin/rendered_harness_contract.py`, owns the semantic checks. It uses only the
-Python standard library.
+Python standard library. The release tooling requires Python 3.11 or newer
+because the core TOML parser is `tomllib`. Loam continuous integration uses
+Python 3.12.
 
 The shell wrapper performs these stages:
 
@@ -68,12 +70,59 @@ It exits nonzero when any failure exists.
 
 ### Copier topology
 
-The checker has an explicit list of required generated harness paths. It also
-has an explicit list of retired paths that must remain absent.
+The checker enforces this exact rendered path set:
 
-The required set covers the rendered Claude configuration, Claude hook scripts,
-the shared catchup skill, Codex configuration, Codex rules, Codex hook wiring,
-and rendered agent instructions.
+| Required rendered path | Kind |
+|---|---|
+| `AGENTS.md` | Rendered agent instructions |
+| `CLAUDE.md` | Rendered Claude instructions |
+| `.agents/skills/catchup/SKILL.md` | Shared skill source |
+| `.claude/settings.json` | Claude configuration and hook wiring |
+| `.claude/settings.local.json.template` | Local settings template |
+| `.claude/hooks/bash-audit-log.sh` | Claude hook script |
+| `.claude/hooks/concurrent-checkout-guard.sh` | Claude hook script |
+| `.claude/hooks/ruff-after-edit.sh` | Claude hook script |
+| `.claude/hooks/stop-verify-gate.sh` | Claude hook script |
+| `.claude/skills/catchup` | Symlink to the shared skill |
+| `.codex/config.toml` | Codex configuration |
+| `.codex/hooks.json` | Codex hook wiring |
+| `.codex/hooks/pre-tool-policy.py` | Codex policy hook |
+| `.codex/rules/default.rules` | Codex execution rules |
+
+The checker enforces this exact source-only path set:
+
+| Required source-only path | Purpose |
+|---|---|
+| `copier.yml` | Copier topology and symlink behavior |
+| `bin/verify-template.sh` | Public verification interface |
+| `bin/rendered_harness_contract.py` | Semantic contract checker |
+| `bin/tests/test_rendered_harness_contract.py` | Contract regression tests |
+| `.github/workflows/test.yml` | Pull-request release-gate wiring |
+| `.github/workflows/release.yml` | Tag release-gate wiring |
+| `bin/release.sh` | Local release-gate wiring |
+
+All release-gate callers are part of the contract. Both workflow files must run
+`bin/verify-template.sh`. In `.github/workflows/release.yml`, that step must
+occur before the first publishing step, currently
+`softprops/action-gh-release`. `bin/release.sh` must invoke the same interface
+before its first mutation, currently `echo "$VERSION" > VERSION`. The checker
+compares the positions of these exact command signatures. A release-flow
+refactor must update this contract deliberately.
+
+The checker also requires these retired rendered paths to stay absent:
+
+| Forbidden rendered path | Reason |
+|---|---|
+| `.mcp.json` | Seed MCP defaults were retired |
+| `.claude/agents` | Seed agents were retired |
+| `.claude/rules` | Empty always-loaded rule layer was retired |
+| `.claude/hooks/post-compact-recovery.sh` | Native context reload replaced it |
+| `.claude/skills/reassess-template-sync` | Sync engine was retired |
+| `.agents/skills/agent-team` | The seed does not ship an agent-team skill |
+| `.codex/reassess-hooks.json` | Old inactive hook file was retired |
+| `.codex/agents` | Empty Codex agent layer was retired |
+| `.codex/mcp` | Dangling MCP layer was retired |
+| `_research` | The research flavor was retired |
 
 This is a product contract, not a generic directory scan. Adding or removing a
 required harness component therefore requires an intentional contract update.
@@ -103,9 +152,9 @@ non-blocking, which preserves the current behavior.
 The generated project gains `.codex/hooks.json` and
 `.codex/hooks/pre-tool-policy.py`.
 
-The hook runs on `PreToolUse` for shell commands. It reads the command from
-`tool_input.command`. It denies a recognized force push with the current Codex
-hook result:
+The hook runs on `PreToolUse` with the exact `Bash` matcher. It reads the command
+from `tool_input.command`. It denies a recognized force push with the current
+Codex hook result:
 
 ```json
 {
@@ -117,14 +166,23 @@ hook result:
 }
 ```
 
-The policy parser recognizes Git global options and common wrappers before the
-`push` subcommand. It denies long force flags, assigned long force flags, short
-`-f`, clustered short flags containing `f`, and plus-prefixed refspecs. It does
-not deny a normal push.
+The parser recognizes literal Git commands, Git global options, `command`, and
+`env` with literal assignments. It examines each literal command segment split
+by `;`, `&&`, `||`, or `|`. It denies long force flags, assigned long force
+flags, short `-f`, clustered short flags containing `f`, and plus-prefixed
+refspecs. It does not deny a normal push.
 
-The hook fails closed when it recognizes a Git push but cannot safely classify
-a force-related argument. Malformed or unrelated hook input exits without a
-decision so it cannot disable unrelated tools.
+The `Bash` matcher keeps unrelated tools outside this hook. Invalid JSON, a
+non-object envelope, a missing `tool_input`, or a non-string command exits `2`
+with a blocking reason. A valid, unrelated shell command exits `0` without a
+decision.
+
+This local hook guarantees only the listed literal command forms. Git aliases,
+shell functions, variable-expanded commands, nested shells, and command
+substitution are outside its guarantee. Absolute force-push prevention belongs
+at the remote Git trust boundary through branch protection or a pre-receive
+hook. The local hook and rules are developer guardrails, not a replacement for
+that remote control.
 
 `default.rules` remains as defense in depth. It prompts for ordinary pushes and
 forbids the direct force forms that its prefix matcher can express. The hook is
@@ -132,9 +190,23 @@ the argument-aware enforcement layer.
 
 ### Prose routes
 
-The checker validates a small, explicit set of active harness references in the
-rendered `AGENTS.md` and `CLAUDE.md`. Each referenced repository path must
-exist. Each required command route must point at the active interface.
+The checker validates these active rendered references:
+
+| Rendered document | Required reference | Required target |
+|---|---|---|
+| `CLAUDE.md` | `@AGENTS.md` | `AGENTS.md` |
+| `AGENTS.md` | `.codex/` | `.codex/` |
+| `AGENTS.md` | `.agents/skills/` | `.agents/skills/` |
+| `CLAUDE.md` | `.claude/hooks/stop-verify-gate.sh` | The named hook script |
+| `CLAUDE.md` | `/catchup` and `.agents/skills/` | `.agents/skills/catchup/SKILL.md` |
+| `CLAUDE.md` | `bash-audit-log.sh` | The named hook script |
+| `CLAUDE.md` | `concurrent-checkout-guard.sh` | The named hook script |
+| `CLAUDE.md` | `ruff-after-edit.sh` | The named hook script |
+
+The current `docs/` placeholder route has no rendered target. The implementation
+removes that row from `seed/CLAUDE.md.jinja`. Routes qualified with "if
+installed" point to optional plugins and are excluded from required-target
+validation.
 
 The checker does not scan every Markdown link. Historical specifications,
 examples, and external URLs are outside this contract. This avoids false
@@ -149,9 +221,12 @@ source copies.
 ## Native supplemental checks
 
 When Claude Code is installed, the wrapper validates the main Claude directory,
-the shared skill directory, and each shipped plugin component directory. It does
-not treat a successful plugin manifest check as proof that nested agents and
-skills are valid.
+the shared skill directory, each plugin root, and supported `agents`, `skills`,
+and `commands` component directories when present. It does not pass a `hooks`
+directory to `claude plugin validate`, because that command requires a plugin or
+marketplace manifest. The checker reads local plugin roots from
+`cultivation/marketplace/.claude-plugin/marketplace.json` and validates hook
+JSON for each declared local plugin. It does not require any plugin by name.
 
 When Codex is installed, the wrapper runs representative execution-policy probes
 against `seed/.codex/rules/default.rules`. These probes confirm the native
@@ -159,6 +234,42 @@ decision for a normal push and direct force-push forms.
 
 Native checks strengthen the contract. They do not define the minimum continuous
 integration environment.
+
+Without Codex, the core checker parses `.codex/config.toml` with `tomllib`. It
+parses `default.rules` as the supported Python-like `prefix_rule` call shape
+with `ast`. It requires literal `pattern`, `decision`, `justification`, and
+`match` values and the expected allow, prompt, and forbidden policies. Native
+Codex probes remain the authoritative semantic check when Codex is installed.
+
+The core Codex configuration schema is bounded to the sections Loam owns:
+
+| Configuration path | Required value contract |
+|---|---|
+| Root table | Only `default_permissions`, `features`, `agents`, and `permissions` |
+| `default_permissions` | String equal to `project-workspace` |
+| `features` | Only `hooks` and `multi_agent`, both equal to `true` |
+| `agents` | Only `max_concurrent_threads_per_session`, with a positive integer |
+| `permissions` | Only the `project-workspace` profile |
+| `permissions.project-workspace.description` | Non-empty string |
+| `permissions.project-workspace.extends` | String equal to `:workspace` |
+| `permissions.project-workspace.filesystem` | Only the `:workspace_roots` table |
+| Secret-file deny entries | The current `.env` and `.envrc` patterns, each equal to `deny` |
+
+Unknown keys inside these owned sections are contract failures. The required
+keys and types follow the current official Codex configuration reference. The
+implementation adds `features.hooks = true` so the policy hook is not dependent
+on a default value.
+
+The installed Codex CLI has no deterministic command that strictly validates an
+untrusted project configuration without starting an agent. `codex
+--strict-config ... doctor` reads the trusted user layer and ignores an
+untrusted project layer. The release gate therefore does not claim that command
+as evidence. The bounded core schema is the required project-config check.
+
+The wrapper also validates `cultivation/marketplace` as a marketplace root. It
+reads local plugin roots from the manifest's string `source` entries. Remote
+object sources are not treated as local directories. It validates each local
+plugin root and its supported component directories.
 
 ## Test design
 
@@ -173,8 +284,10 @@ from more than one area.
 
 The force-push hook receives a table of allowed and denied command strings. The
 table covers direct flags, assigned flags, clustered short flags, plus-prefixed
-refspecs, Git global options, wrappers, quoted arguments, command chains, and
-malformed input.
+refspecs, Git global options, supported wrappers, quoted arguments, literal
+command chains, and malformed hook envelopes. Separate tests record that Git
+aliases, shell functions, expansions, nested shells, and command substitution
+are outside the local guarantee.
 
 The Ruff hook receives realistic Claude hook JSON. A temporary executable on
 `PATH` records whether Ruff was invoked. The test does not require Ruff itself.
@@ -189,12 +302,23 @@ The release gate receives two independent checks at the critical point:
 The checker does not stop after the first defect. It reports every independent
 contract violation it can assess safely.
 
-File-read, JSON-parse, symlink, and permission errors are contract failures.
+File-read, JSON-parse, TOML-parse, rule-parse, symlink, and permission errors are
+contract failures. A malformed payload to the Bash policy hook is denied.
 Optional native-tool absence is a visible skip. Native-tool presence followed
 by validation failure is a release-gate failure.
 
 Temporary fixtures are created outside the repository and removed by the test
 framework or the existing shell cleanup trap.
+
+## Authoritative references
+
+- [Codex hooks](https://learn.chatgpt.com/docs/hooks) defines project hook
+  discovery, `PreToolUse`, `tool_input.command`, and denial output.
+- [Codex configuration reference](https://learn.chatgpt.com/docs/config-file/config-reference)
+  defines the project trust gate and the keys in the bounded configuration
+  schema.
+- [Claude Code hooks reference](https://code.claude.com/docs/en/hooks) defines
+  the hook envelope and `tool_input.file_path` for Edit and Write events.
 
 ## Files in scope
 
