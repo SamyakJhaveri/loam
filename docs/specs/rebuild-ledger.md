@@ -6,7 +6,7 @@
 2. Plan-reviewer: REWRITE confirmed; waits for Samyak's reference agents + the rebuild design session.
 3. Codex: tiered ship per recommendation (fixes pending in rebuild session).
 4. Research flavor: RETIRED. Unified seed, no flavored separations. copier.yml simplified; overlay deleted; research assets parked in cultivation/wip/research-assets/ for later use as normal optional assets.
-5. Ponytail: PURGED everywhere (shipped settings, jinja docs, parbench_sam, global plugin + marketplace).
+5. Ponytail: PURGED everywhere (shipped settings, jinja docs, the private benchmark repo, global plugin + marketplace).
 6. Stop gate: REWIRED slimmed (stop-verify-gate.sh, deterministic core only).
 7. Sync: CONSOLIDATE to at most two canonical mechanisms - Copier forward (loam -> seeded projects, tag-driven) and ONE unified reverse mechanism (seeded projects -> loam, absorbing template-sync/agent-sync/hub-ci). Consolidation design happens in the rebuild design session; engine kept parked until then.
 Extra rulings: align-prompt REWRITTEN (not removed) for Fable 5 + Opus 4.8, new home sam-cc-setup, with citations; catchup slimmed, one home (sam-cc-setup), seed copy deleted; impeccable bundle KEPT; auto-activate bug fixed everywhere (real field: disable-model-invocation).
