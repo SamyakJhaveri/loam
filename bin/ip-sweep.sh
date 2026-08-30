@@ -83,15 +83,24 @@ fi
 # Authors must use a complete GitHub noreply address. Committers may additionally
 # be GitHub's exact web-merge identity; checking both fields preserves the public
 # history identity boundary without rejecting GitHub's merge commits.
+#
+# Grandfathered baseline (Samyak's ruling, 2026-08-29): four sync-factory commits
+# merged publicly via PR #1 (last: 7868345...) carry a pre-noreply identity and are
+# accepted as already public. The identity check inspects only commits AFTER the
+# baseline; if the baseline SHA is absent (fresh shallow clone), fall back to full
+# history so the gate fails closed rather than silently narrowing.
+IDENTITY_BASELINE="7868345144fbe888d80b4e6a70d1d5129d240044"
+IDENTITY_RANGE="HEAD"
+git cat-file -e "$IDENTITY_BASELINE" 2>/dev/null && IDENTITY_RANGE="${IDENTITY_BASELINE}..HEAD"
 NOREPLY_AUTHOR_RE='^[^@[:space:]]+@users\.noreply\.github\.com$'
 NOREPLY_COMMITTER_RE='^([^@[:space:]]+@users\.noreply\.github\.com|noreply@github\.com)$'
-BAD_AUTHORS=$(git log --format='%ae' | sort -u | grep -vE "$NOREPLY_AUTHOR_RE" || true)
+BAD_AUTHORS=$(git log --format='%ae' $IDENTITY_RANGE | sort -u | grep -vE "$NOREPLY_AUTHOR_RE" || true)
 if [ -n "$BAD_AUTHORS" ]; then
   echo "WARN: non-noreply author identities (must be clean in the public repo):"
   echo "$BAD_AUTHORS"
   [[ "$STRICT" = 1 ]] && FAIL=1
 fi
-BAD_COMMITTERS=$(git log --format='%ce' | sort -u | grep -vE "$NOREPLY_COMMITTER_RE" || true)
+BAD_COMMITTERS=$(git log --format='%ce' $IDENTITY_RANGE | sort -u | grep -vE "$NOREPLY_COMMITTER_RE" || true)
 if [ -n "$BAD_COMMITTERS" ]; then
   echo "WARN: non-noreply committer identities (must be clean in the public repo):"
   echo "$BAD_COMMITTERS"
