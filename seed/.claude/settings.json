@@ -59,7 +59,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "FILE=$(cat | python3 -c \"import sys,json; d=json.load(sys.stdin); print(d.get('file_path',''))\" 2>/dev/null); if [ -n \"$FILE\" ] && echo \"$FILE\" | grep -qE '\\.py$'; then python3 -m ruff check --fix \"$FILE\" 2>/dev/null || true; fi"
+            "command": ".claude/hooks/ruff-after-edit.sh"
           }
         ]
       }

@@ -5,6 +5,8 @@
 default_permissions = "project-workspace"
 
 [features]
+# Keep repository policy hooks active after the project is trusted.
+hooks = true
 # Codex multi-agent collaboration tools (documented as on by default; pinned
 # explicitly so a future default flip does not silently change behavior).
 multi_agent = true
