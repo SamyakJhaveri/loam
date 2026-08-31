@@ -32,7 +32,7 @@ TERMS="$(grep -vE '^[[:space:]]*#' "$IP_TERMS_FILE" 2>/dev/null | grep -vE '^[[:
 # material. Public text docs (POST-RELEASE-BACKLOG, design-philosophy.md,
 # concepts.yaml) are deliberately NOT excluded — if ever tracked they must be
 # scanned. Terms under these paths are expected private history, not a leak.
-EXCLUDE='^docs/(plans|adr)/|^_archive/|^cultivation/wip/|^docs/diagrams/loam-hero-.*\.(png|qa\.yaml)$'
+EXCLUDE='^docs/(plans|adr)/|^_archive/|^docs/diagrams/loam-hero-.*\.(png|qa\.yaml)$'
 FAIL=0
 
 # Content check: validate the assembled ERE before scanning. A malformed term
