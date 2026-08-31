@@ -149,6 +149,16 @@ PROSE_ROUTE_TARGETS = (
 
 MARKETPLACE_MANIFEST = "cultivation/marketplace/.claude-plugin/marketplace.json"
 
+DISTRIBUTION_MIRRORS = (
+    (
+        "seed/.claude/hooks/concurrent-checkout-guard.sh",
+        (
+            "cultivation/marketplace/sam-cc-setup/hooks/"
+            "concurrent-checkout-guard.sh"
+        ),
+    ),
+)
+
 
 @dataclasses.dataclass(frozen=True, order=True)
 class Violation:
@@ -196,6 +206,56 @@ def _check_topology(
         if _path_exists(rendered_root / relative_path):
             violations.append(
                 Violation("topology", f"forbidden rendered path exists: {relative_path}")
+            )
+
+
+def _check_distribution_mirrors(
+    source_root: pathlib.Path,
+    violations: list[Violation],
+) -> None:
+    for canonical_relative, mirror_relative in DISTRIBUTION_MIRRORS:
+        paths = (
+            ("canonical", canonical_relative, source_root / canonical_relative),
+            ("mirror", mirror_relative, source_root / mirror_relative),
+        )
+        readable: dict[str, bytes] = {}
+        for role, relative_path, path in paths:
+            if not _path_exists(path):
+                violations.append(
+                    Violation(
+                        "distribution-mirrors",
+                        f"missing {role} file: {relative_path}",
+                    )
+                )
+                continue
+            if path.is_symlink() or not path.is_file():
+                violations.append(
+                    Violation(
+                        "distribution-mirrors",
+                        f"{role} must be a direct regular file: {relative_path}",
+                    )
+                )
+                continue
+            try:
+                readable[role] = path.read_bytes()
+            except OSError:
+                violations.append(
+                    Violation(
+                        "distribution-mirrors",
+                        f"{role} must be readable: {relative_path}",
+                    )
+                )
+
+        if (
+            readable.get("canonical") is not None
+            and readable.get("mirror") is not None
+            and readable["canonical"] != readable["mirror"]
+        ):
+            violations.append(
+                Violation(
+                    "distribution-mirrors",
+                    f"{mirror_relative} must be byte-identical to {canonical_relative}",
+                )
             )
 
 
@@ -1274,6 +1334,7 @@ def verify_contract(
 ) -> tuple[Violation, ...]:
     violations: list[Violation] = []
     _check_topology(source_root, rendered_root, violations)
+    _check_distribution_mirrors(source_root, violations)
     _check_marketplace(source_root, violations)
     _check_release_callers(source_root, violations)
     _check_symlinks(rendered_root, violations)

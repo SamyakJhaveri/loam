@@ -265,6 +265,20 @@ class RenderedHarnessContractTest(unittest.TestCase):
             )
             if relative_path.endswith(".sh"):
                 self.make_executable(path)
+        canonical_hook = "#!/bin/sh\nexit 0\n"
+        self.write(
+            self.source,
+            "seed/.claude/hooks/concurrent-checkout-guard.sh",
+            canonical_hook,
+        )
+        self.write(
+            self.source,
+            (
+                "cultivation/marketplace/sam-cc-setup/hooks/"
+                "concurrent-checkout-guard.sh"
+            ),
+            canonical_hook,
+        )
         self.write(
             self.source,
             "seed/.claude/hooks/ruff-after-edit.sh",
@@ -311,6 +325,49 @@ class RenderedHarnessContractTest(unittest.TestCase):
         self.build_good_fixture()
 
         self.assertEqual((), contract.verify_contract(self.source, self.rendered))
+
+    def test_concurrent_checkout_distribution_mirror_must_match_canonical(
+        self,
+    ) -> None:
+        self.build_good_fixture()
+        self.write(
+            self.source,
+            (
+                "cultivation/marketplace/sam-cc-setup/hooks/"
+                "concurrent-checkout-guard.sh"
+            ),
+            "different hook\n",
+        )
+
+        rendered = self.rendered_violations()
+
+        self.assertTrue(
+            any("FAIL [distribution-mirrors]" in item for item in rendered)
+        )
+        self.assertTrue(any("concurrent-checkout-guard.sh" in item for item in rendered))
+
+    def test_concurrent_checkout_distribution_mirror_requires_both_files(
+        self,
+    ) -> None:
+        self.build_good_fixture()
+        paths = (
+            "seed/.claude/hooks/concurrent-checkout-guard.sh",
+            (
+                "cultivation/marketplace/sam-cc-setup/hooks/"
+                "concurrent-checkout-guard.sh"
+            ),
+        )
+        for missing in paths:
+            with self.subTest(missing=missing):
+                (self.source / missing).unlink()
+
+                rendered = self.rendered_violations()
+
+                self.assertTrue(
+                    any("FAIL [distribution-mirrors]" in item for item in rendered)
+                )
+                self.assertTrue(any(missing in item for item in rendered))
+                self.write(self.source, missing, "#!/bin/sh\nexit 0\n")
 
     def test_missing_required_rendered_paths_are_reported(self) -> None:
         self.build_good_fixture()
