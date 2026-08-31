@@ -12,7 +12,7 @@ trap 'rm -rf "$TMP"' EXIT
 
 echo "== stage 1: contract unit tests =="
 if python3 -m unittest discover -s bin/tests \
-    -p 'test_rendered_harness_contract.py' -v; then
+    -p 'test_*.py' -v; then
   echo "contract unit tests: OK"
 else
   echo "FAIL: rendered harness contract unit tests failed."
