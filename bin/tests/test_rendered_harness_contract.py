@@ -369,6 +369,28 @@ class RenderedHarnessContractTest(unittest.TestCase):
                 self.assertTrue(any(missing in item for item in rendered))
                 self.write(self.source, missing, "#!/bin/sh\nexit 0\n")
 
+    def test_concurrent_checkout_distribution_mirror_must_be_a_direct_file(
+        self,
+    ) -> None:
+        self.build_good_fixture()
+        canonical = self.source / "seed/.claude/hooks/concurrent-checkout-guard.sh"
+        mirror = self.source / (
+            "cultivation/marketplace/sam-cc-setup/hooks/"
+            "concurrent-checkout-guard.sh"
+        )
+        mirror.unlink()
+        mirror.symlink_to(canonical)
+
+        rendered = self.rendered_violations()
+
+        self.assertTrue(
+            any(
+                "FAIL [distribution-mirrors]" in item
+                and "direct regular file" in item
+                for item in rendered
+            )
+        )
+
     def test_missing_required_rendered_paths_are_reported(self) -> None:
         self.build_good_fixture()
         missing = ".codex/hooks.json"
