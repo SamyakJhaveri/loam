@@ -22,7 +22,8 @@ installing this plugin there would duplicate skill names.
   ideas; rehomed from the dissolved helpers bundle), `validate` (on-demand two-wave
   deterministic pass),
   `codex-review` and `codex-plan-review` (cross-model second opinions - require the
-  Codex CLI), `catchup`, `dream`, `align-prompt`, `scaffold-context`, `reflect`,
+  Codex CLI), `brainstorming` (approved design documents), `writing-plans` (exact,
+  testable implementation plans), `catchup`, `dream`, `align-prompt`, `scaffold-context`, `reflect`,
   `sam_handoff`, `unknowns`, `bootstrap-cc-setup`.
 - **Agents:** `plan-reviewer` (merged 2026-08-29: correctness checklist + elegance
   gate in ONE blind unit, bounded findings, coverage ledger), `consistency-checker`,
@@ -32,6 +33,17 @@ installing this plugin there would duplicate skill names.
   (`/security-review`), and the baseline skeletons `verify-app` / `regression-checker`
   (their `.claude/baselines.json` contract never shipped).
 - **Workflows:** `plan-review-fanout` (grounded adversarial plan review, parallel lenses).
+
+## Design-to-plan workflow and provenance
+
+`tech-selection` routes open-ended ideation to the local `brainstorming` skill.
+After the user approves the design, `brainstorming` writes it under `docs/specs/`
+and hands it to the local `writing-plans` skill. Plans go under `docs/plans/`.
+The planning handoff offers only execution methods available in the current host.
+
+The two design workflow skills are moved or adapted from obra/superpowers.
+Their upstream MIT notice is preserved verbatim at
+`THIRD_PARTY_LICENSES/obra-superpowers.txt`.
 
 ## Opt-in guards (v0.2.0) - dormant until you declare their config
 
@@ -109,34 +121,12 @@ That file is the Copier template version.
 
 It does not touch either per-plugin version field:
 
-- `cultivation/marketplace/.claude-plugin/marketplace.json` carries a `version` per plugin (present on 7 of the 12 plugins).
+- `cultivation/marketplace/.claude-plugin/marketplace.json` carries a `version` for local plugins.
 - each plugin's own `.claude-plugin/plugin.json` carries its own `version`.
 
-These plugin versions are maintained by hand today.
-Nothing checks that they agree with each other, with `VERSION`, or with what actually changed.
-Do not read this section as describing a gate: there is none.
-
-Observed drift at the time of writing:
-`VERSION` is `1.1.0`,
-`UPGRADING.md` banners "marketplace v1.2.0",
-and `sam-cc-setup` is `0.3.0` in both `marketplace.json` and its `plugin.json`.
-This is recorded as an open item for the maintainer, not reconciled here.
-
-The drift traces to a bypass, not a forgotten field.
-The `v1.2.0` release did not go through `bin/release.sh`.
-The tag objects show it:
-
-```
-git for-each-ref --format='%(refname:short) %(objecttype)' refs/tags
-v1.0.0 tag
-v1.1.0 tag
-v1.2.0 commit
-```
-
-`release.sh` creates annotated tags (`git tag -a`), which are `tag` objects.
-`v1.2.0` points straight at a `commit`: it is a lightweight tag, which `release.sh` cannot produce.
-So `VERSION` still reads `1.1.0` because the script that writes it was never run for `v1.2.0`.
-Nothing detects a bypass: the checklist below helps only someone who actually runs `release.sh`.
+These plugin versions are maintained by hand. The repository contract tests require the
+two `sam-cc-setup` fields to match the release value. This consolidation sets both to
+`0.5.0`. The top-level `VERSION` remains the independent Copier template version.
 
 ### Before you run bin/release.sh
 

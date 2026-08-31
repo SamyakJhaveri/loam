@@ -8,19 +8,9 @@
   "plugins": [
     {
       "name": "sam-cc-setup",
-      "description": "Portable core setup: merged blind plan-reviewer (+/plan-review, /plan-review-fanout), /tech-selection, /surprise-me, on-demand /validate, Codex cross-model review, /bootstrap-cc-setup for the rules layer",
-      "version": "0.4.0",
+      "description": "Portable Claude Code setup with a local brainstorming-to-writing-plans workflow, plan review, technology selection, validation, Codex cross-model review, and bootstrap support",
+      "version": "0.5.0",
       "source": "./sam-cc-setup",
-      "author": {
-        "name": "Samyak Jhaveri",
-        "email": "39847642+SamyakJhaveri@users.noreply.github.com"
-      }
-    },
-    {
-      "name": "sam-superpowers",
-      "description": "Brainstorming only - the single skill kept from the obra/superpowers 5.0.7 fork (2026-08 rebuild)",
-      "version": "2.0.0",
-      "source": "./sam-superpowers",
       "author": {
         "name": "Samyak Jhaveri",
         "email": "39847642+SamyakJhaveri@users.noreply.github.com"
