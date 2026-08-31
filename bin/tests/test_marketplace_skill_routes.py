@@ -34,6 +34,23 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 """
 
+TECH_SELECTION_HANDOFF = (
+    "For open-ended ideation, route to the local `brainstorming` skill."
+)
+BRAINSTORMING_HANDOFF = "**The terminal state is invoking writing-plans.**"
+
+
+def route_contract_errors(
+    tech_selection: str,
+    brainstorming: str,
+) -> list[str]:
+    errors: list[str] = []
+    if TECH_SELECTION_HANDOFF not in tech_selection:
+        errors.append("tech-selection must route to local brainstorming")
+    if BRAINSTORMING_HANDOFF not in brainstorming:
+        errors.append("brainstorming must terminate at writing-plans")
+    return errors
+
 
 class MarketplaceSkillRoutesTest(unittest.TestCase):
     def load_json(self, path: pathlib.Path) -> dict[str, object]:
@@ -65,10 +82,25 @@ class MarketplaceSkillRoutesTest(unittest.TestCase):
         tech_selection = tech_selection_path.read_text(encoding="utf-8")
         brainstorming = brainstorming_path.read_text(encoding="utf-8")
 
-        self.assertIn("brainstorming", tech_selection)
-        self.assertIn("writing-plans", brainstorming)
+        self.assertEqual([], route_contract_errors(tech_selection, brainstorming))
         self.assertTrue((SAM_CC_ROOT / "skills/brainstorming/SKILL.md").is_file())
         self.assertTrue((SAM_CC_ROOT / "skills/writing-plans/SKILL.md").is_file())
+
+    def test_route_contract_rejects_negated_tech_selection_handoff(self) -> None:
+        errors = route_contract_errors(
+            "For open-ended ideation, do not route to the local `brainstorming` skill.",
+            "**The terminal state is invoking writing-plans.**",
+        )
+
+        self.assertIn("tech-selection must route to local brainstorming", errors)
+
+    def test_route_contract_rejects_negated_brainstorming_handoff(self) -> None:
+        errors = route_contract_errors(
+            "For open-ended ideation, route to the local `brainstorming` skill.",
+            "**The terminal state is not invoking writing-plans.**",
+        )
+
+        self.assertIn("brainstorming must terminate at writing-plans", errors)
 
     def test_design_and_planning_skills_have_no_superpowers_dependency(self) -> None:
         dependency_hits: list[str] = []
