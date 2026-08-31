@@ -8,14 +8,8 @@ cross-model skills. This includes projects rendered by
 [Loam](https://github.com/SamyakJhaveri/loam). A Loam-rendered project already has
 the always-loaded harness, so it does not run `/bootstrap-cc-setup`.
 
-## What installing it gives you, immediately
+## What the plugin exposes after installation
 
-- **Native pre-commit enforcement.** `/bootstrap-cc-setup` installs a plain git
-  pre-commit hook (`hooks/pre-commit.sh`, symlinked at `.git/hooks/pre-commit`) that
-  runs fast deterministic checks on every commit. The earlier sentinel-based Pipeline
-  Gate (`PreToolUse` hook + `.validation_passed` sentinel) was retired 2026-08-14: it
-  blocked every commit until a sentinel matched, which fought the tool; a native hook
-  runs inside git, where no compound command can outrun it.
 - **A concurrent-checkout guard** that blocks two sessions from racing on one working tree.
 - **Skills:** `plan-review` (blind merged plan review), `tech-selection` (bounded
   component trade-off records), `surprise-me` (ranked, evidence-backed unsolicited
@@ -56,7 +50,10 @@ exercise it with a seeded registry row after install.
 Plugins cannot inject always-loaded context (`CLAUDE.md`, `.claude/rules/*.md`).
 Run **`/bootstrap-cc-setup`** once in a new repo: it writes a minimal `CLAUDE.md`
 skeleton and a generic `workflow.md` rule (model-notes only), shows a diff before
-touching anything that exists, and prints how to undo everything it wrote.
+touching anything that exists, and prints how to undo everything it wrote. It also
+installs `hooks/pre-commit.sh` as the repository's native git pre-commit hook.
+Installing the plugin alone does not install that git hook. Loam-rendered projects
+already have their own harness and do not run this bootstrap skill.
 
 ## Honesty labels
 
@@ -82,11 +79,14 @@ A reusable change follows the manual route in `docs/SYNC.md`.
 2. Record what changed and why in `cultivation/marketplace/UPGRADING.md`.
 3. If plugin content changed, update its version in both the marketplace manifest
    and the plugin manifest. Keep the two values equal.
-4. Run `bin/verify-template.sh` from the Loam root. Require
+4. Run `python3 cultivation/marketplace/sam-cc-setup/hooks/test_check_stale_counts.py`
+   and `python3 cultivation/marketplace/sam-cc-setup/hooks/test_protect_paths.py`.
+   Require both control suites to pass.
+5. Run `bin/verify-template.sh` from the Loam root. Require
    `verify-template: PASSED`.
-5. Run `bin/release.sh <version>`. It verifies again before changing the top-level
+6. Run `bin/release.sh <version>`. It verifies again before changing the top-level
    `VERSION`, then commits, tags, and pushes the release.
-6. Installed plugin consumers run `/plugin update`. Copier consumers run
+7. Installed plugin consumers run `/plugin update`. Copier consumers run
    `uvx copier update --trust` after the new tag exists.
 
 ## What a release bumps, and what it does not
@@ -111,8 +111,9 @@ For every plugin whose content changed in this batch:
 2. Bump the same `version` in that plugin's `.claude-plugin/plugin.json`.
 3. Keep the two numbers equal.
 4. Add the `UPGRADING.md` provenance line for the change.
-5. Run `bin/verify-template.sh` and require `verify-template: PASSED`.
-6. Then run `bin/release.sh <version>`.
+5. Run both plugin control suites named in the release loop above.
+6. Run `bin/verify-template.sh` and require `verify-template: PASSED`.
+7. Then run `bin/release.sh <version>`.
 
 A plugin whose content did not change keeps its current version.
 Bumping a version that ships identical content misleads every consumer running `/plugin update`.

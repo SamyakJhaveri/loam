@@ -38,7 +38,7 @@ bin/verify-template.sh
 | `seed/.claude/` | Claude Code hooks and settings. |
 | `seed/.codex/` | Codex configuration, hook policy, and execution rules. |
 | `cultivation/marketplace/` | Optional plugin agents, skills, hooks, and bundles. |
-| `cultivation/wip/` | Gitignored staging for assets with no placement verdict. |
+| `cultivation/wip/` | Staging for assets with no placement verdict. New files are ignored by default; some parked research assets remain tracked. |
 | `bin/` | Verification, release, and intellectual-property checks. |
 | `docs/` | Current template documentation and historical design records. |
 | `copier.yml` | Copier questions, exclusions, and post-render tasks. |
@@ -68,7 +68,7 @@ bin/verify-template.sh
 
 | Resource | Read when |
 |----------|-----------|
-| `CONTEXT.md` | Changing the Rendered Harness Contract. |
+| `bin/rendered_harness_contract.py`, `bin/tests/test_rendered_harness_contract.py` | Changing the Rendered Harness Contract. |
 | `docs/ASSET-LAYERS.md` | Deciding where an agent asset belongs. |
 | `docs/SYNC.md` | Updating projects or promoting a reusable asset. |
 | `docs/BOOTSTRAP.md`, `docs/COPIER.md` | Changing bootstrap or update behavior. |
