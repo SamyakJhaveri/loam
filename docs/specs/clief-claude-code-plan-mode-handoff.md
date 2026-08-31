@@ -41,16 +41,20 @@ in the repository before mapping any recommendation.
 
 ## Required local reading
 
-Read every file below in full before delegating research:
+Preflight every local input before research. Run a read-only existence check for
+each required path below. Stop and report the exact missing path if any required
+file is absent. Treat the ledger and Clief corpus named later as optional
+evidence inputs. Record a missing optional input as a coverage gap, then
+continue every unaffected research workstream.
+
+Read every required file below in full before delegating research:
 
 1. `AGENTS.md`
 2. `CLAUDE.md`
-3. `.claude/rules/workflow.md`
-4. `.claude/rules/known-issues.md`
-5. `docs/specs/cliefnotes-wisdom.md`
-6. `docs/specs/rebuild-research/research-cc-docs.md`
-7. `docs/specs/rebuild-research/research-context-rules.md`
-8. `docs/specs/rebuild-research/clief-claims-validation-method.md`
+3. `docs/specs/cliefnotes-wisdom.md`
+4. `docs/specs/rebuild-research/research-cc-docs.md`
+5. `docs/specs/rebuild-research/research-context-rules.md`
+6. `docs/specs/rebuild-research/clief-claims-validation-method.md`
 
 The three files under `docs/specs/rebuild-research/` are prior research. They
 are leads, not authority. Recheck every product mechanic, source, date, and
@@ -71,9 +75,10 @@ Account for all Clief claims and their source evidence.
 2. Reconcile every normalized ID and every raw ID with
    `docs/specs/cliefnotes-wisdom.md`.
 3. Read every cited source and evidence field needed to judge each claim.
-4. Inspect each unique cited Clief source page under
-   `/Users/samyakjhaveri/Desktop/Skool AI Wisdom/skool-kb/out/cliefnotes` when
-   that corpus is available.
+4. Use `$CLIEF_CORPUS_ROOT` as the session-local corpus input. When it is set,
+   require `[ -d "$CLIEF_CORPUS_ROOT" ]` and verify that it points to the audited
+   Clief corpus before reading each unique cited source page. Do not write the
+   variable's expanded machine-local value into a tracked artifact.
 5. Inspect external links that a Clief claim relies on. A link that was not
    opened is not evidence.
 
