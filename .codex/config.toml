@@ -11,7 +11,5 @@ sandbox_mode = "workspace-write"
 # Deep reasoning for a design-heavy task.
 model_reasoning_effort = "high"
 
-# render-yoshida.py makes a LIVE Gemini API call. The workspace-write sandbox blocks
-# network by default, so renders fail without this. Enabling it is a deliberate policy.
 [sandbox_workspace_write]
 network_access = true

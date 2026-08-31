@@ -3,10 +3,10 @@
 The portable core of Sam's Claude Code setup, extracted from a research repo where every
 piece earned its place in production use (except two, flagged below).
 
-**Audience:** existing repos on any machine that were NOT bootstrapped with the
-[Loam](https://github.com/SamyakJhaveri/loam) Copier template.
-A Loam-rendered project already carries most of these assets in its own `.claude/` -
-installing this plugin there would duplicate skill names.
+**Audience:** repositories that want optional planning, review, validation, and
+cross-model skills. This includes projects rendered by
+[Loam](https://github.com/SamyakJhaveri/loam). A Loam-rendered project already has
+the always-loaded harness, so it does not run `/bootstrap-cc-setup`.
 
 ## What installing it gives you, immediately
 
@@ -22,7 +22,7 @@ installing this plugin there would duplicate skill names.
   ideas; rehomed from the dissolved helpers bundle), `validate` (on-demand two-wave
   deterministic pass),
   `codex-review` and `codex-plan-review` (cross-model second opinions - require the
-  Codex CLI), `catchup`, `dream`, `align-prompt`, `scaffold-context`, `reflect`,
+  Codex CLI), `dream`, `align-prompt`, `scaffold-context`, `reflect`,
   `sam_handoff`, `unknowns`, `bootstrap-cc-setup`.
 - **Agents:** `plan-reviewer` (merged 2026-08-29: correctness checklist + elegance
   gate in ONE blind unit, bounded findings, coverage ledger), `consistency-checker`,
@@ -75,32 +75,19 @@ worse than none.
 
 ## The release loop
 
-A change earns its place in the hub through a fixed loop.
+A reusable change follows the manual route in `docs/SYNC.md`.
 
-1. **Sync a batch from a project.**
-   The scan tool ships in a loam hub clone, not in this plugin, so run it by its hub path.
-   The hub clone defaults to `~/Desktop/loam` (override with `SAM_CC_HUB_REPO`).
-   From a project with `.claude/` work worth keeping, with that project as your working directory, run `~/Desktop/loam/bin/agent-sync.sh scan`.
-   Approve the files that should travel; the scan commits them into the hub.
-2. **Run the hub checks.**
-   Run `bin/hub-ci.sh` from the hub root: the hub promotion gate.
-   It requires `shellcheck` and `copier` (or `uvx`) on the machine: `verify-template.sh` silently skips those checks when they are absent, and the gate refuses a skipped check, so a box without them cannot pass the gate at all.
-   It runs three checks every time and prints one OK or FAIL line for each:
-   `bin/verify-template.sh` (renders both Copier flavors, seed skill lint, schema),
-   every git-tracked `test_*.py` under `cultivation/marketplace/sam-cc-setup/` (discovered via `git ls-files`, not hardcoded, each run as `python3 <file>`),
-   and `bin/lint-skill-descriptions.sh marketplace`.
-   The third check is warn-only: marketplace holds third-party vendored skills, so its warnings are surfaced with a count but do not fail the gate; only a linter that dies before its `Total warnings: N` completion marker hard-fails.
-   The gate runs all three even when one fails, and exits nonzero if any required check failed.
-   `bin/hub-ci.sh` is runnable standalone, and `bin/release.sh` calls it in pre-flight, after the tag-exists check and before the `VERSION` write, so a red gate refuses the release with nothing left behind.
-3. **Record why the change traveled.**
-   Add one line to `cultivation/marketplace/UPGRADING.md` (see its provenance rule).
-4. **Cut the release.**
-   Run `bin/release.sh <version>`.
-   It updates the top-level `VERSION` file, commits and tags under the public identity, and pushes.
-5. **Consumers update.**
-   A repo that installed these plugins from the marketplace runs `/plugin update`.
-   A repo rendered from the Copier template re-renders with the tag `release.sh` prints:
-   `copier copy --trust --vcs-ref vX.Y.Z gh:samyakjhaveri/loam ./my-project`.
+1. Copy the reviewed asset into `cultivation/marketplace/sam-cc-setup/` or the
+   bundle that owns it.
+2. Record what changed and why in `cultivation/marketplace/UPGRADING.md`.
+3. If plugin content changed, update its version in both the marketplace manifest
+   and the plugin manifest. Keep the two values equal.
+4. Run `bin/verify-template.sh` from the Loam root. Require
+   `verify-template: PASSED`.
+5. Run `bin/release.sh <version>`. It verifies again before changing the top-level
+   `VERSION`, then commits, tags, and pushes the release.
+6. Installed plugin consumers run `/plugin update`. Copier consumers run
+   `uvx copier update --trust` after the new tag exists.
 
 ## What a release bumps, and what it does not
 
@@ -109,34 +96,12 @@ That file is the Copier template version.
 
 It does not touch either per-plugin version field:
 
-- `cultivation/marketplace/.claude-plugin/marketplace.json` carries a `version` per plugin (present on 7 of the 12 plugins).
-- each plugin's own `.claude-plugin/plugin.json` carries its own `version`.
+- `cultivation/marketplace/.claude-plugin/marketplace.json` carries the marketplace entry.
+- Each local plugin's `.claude-plugin/plugin.json` carries the plugin entry.
 
 These plugin versions are maintained by hand today.
 Nothing checks that they agree with each other, with `VERSION`, or with what actually changed.
 Do not read this section as describing a gate: there is none.
-
-Observed drift at the time of writing:
-`VERSION` is `1.1.0`,
-`UPGRADING.md` banners "marketplace v1.2.0",
-and `sam-cc-setup` is `0.3.0` in both `marketplace.json` and its `plugin.json`.
-This is recorded as an open item for the maintainer, not reconciled here.
-
-The drift traces to a bypass, not a forgotten field.
-The `v1.2.0` release did not go through `bin/release.sh`.
-The tag objects show it:
-
-```
-git for-each-ref --format='%(refname:short) %(objecttype)' refs/tags
-v1.0.0 tag
-v1.1.0 tag
-v1.2.0 commit
-```
-
-`release.sh` creates annotated tags (`git tag -a`), which are `tag` objects.
-`v1.2.0` points straight at a `commit`: it is a lightweight tag, which `release.sh` cannot produce.
-So `VERSION` still reads `1.1.0` because the script that writes it was never run for `v1.2.0`.
-Nothing detects a bypass: the checklist below helps only someone who actually runs `release.sh`.
 
 ### Before you run bin/release.sh
 
@@ -146,7 +111,7 @@ For every plugin whose content changed in this batch:
 2. Bump the same `version` in that plugin's `.claude-plugin/plugin.json`.
 3. Keep the two numbers equal.
 4. Add the `UPGRADING.md` provenance line for the change.
-5. Run `bin/hub-ci.sh`.
+5. Run `bin/verify-template.sh` and require `verify-template: PASSED`.
 6. Then run `bin/release.sh <version>`.
 
 A plugin whose content did not change keeps its current version.

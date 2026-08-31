@@ -1,37 +1,37 @@
 # Loam
 
-**Bootstrap any project with a production-grade AI-agent setup — and keep every project in sync from one template.**
+**Bootstrap a project with a tested Claude Code and Codex harness.**
 
 ![Loam](docs/assets/hero-identity.jpg)
 
-Loam is a [Copier](https://copier.readthedocs.io/) template that gives a new (or existing) project a complete, battle-tested Claude Code configuration: curated skills, enforcement hooks, layered context routing, and a validation gate that blocks bad commits. When the template improves, every project pulls the update with one command — and skills you build in a project can be promoted back.
+Loam is a [Copier](https://copier.readthedocs.io/) template. It renders shared agent guidance, Claude Code hooks and settings, and Codex policy into a new or existing project. A release gate verifies the complete rendered harness before a Loam release ships.
 
 ```bash
 uvx copier copy --trust gh:samyakjhaveri/loam ./my-project
 ```
 
-That's the whole bootstrap. Sixty seconds later you have a project where the agent knows where it is, what to load, and what it's not allowed to skip.
+The result is a small harness with explicit routes and enforceable local policy.
 
 ![Bootstrap demo](docs/assets/bootstrap.gif)
 
 ## Why this exists
 
-A 2,000-line CLAUDE.md doesn't make an agent smarter — it makes every session pay a token tax for context it mostly ignores. And when you work across several projects, every improvement to your agent setup has to be hand-copied into each repo, where it silently drifts.
+A large always-loaded instruction file makes every session carry material it may not need. Copying the same setup by hand across projects also creates drift.
 
 Loam fixes both:
 
-- **Layered context routing with token budgets** — an ~800-token `CLAUDE.md` map (L0), per-directory `CONTEXT.md` routers (L1), per-task stage contracts (L2), and path-scoped rules that load only when matching files are touched. The agent loads what the task needs, not everything you ever wrote.
-- **Template propagation, both directions** — `copier update` pulls template improvements into every project (three-way merge, tag-based). `template-sync promote` sends a battle-tested skill from a project back to the template as a PR.
-- **An enforced pipeline gate** — `/validate` runs deterministic + rule-based check waves before any commit; a pre-commit hook blocks commits until it passes. Not a convention — a gate.
+- **One shared prose home.** Codex reads `AGENTS.md` directly. Claude Code imports it from `CLAUDE.md` and adds only Claude-specific guidance.
+- **Tag-based updates.** `copier update` pulls released template changes into an existing project. Reusable optional assets move back into the plugin marketplace by a reviewed manual promotion.
+- **Rendered policy.** Claude hooks enforce checkout and turn-end checks. A Codex hook rejects recognized force pushes. Codex execution rules add defense in depth.
+- **One public release gate.** `bin/verify-template.sh` renders a project and checks the complete generated harness before release.
 
 ## What you get
 
-- **27 core skills** — feature-dev, fix-bug, validate, ship, commit, pr, multi-review, session-critique, catchup, handoff, researcher, agent-team, and more
-- **10 hooks** — pre-commit validation gate, turn-end verify gate, session-start brief, sentinel cleanup, audit logging, plan-location routing
-- **16 rules** — 6-stage session workflow, known-issues gotcha log, token-budget guidance, path-scoped language rules
-- **6 agents** — plan-reviewer (adversarial review + elegance gate), self-critic, verification-lead, explorer, diff-reviewer, security-scanner
-- **Research flavor** (optional, `-d is_research=true`) — 18 additional skills: paper-write, cite-check, eval-run, experiment, hypothesis-tree, rebuttal, and more
-- **Skill marketplace** — optional bundles under `cultivation/marketplace/`, installable on demand
+- `AGENTS.md` and `CLAUDE.md` with fill-in project guidance.
+- `.claude/` settings and hook scripts.
+- A shared `/catchup` skill under `.agents/skills/`.
+- `.codex/` configuration, hook policy, and execution rules.
+- Optional agents and skills from `cultivation/marketplace/`.
 
 ## Quick start
 
@@ -39,66 +39,57 @@ Loam fixes both:
 # Bootstrap a new project
 uvx copier copy --trust gh:samyakjhaveri/loam ./my-project
 
-# With the research flavor
-uvx copier copy --trust -d is_research=true gh:samyakjhaveri/loam ./my-project
-
 # Pull template updates into an existing project
 cd my-project && uvx copier update --trust
 ```
 
-**📊 [Visual Overview](docs/VISUAL-OVERVIEW.md)** — diagrams of Loam's architecture, lifecycle, and workflow.
-
 ## Scope, honestly
 
-Loam is **Claude-Code-first**. Skills follow the [agentskills.io](https://agentskills.io/specification) SKILL.md standard (a portable, tool-agnostic format), and a rendered `AGENTS.md` bridges Codex and other AGENTS.md-aware agents to the same conventions — but hooks, the validation gate, and slash-command workflows are Claude Code features today. If you live in Claude Code, this is built for you; if not, you get the context architecture and the skill *definitions* as conventions — not skill execution or the enforcement gate.
+Loam supports Claude Code and Codex through different native mechanisms. Both read the shared skill source and project guidance. Claude Code uses `.claude/settings.json` for its hooks. Codex uses `.codex/hooks.json` and execution rules. Optional plugin skills and agents are Claude Code assets unless their own documentation says otherwise.
 
 ## Project structure
 
 ```
 loam/
 ├── seed/                    # Copier subdirectory — everything rendered to projects
-│   ├── .claude/             # Skills, agents, hooks, rules, settings
-│   ├── _research/           # Research flavor overlay (optional)
+│   ├── .agents/skills/      # Skills shared by Claude Code and Codex
+│   ├── .claude/             # Claude Code hooks and settings
+│   ├── .codex/              # Codex hook policy and execution rules
 │   └── *.jinja              # Template files (CLAUDE.md, AGENTS.md, README.md, …)
-├── cultivation/             # Skill lifecycle: marketplace bundles, retired skills
+├── cultivation/marketplace/ # Optional plugin bundles
 ├── soil/                    # Local-only knowledge base (gitignored)
-├── bin/                     # verify-template.sh, template-sync.sh, release.sh
+├── bin/                     # Verification and release tooling
 ├── docs/                    # Template documentation
 └── copier.yml               # Template config
 ```
 
-## The workflow it ships
+## Verification
 
-```
-Implement → /validate (pipeline gate) → /commit → /pr
-```
-
-Six-stage session workflow (orient → explore → plan → implement → record → verify), surgical exploration rules, plan-review sub-workflow with an adversarial reviewer agent, and a 60/30/10 triage that routes work to deterministic tools before rules before model reasoning. See [docs/VISUAL-OVERVIEW.md](docs/VISUAL-OVERVIEW.md).
+Run `bin/verify-template.sh` when changing Loam. It renders the template, checks the Rendered Harness Contract, and runs native Claude or Codex checks when those tools are installed.
 
 ## Documentation
 
 - `docs/BOOTSTRAP.md` — First-session setup guide
-- `docs/MEMORY.md` — Memory stack architecture
 - `docs/COPIER.md` — Template configuration details
-- `docs/FLAVORS.md` — Flavor system documentation
-- `docs/SYNC.md` — Template sync workflow (update + promote)
+- `docs/SYNC.md` — Forward updates and reverse promotion
 - `docs/ASSET-LAYERS.md` — Asset organization
 
 ## Roadmap
 
-- **Multi-harness parity** — tested Codex / OpenCode support beyond the AGENTS.md bridge
 - **Marketplace polish** — one-command install for every bundle via the plugin marketplace
-- **Research-overlay update hardening** — first-class `copier update` support for the flavor overlay
+- **Policy coverage** — extend native harness checks when a repeated failure earns a new guardrail
 
 ## Requirements
 
 - [Copier](https://copier.readthedocs.io/) >= 9.4.0 (`uvx copier` needs no install)
-- [Claude Code](https://code.claude.com/docs) CLI
+- Python 3.11 or newer for the Rendered Harness Contract checker
+- Optional: [Claude Code](https://code.claude.com/docs) and Codex CLIs for native supplemental checks
 
 ## Contributing
 
-See [CONTRIBUTING.md](CONTRIBUTING.md). Changelog lives in [GitHub Releases](../../releases).
+See [CONTRIBUTING.md](CONTRIBUTING.md). Changelog lives in
+[GitHub Releases](https://github.com/SamyakJhaveri/loam/releases).
 
 ## License
 
-MIT — see [LICENSE](LICENSE). Vendored marketplace bundles retain their upstream license as a `LICENSE.upstream` file (Apache-2.0, MIT, or — for `academic-research` — CC BY-NC 4.0, which is NonCommercial); bundles authored for Loam fall under the repo MIT. See [`cultivation/marketplace/README.md`](cultivation/marketplace/README.md#licensing--attribution) for per-bundle provenance.
+MIT. See [LICENSE](LICENSE). A vendored marketplace bundle may carry its own `LICENSE.upstream`; that file is authoritative for the vendored content.

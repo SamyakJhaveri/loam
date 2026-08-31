@@ -16,9 +16,9 @@ Copier asks two questions: `project_name` and `github_repo` (blank skips GitHub 
 ## What you get
 
 - `CLAUDE.md` importing `AGENTS.md` (the one prose home), both with fill-in placeholders.
-- `.claude/`: settings (model pin, permissions), 3 hooks (bash audit log, concurrent-checkout guard, stop verify gate).
+- `.claude/`: Claude Code settings and hook scripts for audit logging, checkout safety, Python lint fixes, and turn-end verification.
 - `.agents/skills/catchup/`: session-bootstrap skill shared by Claude Code (via symlink) and Codex.
-- `.codex/`: config + execution rules. Inert until you trust the project in Codex and review hooks via `/hooks`.
+- `.codex/`: Codex configuration, force-push policy hook, and execution rules. Inert until you trust the project in Codex and review hooks via `/hooks`.
 
 ## After bootstrap
 
