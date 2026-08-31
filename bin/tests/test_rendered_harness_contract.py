@@ -1453,6 +1453,11 @@ class RenderedHarnessContractTest(unittest.TestCase):
                 "git push $'\\455\\455\\546\\557\\562\\543\\545' "
                 "origin main"
             ),
+            '$"git" push --force origin main',
+            'git $"push" --force origin main',
+            'git push $"--force" origin main',
+            '$"g"it push --force origin main',
+            '$""git push --force origin main',
             "git {fd}>/dev/null push --force origin main",
             "git <<';' push --force origin main\n;\n",
             "printf '%s' ';' git push --force origin main",
@@ -1488,6 +1493,8 @@ class RenderedHarnessContractTest(unittest.TestCase):
             "$'\\547'it --version",
             "git $'\\455\\455\\566\\545\\562\\563\\551\\557\\556'",
             "$'\\0147'it push --force origin main",
+            '$"git" --version',
+            "printf '%s' $'\\U00110000'",
             "git {fd}>/dev/null --version",
             "git <<';' --version\n;\n",
             "printf '%s' 'git push --force origin main'",

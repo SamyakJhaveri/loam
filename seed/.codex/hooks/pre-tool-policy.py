@@ -19,6 +19,7 @@ _DENIAL = {
     }
 }
 _COMMAND_BOUNDARY = set(";&|(){}\n")
+_OPAQUE_ANSI_C_CHARACTER = "\ufffd"
 _GIT_GLOBAL_NO_ARGUMENT = {
     "--bare",
     "--glob-pathspecs",
@@ -161,7 +162,12 @@ def _read_ansi_c_word(command: str, start: int) -> tuple[str, int]:
             while end < limit and command[end] in "0123456789abcdefABCDEF":
                 end += 1
             if end > index + 2:
-                decoded.append(chr(int(command[index + 2 : end], 16)))
+                codepoint = int(command[index + 2 : end], 16)
+                decoded.append(
+                    chr(codepoint)
+                    if codepoint <= sys.maxunicode
+                    else _OPAQUE_ANSI_C_CHARACTER
+                )
                 index = end
                 continue
         decoded.extend(("\\", escaped))
@@ -206,6 +212,12 @@ def _prepare_shell_text(command: str) -> str:
             ansi_word, index = _read_ansi_c_word(command, index + 2)
             prepared.append(_quote_posix_word(ansi_word))
             word_started = True
+            continue
+        if command.startswith('$"', index):
+            prepared.append('"')
+            quote = '"'
+            word_started = True
+            index += 2
             continue
         if character in {"'", '"'}:
             quote = character

@@ -381,8 +381,7 @@ wiring, explicit hooks feature, and checker behavior are absent.
 Implementation order:
 
 ```text
-normalize backslash-newline continuations
-use one lexical pass for continuations, comments, and Bash ANSI-C quoted words
+use one lexical pass for continuations, comments, and Bash ANSI-C and locale quoted words
 lex once with POSIX quoting and shell punctuation
 scan every literal `git` token as a possible command start
 skip recognized shell redirection spans before the Git subcommand
