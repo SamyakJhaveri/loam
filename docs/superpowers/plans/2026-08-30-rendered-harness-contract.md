@@ -382,12 +382,13 @@ Implementation order:
 
 ```text
 normalize backslash-newline continuations
-remove shell comments without treating `#` inside a word as a comment
+use one lexical pass for continuations, comments, and Bash ANSI-C quoted words
 lex once with POSIX quoting and shell punctuation
 scan every literal `git` token as a possible command start
+skip recognized shell redirection spans before the Git subcommand
 classify Git global options by argument count
 locate only the push subcommand
-classify force flags and plus refspecs
+classify force flags and plus refspecs with one long-option arity map
 ```
 
 Do not emulate function depth, heredoc delimiter decoding, case grammar, or

@@ -1,7 +1,7 @@
 # Rendered Harness Contract Design
 
 **Date:** 2026-08-30
-**Status:** Approved and independently reviewed, implementation not started
+**Status:** Approved and independently reviewed, implementation in progress
 
 ## Purpose
 
@@ -187,14 +187,15 @@ recognized force push with the current Codex hook result:
 }
 ```
 
-The policy first validates the complete command with `bash -n`. It then removes
-line continuations and shell comments and uses a small POSIX token recognizer.
-It does not emulate Bash function depth, heredoc delimiters, case grammar, or
-brace structure. From every literal `git` token, it parses Git global options,
-locates `push`, and applies the bounded push argument classifier. It denies long
-force flags, assigned long force flags, short `-f`, clustered short flags
-containing `f`, and plus-prefixed refspecs. Proven help-only and dry-run forms
-remain allowed.
+The policy first validates the complete command with `bash -n`. One lexical
+preprocessing pass then applies Bash line-continuation and comment rules and
+translates Bash ANSI-C quoted words for the small POSIX token recognizer. It
+does not emulate Bash function depth, heredoc delimiters, case grammar, or brace
+structure. From every literal `git` token, it skips recognized shell
+redirections, parses Git global options, locates `push`, and applies the bounded
+push argument classifier. It denies long force flags, assigned long force
+flags, short `-f`, clustered short flags containing `f`, and plus-prefixed
+refspecs. Proven help-only and dry-run forms remain allowed.
 
 This recognition is deliberately conservative. Literal Git token sequences in
 control flow, brace groups, case arms, functions, heredoc text, and after any
@@ -324,11 +325,12 @@ from more than one area.
 
 The force-push hook receives a table of allowed and denied command strings. The
 table covers direct flags, assigned flags, clustered short flags, plus-prefixed
-refspecs, Git global options, bare assignments, supported wrappers, quoted
-arguments, all supported segment separators, line continuations, shell
-comments, and malformed hook envelopes. Separate tests record that Git aliases,
-shell functions, expansions, nested shells, and command substitution are
-outside the local guarantee.
+refspecs, Git global options, bare assignments, supported wrappers, POSIX and
+ANSI-C quoted tokens, redirections, all supported segment separators, line
+continuations, shell comments, and malformed hook envelopes. Visible literal
+Git sequences inside functions and heredoc text are denied conservatively.
+Separate tests record that Git aliases, expansions, `eval`, nested shells, and
+command substitution are outside the local guarantee.
 
 Supported wrapper forms include `command --`, `env` with assignments, and
 `/usr/bin/env -i` with assignments. Git global options are classified by whether
