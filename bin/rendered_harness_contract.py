@@ -147,6 +147,8 @@ PROSE_ROUTE_TARGETS = (
     ("CLAUDE.md", ".claude/hooks/ruff-after-edit.sh"),
 )
 
+MARKETPLACE_MANIFEST = "cultivation/marketplace/.claude-plugin/marketplace.json"
+
 
 @dataclasses.dataclass(frozen=True, order=True)
 class Violation:
@@ -183,6 +185,121 @@ def _check_topology(
             violations.append(
                 Violation("topology", f"forbidden rendered path exists: {relative_path}")
             )
+
+
+def _check_marketplace(
+    source_root: pathlib.Path,
+    violations: list[Violation],
+) -> tuple[pathlib.Path, ...]:
+    manifest_path = source_root / MARKETPLACE_MANIFEST
+    content = _read_text(manifest_path)
+    if content is None:
+        violations.append(
+            Violation("marketplace", f"{MARKETPLACE_MANIFEST} must be readable")
+        )
+        return ()
+    try:
+        manifest = json.loads(content)
+    except json.JSONDecodeError as error:
+        violations.append(
+            Violation(
+                "marketplace",
+                f"{MARKETPLACE_MANIFEST} must contain valid JSON: {error.msg}",
+            )
+        )
+        return ()
+    if not isinstance(manifest, dict):
+        violations.append(
+            Violation(
+                "marketplace",
+                f"{MARKETPLACE_MANIFEST} must contain a JSON object",
+            )
+        )
+        return ()
+    plugins = manifest.get("plugins")
+    if not isinstance(plugins, list):
+        violations.append(
+            Violation(
+                "marketplace",
+                f"{MARKETPLACE_MANIFEST} plugins must be a JSON array",
+            )
+        )
+        return ()
+
+    marketplace_root = manifest_path.parents[1].resolve()
+    local_roots: list[pathlib.Path] = []
+    for index, plugin in enumerate(plugins):
+        if not isinstance(plugin, dict):
+            violations.append(
+                Violation(
+                    "marketplace",
+                    f"plugin entry {index} must be a JSON object",
+                )
+            )
+            continue
+        source = plugin.get("source")
+        if not isinstance(source, str):
+            continue
+        if not source or "\n" in source or "\r" in source:
+            violations.append(
+                Violation(
+                    "marketplace",
+                    f"plugin entry {index} has an invalid local source",
+                )
+            )
+            continue
+
+        candidate = marketplace_root / source
+        try:
+            resolved = candidate.resolve()
+            resolved.relative_to(marketplace_root)
+        except (OSError, RuntimeError, ValueError):
+            violations.append(
+                Violation(
+                    "marketplace",
+                    f"local source escapes marketplace root: {source}",
+                )
+            )
+            continue
+        if not resolved.is_dir():
+            violations.append(
+                Violation(
+                    "marketplace",
+                    f"missing local plugin root: {source}",
+                )
+            )
+            continue
+
+        local_roots.append(resolved)
+        hooks_path = resolved / "hooks/hooks.json"
+        if not _path_exists(hooks_path):
+            continue
+        hooks_content = _read_text(hooks_path)
+        relative_hooks = hooks_path.relative_to(source_root.resolve()).as_posix()
+        if hooks_content is None:
+            violations.append(
+                Violation("marketplace", f"{relative_hooks} must be readable")
+            )
+            continue
+        try:
+            hooks = json.loads(hooks_content)
+        except json.JSONDecodeError as error:
+            violations.append(
+                Violation(
+                    "marketplace",
+                    f"{relative_hooks} must contain valid JSON: {error.msg}",
+                )
+            )
+            continue
+        if not isinstance(hooks, dict):
+            violations.append(
+                Violation(
+                    "marketplace",
+                    f"{relative_hooks} must contain a JSON object",
+                )
+            )
+
+    return tuple(sorted(set(local_roots)))
 
 
 def _read_text(path: pathlib.Path) -> str | None:
@@ -541,10 +658,10 @@ def _ruff_reads_nested_file_path(content: str | None) -> bool:
         return False
     return any(
         _is_get_assignment(statement, "tool_input", "payload", "tool_input")
-        for statement in tree.body
+        for statement in ast.walk(tree)
     ) and any(
         _is_get_assignment(statement, "file_path", "tool_input", "file_path")
-        for statement in tree.body
+        for statement in ast.walk(tree)
     )
 
 
@@ -1053,6 +1170,7 @@ def verify_contract(
 ) -> tuple[Violation, ...]:
     violations: list[Violation] = []
     _check_topology(source_root, rendered_root, violations)
+    _check_marketplace(source_root, violations)
     _check_release_callers(source_root, violations)
     _check_symlinks(rendered_root, violations)
     claude_script_targets = _check_claude_hooks(
@@ -1073,8 +1191,24 @@ def verify_contract(
 def main(argv: Sequence[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--source-root", required=True, type=pathlib.Path)
-    parser.add_argument("--rendered-root", required=True, type=pathlib.Path)
+    parser.add_argument("--rendered-root", type=pathlib.Path)
+    parser.add_argument("--list-local-plugin-roots", action="store_true")
     arguments = parser.parse_args(argv)
+
+    if arguments.list_local_plugin_roots:
+        violations: list[Violation] = []
+        roots = _check_marketplace(arguments.source_root, violations)
+        for violation in sorted(violations):
+            print(violation.render())
+        if violations:
+            return 1
+        source_root = arguments.source_root.resolve()
+        for root in roots:
+            print(root.relative_to(source_root).as_posix())
+        return 0
+
+    if arguments.rendered_root is None:
+        parser.error("--rendered-root is required unless listing local plugin roots")
 
     violations = verify_contract(arguments.source_root, arguments.rendered_root)
     for violation in violations:

@@ -270,6 +270,11 @@ class RenderedHarnessContractTest(unittest.TestCase):
             "seed/.claude/hooks/ruff-after-edit.sh",
             GOOD_RUFF_ADAPTER,
         )
+        self.write(
+            self.source,
+            "cultivation/marketplace/.claude-plugin/marketplace.json",
+            json.dumps({"plugins": []}),
+        )
 
         rendered_contents = {
             "AGENTS.md": GOOD_AGENT_PROSE,
@@ -632,6 +637,293 @@ class RenderedHarnessContractTest(unittest.TestCase):
             },
         )
 
+    def test_marketplace_discovers_string_sources_and_parses_hooks(self) -> None:
+        self.build_good_fixture()
+        self.write(
+            self.source,
+            "cultivation/marketplace/.claude-plugin/marketplace.json",
+            json.dumps(
+                {
+                    "plugins": [
+                        {"name": "local-one", "source": "./local-one"},
+                        {
+                            "name": "remote-one",
+                            "source": {
+                                "source": "git-subdir",
+                                "url": "https://example.invalid/repo.git",
+                            },
+                        },
+                    ]
+                }
+            ),
+        )
+        self.write(self.source, "cultivation/marketplace/local-one/README.md")
+        self.write(
+            self.source,
+            "cultivation/marketplace/local-one/hooks/hooks.json",
+            json.dumps({"hooks": {}}),
+        )
+
+        self.assertEqual((), contract.verify_contract(self.source, self.rendered))
+
+    def test_marketplace_rejects_local_source_outside_root(self) -> None:
+        self.build_good_fixture()
+        self.write(
+            self.source,
+            "cultivation/marketplace/.claude-plugin/marketplace.json",
+            json.dumps({"plugins": [{"source": "../outside"}]}),
+        )
+        (self.source / "cultivation/outside").mkdir(parents=True)
+
+        rendered = self.rendered_violations()
+
+        self.assertTrue(any("FAIL [marketplace]" in item for item in rendered))
+        self.assertTrue(any("escapes marketplace root" in item for item in rendered))
+
+    def test_marketplace_rejects_symlinked_local_source_outside_root(self) -> None:
+        self.build_good_fixture()
+        self.write(
+            self.source,
+            "cultivation/marketplace/.claude-plugin/marketplace.json",
+            json.dumps({"plugins": [{"source": "./linked"}]}),
+        )
+        outside = self.source / "outside-plugin"
+        outside.mkdir()
+        (self.source / "cultivation/marketplace/linked").symlink_to(
+            outside,
+            target_is_directory=True,
+        )
+
+        rendered = self.rendered_violations()
+
+        self.assertTrue(any("FAIL [marketplace]" in item for item in rendered))
+        self.assertTrue(any("escapes marketplace root" in item for item in rendered))
+
+    def test_marketplace_reports_missing_local_root(self) -> None:
+        self.build_good_fixture()
+        self.write(
+            self.source,
+            "cultivation/marketplace/.claude-plugin/marketplace.json",
+            json.dumps({"plugins": [{"source": "./missing-plugin"}]}),
+        )
+
+        rendered = self.rendered_violations()
+
+        self.assertTrue(any("FAIL [marketplace]" in item for item in rendered))
+        self.assertTrue(any("missing local plugin root" in item for item in rendered))
+
+    def test_marketplace_reports_invalid_local_hook_json(self) -> None:
+        self.build_good_fixture()
+        self.write(
+            self.source,
+            "cultivation/marketplace/.claude-plugin/marketplace.json",
+            json.dumps({"plugins": [{"source": "./local-one"}]}),
+        )
+        self.write(
+            self.source,
+            "cultivation/marketplace/local-one/hooks/hooks.json",
+            "{not-json\n",
+        )
+
+        rendered = self.rendered_violations()
+
+        self.assertTrue(any("FAIL [marketplace]" in item for item in rendered))
+        self.assertTrue(any("hooks/hooks.json" in item for item in rendered))
+
+    def test_cli_lists_valid_local_marketplace_roots(self) -> None:
+        self.build_good_fixture()
+        self.write(
+            self.source,
+            "cultivation/marketplace/.claude-plugin/marketplace.json",
+            json.dumps(
+                {
+                    "plugins": [
+                        {"source": "./local-one"},
+                        {"source": {"source": "git-subdir"}},
+                    ]
+                }
+            ),
+        )
+        self.write(self.source, "cultivation/marketplace/local-one/README.md")
+        output = io.StringIO()
+
+        with contextlib.redirect_stdout(output):
+            try:
+                exit_code = contract.main(
+                    [
+                        "--source-root",
+                        str(self.source),
+                        "--list-local-plugin-roots",
+                    ]
+                )
+            except SystemExit as error:
+                exit_code = error.code
+
+        self.assertEqual(0, exit_code)
+        self.assertEqual("cultivation/marketplace/local-one\n", output.getvalue())
+
+    def run_wrapper(
+        self,
+        *,
+        with_claude: bool = True,
+        with_codex: bool = True,
+        claude_fails: bool = False,
+        codex_wrong_decision: bool = False,
+    ) -> tuple[subprocess.CompletedProcess[str], str]:
+        fake_bin = pathlib.Path(self.temp_dir.name) / "fake-bin"
+        fake_bin.mkdir(exist_ok=True)
+        tool_log = pathlib.Path(self.temp_dir.name) / "tool.log"
+
+        def fake_tool(name: str, content: str) -> None:
+            path = self.write(fake_bin, name, content)
+            self.make_executable(path)
+
+        fake_tool(
+            "python3",
+            textwrap.dedent(
+                """\
+                #!/usr/bin/env bash
+                if [[ "$1" == "-m" && "$2" == "unittest" ]]; then
+                  echo "fake contract unit tests: OK"
+                  exit 0
+                fi
+                if [[ "$1" == *rendered_harness_contract.py ]] && [[ " $* " == *" --rendered-root "* ]]; then
+                  echo "checker $*" >> "$FAKE_TOOL_LOG"
+                  exit 0
+                fi
+                if [[ "$1" == "-m" && "$2" == "json.tool" ]]; then
+                  echo "json-tool $3" >> "$FAKE_TOOL_LOG"
+                fi
+                exec "$REAL_PYTHON" "$@"
+                """
+            ),
+        )
+        fake_tool(
+            "copier",
+            textwrap.dedent(
+                """\
+                #!/usr/bin/env bash
+                for destination; do :; done
+                mkdir -p "$destination"
+                echo "copier $*" >> "$FAKE_TOOL_LOG"
+                """
+            ),
+        )
+        if with_claude:
+            fake_tool(
+                "claude",
+                textwrap.dedent(
+                    """\
+                    #!/usr/bin/env bash
+                    printf 'claude' >> "$FAKE_TOOL_LOG"
+                    printf ' <%s>' "$@" >> "$FAKE_TOOL_LOG"
+                    printf '\n' >> "$FAKE_TOOL_LOG"
+                    [[ "$FAKE_CLAUDE_FAILS" == 1 ]] && exit 7
+                    exit 0
+                    """
+                ),
+            )
+        if with_codex:
+            fake_tool(
+                "codex",
+                textwrap.dedent(
+                    """\
+                    #!/usr/bin/env bash
+                    printf 'codex' >> "$FAKE_TOOL_LOG"
+                    printf ' <%s>' "$@" >> "$FAKE_TOOL_LOG"
+                    printf '\n' >> "$FAKE_TOOL_LOG"
+                    decision=prompt
+                    [[ " $* " == *" --force "* ]] && decision=forbidden
+                    [[ " $* " == *" --force-with-lease "* ]] && decision=forbidden
+                    [[ "$FAKE_CODEX_WRONG" == 1 ]] && decision=allow
+                    printf '{"decision":"%s"}\n' "$decision"
+                    """
+                ),
+            )
+
+        environment = os.environ.copy()
+        environment.update(
+            {
+                "PATH": f"{fake_bin}:/usr/bin:/bin",
+                "REAL_PYTHON": sys.executable,
+                "FAKE_TOOL_LOG": str(tool_log),
+                "FAKE_CLAUDE_FAILS": "1" if claude_fails else "0",
+                "FAKE_CODEX_WRONG": "1" if codex_wrong_decision else "0",
+            }
+        )
+        process = subprocess.run(
+            ["bash", str(BIN_DIR / "verify-template.sh")],
+            cwd=BIN_DIR.parent,
+            env=environment,
+            text=True,
+            capture_output=True,
+            timeout=30,
+            check=False,
+        )
+        log = tool_log.read_text(encoding="utf-8") if tool_log.exists() else ""
+        return process, log
+
+    def test_wrapper_runs_required_stages_in_order(self) -> None:
+        process, log = self.run_wrapper()
+        markers = (
+            "contract unit tests",
+            "Copier scratch render from HEAD",
+            "rendered harness contract",
+            "Claude native validation",
+            "Codex native policy probes",
+            "skill frontmatter names",
+            "verify-template: PASSED",
+        )
+
+        self.assertEqual(0, process.returncode, process.stdout + process.stderr)
+        positions = tuple(process.stdout.index(marker) for marker in markers)
+        self.assertEqual(tuple(sorted(positions)), positions)
+        self.assertIn("<plugin> <validate> <seed/.claude>", log)
+        self.assertNotIn("<plugin> <validate> <--strict> <seed/.claude>", log)
+        self.assertIn(
+            "<plugin> <validate> <--strict> <seed/.agents/skills>",
+            log,
+        )
+        self.assertIn(
+            "<plugin> <validate> <--strict> <cultivation/marketplace>",
+            log,
+        )
+        self.assertNotIn("<hooks>", log)
+        self.assertIn(
+            "<execpolicy> <check> <--rules> <seed/.codex/rules/default.rules> "
+            "<--> <git> <push> <origin> <main>",
+            log,
+        )
+        self.assertIn(
+            "<execpolicy> <check> <--rules> <seed/.codex/rules/default.rules> "
+            "<--> <git> <push> <--force> <origin> <main>",
+            log,
+        )
+        self.assertIn(
+            "<execpolicy> <check> <--rules> <seed/.codex/rules/default.rules> "
+            "<--> <git> <push> <--force-with-lease> <origin> <main>",
+            log,
+        )
+
+    def test_wrapper_reports_missing_native_tools_as_visible_skips(self) -> None:
+        process, _ = self.run_wrapper(with_claude=False, with_codex=False)
+
+        self.assertEqual(0, process.returncode, process.stdout + process.stderr)
+        self.assertIn("SKIPPED: claude CLI not found", process.stdout)
+        self.assertIn("SKIPPED: codex CLI not found", process.stdout)
+
+    def test_wrapper_accumulates_native_failures(self) -> None:
+        for label, arguments in (
+            ("claude", {"claude_fails": True}),
+            ("codex", {"codex_wrong_decision": True}),
+        ):
+            with self.subTest(tool=label):
+                process, _ = self.run_wrapper(**arguments)
+
+                self.assertEqual(1, process.returncode)
+                self.assertIn("verify-template: FAILED", process.stdout)
+                self.assertIn("skill frontmatter names", process.stdout)
+
     def test_catchup_must_be_a_symlink(self) -> None:
         self.build_good_fixture()
         catchup = self.rendered / ".claude/skills/catchup"
@@ -831,6 +1123,13 @@ class RenderedHarnessContractTest(unittest.TestCase):
 
         self.assertTrue(any("FAIL [claude-hooks]" in item for item in failures))
         self.assertTrue(any("tool_input.file_path" in item for item in failures))
+
+    def test_source_ruff_adapter_proves_nested_file_path_access(self) -> None:
+        source_adapter = (
+            BIN_DIR.parent / "seed/.claude/hooks/ruff-after-edit.sh"
+        ).read_text(encoding="utf-8")
+
+        self.assertTrue(contract._ruff_reads_nested_file_path(source_adapter))
 
     def test_ruff_route_comments_do_not_prove_nested_file_path_access(self) -> None:
         self.build_good_fixture()
