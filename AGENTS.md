@@ -1,65 +1,76 @@
 # AGENTS.md — Loam
 
-> Bridge file for OpenAI Codex (and any AGENTS.md-aware agent) working **on the Loam repo**.
-> Claude Code reads `CLAUDE.md` + `.claude/rules/*.md`; this file points non-Claude agents at the
-> same conventions and surfaces the hard rules inline. This file lives at the repo root only — it is
-> **not** under `seed/`, so it does **not** ship to bootstrapped projects.
+> The shared prose home for agents working on Loam.
+> Claude Code imports this file from `CLAUDE.md`. Codex reads it directly.
+> Every line loads in every session, so keep only guidance that prevents a real mistake.
 
 ## What this repo is
 
-Loam is simultaneously a **Copier template** and a **Claude Code project**. Bootstrapping a
-project renders everything under `seed/` into the new project. The repo's own `.claude/` is a
-symlink to `seed/.claude/`, so editing one edits both.
+Loam is a Copier template and an agent-harness project. Everything under `seed/`
+renders into a generated project. The root `.claude/` symlink points to
+`seed/.claude/`, so the shipped Claude harness also runs while developing Loam.
 
-## Folder map
+## Working style
+
+- Challenge assumptions and correct false premises.
+- Point out flaws in proposed questions or solutions.
+- Offer a concrete repair when you find a flaw.
+
+## Common commands
+
+```bash
+# Bootstrap from the latest release tag.
+uvx copier copy --trust gh:samyakjhaveri/loam ./my-project
+
+# Pull the latest released template into an existing project.
+cd my-project && uvx copier update --trust
+
+# Verify Loam before a commit or release.
+bin/verify-template.sh
+```
+
+## Layout
 
 | Path | Purpose |
 |------|---------|
-| `seed/`          | Copier `_subdirectory` — **everything here ships to bootstrapped projects** |
-| `seed/.claude/`  | Skills, agents, hooks, rules, settings (shipped) |
-| `seed/_research/`| Research-flavor overlay (applied when `is_research=true`) |
-| `seed/*.jinja`   | Copier-rendered files (CLAUDE.md, AGENTS.md, README.md, …) |
-| `cultivation/`   | Skill staging: `wip/`, `marketplace/`, `retired/` |
-| `soil/`          | Local-only knowledge base (gitignored) |
-| `docs/`          | Template docs; `docs/plans/` (session plans), `docs/specs/` (design specs), `docs/diagrams/` |
-| `bin/`           | `verify-template.sh`, `template-sync.sh`, `release.sh`, lint scripts |
-| `_archive/`      | Human-only reference; **not** loaded into agent context |
-| `copier.yml`     | Copier config (`_subdirectory: "seed"`, questions, `_tasks`) |
-| `VERSION`        | Semver for releases |
+| `seed/` | Copier source. Everything here renders into projects. |
+| `seed/.agents/skills/` | Skills shared by Claude Code and Codex. |
+| `seed/.claude/` | Claude Code hooks and settings. |
+| `seed/.codex/` | Codex configuration, hook policy, and execution rules. |
+| `cultivation/marketplace/` | Optional plugin agents, skills, hooks, and bundles. |
+| `cultivation/wip/` | Staging for assets with no placement verdict. New files are ignored by default; some parked research assets remain tracked. |
+| `bin/` | Verification, release, and intellectual-property checks. |
+| `docs/` | Current template documentation and historical design records. |
+| `copier.yml` | Copier questions, exclusions, and post-render tasks. |
+| `VERSION` | Template release version. |
 
-## Full conventions live elsewhere — read them
+## Rules when editing Loam
 
-The complete rules are in **`CLAUDE.md`** (project map) and **`.claude/rules/*.md`** (the detail).
-Start with `.claude/rules/workflow.md` (6-stage session workflow) and
-`.claude/rules/known-issues.md` (recurring gotchas). Caveat: `CLAUDE.md` and the skills reference
-Claude-Code-only features (the `Skill` tool, `/slash-commands`, claude.ai-hosted MCP servers) that
-Codex cannot invoke — read them for the *conventions*, not for tools you can run.
+1. Use the hybrid branch policy. Docs, content, and small fixes may go directly to
+   `main`. Changes to seed behavior, hooks, `copier.yml`, or releases use a branch
+   and pull request.
+2. Keep rendered content generic. Project-specific material stays outside `seed/`.
+3. Run `bin/verify-template.sh` before every commit. Require
+   `verify-template: PASSED`.
+4. Treat source and command output as authority. Repair prose when it disagrees.
+5. Keep one behavior change per session.
+6. Keep one directive in one home. Read `docs/ASSET-LAYERS.md` before placing a
+   new asset.
 
-## Hard rules (non-negotiable)
+## Gotchas
 
-1. **Branch policy (hybrid).** Commit directly to `main` for docs, content, and small fixes; use a
-   branch + PR for `seed/` behavior changes, hooks, `copier.yml`, and releases. (Matches the hybrid
-   policy in `CLAUDE.md` and `CONTRIBUTING.md`.)
-2. **Only `seed/` ships.** Never put project-specific content in `seed/` — everything there must be
-   generic or scoped to a flavor. This `AGENTS.md` and `.codex/` stay at the root, never in `seed/`.
-3. **Verify before any commit:** run `bin/verify-template.sh` and expect `ALL OK`.
-4. **Source is ground truth, not docs.** If a doc contradicts the code, trust the code and fix the doc.
-5. **One behavior change per session.** Don't bundle unrelated edits.
+- Copier resolves release tags, not the current `main` branch.
+- Verification searches must be case-insensitive and repository-wide.
+- Count skills by finding `SKILL.md` files. Support directories are not skills.
+- Quote YAML description strings that contain colons.
 
-### Diagram-specific rules (the `diagrams` skill / Yoshida renders)
+## Read on demand
 
-- **Never commit copyrighted Yoshida scans.** `yoshida_hiroshi/` is gitignored (style refs, local-only).
-- **Never commit hero renders.** `docs/diagrams/loam-hero-*.png` is gitignored. (Committed
-  `*.drawio.png` vector diagrams are unaffected — the ignore is scoped to `loam-hero-*`.)
-- Renders are named `loam-hero-<NN>-<concept>-c<idx>.png` (e.g. `loam-hero-03-context-routing-c1.png`),
-  written by `seed/.claude/skills/diagrams/scripts/render-yoshida.py`.
-- **Positive framing in all image prompts** — describe what you *want*, never "no/without/avoid X".
-  Gemini image models treat negations poorly and garble rendered text.
-- YAML in skill files: quote or fold (`>`) any description containing a colon; keep specialized
-  skills at `auto-activate: false`; use kebab-case for filenames.
-
-### MCP caveat for Codex
-
-The repo's diagram MCP servers (drawio, excalidraw, tldraw) are **claude.ai-hosted and authed
-through Claude** — they do not port to Codex. The Codex-drivable path is **Track B** (direct Gemini
-API via `render-yoshida.py`, which needs `GEMINI_API_KEY` + network access).
+| Resource | Read when |
+|----------|-----------|
+| `bin/rendered_harness_contract.py`, `bin/tests/test_rendered_harness_contract.py` | Changing the Rendered Harness Contract. |
+| `docs/ASSET-LAYERS.md` | Deciding where an agent asset belongs. |
+| `docs/SYNC.md` | Updating projects or promoting a reusable asset. |
+| `docs/BOOTSTRAP.md`, `docs/COPIER.md` | Changing bootstrap or update behavior. |
+| `docs/specs/rebuild-structure-design.md` | Needing the rationale for the current tree. |
+| `docs/specs/rebuild-research/` | Checking the research behind the rebuild. |

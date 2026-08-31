@@ -5,7 +5,7 @@ Distilled from the Clief Notes lesson audit: 111 pages, 1,270 raw claims, normal
 This document reports what the SOURCE claims, not what Loam should do. No recommendations of my own are added.
 
 Ledger: `soil/loam-rebuild-checkpoint/normalized-claims.jsonl` (one record per normalized claim; every raw_id appears in exactly one record).
-Corpus root: `/Users/samyakjhaveri/Desktop/Skool AI Wisdom/skool-kb/out/cliefnotes`.
+The source corpus was machine-local during extraction. Lesson paths below are relative to that audited corpus.
 
 ## How to read a line
 

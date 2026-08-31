@@ -1,6 +1,7 @@
 # Repo-local Codex config for working ON the Loam template.
 # Committed so the repo-specific Codex policy is reproducible.
 # Current keys: https://developers.openai.com/codex/config-basic
+# Run bin/verify-template.sh after Codex policy changes; it includes native Codex probes when available.
 
 # Run without interactive approval prompts.
 approval_policy = "never"
