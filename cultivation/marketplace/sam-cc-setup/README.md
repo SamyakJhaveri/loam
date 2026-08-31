@@ -11,6 +11,9 @@ the always-loaded harness, so it does not run `/bootstrap-cc-setup`.
 ## What the plugin exposes after installation
 
 - **A concurrent-checkout guard** that blocks two sessions from racing on one working tree.
+  This plugin file is a distribution mirror for non-Loam projects. The canonical file is
+  `seed/.claude/hooks/concurrent-checkout-guard.sh`. Edit the canonical file first, copy it
+  here byte-for-byte, then run `bin/verify-template.sh` from the Loam root.
 - **Skills:** `plan-review` (blind merged plan review), `tech-selection` (bounded
   component trade-off records), `surprise-me` (ranked, evidence-backed unsolicited
   ideas; rehomed from the dissolved helpers bundle), `validate` (on-demand two-wave
