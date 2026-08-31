@@ -15,8 +15,7 @@ claude plugin marketplace add /path/to/loam/cultivation/marketplace
 
 | Bundle | Contents | Notes |
 |--------|----------|-------|
-| `sam-cc-setup` | Merged blind plan-reviewer + 5 review agents, /plan-review, /tech-selection, /surprise-me, /validate, Codex cross-model review, /bootstrap-cc-setup | The plugin layer of the Loam design; see its README |
-| `sam-superpowers` | brainstorming | The single skill kept from the obra/superpowers fork |
+| `sam-cc-setup` | `brainstorming` -> `writing-plans`, merged plan review, technology selection, validation, Codex cross-model review, and bootstrap support | The Loam-owned setup plugin. Upstream-derived design skills retain their MIT notice in `sam-cc-setup/THIRD_PARTY_LICENSES/obra-superpowers.txt` |
 | `impeccable` | UI polish workflow | Vendored; kept per rebuild ledger ruling |
 | `web-frontend-*`, `deer-flow-public` | External skills, SHA-pinned via `git-subdir` | Ship `defaultEnabled:false`; enable to trial. Licenses per entry in `marketplace.json`; a `LICENSE.upstream` file in a vendored bundle is authoritative |
 

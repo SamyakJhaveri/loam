@@ -1,8 +1,8 @@
 {
   "name": "sam-cc-setup",
   "license": "MIT",
-  "version": "0.4.0",
-  "description": "Portable core of Sam's Claude Code setup: merged blind plan-reviewer (correctness + elegance in one unit) with /plan-review and the plan-review-fanout workflow, /tech-selection, /surprise-me, on-demand /validate, cross-model Codex review skills, and /bootstrap-cc-setup for the always-loaded rules layer plugins cannot ship.",
+  "version": "0.5.0",
+  "description": "Portable Claude Code setup with a local brainstorming-to-writing-plans workflow, merged plan review, technology selection, validation, cross-model Codex review, and bootstrap support for the rules layer plugins cannot ship.",
   "author": {
     "name": "Samyak Jhaveri",
     "email": "39847642+SamyakJhaveri@users.noreply.github.com"

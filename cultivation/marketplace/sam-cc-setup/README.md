@@ -16,7 +16,8 @@ the always-loaded harness, so it does not run `/bootstrap-cc-setup`.
   ideas; rehomed from the dissolved helpers bundle), `validate` (on-demand two-wave
   deterministic pass),
   `codex-review` and `codex-plan-review` (cross-model second opinions - require the
-  Codex CLI), `dream`, `align-prompt`, `scaffold-context`, `reflect`,
+  Codex CLI), `brainstorming` (approved design documents), `writing-plans` (exact,
+  testable implementation plans), `dream`, `align-prompt`, `scaffold-context`, `reflect`,
   `sam_handoff`, `unknowns`, `bootstrap-cc-setup`.
 - **Agents:** `plan-reviewer` (merged 2026-08-29: correctness checklist + elegance
   gate in ONE blind unit, bounded findings, coverage ledger), `consistency-checker`,
@@ -26,6 +27,17 @@ the always-loaded harness, so it does not run `/bootstrap-cc-setup`.
   (`/security-review`), and the baseline skeletons `verify-app` / `regression-checker`
   (their `.claude/baselines.json` contract never shipped).
 - **Workflows:** `plan-review-fanout` (grounded adversarial plan review, parallel lenses).
+
+## Design-to-plan workflow and provenance
+
+`tech-selection` routes open-ended ideation to the local `brainstorming` skill.
+After the user approves the design, `brainstorming` writes it under `docs/specs/`
+and hands it to the local `writing-plans` skill. Plans go under `docs/plans/`.
+The planning handoff offers only execution methods available in the current host.
+
+The two design workflow skills are moved or adapted from obra/superpowers.
+Their upstream MIT notice is preserved verbatim at
+`THIRD_PARTY_LICENSES/obra-superpowers.txt`.
 
 ## Opt-in guards (v0.2.0) - dormant until you declare their config
 
@@ -96,12 +108,12 @@ That file is the Copier template version.
 
 It does not touch either per-plugin version field:
 
-- `cultivation/marketplace/.claude-plugin/marketplace.json` carries the marketplace entry.
-- Each local plugin's `.claude-plugin/plugin.json` carries the plugin entry.
+- `cultivation/marketplace/.claude-plugin/marketplace.json` carries a `version` for local plugins.
+- Each plugin's own `.claude-plugin/plugin.json` carries its own `version`.
 
-These plugin versions are maintained by hand today.
-Nothing checks that they agree with each other, with `VERSION`, or with what actually changed.
-Do not read this section as describing a gate: there is none.
+These plugin versions are maintained by hand. The repository contract tests require both
+`sam-cc-setup` fields to be `0.5.0`. The top-level `VERSION` remains the independent
+Copier template version.
 
 ### Before you run bin/release.sh
 

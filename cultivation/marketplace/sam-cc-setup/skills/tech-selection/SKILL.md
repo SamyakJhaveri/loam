@@ -8,7 +8,7 @@ description: >
   ranked by an importance-by-evidence grid, and a tradeoff-per-option table. For
   a full measured bake-off, hands over to the experiment-loop skill. NOT for
   reviewing an already-written plan (use /plan-review) or open-ended ideation
-  (use brainstorming).
+  (use the local brainstorming skill in this plugin).
 argument-hint: '<decision, e.g. "redis vs rabbitmq for job dispatch">'
 ---
 
@@ -16,6 +16,9 @@ argument-hint: '<decision, e.g. "redis vs rabbitmq for job dispatch">'
 
 A decision helper for the component-choice moment in planning.
 Its job is to convert "which X?" into a small, evidence-ranked decision record the plan can cite.
+
+For open-ended ideation, route to the local `brainstorming` skill. That skill owns the
+design process and hands an approved design to the local `writing-plans` skill.
 
 ## Ground rules
 

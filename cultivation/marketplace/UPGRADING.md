@@ -3,6 +3,25 @@
 This file records why a promoted plugin change traveled. It is also the upgrade
 entry point for projects that consume the Loam marketplace.
 
+## Current: sam-cc-setup v0.5.0 consolidation
+
+`sam-cc-setup` now owns the complete design-to-plan workflow. The existing
+`brainstorming` skill moved into it. The adapted `writing-plans` skill now completes the
+local handoff without requiring an absent execution skill. The separate `sam-superpowers`
+plugin is retired.
+
+The moved and adapted material comes from obra/superpowers. Its MIT notice is preserved
+verbatim in `sam-cc-setup/THIRD_PARTY_LICENSES/obra-superpowers.txt`.
+
+For each project that uses this marketplace:
+
+1. Update the marketplace and `sam-cc-setup` through Claude Code's `/plugin` interface.
+2. Remove the retired `sam-superpowers` installation if it is still enabled.
+3. Confirm that `brainstorming` and `writing-plans` resolve from `sam-cc-setup`.
+
+Provenance: the consolidation closes the broken terminal handoff in which the retained
+brainstorming skill required a planning skill that its plugin did not contain.
+
 ## Provenance rule
 
 Every promoted change gets an entry that says what changed and why it traveled.
@@ -21,10 +40,6 @@ in `cultivation/marketplace/sam-cc-setup/README.md` for verification and release
    only the optional plugins you need.
 4. For another project, run `/bootstrap-cc-setup` once if it needs the plugin's
    minimal `CLAUDE.md`, workflow note, and native pre-commit hook.
-
-The current pre-consolidation marketplace still includes `sam-superpowers`. Its
-checked-in plugin content is the authority for what it provides. A later
-consolidation change owns any removal or migration from that plugin.
 
 ## Legacy sentinel cleanup
 
