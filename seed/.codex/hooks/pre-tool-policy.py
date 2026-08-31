@@ -120,6 +120,7 @@ def _fail(reason: str) -> int:
 
 def _read_ansi_c_word(command: str, start: int) -> tuple[str, int]:
     decoded: list[str] = []
+    nul_terminated = False
     escapes = {
         "a": "\a",
         "b": "\b",
@@ -137,6 +138,9 @@ def _read_ansi_c_word(command: str, start: int) -> tuple[str, int]:
     index = start
     while index < len(command) and command[index] != "'":
         character = command[index]
+        if nul_terminated:
+            index += 2 if character == "\\" and index + 1 < len(command) else 1
+            continue
         if character != "\\" or index + 1 >= len(command):
             decoded.append(character)
             index += 1
@@ -146,13 +150,25 @@ def _read_ansi_c_word(command: str, start: int) -> tuple[str, int]:
             decoded.append(escapes[escaped])
             index += 2
             continue
+        if (
+            escaped == "c"
+            and index + 2 < len(command)
+            and ord(command[index + 2]) & 0x1F == 0
+        ):
+            nul_terminated = True
+            index += 3
+            continue
         if escaped in "01234567":
             end = index + 2
             while end < min(index + 4, len(command)):
                 if command[end] not in "01234567":
                     break
                 end += 1
-            decoded.append(chr(int(command[index + 1 : end], 8) & 0xFF))
+            value = int(command[index + 1 : end], 8) & 0xFF
+            if value == 0:
+                nul_terminated = True
+            else:
+                decoded.append(chr(value))
             index = end
             continue
         widths = {"x": 2, "u": 4, "U": 8}
@@ -163,11 +179,14 @@ def _read_ansi_c_word(command: str, start: int) -> tuple[str, int]:
                 end += 1
             if end > index + 2:
                 codepoint = int(command[index + 2 : end], 16)
-                decoded.append(
-                    chr(codepoint)
-                    if codepoint <= sys.maxunicode
-                    else _OPAQUE_ANSI_C_CHARACTER
-                )
+                if codepoint == 0:
+                    nul_terminated = True
+                else:
+                    decoded.append(
+                        chr(codepoint)
+                        if codepoint <= sys.maxunicode
+                        else _OPAQUE_ANSI_C_CHARACTER
+                    )
                 index = end
                 continue
         decoded.extend(("\\", escaped))

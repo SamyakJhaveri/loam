@@ -1509,6 +1509,43 @@ class RenderedHarnessContractTest(unittest.TestCase):
                 self.assertEqual("", process.stdout)
                 self.assertEqual("", process.stderr)
 
+    def test_policy_process_denies_nul_terminated_ansi_c_fragments(self) -> None:
+        commands = (
+            "g$'\\0'it p$'\\0'ush --f$'\\0'orce origin main",
+            "$'\\0'git push --force origin main",
+            "$'\\000'git push --force origin main",
+            "$'\\x00'git push --force origin main",
+            "$'\\u0000'git push --force origin main",
+            "$'\\U00000000'git push --force origin main",
+            "g$'\\c@'it p$'\\c@'ush --f$'\\c@'orce origin main",
+            "$'\\c@'git push --force origin main",
+        )
+        for command in commands:
+            with self.subTest(command=command):
+                process = self.run_policy(self.policy_payload(command))
+
+                self.assertEqual(0, process.returncode, process.stderr)
+                self.assertNotEqual("", process.stdout)
+                self.assertEqual(POLICY_DENIAL, json.loads(process.stdout))
+                self.assertEqual("", process.stderr)
+
+    def test_policy_process_allows_safe_nul_terminated_ansi_c_fragments(
+        self,
+    ) -> None:
+        commands = (
+            "$'\\0'git --version",
+            "$'g\\0it' push --force origin main",
+            "$'\\c@'git --version",
+            "$'g\\c@it' push --force origin main",
+        )
+        for command in commands:
+            with self.subTest(command=command):
+                process = self.run_policy(self.policy_payload(command))
+
+                self.assertEqual(0, process.returncode, process.stderr)
+                self.assertEqual("", process.stdout)
+                self.assertEqual("", process.stderr)
+
     def test_policy_process_finds_force_push_after_compound_text(self) -> None:
         commands = (
             (
