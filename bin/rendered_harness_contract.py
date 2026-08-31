@@ -236,6 +236,14 @@ def _check_distribution_mirrors(
                     )
                 )
                 continue
+            execute_bits = stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH
+            if not path.stat().st_mode & execute_bits:
+                violations.append(
+                    Violation(
+                        "distribution-mirrors",
+                        f"{role} must be executable: {relative_path}",
+                    )
+                )
             try:
                 readable[role] = path.read_bytes()
             except OSError:

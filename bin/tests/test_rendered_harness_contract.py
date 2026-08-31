@@ -266,12 +266,12 @@ class RenderedHarnessContractTest(unittest.TestCase):
             if relative_path.endswith(".sh"):
                 self.make_executable(path)
         canonical_hook = "#!/bin/sh\nexit 0\n"
-        self.write(
+        canonical_checkout_hook = self.write(
             self.source,
             "seed/.claude/hooks/concurrent-checkout-guard.sh",
             canonical_hook,
         )
-        self.write(
+        plugin_checkout_hook = self.write(
             self.source,
             (
                 "cultivation/marketplace/sam-cc-setup/hooks/"
@@ -279,6 +279,8 @@ class RenderedHarnessContractTest(unittest.TestCase):
             ),
             canonical_hook,
         )
+        self.make_executable(canonical_checkout_hook)
+        self.make_executable(plugin_checkout_hook)
         self.write(
             self.source,
             "seed/.claude/hooks/ruff-after-edit.sh",
@@ -387,6 +389,26 @@ class RenderedHarnessContractTest(unittest.TestCase):
             any(
                 "FAIL [distribution-mirrors]" in item
                 and "direct regular file" in item
+                for item in rendered
+            )
+        )
+
+    def test_concurrent_checkout_distribution_mirror_must_be_executable(
+        self,
+    ) -> None:
+        self.build_good_fixture()
+        mirror = self.source / (
+            "cultivation/marketplace/sam-cc-setup/hooks/"
+            "concurrent-checkout-guard.sh"
+        )
+        mirror.chmod(mirror.stat().st_mode & ~(stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH))
+
+        rendered = self.rendered_violations()
+
+        self.assertTrue(
+            any(
+                "FAIL [distribution-mirrors]" in item
+                and "must be executable" in item
                 for item in rendered
             )
         )
