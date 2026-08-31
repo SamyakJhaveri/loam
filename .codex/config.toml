@@ -1,6 +1,6 @@
 # Repo-local Codex config for working ON the Loam template.
 # Committed so the Codex setup is reproducible and the network policy is visible/intentional.
-# Schema verified against https://developers.openai.com/codex/config-basic (June 2026).
+# Run bin/verify-template.sh after Codex policy changes; it includes native Codex probes when available.
 
 # Ask before non-trivial actions; you (the human) stay in the loop on a creative re-run.
 approval_policy = "on-request"

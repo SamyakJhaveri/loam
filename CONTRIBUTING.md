@@ -21,10 +21,9 @@ Rendered projects are unaffected — Copier writes real directories.
 - **Docs, content, small fixes** → commit directly to `main` (or open a PR if you're external).
 - **Behavior changes** (`seed/` guidance, skills, hooks, policy, `copier.yml`, or release tooling) → branch + PR, always.
 - Run `bin/verify-template.sh` before every PR. CI runs it too; a red render blocks merge.
-- Before merging any PR: `bash bin/verify-template.sh && bash bin/ip-sweep.sh` (non-strict;
-  the identity WARNs are known - see the release blocker note in any open consolidation PR.
-  As of 2026-08-10 check 1 also FAILs on pre-existing term hits in `cultivation/marketplace/
-  sam-cc-setup/` - a standing finding awaiting an owner ruling, not a new-PR regression).
+- Before merging any PR, run `bash bin/verify-template.sh && bash bin/ip-sweep.sh`.
+  Without `bin/.ip-terms`, the non-strict IP sweep warns that it skips the content
+  sweep and can still pass.
 - Skills follow the [agentskills.io](https://agentskills.io/specification) SKILL.md format.
   A skill that must reach every rendered project goes in `seed/.agents/skills/`.
   Reusable optional skills go in the appropriate marketplace plugin.

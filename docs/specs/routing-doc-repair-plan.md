@@ -88,4 +88,3 @@ Run `git diff --check`. Then run `bin/verify-template.sh` and require `verify-te
 - Do not change plugin versions.
 - Do not change concurrent-hook ownership in this branch.
 - Do not rewrite historical design and audit records.
-
