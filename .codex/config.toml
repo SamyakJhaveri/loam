@@ -1,6 +1,6 @@
 # Repo-local Codex config for working ON the Loam template.
-# Committed so the Codex setup is reproducible and the network policy is visible/intentional.
-# Schema verified against https://developers.openai.com/codex/config-basic (June 2026).
+# Committed so the repo-specific Codex policy is reproducible.
+# Current keys: https://developers.openai.com/codex/config-basic
 
 # Run without interactive approval prompts.
 approval_policy = "never"
