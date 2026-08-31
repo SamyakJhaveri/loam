@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use
 > `superpowers:subagent-driven-development` to implement this plan task by task.
-> Steps use checkbox (`- [ ]`) syntax for tracking.
+> Completed steps use checkbox (`- [x]`) syntax for tracking.
 
 **Goal:** Make `bin/verify-template.sh` prove that a rendered Loam project has a
 complete and enforceable Claude Code and Codex harness.
@@ -64,7 +64,7 @@ and Codex CLI.
 - Produces: `main(argv: Sequence[str] | None = None) -> int`
 - Later tasks extend private checks without changing the public interface.
 
-- [ ] **Step 1: Write the fixture and failing topology tests.**
+- [x] **Step 1: Write the fixture and failing topology tests.**
 
 Create a `unittest.TestCase` that gives every test separate `source` and
 `rendered` temporary directories. Add `write()`, `make_executable()`, and
@@ -86,7 +86,7 @@ Also reject a directory, an external symlink, an internal symlink, and a
 symlink to a directory in every required rendered file slot. The catchup route
 is the only permitted symlink.
 
-- [ ] **Step 2: Write failing release-caller tests.**
+- [x] **Step 2: Write failing release-caller tests.**
 
 Add these tests:
 
@@ -113,7 +113,7 @@ parse. Track only literal condition, loop, case, brace-group, and subshell
 boundaries. Fail closed on unmatched boundaries and function declarations
 before the gate.
 
-- [ ] **Step 3: Run the red phase.**
+- [x] **Step 3: Run the red phase.**
 
 Run:
 
@@ -123,7 +123,7 @@ python3 -m unittest discover -s bin/tests -p 'test_rendered_harness_contract.py'
 
 Expected: import failure because `rendered_harness_contract` does not exist.
 
-- [ ] **Step 4: Implement the minimum kernel.**
+- [x] **Step 4: Implement the minimum kernel.**
 
 Use this public shape:
 
@@ -154,7 +154,7 @@ requirements from the fixture.
 The CLI must require `--source-root` and `--rendered-root`. It prints every
 rendered violation. It returns `1` when violations exist and `0` otherwise.
 
-- [ ] **Step 5: Run the green checks.**
+- [x] **Step 5: Run the green checks.**
 
 Run:
 
@@ -166,7 +166,7 @@ git diff --check
 
 Expected: every Task 1 test passes. Both syntax checks exit `0`.
 
-- [ ] **Step 6: Commit Task 1.**
+- [x] **Step 6: Commit Task 1.**
 
 Run `bin/verify-template.sh`. Require `verify-template: PASSED`.
 
@@ -195,7 +195,7 @@ test: define rendered harness contract
 - Produces private checks for `symlinks`, `claude-hooks`, `prose-routes`, and
   `executable-modes`.
 
-- [ ] **Step 1: Add failing symlink and settings tests.**
+- [x] **Step 1: Add failing symlink and settings tests.**
 
 Add these test groups:
 
@@ -215,7 +215,7 @@ Ruff route reads tool_input.file_path
 The good settings fixture must route `PostToolUse` `Edit|Write` to
 `.claude/hooks/ruff-after-edit.sh`.
 
-- [ ] **Step 2: Add failing Ruff process tests.**
+- [x] **Step 2: Add failing Ruff process tests.**
 
 Create a temporary `ruff/__main__.py` under a temporary `PYTHONPATH`. It writes
 its received arguments to `RUFF_CAPTURE`.
@@ -231,7 +231,7 @@ Test these payloads and outcomes:
 | Malformed JSON | Exit `0`, no capture |
 | Fake Ruff exits nonzero | Hook still exits `0` |
 
-- [ ] **Step 3: Add failing route and mode tests.**
+- [x] **Step 3: Add failing route and mode tests.**
 
 Test every prose route table entry in the design. Reject the unresolved `docs/`
 placeholder. Do not require targets for rows containing `if installed`.
@@ -239,12 +239,12 @@ placeholder. Do not require targets for rows containing `if installed`.
 Remove executable bits from each rendered hook script in a table-driven test.
 Each case must produce `FAIL [executable-modes]` with the exact path.
 
-- [ ] **Step 4: Run the red phase.**
+- [x] **Step 4: Run the red phase.**
 
 Run the targeted unittest command. Expected failures must name all four new
 contract areas.
 
-- [ ] **Step 5: Implement and wire the Ruff adapter.**
+- [x] **Step 5: Implement and wire the Ruff adapter.**
 
 The script must:
 
@@ -260,14 +260,14 @@ Set the script executable. Replace the inline settings command with the script
 route. Add `ruff-after-edit.sh` to the shipped hook sentence. Remove the `docs/`
 placeholder route.
 
-- [ ] **Step 6: Implement the four private contract checks.**
+- [x] **Step 6: Implement the four private contract checks.**
 
 Use `Path.is_symlink()`, `os.readlink()`, and `Path.resolve()` for the symlink.
 Reject resolved paths outside the rendered root. Validate the exact owned event
 and matcher map. Extract repository script routes without executing settings
 commands. Check executable mode with user, group, or other execute bits.
 
-- [ ] **Step 7: Run the green checks and commit.**
+- [x] **Step 7: Run the green checks and commit.**
 
 Run:
 
@@ -307,7 +307,7 @@ feat: enforce rendered Claude harness
   `stderr reason + exit 2`.
 - Keeps all policy parser functions private and unimported by tests.
 
-- [ ] **Step 1: Add failing policy-process tests.**
+- [x] **Step 1: Add failing policy-process tests.**
 
 For every valid envelope, require `hook_event_name = "PreToolUse"`,
 `tool_name = "Bash"`, and `tool_input.command` as a string.
@@ -344,7 +344,7 @@ non-string command. Require exit `2`, empty stdout, and a short stderr reason.
 An empty string command is valid and silent.
 Later `--no-mirror` cancels mirror mode. Dry-run mirror pushes remain allowed.
 
-- [ ] **Step 2: Add failing wiring tests.**
+- [x] **Step 2: Add failing wiring tests.**
 
 Require this exact handler contract:
 
@@ -364,7 +364,7 @@ Reject `async: true`. Initialize a temporary Git repository. Execute the exact
 configured command from a nested directory. Prove both allowed and denied
 payloads reach the hook.
 
-- [ ] **Step 3: Add failing configuration and rule tests.**
+- [x] **Step 3: Add failing configuration and rule tests.**
 
 Parse config with `tomllib`. Require only these root keys:
 
@@ -387,12 +387,12 @@ non-empty string-alternative pattern leaves, and string or non-empty
 string-token match examples. Reject an invalid appended rule even when all
 required rules remain present.
 
-- [ ] **Step 4: Run the red phase.**
+- [x] **Step 4: Run the red phase.**
 
 Run the targeted unittest command. Expected: failures because the policy hook,
 wiring, explicit hooks feature, and checker behavior are absent.
 
-- [ ] **Step 5: Implement the policy process.**
+- [x] **Step 5: Implement the policy process.**
 
 Implementation order:
 
@@ -413,13 +413,13 @@ Unsupported compound or heredoc forms that expose separate `git`, `push`, and
 force tokens deny conservatively. Unparseable shell text blocks with exit `2`.
 A recognized force push emits only the design denial JSON and exits `0`.
 
-- [ ] **Step 6: Implement wiring and contract checks.**
+- [x] **Step 6: Implement wiring and contract checks.**
 
 Create `.codex/hooks.json` with the exact Step 2 handler. Add `hooks = true` to
 `[features]`. Execute the shipped hook as a subprocess for a normal push and a
 direct force push. Never import it. Implement the bounded TOML and AST checks.
 
-- [ ] **Step 7: Run green and native checks.**
+- [x] **Step 7: Run green and native checks.**
 
 Run:
 
@@ -458,14 +458,14 @@ feat: wire rendered Codex policy
 - Consumes: checker CLI and committed rendered seed.
 - Produces: marketplace discovery and native validation stages.
 
-- [ ] **Step 1: Add failing marketplace tests.**
+- [x] **Step 1: Add failing marketplace tests.**
 
 Parse `cultivation/marketplace/.claude-plugin/marketplace.json`. Discover only
 string `source` entries. Ignore remote object sources. Reject local sources that
 escape the marketplace root. Report missing local roots. Parse every declared
 local plugin `hooks/hooks.json` when present.
 
-- [ ] **Step 2: Add failing wrapper-order tests.**
+- [x] **Step 2: Add failing wrapper-order tests.**
 
 Require this stage order:
 
@@ -483,12 +483,12 @@ Require visible skips for missing Claude and Codex. Require present native
 failures to set the shared failure state. Keep the summary text
 `verify-template: PASSED` or `verify-template: FAILED`.
 
-- [ ] **Step 3: Run the red phase.**
+- [x] **Step 3: Run the red phase.**
 
 Run the targeted unittest command. Expected: marketplace and wrapper-stage tests
 fail against the old wrapper.
 
-- [ ] **Step 4: Implement the wrapper stages.**
+- [x] **Step 4: Implement the wrapper stages.**
 
 Run every fallible independent command inside an `if` block. Record its failure
 and continue. Invoke the checker with the repository root and scratch render.
@@ -510,7 +510,7 @@ JSON with the core checker and `python3 -m json.tool`.
 When Codex exists, run the three native rule probes from Task 3. Parse each JSON
 decision. Do not run `codex doctor`.
 
-- [ ] **Step 5: Run green checks and commit.**
+- [x] **Step 5: Run green checks and commit.**
 
 Run:
 
@@ -538,12 +538,12 @@ feat: deepen template release gate
 
 **Interfaces:** Consumes the complete committed release gate.
 
-- [ ] **Step 1: Run the complete unit suite.**
+- [x] **Step 1: Run the complete unit suite.**
 
 Run the targeted unittest discovery command. Record its exact `Ran N tests` and
 `OK` lines. Do not predict the count.
 
-- [ ] **Step 2: Run direct syntax and hook suites.**
+- [x] **Step 2: Run direct syntax and hook suites.**
 
 Run:
 
@@ -562,18 +562,18 @@ python3 cultivation/marketplace/sam-cc-setup/hooks/test_protect_paths.py
 
 Record every exit code and explicit test summary.
 
-- [ ] **Step 3: Run the positive release gate.**
+- [x] **Step 3: Run the positive release gate.**
 
 Run `bin/verify-template.sh`. Require exit `0` and final line
 `verify-template: PASSED`.
 
-- [ ] **Step 4: Run the independent negative control.**
+- [x] **Step 4: Run the independent negative control.**
 
 Render committed `HEAD` into a temporary directory. Print the Ruff hook path and
 mode. Remove only that temporary file's executable bit. Run the checker. Require
 nonzero exit and `FAIL [executable-modes]` naming the Ruff hook.
 
-- [ ] **Step 5: Run completion checks.**
+- [x] **Step 5: Run completion checks.**
 
 Run:
 
@@ -586,14 +586,14 @@ git diff --name-only main...HEAD
 Require no uncommitted implementation files. Require every changed path to stay
 inside the approved design and plan scope.
 
-- [ ] **Step 6: Dispatch the final Sol correctness review.**
+- [x] **Step 6: Dispatch the final Sol correctness review.**
 
 Use a fresh Codex Sol worker at high effort. Give it the design, branch diff
 package, and verification transcript. Require correctness findings only. Fix
 confirmed defects with one fix worker. Rerun affected tests and the complete
 release gate.
 
-- [ ] **Step 7: Perform the final self-attack.**
+- [x] **Step 7: Perform the final self-attack.**
 
 Answer:
 
