@@ -315,11 +315,16 @@ command --, env assignments, /usr/bin/env -i, and bare assignments
 ;, &, &&, ||, |, and unquoted newline separators
 backslash-LF and backslash-CRLF continuations
 concatenated quoted git, push, and force tokens
+literal Git sequences in control flow, brace groups, compact case arms,
+functions, and heredoc text
+literal Git sequences after any environment-name syntax
 ```
 
 Allowed commands must cover normal push, dry-run push, Git help, unrelated
-commands, quoted force text, commented force text, quoted separators, aliases,
-shell functions, expansions, nested shells, and command substitution.
+commands, quoted force text, commented force text, quoted separators, and a
+single quoted data argument such as `git push --force`. Safe `git --version`
+analogs must remain allowed. Aliases, expansions, `eval`, nested shells, and
+command substitution remain outside the guarantee.
 
 Malformed envelopes must cover empty input, invalid JSON, every non-object JSON
 type, wrong event, wrong tool, missing or non-object `tool_input`, and missing or
@@ -377,17 +382,20 @@ Implementation order:
 
 ```text
 normalize backslash-newline continuations
-lex with POSIX quoting, punctuation_chars=";&|", and shell comments
-split on every specified literal separator
-strip bare assignments and supported wrappers
+remove shell comments without treating `#` inside a word as a comment
+lex once with POSIX quoting and shell punctuation
+scan every literal `git` token as a possible command start
 classify Git global options by argument count
 locate only the push subcommand
 classify force flags and plus refspecs
 ```
 
-Do not search every token for force-related words. Unparseable shell text blocks
-with exit `2`. A recognized force push emits only the design denial JSON and
-exits `0`.
+Do not emulate function depth, heredoc delimiter decoding, case grammar, or
+brace structure. Do not search every token for force-related words. Search only
+for literal `git` starts, then use the bounded Git and push classifiers.
+Unsupported compound or heredoc forms that expose separate `git`, `push`, and
+force tokens deny conservatively. Unparseable shell text blocks with exit `2`.
+A recognized force push emits only the design denial JSON and exits `0`.
 
 - [ ] **Step 6: Implement wiring and contract checks.**
 

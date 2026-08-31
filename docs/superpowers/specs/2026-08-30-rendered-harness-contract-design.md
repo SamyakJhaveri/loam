@@ -187,13 +187,22 @@ recognized force push with the current Codex hook result:
 }
 ```
 
-The parser recognizes literal Git commands, Git global options, bare assignment
-prefixes, `command`, and `env` with literal assignments. It removes shell line
-continuations before lexing. It examines each literal command segment split by
-`;`, `&`, `&&`, `||`, `|`, or an unquoted newline. Shell comments are enabled,
-so text after an unquoted `#` does not create a false block. It denies long
+The policy first validates the complete command with `bash -n`. It then removes
+line continuations and shell comments and uses a small POSIX token recognizer.
+It does not emulate Bash function depth, heredoc delimiters, case grammar, or
+brace structure. From every literal `git` token, it parses Git global options,
+locates `push`, and applies the bounded push argument classifier. It denies long
 force flags, assigned long force flags, short `-f`, clustered short flags
-containing `f`, and plus-prefixed refspecs. It does not deny a normal push.
+containing `f`, and plus-prefixed refspecs. Proven help-only and dry-run forms
+remain allowed.
+
+This recognition is deliberately conservative. Literal Git token sequences in
+control flow, brace groups, case arms, functions, heredoc text, and after any
+environment-name syntax are classified even when Bash structure would make the
+tokens data or defer their execution. A quoted single argument such as
+`'git push --force'` remains one data token and is allowed. Other unsupported
+compound or heredoc forms that expose separate `git`, `push`, and force tokens
+are denied.
 
 The `Bash` matcher keeps unrelated tools outside this hook. Invalid JSON, a
 non-object envelope, a missing `tool_input`, or a non-string command exits `2`
@@ -205,12 +214,13 @@ forward compatibility.
 The hook must remain synchronous. The contract rejects `async: true`, because a
 background hook cannot block the triggering command.
 
-This local hook guarantees only the listed literal command forms. Git aliases,
-shell functions, variable-expanded commands, nested shells, and command
-substitution are outside its guarantee. Absolute force-push prevention belongs
-at the remote Git trust boundary through branch protection or a pre-receive
-hook. The local hook and rules are developer guardrails, not a replacement for
-that remote control.
+This local hook guarantees only recognizable literal Git token sequences. Git
+aliases, variable-expanded commands, `eval`, nested shells, and command
+substitution are outside its guarantee. Some visible token sequences inside
+unsupported Bash forms are denied conservatively. Absolute force-push
+prevention belongs at the remote Git trust boundary through branch protection
+or a pre-receive hook. The local hook and rules are developer guardrails, not a
+replacement for that remote control.
 
 `default.rules` remains as defense in depth. It prompts for ordinary pushes and
 forbids the direct force forms that its prefix matcher can express. The hook is
