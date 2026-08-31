@@ -1546,6 +1546,48 @@ class RenderedHarnessContractTest(unittest.TestCase):
                 self.assertEqual("", process.stdout)
                 self.assertEqual("", process.stderr)
 
+    def test_policy_process_denies_force_pushes_rebuilt_by_byte_rules(
+        self,
+    ) -> None:
+        commands = (
+            "g\u0000it push --force origin main",
+            "g$'\\cࠁ'it p$'\\cࠁ'ush --f$'\\cࠁ'orce origin main",
+            "$'\\cࠁ'git push --force origin main",
+            "$\u0000'git' push --force origin main",
+            '$\u0000"git" push --force origin main',
+            "g\\\u0000it push --force origin main",
+            "git push --f\\\u0000orce origin main",
+            "g\\\u0000\nit push --force origin main",
+            "g\\\u0000\r\nit push --force origin main",
+            "g$'\\\u0000x69't push --force origin main",
+            "g$'\\\u0000c@discard'it push --force origin main",
+        )
+        for command in commands:
+            with self.subTest(command=command):
+                process = self.run_policy(self.policy_payload(command))
+
+                self.assertEqual(0, process.returncode, process.stderr)
+                self.assertNotEqual("", process.stdout)
+                self.assertEqual(POLICY_DENIAL, json.loads(process.stdout))
+                self.assertEqual("", process.stderr)
+
+    def test_policy_process_allows_safe_byte_rule_analogs(self) -> None:
+        commands = (
+            "\u0000git --version",
+            "xg\u0000it push --force origin main",
+            "g$'\\cĀ'it push --force origin main",
+            "$\u0000'git' --version",
+            "xg\\\u0000it push --force origin main",
+            "g$'\\\u0000cĀ'it push --force origin main",
+        )
+        for command in commands:
+            with self.subTest(command=command):
+                process = self.run_policy(self.policy_payload(command))
+
+                self.assertEqual(0, process.returncode, process.stderr)
+                self.assertEqual("", process.stdout)
+                self.assertEqual("", process.stderr)
+
     def test_policy_process_finds_force_push_after_compound_text(self) -> None:
         commands = (
             (

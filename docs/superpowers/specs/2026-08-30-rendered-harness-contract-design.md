@@ -191,13 +191,16 @@ The policy first validates the complete command with `bash -n`. One lexical
 preprocessing pass then applies Bash line-continuation and comment rules and
 translates Bash ANSI-C and locale quoted words for the small POSIX token
 recognizer. Decoded ANSI-C values outside Python Unicode become opaque,
-nonmatching token content. A zero-valued ANSI-C escape terminates the remaining
-content in that quoted fragment; source concatenation resumes after its closing
-quote. It does not emulate Bash function depth, heredoc delimiters, case
-grammar, or brace structure. From every literal `git` token, it skips recognized
-shell redirections, parses Git global options, locates `push`, and applies the
-bounded push argument classifier. It denies long force flags, assigned long
-force flags, short `-f`, clustered short flags containing `f`, and plus-prefixed
+nonmatching token content. Raw NUL input is discarded from the complete command
+before lexical-state recognition. Bash control escapes use the first UTF-8 byte;
+a non-ASCII nonzero result becomes opaque, nonmatching content. A zero-valued
+ANSI-C escape terminates the remaining content in that quoted fragment; source
+concatenation resumes after its closing quote. It does not emulate Bash function
+depth, heredoc delimiters, case grammar, or brace structure. From every literal
+`git` token, it skips recognized shell
+redirections, parses Git global options, locates `push`, and applies the bounded
+push argument classifier. It denies long force flags, assigned long force
+flags, short `-f`, clustered short flags containing `f`, and plus-prefixed
 refspecs. Proven help-only and dry-run forms remain allowed.
 
 This recognition is deliberately conservative. Literal Git token sequences in

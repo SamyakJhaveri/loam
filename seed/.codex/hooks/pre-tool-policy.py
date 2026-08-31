@@ -150,14 +150,17 @@ def _read_ansi_c_word(command: str, start: int) -> tuple[str, int]:
             decoded.append(escapes[escaped])
             index += 2
             continue
-        if (
-            escaped == "c"
-            and index + 2 < len(command)
-            and ord(command[index + 2]) & 0x1F == 0
-        ):
-            nul_terminated = True
-            index += 3
-            continue
+        if escaped == "c" and index + 2 < len(command):
+            control_character = command[index + 2]
+            control_byte = control_character.encode("utf-8")[0]
+            if control_byte & 0x1F == 0:
+                nul_terminated = True
+                index += 3
+                continue
+            if not control_character.isascii():
+                decoded.append(_OPAQUE_ANSI_C_CHARACTER)
+                index += 3
+                continue
         if escaped in "01234567":
             end = index + 2
             while end < min(index + 4, len(command)):
@@ -199,6 +202,7 @@ def _quote_posix_word(word: str) -> str:
 
 
 def _prepare_shell_text(command: str) -> str:
+    command = command.replace("\0", "")
     prepared: list[str] = []
     quote: str | None = None
     word_started = False
