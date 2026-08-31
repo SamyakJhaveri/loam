@@ -386,6 +386,7 @@ def _is_force_push(words: tuple[str, ...]) -> bool:
     dry_run = False
     force = False
     force_with_lease = False
+    mirror = False
     repository_from_option = False
     positionals: list[str] = []
     index = 0
@@ -420,6 +421,10 @@ def _is_force_push(words: tuple[str, ...]) -> bool:
                 force_with_lease = True
             elif canonical == "--no-force-with-lease":
                 force_with_lease = False
+            elif canonical == "--mirror":
+                mirror = True
+            elif canonical == "--no-mirror":
+                mirror = False
             if arity:
                 if canonical == "--repo":
                     repository_from_option = True
@@ -451,7 +456,7 @@ def _is_force_push(words: tuple[str, ...]) -> bool:
 
     refspecs = positionals if repository_from_option else positionals[1:]
     plus_refspec = any(len(word) > 1 and word.startswith("+") for word in refspecs)
-    return not dry_run and (force or force_with_lease or plus_refspec)
+    return not dry_run and (force or force_with_lease or mirror or plus_refspec)
 
 
 def main() -> int:

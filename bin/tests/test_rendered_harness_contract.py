@@ -322,6 +322,49 @@ class RenderedHarnessContractTest(unittest.TestCase):
         self.assertTrue(any("FAIL [topology]" in item for item in rendered))
         self.assertTrue(any(missing in item for item in rendered))
 
+    def test_required_rendered_files_reject_wrong_kinds_and_symlinks(self) -> None:
+        self.build_good_fixture()
+        cases = (
+            ("directory", ".codex/config.toml", "directory"),
+            ("external symlink", "AGENTS.md", "external-file"),
+            (
+                "internal symlink",
+                ".claude/settings.local.json.template",
+                "CLAUDE.md",
+            ),
+            (
+                "symlink to directory",
+                ".codex/rules/default.rules",
+                ".codex",
+            ),
+        )
+        for label, relative_path, target_name in cases:
+            with self.subTest(label=label):
+                path = self.rendered / relative_path
+                original = path.read_bytes()
+                original_mode = path.stat().st_mode
+                path.unlink()
+                if label == "directory":
+                    path.mkdir()
+                elif label == "external symlink":
+                    outside = self.write(self.rendered.parent, target_name)
+                    path.symlink_to(outside)
+                else:
+                    path.symlink_to(self.rendered / target_name)
+
+                failures = self.rendered_violations()
+                if path.is_symlink():
+                    path.unlink()
+                elif path.is_dir():
+                    path.rmdir()
+                path.write_bytes(original)
+                path.chmod(original_mode)
+                self.assertIn(
+                    "FAIL [topology]: required rendered path must be a direct "
+                    f"regular file inside rendered root: {relative_path}",
+                    failures,
+                )
+
     def test_missing_required_source_paths_are_reported(self) -> None:
         self.build_good_fixture()
         missing = "copier.yml"
@@ -510,6 +553,45 @@ class RenderedHarnessContractTest(unittest.TestCase):
             self.rendered_violations(),
         )
 
+    def test_workflow_conditional_gate_is_inert(self) -> None:
+        self.build_good_fixture()
+        self.write(
+            self.source,
+            ".github/workflows/test.yml",
+            "jobs:\n"
+            "  verify:\n"
+            "    steps:\n"
+            "      - name: Conditional gate\n"
+            "        if: false\n"
+            "        run: bin/verify-template.sh\n",
+        )
+
+        self.assertIn(
+            "FAIL [release-callers]: .github/workflows/test.yml must call "
+            "bin/verify-template.sh",
+            self.rendered_violations(),
+        )
+
+    def test_workflow_failure_ignored_gate_is_inert(self) -> None:
+        self.build_good_fixture()
+        self.write(
+            self.source,
+            ".github/workflows/release.yml",
+            "jobs:\n"
+            "  release:\n"
+            "    steps:\n"
+            "      - name: Ignored gate\n"
+            "        run: bin/verify-template.sh\n"
+            "        continue-on-error: true\n"
+            "      - uses: softprops/action-gh-release@v2\n",
+        )
+
+        self.assertIn(
+            "FAIL [release-callers]: .github/workflows/release.yml must call "
+            "bin/verify-template.sh",
+            self.rendered_violations(),
+        )
+
     def test_release_script_runs_gate_before_version_write(self) -> None:
         self.build_good_fixture()
         release_script = "bin/release.sh"
@@ -585,6 +667,73 @@ class RenderedHarnessContractTest(unittest.TestCase):
             '"$SELF_DIR/verify-template.sh"',
             self.rendered_violations(),
         )
+
+    def test_release_script_conditional_gate_is_inert(self) -> None:
+        self.build_good_fixture()
+        for indentation in ("  ", ""):
+            with self.subTest(indentation=repr(indentation)):
+                self.write(
+                    self.source,
+                    "bin/release.sh",
+                    "if false; then\n"
+                    f'{indentation}bash "$SELF_DIR/verify-template.sh" || '
+                    'die "verification failed"\n'
+                    "fi\n"
+                    'echo "$VERSION" > VERSION\n',
+                )
+
+                self.assertIn(
+                    'FAIL [release-callers]: bin/release.sh must call bash '
+                    '"$SELF_DIR/verify-template.sh"',
+                    self.rendered_violations(),
+                )
+
+    def test_release_script_uncalled_function_gate_is_inert(self) -> None:
+        self.build_good_fixture()
+        for indentation in ("  ", ""):
+            with self.subTest(indentation=repr(indentation)):
+                self.write(
+                    self.source,
+                    "bin/release.sh",
+                    "verify_only() {\n"
+                    f'{indentation}bash "$SELF_DIR/verify-template.sh" || '
+                    'die "verification failed"\n'
+                    "}\n"
+                    'echo "$VERSION" > VERSION\n',
+                )
+
+                self.assertIn(
+                    'FAIL [release-callers]: bin/release.sh must call bash '
+                    '"$SELF_DIR/verify-template.sh"',
+                    self.rendered_violations(),
+                )
+
+    def test_release_script_compound_gate_is_inert(self) -> None:
+        self.build_good_fixture()
+        wrappers = (
+            ("while false; do", "done"),
+            ("for value in none; do", "done"),
+            ("case value in", "esac"),
+            ("{", "}"),
+            ("(", ")"),
+        )
+        for opener, closer in wrappers:
+            with self.subTest(opener=opener):
+                self.write(
+                    self.source,
+                    "bin/release.sh",
+                    f"{opener}\n"
+                    'bash "$SELF_DIR/verify-template.sh" || '
+                    'die "verification failed"\n'
+                    f"{closer}\n"
+                    'echo "$VERSION" > VERSION\n',
+                )
+
+                self.assertIn(
+                    'FAIL [release-callers]: bin/release.sh must call bash '
+                    '"$SELF_DIR/verify-template.sh"',
+                    self.rendered_violations(),
+                )
 
     def test_heredoc_gate_markers_are_inert(self) -> None:
         self.build_good_fixture()
@@ -1410,6 +1559,37 @@ class RenderedHarnessContractTest(unittest.TestCase):
                 self.assertEqual(POLICY_DENIAL, json.loads(process.stdout))
                 self.assertEqual("", process.stderr)
 
+    def test_policy_process_denies_active_mirror_pushes(self) -> None:
+        commands = (
+            "git push --mirror origin",
+            "git push --mir origin",
+            "git push --no-mirror --mirror origin",
+            "git push --mirror --no-mirror --mirror origin",
+            "git push --dry-run --no-dry-run --mirror origin",
+        )
+        for command in commands:
+            with self.subTest(command=command):
+                process = self.run_policy(self.policy_payload(command))
+
+                self.assertEqual(0, process.returncode, process.stderr)
+                self.assertNotEqual("", process.stdout)
+                self.assertEqual(POLICY_DENIAL, json.loads(process.stdout))
+                self.assertEqual("", process.stderr)
+
+    def test_policy_process_allows_cancelled_or_dry_run_mirror_pushes(self) -> None:
+        commands = (
+            "git push --mirror --no-mirror origin",
+            "git push --mirror --dry-run origin",
+            "git push --mirror --no-dry-run --dry-run origin",
+        )
+        for command in commands:
+            with self.subTest(command=command):
+                process = self.run_policy(self.policy_payload(command))
+
+                self.assertEqual(0, process.returncode, process.stderr)
+                self.assertEqual("", process.stdout)
+                self.assertEqual("", process.stderr)
+
     def test_policy_process_allows_out_of_scope_shell_forms(self) -> None:
         commands = (
             "",
@@ -2179,6 +2359,48 @@ class RenderedHarnessContractTest(unittest.TestCase):
                     any(
                         "FAIL [codex-rules]" in item
                         for item in self.rendered_violations()
+                    )
+                )
+
+    def test_codex_rules_reject_values_outside_native_grammar(self) -> None:
+        self.build_good_fixture()
+        original = (
+            self.rendered / ".codex/rules/default.rules"
+        ).read_text(encoding="utf-8")
+        invalid_rules = (
+            'prefix_rule(pattern=["x"], decision="deny", '
+            'justification="x", match=[])\n',
+            'prefix_rule(pattern=["x"], decision=[], '
+            'justification="x", match=[])\n',
+            'prefix_rule(pattern=["x", 1], decision="allow", '
+            'justification="x", match=[])\n',
+            'prefix_rule(pattern=["x", ["y", 1]], decision="allow", '
+            'justification="x", match=[])\n',
+            'prefix_rule(pattern=["x"], decision="allow", '
+            'justification="x", match=[1])\n',
+            'prefix_rule(pattern=["x"], decision="allow", '
+            'justification="x", match=[["x", 1]])\n',
+            'prefix_rule(pattern=[], decision="allow", '
+            'justification="x", match=[])\n',
+            'prefix_rule(pattern=["x", []], decision="allow", '
+            'justification="x", match=[])\n',
+        )
+        for invalid_rule in invalid_rules:
+            with self.subTest(invalid_rule=invalid_rule):
+                self.write(
+                    self.rendered,
+                    ".codex/rules/default.rules",
+                    original + invalid_rule,
+                )
+
+                try:
+                    violations = self.rendered_violations()
+                except (TypeError, ValueError) as error:
+                    self.fail(f"literal grammar validation raised {error!r}")
+                self.assertTrue(
+                    any(
+                        "FAIL [codex-rules]" in item
+                        for item in violations
                     )
                 )
 

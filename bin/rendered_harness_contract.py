@@ -175,9 +175,21 @@ def _check_topology(
             )
 
     for relative_path in REQUIRED_RENDERED_PATHS:
-        if not _path_exists(rendered_root / relative_path):
+        path = rendered_root / relative_path
+        if not _path_exists(path):
             violations.append(
                 Violation("topology", f"missing required rendered path: {relative_path}")
+            )
+        elif relative_path != ".claude/skills/catchup" and (
+            path.is_symlink()
+            or not _is_regular_file_inside_root(path, rendered_root)
+        ):
+            violations.append(
+                Violation(
+                    "topology",
+                    "required rendered path must be a direct regular file "
+                    f"inside rendered root: {relative_path}",
+                )
             )
 
     for relative_path in FORBIDDEN_RENDERED_PATHS:
@@ -365,12 +377,48 @@ def _shell_command_position(content: str | None, marker: str) -> int:
     return -1
 
 
+def _declares_shell_function(line: str) -> bool:
+    words = _shell_words(line)
+    if not words:
+        return False
+    if words[0] == "function":
+        return len(words) >= 2
+    if words[0].endswith(("()", "(){")):
+        return True
+    return len(words) >= 2 and words[1] == "()"
+
+
+def _release_block_boundary(words: tuple[str, ...]) -> int:
+    if not words:
+        return 0
+    first = words[0]
+    if first in {"if", "for", "while", "until", "select", "case", "{", "("}:
+        return 1
+    if first in {"fi", "done", "esac", "}", ")"}:
+        return -1
+    return 0
+
+
 def _release_gate_position(content: str | None, marker: str) -> int:
     marker_words = _shell_words(marker)
+    function_declared = False
+    block_depth = 0
     for line_number, line in _active_shell_lines(content):
+        function_declared = function_declared or _declares_shell_function(line)
         words = _shell_words(line)
+        boundary = _release_block_boundary(words)
+        if boundary < 0:
+            if block_depth == 0:
+                return -1
+            block_depth -= 1
+        elif boundary > 0 and not _declares_shell_function(line):
+            block_depth += 1
+        if line != line.lstrip():
+            continue
         if (
-            words[: len(marker_words)] == marker_words
+            not function_declared
+            and block_depth == 0
+            and words[: len(marker_words)] == marker_words
             and words[len(marker_words) : len(marker_words) + 2] == ("||", "die")
             and len(words) == len(marker_words) + 3
         ):
@@ -387,15 +435,31 @@ def _mapping_value(text: str, key: str) -> str | None:
     return text[len(prefix) :].strip()
 
 
-def _workflow_step_values(
+def _workflow_steps(
     content: str | None,
-    key: str,
-) -> tuple[tuple[int, str], ...]:
+) -> tuple[tuple[int, dict[str, str]], ...]:
     if content is None:
         return ()
-    values: list[tuple[int, str]] = []
+    steps: list[tuple[int, dict[str, str]]] = []
     steps_indent: int | None = None
     list_indent: int | None = None
+    current_line: int | None = None
+    current: dict[str, str] = {}
+
+    def finish_step() -> None:
+        nonlocal current_line, current
+        if current_line is not None:
+            steps.append((current_line, current))
+        current_line = None
+        current = {}
+
+    def record_field(text: str) -> None:
+        for key in ("run", "uses", "if", "continue-on-error"):
+            value = _mapping_value(text, key)
+            if value is not None:
+                current[key] = value if key not in current else "\0duplicate"
+                return
+
     for line_number, line in enumerate(content.splitlines()):
         stripped = line.lstrip(" ")
         if not stripped or stripped.startswith("#"):
@@ -408,6 +472,7 @@ def _workflow_step_values(
             continue
 
         if indent <= steps_indent:
+            finish_step()
             steps_indent = None
             list_indent = None
             if stripped == "steps:" or stripped.startswith("steps: #"):
@@ -420,19 +485,25 @@ def _workflow_step_values(
             list_indent = indent
 
         if indent == list_indent and stripped.startswith("- "):
-            value = _mapping_value(stripped[2:].lstrip(), key)
+            finish_step()
+            current_line = line_number
+            record_field(stripped[2:].lstrip())
         elif indent == list_indent + 2:
-            value = _mapping_value(stripped, key)
-        else:
-            value = None
-        if value is not None:
-            values.append((line_number, value))
-    return tuple(values)
+            record_field(stripped)
+    finish_step()
+    return tuple(steps)
+
+
+def _workflow_gate_is_unconditional(step: dict[str, str]) -> bool:
+    return "if" not in step and step.get("continue-on-error", "false") == "false"
 
 
 def _workflow_run_position(content: str | None, marker: str) -> int:
     marker_words = _shell_words(marker)
-    for line_number, value in _workflow_step_values(content, "run"):
+    for line_number, step in _workflow_steps(content):
+        value = step.get("run")
+        if value is None or not _workflow_gate_is_unconditional(step):
+            continue
         words = _shell_words(value)
         if words == marker_words:
             return line_number
@@ -440,7 +511,10 @@ def _workflow_run_position(content: str | None, marker: str) -> int:
 
 
 def _workflow_uses_position(content: str | None, marker: str) -> int:
-    for line_number, value in _workflow_step_values(content, "uses"):
+    for line_number, step in _workflow_steps(content):
+        value = step.get("uses")
+        if value is None:
+            continue
         if value == marker or value.startswith(f"{marker}@"):
             return line_number
     return -1
@@ -1061,15 +1135,45 @@ def _literal_prefix_rules(
                 Violation("codex-rules", "prefix_rule values must be literals")
             )
             return None
+        pattern = values["pattern"]
+        decision = values["decision"]
+        justification = values["justification"]
+        examples = values["match"]
+        pattern_is_valid = (
+            isinstance(pattern, list)
+            and bool(pattern)
+            and all(
+                isinstance(element, str)
+                or (
+                    isinstance(element, list)
+                    and bool(element)
+                    and all(isinstance(option, str) for option in element)
+                )
+                for element in pattern
+            )
+        )
+        examples_are_valid = isinstance(examples, list) and all(
+            (isinstance(example, str) and bool(example))
+            or (
+                isinstance(example, list)
+                and bool(example)
+                and all(isinstance(token, str) for token in example)
+            )
+            for example in examples
+        )
         if (
-            not isinstance(values["pattern"], list)
-            or not isinstance(values["decision"], str)
-            or not isinstance(values["justification"], str)
-            or not values["justification"]
-            or not isinstance(values["match"], list)
+            not pattern_is_valid
+            or not isinstance(decision, str)
+            or decision not in {"allow", "prompt", "forbidden"}
+            or not isinstance(justification, str)
+            or not justification
+            or not examples_are_valid
         ):
             violations.append(
-                Violation("codex-rules", "prefix_rule literal fields have invalid types")
+                Violation(
+                    "codex-rules",
+                    "prefix_rule literal fields do not match native grammar",
+                )
             )
             return None
         rules.append(values)

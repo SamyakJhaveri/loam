@@ -82,6 +82,9 @@ test_multiple_areas_are_reported_in_one_run
 ```
 
 The missing-path tests must assert both `FAIL [topology]` and the exact path.
+Also reject a directory, an external symlink, an internal symlink, and a
+symlink to a directory in every required rendered file slot. The catchup route
+is the only permitted symlink.
 
 - [ ] **Step 2: Write failing release-caller tests.**
 
@@ -102,6 +105,13 @@ softprops/action-gh-release
 bash "$SELF_DIR/verify-template.sh"
 echo "$VERSION" > VERSION
 ```
+
+Also reject workflow gate steps with `if` or active `continue-on-error`.
+Reject release-script gate text inside a conditional or an uncalled function.
+Treat the shell contract as an exact top-level source shape, not a general Bash
+parse. Track only literal condition, loop, case, brace-group, and subshell
+boundaries. Fail closed on unmatched boundaries and function declarations
+before the gate.
 
 - [ ] **Step 3: Run the red phase.**
 
@@ -318,6 +328,7 @@ concatenated quoted git, push, and force tokens
 literal Git sequences in control flow, brace groups, compact case arms,
 functions, and heredoc text
 literal Git sequences after any environment-name syntax
+active `--mirror`, its native abbreviation, and argument-order reactivation
 ```
 
 Allowed commands must cover normal push, dry-run push, Git help, unrelated
@@ -331,6 +342,7 @@ type, wrong event, wrong tool, missing or non-object `tool_input`, and missing o
 non-string command. Require exit `2`, empty stdout, and a short stderr reason.
 
 An empty string command is valid and silent.
+Later `--no-mirror` cancels mirror mode. Dry-run mirror pushes remain allowed.
 
 - [ ] **Step 2: Add failing wiring tests.**
 
@@ -370,6 +382,10 @@ nonliteral values, and calls other than `prefix_rule`. Require literal
 `pattern`, `decision`, `justification`, and `match`. Require the existing allow,
 normal-push prompt, recursive-delete forbids, hard-reset forbid, and direct
 force-push forbids.
+Require the native decision enum. Require non-empty pattern lists, string or
+non-empty string-alternative pattern leaves, and string or non-empty
+string-token match examples. Reject an invalid appended rule even when all
+required rules remain present.
 
 - [ ] **Step 4: Run the red phase.**
 

@@ -107,6 +107,11 @@ The checker enforces this exact rendered path set:
 | `.codex/hooks/pre-tool-policy.py` | Codex policy hook |
 | `.codex/rules/default.rules` | Codex execution rules |
 
+Every required rendered path except `.claude/skills/catchup` must be a direct
+regular file. It must resolve inside the rendered root. A directory, an
+external symlink, or an internal symlink is a contract failure. The catchup
+route is the only designed symlink.
+
 The checker enforces this exact source-only path set:
 
 | Required source-only path | Purpose |
@@ -119,13 +124,19 @@ The checker enforces this exact source-only path set:
 | `.github/workflows/release.yml` | Tag release-gate wiring |
 | `bin/release.sh` | Local release-gate wiring |
 
-All release-gate callers are part of the contract. Both workflow files must run
-`bin/verify-template.sh`. In `.github/workflows/release.yml`, that step must
-occur before the first publishing step, currently
-`softprops/action-gh-release`. `bin/release.sh` must invoke the same interface
-before its first mutation, currently `echo "$VERSION" > VERSION`. The checker
-compares the positions of these exact command signatures. A release-flow
-refactor must update this contract deliberately.
+All release-gate callers are part of the contract. The checker reads workflow
+steps as complete bounded records. Both workflow files must run
+`bin/verify-template.sh` in a step with no `if` field and no active
+`continue-on-error`. In `.github/workflows/release.yml`, that step must occur
+before the first publishing step, currently `softprops/action-gh-release`.
+`bin/release.sh` must contain the exact fail-closed gate command as an
+unindented, top-level line before its first mutation, currently
+`echo "$VERSION" > VERSION`. A conditional body or an uncalled function does
+not satisfy this controlled source contract. This is not a general YAML or
+Bash interpreter. A conservative line scanner tracks literal condition,
+loop, case, brace-group, and subshell boundaries. It fails closed on unmatched
+boundaries. A function declaration before the gate disqualifies that gate.
+A release-flow refactor must update the bounded contract deliberately.
 
 The checker also requires these retired rendered paths to stay absent:
 
@@ -201,7 +212,9 @@ depth, heredoc delimiters, case grammar, or brace structure. From every literal
 redirections, parses Git global options, locates `push`, and applies the bounded
 push argument classifier. It denies long force flags, assigned long force
 flags, short `-f`, clustered short flags containing `f`, and plus-prefixed
-refspecs. Proven help-only and dry-run forms remain allowed.
+refspecs. It also denies active `--mirror`, including the unique native Git
+abbreviation. Later `--no-mirror` cancels it, and later `--mirror` restores it.
+Proven help-only and dry-run forms remain allowed.
 
 This recognition is deliberately conservative. Literal Git token sequences in
 control flow, brace groups, case arms, functions, heredoc text, and after any
@@ -287,6 +300,11 @@ parses `default.rules` as the supported Python-like `prefix_rule` call shape
 with `ast`. It requires literal `pattern`, `decision`, `justification`, and
 `match` values and the expected allow, prompt, and forbidden policies. Native
 Codex probes remain the authoritative semantic check when Codex is installed.
+The core grammar accepts only the native decisions `allow`, `prompt`, and
+`forbidden`. A pattern is a non-empty list of strings or non-empty string
+alternative lists. Match examples are strings or non-empty string-token lists.
+Invalid appended rules fail the complete file even when every required rule is
+also present.
 
 The core Codex configuration schema is bounded to the sections Loam owns:
 
