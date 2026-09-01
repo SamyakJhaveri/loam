@@ -1,7 +1,7 @@
 {
   "name": "sam-cc-setup",
   "license": "MIT",
-  "version": "0.6.0",
+  "version": "0.7.0",
   "description": "Portable Claude Code setup with a local brainstorming-to-writing-plans workflow, merged plan review, technology selection, validation, cross-model Codex review, and bootstrap support for the rules layer plugins cannot ship.",
   "author": {
     "name": "Samyak Jhaveri",

@@ -28,6 +28,11 @@ Rendered projects are unaffected — Copier writes real directories.
 - Skills follow the [agentskills.io](https://agentskills.io/specification) SKILL.md format.
   A skill that must reach every rendered project goes in `seed/.agents/skills/`.
   Reusable optional skills go in the appropriate marketplace plugin.
+- **Vet every external skill before it enters the repo.** Any skill or bundle from a
+  third-party source must pass `bin/vet-skill.sh <path-or-url>` first. It wraps
+  [NVIDIA SkillSpector](https://github.com/nvidia/skillspector): exit 0 (LOW/NONE) adopts,
+  exit 2 (HIGH/CRITICAL) rejects, exit 1 (MEDIUM) needs a recorded human decision in the PR.
+  Keep the scanner current with `uv tool upgrade skillspector`.
 - Read `CLAUDE.md` for current repository gotchas. Read `docs/ASSET-LAYERS.md` before placing a new asset.
 
 ## Promoting a skill from your project
