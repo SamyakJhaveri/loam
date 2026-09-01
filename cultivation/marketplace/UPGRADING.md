@@ -3,7 +3,15 @@
 This file records why a promoted plugin change traveled. It is also the upgrade
 entry point for projects that consume the Loam marketplace.
 
-## Current: sam-cc-setup v0.6.0 harvest
+## Current: sam-cc-setup v0.7.0 external-skill vetting
+
+Adds the `vet-skill` skill (manual-only): security-scan any external skill or bundle
+with NVIDIA SkillSpector before installing it. Pairs with the repo tool
+`bin/vet-skill.sh` and the CONTRIBUTING rule that every third-party skill must pass
+the scan first. This is the 27th plugin skill.
+Upgrade step: `claude plugin update sam-cc-setup` - no removals, no settings changes.
+
+## Previous: sam-cc-setup v0.6.0 harvest
 
 Eleven skills harvested from Samyak's working projects (distbench, parbench, job-search era),
 adapted to be generic, taking the plugin from 15 to 26 skills:
