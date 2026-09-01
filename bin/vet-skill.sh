@@ -144,8 +144,22 @@ fi
 
 # --safe --out: hand the caller the stripped, non-rejected tree to install from.
 if [ "$SAFE" -eq 1 ] && [ -n "$OUT_DIR" ] && [ "$VERDICT" != "REJECT" ]; then
-  python3 -c "import shutil,sys;shutil.rmtree(sys.argv[1],ignore_errors=True)" "$OUT_DIR"
+  # Guard the destructive write: refuse to clobber an existing non-empty path
+  # (e.g. `--out ~/projects`). The caller must point --out at a new or empty
+  # directory, or one this tool wrote before (it drops a marker file).
+  if [ -e "$OUT_DIR" ]; then
+    if [ ! -d "$OUT_DIR" ]; then
+      echo "FAIL: --out $OUT_DIR exists and is not a directory." >&2
+      exit 4
+    fi
+    if [ -n "$(ls -A "$OUT_DIR" 2>/dev/null)" ] && [ ! -f "$OUT_DIR/.vet-skill-output" ]; then
+      echo "FAIL: --out $OUT_DIR is a non-empty directory; refusing to overwrite it. Use a new or empty path." >&2
+      exit 4
+    fi
+    python3 -c "import shutil,sys;shutil.rmtree(sys.argv[1],ignore_errors=True)" "$OUT_DIR"
+  fi
   cp -R "$STRIPPED" "$OUT_DIR"
+  : >"$OUT_DIR/.vet-skill-output"
   info "stripped skill written to $OUT_DIR"
 fi
 

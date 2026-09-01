@@ -4,7 +4,7 @@ description: >
   Design polish with 27 deterministic anti-pattern rules + 12-rule LLM critique. By Paul Bakaus (jQuery UI creator).
   Commands: polish, audit, critique, typeset, animate, colorize, layout, delight. Apache-2.0.
 license: Apache-2.0
-auto-activate: false
+disable-model-invocation: true
 ---
 
 # impeccable

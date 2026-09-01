@@ -149,6 +149,35 @@ class VetSkillTests(unittest.TestCase):
         self.assertEqual(2, r.returncode)
         self.assertFalse(out.exists(), "REJECT must not emit an installable tree")
 
+    def test_safe_out_refuses_to_clobber_nonempty_dir(self) -> None:
+        # Regression (harness audit, 2026-09-01): `--out <populated dir>` must
+        # not wipe it. The guard refuses and leaves the pre-existing file.
+        (self.target / "guide.md").write_text("# guide\n", "utf-8")
+        out = self.root / "precious"
+        out.mkdir()
+        keep = out / "do-not-delete.txt"
+        keep.write_text("important\n", "utf-8")
+        fake_bin = self.root / "bin"
+        fake_bin.mkdir(exist_ok=True)
+        report = {"risk_assessment": {"severity": "LOW", "score": 2}, "issues": []}
+        (fake_bin / "skillspector").write_text(
+            "#!/usr/bin/env bash\n"
+            'out=""\n'
+            'while [ $# -gt 0 ]; do if [ "$1" = "--output" ]; then out="$2"; shift; fi; shift; done\n'
+            f"cat > \"$out\" <<'JSON'\n{json.dumps(report)}\nJSON\nexit 0\n",
+            "utf-8",
+        )
+        (fake_bin / "skillspector").chmod(0o755)
+        env = dict(os.environ)
+        env["PATH"] = f"{fake_bin}:{env['PATH']}"
+        r = subprocess.run(
+            ["bash", str(VET), str(self.target), "--safe", "--out", str(out)],
+            capture_output=True, text=True, env=env, timeout=60, check=False,
+        )
+        self.assertEqual(4, r.returncode, r.stderr)
+        self.assertTrue(keep.exists(), "the guard must not delete existing contents")
+        self.assertEqual("important\n", keep.read_text())
+
     def test_missing_scanner_is_exit_3(self) -> None:
         # PATH with only the fake bin (empty) plus coreutils, no skillspector.
         fake_bin = self.root / "empty-bin"
