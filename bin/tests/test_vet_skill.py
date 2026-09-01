@@ -93,6 +93,62 @@ class VetSkillTests(unittest.TestCase):
         r = self.run_vet(severity="CRITICAL", score=95)
         self.assertEqual(2, r.returncode)
 
+    def test_safe_mode_strips_scripts_before_install(self) -> None:
+        # A skill with a script and a doc; --safe must drop the script and,
+        # with --out, emit a stripped tree containing only the doc.
+        (self.target / "run.py").write_text("import os\n", "utf-8")
+        (self.target / "guide.md").write_text("# guide\n", "utf-8")
+        (self.target / "Makefile").write_text("all:\n\trm -rf x\n", "utf-8")
+        out = self.root / "stripped"
+        fake_bin = self.root / "bin"
+        fake_bin.mkdir(exist_ok=True)
+        report = {"risk_assessment": {"severity": "LOW", "score": 2}, "issues": []}
+        (fake_bin / "skillspector").write_text(
+            "#!/usr/bin/env bash\n"
+            'out=""\n'
+            'while [ $# -gt 0 ]; do if [ "$1" = "--output" ]; then out="$2"; shift; fi; shift; done\n'
+            f"cat > \"$out\" <<'JSON'\n{json.dumps(report)}\nJSON\nexit 0\n",
+            "utf-8",
+        )
+        (fake_bin / "skillspector").chmod(0o755)
+        env = dict(os.environ)
+        env["PATH"] = f"{fake_bin}:{env['PATH']}"
+        r = subprocess.run(
+            ["bash", str(VET), str(self.target), "--safe", "--out", str(out), "--json"],
+            capture_output=True, text=True, env=env, timeout=60, check=False,
+        )
+        self.assertEqual(0, r.returncode, r.stderr)
+        self.assertIn('"safe":1', r.stdout)
+        self.assertTrue((out / "SKILL.md").exists())
+        self.assertTrue((out / "guide.md").exists())
+        self.assertFalse((out / "run.py").exists(), "script must be stripped")
+        self.assertFalse((out / "Makefile").exists(), "Makefile must be stripped")
+
+    def test_safe_reject_does_not_emit_out(self) -> None:
+        # A REJECT verdict must not hand the caller an installable tree.
+        (self.target / "run.py").write_text("import os\n", "utf-8")
+        out = self.root / "stripped2"
+        fake_bin = self.root / "bin"
+        fake_bin.mkdir(exist_ok=True)
+        report = {"risk_assessment": {"severity": "CRITICAL", "score": 100},
+                  "issues": [{"title": "bad"}]}
+        (fake_bin / "skillspector").write_text(
+            "#!/usr/bin/env bash\n"
+            'out=""\n'
+            'while [ $# -gt 0 ]; do if [ "$1" = "--output" ]; then out="$2"; shift; fi; shift; done\n'
+            f"cat > \"$out\" <<'JSON'\n{json.dumps(report)}\nJSON\nexit 0\n",
+            "utf-8",
+        )
+        (fake_bin / "skillspector").chmod(0o755)
+        env = dict(os.environ)
+        env["PATH"] = f"{fake_bin}:{env['PATH']}"
+        r = subprocess.run(
+            ["bash", str(VET), str(self.target), "--safe", "--out", str(out)],
+            capture_output=True, text=True, env=env, timeout=60, check=False,
+        )
+        self.assertEqual(2, r.returncode)
+        self.assertFalse(out.exists(), "REJECT must not emit an installable tree")
+
     def test_missing_scanner_is_exit_3(self) -> None:
         # PATH with only the fake bin (empty) plus coreutils, no skillspector.
         fake_bin = self.root / "empty-bin"

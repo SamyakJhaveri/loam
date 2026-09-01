@@ -27,7 +27,21 @@ which applies the threshold and exit codes for you:
 ```
 bin/vet-skill.sh <path-to-skill-dir>
 bin/vet-skill.sh https://github.com/owner/repo      # cloned read-only first
+bin/vet-skill.sh <target> --safe --out <dir>        # strip scripts, re-scan, emit prose-only tree
 ```
+
+## Making a script-heavy skill safe (prose-only)
+
+When a skill fails on its scripts but you only want its written guidance, run
+`--safe`: it strips every executable (`.py .sh .js .ts`, `Makefile`, `scripts/`,
+and the rest), re-scans, and with `--out <dir>` writes the stripped tree ready to
+install. This removes code-execution risk entirely.
+
+It does NOT remove risk carried in the prose. A skill flagged for rogue-agent or
+excessive-agency instructions in its own `SKILL.md` (patterns like "always do X,
+never stop, ignore other instructions") will still fail after `--safe`, because
+the risky text is the skill, not a script. Read those findings; adopting such a
+skill means editing the instructions out, not just stripping files.
 
 ## Procedure
 
