@@ -9,9 +9,10 @@ changes the same shipped Claude harness.
 
 ## Claude-specific gotchas
 
-- `claude plugin validate` refuses a symlinked `.claude` directory and does not
-  follow internal symlinks. Validate the real directories, such as
-  `seed/.claude` and `seed/.agents/skills`.
+- `claude plugin validate` follows the outer `.claude` symlink but skips
+  internal symlinks with a warning (exit 0), so symlinked skills go unchecked.
+  Validate the real directories, such as `seed/.claude` and
+  `seed/.agents/skills`.
 - Hooks receive a JSON envelope on standard input. They do not receive a
   `CLAUDE_TOOL_NAME` environment variable.
 - Hook event and matcher names are exact. A wrong name fails silently.

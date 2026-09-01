@@ -49,6 +49,7 @@ FORBIDDEN_RENDERED_PATHS = (
     ".claude/agents",
     ".claude/rules",
     ".claude/stale-counts.json",
+    ".claude/codex-reviews",
     ".claude/hooks/post-compact-recovery.sh",
     ".claude/skills/reassess-template-sync",
     ".agents/skills/agent-team",
@@ -117,7 +118,7 @@ CODEX_SECRET_DENIES = {
 
 CODEX_REQUIRED_RULES = (
     (
-        [["cat", "ls", "grep", "rg", "head", "tail", "sed", "echo", "wc", "mkdir"]],
+        [["cat", "ls", "grep", "rg", "head", "tail", "echo", "wc", "mkdir"]],
         "allow",
     ),
     (["git", ["status", "log", "diff"]], "allow"),

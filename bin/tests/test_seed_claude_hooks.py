@@ -114,19 +114,18 @@ class StopVerifyGateTests(HookFixtureCase):
         result = self.run_hook(self.SCRIPT, None, raw_payload="{not json")
         self.assertEqual(2, result.returncode, result.stderr)
 
-    def test_missing_ruff_notes_and_does_not_block(self) -> None:
-        self.commit_file("ok.py", "print('ok')\n")
-        (self.repo / "clean.py").write_text("print('fine')\n", encoding="utf-8")
-
+    def _ruffless_path(self) -> pathlib.Path:
+        """Build a PATH dir with the tools the hook needs, a python3 shim whose
+        `-m ruff` fails, and no `ruff` binary anywhere on the PATH."""
         shim_dir = pathlib.Path(self.temp_dir.name) / "shim"
-        shim_dir.mkdir()
-        shim = shim_dir / "python3"
+        shim_dir.mkdir(exist_ok=True)
         real_python = subprocess.run(
             ["bash", "-lc", "command -v python3"],
             capture_output=True,
             text=True,
             check=True,
         ).stdout.strip()
+        shim = shim_dir / "python3"
         shim.write_text(
             "#!/bin/bash\n"
             'if [ "$1" = "-m" ] && [ "$2" = "ruff" ]; then exit 1; fi\n'
@@ -134,12 +133,54 @@ class StopVerifyGateTests(HookFixtureCase):
             encoding="utf-8",
         )
         shim.chmod(0o755)
+        for tool in ("bash", "git", "cat", "grep", "xargs"):
+            real = subprocess.run(
+                ["bash", "-lc", f"command -v {tool}"],
+                capture_output=True,
+                text=True,
+                check=True,
+            ).stdout.strip()
+            link = shim_dir / tool
+            if not link.exists():
+                link.symlink_to(real)
+        return shim_dir
 
+    def test_missing_ruff_notes_and_does_not_block(self) -> None:
+        # Neither `python3 -m ruff` nor a PATH `ruff` binary exists: the gate
+        # must note the skipped leg and pass, not block or silently no-op.
+        self.commit_file("ok.py", "print('ok')\n")
+        (self.repo / "clean.py").write_text("print('fine')\n", encoding="utf-8")
+
+        shim_dir = self._ruffless_path()
         env = dict(os.environ)
-        env["PATH"] = f"{shim_dir}:{env['PATH']}"
+        env["PATH"] = str(shim_dir)
         result = self.run_hook(self.SCRIPT, {}, env=env)
         self.assertEqual(0, result.returncode, result.stderr)
         self.assertIn("ruff unavailable", result.stderr)
+
+    def test_path_ruff_binary_is_used_when_module_is_missing(self) -> None:
+        # Regression (harness audit, 2026-09-01): uv/brew installs ship ruff
+        # as a PATH binary only. The gate previously probed `python3 -m ruff`,
+        # printed a NOTE, and silently skipped linting on such machines.
+        self.commit_file("ok.py", "print('ok')\n")
+        (self.repo / "bad.py").write_text("import os\n", encoding="utf-8")
+
+        shim_dir = self._ruffless_path()
+        fake_ruff = shim_dir / "ruff"
+        fake_ruff.write_text(
+            "#!/bin/bash\n"
+            'echo "bad.py:1:1: F401 unused import"\n'
+            "exit 1\n",
+            encoding="utf-8",
+        )
+        fake_ruff.chmod(0o755)
+
+        env = dict(os.environ)
+        env["PATH"] = str(shim_dir)
+        result = self.run_hook(self.SCRIPT, {}, env=env)
+        self.assertEqual(2, result.returncode, result.stderr)
+        self.assertIn("[ruff check]", result.stderr)
+        self.assertNotIn("ruff unavailable", result.stderr)
 
     def test_outside_git_repo_passes(self) -> None:
         outside = pathlib.Path(self.temp_dir.name) / "plain"

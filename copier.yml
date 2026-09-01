@@ -21,6 +21,8 @@ _exclude:
   - ".claude/.local-paths"
   - ".claude/settings.local.json"
   - ".claude/worktrees"
+  # Codex review transcripts written through the root .claude symlink; never ship.
+  - ".claude/codex-reviews"
 
 # Questions asked during `copier copy`
 project_name:

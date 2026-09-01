@@ -5,6 +5,7 @@ import io
 import json
 import os
 import pathlib
+import shlex
 import stat
 import subprocess
 import sys
@@ -1791,10 +1792,95 @@ class RenderedHarnessContractTest(unittest.TestCase):
             "printf '%s' 'x; git push --force origin main'",
             "g push --force origin main",
             "git publish --force origin main",
-            "$GIT push --force origin main",
-            "sh -c 'git push --force origin main'",
-            "echo \"$(git push --force origin main)\"",
             "printf '%s' 'git push --force origin main'",
+        )
+        for command in commands:
+            with self.subTest(command=command):
+                process = self.run_policy(self.policy_payload(command))
+
+                self.assertEqual(0, process.returncode, process.stderr)
+                self.assertEqual("", process.stdout)
+                self.assertEqual("", process.stderr)
+
+    def test_policy_process_denies_indirect_force_push_forms(self) -> None:
+        # Regression (harness audit, 2026-09-01): these forms all EXECUTE a
+        # force push and were previously asserted as allowed. Command and
+        # process substitution run their bodies even inside double quotes;
+        # sh -c and eval run their string arguments; an absolute path or an
+        # opaque $VAR head still reaches git.
+        commands = (
+            "$GIT push --force origin main",
+            "${GIT} push --force origin main",
+            "$(command -v git) push --force origin main",
+            "sh -c 'git push --force origin main'",
+            "bash -ec 'git push --force origin main'",
+            "bash -O extglob -c 'git push --force origin main'",
+            "bash --rcfile /dev/null -c 'git push --force origin main'",
+            "eval 'git push --force origin main'",
+            "echo \"$(git push --force origin main)\"",
+            "`git push --force origin main`",
+            "diff <(git push --force origin main) /dev/null",
+            "/usr/bin/git push --force origin main",
+            "./git push --force origin main",
+            "bash -c -- '-x; git push --force origin main'",
+            "`command -v git` push --force origin main",
+            "command ${GIT} push --force origin main",
+            "env bash -c 'git push --force origin main'",
+        )
+        for command in commands:
+            with self.subTest(command=command):
+                process = self.run_policy(self.policy_payload(command))
+
+                self.assertEqual(0, process.returncode, process.stderr)
+                self.assertNotEqual("", process.stdout)
+                self.assertEqual(POLICY_DENIAL, json.loads(process.stdout))
+                self.assertEqual("", process.stderr)
+
+    def test_policy_process_denies_deeply_nested_force_push(self) -> None:
+        # Regression (Codex review, 2026-09-01): stacked shell interpreters
+        # must not fail open at the recursion limit.
+        command = "git push --force origin main"
+        for _ in range(6):
+            command = "sh -c " + shlex.quote(command)
+        process = self.run_policy(self.policy_payload(command))
+        self.assertEqual(0, process.returncode, process.stderr)
+        self.assertEqual(POLICY_DENIAL, json.loads(process.stdout))
+
+    def test_policy_process_fails_closed_past_recursion_limit(self) -> None:
+        # Nesting beyond the recursion limit must deny (fail closed), even with
+        # a harmless leaf, rather than fall through to allow.
+        command = "echo safe"
+        for _ in range(14):
+            command = "sh -c " + shlex.quote(command)
+        process = self.run_policy(self.policy_payload(command))
+        self.assertEqual(0, process.returncode, process.stderr)
+        self.assertEqual(POLICY_DENIAL, json.loads(process.stdout))
+
+    def test_policy_process_allows_wrapper_neighbors_without_force(self) -> None:
+        # Wrapper unwrapping must not over-deny wrappers around safe commands.
+        commands = (
+            "command git status",
+            "command -v git",
+            "env FOO=bar ls",
+            "env bash -c 'git status'",
+        )
+        for command in commands:
+            with self.subTest(command=command):
+                process = self.run_policy(self.policy_payload(command))
+                self.assertEqual(0, process.returncode, process.stderr)
+                self.assertEqual("", process.stdout)
+
+    def test_policy_process_allows_safe_indirect_neighbors(self) -> None:
+        # The indirect-form detection must not over-deny quoted strings that
+        # are never executed, or non-push commands behind the same heads.
+        commands = (
+            "printf '%s' '$(git push --force origin main)'",
+            "sh -c 'git status'",
+            "sh script.sh",
+            "eval 'git status'",
+            "echo \"$(git status)\"",
+            "$GIT status",
+            "/usr/bin/git push origin main",
         )
         for command in commands:
             with self.subTest(command=command):
@@ -2591,7 +2677,7 @@ class RenderedHarnessContractTest(unittest.TestCase):
     def test_codex_rules_require_every_policy_family(self) -> None:
         self.build_good_fixture()
         required_patterns = (
-            '["cat", "ls", "grep", "rg", "head", "tail", "sed", "echo", "wc", "mkdir"]',
+            '["cat", "ls", "grep", "rg", "head", "tail", "echo", "wc", "mkdir"]',
             '["git", ["status", "log", "diff"]]',
             '["rm", "-rf"]',
             '["rm", "-fr"]',

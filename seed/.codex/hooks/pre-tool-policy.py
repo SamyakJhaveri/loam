@@ -279,6 +279,86 @@ def _literal_tokens(command: str) -> tuple[str, ...]:
     return tuple(lexer)
 
 
+def _substitution_bodies(command: str) -> tuple[str, ...]:
+    """Extract command/process-substitution bodies that Bash would execute.
+
+    Single-quoted text never expands, so it is skipped. Double-quoted text
+    expands `$(...)` and backticks, so those are extracted. `<(...)`/`>(...)`
+    only work unquoted. `$((...))` is arithmetic, not a substitution.
+    """
+    bodies: list[str] = []
+    quote: str | None = None
+    index = 0
+    length = len(command)
+    while index < length:
+        character = command[index]
+        if quote == "'":
+            if character == "'":
+                quote = None
+            index += 1
+            continue
+        if character == "\\" and index + 1 < length:
+            index += 2
+            continue
+        if character == '"':
+            quote = None if quote == '"' else '"'
+            index += 1
+            continue
+        if character == "'":
+            quote = "'"
+            index += 1
+            continue
+        if character == "`":
+            end = index + 1
+            body: list[str] = []
+            while end < length and command[end] != "`":
+                if command[end] == "\\" and end + 1 < length:
+                    body.append(command[end + 1])
+                    end += 2
+                    continue
+                body.append(command[end])
+                end += 1
+            bodies.append("".join(body))
+            index = end + 1
+            continue
+        opener: int | None = None
+        if command.startswith("$(", index) and not command.startswith(
+            "$((", index
+        ):
+            opener = index + 2
+        elif quote is None and (
+            command.startswith("<(", index)
+            or command.startswith(">(", index)
+        ):
+            opener = index + 2
+        if opener is not None:
+            depth = 1
+            end = opener
+            inner_quote: str | None = None
+            while end < length and depth:
+                inner = command[end]
+                if inner_quote == "'":
+                    if inner == "'":
+                        inner_quote = None
+                elif inner == "\\" and end + 1 < length:
+                    end += 1
+                elif inner_quote == '"':
+                    if inner == '"':
+                        inner_quote = None
+                elif inner in {"'", '"'}:
+                    inner_quote = inner
+                elif inner == "(":
+                    depth += 1
+                elif inner == ")":
+                    depth -= 1
+                end += 1
+            bodies.append(command[opener : end - 1 if depth == 0 else end])
+            index = end
+            continue
+        index += 1
+    return tuple(bodies)
+
+
 def _redirection_end(tokens: tuple[str, ...], start: int) -> int | None:
     operator_index = start
     named_operator: str | None = None
@@ -468,6 +548,172 @@ def _is_force_push(words: tuple[str, ...]) -> bool:
     return not dry_run and (force or force_with_lease or mirror or plus_refspec)
 
 
+_SHELL_INTERPRETERS = {"sh", "bash", "dash", "zsh", "ksh"}
+_SEGMENT_OPERATORS = set(";&|\n")
+_GROUPING_TOKENS = {"(", "{"}
+_RECURSION_LIMIT = 10
+
+
+def _segments(tokens: tuple[str, ...]) -> list[list[str]]:
+    """Split a token stream into command segments on `;`, `&`, `|`, and
+    newline only. Grouping tokens `(){}` stay inside a segment - they are
+    either subshell grouping or the shattered pieces of a `${...}`/`$(...)`
+    head, which the head parser reassembles."""
+    segments: list[list[str]] = []
+    current: list[str] = []
+    for token in tokens:
+        if token and set(token) <= _SEGMENT_OPERATORS:
+            segments.append(current)
+            current = []
+        else:
+            current.append(token)
+    segments.append(current)
+    return segments
+
+
+_WRAPPER_COMMANDS = {"command", "env", "nice", "nohup", "setsid", "ionice"}
+
+
+def _resolve_head(segment: list[str]) -> tuple[str, str, list[str]] | None:
+    """Return (kind, head, args) for a command segment, or None if empty.
+
+    kind is one of 'git', 'shell', 'eval', 'opaque', 'other'. 'opaque' marks a
+    head whose value cannot be resolved statically - a variable ($NAME/${NAME})
+    or a command substitution ($( ) / backtick) - which a deny policy must still
+    treat as a possible `git` when `push` follows it. Leading wrapper commands
+    (`command`, `env`, ...) and their options are unwrapped so the real head is
+    resolved.
+    """
+    index = 0
+    while index < len(segment):
+        token = segment[index]
+        # Skip grouping tokens, NAME=value assignments, wrapper options.
+        if token in _GROUPING_TOKENS:
+            index += 1
+            continue
+        name, separator, _ = token.partition("=")
+        if separator and name.isidentifier():
+            index += 1
+            continue
+        # Unwrap a leading wrapper command and its dash-options so the wrapped
+        # command's head is resolved (`command ${GIT} push`, `env bash -c ...`).
+        if token.rsplit("/", 1)[-1] in _WRAPPER_COMMANDS:
+            index += 1
+            while index < len(segment) and segment[index].startswith("-") and (
+                segment[index] != "-"
+            ):
+                index += 1
+            continue
+        break
+    if index >= len(segment):
+        return None
+
+    token = segment[index]
+    # Reassemble a shattered ${ ... } or $( ... ) head into an opaque marker.
+    if token == "$" and index + 1 < len(segment) and segment[index + 1] == "{":
+        end = index + 2
+        while end < len(segment) and segment[end] != "}":
+            end += 1
+        return "opaque", "${...}", segment[end + 1 :]
+    if token == "$" and index + 1 < len(segment) and segment[index + 1] == "(":
+        depth = 1
+        end = index + 2
+        while end < len(segment) and depth:
+            if segment[end] == "(":
+                depth += 1
+            elif segment[end] == ")":
+                depth -= 1
+            end += 1
+        return "opaque", "$(...)", segment[end:]
+    # A spaced backtick head (`` `command -v git` push ``) tokenizes with the
+    # backticks attached to the first and last words of the substitution.
+    if token.startswith("`"):
+        end = index
+        while end < len(segment) and not segment[end].endswith("`"):
+            end += 1
+        return "opaque", "`...`", segment[end + 1 :]
+
+    args = segment[index + 1 :]
+    if (len(token) > 1 and token[0] == "$") or "`" in token or "$(" in token:
+        return "opaque", token, args
+
+    base = token.rsplit("/", 1)[-1]
+    if base == "git":
+        return "git", token, args
+    if base in _SHELL_INTERPRETERS:
+        return "shell", token, args
+    if base == "eval":
+        return "eval", token, args
+    return "other", token, args
+
+
+def _drop_trailing_noise(args: list[str]) -> tuple[str, ...]:
+    end = len(args)
+    while end and args[end - 1] and set(args[end - 1]) <= (
+        _SEGMENT_OPERATORS | {"(", ")", "{", "}"}
+    ):
+        end -= 1
+    return tuple(args[:end])
+
+
+def _command_denied(command: str, depth: int = 0) -> bool:
+    # Fail closed: past the recursion limit the command is too deeply nested
+    # (stacked `sh -c`/substitutions) to clear, so a deny policy blocks it.
+    if depth > _RECURSION_LIMIT:
+        return True
+    try:
+        tokens = _literal_tokens(command)
+    except ValueError:
+        return False
+
+    # (a) Conservative literal scan: a visible `git` (or path-prefixed git)
+    # token followed by force-push arguments anywhere in the command. This is
+    # intentionally broad - it denies force-push token sequences inside `env`
+    # prefixes, `case` bodies, and function bodies too.
+    for index, word in enumerate(tokens):
+        if word.rsplit("/", 1)[-1] == "git" and _is_force_push(
+            ("git",) + _git_candidate(tokens, index)[1:]
+        ):
+            return True
+
+    # (b) Forms where the force push is hidden from the literal scan: an opaque
+    # command head, or a string argument executed by a shell interpreter / eval.
+    for segment in _segments(tokens):
+        resolved = _resolve_head(segment)
+        if resolved is None:
+            continue
+        kind, _head, args = resolved
+        clean = _drop_trailing_noise(args)
+        # Opaque head ($VAR / ${VAR} / $( ) / backtick) with a literal `push`
+        # and a force flag: the head may resolve to git, so block it.
+        if (
+            kind == "opaque"
+            and clean
+            and clean[0] == "push"
+            and _is_force_push(("git", "push") + clean[1:])
+        ):
+            return True
+        # A shell interpreter executes a string argument as a command
+        # (`sh -c '<text>'`, `bash -O extglob -c '<text>'`,
+        # `bash -c -- '-x; <text>'`). Recurse into every argument - a leading
+        # dash cannot be assumed to be an option, and recursing an actual option
+        # is harmless because it contains no force-push sequence.
+        if kind == "shell":
+            for argument in clean:
+                if _command_denied(argument, depth + 1):
+                    return True
+        if kind == "eval" and clean and _command_denied(
+            " ".join(clean), depth + 1
+        ):
+            return True
+
+    # (c) Command/process substitution bodies execute too.
+    return any(
+        _command_denied(body, depth + 1)
+        for body in _substitution_bodies(command)
+    )
+
+
 def main() -> int:
     try:
         payload = json.load(sys.stdin)
@@ -501,14 +747,12 @@ def main() -> int:
         return _fail("tool_input.command has invalid Bash syntax")
 
     try:
-        tokens = _literal_tokens(command)
+        _literal_tokens(command)
     except ValueError:
         return _fail("tool_input.command is not valid shell text")
-    for index, word in enumerate(tokens):
-        if word == "git" and _is_force_push(_git_candidate(tokens, index)):
-            json.dump(_DENIAL, sys.stdout)
-            sys.stdout.write("\n")
-            break
+    if _command_denied(command):
+        json.dump(_DENIAL, sys.stdout)
+        sys.stdout.write("\n")
     return 0
 
 

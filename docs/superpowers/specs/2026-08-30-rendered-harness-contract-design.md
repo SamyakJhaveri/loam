@@ -234,12 +234,20 @@ forward compatibility.
 The hook must remain synchronous. The contract rejects `async: true`, because a
 background hook cannot block the triggering command.
 
-This local hook guarantees only recognizable literal Git token sequences. Git
-aliases, variable-expanded commands, `eval`, nested shells, and command
-substitution are outside its guarantee. Some visible token sequences inside
-unsupported Bash forms are denied conservatively. Absolute force-push
-prevention belongs at the remote Git trust boundary through branch protection
-or a pre-receive hook. The local hook and rules are developer guardrails, not a
+This local hook recognizes literal Git token sequences and, since the
+2026-09-01 hardening, force pushes reached through common obfuscations: a
+path-prefixed or variable head (`/usr/bin/git`, `$GIT`, `${GIT}`), a command
+substitution used as the head (`$(command -v git)`), `sh -c`/`bash -c` string
+arguments (including interpreter options such as `-O extglob`), and `eval`.
+Leading wrapper commands (`command`, `env`) are unwrapped to the real head.
+Stacked shells and substitutions past a recursion limit are denied
+conservatively rather than allowed. One known residual remains: a force push
+whose subcommand is produced only by runtime variable expansion, with no
+visible `push` token in the command (`x='git push --force'; eval "$x"`), cannot
+be caught by static inspection. Git aliases and other value-dependent
+expansions that resolve only at runtime are likewise outside its guarantee.
+Absolute force-push prevention belongs at the remote Git trust boundary through
+branch protection or a pre-receive hook. The local hook and rules are developer guardrails, not a
 replacement for that remote control.
 
 `default.rules` remains as defense in depth. It prompts for ordinary pushes and

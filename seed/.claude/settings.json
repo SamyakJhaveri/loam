@@ -13,7 +13,6 @@
       "Bash(git status:*)",
       "Bash(git log:*)",
       "Bash(git diff:*)",
-      "Bash(sed:*)",
       "Bash(echo:*)",
       "Bash(wc:*)",
       "Bash(mkdir:*)"
