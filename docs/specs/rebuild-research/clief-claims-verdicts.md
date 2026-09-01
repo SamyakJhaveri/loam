@@ -76,7 +76,7 @@ External conflict: "examples constrain exploration" (new-rules post, 2026) vs "c
 
 - **D1** Fix certain defects first, then pilots.
 - **D2** Rebuild toward ~27 curated skills (refined 2026-09-01: they live in the sam-cc-setup plugin, not the seed, preserving the asset-layer rule), as on-demand procedural skills with invocation control and a trigger eval before each promotion. Evidence note: the always-loaded tier stays lean; the listing budget carries on-demand skills.
-- **D3** Adopt the revised evaluation portfolio (deterministic + efficiency pilots). The dropped success-rate A/Bs are recorded below as unfunded hypotheses. Status: E1 shipped as hook fixtures; E2 and E3 ran 2026-09-01 with both falsifiers firing (see Pilot results); E4 and E5 remain open.
+- **D3** Adopt the revised evaluation portfolio (deterministic + efficiency pilots). The dropped success-rate A/Bs are recorded below as unfunded hypotheses. Status: E1 shipped as hook fixtures; E2 and E3 ran 2026-09-01 with both falsifiers firing; E4 ran 2026-09-01 and found a live force-push bypass (now fixed); E5 ran 2026-09-01 (30/36, one description sharpened). All five pilots complete. See Pilot results.
 - **D4** Ship a minimal handoff convention in seed now, justified on token savings; keep it cheap; preserve raw-trace access.
 - **D5** This document is the tracked verdicts artifact.
 
@@ -123,6 +123,28 @@ Cost per trial (mean): None $0.92 / 24.5 turns; Structured $0.89 / 22.8; Raw tra
 The structured handoff saved 3%, far below its >=20% falsifier threshold, and the raw trace beat it (matching arXiv 2606.02875's direction).
 Reading: on Opus 4.8 in a small repo with a written spec, re-orientation from the repository itself is nearly free; handoff artifacts add little, and a stale one does no harm because repo evidence wins.
 Decision: the shipped D4 convention stays (six lines, harmless, correct in all trials) but is NOT expanded, and its justification is recorded as convenience, not measured token savings. No further handoff machinery.
+
+### E4: reviewer replay - cross-family reviewer found a live bug the shipped tests missed
+
+Design deviation (stated honestly): the method-doc arm was producer-self-check vs cross-family reviewer. This run instead used two independent fresh reviewers, Claude Opus 4.8 and Codex (gpt-5.6-sol), each blind to authorship, on the pre-fix commit `0db3d5b~1` where four known defect classes were present. It therefore measures fresh-reviewer rediscovery and compares the two model families; it does NOT test self-review (neither model wrote the code), so the "cross-family beats self" falsifier could not be evaluated as written.
+
+Result: both families rediscovered seeded defects and, more valuably, both surfaced defects beyond the original fix.
+- Claude and Codex both flagged that the workflow gate check ignores step conditions; Codex named `continue-on-error: true` and `if: ${{ false }}` exactly (the class commit 0db3d5b fixed with `_workflow_gate_is_unconditional`).
+- Claude found the dangling-symlink topology gap (the class the same commit fixed).
+- NEW and LIVE on current HEAD: Claude's arm found the Codex policy hook fails open when a force push hides behind an unrecognized git global option. Reproduced end-to-end: `git --no-literal-pathspecs push --force` and `git --attr-source=HEAD push --force` both returned ALLOW. This is a real security-relevant defect in shipped seed code, now fixed (commit closing "force-push bypass behind an unknown git global option") with regression tests and a non-over-deny guard (`git help push --force` still allowed).
+- Also raised, latent not live: a cross-job release.yml with no `needs:` would bypass the position check. Current release.yml keeps both steps in one job, so it is not exploitable today; recorded as a contract-hardening follow-up.
+
+Outcome: E4 paid for itself by finding a live bypass. The cost was ~$7 across 4 review sessions. The honest reading: a fresh independent reviewer of either family catches real defects; the specific self-vs-cross question remains unanswered and is a candidate for a future run with a proper self-review arm.
+
+### E5: skill trigger precision and recall - 30 of 36 correct, two descriptions sharpened
+
+Design: for each of the 9 new model-invocable skills, 2 should-trigger probes and 2 should-not-trigger probes (36 total), asking a fresh Claude which single listed skill it would pick. Graded by exact match.
+
+Result: 30/36 correct. All 9 skills fired on at least one positive probe. Six misses:
+- 2 recall misses: worktree-status and agent-team each missed one positive (the model answered NONE where the skill fit).
+- 4 precision misses: ship, auto-phase, critique-swarm, gen-spec each pulled a neighbor skill (codex-review, brainstorming, writing-plans) on one should-not-trigger probe.
+Action taken: sharpened the agent-team description so a "should I use a team?" question triggers it (that was its recall miss). The other five misses were near-neighbor confusions on deliberately ambiguous probes, within tolerance for a 24-skill listing; left as-is and recorded.
+Falsifier check: no skill missed BOTH its positive probes, so none is demoted or inlined.
 
 ### Limits of both pilots
 
