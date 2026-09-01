@@ -23,7 +23,7 @@ A skill enters `seed/.agents/skills/` only when every box passes:
 3. **Description quality.** The frontmatter description states the trigger, the non-trigger ("NOT for ..."), and stays well under the 1,536-character listing cap.
 4. **Invocation control.** Specialized or destructive skills set `disable-model-invocation: true`. `auto-activate` is not a field; never write it.
 5. **Trigger eval.** At least three should-trigger and three should-not-trigger cases pass (skill-creator evals; evaluation E5). A skill that misses required invocations is demoted or inlined, not shipped.
-6. **Validation.** `claude plugin validate --strict` green on the skill directory.
+6. **Validation.** `claude plugin validate --strict` green on the PLUGIN ROOT (the CLI refuses bare skill directories, and it checks manifests only, not skill frontmatter). Frontmatter `name:` is enforced separately by verify-template stage 6.
 7. **License.** Third-party origin keeps its upstream license notice, following the brainstorming/writing-plans precedent.
 
 ## Batch process

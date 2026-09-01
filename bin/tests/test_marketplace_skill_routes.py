@@ -115,7 +115,7 @@ class MarketplaceSkillRoutesTest(unittest.TestCase):
 
         self.assertEqual([], dependency_hits)
 
-    def test_sam_cc_setup_manifests_use_version_0_5_0(self) -> None:
+    def test_sam_cc_setup_manifests_use_version_0_6_0(self) -> None:
         marketplace = self.load_json(MARKETPLACE_MANIFEST)
         marketplace_version = next(
             plugin["version"]
@@ -124,8 +124,8 @@ class MarketplaceSkillRoutesTest(unittest.TestCase):
         )
         plugin_version = self.load_json(PLUGIN_MANIFEST)["version"]
 
-        self.assertEqual("0.5.0", marketplace_version)
-        self.assertEqual("0.5.0", plugin_version)
+        self.assertEqual("0.6.0", marketplace_version)
+        self.assertEqual("0.6.0", plugin_version)
 
     def test_upstream_mit_notice_is_preserved_verbatim(self) -> None:
         notice = SAM_CC_ROOT / "THIRD_PARTY_LICENSES/obra-superpowers.txt"

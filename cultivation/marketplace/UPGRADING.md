@@ -3,7 +3,19 @@
 This file records why a promoted plugin change traveled. It is also the upgrade
 entry point for projects that consume the Loam marketplace.
 
-## Current: sam-cc-setup v0.5.0 consolidation
+## Current: sam-cc-setup v0.6.0 harvest
+
+Eleven skills harvested from Samyak's working projects (distbench, parbench, job-search era),
+adapted to be generic, taking the plugin from 15 to 26 skills:
+authoring-context-docs, session-critique, worktree-status, techdebt, ship, auto-phase,
+critique-swarm, sync-to-hub, gen-spec, agent-team, hypothesis-tree.
+Also: align-prompt gains a `fable-plan` mode (writes the aligned plan to a sibling file).
+session-critique and sync-to-hub are manual-only (`disable-model-invocation: true`).
+Roster rationale: `docs/specs/seed-skill-promotion.md` and the verdicts doc.
+Upgrade step: `claude plugin update sam-cc-setup` (or marketplace update) - no removals,
+no renames, no settings changes required.
+
+## Previous: sam-cc-setup v0.5.0 consolidation
 
 `sam-cc-setup` now owns the complete design-to-plan workflow. The existing
 `brainstorming` skill moved into it. The adapted `writing-plans` skill now completes the
