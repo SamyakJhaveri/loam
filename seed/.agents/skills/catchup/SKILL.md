@@ -15,6 +15,7 @@ An optional numeric argument sets how many recent commits to show (default 10).
 2. Environment: active tmux sessions (`tmux list-sessions`), python/venv presence if the project uses one.
 3. Memory: list the project's auto-memory directory under `~/.claude/projects/<encoded-cwd>/memory/` by modification time.
 4. Tasks: check the task list for anything left in progress by a previous session.
+5. Handoff: read `HANDOFF.md` at the repo root if it exists. It records state, next step, verify command, and the commit hash it was written at.
 
 ## Red flags - put these at the TOP of the briefing
 
@@ -23,6 +24,7 @@ An optional numeric argument sets how many recent commits to show (default 10).
 - Active tmux sessions that may be running long jobs.
 - Memory files untouched for 14+ days.
 - In-progress tasks from a previous session.
+- A stale `HANDOFF.md`: its recorded commit hash is not `git log -1` HEAD. Report the drift; the repository state overrides the handoff, never the reverse.
 
 ## Briefing format
 
@@ -36,6 +38,7 @@ Recent commits (N)
 Changed files since HEAD~N (diffstat)
 Environment: tmux / venv / python
 Memory: file count, most recent, stale list
+Handoff: next step + verify command (or: none; or: STALE - written at <hash>, HEAD is <hash>)
 Open tasks (or: none)
 === END BRIEFING ===
 ```
