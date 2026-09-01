@@ -9,6 +9,15 @@
 #   bin/vet-skill.sh <path-to-skill-dir>
 #   bin/vet-skill.sh <https://github.com/owner/repo>     # cloned read-only first
 #   bin/vet-skill.sh <target> --json                     # machine-readable line
+#   bin/vet-skill.sh <target> --safe [--out <dir>]       # strip scripts, re-scan
+#
+# --safe removes every executable/script the skill ships (.py .sh .js .ts .rb
+# .pl, Makefile, *.mk, and scripts/ dirs), keeping only prose and document
+# assets, then scans what remains. Use it for a skill whose value is its written
+# guidance, not its code. With --out <dir>, the stripped tree is copied there on
+# a non-REJECT verdict, ready to install. Stripping removes code-execution risk;
+# it does NOT remove prompt-injection risk carried in the prose, so a --safe run
+# can still return REVIEW or REJECT on the text alone - read those findings.
 #
 # Exit codes (map to SkillSpector severity, worst finding wins):
 #   0  PASS    - severity NONE or LOW; safe to adopt
@@ -28,15 +37,22 @@ LIB_PREFIX="vet-skill"
 . "$ROOT/bin/lib.sh"
 
 JSON_OUT=0
+SAFE=0
+OUT_DIR=""
 TARGET=""
+expect_out=0
 for arg in "$@"; do
+  if [ "$expect_out" -eq 1 ]; then OUT_DIR="$arg"; expect_out=0; continue; fi
   case "$arg" in
     --json) JSON_OUT=1 ;;
+    --safe) SAFE=1 ;;
+    --out) expect_out=1 ;;
     -*) die "unknown option: $arg" ;;
     *) TARGET="$arg" ;;
   esac
 done
-[ -n "$TARGET" ] || die "usage: vet-skill.sh <path-or-url> [--json]"
+[ -n "$TARGET" ] || die "usage: vet-skill.sh <path-or-url> [--json] [--safe [--out <dir>]]"
+[ "$expect_out" -eq 0 ] || die "--out needs a directory argument"
 
 if ! command -v skillspector >/dev/null 2>&1; then
   echo "FAIL: SkillSpector not found." >&2
@@ -62,6 +78,23 @@ case "$TARGET" in
 esac
 
 [ -e "$SCAN_PATH" ] || { echo "FAIL: no such path: $SCAN_PATH" >&2; exit 4; }
+
+if [ "$SAFE" -eq 1 ]; then
+  STRIPPED="$TMP/stripped"
+  cp -R "$SCAN_PATH" "$STRIPPED"
+  # Remove everything that can execute; keep prose and document assets.
+  find "$STRIPPED" \( \
+      -name '*.py' -o -name '*.sh' -o -name '*.bash' -o -name '*.zsh' \
+      -o -name '*.js' -o -name '*.mjs' -o -name '*.ts' -o -name '*.rb' \
+      -o -name '*.pl' -o -name '*.php' -o -name 'Makefile' -o -name '*.mk' \
+      -o -name '*.bat' -o -name '*.ps1' \
+    \) -type f -delete 2>/dev/null || true
+  find "$STRIPPED" -type d -name scripts -exec \
+    python3 -c "import shutil,sys;[shutil.rmtree(p,ignore_errors=True) for p in sys.argv[1:]]" {} + 2>/dev/null || true
+  find "$STRIPPED" -type d -empty -delete 2>/dev/null || true
+  info "safe mode: stripped executables and scripts, scanning prose only"
+  SCAN_PATH="$STRIPPED"
+fi
 
 REPORT="$TMP/report.json"
 SKILLSPECTOR_LOG_LEVEL="${SKILLSPECTOR_LOG_LEVEL:-ERROR}" \
@@ -105,8 +138,15 @@ PY
 EOF
 
 if [ "$JSON_OUT" -eq 1 ]; then
-  printf '{"target":"%s","verdict":"%s","severity":"%s","score":%s,"top_issues":"%s"}\n' \
-    "$TARGET" "$VERDICT" "$SEVERITY" "${SCORE:-0}" "$ISSUES"
+  printf '{"target":"%s","verdict":"%s","severity":"%s","score":%s,"top_issues":"%s","safe":%s}\n' \
+    "$TARGET" "$VERDICT" "$SEVERITY" "${SCORE:-0}" "$ISSUES" "$SAFE"
+fi
+
+# --safe --out: hand the caller the stripped, non-rejected tree to install from.
+if [ "$SAFE" -eq 1 ] && [ -n "$OUT_DIR" ] && [ "$VERDICT" != "REJECT" ]; then
+  python3 -c "import shutil,sys;shutil.rmtree(sys.argv[1],ignore_errors=True)" "$OUT_DIR"
+  cp -R "$STRIPPED" "$OUT_DIR"
+  info "stripped skill written to $OUT_DIR"
 fi
 
 case "$VERDICT" in
