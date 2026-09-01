@@ -5,8 +5,10 @@ description: >
   that will run it (Claude Fable 5 or Claude Opus 4.8). Use on "align prompt",
   "rewrite this for the model", "tune this prompt", or whenever a free-form request or a
   plan file is handed over to be made into a proper prompt before a fresh session runs it.
-  NOT for doing the task itself, planning, or code review.
-argument-hint: "[fable|4.8] <rough request | path/to/draft.md>"
+  The `fable-plan <path>` mode aligns a whole execution plan file for a Fable 5
+  session (written to a sibling file) rather than rewriting a single prompt. NOT for doing the task itself, planning,
+  or code review.
+argument-hint: "[fable|4.8] <rough request | path/to/draft.md> | fable-plan <path/to/plan.md>"
 ---
 
 # align-prompt
@@ -21,8 +23,35 @@ The draft's intent is fixed; only its expression changes.
   preamble, no model-name header, no trailing notes. It is meant to be pasted as-is.
 - Draft given as a path: overwrite that file in place with the raw aligned prompt (no fences,
   no commentary), then print one line naming the target model and the path.
+- `fable-plan <path>`: write the aligned plan to a sibling `<stem>-fable5.md` (the original is
+  never mutated), then print one
+  line naming the path. See "Plan mode" below.
 
 Never write to any path other than the one supplied.
+
+## 0. Dispatch on the first token
+
+Read the first whitespace-delimited token of the argument and route deterministically. Do not
+reason about it; the token either matches or it does not.
+
+| First token | Route |
+|-------------|-------|
+| `fable`, `fable5`, `f5` | Prompt alignment, target Fable 5 |
+| `4.8` | Prompt alignment, target Opus 4.8 |
+| `fable-plan`, `fable5-plan` | Plan mode, target Fable 5 (see below) |
+| `4.7` | Refuse, verbatim (see below) |
+| anything else, or empty | Ask which of the two targets. Do not default. |
+
+Everything after the first token, trimmed, is the argument. For prompt alignment, probe it with
+`Read`: if the read succeeds it is a draft file (write back to that same path), and if it fails
+it is an inline draft. A multi-line pasted draft is never a readable path, so it routes to inline
+on its own. The probe is a fact, not a judgment, which is what keeps the dispatch predictable.
+
+For `4.7`, reply with exactly this and produce no rewrite:
+
+> 4.7 is not a target for this skill. Use `fable` (Fable 5) or `4.8` (Opus 4.8).
+
+Never silently substitute a neighbouring target. A wrongly-shaped rewrite is worse than a refusal.
 
 ## 1. Understand before rewriting
 
@@ -95,6 +124,36 @@ Never put API parameters in the prompt body. Effort, adaptive thinking, and max 
 by whoever makes the call, not by the text ([prompting-claude-fable-5], [prompting-claude-opus-4-8]).
 
 If no target is given, ask which of the two. Do not default, and do not target Opus 5.
+
+## 4. Plan mode (`fable-plan`)
+
+Plan mode aligns an entire execution plan file for a Fable 5 session that will run it, instead of
+rewriting one prompt. It exists only for Fable 5; there is no `4.8-plan`, because the deltas below
+are corrections for Fable 5's own habits.
+
+The argument must be a readable file path. Probe it with `Read`. If the read fails, stop with
+exactly this line and produce nothing, never falling back to inline mode:
+
+> `fable-plan` needs a readable plan file path. Could not read: `<path>`
+
+Then apply sections 1 to 3 to the plan body, aimed at Fable 5, plus three plan-specific deltas:
+
+1. **De-prescribe.** Collapse the step-by-step scaffolding a Fable 5 session does not need: worked
+   examples of its own tooling, restated general competence, ceremony around ordinary edits. Never
+   remove task content, a scope boundary, or a verification step. Style goes; substance stays.
+2. **Per-task done check.** Every task in the plan ends with an artifact and a way to check it. If
+   the source plan states one, keep it verbatim. If it does not, insert the visible marker
+   `[VERIFY: not specified in source plan - fill in]`. Never invent a check that was not there;
+   an invented check reads as authoritative and is worse than a visible gap.
+3. **Session conduct.** Append one short final section, `## Session conduct (Fable 5)`, stating
+   the boundaries the plan assumes but never wrote down: what the session must not touch outside
+   the plan's scope, and whether the run is attended (ask when a reading is genuinely ambiguous)
+   or unattended (choose the best-supported reading, label the assumption, keep going). Ask which
+   of the two before writing when the plan does not say.
+
+Write the aligned plan to a sibling file `<stem>-fable5.md` next to the source, raw, with no
+fences or commentary; the original plan is never mutated. Then print one line:
+`Aligned plan (Fable 5) written to <stem>-fable5.md.`
 
 ## Sketch
 
