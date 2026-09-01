@@ -152,6 +152,36 @@ n=4 per arm; single small fixture repos; every E3 arm had SPEC.md (a no-spec res
 The frontier pattern from the literature repeats exactly: scaffolding effects measured on smaller models did not reproduce on Opus 4.8.
 Raw data and runners: session scratchpad `pilots/` (not tracked).
 
+## Follow-on: external-skill vetting (built 2026-09-01)
+
+The E5 skill work exposed a gap the Clief corpus flags but Loam had no control for:
+adopting an external skill is a trust decision (corpus claim N-0331, N-0339). So a
+vetting layer was added after the pilots.
+
+What shipped:
+
+1. `bin/vet-skill.sh` wraps NVIDIA SkillSpector (static scan, offline, no API key).
+   Exit 0 (LOW/NONE) adopts, 1 (MEDIUM) needs a recorded human decision, 2
+   (HIGH/CRITICAL) rejects. A `--safe` mode strips a skill's executables and
+   re-scans, for skills whose value is prose not code.
+2. A `CONTRIBUTING.md` rule: every external skill or bundle must pass the gate
+   before it enters the repo.
+3. The manual-only `sam-cc-setup:vet-skill` skill ships the procedure to any
+   project (plugin 0.7.0, the 27th skill).
+4. A macOS LaunchAgent keeps SkillSpector current weekly.
+
+Evidence it earns its place: run against a real batch of ~17 externally-requested
+research skills, the gate cleared 8 and blocked 9. Blocked items included a
+reverse-shell code pattern (`gpt-researcher`), credential-file reads and a
+vulnerable dependency (`FAROS`), and multiple prompt-injection payloads scoring
+100/100 CRITICAL. `--safe` demonstrably lowered a paper-writing skill from HIGH to
+MEDIUM by stripping its build Makefile, but could not salvage two skills whose
+risk lived in rogue-agent prose rather than code. Popularity did not predict
+safety, matching the corpus's own warning that community adoption is not evidence.
+
+This layer is not one of the original Clief verdicts; it is a control the
+validation surfaced as necessary and is recorded here for completeness.
+
 ## Recheck triggers
 
 - Docs-based verdicts: recheck at each Claude Code minor release.
