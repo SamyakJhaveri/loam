@@ -66,6 +66,7 @@ CLAUDE_HOOK_PATHS = (
 )
 
 GOOD_CLAUDE_SETTINGS = {
+    "model": "claude-opus-4-8[1m]",
     "hooks": {
         "PreToolUse": [
             {
@@ -1281,6 +1282,37 @@ class RenderedHarnessContractTest(unittest.TestCase):
                     any("FAIL [claude-hooks]" in item for item in failures)
                 )
                 self.assertTrue(any("owned events" in item for item in failures))
+
+    def test_claude_settings_model_is_pinned(self) -> None:
+        self.build_good_fixture()
+        settings = json.loads(json.dumps(GOOD_CLAUDE_SETTINGS))
+        settings["model"] = "claude-opus-5"
+        self.write(self.rendered, ".claude/settings.json", json.dumps(settings))
+
+        failures = self.rendered_violations()
+
+        self.assertTrue(any("FAIL [claude-model]" in item for item in failures))
+        self.assertTrue(any("claude-opus-4-8[1m]" in item for item in failures))
+
+    def test_claude_settings_model_must_be_present(self) -> None:
+        self.build_good_fixture()
+        settings = json.loads(json.dumps(GOOD_CLAUDE_SETTINGS))
+        del settings["model"]
+        self.write(self.rendered, ".claude/settings.json", json.dumps(settings))
+
+        failures = self.rendered_violations()
+
+        self.assertTrue(any("FAIL [claude-model]" in item for item in failures))
+
+    def test_stale_counts_config_must_not_render(self) -> None:
+        self.build_good_fixture()
+        self.write(self.rendered, ".claude/stale-counts.json", "{}\n")
+
+        failures = self.rendered_violations()
+
+        self.assertTrue(
+            any(".claude/stale-counts.json" in item for item in failures)
+        )
 
     def test_claude_settings_owned_matchers_are_exact(self) -> None:
         self.build_good_fixture()

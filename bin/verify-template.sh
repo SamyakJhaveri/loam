@@ -185,6 +185,15 @@ else
   FAIL=1
 fi
 
+echo "== stage 7: stale numeric claims in prose =="
+if python3 cultivation/marketplace/sam-cc-setup/hooks/check_stale_counts.py \
+    --root "$ROOT" --quiet; then
+  echo "stale-counts: OK"
+else
+  echo "FAIL: prose asserts a number that disagrees with its source of truth."
+  FAIL=1
+fi
+
 echo
 if [ "$FAIL" -ne 0 ]; then
   echo "verify-template: FAILED"

@@ -1,0 +1,39 @@
+{
+  "truths": {
+    "seed_skills": "find seed -name SKILL.md | wc -l",
+    "marketplace_skills": "find cultivation/marketplace -name SKILL.md | wc -l",
+    "claude_hook_handlers": "python3 -c \"import json;h=json.load(open('seed/.claude/settings.json'))['hooks'];print(sum(len(g['hooks']) for e in h.values() for g in e))\""
+  },
+  "checks": [
+    {
+      "pattern": "(\\d+) (?:core|seed) skills?",
+      "truth": "seed_skills",
+      "message": "seed skill count"
+    },
+    {
+      "pattern": "(\\d+) marketplace skills?",
+      "truth": "marketplace_skills",
+      "message": "marketplace skill count"
+    },
+    {
+      "pattern": "(\\d+) (?:Claude )?hooks?\\b",
+      "truth": "claude_hook_handlers",
+      "message": "shipped Claude hook count"
+    }
+  ],
+  "search": [
+    "README.md",
+    "AGENTS.md",
+    "CONTRIBUTING.md",
+    "CONTEXT.md",
+    "CLAUDE.md",
+    "seed/AGENTS.md.jinja",
+    "seed/CLAUDE.md.jinja",
+    "docs/ASSET-LAYERS.md",
+    "docs/SYNC.md",
+    "docs/BOOTSTRAP.md",
+    "docs/COPIER.md"
+  ],
+  "skip": ["worktrees", "plans", ".git", "node_modules", "specs"],
+  "exempt_markers": []
+}
