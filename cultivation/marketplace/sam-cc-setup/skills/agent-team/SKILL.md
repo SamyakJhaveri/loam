@@ -2,9 +2,11 @@
 name: agent-team
 description: >
   Launch a coordinated agent team with a shared task list and cross-talk between
-  teammates. Use ONLY when 2+ agents must challenge each other or coordinate a
-  shared lifecycle: teams cost cross-talk overhead on top of token spend, so
-  reach for them last. NOT for independent parallel work (dispatch plain
+  teammates. Also use when DECIDING whether a team is warranted at all - the
+  skill's decision graph answers "should I use a team for this?". Launch one
+  ONLY when 2+ agents must challenge each other or coordinate a shared
+  lifecycle: teams cost cross-talk overhead on top of token spend, so reach
+  for them last. NOT for independent parallel work (dispatch plain
   parallel subagents instead), not for a quick structured verdict (use one
   subagent), and not for scripted repeatable orchestration (write a script).
 argument-hint: "[--scenario <name>] [--teammates N] [--no-critic] [--advisor] <task-description>"

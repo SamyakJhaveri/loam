@@ -1711,6 +1711,38 @@ class RenderedHarnessContractTest(unittest.TestCase):
                 self.assertEqual(POLICY_DENIAL, json.loads(process.stdout))
                 self.assertEqual("", process.stderr)
 
+    def test_policy_process_denies_force_push_behind_unknown_global(self) -> None:
+        # Regression (E4 pilot, 2026-09-01): an unrecognized git global option
+        # before `push` must not hide a force flag from the deny policy.
+        commands = (
+            "git --no-literal-pathspecs push --force origin main",
+            "git --attr-source=HEAD push --force origin main",
+            "git --attr-source HEAD push --force origin main",
+            "git --literal-pathspecs push --force-with-lease origin main",
+            "git --no-literal-pathspecs push origin +main",
+        )
+        for command in commands:
+            with self.subTest(command=command):
+                process = self.run_policy(self.policy_payload(command))
+
+                self.assertEqual(0, process.returncode, process.stderr)
+                self.assertEqual(POLICY_DENIAL, json.loads(process.stdout))
+
+    def test_policy_process_allows_non_push_git_with_push_like_tokens(self) -> None:
+        # The fail-safe must not over-deny genuine non-push commands.
+        commands = (
+            "git config push.default simple",
+            "git --no-literal-pathspecs status",
+            "git push origin main",
+            "git push --dry-run --force origin main",
+        )
+        for command in commands:
+            with self.subTest(command=command):
+                process = self.run_policy(self.policy_payload(command))
+
+                self.assertEqual(0, process.returncode, process.stderr)
+                self.assertEqual("", process.stdout)
+
     def test_policy_process_denies_active_mirror_pushes(self) -> None:
         commands = (
             "git push --mirror origin",

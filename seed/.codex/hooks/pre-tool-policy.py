@@ -47,6 +47,7 @@ _GIT_GLOBAL_TERMINAL = {
     "-v",
 }
 _GIT_GLOBAL_WITH_ARGUMENT = {
+    "--attr-source",
     "--config-env",
     "--exec-path",
     "--git-dir",
@@ -356,6 +357,14 @@ def _push_arguments(words: tuple[str, ...]) -> tuple[str, ...] | None:
             index += 1
             continue
         if (word.startswith("-C") or word.startswith("-c")) and len(word) > 2:
+            index += 1
+            continue
+        # Unrecognized OPTION before `push`. Fail safe for a deny policy: an
+        # unknown leading global (e.g. `--no-literal-pathspecs`, or any `--opt=val`
+        # form) must not make the command invisible. Skip it and keep scanning so
+        # a force flag cannot hide behind it. A non-option token here is a real
+        # subcommand (help, config, log), so it is genuinely not a push.
+        if word.startswith("-"):
             index += 1
             continue
         return None
