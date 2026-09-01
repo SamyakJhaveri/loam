@@ -1019,6 +1019,7 @@ class RenderedHarnessContractTest(unittest.TestCase):
         with_codex: bool = True,
         claude_fails: bool = False,
         codex_wrong_decision: bool = False,
+        allow_missing_agent_clis: bool = False,
     ) -> tuple[subprocess.CompletedProcess[str], str]:
         fake_bin = pathlib.Path(self.temp_dir.name) / "fake-bin"
         fake_bin.mkdir(exist_ok=True)
@@ -1101,6 +1102,9 @@ class RenderedHarnessContractTest(unittest.TestCase):
                 "FAKE_CODEX_WRONG": "1" if codex_wrong_decision else "0",
             }
         )
+        environment.pop("LOAM_ALLOW_MISSING_AGENT_CLIS", None)
+        if allow_missing_agent_clis:
+            environment["LOAM_ALLOW_MISSING_AGENT_CLIS"] = "1"
         process = subprocess.run(
             ["bash", str(BIN_DIR / "verify-template.sh")],
             cwd=BIN_DIR.parent,
@@ -1155,12 +1159,27 @@ class RenderedHarnessContractTest(unittest.TestCase):
             log,
         )
 
-    def test_wrapper_reports_missing_native_tools_as_visible_skips(self) -> None:
+    def test_wrapper_fails_when_agent_clis_are_missing(self) -> None:
         process, _ = self.run_wrapper(with_claude=False, with_codex=False)
+
+        self.assertEqual(1, process.returncode, process.stdout + process.stderr)
+        self.assertIn("FAIL: claude CLI not found", process.stdout)
+        self.assertIn("FAIL: codex CLI not found", process.stdout)
+        self.assertIn("verify-template: FAILED", process.stdout)
+
+    def test_wrapper_allows_missing_agent_clis_only_with_explicit_opt_out(
+        self,
+    ) -> None:
+        process, _ = self.run_wrapper(
+            with_claude=False,
+            with_codex=False,
+            allow_missing_agent_clis=True,
+        )
 
         self.assertEqual(0, process.returncode, process.stdout + process.stderr)
         self.assertIn("SKIPPED: claude CLI not found", process.stdout)
         self.assertIn("SKIPPED: codex CLI not found", process.stdout)
+        self.assertNotIn("FAIL: claude CLI not found", process.stdout)
 
     def test_wrapper_accumulates_native_failures(self) -> None:
         for label, arguments in (

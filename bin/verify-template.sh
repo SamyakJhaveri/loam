@@ -116,8 +116,11 @@ if command -v claude >/dev/null 2>&1; then
     echo "FAIL: could not discover local marketplace plugins."
     FAIL=1
   fi
-else
+elif [ "${LOAM_ALLOW_MISSING_AGENT_CLIS:-0}" = "1" ]; then
   echo "SKIPPED: claude CLI not found; native Claude validation did not run."
+else
+  echo "FAIL: claude CLI not found; install it or set LOAM_ALLOW_MISSING_AGENT_CLIS=1."
+  FAIL=1
 fi
 
 run_codex_probe() {
@@ -159,8 +162,11 @@ if command -v codex >/dev/null 2>&1; then
   run_codex_probe prompt normal-push git push origin main
   run_codex_probe forbidden force-push git push --force origin main
   run_codex_probe forbidden force-with-lease git push --force-with-lease origin main
-else
+elif [ "${LOAM_ALLOW_MISSING_AGENT_CLIS:-0}" = "1" ]; then
   echo "SKIPPED: codex CLI not found; native Codex policy probes did not run."
+else
+  echo "FAIL: codex CLI not found; install it or set LOAM_ALLOW_MISSING_AGENT_CLIS=1."
+  FAIL=1
 fi
 
 echo "== stage 6: skill frontmatter names =="
