@@ -431,7 +431,8 @@ Flagged where two source claims push in opposite directions. Conditions in the l
    These cannot all fit in fifty lines. The source never resolves this.
 
 2. **CLAUDE.md line budget disagrees with itself.**
-   Inside merged record `N-0249`, one page says forty to fifty lines and another says thirty to fifty. Both conditions are preserved in the ledger.
+   Inside merged record `N-0249`, one page says forty to fifty lines and another says thirty to fifty.
+   (Correction 2026-08-31: the normalized ledger does NOT preserve both figures; `N-0249`'s conditions carry neither. The disagreement lives only in the raw claims. A third budget, "15 lines is enough" on `02-the-foundation/05-04-44`, is captured by no ledger record at all. See `clief-claims-verdicts.md`.)
 
 3. **Never load the whole workspace vs point Claude at the whole folder.**
    `N-0023` (n=9) says never load the whole workspace by default.
@@ -480,6 +481,6 @@ Flagged where two source claims push in opposite directions. Conditions in the l
 ## Reliability notes for the rebuild
 
 - 64 percent of normalized claims are unsupported assertions. The demonstrated 13 percent clusters almost entirely in three pages: `05-the-vault/03-01-comp-8-the-wildcard.html`, `03-02-comp-9-the-editor.html`, and `03-03-comp-10-the-diagnostician.html` - a competition-judging exercise. Those pages carry the verification, gate, and negative-fixture practices, which are therefore the best-evidenced material in the corpus.
-- 34 raw claims cite a linked repository or asset that the audit explicitly did not inspect (`linked repository not inspected`, `description of linked asset not inspected`). Their grade of `linked` reflects that a link exists, not that anything was checked.
+- 48 normalized records covering 83 raw claims cite a linked repository or asset that the audit explicitly did not inspect (`linked repository not inspected`, `description of linked asset not inspected`). Their grade of `linked` reflects that a link exists, not that anything was checked. (Corrected 2026-08-31; this line originally said 34 raw claims. Re-derivation: `clief-claims-verdicts.md`.)
 - Six numeric heuristics are recorded as unsupported: the 60/30/10 split, the thirty-to-fifty-line CLAUDE.md, the eight-to-ten-file subfolder threshold, the 150-line context-file threshold, the 100-line function and 1,000-line file caps, and the three-to-fifteen-step automation band.
 - Claims about product mechanics (Remote Control flags, Chrome extension setup, subscription tiers, Codex `/status`) are time-sensitive and were not re-verified against current primary sources. That is step 4 of the checkpoint resume order and has not been done.

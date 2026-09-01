@@ -23,7 +23,8 @@ Also available as a browser extension.
 
 ## Why It's Strong
 
-27 deterministic rules (Layer 1) run first, LLM critique (Layer 3) only where judgment is needed. Aligns with Loam's 60/30/10 layer triage.
+27 deterministic rules run first, LLM critique only where judgment is needed.
+Deterministic checks outrank model opinion (see `docs/specs/rebuild-research/clief-claims-verdicts.md`).
 
 ## Notes
 

@@ -40,7 +40,7 @@ Also available as a browser extension.
 
 ## Why It's Strong
 
-The 27 deterministic rules align with Loam's 60/30/10 layer triage — most design checks are Layer 1 (deterministic), not Layer 3 (LLM). The tool runs the deterministic rules first, then uses LLM critique only where judgment is needed.
+Most design checks are deterministic, not LLM judgment. The tool runs the 27 deterministic rules first, then uses LLM critique only where judgment is needed.
 
 Also detects AI-generated design fingerprints.
 
