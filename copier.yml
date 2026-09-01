@@ -16,6 +16,8 @@ _exclude:
   - "*.bak"
   - ".git"
   - ".claude/audit.log"
+  # Loam-repo maintenance config (numeric-claim checker); never ships.
+  - ".claude/stale-counts.json"
   - ".claude/.local-paths"
   - ".claude/settings.local.json"
   - ".claude/worktrees"

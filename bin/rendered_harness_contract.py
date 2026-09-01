@@ -48,6 +48,7 @@ FORBIDDEN_RENDERED_PATHS = (
     ".mcp.json",
     ".claude/agents",
     ".claude/rules",
+    ".claude/stale-counts.json",
     ".claude/hooks/post-compact-recovery.sh",
     ".claude/skills/reassess-template-sync",
     ".agents/skills/agent-team",
@@ -56,6 +57,10 @@ FORBIDDEN_RENDERED_PATHS = (
     ".codex/mcp",
     "_research",
 )
+
+# The shipped model string is part of the rendered contract: a bump must be a
+# deliberate, reviewed change, never a silent side effect of a settings edit.
+CLAUDE_SETTINGS_MODEL = "claude-opus-4-8[1m]"
 
 CLAUDE_HOOK_ROUTES = {
     "PreToolUse": (
@@ -807,6 +812,24 @@ def _ruff_reads_nested_file_path(content: str | None) -> bool:
     )
 
 
+def _check_claude_model(
+    rendered_root: pathlib.Path,
+    violations: list[Violation],
+) -> None:
+    settings = _read_claude_settings(rendered_root, violations)
+    if settings is None:
+        return
+    model = settings.get("model")
+    if model != CLAUDE_SETTINGS_MODEL:
+        violations.append(
+            Violation(
+                "claude-model",
+                ".claude/settings.json model must be "
+                f"{CLAUDE_SETTINGS_MODEL!r}, found {model!r}",
+            )
+        )
+
+
 def _check_claude_hooks(
     source_root: pathlib.Path,
     rendered_root: pathlib.Path,
@@ -1346,6 +1369,7 @@ def verify_contract(
     _check_marketplace(source_root, violations)
     _check_release_callers(source_root, violations)
     _check_symlinks(rendered_root, violations)
+    _check_claude_model(rendered_root, violations)
     claude_script_targets = _check_claude_hooks(
         source_root, rendered_root, violations
     )
