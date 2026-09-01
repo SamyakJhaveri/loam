@@ -25,6 +25,7 @@ Recurring traps. Add entries when something bites twice; delete entries when the
 
 Before stopping mid-task, write `HANDOFF.md` at the repo root with four lines: current state, exact next step, the verify command, and `git rev-parse HEAD`.
 `/catchup` reads it on resume and flags it stale when that hash is no longer HEAD.
+It is gitignored and local-only; delete it when the task finishes.
 Keep it short; when in doubt, the repository state wins over the handoff.
 
 ## Codex note

@@ -23,6 +23,7 @@ Remove retired flavor, sync-engine, deleted-document, and obsolete count claims.
 
 Check:
 
+<!-- stale-counts: allow - this grep hunts the stale strings; the numbers are the quarry, not claims -->
 ```bash
 rg -n '(template-sync|is_research|Research flavor|renders both flavors|ALL OK|27 core skills|10 hooks|16 rules|6 agents|3 hooks|VISUAL-OVERVIEW|docs/(MEMORY|FLAVORS)\.md|seed/\.claude/(skills|rules)|not skill execution or the enforcement gate|academic-research|licensing--attribution)' README.md CONTRIBUTING.md docs/BOOTSTRAP.md docs/ASSET-LAYERS.md
 ```
