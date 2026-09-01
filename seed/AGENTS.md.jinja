@@ -21,6 +21,12 @@ Recurring traps. Add entries when something bites twice; delete entries when the
 - Count skills by marker file (`find . -name SKILL.md`), not by directory listing; support directories inflate raw counts.
 - In YAML frontmatter, quote description strings containing colons; strict parsers reject them unquoted.
 
+## Session continuity
+
+Before stopping mid-task, write `HANDOFF.md` at the repo root with four lines: current state, exact next step, the verify command, and `git rev-parse HEAD`.
+`/catchup` reads it on resume and flags it stale when that hash is no longer HEAD.
+Keep it short; when in doubt, the repository state wins over the handoff.
+
 ## Codex note
 
 The `.codex/` layer (config, execution rules) is inert until you mark this project trusted in Codex and review its hooks via `/hooks`.
