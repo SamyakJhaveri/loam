@@ -186,7 +186,11 @@ else
 fi
 
 echo "== stage 7: stale numeric claims in prose =="
-if python3 cultivation/marketplace/sam-cc-setup/hooks/check_stale_counts.py \
+if [ ! -f seed/.claude/stale-counts.json ]; then
+  # The checker treats a missing config as clean; the gate must not.
+  echo "FAIL: seed/.claude/stale-counts.json is missing; stage 7 cannot run."
+  FAIL=1
+elif python3 cultivation/marketplace/sam-cc-setup/hooks/check_stale_counts.py \
     --root "$ROOT" --quiet; then
   echo "stale-counts: OK"
 else

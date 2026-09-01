@@ -44,6 +44,7 @@ class HookFixtureCase(unittest.TestCase):
         script: str,
         payload: object,
         raw_payload: str | None = None,
+        env: dict[str, str] | None = None,
     ) -> subprocess.CompletedProcess[str]:
         stdin = raw_payload if raw_payload is not None else json.dumps(payload)
         return subprocess.run(
@@ -54,6 +55,7 @@ class HookFixtureCase(unittest.TestCase):
             capture_output=True,
             timeout=60,
             check=False,
+            env=env,
         )
 
 
@@ -108,6 +110,33 @@ class StopVerifyGateTests(HookFixtureCase):
 
         result = self.run_hook(self.SCRIPT, None, raw_payload="{not json")
         self.assertEqual(2, result.returncode, result.stderr)
+
+    def test_missing_ruff_notes_and_does_not_block(self) -> None:
+        self.commit_file("ok.py", "print('ok')\n")
+        (self.repo / "clean.py").write_text("print('fine')\n", encoding="utf-8")
+
+        shim_dir = pathlib.Path(self.temp_dir.name) / "shim"
+        shim_dir.mkdir()
+        shim = shim_dir / "python3"
+        real_python = subprocess.run(
+            ["bash", "-lc", "command -v python3"],
+            capture_output=True,
+            text=True,
+            check=True,
+        ).stdout.strip()
+        shim.write_text(
+            "#!/bin/bash\n"
+            'if [ "$1" = "-m" ] && [ "$2" = "ruff" ]; then exit 1; fi\n'
+            f'exec "{real_python}" "$@"\n',
+            encoding="utf-8",
+        )
+        shim.chmod(0o755)
+
+        env = dict(os.environ)
+        env["PATH"] = f"{shim_dir}:{env['PATH']}"
+        result = self.run_hook(self.SCRIPT, {}, env=env)
+        self.assertEqual(0, result.returncode, result.stderr)
+        self.assertIn("ruff unavailable", result.stderr)
 
     def test_outside_git_repo_passes(self) -> None:
         outside = pathlib.Path(self.temp_dir.name) / "plain"

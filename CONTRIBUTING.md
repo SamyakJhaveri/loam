@@ -10,7 +10,8 @@ git clone https://github.com/samyakjhaveri/loam && cd loam
 bin/verify-template.sh   # renders and checks the complete harness; expect "verify-template: PASSED"
 ```
 
-Requirements: [Copier](https://copier.readthedocs.io/) >= 9.4.0 (`uvx copier`), `python3`, `bash`.
+Requirements: [Copier](https://copier.readthedocs.io/) >= 9.4.0 (`uvx copier`), `python3`, `bash`, the Claude Code and Codex CLIs, and Ruff.
+Missing agent CLIs fail the gate; `LOAM_ALLOW_MISSING_AGENT_CLIS=1` permits a reduced local run (CI never sets it).
 
 **Windows note:** template *development* relies on the `.claude → seed/.claude` symlink.
 Use WSL, or enable Developer Mode and `git config core.symlinks true` before cloning.

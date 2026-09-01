@@ -16,24 +16,21 @@
       "message": "marketplace skill count"
     },
     {
-      "pattern": "(\\d+) (?:Claude )?hooks?\\b",
+      "pattern": "(\\d+) (?:shipped|seed) (?:Claude )?hooks?\\b",
       "truth": "claude_hook_handlers",
       "message": "shipped Claude hook count"
     }
   ],
-  "search": [
-    "README.md",
-    "AGENTS.md",
-    "CONTRIBUTING.md",
-    "CONTEXT.md",
-    "CLAUDE.md",
-    "seed/AGENTS.md.jinja",
-    "seed/CLAUDE.md.jinja",
-    "docs/ASSET-LAYERS.md",
-    "docs/SYNC.md",
-    "docs/BOOTSTRAP.md",
-    "docs/COPIER.md"
+  "search": ["."],
+  "skip": [
+    ".git",
+    "worktrees",
+    "node_modules",
+    "codex-reviews",
+    "soil",
+    ".superpowers",
+    "_archive",
+    "__pycache__"
   ],
-  "skip": ["worktrees", "plans", ".git", "node_modules", "specs"],
   "exempt_markers": []
 }

@@ -83,7 +83,7 @@ Run `bin/verify-template.sh` when changing Loam. It renders the template, checks
 
 - [Copier](https://copier.readthedocs.io/) >= 9.4.0 (`uvx copier` needs no install)
 - Python 3.11 or newer for the Rendered Harness Contract checker
-- Optional: [Claude Code](https://code.claude.com/docs) and Codex CLIs for native supplemental checks
+- [Claude Code](https://code.claude.com/docs) and Codex CLIs, plus [Ruff](https://docs.astral.sh/ruff/): the verification gate fails without them (set `LOAM_ALLOW_MISSING_AGENT_CLIS=1` for a reduced local run)
 
 ## Contributing
 

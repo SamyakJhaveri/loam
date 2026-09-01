@@ -33,7 +33,10 @@ DC=$(git diff --check HEAD 2>&1) || true
 # 2. Ruff on changed, still-present Python files (fast).
 PY=$(printf '%s\n' "$CHANGED" | grep -E '\.py$' | while read -r f; do [ -f "$f" ] && echo "$f"; done)
 if [ -n "$PY" ]; then
-    if ! OUT=$(printf '%s\n' "$PY" | xargs python3 -m ruff check 2>&1); then
+    if ! python3 -m ruff --version >/dev/null 2>&1; then
+        # A project without ruff gets a visible note, not a misleading block.
+        echo "NOTE: ruff unavailable; the stop gate skipped its ruff leg." >&2
+    elif ! OUT=$(printf '%s\n' "$PY" | xargs python3 -m ruff check 2>&1); then
         FAIL="${FAIL}\n[ruff check]\n${OUT}\n"
     fi
 fi
