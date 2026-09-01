@@ -76,7 +76,7 @@ External conflict: "examples constrain exploration" (new-rules post, 2026) vs "c
 
 - **D1** Fix certain defects first, then pilots.
 - **D2** Rebuild toward ~27 curated skills (refined 2026-09-01: they live in the sam-cc-setup plugin, not the seed, preserving the asset-layer rule), as on-demand procedural skills with invocation control and a trigger eval before each promotion. Evidence note: the always-loaded tier stays lean; the listing budget carries on-demand skills.
-- **D3** Adopt the revised evaluation portfolio (deterministic + efficiency pilots). The dropped success-rate A/Bs are recorded below as unfunded hypotheses.
+- **D3** Adopt the revised evaluation portfolio (deterministic + efficiency pilots). The dropped success-rate A/Bs are recorded below as unfunded hypotheses. Status: E1 shipped as hook fixtures; E2 and E3 ran 2026-09-01 with both falsifiers firing (see Pilot results); E4 and E5 remain open.
 - **D4** Ship a minimal handoff convention in seed now, justified on token savings; keep it cheap; preserve raw-trace access.
 - **D5** This document is the tracked verdicts artifact.
 
@@ -96,6 +96,39 @@ The method doc's Tests 1, 2, 4, 5 (router A/B, plan A/B, agent-team A/B, skill-p
 They are recorded as designs, not run.
 If ever funded, Test 4 must equalize token budgets across arms ([arXiv 2604.02460](https://arxiv.org/abs/2604.02460)) or it is confounded.
 Kept instead: E1 deterministic hook-gate fixtures; E2 mid-session re-anchor pilot; E3 handoff economics incl. a stale-handoff arm (the case no literature has tested); E4 reviewer replay on the labeled defect corpus in `.superpowers/sdd/`; E5 skill trigger precision/recall evals.
+
+## Pilot results (E2, E3 - run 2026-09-01)
+
+Both pilots ran headless (`claude -p`, model pinned `claude-opus-4-8`, permission mode acceptEdits) on fresh Copier-rendered fixture projects from loam HEAD, graded deterministically (AST checks, hidden tests, git history), never by the agent's own claims.
+
+### E2: mid-session re-anchor hook - FALSIFIER FIRED, do not ship
+
+Design: 3 arms x 4 trials x 6 user turns; each turn asks for 2 functions (12 per session, 48 per arm); AGENTS.md carries 5 unusual machine-checkable rules (qz_ prefix, [v] docstring marker, full type hints, __all__ registration, log() not print()).
+Arm A control; arm B a UserPromptSubmit hook re-injecting a ~60-token rule reminder every turn; arm C the negative control injecting equal-length irrelevant text.
+
+Result: 100.0% adherence in every arm, both session halves (720/720 rule checks passed; 0 turn errors).
+Arm B cost +5% for zero gain.
+The salience-decay effect (~5.6% compliance-odds drop per generated function, McMillan on Sonnet 4.6) predicts roughly halved adherence odds by function 12; observed adherence at functions 7-12 was 48/48 perfect in the control arm.
+Reading: the decay effect did NOT transfer to Opus 4.8 in a clean small-context fixture; this is evidence against it at this scale, not merely an underpowered null.
+Decision: no re-anchor hook ships. Revisit only if real long sessions in large repos show late-session rule violations (the audit log now makes that observable).
+
+### E3: handoff economics - FALSIFIER FIRED for the token claim; stale-handoff harm NOT observed
+
+Design: 4 arms x 4 trials resuming a mid-task fixture (feature 1 of 3 implemented and committed by a real prior session; feature 2 next per SPEC.md).
+Arms: Structured HANDOFF.md (the shipped D4 convention), Raw transcript of the prior session, None, and STALE handoff (claims nothing is implemented, points at the pre-work commit).
+Graded by hidden tests: correct next step (feature 2 works), no scope creep (feature 3 untouched), no redo of feature 1, one commit.
+
+Result: 16/16 trials fully correct in every arm, including all 4 stale trials - the agent checked the repository, contradicted the stale artifact, and did the right next step every time.
+Cost per trial (mean): None $0.92 / 24.5 turns; Structured $0.89 / 22.8; Raw trace $0.82 / 20.5; Stale $0.90 / 23.2.
+The structured handoff saved 3%, far below its >=20% falsifier threshold, and the raw trace beat it (matching arXiv 2606.02875's direction).
+Reading: on Opus 4.8 in a small repo with a written spec, re-orientation from the repository itself is nearly free; handoff artifacts add little, and a stale one does no harm because repo evidence wins.
+Decision: the shipped D4 convention stays (six lines, harmless, correct in all trials) but is NOT expanded, and its justification is recorded as convenience, not measured token savings. No further handoff machinery.
+
+### Limits of both pilots
+
+n=4 per arm; single small fixture repos; every E3 arm had SPEC.md (a no-spec resume was not tested); short sessions; one model.
+The frontier pattern from the literature repeats exactly: scaffolding effects measured on smaller models did not reproduce on Opus 4.8.
+Raw data and runners: session scratchpad `pilots/` (not tracked).
 
 ## Recheck triggers
 
