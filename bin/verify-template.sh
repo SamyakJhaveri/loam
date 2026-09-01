@@ -173,11 +173,20 @@ echo "== stage 6: skill frontmatter names =="
 if find seed cultivation/marketplace -name SKILL.md \
     -not -path '*/node_modules/*' >"$TMP/skill-paths" 2>"$TMP/find.log"; then
   while IFS= read -r SKILL; do
-    if awk '/^---$/{n++} n==1 && /^name:/{found=1} END{exit !found}' "$SKILL"; then
-      continue
+    if ! awk '/^---$/{n++} n==1 && /^name:/{found=1} END{exit !found}' "$SKILL"; then
+      echo "FAIL: $SKILL frontmatter has no name: field."
+      FAIL=1
     fi
-    echo "FAIL: $SKILL frontmatter has no name: field."
-    FAIL=1
+    # Reject frontmatter keys that Claude Code does not honor. `auto-activate`
+    # is the canonical trap: it looks like a manual-only switch but does nothing
+    # (use disable-model-invocation: true). A silent no-op keeps a skill
+    # model-invocable and spending listing tokens.
+    if awk '/^---$/{n++; next} n==1 && /^[A-Za-z0-9_-]+:/{
+              key=$1; sub(/:.*/,"",key); if (key=="auto-activate") bad=1
+            } END{exit !bad}' "$SKILL"; then
+      echo "FAIL: $SKILL uses the non-existent 'auto-activate' field (use disable-model-invocation: true)."
+      FAIL=1
+    fi
   done <"$TMP/skill-paths"
 else
   echo "FAIL: could not discover SKILL.md files."
