@@ -73,9 +73,14 @@ IMG_*
 .mcp.json
 # Generated course output from codebase-to-course skill testing
 *-course/
-# Ad-hoc conversation exports / archives
+# Ad-hoc conversation exports / archives (root-level only; a bare "2026-*"
+# would silently swallow every dated spec under docs/)
 *.zip
-2026-*
+/2026-*
+
+# Codex review transcripts written through the root .claude symlink - Loam-local
+# session state, never shipped (previously hidden only by the 2026-* glob above).
+seed/.claude/codex-reviews/
 
 # Copyrighted Yoshida reference scans — never commit (style refs only, local-only)
 yoshida_hiroshi/
