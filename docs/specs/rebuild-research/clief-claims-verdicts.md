@@ -45,7 +45,7 @@ Evidence classes: F = feature exists, M = mechanism plausible, O = measured outc
 Only three sources test Opus 4.7 or newer.
 Zero published software-engineering studies test Claude Fable 5 or Claude Opus 5; their coding numbers are Anthropic system-card figures.
 
-- Skills gave Opus 4.8 +28.2 instruction-following points (59.8 to 88.0) across ~38,000 trajectories ([arXiv 2606.17819](https://arxiv.org/abs/2606.17819), workshop-reviewed, authors sell agent tooling).
+- Skills gave Opus 4.8 +28.2 instruction-following points (59.8 to 88.0) across ~38,000 trajectories ([arXiv 2606.17819](https://arxiv.org/abs/2606.17819), workshop-reviewed, authors sell agent tooling). RECHECK (2026-09-01 audit): the +28.2 / ~38k figure could NOT be reconfirmed from the abstract, which describes 500 skills, 1,000 tasks, 19 model configs and reports cross-model variance rather than this headline. It may live in the paper body; verify against the full PDF before leaning on it. This figure is a per-INVOKED-skill effect and is NOT evidence for listing size - routing degrades as the listing grows (arXiv 2606.17519: F1 -16-23pp at scale; ~10pp confusion gap survives perfect retrieval).
 - Fable 5 vs Opus 4.8 on the same harness: 92.9 vs 92.0 overall while the skill context added ~17 points to both; Opus 4.8 wins quality-per-dollar 125 to 74 (Tessl blog, vendor-published).
 - Opus 4.6 to 4.8 alone was worth +24.9 points on SWE-Atlas QnA; a coordinated 4-agent team on 4.6 (62.1%) still beat single-agent 4.8 (57.2%); compute-matched independent runs reached only 37.9% ([arXiv 2607.28430](https://arxiv.org/abs/2607.28430)).
 - The synthesis that reconciles the nulls with the positives: describing the repository to the agent is worthless and costs 20-23% more tokens; giving it a procedure is worth ~28 points even at the frontier.
@@ -110,7 +110,7 @@ Result: 100.0% adherence in every arm, both session halves (720/720 rule checks 
 Arm B cost +5% for zero gain.
 The salience-decay effect (~5.6% compliance-odds drop per generated function, McMillan on Sonnet 4.6) predicts roughly halved adherence odds by function 12; observed adherence at functions 7-12 was 48/48 perfect in the control arm.
 Reading: the decay effect did NOT transfer to Opus 4.8 in a clean small-context fixture; this is evidence against it at this scale, not merely an underpowered null.
-Decision: no re-anchor hook ships. Revisit only if real long sessions in large repos show late-session rule violations (the audit log now makes that observable).
+Decision: no PER-TURN re-anchor hook ships. Scope note (2026-09-01 audit): this falsifier covers only per-turn UserPromptSubmit re-injection in a clean small context with NO compaction event. It does NOT cover a `SessionStart` hook with the `compact` matcher, which re-injects after compaction has actually destroyed context - a different mechanism the Claude Code hooks guide recommends and this pilot never tested. The per-turn form was also cache-hostile (variable text every turn invalidates the prefix cache), an independent reason to avoid it. The post-compaction re-brief remains OPEN and is a candidate for the opportunity wave. Revisit the per-turn form only if real long sessions in large repos show late-session rule violations (the audit log now makes that observable).
 
 ### E3: handoff economics - FALSIFIER FIRED for the token claim; stale-handoff harm NOT observed
 
