@@ -1,6 +1,9 @@
 # Seed skill promotion
 
-**Decision D2 (2026-08-31):** grow the seed toward the advertised ~27 shipped skills.
+**Decision D2 (2026-08-31, refined 2026-09-01):** grow `cultivation/marketplace/sam-cc-setup/` toward ~27 curated skills.
+The seed stays lean (catchup only); the README advertises "1 core skill + a 27-skill plugin" honestly.
+This keeps the asset-layer rule: seed/ ships always-on generic behavior, optional workflows live in the plugin.
+Candidate sources include the skills grown in Samyak's other projects: job_search, distbench, parbench, instagram_organizer.
 **Evidence constraint:** skills earn their place as ON-DEMAND procedures, never as always-loaded prose.
 Skills gave Opus 4.8 +28.2 instruction-following points when they encode procedure and constraint (arXiv 2606.17819); repository-description prose adds cost without benefit (arXiv 2602.11988).
 Full verdicts: `docs/specs/rebuild-research/clief-claims-verdicts.md`.

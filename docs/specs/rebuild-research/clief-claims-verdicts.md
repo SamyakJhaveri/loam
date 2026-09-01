@@ -75,7 +75,7 @@ External conflict: "examples constrain exploration" (new-rules post, 2026) vs "c
 ## Decisions (Samyak, 2026-08-31)
 
 - **D1** Fix certain defects first, then pilots.
-- **D2** Rebuild toward the advertised 27-skill seed, as on-demand procedural skills with invocation control and a trigger eval before each promotion. Evidence note: the always-loaded tier stays lean; the listing budget carries on-demand skills.
+- **D2** Rebuild toward ~27 curated skills (refined 2026-09-01: they live in the sam-cc-setup plugin, not the seed, preserving the asset-layer rule), as on-demand procedural skills with invocation control and a trigger eval before each promotion. Evidence note: the always-loaded tier stays lean; the listing budget carries on-demand skills.
 - **D3** Adopt the revised evaluation portfolio (deterministic + efficiency pilots). The dropped success-rate A/Bs are recorded below as unfunded hypotheses.
 - **D4** Ship a minimal handoff convention in seed now, justified on token savings; keep it cheap; preserve raw-trace access.
 - **D5** This document is the tracked verdicts artifact.
