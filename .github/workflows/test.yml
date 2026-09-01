@@ -18,6 +18,9 @@ jobs:
       - name: Install Copier
         run: pip install copier
 
+      - name: Install agent CLIs
+        run: npm install -g @anthropic-ai/claude-code @openai/codex
+
       - name: Configure Git identity
         run: |
           git config --global user.name "CI"
