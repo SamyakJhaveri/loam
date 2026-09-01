@@ -76,8 +76,9 @@ already have their own harness and do not run this bootstrap skill.
   It encodes published guidance, not proven local habit.
 - Everything else ran in anger for weeks in the source repo.
 - Removed in v0.3.0 (2026-08-14 teardown rulings): the sentinel gate family,
-  `create-skill`, `mode-routing`, `techdebt`, the `pr-review` agent, and
+  `create-skill`, `mode-routing`, the `pr-review` agent, and
   `codebase-review-fanout` (never exercised end-to-end).
+  (`techdebt` was later re-harvested and ships again as of v0.6.0.)
 
 ## Versioning
 

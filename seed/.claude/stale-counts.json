@@ -2,6 +2,7 @@
   "truths": {
     "seed_skills": "find seed -name SKILL.md | wc -l",
     "marketplace_skills": "find cultivation/marketplace -name SKILL.md | wc -l",
+    "sam_cc_skills": "find cultivation/marketplace/sam-cc-setup/skills -name SKILL.md | wc -l",
     "claude_hook_handlers": "python3 -c \"import json;h=json.load(open('seed/.claude/settings.json'))['hooks'];print(sum(len(g['hooks']) for e in h.values() for g in e))\""
   },
   "checks": [
@@ -14,6 +15,11 @@
       "pattern": "(\\d+) marketplace skills?",
       "truth": "marketplace_skills",
       "message": "marketplace skill count"
+    },
+    {
+      "pattern": "(\\d+) sam-cc-setup skills?",
+      "truth": "sam_cc_skills",
+      "message": "sam-cc-setup skill count"
     },
     {
       "pattern": "(\\d+) (?:shipped|seed) (?:Claude )?hooks?\\b",
