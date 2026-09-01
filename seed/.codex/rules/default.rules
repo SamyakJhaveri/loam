@@ -4,9 +4,9 @@
 # simple command shapes and user prompting.
 
 prefix_rule(
-    pattern = [["cat", "ls", "grep", "rg", "head", "tail", "sed", "echo", "wc", "mkdir"]],
+    pattern = [["cat", "ls", "grep", "rg", "head", "tail", "echo", "wc", "mkdir"]],
     decision = "allow",
-    justification = "Read-oriented shell helpers and mkdir are allowed for local repo work.",
+    justification = "Read-oriented shell helpers and mkdir are allowed for local repo work. sed is excluded: sed -i writes files without any edit-hook coverage.",
     match = [
         "cat AGENTS.md",
         "rg validate .claude/skills",

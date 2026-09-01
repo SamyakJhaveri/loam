@@ -31,12 +31,20 @@ DC=$(git diff --check HEAD 2>&1) || true
 [ -n "$DC" ] && FAIL="${FAIL}\n[git diff --check]\n${DC}\n"
 
 # 2. Ruff on changed, still-present Python files (fast).
+# uv/brew installs ship ruff as a PATH binary, not an importable module, so
+# probe the module first and fall back to the binary before giving up.
 PY=$(printf '%s\n' "$CHANGED" | grep -E '\.py$' | while read -r f; do [ -f "$f" ] && echo "$f"; done)
 if [ -n "$PY" ]; then
-    if ! python3 -m ruff --version >/dev/null 2>&1; then
+    RUFF=""
+    if python3 -m ruff --version >/dev/null 2>&1; then
+        RUFF="python3 -m ruff"
+    elif command -v ruff >/dev/null 2>&1; then
+        RUFF="ruff"
+    fi
+    if [ -z "$RUFF" ]; then
         # A project without ruff gets a visible note, not a misleading block.
         echo "NOTE: ruff unavailable; the stop gate skipped its ruff leg." >&2
-    elif ! OUT=$(printf '%s\n' "$PY" | xargs python3 -m ruff check 2>&1); then
+    elif ! OUT=$(printf '%s\n' "$PY" | xargs $RUFF check 2>&1); then
         FAIL="${FAIL}\n[ruff check]\n${OUT}\n"
     fi
 fi
