@@ -16,7 +16,7 @@ jobs:
           python-version: '3.12'
 
       - name: Install Copier
-        run: pip install copier
+        run: pip install copier ruff
 
       - name: Install agent CLIs
         run: npm install -g @anthropic-ai/claude-code @openai/codex
