@@ -1,4 +1,5 @@
 name: Test
+# CI smoke test 2026-09-01: first live run of the agent-CLI + ruff install steps.
 
 on:
   pull_request:
@@ -18,7 +19,7 @@ jobs:
           python-version: '3.12'
 
       - name: Install Copier
-        run: pip install copier ruff
+        run: python3 -m pip install copier ruff
 
       - name: Install agent CLIs
         run: npm install -g @anthropic-ai/claude-code @openai/codex

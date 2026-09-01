@@ -77,7 +77,10 @@ class StopVerifyGateTests(HookFixtureCase):
         self.assertIn("verification gate FAILED", red.stderr)
         self.assertIn("[ruff check]", red.stderr)
 
-        bad.write_text("import os\nprint(os.sep)\n", encoding="utf-8")
+        # The fixed version must be clean under any ruff default rule set
+        # (older ruff flags only F401 here; newer ruff also flags I001 import
+        # sorting), so drop the import entirely rather than "using" it.
+        bad.write_text('print("ok")\n', encoding="utf-8")
         green = self.run_hook(self.SCRIPT, {})
         self.assertEqual(0, green.returncode, green.stderr)
 
