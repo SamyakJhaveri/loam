@@ -18,6 +18,18 @@
    `--live` hook-dispatch proof) and `bin/skill_listing_weight.py`, wired as
    verify-template stage 8 (a no-growth ratchet at 2800 tokens).
 
+## Onboarding guides (visual, for a new teammate)
+
+Two independent web guides explain the repo layout, how you use Loam, and what
+fires during a session. Same three diagrams, two separate readings.
+
+1. Claude's field guide (green): https://claude.ai/code/artifact/58db0156-3ac1-4917-a334-d47a855ce009
+2. Codex's field guide (blue blueprint): https://claude.ai/code/artifact/d7e60e60-1e61-41d5-bbaa-e3e8a9e35a3d
+
+Source files live in the session scratchpad (`loam-field-guide.html` and
+`loam-codex-guide.html`). They are artifacts, not committed to the repo. Re-open
+from the Claude Code terminal with `/artifacts`, or the two URLs above.
+
 ## Key measured findings
 
 1. Seed skill-listing weight is 101 tokens (lean). The sam-cc-setup plugin
