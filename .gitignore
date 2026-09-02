@@ -100,3 +100,4 @@ docs/adr/
 _archive/
 cultivation/wip/
 .sync-state
+/harness-smoke.log
