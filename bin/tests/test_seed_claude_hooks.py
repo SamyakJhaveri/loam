@@ -128,7 +128,7 @@ class StopVerifyGateTests(HookFixtureCase):
         shim = shim_dir / "python3"
         shim.write_text(
             "#!/bin/bash\n"
-            'if [ "$1" = "-m" ] && [ "$2" = "ruff" ]; then exit 1; fi\n'
+            'if [ "$1" = "-m" ] && [ "$2" = "ruff" ]; then echo "No module named ruff" >&2; exit 1; fi\n'
             f'exec "{real_python}" "$@"\n',
             encoding="utf-8",
         )
@@ -197,6 +197,56 @@ class StopVerifyGateTests(HookFixtureCase):
         )
         self.assertEqual(0, result.returncode, result.stderr)
 
+    def test_repo_with_no_commits_passes(self) -> None:
+        # setUp runs `git init` but never commits, so the repo has no HEAD.
+        # There is nothing to diff against, so the gate must pass, not block.
+        (self.repo / "bad.py").write_text("import os\n", encoding="utf-8")
+        result = self.run_hook(self.SCRIPT, {})
+        self.assertEqual(0, result.returncode, result.stderr)
+
+    def _transcript_editing(self, *paths: pathlib.Path) -> pathlib.Path:
+        """Write a JSONL transcript recording an Edit tool_use for each path."""
+        transcript = pathlib.Path(self.temp_dir.name) / "session.jsonl"
+        lines = [
+            json.dumps(
+                {
+                    "type": "assistant",
+                    "message": {
+                        "content": [
+                            {
+                                "type": "tool_use",
+                                "name": "Edit",
+                                "input": {"file_path": str(p)},
+                            }
+                        ]
+                    },
+                }
+            )
+            for p in paths
+        ]
+        transcript.write_text("\n".join(lines) + "\n", encoding="utf-8")
+        return transcript
+
+    def test_transcript_scopes_gate_to_session_edited_files(self) -> None:
+        # The transcript records an edit to a.sh only. A syntax error in the
+        # untouched-but-dirty b.sh must not block; one in a.sh must.
+        # bash -n keeps this deterministic without depending on ruff.
+        self.commit_file("ok.py", "print('ok')\n")
+        a = self.repo / "a.sh"
+        b = self.repo / "b.sh"
+        transcript = self._transcript_editing(a)
+        payload = {"transcript_path": str(transcript)}
+
+        a.write_text("echo ok\n", encoding="utf-8")
+        b.write_text("if [ 1 ]; then\n", encoding="utf-8")
+        passed = self.run_hook(self.SCRIPT, payload)
+        self.assertEqual(0, passed.returncode, passed.stderr)
+
+        a.write_text("if [ 1 ]; then\n", encoding="utf-8")
+        blocked = self.run_hook(self.SCRIPT, payload)
+        self.assertEqual(2, blocked.returncode, blocked.stderr)
+        self.assertIn("[bash -n]", blocked.stderr)
+
 
 class RuffAfterEditTests(HookFixtureCase):
     SCRIPT = "ruff-after-edit.sh"
@@ -224,6 +274,65 @@ class RuffAfterEditTests(HookFixtureCase):
     def test_malformed_json_is_graceful(self) -> None:
         result = self.run_hook(self.SCRIPT, None, raw_payload="{not json")
         self.assertEqual(0, result.returncode, result.stderr)
+
+    def _fallback_path(self) -> pathlib.Path:
+        """PATH dir where `python3 -m ruff` fails, but a fake `ruff` binary
+        (which strips `import os`) stands in, so the binary fallback must run."""
+        shim_dir = pathlib.Path(self.temp_dir.name) / "shim"
+        shim_dir.mkdir(exist_ok=True)
+        real_python = subprocess.run(
+            ["bash", "-lc", "command -v python3"],
+            capture_output=True,
+            text=True,
+            check=True,
+        ).stdout.strip()
+        shim = shim_dir / "python3"
+        shim.write_text(
+            "#!/bin/bash\n"
+            'if [ "$1" = "-m" ] && [ "$2" = "ruff" ]; then echo "No module named ruff" >&2; exit 1; fi\n'
+            f'exec "{real_python}" "$@"\n',
+            encoding="utf-8",
+        )
+        shim.chmod(0o755)
+        real_bash = subprocess.run(
+            ["bash", "-lc", "command -v bash"],
+            capture_output=True,
+            text=True,
+            check=True,
+        ).stdout.strip()
+        link = shim_dir / "bash"
+        if not link.exists():
+            link.symlink_to(real_bash)
+        fake_ruff = shim_dir / "ruff"
+        fake_ruff.write_text(
+            "#!/bin/bash\n"
+            'f="${@: -1}"\n'
+            "python3 - \"$f\" <<'PY'\n"
+            "import sys\n"
+            "p = sys.argv[1]\n"
+            'lines = [l for l in open(p) if l.strip() != "import os"]\n'
+            'open(p, "w").writelines(lines)\n'
+            "PY\n",
+            encoding="utf-8",
+        )
+        fake_ruff.chmod(0o755)
+        return shim_dir
+
+    def test_ruff_binary_fallback_fixes_file_when_module_missing(self) -> None:
+        # uv/brew installs ship ruff as a PATH binary only. When `python3 -m
+        # ruff` is unavailable the hook must fall back to that binary and still
+        # apply the fix, not silently no-op.
+        target = self.repo / "edited.py"
+        target.write_text("import os\nprint('x')\n", encoding="utf-8")
+
+        shim_dir = self._fallback_path()
+        env = dict(os.environ)
+        env["PATH"] = str(shim_dir)
+        result = self.run_hook(
+            self.SCRIPT, {"tool_input": {"file_path": str(target)}}, env=env
+        )
+        self.assertEqual(0, result.returncode, result.stderr)
+        self.assertNotIn("import os", target.read_text(encoding="utf-8"))
 
 
 class BashAuditLogTests(HookFixtureCase):

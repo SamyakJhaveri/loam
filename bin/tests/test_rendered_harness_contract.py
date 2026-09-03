@@ -67,7 +67,6 @@ CLAUDE_HOOK_PATHS = (
 )
 
 GOOD_CLAUDE_SETTINGS = {
-    "model": "claude-opus-4-8[1m]",
     "hooks": {
         "PreToolUse": [
             {
@@ -1284,7 +1283,7 @@ class RenderedHarnessContractTest(unittest.TestCase):
                 )
                 self.assertTrue(any("owned events" in item for item in failures))
 
-    def test_claude_settings_model_is_pinned(self) -> None:
+    def test_claude_settings_model_key_is_rejected(self) -> None:
         self.build_good_fixture()
         settings = json.loads(json.dumps(GOOD_CLAUDE_SETTINGS))
         settings["model"] = "claude-opus-5"
@@ -1293,17 +1292,17 @@ class RenderedHarnessContractTest(unittest.TestCase):
         failures = self.rendered_violations()
 
         self.assertTrue(any("FAIL [claude-model]" in item for item in failures))
-        self.assertTrue(any("claude-opus-4-8[1m]" in item for item in failures))
+        self.assertTrue(any("must not pin a model" in item for item in failures))
 
-    def test_claude_settings_model_must_be_present(self) -> None:
+    def test_claude_settings_without_model_passes(self) -> None:
         self.build_good_fixture()
         settings = json.loads(json.dumps(GOOD_CLAUDE_SETTINGS))
-        del settings["model"]
+        settings.pop("model", None)
         self.write(self.rendered, ".claude/settings.json", json.dumps(settings))
 
         failures = self.rendered_violations()
 
-        self.assertTrue(any("FAIL [claude-model]" in item for item in failures))
+        self.assertFalse(any("FAIL [claude-model]" in item for item in failures))
 
     def test_stale_counts_config_must_not_render(self) -> None:
         self.build_good_fixture()

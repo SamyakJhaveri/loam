@@ -59,9 +59,11 @@ FORBIDDEN_RENDERED_PATHS = (
     "_research",
 )
 
-# The shipped model string is part of the rendered contract: a bump must be a
-# deliberate, reviewed change, never a silent side effect of a settings edit.
-CLAUDE_SETTINGS_MODEL = "claude-opus-4-8[1m]"
+# The rendered .claude/settings.json must not pin a model. A template cannot
+# know the right model for a given user or machine; any pinned string ages out
+# within weeks of a new release; and the local settings template used to
+# override the pin anyway, so the pin was dead weight. The user's global default
+# decides the model instead.
 
 CLAUDE_HOOK_ROUTES = {
     "PreToolUse": (
@@ -820,13 +822,12 @@ def _check_claude_model(
     settings = _read_claude_settings(rendered_root, violations)
     if settings is None:
         return
-    model = settings.get("model")
-    if model != CLAUDE_SETTINGS_MODEL:
+    if "model" in settings:
         violations.append(
             Violation(
                 "claude-model",
-                ".claude/settings.json model must be "
-                f"{CLAUDE_SETTINGS_MODEL!r}, found {model!r}",
+                ".claude/settings.json must not pin a model; the user's "
+                "global default decides",
             )
         )
 

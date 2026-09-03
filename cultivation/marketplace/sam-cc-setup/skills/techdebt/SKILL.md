@@ -1,7 +1,7 @@
 ---
 name: techdebt
 description: Inventory tech debt across the codebase - duplicated logic, dead code, magic numbers, deep nesting, TODO/FIXME rot - as a report of locations + suggested actions, not auto-applied fixes. Use when you want a broad debt sweep. NOT for applying fixes to just-changed code (use the built-in /simplify) and NOT for reviewing a specific diff or PR (use /code-review).
-model: opus
+model: claude-opus-4-8[1m]
 allowed-tools: [Read, Grep, Glob, Bash(*)]
 ---
 

@@ -2,7 +2,8 @@
 name: consistency-checker
 description: "Cross-checks documentation against code. Detects stale claims in CLAUDE.md, contradictions between agent tables and actual files, missing rules-table entries, competing controlling-plan claims, and undocumented changes. Use in the project's post-session validation pass. Returns structured PASS/FAIL. Reports every finding, most severe first."
 tools: Bash, Read, Glob, Grep
-model: sonnet
+model: claude-opus-4-8[1m]
+effort: xhigh
 maxTurns: 15
 ---
 
