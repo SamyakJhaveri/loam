@@ -395,7 +395,7 @@ After session 6, the harness-evals idea (skill-creator benchmark on 8 to 12 real
 
 ## Execution log
 
-- 2026-09-03 session 1 DONE on branch `fix/audit-s1-stop-the-bleeding` (not pushed, no PR).
+- 2026-09-03 session 1 DONE on branch `fix/audit-s1-stop-the-bleeding`, pushed, PR #5 open (https://github.com/SamyakJhaveri/loam/pull/5).
   Changed: plugin agents pinned to `claude-opus-4-8[1m]` at xhigh (consistency-checker and
   test-synthesizer moved off Sonnet; build-validator and read-only stay Sonnet at high);
   techdebt skill pinned; seed settings.json lost its model key, cat and echo moved to ask, ruff
