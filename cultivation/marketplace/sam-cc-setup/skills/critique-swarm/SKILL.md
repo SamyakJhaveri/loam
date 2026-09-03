@@ -48,7 +48,7 @@ Each agent receives the review target and its specific mandate.
 **Agent 2 - Scope Creep & Over-Engineering:**
 > Review the changes for scope creep and over-engineering. Check for: unnecessary
 > abstractions, features not requested in the spec, extra deliverables beyond what
-> was asked, verbose preambles, premature generalization, and any "while we're here"
+> was asked, premature generalization, and any "while we're here"
 > cleanup that wasn't part of the task. Flag anything that could be removed without
 > affecting the stated goal.
 

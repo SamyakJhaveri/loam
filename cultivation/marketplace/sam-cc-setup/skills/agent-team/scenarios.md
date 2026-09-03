@@ -5,7 +5,6 @@ A scenario skips Phase 2 (team design) and supplies a pre-filled team configurat
 It still requires user approval before launching.
 
 Every teammate below runs Opus; the Effort column is the dial.
-Sonnet appears only where a teammate spawns a mechanical subagent under itself, never as a teammate model.
 
 ---
 

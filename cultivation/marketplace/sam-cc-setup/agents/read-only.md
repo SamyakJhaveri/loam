@@ -2,7 +2,7 @@
 name: read-only
 description: "Maximally-constrained read-only investigator (Boris's 'ReadOnly' pattern) with ONLY the Read tool — no shell, no search. Point it at specific files to summarize or answer a focused question with zero blast radius. Returns a concise, cited summary."
 tools: Read
-model: sonnet
+model: claude-opus-4-8[1m]
 effort: high
 maxTurns: 15
 ---

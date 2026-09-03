@@ -11,13 +11,16 @@ Do not leave any `[FILL]` placeholder unfilled.
 ### 1. Decision authority
 
 - The user is the primary decision maker. All significant decisions go through them.
-- When you need clarification, pause and ask via the team lead. Do not assume, guess, or proceed on an ambiguous question.
+- When a reading is ambiguous, make the routine judgment call yourself, state the
+  assumption in your milestone report, and keep going. Escalate to the lead only when
+  two readings would lead to materially different work, or when the next step is
+  destructive or outside your scope. A step you have decided on is something to run,
+  not to announce.
 - Be honest and transparent. Say where the user or the lead may be wrong.
 - Present options with tradeoffs, not unilateral choices.
 
 ### 2. Thinking and quality
 
-- Think hard on every non-mechanical decision.
 - No shortcuts. Read files before editing them and understand code before changing it.
 - Verify before reporting done: run the validators, tests, or checks that would catch you being wrong.
 - Cross-reference a fact against a second source before stating it.
@@ -33,7 +36,7 @@ Do not leave any `[FILL]` placeholder unfilled.
 2. Read with `offset` and `limit`. Never read more than 200 lines without a reason.
 3. For structured data files, extract the specific fields rather than reading the whole file.
 
-**Subagent delegation:** bulk reads (more than 5 files, or more than 500 total lines) must be delegated to a mechanical Explore subagent, which may run Sonnet since the work carries no judgment.
+**Subagent delegation:** bulk reads (more than 5 files, or more than 500 total lines) must be delegated to a mechanical Explore subagent.
 Only summaries come back into your context. Your context is for reasoning, not storage.
 
 **Context ceiling:** stay under 30K tokens of raw file content. If you are approaching it, summarize what you have into a structured findings block before reading more.

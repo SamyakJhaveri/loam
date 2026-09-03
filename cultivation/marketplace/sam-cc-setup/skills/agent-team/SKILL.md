@@ -29,9 +29,7 @@ Launch coordinated agent teams for tasks that need persistent cross-talk, shared
 
 ## Model policy
 
-Every teammate runs Opus. Effort is the dial, not the model: xhigh for the advisor, planners, and critics; medium to high for execution workers.
-Sonnet is permitted only for a **mechanical subagent** a teammate spawns underneath itself - bulk file reads, greps, listings, mechanical rewrites with no judgment in them.
-Never Haiku, for anything.
+Every teammate runs Opus 4.8 (`claude-opus-4-8[1m]`). Effort is the dial, not the model: xhigh for Opus execution workers, planners, and critics; a Fable advisor or lead runs at `medium` or `high` only, never higher. Use only Opus or Fable.
 
 There is no cheap-worker tier here, so the cost of a team is roughly linear in teammate count. That is the reason the decision graph below pushes you toward the smallest team that can do the job, and toward no team at all when the work is separable.
 

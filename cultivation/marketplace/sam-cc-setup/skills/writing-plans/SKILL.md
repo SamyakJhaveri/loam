@@ -174,3 +174,4 @@ provide. Offer only available choices, in this order:
 
 Name the saved `docs/plans/<filename>.md` path in the handoff. Do not require an execution skill
 or command that is absent from the current host.
+When the plan will be handed to a fresh session, run `/align-prompt fable-plan <path>` before writing the handoff.

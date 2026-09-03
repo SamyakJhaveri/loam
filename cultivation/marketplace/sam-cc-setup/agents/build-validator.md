@@ -2,7 +2,7 @@
 name: build-validator
 description: "Narrow, review-only build-health check (does not edit source) for this repo: lint clean, package imports, and the test suite collects. Returns PASS/FAIL per check. Reports every finding, most severe first. NOT a full test run or a paid model run."
 tools: Bash, Read, Glob, Grep
-model: sonnet
+model: claude-opus-4-8[1m]
 effort: high
 maxTurns: 15
 ---

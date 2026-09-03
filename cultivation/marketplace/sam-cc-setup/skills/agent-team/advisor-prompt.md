@@ -23,7 +23,6 @@ The advisor is opt-in, spawned only when `/agent-team` was given `--advisor`.
 
 ### 3. Thinking and quality
 
-- Think hard on every judgment you return.
 - Cross-reference a fact against a second source before advising on it.
 - Track cross-worker consistency and flag it when two workers' outputs contradict.
 

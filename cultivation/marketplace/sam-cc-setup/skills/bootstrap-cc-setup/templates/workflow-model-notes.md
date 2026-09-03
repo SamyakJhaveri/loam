@@ -1,16 +1,16 @@
 # Model notes
 
-> Always loaded. The Fable 5 and Opus 5 prompting guides invert on two points;
-> following the wrong column is costly in both directions.
+> Always loaded. The Fable 5.1 and Opus 4.8 prompting guides differ on two points,
+> instruction detail and subagent use; following the wrong column is costly in both directions.
 > Check what model is actually pinned before applying either column:
 > `grep -h '"model"' .claude/settings.json .claude/settings.local.json 2>/dev/null`
 
-## Where the guides invert
+## Where the guides differ
 
-| | Fable 5 | Opus 5 |
+| | Fable 5.1 | Opus 4.8 |
 |---|---|---|
-| Subagents | Use **frequently**; fresh-context reviewers catch what the author misses | **Cap** spawning; prefer one over several |
-| Self-verification | Make it **explicit**; use fresh-context verifiers | **Remove** it; the model self-corrects |
+| Instruction detail | A **brief** instruction serves; with a clear goal it needs little methodology and decides the next step itself | **Literal**; it won't generalize one instruction across items or infer unasked requests, so spell out scope and front-load the whole task in turn one |
+| Subagents | **Delegate** freely; the lead keeps working while subagents run | Spawns **fewer** by default and favors reasoning over tool calls; name when to fan out |
 
 ## Both models
 
@@ -20,13 +20,19 @@
 - **Effort controls thinking, not output length.** Control verbosity explicitly.
 - **Constrain scope on narrow tasks.** State the intended scope for surgical changes.
 
-## Fable 5 only
+## Fable 5.1 only
 
-- **`reasoning_extraction`.** Instructions to echo, transcribe, or explain internal
-  reasoning as response text can trigger a refusal and an elevated fallback to Opus.
-  Avoid reflection-style instructions in agents, rules, and hooks.
-- **Don't surface context-budget countdowns.** They prompt the model to trim its own
-  work and offer a premature handoff.
+- **Targeted edits.** It may rewrite a whole file for a small change. Add to edit
+  tasks: "surgically edit a file rather than rewrite the entire thing" when the
+  result is the same.
+- **Extras stay out.** It over-delivers fixes and tests the task didn't ask for.
+  A pre-existing bug or cleanup is a follow-up in the summary, not the diff; add
+  tests only where asked or where the repo already keeps them.
+- **Fewer progress updates.** It writes fewer user-facing updates than Fable 5.
+  Expect that; if a run is attended, say so in the prompt. Never add a line
+  suppressing narration.
+- **Long deliverables at `high`.** At `xhigh`/`max` it can draft a long document twice,
+  in thinking then reply; run a single long deliverable at `high`.
 
 ## Harness-enforced, model-independent
 
