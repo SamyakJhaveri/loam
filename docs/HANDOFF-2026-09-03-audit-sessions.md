@@ -395,7 +395,7 @@ After session 6, the harness-evals idea (skill-creator benchmark on 8 to 12 real
 
 ## Execution log
 
-- 2026-09-03 session 1 DONE on branch `fix/audit-s1-stop-the-bleeding`, pushed, PR #5 open (https://github.com/SamyakJhaveri/loam/pull/5).
+- 2026-09-03 session 1 DONE on branch `fix/audit-s1-stop-the-bleeding`, merged to main as c7952db via PR #5 (CI verify passed). Session 2 branches from main.
   Changed: plugin agents pinned to `claude-opus-4-8[1m]` at xhigh (consistency-checker and
   test-synthesizer moved off Sonnet; build-validator and read-only stay Sonnet at high);
   techdebt skill pinned; seed settings.json lost its model key, cat and echo moved to ask, ruff
@@ -416,6 +416,4 @@ After session 6, the harness-evals idea (skill-creator benchmark on 8 to 12 real
   the sample validator accepts pinned `claude-*` ids. Transcript in
   `.claude/codex-reviews/2026-09-03-fix-audit-s1-stop-the-bleeding.md` (gitignored). Round cap
   reached; no second round.
-  NEXT SESSION: if `main` does not yet contain this branch, create the session 2 branch FROM
-  `fix/audit-s1-stop-the-bleeding` (stacked), or fast-forward main first if Samyak has approved
-  the merge. Never rebase or force-push.
+  NEXT SESSION: branch `fix/audit-s2-prompts` from `main`. Never rebase or force-push.
