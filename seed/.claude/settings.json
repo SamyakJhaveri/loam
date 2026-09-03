@@ -23,8 +23,6 @@
       "Edit(.env*)"
     ],
     "ask": [
-      "Bash(cat:*)",
-      "Bash(echo:*)",
       "Bash(git push:*)"
     ]
   },
