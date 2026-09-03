@@ -4,7 +4,7 @@ Use with `/agent-team --scenario <name>`.
 A scenario skips Phase 2 (team design) and supplies a pre-filled team configuration.
 It still requires user approval before launching.
 
-Every teammate below runs Opus; the Effort column is the dial.
+Every teammate below runs Opus 4.8 (`claude-opus-4-8[1m]`); the Effort column is the dial.
 
 ---
 
