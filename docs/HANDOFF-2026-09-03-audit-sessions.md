@@ -12,10 +12,11 @@ Read docs/HANDOFF-2026-09-03-audit-sessions.md and run the next unfinished sessi
 "Sessions" list, then stop. You are the Fable 5 lead. Workers are Opus 4.8 at xhigh via the
 Workflow tool (model "claude-opus-4-8[1m]", effort "xhigh"); never spawn Fable subagents.
 Seed behavior, hooks, and copier.yml go on a branch named in the session; docs go direct to main.
-bin/verify-template.sh must print "verify-template: PASSED" and python3 -m pytest -q bin/tests
-must be green before you commit. Commit on the branch; do not push and do not open a PR.
-Update the "Execution log" at the bottom of the handoff when you finish. Please remove all
-mannered prose.
+bin/verify-template.sh must print "verify-template: PASSED" and uvx pytest -q bin/tests must
+be green before you commit (system python3 has no pytest; uvx does). Commit on the branch; do not push and do not open a PR.
+Each session block also owns the items tagged for it in the Gap review and Research additions
+sections. Update the "Execution log" at the bottom of the handoff when you finish. Please
+remove all mannered prose.
 ```
 
 ## Objective and aim
@@ -208,6 +209,23 @@ F. Worktrees, notifications, arbitration (sessions 5 and 6; from code.claude.com
    - "awesome-claude-code" style lists yielded no verifiable mechanism beyond a session logger,
      which the bash-audit-log hook already is. Do not cite star counts.
 
+G. Session 6, run-folder contract (paste-ready, from XScientist and the harness-disclosure paper):
+   CLAUDE.md line: "Experiments live in runs/<UTC-date>_<slug>/ with run.json, protocol.md, logs/,
+   results/. A finished run is immutable: corrections go in runs/<id>/corrections/, never by
+   editing results."
+   `run.json` schema:
+   ```json
+   {"schema_version":"1","run_id":"2026-09-03_cuda-ocl-baseline","protocol_sha256":"","git_commit":"",
+    "harness":{"tool":"claude-code","version":"","model":"","effort":""},
+    "independent_vars":{},"dependent_vars":[],"constants":{},
+    "status":"running|complete|failed","missing_artifacts":[]}
+   ```
+   The `harness` block is load-bearing (harness alone moved Terminal-Bench 2 by 7 points, arXiv
+   2605.23950). `missing_artifacts` is the honesty field everyone omits. Verifier: ~30 lines that
+   reject a run folder missing any of the four parts or any variable the protocol declares.
+   Simpler scaffolds win on MLE-bench (AIDE beat OpenHands and MLAgentBench, arXiv 2410.07095), so
+   the experiment contract stays a file convention plus a verifier, never a framework.
+
 E. Do not do (evidence says skip): asking the agent to add tests mid-fix (test volume did not
    change outcomes across six models, arXiv 2602.07900); spec-driven development as a
    productivity claim (position paper only, arXiv 2609.00252; METR 2025 found experts 19 percent
@@ -231,8 +249,9 @@ E. Do not do (evidence says skip): asking the agent to add tests mid-fix (test v
 - Workflow scripts: `agent(prompt, {model: "claude-opus-4-8[1m]", effort: "xhigh", label})`.
   `Date.now()` throws inside scripts. Worker reports over ~4000 characters get truncated in
   transit; ask for the rest in chunks under 3500 characters, or use a schema.
-- Verification before every commit: `python3 -m pytest -q bin/tests`, `uvx pytest -q bin/tests`
-  (catches the ruff-on-PATH case), `bin/verify-template.sh`, `bin/harness-smoke.sh`.
+- Verification before every commit: `uvx pytest -q bin/tests` (system python3 has no pytest; uvx
+  also catches the ruff-on-PATH case), `bin/verify-template.sh`, `bin/harness-smoke.sh`. Each of
+  the first two takes about five minutes; run them in the background.
 
 ## Sessions
 
@@ -241,6 +260,8 @@ verifier worker), read the diff yourself, fix what the verifier flags, run the f
 on the branch, append to the Execution log, stop.
 
 ### Session 2: prompts to Fable 5.1 (plugin edits, direct to main allowed; seed edit needs branch `fix/audit-s2-prompts`)
+
+Also do every item tagged "session 2" in the Gap review and Research additions sections above. If the combined scope exceeds one workflow run, split into 2a and 2b on the same branch and log both.
 
 Files and exact changes:
 
@@ -317,6 +338,8 @@ Verify: `grep -rn "Fable 5[^.]" cultivation/marketplace/sam-cc-setup | grep -v "
 
 ### Session 3: review consolidation (plugin, direct; weight gate rebaseline touches bin, branch `fix/audit-s3-reviews`)
 
+Also do every item tagged "session 3" in the Gap review and Research additions sections above. If the combined scope exceeds one workflow run, split into 3a and 3b on the same branch and log both.
+
 1. Delete `cultivation/marketplace/sam-cc-setup/skills/critique-swarm/` and every reference to it (grep -rni critique-swarm across the repo, including README, UPGRADING.md, ship, auto-phase, session-critique, docs). Update skill counts in `UPGRADING.md` (count by `find -name SKILL.md`).
 2. `cultivation/marketplace/sam-cc-setup/workflows/plan-review-fanout.js`: add `model: "claude-opus-4-8[1m]"` to every agent call (lines 162-199 and the verify/converge calls); change the verifier fan-out to run only for BLOCK findings, not HIGH.
 3. `skills/auto-phase/SKILL.md` steps 2c-2d: run session-critique once at the end of the plan, or per stage only when the stage touched `seed/`, hooks, or `copier.yml`.
@@ -328,6 +351,8 @@ Verify: `grep -rn "Fable 5[^.]" cultivation/marketplace/sam-cc-setup | grep -v "
 Verify: `python3 bin/skill_listing_weight.py` prints the new total; four checks green.
 
 ### Session 4: new hooks (branch `fix/audit-s4-hooks`)
+
+Also do every item tagged "session 4" in the Gap review and Research additions sections above. If the combined scope exceeds one workflow run, split into 4a and 4b on the same branch and log both.
 
 All under `seed/.claude/hooks/`, each wired in `seed/.claude/settings.json`, each added to `CLAUDE_HOOK_ROUTES` in `bin/rendered_harness_contract.py` and covered by a test in `bin/tests/test_seed_claude_hooks.py`.
 
@@ -342,6 +367,8 @@ Verify: run each hook with a synthetic stdin envelope and show output; four chec
 
 ### Session 5: repair sync and promote inventions (branch `fix/audit-s5-sync`)
 
+Also do every item tagged "session 5" in the Gap review and Research additions sections above. If the combined scope exceeds one workflow run, split into 5a and 5b on the same branch and log both.
+
 1. `seed/.agents/skills/catchup/SKILL.md`: add a gather step that reads `.copier-answers.yml` `_commit`, runs `git ls-remote --tags gh:samyakjhaveri/loam` (or reads `VERSION` when offline), and prints a red flag when `_commit` is not the latest tag or not a tag at all.
 2. `copier.yml`: add question `project_kind` (choices: python, typescript, research, mixed, other). Gate `pyproject.toml.jinja` and the `pyright-lsp` plugin line on python or research or mixed. Update `bin/rendered_harness_contract.py` and tests for both branches.
 3. Parity bill of materials: copy `~/Desktop/distbench/agent-parity.toml` and `~/Desktop/distbench/scripts/agent_parity/parity.py` (plus `adapters/`) into `bin/agent_parity/`. Read them first and strip distbench-specific entries. Author `seed/agent-parity.toml` listing every seed skill, agent, and hook with a Codex mirror or `unsupported: reason`. Wire `python3 bin/agent_parity/parity.py check` as verify-template stage 9.
@@ -353,6 +380,8 @@ Verify: run each hook with a synthetic stdin envelope and show output; four chec
 Verify: `python3 bin/agent_parity/parity.py check` green; four checks green; attach test output pasted.
 
 ### Session 6: research and autonomy layer (branch `fix/audit-s6-research`)
+
+Also do every item tagged "session 6" in the Gap review and Research additions sections above. If the combined scope exceeds one workflow run, split into 6a and 6b on the same branch and log both.
 
 1. Experiment contract. Template `seed/experiments/README.md` (starts empty, explains the contract) and `cultivation/marketplace/research-lane/templates/CONTRACT.md` with fields: question, done-when (a shell command that exits 0), budget (turns, dollars, hours), seeds, protocol hash. Hook `seed/.claude/hooks/experiment-contract-gate.sh`: Stop hook that, when `experiments/*/CONTRACT.md` exists and `EXPERIMENT_ACTIVE=<name>` is set, runs the done-when command and blocks turn end on non-zero with the command output. Commit gate: refuse `git commit` that stages `results/*.jsonl` without a sibling `manifest.json` carrying seed, git SHA, hostname, GPU, container digest, command line. Dry run: a contract with done-when `test -f results/demo.jsonl` must end a `/goal` loop by itself within 5 turns.
 2. Research bundle `cultivation/marketplace/research-lane/`: move the six templates from `cultivation/wip/research-assets/seed-docs/` (they render EMPTY, one heading and one sentence each), and vendor the skills `rigor`, `experiment-loop`, `hypothesis-tree`, `research-writing`, `ml-paper-writing` from `~/.claude/skills/` after `bin/vet-skill.sh` passes on each. Add `cite-resolve` hook: PreToolUse on Edit|Write of `*.bib`/`*.tex`, a new cite key must exist in `refs/resolved.json`; ship `bin/cite-resolve.sh` wrapping a DOI or arXiv lookup (CrossRef or arXiv API, no model). Add a `.claude/loop.md` template: "Continue the current experiment sweep. Run the next unrun configuration in protocol.md, append the result row, commit. If every configuration has a row, say 'sweep complete' and stop."
@@ -380,6 +409,13 @@ After session 6, the harness-evals idea (skill-creator benchmark on 8 to 12 real
   Open follow-ups: two agents still use the bare `model: sonnet` alias by design; the
   test-synthesizer sample validator only accepts short aliases; stop-verify-gate still probes
   ruff with `--version` (unify with the ruff-after-edit pattern in session 4).
+  Codex round 1 (gpt-5.6-sol, high, read-only): FIX FIRST with three High on the stop gate and
+  one Medium on the sample validator; all four applied in a second commit: unborn branch is
+  gated against git's empty tree instead of skipped; files mutated through Bash commands that
+  name a dirty path count as session edits; `git diff --check` is scoped to the session set;
+  the sample validator accepts pinned `claude-*` ids. Transcript in
+  `.claude/codex-reviews/2026-09-03-fix-audit-s1-stop-the-bleeding.md` (gitignored). Round cap
+  reached; no second round.
   NEXT SESSION: if `main` does not yet contain this branch, create the session 2 branch FROM
   `fix/audit-s1-stop-the-bleeding` (stacked), or fast-forward main first if Samyak has approved
   the merge. Never rebase or force-push.

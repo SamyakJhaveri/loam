@@ -197,11 +197,61 @@ class StopVerifyGateTests(HookFixtureCase):
         )
         self.assertEqual(0, result.returncode, result.stderr)
 
-    def test_repo_with_no_commits_passes(self) -> None:
+    def test_repo_with_no_commits_is_gated_against_empty_tree(self) -> None:
         # setUp runs `git init` but never commits, so the repo has no HEAD.
-        # There is nothing to diff against, so the gate must pass, not block.
-        (self.repo / "bad.py").write_text("import os\n", encoding="utf-8")
-        result = self.run_hook(self.SCRIPT, {})
+        # The gate diffs against git's empty tree: a clean file passes, a
+        # broken one still blocks, and git's own "ambiguous HEAD" error never
+        # leaks into the findings.
+        (self.repo / "fine.sh").write_text("echo ok\n", encoding="utf-8")
+        passed = self.run_hook(self.SCRIPT, {})
+        self.assertEqual(0, passed.returncode, passed.stderr)
+        self.assertNotIn("ambiguous", passed.stderr)
+
+        (self.repo / "bad.sh").write_text("if [ 1 ]; then\n", encoding="utf-8")
+        blocked = self.run_hook(self.SCRIPT, {})
+        self.assertEqual(2, blocked.returncode, blocked.stderr)
+        self.assertIn("[bash -n]", blocked.stderr)
+        self.assertNotIn("ambiguous", blocked.stderr)
+
+    def test_bash_mutated_file_counts_as_session_edit(self) -> None:
+        # The transcript has no Edit for b.sh, only a Bash command naming it.
+        # A file written through the shell must still be gated.
+        self.commit_file("ok.py", "print('ok')\n")
+        b = self.repo / "b.sh"
+        b.write_text("if [ 1 ]; then\n", encoding="utf-8")
+        transcript = pathlib.Path(self.temp_dir.name) / "bash.jsonl"
+        transcript.write_text(
+            json.dumps(
+                {
+                    "type": "assistant",
+                    "message": {
+                        "content": [
+                            {
+                                "type": "tool_use",
+                                "name": "Bash",
+                                "input": {"command": "printf 'x' > b.sh"},
+                            }
+                        ]
+                    },
+                }
+            )
+            + "\n",
+            encoding="utf-8",
+        )
+        result = self.run_hook(self.SCRIPT, {"transcript_path": str(transcript)})
+        self.assertEqual(2, result.returncode, result.stderr)
+        self.assertIn("[bash -n]", result.stderr)
+
+    def test_whitespace_error_in_untouched_file_does_not_block(self) -> None:
+        # git diff --check is scoped to the session's files, so trailing
+        # whitespace in an untouched dirty file is not this session's problem.
+        self.commit_file("other.txt", "clean\n")
+        self.commit_file("mine.sh", "echo ok\n")
+        (self.repo / "other.txt").write_text("trailing \n", encoding="utf-8")
+        mine = self.repo / "mine.sh"
+        mine.write_text("echo still ok\n", encoding="utf-8")
+        transcript = self._transcript_editing(mine)
+        result = self.run_hook(self.SCRIPT, {"transcript_path": str(transcript)})
         self.assertEqual(0, result.returncode, result.stderr)
 
     def _transcript_editing(self, *paths: pathlib.Path) -> pathlib.Path:
