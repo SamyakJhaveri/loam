@@ -12,7 +12,7 @@
 2. Removed `Bash(sed:*)` from the seed allowlist (`sed -i` bypassed edit hooks).
 3. Replaced the fake `auto-activate` field with `disable-model-invocation` and
    added a verify-template stage-6 check so it cannot return.
-4. Fixed the stop gate's silent ruff skip on uv/brew installs.
+4. Fixed the stop gate's silent ruff skip on uv/brew installs. (The same skip in ruff-after-edit.sh was fixed in the 2026-09-03 audit session 1.)
 5. Guarded `vet-skill.sh --out` against wiping a non-empty directory.
 6. Built the rig: `bin/harness-smoke.sh` (render + contract + Score B, plus a
    `--live` hook-dispatch proof) and `bin/skill_listing_weight.py`, wired as
@@ -61,7 +61,9 @@ also breaks the `/slash` command on some Claude Code versions (issues #26251,
 #38969). Before applying: verify on the current Claude Code version whether the
 field breaks manual `/ship` invocation. If it does not, apply it (saves ~500
 listing tokens and blocks auto-fire). If it does, leave the descriptions as they
-are (routing is already 7/7).
+are (routing is already 7/7). Audit 2026-09-02: claude 2.1.258 fixed the
+blocking bug in v2.1.110; issue #83369 still reports the Skill tool rejecting a
+plugin command that carries the field, so test on ship alone first.
 
 ### 3. align-prompt auto-wiring (a standing request, still open)
 Samyak asked twice (rebuild-session-brief.md:46, rebuild-ledger.md:15) to wire
@@ -91,7 +93,7 @@ load-bearing for the D2 grow-skills decision.
 1. `bin/verify-template.sh` must print `verify-template: PASSED` (8 stages).
 2. `bin/harness-smoke.sh` (fast lane) or `bin/harness-smoke.sh --live` (proves
    hooks dispatch in a real headless session).
-3. Routing eval: `Workflow({scriptPath: "bin/harness-routing-eval.workflow.js"})`
+3. Routing eval: the workflow script was not committed; re-create it from the plan-review-fanout pattern if needed.
    (needs explicit opt-in; Opus workers + Fable judge).
 
 ## Model and process rules for this repo

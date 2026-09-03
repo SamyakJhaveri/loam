@@ -19,7 +19,18 @@ except (json.JSONDecodeError, OSError):
 ' 2>/dev/null)" || FILE=""
 
 case "$FILE" in
-    *.py) python3 -m ruff check --fix -- "$FILE" >/dev/null 2>&1 || true ;;
+    *.py)
+        # uv/brew installs ship ruff as a PATH binary, not an importable module,
+        # so probe the module first and fall back to the binary before giving up.
+        # Run the module form first; only a missing module (not a ruff error)
+        # triggers the PATH-binary fallback, so a failing ruff never masks itself.
+        ERR=$(python3 -m ruff check --fix -- "$FILE" 2>&1 >/dev/null) && exit 0
+        case "$ERR" in
+            *"No module named ruff"*)
+                command -v ruff >/dev/null 2>&1 && ruff check --fix -- "$FILE" >/dev/null 2>&1
+                ;;
+        esac
+        ;;
 esac
 
 exit 0

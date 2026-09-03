@@ -2,7 +2,8 @@
 name: test-synthesizer
 description: "Writes temporary test scripts for changed code, compiles/runs them, and reports results. Tests Python module imports, spec JSON validity via harness, and shell script syntax. All temp files created in /tmp/ and cleaned up after. Use in post-session validation Wave 2. Returns structured PASS/FAIL. Reports every finding, most severe first."
 tools: Bash, Read, Glob, Grep
-model: sonnet
+model: claude-opus-4-8[1m]
+effort: xhigh
 maxTurns: 20
 ---
 
@@ -125,8 +126,10 @@ def check_agent(path):
     missing = [k for k in required if k not in fm]
     if missing:
         return False, f"Missing fields: {missing}"
-    valid_models = ['sonnet', 'opus', 'haiku']
-    if fm.get('model') not in valid_models:
+    # never haiku (project rule)
+    valid_models = ['sonnet', 'opus']
+    model = str(fm.get('model', ''))
+    if model not in valid_models and not model.startswith('claude-'):
         return False, f"Invalid model: {fm.get('model')}"
     return True, "OK"
 ```

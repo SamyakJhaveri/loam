@@ -1,11 +1,9 @@
 {
-  "model": "claude-opus-4-8[1m]",
   "enabledPlugins": {
     "pyright-lsp@claude-plugins-official": true
   },
   "permissions": {
     "allow": [
-      "Bash(cat:*)",
       "Bash(ls:*)",
       "Bash(grep:*)",
       "Bash(head:*)",
@@ -13,7 +11,6 @@
       "Bash(git status:*)",
       "Bash(git log:*)",
       "Bash(git diff:*)",
-      "Bash(echo:*)",
       "Bash(wc:*)",
       "Bash(mkdir:*)"
     ],
@@ -26,6 +23,8 @@
       "Edit(.env*)"
     ],
     "ask": [
+      "Bash(cat:*)",
+      "Bash(echo:*)",
       "Bash(git push:*)"
     ]
   },
@@ -58,7 +57,8 @@
         "hooks": [
           {
             "type": "command",
-            "command": ".claude/hooks/ruff-after-edit.sh"
+            "command": ".claude/hooks/ruff-after-edit.sh",
+            "timeout": 10
           }
         ]
       }

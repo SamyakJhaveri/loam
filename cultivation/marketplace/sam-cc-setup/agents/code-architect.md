@@ -2,8 +2,8 @@
 name: code-architect
 description: "Review-only architecture reviewer (does NOT edit source). Assesses module boundaries, coupling, seams, and testability against this repo's DOMAIN.md and docs/adr/ before a large change, then recommends a target structure. Reports every finding, most severe first. Distinct from the feature-dev:code-architect PLUGIN agent, which writes implementation blueprints — this one only reviews."
 tools: Bash, Read, Glob, Grep
-model: opus
-effort: high
+model: claude-opus-4-8[1m]
+effort: xhigh
 maxTurns: 20
 ---
 
