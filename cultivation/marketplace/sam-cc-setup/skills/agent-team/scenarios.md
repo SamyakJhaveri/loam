@@ -4,7 +4,7 @@ Use with `/agent-team --scenario <name>`.
 A scenario skips Phase 2 (team design) and supplies a pre-filled team configuration.
 It still requires user approval before launching.
 
-Every teammate below runs Opus; the Effort column is the dial.
+Every teammate below runs Opus 4.8 (`claude-opus-4-8[1m]`); the Effort column is the dial.
 
 ---
 
@@ -17,7 +17,7 @@ Every teammate below runs Opus; the Effort column is the dial.
 | Teammate    | Effort | Role | Scope |
 |-------------|--------|------|-------|
 | planner     | xhigh  | Plan and coordinate | Target files plus their dependencies |
-| implementer | high   | Code changes | Target files only |
+| implementer | xhigh  | Code changes | Target files only |
 | critic      | xhigh  | Quality gate | All teammate outputs (read-only) |
 
 **planner:** produces the implementation plan and gets user approval before the implementer starts.
@@ -56,8 +56,8 @@ This is the scenario to escalate to for genuinely ambiguous bugs, after a single
 
 | Teammate        | Effort | Role | Scope |
 |-----------------|--------|------|-------|
-| codebase-reader | high   | Code structure documenter | Source tree, tests, configs |
-| doc-drafter     | high   | Documentation writer | Docs directory, README, guides |
+| codebase-reader | xhigh  | Code structure documenter | Source tree, tests, configs |
+| doc-drafter     | xhigh  | Documentation writer | Docs directory, README, guides |
 | critic          | xhigh  | Accuracy reviewer | All teammate outputs (read-only) |
 
 **codebase-reader:** explores the code structure and extracts key patterns, public APIs, and architecture decisions. Delegates bulk reads to mechanical Explore subagents.
@@ -75,8 +75,8 @@ Each analyst specializes in one area; a comparator synthesizes.
 
 | Teammate   | Effort | Role | Scope |
 |------------|--------|------|-------|
-| analyst-1  | high   | System A analyst | `<system-a-path>/` |
-| analyst-2  | high   | System B analyst | `<system-b-path>/` |
+| analyst-1  | xhigh  | System A analyst | `<system-a-path>/` |
+| analyst-2  | xhigh  | System B analyst | `<system-b-path>/` |
 | comparator | xhigh  | Cross-system comparator | Analyst summaries only, no raw file reads |
 
 **Per analyst:** delegate bulk reads to a mechanical Explore subagent. Extract the key metrics, patterns, and configurations, and summarize in a structured format.

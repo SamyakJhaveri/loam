@@ -127,9 +127,9 @@ def check_agent(path):
     if missing:
         return False, f"Missing fields: {missing}"
     # never haiku or sonnet (project rule)
-    valid_models = ['opus']
+    valid_models = ['opus', 'fable']
     model = str(fm.get('model', ''))
-    if model not in valid_models and not model.startswith('claude-'):
+    if model not in valid_models and not model.startswith('claude-opus-') and not model.startswith('claude-fable-'):
         return False, f"Invalid model: {fm.get('model')}"
     return True, "OK"
 ```
