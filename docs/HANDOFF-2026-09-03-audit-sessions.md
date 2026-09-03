@@ -1,30 +1,106 @@
 # Handoff: Loam audit execution, sessions 2 to 6
 
 > Written 2026-09-03 by the Fable 5.1 audit session for a fresh session with no context.
-> Lead model for the next sessions: Claude Fable 5. Workers: Claude Opus 4.8 at xhigh effort, never Fable, never Haiku, Sonnet only for mechanical reads.
-> Run each session as a dynamic workflow (the Workflow tool) with the lead deciding between phases.
+> Lead for the next sessions: Claude Fable 5.1 (`claude-fable-5-1`). Samyak selected 5.1 on 2026-09-03.
+> Run any Fable model at `medium` or `high` effort only, never `xhigh` or `max` (Samyak's cap). The lead runs at `high`.
+> The lead decides, commissions the work, coordinates the agents, assesses their output, and gives feedback; it does not write the code.
+> Workers: Claude Opus 4.8 (`claude-opus-4-8[1m]`) at xhigh effort. Never Fable workers, never Haiku, Sonnet only for mechanical reads.
+> Run each session as an advisor-mode agent team or a dynamic workflow; the lead picks the shape. See "Operating model" below.
+> A fresh Fable 5.1 session reviews the work at the end of each session. See "End-of-session review".
 > Samyak sleeps while this runs. Do not ask him questions that the files below already answer.
 
 ## Session-start prompt (paste this into the fresh session)
 
 ```text
-Read docs/HANDOFF-2026-09-03-audit-sessions.md and run the next unfinished session in its
-"Sessions" list, then stop. You are the Fable 5 lead. Workers are Opus 4.8 at xhigh via the
-Workflow tool (model "claude-opus-4-8[1m]", effort "xhigh"); never spawn Fable subagents.
-Seed behavior, hooks, and copier.yml go on a branch named in the session; docs go direct to main.
-bin/verify-template.sh must print "verify-template: PASSED" and uvx pytest -q bin/tests must
-be green before you commit (system python3 has no pytest; uvx does). Commit on the branch; do not push and do not open a PR.
+You are the Claude Fable 5.1 lead for the Loam harness audit. Read
+docs/HANDOFF-2026-09-03-audit-sessions.md in full, then run the next unfinished session in its
+"Sessions" list and stop. Read "Operating model" first; it defines your loop.
+Run yourself at `high` effort, never above (Samyak's cap on Fable); Opus 4.8 workers run at `xhigh`.
+Orchestrate with dynamic workflows and the ultracode quality patterns. In auto mode, set `/goal`
+to this session's Goal line.
+You decide, commission, coordinate, assess, and give feedback. You do not write the file edits.
+Opus 4.8 workers (model "claude-opus-4-8[1m]", effort "xhigh") do the edits, spawned as an
+advisor-mode agent team or a dynamic workflow, your choice per the Operating model. Never spawn
+Fable workers. A worker cannot read your thinking blocks, so every brief must stand on its own.
+Assess each worker's diff on four axes (correctness, Samyak's intent, taste, thoroughness) and
+send it back with specific feedback when it falls short; cap at two feedback rounds per worker.
+Seed behavior, hooks, and copier.yml go on the branch named in the session; docs go direct to main.
+Before you commit, bin/verify-template.sh must print "verify-template: PASSED" and
+uvx pytest -q bin/tests must be green (system python3 has no pytest; uvx does). You commit on the
+branch; workers never commit; do not push and do not open a PR.
 Each session block also owns the items tagged for it in the Gap review and Research additions
-sections. Update the "Execution log" at the bottom of the handoff when you finish. Please
-remove all mannered prose.
+sections. Update the "Execution log" at the bottom of the handoff when you finish, then stop so the
+End-of-session review can run in a fresh context. Please remove all mannered prose.
 ```
+
+## Operating model: Fable 5.1 leads, Opus 4.8 executes
+
+The lead for every remaining session is Claude Fable 5.1 (`claude-fable-5-1`).
+Samyak selected 5.1 on 2026-09-03, replacing the earlier "run on Fable 5" note.
+The lead does not write the code.
+It reads intent, resolves open design choices, commissions the work, coordinates the workers, judges what they produce, sends it back for improvement, then verifies and commits.
+Opus 4.8 workers (`claude-opus-4-8[1m]`, effort `xhigh`) do the file edits.
+
+Effort split, per Samyak's cap on Fable models:
+
+- The Fable 5.1 lead runs at `high` effort and never above. For any Fable model use `medium` or `high` only; `xhigh` and `max` are off-limits for Fable. `high` is also the guide's own default and it avoids the xhigh double-draft, so the cap costs nothing here.
+- The Opus 4.8 workers run at `xhigh`. Dial a worker to `high` only when its whole job is writing one long file.
+- "Ultracode" here means the orchestration and quality discipline, not a Fable effort bump. The lead orchestrates with a dynamic workflow for every substantive step and spends tokens on exhaustive, verified quality; token cost is not the constraint, correctness and taste are. The `xhigh` in ultracode belongs to the Opus workers, not the Fable lead.
+
+Pick one execution shape per session:
+
+1. Advisor-mode agent team. Use the `agent-team` skill with Fable 5.1 as the advisor and Opus 4.8 teammates. Best when the work needs live cross-talk between workers or the plan may change as they report.
+2. Dynamic workflow. Use the Workflow tool: fan workers out over disjoint files, then a verifier stage. Best for a fixed fan-out-then-verify shape. It is deterministic, resumable, and keeps worker transcripts out of the lead's context. This is the default for an unattended overnight run.
+
+Under ultracode, build the workflow for quality, not just speed:
+
+- Adversarially verify each worker edit. Add a checker stage whose job is to prove the edit wrong or incomplete against the item it was given, not to rubber-stamp it.
+- Run a completeness critic at the end. One agent asks what session item is unaddressed, what report recommendation is uncovered, and what check was not run; its answer is the next round of work.
+- Never cap coverage silently. If you bound something (top-N, no retry, sampling), `log()` what you dropped so it does not read as full coverage.
+
+Either shape, the lead runs this loop:
+
+1. Frame. Read the session block plus every Gap review and Research addition item tagged to it. Resolve an open design choice from the repo. Samyak is asleep, so do not ask him a question the handoff already answers; record a genuine blocker in the Execution log and keep going on everything not blocked.
+2. Commission. Write a self-contained brief per worker. An Opus 4.8 worker cannot read your Fable 5.1 thinking blocks, so the brief must stand alone: the exact files, the exact changes, the scope boundary, the forbidden actions, and the command the worker must run to check its own work. Ask for the result as data, not prose.
+3. Coordinate. Keep working while workers run; do not idle waiting for each one (Fable 5.1 guide, "let the lead keep working"). Workers edit disjoint files, so one checkout is safe.
+4. Assess. When a worker reports, read the actual diff, not just its summary. Judge the work on four axes:
+   - Correctness and software-engineering best practice. It works, it is the right layer, it follows the repo's patterns, and the worker ran and pasted the check.
+   - Samyak's intent and the stated scope. It delivers exactly what the session asked, no less and no more.
+   - Taste. Minimal diff, no over-engineering, no abstraction the task did not need, reads like the surrounding code.
+   - Thoroughness. The whole item, the edge cases, the verification actually run.
+5. Iterate. Where the work falls short on any axis, send specific, actionable feedback that names the axis and the fix, and have the worker redo that part. Cap at two feedback rounds per worker; if it still will not converge, do the edit yourself or re-scope it and log why.
+6. Verify and commit. Run the four checks. You commit; workers never commit. Append to the Execution log and stop.
+
+Do not paste the autonomy block or the tool-batching nudge into a worker brief.
+Claude Code injects both as turn-scoped system messages, so a second copy is paid input for no change (Fable 5.1 guide; verified in the audit).
+
+## Running a session under `/goal`
+
+Each session has a checkable end state, so the lead runs it under `/goal` (Claude Code docs, `code.claude.com/docs/en/goal`).
+`/goal <condition>` sets a completion condition and Claude keeps taking turns until a small fast model judges the condition met, judges it impossible, or an unrecoverable error clears it.
+Setting the goal starts a turn at once, so no separate prompt is needed.
+Each session block below carries its own `Goal:` line; the lead pastes that line as the `/goal` condition when it starts the session.
+
+How to write and run it, from the docs:
+
+1. The evaluator reads only the transcript. It never runs commands or reads files. So the condition must be provable by output the lead has already printed. Print the check; do not describe it.
+2. A good condition names one measurable end state, the stated check that proves it (for example "`bin/verify-template.sh` printed verify-template: PASSED"), and the constraint that must not change ("no file outside this session's items is modified").
+3. Always add a turn cap, "or stop after N turns", so a stuck loop returns control. The condition may be up to 4000 characters.
+4. Run the session in auto mode so goal turns proceed unattended; in manual mode Claude still stops for any tool call the settings do not already allow.
+5. `/goal` needs hooks. It is unavailable when `disableAllHooks` is true or `allowManagedHooksOnly` is set, and it tells you so rather than failing silently; never set either in the session.
+
+How `/goal` composes with the workers and with ultracode:
+
+- Workers are background work. While a subagent or a dynamic workflow is still running, Claude Code defers the goal evaluation to the end of the next turn with no background work running. So the evaluator never grades a half-finished session; it waits for the workers, then reads the diff and the checks in the transcript. This is the behavior we want.
+- If the lead answers the evaluator several turns in a row with no tool use, Claude Code pauses the loop and returns control. That pause is the signal to commission the next worker, not to argue with the evaluator.
+- `/goal` (when to stop) and ultracode (how to orchestrate and verify) are orthogonal, so a session runs under both at once.
 
 ## Objective and aim
 
 Loam is the Copier template that ships Samyak's Claude Code and Codex harness into every project.
 The aim: every project seeded from Loam gives him a research partner that can think, brainstorm,
 code, test, and run experiments unattended until a written "done" check passes, with time and
-token efficiency, using Fable 5.x as lead and Opus 4.8 as workers.
+token efficiency, using Fable 5.1 as lead and Opus 4.8 as workers.
 
 The 2026-09-02 audit (14 Opus workers, Fable 5.1 lead) found:
 
@@ -45,7 +121,7 @@ https://claude.ai/code/artifact/fc407a45-857b-4186-8b93-6975bf06cbcb
 - Keep three layers; repair forward sync. Archive distbench; promote its inventions.
 - Promote first: parity bill of materials, validate-sentinel hook trio, experiment scaffolding
   that starts empty (never pre-filled stubs).
-- Workers at xhigh everywhere. Lead is Fable 5 (or 5.1 when he says so).
+- Workers at xhigh everywhere. Lead is Fable 5.1 (Samyak selected 5.1 on 2026-09-03).
 - The stop gate BLOCKS a final message that claims verification without command output.
 - Killed for good: a knowledge graph of claims, more review skills, any always-on MCP server.
 - Seed settings.json carries NO model key; the user's global default decides (session 1).
@@ -63,8 +139,8 @@ https://claude.ai/code/artifact/fc407a45-857b-4186-8b93-6975bf06cbcb
   Codex every skill, hook, and agent with a mirror or an explicit unsupported reason.
 - Fable 5.1 doubled Fable 5 on Terminal-Bench-Science. For research work inside seeded projects,
   the lead for hypothesis design, experiment analysis, chart reading, and paper reasoning is
-  Fable 5.1. Opus 4.8 executes. The harness sessions in this handoff still run on Fable 5 as he
-  asked. Ship this split as prose in the research-lane README, not as a model pin.
+  Fable 5.1. Opus 4.8 executes. The harness sessions in this handoff now run on Fable 5.1 as lead
+  (Samyak's 2026-09-03 selection). Ship this split as prose in the research-lane README, not as a model pin.
 - Everything below is IN ADDITION to sessions 2 to 6. Nothing replaces carved-out work.
 
 ## Gap review (lead's own re-read of the three requests, 2026-09-03)
@@ -107,7 +183,10 @@ These were asked for and were missing from the first draft. Each names the sessi
    run_in_background, ScheduleWakeup, or tmux-and-wait inside a headless task).
 8. Global config pass (user-gated, after session 6). `~/.claude/CLAUDE.md` and
    `~/.claude/FABLE-BRAIN.md` carry anti-formatting language the 5.1 guide says to remove, and
-   the memory index treats Opus 4.8 as the frontier. Propose a diff; Samyak applies it.
+   the memory index treats Opus 4.8 as the frontier. Also propose the D1 declarative model split:
+   set `ANTHROPIC_DEFAULT_MODEL` and `CLAUDE_CODE_SUBAGENT_MODEL_FORCE` in `~/.claude/settings.json`
+   so the Fable-5.1-lead and Opus-4.8-worker split is config, not prose (Samyak decides which model
+   is his global default). Propose a diff; Samyak applies it.
 
 ## Research additions (three Opus researchers, 2026-09-03; additive, each names its session)
 
@@ -236,14 +315,30 @@ E. Do not do (evidence says skip): asking the agent to add tests mid-fix (test v
 
 - Fable 5.1 prompting guide (fetch it, do not recite):
   https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/prompting-claude-fable-5-1
-  Key deltas vs Fable 5: fewer progress updates; may issue one tool call per turn in coding loops;
-  denser prose; less formatting; may end early or ask permission; over-delivers extras and tests;
-  rewrites whole files; at xhigh/max drafts long deliverables twice. Claude Code already injects
-  the autonomy block and the batching nudge, so never duplicate those in CLAUDE.md.
+  The lead is now Fable 5.1, so these deltas describe the lead's own behavior, not just the workers'.
+  Key deltas vs Fable 5: fewer user-facing progress updates; may issue one tool call per turn in
+  coding loops; denser prose (the "mannered prose" line is the fix); less chat formatting; may end
+  a turn early or ask permission on long async work; over-delivers extras and tests; rewrites whole
+  files for small edits; at xhigh/max can draft a long deliverable twice. Claude Code already
+  injects the autonomy block and the batching nudge, so never duplicate those in a CLAUDE.md or a
+  worker brief.
 - Opus 4.8 workers are literal: spell out scope, front-load the whole task in one prompt, never
-  write "only report high-severity" (they drop real findings), name when to fan out.
+  write "only report high-severity" (they drop real findings), name when to fan out. A worker
+  cannot read the lead's thinking blocks, so every brief must be self-contained.
 - Worker prompts must forbid: git commit/add/checkout/stash, whole-file rewrites, edits outside
   the named files, em dashes. Workers never commit; the lead commits.
+- Paste these guide guards into a worker brief when they apply (the guide's own wording):
+  - Editing: "The number of tokens used to edit files is best minimized, all else being equal.
+    Therefore, when it will not affect the end result, try to surgically edit a file rather than
+    rewrite the entire thing."
+  - Extras: "If, while working or testing, you find a pre-existing bug, a performance concern, or
+    behavior the task doesn't mention, don't fix, optimize or extend it in this change unless the
+    requested behavior cannot work without it; report it as a follow-up in your summary. Commit
+    tests only where the task asks for them or this repository already keeps tests for this kind of
+    change. This is about extras only: implement every behavior the task asks for, completely."
+  - Prose: "Please remove all mannered prose."
+  - Evidence: a sentence claiming something passes, builds, or was re-checked must be preceded in
+    the same turn by the command and its output; else write "not verified" and name the command.
 - Parallel workers may edit disjoint files in one checkout; the concurrent-checkout-guard only
   fires on git index writes.
 - Workflow scripts: `agent(prompt, {model: "claude-opus-4-8[1m]", effort: "xhigh", label})`.
@@ -262,6 +357,8 @@ on the branch, append to the Execution log, stop.
 ### Session 2: prompts to Fable 5.1 (plugin edits, direct to main allowed; seed edit needs branch `fix/audit-s2-prompts`)
 
 Also do every item tagged "session 2" in the Gap review and Research additions sections above. If the combined scope exceeds one workflow run, split into 2a and 2b on the same branch and log both.
+
+Goal (paste as the `/goal` condition, run in auto mode): every item tagged for session 2 is implemented, the plugin edits are committed to main and the seed `AGENTS.md.jinja` edit is committed on `fix/audit-s2-prompts`, and this session's transcript shows `uvx pytest -q bin/tests` printed 0 failed, `bin/verify-template.sh` printed "verify-template: PASSED", `bin/harness-smoke.sh` printed PASS, and the session 2 Verify grep returned only historical citations. No file outside the session 2 items is changed; do not push or open a PR. Or stop after 30 turns and say what is left.
 
 Files and exact changes:
 
@@ -340,6 +437,8 @@ Verify: `grep -rn "Fable 5[^.]" cultivation/marketplace/sam-cc-setup | grep -v "
 
 Also do every item tagged "session 3" in the Gap review and Research additions sections above. If the combined scope exceeds one workflow run, split into 3a and 3b on the same branch and log both.
 
+Goal (paste as the `/goal` condition, run in auto mode): every item tagged for session 3 is implemented and committed (plugin edits direct to main where allowed, the weight-gate rebaseline on `fix/audit-s3-reviews`), and this session's transcript shows `python3 bin/skill_listing_weight.py` printed the new rebaselined total, `grep -rni critique-swarm` returned nothing, `uvx pytest -q bin/tests` printed 0 failed, `bin/verify-template.sh` printed "verify-template: PASSED", and `bin/harness-smoke.sh` printed PASS. No file outside the session 3 items is changed; do not push or open a PR. Or stop after 30 turns and say what is left.
+
 1. Delete `cultivation/marketplace/sam-cc-setup/skills/critique-swarm/` and every reference to it (grep -rni critique-swarm across the repo, including README, UPGRADING.md, ship, auto-phase, session-critique, docs). Update skill counts in `UPGRADING.md` (count by `find -name SKILL.md`).
 2. `cultivation/marketplace/sam-cc-setup/workflows/plan-review-fanout.js`: add `model: "claude-opus-4-8[1m]"` to every agent call (lines 162-199 and the verify/converge calls); change the verifier fan-out to run only for BLOCK findings, not HIGH.
 3. `skills/auto-phase/SKILL.md` steps 2c-2d: run session-critique once at the end of the plan, or per stage only when the stage touched `seed/`, hooks, or `copier.yml`.
@@ -353,6 +452,8 @@ Verify: `python3 bin/skill_listing_weight.py` prints the new total; four checks 
 ### Session 4: new hooks (branch `fix/audit-s4-hooks`)
 
 Also do every item tagged "session 4" in the Gap review and Research additions sections above. If the combined scope exceeds one workflow run, split into 4a and 4b on the same branch and log both.
+
+Goal (paste as the `/goal` condition, run in auto mode): every item tagged for session 4 is implemented and committed on `fix/audit-s4-hooks`, each new hook is wired in `seed/.claude/settings.json`, added to `CLAUDE_HOOK_ROUTES` in the contract, and covered by a test, and this session's transcript shows each new hook run against a synthetic stdin envelope with the expected output, `uvx pytest -q bin/tests` printed 0 failed, `bin/verify-template.sh` printed "verify-template: PASSED", and `bin/harness-smoke.sh` printed PASS. No file outside the session 4 items is changed; do not push or open a PR. Or stop after 30 turns and say what is left.
 
 All under `seed/.claude/hooks/`, each wired in `seed/.claude/settings.json`, each added to `CLAUDE_HOOK_ROUTES` in `bin/rendered_harness_contract.py` and covered by a test in `bin/tests/test_seed_claude_hooks.py`.
 
@@ -369,6 +470,8 @@ Verify: run each hook with a synthetic stdin envelope and show output; four chec
 
 Also do every item tagged "session 5" in the Gap review and Research additions sections above. If the combined scope exceeds one workflow run, split into 5a and 5b on the same branch and log both.
 
+Goal (paste as the `/goal` condition, run in auto mode): every item tagged for session 5 is implemented and committed on `fix/audit-s5-sync`, distbench itself is not edited, and this session's transcript shows `python3 bin/agent_parity/parity.py check` printed green, the attach-mode test output is pasted, `uvx pytest -q bin/tests` printed 0 failed, `bin/verify-template.sh` printed "verify-template: PASSED", and `bin/harness-smoke.sh` printed PASS. No file outside the session 5 items is changed; do not push or open a PR. Or stop after 35 turns and say what is left.
+
 1. `seed/.agents/skills/catchup/SKILL.md`: add a gather step that reads `.copier-answers.yml` `_commit`, runs `git ls-remote --tags gh:samyakjhaveri/loam` (or reads `VERSION` when offline), and prints a red flag when `_commit` is not the latest tag or not a tag at all.
 2. `copier.yml`: add question `project_kind` (choices: python, typescript, research, mixed, other). Gate `pyproject.toml.jinja` and the `pyright-lsp` plugin line on python or research or mixed. Update `bin/rendered_harness_contract.py` and tests for both branches.
 3. Parity bill of materials: copy `~/Desktop/distbench/agent-parity.toml` and `~/Desktop/distbench/scripts/agent_parity/parity.py` (plus `adapters/`) into `bin/agent_parity/`. Read them first and strip distbench-specific entries. Author `seed/agent-parity.toml` listing every seed skill, agent, and hook with a Codex mirror or `unsupported: reason`. Wire `python3 bin/agent_parity/parity.py check` as verify-template stage 9.
@@ -383,6 +486,10 @@ Verify: `python3 bin/agent_parity/parity.py check` green; four checks green; att
 
 Also do every item tagged "session 6" in the Gap review and Research additions sections above. If the combined scope exceeds one workflow run, split into 6a and 6b on the same branch and log both.
 
+Goal (paste as the `/goal` condition, run in auto mode): every item tagged for session 6 is implemented and committed on `fix/audit-s6-research`, and this session's transcript shows the item-1 dry run (a contract with done-when `test -f results/demo.jsonl` ended a headless `/goal` loop within 5 turns), each new hook run against a synthetic envelope with the expected output, `uvx pytest -q bin/tests` printed 0 failed, `bin/verify-template.sh` printed "verify-template: PASSED", and `bin/harness-smoke.sh` printed PASS. No file outside the session 6 items is changed; do not push or open a PR. Or stop after 40 turns and say what is left.
+
+Note on the item-1 dry run: only one goal is active per session, so run that inner `/goal` test as a headless `claude -p "/goal <condition>"` invocation, not as a second interactive goal inside this session.
+
 1. Experiment contract. Template `seed/experiments/README.md` (starts empty, explains the contract) and `cultivation/marketplace/research-lane/templates/CONTRACT.md` with fields: question, done-when (a shell command that exits 0), budget (turns, dollars, hours), seeds, protocol hash. Hook `seed/.claude/hooks/experiment-contract-gate.sh`: Stop hook that, when `experiments/*/CONTRACT.md` exists and `EXPERIMENT_ACTIVE=<name>` is set, runs the done-when command and blocks turn end on non-zero with the command output. Commit gate: refuse `git commit` that stages `results/*.jsonl` without a sibling `manifest.json` carrying seed, git SHA, hostname, GPU, container digest, command line. Dry run: a contract with done-when `test -f results/demo.jsonl` must end a `/goal` loop by itself within 5 turns.
 2. Research bundle `cultivation/marketplace/research-lane/`: move the six templates from `cultivation/wip/research-assets/seed-docs/` (they render EMPTY, one heading and one sentence each), and vendor the skills `rigor`, `experiment-loop`, `hypothesis-tree`, `research-writing`, `ml-paper-writing` from `~/.claude/skills/` after `bin/vet-skill.sh` passes on each. Add `cite-resolve` hook: PreToolUse on Edit|Write of `*.bib`/`*.tex`, a new cite key must exist in `refs/resolved.json`; ship `bin/cite-resolve.sh` wrapping a DOI or arXiv lookup (CrossRef or arXiv API, no model). Add a `.claude/loop.md` template: "Continue the current experiment sweep. Run the next unrun configuration in protocol.md, append the result row, commit. If every configuration has a row, say 'sweep complete' and stop."
 3. Ideation chain: new skill `cultivation/marketplace/sam-cc-setup/skills/ideate/SKILL.md` with five steps (frame with one-question-at-a-time interview, diverge via adhd with named directions and ordinary role frames, react with one disposable artifact, ground with the external-anchor gate, plan on one survivor). Fold `unknowns` into step 1, `grilling` references into step 4, `surprise-me` into step 2; leave those skills in place but mark them as parts of `ideate`. Add the grounding gate text: "Before ranking, each surviving idea needs one external anchor: a real citation, a command that would test it, or a cost or time estimate with its basis. Ideas with no anchor are cut, not ranked low. Do not score novelty."
@@ -390,8 +497,44 @@ Also do every item tagged "session 6" in the Gap review and Research additions s
 5. One CLAUDE.md line for loops in `seed/AGENTS.md.jinja`: "Loops: use /goal for a verifiable end state in one session, a Routine for laptop-closed schedules, a saved dynamic workflow for fixed protocols, and always name the terminating check in the condition itself."
 6. Weekly harness watch: write `docs/routines/harness-watch.md` with the prompt for a Monday Routine that reads code.claude.com/docs/en/whats-new and diffs CHANGELOG.md, then opens a PR with new features, adopt/ignore/watch verdicts, exact diffs for adopts, falsified assertions, and a staleness list. Samyak creates the Routine himself with `/schedule`.
 7. Memory staleness: SessionStart hook line `find ~/.claude/projects/*/memory -name '*.md' -mtime +60 | head -5` printed as "stale memory candidates".
+8. D5 diagrams line (report decision D5, the one unshipped piece). Add one line to
+   `seed/AGENTS.md.jinja`: "Diagrams in docs and PRs are inline mermaid; do not maintain drawio or
+   excalidraw sources for internal design." One line, no other change.
 
 After session 6, the harness-evals idea (skill-creator benchmark on 8 to 12 real prompts, with and without each research skill) is the next session.
+
+## End-of-session review
+
+After each session a fresh Claude Fable 5.1 session reviews the work with no memory of the implementation session.
+The fresh context is the point: the reviewer sees the committed diff, not the reasoning that produced it, so it judges the result on its own terms.
+This is a real review, not self-critique theater, because the diff is new input the reviewer never saw; it is the same reason the report keeps plan-review-fanout and drops score-only self-critique.
+
+Run the reviewer at `high` effort. It is a Fable model, so `high` is the cap anyway, and a single written deliverable is best at `high` (guide's long-output note).
+The reviewer reports; it does not edit code.
+Paste this prompt into a fresh session:
+
+```text
+You are a Claude Fable 5.1 reviewer with no context from the session that did this work. Review
+session <N> of the Loam harness audit. Read, in this order:
+1. docs/HANDOFF-2026-09-03-audit-sessions.md: session <N>'s block, every Gap review and Research
+   addition item tagged for it, and the report decisions it implements.
+2. The committed diff: run `git log --oneline main..<session-branch>`, then
+   `git diff main...<session-branch>`. For a docs-only session on main, diff the session's commits.
+3. The session's Execution log entry.
+Judge the work on four axes and cite file:line for each finding:
+- Correctness and software-engineering best practice.
+- Samyak's intent and the session's stated scope: every tagged item done, nothing out of scope.
+- Taste: minimal diff, no over-engineering, reads like the surrounding code.
+- Thoroughness: edge cases, and the four checks actually run with output in the commit or the log.
+Confirm the diff matches the report recommendation for this session; flag any drift.
+Run the four checks yourself: `uvx pytest -q bin/tests`, `bin/verify-template.sh`,
+`bin/harness-smoke.sh`, and the session's Verify line. Paste the output; a claim without output is
+"not verified".
+End with a verdict: SHIP, FIX (list the exact fixes), or REWORK (say why). Write the review to
+docs/reviews/2026-09-<dd>-session-<N>-review.md. Please remove all mannered prose.
+```
+
+If the verdict is FIX or REWORK, Samyak or a follow-up implementation session applies the fixes; the review file is the record.
 
 ## Execution log
 
@@ -416,4 +559,6 @@ After session 6, the harness-evals idea (skill-creator benchmark on 8 to 12 real
   the sample validator accepts pinned `claude-*` ids. Transcript in
   `.claude/codex-reviews/2026-09-03-fix-audit-s1-stop-the-bleeding.md` (gitignored). Round cap
   reached; no second round.
-  NEXT SESSION: branch `fix/audit-s2-prompts` from `main`. Never rebase or force-push.
+  NEXT SESSION: session 2, Claude Fable 5.1 lead, branch `fix/audit-s2-prompts` from `main`.
+  Run it under `/goal` in auto mode with session 2's Goal condition; workers are Opus 4.8 at xhigh.
+  When it commits, run the End-of-session review in a fresh Fable 5.1 session. Never rebase or force-push.
