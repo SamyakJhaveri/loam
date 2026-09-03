@@ -114,7 +114,7 @@ You must execute the relay handoff as you approach your context limit. Do not wa
 
 > Skip this section if no `advisor` teammate exists in this team.
 
-The advisor is a read-only peer running at higher effort with a whole-team view.
+The advisor is a read-only peer with a whole-team view.
 It is not smarter than you; it sees more of the picture. Consult it for coherence, not for permission.
 
 **When to consult (message `advisor`):**
