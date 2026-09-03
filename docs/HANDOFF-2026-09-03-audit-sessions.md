@@ -5,7 +5,7 @@
 > Run any Fable model at `medium` or `high` effort only, never `xhigh` or `max` (Samyak's cap). The lead runs at `high`.
 > The lead decides, commissions the work, coordinates the agents, assesses their output, and gives feedback; it does not write the code.
 > Workers: Claude Opus 4.8 (`claude-opus-4-8[1m]`) at xhigh effort. Never Fable workers.
-> Allowed models are Opus and Fable only. Never Haiku, never Sonnet, for anything, including mechanical subagents. Use only Opus, Fable, or a model Samyak names.
+> Allowed models: Opus and Fable only, for everything, including mechanical subagents. Use only Opus, Fable, or a model Samyak names next.
 > Run each session as an advisor-mode agent team or a dynamic workflow; the lead picks the shape. See "Operating model" below.
 > A fresh Fable 5.1 session reviews the work at the end of each session. See "End-of-session review".
 > Samyak sleeps while this runs. Do not ask him questions that the files below already answer.
@@ -349,16 +349,8 @@ E. Do not do (evidence says skip): asking the agent to add tests mid-fix (test v
   also catches the ruff-on-PATH case), `bin/verify-template.sh`, `bin/harness-smoke.sh`. Each of
   the first two takes about five minutes; run them in the background.
 
-## Required setup and open decisions
+## Open decision for Samyak (does not block starting session 2)
 
-Required setup before a `/goal` session (never-Haiku rule):
-The `/goal` evaluator runs on the small fast model, which defaults to Haiku, and Haiku is forbidden.
-So before setting a goal, point the small fast model at an allowed model: set
-`ANTHROPIC_DEFAULT_HAIKU_MODEL=claude-opus-4-8[1m]` (or a Fable model) for the session.
-The docs warn this variable also moves other background uses, such as summarization, to that model;
-that is the accepted cost of the never-Haiku rule. Without this, the goal judge would run on Haiku.
-
-One open decision (does not block starting session 2):
 Your 2026-09-03 answers name a NEW distbench dogfood render and an experiment-contract results-sync
 step. No session 2 to 6 owns them. Confirm they are post-session-6 validation work, or assign them
 to a session.
@@ -432,7 +424,7 @@ Files and exact changes:
      not to announce.
    ```
    Delete the "think hard" lines at `advisor-prompt.md:26` and `teammate-prompt.md:20`.
-   In `agent-team/SKILL.md` rewrite the whole Model policy block (lines 32-34) to: "Every teammate runs Opus 4.8 (`claude-opus-4-8[1m]`). Effort is the dial, not the model: xhigh for Opus execution workers, planners, and critics; a Fable advisor or lead runs at `medium` or `high` only, never higher. Never Haiku or Sonnet, for anything." Delete the line that permits Sonnet for a mechanical subagent (line 33); the never-Sonnet rule removes that carve-out. This also fixes the bare `Opus` alias and the old "medium to high for execution workers; xhigh for the advisor" split, which contradicts Samyak's xhigh-workers rule and the Fable effort cap. Verify: `grep -niE "sonnet|medium to high" cultivation/marketplace/sam-cc-setup/skills/agent-team/SKILL.md` returns nothing.
+   In `agent-team/SKILL.md` rewrite the whole Model policy block (lines 32-34) to: "Every teammate runs Opus 4.8 (`claude-opus-4-8[1m]`). Effort is the dial, not the model: xhigh for Opus execution workers, planners, and critics; a Fable advisor or lead runs at `medium` or `high` only, never higher. Use only Opus or Fable." Delete the line that permits Sonnet for a mechanical subagent (line 33); the Opus-or-Fable-only rule removes that carve-out. This also fixes the bare `Opus` alias and the old "medium to high for execution workers; xhigh for the advisor" split, which contradicts Samyak's xhigh-workers rule and the Fable effort cap. Verify: `grep -niE "sonnet|medium to high" cultivation/marketplace/sam-cc-setup/skills/agent-team/SKILL.md` returns nothing.
 4. `seed/AGENTS.md.jinja` (branch): after `## Gotchas` add:
    ```markdown
    ## Editing discipline
@@ -451,7 +443,7 @@ Files and exact changes:
 5. `skills/critique-swarm/SKILL.md:51`: drop "verbose preambles" from agent 2's mandate (the skill is deleted in session 3, so skip this if session 3 runs first).
 6. Never-Sonnet rule: re-pin `cultivation/marketplace/sam-cc-setup/agents/build-validator.md:5` and `.../agents/read-only.md:5` from `model: sonnet` to `model: claude-opus-4-8[1m]`. Session 1 kept these on Sonnet for cheap mechanical checks; Samyak's 2026-09-03 rule forbids Sonnet, so they move to Opus. Update the contract check if it asserts these agents' models. Verify: `grep -rniE "model:\s*sonnet" cultivation/marketplace/sam-cc-setup/agents` returns nothing.
 
-Verify: `grep -rn "Fable 5[^.]" cultivation/marketplace/sam-cc-setup | grep -v "5\.1"` returns only historical citations; `grep -rniE "model:\s*(sonnet|haiku)" cultivation/marketplace/sam-cc-setup/agents` is empty; four checks green.
+Verify: `grep -rn "Fable 5[^.]" cultivation/marketplace/sam-cc-setup | grep -v "5\.1"` returns only historical citations; every `model:` line under `cultivation/marketplace/sam-cc-setup/agents` is an Opus or Fable id; four checks green.
 
 ### Session 3: review consolidation (plugin, direct; weight gate rebaseline touches bin, branch `fix/audit-s3-reviews`)
 
