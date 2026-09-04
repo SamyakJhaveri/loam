@@ -208,13 +208,15 @@ else
 fi
 
 echo "== stage 8: skill-listing token weight =="
-# Every model-invocable skill spends its name+description in the listing on
-# every request. The research target is 1% of a 200k window (~2000 tokens);
-# the sam-cc-setup listing currently sits at ~1.35%. Rather than force the
-# grow-vs-consolidate decision here, this is a no-growth RATCHET: it catches
-# silent creep (the failure the audit found - a human watch item that was never
-# watched) while leaving the target-tightening to the consolidation decision.
-LISTING_BUDGET_TOKENS=2800
+# Every model-invocable skill, agent, and workflow spends its name+description
+# in a listing on every request; this weight now sums all three. The research
+# target is 1% of a 200k window (~2000 tokens). Measured 2026-09-03 the
+# sam-cc-setup listing is 2704 tokens, ratcheted to 2750 below. Rather than
+# force the grow-vs-consolidate decision here, this is a no-growth RATCHET: it
+# catches silent creep (the failure the audit found - a human watch item that
+# was never watched) while leaving the target-tightening to the consolidation
+# decision.
+LISTING_BUDGET_TOKENS=2750
 if python3 bin/skill_listing_weight.py --root "$ROOT" \
     --budget-tokens "$LISTING_BUDGET_TOKENS"; then
   echo "skill-listing weight: OK (<= ${LISTING_BUDGET_TOKENS} tokens; research target is ~2000)"

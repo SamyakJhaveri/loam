@@ -3,8 +3,11 @@
 
 Every model-invocable skill spends its `name` + `description` in the skill
 listing on *every* request, whether or not it is invoked (Claude Code docs:
-"Low (descriptions every request)"). This script sums that weight per source so
-a budget can gate listing growth, and so the harness smoke rig has a Score B.
+"Low (descriptions every request)"). Every agent spends its `name` +
+`description` in the Agent tool listing the same way, on every request. Every
+workflow spends its `meta.name` + `meta.description` in the workflow listing on
+every request. This script sums that weight per source so a budget can gate
+listing growth, and so the harness smoke rig has a Score B.
 
 A skill with `disable-model-invocation: true` is not in the listing and costs
 nothing here (docs: "Description not in context").
@@ -27,39 +30,89 @@ import sys
 
 CHARS_PER_TOKEN = 4
 
-# Sources whose listing weight we report. A "gated" source is checked against
-# the budget; the seed is reported but not gated (it ships one tiny skill).
+# Sources whose listing weight we report. A "gated" source is budget-checked;
+# the seed is reported but not gated. `agents`/`workflows` are None if absent.
+_MP = "cultivation/marketplace"
 SOURCES = {
-    "seed": ("seed/.agents/skills", False),
-    "sam-cc-setup": ("cultivation/marketplace/sam-cc-setup/skills", True),
-    "impeccable": ("cultivation/marketplace/impeccable/skills", False),
+    "seed": {"skills": "seed/.agents/skills", "agents": None, "workflows": None,
+             "gated": False},
+    "sam-cc-setup": {"skills": f"{_MP}/sam-cc-setup/skills",
+                     "agents": f"{_MP}/sam-cc-setup/agents",
+                     "workflows": f"{_MP}/sam-cc-setup/workflows", "gated": True},
+    "impeccable": {"skills": f"{_MP}/impeccable/skills", "agents": None,
+                   "workflows": None, "gated": False},
 }
 
-_FRONTMATTER = re.compile(r"^---\n(.*?)\n---", re.S)
-_NAME = re.compile(r"^name:\s*(.+)$", re.M)
-_DESC = re.compile(r"^description:\s*(.+?)(?=^[A-Za-z0-9_-]+:|\Z)", re.S | re.M)
-_MANUAL = re.compile(r"^disable-model-invocation:\s*true\s*$", re.M)
+_FRONTMATTER = re.compile(r"^---\n(.*?)\n---", re.DOTALL)
+_NAME = re.compile(r"^name:\s*(.+)$", re.MULTILINE)
+_DESC = re.compile(r"^description:\s*(.+?)(?=^[A-Za-z0-9_-]+:|\Z)", re.DOTALL | re.MULTILINE)
+_MANUAL = re.compile(r"^disable-model-invocation:\s*true\s*$", re.MULTILINE)
+_META = re.compile(r"export const meta\s*=\s*\{(.*?)^\}", re.DOTALL | re.MULTILINE)
+_META_NAME = re.compile(r"""\bname:\s*(['"])(.*?)(?<!\\)\1""")
+_META_DESC = re.compile(r"""\bdescription:\s*(['"])(.*?)(?<!\\)\1""")
 
 
-def _listing_chars(skill_dir: str) -> tuple[int, int, int]:
-    """Return (model_invocable_count, manual_count, listing_chars)."""
-    model = manual = chars = 0
-    for path in sorted(glob.glob(os.path.join(skill_dir, "**", "SKILL.md"), recursive=True)):
+def _frontmatter_chars(paths: list[str], honor_manual: bool) -> tuple[int, int, int]:
+    """Return (counted, manual, chars) of name+description over frontmatter files."""
+    counted = manual = chars = 0
+    for path in paths:
         with open(path, encoding="utf-8") as handle:
-            text = handle.read()
-        match = _FRONTMATTER.match(text)
+            match = _FRONTMATTER.match(handle.read())
         if not match:
             continue
-        frontmatter = match.group(1)
-        if _MANUAL.search(frontmatter):
+        fm = match.group(1)
+        if honor_manual and _MANUAL.search(fm):
             manual += 1
             continue
-        model += 1
-        name = _NAME.search(frontmatter)
-        desc = _DESC.search(frontmatter)
+        counted += 1
+        name = _NAME.search(fm)
+        desc = _DESC.search(fm)
         chars += len(name.group(1).strip()) if name else 0
         chars += len(desc.group(1).strip()) if desc else 0
-    return model, manual, chars
+    return counted, manual, chars
+
+
+def _workflow_listing(workflows_dir: str) -> tuple[int, int]:
+    """Return (count, chars) of meta name+description over every `*.js` file."""
+    count = chars = 0
+    for path in sorted(glob.glob(os.path.join(workflows_dir, "*.js"))):
+        with open(path, encoding="utf-8") as handle:
+            meta = _META.search(handle.read())
+        if not meta:
+            continue
+        name = _META_NAME.search(meta.group(1))
+        desc = _META_DESC.search(meta.group(1))
+        count += 1
+        chars += len(name.group(2)) if name else 0
+        chars += len(desc.group(2)) if desc else 0
+    return count, chars
+
+
+def summarize_source(root: str, source: dict) -> dict:
+    """Return the listing report for one source, resolved against `root`."""
+    pattern = os.path.join(root, source["skills"], "**", "SKILL.md")
+    skills = sorted(glob.glob(pattern, recursive=True))
+    model, manual, skills_chars = _frontmatter_chars(skills, honor_manual=True)
+    agents = agents_chars = 0
+    if source["agents"]:
+        paths = sorted(glob.glob(os.path.join(root, source["agents"], "*.md")))
+        agents, _manual, agents_chars = _frontmatter_chars(paths, honor_manual=False)
+    workflows = workflows_chars = 0
+    if source["workflows"]:
+        workflows, workflows_chars = _workflow_listing(os.path.join(root, source["workflows"]))
+    listing_chars = skills_chars + agents_chars + workflows_chars
+    return {
+        "model_invocable": model,
+        "manual_only": manual,
+        "agents": agents,
+        "workflows": workflows,
+        "skills_chars": skills_chars,
+        "agents_chars": agents_chars,
+        "workflows_chars": workflows_chars,
+        "listing_chars": listing_chars,
+        "listing_tokens": listing_chars // CHARS_PER_TOKEN,
+        "gated": source["gated"],
+    }
 
 
 def main() -> int:
@@ -77,20 +130,13 @@ def main() -> int:
 
     report = {}
     over_budget = []
-    for label, (rel, gated) in SOURCES.items():
-        skill_dir = os.path.join(args.root, rel)
-        if not os.path.isdir(skill_dir):
+    for label, source in SOURCES.items():
+        if not os.path.isdir(os.path.join(args.root, source["skills"])):
             continue
-        model, manual, chars = _listing_chars(skill_dir)
-        tokens = chars // CHARS_PER_TOKEN
-        report[label] = {
-            "model_invocable": model,
-            "manual_only": manual,
-            "listing_chars": chars,
-            "listing_tokens": tokens,
-            "gated": gated,
-        }
-        if gated and args.budget_tokens is not None and tokens > args.budget_tokens:
+        data = summarize_source(args.root, source)
+        report[label] = data
+        tokens = data["listing_tokens"]
+        if data["gated"] and args.budget_tokens is not None and tokens > args.budget_tokens:
             over_budget.append((label, tokens))
 
     if args.json:
@@ -98,9 +144,12 @@ def main() -> int:
     elif not args.quiet:
         for label, data in report.items():
             flag = " [gated]" if data["gated"] else ""
+            plural = "" if data["workflows"] == 1 else "s"
             print(
                 f"{label}{flag}: {data['listing_tokens']} tokens "
-                f"({data['model_invocable']} listed, {data['manual_only']} manual)"
+                f"({data['model_invocable']} skills listed, "
+                f"{data['manual_only']} manual, {data['agents']} agents, "
+                f"{data['workflows']} workflow{plural})"
             )
         if args.budget_tokens is not None:
             print(f"budget: {args.budget_tokens} tokens per gated source")
