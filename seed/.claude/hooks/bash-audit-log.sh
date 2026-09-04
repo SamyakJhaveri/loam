@@ -4,8 +4,11 @@
 # replayed later (experiment reproducibility).
 #
 # Triggered by: PostToolUse and PostToolUseFailure on Bash (both events route
-# here). PostToolUse carries tool_response.exit_code; PostToolUseFailure carries
-# the failure text in "error".
+# here). A Bash tool_response carries no exit code (its keys are stdout,
+# stderr, interrupted, isImage, noOutputExpected), so PostToolUse logs exit=0
+# for a clean run and "?" when the run was interrupted or Claude Code marked a
+# tolerated non-zero exit (returnCodeInterpretation, e.g. grep with no match).
+# PostToolUseFailure carries the failure text in "error", with the exit code.
 #
 # Project root comes from the payload "cwd" field, NOT CLAUDE_PROJECT_DIR:
 # under `claude --worktree` only cwd carries the worktree path. Falls back to
@@ -28,10 +31,11 @@ except Exception:
 [ -n "$ROOT" ] || ROOT="$(git rev-parse --show-toplevel 2>/dev/null)" || true
 [ -n "$ROOT" ] || exit 0
 
-# Exit code + command in one parse. PostToolUse -> tool_response.exit_code (else
-# "?"); PostToolUseFailure -> first integer after "exit code" (case-insensitive)
-# in "error", else "fail"; malformed JSON -> "?" / "unparseable". Fields are
-# NUL-separated so a multi-line or empty command survives intact.
+# Exit code + command in one parse. PostToolUse -> 0, or "?" when interrupted or
+# returnCodeInterpretation is set (see header); PostToolUseFailure -> first
+# integer after "exit code" (case-insensitive) in "error", else "fail";
+# malformed JSON -> "?" / "unparseable". Fields are NUL-separated so a
+# multi-line or empty command survives intact.
 EXIT=""; COMMAND=""
 { IFS= read -r -d '' EXIT; IFS= read -r -d '' COMMAND; } < <(printf '%s' "$PAYLOAD" | python3 -c '
 import sys, json, re
@@ -46,7 +50,10 @@ if d.get("hook_event_name") == "PostToolUseFailure":
     code = m.group(1) if m else "fail"
 else:
     tr = d.get("tool_response")
-    code = tr.get("exit_code", "?") if isinstance(tr, dict) else "?"
+    if not isinstance(tr, dict) or tr.get("interrupted") or tr.get("returnCodeInterpretation"):
+        code = "?"
+    else:
+        code = 0
 sys.stdout.write("%s\x00%s\x00" % (code, cmd))
 ' 2>/dev/null)
 # Empty EXIT means python produced nothing (e.g. unavailable); treat as unparseable.

@@ -523,6 +523,69 @@ class StopVerifyGateTests(HookFixtureCase):
         )
         self.assertEqual(0, result.returncode, result.stderr)
 
+    def test_unverified_word_without_evidence_passes(self) -> None:
+        # The trigger is whole words: "unverified" is not a claim of
+        # verification, so an honest message is not blocked.
+        self.commit_file("ok.py", "print('ok')\n")
+        transcript = self._claim_transcript(
+            [
+                ("user", "fix it"),
+                ("assistant",
+                 [{"type": "text", "text": "The fix is unverified."}]),
+            ]
+        )
+        result = self.run_hook(
+            self.SCRIPT,
+            {"transcript_path": str(transcript),
+             "last_assistant_message": "The fix is unverified."},
+        )
+        self.assertEqual(0, result.returncode, result.stderr)
+
+    def test_claim_backed_by_exit_equals_zero_passes(self) -> None:
+        # Scripts often print "exit=0"; that spelling is a success token too.
+        self.commit_file("ok.py", "print('ok')\n")
+        transcript = self._claim_transcript(
+            [
+                ("user", "run the probe"),
+                (
+                    "assistant",
+                    [{"type": "tool_use", "id": "t1", "name": "Bash",
+                      "input": {"command": "./probe.sh"}}],
+                ),
+                (
+                    "user",
+                    [{"type": "tool_result", "tool_use_id": "t1",
+                      "content": "probe done\nexit=0"}],
+                ),
+                ("assistant", [{"type": "text", "text": "Verified."}]),
+            ]
+        )
+        result = self.run_hook(
+            self.SCRIPT,
+            {"transcript_path": str(transcript),
+             "last_assistant_message": "Verified."},
+        )
+        self.assertEqual(0, result.returncode, result.stderr)
+
+    def test_bad_transcript_line_does_not_disable_claim_leg(self) -> None:
+        # One unparseable line is skipped; the bare claim still blocks.
+        self.commit_file("ok.py", "print('ok')\n")
+        transcript = self._claim_transcript(
+            [
+                ("user", "run the tests"),
+                ("assistant", [{"type": "text", "text": "All tests pass."}]),
+            ]
+        )
+        with transcript.open("a", encoding="utf-8") as handle:
+            handle.write("{truncated\n")
+        result = self.run_hook(
+            self.SCRIPT,
+            {"transcript_path": str(transcript),
+             "last_assistant_message": "All tests pass."},
+        )
+        self.assertEqual(2, result.returncode, result.stderr)
+        self.assertIn("[unverified claim]", result.stderr)
+
     def test_claim_without_transcript_path_passes(self) -> None:
         # No transcript_path: the claim leg cannot read the turn, so it skips
         # rather than blocking. Clean tree keeps the other legs quiet.
@@ -741,13 +804,19 @@ class RuffAfterEditTests(HookFixtureCase):
 class BashAuditLogTests(HookFixtureCase):
     SCRIPT = "bash-audit-log.sh"
 
-    def _post(self, command: str = "echo fixture-run", exit_code: int = 0) -> dict:
+    def _post(self, command: str = "echo fixture-run", **response: object) -> dict:
+        # The real Bash tool_response key set; it carries no exit code.
+        tool_response = {
+            "stdout": "", "stderr": "", "interrupted": False,
+            "isImage": False, "noOutputExpected": False,
+        }
+        tool_response.update(response)
         return {
             "cwd": str(self.repo),
             "hook_event_name": "PostToolUse",
             "tool_name": "Bash",
             "tool_input": {"command": command},
-            "tool_response": {"exit_code": exit_code, "stdout": "", "stderr": ""},
+            "tool_response": tool_response,
         }
 
     def _audit(self) -> str:
@@ -759,6 +828,21 @@ class BashAuditLogTests(HookFixtureCase):
         log = self._audit()
         self.assertIn("| exit=0 |", log)
         self.assertIn("| echo fixture-run", log)
+
+    def test_tolerated_nonzero_exit_logs_unknown(self) -> None:
+        # A grep with no match exits 1 but still fires PostToolUse, marked by
+        # returnCodeInterpretation; that must not be logged as exit=0.
+        result = self.run_hook(
+            self.SCRIPT,
+            self._post("grep zzz f", returnCodeInterpretation="No matches found"),
+        )
+        self.assertEqual(0, result.returncode, result.stderr)
+        self.assertIn("| exit=? |", self._audit())
+
+    def test_interrupted_run_logs_unknown(self) -> None:
+        result = self.run_hook(self.SCRIPT, self._post("sleep 99", interrupted=True))
+        self.assertEqual(0, result.returncode, result.stderr)
+        self.assertIn("| exit=? |", self._audit())
 
     def test_post_tool_use_failure_records_exit_code(self) -> None:
         payload = {
@@ -1221,6 +1305,59 @@ class TestTamperScanTests(HookFixtureCase):
         result = self.run_hook(self.SCRIPT, self._payload("git grep commit"))
         self.assertEqual(0, result.returncode, result.stderr)
 
+    def test_unstaged_skip_under_add_all_blocks(self) -> None:
+        # The hook runs before `git add -A` stages anything, so it replays the
+        # add into a copy of the index and sees the skip.
+        (self.repo / "test_skip.py").write_text(self.SKIP_TEST, encoding="utf-8")
+        cmd = "git add -A && git commit -m msg"
+        result = self.run_hook(self.SCRIPT, self._payload(cmd))
+        self.assertEqual(2, result.returncode, result.stdout)
+        self.assertIn("new skip/xfail", result.stderr)
+        # The real index was not touched.
+        staged = subprocess.run(
+            ["git", "diff", "--cached", "--name-only"],
+            cwd=self.repo, capture_output=True, text=True, check=True,
+        ).stdout
+        self.assertEqual("", staged)
+
+    def test_tracked_unstaged_skip_under_commit_a_blocks(self) -> None:
+        self.commit_file("test_x.py", "def test_a():\n    assert True\n")
+        (self.repo / "test_x.py").write_text(self.SKIP_TEST, encoding="utf-8")
+        result = self.run_hook(self.SCRIPT, self._payload("git commit -am msg"))
+        self.assertEqual(2, result.returncode, result.stdout)
+        self.assertIn("new skip/xfail", result.stderr)
+
+    def test_untracked_test_under_commit_a_passes(self) -> None:
+        # `commit -a` commits tracked changes only; an untracked test file is
+        # not part of the commit and must not block it.
+        self.commit_file("README.md", "fixture\n")
+        (self.repo / "test_skip.py").write_text(self.SKIP_TEST, encoding="utf-8")
+        result = self.run_hook(self.SCRIPT, self._payload("git commit -a -m msg"))
+        self.assertEqual(0, result.returncode, result.stderr)
+
+    def test_docstring_mentioning_patch_and_mock_passes(self) -> None:
+        # Words inside string literals are prose, not a mock or a skip.
+        self._stage(
+            "test_doc.py",
+            "def test_config():\n"
+            '    """Ensure we patch the config and mock nothing real."""\n'
+            '    label = "skip this step"\n'
+            "    assert label\n",
+        )
+        result = self.run_hook(self.SCRIPT, self._payload())
+        self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+
+    def test_patch_decorator_with_string_argument_still_blocks(self) -> None:
+        self._stage(
+            "test_dec.py",
+            "from unittest.mock import patch\n\n\n"
+            '@patch("os.getcwd")\n'
+            "def test_a(_cwd):\n    assert True\n",
+        )
+        result = self.run_hook(self.SCRIPT, self._payload())
+        self.assertEqual(2, result.returncode, result.stdout)
+        self.assertIn("new mock/patch", result.stderr)
+
 
 class MutationGateTests(HookFixtureCase):
     SCRIPT = "mutation-gate.sh"
@@ -1247,16 +1384,18 @@ class MutationGateTests(HookFixtureCase):
     )
 
     def _shim(
-        self, *, cosmic_ray: bool = True, exec_exit: int = 0
+        self, *, cosmic_ray: bool = True, exec_exit: int = 0, baseline_exit: int = 0
     ) -> tuple[pathlib.Path, pathlib.Path]:
         """Isolated PATH: real tools the hook shells out to, plus fake
-        cosmic-ray / cr-filter-git that log their calls and emit a dump."""
+        cosmic-ray / cr-filter-git that log their calls and emit a dump.
+        The fake cr-filter-git also logs what `git diff HEAD` sees in the
+        scratch worktree, which is what the real filter scopes mutants by."""
         shim_dir = pathlib.Path(self.temp_dir.name) / "mgshim"
         shim_dir.mkdir(exist_ok=True)
         tools = (
             "bash", "sh", "git", "python3", "cat", "grep", "mktemp", "sed",
             "awk", "tr", "wc", "dirname", "basename", "head", "tail", "rm",
-            "mkdir", "env",
+            "mkdir", "env", "cp",
         )
         for tool in tools:
             real = subprocess.run(
@@ -1283,6 +1422,9 @@ class MutationGateTests(HookFixtureCase):
                 "  exec)\n"
                 "    exit " + str(exec_exit) + "\n"
                 "    ;;\n"
+                "  baseline)\n"
+                "    exit " + str(baseline_exit) + "\n"
+                "    ;;\n"
                 "esac\n"
                 "exit 0\n",
                 encoding="utf-8",
@@ -1292,6 +1434,8 @@ class MutationGateTests(HookFixtureCase):
             crf.write_text(
                 "#!/bin/bash\n"
                 'echo "cr-filter-git $*" >> "' + str(calls_log) + '"\n'
+                'echo "diff-head $(git diff HEAD --name-only | tr \'\\n\' \' \')" >> "'
+                + str(calls_log) + '"\n'
                 "exit 0\n",
                 encoding="utf-8",
             )
@@ -1395,11 +1539,11 @@ class MutationGateTests(HookFixtureCase):
         )
 
     def test_leftover_worktree_entry_is_pruned_before_the_add(self) -> None:
-        # A run killed at the hook timeout never reaches the trap that removes
-        # its scratch worktree, so the next run has to prune the leftover entry
-        # itself. The prune must not depend on that trap: here `git worktree
-        # add` fails, the trap is never installed, and the stale entry must
-        # still be gone.
+        # A SIGKILLed run never reaches the trap that removes its scratch
+        # worktree; once its directory is gone the next run prunes the stale
+        # entry itself. The prune must not depend on that trap: here `git
+        # worktree add` fails, the trap is never installed, and the stale entry
+        # must still be gone.
         shim_dir, _ = self._shim()
         self._pyproject()
         self._stage("calc.py", "def answer():\n    return 42\n")
@@ -1446,6 +1590,41 @@ class MutationGateTests(HookFixtureCase):
             text=True,
         ).stdout.strip().splitlines()
         self.assertEqual(1, len(listed), listed)
+
+    def test_new_file_is_visible_to_the_git_filter(self) -> None:
+        # A brand-new module is written into the scratch worktree by
+        # checkout-index but is untracked there until the gate indexes it;
+        # cr-filter-git scopes mutants by `git diff HEAD`, which must list it.
+        shim_dir, calls_log = self._shim()
+        self._pyproject()
+        self._stage("newmod.py", "def mul(a, b):\n    return a * b\n")
+        result = self.run_hook(self.SCRIPT, self._payload(), env=self._env(shim_dir))
+        self.assertEqual(2, result.returncode, result.stdout + result.stderr)
+        self.assertIn("diff-head newmod.py", calls_log.read_text(encoding="utf-8"))
+
+    def test_unstaged_change_under_commit_a_is_gated(self) -> None:
+        # `git commit -a` stages tracked changes after this hook runs, so the
+        # gate replays that staging into an index copy and still runs.
+        shim_dir, calls_log = self._shim()
+        self._pyproject()
+        self.commit_file("calc.py", "def answer():\n    return 1\n")
+        (self.repo / "calc.py").write_text("def answer():\n    return 42\n", encoding="utf-8")
+        result = self.run_hook(
+            self.SCRIPT, self._payload("git commit -a -m msg"), env=self._env(shim_dir)
+        )
+        self.assertEqual(2, result.returncode, result.stdout + result.stderr)
+        self.assertIn("diff-head calc.py", calls_log.read_text(encoding="utf-8"))
+
+    def test_failing_baseline_notes_and_passes(self) -> None:
+        # A test command that fails on unmutated code would "kill" every
+        # mutant; the gate runs a baseline first and steps aside instead.
+        shim_dir, calls_log = self._shim(baseline_exit=1)
+        self._pyproject()
+        self._stage("calc.py", "def answer():\n    return 42\n")
+        result = self.run_hook(self.SCRIPT, self._payload(), env=self._env(shim_dir))
+        self.assertEqual(0, result.returncode, result.stderr)
+        self.assertIn("cosmic-ray baseline", result.stderr)
+        self.assertNotIn("cosmic-ray init", calls_log.read_text(encoding="utf-8"))
 
 
 if __name__ == "__main__":

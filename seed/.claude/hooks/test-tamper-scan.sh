@@ -38,7 +38,33 @@ else
 fi
 [ -n "$ROOT" ] || exit 0
 cd "$ROOT" 2>/dev/null || exit 0
-DIFF="$(git diff --cached -U0 --no-color 2>/dev/null)" || exit 0
+# The command may stage before it commits (`git add ... && git commit`, or
+# `commit -a`), and this hook runs first. Replay that staging into a copy of
+# the index and diff against the copy: `add -A` for an explicit add (a
+# superset; an over-block is recoverable), `add -u` for -a/--all (tracked
+# changes only, which is exactly what -a commits). A plain commit reads the
+# real index.
+STAGE=""
+if printf '%s' "$CMD" | grep -qE '\bgit\s+add\b'; then
+    STAGE="-A"
+elif printf '%s' "$CMD" | grep -qE '\bcommit\b[^&|;]*\s(--all|-[a-zA-Z]*a[a-zA-Z]*)\b'; then
+    STAGE="-u"
+fi
+if [ -n "$STAGE" ]; then
+    TMPI="$(mktemp)" || exit 0
+    IDX="$(git rev-parse --git-path index)"
+    # No index file yet (nothing ever staged): the copy starts empty.
+    if [ -f "$IDX" ]; then
+        cp -- "$IDX" "$TMPI" 2>/dev/null || { rm -f "$TMPI"; exit 0; }
+    else
+        rm -f "$TMPI"
+    fi
+    GIT_INDEX_FILE="$TMPI" git add "$STAGE" >/dev/null 2>&1
+    DIFF="$(GIT_INDEX_FILE="$TMPI" git diff --cached -U0 --no-color 2>/dev/null)"
+    rm -f "$TMPI"
+else
+    DIFF="$(git diff --cached -U0 --no-color 2>/dev/null)" || exit 0
+fi
 # Script via -c so the diff stays on stdin (a heredoc would take stdin instead).
 printf '%s' "$DIFF" | python3 -c "$(cat <<'PY'
 import sys, re
@@ -123,6 +149,26 @@ def strip_comment(s):
         i += 1
     return s
 
+def strip_strings(s):
+    """Blank the contents of quoted string literals so prose in a docstring
+    or a message (`"we patch the config"`) is not read as a mock or skip."""
+    out, q, i, n = [], None, 0, len(s)
+    while i < n:
+        c = s[i]
+        if q:
+            if c == '\\':
+                i += 2
+                continue
+            if c == q:
+                q = None
+                out.append(c)
+        else:
+            if c in ('"', "'"):
+                q = c
+            out.append(c)
+        i += 1
+    return ''.join(out)
+
 # Literals too common to mean anything: a test asserting 0 or True is not
 # mirroring an implementation's new return value.
 TRIVIAL = {'0', '1', '-1', '0.0', '1.0', 'True', 'False', 'None', '""', "''"}
@@ -132,7 +178,7 @@ for f in (x for x in files if x['test']):
     for h in f['hunks']:
         for no, txt in h['add']:
             trimmed = txt.strip()[:120]
-            code = strip_comment(txt)
+            code = strip_strings(strip_comment(txt))
             if SKIP.search(code):
                 findings.append((f['path'], no, 'new skip/xfail', trimmed))
             if MOCK.search(code):

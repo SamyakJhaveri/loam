@@ -109,9 +109,12 @@ fi
 # 4. Claims verification with no Bash or delegated-agent result this turn to back it.
 CLAIM=$(python3 - "$PAYLOAD" <<'PY'
 import sys, json, re
+def load(l):  # one bad transcript line must not disable the leg
+    try: return json.loads(l)
+    except Exception: return None
 try:
     p = json.loads(sys.argv[1])
-    E = [json.loads(l) for l in open(p.get("transcript_path") or "", encoding="utf-8", errors="ignore") if l.strip()]
+    E = [x for x in map(load, open(p.get("transcript_path") or "", encoding="utf-8", errors="ignore")) if x]
 except Exception:
     sys.exit(0)
 msg = p.get("last_assistant_message") or ""
@@ -119,11 +122,8 @@ if not msg:
     a = [e for e in E if e.get("type") == "assistant"]
     c = a[-1].get("message", {}).get("content", []) if a else []
     msg = "".join(i.get("text", "") for i in c if isinstance(i, dict) and i.get("type") == "text")
-if not msg or "not verified" in msg.lower():
-    sys.exit(0)
-m = re.search(r"verified|all tests pass|tests pass|passes|confirmed|re-verified|PASSED", msg, re.I)
-if not m:
-    sys.exit(0)
+m = re.search(r"\b(?:verified|all tests pass|tests pass|passes|confirmed|re-verified|PASSED)\b", msg, re.I) if msg and "not verified" not in msg.lower() else None
+if not m: sys.exit(0)
 def human(e):
     c = e.get("message", {}).get("content") if e.get("type") == "user" else None
     return isinstance(c, str) or (isinstance(c, list) and not any(isinstance(x, dict) and x.get("type") == "tool_result" for x in c))
@@ -137,7 +137,7 @@ for e in turn:
         if isinstance(i, dict) and i.get("type") == "tool_result" and i.get("tool_use_id") in ids:
             rc = i.get("content")
             out += [rc] if isinstance(rc, str) else ([x.get("text", "") for x in rc if isinstance(x, dict) and x.get("type") == "text"] if isinstance(rc, list) else [])
-ok, bad = r"\b(?:PASSED|OK|exit 0)\b|" + re.escape(m.group(0)), r"\b[1-9]\d* failed\b|\bFAILED\b|\bFAIL\b|\bTraceback\b"
+ok, bad = r"\b(?:PASSED|OK|exit[ =]0)\b|" + re.escape(m.group(0)), r"\b[1-9]\d* failed\b|\bFAILED\b|\bFAIL\b|\bTraceback\b"
 if not any(re.search(ok, t, re.I) and not re.search(bad, t) for t in out):  # pytest prints "5 passed", never "0 failed"
     print("CLAIM")
 PY

@@ -14,10 +14,14 @@
 # concurrent editor would meanwhile read mutated code. The whole run therefore
 # happens in a throwaway linked worktree holding the staged tree, removed on
 # exit; the project checkout is only ever read.
-# Recovery after a killed run: git worktree prune.
+# A run killed with SIGTERM still runs that trap. A run killed with SIGKILL
+# does not: its scratch directory and worktree entry stay behind, and
+# `git worktree prune` drops the entry only after the directory is removed.
 #
 # The whole gate is OPT-IN by tool presence: with no cosmic-ray reachable (a
 # project .venv/bin or PATH), it silently no-ops. No cosmic-ray, no gate.
+# [tool.mutation-gate] test-command is split with shlex by cosmic-ray, not a
+# shell: one command and its arguments, no `&&`, pipes, or redirects.
 # Escape hatch: put a "Mutants:" line in the commit message to justify survivors.
 #
 # Triggered by: PreToolUse on Bash (settings wires timeout 600).
@@ -80,9 +84,39 @@ else
 fi
 CRFILTER="$CRBIN/cr-filter-git"
 
+# --- Work area (removed on exit) ---------------------------------------------
+WORK="$(mktemp -d)" || exit 0
+trap 'rm -rf "$WORK"' EXIT
+
+# --- Staging the command will do before it commits ---------------------------
+# Same rule as test-tamper-scan.sh: this hook runs before `git add ... &&
+# git commit` or `commit -a` stages anything, so replay that staging into a
+# copy of the index (`add -A` for an explicit add, `add -u` for -a/--all) and
+# read the copy. A plain commit reads the real index.
+TMPI=""
+STAGE=""
+if printf '%s' "$CMD" | grep -qE '\bgit\s+add\b'; then
+    STAGE="-A"
+elif printf '%s' "$CMD" | grep -qE '\bcommit\b[^&|;]*\s(--all|-[a-zA-Z]*a[a-zA-Z]*)\b'; then
+    STAGE="-u"
+fi
+if [ -n "$STAGE" ]; then
+    TMPI="$WORK/index"
+    IDX="$(git rev-parse --git-path index)"
+    # No index file yet (nothing ever staged): the copy starts empty.
+    if [ -f "$IDX" ]; then
+        cp -- "$IDX" "$TMPI" 2>/dev/null || exit 0
+    fi
+    GIT_INDEX_FILE="$TMPI" git add "$STAGE" >/dev/null 2>&1
+fi
+# git against the index the commit will use (the copy when one was made).
+staged_git() {
+    if [ -n "$TMPI" ]; then GIT_INDEX_FILE="$TMPI" git "$@"; else git "$@"; fi
+}
+
 # Staged, non-test Python files (Added or Modified). Drop test files: a
 # test_*.py / *_test.py / conftest.py basename, or any tests/ or test/ segment.
-STAGED="$(git diff --cached --name-only --diff-filter=AM -- '*.py' 2>/dev/null || true)"
+STAGED="$(staged_git diff --cached --name-only --diff-filter=AM -- '*.py' 2>/dev/null || true)"
 NONTEST="$(printf '%s\n' "$STAGED" \
     | grep -E '\.py$' \
     | grep -vE '(^|/)(test_[^/]*\.py|[^/]*_test\.py|conftest\.py)$' \
@@ -109,10 +143,7 @@ GATE_TIMEOUT="$(printf '%s\n' "$CONF" | sed -n '2p')"
 [ -n "$TEST_CMD" ] || TEST_CMD="python3 -m pytest -q -x"
 [ -n "$GATE_TIMEOUT" ] || GATE_TIMEOUT=60
 
-# --- Work area (removed on exit) and the survivor parser ---------------------
-WORK="$(mktemp -d)" || exit 0
-trap 'rm -rf "$WORK"' EXIT
-
+# --- The survivor parser -----------------------------------------------------
 PARSE="$WORK/parse.py"
 cat > "$PARSE" <<'PY'
 import sys, json
@@ -155,15 +186,23 @@ ESC_CMD="$(toml_esc "$TEST_CMD")"
 # HEAD` inside it shows exactly the staged lines and cr-filter-git's
 # branch = "HEAD" still scopes the mutants to this commit's changes.
 TREE="$WORK/tree"
-# A run killed at the hook timeout skips the trap, so prune its leftover entry here.
+# Drop stale entries whose directory is gone (a SIGKILLed run leaves an entry;
+# prune clears it once that directory has been removed).
 git worktree prune >/dev/null 2>&1 || true
 if ! git worktree add --detach --quiet "$TREE" HEAD 2>/dev/null; then
     echo "NOTE: mutation gate skipped: could not create a scratch worktree" >&2
     exit 0
 fi
 trap 'cd "$ROOT" 2>/dev/null && { git worktree remove --force "$TREE" >/dev/null 2>&1; git worktree prune >/dev/null 2>&1; }; rm -rf "$WORK"' EXIT
-if ! git checkout-index -a -f --prefix="$TREE/" 2>/dev/null; then
+if ! staged_git checkout-index -a -f --prefix="$TREE/" 2>/dev/null; then
     echo "NOTE: mutation gate skipped: could not stage the scratch worktree" >&2
+    exit 0
+fi
+# checkout-index writes files but not the scratch index, so a newly added
+# module would be untracked there and `git diff HEAD` (what cr-filter-git
+# reads) would skip every mutant in it. Index the overlay.
+if ! git -C "$TREE" add -A 2>/dev/null; then
+    echo "NOTE: mutation gate skipped: could not index the scratch worktree" >&2
     exit 0
 fi
 # The worktree has no .venv of its own, so the project's interpreter has to
@@ -176,6 +215,7 @@ cd "$TREE" || exit 0
 SURVIVORS=""
 FAILED_STEP=""
 FAILED_LOG=""
+BASELINE_DONE=""
 
 while IFS= read -r f; do
     [ -z "$f" ] && continue
@@ -201,6 +241,15 @@ while IFS= read -r f; do
 
     # Each tool step logs to $log; any non-zero exit means a broken tool, which
     # must never block a commit - NOTE and pass.
+    # One-time baseline: the test command must pass on unmutated code, else
+    # every mutant is "killed" and the gate passes blind (a failing suite, or
+    # a test-command with shell operators, which shlex does not run).
+    if [ -z "$BASELINE_DONE" ]; then
+        if ! "$CR" baseline "$cfg" >>"$log" 2>&1; then
+            FAILED_STEP="cosmic-ray baseline (test command does not pass on unmutated code)"; FAILED_LOG="$log"; break
+        fi
+        BASELINE_DONE=1
+    fi
     if ! "$CR" init "$cfg" "$sess" >>"$log" 2>&1; then
         FAILED_STEP="cosmic-ray init"; FAILED_LOG="$log"; break
     fi
