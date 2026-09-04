@@ -25,8 +25,9 @@ _DENIAL = {
 }
 # apply_patch deny families, checked in this order. Each entry is a
 # (name, reason) pair; the reason is the permissionDecisionReason returned when a
-# patched path matches the family. Kept as one literal tuple so the rendered
-# harness contract can read the families and reasons directly.
+# patched path matches the family. Kept as one literal tuple; the rendered
+# harness contract probes each family with a fixed patch and expects these
+# exact reasons.
 _PATCH_DENY_FAMILIES = (
     ("secrets", "Patches to .env files are blocked by repository policy."),
     ("sealed", "Patches to sealed run results are blocked by repository policy."),

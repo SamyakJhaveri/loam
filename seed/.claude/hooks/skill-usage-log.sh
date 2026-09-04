@@ -27,7 +27,7 @@ read -r NAME ARGS <<EOF
 $(printf '%s' "$PAYLOAD" | python3 -c 'import sys, json
 try:
     ti = json.load(sys.stdin).get("tool_input") or {}
-    name = ti.get("skill") or ti.get("name") or "unknown"
+    name = ti.get("skill") or "unknown"
     args = ti.get("args") or ""
     print(str(name).replace("\n", " "), str(args).replace("\n", " "))
 except Exception:

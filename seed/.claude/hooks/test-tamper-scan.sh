@@ -38,6 +38,12 @@ else
 fi
 [ -n "$ROOT" ] || exit 0
 cd "$ROOT" 2>/dev/null || exit 0
+# Escape hatch, message-file form: `git commit -F <path>` / `--file <path>`
+# carries the marker in a file, not the command; read it (relative to ROOT).
+MSGFILE="$(printf '%s\n' "$CMD" | grep -oE -- '(^| )(-F ?|--file[ =])[^ ]+' | head -n1 | sed -E 's/^ ?(-F ?|--file[ =])//')"
+if [ -n "$MSGFILE" ] && [ -f "$MSGFILE" ] && grep -qF 'Test-changes:' "$MSGFILE" 2>/dev/null; then
+    exit 0
+fi
 # The command may stage before it commits (`git add ... && git commit`, or
 # `commit -a`), and this hook runs first. Replay that staging into a copy of
 # the index and diff against the copy: `add -A` for an explicit add (a

@@ -4,6 +4,18 @@
 # this prints only the dead ones so they get fixed. Scans, if present, the project's
 # CLAUDE.md, AGENTS.md, STATE.md, and HANDOFF.md.
 #
+# Scan scope: inline `code spans` get the full path/file/command rules. Fenced
+# ```code blocks``` are path-checked only, and only on the FIRST whitespace-
+# separated token of each line: that token is the command or script the line
+# claims exists, while later tokens are arguments and are usually placeholders
+# (--config configs/base.yml). Fence tokens are never command-checked, because
+# fence lines carry arguments and output and a command check there would be
+# noisy. Absolute and "~" paths inside a fence are skipped as machine-specific
+# examples; inline spans still check them. The extension rule and the colon rule
+# (gh:owner/repo and other scheme-like tokens) apply as before. A single-token
+# backticked word is also deliberately not command-checked: those are usually
+# names (skills, flags, concepts), so leaving them out keeps the scan precise.
+#
 # Triggered by: SessionStart (startup|resume|clear)
 # Exit codes:
 #   0 = always (advisory only; stdout is added to the session context)
@@ -84,6 +96,30 @@ def resolve(word):
         return w
     return os.path.join(root, w)
 
+def fence_path_reason(word):
+    # Fenced-block path rule (path-checks only, no command checks). A token is a
+    # path when it holds a "/", passes rule a, has no ":" (so gh:owner/repo and
+    # other scheme-like tokens are left alone), and its basename looks like a
+    # file (a recognised extension). Placeholders such as ./my-project have no
+    # extension and are not flagged. Absolute and "~" paths are skipped too:
+    # inside a fence they are machine-specific examples, not repo references.
+    if "/" not in word or ":" in word:
+        return None
+    if any(ch in word for ch in BADCHARS):
+        return None
+    if word[0] in "-@#":
+        return None
+    if word.startswith("/") or word.startswith("~"):
+        return None
+    if is_url(word) or word in scanned_set:
+        return None
+    base = os.path.basename(word.rstrip("/"))
+    if not FILE_RE.match(base) or VERSION_RE.match(base):
+        return None
+    if not os.path.exists(resolve(word)):
+        return "missing path"
+    return None
+
 dead = []   # (file, word, reason)
 seen = set()
 
@@ -137,6 +173,29 @@ for name in SCANNED:
             # rule c: command check; skip config-key labels ending in ':'.
             if not raw.rstrip(",;)").endswith(":") and cmd_missing(word):
                 reason = "command not found"
+        if reason:
+            key = (name, word)
+            if key not in seen:
+                seen.add(key)
+                dead.append((name, word, reason))
+
+    # Fenced code blocks: path-checks only, first token only (see header). A
+    # line starting with three backticks toggles the fence; inside, skip blank
+    # and comment lines.
+    in_fence = False
+    for line in text.splitlines():
+        if line.startswith("```"):
+            in_fence = not in_fence
+            continue
+        if not in_fence:
+            continue
+        stripped = line.strip()
+        if not stripped or stripped.startswith("#"):
+            continue
+        word = stripped.split()[0].rstrip(",.:;)")
+        if not word:
+            continue
+        reason = fence_path_reason(word)
         if reason:
             key = (name, word)
             if key not in seen:

@@ -305,24 +305,27 @@ GOOD_CODEX_POLICY = """\
 import json
 import sys
 
+
+def deny(reason):
+    print(json.dumps({
+        "hookSpecificOutput": {
+            "hookEventName": "PreToolUse",
+            "permissionDecision": "deny",
+            "permissionDecisionReason": reason,
+        }
+    }))
+
+
 payload = json.load(sys.stdin)
 command = payload["tool_input"]["command"]
 if command == "git push --force origin main":
-    print(json.dumps({
-        "hookSpecificOutput": {
-            "hookEventName": "PreToolUse",
-            "permissionDecision": "deny",
-            "permissionDecisionReason": "Force pushes are blocked by repository policy."
-        }
-    }))
+    deny("Force pushes are blocked by repository policy.")
 elif "*** Add File: .env" in command:
-    print(json.dumps({
-        "hookSpecificOutput": {
-            "hookEventName": "PreToolUse",
-            "permissionDecision": "deny",
-            "permissionDecisionReason": "Patches to .env files are blocked by repository policy."
-        }
-    }))
+    deny("Patches to .env files are blocked by repository policy.")
+elif "results/" in command:
+    deny("Patches to sealed run results are blocked by repository policy.")
+elif "build/" in command:
+    deny("Patches to generated outputs are blocked by repository policy.")
 """
 
 
@@ -2596,28 +2599,49 @@ class RenderedHarnessContractTest(unittest.TestCase):
             any("FAIL [codex-hooks]" in item for item in self.rendered_violations())
         )
 
-    def test_codex_policy_stub_must_deny_env_patch(self) -> None:
+    def test_codex_policy_stub_must_deny_each_patch_family(self) -> None:
         self.build_good_fixture()
-        self.write(
-            self.rendered,
-            ".codex/hooks/pre-tool-policy.py",
+        base = (
             "#!/usr/bin/env python3\n"
             "import json, sys\n"
             "payload = json.load(sys.stdin)\n"
             "command = payload['tool_input']['command']\n"
-            "if command == 'git push --force origin main':\n"
-            "    print(json.dumps({'hookSpecificOutput': {"
-            "'hookEventName': 'PreToolUse', 'permissionDecision': 'deny', "
-            "'permissionDecisionReason': "
-            "'Force pushes are blocked by repository policy.'}}))\n",
         )
 
-        self.assertTrue(
-            any(
-                "deny a patch to .env" in item
-                for item in self.rendered_violations()
+        def deny_block(condition: str, reason: str) -> str:
+            return (
+                f"if {condition}:\n"
+                "    print(json.dumps({'hookSpecificOutput': {"
+                "'hookEventName': 'PreToolUse', 'permissionDecision': 'deny', "
+                f"'permissionDecisionReason': {reason!r}}}))\n"
             )
+
+        force = deny_block(
+            "command == 'git push --force origin main'",
+            "Force pushes are blocked by repository policy.",
         )
+        env = deny_block(
+            "'*** Add File: .env' in command",
+            "Patches to .env files are blocked by repository policy.",
+        )
+        cases = (
+            (force, "deny a patch to .env"),
+            (force + env, "deny a patch to sealed run results"),
+        )
+        for stub, expected in cases:
+            with self.subTest(expected=expected):
+                self.write(
+                    self.rendered,
+                    ".codex/hooks/pre-tool-policy.py",
+                    base + stub,
+                )
+
+                self.assertTrue(
+                    any(
+                        expected in item
+                        for item in self.rendered_violations()
+                    )
+                )
 
     def test_exact_hook_command_runs_from_nested_git_directory(self) -> None:
         hooks_path = BIN_DIR.parent / "seed/.codex/hooks.json"

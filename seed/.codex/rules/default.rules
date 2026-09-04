@@ -63,7 +63,7 @@ prefix_rule(
 prefix_rule(
     pattern = ["git", "push", "--force-if-includes"],
     decision = "forbidden",
-    justification = "Defense-in-depth: force pushes are blocked by the pre-tool hook; use a normal push or ask for a reviewed recovery plan.",
+    justification = "Defense-in-depth: --force-if-includes is a no-op without --force-with-lease, which is blocked; forbidding it here keeps a push from being argued into a lease form.",
     match = ["git push --force-if-includes origin main"],
 )
 

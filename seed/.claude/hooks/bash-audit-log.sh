@@ -34,8 +34,9 @@ except Exception:
 # Exit code + command in one parse. PostToolUse -> 0, or "?" when interrupted or
 # returnCodeInterpretation is set (see header); PostToolUseFailure -> first
 # integer after "exit code" (case-insensitive) in "error", else "fail";
-# malformed JSON -> "?" / "unparseable". Fields are NUL-separated so a
-# multi-line or empty command survives intact.
+# malformed JSON -> "?" / "unparseable". Fields are NUL-separated so an empty
+# command survives; embedded newlines in the command are escaped to the two
+# characters \n (and a carriage return to \r) so one command is always one line.
 EXIT=""; COMMAND=""
 { IFS= read -r -d '' EXIT; IFS= read -r -d '' COMMAND; } < <(printf '%s' "$PAYLOAD" | python3 -c '
 import sys, json, re
@@ -54,6 +55,7 @@ else:
         code = "?"
     else:
         code = 0
+cmd = cmd.replace("\r", "\\r").replace("\n", "\\n")
 sys.stdout.write("%s\x00%s\x00" % (code, cmd))
 ' 2>/dev/null)
 # Empty EXIT means python produced nothing (e.g. unavailable); treat as unparseable.

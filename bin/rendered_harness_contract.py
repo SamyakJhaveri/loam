@@ -138,13 +138,17 @@ CODEX_POLICY_DENIAL = {
     }
 }
 
+CODEX_PATCH_DENIAL_REASONS = (
+    "Patches to .env files are blocked by repository policy.",
+    "Patches to sealed run results are blocked by repository policy.",
+    "Patches to generated outputs are blocked by repository policy.",
+)
+
 CODEX_PATCH_DENIAL = {
     "hookSpecificOutput": {
         "hookEventName": "PreToolUse",
         "permissionDecision": "deny",
-        "permissionDecisionReason": (
-            "Patches to .env files are blocked by repository policy."
-        ),
+        "permissionDecisionReason": CODEX_PATCH_DENIAL_REASONS[0],
     }
 }
 
@@ -1107,6 +1111,32 @@ def _run_codex_policy_probe(
         return None
 
 
+def _check_codex_patch_denial(
+    policy_path: pathlib.Path,
+    patch: str,
+    reason: str,
+    detail: str,
+    violations: list[Violation],
+) -> None:
+    result = _run_codex_policy_probe(
+        policy_path, patch, violations, tool_name="apply_patch"
+    )
+    if result is None:
+        return
+    try:
+        decision = json.loads(result.stdout)
+    except json.JSONDecodeError:
+        decision = None
+    expected = {
+        "hookSpecificOutput": {
+            **CODEX_PATCH_DENIAL["hookSpecificOutput"],
+            "permissionDecisionReason": reason,
+        }
+    }
+    if result.returncode != 0 or result.stderr != "" or decision != expected:
+        violations.append(Violation("codex-hooks", detail))
+
+
 def _check_codex_hooks(
     rendered_root: pathlib.Path,
     violations: list[Violation],
@@ -1165,28 +1195,30 @@ def _check_codex_hooks(
                 )
             )
 
-    env_patch = _run_codex_policy_probe(
+    _check_codex_patch_denial(
         policy_path,
         "*** Begin Patch\n*** Add File: .env\n+SECRET=1\n*** End Patch\n",
+        CODEX_PATCH_DENIAL_REASONS[0],
+        "policy process must deny a patch to .env with the design result",
         violations,
-        tool_name="apply_patch",
     )
-    if env_patch is not None:
-        try:
-            patch_decision = json.loads(env_patch.stdout)
-        except json.JSONDecodeError:
-            patch_decision = None
-        if (
-            env_patch.returncode != 0
-            or env_patch.stderr != ""
-            or patch_decision != CODEX_PATCH_DENIAL
-        ):
-            violations.append(
-                Violation(
-                    "codex-hooks",
-                    "policy process must deny a patch to .env with the design result",
-                )
-            )
+    _check_codex_patch_denial(
+        policy_path,
+        "*** Begin Patch\n*** Update File: runs/r1/results/metrics.json\n"
+        "+{}\n*** End Patch\n",
+        CODEX_PATCH_DENIAL_REASONS[1],
+        "policy process must deny a patch to sealed run results with the "
+        "design result",
+        violations,
+    )
+    _check_codex_patch_denial(
+        policy_path,
+        "*** Begin Patch\n*** Add File: build/out.js\n+x\n*** End Patch\n",
+        CODEX_PATCH_DENIAL_REASONS[2],
+        "policy process must deny a patch to generated outputs with the "
+        "design result",
+        violations,
+    )
 
     source_patch = _run_codex_policy_probe(
         policy_path,

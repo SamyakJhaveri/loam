@@ -14,9 +14,11 @@
 # concurrent editor would meanwhile read mutated code. The whole run therefore
 # happens in a throwaway linked worktree holding the staged tree, removed on
 # exit; the project checkout is only ever read.
-# A run killed with SIGTERM still runs that trap. A run killed with SIGKILL
-# does not: its scratch directory and worktree entry stay behind, and
-# `git worktree prune` drops the entry only after the directory is removed.
+# A run killed with SIGTERM still runs that trap. A SIGKILLed run does not: it
+# leaves its scratch directory and worktree entry behind. The next run sweeps
+# entries named mutation-gate.* that are older than 30 minutes, so the leak
+# heals itself; a fresh entry is left alone because it may belong to a live run
+# in another session.
 #
 # The whole gate is OPT-IN by tool presence: with no cosmic-ray reachable (a
 # project .venv/bin or PATH), it silently no-ops. No cosmic-ray, no gate.
@@ -64,6 +66,14 @@ fi
 [ -n "$ROOT" ] && [ -d "$ROOT" ] || exit 0
 cd "$ROOT" 2>/dev/null || exit 0
 
+# Escape hatch, message-file form: `git commit -F <path>` / `--file <path>`
+# cannot carry the marker in the command string, so read it from the file
+# (resolved relative to ROOT, which is now the cwd).
+MSGFILE="$(printf '%s\n' "$CMD" | grep -oE -- '(^| )(-F ?|--file[ =])[^ ]+' | head -n1 | sed -E 's/^ ?(-F ?|--file[ =])//')"
+if [ -n "$MSGFILE" ] && [ -f "$MSGFILE" ] && grep -q 'Mutants:' "$MSGFILE" 2>/dev/null; then
+    exit 0
+fi
+
 # --- Guards: each a silent exit 0 with a one-line NOTE on stderr -------------
 if [ ! -f pyproject.toml ]; then
     echo "NOTE: mutation gate skipped: no pyproject.toml in $ROOT" >&2
@@ -85,7 +95,7 @@ fi
 CRFILTER="$CRBIN/cr-filter-git"
 
 # --- Work area (removed on exit) ---------------------------------------------
-WORK="$(mktemp -d)" || exit 0
+WORK="$(mktemp -d "${TMPDIR:-/tmp}/mutation-gate.XXXXXX")" || exit 0
 trap 'rm -rf "$WORK"' EXIT
 
 # --- Staging the command will do before it commits ---------------------------
@@ -186,9 +196,39 @@ ESC_CMD="$(toml_esc "$TEST_CMD")"
 # HEAD` inside it shows exactly the staged lines and cr-filter-git's
 # branch = "HEAD" still scopes the mutants to this commit's changes.
 TREE="$WORK/tree"
-# Drop stale entries whose directory is gone (a SIGKILLed run leaves an entry;
-# prune clears it once that directory has been removed).
-git worktree prune >/dev/null 2>&1 || true
+# Sweep stale scratch worktrees left by a SIGKILLed run (see header): entries
+# named mutation-gate.*/tree whose directory is gone or older than 30 minutes.
+# `git worktree prune` alone cannot drop an entry while its directory survives.
+# A fresh entry may belong to a live run in another session, so it is left alone.
+dir_mtime() {
+    if [ "$(uname)" = "Linux" ]; then
+        stat -c %Y "$1" 2>/dev/null || echo 0
+    else
+        stat -f %m "$1" 2>/dev/null || echo 0
+    fi
+}
+sweep_stale_worktrees() {
+    local now p parent
+    now="$(date +%s)"
+    git worktree list --porcelain 2>/dev/null | while IFS= read -r line; do
+        case "$line" in
+            "worktree "*) p="${line#worktree }" ;;
+            *) continue ;;
+        esac
+        [ "$(basename "$p")" = "tree" ] || continue
+        parent="$(dirname "$p")"
+        case "$(basename "$parent")" in
+            mutation-gate.*) ;;
+            *) continue ;;
+        esac
+        if [ ! -d "$p" ] || [ "$(( now - $(dir_mtime "$p") ))" -ge 1800 ]; then
+            git worktree remove --force "$p" >/dev/null 2>&1 || true
+            rm -rf "$parent"
+        fi
+    done
+    git worktree prune >/dev/null 2>&1 || true
+}
+sweep_stale_worktrees
 if ! git worktree add --detach --quiet "$TREE" HEAD 2>/dev/null; then
     echo "NOTE: mutation gate skipped: could not create a scratch worktree" >&2
     exit 0
