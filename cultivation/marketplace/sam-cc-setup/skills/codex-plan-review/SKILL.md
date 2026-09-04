@@ -1,5 +1,6 @@
 ---
 name: codex-plan-review
+disable-model-invocation: true
 description: "Second-opinion adversarial review of a PLAN file via the Codex CLI, read-only. Use when a plan needs an independent cross-model review before execution. Manual only. NOT for replacing your project's own plan-review gate; Codex never edits - findings are advisory and Claude folds them into the plan."
 argument-hint: "<path-to-plan.md>"
 ---
@@ -15,10 +16,9 @@ This is the plan-file sibling of `/codex-review` (which reviews diffs). The cros
 the point: a same-model reviewer cannot remove identity-based self-preference, so a *different*
 model reviewing the plan is the irreplaceable defense before execution.
 
-**Trigger:** user types `/codex-plan-review <path-to-plan.md>`. Like `/codex-review`, it
-deliberately does NOT carry `disable-model-invocation: true`: that flag currently also blocks
-the slash command itself (anthropics/claude-code#26251, dup #38969), so the "Manual only" scoping
-in the description is what keeps it from auto-firing.
+**Trigger:** user types `/codex-plan-review <path>`. Manual-only (`disable-model-invocation:
+true`); the model never auto-fires it. The flag used to block the slash command too
+(anthropics/claude-code#26251, closed 2026-02-20); verified working on 2026-09-03.
 
 ## Single-writer rule (mandatory)
 

@@ -1,12 +1,12 @@
 export const meta = {
   name: 'plan-review-fanout',
-  description: 'Adversarial plan review as a grounded fan-out (canonical plan-reviewer checklist + elegance gate), adversarially verify BLOCK/HIGH findings, converge to APPROVE / APPROVE_WITH_CHANGES / REJECT plus a verbatim revised handoff plan. Pass the plan path as args.',
+  description: 'Adversarial plan review as a grounded fan-out (canonical plan-reviewer checklist + elegance gate), adversarially verify BLOCK findings, converge to APPROVE / APPROVE_WITH_CHANGES / REJECT plus a verbatim revised handoff plan. Pass the plan path as args.',
   whenToUse: 'Reviewing a plan written in a prior session before execution. Parallel, grounded upgrade of the single-agent /plan-review skill. Invoke: /plan-review-fanout <path-to-plan.md> (the calling session writes the returned revised plan to disk).',
   phases: [
     { title: 'Ground', detail: '3 git/Bash agents verify the plan factual/code/reframe claims against the live repo' },
     { title: 'Review', detail: '5 plan-reviewer lenses: repo-rules, over-engineering, missing-decisions, completeness, ordering' },
     { title: 'Elegance', detail: 'step back + web-search for a fundamentally simpler approach' },
-    { title: 'Verify', detail: 'adversarial refutation of every BLOCK/HIGH finding (2 skeptics each)' },
+    { title: 'Verify', detail: 'adversarial refutation of every BLOCK finding (2 skeptics each)' },
     { title: 'Converge', detail: 'synthesize verdict + verbatim revised handoff plan' },
   ],
 }
@@ -159,15 +159,15 @@ log("Fan-out: 3 grounding (git/Bash) + 5 checklist lenses + 1 elegance gate on "
 // The default workflow agent has the full toolset and the prompts already
 // carry each lens.
 const findSpecs = [
-  { label: "ground:facts",             prompt: G1, phase: "Ground",   schema: FINDINGS, effort: "high" },
-  { label: "ground:code+LOC+dup",      prompt: G2, phase: "Ground",   schema: FINDINGS, effort: "high" },
-  { label: "ground:reframe+artifacts", prompt: G3, phase: "Ground",   schema: FINDINGS, effort: "high" },
-  { label: "review:repo-rules",        prompt: R1, phase: "Review",   schema: FINDINGS, effort: "high" },
-  { label: "review:over-engineering",  prompt: R2, phase: "Review",   schema: FINDINGS, effort: "high" },
-  { label: "review:missing-decisions", prompt: R3, phase: "Review",   schema: FINDINGS, effort: "high" },
-  { label: "review:completeness",      prompt: R4, phase: "Review",   schema: FINDINGS, effort: "high" },
-  { label: "review:ordering-deps",     prompt: R5, phase: "Review",   schema: FINDINGS, effort: "high" },
-  { label: "elegance:step-back+web",   prompt: E1, phase: "Elegance", schema: ELEGANCE, effort: "high" },
+  { label: "ground:facts",             prompt: G1, phase: "Ground",   schema: FINDINGS, effort: "high", model: "claude-opus-4-8[1m]" },
+  { label: "ground:code+LOC+dup",      prompt: G2, phase: "Ground",   schema: FINDINGS, effort: "high", model: "claude-opus-4-8[1m]" },
+  { label: "ground:reframe+artifacts", prompt: G3, phase: "Ground",   schema: FINDINGS, effort: "high", model: "claude-opus-4-8[1m]" },
+  { label: "review:repo-rules",        prompt: R1, phase: "Review",   schema: FINDINGS, effort: "high", model: "claude-opus-4-8[1m]" },
+  { label: "review:over-engineering",  prompt: R2, phase: "Review",   schema: FINDINGS, effort: "high", model: "claude-opus-4-8[1m]" },
+  { label: "review:missing-decisions", prompt: R3, phase: "Review",   schema: FINDINGS, effort: "high", model: "claude-opus-4-8[1m]" },
+  { label: "review:completeness",      prompt: R4, phase: "Review",   schema: FINDINGS, effort: "high", model: "claude-opus-4-8[1m]" },
+  { label: "review:ordering-deps",     prompt: R5, phase: "Review",   schema: FINDINGS, effort: "high", model: "claude-opus-4-8[1m]" },
+  { label: "elegance:step-back+web",   prompt: E1, phase: "Elegance", schema: ELEGANCE, effort: "high", model: "claude-opus-4-8[1m]" },
 ]
 const LENS_LABELS = findSpecs.map(s => s.label)
 const all = await parallel(findSpecs.map(s => () => { const { prompt, ...opts } = s; return agent(prompt, opts) }))
@@ -182,9 +182,9 @@ const allFindings = findingResults.flatMap(r =>
 const dimVerdicts = findingResults.map(r => ({ dimension: r.dimension, verdict: r.verdict, summary: r.summary }))
 log("Collected " + allFindings.length + " findings across " + findingResults.length + " lenses")
 
-const mustFix = allFindings.filter(f => f.severity === "BLOCK" || f.severity === "HIGH")
-const toVerify = mustFix.slice(0, 14)
-if (mustFix.length > toVerify.length) log("Capping adversarial verify at 14 of " + mustFix.length + " BLOCK/HIGH findings")
+const blockers = allFindings.filter(f => f.severity === "BLOCK")
+const toVerify = blockers.slice(0, 14)
+if (blockers.length > toVerify.length) log("Capping adversarial verify at 14 of " + blockers.length + " BLOCK findings")
 
 const verifyPrompt = (f) => PREAMBLE + "\nYOU ARE AN ADVERSARIAL VERIFIER. A plan-review finding is below. Try HARD to REFUTE it - show the plan is actually CORRECT and the finding is wrong or overstated. Open the real files / run git to check. Default to real=false (refuted) if the evidence is ambiguous.\n\n" +
   "FINDING:\n- id: " + f.id + "\n- severity: " + f.severity + "\n- dimension: " + f.dimension + "\n- title: " + f.title + "\n- plan_claim: " + f.plan_claim + "\n- reality (finder asserts): " + f.reality + "\n- evidence (finder): " + f.evidence + "\n- recommendation: " + f.recommendation + "\n\n" +
@@ -192,11 +192,11 @@ const verifyPrompt = (f) => PREAMBLE + "\nYOU ARE AN ADVERSARIAL VERIFIER. A pla
 
 let verified = []
 if (toVerify.length > 0) {
-  log("Adversarially verifying " + toVerify.length + " BLOCK/HIGH findings (2 skeptics each)")
+  log("Adversarially verifying " + toVerify.length + " BLOCK findings (2 skeptics each)")
   verified = await parallel(toVerify.map(f => () =>
     parallel([
-      () => agent(verifyPrompt(f), { label: "verify-A:" + f.id, phase: "Verify", schema: VERDICT, effort: "high" }),
-      () => agent(verifyPrompt(f), { label: "verify-B:" + f.id, phase: "Verify", schema: VERDICT, effort: "high" }),
+      () => agent(verifyPrompt(f), { label: "verify-A:" + f.id, phase: "Verify", schema: VERDICT, effort: "high", model: "claude-opus-4-8[1m]" }),
+      () => agent(verifyPrompt(f), { label: "verify-B:" + f.id, phase: "Verify", schema: VERDICT, effort: "high", model: "claude-opus-4-8[1m]" }),
     ]).then(vs => {
       const v = vs.filter(Boolean)
       const survived = v.some(x => x.real)
@@ -214,24 +214,24 @@ const convergePrompt = PREAMBLE +
   "Re-Read the plan file in full first: " + PLAN_PATH + "\n\n" +
   "=== PER-LENS VERDICTS ===\n" + JSON.stringify(dimVerdicts, null, 1) + "\n\n" +
   "=== ALL FINDINGS (grounding + checklist lenses) ===\n" + JSON.stringify(allFindings, null, 1) + "\n\n" +
-  "=== ADVERSARIAL VERIFICATION of BLOCK/HIGH findings (survived=true means it withstood a refutation attempt) ===\n" + JSON.stringify(verified.map(v => ({ id: v.finding.id, title: v.finding.title, severity: v.finding.severity, survived: v.survived, verdicts: v.verdicts })), null, 1) + "\n\n" +
+  "=== ADVERSARIAL VERIFICATION of BLOCK findings (survived=true means it withstood a refutation attempt) ===\n" + JSON.stringify(verified.map(v => ({ id: v.finding.id, title: v.finding.title, severity: v.finding.severity, survived: v.survived, verdicts: v.verdicts })), null, 1) + "\n\n" +
   "=== ELEGANCE GATE ===\n" + JSON.stringify(elegance, null, 1) + "\n\n" +
   "PRODUCE (REVIEW schema):\n" +
   "1. verdict: APPROVE / APPROVE_WITH_CHANGES / REJECT.\n" +
   "2. verdict_rationale: 2-4 sentences.\n" +
-  "3. findings_breakdown_md: COMPLETE markdown (no summarization). Cover: what was investigated; what you CHANGED from the original plan and why; the elegance alternatives (adopted/partial/rejected + why); decisions deferred to the user. Group by severity. Treat BLOCK/HIGH findings with survived=false as 'Considered & dismissed' (state why the refutation held). Be honest, transparent, critical.\n" +
+  "3. findings_breakdown_md: COMPLETE markdown (no summarization). Cover: what was investigated; what you CHANGED from the original plan and why; the elegance alternatives (adopted/partial/rejected + why); decisions deferred to the user. Group by severity. Treat BLOCK findings with survived=false as 'Considered & dismissed' (state why the refutation held). HIGH findings were not adversarially verified; carry each into the revised plan as a must-fix unless the grounding lenses contradict it. Be honest, transparent, critical.\n" +
   "4. final_plan_md: the COMPLETE revised plan, VERBATIM and self-contained for a fresh session with zero context. PRESERVE the plan's section structure/headings. CORRECT every stale/wrong fact the grounding surfaced (real SHAs, real counts, real LOC, etc.). Keep any user-gate / open-decisions section INTACT. Fold in the elegance recommendation (if it narrows scope or re-orders, do so explicitly). Ensure every task states files + action + verification. Repo-relative paths only; no 'the file we discussed'. Inline the binding repo rules. Add a 'verify live topology yourself' note (with the commands) so the executor re-verifies rather than trusting the file.\n" +
   "5. deferred_decisions: the list of choices for the user.\n"
 
 log("Converging into verdict + revised handoff plan")
-const review = await agent(convergePrompt, { label: "converge:final-review", phase: "Converge", schema: REVIEW, effort: "high" })
+const review = await agent(convergePrompt, { label: "converge:final-review", phase: "Converge", schema: REVIEW, effort: "high", model: "claude-opus-4-8[1m]" })
 
 return {
   plan_path: PLAN_PATH,
   verdict: review && review.verdict,
   counts: {
     findings_total: allFindings.length,
-    block_high: mustFix.length,
+    block: blockers.length,
     verified: verified.length,
     survived: verified.filter(v => v.survived).length,
   },

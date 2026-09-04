@@ -3,6 +3,22 @@
 This file records why a promoted plugin change traveled. It is also the upgrade
 entry point for projects that consume the Loam marketplace.
 
+## Unreleased: sam-cc-setup review consolidation
+
+The critique-swarm skill is removed because session-critique covers decision-aware
+session review and the plan-review-fanout workflow covers pre-execution plan review, so
+the skill was a fifth review entry point with no job of its own. The plugin now ships 26
+skills, counted by
+`find cultivation/marketplace/sam-cc-setup/skills -name SKILL.md | wc -l`.
+plan-review-fanout pins every agent to claude-opus-4-8[1m] and adversarially
+verifies only BLOCK findings. validate is now a thin caller of the build-validator
+agent, which absorbed the lint, type check, whitespace, shell syntax, test suite, and
+smoke-path checks. ship, auto-phase, gen-spec, codex-review, and codex-plan-review are
+manual-only (disable-model-invocation: true) now that anthropics/claude-code#26251 is
+closed. codex-review appends open findings to docs/findings/FINDINGS.md. Upgrade step:
+`claude plugin update sam-cc-setup` after the next release; the version bump happens in
+the release loop.
+
 ## Current: sam-cc-setup v0.7.0 external-skill vetting
 
 Adds the `vet-skill` skill (manual-only): security-scan any external skill or bundle

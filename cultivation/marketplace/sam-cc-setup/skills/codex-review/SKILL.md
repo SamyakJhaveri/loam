@@ -1,5 +1,6 @@
 ---
 name: codex-review
+disable-model-invocation: true
 description: "Second-opinion review of the current diff via the Codex CLI, read-only. Use when you want an independent adversarial review of a diff from a different model before merging. Manual only. NOT for replacing your project's own diff-review or validation gate; Codex never edits - findings are advisory and Claude applies any fixes."
 argument-hint: "[optional diff scope, e.g. main...HEAD or HEAD~3; defaults to the default branch ...HEAD]"
 ---
@@ -11,10 +12,9 @@ fresh context) and triage its findings. Codex runs in a pinned **read-only** san
 **never edits the checkout** - it only reports. Claude saves a transcript under
 `.claude/codex-reviews/` (gitignore it) and applies any fixes.
 
-**Trigger:** user types `/codex-review [scope]`. It deliberately does NOT carry
-`disable-model-invocation: true`: that flag currently also blocks the `/codex-review` slash
-command itself (anthropics/claude-code#26251, dup #38969), so the "Manual only" scoping in the
-description is what keeps it from auto-firing.
+**Trigger:** user types `/codex-review [scope]`. Manual-only (`disable-model-invocation:
+true`); the model never auto-fires it. The flag used to block the slash command too
+(anthropics/claude-code#26251, closed 2026-02-20); verified working on 2026-09-03.
 
 ## Single-writer rule (mandatory)
 
@@ -128,6 +128,10 @@ Be terse; no preamble."
   Claude checkout. Codex does not edit.
 - For a FIX FIRST / REWORK verdict, fold the confirmed Critical/High findings into the work
   before shipping; note Medium/Low as follow-ups.
+- Append every confirmed finding you do not fix in this session as a row to
+  `docs/findings/FINDINGS.md` (columns: Date | Source | Severity | Path:line | Finding |
+  Status | Closing commit; create the file with that header if it is missing). When you
+  later fix a row, fill its closing commit instead of deleting the row.
 
 ## What NOT to do
 

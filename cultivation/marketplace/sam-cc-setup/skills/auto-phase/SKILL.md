@@ -1,8 +1,10 @@
 ---
 name: auto-phase
+disable-model-invocation: true
 description: >
   Autonomous multi-phase release execution. Reads a PHASE-PLAN.md with stages 1-N
-  and executes them end-to-end, running validation + critique per stage, committing
+  and executes them end-to-end, running validation per stage and session critique at the
+  end of the plan (per stage when a stage touches seed/, hooks, or copier.yml), committing
   with clean scope, and advancing automatically. Halts only when a validation gate
   fails twice or a critique surfaces an unresolvable issue. Use for multi-stage
   release plans, phased restructures, or any numbered-phase execution. NOT for
@@ -72,7 +74,7 @@ files, modify configurations, whatever the stage specifies.
 
 #### 2c. Run validation pipeline
 
-Invoke `/validate` (full, both waves). If validation fails:
+Invoke `/validate`. If validation fails:
 
 - **First failure:** Fix the issues and re-run `/validate`.
 - **Second failure on same stage:** HALT. Report the failure and ask the user.
@@ -83,10 +85,12 @@ Failure: [description]
 Action: Halting for user input. The stage contract may need revision.
 ```
 
-#### 2d. Run session critique
+#### 2d. Run session critique when the stage is template-facing
 
-Invoke `/session-critique` for the current stage's changes only. If critique
-surfaces HIGH/MEDIUM findings:
+Run `/session-critique` for this stage's changes only when the stage touched `seed/`,
+`.claude/hooks/`, `.codex/`, or `copier.yml` (check `git diff --name-only HEAD`).
+Otherwise skip; the end-of-plan critique in Step 3 covers it. If critique surfaces
+HIGH/MEDIUM findings:
 
 - Attempt to fix automatically if the fix is clear and contained.
 - If the fix requires judgment or scope expansion: HALT and ask the user.
@@ -128,7 +132,13 @@ Commit: [hash]
 Advancing to Stage K+1...
 ```
 
-### Step 3: Completion report
+### Step 3: End-of-plan critique
+
+Invoke `/session-critique` once over all stages' changes
+(`git diff --name-only <first stage's parent commit>..HEAD`). Handle findings as
+in 2d; a fix lands as its own follow-up commit, never by amending a stage commit.
+
+### Step 4: Completion report
 
 After all stages complete:
 
@@ -139,7 +149,7 @@ Stages: N/N completed
 Commits: [list of hashes]
 Total changes: [file count summary]
 
-All stages passed validation and critique gates.
+All stages passed validation; the end-of-plan critique ran.
 ```
 
 ## Stopping Conditions
@@ -156,6 +166,7 @@ All stages passed validation and critique gates.
 
 1. **One stage at a time.** Never start stage K+1 before stage K is committed.
 2. **Never bundle cross-stage changes.** Each commit contains exactly one stage.
-3. **Never skip validation or critique.** Every stage passes both gates.
+3. **Never skip validation or the end-of-plan critique.** Every stage passes the
+   validation gate; template-facing stages also pass a per-stage critique.
 4. **Halt on ambiguity.** If a stage's instructions are unclear, ask, don't guess.
 5. **Track progress.** Update TASKS.md after every stage so a fresh session can resume.

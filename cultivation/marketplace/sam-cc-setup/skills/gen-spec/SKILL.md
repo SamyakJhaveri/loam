@@ -1,5 +1,6 @@
 ---
 name: gen-spec
+disable-model-invocation: true
 description: >
   Guided specification generation wizard. Use when adding a new feature, API
   endpoint, or component, to force a written spec before implementation:

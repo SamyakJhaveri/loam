@@ -1,8 +1,9 @@
 ---
 name: ship
+disable-model-invocation: true
 description: >
   Orchestrates the full shipping pipeline in strict order: session-critique, then
-  validate (both waves), then commit, then PR, then a handoff completion record.
+  validate, then commit, then PR, then a handoff completion record.
   Use when work is complete and ready to ship. Enforces ordering to prevent
   premature commits and skipped critiques. Accepts optional argument
   'critique-only' to run just the critique step. NOT for mid-implementation
@@ -44,11 +45,11 @@ This spawns an advisor-pattern agent team that adversarially reviews all work in
 
 ### Stage 2: Validate
 
-Invoke `/validate` (full, both waves).
+Invoke `/validate`.
 
-This runs the two-wave validation loop: deterministic checks, then rule-based tests.
+This runs the build-validator gate through the validate skill.
 
-**Gate:** Both waves must pass. On failure, enter the skill's fix loop. Max 3 iterations. After 3 fails, halt and escalate to the user.
+**Gate:** The gate verdict must be PASS. On failure, enter the skill's fix loop. Max 3 iterations. After 3 fails, halt and escalate to the user.
 
 ### Stage 3: Commit
 
@@ -72,7 +73,7 @@ Split commits by scope if the session produced multiple logical changes. Never b
 
 ### Stage 4: PR
 
-Push the branch and open a PR:
+First decide whether this change is docs-only. Resolve the default branch the way codex-review does (`git symbolic-ref --short refs/remotes/origin/HEAD`, falling back to main) and run `git diff --name-only <default>...HEAD`. The change is docs-only when every path is under `docs/`, or is a `*.md` file outside `seed/` and `cultivation/`. Docs-only changes go direct to the default branch under the hybrid branch policy: skip the push and the PR, report 'docs-only: stage 4 skipped', and continue to stage 5. Otherwise push and open the PR:
 
 ```bash
 git push -u origin HEAD
@@ -81,13 +82,13 @@ gh pr create --title "<title>" --body "<summary + test plan>"
 
 Never force push. If the push fails, report the error and stop.
 
-**Post-check:** Report the PR URL.
+**Post-check:** Report the PR URL, or that stage 4 was skipped as docs-only.
 
 ### Stage 5: Completion Record
 
 Invoke `/sam_handoff` (per Hard Rule 3, use the skill, do not restate its schema
 inline). Runs AFTER commit + PR so the record can cite the post-commit SHA and
-the opened PR number. Every shipped work-stream leaves a machine-findable
+the opened PR number when there is one. Every shipped work-stream leaves a machine-findable
 record, so no more hand-pasted summaries.
 
 **Post-check:** Report the handoff record path. Pipeline complete.

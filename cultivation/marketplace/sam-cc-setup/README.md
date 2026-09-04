@@ -16,8 +16,8 @@ the always-loaded harness, so it does not run `/bootstrap-cc-setup`.
   here byte-for-byte, then run `bin/verify-template.sh` from the Loam root.
 - **Skills:** `plan-review` (blind merged plan review), `tech-selection` (bounded
   component trade-off records), `surprise-me` (ranked, evidence-backed unsolicited
-  ideas; rehomed from the dissolved helpers bundle), `validate` (on-demand two-wave
-  deterministic pass),
+  ideas; rehomed from the dissolved helpers bundle), `validate` (on-demand
+  deterministic gate through the build-validator agent),
   `codex-review` and `codex-plan-review` (cross-model second opinions - require the
   Codex CLI), `brainstorming` (approved design documents), `writing-plans` (exact,
   testable implementation plans), `dream`, `align-prompt`, `scaffold-context`, `reflect`,

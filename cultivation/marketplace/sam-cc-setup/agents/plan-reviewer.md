@@ -3,7 +3,7 @@ name: plan-reviewer
 description: "Blind adversarial review of a plan, spec, or design doc before execution: correctness checklist plus frame-breaking elegance pass in one unit. Invoke BLIND: give it the artifact path and its constraints, never the author's reasoning. Emits bounded, evidence-capped findings, a coverage ledger, a verdict, and a self-contained revised handoff plan. Use BEFORE any non-trivial implementation, especially architecture decisions, pipeline changes, or anything hard to reverse. Not a code/diff reviewer (use /code-review for shipped changes)."
 tools: Read, Glob, Grep, Bash, WebSearch
 model: claude-opus-4-8[1m]
-effort: xhigh
+effort: high
 maxTurns: 60
 ---
 

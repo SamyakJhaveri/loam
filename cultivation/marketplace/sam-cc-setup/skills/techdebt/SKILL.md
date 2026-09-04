@@ -30,5 +30,5 @@ commits - fall back to `main...HEAD`, then to a whole-tree scan.
 
 This skill reports; it does not edit. Hand the table back to the user and let
 them choose what to act on. If they approve a set of fixes, apply them outside
-this skill, then run the project's linter/type checker (`/validate` Wave 1) to
+this skill, then run the project's linter/type checker (`/validate`) to
 confirm no regressions.
