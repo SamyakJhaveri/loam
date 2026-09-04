@@ -47,6 +47,26 @@
             "timeout": 10
           }
         ]
+      },
+      {
+        "matcher": "Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": ".claude/hooks/write-rewrite-guard.sh",
+            "timeout": 5
+          }
+        ]
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": ".claude/hooks/bash-length-advisory.sh",
+            "timeout": 5
+          }
+        ]
       }
     ],
     "PostToolUse": [
@@ -57,6 +77,18 @@
             "type": "command",
             "command": ".claude/hooks/ruff-after-edit.sh",
             "timeout": 10
+          }
+        ]
+      }
+    ],
+    "SessionStart": [
+      {
+        "matcher": "compact",
+        "hooks": [
+          {
+            "type": "command",
+            "command": ".claude/hooks/post-compact-reinject.sh",
+            "timeout": 5
           }
         ]
       }

@@ -16,12 +16,13 @@
 - Hook event and matcher names are exact strings; a wrong name fails silently. Verify against the documented event list before wiring a hook.
 - A rule's `paths:` frontmatter fires when Claude READS a matching file, never on Write. Rules whose trigger is authoring a new file must stay always-loaded.
 - `auto-activate` is not a real skill-frontmatter field. To make a skill manual-only, use `disable-model-invocation: true`.
+- `/goal` is unavailable when `disableAllHooks` or `allowManagedHooksOnly` is set; never set either in a rendered project.
 
 ## Shipped machinery
 
-- The Stop hook (`.claude/hooks/stop-verify-gate.sh`) blocks turn-end on `git diff --check`, ruff, or `bash -n` failures in changed files. Fix the failures instead of fighting the gate.
+- The Stop hook (`.claude/hooks/stop-verify-gate.sh`) blocks turn-end on `git diff --check`, ruff, or `bash -n` failures in changed files, and additionally blocks a final message that claims verification without a Bash result in the same turn. Fix the failures instead of fighting the gate.
 - `/catchup` (in `.agents/skills/`, shared with Codex via symlink): session bootstrap briefing.
-- Other hooks: `bash-audit-log.sh` (command forensics log, gitignored), `concurrent-checkout-guard.sh` (blocks two sessions racing one checkout), and `ruff-after-edit.sh` (auto-fixes changed Python files).
+- Other hooks: `bash-audit-log.sh` (command forensics log, gitignored), `concurrent-checkout-guard.sh` (blocks two sessions racing one checkout), `ruff-after-edit.sh` (auto-fixes changed Python files), `write-rewrite-guard.sh` (advises Edit over Write on files of 80 or more lines), `bash-length-advisory.sh` (advises splitting commands over 400 characters), and `post-compact-reinject.sh` (re-injects the working rules after compaction).
 
 ## Routing (read on demand)
 

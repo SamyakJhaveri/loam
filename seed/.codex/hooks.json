@@ -11,6 +11,17 @@
             "statusMessage": "Checking Git push policy"
           }
         ]
+      },
+      {
+        "matcher": "^apply_patch$",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"$(git rev-parse --show-toplevel)/.codex/hooks/pre-tool-policy.py\"",
+            "timeout": 10,
+            "statusMessage": "Checking patch policy"
+          }
+        ]
       }
     ]
   }

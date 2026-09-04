@@ -54,6 +54,20 @@ prefix_rule(
 )
 
 prefix_rule(
+    pattern = ["git", "push", "-f"],
+    decision = "forbidden",
+    justification = "Defense-in-depth: force pushes are blocked by the pre-tool hook; use a normal push or ask for a reviewed recovery plan.",
+    match = ["git push -f origin main"],
+)
+
+prefix_rule(
+    pattern = ["git", "push", "--force-if-includes"],
+    decision = "forbidden",
+    justification = "Defense-in-depth: force pushes are blocked by the pre-tool hook; use a normal push or ask for a reviewed recovery plan.",
+    match = ["git push --force-if-includes origin main"],
+)
+
+prefix_rule(
     pattern = ["git", "reset", "--hard"],
     decision = "forbidden",
     justification = "Hard resets are blocked because they can destroy local work. Use non-destructive inspection or ask the user.",

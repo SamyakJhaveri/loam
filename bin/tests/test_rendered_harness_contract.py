@@ -40,6 +40,9 @@ REQUIRED_RENDERED_PATHS = (
     ".claude/hooks/concurrent-checkout-guard.sh",
     ".claude/hooks/ruff-after-edit.sh",
     ".claude/hooks/stop-verify-gate.sh",
+    ".claude/hooks/write-rewrite-guard.sh",
+    ".claude/hooks/bash-length-advisory.sh",
+    ".claude/hooks/post-compact-reinject.sh",
     ".codex/config.toml",
     ".codex/hooks.json",
     ".codex/hooks/pre-tool-policy.py",
@@ -64,6 +67,9 @@ CLAUDE_HOOK_PATHS = (
     ".claude/hooks/concurrent-checkout-guard.sh",
     ".claude/hooks/ruff-after-edit.sh",
     ".claude/hooks/stop-verify-gate.sh",
+    ".claude/hooks/write-rewrite-guard.sh",
+    ".claude/hooks/bash-length-advisory.sh",
+    ".claude/hooks/post-compact-reinject.sh",
 )
 
 GOOD_CLAUDE_SETTINGS = {
@@ -87,6 +93,24 @@ GOOD_CLAUDE_SETTINGS = {
                     }
                 ],
             },
+            {
+                "matcher": "Write",
+                "hooks": [
+                    {
+                        "type": "command",
+                        "command": ".claude/hooks/write-rewrite-guard.sh",
+                    }
+                ],
+            },
+            {
+                "matcher": "Bash",
+                "hooks": [
+                    {
+                        "type": "command",
+                        "command": ".claude/hooks/bash-length-advisory.sh",
+                    }
+                ],
+            },
         ],
         "PostToolUse": [
             {
@@ -95,6 +119,17 @@ GOOD_CLAUDE_SETTINGS = {
                     {
                         "type": "command",
                         "command": ".claude/hooks/ruff-after-edit.sh",
+                    }
+                ],
+            }
+        ],
+        "SessionStart": [
+            {
+                "matcher": "compact",
+                "hooks": [
+                    {
+                        "type": "command",
+                        "command": ".claude/hooks/post-compact-reinject.sh",
                     }
                 ],
             }
@@ -118,7 +153,7 @@ GOOD_CLAUDE_PROSE = """# CLAUDE.md
 
 - Stop hook: `.claude/hooks/stop-verify-gate.sh`.
 - `/catchup` lives in `.agents/skills/`.
-- Hooks: `bash-audit-log.sh`, `concurrent-checkout-guard.sh`, and `ruff-after-edit.sh`.
+- Hooks: `bash-audit-log.sh`, `concurrent-checkout-guard.sh`, `ruff-after-edit.sh`, `write-rewrite-guard.sh`, `bash-length-advisory.sh`, and `post-compact-reinject.sh`.
 
 | Resource | Use when |
 | --- | --- |
@@ -166,7 +201,21 @@ GOOD_CODEX_HOOKS = {
                         "statusMessage": "Checking Git push policy",
                     }
                 ],
-            }
+            },
+            {
+                "matcher": "^apply_patch$",
+                "hooks": [
+                    {
+                        "type": "command",
+                        "command": (
+                            'python3 "$(git rev-parse --show-toplevel)/.codex/'
+                            'hooks/pre-tool-policy.py"'
+                        ),
+                        "timeout": 10,
+                        "statusMessage": "Checking patch policy",
+                    }
+                ],
+            },
         ]
     }
 }
@@ -209,6 +258,14 @@ if command == "git push --force origin main":
             "hookEventName": "PreToolUse",
             "permissionDecision": "deny",
             "permissionDecisionReason": "Force pushes are blocked by repository policy."
+        }
+    }))
+elif "*** Add File: .env" in command:
+    print(json.dumps({
+        "hookSpecificOutput": {
+            "hookEventName": "PreToolUse",
+            "permissionDecision": "deny",
+            "permissionDecisionReason": "Patches to .env files are blocked by repository policy."
         }
     }))
 """
@@ -1261,7 +1318,7 @@ class RenderedHarnessContractTest(unittest.TestCase):
     def test_claude_settings_owned_events_are_exact(self) -> None:
         self.build_good_fixture()
         for event, mutation in (
-            ("SessionStart", "add"),
+            ("UserPromptSubmit", "add"),
             ("Stop", "remove"),
         ):
             with self.subTest(event=event, mutation=mutation):
@@ -1646,6 +1703,15 @@ class RenderedHarnessContractTest(unittest.TestCase):
                 "tool_name": "Bash",
                 "tool_input": {"command": command},
                 "future_field": "accepted",
+            }
+        )
+
+    def patch_payload(self, patch_text: str) -> str:
+        return json.dumps(
+            {
+                "hook_event_name": "PreToolUse",
+                "tool_name": "apply_patch",
+                "tool_input": {"command": patch_text},
             }
         )
 
@@ -2403,6 +2469,49 @@ class RenderedHarnessContractTest(unittest.TestCase):
                 self.assertEqual(POLICY_DENIAL, json.loads(process.stdout))
                 self.assertEqual("", process.stderr)
 
+    def test_policy_process_denies_and_allows_apply_patch_targets(self) -> None:
+        denied = (
+            (".env", "Patches to .env files are blocked by repository policy."),
+            (
+                "runs/r1/results/x.csv",
+                "Patches to sealed run results are blocked by repository policy.",
+            ),
+            (
+                "build/out.js",
+                "Patches to generated outputs are blocked by repository policy.",
+            ),
+        )
+        for target, reason in denied:
+            with self.subTest(target=target):
+                patch = (
+                    f"*** Begin Patch\n*** Add File: {target}\n+x\n*** End Patch\n"
+                )
+                process = self.run_policy(self.patch_payload(patch))
+
+                self.assertEqual(0, process.returncode, process.stderr)
+                self.assertNotEqual("", process.stdout)
+                self.assertEqual(
+                    {
+                        "hookSpecificOutput": {
+                            "hookEventName": "PreToolUse",
+                            "permissionDecision": "deny",
+                            "permissionDecisionReason": reason,
+                        }
+                    },
+                    json.loads(process.stdout),
+                )
+                self.assertEqual("", process.stderr)
+
+        allowed = self.run_policy(
+            self.patch_payload(
+                "*** Begin Patch\n*** Add File: src/app.py\n+print('hi')\n"
+                "*** End Patch\n"
+            )
+        )
+        self.assertEqual(0, allowed.returncode, allowed.stderr)
+        self.assertEqual("", allowed.stdout)
+        self.assertEqual("", allowed.stderr)
+
     def test_codex_hook_wiring_is_exact_and_synchronous(self) -> None:
         hooks_path = BIN_DIR.parent / "seed/.codex/hooks.json"
         self.assertTrue(hooks_path.is_file(), f"missing {hooks_path}")
@@ -2420,6 +2529,39 @@ class RenderedHarnessContractTest(unittest.TestCase):
 
         self.assertTrue(
             any("FAIL [codex-hooks]" in item for item in self.rendered_violations())
+        )
+
+    def test_codex_hook_wiring_requires_the_apply_patch_group(self) -> None:
+        self.build_good_fixture()
+        hooks = json.loads(json.dumps(GOOD_CODEX_HOOKS))
+        del hooks["hooks"]["PreToolUse"][1]
+        self.write(self.rendered, ".codex/hooks.json", json.dumps(hooks))
+
+        self.assertTrue(
+            any("FAIL [codex-hooks]" in item for item in self.rendered_violations())
+        )
+
+    def test_codex_policy_stub_must_deny_env_patch(self) -> None:
+        self.build_good_fixture()
+        self.write(
+            self.rendered,
+            ".codex/hooks/pre-tool-policy.py",
+            "#!/usr/bin/env python3\n"
+            "import json, sys\n"
+            "payload = json.load(sys.stdin)\n"
+            "command = payload['tool_input']['command']\n"
+            "if command == 'git push --force origin main':\n"
+            "    print(json.dumps({'hookSpecificOutput': {"
+            "'hookEventName': 'PreToolUse', 'permissionDecision': 'deny', "
+            "'permissionDecisionReason': "
+            "'Force pushes are blocked by repository policy.'}}))\n",
+        )
+
+        self.assertTrue(
+            any(
+                "deny a patch to .env" in item
+                for item in self.rendered_violations()
+            )
         )
 
     def test_exact_hook_command_runs_from_nested_git_directory(self) -> None:
@@ -2682,6 +2824,8 @@ class RenderedHarnessContractTest(unittest.TestCase):
             '["rm", "-fr"]',
             '["git", "push", "--force"]',
             '["git", "push", "--force-with-lease"]',
+            '["git", "push", "-f"]',
+            '["git", "push", "--force-if-includes"]',
             '["git", "reset", "--hard"]',
             '["git", "push"]',
         )

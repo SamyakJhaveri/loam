@@ -1,4 +1,4 @@
-"""Behavioral fixtures for the four shipped Claude hooks (evaluation E1).
+"""Behavioral fixtures for the shipped Claude hooks (evaluation E1).
 
 Each test runs the real hook script against a disposable git repository and
 asserts on exit code and output. Every gate gets a RED fixture (must block),
@@ -297,6 +297,237 @@ class StopVerifyGateTests(HookFixtureCase):
         self.assertEqual(2, blocked.returncode, blocked.stderr)
         self.assertIn("[bash -n]", blocked.stderr)
 
+    def _claim_transcript(self, entries: list[tuple[str, object]]) -> pathlib.Path:
+        """Write a JSONL transcript from (role, content) tuples, where content
+        is the message content verbatim: a string for a human turn, or a list
+        of blocks (tool_use / tool_result / text) otherwise."""
+        transcript = pathlib.Path(self.temp_dir.name) / "claim.jsonl"
+        lines = [
+            json.dumps({"type": role, "message": {"content": content}})
+            for role, content in entries
+        ]
+        transcript.write_text("\n".join(lines) + "\n", encoding="utf-8")
+        return transcript
+
+    def test_claim_with_same_turn_bash_result_passes(self) -> None:
+        # A verification claim backed by a Bash tool_result ("3 passed") in the
+        # same turn is honored: exit 0.
+        self.commit_file("ok.py", "print('ok')\n")
+        transcript = self._claim_transcript(
+            [
+                ("user", "run the tests"),
+                (
+                    "assistant",
+                    [{"type": "tool_use", "id": "t1", "name": "Bash",
+                      "input": {"command": "pytest"}}],
+                ),
+                (
+                    "user",
+                    [{"type": "tool_result", "tool_use_id": "t1",
+                      "content": "3 passed"}],
+                ),
+                ("assistant", [{"type": "text", "text": "All tests pass."}]),
+            ]
+        )
+        result = self.run_hook(
+            self.SCRIPT,
+            {"transcript_path": str(transcript),
+             "last_assistant_message": "All tests pass."},
+        )
+        self.assertEqual(0, result.returncode, result.stderr)
+
+    def test_claim_without_bash_result_blocks(self) -> None:
+        # A verification claim with no Bash output in the turn blocks with the
+        # exact gate sentence.
+        self.commit_file("ok.py", "print('ok')\n")
+        transcript = self._claim_transcript(
+            [
+                ("user", "run the tests"),
+                ("assistant", [{"type": "text", "text": "All tests pass."}]),
+            ]
+        )
+        result = self.run_hook(
+            self.SCRIPT,
+            {"transcript_path": str(transcript),
+             "last_assistant_message": "All tests pass."},
+        )
+        self.assertEqual(2, result.returncode, result.stderr)
+        self.assertIn(
+            "Final message claims verification without command output in this turn.",
+            result.stderr,
+        )
+
+    def test_claim_backed_only_before_last_human_message_blocks(self) -> None:
+        # The only passing tool_result sits before the last human message, so it
+        # is not this turn's evidence: the claim still blocks.
+        self.commit_file("ok.py", "print('ok')\n")
+        transcript = self._claim_transcript(
+            [
+                (
+                    "assistant",
+                    [{"type": "tool_use", "id": "t1", "name": "Bash",
+                      "input": {"command": "pytest"}}],
+                ),
+                (
+                    "user",
+                    [{"type": "tool_result", "tool_use_id": "t1",
+                      "content": "3 passed"}],
+                ),
+                ("user", "now summarize"),
+                ("assistant", [{"type": "text", "text": "All tests pass."}]),
+            ]
+        )
+        result = self.run_hook(
+            self.SCRIPT,
+            {"transcript_path": str(transcript),
+             "last_assistant_message": "All tests pass."},
+        )
+        self.assertEqual(2, result.returncode, result.stderr)
+
+    def test_claim_with_not_verified_disclaimer_passes(self) -> None:
+        # "not verified" anywhere in the message skips the claim leg: exit 0.
+        self.commit_file("ok.py", "print('ok')\n")
+        transcript = self._claim_transcript(
+            [
+                ("user", "run the tests"),
+                ("assistant",
+                 [{"type": "text", "text": "Tests pass; not verified."}]),
+            ]
+        )
+        result = self.run_hook(
+            self.SCRIPT,
+            {"transcript_path": str(transcript),
+             "last_assistant_message": "Tests pass; not verified."},
+        )
+        self.assertEqual(0, result.returncode, result.stderr)
+
+    def test_claim_without_transcript_path_passes(self) -> None:
+        # No transcript_path: the claim leg cannot read the turn, so it skips
+        # rather than blocking. Clean tree keeps the other legs quiet.
+        self.commit_file("ok.py", "print('ok')\n")
+        result = self.run_hook(
+            self.SCRIPT, {"last_assistant_message": "All tests pass."}
+        )
+        self.assertEqual(0, result.returncode, result.stderr)
+
+    def test_claim_with_list_tool_result_text_passes(self) -> None:
+        # A tool_result whose content is a list of text items ("everything OK")
+        # is read like a string result: the "OK" token backs the claim.
+        self.commit_file("ok.py", "print('ok')\n")
+        transcript = self._claim_transcript(
+            [
+                ("user", "run the tests"),
+                (
+                    "assistant",
+                    [{"type": "tool_use", "id": "t1", "name": "Bash",
+                      "input": {"command": "pytest"}}],
+                ),
+                (
+                    "user",
+                    [{"type": "tool_result", "tool_use_id": "t1",
+                      "content": [{"type": "text", "text": "everything OK"}]}],
+                ),
+                ("assistant", [{"type": "text", "text": "Confirmed."}]),
+            ]
+        )
+        result = self.run_hook(
+            self.SCRIPT,
+            {"transcript_path": str(transcript),
+             "last_assistant_message": "Confirmed."},
+        )
+        self.assertEqual(0, result.returncode, result.stderr)
+
+    def test_claim_evidence_matches_whole_words_only(self) -> None:
+        # "broken pipe" embeds "ok" but is not evidence: the word-boundary match
+        # blocks it, while a real "OK" summary line still backs the claim.
+        self.commit_file("ok.py", "print('ok')\n")
+
+        def transcript_with(output: str) -> pathlib.Path:
+            return self._claim_transcript(
+                [
+                    ("user", "run the tests"),
+                    (
+                        "assistant",
+                        [{"type": "tool_use", "id": "t1", "name": "Bash",
+                          "input": {"command": "pytest"}}],
+                    ),
+                    (
+                        "user",
+                        [{"type": "tool_result", "tool_use_id": "t1",
+                          "content": output}],
+                    ),
+                    ("assistant", [{"type": "text", "text": "All tests pass."}]),
+                ]
+            )
+
+        blocked = self.run_hook(
+            self.SCRIPT,
+            {"transcript_path": str(transcript_with("error: broken pipe")),
+             "last_assistant_message": "All tests pass."},
+        )
+        self.assertEqual(2, blocked.returncode, blocked.stderr)
+        self.assertIn("Final message claims verification", blocked.stderr)
+
+        passed = self.run_hook(
+            self.SCRIPT,
+            {"transcript_path": str(transcript_with("Ran 3 tests\n\nOK")),
+             "last_assistant_message": "All tests pass."},
+        )
+        self.assertEqual(0, passed.returncode, passed.stderr)
+
+    def test_claim_falls_back_to_last_assistant_text_block(self) -> None:
+        # With no last_assistant_message field, the gate reads the claim from
+        # the transcript's last assistant text block ("Verified.") and blocks
+        # when no result backs it.
+        self.commit_file("ok.py", "print('ok')\n")
+        transcript = self._claim_transcript(
+            [
+                ("user", "run the tests"),
+                ("assistant", [{"type": "text", "text": "Verified."}]),
+            ]
+        )
+        result = self.run_hook(self.SCRIPT, {"transcript_path": str(transcript)})
+        self.assertEqual(2, result.returncode, result.stderr)
+        self.assertIn(
+            "Final message claims verification without command output in this turn.",
+            result.stderr,
+        )
+
+    def test_message_without_claim_word_passes(self) -> None:
+        # No claim word in the final message: the leg never fires, exit 0.
+        self.commit_file("ok.py", "print('ok')\n")
+        transcript = self._claim_transcript(
+            [
+                ("user", "update the readme"),
+                ("assistant", [{"type": "text", "text": "Edited the README."}]),
+            ]
+        )
+        result = self.run_hook(
+            self.SCRIPT,
+            {"transcript_path": str(transcript),
+             "last_assistant_message": "Edited the README."},
+        )
+        self.assertEqual(0, result.returncode, result.stderr)
+
+    def test_path_ruff_binary_clean_file_passes_when_module_missing(self) -> None:
+        # Binary-fallback happy path: `python3 -m ruff` is missing and a PATH
+        # `ruff` binary exits 0 on a clean changed file, so the gate passes with
+        # no "ruff unavailable" note. (The failing-binary path is covered by
+        # test_path_ruff_binary_is_used_when_module_is_missing.)
+        self.commit_file("ok.py", "print('ok')\n")
+        (self.repo / "clean.py").write_text("print('fine')\n", encoding="utf-8")
+
+        shim_dir = self._ruffless_path()
+        fake_ruff = shim_dir / "ruff"
+        fake_ruff.write_text("#!/bin/bash\nexit 0\n", encoding="utf-8")
+        fake_ruff.chmod(0o755)
+
+        env = dict(os.environ)
+        env["PATH"] = str(shim_dir)
+        result = self.run_hook(self.SCRIPT, {}, env=env)
+        self.assertEqual(0, result.returncode, result.stderr)
+        self.assertNotIn("ruff unavailable", result.stderr)
+
 
 class RuffAfterEditTests(HookFixtureCase):
     SCRIPT = "ruff-after-edit.sh"
@@ -460,6 +691,107 @@ class ConcurrentCheckoutGuardTests(HookFixtureCase):
             {"tool_name": "Edit", "tool_input": {"file_path": "x.py"}},
         )
         self.assertEqual(2, result.returncode, result.stderr)
+
+
+class WriteRewriteGuardTests(HookFixtureCase):
+    SCRIPT = "write-rewrite-guard.sh"
+
+    def _write_lines(self, name: str, count: int) -> pathlib.Path:
+        target = self.repo / name
+        target.write_text("x\n" * count, encoding="utf-8")
+        return target
+
+    def test_file_at_threshold_triggers(self) -> None:
+        target = self._write_lines("big.txt", 80)
+        result = self.run_hook(
+            self.SCRIPT, {"tool_input": {"file_path": str(target)}}
+        )
+        self.assertEqual(0, result.returncode, result.stderr)
+        payload = json.loads(result.stdout)
+        context = payload["hookSpecificOutput"]["additionalContext"]
+        self.assertIn("80 lines", context)
+        self.assertEqual("PreToolUse", payload["hookSpecificOutput"]["hookEventName"])
+
+    def test_file_below_threshold_is_silent(self) -> None:
+        target = self._write_lines("small.txt", 79)
+        result = self.run_hook(
+            self.SCRIPT, {"tool_input": {"file_path": str(target)}}
+        )
+        self.assertEqual(0, result.returncode, result.stderr)
+        self.assertEqual("", result.stdout.strip())
+
+    def test_missing_file_is_silent(self) -> None:
+        result = self.run_hook(
+            self.SCRIPT,
+            {"tool_input": {"file_path": str(self.repo / "nope.txt")}},
+        )
+        self.assertEqual(0, result.returncode, result.stderr)
+        self.assertEqual("", result.stdout.strip())
+
+    def test_custom_threshold_env_triggers(self) -> None:
+        target = self._write_lines("ten.txt", 10)
+        env = dict(os.environ, REWRITE_GUARD_LINES="10")
+        result = self.run_hook(
+            self.SCRIPT, {"tool_input": {"file_path": str(target)}}, env=env
+        )
+        self.assertEqual(0, result.returncode, result.stderr)
+        context = json.loads(result.stdout)["hookSpecificOutput"]["additionalContext"]
+        self.assertIn("10 lines", context)
+
+    def test_malformed_json_is_silent(self) -> None:
+        result = self.run_hook(self.SCRIPT, None, raw_payload="{not json")
+        self.assertEqual(0, result.returncode, result.stderr)
+        self.assertEqual("", result.stdout.strip())
+
+    def test_relative_path_resolved_via_cwd(self) -> None:
+        self._write_lines("big.txt", 80)
+        result = self.run_hook(
+            self.SCRIPT,
+            {"tool_input": {"file_path": "big.txt"}, "cwd": str(self.repo)},
+        )
+        self.assertEqual(0, result.returncode, result.stderr)
+        context = json.loads(result.stdout)["hookSpecificOutput"]["additionalContext"]
+        self.assertIn("80 lines", context)
+
+
+class BashLengthAdvisoryTests(HookFixtureCase):
+    SCRIPT = "bash-length-advisory.sh"
+
+    def test_long_command_triggers(self) -> None:
+        result = self.run_hook(
+            self.SCRIPT, {"tool_input": {"command": "a" * 401}}
+        )
+        self.assertEqual(0, result.returncode, result.stderr)
+        context = json.loads(result.stdout)["hookSpecificOutput"]["additionalContext"]
+        self.assertIn("(401 chars)", context)
+
+    def test_boundary_command_is_silent(self) -> None:
+        result = self.run_hook(
+            self.SCRIPT, {"tool_input": {"command": "a" * 400}}
+        )
+        self.assertEqual(0, result.returncode, result.stderr)
+        self.assertEqual("", result.stdout.strip())
+
+    def test_malformed_json_is_silent(self) -> None:
+        result = self.run_hook(self.SCRIPT, None, raw_payload="{not json")
+        self.assertEqual(0, result.returncode, result.stderr)
+        self.assertEqual("", result.stdout.strip())
+
+
+class PostCompactReinjectTests(HookFixtureCase):
+    SCRIPT = "post-compact-reinject.sh"
+
+    def test_emits_reminders(self) -> None:
+        result = self.run_hook(self.SCRIPT, {"source": "compact"})
+        self.assertEqual(0, result.returncode, result.stderr)
+        self.assertTrue(result.stdout.startswith("Post-compaction reminders:"))
+        self.assertIn("5. Re-read HANDOFF.md", result.stdout)
+
+    def test_empty_stdin_still_emits(self) -> None:
+        result = self.run_hook(self.SCRIPT, None, raw_payload="")
+        self.assertEqual(0, result.returncode, result.stderr)
+        self.assertTrue(result.stdout.startswith("Post-compaction reminders:"))
+        self.assertIn("5. Re-read HANDOFF.md", result.stdout)
 
 
 if __name__ == "__main__":

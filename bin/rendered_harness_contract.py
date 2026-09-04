@@ -37,6 +37,9 @@ REQUIRED_RENDERED_PATHS = (
     ".claude/hooks/concurrent-checkout-guard.sh",
     ".claude/hooks/ruff-after-edit.sh",
     ".claude/hooks/stop-verify-gate.sh",
+    ".claude/hooks/write-rewrite-guard.sh",
+    ".claude/hooks/bash-length-advisory.sh",
+    ".claude/hooks/post-compact-reinject.sh",
     ".claude/skills/catchup",
     ".codex/config.toml",
     ".codex/hooks.json",
@@ -69,8 +72,11 @@ CLAUDE_HOOK_ROUTES = {
     "PreToolUse": (
         ("Bash", ".claude/hooks/bash-audit-log.sh"),
         ("Bash|Edit|Write", ".claude/hooks/concurrent-checkout-guard.sh"),
+        ("Write", ".claude/hooks/write-rewrite-guard.sh"),
+        ("Bash", ".claude/hooks/bash-length-advisory.sh"),
     ),
     "PostToolUse": (("Edit|Write", ".claude/hooks/ruff-after-edit.sh"),),
+    "SessionStart": (("compact", ".claude/hooks/post-compact-reinject.sh"),),
     "Stop": ((None, ".claude/hooks/stop-verify-gate.sh"),),
 }
 
@@ -90,7 +96,21 @@ CODEX_HOOKS = {
                         "statusMessage": "Checking Git push policy",
                     }
                 ],
-            }
+            },
+            {
+                "matcher": "^apply_patch$",
+                "hooks": [
+                    {
+                        "type": "command",
+                        "command": (
+                            'python3 "$(git rev-parse --show-toplevel)/.codex/'
+                            'hooks/pre-tool-policy.py"'
+                        ),
+                        "timeout": 10,
+                        "statusMessage": "Checking patch policy",
+                    }
+                ],
+            },
         ]
     }
 }
@@ -101,6 +121,16 @@ CODEX_POLICY_DENIAL = {
         "permissionDecision": "deny",
         "permissionDecisionReason": (
             "Force pushes are blocked by repository policy."
+        ),
+    }
+}
+
+CODEX_PATCH_DENIAL = {
+    "hookSpecificOutput": {
+        "hookEventName": "PreToolUse",
+        "permissionDecision": "deny",
+        "permissionDecisionReason": (
+            "Patches to .env files are blocked by repository policy."
         ),
     }
 }
@@ -128,6 +158,8 @@ CODEX_REQUIRED_RULES = (
     (["rm", "-fr"], "forbidden"),
     (["git", "push", "--force"], "forbidden"),
     (["git", "push", "--force-with-lease"], "forbidden"),
+    (["git", "push", "-f"], "forbidden"),
+    (["git", "push", "--force-if-includes"], "forbidden"),
     (["git", "reset", "--hard"], "forbidden"),
     (["git", "push"], "prompt"),
 )
@@ -142,6 +174,9 @@ PROSE_ROUTE_REFERENCES = (
     ("CLAUDE.md", "bash-audit-log.sh"),
     ("CLAUDE.md", "concurrent-checkout-guard.sh"),
     ("CLAUDE.md", "ruff-after-edit.sh"),
+    ("CLAUDE.md", "write-rewrite-guard.sh"),
+    ("CLAUDE.md", "bash-length-advisory.sh"),
+    ("CLAUDE.md", "post-compact-reinject.sh"),
 )
 
 PROSE_ROUTE_TARGETS = (
@@ -153,6 +188,9 @@ PROSE_ROUTE_TARGETS = (
     ("CLAUDE.md", ".claude/hooks/bash-audit-log.sh"),
     ("CLAUDE.md", ".claude/hooks/concurrent-checkout-guard.sh"),
     ("CLAUDE.md", ".claude/hooks/ruff-after-edit.sh"),
+    ("CLAUDE.md", ".claude/hooks/write-rewrite-guard.sh"),
+    ("CLAUDE.md", ".claude/hooks/bash-length-advisory.sh"),
+    ("CLAUDE.md", ".claude/hooks/post-compact-reinject.sh"),
 )
 
 MARKETPLACE_MANIFEST = "cultivation/marketplace/.claude-plugin/marketplace.json"
@@ -854,7 +892,7 @@ def _check_claude_hooks(
         violations.append(
             Violation(
                 "claude-hooks",
-                "owned events must equal PreToolUse, PostToolUse, and Stop; "
+                "owned events must equal PreToolUse, PostToolUse, SessionStart, and Stop; "
                 f"found {', '.join(sorted(actual_events)) or 'none'}",
             )
         )
@@ -1015,11 +1053,11 @@ def _read_json_object(
     return value
 
 
-def _policy_envelope(command: str) -> str:
+def _policy_envelope(command: str, tool_name: str = "Bash") -> str:
     return json.dumps(
         {
             "hook_event_name": "PreToolUse",
-            "tool_name": "Bash",
+            "tool_name": tool_name,
             "tool_input": {"command": command},
         }
     )
@@ -1029,11 +1067,12 @@ def _run_codex_policy_probe(
     policy_path: pathlib.Path,
     command: str,
     violations: list[Violation],
+    tool_name: str = "Bash",
 ) -> subprocess.CompletedProcess[str] | None:
     try:
         return subprocess.run(
             [sys.executable, str(policy_path)],
-            input=_policy_envelope(command),
+            input=_policy_envelope(command, tool_name),
             text=True,
             capture_output=True,
             timeout=10,
@@ -1103,6 +1142,47 @@ def _check_codex_hooks(
                     "policy process must deny a direct force push with the design result",
                 )
             )
+
+    env_patch = _run_codex_policy_probe(
+        policy_path,
+        "*** Begin Patch\n*** Add File: .env\n+SECRET=1\n*** End Patch\n",
+        violations,
+        tool_name="apply_patch",
+    )
+    if env_patch is not None:
+        try:
+            patch_decision = json.loads(env_patch.stdout)
+        except json.JSONDecodeError:
+            patch_decision = None
+        if (
+            env_patch.returncode != 0
+            or env_patch.stderr != ""
+            or patch_decision != CODEX_PATCH_DENIAL
+        ):
+            violations.append(
+                Violation(
+                    "codex-hooks",
+                    "policy process must deny a patch to .env with the design result",
+                )
+            )
+
+    source_patch = _run_codex_policy_probe(
+        policy_path,
+        "*** Begin Patch\n*** Add File: src/app.py\n+print('hi')\n*** End Patch\n",
+        violations,
+        tool_name="apply_patch",
+    )
+    if source_patch is not None and (
+        source_patch.returncode != 0
+        or source_patch.stdout != ""
+        or source_patch.stderr != ""
+    ):
+        violations.append(
+            Violation(
+                "codex-hooks",
+                "policy process must allow a plain source patch silently",
+            )
+        )
     return (relative_path,)
 
 
