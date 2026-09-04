@@ -12,18 +12,19 @@ each ticket points to its section there and carries the goal, branch, and checks
 | [session-1](../HANDOFF-2026-09-03-audit-sessions.md) | 1: stop the bleeding | `fix/audit-s1-stop-the-bleeding` | DONE (merged, PR #5) |
 | [session-2.md](session-2.md) | 2: prompts to Fable 5.1 | `fix/audit-s2-prompts` | DONE (review SHIP, merged, PR #6) |
 | [session-3.md](session-3.md) | 3: review consolidation | `fix/audit-s3-reviews` | DONE (review SHIP, merged, PR #7) |
-| [session-4.md](session-4.md) | 4: new hooks | `fix/audit-s4-hooks` | next |
-| [session-5.md](session-5.md) | 5: repair sync, promote inventions | `fix/audit-s5-sync` | not started |
+| [session-4.md](session-4.md) | 4: new hooks | `fix/audit-s4-hooks` | DONE (review FIX applied, merged, PR #8) |
+| [session-5.md](session-5.md) | 5: repair sync, promote inventions | `fix/audit-s5-sync` | next |
 | [session-6.md](session-6.md) | 6: research and autonomy layer | `fix/audit-s6-research` | not started |
 
 Mark a ticket DONE here after its End-of-session review passes.
 
 ## How to run any ticket (same five steps)
 
-1. Open a new Claude Code session in the primary checkout `~/Desktop/loam`.
-   Create the session branch from origin, never from a stale local `main`:
-   `git fetch origin && git checkout -b <branch> origin/main`.
-   Local `main` may be checked out in a worktree under `/private/tmp/`; leave it alone and never check out `main` in two places.
+1. Open a new Claude Code session in the session's own worktree, created from `main`.
+   `main` now lives in the primary checkout `~/Desktop/loam`, updated through session 4.
+   Create the worktree from `main`, never from a stale branch:
+   `git fetch origin && git worktree add /private/tmp/loam-<name> -b <branch> origin/main`.
+   Never check out `main` in two places.
 2. Set the model to Fable 5.1 at `high` effort. Never higher for Fable.
 3. Turn on auto mode, so `/goal` turns run unattended.
 4. Paste the ticket's "Run" block.
