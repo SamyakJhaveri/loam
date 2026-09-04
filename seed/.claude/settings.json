@@ -29,11 +29,11 @@
   "hooks": {
     "PreToolUse": [
       {
-        "matcher": "Bash",
+        "matcher": "Skill",
         "hooks": [
           {
             "type": "command",
-            "command": ".claude/hooks/bash-audit-log.sh",
+            "command": ".claude/hooks/skill-usage-log.sh",
             "timeout": 5
           }
         ]
@@ -47,6 +47,46 @@
             "timeout": 10
           }
         ]
+      },
+      {
+        "matcher": "Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": ".claude/hooks/write-rewrite-guard.sh",
+            "timeout": 5
+          }
+        ]
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": ".claude/hooks/bash-length-advisory.sh",
+            "timeout": 5
+          }
+        ]
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": ".claude/hooks/test-tamper-scan.sh",
+            "timeout": 15
+          }
+        ]
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": ".claude/hooks/mutation-gate.sh",
+            "timeout": 600
+          }
+        ]
       }
     ],
     "PostToolUse": [
@@ -56,6 +96,50 @@
           {
             "type": "command",
             "command": ".claude/hooks/ruff-after-edit.sh",
+            "timeout": 10
+          }
+        ]
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": ".claude/hooks/bash-audit-log.sh",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "PostToolUseFailure": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": ".claude/hooks/bash-audit-log.sh",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "SessionStart": [
+      {
+        "matcher": "compact",
+        "hooks": [
+          {
+            "type": "command",
+            "command": ".claude/hooks/post-compact-reinject.sh",
+            "timeout": 5
+          }
+        ]
+      },
+      {
+        "matcher": "startup|resume|clear",
+        "hooks": [
+          {
+            "type": "command",
+            "command": ".claude/hooks/harness-hygiene.sh",
             "timeout": 10
           }
         ]

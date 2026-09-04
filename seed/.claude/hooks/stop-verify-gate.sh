@@ -66,29 +66,31 @@ if [ -n "$SESSION" ]; then
 else
     CHANGED="$DIRTY"
 fi
-[ -z "$CHANGED" ] && exit 0   # nothing this session changed is dirty → pass
-
+# No early exit on empty CHANGED: the claim leg (4) must run every turn, and
+# legs 1-3 already no-op when CHANGED is empty.
 FAIL=""
 
 # 1. Whitespace errors / leftover conflict markers (instant).
-DC=$(printf '%s\n' "$CHANGED" | tr '\n' '\0' | xargs -0 git diff --check "$BASE" -- 2>/dev/null) || true
-[ -n "$DC" ] && FAIL="${FAIL}\n[git diff --check]\n${DC}\n"
+if [ -n "$CHANGED" ]; then
+    DC=$(printf '%s\n' "$CHANGED" | tr '\n' '\0' | xargs -0 git diff --check "$BASE" -- 2>/dev/null) || true
+    [ -n "$DC" ] && FAIL="${FAIL}\n[git diff --check]\n${DC}\n"
+fi
 
 # 2. Ruff on changed, still-present Python files (fast).
-# uv/brew installs ship ruff as a PATH binary, not an importable module, so
-# probe the module first and fall back to the binary before giving up.
+# uv/brew installs ship ruff as a PATH binary, not an importable module, so run
+# the module form first; only a missing module (not a ruff finding) falls back to
+# the PATH binary, so a failing ruff is never masked as "ruff unavailable".
 PY=$(printf '%s\n' "$CHANGED" | grep -E '\.py$' | while read -r f; do [ -f "$f" ] && echo "$f"; done)
 if [ -n "$PY" ]; then
-    RUFF=""
-    if python3 -m ruff --version >/dev/null 2>&1; then
-        RUFF="python3 -m ruff"
-    elif command -v ruff >/dev/null 2>&1; then
-        RUFF="ruff"
-    fi
-    if [ -z "$RUFF" ]; then
-        # A project without ruff gets a visible note, not a misleading block.
-        echo "NOTE: ruff unavailable; the stop gate skipped its ruff leg." >&2
-    elif ! OUT=$(printf '%s\n' "$PY" | xargs $RUFF check 2>&1); then
+    if OUT=$(printf '%s\n' "$PY" | xargs python3 -m ruff check 2>&1); then
+        :
+    elif printf '%s' "$OUT" | grep -q "No module named ruff"; then
+        if command -v ruff >/dev/null 2>&1; then
+            OUT=$(printf '%s\n' "$PY" | xargs ruff check 2>&1) || FAIL="${FAIL}\n[ruff check]\n${OUT}\n"
+        else
+            echo "NOTE: ruff unavailable; the stop gate skipped its ruff leg." >&2
+        fi
+    else
         FAIL="${FAIL}\n[ruff check]\n${OUT}\n"
     fi
 fi
@@ -102,6 +104,46 @@ if [ -n "$SH" ]; then
             FAIL="${FAIL}\n[bash -n] ${f}:\n${ERR}\n"
         fi
     done <<< "$SH"
+fi
+
+# 4. Claims verification with no Bash or delegated-agent result this turn to back it.
+CLAIM=$(python3 - "$PAYLOAD" <<'PY'
+import sys, json, re
+def load(l):  # one bad transcript line must not disable the leg
+    try: return json.loads(l)
+    except Exception: return None
+try:
+    p = json.loads(sys.argv[1])
+    E = [x for x in map(load, open(p.get("transcript_path") or "", encoding="utf-8", errors="ignore")) if x]
+except Exception:
+    sys.exit(0)
+msg = p.get("last_assistant_message") or ""
+if not msg:
+    a = [e for e in E if e.get("type") == "assistant"]
+    c = a[-1].get("message", {}).get("content", []) if a else []
+    msg = "".join(i.get("text", "") for i in c if isinstance(i, dict) and i.get("type") == "text")
+m = re.search(r"\b(?:verified|all tests pass|tests pass|passes|confirmed|re-verified|PASSED)\b", msg, re.I) if msg and "not verified" not in msg.lower() else None
+if not m: sys.exit(0)
+def human(e):
+    c = e.get("message", {}).get("content") if e.get("type") == "user" else None
+    return isinstance(c, str) or (isinstance(c, list) and not any(isinstance(x, dict) and x.get("type") == "tool_result" for x in c))
+turn = E[max([i for i, e in enumerate(E) if human(e)] + [-1]) + 1:]
+ids = {i.get("id") for e in turn if e.get("type") == "assistant"
+       for i in e.get("message", {}).get("content", []) if isinstance(i, dict) and i.get("type") == "tool_use" and i.get("name") in ("Bash", "Agent", "Task", "Workflow")}
+out = []
+for e in turn:
+    c = e.get("message", {}).get("content") if e.get("type") == "user" else None
+    for i in (c if isinstance(c, list) else []):
+        if isinstance(i, dict) and i.get("type") == "tool_result" and i.get("tool_use_id") in ids:
+            rc = i.get("content")
+            out += [rc] if isinstance(rc, str) else ([x.get("text", "") for x in rc if isinstance(x, dict) and x.get("type") == "text"] if isinstance(rc, list) else [])
+ok, bad = r"\b(?:PASSED|OK|exit[ =]0)\b|" + re.escape(m.group(0)), r"\b[1-9]\d* failed\b|\bFAILED\b|\bFAIL\b|\bTraceback\b"
+if not any(re.search(ok, t, re.I) and not re.search(bad, t) for t in out):  # pytest prints "5 passed", never "0 failed"
+    print("CLAIM")
+PY
+)
+if [ "$CLAIM" = "CLAIM" ]; then
+    FAIL="${FAIL}\n[unverified claim]\nFinal message claims verification without command output in this turn. Run the check and paste its output, or write 'not verified'.\n"
 fi
 
 if [ -n "$FAIL" ]; then

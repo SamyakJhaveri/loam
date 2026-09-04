@@ -1,9 +1,14 @@
 #!/usr/bin/env python3
-"""Block recognizable literal force-push commands before Codex runs Bash."""
+"""Block recognizable literal force-push commands before Codex runs Bash.
+
+Also deny apply_patch envelopes that touch .env secrets, sealed run results, or
+generated outputs.
+"""
 
 from __future__ import annotations
 
 import json
+import posixpath
 import shlex
 import subprocess
 import sys
@@ -18,6 +23,16 @@ _DENIAL = {
         ),
     }
 }
+# apply_patch deny families, checked in this order. Each entry is a
+# (name, reason) pair; the reason is the permissionDecisionReason returned when a
+# patched path matches the family. Kept as one literal tuple; the rendered
+# harness contract probes each family with a fixed patch and expects these
+# exact reasons.
+_PATCH_DENY_FAMILIES = (
+    ("secrets", "Patches to .env files are blocked by repository policy."),
+    ("sealed", "Patches to sealed run results are blocked by repository policy."),
+    ("generated", "Patches to generated outputs are blocked by repository policy."),
+)
 _COMMAND_BOUNDARY = set(";&|(){}\n")
 _OPAQUE_ANSI_C_CHARACTER = "\ufffd"
 _GIT_GLOBAL_NO_ARGUMENT = {
@@ -714,6 +729,80 @@ def _command_denied(command: str, depth: int = 0) -> bool:
     )
 
 
+_PATCH_PATH_PREFIXES = (
+    "*** Add File: ",
+    "*** Update File: ",
+    "*** Delete File: ",
+    "*** Move to: ",
+)
+_GENERATED_SEGMENTS = {"build", "dist", "htmlcov", "__pycache__", ".pytest_cache"}
+_SEALED_ANCESTORS = {"runs", "experiments"}
+
+
+def _patch_paths(patch: str) -> list[str]:
+    """Return normalized target paths declared in an apply_patch envelope."""
+    paths: list[str] = []
+    for line in patch.splitlines():
+        for prefix in _PATCH_PATH_PREFIXES:
+            if line.startswith(prefix):
+                raw = line[len(prefix) :].rstrip()
+                if not raw:
+                    break
+                normalized = posixpath.normpath(raw)
+                if normalized.startswith("./"):
+                    normalized = normalized[2:]
+                paths.append(normalized)
+                break
+    return paths
+
+
+def _is_secret_path(segments: list[str], basename: str) -> bool:
+    for segment in segments:
+        if segment in {".env", ".envrc"}:
+            return True
+        if segment.startswith(".env.") or segment.startswith(".envrc."):
+            return True
+    return basename.startswith(".env")
+
+
+def _is_sealed_path(segments: list[str]) -> bool:
+    for index, segment in enumerate(segments):
+        if segment == "results" and any(
+            ancestor in _SEALED_ANCESTORS for ancestor in segments[:index]
+        ):
+            return True
+    return False
+
+
+def _is_generated_path(segments: list[str], basename: str) -> bool:
+    for segment in segments:
+        if segment in _GENERATED_SEGMENTS or segment.endswith(".egg-info"):
+            return True
+    return basename == ".coverage"
+
+
+def _patch_denial_reason(patch: str) -> str | None:
+    for path in _patch_paths(patch):
+        segments = path.split("/")
+        basename = segments[-1]
+        if _is_secret_path(segments, basename):
+            return _PATCH_DENY_FAMILIES[0][1]
+        if _is_sealed_path(segments):
+            return _PATCH_DENY_FAMILIES[1][1]
+        if _is_generated_path(segments, basename):
+            return _PATCH_DENY_FAMILIES[2][1]
+    return None
+
+
+def _patch_denial(reason: str) -> dict:
+    return {
+        "hookSpecificOutput": {
+            **_DENIAL["hookSpecificOutput"],
+            "permissionDecisionReason": reason,
+        }
+    }
+
+
 def main() -> int:
     try:
         payload = json.load(sys.stdin)
@@ -723,14 +812,22 @@ def main() -> int:
         return _fail("hook envelope must be a JSON object")
     if payload.get("hook_event_name") != "PreToolUse":
         return _fail("hook_event_name must be PreToolUse")
-    if payload.get("tool_name") != "Bash":
-        return _fail("tool_name must be Bash")
+    tool_name = payload.get("tool_name")
+    if tool_name not in {"Bash", "apply_patch"}:
+        return _fail("tool_name must be Bash or apply_patch")
     tool_input = payload.get("tool_input")
     if not isinstance(tool_input, dict):
         return _fail("tool_input must be a JSON object")
     command = tool_input.get("command")
     if not isinstance(command, str):
         return _fail("tool_input.command must be a string")
+
+    if tool_name == "apply_patch":
+        reason = _patch_denial_reason(command)
+        if reason is not None:
+            json.dump(_patch_denial(reason), sys.stdout)
+            sys.stdout.write("\n")
+        return 0
 
     try:
         syntax = subprocess.run(

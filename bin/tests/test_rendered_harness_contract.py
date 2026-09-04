@@ -40,6 +40,13 @@ REQUIRED_RENDERED_PATHS = (
     ".claude/hooks/concurrent-checkout-guard.sh",
     ".claude/hooks/ruff-after-edit.sh",
     ".claude/hooks/stop-verify-gate.sh",
+    ".claude/hooks/write-rewrite-guard.sh",
+    ".claude/hooks/bash-length-advisory.sh",
+    ".claude/hooks/post-compact-reinject.sh",
+    ".claude/hooks/harness-hygiene.sh",
+    ".claude/hooks/skill-usage-log.sh",
+    ".claude/hooks/test-tamper-scan.sh",
+    ".claude/hooks/mutation-gate.sh",
     ".codex/config.toml",
     ".codex/hooks.json",
     ".codex/hooks/pre-tool-policy.py",
@@ -64,17 +71,24 @@ CLAUDE_HOOK_PATHS = (
     ".claude/hooks/concurrent-checkout-guard.sh",
     ".claude/hooks/ruff-after-edit.sh",
     ".claude/hooks/stop-verify-gate.sh",
+    ".claude/hooks/write-rewrite-guard.sh",
+    ".claude/hooks/bash-length-advisory.sh",
+    ".claude/hooks/post-compact-reinject.sh",
+    ".claude/hooks/harness-hygiene.sh",
+    ".claude/hooks/skill-usage-log.sh",
+    ".claude/hooks/test-tamper-scan.sh",
+    ".claude/hooks/mutation-gate.sh",
 )
 
 GOOD_CLAUDE_SETTINGS = {
     "hooks": {
         "PreToolUse": [
             {
-                "matcher": "Bash",
+                "matcher": "Skill",
                 "hooks": [
                     {
                         "type": "command",
-                        "command": ".claude/hooks/bash-audit-log.sh",
+                        "command": ".claude/hooks/skill-usage-log.sh",
                     }
                 ],
             },
@@ -84,6 +98,42 @@ GOOD_CLAUDE_SETTINGS = {
                     {
                         "type": "command",
                         "command": ".claude/hooks/concurrent-checkout-guard.sh",
+                    }
+                ],
+            },
+            {
+                "matcher": "Write",
+                "hooks": [
+                    {
+                        "type": "command",
+                        "command": ".claude/hooks/write-rewrite-guard.sh",
+                    }
+                ],
+            },
+            {
+                "matcher": "Bash",
+                "hooks": [
+                    {
+                        "type": "command",
+                        "command": ".claude/hooks/bash-length-advisory.sh",
+                    }
+                ],
+            },
+            {
+                "matcher": "Bash",
+                "hooks": [
+                    {
+                        "type": "command",
+                        "command": ".claude/hooks/test-tamper-scan.sh",
+                    }
+                ],
+            },
+            {
+                "matcher": "Bash",
+                "hooks": [
+                    {
+                        "type": "command",
+                        "command": ".claude/hooks/mutation-gate.sh",
                     }
                 ],
             },
@@ -97,7 +147,47 @@ GOOD_CLAUDE_SETTINGS = {
                         "command": ".claude/hooks/ruff-after-edit.sh",
                     }
                 ],
+            },
+            {
+                "matcher": "Bash",
+                "hooks": [
+                    {
+                        "type": "command",
+                        "command": ".claude/hooks/bash-audit-log.sh",
+                    }
+                ],
+            },
+        ],
+        "PostToolUseFailure": [
+            {
+                "matcher": "Bash",
+                "hooks": [
+                    {
+                        "type": "command",
+                        "command": ".claude/hooks/bash-audit-log.sh",
+                    }
+                ],
             }
+        ],
+        "SessionStart": [
+            {
+                "matcher": "compact",
+                "hooks": [
+                    {
+                        "type": "command",
+                        "command": ".claude/hooks/post-compact-reinject.sh",
+                    }
+                ],
+            },
+            {
+                "matcher": "startup|resume|clear",
+                "hooks": [
+                    {
+                        "type": "command",
+                        "command": ".claude/hooks/harness-hygiene.sh",
+                    }
+                ],
+            },
         ],
         "Stop": [
             {
@@ -118,7 +208,7 @@ GOOD_CLAUDE_PROSE = """# CLAUDE.md
 
 - Stop hook: `.claude/hooks/stop-verify-gate.sh`.
 - `/catchup` lives in `.agents/skills/`.
-- Hooks: `bash-audit-log.sh`, `concurrent-checkout-guard.sh`, and `ruff-after-edit.sh`.
+- Hooks: `bash-audit-log.sh`, `concurrent-checkout-guard.sh`, `ruff-after-edit.sh`, `write-rewrite-guard.sh`, `bash-length-advisory.sh`, `post-compact-reinject.sh`, `harness-hygiene.sh`, `skill-usage-log.sh`, `test-tamper-scan.sh`, and `mutation-gate.sh`.
 
 | Resource | Use when |
 | --- | --- |
@@ -166,7 +256,21 @@ GOOD_CODEX_HOOKS = {
                         "statusMessage": "Checking Git push policy",
                     }
                 ],
-            }
+            },
+            {
+                "matcher": "^apply_patch$",
+                "hooks": [
+                    {
+                        "type": "command",
+                        "command": (
+                            'python3 "$(git rev-parse --show-toplevel)/.codex/'
+                            'hooks/pre-tool-policy.py"'
+                        ),
+                        "timeout": 10,
+                        "statusMessage": "Checking patch policy",
+                    }
+                ],
+            },
         ]
     }
 }
@@ -201,16 +305,27 @@ GOOD_CODEX_POLICY = """\
 import json
 import sys
 
-payload = json.load(sys.stdin)
-command = payload["tool_input"]["command"]
-if command == "git push --force origin main":
+
+def deny(reason):
     print(json.dumps({
         "hookSpecificOutput": {
             "hookEventName": "PreToolUse",
             "permissionDecision": "deny",
-            "permissionDecisionReason": "Force pushes are blocked by repository policy."
+            "permissionDecisionReason": reason,
         }
     }))
+
+
+payload = json.load(sys.stdin)
+command = payload["tool_input"]["command"]
+if command == "git push --force origin main":
+    deny("Force pushes are blocked by repository policy.")
+elif "*** Add File: .env" in command:
+    deny("Patches to .env files are blocked by repository policy.")
+elif "results/" in command:
+    deny("Patches to sealed run results are blocked by repository policy.")
+elif "build/" in command:
+    deny("Patches to generated outputs are blocked by repository policy.")
 """
 
 
@@ -1261,7 +1376,7 @@ class RenderedHarnessContractTest(unittest.TestCase):
     def test_claude_settings_owned_events_are_exact(self) -> None:
         self.build_good_fixture()
         for event, mutation in (
-            ("SessionStart", "add"),
+            ("UserPromptSubmit", "add"),
             ("Stop", "remove"),
         ):
             with self.subTest(event=event, mutation=mutation):
@@ -1646,6 +1761,15 @@ class RenderedHarnessContractTest(unittest.TestCase):
                 "tool_name": "Bash",
                 "tool_input": {"command": command},
                 "future_field": "accepted",
+            }
+        )
+
+    def patch_payload(self, patch_text: str) -> str:
+        return json.dumps(
+            {
+                "hook_event_name": "PreToolUse",
+                "tool_name": "apply_patch",
+                "tool_input": {"command": patch_text},
             }
         )
 
@@ -2403,6 +2527,49 @@ class RenderedHarnessContractTest(unittest.TestCase):
                 self.assertEqual(POLICY_DENIAL, json.loads(process.stdout))
                 self.assertEqual("", process.stderr)
 
+    def test_policy_process_denies_and_allows_apply_patch_targets(self) -> None:
+        denied = (
+            (".env", "Patches to .env files are blocked by repository policy."),
+            (
+                "runs/r1/results/x.csv",
+                "Patches to sealed run results are blocked by repository policy.",
+            ),
+            (
+                "build/out.js",
+                "Patches to generated outputs are blocked by repository policy.",
+            ),
+        )
+        for target, reason in denied:
+            with self.subTest(target=target):
+                patch = (
+                    f"*** Begin Patch\n*** Add File: {target}\n+x\n*** End Patch\n"
+                )
+                process = self.run_policy(self.patch_payload(patch))
+
+                self.assertEqual(0, process.returncode, process.stderr)
+                self.assertNotEqual("", process.stdout)
+                self.assertEqual(
+                    {
+                        "hookSpecificOutput": {
+                            "hookEventName": "PreToolUse",
+                            "permissionDecision": "deny",
+                            "permissionDecisionReason": reason,
+                        }
+                    },
+                    json.loads(process.stdout),
+                )
+                self.assertEqual("", process.stderr)
+
+        allowed = self.run_policy(
+            self.patch_payload(
+                "*** Begin Patch\n*** Add File: src/app.py\n+print('hi')\n"
+                "*** End Patch\n"
+            )
+        )
+        self.assertEqual(0, allowed.returncode, allowed.stderr)
+        self.assertEqual("", allowed.stdout)
+        self.assertEqual("", allowed.stderr)
+
     def test_codex_hook_wiring_is_exact_and_synchronous(self) -> None:
         hooks_path = BIN_DIR.parent / "seed/.codex/hooks.json"
         self.assertTrue(hooks_path.is_file(), f"missing {hooks_path}")
@@ -2421,6 +2588,60 @@ class RenderedHarnessContractTest(unittest.TestCase):
         self.assertTrue(
             any("FAIL [codex-hooks]" in item for item in self.rendered_violations())
         )
+
+    def test_codex_hook_wiring_requires_the_apply_patch_group(self) -> None:
+        self.build_good_fixture()
+        hooks = json.loads(json.dumps(GOOD_CODEX_HOOKS))
+        del hooks["hooks"]["PreToolUse"][1]
+        self.write(self.rendered, ".codex/hooks.json", json.dumps(hooks))
+
+        self.assertTrue(
+            any("FAIL [codex-hooks]" in item for item in self.rendered_violations())
+        )
+
+    def test_codex_policy_stub_must_deny_each_patch_family(self) -> None:
+        self.build_good_fixture()
+        base = (
+            "#!/usr/bin/env python3\n"
+            "import json, sys\n"
+            "payload = json.load(sys.stdin)\n"
+            "command = payload['tool_input']['command']\n"
+        )
+
+        def deny_block(condition: str, reason: str) -> str:
+            return (
+                f"if {condition}:\n"
+                "    print(json.dumps({'hookSpecificOutput': {"
+                "'hookEventName': 'PreToolUse', 'permissionDecision': 'deny', "
+                f"'permissionDecisionReason': {reason!r}}}))\n"
+            )
+
+        force = deny_block(
+            "command == 'git push --force origin main'",
+            "Force pushes are blocked by repository policy.",
+        )
+        env = deny_block(
+            "'*** Add File: .env' in command",
+            "Patches to .env files are blocked by repository policy.",
+        )
+        cases = (
+            (force, "deny a patch to .env"),
+            (force + env, "deny a patch to sealed run results"),
+        )
+        for stub, expected in cases:
+            with self.subTest(expected=expected):
+                self.write(
+                    self.rendered,
+                    ".codex/hooks/pre-tool-policy.py",
+                    base + stub,
+                )
+
+                self.assertTrue(
+                    any(
+                        expected in item
+                        for item in self.rendered_violations()
+                    )
+                )
 
     def test_exact_hook_command_runs_from_nested_git_directory(self) -> None:
         hooks_path = BIN_DIR.parent / "seed/.codex/hooks.json"
@@ -2682,6 +2903,8 @@ class RenderedHarnessContractTest(unittest.TestCase):
             '["rm", "-fr"]',
             '["git", "push", "--force"]',
             '["git", "push", "--force-with-lease"]',
+            '["git", "push", "-f"]',
+            '["git", "push", "--force-if-includes"]',
             '["git", "reset", "--hard"]',
             '["git", "push"]',
         )

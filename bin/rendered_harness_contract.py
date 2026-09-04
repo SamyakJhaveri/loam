@@ -37,6 +37,13 @@ REQUIRED_RENDERED_PATHS = (
     ".claude/hooks/concurrent-checkout-guard.sh",
     ".claude/hooks/ruff-after-edit.sh",
     ".claude/hooks/stop-verify-gate.sh",
+    ".claude/hooks/write-rewrite-guard.sh",
+    ".claude/hooks/bash-length-advisory.sh",
+    ".claude/hooks/post-compact-reinject.sh",
+    ".claude/hooks/harness-hygiene.sh",
+    ".claude/hooks/skill-usage-log.sh",
+    ".claude/hooks/test-tamper-scan.sh",
+    ".claude/hooks/mutation-gate.sh",
     ".claude/skills/catchup",
     ".codex/config.toml",
     ".codex/hooks.json",
@@ -67,10 +74,22 @@ FORBIDDEN_RENDERED_PATHS = (
 
 CLAUDE_HOOK_ROUTES = {
     "PreToolUse": (
-        ("Bash", ".claude/hooks/bash-audit-log.sh"),
+        ("Skill", ".claude/hooks/skill-usage-log.sh"),
         ("Bash|Edit|Write", ".claude/hooks/concurrent-checkout-guard.sh"),
+        ("Write", ".claude/hooks/write-rewrite-guard.sh"),
+        ("Bash", ".claude/hooks/bash-length-advisory.sh"),
+        ("Bash", ".claude/hooks/test-tamper-scan.sh"),
+        ("Bash", ".claude/hooks/mutation-gate.sh"),
     ),
-    "PostToolUse": (("Edit|Write", ".claude/hooks/ruff-after-edit.sh"),),
+    "PostToolUse": (
+        ("Edit|Write", ".claude/hooks/ruff-after-edit.sh"),
+        ("Bash", ".claude/hooks/bash-audit-log.sh"),
+    ),
+    "PostToolUseFailure": (("Bash", ".claude/hooks/bash-audit-log.sh"),),
+    "SessionStart": (
+        ("compact", ".claude/hooks/post-compact-reinject.sh"),
+        ("startup|resume|clear", ".claude/hooks/harness-hygiene.sh"),
+    ),
     "Stop": ((None, ".claude/hooks/stop-verify-gate.sh"),),
 }
 
@@ -90,7 +109,21 @@ CODEX_HOOKS = {
                         "statusMessage": "Checking Git push policy",
                     }
                 ],
-            }
+            },
+            {
+                "matcher": "^apply_patch$",
+                "hooks": [
+                    {
+                        "type": "command",
+                        "command": (
+                            'python3 "$(git rev-parse --show-toplevel)/.codex/'
+                            'hooks/pre-tool-policy.py"'
+                        ),
+                        "timeout": 10,
+                        "statusMessage": "Checking patch policy",
+                    }
+                ],
+            },
         ]
     }
 }
@@ -102,6 +135,20 @@ CODEX_POLICY_DENIAL = {
         "permissionDecisionReason": (
             "Force pushes are blocked by repository policy."
         ),
+    }
+}
+
+CODEX_PATCH_DENIAL_REASONS = (
+    "Patches to .env files are blocked by repository policy.",
+    "Patches to sealed run results are blocked by repository policy.",
+    "Patches to generated outputs are blocked by repository policy.",
+)
+
+CODEX_PATCH_DENIAL = {
+    "hookSpecificOutput": {
+        "hookEventName": "PreToolUse",
+        "permissionDecision": "deny",
+        "permissionDecisionReason": CODEX_PATCH_DENIAL_REASONS[0],
     }
 }
 
@@ -128,6 +175,8 @@ CODEX_REQUIRED_RULES = (
     (["rm", "-fr"], "forbidden"),
     (["git", "push", "--force"], "forbidden"),
     (["git", "push", "--force-with-lease"], "forbidden"),
+    (["git", "push", "-f"], "forbidden"),
+    (["git", "push", "--force-if-includes"], "forbidden"),
     (["git", "reset", "--hard"], "forbidden"),
     (["git", "push"], "prompt"),
 )
@@ -142,6 +191,13 @@ PROSE_ROUTE_REFERENCES = (
     ("CLAUDE.md", "bash-audit-log.sh"),
     ("CLAUDE.md", "concurrent-checkout-guard.sh"),
     ("CLAUDE.md", "ruff-after-edit.sh"),
+    ("CLAUDE.md", "write-rewrite-guard.sh"),
+    ("CLAUDE.md", "bash-length-advisory.sh"),
+    ("CLAUDE.md", "post-compact-reinject.sh"),
+    ("CLAUDE.md", "harness-hygiene.sh"),
+    ("CLAUDE.md", "skill-usage-log.sh"),
+    ("CLAUDE.md", "test-tamper-scan.sh"),
+    ("CLAUDE.md", "mutation-gate.sh"),
 )
 
 PROSE_ROUTE_TARGETS = (
@@ -153,6 +209,13 @@ PROSE_ROUTE_TARGETS = (
     ("CLAUDE.md", ".claude/hooks/bash-audit-log.sh"),
     ("CLAUDE.md", ".claude/hooks/concurrent-checkout-guard.sh"),
     ("CLAUDE.md", ".claude/hooks/ruff-after-edit.sh"),
+    ("CLAUDE.md", ".claude/hooks/write-rewrite-guard.sh"),
+    ("CLAUDE.md", ".claude/hooks/bash-length-advisory.sh"),
+    ("CLAUDE.md", ".claude/hooks/post-compact-reinject.sh"),
+    ("CLAUDE.md", ".claude/hooks/harness-hygiene.sh"),
+    ("CLAUDE.md", ".claude/hooks/skill-usage-log.sh"),
+    ("CLAUDE.md", ".claude/hooks/test-tamper-scan.sh"),
+    ("CLAUDE.md", ".claude/hooks/mutation-gate.sh"),
 )
 
 MARKETPLACE_MANIFEST = "cultivation/marketplace/.claude-plugin/marketplace.json"
@@ -854,7 +917,8 @@ def _check_claude_hooks(
         violations.append(
             Violation(
                 "claude-hooks",
-                "owned events must equal PreToolUse, PostToolUse, and Stop; "
+                "owned events must equal PreToolUse, PostToolUse, "
+                "PostToolUseFailure, SessionStart, and Stop; "
                 f"found {', '.join(sorted(actual_events)) or 'none'}",
             )
         )
@@ -1015,11 +1079,11 @@ def _read_json_object(
     return value
 
 
-def _policy_envelope(command: str) -> str:
+def _policy_envelope(command: str, tool_name: str = "Bash") -> str:
     return json.dumps(
         {
             "hook_event_name": "PreToolUse",
-            "tool_name": "Bash",
+            "tool_name": tool_name,
             "tool_input": {"command": command},
         }
     )
@@ -1029,11 +1093,12 @@ def _run_codex_policy_probe(
     policy_path: pathlib.Path,
     command: str,
     violations: list[Violation],
+    tool_name: str = "Bash",
 ) -> subprocess.CompletedProcess[str] | None:
     try:
         return subprocess.run(
             [sys.executable, str(policy_path)],
-            input=_policy_envelope(command),
+            input=_policy_envelope(command, tool_name),
             text=True,
             capture_output=True,
             timeout=10,
@@ -1044,6 +1109,32 @@ def _run_codex_policy_probe(
             Violation("codex-hooks", f"policy process could not run: {error}")
         )
         return None
+
+
+def _check_codex_patch_denial(
+    policy_path: pathlib.Path,
+    patch: str,
+    reason: str,
+    detail: str,
+    violations: list[Violation],
+) -> None:
+    result = _run_codex_policy_probe(
+        policy_path, patch, violations, tool_name="apply_patch"
+    )
+    if result is None:
+        return
+    try:
+        decision = json.loads(result.stdout)
+    except json.JSONDecodeError:
+        decision = None
+    expected = {
+        "hookSpecificOutput": {
+            **CODEX_PATCH_DENIAL["hookSpecificOutput"],
+            "permissionDecisionReason": reason,
+        }
+    }
+    if result.returncode != 0 or result.stderr != "" or decision != expected:
+        violations.append(Violation("codex-hooks", detail))
 
 
 def _check_codex_hooks(
@@ -1103,6 +1194,49 @@ def _check_codex_hooks(
                     "policy process must deny a direct force push with the design result",
                 )
             )
+
+    _check_codex_patch_denial(
+        policy_path,
+        "*** Begin Patch\n*** Add File: .env\n+SECRET=1\n*** End Patch\n",
+        CODEX_PATCH_DENIAL_REASONS[0],
+        "policy process must deny a patch to .env with the design result",
+        violations,
+    )
+    _check_codex_patch_denial(
+        policy_path,
+        "*** Begin Patch\n*** Update File: runs/r1/results/metrics.json\n"
+        "+{}\n*** End Patch\n",
+        CODEX_PATCH_DENIAL_REASONS[1],
+        "policy process must deny a patch to sealed run results with the "
+        "design result",
+        violations,
+    )
+    _check_codex_patch_denial(
+        policy_path,
+        "*** Begin Patch\n*** Add File: build/out.js\n+x\n*** End Patch\n",
+        CODEX_PATCH_DENIAL_REASONS[2],
+        "policy process must deny a patch to generated outputs with the "
+        "design result",
+        violations,
+    )
+
+    source_patch = _run_codex_policy_probe(
+        policy_path,
+        "*** Begin Patch\n*** Add File: src/app.py\n+print('hi')\n*** End Patch\n",
+        violations,
+        tool_name="apply_patch",
+    )
+    if source_patch is not None and (
+        source_patch.returncode != 0
+        or source_patch.stdout != ""
+        or source_patch.stderr != ""
+    ):
+        violations.append(
+            Violation(
+                "codex-hooks",
+                "policy process must allow a plain source patch silently",
+            )
+        )
     return (relative_path,)
 
 

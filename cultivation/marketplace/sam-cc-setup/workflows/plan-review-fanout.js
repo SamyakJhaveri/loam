@@ -159,15 +159,15 @@ log("Fan-out: 3 grounding (git/Bash) + 5 checklist lenses + 1 elegance gate on "
 // The default workflow agent has the full toolset and the prompts already
 // carry each lens.
 const findSpecs = [
-  { label: "ground:facts",             prompt: G1, phase: "Ground",   schema: FINDINGS, effort: "high", model: "claude-opus-4-8[1m]" },
-  { label: "ground:code+LOC+dup",      prompt: G2, phase: "Ground",   schema: FINDINGS, effort: "high", model: "claude-opus-4-8[1m]" },
-  { label: "ground:reframe+artifacts", prompt: G3, phase: "Ground",   schema: FINDINGS, effort: "high", model: "claude-opus-4-8[1m]" },
-  { label: "review:repo-rules",        prompt: R1, phase: "Review",   schema: FINDINGS, effort: "high", model: "claude-opus-4-8[1m]" },
-  { label: "review:over-engineering",  prompt: R2, phase: "Review",   schema: FINDINGS, effort: "high", model: "claude-opus-4-8[1m]" },
-  { label: "review:missing-decisions", prompt: R3, phase: "Review",   schema: FINDINGS, effort: "high", model: "claude-opus-4-8[1m]" },
-  { label: "review:completeness",      prompt: R4, phase: "Review",   schema: FINDINGS, effort: "high", model: "claude-opus-4-8[1m]" },
-  { label: "review:ordering-deps",     prompt: R5, phase: "Review",   schema: FINDINGS, effort: "high", model: "claude-opus-4-8[1m]" },
-  { label: "elegance:step-back+web",   prompt: E1, phase: "Elegance", schema: ELEGANCE, effort: "high", model: "claude-opus-4-8[1m]" },
+  { label: "ground:facts",             prompt: G1, phase: "Ground",   schema: FINDINGS, effort: "xhigh", model: "claude-opus-4-8[1m]" },
+  { label: "ground:code+LOC+dup",      prompt: G2, phase: "Ground",   schema: FINDINGS, effort: "xhigh", model: "claude-opus-4-8[1m]" },
+  { label: "ground:reframe+artifacts", prompt: G3, phase: "Ground",   schema: FINDINGS, effort: "xhigh", model: "claude-opus-4-8[1m]" },
+  { label: "review:repo-rules",        prompt: R1, phase: "Review",   schema: FINDINGS, effort: "xhigh", model: "claude-opus-4-8[1m]" },
+  { label: "review:over-engineering",  prompt: R2, phase: "Review",   schema: FINDINGS, effort: "xhigh", model: "claude-opus-4-8[1m]" },
+  { label: "review:missing-decisions", prompt: R3, phase: "Review",   schema: FINDINGS, effort: "xhigh", model: "claude-opus-4-8[1m]" },
+  { label: "review:completeness",      prompt: R4, phase: "Review",   schema: FINDINGS, effort: "xhigh", model: "claude-opus-4-8[1m]" },
+  { label: "review:ordering-deps",     prompt: R5, phase: "Review",   schema: FINDINGS, effort: "xhigh", model: "claude-opus-4-8[1m]" },
+  { label: "elegance:step-back+web",   prompt: E1, phase: "Elegance", schema: ELEGANCE, effort: "xhigh", model: "claude-opus-4-8[1m]" },
 ]
 const LENS_LABELS = findSpecs.map(s => s.label)
 const all = await parallel(findSpecs.map(s => () => { const { prompt, ...opts } = s; return agent(prompt, opts) }))
@@ -195,8 +195,8 @@ if (toVerify.length > 0) {
   log("Adversarially verifying " + toVerify.length + " BLOCK findings (2 skeptics each)")
   verified = await parallel(toVerify.map(f => () =>
     parallel([
-      () => agent(verifyPrompt(f), { label: "verify-A:" + f.id, phase: "Verify", schema: VERDICT, effort: "high", model: "claude-opus-4-8[1m]" }),
-      () => agent(verifyPrompt(f), { label: "verify-B:" + f.id, phase: "Verify", schema: VERDICT, effort: "high", model: "claude-opus-4-8[1m]" }),
+      () => agent(verifyPrompt(f), { label: "verify-A:" + f.id, phase: "Verify", schema: VERDICT, effort: "xhigh", model: "claude-opus-4-8[1m]" }),
+      () => agent(verifyPrompt(f), { label: "verify-B:" + f.id, phase: "Verify", schema: VERDICT, effort: "xhigh", model: "claude-opus-4-8[1m]" }),
     ]).then(vs => {
       const v = vs.filter(Boolean)
       const survived = v.some(x => x.real)
@@ -224,7 +224,7 @@ const convergePrompt = PREAMBLE +
   "5. deferred_decisions: the list of choices for the user.\n"
 
 log("Converging into verdict + revised handoff plan")
-const review = await agent(convergePrompt, { label: "converge:final-review", phase: "Converge", schema: REVIEW, effort: "high", model: "claude-opus-4-8[1m]" })
+const review = await agent(convergePrompt, { label: "converge:final-review", phase: "Converge", schema: REVIEW, effort: "xhigh", model: "claude-opus-4-8[1m]" })
 
 return {
   plan_path: PLAN_PATH,
