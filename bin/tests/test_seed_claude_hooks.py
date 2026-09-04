@@ -8,6 +8,7 @@ design: nonmatching input, malformed JSON, and the loop guard.
 
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 import pathlib
@@ -619,18 +620,86 @@ class RuffAfterEditTests(HookFixtureCase):
 class BashAuditLogTests(HookFixtureCase):
     SCRIPT = "bash-audit-log.sh"
 
-    def test_logs_command_with_timestamp(self) -> None:
-        payload = {"tool_input": {"command": "echo fixture-run"}}
+    def _post(self, command: str = "echo fixture-run", exit_code: int = 0) -> dict:
+        return {
+            "cwd": str(self.repo),
+            "hook_event_name": "PostToolUse",
+            "tool_name": "Bash",
+            "tool_input": {"command": command},
+            "tool_response": {"exit_code": exit_code, "stdout": "", "stderr": ""},
+        }
+
+    def _audit(self) -> str:
+        return (self.repo / ".claude/audit.log").read_text(encoding="utf-8")
+
+    def test_post_tool_use_logs_exit_and_command(self) -> None:
+        result = self.run_hook(self.SCRIPT, self._post())
+        self.assertEqual(0, result.returncode, result.stderr)
+        log = self._audit()
+        self.assertIn("| exit=0 |", log)
+        self.assertIn("| echo fixture-run", log)
+
+    def test_post_tool_use_failure_records_exit_code(self) -> None:
+        payload = {
+            "cwd": str(self.repo),
+            "hook_event_name": "PostToolUseFailure",
+            "tool_name": "Bash",
+            "tool_input": {"command": "false"},
+            "error": "Exit code 1\nboom",
+            "is_interrupt": False,
+        }
         result = self.run_hook(self.SCRIPT, payload)
         self.assertEqual(0, result.returncode, result.stderr)
-        log = (self.repo / ".claude/audit.log").read_text(encoding="utf-8")
-        self.assertIn("| echo fixture-run", log)
+        self.assertIn("exit=1", self._audit())
 
     def test_malformed_json_logs_unparseable_and_passes(self) -> None:
         result = self.run_hook(self.SCRIPT, None, raw_payload="{not json")
         self.assertEqual(0, result.returncode, result.stderr)
-        log = (self.repo / ".claude/audit.log").read_text(encoding="utf-8")
-        self.assertIn("| unparseable", log)
+        self.assertIn("unparseable", self._audit())
+
+    def test_active_experiment_mirrors_line_into_run_folder(self) -> None:
+        (self.repo / "experiments/demo").mkdir(parents=True)
+        env = dict(os.environ, EXPERIMENT_ACTIVE="demo")
+        result = self.run_hook(self.SCRIPT, self._post(), env=env)
+        self.assertEqual(0, result.returncode, result.stderr)
+        self.assertIn("| demo |", self._audit())
+        cmd_dir = self.repo / "experiments/demo/logs/commands"
+        logs = list(cmd_dir.glob("*.log"))
+        self.assertEqual(1, len(logs), logs)
+        content = logs[0].read_text(encoding="utf-8")
+        self.assertIn("echo fixture-run", content)
+        self.assertIn("| demo |", content)
+
+    def test_active_experiment_without_folder_logs_only_audit(self) -> None:
+        env = dict(os.environ, EXPERIMENT_ACTIVE="demo")
+        result = self.run_hook(self.SCRIPT, self._post(), env=env)
+        self.assertEqual(0, result.returncode, result.stderr)
+        self.assertIn("| demo |", self._audit())
+        self.assertFalse((self.repo / "experiments").exists())
+
+    def test_cwd_field_directs_log_to_that_repo(self) -> None:
+        other = pathlib.Path(self.temp_dir.name) / "repo2"
+        other.mkdir()
+        (other / ".claude").mkdir()
+        payload = self._post()
+        payload["cwd"] = str(other)
+        result = self.run_hook(self.SCRIPT, payload)
+        self.assertEqual(0, result.returncode, result.stderr)
+        self.assertIn(
+            "| echo fixture-run",
+            (other / ".claude/audit.log").read_text(encoding="utf-8"),
+        )
+        self.assertFalse((self.repo / ".claude/audit.log").exists())
+
+    def test_multiline_quoted_command_lands_intact(self) -> None:
+        # NUL-separated parsing must carry an embedded newline and double
+        # quotes through unchanged: two lines in the log, quotes preserved.
+        command = 'echo "first"\necho "second"'
+        result = self.run_hook(self.SCRIPT, self._post(command=command))
+        self.assertEqual(0, result.returncode, result.stderr)
+        log = self._audit()
+        self.assertIn('| echo "first"\necho "second"\n', log)
+        self.assertEqual(2, len(log.rstrip("\n").split("\n")))
 
 
 class ConcurrentCheckoutGuardTests(HookFixtureCase):
@@ -792,6 +861,427 @@ class PostCompactReinjectTests(HookFixtureCase):
         self.assertEqual(0, result.returncode, result.stderr)
         self.assertTrue(result.stdout.startswith("Post-compaction reminders:"))
         self.assertIn("5. Re-read HANDOFF.md", result.stdout)
+
+
+class HarnessHygieneTests(HookFixtureCase):
+    SCRIPT = "harness-hygiene.sh"
+
+    CLAUDE_MD = (
+        "# Fixture agent doc\n\n"
+        "- `bin/real.sh`\n"
+        "- `bin/gone.sh`\n"
+        "- `git status --short`\n"
+        "- `nonexistent-cmd-xyz --flag`\n"
+        "- `/catchup`\n"
+        "- `.env*`\n"
+        "- `HANDOFF.md`\n"
+        "- `real.sh`\n"
+        "- `{{ project_name }}`\n"
+    )
+
+    def _payload(self) -> dict:
+        return {"cwd": str(self.repo)}
+
+    def test_reports_only_dead_paths_and_missing_commands(self) -> None:
+        (self.repo / "bin").mkdir()
+        (self.repo / "bin/real.sh").write_text("echo real\n", encoding="utf-8")
+        (self.repo / "CLAUDE.md").write_text(self.CLAUDE_MD, encoding="utf-8")
+        self.git("add", "-A")
+        self.git("commit", "-q", "-m", "fixture docs")
+
+        result = self.run_hook(self.SCRIPT, self._payload())
+        self.assertEqual(0, result.returncode, result.stderr)
+        out = result.stdout
+        self.assertIn("bin/gone.sh", out)
+        self.assertIn("missing path", out)
+        self.assertIn("nonexistent-cmd-xyz", out)
+        self.assertIn("command not found", out)
+        for absent in ("real.sh", "catchup", ".env", "HANDOFF.md", "project_name"):
+            self.assertNotIn(absent, out)
+
+    def test_clean_doc_is_silent(self) -> None:
+        (self.repo / "CLAUDE.md").write_text(
+            "# Clean doc\n\nNo dead references here.\n", encoding="utf-8"
+        )
+        result = self.run_hook(self.SCRIPT, self._payload())
+        self.assertEqual(0, result.returncode, result.stderr)
+        self.assertEqual("", result.stdout.strip())
+
+    def test_no_agent_docs_is_silent(self) -> None:
+        result = self.run_hook(self.SCRIPT, self._payload())
+        self.assertEqual(0, result.returncode, result.stderr)
+        self.assertEqual("", result.stdout.strip())
+
+    def test_malformed_json_passes(self) -> None:
+        result = self.run_hook(self.SCRIPT, None, raw_payload="{not json")
+        self.assertEqual(0, result.returncode, result.stderr)
+
+    INNOCENT_MD = (
+        "# Fixture agent doc\n\n"
+        "- `v2.0.0`\n"
+        "- `1.2.3`\n"
+        "- `asyncio.gather`\n"
+        "- `this.state`\n"
+        "- `docs.example.com`\n"
+        "- `Node.js`\n"
+        "- `strict.mode`\n"
+        "- `gone.md`\n"
+    )
+
+    def test_dotted_non_paths_are_not_flagged(self) -> None:
+        # Innocent-prose control: version strings and dotted names carry a dot
+        # but are not paths. Only the real missing file may be reported.
+        (self.repo / "CLAUDE.md").write_text(self.INNOCENT_MD, encoding="utf-8")
+
+        result = self.run_hook(self.SCRIPT, self._payload())
+        self.assertEqual(0, result.returncode, result.stderr)
+        out = result.stdout
+        self.assertIn("1 stale reference(s)", out)
+        self.assertIn("gone.md (missing path)", out)
+        for absent in (
+            "v2.0.0",
+            "1.2.3",
+            "asyncio.gather",
+            "this.state",
+            "docs.example.com",
+            "Node.js",
+            "strict.mode",
+        ):
+            self.assertNotIn(absent, out)
+
+
+class SkillUsageLogTests(HookFixtureCase):
+    SCRIPT = "skill-usage-log.sh"
+
+    def test_logs_skill_name(self) -> None:
+        payload = {
+            "cwd": str(self.repo),
+            "tool_input": {"skill": "catchup", "args": ""},
+        }
+        result = self.run_hook(self.SCRIPT, payload)
+        self.assertEqual(0, result.returncode, result.stderr)
+        log = (self.repo / ".claude/skill-usage.log").read_text(encoding="utf-8")
+        self.assertIn("catchup", log)
+
+    def test_malformed_json_logs_unparseable(self) -> None:
+        result = self.run_hook(self.SCRIPT, None, raw_payload="{not json")
+        self.assertEqual(0, result.returncode, result.stderr)
+        log = (self.repo / ".claude/skill-usage.log").read_text(encoding="utf-8")
+        self.assertIn("unparseable", log)
+
+    def test_no_claude_dir_writes_nothing(self) -> None:
+        other = pathlib.Path(self.temp_dir.name) / "noclaude"
+        other.mkdir()
+        payload = {"cwd": str(other), "tool_input": {"skill": "catchup"}}
+        result = self.run_hook(self.SCRIPT, payload)
+        self.assertEqual(0, result.returncode, result.stderr)
+        self.assertFalse((other / ".claude").exists())
+
+
+class TestTamperScanTests(HookFixtureCase):
+    SCRIPT = "test-tamper-scan.sh"
+
+    SKIP_TEST = (
+        "import pytest\n\n\n"
+        '@pytest.mark.skip(reason="flaky")\n'
+        "def test_a():\n    assert True\n"
+    )
+
+    def _payload(self, command: str = "git commit -m msg") -> dict:
+        return {
+            "cwd": str(self.repo),
+            "tool_name": "Bash",
+            "tool_input": {"command": command},
+        }
+
+    def _stage(self, name: str, content: str) -> None:
+        p = self.repo / name
+        p.parent.mkdir(parents=True, exist_ok=True)
+        p.write_text(content, encoding="utf-8")
+        self.git("add", name)
+
+    def test_non_commit_command_passes(self) -> None:
+        self._stage("test_x.py", self.SKIP_TEST)
+        result = self.run_hook(self.SCRIPT, self._payload("pytest -q"))
+        self.assertEqual(0, result.returncode, result.stderr)
+
+    def test_escape_hatch_passes(self) -> None:
+        self._stage("test_x.py", self.SKIP_TEST)
+        cmd = "git commit -m msg -m 'Test-changes: net flaky'"
+        result = self.run_hook(self.SCRIPT, self._payload(cmd))
+        self.assertEqual(0, result.returncode, result.stderr)
+
+    def test_no_staged_test_files_passes(self) -> None:
+        self._stage("main.py", "def main():\n    return 0\n")
+        result = self.run_hook(self.SCRIPT, self._payload())
+        self.assertEqual(0, result.returncode, result.stderr)
+
+    def test_clean_staged_test_passes(self) -> None:
+        self._stage("test_clean.py", "def test_add():\n    assert 1 + 1 == 2\n")
+        result = self.run_hook(self.SCRIPT, self._payload())
+        self.assertEqual(0, result.returncode, result.stderr)
+
+    def test_added_skip_blocks(self) -> None:
+        self._stage("test_skip.py", self.SKIP_TEST)
+        result = self.run_hook(self.SCRIPT, self._payload())
+        self.assertEqual(2, result.returncode, result.stdout)
+        self.assertIn("new skip/xfail", result.stderr)
+
+    def test_added_mock_blocks(self) -> None:
+        self._stage(
+            "test_mock.py",
+            "from unittest.mock import patch\n\n\n"
+            "def test_a():\n"
+            '    with patch("os.getcwd"):\n'
+            "        assert True\n",
+        )
+        result = self.run_hook(self.SCRIPT, self._payload())
+        self.assertEqual(2, result.returncode, result.stdout)
+        self.assertIn("new mock/patch", result.stderr)
+
+    def test_loosened_tolerance_blocks(self) -> None:
+        self.commit_file(
+            "test_tol.py",
+            "import pytest\n\n\ndef test_close():\n    x = 1.0\n    y = 1.0\n"
+            "    assert x == pytest.approx(y, rel=1e-9)\n",
+        )
+        (self.repo / "test_tol.py").write_text(
+            "import pytest\n\n\ndef test_close():\n    x = 1.0\n    y = 1.0\n"
+            "    assert x == pytest.approx(y, rel=1e-2)\n",
+            encoding="utf-8",
+        )
+        self.git("add", "test_tol.py")
+        result = self.run_hook(self.SCRIPT, self._payload())
+        self.assertEqual(2, result.returncode, result.stdout)
+        self.assertIn("loosened tolerance", result.stderr)
+
+    def test_asserted_literal_from_new_return_blocks(self) -> None:
+        self._stage("calc.py", "def answer():\n    return 42\n")
+        self._stage(
+            "test_calc.py",
+            "from calc import answer\n\n\n"
+            "def test_answer():\n    assert answer() == 42\n",
+        )
+        result = self.run_hook(self.SCRIPT, self._payload())
+        self.assertEqual(2, result.returncode, result.stdout)
+        self.assertIn("expected literal", result.stderr)
+        self.assertIn("calc.py", result.stderr)
+
+    def test_malformed_json_passes(self) -> None:
+        result = self.run_hook(self.SCRIPT, None, raw_payload="{not json")
+        self.assertEqual(0, result.returncode, result.stderr)
+
+    def test_comment_mentioning_skip_passes(self) -> None:
+        # A trailing "# skip the header row" is prose, not a pytest skip.
+        self._stage(
+            "test_comment.py",
+            "def test_rows():\n"
+            "    data = [1, 2, 3]\n"
+            "    rows = data[1:]  # skip the header row\n"
+            "    assert rows == [2, 3]\n",
+        )
+        result = self.run_hook(self.SCRIPT, self._payload())
+        self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+
+    def test_trivial_return_literal_passes(self) -> None:
+        # `return 0` and `== 0` coincide in every codebase; only a distinctive
+        # literal (see test_asserted_literal_from_new_return_blocks) is a tell.
+        self._stage("main.py", "def main():\n    return 0\n")
+        self._stage(
+            "test_main.py",
+            "from main import main\n\n\ndef test_main():\n    assert main() == 0\n",
+        )
+        result = self.run_hook(self.SCRIPT, self._payload())
+        self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+
+    def test_git_grep_commit_is_not_a_commit(self) -> None:
+        # The trigger must read the git subcommand, not the word "commit".
+        self._stage("test_skip.py", self.SKIP_TEST)
+        result = self.run_hook(self.SCRIPT, self._payload("git grep commit"))
+        self.assertEqual(0, result.returncode, result.stderr)
+
+
+class MutationGateTests(HookFixtureCase):
+    SCRIPT = "mutation-gate.sh"
+
+    def setUp(self) -> None:
+        super().setUp()
+        # The gate runs cosmic-ray in a linked worktree detached at HEAD, so
+        # the fixture repo needs a commit to detach from, exactly as a real
+        # repo taking a commit does.
+        self.commit_file("README.md", "fixture\n")
+
+    # One cosmic-ray dump job per line, in the two-element [work_item, result]
+    # shape the hook's parser reads: a survivor (worker normal, test survived)
+    # and a killed mutant (which the parser must drop).
+    SURVIVOR = (
+        '[{"mutations":[{"module_path":"calc.py","start_pos":[3,0],'
+        '"operator_name":"core/NumberReplacer","occurrence":0}]},'
+        '{"worker_outcome":"normal","test_outcome":"survived"}]'
+    )
+    KILLED = (
+        '[{"mutations":[{"module_path":"calc.py","start_pos":[4,0],'
+        '"operator_name":"core/NumberReplacer","occurrence":1}]},'
+        '{"worker_outcome":"normal","test_outcome":"killed"}]'
+    )
+
+    def _shim(
+        self, *, cosmic_ray: bool = True, exec_exit: int = 0
+    ) -> tuple[pathlib.Path, pathlib.Path]:
+        """Isolated PATH: real tools the hook shells out to, plus fake
+        cosmic-ray / cr-filter-git that log their calls and emit a dump."""
+        shim_dir = pathlib.Path(self.temp_dir.name) / "mgshim"
+        shim_dir.mkdir(exist_ok=True)
+        tools = (
+            "bash", "sh", "git", "python3", "cat", "grep", "mktemp", "sed",
+            "awk", "tr", "wc", "dirname", "basename", "head", "tail", "rm",
+            "mkdir", "env",
+        )
+        for tool in tools:
+            real = subprocess.run(
+                ["bash", "-lc", f"command -v {tool}"],
+                capture_output=True,
+                text=True,
+            ).stdout.strip()
+            if not real:
+                continue
+            link = shim_dir / tool
+            if not link.exists():
+                link.symlink_to(real)
+        calls_log = shim_dir / "cr-calls.log"
+        if cosmic_ray:
+            cr = shim_dir / "cosmic-ray"
+            cr.write_text(
+                "#!/bin/bash\n"
+                'echo "cosmic-ray $*" >> "' + str(calls_log) + '"\n'
+                'case "$1" in\n'
+                "  dump)\n"
+                "    printf '%s\\n' '" + self.SURVIVOR + "'\n"
+                "    printf '%s\\n' '" + self.KILLED + "'\n"
+                "    ;;\n"
+                "  exec)\n"
+                "    exit " + str(exec_exit) + "\n"
+                "    ;;\n"
+                "esac\n"
+                "exit 0\n",
+                encoding="utf-8",
+            )
+            cr.chmod(0o755)
+            crf = shim_dir / "cr-filter-git"
+            crf.write_text(
+                "#!/bin/bash\n"
+                'echo "cr-filter-git $*" >> "' + str(calls_log) + '"\n'
+                "exit 0\n",
+                encoding="utf-8",
+            )
+            crf.chmod(0o755)
+        return shim_dir, calls_log
+
+    def _env(self, shim_dir: pathlib.Path) -> dict:
+        return dict(os.environ, PATH=str(shim_dir))
+
+    def _payload(self, command: str = "git commit -m msg") -> dict:
+        return {
+            "cwd": str(self.repo),
+            "tool_name": "Bash",
+            "tool_input": {"command": command},
+        }
+
+    def _stage(self, name: str, content: str) -> None:
+        p = self.repo / name
+        p.parent.mkdir(parents=True, exist_ok=True)
+        p.write_text(content, encoding="utf-8")
+        self.git("add", name)
+
+    def _pyproject(self) -> None:
+        (self.repo / "pyproject.toml").write_text(
+            '[project]\nname = "fixture"\nversion = "0"\n', encoding="utf-8"
+        )
+
+    def test_non_commit_command_passes_without_tools(self) -> None:
+        shim_dir, calls_log = self._shim()
+        self._pyproject()
+        self._stage("calc.py", "def answer():\n    return 42\n")
+        result = self.run_hook(
+            self.SCRIPT, self._payload("pytest -q"), env=self._env(shim_dir)
+        )
+        self.assertEqual(0, result.returncode, result.stderr)
+        self.assertFalse(calls_log.exists())
+
+    def test_no_pyproject_notes_and_passes(self) -> None:
+        shim_dir, calls_log = self._shim()
+        result = self.run_hook(self.SCRIPT, self._payload(), env=self._env(shim_dir))
+        self.assertEqual(0, result.returncode, result.stderr)
+        self.assertIn("no pyproject.toml", result.stderr)
+        self.assertFalse(calls_log.exists())
+
+    def test_no_cosmic_ray_notes_and_passes(self) -> None:
+        shim_dir, _ = self._shim(cosmic_ray=False)
+        self._pyproject()
+        self._stage("calc.py", "def answer():\n    return 42\n")
+        result = self.run_hook(self.SCRIPT, self._payload(), env=self._env(shim_dir))
+        self.assertEqual(0, result.returncode, result.stderr)
+        self.assertIn("cosmic-ray not installed", result.stderr)
+
+    def test_only_staged_tests_skips_the_gate(self) -> None:
+        shim_dir, calls_log = self._shim()
+        self._pyproject()
+        self._stage("tests/test_x.py", "def test_a():\n    assert True\n")
+        result = self.run_hook(self.SCRIPT, self._payload(), env=self._env(shim_dir))
+        self.assertEqual(0, result.returncode, result.stderr)
+        self.assertIn("no staged non-test", result.stderr)
+        self.assertFalse(calls_log.exists())
+
+    def test_surviving_mutant_blocks(self) -> None:
+        shim_dir, calls_log = self._shim()
+        self._pyproject()
+        self._stage("calc.py", "def answer():\n    return 42\n")
+        result = self.run_hook(self.SCRIPT, self._payload(), env=self._env(shim_dir))
+        self.assertEqual(2, result.returncode, result.stdout)
+        self.assertIn("Mutation gate: 1 surviving", result.stderr)
+        self.assertIn("calc.py:", result.stderr)
+        self.assertTrue(calls_log.exists())
+
+    def test_mutants_escape_hatch_passes(self) -> None:
+        shim_dir, calls_log = self._shim()
+        self._pyproject()
+        self._stage("calc.py", "def answer():\n    return 42\n")
+        cmd = "git commit -m msg -m 'Mutants: justified'"
+        result = self.run_hook(self.SCRIPT, self._payload(cmd), env=self._env(shim_dir))
+        self.assertEqual(0, result.returncode, result.stderr)
+        self.assertFalse(calls_log.exists())
+
+    def test_broken_exec_step_notes_and_passes(self) -> None:
+        shim_dir, _ = self._shim(exec_exit=1)
+        self._pyproject()
+        self._stage("calc.py", "def answer():\n    return 42\n")
+        result = self.run_hook(self.SCRIPT, self._payload(), env=self._env(shim_dir))
+        self.assertEqual(0, result.returncode, result.stderr)
+        self.assertIn("mutation gate skipped", result.stderr)
+        self.assertIn("cosmic-ray exec", result.stderr)
+
+    def test_run_leaves_no_worktree_and_no_mutated_source(self) -> None:
+        # cosmic-ray mutates a module in place, so the run must happen in a
+        # throwaway worktree: after a blocking run the project's source file
+        # is byte-identical and no scratch worktree survives.
+        shim_dir, _ = self._shim()
+        self._pyproject()
+        self._stage("calc.py", "def answer():\n    return 42\n")
+        source = self.repo / "calc.py"
+        before = hashlib.sha256(source.read_bytes()).hexdigest()
+
+        result = self.run_hook(self.SCRIPT, self._payload(), env=self._env(shim_dir))
+        self.assertEqual(2, result.returncode, result.stdout)
+        self.assertEqual(before, hashlib.sha256(source.read_bytes()).hexdigest())
+
+        listed = subprocess.run(
+            ["git", "worktree", "list"],
+            cwd=self.repo,
+            check=True,
+            capture_output=True,
+            text=True,
+        ).stdout.strip().splitlines()
+        self.assertEqual(1, len(listed), listed)
 
 
 if __name__ == "__main__":

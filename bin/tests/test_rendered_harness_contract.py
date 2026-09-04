@@ -43,6 +43,10 @@ REQUIRED_RENDERED_PATHS = (
     ".claude/hooks/write-rewrite-guard.sh",
     ".claude/hooks/bash-length-advisory.sh",
     ".claude/hooks/post-compact-reinject.sh",
+    ".claude/hooks/harness-hygiene.sh",
+    ".claude/hooks/skill-usage-log.sh",
+    ".claude/hooks/test-tamper-scan.sh",
+    ".claude/hooks/mutation-gate.sh",
     ".codex/config.toml",
     ".codex/hooks.json",
     ".codex/hooks/pre-tool-policy.py",
@@ -70,17 +74,21 @@ CLAUDE_HOOK_PATHS = (
     ".claude/hooks/write-rewrite-guard.sh",
     ".claude/hooks/bash-length-advisory.sh",
     ".claude/hooks/post-compact-reinject.sh",
+    ".claude/hooks/harness-hygiene.sh",
+    ".claude/hooks/skill-usage-log.sh",
+    ".claude/hooks/test-tamper-scan.sh",
+    ".claude/hooks/mutation-gate.sh",
 )
 
 GOOD_CLAUDE_SETTINGS = {
     "hooks": {
         "PreToolUse": [
             {
-                "matcher": "Bash",
+                "matcher": "Skill",
                 "hooks": [
                     {
                         "type": "command",
-                        "command": ".claude/hooks/bash-audit-log.sh",
+                        "command": ".claude/hooks/skill-usage-log.sh",
                     }
                 ],
             },
@@ -111,6 +119,24 @@ GOOD_CLAUDE_SETTINGS = {
                     }
                 ],
             },
+            {
+                "matcher": "Bash",
+                "hooks": [
+                    {
+                        "type": "command",
+                        "command": ".claude/hooks/test-tamper-scan.sh",
+                    }
+                ],
+            },
+            {
+                "matcher": "Bash",
+                "hooks": [
+                    {
+                        "type": "command",
+                        "command": ".claude/hooks/mutation-gate.sh",
+                    }
+                ],
+            },
         ],
         "PostToolUse": [
             {
@@ -119,6 +145,26 @@ GOOD_CLAUDE_SETTINGS = {
                     {
                         "type": "command",
                         "command": ".claude/hooks/ruff-after-edit.sh",
+                    }
+                ],
+            },
+            {
+                "matcher": "Bash",
+                "hooks": [
+                    {
+                        "type": "command",
+                        "command": ".claude/hooks/bash-audit-log.sh",
+                    }
+                ],
+            },
+        ],
+        "PostToolUseFailure": [
+            {
+                "matcher": "Bash",
+                "hooks": [
+                    {
+                        "type": "command",
+                        "command": ".claude/hooks/bash-audit-log.sh",
                     }
                 ],
             }
@@ -132,7 +178,16 @@ GOOD_CLAUDE_SETTINGS = {
                         "command": ".claude/hooks/post-compact-reinject.sh",
                     }
                 ],
-            }
+            },
+            {
+                "matcher": "startup|resume|clear",
+                "hooks": [
+                    {
+                        "type": "command",
+                        "command": ".claude/hooks/harness-hygiene.sh",
+                    }
+                ],
+            },
         ],
         "Stop": [
             {
@@ -153,7 +208,7 @@ GOOD_CLAUDE_PROSE = """# CLAUDE.md
 
 - Stop hook: `.claude/hooks/stop-verify-gate.sh`.
 - `/catchup` lives in `.agents/skills/`.
-- Hooks: `bash-audit-log.sh`, `concurrent-checkout-guard.sh`, `ruff-after-edit.sh`, `write-rewrite-guard.sh`, `bash-length-advisory.sh`, and `post-compact-reinject.sh`.
+- Hooks: `bash-audit-log.sh`, `concurrent-checkout-guard.sh`, `ruff-after-edit.sh`, `write-rewrite-guard.sh`, `bash-length-advisory.sh`, `post-compact-reinject.sh`, `harness-hygiene.sh`, `skill-usage-log.sh`, `test-tamper-scan.sh`, and `mutation-gate.sh`.
 
 | Resource | Use when |
 | --- | --- |

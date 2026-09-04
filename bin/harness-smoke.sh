@@ -76,7 +76,7 @@ if [ "$LIVE" -eq 1 ]; then
   if ! command -v claude >/dev/null 2>&1; then
     echo "FAIL: --live needs the claude CLI, which is not on PATH."; FAIL=1
   else
-    # A real headless turn that must run a Bash command. If the PreToolUse Bash
+    # A real headless turn that must run a Bash command. If the PostToolUse Bash
     # audit hook dispatches, .claude/audit.log gains a line. That is end-to-end
     # proof the hook fires in a session, not just in a unit test.
     ( cd "$RENDER" && git init -q 2>/dev/null; git add -A 2>/dev/null; \
@@ -85,7 +85,7 @@ if [ "$LIVE" -eq 1 ]; then
     ( cd "$RENDER" && claude -p "Run exactly this shell command and nothing else: echo harness-smoke-probe" \
         --allowedTools Bash >"$TMP/live.log" 2>&1 ) || true
     if grep -q "harness-smoke-probe" "$RENDER/.claude/audit.log" 2>/dev/null; then
-      echo "hook-dispatch: OK (PreToolUse/Bash logged the probe command)"
+      echo "hook-dispatch: OK (PostToolUse/Bash logged the probe command)"
       HOOK_FIRE="pass"
     else
       echo "FAIL: the Bash audit hook did not log the probe; hooks may not be dispatching."

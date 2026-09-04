@@ -40,6 +40,10 @@ REQUIRED_RENDERED_PATHS = (
     ".claude/hooks/write-rewrite-guard.sh",
     ".claude/hooks/bash-length-advisory.sh",
     ".claude/hooks/post-compact-reinject.sh",
+    ".claude/hooks/harness-hygiene.sh",
+    ".claude/hooks/skill-usage-log.sh",
+    ".claude/hooks/test-tamper-scan.sh",
+    ".claude/hooks/mutation-gate.sh",
     ".claude/skills/catchup",
     ".codex/config.toml",
     ".codex/hooks.json",
@@ -70,13 +74,22 @@ FORBIDDEN_RENDERED_PATHS = (
 
 CLAUDE_HOOK_ROUTES = {
     "PreToolUse": (
-        ("Bash", ".claude/hooks/bash-audit-log.sh"),
+        ("Skill", ".claude/hooks/skill-usage-log.sh"),
         ("Bash|Edit|Write", ".claude/hooks/concurrent-checkout-guard.sh"),
         ("Write", ".claude/hooks/write-rewrite-guard.sh"),
         ("Bash", ".claude/hooks/bash-length-advisory.sh"),
+        ("Bash", ".claude/hooks/test-tamper-scan.sh"),
+        ("Bash", ".claude/hooks/mutation-gate.sh"),
     ),
-    "PostToolUse": (("Edit|Write", ".claude/hooks/ruff-after-edit.sh"),),
-    "SessionStart": (("compact", ".claude/hooks/post-compact-reinject.sh"),),
+    "PostToolUse": (
+        ("Edit|Write", ".claude/hooks/ruff-after-edit.sh"),
+        ("Bash", ".claude/hooks/bash-audit-log.sh"),
+    ),
+    "PostToolUseFailure": (("Bash", ".claude/hooks/bash-audit-log.sh"),),
+    "SessionStart": (
+        ("compact", ".claude/hooks/post-compact-reinject.sh"),
+        ("startup|resume|clear", ".claude/hooks/harness-hygiene.sh"),
+    ),
     "Stop": ((None, ".claude/hooks/stop-verify-gate.sh"),),
 }
 
@@ -177,6 +190,10 @@ PROSE_ROUTE_REFERENCES = (
     ("CLAUDE.md", "write-rewrite-guard.sh"),
     ("CLAUDE.md", "bash-length-advisory.sh"),
     ("CLAUDE.md", "post-compact-reinject.sh"),
+    ("CLAUDE.md", "harness-hygiene.sh"),
+    ("CLAUDE.md", "skill-usage-log.sh"),
+    ("CLAUDE.md", "test-tamper-scan.sh"),
+    ("CLAUDE.md", "mutation-gate.sh"),
 )
 
 PROSE_ROUTE_TARGETS = (
@@ -191,6 +208,10 @@ PROSE_ROUTE_TARGETS = (
     ("CLAUDE.md", ".claude/hooks/write-rewrite-guard.sh"),
     ("CLAUDE.md", ".claude/hooks/bash-length-advisory.sh"),
     ("CLAUDE.md", ".claude/hooks/post-compact-reinject.sh"),
+    ("CLAUDE.md", ".claude/hooks/harness-hygiene.sh"),
+    ("CLAUDE.md", ".claude/hooks/skill-usage-log.sh"),
+    ("CLAUDE.md", ".claude/hooks/test-tamper-scan.sh"),
+    ("CLAUDE.md", ".claude/hooks/mutation-gate.sh"),
 )
 
 MARKETPLACE_MANIFEST = "cultivation/marketplace/.claude-plugin/marketplace.json"
@@ -892,7 +913,8 @@ def _check_claude_hooks(
         violations.append(
             Violation(
                 "claude-hooks",
-                "owned events must equal PreToolUse, PostToolUse, SessionStart, and Stop; "
+                "owned events must equal PreToolUse, PostToolUse, "
+                "PostToolUseFailure, SessionStart, and Stop; "
                 f"found {', '.join(sorted(actual_events)) or 'none'}",
             )
         )
