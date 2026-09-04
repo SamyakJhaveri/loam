@@ -12,6 +12,7 @@ import hashlib
 import json
 import os
 import pathlib
+import shutil
 import subprocess
 import tempfile
 import unittest
@@ -357,6 +358,126 @@ class StopVerifyGateTests(HookFixtureCase):
             "Final message claims verification without command output in this turn.",
             result.stderr,
         )
+
+    def test_claim_with_failing_bash_result_blocks(self) -> None:
+        # A pytest line carries both tokens: "5 passed" would back the claim,
+        # but "2 failed" is a failure marker, so the result is not evidence.
+        self.commit_file("ok.py", "print('ok')\n")
+        transcript = self._claim_transcript(
+            [
+                ("user", "run the tests"),
+                (
+                    "assistant",
+                    [{"type": "tool_use", "id": "t1", "name": "Bash",
+                      "input": {"command": "pytest"}}],
+                ),
+                (
+                    "user",
+                    [{"type": "tool_result", "tool_use_id": "t1",
+                      "content": "2 failed, 5 passed in 0.4s"}],
+                ),
+                ("assistant", [{"type": "text", "text": "All tests pass."}]),
+            ]
+        )
+        result = self.run_hook(
+            self.SCRIPT,
+            {"transcript_path": str(transcript),
+             "last_assistant_message": "All tests pass."},
+        )
+        self.assertEqual(2, result.returncode, result.stderr)
+        self.assertIn("Final message claims verification", result.stderr)
+
+    def test_claim_after_a_failing_then_passing_rerun_passes(self) -> None:
+        # The failure marker disqualifies its own result, not the whole turn:
+        # fix-then-rerun is the normal loop, and the clean rerun is evidence.
+        self.commit_file("ok.py", "print('ok')\n")
+        transcript = self._claim_transcript(
+            [
+                ("user", "run the tests"),
+                (
+                    "assistant",
+                    [{"type": "tool_use", "id": "t1", "name": "Bash",
+                      "input": {"command": "pytest"}}],
+                ),
+                (
+                    "user",
+                    [{"type": "tool_result", "tool_use_id": "t1",
+                      "content": "2 failed, 5 passed in 0.4s"}],
+                ),
+                (
+                    "assistant",
+                    [{"type": "tool_use", "id": "t2", "name": "Bash",
+                      "input": {"command": "pytest"}}],
+                ),
+                (
+                    "user",
+                    [{"type": "tool_result", "tool_use_id": "t2",
+                      "content": "7 passed in 0.4s"}],
+                ),
+                ("assistant", [{"type": "text", "text": "All tests pass."}]),
+            ]
+        )
+        result = self.run_hook(
+            self.SCRIPT,
+            {"transcript_path": str(transcript),
+             "last_assistant_message": "All tests pass."},
+        )
+        self.assertEqual(0, result.returncode, result.stderr)
+
+    def test_claim_with_delegated_agent_result_passes(self) -> None:
+        # A lead that delegates verification reports the subagent's pasted
+        # output through the Agent tool, not Bash: that result is evidence.
+        self.commit_file("ok.py", "print('ok')\n")
+        transcript = self._claim_transcript(
+            [
+                ("user", "verify the build"),
+                (
+                    "assistant",
+                    [{"type": "tool_use", "id": "a1", "name": "Agent",
+                      "input": {"prompt": "run the suite"}}],
+                ),
+                (
+                    "user",
+                    [{"type": "tool_result", "tool_use_id": "a1",
+                      "content": "build-validator: PASS, 12 passed"}],
+                ),
+                ("assistant", [{"type": "text", "text": "All tests pass."}]),
+            ]
+        )
+        result = self.run_hook(
+            self.SCRIPT,
+            {"transcript_path": str(transcript),
+             "last_assistant_message": "All tests pass."},
+        )
+        self.assertEqual(0, result.returncode, result.stderr)
+
+    def test_claim_with_failed_verify_output_blocks(self) -> None:
+        # An uppercase FAILED marker outweighs the "OK" token earlier in the
+        # same output: a failing verify-template run is never evidence.
+        self.commit_file("ok.py", "print('ok')\n")
+        transcript = self._claim_transcript(
+            [
+                ("user", "run the template check"),
+                (
+                    "assistant",
+                    [{"type": "tool_use", "id": "t1", "name": "Bash",
+                      "input": {"command": "bin/verify-template.sh"}}],
+                ),
+                (
+                    "user",
+                    [{"type": "tool_result", "tool_use_id": "t1",
+                      "content": "12 checks OK\nverify-template: FAILED"}],
+                ),
+                ("assistant", [{"type": "text", "text": "All tests pass."}]),
+            ]
+        )
+        result = self.run_hook(
+            self.SCRIPT,
+            {"transcript_path": str(transcript),
+             "last_assistant_message": "All tests pass."},
+        )
+        self.assertEqual(2, result.returncode, result.stderr)
+        self.assertIn("Final message claims verification", result.stderr)
 
     def test_claim_backed_only_before_last_human_message_blocks(self) -> None:
         # The only passing tool_result sits before the last human message, so it
@@ -1259,6 +1380,49 @@ class MutationGateTests(HookFixtureCase):
         self.assertEqual(0, result.returncode, result.stderr)
         self.assertIn("mutation gate skipped", result.stderr)
         self.assertIn("cosmic-ray exec", result.stderr)
+
+    def _worktrees(self) -> list[str]:
+        return (
+            subprocess.run(
+                ["git", "worktree", "list"],
+                cwd=self.repo,
+                check=True,
+                capture_output=True,
+                text=True,
+            )
+            .stdout.strip()
+            .splitlines()
+        )
+
+    def test_leftover_worktree_entry_is_pruned_before_the_add(self) -> None:
+        # A run killed at the hook timeout never reaches the trap that removes
+        # its scratch worktree, so the next run has to prune the leftover entry
+        # itself. The prune must not depend on that trap: here `git worktree
+        # add` fails, the trap is never installed, and the stale entry must
+        # still be gone.
+        shim_dir, _ = self._shim()
+        self._pyproject()
+        self._stage("calc.py", "def answer():\n    return 42\n")
+
+        stale = pathlib.Path(self.temp_dir.name) / "stale-tree"
+        self.git("worktree", "add", "--detach", "--quiet", str(stale), "HEAD")
+        shutil.rmtree(stale)
+        self.assertEqual(2, len(self._worktrees()), self._worktrees())
+
+        real_git = os.path.realpath(shim_dir / "git")
+        (shim_dir / "git").unlink()
+        (shim_dir / "git").write_text(
+            "#!/bin/bash\n"
+            'if [ "$1" = "worktree" ] && [ "$2" = "add" ]; then exit 1; fi\n'
+            'exec "' + real_git + '" "$@"\n',
+            encoding="utf-8",
+        )
+        (shim_dir / "git").chmod(0o755)
+
+        result = self.run_hook(self.SCRIPT, self._payload(), env=self._env(shim_dir))
+        self.assertEqual(0, result.returncode, result.stderr)
+        self.assertIn("could not create a scratch worktree", result.stderr)
+        self.assertEqual(1, len(self._worktrees()), self._worktrees())
 
     def test_run_leaves_no_worktree_and_no_mutated_source(self) -> None:
         # cosmic-ray mutates a module in place, so the run must happen in a

@@ -106,7 +106,7 @@ if [ -n "$SH" ]; then
     done <<< "$SH"
 fi
 
-# 4. Final message claims verification with no Bash output this turn to back it.
+# 4. Claims verification with no Bash or delegated-agent result this turn to back it.
 CLAIM=$(python3 - "$PAYLOAD" <<'PY'
 import sys, json, re
 try:
@@ -129,7 +129,7 @@ def human(e):
     return isinstance(c, str) or (isinstance(c, list) and not any(isinstance(x, dict) and x.get("type") == "tool_result" for x in c))
 turn = E[max([i for i, e in enumerate(E) if human(e)] + [-1]) + 1:]
 ids = {i.get("id") for e in turn if e.get("type") == "assistant"
-       for i in e.get("message", {}).get("content", []) if isinstance(i, dict) and i.get("type") == "tool_use" and i.get("name") == "Bash"}
+       for i in e.get("message", {}).get("content", []) if isinstance(i, dict) and i.get("type") == "tool_use" and i.get("name") in ("Bash", "Agent", "Task", "Workflow")}
 out = []
 for e in turn:
     c = e.get("message", {}).get("content") if e.get("type") == "user" else None
@@ -137,7 +137,8 @@ for e in turn:
         if isinstance(i, dict) and i.get("type") == "tool_result" and i.get("tool_use_id") in ids:
             rc = i.get("content")
             out += [rc] if isinstance(rc, str) else ([x.get("text", "") for x in rc if isinstance(x, dict) and x.get("type") == "text"] if isinstance(rc, list) else [])
-if not re.search(r"\b(?:PASSED|OK|exit 0)\b|" + re.escape(m.group(0)), "\n".join(out), re.I):
+ok, bad = r"\b(?:PASSED|OK|exit 0)\b|" + re.escape(m.group(0)), r"\b[1-9]\d* failed\b|\bFAILED\b|\bFAIL\b|\bTraceback\b"
+if not any(re.search(ok, t, re.I) and not re.search(bad, t) for t in out):  # pytest prints "5 passed", never "0 failed"
     print("CLAIM")
 PY
 )

@@ -14,6 +14,7 @@
 # concurrent editor would meanwhile read mutated code. The whole run therefore
 # happens in a throwaway linked worktree holding the staged tree, removed on
 # exit; the project checkout is only ever read.
+# Recovery after a killed run: git worktree prune.
 #
 # The whole gate is OPT-IN by tool presence: with no cosmic-ray reachable (a
 # project .venv/bin or PATH), it silently no-ops. No cosmic-ray, no gate.
@@ -154,6 +155,8 @@ ESC_CMD="$(toml_esc "$TEST_CMD")"
 # HEAD` inside it shows exactly the staged lines and cr-filter-git's
 # branch = "HEAD" still scopes the mutants to this commit's changes.
 TREE="$WORK/tree"
+# A run killed at the hook timeout skips the trap, so prune its leftover entry here.
+git worktree prune >/dev/null 2>&1 || true
 if ! git worktree add --detach --quiet "$TREE" HEAD 2>/dev/null; then
     echo "NOTE: mutation gate skipped: could not create a scratch worktree" >&2
     exit 0
