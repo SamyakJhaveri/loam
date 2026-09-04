@@ -1,5 +1,7 @@
 # Ticket: Session 3 - review consolidation
 
+Status: DONE. Review verdict SHIP in `docs/reviews/2026-09-03-session-3-review.md`; merged via PR #7.
+
 - Branch: `fix/audit-s3-reviews` (plugin edits may go direct to main; the weight-gate rebaseline touches `bin/`)
 - Full items: `docs/HANDOFF-2026-09-03-audit-sessions.md`, the "Session 3" block plus every Gap review and Research addition item tagged "session 3".
 - Depends on: nothing hard. If run before session 2, skip the critique-swarm edit in session 2 item 5.

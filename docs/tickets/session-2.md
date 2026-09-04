@@ -1,5 +1,7 @@
 # Ticket: Session 2 - prompts to Fable 5.1
 
+Status: DONE. Review verdict SHIP in `docs/reviews/2026-09-03-session-2-review.md`; merged via PR #6.
+
 - Branch: `fix/audit-s2-prompts` (plugin edits may go direct to main; the seed `AGENTS.md.jinja` edit needs the branch)
 - Full items: `docs/HANDOFF-2026-09-03-audit-sessions.md`, the "Session 2" block plus every Gap review and Research addition item tagged "session 2".
 - Depends on: nothing. Session 1 is merged.
