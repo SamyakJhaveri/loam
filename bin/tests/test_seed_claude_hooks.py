@@ -1464,6 +1464,18 @@ class TamperScanTests(HookFixtureCase):
         )
         self.assertEqual(0, result.returncode, result.stderr)
 
+    def test_quoted_message_file_marker_passes(self) -> None:
+        # The path is quoted in the command string; the hook must strip the
+        # quotes before it opens the file.
+        self._stage("test_skip.py", self.SKIP_TEST)
+        (self.repo / "msg.txt").write_text(
+            "commit\n\nTest-changes: net flaky\n", encoding="utf-8"
+        )
+        result = self.run_hook(
+            self.SCRIPT, self._payload('git commit -F "msg.txt"')
+        )
+        self.assertEqual(0, result.returncode, result.stderr)
+
     def test_message_file_without_marker_blocks(self) -> None:
         self._stage("test_skip.py", self.SKIP_TEST)
         (self.repo / "msg.txt").write_text("commit\n", encoding="utf-8")
@@ -1796,6 +1808,23 @@ class MutationGateTests(HookFixtureCase):
         result = self.run_hook(
             self.SCRIPT,
             self._payload("git commit -F msg.txt"),
+            env=self._env(shim_dir),
+        )
+        self.assertEqual(0, result.returncode, result.stderr)
+        self.assertFalse(calls_log.exists())
+
+    def test_quoted_message_file_marker_passes(self) -> None:
+        # The path is quoted in the command string; the gate must strip the
+        # quotes before it opens the file.
+        shim_dir, calls_log = self._shim()
+        self._pyproject()
+        self._stage("calc.py", "def answer():\n    return 42\n")
+        (self.repo / "msg.txt").write_text(
+            "commit\n\nMutants: justified\n", encoding="utf-8"
+        )
+        result = self.run_hook(
+            self.SCRIPT,
+            self._payload('git commit -F "msg.txt"'),
             env=self._env(shim_dir),
         )
         self.assertEqual(0, result.returncode, result.stderr)

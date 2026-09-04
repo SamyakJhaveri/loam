@@ -40,7 +40,9 @@ fi
 cd "$ROOT" 2>/dev/null || exit 0
 # Escape hatch, message-file form: `git commit -F <path>` / `--file <path>`
 # carries the marker in a file, not the command; read it (relative to ROOT).
-MSGFILE="$(printf '%s\n' "$CMD" | grep -oE -- '(^| )(-F ?|--file[ =])[^ ]+' | head -n1 | sed -E 's/^ ?(-F ?|--file[ =])//')"
+# The second sed drops one layer of matching quotes, so `-F "msg.txt"` and
+# `-F 'msg.txt'` resolve to the same path as the bare form.
+MSGFILE="$(printf '%s\n' "$CMD" | grep -oE -- '(^| )(-F ?|--file[ =])[^ ]+' | head -n1 | sed -E 's/^ ?(-F ?|--file[ =])//' | sed -E "s/^\"(.*)\"\$/\1/; s/^'(.*)'\$/\1/")"
 if [ -n "$MSGFILE" ] && [ -f "$MSGFILE" ] && grep -qF 'Test-changes:' "$MSGFILE" 2>/dev/null; then
     exit 0
 fi
