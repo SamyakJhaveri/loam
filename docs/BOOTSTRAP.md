@@ -18,6 +18,7 @@ Copier asks three questions: `project_name`, `github_repo` (blank skips GitHub s
 - `CLAUDE.md` importing `AGENTS.md` (the one prose home), both with fill-in placeholders.
 - `.claude/`: Claude Code settings and hook scripts for audit logging, checkout safety, Python lint fixes, and turn-end verification.
 - `.agents/skills/catchup/`: session-bootstrap skill shared by Claude Code (via symlink) and Codex.
+- `.agents/skills/fable-prompting/`: index over the Fable 5.1 prompting guide, shared the same way.
 - `.codex/`: Codex configuration, force-push policy hook, and execution rules. Inert until you trust the project in Codex and review hooks via `/hooks`.
 
 ## After bootstrap

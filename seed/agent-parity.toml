@@ -21,7 +21,7 @@ schema_version = 1
 # Check: python3 bin/agent_parity/parity.py check --root seed
 
 [skills]
-shared = ["catchup"]
+shared = ["catchup", "fable-prompting"]
 native_adapter = []
 native_codex = []
 unsupported = []
@@ -45,6 +45,7 @@ pre_tool_policy = ".codex/hooks/pre-tool-policy.py"
 ".claude/hooks/bash-audit-log.sh" = "seed/.codex/hooks.json wires no PostToolUse event; command-audit logging is not mirrored."
 ".claude/hooks/bash-length-advisory.sh" = "pre-tool-policy.py checks only force-push/apply_patch; no command-length advisory is implemented."
 ".claude/hooks/concurrent-checkout-guard.sh" = "pre-tool-policy.py does not implement the concurrent-checkout git-index guard."
+".claude/hooks/fable-session-brief.sh" = "seed/.codex/hooks.json wires no SessionStart or PostModelSwitch event; the Fable prompting brief is not mirrored."
 ".claude/hooks/harness-hygiene.sh" = "seed/.codex/hooks.json wires no SessionStart event; the harness-hygiene scan is not mirrored."
 ".claude/hooks/mutation-gate.sh" = "pre-tool-policy.py does not implement the commit-time diff-scoped mutation gate."
 ".claude/hooks/post-compact-reinject.sh" = "seed/.codex/hooks.json wires no SessionStart/compact event; reminder reinjection is not mirrored."

@@ -1,9 +1,9 @@
 # Seed skill promotion
 
 **Decision D2 (2026-08-31, refined 2026-09-01):** grow `cultivation/marketplace/sam-cc-setup/` toward ~27 curated skills.
-The seed stays lean (catchup only); the README points to the shared catchup skill and the optional marketplace plugin without asserting a hard skill count.
+The seed stays lean; the README points to the shared catchup skill and the optional marketplace plugin without asserting a hard skill count.
 This keeps the asset-layer rule: seed/ ships always-on generic behavior, optional workflows live in the plugin.
-Candidate sources include the skills grown in Samyak's other projects: job_search, distbench, parbench, instagram_organizer.
+Candidate sources include the skills grown in Samyak's other projects: job_search, distbench, the eval-bench project, instagram_organizer.
 **Evidence constraint:** skills earn their place as ON-DEMAND procedures, never as always-loaded prose.
 Skills gave Opus 4.8 +28.2 instruction-following points when they encode procedure and constraint (arXiv 2606.17819); repository-description prose adds cost without benefit (arXiv 2602.11988).
 Full verdicts: `docs/specs/rebuild-research/clief-claims-verdicts.md`.
@@ -19,6 +19,7 @@ Full verdicts: `docs/specs/rebuild-research/clief-claims-verdicts.md`.
 A skill enters `seed/.agents/skills/` only when every box passes:
 
 1. **Procedure, not description.** The body tells the agent HOW to do something or WHAT constraint binds it. A skill that describes the repository or restates general competence is rejected.
+   Exception by owner decision (2026-09-04): pure reference material may enter the seed when the owner requires it in every generated project, as `fable-prompting` does; see the rule of thumb in `docs/ASSET-LAYERS.md`.
 2. **Generic.** Useful to every bootstrapped project, not only to Loam. Loam-specific skills stay in the plugin.
 3. **Description quality.** The frontmatter description states the trigger, the non-trigger ("NOT for ..."), and stays well under the 1,536-character listing cap.
 4. **Invocation control.** Specialized or destructive skills set `disable-model-invocation: true`. `auto-activate` is not a field; never write it.

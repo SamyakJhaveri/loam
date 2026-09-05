@@ -29,7 +29,7 @@ Upgrade step: `claude plugin update sam-cc-setup` - no removals, no settings cha
 
 ## Previous: sam-cc-setup v0.6.0 harvest
 
-Eleven skills harvested from Samyak's working projects (distbench, parbench, job-search era),
+Eleven skills harvested from Samyak's working projects (distbench, the eval-bench project, job-search era),
 adapted to be generic, taking the plugin from 15 to 26 skills:
 authoring-context-docs, session-critique, worktree-status, techdebt, ship, auto-phase,
 critique-swarm, sync-to-hub, gen-spec, agent-team, hypothesis-tree.

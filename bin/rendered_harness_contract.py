@@ -27,10 +27,15 @@ REQUIRED_SOURCE_PATHS = (
     "bin/release.sh",
 )
 
+# Skills that live once in `.agents/skills/` and are exposed to Claude Code
+# through a checked-in relative symlink under `.claude/skills/`.
+SHARED_SKILL_LINKS = ("catchup", "fable-prompting")
+
 REQUIRED_RENDERED_PATHS = (
     "AGENTS.md",
     "CLAUDE.md",
     ".agents/skills/catchup/SKILL.md",
+    ".agents/skills/fable-prompting/SKILL.md",
     ".claude/settings.json",
     ".claude/settings.local.json.template",
     ".claude/hooks/bash-audit-log.sh",
@@ -47,7 +52,9 @@ REQUIRED_RENDERED_PATHS = (
     ".claude/hooks/run-validate-waves.sh",
     ".claude/hooks/sentinel-cleanup.sh",
     ".claude/hooks/pre-commit-gate.sh",
+    ".claude/hooks/fable-session-brief.sh",
     ".claude/skills/catchup",
+    ".claude/skills/fable-prompting",
     ".codex/config.toml",
     ".codex/hooks.json",
     ".codex/hooks/pre-tool-policy.py",
@@ -99,7 +106,9 @@ CLAUDE_HOOK_ROUTES = {
     "SessionStart": (
         ("compact", ".claude/hooks/post-compact-reinject.sh"),
         ("startup|resume|clear", ".claude/hooks/harness-hygiene.sh"),
+        ("startup|resume|clear|compact|fork", ".claude/hooks/fable-session-brief.sh"),
     ),
+    "PostModelSwitch": ((None, ".claude/hooks/fable-session-brief.sh"),),
     "Stop": ((None, ".claude/hooks/stop-verify-gate.sh"),),
 }
 
@@ -197,6 +206,7 @@ PROSE_ROUTE_REFERENCES = (
     ("AGENTS.md", ".agents/skills/"),
     ("CLAUDE.md", ".claude/hooks/stop-verify-gate.sh"),
     ("CLAUDE.md", "/catchup"),
+    ("CLAUDE.md", "/fable-prompting"),
     ("CLAUDE.md", ".agents/skills/"),
     ("CLAUDE.md", "bash-audit-log.sh"),
     ("CLAUDE.md", "concurrent-checkout-guard.sh"),
@@ -211,6 +221,7 @@ PROSE_ROUTE_REFERENCES = (
     ("CLAUDE.md", "pre-commit-gate.sh"),
     ("CLAUDE.md", "run-validate-waves.sh"),
     ("CLAUDE.md", "sentinel-cleanup.sh"),
+    ("CLAUDE.md", "fable-session-brief.sh"),
 )
 
 PROSE_ROUTE_TARGETS = (
@@ -219,6 +230,7 @@ PROSE_ROUTE_TARGETS = (
     ("AGENTS.md", ".agents/skills"),
     ("CLAUDE.md", ".claude/hooks/stop-verify-gate.sh"),
     ("CLAUDE.md", ".agents/skills/catchup/SKILL.md"),
+    ("CLAUDE.md", ".agents/skills/fable-prompting/SKILL.md"),
     ("CLAUDE.md", ".claude/hooks/bash-audit-log.sh"),
     ("CLAUDE.md", ".claude/hooks/concurrent-checkout-guard.sh"),
     ("CLAUDE.md", ".claude/hooks/ruff-after-edit.sh"),
@@ -232,6 +244,7 @@ PROSE_ROUTE_TARGETS = (
     ("CLAUDE.md", ".claude/hooks/pre-commit-gate.sh"),
     ("CLAUDE.md", ".claude/hooks/run-validate-waves.sh"),
     ("CLAUDE.md", ".claude/hooks/sentinel-cleanup.sh"),
+    ("CLAUDE.md", ".claude/hooks/fable-session-brief.sh"),
 )
 
 MARKETPLACE_MANIFEST = "cultivation/marketplace/.claude-plugin/marketplace.json"
@@ -277,7 +290,9 @@ def _check_topology(
             violations.append(
                 Violation("topology", f"missing required rendered path: {relative_path}")
             )
-        elif relative_path != ".claude/skills/catchup" and (
+        elif relative_path not in {
+            f".claude/skills/{name}" for name in SHARED_SKILL_LINKS
+        } and (
             path.is_symlink()
             or not _is_regular_file_inside_root(path, rendered_root)
         ):
@@ -741,7 +756,16 @@ def _check_symlinks(
     rendered_root: pathlib.Path,
     violations: list[Violation],
 ) -> None:
-    relative_path = ".claude/skills/catchup"
+    for name in SHARED_SKILL_LINKS:
+        _check_shared_skill_link(rendered_root, name, violations)
+
+
+def _check_shared_skill_link(
+    rendered_root: pathlib.Path,
+    name: str,
+    violations: list[Violation],
+) -> None:
+    relative_path = f".claude/skills/{name}"
     link = rendered_root / relative_path
     if not link.is_symlink():
         violations.append(Violation("symlinks", f"{relative_path} must be a symlink"))
@@ -768,12 +792,13 @@ def _check_symlinks(
         )
         return
 
-    expected_target = (rendered_root / ".agents/skills/catchup").resolve()
+    expected_relative = f".agents/skills/{name}"
+    expected_target = (rendered_root / expected_relative).resolve()
     if resolved_target != expected_target:
         violations.append(
             Violation(
                 "symlinks",
-                f"{relative_path} must resolve to .agents/skills/catchup; "
+                f"{relative_path} must resolve to {expected_relative}; "
                 f"found {raw_target}",
             )
         )
@@ -934,7 +959,7 @@ def _check_claude_hooks(
             Violation(
                 "claude-hooks",
                 "owned events must equal PreToolUse, PostToolUse, "
-                "PostToolUseFailure, SessionStart, and Stop; "
+                "PostToolUseFailure, SessionStart, PostModelSwitch, and Stop; "
                 f"found {', '.join(sorted(actual_events)) or 'none'}",
             )
         )
