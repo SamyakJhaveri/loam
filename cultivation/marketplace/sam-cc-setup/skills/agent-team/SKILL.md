@@ -33,6 +33,20 @@ Every teammate runs Opus 4.8 (`claude-opus-4-8[1m]`). Effort is the dial, not th
 
 There is no cheap-worker tier here, so the cost of a team is roughly linear in teammate count. That is the reason the decision graph below pushes you toward the smallest team that can do the job, and toward no team at all when the work is separable.
 
+## Worktree isolation for parallel implementers
+
+Give each parallel implementer that edits files its own git worktree by default. `claude --worktree <name>` (or `-w <name>`) creates the worktree under `.claude/worktrees/<name>/` and isolates its edits from the main checkout. One checkout with strictly disjoint files is the documented exception, guarded by the concurrent-checkout-guard hook; reach for it only when the workers provably never touch the same file.
+
+Operating notes, current as of the code.claude.com docs:
+
+- A `-p` (headless) run skips the workspace-trust dialog, and it does not clean up its worktree on exit. Remove it by hand with `git worktree remove`.
+- Set `worktree.baseRef` to `"head"` in settings to branch a worktree from your current HEAD commit instead of a clean default branch. It carries that commit, not your uncommitted changes.
+- A `.worktreeinclude` file at the repo root copies gitignored files (such as `.env`) into each new worktree.
+- Pin a subagent to its own worktree with `isolation: worktree` in its frontmatter.
+- Hook gotcha: `CLAUDE_PROJECT_DIR` stays at the launch root, not the worktree; the worktree path is the `cwd` field of the hook JSON, so a run-logging hook must read `cwd`.
+
+For one contended resource (a GPU, a database) use `flock /tmp/<resource>.lock <cmd>` (util-linux; absent on stock macOS). Build nothing else; twelve parallel tasks ran on one Mac with only worktrees and separate databases.
+
 ## When to use
 
 ```dot
@@ -123,6 +137,8 @@ Wait for the advisor's "ADVISOR READY" message before spawning any workers.
 
 **Step 4 - spawn workers.** Spawn each worker and the critic with a unique `name` and its filled prompt plus task description.
 All run Opus; set effort per role.
+
+**Brief and report.** For every teammate, write a brief to `.superpowers/sdd/<task>/brief.md` before it starts, and require it to write `.superpowers/sdd/<task>/report.md` before it stops or when interrupted, one task subdirectory each. Both use the same seven HANDOFF fields in [brief-report-template.md](brief-report-template.md). An interrupted worker's findings are read from its report, never rebuilt from a transcript.
 
 **Step 5 - manage the lifecycle:**
 

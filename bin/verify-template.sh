@@ -225,6 +225,14 @@ else
   FAIL=1
 fi
 
+echo "== stage 9: Claude/Codex parity BOM =="
+if python3 bin/agent_parity/parity.py check --root "$ROOT/seed"; then
+  echo "agent parity: OK"
+else
+  echo "FAIL: seed agent-parity.toml disagrees with the seed capability tree."
+  FAIL=1
+fi
+
 echo
 if [ "$FAIL" -ne 0 ]; then
   echo "verify-template: FAILED"

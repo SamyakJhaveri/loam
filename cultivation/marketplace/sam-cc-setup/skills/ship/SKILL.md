@@ -53,9 +53,15 @@ This runs the build-validator gate through the validate skill.
 
 ### Stage 3: Commit
 
-Commit inline with git. There is no sentinel file to check; the native git
-pre-commit hook independently re-runs the fast deterministic checks and fails the
-commit if any fail.
+Commit inline with git. In a project rendered from Loam, the commit gate is the
+sentinel trio: `.validation_passed` is written by
+`.claude/hooks/run-validate-waves.sh`, removed by `sentinel-cleanup.sh` on the
+next edit, and required by `pre-commit-gate.sh` on `git commit`. When that script
+exists, run `.claude/hooks/run-validate-waves.sh` in its own Bash call before the
+commit so the gate has a fresh sentinel. In a project bootstrapped by
+`/bootstrap-cc-setup`, the native git pre-commit hook applies instead and
+independently re-runs the fast deterministic checks, failing the commit if any
+fail.
 
 ```bash
 git status --short

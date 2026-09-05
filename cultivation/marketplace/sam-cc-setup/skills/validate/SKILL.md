@@ -13,8 +13,10 @@ want it.
 
 Enforcement model: a native git pre-commit hook (installed by `/bootstrap-cc-setup` at
 `.git/hooks/pre-commit`) runs the fast deterministic checks on every commit and fails the
-commit if any fail. There is no sentinel file and no PreToolUse commit gate. This skill is
-the on-demand superset of what the hook enforces.
+commit if any fail. In a project rendered from Loam, enforcement is instead the sentinel
+trio: `.validation_passed` is written by `.claude/hooks/run-validate-waves.sh`, removed by
+`sentinel-cleanup.sh` on the next edit, and required by `pre-commit-gate.sh` on `git commit`.
+This skill is the on-demand superset of what those enforce.
 
 ## Arguments
 
@@ -62,5 +64,7 @@ Never bypass a failing check.
 
 ### Completion
 
-Report every check with its exit status. No sentinel is written; the native pre-commit
-hook independently re-runs the fast checks at commit time.
+Report every check with its exit status. In a project rendered from Loam, finish by running
+`.claude/hooks/run-validate-waves.sh` so the commit gate has a fresh `.validation_passed`
+sentinel; skip when the script is absent. In a project bootstrapped by `/bootstrap-cc-setup`,
+no sentinel is written and the native pre-commit hook re-runs the fast checks at commit time.

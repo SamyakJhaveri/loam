@@ -72,7 +72,7 @@ Run `bin/verify-template.sh` when changing Loam. It renders the template, checks
 
 - `docs/BOOTSTRAP.md` — First-session setup guide
 - `docs/COPIER.md` — Template configuration details
-- `docs/SYNC.md` — Forward updates and reverse promotion
+- `docs/SYNC.md` — Forward updates, reverse promotion, and attach mode
 - `docs/ASSET-LAYERS.md` — Asset organization
 
 ## Roadmap

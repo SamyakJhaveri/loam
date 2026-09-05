@@ -48,6 +48,9 @@ REQUIRED_RENDERED_PATHS = (
     ".claude/hooks/skill-usage-log.sh",
     ".claude/hooks/test-tamper-scan.sh",
     ".claude/hooks/mutation-gate.sh",
+    ".claude/hooks/run-validate-waves.sh",
+    ".claude/hooks/sentinel-cleanup.sh",
+    ".claude/hooks/pre-commit-gate.sh",
     ".claude/hooks/fable-session-brief.sh",
     ".codex/config.toml",
     ".codex/hooks.json",
@@ -136,6 +139,15 @@ GOOD_CLAUDE_SETTINGS = {
                 "hooks": [
                     {
                         "type": "command",
+                        "command": ".claude/hooks/pre-commit-gate.sh",
+                    }
+                ],
+            },
+            {
+                "matcher": "Bash",
+                "hooks": [
+                    {
+                        "type": "command",
                         "command": ".claude/hooks/mutation-gate.sh",
                     }
                 ],
@@ -148,6 +160,15 @@ GOOD_CLAUDE_SETTINGS = {
                     {
                         "type": "command",
                         "command": ".claude/hooks/ruff-after-edit.sh",
+                    }
+                ],
+            },
+            {
+                "matcher": "Edit|Write",
+                "hooks": [
+                    {
+                        "type": "command",
+                        "command": ".claude/hooks/sentinel-cleanup.sh",
                     }
                 ],
             },
@@ -231,7 +252,7 @@ GOOD_CLAUDE_PROSE = """# CLAUDE.md
 - Stop hook: `.claude/hooks/stop-verify-gate.sh`.
 - `/catchup` lives in `.agents/skills/`.
 - `/fable-prompting` is the other shared skill.
-- Hooks: `bash-audit-log.sh`, `concurrent-checkout-guard.sh`, `ruff-after-edit.sh`, `write-rewrite-guard.sh`, `bash-length-advisory.sh`, `post-compact-reinject.sh`, `harness-hygiene.sh`, `skill-usage-log.sh`, `test-tamper-scan.sh`, `mutation-gate.sh`, and `fable-session-brief.sh`.
+- Hooks: `bash-audit-log.sh`, `concurrent-checkout-guard.sh`, `ruff-after-edit.sh`, `write-rewrite-guard.sh`, `bash-length-advisory.sh`, `post-compact-reinject.sh`, `harness-hygiene.sh`, `skill-usage-log.sh`, `test-tamper-scan.sh`, `mutation-gate.sh`, `pre-commit-gate.sh`, `run-validate-waves.sh`, `sentinel-cleanup.sh`, and `fable-session-brief.sh`.
 
 | Resource | Use when |
 | --- | --- |
@@ -1453,6 +1474,95 @@ class RenderedHarnessContractTest(unittest.TestCase):
         failures = self.rendered_violations()
 
         self.assertFalse(any("FAIL [claude-model]" in item for item in failures))
+
+    def _enable_pyright(self) -> None:
+        settings = json.loads(json.dumps(GOOD_CLAUDE_SETTINGS))
+        settings["enabledPlugins"] = {contract.PYRIGHT_PLUGIN_KEY: True}
+        self.write(self.rendered, ".claude/settings.json", json.dumps(settings))
+
+    def test_python_kind_requires_pyproject_and_pyright(self) -> None:
+        self.build_good_fixture()
+        self.write(self.rendered, ".copier-answers.yml", "project_kind: python\n")
+        self.write(self.rendered, "pyproject.toml", "[project]\nname = \"x\"\n")
+        self._enable_pyright()
+
+        failures = self.rendered_violations()
+
+        self.assertFalse(any("language-scaffold" in item for item in failures))
+
+    def test_typescript_kind_forbids_pyproject_and_pyright(self) -> None:
+        self.build_good_fixture()
+        self.write(
+            self.rendered, ".copier-answers.yml", "project_kind: typescript\n"
+        )
+
+        failures = self.rendered_violations()
+
+        self.assertFalse(any("language-scaffold" in item for item in failures))
+
+    def test_python_kind_missing_pyproject_is_rejected(self) -> None:
+        self.build_good_fixture()
+        self.write(self.rendered, ".copier-answers.yml", "project_kind: python\n")
+        self._enable_pyright()
+
+        failures = self.rendered_violations()
+
+        self.assertTrue(any("FAIL [language-scaffold]" in item for item in failures))
+        self.assertTrue(
+            any("pyproject.toml must render" in item for item in failures)
+        )
+
+    def test_python_kind_missing_pyright_is_rejected(self) -> None:
+        self.build_good_fixture()
+        self.write(self.rendered, ".copier-answers.yml", "project_kind: python\n")
+        self.write(self.rendered, "pyproject.toml", "[project]\nname = \"x\"\n")
+
+        failures = self.rendered_violations()
+
+        self.assertTrue(any("FAIL [language-scaffold]" in item for item in failures))
+        self.assertTrue(
+            any("pyright-lsp plugin must be enabled" in item for item in failures)
+        )
+
+    def test_typescript_kind_with_pyproject_is_rejected(self) -> None:
+        self.build_good_fixture()
+        self.write(
+            self.rendered, ".copier-answers.yml", "project_kind: typescript\n"
+        )
+        self.write(self.rendered, "pyproject.toml", "[project]\nname = \"x\"\n")
+
+        failures = self.rendered_violations()
+
+        self.assertTrue(
+            any("pyproject.toml must not render" in item for item in failures)
+        )
+
+    def test_typescript_kind_with_pyright_is_rejected(self) -> None:
+        self.build_good_fixture()
+        self.write(
+            self.rendered, ".copier-answers.yml", "project_kind: typescript\n"
+        )
+        self._enable_pyright()
+
+        failures = self.rendered_violations()
+
+        self.assertTrue(
+            any("pyright-lsp plugin must not be enabled" in item for item in failures)
+        )
+
+    def test_missing_project_kind_with_pyproject_is_allowed(self) -> None:
+        # A project rendered before the project_kind question existed has an
+        # answers file with no project_kind line. Its pyproject.toml carries no
+        # language-scaffold obligation.
+        self.build_good_fixture()
+        self.write(
+            self.rendered, ".copier-answers.yml", "_src_path: gh:x/loam\n"
+        )
+        self.write(self.rendered, "pyproject.toml", "[project]\nname = \"x\"\n")
+
+        failures = self.rendered_violations()
+
+        self.assertFalse(any("language-scaffold" in item for item in failures))
 
     def test_stale_counts_config_must_not_render(self) -> None:
         self.build_good_fixture()

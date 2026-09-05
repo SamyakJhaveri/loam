@@ -45,10 +45,12 @@ starts with zero and earns its own.
 
 ### 4. Install the native pre-commit hook
 
-Commit enforcement is a plain git pre-commit hook, not a sentinel or PreToolUse gate
-(the gate design was retired 2026-08-14: it blocked every commit until a sentinel
-matched, which fought the tool; a native hook runs inside git, where no compound
-command can outrun it).
+Commit enforcement here is a plain git pre-commit hook, not a sentinel or
+PreToolUse gate: this repo was bootstrapped, not rendered from Loam, so the native
+hook runs inside git, where no compound command can outrun it. A project rendered
+from Loam uses the sentinel trio instead: `.validation_passed` is written by
+`.claude/hooks/run-validate-waves.sh`, removed by `sentinel-cleanup.sh` on the
+next edit, and required by `pre-commit-gate.sh` on `git commit`.
 
 ```bash
 mkdir -p "$ROOT/scripts"

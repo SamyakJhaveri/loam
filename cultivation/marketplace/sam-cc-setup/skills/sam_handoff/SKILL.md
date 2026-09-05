@@ -8,11 +8,13 @@ Write or update a handoff document so the next agent with fresh context can cont
 Steps:
 1. Check if HANDOFF.md already exists in the project
 2. If it exists, read it first to understand prior context before updating
-3. Create or update the document with:
+3. Create or update the document with these seven headings, in order:
    - **Goal**: What we're trying to accomplish
-   - **Current Progress**: What's been done so far
-   - **What Worked**: Approaches that succeeded
-   - **What Didn't Work**: Approaches that failed (so they're not repeated)
-   - **Next Steps**: Clear action items for continuing
+   - **Files touched**: Every file changed, with its path
+   - **Commands run**: Each command with its exit code
+   - **Tried and failed**: Approaches that failed, so they are not repeated
+   - **Open assumptions**: Anything assumed but not verified
+   - **Next single action**: The one next step to take
+   - **Written at**: The output of `git rev-parse HEAD`
 
 Save as HANDOFF.md in the project root and tell the user the file path so they can start a fresh conversation with just that path.

@@ -1,0 +1,64 @@
+schema_version = 1
+
+# Claude/Codex capability bill of materials for the Loam seed.
+#
+# The binding rule: Codex is an equal implementer. Every seed skill, hook,
+# and agent is shared, mirrored on the Codex side, or listed unsupported with a
+# concrete reason naming the Codex limitation that blocks the mirror today.
+#
+# Canonical skill home is .agents/skills/<name> (real files, read by both Claude
+# and Codex); .claude/skills/<name> is a relative symlink into it. This is the
+# reverse of the upstream layout, where .claude/skills was canonical.
+#
+# The Codex policy layer (.codex/config.toml, .codex/rules/default.rules,
+# .codex/hooks/pre-tool-policy.py) mirrors seed/.claude/settings.json, not any
+# single Claude behavioral hook. default.rules:1 says it is "translated from
+# .claude/settings.json"; pre-tool-policy.py enforces force-push and apply_patch
+# denials whose Claude twin is the settings.json deny-list. seed/.codex/hooks.json
+# wires only PreToolUse with matchers ^Bash$ and ^apply_patch$, so none of the
+# behavioral Claude hooks has a Codex event wired; each is listed unsupported.
+#
+# Check: python3 bin/agent_parity/parity.py check --root seed
+
+[skills]
+shared = ["catchup", "fable-prompting"]
+native_adapter = []
+native_codex = []
+unsupported = []
+
+[agents]
+native_adapter = []
+native_codex = []
+
+[hooks.native_adapter]
+# No Claude hook has a per-hook Codex adapter. The one shared Codex enforcement
+# is pre-tool-policy.py (native_codex below); its Claude twin is the
+# settings.json deny-list, not a .claude/hooks file.
+
+[hooks.native_codex]
+# pre-tool-policy.py: force-push deny (Bash) + apply_patch deny for
+# .env/sealed/generated. Mirrors seed/.claude/settings.json, wired at
+# seed/.codex/hooks.json PreToolUse ^Bash$/^apply_patch$.
+pre_tool_policy = ".codex/hooks/pre-tool-policy.py"
+
+[hooks.unsupported]
+".claude/hooks/bash-audit-log.sh" = "seed/.codex/hooks.json wires no PostToolUse event; command-audit logging is not mirrored."
+".claude/hooks/bash-length-advisory.sh" = "pre-tool-policy.py checks only force-push/apply_patch; no command-length advisory is implemented."
+".claude/hooks/concurrent-checkout-guard.sh" = "pre-tool-policy.py does not implement the concurrent-checkout git-index guard."
+".claude/hooks/fable-session-brief.sh" = "seed/.codex/hooks.json wires no SessionStart or PostModelSwitch event; the Fable prompting brief is not mirrored."
+".claude/hooks/harness-hygiene.sh" = "seed/.codex/hooks.json wires no SessionStart event; the harness-hygiene scan is not mirrored."
+".claude/hooks/mutation-gate.sh" = "pre-tool-policy.py does not implement the commit-time diff-scoped mutation gate."
+".claude/hooks/post-compact-reinject.sh" = "seed/.codex/hooks.json wires no SessionStart/compact event; reminder reinjection is not mirrored."
+".claude/hooks/ruff-after-edit.sh" = "seed/.codex/hooks.json wires no PostToolUse event; Codex reports Ruff without an autofix mirror."
+".claude/hooks/skill-usage-log.sh" = "seed/.codex/hooks.json wires no Skill-tool matcher; skill-usage logging is not mirrored."
+".claude/hooks/stop-verify-gate.sh" = "seed/.codex/hooks.json wires no Stop event; the turn-end verification gate is not mirrored."
+".claude/hooks/test-tamper-scan.sh" = "pre-tool-policy.py does not implement the commit-time test-tamper scan."
+".claude/hooks/write-rewrite-guard.sh" = "seed/.codex/hooks.json wires no Write matcher; the write-rewrite advisory is not mirrored."
+# Validate sentinel trio (session 5 item 4).
+".claude/hooks/pre-commit-gate.sh" = "pre-tool-policy.py does not implement the commit-time validation sentinel gate; follow-up."
+".claude/hooks/run-validate-waves.sh" = "seed ships no Codex validate skill or wave runner; not mirrored; follow-up."
+".claude/hooks/sentinel-cleanup.sh" = "seed/.codex/hooks.json wires no PostToolUse event; sentinel cleanup is not mirrored; follow-up."
+
+[workflows]
+native_adapter = []
+unsupported = []

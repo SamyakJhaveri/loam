@@ -49,6 +49,9 @@ REQUIRED_RENDERED_PATHS = (
     ".claude/hooks/skill-usage-log.sh",
     ".claude/hooks/test-tamper-scan.sh",
     ".claude/hooks/mutation-gate.sh",
+    ".claude/hooks/run-validate-waves.sh",
+    ".claude/hooks/sentinel-cleanup.sh",
+    ".claude/hooks/pre-commit-gate.sh",
     ".claude/hooks/fable-session-brief.sh",
     ".claude/skills/catchup",
     ".claude/skills/fable-prompting",
@@ -73,6 +76,11 @@ FORBIDDEN_RENDERED_PATHS = (
     "_research",
 )
 
+# Project kinds that ship the Python language scaffolding: a rendered
+# pyproject.toml and the pyright-lsp plugin. Every other kind gets neither.
+LANGUAGE_SCAFFOLD_KINDS = frozenset({"python", "research", "mixed"})
+PYRIGHT_PLUGIN_KEY = "pyright-lsp@claude-plugins-official"
+
 # The rendered .claude/settings.json must not pin a model. A template cannot
 # know the right model for a given user or machine; any pinned string ages out
 # within weeks of a new release; and the local settings template used to
@@ -86,10 +94,12 @@ CLAUDE_HOOK_ROUTES = {
         ("Write", ".claude/hooks/write-rewrite-guard.sh"),
         ("Bash", ".claude/hooks/bash-length-advisory.sh"),
         ("Bash", ".claude/hooks/test-tamper-scan.sh"),
+        ("Bash", ".claude/hooks/pre-commit-gate.sh"),
         ("Bash", ".claude/hooks/mutation-gate.sh"),
     ),
     "PostToolUse": (
         ("Edit|Write", ".claude/hooks/ruff-after-edit.sh"),
+        ("Edit|Write", ".claude/hooks/sentinel-cleanup.sh"),
         ("Bash", ".claude/hooks/bash-audit-log.sh"),
     ),
     "PostToolUseFailure": (("Bash", ".claude/hooks/bash-audit-log.sh"),),
@@ -208,6 +218,9 @@ PROSE_ROUTE_REFERENCES = (
     ("CLAUDE.md", "skill-usage-log.sh"),
     ("CLAUDE.md", "test-tamper-scan.sh"),
     ("CLAUDE.md", "mutation-gate.sh"),
+    ("CLAUDE.md", "pre-commit-gate.sh"),
+    ("CLAUDE.md", "run-validate-waves.sh"),
+    ("CLAUDE.md", "sentinel-cleanup.sh"),
     ("CLAUDE.md", "fable-session-brief.sh"),
 )
 
@@ -228,6 +241,9 @@ PROSE_ROUTE_TARGETS = (
     ("CLAUDE.md", ".claude/hooks/skill-usage-log.sh"),
     ("CLAUDE.md", ".claude/hooks/test-tamper-scan.sh"),
     ("CLAUDE.md", ".claude/hooks/mutation-gate.sh"),
+    ("CLAUDE.md", ".claude/hooks/pre-commit-gate.sh"),
+    ("CLAUDE.md", ".claude/hooks/run-validate-waves.sh"),
+    ("CLAUDE.md", ".claude/hooks/sentinel-cleanup.sh"),
     ("CLAUDE.md", ".claude/hooks/fable-session-brief.sh"),
 )
 
@@ -1520,6 +1536,68 @@ def _check_executable_modes(
                 )
             )
 
+
+def _rendered_project_kind(rendered_root: pathlib.Path) -> str | None:
+    content = _read_text(rendered_root / ".copier-answers.yml")
+    if content is None:
+        return None
+    for line in content.splitlines():
+        value = _mapping_value(line, "project_kind")
+        if value is not None:
+            return value.strip().strip("'\"")
+    return None
+
+
+def _check_language_scaffold(
+    rendered_root: pathlib.Path,
+    violations: list[Violation],
+) -> None:
+    kind = _rendered_project_kind(rendered_root)
+    if kind is None:
+        # A project rendered before project_kind existed (or with no answers
+        # file) carries no language-scaffold obligation; do not treat the
+        # absent kind as a non-scaffold kind.
+        return
+    wants_scaffold = kind in LANGUAGE_SCAFFOLD_KINDS
+    label = kind
+
+    pyproject_exists = _path_exists(rendered_root / "pyproject.toml")
+    if wants_scaffold and not pyproject_exists:
+        violations.append(
+            Violation(
+                "language-scaffold",
+                f"pyproject.toml must render for project_kind {label}",
+            )
+        )
+    elif not wants_scaffold and pyproject_exists:
+        violations.append(
+            Violation(
+                "language-scaffold",
+                f"pyproject.toml must not render for project_kind {label}",
+            )
+        )
+
+    settings = _read_claude_settings(rendered_root, [])
+    if settings is None:
+        return
+    enabled = settings.get("enabledPlugins")
+    pyright_enabled = isinstance(enabled, dict) and PYRIGHT_PLUGIN_KEY in enabled
+    if wants_scaffold and not pyright_enabled:
+        violations.append(
+            Violation(
+                "language-scaffold",
+                f"the pyright-lsp plugin must be enabled for project_kind {label}",
+            )
+        )
+    elif not wants_scaffold and pyright_enabled:
+        violations.append(
+            Violation(
+                "language-scaffold",
+                f"the pyright-lsp plugin must not be enabled for project_kind {label}",
+            )
+        )
+
+
 def verify_contract(
     source_root: pathlib.Path,
     rendered_root: pathlib.Path,
@@ -1538,6 +1616,7 @@ def verify_contract(
     _check_codex_config(rendered_root, violations)
     _check_codex_rules(rendered_root, violations)
     _check_prose_routes(rendered_root, violations)
+    _check_language_scaffold(rendered_root, violations)
     _check_executable_modes(
         rendered_root,
         claude_script_targets + codex_script_targets,

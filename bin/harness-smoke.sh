@@ -40,8 +40,9 @@ echo "== stage 1: render the working-tree seed =="
 # committed state, so a dirty seed/ would be rendered stale. Fail fast and say
 # so, rather than silently scoring the wrong tree.
 if [ -n "$(git status --porcelain seed/ copier.yml 2>/dev/null)" ]; then
-  echo "NOTE: seed/ or copier.yml has uncommitted changes; the render reflects HEAD, not the working tree."
-  echo "      Commit seed changes before trusting the scores below."
+  echo "FAIL: seed/ or copier.yml has uncommitted changes; the render reflects HEAD, not the working tree."
+  echo "      Commit seed changes before running the smoke test."
+  exit 1
 fi
 COPIER=()
 if command -v copier >/dev/null 2>&1; then COPIER=(copier)

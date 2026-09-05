@@ -17,6 +17,7 @@ Template content lives in `seed/` (`_subdirectory: "seed"` in `copier.yml`); eve
 |----------|------|---------|--------|
 | `project_name` | string | (required) | Substituted into the top-level `.jinja` files |
 | `github_repo` | string `owner/name` | `""` | `gh repo create` after init if non-empty |
+| `project_kind` | choice | `python` | Gates `pyproject.toml` and the pyright-lsp plugin (python, research, mixed get both) |
 
 ## Updating a project
 
