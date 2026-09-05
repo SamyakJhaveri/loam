@@ -34,6 +34,7 @@ REQUIRED_RENDERED_PATHS = (
     "AGENTS.md",
     "CLAUDE.md",
     ".agents/skills/catchup/SKILL.md",
+    ".agents/skills/fable-prompting/SKILL.md",
     ".claude/settings.json",
     ".claude/settings.local.json.template",
     ".claude/hooks/bash-audit-log.sh",
@@ -229,6 +230,7 @@ GOOD_CLAUDE_PROSE = """# CLAUDE.md
 
 - Stop hook: `.claude/hooks/stop-verify-gate.sh`.
 - `/catchup` lives in `.agents/skills/`.
+- `/fable-prompting` is the other shared skill.
 - Hooks: `bash-audit-log.sh`, `concurrent-checkout-guard.sh`, `ruff-after-edit.sh`, `write-rewrite-guard.sh`, `bash-length-advisory.sh`, `post-compact-reinject.sh`, `harness-hygiene.sh`, `skill-usage-log.sh`, `test-tamper-scan.sh`, `mutation-gate.sh`, and `fable-session-brief.sh`.
 
 | Resource | Use when |
@@ -450,9 +452,10 @@ class RenderedHarnessContractTest(unittest.TestCase):
             if "/hooks/" in relative_path:
                 self.make_executable(path)
 
-        catchup_link = self.rendered / ".claude/skills/catchup"
-        catchup_link.parent.mkdir(parents=True, exist_ok=True)
-        catchup_link.symlink_to("../../.agents/skills/catchup", target_is_directory=True)
+        for name in ("catchup", "fable-prompting"):
+            link = self.rendered / ".claude/skills" / name
+            link.parent.mkdir(parents=True, exist_ok=True)
+            link.symlink_to(f"../../.agents/skills/{name}", target_is_directory=True)
 
     def rendered_violations(self) -> tuple[str, ...]:
         return tuple(
@@ -1338,6 +1341,17 @@ class RenderedHarnessContractTest(unittest.TestCase):
 
         self.assertIn(
             "FAIL [symlinks]: .claude/skills/catchup must be a symlink",
+            self.rendered_violations(),
+        )
+
+    def test_fable_prompting_must_be_a_symlink(self) -> None:
+        self.build_good_fixture()
+        link = self.rendered / ".claude/skills/fable-prompting"
+        link.unlink()
+        link.mkdir()
+
+        self.assertIn(
+            "FAIL [symlinks]: .claude/skills/fable-prompting must be a symlink",
             self.rendered_violations(),
         )
 

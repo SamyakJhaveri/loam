@@ -316,13 +316,15 @@ E. Do not do (evidence says skip): asking the agent to add tests mid-fix (test v
 
 - Fable 5.1 prompting guide (fetch it, do not recite):
   https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/prompting-claude-fable-5-1
+  The `/fable-prompting` seed skill is the filtered index over that guide: it says which sections a
+  prompt can act on and which ones Claude Code already injects.
   The lead is now Fable 5.1, so these deltas describe the lead's own behavior, not just the workers'.
   Key deltas vs Fable 5: fewer user-facing progress updates; may issue one tool call per turn in
   coding loops; denser prose (the "mannered prose" line is the fix); less chat formatting; may end
   a turn early or ask permission on long async work; over-delivers extras and tests; rewrites whole
   files for small edits; at xhigh/max can draft a long deliverable twice. Claude Code already
-  injects the autonomy block and the batching nudge, so never duplicate those in a CLAUDE.md or a
-  worker brief.
+  injects the autonomy block, the Delivering work block, the progress-updates line, and the
+  batching nudge, so never duplicate those in a CLAUDE.md or a worker brief.
 - Opus 4.8 workers are literal: spell out scope, front-load the whole task in one prompt, never
   write "only report high-severity" (they drop real findings), name when to fan out. A worker
   cannot read the lead's thinking blocks, so every brief must be self-contained.

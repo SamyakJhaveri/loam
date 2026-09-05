@@ -8,7 +8,7 @@ Template content lives in `seed/` (`_subdirectory: "seed"` in `copier.yml`); eve
 
 1. Clones the template repo (or uses a local path) at the latest TAG.
 2. Asks the questions below.
-3. Renders `.jinja` files and copies `seed/` into the new project (`_preserve_symlinks: true` keeps the `.claude/skills/catchup` symlink a symlink).
+3. Renders `.jinja` files and copies `seed/` into the new project (`_preserve_symlinks: true` keeps the `.claude/skills/*` symlinks as symlinks).
 4. Runs `_tasks` (git init, optional GitHub setup) - which is why `--trust` is mandatory.
 
 ## Questions
