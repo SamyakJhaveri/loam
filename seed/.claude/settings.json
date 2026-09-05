@@ -143,6 +143,27 @@
             "timeout": 10
           }
         ]
+      },
+      {
+        "matcher": "startup|resume|clear|compact|fork",
+        "hooks": [
+          {
+            "type": "command",
+            "command": ".claude/hooks/fable-session-brief.sh",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "PostModelSwitch": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": ".claude/hooks/fable-session-brief.sh",
+            "timeout": 5
+          }
+        ]
       }
     ],
     "Stop": [

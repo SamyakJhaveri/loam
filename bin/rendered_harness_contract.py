@@ -44,6 +44,7 @@ REQUIRED_RENDERED_PATHS = (
     ".claude/hooks/skill-usage-log.sh",
     ".claude/hooks/test-tamper-scan.sh",
     ".claude/hooks/mutation-gate.sh",
+    ".claude/hooks/fable-session-brief.sh",
     ".claude/skills/catchup",
     ".codex/config.toml",
     ".codex/hooks.json",
@@ -89,7 +90,9 @@ CLAUDE_HOOK_ROUTES = {
     "SessionStart": (
         ("compact", ".claude/hooks/post-compact-reinject.sh"),
         ("startup|resume|clear", ".claude/hooks/harness-hygiene.sh"),
+        ("startup|resume|clear|compact|fork", ".claude/hooks/fable-session-brief.sh"),
     ),
+    "PostModelSwitch": ((None, ".claude/hooks/fable-session-brief.sh"),),
     "Stop": ((None, ".claude/hooks/stop-verify-gate.sh"),),
 }
 
@@ -198,6 +201,7 @@ PROSE_ROUTE_REFERENCES = (
     ("CLAUDE.md", "skill-usage-log.sh"),
     ("CLAUDE.md", "test-tamper-scan.sh"),
     ("CLAUDE.md", "mutation-gate.sh"),
+    ("CLAUDE.md", "fable-session-brief.sh"),
 )
 
 PROSE_ROUTE_TARGETS = (
@@ -216,6 +220,7 @@ PROSE_ROUTE_TARGETS = (
     ("CLAUDE.md", ".claude/hooks/skill-usage-log.sh"),
     ("CLAUDE.md", ".claude/hooks/test-tamper-scan.sh"),
     ("CLAUDE.md", ".claude/hooks/mutation-gate.sh"),
+    ("CLAUDE.md", ".claude/hooks/fable-session-brief.sh"),
 )
 
 MARKETPLACE_MANIFEST = "cultivation/marketplace/.claude-plugin/marketplace.json"
@@ -918,7 +923,7 @@ def _check_claude_hooks(
             Violation(
                 "claude-hooks",
                 "owned events must equal PreToolUse, PostToolUse, "
-                "PostToolUseFailure, SessionStart, and Stop; "
+                "PostToolUseFailure, SessionStart, PostModelSwitch, and Stop; "
                 f"found {', '.join(sorted(actual_events)) or 'none'}",
             )
         )
