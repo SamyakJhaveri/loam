@@ -3,7 +3,7 @@
 **Decision D2 (2026-08-31, refined 2026-09-01):** grow `cultivation/marketplace/sam-cc-setup/` toward ~27 curated skills.
 The seed stays lean; the README points to the shared catchup skill and the optional marketplace plugin without asserting a hard skill count.
 This keeps the asset-layer rule: seed/ ships always-on generic behavior, optional workflows live in the plugin.
-Candidate sources include the skills grown in Samyak's other projects: job_search, distbench, parbench, instagram_organizer.
+Candidate sources include the skills grown in Samyak's other projects: job_search, distbench, the eval-bench project, instagram_organizer.
 **Evidence constraint:** skills earn their place as ON-DEMAND procedures, never as always-loaded prose.
 Skills gave Opus 4.8 +28.2 instruction-following points when they encode procedure and constraint (arXiv 2606.17819); repository-description prose adds cost without benefit (arXiv 2602.11988).
 Full verdicts: `docs/specs/rebuild-research/clief-claims-verdicts.md`.

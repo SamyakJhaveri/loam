@@ -105,7 +105,7 @@ token efficiency, using Fable 5.1 as lead and Opus 4.8 as workers.
 
 The 2026-09-02 audit (14 Opus workers, Fable 5.1 lead) found:
 
-1. No project uses the Loam seed today. distbench is pinned to a dead tag (v3.6.2). parbench and
+1. No project uses the Loam seed today. distbench is pinned to a dead tag (v3.6.2). The eval-bench project and
    content_search_engine run plugin-only plus richer hand-built harnesses. Samyak chose to KEEP
    the three-layer model and REPAIR sync (not invert to plugin-first).
 2. Every model-facing prompt targets Fable 5 or Opus 5. Rendered projects get zero Fable 5.1 steering.
@@ -132,10 +132,10 @@ https://claude.ai/code/artifact/fc407a45-857b-4186-8b93-6975bf06cbcb
 
 - Dogfood target for the research lane and the experiment contract: a NEW distbench, same research
   goal, fresh repo rendered from the updated seed. The old distbench stays archived.
-- Walk-away runs execute on this Mac AND on a remote eval host (ssh plus tmux, like parbench's
+- Walk-away runs execute on this Mac AND on a remote eval host (ssh plus tmux, like the eval-bench project's
   conveyor). The experiment contract needs a remote runner and a results sync step.
-- Notifications: Pushover. Reuse parbench's pattern (`~/.parbench_pushover` credentials file,
-  ntfy.sh as fallback). See `~/Desktop/parbench_sam/scripts/orchestration/run_conveyor.sh`.
+- Notifications: Pushover. Reuse the eval-bench project's pattern (a `~/.<project>_pushover` credentials file,
+  ntfy.sh as fallback). See the eval-bench project's `scripts/orchestration/run_conveyor.sh`.
 - Codex is an EQUAL IMPLEMENTER, not a review probe. The parity bill of materials must give
   Codex every skill, hook, and agent with a mirror or an explicit unsupported reason.
 - Fable 5.1 doubled Fable 5 on Terminal-Bench-Science. For research work inside seeded projects,
@@ -150,11 +150,11 @@ These were asked for and were missing from the first draft. Each names the sessi
 
 1. Understanding his own thinking and the repo (session 5). Ship a decision ledger:
    `docs/decisions/RULINGS.md`, one dated line per ruling ("do now / defer / drop", verbatim
-   words, agents may not re-argue), promoted from parbench's rulings walkthrough and the day
+   words, agents may not re-argue), promoted from the eval-bench project's rulings walkthrough and the day
    planner's backlog-for-ruling. Ship a standing-constraints block: `.claude/rules/invariants.md`
-   that every ticket prompt references instead of restating (parbench repeated one clause five
+   that every ticket prompt references instead of restating (the eval-bench project repeated one clause five
    times in one plan). Ship the CONTEXT.md scaffold with a Skip column (Task / Load these / Skip
-   these with a reason), from parbench's six subdirectory files; the `scaffold-context` skill
+   these with a reason), from the eval-bench project's six subdirectory files; the `scaffold-context` skill
    exists in the plugin, so wire it and add the Skip column.
 2. Acquiring and creating skills (session 6). A skill-acquisition loop as one skill, `adopt-skill`:
    find (`find-skills`, skills.sh), vet (`bin/vet-skill.sh`), eval (skill-creator benchmark with
@@ -178,7 +178,7 @@ These were asked for and were missing from the first draft. Each names the sessi
    `evalset.json` hash-pinned, a judge script with position swap and rubric dimensions, and a
    cost-per-task column (tokens, dollars, wall-clock) in every results table. Contamination
    note and a verification oracle field in the experiment contract.
-7. Fast research coding (session 6). Promote parbench's headless conveyor as
+7. Fast research coding (session 6). Promote the eval-bench project's headless conveyor as
    `bin/conveyor.sh`: tasks run via `claude -p` in tmux on the eval host, a Codex gate capped by
    `MAX_GATE_ROUNDS=2`, Pushover on halt, and the HEADLESS EXECUTION RULE line (never
    run_in_background, ScheduleWakeup, or tmux-and-wait inside a headless task).
@@ -490,7 +490,7 @@ Goal (paste as the `/goal` condition, run in auto mode): every item tagged for s
 2. `copier.yml`: add question `project_kind` (choices: python, typescript, research, mixed, other). Gate `pyproject.toml.jinja` on python or research or mixed. The `pyright-lsp` line lives in `seed/.claude/settings.json`, which has no `.jinja` suffix and is copied verbatim, so first rename it to `seed/.claude/settings.json.jinja` (Copier strips the suffix) to make that one line conditional, and update every path reference to it in the contract and tests. Update `bin/rendered_harness_contract.py` and tests for both `project_kind` branches. Verify: render with `project_kind=typescript` and confirm no pyright-lsp line.
 3. Parity bill of materials: copy `~/Desktop/distbench/agent-parity.toml` and `~/Desktop/distbench/scripts/agent_parity/parity.py` (plus `adapters/`) into `bin/agent_parity/`. Read them first and strip distbench-specific entries. Author `seed/agent-parity.toml` listing every seed skill, agent, and hook with a Codex mirror or `unsupported: reason`. Wire `python3 bin/agent_parity/parity.py check` as verify-template stage 9.
 4. Validate-sentinel trio: copy `~/Desktop/distbench/.claude/hooks/run-validate-waves.sh`, `sentinel-cleanup.sh`, `pre-commit-gate.sh` into `seed/.claude/hooks/`, generalize (no distbench paths, ruff/mypy guarded on pyproject), wire sentinel-cleanup as PostToolUse Edit|Write, pre-commit-gate as PreToolUse Bash on `git commit`. The sentinel file is `.validation_passed`, gitignored. Contract inventory and tests as in session 4.
-5. Attach mode: `bin/loam-attach.sh <dir>`: copies `seed/.claude/settings.json`, `seed/.claude/hooks/`, the `.gitignore` hook lines, and writes a `.claude/settings.local.json` that enables the sam-cc-setup plugin from `cultivation/marketplace`; refuses if `<dir>/.claude/settings.json` exists unless `--force`. Test on `~/Desktop/teach-parbench` (no git repo there; the script must handle that) and show a hook firing.
+5. Attach mode: `bin/loam-attach.sh <dir>`: copies `seed/.claude/settings.json`, `seed/.claude/hooks/`, the `.gitignore` hook lines, and writes a `.claude/settings.local.json` that enables the sam-cc-setup plugin from `cultivation/marketplace`; refuses if `<dir>/.claude/settings.json` exists unless `--force`. Test on `~/Desktop/teach-the eval-bench project` (no git repo there; the script must handle that) and show a hook firing.
 6. distbench: do NOT edit it. Add `docs/plans/2026-09-03-distbench-archive-note.md` stating it is archived at commit 410c07e, its Loam pin is v3.6.2 (dead), and which inventions were promoted in this session.
 7. Root `AGENTS.md:63-64` (the case-insensitive-grep and count-by-marker gotchas) overlap `seed/AGENTS.md.jinja`: add a mirror check next to `_check_distribution_mirrors` in the contract, or delete the root copies. Note session 2 item 4 removes these two lines from the seed, so after that lands the overlap is root vs CLAUDE.md, not root vs seed. Fix the `bin/harness-smoke.sh:39-45` comment vs behavior mismatch (make a dirty seed exit 1).
 
