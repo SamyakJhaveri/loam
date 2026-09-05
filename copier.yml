@@ -37,8 +37,22 @@ github_repo:
   default: ""
   validator: "{% if github_repo and not (github_repo | regex_search('^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$')) %}Invalid repo format — use owner/repo{% endif %}"
 
+project_kind:
+  type: str
+  help: "Project kind? Gates pyproject.toml and the pyright-lsp plugin (python, research, mixed get both)."
+  choices: [python, typescript, research, mixed, other]
+  default: python
+
 # Post-generation tasks (run in the generated project directory)
 _tasks:
+  # Strip the pyright-lsp plugin from settings for non-Python project kinds.
+  - >-
+    {% if project_kind not in ['python', 'research', 'mixed'] %}
+    python3 -c "import json; f='.claude/settings.json'; d=json.load(open(f)); d.get('enabledPlugins', {}).pop('pyright-lsp@claude-plugins-official', None); w=open(f, 'w'); json.dump(d, w, indent=2); w.write('\n')"
+    {% else %}
+    true
+    {% endif %}
+
   # Initialize git repo (skip on copier update — .git already exists)
   - "if [ ! -d .git ]; then (git init -b main 2>/dev/null || git init) && git add . && git commit -m 'Initial commit from loam'; fi"
 

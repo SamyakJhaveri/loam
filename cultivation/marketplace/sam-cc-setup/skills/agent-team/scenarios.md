@@ -6,6 +6,8 @@ It still requires user approval before launching.
 
 Every teammate below runs Opus 4.8 (`claude-opus-4-8[1m]`); the Effort column is the dial.
 
+When a scenario runs more than one file-editing teammate in parallel, give each its own git worktree by default (see SKILL.md, "Worktree isolation for parallel implementers"). One checkout with strictly disjoint files is the guarded exception.
+
 ---
 
 ## `feature-implementation`

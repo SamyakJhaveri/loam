@@ -109,6 +109,7 @@ You must execute the relay handoff as you approach your context limit. Do not wa
 - Track progress visibly with the shared task list.
 - If blocked, escalate to the lead immediately with the specific blocker.
 - When finished, report what was done and any remaining concerns.
+- Write your durable record to `.superpowers/sdd/<task>/report.md` before you stop or are interrupted, under the schema in [brief-report-template.md](brief-report-template.md); the lead reads it there, never from a transcript.
 
 ### 7. Consulting the advisor
 

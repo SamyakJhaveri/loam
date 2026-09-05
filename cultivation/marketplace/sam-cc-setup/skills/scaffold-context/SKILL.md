@@ -33,8 +33,10 @@ A CONTEXT.md is an L1 routing file: it tells an agent entering this subdirectory
 what to load and what to skip for the tasks done here. Required sections, in order:
 
 1. **What this area is** - 1-2 sentences.
-2. **What to Load** - table: `Task | Load These | Skip These`. The Skip column must be
-   non-empty for at least one row (skipping is the point of routing).
+2. **What to Load** - table: `Task | Load These | Skip These`. Every Skip cell names the file or
+   area AND the reason to skip it (for example "other specs in the suite - they do not constrain
+   this one"), never a bare path. The Skip column must be non-empty for at least one row: not
+   loading the wrong thing is the point of routing.
 3. **Folder** - this area's own directory layout, NOT the whole project tree.
 4. **The Process** - numbered steps for the dominant workflow, ending with a
    `Done looks like:` line (one verifiable sentence).
@@ -66,8 +68,9 @@ sufficient.
    this area and under what trigger condition. If none, omit the Skills table; do not fill
    it with placeholders.
 7. Identify reference files this area should explicitly **Skip** - older directories, raw data
-   already summarized, sibling areas with overlapping content. The Skip column must be
-   non-empty for at least one task row.
+   already summarized, sibling areas with overlapping content. Write each Skip cell as the file or
+   area plus the reason to skip it, never a bare path. The Skip column must be non-empty for at
+   least one task row.
 8. Draft `<subdir>/CONTEXT.md` with the six required sections in the order above.
 9. Target 25-80 lines. If the area genuinely needs more, split into multiple CONTEXT.md files
    for distinct sub-areas rather than bloating one.
@@ -90,7 +93,7 @@ sufficient.
 
 - `<subdir>/CONTEXT.md` exists, between 25 and 80 lines.
 - All six required sections present (with Skills & Tools optional).
-- Skip column non-empty for at least one task row.
+- Skip column non-empty for at least one task row, and every Skip cell carries a reason.
 - Every Skill row has a non-trivial When trigger.
 - "The Process" section ends with a `Done looks like:` line from the user.
 - The user has acknowledged the draft.

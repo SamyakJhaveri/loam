@@ -12,7 +12,8 @@
       "Bash(git log:*)",
       "Bash(git diff:*)",
       "Bash(wc:*)",
-      "Bash(mkdir:*)"
+      "Bash(mkdir:*)",
+      "Bash(.claude/hooks/run-validate-waves.sh:*)"
     ],
     "deny": [
       "Bash(rm -rf:*)",
@@ -83,6 +84,16 @@
         "hooks": [
           {
             "type": "command",
+            "command": ".claude/hooks/pre-commit-gate.sh",
+            "timeout": 10
+          }
+        ]
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
             "command": ".claude/hooks/mutation-gate.sh",
             "timeout": 600
           }
@@ -97,6 +108,16 @@
             "type": "command",
             "command": ".claude/hooks/ruff-after-edit.sh",
             "timeout": 10
+          }
+        ]
+      },
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": ".claude/hooks/sentinel-cleanup.sh",
+            "timeout": 5
           }
         ]
       },

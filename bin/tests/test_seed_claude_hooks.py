@@ -1895,5 +1895,132 @@ class MutationGateTests(HookFixtureCase):
         self.assertTrue(fresh.exists())
 
 
+class RunValidateWavesTests(HookFixtureCase):
+    SCRIPT = "run-validate-waves.sh"
+
+    def _sentinel(self) -> pathlib.Path:
+        return self.repo / ".validation_passed"
+
+    def test_no_pyproject_skips_waves_and_writes_sentinel(self) -> None:
+        # No pyproject.toml: ruff/mypy/pytest are skipped and the sentinel is
+        # still written so a non-Python project can clear the commit gate.
+        result = self.run_hook(self.SCRIPT, {})
+        self.assertEqual(0, result.returncode, result.stderr)
+        self.assertTrue(self._sentinel().is_file())
+        self.assertIn("waves_passed=2", self._sentinel().read_text(encoding="utf-8"))
+
+    def test_env_seams_drive_green_path(self) -> None:
+        # Both wave overrides succeed, so both waves pass without a real ruff or
+        # pytest run and the sentinel is written.
+        env = dict(
+            os.environ,
+            RUN_VALIDATE_WAVE1_CMD="true",
+            RUN_VALIDATE_WAVE2_CMD="true",
+        )
+        result = self.run_hook(self.SCRIPT, {}, env=env)
+        self.assertEqual(0, result.returncode, result.stderr)
+        self.assertIn("waves_passed=2", self._sentinel().read_text(encoding="utf-8"))
+
+    def test_env_seam_wave1_failure_writes_no_sentinel(self) -> None:
+        env = dict(os.environ, RUN_VALIDATE_WAVE1_CMD="false")
+        result = self.run_hook(self.SCRIPT, {}, env=env)
+        self.assertEqual(1, result.returncode, result.stdout)
+        self.assertFalse(self._sentinel().exists())
+
+
+class SentinelCleanupTests(HookFixtureCase):
+    SCRIPT = "sentinel-cleanup.sh"
+
+    def _sentinel(self) -> pathlib.Path:
+        return self.repo / ".validation_passed"
+
+    def _edit_payload(self, file_path: str) -> dict:
+        return {
+            "cwd": str(self.repo),
+            "tool_name": "Edit",
+            "tool_input": {"file_path": file_path},
+        }
+
+    def test_in_repo_edit_removes_sentinel(self) -> None:
+        self._sentinel().write_text("waves_passed=2\n", encoding="utf-8")
+        (self.repo / "src.py").write_text("x = 1\n", encoding="utf-8")
+        result = self.run_hook(
+            self.SCRIPT, self._edit_payload(str(self.repo / "src.py"))
+        )
+        self.assertEqual(0, result.returncode, result.stderr)
+        self.assertFalse(self._sentinel().exists())
+
+    def test_gitignored_path_keeps_sentinel(self) -> None:
+        (self.repo / ".gitignore").write_text("build/\n", encoding="utf-8")
+        self._sentinel().write_text("waves_passed=2\n", encoding="utf-8")
+        result = self.run_hook(
+            self.SCRIPT, self._edit_payload(str(self.repo / "build/out.o"))
+        )
+        self.assertEqual(0, result.returncode, result.stderr)
+        self.assertTrue(self._sentinel().exists())
+
+    def test_outside_repo_path_keeps_sentinel(self) -> None:
+        self._sentinel().write_text("waves_passed=2\n", encoding="utf-8")
+        outside = pathlib.Path(self.temp_dir.name) / "outside.py"
+        result = self.run_hook(self.SCRIPT, self._edit_payload(str(outside)))
+        self.assertEqual(0, result.returncode, result.stderr)
+        self.assertTrue(self._sentinel().exists())
+
+    def test_malformed_json_deletes_sentinel(self) -> None:
+        # Fail-safe: an unparseable envelope is treated as a real edit.
+        self._sentinel().write_text("waves_passed=2\n", encoding="utf-8")
+        result = self.run_hook(self.SCRIPT, None, raw_payload="{not json")
+        self.assertEqual(0, result.returncode, result.stderr)
+        self.assertFalse(self._sentinel().exists())
+
+
+class PreCommitGateTests(HookFixtureCase):
+    SCRIPT = "pre-commit-gate.sh"
+
+    def _write_sentinel(self, waves: int = 2) -> pathlib.Path:
+        s = self.repo / ".validation_passed"
+        s.write_text(
+            "timestamp=now\ngit_hash=none\nchanged_files=0\n"
+            f"waves_passed={waves}\nvalidated_by=test\n",
+            encoding="utf-8",
+        )
+        return s
+
+    def test_non_commit_command_passes(self) -> None:
+        result = self.run_hook(self.SCRIPT, self._payload("pytest -q"))
+        self.assertEqual(0, result.returncode, result.stderr)
+
+    def test_git_grep_commit_passes(self) -> None:
+        # The trigger must read the git subcommand, not the word "commit".
+        result = self.run_hook(self.SCRIPT, self._payload("git grep commit"))
+        self.assertEqual(0, result.returncode, result.stderr)
+
+    def test_missing_sentinel_blocks_with_fix(self) -> None:
+        result = self.run_hook(self.SCRIPT, self._payload())
+        self.assertEqual(2, result.returncode, result.stdout)
+        self.assertIn("run-validate-waves.sh", result.stderr)
+
+    def test_fresh_sentinel_clean_tree_allows(self) -> None:
+        self.commit_file("a.py", "print('a')\n")
+        self._write_sentinel()
+        result = self.run_hook(self.SCRIPT, self._payload())
+        self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+
+    def test_file_newer_than_sentinel_blocks(self) -> None:
+        self.commit_file("a.py", "print('a')\n")
+        sentinel = self._write_sentinel()
+        newer = self.repo / "b.py"
+        newer.write_text("print('b')\n", encoding="utf-8")
+        smtime = sentinel.stat().st_mtime
+        os.utime(newer, (smtime + 120, smtime + 120))
+        result = self.run_hook(self.SCRIPT, self._payload())
+        self.assertEqual(2, result.returncode, result.stdout)
+        self.assertIn("Files changed after validation", result.stderr)
+
+    def test_malformed_json_passes(self) -> None:
+        result = self.run_hook(self.SCRIPT, None, raw_payload="{not json")
+        self.assertEqual(0, result.returncode, result.stderr)
+
+
 if __name__ == "__main__":
     unittest.main()

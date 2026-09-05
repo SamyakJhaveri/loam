@@ -1,4 +1,4 @@
-# AGENTS.md — {{ project_name }}
+# AGENTS.md - {{ project_name }}
 
 > The ONE prose home for agent guidance in this project.
 > Claude Code loads it through the `@AGENTS.md` import in CLAUDE.md; Codex reads it directly.
@@ -18,6 +18,7 @@ Recurring traps. Add entries when something bites twice; delete entries when the
 
 - Copier resolves git TAGS, not HEAD. Template updates reach this project only after a new tag; always run copier with `--trust`.
 - In YAML frontmatter, quote description strings containing colons; strict parsers reject them unquoted.
+- Parallel workers: give each its own worktree (`claude --worktree <name>`); one checkout is safe only for disjoint files. For a shared GPU or database use `flock /tmp/<resource>.lock <cmd>` (util-linux; absent on stock macOS); build no other lock.
 
 ## Editing discipline
 
@@ -31,12 +32,20 @@ builds, or was re-checked must be preceded in the same turn by the command and i
 If you did not run it, write "not verified" and name the command that would verify it.
 When a change fixes a bug or adds behavior, the failing test lands in its own commit before the implementation commit.
 
+## Invariants
+
+Standing constraints for this project, one per line, dated.
+A ticket or worker prompt says "obey the Invariants in AGENTS.md" instead of restating them.
+This list starts empty; add a line only when a constraint has been violated once or will bind more than one session.
+
 ## Session continuity
 
-Before stopping mid-task, write `HANDOFF.md` at the repo root with four lines: current state, exact next step, the verify command, and `git rev-parse HEAD`.
-`/catchup` reads it on resume and flags it stale when that hash is no longer HEAD.
+Before stopping mid-task, write `HANDOFF.md` at the repo root with these fields, one heading each, in this order: Goal; Files touched; Commands run (each with its exit code); Tried and failed; Open assumptions; Next single action; Written at (the output of `git rev-parse HEAD`).
+The verify command that proves the work belongs under Commands run.
+`/catchup` reads it on resume and flags it stale when that hash is no longer HEAD, when its mtime is older than the last commit, or when its status words contradict git.
 It is gitignored and local-only; delete it when the task finishes.
 Keep it short; when in doubt, the repository state wins over the handoff.
+A worker brief (`.superpowers/sdd/<task>/brief.md`) and its report (`report.md`) use the same seven fields, so an interrupted worker's findings are read from its report, never rebuilt from a transcript.
 
 ## Codex note
 
