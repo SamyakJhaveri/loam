@@ -15,5 +15,6 @@ Rules of thumb:
 - A new asset starts in the project that needed it. It moves UP a layer only when a second project needs it (the plugin trigger from the official docs).
 - Anything that must hold every time is a hook in the seed, not prose anywhere.
 - The shared skill location for both harnesses is `seed/.agents/skills/` (Codex reads it directly; Claude Code reads it through a checked-in symlink in `.claude/skills/`).
+- A seed skill may be pure reference material when the owner requires it in every generated project; keep its description near 40 tokens, because the listing is paid in every session.
 - The canonical concurrent-checkout guard is `seed/.claude/hooks/concurrent-checkout-guard.sh`. The `sam-cc-setup` plugin carries a byte-identical distribution mirror for projects that do not use the Loam seed. `bin/rendered_harness_contract.py` rejects drift or a missing copy.
 - `cultivation/wip/` stages work that has no placement verdict yet.

@@ -30,6 +30,7 @@ Loam fixes both:
 - `AGENTS.md` and `CLAUDE.md` with fill-in project guidance.
 - `.claude/` settings and hook scripts.
 - A shared `/catchup` skill under `.agents/skills/`.
+- A shared `/fable-prompting` skill under `.agents/skills/`: which Fable 5.1 guide sections a prompt can act on.
 - `.codex/` configuration, hook policy, and execution rules.
 - Optional agents and skills from `cultivation/marketplace/`.
 
