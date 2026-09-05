@@ -47,6 +47,7 @@ REQUIRED_RENDERED_PATHS = (
     ".claude/hooks/skill-usage-log.sh",
     ".claude/hooks/test-tamper-scan.sh",
     ".claude/hooks/mutation-gate.sh",
+    ".claude/hooks/fable-session-brief.sh",
     ".codex/config.toml",
     ".codex/hooks.json",
     ".codex/hooks/pre-tool-policy.py",
@@ -78,6 +79,7 @@ CLAUDE_HOOK_PATHS = (
     ".claude/hooks/skill-usage-log.sh",
     ".claude/hooks/test-tamper-scan.sh",
     ".claude/hooks/mutation-gate.sh",
+    ".claude/hooks/fable-session-brief.sh",
 )
 
 GOOD_CLAUDE_SETTINGS = {
@@ -188,6 +190,25 @@ GOOD_CLAUDE_SETTINGS = {
                     }
                 ],
             },
+            {
+                "matcher": "startup|resume|clear|compact|fork",
+                "hooks": [
+                    {
+                        "type": "command",
+                        "command": ".claude/hooks/fable-session-brief.sh",
+                    }
+                ],
+            },
+        ],
+        "PostModelSwitch": [
+            {
+                "hooks": [
+                    {
+                        "type": "command",
+                        "command": ".claude/hooks/fable-session-brief.sh",
+                    }
+                ]
+            }
         ],
         "Stop": [
             {
@@ -208,7 +229,7 @@ GOOD_CLAUDE_PROSE = """# CLAUDE.md
 
 - Stop hook: `.claude/hooks/stop-verify-gate.sh`.
 - `/catchup` lives in `.agents/skills/`.
-- Hooks: `bash-audit-log.sh`, `concurrent-checkout-guard.sh`, `ruff-after-edit.sh`, `write-rewrite-guard.sh`, `bash-length-advisory.sh`, `post-compact-reinject.sh`, `harness-hygiene.sh`, `skill-usage-log.sh`, `test-tamper-scan.sh`, and `mutation-gate.sh`.
+- Hooks: `bash-audit-log.sh`, `concurrent-checkout-guard.sh`, `ruff-after-edit.sh`, `write-rewrite-guard.sh`, `bash-length-advisory.sh`, `post-compact-reinject.sh`, `harness-hygiene.sh`, `skill-usage-log.sh`, `test-tamper-scan.sh`, `mutation-gate.sh`, and `fable-session-brief.sh`.
 
 | Resource | Use when |
 | --- | --- |

@@ -1081,6 +1081,75 @@ class PostCompactReinjectTests(HookFixtureCase):
         self.assertIn("5. Re-read HANDOFF.md", result.stdout)
 
 
+class FableSessionBriefTests(HookFixtureCase):
+    SCRIPT = "fable-session-brief.sh"
+
+    def test_session_start_fable_model_emits_brief(self) -> None:
+        result = self.run_hook(
+            self.SCRIPT,
+            {
+                "cwd": str(self.repo),
+                "hook_event_name": "SessionStart",
+                "source": "startup",
+                "model": "claude-fable-5-1",
+            },
+        )
+        self.assertEqual(0, result.returncode, result.stderr)
+        self.assertIn("goal", result.stdout)
+        self.assertIn("constraints", result.stdout)
+        self.assertIn("done check", result.stdout)
+        self.assertIn("Target model and effort", result.stdout)
+
+    def test_post_model_switch_to_fable_emits_brief(self) -> None:
+        result = self.run_hook(
+            self.SCRIPT,
+            {
+                "hook_event_name": "PostModelSwitch",
+                "from_model": "claude-opus-4-8",
+                "to_model": "claude-fable-5-1",
+            },
+        )
+        self.assertEqual(0, result.returncode, result.stderr)
+        self.assertNotEqual("", result.stdout.strip())
+
+    def test_non_fable_model_is_silent(self) -> None:
+        result = self.run_hook(
+            self.SCRIPT,
+            {
+                "hook_event_name": "PostModelSwitch",
+                "from_model": "claude-fable-5-1",
+                "to_model": "claude-opus-4-8",
+            },
+        )
+        self.assertEqual(0, result.returncode, result.stderr)
+        self.assertEqual("", result.stdout.strip())
+
+    def test_absent_model_field_is_silent(self) -> None:
+        result = self.run_hook(
+            self.SCRIPT,
+            {"hook_event_name": "SessionStart", "source": "startup"},
+        )
+        self.assertEqual(0, result.returncode, result.stderr)
+        self.assertEqual("", result.stdout.strip())
+
+    def test_case_insensitive_match(self) -> None:
+        result = self.run_hook(
+            self.SCRIPT,
+            {
+                "hook_event_name": "SessionStart",
+                "source": "startup",
+                "model": "Claude-Fable-5-1",
+            },
+        )
+        self.assertEqual(0, result.returncode, result.stderr)
+        self.assertNotEqual("", result.stdout.strip())
+
+    def test_malformed_json_is_silent(self) -> None:
+        result = self.run_hook(self.SCRIPT, None, raw_payload="{not json")
+        self.assertEqual(0, result.returncode, result.stderr)
+        self.assertEqual("", result.stdout.strip())
+
+
 class HarnessHygieneTests(HookFixtureCase):
     SCRIPT = "harness-hygiene.sh"
 
