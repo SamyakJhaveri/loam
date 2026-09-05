@@ -26,9 +26,37 @@ sys.stdout.write((d.get("cwd") or "") + "\n" + (cmd or ""))
 ' 2>/dev/null)" || EXTRACT=""
 CWD="$(printf '%s' "$EXTRACT" | head -n1)"
 CMD="$(printf '%s' "$EXTRACT" | tail -n +2)"
+# Quote-blanked copy of the command: single- and double-quoted spans become
+# spaces (newlines kept) so a `git commit` inside quotes -- echo "git commit",
+# grep -r "git commit" . -- is not read as a real commit. Same string-state
+# idea as strip_strings in test-tamper-scan.sh. The raw CMD is kept for the
+# bundled-writer check below; only the trigger reads the blanked copy.
+CMD_SCAN="$(printf '%s' "$CMD" | python3 -c '
+import sys
+s = sys.stdin.read()
+sq = chr(39); dq = chr(34)
+out, q, i, n = [], None, 0, len(s)
+while i < n:
+    c = s[i]
+    if c == "\n":
+        out.append("\n"); q = None; i += 1; continue
+    if q:
+        if c == "\\":
+            out.append("  "); i += 2; continue
+        out.append(" ")
+        if c == q:
+            q = None
+    elif c == dq or c == sq:
+        q = c; out.append(" ")
+    else:
+        out.append(c)
+    i += 1
+sys.stdout.write("".join(out))
+' 2>/dev/null)" || CMD_SCAN="$CMD"
 # Fire only on a real `git commit`: git, optional global options (-C dir,
-# -c k=v), then the commit subcommand. `git grep commit` must not fire.
-printf '%s' "$CMD" | grep -qE '\bgit\s+(-\S+\s+(\S+\s+)?)*commit\b' || exit 0
+# -c k=v), then the commit subcommand. `git grep commit` must not fire, and a
+# quoted `git commit` in an unrelated command must not fire (blanked above).
+printf '%s' "$CMD_SCAN" | grep -qE '\bgit\s+(-\S+\s+(\S+\s+)?)*commit\b' || exit 0
 # Root = cwd field, fallback git toplevel, else pass.
 if [ -n "$CWD" ] && [ -d "$CWD" ]; then
     ROOT="$CWD"
@@ -55,7 +83,7 @@ gate_fail() {
     exit 2
 }
 
-# 3. Sentinel must exist.
+# 1. Sentinel must exist.
 if [ ! -f "$SENTINEL" ]; then
     HINT="Post-session validation has not been run; no .validation_passed sentinel."
     if printf '%s' "$CMD" | grep -qF -e '.validation_passed' -e 'run-validate-waves'; then
@@ -64,7 +92,7 @@ if [ ! -f "$SENTINEL" ]; then
     gate_fail "Validation sentinel missing." "$HINT"
 fi
 
-# 4. Sentinel must be under 30 minutes old.
+# 2. Sentinel must be under 30 minutes old.
 if [ "$IS_LINUX" = "1" ]; then
     SENTINEL_MTIME=$(stat -c %Y "$SENTINEL" 2>/dev/null || echo 0)
 else
@@ -77,7 +105,7 @@ if [ "$AGE" -gt "$MAX_AGE" ]; then
     gate_fail "Validation sentinel is stale (age ${AGE}s, limit ${MAX_AGE}s)." "Files may have changed since validation."
 fi
 
-# 4b. Both waves must be recorded (fail-closed): a sentinel without a numeric
+# 2b. Both waves must be recorded (fail-closed): a sentinel without a numeric
 # waves_passed>=2 is treated as insufficient.
 WAVES=$(grep '^waves_passed=' "$SENTINEL" 2>/dev/null | head -1 | cut -d= -f2 | tr -d ' ' || true)
 if printf '%s' "$WAVES" | grep -qE '^[0-9]+$' && [ "$WAVES" -ge 2 ]; then
@@ -86,7 +114,7 @@ else
     gate_fail "Validation sentinel records insufficient waves_passed (need >=2, got '${WAVES:-<missing>}')." "A partial validation cannot clear the gate."
 fi
 
-# 5. No changed or untracked file may be newer than the sentinel. Include
+# 3. No changed or untracked file may be newer than the sentinel. Include
 # untracked-unignored files so a brand-new file edited after validation still
 # re-triggers the gate.
 NEWEST_MTIME=$( { git diff --name-only HEAD; git ls-files --others --exclude-standard; } 2>/dev/null | while read -r f; do
@@ -103,6 +131,6 @@ if [ -n "$NEWEST_MTIME" ] && [ "$NEWEST_MTIME" -gt "$SENTINEL_MTIME" ]; then
     gate_fail "Files changed after validation passed." "The sentinel no longer covers the working tree."
 fi
 
-# 6. All checks passed - allow the commit.
+# 4. All checks passed - allow the commit.
 echo "pre-commit-gate: validation sentinel OK (age ${AGE}s, max ${MAX_AGE}s). Commit allowed." >&2
 exit 0

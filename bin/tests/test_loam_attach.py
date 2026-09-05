@@ -65,6 +65,35 @@ class LoamAttachTests(unittest.TestCase):
         gi = (self.dst / ".gitignore").read_text()
         self.assertEqual(1, gi.count("# Loam harness (added by loam-attach.sh)"))
 
+    def test_force_keeps_foreign_hooks(self) -> None:
+        hooks = self.dst / ".claude/hooks"
+        hooks.mkdir(parents=True)
+        foreign = hooks / "my-own-hook.sh"
+        body = "#!/usr/bin/env bash\necho mine\n"
+        foreign.write_text(body)
+        r = self.attach("--force")
+        self.assertEqual(0, r.returncode, r.stderr)
+        self.assertTrue(foreign.is_file(), "foreign hook was removed")
+        self.assertEqual(body, foreign.read_text(), "foreign hook was mutated")
+        self.assertTrue(list(hooks.glob("*.sh")), "seed hooks not copied alongside")
+
+    def test_refuses_when_hooks_dir_exists_without_settings(self) -> None:
+        hooks = self.dst / ".claude/hooks"
+        hooks.mkdir(parents=True)
+        (hooks / "my-own-hook.sh").write_text("#!/usr/bin/env bash\n")
+        r = self.attach()
+        self.assertEqual(1, r.returncode)
+        self.assertIn("re-run with --force", r.stderr)
+
+    def test_gitignore_without_trailing_newline(self) -> None:
+        gi = self.dst / ".gitignore"
+        gi.write_text("node_modules/")  # no trailing newline
+        self.assertEqual(0, self.attach().returncode)
+        self.assertEqual(0, self.attach("--force").returncode)
+        lines = gi.read_text().splitlines()
+        self.assertEqual(1, lines.count("# Loam harness (added by loam-attach.sh)"))
+        self.assertIn("node_modules/", lines)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -17,6 +17,8 @@ _exclude:
   - ".git"
   - ".claude/audit.log"
   - ".claude/skill-usage.log"
+  # Loam-repo parity manifest; the check runs in the template repo, never in a project.
+  - "agent-parity.toml"
   # Loam-repo maintenance config (numeric-claim checker); never ships.
   - ".claude/stale-counts.json"
   - ".claude/.local-paths"

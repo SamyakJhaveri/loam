@@ -1515,6 +1515,20 @@ class RenderedHarnessContractTest(unittest.TestCase):
             any("pyright-lsp plugin must not be enabled" in item for item in failures)
         )
 
+    def test_missing_project_kind_with_pyproject_is_allowed(self) -> None:
+        # A project rendered before the project_kind question existed has an
+        # answers file with no project_kind line. Its pyproject.toml carries no
+        # language-scaffold obligation.
+        self.build_good_fixture()
+        self.write(
+            self.rendered, ".copier-answers.yml", "_src_path: gh:x/loam\n"
+        )
+        self.write(self.rendered, "pyproject.toml", "[project]\nname = \"x\"\n")
+
+        failures = self.rendered_violations()
+
+        self.assertFalse(any("language-scaffold" in item for item in failures))
+
     def test_stale_counts_config_must_not_render(self) -> None:
         self.build_good_fixture()
         self.write(self.rendered, ".claude/stale-counts.json", "{}\n")

@@ -1528,8 +1528,13 @@ def _check_language_scaffold(
     violations: list[Violation],
 ) -> None:
     kind = _rendered_project_kind(rendered_root)
+    if kind is None:
+        # A project rendered before project_kind existed (or with no answers
+        # file) carries no language-scaffold obligation; do not treat the
+        # absent kind as a non-scaffold kind.
+        return
     wants_scaffold = kind in LANGUAGE_SCAFFOLD_KINDS
-    label = kind if kind is not None else "unset"
+    label = kind
 
     pyproject_exists = _path_exists(rendered_root / "pyproject.toml")
     if wants_scaffold and not pyproject_exists:

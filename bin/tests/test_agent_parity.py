@@ -60,11 +60,6 @@ class AgentParityTests(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertIn("parity check passed", result.stdout)
 
-    def test_clean_base_passes(self) -> None:
-        result = _run(self._clean_base())
-        self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertIn("parity check passed", result.stdout)
-
     def test_unclassified_hook_fails(self) -> None:
         base = self._clean_base()
         (base / ".claude/hooks/x-unlisted.sh").write_text(

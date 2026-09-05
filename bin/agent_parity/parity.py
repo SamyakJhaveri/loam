@@ -5,6 +5,9 @@ Fail-closed: any manifest error, drift between agent-parity.toml and the seed
 capability tree, or missing shared-skill symlink is a non-zero exit. This is the
 check-only descendant of distbench's apply/check/report/catalog tool; Loam ships
 only the gate.
+
+The agents and workflows legs are kept for upstream fidelity and are inert while
+the seed ships no agents or workflows.
 """
 
 from __future__ import annotations

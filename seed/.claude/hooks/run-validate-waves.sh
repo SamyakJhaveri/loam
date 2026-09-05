@@ -14,7 +14,7 @@
 # uninstalled dev tool cannot block a commit for an unrelated reason. With no
 # pyproject.toml checks are skipped, sentinel still written; mypy non-blocking.
 #
-# Usage: ./.claude/hooks/run-validate-waves.sh [validated_by-label]
+# Usage: .claude/hooks/run-validate-waves.sh [validated_by-label]
 #   default label: validate-skill
 #
 # Exit: 0 = both waves green, sentinel written; 1 = a wave failed, no sentinel.
@@ -29,19 +29,26 @@ VALIDATED_BY="${1:-validate-skill}"
 # paths without recursing into a real ruff/pytest run.
 WAVE1_OVERRIDE="${RUN_VALIDATE_WAVE1_CMD:-}"
 WAVE2_OVERRIDE="${RUN_VALIDATE_WAVE2_CMD:-}"
+# A seam bypasses the real ruff/pytest run, so the sentinel must say so: an
+# -override suffix in validated_by keeps the audit field honest.
+if [ -n "$WAVE1_OVERRIDE" ] || [ -n "$WAVE2_OVERRIDE" ]; then
+    VALIDATED_BY="$VALIDATED_BY-override"
+fi
 
 # Resolve how to run each tool; echo the command prefix, empty when unavailable.
+# --no-sync keeps the probe and the run from syncing the project (which would
+# leave .venv/, uv.lock, and .ruff_cache/ behind) just to check availability.
 ruff_runner() {
-    if command -v uv >/dev/null 2>&1 && uv run python -c 'import ruff' >/dev/null 2>&1; then echo "uv run ruff"
+    if command -v uv >/dev/null 2>&1 && uv run --no-sync python -c 'import ruff' >/dev/null 2>&1; then echo "uv run --no-sync ruff"
     elif command -v ruff >/dev/null 2>&1; then echo "ruff"
     elif command -v uvx >/dev/null 2>&1; then echo "uvx ruff"; fi
 }
 pytest_runner() {
-    if command -v uv >/dev/null 2>&1 && uv run python -c 'import pytest' >/dev/null 2>&1; then echo "uv run pytest"
+    if command -v uv >/dev/null 2>&1 && uv run --no-sync python -c 'import pytest' >/dev/null 2>&1; then echo "uv run --no-sync pytest"
     elif python3 -c 'import pytest' >/dev/null 2>&1; then echo "python3 -m pytest"; fi
 }
 mypy_runner() {
-    if command -v uv >/dev/null 2>&1 && uv run python -c 'import mypy' >/dev/null 2>&1; then echo "uv run mypy"
+    if command -v uv >/dev/null 2>&1 && uv run --no-sync python -c 'import mypy' >/dev/null 2>&1; then echo "uv run --no-sync mypy"
     elif python3 -c 'import mypy' >/dev/null 2>&1; then echo "python3 -m mypy"; fi
 }
 

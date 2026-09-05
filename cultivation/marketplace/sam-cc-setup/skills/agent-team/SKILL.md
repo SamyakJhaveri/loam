@@ -40,7 +40,7 @@ Give each parallel implementer that edits files its own git worktree by default.
 Operating notes, current as of the code.claude.com docs:
 
 - A `-p` (headless) run skips the workspace-trust dialog, and it does not clean up its worktree on exit. Remove it by hand with `git worktree remove`.
-- Set `worktree.baseRef` to `"head"` in settings to branch a worktree from your current dirty branch instead of a clean default branch.
+- Set `worktree.baseRef` to `"head"` in settings to branch a worktree from your current HEAD commit instead of a clean default branch. It carries that commit, not your uncommitted changes.
 - A `.worktreeinclude` file at the repo root copies gitignored files (such as `.env`) into each new worktree.
 - Pin a subagent to its own worktree with `isolation: worktree` in its frontmatter.
 - Hook gotcha: `CLAUDE_PROJECT_DIR` stays at the launch root, not the worktree; the worktree path is the `cwd` field of the hook JSON, so a run-logging hook must read `cwd`.

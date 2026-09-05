@@ -226,7 +226,7 @@ else
 fi
 
 echo "== stage 9: Claude/Codex parity BOM =="
-if python3 bin/agent_parity/parity.py check --root seed; then
+if python3 bin/agent_parity/parity.py check --root "$ROOT/seed"; then
   echo "agent parity: OK"
 else
   echo "FAIL: seed agent-parity.toml disagrees with the seed capability tree."

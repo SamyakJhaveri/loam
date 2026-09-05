@@ -1911,7 +1911,8 @@ class RunValidateWavesTests(HookFixtureCase):
 
     def test_env_seams_drive_green_path(self) -> None:
         # Both wave overrides succeed, so both waves pass without a real ruff or
-        # pytest run and the sentinel is written.
+        # pytest run and the sentinel is written. Because a seam bypassed the
+        # real run, validated_by carries the -override suffix.
         env = dict(
             os.environ,
             RUN_VALIDATE_WAVE1_CMD="true",
@@ -1919,7 +1920,9 @@ class RunValidateWavesTests(HookFixtureCase):
         )
         result = self.run_hook(self.SCRIPT, {}, env=env)
         self.assertEqual(0, result.returncode, result.stderr)
-        self.assertIn("waves_passed=2", self._sentinel().read_text(encoding="utf-8"))
+        sentinel = self._sentinel().read_text(encoding="utf-8")
+        self.assertIn("waves_passed=2", sentinel)
+        self.assertIn("validated_by=validate-skill-override", sentinel)
 
     def test_env_seam_wave1_failure_writes_no_sentinel(self) -> None:
         env = dict(os.environ, RUN_VALIDATE_WAVE1_CMD="false")
@@ -1994,6 +1997,26 @@ class PreCommitGateTests(HookFixtureCase):
         # The trigger must read the git subcommand, not the word "commit".
         result = self.run_hook(self.SCRIPT, self._payload("git grep commit"))
         self.assertEqual(0, result.returncode, result.stderr)
+
+    def test_echo_quoted_commit_passes(self) -> None:
+        # A quoted `git commit` inside an unrelated command is blanked before
+        # the trigger, so a read-only echo is not gated.
+        result = self.run_hook(self.SCRIPT, self._payload('echo "git commit"'))
+        self.assertEqual(0, result.returncode, result.stderr)
+
+    def test_grep_quoted_commit_passes(self) -> None:
+        # Same for a grep whose pattern is the literal string "git commit".
+        result = self.run_hook(self.SCRIPT, self._payload('grep -r "git commit" .'))
+        self.assertEqual(0, result.returncode, result.stderr)
+
+    def test_compound_commit_with_quoted_message_blocks(self) -> None:
+        # Blanking must not hide a real commit: the quoted -m message is blanked
+        # but the unquoted `git commit` still fires the gate (no sentinel here).
+        result = self.run_hook(
+            self.SCRIPT, self._payload('git add -A && git commit -m "msg"')
+        )
+        self.assertEqual(2, result.returncode, result.stdout)
+        self.assertIn("run-validate-waves.sh", result.stderr)
 
     def test_missing_sentinel_blocks_with_fix(self) -> None:
         result = self.run_hook(self.SCRIPT, self._payload())
