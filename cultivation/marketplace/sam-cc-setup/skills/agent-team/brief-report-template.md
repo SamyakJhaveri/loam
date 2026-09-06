@@ -4,6 +4,10 @@ Two skeletons for the brief-and-report protocol.
 The lead writes `brief.md`; the worker writes `report.md` before it stops or when interrupted.
 Both live under `.superpowers/sdd/<task>/`, and both carry the same seven HANDOFF fields, in the same order, one heading each.
 
+Keep each artifact below 4 KiB. Link to exact file sections and log paths. Do not paste
+whole source files, transcripts, or full command logs. A command entry includes its exit
+code and one summary line.
+
 ## brief.md
 
 ### Goal

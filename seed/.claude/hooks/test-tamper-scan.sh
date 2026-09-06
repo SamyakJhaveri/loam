@@ -59,7 +59,7 @@ elif printf '%s' "$CMD" | grep -qE '\bcommit\b[^&|;]*\s(--all|-[a-zA-Z]*a[a-zA-Z
     STAGE="-u"
 fi
 if [ -n "$STAGE" ]; then
-    TMPI="$(mktemp)" || exit 0
+    TMPI="$(mktemp "${TMPDIR:-/tmp}/loam-tamper-index.XXXXXX")" || exit 0
     IDX="$(git rev-parse --git-path index)"
     # No index file yet (nothing ever staged): the copy starts empty.
     if [ -f "$IDX" ]; then

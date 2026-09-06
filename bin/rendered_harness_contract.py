@@ -36,6 +36,8 @@ REQUIRED_RENDERED_PATHS = (
     "CLAUDE.md",
     ".agents/skills/catchup/SKILL.md",
     ".agents/skills/fable-prompting/SKILL.md",
+    ".agents/lib/validation.py",
+    ".agents/lib/stop_verify.py",
     ".claude/settings.json",
     ".claude/settings.local.json.template",
     ".claude/hooks/bash-audit-log.sh",
@@ -126,7 +128,13 @@ CODEX_HOOKS = {
                         ),
                         "timeout": 10,
                         "statusMessage": "Checking Git push policy",
-                    }
+                    },
+                    {
+                        "type": "command",
+                        "command": 'bash "$(git rev-parse --show-toplevel)/.claude/hooks/pre-commit-gate.sh"',
+                        "timeout": 10,
+                        "statusMessage": "Checking validation evidence",
+                    },
                 ],
             },
             {
@@ -143,7 +151,13 @@ CODEX_HOOKS = {
                     }
                 ],
             },
-        ]
+        ],
+        "Stop": [{"hooks": [{
+            "type": "command",
+            "command": 'bash "$(git rev-parse --show-toplevel)/.claude/hooks/stop-verify-gate.sh"',
+            "timeout": 30,
+            "statusMessage": "Checking completion evidence",
+        }]}],
     }
 }
 

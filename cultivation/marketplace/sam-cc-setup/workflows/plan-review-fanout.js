@@ -1,12 +1,12 @@
 export const meta = {
   name: 'plan-review-fanout',
-  description: 'Adversarial plan review as a grounded fan-out (canonical plan-reviewer checklist + elegance gate), adversarially verify BLOCK findings, converge to APPROVE / APPROVE_WITH_CHANGES / REJECT plus a verbatim revised handoff plan. Pass the plan path as args.',
-  whenToUse: 'Reviewing a plan written in a prior session before execution. Parallel, grounded upgrade of the single-agent /plan-review skill. Invoke: /plan-review-fanout <path-to-plan.md> (the calling session writes the returned revised plan to disk).',
+  description: 'Conditional multi-lens review for a high-risk plan with distinct grounding, correctness, and architecture questions. Reuses one fixed plan fingerprint and returns a durable revised plan.',
+  whenToUse: 'Use only when a prior-session plan crosses security, architecture, or several subsystems and one /plan-review pass cannot cover the named risks. Do not repeat it for an unchanged plan.',
   phases: [
-    { title: 'Ground', detail: '3 git/Bash agents verify the plan factual/code/reframe claims against the live repo' },
-    { title: 'Review', detail: '5 plan-reviewer lenses: repo-rules, over-engineering, missing-decisions, completeness, ordering' },
+    { title: 'Ground', detail: 'one mechanical pass verifies factual, code, and reuse claims' },
+    { title: 'Review', detail: 'one strong pass checks rules, scope, decisions, completeness, and ordering' },
     { title: 'Elegance', detail: 'step back + web-search for a fundamentally simpler approach' },
-    { title: 'Verify', detail: 'adversarial refutation of every BLOCK finding (2 skeptics each)' },
+    { title: 'Verify', detail: 'one adversarial refutation for each bounded BLOCK finding' },
     { title: 'Converge', detail: 'synthesize verdict + verbatim revised handoff plan' },
   ],
 }
@@ -103,7 +103,8 @@ const PREAMBLE = "PLAN UNDER REVIEW: " + PLAN_PATH + "\n" +
 "BINDING RULES for THIS review:\n" +
 "- This is READ-ONLY. Do not edit/commit/push, do not run paid models.\n" +
 "- Verify every factual claim against git/gh/files - NEVER trust prose or memory.\n" +
-"- Run tests with the project's configured test command (check CLAUDE.md, CI config, or the test runner's own config).\n" +
+"- Record `git hash-object " + PLAN_PATH + "` before and after your pass. Stop if it changes.\n" +
+"- Do not rerun a full test suite. Use existing content-bound validation evidence; run a focused check only for a named unresolved risk.\n" +
 "- Cite evidence as file:line or the exact command + a short output snippet. Vague findings will be discarded.\n"
 
 // ---- Grounding lenses (default workflow agent: full tools incl. Bash/git) ----
@@ -122,7 +123,7 @@ const G3 = PREAMBLE + "\nYOUR LENS - CODEBASE GROUNDING #3: the plan's RATIONALE
 // ---- Checklist lenses (plan-reviewer agent: Read/Glob/Grep/WebSearch) ----
 const R1 = PREAMBLE + "\nYOUR LENS - REPOSITORY RULES (canonical checklist item 2).\n" +
 "Read .claude/rules/*.md and CLAUDE.md. Then check TWO things separately:\n" +
-"(a) Does the plan CONFORM to these rules - workflow ordering (implement -> the project's validation gate -> commit -> independent review); ask-before-broad-sweeps; never-cite-from-memory; immutable data directories; atomic commits; plan-vs-execute; the validation gate's mechanics?\n" +
+"(a) Does the plan CONFORM to these rules - the repository's documented ordering among implementation, independent review, validation, and commit; ask-before-broad-sweeps; never-cite-from-memory; immutable data directories; atomic commits; plan-vs-execute; the validation gate's mechanics?\n" +
 "(b) If the plan inlines a 'binding repo rules' section, are those restatements ACCURATE? Cross-check each restated rule against the actual rule file it claims to restate, including any commit gate, sandbox artifact, and commit/merge mechanics.\n" +
 "For each violation or inaccurate restatement, cite the specific rule file:line and the corrective action."
 
@@ -144,30 +145,22 @@ const R5 = PREAMBLE + "\nYOUR LENS - ORDERING & DEPENDENCIES (canonical checklis
 
 const E1 = PREAMBLE + "\n<elegance_gate> MANDATORY. Do not treat as a formality.\n" +
 "Step back from the plan ENTIRELY and look at the underlying problem it is trying to solve. Ask: (1) Is the plan solving the RIGHT problem, or has it drifted into solving a side-effect / into 'do all these steps' as the goal? (2) Is there a fundamentally different, leaner approach - a built-in feature, an existing library or pattern, a much smaller change - that would make most of the plan unnecessary? (3) Would an experienced engineer say 'why not just do X instead'?\n" +
-"SEARCH THE WEB for how others have solved this class of problem (established patterns, official docs, open-source projects). Cite sources.\n" +
+"Search current primary sources only when an alternative depends on an external fact that the repository cannot settle. Cite any source used.\n" +
 "Produce concrete alternatives with verdicts (ADOPT / PARTIAL / REJECT). If the current approach is genuinely best, say so and explain why the alternatives you considered are worse. </elegance_gate>"
 
-log("Fan-out: 3 grounding (git/Bash) + 5 checklist lenses + 1 elegance gate on " + PLAN_PATH)
+log("Conditional fan-out: grounding + aggregate review + elegance on " + PLAN_PATH)
 // Single-source specs: each lens's label lives ONCE and drives both the agent
-// call and the failed-lens report, so labels can never desync from the thunk
-// order (the off-by-3 class of bug: 3 grounding thunks prefix the 5 review
-// lenses + elegance, so a hardcoded 5-label array over all[0..4] would mislabel
-// grounding failures and never check completeness/ordering/elegance).
+// call and the failed-lens report, so labels stay aligned when the bounded
+// grounding, aggregate-review, and elegance passes change.
 // Do NOT set agentType on these. The merged plan-reviewer agent declares
 // `tools: Read, Glob, Grep, Bash, WebSearch` - an explicit allowlist that
 // excludes StructuredOutput, so a lens run under it cannot emit its schema.
 // The default workflow agent has the full toolset and the prompts already
 // carry each lens.
 const findSpecs = [
-  { label: "ground:facts",             prompt: G1, phase: "Ground",   schema: FINDINGS, effort: "xhigh", model: "claude-opus-4-8[1m]" },
-  { label: "ground:code+LOC+dup",      prompt: G2, phase: "Ground",   schema: FINDINGS, effort: "xhigh", model: "claude-opus-4-8[1m]" },
-  { label: "ground:reframe+artifacts", prompt: G3, phase: "Ground",   schema: FINDINGS, effort: "xhigh", model: "claude-opus-4-8[1m]" },
-  { label: "review:repo-rules",        prompt: R1, phase: "Review",   schema: FINDINGS, effort: "xhigh", model: "claude-opus-4-8[1m]" },
-  { label: "review:over-engineering",  prompt: R2, phase: "Review",   schema: FINDINGS, effort: "xhigh", model: "claude-opus-4-8[1m]" },
-  { label: "review:missing-decisions", prompt: R3, phase: "Review",   schema: FINDINGS, effort: "xhigh", model: "claude-opus-4-8[1m]" },
-  { label: "review:completeness",      prompt: R4, phase: "Review",   schema: FINDINGS, effort: "xhigh", model: "claude-opus-4-8[1m]" },
-  { label: "review:ordering-deps",     prompt: R5, phase: "Review",   schema: FINDINGS, effort: "xhigh", model: "claude-opus-4-8[1m]" },
-  { label: "elegance:step-back+web",   prompt: E1, phase: "Elegance", schema: ELEGANCE, effort: "xhigh", model: "claude-opus-4-8[1m]" },
+  { label: "ground:claims", prompt: G1 + "\n\n" + G2 + "\n\n" + G3, phase: "Ground", schema: FINDINGS, effort: "medium" },
+  { label: "review:aggregate", prompt: R1 + "\n\n" + R2 + "\n\n" + R3 + "\n\n" + R4 + "\n\n" + R5, phase: "Review", schema: FINDINGS, effort: "xhigh" },
+  { label: "elegance:step-back", prompt: E1, phase: "Elegance", schema: ELEGANCE, effort: "high" },
 ]
 const LENS_LABELS = findSpecs.map(s => s.label)
 const all = await parallel(findSpecs.map(s => () => { const { prompt, ...opts } = s; return agent(prompt, opts) }))
@@ -192,17 +185,11 @@ const verifyPrompt = (f) => PREAMBLE + "\nYOU ARE AN ADVERSARIAL VERIFIER. A pla
 
 let verified = []
 if (toVerify.length > 0) {
-  log("Adversarially verifying " + toVerify.length + " BLOCK findings (2 skeptics each)")
-  verified = await parallel(toVerify.map(f => () =>
-    parallel([
-      () => agent(verifyPrompt(f), { label: "verify-A:" + f.id, phase: "Verify", schema: VERDICT, effort: "xhigh", model: "claude-opus-4-8[1m]" }),
-      () => agent(verifyPrompt(f), { label: "verify-B:" + f.id, phase: "Verify", schema: VERDICT, effort: "xhigh", model: "claude-opus-4-8[1m]" }),
-    ]).then(vs => {
-      const v = vs.filter(Boolean)
-      const survived = v.some(x => x.real)
-      return { finding: f, verdicts: v, survived }
-    })
-  ))
+  log("Adversarially verifying " + toVerify.length + " BLOCK findings with one skeptic each")
+  verified = await parallel(toVerify.map(f => async () => {
+    const verdict = await agent(verifyPrompt(f), { label: "verify:" + f.id, phase: "Verify", schema: VERDICT, effort: "xhigh" })
+    return verdict ? { finding: f, verdicts: [verdict], survived: verdict.real } : null
+  }))
   verified = verified.filter(Boolean)
 }
 
@@ -224,7 +211,7 @@ const convergePrompt = PREAMBLE +
   "5. deferred_decisions: the list of choices for the user.\n"
 
 log("Converging into verdict + revised handoff plan")
-const review = await agent(convergePrompt, { label: "converge:final-review", phase: "Converge", schema: REVIEW, effort: "xhigh", model: "claude-opus-4-8[1m]" })
+const review = await agent(convergePrompt, { label: "converge:final-review", phase: "Converge", schema: REVIEW, effort: "high" })
 
 return {
   plan_path: PLAN_PATH,

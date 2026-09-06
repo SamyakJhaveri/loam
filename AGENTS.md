@@ -56,6 +56,9 @@ bin/verify-template.sh
 5. Keep one behavior change per session.
 6. Keep one directive in one home. Read `docs/ASSET-LAYERS.md` before placing a
    new asset.
+7. Give one integration owner the final source snapshot. Give one validation
+   owner the single full `bin/verify-template.sh` run for that snapshot. Other
+   workers run focused checks and return bounded reports.
 
 ## Gotchas
 

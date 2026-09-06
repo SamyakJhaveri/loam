@@ -4,7 +4,10 @@ Use with `/agent-team --scenario <name>`.
 A scenario skips Phase 2 (team design) and supplies a pre-filled team configuration.
 It still requires user approval before launching.
 
-Every teammate below runs Opus 4.8 (`claude-opus-4-8[1m]`); the Effort column is the dial.
+Choose model and effort from the live spawn tool. `mechanical` means the default or cheaper
+available profile. `strong review` means a stronger available profile for cross-cutting judgment.
+Critic rows are conditional: spawn one only when the aggregate change meets the risk conditions
+in SKILL.md or the user asks for independent review.
 
 When a scenario runs more than one file-editing teammate in parallel, give each its own git worktree by default (see SKILL.md, "Worktree isolation for parallel implementers"). One checkout with strictly disjoint files is the guarded exception.
 
@@ -16,11 +19,11 @@ When a scenario runs more than one file-editing teammate in parallel, give each 
 
 **Usage:** `/agent-team --scenario feature-implementation "implement X"`
 
-| Teammate    | Effort | Role | Scope |
-|-------------|--------|------|-------|
-| planner     | xhigh  | Plan and coordinate | Target files plus their dependencies |
-| implementer | xhigh  | Code changes | Target files only |
-| critic      | xhigh  | Quality gate | All teammate outputs (read-only) |
+| Teammate    | Profile | Role | Scope |
+|-------------|---------|------|-------|
+| planner     | default | Plan and coordinate | Target files plus their dependencies |
+| implementer | default | Code changes | Target files only |
+| critic      | strong review | Quality gate | Fixed aggregate diff (read-only) |
 
 **planner:** produces the implementation plan and gets user approval before the implementer starts.
 
@@ -39,11 +42,11 @@ Each investigator owns one stage hypothesis and tries to disprove the others'.
 
 **Usage:** `/agent-team --scenario failure-investigation "<component> <failure-type>"`
 
-| Teammate            | Effort | Role | Scope |
-|---------------------|--------|------|-------|
-| input-investigator  | xhigh  | Input and setup analyst | Config, input data, initialization code |
-| logic-investigator  | xhigh  | Core logic analyst | Main processing code, algorithms |
-| output-investigator | xhigh  | Output and validation analyst | Output formatting, assertions, expected vs actual |
+| Teammate            | Profile | Role | Scope |
+|---------------------|---------|------|-------|
+| input-investigator  | default | Input and setup analyst | Config, input data, initialization code |
+| logic-investigator  | default | Core logic analyst | Main processing code, algorithms |
+| output-investigator | default | Output and validation analyst | Output formatting, assertions, expected vs actual |
 
 Each investigator greps for the relevant functions first, reads only its own stage, then debates adversarially: it owns a hypothesis for its stage and actively tries to disprove the others' hypotheses by message, not merely share findings.
 The hypothesis that survives the cross-challenge is the likely root cause; the lead synthesizes the surviving theory.
@@ -56,11 +59,11 @@ This is the scenario to escalate to for genuinely ambiguous bugs, after a single
 
 **Purpose:** parallel gathering and drafting across multiple sources. Useful for README assembly, architecture docs, or onboarding guides.
 
-| Teammate        | Effort | Role | Scope |
-|-----------------|--------|------|-------|
-| codebase-reader | xhigh  | Code structure documenter | Source tree, tests, configs |
-| doc-drafter     | xhigh  | Documentation writer | Docs directory, README, guides |
-| critic          | xhigh  | Accuracy reviewer | All teammate outputs (read-only) |
+| Teammate        | Profile | Role | Scope |
+|-----------------|---------|------|-------|
+| codebase-reader | mechanical | Code structure documenter | Source tree, tests, configs |
+| doc-drafter     | default | Documentation writer | Docs directory, README, guides |
+| critic          | strong review | Accuracy reviewer | Fixed aggregate diff (read-only) |
 
 **codebase-reader:** explores the code structure and extracts key patterns, public APIs, and architecture decisions. Delegates bulk reads to mechanical Explore subagents.
 
@@ -75,11 +78,11 @@ This is the scenario to escalate to for genuinely ambiguous bugs, after a single
 **Purpose:** deep-dive comparison across multiple subsystems, data sources, or configurations.
 Each analyst specializes in one area; a comparator synthesizes.
 
-| Teammate   | Effort | Role | Scope |
-|------------|--------|------|-------|
-| analyst-1  | xhigh  | System A analyst | `<system-a-path>/` |
-| analyst-2  | xhigh  | System B analyst | `<system-b-path>/` |
-| comparator | xhigh  | Cross-system comparator | Analyst summaries only, no raw file reads |
+| Teammate   | Profile | Role | Scope |
+|------------|---------|------|-------|
+| analyst-1  | default | System A analyst | `<system-a-path>/` |
+| analyst-2  | default | System B analyst | `<system-b-path>/` |
+| comparator | strong review | Cross-system comparator | Analyst summaries only, no raw file reads |
 
 **Per analyst:** delegate bulk reads to a mechanical Explore subagent. Extract the key metrics, patterns, and configurations, and summarize in a structured format.
 

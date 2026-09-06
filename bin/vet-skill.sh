@@ -61,7 +61,7 @@ if ! command -v skillspector >/dev/null 2>&1; then
   exit 3
 fi
 
-TMP="$(mktemp -d)"
+TMP="$(mktemp -d "${TMPDIR:-/tmp}/loam-vet-skill.XXXXXX")" || exit 4
 trap 'python3 -c "import shutil,sys;shutil.rmtree(sys.argv[1],ignore_errors=True)" "$TMP"' EXIT
 
 SCAN_PATH="$TARGET"

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # sentinel-cleanup.sh - PostToolUse hook on Edit|Write.
 #
-# Deletes the .validation_passed sentinel whenever a real repo file is edited
+# Deletes the .validation_passed receipt whenever a real repo file is edited
 # after validation, forcing re-validation before the next commit. The write is
 # a real edit only when the target is a tracked or untracked file inside the
 # repo; an edit invisible to the commit gate is skipped:
@@ -35,11 +35,13 @@ else
     ROOT="$(git rev-parse --show-toplevel 2>/dev/null)" || exit 0
 fi
 [ -n "$ROOT" ] || exit 0
+EDIT_CWD="$ROOT"
+ROOT="$(git -C "$ROOT" rev-parse --show-toplevel 2>/dev/null)" || exit 0
 
 # Keep the sentinel when the edit is invisible to the commit gate: a path
 # outside the repo, or a still-gitignored in-repo path. Any parse failure falls
 # through to deletion (fail-safe).
-if ROOT="$ROOT" python3 -c '
+if ROOT="$ROOT" EDIT_CWD="$EDIT_CWD" python3 -c '
 import json, os, subprocess, sys
 root = os.path.realpath(os.environ["ROOT"])
 try:
@@ -54,7 +56,7 @@ if not isinstance(tool_input, dict):
 fp = tool_input.get("file_path", "")
 if not isinstance(fp, str) or not fp:
     sys.exit(1)
-target = fp if os.path.isabs(fp) else os.path.join(root, fp)
+target = fp if os.path.isabs(fp) else os.path.join(os.environ["EDIT_CWD"], fp)
 target = os.path.realpath(target)
 if not target.startswith(root + os.sep):
     sys.exit(0)  # outside the repo -> invisible to the gate -> keep sentinel
@@ -68,13 +70,13 @@ sys.exit(0 if rc == 0 else 1)  # gitignored -> keep; anything else -> delete
 fi
 
 SENTINEL="$ROOT/.validation_passed"
-if [ -f "$SENTINEL" ]; then
+if [ -f "$SENTINEL" ] || [ -L "$SENTINEL" ]; then
     rm -f "$SENTINEL"
     echo "sentinel-cleanup: .validation_passed deleted (file edited after validation)" >&2
 fi
 
 CODEX_SENTINEL="$ROOT/.codex_review_done"
-if [ -f "$CODEX_SENTINEL" ]; then
+if [ -f "$CODEX_SENTINEL" ] || [ -L "$CODEX_SENTINEL" ]; then
     rm -f "$CODEX_SENTINEL"
     echo "sentinel-cleanup: .codex_review_done deleted (file edited after Codex review)" >&2
 fi

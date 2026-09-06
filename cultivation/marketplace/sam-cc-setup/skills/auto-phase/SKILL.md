@@ -3,8 +3,8 @@ name: auto-phase
 disable-model-invocation: true
 description: >
   Autonomous multi-phase release execution. Reads a PHASE-PLAN.md with stages 1-N
-  and executes them end-to-end, running validation per stage and session critique at the
-  end of the plan (per stage when a stage touches seed/, hooks, or copier.yml), committing
+  and executes them end-to-end, running focused checks per stage and one integrated
+  validation pass. Keeps independent final review for risky aggregate changes, committing
   with clean scope, and advancing automatically. Halts only when a validation gate
   fails twice or a critique surfaces an unresolvable issue. Use for multi-stage
   release plans, phased restructures, or any numbered-phase execution. NOT for
@@ -15,8 +15,8 @@ argument-hint: "[path to phase plan, defaults to PHASE-PLAN.md]"
 
 # Auto-Phase: Autonomous Multi-Stage Execution
 
-Reads a phase plan and executes stages autonomously, one at a time, with
-validation and critique gates between each stage.
+Reads a phase plan and executes stages autonomously. Each stage gets focused evidence.
+One owner validates the integrated source fingerprint.
 
 **Requires the `ship` and `session-critique` skills** (plus `validate`, which
 `ship` also depends on). If they are not installed, stop and say so rather than
@@ -72,11 +72,15 @@ Status: STARTING
 Follow the stage's instructions from the plan. Make the code changes, create
 files, modify configurations, whatever the stage specifies.
 
-#### 2c. Run validation pipeline
+#### 2c. Run focused stage checks
 
-Invoke `/validate`. If validation fails:
+Run only the checks that cover this stage's changed behavior. Record the exact command,
+exit code, and summary in `TASKS.md`. Do not run the full project gate here unless this is
+the final integrated stage.
 
-- **First failure:** Fix the issues and re-run `/validate`.
+If a focused check fails:
+
+- **First failure:** Fix the issue and re-run the focused check.
 - **Second failure on same stage:** HALT. Report the failure and ask the user.
 
 ```
@@ -85,15 +89,11 @@ Failure: [description]
 Action: Halting for user input. The stage contract may need revision.
 ```
 
-#### 2d. Run session critique when the stage is template-facing
+#### 2d. Record review risk
 
-Run `/session-critique` for this stage's changes only when the stage touched `seed/`,
-`.claude/hooks/`, `.codex/`, or `copier.yml` (check `git diff --name-only HEAD`).
-Otherwise skip; the end-of-plan critique in Step 3 covers it. If critique surfaces
-HIGH/MEDIUM findings:
-
-- Attempt to fix automatically if the fix is clear and contained.
-- If the fix requires judgment or scope expansion: HALT and ask the user.
+Record whether the stage affects security, a trust boundary, architecture, or several
+subsystems. Do not run a per-stage generic critique when the final aggregate reviewer will
+inspect the same work.
 
 #### 2e. Commit with clean scope
 
@@ -107,8 +107,9 @@ git commit -m "<type>: <stage K subject>"
 git rev-parse --short HEAD
 ```
 
-If the native pre-commit hook rejects the commit, treat it as a validation
-failure for this stage and return to step 2c.
+Before commit, use `/validate` for the exact stage fingerprint when the repository requires
+a validated receipt for every commit. Reuse a valid receipt. If the content changed, run
+validation before the commit rather than probing with a failed commit attempt.
 
 #### 2f. Update progress tracking
 
@@ -132,11 +133,14 @@ Commit: [hash]
 Advancing to Stage K+1...
 ```
 
-### Step 3: End-of-plan critique
+### Step 3: Integrated validation and review
 
-Invoke `/session-critique` once over all stages' changes
-(`git diff --name-only <first stage's parent commit>..HEAD`). Handle findings as
-in 2d; a fix lands as its own follow-up commit, never by amending a stage commit.
+The validation owner invokes `/validate` once for the final integrated fingerprint. Reuse
+an existing receipt only when `validation.py check` accepts it.
+
+If any stage recorded review risk, invoke `/session-critique` once over the fixed aggregate
+diff. Reuse a durable review for the same fingerprint. A fix lands as its own follow-up
+commit. Repeat review only after material behavior changes or for a named unresolved risk.
 
 ### Step 4: Completion report
 
@@ -166,7 +170,7 @@ All stages passed validation; the end-of-plan critique ran.
 
 1. **One stage at a time.** Never start stage K+1 before stage K is committed.
 2. **Never bundle cross-stage changes.** Each commit contains exactly one stage.
-3. **Never skip validation or the end-of-plan critique.** Every stage passes the
-   validation gate; template-facing stages also pass a per-stage critique.
+3. **Never skip focused checks or integrated validation.** Keep one independent final
+   review when the aggregate change meets the risk conditions in Step 3.
 4. **Halt on ambiguity.** If a stage's instructions are unclear, ask, don't guess.
 5. **Track progress.** Update TASKS.md after every stage so a fresh session can resume.

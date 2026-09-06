@@ -1,20 +1,19 @@
 ---
 name: codex-review
 disable-model-invocation: true
-description: "Second-opinion review of the current diff via the Codex CLI, read-only. Use when you want an independent adversarial review of a diff from a different model before merging. Manual only. NOT for replacing your project's own diff-review or validation gate; Codex never edits - findings are advisory and Claude applies any fixes."
+description: "Second-opinion review of the current diff via the Codex CLI, read-only. Use when you want an independent fresh-context review before merging. Manual only. NOT for replacing your project's own diff-review or validation gate; Codex never edits - findings are advisory and Claude applies any fixes."
 argument-hint: "[optional diff scope, e.g. main...HEAD or HEAD~3; defaults to the default branch ...HEAD]"
 ---
 
 # Codex Second-Opinion Review
 
-Run the current diff past the **Codex CLI** as an independent reviewer (a different model,
-fresh context) and triage its findings. Codex runs in a pinned **read-only** sandbox and
+Run the current diff past the **Codex CLI** as an independent fresh-context reviewer and
+triage its findings. Codex runs in a **read-only** sandbox and
 **never edits the checkout** - it only reports. Claude saves a transcript under
 `.claude/codex-reviews/` (gitignore it) and applies any fixes.
 
 **Trigger:** user types `/codex-review [scope]`. Manual-only (`disable-model-invocation:
-true`); the model never auto-fires it. The flag used to block the slash command too
-(anthropics/claude-code#26251, closed 2026-02-20); verified working on 2026-09-03.
+true`).
 
 ## Single-writer rule (mandatory)
 
@@ -88,24 +87,16 @@ if [ "$DIFF_BYTES" -gt "$MAX_DIFF_BYTES" ]; then
 fi
 
 git --no-pager diff "$SCOPE" --stat    # confirm there is something to review
+git --no-pager diff "$SCOPE" | git hash-object --stdin
 ```
 
 If the diff is empty, stop and report "nothing to review for `<scope>`".
 
 ### Step 2 - Run Codex (read-only, diff piped via stdin)
 
-Pipe the diff on **stdin** (Codex appends it as a `<stdin>` block) so a large diff never
-hits the shell argument-length limit. The Codex sandbox stays read-only, and the effort floor
-(`model_reasoning_effort=high`) is pinned explicitly because this is a reasoning-heavy review
-(don't rely on the ambient default). `-o` writes **only the final agent message** to `$OUT`;
-nothing is echoed to the terminal - streamed reasoning goes to stderr and is dropped - so read
-the verdict from `$OUT` in Step 3.
-
-**Model policy:** default to the frontier Codex model (`gpt-5.6-sol`) at `high`, or step up to
-a deeper-reasoning tier at `xhigh` when you want the stronger pass. The deeper pass is
-materially slower - run it in the background rather than blocking on a foreground timeout.
-Valid `model_reasoning_effort` values: `none, low, medium, high, xhigh, max`. Confirm the
-current Codex model ids against your provider before pinning one.
+Pipe the fixed diff on **stdin**. Keep the sandbox read-only. Use the configured Codex
+model with high review effort. Inspect `codex --help` and the active provider config before
+adding any model ID or unsupported effort value. `-o` saves the durable final report.
 
 ```bash
 mkdir -p .claude/codex-reviews
@@ -113,7 +104,7 @@ SAFE_BRANCH="${BRANCH//\//-}"
 OUT=".claude/codex-reviews/$(date +%F)-${SAFE_BRANCH}.md"
 
 git --no-pager diff "$SCOPE" | codex exec --sandbox read-only \
-  -c model="gpt-5.6-sol" -c model_reasoning_effort=high -o "$OUT" \
+  -c model_reasoning_effort=high -o "$OUT" \
   "You are a second-opinion code reviewer. Review the diff in the <stdin> block against \
 the current repository (you may read files read-only for context). Respond in <=60 lines: \
 first line a single verdict - SHIP, FIX FIRST, or REWORK - then findings grouped under \
@@ -132,6 +123,8 @@ Be terse; no preamble."
   `docs/findings/FINDINGS.md` (columns: Date | Source | Severity | Path:line | Finding |
   Status | Closing commit; create the file with that header if it is missing). When you
   later fix a row, fill its closing commit instead of deleting the row.
+- Record the diff fingerprint in `$OUT`. Reuse this report while the fingerprint and
+  criteria are unchanged. Review again only after material changes or for a named risk.
 
 ## What NOT to do
 

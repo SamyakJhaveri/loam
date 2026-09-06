@@ -3,8 +3,9 @@ schema_version = 1
 # Claude/Codex capability bill of materials for the Loam seed.
 #
 # The binding rule: Codex is an equal implementer. Every seed skill, hook,
-# and agent is shared, mirrored on the Codex side, or listed unsupported with a
-# concrete reason naming the Codex limitation that blocks the mirror today.
+# and agent is shared, mirrored on the Codex side, or assigned one explicit gap.
+# An unimplemented adapter means the host exposes a usable lifecycle event but
+# Loam has not wired it. Unsupported means the host lacks the required event.
 #
 # Canonical skill home is .agents/skills/<name> (real files, read by both Claude
 # and Codex); .claude/skills/<name> is a relative symlink into it. This is the
@@ -15,10 +16,15 @@ schema_version = 1
 # single Claude behavioral hook. default.rules:1 says it is "translated from
 # .claude/settings.json"; pre-tool-policy.py enforces force-push and apply_patch
 # denials whose Claude twin is the settings.json deny-list. seed/.codex/hooks.json
-# wires only PreToolUse with matchers ^Bash$ and ^apply_patch$, so none of the
-# behavioral Claude hooks has a Codex event wired; each is listed unsupported.
+# wires PreToolUse with matchers ^Bash$ and ^apply_patch$, plus the shared Stop gate. That describes
+# current Loam wiring. It is not evidence that other host events are unsupported.
 #
 # Check: python3 bin/agent_parity/parity.py check --root seed
+
+[validation]
+# One content-bound receipt implementation and CLI are called by both hosts.
+shared_module = ".agents/lib/validation.py"
+commands = ["run", "check", "fingerprint", "pre-commit"]
 
 [skills]
 shared = ["catchup", "fable-prompting"]
@@ -31,9 +37,11 @@ native_adapter = []
 native_codex = []
 
 [hooks.native_adapter]
-# No Claude hook has a per-hook Codex adapter. The one shared Codex enforcement
-# is pre-tool-policy.py (native_codex below); its Claude twin is the
-# settings.json deny-list, not a .claude/hooks file.
+# Both hosts call these same checked-in paths. Codex wiring lives in
+# .codex/hooks.json; Claude wiring lives in .claude/settings.json.
+".claude/hooks/pre-commit-gate.sh" = ".claude/hooks/pre-commit-gate.sh"
+".claude/hooks/run-validate-waves.sh" = ".claude/hooks/run-validate-waves.sh"
+".claude/hooks/stop-verify-gate.sh" = ".claude/hooks/stop-verify-gate.sh"
 
 [hooks.native_codex]
 # pre-tool-policy.py: force-push deny (Bash) + apply_patch deny for
@@ -41,23 +49,21 @@ native_codex = []
 # seed/.codex/hooks.json PreToolUse ^Bash$/^apply_patch$.
 pre_tool_policy = ".codex/hooks/pre-tool-policy.py"
 
+[hooks.unimplemented_adapter]
+".claude/hooks/bash-audit-log.sh" = "Adapter missing: Codex documents PostToolUse, but Loam has not wired command-audit logging."
+".claude/hooks/bash-length-advisory.sh" = "Adapter missing: Codex PreToolUse is wired only to policy checks, not the command-length advisory."
+".claude/hooks/concurrent-checkout-guard.sh" = "Adapter missing: the Codex PreToolUse adapter does not implement the concurrent-checkout Git-index guard."
+".claude/hooks/harness-hygiene.sh" = "Adapter missing: Codex documents SessionStart, but Loam has not wired the harness-hygiene scan."
+".claude/hooks/mutation-gate.sh" = "Adapter missing: the Codex PreToolUse adapter does not implement the commit-time diff-scoped mutation gate."
+".claude/hooks/post-compact-reinject.sh" = "Adapter missing: Codex documents PostCompact, but Loam has not wired reminder reinjection."
+".claude/hooks/ruff-after-edit.sh" = "Adapter missing: Codex documents PostToolUse, but Loam has not wired the Ruff edit check."
+".claude/hooks/test-tamper-scan.sh" = "Adapter missing: the Codex PreToolUse adapter does not implement the commit-time test-tamper scan."
+".claude/hooks/write-rewrite-guard.sh" = "Adapter missing: Codex PreToolUse can inspect apply_patch, but Loam has not wired the rewrite advisory."
+".claude/hooks/sentinel-cleanup.sh" = "Adapter missing: content-bound receipts do not require time-based cleanup, and no Codex cleanup adapter is wired."
+
 [hooks.unsupported]
-".claude/hooks/bash-audit-log.sh" = "seed/.codex/hooks.json wires no PostToolUse event; command-audit logging is not mirrored."
-".claude/hooks/bash-length-advisory.sh" = "pre-tool-policy.py checks only force-push/apply_patch; no command-length advisory is implemented."
-".claude/hooks/concurrent-checkout-guard.sh" = "pre-tool-policy.py does not implement the concurrent-checkout git-index guard."
-".claude/hooks/fable-session-brief.sh" = "seed/.codex/hooks.json wires no SessionStart or PostModelSwitch event; the Fable prompting brief is not mirrored."
-".claude/hooks/harness-hygiene.sh" = "seed/.codex/hooks.json wires no SessionStart event; the harness-hygiene scan is not mirrored."
-".claude/hooks/mutation-gate.sh" = "pre-tool-policy.py does not implement the commit-time diff-scoped mutation gate."
-".claude/hooks/post-compact-reinject.sh" = "seed/.codex/hooks.json wires no SessionStart/compact event; reminder reinjection is not mirrored."
-".claude/hooks/ruff-after-edit.sh" = "seed/.codex/hooks.json wires no PostToolUse event; Codex reports Ruff without an autofix mirror."
-".claude/hooks/skill-usage-log.sh" = "seed/.codex/hooks.json wires no Skill-tool matcher; skill-usage logging is not mirrored."
-".claude/hooks/stop-verify-gate.sh" = "seed/.codex/hooks.json wires no Stop event; the turn-end verification gate is not mirrored."
-".claude/hooks/test-tamper-scan.sh" = "pre-tool-policy.py does not implement the commit-time test-tamper scan."
-".claude/hooks/write-rewrite-guard.sh" = "seed/.codex/hooks.json wires no Write matcher; the write-rewrite advisory is not mirrored."
-# Validate sentinel trio (session 5 item 4).
-".claude/hooks/pre-commit-gate.sh" = "pre-tool-policy.py does not implement the commit-time validation sentinel gate; follow-up."
-".claude/hooks/run-validate-waves.sh" = "seed ships no Codex validate skill or wave runner; not mirrored; follow-up."
-".claude/hooks/sentinel-cleanup.sh" = "seed/.codex/hooks.json wires no PostToolUse event; sentinel cleanup is not mirrored; follow-up."
+".claude/hooks/fable-session-brief.sh" = "Host gap: Codex has no documented PostModelSwitch event; the Fable-only prompt injection has no equivalent trigger."
+".claude/hooks/skill-usage-log.sh" = "Host gap: Codex has no documented skill-invocation lifecycle event; use normal agent logs when an audit is required."
 
 [workflows]
 native_adapter = []

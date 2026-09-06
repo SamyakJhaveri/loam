@@ -1,24 +1,23 @@
 ---
 name: codex-plan-review
 disable-model-invocation: true
-description: "Second-opinion adversarial review of a PLAN file via the Codex CLI, read-only. Use when a plan needs an independent cross-model review before execution. Manual only. NOT for replacing your project's own plan-review gate; Codex never edits - findings are advisory and Claude folds them into the plan."
+description: "Second-opinion adversarial review of a PLAN file via the Codex CLI, read-only. Use when a plan needs an independent fresh-context review before execution. Manual only. NOT for replacing your project's own plan-review gate; Codex never edits - findings are advisory and Claude folds them into the plan."
 argument-hint: "<path-to-plan.md>"
 ---
 
-# Codex Plan Review (cross-model)
+# Codex Plan Review (fresh context)
 
-Run a **plan file** past the **Codex CLI** as an independent adversarial reviewer (a different
-model, fresh context) and fold its findings into the plan. Codex runs in a pinned **read-only**
+Run a **plan file** past the **Codex CLI** as an independent fresh-context reviewer and
+fold its findings into the plan. Codex runs in a **read-only**
 sandbox and **never edits the checkout** - it only reports. Claude saves a transcript
 under `.claude/codex-reviews/` (gitignore it) and applies any accepted changes to the plan itself.
 
-This is the plan-file sibling of `/codex-review` (which reviews diffs). The cross-model angle is
-the point: a same-model reviewer cannot remove identity-based self-preference, so a *different*
-model reviewing the plan is the irreplaceable defense before execution.
+This is the plan-file sibling of `/codex-review` (which reviews diffs). Its independence
+comes from a fresh context, fixed input, and a read-only role. Do not infer review quality
+or independence from an unverified model identity.
 
 **Trigger:** user types `/codex-plan-review <path>`. Manual-only (`disable-model-invocation:
-true`); the model never auto-fires it. The flag used to block the slash command too
-(anthropics/claude-code#26251, closed 2026-02-20); verified working on 2026-09-03.
+true`).
 
 ## Single-writer rule (mandatory)
 
@@ -74,25 +73,17 @@ fi
 
 ### Step 2 - Run Codex (read-only, plan piped via stdin)
 
-Pipe the plan on **stdin** (Codex appends it as a `<stdin>` block) so a large plan never hits the
-shell argument-length limit. The Codex sandbox stays read-only; the effort floor
-(`model_reasoning_effort=high`) applies because this is a reasoning-heavy review. `-o` writes only
-the final agent message to `$OUT` (streamed reasoning on stderr is dropped). Codex has no built-in
-timeout - run this **via the Bash tool with an extended timeout** (up to the 600 s tool max); don't
-prefix a shell `timeout`, which isn't present on macOS (`codex-review` runs the same way).
-
-**Model policy:** default to the frontier Codex model (`gpt-5.6-sol`) at `high`, or step up to
-a deeper-reasoning tier at `xhigh` when you want the stronger pass. The deeper pass is
-materially slower - run it in the background rather than blocking on a foreground timeout.
-Valid `model_reasoning_effort` values: `none, low, medium, high, xhigh, max`. Confirm the
-current Codex model ids against your provider before pinning one.
+Pipe the fixed plan on **stdin**. Keep the sandbox read-only. Use the configured Codex
+model with high review effort. Inspect `codex --help` and the active provider config before
+adding any model ID or unsupported effort value. `-o` saves the durable final report.
 
 ```bash
 PLAN="$ARGUMENTS"   # set explicitly - mirrors codex-review's SCOPE="${ARGUMENTS:-...}" pattern
 mkdir -p .claude/codex-reviews
 OUT=".claude/codex-reviews/$(date +%F)-plan-$(basename "$PLAN" .md).md"
+PLAN_FINGERPRINT=$(git hash-object "$PLAN")
 cat "$PLAN" | codex exec --sandbox read-only \
-  -c model="gpt-5.6-sol" -c model_reasoning_effort=high -o "$OUT" \
+  -c model_reasoning_effort=high -o "$OUT" \
   "You are an adversarial plan reviewer. Review the plan in the <stdin> block against the \
 current repository (read files read-only for context). Check: (1) every task names real files \
 and a verification command; (2) unstated assumptions and missing edge cases; (3) ordering/ \
@@ -114,6 +105,8 @@ that affect correctness or the stated requirements, not style preferences. <=60 
 - Fold accepted Critical/High findings into the plan; note Medium/Low as follow-ups.
 - **Dismiss a finding only with a reproducing check**, never an argument: record the check
   that shows the finding is a false positive.
+- Record `$PLAN_FINGERPRINT` in the report. Reuse the report while the content and criteria
+  are unchanged. Review again only after material changes or for a named unresolved risk.
 
 ## What NOT to do
 
