@@ -31,7 +31,7 @@ The output is a short ranked table of ideas plus one already-executed proof, nev
    "commit for later" (frozen-artifact side, e.g. after a freeze lifts). An idea on the wrong side
    of the line becomes a named commitment, not an action.
 5. **Rank by goal-value per unit cost** and present as a table: `# | idea | when | owner | cost | deliverable`.
-   Three to six ideas; kill the rest.
+   Present the survivors; cut anything that does not beat the ideas above it.
 6. **Execute the cheapest read-only idea in the same turn** (a grep sweep, a framing sentence, a
    control run in a scratch dir) and report its first result alongside the table. Proof beats proposal.
 7. **File the survivors.** Propose appending the table to the project's active plan document so the
@@ -53,7 +53,7 @@ written down in advance ("byte-identical output or it changed nothing"), and (b)
 adversarial pass - run an interrogation of the idea (e.g. the `grill-research` skill if available)
 rather than re-implementing interrogation here.
 
-## Critical rules
+## Rules
 
 1. Never manufacture an idea that moves a number by choosing what to measure - ideas must survive an
    adversarial reader. This is the canonical anti-tuning rule; step 3 and the pre-spend gate point here.
@@ -64,7 +64,7 @@ rather than re-implementing interrogation here.
 4. Every claimed fact in an idea's pitch traces to a command run this session.
 5. Respect the repo's hard invariants (immutable results, protected sources, signed artifacts) -
    creative means recombining, not bending.
-6. Scale is 3-6 ideas; if more survive ranking, merge or cut. One executed proof is mandatory.
+6. One executed proof is mandatory.
 7. If the goal is ambiguous, ask one question to pin the judge before generating anything.
 
 Use `$ARGUMENTS` as the goal; if empty, default to the project's nearest deadline or active

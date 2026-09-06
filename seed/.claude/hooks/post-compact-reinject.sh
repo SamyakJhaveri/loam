@@ -12,5 +12,5 @@ set -uo pipefail
 # Drain stdin so the caller's pipe never blocks; the payload is not needed.
 cat >/dev/null 2>&1 || true
 
-echo "Post-compaction reminders: 1. Finish the whole task; do not stop early or ask permission for work already requested. 2. Keep changes to what the task asks; report pre-existing bugs as follow-ups. 3. Surgically edit files. 4. Batch independent tool calls. 5. Re-read HANDOFF.md if present and run the verify command it names before claiming anything."
+echo "After compaction: re-read HANDOFF.md if it exists and run the verify command it names before claiming any result."
 exit 0

@@ -36,9 +36,8 @@ if model is None or "fable" not in model.lower():
     sys.exit(0)
 
 print(
-    "Fable 5.1 session. On a rough request, restate goal, constraints, and done "
-    "check in three lines before acting; ask one question only if a reading would "
-    "change the architecture. When writing a handoff or plan for another session, "
+    "Fable session. Ask one question before acting only if a reading of the "
+    "request would change the architecture; otherwise act. When writing a handoff or plan for another session, "
     "give it five headings: Goal and why; Constraints; Done check per task; "
     "Session conduct; Target model and effort. Do not paste the autonomy block, "
     "the Delivering work block, the progress-updates line, or the batching nudge; "

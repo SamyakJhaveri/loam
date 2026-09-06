@@ -1,6 +1,6 @@
 ---
 name: sam_handoff
-description: Write or update a handoff document so the next agent with fresh context can continue this work. Use for IN-PROGRESS work only, not end-of-session cleanup. Writes to the project root. Renamed from `handoff` on 2026-08-02 to avoid a name clash with the mattpocock-skills plugin, whose `handoff` compacts the conversation into the OS temp dir instead - a different contract.
+description: Write or update a handoff document so the next agent with fresh context can continue this work. Use for IN-PROGRESS work only, not end-of-session cleanup. Writes to the project root. Not the mattpocock-skills `handoff`, which compacts the conversation into the OS temp dir instead.
 ---
 
 Write or update a handoff document so the next agent with fresh context can continue this work.

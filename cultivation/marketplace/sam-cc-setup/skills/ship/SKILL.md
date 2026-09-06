@@ -97,7 +97,7 @@ Never force push. If the push fails, report the error and stop.
 Invoke `/sam_handoff` (per Hard Rule 3, use the skill, do not restate its schema
 inline). Runs AFTER commit + PR so the record can cite the post-commit SHA and
 the opened PR number when there is one. Every shipped work-stream leaves a machine-findable
-record, so no more hand-pasted summaries.
+record.
 
 **Post-check:** Report the handoff record path. Pipeline complete.
 

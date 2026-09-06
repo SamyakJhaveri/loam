@@ -1465,14 +1465,14 @@ class PostCompactReinjectTests(HookFixtureCase):
     def test_emits_reminders(self) -> None:
         result = self.run_hook(self.SCRIPT, {"source": "compact"})
         self.assertEqual(0, result.returncode, result.stderr)
-        self.assertTrue(result.stdout.startswith("Post-compaction reminders:"))
-        self.assertIn("5. Re-read HANDOFF.md", result.stdout)
+        self.assertTrue(result.stdout.startswith("After compaction:"))
+        self.assertIn("re-read HANDOFF.md", result.stdout)
 
     def test_empty_stdin_still_emits(self) -> None:
         result = self.run_hook(self.SCRIPT, None, raw_payload="")
         self.assertEqual(0, result.returncode, result.stderr)
-        self.assertTrue(result.stdout.startswith("Post-compaction reminders:"))
-        self.assertIn("5. Re-read HANDOFF.md", result.stdout)
+        self.assertTrue(result.stdout.startswith("After compaction:"))
+        self.assertIn("re-read HANDOFF.md", result.stdout)
 
 
 class FableSessionBriefTests(HookFixtureCase):
@@ -1489,9 +1489,8 @@ class FableSessionBriefTests(HookFixtureCase):
             },
         )
         self.assertEqual(0, result.returncode, result.stderr)
-        self.assertIn("goal", result.stdout)
-        self.assertIn("constraints", result.stdout)
-        self.assertIn("done check", result.stdout)
+        self.assertTrue(result.stdout.startswith("Fable session."))
+        self.assertIn("change the architecture", result.stdout)
         self.assertIn("Target model and effort", result.stdout)
 
     def test_post_model_switch_to_fable_emits_brief(self) -> None:

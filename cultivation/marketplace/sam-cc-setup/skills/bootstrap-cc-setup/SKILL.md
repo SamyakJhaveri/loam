@@ -39,9 +39,8 @@ If a CLAUDE.md exists, offer to append only the "Pipeline gate" section instead.
 Copy `templates/workflow-model-notes.md` to `$ROOT/.claude/rules/workflow.md`.
 It contains the model-notes section only - the Fable 5.1 / Opus 4.8 guides differ on
 instruction detail and subagent use, and following the wrong one is costly both ways.
-**No anti-pattern list is written**: a 2026-08-02 audit cut twelve anti-patterns to
-three, and all three survivors were incidents local to the source repo. A new repo
-starts with zero and earns its own.
+**No anti-pattern list is written.** Anti-patterns are local to the repo that earned
+them. A new repo starts with zero and earns its own.
 
 ### 4. Install the native pre-commit hook
 

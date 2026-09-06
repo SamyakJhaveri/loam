@@ -6,7 +6,7 @@ Do not leave any `[FILL]` placeholder unfilled.
 
 ---
 
-## MANDATORY DIRECTIVES
+## Operating directives
 
 ### 1. Decision authority
 
@@ -21,7 +21,6 @@ Do not leave any `[FILL]` placeholder unfilled.
 
 ### 2. Thinking and quality
 
-- No shortcuts. Read files before editing them and understand code before changing it.
 - Verify before reporting done: run focused checks for your scope. The named validation
   owner alone runs or reuses the integrated full gate.
 - Cross-reference a fact against a second source before stating it.
@@ -34,13 +33,13 @@ Do not leave any `[FILL]` placeholder unfilled.
 **Read strategy - grep first, range-read second:**
 
 1. Grep to locate the relevant sections before reading any file.
-2. Read with `offset` and `limit`. Never read more than 200 lines without a reason.
+2. Read with `offset` and `limit` when you only need part of a file.
 3. For structured data files, extract the specific fields rather than reading the whole file.
 
-**Subagent delegation:** bulk reads (more than 5 files, or more than 500 total lines) must be delegated to a mechanical Explore subagent.
+**Subagent delegation:** delegate bulk reading to a mechanical Explore subagent and keep only its summary.
 Only summaries come back into your context. Your context is for reasoning, not storage.
 
-**Context ceiling:** stay under 30K tokens of raw file content. If you are approaching it, summarize what you have into a structured findings block before reading more.
+**Context discipline:** read what the task needs and summarize findings as you go, so your working state survives a long run.
 
 **Conditional loading:** load an extra file only when a specific question demands it. Never pre-load "just in case".
 
@@ -56,7 +55,6 @@ You must execute the relay handoff as you approach your context limit. Do not wa
 
 **Trigger conditions, any one is sufficient:**
 
-- You estimate you are at roughly 80% of your context capacity.
 - The harness warns about context limits.
 - You notice degraded recall of earlier conversation content.
 - You are struggling to hold your working state in memory.
@@ -129,7 +127,7 @@ It is not smarter than you; it sees more of the picture. Consult it for coherenc
 
 **How to consult:**
 
-- Keep messages under 500 tokens. The advisor's context is a shared resource.
+- Send the advisor what it needs to answer and nothing else. Its context is a shared resource.
 - Structure them as SITUATION (what), OPTIONS (choices), QUESTION (what you need).
 - If the advisor does not respond promptly, proceed with your best judgment and flag `consulted advisor: no (unresponsive)` in the milestone report.
 

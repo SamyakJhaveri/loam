@@ -20,11 +20,9 @@ Each hypothesis carries falsifiable criteria, linked evidence, and a next experi
 
 **Trigger:** `/hypothesis-tree <subcommand>`.
 
-## Iron law
+## The rule
 
-```
-NO HYPOTHESIS WITHOUT FALSIFIABLE CRITERIA AND A NEXT EXPERIMENT
-```
+A hypothesis needs a falsifiable criterion and a named next experiment. Without both, do not add the node.
 
 ## Arguments
 
@@ -35,26 +33,6 @@ NO HYPOTHESIS WITHOUT FALSIFIABLE CRITERIA AND A NEXT EXPERIMENT
 - `update <ID> --confidence <level>` - change confidence, permitted only alongside evidence.
 - `review` - display every hypothesis with staleness indicators.
 - `prune` - propose archiving hypotheses with no evidence updates in 14 or more days.
-
-## Anti-rationalization table
-
-| Excuse | Reality |
-|--------|---------|
-| "I'll add the evidence later" | Evidence without a timestamp rots. Link it now or lose the thread. |
-| "The evidence is obvious" | Obvious to you today, opaque to a reviewer in six months. Cite the file. |
-| "This hypothesis is too simple to formalize" | Simple claims are exactly the ones that break a conclusion, because nobody checked them. State the criterion. |
-| "I just need a placeholder" | Placeholders become permanent. State the falsifiable criterion or do not add the node. |
-| "The confidence feels higher now" | Confidence follows evidence, not intuition. No new evidence, no confidence change. |
-
-## Red flags - stop and restart
-
-- Adding a hypothesis with no falsifiable criterion.
-- Linking evidence to a file path that does not exist on disk.
-- Claiming evidence supports a hypothesis without having read that file's contents.
-- Updating a confidence level without new evidence.
-- Any hypothesis that cannot be tested against data you already have, or by a concrete next experiment you can name.
-
-If any red flag triggers: STOP. Re-read the hypothesis and rewrite it with falsifiable criteria before doing anything else.
 
 ## Tree node schema
 

@@ -187,10 +187,6 @@ For Opus 4.8 the same prompt additionally names the two collision guards by line
 applies to both and not to the surrounding validators, and states that the test script is the
 tool to run.
 
----
-
-This skill is manual today. Wiring it into a workflow or a hook so it fires automatically on a
-rough handover is a pending task.
 
 [prompting-claude-fable-5-1]: https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/prompting-claude-fable-5-1
 [prompting-claude-fable-5]: https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/prompting-claude-fable-5

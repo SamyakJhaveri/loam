@@ -1,0 +1,598 @@
+diff -ruN a/bin/tests/test_seed_claude_hooks.py b/bin/tests/test_seed_claude_hooks.py
+--- a/bin/tests/test_seed_claude_hooks.py	2026-09-06 13:22:47
++++ b/bin/tests/test_seed_claude_hooks.py	2026-09-06 13:22:47
+@@ -1465,14 +1465,14 @@
+     def test_emits_reminders(self) -> None:
+         result = self.run_hook(self.SCRIPT, {"source": "compact"})
+         self.assertEqual(0, result.returncode, result.stderr)
+-        self.assertTrue(result.stdout.startswith("Post-compaction reminders:"))
+-        self.assertIn("5. Re-read HANDOFF.md", result.stdout)
++        self.assertTrue(result.stdout.startswith("After compaction:"))
++        self.assertIn("re-read HANDOFF.md", result.stdout)
+ 
+     def test_empty_stdin_still_emits(self) -> None:
+         result = self.run_hook(self.SCRIPT, None, raw_payload="")
+         self.assertEqual(0, result.returncode, result.stderr)
+-        self.assertTrue(result.stdout.startswith("Post-compaction reminders:"))
+-        self.assertIn("5. Re-read HANDOFF.md", result.stdout)
++        self.assertTrue(result.stdout.startswith("After compaction:"))
++        self.assertIn("re-read HANDOFF.md", result.stdout)
+ 
+ 
+ class FableSessionBriefTests(HookFixtureCase):
+@@ -1489,9 +1489,8 @@
+             },
+         )
+         self.assertEqual(0, result.returncode, result.stderr)
+-        self.assertIn("goal", result.stdout)
+-        self.assertIn("constraints", result.stdout)
+-        self.assertIn("done check", result.stdout)
++        self.assertTrue(result.stdout.startswith("Fable session."))
++        self.assertIn("change the architecture", result.stdout)
+         self.assertIn("Target model and effort", result.stdout)
+ 
+     def test_post_model_switch_to_fable_emits_brief(self) -> None:
+diff -ruN a/cultivation/marketplace/.claude-plugin/marketplace.json b/cultivation/marketplace/.claude-plugin/marketplace.json
+--- a/cultivation/marketplace/.claude-plugin/marketplace.json	2026-09-06 13:22:47
++++ b/cultivation/marketplace/.claude-plugin/marketplace.json	2026-09-06 13:22:47
+@@ -18,7 +18,7 @@
+     },
+     {
+       "name": "impeccable",
+-      "description": "UI polish workflow (vendored bundle; kept per 2026-08 rebuild ledger ruling)",
++      "description": "UI polish workflow: deterministic anti-pattern rules plus an LLM critique. Vendored from pbakaus/impeccable, Apache-2.0.",
+       "version": "0.1.0",
+       "source": "./impeccable",
+       "author": {
+@@ -101,7 +101,7 @@
+     },
+     {
+       "name": "deer-flow-public",
+-      "description": "Deer Flow public skills (SHA-pinned via git-subdir; SkillSpector-vetted 2026-08-10, static scan - evidence recorded in the private setup log). Only vetted-clean, collision-free skills enabled; 16 flagged + 3 name-collided skills withheld pending owner verdicts. claude-to-deerflow (withheld) additionally requires a running DeerFlow backend. Installs DISABLED (defaultEnabled:false) - enable to trial.",
++      "description": "Deer Flow public skills from bytedance/deer-flow, SHA-pinned via git-subdir. Only the vetted, collision-free skills are enabled. Installs DISABLED (defaultEnabled:false) - enable to trial.",
+       "strict": false,
+       "defaultEnabled": false,
+       "license": "MIT",
+diff -ruN a/cultivation/marketplace/sam-cc-setup/README.md b/cultivation/marketplace/sam-cc-setup/README.md
+--- a/cultivation/marketplace/sam-cc-setup/README.md	2026-09-06 13:22:47
++++ b/cultivation/marketplace/sam-cc-setup/README.md	2026-09-06 13:22:47
+@@ -116,7 +116,8 @@
+ - Each plugin's own `.claude-plugin/plugin.json` carries its own `version`.
+ 
+ These plugin versions are maintained by hand. The repository contract tests require both
+-`sam-cc-setup` fields to be `0.5.0`. The top-level `VERSION` remains the independent
++`sam-cc-setup` version fields to match each other and the value asserted in
++`bin/tests/test_marketplace_skill_routes.py`. The top-level `VERSION` remains the independent
+ Copier template version.
+ 
+ ### Before you run bin/release.sh
+diff -ruN a/cultivation/marketplace/sam-cc-setup/agents/code-architect.md b/cultivation/marketplace/sam-cc-setup/agents/code-architect.md
+--- a/cultivation/marketplace/sam-cc-setup/agents/code-architect.md	2026-09-06 13:22:47
++++ b/cultivation/marketplace/sam-cc-setup/agents/code-architect.md	2026-09-06 13:22:47
+@@ -11,7 +11,7 @@
+ 
+ You review the architecture of a target area (named in your prompt) and recommend how to
+ structure a proposed change so it stays testable and AI-navigable. You never edit; you
+-report. Report every finding, most severe first - never drop one to fit a length target. Keep each finding to 1-3 lines.
++report. Report every finding, most severe first - never drop one to fit a length target. Keep each finding tight enough to act on without re-reading the file.
+ 
+ ## Setup
+ ```bash
+diff -ruN a/cultivation/marketplace/sam-cc-setup/agents/plan-reviewer.md b/cultivation/marketplace/sam-cc-setup/agents/plan-reviewer.md
+--- a/cultivation/marketplace/sam-cc-setup/agents/plan-reviewer.md	2026-09-06 13:22:47
++++ b/cultivation/marketplace/sam-cc-setup/agents/plan-reviewer.md	2026-09-06 13:22:47
+@@ -13,7 +13,7 @@
+ You do two jobs in one pass: find real defects, and find the fundamentally simpler shape if one exists.
+ You are given the artifact and its constraints. You are NOT given the author's reasoning, and you must not ask for it. Judge the artifact on its own terms; treat the artifact as authoritative for what is proposed and the repository as authoritative for what is true.
+ 
+-You are scored on the quality of what you let the author fix or delete, not on the number of findings. A reviewer prompted to find gaps will report some even when the work is sound; you are not that reviewer. Manufacturing findings to justify the invocation is a failure; the verdict mapping at the end tells you when to approve.
++Report the findings the author can act on. A reviewer prompted to find gaps will report some even when the work is sound; you are not that reviewer. Manufacturing findings to justify the invocation is a failure; the verdict mapping at the end tells you when to approve.
+ 
+ ## Honesty bounds (read first, apply throughout)
+ 
+@@ -68,7 +68,7 @@
+ 2. **Evidence-capped severity.** Severity is one of BLOCK / HIGH / MEDIUM / LOW. A finding without a file:line citation or a command you ran cannot rank above MEDIUM, no matter how alarming it sounds.
+ 3. **Named fix.** "This could be simpler" or "this might break" is not a finding. Every finding ships a concrete alternative, correction, or mitigation, and states its trade-off.
+ 4. **Verified or flagged.** Mark each finding CONFIRMED (you verified the defect and the fix's feasibility) or PLAUSIBLE (you could not fully verify; say exactly what would settle it). When you cannot determine something, say NEEDS MANUAL REVIEW rather than converting uncertainty into a confident finding.
+-5. **Bounded.** Report at most 10 findings, ranked by severity then payoff. Everything you noticed but cut goes in the coverage ledger, not in the findings.
++5. **Bounded.** Rank findings by severity then payoff and lead with the ones that change the plan. Everything you noticed but did not report goes in the coverage ledger, not in the findings.
+ 
+ ## Output (in this order)
+ 
+diff -ruN a/cultivation/marketplace/sam-cc-setup/skills/agent-team/advisor-prompt.md b/cultivation/marketplace/sam-cc-setup/skills/agent-team/advisor-prompt.md
+--- a/cultivation/marketplace/sam-cc-setup/skills/agent-team/advisor-prompt.md	2026-09-06 13:22:47
++++ b/cultivation/marketplace/sam-cc-setup/skills/agent-team/advisor-prompt.md	2026-09-06 13:22:47
+@@ -6,7 +6,7 @@
+ 
+ ---
+ 
+-## MANDATORY DIRECTIVES
++## Operating directives
+ 
+ ### 1. Role and authority
+ 
+@@ -34,7 +34,7 @@
+ 
+ - Workers message you directly, structured as SITUATION (what), OPTIONS (choices), QUESTION (what they need).
+ - Respond with a clear recommendation, a brief rationale, and a specific next step.
+-- Keep responses under 300 tokens; your context is a shared resource.
++- Answer at the length the question needs; your context is a shared resource, so do not pad.
+ - If you are uncertain, say so explicitly. Never guess.
+ 
+ ### 6. What you receive from the lead
+diff -ruN a/cultivation/marketplace/sam-cc-setup/skills/agent-team/brief-report-template.md b/cultivation/marketplace/sam-cc-setup/skills/agent-team/brief-report-template.md
+--- a/cultivation/marketplace/sam-cc-setup/skills/agent-team/brief-report-template.md	2026-09-06 13:22:47
++++ b/cultivation/marketplace/sam-cc-setup/skills/agent-team/brief-report-template.md	2026-09-06 13:22:47
+@@ -4,7 +4,7 @@
+ The lead writes `brief.md`; the worker writes `report.md` before it stops or when interrupted.
+ Both live under `.superpowers/sdd/<task>/`, and both carry the same seven HANDOFF fields, in the same order, one heading each.
+ 
+-Keep each artifact below 4 KiB. Link to exact file sections and log paths. Do not paste
++Keep each artifact short enough to read in one pass. Link to exact file sections and log paths. Do not paste
+ whole source files, transcripts, or full command logs. A command entry includes its exit
+ code and one summary line.
+ 
+diff -ruN a/cultivation/marketplace/sam-cc-setup/skills/agent-team/teammate-prompt.md b/cultivation/marketplace/sam-cc-setup/skills/agent-team/teammate-prompt.md
+--- a/cultivation/marketplace/sam-cc-setup/skills/agent-team/teammate-prompt.md	2026-09-06 13:22:47
++++ b/cultivation/marketplace/sam-cc-setup/skills/agent-team/teammate-prompt.md	2026-09-06 13:22:47
+@@ -6,7 +6,7 @@
+ 
+ ---
+ 
+-## MANDATORY DIRECTIVES
++## Operating directives
+ 
+ ### 1. Decision authority
+ 
+@@ -21,7 +21,6 @@
+ 
+ ### 2. Thinking and quality
+ 
+-- No shortcuts. Read files before editing them and understand code before changing it.
+ - Verify before reporting done: run focused checks for your scope. The named validation
+   owner alone runs or reuses the integrated full gate.
+ - Cross-reference a fact against a second source before stating it.
+@@ -34,13 +33,13 @@
+ **Read strategy - grep first, range-read second:**
+ 
+ 1. Grep to locate the relevant sections before reading any file.
+-2. Read with `offset` and `limit`. Never read more than 200 lines without a reason.
++2. Read with `offset` and `limit` when you only need part of a file.
+ 3. For structured data files, extract the specific fields rather than reading the whole file.
+ 
+-**Subagent delegation:** bulk reads (more than 5 files, or more than 500 total lines) must be delegated to a mechanical Explore subagent.
++**Subagent delegation:** delegate bulk reading to a mechanical Explore subagent and keep only its summary.
+ Only summaries come back into your context. Your context is for reasoning, not storage.
+ 
+-**Context ceiling:** stay under 30K tokens of raw file content. If you are approaching it, summarize what you have into a structured findings block before reading more.
++**Context discipline:** read what the task needs and summarize findings as you go, so your working state survives a long run.
+ 
+ **Conditional loading:** load an extra file only when a specific question demands it. Never pre-load "just in case".
+ 
+@@ -56,7 +55,6 @@
+ 
+ **Trigger conditions, any one is sufficient:**
+ 
+-- You estimate you are at roughly 80% of your context capacity.
+ - The harness warns about context limits.
+ - You notice degraded recall of earlier conversation content.
+ - You are struggling to hold your working state in memory.
+@@ -129,7 +127,7 @@
+ 
+ **How to consult:**
+ 
+-- Keep messages under 500 tokens. The advisor's context is a shared resource.
++- Send the advisor what it needs to answer and nothing else. Its context is a shared resource.
+ - Structure them as SITUATION (what), OPTIONS (choices), QUESTION (what you need).
+ - If the advisor does not respond promptly, proceed with your best judgment and flag `consulted advisor: no (unresponsive)` in the milestone report.
+ 
+diff -ruN a/cultivation/marketplace/sam-cc-setup/skills/align-prompt/SKILL.md b/cultivation/marketplace/sam-cc-setup/skills/align-prompt/SKILL.md
+--- a/cultivation/marketplace/sam-cc-setup/skills/align-prompt/SKILL.md	2026-09-06 13:22:47
++++ b/cultivation/marketplace/sam-cc-setup/skills/align-prompt/SKILL.md	2026-09-06 13:22:47
+@@ -187,10 +187,6 @@
+ applies to both and not to the surrounding validators, and states that the test script is the
+ tool to run.
+ 
+----
+-
+-This skill is manual today. Wiring it into a workflow or a hook so it fires automatically on a
+-rough handover is a pending task.
+ 
+ [prompting-claude-fable-5-1]: https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/prompting-claude-fable-5-1
+ [prompting-claude-fable-5]: https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/prompting-claude-fable-5
+diff -ruN a/cultivation/marketplace/sam-cc-setup/skills/bootstrap-cc-setup/SKILL.md b/cultivation/marketplace/sam-cc-setup/skills/bootstrap-cc-setup/SKILL.md
+--- a/cultivation/marketplace/sam-cc-setup/skills/bootstrap-cc-setup/SKILL.md	2026-09-06 13:22:47
++++ b/cultivation/marketplace/sam-cc-setup/skills/bootstrap-cc-setup/SKILL.md	2026-09-06 13:22:47
+@@ -39,9 +39,8 @@
+ Copy `templates/workflow-model-notes.md` to `$ROOT/.claude/rules/workflow.md`.
+ It contains the model-notes section only - the Fable 5.1 / Opus 4.8 guides differ on
+ instruction detail and subagent use, and following the wrong one is costly both ways.
+-**No anti-pattern list is written**: a 2026-08-02 audit cut twelve anti-patterns to
+-three, and all three survivors were incidents local to the source repo. A new repo
+-starts with zero and earns its own.
++**No anti-pattern list is written.** Anti-patterns are local to the repo that earned
++them. A new repo starts with zero and earns its own.
+ 
+ ### 4. Install the native pre-commit hook
+ 
+diff -ruN a/cultivation/marketplace/sam-cc-setup/skills/brainstorming/SKILL.md b/cultivation/marketplace/sam-cc-setup/skills/brainstorming/SKILL.md
+--- a/cultivation/marketplace/sam-cc-setup/skills/brainstorming/SKILL.md	2026-09-06 13:22:47
++++ b/cultivation/marketplace/sam-cc-setup/skills/brainstorming/SKILL.md	2026-09-06 13:22:47
+@@ -9,17 +9,11 @@
+ 
+ Start by understanding the current project context, then ask questions one at a time to refine the idea. Once you understand what you're building, present the design and get user approval.
+ 
+-<HARD-GATE>
+-Do NOT invoke any implementation skill, write any code, scaffold any project, or take any implementation action until you have presented a design and the user has approved it. This applies to EVERY project regardless of perceived simplicity.
+-</HARD-GATE>
++Present a design and get the user's approval before writing code, scaffolding a project, or invoking an implementation skill. This holds for small projects too - the design can be two sentences.
+ 
+-## Anti-Pattern: "This Is Too Simple To Need A Design"
+-
+-Every project goes through this process. A todo list, a single-function utility, a config change — all of them. "Simple" projects are where unexamined assumptions cause the most wasted work. The design can be short (a few sentences for truly simple projects), but you MUST present it and get approval.
+-
+ ## Checklist
+ 
+-You MUST create a task for each of these items and complete them in order:
++Create a task for each item and work them in order:
+ 
+ 1. **Explore project context** — check files, docs, recent commits
+ 2. **Offer visual companion** (if topic will involve visual questions) — this is its own message, not combined with a clarifying question. See the Visual Companion section below.
+@@ -63,7 +57,7 @@
+ }
+ ```
+ 
+-**The terminal state is invoking writing-plans.** Do NOT invoke frontend-design, mcp-builder, or any other implementation skill. The ONLY skill you invoke after brainstorming is writing-plans.
++**The terminal state is invoking writing-plans.**
+ 
+ ## The Process
+ 
+@@ -86,7 +80,7 @@
+ **Presenting the design:**
+ 
+ - Once you believe you understand what you're building, present the design
+-- Scale each section to its complexity: a few sentences if straightforward, up to 200-300 words if nuanced
++- Scale each section to its complexity: a sentence or two when it is straightforward, longer when the design decision is genuinely nuanced
+ - Ask after each section whether it looks right so far
+ - Cover: architecture, components, data flow, error handling, testing
+ - Be ready to go back and clarify if something doesn't make sense
+@@ -96,7 +90,7 @@
+ - Break the system into smaller units that each have one clear purpose, communicate through well-defined interfaces, and can be understood and tested independently
+ - For each unit, you should be able to answer: what does it do, how do you use it, and what does it depend on?
+ - Can someone understand what a unit does without reading its internals? Can you change the internals without breaking consumers? If not, the boundaries need work.
+-- Smaller, well-bounded units are also easier for you to work with - you reason better about code you can hold in context at once, and your edits are more reliable when files are focused. When a file grows large, that's often a signal that it's doing too much.
++- Smaller, well-bounded units are also easier to change safely: a focused file makes the blast radius of an edit obvious. When a file grows large, that's often a signal that it's doing too much.
+ 
+ **Working in existing codebases:**
+ 
+@@ -134,15 +128,6 @@
+ 
+ - Invoke the writing-plans skill to create a detailed implementation plan
+ - Do NOT invoke any other skill. writing-plans is the next step.
+-
+-## Key Principles
+-
+-- **One question at a time** - Don't overwhelm with multiple questions
+-- **Multiple choice preferred** - Easier to answer than open-ended when possible
+-- **YAGNI ruthlessly** - Remove unnecessary features from all designs
+-- **Explore alternatives** - Always propose 2-3 approaches before settling
+-- **Incremental validation** - Present design, get approval before moving on
+-- **Be flexible** - Go back and clarify when something doesn't make sense
+ 
+ ## Visual Companion
+ 
+diff -ruN a/cultivation/marketplace/sam-cc-setup/skills/hypothesis-tree/SKILL.md b/cultivation/marketplace/sam-cc-setup/skills/hypothesis-tree/SKILL.md
+--- a/cultivation/marketplace/sam-cc-setup/skills/hypothesis-tree/SKILL.md	2026-09-06 13:22:47
++++ b/cultivation/marketplace/sam-cc-setup/skills/hypothesis-tree/SKILL.md	2026-09-06 13:22:47
+@@ -20,11 +20,9 @@
+ 
+ **Trigger:** `/hypothesis-tree <subcommand>`.
+ 
+-## Iron law
++## The rule
+ 
+-```
+-NO HYPOTHESIS WITHOUT FALSIFIABLE CRITERIA AND A NEXT EXPERIMENT
+-```
++A hypothesis needs a falsifiable criterion and a named next experiment. Without both, do not add the node.
+ 
+ ## Arguments
+ 
+@@ -35,26 +33,6 @@
+ - `update <ID> --confidence <level>` - change confidence, permitted only alongside evidence.
+ - `review` - display every hypothesis with staleness indicators.
+ - `prune` - propose archiving hypotheses with no evidence updates in 14 or more days.
+-
+-## Anti-rationalization table
+-
+-| Excuse | Reality |
+-|--------|---------|
+-| "I'll add the evidence later" | Evidence without a timestamp rots. Link it now or lose the thread. |
+-| "The evidence is obvious" | Obvious to you today, opaque to a reviewer in six months. Cite the file. |
+-| "This hypothesis is too simple to formalize" | Simple claims are exactly the ones that break a conclusion, because nobody checked them. State the criterion. |
+-| "I just need a placeholder" | Placeholders become permanent. State the falsifiable criterion or do not add the node. |
+-| "The confidence feels higher now" | Confidence follows evidence, not intuition. No new evidence, no confidence change. |
+-
+-## Red flags - stop and restart
+-
+-- Adding a hypothesis with no falsifiable criterion.
+-- Linking evidence to a file path that does not exist on disk.
+-- Claiming evidence supports a hypothesis without having read that file's contents.
+-- Updating a confidence level without new evidence.
+-- Any hypothesis that cannot be tested against data you already have, or by a concrete next experiment you can name.
+-
+-If any red flag triggers: STOP. Re-read the hypothesis and rewrite it with falsifiable criteria before doing anything else.
+ 
+ ## Tree node schema
+ 
+diff -ruN a/cultivation/marketplace/sam-cc-setup/skills/reflect/SKILL.md b/cultivation/marketplace/sam-cc-setup/skills/reflect/SKILL.md
+--- a/cultivation/marketplace/sam-cc-setup/skills/reflect/SKILL.md	2026-09-06 13:22:47
++++ b/cultivation/marketplace/sam-cc-setup/skills/reflect/SKILL.md	2026-09-06 13:22:47
+@@ -160,8 +160,8 @@
+ 
+ ## Context Management
+ 
+-This skill reads git state and conversation context. It should NOT launch subagents
+-or perform deep exploration. The reflection is generated from what's already in context.
++Generate the reflection from what is already in this session's context and git state.
++Fresh exploration would describe the repository, not the session.
+ 
+-Total output to main conversation: the reflection file path + the 6-line summary above.
++Keep the conversation output to the file path and a short summary.
+ The reflection content itself is written to disk, not pasted into the conversation.
+diff -ruN a/cultivation/marketplace/sam-cc-setup/skills/sam_handoff/SKILL.md b/cultivation/marketplace/sam-cc-setup/skills/sam_handoff/SKILL.md
+--- a/cultivation/marketplace/sam-cc-setup/skills/sam_handoff/SKILL.md	2026-09-06 13:22:47
++++ b/cultivation/marketplace/sam-cc-setup/skills/sam_handoff/SKILL.md	2026-09-06 13:22:47
+@@ -1,6 +1,6 @@
+ ---
+ name: sam_handoff
+-description: Write or update a handoff document so the next agent with fresh context can continue this work. Use for IN-PROGRESS work only, not end-of-session cleanup. Writes to the project root. Renamed from `handoff` on 2026-08-02 to avoid a name clash with the mattpocock-skills plugin, whose `handoff` compacts the conversation into the OS temp dir instead - a different contract.
++description: Write or update a handoff document so the next agent with fresh context can continue this work. Use for IN-PROGRESS work only, not end-of-session cleanup. Writes to the project root. Not the mattpocock-skills `handoff`, which compacts the conversation into the OS temp dir instead.
+ ---
+ 
+ Write or update a handoff document so the next agent with fresh context can continue this work.
+diff -ruN a/cultivation/marketplace/sam-cc-setup/skills/session-critique/teammates.md b/cultivation/marketplace/sam-cc-setup/skills/session-critique/teammates.md
+--- a/cultivation/marketplace/sam-cc-setup/skills/session-critique/teammates.md	2026-09-06 13:22:47
++++ b/cultivation/marketplace/sam-cc-setup/skills/session-critique/teammates.md	1969-12-31 16:00:00
+@@ -1,150 +0,0 @@
+-# Teammate Specifications
+-
+-Loaded by `/session-critique` when spawning workers in Phase 2.
+-Each section defines subagents, checklists, and scope for one worker.
+-
+----
+-
+-## advisor (Opus)
+-
+-**Role:** Strategic reviewer across all session files. Read-only - does not
+-edit files. Provides direction to workers, reviews worker findings, surfaces
+-decisions to user via lead. Does NOT make final calls - the user does.
+-
+-**Responsibilities:**
+-- Review each worker's approach before they start
+-- Add severity assessment and recommended action to findings
+-- Frame everything as recommendation, not decision
+-- Arbitrate when workers disagree - present both sides to lead, let user decide
+-- **Phase A.5 Elegance Gate:** after the per-file findings are in, run the whole-session
+-  step-back - see SKILL.md Phase A.5 for the full prompt. Produce a verdict or a concrete
+-  counter-proposal; not a formality.
+-- Phase C quality gate: review ALL applied changes for accuracy and scope compliance
+-
+----
+-
+-## self-critic (Opus)
+-
+-**Role:** Adversarial self-review as a senior software engineer. Finds rationalization
+-patterns, incomplete implementations, unverified claims, description inaccuracies, quality bar
+-violations, **drift from the Session Decisions Ledger**, and **forward-elegance/extensibility
+-problems**. Reports findings for Bucket A. Fixes ONLY after user approval. Be honest and
+-transparent - name what is unfinished; never rationalize.
+-
+-### Standing constraints (apply without invoking anything)
+-
+-- The project's always-loaded engineering rules (`CLAUDE.md` / `AGENTS.md`) bind this worker:
+-  think before coding, simplicity first, surgical changes.
+-- **Evidence before completion.** Never call a fix correct without output that shows it.
+-- **Baseline then confirm.** Capture the failing/current state before a fix, re-run after, and
+-  state both.
+-- **Root cause before fix.** If a finding is not obviously understood, investigate until the
+-  mechanism is known; do not patch a symptom.
+-
+-### Subagents to spawn (parallel)
+-
+-- `code-architect` - review-only structural pass over the changed modules: boundaries,
+-  coupling, seams, testability
+-- `consistency-checker` - cross-check `CLAUDE.md` tables, rules files, and any index or
+-  known-issues doc against what is actually on the filesystem
+-- `read-only` - bulk-read files to keep this worker's own context lean
+-
+-(Decision-adherence is NOT a worker subagent - the lead runs one `plan-reviewer` Drift
+-Detection pass for the whole session; see SKILL.md Phase A.)
+-
+-### Audit checklist (per file in Bucket A)
+-
+-1. Does content match its stated purpose?
+-2. Any claims that can't be verified against the filesystem?
+-3. Any vague language that could cause mis-routing or misunderstanding?
+-4. Any missing negative triggers ("NOT for...") where confusable siblings exist?
+-5. Naming consistency (identifiers match directory/file names)?
+-6. **Decision adherence:** owned by the lead's single `plan-reviewer` Drift Detection pass
+-   (SKILL.md Phase A) - do NOT re-derive it. Surface only drift you spot in passing, tagged
+-   to the ledger item #.
+-7. **Forward elegance / extensibility:** one clear purpose, a well-defined interface,
+-   understandable and testable on its own, following existing patterns - or a one-off
+-   bolt-on the next task will fight? Will the next task build on this, or untangle it?
+-
+-### Two-phase workflow
+-
+-1. **ANALYZE:** Read all files, run subagents, build findings list.
+-   Do NOT fix anything. Send findings report to lead.
+-2. **FIX (after user approval):** Apply only approved fixes. Verify each.
+-   Report results.
+-
+----
+-
+-## code-reviewer (Opus)
+-
+-**Role:** Code quality and structural review as a senior software engineer. Finds duplication,
+-naming issues, stale references, taxonomy inaccuracies, cross-file inconsistencies, **decision
+-drift**, and **forward-elegance** problems. Owns Bucket B + `CLAUDE.md` + documentation
+-artifacts. Reviews generated and write-once artifacts read-only. Fixes ONLY after user
+-approval. Be honest and transparent.
+-
+-### Standing constraints (apply without invoking anything)
+-
+-Same as self-critic: the project's always-loaded engineering rules, evidence before completion,
+-baseline-then-confirm on every fix, root cause before patch.
+-
+-### Subagents to spawn (parallel)
+-
+-- `consistency-checker` - verify every entry in the changed docs against the actual filesystem;
+-  stale claims and contradictions are its specialty
+-- `read-only` - bulk-read reference files without spending this worker's context
+-
+-(Decision-adherence is NOT a worker subagent - the lead runs one `plan-reviewer` Drift
+-Detection pass for the whole session; see SKILL.md Phase A.)
+-
+-Duplication, dead code, over-engineering, and unclear names are this worker's own pass; there
+-is no separate simplification agent, so run those greps and reads directly.
+-
+-### Review checklist (per file in Bucket B)
+-
+-1. Do all referenced tools/agents/commands actually exist on disk?
+-2. Are cross-references between files accurate and consistent?
+-3. Is there harmful duplication? (intentional layering is OK)
+-4. Are "When to use" / "When NOT to use" clauses accurate and complete?
+-5. Registration in `CLAUDE.md`: correct path, accurate description, alphabetical?
+-6. **Decision adherence:** owned by the lead's single `plan-reviewer` Drift Detection pass
+-   (SKILL.md Phase A) - do NOT re-derive it; flag only drift you spot in passing.
+-7. **Forward elegance / extensibility:** a coherent solution the next task can build on, or
+-   a hodgepodge it will have to untangle?
+-8. **Generated and write-once artifacts:** never propose an edit, delete, or overwrite of one.
+-   Route the finding to the generating code or spec, or flag it for the user.
+-
+-### Two-phase workflow
+-
+-Same as self-critic: ANALYZE first, FIX only after user approval.
+-
+----
+-
+-## Cross-talk Protocol
+-
+-- Both workers READ all session files, but only FIX files in their bucket
+-- Cross-scope issues: send via `SendMessage` to the owning worker
+-- Before applying any approved fix: message the other worker with a 2-line summary
+-- If both find the same issue: escalate to advisor -> lead -> user decides who fixes
+-- Strategic/ambiguous decisions: consult advisor, who recommends to lead -> user decides
+-- No direct user contact - all communication through team lead
+-- No autonomous fixes - all fixes require user approval
+-
+----
+-
+-## Escalation Format (worker -> lead -> user)
+-
+-```
+-DECISION NEEDED: [one-line summary]
+-
+-Context: [what was found, in which file]
+-
+-Options:
+-  A) [option with tradeoff]
+-  B) [option with tradeoff]
+-  C) Leave as-is because [reason]
+-
+-My recommendation: [letter] because [reason]
+-
+-Waiting for approval before proceeding.
+-```
+diff -ruN a/cultivation/marketplace/sam-cc-setup/skills/ship/SKILL.md b/cultivation/marketplace/sam-cc-setup/skills/ship/SKILL.md
+--- a/cultivation/marketplace/sam-cc-setup/skills/ship/SKILL.md	2026-09-06 13:22:47
++++ b/cultivation/marketplace/sam-cc-setup/skills/ship/SKILL.md	2026-09-06 13:22:47
+@@ -97,7 +97,7 @@
+ Invoke `/sam_handoff` (per Hard Rule 3, use the skill, do not restate its schema
+ inline). Runs AFTER commit + PR so the record can cite the post-commit SHA and
+ the opened PR number when there is one. Every shipped work-stream leaves a machine-findable
+-record, so no more hand-pasted summaries.
++record.
+ 
+ **Post-check:** Report the handoff record path. Pipeline complete.
+ 
+diff -ruN a/cultivation/marketplace/sam-cc-setup/skills/surprise-me/SKILL.md b/cultivation/marketplace/sam-cc-setup/skills/surprise-me/SKILL.md
+--- a/cultivation/marketplace/sam-cc-setup/skills/surprise-me/SKILL.md	2026-09-06 13:22:47
++++ b/cultivation/marketplace/sam-cc-setup/skills/surprise-me/SKILL.md	2026-09-06 13:22:47
+@@ -31,7 +31,7 @@
+    "commit for later" (frozen-artifact side, e.g. after a freeze lifts). An idea on the wrong side
+    of the line becomes a named commitment, not an action.
+ 5. **Rank by goal-value per unit cost** and present as a table: `# | idea | when | owner | cost | deliverable`.
+-   Three to six ideas; kill the rest.
++   Present the survivors; cut anything that does not beat the ideas above it.
+ 6. **Execute the cheapest read-only idea in the same turn** (a grep sweep, a framing sentence, a
+    control run in a scratch dir) and report its first result alongside the table. Proof beats proposal.
+ 7. **File the survivors.** Propose appending the table to the project's active plan document so the
+@@ -53,7 +53,7 @@
+ adversarial pass - run an interrogation of the idea (e.g. the `grill-research` skill if available)
+ rather than re-implementing interrogation here.
+ 
+-## Critical rules
++## Rules
+ 
+ 1. Never manufacture an idea that moves a number by choosing what to measure - ideas must survive an
+    adversarial reader. This is the canonical anti-tuning rule; step 3 and the pre-spend gate point here.
+@@ -64,7 +64,7 @@
+ 4. Every claimed fact in an idea's pitch traces to a command run this session.
+ 5. Respect the repo's hard invariants (immutable results, protected sources, signed artifacts) -
+    creative means recombining, not bending.
+-6. Scale is 3-6 ideas; if more survive ranking, merge or cut. One executed proof is mandatory.
++6. One executed proof is mandatory.
+ 7. If the goal is ambiguous, ask one question to pin the judge before generating anything.
+ 
+ Use `$ARGUMENTS` as the goal; if empty, default to the project's nearest deadline or active
+diff -ruN a/cultivation/marketplace/sam-cc-setup/skills/tech-selection/SKILL.md b/cultivation/marketplace/sam-cc-setup/skills/tech-selection/SKILL.md
+--- a/cultivation/marketplace/sam-cc-setup/skills/tech-selection/SKILL.md	2026-09-06 13:22:47
++++ b/cultivation/marketplace/sam-cc-setup/skills/tech-selection/SKILL.md	2026-09-06 13:22:47
+@@ -24,7 +24,7 @@
+ 
+ - Compare candidates on the task THIS project actually performs, not on generic benchmarks. Benchmarks are directional signals, never guarantees.
+ - Never report a number you did not compute or fetch this session; version facts, pricing, and API behavior must come from a current source, not memory.
+-- The deliverable is bounded: at most 4 candidates, at most 5 assumptions to test, one recommendation.
++- The deliverable is bounded: compare only the candidates genuinely in play, test only the assumptions that would change the answer, and end with one recommendation.
+ 
+ ## Steps
+ 
+diff -ruN a/cultivation/marketplace/sam-cc-setup/skills/writing-plans/SKILL.md b/cultivation/marketplace/sam-cc-setup/skills/writing-plans/SKILL.md
+--- a/cultivation/marketplace/sam-cc-setup/skills/writing-plans/SKILL.md	2026-09-06 13:22:47
++++ b/cultivation/marketplace/sam-cc-setup/skills/writing-plans/SKILL.md	2026-09-06 13:22:47
+@@ -12,8 +12,6 @@
+ interfaces, code, checks, expected results, and small tasks. Use DRY, YAGNI, test-driven
+ development, and frequent commits.
+ 
+-**Announce at start:** "I'm using the writing-plans skill to create the implementation plan."
+-
+ **Input:** An approved design document or complete requirements.
+ 
+ **Save plans to:** `docs/plans/YYYY-MM-DD-<feature-name>.md`
+diff -ruN a/seed/.claude/hooks/fable-session-brief.sh b/seed/.claude/hooks/fable-session-brief.sh
+--- a/seed/.claude/hooks/fable-session-brief.sh	2026-09-06 13:22:47
++++ b/seed/.claude/hooks/fable-session-brief.sh	2026-09-06 13:22:47
+@@ -36,9 +36,8 @@
+     sys.exit(0)
+ 
+ print(
+-    "Fable 5.1 session. On a rough request, restate goal, constraints, and done "
+-    "check in three lines before acting; ask one question only if a reading would "
+-    "change the architecture. When writing a handoff or plan for another session, "
++    "Fable session. Ask one question before acting only if a reading of the "
++    "request would change the architecture; otherwise act. When writing a handoff or plan for another session, "
+     "give it five headings: Goal and why; Constraints; Done check per task; "
+     "Session conduct; Target model and effort. Do not paste the autonomy block, "
+     "the Delivering work block, the progress-updates line, or the batching nudge; "
+diff -ruN a/seed/.claude/hooks/post-compact-reinject.sh b/seed/.claude/hooks/post-compact-reinject.sh
+--- a/seed/.claude/hooks/post-compact-reinject.sh	2026-09-06 13:22:47
++++ b/seed/.claude/hooks/post-compact-reinject.sh	2026-09-06 13:22:47
+@@ -12,5 +12,5 @@
+ # Drain stdin so the caller's pipe never blocks; the payload is not needed.
+ cat >/dev/null 2>&1 || true
+ 
+-echo "Post-compaction reminders: 1. Finish the whole task; do not stop early or ask permission for work already requested. 2. Keep changes to what the task asks; report pre-existing bugs as follow-ups. 3. Surgically edit files. 4. Batch independent tool calls. 5. Re-read HANDOFF.md if present and run the verify command it names before claiming anything."
++echo "After compaction: re-read HANDOFF.md if it exists and run the verify command it names before claiming any result."
+ exit 0
