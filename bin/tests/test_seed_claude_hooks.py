@@ -77,6 +77,33 @@ class HookFixtureCase(unittest.TestCase):
 class StopVerifyGateTests(HookFixtureCase):
     SCRIPT = "stop-verify-gate.sh"
 
+    def _install_validation_stub(self, state: str = "validated\n") -> None:
+        lib = self.repo / ".agents/lib"
+        lib.mkdir(parents=True)
+        (lib / "validation.py").write_text(
+            """import json
+
+
+class ValidationError(Exception):
+    pass
+
+
+def check(root):
+    data = json.loads((root / '.validation_passed').read_text())
+    if data.get('state') != (root / 'state.txt').read_text():
+        raise ValidationError('Files changed after validation')
+    return data
+""",
+            encoding="utf-8",
+        )
+        (self.repo / "state.txt").write_text(state, encoding="utf-8")
+        self.git("add", ".agents/lib/validation.py", "state.txt")
+        self.git("commit", "-q", "-m", "add validation fixture")
+        (self.repo / ".validation_passed").write_text(
+            json.dumps({"state": state}) + "\n",
+            encoding="utf-8",
+        )
+
     def test_clean_tree_passes(self) -> None:
         self.commit_file("ok.py", "print('ok')\n")
         result = self.run_hook(self.SCRIPT, {})
@@ -257,6 +284,38 @@ class StopVerifyGateTests(HookFixtureCase):
         self.assertEqual(2, result.returncode, result.stderr)
         self.assertIn("[bash -n]", result.stderr)
 
+    def test_newline_in_changed_filename_is_checked(self) -> None:
+        self.commit_file("ok.py", "print('ok')\n")
+        (self.repo / "bad\nname.sh").write_text(
+            "if [ 1 ]; then\n",
+            encoding="utf-8",
+        )
+
+        result = self.run_hook(self.SCRIPT, {})
+
+        self.assertEqual(2, result.returncode, result.stderr)
+        self.assertIn("[bash -n]", result.stderr)
+
+    def test_payload_cwd_selects_the_worktree(self) -> None:
+        self.commit_file("ok.py", "print('ok')\n")
+        (self.repo / "bad.sh").write_text("if [ 1 ]; then\n", encoding="utf-8")
+        outside = pathlib.Path(self.temp_dir.name) / "outside"
+        outside.mkdir()
+
+        result = subprocess.run(
+            ["bash", str(HOOKS_DIR / self.SCRIPT)],
+            cwd=outside,
+            input=json.dumps({"cwd": str(self.repo)}),
+            text=True,
+            capture_output=True,
+            timeout=60,
+            check=False,
+            env={**os.environ, "GIT_CEILING_DIRECTORIES": self.temp_dir.name},
+        )
+
+        self.assertEqual(2, result.returncode, result.stderr)
+        self.assertIn("[bash -n]", result.stderr)
+
     def test_whitespace_error_in_untouched_file_does_not_block(self) -> None:
         # git diff --check is scoped to the session's files, so trailing
         # whitespace in an untouched dirty file is not this session's problem.
@@ -351,6 +410,162 @@ class StopVerifyGateTests(HookFixtureCase):
         )
         self.assertEqual(0, result.returncode, result.stderr)
 
+    def test_valid_local_receipt_backs_test_claim_across_turns(self) -> None:
+        self._install_validation_stub()
+        transcript = self._claim_transcript(
+            [
+                (
+                    "assistant",
+                    [{"type": "tool_use", "id": "old", "name": "Bash",
+                      "input": {"command": "pytest"}}],
+                ),
+                (
+                    "user",
+                    [{"type": "tool_result", "tool_use_id": "old",
+                      "content": "3 passed"}],
+                ),
+                ("user", "summarize the completed work"),
+                ("assistant", [{"type": "text", "text": "All tests pass."}]),
+            ]
+        )
+
+        result = self.run_hook(
+            self.SCRIPT,
+            {
+                "transcript_path": str(transcript),
+                "last_assistant_message": "All tests pass.",
+            },
+        )
+
+        self.assertEqual(0, result.returncode, result.stderr)
+
+    def test_stale_local_receipt_does_not_back_test_claim(self) -> None:
+        self._install_validation_stub()
+        (self.repo / "state.txt").write_text("edited later\n", encoding="utf-8")
+        transcript = self._claim_transcript(
+            [
+                ("user", "summarize"),
+                ("assistant", [{"type": "text", "text": "All tests pass."}]),
+            ]
+        )
+
+        result = self.run_hook(
+            self.SCRIPT,
+            {
+                "transcript_path": str(transcript),
+                "last_assistant_message": "All tests pass.",
+            },
+        )
+
+        self.assertEqual(2, result.returncode, result.stderr)
+        self.assertIn("[unverified claim]", result.stderr)
+
+    def test_local_receipt_does_not_back_remote_ci_claim(self) -> None:
+        self._install_validation_stub()
+        transcript = self._claim_transcript(
+            [
+                ("user", "check CI"),
+                (
+                    "assistant",
+                    [{"type": "text", "text": "GitHub Actions CI passed."}],
+                ),
+            ]
+        )
+
+        result = self.run_hook(
+            self.SCRIPT,
+            {
+                "transcript_path": str(transcript),
+                "last_assistant_message": "GitHub Actions CI passed.",
+            },
+        )
+
+        self.assertEqual(2, result.returncode, result.stderr)
+        self.assertIn("[unverified claim]", result.stderr)
+
+    def test_echoed_fake_test_result_does_not_back_claim(self) -> None:
+        self.commit_file("ok.py", "print('ok')\n")
+        transcript = self._claim_transcript(
+            [
+                ("user", "run the tests"),
+                (
+                    "assistant",
+                    [{"type": "tool_use", "id": "fake", "name": "Bash",
+                      "input": {"command": "echo '3 passed'"}}],
+                ),
+                (
+                    "user",
+                    [{"type": "tool_result", "tool_use_id": "fake",
+                      "content": "3 passed"}],
+                ),
+                ("assistant", [{"type": "text", "text": "All tests pass."}]),
+            ]
+        )
+
+        result = self.run_hook(
+            self.SCRIPT,
+            {
+                "transcript_path": str(transcript),
+                "last_assistant_message": "All tests pass.",
+            },
+        )
+
+        self.assertEqual(2, result.returncode, result.stderr)
+        self.assertIn("[unverified claim]", result.stderr)
+
+    def test_edit_after_passing_result_invalidates_turn_evidence(self) -> None:
+        self.commit_file("ok.py", "print('ok')\n")
+        transcript = self._claim_transcript(
+            [
+                ("user", "run the tests"),
+                (
+                    "assistant",
+                    [{"type": "tool_use", "id": "test", "name": "Bash",
+                      "input": {"command": "pytest"}}],
+                ),
+                (
+                    "user",
+                    [{"type": "tool_result", "tool_use_id": "test",
+                      "content": "3 passed"}],
+                ),
+                (
+                    "assistant",
+                    [{"type": "tool_use", "id": "edit", "name": "Edit",
+                      "input": {"file_path": str(self.repo / "ok.py")}}],
+                ),
+                ("assistant", [{"type": "text", "text": "All tests pass."}]),
+            ]
+        )
+
+        result = self.run_hook(
+            self.SCRIPT,
+            {
+                "transcript_path": str(transcript),
+                "last_assistant_message": "All tests pass.",
+            },
+        )
+
+        self.assertEqual(2, result.returncode, result.stderr)
+        self.assertIn("[unverified claim]", result.stderr)
+
+    def test_generic_verified_file_statement_is_not_a_test_claim(self) -> None:
+        self.commit_file("ok.py", "print('ok')\n")
+        message = "Verified: ok.py contains the expected print call."
+        transcript = self._claim_transcript(
+            [
+                ("user", "inspect the file"),
+                ("assistant", [{"type": "text", "text": message}]),
+            ]
+        )
+
+        result = self.run_hook(
+            self.SCRIPT,
+            {"transcript_path": str(transcript),
+             "last_assistant_message": message},
+        )
+
+        self.assertEqual(0, result.returncode, result.stderr)
+
     def test_claim_without_bash_result_blocks(self) -> None:
         # A verification claim with no Bash output in the turn blocks with the
         # exact gate sentence.
@@ -437,9 +652,9 @@ class StopVerifyGateTests(HookFixtureCase):
         )
         self.assertEqual(0, result.returncode, result.stderr)
 
-    def test_claim_with_delegated_agent_result_passes(self) -> None:
-        # A lead that delegates verification reports the subagent's pasted
-        # output through the Agent tool, not Bash: that result is evidence.
+    def test_delegated_summary_without_command_evidence_blocks(self) -> None:
+        # A child summary is prose, even when it quotes a success count.
+        # Verification requires a matching receipt or actual command evidence.
         self.commit_file("ok.py", "print('ok')\n")
         transcript = self._claim_transcript(
             [
@@ -462,7 +677,8 @@ class StopVerifyGateTests(HookFixtureCase):
             {"transcript_path": str(transcript),
              "last_assistant_message": "All tests pass."},
         )
-        self.assertEqual(0, result.returncode, result.stderr)
+        self.assertEqual(2, result.returncode, result.stderr)
+        self.assertIn("[unverified claim]", result.stderr)
 
     def test_claim_with_failed_verify_output_blocks(self) -> None:
         # An uppercase FAILED marker outweighs the "OK" token earlier in the
@@ -570,13 +786,13 @@ class StopVerifyGateTests(HookFixtureCase):
                     [{"type": "tool_result", "tool_use_id": "t1",
                       "content": "probe done\nexit=0"}],
                 ),
-                ("assistant", [{"type": "text", "text": "Verified."}]),
+                ("assistant", [{"type": "text", "text": "Tests pass."}]),
             ]
         )
         result = self.run_hook(
             self.SCRIPT,
             {"transcript_path": str(transcript),
-             "last_assistant_message": "Verified."},
+             "last_assistant_message": "Tests pass."},
         )
         self.assertEqual(0, result.returncode, result.stderr)
 
@@ -599,14 +815,57 @@ class StopVerifyGateTests(HookFixtureCase):
         self.assertEqual(2, result.returncode, result.stderr)
         self.assertIn("[unverified claim]", result.stderr)
 
-    def test_claim_without_transcript_path_passes(self) -> None:
-        # No transcript_path: the claim leg cannot read the turn, so it skips
-        # rather than blocking. Clean tree keeps the other legs quiet.
+    def test_explicit_claim_without_transcript_path_blocks(self) -> None:
+        # The explicit payload claim is available evidence of what was said,
+        # even when an ephemeral host has no transcript to inspect.
         self.commit_file("ok.py", "print('ok')\n")
         result = self.run_hook(
             self.SCRIPT, {"last_assistant_message": "All tests pass."}
         )
-        self.assertEqual(0, result.returncode, result.stderr)
+        self.assertEqual(2, result.returncode, result.stderr)
+        self.assertIn("[unverified claim]", result.stderr)
+
+    def test_absent_transcript_requires_receipt_for_explicit_local_claim(self) -> None:
+        self._install_validation_stub()
+        for transcript in (None, str(self.repo / "missing.jsonl")):
+            with self.subTest(transcript=transcript):
+                payload = {"transcript_path": transcript, "last_assistant_message": "Tests pass."}
+                valid = self.run_hook(self.SCRIPT, payload)
+                self.assertEqual(0, valid.returncode, valid.stderr)
+                payload["last_assistant_message"] = "CI passed."
+                remote = self.run_hook(self.SCRIPT, payload)
+                self.assertEqual(2, remote.returncode, remote.stderr)
+        (self.repo / "state.txt").write_text("edited later\n")
+        stale = self.run_hook(self.SCRIPT, {"last_assistant_message": "Tests pass."})
+        self.assertEqual(2, stale.returncode, stale.stderr)
+        no_message = self.run_hook(self.SCRIPT, {})
+        self.assertEqual(0, no_message.returncode, no_message.stderr)
+
+    def test_delegated_prose_needs_receipt_or_later_command(self) -> None:
+        self._install_validation_stub()
+        for tool in ("Agent", "Task", "Workflow"):
+            with self.subTest(tool=tool):
+                events = [
+                    ("user", "verify"),
+                    ("assistant", [{"type": "tool_use", "id": "child", "name": tool,
+                                    "input": {"prompt": "run pytest"}}]),
+                    ("user", [{"type": "tool_result", "tool_use_id": "child", "content": "All tests passed."}]),
+                ]
+                transcript = self._claim_transcript(events)
+                payload = {"transcript_path": str(transcript), "last_assistant_message": "Tests pass."}
+                (self.repo / "state.txt").write_text("validated\n")
+                valid = self.run_hook(self.SCRIPT, payload)
+                self.assertEqual(0, valid.returncode, valid.stderr)
+                (self.repo / "state.txt").write_text("edited later\n")
+                unsubstantiated = self.run_hook(self.SCRIPT, payload)
+                self.assertEqual(2, unsubstantiated.returncode, unsubstantiated.stderr)
+                self._claim_transcript(events + [
+                    ("assistant", [{"type": "tool_use", "id": "check", "name": "Bash",
+                                    "input": {"command": "pytest"}}]),
+                    ("user", [{"type": "tool_result", "tool_use_id": "check", "content": "3 passed"}]),
+                ])
+                checked = self.run_hook(self.SCRIPT, payload)
+                self.assertEqual(0, checked.returncode, checked.stderr)
 
     def test_claim_with_list_tool_result_text_passes(self) -> None:
         # A tool_result whose content is a list of text items ("everything OK")
@@ -625,13 +884,13 @@ class StopVerifyGateTests(HookFixtureCase):
                     [{"type": "tool_result", "tool_use_id": "t1",
                       "content": [{"type": "text", "text": "everything OK"}]}],
                 ),
-                ("assistant", [{"type": "text", "text": "Confirmed."}]),
+                ("assistant", [{"type": "text", "text": "Tests pass."}]),
             ]
         )
         result = self.run_hook(
             self.SCRIPT,
             {"transcript_path": str(transcript),
-             "last_assistant_message": "Confirmed."},
+             "last_assistant_message": "Tests pass."},
         )
         self.assertEqual(0, result.returncode, result.stderr)
 
@@ -681,7 +940,7 @@ class StopVerifyGateTests(HookFixtureCase):
         transcript = self._claim_transcript(
             [
                 ("user", "run the tests"),
-                ("assistant", [{"type": "text", "text": "Verified."}]),
+                ("assistant", [{"type": "text", "text": "Tests pass."}]),
             ]
         )
         result = self.run_hook(self.SCRIPT, {"transcript_path": str(transcript)})
@@ -690,6 +949,141 @@ class StopVerifyGateTests(HookFixtureCase):
             "Final message claims verification without command output in this turn.",
             result.stderr,
         )
+
+    def test_transcript_analyzer_consumes_lines_once(self) -> None:
+        module_path = HOOKS_DIR.parents[1] / ".agents/lib/stop_verify.py"
+        self.assertTrue(module_path.is_file(), f"missing {module_path}")
+        import importlib.util
+
+        spec = importlib.util.spec_from_file_location("stop_verify_test", module_path)
+        self.assertIsNotNone(spec)
+        self.assertIsNotNone(spec.loader if spec else None)
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+
+        class OnePassLines:
+            def __init__(self) -> None:
+                self.iterations = 0
+
+            def __iter__(self):
+                self.iterations += 1
+                if self.iterations > 1:
+                    raise AssertionError("transcript iterated more than once")
+                yield json.dumps(
+                    {"type": "user", "message": {"content": "run tests"}}
+                )
+
+        lines = OnePassLines()
+        analysis = module.analyze_transcript(
+            lines,
+            {"last_assistant_message": "Tests pass."},
+            set(),
+        )
+
+        self.assertEqual(1, lines.iterations)
+        self.assertEqual("local", analysis.claim_kind)
+
+    def test_remote_and_local_evidence_remain_distinct(self) -> None:
+        self.commit_file("ok.py", "print('ok')\n")
+        cases = [
+            ("gh run view 123", "conclusion: success", "CI passed.", 0),
+            ("pytest", "3 passed", "CI passed.", 2),
+            ("gh run view 123", "conclusion: success", "Tests pass.", 2),
+            ("gh run view 123", "conclusion: success", "CI passed and local tests pass.", 2),
+            ("echo 'CI passed'", "CI passed", "CI passed.", 2),
+            ("pytest --version", "pytest 9.0\nexit=0", "Tests pass.", 2),
+            ("pytest --help", "help\nexit=0", "Tests pass.", 2),
+            ("ruff check --fix .", "All checks passed!", "Tests pass.", 2),
+            ("pytest || echo passed", "passed", "Tests pass.", 2),
+        ]
+        for command, output, message, expected in cases:
+            with self.subTest(command=command, message=message):
+                transcript = self._claim_transcript([
+                    ("user", "verify"),
+                    ("assistant", [{"type": "tool_use", "id": "check", "name": "Bash",
+                                    "input": {"command": command}}]),
+                    ("user", [{"type": "tool_result", "tool_use_id": "check", "content": output}]),
+                ])
+                result = self.run_hook(self.SCRIPT, {"transcript_path": str(transcript),
+                                                    "last_assistant_message": message})
+                self.assertEqual(expected, result.returncode, result.stderr)
+
+    def test_later_failure_and_pending_edit_invalidate_success(self) -> None:
+        self.commit_file("ok.py", "print('ok')\n")
+        check = ("assistant", [{"type": "tool_use", "id": "test", "name": "Bash",
+                                "input": {"command": "pytest"}}])
+        passed = ("user", [{"type": "tool_result", "tool_use_id": "test", "content": "3 passed"}])
+        edit = ("assistant", [{"type": "tool_use", "name": "Edit",
+                               "input": {"file_path": str(self.repo / "ok.py")}}])
+        failed = ("user", [{"type": "tool_result", "tool_use_id": "test", "content": "1 failed"}])
+        shell_edit = ("assistant", [{"type": "tool_use", "name": "Bash",
+                                     "input": {"command": "sed -i s/ok/new/ ok.py"}}])
+        for events in ([check, edit, passed], [check, passed, check, failed], [check, passed, shell_edit]):
+            with self.subTest(events=events):
+                transcript = self._claim_transcript([("user", "verify"), *events])
+                result = self.run_hook(self.SCRIPT, {"transcript_path": str(transcript),
+                                                    "last_assistant_message": "Tests pass."})
+                self.assertEqual(2, result.returncode, result.stderr)
+
+    def test_real_receipt_reuse_is_read_only_and_content_bound(self) -> None:
+        import sys
+
+        lib = self.repo / ".agents/lib"
+        lib.mkdir(parents=True)
+        shutil.copyfile(HOOKS_DIR.parents[1] / ".agents/lib/validation.py", lib / "validation.py")
+        (self.repo / ".agents/validation.json").write_text(json.dumps({
+            "schema": 1, "checks": [{"name": "shell", "argv": ["bash", "-n", "ok.sh"],
+                                     "runtime_dependencies": []}],
+        }))
+        self.commit_file("ok.sh", "echo ok\n")
+        self.git("add", ".agents")
+        self.git("commit", "-q", "-m", "validation fixture")
+        receipt = subprocess.run([sys.executable, str(lib / "validation.py"), "run"],
+                                 cwd=self.repo, capture_output=True, text=True, check=False)
+        self.assertEqual(0, receipt.returncode, receipt.stderr)
+        transcript = self._claim_transcript([("user", "summarize the prior turn")])
+        payload = {"transcript_path": str(transcript), "last_assistant_message": "Tests pass."}
+        first = self.run_hook(self.SCRIPT, payload)
+        self.assertEqual(0, first.returncode, first.stderr)
+        self.assertFalse((lib / "__pycache__").exists(), "Stop must not alter validated source")
+        (self.repo / "ok.sh").write_text("echo edited\n")
+        stale = self.run_hook(self.SCRIPT, payload)
+        self.assertEqual(2, stale.returncode, stale.stderr)
+        self.assertIn("[unverified claim]", stale.stderr)
+
+    def test_loam_layout_receipt_is_reused_without_claude_transcript(self) -> None:
+        import sys
+
+        lib = self.repo / "seed/.agents/lib"
+        lib.mkdir(parents=True)
+        shutil.copyfile(HOOKS_DIR.parents[1] / ".agents/lib/validation.py", lib / "validation.py")
+        (self.repo / ".agents").mkdir()
+        (self.repo / ".agents/validation.json").write_text(json.dumps({
+            "schema": 1, "checks": [{"name": "shell", "argv": ["bash", "-n", "ok.sh"],
+                                     "runtime_dependencies": []}],
+        }))
+        self.commit_file("ok.sh", "echo ok\n")
+        self.git("add", ".agents", "seed")
+        self.git("commit", "-q", "-m", "Loam validation layout")
+        receipt = subprocess.run([sys.executable, str(lib / "validation.py"), "run"],
+                                 cwd=self.repo, capture_output=True, text=True, check=False)
+        self.assertEqual(0, receipt.returncode, receipt.stderr)
+        transcript = pathlib.Path(self.temp_dir.name) / "codex.jsonl"
+        transcript.write_text(json.dumps({"type": "response_item", "payload": {"role": "assistant"}}))
+        result = self.run_hook(self.SCRIPT, {"transcript_path": str(transcript),
+                                            "last_assistant_message": "Tests pass."})
+        self.assertEqual(0, result.returncode, result.stderr)
+        self.assertFalse((lib / "__pycache__").exists())
+
+    def test_literal_pathspec_does_not_check_other_dirty_files(self) -> None:
+        self.commit_file("other.txt", "clean\n")
+        self.commit_file("*.sh", "echo ok\n")
+        (self.repo / "other.txt").write_text("trailing \n")
+        path = self.repo / "*.sh"
+        path.write_text("echo still_ok\n")
+        transcript = self._transcript_editing(path)
+        result = self.run_hook(self.SCRIPT, {"transcript_path": str(transcript)})
+        self.assertEqual(0, result.returncode, result.stderr)
 
     def test_message_without_claim_word_passes(self) -> None:
         # No claim word in the final message: the leg never fires, exit 0.
@@ -1970,28 +2364,20 @@ class RunValidateWavesTests(HookFixtureCase):
     def _sentinel(self) -> pathlib.Path:
         return self.repo / ".validation_passed"
 
-    def test_no_pyproject_skips_waves_and_writes_sentinel(self) -> None:
-        # No pyproject.toml: ruff/mypy/pytest are skipped and the sentinel is
-        # still written so a non-Python project can clear the commit gate.
+    def test_no_project_checks_blocks_without_sentinel(self) -> None:
         result = self.run_hook(self.SCRIPT, {})
-        self.assertEqual(0, result.returncode, result.stderr)
-        self.assertTrue(self._sentinel().is_file())
-        self.assertIn("waves_passed=2", self._sentinel().read_text(encoding="utf-8"))
+        self.assertEqual(1, result.returncode, result.stderr)
+        self.assertFalse(self._sentinel().exists())
 
-    def test_env_seams_drive_green_path(self) -> None:
-        # Both wave overrides succeed, so both waves pass without a real ruff or
-        # pytest run and the sentinel is written. Because a seam bypassed the
-        # real run, validated_by carries the -override suffix.
+    def test_env_seams_cannot_mint_production_receipt(self) -> None:
         env = dict(
             os.environ,
             RUN_VALIDATE_WAVE1_CMD="true",
             RUN_VALIDATE_WAVE2_CMD="true",
         )
         result = self.run_hook(self.SCRIPT, {}, env=env)
-        self.assertEqual(0, result.returncode, result.stderr)
-        sentinel = self._sentinel().read_text(encoding="utf-8")
-        self.assertIn("waves_passed=2", sentinel)
-        self.assertIn("validated_by=validate-skill-override", sentinel)
+        self.assertEqual(1, result.returncode, result.stderr)
+        self.assertFalse(self._sentinel().exists())
 
     def test_env_seam_wave1_failure_writes_no_sentinel(self) -> None:
         env = dict(os.environ, RUN_VALIDATE_WAVE1_CMD="false")
@@ -2045,17 +2431,37 @@ class SentinelCleanupTests(HookFixtureCase):
         self.assertEqual(0, result.returncode, result.stderr)
         self.assertFalse(self._sentinel().exists())
 
+    def test_subdirectory_payload_cleans_root_receipt(self) -> None:
+        self._sentinel().write_text("stale receipt\n")
+        nested = self.repo / "nested"
+        nested.mkdir()
+        payload = self._edit_payload("src.py")
+        payload["cwd"] = str(nested)
+        result = self.run_hook(self.SCRIPT, payload)
+        self.assertEqual(0, result.returncode, result.stderr)
+        self.assertFalse(self._sentinel().exists())
+
+    def test_receipt_symlink_cleanup_preserves_external_target(self) -> None:
+        outside = pathlib.Path(self.temp_dir.name) / "outside"
+        outside.write_text("preserve this\n")
+        self._sentinel().symlink_to(outside)
+        result = self.run_hook(self.SCRIPT, self._edit_payload("src.py"))
+        self.assertEqual(0, result.returncode, result.stderr)
+        self.assertFalse(self._sentinel().is_symlink())
+        self.assertEqual(outside.read_text(), "preserve this\n")
+
 
 class PreCommitGateTests(HookFixtureCase):
     SCRIPT = "pre-commit-gate.sh"
 
-    def _write_sentinel(self, waves: int = 2) -> pathlib.Path:
+    def _write_sentinel(self) -> pathlib.Path:
+        config = self.repo / ".agents/validation.json"
+        config.parent.mkdir(exist_ok=True)
+        config.write_text(json.dumps({"schema": 1, "not_applicable": "Fixture source has no executable tests."}))
+        self.git("add", ".agents/validation.json")
+        result = self.run_hook("run-validate-waves.sh", {})
+        self.assertEqual(0, result.returncode, result.stdout + result.stderr)
         s = self.repo / ".validation_passed"
-        s.write_text(
-            "timestamp=now\ngit_hash=none\nchanged_files=0\n"
-            f"waves_passed={waves}\nvalidated_by=test\n",
-            encoding="utf-8",
-        )
         return s
 
     def test_non_commit_command_passes(self) -> None:
@@ -2112,6 +2518,73 @@ class PreCommitGateTests(HookFixtureCase):
     def test_malformed_json_passes(self) -> None:
         result = self.run_hook(self.SCRIPT, None, raw_payload="{not json")
         self.assertEqual(0, result.returncode, result.stderr)
+
+    def test_old_timestamp_does_not_override_matching_contents(self) -> None:
+        self.commit_file("a.py", "print('a')\n")
+        sentinel = self._write_sentinel()
+        os.utime(sentinel, (1, 1))
+        result = self.run_hook(self.SCRIPT, self._payload())
+        self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+
+    def test_legacy_marker_cannot_approve_commit(self) -> None:
+        (self.repo / ".validation_passed").write_text("waves_passed=2\n")
+        result = self.run_hook(self.SCRIPT, self._payload())
+        self.assertEqual(2, result.returncode, result.stdout + result.stderr)
+
+    def test_subdirectory_payload_uses_repository_root(self) -> None:
+        self.commit_file("a.py", "print('a')\n")
+        self._write_sentinel()
+        nested = self.repo / "nested"
+        nested.mkdir()
+        payload = self._payload()
+        payload["cwd"] = str(nested)
+        result = self.run_hook(self.SCRIPT, payload)
+        self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+
+    def test_redirected_git_context_cannot_reuse_current_receipt(self) -> None:
+        self._write_sentinel()
+        result = self.run_hook(self.SCRIPT, self._payload("git -C /tmp commit -m message"))
+        self.assertEqual(2, result.returncode, result.stdout + result.stderr)
+
+    def test_staging_and_commit_bundle_cannot_reuse_pre_staging_receipt(self) -> None:
+        self._write_sentinel()
+        result = self.run_hook(self.SCRIPT, self._payload("git add -A && git commit -m message"))
+        self.assertEqual(2, result.returncode, result.stdout + result.stderr)
+
+    def test_quoted_git_executable_still_requires_evidence(self) -> None:
+        result = self.run_hook(self.SCRIPT, self._payload("'git' commit -m message"))
+        self.assertEqual(2, result.returncode, result.stdout + result.stderr)
+
+    def test_shell_wrapped_commit_requires_evidence(self) -> None:
+        result = self.run_hook(self.SCRIPT, self._payload("sh -c 'git commit -m message'"))
+        self.assertEqual(2, result.returncode, result.stdout + result.stderr)
+
+    def test_invalid_field_types_do_not_crash(self) -> None:
+        for payload in ({"cwd": [], "tool_input": {"command": 4}},
+                        {"tool_input": []}, ["git commit"]):
+            result = self.run_hook(self.SCRIPT, payload)
+            self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+
+    def test_unstaged_worktree_cannot_approve_different_index(self) -> None:
+        self.commit_file("a.py", "raise RuntimeError('bad staged source')\n")
+        (self.repo / "a.py").write_text("print('good working source')\n")
+        self._write_sentinel()
+        result = self.run_hook(self.SCRIPT, self._payload())
+        self.assertEqual(2, result.returncode, result.stdout + result.stderr)
+
+    def test_untracked_input_cannot_approve_incomplete_commit(self) -> None:
+        (self.repo / "dependency.py").write_text("ANSWER = 42\n")
+        self._write_sentinel()
+        result = self.run_hook(self.SCRIPT, self._payload())
+        self.assertEqual(2, result.returncode, result.stdout + result.stderr)
+
+    def test_assume_unchanged_cannot_hide_staged_worktree_mismatch(self) -> None:
+        self.commit_file("a.py", "raise RuntimeError('bad staged source')\n")
+        self.git("update-index", "--assume-unchanged", "a.py")
+        (self.repo / "a.py").write_text("print('good working source')\n")
+        self._write_sentinel()
+        result = self.run_hook(self.SCRIPT, self._payload())
+        self.assertEqual(2, result.returncode, result.stdout + result.stderr)
 
 
 if __name__ == "__main__":

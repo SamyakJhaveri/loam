@@ -1,286 +1,116 @@
 ---
 name: session-critique
 description: >
-  Adversarial, decision-aware critique of a session's completed work before
-  committing. Manual only - invoke with /session-critique. Reviews every changed
-  artifact as a senior software engineer, asking: did the work follow the
-  decisions made this session, follow repo rules, stay un-over-engineered, and
-  leave the codebase maintainable and extensible? Stops at each HIGH/MEDIUM
-  finding to discuss the fix with you before applying it, batches LOW nits, and
-  applies only the fixes you authorize. NOT for single-file trivial edits (use
-  /validate), NOT for standard code review without fix authority (use
-  /code-review), and NOT for work that is still in progress - finish the
-  implementation first.
+  Use when a completed multi-file change needs decision-aware independent review,
+  especially for security, trust boundaries, architecture, or cross-cutting behavior.
+  Manual only. NOT for routine focused checks, deterministic validation, or work
+  that is still changing.
 disable-model-invocation: true
 ---
 
-# Session Critique: Decision-Aware Adversarial Review
+# Session Critique
 
-Spawn an advisor-pattern agent team that reviews **all** work done this session, acting as a
-**senior software engineer**. The bar is not only "is it correct and finished?" but two
-forward-looking questions:
-
-1. **Decision adherence** - did the implementation follow the decisions the user made *during
-   this session*?
-2. **Build-on-top, not patch-on-patch** - did the work leave a codebase the next task can
-   extend, or a hodgepodge the next task must spend its time untangling? Elegant solutions,
-   not a regression backlog.
-
-Surface every finding for user approval; apply only the fixes the user authorizes.
-
-**Be honest and transparent.** Surface uncertainty explicitly. Never rationalize an incomplete
-or "good enough" result as done - name what is unfinished and why.
+Review one fixed diff against the user's decisions and repository rules. Keep the
+review independent from implementation. Save its evidence so another turn does not
+repeat the same review.
 
 ## When to use
 
-- Session produced multi-file changes that should be stress-tested
-- You want adversarial self-critique + code quality review before committing
-- You want to confirm the implementation honored the decisions you made this session
-- You need independent verification that nothing was missed, mis-stated, or over-built
+- The change crosses subsystems or changes architecture.
+- The change affects security, permissions, data integrity, or another trust boundary.
+- The user asks for an independent review.
 
-## When NOT to use
+For routine or single-area work, use focused self-review plus `/validate`.
 
-- Single-file trivial edit - run `/validate` directly
-- Standard code review without fix authority - use `/code-review`
-- Only need diff/lint/schema checks - use `/validate`
-- Work is not yet complete - finish implementation first
+## Model and team policy
 
-## Decision Authority
+Inspect the live spawn tool before selecting a model or effort. Use a stronger available
+review profile for the aggregate reviewer. Do not copy a model ID from prose. Add a
+specialist only for a concrete risk that the aggregate reviewer cannot cover. Mechanical
+evidence gathering uses the default or cheaper available profile.
 
-**The user approves ALL non-trivial decisions. No teammate decides autonomously.**
+## Phase 1: Freeze the review input
 
-Teammates CAN without asking: read files, run verification commands, spawn subagents, report
-findings.
+The integration owner records:
 
-Teammates MUST escalate (via lead -> user): applying any fix, dismissing any finding, resolving
-disagreements, any file content change.
-
-## Procedure
-
-### Phase 0: Scope + Session Decisions Ledger
-
-**Scope the changed artifacts:**
-
-```bash
-git log --oneline -10                      # find where this session started
-git diff HEAD --name-only                  # uncommitted changes - covers a session with no commits yet
-git status --porcelain                     # + untracked session files
-# If the session already produced commits, also fold them in:
-git diff <first-session-commit>~1..HEAD --name-only
+```text
+base revision
+changed paths, including untracked paths
+diff fingerprint
+validation receipt fingerprint, or "none"
+numbered session decisions
 ```
 
-Split files into ownership buckets (no overlap), by artifact type:
+The reviewer uses this fixed diff. It checks the fingerprint before and after review.
+If the source changes, it stops and reports that its input became stale. It does not
+silently switch to the new diff.
 
-- **Bucket A** (self-critic): modifications to existing **code** + docs
-- **Bucket B** (code-reviewer): newly created files, CLAUDE.md / index files, and other
-  **documentation** artifacts
-- **Generated or immutable artifacts** (build output, recorded results, vendored code, anything
-  the project treats as write-once): review **read-only**. A wrong-looking generated file is a
-  finding against the *generating code or spec*, or a flag for the user - never a hand edit of
-  the artifact.
-- If a split is unclear: ask the user.
+## Phase 2: Independent review
 
-**Build the Session Decisions Ledger.** The user's in-session decisions live in this
-conversation, not in git - and the teammates you spawn will not have the conversation. So you
-(the lead) extract them first. Write a numbered ledger of every explicit choice or direction
-the user gave this session:
+Spawn one read-only aggregate reviewer. Give it only the fixed input, repository rules,
+and acceptance criteria. Do not include the implementer's rationale or earlier verdicts.
+The reviewer checks:
 
-```
-SESSION DECISIONS LEDGER
-1. Chose X over Y because <reason>
-2. Directed: use approach Z for <component>
-3. Constraint: do NOT do W
-...
-```
+1. Correctness and decision adherence.
+2. Security and trust-boundary failures.
+3. Unchecked callers, interfaces, and cross-file contradictions.
+4. Scope drift, excess machinery, and missing error paths.
+5. Claims not supported by the fixed diff or durable validation receipt.
 
-Confirm the ledger with the user before spawning teammates: "Here are the N decisions I'll hold
-the work against - anything missing or misremembered?" This ledger is the contract the team
-measures implementation drift against.
-(The `/agent-team` skill in this plugin holds the general team-launch procedure and its
-cost warnings; the spawn mechanics below are self-contained if it is absent.)
+The reviewer does not rerun an unchanged full suite. It may run a focused check only for
+a named unresolved risk that existing evidence does not cover. It reports the command,
+exit code, and why the extra run was needed.
 
-> **Cross-session caveat:** this reconstruction works because `/session-critique` runs at the
-> end of the *same* session. If invoked in a fresh session the conversation is gone - fall back
-> to commit messages + handoff docs for the ledger, and say so explicitly.
+## Phase 3: Durable findings
 
-### Phase 1: Team Design + User Approval
+Write the report under `.superpowers/reviews/` with the diff fingerprint in the filename.
+Keep it bounded. Point to source sections and log paths instead of pasting whole files or
+logs.
 
-Present the team design table to the user. **WAIT for approval before launching.**
+```markdown
+# Independent review: <fingerprint>
 
-```
-| Teammate      | Model  | Role                                            | Owns       |
-|---------------|--------|-------------------------------------------------|------------|
-| advisor       | opus   | Strategic direction + Elegance Gate, read-only  | All (read) |
-| self-critic   | opus   | Adversarial self-review                         | Bucket A   |
-| code-reviewer | opus   | Code quality + structural + docs                | Bucket B   |
+## Verdict
+PASS | FIX | BLOCKED
 
-The lead runs ONE plan-reviewer subagent in Drift Detection mode, fed the Session Decisions
-Ledger, as the single decision-adherence check (workers do not each re-run it).
+## Fixed input
+- Base: <revision>
+- Diff fingerprint: <fingerprint>
+- Validation receipt: <fingerprint or none>
 
-Cost: all-Opus critique team (advisor + self-critic + code-reviewer) - a critique task stays on Opus.
+## Findings
+| Severity | Evidence | Consequence | Smallest repair |
+|----------|----------|-------------|-----------------|
+
+## Coverage and deferred checks
+- Checked: ...
+- Deferred: ... because ...
 ```
 
-### Phase 2: Launch (advisor pattern)
+Every finding is either confirmed with evidence or marked uncertain with the exact check
+that would settle it. An unrun check is never a pass.
 
-1. Spawn the advisor FIRST, as a teammate with the unique `name` `advisor`. Its brief is the
-   advisor section of [teammates.md](teammates.md): read-only strategic reviewer across all
-   session files, recommends but never decides.
-2. Wait for "ADVISOR READY".
-3. Spawn the two workers (self-critic, code-reviewer) with the filled prompts from
-   [teammates.md](teammates.md) - **include the Session Decisions Ledger verbatim in each
-   worker's brief**.
-4. Give every teammate a unique `name`; that is what makes it addressable via `SendMessage`.
+## Phase 4: Repair and re-review
 
-### Phase A: Analysis (parallel, no edits)
+The user approves any repair that changes scope or a prior decision. A targeted owner
+implements each accepted repair and runs its focused regression check. The validation
+owner runs new validation because the content fingerprint changed.
 
-Both workers analyze simultaneously. Advisor reviews as findings arrive. **No files are
-modified.** Each worker runs its audit checklist from [teammates.md](teammates.md), plus the
-**forward-elegance** audit (per changed unit: one clear purpose? a well-defined interface?
-understandable and testable on its own? follows existing patterns or a one-off bolt-on? will
-the next task build on this, or fight it?).
+Reuse the durable review when the diff fingerprint is unchanged. Run a second independent
+review only when a material repair changes behavior across the reviewed boundary, or when
+the first report names a concrete unresolved risk. Record why the second review was needed.
 
-**Decision-adherence is a single session-level pass - not a per-worker one.** The lead spawns
-**one** `plan-reviewer` subagent in Drift Detection mode with the Session Decisions Ledger; it
-checks the whole implementation against each ledger item (Done-sentence mismatch, scope drift,
-Must-NOT violation) and returns one authoritative adherence report. Workers do not each re-run
-it - they only flag drift they happen to spot in passing.
+## Completion
 
-Output: two worker findings reports + one drift report (all severity-tagged).
+The critique is complete when the report has a verdict, every blocking finding has a
+recorded disposition, the fixed-input fingerprint still matches, and deferred checks are
+visible. `/validate` remains the one deterministic full-gate owner. Critique does not run
+that gate again.
 
-Workers consult the advisor: brief approach before starting, present options at decision
-points, escalate after 2 failed attempts, send findings to lead + advisor when done.
+## Red flags
 
-### Phase A.5: Elegance Gate (advisor - whole-session step-back)
-
-After the per-file findings are in, the advisor runs ONE whole-session Elegance Gate. **Think
-carefully. Step back** from the individual changes and look at what this session set out to
-accomplish:
-
-- Is the work solving the right problem, or has it drifted into solving a side-effect?
-- Is there a fundamentally simpler or more coherent shape the whole body of work should have
-  taken - a different structure, an existing utility, a known pattern - that would make much of
-  it unnecessary?
-- Would an experienced engineer look at the session and say "why not just do X instead?"
-
-Output one of: "the overall shape is right because <reason>," or a concrete counter-proposal
-(what the alternative is, why it's better, its tradeoffs, what in the session's work it would
-replace). This is not a formality - do not skip it.
-
-### Phase B: Decision Loop (user decides, one issue at a time)
-
-The lead collects all findings + advisor recommendations + the Elegance Gate verdict, then
-**normalizes every finding to one canonical 4-tier scale** (incoming findings use different
-vocabularies) and sorts by severity:
-
-| Canonical | Means | Sources map in | Loop treatment |
-|-----------|-------|----------------|----------------|
-| **BLOCK** | Halt - must be fixed or explicitly waived before commit | self-critic `BLOCK`; plan-reviewer `critical` | serial, first |
-| **HIGH** | Serious; discuss before deciding | plan-reviewer `high`; self-critic `HIGH` | serial |
-| **MEDIUM** | Worth a decision | `medium` | serial |
-| **LOW** | Nit / advisory | self-critic `WARN`; `low` | batched at end |
-
-**BLOCK, HIGH, and MEDIUM findings - serial, one at a time** (BLOCK first). For each:
-
-```
-=== ISSUE k of N  [BLOCK|HIGH|MEDIUM] ===
-[file:line] <issue>
-Why it matters: <consequence if unfixed - regression risk, decision drift, maintainability cost>
-Decision-Ledger link: <which ledger decision this violates, or "none">
-Advisor recommendation: <approach> because <reason>
-Options: A) <fix>   B) <alternative>   C) leave as-is because <when that is right>
-```
-
-**STOP. Discuss with the user.** The user decides the approach. Apply the chosen fix, verify it
-(state before/after), then move to the next issue. Do NOT batch BLOCK/HIGH/MEDIUM - each gets
-its own discussion. A BLOCK left unresolved and unwaived halts the commit.
-
-**LOW / advisory findings - one batch at the end.** After the High/Med loop completes, present
-all LOW findings as a single numbered list for approve-all / cherry-pick:
-
-```
-=== LOW / ADVISORY (batch) ===
-1. [file:line] <nit> -> <suggested fix>
-2. ...
-Type approvals (e.g., "1,3,5", "all", or "none").
-```
-
-### Phase C: Fix Verification
-
-Every applied fix - BLOCK/HIGH/MEDIUM (in-loop) or LOW (post-batch) - is verified before/after
-by the owning worker. Once all approved fixes are in, the lead runs the `build-validator` agent
-to confirm lint, imports, and test collection still pass; if a fix touched executable code, the
-`test-synthesizer` agent exercises it. The advisor reviews all applied changes (Phase C quality
-gate) for accuracy and scope compliance.
-
-### Phase D: Handback
-
-Lead reviews any out-of-scope changes introduced by this critique. Do not revert
-pre-existing local work or ambiguous changes without explicit user approval:
-
-```bash
-git diff --stat HEAD
-git diff --name-only HEAD
-```
-
-If a file is out-of-scope and the critique introduced the change, ask the user
-before reverting it. If a file was dirty before the critique began or ownership
-is unclear, report it and leave it untouched.
-
-Confirm no generated or write-once artifact was hand-edited. Present the final summary:
-ledger decisions checked (adhered / drifted), Elegance Gate verdict, fixes applied
-(High/Med + Low), findings dismissed (with reasons). The user runs `/validate`
-and commits at their own discretion.
-
-## Critique is Done when
-
-- Every BLOCK/HIGH/MEDIUM finding has been discussed with the user and resolved (fixed or
-  dismissed with a recorded reason); no BLOCK remains unresolved or unwaived
-- Every LOW finding has been presented in the batch and dispositioned
-- Each Session Decisions Ledger item has been marked adhered or drifted
-- The advisor's whole-session Elegance Gate has produced a verdict
-- No generated or write-once artifact was hand-edited; out-of-scope changes introduced by
-  the critique were resolved with user approval, and pre-existing local work was
-  left untouched
-
-## Report Format (each worker sends to lead after Phase A)
-
-```
-## [Role] Findings (AWAITING APPROVAL)
-
-### Issues Found: N
-| # | File | Issue | Severity | Decision-Ledger link | Proposed Fix | Alternatives |
-|---|------|-------|----------|----------------------|--------------|--------------|
-| 1 | ...  | ...   | high/med/low | #2 (drift) / none | [fix A] | [fix B], [skip] |
-
-### Decision adherence (plan-reviewer drift pass): [adhered / drifted on #k, ...]
-### Forward elegance: [units that the next task will build on / fight, with reasons]
-### Advisor consultations: N
-### Subagent results: [agent: PASS/FAIL (N issues)]
-### Cross-team issues flagged: [list if any]
-```
-
-## Common Mistakes
-
-| Mistake | Prevention |
-|---------|-----------|
-| Teammates fix files without user approval | Two-phase workflow: ANALYZE then FIX after approval |
-| Batching BLOCK/HIGH/MEDIUM into one approval list | Phase B is serial for those - one issue, one discussion, one fix |
-| Skipping the Session Decisions Ledger | Phase 0 builds + confirms it before any teammate spawns |
-| Treating the Elegance Gate as a formality | Phase A.5 must produce a real verdict or counter-proposal |
-| Proposing edits to generated or write-once artifacts | Those are read-only; fix the generating code/spec or flag for user |
-| Teammates edit out-of-scope files | Explicit bucket ownership + Phase D review; revert only critique-introduced changes with user approval |
-| Advisor makes final calls instead of user | Decision authority rule: advisor recommends, user decides |
-| Lead commits without user running /validate | Phase D hands back - user owns validation and commit |
-
-## Red Flags - STOP and Escalate to User
-
-- Worker editing a file before Phase B approval
-- Worker dismissing a finding as "not worth fixing" without escalating
-- Any proposed Edit/Write/rm targeting a generated or write-once artifact
-- BLOCK/HIGH/MEDIUM findings presented as a batch instead of one at a time
-- Advisor approving fixes on the user's behalf
-- Any teammate contacting the user directly (all goes through lead)
-- Out-of-scope files appearing in `git diff --stat HEAD`
-
-See [teammates.md](teammates.md) for detailed worker specifications, subagents, and
-audit checklists.
+- Review input changes while reviewers are running.
+- Several generic reviewers inspect the same diff.
+- A reviewer repeats the full suite without a named evidence gap.
+- Findings exist only in chat or a transcript.
+- A repair changes the fingerprint but old evidence is called current.

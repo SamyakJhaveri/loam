@@ -29,23 +29,20 @@ Launch coordinated agent teams for tasks that need persistent cross-talk, shared
 
 ## Model policy
 
-Every teammate runs Opus 4.8 (`claude-opus-4-8[1m]`). Effort is the dial, not the model: xhigh for Opus execution workers, planners, and critics; a Fable advisor or lead runs at `medium` or `high` only, never higher. Use only Opus or Fable.
-
-There is no cheap-worker tier here, so the cost of a team is roughly linear in teammate count. That is the reason the decision graph below pushes you toward the smallest team that can do the job, and toward no team at all when the work is separable.
+Choose only from models and effort values exposed by the live spawn tool. Do not copy a
+model ID from this skill. Use the default or cheaper available profile for mechanical
+search, formatting, and deterministic command execution. Use a stronger available
+review profile for security boundaries, architecture, cross-cutting synthesis, and the
+independent final review. Start with the smallest team because each teammate adds context
+and coordination work.
 
 ## Worktree isolation for parallel implementers
 
 Give each parallel implementer that edits files its own git worktree by default. `claude --worktree <name>` (or `-w <name>`) creates the worktree under `.claude/worktrees/<name>/` and isolates its edits from the main checkout. One checkout with strictly disjoint files is the documented exception, guarded by the concurrent-checkout-guard hook; reach for it only when the workers provably never touch the same file.
 
-Operating notes, current as of the code.claude.com docs:
-
-- A `-p` (headless) run skips the workspace-trust dialog, and it does not clean up its worktree on exit. Remove it by hand with `git worktree remove`.
-- Set `worktree.baseRef` to `"head"` in settings to branch a worktree from your current HEAD commit instead of a clean default branch. It carries that commit, not your uncommitted changes.
-- A `.worktreeinclude` file at the repo root copies gitignored files (such as `.env`) into each new worktree.
-- Pin a subagent to its own worktree with `isolation: worktree` in its frontmatter.
-- Hook gotcha: `CLAUDE_PROJECT_DIR` stays at the launch root, not the worktree; the worktree path is the `cwd` field of the hook JSON, so a run-logging hook must read `cwd`.
-
-For one contended resource (a GPU, a database) use `flock /tmp/<resource>.lock <cmd>` (util-linux; absent on stock macOS). Build nothing else; twelve parallel tasks ran on one Mac with only worktrees and separate databases.
+Before using a host-specific worktree flag or cleanup behavior, inspect the live tool schema
+or current official documentation. If isolation is unavailable, assign disjoint files or
+run writers sequentially. Do not infer live host support from this prose.
 
 ## When to use
 
@@ -98,17 +95,17 @@ digraph when_to_use {
    - **Role** - one sentence.
    - **Scope** - the specific files or areas it owns, with NO overlap between teammates.
    - **Skills/Agents** - which pre-made agents or skills it should use.
-3. All teammates run Opus (see Model policy). Set effort per role rather than downgrading a model.
+3. Assign a mechanical or review profile by the observable risk in Model policy.
 4. Present the proposal to the user:
 
 ```
 ## Proposed Team: <team-name>
 
-| Teammate    | Effort | Role | Scope | Skills/Agents |
-|-------------|--------|------|-------|---------------|
-| planner     | xhigh  | ...  | ...   | /writing-plans |
-| implementer | high   | ...  | ...   | ...            |
-| critic      | xhigh  | ...  | All teammate outputs (read-only) | /plan-review |
+| Teammate    | Profile | Role | Scope | Skills/Agents |
+|-------------|---------|------|-------|---------------|
+| researcher  | mechanical | ... | ... | read-only exploration |
+| implementer | default | ... | ... | ... |
+| critic      | strong review | ... | fixed aggregate diff (read-only) | /plan-review |
 
 Estimated cost: ~Nx a single session (N = teammate count; see Cost below)
 ```
@@ -126,8 +123,10 @@ Do not hard-code a tool-call recipe here; it changes between releases. `team_nam
 
 **Step 2 - create tasks** with the task tool for each unit of work.
 
-**Step 2.5 - spawn the advisor first** (only if `--advisor` was given): spawn a teammate named `advisor` using [advisor-prompt.md](advisor-prompt.md) with every `[FILL]` placeholder filled.
-Wait for the advisor's "ADVISOR READY" message before spawning any workers.
+**Step 2.5 - spawn the advisor** (only if `--advisor` was given): spawn a teammate named
+`advisor` using [advisor-prompt.md](advisor-prompt.md) with every `[FILL]` placeholder
+filled. Launch independent workers without polling for a readiness message. Route the
+first consultation after the host reports the advisor ready.
 
 **Step 3 - compose teammate prompts.** For every worker and critic:
 
@@ -135,14 +134,23 @@ Wait for the advisor's "ADVISOR READY" message before spawning any workers.
 2. Fill in every `[FILL]` placeholder with that teammate's scope, skills, and file ownership.
 3. Append the teammate's task description after the directives block.
 
-**Step 4 - spawn workers.** Spawn each worker and the critic with a unique `name` and its filled prompt plus task description.
-All run Opus; set effort per role.
+**Step 4 - spawn workers.** Spawn each worker with a unique `name` and its filled prompt
+plus task description. Spawn a critic only when the change is risky or the user requested
+one. Apply Model policy by role.
 
-**Brief and report.** For every teammate, write a brief to `.superpowers/sdd/<task>/brief.md` before it starts, and require it to write `.superpowers/sdd/<task>/report.md` before it stops or when interrupted, one task subdirectory each. Both use the same seven HANDOFF fields in [brief-report-template.md](brief-report-template.md). An interrupted worker's findings are read from its report, never rebuilt from a transcript.
+**Brief and report.** For every teammate, write a brief to
+`.superpowers/sdd/<task>/brief.md` before it starts. Require a bounded `report.md` before
+it stops or is interrupted. Use [brief-report-template.md](brief-report-template.md).
+Reports contain conclusions, evidence pointers, and focused command results. They do not
+paste whole source files, transcripts, or long logs.
+
+Name one integration owner and one validation owner. Workers run only focused checks for
+their scope. The validation owner runs or reuses the content-bound full gate for the fixed
+integrated source. No other teammate repeats that gate.
 
 **Step 5 - manage the lifecycle:**
 
-- Assign tasks as teammates become available.
+- Assign tasks from host completion or availability events. Do not poll idle agents.
 - Aggregate results and present them to the user.
 - Escalate decisions to the user. Teammates do not contact the user directly.
 - Watch for handoff signals (teammate-prompt.md Section 5).
@@ -151,17 +159,18 @@ All run Opus; set effort per role.
 
 **Advisor coordination** (only when `--advisor` is active):
 
-1. After each worker milestone, forward the summary to the advisor.
+1. Forward only milestones that change another worker's scope or a cross-cutting decision.
 2. Relay the advisor's guidance back to the relevant worker.
 3. If a worker is stuck after two failed attempts, escalate to the advisor.
-4. Before Phase 4, send the advisor a `PRE-REVIEW:` message summarizing all the work.
+4. Before Phase 4, send one bounded `PRE-REVIEW:` message with the fixed diff fingerprint.
 5. During an advisor relay handoff, pause milestone forwarding until the replacement advisor signals READY.
 
 ### Phase 4: Quality gate
 
-Skip this phase only if `--no-critic` was given.
+Run this phase for security, trust-boundary, architecture, or cross-cutting changes. It may
+also be requested by the user. For routine work, the lead performs a focused self-review.
 
-1. **The critic reviews all changes** made by the other teammates, checking:
+1. **The critic reviews one fixed aggregate diff** made by the other teammates, checking:
    - Factual accuracy: claims match the actual files and data.
    - Stale references: files, functions, or numbers that do not exist.
    - Consistency: no contradictions between teammate outputs.
@@ -169,7 +178,8 @@ Skip this phase only if `--no-critic` was given.
    - Scope compliance: no unauthorized file changes.
 2. If `--advisor` is active, send the advisor any cross-cutting or borderline findings for arbitration before reporting.
 3. Present the critic's findings (plus advisor arbitration if any) to the user.
-4. If issues were found, run the fix loop: decide which teammate owns the fix, get user approval, have that teammate implement it, have the critic re-review. Maximum 3 iterations, then escalate to the user.
+4. Save findings to the task report. If issues were found, assign targeted fixes. Re-run
+   the independent review only after material diff changes or for a named unresolved risk.
 5. Final report to the user:
    - What was done, with file paths.
    - What decisions were made, and why.
@@ -192,22 +202,13 @@ Teammates reuse what exists rather than building from scratch. Adapt this list t
 
 ## Cost
 
-Every teammate is an Opus session, so a team of N costs roughly N times a single session, plus the cross-talk overhead of relaying messages between teammates.
-
-| Team size | Rough multiplier | When it is worth it |
-|-----------|------------------|---------------------|
-| Lead + 1  | ~2x  | A task with one genuine adversarial counterpart |
-| Lead + 2  | ~3x  | Most analysis and debugging work |
-| Lead + 3  | ~4x  | Multi-system analysis |
-| Lead + 4+ | ~5x+ | Rare; large-scale comparison only |
-
-The multiplier is the reason to reach for teams last.
-If the same result is reachable with one session and a few subagents, that is the correct choice.
+Each teammate adds its own model context and message relay cost. Use the minimum set of
+independent scopes and one aggregate reviewer. Record actual usage when cost matters.
 
 ## Known limitations
 
-For the current authoritative limitations of agent teams (session resumption, task-status lag, one team per session, no nested teams), see https://code.claude.com/docs/en/agent-teams.
-Those move between releases and are deliberately not transcribed here. Two durable caveats:
+Host limits change. Inspect the live tool schema or current official documentation before
+claiming a feature exists. Two repository-level caveats remain:
 
 - **File conflicts.** Two teammates editing the same file causes overwrites. Assign explicit file ownership in Phase 2.
 - **Context exhaustion.** Large directories fill context fast. Teammates must follow the context relay protocol in [teammate-prompt.md](teammate-prompt.md) Section 5.
@@ -217,8 +218,5 @@ Those move between releases and are deliberately not transcribed here. Two durab
 Keyboard controls for selecting a teammate, viewing its session, messaging it, and toggling the shared task list change between releases.
 See the controls reference at https://code.claude.com/docs/en/agent-teams for the current keys.
 
-Durable behavior, stable across releases:
-
-- Teammates stay running and addressable while idle. Idle rows may auto-hide in the UI, but the teammate is alive and can be messaged.
-- Team cleanup is automatic on session exit. There is no manual cleanup step.
-- To stop a single teammate, tell the lead in natural language ("ask `<name>` to shut down").
+Use the live controls for status, interruption, and cleanup. Do not describe a requested
+operation as completed until the host emits its completion result.
