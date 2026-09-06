@@ -13,6 +13,7 @@ the seed ships no agents or workflows.
 from __future__ import annotations
 
 import argparse
+import ast
 import os
 import re
 import sys
@@ -23,6 +24,7 @@ from typing import Any
 
 MANIFEST = "agent-parity.toml"
 CAPABILITY_NAME = re.compile(r"[a-z0-9][a-z0-9-]*")
+VALIDATION_COMMANDS = {"run", "check", "fingerprint", "pre-commit"}
 
 
 class ParityError(RuntimeError):
@@ -103,9 +105,59 @@ def _compare(label: str, actual: set[str], declared: set[str]) -> list[str]:
     return errors
 
 
+def _validation_commands(path: Path) -> set[str]:
+    """Read the validator's argparse action choices without executing it."""
+    try:
+        tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
+    except SyntaxError as exc:
+        raise ParityError(f"shared validation module cannot be parsed: {exc}") from exc
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.Call) or not isinstance(node.func, ast.Attribute):
+            continue
+        if node.func.attr != "add_argument" or not node.args:
+            continue
+        if not isinstance(node.args[0], ast.Constant) or node.args[0].value != "action":
+            continue
+        for keyword in node.keywords:
+            if keyword.arg == "choices":
+                try:
+                    choices = ast.literal_eval(keyword.value)
+                except (ValueError, TypeError, SyntaxError):
+                    return set()
+                if isinstance(choices, (list, tuple)) and all(
+                    isinstance(choice, str) for choice in choices
+                ):
+                    return set(choices)
+                return set()
+    return set()
+
+
 def check(root: Path, data: dict[str, Any] | None = None) -> list[str]:
     data = data or _load(root)
     errors: list[str] = []
+
+    validation = data["validation"]
+    validation_module = validation["shared_module"]
+    validation_path = _repo_path(root, validation_module)
+    if validation_module != ".agents/lib/validation.py":
+        errors.append(
+            "shared validation module must be .agents/lib/validation.py"
+        )
+    if not validation_path.is_file():
+        errors.append(f"shared validation module is missing: {validation_module}")
+    else:
+        actual_validation_commands = _validation_commands(validation_path)
+        for command in sorted(VALIDATION_COMMANDS - actual_validation_commands):
+            errors.append(f"validation command missing: {command}")
+        for command in sorted(actual_validation_commands - VALIDATION_COMMANDS):
+            errors.append(f"validation command is not inventoried: {command}")
+    declared_validation_commands = validation["commands"]
+    if len(declared_validation_commands) != len(set(declared_validation_commands)):
+        errors.append("validation commands contain duplicates")
+    for command in sorted(VALIDATION_COMMANDS - set(declared_validation_commands)):
+        errors.append(f"validation command missing from manifest: {command}")
+    for command in sorted(set(declared_validation_commands) - VALIDATION_COMMANDS):
+        errors.append(f"validation command is unsupported: {command}")
 
     skills = data["skills"]
     skill_groups = {
@@ -200,8 +252,34 @@ def check(root: Path, data: dict[str, Any] | None = None) -> list[str]:
 
     hooks = data["hooks"]
     hook_adapters = dict(hooks["native_adapter"])
+    hook_unimplemented = dict(hooks["unimplemented_adapter"])
     hook_unsupported = dict(hooks["unsupported"])
     hook_native = dict(hooks["native_codex"])
+    errors.extend(
+        _duplicates(
+            {
+                "native_adapter": list(hook_adapters),
+                "unimplemented_adapter": list(hook_unimplemented),
+                "unsupported": list(hook_unsupported),
+            }
+        )
+    )
+    for reason in hook_unimplemented.values():
+        if not reason.startswith("Adapter missing:"):
+            errors.append(
+                "unimplemented hook adapter reason must start with 'Adapter missing:'"
+            )
+    for reason in hook_unsupported.values():
+        if not reason.startswith("Host gap:"):
+            errors.append("unsupported hook reason must start with 'Host gap:'")
+    for source, target in hook_adapters.items():
+        if not _repo_path(root, source).is_file():
+            errors.append(f"hook adapter source is missing: {source}")
+        if not _repo_path(root, target).is_file():
+            errors.append(f"hook adapter target is missing: {target}")
+    unimplemented_hook_files = {
+        path for path in hook_unimplemented if path.startswith(".claude/hooks/")
+    }
     unsupported_hook_files = {
         path for path in hook_unsupported if path.startswith(".claude/hooks/")
     }
@@ -209,7 +287,9 @@ def check(root: Path, data: dict[str, Any] | None = None) -> list[str]:
         _compare(
             "Claude hook",
             _file_set(root, ".claude/hooks"),
-            set(hook_adapters) | unsupported_hook_files,
+            set(hook_adapters)
+            | unimplemented_hook_files
+            | unsupported_hook_files,
         )
     )
     codex_hook_targets = {

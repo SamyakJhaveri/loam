@@ -23,6 +23,16 @@ _DENIAL = {
         ),
     }
 }
+_OVERSIZED_COMMAND_DENIAL = {
+    "hookSpecificOutput": {
+        "hookEventName": "PreToolUse",
+        "permissionDecision": "deny",
+        "permissionDecisionReason": (
+            "Command input exceeds the policy analysis limit."
+        ),
+    }
+}
+_MAX_COMMAND_BYTES = 400_000
 # apply_patch deny families, checked in this order. Each entry is a
 # (name, reason) pair; the reason is the permissionDecisionReason returned when a
 # patched path matches the family. Kept as one literal tuple; the rendered
@@ -671,15 +681,20 @@ def _drop_trailing_noise(args: list[str]) -> tuple[str, ...]:
     return tuple(args[:end])
 
 
-def _command_denied(command: str, depth: int = 0) -> bool:
+def _command_denied(
+    command: str,
+    depth: int = 0,
+    tokens: tuple[str, ...] | None = None,
+) -> bool:
     # Fail closed: past the recursion limit the command is too deeply nested
     # (stacked `sh -c`/substitutions) to clear, so a deny policy blocks it.
     if depth > _RECURSION_LIMIT:
         return True
-    try:
-        tokens = _literal_tokens(command)
-    except ValueError:
-        return False
+    if tokens is None:
+        try:
+            tokens = _literal_tokens(command)
+        except ValueError:
+            return False
 
     # (a) Conservative literal scan: a visible `git` (or path-prefixed git)
     # token followed by force-push arguments anywhere in the command. This is
@@ -830,6 +845,15 @@ def main() -> int:
         return 0
 
     try:
+        command_bytes = len(command.encode("utf-8"))
+    except UnicodeEncodeError:
+        return _fail("tool_input.command must contain valid Unicode")
+    if command_bytes > _MAX_COMMAND_BYTES:
+        json.dump(_OVERSIZED_COMMAND_DENIAL, sys.stdout)
+        sys.stdout.write("\n")
+        return 0
+
+    try:
         syntax = subprocess.run(
             ["bash", "-n", "-s"],
             input=command,
@@ -844,10 +868,10 @@ def main() -> int:
         return _fail("tool_input.command has invalid Bash syntax")
 
     try:
-        _literal_tokens(command)
+        tokens = _literal_tokens(command)
     except ValueError:
         return _fail("tool_input.command is not valid shell text")
-    if _command_denied(command):
+    if _command_denied(command, tokens=tokens):
         json.dump(_DENIAL, sys.stdout)
         sys.stdout.write("\n")
     return 0

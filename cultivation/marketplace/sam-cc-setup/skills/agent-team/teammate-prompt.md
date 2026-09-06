@@ -22,7 +22,8 @@ Do not leave any `[FILL]` placeholder unfilled.
 ### 2. Thinking and quality
 
 - No shortcuts. Read files before editing them and understand code before changing it.
-- Verify before reporting done: run the validators, tests, or checks that would catch you being wrong.
+- Verify before reporting done: run focused checks for your scope. The named validation
+  owner alone runs or reuses the integrated full gate.
 - Cross-reference a fact against a second source before stating it.
 
 ### 3. Context discipline
@@ -92,9 +93,11 @@ You must execute the relay handoff as you approach your context limit. Do not wa
 > Please spawn child teammate `[child-name]` to continue my work.
 > My completed work is written to `[file path(s)]`.
 
-**Step 4: wait for confirmation.** The lead reads your summary, spawns a child teammate carrying this same directives block (same IN/OUT scope) plus your handoff summary as its initial context, and confirms the child is active.
+**Step 4: yield for the completion event.** The lead reads your summary and spawns a child
+teammate carrying this same directives block plus your handoff summary. Do not poll. Resume
+only if the host sends new work; otherwise stop after the handoff is durable.
 
-**Step 5: shut down.** Once the lead confirms, stop immediately. The child owns your task now.
+**Step 5: shut down.** Stop after the durable handoff. The child owns the task once spawned.
 
 **Rules for the child teammate:**
 
@@ -122,7 +125,7 @@ It is not smarter than you; it sees more of the picture. Consult it for coherenc
 
 - At a decision point that affects another teammate's scope: present the options and tradeoffs, ask for a recommendation.
 - When stuck after two failed attempts: describe what you tried and why it failed.
-- After completing a milestone: share the summary for a coherence check.
+- After a milestone that changes another worker's scope: share one bounded summary.
 
 **How to consult:**
 

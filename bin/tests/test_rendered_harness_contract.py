@@ -35,6 +35,8 @@ REQUIRED_RENDERED_PATHS = (
     "CLAUDE.md",
     ".agents/skills/catchup/SKILL.md",
     ".agents/skills/fable-prompting/SKILL.md",
+    ".agents/lib/validation.py",
+    ".agents/lib/stop_verify.py",
     ".claude/settings.json",
     ".claude/settings.local.json.template",
     ".claude/hooks/bash-audit-log.sh",
@@ -298,7 +300,13 @@ GOOD_CODEX_HOOKS = {
                         ),
                         "timeout": 10,
                         "statusMessage": "Checking Git push policy",
-                    }
+                    },
+                    {
+                        "type": "command",
+                        "command": 'bash "$(git rev-parse --show-toplevel)/.claude/hooks/pre-commit-gate.sh"',
+                        "timeout": 10,
+                        "statusMessage": "Checking validation evidence",
+                    },
                 ],
             },
             {
@@ -315,7 +323,13 @@ GOOD_CODEX_HOOKS = {
                     }
                 ],
             },
-        ]
+        ],
+        "Stop": [{"hooks": [{
+            "type": "command",
+            "command": 'bash "$(git rev-parse --show-toplevel)/.claude/hooks/stop-verify-gate.sh"',
+            "timeout": 30,
+            "statusMessage": "Checking completion evidence",
+        }]}],
     }
 }
 GOOD_CODEX_CONFIG = """\
@@ -1925,6 +1939,7 @@ class RenderedHarnessContractTest(unittest.TestCase):
             input=payload,
             text=True,
             capture_output=True,
+            timeout=10,
             check=False,
         )
 
@@ -2114,15 +2129,20 @@ class RenderedHarnessContractTest(unittest.TestCase):
         self.assertEqual(0, process.returncode, process.stderr)
         self.assertEqual(POLICY_DENIAL, json.loads(process.stdout))
 
-    def test_policy_process_fails_closed_past_recursion_limit(self) -> None:
-        # Nesting beyond the recursion limit must deny (fail closed), even with
-        # a harmless leaf, rather than fall through to allow.
+    def test_policy_process_enforces_exact_recursion_boundary(self) -> None:
+        # Depth 10 is the last allowed safe wrapper. Depth 11 must fail closed.
         command = "echo safe"
-        for _ in range(14):
+        for depth in range(1, 12):
             command = "sh -c " + shlex.quote(command)
-        process = self.run_policy(self.policy_payload(command))
-        self.assertEqual(0, process.returncode, process.stderr)
-        self.assertEqual(POLICY_DENIAL, json.loads(process.stdout))
+            if depth not in {10, 11}:
+                continue
+            with self.subTest(depth=depth):
+                process = self.run_policy(self.policy_payload(command))
+                self.assertEqual(0, process.returncode, process.stderr)
+                if depth == 10:
+                    self.assertEqual("", process.stdout)
+                else:
+                    self.assertEqual(POLICY_DENIAL, json.loads(process.stdout))
 
     def test_policy_process_allows_wrapper_neighbors_without_force(self) -> None:
         # Wrapper unwrapping must not over-deny wrappers around safe commands.
@@ -2220,6 +2240,16 @@ class RenderedHarnessContractTest(unittest.TestCase):
                         "hook_event_name": "PreToolUse",
                         "tool_name": "Bash",
                         "tool_input": {"command": 7},
+                    }
+                ),
+            ),
+            (
+                "invalid Unicode command",
+                json.dumps(
+                    {
+                        "hook_event_name": "PreToolUse",
+                        "tool_name": "Bash",
+                        "tool_input": {"command": "\ud800"},
                     }
                 ),
             ),

@@ -2,10 +2,9 @@
 name: ship
 disable-model-invocation: true
 description: >
-  Orchestrates the full shipping pipeline in strict order: session-critique, then
-  validate, then commit, then PR, then a handoff completion record.
-  Use when work is complete and ready to ship. Enforces ordering to prevent
-  premature commits and skipped critiques. Accepts optional argument
+  Use when work is complete and ready to ship through risk-based independent
+  review, deterministic validation, commit, PR, and a completion record. Accepts
+  optional argument
   'critique-only' to run just the critique step. NOT for mid-implementation
   checks (use /validate), code review without shipping (use /code-review), or
   committing without the full pipeline.
@@ -14,7 +13,8 @@ argument-hint: "[critique-only]"
 
 # Ship Pipeline
 
-Strict-ordering orchestrator. Runs five stages in sequence, halting on failure.
+Strict-ordering orchestrator. Runs five stages in sequence. It reuses evidence only when
+the content fingerprint and criteria match.
 
 Requires the `session-critique` and `validate` skills, plus `sam_handoff` for the
 completion record.
@@ -26,52 +26,54 @@ completion record.
 
 ## Hard Rules
 
-1. **Never skip or reorder stages.** The sequence is: critique -> validate -> commit -> PR -> handoff record.
+1. **Never reorder stages.** The sequence is: review decision -> validate -> commit -> PR -> handoff record.
 2. **If stage 1 or 2 fails, do NOT proceed to stage 3.** Fix findings first.
 3. **Each stage uses the existing skill's full logic.** Where a stage names a skill, invoke the skill instead of reimplementing it inline.
 4. **Report status between stages.** After each stage completes, state what passed and what's next.
 
 ## Pipeline
 
-### Stage 1: Session Critique
+### Stage 1: Independent Review Decision
 
-Invoke `/session-critique`.
+Resolve a fixed diff fingerprint. Reuse a durable independent review only when it names
+that fingerprint and the same criteria.
 
-This spawns an advisor-pattern agent team that adversarially reviews all work in the current session **against the decisions the user made during it**. It surfaces findings for decision-drift, regressions, over-engineering, dangling references, and scope hygiene.
+Invoke `/session-critique` when the diff affects security, a trust boundary, architecture,
+or several subsystems, or when the user asked for independent review. Keep one aggregate
+review. For routine changes, record `review skipped: routine scope` and continue.
 
 **Gate:** All BLOCK/HIGH/MEDIUM findings must be resolved (fixed or explicitly dismissed by the user) before proceeding; an unresolved BLOCK halts the pipeline. If the user dismisses a finding, record the dismissal reason.
 
-**If `critique-only` was passed:** Stop here. Report findings and exit. Do not proceed to Stage 2.
+**If `critique-only` was passed:** Stop here. Report the reused or new findings and exit.
 
 ### Stage 2: Validate
 
+Confirm the changed paths belong to this logical change, then stage only those paths.
+The validator fingerprints the Git index, so staging must happen before validation.
+
+```bash
+git status --short
+git diff --stat HEAD
+git add <paths>
+git diff --cached --stat
+```
+
 Invoke `/validate`.
 
-This runs the build-validator gate through the validate skill.
+This runs or reuses the one content-bound gate through the validate skill. Do not run a
+standalone full suite, smoke test, or validator agent beside it.
 
 **Gate:** The gate verdict must be PASS. On failure, enter the skill's fix loop. Max 3 iterations. After 3 fails, halt and escalate to the user.
 
 ### Stage 3: Commit
 
-Commit inline with git. In a project rendered from Loam, the commit gate is the
-sentinel trio: `.validation_passed` is written by
-`.claude/hooks/run-validate-waves.sh`, removed by `sentinel-cleanup.sh` on the
-next edit, and required by `pre-commit-gate.sh` on `git commit`. When that script
-exists, run `.claude/hooks/run-validate-waves.sh` in its own Bash call before the
-commit so the gate has a fresh sentinel. In a project bootstrapped by
-`/bootstrap-cc-setup`, the native git pre-commit hook applies instead and
-independently re-runs the fast deterministic checks, failing the commit if any
-fail.
+Commit inline with git. Run the shared validator's `check` command immediately before the
+commit. If the fingerprint changed, return to Stage 2 before attempting the commit. Do
+not use a failed commit attempt to discover a known boundary mismatch.
 
 ```bash
 git status --short
-git diff --stat HEAD
-```
-
-Stage only the files belonging to one logical change, then commit:
-
-```bash
-git add <paths>
+git diff --cached --stat
 git commit -m "<type>: <subject>"
 ```
 
@@ -103,7 +105,7 @@ record, so no more hand-pasted summaries.
 
 | Failure | Action |
 |---------|--------|
-| Stage 1 finds HIGH/MEDIUM issues | Fix findings, re-run Stage 1 |
+| Stage 1 finds HIGH/MEDIUM issues | Fix findings; review again only after material changes or for a named unresolved risk |
 | Stage 2 validation fails | Enter fix loop (max 3 iterations), re-run Stage 2 |
 | Stage 3 commit blocked by the pre-commit hook | Return to Stage 2, fix the reported failures, retry |
 | Stage 4 push fails | Report error, do NOT force push |
