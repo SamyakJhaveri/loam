@@ -24,7 +24,7 @@ design process and hands an approved design to the local `writing-plans` skill.
 
 - Compare candidates on the task THIS project actually performs, not on generic benchmarks. Benchmarks are directional signals, never guarantees.
 - Never report a number you did not compute or fetch this session; version facts, pricing, and API behavior must come from a current source, not memory.
-- The deliverable is bounded: at most 4 candidates, at most 5 assumptions to test, one recommendation.
+- The deliverable is bounded: compare only the candidates genuinely in play, test only the assumptions that would change the answer, and end with one recommendation.
 
 ## Steps
 

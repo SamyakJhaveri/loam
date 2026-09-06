@@ -12,8 +12,6 @@ skilled but has no prior context for the repository or problem. Give them exact 
 interfaces, code, checks, expected results, and small tasks. Use DRY, YAGNI, test-driven
 development, and frequent commits.
 
-**Announce at start:** "I'm using the writing-plans skill to create the implementation plan."
-
 **Input:** An approved design document or complete requirements.
 
 **Save plans to:** `docs/plans/YYYY-MM-DD-<feature-name>.md`

@@ -160,8 +160,8 @@ It only suggests. The user is the decision maker on what becomes project policy.
 
 ## Context Management
 
-This skill reads git state and conversation context. It should NOT launch subagents
-or perform deep exploration. The reflection is generated from what's already in context.
+Generate the reflection from what is already in this session's context and git state.
+Fresh exploration would describe the repository, not the session.
 
-Total output to main conversation: the reflection file path + the 6-line summary above.
+Keep the conversation output to the file path and a short summary.
 The reflection content itself is written to disk, not pasted into the conversation.

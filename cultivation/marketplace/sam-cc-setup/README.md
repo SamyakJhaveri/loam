@@ -116,7 +116,8 @@ It does not touch either per-plugin version field:
 - Each plugin's own `.claude-plugin/plugin.json` carries its own `version`.
 
 These plugin versions are maintained by hand. The repository contract tests require both
-`sam-cc-setup` fields to be `0.5.0`. The top-level `VERSION` remains the independent
+`sam-cc-setup` version fields to match each other and the value asserted in
+`bin/tests/test_marketplace_skill_routes.py`. The top-level `VERSION` remains the independent
 Copier template version.
 
 ### Before you run bin/release.sh

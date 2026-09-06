@@ -18,7 +18,7 @@
     },
     {
       "name": "impeccable",
-      "description": "UI polish workflow (vendored bundle; kept per 2026-08 rebuild ledger ruling)",
+      "description": "UI polish workflow: deterministic anti-pattern rules plus an LLM critique. Vendored from pbakaus/impeccable, Apache-2.0.",
       "version": "0.1.0",
       "source": "./impeccable",
       "author": {
@@ -101,7 +101,7 @@
     },
     {
       "name": "deer-flow-public",
-      "description": "Deer Flow public skills (SHA-pinned via git-subdir; SkillSpector-vetted 2026-08-10, static scan - evidence recorded in the private setup log). Only vetted-clean, collision-free skills enabled; 16 flagged + 3 name-collided skills withheld pending owner verdicts. claude-to-deerflow (withheld) additionally requires a running DeerFlow backend. Installs DISABLED (defaultEnabled:false) - enable to trial.",
+      "description": "Deer Flow public skills from bytedance/deer-flow, SHA-pinned via git-subdir. Only the vetted, collision-free skills are enabled. Installs DISABLED (defaultEnabled:false) - enable to trial.",
       "strict": false,
       "defaultEnabled": false,
       "license": "MIT",
