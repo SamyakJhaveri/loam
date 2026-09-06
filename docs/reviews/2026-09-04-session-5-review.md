@@ -140,7 +140,7 @@ Verified OK, with evidence from the workers' probes:
 - shellcheck: the three hooks are clean; `loam-attach.sh` has only the SC1091 info every `bin/` script that sources `lib.sh` produces.
 - `harness-smoke.sh:43-45` now matches its comment (dirty seed exits 1). The lost log row on that exit matches the two existing early exits at lines 51 and 57, and no automated caller exists.
 - `verify-template.sh:228-235` follows the stage 8 shape; the summary is a bare `FAIL -ne 0` check, so no count can drift.
-- `~/Desktop/teach-parbench` is at its original seven entries with no `.claude` or `.gitignore` residue.
+- a disposable attach-test directory is at its original seven entries with no `.claude` or `.gitignore` residue.
 - `~/Desktop/distbench` has no modified tracked file and no new commit (`410c07e`); the three untracked files there are personal exports with today's date, not from this session.
 
 Lower-severity correctness notes, not blocking:
@@ -176,7 +176,7 @@ Coverage, with the log's stated reason for each deviation:
 | `seed/agent-parity.toml`, mirror or unsupported (489) | DONE, see fix 4 | `seed/agent-parity.toml:1-63` |
 | parity as verify-template stage 9 (489) | DONE | `bin/verify-template.sh:228-235` |
 | three sentinel hooks copied and generalized, wired, gitignored (490) | DONE | `seed/.claude/hooks/`, `seed/.claude/settings.json`, `seed/.gitignore.jinja:44`; 13 tests |
-| `bin/loam-attach.sh`, refuse without `--force`, test on teach-parbench (491) | DONE, see fixes 1 and 2 | `bin/loam-attach.sh`; `docs/SYNC.md:17-22`; log line 632 |
+| `bin/loam-attach.sh`, refuse without `--force`, test on a disposable directory (491) | DONE, see fixes 1 and 2 | `bin/loam-attach.sh`; `docs/SYNC.md:17-22`; log line 632 |
 | distbench archive note, not edited (492) | DONE | `docs/2026-09-03-distbench-archive-note.md`; decision (e) moves it out of gitignored `docs/plans/` |
 | root `AGENTS.md:63-64` overlap (493) | DEVIATED, sound | no-op; session 2 removed the seed copies (grep of `seed/AGENTS.md.jinja` is empty) |
 | harness-smoke comment vs behavior (493) | DONE | `bin/harness-smoke.sh:43-45` |
