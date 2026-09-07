@@ -104,14 +104,13 @@ repo-side rows measured in the repo itself.
 |---|---|---|
 | Hooks shipped in `.claude/hooks/` | 15 | 2 |
 | Hooks on a tool matcher | 11 | 0 |
-| Hook events per Bash call | 7 (about 414 ms) | 0 (about 0 ms) |
+| Hook events per Bash call | 414 ms (DESIGN, 5 hooks); 7 `PreToolUse` entries in settings.json | 0 (about 0 ms) |
 | Hook runs per Edit or Write | 1 ruff run | 0 |
 | Always-on prose bytes (`CLAUDE.md` + `AGENTS.md`) | 7862 | 1125 |
 | Check wall time, one script | 207 s (`bin/verify-template.sh`) | 5 s local, 7 s in CI |
 | Seed hook and lib lines | 2309 | 71 |
 | `bin/` plus `bin/tests/` lines | 11377 | 1525 |
 | Marketplace skills shipped | 26 | 3 |
-| Ship after merge | hours to days | not measured until the owner merges and runs `bin/release.sh` |
 
 Token figures anywhere in this file are byte counts divided by four, not a
 tokenizer result.
