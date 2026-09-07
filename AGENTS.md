@@ -1,4 +1,4 @@
-# AGENTS.md — Loam
+# AGENTS.md - Loam
 
 > The shared prose home for agents working on Loam.
 > Claude Code imports this file from `CLAUDE.md`. Codex reads it directly.
@@ -25,8 +25,8 @@ uvx copier copy --trust gh:samyakjhaveri/loam ./my-project
 # Pull the latest released template into an existing project.
 cd my-project && uvx copier update --trust
 
-# Verify Loam before a commit or release.
-bin/verify-template.sh
+# Check Loam before a commit or release.
+bin/check
 ```
 
 ## Layout
@@ -35,11 +35,11 @@ bin/verify-template.sh
 |------|---------|
 | `seed/` | Copier source. Everything here renders into projects. |
 | `seed/.agents/skills/` | Skills shared by Claude Code and Codex. |
-| `seed/.claude/` | Claude Code hooks and settings. |
-| `seed/.codex/` | Codex configuration, hook policy, and execution rules. |
+| `seed/.claude/` | Claude Code settings, deny rules, and two hooks. |
+| `seed/.codex/` | Codex configuration and execution rules. |
 | `cultivation/marketplace/` | Optional plugin agents, skills, hooks, and bundles. |
-| `cultivation/wip/` | Staging for assets with no placement verdict. New files are ignored by default; some parked research assets remain tracked. |
-| `bin/` | Verification, release, and intellectual-property checks. |
+| `cultivation/parked/` | Skills, agents, and hooks removed from the shipped plugin. Not installed. |
+| `bin/` | Check, release, and intellectual-property tooling. |
 | `docs/` | Current template documentation and historical design records. |
 | `copier.yml` | Copier questions, exclusions, and post-render tasks. |
 | `VERSION` | Template release version. |
@@ -50,15 +50,14 @@ bin/verify-template.sh
    `main`. Changes to seed behavior, hooks, `copier.yml`, or releases use a branch
    and pull request.
 2. Keep rendered content generic. Project-specific material stays outside `seed/`.
-3. Run `bin/verify-template.sh` before every commit. Require
-   `verify-template: PASSED`.
+3. Run `bin/check` before every commit. Require `check: PASSED`.
 4. Treat source and command output as authority. Repair prose when it disagrees.
 5. Keep one behavior change per session.
 6. Keep one directive in one home. Read `docs/ASSET-LAYERS.md` before placing a
    new asset.
 7. Give one integration owner the final source snapshot. Give one validation
-   owner the single full `bin/verify-template.sh` run for that snapshot. Other
-   workers run focused checks and return bounded reports.
+   owner the single full `bin/check` run for that snapshot. Other workers run
+   focused checks and return bounded reports.
 
 ## Gotchas
 
@@ -71,12 +70,11 @@ bin/verify-template.sh
 
 | Resource | Read when |
 |----------|-----------|
-| `bin/rendered_harness_contract.py`, `bin/tests/test_rendered_harness_contract.py` | Changing the Rendered Harness Contract. |
+| `seed/docs/HARNESS.md` | Changing hooks, settings, or the deny lists; or needing the accepted risks. |
 | `docs/ASSET-LAYERS.md` | Deciding where an agent asset belongs. |
 | `docs/SYNC.md` | Updating projects or promoting a reusable asset. |
 | `docs/BOOTSTRAP.md`, `docs/COPIER.md` | Changing bootstrap or update behavior. |
-| `docs/specs/rebuild-structure-design.md` | Needing the rationale for the current tree. |
-| `docs/specs/rebuild-research/` | Checking the research behind the rebuild. |
+| `docs/archive/specs/rebuild-structure-design.md` | Needing the rationale for the current tree. |
 
 ## Agent skills
 

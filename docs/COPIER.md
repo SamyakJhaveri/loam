@@ -38,11 +38,11 @@ The public repo restarted history at v1.0.0, so older `_commit` refs no longer r
 **Copier always resolves the latest tag, never main's HEAD.** Push without tagging and nothing ships.
 
 ```bash
-bin/release.sh 5.0.0    # verify gate + IP sweep, bump VERSION, commit, tag, push
+bin/release.sh 5.0.0    # green CI run + IP sweep, bump VERSION, commit, tag, push
 uvx copier copy --trust --vcs-ref v5.0.0 gh:samyakjhaveri/loam ./proj   # pin a version
 ```
 
-Use `--vcs-ref=HEAD` against a local clone to test unreleased changes (this is what `bin/verify-template.sh` does).
+Use `--vcs-ref=HEAD` against a local clone to test unreleased changes (this is what the render smoke in `bin/check` does).
 
 ## Copier visibility map
 

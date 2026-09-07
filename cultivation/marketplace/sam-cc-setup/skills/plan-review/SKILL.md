@@ -1,13 +1,12 @@
 ---
 name: plan-review
+disable-model-invocation: true
 description: >
-  Run the merged blind plan review (correctness checklist + elegance gate in one
-  agent) on a plan, spec, or design doc before execution. Accepts the artifact
-  path as the argument. Use in a fresh session on a plan authored earlier, or
-  before executing any non-trivial or hard-to-reverse plan.
-  NOT for: reviewing shipped code or
-  diffs (use /code-review), or reviews where the author's rationale must be
-  weighed (this flow deliberately withholds it).
+  Run the merged blind plan review (correctness checklist + elegance gate in one agent)
+  on a plan, spec, or design doc before execution. Accepts the artifact path as the argument.
+  Use in a fresh session on a plan authored earlier, or before executing any non-trivial or
+  hard-to-reverse plan. NOT for reviewing shipped code or diffs (use /code-review), or reviews
+  where the author's rationale must be weighed (this flow deliberately withholds it).
 argument-hint: <path-to-plan>
 ---
 

@@ -1,28 +1,28 @@
 # Contributing to Loam
 
-Thanks for your interest! Loam is a Copier template — the things it ships live under
-`seed/`, and the repo runs on its own config via the `.claude → seed/.claude` symlink.
+Thanks for your interest! Loam is a Copier template; the things it ships live under
+`seed/`, and the repo runs on its own config via the `.claude -> seed/.claude` symlink.
 
 ## Development setup
 
 ```bash
 git clone https://github.com/samyakjhaveri/loam && cd loam
-bin/verify-template.sh   # renders and checks the complete harness; expect "verify-template: PASSED"
+bin/check   # ruff, shell syntax, tests, plugin validate, render smoke; expect "check: PASSED"
 ```
 
 Requirements: [Copier](https://copier.readthedocs.io/) >= 9.4.0 (`uvx copier`), `python3`, `bash`, the Claude Code and Codex CLIs, and Ruff.
 Missing agent CLIs fail the gate; `LOAM_ALLOW_MISSING_AGENT_CLIS=1` permits a reduced local run (CI never sets it).
 
-**Windows note:** template *development* relies on the `.claude → seed/.claude` symlink.
+**Windows note:** template *development* relies on the `.claude -> seed/.claude` symlink.
 Use WSL, or enable Developer Mode and `git config core.symlinks true` before cloning.
-Rendered projects are unaffected — Copier writes real directories.
+Rendered projects are unaffected: Copier writes real directories.
 
 ## Making changes
 
-- **Docs, content, small fixes** → commit directly to `main` (or open a PR if you're external).
-- **Behavior changes** (`seed/` guidance, skills, hooks, policy, `copier.yml`, or release tooling) → branch + PR, always.
-- Run `bin/verify-template.sh` before every PR. CI runs it too; a red render blocks merge.
-- Before merging any PR, run `bash bin/verify-template.sh && bash bin/ip-sweep.sh`.
+- **Docs, content, small fixes**: commit directly to `main` (or open a PR if you're external).
+- **Behavior changes** (`seed/` guidance, skills, hooks, policy, `copier.yml`, or release tooling): branch and PR, always.
+- Run `bin/check` before every PR. CI runs the same script; a red run blocks merge.
+- Before merging any PR, run `bin/check && bash bin/ip-sweep.sh`.
   Without `bin/.ip-terms`, the non-strict IP sweep warns that it skips the content
   sweep and can still pass.
 - Skills follow the [agentskills.io](https://agentskills.io/specification) SKILL.md format.
@@ -46,10 +46,10 @@ Promotion PRs should state which project battle-tested the skill and what it was
 Copier resolves from **git tags**, not HEAD. After merging significant changes:
 
 ```bash
-bin/release.sh <version>   # bumps VERSION, tags, pushes — CI verifies and publishes the release
+bin/release.sh <version>   # needs a green CI run on HEAD; runs the IP sweep, bumps VERSION, tags, pushes
 ```
 
 ## Reporting issues
 
-Open a GitHub issue with your Copier version and the output of
-`bin/verify-template.sh` if the template fails to render.
+Open a GitHub issue with your Copier version and the output of `bin/check`
+if the template fails to render.
