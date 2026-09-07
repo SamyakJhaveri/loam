@@ -1,24 +1,31 @@
-# Repo-scoped Codex configuration for this project.
-# NOTE: this whole layer is inert until you mark the project trusted in Codex
-# and review hooks via /hooks. See AGENTS.md "Codex note".
-
-default_permissions = "project-workspace"
+# Repo-scoped Codex config. Inert until the project is marked trusted in Codex.
+# No sandbox_mode key: that legacy key disables named permission profiles.
+# default_permissions is a TOP-LEVEL key and MUST stay above the first [table]
+# header. In TOML a bare key written after [agents] would bind to that table
+# (agents.default_permissions), the loam profile would never be selected, and the
+# .env denies would be inert.
+approval_policy = "never"
+default_permissions = "loam"
 
 [features]
-# Keep repository policy hooks active after the project is trusted.
-hooks = true
-# Codex multi-agent collaboration tools (documented as on by default; pinned
-# explicitly so a future default flip does not silently change behavior).
+# The Codex hook layer is gone; do not advertise hooks as active.
+hooks = false
 multi_agent = true
 
 [agents]
 max_concurrent_threads_per_session = 6
 
-[permissions.project-workspace]
-description = "Workspace editing with project secret-file denies."
+[permissions.loam]
+description = "Workspace editing with network on and .env denied."
 extends = ":workspace"
 
-[permissions.project-workspace.filesystem.":workspace_roots"]
+[permissions.loam.network]
+# Permit command network access (git, pip, npm). No proxy and no domains table:
+# domain rules only bind when features.network_proxy starts the proxy, so a
+# domains table here would be inert config.
+enabled = true
+
+[permissions.loam.filesystem.":workspace_roots"]
 ".env" = "deny"
 ".env*" = "deny"
 ".env.*" = "deny"

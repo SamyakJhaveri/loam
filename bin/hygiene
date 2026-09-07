@@ -47,9 +47,7 @@ def git_root() -> str:
 
 
 def tracked_basenames(root: str) -> set[str]:
-    r = subprocess.run(
-        ["git", "-C", root, "ls-files"], capture_output=True, text=True
-    )
+    r = subprocess.run(["git", "-C", root, "ls-files"], capture_output=True, text=True)
     if r.returncode != 0:
         return set()
     return {os.path.basename(line) for line in r.stdout.splitlines() if line}
@@ -137,7 +135,9 @@ def scan(scanner: Scanner) -> tuple[list, list]:
                 # A slug like SamyakJhaveri/loam is not a path: inside a span,
                 # only a filename-looking basename or a trailing slash counts.
                 base = os.path.basename(word.rstrip("/"))
-                if (word.endswith("/") or FILE_RE.match(base)) and scanner.missing_path(word):
+                if (word.endswith("/") or FILE_RE.match(base)) and scanner.missing_path(
+                    word
+                ):
                     record(dead, name, word)
             elif "." in word:
                 stem = word.rsplit(".", 1)[0]
@@ -183,9 +183,16 @@ def main() -> int:
         print("hygiene: not inside a git repository")
         return 0
     dead, absent_cmds = scan(Scanner(root))
-    report("Stale references in agent docs", dead, "path does not exist and is not gitignored")
-    report("Commands named in agent docs but not installed here", absent_cmds,
-           "informational; the doc may still be right")
+    report(
+        "Stale references in agent docs",
+        dead,
+        "path does not exist and is not gitignored",
+    )
+    report(
+        "Commands named in agent docs but not installed here",
+        absent_cmds,
+        "informational; the doc may still be right",
+    )
     if not dead and not absent_cmds:
         print("hygiene: no stale references in %s" % ", ".join(SCANNED))
     return 0
