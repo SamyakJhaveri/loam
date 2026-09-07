@@ -74,3 +74,12 @@ Why: real, but not the template's job.
 
 - F7: `bin/check`'s render smoke renders defaults only. A `project_kind=typescript` render is a LATER item (00-DECISIONS row 3 deferred it).
 - Every other open `FINDINGS.md` row (F1 to F6, F8, F9) targets a component v3 deletes or parks, so those fixes are moot. The tracker itself is archived at `docs/archive/findings/FINDINGS.md`.
+
+## S3-owned cleanups created by the v3 park
+
+These exist only because v3.0.0 parked code that other files still point at. Each must land before `cultivation/parked/` can be treated as inert reference material.
+
+- Move `cultivation/parked/sam-cc-setup/hooks/check_stale_counts.py` into `bin/`. Stage 7 of `bin/verify-template-stages.sh` executes it today, so the release gate depends on parked code.
+- Drop the parked mirror row for `cultivation/parked/sam-cc-setup/hooks/concurrent-checkout-guard.sh` from `DISTRIBUTION_MIRRORS` in `bin/rendered_harness_contract.py`, plus its five fixtures in `bin/tests/test_rendered_harness_contract.py`. The mirror no longer distributes anything, but it still forces every edit to the shipped seed hook to be copied into a parked file.
+- Delete or retarget the three tests in `bin/tests/test_agent_parity.py` that read `cultivation/parked/` skills (`validate`, `ship`, `agent-team`, `session-critique`, `codex-plan-review`). They assert seed prose agrees with content the plugin no longer ships, so they pass regardless of the plugin surface.
+- Bump the `sam-cc-setup` plugin version and add an `UPGRADING.md` entry before the v3.0.0 tag. v3 removed 23 skills, 5 agents, the plugin hooks, and the fanout workflow, but the ticket froze the `marketplace.json` entry, so installed consumers running `/plugin update` currently see no change.

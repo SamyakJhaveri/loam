@@ -1,1 +1,3 @@
 Skills, agents, hooks, and workflows removed from the shipped `sam-cc-setup` plugin in v3.0.0, plus the `impeccable` plugin and the never-dogfooded research lane. Kept for reference; not installed. Zero recorded use at parking (see the v3 audit).
+
+Two files here are still load-bearing, so do not delete this tree wholesale: `sam-cc-setup/hooks/check_stale_counts.py` runs as stage 7 of `bin/verify-template-stages.sh`, and `sam-cc-setup/hooks/concurrent-checkout-guard.sh` is pinned byte-identical to `seed/.claude/hooks/concurrent-checkout-guard.sh` by `DISTRIBUTION_MIRRORS` in `bin/rendered_harness_contract.py`. S3 owns both cleanups (see `docs/BACKLOG.md`).
