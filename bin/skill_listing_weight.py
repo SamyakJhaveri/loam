@@ -39,8 +39,6 @@ SOURCES = {
     "sam-cc-setup": {"skills": f"{_MP}/sam-cc-setup/skills",
                      "agents": f"{_MP}/sam-cc-setup/agents",
                      "workflows": f"{_MP}/sam-cc-setup/workflows", "gated": True},
-    "impeccable": {"skills": f"{_MP}/impeccable/skills", "agents": None,
-                   "workflows": None, "gated": False},
 }
 
 _FRONTMATTER = re.compile(r"^---\n(.*?)\n---", re.DOTALL)

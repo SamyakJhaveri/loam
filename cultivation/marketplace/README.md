@@ -2,7 +2,8 @@
 
 Install-on-demand plugin bundles for Loam-adjacent projects.
 Nothing here ships to bootstrapped projects by default; installs are explicit.
-Slimmed 2026-08-29 in the rebuild (audit: `docs/specs/rebuild-research/slim-audit-bundles.md`).
+Slimmed 2026-08-29 in the rebuild.
+Slimmed again in v3.0.0: `sam-cc-setup` keeps 3 skills and ships no hooks; everything else moved to `cultivation/parked/` (design law 7, burden of proof is on keeping).
 
 ## Install
 
@@ -15,9 +16,8 @@ claude plugin marketplace add /path/to/loam/cultivation/marketplace
 
 | Bundle | Contents | Notes |
 |--------|----------|-------|
-| `sam-cc-setup` | `brainstorming` -> `writing-plans`, merged plan review, technology selection, validation, Codex cross-model review, and bootstrap support | The Loam-owned setup plugin. Upstream-derived design skills retain their MIT notice in `sam-cc-setup/THIRD_PARTY_LICENSES/obra-superpowers.txt` |
-| `impeccable` | UI polish workflow | Vendored; kept per rebuild ledger ruling |
+| `sam-cc-setup` | `plan-review` (blind merged plan review, with the `plan-reviewer` agent), `codex-review` (cross-model second opinion), `surprise-me` (ranked, evidence-backed ideas) | The Loam-owned setup plugin. No hooks, no workflows |
 | `web-frontend-*`, `deer-flow-public` | External skills, SHA-pinned via `git-subdir` | Ship `defaultEnabled:false`; enable to trial. Licenses per entry in `marketplace.json`; a `LICENSE.upstream` file in a vendored bundle is authoritative |
 
-Removed 2026-08-29 (zero or near-zero survivors under the rebuild criteria): `meta-improvement`, `helpers` (surprise-me rehomed into sam-cc-setup), `business-process`, `planning-with-files`, `ui-ux-pro-max`, `understand-anything`.
-Earlier removals (ledger): `pocock-engineering`, `team-deliberation`, `code-review-graph`, and the research bundles.
+Parked in v3.0.0 (moved to `cultivation/parked/`, not installed): 23 `sam-cc-setup` skills, 5 unused agents, the plugin `hooks/` directory, the `plan-review-fanout` workflow, the upstream MIT notice that covered the parked design skills, and the whole `impeccable` plugin.
+Removed 2026-08-29: `meta-improvement`, `helpers`, `business-process`, `planning-with-files`, `ui-ux-pro-max`, `understand-anything`.
