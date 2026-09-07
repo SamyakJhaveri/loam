@@ -27,6 +27,13 @@ The output is a short ranked table of ideas plus one already-executed proof, nev
    worth less than one they can re-run. Prefer: quoting reproducible evidence verbatim, running a
    control experiment, machine-deriving a statistic, reframing existing facts. Reject: adjectives,
    promises without dates, anything that tunes an instrument toward the desired outcome.
+   Run the analogy move once:
+   (a) restate the goal's purpose in one sentence with no domain nouns;
+   (b) list who else serves that purpose with a different mechanism - three sources from this repo
+       or its dependencies, two from an adjacent field, at most one far. Near first: near sources
+       yield more usable ideas than far ones;
+   (c) for each source, one line mapping source relation to target relation, and one line naming
+       where the analogy breaks. No named break, no idea. Model the mechanism, never the nouns.
 4. **Check each idea against any policy or freeze line.** Mark it "do now" (tooling/framing side) or
    "commit for later" (frozen-artifact side, e.g. after a freeze lifts). An idea on the wrong side
    of the line becomes a named commitment, not an action.
@@ -41,10 +48,10 @@ The output is a short ranked table of ideas plus one already-executed proof, nev
 ## Scale modes
 
 - **Solo (default):** the 7-step process above, one context. Right for a daily "what am I missing".
-- **Panel (wide or high-stakes decisions):** fan out 3 fresh-context agents with deliberately
+- **Panel (wide or high-stakes decisions):** fan out 4 fresh-context agents with deliberately
   different lenses - a dormant-assets hunter (step 2 only), a reframing hunter (same facts, stronger
-  story), and an adversary (attacks the current plan and proposes what its holes imply) - then merge,
-  dedupe, and rank their ideas yourself.
+  story), an adversary (attacks the current plan and proposes what its holes imply), and an analogist
+  (the step-3 analogy move only) - then merge, dedupe, and rank their ideas yourself.
 
 ## Before spending on a winner
 
