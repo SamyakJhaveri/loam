@@ -448,7 +448,7 @@ class RenderedHarnessContractTest(unittest.TestCase):
         plugin_checkout_hook = self.write(
             self.source,
             (
-                "cultivation/marketplace/sam-cc-setup/hooks/"
+                "cultivation/parked/sam-cc-setup/hooks/"
                 "concurrent-checkout-guard.sh"
             ),
             canonical_hook,
@@ -510,7 +510,7 @@ class RenderedHarnessContractTest(unittest.TestCase):
         self.write(
             self.source,
             (
-                "cultivation/marketplace/sam-cc-setup/hooks/"
+                "cultivation/parked/sam-cc-setup/hooks/"
                 "concurrent-checkout-guard.sh"
             ),
             "different hook\n",
@@ -530,7 +530,7 @@ class RenderedHarnessContractTest(unittest.TestCase):
         paths = (
             "seed/.claude/hooks/concurrent-checkout-guard.sh",
             (
-                "cultivation/marketplace/sam-cc-setup/hooks/"
+                "cultivation/parked/sam-cc-setup/hooks/"
                 "concurrent-checkout-guard.sh"
             ),
         )
@@ -552,7 +552,7 @@ class RenderedHarnessContractTest(unittest.TestCase):
         self.build_good_fixture()
         canonical = self.source / "seed/.claude/hooks/concurrent-checkout-guard.sh"
         mirror = self.source / (
-            "cultivation/marketplace/sam-cc-setup/hooks/"
+            "cultivation/parked/sam-cc-setup/hooks/"
             "concurrent-checkout-guard.sh"
         )
         mirror.unlink()
@@ -573,7 +573,7 @@ class RenderedHarnessContractTest(unittest.TestCase):
     ) -> None:
         self.build_good_fixture()
         mirror = self.source / (
-            "cultivation/marketplace/sam-cc-setup/hooks/"
+            "cultivation/parked/sam-cc-setup/hooks/"
             "concurrent-checkout-guard.sh"
         )
         mirror.chmod(mirror.stat().st_mode & ~(stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH))
