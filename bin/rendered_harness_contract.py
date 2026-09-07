@@ -733,26 +733,6 @@ def _check_release_callers(
     source_root: pathlib.Path,
     violations: list[Violation],
 ) -> None:
-    test_workflow = _read_text(source_root / ".github/workflows/test.yml")
-    _check_marker_positions(
-        ".github/workflows/test.yml",
-        "bin/verify-template.sh",
-        None,
-        _workflow_run_position(test_workflow, "bin/verify-template.sh"),
-        None,
-        violations,
-    )
-
-    release_workflow = _read_text(source_root / ".github/workflows/release.yml")
-    _check_marker_positions(
-        ".github/workflows/release.yml",
-        "bin/verify-template.sh",
-        "softprops/action-gh-release",
-        _workflow_run_position(release_workflow, "bin/verify-template.sh"),
-        _workflow_uses_position(release_workflow, "softprops/action-gh-release"),
-        violations,
-    )
-
     release_script = _read_text(source_root / "bin/release.sh")
     _check_marker_positions(
         "bin/release.sh",

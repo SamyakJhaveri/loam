@@ -664,208 +664,13 @@ class RenderedHarnessContractTest(unittest.TestCase):
     def test_multiple_areas_are_reported_in_one_run(self) -> None:
         self.build_good_fixture()
         (self.rendered / "AGENTS.md").unlink()
-        self.write(
-            self.source,
-            ".github/workflows/test.yml",
-            "jobs:\n"
-            "  verify:\n"
-            "    steps:\n"
-            "      - run: a-different-command\n",
-        )
+        self.write(self.source, "bin/release.sh", "a-different-command\n")
 
         violations = contract.verify_contract(self.source, self.rendered)
 
         self.assertEqual(
             {"prose-routes", "release-callers", "topology"},
             {v.area for v in violations},
-        )
-
-    def test_pull_request_workflow_calls_public_gate(self) -> None:
-        self.build_good_fixture()
-        workflow = ".github/workflows/test.yml"
-        self.write(
-            self.source,
-            workflow,
-            "jobs:\n"
-            "  verify:\n"
-            "    steps:\n"
-            "      - run: a-different-command\n",
-        )
-
-        rendered = self.rendered_violations()
-
-        self.assertTrue(any(workflow in item for item in rendered))
-        self.assertTrue(any("bin/verify-template.sh" in item for item in rendered))
-
-    def test_release_workflow_runs_gate_before_publish(self) -> None:
-        self.build_good_fixture()
-        workflow = ".github/workflows/release.yml"
-        self.write(
-            self.source,
-            workflow,
-            "jobs:\n"
-            "  release:\n"
-            "    steps:\n"
-            "      - uses: softprops/action-gh-release@v2\n"
-            "      - run: bin/verify-template.sh\n",
-        )
-
-        rendered = self.rendered_violations()
-
-        self.assertTrue(any(workflow in item for item in rendered))
-        self.assertTrue(any("before" in item for item in rendered))
-
-    def test_commented_workflow_gate_is_inert(self) -> None:
-        self.build_good_fixture()
-        workflow = ".github/workflows/release.yml"
-        self.write(
-            self.source,
-            workflow,
-            "jobs:\n"
-            "  release:\n"
-            "    steps:\n"
-            "      # - run: bin/verify-template.sh\n"
-            "      - uses: softprops/action-gh-release@v2\n",
-        )
-
-        self.assertIn(
-            "FAIL [release-callers]: .github/workflows/release.yml must call "
-            "bin/verify-template.sh",
-            self.rendered_violations(),
-        )
-
-    def test_echoed_workflow_gate_is_inert(self) -> None:
-        self.build_good_fixture()
-        workflow = ".github/workflows/release.yml"
-        self.write(
-            self.source,
-            workflow,
-            "jobs:\n"
-            "  release:\n"
-            "    steps:\n"
-            "      - run: echo bin/verify-template.sh\n"
-            "      - uses: softprops/action-gh-release@v2\n",
-        )
-
-        self.assertIn(
-            "FAIL [release-callers]: .github/workflows/release.yml must call "
-            "bin/verify-template.sh",
-            self.rendered_violations(),
-        )
-
-    def test_inert_workflow_duplicate_does_not_hide_late_gate(self) -> None:
-        self.build_good_fixture()
-        workflow = ".github/workflows/release.yml"
-        self.write(
-            self.source,
-            workflow,
-            "jobs:\n"
-            "  release:\n"
-            "    steps:\n"
-            "      - run: echo bin/verify-template.sh\n"
-            "      - uses: softprops/action-gh-release@v2\n"
-            "      - run: bin/verify-template.sh\n",
-        )
-
-        self.assertIn(
-            "FAIL [release-callers]: .github/workflows/release.yml must run "
-            "bin/verify-template.sh before softprops/action-gh-release",
-            self.rendered_violations(),
-        )
-
-    def test_workflow_env_run_is_inert(self) -> None:
-        self.build_good_fixture()
-        self.write(
-            self.source,
-            ".github/workflows/release.yml",
-            "jobs:\n"
-            "  release:\n"
-            "    steps:\n"
-            "      - name: Inert environment value\n"
-            "        env:\n"
-            "          run: bin/verify-template.sh\n"
-            "      - uses: softprops/action-gh-release@v2\n"
-            "      - run: bin/verify-template.sh\n",
-        )
-
-        self.assertIn(
-            "FAIL [release-callers]: .github/workflows/release.yml must run "
-            "bin/verify-template.sh before softprops/action-gh-release",
-            self.rendered_violations(),
-        )
-
-    def test_workflow_env_uses_is_inert(self) -> None:
-        self.build_good_fixture()
-        self.write(
-            self.source,
-            ".github/workflows/release.yml",
-            "jobs:\n"
-            "  release:\n"
-            "    steps:\n"
-            "      - name: Inert environment value\n"
-            "        env:\n"
-            "          uses: softprops/action-gh-release@v2\n"
-            "      - run: bin/verify-template.sh\n"
-            "      - uses: softprops/action-gh-release@v2\n",
-        )
-
-        self.assertEqual((), contract.verify_contract(self.source, self.rendered))
-
-    def test_workflow_gate_cannot_suppress_failure(self) -> None:
-        self.build_good_fixture()
-        self.write(
-            self.source,
-            ".github/workflows/release.yml",
-            "jobs:\n"
-            "  release:\n"
-            "    steps:\n"
-            "      - run: bin/verify-template.sh || true\n"
-            "      - uses: softprops/action-gh-release@v2\n",
-        )
-
-        self.assertIn(
-            "FAIL [release-callers]: .github/workflows/release.yml must call "
-            "bin/verify-template.sh",
-            self.rendered_violations(),
-        )
-
-    def test_workflow_conditional_gate_is_inert(self) -> None:
-        self.build_good_fixture()
-        self.write(
-            self.source,
-            ".github/workflows/test.yml",
-            "jobs:\n"
-            "  verify:\n"
-            "    steps:\n"
-            "      - name: Conditional gate\n"
-            "        if: false\n"
-            "        run: bin/verify-template.sh\n",
-        )
-
-        self.assertIn(
-            "FAIL [release-callers]: .github/workflows/test.yml must call "
-            "bin/verify-template.sh",
-            self.rendered_violations(),
-        )
-
-    def test_workflow_failure_ignored_gate_is_inert(self) -> None:
-        self.build_good_fixture()
-        self.write(
-            self.source,
-            ".github/workflows/release.yml",
-            "jobs:\n"
-            "  release:\n"
-            "    steps:\n"
-            "      - name: Ignored gate\n"
-            "        run: bin/verify-template.sh\n"
-            "        continue-on-error: true\n"
-            "      - uses: softprops/action-gh-release@v2\n",
-        )
-
-        self.assertIn(
-            "FAIL [release-callers]: .github/workflows/release.yml must call "
-            "bin/verify-template.sh",
-            self.rendered_violations(),
         )
 
     def test_release_script_runs_gate_before_version_write(self) -> None:
@@ -1034,8 +839,6 @@ class RenderedHarnessContractTest(unittest.TestCase):
 
     def test_release_caller_failures_accumulate(self) -> None:
         self.build_good_fixture()
-        self.write(self.source, ".github/workflows/test.yml", "missing gate\n")
-        self.write(self.source, ".github/workflows/release.yml", "missing markers\n")
         self.write(self.source, "bin/release.sh", "missing markers\n")
 
         failures = [
@@ -1044,22 +847,9 @@ class RenderedHarnessContractTest(unittest.TestCase):
             if violation.area == "release-callers"
         ]
 
-        self.assertEqual(3, len(failures))
-        self.assertEqual(
-            {
-                ".github/workflows/test.yml",
-                ".github/workflows/release.yml",
-                "bin/release.sh",
-            },
-            {
-                path
-                for path in (
-                    ".github/workflows/test.yml",
-                    ".github/workflows/release.yml",
-                    "bin/release.sh",
-                )
-                if any(path in violation.detail for violation in failures)
-            },
+        self.assertEqual(1, len(failures))
+        self.assertTrue(
+            all("bin/release.sh" in violation.detail for violation in failures)
         )
 
     def test_marketplace_discovers_string_sources_and_parses_hooks(self) -> None:

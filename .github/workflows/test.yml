@@ -1,21 +1,24 @@
 name: Test
-# CI smoke test 2026-09-01: first live run of the agent-CLI + ruff install steps.
 
 on:
+  push:
+    branches: [main]
   pull_request:
     branches: [main]
 
 concurrency:
-  group: test-${{ github.event.pull_request.number }}
+  group: check-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
+  # Job id is the required-status context in the branch ruleset. Keep it `verify`.
   verify:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
         with:
+          fetch-depth: 0
           persist-credentials: false
 
       - name: Set up Python
@@ -42,5 +45,5 @@ jobs:
           git config --global user.name "CI"
           git config --global user.email "ci@loam"
 
-      - name: Verify template
-        run: bin/verify-template.sh
+      - name: Run check
+        run: bin/check
