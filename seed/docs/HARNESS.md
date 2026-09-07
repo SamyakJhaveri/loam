@@ -111,8 +111,13 @@ tokenizer result.
   `git clean -fdx -n` ran (dry run), while `rm -rf` and `rm -Rf` were denied. Codex
   agrees: `codex execpolicy check` returns no decision for either. Both deny
   lists cover the honest mistake, not a deliberate rewording.
-- "Where the host supports it" is load-bearing. On a Linux host without `socat`,
-  Claude Code prints `Sandbox disabled` at startup and runs unsandboxed, because
-  `failIfUnavailable` is false; `python3 -c "open('.env').read()"` then prints
-  the file. Install the sandbox dependencies, or treat the deny list as the only
+- "Where the host supports it" is load-bearing. With `bwrap` and `socat` present
+  the sandbox enforces: `python3 -c "open('.env').read()"` raises
+  `PermissionError`, and a write to `/tmp` fails with `Read-only file system`.
+  Drop `socat` and Claude Code prints `Sandbox disabled` at startup and runs
+  unsandboxed, because `failIfUnavailable` is false, and both commands then
+  succeed. Install the sandbox dependencies, or treat the deny list as the only
   file guard.
+- Under the sandbox, git writes its credential lock outside the workspace, so
+  `git ls-remote origin` prints `fatal: unable to get credential storage lock in
+  1000 ms: Read-only file system` on stderr and still exits 0. The line is noise.
