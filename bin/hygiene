@@ -1,0 +1,169 @@
+#!/usr/bin/env python3
+"""bin/hygiene - flag dead references in CLAUDE.md, AGENTS.md, STATE.md, HANDOFF.md. Advisory: always exits 0.
+
+Gitignored paths are local artifacts, not stale references, so they are skipped.
+Missing commands are reported separately, since an absent optional tool says nothing about the doc.
+Inline spans get the path and command rules; fenced blocks are path-checked on the first token of each line only.
+"""
+
+from __future__ import annotations
+
+import os
+import re
+import subprocess
+import sys
+from functools import lru_cache
+
+SCANNED = ["CLAUDE.md", "AGENTS.md", "STATE.md", "HANDOFF.md"]
+SPAN = re.compile(r"`([^`\n]+)`")
+BADCHARS = set("*{}$<>|()")
+CMD_RE = re.compile(r"^[A-Za-z][A-Za-z0-9_.+-]*$")
+# A slashless word is path-checked only when it ends in a known extension; other dotted words are names.
+FILE_RE = re.compile(
+    r"^[\w.+-]+\.(md|py|sh|json|jsonl|yml|yaml|toml|txt|js|ts|tsx|jsx|cfg|ini"
+    r"|lock|rules|css|html|rst|csv|sql|tex|bib|ipynb|env|log)$"
+)
+
+
+def git(*args: str) -> subprocess.CompletedProcess:
+    return subprocess.run(["git", *args], capture_output=True, text=True)
+
+
+def resolve(root: str, word: str) -> str:
+    w = word.rstrip("/") or "/"
+    if w.startswith("~"):
+        return os.path.expanduser(w)
+    return w if os.path.isabs(w) else os.path.join(root, w)
+
+
+@lru_cache(maxsize=None)
+def ignored(root: str, word: str) -> bool:
+    return git("-C", root, "check-ignore", "-q", "--", word).returncode == 0
+
+
+@lru_cache(maxsize=None)
+def cmd_missing(word: str) -> bool:
+    return (
+        subprocess.run(
+            ["bash", "-c", 'command -v -- "$1" >/dev/null 2>&1', "_", word]
+        ).returncode
+        != 0
+    )
+
+
+def missing_path(root: str, word: str) -> bool:
+    return not os.path.exists(resolve(root, word)) and not ignored(root, word)
+
+
+def skippable(word: str) -> bool:
+    return (
+        not word
+        or any(ch in word for ch in BADCHARS)
+        or word[0] in "-@#"
+        or word in SCANNED
+        or "://" in word
+        or word.startswith("www.")
+    )
+
+
+def scan(root: str) -> tuple[list, list]:
+    tracked = {
+        os.path.basename(line)
+        for line in git("-C", root, "ls-files").stdout.splitlines()
+        if line
+    }
+    dead: list[tuple[str, str]] = []
+    absent_cmds: list[tuple[str, str]] = []
+    seen: set[tuple[str, str]] = set()
+
+    def record(bucket, name, word):
+        if (name, word) not in seen:
+            seen.add((name, word))
+            bucket.append((name, word))
+
+    for name in SCANNED:
+        fp = os.path.join(root, name)
+        if not os.path.isfile(fp):
+            continue
+        text = open(fp, encoding="utf-8", errors="ignore").read()
+
+        for m in SPAN.finditer(text):
+            toks = m.group(1).split()
+            if not toks:
+                continue
+            raw = toks[0]
+            word = raw.rstrip(",.:;)")
+            if skippable(word) or (word.startswith("/") and word.count("/") == 1):
+                continue
+            if "/" in word:
+                # A slug like SamyakJhaveri/loam is not a path: only a filename-looking basename or a trailing slash counts.
+                base = os.path.basename(word.rstrip("/"))
+                if (word.endswith("/") or FILE_RE.match(base)) and missing_path(
+                    root, word
+                ):
+                    record(dead, name, word)
+            elif "." in word:
+                # Capitalized stems (Node.js, React.js) are product names unless the repo tracks such a file.
+                stem = word.rsplit(".", 1)[0]
+                named = not any(c.isupper() for c in stem) or word in tracked
+                if (
+                    FILE_RE.match(word)
+                    and named
+                    and word not in tracked
+                    and missing_path(root, word)
+                ):
+                    record(dead, name, word)
+            elif len(toks) >= 2 and CMD_RE.match(word):
+                if not raw.rstrip(",;)").endswith(":") and cmd_missing(word):
+                    record(absent_cmds, name, word)
+
+        in_fence = False
+        for line in text.splitlines():
+            if line.startswith("```"):
+                in_fence = not in_fence
+                continue
+            stripped = line.strip()
+            if not in_fence or not stripped or stripped.startswith("#"):
+                continue
+            word = stripped.split()[0].rstrip(",.:;)")
+            # Absolute and ~ paths inside a fence are machine-specific examples.
+            if "/" not in word or ":" in word or skippable(word) or word[0] in "/~":
+                continue
+            if FILE_RE.match(os.path.basename(word.rstrip("/"))) and missing_path(
+                root, word
+            ):
+                record(dead, name, word)
+
+    return dead, absent_cmds
+
+
+def report(title: str, rows: list[tuple[str, str]], note: str) -> None:
+    if rows:
+        print("%s: %d (%s)" % (title, len(rows), note))
+        for name, word in rows:
+            print("  %s: %s" % (name, word))
+
+
+def main() -> int:
+    root = git("rev-parse", "--show-toplevel").stdout.strip()
+    if not root:
+        print("hygiene: not inside a git repository")
+        return 0
+    dead, absent_cmds = scan(root)
+    report(
+        "Stale references in agent docs",
+        dead,
+        "path does not exist and is not gitignored",
+    )
+    report(
+        "Commands named in agent docs but not installed here",
+        absent_cmds,
+        "informational; the doc may still be right",
+    )
+    if not dead and not absent_cmds:
+        print("hygiene: no stale references in %s" % ", ".join(SCANNED))
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

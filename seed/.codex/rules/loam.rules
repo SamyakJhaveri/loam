@@ -1,0 +1,19 @@
+# Loam command policy for Codex. forbidden beats prompt beats allow.
+# Codex splits command chains itself; do not reimplement a shell parser.
+# Prefix rules match tokens: "--force" does not match "--force-with-lease",
+# so every destructive spelling is listed explicitly.
+prefix_rule(pattern = ["rm", "-rf"], decision = "forbidden", justification = "Recursive delete blocked.", match = ["rm -rf x"])
+prefix_rule(pattern = ["rm", "-fr"], decision = "forbidden", justification = "Recursive delete blocked.", match = ["rm -fr x"])
+prefix_rule(pattern = ["rm", "-Rf"], decision = "forbidden", justification = "Recursive delete blocked.", match = ["rm -Rf x"])
+prefix_rule(pattern = ["git", "push", "--force"], decision = "forbidden", justification = "Force push blocked.", match = ["git push --force origin main"])
+prefix_rule(pattern = ["git", "push", "-f"], decision = "forbidden", justification = "Force push blocked.", match = ["git push -f origin main"])
+prefix_rule(pattern = ["git", "push", "--force-with-lease"], decision = "forbidden", justification = "Force push blocked.", match = ["git push --force-with-lease origin main"])
+prefix_rule(pattern = ["git", "push", "--force-if-includes"], decision = "forbidden", justification = "Force push blocked.", match = ["git push --force-if-includes origin main"])
+prefix_rule(pattern = ["git", "reset", "--hard"], decision = "forbidden", justification = "Hard reset blocked.", match = ["git reset --hard HEAD"])
+prefix_rule(pattern = ["git", "clean", "-f"], decision = "forbidden", justification = "Force clean blocked.", match = ["git clean -f"])
+prefix_rule(pattern = ["git", "clean", "-d"], decision = "forbidden", justification = "Force clean blocked.", match = ["git clean -d"])
+prefix_rule(pattern = ["git", "clean", "-x"], decision = "forbidden", justification = "Force clean blocked.", match = ["git clean -x"])
+prefix_rule(pattern = ["git", "checkout", "."], decision = "forbidden", justification = "Whole-tree discard blocked.", match = ["git checkout ."])
+prefix_rule(pattern = ["git", "restore", "."], decision = "forbidden", justification = "Whole-tree restore blocked.", match = ["git restore ."])
+prefix_rule(pattern = ["git", "stash", "clear"], decision = "forbidden", justification = "Stash wipe blocked.", match = ["git stash clear"])
+prefix_rule(pattern = ["git", "stash", "drop"], decision = "forbidden", justification = "Stash drop blocked.", match = ["git stash drop"])

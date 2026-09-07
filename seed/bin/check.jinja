@@ -1,0 +1,28 @@
+#!/usr/bin/env bash
+# bin/check - the one check for {{ project_name }}.
+# Run it yourself; CI runs it on push and PR. Exit 0 means green.
+{% raw %}set -uo pipefail
+ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+cd "$ROOT"
+FAIL=0
+bad() { echo "FAIL: $*"; FAIL=1; }
+
+# No `mapfile` (bash 4+); macOS ships bash 3.2. Read into an indexed array.
+PY=()
+while IFS= read -r f; do PY+=("$f"); done < <(git ls-files '*.py')
+if [ "${#PY[@]}" -gt 0 ] && command -v ruff >/dev/null 2>&1; then
+  ruff check "${PY[@]}"          || bad "ruff check"
+  ruff format --check "${PY[@]}" || bad "ruff format --check"
+fi
+
+while IFS= read -r sh; do
+  [ -n "$sh" ] || continue
+  bash -n "$sh" || bad "bash -n $sh"
+done < <(git ls-files '*.sh')
+# Diff against the empty tree: HEAD vs working tree passes vacuously on a clean checkout.
+git diff --check "$(git hash-object -t tree /dev/null)" HEAD -- || bad "whitespace or conflict markers"
+
+if { [ -d tests ] || [ -d test ]; } && command -v pytest >/dev/null 2>&1; then pytest -q || bad "pytest"; fi
+
+if [ "$FAIL" -ne 0 ]; then echo "check: FAILED"; exit 1; fi
+echo "check: PASSED"{% endraw %}

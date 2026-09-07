@@ -1,31 +1,28 @@
-# Repo-scoped Codex configuration for this project.
-# NOTE: this whole layer is inert until you mark the project trusted in Codex
-# and review hooks via /hooks. See AGENTS.md "Codex note".
-
-default_permissions = "project-workspace"
+# Repo-scoped Codex config. Inert until the project is marked trusted in Codex.
+# No sandbox_mode key: that legacy key disables named permission profiles.
+# default_permissions must stay above the first [table]: after one it binds to that table and the profile never loads.
+approval_policy = "never"
+default_permissions = "loam"
 
 [features]
-# Keep repository policy hooks active after the project is trusted.
-hooks = true
-# Codex multi-agent collaboration tools (documented as on by default; pinned
-# explicitly so a future default flip does not silently change behavior).
+hooks = false
 multi_agent = true
 
 [agents]
 max_concurrent_threads_per_session = 6
 
-[permissions.project-workspace]
-description = "Workspace editing with project secret-file denies."
+[permissions.loam]
+description = "Workspace editing with network on and .env denied."
 extends = ":workspace"
 
-[permissions.project-workspace.filesystem.":workspace_roots"]
-".env" = "deny"
+[permissions.loam.network]
+# No domains table: domain rules only bind when features.network_proxy runs the proxy.
+enabled = true
+
+[permissions.loam.filesystem]
+# Linux and WSL cannot expand an unbounded ** deny glob; without this cap codex doctor warns per pattern (0.153.4).
+glob_scan_max_depth = 3
+
+[permissions.loam.filesystem.":workspace_roots"]
 ".env*" = "deny"
-".env.*" = "deny"
-".envrc" = "deny"
-".envrc.*" = "deny"
-"**/.env" = "deny"
 "**/.env*" = "deny"
-"**/.env.*" = "deny"
-"**/.envrc" = "deny"
-"**/.envrc.*" = "deny"

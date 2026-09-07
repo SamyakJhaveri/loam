@@ -1,7 +1,5 @@
 #!/usr/bin/env bash
-# bin/check - the one check for Loam.
-# The agent runs it by choice; CI runs it on every push and PR. Nothing else
-# runs ruff or the tests. Exit 0 means green. Design law 4 and 6.
+# bin/check - the one check for Loam. CI runs it on every push and PR. Exit 0 means green.
 set -uo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
@@ -10,87 +8,46 @@ step() { printf '\n== %s ==\n' "$1"; }
 bad()  { echo "FAIL: $*"; FAIL=1; }
 
 step "ruff (tracked .py)"
-# No `mapfile`: it is bash 4+, and macOS ships bash 3.2 as /bin/bash. Under 3.2
-# `mapfile` errors, PY stays unset, the ruff step silently skips, and check still
-# prints PASSED - a false green on the owner's own platform. Read into an indexed
-# array (supported in 3.2) instead.
+# No `mapfile` (bash 4+): macOS ships bash 3.2, where it fails and the step would silently skip.
 PY=()
 while IFS= read -r f; do PY+=("$f"); done < <(git ls-files '*.py')
-if [ "${#PY[@]}" -gt 0 ]; then
-  ruff check "${PY[@]}"        || bad "ruff check"
-  # `ruff format --check` is NOT run yet. On the tree this check was added to, 19
-  # of 25 tracked .py files are unformatted, and every one of them lives in a
-  # directory another in-flight ticket owns (bin/, seed/, cultivation/). Adding
-  # the gate here would mean reformatting files this ticket may not touch. Most
-  # offenders are deleted by the hot-path cut; add the line back after it, when
-  # the survivors can be formatted in one commit that owns them.
-fi
+[ "${#PY[@]}" -eq 0 ] || ruff check "${PY[@]}" || bad "ruff check"
 
 step "shell syntax + whitespace"
 while IFS= read -r sh; do
   [ -n "$sh" ] || continue
   bash -n "$sh" || bad "bash -n $sh"
 done < <(git ls-files '*.sh')
-# Diff the empty tree against HEAD so every committed line is inspected. Diffing
-# HEAD against the working tree passes vacuously on a clean checkout, which is
-# exactly what CI has.
-# Stored patches/diffs are checked-in diff text; their trailing whitespace is
-# content, not a defect, so exclude them.
+# Diff against the empty tree: HEAD vs working tree passes vacuously on the clean checkout CI has.
 git diff --check "$(git hash-object -t tree /dev/null)" HEAD -- . ":(exclude)*.patch" ":(exclude)*.diff" || bad "git diff --check (trailing whitespace or conflict markers)"
 
 step "pytest"
-# -n auto needs pytest-xdist, pinned in .github/ci/python-requirements.txt, so CI
-# always runs parallel. A distro python3 often has pytest without xdist; serial
-# there takes about 117 s, which blows the under-45 s target. So when the plugin
-# is missing, build (or reuse) a local venv from the same pinned file CI installs
-# and run pytest from it. The venv lives at .venv/check, which .gitignore already
-# ignores via `.venv/`, so it never dirties the worktree.
-# Always `python3 -m pytest`, never the bare `pytest` entry point: some hook tests
-# mint a receipt with sys.executable and the hook re-validates it with `python3`,
-# so the two must be the same interpreter.
+# Always `python3 -m pytest`: hook tests mint a receipt with sys.executable and re-validate it with `python3`.
+# Without pytest-xdist the suite takes ~117 s serial, so build a venv from the CI pins (.venv/ is gitignored).
 PYTEST_PY=python3
-if python3 -c 'import xdist' >/dev/null 2>&1; then
-  :
-else
+if ! python3 -c 'import xdist' 2>/dev/null; then
   VENV="$ROOT/.venv/check"
-  PINS=".github/ci/python-requirements.txt"
-  if ! "$VENV/bin/python3" -c 'import xdist' >/dev/null 2>&1; then
-    echo "NOTE: no pytest-xdist for this python3; building $VENV from $PINS"
+  "$VENV/bin/python3" -c 'import xdist' 2>/dev/null || {
+    echo "NOTE: no pytest-xdist for this python3; building $VENV from .github/ci/python-requirements.txt"
     rm -rf "$VENV"
-    if python3 -m venv "$VENV" >/dev/null 2>&1 \
-       && "$VENV/bin/python3" -m pip install -q -r "$PINS" >/dev/null 2>&1; then
-      :
-    else
-      rm -rf "$VENV"
-    fi
-  fi
-  if "$VENV/bin/python3" -c 'import xdist' >/dev/null 2>&1; then
-    # Put the venv first on PATH too: some hook tests mint a receipt with
-    # sys.executable and the hook re-validates it by running `python3`, so bare
-    # `python3` must resolve to the same interpreter pytest runs under.
-    PATH="$VENV/bin:$PATH"
-    export PATH
-    PYTEST_PY="$VENV/bin/python3"
+    python3 -m venv "$VENV" >/dev/null 2>&1 && "$VENV/bin/python3" -m pip install -q -r .github/ci/python-requirements.txt >/dev/null 2>&1 || rm -rf "$VENV"
+  }
+  if "$VENV/bin/python3" -c 'import xdist' 2>/dev/null; then
+    PATH="$VENV/bin:$PATH"; export PATH; PYTEST_PY="$VENV/bin/python3"
   else
     echo "NOTE: could not provide pytest-xdist; running serial"
   fi
 fi
 PYTEST_ARGS=(bin/tests)
-if "$PYTEST_PY" -c 'import xdist' >/dev/null 2>&1; then
-  PYTEST_ARGS=(-n auto "${PYTEST_ARGS[@]}")
-fi
+"$PYTEST_PY" -c 'import xdist' 2>/dev/null && PYTEST_ARGS=(-n auto "${PYTEST_ARGS[@]}")
 "$PYTEST_PY" -m pytest "${PYTEST_ARGS[@]}" || bad "pytest"
 
 step "SKILL.md frontmatter name gate"
-# Folded from the old verify-template-stages.sh stage 6. Every SKILL.md must
-# carry a name: in its first frontmatter block and must NOT use the fake
-# auto-activate key (use disable-model-invocation: true).
+# name: must sit in the first frontmatter block; auto-activate is not a real field.
 while IFS= read -r skill; do
   [ -n "$skill" ] || continue
-  awk '/^---$/{n++} n==1 && /^name:/{ok=1} END{exit !ok}' "$skill" \
-    || bad "$skill has no name: in frontmatter"
-  awk '/^---$/{n++; next} n==1 && /^auto-activate:/{bad=1} END{exit !bad}' "$skill" \
-    && bad "$skill uses the non-existent auto-activate field"
+  awk '/^---$/{n++; next} n==1 && /^name:/{ok=1} n==1 && /^auto-activate:/{bad=1} END{exit !(ok && !bad)}' "$skill" \
+    || bad "$skill lacks name: in frontmatter or uses the non-existent auto-activate field"
 done < <(find seed cultivation/marketplace -name SKILL.md -not -path '*/node_modules/*')
 
 step "skill-listing token weight"
@@ -99,12 +56,8 @@ python3 bin/skill_listing_weight.py --root "$ROOT" --budget-tokens "${LISTING_BU
 
 step "claude plugin validate"
 if command -v claude >/dev/null 2>&1; then
-  # seed/.claude holds internal symlinks (skills -> ../../.agents/skills). The
-  # validator skips them with a WARNING ("entries here are symlinks and were not
-  # read"), and --strict turns any warning into a failure. So validate seed/.claude
-  # NON-strict and validate the real symlink targets (seed/.agents/skills) strict.
-  # Verified live 2026-09-06: `claude plugin validate --strict seed/.claude` exits 1;
-  # non-strict exits 0 ("passed with warnings"); the other two pass under --strict.
+  # seed/.claude holds internal symlinks the validator skips with a warning, and --strict fails on warnings,
+  # so seed/.claude runs non-strict and the real targets run strict (verified 2026-09-06).
   claude plugin validate seed/.claude || bad "claude plugin validate seed/.claude"
   for t in seed/.agents/skills cultivation/marketplace; do
     claude plugin validate --strict "$t" || bad "claude plugin validate --strict $t"

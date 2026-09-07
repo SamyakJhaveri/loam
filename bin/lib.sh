@@ -9,7 +9,7 @@ info() { printf '\033[36m[%s]\033[0m %s\n' "$LIB_PREFIX" "$*"; }
 warn() { printf '\033[33m[%s]\033[0m %s\n' "$LIB_PREFIX" "$*"; }
 ok()   { printf '\033[32m[%s]\033[0m   %s\n' "$LIB_PREFIX" "$*"; }
 
-# Plain output (verify-template.sh style)
+# Plain output for step-by-step scripts.
 fail() { echo "FAIL: $*" >&2; exit 1; }
 pass() { echo "OK: $*"; }
 
