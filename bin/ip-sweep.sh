@@ -89,7 +89,12 @@ fi
 # accepted as already public. The identity check inspects only commits AFTER the
 # baseline; if the baseline SHA is absent (fresh shallow clone), fall back to full
 # history so the gate fails closed rather than silently narrowing.
-IDENTITY_BASELINE="7868345144fbe888d80b4e6a70d1d5129d240044"
+#
+# Second baseline (Samyak's ruling, 2026-09-07): the 36 Lean v3 loop commits merged
+# publicly via PRs #27 to #32 (last: ef7e9be) were made on jhaveris with the
+# pre-noreply identity and are accepted as already public; that clone now commits
+# as noreply. The first baseline above stays for the record.
+IDENTITY_BASELINE="ef7e9be19bd50caf1407a9ada1db5ae7c6df8864"
 IDENTITY_RANGE="HEAD"
 git cat-file -e "$IDENTITY_BASELINE" 2>/dev/null && IDENTITY_RANGE="${IDENTITY_BASELINE}..HEAD"
 NOREPLY_AUTHOR_RE='^[^@[:space:]]+@users\.noreply\.github\.com$'
