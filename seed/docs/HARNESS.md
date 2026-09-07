@@ -80,7 +80,7 @@ removing it would cause a mistake.
   `dontAsk` agent cannot change its own harness.
 - A deny entry matches a literal prefix, so a combined short flag is a different
   string and runs. Measured in a rendered project: `rm -rfv y` deleted `y/`, and
-  `git clean -fdx` was allowed, while `rm -rf` and `rm -Rf` were denied. Codex
+  `git clean -fdx -n` ran (dry run), while `rm -rf` and `rm -Rf` were denied. Codex
   agrees: `codex execpolicy check` returns no decision for either. Both deny
   lists cover the honest mistake, not a deliberate rewording.
 - "Where the host supports it" is load-bearing. On a Linux host without `socat`,
