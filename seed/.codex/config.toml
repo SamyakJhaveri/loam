@@ -25,6 +25,12 @@ extends = ":workspace"
 # domains table here would be inert config.
 enabled = true
 
+[permissions.loam.filesystem]
+# Linux and WSL sandboxing cannot expand an unbounded ** deny-read glob, and
+# Codex prints one startup warning per pattern without this cap. Verified with
+# codex doctor on codex-cli 0.153.4: 5 warnings before, 0 after.
+glob_scan_max_depth = 3
+
 [permissions.loam.filesystem.":workspace_roots"]
 ".env" = "deny"
 ".env*" = "deny"
