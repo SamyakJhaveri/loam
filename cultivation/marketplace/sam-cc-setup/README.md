@@ -9,7 +9,7 @@ This includes projects rendered by [Loam](https://github.com/SamyakJhaveri/loam)
 ## What the plugin exposes after installation
 
 - **Skills:** `plan-review` (blind merged plan review: correctness checklist plus elegance gate in one unit), `codex-review` (cross-model second opinion; requires the Codex CLI), `surprise-me` (ranked, evidence-backed unsolicited ideas).
-- **Agents:** `plan-reviewer`, used by `plan-review`.
+- **Agents:** `plan-reviewer`, used by `plan-review`; `lean-critic`, a read-only Fable 5.1 critic that cuts verbosity from code and prose another model wrote.
 - **Hooks:** none. The plugin installs no hook on any tool matcher (design law 3).
 - **Workflows:** none.
 
