@@ -28,13 +28,21 @@ class CIConfig(unittest.TestCase):
 
     def test_test_workflow_runs_check_on_push_and_pr(self):
         w = TEST.read_text()
-        self.assertIn("push:", w)
-        self.assertIn("pull_request:", w)
+        self.assertIn("push:\n    branches: [main]", w)
+        self.assertIn("pull_request:\n    branches: [main]", w)
         self.assertIn("  verify:", w)  # job name = ruleset status context
-        self.assertIn("run: bin/check", w)
+        # Exact step block: a commented-out or renamed step must fail here.
+        self.assertIn("- name: Run check\n        run: bin/check", w)
         self.assertIn("run: python3 -m pip install -r .github/ci/python-requirements.txt", w)
         self.assertIn("cache-dependency-path: .github/ci/python-requirements.txt", w)
         self.assertNotIn("verify-template", w)
+
+    def test_verify_job_has_no_inert_gate(self):
+        """An `if:` or `continue-on-error:` in the verify job would make check advisory."""
+        w = TEST.read_text()
+        job = w[w.index("  verify:"):]
+        self.assertNotIn("continue-on-error:", job)
+        self.assertNotIn("if:", job)
 
     def test_release_workflow_publishes_only(self):
         w = RELEASE.read_text()
