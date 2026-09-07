@@ -19,13 +19,10 @@ while IFS= read -r sh; do
   [ -n "$sh" ] || continue
   bash -n "$sh" || bad "bash -n $sh"
 done < <(git ls-files '*.sh')
-git diff --check HEAD -- || bad "whitespace or conflict markers"
+# Diff against the empty tree: HEAD vs working tree passes vacuously on a clean checkout.
+git diff --check "$(git hash-object -t tree /dev/null)" HEAD -- || bad "whitespace or conflict markers"
 
-if [ -d tests ] || [ -d test ]; then
-  if command -v pytest >/dev/null 2>&1; then
-    pytest -q || bad "pytest"
-  fi
-fi
+if { [ -d tests ] || [ -d test ]; } && command -v pytest >/dev/null 2>&1; then pytest -q || bad "pytest"; fi
 
 if [ "$FAIL" -ne 0 ]; then echo "check: FAILED"; exit 1; fi
 echo "check: PASSED"{% endraw %}

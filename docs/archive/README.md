@@ -13,4 +13,4 @@ Archived in v3.0.0 (2026-09-06):
 - `findings/` - the findings tracker. v3 drops the tracker; the PR description is the record.
 - `HANDOFF-2026-09-01-harness.md`, `HANDOFF-2026-09-03-audit-sessions.md` - old handoffs. `docs/BACKLOG.md` names its own source; it was not built from these.
 
-Marketing drafts under `docs/plans/marketing/` were deleted rather than archived; that directory did not exist on this branch at v3 time, so there was nothing to remove.
+`docs/plans/marketing/` did not exist on this branch at v3 time, so nothing from it was archived.

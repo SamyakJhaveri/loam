@@ -32,8 +32,9 @@ fi
 
 echo "$VERSION" > VERSION
 git add VERSION
-git -c user.name="$NOREPLY_NAME" -c user.email="$NOREPLY_EMAIL" commit -m "release: v$VERSION" -- VERSION
+GITID=(-c user.name="$NOREPLY_NAME" -c user.email="$NOREPLY_EMAIL")
+git "${GITID[@]}" commit -m "release: v$VERSION" -- VERSION
 RELEASE_COMMIT="$(git rev-parse HEAD)"
-git -c user.name="$NOREPLY_NAME" -c user.email="$NOREPLY_EMAIL" tag -a "v$VERSION" -m "Release v$VERSION" "$RELEASE_COMMIT"
+git "${GITID[@]}" tag -a "v$VERSION" -m "Release v$VERSION" "$RELEASE_COMMIT"
 git push --atomic origin "${RELEASE_COMMIT}:refs/heads/main" "refs/tags/v$VERSION"
 ok "released v$VERSION"

@@ -167,7 +167,8 @@ class UpdateSmoke(unittest.TestCase):
     def test_update_from_v230_leaves_no_orphan_hook(self):
         cmd = _copier()
         with tempfile.TemporaryDirectory() as d:
-            proj = pathlib.Path(d) / "p"
+            # resolve(): macOS puts tmp under /var -> /private/var, and copier update rejects the unresolved path
+            proj = pathlib.Path(d).resolve() / "p"
             _render(proj, ref="v2.3.0")
             subprocess.run(["git", "init", "-q"], cwd=proj, check=True)
             subprocess.run(["git", "add", "-A"], cwd=proj, check=True)
