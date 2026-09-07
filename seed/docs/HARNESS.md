@@ -84,3 +84,40 @@ removing it would cause a mistake.
 The owner's `~/.claude/` files are personal and are not shipped by the template.
 A global hook in `~/.claude/hooks/` repeats the "prefer targeted edits" rule for
 every project on that machine, so the owner sees it twice; nobody else does.
+
+## Measured cost, v2.3.0 to v3.0.0
+
+Rendered-project rows measured in a `copier copy` render of each version;
+repo-side rows measured in the repo itself.
+
+| Row | Before (v2.3.0) | After (v3.0.0) |
+|---|---|---|
+| Hooks shipped in `.claude/hooks/` | 15 | 2 |
+| `PreToolUse` hook entries matching Bash | 7 | 0 |
+| Hook runs per Edit or Write | 1 ruff run | 0 |
+| Always-on prose bytes (`CLAUDE.md` + `AGENTS.md`) | 7862 | 1125 |
+| Check wall time, one script | 207 s (`bin/verify-template.sh`) | 5 s local, 7 s in CI |
+| Seed hook and lib lines | 2309 | 71 |
+| `bin/` plus `bin/tests/` lines | 11377 | 1525 |
+| Marketplace skills shipped | 26 | 3 |
+
+Token figures anywhere in this file are byte counts divided by four, not a
+tokenizer result.
+
+## Accepted risks measured in v3.0.0
+
+- A deny entry matches a literal prefix, so a combined short flag is a different
+  string and runs. Measured in a rendered project: `rm -rfv y` deleted `y/`, and
+  `git clean -fdx -n` ran (dry run), while `rm -rf` and `rm -Rf` were denied. Codex
+  agrees: `codex execpolicy check` returns no decision for either. Both deny
+  lists cover the honest mistake, not a deliberate rewording.
+- "Where the host supports it" is load-bearing. With `bwrap` and `socat` present
+  the sandbox enforces: `python3 -c "open('.env').read()"` raises
+  `PermissionError`, and a write to `/tmp` fails with `Read-only file system`.
+  Drop `socat` and Claude Code prints `Sandbox disabled` at startup and runs
+  unsandboxed, because `failIfUnavailable` is false, and both commands then
+  succeed. Install the sandbox dependencies, or treat the deny list as the only
+  file guard.
+- Under the sandbox, git writes its credential lock outside the workspace, so
+  `git ls-remote origin` prints `fatal: unable to get credential storage lock in
+  1000 ms: Read-only file system` on stderr and still exits 0. The line is noise.
