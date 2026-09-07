@@ -37,8 +37,11 @@ on a prompt.
 
 Both are SessionStart-class, so they add no per-tool latency.
 
-- `fable-session-brief.sh` (SessionStart, PostModelSwitch): prints a short
-  prompting brief when the session model is Fable; silent otherwise.
+- `fable-session-brief.sh` (SessionStart, PostModelSwitch): prints the Fable 5.1
+  judgment rules when the event names a Fable model; silent otherwise. Measured
+  on Claude Code 2.1.263: the SessionStart payload carries no `model` field, so
+  in practice only PostModelSwitch (`/model`, interactive) fires it. A session
+  that starts on Fable and never switches does not see the brief.
 - `post-compact-reinject.sh` (SessionStart `compact`): re-injects the task after
   a compaction.
 
