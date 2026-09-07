@@ -78,16 +78,6 @@ removing it would cause a mistake.
   test integrity.
 - Editing any file under `.claude/` needs bypassPermissions mode. An unattended
   `dontAsk` agent cannot change its own harness.
-- A deny entry matches a literal prefix, so a combined short flag is a different
-  string and runs. Measured in a rendered project: `rm -rfv y` deleted `y/`, and
-  `git clean -fdx -n` ran (dry run), while `rm -rf` and `rm -Rf` were denied. Codex
-  agrees: `codex execpolicy check` returns no decision for either. Both deny
-  lists cover the honest mistake, not a deliberate rewording.
-- "Where the host supports it" is load-bearing. On a Linux host without `socat`,
-  Claude Code prints `Sandbox disabled` at startup and runs unsandboxed, because
-  `failIfUnavailable` is false; `python3 -c "open('.env').read()"` then prints
-  the file. Install the sandbox dependencies, or treat the deny list as the only
-  file guard.
 
 ## Owner global config, outside this project
 
@@ -103,8 +93,7 @@ repo-side rows measured in the repo itself.
 | Row | Before (v2.3.0) | After (v3.0.0) |
 |---|---|---|
 | Hooks shipped in `.claude/hooks/` | 15 | 2 |
-| Hooks on a tool matcher | 11 | 0 |
-| Hook events per Bash call | 414 ms (DESIGN, 5 hooks); 7 `PreToolUse` entries in settings.json | 0 (about 0 ms) |
+| `PreToolUse` hook entries matching Bash | 7 | 0 |
 | Hook runs per Edit or Write | 1 ruff run | 0 |
 | Always-on prose bytes (`CLAUDE.md` + `AGENTS.md`) | 7862 | 1125 |
 | Check wall time, one script | 207 s (`bin/verify-template.sh`) | 5 s local, 7 s in CI |
@@ -114,3 +103,16 @@ repo-side rows measured in the repo itself.
 
 Token figures anywhere in this file are byte counts divided by four, not a
 tokenizer result.
+
+## Accepted risks measured in v3.0.0
+
+- A deny entry matches a literal prefix, so a combined short flag is a different
+  string and runs. Measured in a rendered project: `rm -rfv y` deleted `y/`, and
+  `git clean -fdx -n` ran (dry run), while `rm -rf` and `rm -Rf` were denied. Codex
+  agrees: `codex execpolicy check` returns no decision for either. Both deny
+  lists cover the honest mistake, not a deliberate rewording.
+- "Where the host supports it" is load-bearing. On a Linux host without `socat`,
+  Claude Code prints `Sandbox disabled` at startup and runs unsandboxed, because
+  `failIfUnavailable` is false; `python3 -c "open('.env').read()"` then prints
+  the file. Install the sandbox dependencies, or treat the deny list as the only
+  file guard.
