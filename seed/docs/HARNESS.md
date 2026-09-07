@@ -38,12 +38,12 @@ on a prompt.
 
 Both are SessionStart-class, so they add no per-tool latency.
 
-- `fable-session-brief.sh` (SessionStart, PostModelSwitch): prints five
-  judgment rules Claude Code does not inject, plus a Fable-only paragraph when
-  the event names a Fable model. The rules block is unconditional because no
-  SessionStart payload names the model (measured on Claude Code 2.1.263); only
-  PostModelSwitch carries `to_model`, so a session that starts on Fable and
-  never switches sees the rules but not the Fable paragraph.
+- `fable-session-brief.sh` (SessionStart, PostModelSwitch): prints the Fable
+  judgment rules Claude Code does not inject, when the event names a Fable
+  model; silent otherwise. It reads `model` on SessionStart and `to_model` on
+  PostModelSwitch. Measured on Claude Code 2.1.263: a non-interactive
+  `claude -p` startup payload carries no `model` field, so the brief does not
+  fire there.
 - `post-compact-reinject.sh` (SessionStart `compact`): re-injects the task after
   a compaction.
 
@@ -59,9 +59,8 @@ request. Nothing else lints or tests.
 via `CLAUDE.md`, Codex reads it directly. Add a line to either file only if
 removing it would cause a mistake.
 
-- Prose (`CLAUDE.md` plus `AGENTS.md`) plus the unconditional part of
-  `fable-session-brief.sh`: 400 tokens together. The skill listing is a separate
-  always-on cost and is not inside that number.
+- Prose (`CLAUDE.md` plus `AGENTS.md`): 400 tokens. The skill listing and the
+  session brief are separate always-on costs and are not inside that number.
 - Skill listing: the two seed skills weigh 131 tokens, so a fresh project pays
   about 400 + 131 tokens before any work starts.
 - In the Loam template repo the `sam-cc-setup` plugin listing weighs 448 tokens.
@@ -82,6 +81,6 @@ removing it would cause a mistake.
 
 ## Owner global config, outside this project
 
-The owner's `~/.claude/` files are personal and are not shipped by the template;
-the Fable "prefer targeted edits" rule is enforced there by a global hook in
-`~/.claude/hooks/`, which is why this project ships no seed hook for it.
+The owner's `~/.claude/` files are personal and are not shipped by the template.
+A global hook in `~/.claude/hooks/` repeats the "prefer targeted edits" rule for
+every project on that machine, so the owner sees it twice; nobody else does.
