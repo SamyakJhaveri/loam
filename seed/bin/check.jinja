@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # bin/check - the one check for {{ project_name }}.
 # Run it yourself; CI runs it on push and PR. Exit 0 means green.
-set -uo pipefail
+{% raw %}set -uo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
 FAIL=0
@@ -28,4 +28,4 @@ if [ -d tests ] || [ -d test ]; then
 fi
 
 if [ "$FAIL" -ne 0 ]; then echo "check: FAILED"; exit 1; fi
-echo "check: PASSED"
+echo "check: PASSED"{% endraw %}
