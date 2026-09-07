@@ -195,7 +195,10 @@ class UpdateSmoke(unittest.TestCase):
             for block in settings["hooks"].values():
                 for entry in block:
                     for h in entry["hooks"]:
-                        script = proj / h["command"].lstrip("./")
+                        # removeprefix, not lstrip: lstrip("./") would eat
+                        # the leading dot of ".claude/..." as well.
+                        rel = h["command"].removeprefix("./")
+                        script = proj / rel
                         self.assertTrue(
                             script.exists(), f"orphan hook wiring: {h['command']}"
                         )
