@@ -11,8 +11,6 @@ Archived in v3.0.0 (2026-09-06):
 - `reviews/` - per-session reviews from the audit sessions.
 - `tickets/` - per-session tickets from the audit sessions.
 - `findings/` - the findings tracker. v3 drops the tracker; the PR description is the record.
-- `superpowers/` - old plans and specs for the rendered-harness contract (slated for removal in S3).
 - `HANDOFF-2026-09-01-harness.md`, `HANDOFF-2026-09-03-audit-sessions.md` - old handoffs. `docs/BACKLOG.md` names its own source; it was not built from these.
-- `2026-09-03-distbench-archive-note.md`.
 
 Marketing drafts under `docs/plans/marketing/` were deleted rather than archived; that directory did not exist on this branch at v3 time, so there was nothing to remove.
