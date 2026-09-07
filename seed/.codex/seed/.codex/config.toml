@@ -1,0 +1,38 @@
+# Repo-scoped Codex config. Inert until the project is marked trusted in Codex.
+# No sandbox_mode key: that legacy key disables named permission profiles.
+# default_permissions is a TOP-LEVEL key and MUST stay above the first [table]
+# header. In TOML a bare key written after [agents] would bind to that table
+# (agents.default_permissions), the loam profile would never be selected, and the
+# .env denies would be inert.
+approval_policy = "never"
+default_permissions = "loam"
+
+[features]
+# The Codex hook layer is gone; do not advertise hooks as active.
+hooks = false
+multi_agent = true
+
+[agents]
+max_concurrent_threads_per_session = 6
+
+[permissions.loam]
+description = "Workspace editing with network on and .env denied."
+extends = ":workspace"
+
+[permissions.loam.network]
+# Permit command network access (git, pip, npm). No proxy and no domains table:
+# domain rules only bind when features.network_proxy starts the proxy, so a
+# domains table here would be inert config.
+enabled = true
+
+[permissions.loam.filesystem.":workspace_roots"]
+".env" = "deny"
+".env*" = "deny"
+".env.*" = "deny"
+".envrc" = "deny"
+".envrc.*" = "deny"
+"**/.env" = "deny"
+"**/.env*" = "deny"
+"**/.env.*" = "deny"
+"**/.envrc" = "deny"
+"**/.envrc.*" = "deny"
