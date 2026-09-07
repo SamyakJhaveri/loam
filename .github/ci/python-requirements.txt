@@ -1,2 +1,4 @@
 copier==9.16.0
 ruff==0.15.20
+pytest==8.4.2
+pytest-xdist==3.8.0

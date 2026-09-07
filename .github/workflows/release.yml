@@ -11,38 +11,11 @@ permissions:
 jobs:
   release:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
         with:
           persist-credentials: false
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.12'
-          cache: 'pip'
-          cache-dependency-path: .github/ci/python-requirements.txt
-
-      - name: Install Python dependencies
-        run: python3 -m pip install -r .github/ci/python-requirements.txt
-
-      - name: Cache npm downloads
-        uses: actions/cache@v4
-        with:
-          path: ~/.npm
-          key: ${{ runner.os }}-npm-${{ hashFiles('.github/ci/npm-packages.txt') }}
-
-      - name: Install agent CLIs
-        run: xargs npm install -g < .github/ci/npm-packages.txt
-
-      - name: Configure Git identity
-        run: |
-          git config --global user.name "CI"
-          git config --global user.email "ci@loam"
-
-      - name: Run template verification
-        run: bin/verify-template.sh
 
       - name: Extract version
         id: version
