@@ -10,14 +10,12 @@ matcher. Two native deny lists do the blocking.
   `--force-with-lease` / `--force-if-includes`, `git reset --hard`,
   `git clean -f|-d|-x`, `git checkout -- .` / `git checkout .` /
   `git restore .`, `git stash clear|drop`, and read or edit of `.env*`.
-  Deny applies in every permission mode, including bypassPermissions. Each
-  entry is a literal prefix, so only the listed spellings block; see the
-  accepted risks below.
+  Deny applies in every permission mode, including bypassPermissions.
 - Codex, `.codex/rules/loam.rules`: the same families, one `prefix_rule` per
   spelling, `decision = "forbidden"`. Codex splits command chains itself.
 - The Claude sandbox is on (`sandbox.enabled`), with `.env*` denied for read and
-  write. `failIfUnavailable` is false, so a host without sandbox support runs
-  unsandboxed; see the accepted risks below.
+  write. `failIfUnavailable` is false, so a host without sandbox support still
+  runs; the deny list is then the only file guard.
 - `.codex/config.toml` denies `.env*` in the workspace and leaves network on.
   All of `.codex/` is inert until you mark this project trusted in Codex.
 
@@ -73,22 +71,23 @@ removing it would cause a mistake.
 
 - Git recovers committed work only. A command that dodges the deny prefixes and
   destroys uncommitted or untracked files is unrecoverable.
-- A deny entry matches a literal prefix, so a combined short flag is a different
-  string and runs. Measured in a rendered project: `rm -rfv y` deleted `y/`, and
-  `git clean -fdx` was allowed, while `rm -rf` and `rm -Rf` were denied. Codex
-  behaves the same way: `codex execpolicy check` returns no decision for
-  `rm -rfv` and `git clean -fdx`. Both deny lists cover the honest mistake, not
-  a deliberate rewording.
 - The `.env` deny rules do not stop a Python or Node subprocess opening the file.
-  The sandbox filesystem deny is the real containment. It needs host support:
-  on a Linux host without `socat`, Claude Code prints `Sandbox disabled` at
-  startup, and `python3 -c "open('.env').read()"` then prints the file. Install
-  the sandbox dependencies, or treat the deny list as the only file guard.
+  The sandbox filesystem deny is the real containment, where the host supports it.
 - Secrets typed into an ordinary source file are not caught locally.
 - Test tampering and mutation coverage have no gate. Pull-request review owns
   test integrity.
 - Editing any file under `.claude/` needs bypassPermissions mode. An unattended
   `dontAsk` agent cannot change its own harness.
+- A deny entry matches a literal prefix, so a combined short flag is a different
+  string and runs. Measured in a rendered project: `rm -rfv y` deleted `y/`, and
+  `git clean -fdx` was allowed, while `rm -rf` and `rm -Rf` were denied. Codex
+  agrees: `codex execpolicy check` returns no decision for either. Both deny
+  lists cover the honest mistake, not a deliberate rewording.
+- "Where the host supports it" is load-bearing. On a Linux host without `socat`,
+  Claude Code prints `Sandbox disabled` at startup and runs unsandboxed, because
+  `failIfUnavailable` is false; `python3 -c "open('.env').read()"` then prints
+  the file. Install the sandbox dependencies, or treat the deny list as the only
+  file guard.
 
 ## Owner global config, outside this project
 
@@ -98,9 +97,8 @@ every project on that machine, so the owner sees it twice; nobody else does.
 
 ## Measured cost, v2.3.0 to v3.0.0
 
-Rendered-project rows, measured in a `copier copy` render of each version. The
-repo-side rows (`bin/` size, parked plugin skills) are in the v3.0.0 pull
-request, not here.
+Rendered-project rows measured in a `copier copy` render of each version;
+repo-side rows measured in the repo itself.
 
 | Row | Before (v2.3.0) | After (v3.0.0) |
 |---|---|---|
@@ -110,6 +108,10 @@ request, not here.
 | Hook runs per Edit or Write | 1 ruff run | 0 |
 | Always-on prose bytes (`CLAUDE.md` + `AGENTS.md`) | 7862 | 1125 |
 | Check wall time, one script | 207 s (`bin/verify-template.sh`) | 5 s local, 7 s in CI |
+| Seed hook and lib lines | 2309 | 71 |
+| `bin/` plus `bin/tests/` lines | 11377 | 1525 |
+| Marketplace skills shipped | 26 | 3 |
+| Ship after merge | hours to days | not measured until the owner merges and runs `bin/release.sh` |
 
 Token figures anywhere in this file are byte counts divided by four, not a
 tokenizer result.
