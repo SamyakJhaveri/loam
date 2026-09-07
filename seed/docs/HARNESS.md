@@ -17,6 +17,7 @@ matcher. Two native deny lists do the blocking.
   write. `failIfUnavailable` is false, so a host without sandbox support still
   runs; the deny list is then the only file guard.
 - `.codex/config.toml` denies `.env*` in the workspace and leaves network on.
+  All of `.codex/` is inert until you mark this project trusted in Codex.
 
 ## Push guard, by case
 
@@ -37,11 +38,12 @@ on a prompt.
 
 Both are SessionStart-class, so they add no per-tool latency.
 
-- `fable-session-brief.sh` (SessionStart, PostModelSwitch): prints the Fable 5.1
-  judgment rules when the event names a Fable model; silent otherwise. Measured
-  on Claude Code 2.1.263: the SessionStart payload carries no `model` field, so
-  in practice only PostModelSwitch (`/model`, interactive) fires it. A session
-  that starts on Fable and never switches does not see the brief.
+- `fable-session-brief.sh` (SessionStart, PostModelSwitch): prints five
+  judgment rules Claude Code does not inject, plus a Fable-only paragraph when
+  the event names a Fable model. The rules block is unconditional because no
+  SessionStart payload names the model (measured on Claude Code 2.1.263); only
+  PostModelSwitch carries `to_model`, so a session that starts on Fable and
+  never switches sees the rules but not the Fable paragraph.
 - `post-compact-reinject.sh` (SessionStart `compact`): re-injects the task after
   a compaction.
 
@@ -53,8 +55,13 @@ request. Nothing else lints or tests.
 
 ## Always-on budget
 
-- Prose (`CLAUDE.md` plus `AGENTS.md`): 400 tokens. The skill listing is a
-  separate always-on cost and is not inside that number.
+`AGENTS.md` is the one prose home for agent guidance; Claude Code imports it
+via `CLAUDE.md`, Codex reads it directly. Add a line to either file only if
+removing it would cause a mistake.
+
+- Prose (`CLAUDE.md` plus `AGENTS.md`) plus the unconditional part of
+  `fable-session-brief.sh`: 400 tokens together. The skill listing is a separate
+  always-on cost and is not inside that number.
 - Skill listing: the two seed skills weigh 131 tokens, so a fresh project pays
   about 400 + 131 tokens before any work starts.
 - In the Loam template repo the `sam-cc-setup` plugin listing weighs 448 tokens.

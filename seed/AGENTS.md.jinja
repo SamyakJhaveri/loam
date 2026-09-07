@@ -1,8 +1,5 @@
 # AGENTS.md - {{ project_name }}
 
-> The one prose home for agent guidance. Claude Code imports it via CLAUDE.md; Codex reads it directly.
-> Every line loads every session. Add a line only if removing it would cause a mistake.
-
 ## What this project is
 
 (Two or three sentences: what the codebase does, and what to keep in mind while working on it. Replace this.)
@@ -19,13 +16,8 @@
 
 - Copier resolves git TAGS, not HEAD; run `copier update --trust`.
 - In YAML frontmatter, quote description strings containing colons.
-- Parallel workers each get their own worktree (`claude --worktree <name>`).
 
 ## Read on demand
 
-- `docs/HARNESS.md` - what the harness guards, what it does not, and the accepted risks.
+- `docs/HARNESS.md` - what the harness guards, what it does not, the accepted risks. Read it before editing a hook, `.claude/settings.json`, or `.codex/`.
 - `docs/WORKERS.md` - parallel-worker roles and the `HANDOFF.md` format.
-
-## Codex note
-
-`.codex/` (config, rules) is inert until you mark this project trusted in Codex.
