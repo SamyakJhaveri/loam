@@ -40,19 +40,46 @@ git diff --check "$(git hash-object -t tree /dev/null)" HEAD -- . ":(exclude)*.p
 
 step "pytest"
 # -n auto needs pytest-xdist, pinned in .github/ci/python-requirements.txt, so CI
-# always runs parallel. A distro python3 often has pytest without xdist; there,
-# run serial and say so rather than failing on the missing plugin (honesty flag 5).
+# always runs parallel. A distro python3 often has pytest without xdist; serial
+# there takes about 117 s, which blows the under-45 s target. So when the plugin
+# is missing, build (or reuse) a local venv from the same pinned file CI installs
+# and run pytest from it. The venv lives at .venv/check, which .gitignore already
+# ignores via `.venv/`, so it never dirties the worktree.
 # Always `python3 -m pytest`, never the bare `pytest` entry point: some hook tests
 # mint a receipt with sys.executable and the hook re-validates it with `python3`,
-# so the two must be the same interpreter. To run parallel locally, activate a
-# venv holding .github/ci/python-requirements.txt (that puts its python3 on PATH).
-PYTEST_ARGS=(bin/tests)
+# so the two must be the same interpreter.
+PYTEST_PY=python3
 if python3 -c 'import xdist' >/dev/null 2>&1; then
-  PYTEST_ARGS=(-n auto "${PYTEST_ARGS[@]}")
+  :
 else
-  echo "NOTE: no pytest-xdist for this python3; running serial"
+  VENV="$ROOT/.venv/check"
+  PINS=".github/ci/python-requirements.txt"
+  if ! "$VENV/bin/python3" -c 'import xdist' >/dev/null 2>&1; then
+    echo "NOTE: no pytest-xdist for this python3; building $VENV from $PINS"
+    rm -rf "$VENV"
+    if python3 -m venv "$VENV" >/dev/null 2>&1 \
+       && "$VENV/bin/python3" -m pip install -q -r "$PINS" >/dev/null 2>&1; then
+      :
+    else
+      rm -rf "$VENV"
+    fi
+  fi
+  if "$VENV/bin/python3" -c 'import xdist' >/dev/null 2>&1; then
+    # Put the venv first on PATH too: some hook tests mint a receipt with
+    # sys.executable and the hook re-validates it by running `python3`, so bare
+    # `python3` must resolve to the same interpreter pytest runs under.
+    PATH="$VENV/bin:$PATH"
+    export PATH
+    PYTEST_PY="$VENV/bin/python3"
+  else
+    echo "NOTE: could not provide pytest-xdist; running serial"
+  fi
 fi
-python3 -m pytest "${PYTEST_ARGS[@]}" || bad "pytest"
+PYTEST_ARGS=(bin/tests)
+if "$PYTEST_PY" -c 'import xdist' >/dev/null 2>&1; then
+  PYTEST_ARGS=(-n auto "${PYTEST_ARGS[@]}")
+fi
+"$PYTEST_PY" -m pytest "${PYTEST_ARGS[@]}" || bad "pytest"
 
 step "SKILL.md frontmatter name gate"
 # Folded from the old verify-template-stages.sh stage 6. Every SKILL.md must
