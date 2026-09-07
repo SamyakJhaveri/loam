@@ -35,7 +35,8 @@ class CIConfig(unittest.TestCase):
         self.assertIn("- name: Run check\n        run: bin/check", w)
         self.assertIn("run: python3 -m pip install -r .github/ci/python-requirements.txt", w)
         self.assertIn("cache-dependency-path: .github/ci/python-requirements.txt", w)
-        self.assertNotIn("verify-template", w)
+        # bin/check is the only repo script CI runs: no retired checker may come back.
+        self.assertEqual(1, w.count("run: bin/"))
 
     def test_verify_job_has_no_inert_gate(self):
         """An `if:` or `continue-on-error:` in the verify job would make check advisory."""
@@ -48,7 +49,7 @@ class CIConfig(unittest.TestCase):
         w = RELEASE.read_text()
         self.assertIn("tags:", w)
         self.assertIn("softprops/action-gh-release@v2", w)
-        self.assertNotIn("verify-template", w)
+        self.assertNotIn("run: bin/", w)  # release runs no repo script
         self.assertNotIn("bin/check", w)  # release does not re-run the gate
 
 

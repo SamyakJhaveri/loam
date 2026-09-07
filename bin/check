@@ -82,7 +82,7 @@ fi
 "$PYTEST_PY" -m pytest "${PYTEST_ARGS[@]}" || bad "pytest"
 
 step "SKILL.md frontmatter name gate"
-# Folded from the old verify-template-stages.sh stage 6. Every SKILL.md must
+# Folded from the old staged template checker. Every SKILL.md must
 # carry a name: in its first frontmatter block and must NOT use the fake
 # auto-activate key (use disable-model-invocation: true).
 while IFS= read -r skill; do
