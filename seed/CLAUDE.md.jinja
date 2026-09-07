@@ -2,36 +2,8 @@
 
 @AGENTS.md
 
-## Environment
-
-- `python3` always, never `python`. Venv: (path, if any).
-- Verified commands (fill in and keep current):
-  - Test: (e.g. `pytest -q`)
-  - Lint: (e.g. `ruff check .`)
-  - Run: (how to launch the thing)
-
 ## Claude-specific gotchas
 
-- Hooks receive a JSON envelope on stdin (`tool_name`, `tool_input`); there is no `CLAUDE_TOOL_NAME` env var.
-- Hook event and matcher names are exact strings; a wrong name fails silently. Verify against the documented event list before wiring a hook.
-- A rule's `paths:` frontmatter fires when Claude READS a matching file, never on Write. Rules whose trigger is authoring a new file must stay always-loaded.
-- `auto-activate` is not a real skill-frontmatter field. To make a skill manual-only, use `disable-model-invocation: true`.
-- `/goal` is unavailable when `disableAllHooks` or `allowManagedHooksOnly` is set; never set either in a rendered project.
-
-## Shipped machinery
-
-- The Stop hook (`.claude/hooks/stop-verify-gate.sh`) blocks turn-end on changed-file check failures. It accepts a content-bound `.validation_passed` receipt across turns only while `python3 .agents/lib/validation.py check --root .` accepts the current source and command definitions. Fix failures instead of fighting the gate.
-- `sentinel-cleanup.sh` clears validation and review receipts after source edits; ignored artifacts keep them. Receipt checks also detect changes made outside Edit/Write hooks.
-- `/catchup` (in `.agents/skills/`, shared with Codex via symlink): session bootstrap briefing.
-- `/fable-prompting` (in `.agents/skills/`, shared via symlink): which Fable 5.1 guide sections you can act on and which Claude Code already injects; load before writing a Fable prompt or handoff.
-- Other hooks: `bash-audit-log.sh` (command log with exit code and experiment name, gitignored), `concurrent-checkout-guard.sh` (blocks two sessions racing one checkout), `ruff-after-edit.sh` (auto-fixes changed Python files), `write-rewrite-guard.sh` (advises Edit over Write on files of 80 or more lines), `bash-length-advisory.sh` (advises splitting commands over 400 characters), `post-compact-reinject.sh` (re-injects the working rules after compaction), and `fable-session-brief.sh` (prints a short prompting brief on a model switch, and at session start when the event names the model, for any Fable model).
-- Commit gates on `git commit`: `test-tamper-scan.sh` (blocks new skip, mock, loosened tolerance, or expected-equals-new-return lines in staged tests unless the message has a `Test-changes:` line), `mutation-gate.sh` (blocks when cosmic-ray finds surviving mutants on the changed lines; opt-in by installing cosmic-ray; justify under `Mutants:`), and `pre-commit-gate.sh` (requires a valid versioned JSON receipt at `.validation_passed`; run `.claude/hooks/run-validate-waves.sh` or the shared validator's `run` command to create it). The receipt is evidence for exact contents, Git state, command definitions, and runtime identity. File age does not make it valid.
-- Session logs: `harness-hygiene.sh` prints dead paths and commands named in CLAUDE.md, AGENTS.md, STATE.md, HANDOFF.md at session start; `skill-usage-log.sh` appends every skill invocation to `.claude/skill-usage.log` (gitignored).
-
-## Routing (read on demand)
-
-| Resource | Use when |
-|----------|----------|
-| `/plan-review <path>` (sam-cc-setup plugin, if installed) | Before executing a non-trivial or hard-to-reverse plan |
-| `scaffold-context` skill (sam-cc-setup plugin, if installed) | Authoring a CONTEXT.md for a subdirectory |
-| `docs/decisions/RULINGS.md` | A design choice was already decided; check or record the ruling |
+- Hook event and matcher names are exact strings; a wrong name fails silently.
+- Editing any file under `.claude/` needs bypassPermissions mode; other modes deny or prompt.
+- `auto-activate` is not a skill field. Use `disable-model-invocation: true` for a manual-only skill.

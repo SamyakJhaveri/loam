@@ -51,7 +51,7 @@ while IFS= read -r skill; do
 done < <(find seed cultivation/marketplace -name SKILL.md -not -path '*/node_modules/*')
 
 step "skill-listing token weight"
-python3 bin/skill_listing_weight.py --root "$ROOT" --budget-tokens "${LISTING_BUDGET:-2750}" \
+python3 bin/skill_listing_weight.py --root "$ROOT" --budget-tokens "${LISTING_BUDGET:-448}" \
   || bad "skill-listing weight over budget"
 
 step "claude plugin validate"
