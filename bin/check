@@ -31,7 +31,12 @@ while IFS= read -r sh; do
   [ -n "$sh" ] || continue
   bash -n "$sh" || bad "bash -n $sh"
 done < <(git ls-files '*.sh')
-git diff --check HEAD -- || bad "git diff --check (trailing whitespace or conflict markers)"
+# Diff the empty tree against HEAD so every committed line is inspected. Diffing
+# HEAD against the working tree passes vacuously on a clean checkout, which is
+# exactly what CI has.
+# Stored patches/diffs are checked-in diff text; their trailing whitespace is
+# content, not a defect, so exclude them.
+git diff --check "$(git hash-object -t tree /dev/null)" HEAD -- . ":(exclude)*.patch" ":(exclude)*.diff" || bad "git diff --check (trailing whitespace or conflict markers)"
 
 step "pytest"
 # -n auto needs pytest-xdist, pinned in .github/ci/python-requirements.txt, so CI

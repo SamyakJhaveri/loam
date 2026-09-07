@@ -30,8 +30,10 @@ class CIConfig(unittest.TestCase):
         w = TEST.read_text()
         self.assertIn("push:", w)
         self.assertIn("pull_request:", w)
-        self.assertIn("  check:", w)  # job name = ruleset status context
+        self.assertIn("  verify:", w)  # job name = ruleset status context
         self.assertIn("run: bin/check", w)
+        self.assertIn("run: python3 -m pip install -r .github/ci/python-requirements.txt", w)
+        self.assertIn("cache-dependency-path: .github/ci/python-requirements.txt", w)
         self.assertNotIn("verify-template", w)
 
     def test_release_workflow_publishes_only(self):
