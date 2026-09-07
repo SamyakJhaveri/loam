@@ -25,8 +25,14 @@ except (json.JSONDecodeError, OSError):
 if not isinstance(payload, dict):
     sys.exit(0)
 
-model = payload.get("to_model") or payload.get("model")
-if not isinstance(model, str) or "fable" not in model.lower():
+model = None
+for field in ("to_model", "model"):
+    value = payload.get(field)
+    if isinstance(value, str) and value:
+        model = value
+        break
+
+if model is None or "fable" not in model.lower():
     sys.exit(0)
 
 print(
