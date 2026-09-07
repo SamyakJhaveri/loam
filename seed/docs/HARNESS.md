@@ -102,7 +102,7 @@ Rendered-project rows, measured in a `copier copy` render of each version. The
 repo-side rows (`bin/` size, parked plugin skills) are in the v3.0.0 pull
 request, not here.
 
-| Row | v2.3.0 | v3.0.0 |
+| Row | Before (v2.3.0) | After (v3.0.0) |
 |---|---|---|
 | Hooks shipped in `.claude/hooks/` | 15 | 2 |
 | Hooks on a tool matcher | 11 | 0 |
