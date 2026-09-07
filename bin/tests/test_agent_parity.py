@@ -137,7 +137,7 @@ class AgentParityTests(unittest.TestCase):
         agents = (ROOT / "seed/AGENTS.md.jinja").read_text(encoding="utf-8")
         claude = (ROOT / "seed/CLAUDE.md.jinja").read_text(encoding="utf-8")
         validate = (
-            ROOT / "cultivation/marketplace/sam-cc-setup/skills/validate/SKILL.md"
+            ROOT / "cultivation/parked/sam-cc-setup/skills/validate/SKILL.md"
         ).read_text(encoding="utf-8")
         combined = "\n".join((agents, claude, validate))
         self.assertIn("validation.py check", combined)
@@ -148,10 +148,10 @@ class AgentParityTests(unittest.TestCase):
 
     def test_shipping_stages_intended_inputs_before_validation(self) -> None:
         validate = (
-            ROOT / "cultivation/marketplace/sam-cc-setup/skills/validate/SKILL.md"
+            ROOT / "cultivation/parked/sam-cc-setup/skills/validate/SKILL.md"
         ).read_text(encoding="utf-8")
         ship = (
-            ROOT / "cultivation/marketplace/sam-cc-setup/skills/ship/SKILL.md"
+            ROOT / "cultivation/parked/sam-cc-setup/skills/ship/SKILL.md"
         ).read_text(encoding="utf-8")
         self.assertIn("intended source changes are staged", validate)
         self.assertLess(ship.index("git add <paths>"), ship.index("Invoke `/validate`."))
@@ -159,26 +159,26 @@ class AgentParityTests(unittest.TestCase):
 
     def test_expensive_review_workflows_are_conditional_and_bounded(self) -> None:
         team = (
-            ROOT / "cultivation/marketplace/sam-cc-setup/skills/agent-team/SKILL.md"
+            ROOT / "cultivation/parked/sam-cc-setup/skills/agent-team/SKILL.md"
         ).read_text(encoding="utf-8")
         scenarios = (
-            ROOT / "cultivation/marketplace/sam-cc-setup/skills/agent-team/scenarios.md"
+            ROOT / "cultivation/parked/sam-cc-setup/skills/agent-team/scenarios.md"
         ).read_text(encoding="utf-8")
         teammate = (
             ROOT
-            / "cultivation/marketplace/sam-cc-setup/skills/agent-team/teammate-prompt.md"
+            / "cultivation/parked/sam-cc-setup/skills/agent-team/teammate-prompt.md"
         ).read_text(encoding="utf-8")
         critique = (
             ROOT
-            / "cultivation/marketplace/sam-cc-setup/skills/session-critique/SKILL.md"
+            / "cultivation/parked/sam-cc-setup/skills/session-critique/SKILL.md"
         ).read_text(encoding="utf-8")
         fanout = (
             ROOT
-            / "cultivation/marketplace/sam-cc-setup/workflows/plan-review-fanout.js"
+            / "cultivation/parked/sam-cc-setup/workflows/plan-review-fanout.js"
         ).read_text(encoding="utf-8")
         codex_plan = (
             ROOT
-            / "cultivation/marketplace/sam-cc-setup/skills/codex-plan-review/SKILL.md"
+            / "cultivation/parked/sam-cc-setup/skills/codex-plan-review/SKILL.md"
         ).read_text(encoding="utf-8")
         self.assertIn("one validation owner", team.lower())
         self.assertIn("fixed diff", critique.lower())

@@ -17,16 +17,6 @@
       }
     },
     {
-      "name": "impeccable",
-      "description": "UI polish workflow: deterministic anti-pattern rules plus an LLM critique. Vendored from pbakaus/impeccable, Apache-2.0.",
-      "version": "0.1.0",
-      "source": "./impeccable",
-      "author": {
-        "name": "Samyak Jhaveri",
-        "email": "39847642+SamyakJhaveri@users.noreply.github.com"
-      }
-    },
-    {
       "name": "web-frontend-anthropics",
       "description": "Vetted web/UI skills from anthropics/skills, SHA-pinned via git-subdir: web-artifacts-builder (claude.ai bundle.html artifacts), webapp-testing (Playwright UI verification), theme-factory (challenger vs ui-ux-pro-max). Installs DISABLED (defaultEnabled:false) \u2014 enable to trial.",
       "strict": false,

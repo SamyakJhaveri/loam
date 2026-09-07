@@ -267,7 +267,7 @@ DISTRIBUTION_MIRRORS = (
     (
         "seed/.claude/hooks/concurrent-checkout-guard.sh",
         (
-            "cultivation/marketplace/sam-cc-setup/hooks/"
+            "cultivation/parked/sam-cc-setup/hooks/"
             "concurrent-checkout-guard.sh"
         ),
     ),

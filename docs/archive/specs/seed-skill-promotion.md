@@ -10,6 +10,7 @@ Full verdicts: `docs/specs/rebuild-research/clief-claims-verdicts.md`.
 
 ## Source pools, in preference order
 
+<!-- stale-counts: allow - dated record. v3.0.0 reversed decision D2: 3 skills ship, the rest are parked. The count below is history and is not corrected. -->
 1. `cultivation/marketplace/sam-cc-setup/skills/` (26 sam-cc-setup skills, Samyak-authored or adapted with license notices).
 2. The SkillSpector-vetted parked bundles in the marketplace manifest (enable-and-adapt, keep SHA pins and licenses).
 3. New skills, only after the trigger that justifies them fires twice.
