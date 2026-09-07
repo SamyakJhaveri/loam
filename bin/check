@@ -34,8 +34,20 @@ done < <(git ls-files '*.sh')
 git diff --check HEAD -- || bad "git diff --check (trailing whitespace or conflict markers)"
 
 step "pytest"
-# -n auto needs pytest-xdist (pinned in .github/ci/python-requirements.txt).
-pytest -n auto bin/tests || bad "pytest"
+# -n auto needs pytest-xdist, pinned in .github/ci/python-requirements.txt, so CI
+# always runs parallel. A distro python3 often has pytest without xdist; there,
+# run serial and say so rather than failing on the missing plugin (honesty flag 5).
+# Always `python3 -m pytest`, never the bare `pytest` entry point: some hook tests
+# mint a receipt with sys.executable and the hook re-validates it with `python3`,
+# so the two must be the same interpreter. To run parallel locally, activate a
+# venv holding .github/ci/python-requirements.txt (that puts its python3 on PATH).
+PYTEST_ARGS=(bin/tests)
+if python3 -c 'import xdist' >/dev/null 2>&1; then
+  PYTEST_ARGS=(-n auto "${PYTEST_ARGS[@]}")
+else
+  echo "NOTE: no pytest-xdist for this python3; running serial"
+fi
+python3 -m pytest "${PYTEST_ARGS[@]}" || bad "pytest"
 
 step "SKILL.md frontmatter name gate"
 # Folded from the old verify-template-stages.sh stage 6. Every SKILL.md must
