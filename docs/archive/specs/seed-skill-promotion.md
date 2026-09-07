@@ -1,6 +1,5 @@
 # Seed skill promotion
 
-
 **Decision D2 (2026-08-31, refined 2026-09-01):** grow `cultivation/marketplace/sam-cc-setup/` toward ~27 curated skills.
 The seed stays lean; the README points to the shared catchup skill and the optional marketplace plugin without asserting a hard skill count.
 This keeps the asset-layer rule: seed/ ships always-on generic behavior, optional workflows live in the plugin.

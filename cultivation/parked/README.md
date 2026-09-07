@@ -1,3 +1,1 @@
-# Parked assets
-
 Skills, agents, hooks, and workflows removed from the shipped `sam-cc-setup` plugin in v3.0.0, plus the `impeccable` plugin and the never-dogfooded research lane. Kept for reference; not installed. Zero recorded use at parking (see the v3 audit).

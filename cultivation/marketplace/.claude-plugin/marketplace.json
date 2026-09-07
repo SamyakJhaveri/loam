@@ -8,8 +8,8 @@
   "plugins": [
     {
       "name": "sam-cc-setup",
-      "description": "Three shipped skills: plan-review (blind merged plan review), codex-review (cross-model second opinion), surprise-me (ranked, evidence-backed ideas). Ships no hooks.",
-      "version": "0.8.0",
+      "description": "Portable Claude Code setup with a local brainstorming-to-writing-plans workflow, plan review, technology selection, validation, Codex cross-model review, and bootstrap support",
+      "version": "0.7.0",
       "source": "./sam-cc-setup",
       "author": {
         "name": "Samyak Jhaveri",

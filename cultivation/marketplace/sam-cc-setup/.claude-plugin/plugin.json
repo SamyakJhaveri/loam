@@ -1,8 +1,8 @@
 {
   "name": "sam-cc-setup",
   "license": "MIT",
-  "version": "0.8.0",
-  "description": "Three shipped skills: plan-review (blind merged plan review), codex-review (cross-model second opinion), surprise-me (ranked, evidence-backed ideas). Ships no hooks.",
+  "version": "0.7.0",
+  "description": "Portable Claude Code setup with a local brainstorming-to-writing-plans workflow, merged plan review, technology selection, validation, cross-model Codex review, and bootstrap support for the rules layer plugins cannot ship.",
   "author": {
     "name": "Samyak Jhaveri",
     "email": "39847642+SamyakJhaveri@users.noreply.github.com"
