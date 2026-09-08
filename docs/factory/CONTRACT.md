@@ -120,6 +120,7 @@ This contract owns the issue body: the stage-2 session hands the sections above 
 - A check line containing a token matching `*test*.py`, `*_test.sh`, or `pytest` that names a path not listed under Do not touch is flagged as a self-graded oracle.
 - `worker`, `codex-review`, `effort`, `goal`, and caps take valid values; every `skills:` name is in the set decided in #37.
 - Every path named under Where, Do not touch, and Approach exists in the tree or is named by the Goal as created.
+  The path rule is skipped under `bin/factory.d/fixtures/`, whose bodies are historical tickets and name paths that later tickets removed.
 - At most three merge-checklist lines on a Track B ticket.
 - Lint is static; it never executes a check.
 
