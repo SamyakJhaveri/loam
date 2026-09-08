@@ -14,7 +14,7 @@ Rubric text lives only in the grader files.
 | `bin/factory run <issue>` | round 0, then worker rounds, graders, PR | F1 |
 | `bin/factory status` | run states, spend, denials per round, worktree and PR readiness, preconditions | F1 |
 | `bin/factory stop <issue>` | writes `FACTORY_STOP` into the run dir | F1 |
-| `bin/runner <cmd>` | runs `<cmd>` on the runner: `ssh jhaveris bash -lc 'cd ~/Desktop/loam && <cmd>'`; `bin/runner sync` rsyncs the input set decided in #36 | F0 |
+| `bin/runner <cmd>` | runs `<cmd>` on the runner: `ssh jhaveris bash -lc 'cd ~/Desktop/loam && <cmd>'`; `bin/runner sync` mirrors `.superpowers/lean-v3/` and `.superpowers/factory/` to the same paths on the runner with `rsync -az --delete`, excluding `runs/` and `__pycache__`; it never pulls (#36) | F0 |
 | `bin/factory next [--install]` | launches up to `MAX_PARALLEL` `ready-for-agent` issues with no assignee and no open native blocker (read through `gh api`); `--install` writes the ten-minute runner timer | F9 |
 
 `REPO` comes from `gh repo view --json nameWithOwner` in the checkout the run was launched from.
@@ -116,8 +116,8 @@ Its workspace-write sandbox does not block `.env` reads (#41); F4 denies them in
 
 ## The worker prompt
 
-Every worker round receives, in the order #36 decides: the ticket's `goal:` line, one `/<skill>` line per name in `skills:`, the issue body verbatim, `_common.md`, and from round 2 a `## Previous round` block holding the failing check lines and every blocking finding verbatim.
-A slash command expands only on the first line of a `-p` prompt and swallows the rest as its argument (#40), so the carrier and order (route A: `/goal <goal:>` as the whole prompt with the rest in a system-prompt file; route B: a `Stop` hook running the block) are decided in #36; until then the `_common.md` line "repeat until it prints no FAIL line" stands in for `/goal`.
+Every worker round receives, in this order: the issue body verbatim, which carries its `goal:` line as text, `_common.md`, and from round 2 a `## Previous round` block holding the failing check lines and every blocking finding verbatim.
+A slash command expands only on the first line of a `-p` prompt and swallows the rest as its argument (#40), so no worker prompt carries `/goal` or a `/<skill>` line; a `Stop` hook in the worker's settings file runs the frozen check script from the worktree root and exits 2 with the FAIL lines while any check fails, and `--max-turns` bounds the round (#36, route B). How the `skills:` names reach the worker is #37's.
 A Codex worker gets the skill bodies pasted instead.
 `_common.md` is the loop contract, frozen per run; its target text:
 

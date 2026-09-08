@@ -29,7 +29,7 @@ Items marked Track A need no ticket and no loop.
 ## F2 ticket contract and lint
 
 The worked ticket in `CONTRACT.md` is this ticket's body.
-Running it under `loop.sh`: F0 publishes the issue unlinted; the loop file names and binding are decided in #36; the check file is `source lib.sh`, an inline `guard() { "$@"; }`, the done-checks block, and `exit $((n_fail > 0))`; the judge prompt for this run reads "Files owned" as everything not under Do not touch, scores `lean` on the diff alone, and marks `helpful` not applicable; whether the F6 run uses the same reading is decided in #36.
+Running it under `loop.sh`: F0 publishes the issue unlinted; `launch.sh` and `loop.sh` take the ticket id (`F2`) as their argument and build `tickets/F2.env`, `prompts/F2.md`, `checks/F2.sh`, `tickets/F2.issue.md`, `runs/F2`, and tmux `loam-F2` from it (#36); the check file is `source lib.sh`, an inline `guard() { "$@"; }`, the done-checks block, and `exit $((n_fail > 0))`; the judge for this run and for F6 is `loops/judge-factory.md`, selected by `JUDGE_MD` in the ticket env: Files owned is everything not under Do not touch, `lean` is scored on the diff alone, `helpful` is not applicable, `honest` reads `decisions.md`; the lean-v3 `judge.md` stays byte-identical for F6's replay (#36).
 
 ## F5 `/brief` skill
 
