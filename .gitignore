@@ -51,6 +51,7 @@ env/
 *.a
 *.so
 *.d
+!bin/factory.d/
 
 # ANL credentials — never commit
 *.pem
