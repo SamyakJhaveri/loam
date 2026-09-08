@@ -37,6 +37,18 @@ paths() {
     | grep -vE '[*$?{}]' | sort -u
 }
 
+# The paths a ticket promises: backtick-wrapped tokens whose first segment is a tracked
+# top-level entry. Prose such as "and/or", loop-relative names, and gitignored
+# .superpowers/ names are then prose, not paths the tree must already hold.
+promised_paths() {
+  local tops
+  tops=$(git -C "$ROOT" ls-files | cut -d/ -f1 | sort -u)
+  grep -o '`[^`]*`' | tr -d '`' | tr -s ' \t' '\n\n' | tr -d '",' | sed 's/[.,;:)]*$//' \
+    | grep -E '^[.A-Za-z0-9_][A-Za-z0-9_./-]*/[A-Za-z0-9_./-]*$' | grep -vE '[*$?{}]' \
+    | awk -v tops="$tops" 'BEGIN {n = split(tops, a, "\n"); for (i = 1; i <= n; i++) t[a[i]] = 1}
+                           {s = $0; sub(/\/.*/, "", s); if (s in t) print}' | sort -u
+}
+
 # ---- rules ----
 
 check_sections() {
@@ -65,7 +77,7 @@ check_header() {
 }
 
 check_no_skip() {
-  grep -qiE '(^|[^A-Za-z])skip' <<<"$BODY" && err "the body says 'skip'; a check leaves a ticket only through the abandon exit"
+  grep -qiE '(^|[^A-Za-z_-])skip([^A-Za-z_-]|$)' <<<"$BODY" && err "the body says 'skip'; a check leaves a ticket only through the abandon exit"
   return 0
 }
 
@@ -76,7 +88,7 @@ check_block_syntax() {
     err "expected exactly one fenced done-checks block, found $n"
     return
   fi
-  tmp=$(mktemp)
+  tmp=$(mktemp "${TMPDIR:-/tmp}/factory-lint.XXXXXX")
   { cat "$ROOT/bin/factory.d/lib.sh"; echo; dc_block; } > "$tmp"
   bash -n "$tmp" || err "the done-checks block plus lib.sh does not pass bash -n"
   rm -f "$tmp"
@@ -88,7 +100,8 @@ check_check_lines() {
   local line owned c covered e
   owned=$(section "Do not touch" | paths)
   while IFS= read -r line; do
-    [ -n "${line//[[:space:]]/}" ] || continue
+    line=${line#"${line%%[![:space:]]*}"}
+    [ -n "$line" ] || continue
     case "$line" in \#*) continue ;; esac
     grep -qE '(^|[[:space:]])pass[[:space:]]' <<<"$line" \
       || err "check line does not report a pass: $line"
@@ -106,7 +119,7 @@ check_check_lines() {
       done <<<"$owned"
       [ "$covered" = 1 ] || err "self-graded oracle: the check names $c, which Do not touch does not fence off"
     done < <(printf '%s\n' "$line" | paths)
-  done < <(dc_block)
+  done < <(dc_block | sed -e :a -e '/\\$/N; s/\\\n//; ta')
 }
 
 check_worker() {
@@ -137,13 +150,13 @@ check_merge_checklist() {
 # Every path the ticket names must already be in the tree, or be one the ticket says it creates.
 check_paths() {
   local p created
-  created=$(section "Do not touch" | grep -F 'Except:' | paths)
+  created=$(section "Do not touch" | grep -F 'Except:' | promised_paths)
   while IFS= read -r p; do
     [ -n "$p" ] || continue
     [ -e "$ROOT/$p" ] && continue
     grep -qxF "$p" <<<"$created" && continue
     err "names $p, which is not in the tree and is not one the ticket creates"
-  done < <( { header | grep -E '^Where:'; section "Do not touch"; section Approach; } | paths)
+  done < <( { header | grep -E '^Where:'; section "Do not touch"; section Approach; } | promised_paths)
 }
 
 lint() {
@@ -152,10 +165,11 @@ lint() {
   if [ -f "$SRC" ]; then
     BODY=$(cat "$SRC")
     head -n 1 "$SRC" | grep -q '^# ' || err "first line is not a '# ' title"
-  elif [ -n "$SRC" ]; then
+  elif [[ "$SRC" =~ ^[0-9]+$ ]]; then
     BODY=$(gh issue view "$SRC" --json body -q .body) \
       || { echo "LINT $SRC: could not read the issue body with gh" >&2; return 1; }
   else
+    echo "no such file: $SRC" >&2
     return 1
   fi
 

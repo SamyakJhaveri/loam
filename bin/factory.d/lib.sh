@@ -7,5 +7,5 @@ n_pass=0
 n_fail=0
 
 pass() { echo "PASS $1"; n_pass=$((n_pass + 1)); }
-fail() { echo "FAIL $1: $2"; n_fail=$((n_fail + 1)); }
+fail() { echo "FAIL $1: ${2:-}"; n_fail=$((n_fail + 1)); }
 guard() { "$@"; }   # a regression guard: runs CMD and returns its status; allowed to pass on main
