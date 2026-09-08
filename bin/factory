@@ -37,16 +37,13 @@ paths() {
     | grep -vE '[*$?{}]' | sort -u
 }
 
-# The paths a ticket promises: backtick-wrapped tokens whose first segment is a tracked
-# top-level entry. Prose such as "and/or", loop-relative names, and gitignored
-# .superpowers/ names are then prose, not paths the tree must already hold.
+# The paths a ticket promises: backtick-wrapped tokens whose first segment is a tracked top-level entry.
 promised_paths() {
   local tops
   tops=$(git -C "$ROOT" ls-files | cut -d/ -f1 | sort -u)
-  grep -o '`[^`]*`' | tr -d '`' | tr -s ' \t' '\n\n' | tr -d '",' | sed 's/[.,;:)]*$//' \
-    | grep -E '^[.A-Za-z0-9_][A-Za-z0-9_./-]*/[A-Za-z0-9_./-]*$' | grep -vE '[*$?{}]' \
+  grep -o '`[^`]*`' | tr -d '`' | paths \
     | awk -v tops="$tops" 'BEGIN {n = split(tops, a, "\n"); for (i = 1; i <= n; i++) t[a[i]] = 1}
-                           {s = $0; sub(/\/.*/, "", s); if (s in t) print}' | sort -u
+                           {s = $0; sub(/\/.*/, "", s); if (s in t) print}'
 }
 
 # ---- rules ----
