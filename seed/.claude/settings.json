@@ -27,6 +27,7 @@
     ]
   },
   "sandbox": {
+    "excludedCommands": ["ssh *", "scp *", "rsync *"],
     "enabled": true,
     "failIfUnavailable": false,
     "autoAllowBashIfSandboxed": true,
