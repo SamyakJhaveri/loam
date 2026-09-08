@@ -40,9 +40,10 @@ paths() {
 # The paths a ticket promises: backtick-wrapped tokens whose first segment is a tracked top-level entry.
 promised_paths() {
   local tops
-  tops=$(git -C "$ROOT" ls-files | cut -d/ -f1 | sort -u)
+  # tops is space-joined: macOS awk rejects a newline inside a -v value.
+  tops=$(git -C "$ROOT" ls-files | cut -d/ -f1 | sort -u | tr '\n' ' ')
   grep -o '`[^`]*`' | tr -d '`' | paths \
-    | awk -v tops="$tops" 'BEGIN {n = split(tops, a, "\n"); for (i = 1; i <= n; i++) t[a[i]] = 1}
+    | awk -v tops="$tops" 'BEGIN {n = split(tops, a, " "); for (i = 1; i <= n; i++) t[a[i]] = 1}
                            {s = $0; sub(/\/.*/, "", s); if (s in t) print}'
 }
 
@@ -74,7 +75,7 @@ check_header() {
 }
 
 check_no_skip() {
-  grep -qiE '(^|[^A-Za-z_-])skip([^A-Za-z_-]|$)' <<<"$BODY" && err "the body says 'skip'; a check leaves a ticket only through the abandon exit"
+  grep -qiE '(^|[^A-Za-z_-])skip(s|ped|ping)?([^A-Za-z_-]|$)' <<<"$BODY" && err "the body says 'skip'; a check leaves a ticket only through the abandon exit"
   return 0
 }
 
@@ -85,6 +86,7 @@ check_block_syntax() {
     err "expected exactly one fenced done-checks block, found $n"
     return
   fi
+  # bare mktemp ignores TMPDIR on macOS and fails inside the Claude Code sandbox
   tmp=$(mktemp "${TMPDIR:-/tmp}/factory-lint.XXXXXX")
   { cat "$ROOT/bin/factory.d/lib.sh"; echo; dc_block; } > "$tmp"
   bash -n "$tmp" || err "the done-checks block plus lib.sh does not pass bash -n"
@@ -147,13 +149,13 @@ check_merge_checklist() {
 # Every path the ticket names must already be in the tree, or be one the ticket says it creates.
 check_paths() {
   local p created
-  created=$(section "Do not touch" | grep -F 'Except:' | promised_paths)
+  created=$(section "Do not touch" | grep -F 'Except:' | paths)
   while IFS= read -r p; do
     [ -n "$p" ] || continue
     [ -e "$ROOT/$p" ] && continue
     grep -qxF "$p" <<<"$created" && continue
     err "names $p, which is not in the tree and is not one the ticket creates"
-  done < <( { header | grep -E '^Where:'; section "Do not touch"; section Approach; } | promised_paths)
+  done < <( { { header | grep -E '^Where:'; } | paths; { section "Do not touch"; section Approach; } | promised_paths; } | sort -u)
 }
 
 lint() {
