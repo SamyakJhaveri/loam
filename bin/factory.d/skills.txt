@@ -1,0 +1,6 @@
+mattpocock-skills:research
+mattpocock-skills:tdd
+mattpocock-skills:diagnosing-bugs
+mattpocock-skills:code-review
+sam-cc-setup:surprise-me
+rigor

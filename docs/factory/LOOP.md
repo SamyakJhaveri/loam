@@ -117,7 +117,7 @@ Its workspace-write sandbox does not block `.env` reads (#41); F4 denies them in
 ## The worker prompt
 
 Every worker round receives, in this order: the issue body verbatim, which carries its `goal:` line as text, `_common.md`, and from round 2 a `## Previous round` block holding the failing check lines and every blocking finding verbatim.
-A slash command expands only on the first line of a `-p` prompt and swallows the rest as its argument (#40), so no worker prompt carries `/goal` or a `/<skill>` line; a `Stop` hook in the worker's settings file runs the frozen check script from the worktree root and exits 2 with the FAIL lines while any check fails, and `--max-turns` bounds the round (#36, route B). How the `skills:` names reach the worker is #37's.
+A slash command expands only on the first line of a `-p` prompt and swallows the rest as its argument (#40), so no worker prompt carries `/goal` or a `/<skill>` line; a `Stop` hook in the worker's settings file runs the frozen check script from the worktree root and exits 2 with the FAIL lines while any check fails, and `--max-turns` bounds the round (#36, route B). `build_worker_prompt` in `loop.sh` appends after `_common.md` one sentence per `skills:` name: `Before the first edit, call the Skill tool with "<name>".` (#37).
 A Codex worker gets the skill bodies pasted instead.
 `_common.md` is the loop contract, frozen per run; its target text:
 
@@ -144,11 +144,12 @@ Skills are given at the moment they apply, never all at once; the listing is pai
 | Brief (stage 0) | `/brief` (F5) | Samyak invokes it |
 | Design (stage 1) | `surprise-me` (panel), `research`, plan mode, `/plan-review`, `grill-with-docs`, `domain-modeling`, `wayfinder` | the design session invokes them in that order for `Mode: figure-out`; from plan mode on for `build` |
 | Tickets (stage 2) | `to-tickets`, ticket grader, lean-critic | the stage-2 session; grader and lean-critic after `bin/factory lint` exits 0 |
-| Worker | the skills the ticket's `skills:` field names (set decided in #37) | the worker prompt |
+| Worker | the skills the ticket's `skills:` field names, each a line of `bin/factory.d/skills.txt` | one Skill-tool sentence per name in the worker prompt |
 | Graders | none; their prompt is the whole instruction | frozen files |
 | Manager (stage 5, 6) | `handoff` when stopping mid-stream | the manager session |
 
-The set a worker may name, and where lint reads it, are decided in #37.
+A worker may name only a line of `bin/factory.d/skills.txt`, and lint reads that file (#37).
+The worker runs with `--setting-sources user`, which loads `~/.claude/skills/` and user-scope plugins but no project skill, so the seed pair (`catchup`, `fable-prompting`) is not in the file.
 
 ## Parallel runs
 

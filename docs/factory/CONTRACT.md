@@ -100,7 +100,8 @@ The body starts at `Brief:` or `Part of`; in a file fixture the first `#` line i
    Rendered into the PR body as checkboxes; lint accepts it; the judge ignores it; the loop never converts a done check into one.
 8. `## Rows measured` (optional): one line per row, `command | baseline`, run by the supervisor after the checks pass and printed as `MEASURE <row> <value>`.
    This is the only per-project extension point.
-9. `## Worker`: `worker: claude|codex`, `codex-review: yes|no`, `effort: low|medium`, `goal:` the condition the round's `/goal` holds until, always the done-checks block printing no FAIL line, ending "or stop after 60 turns", `skills:` (optional) a comma list of skill names the worker must invoke, from the set decided in #37, and any cap override from `LOOP.md`.
+9. `## Worker`: `worker: claude|codex`, `codex-review: yes|no`, `effort: low|medium`, `goal:` the condition the round's `/goal` holds until, always the done-checks block printing no FAIL line, ending "or stop after 60 turns", `skills:` (optional) a comma list of skill names the worker must invoke, each a line of `bin/factory.d/skills.txt` written as the Skill tool lists it (`mattpocock-skills:research`, `rigor`), and any cap override from `LOOP.md`.
+    Samyak adds a line by hand, direct to `main`, after `bin/runner 'claude -p --setting-sources user --max-turns 1 "print skill names"'` prints the name on the runner; a worker runs with `--setting-sources user`, so a project skill such as `catchup` never loads there and never enters the file (#37).
 10. `## Decisions`: links to ADRs, closed decision tickets, or the design doc.
 
 Every path under Where, Do not touch, and Approach is verified with `git ls-files` when the ticket is written, or is a path the Goal creates; a guessed path is the commonest small defect and lint rejects it.
@@ -118,7 +119,7 @@ This contract owns the issue body: the stage-2 session hands the sections above 
 - The done-checks block plus `lib.sh` pass `bash -n`.
 - Every check line ends in `pass` or `fail`; no `skip` anywhere.
 - A check line containing a token matching `*test*.py`, `*_test.sh`, or `pytest` that names a path not listed under Do not touch is flagged as a self-graded oracle.
-- `worker`, `codex-review`, `effort`, `goal`, and caps take valid values; every `skills:` name is in the set decided in #37.
+- `worker`, `codex-review`, `effort`, `goal`, and caps take valid values; every `skills:` name is a line of `bin/factory.d/skills.txt`, matched byte for byte (#37).
 - Every path named under Where, Do not touch, and Approach exists in the tree or is named by the Goal as created.
   The path rule is skipped under `bin/factory.d/fixtures/`, whose bodies are historical tickets and name paths that later tickets removed.
 - At most three merge-checklist lines on a Track B ticket.
