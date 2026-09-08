@@ -173,4 +173,4 @@ goal: the done-checks block prints no FAIL line, or stop after 60 turns
 docs/factory/CONTRACT.md, docs/factory/ROADMAP.md
 ~~~
 
-On `main` the second line fails because `bin/factory` is missing, the third because the glob matches nothing and lint is missing, the fourth because `bin/check` has no lint step; the first fails on the missing files; the guard passes.
+On `main` the second line fails because `bin/factory` is missing, the third because lint is missing, the fourth because `bin/check` has no lint step; the first fails on the missing files; the guard passes.
