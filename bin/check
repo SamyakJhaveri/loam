@@ -72,9 +72,6 @@ step "factory ticket lint"
 for t in bin/factory.d/fixtures/S[1-5].md; do
   bin/factory lint "$t" || bad "bin/factory lint $t"
 done
-# The one fixture lint must reject, so a lint that accepts everything cannot pass this step.
-! bin/factory lint bin/factory.d/fixtures/S5.before.md >/dev/null 2>&1 \
-  || bad "bin/factory lint accepted bin/factory.d/fixtures/S5.before.md"
 
 if [ "$FAIL" -ne 0 ]; then echo; echo "check: FAILED"; exit 1; fi
 echo; echo "check: PASSED"

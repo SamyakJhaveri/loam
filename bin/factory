@@ -151,7 +151,7 @@ lint() {
   ERRS=0
   if [ -f "$SRC" ]; then
     BODY=$(cat "$SRC")
-    grep -qE -m1 '^# ' <<<"$(head -n 1 "$SRC")" || err "first line is not a '# ' title"
+    head -n 1 "$SRC" | grep -q '^# ' || err "first line is not a '# ' title"
   elif [ -n "$SRC" ]; then
     BODY=$(gh issue view "$SRC" --json body -q .body) \
       || { echo "LINT $SRC: could not read the issue body with gh" >&2; return 1; }
