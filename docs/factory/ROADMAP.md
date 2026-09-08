@@ -10,8 +10,8 @@ Items marked Track A need no ticket and no loop.
 | 1 | F2 ticket contract and lint | F0, `docs/factory` on main | `loop.sh` with a hand-authored prompt and checks |
 | 2 | F5 `/brief` skill | F2 | interactive Track B |
 | 3 | F6 grader replay | F2 | `loop.sh`, the last hand-authored ticket |
-| 4 | F1 `bin/factory run` | S5 merged, v3.0.0, F2 | the first ticket the factory runs on itself |
-| 5 | F3 graders | F1, F6 | `bin/factory run` |
+| 4 | F1 `bin/factory run` | F2 | `loop.sh` |
+| 5 | F3 graders | F1, F6 | `bin/factory run`, the first self-run |
 | 6 | F4 Codex worker and review stage | F1 | `bin/factory run` |
 | 7 | F9 frontier timer | two clean F1 tickets | `bin/factory run` |
 | 8 | F7 model-upgrade ablation step | F3 | Track A |
@@ -21,16 +21,15 @@ Items marked Track A need no ticket and no loop.
 
 - Set `cultivation/marketplace/sam-cc-setup/agents/plan-reviewer.md` model to `claude-fable-5-1`, effort stays high; bump the plugin; check the listing weight.
 - Fix `gh` on the Mac: re-login the keyring and trust the proxy CA, or install a three-line shim over `ssh jhaveris gh "$@"` that rewrites `--body-file X` to stdin; prove it with `gh api rate_limit`.
-- Remove the stale `~/Desktop/loam-s3` worktree.
 - Add `bin/runner` (`LOOP.md` Commands) and use it for every remote command from then on.
-- Commit `bin/factory.d/fixtures/`: `S5.before.md` and `S1.md` to `S5.md`, the lean-v3 tickets rewritten into the contract form (`CONTRACT.md`).
+- Commit `bin/factory.d/fixtures/`: `S1.before.md`, `S4.before.md`, `S5.before.md` (the pre-addendum bodies from the lean-v3 tickets directory) and `S1.md` to `S5.md`, the lean-v3 tickets rewritten into the contract form (`CONTRACT.md`).
 - Chart the factory as a `wayfinder` map, convert F1 to F9 below into the contract form, publish them through `to-tickets` as GitHub issues with native blocking edges, and replace the bodies here with links. Each ticket then runs as its own loop and merges to `main` before the next starts, so every merged ticket improves the loop that runs the following one.
 - Reinstall bradautomates/claude-video, run it on the four unparsed videos, append findings to `../research/community.md`.
 
 ## F2 ticket contract and lint
 
 The worked ticket in `CONTRACT.md` is this ticket's body.
-Running it under `loop.sh`: F0 publishes the issue unlinted; `tickets/F2.env` names it; `prompts/F2.md` is the worked ticket plus `_common.md`; `checks/F2.sh` is `source lib.sh`, an inline `guard() { "$@"; }`, the done-checks block, and `exit $((n_fail > 0))`; the judge prompt for this run reads "Files owned" as everything not under Do not touch, scores `lean` on the diff alone, and marks `helpful` not applicable.
+Running it under `loop.sh`: F0 publishes the issue unlinted; the loop file names and binding are decided in #36; the check file is `source lib.sh`, an inline `guard() { "$@"; }`, the done-checks block, and `exit $((n_fail > 0))`; the judge prompt for this run reads "Files owned" as everything not under Do not touch, scores `lean` on the diff alone, and marks `helpful` not applicable; whether the F6 run uses the same reading is decided in #36.
 
 ## F5 `/brief` skill
 
@@ -51,25 +50,26 @@ Merge checklist: record the first replay run in the PR body.
 Goal and why: `loop.sh` becomes `bin/factory run <issue>` as specified in `LOOP.md`, minus Codex.
 Do not touch: the standing list, `seed/`. Except: `bin/factory`, `bin/factory.d/`, the plugin `agents/` directory (this ticket moves `judge.md` and `reviewer.md` there).
 Done checks: `bin/factory run` on a trivial Track B ticket in Loam reaches `pr-opened` with `Closes #<issue>` as the PR body's first line and the metrics in it; round 0 exits `ticket-defect` on a ticket whose check passes on base; a killed model call produces `stopped-environment` without consuming a round; the three graders run with `--tools Read,Grep,Glob`; `judge.md` and `reviewer.md` exist under the plugin agents directory with `model: claude-fable-5-1`, `effort: medium`, `tools: Read, Grep, Glob`; the frozen judge and reviewer prompts carry the run's fence string, not a fixed one; `grep -c 'SamyakJhaveri\|jhaveris\|loam-s' bin/factory bin/factory.d/lib.sh` prints 0; `bin/factory status` lists denials per round.
+How the live-run checks execute without a loop inside a loop, here and in F4 and F9, is decided in #38.
 Merge checklist: replace the judge rubric copy in `.superpowers/lean-v3/04-SESSION-PLAN.md` with a link; delete `.superpowers/lean-v3/` on the Mac and the runner.
 
 ## F3 graders
 
 Goal and why: the ticket grader, the round-0 probe prompt, the target judge rubric (row names `correct`, `verified`, `honest`; `green` removed), and the lean-critic slop tells, each with a JSON schema.
 First try a ticket-specific prompt to the existing `plan-reviewer`; add a `ticket-grader.md` agent only if the eval shows a gap, since each agent costs about 200 always-on tokens per session.
-Do not touch: the standing list. Except: the plugin `agents/` directory.
-Done checks: `bin/factory eval` passes on every grader before and after with zero verdict changes, row sets re-baselined in the same PR; the ticket grader fails the S1 before case and passes the S1 contract fixture; the round-0 probe on the S4 ticket at `38eefc8` names done check 2 with the payload evidence.
+Do not touch: the standing list. Except: the plugin `agents/` directory, `bin/factory`, `bin/factory.d/` (this ticket adds the probe prompt and the grader schemas the supervisor loads).
+Done checks: `bin/factory eval` passes on every grader before and after with zero verdict changes, row sets re-baselined in the same PR; the ticket grader fails `S1.before.md` and passes `S1.md`; the round-0 probe on `S4.before.md` names done check 2 with the payload evidence.
 Merge checklist: bump the plugin version; check the listing weight.
 
 ## F4 Codex worker and review stage
 
 Goal and why: `worker: codex` and `codex-review: yes` as specified in `LOOP.md`.
 Do not touch: the standing list. Except: `bin/factory`, `bin/factory.d/`.
-Done checks: a Track B ticket with `worker: codex` reaches `pr-opened`; `codex-review: yes` adds one review section shaped by `review-output.schema.json`; Codex token counts appear in the ledger; whether `codex exec -s workspace-write` blocks a `.env` read is recorded in the PR body either way; `codex login status` is a preflight line.
+Done checks: a Track B ticket with `worker: codex` reaches `pr-opened`; `codex-review: yes` adds one review section shaped by `review-output.schema.json`; Codex token counts appear in the ledger; the Codex worker's config denies `.env` reads (`../research/sandbox-and-codex-keys.md`, `"**/*.env" = "deny"`), proven by a fixture `.env` absent from the round's JSONL, since the sandbox does not block the read (#41); `codex login status` is a preflight line.
 
 ## F9 frontier timer
 
-Goal and why: `bin/factory next` on a ten-minute runner timer, as specified in `LOOP.md`.
+Goal and why: `bin/factory next` on a ten-minute runner timer installed by `next --install`, as specified in `LOOP.md`.
 Done checks: after a merge, the next run's ledger start line is within ten minutes with zero operator commands; removing the label parks the ticket; `FACTORY_STOP` at the runs root pauses the timer.
 
 ## F7 model-upgrade ablation step

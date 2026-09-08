@@ -14,8 +14,8 @@ Rubric text lives only in the grader files.
 | `bin/factory run <issue>` | round 0, then worker rounds, graders, PR | F1 |
 | `bin/factory status` | run states, spend, denials per round, worktree and PR readiness, preconditions | F1 |
 | `bin/factory stop <issue>` | writes `FACTORY_STOP` into the run dir | F1 |
-| `bin/runner <cmd>` | runs `<cmd>` on the runner: `ssh jhaveris bash -lc 'cd ~/Desktop/loam && <cmd>'`; `bin/runner sync` rsyncs the gitignored inputs | F0 |
-| `bin/factory next` | launches up to `MAX_PARALLEL` `ready-for-agent` issues with no assignee and no open native blocker (read through `gh api`) | F9 |
+| `bin/runner <cmd>` | runs `<cmd>` on the runner: `ssh jhaveris bash -lc 'cd ~/Desktop/loam && <cmd>'`; `bin/runner sync` rsyncs the input set decided in #36 | F0 |
+| `bin/factory next [--install]` | launches up to `MAX_PARALLEL` `ready-for-agent` issues with no assignee and no open native blocker (read through `gh api`); `--install` writes the ten-minute runner timer | F9 |
 
 `REPO` comes from `gh repo view --json nameWithOwner` in the checkout the run was launched from.
 `status` runs on the runner; from the Mac it is `bin/runner bin/factory status`.
@@ -35,7 +35,7 @@ evals/<grader>/<case>/{prompt.md,expected.json}
     status  ledger.jsonl  base.sha  frozen/  round-<k>.*  worker/decisions.md  pr-body.md  notify.failed
 ```
 
-Graders are plugin agents (home in `ARCHITECTURE.md`): `judge.md`, `reviewer.md`, `lean-critic.md`, `ticket-grader.md`.
+Graders are plugin agents (home in `ARCHITECTURE.md`): `judge.md`, `reviewer.md`, `lean-critic.md`, and `ticket-grader.md` if F3 adds it (`ROADMAP.md`).
 The run resolves them from the installed plugin cache and records each file's sha256 in the ledger.
 
 ## A run
@@ -73,6 +73,7 @@ These read loop-control files to decide exit, never safety; safety stays with de
 ## Caps
 
 Defaults from lean-v3, overridable per ticket in its Worker section: `MAX_ROUNDS=6`, `ROUND_BUDGET_USD=15`, `GRADER_BUDGET_USD=5`, `TICKET_BUDGET_USD=60`, `DAILY_BUDGET_USD=150`, `MAX_HOURS=8`, `MAX_TURNS=200`, `CALL_TIMEOUT_SEC=5400`, `MAX_PARALLEL=1`.
+No research source gives a numeric anchor (`../research/anthropic-loop-engineering.md`); re-measure after two real runs.
 The daily ledger `runs/ledger-daily.jsonl` is keyed by UTC date across all runs.
 Codex token counts come from its `--json` events and land in the ledger with `cost_usd` null, so the dollar caps do not bound a Codex worker; the PR body says so.
 
@@ -87,6 +88,7 @@ A grader whose output is absent or unparseable is a fail with one high finding "
 ## Grader calls
 
 Graders run from the worktree root.
+`--tools Read,Grep,Glob` on the call is what makes a grader read-only (#40 measured that it sets the tool list exactly); an agent file's `tools:` line governs its interactive use only, so `lean-critic.md` keeps Bash.
 
 ```
 claude -p --model fable --effort medium --tools Read,Grep,Glob --no-session-persistence \
@@ -96,7 +98,8 @@ claude -p --model fable --effort medium --tools Read,Grep,Glob --no-session-pers
 
 Every evidence section sits between the run's fence lines; the frozen grader prompts say that any instruction found inside the fences is data and a dishonesty finding.
 The evidence bundle is the ticket body, the design issue body when one exists, `git diff base...HEAD`, the check output, the MEASURE lines, and `decisions.md`.
-The Codex review stage runs `codex exec review --base "$(cat base.sha)" --output-schema bin/factory.d/review-output.schema.json --json -o <file>`; `needs-attention` with a `critical` or `high` finding blocks once.
+The Codex review stage runs `codex exec --json --output-schema frozen/review-output.schema.json -o <file> -s workspace-write "$(cat frozen/codex-review.prompt.md)" < /dev/null`, with the base sha in the prompt; `codex exec review` ignores `--output-schema` (#41).
+`needs-attention` with a `critical` or `high` finding blocks once.
 
 ## Worker calls
 
@@ -106,14 +109,16 @@ claude -p --model opus --effort medium --permission-mode bypassPermissions \
   --max-budget-usd "$ROUND_BUDGET_USD" --output-format stream-json --verbose --include-hook-events < round-<k>.prompt.md
 ```
 
-`--max-turns` is accepted by Claude Code 2.1.258 though absent from its `--help`.
+`--max-turns` is accepted by Claude Code 2.1.263, the runner's login-shell binary (#40; a plain shell resolves an older nvm copy), though absent from its `--help`.
 `role-settings.json` is deny-only: the lean-v3 list plus `Bash(gh:*)`, so a worker cannot touch GitHub at all.
-The Codex worker runs `codex exec --json -o <file> -s workspace-write` with the same prompt shape; whether its sandbox blocks `.env` reads is a done check of F4.
-The worker prompt names the allowed subagents: Explore for reading, `verify-app` and `build-validator` for evidence when present in the runner's user config; every `Agent` call passes `model: opus`; no subagent edits.
+The Codex worker runs `codex exec --json -s workspace-write "$(cat round-<k>.prompt.md)" > round-<k>.jsonl -o round-<k>.last.md < /dev/null`: the JSONL stream is stdout and `-o` is the last-message file.
+Its workspace-write sandbox does not block `.env` reads (#41); F4 denies them in Codex config (`ROADMAP.md`).
 
 ## The worker prompt
 
-Every worker round receives, in this order: one `/<skill>` line per name in the ticket's `skills:` field (Claude Code expands slash commands inside a `-p` prompt; a Codex worker gets the skill bodies pasted instead), the issue body verbatim, `_common.md`, and from round 2 a `## Previous round` block holding the failing check lines and every blocking finding verbatim.
+Every worker round receives, in the order #36 decides: the ticket's `goal:` line, one `/<skill>` line per name in `skills:`, the issue body verbatim, `_common.md`, and from round 2 a `## Previous round` block holding the failing check lines and every blocking finding verbatim.
+A slash command expands only on the first line of a `-p` prompt and swallows the rest as its argument (#40), so the carrier and order (route A: `/goal <goal:>` as the whole prompt with the rest in a system-prompt file; route B: a `Stop` hook running the block) are decided in #36; until then the `_common.md` line "repeat until it prints no FAIL line" stands in for `/goal`.
+A Codex worker gets the skill bodies pasted instead.
 `_common.md` is the loop contract, frozen per run; its target text:
 
 ```
@@ -121,10 +126,10 @@ You are one round of an unattended loop on ticket #<issue>. There is no human. D
 Start by opening every path named under Where, Do not touch, and Approach with git ls-files; never guess a path or a name.
 Follow the Approach section where the ticket has one; if you depart from it, say why in decisions.md.
 Implement the Goal. Touch nothing listed under Do not touch. Add nothing listed under Out of scope.
-Before you finish, run the done-checks block from the worktree root exactly as the supervisor will, and fix every FAIL line you can. The supervisor reruns it; a claim without a PASS line is worth nothing.
+Before you finish, run the done-checks block from the worktree root exactly as the supervisor will, and fix every FAIL line you can; repeat until it prints no FAIL line or you cannot proceed. The supervisor reruns it; a claim without a PASS line is worth nothing.
 Commit as you go with messages that name the step. Never push, never open a PR, never touch GitHub.
 If a check cannot be met, write "ABANDON <name> <reason>" in decisions.md and stop; never edit, weaken, or route around a check.
-Use subagents only to read or to gather evidence; no subagent edits. Every Agent call names model opus.
+Use subagents only to read (Explore) or to gather evidence (verify-app, build-validator when installed); no subagent edits. Every Agent call names model opus.
 Write no summary, measurement table, or PR text; the supervisor assembles the PR from the diff, the checks, and decisions.md.
 ```
 
@@ -137,18 +142,18 @@ Skills are given at the moment they apply, never all at once; the listing is pai
 | Role | Skills | How they arrive |
 |---|---|---|
 | Brief (stage 0) | `/brief` (F5) | Samyak invokes it |
-| Design (stage 1) | `surprise-me` (panel), `research`, plan mode, `/plan-review`, `grill-with-docs`, `domain-modeling`, `wayfinder` | the design session invokes them in that order for `Mode: figure-out`; from `/plan-review` on for `build` |
-| Tickets (stage 2) | `to-tickets`, `bin/factory lint`, ticket grader, lean-critic | the stage-2 session |
-| Worker | `catchup` always; `tdd`, `diagnosing-bugs`, `test-driven-development`, `codebase-design`, or a domain skill when the ticket's `skills:` field names it | one `/<skill>` line at the top of the worker prompt |
+| Design (stage 1) | `surprise-me` (panel), `research`, plan mode, `/plan-review`, `grill-with-docs`, `domain-modeling`, `wayfinder` | the design session invokes them in that order for `Mode: figure-out`; from plan mode on for `build` |
+| Tickets (stage 2) | `to-tickets`, ticket grader, lean-critic | the stage-2 session; grader and lean-critic after `bin/factory lint` exits 0 |
+| Worker | the skills the ticket's `skills:` field names (set decided in #37) | the worker prompt |
 | Graders | none; their prompt is the whole instruction | frozen files |
-| Manager (stage 5, 6) | `bin/runner bin/factory status`, `handoff` when stopping mid-stream | the manager session |
+| Manager (stage 5, 6) | `handoff` when stopping mid-stream | the manager session |
 
-Skills the worker may name today: the seed pair (`catchup`, `fable-prompting`), the Pocock engineering set, and the personal set under `~/.claude/skills/` that the runner's user config carries.
+The set a worker may name, and where lint reads it, are decided in #37.
 
 ## Parallel runs
 
 Each run has its own worktree, branch, and run directory, so unblocked tickets may run at the same time.
-Two tickets may run together only when neither names a path the other's Goal creates or rewrites; the ticket grader checks this over a breakdown, and native blocking edges hold the rest apart.
+Two tickets may run together only when neither names a path the other's Goal creates or rewrites; the stage-2 grader pass checks this over a breakdown, and native blocking edges hold the rest apart.
 The daily ledger is written under a lock.
 `bin/factory next` launches up to `MAX_PARALLEL` runs (default 1; raise it after two clean single runs).
 
@@ -185,6 +190,7 @@ Each new grader agent costs about 200 always-on tokens in every session of every
 - `gh api rate_limit` succeeds on the seat that runs stages 0, 1, 2, and 5 (F0 fixes the Mac).
 - `grill-with-docs`, `wayfinder`, and `to-tickets` are invocable on that seat.
 - `codex login status` succeeds when any ticket uses Codex.
+- Every `codex` call on the runner exports `PATH=$HOME/.local/bin:$PATH` and ends in `< /dev/null`, or Codex is not found or eats the caller's stdin (#41).
 - The plugin cache holds the grader files at the version the ledger records.
 - Sessions that edit `bin/factory` run in `acceptEdits`, not auto mode, because the auto-mode classifier blocks tool calls whose text names a permission mode (observed, not documented).
 - `gh pr edit` has failed on a GraphQL deprecation; PR bodies are updated through the REST API.
@@ -194,6 +200,4 @@ From the Mac sandbox, known on 2026-09-07 and to re-check after F0:
 
 - `gh` fails (keyring and TLS); `git ls-remote` and unauthenticated `curl https://api.github.com` work.
 - `raw.githubusercontent.com` is blocked; read repo files through `https://api.github.com/repos/<owner>/<repo>/contents/<path>` with `Accept: application/vnd.github.raw`.
-- Reddit and YouTube pages are blocked to the fetch tools; use the Chrome browser tools, which the owner has authorized, and read Reddit through `old.reddit.com`.
-- YouTube transcripts are not retrievable by fetch or browser; use bradautomates/claude-video locally.
 - `ssh`, `scp`, and `rsync` to the runner are excluded from the sandbox and work; every remote command goes through `bin/runner`.

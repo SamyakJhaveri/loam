@@ -11,7 +11,7 @@ Everything here describes the target; a thing that exists at the time of writing
 - A known command is code, not an agent: anything a ticket can name as a command runs in the supervisor.
 - The agent that does the work never grades the work; graders run fresh, read-only, on frozen prompts, on a different model from the worker.
 - What Samyak does not want is written down as firmly as what he wants: Out of scope in every brief and ticket, Do not touch per ticket, ADRs from the grill, and the lean-critic on every diff.
-- One ticket, one worktree, one branch, one run directory; unblocked tickets may run in parallel (`LOOP.md`).
+- One ticket, one worktree, one branch, one run directory; parallel runs gated by `MAX_PARALLEL` (`LOOP.md`).
 - One directive has one home; a duplicate is a bug.
 - Every harness component is a dated bet on a model weakness and must justify its keep after each upgrade: remove one at a time and replay the graders.
 - When Samyak does not know the solution, the factory proposes before it asks: options with evidence first, then the grill picks.
@@ -37,7 +37,7 @@ flowchart LR
 | Stage | Input | Actor, model, effort | Samyak does | Output | Gate to next |
 |---|---|---|---|---|---|
 | 0 Brief | raw request | Fable 5.1 high, interactive, `/brief` (F5) | corrects the echoed brief, accepts | Track A: nothing. Track B: one ticket. Track C: a design issue whose top section is the brief | A exits; B to stage 2; C to stage 1 |
-| 1 Design (Track C) | design issue | when the brief is `Mode: figure-out`, `surprise-me` in panel mode and `research` subagents first; then Fable plan mode with Opus Explore subagents; `/plan-review` blind on Fable, whose elegance gate writes two competing designs before a verdict; `grill-with-docs` writes ADRs; `wayfinder` when unknowns remain; lean-critic on the design issue | reacts to the options, answers the grill, approves | design issue body (brief, destination, deliverables, constraints, proof, no implementation detail), ADRs in `docs/adr/`, map if used | review verdict recorded, ADRs committed |
+| 1 Design (Track C) | design issue | when the brief is `Mode: figure-out`, `surprise-me` in panel mode and `research` subagents first; then Fable plan mode with Opus Explore subagents; `/plan-review` blind on Fable, whose elegance gate writes two competing designs before a verdict; `grill-with-docs` with `domain-modeling` writes ADRs; `wayfinder` when unknowns remain; lean-critic on the design issue | reacts to the options, answers the grill, approves | design issue body (brief, destination, deliverables, constraints, proof, no implementation detail), ADRs in `docs/adr/`, map if used | review verdict recorded, ADRs committed |
 | 2 Tickets | design issue, or the one Track B ticket | Fable runs `to-tickets`; issue bodies use the ticket contract; `bin/factory lint` (F2); ticket grader (F3) and lean-critic once over the breakdown | approves the breakdown | GitHub issues, native blocking edges, label `ready-for-agent` | lint exit 0, grader pass |
 | 3 Loop | one ticket | `bin/factory run <issue>` on the runner (F1): round 0, then worker rounds on Opus 5 medium or `codex exec` | nothing; may run `bin/factory stop`, or edit the issue body and relaunch | branch, commits, a run directory | checks exit 0, clean tree, do-not-touch clean |
 | 4 Grade | diff and evidence | Fable medium judge, reviewer, lean-critic, read-only, fresh, frozen per run; Codex review stage when the ticket sets it | nothing | JSON verdicts, PR with metrics and merge checklist | judge pass and no blocking finding, or the grader-round cap with a backlog |
@@ -84,7 +84,7 @@ Scope beyond the ticket goal outside this list is a judge finding, not a stall.
 
 | Thing | Home | Reaches a seeded project |
 |---|---|---|
-| Graders | `cultivation/marketplace/sam-cc-setup/agents/`: `lean-critic.md` exists; `judge.md` and `reviewer.md` move there in F1; `ticket-grader.md` in F3 | through the plugin, or `bin/loam-attach.sh` |
+| Graders | `cultivation/marketplace/sam-cc-setup/agents/`: `lean-critic.md` exists; `judge.md` and `reviewer.md` move there in F1; `ticket-grader.md` in F3 only if its eval shows the `plan-reviewer` prompt has a gap | through the plugin, or `bin/loam-attach.sh` |
 | `/brief` skill | `cultivation/marketplace/sam-cc-setup/skills/brief/` (F5) | through the plugin |
 | `bin/factory`, `bin/factory.d/` | Loam `bin/` (F2, F6, F1) | not until F8 |
 | `evals/` | Loam root (F6) | no |

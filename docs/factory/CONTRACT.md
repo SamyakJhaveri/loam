@@ -38,9 +38,8 @@ Drop the rest or answer them from the codebase.
 
 `Mode: figure-out` is set when the ask is a question, names no solution, or says "help me figure out".
 It is always Track C.
-Stage 1 then opens with `surprise-me` in panel mode (dormant assets, reframing, adversary, analogist) and Pocock `research` subagents against primary sources, before any plan is written.
+Stage 1 then opens with `surprise-me` in panel mode and `research` subagents against primary sources before any plan is written; the actors and order are in the `ARCHITECTURE.md` stage table.
 The design issue records the options considered, the evidence for each, and the ones rejected with a reason.
-The grill then picks; the plan-reviewer's elegance gate compares two competing designs before its verdict; the lean-critic reads the design issue for over-engineering before tickets are cut.
 
 ### Tracks, by blast radius
 
@@ -55,16 +54,16 @@ The grill then picks; the plan-reviewer's elegance gate compares two competing d
   The brief becomes the top section of a design issue; stage 1 follows, then `to-tickets`.
 
 Risk high means anything Track A excludes, plus outward-facing behavior.
-It sets `codex-review: yes` on every ticket and asks for a human diff read before merge.
+It sets `codex-review: yes` on every ticket once F4 ships the stage, and asks for a human diff read before merge; until F4, `codex-review: no` is valid on a high-risk ticket and the diff read carries the weight.
 
 ### Worked brief, Track A
 
 ```
 Remove the stale loam-s3 worktree registered at ~/Desktop/loam-s3.
-Where: git worktree list shows it at 5d2a1ea; PR #29 merged that branch.
+Where: git worktree list shows it on branch lean/s3; PR #29 merged that branch.
 Done means: git worktree list no longer shows loam-s3 and git status is clean.
 Out of scope: pruning any other worktree; deleting the lean/s3 remote branch.
-Track: A    Risk: low    Open question: none
+Track: A    Risk: low    Mode: build    Open question: none
 ```
 
 ### Worked brief, Track B
@@ -74,7 +73,7 @@ Add a static linter for factory tickets so a bad ticket is rejected before a loo
 Where: bin/ (new bin/factory with a lint subcommand), bin/factory.d/fixtures/ (committed by F0).
 Done means: bin/factory lint rejects the pre-addendum S5 body, accepts the five contract-form bodies, and bin/check runs it.
 Out of scope: running any check command; the ticket grader; bin/factory run.
-Track: B    Risk: low    Open question: none
+Track: B    Risk: high    Mode: build    Open question: none
 ```
 
 ## The ticket contract
@@ -84,6 +83,7 @@ It is the shipped `fable-prompting` handoff rubric with fixed names: Goal and wh
 The body starts at `Brief:` or `Part of`; in a file fixture the first `#` line is the title.
 
 1. Title, then `Part of <design issue>` for Track C or `Brief:` followed by the four brief lines for Track B, then `Blocked by:` with issue links or `none` (display only; native blocking edges are what the loop reads).
+   The `Brief:` lines are display only; lint and the loop read the sections below.
 2. `## Goal and why`: two to four lines, linking the decision, ADR, or design doc.
 3. `## Do not touch`: the standing list from `ARCHITECTURE.md`, ticket-specific paths, and any `Except:` line.
 4. `## Out of scope`: one line each.
@@ -100,7 +100,7 @@ The body starts at `Brief:` or `Part of`; in a file fixture the first `#` line i
    Rendered into the PR body as checkboxes; lint accepts it; the judge ignores it; the loop never converts a done check into one.
 8. `## Rows measured` (optional): one line per row, `command | baseline`, run by the supervisor after the checks pass and printed as `MEASURE <row> <value>`.
    This is the only per-project extension point.
-9. `## Worker`: `worker: claude|codex`, `codex-review: yes|no`, `effort: low|medium`, `skills:` a comma list of installed skill names the worker must invoke (see `LOOP.md` for the map), and any cap override from `LOOP.md`.
+9. `## Worker`: `worker: claude|codex`, `codex-review: yes|no`, `effort: low|medium`, `goal:` the condition the round's `/goal` holds until, always the done-checks block printing no FAIL line, ending "or stop after 60 turns", `skills:` (optional) a comma list of skill names the worker must invoke, from the set decided in #37, and any cap override from `LOOP.md`.
 10. `## Decisions`: links to ADRs, closed decision tickets, or the design doc.
 
 Every path under Where, Do not touch, and Approach is verified with `git ls-files` when the ticket is written, or is a path the Goal creates; a guessed path is the commonest small defect and lint rejects it.
@@ -118,13 +118,13 @@ This contract owns the issue body: the stage-2 session hands the sections above 
 - The done-checks block plus `lib.sh` pass `bash -n`.
 - Every check line ends in `pass` or `fail`; no `skip` anywhere.
 - A check line containing a token matching `*test*.py`, `*_test.sh`, or `pytest` that names a path not listed under Do not touch is flagged as a self-graded oracle.
-- `worker`, `codex-review`, `effort`, and caps take valid values; every `skills:` name resolves to an installed skill.
+- `worker`, `codex-review`, `effort`, `goal`, and caps take valid values; every `skills:` name is in the set decided in #37.
 - Every path named under Where, Do not touch, and Approach exists in the tree or is named by the Goal as created.
 - At most three merge-checklist lines on a Track B ticket.
 - Lint is static; it never executes a check.
 
 Lint runs inside `bin/check` on its fixtures.
-Fixtures live in `bin/factory.d/fixtures/`, committed by F0: `S5.before.md`, which lint must reject on its `skip` (the release check becomes a merge-checklist line), and `S1.md` to `S5.md`, the lean-v3 tickets rewritten into the contract form, which lint must accept.
+Fixtures live in `bin/factory.d/fixtures/`, committed by F0: `S5.before.md`, which lint must reject on its `skip` (the release check becomes a merge-checklist line), `S1.before.md` and `S4.before.md`, the pre-addendum bodies for the F3 evals, and `S1.md` to `S5.md`, the lean-v3 tickets rewritten into the contract form, which lint must accept.
 S1's defect (contradictory checks) is semantic and becomes a ticket-grader eval case in F3.
 
 ### Ticket grader (Fable, fresh context, fixed prompt, F3)
@@ -167,6 +167,7 @@ guard bin/check >/dev/null && pass check-green || fail check-green "bin/check"
 worker: claude
 codex-review: no
 effort: medium
+goal: the done-checks block prints no FAIL line, or stop after 60 turns
 
 ## Decisions
 docs/factory/CONTRACT.md, docs/factory/ROADMAP.md
