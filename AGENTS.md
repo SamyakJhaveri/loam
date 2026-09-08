@@ -75,6 +75,7 @@ bin/check
 | `docs/SYNC.md` | Updating projects or promoting a reusable asset. |
 | `docs/BOOTSTRAP.md`, `docs/COPIER.md` | Changing bootstrap or update behavior. |
 | `docs/archive/specs/rebuild-structure-design.md` | Needing the rationale for the current tree. |
+| `docs/factory/ARCHITECTURE.md` | Running or changing the loop factory (brief, tickets, `bin/factory`, graders). |
 
 ## Agent skills
 

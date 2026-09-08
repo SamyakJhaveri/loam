@@ -1,0 +1,93 @@
+# What the loop-engineering video teaches
+
+Lean v3 takes three things from this video: a written pass-or-fail answer key as the completion condition per ticket, a fixed judge prompt the planner cannot author, and explicit iteration, time, and spend caps, which the video lacks.
+It also takes the fog rule: an unsettled decision becomes an explicit question, never an assumption.
+It does not take letting the main agent invent the checking criteria, or any reading in which the critic's free-text verdict gates safety rather than quality.
+
+Source: <https://www.youtube.com/watch?v=D_uojDHkbw4>, "This Claude Skill Just Fixed Loop Engineering", channel AI LABS, 14:31.
+Method: `watch` skill, `--detail transcript --no-whisper`, transcript-only with no frames.
+Timestamps are caption times.
+My own reasoning is labelled **Inference**.
+
+## The loop it teaches
+
+A loop is when the human leaves the prompt, inspect, correct cycle: you give the agent the goal and the standard, and it checks its own work until it gets there [01:03]-[01:22].
+The specific method is the "gauntlet loop", named by Matt Schumer after a one-prompt first-person-shooter demo [01:40]-[02:03], a three-line prompt [02:45]-[02:51]:
+
+1. What you are building and the quality bar, for Schumer the most recent Call of Duty games [02:56]-[03:16].
+2. How to build: the main agent breaks the goal into parts and hands each to its own sub-agent, each in its own memory [03:17]-[03:37].
+3. The quality level the final output must match, which is what tells the critic when it may stop [04:16]-[04:22].
+
+Each builder gets its own loop with a separate review sub-agent, the critic [03:48]-[03:56].
+The shape is a diamond graph: one task fanning out to parallel sub-agents, then narrowing back to one agent [04:57]-[05:30].
+The prompt ends with the keyword "ultra code", which the video says turns the run into a "dynamic workflow" running a fleet of sub-agents at once [04:46]-[04:52]; I did not verify that this keyword exists.
+
+**Inference.** For Lean v3's six tickets the transferable shape is one planning pass that produces the standard, per-ticket workers, a fresh critic per worker, and a final narrowing agent. The tickets are already the split.
+
+## The completion condition
+
+The video's central claim: "good is something it decides for itself, and an agent that decides its own standard passes its own work", so Schumer gave it a real game to measure against [02:03]-[02:12].
+The critic's stopping test is a blind comparison of the built thing and the reference, without being told which one Claude made [04:26]-[04:45].
+
+The critic [03:56]-[04:15]: it only checks and never builds, starts with no memory, does not know who made the work or how many times it has been sent back, is told to be "brutal and critically honest", and returns work until it passes.
+
+For projects with nothing to copy, the fix is a written spec as the bar [10:20]-[10:40], produced by a modified version of Matt Pocock's Wayfinder planning skill [08:34]-[08:56], [11:02]-[12:00].
+The modified skill emits two files into a `.wayfinder` folder [12:26]-[12:47]: the **map**, every decision, its reason, and what the finished thing should look like, and the **answer key**, "nothing but checks, where every line comes back as either a pass or a fail".
+The gauntlet prompt then points at `.wayfinder` instead of a game [12:56]-[13:15].
+Wayfinder reaches those decisions by interview, 34 questions in the session shown, and is a manual skill [12:06]-[12:33].
+
+**Inference.** The pass-or-fail answer key is the single most portable idea. A binary per-line checklist is a completion condition a worker cannot argue with, and it is the same artifact regardless of who reads it. Keep it under Loam's gitignored `.superpowers/` rather than adding a `.wayfinder` folder.
+
+## Cost and time
+
+The video gives no cost mechanism, only measured outcomes.
+
+| Measure | Value | Timestamp |
+|---|---|---|
+| Intro example build time | over 1 hour | [00:12] |
+| HR system build time | 1 hour 33 minutes | [13:38] |
+| Session limit consumed (Max plan) | about 40 percent | [13:40] |
+| Equivalent API cost | about $116 | [13:44] |
+
+It calls $116 "a lot" [13:49] but proposes no budget cap, no iteration cap, no wall-clock limit, and no early-abort rule; the only exit is the critic passing the work.
+Its bounding argument is upstream: a drifting critic wastes "a lot of time and tokens", so fix the standard before the loop starts [07:44]-[08:00].
+
+**Inference.** A loop whose only exit is "the critic is satisfied" has no upper bound. Lean v3 must add an iteration cap per ticket and a wall-clock or spend cap.
+
+## Roles and the fixed judge prompt
+
+Three roles: main agent (planner) splits the work and in the HR run planned, installed tools, laid the foundation, then launched many agents [13:22]-[13:38]; sub-agent (worker) in its own memory [03:30]-[03:37]; critic (judge) attached to each builder, memoryless, checks only [03:50]-[04:14].
+
+The video's first named problem is that this separation is not enforced [06:36]-[07:13].
+The main agent is "completely responsible for checking", spins up the critics and writes their instructions, and "you don't have control on the agents nor how the judgment prompt is being passed to the critics".
+Past the reference game, the prompt only says be a really harsh critic and check it visually [06:59]-[07:03].
+
+**Inference.** The judge's independence is only as strong as the judge's prompt, and here the planner writes it. For Lean v3 the judge prompt and its pass criteria are a fixed file the planner cannot rewrite.
+
+## Drift
+
+The second named problem [07:13]-[08:20]: when there is no existing product to copy, "the critic makes up a standard and starts passing work by it", and you come back to "a pile of features that all got built in one go against a standard the agent made up itself".
+"Having nothing to compare the work to is the normal case, not the exception" [08:05]-[08:08], so "the gauntlet loop works when there's something close enough to copy, and it breaks the moment there isn't" [08:14]-[08:20].
+
+The related planning failure is Pocock's "fog" [08:56]-[09:20]: the agent never says it is in the fog, fills the gap with an assumption, and returns a plan that looks finished with invented parts.
+Wayfinder's answer [09:26]-[09:58]: every remaining decision becomes a question on the map, split into answerable now and blocked; fog is cleared by research, a rough build, or a real-world action, and each answer unblocks what was waiting.
+
+The fixed loop still was not clean: every feature worked "though it did have some issues" [13:51]-[14:00], after being told "no close enough and no shortcuts" [13:26]-[13:29].
+The video says nothing about drift within a single long run; its whole analysis is about the standard being wrong from the start.
+
+## Loam design laws 2 and 3
+
+Law 2, nothing parses free text to decide safety: the critic decides pass or fail by judging free text and rendered output, so it conflicts if treated as a safety control.
+The answer key reduces this, since a pass-or-fail line is closer to an assertion than a verdict [12:44]-[12:47].
+**Inference.** The critic is a quality gate, not a safety gate. It may judge whether work is good, never whether an action is safe; safety stays with deny rules, the sandbox, git, and CI. Any answer-key line that gated a destructive or outward-facing action belongs in `bin/check` or CI instead.
+
+Law 4 tension: an answer key is a second place where checks live.
+Lean v3 should make the answer key call `bin/check` for anything mechanically checkable and reserve answer-key lines for judgements `bin/check` cannot express.
+
+Law 3, no hook on any tool matcher: no conflict.
+The video's entire control mechanism is prompt content and sub-agent structure; the critic is a spawned sub-agent, not a harness interception.
+
+## Risks
+
+Single source, transcript-only, auto-captioned, from a channel that sells a paid community and ran a sponsor segment [05:38]-[06:32]; on-screen prompt and answer-key text were never seen, and "ultra code" is unverified against Claude Code documentation.
+The $116 and 40-percent figures are the video's own unaudited numbers for one build.
