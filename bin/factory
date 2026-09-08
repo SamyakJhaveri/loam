@@ -163,7 +163,17 @@ lint() {
   ERRS=0
   if [ -f "$SRC" ]; then
     BODY=$(cat "$SRC")
-    head -n 1 "$SRC" | grep -q '^# ' || err "first line is not a '# ' title"
+    # A file may open with the front matter publish.sh reads: title:, then optional
+    # labels: and blocked_by:, then ---. The body is what follows the --- line.
+    if head -n 1 "$SRC" | grep -q '^title: '; then
+      if grep -qxF -- '---' "$SRC"; then
+        BODY=$(sed '1,/^---$/d' "$SRC")
+      else
+        err "front matter has no --- line"
+      fi
+    else
+      head -n 1 "$SRC" | grep -q '^# ' || err "first line is not a '# ' title"
+    fi
   elif [[ "$SRC" =~ ^[0-9]+$ ]]; then
     BODY=$(gh issue view "$SRC" --json body -q .body) \
       || { echo "LINT $SRC: could not read the issue body with gh" >&2; return 1; }
