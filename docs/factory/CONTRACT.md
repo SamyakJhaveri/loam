@@ -80,7 +80,7 @@ Track: B    Risk: high    Mode: build    Open question: none
 
 A ticket is a GitHub issue whose body has these sections in this order.
 It is the shipped `fable-prompting` handoff rubric with fixed names: Goal and why, Do not touch (Constraints), Done checks (Done check per task), Worker (Target model and effort); Session conduct is always unattended.
-The body starts at `Brief:` or `Part of`; in a file fixture the first `#` line is the title.
+The body starts at `Brief:` or `Part of`; in a file the first `#` line is the title, or the file opens with the `title:` front matter publish.sh reads, ending in `---`.
 
 1. Title, then `Part of <design issue>` for Track C or `Brief:` followed by the four brief lines for Track B, then `Blocked by:` with issue links or `none` (display only; native blocking edges are what the loop reads).
    The `Brief:` lines are display only; lint and the loop read the sections below.
