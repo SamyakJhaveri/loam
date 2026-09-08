@@ -94,6 +94,7 @@ The body starts at `Brief:` or `Part of`; in a file the first `#` line is the ti
    A line prefixed `guard` is a regression guard allowed to pass on `main`; every other check must print FAIL on `main`.
    The block is green when it prints no FAIL line and every named check prints exactly one PASS or FAIL line.
    No `skip`.
+   The block runs under `pipefail`, so a check never pipes a command that is meant to exit non-zero into `grep`; it captures the output first (`out=$(cmd 2>&1); grep -q pattern <<<"$out"`).
    Written before implementation.
    A check leaves the ticket only through the `abandon` exit in `LOOP.md`.
 7. `## Merge checklist` (optional): steps a human or a post-merge action performs, one line each with its command.
