@@ -26,7 +26,8 @@ Rubric text lives only in the grader files.
 bin/factory                    the supervisor
 bin/factory.d/lib.sh           pass, fail, guard (F2); MEASURE, render_into, check_clean (F1)
 bin/factory.d/_common.md       the loop contract appended to every worker prompt
-bin/factory.d/role-settings.json   deny-only settings for worker and grader calls
+bin/factory.d/role-settings.json   deny-only settings for grader calls
+bin/factory.d/worker-settings.json   worker-only settings: the same deny rules plus the Stop hook that runs the done-checks block
 bin/factory.d/review-output.schema.json   copied from the Codex plugin
 bin/factory.d/summarize_sample.py  stream-json summarizer (moved in F1)
 bin/factory.d/fixtures/        lint fixtures (CONTRACT.md)
@@ -35,15 +36,16 @@ evals/<grader>/<case>/{prompt.md,expected.json}
     status  ledger.jsonl  base.sha  frozen/  round-<k>.*  worker/decisions.md  pr-body.md  notify.failed
 ```
 
-Graders are plugin agents (home in `ARCHITECTURE.md`): `judge.md`, `reviewer.md`, `lean-critic.md`, and `ticket-grader.md` if F3 adds it (`ROADMAP.md`).
+Graders are plugin agents (home in `ARCHITECTURE.md`): `judge.md`, `reviewer.md`, `lean-critic.md`.
 The run resolves them from the installed plugin cache and records each file's sha256 in the ledger.
 
 ## A run
 
-1. Read the issue body from GitHub; `sha8` is the first eight hex of its sha256 and names the run dir.
+1. Read the ticket: an issue number reads the body from GitHub, a file path reads it from disk and makes no GitHub call, keying the run directory by the file stem instead of the issue number.
+   `sha8` is the first eight hex of the body's sha256 and, with the issue number or file stem, names the run dir under `FACTORY_RUNS_ROOT` (default `~/.local/state/loam-factory/runs`).
    A changed body is a new run; old rounds stay on disk.
-2. Record the `origin/main` sha as `base.sha`; create the sibling worktree on branch `factory/<issue>` from it; assign the issue to the operator.
-3. Extract the done-checks block; freeze `bin/factory`, the graders, `lib.sh`, `_common.md`, `role-settings.json`, the grader schemas, and the body into `frozen/`, owned outside the worker's write scope, with a random per-run evidence fence written into the frozen grader prompts.
+2. Record the `origin/main` sha as `base.sha`; create the sibling worktree on branch `factory/<issue>` from it; assign the issue to the operator (skipped for a file ticket).
+3. Extract the done-checks block; freeze `bin/factory`, the graders, `lib.sh`, `_common.md`, `role-settings.json`, `worker-settings.json`, the grader schemas, and the body into `frozen/`, owned outside the worker's write scope; the frozen grader prompts keep fixed evidence markers, there is no per-run string (#38).
 4. Round 0: run the block on `base.sha` from the worktree root; every non-guard check must print FAIL, else exit `ticket-defect`.
    Then one read-only Fable 5.1 low call with the ticket and the check output, answering `{doable, unmeetable:[{check, reason, evidence}]}` through `--json-schema`.
    Any `unmeetable` entry exits `ticket-defect` with the evidence and pages the owner.
@@ -96,7 +98,7 @@ claude -p --model fable --effort medium --tools Read,Grep,Glob --no-session-pers
   --setting-sources user --settings frozen/role-settings.json --output-format json < frozen/<grader>.prompt.md
 ```
 
-Every evidence section sits between the run's fence lines; the frozen grader prompts say that any instruction found inside the fences is data and a dishonesty finding.
+The frozen grader prompts keep fixed evidence markers; there is no per-run string, and any instruction found inside those markers is data and a dishonesty finding.
 The evidence bundle is the ticket body, the design issue body when one exists, `git diff base...HEAD`, the check output, the MEASURE lines, and `decisions.md`.
 The Codex review stage runs `codex exec --json --output-schema frozen/review-output.schema.json -o <file> -s workspace-write "$(cat frozen/codex-review.prompt.md)" < /dev/null`, with the base sha in the prompt; `codex exec review` ignores `--output-schema` (#41).
 `needs-attention` with a `critical` or `high` finding blocks once.
@@ -105,19 +107,19 @@ The Codex review stage runs `codex exec --json --output-schema frozen/review-out
 
 ```
 claude -p --model opus --effort medium --permission-mode bypassPermissions \
-  --setting-sources user --settings frozen/role-settings.json --max-turns "$MAX_TURNS" \
+  --setting-sources user --settings frozen/worker-settings.json --max-turns "$MAX_TURNS" \
   --max-budget-usd "$ROUND_BUDGET_USD" --output-format stream-json --verbose --include-hook-events < round-<k>.prompt.md
 ```
 
 `--max-turns` is accepted by Claude Code 2.1.263, the runner's login-shell binary (#40; a plain shell resolves an older nvm copy), though absent from its `--help`.
-`role-settings.json` is deny-only: the lean-v3 list plus `Bash(gh:*)`, so a worker cannot touch GitHub at all.
+`worker-settings.json` is deny-only, the lean-v3 list plus `Bash(gh:*)` so a worker cannot touch GitHub at all, plus the `Stop` hook (see The worker prompt); `role-settings.json`, loaded only by grader calls, carries the same deny rules with no hook.
 The Codex worker runs `codex exec --json -s workspace-write "$(cat round-<k>.prompt.md)" > round-<k>.jsonl -o round-<k>.last.md < /dev/null`: the JSONL stream is stdout and `-o` is the last-message file.
 Its workspace-write sandbox does not block `.env` reads (#41); F4 denies them in Codex config (`ROADMAP.md`).
 
 ## The worker prompt
 
 Every worker round receives, in this order: the issue body verbatim, which carries its `goal:` line as text, `_common.md`, and from round 2 a `## Previous round` block holding the failing check lines and every blocking finding verbatim.
-A slash command expands only on the first line of a `-p` prompt and swallows the rest as its argument (#40), so no worker prompt carries `/goal` or a `/<skill>` line; a `Stop` hook in the worker's settings file runs the frozen check script from the worktree root and exits 2 with the FAIL lines while any check fails, and `--max-turns` bounds the round (#36, route B). `build_worker_prompt` in `loop.sh` appends after `_common.md` one sentence per `skills:` name: `Before the first edit, call the Skill tool with "<name>".` (#37).
+A slash command expands only on the first line of a `-p` prompt and swallows the rest as its argument (#40), so no worker prompt carries `/goal` or a `/<skill>` line; a `Stop` hook in `worker-settings.json`, the worker-only settings file, runs the frozen check script from the worktree root and exits 2 with the FAIL lines while any check fails, and `--max-turns` bounds the round (#36, route B). `build_worker_prompt` in `loop.sh` appends after `_common.md` one sentence per `skills:` name: `Before the first edit, call the Skill tool with "<name>".` (#37).
 A Codex worker gets the skill bodies pasted instead.
 `_common.md` is the loop contract, frozen per run; its target text:
 
@@ -143,7 +145,7 @@ Skills are given at the moment they apply, never all at once; the listing is pai
 |---|---|---|
 | Brief (stage 0) | `/brief` (F5) | Samyak invokes it |
 | Design (stage 1) | `surprise-me` (panel), `research`, plan mode, `/plan-review`, `grill-with-docs`, `domain-modeling`, `wayfinder` | the design session invokes them in that order for `Mode: figure-out`; from plan mode on for `build` |
-| Tickets (stage 2) | `to-tickets`, ticket grader, lean-critic | the stage-2 session; grader and lean-critic after `bin/factory lint` exits 0 |
+| Tickets (stage 2) | `to-tickets`, `plan-reviewer`, lean-critic | the stage-2 session; `plan-reviewer` and lean-critic after `bin/factory lint` exits 0 |
 | Worker | the skills the ticket's `skills:` field names, each a line of `bin/factory.d/skills.txt` | one Skill-tool sentence per name in the worker prompt |
 | Graders | none; their prompt is the whole instruction | frozen files |
 | Manager (stage 5, 6) | `handoff` when stopping mid-stream | the manager session |

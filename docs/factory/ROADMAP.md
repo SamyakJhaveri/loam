@@ -48,29 +48,31 @@ Merge checklist: record the first replay run in the PR body.
 ## F1 `bin/factory run`
 
 Goal and why: `loop.sh` becomes `bin/factory run <issue>` as specified in `LOOP.md`, minus Codex.
-Do not touch: the standing list, `seed/`. Except: `bin/factory`, `bin/factory.d/`, the plugin `agents/` directory (this ticket moves `judge.md` and `reviewer.md` there).
-Done checks: `bin/factory run` on a trivial Track B ticket in Loam reaches `pr-opened` with `Closes #<issue>` as the PR body's first line and the metrics in it; round 0 exits `ticket-defect` on a ticket whose check passes on base; a killed model call produces `stopped-environment` without consuming a round; the three graders run with `--tools Read,Grep,Glob`; `judge.md` and `reviewer.md` exist under the plugin agents directory with `model: claude-fable-5-1`, `effort: medium`, `tools: Read, Grep, Glob`; the frozen judge and reviewer prompts carry the run's fence string, not a fixed one; `grep -c 'SamyakJhaveri\|jhaveris\|loam-s' bin/factory bin/factory.d/lib.sh` prints 0; `bin/factory status` lists denials per round.
-How the live-run checks execute without a loop inside a loop, here and in F4 and F9, is decided in #38.
-Merge checklist: replace the judge rubric copy in `.superpowers/lean-v3/04-SESSION-PLAN.md` with a link; delete `.superpowers/lean-v3/` on the Mac and the runner.
+Do not touch: the standing list, `seed/`. Except: `bin/factory`, `bin/factory.d/`, `bin/factory.d/fixtures/live/` (this ticket creates it), the plugin `agents/` directory (this ticket moves `judge.md` and `reviewer.md` there).
+Done checks: `bin/factory run/status/stop` exist with the `LOOP.md` layout and caps; `run` accepts a ticket file path in place of an issue number, keys the run directory by the file stem, and makes no GitHub call; two fixtures under `bin/factory.d/fixtures/live/` prove the failure-only exits without a loop inside a loop: `defective.md` ends `ticket-defect` before any model call, `hang.md` (`CALL_TIMEOUT_SEC=2`) ends `stopped-environment` with no `round-1.*` file; the two graders run with `--tools Read,Grep,Glob`; `judge.md` and `reviewer.md` exist under the plugin agents directory with `model: claude-fable-5-1`, `effort: medium`, `tools: Read, Grep, Glob`; the frozen grader prompts keep fixed evidence markers, not a random fence; `grep -c 'SamyakJhaveri\|jhaveris\|loam-s' bin/factory bin/factory.d/lib.sh` prints 0; `bin/factory status` lists denials per round.
+The happy path (a run reaching `pr-opened`) is proved once by hand, in the merge checklist, not by an automated check (#38).
+Merge checklist: bump the plugin cache on the runner from the F1 branch, then run `bin/factory run` on F3 from the F1 worktree until it reaches `pr-opened`, the run directory path in the PR body; then replace the judge rubric copy in `.superpowers/lean-v3/04-SESSION-PLAN.md` with a link; delete `.superpowers/lean-v3/` on the Mac and the runner.
 
 ## F3 graders
 
-Goal and why: the ticket grader, the round-0 probe prompt, the target judge rubric (row names `correct`, `verified`, `honest`; `green` removed), and the lean-critic slop tells, each with a JSON schema.
-First try a ticket-specific prompt to the existing `plan-reviewer`; add a `ticket-grader.md` agent only if the eval shows a gap, since each agent costs about 200 always-on tokens per session.
-Do not touch: the standing list. Except: the plugin `agents/` directory, `bin/factory`, `bin/factory.d/` (this ticket adds the probe prompt and the grader schemas the supervisor loads).
-Done checks: `bin/factory eval` passes on every grader before and after with zero verdict changes, row sets re-baselined in the same PR; the ticket grader fails `S1.before.md` and passes `S1.md`; the round-0 probe on `S4.before.md` names done check 2 with the payload evidence.
+Goal and why: graders as plugin agents plus the eval schemas: the target judge rubric (row names `correct`, `verified`, `honest`; `green` removed) and the lean-critic slop tells, each with a JSON schema.
+The plan gate is the existing `plan-reviewer`, run by hand over a ticket breakdown before publish; no dedicated ticket-checking agent is added.
+Do not touch: the standing list. Except: the plugin `agents/` directory, `bin/factory`, `bin/factory.d/` (this ticket adds the grader schemas the supervisor loads).
+Done checks: `bin/factory eval` passes on every grader before and after with zero verdict changes, row sets re-baselined in the same PR.
 Merge checklist: bump the plugin version; check the listing weight.
 
 ## F4 Codex worker and review stage
 
 Goal and why: `worker: codex` and `codex-review: yes` as specified in `LOOP.md`.
 Do not touch: the standing list. Except: `bin/factory`, `bin/factory.d/`.
-Done checks: a Track B ticket with `worker: codex` reaches `pr-opened`; `codex-review: yes` adds one review section shaped by `review-output.schema.json`; Codex token counts appear in the ledger; the Codex worker's config denies `.env` reads (`../research/sandbox-and-codex-keys.md`, `"**/*.env" = "deny"`), proven by a fixture `.env` absent from the round's JSONL, since the sandbox does not block the read (#41); `codex login status` is a preflight line.
+Done checks: `codex-review: yes` adds one review section shaped by `review-output.schema.json`; the Codex worker's config denies `.env` reads (`../research/sandbox-and-codex-keys.md`, `"**/*.env" = "deny"`); `codex login status` is a preflight line.
+Merge checklist: a hand run of a Track B ticket with `worker: codex` reaches `pr-opened`; Codex token counts appear in the ledger for that run; a fixture `.env` is confirmed absent from the round's JSONL, since the sandbox does not block the read (#41); run directory path in the PR body.
 
 ## F9 frontier timer
 
 Goal and why: `bin/factory next` on a ten-minute runner timer installed by `next --install`, as specified in `LOOP.md`.
-Done checks: after a merge, the next run's ledger start line is within ten minutes with zero operator commands; removing the label parks the ticket; `FACTORY_STOP` at the runs root pauses the timer.
+Done checks: removing the `ready-for-agent` label parks a ticket; `FACTORY_STOP` at the runs root pauses the timer.
+Merge checklist: after a real merge, hand-confirm the next run's ledger start line lands within ten minutes with zero operator commands; run directory path in the PR body.
 
 ## F7 model-upgrade ablation step
 

@@ -72,7 +72,7 @@ Track: A    Risk: low    Mode: build    Open question: none
 Add a static linter for factory tickets so a bad ticket is rejected before a loop starts.
 Where: bin/ (new bin/factory with a lint subcommand), bin/factory.d/fixtures/ (committed by F0).
 Done means: bin/factory lint rejects the pre-addendum S5 body, accepts the five contract-form bodies, and bin/check runs it.
-Out of scope: running any check command; the ticket grader; bin/factory run.
+Out of scope: running any check command; bin/factory run.
 Track: B    Risk: high    Mode: build    Open question: none
 ```
 
@@ -128,13 +128,7 @@ This contract owns the issue body: the stage-2 session hands the sections above 
 
 Lint runs inside `bin/check` on its fixtures.
 Fixtures live in `bin/factory.d/fixtures/`, committed by F0: `S5.before.md`, which lint must reject on its `skip` (the release check becomes a merge-checklist line), `S1.before.md` and `S4.before.md`, the pre-addendum bodies for the F3 evals, and `S1.md` to `S5.md`, the lean-v3 tickets rewritten into the contract form, which lint must accept.
-S1's defect (contradictory checks) is semantic and becomes a ticket-grader eval case in F3.
-
-### Ticket grader (Fable, fresh context, fixed prompt, F3)
-
-It runs once over the whole breakdown and again on any edited ticket, and answers with JSON through `--json-schema`.
-Its questions: do the tickets together deliver every line of the brief's ask and Done means (a line no ticket delivers is a gap even if no ticket named it); does each goal follow from the linked decision; are the checks sufficient for the goal; is anything contradictory; is each ticket one session of work; does any check's English name mismatch its command.
-Its rubric text lives in its agent file only.
+S1's defect (contradictory checks) is semantic; the plan gate that would have caught it is `plan-reviewer`, run by hand over the breakdown before publish, not a dedicated ticket-checking agent.
 
 ### Worked ticket: F2
 
@@ -144,7 +138,7 @@ Brief:
 Add a static linter for factory tickets so a bad ticket is rejected before a loop starts.
 Where: bin/ (new bin/factory with a lint subcommand), bin/factory.d/fixtures/ (committed by F0).
 Done means: bin/factory lint rejects the pre-addendum S5 body, accepts the five contract-form bodies, and bin/check runs it.
-Out of scope: running any check command; the ticket grader; bin/factory run.
+Out of scope: running any check command; bin/factory run.
 Blocked by: F0 (fixtures committed, issue published), docs/factory on main
 
 ## Goal and why
@@ -155,7 +149,7 @@ Four of five lean-v3 tickets needed an owner addendum; a static lint catches the
 The standing list. Except: bin/factory, bin/factory.d/ (this ticket creates them).
 
 ## Out of scope
-Executing any check; the ticket grader; bin/factory run; publishing issues.
+Executing any check; bin/factory run; publishing issues.
 
 ## Done checks
 ```done-checks
