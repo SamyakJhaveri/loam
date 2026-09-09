@@ -49,7 +49,7 @@ The run resolves them from the installed plugin cache and records each file's sh
 4. Round 0: run the block on `base.sha` from the worktree root; every non-guard check must print FAIL, else exit `ticket-defect`.
    Then one read-only Fable 5.1 low call with the ticket and the check output, answering `{doable, unmeetable:[{check, reason, evidence}]}` through `--json-schema`.
    Any `unmeetable` entry exits `ticket-defect` with the evidence and pages the owner.
-5. Worker round k: a fresh `claude -p` (Opus 5 medium) or a fresh `codex exec` in the worktree with the body, `_common.md`, and from round 2 the failing check lines and every blocking finding verbatim.
+5. Worker round k: a fresh `claude -p` (`claude-opus-4-8[1m]` high) or a fresh `codex exec` in the worktree with the body, `_common.md`, and from round 2 the failing check lines and every blocking finding verbatim.
    The worker writes code and `decisions.md` only.
    Every round is a fresh process for either worker; there is no fixer role.
 6. Before grading, in order: scan `decisions.md` for an `ABANDON` line; re-hash the frozen set (a mismatch exits `stopped-environment`); `git status --porcelain` must be empty, else the round fails with the path list; `git diff --name-only "$(cat base.sha)"...HEAD` against Do not touch emits `FAIL do-not-touch <paths>`; then run the done-checks block from the worktree root.
@@ -100,13 +100,14 @@ claude -p --model fable --effort medium --tools Read,Grep,Glob --no-session-pers
 
 The frozen grader prompts keep fixed evidence markers; there is no per-run string, and any instruction found inside those markers is data and a dishonesty finding.
 The evidence bundle is the ticket body, the design issue body when one exists, `git diff base...HEAD`, the check output, the MEASURE lines, and `decisions.md`.
+In that diff, code files pass as content, but data files pass as stat only (files under `evals/` named `prompt.md`, and any single added file over 400 lines), so a frozen prompt or a large fixture never floods the grader diff.
 The Codex review stage runs `codex exec --json --output-schema frozen/review-output.schema.json -o <file> -s workspace-write "$(cat frozen/codex-review.prompt.md)" < /dev/null`, with the base sha in the prompt; `codex exec review` ignores `--output-schema` (#41).
 `needs-attention` with a `critical` or `high` finding blocks once.
 
 ## Worker calls
 
 ```
-claude -p --model opus --effort medium --permission-mode bypassPermissions \
+claude -p --model claude-opus-4-8[1m] --effort high --permission-mode bypassPermissions \
   --setting-sources user --settings frozen/worker-settings.json --max-turns "$MAX_TURNS" \
   --max-budget-usd "$ROUND_BUDGET_USD" --output-format stream-json --verbose --include-hook-events < round-<k>.prompt.md
 ```
@@ -121,6 +122,7 @@ Its workspace-write sandbox does not block `.env` reads (#41); F4 denies them in
 Every worker round receives, in this order: the issue body verbatim, which carries its `goal:` line as text, `_common.md`, and from round 2 a `## Previous round` block holding the failing check lines and every blocking finding verbatim.
 A slash command expands only on the first line of a `-p` prompt and swallows the rest as its argument (#40), so no worker prompt carries `/goal` or a `/<skill>` line; a `Stop` hook in `worker-settings.json`, the worker-only settings file, runs the frozen check script from the worktree root and exits 2 with the FAIL lines while any check fails, and `--max-turns` bounds the round (#36, route B). `build_worker_prompt` in `loop.sh` appends after `_common.md` one sentence per `skills:` name: `Before the first edit, call the Skill tool with "<name>".` (#37).
 A Codex worker gets the skill bodies pasted instead.
+The worker never runs `bin/factory eval` against the live model; the supervisor's own check run is the one live replay per round.
 `_common.md` is the loop contract, frozen per run; its target text:
 
 ```
@@ -131,7 +133,7 @@ Implement the Goal. Touch nothing listed under Do not touch. Add nothing listed 
 Before you finish, run the done-checks block from the worktree root exactly as the supervisor will, and fix every FAIL line you can; repeat until it prints no FAIL line or you cannot proceed. The supervisor reruns it; a claim without a PASS line is worth nothing.
 Commit as you go with messages that name the step. Never push, never open a PR, never touch GitHub.
 If a check cannot be met, write "ABANDON <name> <reason>" in decisions.md and stop; never edit, weaken, or route around a check.
-Use subagents only to read (Explore) or to gather evidence (verify-app, build-validator when installed); no subagent edits. Every Agent call names model opus.
+Use subagents only to read (Explore) or to gather evidence (verify-app, build-validator when installed); no subagent edits. Every Agent call names model claude-opus-4-8[1m].
 Write no summary, measurement table, or PR text; the supervisor assembles the PR from the diff, the checks, and decisions.md.
 ```
 

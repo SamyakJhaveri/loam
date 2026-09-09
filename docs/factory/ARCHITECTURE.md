@@ -39,7 +39,7 @@ flowchart LR
 | 0 Brief | raw request | Fable 5.1 high, interactive, `/brief` (F5) | corrects the echoed brief, accepts | Track A: nothing. Track B: one ticket. Track C: a design issue whose top section is the brief | A exits; B to stage 2; C to stage 1 |
 | 1 Design (Track C) | design issue | when the brief is `Mode: figure-out`, `surprise-me` in panel mode and `research` subagents first; then Fable plan mode with Opus Explore subagents; `/plan-review` blind on Fable, whose elegance gate writes two competing designs before a verdict; `grill-with-docs` with `domain-modeling` writes ADRs; `wayfinder` when unknowns remain; lean-critic on the design issue | reacts to the options, answers the grill, approves | design issue body (brief, destination, deliverables, constraints, proof, no implementation detail), ADRs in `docs/adr/`, map if used | review verdict recorded, ADRs committed |
 | 2 Tickets | design issue, or the one Track B ticket | Fable runs `to-tickets`; issue bodies use the ticket contract; `bin/factory lint` (F2); `plan-reviewer` by hand and lean-critic once over the breakdown | approves the breakdown | GitHub issues, native blocking edges, label `ready-for-agent` | lint exit 0, `plan-reviewer` pass |
-| 3 Loop | one ticket | `bin/factory run <issue>` on the runner (F1): round 0, then worker rounds on Opus 5 medium or `codex exec` | nothing; may run `bin/factory stop`, or edit the issue body and relaunch | branch, commits, a run directory | checks exit 0, clean tree, do-not-touch clean |
+| 3 Loop | one ticket | `bin/factory run <issue>` on the runner (F1): round 0, then worker rounds on `claude-opus-4-8[1m]` high or `codex exec` | nothing; may run `bin/factory stop`, or edit the issue body and relaunch | branch, commits, a run directory | checks exit 0, clean tree, do-not-touch clean |
 | 4 Grade | diff and evidence | Fable medium judge, reviewer, lean-critic, read-only, fresh, frozen per run; Codex review stage when the ticket sets it | nothing | JSON verdicts, PR with metrics and merge checklist | judge pass and no blocking finding, or the grader-round cap with a backlog |
 | 5 Merge | PR | Samyak with `bin/runner bin/factory status`; `claude ultrareview --json` optional on high risk | ticks the merge checklist, merges | merged main; the PR's `Closes #N` closes the ticket | human merge, never the loop |
 | 6 Learn | `bin/factory status` | the manager session (rule in `LOOP.md`) | nothing | a `CLAUDE.md` line, a lint rule, or nothing | none |
@@ -75,7 +75,7 @@ Scope beyond the ticket goal outside this list is a judge finding, not a stall.
 ## Models and roles
 
 - Every reviewing or judging agent is a fresh Fable 5.1: judge, reviewer, lean-critic at medium; the round-0 doable/unmeetable call at low; the plan-reviewer at high (F0 sets its frontmatter).
-- Opus 5 does exploration, retrieval, and implementation only: loop worker at medium, Explore subagents.
+- `claude-opus-4-8[1m]` does exploration, retrieval, and implementation only: loop worker at high, Explore subagents. Never Opus 5 (2026-09-09).
 - Brief and design sessions are Fable 5.1 at high, interactive.
 - Never Sonnet or Haiku; never high or above for a loop worker; any flag that defaults to Haiku is overridden or unused; every `Agent` call names its model.
 - The one named exception: Codex may be the worker (`worker: codex`) or an added reviewer (`codex-review: yes`); the Fable graders always run.
