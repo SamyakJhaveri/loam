@@ -63,9 +63,11 @@ removing it would cause a mistake.
   session brief are separate always-on costs and are not inside that number.
 - Skill listing: the two seed skills weigh 131 tokens, so a fresh project pays
   about 400 + 131 tokens before any work starts.
-- In the Loam template repo the `sam-cc-setup` plugin listing weighs 448 tokens.
+- In the Loam template repo the `sam-cc-setup` plugin listing weighs 565 tokens.
   That is the `LISTING_BUDGET` ratchet `bin/check` asserts. Lower it when the
-  listing shrinks; never raise it without saying why.
+  listing shrinks; never raise it without saying why. Raised from 448 on
+  2026-09-09 when `plan-review` became model-invocable, so its description
+  now sits in the listing.
 
 ## Accepted risks, stated rather than hidden
 
