@@ -1,6 +1,5 @@
 ---
 name: plan-review
-disable-model-invocation: true
 description: >
   Run the merged blind plan review (correctness checklist + elegance gate in one agent)
   on a plan, spec, or design doc before execution. Accepts the artifact path as the argument.
