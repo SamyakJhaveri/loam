@@ -1,0 +1,7 @@
+{
+  "source": "lean-v3 run S2 round 6: the fixer left edits uncommitted, so the judge graded a stale tree",
+  "verdict": "fail",
+  "failing_rows": [
+    "correct"
+  ]
+}
