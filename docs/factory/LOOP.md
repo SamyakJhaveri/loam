@@ -201,8 +201,10 @@ Each new grader agent costs about 200 always-on tokens in every session of every
 - `gh pr edit` has failed on a GraphQL deprecation; PR bodies are updated through the REST API.
 - macOS lacks coreutils `timeout`; the supervisor runs only on the runner.
 
-From the Mac sandbox, known on 2026-09-07 and to re-check after F0:
+From the Mac sandbox, re-checked on 2026-09-09 (#34):
 
-- `gh` fails (keyring and TLS); `git ls-remote` and unauthenticated `curl https://api.github.com` work.
-- `raw.githubusercontent.com` is blocked; read repo files through `https://api.github.com/repos/<owner>/<repo>/contents/<path>` with `Accept: application/vnd.github.raw`.
-- `ssh`, `scp`, and `rsync` to the runner are excluded from the sandbox and work; every remote command goes through `bin/runner`.
+- Native `gh` fails on two faults: the Mac keyring token is invalid, and the sandbox blocks Go's call into the macOS Security framework (`x509: OSStatus -26276`), which no CA file fixes because the proxy does not intercept TLS.
+- `gh` works through the runner: `bin/runner 'gh api rate_limit'` succeeds, stdin passes through, so `bin/runner 'gh issue comment N --body-file -' < file` is the GitHub write path from a sandboxed session.
+- `bin/runner`, `ssh`, `scp`, and `rsync` to the runner are excluded from the sandbox by the global settings and work.
+- `raw.githubusercontent.com` returns 200; `git ls-remote`, `git fetch`, `git push`, and unauthenticated `curl https://api.github.com` work.
+- `reddit.com` returns 403; `youtube.com` returns 200.
