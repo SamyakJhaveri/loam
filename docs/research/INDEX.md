@@ -14,9 +14,10 @@ The design that rests on this evidence is in `../factory/ARCHITECTURE.md`.
 | `anthropic-loop-engineering.md` | the mis-titled loop-engineering PDF and the AI LABS levels video (2026-09-06) | supervisor owns everything mechanical; models write and judge only |
 | `video-loop-engineering.md` | the AI LABS skill video (2026-09-06) | answer key per ticket, fixed judge prompt, hard caps |
 | `sandbox-and-codex-keys.md` | sandbox and permission keys from primary docs (2026-09-06) | the deny-only role settings |
+| `primary-2026-09-08/` | the same sources read from their live pages, repos, and captions on 2026-09-08, with the fact-check corrections to the notes above | one fresh judge, human-decided checks, no loop inside a loop, remove one component per run and read the ledger (#38) |
 
 The three 2026-09-06 notes are copies of gitignored files under `.superpowers/lean-v3/research/`; F1 deletes the originals.
-Transcripts for the five videos given on 2026-09-07 were unobtainable by every route; `community.md` records what was read instead.
+Transcripts for the five videos given on 2026-09-07 were unobtainable on that day; `primary-2026-09-08/videos.md` has them, pulled with yt-dlp auto-captions.
 
 ## Resources given, by theme
 
