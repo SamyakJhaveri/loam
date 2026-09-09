@@ -209,11 +209,12 @@ run_eval() {
     fi
     name=$(basename "$dir")
     cases=$((cases + 1))
-    # Two attempts, as the loop's grader call takes: without --json-schema (F3) a reply
-    # sometimes carries prose around the object.
+    # Two attempts, as the loop's grader call takes.
     for attempt in 1 2; do
+      # Each call gets the remaining headroom, so EVAL_BUDGET_USD caps the sum over cases.
       out=$(cat "$rubric" "$dir/prompt.md" | claude -p --model "$EVAL_MODEL" --effort medium \
-        --tools Read,Grep,Glob --no-session-persistence --max-budget-usd "$budget" \
+        --tools Read,Grep,Glob --no-session-persistence \
+        --max-budget-usd "$(awk -v b="$budget" -v s="$spent" 'BEGIN {printf "%.4f", b - s}')" \
         --setting-sources user --output-format json 2>/dev/null)
       spent=$(awk -v a="$spent" -v b="$(jq -r "$RESULT_OBJ | .total_cost_usd // 0" <<<"$out" 2>/dev/null)" \
         'BEGIN {printf "%.4f", a + (b + 0)}')
