@@ -380,7 +380,7 @@ index f4b0de9..f055e3b 100755
 +++ b/bin/check
 @@ -82,7 +82,7 @@ fi
  "$PYTEST_PY" -m pytest "${PYTEST_ARGS[@]}" || bad "pytest"
- 
+
  step "SKILL.md frontmatter name gate"
 -# Folded from the old verify-template-stages.sh stage 6. Every SKILL.md must
 +# Folded from the old staged template checker. Every SKILL.md must
@@ -602,12 +602,12 @@ index d120b36..67c96cb 100755
 @@ -9,7 +9,7 @@ info() { printf '\033[36m[%s]\033[0m %s\n' "$LIB_PREFIX" "$*"; }
  warn() { printf '\033[33m[%s]\033[0m %s\n' "$LIB_PREFIX" "$*"; }
  ok()   { printf '\033[32m[%s]\033[0m   %s\n' "$LIB_PREFIX" "$*"; }
- 
+
 -# Plain output (verify-template.sh style)
 +# Plain output for step-by-step scripts.
  fail() { echo "FAIL: $*" >&2; exit 1; }
  pass() { echo "OK: $*"; }
- 
+
 diff --git a/bin/release.sh b/bin/release.sh
 index c5765ca..f01544e 100755
 --- a/bin/release.sh
@@ -636,11 +636,11 @@ index c5765ca..f01544e 100755
  LIB_PREFIX="release"
 -# shellcheck source=bin/lib.sh
  source "$(dirname "$0")/lib.sh"
- 
+
 -# Public release identity — the only identity allowed in public history.
  NOREPLY_NAME="Samyak Jhaveri"
  NOREPLY_EMAIL="39847642+SamyakJhaveri@users.noreply.github.com"
- 
+
  VERSION="${1:-}"
 -[[ -n "$VERSION" ]] || die "usage: bin/release.sh <version> (e.g., 1.1.0)"
 -[[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || die "version must be semver (e.g., 1.2.3)"
@@ -721,7 +721,7 @@ index c5765ca..f01544e 100755
 -  warn "bin/ip-sweep.sh not present — skipping IP gate"
 +  warn "bin/ip-sweep.sh absent - skipping IP gate"
  fi
- 
+
 -# Re-verify ALL pre-flight invariants immediately before mutating (C2 + R4-H2).
 -# The gates take time; a gate side-effect or a concurrent process could have
 -# staged content, moved off main, created the tag, made a CLEAN commit, or set
@@ -788,7 +788,7 @@ index 6995483..9af0214 100644
 -        self.assertNotIn("verify-template", w)
 +        # bin/check is the only repo script CI runs: no retired checker may come back.
 +        self.assertEqual(1, w.count("run: bin/"))
- 
+
      def test_verify_job_has_no_inert_gate(self):
          """An `if:` or `continue-on-error:` in the verify job would make check advisory."""
 @@ -48,7 +49,7 @@ class CIConfig(unittest.TestCase):
@@ -798,8 +798,8 @@ index 6995483..9af0214 100644
 -        self.assertNotIn("verify-template", w)
 +        self.assertNotIn("run: bin/", w)  # release runs no repo script
          self.assertNotIn("bin/check", w)  # release does not re-run the gate
- 
- 
+
+
 diff --git a/bin/tests/test_render_smoke.py b/bin/tests/test_render_smoke.py
 new file mode 100644
 index 0000000..8aaa94a
@@ -1256,7 +1256,7 @@ index 34d8c9b..9a429e3 100644
 +# .env denies would be inert.
 +approval_policy = "never"
 +default_permissions = "loam"
- 
+
  [features]
 -# Keep repository policy hooks active after the project is trusted.
 -hooks = true
@@ -1265,16 +1265,16 @@ index 34d8c9b..9a429e3 100644
 +# The Codex hook layer is gone; do not advertise hooks as active.
 +hooks = false
  multi_agent = true
- 
+
  [agents]
  max_concurrent_threads_per_session = 6
- 
+
 -[permissions.project-workspace]
 -description = "Workspace editing with project secret-file denies."
 +[permissions.loam]
 +description = "Workspace editing with network on and .env denied."
  extends = ":workspace"
- 
+
 -[permissions.project-workspace.filesystem.":workspace_roots"]
 +[permissions.loam.network]
 +# Permit command network access (git, pip, npm). No proxy and no domains table:
@@ -1351,7 +1351,7 @@ index c2c105d..59db8b7 100644
 --- a/seed/.gitignore.jinja
 +++ b/seed/.gitignore.jinja
 @@ -41,11 +41,8 @@ logs/
- 
+
  # Claude Code session artifacts
  .codex_review_done
 -# Validation sentinel; written by run-validate-waves.sh, never committed
@@ -1361,7 +1361,7 @@ index c2c105d..59db8b7 100644
 -.claude/audit.log
  .claude/worktrees/
  .claude/codex-reviews/
- 
+
 diff --git a/seed/bin/check.jinja b/seed/bin/check.jinja
 new file mode 100755
 index 0000000..9938832

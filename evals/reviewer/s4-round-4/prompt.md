@@ -212,19 +212,19 @@ index eb4ee8c..a3bf7c8 100644
 @@ -1,4 +1,4 @@
 -# AGENTS.md — Loam
 +# AGENTS.md - Loam
- 
+
  > The shared prose home for agents working on Loam.
  > Claude Code imports this file from `CLAUDE.md`. Codex reads it directly.
 @@ -25,8 +25,8 @@ uvx copier copy --trust gh:samyakjhaveri/loam ./my-project
  # Pull the latest released template into an existing project.
  cd my-project && uvx copier update --trust
- 
+
 -# Verify Loam before a commit or release.
 -bin/verify-template.sh
 +# Check Loam before a commit or release.
 +bin/check
  ```
- 
+
  ## Layout
 @@ -35,11 +35,11 @@ bin/verify-template.sh
  |------|---------|
@@ -258,11 +258,11 @@ index eb4ee8c..a3bf7c8 100644
 -   workers run focused checks and return bounded reports.
 +   owner the single full `bin/check` run for that snapshot. Other workers run
 +   focused checks and return bounded reports.
- 
+
  ## Gotchas
- 
+
 @@ -71,12 +70,11 @@ bin/verify-template.sh
- 
+
  | Resource | Read when |
  |----------|-----------|
 -| `bin/rendered_harness_contract.py`, `bin/tests/test_rendered_harness_contract.py` | Changing the Rendered Harness Contract. |
@@ -273,40 +273,40 @@ index eb4ee8c..a3bf7c8 100644
 -| `docs/specs/rebuild-structure-design.md` | Needing the rationale for the current tree. |
 -| `docs/specs/rebuild-research/` | Checking the research behind the rebuild. |
 +| `docs/archive/specs/rebuild-structure-design.md` | Needing the rationale for the current tree. |
- 
+
  ## Agent skills
- 
+
 diff --git a/CONTRIBUTING.md b/CONTRIBUTING.md
 index 35f9ada..efe4438 100644
 --- a/CONTRIBUTING.md
 +++ b/CONTRIBUTING.md
 @@ -1,28 +1,28 @@
  # Contributing to Loam
- 
+
 -Thanks for your interest! Loam is a Copier template — the things it ships live under
 -`seed/`, and the repo runs on its own config via the `.claude → seed/.claude` symlink.
 +Thanks for your interest! Loam is a Copier template; the things it ships live under
 +`seed/`, and the repo runs on its own config via the `.claude -> seed/.claude` symlink.
- 
+
  ## Development setup
- 
+
  ```bash
  git clone https://github.com/samyakjhaveri/loam && cd loam
 -bin/verify-template.sh   # renders and checks the complete harness; expect "verify-template: PASSED"
 +bin/check   # ruff, shell syntax, tests, plugin validate, render smoke; expect "check: PASSED"
  ```
- 
+
  Requirements: [Copier](https://copier.readthedocs.io/) >= 9.4.0 (`uvx copier`), `python3`, `bash`, the Claude Code and Codex CLIs, and Ruff.
  Missing agent CLIs fail the gate; `LOAM_ALLOW_MISSING_AGENT_CLIS=1` permits a reduced local run (CI never sets it).
- 
+
 -**Windows note:** template *development* relies on the `.claude → seed/.claude` symlink.
 +**Windows note:** template *development* relies on the `.claude -> seed/.claude` symlink.
  Use WSL, or enable Developer Mode and `git config core.symlinks true` before cloning.
 -Rendered projects are unaffected — Copier writes real directories.
 +Rendered projects are unaffected: Copier writes real directories.
- 
+
  ## Making changes
- 
+
 -- **Docs, content, small fixes** → commit directly to `main` (or open a PR if you're external).
 -- **Behavior changes** (`seed/` guidance, skills, hooks, policy, `copier.yml`, or release tooling) → branch + PR, always.
 -- Run `bin/verify-template.sh` before every PR. CI runs it too; a red render blocks merge.
@@ -320,14 +320,14 @@ index 35f9ada..efe4438 100644
  - Skills follow the [agentskills.io](https://agentskills.io/specification) SKILL.md format.
 @@ -46,10 +46,10 @@ Promotion PRs should state which project battle-tested the skill and what it was
  Copier resolves from **git tags**, not HEAD. After merging significant changes:
- 
+
  ```bash
 -bin/release.sh <version>   # bumps VERSION, tags, pushes — CI verifies and publishes the release
 +bin/release.sh <version>   # needs a green CI run on HEAD; runs the IP sweep, bumps VERSION, tags, pushes
  ```
- 
+
  ## Reporting issues
- 
+
 -Open a GitHub issue with your Copier version and the output of
 -`bin/verify-template.sh` if the template fails to render.
 +Open a GitHub issue with your Copier version and the output of `bin/check`
@@ -337,25 +337,25 @@ index 89dc53f..f3786ae 100644
 --- a/README.md
 +++ b/README.md
 @@ -4,7 +4,7 @@
- 
+
  ![Loam](docs/assets/hero-identity.jpg)
- 
+
 -Loam is a [Copier](https://copier.readthedocs.io/) template. It renders shared agent guidance, Claude Code hooks and settings, and Codex policy into a new or existing project. A release gate verifies the complete rendered harness before a Loam release ships.
 +Loam is a [Copier](https://copier.readthedocs.io/) template. It renders shared agent guidance, Claude Code settings, and Codex policy into a new or existing project. One check, `bin/check`, gates every change.
- 
+
  ```bash
  uvx copier copy --trust gh:samyakjhaveri/loam ./my-project
 @@ -22,16 +22,18 @@ Loam fixes both:
- 
+
  - **One shared prose home.** Codex reads `AGENTS.md` directly. Claude Code imports it from `CLAUDE.md` and adds only Claude-specific guidance.
  - **Tag-based updates.** `copier update` pulls released template changes into an existing project. Reusable optional assets move back into the plugin marketplace by a reviewed manual promotion.
 -- **Rendered policy.** Claude hooks enforce checkout and turn-end checks. A Codex hook rejects recognized force pushes. Codex execution rules add defense in depth.
 -- **One public release gate.** `bin/verify-template.sh` renders a project and checks the complete generated harness before release.
 +- **Native policy, no text parsing.** Claude Code deny rules and `.codex/rules/loam.rules` block the destructive command families in both harnesses, and a repository ruleset guards the default branch. Two SessionStart-class hooks remain, so a tool call pays no hook latency.
 +- **One check.** `bin/check` runs lint, shell syntax, tests, plugin validation, and a render smoke. The agent and CI run the same script.
- 
+
  ## What you get
- 
+
  - `AGENTS.md` and `CLAUDE.md` with fill-in project guidance.
 -- `.claude/` settings and hook scripts.
 +- `.claude/` settings, deny rules, and two SessionStart-class hooks.
@@ -366,17 +366,17 @@ index 89dc53f..f3786ae 100644
 +- `bin/check` and a CI workflow that runs it.
 +- `docs/HARNESS.md` and `docs/WORKERS.md`, read on demand.
  - Optional agents and skills from `cultivation/marketplace/`.
- 
+
  ## Quick start
 @@ -46,45 +48,46 @@ cd my-project && uvx copier update --trust
- 
+
  ## Scope, honestly
- 
+
 -Loam supports Claude Code and Codex through different native mechanisms. Both read the shared skill source and project guidance. Claude Code uses `.claude/settings.json` for its hooks. Codex uses `.codex/hooks.json` and execution rules. Optional plugin skills and agents are Claude Code assets unless their own documentation says otherwise.
 +Loam supports Claude Code and Codex through different native mechanisms. Both read the shared skill source and project guidance. Claude Code uses `.claude/settings.json` for permissions, the sandbox, and hooks. Codex uses `.codex/config.toml` and execution rules. Optional plugin skills and agents are Claude Code assets unless their own documentation says otherwise.
- 
+
  ## Project structure
- 
+
  ```
  loam/
 -├── seed/                    # Copier subdirectory — everything rendered to projects
@@ -395,14 +395,14 @@ index 89dc53f..f3786ae 100644
  ├── docs/                    # Template documentation
  └── copier.yml               # Template config
  ```
- 
+
  ## Verification
- 
+
 -Run `bin/verify-template.sh` when changing Loam. It renders the template, checks the Rendered Harness Contract, and runs native Claude or Codex checks when those tools are installed.
 +Run `bin/check` when changing Loam. It lints, checks shell syntax and whitespace, runs the tests including a render smoke, and validates the shipped plugins.
- 
+
  ## Documentation
- 
+
 -- `docs/BOOTSTRAP.md` — First-session setup guide
 -- `docs/COPIER.md` — Template configuration details
 -- `docs/SYNC.md` — Forward updates, reverse promotion, and attach mode
@@ -412,36 +412,36 @@ index 89dc53f..f3786ae 100644
 +- `docs/SYNC.md` - Forward updates, reverse promotion, and attach mode
 +- `docs/ASSET-LAYERS.md` - Asset organization
 +- `seed/docs/HARNESS.md` - What the shipped harness guards, and the accepted risks
- 
+
  ## Roadmap
- 
+
 -- **Marketplace polish** — one-command install for every bundle via the plugin marketplace
 -- **Policy coverage** — extend native harness checks when a repeated failure earns a new guardrail
 +- **Marketplace polish** - one-command install for every bundle via the plugin marketplace
 +- **Policy coverage** - extend the native deny lists when a repeated failure earns a new guardrail
- 
+
  ## Requirements
- 
+
  - [Copier](https://copier.readthedocs.io/) >= 9.4.0 (`uvx copier` needs no install)
 -- Python 3.11 or newer for the Rendered Harness Contract checker
 -- [Claude Code](https://code.claude.com/docs) and Codex CLIs, plus [Ruff](https://docs.astral.sh/ruff/): the verification gate fails without them (set `LOAM_ALLOW_MISSING_AGENT_CLIS=1` for a reduced local run)
 +- Python 3.11 or newer, with `pytest` and `ruff`, to run `bin/check`
 +- [Claude Code](https://code.claude.com/docs) and Codex CLIs: `bin/check` fails without them (set `LOAM_ALLOW_MISSING_AGENT_CLIS=1` for a reduced local run)
- 
+
  ## Contributing
- 
+
 diff --git a/bin/check b/bin/check
 index 2fd0776..0005b68 100755
 --- a/bin/check
 +++ b/bin/check
 @@ -51,7 +51,7 @@ while IFS= read -r skill; do
  done < <(find seed cultivation/marketplace -name SKILL.md -not -path '*/node_modules/*')
- 
+
  step "skill-listing token weight"
 -python3 bin/skill_listing_weight.py --root "$ROOT" --budget-tokens "${LISTING_BUDGET:-2750}" \
 +python3 bin/skill_listing_weight.py --root "$ROOT" --budget-tokens "${LISTING_BUDGET:-448}" \
    || bad "skill-listing weight over budget"
- 
+
  step "claude plugin validate"
 diff --git a/cultivation/marketplace/sam-cc-setup/skills/plan-review/SKILL.md b/cultivation/marketplace/sam-cc-setup/skills/plan-review/SKILL.md
 index 0b4ca64..939d2bf 100644
@@ -466,20 +466,20 @@ index 0b4ca64..939d2bf 100644
 +  where the author's rationale must be weighed (this flow deliberately withholds it).
  argument-hint: <path-to-plan>
  ---
- 
+
 diff --git a/docs/ASSET-LAYERS.md b/docs/ASSET-LAYERS.md
 index e31bd1f..579065d 100644
 --- a/docs/ASSET-LAYERS.md
 +++ b/docs/ASSET-LAYERS.md
 @@ -6,7 +6,7 @@ A duplicate across layers is a bug unless it is an explicit distribution mirror
- 
+
  | Layer | Lives in | Reaches a project | Context cost |
  |-------|----------|-------------------|--------------|
 -| Always-on seed harness | `seed/` (shared guidance and skill, Claude hooks and settings, Codex hook policy and rules) | Rendered by Copier at bootstrap; updated by `copier update` on new tags | Paid in every session; priced highest |
 +| Always-on seed harness | `seed/` (shared guidance and skills, Claude settings and the two hooks, Codex config and rules) | Rendered by Copier at bootstrap; updated by `copier update` on new tags | Paid in every session; priced highest |
  | Plugin layer | `cultivation/marketplace/sam-cc-setup/` (agents + optional skills + the plan-review workflow) | Installed as a plugin; updates in place | Skill descriptions only, until invoked |
  | Marketplace bundles | `cultivation/marketplace/<name>/` | Install-on-demand | Zero until enabled |
- 
+
 @@ -16,5 +16,5 @@ Rules of thumb:
  - Anything that must hold every time is a hook in the seed, not prose anywhere.
  - The shared skill location for both harnesses is `seed/.agents/skills/` (Codex reads it directly; Claude Code reads it through a checked-in symlink in `.claude/skills/`).
@@ -494,18 +494,18 @@ index 867d2c8..e258e7e 100644
 +++ b/docs/COPIER.md
 @@ -38,11 +38,11 @@ The public repo restarted history at v1.0.0, so older `_commit` refs no longer r
  **Copier always resolves the latest tag, never main's HEAD.** Push without tagging and nothing ships.
- 
+
  ```bash
 -bin/release.sh 5.0.0    # verify gate + IP sweep, bump VERSION, commit, tag, push
 +bin/release.sh 5.0.0    # green CI run + IP sweep, bump VERSION, commit, tag, push
  uvx copier copy --trust --vcs-ref v5.0.0 gh:samyakjhaveri/loam ./proj   # pin a version
  ```
- 
+
 -Use `--vcs-ref=HEAD` against a local clone to test unreleased changes (this is what `bin/verify-template.sh` does).
 +Use `--vcs-ref=HEAD` against a local clone to test unreleased changes (this is what the render smoke in `bin/check` does).
- 
+
  ## Copier visibility map
- 
+
 diff --git a/docs/archive/README.md b/docs/archive/README.md
 index 5fd5fac..66d45ae 100644
 --- a/docs/archive/README.md
@@ -513,7 +513,7 @@ index 5fd5fac..66d45ae 100644
 @@ -13,4 +13,9 @@ Archived in v3.0.0 (2026-09-06):
  - `findings/` - the findings tracker. v3 drops the tracker; the PR description is the record.
  - `HANDOFF-2026-09-01-harness.md`, `HANDOFF-2026-09-03-audit-sessions.md` - old handoffs. `docs/BACKLOG.md` names its own source; it was not built from these.
- 
+
 +Archived in S4 (2026-09-07), after S3 deleted the machinery they describe:
 +
 +- `specs/2026-09-01-harness-smoke-rig-design.md`, `specs/routing-doc-repair-plan.md`, `specs/sam-cc-consolidation-*.md`, `specs/clief-claude-code-plan-mode-handoff.md` - spent plans that route work through `bin/verify-template.sh`.
@@ -562,14 +562,14 @@ index 83aba57..4778e7a 100644
 -description: Fast 30s session bootstrap briefing. Use when resuming work after any break, at the start of a fresh session, or when unsure of current project state. Reports git status, recent commits, environment state, memory-index staleness, pending tasks, and red flags (uncommitted changes, detached HEAD, stale memory). NOT for deep code exploration or planning - it only reports state, it does not change it.
 +description: Fast 30s session bootstrap briefing. Use when resuming work after any break, at the start of a fresh session, or when unsure of current project state. Reports git status, recent commits, environment state, memory-index staleness, pending tasks, and red flags. NOT for deep code exploration or planning - it only reports state, it does not change it.
  ---
- 
+
  # Session Catchup Briefing
 diff --git a/seed/.claude/hooks/fable-session-brief.sh b/seed/.claude/hooks/fable-session-brief.sh
 index 3be0da5..f1c7410 100755
 --- a/seed/.claude/hooks/fable-session-brief.sh
 +++ b/seed/.claude/hooks/fable-session-brief.sh
 @@ -37,11 +37,19 @@ if model is None or "fable" not in model.lower():
- 
+
  print(
      "Fable session. Ask one question before acting only if a reading of the "
 -    "request would change the architecture; otherwise act. When writing a handoff or plan for another session, "
@@ -600,13 +600,13 @@ index b404902..8f84114 100644
 +++ b/seed/AGENTS.md.jinja
 @@ -1,62 +1,23 @@
  # AGENTS.md - {{ project_name }}
- 
+
 -> The ONE prose home for agent guidance in this project.
 -> Claude Code loads it through the `@AGENTS.md` import in CLAUDE.md; Codex reads it directly.
 -> Every line here loads in every session of every harness. Add a line only if removing it would cause a mistake.
 -
  ## What this project is
- 
+
 -(Two or three sentences. What the codebase does, and what an agent should keep in mind while working on it. Replace this placeholder.)
 -
 -## Conventions
@@ -615,16 +615,16 @@ index b404902..8f84114 100644
 -
 -## Gotchas
 +(Two or three sentences: what the codebase does, and what to keep in mind while working on it. Replace this.)
- 
+
 -Recurring traps. Add entries when something bites twice; delete entries when the machinery they describe is gone.
 +## Commands
- 
+
 -- Copier resolves git TAGS, not HEAD. Template updates reach this project only after a new tag; always run copier with `--trust`.
 -- In YAML frontmatter, quote description strings containing colons; strict parsers reject them unquoted.
 -- Parallel workers: give each its own worktree (`claude --worktree <name>`); one checkout is safe only for disjoint files. For a shared GPU or database use `flock /tmp/<resource>.lock <cmd>` (util-linux; absent on stock macOS); build no other lock.
 -- Parallel work has one integration owner and one validation owner. Workers run focused checks and return bounded reports. Only the validation owner runs the configured full gate on a given source fingerprint.
 +- Check: `bin/check` (lint, shell syntax, whitespace, tests). Run it before you call work done.
- 
+
 -## Editing discipline
 -
 -Prefer a surgical edit to a whole-file rewrite when the end result is the same.
@@ -646,15 +646,15 @@ index b404902..8f84114 100644
 -
 -## Invariants
 +## Conventions
- 
+
 -Standing constraints for this project, one per line, dated.
 -A ticket or worker prompt says "obey the Invariants in AGENTS.md" instead of restating them.
 -This list starts empty; add a line only when a constraint has been violated once or will bind more than one session.
 +(Record only what an agent cannot derive from the code: naming, layout, review etiquette. Replace or delete.)
- 
+
 -## Session continuity
 +## Gotchas
- 
+
 -Before stopping mid-task, write `HANDOFF.md` at the repo root with these fields, one heading each, in this order: Goal; Files touched; Commands run (each with its exit code); Tried and failed; Open assumptions; Next single action; Written at (the output of `git rev-parse HEAD`).
 -The verify command that proves the work belongs under Commands run.
 -`/catchup` reads it on resume and flags it stale when that hash is no longer HEAD, when its mtime is older than the last commit, or when its status words contradict git.
@@ -664,10 +664,10 @@ index b404902..8f84114 100644
 -A worker brief (`.superpowers/sdd/<task>/brief.md`) and its report (`report.md`) use the same seven fields, so an interrupted worker's findings are read from its report, never rebuilt from a transcript.
 +- Copier resolves git TAGS, not HEAD; run `copier update --trust`.
 +- In YAML frontmatter, quote description strings containing colons.
- 
+
 -## Codex note
 +## Read on demand
- 
+
 -The `.codex/` layer (config, execution rules) is inert until you mark this project trusted in Codex and review its hooks via `/hooks`.
 -Codex-side skills live in `.agents/skills/`.
 +- `docs/HARNESS.md` - what the harness guards, what it does not, the accepted risks. Read it before editing a hook, `.claude/settings.json`, or `.codex/`.
@@ -677,9 +677,9 @@ index a38d3be..6d9db3f 100644
 --- a/seed/CLAUDE.md.jinja
 +++ b/seed/CLAUDE.md.jinja
 @@ -2,36 +2,8 @@
- 
+
  @AGENTS.md
- 
+
 -## Environment
 -
 -- `python3` always, never `python`. Venv: (path, if any).
@@ -689,7 +689,7 @@ index a38d3be..6d9db3f 100644
 -  - Run: (how to launch the thing)
 -
  ## Claude-specific gotchas
- 
+
 -- Hooks receive a JSON envelope on stdin (`tool_name`, `tool_input`); there is no `CLAUDE_TOOL_NAME` env var.
 -- Hook event and matcher names are exact strings; a wrong name fails silently. Verify against the documented event list before wiring a hook.
 -- A rule's `paths:` frontmatter fires when Claude READS a matching file, never on Write. Rules whose trigger is authoring a new file must stay always-loaded.
@@ -722,7 +722,7 @@ index 9dd6d16..f568cda 100755
 +++ b/seed/_gh_setup.sh
 @@ -22,15 +22,46 @@ fi
  BRANCH="$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo main)"
- 
+
  if gh repo view "${REPO}" >/dev/null 2>&1; then
 -  echo "[copier] Repo ${REPO} already exists — connecting..."
 +  echo "[copier] Repo ${REPO} already exists; connecting..."

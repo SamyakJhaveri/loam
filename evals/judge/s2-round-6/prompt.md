@@ -382,7 +382,7 @@ index 710af8b..945175a 100755
 -    "impeccable": {"skills": f"{_MP}/impeccable/skills", "agents": None,
 -                   "workflows": None, "gated": False},
  }
- 
+
  _FRONTMATTER = re.compile(r"^---\n(.*?)\n---", re.DOTALL)
 diff --git a/bin/tests/test_agent_parity.py b/bin/tests/test_agent_parity.py
 index cb1a48e..3d1c4b9 100644
@@ -398,7 +398,7 @@ index cb1a48e..3d1c4b9 100644
          combined = "\n".join((agents, claude, validate))
          self.assertIn("validation.py check", combined)
 @@ -148,10 +148,10 @@ class AgentParityTests(unittest.TestCase):
- 
+
      def test_shipping_stages_intended_inputs_before_validation(self) -> None:
          validate = (
 -            ROOT / "cultivation/marketplace/sam-cc-setup/skills/validate/SKILL.md"
@@ -411,7 +411,7 @@ index cb1a48e..3d1c4b9 100644
          self.assertIn("intended source changes are staged", validate)
          self.assertLess(ship.index("git add <paths>"), ship.index("Invoke `/validate`."))
 @@ -159,26 +159,26 @@ class AgentParityTests(unittest.TestCase):
- 
+
      def test_expensive_review_workflows_are_conditional_and_bounded(self) -> None:
          team = (
 -            ROOT / "cultivation/marketplace/sam-cc-setup/skills/agent-team/SKILL.md"
@@ -531,24 +531,24 @@ index 6875d63..9427a87 100644
 --- a/cultivation/marketplace/README.md
 +++ b/cultivation/marketplace/README.md
 @@ -2,7 +2,8 @@
- 
+
  Install-on-demand plugin bundles for Loam-adjacent projects.
  Nothing here ships to bootstrapped projects by default; installs are explicit.
 -Slimmed 2026-08-29 in the rebuild (audit: `docs/specs/rebuild-research/slim-audit-bundles.md`).
 +Slimmed 2026-08-29 in the rebuild.
 +Slimmed again in v3.0.0: `sam-cc-setup` keeps 3 skills and ships no hooks; everything else moved to `cultivation/parked/` (design law 7, burden of proof is on keeping).
- 
+
  ## Install
- 
+
 @@ -15,9 +16,8 @@ claude plugin marketplace add /path/to/loam/cultivation/marketplace
- 
+
  | Bundle | Contents | Notes |
  |--------|----------|-------|
 -| `sam-cc-setup` | `brainstorming` -> `writing-plans`, merged plan review, technology selection, validation, Codex cross-model review, and bootstrap support | The Loam-owned setup plugin. Upstream-derived design skills retain their MIT notice in `sam-cc-setup/THIRD_PARTY_LICENSES/obra-superpowers.txt` |
 -| `impeccable` | UI polish workflow | Vendored; kept per rebuild ledger ruling |
 +| `sam-cc-setup` | `plan-review` (blind merged plan review, with the `plan-reviewer` agent), `codex-review` (cross-model second opinion), `surprise-me` (ranked, evidence-backed ideas) | The Loam-owned setup plugin. No hooks, no workflows |
  | `web-frontend-*`, `deer-flow-public` | External skills, SHA-pinned via `git-subdir` | Ship `defaultEnabled:false`; enable to trial. Licenses per entry in `marketplace.json`; a `LICENSE.upstream` file in a vendored bundle is authoritative |
- 
+
 -Removed 2026-08-29 (zero or near-zero survivors under the rebuild criteria): `meta-improvement`, `helpers` (surprise-me rehomed into sam-cc-setup), `business-process`, `planning-with-files`, `ui-ux-pro-max`, `understand-anything`.
 -Earlier removals (ledger): `pocock-engineering`, `team-deliberation`, `code-review-graph`, and the research bundles.
 +Parked in v3.0.0 (moved to `cultivation/parked/`, not installed): 23 `sam-cc-setup` skills, 5 unused agents, the plugin `hooks/` directory, the `plan-review-fanout` workflow, the upstream MIT notice that covered the parked design skills, and the whole `impeccable` plugin.
@@ -559,21 +559,21 @@ index 4dfdcb1..905ce8e 100644
 +++ b/cultivation/marketplace/sam-cc-setup/README.md
 @@ -1,136 +1,29 @@
  # sam-cc-setup
- 
+
 -The portable core of Sam's Claude Code setup, extracted from a research repo where every
 -piece earned its place in production use (except two, flagged below).
 +The portable core of Sam's Claude Code setup.
 +Cut to three skills in v3.0.0 under design law 7: the burden of proof is on keeping, and everything with zero recorded use is parked, not shipped.
- 
+
 -**Audience:** repositories that want optional planning, review, validation, and
 -cross-model skills. This includes projects rendered by
 -[Loam](https://github.com/SamyakJhaveri/loam). A Loam-rendered project already has
 -the always-loaded harness, so it does not run `/bootstrap-cc-setup`.
 +**Audience:** repositories that want optional planning-review and cross-model review skills.
 +This includes projects rendered by [Loam](https://github.com/SamyakJhaveri/loam).
- 
+
  ## What the plugin exposes after installation
- 
+
 -- **A concurrent-checkout guard** that blocks two sessions from racing on one working tree.
 -  This plugin file is a distribution mirror for non-Loam projects. The canonical file is
 -  `seed/.claude/hooks/concurrent-checkout-guard.sh`. Edit the canonical file first, copy it
@@ -598,11 +598,11 @@ index 4dfdcb1..905ce8e 100644
 +- **Agents:** `plan-reviewer`, used by `plan-review`.
 +- **Hooks:** none. The plugin installs no hook on any tool matcher (design law 3).
 +- **Workflows:** none.
- 
+
 -## Design-to-plan workflow and provenance
 +Everything else that used to ship here now sits unmodified in `cultivation/parked/sam-cc-setup/`, preserving its subpaths: 23 skills, 5 agents, the `hooks/` directory (`protect-paths`, `check_stale_counts`, `generated-file-guard`, `concurrent-checkout-guard`, `codex-review-reminder`, `pre-commit`, and their control suites), the `plan-review-fanout` workflow, and `THIRD_PARTY_LICENSES/`.
 +Parked assets are kept for reference and can be promoted again when a real project uses one.
- 
+
 -`tech-selection` routes open-ended ideation to the local `brainstorming` skill.
 -After the user approves the design, `brainstorming` writes it under `docs/specs/`
 -and hands it to the local `writing-plans` skill. Plans go under `docs/plans/`.
@@ -632,7 +632,7 @@ index 4dfdcb1..905ce8e 100644
 -
 -## What it cannot ship, and the workaround
 +## What it cannot ship
- 
+
  Plugins cannot inject always-loaded context (`CLAUDE.md`, `.claude/rules/*.md`).
 -Run **`/bootstrap-cc-setup`** once in a new repo: it writes a minimal `CLAUDE.md`
 -skeleton and a generic `workflow.md` rule (model-notes only), shows a diff before
@@ -652,9 +652,9 @@ index 4dfdcb1..905ce8e 100644
 -  (`techdebt` was later re-harvested and ships again as of v0.6.0.)
 +A Loam-rendered project already carries that layer.
 +The `bootstrap-cc-setup` skill that wrote it for non-Loam repos is parked.
- 
+
  ## Versioning
- 
+
 -Semver in `.claude-plugin/plugin.json`. Behaviour changes (enforcement model, check
 -sets) bump minor at least - enforcement that silently changes across machines is
 -worse than none.
@@ -1236,9 +1236,9 @@ index b5b52a2..f86422a 100644
 --- a/docs/specs/seed-skill-promotion.md
 +++ b/docs/archive/specs/seed-skill-promotion.md
 @@ -10,6 +10,7 @@ Full verdicts: `docs/specs/rebuild-research/clief-claims-verdicts.md`.
- 
+
  ## Source pools, in preference order
- 
+
 +<!-- stale-counts: allow - dated record. v3.0.0 reversed decision D2: 3 skills ship, the rest are parked. The count below is history and is not corrected. -->
  1. `cultivation/marketplace/sam-cc-setup/skills/` (26 sam-cc-setup skills, Samyak-authored or adapted with license notices).
  2. The SkillSpector-vetted parked bundles in the marketplace manifest (enable-and-adapt, keep SHA pins and licenses).

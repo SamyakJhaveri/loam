@@ -228,9 +228,9 @@ index 3b38f2f..ad13c98 100644
 +  `failIfUnavailable` is false; `python3 -c "open('.env').read()"` then prints
 +  the file. Install the sandbox dependencies, or treat the deny list as the only
 +  file guard.
- 
+
  ## Owner global config, outside this project
- 
+
  The owner's `~/.claude/` files are personal and are not shipped by the template.
  A global hook in `~/.claude/hooks/` repeats the "prefer targeted edits" rule for
  every project on that machine, so the owner sees it twice; nobody else does.
