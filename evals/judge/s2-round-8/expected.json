@@ -1,4 +1,0 @@
-{
-  "source": "lean-v3 run S2 round 8: the judge passed every row; the round failed on the reviewer gate, not the judge (runs/S2/round-8.judge.raw.json, loop.log 07:02:34Z)",
-  "verdict": "pass"
-}
