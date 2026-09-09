@@ -217,8 +217,12 @@ run_eval() {
         --setting-sources user --output-format json 2>/dev/null)
       spent=$(awk -v a="$spent" -v b="$(jq -r "$RESULT_OBJ | .total_cost_usd // 0" <<<"$out" 2>/dev/null)" \
         'BEGIN {printf "%.4f", a + (b + 0)}')
-      res=$(jq -r "$RESULT_OBJ | .result // \"\"" <<<"$out" 2>/dev/null \
-        | sed -e 's/^```json//' -e 's/^```//' -e 's/```$//')
+      res=$(jq -r "$RESULT_OBJ | .result // \"\"" <<<"$out" 2>/dev/null)
+      # Without --json-schema (F3) a reply sometimes wraps the object in code fences or
+      # prose. The object runs from the first brace to the last, so cut to those.
+      if ! jq -e .verdict <<<"$res" > /dev/null 2>&1 && [ "${res#*\{}" != "$res" ]; then
+        res="{${res#*\{}"; res="${res%\}*}}"
+      fi
       # A usage limit or an API error answers with is_error and no cost. That is the environment,
       # not a verdict: say so and stop, rather than reporting it as a grader disagreement.
       if [ "$(jq -r "$RESULT_OBJ | .is_error // false" <<<"$out" 2>/dev/null)" = true ]; then
