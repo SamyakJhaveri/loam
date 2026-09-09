@@ -1,0 +1,4 @@
+{
+  "source": "lean-v3 run S5 round 8 lean-critic",
+  "verdict": "fix"
+}

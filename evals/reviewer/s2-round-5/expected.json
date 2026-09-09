@@ -1,0 +1,4 @@
+{
+  "source": "lean-v3 run S2 round 5 reviewer, the review round nearest the stale-tree round",
+  "verdict": "merge"
+}
