@@ -219,6 +219,13 @@ run_eval() {
         'BEGIN {printf "%.4f", a + (b + 0)}')
       res=$(jq -r "$RESULT_OBJ | .result // \"\"" <<<"$out" 2>/dev/null \
         | sed -e 's/^```json//' -e 's/^```//' -e 's/```$//')
+      # A usage limit or an API error answers with is_error and no cost. That is the environment,
+      # not a verdict: say so and stop, rather than reporting it as a grader disagreement.
+      if [ "$(jq -r "$RESULT_OBJ | .is_error // false" <<<"$out" 2>/dev/null)" = true ]; then
+        echo "eval $grader/$name: the call failed: $res" >&2
+        rm -f "$rubric"
+        return 2
+      fi
       jq -e .verdict <<<"$res" > /dev/null 2>&1 && break
       echo "eval $grader/$name: attempt $attempt output not parseable" >&2
     done

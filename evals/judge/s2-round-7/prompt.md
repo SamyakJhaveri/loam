@@ -170,7 +170,7 @@ This is `DESIGN.md` L5 and L6 under design law 7: the burden of proof is on keep
 1. `cultivation/marketplace/sam-cc-setup/` keeps 3 skills (`plan-review`, `codex-review`, `surprise-me`) and 1 agent (`plan-reviewer`). It ships no hooks and no workflows.
 2. Parked to `cultivation/parked/sam-cc-setup/`, subpaths preserved: 23 skills, 5 agents, the whole `hooks/` directory, `workflows/plan-review-fanout.js`, and `THIRD_PARTY_LICENSES/`.
 3. The `impeccable` plugin moved to `cultivation/parked/impeccable/` and its `marketplace.json` entry was deleted. `cultivation/wip/research-assets/` moved to `cultivation/parked/research-lane/` and `cultivation/wip` is gone. `cultivation/parked/README.md` added.
-4. `docs/archive/` now holds the rebuild research, the session reviews, `docs/tickets/`, `docs/findings/`, `docs/superpowers/`, both old handoffs, and the distbench note, with a `README.md` saying what is in it and that none of it is live.
+4. `docs/archive/` now holds the rebuild research, the session reviews, `docs/tickets/`, `docs/findings/`, and both old handoffs, with a `README.md` saying what is in it and that none of it is live. `docs/superpowers/` and the distbench note stay at their original paths; the ticket does not name them.
 5. `docs/BACKLOG.md` added, carrying all 9 ranked LATER items from `01-PENDING-WORK.md` plus the folded-in `FINDINGS.md` rows. `bin/tests/test_marketplace_skill_routes.py` deleted.
 6. Two done checks are SKIP, not PASS, and need human review before merge: `wip-emptied` (whether `cultivation/wip` has no shipped content left) and `archive-contents` (whether the `docs/archive/` move is complete). Both are judgement calls, so no command decides them. See Unverified below.
 
@@ -244,6 +244,7 @@ The unattended worker made these calls. Full reasoning is in `.superpowers/lean-
  cultivation/marketplace/.claude-plugin/marketplace.json                                                      |  10 ------
  cultivation/marketplace/README.md                                                                            |  10 +++---
  cultivation/marketplace/sam-cc-setup/README.md                                                               | 139 ++++++++++-------------------------------------------------------------------------
+ cultivation/marketplace/sam-cc-setup/skills/plan-review/SKILL.md                                             |   3 +-
  cultivation/parked/README.md                                                                                 |   1 +
  cultivation/{marketplace => parked}/impeccable/.claude-plugin/plugin.json                                    |   0
  cultivation/{marketplace => parked}/impeccable/LICENSE.upstream                                              |   0
@@ -314,11 +315,10 @@ The unattended worker made these calls. Full reasoning is in `.superpowers/lean-
  cultivation/{marketplace => parked}/sam-cc-setup/skills/worktree-status/SKILL.md                             |   0
  cultivation/{marketplace => parked}/sam-cc-setup/skills/writing-plans/SKILL.md                               |   0
  cultivation/{marketplace => parked}/sam-cc-setup/workflows/plan-review-fanout.js                             |   0
- docs/BACKLOG.md                                                                                              |  85 +++++++++++++++++++++++++++++++++++++++++++++++++++
- docs/{ => archive}/2026-09-03-distbench-archive-note.md                                                      |   0
+ docs/BACKLOG.md                                                                                              |  86 +++++++++++++++++++++++++++++++++++++++++++++++++++
  docs/{ => archive}/HANDOFF-2026-09-01-harness.md                                                             |   0
  docs/{ => archive}/HANDOFF-2026-09-03-audit-sessions.md                                                      |   0
- docs/archive/README.md                                                                                       |  18 +++++++++++
+ docs/archive/README.md                                                                                       |  16 ++++++++++
  docs/{ => archive}/findings/AGENT-EFFICIENCY.md                                                              |   0
  docs/{ => archive}/findings/CI-PERFORMANCE-DIAGNOSIS.md                                                      |   0
  docs/{ => archive}/findings/FINDINGS.md                                                                      |   0
@@ -347,16 +347,13 @@ The unattended worker made these calls. Full reasoning is in `.superpowers/lean-
  docs/{ => archive}/specs/rebuild-structure-design-review.md                                                  |   0
  docs/{ => archive}/specs/rebuild-structure-design.md                                                         |   0
  docs/{ => archive}/specs/seed-skill-promotion.md                                                             |   1 +
- docs/{ => archive}/superpowers/plans/2026-08-30-rendered-harness-contract.md                                 |   0
- docs/{ => archive}/superpowers/plans/2026-09-05-agent-efficiency.md                                          |   0
- docs/{ => archive}/superpowers/specs/2026-08-30-rendered-harness-contract-design.md                          |   0
  docs/{ => archive}/tickets/README.md                                                                         |   0
  docs/{ => archive}/tickets/session-2.md                                                                      |   0
  docs/{ => archive}/tickets/session-3.md                                                                      |   0
  docs/{ => archive}/tickets/session-4.md                                                                      |   0
  docs/{ => archive}/tickets/session-5.md                                                                      |   0
  docs/{ => archive}/tickets/session-6.md                                                                      |   0
- 121 files changed, 142 insertions(+), 294 deletions(-)
+ 118 files changed, 142 insertions(+), 296 deletions(-)
 
 diff --git a/bin/rendered_harness_contract.py b/bin/rendered_harness_contract.py
 index 29c9a0a..b7b88f0 100644
@@ -710,13 +707,27 @@ index 4dfdcb1..905ce8e 100644
 +Semver in `.claude-plugin/plugin.json`, kept equal to the `sam-cc-setup` entry in `cultivation/marketplace/.claude-plugin/marketplace.json`.
 +Bump both by hand when plugin content changes, and record the change in `cultivation/marketplace/UPGRADING.md`.
 +`bin/release.sh` writes only the top-level `VERSION` (the Copier template version) and never touches either plugin version field.
+diff --git a/cultivation/marketplace/sam-cc-setup/skills/plan-review/SKILL.md b/cultivation/marketplace/sam-cc-setup/skills/plan-review/SKILL.md
+index 35c5490..0b4ca64 100644
+--- a/cultivation/marketplace/sam-cc-setup/skills/plan-review/SKILL.md
++++ b/cultivation/marketplace/sam-cc-setup/skills/plan-review/SKILL.md
+@@ -4,8 +4,7 @@ description: >
+   Run the merged blind plan review (correctness checklist + elegance gate in one
+   agent) on a plan, spec, or design doc before execution. Accepts the artifact
+   path as the argument. Use in a fresh session on a plan authored earlier, or
+-  before executing any non-trivial or hard-to-reverse plan. Use the parallel
+-  multi-lens version only for named security, architecture, or cross-system risks.
++  before executing any non-trivial or hard-to-reverse plan.
+   NOT for: reviewing shipped code or
+   diffs (use /code-review), or reviews where the author's rationale must be
+   weighed (this flow deliberately withholds it).
 diff --git a/cultivation/parked/README.md b/cultivation/parked/README.md
 new file mode 100644
-index 0000000..24f6835
+index 0000000..4646581
 --- /dev/null
 +++ b/cultivation/parked/README.md
 @@ -0,0 +1 @@
-+Skills, agents, hooks, and workflows removed from the shipped `sam-cc-setup` plugin in v3.0.0, plus the `impeccable` plugin and the never-dogfooded research lane; kept for reference, not installed, and two files here are still load-bearing, so see the "S3-owned cleanups" section of `docs/BACKLOG.md` before deleting this tree.
++Skills, agents, hooks, and workflows removed from the shipped `sam-cc-setup` plugin in v3.0.0, plus the `impeccable` plugin and the never-dogfooded research lane; kept for reference, not installed, but not yet inert: stage 7 of `bin/verify-template-stages.sh` executes `sam-cc-setup/hooks/check_stale_counts.py` from this tree, `bin/rendered_harness_contract.py` mirrors `sam-cc-setup/hooks/concurrent-checkout-guard.sh`, and `bin/tests/test_agent_parity.py` reads six parked skill files, so see the "S3-owned cleanups" section of `docs/BACKLOG.md` before deleting this tree.
 diff --git a/cultivation/marketplace/impeccable/.claude-plugin/plugin.json b/cultivation/parked/impeccable/.claude-plugin/plugin.json
 similarity index 100%
 rename from cultivation/marketplace/impeccable/.claude-plugin/plugin.json
@@ -995,10 +1006,10 @@ rename from cultivation/marketplace/sam-cc-setup/workflows/plan-review-fanout.js
 rename to cultivation/parked/sam-cc-setup/workflows/plan-review-fanout.js
 diff --git a/docs/BACKLOG.md b/docs/BACKLOG.md
 new file mode 100644
-index 0000000..024a2e4
+index 0000000..d3f911a
 --- /dev/null
 +++ b/docs/BACKLOG.md
-@@ -0,0 +1,85 @@
+@@ -0,0 +1,86 @@
 +# Backlog
 +
 +Everything from the v3 audit that is still worth doing after v3.0.0 ships.
@@ -1083,11 +1094,8 @@ index 0000000..024a2e4
 +- Move `cultivation/parked/sam-cc-setup/hooks/check_stale_counts.py` into `bin/`. Stage 7 of `bin/verify-template-stages.sh` executes it today, so the release gate depends on parked code.
 +- Drop the parked mirror row for `cultivation/parked/sam-cc-setup/hooks/concurrent-checkout-guard.sh` from `DISTRIBUTION_MIRRORS` in `bin/rendered_harness_contract.py`, plus its five fixtures in `bin/tests/test_rendered_harness_contract.py`. The mirror no longer distributes anything, but it still forces every edit to the shipped seed hook to be copied into a parked file.
 +- Delete or retarget the three tests in `bin/tests/test_agent_parity.py` that read `cultivation/parked/` skills (`validate`, `ship`, `agent-team`, `session-critique`, `codex-plan-review`). They assert seed prose agrees with content the plugin no longer ships, so they pass regardless of the plugin surface.
++- Re-add version-parity coverage for the `sam-cc-setup` plugin. `bin/tests/test_marketplace_skill_routes.py` was deleted in v3.0.0, and it held the only assertion that `plugin.json` and `marketplace.json` versions stay equal, so `cultivation/marketplace/sam-cc-setup/README.md` still claims a parity that nothing now enforces.
 +- Bump the `sam-cc-setup` plugin version and add an `UPGRADING.md` entry before the v3.0.0 tag. v3 removed 23 skills, 5 agents, the plugin hooks, and the fanout workflow, but the ticket froze the `marketplace.json` entry, so installed consumers running `/plugin update` currently see no change.
-diff --git a/docs/2026-09-03-distbench-archive-note.md b/docs/archive/2026-09-03-distbench-archive-note.md
-similarity index 100%
-rename from docs/2026-09-03-distbench-archive-note.md
-rename to docs/archive/2026-09-03-distbench-archive-note.md
 diff --git a/docs/HANDOFF-2026-09-01-harness.md b/docs/archive/HANDOFF-2026-09-01-harness.md
 similarity index 100%
 rename from docs/HANDOFF-2026-09-01-harness.md
@@ -1098,10 +1106,10 @@ rename from docs/HANDOFF-2026-09-03-audit-sessions.md
 rename to docs/archive/HANDOFF-2026-09-03-audit-sessions.md
 diff --git a/docs/archive/README.md b/docs/archive/README.md
 new file mode 100644
-index 0000000..4609c75
+index 0000000..a512cec
 --- /dev/null
 +++ b/docs/archive/README.md
-@@ -0,0 +1,18 @@
+@@ -0,0 +1,16 @@
 +# Archive
 +
 +Spent documents, kept as a record and not maintained.
@@ -1115,9 +1123,7 @@ index 0000000..4609c75
 +- `reviews/` - per-session reviews from the audit sessions.
 +- `tickets/` - per-session tickets from the audit sessions.
 +- `findings/` - the findings tracker. v3 drops the tracker; the PR description is the record.
-+- `superpowers/` - old plans and specs for the rendered-harness contract (slated for removal in S3).
 +- `HANDOFF-2026-09-01-harness.md`, `HANDOFF-2026-09-03-audit-sessions.md` - old handoffs. `docs/BACKLOG.md` names its own source; it was not built from these.
-+- `2026-09-03-distbench-archive-note.md`.
 +
 +Marketing drafts under `docs/plans/marketing/` were deleted rather than archived; that directory did not exist on this branch at v3 time, so there was nothing to remove.
 diff --git a/docs/findings/AGENT-EFFICIENCY.md b/docs/archive/findings/AGENT-EFFICIENCY.md
@@ -1243,18 +1249,6 @@ index b5b52a2..f86422a 100644
  1. `cultivation/marketplace/sam-cc-setup/skills/` (26 sam-cc-setup skills, Samyak-authored or adapted with license notices).
  2. The SkillSpector-vetted parked bundles in the marketplace manifest (enable-and-adapt, keep SHA pins and licenses).
  3. New skills, only after the trigger that justifies them fires twice.
-diff --git a/docs/superpowers/plans/2026-08-30-rendered-harness-contract.md b/docs/archive/superpowers/plans/2026-08-30-rendered-harness-contract.md
-similarity index 100%
-rename from docs/superpowers/plans/2026-08-30-rendered-harness-contract.md
-rename to docs/archive/superpowers/plans/2026-08-30-rendered-harness-contract.md
-diff --git a/docs/superpowers/plans/2026-09-05-agent-efficiency.md b/docs/archive/superpowers/plans/2026-09-05-agent-efficiency.md
-similarity index 100%
-rename from docs/superpowers/plans/2026-09-05-agent-efficiency.md
-rename to docs/archive/superpowers/plans/2026-09-05-agent-efficiency.md
-diff --git a/docs/superpowers/specs/2026-08-30-rendered-harness-contract-design.md b/docs/archive/superpowers/specs/2026-08-30-rendered-harness-contract-design.md
-similarity index 100%
-rename from docs/superpowers/specs/2026-08-30-rendered-harness-contract-design.md
-rename to docs/archive/superpowers/specs/2026-08-30-rendered-harness-contract-design.md
 diff --git a/docs/tickets/README.md b/docs/archive/tickets/README.md
 similarity index 100%
 rename from docs/tickets/README.md
