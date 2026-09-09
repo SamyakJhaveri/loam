@@ -36,7 +36,8 @@ evals/<grader>/<case>/{prompt.md,expected.json}
     status  ledger.jsonl  base.sha  frozen/  round-<k>.*  worker/decisions.md  pr-body.md  notify.failed
 ```
 
-Graders are plugin agents (home in `ARCHITECTURE.md`): `judge.md`, `reviewer.md`, `lean-critic.md`.
+Graders are plugin agents (home in `ARCHITECTURE.md`): `judge.md` and `reviewer.md`.
+`lean-critic.md` is a grader file under the same change protocol, but the manager runs it by hand on the PR, outside the round loop: on the 2026-09-09 ledger 3 of its 6 round calls were unparseable.
 The run resolves them from the installed plugin cache and records each file's sha256 in the ledger.
 
 ## A run
@@ -53,7 +54,7 @@ The run resolves them from the installed plugin cache and records each file's sh
    The worker writes code and `decisions.md` only.
    Every round is a fresh process for either worker; there is no fixer role.
 6. Before grading, in order: scan `decisions.md` for an `ABANDON` line; re-hash the frozen set (a mismatch exits `stopped-environment`); `git status --porcelain` must be empty, else the round fails with the path list; `git diff --name-only "$(cat base.sha)"...HEAD` against Do not touch emits `FAIL do-not-touch <paths>`; then run the done-checks block from the worktree root.
-7. On green: the supervisor runs Rows measured and prints `MEASURE` lines, then calls the judge, the reviewer, the lean-critic, and the Codex review stage if the ticket sets it, each fresh, on the frozen prompt and the same evidence bundle.
+7. On green: the supervisor runs Rows measured and prints `MEASURE` lines, then calls the judge, the reviewer, and the Codex review stage if the ticket sets it, each fresh, on the frozen prompt and the same evidence bundle.
 8. On pass, or at the grader-round cap: assemble the PR body (first line `Closes #<issue>`, then goal, `git log --oneline base..HEAD`, the MEASURE table, the merge checklist as checkboxes, `decisions.md`, grader sections, backlog, metrics), push, `gh pr create` or update the existing PR through the REST API, notify, exit `pr-opened`.
 
 ## Exits
@@ -71,6 +72,8 @@ The run resolves them from the installed plugin cache and records each file's sh
 
 Exit code, `status`, and the final log line are decided together and cannot disagree.
 These read loop-control files to decide exit, never safety; safety stays with deny rules, the sandbox, git, and CI.
+A usage-limit reply (`hit your session limit`, `reached your Fable limit`) is neither an exit nor a round: the supervisor writes `waiting-limit` to `status`, sleeps until the reset time the reply names or twenty minutes when it names none, then repeats the same call; a reset past `MAX_HOURS` exits `stopped-environment`.
+A call with no result event (killed by `CALL_TIMEOUT_SEC`, or crashed) exits `stopped-environment` and counts no round.
 
 ## Caps
 
@@ -83,7 +86,7 @@ Codex token counts come from its `--json` events and land in the ledger with `co
 
 After the checks first pass, at most two grader-fail rounds per ticket; then the remaining non-blocking findings go to the PR body backlog and the PR opens.
 The judge decides pass or fail.
-The reviewer, the Codex review, and the lean-critic block only on a `high` finding (Codex: `critical` or `high`), and each may block at most once per ticket.
+The reviewer and the Codex review block only on a `high` finding (Codex: `critical` or `high`), and each may block at most once per ticket.
 A grader whose output is absent or unparseable is a fail with one high finding "grader unparseable", never a pass.
 `verdict_consistent` runs on every grader JSON: a pass with non-empty fixes, or a fail with empty fixes and empty backlog, is refuted, and the grader is called once more, fresh, with the refutation appended to its prompt.
 
@@ -91,9 +94,10 @@ A grader whose output is absent or unparseable is a fail with one high finding "
 
 Graders run from the worktree root.
 `--tools Read,Grep,Glob` on the call is what makes a grader read-only (#40 measured that it sets the tool list exactly); an agent file's `tools:` line governs its interactive use only, so `lean-critic.md` keeps Bash.
+`--strict-mcp-config` and `--disable-slash-commands` drop the MCP schemas and the skills listing a grader never uses: its prefix is then 9.9k tokens instead of 27k (probed on the runner 2026-09-09), and the prefix is most of a grader call's input.
 
 ```
-claude -p --model fable --effort medium --tools Read,Grep,Glob --no-session-persistence \
+claude -p --model fable --effort medium --tools Read,Grep,Glob --strict-mcp-config --disable-slash-commands --no-session-persistence \
   --json-schema "$(cat frozen/<grader>.schema.json)" --max-budget-usd "$GRADER_BUDGET_USD" \
   --setting-sources user --settings frozen/role-settings.json --output-format json < frozen/<grader>.prompt.md
 ```
@@ -107,11 +111,12 @@ The Codex review stage runs `codex exec --json --output-schema frozen/review-out
 ## Worker calls
 
 ```
-claude -p --model claude-opus-4-8[1m] --effort high --permission-mode bypassPermissions \
+claude -p --model claude-opus-4-8[1m] --effort high --permission-mode bypassPermissions --strict-mcp-config \
   --setting-sources user --settings frozen/worker-settings.json --max-turns "$MAX_TURNS" \
   --max-budget-usd "$ROUND_BUDGET_USD" --output-format stream-json --verbose --include-hook-events < round-<k>.prompt.md
 ```
 
+`--strict-mcp-config` drops the MCP schemas, 2k tokens of prefix on every worker turn; the worker keeps its skills listing because the `skills:` sentence names a Skill-tool call (#37).
 `--max-turns` is accepted by Claude Code 2.1.263, the runner's login-shell binary (#40; a plain shell resolves an older nvm copy), though absent from its `--help`.
 `worker-settings.json` is deny-only, the lean-v3 list plus `Bash(gh:*)` so a worker cannot touch GitHub at all, plus the `Stop` hook (see The worker prompt); `role-settings.json`, loaded only by grader calls, carries the same deny rules with no hook.
 The Codex worker runs `codex exec --json -s workspace-write "$(cat round-<k>.prompt.md)" > round-<k>.jsonl -o round-<k>.last.md < /dev/null`: the JSONL stream is stdout and `-o` is the last-message file.
@@ -120,7 +125,8 @@ Its workspace-write sandbox does not block `.env` reads (#41); F4 denies them in
 ## The worker prompt
 
 Every worker round receives, in this order: the issue body verbatim, which carries its `goal:` line as text, `_common.md`, and from round 2 a `## Previous round` block holding the failing check lines and every blocking finding verbatim.
-A slash command expands only on the first line of a `-p` prompt and swallows the rest as its argument (#40), so no worker prompt carries `/goal` or a `/<skill>` line; a `Stop` hook in `worker-settings.json`, the worker-only settings file, runs the frozen check script from the worktree root and exits 2 with the FAIL lines while any check fails, and `--max-turns` bounds the round (#36, route B). `build_worker_prompt` in `loop.sh` appends after `_common.md` one sentence per `skills:` name: `Before the first edit, call the Skill tool with "<name>".` (#37).
+A slash command expands only on the first line of a `-p` prompt and swallows the rest as its argument (#40), so no worker prompt carries `/goal` or a `/<skill>` line; a `Stop` hook in `worker-settings.json`, the worker-only settings file, runs the frozen check script from the worktree root and exits 2 with the FAIL lines while any check fails, and `--max-turns` bounds the round (#36, route B).
+The hook sets `LOAM_HOOK=1`, under which the check lines that call `bin/check` (minutes per stop) or the live model pass without running; the supervisor's own check run has it unset and is the one run of those per round. `build_worker_prompt` in `loop.sh` appends after `_common.md` one sentence per `skills:` name: `Before the first edit, call the Skill tool with "<name>".` (#37).
 A Codex worker gets the skill bodies pasted instead.
 The worker never runs `bin/factory eval` against the live model; the supervisor's own check run is the one live replay per round.
 `_common.md` is the loop contract, frozen per run; its target text:
