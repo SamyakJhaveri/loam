@@ -1,0 +1,4 @@
+{
+  "source": "lean-v3 run S5 round 12: the judge passed every rubric row and returned verdict pass (runs/S5/round-12.judge.raw.json)",
+  "verdict": "pass"
+}

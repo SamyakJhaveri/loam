@@ -1,0 +1,7 @@
+{
+  "source": "lean-v3 run S4 round 1: done check 2 is unmeetable and measurements.md says so",
+  "verdict": "fail",
+  "failing_rows": [
+    "correct"
+  ]
+}

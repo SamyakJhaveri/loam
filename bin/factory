@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
-# bin/factory - factory tooling. Subcommand: lint.
+# bin/factory - factory tooling. Subcommands: lint, eval.
 #   bin/factory lint <file|issue>   statically checks a ticket body against docs/factory/CONTRACT.md.
+#   bin/factory eval <grader>       replays the frozen evals/ cases through the production grader call.
 # Lint never executes a check; it reads the body and shells out only to `bash -n` and `gh`.
 set -uo pipefail
 
@@ -13,6 +14,9 @@ CANON=("Goal and why" "Do not touch" "Out of scope" "Approach" "Done checks" \
 REQUIRED=("Goal and why" "Do not touch" "Out of scope" "Done checks" "Worker" "Decisions")
 CAPS=" MAX_ROUNDS ROUND_BUDGET_USD GRADER_BUDGET_USD TICKET_BUDGET_USD DAILY_BUDGET_USD \
 MAX_HOURS MAX_TURNS CALL_TIMEOUT_SEC MAX_PARALLEL "
+
+# `claude --output-format json` prints one object, or an array whose last result element is it.
+RESULT_OBJ='if type == "array" then ((last(.[] | select(.type == "result")) // .[-1]) // {}) else . end'
 
 SRC=""
 BODY=""
@@ -158,6 +162,102 @@ check_paths() {
   done < <( { { header | grep -E '^Where:'; } | paths; { section "Do not touch"; section Approach; } | promised_paths; } | sort -u)
 }
 
+# ---- eval ----
+# Replays evals/<grader>/<case>/prompt.md through the grader call in docs/factory/LOOP.md and
+# compares the verdict with expected.json. The rubric comes from the live grader file, so a
+# grader prompt edit changes the result; that is the point (LOOP.md, Grader change protocol).
+
+EVAL_MODEL=fable
+EVALS_DIR=evals
+GRADERS_DIR=""
+
+# The installed plugin's agents dir ships lean-critic.md; judge.md and reviewer.md live with the
+# lean-v3 loop until F1 moves them into the plugin. --graders-dir replaces the whole search.
+grader_file() {
+  local dirs=("$GRADERS_DIR") d f
+  [ -n "$GRADERS_DIR" ] || dirs=("$HOME"/.claude/plugins/cache/*/sam-cc-setup/*/agents \
+                                 "${LOAM_LOOPS_DIR:-$ROOT/../loam/.superpowers/lean-v3/loops}")
+  for d in "${dirs[@]}"; do
+    f="$d/$1.md"
+    [ -f "$f" ] && { printf '%s\n' "$f"; return 0; }
+  done
+  echo "eval: found no $1.md in ${dirs[*]}" >&2
+  return 1
+}
+
+# A plugin agent file opens with frontmatter and asks for prose; strip the one and ask for the JSON
+# form, the same two edits the lean-v3 loop's run_lean makes. judge.md and reviewer.md need neither.
+grader_rubric() {
+  [ "$(head -n 1 "$1")" = "---" ] || { cat "$1"; return; }
+  awk 'f; /^---$/ { c++; if (c == 2) f = 1 }' "$1"
+  printf '\n## Output for this call\n\nRespond with exactly one JSON object and nothing else: no prose before or after, no code fences, no closing sentence; put anything you could not verify in the "unverified" array. Scope: the diff below and the worker-authored files. Severity as defined above.\n'
+}
+
+run_eval() {
+  local grader="$1" budget="${EVAL_BUDGET_USD:-10}" gf rubric dir name out res exp got erows grows
+  local spent=0 cases=0 mism=0 ok attempt
+  gf=$(grader_file "$grader") || return 2
+  [ -d "$EVALS_DIR/$grader" ] || { echo "eval: no cases under $EVALS_DIR/$grader" >&2; return 2; }
+  rubric=$(mktemp "${TMPDIR:-/tmp}/factory-eval.XXXXXX")
+  grader_rubric "$gf" > "$rubric"
+  for dir in "$EVALS_DIR/$grader"/*/; do
+    [ -f "$dir/prompt.md" ] && [ -f "$dir/expected.json" ] || continue
+    if awk -v s="$spent" -v b="$budget" 'BEGIN {exit !(s >= b)}'; then
+      echo "eval $grader: EVAL_BUDGET_USD $budget reached after \$$spent and $cases cases" >&2
+      rm -f "$rubric"
+      return 2
+    fi
+    name=$(basename "$dir")
+    cases=$((cases + 1))
+    # Two attempts, as the loop's grader call takes.
+    for attempt in 1 2; do
+      # Each call gets the remaining headroom, so EVAL_BUDGET_USD caps the sum over cases.
+      out=$(cat "$rubric" "$dir/prompt.md" | claude -p --model "$EVAL_MODEL" --effort medium \
+        --tools Read,Grep,Glob --no-session-persistence \
+        --max-budget-usd "$(awk -v b="$budget" -v s="$spent" 'BEGIN {printf "%.4f", b - s}')" \
+        --setting-sources user --output-format json 2>/dev/null)
+      spent=$(awk -v a="$spent" -v b="$(jq -r "$RESULT_OBJ | .total_cost_usd // 0" <<<"$out" 2>/dev/null)" \
+        'BEGIN {printf "%.4f", a + (b + 0)}')
+      res=$(jq -r "$RESULT_OBJ | .result // \"\"" <<<"$out" 2>/dev/null)
+      # Without --json-schema (F3) a reply sometimes wraps the object in code fences or
+      # prose. The object runs from the first brace to the last, so cut to those.
+      if ! jq -e .verdict <<<"$res" > /dev/null 2>&1 && [ "${res#*\{}" != "$res" ]; then
+        res="{${res#*\{}"; res="${res%\}*}}"
+      fi
+      # A usage limit or an API error answers with is_error and no cost. That is the environment,
+      # not a verdict: say so and stop, rather than reporting it as a grader disagreement.
+      if [ "$(jq -r "$RESULT_OBJ | .is_error // false" <<<"$out" 2>/dev/null)" = true ]; then
+        echo "eval $grader/$name: the call failed: $res" >&2
+        rm -f "$rubric"
+        return 2
+      fi
+      jq -e .verdict <<<"$res" > /dev/null 2>&1 && break
+      echo "eval $grader/$name: attempt $attempt output not parseable" >&2
+    done
+    exp=$(jq -r .verdict "$dir/expected.json")
+    got=$(jq -r '.verdict // "unparseable"' <<<"$res" 2>/dev/null) || got=unparseable
+    [ -n "$got" ] || got=unparseable
+    ok=1
+    [ "$got" = "$exp" ] || ok=0
+    # The failing-row set is compared only for a case that lists one.
+    if [ "$ok" = 1 ] && jq -e 'has("failing_rows")' "$dir/expected.json" > /dev/null 2>&1; then
+      erows=$(jq -r '.failing_rows | sort | join(",")' "$dir/expected.json")
+      grows=$(jq -r '[(.rows // {}) | to_entries[] | select(.value != "pass") | .key] | sort | join(",")' <<<"$res" 2>/dev/null)
+      [ "$grows" = "$erows" ] || { ok=0; got="$got rows=[$grows]"; exp="$exp rows=[$erows]"; }
+    fi
+    if [ "$ok" = 1 ]; then
+      echo "eval $grader/$name: OK $got"
+    else
+      echo "eval $grader/$name: MISMATCH got '$got', expected '$exp'"
+      mism=$((mism + 1))
+    fi
+  done
+  rm -f "$rubric"
+  echo "eval $grader: $cases cases, $mism mismatch, \$$spent"
+  [ "$cases" -gt 0 ] || return 2
+  [ "$mism" -eq 0 ]
+}
+
 lint() {
   SRC="$1"
   ERRS=0
@@ -196,8 +296,29 @@ lint() {
   echo "lint: OK $SRC"
 }
 
-case "${1:-}" in
-  lint) [ $# -eq 2 ] || { echo "usage: bin/factory lint <file|issue>" >&2; exit 2; }
-        lint "$2" ;;
-  *)    echo "usage: bin/factory lint <file|issue>" >&2; exit 2 ;;
+usage() {
+  echo "usage: bin/factory lint <file|issue>" >&2
+  echo "       bin/factory eval <grader> [--evals-dir D] [--graders-dir D] [--model M]" >&2
+  exit 2
+}
+
+CMD="${1:-}"
+shift 2> /dev/null || true
+case "$CMD" in
+  lint) [ $# -eq 1 ] || usage
+        lint "$1" ;;
+  eval) [ $# -ge 1 ] || usage
+        GRADER="$1"; shift
+        while [ $# -gt 0 ]; do
+          [ $# -ge 2 ] || usage
+          case "$1" in
+            --evals-dir)   EVALS_DIR="$2" ;;
+            --graders-dir) GRADERS_DIR="$2" ;;
+            --model)       EVAL_MODEL="$2" ;;
+            *)             usage ;;
+          esac
+          shift 2
+        done
+        run_eval "$GRADER" ;;
+  *)    usage ;;
 esac

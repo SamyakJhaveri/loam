@@ -1,0 +1,7 @@
+{
+  "source": "lean-v3 run S3 round 4: the diff touches six paths outside the ticket ownership list",
+  "verdict": "fail",
+  "failing_rows": [
+    "correct"
+  ]
+}
