@@ -788,7 +788,9 @@ open_pr() {
     url="https://github.com/$REPO/pull/$num"
   else
     title=$(grep -m1 '^# ' "$RUN/frozen/issue.md" | sed 's/^# //')
-    url=$(gh pr create -R "$REPO" --head "$BRANCH" --base main --title "${title:-$KEY}" --body-file "$body" 2>&1 | tail -1)
+    url=$(gh pr create -R "$REPO" --head "$BRANCH" --base main --title "${title:-$KEY}" --body-file "$body" 2>&1) \
+      || finish stopped-environment "gh pr create for $BRANCH failed: $url"
+    url=$(printf '%s\n' "$url" | tail -1)
   fi
   finish pr-opened "$url after $ROUND rounds, $(ticket_spent) usd"
 }
