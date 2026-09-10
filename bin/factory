@@ -634,7 +634,7 @@ worker_round() { # round; leaves round-N.* only once the call produced a result
   local round="$1" pf out="$RUN/pending.jsonl" res="$RUN/pending.result.json" t=() login_retried=0 le
   command -v timeout > /dev/null 2>&1 && t=(timeout --foreground "$CALL_TIMEOUT_SEC")
   # The first round this process runs; a login expired at launch retries only its call. A global,
-  # not a local, so it survives the loop's later rounds; set here since line 350 is do-not-touch.
+  # not a local, so it survives the loop's later rounds.
   [ -n "${FIRST_WORKER_ROUND+x}" ] || FIRST_WORKER_ROUND="$round"
   pf=$(build_worker_prompt "$round")
   while :; do
