@@ -77,5 +77,14 @@ reject_out=$(bin/factory lint bin/factory.d/fixtures/S5.before.md 2>&1); reject_
 { [ "$reject_rc" -eq 1 ] && grep -q "'skip'" <<<"$reject_out"; } \
   || bad "bin/factory lint did not reject S5.before.md on 'skip' (exit $reject_rc)"
 
+step "factory verdict gate"
+# verdict_consistent must refute a pass that ships a fix, and accept the same object as a fail (#64).
+# Capture first (these checks run under pipefail), then compare. The refute half also requires empty
+# output: a broken guard exits non-zero with usage text, and that must not count as a refutation.
+out=$(FACTORY_SOURCED=1 bash -c '. bin/factory; verdict_consistent bin/factory.d/fixtures/grader-inconsistent.json' 2>&1); r=$?
+{ [ "$r" -ne 0 ] && [ -z "$out" ]; } || bad "verdict_consistent did not refute the inconsistent grader fixture (exit $r): $out"
+out=$(FACTORY_SOURCED=1 bash -c '. bin/factory; verdict_consistent bin/factory.d/fixtures/grader-consistent.json' 2>&1); r=$?
+[ "$r" -eq 0 ] || bad "verdict_consistent refuted the consistent grader fixture (exit $r): $out"
+
 if [ "$FAIL" -ne 0 ]; then echo; echo "check: FAILED"; exit 1; fi
 echo; echo "check: PASSED"
