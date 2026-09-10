@@ -207,9 +207,11 @@ grader_rubric() {
 }
 
 run_eval() {
-  local grader="$1" budget="${EVAL_BUDGET_USD:-10}" gf rubric dir name out res exp got erows grows
+  local grader="$1" budget="${EVAL_BUDGET_USD:-10}" gf schema rubric dir name out res exp got erows grows
   local spent=0 cases=0 mism=0 ok attempt
   gf=$(grader_file "$grader") || return 2
+  schema=$(schema_for "$grader" 2> /dev/null)
+  [ -n "$schema" ] || { echo "eval: no bin/factory.d/$grader.schema.json" >&2; return 2; }
   [ -d "$EVALS_DIR/$grader" ] || { echo "eval: no cases under $EVALS_DIR/$grader" >&2; return 2; }
   rubric=$(mktemp "${TMPDIR:-/tmp}/factory-eval.XXXXXX")
   grader_rubric "$gf" > "$rubric"
@@ -224,16 +226,20 @@ run_eval() {
     cases=$((cases + 1))
     # Two attempts, as the loop's grader call takes.
     for attempt in 1 2; do
-      # Each call gets the remaining headroom, so EVAL_BUDGET_USD caps the sum over cases.
+      # The same flags as the production grader call (LOOP.md, Grader calls), so the replay grades the
+      # way the loop does: --json-schema routes the reply through the schema, --strict-mcp-config and
+      # --disable-slash-commands drop the prefix the grader never uses. Each call gets the remaining
+      # headroom, so EVAL_BUDGET_USD caps the sum over cases.
       out=$(cat "$rubric" "$dir/prompt.md" | claude -p --model "$EVAL_MODEL" --effort medium \
-        --tools Read,Grep,Glob --no-session-persistence \
+        --tools Read,Grep,Glob --strict-mcp-config --disable-slash-commands --no-session-persistence \
+        --json-schema "$schema" \
         --max-budget-usd "$(awk -v b="$budget" -v s="$spent" 'BEGIN {printf "%.4f", b - s}')" \
         --setting-sources user --output-format json 2>/dev/null)
       spent=$(awk -v a="$spent" -v b="$(jq -r "$RESULT_OBJ | .total_cost_usd // 0" <<<"$out" 2>/dev/null)" \
         'BEGIN {printf "%.4f", a + (b + 0)}')
       res=$(jq -r "$RESULT_OBJ | .result // \"\"" <<<"$out" 2>/dev/null)
-      # Without --json-schema (F3) a reply sometimes wraps the object in code fences or
-      # prose. The object runs from the first brace to the last, so cut to those.
+      # Even through --json-schema a reply sometimes wraps the object in code fences or prose.
+      # The object runs from the first brace to the last, so cut to those.
       if ! jq -e .verdict <<<"$res" > /dev/null 2>&1 && [ "${res#*\{}" != "$res" ]; then
         res="{${res#*\{}"; res="${res%\}*}}"
       fi
@@ -642,14 +648,11 @@ measure_rows() { # round; Rows measured is `<row>: <command> | <baseline>` per l
 # ---- step 7: the graders ----------------------------------------------------
 
 # --json-schema routes the grader's last message through a structured-output tool, so .result is the
-# bare object whatever the rubric's prose default asks for. Required keys are the ones the loop reads.
-schema_for() { # judge|reviewer -> a JSON Schema on stdout
-  local f='{"type":"object","properties":{"severity":{"enum":["high","medium","low"]},"file":{"type":"string"},"line":{"type":"integer"},"defect":{"type":"string"},"fix":{"type":"string"}},"required":["severity","file","defect","fix"]}'
-  case "$1" in
-    judge) printf '{"type":"object","properties":{"rows":{"type":"object"},"evidence":{"type":"object"},"fixes":{"type":"array","items":{"type":"string"}},"backlog":{"type":"array","items":{"type":"string"}},"verdict":{"enum":["pass","fail"]}},"required":["rows","fixes","verdict"]}' ;;
-    *)     printf '{"type":"object","properties":{"findings":{"type":"array","items":%s},"unverified":{"type":"array","items":{"type":"string"}},"verdict":{"enum":["merge","fix"]}},"required":["findings","verdict"]}' "$f" ;;
-  esac
-}
+# bare object whatever the rubric's prose default asks for. Each schema's one home is its file next to
+# the running factory (bin/factory.d/), not under $ROOT: an eval run from a worktree reads that
+# worktree's schema even though the supervisor exports FACTORY_ROOT pointing at the main checkout.
+# freeze copies judge's and reviewer's into frozen/; the eval reads them directly.
+schema_for() { cat "$(dirname "$0")/factory.d/$1.schema.json"; }  # judge|reviewer|lean-critic -> JSON Schema on stdout
 
 build_evidence() { # rubric_file diff_cap -> stdout
   local rubric="$1" cap="$2" base names stat_only content paths diff="$RUN/round-$ROUND.diff"
