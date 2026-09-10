@@ -38,7 +38,7 @@ evals/<grader>/<case>/{prompt.md,expected.json}
 
 Graders are plugin agents (home in `ARCHITECTURE.md`): `judge.md` and `reviewer.md`.
 `lean-critic.md` is a grader file under the same change protocol, but the manager runs it by hand on the PR, outside the round loop: on the 2026-09-09 ledger 3 of its 6 round calls were unparseable.
-The run resolves them from the installed plugin cache and records each file's sha256 in the ledger.
+The run resolves them from the installed plugin cache, falling back to the checkout's own `cultivation/marketplace/sam-cc-setup/agents/` when a branch's grader edits are not installed yet, and records each file's sha256 in the ledger.
 
 ## A run
 
@@ -50,7 +50,7 @@ The run resolves them from the installed plugin cache and records each file's sh
 4. Round 0: run the block on `base.sha` from the worktree root; every non-guard check must print FAIL, else exit `ticket-defect`.
    Then one read-only Fable 5.1 low call with the ticket and the check output, answering `{doable, unmeetable:[{check, reason, evidence}]}` through `--json-schema`.
    Any `unmeetable` entry exits `ticket-defect` with the evidence and pages the owner.
-5. Worker round k: a fresh `claude -p` (`claude-opus-4-8[1m]` high) or a fresh `codex exec` in the worktree with the body, `_common.md`, and from round 2 the failing check lines and every blocking finding verbatim.
+5. Worker round k: a fresh `claude -p` (`claude-opus-4-8[1m]` xhigh) or a fresh `codex exec` in the worktree with the body, `_common.md`, and from round 2 the failing check lines and every blocking finding verbatim.
    The worker writes code and `decisions.md` only.
    Every round is a fresh process for either worker; there is no fixer role.
 6. Before grading, in order: scan `decisions.md` for an `ABANDON` line; re-hash the frozen set (a mismatch exits `stopped-environment`); `git status --porcelain` must be empty, else the round fails with the path list; `git diff --name-only "$(cat base.sha)"...HEAD` against Do not touch emits `FAIL do-not-touch <paths>`; then run the done-checks block from the worktree root.
@@ -77,7 +77,7 @@ A call with no result event (killed by `CALL_TIMEOUT_SEC`, or crashed) exits `st
 
 ## Caps
 
-Defaults from lean-v3, overridable per ticket in its Worker section: `MAX_ROUNDS=6`, `ROUND_BUDGET_USD=15`, `GRADER_BUDGET_USD=5`, `TICKET_BUDGET_USD=60`, `DAILY_BUDGET_USD=150`, `MAX_HOURS=8`, `MAX_TURNS=200`, `CALL_TIMEOUT_SEC=5400`, `MAX_PARALLEL=1`.
+Defaults from lean-v3, overridable per ticket in its Worker section and then by `FACTORY_<NAME>` in the environment, never by the bare name, which a Claude Code session already exports for `WORKER_MODEL` and `CALL_TIMEOUT_SEC`: `MAX_ROUNDS=6`, `ROUND_BUDGET_USD=15`, `GRADER_BUDGET_USD=5`, `TICKET_BUDGET_USD=60`, `DAILY_BUDGET_USD=150`, `MAX_HOURS=8`, `MAX_TURNS=200`, `CALL_TIMEOUT_SEC=5400`, `MAX_PARALLEL=1`.
 No research source gives a numeric anchor (`../research/anthropic-loop-engineering.md`); re-measure after two real runs.
 The daily ledger `runs/ledger-daily.jsonl` is keyed by UTC date across all runs.
 Codex token counts come from its `--json` events and land in the ledger with `cost_usd` null, so the dollar caps do not bound a Codex worker; the PR body says so.
@@ -111,7 +111,7 @@ The Codex review stage runs `codex exec --json --output-schema frozen/review-out
 ## Worker calls
 
 ```
-claude -p --model claude-opus-4-8[1m] --effort high --permission-mode bypassPermissions --strict-mcp-config \
+claude -p --model claude-opus-4-8[1m] --effort xhigh --permission-mode bypassPermissions --strict-mcp-config \
   --setting-sources user --settings frozen/worker-settings.json --max-turns "$MAX_TURNS" \
   --max-budget-usd "$ROUND_BUDGET_USD" --output-format stream-json --verbose --include-hook-events < round-<k>.prompt.md
 ```

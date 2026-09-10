@@ -1,0 +1,19 @@
+{
+  "permissions": {
+    "deny": [
+      "Bash(rm -rf:*)", "Bash(rm -fr:*)", "Bash(rm -Rf:*)", "Bash(rm -r -f:*)", "Bash(rm -f -r:*)",
+      "Bash(git push:*)",
+      "Bash(git tag:*)",
+      "Bash(gh:*)",
+      "Bash(git reset --hard:*)",
+      "Bash(git clean -f:*)", "Bash(git clean -d:*)", "Bash(git clean -x:*)",
+      "Bash(git checkout -- .:*)", "Bash(git checkout .:*)", "Bash(git restore .:*)",
+      "Bash(git stash clear:*)", "Bash(git stash drop:*)",
+      "Read(.env*)", "Edit(.env*)"
+    ]
+  },
+  "hooks": {
+    "Stop": [{"hooks": [{"type": "command", "timeout": 900,
+      "command": "bash -c 'out=$(LOAM_HOOK=1 bash \"$LOAM_CHECKS\" 2>&1); s=$?; [ \"$s\" -eq 0 ] && exit 0; printf \"%s\\n\" \"$out\" | grep -E \"^(FAIL|SUMMARY)\" >&2; exit 2'"}]}]
+  }
+}
