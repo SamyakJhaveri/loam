@@ -72,6 +72,10 @@ step "factory ticket lint"
 for t in bin/factory.d/fixtures/S[1-5].md; do
   bin/factory lint "$t" || bad "bin/factory lint $t"
 done
+# Lint must reject the S5.before.md fixture on its forbidden word 'skip' (CONTRACT.md Lint rules, #37).
+reject_out=$(bin/factory lint bin/factory.d/fixtures/S5.before.md 2>&1); reject_rc=$?
+{ [ "$reject_rc" -eq 1 ] && grep -q "'skip'" <<<"$reject_out"; } \
+  || bad "bin/factory lint did not reject S5.before.md on 'skip' (exit $reject_rc)"
 
 if [ "$FAIL" -ne 0 ]; then echo; echo "check: FAILED"; exit 1; fi
 echo; echo "check: PASSED"

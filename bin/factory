@@ -141,11 +141,14 @@ check_worker() {
   grep -qE '^goal: .*or stop after [0-9]+ turns$' <<<"$w" \
     || err "Worker has no 'goal:' line ending 'or stop after <N> turns'"
   # Every `skills:` name is a line of bin/factory.d/skills.txt, matched byte for byte (#37).
-  while IFS= read -r skill; do
-    [ -n "$skill" ] || continue
-    grep -qxF "$skill" "$ROOT/bin/factory.d/skills.txt" \
-      || err "unknown skill '$skill': not a line of bin/factory.d/skills.txt"
-  done < <(sed -n 's/^skills: *//p' <<<"$w" | head -1 | tr ',' '\n' | sed 's/^ *//;s/ *$//')
+  # Skipped under fixtures/, whose historical bodies predate the allowlist, as check_paths is (lint).
+  case "$SRC" in *bin/factory.d/fixtures/*) ;; *)
+    while IFS= read -r skill; do
+      [ -n "$skill" ] || continue
+      grep -qxF "$skill" "$ROOT/bin/factory.d/skills.txt" \
+        || err "unknown skill '$skill': not a line of bin/factory.d/skills.txt"
+    done < <(sed -n 's/^skills: *//p' <<<"$w" | head -1 | tr ',' '\n' | sed 's/^ *//;s/ *$//')
+  ;; esac
   while IFS= read -r line; do
     [ -n "${line//[[:space:]]/}" ] || continue
     case "$line" in worker:*|codex-review:*|effort:*|goal:*|skills:*) continue ;; esac
