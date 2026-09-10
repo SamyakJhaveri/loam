@@ -196,7 +196,11 @@ grader_file() {
 # A plugin agent file opens with frontmatter; strip it. One that asks for prose is also asked for the
 # JSON form; judge.md and reviewer.md carry their own `## Output` section and keep it byte-identical.
 grader_rubric() {
-  if [ "$(head -n 1 "$1")" = "---" ]; then awk 'f; /^---$/ { c++; if (c == 2) f = 1 }' "$1"; else cat "$1"; fi
+  # `sed '/./,$!d'` drops the blank line after the frontmatter, so the rubric a grader reads is the
+  # agent file's body byte for byte.
+  if [ "$(head -n 1 "$1")" = "---" ]; then
+    awk 'f; /^---$/ { c++; if (c == 2) f = 1 }' "$1" | sed '/./,$!d'
+  else cat "$1"; fi
   grep -qxF '## Output' "$1" && return 0
   printf '\n## Output for this call\n\nRespond with exactly one JSON object and nothing else: no prose before or after, no code fences, no closing sentence; put anything you could not verify in the "unverified" array. Scope: the diff below and the worker-authored files. Severity as defined above.\n'
 }
@@ -684,8 +688,9 @@ call_json() { # round stem role prompt_file schema_file
     stop_requested && finish stopped "FACTORY_STOP before the $role call"
     log "$role call (attempt $attempt): model=$GRADER_MODEL effort=$GRADER_EFFORT"
     # --tools Read,Grep,Glob is what makes a grader read-only (#40); with no MCP schemas and no
-    # skills listing its prefix is 9.9k tokens instead of 27k (probed 2026-09-09).
-    ( cd "$RUN" && ${TIMEOUT_G[@]+"${TIMEOUT_G[@]}"} claude -p --model "$GRADER_MODEL" --effort "$GRADER_EFFORT" \
+    # skills listing its prefix is 9.9k tokens instead of 27k (probed 2026-09-09). --setting-sources
+    # user is what keeps the worktree's own hooks out, so a grader can still read the tree it grades.
+    ( cd "$WORKTREE" && ${TIMEOUT_G[@]+"${TIMEOUT_G[@]}"} claude -p --model "$GRADER_MODEL" --effort "$GRADER_EFFORT" \
         --tools Read,Grep,Glob --strict-mcp-config --disable-slash-commands --no-session-persistence \
         --json-schema "$(cat "$schema")" \
         --max-budget-usd "$GRADER_BUDGET_USD" --setting-sources user --settings "$RUN/frozen/role-settings.json" \

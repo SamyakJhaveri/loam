@@ -38,7 +38,7 @@ evals/<grader>/<case>/{prompt.md,expected.json}
 
 Graders are plugin agents (home in `ARCHITECTURE.md`): `judge.md` and `reviewer.md`.
 `lean-critic.md` is a grader file under the same change protocol, but the manager runs it by hand on the PR, outside the round loop: on the 2026-09-09 ledger 3 of its 6 round calls were unparseable.
-The run resolves them from the installed plugin cache and records each file's sha256 in the ledger.
+The run resolves them from the installed plugin cache, falling back to the checkout's own `cultivation/marketplace/sam-cc-setup/agents/` when a branch's grader edits are not installed yet, and records each file's sha256 in the ledger.
 
 ## A run
 
@@ -77,7 +77,7 @@ A call with no result event (killed by `CALL_TIMEOUT_SEC`, or crashed) exits `st
 
 ## Caps
 
-Defaults from lean-v3, overridable per ticket in its Worker section: `MAX_ROUNDS=6`, `ROUND_BUDGET_USD=15`, `GRADER_BUDGET_USD=5`, `TICKET_BUDGET_USD=60`, `DAILY_BUDGET_USD=150`, `MAX_HOURS=8`, `MAX_TURNS=200`, `CALL_TIMEOUT_SEC=5400`, `MAX_PARALLEL=1`.
+Defaults from lean-v3, overridable per ticket in its Worker section and then by `FACTORY_<NAME>` in the environment, never by the bare name, which a Claude Code session already exports for `WORKER_MODEL` and `CALL_TIMEOUT_SEC`: `MAX_ROUNDS=6`, `ROUND_BUDGET_USD=15`, `GRADER_BUDGET_USD=5`, `TICKET_BUDGET_USD=60`, `DAILY_BUDGET_USD=150`, `MAX_HOURS=8`, `MAX_TURNS=200`, `CALL_TIMEOUT_SEC=5400`, `MAX_PARALLEL=1`.
 No research source gives a numeric anchor (`../research/anthropic-loop-engineering.md`); re-measure after two real runs.
 The daily ledger `runs/ledger-daily.jsonl` is keyed by UTC date across all runs.
 Codex token counts come from its `--json` events and land in the ledger with `cost_usd` null, so the dollar caps do not bound a Codex worker; the PR body says so.
