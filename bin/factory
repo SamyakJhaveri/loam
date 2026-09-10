@@ -133,13 +133,22 @@ check_check_lines() {
 }
 
 check_worker() {
-  local w line name
+  local w line name skill
   w=$(section Worker)
   grep -qE '^worker: (claude|codex)$' <<<"$w" || err "Worker has no 'worker: claude|codex' line"
   grep -qE '^codex-review: (yes|no)$' <<<"$w" || err "Worker has no 'codex-review: yes|no' line"
   grep -qE '^effort: (low|medium|high|xhigh)$' <<<"$w" || err "Worker has no 'effort: low|medium|high|xhigh' line"
   grep -qE '^goal: .*or stop after [0-9]+ turns$' <<<"$w" \
     || err "Worker has no 'goal:' line ending 'or stop after <N> turns'"
+  # Every `skills:` name is a line of bin/factory.d/skills.txt, matched byte for byte (#37).
+  # Skipped under fixtures/, whose historical bodies predate the allowlist, as check_paths is (lint).
+  case "$SRC" in *bin/factory.d/fixtures/*) ;; *)
+    while IFS= read -r skill; do
+      [ -n "$skill" ] || continue
+      grep -qxF "$skill" "$ROOT/bin/factory.d/skills.txt" \
+        || err "unknown skill '$skill': not a line of bin/factory.d/skills.txt"
+    done < <(sed -n 's/^skills: *//p' <<<"$w" | head -1 | tr ',' '\n' | sed 's/^ *//;s/ *$//')
+  ;; esac
   while IFS= read -r line; do
     [ -n "${line//[[:space:]]/}" ] || continue
     case "$line" in worker:*|codex-review:*|effort:*|goal:*|skills:*) continue ;; esac
