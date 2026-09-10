@@ -192,6 +192,20 @@ Credibility: sponsored and SEO-stuffed, but a bake-off admitting failures beats 
 Three of the five videos come from AI LABS, so the loop material approximates one opinion.
 That channel contradicts itself two days apart on whether /goal's conversation-reading verification is adequate, and the later position is that it is not.
 
+## Read live 2026-09-09
+
+The three Reddit threads and the X post were read through the Chrome extension after Samyak signed in; Reddit JSON came back cut at the tool's size cap, so late comments were not seen.
+
+- https://www.reddit.com/r/ClaudeCode/comments/1w97lh4/how_are_you_building_so_fast/ : the best-received advice (17 points) is to build a detailed implementation plan with verification loops that say how each task is verified, then run a goal.
+  The top counterpoint (18 points), verbatim: "It's pretty easy to construct a prompt that spawns a bunch of agents and does nothing."
+- https://www.reddit.com/r/ClaudeAI/comments/1vzl6kk/anthropic_published_an_ainative_sdlc_playbook_the/ : the sharpest comment (25 points), verbatim: "In my experience, optional tasks are ignored. If something is not an enforced gate, but "human readable", how quickly do we devolve into "humans never look at it"? At what point does that become a problem?"
+- https://www.reddit.com/r/ClaudeCode/comments/1w71zqx/has_anyone_actually_tried_anthropics_ainative/ : no new position beyond the section above; the thread repeats that the playbook's roles are heavier than most solo setups.
+- https://x.com/RLanceMartin/status/2095170001175199771 (2026-09-02): Lance Martin added `/claude-api prompt-audit` to the claude-api skill.
+  It rewrites six prompting anti-patterns that make frontier models waste tokens: verification rituals ("double-check your work"), emphasis boosters, mandatory scaffolds, stale examples, contradictory rules, and dated configuration.
+  The factory runs it on every new prompt paragraph before a ticket is published.
+
+What changed in the factory from this read: nothing in the loop; the plan-before-goal advice and the enforced-gate comment are the reasons the done-checks block, not prose, is the completion condition, and prompt-audit became a publish step.
+
 ## Playbook and critiques
 
 The AI-Native SDLC playbook, Louis Claxton, Anthropic, 2026-08-21.

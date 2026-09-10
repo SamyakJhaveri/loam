@@ -108,6 +108,12 @@ The done rule and the honesty rule are the mechanism:
 Verification runs in four layers: leaf self-check, parent re-verify which re-executes the oracle, branch integration, and an optional structural backstop.
 Layer one is labelled self-certification, and `--status` explicitly does not count as re-execution.
 
+Read live 2026-09-09: `scripts/gate-check.mjs` with `scripts/lib/gates.mjs` is the one copyable fan-out source in the nine repos.
+`globsOverlap` in `gates.mjs` is the conservative check, with this comment above it: "Prove disjointness only when literal path segments disagree. Everything else conflicts, including mid-segment pairs such as a* and ab*."
+`claimLeases` writes a lease under one global lock so two conflicting claims cannot both succeed, and the parent "executes each runnable oracle again instead of trusting old or manually written evidence".
+Its warning also carries over: "Do not call a leaf `VERIFIED` merely because every runnable gate passed."
+F12 ports `globsOverlap` into the factory workflow script with the MIT attribution in the file header; the lease is not needed because one script owns the whole fan-out.
+
 Steal:
 - `CHECK:` and `EXPECT:` gates authored before implementation, because our verify stage currently reads prose acceptance criteria.
 - `ABANDON:` with a mandatory reason that exits non-zero, because three of four Loam loops stalled on exactly the silent-scope-shrink failure this prevents.
@@ -191,8 +197,11 @@ Maps to: brief and loop hygiene only, as a constraint rather than a component.
 
 ### disler/super-simple-software-factory
 
-A skill that stamps deterministic Python workflow scripts into a repo, with agents as bounded nodes inside them.
+A README essay about deterministic Python workflow scripts with agents as bounded nodes inside them.
 MIT, 811 stars, 211 forks, last push 2026-08-04.
+Correction, read live 2026-09-09: the repo ships no code.
+Its tree is `README.md`, `LICENSE`, `images/`, and an empty `.claude/skills/`; the `adws/` modules, phases, gates, `verdict_consistent`, per-role model resolution, and the lazy-load table below are prose.
+Everything taken from it was written here from the essay, which is why `verdict_consistent` lives in `bin/factory` (F1) with no upstream file to cite.
 
 The thesis is that code owns the graph:
 

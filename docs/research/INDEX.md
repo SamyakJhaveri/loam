@@ -14,6 +14,7 @@ The design that rests on this evidence is in `../factory/ARCHITECTURE.md`.
 | `anthropic-loop-engineering.md` | the mis-titled loop-engineering PDF and the AI LABS levels video (2026-09-06) | supervisor owns everything mechanical; models write and judge only |
 | `video-loop-engineering.md` | the AI LABS skill video (2026-09-06) | answer key per ticket, fixed judge prompt, hard caps |
 | `sandbox-and-codex-keys.md` | sandbox and permission keys from primary docs (2026-09-06) | the deny-only role settings |
+| `advisor-and-managed-agents.md` | the Claude Code advisor page, the seven cookbook notebooks Samyak named on 2026-09-09, one local advisor probe | `--advisor fable` on the worker call (F11), the specialist shape for the large-ticket workflow (F12), nothing from PTC or tool search |
 | `primary-2026-09-08/` | the same sources read from their live pages, repos, and captions on 2026-09-08, with the fact-check corrections to the notes above | one fresh judge, human-decided checks, no loop inside a loop, remove one component per run and read the ledger (#38) |
 
 The three 2026-09-06 notes are copies of gitignored files under `.superpowers/lean-v3/research/`; F1 deletes the originals.
@@ -72,6 +73,20 @@ Scope: on-disk transcripts start 2026-08-26, so earlier sessions are not recover
 | https://www.reddit.com/r/ClaudeAI/wiki/survivalguideweekly/ | reddit | 2026-09-03 | Same audit brief | community.md |
 | https://news.ycombinator.com/item?id=49525809 | other | 2026-09-03 | Same audit brief | community.md |
 | https://x.com/RLanceMartin/status/2095170001175199771 | other | 2026-09-06 | "See this as well", sent beside the claude-api skill | community.md |
+
+### Advisor and Managed Agents
+
+| URL | kind | given on | context | note file |
+|---|---|---|---|---|
+| https://code.claude.com/docs/en/advisor | docs | 2026-09-09 | The native advisor tool, read when Samyak asked why Fable never steers the worker | advisor-and-managed-agents.md |
+| https://platform.claude.com/cookbook/managed-agents-cma-consult-an-advisor | cookbook | 2026-09-09 | "include these too, but only if they are relevant"; notebook `managed_agents/CMA_consult_an_advisor.ipynb` | advisor-and-managed-agents.md |
+| https://platform.claude.com/cookbook/managed-agents-cma-coordinate-specialist-team | cookbook | 2026-09-09 | Same ask; notebook `managed_agents/CMA_coordinate_specialist_team.ipynb` | advisor-and-managed-agents.md |
+| https://platform.claude.com/cookbook/managed-agents-cma-verify-with-outcome-grader | cookbook | 2026-09-09 | Same ask; notebook `managed_agents/CMA_verify_with_outcome_grader.ipynb` | advisor-and-managed-agents.md |
+| https://platform.claude.com/cookbook/claude-agent-sdk-08-dynamic-workflows | cookbook | 2026-09-09 | Same ask; notebook `claude_agent_sdk/08_Dynamic_workflows.ipynb` | advisor-and-managed-agents.md |
+| https://platform.claude.com/cookbook/patterns-agents-async-multi-agent-orchestration | cookbook | 2026-09-09 | Same ask; notebook `patterns/agents/async_multi_agent_orchestration.ipynb` | advisor-and-managed-agents.md |
+| https://platform.claude.com/cookbook/tool-use-programmatic-tool-calling-ptc | cookbook | 2026-09-09 | Same ask; notebook `tool_use/programmatic_tool_calling_ptc.ipynb` | advisor-and-managed-agents.md |
+| https://platform.claude.com/cookbook/tool-use-tool-search-with-embeddings | cookbook | 2026-09-09 | Same ask; notebook `tool_use/tool_search_with_embeddings.ipynb` | advisor-and-managed-agents.md |
+| https://github.com/anthropics/claude-cookbooks | repo | 2026-09-09 | The tree the seven notebooks live in, listed for the cookbook survey table | advisor-and-managed-agents.md |
 
 ### Skills and agents to vet
 

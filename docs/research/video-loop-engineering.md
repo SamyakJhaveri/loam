@@ -91,3 +91,36 @@ The video's entire control mechanism is prompt content and sub-agent structure; 
 
 Single source, transcript-only, auto-captioned, from a channel that sells a paid community and ran a sponsor segment [05:38]-[06:32]; on-screen prompt and answer-key text were never seen, and "ultra code" is unverified against Claude Code documentation.
 The $116 and 40-percent figures are the video's own unaudited numbers for one build.
+
+## Transcripts, read in full 2026-09-09
+
+The full transcripts of the three AI LABS videos were fetched on the runner with `youtube-transcript-api` (YouTube rate-limits the Mac) and copied to `.superpowers/lean-v3/research/transcripts/<video id>.txt`, gitignored because the full text is not ours to publish.
+Line numbers below are lines of those files.
+Everything above this section for the D_uojDHkbw4 video was written from a caption-only read on 2026-09-06 and stands.
+
+### PLyRe6Zk--8, "Every Level Of Claude Code Loop Engineering Explained" (736 lines)
+
+- Three levels (lines 8-11): level one is the basic unit, level two the factory, level three "finally frees" the human.
+- Level two (lines 408-490): the main agent picks a queue row, hands it to a build subagent on a branch, then to an adversarial review subagent with a fresh context, and loops until the row is ticked; a pull request with screenshots is opened and a human merges.
+- The rule (lines 452-455), verbatim: "The agent that does the work should never verify it. The verification should always go to another agent with a fresh context window."
+- The reviewer's stance (lines 457-460): the review agent "always needs to believe that there is some error in the work done".
+- Merge stays human (lines 477-486): "When a feature is done, a pull request is made", and "If it's correct, you can merge the pull request."
+- The screenshot tool (lines 236-240 and 276-279) exists because a screenshot "only ever catches" what is on the page; the blinking mascot was the error no screenshot caught.
+
+What the factory already has: this exact shape, with the judge and reviewer as the fresh-context review agents and human merge as the only merge (`../factory/ARCHITECTURE.md`, stage table).
+
+### D_uojDHkbw4, "This Claude Skill Just Fixed Loop Engineering"
+
+- The diamond graph (one planner, parallel subagents each with a critic, one integrator) has two failures the video names: the orchestrator writes the critic prompts itself, so "you don't have control on the agents nor how the judgment prompt is being passed to the critics"; and the bar must be a concrete reference, an answer key "where every line comes back as either a pass or a fail".
+- The run took 1 hour 33 minutes and about 116 usd at API rates.
+- Line numbers: pending; the runner's hostname stopped resolving from the Mac on 2026-09-10 before this file was copied. The quotes match the caption timestamps in the sections above ([06:59]-[07:03], [12:44]-[12:47], [13:38]-[13:44]).
+
+### c47uqR7XB_c, the Unlazy walkthrough
+
+- Gates carry a command, the expected output, and an evidence line; pending evidence "counts as unmet" and is worse than an empty box.
+- In orchestrated mode "the main one doesn't take its word for it and runs that task's checks against itself".
+- The plan file names "which task is to work with which file so that if two agents are working at the same time, they don't overwrite each other's work".
+- Serial hand-out was the slowness; parallel hand-out fixed it. A router sends "simple mechanical work" to a cheaper model.
+- Line numbers: pending, same reason as above.
+
+What the factory takes from the two: the fixed grader prompts the planner cannot write (already `LOOP.md`, Grader change protocol), the owned-files rule and the integrator that reruns every check (F12), and the answer key as the done-checks block (already `CONTRACT.md`).
