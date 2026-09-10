@@ -848,7 +848,15 @@ cmd_run() {
   [ "$IS_FILE" = 1 ] && trap 'git -C "$MAIN_CHECKOUT" worktree remove --force "$WORKTREE" > /dev/null 2>&1' EXIT
   TIMEOUT_G=()
   command -v timeout > /dev/null 2>&1 && TIMEOUT_G=(timeout --foreground "$CALL_TIMEOUT_SEC")
-  round_zero
+  # A relaunch reuses the worktree at branch HEAD, where the checks may already pass:
+  # round 0 belongs to base only, and ROUND resumes past the rounds already on disk.
+  if [ ! -f "$RUN/round-0.checks" ]; then
+    round_zero
+  else
+    ROUND=$(find "$RUN" -maxdepth 1 -name 'round-*.checks' | sed -n 's/.*round-\([0-9][0-9]*\)\.checks$/\1/p' \
+      | sort -n | tail -1)
+    log "resuming after round $ROUND"
+  fi
   main_loop
 }
 
