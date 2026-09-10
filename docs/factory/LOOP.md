@@ -111,7 +111,7 @@ The Codex review stage runs `codex exec --json --output-schema frozen/review-out
 ## Worker calls
 
 ```
-claude -p --model claude-opus-4-8[1m] --effort xhigh --permission-mode bypassPermissions --strict-mcp-config \
+claude -p --model claude-opus-4-8[1m] --effort xhigh --advisor fable --permission-mode bypassPermissions --strict-mcp-config \
   --setting-sources user --settings frozen/worker-settings.json --max-turns "$MAX_TURNS" \
   --max-budget-usd "$ROUND_BUDGET_USD" --output-format stream-json --verbose --include-hook-events < round-<k>.prompt.md
 ```
@@ -203,6 +203,7 @@ Each new grader agent costs about 200 always-on tokens in every session of every
 - `codex login status` succeeds when any ticket uses Codex.
 - Every `codex` call on the runner exports `PATH=$HOME/.local/bin:$PATH` and ends in `< /dev/null`, or Codex is not found or eats the caller's stdin (#41).
 - The plugin cache holds the grader files at the version the ledger records.
+- Neither `DISABLE_TELEMETRY` nor `CLAUDE_CODE_DISABLE_ADVISOR_TOOL` is set in the runner's environment: either turns the worker's advisor silently off, and `bin/factory run` refuses to launch when one is set (F11). `FACTORY_STATUS_PROBE=1 bin/factory status` makes one paid Opus call to prove the advisor attaches.
 - Sessions that edit `bin/factory` run in `acceptEdits`, not auto mode, because the auto-mode classifier blocks tool calls whose text names a permission mode (observed, not documented).
 - `gh pr edit` has failed on a GraphQL deprecation; PR bodies are updated through the REST API.
 - macOS lacks coreutils `timeout`; the supervisor runs only on the runner.

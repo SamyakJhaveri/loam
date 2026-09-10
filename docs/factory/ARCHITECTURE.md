@@ -76,6 +76,7 @@ Scope beyond the ticket goal outside this list is a judge finding, not a stall.
 
 - Every reviewing or judging agent is a fresh Fable 5.1: judge and reviewer at medium in the loop, the lean-critic at medium by hand on the PR; the round-0 doable/unmeetable call at low; the plan-reviewer at high (F0 sets its frontmatter).
 - `claude-opus-4-8[1m]` does exploration, retrieval, and implementation only: loop worker at xhigh, never high, Explore subagents. Never Opus 5 (2026-09-09).
+- The loop worker carries a Fable 5.1 advisor (`--advisor fable`, F11, 2026-09-10): the worker decides when to consult it; `FACTORY_WORKER_ADVISOR=` (explicit empty) turns it off; each worker ledger line records `advisor_calls` and `advisor_usd`. Kept while the ledger shows lower usd per ticket or fewer and less severe grader findings.
 - Brief and design sessions are Fable 5.1 at high, interactive.
 - Never Sonnet or Haiku; any flag that defaults to Haiku is overridden or unused; every `Agent` call names its model.
 - The one named exception: Codex may be the worker (`worker: codex`) or an added reviewer (`codex-review: yes`); the Fable graders always run.
