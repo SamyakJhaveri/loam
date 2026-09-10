@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 # bin/check - the one check for Loam. CI runs it on every push and PR. Exit 0 means green.
+# Needs jq: the factory verdict-gate step (#64) sources bin/factory, whose verdict_consistent runs jq.
 set -uo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
