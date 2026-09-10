@@ -140,6 +140,10 @@ check_worker() {
   grep -qE '^effort: (low|medium|high|xhigh)$' <<<"$w" || err "Worker has no 'effort: low|medium|high|xhigh' line"
   grep -qE '^goal: .*or stop after [0-9]+ turns$' <<<"$w" \
     || err "Worker has no 'goal:' line ending 'or stop after <N> turns'"
+  # `size:` is optional (default small); large routes round 1 through the fan-out workflow (F12).
+  if grep -qE '^size:' <<<"$w"; then
+    grep -qE '^size: (small|large)$' <<<"$w" || err "Worker 'size:' must be 'small' or 'large'"
+  fi
   # Every `skills:` name is a line of bin/factory.d/skills.txt, matched byte for byte (#37).
   # Skipped under fixtures/, whose historical bodies predate the allowlist, as check_paths is (lint).
   case "$SRC" in *bin/factory.d/fixtures/*) ;; *)
@@ -151,7 +155,7 @@ check_worker() {
   ;; esac
   while IFS= read -r line; do
     [ -n "${line//[[:space:]]/}" ] || continue
-    case "$line" in worker:*|codex-review:*|effort:*|goal:*|skills:*) continue ;; esac
+    case "$line" in worker:*|codex-review:*|effort:*|goal:*|skills:*|size:*) continue ;; esac
     name=${line%%=*}
     if [ "$name" = "$line" ] || [ "${CAPS/ $name /}" = "$CAPS" ]; then
       err "unrecognized Worker line: $line"
