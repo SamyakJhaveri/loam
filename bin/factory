@@ -1012,6 +1012,10 @@ usage() { # [cmd...] - one line per named command, all five when none is named
 
 CMD="${1:-}"
 shift 2> /dev/null || true
+# `FACTORY_SOURCED=1 . bin/factory` loads the functions for a test (bin/check's verdict gate) without
+# running a subcommand. `return` works only in a sourced script; 2> /dev/null hides the error if the
+# guard is ever hit while the file runs as a program.
+[ "${FACTORY_SOURCED:-}" = 1 ] && return 0 2> /dev/null
 case "$CMD" in
   lint) [ $# -eq 1 ] || usage lint
         lint "$1" ;;
