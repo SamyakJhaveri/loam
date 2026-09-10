@@ -515,6 +515,21 @@ assert_caps() { # before every model call; the daily cap is "the next call could
 
 stop_requested() { [ -f "$RUN/FACTORY_STOP" ] || [ -f "$RUNS_ROOT/FACTORY_STOP" ]; }
 
+# MAX_PARALLEL counts the other tickets already holding a slot: a run is live while its
+# status reads running or waiting-limit.
+assert_parallel() {
+  local d n=0 st
+  for d in "$RUNS_ROOT"/*/*/; do
+    [ -f "$d/status" ] || continue
+    [ "$(basename "$(dirname "$d")")" = "$KEY" ] && continue
+    st=$(cat "$d/status")
+    [ "$st" = running ] || [ "$st" = waiting-limit ] || continue
+    n=$((n + 1))
+  done
+  [ "$n" -lt "$MAX_PARALLEL" ] \
+    || finish stopped-environment "parallel cap: $n other live run(s), MAX_PARALLEL=$MAX_PARALLEL"
+}
+
 # A call with no result event (killed by CALL_TIMEOUT_SEC, or crashed) is the environment, not a round.
 assert_call_ok() { # role result.json
   local e
@@ -841,6 +856,7 @@ cmd_run() {
   [ -f "$RUN/started" ] || date -u +%s > "$RUN/started"
   date -u +%s > "$RUN/launched"
   stop_requested && finish stopped "FACTORY_STOP is present at launch"
+  assert_parallel
   prepare_worktree
   freeze
   exec_frozen
