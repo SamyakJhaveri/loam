@@ -39,23 +39,24 @@ section() { awk -v want="## $1" '$0 == want {inb=1; next} /^## /{inb=0} inb {pri
 # The done-checks fenced block, without its fences.
 dc_block() { awk '/^```done-checks$/{inb=1; next} /^```/{if (inb) exit} inb {print}' <<<"$BODY"; }
 
-# Path-looking tokens in stdin: anything with a slash, backticks and sentence punctuation stripped.
-# Tokens holding a glob or a shell expansion are not paths a ticket promises.
-paths() {
-  tr -s ' \t' '\n\n' | tr -d '`",' | sed 's/[.,;:)]*$//' \
-    | grep -E '^[.A-Za-z0-9_][A-Za-z0-9_./-]*/[A-Za-z0-9_./-]*$' \
-    | grep -vE '[*$?{}]' | sort -u
-}
+# Word-like tokens in stdin, backticks and sentence punctuation stripped. A token holding a glob or a
+# shell expansion is not a path a ticket promises.
+tokens() { tr -s ' \t' '\n\n' | tr -d '`",' | sed 's/[.,;:)]*$//' | grep -vE '[*$?{}]'; }
 
-# The paths a ticket promises: backtick-wrapped tokens whose first segment is a tracked top-level entry.
-promised_paths() {
+# Path-looking tokens: anything with a slash.
+paths() { tokens | grep -E '^[.A-Za-z0-9_][A-Za-z0-9_./-]*/[A-Za-z0-9_./-]*$' | sort -u; }
+
+# Keep only the tokens whose first segment is a tracked top-level entry: what a ticket really names.
+only_tracked_tops() {
   local tops
   # tops is space-joined: macOS awk rejects a newline inside a -v value.
   tops=$(git -C "$ROOT" ls-files | cut -d/ -f1 | sort -u | tr '\n' ' ')
-  grep -o '`[^`]*`' | tr -d '`' | paths \
-    | awk -v tops="$tops" 'BEGIN {n = split(tops, a, " "); for (i = 1; i <= n; i++) t[a[i]] = 1}
-                           {s = $0; sub(/\/.*/, "", s); if (s in t) print}'
+  awk -v tops="$tops" 'BEGIN {n = split(tops, a, " "); for (i = 1; i <= n; i++) t[a[i]] = 1}
+                       {s = $0; sub(/\/.*/, "", s); if (s in t) print}'
 }
+
+# The paths a ticket promises: backtick-wrapped tokens that survive both filters.
+promised_paths() { grep -o '`[^`]*`' | tr -d '`' | paths | only_tracked_tops; }
 
 # ---- rules ----
 
@@ -396,15 +397,8 @@ apply_caps() { # the ticket's Worker section, then any FACTORY_<NAME> override
   done
 }
 
-# Path-looking tokens whose first segment is a tracked top-level entry: what a ticket section promises.
-ticket_paths() {
-  local tops
-  tops=$(git -C "$ROOT" ls-files | cut -d/ -f1 | sort -u | tr '\n' ' ')
-  tr -s ' \t,`"' '\n\n\n\n\n' | sed 's/[.,;:)]*$//' \
-    | grep -E '^[.A-Za-z0-9_][A-Za-z0-9_./-]*$' | grep -vE '[*$?{}]' \
-    | awk -v tops="$tops" 'BEGIN {n = split(tops, a, " "); for (i = 1; i <= n; i++) t[a[i]] = 1}
-                           {s = $0; sub(/\/.*/, "", s); if (s in t) print}' | sort -u
-}
+# What a ticket section fences off: like promised_paths, but a bare name (VERSION) counts too.
+ticket_paths() { tokens | grep -E '^[.A-Za-z0-9_][A-Za-z0-9_./-]*$' | only_tracked_tops | sort -u; }
 
 # The standing do-not-touch list, read from its one home (ARCHITECTURE.md).
 standing_list() {
