@@ -462,13 +462,15 @@ prepare_worktree() {
 }
 
 FROZEN_SET="factory lib.sh _common.md role-settings.json worker-settings.json checks.sh \
-judge.md reviewer.md judge.schema.json reviewer.schema.json issue.md protected.txt exempt.txt"
+judge.md reviewer.md judge.schema.json reviewer.schema.json issue.md protected.txt exempt.txt \
+factory-round.js"
 
 freeze() {
   local g src
   [ -f "$RUN/frozen/sha256" ] && return 0
   printf '%s\n' "$BODY" > "$RUN/frozen/issue.md"
   cp "$ROOT/bin/factory" "$RUN/frozen/factory"
+  cp "$ROOT/bin/factory.d/factory-round.js" "$RUN/frozen/factory-round.js"  # the worker runs its frozen copy, so it cannot edit the script (F12)
   cp "$ROOT/bin/factory.d/lib.sh" "$RUN/frozen/lib.sh"
   cp "$ROOT/bin/factory.d/role-settings.json" "$RUN/frozen/role-settings.json"
   cp "$ROOT/bin/factory.d/worker-settings.json" "$RUN/frozen/worker-settings.json"
@@ -507,16 +509,20 @@ exec_frozen() {
 ticket_spent() { jq -s '[.[].cost_usd // 0] | add // 0' "$LEDGER"; }
 daily_spent()  { jq -s --arg d "$(today)" '[.[] | select(.date == $d) | .cost_usd // 0] | add // 0' "$DAILY"; }
 
-record() { # round role model result.json [advisor_calls] [advisor_usd]
-  local line acalls="${5:-0}" ausd="${6:-0}"
+record() { # round role model result.json [advisor_calls] [advisor_usd] [ran_workflow]
+  # workflow_agents is the subagents this round spawned; workflow_usd is the round's cost when it ran
+  # the fan-out workflow, else 0 (F12). ranwf is 1 only on a large ticket's round 1.
+  local line acalls="${5:-0}" ausd="${6:-0}" ranwf="${7:-0}"
   line=$(jq -c --argjson round "$1" --arg role "$2" --arg model "$3" --arg ts "$(now)" \
-    --argjson acalls "$acalls" --argjson ausd "$ausd" \
+    --argjson acalls "$acalls" --argjson ausd "$ausd" --argjson ranwf "$ranwf" \
     "$RESULT_OBJ | {round:\$round, role:\$role, model:\$model, cost_usd:(.total_cost_usd // 0), \
 duration_ms:(.duration_ms // 0), num_turns:(.num_turns // 0), denials:((.permission_denials // []) | length), \
-subtype:(.subtype // \"unknown\"), advisor_calls:\$acalls, advisor_usd:\$ausd, ts:\$ts}" "$4" 2> /dev/null) \
+subtype:(.subtype // \"unknown\"), advisor_calls:\$acalls, advisor_usd:\$ausd, \
+workflow_agents:(.subagent_stats.spawned // 0), workflow_usd:(if \$ranwf == 1 then (.total_cost_usd // 0) else 0 end), \
+ts:\$ts}" "$4" 2> /dev/null) \
     || line=$(jq -nc --argjson round "$1" --arg role "$2" --arg model "$3" --arg ts "$(now)" \
-      --argjson acalls "$acalls" --argjson ausd "$ausd" \
-      '{round:$round, role:$role, model:$model, cost_usd:0, duration_ms:0, num_turns:0, denials:0, subtype:"unknown", advisor_calls:$acalls, advisor_usd:$ausd, ts:$ts}')
+      --argjson acalls "$acalls" --argjson ausd "$ausd" --argjson ranwf "$ranwf" \
+      '{round:$round, role:$role, model:$model, cost_usd:0, duration_ms:0, num_turns:0, denials:0, subtype:"unknown", advisor_calls:$acalls, advisor_usd:$ausd, workflow_agents:0, workflow_usd:0, ts:$ts}')
   printf '%s\n' "$line" >> "$LEDGER"
   printf '%s' "$line" | jq -c --arg date "$(today)" --arg ticket "$KEY" \
     '{date:$date, ticket:$ticket, role:.role, cost_usd:.cost_usd}' >> "$DAILY"
@@ -604,6 +610,16 @@ build_worker_prompt() { # round -> prompt path (pending until the call returns a
   # One Skill-tool sentence per `skills:` name; never a slash command, which would swallow the body (#37, #40).
   section Worker | sed -n 's/^skills: *//p' | head -1 | tr ',' '\n' | sed 's/^ *//;s/ *$//' | grep . \
     | while read -r s; do printf 'Before the first edit, call the Skill tool with "%s".\n' "$s"; done >> "$pf"
+  # A large ticket runs round 1 as the fan-out workflow; the F11 advisor is the Fable check on the split (F12).
+  if [ "${WORKER_SIZE:-small}" = large ] && [ "$round" -eq 1 ]; then
+    {
+      printf '\n\n## Large ticket, round 1: run the fan-out workflow\n\n'
+      printf 'Run the Workflow tool with scriptPath `%s/frozen/factory-round.js` and args `{"ticket": "%s/frozen/issue.md", "run": "%s"}`. ' "$RUN" "$RUN" "$RUN"
+      printf 'If it returns `solo: true`, implement the ticket yourself as in any round. '
+      printf 'Otherwise the round is done once the workflow returns: the integrator has committed. '
+      printf 'Copy its `unmet` and `abandoned` lists into %s.\n' "$DECISIONS"
+    } >> "$pf"
+  fi
   if [ "$round" -gt 1 ]; then
     {
       printf '\n\n## Previous round (%d)\n\n' "$prev"
@@ -622,7 +638,7 @@ worker_round() { # round; leaves round-N.* only once the call produced a result
   while :; do
     log "worker call: round $round model=$WORKER_MODEL effort=$WORKER_EFFORT advisor=${WORKER_ADVISOR:-off} budget=$ROUND_BUDGET_USD usd, prompt=$(wc -c < "$pf") bytes"
     rm -f "$out"
-    ( cd "$WORKTREE" && LOAM_CHECKS="$RUN/frozen/checks.sh" ${t[@]+"${t[@]}"} claude -p \
+    ( cd "$WORKTREE" && LOAM_CHECKS="$RUN/frozen/checks.sh" CLAUDE_CODE_SUBAGENT_MODEL="$WORKER_MODEL" ${t[@]+"${t[@]}"} claude -p \
         --model "$WORKER_MODEL" --effort "$WORKER_EFFORT" ${WORKER_ADVISOR:+--advisor "$WORKER_ADVISOR"} --permission-mode bypassPermissions --strict-mcp-config \
         --setting-sources user --settings "$RUN/frozen/worker-settings.json" --max-turns "$MAX_TURNS" \
         --max-budget-usd "$ROUND_BUDGET_USD" --output-format stream-json --verbose --include-hook-events \
@@ -641,7 +657,10 @@ worker_round() { # round; leaves round-N.* only once the call produced a result
   ausd=$(jq -r --arg m "$WORKER_MODEL" \
     '[(.modelUsage // {}) | to_entries[] | select(.key != $m) | .value.costUSD] | add // 0' "$res" 2> /dev/null) || ausd=0
   [ -n "$ausd" ] || ausd=0
-  record "$round" worker "$WORKER_MODEL" "$res" "$acalls" "$ausd"
+  # A large ticket runs its workflow in round 1; that round's fields carry the fan-out spend (F12).
+  local ranwf=0
+  { [ "${WORKER_SIZE:-small}" = large ] && [ "$round" -eq 1 ]; } && ranwf=1
+  record "$round" worker "$WORKER_MODEL" "$res" "$acalls" "$ausd" "$ranwf"
   assert_call_ok worker "$res"
   mv "$pf" "$RUN/round-$round.prompt.md"
   mv "$out" "$RUN/round-$round.jsonl"
@@ -876,8 +895,10 @@ cmd_run() {
   apply_caps
   WORKER_EFFORT=$(section Worker | sed -n 's/^effort: *//p' | head -1)
   [ -n "$WORKER_EFFORT" ] || WORKER_EFFORT=xhigh
+  WORKER_SIZE=$(section Worker | sed -n 's/^size: *//p' | head -1)   # small|large; large routes round 1 to the workflow (F12)
+  [ -n "$WORKER_SIZE" ] || WORKER_SIZE=small
   RUN="$RUNS_ROOT/$KEY/$(printf '%s' "$BODY" | sha256_of | cut -c1-8)"
-  mkdir -p "$RUN/frozen" "$RUN/worker" || { echo "factory run: cannot create $RUN" >&2; exit 4; }
+  mkdir -p "$RUN/frozen" "$RUN/worker" "$RUN/tasks" || { echo "factory run: cannot create $RUN" >&2; exit 4; }
   LOG="$RUN/factory.log"; LEDGER="$RUN/ledger.jsonl"; DAILY="$RUNS_ROOT/ledger-daily.jsonl"
   DECISIONS="$RUN/worker/decisions.md"
   touch "$LOG" "$LEDGER" "$DAILY" "$DECISIONS"
@@ -963,7 +984,7 @@ grader_first_fail() { # run dir -> the first grader item that failed in the last
 
 precondition_lines() { # LOOP.md, Preconditions
   local t
-  for t in claude gh git jq python3 uv tmux timeout socat; do
+  for t in claude gh git jq python3 uv tmux timeout socat node; do
     command -v "$t" > /dev/null 2>&1 && echo "  PASS $t on PATH" || echo "  FAIL $t not on PATH"
   done
   gh api rate_limit > /dev/null 2>&1 && echo "  PASS gh api rate_limit" || echo "  FAIL gh api rate_limit"
