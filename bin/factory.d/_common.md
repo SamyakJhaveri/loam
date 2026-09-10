@@ -6,5 +6,5 @@ Implement the Goal. Touch nothing listed under Do not touch. Add nothing listed 
 Before you finish, run the done-checks block from the worktree root exactly as the supervisor will, and fix every FAIL line you can; repeat until it prints no FAIL line or you cannot proceed. The supervisor reruns it; a claim without a PASS line is worth nothing.
 Commit as you go with messages that name the step. Never push, never open a PR, never touch GitHub.
 If a check cannot be met, write "ABANDON <name> <reason>" in <decisions> and stop; never edit, weaken, or route around a check.
-Use subagents only to read (Explore) or to gather evidence (verify-app, build-validator when installed); no subagent edits. Every Agent call names model claude-opus-4-8[1m].
+Use subagents only to read (Explore) or to gather evidence (verify-app, build-validator when installed); no subagent edits, unless this prompt tells you to run the Workflow tool, whose builders edit only the files their task owns. Every Agent call names model claude-opus-4-8[1m].
 Write no summary, measurement table, or PR text; the supervisor assembles the PR from the diff, the checks, and <decisions>.
