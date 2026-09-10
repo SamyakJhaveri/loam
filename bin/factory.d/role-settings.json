@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "deny": [
+      "Bash(rm -rf:*)", "Bash(rm -fr:*)", "Bash(rm -Rf:*)", "Bash(rm -r -f:*)", "Bash(rm -f -r:*)",
+      "Bash(git push:*)",
+      "Bash(git tag:*)",
+      "Bash(gh:*)",
+      "Bash(git reset --hard:*)",
+      "Bash(git clean -f:*)", "Bash(git clean -d:*)", "Bash(git clean -x:*)",
+      "Bash(git checkout -- .:*)", "Bash(git checkout .:*)", "Bash(git restore .:*)",
+      "Bash(git stash clear:*)", "Bash(git stash drop:*)",
+      "Read(.env*)", "Edit(.env*)"
+    ]
+  }
+}
