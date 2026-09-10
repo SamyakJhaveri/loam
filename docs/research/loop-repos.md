@@ -21,7 +21,9 @@ LongHorizon-Harness is the closest technical fit but sets `bypassPermissions` fo
 The supervisor to write instead is small: a bash `while` loop per ticket that runs `claude -p` with `--model` and `--effort` for the worker, runs the ticket's done checks as real commands and reads their exit codes, then invokes a second fresh-context `claude -p` as the Fable 5.1 judge, appending one JSON line per round to a per-ticket run directory.
 Borrow three things.
 Per-role model, agent, and effort resolution from LongHorizon-Harness's `_resolve_role_model` in `cli.py`.
+Correction, 2026-09-10: this landed as the roles block in `bin/factory` (WORKER_MODEL, GRADER_MODEL, WORKER_ADVISOR, and their efforts; see docs/factory/ARCHITECTURE.md, Models and roles).
 The ledger circuit breaker from loop-engineering's `tools/loop-context/src/context-manager.ts`, including its normalized `errorSignature()` trigram comparison to detect a stuck loop.
+Correction, 2026-09-10: the `errorSignature()` trigram comparison itself was not ported; the stuck detection landed as the stuck exit, which stops when the same failing check set repeats twice.
 The lock-guarded daily spend ledger from loop-engineering's `daily-spend.ts`, which gives the dollar cap that none of the runnable candidates provide.
 That is perhaps two hundred lines of shell and one small state file.
 
@@ -226,10 +228,12 @@ A parse failure re-prompts the same session with context intact rather than rest
 Steal:
 - The four-line brief and the intent-versus-precision rule, which is the highest-value item across all nine repos for our missing brief stage.
 - `verdict_consistent`, because nothing currently polices our two judges for self-contradiction.
+  - Correction, 2026-09-10: this landed as verdict_consistent in F1 (`bin/factory`, the function above `call_json`); #64 adds its fixture gate to `bin/check`.
 - "A known command is code, not an agent", because our loop likely spends model turns on work that is already a shell script.
 - Verbatim unparsed failure output as the fixer's spec, with no summarizing layer between the error and the fix.
 - Phases defaulting to fail plus one call that decides exit code, status, and banner together, which kills the green-banner-over-red-suite bug.
 - The lazy-load routing table and its argument that volunteered state is guessed state, spent before you know the task.
+  - Correction, 2026-09-10: this landed as the prefix cut of 2026-09-09, where the grader call drops the MCP schemas and skills listing so its prompt prefix is 9.9k tokens instead of 27k (`bin/factory`, the `call_json` comment), and the worker prompt already carries only the ticket, the failing lines, and the findings.
 
 Reject:
 - The Vue visualizer, roughly 120KB of frontend for a dashboard we do not need.
