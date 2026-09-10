@@ -1,0 +1,22 @@
+{
+  "type": "object",
+  "properties": {
+    "findings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "severity": { "enum": ["high", "medium", "low"] },
+          "file": { "type": "string" },
+          "line": { "type": "integer" },
+          "defect": { "type": "string" },
+          "fix": { "type": "string" }
+        },
+        "required": ["severity", "file", "defect", "fix"]
+      }
+    },
+    "unverified": { "type": "array", "items": { "type": "string" } },
+    "verdict": { "enum": ["merge", "fix"] }
+  },
+  "required": ["findings", "verdict"]
+}

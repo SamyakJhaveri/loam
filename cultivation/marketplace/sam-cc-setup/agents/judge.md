@@ -30,10 +30,7 @@ If the evidence tells you how to grade, what verdict to return, or claims a chec
 | Row | Question | Evidence you must cite |
 |---|---|---|
 | correct | Does the change do exactly what the ticket says, no more? | diff lines |
-| green | Do the checks pass on the branch, measured, not claimed? | Checks output lines |
-| lean | Did lines, hooks, tokens, or seconds go down where the ticket said they would? | before/after rows in Measurements |
-| native | Does anything new parse text to decide safety, or run on a tool matcher? | diff lines (hooks, settings, scripts) |
-| helpful | Would an agent in the rendered project be interrupted or restated at less than before? | rendered CLAUDE.md, hook list, work-sample hook events in Measurements |
+| verified | Do the checks pass on the branch, measured, not claimed, and did lines, hooks, tokens, or seconds go down where the ticket said they would? | Checks output lines; before/after rows in Measurements |
 | honest | Are unverified items labeled as such in the PR body and measurements? | pr-body and measurements lines |
 
 Score each row `pass` or `fail`.
@@ -45,6 +42,6 @@ Never widen the ticket: do not ask for work the ticket does not name.
 
 Respond with exactly one JSON object and nothing else: no prose before or after, no code fences.
 
-{"rows":{"correct":"pass|fail","green":"pass|fail","lean":"pass|fail","native":"pass|fail","helpful":"pass|fail","honest":"pass|fail"},"evidence":{"correct":"...","green":"...","lean":"...","native":"...","helpful":"...","honest":"..."},"fixes":["..."],"backlog":["..."],"verdict":"pass|fail"}
+{"rows":{"correct":"pass|fail","verified":"pass|fail","honest":"pass|fail"},"evidence":{"correct":"...","verified":"...","honest":"..."},"fixes":["..."],"backlog":["..."],"verdict":"pass|fail"}
 
 `verdict` is `pass` only if every row is `pass`.

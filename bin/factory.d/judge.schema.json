@@ -1,0 +1,11 @@
+{
+  "type": "object",
+  "properties": {
+    "rows": { "type": "object" },
+    "evidence": { "type": "object" },
+    "fixes": { "type": "array", "items": { "type": "string" } },
+    "backlog": { "type": "array", "items": { "type": "string" } },
+    "verdict": { "enum": ["pass", "fail"] }
+  },
+  "required": ["rows", "fixes", "verdict"]
+}
