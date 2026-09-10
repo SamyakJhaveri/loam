@@ -337,6 +337,7 @@ MAX_ROUNDS=6; ROUND_BUDGET_USD=15; GRADER_BUDGET_USD=5; TICKET_BUDGET_USD=60
 DAILY_BUDGET_USD=150; MAX_HOURS=8; MAX_TURNS=200; CALL_TIMEOUT_SEC=5400; MAX_PARALLEL=1
 WORKER_MODEL="${FACTORY_WORKER_MODEL:-claude-opus-4-8[1m]}"   # ARCHITECTURE.md, Models and roles (2026-09-09)
 GRADER_MODEL="${FACTORY_GRADER_MODEL:-fable}"
+WORKER_ADVISOR="${FACTORY_WORKER_ADVISOR-fable}"   # mid-round advisor on the worker call; FACTORY_WORKER_ADVISOR= (explicit empty) disables the flag. No colon: :- could never disable. The bare name is never read.
 WORKER_EFFORT=xhigh        # the ticket's `effort:` line overrides
 GRADER_EFFORT=medium
 GRADER_FAIL_ROUNDS=2      # grader-fail rounds allowed once the checks pass (LOOP.md, Grader-round cap)
@@ -502,18 +503,20 @@ exec_frozen() {
 ticket_spent() { jq -s '[.[].cost_usd // 0] | add // 0' "$LEDGER"; }
 daily_spent()  { jq -s --arg d "$(today)" '[.[] | select(.date == $d) | .cost_usd // 0] | add // 0' "$DAILY"; }
 
-record() { # round role model result.json
-  local line
+record() { # round role model result.json [advisor_calls] [advisor_usd]
+  local line acalls="${5:-0}" ausd="${6:-0}"
   line=$(jq -c --argjson round "$1" --arg role "$2" --arg model "$3" --arg ts "$(now)" \
+    --argjson acalls "$acalls" --argjson ausd "$ausd" \
     "$RESULT_OBJ | {round:\$round, role:\$role, model:\$model, cost_usd:(.total_cost_usd // 0), \
 duration_ms:(.duration_ms // 0), num_turns:(.num_turns // 0), denials:((.permission_denials // []) | length), \
-subtype:(.subtype // \"unknown\"), ts:\$ts}" "$4" 2> /dev/null) \
+subtype:(.subtype // \"unknown\"), advisor_calls:\$acalls, advisor_usd:\$ausd, ts:\$ts}" "$4" 2> /dev/null) \
     || line=$(jq -nc --argjson round "$1" --arg role "$2" --arg model "$3" --arg ts "$(now)" \
-      '{round:$round, role:$role, model:$model, cost_usd:0, duration_ms:0, num_turns:0, denials:0, subtype:"unknown", ts:$ts}')
+      --argjson acalls "$acalls" --argjson ausd "$ausd" \
+      '{round:$round, role:$role, model:$model, cost_usd:0, duration_ms:0, num_turns:0, denials:0, subtype:"unknown", advisor_calls:$acalls, advisor_usd:$ausd, ts:$ts}')
   printf '%s\n' "$line" >> "$LEDGER"
   printf '%s' "$line" | jq -c --arg date "$(today)" --arg ticket "$KEY" \
     '{date:$date, ticket:$ticket, role:.role, cost_usd:.cost_usd}' >> "$DAILY"
-  log "$2 round $1: $(printf '%s' "$line" | jq -r '"cost=\(.cost_usd) usd, turns=\(.num_turns), denials=\(.denials), \(.duration_ms)ms, \(.subtype)"')"
+  log "$2 round $1: $(printf '%s' "$line" | jq -r '"cost=\(.cost_usd) usd, turns=\(.num_turns), denials=\(.denials), \(.duration_ms)ms, \(.subtype)" + (if .role == "worker" then ", advisor_calls=\(.advisor_calls), advisor_usd=\(.advisor_usd)" else "" end)')"
 }
 
 assert_caps() { # before every model call; the daily cap is "the next call could exceed it"
@@ -613,10 +616,10 @@ worker_round() { # round; leaves round-N.* only once the call produced a result
   command -v timeout > /dev/null 2>&1 && t=(timeout --foreground "$CALL_TIMEOUT_SEC")
   pf=$(build_worker_prompt "$round")
   while :; do
-    log "worker call: round $round model=$WORKER_MODEL effort=$WORKER_EFFORT budget=$ROUND_BUDGET_USD usd, prompt=$(wc -c < "$pf") bytes"
+    log "worker call: round $round model=$WORKER_MODEL effort=$WORKER_EFFORT advisor=${WORKER_ADVISOR:-off} budget=$ROUND_BUDGET_USD usd, prompt=$(wc -c < "$pf") bytes"
     rm -f "$out"
     ( cd "$WORKTREE" && LOAM_CHECKS="$RUN/frozen/checks.sh" ${t[@]+"${t[@]}"} claude -p \
-        --model "$WORKER_MODEL" --effort "$WORKER_EFFORT" --permission-mode bypassPermissions --strict-mcp-config \
+        --model "$WORKER_MODEL" --effort "$WORKER_EFFORT" ${WORKER_ADVISOR:+--advisor "$WORKER_ADVISOR"} --permission-mode bypassPermissions --strict-mcp-config \
         --setting-sources user --settings "$RUN/frozen/worker-settings.json" --max-turns "$MAX_TURNS" \
         --max-budget-usd "$ROUND_BUDGET_USD" --output-format stream-json --verbose --include-hook-events \
         < "$pf" > "$out" 2>> "$LOG" ) || log "worker exited non-zero (the result event decides)"
@@ -625,7 +628,16 @@ worker_round() { # round; leaves round-N.* only once the call produced a result
     limit_wait "$res" || break
     assert_caps
   done
-  record "$round" worker "$WORKER_MODEL" "$res"
+  # Advisor spend on this round: calls from the server_tool_use blocks in the stream, usd from the
+  # result's modelUsage minus the worker's own line (docs/research/advisor-and-managed-agents.md).
+  local acalls ausd
+  acalls=$(jq -s '[.[] | select(.type == "assistant") | .message.content[]?
+    | select(.type == "server_tool_use" and .name == "advisor")] | length' "$out" 2> /dev/null) || acalls=0
+  [ -n "$acalls" ] || acalls=0
+  ausd=$(jq -r --arg m "$WORKER_MODEL" \
+    '[(.modelUsage // {}) | to_entries[] | select(.key != $m) | .value.costUSD] | add // 0' "$res" 2> /dev/null) || ausd=0
+  [ -n "$ausd" ] || ausd=0
+  record "$round" worker "$WORKER_MODEL" "$res" "$acalls" "$ausd"
   assert_call_ok worker "$res"
   mv "$pf" "$RUN/round-$round.prompt.md"
   mv "$out" "$RUN/round-$round.jsonl"
@@ -878,6 +890,13 @@ cmd_run() {
   [ "$IS_FILE" = 1 ] && trap 'git -C "$MAIN_CHECKOUT" worktree remove --force "$WORKTREE" > /dev/null 2>&1' EXIT
   TIMEOUT_G=()
   command -v timeout > /dev/null 2>&1 && TIMEOUT_G=(timeout --foreground "$CALL_TIMEOUT_SEC")
+  # The advisor attaches through a feature flag claude fetches; two env vars turn it silently off.
+  # Refuse to launch rather than run a worker that thinks it has an advisor and does not (F11).
+  if [ -n "$WORKER_ADVISOR" ]; then
+    { [ -n "${DISABLE_TELEMETRY+x}" ] || [ -n "${CLAUDE_CODE_DISABLE_ADVISOR_TOOL+x}" ]; } \
+      && finish stopped-environment "the advisor would be silently off: DISABLE_TELEMETRY or CLAUDE_CODE_DISABLE_ADVISOR_TOOL is set"
+    log "advisor: $WORKER_ADVISOR (the first worker call proves it attaches)"
+  fi
   # A relaunch reuses the worktree at branch HEAD, where the checks may already pass:
   # round 0 belongs to base only, and ROUND resumes past the rounds already on disk.
   if [ ! -f "$RUN/round-0.checks" ]; then
@@ -949,6 +968,29 @@ precondition_lines() { # LOOP.md, Preconditions
   for t in judge reviewer; do
     grader_file "$t" > /dev/null 2>&1 && echo "  PASS $t.md in the plugin cache" || echo "  FAIL no $t.md in the plugin cache"
   done
+  if [ -n "${DISABLE_TELEMETRY+x}" ]; then
+    echo "  FAIL DISABLE_TELEMETRY is set; the advisor stays off"
+  elif [ -n "${CLAUDE_CODE_DISABLE_ADVISOR_TOOL+x}" ]; then
+    echo "  FAIL CLAUDE_CODE_DISABLE_ADVISOR_TOOL is set; --advisor has no effect"
+  else
+    echo "  PASS advisor env clean"
+  fi
+  if [ "${FACTORY_STATUS_PROBE:-}" = 1 ]; then
+    # One paid Opus call with no --settings: the frozen worker settings carry a Stop hook that blocks
+    # a one-turn probe. success means --advisor attached (docs/research/advisor-and-managed-agents.md).
+    local pe po rc
+    pe=$(mktemp "${TMPDIR:-/tmp}/factory-probe.XXXXXX")
+    po=$(claude -p --model "$WORKER_MODEL" --advisor "$WORKER_ADVISOR" --max-turns 1 --output-format json \
+      --strict-mcp-config --no-session-persistence 'Reply with the single word ok' 2> "$pe"); rc=$?
+    if [ "$rc" -eq 0 ] && [ "$(jq -r "$RESULT_OBJ | .subtype // \"\"" <<< "$po" 2> /dev/null)" = success ]; then
+      echo "  PASS advisor attaches"
+    else
+      echo "  FAIL advisor: $(head -1 "$pe")"
+    fi
+    rm -f "$pe"
+  else
+    echo "  INFO advisor probe not run; FACTORY_STATUS_PROBE=1 bin/factory status runs it (one paid Opus call)"
+  fi
   [ -f "$HOME/.config/loam-loops/pushover.env" ] && echo "  INFO pushover.env present" \
     || echo "  INFO no pushover.env; notifications comment on the ticket"
 }
