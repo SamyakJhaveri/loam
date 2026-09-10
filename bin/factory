@@ -681,8 +681,8 @@ build_evidence() { # rubric_file diff_cap -> stdout
 # A pass with fixes to apply, or a fail with nothing to point at, refutes itself (LOOP.md, precedence).
 verdict_consistent() { # json file
   jq -e '(.verdict // "") as $v
-    | ((.fixes // []) | length) + ([.findings[]? | select(.severity == "high")] | length) as $blocking
-    | ((.backlog // []) | length) + ((.findings // []) | length) as $other
+    | (((.fixes // []) | length) + ([.findings[]? | select(.severity == "high")] | length)) as $blocking
+    | (((.backlog // []) | length) + ((.findings // []) | length)) as $other
     | if ($v == "pass" or $v == "merge") then $blocking == 0
       elif ($v == "fail" or $v == "fix") then ($blocking > 0 or $other > 0)
       else true end' "$1" > /dev/null 2>&1
