@@ -615,7 +615,7 @@ build_worker_prompt() { # round -> prompt path (pending until the call returns a
     {
       printf '\n\n## Large ticket, round 1: run the fan-out workflow\n\n'
       printf 'Remove %s/tasks/result.json if it exists, then run the Workflow tool with scriptPath `%s/frozen/factory-round.js` and args `{"ticket": "%s/frozen/issue.md", "run": "%s"}`. ' "$RUN" "$RUN" "$RUN" "$RUN"
-      printf 'When it returns, read %s/tasks/result.json. If that file is absent or has `solo: true`, implement the ticket yourself as in any round. ' "$RUN"
+      printf 'When it returns, read %s/tasks/result.json. If that file is absent, implement the ticket yourself as in any round. ' "$RUN"
       printf 'Otherwise the integrator has committed; copy its `unmet` and `abandoned` lists into %s.\n' "$DECISIONS"
     } >> "$pf"
   fi
@@ -631,8 +631,11 @@ build_worker_prompt() { # round -> prompt path (pending until the call returns a
 }
 
 worker_round() { # round; leaves round-N.* only once the call produced a result
-  local round="$1" pf out="$RUN/pending.jsonl" res="$RUN/pending.result.json" t=()
+  local round="$1" pf out="$RUN/pending.jsonl" res="$RUN/pending.result.json" t=() login_retried=0 le
   command -v timeout > /dev/null 2>&1 && t=(timeout --foreground "$CALL_TIMEOUT_SEC")
+  # The first round this process runs; a login expired at launch retries only its call. A global,
+  # not a local, so it survives the loop's later rounds.
+  [ -n "${FIRST_WORKER_ROUND+x}" ] || FIRST_WORKER_ROUND="$round"
   pf=$(build_worker_prompt "$round")
   while :; do
     log "worker call: round $round model=$WORKER_MODEL effort=$WORKER_EFFORT advisor=${WORKER_ADVISOR:-off} budget=$ROUND_BUDGET_USD usd, prompt=$(wc -c < "$pf") bytes"
@@ -644,7 +647,15 @@ worker_round() { # round; leaves round-N.* only once the call produced a result
         < "$pf" > "$out" 2>> "$LOG" ) || log "worker exited non-zero (the result event decides)"
     jq -c 'select(.type == "result")' "$out" 2> /dev/null | tail -1 > "$res"
     [ -s "$res" ] || echo '{"subtype":"no-result"}' > "$res"
-    limit_wait "$res" || break
+    # An `OAuth session expired` on the first call of a launch is a stale login, not a round: wait
+    # once and relaunch the call. A second failure, or the same on a later round, stops as today.
+    if ! limit_wait "$res"; then
+      le=$(jq -r "$RESULT_OBJ | if .is_error == true then (.result // \"\") else empty end" "$res" 2> /dev/null) || le=""
+      { [ "$round" -eq "$FIRST_WORKER_ROUND" ] && [ "$login_retried" -eq 0 ] && grep -q 'OAuth session expired' <<< "$le"; } || break
+      login_retried=1
+      log "login expired; waiting 60s and relaunching the call once"
+      sleep 60
+    fi
     assert_caps
   done
   # Advisor spend on this round: calls from the server_tool_use blocks in the stream, usd from the
@@ -992,28 +1003,38 @@ precondition_lines() { # LOOP.md, Preconditions
   for t in judge reviewer; do
     grader_file "$t" > /dev/null 2>&1 && echo "  PASS $t.md in the plugin cache" || echo "  FAIL no $t.md in the plugin cache"
   done
-  if [ -n "${DISABLE_TELEMETRY+x}" ]; then
-    echo "  FAIL DISABLE_TELEMETRY is set; the advisor stays off"
-  elif [ -n "${CLAUDE_CODE_DISABLE_ADVISOR_TOOL+x}" ]; then
-    echo "  FAIL CLAUDE_CODE_DISABLE_ADVISOR_TOOL is set; --advisor has no effect"
-  else
-    echo "  PASS advisor env clean"
-  fi
-  if [ "${FACTORY_STATUS_PROBE:-}" = 1 ]; then
-    # One paid Opus call with no --settings: the frozen worker settings carry a Stop hook that blocks
-    # a one-turn probe. success means --advisor attached (docs/research/advisor-and-managed-agents.md).
-    local pe po rc
-    pe=$(mktemp "${TMPDIR:-/tmp}/factory-probe.XXXXXX")
-    po=$(claude -p --model "$WORKER_MODEL" --advisor "$WORKER_ADVISOR" --max-turns 1 --output-format json \
-      --strict-mcp-config --no-session-persistence 'Reply with the single word ok' 2> "$pe"); rc=$?
-    if [ "$rc" -eq 0 ] && [ "$(jq -r "$RESULT_OBJ | .subtype // \"\"" <<< "$po" 2> /dev/null)" = success ]; then
-      echo "  PASS advisor attaches"
+  # With the advisor off (FACTORY_WORKER_ADVISOR= empty) the env check and probe are moot: neither
+  # would run --advisor, so report the choice and skip both rather than FAIL a deliberate off (#68).
+  if [ -n "$WORKER_ADVISOR" ]; then
+    if [ -n "${DISABLE_TELEMETRY+x}" ]; then
+      echo "  FAIL DISABLE_TELEMETRY is set; the advisor stays off"
+    elif [ -n "${CLAUDE_CODE_DISABLE_ADVISOR_TOOL+x}" ]; then
+      echo "  FAIL CLAUDE_CODE_DISABLE_ADVISOR_TOOL is set; --advisor has no effect"
     else
-      echo "  FAIL advisor: $(head -1 "$pe")"
+      echo "  PASS advisor env clean"
     fi
-    rm -f "$pe"
+    if [ "${FACTORY_STATUS_PROBE:-}" = 1 ]; then
+      # One paid Opus call with no --settings: the frozen worker settings carry a Stop hook that blocks
+      # a one-turn probe. success means --advisor attached (docs/research/advisor-and-managed-agents.md).
+      # Wrapped in timeout like every other model call; a hung probe must not hang status (#68).
+      local pe po rc pt=()
+      command -v timeout > /dev/null 2>&1 && pt=(timeout --foreground 120)
+      pe=$(mktemp "${TMPDIR:-/tmp}/factory-probe.XXXXXX")
+      po=$(${pt[@]+"${pt[@]}"} claude -p --model "$WORKER_MODEL" --advisor "$WORKER_ADVISOR" --max-turns 1 --output-format json \
+        --strict-mcp-config --no-session-persistence 'Reply with the single word ok' 2> "$pe"); rc=$?
+      if [ "$rc" -eq 124 ]; then
+        echo "  FAIL advisor: probe timed out after 120s"
+      elif [ "$rc" -eq 0 ] && [ "$(jq -r "$RESULT_OBJ | .subtype // \"\"" <<< "$po" 2> /dev/null)" = success ]; then
+        echo "  PASS advisor attaches"
+      else
+        echo "  FAIL advisor: $(head -1 "$pe")"
+      fi
+      rm -f "$pe"
+    else
+      echo "  INFO advisor probe not run; FACTORY_STATUS_PROBE=1 bin/factory status runs it (one paid Opus call)"
+    fi
   else
-    echo "  INFO advisor probe not run; FACTORY_STATUS_PROBE=1 bin/factory status runs it (one paid Opus call)"
+    echo "  INFO advisor off (FACTORY_WORKER_ADVISOR is empty)"
   fi
   [ -f "$HOME/.config/loam-loops/pushover.env" ] && echo "  INFO pushover.env present" \
     || echo "  INFO no pushover.env; notifications comment on the ticket"
