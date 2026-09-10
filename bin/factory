@@ -614,10 +614,9 @@ build_worker_prompt() { # round -> prompt path (pending until the call returns a
   if [ "${WORKER_SIZE:-small}" = large ] && [ "$round" -eq 1 ]; then
     {
       printf '\n\n## Large ticket, round 1: run the fan-out workflow\n\n'
-      printf 'Run the Workflow tool with scriptPath `%s/frozen/factory-round.js` and args `{"ticket": "%s/frozen/issue.md", "run": "%s"}`. ' "$RUN" "$RUN" "$RUN"
-      printf 'If it returns `solo: true`, implement the ticket yourself as in any round. '
-      printf 'Otherwise the round is done once the workflow returns: the integrator has committed. '
-      printf 'Copy its `unmet` and `abandoned` lists into %s.\n' "$DECISIONS"
+      printf 'Remove %s/tasks/result.json if it exists, then run the Workflow tool with scriptPath `%s/frozen/factory-round.js` and args `{"ticket": "%s/frozen/issue.md", "run": "%s"}`. ' "$RUN" "$RUN" "$RUN" "$RUN"
+      printf 'When it returns, read %s/tasks/result.json. If that file is absent or has `solo: true`, implement the ticket yourself as in any round. ' "$RUN"
+      printf 'Otherwise the integrator has committed; copy its `unmet` and `abandoned` lists into %s.\n' "$DECISIONS"
     } >> "$pf"
   fi
   if [ "$round" -gt 1 ]; then
