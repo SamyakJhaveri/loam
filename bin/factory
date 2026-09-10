@@ -238,8 +238,8 @@ run_eval() {
       spent=$(awk -v a="$spent" -v b="$(jq -r "$RESULT_OBJ | .total_cost_usd // 0" <<<"$out" 2>/dev/null)" \
         'BEGIN {printf "%.4f", a + (b + 0)}')
       res=$(jq -r "$RESULT_OBJ | .result // \"\"" <<<"$out" 2>/dev/null)
-      # Even through --json-schema a reply sometimes wraps the object in code fences or prose.
-      # The object runs from the first brace to the last, so cut to those.
+      # Fallback: if a reply still carries code fences or prose around the object, the object runs
+      # from the first brace to the last, so cut to those before parsing the verdict.
       if ! jq -e .verdict <<<"$res" > /dev/null 2>&1 && [ "${res#*\{}" != "$res" ]; then
         res="{${res#*\{}"; res="${res%\}*}}"
       fi
