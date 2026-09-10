@@ -22,7 +22,7 @@ Any edit at all.
 ## Worker
 worker: claude
 codex-review: no
-effort: high
+effort: xhigh
 CALL_TIMEOUT_SEC=2
 goal: unreachable; the first call is killed at two seconds, or stop after 1 turns
 

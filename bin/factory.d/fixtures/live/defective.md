@@ -22,7 +22,7 @@ Any edit at all.
 ## Worker
 worker: claude
 codex-review: no
-effort: high
+effort: xhigh
 goal: unreachable; round 0 refuses this ticket, or stop after 1 turns
 
 ## Decisions

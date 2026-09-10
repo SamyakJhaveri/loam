@@ -137,7 +137,7 @@ check_worker() {
   w=$(section Worker)
   grep -qE '^worker: (claude|codex)$' <<<"$w" || err "Worker has no 'worker: claude|codex' line"
   grep -qE '^codex-review: (yes|no)$' <<<"$w" || err "Worker has no 'codex-review: yes|no' line"
-  grep -qE '^effort: (low|medium|high)$' <<<"$w" || err "Worker has no 'effort: low|medium|high' line"
+  grep -qE '^effort: (low|medium|high|xhigh)$' <<<"$w" || err "Worker has no 'effort: low|medium|high|xhigh' line"
   grep -qE '^goal: .*or stop after [0-9]+ turns$' <<<"$w" \
     || err "Worker has no 'goal:' line ending 'or stop after <N> turns'"
   while IFS= read -r line; do
@@ -322,7 +322,7 @@ MAX_ROUNDS=6; ROUND_BUDGET_USD=15; GRADER_BUDGET_USD=5; TICKET_BUDGET_USD=60
 DAILY_BUDGET_USD=150; MAX_HOURS=8; MAX_TURNS=200; CALL_TIMEOUT_SEC=5400; MAX_PARALLEL=1
 WORKER_MODEL="${FACTORY_WORKER_MODEL:-claude-opus-4-8[1m]}"   # ARCHITECTURE.md, Models and roles (2026-09-09)
 GRADER_MODEL="${FACTORY_GRADER_MODEL:-fable}"
-WORKER_EFFORT=high        # the ticket's `effort:` line overrides
+WORKER_EFFORT=xhigh        # the ticket's `effort:` line overrides
 GRADER_EFFORT=medium
 GRADER_FAIL_ROUNDS=2      # grader-fail rounds allowed once the checks pass (LOOP.md, Grader-round cap)
 FENCE='~~~~~~~~~~~~ evidence'   # fixed marker; never a per-run string (#38)
@@ -847,7 +847,7 @@ cmd_run() {
   load_ticket "$1"
   apply_caps
   WORKER_EFFORT=$(section Worker | sed -n 's/^effort: *//p' | head -1)
-  [ -n "$WORKER_EFFORT" ] || WORKER_EFFORT=high
+  [ -n "$WORKER_EFFORT" ] || WORKER_EFFORT=xhigh
   RUN="$RUNS_ROOT/$KEY/$(printf '%s' "$BODY" | sha256_of | cut -c1-8)"
   mkdir -p "$RUN/frozen" "$RUN/worker" || { echo "factory run: cannot create $RUN" >&2; exit 4; }
   LOG="$RUN/factory.log"; LEDGER="$RUN/ledger.jsonl"; DAILY="$RUNS_ROOT/ledger-daily.jsonl"
