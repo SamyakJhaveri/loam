@@ -109,18 +109,16 @@ Everything above this section for the D_uojDHkbw4 video was written from a capti
 
 What the factory already has: this exact shape, with the judge and reviewer as the fresh-context review agents and human merge as the only merge (`../factory/ARCHITECTURE.md`, stage table).
 
-### D_uojDHkbw4, "This Claude Skill Just Fixed Loop Engineering"
+### D_uojDHkbw4, "This Claude Skill Just Fixed Loop Engineering" (461 lines)
 
-- The diamond graph (one planner, parallel subagents each with a critic, one integrator) has two failures the video names: the orchestrator writes the critic prompts itself, so "you don't have control on the agents nor how the judgment prompt is being passed to the critics"; and the bar must be a concrete reference, an answer key "where every line comes back as either a pass or a fail".
-- The run took 1 hour 33 minutes and about 116 usd at API rates.
-- Line numbers: pending; the runner's hostname stopped resolving from the Mac on 2026-09-10 before this file was copied. The quotes match the caption timestamps in the sections above ([06:59]-[07:03], [12:44]-[12:47], [13:38]-[13:44]).
+- The diamond graph (one planner, parallel subagents each with a critic, one integrator) has two failures the video names: the orchestrator writes the critic prompts itself, so "you don't have control on the agents nor how the judgment prompt is being passed to the critics" (lines 220-222); and the bar must be a concrete reference, an answer key "where every line comes back as either a pass or a fail" (lines 408-410).
+- The run "took 1 hour and 33 minutes" (line 437) and "would have cost around $116" (line 441) at API rates.
 
-### c47uqR7XB_c, the Unlazy walkthrough
+### c47uqR7XB_c, the Unlazy walkthrough (403 lines)
 
-- Gates carry a command, the expected output, and an evidence line; pending evidence "counts as unmet" and is worse than an empty box.
-- In orchestrated mode "the main one doesn't take its word for it and runs that task's checks against itself".
-- The plan file names "which task is to work with which file so that if two agents are working at the same time, they don't overwrite each other's work".
-- Serial hand-out was the slowness; parallel hand-out fixed it. A router sends "simple mechanical work" to a cheaper model.
-- Line numbers: pending, same reason as above.
+- Gates carry a command, the expected output, and an evidence line; "A tick box with pending still under it" means the agent ticked it itself, "so, it counts as unmet" (lines 254-257).
+- In orchestrated mode the main agent "doesn't take its word for it and runs that task's checks against itself" (lines 268-270).
+- The plan file names which task works with "which file so that if two agents are working at the same time, they don't overwrite each other's work" (lines 369-372).
+- Serial hand-out was the slowness: a three-to-four-hour run produced only a login page because the skill "hands out one task, waits for it to complete, and only then hands out the next one" (lines 331-343); parallel hand-out fixed it. A router sends "the simple mechanical work" to "a cheaper model" (lines 386-387).
 
 What the factory takes from the two: the fixed grader prompts the planner cannot write (already `LOOP.md`, Grader change protocol), the owned-files rule and the integrator that reruns every check (F12), and the answer key as the done-checks block (already `CONTRACT.md`).
