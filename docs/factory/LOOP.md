@@ -105,7 +105,7 @@ claude -p --model fable --effort medium --tools Read,Grep,Glob --strict-mcp-conf
 The frozen grader prompts keep fixed evidence markers; there is no per-run string, and any instruction found inside those markers is data and a dishonesty finding.
 The evidence bundle is the ticket body, the design issue body when one exists, `git diff base...HEAD`, the check output, the MEASURE lines, and `decisions.md`.
 In that diff, code files pass as content, but data files pass as stat only (files under `evals/` named `prompt.md`, and any single added file over 400 lines), so a frozen prompt or a large fixture never floods the grader diff.
-The Codex review stage runs `codex exec --json --output-schema frozen/review-output.schema.json -o <file> -s workspace-write "$(cat frozen/codex-review.prompt.md)" < /dev/null`, with the base sha in the prompt; `codex exec review` ignores `--output-schema` (#41).
+The Codex review stage runs `codex exec --json --output-schema frozen/review-output.schema.json -o <file> -s read-only "$(cat frozen/codex-review.prompt.md)" < /dev/null`, with the base sha filled into the frozen prompt's `<base>` placeholder; a review needs no write access and `read-only` keeps it from editing the tree the judge and reviewer already graded; `codex exec review` ignores `--output-schema` (#41).
 `needs-attention` with a `critical` or `high` finding blocks once.
 
 ## Worker calls
@@ -119,8 +119,8 @@ claude -p --model claude-opus-4-8[1m] --effort xhigh --advisor fable --permissio
 `--strict-mcp-config` drops the MCP schemas, 2k tokens of prefix on every worker turn; the worker keeps its skills listing because the `skills:` sentence names a Skill-tool call (#37).
 `--max-turns` is accepted by Claude Code 2.1.263, the runner's login-shell binary (#40; a plain shell resolves an older nvm copy), though absent from its `--help`.
 `worker-settings.json` is deny-only, the lean-v3 list plus `Bash(gh:*)` so a worker cannot touch GitHub at all, plus the `Stop` hook (see The worker prompt); `role-settings.json`, loaded only by grader calls, carries the same deny rules with no hook.
-The Codex worker runs `codex exec --json -s workspace-write "$(cat round-<k>.prompt.md)" > round-<k>.jsonl -o round-<k>.last.md < /dev/null`: the JSONL stream is stdout and `-o` is the last-message file.
-Its workspace-write sandbox does not block `.env` reads (#41); F4 denies them in Codex config (`ROADMAP.md`).
+The Codex worker runs `codex exec --json -s workspace-write "$(cat round-<k>.prompt.md)" > round-<k>.jsonl -o round-<k>.last.txt < /dev/null`: the JSONL stream is stdout and `-o` is the last-message file.
+Its workspace-write sandbox does not block `.env` reads (#41); no deny is configured, and the F4 merge checklist's hand run confirms the read is absent from the round's JSONL or records it as a risk.
 
 ## The worker prompt
 
