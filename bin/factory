@@ -709,7 +709,11 @@ call_json() { # round stem role prompt_file schema_file
     log "$role output not parseable"
   done
   # An absent or unparseable grader is a fail with one high finding, never a pass (LOOP.md).
-  finish stopped-environment "$role output unparseable or inconsistent after 3 attempts; see $out"
+  log "$role output unparseable or inconsistent after 3 attempts; see $out"
+  jq -n --arg r "$role" '{verdict: (if $r == "judge" then "fail" else "fix" end), unparseable: true,
+    rows: {}, evidence: {}, fixes: [], backlog: [],
+    findings: [{severity: "high", file: "-", line: 0, defect: ($r + " output unparseable"),
+                fix: ("rerun the " + $r + " on this round")}]}' > "$final"
 }
 
 run_judge() { # round -> 0 on a pass verdict
@@ -885,9 +889,8 @@ cmd_status() {
   done
   printf '\n== worktrees and PRs\n'
   git -C "$MAIN_CHECKOUT" worktree list 2> /dev/null | sed 's/^/  /'
-  gh pr list -R "$(gh repo view --json nameWithOwner -q .nameWithOwner 2> /dev/null)" \
-    --head-search factory --json number,headRefName,title,isDraft \
-    --jq '.[] | "  #\(.number) \(.headRefName) \(.title)"' 2> /dev/null \
+  gh pr list --json number,headRefName,title \
+    --jq '.[] | select(.headRefName | startswith("factory/")) | "  #\(.number) \(.headRefName) \(.title)"' 2> /dev/null \
     || echo "  (no PR list: gh is unavailable from here; run status on the runner)"
   printf '\n== preconditions\n'
   precondition_lines
