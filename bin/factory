@@ -1,11 +1,17 @@
 #!/usr/bin/env bash
-# bin/factory - factory tooling. Subcommands: lint, eval.
+# bin/factory - factory tooling. Subcommands: lint, eval, run, status, stop.
 #   bin/factory lint <file|issue>   statically checks a ticket body against docs/factory/CONTRACT.md.
 #   bin/factory eval <grader>       replays the frozen evals/ cases through the production grader call.
+#   bin/factory run <issue|file>    the supervisor: one ticket to a pull request (docs/factory/LOOP.md).
+#   bin/factory status              run states, spend, denials, worktrees, PRs, preconditions.
+#   bin/factory stop <issue>        writes FACTORY_STOP into the run dir; the run halts before its next call.
 # Lint never executes a check; it reads the body and shells out only to `bash -n` and `gh`.
 set -uo pipefail
 
-ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+# FACTORY_ROOT is set when a run execs its frozen copy of this file out of the run directory.
+ROOT="${FACTORY_ROOT:-$(cd "$(dirname "$0")/.." && pwd)}"
+GIT_COMMON="$(cd "$ROOT" && cd "$(git rev-parse --git-common-dir 2> /dev/null || echo .)" && pwd)"
+MAIN_CHECKOUT="$(dirname "$GIT_COMMON")"
 
 # The ticket sections, in contract order. Six are required; Approach, Merge checklist,
 # and Rows measured are optional.
@@ -171,12 +177,14 @@ EVAL_MODEL=fable
 EVALS_DIR=evals
 GRADERS_DIR=""
 
-# The installed plugin's agents dir ships lean-critic.md; judge.md and reviewer.md live with the
-# lean-v3 loop until F1 moves them into the plugin. --graders-dir replaces the whole search.
+# Graders are plugin agents; a run and an eval both resolve them from the installed plugin cache,
+# so both grade with the version the ledger records. --graders-dir replaces the search.
 grader_file() {
   local dirs=("$GRADERS_DIR") d f
+  # The installed plugin first; the checkout's own marketplace copy is the fallback, so a run works
+  # from a branch whose grader edits are not installed yet.
   [ -n "$GRADERS_DIR" ] || dirs=("$HOME"/.claude/plugins/cache/*/sam-cc-setup/*/agents \
-                                 "${LOAM_LOOPS_DIR:-$ROOT/../loam/.superpowers/lean-v3/loops}")
+                                 "$ROOT/cultivation/marketplace/sam-cc-setup/agents")
   for d in "${dirs[@]}"; do
     f="$d/$1.md"
     [ -f "$f" ] && { printf '%s\n' "$f"; return 0; }
@@ -185,11 +193,11 @@ grader_file() {
   return 1
 }
 
-# A plugin agent file opens with frontmatter and asks for prose; strip the one and ask for the JSON
-# form, the same two edits the lean-v3 loop's run_lean makes. judge.md and reviewer.md need neither.
+# A plugin agent file opens with frontmatter; strip it. One that asks for prose is also asked for the
+# JSON form; judge.md and reviewer.md carry their own `## Output` section and keep it byte-identical.
 grader_rubric() {
-  [ "$(head -n 1 "$1")" = "---" ] || { cat "$1"; return; }
-  awk 'f; /^---$/ { c++; if (c == 2) f = 1 }' "$1"
+  if [ "$(head -n 1 "$1")" = "---" ]; then awk 'f; /^---$/ { c++; if (c == 2) f = 1 }' "$1"; else cat "$1"; fi
+  grep -qxF '## Output' "$1" && return 0
   printf '\n## Output for this call\n\nRespond with exactly one JSON object and nothing else: no prose before or after, no code fences, no closing sentence; put anything you could not verify in the "unverified" array. Scope: the diff below and the worker-authored files. Severity as defined above.\n'
 }
 
@@ -296,29 +304,653 @@ lint() {
   echo "lint: OK $SRC"
 }
 
-usage() {
-  echo "usage: bin/factory lint <file|issue>" >&2
-  echo "       bin/factory eval <grader> [--evals-dir D] [--graders-dir D] [--model M]" >&2
+# ---- run, status, stop ----
+# The supervisor: one ticket to a pull request, in the steps docs/factory/LOOP.md sets out.
+# Run state lives under FACTORY_RUNS_ROOT, outside every checkout.
+
+RUNS_ROOT="${FACTORY_RUNS_ROOT:-$HOME/.local/state/loam-factory/runs}"
+CAP_NAMES="MAX_ROUNDS ROUND_BUDGET_USD GRADER_BUDGET_USD TICKET_BUDGET_USD DAILY_BUDGET_USD \
+MAX_HOURS MAX_TURNS CALL_TIMEOUT_SEC MAX_PARALLEL"
+# Defaults, then the ticket's Worker section, then FACTORY_<NAME> in the environment. The bare names
+# are never read: a Claude Code session already exports WORKER_MODEL and CALL_TIMEOUT_SEC of its own.
+MAX_ROUNDS=6; ROUND_BUDGET_USD=15; GRADER_BUDGET_USD=5; TICKET_BUDGET_USD=60
+DAILY_BUDGET_USD=150; MAX_HOURS=8; MAX_TURNS=200; CALL_TIMEOUT_SEC=5400; MAX_PARALLEL=1
+WORKER_MODEL="${FACTORY_WORKER_MODEL:-claude-opus-4-8[1m]}"   # ARCHITECTURE.md, Models and roles (2026-09-09)
+GRADER_MODEL="${FACTORY_GRADER_MODEL:-fable}"
+WORKER_EFFORT=high        # the ticket's `effort:` line overrides
+GRADER_EFFORT=medium
+GRADER_FAIL_ROUNDS=2      # grader-fail rounds allowed once the checks pass (LOOP.md, Grader-round cap)
+FENCE='~~~~~~~~~~~~ evidence'   # fixed marker; never a per-run string (#38)
+
+REPO=""; ISSUE=""; KEY=""; IS_FILE=0; RUN=""; ROUND=0; REVIEW_BLOCKED=0
+LOG=/dev/null; LEDGER=""; DAILY=""; DECISIONS=""; WORKTREE=""; BRANCH=""
+
+now()   { date -u +%Y-%m-%dT%H:%M:%SZ; }
+today() { date -u +%Y-%m-%d; }
+log()   { printf '%s %s\n' "$(now)" "$*" | tee -a "$LOG" >&2; }
+sha256_of() { if command -v sha256sum > /dev/null 2>&1; then sha256sum "$@"; else shasum -a 256 "$@"; fi; }
+set_status() { printf '%s\n' "$1" > "$RUN/status"; log "status: $1"; }
+
+# Pushover when it is configured, else a comment on the ticket; a failure leaves notify.failed.
+notify() { # title message
+  local pe="$HOME/.config/loam-loops/pushover.env"
+  log "[notify] $1: $2"
+  [ "$IS_FILE" = 1 ] && return 0   # a file ticket is a rehearsal with no issue to comment on
+  if [ -f "$pe" ]; then
+    # shellcheck disable=SC1090
+    . "$pe"
+    if [ -n "${PUSHOVER_TOKEN:-}" ] && [ -n "${PUSHOVER_USER:-}" ] \
+      && curl -s --max-time 15 -F "token=$PUSHOVER_TOKEN" -F "user=$PUSHOVER_USER" \
+         -F "title=$1" -F "message=${2:0:1000}" https://api.pushover.net/1/messages.json > /dev/null; then return 0; fi
+  elif [ -n "$ISSUE" ] && printf '**%s**\n\n%s\n' "$1" "$2" \
+    | gh issue comment "$ISSUE" -R "$REPO" --body-file - > /dev/null 2>&1; then return 0
+  fi
+  printf '%s %s: %s\n' "$(now)" "$1" "$2" >> "$RUN/notify.failed"
+}
+
+# Exit code, status, and the final log line are decided together (LOOP.md, Exits).
+finish() { # status message
+  local code
+  case "$1" in
+    pr-opened) code=0 ;; ticket-defect) code=3 ;; stopped-environment) code=4 ;; abandon) code=5 ;; *) code=2 ;;
+  esac
+  set_status "$1"
+  notify "$KEY $1" "$2"
+  log "EXIT $1 ($code): $2"
+  exit "$code"
+}
+
+# ---- the ticket -------------------------------------------------------------
+
+load_ticket() { # <issue|file>
+  SRC="$1"
+  if [ -f "$SRC" ]; then
+    IS_FILE=1
+    BODY=$(cat "$SRC")
+    head -n 1 "$SRC" | grep -q '^title: ' && BODY=$(sed '1,/^---$/d' "$SRC")
+    KEY=$(basename "$SRC"); KEY=${KEY%.md}
+  elif [[ "$SRC" =~ ^[0-9]+$ ]]; then
+    ISSUE="$SRC"; KEY="$SRC"
+    REPO=$(gh repo view --json nameWithOwner -q .nameWithOwner) \
+      || { echo "factory run: gh repo view failed; run it from a checkout with a remote" >&2; exit 4; }
+    BODY=$(gh issue view "$ISSUE" -R "$REPO" --json body -q .body) \
+      || { echo "factory run: could not read issue #$ISSUE" >&2; exit 4; }
+  else
+    echo "factory run: no such ticket file, and not an issue number: $SRC" >&2; exit 2
+  fi
+}
+
+apply_caps() { # the ticket's Worker section, then any FACTORY_<NAME> override
+  local line name v
+  while IFS= read -r line; do
+    case "$line" in *=*) name=${line%%=*} ;; *) continue ;; esac
+    case " $CAP_NAMES " in *" $name "*) eval "$name=\${line#*=}" ;; esac
+  done <<< "$(section Worker)"
+  for name in $CAP_NAMES; do
+    v="FACTORY_$name"
+    [ -z "${!v:-}" ] || eval "$name=\${!v}"
+  done
+}
+
+# Path-looking tokens whose first segment is a tracked top-level entry: what a ticket section promises.
+ticket_paths() {
+  local tops
+  tops=$(git -C "$ROOT" ls-files | cut -d/ -f1 | sort -u | tr '\n' ' ')
+  tr -s ' \t,`"' '\n\n\n\n\n' | sed 's/[.,;:)]*$//' \
+    | grep -E '^[.A-Za-z0-9_][A-Za-z0-9_./-]*$' | grep -vE '[*$?{}]' \
+    | awk -v tops="$tops" 'BEGIN {n = split(tops, a, " "); for (i = 1; i <= n; i++) t[a[i]] = 1}
+                           {s = $0; sub(/\/.*/, "", s); if (s in t) print}' | sort -u
+}
+
+# The standing do-not-touch list, read from its one home (ARCHITECTURE.md).
+standing_list() {
+  awk '/^## Standing do-not-touch list$/ {inb = 1; next} /^## / {inb = 0} inb && /^- /' \
+    "$ROOT/docs/factory/ARCHITECTURE.md" | ticket_paths
+}
+
+under() { # path list -> 0 when path equals or sits under a list entry
+  local p="$1" e
+  while IFS= read -r e; do
+    [ -n "$e" ] || continue
+    e=${e%/}
+    { [ "$p" = "$e" ] || [ "${p#"$e"/}" != "$p" ]; } && return 0
+  done <<< "$2"
+  return 1
+}
+
+# ---- steps 2 and 3: worktree, freeze ----------------------------------------
+
+prepare_worktree() {
+  local base
+  if [ ! -s "$RUN/base.sha" ]; then
+    git -C "$MAIN_CHECKOUT" fetch -q origin 2> /dev/null
+    git -C "$MAIN_CHECKOUT" rev-parse origin/main > "$RUN/base.sha" 2> /dev/null \
+      || git -C "$MAIN_CHECKOUT" rev-parse HEAD > "$RUN/base.sha"
+  fi
+  base=$(cat "$RUN/base.sha")
+  if [ ! -d "$WORKTREE" ]; then
+    # A file ticket is a rehearsal: it takes a detached worktree and leaves no branch behind.
+    if [ "$IS_FILE" = 1 ]; then
+      git -C "$MAIN_CHECKOUT" worktree add --detach "$WORKTREE" "$base" > /dev/null 2>&1
+    elif git -C "$MAIN_CHECKOUT" show-ref --verify --quiet "refs/heads/$BRANCH"; then
+      git -C "$MAIN_CHECKOUT" worktree add "$WORKTREE" "$BRANCH" > /dev/null 2>&1
+    else
+      git -C "$MAIN_CHECKOUT" worktree add "$WORKTREE" -b "$BRANCH" "$base" > /dev/null 2>&1
+    fi
+    [ -d "$WORKTREE" ] || finish stopped-environment "could not create the worktree $WORKTREE from $base"
+  fi
+  [ "$IS_FILE" = 1 ] && return 0
+  gh issue edit "$ISSUE" -R "$REPO" --add-assignee @me > /dev/null 2>&1 || log "could not assign #$ISSUE; continuing"
+}
+
+FROZEN_SET="factory lib.sh _common.md role-settings.json worker-settings.json checks.sh \
+judge.md reviewer.md judge.schema.json reviewer.schema.json issue.md protected.txt exempt.txt"
+
+freeze() {
+  local g src
+  [ -f "$RUN/frozen/sha256" ] && return 0
+  printf '%s\n' "$BODY" > "$RUN/frozen/issue.md"
+  cp "$ROOT/bin/factory" "$RUN/frozen/factory"
+  cp "$ROOT/bin/factory.d/lib.sh" "$RUN/frozen/lib.sh"
+  cp "$ROOT/bin/factory.d/role-settings.json" "$RUN/frozen/role-settings.json"
+  cp "$ROOT/bin/factory.d/worker-settings.json" "$RUN/frozen/worker-settings.json"
+  sed -e "s|<issue>|${ISSUE:-$KEY}|g" -e "s|<decisions>|$DECISIONS|g" \
+    "$ROOT/bin/factory.d/_common.md" > "$RUN/frozen/_common.md"
+  for g in judge reviewer; do
+    src=$(grader_file "$g") || finish stopped-environment "no $g.md in the installed plugin cache"
+    grader_rubric "$src" > "$RUN/frozen/$g.md"
+    schema_for "$g" > "$RUN/frozen/$g.schema.json"
+    printf '{"ts":"%s","event":"grader","role":"%s","file":"%s","sha256":"%s"}\n' \
+      "$(now)" "$g" "$src" "$(sha256_of < "$src" | cut -d' ' -f1)" >> "$LEDGER"
+  done
+  { cat "$RUN/frozen/lib.sh"; echo; dc_block; echo; echo 'exit $((n_fail > 0))'; } > "$RUN/frozen/checks.sh"
+  { standing_list; section "Do not touch" | sed 's/[Ee]xcept:.*//' | ticket_paths; } | sort -u > "$RUN/frozen/protected.txt"
+  section "Do not touch" | grep -o '[Ee]xcept:.*' | ticket_paths > "$RUN/frozen/exempt.txt"
+  chmod +x "$RUN/frozen/checks.sh" "$RUN/frozen/factory"
+  # shellcheck disable=SC2086
+  ( cd "$RUN/frozen" && sha256_of $FROZEN_SET > sha256 )
+  chmod a-w "$RUN/frozen"/*
+}
+
+check_frozen() {
+  ( cd "$RUN/frozen" && sha256_of -c sha256 --status ) \
+    || finish stopped-environment "the frozen set under $RUN/frozen changed mid-run"
+}
+
+# The supervisor runs its frozen copy, so a ticket that edits bin/factory takes effect next run.
+exec_frozen() {
+  [ "${FACTORY_FROZEN:-}" = "$RUN/frozen/factory" ] && return 0
+  export FACTORY_FROZEN="$RUN/frozen/factory" FACTORY_ROOT="$ROOT"
+  exec "$RUN/frozen/factory" run "$SRC"
+}
+
+# ---- ledger and caps --------------------------------------------------------
+
+ticket_spent() { jq -s '[.[].cost_usd // 0] | add // 0' "$LEDGER"; }
+daily_spent()  { jq -s --arg d "$(today)" '[.[] | select(.date == $d) | .cost_usd // 0] | add // 0' "$DAILY"; }
+
+record() { # round role model result.json
+  local line
+  line=$(jq -c --argjson round "$1" --arg role "$2" --arg model "$3" --arg ts "$(now)" \
+    "$RESULT_OBJ | {round:\$round, role:\$role, model:\$model, cost_usd:(.total_cost_usd // 0), \
+duration_ms:(.duration_ms // 0), num_turns:(.num_turns // 0), denials:((.permission_denials // []) | length), \
+subtype:(.subtype // \"unknown\"), ts:\$ts}" "$4" 2> /dev/null) \
+    || line=$(jq -nc --argjson round "$1" --arg role "$2" --arg model "$3" --arg ts "$(now)" \
+      '{round:$round, role:$role, model:$model, cost_usd:0, duration_ms:0, num_turns:0, denials:0, subtype:"unknown", ts:$ts}')
+  printf '%s\n' "$line" >> "$LEDGER"
+  printf '%s' "$line" | jq -c --arg date "$(today)" --arg ticket "$KEY" \
+    '{date:$date, ticket:$ticket, role:.role, cost_usd:.cost_usd}' >> "$DAILY"
+  log "$2 round $1: $(printf '%s' "$line" | jq -r '"cost=\(.cost_usd) usd, turns=\(.num_turns), denials=\(.denials), \(.duration_ms)ms, \(.subtype)"')"
+}
+
+assert_caps() { # before every model call; the daily cap is "the next call could exceed it"
+  local spent daily hours
+  spent=$(ticket_spent); daily=$(daily_spent)
+  jq -en --argjson a "$spent" --argjson b "$TICKET_BUDGET_USD" '$a >= $b' > /dev/null \
+    && finish stopped-cap "ticket budget: spent $spent of $TICKET_BUDGET_USD usd"
+  hours=$(( ( $(date -u +%s) - $(cat "$RUN/launched") ) / 3600 ))
+  [ "$hours" -lt "$MAX_HOURS" ] || finish stopped-cap "wall clock: ${hours}h of ${MAX_HOURS}h since this launch"
+  jq -en --argjson a "$daily" --argjson b "$ROUND_BUDGET_USD" --argjson c "$DAILY_BUDGET_USD" '($a + $b) > $c' > /dev/null \
+    && finish stopped-cap "daily budget: $daily spent today, the next call could exceed $DAILY_BUDGET_USD usd"
+  return 0
+}
+
+stop_requested() { [ -f "$RUN/FACTORY_STOP" ] || [ -f "$RUNS_ROOT/FACTORY_STOP" ]; }
+
+# A call with no result event (killed by CALL_TIMEOUT_SEC, or crashed) is the environment, not a round.
+assert_call_ok() { # role result.json
+  local e
+  e=$(jq -r "$RESULT_OBJ | if .is_error == true then (.result // \"unknown error\") \
+elif .subtype == \"no-result\" then \"no result event (killed by CALL_TIMEOUT_SEC=$CALL_TIMEOUT_SEC, or crashed)\" \
+else empty end" "$2" 2> /dev/null) || e=""
+  [ -z "$e" ] || finish stopped-environment "the $1 call failed before doing work: $e"
+}
+
+# A usage-limit reply names its reset ("You've hit your session limit - resets 1:30pm (America/Los_Angeles)").
+# Waiting for it is loop behavior, not a round: sleep to the reset, or 20 minutes, then repeat the same call.
+limit_wait() { # result.json -> 0 after waiting, 1 when the reply is not a usage limit
+  local e t tz at left secs=1200
+  e=$(jq -r "$RESULT_OBJ | if .is_error == true then (.result // \"\") else empty end" "$1" 2> /dev/null) || e=""
+  grep -qiE '(hit|reached) your .*limit' <<< "$e" || return 1
+  t=$(grep -oiE 'resets? [0-9]{1,2}(:[0-9]{2})? ?[ap]m' <<< "$e" | head -1 | sed -E 's/^[Rr]esets? //')
+  tz=$(grep -oE '\([A-Za-z_]+/[A-Za-z_]+\)' <<< "$e" | head -1 | tr -d '()')
+  if [ -n "$t" ] && at=$(TZ="${tz:-UTC}" date -d "$t" +%s 2> /dev/null); then
+    [ "$at" -gt "$(date +%s)" ] || at=$((at + 86400))
+    secs=$((at - $(date +%s) + 60))
+  fi
+  left=$(( MAX_HOURS * 3600 - ( $(date +%s) - $(cat "$RUN/launched") ) ))
+  [ "$secs" -le "$left" ] || finish stopped-environment "usage limit: $e; the reset is ${secs}s away, past MAX_HOURS=$MAX_HOURS"
+  log "usage limit, not a round: $e; waiting ${secs}s"
+  set_status waiting-limit
+  sleep "$secs"
+  return 0
+}
+
+# ---- step 4: round 0 --------------------------------------------------------
+# Every non-guard check must fail on base; one that passes there cannot prove the ticket.
+
+round_zero() {
+  local out="$RUN/round-0.checks" guards name
+  ( cd "$WORKTREE" && "$RUN/frozen/checks.sh" ) > "$out" 2>&1
+  guards=$(dc_block | grep 'guard' | grep -oE '(^|[[:space:]])pass[[:space:]]+"?[A-Za-z0-9_.-]+' \
+    | awk '{print $NF}' | tr -d '"' | sort -u)
+  while read -r _ name _; do
+    printf '%s\n' "$guards" | grep -qxF "$name" && continue
+    finish ticket-defect "check $name passes on $(cut -c1-8 "$RUN/base.sha"), so it cannot prove the ticket; see $out"
+  done < <(grep '^PASS ' "$out")
+  log "round 0: every non-guard check fails on base"
+}
+
+# ---- steps 5 and 6: the worker round ----------------------------------------
+
+build_worker_prompt() { # round -> prompt path (pending until the call returns a result)
+  local round="$1" pf="$RUN/pending.prompt.md" prev=$((round - 1)) s
+  { printf '%s\n\n' "$BODY"; cat "$RUN/frozen/_common.md"; } > "$pf"
+  # One Skill-tool sentence per `skills:` name; never a slash command, which would swallow the body (#37, #40).
+  section Worker | sed -n 's/^skills: *//p' | head -1 | tr ',' '\n' | sed 's/^ *//;s/ *$//' | grep . \
+    | while read -r s; do printf 'Before the first edit, call the Skill tool with "%s".\n' "$s"; done >> "$pf"
+  if [ "$round" -gt 1 ]; then
+    {
+      printf '\n\n## Previous round (%d)\n\n' "$prev"
+      [ -f "$RUN/round-$prev.checks" ] && { printf 'Check lines that failed:\n\n```\n'
+        grep '^FAIL' "$RUN/round-$prev.checks"; printf '```\n\n'; }
+      [ -s "$RUN/round-$prev.fixes" ] && { printf 'Blocking findings, verbatim:\n\n'; cat "$RUN/round-$prev.fixes"; printf '\n'; }
+    } >> "$pf"
+  fi
+  printf '%s\n' "$pf"
+}
+
+worker_round() { # round; leaves round-N.* only once the call produced a result
+  local round="$1" pf out="$RUN/pending.jsonl" res="$RUN/pending.result.json" t=()
+  command -v timeout > /dev/null 2>&1 && t=(timeout --foreground "$CALL_TIMEOUT_SEC")
+  pf=$(build_worker_prompt "$round")
+  while :; do
+    log "worker call: round $round model=$WORKER_MODEL effort=$WORKER_EFFORT budget=$ROUND_BUDGET_USD usd, prompt=$(wc -c < "$pf") bytes"
+    rm -f "$out"
+    ( cd "$WORKTREE" && LOAM_CHECKS="$RUN/frozen/checks.sh" ${t[@]+"${t[@]}"} claude -p \
+        --model "$WORKER_MODEL" --effort "$WORKER_EFFORT" --permission-mode bypassPermissions --strict-mcp-config \
+        --setting-sources user --settings "$RUN/frozen/worker-settings.json" --max-turns "$MAX_TURNS" \
+        --max-budget-usd "$ROUND_BUDGET_USD" --output-format stream-json --verbose --include-hook-events \
+        < "$pf" > "$out" 2>> "$LOG" ) || log "worker exited non-zero (the result event decides)"
+    jq -c 'select(.type == "result")' "$out" 2> /dev/null | tail -1 > "$res"
+    [ -s "$res" ] || echo '{"subtype":"no-result"}' > "$res"
+    limit_wait "$res" || break
+    assert_caps
+  done
+  record "$round" worker "$WORKER_MODEL" "$res"
+  assert_call_ok worker "$res"
+  mv "$pf" "$RUN/round-$round.prompt.md"
+  mv "$out" "$RUN/round-$round.jsonl"
+  mv "$res" "$RUN/round-$round.result.json"
+}
+
+do_not_touch_hits() { # -> the changed paths the ticket fenced off
+  local f
+  git -C "$WORKTREE" diff --name-only "$(cat "$RUN/base.sha")...HEAD" | while IFS= read -r f; do
+    under "$f" "$(cat "$RUN/frozen/protected.txt")" || continue
+    under "$f" "$(cat "$RUN/frozen/exempt.txt")" && continue
+    printf '%s ' "$f"
+  done
+}
+
+measure_rows() { # round; Rows measured is `<row>: <command> | <baseline>` per line (CONTRACT.md)
+  local out="$RUN/round-$1.measure" line row rest
+  : > "$out"
+  while IFS= read -r line; do
+    line=${line#- }
+    [ -n "${line//[[:space:]]/}" ] || continue
+    row=${line%%:*}; rest=${line#*:}
+    printf 'MEASURE %s %s (baseline %s)\n' "$row" \
+      "$( cd "$WORKTREE" && eval "${rest%%|*}" 2>&1 | tail -1 )" "$(printf '%s' "${rest#*|}" | tr -d ' ')" \
+      | tee -a "$out" >&2
+  done <<< "$(section "Rows measured")"
+}
+
+# ---- step 7: the graders ----------------------------------------------------
+
+# --json-schema routes the grader's last message through a structured-output tool, so .result is the
+# bare object whatever the rubric's prose default asks for. Required keys are the ones the loop reads.
+schema_for() { # judge|reviewer -> a JSON Schema on stdout
+  local f='{"type":"object","properties":{"severity":{"enum":["high","medium","low"]},"file":{"type":"string"},"line":{"type":"integer"},"defect":{"type":"string"},"fix":{"type":"string"}},"required":["severity","file","defect","fix"]}'
+  case "$1" in
+    judge) printf '{"type":"object","properties":{"rows":{"type":"object"},"evidence":{"type":"object"},"fixes":{"type":"array","items":{"type":"string"}},"backlog":{"type":"array","items":{"type":"string"}},"verdict":{"enum":["pass","fail"]}},"required":["rows","fixes","verdict"]}' ;;
+    *)     printf '{"type":"object","properties":{"findings":{"type":"array","items":%s},"unverified":{"type":"array","items":{"type":"string"}},"verdict":{"enum":["merge","fix"]}},"required":["findings","verdict"]}' "$f" ;;
+  esac
+}
+
+build_evidence() { # rubric_file diff_cap -> stdout
+  local rubric="$1" cap="$2" base names stat_only content paths diff="$RUN/round-$ROUND.diff"
+  base=$(cat "$RUN/base.sha")
+  cat "$rubric"
+  printf '\n\n## Ticket\n\n%s\n' "$FENCE"; cat "$RUN/frozen/issue.md"; printf '\n%s\n' "$FENCE"
+  printf '\n## Checks output\n\n%s\n' "$FENCE"; cat "$RUN/round-$ROUND.checks"; printf '\n%s\n' "$FENCE"
+  printf '\n## Rows measured\n\n%s\n' "$FENCE"; cat "$RUN/round-$ROUND.measure" 2> /dev/null; printf '\n%s\n' "$FENCE"
+  printf '\n## decisions.md (worker-authored)\n\n%s\n' "$FENCE"; cat "$DECISIONS"; printf '\n%s\n' "$FENCE"
+  # Data files pass as stat only: evals/**/prompt.md and any added file over 400 lines (LOOP.md, Grader calls),
+  # so a frozen grader prompt or a large fixture never floods the diff a grader reads.
+  names=$( cd "$WORKTREE" && git diff -M --name-only --diff-filter=AMR "$base...HEAD" )
+  stat_only=$( { grep -E '^evals/.*/prompt\.md$' <<< "$names" || true
+                 ( cd "$WORKTREE" && git diff --numstat --diff-filter=A "$base...HEAD" ) \
+                   | awk -F'\t' '$1 + 0 > 400 {print $3}'; } | sort -u )
+  content=$( grep -vxF -f <(printf '%s\n' "$stat_only") <<< "$names" || true )
+  printf '\n## Diff (%s...HEAD)\n\n%s\n' "${base:0:8}" "$FENCE"
+  ( cd "$WORKTREE" && git diff -M --stat=200 "$base...HEAD" ); printf '\n'
+  [ -z "$stat_only" ] || printf '[stat only, content omitted as data: %s]\n\n' "$(printf '%s' "$stat_only" | tr '\n' ' ')"
+  if [ -n "$content" ]; then
+    mapfile -t paths <<< "$content"
+    ( cd "$WORKTREE" && git diff -M --diff-filter=AMR "$base...HEAD" -- "${paths[@]}" ) > "$diff"
+    head -"$cap" "$diff"
+    [ "$(wc -l < "$diff")" -le "$cap" ] || printf '\n[content diff capped at %s lines; the stat above is complete]\n' "$cap"
+  fi
+  printf '%s\n' "$FENCE"
+}
+
+# A pass with fixes to apply, or a fail with nothing to point at, refutes itself (LOOP.md, precedence).
+verdict_consistent() { # json file
+  jq -e '(.verdict // "") as $v
+    | ((.fixes // []) | length) + ([.findings[]? | select(.severity == "high")] | length) as $blocking
+    | ((.backlog // []) | length) + ((.findings // []) | length) as $other
+    | if ($v == "pass" or $v == "merge") then $blocking == 0
+      elif ($v == "fail" or $v == "fix") then ($blocking > 0 or $other > 0)
+      else true end' "$1" > /dev/null 2>&1
+}
+
+call_json() { # round stem role prompt_file schema_file
+  local round="$1" stem="$2" role="$3" pf="$4" schema="$5" final="$RUN/round-$1.$2.json" out res attempt=0
+  while [ "$attempt" -lt 3 ]; do
+    attempt=$((attempt + 1))
+    out="$RUN/round-$round.$stem.raw.$attempt.json"
+    assert_caps
+    stop_requested && finish stopped "FACTORY_STOP before the $role call"
+    log "$role call (attempt $attempt): model=$GRADER_MODEL effort=$GRADER_EFFORT"
+    # --tools Read,Grep,Glob is what makes a grader read-only (#40); with no MCP schemas and no
+    # skills listing its prefix is 9.9k tokens instead of 27k (probed 2026-09-09).
+    ( cd "$RUN" && ${TIMEOUT_G[@]+"${TIMEOUT_G[@]}"} claude -p --model "$GRADER_MODEL" --effort "$GRADER_EFFORT" \
+        --tools Read,Grep,Glob --strict-mcp-config --disable-slash-commands --no-session-persistence \
+        --json-schema "$(cat "$schema")" \
+        --max-budget-usd "$GRADER_BUDGET_USD" --setting-sources user --settings "$RUN/frozen/role-settings.json" \
+        --output-format json < "$pf" > "$out" 2>> "$LOG" ) || log "$role exited non-zero"
+    if limit_wait "$out"; then attempt=$((attempt - 1)); continue; fi
+    record "$round" "$role" "$GRADER_MODEL" "$out"
+    res=$(jq -r "$RESULT_OBJ | .result // \"\"" "$out" 2> /dev/null | sed -e 's/^```json//' -e 's/^```//' -e 's/```$//') || res=""
+    if printf '%s' "$res" | jq -e '.verdict' > /dev/null 2>&1; then
+      printf '%s' "$res" | jq '.' > "$final"
+      verdict_consistent "$final" && return 0
+      log "$role verdict is inconsistent with its own lists; calling once more with the refutation"
+      printf '\n\n## Refutation\n\nYour previous reply was `%s`, which contradicts the fixes, findings, and backlog you listed. Grade again and return a consistent object.\n' \
+        "$(jq -c '{verdict, fixes: (.fixes // []), findings: ((.findings // []) | length), backlog: (.backlog // [])}' "$final")" >> "$pf"
+      continue
+    fi
+    log "$role output not parseable"
+  done
+  # An absent or unparseable grader is a fail with one high finding, never a pass (LOOP.md).
+  finish stopped-environment "$role output unparseable or inconsistent after 3 attempts; see $out"
+}
+
+run_judge() { # round -> 0 on a pass verdict
+  local round="$1" pf="$RUN/round-$1.judge.prompt.md" f="$RUN/round-$1.judge.json"
+  build_evidence "$RUN/frozen/judge.md" 4000 > "$pf"
+  call_json "$round" judge judge "$pf" "$RUN/frozen/judge.schema.json"
+  jq -r '.fixes[]? | "- " + .' "$f" > "$RUN/round-$round.fixes"
+  log "judge verdict: $(jq -r .verdict "$f") rows=$(jq -c '.rows // {}' "$f")"
+  [ "$(jq -r .verdict "$f")" = pass ]
+}
+
+run_review() { # round -> 0 when nothing blocks
+  local round="$1" pf="$RUN/round-$1.review.prompt.md" f="$RUN/round-$1.review.json" highs
+  build_evidence "$RUN/frozen/reviewer.md" 6000 > "$pf"
+  call_json "$round" review reviewer "$pf" "$RUN/frozen/reviewer.schema.json"
+  highs=$(jq '[.findings[]? | select(.severity == "high")] | length' "$f")
+  log "reviewer verdict: $(jq -r .verdict "$f") findings=$(jq '(.findings // []) | length' "$f") blocking=$highs"
+  [ "$highs" -gt 0 ] || return 0
+  if [ "$REVIEW_BLOCKED" = 1 ]; then
+    log "the reviewer already blocked once on this ticket; its findings go to the backlog"
+    return 0
+  fi
+  REVIEW_BLOCKED=1
+  jq -r '[.findings[]? | select(.severity == "high")] | .[]
+    | "- " + (.file // "?") + ":" + ((.line // 0) | tostring) + " " + .defect + " Fix: " + .fix' "$f" >> "$RUN/round-$round.fixes"
+  return 1
+}
+
+graders() { # round -> 0 when the judge passes and nothing blocks
+  local ok=0
+  run_judge "$1" || ok=1
+  run_review "$1" || ok=1
+  return "$ok"
+}
+
+# ---- step 8: the pull request -----------------------------------------------
+
+open_pr() {
+  local body="$RUN/pr-body.md" base url num title
+  base=$(cat "$RUN/base.sha")
+  {
+    [ "$IS_FILE" = 1 ] || printf 'Closes #%s\n\n' "$ISSUE"
+    printf '## Goal\n\n%s\n\n' "$(section Worker | sed -n 's/^goal: //p' | head -1)"
+    printf '## Commits\n\n```\n%s\n```\n\n' "$(git -C "$WORKTREE" log --oneline "$base..HEAD")"
+    [ -s "$RUN/round-$ROUND.measure" ] && { printf '## Rows measured\n\n```\n'; cat "$RUN/round-$ROUND.measure"; printf '```\n\n'; }
+    printf '## Merge checklist\n\n'; section "Merge checklist" | grep '^- ' | sed 's/^- /- [ ] /'; printf '\n'
+    printf '## Decisions\n\n```\n'; cat "$DECISIONS"; printf '```\n\n'
+    printf '## Judge\n\n```json\n%s\n```\n\n' "$(jq -c '{verdict, rows: (.rows // {}), evidence: (.evidence // {})}' "$RUN/round-$ROUND.judge.json")"
+    printf '## Reviewer\n\n'
+    jq -r '.findings[]? | "- [" + .severity + "] " + (.file // "?") + ":" + ((.line // 0) | tostring) + " " + .defect + " Fix: " + .fix' "$RUN/round-$ROUND.review.json"
+    jq -r '.unverified[]? | "- unverified: " + .' "$RUN/round-$ROUND.review.json"
+    printf '\n## Backlog\n\n'; jq -r '.backlog[]? | "- " + .' "$RUN/round-$ROUND.judge.json"
+    printf '\n## Metrics\n\nrounds: %s, spend: %s usd, wall: %s min, denials: %s\nrun directory: %s\n' \
+      "$ROUND" "$(ticket_spent)" "$(( ( $(date -u +%s) - $(cat "$RUN/started") ) / 60 ))" \
+      "$(jq -s '[.[].denials // 0] | add // 0' "$LEDGER")" "$RUN"
+  } > "$body"
+  [ "$IS_FILE" = 1 ] && finish pr-opened "file ticket: no GitHub call; the PR body is at $body"
+  git -C "$WORKTREE" push -u origin "$BRANCH" >> "$LOG" 2>&1 || finish stopped-environment "git push of $BRANCH failed"
+  if num=$(gh pr view "$BRANCH" -R "$REPO" --json number --jq .number 2> /dev/null) && [ -n "$num" ]; then
+    # gh pr edit has failed on a GraphQL deprecation; PR bodies are updated through the REST API.
+    gh api -X PATCH "repos/$REPO/pulls/$num" -f "body=$(cat "$body")" > /dev/null \
+      || finish stopped-environment "could not update the body of PR #$num"
+    url="https://github.com/$REPO/pull/$num"
+  else
+    title=$(grep -m1 '^# ' "$RUN/frozen/issue.md" | sed 's/^# //')
+    url=$(gh pr create -R "$REPO" --head "$BRANCH" --base main --title "${title:-$KEY}" --body-file "$body" 2>&1 | tail -1)
+  fi
+  finish pr-opened "$url after $ROUND rounds, $(ticket_spent) usd"
+}
+
+# ---- the loop ---------------------------------------------------------------
+
+main_loop() {
+  local prev_fails="" prev_head="" grader_fails=0 fails dirty touched checks head_now
+  notify "$KEY run started" "$KEY on $BRANCH in $WORKTREE; caps: $MAX_ROUNDS rounds, $TICKET_BUDGET_USD usd, ${MAX_HOURS}h"
+  while :; do
+    ROUND=$((ROUND + 1))
+    [ "$ROUND" -le "$MAX_ROUNDS" ] || finish stopped-cap "round cap: $MAX_ROUNDS rounds"
+    set_status running
+    log "===== round $ROUND ====="
+    check_frozen
+    assert_caps
+    stop_requested && finish stopped "FACTORY_STOP before the round-$ROUND call"
+    worker_round "$ROUND"
+    # Step 6, in order: abandon, the frozen set, a clean tree, do-not-touch, then the checks.
+    grep -q '^ABANDON ' "$DECISIONS" && finish abandon "$(grep -m1 '^ABANDON ' "$DECISIONS")"
+    check_frozen
+    head_now=$(git -C "$WORKTREE" rev-parse HEAD)
+    [ "$head_now" = "$prev_head" ] && finish no-change "HEAD is unchanged since round $((ROUND - 1))"
+    prev_head="$head_now"
+    checks="$RUN/round-$ROUND.checks"
+    dirty=$(git -C "$WORKTREE" status --porcelain)
+    touched=$(do_not_touch_hits)
+    if [ -n "$dirty" ]; then
+      printf 'FAIL worktree-dirty: %s\n' "$(printf '%s' "$dirty" | tr '\n' ' ')" > "$checks"
+    elif [ -n "$touched" ]; then
+      printf 'FAIL do-not-touch %s\n' "$touched" > "$checks"
+    else
+      ( cd "$WORKTREE" && "$RUN/frozen/checks.sh" ) > "$checks" 2>&1
+    fi
+    if grep -q '^FAIL' "$checks"; then
+      fails=$(grep '^FAIL' "$checks" | awk '{print $2}' | tr -d ':' | sort -u | tr '\n' ',')
+      log "checks failing: $fails"
+      [ "$fails" = "$prev_fails" ] && finish stuck "the same checks failed twice: $fails"
+      prev_fails="$fails"
+      [ $((ROUND % 2)) -eq 0 ] && notify "$KEY checks failing after round $ROUND" "$(grep '^FAIL' "$checks" | head -10)"
+      continue
+    fi
+    prev_fails=""
+    log "checks: all pass"
+    measure_rows "$ROUND"
+    graders "$ROUND" && open_pr
+    grader_fails=$((grader_fails + 1))
+    [ "$grader_fails" -lt "$GRADER_FAIL_ROUNDS" ] \
+      || { log "grader-round cap: $GRADER_FAIL_ROUNDS grader-fail rounds; the rest goes to the PR backlog"; open_pr; }
+  done
+}
+
+cmd_run() {
+  load_ticket "$1"
+  apply_caps
+  WORKER_EFFORT=$(section Worker | sed -n 's/^effort: *//p' | head -1)
+  [ -n "$WORKER_EFFORT" ] || WORKER_EFFORT=high
+  RUN="$RUNS_ROOT/$KEY/$(printf '%s' "$BODY" | sha256_of | cut -c1-8)"
+  mkdir -p "$RUN/frozen" "$RUN/worker" || { echo "factory run: cannot create $RUN" >&2; exit 4; }
+  LOG="$RUN/factory.log"; LEDGER="$RUN/ledger.jsonl"; DAILY="$RUNS_ROOT/ledger-daily.jsonl"
+  DECISIONS="$RUN/worker/decisions.md"
+  touch "$LOG" "$LEDGER" "$DAILY" "$DECISIONS"
+  BRANCH="factory/$KEY"
+  WORKTREE="${FACTORY_WORKTREE:-$MAIN_CHECKOUT-$(printf '%s' "$KEY" | tr '[:upper:]' '[:lower:]')}"
+  [ -f "$RUN/started" ] || date -u +%s > "$RUN/started"
+  date -u +%s > "$RUN/launched"
+  stop_requested && finish stopped "FACTORY_STOP is present at launch"
+  prepare_worktree
+  freeze
+  exec_frozen
+  BODY=$(cat "$RUN/frozen/issue.md")   # from here on the frozen body is the ticket
+  [ "$IS_FILE" = 1 ] && trap 'git -C "$MAIN_CHECKOUT" worktree remove --force "$WORKTREE" > /dev/null 2>&1' EXIT
+  TIMEOUT_G=()
+  command -v timeout > /dev/null 2>&1 && TIMEOUT_G=(timeout --foreground "$CALL_TIMEOUT_SEC")
+  round_zero
+  main_loop
+}
+
+cmd_stop() { # <issue|stem>
+  local d n=0
+  for d in "$RUNS_ROOT/$1"/*/; do
+    [ -d "$d" ] || continue
+    : > "$d/FACTORY_STOP"; n=$((n + 1))
+    echo "FACTORY_STOP written to $d"
+  done
+  [ "$n" -gt 0 ] || { echo "factory stop: no run directory under $RUNS_ROOT/$1" >&2; return 1; }
+}
+
+cmd_status() {
+  local d led st rounds spend wall den grader notes
+  printf '%-14s %-9s %-20s %6s %8s %6s %8s %-22s %s\n' \
+    ticket sha8 status rounds spend wall denials first-failing-grader notes
+  for d in "$RUNS_ROOT"/*/*/; do
+    [ -f "$d/status" ] || continue
+    led="$d/ledger.jsonl"
+    st=$(cat "$d/status")
+    rounds=$(find "$d" -maxdepth 1 -name 'round-*.checks' 2> /dev/null | grep -vc 'round-0' || true)
+    spend=$(jq -s '[.[].cost_usd // 0] | add // 0 | . * 100 | round / 100' "$led" 2> /dev/null || echo 0)
+    wall=$(( ( $(date -u +%s) - $(cat "$d/started" 2> /dev/null || date -u +%s) ) / 60 ))
+    den=$(jq -s '[.[].denials // 0] | add // 0' "$led" 2> /dev/null || echo 0)
+    grader=$(grader_first_fail "$d")
+    notes=""
+    [ -f "$d/notify.failed" ] && notes="notify.failed"
+    [ -f "$d/FACTORY_STOP" ] && notes="$notes FACTORY_STOP"
+    printf '%-14s %-9s %-20s %6s %8s %5sm %8s %-22s %s\n' \
+      "$(basename "$(dirname "$d")")" "$(basename "$d")" "$st" "$rounds" "$spend" "$wall" "$den" "${grader:--}" "$notes"
+  done
+  printf '\n== worktrees and PRs\n'
+  git -C "$MAIN_CHECKOUT" worktree list 2> /dev/null | sed 's/^/  /'
+  gh pr list -R "$(gh repo view --json nameWithOwner -q .nameWithOwner 2> /dev/null)" \
+    --head-search factory --json number,headRefName,title,isDraft \
+    --jq '.[] | "  #\(.number) \(.headRefName) \(.title)"' 2> /dev/null \
+    || echo "  (no PR list: gh is unavailable from here; run status on the runner)"
+  printf '\n== preconditions\n'
+  precondition_lines
+}
+
+grader_first_fail() { # run dir -> the first grader item that failed in the last graded round
+  local j r
+  j=$(find "$1" -maxdepth 1 -name 'round-*.judge.json' 2> /dev/null | sort -V | tail -1)
+  [ -n "$j" ] || return 0
+  r=$(jq -r 'first((.rows // {}) | to_entries[] | select(.value != "pass") | "judge:" + .key) // empty' "$j" 2> /dev/null)
+  [ -n "$r" ] || r=$(jq -r 'first(.findings[]? | select(.severity == "high") | "review:" + (.file // "?")) // empty' \
+    "${j%judge.json}review.json" 2> /dev/null)
+  printf '%s' "$r"
+}
+
+precondition_lines() { # LOOP.md, Preconditions
+  local t
+  for t in claude gh git jq python3 uv tmux timeout socat; do
+    command -v "$t" > /dev/null 2>&1 && echo "  PASS $t on PATH" || echo "  FAIL $t not on PATH"
+  done
+  gh api rate_limit > /dev/null 2>&1 && echo "  PASS gh api rate_limit" || echo "  FAIL gh api rate_limit"
+  claude -p --help 2>&1 | grep -q -- '--json-schema' && echo "  PASS claude -p accepts --json-schema" \
+    || echo "  FAIL claude -p lacks --json-schema; every grader call needs it"
+  for t in judge reviewer; do
+    grader_file "$t" > /dev/null 2>&1 && echo "  PASS $t.md in the plugin cache" || echo "  FAIL no $t.md in the plugin cache"
+  done
+  [ -f "$HOME/.config/loam-loops/pushover.env" ] && echo "  INFO pushover.env present" \
+    || echo "  INFO no pushover.env; notifications comment on the ticket"
+}
+
+usage() { # [cmd...] - one line per named command, all five when none is named
+  local c
+  for c in ${@:-lint eval run status stop}; do
+    case "$c" in
+      lint)   echo "usage: bin/factory lint <file|issue>" ;;
+      eval)   echo "usage: bin/factory eval <grader> [--evals-dir D] [--graders-dir D] [--model M]" ;;
+      run)    echo "usage: bin/factory run <issue|ticket-file>" ;;
+      status) echo "usage: bin/factory status" ;;
+      stop)   echo "usage: bin/factory stop <issue|ticket-stem>" ;;
+      *)      echo "usage: bin/factory <lint|eval|run|status|stop>" ;;
+    esac
+  done >&2
   exit 2
 }
 
 CMD="${1:-}"
 shift 2> /dev/null || true
 case "$CMD" in
-  lint) [ $# -eq 1 ] || usage
+  lint) [ $# -eq 1 ] || usage lint
         lint "$1" ;;
-  eval) [ $# -ge 1 ] || usage
+  eval) [ $# -ge 1 ] || usage eval
         GRADER="$1"; shift
         while [ $# -gt 0 ]; do
-          [ $# -ge 2 ] || usage
+          [ $# -ge 2 ] || usage eval
           case "$1" in
             --evals-dir)   EVALS_DIR="$2" ;;
             --graders-dir) GRADERS_DIR="$2" ;;
             --model)       EVAL_MODEL="$2" ;;
-            *)             usage ;;
+            *)             usage eval ;;
           esac
           shift 2
         done
         run_eval "$GRADER" ;;
-  *)    usage ;;
+  run)    [ $# -eq 1 ] || usage run
+          cmd_run "$1" ;;
+  status) [ $# -eq 0 ] || usage status
+          cmd_status ;;
+  stop)   [ $# -eq 1 ] || usage stop
+          cmd_stop "$1" ;;
+  *)      usage ;;
 esac
