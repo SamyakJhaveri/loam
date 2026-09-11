@@ -686,7 +686,7 @@ build_worker_prompt() { # round -> prompt path (pending until the call returns a
   if runs_workflow "$round"; then
     {
       printf '\n\n## Large ticket, round 1: run the fan-out workflow\n\n'
-      printf 'Remove `%s/tasks/` if it exists, then run the Workflow tool with scriptPath `%s/frozen/factory-round.js` and args `{"ticket": "%s/frozen/issue.md", "run": "%s"}`. ' "$RUN" "$RUN" "$RUN" "$RUN"
+      printf 'Run the Workflow tool with scriptPath `%s/frozen/factory-round.js` and args `{"ticket": "%s/frozen/issue.md", "run": "%s"}`. ' "$RUN" "$RUN" "$RUN"
       printf 'When it returns, read %s/tasks/result.json. If that file is absent, implement the ticket yourself as in any round. ' "$RUN"
       printf 'Otherwise the integrator has committed; copy its `unmet` and `abandoned` lists into %s.\n' "$DECISIONS"
     } >> "$pf"
@@ -728,6 +728,13 @@ worker_round() { # round; leaves round-N.* only once the call produced a result
   # The first round this process runs; a login expired at launch retries only its call. A global,
   # not a local, so it survives the loop's later rounds.
   [ -n "${FIRST_WORKER_ROUND+x}" ] || FIRST_WORKER_ROUND="$round"
+  # A retried round 1 must not inherit a builder artifact or result.json from an earlier attempt, which
+  # workflow_ledger would count and the worker would read as an integrated round. The supervisor empties
+  # tasks/ itself and keeps the directory: the integrator writes result.json under it and never recreates
+  # it, and the worker cannot (rm -rf is denied by worker-settings.json). Codex review of #74.
+  if runs_workflow "$round"; then
+    find "$RUN/tasks" -mindepth 1 -delete 2> /dev/null || finish stopped-environment "could not empty $RUN/tasks before the fan-out round"
+  fi
   pf=$(build_worker_prompt "$round") || finish ticket-defect "a skill this ticket names resolves to no SKILL.md under ~/.claude/skills or the plugin cache; see the log"
   if [ "$WORKER_KIND" = codex ]; then
     # The Codex worker: JSONL stream is stdout, -o is the last message, < /dev/null keeps Codex off the
