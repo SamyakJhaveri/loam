@@ -686,7 +686,7 @@ build_worker_prompt() { # round -> prompt path (pending until the call returns a
   if runs_workflow "$round"; then
     {
       printf '\n\n## Large ticket, round 1: run the fan-out workflow\n\n'
-      printf 'Remove %s/tasks/result.json if it exists, then run the Workflow tool with scriptPath `%s/frozen/factory-round.js` and args `{"ticket": "%s/frozen/issue.md", "run": "%s"}`. ' "$RUN" "$RUN" "$RUN" "$RUN"
+      printf 'Run the Workflow tool with scriptPath `%s/frozen/factory-round.js` and args `{"ticket": "%s/frozen/issue.md", "run": "%s"}`. ' "$RUN" "$RUN" "$RUN"
       printf 'When it returns, read %s/tasks/result.json. If that file is absent, implement the ticket yourself as in any round. ' "$RUN"
       printf 'Otherwise the integrator has committed; copy its `unmet` and `abandoned` lists into %s.\n' "$DECISIONS"
     } >> "$pf"
@@ -728,6 +728,13 @@ worker_round() { # round; leaves round-N.* only once the call produced a result
   # The first round this process runs; a login expired at launch retries only its call. A global,
   # not a local, so it survives the loop's later rounds.
   [ -n "${FIRST_WORKER_ROUND+x}" ] || FIRST_WORKER_ROUND="$round"
+  # A retried round 1 must not inherit a builder artifact or result.json from an earlier attempt, which
+  # workflow_ledger would count and the worker would read as an integrated round. The supervisor empties
+  # tasks/ itself and keeps the directory: the integrator writes result.json under it and never recreates
+  # it, and the worker cannot (rm -rf is denied by worker-settings.json). Codex review of #74.
+  if runs_workflow "$round"; then
+    find "$RUN/tasks" -mindepth 1 -delete 2> /dev/null || finish stopped-environment "could not empty $RUN/tasks before the fan-out round"
+  fi
   pf=$(build_worker_prompt "$round") || finish ticket-defect "a skill this ticket names resolves to no SKILL.md under ~/.claude/skills or the plugin cache; see the log"
   if [ "$WORKER_KIND" = codex ]; then
     # The Codex worker: JSONL stream is stdout, -o is the last message, < /dev/null keeps Codex off the
@@ -1010,7 +1017,7 @@ open_pr() {
     if [ "$WORKER_KIND" = codex ]; then
       printf '\n## Codex worker notes\n\n'
       printf -- '- Cost: the Codex worker rounds carry `cost_usd: null` in the ledger; the dollar caps (ROUND_BUDGET_USD, TICKET_BUDGET_USD, DAILY_BUDGET_USD) do not bound a Codex worker. Only token counts are recorded.\n'
-      printf -- '- `.env`: the workspace-write sandbox does not block a `.env` read (D8, #41); a secret in `.env` is readable by the worker. F4 denies it in Codex config, or it stays a recorded risk.\n'
+      printf -- '- `.env` is readable by the Codex worker (D8, #41). No deny is configured; recorded risk.\n'
     fi
     printf '\n## Backlog\n\n'; jq -r '.backlog[]? | "- " + .' "$RUN/round-$ROUND.judge.json"
     printf '\n## Metrics\n\nrounds: %s, spend: %s usd, wall: %s min, denials: %s\nrun directory: %s\n' \
@@ -1192,7 +1199,7 @@ precondition_lines() { # LOOP.md, Preconditions
   # at build_worker_prompt (skill_file); a bare name and a plugin:name both, newest version first.
   while IFS= read -r t; do
     [ -n "$t" ] || continue
-    skill_file "$t" > /dev/null 2>&1 && echo "  PASS skill $t resolves" || echo "  FAIL skill $t resolves to no SKILL.md"
+    skill_file "$t" > /dev/null 2>&1 && echo "  PASS skill $t resolves" || echo "  INFO skill $t resolves to no SKILL.md (a worker: codex ticket naming it stops)"
   done < "$ROOT/bin/factory.d/skills.txt"
   # Codex login: Codex is not on the bare PATH (#41), so probe it under CODEX_PATH. Only a worker: codex
   # ticket needs it, so a logged-out or absent Codex is INFO here, not FAIL.

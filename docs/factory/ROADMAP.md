@@ -65,7 +65,7 @@ Merge checklist: bump the plugin version; check the listing weight.
 
 Goal and why: `worker: codex` and `codex-review: yes` as specified in `LOOP.md`.
 Do not touch: the standing list. Except: `bin/factory`, `bin/factory.d/`.
-Done checks: `codex-review: yes` adds one review section shaped by `review-output.schema.json`; the Codex worker's workspace-write sandbox does not block `.env` reads (#41), and no deny is configured, so the F4 merge checklist's hand run confirms the read is absent from the round's JSONL or records it as a risk; `codex login status` is a preflight line.
+Done checks: `codex-review: yes` adds one review section shaped by `review-output.schema.json`; no `.env` deny is configured (`LOOP.md`, Worker calls); `codex login status` is a preflight line.
 Merge checklist: a hand run of a Track B ticket with `worker: codex` reaches `pr-opened`; Codex token counts appear in the ledger for that run; a fixture `.env` is confirmed absent from the round's JSONL, since the sandbox does not block the read (#41); run directory path in the PR body.
 
 ## F9 frontier timer
