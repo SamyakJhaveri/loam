@@ -732,12 +732,39 @@ worker_round() { # round; leaves round-N.* only once the call produced a result
   if [ "$WORKER_KIND" = codex ]; then
     # The Codex worker: JSONL stream is stdout, -o is the last message, < /dev/null keeps Codex off the
     # caller's stdin (#41). No dollar budget bounds it (cost_usd null); CALL_TIMEOUT_SEC and MAX_HOURS do.
-    local rc start wl wagents wusd
+    local rc start wl wagents wusd swapped=0 codex_target cgd ccd add_dirs
     log "codex worker call: round $round model=$CODEX_MODEL (dollar caps do not bound it), prompt=$(wc -c < "$pf") bytes"
     rm -f "$out"
+    # Codex's workspace-write sandbox mounts the workspace .codex read-only, and bubblewrap refuses the
+    # root .codex because it is a symlink into seed/ (D12, #77). Swap it for a real copy of its target for
+    # the call; it is restored before grading below. The worktree's commit also needs four git roots
+    # writable: the worktree gitdir, plus objects/refs/logs under the common dir (probe C2).
+    if [ -L "$WORKTREE/.codex" ]; then
+      { codex_target=$(readlink -f "$WORKTREE/.codex") && rm "$WORKTREE/.codex" && cp -R "$codex_target" "$WORKTREE/.codex"; } \
+        || finish stopped-environment "could not swap the .codex symlink for a real directory before the Codex round"
+      swapped=1
+      log "codex worker call: swapped the .codex symlink for a real copy of $codex_target for the workspace-write sandbox"
+    fi
+    cgd=$(git -C "$WORKTREE" rev-parse --absolute-git-dir)
+    ccd=$(git -C "$WORKTREE" rev-parse --path-format=absolute --git-common-dir)
+    add_dirs=(--add-dir "$cgd" --add-dir "$ccd/objects" --add-dir "$ccd/refs" --add-dir "$ccd/logs")
     start=$SECONDS
-    ( cd "$WORKTREE" && PATH="$CODEX_PATH:$PATH" ${t[@]+"${t[@]}"} codex exec --json -s workspace-write "$(cat "$pf")" > "$out" -o "$RUN/round-$round.last.txt" < /dev/null ); rc=$?
+    ( cd "$WORKTREE" && PATH="$CODEX_PATH:$PATH" ${t[@]+"${t[@]}"} codex exec --json -s workspace-write "${add_dirs[@]}" "$(cat "$pf")" > "$out" -o "$RUN/round-$round.last.txt" < /dev/null ); rc=$?
     [ "$rc" -eq 0 ] || log "codex worker call exited $rc (the result decides)"
+    # Restore the tracked .codex before codex_result so the clean-tree check and the graders see the
+    # symlink, whatever the call's exit code (D12, #77). If the round committed the ` D .codex` deletion,
+    # .codex has left the index, so there is nothing to check out and do_not_touch_hits counts the
+    # committed change as a hit. A restore that fails is the environment, not a round.
+    if [ "$swapped" -eq 1 ]; then
+      rm -rf "$WORKTREE/.codex" || finish stopped-environment "could not remove the .codex copy after the Codex round"
+      if git -C "$WORKTREE" ls-files --error-unmatch .codex > /dev/null 2>&1; then
+        git -C "$WORKTREE" checkout -- .codex \
+          || finish stopped-environment "could not restore the .codex symlink after the Codex round"
+        log "codex worker call: restored the .codex symlink before grading"
+      else
+        log "codex worker call: the round removed the tracked .codex; do_not_touch_hits counts it as a hit"
+      fi
+    fi
     codex_result "$out" "$rc" "$(( (SECONDS - start) * 1000 ))" > "$res"
     wl=$(workflow_ledger "$round" "$out" "$res"); wagents=${wl% *}; wusd=${wl#* }
     record "$round" worker "$CODEX_MODEL" "$res" 0 0 "$wagents" "$wusd" 1
