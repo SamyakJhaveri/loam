@@ -635,15 +635,20 @@ limit_wait() { # result.json -> 0 after waiting, 1 when the reply is not a usage
 # Every non-guard check must fail on base; one that passes there cannot prove the ticket.
 
 round_zero() {
-  local out="$RUN/round-0.checks" guards name base wt
+  local out="$RUN/round-0.checks" guards name base wt msg
   base=$(cat "$RUN/base.sha"); wt="${WORKTREE}-base"
   # Round 0 belongs to base only: run the frozen checks at base.sha in a detached temporary
   # worktree, never in the ticket worktree, which a relaunch may leave ahead of base with the
-  # checks already passing. Clear a leftover from a killed round 0 before the add, and remove
-  # the worktree before the scan so it is gone on both the defect and the clean path.
+  # checks already passing. Remove and prune clear a leftover from a killed round 0 before the
+  # add; a bare directory git does not track is reported, not deleted. Remove the worktree
+  # before the scan so it is gone on both the defect and the clean path.
   git -C "$MAIN_CHECKOUT" worktree remove --force "$wt" > /dev/null 2>&1
-  git -C "$MAIN_CHECKOUT" worktree add --detach "$wt" "$base" > /dev/null 2>&1 \
-    || finish stopped-environment "could not add the round-0 worktree $wt at $(cut -c1-8 "$RUN/base.sha")"
+  git -C "$MAIN_CHECKOUT" worktree prune > /dev/null 2>&1
+  if ! git -C "$MAIN_CHECKOUT" worktree add --detach "$wt" "$base" > /dev/null 2>&1; then
+    msg="could not add the round-0 worktree $wt at $(cut -c1-8 "$RUN/base.sha")"
+    [ -e "$wt" ] && msg="$msg; the path exists but is not a registered worktree, delete it by hand"
+    finish stopped-environment "$msg"
+  fi
   ( cd "$wt" && "$RUN/frozen/checks.sh" ) > "$out" 2>&1
   git -C "$MAIN_CHECKOUT" worktree remove --force "$wt" > /dev/null 2>&1
   guards=$(dc_block | grep 'guard' | grep -oE '(^|[[:space:]])pass[[:space:]]+"?[A-Za-z0-9_.-]+' \
