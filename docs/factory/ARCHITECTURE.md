@@ -69,6 +69,7 @@ The supervisor execs its frozen copy of `bin/factory`, so a ticket that edits th
 - `seed/bin/`
 - `VERSION`, `bin/release.sh`, `.github/workflows/`
 - `bin/factory`, `bin/factory.d/`, and any grader file
+- `.codex` - a Codex round swaps this symlink for a real directory and restores it; a commit that changes it is a hit
 
 Scope beyond the ticket goal outside this list is a judge finding, not a stall.
 
