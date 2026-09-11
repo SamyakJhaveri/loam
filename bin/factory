@@ -1187,7 +1187,9 @@ cmd_next() { # [--dry-run|--install]
     local tmpl="$ROOT/bin/factory.d/next.crontab"
     [ -f "$tmpl" ] || { echo "factory next --install: no template at $tmpl" >&2; return 1; }
     command -v crontab > /dev/null 2>&1 || { echo "factory next --install: crontab not found" >&2; return 1; }
-    ( crontab -l 2> /dev/null | grep -vF 'bin/factory next'; cat "$tmpl" ) | crontab -
+    # Install the cron line only (the comments would accumulate on reinstall); grep -vF strips the
+    # prior copy so the result is idempotent.
+    ( crontab -l 2> /dev/null | grep -vF 'bin/factory next'; grep -v '^#' "$tmpl" ) | crontab -
     echo "installed: $(grep -v '^#' "$tmpl" | grep -m1 .)"
     return 0
   fi
@@ -1227,7 +1229,7 @@ cmd_next() { # [--dry-run|--install]
   local repo ready num
   repo=$(gh repo view --json nameWithOwner -q .nameWithOwner 2> /dev/null)
   ready=$(gh api "repos/$repo/issues?labels=ready-for-agent&state=open&assignee=none&per_page=100" \
-    --jq 'sort_by(.number)[] | select(.pull_request == null) | select((.issue_dependencies_summary.blocked_by // 0) == 0) | .number' 2> /dev/null)
+    --jq 'sort_by(.number)[] | select(.pull_request == null) | select(.issue_dependencies_summary.blocked_by == 0) | .number' 2> /dev/null)
 
   # A ticket whose PR is open but unmerged keeps its label and stays unassigned (open_pr does
   # neither), so skip any issue with a run dir already at pr-opened, or the timer would relaunch it.
