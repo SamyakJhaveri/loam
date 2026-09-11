@@ -62,7 +62,7 @@ The run resolves them from the installed plugin cache, falling back to the check
 | Status | Meaning | Counts a round |
 |---|---|---|
 | `pr-opened` | checks and graders pass, or the grader-round cap reached with a backlog | yes |
-| `no-change` | HEAD is unchanged since the previous round | yes |
+| `no-change` | HEAD and `decisions.md` are both unchanged since the previous round | yes |
 | `stuck` | the same failing check set twice in a row | yes |
 | `ticket-defect` | round 0 found a check that passes on base or an unmeetable check | no |
 | `abandon` | an `ABANDON NAME reason` line in `decisions.md`; the owner is paged | yes |
@@ -200,6 +200,7 @@ Each new grader agent costs about 200 always-on tokens in every session of every
 ## Preconditions
 
 - The runner is Ubuntu with `claude`, `codex`, `gh` (logged in), `uv`, `git`, `jq`, `python3`, coreutils `timeout`, `tmux`, and `socat` on a login-shell PATH; ssh commands use `bash -lc`.
+- `claude auth status` reports `loggedIn: true` on the runner; `claude` on PATH is not `claude` logged in, so a logged-out Claude fails every worker call while `status` still shows it on PATH, and `bin/factory status` prints `FAIL claude login` (#78).
 - `gh api rate_limit` succeeds on the seat that runs stages 0, 1, 2, and 5 (F0 fixes the Mac).
 - `grill-with-docs`, `wayfinder`, and `to-tickets` are invocable on that seat.
 - `codex login status` succeeds when any ticket uses Codex.

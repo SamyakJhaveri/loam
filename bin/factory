@@ -1043,7 +1043,7 @@ open_pr() {
 # ---- the loop ---------------------------------------------------------------
 
 main_loop() {
-  local prev_fails="" prev_head="" grader_fails=0 fails dirty touched checks head_now
+  local prev_fails="" prev_sig="" grader_fails=0 fails dirty touched checks sig_now
   notify "$KEY run started" "$KEY on $BRANCH in $WORKTREE; caps: $MAX_ROUNDS rounds, $TICKET_BUDGET_USD usd, ${MAX_HOURS}h"
   while :; do
     ROUND=$((ROUND + 1))
@@ -1057,9 +1057,12 @@ main_loop() {
     # Step 6, in order: abandon, the frozen set, a clean tree, do-not-touch, then the checks.
     grep -q '^ABANDON ' "$DECISIONS" && finish abandon "$(grep -m1 '^ABANDON ' "$DECISIONS")"
     check_frozen
-    head_now=$(git -C "$WORKTREE" rev-parse HEAD)
-    [ "$head_now" = "$prev_head" ] && finish no-change "HEAD is unchanged since round $((ROUND - 1))"
-    prev_head="$head_now"
+    # The round signature is HEAD plus the digest of decisions.md, so a round that only relabels
+    # decisions.md after a grader-only fail (#78) proceeds to the checks and graders; no-change fires
+    # only when both are unchanged since the previous round.
+    sig_now="$(git -C "$WORKTREE" rev-parse HEAD) $(sha256_of < "$DECISIONS" | cut -d' ' -f1)"
+    [ "$sig_now" = "$prev_sig" ] && finish no-change "HEAD and decisions.md are unchanged since round $((ROUND - 1))"
+    prev_sig="$sig_now"
     checks="$RUN/round-$ROUND.checks"
     dirty=$(git -C "$WORKTREE" status --porcelain)
     touched=$(do_not_touch_hits)
@@ -1189,6 +1192,13 @@ precondition_lines() { # LOOP.md, Preconditions
   for t in claude gh git jq python3 uv tmux timeout socat node; do
     command -v "$t" > /dev/null 2>&1 && echo "  PASS $t on PATH" || echo "  FAIL $t not on PATH"
   done
+  # claude on PATH is not claude logged in: a logged-out Claude fails every worker call while claude
+  # stays on PATH (#78). claude auth status prints JSON with a loggedIn boolean and exits 0 either way.
+  if claude auth status 2> /dev/null | jq -e '.loggedIn' > /dev/null 2>&1; then
+    echo "  PASS claude login"
+  else
+    echo "  FAIL claude login: claude auth status reports logged out; run claude login on the runner"
+  fi
   gh api rate_limit > /dev/null 2>&1 && echo "  PASS gh api rate_limit" || echo "  FAIL gh api rate_limit"
   claude -p --help 2>&1 | grep -q -- '--json-schema' && echo "  PASS claude -p accepts --json-schema" \
     || echo "  FAIL claude -p lacks --json-schema; every grader call needs it"
