@@ -1,6 +1,6 @@
 # Loam Factory: the brief and the ticket contract
 
-This file is the one home of the brief form (stage 0) and the ticket contract (stage 2).
+This file is the home of the ticket contract (stage 2); the brief form (stage 0) lives in `cultivation/marketplace/sam-cc-setup/skills/brief/SKILL.md`.
 The stage table and model rules live in `ARCHITECTURE.md`; the supervisor that consumes tickets lives in `LOOP.md`.
 
 ## The brief

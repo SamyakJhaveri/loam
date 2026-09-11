@@ -61,8 +61,6 @@ The design issue records the options considered, the evidence for each, and the 
 Risk high means anything Track A excludes, plus outward-facing behavior.
 It sets `codex-review: yes` on every ticket once F4 ships the stage, and asks for a human diff read before merge; until F4, `codex-review: no` is valid on a high-risk ticket and the diff read carries the weight.
 
-For a Track B brief, hand these lines to the ticket contract (`docs/factory/CONTRACT.md`, `## The ticket contract`) and publish the issue from this same session; the mapping above (ask to Goal and why, Done means to the done-checks block, Out of scope carried over) is the template, and the sections there are written before implementation.
-
 ## Worked brief, Track A
 
 ```

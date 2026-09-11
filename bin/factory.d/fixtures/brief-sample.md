@@ -12,7 +12,7 @@ A Track B brief should reach GitHub without a second tool.
 Today the author copies the linted body into the web UI by hand; a `publish` subcommand closes stage 2 in one session (ROADMAP.md F5).
 
 ## Do not touch
-The standing list. Except: bin/factory (this ticket adds the publish subcommand).
+The standing list. Except: bin/factory (this ticket adds the publish subcommand), docs/factory/CONTRACT.md (the Seam with to-tickets section).
 
 ## Out of scope
 Editing an issue after it is opened; any change to the loop, the grader, or to-tickets.
