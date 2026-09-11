@@ -1201,14 +1201,15 @@ cmd_next() { # [--dry-run|--install]
   fi
 
   # 2. A run whose status is running or waiting-limit holds a slot (assert_parallel's rule).
-  local d st n=0
+  #    FACTORY_MAX_PARALLEL bounds the count, as it does in cmd_run through apply_caps; default 1.
+  local d st n=0 max="${FACTORY_MAX_PARALLEL:-$MAX_PARALLEL}"
   for d in "$RUNS_ROOT"/*/*/; do
     [ -f "$d/status" ] || continue
     st=$(cat "$d/status")
     [ "$st" = running ] || [ "$st" = waiting-limit ] || continue
     n=$((n + 1))
   done
-  if [ "$n" -ge "$MAX_PARALLEL" ]; then
+  if [ "$n" -ge "$max" ]; then
     echo "nothing to launch"
     return 0
   fi
@@ -1216,20 +1217,33 @@ cmd_next() { # [--dry-run|--install]
   # 3. Fast-forward the checkout next runs from, so a merged loop change reaches the supervisor
   #    (freeze copies bin/factory from here) before the launch. Never under --dry-run, and only
   #    with a clean tree, since a dirty tree would abort the --ff-only merge mid-launch.
+  #    A refused pull is logged (log writes to stderr, which cron mails) and never aborts the launch:
+  #    the run proceeds on the stale checkout, with the cause on record.
   if [ "$dry" = 0 ]; then
-    if [ -z "$(git -C "$ROOT" status --porcelain 2> /dev/null)" ]; then
-      git -C "$ROOT" fetch -q origin 2> /dev/null && git -C "$ROOT" merge --ff-only origin/main > /dev/null 2>&1 || true
-    else
+    if [ -n "$(git -C "$ROOT" status --porcelain 2> /dev/null)" ]; then
       log "refused pull: dirty checkout"
+    elif ! git -C "$ROOT" fetch -q origin 2> /dev/null; then
+      log "refused pull: git fetch origin failed"
+    elif ! git -C "$ROOT" merge --ff-only origin/main > /dev/null 2>&1; then
+      log "refused pull: not fast-forward"
     fi
   fi
 
   # 4. The frontier: open, ready-for-agent, unassigned issues with no open native blocker, lowest
-  #    number first. A gh failure (offline, unauthenticated) yields no candidate, not an error.
+  #    number first. A gh failure (offline, unauthenticated, off cron's PATH, empty repo) prints
+  #    `frontier query failed` and returns 1, so cron mails it rather than the timer stalling silent;
+  #    only a successful, empty query falls through to `nothing to launch`.
   local repo ready num
   repo=$(gh repo view --json nameWithOwner -q .nameWithOwner 2> /dev/null)
-  ready=$(gh api "repos/$repo/issues?labels=ready-for-agent&state=open&assignee=none&per_page=100" \
-    --jq 'sort_by(.number)[] | select(.pull_request == null) | select(.issue_dependencies_summary.blocked_by == 0) | .number' 2> /dev/null)
+  if [ -z "$repo" ]; then
+    echo "frontier query failed: gh repo view" >&2
+    return 1
+  fi
+  if ! ready=$(gh api "repos/$repo/issues?labels=ready-for-agent&state=open&assignee=none&per_page=100" \
+    --jq 'sort_by(.number)[] | select(.pull_request == null) | select(.issue_dependencies_summary.blocked_by == 0) | .number' 2> /dev/null); then
+    echo "frontier query failed: gh api issues" >&2
+    return 1
+  fi
 
   # A ticket whose PR is open but unmerged keeps its label and stays unassigned (open_pr does
   # neither), so skip any issue with a run dir already at pr-opened, or the timer would relaunch it.
@@ -1257,8 +1271,15 @@ cmd_next() { # [--dry-run|--install]
     echo "nothing to launch"
     return 0
   fi
-  tmux new-session -d -s "loam-$pick" "cd '$ROOT' && bin/factory run $pick >> '$RUNS_ROOT/$pick.tmux.log' 2>&1"
-  echo "launched #$pick"
+  # cmd_run creates the run dir, but the detached shell opens the tmux log first; on a fresh install
+  # RUNS_ROOT does not exist yet, so the redirection would fail before the run ever starts.
+  mkdir -p "$RUNS_ROOT"
+  if tmux new-session -d -s "loam-$pick" "cd '$ROOT' && bin/factory run $pick >> '$RUNS_ROOT/$pick.tmux.log' 2>&1"; then
+    echo "launched #$pick"
+  else
+    echo "launch failed: tmux new-session -s loam-$pick" >&2
+    return 1
+  fi
 }
 
 cmd_status() {
