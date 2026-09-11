@@ -635,15 +635,24 @@ limit_wait() { # result.json -> 0 after waiting, 1 when the reply is not a usage
 # Every non-guard check must fail on base; one that passes there cannot prove the ticket.
 
 round_zero() {
-  local out="$RUN/round-0.checks" guards name
-  ( cd "$WORKTREE" && "$RUN/frozen/checks.sh" ) > "$out" 2>&1
+  local out="$RUN/round-0.checks" guards name base wt
+  base=$(cat "$RUN/base.sha"); wt="${WORKTREE}-base"
+  # Round 0 belongs to base only: run the frozen checks at base.sha in a detached temporary
+  # worktree, never in the ticket worktree, which a relaunch may leave ahead of base with the
+  # checks already passing. Clear a leftover from a killed round 0 before the add, and remove
+  # the worktree before the scan so it is gone on both the defect and the clean path.
+  git -C "$MAIN_CHECKOUT" worktree remove --force "$wt" > /dev/null 2>&1
+  git -C "$MAIN_CHECKOUT" worktree add --detach "$wt" "$base" > /dev/null 2>&1 \
+    || finish stopped-environment "could not add the round-0 worktree $wt at $(cut -c1-8 "$RUN/base.sha")"
+  ( cd "$wt" && "$RUN/frozen/checks.sh" ) > "$out" 2>&1
+  git -C "$MAIN_CHECKOUT" worktree remove --force "$wt" > /dev/null 2>&1
   guards=$(dc_block | grep 'guard' | grep -oE '(^|[[:space:]])pass[[:space:]]+"?[A-Za-z0-9_.-]+' \
     | awk '{print $NF}' | tr -d '"' | sort -u)
   while read -r _ name _; do
     printf '%s\n' "$guards" | grep -qxF "$name" && continue
     finish ticket-defect "check $name passes on $(cut -c1-8 "$RUN/base.sha"), so it cannot prove the ticket; see $out"
   done < <(grep '^PASS ' "$out")
-  log "round 0: every non-guard check fails on base"
+  log "round 0 at $(cut -c1-8 "$RUN/base.sha"): every non-guard check fails on base"
 }
 
 # ---- steps 5 and 6: the worker round ----------------------------------------
@@ -1148,8 +1157,10 @@ cmd_run() {
       && finish stopped-environment "the advisor would be silently off: DISABLE_TELEMETRY or CLAUDE_CODE_DISABLE_ADVISOR_TOOL is set"
     log "advisor: $WORKER_ADVISOR (the first worker call proves it attaches)"
   fi
-  # A relaunch reuses the worktree at branch HEAD, where the checks may already pass:
-  # round 0 belongs to base only, and ROUND resumes past the rounds already on disk.
+  # A relaunch with an edited body is a new run over a ticket worktree the last run left ahead of
+  # base, where the checks may already pass; round 0 runs at base in its own detached worktree, so
+  # base is what it proves. A resume (round-0.checks present) leaves round 0 out: the rounds on disk
+  # already proved base, and ROUND resumes past them.
   if [ ! -f "$RUN/round-0.checks" ]; then
     round_zero
   else
