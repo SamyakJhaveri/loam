@@ -1,0 +1,6 @@
+# bin/factory.d/next.crontab - the F9 ten-minute frontier timer.
+# `bin/factory next --install` appends this line to the runner's crontab (idempotently).
+# A user crontab entry runs without a login shell, so `bash -lc` loads the profile that puts
+# claude, gh, and tmux on PATH. The alternative is a systemd user timer with
+# OnUnitActiveSec=10min plus `loginctl enable-linger`; the merge checklist accepts either.
+*/10 * * * * bash -lc 'cd ~/Desktop/loam && bin/factory next'
