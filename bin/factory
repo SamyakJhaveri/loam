@@ -955,18 +955,19 @@ run_judge() { # round -> 0 on a pass verdict
 }
 
 run_review() { # round -> 0 when nothing blocks
-  local round="$1" pf="$RUN/round-$1.review.prompt.md" f="$RUN/round-$1.review.json" highs
+  local round="$1" pf="$RUN/round-$1.review.prompt.md" f="$RUN/round-$1.review.json" blocking
   build_evidence "$RUN/frozen/reviewer.md" 6000 > "$pf"
   call_json "$round" review reviewer "$pf" "$RUN/frozen/reviewer.schema.json"
-  highs=$(jq '[.findings[]? | select(.severity == "high")] | length' "$f")
-  log "reviewer verdict: $(jq -r .verdict "$f") findings=$(jq '(.findings // []) | length' "$f") blocking=$highs"
-  [ "$highs" -gt 0 ] || return 0
+  blocking=$(jq '[.findings[]? | select(.severity == "high" or .severity == "medium")] | length' "$f")
+  log "reviewer verdict: $(jq -r .verdict "$f") findings=$(jq '(.findings // []) | length' "$f") blocking=$blocking (high or medium)"
+  [ "$blocking" -gt 0 ] || return 0
   if [ "$REVIEW_BLOCKED" = 1 ]; then
     log "the reviewer already blocked once on this ticket; its findings go to the backlog"
     return 0
   fi
   REVIEW_BLOCKED=1
-  jq -r '[.findings[]? | select(.severity == "high")] | .[]
+  # highs before mediums: sort_by(.severity != "high") keys false (high) before true (medium), and jq's sort is stable.
+  jq -r '[.findings[]? | select(.severity == "high" or .severity == "medium")] | sort_by(.severity != "high") | .[]
     | "- " + (.file // "?") + ":" + ((.line // 0) | tostring) + " " + .defect + " Fix: " + .fix' "$f" >> "$RUN/round-$round.fixes"
   return 1
 }
