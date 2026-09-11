@@ -94,7 +94,7 @@ The $116 and 40-percent figures are the video's own unaudited numbers for one bu
 
 ## Transcripts, read in full 2026-09-09
 
-The full transcripts of the three AI LABS videos were fetched on the runner with `youtube-transcript-api` (YouTube rate-limits the Mac) and copied to `.superpowers/lean-v3/research/transcripts/<video id>.txt`, gitignored because the full text is not ours to publish.
+The full transcripts of the three AI LABS videos were fetched on the runner with `youtube-transcript-api` (YouTube rate-limits the Mac) and copied to `.superpowers/transcripts/<video id>.txt`, gitignored because the full text is not ours to publish.
 Line numbers below are lines of those files.
 Everything above this section for the D_uojDHkbw4 video was written from a caption-only read on 2026-09-06 and stands.
 

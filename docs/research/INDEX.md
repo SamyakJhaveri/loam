@@ -17,7 +17,7 @@ The design that rests on this evidence is in `../factory/ARCHITECTURE.md`.
 | `advisor-and-managed-agents.md` | the Claude Code advisor page, the seven cookbook notebooks Samyak named on 2026-09-09, one local advisor probe | `--advisor fable` on the worker call (F11), the specialist shape for the large-ticket workflow (F12), nothing from PTC or tool search |
 | `primary-2026-09-08/` | the same sources read from their live pages, repos, and captions on 2026-09-08, with the fact-check corrections to the notes above | one fresh judge, human-decided checks, no loop inside a loop, remove one component per run and read the ledger (#38) |
 
-The three 2026-09-06 notes are copies of gitignored files under `.superpowers/lean-v3/research/`; F1 deletes the originals.
+The three 2026-09-06 notes were copied from gitignored files under `.superpowers/lean-v3/research/`, deleted 2026-09-11 (archive: loam-lean-v3-archive-2026-09-11.tar.gz on both machines); the video transcripts live on under `.superpowers/transcripts/`.
 Transcripts for the five videos given on 2026-09-07 were unobtainable on that day; `primary-2026-09-08/videos.md` has them, pulled with yt-dlp auto-captions.
 
 ## Resources given, by theme

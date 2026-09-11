@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
 # bin/runner <cmd>   runs <cmd> on the runner from the repo root there.
-# bin/runner sync    mirrors the two gitignored input trees to the runner (#36).
+# bin/runner sync    mirrors the gitignored factory tree to the runner (#36).
 set -euo pipefail
 HOST="${LOOP_HOST:-jhaveris}"
 if [ "${1:-}" = sync ]; then
   cd "$(dirname "$0")/.."
-  for tree in .superpowers/lean-v3 .superpowers/factory; do
+  for tree in .superpowers/factory; do
     rsync -az --delete --exclude __pycache__ --exclude runs "$tree/" "$HOST:Desktop/loam/$tree/"
   done
   exit 0
