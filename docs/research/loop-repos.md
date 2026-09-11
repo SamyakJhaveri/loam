@@ -20,11 +20,12 @@ LongHorizon-Harness is the closest technical fit but sets `bypassPermissions` fo
 
 The supervisor to write instead is small: a bash `while` loop per ticket that runs `claude -p` with `--model` and `--effort` for the worker, runs the ticket's done checks as real commands and reads their exit codes, then invokes a second fresh-context `claude -p` as the Fable 5.1 judge, appending one JSON line per round to a per-ticket run directory.
 Borrow three things.
-Per-role model, agent, and effort resolution from LongHorizon-Harness's `_resolve_role_model` in `cli.py`.
+Per-role model, agent, and effort resolution from LongHorizon-Harness's `_ROLE_OPTIONS` and `_ROLE_PARENTS` table in `cli.py` (an argparse fallback from `--<role>-model` to the global `--model`; there is no `_resolve_role_model` function, corrected 2026-09-11 from a code re-read).
 Correction, 2026-09-10: this landed as the roles block in `bin/factory` (WORKER_MODEL, GRADER_MODEL, WORKER_ADVISOR, and their efforts; see docs/factory/ARCHITECTURE.md, Models and roles).
 The ledger circuit breaker from loop-engineering's `tools/loop-context/src/context-manager.ts`, including its normalized `errorSignature()` trigram comparison to detect a stuck loop.
 Correction, 2026-09-10: the `errorSignature()` trigram comparison itself was not ported; the stuck detection landed as the stuck exit, which stops when the same failing check set repeats twice.
-The lock-guarded daily spend ledger from loop-engineering's `daily-spend.ts`, which gives the dollar cap that none of the runnable candidates provide.
+The lock-guarded daily spend ledger from loop-engineering's `daily-spend.ts`, the shape of a daily cap that none of the runnable candidates provide.
+Correction, 2026-09-11: `daily-spend.ts` tracks tokens (`tokensUsedToday`), not dollars; Loam took the lock-guarded daily-ledger shape and changed the unit to dollars in `ledger-daily.jsonl`.
 That is perhaps two hundred lines of shell and one small state file.
 
 ### Fit table
@@ -55,9 +56,9 @@ Apache-2.0, 163 MB, 3,700 files, hard Node 22.6 requirement.
 
 #### AMAP-ML/LongHorizon-Harness
 
-The closest fit: eight roles each take independent `agent`, `model`, and `reasoning_effort`, resolved through `_resolve_role_model` in `cli.py` and passed as `--model` and `--effort`.
+The closest fit: eight roles each take independent `agent`, `model`, and `reasoning_effort`, resolved through the `_ROLE_OPTIONS` and `_ROLE_PARENTS` fallback table and `_fallback_hint` in `cli.py` and passed as `--model` and `--effort`.
 Disqualified because `adapters/claude_permissions.py` sets `permission_mode="bypassPermissions"` for every role and replaces the native permission layer with a launch-time tool deny-list its own docstring says is not a sandbox.
-Completion is regex over bilingual prose (`parse_role_manager_next_step`, `_AUDIT_HEADER_RE`), there is no token or dollar cap, and `_human_gate` stops an unattended run on `Next: ask`.
+Completion is regex over bilingual prose (`parse_role_manager_next_step` and `_AUDIT_HEADER_RE`, both in `role_prompts.py`), there is no token or dollar cap, and `_human_gate` stops an unattended run on `Next: ask`.
 README benchmark numbers (WeaveBench 51.8 to 80.7, Terminal-Bench 2.1 69.7 to 77.2) were not verified.
 
 #### ray-r-ren/agent-apprenticeship
@@ -72,6 +73,7 @@ Quiet since 2026-07-06.
 A pattern library plus npm CLIs; no code anywhere spawns claude, codex, or an API client, and the only driver is a cron GitHub Action calling deterministic Node scripts.
 Every shipped agent file sets `model: inherit`, so worker and judge are the same model, a hard fail against the Opus 5 worker plus Fable 5.1 judge requirement.
 Its safety posture is the cleanest of the five (path globs in `gate.yaml`, ephemeral worktrees, no hooks, no bypass), and its `context-manager.ts` breaker (defaults: 10 iterations, stagnation 3, frustration 3, no-progress 5, similarity 0.85) and `daily-spend.ts` are the two pieces worth borrowing.
+Re-read 2026-09-11 (code, not README): the frustration trigger (a worker repeating a near-identical action, `context-manager.ts:211-227`) is declined; it needs fuzzy string similarity over worker actions, and `MAX_ROUNDS` plus the round and ticket budgets already bound the waste. Revisit only if a ledger shows rounds lost to action-looping.
 
 #### Forward-Future/loopy
 
@@ -120,8 +122,8 @@ Steal:
 - `CHECK:` and `EXPECT:` gates authored before implementation, because our verify stage currently reads prose acceptance criteria.
 - `ABANDON:` with a mandatory reason that exits non-zero, because three of four Loam loops stalled on exactly the silent-scope-shrink failure this prevents.
 - Parent re-verification, because our loop trusts worker reports today.
-- The gate-honesty checklist as a plan-reviewer rubric, because a gate that cannot fail is worse than no gate.
-- `gate-lint`, because catching a vacuous oracle at authoring time is cheaper than certifying it at report time.
+- The gate-honesty checklist as a plan-reviewer rubric, because a gate that cannot fail is worse than no gate. Decided 2026-09-11: not added to the judge either; round 0 in `bin/factory` is the negative control in code (every non-guard check must fail on base), and a second home for the rule would be a duplicate.
+- `gate-lint`, because catching a vacuous oracle at authoring time is cheaper than certifying it at report time. Decided 2026-09-11: not ported; a constant-output oracle passes on base and round 0 already exits `ticket-defect` on it (F15's first launch was exactly that catch), and a lint cannot tell whether a `guard` line can fail without running it. Revisit if a vacuous check ever reaches a grader.
 - Append-only `status.log` instead of regenerating a plan file, which is a direct token saving.
 
 Reject:
@@ -163,6 +165,10 @@ Steal:
 - The governance whitelist paired with a blacklist, because that is anti-bloat enforced by the harness rather than by prose.
 - `WONTFIX-with-reason` as the only non-fix exit, which is the same rule unlazy reached independently.
 - Frontier-tail resume, one line read to restart, because our manager state is a prose log today.
+
+Re-read 2026-09-11 of `agents/claude/workflow/autoprompt-gate.js` (4,937 lines, read by targeted ranges), the script the 2026-09-07 pass did not open:
+- `groundedVerifyReasons` (gate.js:929-967), an omitted field is never evidence: not ported. Across the 16 judge rounds on the runner to 2026-09-11 no `pass` came back with an empty evidence entry, so there is no observed weakness to bet on; `verdict_consistent` is the place if one appears.
+- `withRetry` (gate.js:1763-1826), transient versus permanent error split for the worker call: not ported. No run has stopped on a transient error; the one `stopped-environment` was a lapsed login, which F20's preflight line now reports before launch.
 
 Reject:
 - The 24-persona hierarchy, which is governance weight for a solo author and repeats identical boilerplate in every file.

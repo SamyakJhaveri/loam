@@ -48,8 +48,6 @@ The run resolves them from the installed plugin cache, falling back to the check
 2. Record the `origin/main` sha as `base.sha`; create the sibling worktree on branch `factory/<issue>` from it; assign the issue to the operator (skipped for a file ticket).
 3. Extract the done-checks block; freeze `bin/factory`, the graders, `lib.sh`, `_common.md`, `role-settings.json`, `worker-settings.json`, the grader schemas, and the body into `frozen/`, owned outside the worker's write scope; the frozen grader prompts keep fixed evidence markers, there is no per-run string (#38).
 4. Round 0: run the block on `base.sha` from the worktree root; every non-guard check must print FAIL, else exit `ticket-defect`.
-   Then one read-only Fable 5.1 low call with the ticket and the check output, answering `{doable, unmeetable:[{check, reason, evidence}]}` through `--json-schema`.
-   Any `unmeetable` entry exits `ticket-defect` with the evidence and pages the owner.
 5. Worker round k: a fresh `claude -p` (`claude-opus-4-8[1m]` xhigh) or a fresh `codex exec` in the worktree with the body, `_common.md`, and from round 2 the failing check lines and every blocking finding verbatim.
    The worker writes code and `decisions.md` only.
    Every round is a fresh process for either worker; there is no fixer role.
@@ -64,7 +62,7 @@ The run resolves them from the installed plugin cache, falling back to the check
 | `pr-opened` | checks and graders pass, or the grader-round cap reached with a backlog | yes |
 | `no-change` | HEAD and `decisions.md` are both unchanged since the previous round | yes |
 | `stuck` | the same failing check set twice in a row | yes |
-| `ticket-defect` | round 0 found a check that passes on base or an unmeetable check | no |
+| `ticket-defect` | round 0 found a check that passes on base | no |
 | `abandon` | an `ABANDON NAME reason` line in `decisions.md`; the owner is paged | yes |
 | `stopped-environment` | a `claude` result subtype other than `success`, a Codex exit other than 0 or no `turn.completed` event, a `gh` or `git` failure, or a frozen-set hash mismatch | no, and it pages at once |
 | `stopped-cap` | `MAX_ROUNDS`, `TICKET_BUDGET_USD`, `DAILY_BUDGET_USD`, or `MAX_HOURS` reached | yes |

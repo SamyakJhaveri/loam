@@ -128,14 +128,14 @@ Verified against `main` 8305c9a on 2026-09-11 by reading the files named.
 
 | Resource | Use | Where in Loam |
 |---|---|---|
-| Claude Code advisor doc | code | `--advisor fable` on the worker call, the env guard, the ledger fields `advisor_calls` and `advisor_usd` (`bin/factory`, F11) |
+| Claude Code advisor doc | code | `--advisor fable` on the worker call, the env guard, the ledger fields `advisor_calls` and `advisor_usd` (`bin/factory`, F11); of its three consult moments the worker contract names the first, F24 adds the recurring-failure one, and the consult-before-done one is rejected on cost |
 | Managed Agents consult-an-advisor cookbook | code | the consultation policy paragraph in `bin/factory.d/_common.md` is the cookbook worker prompt with Loam's decisions named |
 | Managed Agents coordinate-specialist-team cookbook | shape | one objective, one owned input set, one JSON hand-back per task in `bin/factory.d/factory-round.js` (F12) |
 | Leonxlnx/unlazy (`scripts/lib/gates.mjs`, MIT) | code | `globsOverlap` and `normalizeOwnsGlob` ported with attribution into `factory-round.js`; the parent re-verifies every check (the integrator reruns each task's check); ABANDON with a reason as the only non-fix exit (`_common.md`, `LOOP.md`) |
 | disler/super-simple-software-factory (README essay, no code) | shape | `verdict_consistent` in `bin/factory` with its fixture gate in `bin/check` (F13); the four-line brief form in `CONTRACT.md`, moving to the `/brief` skill (F5); "a known command is code" as the rule that every done check is a shell line the supervisor runs |
-| Anthropic, harness design and effective harnesses | shape | fresh-context judge and reviewer on a different model from the worker, frozen prompts, the worker never grades itself (`LOOP.md`, `ARCHITECTURE.md` design rules) |
+| Anthropic, harness design and effective harnesses | shape | harness design: fresh-context judge and reviewer on a different model from the worker, frozen prompts, the worker never grades itself (`LOOP.md`, `ARCHITECTURE.md` design rules); effective harnesses: the feature list that starts `passes: false` is the done-checks block that must print FAIL on base (round 0) |
 | Anthropic, multi-agent research system | read | the fan-out caps at four tasks and ships behind a flag with a ledger line because "most coding tasks involve fewer truly parallelizable tasks" and multi-agent costs about 15x (F12 Goal) |
-| AI-native SDLC playbook | shape | the review ceiling of four parallel streams; tracks by blast radius in `CONTRACT.md` |
+| AI-native SDLC playbook | shape | the review ceiling is how many streams one person can review properly (the playbook suggests two or three to start; the fan-out cap of four is Loam's own number, inside multi-agent research's three to five); tracks by blast radius in `CONTRACT.md` |
 | AI LABS, Every Level video | shape | the level-two loop is the factory's shape: queue row, build agent on a branch, adversarial reviewer with fresh context, human merge |
 | AI LABS, gauntlet loop video | shape | the answer key "where every line comes back as either a pass or a fail" is the done-checks block; the fixed grader prompt the planner cannot write is the frozen judge and reviewer files |
 | AI LABS, Unlazy walkthrough | shape | pending evidence counts as unmet; the owned-files rule for parallel builders; the integrator reruns checks instead of trusting reports (F12) |
@@ -148,8 +148,8 @@ Verified against `main` 8305c9a on 2026-09-11 by reading the files named.
 | Codex plugin (openai-codex) | code | `bin/factory.d/review-output.schema.json` is the plugin's schema, byte-identical; the Codex worker and review calls (F4, F17) |
 | AMAP-ML/LongHorizon-Harness | shape | per-role model and effort resolution is the roles block in `bin/factory` |
 | cobusgreyling/loop-engineering | shape | stuck detection is the `stuck` exit (same failing set twice); the daily spend ledger is `ledger-daily.jsonl` |
-| anthropics/cwc-long-running-agents | shape | the fresh-context evaluator with no write tools is the grader call with `--tools Read,Grep,Glob`; license unstated, nothing copied |
-| huangruiteng/loopx, ray-r-ren/agent-apprenticeship, Forward-Future/loopy, Spielewoy/autoprompt-skill, chenxiachan/thoughtdag | read | evaluated in `loop-repos.md`; nothing taken; autoprompt and thoughtdag are noted for a later reprompt stage and the graph goal |
+| anthropics/cwc-long-running-agents | shape | the fresh-context evaluator with no write tools is the grader call with `--tools Read,Grep,Glob`; Apache-2.0; about eleven rules taken into `anthropic-engineering.md`, no code copied; its two `matcher: "*"` hooks rejected |
+| huangruiteng/loopx, ray-r-ren/agent-apprenticeship, Forward-Future/loopy, Spielewoy/autoprompt-skill, chenxiachan/thoughtdag | read | evaluated in `loop-repos.md`, re-read at the code level 2026-09-11 (autoprompt's `autoprompt-gate.js` included); nothing taken, each rejection with its reason there |
 | PTC and tool-search cookbooks | read | API betas with no CLI form; the Bash tool and native ToolSearch are the equivalents, so nothing was built |
 | Dynamic workflows and async orchestration cookbooks | read | the Workflow tool and `parallel()` are the CLI forms used by F12 |
 | nvidia/skillspector | unused | named as the vetting gate for every external skill; never installed; the 2026-09-01 skill clusters are still unvetted |
