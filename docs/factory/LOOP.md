@@ -166,7 +166,7 @@ The worker runs with `--setting-sources user`, which loads `~/.claude/skills/` a
 Each run has its own worktree, branch, and run directory, so unblocked tickets may run at the same time.
 Two tickets may run together only when neither names a path the other's Goal creates or rewrites; the stage-2 grader pass checks this over a breakdown, and native blocking edges hold the rest apart.
 The daily ledger is written under a lock.
-`bin/factory next` launches up to `MAX_PARALLEL` runs (default 1; raise it after two clean single runs).
+`bin/factory next` launches up to `MAX_PARALLEL` runs (default 1; raise it after two clean single runs, as `status` reports them).
 
 ## Notify
 
@@ -177,6 +177,7 @@ Events: run started, `pr-opened` with the URL, every other exit, checks failing 
 ## Status and the manager
 
 `bin/factory status` renders, per run: status, rounds, spend, wall time, first failing grader, permission denials per round (from the worker stream-json), `notify.failed`, and a worktree and PR readiness table.
+It also shows a `clean` column (D09 Option A): `yes` when the run reached `pr-opened` with zero grader-fail rounds and no other exit on the way, `no` when it reached `pr-opened` some other way (an earlier exit, or a round that queued fixes), and `-` for a run not yet at `pr-opened`.
 It also checks the preconditions below.
 The manager is a Fable session that runs `status`, merges, and writes one learn line when the same first-failing grader appears in two consecutive runs.
 After F9, `bin/factory next` on a ten-minute runner timer launches the next frontier ticket after each merge; removing the `ready-for-agent` label parks a ticket, and `FACTORY_STOP` at the runs root pauses the timer.

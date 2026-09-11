@@ -1,10 +1,11 @@
 #!/usr/bin/env bash
-# bin/factory - factory tooling. Subcommands: lint, eval, run, status, stop.
+# bin/factory - factory tooling. Subcommands: lint, eval, run, status, stop, next.
 #   bin/factory lint <file|issue>   statically checks a ticket body against docs/factory/CONTRACT.md.
 #   bin/factory eval <grader>       replays the frozen evals/ cases through the production grader call.
 #   bin/factory run <issue|file>    the supervisor: one ticket to a pull request (docs/factory/LOOP.md).
 #   bin/factory status              run states, spend, denials, worktrees, PRs, preconditions.
 #   bin/factory stop <issue>        writes FACTORY_STOP into the run dir; the run halts before its next call.
+#   bin/factory next [--install]    the F9 frontier timer's step: launch the next unblocked ready-for-agent ticket.
 # Lint never executes a check; it reads the body and shells out only to `bash -n` and `gh`.
 set -uo pipefail
 
@@ -1169,10 +1170,99 @@ cmd_stop() { # <issue|stem>
   [ "$n" -gt 0 ] || { echo "factory stop: no run directory under $RUNS_ROOT/$1" >&2; return 1; }
 }
 
+# The F9 frontier timer's one step: launch the next unblocked ready-for-agent ticket, or say why not.
+# --dry-run reports without launching or pulling, so a check can run it from inside a worktree.
+# --install writes the ten-minute runner timer from bin/factory.d/next.crontab.
+cmd_next() { # [--dry-run|--install]
+  local dry=0 do_install=0 a
+  for a in "$@"; do
+    case "$a" in
+      --dry-run) dry=1 ;;
+      --install) do_install=1 ;;
+      *)         usage next ;;
+    esac
+  done
+
+  if [ "$do_install" = 1 ]; then
+    local tmpl="$ROOT/bin/factory.d/next.crontab"
+    [ -f "$tmpl" ] || { echo "factory next --install: no template at $tmpl" >&2; return 1; }
+    command -v crontab > /dev/null 2>&1 || { echo "factory next --install: crontab not found" >&2; return 1; }
+    ( crontab -l 2> /dev/null | grep -vF 'bin/factory next'; cat "$tmpl" ) | crontab -
+    echo "installed: $(grep -v '^#' "$tmpl" | grep -m1 .)"
+    return 0
+  fi
+
+  # 1. FACTORY_STOP at the runs root pauses the timer.
+  if [ -f "$RUNS_ROOT/FACTORY_STOP" ]; then
+    echo paused
+    return 0
+  fi
+
+  # 2. A run whose status is running or waiting-limit holds a slot (assert_parallel's rule).
+  local d st n=0
+  for d in "$RUNS_ROOT"/*/*/; do
+    [ -f "$d/status" ] || continue
+    st=$(cat "$d/status")
+    [ "$st" = running ] || [ "$st" = waiting-limit ] || continue
+    n=$((n + 1))
+  done
+  if [ "$n" -ge "$MAX_PARALLEL" ]; then
+    echo "nothing to launch"
+    return 0
+  fi
+
+  # 3. Fast-forward the checkout next runs from, so a merged loop change reaches the supervisor
+  #    (freeze copies bin/factory from here) before the launch. Never under --dry-run, and only
+  #    with a clean tree, since a dirty tree would abort the --ff-only merge mid-launch.
+  if [ "$dry" = 0 ]; then
+    if [ -z "$(git -C "$ROOT" status --porcelain 2> /dev/null)" ]; then
+      git -C "$ROOT" fetch -q origin 2> /dev/null && git -C "$ROOT" merge --ff-only origin/main > /dev/null 2>&1 || true
+    else
+      log "refused pull: dirty checkout"
+    fi
+  fi
+
+  # 4. The frontier: open, ready-for-agent, unassigned issues with no open native blocker, lowest
+  #    number first. A gh failure (offline, unauthenticated) yields no candidate, not an error.
+  local repo ready num
+  repo=$(gh repo view --json nameWithOwner -q .nameWithOwner 2> /dev/null)
+  ready=$(gh api "repos/$repo/issues?labels=ready-for-agent&state=open&assignee=none&per_page=100" \
+    --jq 'sort_by(.number)[] | select(.pull_request == null) | select((.issue_dependencies_summary.blocked_by // 0) == 0) | .number' 2> /dev/null)
+
+  # A ticket whose PR is open but unmerged keeps its label and stays unassigned (open_pr does
+  # neither), so skip any issue with a run dir already at pr-opened, or the timer would relaunch it.
+  local pick="" rd skip
+  for num in $ready; do
+    skip=0
+    for rd in "$RUNS_ROOT/$num"/*/; do
+      [ -f "$rd/status" ] || continue
+      [ "$(cat "$rd/status")" = pr-opened ] && { skip=1; break; }
+    done
+    [ "$skip" = 0 ] && { pick="$num"; break; }
+  done
+
+  if [ -z "$pick" ]; then
+    echo "nothing to launch"
+    return 0
+  fi
+  if [ "$dry" = 1 ]; then
+    echo "would launch #$pick"
+    return 0
+  fi
+
+  # Launch bin/factory run <N> detached in one tmux session per issue, output appended to the runs root.
+  if tmux has-session -t "loam-$pick" 2> /dev/null; then
+    echo "nothing to launch"
+    return 0
+  fi
+  tmux new-session -d -s "loam-$pick" "cd '$ROOT' && bin/factory run $pick >> '$RUNS_ROOT/$pick.tmux.log' 2>&1"
+  echo "launched #$pick"
+}
+
 cmd_status() {
-  local d led st rounds spend wall den grader notes
-  printf '%-14s %-9s %-20s %6s %8s %6s %8s %-22s %s\n' \
-    ticket sha8 status rounds spend wall denials first-failing-grader notes
+  local d led st rounds spend wall den grader clean notes
+  printf '%-14s %-9s %-20s %6s %8s %6s %8s %-22s %-5s %s\n' \
+    ticket sha8 status rounds spend wall denials first-failing-grader clean notes
   for d in "$RUNS_ROOT"/*/*/; do
     [ -f "$d/status" ] || continue
     led="$d/ledger.jsonl"
@@ -1182,11 +1272,12 @@ cmd_status() {
     wall=$(( ( $(date -u +%s) - $(cat "$d/started" 2> /dev/null || date -u +%s) ) / 60 ))
     den=$(jq -s '[.[].denials // 0] | add // 0' "$led" 2> /dev/null || echo 0)
     grader=$(grader_first_fail "$d")
+    clean=$(run_clean "$d")
     notes=""
     [ -f "$d/notify.failed" ] && notes="notify.failed"
     [ -f "$d/FACTORY_STOP" ] && notes="$notes FACTORY_STOP"
-    printf '%-14s %-9s %-20s %6s %8s %5sm %8s %-22s %s\n' \
-      "$(basename "$(dirname "$d")")" "$(basename "$d")" "$st" "$rounds" "$spend" "$wall" "$den" "${grader:--}" "$notes"
+    printf '%-14s %-9s %-20s %6s %8s %5sm %8s %-22s %-5s %s\n' \
+      "$(basename "$(dirname "$d")")" "$(basename "$d")" "$st" "$rounds" "$spend" "$wall" "$den" "${grader:--}" "$clean" "$notes"
   done
   printf '\n== worktrees and PRs\n'
   git -C "$MAIN_CHECKOUT" worktree list 2> /dev/null | sed 's/^/  /'
@@ -1205,6 +1296,23 @@ grader_first_fail() { # run dir -> the first grader item that failed in the last
   [ -n "$r" ] || r=$(jq -r 'first(.findings[]? | select(.severity == "high") | "review:" + (.file // "?")) // empty' \
     "${j%judge.json}review.json" 2> /dev/null)
   printf '%s' "$r"
+}
+
+# run_clean: yes|no|- for the status clean column (D09 Option A). A run is clean when it reached
+# pr-opened with zero grader-fail rounds and no other exit on the way; a hand fix after pr-opened
+# does not change it. From the run dir: status is pr-opened, the only EXIT line in factory.log is
+# pr-opened, and every round-<k>.fixes for k>=1 is empty (a grader that fails or blocks queues fixes
+# there). `-` marks a run not yet at pr-opened.
+run_clean() { # run dir -> yes|no|-
+  local d="$1" f
+  [ "$(cat "$d/status" 2> /dev/null)" = pr-opened ] || { printf -- '-'; return; }
+  grep -h ' EXIT ' "$d/factory.log" 2> /dev/null | grep -vq ' EXIT pr-opened ' && { printf 'no'; return; }
+  for f in "$d"/round-*.fixes; do
+    [ -e "$f" ] || continue
+    case "$f" in */round-0.fixes) continue ;; esac
+    [ -s "$f" ] && { printf 'no'; return; }
+  done
+  printf 'yes'
 }
 
 precondition_lines() { # LOOP.md, Preconditions
@@ -1279,16 +1387,17 @@ precondition_lines() { # LOOP.md, Preconditions
     || echo "  INFO no pushover.env; notifications comment on the ticket"
 }
 
-usage() { # [cmd...] - one line per named command, all five when none is named
+usage() { # [cmd...] - one line per named command, all six when none is named
   local c
-  for c in ${@:-lint eval run status stop}; do
+  for c in ${@:-lint eval run status stop next}; do
     case "$c" in
       lint)   echo "usage: bin/factory lint <file|issue>" ;;
       eval)   echo "usage: bin/factory eval <grader> [--evals-dir D] [--graders-dir D] [--model M]" ;;
       run)    echo "usage: bin/factory run <issue|ticket-file>" ;;
       status) echo "usage: bin/factory status" ;;
       stop)   echo "usage: bin/factory stop <issue|ticket-stem>" ;;
-      *)      echo "usage: bin/factory <lint|eval|run|status|stop>" ;;
+      next)   echo "usage: bin/factory next [--dry-run|--install]" ;;
+      *)      echo "usage: bin/factory <lint|eval|run|status|stop|next>" ;;
     esac
   done >&2
   exit 2
@@ -1322,5 +1431,6 @@ case "$CMD" in
           cmd_status ;;
   stop)   [ $# -eq 1 ] || usage stop
           cmd_stop "$1" ;;
+  next)   cmd_next "$@" ;;
   *)      usage ;;
 esac
