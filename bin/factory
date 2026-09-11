@@ -1189,8 +1189,12 @@ cmd_next() { # [--dry-run|--install]
     command -v crontab > /dev/null 2>&1 || { echo "factory next --install: crontab not found" >&2; return 1; }
     # Install the cron line only (the comments would accumulate on reinstall); grep -vF strips the
     # prior copy so the result is idempotent.
-    ( crontab -l 2> /dev/null | grep -vF 'bin/factory next'; grep -v '^#' "$tmpl" ) | crontab -
-    echo "installed: $(grep -v '^#' "$tmpl" | grep -m1 .)"
+    # The template names ~/Desktop/loam; the installed line names the checkout that ran --install.
+    local line
+    line=$(grep -v '^#' "$tmpl" | grep -m1 . | sed "s|cd ~/Desktop/loam|cd $ROOT|")
+    ( crontab -l 2> /dev/null | grep -vF 'bin/factory next'; printf '%s\n' "$line" ) | crontab - \
+      || { echo "factory next --install: crontab rejected the update" >&2; return 1; }
+    echo "installed: $line"
     return 0
   fi
 
@@ -1200,12 +1204,18 @@ cmd_next() { # [--dry-run|--install]
     return 0
   fi
 
-  # 2. A run whose status is running or waiting-limit holds a slot (assert_parallel's rule).
+  # 2. A run whose status is running or waiting-limit holds a slot (assert_parallel's rule), and so
+  #    does a pr-opened run whose ticket worktree still exists: the merge ritual removes the worktree,
+  #    so until then the PR awaits merge and the next ticket waits (LOOP.md: after each merge).
   #    FACTORY_MAX_PARALLEL bounds the count, as it does in cmd_run through apply_caps; default 1.
   local d st n=0 max="${FACTORY_MAX_PARALLEL:-$MAX_PARALLEL}"
   for d in "$RUNS_ROOT"/*/*/; do
     [ -f "$d/status" ] || continue
     st=$(cat "$d/status")
+    if [ "$st" = pr-opened ]; then
+      [ -d "$MAIN_CHECKOUT-$(basename "$(dirname "$d")")" ] && n=$((n + 1))
+      continue
+    fi
     [ "$st" = running ] || [ "$st" = waiting-limit ] || continue
     n=$((n + 1))
   done
@@ -1220,7 +1230,9 @@ cmd_next() { # [--dry-run|--install]
   #    A refused pull is logged (log writes to stderr, which cron mails) and never aborts the launch:
   #    the run proceeds on the stale checkout, with the cause on record.
   if [ "$dry" = 0 ]; then
-    if [ -n "$(git -C "$ROOT" status --porcelain 2> /dev/null)" ]; then
+    if [ "$(git -C "$ROOT" rev-parse --abbrev-ref HEAD 2> /dev/null)" != main ]; then
+      log "refused pull: not on main"
+    elif [ -n "$(git -C "$ROOT" status --porcelain 2> /dev/null)" ]; then
       log "refused pull: dirty checkout"
     elif ! git -C "$ROOT" fetch -q origin 2> /dev/null; then
       log "refused pull: git fetch origin failed"
@@ -1245,16 +1257,24 @@ cmd_next() { # [--dry-run|--install]
     return 1
   fi
 
-  # A ticket whose PR is open but unmerged keeps its label and stays unassigned (open_pr does
-  # neither), so skip any issue with a run dir already at pr-opened, or the timer would relaunch it.
-  local pick="" rd skip
+  # An issue's newest run dir (by launch time) decides: no run dir launches; stopped-environment and
+  # stopped relaunch (the environment, not the ticket, ended them); every other exit parks the issue
+  # until a human edits the body or removes the label, since the same body would fail the same way.
+  # A ticket at pr-opened is assigned at launch, so it is not in the frontier; if a human unassigns
+  # it, its slot is already counted above while its worktree exists.
+  local pick="" rd newest st_last
   for num in $ready; do
-    skip=0
+    newest=""
     for rd in "$RUNS_ROOT/$num"/*/; do
       [ -f "$rd/status" ] || continue
-      [ "$(cat "$rd/status")" = pr-opened ] && { skip=1; break; }
+      [ -z "$newest" ] || [ "$(cat "$rd/launched" 2> /dev/null || echo 0)" -gt "$(cat "$newest/launched" 2> /dev/null || echo 0)" ] && newest="$rd"
     done
-    [ "$skip" = 0 ] && { pick="$num"; break; }
+    st_last=$(cat "$newest/status" 2> /dev/null || echo none)
+    case "$st_last" in
+      none|stopped-environment|stopped) [ -n "$pick" ] || pick="$num" ;;
+      pr-opened) ;;
+      *) echo "parked #$num: last run exited $st_last; edit the body or remove ready-for-agent" >&2 ;;
+    esac
   done
 
   if [ -z "$pick" ]; then
