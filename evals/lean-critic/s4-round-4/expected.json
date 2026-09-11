@@ -1,4 +1,0 @@
-{
-  "source": "lean-v3 run S4 round 4 lean-critic",
-  "verdict": "merge"
-}
