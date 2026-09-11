@@ -240,7 +240,7 @@ grader_rubric() {
 
 run_eval() {
   local grader="$1" budget="${EVAL_BUDGET_USD:-10}" gf schema rubric dir name out res exp got erows grows
-  local spent=0 cases=0 mism=0 ok attempt
+  local spent=0 cases=0 mism=0 ok attempt eline
   gf=$(grader_file "$grader") || return 2
   schema=$(schema_for "$grader" 2> /dev/null)
   [ -n "$schema" ] || { echo "eval: no bin/factory.d/$grader.schema.json" >&2; return 2; }
@@ -269,6 +269,21 @@ run_eval() {
         --setting-sources user --output-format json 2>/dev/null)
       spent=$(awk -v a="$spent" -v b="$(jq -r "$RESULT_OBJ | .total_cost_usd // 0" <<<"$out" 2>/dev/null)" \
         'BEGIN {printf "%.4f", a + (b + 0)}')
+      # When a run's measure step drives this eval (FACTORY_LEDGER is set), book each reply's cost to
+      # that run's ledger and daily ledger, so the ticket and daily caps see it (#76). A stand-alone
+      # eval has no FACTORY_LEDGER and books nothing. run_eval is a child process with its own globals,
+      # so it cannot call record; it writes the two line shapes record writes, itself.
+      if [ -n "${FACTORY_LEDGER:-}" ]; then
+        eline=$(jq -c --argjson round "${FACTORY_ROUND:-0}" --arg role eval --arg model "$EVAL_MODEL" --arg ts "$(now)" \
+          "$RESULT_OBJ | {round:\$round, role:\$role, model:\$model, cost_usd:(.total_cost_usd // 0), \
+duration_ms:(.duration_ms // 0), num_turns:(.num_turns // 0), denials:0, subtype:(.subtype // \"unknown\"), ts:\$ts}" \
+          <<<"$out" 2>/dev/null)
+        [ -n "$eline" ] || eline=$(jq -nc --argjson round "${FACTORY_ROUND:-0}" --arg role eval --arg model "$EVAL_MODEL" --arg ts "$(now)" \
+          '{round:$round, role:$role, model:$model, cost_usd:0, duration_ms:0, num_turns:0, denials:0, subtype:"unknown", ts:$ts}')
+        printf '%s\n' "$eline" >> "$FACTORY_LEDGER"
+        [ -z "${FACTORY_DAILY:-}" ] || printf '%s' "$eline" | jq -c --arg date "$(today)" --arg ticket "${FACTORY_KEY:-}" \
+          '{date:$date, ticket:$ticket, role:.role, cost_usd:.cost_usd}' >> "$FACTORY_DAILY"
+      fi
       res=$(jq -r "$RESULT_OBJ | .result // \"\"" <<<"$out" 2>/dev/null)
       # Fallback: if a reply still carries code fences or prose around the object, the object runs
       # from the first brace to the last, so cut to those before parsing the verdict.
@@ -832,13 +847,17 @@ do_not_touch_hits() { # -> the changed paths the ticket fenced off
 
 measure_rows() { # round; Rows measured is `<row>: <command> | <baseline>` per line (CONTRACT.md)
   local out="$RUN/round-$1.measure" line row rest
+  # The row's command runs with the run's ledger, daily ledger, ticket key, and round in its environment
+  # only, so a `bin/factory eval` row books its cost to this run (#76) and no later child of the
+  # supervisor inherits a stale round; run_eval reads these four names, mirroring apply_caps's FACTORY_<NAME>.
+  local env=(FACTORY_LEDGER="$LEDGER" FACTORY_DAILY="$DAILY" FACTORY_KEY="$KEY" FACTORY_ROUND="$1")
   : > "$out"
   while IFS= read -r line; do
     line=${line#- }
     [ -n "${line//[[:space:]]/}" ] || continue
     row=${line%%:*}; rest=${line#*:}
     printf 'MEASURE %s %s (baseline %s)\n' "$row" \
-      "$( cd "$WORKTREE" && eval "${rest%%|*}" 2>&1 | tail -1 )" "$(printf '%s' "${rest#*|}" | tr -d ' ')" \
+      "$( cd "$WORKTREE" && export "${env[@]}" && eval "${rest%%|*}" 2>&1 | tail -1 )" "$(printf '%s' "${rest#*|}" | tr -d ' ')" \
       | tee -a "$out" >&2
   done <<< "$(section "Rows measured")"
 }
