@@ -37,8 +37,8 @@ case "$cmd" in
     [ -f "$dir/$name.token" ] || { echo "no stored token for '$name'; run: bin/claude-account set $name" >&2; exit 1; }
     t=$(cat "$dir/$name.token")
     # Separate steps so set -e aborts before `active` is written if the jq write fails, and the switch
-    # a caller logs can never outrun the settings file. Keep the spaces in the jq filter: the merge grep
-    # for `CLAUDE_CODE_OAUTH_TOKEN=` must stay clean.
+    # a caller logs can never outrun the settings file. Keep the spaces around `=` in the jq filter so the
+    # merge grep for an assignment of the token env var finds no hit here.
     tmp=$(mktemp "$f.XXXXXX")
     jq --arg t "$t" '.env.CLAUDE_CODE_OAUTH_TOKEN = $t' "$f" > "$tmp"
     mv "$tmp" "$f"

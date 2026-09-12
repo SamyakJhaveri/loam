@@ -71,7 +71,10 @@ The run resolves them from the installed plugin cache, falling back to the check
 
 Exit code, `status`, and the final log line are decided together and cannot disagree.
 These read loop-control files to decide exit, never safety; safety stays with deny rules, the sandbox, git, and CI.
-A usage-limit reply (`hit your session limit`, `reached your Fable limit`) is neither an exit nor a round: the supervisor writes `waiting-limit` to `status`, sleeps until the reset time the reply names or twenty minutes when it names none, then repeats the same call; a reset past `MAX_HOURS` exits `stopped-environment`.
+A usage-limit reply (`hit your session limit`, `reached your Fable limit`) is neither an exit nor a round.
+Usage limits are per account, so the supervisor first switches to the other stored account through `bin/claude-account` and retries the same call at once.
+It sleeps only when no other account exists or a switch already happened in the last five minutes; then it writes `waiting-limit` to `status`, sleeps until the reset time the reply names or twenty minutes when it names none, and repeats the same call.
+A reset past `MAX_HOURS` exits `stopped-environment`.
 A call with no result event (killed by `CALL_TIMEOUT_SEC`, or crashed) exits `stopped-environment` and counts no round.
 
 ## Caps
@@ -202,6 +205,7 @@ Each new grader agent costs about 200 always-on tokens in every session of every
 
 - The runner is Ubuntu with `claude`, `codex`, `gh` (logged in), `uv`, `git`, `jq`, `python3`, coreutils `timeout`, `tmux`, and `socat` on a login-shell PATH; ssh commands use `bash -lc`.
 - `claude auth status` reports `loggedIn: true` on the runner; `claude` on PATH is not `claude` logged in, so a logged-out Claude fails every worker call while `status` still shows it on PATH, and `bin/factory status` prints `FAIL claude login` (#78). `bin/factory next` refuses to launch on the same probe: a logged-out runner makes it print `login expired` on stderr and exit 1 before it queries the frontier.
+- `bin/claude-account status` names an active account and at least one other stored account on the runner when the usage-limit switch is wanted; with a single stored account the loop sleeps through a usage limit as before.
 - `gh api rate_limit` succeeds on the seat that runs stages 0, 1, 2, and 5 (F0 fixes the Mac).
 - `grill-with-docs`, `wayfinder`, and `to-tickets` are invocable on that seat.
 - `codex login status` succeeds when any ticket uses Codex.

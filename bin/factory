@@ -615,12 +615,34 @@ else empty end" "$2" 2> /dev/null) || e=""
   [ -z "$e" ] || finish stopped-environment "the $1 call failed before doing work: $e"
 }
 
+# Usage limits are per account, so on a limit reply switch to the other stored account and retry at once,
+# rather than idling this run while the other account sits unused. bin/claude-account owns the token files
+# and the settings env channel; one switch per limit event, then a five-minute cooldown sends any further
+# limit down the sleep path (both accounts are limited when a second reply lands within seconds). No token
+# value ever reaches the log or the ledger: the switcher prints names only and the ledger line names only.
+limit_switch() { # -> 0 after switching accounts, 1 when there is no other account or a switch is on cooldown
+  local to from last
+  to=$("$ROOT/bin/claude-account" other 2> /dev/null) || return 1
+  if [ -f "$RUN/limit-switch" ]; then
+    last=$(cat "$RUN/limit-switch" 2> /dev/null) || last=""
+    [ -n "$last" ] && [ "$(( $(date +%s) - last ))" -lt 300 ] && return 1
+  fi
+  from=$("$ROOT/bin/claude-account" status 2> /dev/null | sed -n 's/^active: \([^;]*\);.*/\1/p')
+  "$ROOT/bin/claude-account" use "$to" > /dev/null 2>&1 || return 1
+  date +%s > "$RUN/limit-switch"
+  log "usage limit: switched account ${from:-none} -> $to; retrying the call"
+  printf '{"ts":"%s","event":"limit-switch","from":"%s","to":"%s"}\n' "$(now)" "${from:-none}" "$to" >> "$LEDGER"
+  return 0
+}
+
 # A usage-limit reply names its reset ("You've hit your session limit - resets 1:30pm (America/Los_Angeles)").
-# Waiting for it is loop behavior, not a round: sleep to the reset, or 20 minutes, then repeat the same call.
+# Waiting for it is loop behavior, not a round: switch accounts and retry at once, or sleep to the reset, or
+# 20 minutes, then repeat the same call.
 limit_wait() { # result.json -> 0 after waiting, 1 when the reply is not a usage limit
   local e t tz at left secs=1200
   e=$(jq -r "$RESULT_OBJ | if .is_error == true then (.result // \"\") else empty end" "$1" 2> /dev/null) || e=""
   grep -qiE '(hit|reached) your .*limit' <<< "$e" || return 1
+  limit_switch && return 0
   t=$(grep -oiE 'resets? [0-9]{1,2}(:[0-9]{2})? ?[ap]m' <<< "$e" | head -1 | sed -E 's/^[Rr]esets? //')
   tz=$(grep -oE '\([A-Za-z_]+/[A-Za-z_]+\)' <<< "$e" | head -1 | tr -d '()')
   if [ -n "$t" ] && at=$(TZ="${tz:-UTC}" date -d "$t" +%s 2> /dev/null); then
