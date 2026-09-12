@@ -1224,6 +1224,17 @@ cmd_next() { # [--dry-run|--install]
     return 0
   fi
 
+  # 1b. A logged-out Claude fails every worker call (#78), so the timer refuses to launch rather than
+  #     assign the ticket, run round 0, and page the owner when the first call fails. The probe is
+  #     read-only and shared with precondition_lines; it runs under --dry-run too, since a check from
+  #     inside a worktree may run it. The line goes to stderr (cron mails it) and returns 1, the same
+  #     shape as `frontier query failed`; the ticket stays unassigned and launches on the first tick
+  #     after the login returns.
+  if ! claude_logged_in; then
+    echo "login expired: claude auth status reports logged out; run claude login on the runner" >&2
+    return 1
+  fi
+
   # 2. A run whose status is running or waiting-limit holds a slot (assert_parallel's rule), and so
   #    does a pr-opened run whose ticket worktree still exists: the merge ritual removes the worktree,
   #    so until then the PR awaits merge and the next ticket waits (LOOP.md: after each merge).
@@ -1378,14 +1389,19 @@ run_clean() { # run dir -> yes|no|-
   printf 'yes'
 }
 
+# claude on PATH is not claude logged in: a logged-out Claude fails every worker call while claude
+# stays on PATH (#78). claude auth status prints JSON with a loggedIn boolean and exits 0 either way.
+# One probe, shared by precondition_lines (its PASS/FAIL line) and cmd_next (its launch gate).
+claude_logged_in() {
+  claude auth status 2> /dev/null | jq -e '.loggedIn' > /dev/null 2>&1
+}
+
 precondition_lines() { # LOOP.md, Preconditions
   local t
   for t in claude gh git jq python3 uv tmux timeout socat node; do
     command -v "$t" > /dev/null 2>&1 && echo "  PASS $t on PATH" || echo "  FAIL $t not on PATH"
   done
-  # claude on PATH is not claude logged in: a logged-out Claude fails every worker call while claude
-  # stays on PATH (#78). claude auth status prints JSON with a loggedIn boolean and exits 0 either way.
-  if claude auth status 2> /dev/null | jq -e '.loggedIn' > /dev/null 2>&1; then
+  if claude_logged_in; then
     echo "  PASS claude login"
   else
     echo "  FAIL claude login: claude auth status reports logged out; run claude login on the runner"
