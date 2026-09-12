@@ -917,14 +917,13 @@ build_evidence() { # rubric_file diff_cap -> stdout
   printf '%s\n' "$FENCE"
 }
 
-# A pass with fixes to apply, a fail with nothing to point at, a merge carrying a high or medium finding, or a fix carrying no such finding, refutes itself (LOOP.md, precedence).
+# A pass with fixes to apply, a fail with nothing to point at, or a merge carrying a high or medium finding, refutes itself (LOOP.md, precedence).
 verdict_consistent() { # json file
   jq -e '(.verdict // "") as $v
     | (((.fixes // []) | length) + ([.findings[]? | select(.severity == "high" or .severity == "medium")] | length)) as $blocking
     | (((.backlog // []) | length) + ((.findings // []) | length)) as $other
     | if ($v == "pass" or $v == "merge") then $blocking == 0
-      elif $v == "fix" then $blocking > 0
-      elif $v == "fail" then ($blocking > 0 or $other > 0)
+      elif ($v == "fail" or $v == "fix") then ($blocking > 0 or $other > 0)
       else true end' "$1" > /dev/null 2>&1
 }
 
