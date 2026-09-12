@@ -1,7 +1,8 @@
 // factory-round.js - the F12 fan-out workflow for one `size: large` ticket's round 1:
-// one Fable-checked plan, two to four Opus builders on disjoint files, one Opus
-// integrator that reruns every check and commits. Run by the worker via the Workflow
-// tool; every agent is pinned to the worker model by CLAUDE_CODE_SUBAGENT_MODEL.
+// one plan on the worker model (the only check on the split is firstOverlap), two to
+// four Opus builders on disjoint files, one Opus integrator that reruns every check and
+// commits. Run by the worker via the Workflow tool; every agent is pinned to the worker
+// model by CLAUDE_CODE_SUBAGENT_MODEL.
 //
 // globsOverlap and normalizeOwnsGlob below are ported from Leonxlnx/unlazy
 // (scripts/lib/gates.mjs), MIT License, Copyright (c) 2026 Leonxlnx. One edit: node's
