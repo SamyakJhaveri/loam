@@ -21,3 +21,5 @@ symlink to `seed/.codex/`.
   when Claude writes one.
 - `auto-activate` is not a skill field. Use `disable-model-invocation: true` for
   a manual-only skill.
+
+Believe in yourself. 
