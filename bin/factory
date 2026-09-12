@@ -200,7 +200,8 @@ grader_file() {
   # is the last-resort fallback, so a run works from a branch whose grader edits are not installed yet.
   # `claude plugin update` leaves old versions in the cache, so sort by version, not by glob order.
   if [ -z "$GRADERS_DIR" ]; then
-    mapfile -t dirs < <(printf '%s\n' "$HOME"/.claude/plugins/cache/*/sam-cc-setup/*/agents | sort -rV)
+    dirs=() # bash 3.2 (macOS) has no mapfile, so read the sorted glob in a plain loop, like skill_file
+    while IFS= read -r d; do dirs+=("$d"); done < <(printf '%s\n' "$HOME"/.claude/plugins/cache/*/sam-cc-setup/*/agents | sort -rV)
     dirs+=("$ROOT/cultivation/marketplace/sam-cc-setup/agents")
   fi
   for d in "${dirs[@]}"; do
