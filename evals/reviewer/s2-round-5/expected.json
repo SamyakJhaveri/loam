@@ -1,4 +1,4 @@
 {
-  "source": "lean-v3 run S2 round 5 reviewer, the review round nearest the stale-tree round",
-  "verdict": "merge"
+  "source": "lean-v3 run S2 round 5 reviewer, the review round nearest the stale-tree round; fix since F23 (medium findings in the frozen reply)",
+  "verdict": "fix"
 }

@@ -1,4 +1,4 @@
 {
-  "source": "lean-v3 run S2 round 8 reviewer",
-  "verdict": "merge"
+  "source": "lean-v3 run S2 round 8 reviewer; fix since F23 (medium findings in the frozen reply)",
+  "verdict": "fix"
 }
