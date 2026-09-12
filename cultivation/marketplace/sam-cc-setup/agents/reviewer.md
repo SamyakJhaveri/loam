@@ -28,6 +28,7 @@ Look for, in this order:
 5. Loam's design laws: anything new that parses free text to decide safety, or that runs on a tool matcher.
 
 Severity: `high` means merging would break main, CI, a rendered project, or a later ticket; `medium` means wrong but contained; `low` means style or clarity.
+Raise a finding only when the diff shows it and no done check already proves it; a pre-existing issue the diff did not introduce, or a defect whose fix lies outside the ticket's owned files, is not a finding.
 
 ## Output
 
