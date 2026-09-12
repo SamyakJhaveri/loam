@@ -196,10 +196,13 @@ GRADERS_DIR=""
 # so both grade with the version the ledger records. --graders-dir replaces the search.
 grader_file() {
   local dirs=("$GRADERS_DIR") d f
-  # The installed plugin first; the checkout's own marketplace copy is the fallback, so a run works
-  # from a branch whose grader edits are not installed yet.
-  [ -n "$GRADERS_DIR" ] || dirs=("$HOME"/.claude/plugins/cache/*/sam-cc-setup/*/agents \
-                                 "$ROOT/cultivation/marketplace/sam-cc-setup/agents")
+  # The installed plugin cache is searched newest version first; the checkout's own marketplace copy
+  # is the last-resort fallback, so a run works from a branch whose grader edits are not installed yet.
+  # `claude plugin update` leaves old versions in the cache, so sort by version, not by glob order.
+  if [ -z "$GRADERS_DIR" ]; then
+    mapfile -t dirs < <(printf '%s\n' "$HOME"/.claude/plugins/cache/*/sam-cc-setup/*/agents | sort -rV)
+    dirs+=("$ROOT/cultivation/marketplace/sam-cc-setup/agents")
+  fi
   for d in "${dirs[@]}"; do
     f="$d/$1.md"
     [ -f "$f" ] && { printf '%s\n' "$f"; return 0; }
