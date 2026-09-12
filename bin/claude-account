@@ -1,0 +1,74 @@
+#!/usr/bin/env bash
+# bin/claude-account - hold one long-lived Claude Code token per account and switch between them.
+#   bin/claude-account set <name>   read a `claude setup-token` value from stdin into <dir>/<name>.token (0600)
+#   bin/claude-account use <name>   write that token into the env block of the settings file (new claude processes use it)
+#   bin/claude-account other        print one stored account that is not the active one, non-zero when there is none
+#   bin/claude-account status       print `active: <name>; stored: <names>` and nothing else
+# Tokens live outside the settings file so a switch never needs the browser; each is valid one year.
+# No command prints, echoes, or logs a token value; `set -x` is never used here.
+# The account directory and settings file are overridable so the factory loop can drive this against a temp home.
+set -euo pipefail
+
+dir=${CLAUDE_ACCOUNTS_DIR:-$HOME/.config/claude-accounts}
+f=${CLAUDE_SETTINGS_FILE:-$HOME/.claude/settings.json}
+cmd=${1:-status}
+name=${2:-}
+
+# The active account name, from the file `use` writes; empty when nothing is active yet.
+active_name() { [ -f "$dir/active" ] && cat "$dir/active" || true; }
+
+case "$cmd" in
+  set)
+    [ -n "$name" ] || { echo "usage: bin/claude-account set <name>" >&2; exit 2; }
+    [ -t 0 ] && printf 'Paste the setup token for %s, then Enter: ' "$name" >&2
+    IFS= read -rs t || true   # a paste without a trailing newline still lands in $t under set -e
+    [ -t 0 ] && echo >&2
+    case "$t" in
+      sk-ant-oat01-*) ;;
+      *) echo "not a valid setup token (expected the sk-ant-oat01- prefix)" >&2; exit 1 ;;
+    esac
+    umask 077
+    mkdir -p "$dir"; chmod 700 "$dir"
+    printf '%s\n' "$t" > "$dir/$name.token"; chmod 600 "$dir/$name.token"
+    echo "stored $dir/$name.token" >&2
+    ;;
+  use)
+    [ -n "$name" ] || { echo "usage: bin/claude-account use <name>" >&2; exit 2; }
+    [ -f "$dir/$name.token" ] || { echo "no stored token for '$name'; run: bin/claude-account set $name" >&2; exit 1; }
+    t=$(cat "$dir/$name.token")
+    # Separate steps so set -e aborts before `active` is written if the jq write fails, and the switch
+    # a caller logs can never outrun the settings file. Keep the spaces in the jq filter: the merge grep
+    # for `CLAUDE_CODE_OAUTH_TOKEN=` must stay clean.
+    tmp=$(mktemp "$f.XXXXXX")
+    jq --arg t "$t" '.env.CLAUDE_CODE_OAUTH_TOKEN = $t' "$f" > "$tmp"
+    mv "$tmp" "$f"
+    chmod 600 "$f"
+    printf '%s\n' "$name" > "$dir/active"
+    echo "active: $name" >&2
+    ;;
+  other)
+    a=$(active_name)
+    for p in "$dir"/*.token; do
+      [ -f "$p" ] || continue
+      n=$(basename "$p" .token)
+      [ "$n" = "$a" ] && continue
+      printf '%s\n' "$n"
+      exit 0
+    done
+    echo "no stored account other than '${a:-none}'" >&2
+    exit 1
+    ;;
+  status)
+    a=$(active_name)
+    stored=""
+    for p in "$dir"/*.token; do
+      [ -f "$p" ] || continue
+      stored="$stored $(basename "$p" .token)"
+    done
+    echo "active: ${a:-none}; stored:${stored}"
+    ;;
+  *)
+    echo "usage: bin/claude-account set|use <name> | other | status" >&2
+    exit 2
+    ;;
+esac
