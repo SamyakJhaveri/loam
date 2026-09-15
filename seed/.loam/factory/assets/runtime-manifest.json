@@ -2,8 +2,14 @@
   "schemaVersion": 1,
   "status": "qualification-candidate",
   "supportedRuntime": false,
+  "qualification": "CORE-02",
   "node": "24.21.0",
   "npm": "11.19.0",
+  "sqlite": "3.53.4",
   "qualificationHosts": ["darwin-arm64", "linux-x64"],
-  "note": "Package qualification only. Runtime support and protected installation require later qualification."
+  "platforms": {
+    "darwin-arm64": { "nodeSha256": "e4b5a3af0e05c75de2eae013904145f40fe7fc2a6e6f17510128bf45cca4e79b" },
+    "linux-x64": { "nodeSha256": "7fde7b8afa198da66257f42ee2001d874c7355631e6d1579a5fb5ef1f246df4c" }
+  },
+  "note": "Package and platform qualification only. Runtime support and protected installation require later qualification."
 }

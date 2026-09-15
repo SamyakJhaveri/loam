@@ -29,6 +29,46 @@ export const BUILD_CASES = [
     "rebuild.ancestor-types-collision",
     "rebuild.provider-free-build"
 ];
+export const QUALIFICATION_CASES = [
+    "runtime.identity-matches-manifest",
+    "runtime.incompatible-reports-precisely",
+    "runtime.child-resolved-explicitly",
+    "storage.uri-encodes-metacharacters",
+    "storage.missing-refused",
+    "storage.vanish-between-precheck-and-open",
+    "storage.empty-rejected-as-foreign",
+    "storage.foreign-application-id-rejected",
+    "storage.corrupt-rejected",
+    "storage.arbitrary-uri-refused",
+    "storage.effective-settings-read-back",
+    "storage.integer-boundaries",
+    "storage.backup-succeeds-and-fails-precisely",
+    "storage.busy-worker-keeps-loop-responsive",
+    "lock.competing-owner-refused",
+    "lock.stopped-owner-still-owns",
+    "lock.killed-owner-releases",
+    "lock.child-does-not-inherit",
+    "lock.replaced-path-detected",
+    "lock.never-unlinks",
+    "env.preload-stripped",
+    "env.git-redirection-stripped",
+    "env.process-sanitized-before-children"
+];
+export const NATIVE_BOUNDARY_CASES = [
+    "boundary.mechanism-available",
+    "boundary.workspace-admitted",
+    "boundary.runtime-write-denied",
+    "boundary.registry-denied",
+    "boundary.state-denied",
+    "boundary.locks-denied",
+    "boundary.credentials-denied",
+    "boundary.callbacks-denied",
+    "boundary.sockets-denied",
+    "boundary.descendant-denied",
+    "boundary.symlink-denied",
+    "boundary.path-alias-denied",
+    "boundary.same-user-control"
+];
 // Future case IDs reserve source obligations. Their owning tickets supply executable cases.
 export const POPULATIONS = [
     {
@@ -68,15 +108,27 @@ export const POPULATIONS = [
             "installation"
         ],
         "scope": "recipient",
-        "available": false,
-        "fixture": null,
-        "expectedCases": [
-            "core-02/obligation-01",
-            "core-02/obligation-02",
-            "core-02/obligation-03",
-            "core-02/obligation-04",
-            "core-02/obligation-05"
-        ]
+        "available": true,
+        "fixture": "dist/tests/platform/qualification.test.js",
+        "expectedCases": [...QUALIFICATION_CASES]
+    },
+    // OPS-10 obligation: native-boundary is verified only by the two-host
+    // qualify-host.py evidence for each candidate; bin/check and CI do not run it;
+    // OPS-10 closure must either add a CI host with bwrap or accept the
+    // per-candidate host evidence as the gate. Reverse this before merge by
+    // setting "available": false if the campaign wants a missing-fixture entry.
+    {
+        "id": "native-boundary",
+        "owners": [
+            "CORE-02"
+        ],
+        "groups": [
+            "installation"
+        ],
+        "scope": "recipient",
+        "available": true,
+        "fixture": "dist/tests/platform/native-boundary.test.js",
+        "expectedCases": [...NATIVE_BOUNDARY_CASES]
     },
     {
         "id": "native-qualification",

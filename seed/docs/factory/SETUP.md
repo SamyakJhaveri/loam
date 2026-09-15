@@ -26,6 +26,34 @@ The full `verify installation`, `verify store`, `verify execution` and
 `verify complete-slice` groups also return nonzero. Their missing populations remain
 visible; a package pass cannot stand in for future installation or execution checks.
 
+## Platform qualification
+
+Two further recipient commands qualify the mechanical foundation on a host:
+
+```bash
+node .loam/factory/launcher.mjs qualify platform
+node .loam/factory/launcher.mjs qualify native-boundary
+```
+
+`qualify platform` proves runtime identity against the manifest, existing-only SQLite
+storage open (no create fallback, no arbitrary URI), the SQLite exclusive lifetime lock
+(a competing owner is refused, a stopped owner keeps the lock, a killed owner releases
+it, a child does not inherit it, a replaced path is detected, the lock is never
+unlinked), and that preload and Git-redirection environment inputs are stripped before
+a trusted child starts. It runs inside a sandbox and on CI, so it is part of `bin/check`.
+
+`qualify native-boundary` proves candidate containment: a contained process may work in
+its workspace but is denied the protected registry, state, locks, credentials, sockets
+and callback paths through descendants, symlinks and path aliases, while the same script
+run without containment reads them. It needs a real sandbox mechanism (`sandbox-exec` on
+macOS, `bwrap` on Linux) that cannot nest inside another sandbox, so it is **not** part
+of `bin/check`. Run it from a plain terminal on macOS and directly on Linux; a nested or
+sandboxed session fails at `boundary.mechanism-available` with the mechanism's own reason.
+
+Both commands are qualification only. No runtime is supported yet: the runtime manifest
+keeps `supportedRuntime: false` and records the Node and bundled SQLite versions and
+per-platform executable digests as candidates, not a support declaration.
+
 ## Work on the factory source
 
 Use a separate official Node 24.21.0 distribution with bundled npm 11.19.0.

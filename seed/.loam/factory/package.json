@@ -6,7 +6,7 @@
   "scripts": {
     "build": "node scripts/build.mjs",
     "verify:build": "node scripts/rebuild.mjs",
-    "test": "node launcher.mjs qualify package"
+    "test": "node launcher.mjs qualify package && node launcher.mjs qualify platform"
   },
   "devDependencies": {
     "@types/node": "24.3.0",

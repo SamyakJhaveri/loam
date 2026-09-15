@@ -97,6 +97,10 @@ else
   "$FACTORY_NODE" seed/.loam/factory/scripts/rebuild.mjs || bad "factory independent rebuild"
   # Fixed case accounting: a skipped or missing render case fails the gate.
   "$FACTORY_NODE" bin/factory-release-render.mjs || bad "factory exact release render"
+  # Storage, lifetime locks and runtime identity. Runs inside sandboxes and on CI;
+  # after the pristine-tree rebuild/render gates so a leak cannot disturb them.
+  # Containment (qualify native-boundary) is a host-only gate; see seed/docs/factory/SETUP.md.
+  "$FACTORY_NODE" seed/.loam/factory/launcher.mjs qualify platform || bad "factory platform qualification"
 fi
 
 if [ "$FAIL" -ne 0 ]; then echo; echo "check: FAILED"; exit 1; fi
