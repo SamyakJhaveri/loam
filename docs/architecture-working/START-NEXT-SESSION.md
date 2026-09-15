@@ -1,6 +1,10 @@
 # Resume Loam architecture with Astra
 
-## Current handoff: saved locally, Git commit blocked
+## Current handoff: CORE-01 merged, CORE-02 not authorized
+
+CORE-01 (#103) merged to main as `1ed2261` through PR #138 on 2026-09-15. Read [core-01-handoff.md](core-01-handoff.md) for what shipped, the evidence locations, and the open items. The next ticket, CORE-02, needs an explicit instruction to begin. Everything below this section describes earlier states.
+
+## Earlier handoff: saved locally, Git commit blocked
 
 The user explicitly requested committing and pushing these planning records to main, with no runtime implementation in this session. Staging failed because the environment denied creation of `.git/index.lock`; no commit or push occurred. Finish the documentation commit and push in a session with Git write access before beginning CORE-01. Read [save-to-main handoff](save-to-main-handoff.md) first, then the reading order below. The [next-session prompt](NEXT-SESSION-PROMPT.md) authorizes CORE-01 only when supplied in a new session. The current checkpoint is `save-to-main-checkpoint.json`. Historical statements below about untracked records or pending publication describe earlier snapshots; do not treat them as current status.
 

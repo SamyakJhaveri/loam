@@ -1,6 +1,8 @@
 # Loam architecture working record
 
-Current handoff: [planning saved locally; Git commit blocked](save-to-main-handoff.md). Start the next implementation session with [the CORE-01 prompt](NEXT-SESSION-PROMPT.md). No runtime implementation was started in the planning session.
+Current handoff: [CORE-01 is merged](core-01-handoff.md). Main `1ed2261` ships `seed/.loam/factory/` with the package, independent rebuild and exact render gates in `bin/check`. CORE-02 needs an explicit instruction to begin.
+
+Historical: [planning saved locally; Git commit blocked](save-to-main-handoff.md) and [the CORE-01 prompt](NEXT-SESSION-PROMPT.md) describe the state before implementation. Their "deferred" and "untracked" wording is provenance, not current status.
 
 Latest: [approved GitHub publication and next step](publication-handoff.md), [publication ledger](publication/ledger.json), and [Codex implementation cycle](codex-implementation-runbook.md). These supersede the earlier publication-pending wording. Runtime implementation remains deferred.
 
