@@ -7,10 +7,32 @@ Thanks for your interest! Loam is a Copier template; the things it ships live un
 
 ```bash
 git clone https://github.com/samyakjhaveri/loam && cd loam
-bin/check   # ruff, shell syntax, tests, plugin validate, render smoke; expect "check: PASSED"
+# Select a Node 24.21.0 distribution with its bundled npm 11.19.0.
+export LOAM_FACTORY_TOOLCHAIN="/absolute/path/to/node-v24.21.0-distribution"
+export PATH="$LOAM_FACTORY_TOOLCHAIN/bin:$PATH"
+# Install the pinned Python tools in an environment you control.
+python3 -m pip install -r .github/ci/python-requirements.txt
+export LOAM_FACTORY_COPIER="$(command -v copier)"
+bin/check   # expect "check: PASSED"
 ```
 
-Requirements: [Copier](https://copier.readthedocs.io/) >= 9.4.0 (`uvx copier`), `python3`, `bash`, the Claude Code and Codex CLIs, and Ruff.
+Requirements: [Copier](https://copier.readthedocs.io/) 9.16.0 for release verification,
+Node 24.21.0 with bundled npm 11.19.0, `python3`, `bash`, the Claude Code and Codex
+CLIs, and the pinned Python check dependencies. Node and npm are package qualification
+candidates. This does not declare the future factory runtime supported.
+
+`bin/check` requires the two explicit tool exports above. The rebuild gate downloads
+the locked development dependencies into fresh scratch, so it needs access to the npm
+registry. It compares against the supplied `dist` files without changing them. It also
+checks that the factory payload exactly matches Git's index. Stage intended factory
+changes before running it. Build source changes explicitly with
+`npm --prefix seed/.loam/factory run build`, then stage the source, compiled output and
+release manifest together. A stale or missing compiled file fails the check.
+
+The factory's dependencies stay under `seed/.loam/factory/node_modules`. Project-root
+packages cannot supply a missing compiler or Node type package. Recipient package
+checks execute supplied JavaScript without installing the compiler; see
+[factory setup](seed/docs/factory/SETUP.md).
 Missing agent CLIs fail the gate; `LOAM_ALLOW_MISSING_AGENT_CLIS=1` permits a reduced local run (CI never sets it).
 
 **Windows note:** template *development* relies on the `.claude -> seed/.claude` symlink.

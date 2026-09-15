@@ -87,5 +87,17 @@ out=$(FACTORY_SOURCED=1 bash -c '. bin/factory; verdict_consistent bin/factory.d
 out=$(FACTORY_SOURCED=1 bash -c '. bin/factory; verdict_consistent bin/factory.d/fixtures/grader-consistent.json' 2>&1); r=$?
 [ "$r" -eq 0 ] || bad "verdict_consistent refuted the consistent grader fixture (exit $r): $out"
 
+step "factory package qualification and independent rebuild"
+if [ -z "${LOAM_FACTORY_TOOLCHAIN:-}" ] || [ ! -x "$LOAM_FACTORY_TOOLCHAIN/bin/node" ]; then
+  bad "set LOAM_FACTORY_TOOLCHAIN to the candidate Node distribution; see CONTRIBUTING.md"
+else
+  FACTORY_NODE="$LOAM_FACTORY_TOOLCHAIN/bin/node"
+  "$FACTORY_NODE" seed/.loam/factory/launcher.mjs qualify package || bad "factory package qualification"
+  # Inspect the frozen candidate. Never run npm build before this comparison.
+  "$FACTORY_NODE" seed/.loam/factory/scripts/rebuild.mjs || bad "factory independent rebuild"
+  # Fixed case accounting: a skipped or missing render case fails the gate.
+  "$FACTORY_NODE" bin/factory-release-render.mjs || bad "factory exact release render"
+fi
+
 if [ "$FAIL" -ne 0 ]; then echo; echo "check: FAILED"; exit 1; fi
 echo; echo "check: PASSED"
