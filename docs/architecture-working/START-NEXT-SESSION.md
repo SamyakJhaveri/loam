@@ -2,7 +2,7 @@
 
 ## Current handoff: CORE-02 candidate ready, merge waits for the Codex review
 
-CORE-02 (#104) is implemented and qualified (Linux fully; Mac containment pending) on branch `core-02-storage-containment`, candidate commit `9b6aea0`, PR https://github.com/SamyakJhaveri/loam/pull/139. It is not merged. Read [core-02-handoff.md](core-02-handoff.md) for what shipped, the evidence locations, the Mac plain-terminal run that is still pending, and the exact Codex review prompt to run on or after 2026-09-19. CORE-01 (#103) merged to main as `1ed2261` through PR #138 on 2026-09-15; its record is [core-01-handoff.md](core-01-handoff.md). Everything below this section describes earlier states.
+CORE-02 (#104) is implemented and qualified on both hosts on branch `core-02-storage-containment`, candidate commit `eacd020`, PR https://github.com/SamyakJhaveri/loam/pull/139. It is not merged. Read [core-02-handoff.md](core-02-handoff.md) for what shipped, the evidence locations, and the exact Codex review prompt to run on or after 2026-09-19. CORE-01 (#103) merged to main as `1ed2261` through PR #138 on 2026-09-15; its record is [core-01-handoff.md](core-01-handoff.md). Everything below this section describes earlier states.
 
 ## Earlier handoff: saved locally, Git commit blocked
 

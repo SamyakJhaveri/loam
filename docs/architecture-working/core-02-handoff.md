@@ -1,12 +1,12 @@
 # CORE-02 handoff: candidate ready, merge waits for the Codex review
 
-Status on 2026-09-15: the CORE-02 candidate is implemented, qualified on Linux, qualified for storage and locks on the Mac, checked with `bin/check`, and reviewed. It is not merged. Merge waits for two things: a fresh Codex/Astra review on or after 2026-09-19, and the Mac plain-terminal containment run described below.
+Status on 2026-09-16: the CORE-02 candidate is implemented, qualified on both hosts including the Mac plain-terminal containment run, checked with `bin/check`, and reviewed. It is not merged. Merge waits for one thing: a fresh Codex/Astra review on or after 2026-09-19.
 
 Ticket: [#104](https://github.com/SamyakJhaveri/loam/issues/104). Campaign: [#102](https://github.com/SamyakJhaveri/loam/issues/102). Predecessor: [core-01-handoff.md](core-01-handoff.md).
 
 ## The candidate
 
-Branch `core-02-storage-containment`, PR https://github.com/SamyakJhaveri/loam/pull/139, base main `2f0a845`. Candidate commit 9b6aea0c2437d2d51ff8bf89865e50c8136836bd (tree a22f09f9). Worktree on this Mac: `/private/tmp/loam-core-02`. Worktree on jhaveris: `~/Desktop/loam-core-02`.
+Branch `core-02-storage-containment`, PR https://github.com/SamyakJhaveri/loam/pull/139, base main `2f0a845`. Candidate commit eacd020ec342969385d1d5600c1f3b7c01f02308 (tree d90a48d2), candidate-03. Worktree on this Mac: `/private/tmp/loam-core-02`. Worktree on jhaveris: `~/Desktop/loam-core-02`.
 
 What shipped under `seed/.loam/factory/`:
 
@@ -25,7 +25,8 @@ What shipped under `seed/.loam/factory/`:
 - Four source files instead of the ticket's two. `runtime.ts` and `store-worker.ts` were added; only `runtime.ts` and `native-boundary.ts` read `process.platform`.
 - Two populations instead of filling the single `platform-qualification` placeholder. `native-boundary` is registered available because its fixture exists; it passes on Linux, with Mac containment pending (open item 1). OPS-10 obligation: `native-boundary` is proved only by the two-host `qualify native-boundary` run, driven per host by `qualify-host.py` (open item 2); OPS-10 closure must add a CI host with bwrap or formally accept the per-candidate host evidence as the gate. Reverse with `available: false` if the campaign prefers a missing-fixture entry.
 - The ticket names `node --test <both fixtures>` as the future command. Bare `node --test` exits 0 when every case is skipped, so the gates use `runFixedFixture`. `qualify-host.py` still runs the literal command as its first recipient check.
-- The macOS profile allows reads outside the protected control root (global `file-read*`, then last-wins denies of the six protected paths). The narrower system-path allow list in the plan was not used because the profile cannot be exercised inside an agent sandbox and a too-narrow list would fail Node startup on the owner's one manual run. Tightening the profile after that run passes is an open item.
+- The macOS profile allows reads outside the protected control root (global `file-read*`, then last-wins denies of the six protected paths). The narrower system-path allow list in the plan was not used because the profile cannot be exercised inside an agent sandbox and a too-narrow list would fail Node startup on the owner's manual run. Tightening the profile is an open item.
+- Seatbelt lesson, measured on candidate-02: a deny written as `file*` loses to an earlier `allow file-read*` whatever its position, because Seatbelt gives the more specific operation name precedence. Samyak's first plain-terminal run leaked every read denial. Candidate-03 denies `file-read* file-write*` on the same operations, decided by order with the last rule winning, and the rerun observed all 13 denials.
 
 ## Evidence
 
@@ -37,24 +38,25 @@ Under `~/.local/state/loam/build-evidence/` on this Mac:
 - `reviews/CORE-02/plan-01..04/`: plan, ticket, verdict, input hashes per round; `plan-review-manifest.json`.
 - `CORE-02/red/`: the three red logs (stubs throwing `not implemented`, old registry assertion).
 - `CORE-02/candidate-01/`: the first frozen candidate `364dd73` (diff, manifest, `full-check.log` with `check: PASSED`, `jhaveris-02/` and `mac-sandboxed-02/` qualification records) and its fresh Fable review (APPROVE). A prose critic then required three comment fixes in shipped seed source.
-- `CORE-02/candidate-02/`: the reviewed candidate `9b6aea0` (candidate-01 plus the comment fixes and the rebuilt output). `candidate.diff`, `interdiff-from-candidate-01.diff`, `manifest.json`, `full-check.log` (`check: PASSED`), `jhaveris/qualification.json` (status passed, five commands exit 0, candidate unchanged, node digest matches), `mac-sandboxed/qualification.json` (storage, locks and package pass; native-boundary fails only at `boundary.mechanism-available` because `sandbox-exec` cannot nest inside the agent sandbox).
+- `CORE-02/candidate-02/`: candidate `9b6aea0` (candidate-01 plus the comment fixes). Reviewed APPROVE. Its `mac-terminal/` run by Samyak from a plain Terminal exposed the Seatbelt precedence defect: eight `boundary.*` read-denial cases leaked.
+- `CORE-02/candidate-03/`: the final candidate `eacd020` (candidate-02 plus the one-line profile fix). `candidate.diff`, `interdiff-from-candidate-02.diff`, `manifest.json`, `full-check.log` (`check: PASSED`), `jhaveris/qualification.json` (status passed, five commands exit 0, candidate unchanged, node digest matches), `mac-terminal/qualification.json` (status passed, 36 of 36 recipient cases, 13 observed denials in `observed-4.jsonl`, run by Samyak outside any agent sandbox).
 - `CORE-02/negative/renamed-case.log`: one renamed case fails `qualify platform`.
-- `reviews/CORE-02/candidate-01/verdict.md` and `candidate-02/verdict.md`: the fresh Fable finished-work reviews. `candidate-01/lean-critic-docs.md`: the prose pass.
+- `reviews/CORE-02/candidate-01/verdict.md`, `candidate-02/verdict.md` and `candidate-03/verdict.md`: the fresh Fable finished-work reviews. `candidate-01/lean-critic-docs.md` and `candidate-02/lean-critic-records.md`: the prose passes.
 - `CORE-02/qualify-host.py`: the per-host qualification script.
 
 ## Open items
 
-1. Mac plain-terminal containment run (blocking for merge). From a normal Terminal window, not inside any agent session:
+1. Mac plain-terminal containment run: done on candidate-03 by Samyak on 2026-09-16, status passed. If the candidate changes again, rerun from a normal Terminal window, not inside any agent session:
 
    ```
-   cd /private/tmp/loam-core-02 && git checkout 9b6aea0c2437d2d51ff8bf89865e50c8136836bd && \
+   cd /private/tmp/loam-core-02 && git checkout <candidate-sha> && \
    python3 ~/.local/state/loam/build-evidence/CORE-02/qualify-host.py \
      /private/tmp/loam-core-02 \
      ~/.local/state/loam/toolchains/node-v24.21.0-darwin-arm64 \
-     ~/.local/state/loam/build-evidence/CORE-02/candidate-02/mac-terminal
+     ~/.local/state/loam/build-evidence/CORE-02/candidate-NN/mac-terminal
    ```
 
-   Pass condition: `mac-terminal/qualification.json` shows `status: passed` and `candidateUnchanged: true`. If `boundary.*` cases fail there, the profile in `native-boundary.ts` needs a fix and the candidate must be refrozen and re-reviewed.
+   Pass condition: `mac-terminal/qualification.json` shows `status: passed` and `candidateUnchanged: true`.
 2. CI does not run `qualify native-boundary`. The GitHub runner has no bwrap and no unsandboxed Mac. Recorded for OPS-10.
 3. The macOS profile could be tightened to deny the home directory outside the workspace and runtime once the plain-terminal run passes.
 4. No runtime is declared supported. The pin stays a qualification candidate.
@@ -69,20 +71,20 @@ was implemented by a Claude Code session; you are the opposite-model reviewer th
 
 Read AGENTS.md, docs/architecture-working/core-02-handoff.md, the ticket, and the approved plan at
 ~/.local/state/loam/build-evidence/reviews/CORE-02/plan-04/plan.md. Then review the exact frozen
-candidate: PR https://github.com/SamyakJhaveri/loam/pull/139, commit 9b6aea0c2437d2d51ff8bf89865e50c8136836bd, in the worktree /private/tmp/loam-core-02
+candidate: PR https://github.com/SamyakJhaveri/loam/pull/139, commit eacd020ec342969385d1d5600c1f3b7c01f02308, in the worktree /private/tmp/loam-core-02
 (run: git -C /private/tmp/loam-core-02 rev-parse HEAD, and stop if it differs).
 
 Judge against every acceptance bullet of the ticket. Check the evidence under
-~/.local/state/loam/build-evidence/CORE-02/candidate-02/ and reviews/CORE-02/, including
-mac-terminal/qualification.json, which must show status passed; if it is missing, the Mac
-containment gate has not run and the candidate is not mergeable yet.
+~/.local/state/loam/build-evidence/CORE-02/candidate-03/ and reviews/CORE-02/, including
+mac-terminal/qualification.json (status passed, run by the owner from a plain Terminal) and
+candidate-02/mac-terminal/check-1.log (the leak that the candidate-03 fix closed).
 
 Hunt for vacuous cases, denials that could come from test setup rather than the mechanism, lock
 semantics errors, URI encoding gaps, macOS profile or bwrap argument mistakes, environment
 sanitisation gaps, and any weakening of fixed case accounting. Judge the recorded departures in the
 handoff. Return findings with severity and file:line, and a verdict of APPROVE or BLOCK with required
-fixes. Write the verdict to ~/.local/state/loam/build-evidence/reviews/CORE-02/candidate-02/codex-verdict.md.
+fixes. Write the verdict to ~/.local/state/loam/build-evidence/reviews/CORE-02/candidate-03/codex-verdict.md.
 Do not merge. Do not modify the candidate.
 ```
 
-If Codex returns APPROVE and the Mac terminal run passed, merge by squash so the merged tree equals the reviewed tree, verify remote main, tick CORE-02 in #102, and close #104. If Codex returns BLOCK, fix in a new session, refreeze as candidate-02, rerun both hosts and `bin/check`, and repeat both reviews.
+If Codex returns APPROVE, merge by squash so the merged tree equals the reviewed tree, verify remote main, tick CORE-02 in #102, and close #104. If Codex returns BLOCK, fix in a new session, refreeze as candidate-04, rerun both hosts (Mac from a plain Terminal) and `bin/check`, and repeat both reviews.
