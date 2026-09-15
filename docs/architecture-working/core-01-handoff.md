@@ -50,4 +50,4 @@ Copy them into `CORE-01/candidate-02/` when a session with that write access run
 
 ## Next
 
-CORE-02 is the next ticket in the campaign (#102). It needs an explicit instruction to begin, a fresh worktree from main `1ed2261`, and the same opposite-model review cycle.
+CORE-02 (#104) is the next ticket in the campaign (#102). It needs an explicit instruction to begin, a fresh worktree from latest main, and the same opposite-model review cycle. The session prompt is [NEXT-SESSION-PROMPT-CORE-02.md](NEXT-SESSION-PROMPT-CORE-02.md).
