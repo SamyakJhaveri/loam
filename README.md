@@ -87,6 +87,7 @@ Run `bin/check` when changing Loam. It lints, checks shell syntax and whitespace
 
 - [Copier](https://copier.readthedocs.io/) >= 9.4.0 (`uvx copier` needs no install)
 - Python 3.11 or newer, with `pytest` and `ruff`, to run `bin/check`
+- The [declared factory qualification tools](CONTRIBUTING.md#development-setup) for package and rebuild checks
 - [Claude Code](https://code.claude.com/docs) and Codex CLIs: `bin/check` fails without them (set `LOAM_ALLOW_MISSING_AGENT_CLIS=1` for a reduced local run)
 
 ## Contributing

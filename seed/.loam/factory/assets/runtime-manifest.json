@@ -1,0 +1,9 @@
+{
+  "schemaVersion": 1,
+  "status": "qualification-candidate",
+  "supportedRuntime": false,
+  "node": "24.21.0",
+  "npm": "11.19.0",
+  "qualificationHosts": ["darwin-arm64", "linux-x64"],
+  "note": "Package qualification only. Runtime support and protected installation require later qualification."
+}

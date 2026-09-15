@@ -1,0 +1,18 @@
+{
+  "name": "@loam/factory",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "verify:build": "node scripts/rebuild.mjs",
+    "test": "node launcher.mjs qualify package"
+  },
+  "devDependencies": {
+    "@types/node": "24.3.0",
+    "typescript": "5.9.3"
+  },
+  "overrides": {
+    "undici-types": "7.10.0"
+  }
+}

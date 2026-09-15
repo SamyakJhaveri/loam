@@ -1,0 +1,32 @@
+{
+  "version": 1,
+  "files": {
+    ".gitignore": "f21b3f1dfa4f08647f61d6f12c36881859c70cb17c39f34f7d03b4de40a94a93",
+    "assets/runtime-manifest.json": "8e5c34573f6a9234c6db4e3fd160605d95a42b2c5b01a10fb0893e97d56c054c",
+    "dist/src/installation/package.js": "13b4dbd5d60f31280303218af9979e28b236c8f2067bb9a8f4656715d0572291",
+    "dist/src/installation/package.js.map": "b2b20f47fb33f0985d9b2d7d0c6054efd29e47824b22cce06a583c6215167683",
+    "dist/src/installation/rebuild.js": "9545444e8d1a4ee2111ec990dd6e9c2699fe900ade1b09883030884d4af76d3e",
+    "dist/src/installation/rebuild.js.map": "2b19d03d002d0fa59d991b0b9dc2f62de80df9b8d899599f170f313ec31e6d35",
+    "dist/src/testing/verify.js": "eb821079c27c98283dfe6c05fd5ca023cd34639674966b68bced2d10e9d98f2f",
+    "dist/src/testing/verify.js.map": "07e668e5d3214926084c503fd25f9cd6a0805ea6666f7d6a1456b22b5d27143c",
+    "dist/tests/build/rebuild.test.js": "2daca3d24e8fff9d629c5938ff9c48b69c74aa32d5341e0fb45d8e591d08bcef",
+    "dist/tests/build/rebuild.test.js.map": "41764df3b5e7ef6f5ff1a2d0202248696aae74d792182da4878dd40af79f4b08",
+    "dist/tests/installation/package.test.js": "406b6206ba7cb37ad06610291e9fa7493bfe8978be3092d886f8956d727b2471",
+    "dist/tests/installation/package.test.js.map": "443b226cbe2721b24f88b2e9a9b8c40f134ce6a265f301571c54d629b934d95c",
+    "launcher.mjs": "59e26ec72b9569329d43c499e4ddaddd18c69743db578a72f64d38739328eaa2",
+    "package-lock.json": "4ef2138ee7efdc09605ce4a042fdfb64bdca4789fc611ba99e30f5e584884f8b",
+    "package.json": "f1b3990cc318ae44550d4c2e5fffc0579db76e8ece44b59143ff4d5125392ef0",
+    "scripts/build.mjs": "4e07cccb432f2459dc932fc89944f200cf252a7efdcace1e1bfb2c9135f105df",
+    "scripts/rebuild.mjs": "de12b0302af2700e2371a2fb85828b3d696168449fcd6ceadd8a3b5551854e3a",
+    "scripts/toolchain.mjs": "d4d2a8b907ba986ab0ace4351ca05273fe87a0b34b7e08ebb25b39cb2eecc500",
+    "src/installation/package.ts": "5d6aa2ec41c592205b349153bbd613c71c67cfa74516c640bf1782194591aeba",
+    "src/installation/rebuild.ts": "3f91de18ff2a5276350f40c0f605b16fc0038a7e9ef3e406c469a4fcc9c018a8",
+    "src/testing/verify.ts": "f37f2f4912230fb8b7ed450cf78466c2355aa392db8fad77dacd263a3d6c0072",
+    "tests/build/rebuild.test.ts": "70e50f8f4b25db1901d821c92d8719274863f783631137d44b4edc6c88066608",
+    "tests/installation/package.test.ts": "d4d90434eba9c4ce89c530303dc33d016c047feea34bacf0121da110131a5097",
+    "tsconfig.json": "89445fad719e12b5b787db90dc85fc652b925c094f32f0a165d89ad96b1b914c"
+  },
+  "sourceDigest": "d26132e82e1cab9d1996de1276f2cc92e10994b358bcead41c0d1c2a0ae853ac",
+  "outputDigest": "fa168fe7dd9114ed25b460ca02f388dcb8081ffadcfdab7a3baf57c8c42bd689",
+  "dependencyDigest": "4ef2138ee7efdc09605ce4a042fdfb64bdca4789fc611ba99e30f5e584884f8b"
+}
