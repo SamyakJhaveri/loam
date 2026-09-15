@@ -67,9 +67,7 @@ test('package.registry-obligations', () => {
   const available = new Map<string, { fixture: string; cases: readonly string[] }>([
     ['package-closure', { fixture: 'dist/tests/installation/package.test.js', cases: PACKAGE_CASES }],
     ['platform-qualification', { fixture: 'dist/tests/platform/qualification.test.js', cases: QUALIFICATION_CASES }],
-    // OPS-10 obligation: native-boundary is verified only by the two-host qualify-host.py
-    // evidence for each candidate; bin/check and CI do not run it; OPS-10 closure must
-    // either add a CI host with bwrap or accept the per-candidate host evidence as the gate.
+    // native-boundary is host-only; see the OPS-10 note in verify.ts POPULATIONS.
     ['native-boundary', { fixture: 'dist/tests/platform/native-boundary.test.js', cases: NATIVE_BOUNDARY_CASES }],
   ]);
   for (const [id, expected] of available) {

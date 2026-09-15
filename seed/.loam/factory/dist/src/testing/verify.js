@@ -112,11 +112,10 @@ export const POPULATIONS = [
         "fixture": "dist/tests/platform/qualification.test.js",
         "expectedCases": [...QUALIFICATION_CASES]
     },
-    // OPS-10 obligation: native-boundary is verified only by the two-host
-    // qualify-host.py evidence for each candidate; bin/check and CI do not run it;
-    // OPS-10 closure must either add a CI host with bwrap or accept the
-    // per-candidate host evidence as the gate. Reverse this before merge by
-    // setting "available": false if the campaign wants a missing-fixture entry.
+    // OPS-10 obligation: native-boundary is available:true (its fixture exists) but is
+    // proved only by the two-host `qualify native-boundary` run; bin/check and CI do not
+    // run it. OPS-10 closure adds a CI host with bwrap or accepts the host evidence as
+    // the gate.
     {
         "id": "native-boundary",
         "owners": [
