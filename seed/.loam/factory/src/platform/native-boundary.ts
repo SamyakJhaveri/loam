@@ -60,11 +60,14 @@ function resolveBwrap(): string | null {
 }
 function realpathOr(path: string): string { try { return realpathSync(path); } catch { return path; } }
 function sbplString(value: string): string { return `"${value.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`; }
-// Deny rules come last so, under Seatbelt's last-match-wins evaluation, they
-// override the broad read allow for the protected control paths. realpath handles
-// the macOS /tmp -> /private/tmp alias.
+// Deny rules come last and name the same operations as the broad allow
+// (file-read* and file-write*). Seatbelt resolves rules per operation and a more
+// specific operation name wins over a broader one, so a deny written as `file*`
+// would lose to `(allow file-read*)` whatever its position; a deny on the same
+// operation is decided by order, and the last rule wins. Measured on this Mac
+// (CORE-02 candidate-02 mac-terminal run). realpath handles /tmp -> /private/tmp.
 function macProfile(spec: ContainSpec): string {
-  const denies = Object.values(spec.protectedPaths).map((path) => `(deny file* (subpath ${sbplString(realpathOr(path))}))`);
+  const denies = Object.values(spec.protectedPaths).map((path) => `(deny file-read* file-write* (subpath ${sbplString(realpathOr(path))}))`);
   return [
     '(version 1)',
     '(deny default)',

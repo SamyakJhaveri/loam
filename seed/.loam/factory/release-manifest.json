@@ -7,8 +7,8 @@
     "dist/src/installation/package.js.map": "b2b20f47fb33f0985d9b2d7d0c6054efd29e47824b22cce06a583c6215167683",
     "dist/src/installation/rebuild.js": "9545444e8d1a4ee2111ec990dd6e9c2699fe900ade1b09883030884d4af76d3e",
     "dist/src/installation/rebuild.js.map": "2b19d03d002d0fa59d991b0b9dc2f62de80df9b8d899599f170f313ec31e6d35",
-    "dist/src/platform/native-boundary.js": "e2501182ee1501954d176abbb98fb6c7a2e9326a374db9f0b0dae131af0d21f3",
-    "dist/src/platform/native-boundary.js.map": "3cb1dbeee089e44d99f35e4603e40c359599377a6528e1e88349f0389cfbc920",
+    "dist/src/platform/native-boundary.js": "2659d37861e61ba927a5348a3da3c6db7750c8b5e790314464a953c245bdd797",
+    "dist/src/platform/native-boundary.js.map": "46dacaf6d1122911e31fe67b0eda9749a78a17e0e6aba7112df72d0743e7b30e",
     "dist/src/platform/ownership.js": "ac926aa57bf709cea89fe7a615a1f5044cbe534bf00f280e148a1ad75a7048df",
     "dist/src/platform/ownership.js.map": "ce15c2ee41229cbda322d3cd101fa3047b5225b2fb5bffb69decfef37b6f6066",
     "dist/src/platform/runtime.js": "d97d4954173979c93b38ece993001768ce2ba3b817ff92f954882bad81970091",
@@ -33,7 +33,7 @@
     "scripts/toolchain.mjs": "d4d2a8b907ba986ab0ace4351ca05273fe87a0b34b7e08ebb25b39cb2eecc500",
     "src/installation/package.ts": "5d6aa2ec41c592205b349153bbd613c71c67cfa74516c640bf1782194591aeba",
     "src/installation/rebuild.ts": "3f91de18ff2a5276350f40c0f605b16fc0038a7e9ef3e406c469a4fcc9c018a8",
-    "src/platform/native-boundary.ts": "fb7ef911504679f6f57b35a45ec1b403349ea5cab5fe0818385d345e555ada5a",
+    "src/platform/native-boundary.ts": "218fc01318c1752eefd1168b588c97f3fb308bc6bcfa41e4c61e7e5d96f6aa10",
     "src/platform/ownership.ts": "ba7e0119106636e34e224ce2328ba1b6224af32c910f0db03d7044b3d5eb2d22",
     "src/platform/runtime.ts": "6f4a7c9a43c01c32d5bdd96ebe3592cc72b17b64ea790765e3188ebe1dd65a1f",
     "src/platform/store-worker.ts": "461dce0bb75dc492199012edbe57ebc2cacfcdc55614c7c20382e9624657a215",
@@ -44,7 +44,7 @@
     "tests/platform/qualification.test.ts": "795a7b6e592ceca3ff697c2eb918de91d9650ae3828f63df651cd7953bb9b272",
     "tsconfig.json": "89445fad719e12b5b787db90dc85fc652b925c094f32f0a165d89ad96b1b914c"
   },
-  "sourceDigest": "cc28bd1b3081b75d4609fa942a5bdfba688bde5204c491952fc53c8887c00e7c",
-  "outputDigest": "d886c2acd99b3dea8f2694af9a3d75892e1fee522a3827d6f3b0c4af7c6cb89c",
+  "sourceDigest": "961246aa65d88624c9630b998e25afab8d7eb4b7a3099e69782c899176cfe894",
+  "outputDigest": "45f7ef88da079a6c4eca4c24cb40a88e15545a7f7132e9428b4ec7d81d3cf78c",
   "dependencyDigest": "4ef2138ee7efdc09605ce4a042fdfb64bdca4789fc611ba99e30f5e584884f8b"
 }
