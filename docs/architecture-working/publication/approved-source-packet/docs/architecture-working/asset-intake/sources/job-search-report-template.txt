@@ -1,0 +1,130 @@
+---
+report_schema: company-research-v1
+company: COMPANY_DISPLAY_NAME
+company_slug: company-display-name
+mode: discover
+observed_at: 2000-01-01T00:00:00+00:00
+completion: blocked
+inventory_before_prioritization: true
+comparison_target: not_applicable
+fresh_agent_state: pending
+---
+# COMPANY_DISPLAY_NAME research-team discovery
+
+## Scope and source routes
+
+Coverage state: blocked.
+
+State the official starting routes, inclusion rule, exclusions, and whether
+pagination or parsing was complete.
+
+## Formal research roster
+
+| Person | Current role | Membership | Identity source | Current-role source | Work evidence | Work state | Observed |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+
+A `likely` Work state must put `Inference:` and `Missing check:` in Work
+evidence with its source URL. The `Current role` cell of a formal or adjacent
+row must be a displayed role, not a placeholder such as `Role not displayed`; a
+person with no displayed current role belongs in a deferred note, not the roster.
+
+## Formal research focus inventory
+
+| Focus | Official source | Observed |
+| --- | --- | --- |
+
+Coverage state: blocked. Replace this line when the focus inventory is
+complete.
+
+## Alumni and affiliation conflicts
+
+Record only conflicts that affect current status. Preserve both dated sources.
+
+## Current artifacts and work-team-company mappings
+
+Separate the current work item, personally attributable team evidence, and
+company production surface.
+
+## Adjacent research-like teams
+
+| Person | Current role | Membership | Identity source | Current-role source | Work evidence | Work state | Observed |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+
+Use `adjacent` in the Membership column. State that adjacent evidence is not
+formal roster membership. A `likely` Work state must put `Inference:` and
+`Missing check:` in Work evidence with its source URL.
+
+## Public identity and contact routes
+
+Record only identity-safe public routes. A published email line must use:
+`Published email: ADDRESS ([source](OFFICIAL_SOURCE_URL))`.
+
+## Current relevant jobs
+
+| Job ID | Current title | Official source | Observed |
+| --- | --- | --- | --- |
+
+State the explicit inclusion rule. An empty table needs a coverage explanation.
+
+## Contact priorities
+
+| Person | Classification | Identity source | Affiliation source | Attributable-work source | State | Reason now | Observed |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+
+Prioritize only after the formal inventory. Use `deferred` when a required
+source is missing. Use only `research_fit`, `connector_only`, or `undetermined`
+for Classification. Use only `review_required` or `deferred` for State. A
+`research_fit` Reason now must name `Transfer bridge:`. A `connector_only` row
+must put `Connector edge:` with its source in Attributable-work source and put
+`Routing value:` plus `not a substantive research-fit target` in Reason now.
+
+## Comparison results
+
+### Exact matches
+
+Record exact current matches with the comparison target.
+
+### Correct but incomplete claims
+
+Record claims that remain correct but omit material current evidence.
+
+### Confirmed discrepancies
+
+Record source-backed contradictions.
+
+### New current evidence
+
+Record current evidence absent from the comparison target.
+
+### Stale or unavailable sources
+
+Record stale, removed, blocked, or otherwise unavailable comparison sources.
+
+## Fresh-agent independence record
+
+- creation_mode: fork_turns=none
+- evidence_frozen_at: 2000-01-01T00:00:00+00:00
+- comparison_received_at: 2000-01-01T00:00:01+00:00
+
+Replace the example values with observed run values. The session transcript is
+the independent evidence for agent creation mode.
+
+## Evidence gaps and coverage limits
+
+Record blocked sources, incomplete pagination, parser drift, conflicting
+claims, sparse public artifacts, and anti-bot results.
+
+## Reproducible checks
+
+Record exact commands, exit statuses, parsed counts, and link-check summaries.
+
+## Approval boundary
+
+No ledger edit was performed. No outreach was sent. No application was
+submitted. No LinkedIn automation was used.
+
+## Risks
+
+Include this section whenever an assumption, blocked source, incomplete
+inventory, or other unresolved condition remains. Remove it only when the
+report has no unresolved condition.

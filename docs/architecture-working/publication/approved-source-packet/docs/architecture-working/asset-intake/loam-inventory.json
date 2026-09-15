@@ -1,0 +1,3346 @@
+{
+  "schema_version": 1,
+  "generated_at_utc": "2026-09-14T23:50:44.409164+00:00",
+  "repository": "/Users/samyakjhaveri/Desktop/loam",
+  "review_scope": "Static local discovery, whole-file hashing and targeted content/metadata review. No asset commands, installs, native app launches, runtime tests or license certification. Source preservation does not imply runtime approval. Parked placement is observed current distribution state, not an exclusion decision.",
+  "instruction_sources": [
+    "AGENTS.md",
+    "docs/ASSET-LAYERS.md"
+  ],
+  "inventory_roots": [
+    "seed/.agents/skills",
+    "cultivation/marketplace",
+    "cultivation/parked",
+    "seed/.claude",
+    "seed/.codex"
+  ],
+  "counts": {
+    "skills_by_layer": {
+      "active_seed": 2,
+      "optional_marketplace": 4,
+      "parked_not_installed": 24
+    },
+    "files_by_kind": {
+      "skill": 30,
+      "marketplace_manifest": 1,
+      "support_or_config": 42,
+      "plugin_manifest": 2,
+      "agent": 9,
+      "hook": 9,
+      "hook_registry": 1,
+      "test": 2,
+      "workflow": 1,
+      "distribution_symlink": 2
+    },
+    "remote_bundle_declarations": 5,
+    "remote_declared_skills": 13
+  },
+  "dependency_path_checks": [
+    {
+      "path": "seed/.agents/lib/validation.py",
+      "exists": false
+    },
+    {
+      "path": "bin/agent-sync.sh",
+      "exists": false
+    },
+    {
+      "path": "bin/verify-template-stages.sh",
+      "exists": false
+    },
+    {
+      "path": "bin/rendered_harness_contract.py",
+      "exists": false
+    },
+    {
+      "path": "bin/tests/test_agent_parity.py",
+      "exists": false
+    },
+    {
+      "path": "seed/.claude/hooks/run-validate-waves.sh",
+      "exists": false
+    },
+    {
+      "path": "seed/.claude/hooks/sentinel-cleanup.sh",
+      "exists": false
+    },
+    {
+      "path": "seed/.claude/hooks/pre-commit-gate.sh",
+      "exists": false
+    },
+    {
+      "path": "cultivation/marketplace/sam-cc-setup/hooks/pre-commit.sh",
+      "exists": false
+    }
+  ],
+  "files": [
+    {
+      "source_path": "seed/.agents/skills/catchup/SKILL.md",
+      "absolute_source_path": "/Users/samyakjhaveri/Desktop/loam/seed/.agents/skills/catchup/SKILL.md",
+      "resolved_path": "/Users/samyakjhaveri/Desktop/loam/seed/.agents/skills/catchup/SKILL.md",
+      "kind": "skill",
+      "name": "catchup",
+      "sha256": "87ef6c5978ee431e5ab0d07c9689de2e116b0c1550201817cc00e0859bc4d27a",
+      "bytes": 4176,
+      "layer": "active_seed",
+      "baseline_decision": "include_curated_source_pending_adaptation",
+      "runtime_enabled_by_audit": false,
+      "frontmatter": {
+        "name": "catchup"
+      },
+      "disposition": "Preserve briefing. Adapt Claude auto-memory discovery to explicit host capability; absent memory is unavailable, not failure.",
+      "static_flags": {
+        "personal_path_or_memory_binding": [
+          {
+            "line": 16,
+            "text": "3. Memory: list the project's auto-memory directory under `~/.claude/projects/<encoded-cwd>/memory/` by modification time."
+          }
+        ],
+        "host_binding": [
+          {
+            "line": 16,
+            "text": "3. Memory: list the project's auto-memory directory under `~/.claude/projects/<encoded-cwd>/memory/` by modification time."
+          }
+        ]
+      },
+      "references": []
+    },
+    {
+      "source_path": "seed/.agents/skills/fable-prompting/SKILL.md",
+      "absolute_source_path": "/Users/samyakjhaveri/Desktop/loam/seed/.agents/skills/fable-prompting/SKILL.md",
+      "resolved_path": "/Users/samyakjhaveri/Desktop/loam/seed/.agents/skills/fable-prompting/SKILL.md",
+      "kind": "skill",
+      "name": "fable-prompting",
+      "sha256": "762f72b1b6a473fc0c980d0ff71e2fc242e7f23c6aa5e3e158f261b6aa23cebd",
+      "bytes": 3956,
+      "layer": "active_seed",
+      "baseline_decision": "include_curated_source_pending_adaptation",
+      "runtime_enabled_by_audit": false,
+      "frontmatter": {
+        "name": "fable-prompting"
+      },
+      "disposition": "Preserve curated model-specific prompting knowledge as optional provider reference. Validate guide/model claims live before execution; do not impose Claude guidance on Codex.",
+      "static_flags": {
+        "hardcoded_model_or_effort": [
+          {
+            "line": 72,
+            "text": "- Guide: https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/prompting-claude-fable-5-1.md"
+          }
+        ],
+        "host_binding": [
+          {
+            "line": 28,
+            "text": "| One tool call per turn | Batch independent tool calls in agent loops | H |"
+          },
+          {
+            "line": 40,
+            "text": "| Lead agent idles while subagents run | Let the lead agent keep working while subagents run | H |"
+          }
+        ]
+      },
+      "references": []
+    },
+    {
+      "source_path": "cultivation/marketplace/.claude-plugin/marketplace.json",
+      "absolute_source_path": "/Users/samyakjhaveri/Desktop/loam/cultivation/marketplace/.claude-plugin/marketplace.json",
+      "resolved_path": "/Users/samyakjhaveri/Desktop/loam/cultivation/marketplace/.claude-plugin/marketplace.json",
+      "kind": "marketplace_manifest",
+      "name": "marketplace",
+      "sha256": "0e7ea899f14960fc6dffa541315d38085bc12272063d7b2b34a9999fb22bd582",
+      "bytes": 4480,
+      "layer": "optional_marketplace",
+      "baseline_decision": "include_curated_source_pending_adaptation",
+      "runtime_enabled_by_audit": false,
+      "frontmatter": {},
+      "disposition": "Preserve source and curated knowledge in baseline; review host/dependency bindings before enabling.",
+      "static_flags": {
+        "host_binding": [
+          {
+            "line": 40,
+            "text": "      \"description\": \"Vetted React/UI skills from vercel-labs/agent-skills, SHA-pinned via git-subdir: react-best-practices, react-view-transitions (view-transition animation), composition-patterns, web-design-guidelines (challenger vs impeccable). Installs DISABLED (defaultEnabled:false) \\u2014 enable to trial.\","
+          },
+          {
+            "line": 46,
+            "text": "        \"url\": \"https://github.com/vercel-labs/agent-skills.git\","
+          }
+        ]
+      },
+      "references": []
+    },
+    {
+      "source_path": "cultivation/marketplace/README.md",
+      "absolute_source_path": "/Users/samyakjhaveri/Desktop/loam/cultivation/marketplace/README.md",
+      "resolved_path": "/Users/samyakjhaveri/Desktop/loam/cultivation/marketplace/README.md",
+      "kind": "support_or_config",
+      "name": "README",
+      "sha256": "fe03ab8b5bac79debe8461710801368910ff320bd400d128147c7d8efa7cd876",
+      "bytes": 1456,
+      "layer": "optional_marketplace",
+      "baseline_decision": "include_curated_source_pending_adaptation",
+      "runtime_enabled_by_audit": false,
+      "frontmatter": {},
+      "disposition": "Preserve source and curated knowledge in baseline; review host/dependency bindings before enabling.",
+      "static_flags": {
+        "host_binding": [
+          {
+            "line": 19,
+            "text": "| `sam-cc-setup` | `plan-review` (blind merged plan review, with the `plan-reviewer` agent), `codex-review` (cross-model second opinion), `surprise-me` (ranked, evidence-backed ideas) | The Loam-owned setup plugin. No hooks, no workflows |"
+          }
+        ]
+      },
+      "references": []
+    },
+    {
+      "source_path": "cultivation/marketplace/UPGRADING.md",
+      "absolute_source_path": "/Users/samyakjhaveri/Desktop/loam/cultivation/marketplace/UPGRADING.md",
+      "resolved_path": "/Users/samyakjhaveri/Desktop/loam/cultivation/marketplace/UPGRADING.md",
+      "kind": "support_or_config",
+      "name": "UPGRADING",
+      "sha256": "0bfa533773750657f49ec0ada76c115ebf487f78d66d1dcbbeb024e640eedbf3",
+      "bytes": 4932,
+      "layer": "optional_marketplace",
+      "baseline_decision": "include_curated_source_pending_adaptation",
+      "runtime_enabled_by_audit": false,
+      "frontmatter": {},
+      "disposition": "Preserve source and curated knowledge in baseline; review host/dependency bindings before enabling.",
+      "static_flags": {
+        "hardcoded_model_or_effort": [
+          {
+            "line": 13,
+            "text": "plan-review-fanout pins every agent to claude-opus-4-8[1m] and adversarially"
+          }
+        ],
+        "host_binding": [
+          {
+            "line": 13,
+            "text": "plan-review-fanout pins every agent to claude-opus-4-8[1m] and adversarially"
+          },
+          {
+            "line": 15,
+            "text": "agent, which absorbed the lint, type check, whitespace, shell syntax, test suite, and"
+          },
+          {
+            "line": 35,
+            "text": "critique-swarm, sync-to-hub, gen-spec, agent-team, hypothesis-tree."
+          },
+          {
+            "line": 85,
+            "text": "from `.claude/hooks/`. Remove their old hook entries from"
+          },
+          {
+            "line": 86,
+            "text": "`.claude/settings.json`. Remove `.validation_passed` and its `.gitignore` entry."
+          }
+        ],
+        "retired_dependency_or_receipt": [
+          {
+            "line": 80,
+            "text": "## Legacy sentinel cleanup"
+          },
+          {
+            "line": 82,
+            "text": "Projects that copied the retired sentinel gate may remove"
+          },
+          {
+            "line": 84,
+            "text": "`sentinel-cleanup.sh`, `test_pre_commit_gate.py`, and `test_gate_sentinel.py`"
+          },
+          {
+            "line": 86,
+            "text": "`.claude/settings.json`. Remove `.validation_passed` and its `.gitignore` entry."
+          }
+        ]
+      },
+      "references": []
+    },
+    {
+      "source_path": "cultivation/marketplace/sam-cc-setup/.claude-plugin/plugin.json",
+      "absolute_source_path": "/Users/samyakjhaveri/Desktop/loam/cultivation/marketplace/sam-cc-setup/.claude-plugin/plugin.json",
+      "resolved_path": "/Users/samyakjhaveri/Desktop/loam/cultivation/marketplace/sam-cc-setup/.claude-plugin/plugin.json",
+      "kind": "plugin_manifest",
+      "name": "plugin",
+      "sha256": "b6aaf92b25ca8504f7b9bdd63887d86e3f04c46d1096223f3432b10c0aea3507",
+      "bytes": 427,
+      "layer": "optional_marketplace",
+      "baseline_decision": "include_curated_source_pending_adaptation",
+      "runtime_enabled_by_audit": false,
+      "frontmatter": {},
+      "disposition": "Preserve source and curated knowledge in baseline; review host/dependency bindings before enabling.",
+      "static_flags": {},
+      "references": []
+    },
+    {
+      "source_path": "cultivation/marketplace/sam-cc-setup/README.md",
+      "absolute_source_path": "/Users/samyakjhaveri/Desktop/loam/cultivation/marketplace/sam-cc-setup/README.md",
+      "resolved_path": "/Users/samyakjhaveri/Desktop/loam/cultivation/marketplace/sam-cc-setup/README.md",
+      "kind": "support_or_config",
+      "name": "README",
+      "sha256": "a442de36a875e47fbf41037db5f64ec01ad9cb2c64650f86efb82f1d9a2a9403",
+      "bytes": 2052,
+      "layer": "optional_marketplace",
+      "baseline_decision": "include_curated_source_pending_adaptation",
+      "runtime_enabled_by_audit": false,
+      "frontmatter": {},
+      "disposition": "Preserve source and curated knowledge in baseline; review host/dependency bindings before enabling.",
+      "static_flags": {
+        "host_binding": [
+          {
+            "line": 21,
+            "text": "Plugins cannot inject always-loaded context (`CLAUDE.md`, `.claude/rules/*.md`)."
+          }
+        ]
+      },
+      "references": [
+        {
+          "target": "https://github.com/SamyakJhaveri/loam",
+          "kind": "external_reference",
+          "resolution": "not fetched in static inventory"
+        }
+      ]
+    },
+    {
+      "source_path": "cultivation/marketplace/sam-cc-setup/agents/judge.md",
+      "absolute_source_path": "/Users/samyakjhaveri/Desktop/loam/cultivation/marketplace/sam-cc-setup/agents/judge.md",
+      "resolved_path": "/Users/samyakjhaveri/Desktop/loam/cultivation/marketplace/sam-cc-setup/agents/judge.md",
+      "kind": "agent",
+      "name": "judge",
+      "sha256": "fcc60f8eb7a95f8e1d85fb19e7a4096400b417298935f695b4aeb0c27799b679",
+      "bytes": 2512,
+      "layer": "optional_marketplace",
+      "baseline_decision": "include_curated_source_pending_adaptation",
+      "runtime_enabled_by_audit": false,
+      "frontmatter": {
+        "name": "judge",
+        "model": "claude-fable-5-1",
+        "effort": "medium",
+        "tools": "Read, Grep, Glob",
+        "maxTurns": "40"
+      },
+      "disposition": "Preserve source and curated knowledge in baseline; review host/dependency bindings before enabling.",
+      "static_flags": {
+        "hardcoded_model_or_effort": [
+          {
+            "line": 5,
+            "text": "model: claude-fable-5-1"
+          },
+          {
+            "line": 6,
+            "text": "effort: medium"
+          }
+        ]
+      },
+      "references": []
+    },
+    {
+      "source_path": "cultivation/marketplace/sam-cc-setup/agents/lean-critic.md",
+      "absolute_source_path": "/Users/samyakjhaveri/Desktop/loam/cultivation/marketplace/sam-cc-setup/agents/lean-critic.md",
+      "resolved_path": "/Users/samyakjhaveri/Desktop/loam/cultivation/marketplace/sam-cc-setup/agents/lean-critic.md",
+      "kind": "agent",
+      "name": "lean-critic",
+      "sha256": "ab3d2c381e05c00790556399c54332eb086540ea18cfb77b4d6e2eb7376382ab",
+      "bytes": 7952,
+      "layer": "optional_marketplace",
+      "baseline_decision": "include_curated_source_pending_adaptation",
+      "runtime_enabled_by_audit": false,
+      "frontmatter": {
+        "name": "lean-critic",
+        "model": "claude-fable-5-1",
+        "effort": "medium",
+        "tools": "Read, Glob, Grep, Bash",
+        "maxTurns": "80"
+      },
+      "disposition": "Preserve source and curated knowledge in baseline; review host/dependency bindings before enabling.",
+      "static_flags": {
+        "hardcoded_model_or_effort": [
+          {
+            "line": 5,
+            "text": "model: claude-fable-5-1"
+          },
+          {
+            "line": 6,
+            "text": "effort: medium"
+          }
+        ]
+      },
+      "references": []
+    },
+    {
+      "source_path": "cultivation/marketplace/sam-cc-setup/agents/plan-reviewer.md",
+      "absolute_source_path": "/Users/samyakjhaveri/Desktop/loam/cultivation/marketplace/sam-cc-setup/agents/plan-reviewer.md",
+      "resolved_path": "/Users/samyakjhaveri/Desktop/loam/cultivation/marketplace/sam-cc-setup/agents/plan-reviewer.md",
+      "kind": "agent",
+      "name": "plan-reviewer",
+      "sha256": "f288663a88a858076b7df14b1343d25accdee1961bed691d23abc78c2bc23a00",
+      "bytes": 9315,
+      "layer": "optional_marketplace",
+      "baseline_decision": "include_curated_source_pending_adaptation",
+      "runtime_enabled_by_audit": false,
+      "frontmatter": {
+        "name": "plan-reviewer",
+        "model": "claude-fable-5-1",
+        "effort": "high",
+        "tools": "Read, Glob, Grep, Bash, WebSearch",
+        "maxTurns": "60"
+      },
+      "disposition": "Preserve source and curated knowledge in baseline; review host/dependency bindings before enabling.",
+      "static_flags": {
+        "hardcoded_model_or_effort": [
+          {
+            "line": 5,
+            "text": "model: claude-fable-5-1"
+          },
+          {
+            "line": 6,
+            "text": "effort: high"
+          }
+        ],
+        "host_binding": [
+          {
+            "line": 47,
+            "text": "2. **Repository rules.** Read `.claude/rules/` (if present), CLAUDE.md/AGENTS.md, linter and CI configs. Does the plan conform? Cite the specific rule for each violation."
+          }
+        ]
+      },
+      "references": []
+    },
+    {
+      "source_path": "cultivation/marketplace/sam-cc-setup/agents/reviewer.md",
+      "absolute_source_path": "/Users/samyakjhaveri/Desktop/loam/cultivation/marketplace/sam-cc-setup/agents/reviewer.md",
+      "resolved_path": "/Users/samyakjhaveri/Desktop/loam/cultivation/marketplace/sam-cc-setup/agents/reviewer.md",
+      "kind": "agent",
+      "name": "reviewer",
+      "sha256": "e18d1d4b3d16f0e9f4f38eb5d948b44e156defc6ef2dbbea9950e6ab0f474863",
+      "bytes": 2486,
+      "layer": "optional_marketplace",
+      "baseline_decision": "include_curated_source_pending_adaptation",
+      "runtime_enabled_by_audit": false,
+      "frontmatter": {
+        "name": "reviewer",
+        "model": "claude-fable-5-1",
+        "effort": "medium",
+        "tools": "Read, Grep, Glob",
+        "maxTurns": "40"
+      },
+      "disposition": "Preserve source and curated knowledge in baseline; review host/dependency bindings before enabling.",
+      "static_flags": {
+        "hardcoded_model_or_effort": [
+          {
+            "line": 5,
+            "text": "model: claude-fable-5-1"
+          },
+          {
+            "line": 6,
+            "text": "effort: medium"
+          }
+        ]
+      },
+      "references": []
+    },
+    {
+      "source_path": "cultivation/marketplace/sam-cc-setup/skills/brief/SKILL.md",
+      "absolute_source_path": "/Users/samyakjhaveri/Desktop/loam/cultivation/marketplace/sam-cc-setup/skills/brief/SKILL.md",
+      "resolved_path": "/Users/samyakjhaveri/Desktop/loam/cultivation/marketplace/sam-cc-setup/skills/brief/SKILL.md",
+      "kind": "skill",
+      "name": "brief",
+      "sha256": "673270e3e0f3fa4a518c1cf50b5a71144d25dfc59dc2fde2b5e6edf15210f315",
+      "bytes": 4799,
+      "layer": "optional_marketplace",
+      "baseline_decision": "include_curated_source_pending_adaptation",
+      "runtime_enabled_by_audit": false,
+      "frontmatter": {
+        "name": "brief",
+        "disable-model-invocation": "true"
+      },
+      "disposition": "Preserve intake and uncertainty questions. Separate generic brief contract from Loam-specific factory tracks, F4 staging statements and local examples.",
+      "static_flags": {
+        "personal_path_or_memory_binding": [
+          {
+            "line": 67,
+            "text": "Remove the stale loam-s3 worktree registered at ~/Desktop/loam-s3."
+          }
+        ],
+        "host_binding": [
+          {
+            "line": 51,
+            "text": "- Track A touches none of `seed/**`, `.claude/**`, `bin/factory*`, plugin `agents/**`, trust roots, keychains, or release files."
+          }
+        ]
+      },
+      "references": []
+    },
+    {
+      "source_path": "cultivation/marketplace/sam-cc-setup/skills/codex-review/SKILL.md",
+      "absolute_source_path": "/Users/samyakjhaveri/Desktop/loam/cultivation/marketplace/sam-cc-setup/skills/codex-review/SKILL.md",
+      "resolved_path": "/Users/samyakjhaveri/Desktop/loam/cultivation/marketplace/sam-cc-setup/skills/codex-review/SKILL.md",
+      "kind": "skill",
+      "name": "codex-review",
+      "sha256": "193900237ac3364f39a520e3bc3de7046d648854d521947b60c21e3b64a4bd1b",
+      "bytes": 5508,
+      "layer": "optional_marketplace",
+      "baseline_decision": "include_curated_source_pending_adaptation",
+      "runtime_enabled_by_audit": false,
+      "frontmatter": {
+        "name": "codex-review",
+        "disable-model-invocation": "true"
+      },
+      "disposition": "Preserve read-only fixed-diff second opinion and input validation; factor shared reviewer contract with codex-plan-review/session-critique. CLI flags and provider availability need runtime preflight.",
+      "static_flags": {
+        "hardcoded_model_or_effort": [
+          {
+            "line": 107,
+            "text": "  -c model_reasoning_effort=high -o \"$OUT\" \\"
+          }
+        ],
+        "host_binding": [
+          {
+            "line": 13,
+            "text": "`.claude/codex-reviews/` (gitignore it) and applies any fixes."
+          },
+          {
+            "line": 102,
+            "text": "mkdir -p .claude/codex-reviews"
+          },
+          {
+            "line": 104,
+            "text": "OUT=\".claude/codex-reviews/$(date +%F)-${SAFE_BRANCH}.md\""
+          },
+          {
+            "line": 106,
+            "text": "git --no-pager diff \"$SCOPE\" | codex exec --sandbox read-only \\"
+          }
+        ]
+      },
+      "references": []
+    },
+    {
+      "source_path": "cultivation/marketplace/sam-cc-setup/skills/plan-review/SKILL.md",
+      "absolute_source_path": "/Users/samyakjhaveri/Desktop/loam/cultivation/marketplace/sam-cc-setup/skills/plan-review/SKILL.md",
+      "resolved_path": "/Users/samyakjhaveri/Desktop/loam/cultivation/marketplace/sam-cc-setup/skills/plan-review/SKILL.md",
+      "kind": "skill",
+      "name": "plan-review",
+      "sha256": "e0c2efe6eaeaad06c36d45a8f0a1d9ae6c71be3ea1a0f7ea3ed6bc3685adf200",
+      "bytes": 2107,
+      "layer": "optional_marketplace",
+      "baseline_decision": "include_curated_source_pending_adaptation",
+      "runtime_enabled_by_audit": false,
+      "frontmatter": {
+        "name": "plan-review"
+      },
+      "disposition": "Preserve blind review, evidence limits, coverage ledger and durable fingerprint reuse; canonical shared review criteria with optional host adapters.",
+      "static_flags": {
+        "host_binding": [
+          {
+            "line": 4,
+            "text": "  Run the merged blind plan review (correctness checklist + elegance gate in one agent)"
+          },
+          {
+            "line": 14,
+            "text": "Invokes the merged `plan-reviewer` agent (`agents/plan-reviewer.md`) BLIND."
+          },
+          {
+            "line": 15,
+            "text": "The agent carries the whole contract itself: honesty bounds, surface enumeration, grounding, the 7-point checklist, the elegance gate, bounded findings with a coverage ledger, and the revised handoff plan."
+          },
+          {
+            "line": 26,
+            "text": "3. Build the agent prompt with ONLY:"
+          },
+          {
+            "line": 31,
+            "text": "4. Spawn one `plan-reviewer` agent with that prompt. It does not rerun an unchanged full"
+          }
+        ]
+      },
+      "references": []
+    },
+    {
+      "source_path": "cultivation/marketplace/sam-cc-setup/skills/surprise-me/SKILL.md",
+      "absolute_source_path": "/Users/samyakjhaveri/Desktop/loam/cultivation/marketplace/sam-cc-setup/skills/surprise-me/SKILL.md",
+      "resolved_path": "/Users/samyakjhaveri/Desktop/loam/cultivation/marketplace/sam-cc-setup/skills/surprise-me/SKILL.md",
+      "kind": "skill",
+      "name": "surprise-me",
+      "sha256": "4ed5e7418dedf61c097be1a769b2cf989ce4ee970a54cdf3db549234647e4415",
+      "bytes": 5649,
+      "layer": "optional_marketplace",
+      "baseline_decision": "include_curated_source_pending_adaptation",
+      "runtime_enabled_by_audit": false,
+      "frontmatter": {
+        "name": "surprise-me"
+      },
+      "disposition": "Preserve goal-specific ranked ideas; immediate execution clause must obey user scope and action authorization.",
+      "static_flags": {
+        "host_binding": [
+          {
+            "line": 19,
+            "text": "   but never aggregated, tools pointed at the wrong target. The inventory includes the AGENT'S own"
+          },
+          {
+            "line": 21,
+            "text": "   rendered pages, multi-agent document QA, published dashboards, cross-model review panels) - list"
+          }
+        ]
+      },
+      "references": []
+    },
+    {
+      "source_path": "cultivation/parked/README.md",
+      "absolute_source_path": "/Users/samyakjhaveri/Desktop/loam/cultivation/parked/README.md",
+      "resolved_path": "/Users/samyakjhaveri/Desktop/loam/cultivation/parked/README.md",
+      "kind": "support_or_config",
+      "name": "README",
+      "sha256": "9ae5eaa199bf32ea6cf45c64742ba01711c1ac7a56c30c11392d6586e5c1d2a9",
+      "bytes": 576,
+      "layer": "parked_not_installed",
+      "baseline_decision": "include_curated_source_pending_adaptation",
+      "runtime_enabled_by_audit": false,
+      "frontmatter": {},
+      "disposition": "Preserve source and curated knowledge in baseline; review host/dependency bindings before enabling.",
+      "static_flags": {},
+      "references": []
+    },
+    {
+      "source_path": "cultivation/parked/impeccable/.claude-plugin/plugin.json",
+      "absolute_source_path": "/Users/samyakjhaveri/Desktop/loam/cultivation/parked/impeccable/.claude-plugin/plugin.json",
+      "resolved_path": "/Users/samyakjhaveri/Desktop/loam/cultivation/parked/impeccable/.claude-plugin/plugin.json",
+      "kind": "plugin_manifest",
+      "name": "plugin",
+      "sha256": "6686c01fb7c5f5b5fd9a80172d2f24be5d3d787fdd532a83bdc61558fb074f92",
+      "bytes": 504,
+      "layer": "parked_not_installed",
+      "baseline_decision": "include_curated_source_pending_adaptation",
+      "runtime_enabled_by_audit": false,
+      "frontmatter": {},
+      "disposition": "Preserve source and curated knowledge in baseline; review host/dependency bindings before enabling.",
+      "static_flags": {},
+      "references": []
+    },
+    {
+      "source_path": "cultivation/parked/impeccable/LICENSE.upstream",
+      "absolute_source_path": "/Users/samyakjhaveri/Desktop/loam/cultivation/parked/impeccable/LICENSE.upstream",
+      "resolved_path": "/Users/samyakjhaveri/Desktop/loam/cultivation/parked/impeccable/LICENSE.upstream",
+      "kind": "support_or_config",
+      "name": "LICENSE",
+      "sha256": "02bb8c3b4e70190e3986c0404ad2fd8d639b4f534252d82379cc1b502b6d1812",
+      "bytes": 10766,
+      "layer": "parked_not_installed",
+      "baseline_decision": "include_curated_source_pending_adaptation",
+      "runtime_enabled_by_audit": false,
+      "frontmatter": {},
+      "disposition": "Preserve source and curated knowledge in baseline; review host/dependency bindings before enabling.",
+      "static_flags": {},
+      "references": []
+    },
+    {
+      "source_path": "cultivation/parked/impeccable/README.md",
+      "absolute_source_path": "/Users/samyakjhaveri/Desktop/loam/cultivation/parked/impeccable/README.md",
+      "resolved_path": "/Users/samyakjhaveri/Desktop/loam/cultivation/parked/impeccable/README.md",
+      "kind": "support_or_config",
+      "name": "README",
+      "sha256": "f3609d65058286e63e56794d3b79d12defb9670c84ae75b1f45a74c03c142bfe",
+      "bytes": 810,
+      "layer": "parked_not_installed",
+      "baseline_decision": "include_curated_source_pending_adaptation",
+      "runtime_enabled_by_audit": false,
+      "frontmatter": {},
+      "disposition": "Preserve source and curated knowledge in baseline; review host/dependency bindings before enabling.",
+      "static_flags": {},
+      "references": []
+    },
+    {
+      "source_path": "cultivation/parked/impeccable/skills/impeccable/SKILL.md",
+      "absolute_source_path": "/Users/samyakjhaveri/Desktop/loam/cultivation/parked/impeccable/skills/impeccable/SKILL.md",
+      "resolved_path": "/Users/samyakjhaveri/Desktop/loam/cultivation/parked/impeccable/skills/impeccable/SKILL.md",
+      "kind": "skill",
+      "name": "impeccable",
+      "sha256": "73907593ad122370062f1d55561dae1350ef298c68cdaedaafbd846eae0e2a25",
+      "bytes": 1870,
+      "layer": "parked_not_installed",
+      "baseline_decision": "include_curated_source_pending_adaptation",
+      "runtime_enabled_by_audit": false,
+      "frontmatter": {
+        "name": "impeccable",
+        "disable-model-invocation": "true"
+      },
+      "disposition": "Preserve wrapper and provenance. Local tree is not upstream implementation; CLI, command counts and package identity remain unverified. Resolve pinned upstream before activation.",
+      "static_flags": {},
+      "references": [
+        {
+          "target": "https://www.claudepluginhub.com/plugins/pbakaus-impeccable",
+          "kind": "external_reference",
+          "resolution": "not fetched in static inventory"
+        }
+      ]
+    },
+    {
+      "source_path": "cultivation/parked/research-lane/research-assets/reassess-protect-results.sh",
+      "absolute_source_path": "/Users/samyakjhaveri/Desktop/loam/cultivation/parked/research-lane/research-assets/reassess-protect-results.sh",
+      "resolved_path": "/Users/samyakjhaveri/Desktop/loam/cultivation/parked/research-lane/research-assets/reassess-protect-results.sh",
+      "kind": "support_or_config",
+      "name": "reassess-protect-results",
+      "sha256": "94ee6f82869eafdaf6caa88a713ce2e3c1e61c255afec64ad10db2a2166019ac",
+      "bytes": 2153,
+      "layer": "parked_not_installed",
+      "baseline_decision": "include_curated_source_pending_adaptation",
+      "runtime_enabled_by_audit": false,
+      "frontmatter": {},
+      "disposition": "Preserve source and curated knowledge in baseline; review host/dependency bindings before enabling.",
+      "static_flags": {
+        "host_binding": [
+          {
+            "line": 7,
+            "text": "# PreToolUse hook on Bash|Edit|Write"
+          }
+        ]
+      },
+      "references": []
+    },
+    {
+      "source_path": "cultivation/parked/research-lane/research-assets/reassess-research-consistency.md",
+      "absolute_source_path": "/Users/samyakjhaveri/Desktop/loam/cultivation/parked/research-lane/research-assets/reassess-research-consistency.md",
+      "resolved_path": "/Users/samyakjhaveri/Desktop/loam/cultivation/parked/research-lane/research-assets/reassess-research-consistency.md",
+      "kind": "support_or_config",
+      "name": "reassess-research-consistency",
+      "sha256": "85d3b2be2189e84db36d912cf7736a68f0cb6c76d645db5adf842d2303031b94",
+      "bytes": 1891,
+      "layer": "parked_not_installed",
+      "baseline_decision": "include_curated_source_pending_adaptation",
+      "runtime_enabled_by_audit": false,
+      "frontmatter": {},
+      "disposition": "Preserve source and curated knowledge in baseline; review host/dependency bindings before enabling.",
+      "static_flags": {},
+      "references": []
+    },
+    {
+      "source_path": "cultivation/parked/research-lane/research-assets/reassess-research-memory.md",
+      "absolute_source_path": "/Users/samyakjhaveri/Desktop/loam/cultivation/parked/research-lane/research-assets/reassess-research-memory.md",
+      "resolved_path": "/Users/samyakjhaveri/Desktop/loam/cultivation/parked/research-lane/research-assets/reassess-research-memory.md",
+      "kind": "support_or_config",
+      "name": "reassess-research-memory",
+      "sha256": "99707400d51b67303584b8c7ec0f1a67b51a21680280b36f2c3f5d9873532d76",
+      "bytes": 1690,
+      "layer": "parked_not_installed",
+      "baseline_decision": "include_curated_source_pending_adaptation",
+      "runtime_enabled_by_audit": false,
+      "frontmatter": {},
+      "disposition": "Preserve source and curated knowledge in baseline; review host/dependency bindings before enabling.",
+      "static_flags": {},
+      "references": []
+    },
+    {
+      "source_path": "cultivation/parked/research-lane/research-assets/seed-docs/CHANGELOG.research.md.jinja",
+      "absolute_source_path": "/Users/samyakjhaveri/Desktop/loam/cultivation/parked/research-lane/research-assets/seed-docs/CHANGELOG.research.md.jinja",
+      "resolved_path": "/Users/samyakjhaveri/Desktop/loam/cultivation/parked/research-lane/research-assets/seed-docs/CHANGELOG.research.md.jinja",
+      "kind": "support_or_config",
+      "name": "CHANGELOG.research.md",
+      "sha256": "edf837b1e186c247cc396afaa596b725b3ea8fbd6a621004fd044f282b0db1d2",
+      "bytes": 622,
+      "layer": "parked_not_installed",
+      "baseline_decision": "include_curated_source_pending_adaptation",
+      "runtime_enabled_by_audit": false,
+      "frontmatter": {},
+      "disposition": "Preserve source and curated knowledge in baseline; review host/dependency bindings before enabling.",
+      "static_flags": {},
+      "references": []
+    },
+    {
+      "source_path": "cultivation/parked/research-lane/research-assets/seed-docs/EXPERIMENT-PROTOCOL.md.jinja",
+      "absolute_source_path": "/Users/samyakjhaveri/Desktop/loam/cultivation/parked/research-lane/research-assets/seed-docs/EXPERIMENT-PROTOCOL.md.jinja",
+      "resolved_path": "/Users/samyakjhaveri/Desktop/loam/cultivation/parked/research-lane/research-assets/seed-docs/EXPERIMENT-PROTOCOL.md.jinja",
+      "kind": "support_or_config",
+      "name": "EXPERIMENT-PROTOCOL.md",
+      "sha256": "e3957f5e6feb44e8ca1dfc48a7ea5b8a93d745d8bb259ccec14c1e826a227a5e",
+      "bytes": 2126,
+      "layer": "parked_not_installed",
+      "baseline_decision": "include_curated_source_pending_adaptation",
+      "runtime_enabled_by_audit": false,
+      "frontmatter": {},
+      "disposition": "Preserve source and curated knowledge in baseline; review host/dependency bindings before enabling.",
+      "static_flags": {},
+      "references": []
+    },
+    {
+      "source_path": "cultivation/parked/research-lane/research-assets/seed-docs/EXPERIMENTS.md.jinja",
+      "absolute_source_path": "/Users/samyakjhaveri/Desktop/loam/cultivation/parked/research-lane/research-assets/seed-docs/EXPERIMENTS.md.jinja",
+      "resolved_path": "/Users/samyakjhaveri/Desktop/loam/cultivation/parked/research-lane/research-assets/seed-docs/EXPERIMENTS.md.jinja",
+      "kind": "support_or_config",
+      "name": "EXPERIMENTS.md",
+      "sha256": "54800080c8214719e76d1ff96c1825a2809fc94f39a702d4f5b496ea3f74318b",
+      "bytes": 570,
+      "layer": "parked_not_installed",
+      "baseline_decision": "include_curated_source_pending_adaptation",
+      "runtime_enabled_by_audit": false,
+      "frontmatter": {},
+      "disposition": "Preserve source and curated knowledge in baseline; review host/dependency bindings before enabling.",
+      "static_flags": {},
+      "references": []
+    },
+    {
+      "source_path": "cultivation/parked/research-lane/research-assets/seed-docs/FINDINGS.md.jinja",
+      "absolute_source_path": "/Users/samyakjhaveri/Desktop/loam/cultivation/parked/research-lane/research-assets/seed-docs/FINDINGS.md.jinja",
+      "resolved_path": "/Users/samyakjhaveri/Desktop/loam/cultivation/parked/research-lane/research-assets/seed-docs/FINDINGS.md.jinja",
+      "kind": "support_or_config",
+      "name": "FINDINGS.md",
+      "sha256": "cfc163f06bedbb58d85286d0d7bca41393c91ed9ffd822336c67c68b5430958e",
+      "bytes": 452,
+      "layer": "parked_not_installed",
+      "baseline_decision": "include_curated_source_pending_adaptation",
+      "runtime_enabled_by_audit": false,
+      "frontmatter": {},
+      "disposition": "Preserve source and curated knowledge in baseline; review host/dependency bindings before enabling.",
+      "static_flags": {},
+      "references": []
+    },
+    {
+      "source_path": "cultivation/parked/research-lane/research-assets/seed-docs/REFERENCES.md.jinja",
+      "absolute_source_path": "/Users/samyakjhaveri/Desktop/loam/cultivation/parked/research-lane/research-assets/seed-docs/REFERENCES.md.jinja",
+      "resolved_path": "/Users/samyakjhaveri/Desktop/loam/cultivation/parked/research-lane/research-assets/seed-docs/REFERENCES.md.jinja",
+      "kind": "support_or_config",
+      "name": "REFERENCES.md",
+      "sha256": "22e5ff633198e982cab686d369030c6d7c6ca1bc51b434b49dc63565dd1dd626",
+      "bytes": 462,
+      "layer": "parked_not_installed",
+      "baseline_decision": "include_curated_source_pending_adaptation",
+      "runtime_enabled_by_audit": false,
+      "frontmatter": {},
+      "disposition": "Preserve source and curated knowledge in baseline; review host/dependency bindings before enabling.",
+      "static_flags": {},
+      "references": []
+    },
+    {
+      "source_path": "cultivation/parked/research-lane/research-assets/seed-docs/RESULTS.md.jinja",
+      "absolute_source_path": "/Users/samyakjhaveri/Desktop/loam/cultivation/parked/research-lane/research-assets/seed-docs/RESULTS.md.jinja",
+      "resolved_path": "/Users/samyakjhaveri/Desktop/loam/cultivation/parked/research-lane/research-assets/seed-docs/RESULTS.md.jinja",
+      "kind": "support_or_config",
+      "name": "RESULTS.md",
+      "sha256": "ab4fbc7012d35eb6687da01eafcc0d4509fa29e088bc8f888887085ad0d5cb96",
+      "bytes": 357,
+      "layer": "parked_not_installed",
+      "baseline_decision": "include_curated_source_pending_adaptation",
+      "runtime_enabled_by_audit": false,
+      "frontmatter": {},
+      "disposition": "Preserve source and curated knowledge in baseline; review host/dependency bindings before enabling.",
+      "static_flags": {},
+      "references": []
+    },
+    {
+      "source_path": "cultivation/parked/sam-cc-setup/THIRD_PARTY_LICENSES/obra-superpowers.txt",
+      "absolute_source_path": "/Users/samyakjhaveri/Desktop/loam/cultivation/parked/sam-cc-setup/THIRD_PARTY_LICENSES/obra-superpowers.txt",
+      "resolved_path": "/Users/samyakjhaveri/Desktop/loam/cultivation/parked/sam-cc-setup/THIRD_PARTY_LICENSES/obra-superpowers.txt",
+      "kind": "support_or_config",
+      "name": "obra-superpowers",
+      "sha256": "a37e0e9697144819e1d965176ac4ae5bc3fa02d11e7812036bbcadf6dafe2400",
+      "bytes": 1070,
+      "layer": "parked_not_installed",
+      "baseline_decision": "include_curated_source_pending_adaptation",
+      "runtime_enabled_by_audit": false,
+      "frontmatter": {},
+      "disposition": "Preserve source and curated knowledge in baseline; review host/dependency bindings before enabling.",
+      "static_flags": {},
+      "references": []
+    },
+    {
+      "source_path": "cultivation/parked/sam-cc-setup/agents/build-validator.md",
+      "absolute_source_path": "/Users/samyakjhaveri/Desktop/loam/cultivation/parked/sam-cc-setup/agents/build-validator.md",
+      "resolved_path": "/Users/samyakjhaveri/Desktop/loam/cultivation/parked/sam-cc-setup/agents/build-validator.md",
+      "kind": "agent",
+      "name": "build-validator",
+      "sha256": "d1f18fcb8a9fc9b70024e40a9f84d4fcf51ff889f14058a573b723ce7a599259",
+      "bytes": 2353,
+      "layer": "parked_not_installed",
+      "baseline_decision": "include_curated_source_pending_adaptation",
+      "runtime_enabled_by_audit": false,
+      "frontmatter": {
+        "name": "build-validator",
+        "tools": "Bash, Read, Glob, Grep",
+        "maxTurns": "25"
+      },
+      "disposition": "Preserve source and curated knowledge in baseline; review host/dependency bindings before enabling.",
+      "static_flags": {
+        "host_binding": [
+          {
+            "line": 8,
+            "text": "# Build Validator Agent"
+          }
+        ],
+        "retired_dependency_or_receipt": [
+          {
+            "line": 26,
+            "text": "1. If `.agents/lib/validation.py` exists, run its `check` command first. Exit 0 reuses"
+          },
+          {
+            "line": 28,
+            "text": "2. In the Loam template repository, use `seed/.agents/lib/validation.py` with `--root .`."
+          }
+        ]
+      },
+      "references": []
+    },
+    {
+      "source_path": "cultivation/parked/sam-cc-setup/agents/code-architect.md",
+      "absolute_source_path": "/Users/samyakjhaveri/Desktop/loam/cultivation/parked/sam-cc-setup/agents/code-architect.md",
+      "resolved_path": "/Users/samyakjhaveri/Desktop/loam/cultivation/parked/sam-cc-setup/agents/code-architect.md",
+      "kind": "agent",
+      "name": "code-architect",
+      "sha256": "6eead48167dc3a9605c7e2240646859ad2e985a243c575613f217a4b9bfc0523",
+      "bytes": 2171,
+      "layer": "parked_not_installed",
+      "baseline_decision": "include_curated_source_pending_adaptation",
+      "runtime_enabled_by_audit": false,
+      "frontmatter": {
+        "name": "code-architect",
+        "model": "claude-opus-4-8[1m]",
+        "effort": "xhigh",
+        "tools": "Bash, Read, Glob, Grep",
+        "maxTurns": "20"
+      },
+      "disposition": "Preserve source and curated knowledge in baseline; review host/dependency bindings before enabling.",
+      "static_flags": {
+        "hardcoded_model_or_effort": [
+          {
+            "line": 5,
+            "text": "model: claude-opus-4-8[1m]"
+          },
+          {
+            "line": 6,
+            "text": "effort: xhigh"
+          }
+        ],
+        "host_binding": [
+          {
+            "line": 3,
+            "text": "description: \"Review-only architecture reviewer (does NOT edit source). Assesses module boundaries, coupling, seams, and testability against this repo's DOMAIN.md and docs/adr/ before a large change, then recommends a target structure. Reports every finding, most severe first. Distinct from the feature-dev:code-architect PLUGIN agent, which writes implementation blueprints \u2014 this one only reviews.\""
+          },
+          {
+            "line": 10,
+            "text": "# Code Architect Agent"
+          }
+        ]
+      },
+      "references": []
+    },
+    {
+      "source_path": "cultivation/parked/sam-cc-setup/agents/consistency-checker.md",
+      "absolute_source_path": "/Users/samyakjhaveri/Desktop/loam/cultivation/parked/sam-cc-setup/agents/consistency-checker.md",
+      "resolved_path": "/Users/samyakjhaveri/Desktop/loam/cultivation/parked/sam-cc-setup/agents/consistency-checker.md",
+      "kind": "agent",
+      "name": "consistency-checker",
+      "sha256": "4ec5998a7de3c41efed2de76775d18397d40497edc413f6ad2b56020ba905073",
+      "bytes": 10860,
+      "layer": "parked_not_installed",
+      "baseline_decision": "include_curated_source_pending_adaptation",
+      "runtime_enabled_by_audit": false,
+      "frontmatter": {
+        "name": "consistency-checker",
+        "model": "claude-opus-4-8[1m]",
+        "effort": "xhigh",
+        "tools": "Bash, Read, Glob, Grep",
+        "maxTurns": "15"
+      },
+      "disposition": "Preserve source and curated knowledge in baseline; review host/dependency bindings before enabling.",
+      "static_flags": {
+        "hardcoded_model_or_effort": [
+          {
+            "line": 5,
+            "text": "model: claude-opus-4-8[1m]"
+          },
+          {
+            "line": 6,
+            "text": "effort: xhigh"
+          }
+        ],
+        "host_binding": [
+          {
+            "line": 3,
+            "text": "description: \"Cross-checks documentation against code. Detects stale claims in CLAUDE.md, contradictions between agent tables and actual files, missing rules-table entries, competing controlling-plan claims, and undocumented changes. Use in the project's post-session validation pass. Returns structured PASS/FAIL. Reports every finding, most severe first.\""
+          },
+          {
+            "line": 10,
+            "text": "# Consistency Checker Agent"
+          },
+          {
+            "line": 21,
+            "text": "## Check 1: CLAUDE.md Agent Table vs Actual Agent Files"
+          },
+          {
+            "line": 23,
+            "text": "Conditional: only projects that maintain an agent table in CLAUDE.md are checked."
+          },
+          {
+            "line": 24,
+            "text": "Detect that by whether ANY agent name already appears in CLAUDE.md; if none do,"
+          },
+          {
+            "line": 25,
+            "text": "the project keeps no such table, so report SKIP rather than flagging every agent."
+          },
+          {
+            "line": 28,
+            "text": "if ! ls .claude/agents/*.md >/dev/null 2>&1; then"
+          },
+          {
+            "line": 29,
+            "text": "    echo \"SKIP Check 1: no .claude/agents/ directory\""
+          },
+          {
+            "line": 32,
+            "text": "    for f in .claude/agents/*.md; do"
+          },
+          {
+            "line": 37,
+            "text": "        echo \"SKIP Check 1: CLAUDE.md maintains no agent table\""
+          },
+          {
+            "line": 40,
+            "text": "        ACTUAL_AGENTS=$(ls .claude/agents/*.md 2>/dev/null | wc -l | tr -d ' ')"
+          },
+          {
+            "line": 43,
+            "text": "            echo \"MISMATCH: update the agent count in CLAUDE.md from $CLAIMED_AGENTS to $ACTUAL_AGENTS\""
+          },
+          {
+            "line": 45,
+            "text": "        # Each agent name must appear in the table"
+          },
+          {
+            "line": 46,
+            "text": "        for f in .claude/agents/*.md; do"
+          },
+          {
+            "line": 62,
+            "text": "if ! ls .claude/skills/*/SKILL.md >/dev/null 2>&1; then"
+          },
+          {
+            "line": 63,
+            "text": "    echo \"SKIP Check 2: no .claude/skills/ directory\""
+          },
+          {
+            "line": 68,
+            "text": "    for s in .claude/skills/*/SKILL.md; do"
+          },
+          {
+            "line": 75,
+            "text": "        for s in .claude/skills/*/SKILL.md; do"
+          },
+          {
+            "line": 92,
+            "text": "if ! ls .claude/rules/*.md >/dev/null 2>&1; then"
+          },
+          {
+            "line": 93,
+            "text": "    echo \"SKIP Check 3: no .claude/rules/ directory\""
+          },
+          {
+            "line": 96,
+            "text": "    for f in .claude/rules/*.md; do"
+          },
+          {
+            "line": 102,
+            "text": "        for f in .claude/rules/*.md; do"
+          },
+          {
+            "line": 123,
+            "text": "# If a new agent was added (.claude/agents/*.md added)"
+          },
+          {
+            "line": 124,
+            "text": "NEW_AGENTS=$(git diff --name-only HEAD | grep '^\\.claude/agents/')"
+          },
+          {
+            "line": 129,
+            "text": "# If a new skill was added (.claude/skills/*/SKILL.md)"
+          },
+          {
+            "line": 130,
+            "text": "NEW_SKILLS=$(git diff --name-only HEAD | grep '^\\.claude/skills/')"
+          },
+          {
+            "line": 176,
+            "text": "     *.md AGENTS.md */CONTEXT.md .claude/rules/*.md .claude/plans/*.md .claude/plans/*.html 2>/dev/null \\"
+          },
+          {
+            "line": 229,
+            "text": "[1] CLAUDE.md agent table:    PASS/FAIL/SKIP"
+          },
+          {
+            "line": 230,
+            "text": "    [if FAIL: agent names missing from table; SKIP: project keeps no agent table]"
+          }
+        ]
+      },
+      "references": []
+    },
+    {
+      "source_path": "cultivation/parked/sam-cc-setup/agents/read-only.md",
+      "absolute_source_path": "/Users/samyakjhaveri/Desktop/loam/cultivation/parked/sam-cc-setup/agents/read-only.md",
+      "resolved_path": "/Users/samyakjhaveri/Desktop/loam/cultivation/parked/sam-cc-setup/agents/read-only.md",
+      "kind": "agent",
+      "name": "read-only",
+      "sha256": "76ed1b385b78cacf9d54fa7e4f9cf916a8f00a6c971e3ba8024f2793ac03b980",
+      "bytes": 1031,
+      "layer": "parked_not_installed",
+      "baseline_decision": "include_curated_source_pending_adaptation",
+      "runtime_enabled_by_audit": false,
+      "frontmatter": {
+        "name": "read-only",
+        "model": "claude-opus-4-8[1m]",
+        "effort": "high",
+        "tools": "Read",
+        "maxTurns": "15"
+      },
+      "disposition": "Preserve source and curated knowledge in baseline; review host/dependency bindings before enabling.",
+      "static_flags": {
+        "hardcoded_model_or_effort": [
+          {
+            "line": 5,
+            "text": "model: claude-opus-4-8[1m]"
+          },
+          {
+            "line": 6,
+            "text": "effort: high"
+          }
+        ],
+        "host_binding": [
+          {
+            "line": 10,
+            "text": "# Read-Only Agent"
+          }
+        ]
+      },
+      "references": []
+    },
+    {
+      "source_path": "cultivation/parked/sam-cc-setup/agents/test-synthesizer.md",
+      "absolute_source_path": "/Users/samyakjhaveri/Desktop/loam/cultivation/parked/sam-cc-setup/agents/test-synthesizer.md",
+      "resolved_path": "/Users/samyakjhaveri/Desktop/loam/cultivation/parked/sam-cc-setup/agents/test-synthesizer.md",
+      "kind": "agent",
+      "name": "test-synthesizer",
+      "sha256": "d286d3ac828b1e0dea69d6fa62ee03407893a8bb314db3d29d5b4b08dc285b44",
+      "bytes": 5408,
+      "layer": "parked_not_installed",
+      "baseline_decision": "include_curated_source_pending_adaptation",
+      "runtime_enabled_by_audit": false,
+      "frontmatter": {
+        "name": "test-synthesizer",
+        "model": "claude-opus-4-8[1m]",
+        "effort": "xhigh",
+        "tools": "Bash, Read, Glob, Grep",
+        "maxTurns": "20"
+      },
+      "disposition": "Preserve source and curated knowledge in baseline; review host/dependency bindings before enabling.",
+      "static_flags": {
+        "hardcoded_model_or_effort": [
+          {
+            "line": 5,
+            "text": "model: claude-opus-4-8[1m]"
+          },
+          {
+            "line": 6,
+            "text": "effort: xhigh"
+          },
+          {
+            "line": 132,
+            "text": "    if model not in valid_models and not model.startswith('claude-opus-') and not model.startswith('claude-fable-'):"
+          }
+        ],
+        "host_binding": [
+          {
+            "line": 10,
+            "text": "# Test Synthesizer Agent"
+          },
+          {
+            "line": 29,
+            "text": "CHANGED_AGENTS=$(git diff --name-only HEAD | grep '^\\.claude/agents/.*\\.md$')"
+          },
+          {
+            "line": 30,
+            "text": "CHANGED_SKILLS=$(git diff --name-only HEAD | grep '^\\.claude/skills/')"
+          },
+          {
+            "line": 90,
+            "text": "## Test Strategy 4: Agent/Skill Frontmatter Validity"
+          },
+          {
+            "line": 91,
+            "text": "For each changed `.claude/agents/*.md` or `.claude/skills/*/SKILL.md`:"
+          },
+          {
+            "line": 158,
+            "text": "Agent frontmatter:      PASS/FAIL/SKIP (N/N passed)"
+          },
+          {
+            "line": 159,
+            "text": "  [if FAIL: agent path \u2014 missing field or invalid value]"
+          }
+        ]
+      },
+      "references": []
+    },
+    {
+      "source_path": "cultivation/parked/sam-cc-setup/hooks/check_stale_counts.py",
+      "absolute_source_path": "/Users/samyakjhaveri/Desktop/loam/cultivation/parked/sam-cc-setup/hooks/check_stale_counts.py",
+      "resolved_path": "/Users/samyakjhaveri/Desktop/loam/cultivation/parked/sam-cc-setup/hooks/check_stale_counts.py",
+      "kind": "hook",
+      "name": "check_stale_counts",
+      "sha256": "ae087660630b4d38be5c0549682f0162227d0a68519b0273a983aec7d897e1f1",
+      "bytes": 7313,
+      "layer": "parked_not_installed",
+      "baseline_decision": "include_curated_source_pending_adaptation",
+      "runtime_enabled_by_audit": false,
+      "frontmatter": {},
+      "disposition": "Preserve enforcement intent and source/test knowledge. Seed native policies and SessionStart-class hooks remain canonical; do not enable parked tool-matcher hooks unchanged.",
+      "static_flags": {
+        "host_binding": [
+          {
+            "line": 4,
+            "text": "Why this exists (Boris, \"Automation as infrastructure\"): an agent that fixes a"
+          },
+          {
+            "line": 13,
+            "text": "Config: .claude/stale-counts.json"
+          },
+          {
+            "line": 36,
+            "text": "an agent decides whether the doc is stale or the doc is history. Dated"
+          },
+          {
+            "line": 158,
+            "text": "            print(\"no .claude/stale-counts.json - nothing declared, nothing checked\")"
+          },
+          {
+            "line": 165,
+            "text": "            print(f\"INVALID CONFIG: .claude/stale-counts.json has no usable '{key}'.\","
+          }
+        ]
+      },
+      "references": []
+    },
+    {
+      "source_path": "cultivation/parked/sam-cc-setup/hooks/codex-review-reminder.sh",
+      "absolute_source_path": "/Users/samyakjhaveri/Desktop/loam/cultivation/parked/sam-cc-setup/hooks/codex-review-reminder.sh",
+      "resolved_path": "/Users/samyakjhaveri/Desktop/loam/cultivation/parked/sam-cc-setup/hooks/codex-review-reminder.sh",
+      "kind": "hook",
+      "name": "codex-review-reminder",
+      "sha256": "225441222f4e3aed584160a838fe20458f350c7738b41943b3792135dc2acf46",
+      "bytes": 3514,
+      "layer": "parked_not_installed",
+      "baseline_decision": "include_curated_source_pending_adaptation",
+      "runtime_enabled_by_audit": false,
+      "frontmatter": {},
+      "disposition": "Preserve enforcement intent and source/test knowledge. Seed native policies and SessionStart-class hooks remain canonical; do not enable parked tool-matcher hooks unchanged.",
+      "static_flags": {
+        "host_binding": [
+          {
+            "line": 4,
+            "text": "# PreToolUse (Bash) hook - advisory reminder to run a Codex review before committing."
+          },
+          {
+            "line": 65,
+            "text": "REMINDER_JSON='{\"hookSpecificOutput\":{\"hookEventName\":\"PreToolUse\",\"additionalContext\":\"Codex review reminder: You have not run a Codex review in this session. Before committing, consider running:\\n\\n  /codex-review\\n\\nAfter the review completes, write the sentinel from the project root: touch .codex_review_done\\nTo skip this reminder, touch .codex_review_done from the project root.\"}}'"
+          }
+        ],
+        "retired_dependency_or_receipt": [
+          {
+            "line": 7,
+            "text": "# It checks for a `.codex_review_done` sentinel at the project root: if that file is"
+          },
+          {
+            "line": 64,
+            "text": "SENTINEL=\"$PROJECT_ROOT/.codex_review_done\""
+          },
+          {
+            "line": 65,
+            "text": "REMINDER_JSON='{\"hookSpecificOutput\":{\"hookEventName\":\"PreToolUse\",\"additionalContext\":\"Codex review reminder: You have not run a Codex review in this session. Before committing, consider running:\\n\\n  /codex-review\\n\\nAfter the review completes, write the sentinel from the project root: touch .codex_review_done\\nTo skip this reminder, touch .codex_review_done from the project root.\"}}'"
+          },
+          {
+            "line": 67,
+            "text": "if [ ! -f \"$SENTINEL\" ]; then"
+          },
+          {
+            "line": 74,
+            "text": "    SENTINEL_MTIME=$(stat -c %Y \"$SENTINEL\" 2>/dev/null || echo \"0\")"
+          },
+          {
+            "line": 76,
+            "text": "    SENTINEL_MTIME=$(stat -f %m \"$SENTINEL\" 2>/dev/null || echo \"0\")"
+          },
+          {
+            "line": 80,
+            "text": "AGE=$(( NOW - SENTINEL_MTIME ))"
+          }
+        ]
+      },
+      "references": []
+    },
+    {
+      "source_path": "cultivation/parked/sam-cc-setup/hooks/concurrent-checkout-guard.sh",
+      "absolute_source_path": "/Users/samyakjhaveri/Desktop/loam/cultivation/parked/sam-cc-setup/hooks/concurrent-checkout-guard.sh",
+      "resolved_path": "/Users/samyakjhaveri/Desktop/loam/cultivation/parked/sam-cc-setup/hooks/concurrent-checkout-guard.sh",
+      "kind": "hook",
+      "name": "concurrent-checkout-guard",
+      "sha256": "7acf3323a235245fb02db7842a78d948812de610bb6dc0a2fd16bbad2c51fd4d",
+      "bytes": 3272,
+      "layer": "parked_not_installed",
+      "baseline_decision": "include_curated_source_pending_adaptation",
+      "runtime_enabled_by_audit": false,
+      "frontmatter": {},
+      "disposition": "Preserve enforcement intent and source/test knowledge. Seed native policies and SessionStart-class hooks remain canonical; do not enable parked tool-matcher hooks unchanged.",
+      "static_flags": {
+        "host_binding": [
+          {
+            "line": 4,
+            "text": "# PreToolUse hook on Bash|Edit|Write."
+          },
+          {
+            "line": 76,
+            "text": "    echo \"  A second agent (a concurrent Codex or Claude session) is mid-write in the SAME working tree.\" >&2"
+          },
+          {
+            "line": 85,
+            "text": "echo \"  If no other agent is active in this checkout, clear it: rm '$LOCK'\" >&2"
+          }
+        ],
+        "retired_dependency_or_receipt": [
+          {
+            "line": 10,
+            "text": "# plus mystery files and clobbered .validation_passed sentinels."
+          }
+        ]
+      },
+      "references": []
+    },
+    {
+      "source_path": "cultivation/parked/sam-cc-setup/hooks/generated-file-guard.sh",
+      "absolute_source_path": "/Users/samyakjhaveri/Desktop/loam/cultivation/parked/sam-cc-setup/hooks/generated-file-guard.sh",
+      "resolved_path": "/Users/samyakjhaveri/Desktop/loam/cultivation/parked/sam-cc-setup/hooks/generated-file-guard.sh",
+      "kind": "hook",
+      "name": "generated-file-guard",
+      "sha256": "aad18f4dfbcd0dcfbf5a194e69d009b8e3f439e63380cff30b6ca20fd7a815ed",
+      "bytes": 3161,
+      "layer": "parked_not_installed",
+      "baseline_decision": "include_curated_source_pending_adaptation",
+      "runtime_enabled_by_audit": false,
+      "frontmatter": {},
+      "disposition": "Preserve enforcement intent and source/test knowledge. Seed native policies and SessionStart-class hooks remain canonical; do not enable parked tool-matcher hooks unchanged.",
+      "static_flags": {
+        "host_binding": [
+          {
+            "line": 4,
+            "text": "# Triggered by: PreToolUse on Edit|Write"
+          },
+          {
+            "line": 6,
+            "text": "#          generator. Registry: .claude/generated-outputs.tsv"
+          },
+          {
+            "line": 26,
+            "text": "REGISTRY=\"$ROOT/.claude/generated-outputs.tsv\""
+          },
+          {
+            "line": 72,
+            "text": "    echo \".claude/generated-outputs.tsv): mode is '${mode:-<empty>}', expected block or warn.\" >&2"
+          },
+          {
+            "line": 79,
+            "text": "  echo \"If this file is genuinely hand-maintained, remove its row from .claude/generated-outputs.tsv.\" >&2"
+          }
+        ]
+      },
+      "references": []
+    },
+    {
+      "source_path": "cultivation/parked/sam-cc-setup/hooks/hooks.json",
+      "absolute_source_path": "/Users/samyakjhaveri/Desktop/loam/cultivation/parked/sam-cc-setup/hooks/hooks.json",
+      "resolved_path": "/Users/samyakjhaveri/Desktop/loam/cultivation/parked/sam-cc-setup/hooks/hooks.json",
+      "kind": "hook_registry",
+      "name": "hooks",
+      "sha256": "f3e5ce741735cd8bbcbc114adc940183c164271ff3cdd35f7f7752f704e7b1d5",
+      "bytes": 917,
+      "layer": "parked_not_installed",
+      "baseline_decision": "include_curated_source_pending_adaptation",
+      "runtime_enabled_by_audit": false,
+      "frontmatter": {},
+      "disposition": "Preserve enforcement intent and source/test knowledge. Seed native policies and SessionStart-class hooks remain canonical; do not enable parked tool-matcher hooks unchanged.",
+      "static_flags": {
+        "host_binding": [
+          {
+            "line": 3,
+            "text": "    \"PreToolUse\": ["
+          },
+          {
+            "line": 9,
+            "text": "            \"command\": \"${CLAUDE_PLUGIN_ROOT}/hooks/codex-review-reminder.sh\","
+          },
+          {
+            "line": 19,
+            "text": "            \"command\": \"${CLAUDE_PLUGIN_ROOT}/hooks/concurrent-checkout-guard.sh\","
+          },
+          {
+            "line": 24,
+            "text": "            \"command\": \"${CLAUDE_PLUGIN_ROOT}/hooks/protect-paths.sh\","
+          },
+          {
+            "line": 34,
+            "text": "            \"command\": \"${CLAUDE_PLUGIN_ROOT}/hooks/generated-file-guard.sh\","
+          }
+        ]
+      },
+      "references": []
+    },
+    {
+      "source_path": "cultivation/parked/sam-cc-setup/hooks/pre-commit.sh",
+      "absolute_source_path": "/Users/samyakjhaveri/Desktop/loam/cultivation/parked/sam-cc-setup/hooks/pre-commit.sh",
+      "resolved_path": "/Users/samyakjhaveri/Desktop/loam/cultivation/parked/sam-cc-setup/hooks/pre-commit.sh",
+      "kind": "hook",
+      "name": "pre-commit",
+      "sha256": "25930eff754a6fde6a41add471fcf4c1df6a7cfcbefdd2daab8873a6aa486133",
+      "bytes": 1150,
+      "layer": "parked_not_installed",
+      "baseline_decision": "include_curated_source_pending_adaptation",
+      "runtime_enabled_by_audit": false,
+      "frontmatter": {},
+      "disposition": "Preserve enforcement intent and source/test knowledge. Seed native policies and SessionStart-class hooks remain canonical; do not enable parked tool-matcher hooks unchanged.",
+      "static_flags": {},
+      "references": []
+    },
+    {
+      "source_path": "cultivation/parked/sam-cc-setup/hooks/protect-paths.sh",
+      "absolute_source_path": "/Users/samyakjhaveri/Desktop/loam/cultivation/parked/sam-cc-setup/hooks/protect-paths.sh",
+      "resolved_path": "/Users/samyakjhaveri/Desktop/loam/cultivation/parked/sam-cc-setup/hooks/protect-paths.sh",
+      "kind": "hook",
+      "name": "protect-paths",
+      "sha256": "b24b09dc7ecd6defb68c1e891daaf790bfac5ed434da71f9c76839d9d41bd0d2",
+      "bytes": 1225,
+      "layer": "parked_not_installed",
+      "baseline_decision": "include_curated_source_pending_adaptation",
+      "runtime_enabled_by_audit": false,
+      "frontmatter": {},
+      "disposition": "Preserve enforcement intent and source/test knowledge. Seed native policies and SessionStart-class hooks remain canonical; do not enable parked tool-matcher hooks unchanged.",
+      "static_flags": {
+        "host_binding": [
+          {
+            "line": 4,
+            "text": "# Triggered by: PreToolUse on Edit|Write|Bash"
+          },
+          {
+            "line": 5,
+            "text": "# Config:      .claude/protected-paths.txt (one glob per line, '#' comments)"
+          },
+          {
+            "line": 17,
+            "text": "CONFIG=\"$ROOT/.claude/protected-paths.txt\""
+          },
+          {
+            "line": 29,
+            "text": "    echo \"Protected paths are declared in .claude/protected-paths.txt.\" >&2"
+          }
+        ]
+      },
+      "references": []
+    },
+    {
+      "source_path": "cultivation/parked/sam-cc-setup/hooks/protect_paths.py",
+      "absolute_source_path": "/Users/samyakjhaveri/Desktop/loam/cultivation/parked/sam-cc-setup/hooks/protect_paths.py",
+      "resolved_path": "/Users/samyakjhaveri/Desktop/loam/cultivation/parked/sam-cc-setup/hooks/protect_paths.py",
+      "kind": "hook",
+      "name": "protect_paths",
+      "sha256": "cb13893c253557b95f93d32c206fdfc37efb970fd48bbf59977286f1f5d2521f",
+      "bytes": 8161,
+      "layer": "parked_not_installed",
+      "baseline_decision": "include_curated_source_pending_adaptation",
+      "runtime_enabled_by_audit": false,
+      "frontmatter": {},
+      "disposition": "Preserve enforcement intent and source/test knowledge. Seed native policies and SessionStart-class hooks remain canonical; do not enable parked tool-matcher hooks unchanged.",
+      "static_flags": {
+        "host_binding": [
+          {
+            "line": 8,
+            "text": "Config: .claude/protected-paths.txt - one glob per line, '#' comments, paths"
+          },
+          {
+            "line": 12,
+            "text": "Reads the PreToolUse hook JSON on stdin. Prints one line:"
+          },
+          {
+            "line": 193,
+            "text": "            return f\"block\\t{rel} is protected (.claude/protected-paths.txt)\""
+          }
+        ]
+      },
+      "references": []
+    },
+    {
+      "source_path": "cultivation/parked/sam-cc-setup/hooks/test_check_stale_counts.py",
+      "absolute_source_path": "/Users/samyakjhaveri/Desktop/loam/cultivation/parked/sam-cc-setup/hooks/test_check_stale_counts.py",
+      "resolved_path": "/Users/samyakjhaveri/Desktop/loam/cultivation/parked/sam-cc-setup/hooks/test_check_stale_counts.py",
+      "kind": "test",
+      "name": "test_check_stale_counts",
+      "sha256": "222c98c607bdaaf4e5735009f5018bb3187a0873b606e7c81877a40a9d3a6aaf",
+      "bytes": 4826,
+      "layer": "parked_not_installed",
+      "baseline_decision": "include_curated_source_pending_adaptation",
+      "runtime_enabled_by_audit": false,
+      "frontmatter": {},
+      "disposition": "Preserve source and curated knowledge in baseline; review host/dependency bindings before enabling.",
+      "static_flags": {},
+      "references": []
+    },
+    {
+      "source_path": "cultivation/parked/sam-cc-setup/hooks/test_protect_paths.py",
+      "absolute_source_path": "/Users/samyakjhaveri/Desktop/loam/cultivation/parked/sam-cc-setup/hooks/test_protect_paths.py",
+      "resolved_path": "/Users/samyakjhaveri/Desktop/loam/cultivation/parked/sam-cc-setup/hooks/test_protect_paths.py",
+      "kind": "test",
+      "name": "test_protect_paths",
+      "sha256": "db1f1950a231e92a5d20013a40e1438d5a0b6cc3e56af74c86597530331f82e8",
+      "bytes": 4988,
+      "layer": "parked_not_installed",
+      "baseline_decision": "include_curated_source_pending_adaptation",
+      "runtime_enabled_by_audit": false,
+      "frontmatter": {},
+      "disposition": "Preserve source and curated knowledge in baseline; review host/dependency bindings before enabling.",
+      "static_flags": {},
+      "references": []
+    },
+    {
+      "source_path": "cultivation/parked/sam-cc-setup/skills/agent-team/SKILL.md",
+      "absolute_source_path": "/Users/samyakjhaveri/Desktop/loam/cultivation/parked/sam-cc-setup/skills/agent-team/SKILL.md",
+      "resolved_path": "/Users/samyakjhaveri/Desktop/loam/cultivation/parked/sam-cc-setup/skills/agent-team/SKILL.md",
+      "kind": "skill",
+      "name": "agent-team",
+      "sha256": "245b0b804377a1dc7110e46df860c4af770b90181c6c06647d41c2fceaa2df1a",
+      "bytes": 11802,
+      "layer": "parked_not_installed",
+      "baseline_decision": "include_curated_source_pending_adaptation",
+      "runtime_enabled_by_audit": false,
+      "frontmatter": {
+        "name": "agent-team"
+      },
+      "disposition": "Preserve lifecycle, narrow ownership, handoffs and single validation owner. Adapt host spawn/message/task operations; remove reliance on parked checkout guard and unsupported team lifecycle assertions.",
+      "static_flags": {
+        "host_binding": [
+          {
+            "line": 2,
+            "text": "name: agent-team"
+          },
+          {
+            "line": 4,
+            "text": "  Launch a coordinated agent team with a shared task list and cross-talk between"
+          },
+          {
+            "line": 15,
+            "text": "# agent-team"
+          },
+          {
+            "line": 17,
+            "text": "Launch coordinated agent teams for tasks that need persistent cross-talk, shared state, and teammate lifecycle management."
+          },
+          {
+            "line": 19,
+            "text": "**Trigger:** `/agent-team <task-description>`"
+          },
+          {
+            "line": 41,
+            "text": "Give each parallel implementer that edits files its own git worktree by default. `claude --worktree <name>` (or `-w <name>`) creates the worktree under `.claude/worktrees/<name>/` and isolates its edits from the main checkout. One checkout with strictly disjoint files is the documented exception, guarded by the concurrent-checkout-guard hook; reach for it only when the workers provably never touch the same file."
+          },
+          {
+            "line": 54,
+            "text": "    \"Single agent or subagent\" [shape=box];"
+          },
+          {
+            "line": 56,
+            "text": "    \"agent-team\" [shape=box style=filled fillcolor=lightgreen];"
+          },
+          {
+            "line": 58,
+            "text": "    \"Complex task needing\\nmultiple workers?\" -> \"Single agent or subagent\" [label=\"no\"];"
+          },
+          {
+            "line": 61,
+            "text": "    \"Workers need to\\ncommunicate findings?\" -> \"agent-team\" [label=\"yes\"];"
+          },
+          {
+            "line": 63,
+            "text": "    \"Tasks fully\\nindependent?\" -> \"agent-team\" [label=\"no - shared state\\nor synthesis needed\"];"
+          },
+          {
+            "line": 67,
+            "text": "**Use an agent team when:**"
+          },
+          {
+            "line": 121,
+            "text": "Spawn teammates via the session's current spawn mechanism (the `Agent` tool with a `name`, or the equivalent in your harness), and consult the live `Agent` / `SendMessage` tool schema and https://code.claude.com/docs/en/agent-teams for the exact form."
+          },
+          {
+            "line": 193,
+            "text": "| Agent/Skill | Use for |"
+          },
+          {
+            "line": 195,
+            "text": "| A read-only explore agent | Codebase exploration without edit risk |"
+          },
+          {
+            "line": 196,
+            "text": "| A plan-reviewer agent | Adversarial plan or spec review |"
+          },
+          {
+            "line": 197,
+            "text": "| A self-critic agent | Adversarial review of the team's own output |"
+          },
+          {
+            "line": 198,
+            "text": "| A consistency-checker agent | Cross-checking docs against code |"
+          },
+          {
+            "line": 201,
+            "text": "| `/code-review` | Multi-agent review of the diff |"
+          },
+          {
+            "line": 219,
+            "text": "See the controls reference at https://code.claude.com/docs/en/agent-teams for the current keys."
+          }
+        ]
+      },
+      "references": [
+        {
+          "target": "scenarios.md",
+          "kind": "relative_reference",
+          "resolved_path": "/Users/samyakjhaveri/Desktop/loam/cultivation/parked/sam-cc-setup/skills/agent-team/scenarios.md",
+          "exists": true
+        },
+        {
+          "target": "scenarios.md",
+          "kind": "relative_reference",
+          "resolved_path": "/Users/samyakjhaveri/Desktop/loam/cultivation/parked/sam-cc-setup/skills/agent-team/scenarios.md",
+          "exists": true
+        },
+        {
+          "target": "advisor-prompt.md",
+          "kind": "relative_reference",
+          "resolved_path": "/Users/samyakjhaveri/Desktop/loam/cultivation/parked/sam-cc-setup/skills/agent-team/advisor-prompt.md",
+          "exists": true
+        },
+        {
+          "target": "teammate-prompt.md",
+          "kind": "relative_reference",
+          "resolved_path": "/Users/samyakjhaveri/Desktop/loam/cultivation/parked/sam-cc-setup/skills/agent-team/teammate-prompt.md",
+          "exists": true
+        },
+        {
+          "target": "brief-report-template.md",
+          "kind": "relative_reference",
+          "resolved_path": "/Users/samyakjhaveri/Desktop/loam/cultivation/parked/sam-cc-setup/skills/agent-team/brief-report-template.md",
+          "exists": true
+        },
+        {
+          "target": "teammate-prompt.md",
+          "kind": "relative_reference",
+          "resolved_path": "/Users/samyakjhaveri/Desktop/loam/cultivation/parked/sam-cc-setup/skills/agent-team/teammate-prompt.md",
+          "exists": true
+        }
+      ]
+    },
+    {
+      "source_path": "cultivation/parked/sam-cc-setup/skills/agent-team/advisor-prompt.md",
+      "absolute_source_path": "/Users/samyakjhaveri/Desktop/loam/cultivation/parked/sam-cc-setup/skills/agent-team/advisor-prompt.md",
+      "resolved_path": "/Users/samyakjhaveri/Desktop/loam/cultivation/parked/sam-cc-setup/skills/agent-team/advisor-prompt.md",
+      "kind": "support_or_config",
+      "name": "advisor-prompt",
+      "sha256": "7ba8bb52c2a944f3d27b61e4f36916b08dd07bbc996645545aaf9a25633b5d76",
+      "bytes": 2688,
+      "layer": "parked_not_installed",
+      "baseline_decision": "include_curated_source_pending_adaptation",
+      "runtime_enabled_by_audit": false,
+      "frontmatter": {},
+      "disposition": "Preserve source and curated knowledge in baseline; review host/dependency bindings before enabling.",
+      "static_flags": {
+        "host_binding": [
+          {
+            "line": 5,
+            "text": "The advisor is opt-in, spawned only when `/agent-team` was given `--advisor`."
+          }
+        ]
+      },
+      "references": []
+    },
+    {
+      "source_path": "cultivation/parked/sam-cc-setup/skills/agent-team/brief-report-template.md",
+      "absolute_source_path": "/Users/samyakjhaveri/Desktop/loam/cultivation/parked/sam-cc-setup/skills/agent-team/brief-report-template.md",
+      "resolved_path": "/Users/samyakjhaveri/Desktop/loam/cultivation/parked/sam-cc-setup/skills/agent-team/brief-report-template.md",
+      "kind": "support_or_config",
+      "name": "brief-report-template",
+      "sha256": "b81438b4172f9ca285192818a94e2644fe6ee20cff9341154521f44d31ba1c5c",
+      "bytes": 904,
+      "layer": "parked_not_installed",
+      "baseline_decision": "include_curated_source_pending_adaptation",
+      "runtime_enabled_by_audit": false,
+      "frontmatter": {},
+      "disposition": "Preserve source and curated knowledge in baseline; review host/dependency bindings before enabling.",
+      "static_flags": {},
+      "references": []
+    },
+    {
+      "source_path": "cultivation/parked/sam-cc-setup/skills/agent-team/scenarios.md",
+      "absolute_source_path": "/Users/samyakjhaveri/Desktop/loam/cultivation/parked/sam-cc-setup/skills/agent-team/scenarios.md",
+      "resolved_path": "/Users/samyakjhaveri/Desktop/loam/cultivation/parked/sam-cc-setup/skills/agent-team/scenarios.md",
+      "kind": "support_or_config",
+      "name": "scenarios",
+      "sha256": "7989f4de53086d09923c2f734f7464c5257c81f76f23d74a5ed1642d4019bb54",
+      "bytes": 4831,
+      "layer": "parked_not_installed",
+      "baseline_decision": "include_curated_source_pending_adaptation",
+      "runtime_enabled_by_audit": false,
+      "frontmatter": {},
+      "disposition": "Preserve source and curated knowledge in baseline; review host/dependency bindings before enabling.",
+      "static_flags": {
+        "host_binding": [
+          {
+            "line": 3,
+            "text": "Use with `/agent-team --scenario <name>`."
+          },
+          {
+            "line": 20,
+            "text": "**Usage:** `/agent-team --scenario feature-implementation \"implement X\"`"
+          },
+          {
+            "line": 43,
+            "text": "**Usage:** `/agent-team --scenario failure-investigation \"<component> <failure-type>\"`"
+          }
+        ]
+      },
+      "references": []
+    },
+    {
+      "source_path": "cultivation/parked/sam-cc-setup/skills/agent-team/teammate-prompt.md",
+      "absolute_source_path": "/Users/samyakjhaveri/Desktop/loam/cultivation/parked/sam-cc-setup/skills/agent-team/teammate-prompt.md",
+      "resolved_path": "/Users/samyakjhaveri/Desktop/loam/cultivation/parked/sam-cc-setup/skills/agent-team/teammate-prompt.md",
+      "kind": "support_or_config",
+      "name": "teammate-prompt",
+      "sha256": "fc7e66111e522019a482595a30752d84cf456b22b4b5894b998c37b44b7e64a8",
+      "bytes": 6132,
+      "layer": "parked_not_installed",
+      "baseline_decision": "include_curated_source_pending_adaptation",
+      "runtime_enabled_by_audit": false,
+      "frontmatter": {},
+      "disposition": "Preserve source and curated knowledge in baseline; review host/dependency bindings before enabling.",
+      "static_flags": {
+        "host_binding": [
+          {
+            "line": 46,
+            "text": "### 4. Skills and agent reuse"
+          },
+          {
+            "line": 50,
+            "text": "[FILL - the specific agents and skills this teammate should use, for example: a read-only explore agent for codebase exploration, `/writing-plans` for implementation plans, `/validate` before committing]"
+          }
+        ]
+      },
+      "references": [
+        {
+          "target": "brief-report-template.md",
+          "kind": "relative_reference",
+          "resolved_path": "/Users/samyakjhaveri/Desktop/loam/cultivation/parked/sam-cc-setup/skills/agent-team/brief-report-template.md",
+          "exists": true
+        }
+      ]
+    },
+    {
+      "source_path": "cultivation/parked/sam-cc-setup/skills/align-prompt/SKILL.md",
+      "absolute_source_path": "/Users/samyakjhaveri/Desktop/loam/cultivation/parked/sam-cc-setup/skills/align-prompt/SKILL.md",
+      "resolved_path": "/Users/samyakjhaveri/Desktop/loam/cultivation/parked/sam-cc-setup/skills/align-prompt/SKILL.md",
+      "kind": "skill",
+      "name": "align-prompt",
+      "sha256": "215879f4a26e701f7966fe4cff304f880b5b4717aaacb6ce1d715575112820a8",
+      "bytes": 11791,
+      "layer": "parked_not_installed",
+      "baseline_decision": "include_curated_source_pending_adaptation",
+      "runtime_enabled_by_audit": false,
+      "frontmatter": {
+        "name": "align-prompt"
+      },
+      "disposition": "Preserve prompt alignment and plan rubric; consolidate model-specific content with fable-prompting and bootstrap model notes behind provider selection.",
+      "static_flags": {
+        "hardcoded_model_or_effort": [
+          {
+            "line": 79,
+            "text": "**Claude Fable 5.1 (`claude-fable-5-1`)** - steer briefly and let it find the path."
+          },
+          {
+            "line": 83,
+            "text": "  name\" ([prompting-claude-fable-5])."
+          },
+          {
+            "line": 85,
+            "text": "  request\" ([prompting-claude-fable-5])."
+          },
+          {
+            "line": 87,
+            "text": "  multithreaded requests and asked to determine next steps\" ([prompting-claude-fable-5]); when"
+          },
+          {
+            "line": 91,
+            "text": "  beyond the task ([prompting-claude-fable-5])."
+          },
+          {
+            "line": 98,
+            "text": "  ([prompting-claude-fable-5]), and examples \"constrain them to a certain exploration space\""
+          },
+          {
+            "line": 125,
+            "text": "**Claude Opus 4.8 (`claude-opus-4-8`)** - say the parts it will not infer."
+          },
+          {
+            "line": 128,
+            "text": "  it does not infer requests you didn't make\" ([prompting-claude-opus-4-8]). Spell out scope"
+          },
+          {
+            "line": 132,
+            "text": "  reduce token efficiency and sometimes performance\" ([prompting-claude-opus-4-8]). This is the"
+          },
+          {
+            "line": 136,
+            "text": "  negative examples\" ([prompting-claude-opus-4-8])."
+          },
+          {
+            "line": 138,
+            "text": "  spawns fewer subagents by default ([prompting-claude-opus-4-8])."
+          },
+          {
+            "line": 140,
+            "text": "  literally and drops real findings ([prompting-claude-opus-4-8])."
+          },
+          {
+            "line": 143,
+            "text": "by whoever makes the call, not by the text ([prompting-claude-fable-5-1], [prompting-claude-opus-4-8])."
+          },
+          {
+            "line": 191,
+            "text": "[prompting-claude-fable-5-1]: https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/prompting-claude-fable-5-1"
+          },
+          {
+            "line": 192,
+            "text": "[prompting-claude-fable-5]: https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/prompting-claude-fable-5"
+          },
+          {
+            "line": 193,
+            "text": "[prompting-claude-opus-4-8]: https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/prompting-claude-opus-4-8"
+          },
+          {
+            "line": 194,
+            "text": "[field-guide]: https://claude.com/blog/a-field-guide-to-claude-fable-finding-your-unknowns"
+          }
+        ],
+        "host_binding": [
+          {
+            "line": 181,
+            "text": "Aligned (Fable 5.1): *Make `bin/agent-sync-scan.sh` deterministic on the file-vs-directory"
+          },
+          {
+            "line": 184,
+            "text": "`bin/agent-sync-tests/run-all.sh` passes and shellcheck is clean.*"
+          }
+        ]
+      },
+      "references": []
+    },
+    {
+      "source_path": "cultivation/parked/sam-cc-setup/skills/authoring-context-docs/SKILL.md",
+      "absolute_source_path": "/Users/samyakjhaveri/Desktop/loam/cultivation/parked/sam-cc-setup/skills/authoring-context-docs/SKILL.md",
+      "resolved_path": "/Users/samyakjhaveri/Desktop/loam/cultivation/parked/sam-cc-setup/skills/authoring-context-docs/SKILL.md",
+      "kind": "skill",
+      "name": "authoring-context-docs",
+      "sha256": "8320ef40275d60b3f2f47c984f9b0799566b57355ee8105f72a7e049111a4f6c",
+      "bytes": 7878,
+      "layer": "parked_not_installed",
+      "baseline_decision": "include_curated_source_pending_adaptation",
+      "runtime_enabled_by_audit": false,
+      "frontmatter": {
+        "name": "authoring-context-docs"
+      },
+      "disposition": "Preserve routing anatomy and size discipline. Make AGENTS.md canonical shared guidance with CLAUDE.md adapter; reconcile nested-context advice with current single-context project convention.",
+      "static_flags": {
+        "host_binding": [
+          {
+            "line": 46,
+            "text": "3. **Reference doc index** - `.claude/rules/*.md` and `docs/*.md` pointers with a single-clause description of when to read each. Use a \"load on demand\" framing."
+          },
+          {
+            "line": 51,
+            "text": "- Detailed instructions on how to do anything (those live in `.claude/rules/` or skills)"
+          },
+          {
+            "line": 53,
+            "text": "- Code style rules (those live in path-scoped `.claude/rules/python.md`, `.claude/rules/tech-stack.md`, etc.)"
+          },
+          {
+            "line": 63,
+            "text": "| Authoring rules for a specific file type | `.claude/rules/<lang>.md`, path-scoped |"
+          },
+          {
+            "line": 64,
+            "text": "| A repeating workflow with steps | `.claude/skills/<name>/SKILL.md` |"
+          },
+          {
+            "line": 69,
+            "text": "Replace the moved content in `CLAUDE.md` with a single line: \"See `.claude/rules/X.md` (when working on Y).\""
+          },
+          {
+            "line": 83,
+            "text": "An unscoped file in `.claude/rules/` is loaded in **every** session, exactly like `CLAUDE.md` - only files carrying `paths:` frontmatter are conditional. And `paths:` fires on **read**, not write (claude-code#23478), so a rule whose trigger is *authoring* a file can never be made conditional that way. A skill is the only real lazy-loading mechanism for authoring guidance. That is why this file is a skill."
+          }
+        ]
+      },
+      "references": []
+    },
+    {
+      "source_path": "cultivation/parked/sam-cc-setup/skills/auto-phase/SKILL.md",
+      "absolute_source_path": "/Users/samyakjhaveri/Desktop/loam/cultivation/parked/sam-cc-setup/skills/auto-phase/SKILL.md",
+      "resolved_path": "/Users/samyakjhaveri/Desktop/loam/cultivation/parked/sam-cc-setup/skills/auto-phase/SKILL.md",
+      "kind": "skill",
+      "name": "auto-phase",
+      "sha256": "b305fffef44ca699a9cc5e194d16559ec98c897d6f3af8118c86ce77b2ff01dd",
+      "bytes": 6044,
+      "layer": "parked_not_installed",
+      "baseline_decision": "include_curated_source_pending_adaptation",
+      "runtime_enabled_by_audit": false,
+      "frontmatter": {
+        "name": "auto-phase",
+        "disable-model-invocation": "true"
+      },
+      "disposition": "Preserve ordered stages and focused verification. Merge execution policy with writing-plans/ship; resolve validation dependency and do not infer authorization for commit/push.",
+      "static_flags": {
+        "retired_dependency_or_receipt": [
+          {
+            "line": 139,
+            "text": "an existing receipt only when `validation.py check` accepts it."
+          }
+        ]
+      },
+      "references": []
+    },
+    {
+      "source_path": "cultivation/parked/sam-cc-setup/skills/bootstrap-cc-setup/SKILL.md",
+      "absolute_source_path": "/Users/samyakjhaveri/Desktop/loam/cultivation/parked/sam-cc-setup/skills/bootstrap-cc-setup/SKILL.md",
+      "resolved_path": "/Users/samyakjhaveri/Desktop/loam/cultivation/parked/sam-cc-setup/skills/bootstrap-cc-setup/SKILL.md",
+      "kind": "skill",
+      "name": "bootstrap-cc-setup",
+      "sha256": "f87d13b25251d0aa741f659bca7f1f7e0684a226674b511d9f9f81d4d9b0e5d8",
+      "bytes": 3279,
+      "layer": "parked_not_installed",
+      "baseline_decision": "include_curated_source_pending_adaptation",
+      "runtime_enabled_by_audit": false,
+      "frontmatter": {
+        "name": "bootstrap-cc-setup"
+      },
+      "disposition": "Preserve safe onboarding ideas and templates. Obsolete rendered sentinel trio and absent active plugin pre-commit source block unchanged activation; reconcile with Copier.",
+      "static_flags": {
+        "host_binding": [
+          {
+            "line": 3,
+            "text": "description: \"Write the always-loaded rules layer that a plugin cannot ship into the current repo: a CLAUDE.md skeleton (purpose + gotchas only) and a generic workflow.md rule (model notes only). Optionally vendors the pre-commit gate hooks into .claude/hooks/ for git-tracked, collaborator-visible enforcement. Run once per new repo after installing the sam-cc-setup plugin. NOT for repos rendered by the Loam Copier template (they already have this layer).\""
+          },
+          {
+            "line": 8,
+            "text": "Plugins cannot inject always-loaded context (`CLAUDE.md`, `.claude/rules/*.md`)."
+          },
+          {
+            "line": 24,
+            "text": "ls -la \"$ROOT/CLAUDE.md\" \"$ROOT/.claude/rules/workflow.md\" 2>/dev/null"
+          },
+          {
+            "line": 37,
+            "text": "### 3. Write `.claude/rules/workflow.md` (model notes only)"
+          },
+          {
+            "line": 39,
+            "text": "Copy `templates/workflow-model-notes.md` to `$ROOT/.claude/rules/workflow.md`."
+          },
+          {
+            "line": 48,
+            "text": "PreToolUse gate: this repo was bootstrapped, not rendered from Loam, so the native"
+          },
+          {
+            "line": 51,
+            "text": "`.claude/hooks/run-validate-waves.sh`, removed by `sentinel-cleanup.sh` on the"
+          },
+          {
+            "line": 56,
+            "text": "cp \"${CLAUDE_PLUGIN_ROOT}/hooks/pre-commit.sh\" \"$ROOT/scripts/pre-commit.sh\""
+          },
+          {
+            "line": 70,
+            "text": "Undo: rm CLAUDE.md .claude/rules/workflow.md scripts/pre-commit.sh .git/hooks/pre-commit"
+          }
+        ],
+        "retired_dependency_or_receipt": [
+          {
+            "line": 47,
+            "text": "Commit enforcement here is a plain git pre-commit hook, not a sentinel or"
+          },
+          {
+            "line": 50,
+            "text": "from Loam uses the sentinel trio instead: `.validation_passed` is written by"
+          },
+          {
+            "line": 51,
+            "text": "`.claude/hooks/run-validate-waves.sh`, removed by `sentinel-cleanup.sh` on the"
+          }
+        ]
+      },
+      "references": []
+    },
+    {
+      "source_path": "cultivation/parked/sam-cc-setup/skills/bootstrap-cc-setup/templates/CLAUDE-skeleton.md",
+      "absolute_source_path": "/Users/samyakjhaveri/Desktop/loam/cultivation/parked/sam-cc-setup/skills/bootstrap-cc-setup/templates/CLAUDE-skeleton.md",
+      "resolved_path": "/Users/samyakjhaveri/Desktop/loam/cultivation/parked/sam-cc-setup/skills/bootstrap-cc-setup/templates/CLAUDE-skeleton.md",
+      "kind": "support_or_config",
+      "name": "CLAUDE-skeleton",
+      "sha256": "7dc6ca6cf9780e84ec04dab1423f3ad357b7aa1aebee4f485774072cbbc25529",
+      "bytes": 908,
+      "layer": "parked_not_installed",
+      "baseline_decision": "include_curated_source_pending_adaptation",
+      "runtime_enabled_by_audit": false,
+      "frontmatter": {},
+      "disposition": "Preserve source and curated knowledge in baseline; review host/dependency bindings before enabling.",
+      "static_flags": {
+        "host_binding": [
+          {
+            "line": 6,
+            "text": "     to .claude/rules/ (path-scoped) or a skill. -->"
+          }
+        ]
+      },
+      "references": []
+    },
+    {
+      "source_path": "cultivation/parked/sam-cc-setup/skills/bootstrap-cc-setup/templates/workflow-model-notes.md",
+      "absolute_source_path": "/Users/samyakjhaveri/Desktop/loam/cultivation/parked/sam-cc-setup/skills/bootstrap-cc-setup/templates/workflow-model-notes.md",
+      "resolved_path": "/Users/samyakjhaveri/Desktop/loam/cultivation/parked/sam-cc-setup/skills/bootstrap-cc-setup/templates/workflow-model-notes.md",
+      "kind": "support_or_config",
+      "name": "workflow-model-notes",
+      "sha256": "660c44bb509a530bef498f7db5db83b3e921e6fb7d99239ab9f380091bde49a6",
+      "bytes": 2276,
+      "layer": "parked_not_installed",
+      "baseline_decision": "include_curated_source_pending_adaptation",
+      "runtime_enabled_by_audit": false,
+      "frontmatter": {},
+      "disposition": "Preserve source and curated knowledge in baseline; review host/dependency bindings before enabling.",
+      "static_flags": {
+        "host_binding": [
+          {
+            "line": 6,
+            "text": "> `grep -h '\"model\"' .claude/settings.json .claude/settings.local.json 2>/dev/null`"
+          }
+        ]
+      },
+      "references": []
+    },
+    {
+      "source_path": "cultivation/parked/sam-cc-setup/skills/brainstorming/SKILL.md",
+      "absolute_source_path": "/Users/samyakjhaveri/Desktop/loam/cultivation/parked/sam-cc-setup/skills/brainstorming/SKILL.md",
+      "resolved_path": "/Users/samyakjhaveri/Desktop/loam/cultivation/parked/sam-cc-setup/skills/brainstorming/SKILL.md",
+      "kind": "skill",
+      "name": "brainstorming",
+      "sha256": "aea200dab06aacedec7b11cbc1e6319cf7b3f040b1421045d7979b7296dec7f8",
+      "bytes": 9509,
+      "layer": "parked_not_installed",
+      "baseline_decision": "include_curated_source_pending_adaptation",
+      "runtime_enabled_by_audit": false,
+      "frontmatter": {
+        "name": "brainstorming"
+      },
+      "disposition": "Preserve local curated design workflow and reviewer/visual resources; merge with any selected upstream implementation using explicit section-level attribution and behavior tests.",
+      "static_flags": {},
+      "references": []
+    },
+    {
+      "source_path": "cultivation/parked/sam-cc-setup/skills/brainstorming/scripts/frame-template.html",
+      "absolute_source_path": "/Users/samyakjhaveri/Desktop/loam/cultivation/parked/sam-cc-setup/skills/brainstorming/scripts/frame-template.html",
+      "resolved_path": "/Users/samyakjhaveri/Desktop/loam/cultivation/parked/sam-cc-setup/skills/brainstorming/scripts/frame-template.html",
+      "kind": "support_or_config",
+      "name": "frame-template",
+      "sha256": "fb22ba9d47f3b83b56e0a95d52a3c2727db03b0d4365078d92c850293a62457b",
+      "bytes": 7703,
+      "layer": "parked_not_installed",
+      "baseline_decision": "include_curated_source_pending_adaptation",
+      "runtime_enabled_by_audit": false,
+      "frontmatter": {},
+      "disposition": "Preserve source and curated knowledge in baseline; review host/dependency bindings before enabling.",
+      "static_flags": {},
+      "references": []
+    },
+    {
+      "source_path": "cultivation/parked/sam-cc-setup/skills/brainstorming/scripts/helper.js",
+      "absolute_source_path": "/Users/samyakjhaveri/Desktop/loam/cultivation/parked/sam-cc-setup/skills/brainstorming/scripts/helper.js",
+      "resolved_path": "/Users/samyakjhaveri/Desktop/loam/cultivation/parked/sam-cc-setup/skills/brainstorming/scripts/helper.js",
+      "kind": "support_or_config",
+      "name": "helper",
+      "sha256": "e763d82f32b4ebb320be2f0d08449d3e5a0585778edf5c407c1fdab3f39976a5",
+      "bytes": 2707,
+      "layer": "parked_not_installed",
+      "baseline_decision": "include_curated_source_pending_adaptation",
+      "runtime_enabled_by_audit": false,
+      "frontmatter": {},
+      "disposition": "Preserve source and curated knowledge in baseline; review host/dependency bindings before enabling.",
+      "static_flags": {},
+      "references": []
+    },
+    {
+      "source_path": "cultivation/parked/sam-cc-setup/skills/brainstorming/scripts/server.cjs",
+      "absolute_source_path": "/Users/samyakjhaveri/Desktop/loam/cultivation/parked/sam-cc-setup/skills/brainstorming/scripts/server.cjs",
+      "resolved_path": "/Users/samyakjhaveri/Desktop/loam/cultivation/parked/sam-cc-setup/skills/brainstorming/scripts/server.cjs",
+      "kind": "support_or_config",
+      "name": "server",
+      "sha256": "ea81185f581897c67d4b417eeb9bc7a158c50e0932c73047054fe53efc2683ef",
+      "bytes": 11218,
+      "layer": "parked_not_installed",
+      "baseline_decision": "include_curated_source_pending_adaptation",
+      "runtime_enabled_by_audit": false,
+      "frontmatter": {},
+      "disposition": "Preserve source and curated knowledge in baseline; review host/dependency bindings before enabling.",
+      "static_flags": {
+        "host_binding": [
+          {
+            "line": 99,
+            "text": "<p>Waiting for the agent to push a screen...</p></body></html>`;"
+          }
+        ]
+      },
+      "references": []
+    },
+    {
+      "source_path": "cultivation/parked/sam-cc-setup/skills/brainstorming/scripts/start-server.sh",
+      "absolute_source_path": "/Users/samyakjhaveri/Desktop/loam/cultivation/parked/sam-cc-setup/skills/brainstorming/scripts/start-server.sh",
+      "resolved_path": "/Users/samyakjhaveri/Desktop/loam/cultivation/parked/sam-cc-setup/skills/brainstorming/scripts/start-server.sh",
+      "kind": "support_or_config",
+      "name": "start-server",
+      "sha256": "3442a54b5ee5511637d27bf696e092b72f94c2324f40b5ba4410da4dd0c23bc8",
+      "bytes": 4606,
+      "layer": "parked_not_installed",
+      "baseline_decision": "include_curated_source_pending_adaptation",
+      "runtime_enabled_by_audit": false,
+      "frontmatter": {},
+      "disposition": "Preserve source and curated knowledge in baseline; review host/dependency bindings before enabling.",
+      "static_flags": {},
+      "references": []
+    },
+    {
+      "source_path": "cultivation/parked/sam-cc-setup/skills/brainstorming/scripts/stop-server.sh",
+      "absolute_source_path": "/Users/samyakjhaveri/Desktop/loam/cultivation/parked/sam-cc-setup/skills/brainstorming/scripts/stop-server.sh",
+      "resolved_path": "/Users/samyakjhaveri/Desktop/loam/cultivation/parked/sam-cc-setup/skills/brainstorming/scripts/stop-server.sh",
+      "kind": "support_or_config",
+      "name": "stop-server",
+      "sha256": "f65b7634a27343eab2086bdb6c59ba78695685f471b5a577b08a8817f7c50600",
+      "bytes": 1314,
+      "layer": "parked_not_installed",
+      "baseline_decision": "include_curated_source_pending_adaptation",
+      "runtime_enabled_by_audit": false,
+      "frontmatter": {},
+      "disposition": "Preserve source and curated knowledge in baseline; review host/dependency bindings before enabling.",
+      "static_flags": {},
+      "references": []
+    },
+    {
+      "source_path": "cultivation/parked/sam-cc-setup/skills/brainstorming/spec-document-reviewer-prompt.md",
+      "absolute_source_path": "/Users/samyakjhaveri/Desktop/loam/cultivation/parked/sam-cc-setup/skills/brainstorming/spec-document-reviewer-prompt.md",
+      "resolved_path": "/Users/samyakjhaveri/Desktop/loam/cultivation/parked/sam-cc-setup/skills/brainstorming/spec-document-reviewer-prompt.md",
+      "kind": "support_or_config",
+      "name": "spec-document-reviewer-prompt",
+      "sha256": "8adabd7588bcd0bdf9e5492b386e2bd0eb66ad76e9aba36caf8640e90ae150b1",
+      "bytes": 1736,
+      "layer": "parked_not_installed",
+      "baseline_decision": "include_curated_source_pending_adaptation",
+      "runtime_enabled_by_audit": false,
+      "frontmatter": {},
+      "disposition": "Preserve source and curated knowledge in baseline; review host/dependency bindings before enabling.",
+      "static_flags": {},
+      "references": []
+    },
+    {
+      "source_path": "cultivation/parked/sam-cc-setup/skills/brainstorming/visual-companion.md",
+      "absolute_source_path": "/Users/samyakjhaveri/Desktop/loam/cultivation/parked/sam-cc-setup/skills/brainstorming/visual-companion.md",
+      "resolved_path": "/Users/samyakjhaveri/Desktop/loam/cultivation/parked/sam-cc-setup/skills/brainstorming/visual-companion.md",
+      "kind": "support_or_config",
+      "name": "visual-companion",
+      "sha256": "a2bc6fc47d0df1df981d02f707a16225b147f462e7059175ad2bc5e6dd29fcae",
+      "bytes": 12047,
+      "layer": "parked_not_installed",
+      "baseline_decision": "include_curated_source_pending_adaptation",
+      "runtime_enabled_by_audit": false,
+      "frontmatter": {},
+      "disposition": "Preserve source and curated knowledge in baseline; review host/dependency bindings before enabling.",
+      "static_flags": {},
+      "references": []
+    },
+    {
+      "source_path": "cultivation/parked/sam-cc-setup/skills/codex-plan-review/SKILL.md",
+      "absolute_source_path": "/Users/samyakjhaveri/Desktop/loam/cultivation/parked/sam-cc-setup/skills/codex-plan-review/SKILL.md",
+      "resolved_path": "/Users/samyakjhaveri/Desktop/loam/cultivation/parked/sam-cc-setup/skills/codex-plan-review/SKILL.md",
+      "kind": "skill",
+      "name": "codex-plan-review",
+      "sha256": "711648ef3437f275363586fbc254bd3ae0dacaa0290f15d8835417c6d44f57c0",
+      "bytes": 5372,
+      "layer": "parked_not_installed",
+      "baseline_decision": "include_curated_source_pending_adaptation",
+      "runtime_enabled_by_audit": false,
+      "frontmatter": {
+        "name": "codex-plan-review",
+        "disable-model-invocation": "true"
+      },
+      "disposition": "Preserve validated file input and read-only external review. Share transport with codex-review and criteria with plan-review; runtime CLI capability check needed.",
+      "static_flags": {
+        "hardcoded_model_or_effort": [
+          {
+            "line": 86,
+            "text": "  -c model_reasoning_effort=high -o \"$OUT\" \\"
+          }
+        ],
+        "host_binding": [
+          {
+            "line": 13,
+            "text": "under `.claude/codex-reviews/` (gitignore it) and applies any accepted changes to the plan itself."
+          },
+          {
+            "line": 82,
+            "text": "mkdir -p .claude/codex-reviews"
+          },
+          {
+            "line": 83,
+            "text": "OUT=\".claude/codex-reviews/$(date +%F)-plan-$(basename \"$PLAN\" .md).md\""
+          },
+          {
+            "line": 85,
+            "text": "cat \"$PLAN\" | codex exec --sandbox read-only \\"
+          },
+          {
+            "line": 94,
+            "text": ".claude/rules/. \\"
+          }
+        ]
+      },
+      "references": []
+    },
+    {
+      "source_path": "cultivation/parked/sam-cc-setup/skills/dream/SKILL.md",
+      "absolute_source_path": "/Users/samyakjhaveri/Desktop/loam/cultivation/parked/sam-cc-setup/skills/dream/SKILL.md",
+      "resolved_path": "/Users/samyakjhaveri/Desktop/loam/cultivation/parked/sam-cc-setup/skills/dream/SKILL.md",
+      "kind": "skill",
+      "name": "dream",
+      "sha256": "7d89d66e2e9e79e9f820bb0fc5c924d91c0a42f5dac1c514564fbcc5cd27ac5b",
+      "bytes": 9281,
+      "layer": "parked_not_installed",
+      "baseline_decision": "include_curated_source_pending_adaptation",
+      "runtime_enabled_by_audit": false,
+      "frontmatter": {
+        "name": "dream"
+      },
+      "disposition": "Preserve staleness/phantom/orphan/contradiction audit and explicit destructive change approval. Claude per-project memory resolution and deletion need provider-specific adapter and fixture validation.",
+      "static_flags": {
+        "personal_path_or_memory_binding": [
+          {
+            "line": 28,
+            "text": "# Claude Code keeps per-project memory at ~/.claude/projects/<project>/memory/,"
+          },
+          {
+            "line": 33,
+            "text": "MEMORY_DIR=\"$HOME/.claude/projects/$(printf '%s' \"$ROOT\" | sed 's#[^a-zA-Z0-9]#-#g')/memory\""
+          },
+          {
+            "line": 195,
+            "text": "Remind: \"Memory files under `~/.claude/` are NOT in git - deletions are permanent.\""
+          },
+          {
+            "line": 248,
+            "text": "- **Memory files are NOT in git** - deletions under `~/.claude/` are permanent; warn user"
+          }
+        ],
+        "host_binding": [
+          {
+            "line": 28,
+            "text": "# Claude Code keeps per-project memory at ~/.claude/projects/<project>/memory/,"
+          },
+          {
+            "line": 33,
+            "text": "MEMORY_DIR=\"$HOME/.claude/projects/$(printf '%s' \"$ROOT\" | sed 's#[^a-zA-Z0-9]#-#g')/memory\""
+          },
+          {
+            "line": 96,
+            "text": "- `.claude/rules/*.md` if the project uses them"
+          },
+          {
+            "line": 195,
+            "text": "Remind: \"Memory files under `~/.claude/` are NOT in git - deletions are permanent.\""
+          },
+          {
+            "line": 236,
+            "text": "- [ ] No duplicate content between memory files and `.claude/rules/`"
+          },
+          {
+            "line": 246,
+            "text": "- **Never touch CLAUDE.md or .claude/rules/** - those are managed separately"
+          },
+          {
+            "line": 248,
+            "text": "- **Memory files are NOT in git** - deletions under `~/.claude/` are permanent; warn user"
+          }
+        ]
+      },
+      "references": [
+        {
+          "target": "file.md",
+          "kind": "relative_reference",
+          "resolved_path": "/Users/samyakjhaveri/Desktop/loam/cultivation/parked/sam-cc-setup/skills/dream/file.md",
+          "exists": false
+        }
+      ]
+    },
+    {
+      "source_path": "cultivation/parked/sam-cc-setup/skills/gen-spec/SKILL.md",
+      "absolute_source_path": "/Users/samyakjhaveri/Desktop/loam/cultivation/parked/sam-cc-setup/skills/gen-spec/SKILL.md",
+      "resolved_path": "/Users/samyakjhaveri/Desktop/loam/cultivation/parked/sam-cc-setup/skills/gen-spec/SKILL.md",
+      "kind": "skill",
+      "name": "gen-spec",
+      "sha256": "57ec2bca1e76a620223660165fbaa912e99a2e01288f7eb8247f3ce2ba73270d",
+      "bytes": 5260,
+      "layer": "parked_not_installed",
+      "baseline_decision": "include_curated_source_pending_adaptation",
+      "runtime_enabled_by_audit": false,
+      "frontmatter": {
+        "name": "gen-spec",
+        "disable-model-invocation": "true"
+      },
+      "disposition": "Preserve spec sections and health criteria; factor overlap with brainstorming/writing-plans into canonical design/spec references.",
+      "static_flags": {},
+      "references": []
+    },
+    {
+      "source_path": "cultivation/parked/sam-cc-setup/skills/hypothesis-tree/SKILL.md",
+      "absolute_source_path": "/Users/samyakjhaveri/Desktop/loam/cultivation/parked/sam-cc-setup/skills/hypothesis-tree/SKILL.md",
+      "resolved_path": "/Users/samyakjhaveri/Desktop/loam/cultivation/parked/sam-cc-setup/skills/hypothesis-tree/SKILL.md",
+      "kind": "skill",
+      "name": "hypothesis-tree",
+      "sha256": "81dbafe39be47043d9598449eb85a02276cfbf3e2e942a0dae1ad1ddda74b907",
+      "bytes": 5901,
+      "layer": "parked_not_installed",
+      "baseline_decision": "include_curated_source_pending_adaptation",
+      "runtime_enabled_by_audit": false,
+      "frontmatter": {
+        "name": "hypothesis-tree"
+      },
+      "disposition": "Preserve falsifiable claims, dated evidence and prune/review structure as generic optional investigation capability.",
+      "static_flags": {},
+      "references": [
+        {
+          "target": "<relative path to file>",
+          "kind": "relative_reference",
+          "resolved_path": "/Users/samyakjhaveri/Desktop/loam/cultivation/parked/sam-cc-setup/skills/hypothesis-tree/<relative path to file>",
+          "exists": false
+        },
+        {
+          "target": "<relative path to file>",
+          "kind": "relative_reference",
+          "resolved_path": "/Users/samyakjhaveri/Desktop/loam/cultivation/parked/sam-cc-setup/skills/hypothesis-tree/<relative path to file>",
+          "exists": false
+        }
+      ]
+    },
+    {
+      "source_path": "cultivation/parked/sam-cc-setup/skills/reflect/SKILL.md",
+      "absolute_source_path": "/Users/samyakjhaveri/Desktop/loam/cultivation/parked/sam-cc-setup/skills/reflect/SKILL.md",
+      "resolved_path": "/Users/samyakjhaveri/Desktop/loam/cultivation/parked/sam-cc-setup/skills/reflect/SKILL.md",
+      "kind": "skill",
+      "name": "reflect",
+      "sha256": "2640df49c639159584efa036acabdd2d3e4330923b138ae2f4c656654c097569",
+      "bytes": 5466,
+      "layer": "parked_not_installed",
+      "baseline_decision": "include_curated_source_pending_adaptation",
+      "runtime_enabled_by_audit": false,
+      "frontmatter": {
+        "name": "reflect"
+      },
+      "disposition": "Preserve surprises, proposals and prompt repair; route durable knowledge to canonical shared project context and deduplicate with dream/catchup/handoff.",
+      "static_flags": {
+        "host_binding": [
+          {
+            "line": 3,
+            "text": "description: Structured post-task reflection - surprises, pattern proposals, prompt improvements, gotchas to record. Use at the end of a significant session, after a debugging marathon, or when patterns emerged that should update CLAUDE.md or .claude/rules/. NOT for mid-task status notes or routine single-file edits."
+          },
+          {
+            "line": 73,
+            "text": "- Specify exactly where it should go: `CLAUDE.md`, a specific `.claude/rules/` file, or a new rule file"
+          }
+        ]
+      },
+      "references": []
+    },
+    {
+      "source_path": "cultivation/parked/sam-cc-setup/skills/sam_handoff/SKILL.md",
+      "absolute_source_path": "/Users/samyakjhaveri/Desktop/loam/cultivation/parked/sam-cc-setup/skills/sam_handoff/SKILL.md",
+      "resolved_path": "/Users/samyakjhaveri/Desktop/loam/cultivation/parked/sam-cc-setup/skills/sam_handoff/SKILL.md",
+      "kind": "skill",
+      "name": "sam_handoff",
+      "sha256": "68007ee87f30b76c0a97d69ea383d1119d80b7b5b504f7f39fd23f6ec5d772e5",
+      "bytes": 1163,
+      "layer": "parked_not_installed",
+      "baseline_decision": "include_curated_source_pending_adaptation",
+      "runtime_enabled_by_audit": false,
+      "frontmatter": {
+        "name": "sam_handoff"
+      },
+      "disposition": "Preserve compact in-progress handoff contract including commands, failed attempts, assumptions and next action; align naming with one handoff home.",
+      "static_flags": {
+        "host_binding": [
+          {
+            "line": 3,
+            "text": "description: Write or update a handoff document so the next agent with fresh context can continue this work. Use for IN-PROGRESS work only, not end-of-session cleanup. Writes to the project root. Not the mattpocock-skills `handoff`, which compacts the conversation into the OS temp dir instead."
+          },
+          {
+            "line": 6,
+            "text": "Write or update a handoff document so the next agent with fresh context can continue this work."
+          }
+        ]
+      },
+      "references": []
+    },
+    {
+      "source_path": "cultivation/parked/sam-cc-setup/skills/scaffold-context/SKILL.md",
+      "absolute_source_path": "/Users/samyakjhaveri/Desktop/loam/cultivation/parked/sam-cc-setup/skills/scaffold-context/SKILL.md",
+      "resolved_path": "/Users/samyakjhaveri/Desktop/loam/cultivation/parked/sam-cc-setup/skills/scaffold-context/SKILL.md",
+      "kind": "skill",
+      "name": "scaffold-context",
+      "sha256": "9cbb1cda38bfb1da3dd23a7a97eca6dde0d2c2f895310dbe76a3ad3785687db6",
+      "bytes": 5507,
+      "layer": "parked_not_installed",
+      "baseline_decision": "include_curated_source_pending_adaptation",
+      "runtime_enabled_by_audit": false,
+      "frontmatter": {
+        "name": "scaffold-context"
+      },
+      "disposition": "Preserve generation procedure; share anatomy with authoring-context-docs rather than maintaining inlined duplicate schema.",
+      "static_flags": {
+        "host_binding": [
+          {
+            "line": 32,
+            "text": "A CONTEXT.md is an L1 routing file: it tells an agent entering this subdirectory"
+          },
+          {
+            "line": 67,
+            "text": "6. Identify which skills (from the project's `.claude/skills/` or installed plugins) wire to"
+          }
+        ]
+      },
+      "references": []
+    },
+    {
+      "source_path": "cultivation/parked/sam-cc-setup/skills/session-critique/SKILL.md",
+      "absolute_source_path": "/Users/samyakjhaveri/Desktop/loam/cultivation/parked/sam-cc-setup/skills/session-critique/SKILL.md",
+      "resolved_path": "/Users/samyakjhaveri/Desktop/loam/cultivation/parked/sam-cc-setup/skills/session-critique/SKILL.md",
+      "kind": "skill",
+      "name": "session-critique",
+      "sha256": "89308cab0386243b4f2433674dc4faee8200de4ede444dbd2297cac76c991662",
+      "bytes": 4263,
+      "layer": "parked_not_installed",
+      "baseline_decision": "include_curated_source_pending_adaptation",
+      "runtime_enabled_by_audit": false,
+      "frontmatter": {
+        "name": "session-critique",
+        "disable-model-invocation": "true"
+      },
+      "disposition": "Preserve frozen aggregate diff, explicit decisions, durable bounded findings and material-change-only rereview; share criteria/receipt schema with other reviews.",
+      "static_flags": {},
+      "references": []
+    },
+    {
+      "source_path": "cultivation/parked/sam-cc-setup/skills/ship/SKILL.md",
+      "absolute_source_path": "/Users/samyakjhaveri/Desktop/loam/cultivation/parked/sam-cc-setup/skills/ship/SKILL.md",
+      "resolved_path": "/Users/samyakjhaveri/Desktop/loam/cultivation/parked/sam-cc-setup/skills/ship/SKILL.md",
+      "kind": "skill",
+      "name": "ship",
+      "sha256": "7f7a042ba312dd3ee3306899ae020b1d73542d504954c593f108cd10c800c1b8",
+      "bytes": 4983,
+      "layer": "parked_not_installed",
+      "baseline_decision": "include_curated_source_pending_adaptation",
+      "runtime_enabled_by_audit": false,
+      "frontmatter": {
+        "name": "ship",
+        "disable-model-invocation": "true"
+      },
+      "disposition": "Preserve risk-based review and deterministic validation contract; repair validate dependency, honor explicit authorization for outward writes and current hybrid branch rules.",
+      "static_flags": {
+        "host_binding": [
+          {
+            "line": 64,
+            "text": "standalone full suite, smoke test, or validator agent beside it."
+          }
+        ]
+      },
+      "references": []
+    },
+    {
+      "source_path": "cultivation/parked/sam-cc-setup/skills/sync-to-hub/SKILL.md",
+      "absolute_source_path": "/Users/samyakjhaveri/Desktop/loam/cultivation/parked/sam-cc-setup/skills/sync-to-hub/SKILL.md",
+      "resolved_path": "/Users/samyakjhaveri/Desktop/loam/cultivation/parked/sam-cc-setup/skills/sync-to-hub/SKILL.md",
+      "kind": "skill",
+      "name": "sync-to-hub",
+      "sha256": "ace167cf16cce623769214fe2ef489173e702e46f306609696b6baf3aac2ca10",
+      "bytes": 6844,
+      "layer": "parked_not_installed",
+      "baseline_decision": "include_curated_source_pending_adaptation",
+      "runtime_enabled_by_audit": false,
+      "frontmatter": {
+        "name": "sync-to-hub",
+        "disable-model-invocation": "true"
+      },
+      "disposition": "Preserve additive promotion, manifest/dependency discipline and recorded intent. Missing bin/agent-sync.sh and personal $HOME/Desktop/loam default block unchanged activation; use docs/SYNC.md and explicit target.",
+      "static_flags": {
+        "personal_path_or_memory_binding": [
+          {
+            "line": 18,
+            "text": "> **Prerequisite:** the hub repo must be cloned locally. Its location comes from `SAM_CC_HUB_REPO` (default `$HOME/Desktop/loam`). It is not present on every box; `sync.sh` exits 1 with a hint if missing."
+          },
+          {
+            "line": 69,
+            "text": "1. Resolve `SAM_CC_HUB_REPO` (default `$HOME/Desktop/loam`). Verify it exists and is a git repo."
+          }
+        ],
+        "host_binding": [
+          {
+            "line": 4,
+            "text": "  Promote project-side `.claude/` improvements (skills, agents, hooks, rules) into"
+          },
+          {
+            "line": 16,
+            "text": "Promote `.claude/` work from a project repo into the sam-cc-setup plugin inside the hub repo, at `<hub>/cultivation/marketplace/sam-cc-setup/`."
+          },
+          {
+            "line": 70,
+            "text": "2. Verify the project's `.claude/` has no uncommitted changes. If dirty, refuse - commit or stash first."
+          },
+          {
+            "line": 96,
+            "text": "(`<hub>/bin/agent-sync.sh scan`), so the apply path has no LLM in it. Approvals come"
+          },
+          {
+            "line": 124,
+            "text": "- During a live debugging session - your `.claude/` may have transient experimental tweaks you have not yet decided to keep. Sync at session end, not mid-session."
+          },
+          {
+            "line": 125,
+            "text": "- When you have not yet committed your project work - the dirty-check refuses to sync until the project's `.claude/` is committed."
+          }
+        ],
+        "retired_dependency_or_receipt": [
+          {
+            "line": 96,
+            "text": "(`<hub>/bin/agent-sync.sh scan`), so the apply path has no LLM in it. Approvals come"
+          }
+        ]
+      },
+      "references": []
+    },
+    {
+      "source_path": "cultivation/parked/sam-cc-setup/skills/sync-to-hub/sync.sh",
+      "absolute_source_path": "/Users/samyakjhaveri/Desktop/loam/cultivation/parked/sam-cc-setup/skills/sync-to-hub/sync.sh",
+      "resolved_path": "/Users/samyakjhaveri/Desktop/loam/cultivation/parked/sam-cc-setup/skills/sync-to-hub/sync.sh",
+      "kind": "support_or_config",
+      "name": "sync",
+      "sha256": "668f3b9778d4cd9cbab07492e4e2a44c60b76b88fba56430d1135dd74c30cca7",
+      "bytes": 692,
+      "layer": "parked_not_installed",
+      "baseline_decision": "include_curated_source_pending_adaptation",
+      "runtime_enabled_by_audit": false,
+      "frontmatter": {},
+      "disposition": "Preserve source and curated knowledge in baseline; review host/dependency bindings before enabling.",
+      "static_flags": {
+        "personal_path_or_memory_binding": [
+          {
+            "line": 7,
+            "text": "HUB=\"${SAM_CC_HUB_REPO:-$HOME/Desktop/loam}\""
+          }
+        ],
+        "host_binding": [
+          {
+            "line": 2,
+            "text": "# Thin wrapper - the canonical scan engine lives in the hub repo as bin/agent-sync-scan.sh,"
+          },
+          {
+            "line": 3,
+            "text": "# behind the bin/agent-sync.sh dispatcher."
+          },
+          {
+            "line": 5,
+            "text": "# refuses on dirty project .claude/, fail-closed manifest guard, .sync-state ledger in the hub."
+          },
+          {
+            "line": 8,
+            "text": "ENGINE=\"${SAM_CC_ENGINE:-$HUB/bin/agent-sync.sh}\""
+          }
+        ],
+        "retired_dependency_or_receipt": [
+          {
+            "line": 3,
+            "text": "# behind the bin/agent-sync.sh dispatcher."
+          },
+          {
+            "line": 8,
+            "text": "ENGINE=\"${SAM_CC_ENGINE:-$HUB/bin/agent-sync.sh}\""
+          }
+        ]
+      },
+      "references": []
+    },
+    {
+      "source_path": "cultivation/parked/sam-cc-setup/skills/tech-selection/SKILL.md",
+      "absolute_source_path": "/Users/samyakjhaveri/Desktop/loam/cultivation/parked/sam-cc-setup/skills/tech-selection/SKILL.md",
+      "resolved_path": "/Users/samyakjhaveri/Desktop/loam/cultivation/parked/sam-cc-setup/skills/tech-selection/SKILL.md",
+      "kind": "skill",
+      "name": "tech-selection",
+      "sha256": "1378940994299ebb01bd8eeabeb10904a21cb3e21bd003db0da03cf658e9403e",
+      "bytes": 3294,
+      "layer": "parked_not_installed",
+      "baseline_decision": "include_curated_source_pending_adaptation",
+      "runtime_enabled_by_audit": false,
+      "frontmatter": {
+        "name": "tech-selection"
+      },
+      "disposition": "Preserve measured tradeoff record and null candidate; experiment-loop is optional with documented protocol fallback.",
+      "static_flags": {},
+      "references": []
+    },
+    {
+      "source_path": "cultivation/parked/sam-cc-setup/skills/techdebt/SKILL.md",
+      "absolute_source_path": "/Users/samyakjhaveri/Desktop/loam/cultivation/parked/sam-cc-setup/skills/techdebt/SKILL.md",
+      "resolved_path": "/Users/samyakjhaveri/Desktop/loam/cultivation/parked/sam-cc-setup/skills/techdebt/SKILL.md",
+      "kind": "skill",
+      "name": "techdebt",
+      "sha256": "f2ac2f0d1a9a20cfd159cb78dc290b6d5ee35396011cf8f779ab42b5dfcfc204",
+      "bytes": 1813,
+      "layer": "parked_not_installed",
+      "baseline_decision": "include_curated_source_pending_adaptation",
+      "runtime_enabled_by_audit": false,
+      "frontmatter": {
+        "name": "techdebt",
+        "model": "claude-opus-4-8[1m]",
+        "allowed-tools": "[Read, Grep, Glob, Bash(*)]"
+      },
+      "disposition": "Preserve debt taxonomy and read-only evidence table; remove hardcoded Claude model and adapt tool restrictions.",
+      "static_flags": {
+        "hardcoded_model_or_effort": [
+          {
+            "line": 4,
+            "text": "model: claude-opus-4-8[1m]"
+          }
+        ]
+      },
+      "references": []
+    },
+    {
+      "source_path": "cultivation/parked/sam-cc-setup/skills/unknowns/ARTIFACT-FORMAT.md",
+      "absolute_source_path": "/Users/samyakjhaveri/Desktop/loam/cultivation/parked/sam-cc-setup/skills/unknowns/ARTIFACT-FORMAT.md",
+      "resolved_path": "/Users/samyakjhaveri/Desktop/loam/cultivation/parked/sam-cc-setup/skills/unknowns/ARTIFACT-FORMAT.md",
+      "kind": "support_or_config",
+      "name": "ARTIFACT-FORMAT",
+      "sha256": "70a2c301ee961a1c09c1ea5ad2843562363b33ed5681ca28c55f93a8761c76a5",
+      "bytes": 2361,
+      "layer": "parked_not_installed",
+      "baseline_decision": "include_curated_source_pending_adaptation",
+      "runtime_enabled_by_audit": false,
+      "frontmatter": {},
+      "disposition": "Preserve source and curated knowledge in baseline; review host/dependency bindings before enabling.",
+      "static_flags": {},
+      "references": []
+    },
+    {
+      "source_path": "cultivation/parked/sam-cc-setup/skills/unknowns/IMPLEMENTATION-NOTES.md",
+      "absolute_source_path": "/Users/samyakjhaveri/Desktop/loam/cultivation/parked/sam-cc-setup/skills/unknowns/IMPLEMENTATION-NOTES.md",
+      "resolved_path": "/Users/samyakjhaveri/Desktop/loam/cultivation/parked/sam-cc-setup/skills/unknowns/IMPLEMENTATION-NOTES.md",
+      "kind": "support_or_config",
+      "name": "IMPLEMENTATION-NOTES",
+      "sha256": "9466d36703866ed8c97602b4433695512f596b075ae13d0aedcbaafa5b369f28",
+      "bytes": 2837,
+      "layer": "parked_not_installed",
+      "baseline_decision": "include_curated_source_pending_adaptation",
+      "runtime_enabled_by_audit": false,
+      "frontmatter": {},
+      "disposition": "Preserve source and curated knowledge in baseline; review host/dependency bindings before enabling.",
+      "static_flags": {},
+      "references": []
+    },
+    {
+      "source_path": "cultivation/parked/sam-cc-setup/skills/unknowns/SKILL.md",
+      "absolute_source_path": "/Users/samyakjhaveri/Desktop/loam/cultivation/parked/sam-cc-setup/skills/unknowns/SKILL.md",
+      "resolved_path": "/Users/samyakjhaveri/Desktop/loam/cultivation/parked/sam-cc-setup/skills/unknowns/SKILL.md",
+      "kind": "skill",
+      "name": "unknowns",
+      "sha256": "e86417f3bdbab5258ba216c02137a8ebacad1be6624d915ea8586e063ffe270b",
+      "bytes": 7838,
+      "layer": "parked_not_installed",
+      "baseline_decision": "include_curated_source_pending_adaptation",
+      "runtime_enabled_by_audit": false,
+      "frontmatter": {
+        "name": "unknowns"
+      },
+      "disposition": "Preserve before/during/after uncertainty techniques and artifact format; optional HTML requirement needs host rendering and accessibility review.",
+      "static_flags": {
+        "host_binding": [
+          {
+            "line": 32,
+            "text": "wrong as blanket policies, here and in `.claude/rules/`."
+          }
+        ]
+      },
+      "references": []
+    },
+    {
+      "source_path": "cultivation/parked/sam-cc-setup/skills/validate/SKILL.md",
+      "absolute_source_path": "/Users/samyakjhaveri/Desktop/loam/cultivation/parked/sam-cc-setup/skills/validate/SKILL.md",
+      "resolved_path": "/Users/samyakjhaveri/Desktop/loam/cultivation/parked/sam-cc-setup/skills/validate/SKILL.md",
+      "kind": "skill",
+      "name": "validate",
+      "sha256": "4602e8e4838da73cc89cf721ba185e40903b1ddfbf8a70ef89d35ff78cfe06e4",
+      "bytes": 3584,
+      "layer": "parked_not_installed",
+      "baseline_decision": "include_curated_source_pending_adaptation",
+      "runtime_enabled_by_audit": false,
+      "frontmatter": {
+        "name": "validate"
+      },
+      "disposition": "Preserve single validation owner and source-bound evidence semantics. Missing shared validation.py and currently parked fallback agent block unchanged activation; bind to current bin/check or project-configured gate.",
+      "static_flags": {
+        "host_binding": [
+          {
+            "line": 70,
+            "text": "When no shared validator exists, spawn one `sam-cc-setup:build-validator` agent. That is a"
+          },
+          {
+            "line": 76,
+            "text": "- `VERDICT: BLOCKED` \u2192 report the agent's reason to the user and stop."
+          }
+        ],
+        "retired_dependency_or_receipt": [
+          {
+            "line": 14,
+            "text": "Projects rendered from Loam share `.agents/lib/validation.py` between Claude and Codex."
+          },
+          {
+            "line": 15,
+            "text": "It writes a versioned JSON receipt to `.validation_passed`. The commit adapter checks the"
+          },
+          {
+            "line": 36,
+            "text": "if [ -f .agents/lib/validation.py ]; then"
+          },
+          {
+            "line": 37,
+            "text": "  VALIDATOR=.agents/lib/validation.py"
+          },
+          {
+            "line": 38,
+            "text": "elif [ -f seed/.agents/lib/validation.py ]; then"
+          },
+          {
+            "line": 39,
+            "text": "  VALIDATOR=seed/.agents/lib/validation.py"
+          }
+        ]
+      },
+      "references": []
+    },
+    {
+      "source_path": "cultivation/parked/sam-cc-setup/skills/vet-skill/SKILL.md",
+      "absolute_source_path": "/Users/samyakjhaveri/Desktop/loam/cultivation/parked/sam-cc-setup/skills/vet-skill/SKILL.md",
+      "resolved_path": "/Users/samyakjhaveri/Desktop/loam/cultivation/parked/sam-cc-setup/skills/vet-skill/SKILL.md",
+      "kind": "skill",
+      "name": "vet-skill",
+      "sha256": "ff20eae704629485cd3f99d8f49010d6aff309818e92e62188baa191279be913",
+      "bytes": 3326,
+      "layer": "parked_not_installed",
+      "baseline_decision": "include_curated_source_pending_adaptation",
+      "runtime_enabled_by_audit": false,
+      "frontmatter": {
+        "name": "vet-skill",
+        "allowed-tools": "Bash, Read",
+        "disable-model-invocation": "true"
+      },
+      "disposition": "Preserve adoption security review and provenance; bin/vet-skill.sh exists, scanner availability/version/threshold behavior need verification before enablement.",
+      "static_flags": {
+        "host_binding": [
+          {
+            "line": 3,
+            "text": "description: \"Security-scan an external skill or bundle before installing it. Use whenever adopting a skill, plugin, or agent from a third-party GitHub repo or marketplace, before enabling it or copying it into the project. Wraps NVIDIA SkillSpector for a static scan and applies a pass/review/reject threshold. NOT for scanning your own authored skills as a quality check (use /code-review), and NOT a runtime sandbox - it inspects, it does not contain.\""
+          },
+          {
+            "line": 11,
+            "text": "the agent's context and can carry injected instructions; some skills ship scripts"
+          },
+          {
+            "line": 17,
+            "text": "agent skills. Install once, keep current:"
+          },
+          {
+            "line": 40,
+            "text": "It does NOT remove risk carried in the prose. A skill flagged for rogue-agent or"
+          }
+        ]
+      },
+      "references": [
+        {
+          "target": "https://github.com/nvidia/skillspector",
+          "kind": "external_reference",
+          "resolution": "not fetched in static inventory"
+        }
+      ]
+    },
+    {
+      "source_path": "cultivation/parked/sam-cc-setup/skills/worktree-status/SKILL.md",
+      "absolute_source_path": "/Users/samyakjhaveri/Desktop/loam/cultivation/parked/sam-cc-setup/skills/worktree-status/SKILL.md",
+      "resolved_path": "/Users/samyakjhaveri/Desktop/loam/cultivation/parked/sam-cc-setup/skills/worktree-status/SKILL.md",
+      "kind": "skill",
+      "name": "worktree-status",
+      "sha256": "2cbc4b7914c6ed205ed5349ac18520d0791212bd084f0effb99c7c877924cd87",
+      "bytes": 6165,
+      "layer": "parked_not_installed",
+      "baseline_decision": "include_curated_source_pending_adaptation",
+      "runtime_enabled_by_audit": false,
+      "frontmatter": {
+        "name": "worktree-status"
+      },
+      "disposition": "Preserve deterministic readiness and stale-baseline reporting; default branch/main assumptions and git/gh/network preflight need checks.",
+      "static_flags": {},
+      "references": []
+    },
+    {
+      "source_path": "cultivation/parked/sam-cc-setup/skills/writing-plans/SKILL.md",
+      "absolute_source_path": "/Users/samyakjhaveri/Desktop/loam/cultivation/parked/sam-cc-setup/skills/writing-plans/SKILL.md",
+      "resolved_path": "/Users/samyakjhaveri/Desktop/loam/cultivation/parked/sam-cc-setup/skills/writing-plans/SKILL.md",
+      "kind": "skill",
+      "name": "writing-plans",
+      "sha256": "7563e3e82087079cfaca7c14606b984c905b71f58d5a8a783873d984ca193712",
+      "bytes": 5701,
+      "layer": "parked_not_installed",
+      "baseline_decision": "include_curated_source_pending_adaptation",
+      "runtime_enabled_by_audit": false,
+      "frontmatter": {
+        "name": "writing-plans"
+      },
+      "disposition": "Preserve checkable deliverables, scope mapping, no placeholders and execution handoff; consolidate shared design criteria without losing local modifications.",
+      "static_flags": {},
+      "references": []
+    },
+    {
+      "source_path": "cultivation/parked/sam-cc-setup/workflows/plan-review-fanout.js",
+      "absolute_source_path": "/Users/samyakjhaveri/Desktop/loam/cultivation/parked/sam-cc-setup/workflows/plan-review-fanout.js",
+      "resolved_path": "/Users/samyakjhaveri/Desktop/loam/cultivation/parked/sam-cc-setup/workflows/plan-review-fanout.js",
+      "kind": "workflow",
+      "name": "plan-review-fanout",
+      "sha256": "1de437fe38fad70689ea128ae1da07c5859262747ee3e1f2127576c0656fba01",
+      "bytes": 18846,
+      "layer": "parked_not_installed",
+      "baseline_decision": "include_curated_source_pending_adaptation",
+      "runtime_enabled_by_audit": false,
+      "frontmatter": {},
+      "disposition": "Preserve distinct grounding, correctness, elegance and refutation criteria; merge canonical criteria with plan-review and adapt controller-provided args/agent globals before runtime enablement.",
+      "static_flags": {
+        "hardcoded_model_or_effort": [
+          {
+            "line": 161,
+            "text": "  { label: \"ground:claims\", prompt: G1 + \"\\n\\n\" + G2 + \"\\n\\n\" + G3, phase: \"Ground\", schema: FINDINGS, effort: \"medium\" },"
+          },
+          {
+            "line": 162,
+            "text": "  { label: \"review:aggregate\", prompt: R1 + \"\\n\\n\" + R2 + \"\\n\\n\" + R3 + \"\\n\\n\" + R4 + \"\\n\\n\" + R5, phase: \"Review\", schema: FINDINGS, effort: \"xhigh\" },"
+          },
+          {
+            "line": 163,
+            "text": "  { label: \"elegance:step-back\", prompt: E1, phase: \"Elegance\", schema: ELEGANCE, effort: \"high\" },"
+          },
+          {
+            "line": 190,
+            "text": "    const verdict = await agent(verifyPrompt(f), { label: \"verify:\" + f.id, phase: \"Verify\", schema: VERDICT, effort: \"xhigh\" })"
+          },
+          {
+            "line": 214,
+            "text": "const review = await agent(convergePrompt, { label: \"converge:final-review\", phase: \"Converge\", schema: REVIEW, effort: \"high\" })"
+          }
+        ],
+        "host_binding": [
+          {
+            "line": 110,
+            "text": "// ---- Grounding lenses (default workflow agent: full tools incl. Bash/git) ----"
+          },
+          {
+            "line": 123,
+            "text": "// ---- Checklist lenses (plan-reviewer agent: Read/Glob/Grep/WebSearch) ----"
+          },
+          {
+            "line": 125,
+            "text": "\"Read .claude/rules/*.md and CLAUDE.md. Then check TWO things separately:\\n\" +"
+          },
+          {
+            "line": 152,
+            "text": "// Single-source specs: each lens's label lives ONCE and drives both the agent"
+          },
+          {
+            "line": 155,
+            "text": "// Do NOT set agentType on these. The merged plan-reviewer agent declares"
+          },
+          {
+            "line": 158,
+            "text": "// The default workflow agent has the full toolset and the prompts already"
+          },
+          {
+            "line": 166,
+            "text": "const all = await parallel(findSpecs.map(s => () => { const { prompt, ...opts } = s; return agent(prompt, opts) }))"
+          },
+          {
+            "line": 169,
+            "text": "const elegance = all[all.length - 1] || { recommendation: \"(elegance agent failed)\", alternatives: [] }"
+          },
+          {
+            "line": 190,
+            "text": "    const verdict = await agent(verifyPrompt(f), { label: \"verify:\" + f.id, phase: \"Verify\", schema: VERDICT, effort: \"xhigh\" })"
+          },
+          {
+            "line": 200,
+            "text": "  \"\\nYOU ARE THE CONVERGING PLAN-REVIEWER. Synthesize the multi-agent review below into ONE adversarial verdict and ONE handoff-ready REVISED plan. Judge whether the plan is SAFE and SUFFICIENT to hand to a fresh session that will execute it autonomously.\\n\\n\" +"
+          },
+          {
+            "line": 214,
+            "text": "const review = await agent(convergePrompt, { label: \"converge:final-review\", phase: \"Converge\", schema: REVIEW, effort: \"high\" })"
+          }
+        ]
+      },
+      "references": []
+    },
+    {
+      "source_path": "seed/.claude/codex-reviews/2026-08-31-main-clief-batch.md",
+      "absolute_source_path": "/Users/samyakjhaveri/Desktop/loam/seed/.claude/codex-reviews/2026-08-31-main-clief-batch.md",
+      "resolved_path": "/Users/samyakjhaveri/Desktop/loam/seed/.claude/codex-reviews/2026-08-31-main-clief-batch.md",
+      "kind": "support_or_config",
+      "name": "2026-08-31-main-clief-batch",
+      "sha256": "4a006f7b32190d9b96480efc534a10318799f934cf557a42eaa751de6332263b",
+      "bytes": 1757,
+      "layer": "active_seed",
+      "baseline_decision": "include_curated_source_pending_adaptation",
+      "runtime_enabled_by_audit": false,
+      "frontmatter": {},
+      "disposition": "Preserve source and curated knowledge in baseline; review host/dependency bindings before enabling.",
+      "static_flags": {
+        "host_binding": [
+          {
+            "line": 6,
+            "text": "- `seed/.claude/stale-counts.json:24`: Verified: the stale-count search uses an allowlist and explicitly skips `specs`, so it violates the repository-wide verification rule and misses current prose under new docs and marketplace paths. Fix: scan from the repository root and exempt only specific historical lines or directories."
+          },
+          {
+            "line": 11,
+            "text": "- `bin/verify-template.sh:189`: Verified: deleting `seed/.claude/stale-counts.json` disables stage 7 because the checker treats missing configuration as success and the source contract does not require the file. Fix: add the config to `REQUIRED_SOURCE_PATHS` and test that a missing config fails verification."
+          }
+        ]
+      },
+      "references": []
+    },
+    {
+      "source_path": "seed/.claude/codex-reviews/2026-09-01-wave-f-harness-fixes-pass2.md",
+      "absolute_source_path": "/Users/samyakjhaveri/Desktop/loam/seed/.claude/codex-reviews/2026-09-01-wave-f-harness-fixes-pass2.md",
+      "resolved_path": "/Users/samyakjhaveri/Desktop/loam/seed/.claude/codex-reviews/2026-09-01-wave-f-harness-fixes-pass2.md",
+      "kind": "support_or_config",
+      "name": "2026-09-01-wave-f-harness-fixes-pass2",
+      "sha256": "1a7fc32ef0eacbc927b6d984f3a1e4e6424996be0f56dce4353d605aa92eea25",
+      "bytes": 2009,
+      "layer": "active_seed",
+      "baseline_decision": "include_curated_source_pending_adaptation",
+      "runtime_enabled_by_audit": false,
+      "frontmatter": {},
+      "disposition": "Preserve source and curated knowledge in baseline; review host/dependency bindings before enabling.",
+      "static_flags": {},
+      "references": []
+    },
+    {
+      "source_path": "seed/.claude/codex-reviews/2026-09-01-wave-f-harness-fixes.md",
+      "absolute_source_path": "/Users/samyakjhaveri/Desktop/loam/seed/.claude/codex-reviews/2026-09-01-wave-f-harness-fixes.md",
+      "resolved_path": "/Users/samyakjhaveri/Desktop/loam/seed/.claude/codex-reviews/2026-09-01-wave-f-harness-fixes.md",
+      "kind": "support_or_config",
+      "name": "2026-09-01-wave-f-harness-fixes",
+      "sha256": "adac06561ab5932e02ef72ea4b420f3b6c9d594f50bee09fff9c5e943ac39639",
+      "bytes": 1940,
+      "layer": "active_seed",
+      "baseline_decision": "include_curated_source_pending_adaptation",
+      "runtime_enabled_by_audit": false,
+      "frontmatter": {},
+      "disposition": "Preserve source and curated knowledge in baseline; review host/dependency bindings before enabling.",
+      "static_flags": {},
+      "references": []
+    },
+    {
+      "source_path": "seed/.claude/codex-reviews/2026-09-03-fix-audit-s1-stop-the-bleeding.md",
+      "absolute_source_path": "/Users/samyakjhaveri/Desktop/loam/seed/.claude/codex-reviews/2026-09-03-fix-audit-s1-stop-the-bleeding.md",
+      "resolved_path": "/Users/samyakjhaveri/Desktop/loam/seed/.claude/codex-reviews/2026-09-03-fix-audit-s1-stop-the-bleeding.md",
+      "kind": "support_or_config",
+      "name": "2026-09-03-fix-audit-s1-stop-the-bleeding",
+      "sha256": "7a95ffb77cd11130dc288cf218129b5063bf9221496dba9818cc44a79f980e71",
+      "bytes": 1226,
+      "layer": "active_seed",
+      "baseline_decision": "include_curated_source_pending_adaptation",
+      "runtime_enabled_by_audit": false,
+      "frontmatter": {},
+      "disposition": "Preserve source and curated knowledge in baseline; review host/dependency bindings before enabling.",
+      "static_flags": {
+        "hardcoded_model_or_effort": [
+          {
+            "line": 11,
+            "text": "- `cultivation/marketplace/sam-cc-setup/agents/test-synthesizer.md:130` Verified: the validator accepts only `sonnet` and `opus`, but this diff gives the agent `claude-opus-4-8[1m]`, which the validator rejects; fix: accept the pinned model ID and add a fixture covering the exact shipped frontmatter."
+          }
+        ],
+        "host_binding": [
+          {
+            "line": 5,
+            "text": "- `seed/.claude/hooks/stop-verify-gate.sh:23` Verified: an unborn branch exits before Ruff or `bash -n`, so the first session can end with invalid Python or shell files; fix: compare tracked files with Git\u2019s empty tree and continue checking untracked files."
+          },
+          {
+            "line": 6,
+            "text": "- `seed/.claude/hooks/stop-verify-gate.sh:33` Verified: session scoping records only editor tools, so a transcript containing one Edit causes files changed through Bash, formatters, generators, or subagents to escape all checks; fix: fall back to all dirty files when untracked mutation sources appear, or maintain a complete mutation log."
+          },
+          {
+            "line": 7,
+            "text": "- `seed/.claude/hooks/stop-verify-gate.sh:65` Verified: `git diff --check HEAD` still scans every tracked dirty file, so unrelated pre-existing whitespace blocks the session despite the new scope filter; fix: invoke it with the NUL-safe scoped path set and add a tracked-whitespace regression test."
+          },
+          {
+            "line": 11,
+            "text": "- `cultivation/marketplace/sam-cc-setup/agents/test-synthesizer.md:130` Verified: the validator accepts only `sonnet` and `opus`, but this diff gives the agent `claude-opus-4-8[1m]`, which the validator rejects; fix: accept the pinned model ID and add a fixture covering the exact shipped frontmatter."
+          }
+        ]
+      },
+      "references": []
+    },
+    {
+      "source_path": "seed/.claude/codex-reviews/2026-09-03-fix-audit-s2-prompts.md",
+      "absolute_source_path": "/Users/samyakjhaveri/Desktop/loam/seed/.claude/codex-reviews/2026-09-03-fix-audit-s2-prompts.md",
+      "resolved_path": "/Users/samyakjhaveri/Desktop/loam/seed/.claude/codex-reviews/2026-09-03-fix-audit-s2-prompts.md",
+      "kind": "support_or_config",
+      "name": "2026-09-03-fix-audit-s2-prompts",
+      "sha256": "882e06f3cd750eb9d925a9e1b8882e03ee1f0fcb0b57a375980faec71cd42d01",
+      "bytes": 1928,
+      "layer": "active_seed",
+      "baseline_decision": "include_curated_source_pending_adaptation",
+      "runtime_enabled_by_audit": false,
+      "frontmatter": {},
+      "disposition": "Preserve source and curated knowledge in baseline; review host/dependency bindings before enabling.",
+      "static_flags": {
+        "hardcoded_model_or_effort": [
+          {
+            "line": 5,
+            "text": "- `cultivation/marketplace/sam-cc-setup/agents/test-synthesizer.md:132` \u2014 The validator accepts every `claude-*` value, including Sonnet, Haiku, and invalid model names; allow only `opus`, `claude-opus-*`, and `claude-fable-*`."
+          },
+          {
+            "line": 9,
+            "text": "- `cultivation/marketplace/sam-cc-setup/skills/agent-team/teammate-prompt.md:39` \u2014 Mandatory nested Explore subagents have no model pin, so the Opus-or-Fable rule is not enforced; require `claude-opus-4-8[1m]` or Fable and mirror that requirement at `scenarios.md:63` and `scenarios.md:82`."
+          }
+        ],
+        "host_binding": [
+          {
+            "line": 6,
+            "text": "- `cultivation/marketplace/sam-cc-setup/skills/agent-team/SKILL.md:32` \u2014 \u201cEvery teammate runs Opus\u201d contradicts the Fable-advisor exception on the same line and the advisor teammate at line 115; define an explicit role matrix and update the all-Opus statements at lines 87, 125, and 179."
+          },
+          {
+            "line": 7,
+            "text": "- `cultivation/marketplace/sam-cc-setup/skills/agent-team/advisor-prompt.md:17` \u2014 The advisor cannot run at higher effort than workers when Fable is capped at `high` and Opus workers use `xhigh`; remove the higher-effort claim here and at `teammate-prompt.md:117`."
+          },
+          {
+            "line": 8,
+            "text": "- `cultivation/marketplace/sam-cc-setup/skills/agent-team/scenarios.md:20` \u2014 Scenario workers remain at `high`, contradicting the new `xhigh` policy for Opus execution workers; align all worker rows at lines 20, 59, 60, 78, and 79, or relax the policy."
+          },
+          {
+            "line": 9,
+            "text": "- `cultivation/marketplace/sam-cc-setup/skills/agent-team/teammate-prompt.md:39` \u2014 Mandatory nested Explore subagents have no model pin, so the Opus-or-Fable rule is not enforced; require `claude-opus-4-8[1m]` or Fable and mirror that requirement at `scenarios.md:63` and `scenarios.md:82`."
+          }
+        ]
+      },
+      "references": []
+    },
+    {
+      "source_path": "seed/.claude/hooks/fable-session-brief.sh",
+      "absolute_source_path": "/Users/samyakjhaveri/Desktop/loam/seed/.claude/hooks/fable-session-brief.sh",
+      "resolved_path": "/Users/samyakjhaveri/Desktop/loam/seed/.claude/hooks/fable-session-brief.sh",
+      "kind": "hook",
+      "name": "fable-session-brief",
+      "sha256": "d55bc25ae8954a097cc303f7a58bc9ccf292d1741f2152adb39e16b5bdd88edd",
+      "bytes": 1995,
+      "layer": "active_seed",
+      "baseline_decision": "include_curated_source_pending_adaptation",
+      "runtime_enabled_by_audit": false,
+      "frontmatter": {},
+      "disposition": "Preserve current provider-specific runtime adapter; verify event and permission contracts when adapting.",
+      "static_flags": {
+        "host_binding": [
+          {
+            "line": 5,
+            "text": "# optional `model`, PostModelSwitch carries `to_model`. Plain stdout on either"
+          },
+          {
+            "line": 9,
+            "text": "# Triggered by: SessionStart (startup|resume|clear|compact|fork) and PostModelSwitch"
+          }
+        ]
+      },
+      "references": []
+    },
+    {
+      "source_path": "seed/.claude/hooks/post-compact-reinject.sh",
+      "absolute_source_path": "/Users/samyakjhaveri/Desktop/loam/seed/.claude/hooks/post-compact-reinject.sh",
+      "resolved_path": "/Users/samyakjhaveri/Desktop/loam/seed/.claude/hooks/post-compact-reinject.sh",
+      "kind": "hook",
+      "name": "post-compact-reinject",
+      "sha256": "7b3e4ee11c6c96b95bd7c5772c8ebedd74073d42fa2d09a813de13fc3c94ffad",
+      "bytes": 539,
+      "layer": "active_seed",
+      "baseline_decision": "include_curated_source_pending_adaptation",
+      "runtime_enabled_by_audit": false,
+      "frontmatter": {},
+      "disposition": "Preserve current provider-specific runtime adapter; verify event and permission contracts when adapting.",
+      "static_flags": {},
+      "references": []
+    },
+    {
+      "source_path": "seed/.claude/settings.json",
+      "absolute_source_path": "/Users/samyakjhaveri/Desktop/loam/seed/.claude/settings.json",
+      "resolved_path": "/Users/samyakjhaveri/Desktop/loam/seed/.claude/settings.json",
+      "kind": "support_or_config",
+      "name": "settings",
+      "sha256": "7ba9133a80275f1c72fdede99307d6b39ec5380408ca0851356711ebaca163ee",
+      "bytes": 1766,
+      "layer": "active_seed",
+      "baseline_decision": "include_curated_source_pending_adaptation",
+      "runtime_enabled_by_audit": false,
+      "frontmatter": {},
+      "disposition": "Preserve source and curated knowledge in baseline; review host/dependency bindings before enabling.",
+      "static_flags": {
+        "host_binding": [
+          {
+            "line": 47,
+            "text": "            \"command\": \".claude/hooks/post-compact-reinject.sh\","
+          },
+          {
+            "line": 57,
+            "text": "            \"command\": \".claude/hooks/fable-session-brief.sh\","
+          },
+          {
+            "line": 63,
+            "text": "    \"PostModelSwitch\": ["
+          },
+          {
+            "line": 68,
+            "text": "            \"command\": \".claude/hooks/fable-session-brief.sh\","
+          }
+        ]
+      },
+      "references": []
+    },
+    {
+      "source_path": "seed/.claude/settings.local.json.template",
+      "absolute_source_path": "/Users/samyakjhaveri/Desktop/loam/seed/.claude/settings.local.json.template",
+      "resolved_path": "/Users/samyakjhaveri/Desktop/loam/seed/.claude/settings.local.json.template",
+      "kind": "support_or_config",
+      "name": "settings.local.json",
+      "sha256": "d55f6ad3a0be3af7a18626533695024b055f710a0db1f40b382d8cf4be6d8320",
+      "bytes": 446,
+      "layer": "active_seed",
+      "baseline_decision": "include_curated_source_pending_adaptation",
+      "runtime_enabled_by_audit": false,
+      "frontmatter": {},
+      "disposition": "Preserve source and curated knowledge in baseline; review host/dependency bindings before enabling.",
+      "static_flags": {},
+      "references": []
+    },
+    {
+      "source_path": "seed/.claude/skills/catchup",
+      "absolute_source_path": "/Users/samyakjhaveri/Desktop/loam/seed/.claude/skills/catchup",
+      "resolved_path": "/Users/samyakjhaveri/Desktop/loam/seed/.agents/skills/catchup",
+      "kind": "distribution_symlink",
+      "link_target": "../../.agents/skills/catchup",
+      "target_exists": true,
+      "link_sha256": "2849ce8ca2910dcc5ad2fd73c7c828d666abb4402fdc57a5bcd9da2e361e8e35",
+      "disposition": "preserve checked distribution mirror, not independent skill implementation"
+    },
+    {
+      "source_path": "seed/.claude/skills/fable-prompting",
+      "absolute_source_path": "/Users/samyakjhaveri/Desktop/loam/seed/.claude/skills/fable-prompting",
+      "resolved_path": "/Users/samyakjhaveri/Desktop/loam/seed/.agents/skills/fable-prompting",
+      "kind": "distribution_symlink",
+      "link_target": "../../.agents/skills/fable-prompting",
+      "target_exists": true,
+      "link_sha256": "5446b2724d240b44adfaa38a456ccb03b481b8e6533921d7c11e22142f63d064",
+      "disposition": "preserve checked distribution mirror, not independent skill implementation"
+    },
+    {
+      "source_path": "seed/.claude/stale-counts.json",
+      "absolute_source_path": "/Users/samyakjhaveri/Desktop/loam/seed/.claude/stale-counts.json",
+      "resolved_path": "/Users/samyakjhaveri/Desktop/loam/seed/.claude/stale-counts.json",
+      "kind": "support_or_config",
+      "name": "stale-counts",
+      "sha256": "a21ec91cec565c3ea8d27794d92d2ccc81abf6587f6b574af86432bc8b933fdb",
+      "bytes": 1209,
+      "layer": "active_seed",
+      "baseline_decision": "include_curated_source_pending_adaptation",
+      "runtime_enabled_by_audit": false,
+      "frontmatter": {},
+      "disposition": "Preserve source and curated knowledge in baseline; review host/dependency bindings before enabling.",
+      "static_flags": {
+        "host_binding": [
+          {
+            "line": 6,
+            "text": "    \"claude_hook_handlers\": \"python3 -c \\\"import json;h=json.load(open('seed/.claude/settings.json'))['hooks'];print(sum(len(g['hooks']) for e in h.values() for g in e))\\\"\""
+          }
+        ]
+      },
+      "references": []
+    },
+    {
+      "source_path": "seed/.codex/config.toml",
+      "absolute_source_path": "/Users/samyakjhaveri/Desktop/loam/seed/.codex/config.toml",
+      "resolved_path": "/Users/samyakjhaveri/Desktop/loam/seed/.codex/config.toml",
+      "kind": "support_or_config",
+      "name": "config",
+      "sha256": "64f5d0069afd8c9372a08c0478ac3a24da7509289699fbb3546822f737ca5b15",
+      "bytes": 921,
+      "layer": "active_seed",
+      "baseline_decision": "include_curated_source_pending_adaptation",
+      "runtime_enabled_by_audit": false,
+      "frontmatter": {},
+      "disposition": "Preserve source and curated knowledge in baseline; review host/dependency bindings before enabling.",
+      "static_flags": {},
+      "references": []
+    },
+    {
+      "source_path": "seed/.codex/rules/loam.rules",
+      "absolute_source_path": "/Users/samyakjhaveri/Desktop/loam/seed/.codex/rules/loam.rules",
+      "resolved_path": "/Users/samyakjhaveri/Desktop/loam/seed/.codex/rules/loam.rules",
+      "kind": "support_or_config",
+      "name": "loam",
+      "sha256": "dbaa2fcaedcfc00f256f6ad46321d6e074016a6bccac85196177020a47c9ba90",
+      "bytes": 2440,
+      "layer": "active_seed",
+      "baseline_decision": "include_curated_source_pending_adaptation",
+      "runtime_enabled_by_audit": false,
+      "frontmatter": {},
+      "disposition": "Preserve source and curated knowledge in baseline; review host/dependency bindings before enabling.",
+      "static_flags": {},
+      "references": []
+    }
+  ],
+  "remote_declarations": [
+    {
+      "name": "web-frontend-anthropics",
+      "declared_source": {
+        "source": "git-subdir",
+        "url": "https://github.com/anthropics/skills.git",
+        "path": "skills",
+        "ref": "main",
+        "sha": "35414756ca55738e050562e272a6bbc6273aa926"
+      },
+      "declared_skills": [
+        "./web-artifacts-builder",
+        "./webapp-testing",
+        "./theme-factory"
+      ],
+      "declared_license": "Apache-2.0",
+      "default_enabled": false,
+      "implementation_reviewed": false,
+      "local_sha256": null,
+      "disposition": "include existing curated declaration; resolve pinned source, license and full dependency closure before activation; current metadata is not content verification"
+    },
+    {
+      "name": "web-frontend-vercel",
+      "declared_source": {
+        "source": "git-subdir",
+        "url": "https://github.com/vercel-labs/agent-skills.git",
+        "path": "skills",
+        "ref": "main",
+        "sha": "f8a72b9603728bb92a217a879b7e62e43ad76c81"
+      },
+      "declared_skills": [
+        "./react-best-practices",
+        "./react-view-transitions",
+        "./composition-patterns",
+        "./web-design-guidelines"
+      ],
+      "declared_license": "MIT",
+      "default_enabled": false,
+      "implementation_reviewed": false,
+      "local_sha256": null,
+      "disposition": "include existing curated declaration; resolve pinned source, license and full dependency closure before activation; current metadata is not content verification"
+    },
+    {
+      "name": "web-frontend-find-skills",
+      "declared_source": {
+        "source": "git-subdir",
+        "url": "https://github.com/vercel-labs/skills.git",
+        "path": "skills",
+        "ref": "main",
+        "sha": "2adcfe5a4cce0ce5f4d5547a997b2a161ec5d127"
+      },
+      "declared_skills": [
+        "./find-skills"
+      ],
+      "declared_license": "Unspecified \u2014 vercel-labs/skills declares no LICENSE",
+      "default_enabled": false,
+      "implementation_reviewed": false,
+      "local_sha256": null,
+      "disposition": "include existing curated declaration; resolve pinned source, license and full dependency closure before activation; current metadata is not content verification"
+    },
+    {
+      "name": "web-frontend-taste",
+      "declared_source": {
+        "source": "git-subdir",
+        "url": "https://github.com/Leonxlnx/taste-skill.git",
+        "path": "skills",
+        "ref": "main",
+        "sha": "06d6028b5c623016c59ce8536f578e5a1127b499"
+      },
+      "declared_skills": [
+        "./taste-skill"
+      ],
+      "declared_license": "MIT",
+      "default_enabled": false,
+      "implementation_reviewed": false,
+      "local_sha256": null,
+      "disposition": "include existing curated declaration; resolve pinned source, license and full dependency closure before activation; current metadata is not content verification"
+    },
+    {
+      "name": "deer-flow-public",
+      "declared_source": {
+        "source": "git-subdir",
+        "url": "https://github.com/bytedance/deer-flow.git",
+        "path": "skills/public",
+        "ref": "main",
+        "sha": "feaf48358140a6af1c22729863a6c3f7e77bb7ec"
+      },
+      "declared_skills": [
+        "./academic-paper-review",
+        "./bootstrap",
+        "./code-documentation",
+        "./newsletter-generation"
+      ],
+      "declared_license": "MIT",
+      "default_enabled": false,
+      "implementation_reviewed": false,
+      "local_sha256": null,
+      "disposition": "include existing curated declaration; resolve pinned source, license and full dependency closure before activation; current metadata is not content verification"
+    }
+  ],
+  "byte_identical_file_groups": [],
+  "canonical_home_recommendation": {
+    "shared_skill_source": "seed/.agents/skills/<name>/ for capabilities explicitly included in every generated project; keep descriptions concise and references on demand",
+    "optional_provider_adapters": "cultivation/marketplace/sam-cc-setup/ for optional Claude plugin agents/commands and host adapters; shared semantic contract must have a single source",
+    "runtime_policy": "seed/.claude/settings.json and hooks; seed/.codex/config.toml and rules. Preserve security knowledge from parked hooks without reviving obsolete tool-matcher policy automatically.",
+    "parked_sources": "Retain as curated inclusion source until replacement parity is documented. Placement alone is not rejection.",
+    "project_specific_factory": "Keep factory-specific brief, grader and execution policy outside generic seed unless parameterized."
+  },
+  "test_obligations": [
+    "Manifest and link resolution, dependency closure and unique canonical skill names after assembly.",
+    "Section-level preservation map for duplicate implementations; retain local changes and attribution before deleting duplicates.",
+    "Provider adapter tests for model/effort selection, host capabilities and no unexpected external actions.",
+    "Validation evidence invalidation tests if receipt behavior is retained; bind to an existing current gate.",
+    "Read-only review scope/path input tests and malformed path handling for Codex adapters.",
+    "Memory discovery, dry-run proposals and destructive-operation approval fixtures before dream is enabled.",
+    "Focused hook parser/control fixtures remain evidence to port; independent native permission tests required rather than claiming equivalence.",
+    "No full check run by this audit. Designated validation owner runs bin/check after later implementation snapshot."
+  ]
+}

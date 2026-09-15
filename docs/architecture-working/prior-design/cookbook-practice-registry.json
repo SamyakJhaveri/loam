@@ -1,0 +1,552 @@
+[
+  {
+    "id": "intent",
+    "practice": "Original intent and method routing",
+    "disposition": "adopt",
+    "sources": [
+      "cookbook-claude-patterns-audit.md",
+      "cookbook-codex-audit.md",
+      "cookbook-index-coverage.md"
+    ],
+    "source_mechanism": "Basic workflows, research lead, ExecPlans and inquiry branch contracts",
+    "implementation": "Keep original request and immutable obligations separate from the evolving plan; validate allowed method IDs and their prerequisites.",
+    "native_mapping": "Native leads choose a method; neither provider receives a rigid universal stage ritual.",
+    "seed_owner": "methods + entry skills",
+    "dependencies": "methods",
+    "proposed_command": "python3 -m unittest discover -s .loam/factory/tests -p 'test_factory_methods.py'",
+    "acceptance_case": "Unknown route or polished answer to the wrong question remains unaccepted."
+  },
+  {
+    "id": "premises",
+    "practice": "Plan premise and population verification",
+    "disposition": "adopt",
+    "sources": [
+      "cookbook-claude-patterns-audit.md",
+      "cookbook-long-horizon-audit.md"
+    ],
+    "source_mechanism": "CMA_plan_big_execute_small and effective-harnesses feature inventory",
+    "implementation": "Establish critical premises and expected population from evidence before required fan-out; preserve unverified premises.",
+    "native_mapping": "Shared inquiry contract delivered through either adapter.",
+    "seed_owner": "methods + evidence schemas",
+    "dependencies": "methods",
+    "proposed_command": "python3 -m unittest discover -s .loam/factory/tests -p 'test_factory_methods.py'",
+    "acceptance_case": "Correct answers for the wrong population fail coverage."
+  },
+  {
+    "id": "plans",
+    "practice": "Living execution plans",
+    "disposition": "adapt",
+    "sources": [
+      "cookbook-codex-audit.md",
+      "cookbook-long-horizon-audit.md"
+    ],
+    "source_mechanism": "ExecPlans and later harness design",
+    "implementation": "Maintain scope-linked progress, decisions, failed approaches and next work; plan edits cannot weaken authority.",
+    "native_mapping": "Continue native conversation with a reopenable plan artifact.",
+    "seed_owner": "planning skill + state links",
+    "dependencies": "methods",
+    "proposed_command": "python3 -m unittest discover -s .loam/factory/tests -p 'test_factory_methods.py'",
+    "acceptance_case": "A plan revision dropping an original requirement cannot satisfy it."
+  },
+  {
+    "id": "subagents",
+    "practice": "Native specialist delegation",
+    "disposition": "adopt",
+    "sources": [
+      "cookbook-claude-sdk-audit.md",
+      "cookbook-claude-patterns-audit.md",
+      "cookbook-codex-audit.md",
+      "cookbook-index-coverage.md"
+    ],
+    "source_mechanism": "SDK subagents, specialist team and native Codex subagents",
+    "implementation": "Self-contained task, source inputs, role profile and handback; register required child before dispatch and bind actual native identity.",
+    "native_mapping": "Claude Agent/subagents; Codex native delegation, preserving real controls.",
+    "seed_owner": "role contracts + adapters",
+    "dependencies": "coordination",
+    "proposed_command": "python3 -m unittest discover -s .loam/factory/tests -p 'test_factory_coordination.py'",
+    "acceptance_case": "Rejected admission or missing child binding never launches a duplicate or accepts output."
+  },
+  {
+    "id": "async",
+    "practice": "Asynchronous coordination",
+    "disposition": "adapt",
+    "sources": [
+      "cookbook-claude-patterns-audit.md",
+      "cookbook-codex-audit.md"
+    ],
+    "source_mechanism": "Async multi-agent orchestration and native delegation",
+    "implementation": "Track child liveness, messages, unfinished handbacks and parent outcome independently; retain all admitted accounting.",
+    "native_mapping": "Use native messaging/events, not a replacement Messages/Responses tool loop.",
+    "seed_owner": "adapters + supervisor inventory",
+    "dependencies": "coordination",
+    "proposed_command": "python3 -m unittest discover -s .loam/factory/tests -p 'test_factory_coordination.py'",
+    "acceptance_case": "Lead ends before late child/message; required work remains pending."
+  },
+  {
+    "id": "dynamic",
+    "practice": "Dynamic workflows",
+    "disposition": "adapt",
+    "sources": [
+      "cookbook-claude-sdk-audit.md",
+      "cookbook-claude-patterns-audit.md",
+      "cookbook-codex-audit.md"
+    ],
+    "source_mechanism": "SDK Dynamic workflows and orchestration patterns",
+    "implementation": "Native lead proposes typed dependent work; supervisor admits required population; null/error/missing outcomes stay explicit.",
+    "native_mapping": "Claude bounded Workflow; Codex native delegation and Loam method dependencies, no fictitious Workflow API.",
+    "seed_owner": "methods + native workflow assets",
+    "dependencies": "coordination",
+    "proposed_command": "python3 -m unittest discover -s .loam/factory/tests -p 'test_factory_coordination.py'",
+    "acceptance_case": "Null verifier, duplicate claim and replayed sibling cannot reduce expected coverage."
+  },
+  {
+    "id": "teams",
+    "practice": "Interactive agent teams",
+    "disposition": "optional native method",
+    "sources": [
+      "cookbook-claude-patterns-audit.md",
+      "cookbook-codex-audit.md",
+      "cookbook-index-coverage.md"
+    ],
+    "source_mechanism": "Native teams docs and research-team role contracts",
+    "implementation": "Use real teams when sustained peer interaction is useful; supervised guarantees fixed, otherwise explicit ordinary collaboration/evidence import.",
+    "native_mapping": "Claude interactive teams distinct from SDK subagents; Codex uses its documented native coordination.",
+    "seed_owner": "team method + native capability profiles",
+    "dependencies": "coordination",
+    "proposed_command": "python3 -m unittest discover -s .loam/factory/tests -p 'test_factory_coordination.py'",
+    "acceptance_case": "Unrecorded direct teammate steering prevents managed admission; no inline-role substitute for independence."
+  },
+  {
+    "id": "advisor",
+    "practice": "Advisory consultation",
+    "disposition": "optional native method",
+    "sources": [
+      "cookbook-claude-patterns-audit.md"
+    ],
+    "source_mechanism": "Native advisor, CMA_consult_an_advisor and cost-optimization failure analysis",
+    "implementation": "Consult on consequential design, repeated failure or material completion doubt; record actual occurrence, identity, applicability and response.",
+    "native_mapping": "Supported Fable-to-Fable native advisor; Codex separate admitted consultation agent, not server-advisor parity.",
+    "seed_owner": "consultation role + receipt schema + native mapping",
+    "dependencies": "coordination",
+    "proposed_command": "python3 -m unittest discover -s .loam/factory/tests -p 'test_factory_coordination.py'",
+    "acceptance_case": "Enablement alone does not satisfy consultation. Proven occurrence/identity may satisfy an occurrence-only obligation that permits redaction; it cannot satisfy required inspectable advice, invent content or replace independent review."
+  },
+  {
+    "id": "independent",
+    "practice": "Independent investigation and review",
+    "disposition": "adopt",
+    "sources": [
+      "cookbook-claude-sdk-audit.md",
+      "cookbook-claude-patterns-audit.md",
+      "cookbook-codex-audit.md",
+      "cookbook-long-horizon-audit.md",
+      "cookbook-index-coverage.md"
+    ],
+    "source_mechanism": "Outcome grader, evaluator separation and research handoff",
+    "implementation": "Capture independent initial reports before peer critique; required reviewer gets fresh context with candidate, criteria and adequate source access.",
+    "native_mapping": "Both providers use actual distinct contexts with allowed models; no universal different-model rule.",
+    "seed_owner": "review roles + context compiler",
+    "dependencies": "evidence",
+    "proposed_command": "python3 -m unittest discover -s .loam/factory/tests -p 'test_factory_evidence.py'",
+    "acceptance_case": "Producer conversation reused as reviewer is rejected; same allowed model alone is not rejected."
+  },
+  {
+    "id": "adversarial",
+    "practice": "Adversarial counterexamples and defense",
+    "disposition": "adapt",
+    "sources": [
+      "cookbook-claude-patterns-audit.md",
+      "cookbook-index-coverage.md"
+    ],
+    "source_mechanism": "Dynamic skeptic and PaperJury trial",
+    "implementation": "Challenge falsifiable claims, allow source/context expansion, preserve charitable alternatives and evidence-backed minority dissent.",
+    "native_mapping": "Native independent agents then explicit critique stage.",
+    "seed_owner": "critique method + findings schema",
+    "dependencies": "evidence",
+    "proposed_command": "python3 -m unittest discover -s .loam/factory/tests -p 'test_factory_evidence.py'",
+    "acceptance_case": "Missing skeptic is unavailable; hostile wording or majority agreement cannot establish a defect. Downstream analysis must consume the admitted upstream artifact, not only run after it."
+  },
+  {
+    "id": "recall",
+    "practice": "Dismissed-finding and consensus audit",
+    "disposition": "adapt",
+    "sources": [
+      "cookbook-index-coverage.md",
+      "cookbook-claude-sdk-audit.md"
+    ],
+    "source_mechanism": "PaperJury recall audit and scheduled reviewer",
+    "implementation": "Revisit consequential dismissals and apparent consensus where the method requires; retain issue lineage and unresolved author work.",
+    "native_mapping": "Fresh critique roles through either native provider.",
+    "seed_owner": "review methods + issue records",
+    "dependencies": "evidence",
+    "proposed_command": "python3 -m unittest discover -s .loam/factory/tests -p 'test_factory_evidence.py'",
+    "acceptance_case": "Empty recall votes cannot confirm a dismissal; baseline cannot advance after partial review."
+  },
+  {
+    "id": "outcome",
+    "practice": "Outcome grading and bounded repair",
+    "disposition": "adapt",
+    "sources": [
+      "cookbook-claude-patterns-audit.md",
+      "cookbook-codex-audit.md",
+      "cookbook-long-horizon-audit.md"
+    ],
+    "source_mechanism": "Outcome grader, evaluator optimizer and Codex repair loop",
+    "implementation": "Separate FAIL from ERROR/UNAVAILABLE/cap; require evidence for each criterion; repair concrete defects within admitted limits.",
+    "native_mapping": "Native workers repair; protected evaluator/supervisor checks actual candidate.",
+    "seed_owner": "check engine + review rubrics",
+    "dependencies": "evidence",
+    "proposed_command": "python3 -m unittest discover -s .loam/factory/tests -p 'test_factory_evidence.py'",
+    "acceptance_case": "Malformed JSON, empty approved output or cap never becomes acceptance; style-only churn does not create endless repair."
+  },
+  {
+    "id": "continuity",
+    "practice": "Long-horizon native continuity",
+    "disposition": "adopt",
+    "sources": [
+      "cookbook-codex-audit.md",
+      "cookbook-long-horizon-audit.md",
+      "cookbook-claude-sdk-audit.md"
+    ],
+    "source_mechanism": "Later harness design, Codex long-task examples and SDK sessions",
+    "implementation": "Retain useful native context across turns and compaction; revalidate attempt/profile on continuation; preserve candidate history.",
+    "native_mapping": "Provider-native sessions and compaction, not mandatory fresh worker rounds.",
+    "seed_owner": "adapters + continuation records",
+    "dependencies": "recovery",
+    "proposed_command": "python3 -m unittest discover -s .loam/factory/tests -p 'test_factory_recovery.py'",
+    "acceptance_case": "Old receipt cannot certify changed assets; final candidate is not selected merely because latest."
+  },
+  {
+    "id": "goals",
+    "practice": "Native goals with one continuation owner",
+    "disposition": "optional native method",
+    "sources": [
+      "cookbook-claude-patterns-audit.md",
+      "cookbook-codex-audit.md",
+      "cookbook-long-horizon-audit.md"
+    ],
+    "source_mechanism": "Claude goal and Codex goals",
+    "implementation": "Choose native-goal or supervisor continuation ownership for an active stage; reconcile goal before competing repair; acceptance separate.",
+    "native_mapping": "Claude evaluator must satisfy model policy; Codex native goal observed through admitted supported surface.",
+    "seed_owner": "goal capability profile + supervisor arbitration",
+    "dependencies": "recovery",
+    "proposed_command": "python3 -m unittest discover -s .loam/factory/tests -p 'test_factory_recovery.py'",
+    "acceptance_case": "Goal active/unknown plus supervisor retry cannot create concurrent turn; completed goal still needs checks."
+  },
+  {
+    "id": "steering",
+    "practice": "Authenticated steering and human questions",
+    "disposition": "adopt",
+    "sources": [
+      "cookbook-claude-sdk-audit.md",
+      "cookbook-claude-patterns-audit.md",
+      "cookbook-codex-audit.md",
+      "cookbook-long-horizon-audit.md"
+    ],
+    "source_mechanism": "SDK interaction, human gate, cwc steering and native turns",
+    "implementation": "Durable trusted ingress and request identity; separate delivery/consumption/application; recheck barriers before execution-triggering replies.",
+    "native_mapping": "Native permission/question/steering channels; Workflow stage change at reconciled boundary.",
+    "seed_owner": "control boundary + adapters",
+    "dependencies": "recovery",
+    "proposed_command": "python3 -m unittest discover -s .loam/factory/tests -p 'test_factory_recovery.py'",
+    "acceptance_case": "Forged human flag, canceled approval answer or stale queued input never grants current execution authority."
+  },
+  {
+    "id": "recovery",
+    "practice": "Crash and replay reconciliation",
+    "disposition": "adapt",
+    "sources": [
+      "cookbook-claude-sdk-audit.md",
+      "cookbook-claude-patterns-audit.md",
+      "cookbook-codex-audit.md",
+      "cookbook-long-horizon-audit.md"
+    ],
+    "source_mechanism": "Workflow replay, LoopX recovery and durable sessions",
+    "implementation": "Persist intent/receipts, reconcile actual processes and external effects, preserve original lineage on evidence adoption.",
+    "native_mapping": "Explicit native IDs; no newest-file/latest-session binding or blind resume.",
+    "seed_owner": "SQLite state + artifact spool + adapters",
+    "dependencies": "recovery",
+    "proposed_command": "python3 -m unittest discover -s .loam/factory/tests -p 'test_factory_recovery.py'",
+    "acceptance_case": "Crash after launch or saved sibling effect produces reconciliation, not duplicate writer or effect."
+  },
+  {
+    "id": "workspace",
+    "practice": "Owned parallel work and integration",
+    "disposition": "adapt",
+    "sources": [
+      "cookbook-long-horizon-audit.md",
+      "cookbook-index-coverage.md",
+      "cookbook-codex-audit.md"
+    ],
+    "source_mechanism": "Unlazy, parallel phases, native worktree recipes",
+    "implementation": "Assign owned workspaces/boundaries; preserve unrelated edits; one integrator validates combined candidate and full checks.",
+    "native_mapping": "Native execution retains tools in admitted workspace.",
+    "seed_owner": "workspace service + integration role",
+    "dependencies": "isolation",
+    "proposed_command": "python3 -m unittest discover -s .loam/factory/tests -p 'test_factory_isolation.py'",
+    "acceptance_case": "Disjoint-glob declaration alone cannot permit forbidden write; cleanup cannot erase unrelated work."
+  },
+  {
+    "id": "capabilities",
+    "practice": "Effective native profile and authority",
+    "disposition": "adopt",
+    "sources": [
+      "cookbook-claude-sdk-audit.md",
+      "cookbook-claude-patterns-audit.md",
+      "cookbook-codex-audit.md",
+      "cookbook-long-horizon-audit.md"
+    ],
+    "source_mechanism": "SDK permission semantics, watched subagents and native schema evidence",
+    "implementation": "Resolve complete profile and distinguish desired/configured/observed; protect authoritative stores; admit only proven required controls.",
+    "native_mapping": "No empty allowedTools assumption, hidden personal config or unsupported model fallback.",
+    "seed_owner": "profile compiler + adapter readiness",
+    "dependencies": "isolation",
+    "proposed_command": "python3 -m unittest discover -s .loam/factory/tests -p 'test_factory_isolation.py'",
+    "acceptance_case": "Empty preapproval list still cannot be called no-tools; unknown hidden model cannot produce compliant receipt; pending human approval cannot block raw child/interrupt event observation."
+  },
+  {
+    "id": "evidence",
+    "practice": "Artifact, criterion and claim binding",
+    "disposition": "adopt",
+    "sources": [
+      "cookbook-claude-sdk-audit.md",
+      "cookbook-claude-patterns-audit.md",
+      "cookbook-codex-audit.md",
+      "cookbook-long-horizon-audit.md",
+      "cookbook-index-coverage.md"
+    ],
+    "source_mechanism": "cwc gate, claim verification, tool evidence and SSSF gates",
+    "implementation": "Actual artifact bytes, source scope, candidate/criteria/dependency identities and expected population; identity is not semantic truth.",
+    "native_mapping": "Raw native observations plus provider-neutral evidence receipts.",
+    "seed_owner": "artifact engine + evidence schemas",
+    "dependencies": "evidence",
+    "proposed_command": "python3 -m unittest discover -s .loam/factory/tests -p 'test_factory_evidence.py'",
+    "acceptance_case": "Attempted Read error, unrelated screenshot, arbitrary path, same-length edit and omitted criterion cannot certify support."
+  },
+  {
+    "id": "retrieval",
+    "practice": "Source acquisition and solution discovery",
+    "disposition": "adapt",
+    "sources": [
+      "cookbook-claude-sdk-audit.md",
+      "cookbook-claude-patterns-audit.md",
+      "cookbook-codex-audit.md",
+      "cookbook-index-coverage.md"
+    ],
+    "source_mechanism": "Agentic search, discovery ledgers and research prompts",
+    "implementation": "Track per-provider fetch outcome, source read scope, relevance and claim support; retain contrary sources; papers/code/tools all eligible.",
+    "native_mapping": "Native web/connectors and declared Consensus connection when relevant and available.",
+    "seed_owner": "research skills + domain tool bindings",
+    "dependencies": "methods",
+    "proposed_command": "python3 -m unittest discover -s .loam/factory/tests -p 'test_factory_methods.py'",
+    "acceptance_case": "Failed fetch differs from no results; citation insertion cannot repair unsupported content."
+  },
+  {
+    "id": "branches",
+    "practice": "Inquiry reopening and downstream invalidation",
+    "disposition": "adapt",
+    "sources": [
+      "cookbook-index-coverage.md",
+      "cookbook-long-horizon-audit.md"
+    ],
+    "source_mechanism": "Inquiry branch ledger and provenance graph",
+    "implementation": "Give adopted branches reasons and reopen conditions; changing evidence marks dependent decisions/lessons stale by specific cause.",
+    "native_mapping": "Native lead proposes branches within scope, supervisor records transitions.",
+    "seed_owner": "inquiry records + dependency index",
+    "dependencies": "memory",
+    "proposed_command": "python3 -m unittest discover -s .loam/factory/tests -p 'test_factory_memory.py'",
+    "acceptance_case": "Resolve one stale cause without clearing another; reopened claim cannot reuse unsupported conclusion."
+  },
+  {
+    "id": "tools",
+    "practice": "Precise tools and deterministic computation",
+    "disposition": "adapt",
+    "sources": [
+      "cookbook-claude-patterns-audit.md",
+      "cookbook-codex-audit.md",
+      "cookbook-long-horizon-audit.md"
+    ],
+    "source_mechanism": "PTC, tool evaluation and effective-agents interfaces",
+    "implementation": "Use typed arguments, explicit errors/examples, native batching and code aggregation; preserve raw sources and complete error propagation.",
+    "native_mapping": "Native shell/code tools, not mandatory extra API controller.",
+    "seed_owner": "tool contracts + skill references",
+    "dependencies": "tools",
+    "proposed_command": "python3 -m unittest discover -s .loam/factory/tests -p 'test_factory_tools.py'",
+    "acceptance_case": "Units mismatch, dropped parallel result or empty evaluation population cannot produce a valid computed answer."
+  },
+  {
+    "id": "tool_discovery",
+    "practice": "On-demand native tool discovery",
+    "disposition": "adapt",
+    "sources": [
+      "cookbook-claude-patterns-audit.md",
+      "cookbook-codex-audit.md"
+    ],
+    "source_mechanism": "Tool search embedding/alternate notebooks and native discovery",
+    "implementation": "Small permission-filtered catalog with on-demand schemas; discovery and execution authorization separate.",
+    "native_mapping": "Prefer real native tool/MCP discovery; embeddings only if measured need warrants.",
+    "seed_owner": "capability catalog + native bindings",
+    "dependencies": "tools",
+    "proposed_command": "python3 -m unittest discover -s .loam/factory/tests -p 'test_factory_tools.py'",
+    "acceptance_case": "Unknown/disallowed/revoked tool cannot execute; empty lookup is not fabricated success."
+  },
+  {
+    "id": "skills",
+    "practice": "Complete portable skill assets",
+    "disposition": "adopt",
+    "sources": [
+      "cookbook-claude-sdk-audit.md",
+      "cookbook-claude-patterns-audit.md",
+      "cookbook-codex-audit.md",
+      "cookbook-index-coverage.md"
+    ],
+    "source_mechanism": "SDK skills, skills repository cookbook and Vercel discovery",
+    "implementation": "Ship canonical shared skill plus support files, digest/pin/license and native projections; validate collision and actual loading.",
+    "native_mapping": "Claude shared-skill references; Codex native skill input/discovery, no personal-body paste.",
+    "seed_owner": "seed/.agents/skills + managed asset manifest",
+    "dependencies": "distribution",
+    "proposed_command": "python3 -m unittest discover -s .loam/factory/tests -p 'test_factory_distribution.py'",
+    "acceptance_case": "Missing support file, same-name personal override or changed asset fails admission or freshness check."
+  },
+  {
+    "id": "context",
+    "practice": "Context compaction and source access",
+    "disposition": "adapt",
+    "sources": [
+      "cookbook-claude-sdk-audit.md",
+      "cookbook-claude-patterns-audit.md",
+      "cookbook-codex-audit.md",
+      "cookbook-long-horizon-audit.md"
+    ],
+    "source_mechanism": "Session memory/compaction and lost-exception cost example",
+    "implementation": "Context packet summarizes progress with references and exceptions; preserves raw-source access, uncertainties and failed approaches.",
+    "native_mapping": "Preserve native compaction and memory capabilities; Loam does not forge internal inclusion telemetry.",
+    "seed_owner": "context compiler + catchup skill",
+    "dependencies": "memory",
+    "proposed_command": "python3 -m unittest discover -s .loam/factory/tests -p 'test_factory_memory.py'",
+    "acceptance_case": "Critical exception omitted from summary fails applicable context-quality evaluation. Re-fetch after tool-result clearing cannot replace historical evidence when the external source changed."
+  },
+  {
+    "id": "memory",
+    "practice": "Scoped memory distinct from authority",
+    "disposition": "adapt",
+    "sources": [
+      "cookbook-claude-sdk-audit.md",
+      "cookbook-claude-patterns-audit.md",
+      "cookbook-codex-audit.md",
+      "cookbook-index-coverage.md"
+    ],
+    "source_mechanism": "SDK memory, preference memory and research provenance",
+    "implementation": "Capture source-linked observations/lessons with applicability, correction and supersession; project state/rules remain separate.",
+    "native_mapping": "Both providers consume shared records; native private memory is optional context, not portability dependency.",
+    "seed_owner": "memory contracts + shared context tools",
+    "dependencies": "memory",
+    "proposed_command": "python3 -m unittest discover -s .loam/factory/tests -p 'test_factory_memory.py'",
+    "acceptance_case": "A remembered race contradicted by source stays unverified, not promoted; failed consolidation retains temporary candidates instead of promoting them. Stale preference cannot override current user decision; normalized root aliases and sibling-prefix paths cannot bypass memory protection."
+  },
+  {
+    "id": "derived",
+    "practice": "Derived indexes and generated policy",
+    "disposition": "adapt with restricted authority",
+    "sources": [
+      "cookbook-claude-sdk-audit.md",
+      "cookbook-index-coverage.md"
+    ],
+    "source_mechanism": "Knowledge graph, compiled moderation rules and provenance builders",
+    "implementation": "Graphs/retrieval indexes derived from source IDs; generated deterministic policy is a reviewed proposal needing coverage and semantic validation.",
+    "native_mapping": "Native agents may propose/inspect; protected engine applies only admitted revisions.",
+    "seed_owner": "derived-index interface + policy proposal schema",
+    "dependencies": "memory",
+    "proposed_command": "python3 -m unittest discover -s .loam/factory/tests -p 'test_factory_memory.py'",
+    "acceptance_case": "Empty compiled policy, lost source_doc, conflated homonym or hallucinated rule cannot become governing authority."
+  },
+  {
+    "id": "prompts",
+    "practice": "Driver-specific prompt/role maintenance",
+    "disposition": "adapt",
+    "sources": [
+      "cookbook-claude-patterns-audit.md",
+      "cookbook-codex-audit.md",
+      "cookbook-long-horizon-audit.md",
+      "cookbook-index-coverage.md"
+    ],
+    "source_mechanism": "Prompt versioning/rollback, workflow iteration and official prompt audits",
+    "implementation": "Propose targeted change from failure + source; freeze profile, evaluate representative/held-out cases, retain rollback and remove obsolete scaffolding.",
+    "native_mapping": "Preserve chosen driver/effort; update native projections explicitly.",
+    "seed_owner": "managed role/method versions + project extensions",
+    "dependencies": "evaluation",
+    "proposed_command": "python3 -m unittest discover -s .loam/factory/tests -p 'test_factory_evaluation.py'",
+    "acceptance_case": "Improvement on one field with regression on another fails promotion; user rule cannot be overwritten by learned advice."
+  },
+  {
+    "id": "evaluation",
+    "practice": "Evaluate factory quality and reviewer calibration",
+    "disposition": "adopt",
+    "sources": [
+      "cookbook-claude-sdk-audit.md",
+      "cookbook-claude-patterns-audit.md",
+      "cookbook-codex-audit.md",
+      "cookbook-long-horizon-audit.md"
+    ],
+    "source_mechanism": "Building evals, tool evals, repair loops and evaluation saturation",
+    "implementation": "Use independent expectations, full case population, failure-category results and representative tasks; synthetic cases supplement real evidence.",
+    "native_mapping": "Run comparable admitted profiles without changing model/effort to improve scores.",
+    "seed_owner": "evaluation fixtures + experiment records",
+    "dependencies": "evaluation",
+    "proposed_command": "python3 -m unittest discover -s .loam/factory/tests -p 'test_factory_evaluation.py'",
+    "acceptance_case": "Missing/failed case cannot disappear from denominator; feedback binds the exact displayed output/run; demo target-iteration gate is not evidence of autonomous convergence."
+  },
+  {
+    "id": "accounting",
+    "practice": "Truthful cumulative resource accounting",
+    "disposition": "adapt",
+    "sources": [
+      "cookbook-claude-patterns-audit.md",
+      "cookbook-codex-audit.md",
+      "cookbook-long-horizon-audit.md"
+    ],
+    "source_mechanism": "Native usage and session spend caps",
+    "implementation": "Retain raw scope/counters; handle resets and unknowns; aggregate only when inclusion semantics known; user controls bounds.",
+    "native_mapping": "No model/effort downgrade or cap raising inferred from cookbook defaults.",
+    "seed_owner": "supervisor reservations + accounting",
+    "dependencies": "recovery",
+    "proposed_command": "python3 -m unittest discover -s .loam/factory/tests -p 'test_factory_recovery.py'",
+    "acceptance_case": "Resume/cancel/child usage neither resets allowance nor double counts cumulative counters. Truncated accounting pages or malformed amounts remain incomplete/unknown, not zero."
+  },
+  {
+    "id": "operations",
+    "practice": "Event-driven maintenance and publication",
+    "disposition": "adapt",
+    "sources": [
+      "cookbook-claude-patterns-audit.md",
+      "cookbook-codex-audit.md",
+      "cookbook-long-horizon-audit.md",
+      "cookbook-index-coverage.md"
+    ],
+    "source_mechanism": "Issue-to-PR, scheduled reviewer and harness maintenance",
+    "implementation": "Authorized triggers enter the same supervisor; success requires actual check/review evidence; publication has distinct action/receipt reconciliation.",
+    "native_mapping": "Native workers can propose/repair; no notebook demo grants external authority.",
+    "seed_owner": "scheduler trigger infrastructure + publication boundary",
+    "dependencies": "operations",
+    "proposed_command": "python3 -m unittest discover -s .loam/factory/tests -p 'test_factory_operations.py'",
+    "acceptance_case": "Partial scan cannot advance complete baseline; ambiguous publish receipt reconciles instead of duplicate send."
+  },
+  {
+    "id": "domain",
+    "practice": "Domain-specific methods and optional backends",
+    "disposition": "project extension",
+    "sources": [
+      "cookbook-claude-sdk-audit.md",
+      "cookbook-claude-patterns-audit.md",
+      "cookbook-codex-audit.md",
+      "cookbook-index-coverage.md"
+    ],
+    "source_mechanism": "RAG/multimodal, geography, scanners, Agents API and scientific review recipes",
+    "implementation": "Ship generic method/tool extension contract; select domain assets and declared dependencies when needed; source-specific limitations retained.",
+    "native_mapping": "Use native tools or separately admitted integration; no mandatory MongoDB/embedding/cloud-agent runtime.",
+    "seed_owner": "project-owned bindings/extensions + managed interface",
+    "dependencies": "distribution",
+    "proposed_command": "python3 -m unittest discover -s .loam/factory/tests -p 'test_factory_distribution.py'",
+    "acceptance_case": "Unavailable required domain capability reports precise gap; optional absence cannot silently alter requested method."
+  }
+]

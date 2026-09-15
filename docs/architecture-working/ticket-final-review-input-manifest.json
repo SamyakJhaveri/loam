@@ -1,0 +1,45 @@
+{
+  "scope": "Current supplied tickets and listed source documents only; no earlier review reports",
+  "files": [
+    {
+      "file": "docs/architecture-working/ticket-campaign.md",
+      "sha256": "963d72616c14233ca280bf07a1e23dc45ad9acc8c2b7bfc8f4f64bab94b754d9"
+    },
+    {
+      "file": "docs/architecture-working/consolidated-implementation-plan.md",
+      "sha256": "e6215447a617447e6f7a182ae547407a8ea9c981bff4488e3d23ea6dc7b59d04"
+    },
+    {
+      "file": "docs/architecture-working/delivery-workflow.md",
+      "sha256": "d25319b91f79074627893d885caac477dd6b16651d6774393d125917490b6bc5"
+    },
+    {
+      "file": "docs/architecture-working/first-complete-slice.md",
+      "sha256": "4571c7714419f9880770b15043228d6db1880467ff9715265b83bc586764ec26"
+    },
+    {
+      "file": "docs/architecture-working/prior-design/records-and-transitions.md",
+      "sha256": "bb90d900226df193515af42038caeca4455ea0353b074f8d183f7ab877e82026"
+    },
+    {
+      "file": "docs/architecture-working/first-run-ownership-storage-recovery.md",
+      "sha256": "a6c82395ef9f643e7f6140616e8a4be7fcd6437e0ef8ee801cfa622e370fb61d"
+    },
+    {
+      "file": "docs/architecture-working/remote-execution-contract.md",
+      "sha256": "1f7fd3570cdc14f37f937acb6f6cfa9ae6dde2496e50a8775d9b6315b194146b"
+    },
+    {
+      "file": "docs/architecture-working/curated-asset-adoption-plan.md",
+      "sha256": "a4e0785778b855c68dc2ad49bf8dbcd504b53fe13968ab116643aa20d7c2e612"
+    },
+    {
+      "file": "docs/architecture-working/ticket-backlog.json",
+      "sha256": "0b5ca3c1fd10b3c7f769745ab81c9b0f17bef341ca0639b009eac05832cfa439"
+    }
+  ],
+  "packet_sha256": "f560f72d4241833ed3bd685d2626979d4b1c691fcdbae2ec2326fe916dc364f2",
+  "packet_bytes": 405226,
+  "model": "claude-fable-5-1",
+  "requested_effort": "high"
+}

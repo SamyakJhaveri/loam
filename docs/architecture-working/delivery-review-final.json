@@ -1,0 +1,49 @@
+{
+  "requested_model": "claude-fable-5-1",
+  "requested_effort": "high",
+  "host": "jhaveris",
+  "process_exit": 0,
+  "input_manifest": [
+    {
+      "file": "docs/architecture-working/delivery-workflow.md",
+      "sha256": "3cf262322fc6c106990257ea4ffcfbc91e9cbe5ab8ac266a780d17ea4c09d3d8"
+    },
+    {
+      "file": "docs/architecture-working/consolidated-implementation-plan.md",
+      "sha256": "043df49441d0f4c5af70fec055385f73aa6f4df1bb68b7d312d7b79bca07a695"
+    }
+  ],
+  "is_error": false,
+  "result": "**All three repairs verified. No contradiction within scope; one minor wording hedge noted.**\n\n- **Repair 1 verified.** delivery-workflow.md \"Concrete plan additions and evidence\" places receipts at an operator-controlled persistent root \"configured outside the source candidate and all step worktrees,\" holds raw reports there so a review cannot change the reviewed tree, and states \"Reviewer access excludes the same ticket's prior reports.\" The \"Who implements and who reviews\" section repeats the exclusion. The manifest links \"exact plan/source-packet digest\" and \"complete candidate input digest and tree/commit identity,\" and cycle steps 3, 6 and 7 record the plan digest and frozen tree identity, then check merged main matches.\n- **Repair 2 verified.** delivery-workflow.md names `tests/native/coordination.test.ts`, assigns loop-outcome cases to it, registers coordination as a \"mandatory nonempty execution population,\" and lists missing check, repeated confirmed blocker and repair-cap exhaustion as required cases. Consolidated plan S3 verifies the same outcomes and its focused acceptance runs that fixture with nonempty-population assertions.\n- **Repair 3 verified.** Consolidated plan S4 focused acceptance runs the coordination fixture \"on both hosts\" and says \"Run the registered coordination population on each host.\" delivery-workflow.md agrees that S4 repeats coordination cases across Mac and Linux.\n\n**Remaining note.** Receipts \"initially live at\" the evidence root. The word \"initially\" hedges permanence but names no conflicting location, so it is not a contradiction.",
+  "reported_model_usage": {
+    "claude-haiku-4-5-20251001": {
+      "inputTokens": 11555,
+      "outputTokens": 16,
+      "cacheReadInputTokens": 0,
+      "cacheCreationInputTokens": 0,
+      "webSearchRequests": 0,
+      "costUSD": 0.011635,
+      "contextWindow": 200000,
+      "maxOutputTokens": 32000,
+      "thinkingTokens": 0,
+      "canonicalModel": "claude-haiku-4-5",
+      "provider": "firstParty",
+      "costBasis": "list"
+    },
+    "claude-fable-5-1": {
+      "inputTokens": 2,
+      "outputTokens": 2491,
+      "cacheReadInputTokens": 3170,
+      "cacheCreationInputTokens": 16943,
+      "webSearchRequests": 0,
+      "costUSD": 0.4642225,
+      "contextWindow": 1000000,
+      "maxOutputTokens": 64000,
+      "thinkingTokens": 1946,
+      "canonicalModel": "claude-fable-5-1",
+      "provider": "firstParty",
+      "costBasis": "list"
+    }
+  },
+  "scope": "Bounded verification of remaining receipt/fixture/both-host contract repairs; exact current document hashes verified. Not runtime or strict model-profile proof."
+}

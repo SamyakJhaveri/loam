@@ -1,0 +1,364 @@
+{
+  "backlog_sha256": "6944c13df21316acdd27ad9e090d56a468156b33f332ec32e021a542296eec70",
+  "approval": "User selected Option A: publish parent and all prepared tickets",
+  "runtime_authorized": false,
+  "issues": {
+    "parent": {
+      "number": 102,
+      "url": "https://github.com/SamyakJhaveri/loam/issues/102",
+      "body_sha256": "1fb875aaf8344828f760942ceeb90e3418b4d1b3fde7960a43eb97d5ed0cceb9",
+      "title": "Generated native software factory for every Loam seed",
+      "id": 5458548785
+    },
+    "CORE-01": {
+      "number": 103,
+      "url": "https://github.com/SamyakJhaveri/loam/issues/103",
+      "body_sha256": "e3654e984b0f4962d78800225329cc263d66fd999b2e7d8b8a75d899ee525dd8",
+      "title": "CORE-01: Ship and independently verify a buildable factory payload",
+      "id": 5458549210
+    },
+    "CORE-02": {
+      "number": 104,
+      "url": "https://github.com/SamyakJhaveri/loam/issues/104",
+      "body_sha256": "a3e40903742da46636bafc75d634c3ffb61bfdb1102146b1a773fb98d38c1036",
+      "title": "CORE-02: Qualify storage, lifetime locks and candidate containment on both hosts",
+      "id": 5458549691
+    },
+    "CORE-04": {
+      "number": 105,
+      "url": "https://github.com/SamyakJhaveri/loam/issues/105",
+      "body_sha256": "4e61e2fc385d4f233485c37f408bcedd35a3afdce475c3864070d2b0329c46e7",
+      "title": "CORE-04: Admit an isolated installed runtime from an independent trust source",
+      "id": 5458550250
+    },
+    "CORE-03": {
+      "number": 106,
+      "url": "https://github.com/SamyakJhaveri/loam/issues/106",
+      "body_sha256": "b0fdab3f1ed97f80b3a279b07233515489503e1862990a102db2fc4147e3d036",
+      "title": "CORE-03: Qualify actual native profile and lead evidence in bounded scratch sessions",
+      "id": 5458550562
+    },
+    "CORE-05": {
+      "number": 107,
+      "url": "https://github.com/SamyakJhaveri/loam/issues/107",
+      "body_sha256": "e4135ad210064c577eedd1e2e5c424df175d728c41333cc82ace7934f8ded04a",
+      "title": "CORE-05: Open and retain sole authority over an existing registered store",
+      "id": 5458550841
+    },
+    "CORE-06": {
+      "number": 108,
+      "url": "https://github.com/SamyakJhaveri/loam/issues/108",
+      "body_sha256": "69dbf305ec5e2c981e9589fb53277c731913554a128371b6b7218b016f0c31c3",
+      "title": "CORE-06: Resume explicit first setup without replacing an existing instance",
+      "id": 5458551110
+    },
+    "CORE-07": {
+      "number": 109,
+      "url": "https://github.com/SamyakJhaveri/loam/issues/109",
+      "body_sha256": "b58e5be863264af603e81d8f26a9e62c94f0e023594877a643b0388aaa024df4",
+      "title": "CORE-07: Record a bounded task and durably capture its deterministic check",
+      "id": 5458551640
+    },
+    "CORE-10": {
+      "number": 110,
+      "url": "https://github.com/SamyakJhaveri/loam/issues/110",
+      "body_sha256": "705d9885b755fbe9753cc27408af247ed37a46770587c7b3cc34b6266c09c800",
+      "title": "CORE-10: Preserve user control and effort limits across work revisions",
+      "id": 5458552130
+    },
+    "CORE-08": {
+      "number": 111,
+      "url": "https://github.com/SamyakJhaveri/loam/issues/111",
+      "body_sha256": "01ff985d5cb746f44472e42f8bf5e3cf3c002a5eff389c7a99b22edabd5c62cc",
+      "title": "CORE-08: Reconnect to the original host and settle captured results once",
+      "id": 5458552477
+    },
+    "CORE-09": {
+      "number": 112,
+      "url": "https://github.com/SamyakJhaveri/loam/issues/112",
+      "body_sha256": "daeef19b1ebc0b187cde2461c7432da3c7a4c2ee0d82c0cafcb083c1d9db7d7d",
+      "title": "CORE-09: Back up and restore local history through a durable external barrier",
+      "id": 5458552806
+    },
+    "NATIVE-01": {
+      "number": 113,
+      "url": "https://github.com/SamyakJhaveri/loam/issues/113",
+      "body_sha256": "e4af913aa519f6135e2a2a053ab2d1855ccaa64ccd0a6330b92d7a48b574b238",
+      "title": "NATIVE-01: Admit an explicit native profile and show truthful readiness",
+      "id": 5458553202
+    },
+    "NATIVE-02": {
+      "number": 114,
+      "url": "https://github.com/SamyakJhaveri/loam/issues/114",
+      "body_sha256": "0a6fc9e27432f69669a7d243fc3f439141dd2f110cf822f487951d424ec6d3fa",
+      "title": "NATIVE-02: Account for dynamic required work and independent review",
+      "id": 5458553434
+    },
+    "NATIVE-03": {
+      "number": 115,
+      "url": "https://github.com/SamyakJhaveri/loam/issues/115",
+      "body_sha256": "288f11c24f85e0f8915643bead090df6ca9729859bba46006930ce3435faa70b",
+      "title": "NATIVE-03: Bind Claude root decisions, Workflow and advisor evidence",
+      "id": 5458553718
+    },
+    "NATIVE-04": {
+      "number": 116,
+      "url": "https://github.com/SamyakJhaveri/loam/issues/116",
+      "body_sha256": "490b66a3046e8f144ee88825005ba164ba6c28d9024cbf3fa48e3dc4eeb2d576",
+      "title": "NATIVE-04: Bind Codex root decisions and native consultation",
+      "id": 5458554239
+    },
+    "NATIVE-05": {
+      "number": 117,
+      "url": "https://github.com/SamyakJhaveri/loam/issues/117",
+      "body_sha256": "3d90b5b7d45007554fac7da06e26e3bb8ce76fa48f74f29f2c3eb841e9eea036",
+      "title": "NATIVE-05: Catalog every curated method and supporting native asset (ASSET-01)",
+      "id": 5458554666
+    },
+    "NATIVE-06": {
+      "number": 118,
+      "url": "https://github.com/SamyakJhaveri/loam/issues/118",
+      "body_sha256": "77251824f55c93b3c9ec0d0a0a278ff6310a1602ffd454a7811401295ae2bd10",
+      "title": "NATIVE-06: Repair curated planning and review methods (ASSET-02a)",
+      "id": 5458554952
+    },
+    "NATIVE-08": {
+      "number": 119,
+      "url": "https://github.com/SamyakJhaveri/loam/issues/119",
+      "body_sha256": "c92d5de443a6cf1e4233fe3c4028254d70bc734150ffb7d745409e84a8421855",
+      "title": "NATIVE-08: Add cross-project critique and simpler-design review (ASSET-03)",
+      "id": 5458555307
+    },
+    "NATIVE-09": {
+      "number": 120,
+      "url": "https://github.com/SamyakJhaveri/loam/issues/120",
+      "body_sha256": "f572e936de7f734e4b2c6bde52dd91c7574d7574a6580f688df9b44b5eefce6b",
+      "title": "NATIVE-09: Capture and assess source-linked project memory",
+      "id": 5458555743
+    },
+    "NATIVE-10": {
+      "number": 121,
+      "url": "https://github.com/SamyakJhaveri/loam/issues/121",
+      "body_sha256": "e2e74f6249cc2baba9cc8c69a6c4e540d19296a5161973e14c5c24bc4941e749",
+      "title": "NATIVE-10: Deliver corrected memory to fresh native work and record real use",
+      "id": 5458556025
+    },
+    "NATIVE-07": {
+      "number": 122,
+      "url": "https://github.com/SamyakJhaveri/loam/issues/122",
+      "body_sha256": "f99d191e154ae0252acdb00409864d8af0422c208a8ca6dc0079022cced07bf6",
+      "title": "NATIVE-07: Repair curated continuity and execution methods (ASSET-02b)",
+      "id": 5458556277
+    },
+    "NATIVE-11": {
+      "number": 123,
+      "url": "https://github.com/SamyakJhaveri/loam/issues/123",
+      "body_sha256": "6328cfb1304f030ae8e43a5e3c76f24c13838265164332de7c9ca71b02edbeef",
+      "title": "NATIVE-11: Evaluate a fixed improvement and record the actual lead decision",
+      "id": 5458556735
+    },
+    "NATIVE-12": {
+      "number": 124,
+      "url": "https://github.com/SamyakJhaveri/loam/issues/124",
+      "body_sha256": "f96e2ac2c151d0aa104ac7afbbab71c0f70b661182b031ad7cf400d654effa6c",
+      "title": "NATIVE-12: Add generic experiments and source-evidence audits (ASSET-04)",
+      "id": 5458557244
+    },
+    "NATIVE-13": {
+      "number": 125,
+      "url": "https://github.com/SamyakJhaveri/loam/issues/125",
+      "body_sha256": "f7b51bf22e614168a841ebd4161f385ee07b79cade8ab02cafa10b1006b3ff63",
+      "title": "NATIVE-13: Prove the connected local research and recovery story",
+      "id": 5458557532
+    },
+    "OPS-01": {
+      "number": 126,
+      "url": "https://github.com/SamyakJhaveri/loam/issues/126",
+      "body_sha256": "d9f84d0c50cb73b18b0bc5d50409b7151d883447a92aa718173bc7196d0502d2",
+      "title": "OPS-01: Explain readiness for the selected local and remote profile",
+      "id": 5458558124
+    },
+    "OPS-02": {
+      "number": 127,
+      "url": "https://github.com/SamyakJhaveri/loam/issues/127",
+      "body_sha256": "937cbfd551095db04ac1661302602be29c2313da1a8cc9e77775bdb52d86d784",
+      "title": "OPS-02: Recover one durable Linux launch through lost replies and runner restarts",
+      "id": 5458558590
+    },
+    "OPS-03": {
+      "number": 128,
+      "url": "https://github.com/SamyakJhaveri/loam/issues/128",
+      "body_sha256": "a21916a2ead8dcbe019d4869cd1276172a6586acb5752a2b987bc10de36feea5",
+      "title": "OPS-03: Launch remote native work from verified inputs and collect current evidence",
+      "id": 5458558864
+    },
+    "OPS-04": {
+      "number": 129,
+      "url": "https://github.com/SamyakJhaveri/loam/issues/129",
+      "body_sha256": "6885d32c13eac69c52262b61289b1b283a02d52488d27bf6926c25a7e94b4d22",
+      "title": "OPS-04: Enforce mixed offline behavior at each job host with a simple personal queue",
+      "id": 5458559306
+    },
+    "OPS-12": {
+      "number": 130,
+      "url": "https://github.com/SamyakJhaveri/loam/issues/130",
+      "body_sha256": "8d5c941b6754fbfd1f3029bfc2d6c2912949d1ad42ed0472445a9e3b21658ae1",
+      "title": "OPS-12: Prove real Mac-led Linux native and GPU work",
+      "id": 5458559631
+    },
+    "OPS-05": {
+      "number": 131,
+      "url": "https://github.com/SamyakJhaveri/loam/issues/131",
+      "body_sha256": "c0620e997ec9764f6c9b39fef70738a5eac24b5e9ad3d99b9a5850dfe5431ed2",
+      "title": "OPS-05: Adopt a staged update only after a race-free drain",
+      "id": 5458560075
+    },
+    "OPS-06": {
+      "number": 132,
+      "url": "https://github.com/SamyakJhaveri/loam/issues/132",
+      "body_sha256": "976cae8fae2fab1ebad0b8fff0fac065e385ca14b9ccbf1d3289599331c6d123",
+      "title": "OPS-06: Restore remote history without reopening retired requests or withdrawn memory",
+      "id": 5458560514
+    },
+    "OPS-07": {
+      "number": 133,
+      "url": "https://github.com/SamyakJhaveri/loam/issues/133",
+      "body_sha256": "fe1982cae9cf7b993a80904a02a69b33a67ed1cfdc957314325c20a1d1646f2b",
+      "title": "OPS-07: Fence the old controller before moving ownership to a replacement machine",
+      "id": 5458560791
+    },
+    "OPS-08": {
+      "number": 134,
+      "url": "https://github.com/SamyakJhaveri/loam/issues/134",
+      "body_sha256": "1c0479a3183372026f9937f269b37bbaa55fe0cfc4b994d90fda965b2c41a702",
+      "title": "OPS-08: Deliver every curated asset and declare specialist prerequisites",
+      "id": 5458561271
+    },
+    "OPS-09": {
+      "number": 135,
+      "url": "https://github.com/SamyakJhaveri/loam/issues/135",
+      "body_sha256": "3baba2ee01cc53867e13bef5327e8a858a6152b05a171d0a7cc4cbcf71d16dd4",
+      "title": "OPS-09: Prove exact factory source and build survive every render and update",
+      "id": 5458561556
+    },
+    "OPS-10": {
+      "number": 136,
+      "url": "https://github.com/SamyakJhaveri/loam/issues/136",
+      "body_sha256": "db5791c7e3e396e7a3d17b4d1f2b7b854ac28c287635379fea79b4118360e1c3",
+      "title": "OPS-10: Prove the connected factory on both hosts and providers without retiring the old controller",
+      "id": 5458561849
+    },
+    "OPS-11": {
+      "number": 137,
+      "url": "https://github.com/SamyakJhaveri/loam/issues/137",
+      "body_sha256": "bc0ef103a03adf305fc42896c65ce6714478c5bb5503c8f1e441a9644dc770e6",
+      "title": "OPS-11: Evaluate installed memory on real project work and retain harmful outcomes",
+      "id": 5458562431
+    }
+  },
+  "relationships": {
+    "CORE-02<-CORE-01": "native",
+    "CORE-04<-CORE-02": "native",
+    "CORE-03<-CORE-02": "native",
+    "CORE-03<-CORE-04": "native",
+    "CORE-05<-CORE-04": "native",
+    "CORE-06<-CORE-05": "native",
+    "CORE-07<-CORE-06": "native",
+    "CORE-10<-CORE-07": "native",
+    "CORE-08<-CORE-07": "native",
+    "CORE-08<-CORE-10": "native",
+    "CORE-09<-CORE-08": "native",
+    "NATIVE-01<-CORE-03": "native",
+    "NATIVE-01<-CORE-08": "native",
+    "NATIVE-02<-NATIVE-01": "native",
+    "NATIVE-02<-CORE-08": "native",
+    "NATIVE-03<-NATIVE-01": "native",
+    "NATIVE-03<-NATIVE-02": "native",
+    "NATIVE-03<-CORE-03": "native",
+    "NATIVE-04<-NATIVE-01": "native",
+    "NATIVE-04<-NATIVE-02": "native",
+    "NATIVE-04<-CORE-03": "native",
+    "NATIVE-05<-CORE-01": "native",
+    "NATIVE-06<-NATIVE-03": "native",
+    "NATIVE-06<-NATIVE-04": "native",
+    "NATIVE-06<-NATIVE-05": "native",
+    "NATIVE-08<-NATIVE-05": "native",
+    "NATIVE-08<-NATIVE-06": "native",
+    "NATIVE-08<-NATIVE-03": "native",
+    "NATIVE-08<-NATIVE-04": "native",
+    "NATIVE-09<-CORE-08": "native",
+    "NATIVE-09<-NATIVE-02": "native",
+    "NATIVE-09<-CORE-09": "native",
+    "NATIVE-10<-NATIVE-09": "native",
+    "NATIVE-10<-NATIVE-03": "native",
+    "NATIVE-10<-NATIVE-04": "native",
+    "NATIVE-07<-NATIVE-05": "native",
+    "NATIVE-07<-NATIVE-09": "native",
+    "NATIVE-07<-NATIVE-10": "native",
+    "NATIVE-07<-NATIVE-02": "native",
+    "NATIVE-07<-NATIVE-06": "native",
+    "NATIVE-11<-NATIVE-03": "native",
+    "NATIVE-11<-NATIVE-04": "native",
+    "NATIVE-11<-NATIVE-09": "native",
+    "NATIVE-11<-NATIVE-10": "native",
+    "NATIVE-11<-CORE-08": "native",
+    "NATIVE-12<-NATIVE-05": "native",
+    "NATIVE-12<-NATIVE-06": "native",
+    "NATIVE-12<-NATIVE-07": "native",
+    "NATIVE-12<-NATIVE-11": "native",
+    "NATIVE-13<-NATIVE-07": "native",
+    "NATIVE-13<-NATIVE-08": "native",
+    "NATIVE-13<-NATIVE-10": "native",
+    "NATIVE-13<-NATIVE-11": "native",
+    "NATIVE-13<-NATIVE-12": "native",
+    "NATIVE-13<-CORE-09": "native",
+    "OPS-01<-CORE-04": "native",
+    "OPS-01<-NATIVE-05": "native",
+    "OPS-01<-NATIVE-01": "native",
+    "OPS-02<-OPS-01": "native",
+    "OPS-02<-CORE-02": "native",
+    "OPS-02<-CORE-08": "native",
+    "OPS-03<-OPS-02": "native",
+    "OPS-03<-NATIVE-03": "native",
+    "OPS-03<-NATIVE-04": "native",
+    "OPS-03<-NATIVE-02": "native",
+    "OPS-04<-OPS-02": "native",
+    "OPS-04<-OPS-03": "native",
+    "OPS-12<-OPS-04": "native",
+    "OPS-12<-NATIVE-13": "native",
+    "OPS-05<-OPS-04": "native",
+    "OPS-05<-CORE-04": "native",
+    "OPS-05<-CORE-09": "native",
+    "OPS-06<-OPS-04": "native",
+    "OPS-06<-CORE-09": "native",
+    "OPS-06<-NATIVE-10": "native",
+    "OPS-06<-NATIVE-11": "native",
+    "OPS-07<-OPS-04": "native",
+    "OPS-07<-OPS-06": "native",
+    "OPS-08<-NATIVE-05": "native",
+    "OPS-08<-NATIVE-06": "native",
+    "OPS-08<-NATIVE-07": "native",
+    "OPS-08<-NATIVE-08": "native",
+    "OPS-08<-NATIVE-12": "native",
+    "OPS-08<-OPS-01": "native",
+    "OPS-09<-OPS-08": "native",
+    "OPS-09<-OPS-05": "native",
+    "OPS-09<-OPS-06": "native",
+    "OPS-09<-OPS-07": "native",
+    "OPS-09<-CORE-01": "native",
+    "OPS-10<-OPS-09": "native",
+    "OPS-10<-NATIVE-12": "native",
+    "OPS-10<-CORE-09": "native",
+    "OPS-10<-NATIVE-11": "native",
+    "OPS-10<-NATIVE-03": "native",
+    "OPS-10<-NATIVE-04": "native",
+    "OPS-10<-NATIVE-02": "native",
+    "OPS-10<-OPS-04": "native",
+    "OPS-10<-OPS-07": "native",
+    "OPS-10<-NATIVE-13": "native",
+    "OPS-10<-OPS-12": "native",
+    "OPS-11<-OPS-10": "native",
+    "OPS-11<-NATIVE-11": "native"
+  },
+  "status": "published-verified-runtime-deferred"
+}

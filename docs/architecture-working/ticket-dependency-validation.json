@@ -1,0 +1,10 @@
+{
+  "backlog_sha256": "6944c13df21316acdd27ad9e090d56a468156b33f332ec32e021a542296eec70",
+  "checks": {
+    "memory_waits_for_migration": true,
+    "adoption_waits_for_migration": true,
+    "restore_waits_for_adoption": true,
+    "maintenance_independent_of_live_proof": true,
+    "product_waits_for_live_proof": true
+  }
+}

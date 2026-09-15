@@ -1,0 +1,71 @@
+# Evidence Contract
+
+## Binding repository contracts
+
+This reference operationalizes, and does not replace, the approved industry
+contact-discovery and work-team-company triangulation designs. The root
+`AGENTS.md` and those designs control any conflict.
+
+## Source capabilities
+
+| Source | May establish | Does not establish by itself |
+| --- | --- | --- |
+| Current company people or research page | Displayed current role and formal membership | Private reporting line, hiring authority, or willingness to talk |
+| Current company author page | Displayed role and named company work | Formal research-team membership |
+| Paper, report, standard, patent, dataset, or benchmark | Authorship, named contribution, and technical subject | Current employer |
+| Repository history | Direct implementation, review, or maintenance contribution | Current team, manager, or authority |
+| Official job page or applicant-tracking API | Live role, mission, department, and displayed location | The person who controls hiring |
+| Google Scholar, OpenAlex, DBLP, Crossref, or arXiv | Publication discovery and identity clues | Current affiliation without current corroboration |
+| Public LinkedIn or professional profile | Supporting public identity or displayed role | Safe automated access, consent, or a sole proof when a stronger current source exists |
+| General search result | A route to an underlying source | Evidence from the snippet alone |
+
+## Evidence labels
+
+- `Verified`: directly supported by a named current source or command result.
+- `Likely`: inferred from verified evidence. Name the inference and missing
+  check.
+- `Assumption`: unverified and load-bearing. Name the source or action that
+  would resolve it.
+
+Company-level research-to-production conclusions remain `Likely` when all
+evidence is under company custody. Use `Verified` only when a distinct primary
+record or custodian corroborates the conclusion.
+
+## Person evidence
+
+Every formal roster row needs a current identity source, current-role source,
+observation date, and work state. Work state is `verified`, `likely`,
+`not_found`, `source_limited`, or `blocked`.
+
+Every proposed contact candidate needs current identity, current affiliation,
+and attributable-work evidence. If one is missing, use `deferred`. Never admit
+by title, prestige, publication adjacency, or network warmth alone.
+
+## Team and company evidence
+
+Connect one current work item, personally attributable team evidence, and one
+production surface. Keep formal and adjacent teams separate. Record a research
+owner, implementation peer, manager, or route person only when a source
+establishes that function. `not_found` is valid and does not mean no such person
+exists.
+
+## Currentness and conflicts
+
+Record an observation date for each structured evidence row. Preserve
+conflicting role or affiliation claims with separate sources and dates. A
+blocked source, incomplete pagination, parser drift, or changing job board
+creates a coverage limit. It does not prove absence.
+
+## Contact data and privacy
+
+Record an email only when a source publishes that exact address. Put
+`Published email` and the source URL on the same report line. Do not infer email
+patterns, mutual connections, private relationship facts, reporting lines,
+hiring authority, or consent. Do not store credentials, cookies, private
+messages, or private connection exports in a company report.
+
+## Storage and action boundary
+
+`RESEARCH-CONTACTS.md` is the only person store. Reports are assessment views.
+Stop before applying a proposed ledger diff. Expose no sending, application,
+publishing, introduction-request, or LinkedIn-automation action.

@@ -1,0 +1,57 @@
+<!-- loam-native-campaign:6944c13df21316acdd27ad9e090d56a468156b33f332ec32e021a542296eec70:parent -->
+
+## Destination
+
+Every generated project has its own maintainable native Claude/Codex factory, with durable local authority, curated methods, Mac-led Linux native/GPU work, recoverable maintenance and explicit evidence for its supported capabilities. The controlled product proof and later real-project usefulness evidence are separate outcomes.
+
+## Status and authority
+
+Published with explicit Option A approval. Status: planned; runtime implementation deferred; not ready-for-agent. Child tickets remain planned and unassigned. Runtime implementation is deferred until explicitly requested. Publication never applies ready-for-agent or starts the existing factory. Each child needs its accessible digest-verified source packet before its fresh-worktree plan review.
+
+## Governing packet
+
+Read campaign contract: `docs/architecture-working/ticket-campaign.md`, accepted decisions: `docs/architecture-working/decision-delta.md`, implementation plan: `docs/architecture-working/consolidated-implementation-plan.md`, source inventory: `docs/architecture-working/source-inventory.md` and each child body. Sources inform engineering choices; justified departures preserve accepted requirements and record reasons and checks. Follow actual opposite-model plan/code review and latest-main sequential integration.
+
+Historical context: [Bash Loam Factory map](https://github.com/SamyakJhaveri/loam/issues/33). This new campaign does not change that map or inherit its old model/automation rules.
+
+## Child tickets
+
+- [ ] [CORE-01: Ship and independently verify a buildable factory payload](https://github.com/SamyakJhaveri/loam/issues/103)
+- [ ] [CORE-02: Qualify storage, lifetime locks and candidate containment on both hosts](https://github.com/SamyakJhaveri/loam/issues/104)
+- [ ] [CORE-04: Admit an isolated installed runtime from an independent trust source](https://github.com/SamyakJhaveri/loam/issues/105)
+- [ ] [CORE-03: Qualify actual native profile and lead evidence in bounded scratch sessions](https://github.com/SamyakJhaveri/loam/issues/106)
+- [ ] [CORE-05: Open and retain sole authority over an existing registered store](https://github.com/SamyakJhaveri/loam/issues/107)
+- [ ] [CORE-06: Resume explicit first setup without replacing an existing instance](https://github.com/SamyakJhaveri/loam/issues/108)
+- [ ] [CORE-07: Record a bounded task and durably capture its deterministic check](https://github.com/SamyakJhaveri/loam/issues/109)
+- [ ] [CORE-10: Preserve user control and effort limits across work revisions](https://github.com/SamyakJhaveri/loam/issues/110)
+- [ ] [CORE-08: Reconnect to the original host and settle captured results once](https://github.com/SamyakJhaveri/loam/issues/111)
+- [ ] [CORE-09: Back up and restore local history through a durable external barrier](https://github.com/SamyakJhaveri/loam/issues/112)
+- [ ] [NATIVE-01: Admit an explicit native profile and show truthful readiness](https://github.com/SamyakJhaveri/loam/issues/113)
+- [ ] [NATIVE-02: Account for dynamic required work and independent review](https://github.com/SamyakJhaveri/loam/issues/114)
+- [ ] [NATIVE-03: Bind Claude root decisions, Workflow and advisor evidence](https://github.com/SamyakJhaveri/loam/issues/115)
+- [ ] [NATIVE-04: Bind Codex root decisions and native consultation](https://github.com/SamyakJhaveri/loam/issues/116)
+- [ ] [NATIVE-05: Catalog every curated method and supporting native asset (ASSET-01)](https://github.com/SamyakJhaveri/loam/issues/117)
+- [ ] [NATIVE-06: Repair curated planning and review methods (ASSET-02a)](https://github.com/SamyakJhaveri/loam/issues/118)
+- [ ] [NATIVE-08: Add cross-project critique and simpler-design review (ASSET-03)](https://github.com/SamyakJhaveri/loam/issues/119)
+- [ ] [NATIVE-09: Capture and assess source-linked project memory](https://github.com/SamyakJhaveri/loam/issues/120)
+- [ ] [NATIVE-10: Deliver corrected memory to fresh native work and record real use](https://github.com/SamyakJhaveri/loam/issues/121)
+- [ ] [NATIVE-07: Repair curated continuity and execution methods (ASSET-02b)](https://github.com/SamyakJhaveri/loam/issues/122)
+- [ ] [NATIVE-11: Evaluate a fixed improvement and record the actual lead decision](https://github.com/SamyakJhaveri/loam/issues/123)
+- [ ] [NATIVE-12: Add generic experiments and source-evidence audits (ASSET-04)](https://github.com/SamyakJhaveri/loam/issues/124)
+- [ ] [NATIVE-13: Prove the connected local research and recovery story](https://github.com/SamyakJhaveri/loam/issues/125)
+- [ ] [OPS-01: Explain readiness for the selected local and remote profile](https://github.com/SamyakJhaveri/loam/issues/126)
+- [ ] [OPS-02: Recover one durable Linux launch through lost replies and runner restarts](https://github.com/SamyakJhaveri/loam/issues/127)
+- [ ] [OPS-03: Launch remote native work from verified inputs and collect current evidence](https://github.com/SamyakJhaveri/loam/issues/128)
+- [ ] [OPS-04: Enforce mixed offline behavior at each job host with a simple personal queue](https://github.com/SamyakJhaveri/loam/issues/129)
+- [ ] [OPS-12: Prove real Mac-led Linux native and GPU work](https://github.com/SamyakJhaveri/loam/issues/130)
+- [ ] [OPS-05: Adopt a staged update only after a race-free drain](https://github.com/SamyakJhaveri/loam/issues/131)
+- [ ] [OPS-06: Restore remote history without reopening retired requests or withdrawn memory](https://github.com/SamyakJhaveri/loam/issues/132)
+- [ ] [OPS-07: Fence the old controller before moving ownership to a replacement machine](https://github.com/SamyakJhaveri/loam/issues/133)
+- [ ] [OPS-08: Deliver every curated asset and declare specialist prerequisites](https://github.com/SamyakJhaveri/loam/issues/134)
+- [ ] [OPS-09: Prove exact factory source and build survive every render and update](https://github.com/SamyakJhaveri/loam/issues/135)
+- [ ] [OPS-10: Prove the connected factory on both hosts and providers without retiring the old controller](https://github.com/SamyakJhaveri/loam/issues/136)
+- [ ] [OPS-11: Evaluate installed memory on real project work and retain harmful outcomes](https://github.com/SamyakJhaveri/loam/issues/137)
+
+## Source availability
+
+The exact approved source packet is preserved locally at `docs/architecture-working/publication/approved-source-packet/`. It is not yet committed to main. Supply and verify it before a fresh worker starts. Publication does not remove this readiness gate.

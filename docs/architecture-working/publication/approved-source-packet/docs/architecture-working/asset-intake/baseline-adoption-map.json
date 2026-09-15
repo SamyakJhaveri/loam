@@ -1,0 +1,305 @@
+{
+  "scope": "Exact provisional destinations for every local curated skill; no source has moved. A merged successor requires an explicit conservation map.",
+  "entries": [
+    {
+      "id": "catchup",
+      "source": "seed/.agents/skills/catchup/SKILL.md",
+      "source_sha256": "87ef6c5978ee431e5ab0d07c9689de2e116b0c1550201817cc00e0859bc4d27a",
+      "planned_destination": "seed/.agents/skills/catchup/SKILL.md",
+      "decision": "accepted baseline inclusion; preserve or map merged successor",
+      "adaptation": "Preserve briefing. Adapt Claude auto-memory discovery to explicit host capability; absent memory is unavailable, not failure.",
+      "ticket": "ASSET-01/ASSET-02",
+      "activated": false
+    },
+    {
+      "id": "fable-prompting",
+      "source": "seed/.agents/skills/fable-prompting/SKILL.md",
+      "source_sha256": "762f72b1b6a473fc0c980d0ff71e2fc242e7f23c6aa5e3e158f261b6aa23cebd",
+      "planned_destination": "seed/.agents/skills/fable-prompting/SKILL.md",
+      "decision": "accepted baseline inclusion; preserve or map merged successor",
+      "adaptation": "Preserve curated model-specific prompting knowledge as optional provider reference. Validate guide/model claims live before execution; do not impose Claude guidance on Codex.",
+      "ticket": "ASSET-01/ASSET-02",
+      "activated": false
+    },
+    {
+      "id": "brief",
+      "source": "cultivation/marketplace/sam-cc-setup/skills/brief/SKILL.md",
+      "source_sha256": "673270e3e0f3fa4a518c1cf50b5a71144d25dfc59dc2fde2b5e6edf15210f315",
+      "planned_destination": "seed/.agents/skills/brief/SKILL.md",
+      "decision": "accepted baseline inclusion; preserve or map merged successor",
+      "adaptation": "Preserve intake and uncertainty questions. Separate generic brief contract from Loam-specific factory tracks, F4 staging statements and local examples.",
+      "ticket": "ASSET-01/ASSET-02",
+      "activated": false
+    },
+    {
+      "id": "codex-review",
+      "source": "cultivation/marketplace/sam-cc-setup/skills/codex-review/SKILL.md",
+      "source_sha256": "193900237ac3364f39a520e3bc3de7046d648854d521947b60c21e3b64a4bd1b",
+      "planned_destination": "seed/.agents/skills/codex-review/SKILL.md",
+      "decision": "accepted baseline inclusion; preserve or map merged successor",
+      "adaptation": "Preserve read-only fixed-diff second opinion and input validation; factor shared reviewer contract with codex-plan-review/session-critique. CLI flags and provider availability need runtime preflight.",
+      "ticket": "ASSET-01/ASSET-02",
+      "activated": false
+    },
+    {
+      "id": "plan-review",
+      "source": "cultivation/marketplace/sam-cc-setup/skills/plan-review/SKILL.md",
+      "source_sha256": "e0c2efe6eaeaad06c36d45a8f0a1d9ae6c71be3ea1a0f7ea3ed6bc3685adf200",
+      "planned_destination": "seed/.agents/skills/plan-review/SKILL.md",
+      "decision": "accepted baseline inclusion; preserve or map merged successor",
+      "adaptation": "Preserve blind review, evidence limits, coverage ledger and durable fingerprint reuse; canonical shared review criteria with optional host adapters.",
+      "ticket": "ASSET-01/ASSET-02",
+      "activated": false
+    },
+    {
+      "id": "surprise-me",
+      "source": "cultivation/marketplace/sam-cc-setup/skills/surprise-me/SKILL.md",
+      "source_sha256": "4ed5e7418dedf61c097be1a769b2cf989ce4ee970a54cdf3db549234647e4415",
+      "planned_destination": "seed/.agents/skills/surprise-me/SKILL.md",
+      "decision": "accepted baseline inclusion; preserve or map merged successor",
+      "adaptation": "Preserve goal-specific ranked ideas; immediate execution clause must obey user scope and action authorization.",
+      "ticket": "ASSET-01/ASSET-02",
+      "activated": false
+    },
+    {
+      "id": "impeccable",
+      "source": "cultivation/parked/impeccable/skills/impeccable/SKILL.md",
+      "source_sha256": "73907593ad122370062f1d55561dae1350ef298c68cdaedaafbd846eae0e2a25",
+      "planned_destination": "seed/.agents/skills/impeccable/SKILL.md",
+      "decision": "accepted baseline inclusion; preserve or map merged successor",
+      "adaptation": "Preserve wrapper and provenance. Local tree is not upstream implementation; CLI, command counts and package identity remain unverified. Resolve pinned upstream before activation.",
+      "ticket": "ASSET-01/ASSET-02",
+      "activated": false
+    },
+    {
+      "id": "agent-team",
+      "source": "cultivation/parked/sam-cc-setup/skills/agent-team/SKILL.md",
+      "source_sha256": "245b0b804377a1dc7110e46df860c4af770b90181c6c06647d41c2fceaa2df1a",
+      "planned_destination": "seed/.agents/skills/agent-team/SKILL.md",
+      "decision": "accepted baseline inclusion; preserve or map merged successor",
+      "adaptation": "Preserve lifecycle, narrow ownership, handoffs and single validation owner. Adapt host spawn/message/task operations; remove reliance on parked checkout guard and unsupported team lifecycle assertions.",
+      "ticket": "ASSET-01/ASSET-02",
+      "activated": false
+    },
+    {
+      "id": "align-prompt",
+      "source": "cultivation/parked/sam-cc-setup/skills/align-prompt/SKILL.md",
+      "source_sha256": "215879f4a26e701f7966fe4cff304f880b5b4717aaacb6ce1d715575112820a8",
+      "planned_destination": "seed/.agents/skills/align-prompt/SKILL.md",
+      "decision": "accepted baseline inclusion; preserve or map merged successor",
+      "adaptation": "Preserve prompt alignment and plan rubric; consolidate model-specific content with fable-prompting and bootstrap model notes behind provider selection.",
+      "ticket": "ASSET-01/ASSET-02",
+      "activated": false
+    },
+    {
+      "id": "authoring-context-docs",
+      "source": "cultivation/parked/sam-cc-setup/skills/authoring-context-docs/SKILL.md",
+      "source_sha256": "8320ef40275d60b3f2f47c984f9b0799566b57355ee8105f72a7e049111a4f6c",
+      "planned_destination": "seed/.agents/skills/authoring-context-docs/SKILL.md",
+      "decision": "accepted baseline inclusion; preserve or map merged successor",
+      "adaptation": "Preserve routing anatomy and size discipline. Make AGENTS.md canonical shared guidance with CLAUDE.md adapter; reconcile nested-context advice with current single-context project convention.",
+      "ticket": "ASSET-01/ASSET-02",
+      "activated": false
+    },
+    {
+      "id": "auto-phase",
+      "source": "cultivation/parked/sam-cc-setup/skills/auto-phase/SKILL.md",
+      "source_sha256": "b305fffef44ca699a9cc5e194d16559ec98c897d6f3af8118c86ce77b2ff01dd",
+      "planned_destination": "seed/.agents/skills/auto-phase/SKILL.md",
+      "decision": "accepted baseline inclusion; preserve or map merged successor",
+      "adaptation": "Preserve ordered stages and focused verification. Merge execution policy with writing-plans/ship; resolve validation dependency and do not infer authorization for commit/push.",
+      "ticket": "ASSET-01/ASSET-02",
+      "activated": false
+    },
+    {
+      "id": "bootstrap-cc-setup",
+      "source": "cultivation/parked/sam-cc-setup/skills/bootstrap-cc-setup/SKILL.md",
+      "source_sha256": "f87d13b25251d0aa741f659bca7f1f7e0684a226674b511d9f9f81d4d9b0e5d8",
+      "planned_destination": "seed/.agents/skills/bootstrap-cc-setup/SKILL.md",
+      "decision": "accepted baseline inclusion; preserve or map merged successor",
+      "adaptation": "Preserve safe onboarding ideas and templates. Obsolete rendered sentinel trio and absent active plugin pre-commit source block unchanged activation; reconcile with Copier.",
+      "ticket": "ASSET-01/ASSET-02",
+      "activated": false
+    },
+    {
+      "id": "brainstorming",
+      "source": "cultivation/parked/sam-cc-setup/skills/brainstorming/SKILL.md",
+      "source_sha256": "aea200dab06aacedec7b11cbc1e6319cf7b3f040b1421045d7979b7296dec7f8",
+      "planned_destination": "seed/.agents/skills/brainstorming/SKILL.md",
+      "decision": "accepted baseline inclusion; preserve or map merged successor",
+      "adaptation": "Preserve local curated design workflow and reviewer/visual resources; merge with any selected upstream implementation using explicit section-level attribution and behavior tests.",
+      "ticket": "ASSET-01/ASSET-02",
+      "activated": false
+    },
+    {
+      "id": "codex-plan-review",
+      "source": "cultivation/parked/sam-cc-setup/skills/codex-plan-review/SKILL.md",
+      "source_sha256": "711648ef3437f275363586fbc254bd3ae0dacaa0290f15d8835417c6d44f57c0",
+      "planned_destination": "seed/.agents/skills/codex-plan-review/SKILL.md",
+      "decision": "accepted baseline inclusion; preserve or map merged successor",
+      "adaptation": "Preserve validated file input and read-only external review. Share transport with codex-review and criteria with plan-review; runtime CLI capability check needed.",
+      "ticket": "ASSET-01/ASSET-02",
+      "activated": false
+    },
+    {
+      "id": "dream",
+      "source": "cultivation/parked/sam-cc-setup/skills/dream/SKILL.md",
+      "source_sha256": "7d89d66e2e9e79e9f820bb0fc5c924d91c0a42f5dac1c514564fbcc5cd27ac5b",
+      "planned_destination": "seed/.agents/skills/dream/SKILL.md",
+      "decision": "accepted baseline inclusion; preserve or map merged successor",
+      "adaptation": "Preserve staleness/phantom/orphan/contradiction audit and explicit destructive change approval. Claude per-project memory resolution and deletion need provider-specific adapter and fixture validation.",
+      "ticket": "ASSET-01/ASSET-02",
+      "activated": false
+    },
+    {
+      "id": "gen-spec",
+      "source": "cultivation/parked/sam-cc-setup/skills/gen-spec/SKILL.md",
+      "source_sha256": "57ec2bca1e76a620223660165fbaa912e99a2e01288f7eb8247f3ce2ba73270d",
+      "planned_destination": "seed/.agents/skills/gen-spec/SKILL.md",
+      "decision": "accepted baseline inclusion; preserve or map merged successor",
+      "adaptation": "Preserve spec sections and health criteria; factor overlap with brainstorming/writing-plans into canonical design/spec references.",
+      "ticket": "ASSET-01/ASSET-02",
+      "activated": false
+    },
+    {
+      "id": "hypothesis-tree",
+      "source": "cultivation/parked/sam-cc-setup/skills/hypothesis-tree/SKILL.md",
+      "source_sha256": "81dbafe39be47043d9598449eb85a02276cfbf3e2e942a0dae1ad1ddda74b907",
+      "planned_destination": "seed/.agents/skills/hypothesis-tree/SKILL.md",
+      "decision": "accepted baseline inclusion; preserve or map merged successor",
+      "adaptation": "Preserve falsifiable claims, dated evidence and prune/review structure as generic optional investigation capability.",
+      "ticket": "ASSET-01/ASSET-02",
+      "activated": false
+    },
+    {
+      "id": "reflect",
+      "source": "cultivation/parked/sam-cc-setup/skills/reflect/SKILL.md",
+      "source_sha256": "2640df49c639159584efa036acabdd2d3e4330923b138ae2f4c656654c097569",
+      "planned_destination": "seed/.agents/skills/reflect/SKILL.md",
+      "decision": "accepted baseline inclusion; preserve or map merged successor",
+      "adaptation": "Preserve surprises, proposals and prompt repair; route durable knowledge to canonical shared project context and deduplicate with dream/catchup/handoff.",
+      "ticket": "ASSET-01/ASSET-02",
+      "activated": false
+    },
+    {
+      "id": "sam_handoff",
+      "source": "cultivation/parked/sam-cc-setup/skills/sam_handoff/SKILL.md",
+      "source_sha256": "68007ee87f30b76c0a97d69ea383d1119d80b7b5b504f7f39fd23f6ec5d772e5",
+      "planned_destination": "seed/.agents/skills/sam_handoff/SKILL.md",
+      "decision": "accepted baseline inclusion; preserve or map merged successor",
+      "adaptation": "Preserve compact in-progress handoff contract including commands, failed attempts, assumptions and next action; align naming with one handoff home.",
+      "ticket": "ASSET-01/ASSET-02",
+      "activated": false
+    },
+    {
+      "id": "scaffold-context",
+      "source": "cultivation/parked/sam-cc-setup/skills/scaffold-context/SKILL.md",
+      "source_sha256": "9cbb1cda38bfb1da3dd23a7a97eca6dde0d2c2f895310dbe76a3ad3785687db6",
+      "planned_destination": "seed/.agents/skills/scaffold-context/SKILL.md",
+      "decision": "accepted baseline inclusion; preserve or map merged successor",
+      "adaptation": "Preserve generation procedure; share anatomy with authoring-context-docs rather than maintaining inlined duplicate schema.",
+      "ticket": "ASSET-01/ASSET-02",
+      "activated": false
+    },
+    {
+      "id": "session-critique",
+      "source": "cultivation/parked/sam-cc-setup/skills/session-critique/SKILL.md",
+      "source_sha256": "89308cab0386243b4f2433674dc4faee8200de4ede444dbd2297cac76c991662",
+      "planned_destination": "seed/.agents/skills/session-critique/SKILL.md",
+      "decision": "accepted baseline inclusion; preserve or map merged successor",
+      "adaptation": "Preserve frozen aggregate diff, explicit decisions, durable bounded findings and material-change-only rereview; share criteria/receipt schema with other reviews.",
+      "ticket": "ASSET-01/ASSET-02",
+      "activated": false
+    },
+    {
+      "id": "ship",
+      "source": "cultivation/parked/sam-cc-setup/skills/ship/SKILL.md",
+      "source_sha256": "7f7a042ba312dd3ee3306899ae020b1d73542d504954c593f108cd10c800c1b8",
+      "planned_destination": "seed/.agents/skills/ship/SKILL.md",
+      "decision": "accepted baseline inclusion; preserve or map merged successor",
+      "adaptation": "Preserve risk-based review and deterministic validation contract; repair validate dependency, honor explicit authorization for outward writes and current hybrid branch rules.",
+      "ticket": "ASSET-01/ASSET-02",
+      "activated": false
+    },
+    {
+      "id": "sync-to-hub",
+      "source": "cultivation/parked/sam-cc-setup/skills/sync-to-hub/SKILL.md",
+      "source_sha256": "ace167cf16cce623769214fe2ef489173e702e46f306609696b6baf3aac2ca10",
+      "planned_destination": "seed/.agents/skills/sync-to-hub/SKILL.md",
+      "decision": "accepted baseline inclusion; preserve or map merged successor",
+      "adaptation": "Preserve additive promotion, manifest/dependency discipline and recorded intent. Missing bin/agent-sync.sh and personal $HOME/Desktop/loam default block unchanged activation; use docs/SYNC.md and explicit target.",
+      "ticket": "ASSET-01/ASSET-02",
+      "activated": false
+    },
+    {
+      "id": "tech-selection",
+      "source": "cultivation/parked/sam-cc-setup/skills/tech-selection/SKILL.md",
+      "source_sha256": "1378940994299ebb01bd8eeabeb10904a21cb3e21bd003db0da03cf658e9403e",
+      "planned_destination": "seed/.agents/skills/tech-selection/SKILL.md",
+      "decision": "accepted baseline inclusion; preserve or map merged successor",
+      "adaptation": "Preserve measured tradeoff record and null candidate; experiment-loop is optional with documented protocol fallback.",
+      "ticket": "ASSET-01/ASSET-02",
+      "activated": false
+    },
+    {
+      "id": "techdebt",
+      "source": "cultivation/parked/sam-cc-setup/skills/techdebt/SKILL.md",
+      "source_sha256": "f2ac2f0d1a9a20cfd159cb78dc290b6d5ee35396011cf8f779ab42b5dfcfc204",
+      "planned_destination": "seed/.agents/skills/techdebt/SKILL.md",
+      "decision": "accepted baseline inclusion; preserve or map merged successor",
+      "adaptation": "Preserve debt taxonomy and read-only evidence table; remove hardcoded Claude model and adapt tool restrictions.",
+      "ticket": "ASSET-01/ASSET-02",
+      "activated": false
+    },
+    {
+      "id": "unknowns",
+      "source": "cultivation/parked/sam-cc-setup/skills/unknowns/SKILL.md",
+      "source_sha256": "e86417f3bdbab5258ba216c02137a8ebacad1be6624d915ea8586e063ffe270b",
+      "planned_destination": "seed/.agents/skills/unknowns/SKILL.md",
+      "decision": "accepted baseline inclusion; preserve or map merged successor",
+      "adaptation": "Preserve before/during/after uncertainty techniques and artifact format; optional HTML requirement needs host rendering and accessibility review.",
+      "ticket": "ASSET-01/ASSET-02",
+      "activated": false
+    },
+    {
+      "id": "validate",
+      "source": "cultivation/parked/sam-cc-setup/skills/validate/SKILL.md",
+      "source_sha256": "4602e8e4838da73cc89cf721ba185e40903b1ddfbf8a70ef89d35ff78cfe06e4",
+      "planned_destination": "seed/.agents/skills/validate/SKILL.md",
+      "decision": "accepted baseline inclusion; preserve or map merged successor",
+      "adaptation": "Preserve single validation owner and source-bound evidence semantics. Missing shared validation.py and currently parked fallback agent block unchanged activation; bind to current bin/check or project-configured gate.",
+      "ticket": "ASSET-01/ASSET-02",
+      "activated": false
+    },
+    {
+      "id": "vet-skill",
+      "source": "cultivation/parked/sam-cc-setup/skills/vet-skill/SKILL.md",
+      "source_sha256": "ff20eae704629485cd3f99d8f49010d6aff309818e92e62188baa191279be913",
+      "planned_destination": "seed/.agents/skills/vet-skill/SKILL.md",
+      "decision": "accepted baseline inclusion; preserve or map merged successor",
+      "adaptation": "Preserve adoption security review and provenance; bin/vet-skill.sh exists, scanner availability/version/threshold behavior need verification before enablement.",
+      "ticket": "ASSET-01/ASSET-02",
+      "activated": false
+    },
+    {
+      "id": "worktree-status",
+      "source": "cultivation/parked/sam-cc-setup/skills/worktree-status/SKILL.md",
+      "source_sha256": "2cbc4b7914c6ed205ed5349ac18520d0791212bd084f0effb99c7c877924cd87",
+      "planned_destination": "seed/.agents/skills/worktree-status/SKILL.md",
+      "decision": "accepted baseline inclusion; preserve or map merged successor",
+      "adaptation": "Preserve deterministic readiness and stale-baseline reporting; default branch/main assumptions and git/gh/network preflight need checks.",
+      "ticket": "ASSET-01/ASSET-02",
+      "activated": false
+    },
+    {
+      "id": "writing-plans",
+      "source": "cultivation/parked/sam-cc-setup/skills/writing-plans/SKILL.md",
+      "source_sha256": "7563e3e82087079cfaca7c14606b984c905b71f58d5a8a783873d984ca193712",
+      "planned_destination": "seed/.agents/skills/writing-plans/SKILL.md",
+      "decision": "accepted baseline inclusion; preserve or map merged successor",
+      "adaptation": "Preserve checkable deliverables, scope mapping, no placeholders and execution handoff; consolidate shared design criteria without losing local modifications.",
+      "ticket": "ASSET-01/ASSET-02",
+      "activated": false
+    }
+  ]
+}

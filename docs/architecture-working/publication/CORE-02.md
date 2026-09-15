@@ -1,0 +1,67 @@
+<!-- loam-native-campaign:6944c13df21316acdd27ad9e090d56a468156b33f332ec32e021a542296eec70:CORE-02 -->
+
+Stage: S1
+
+Implementation lead: Codex/Astra
+
+Campaign: https://github.com/SamyakJhaveri/loam/issues/102
+
+## Blocked by
+
+- https://github.com/SamyakJhaveri/loam/issues/103 (CORE-01)
+
+## What it delivers
+A reproducible scratch report identifies a supported mechanical foundation on this Mac and Linux `jhaveris`, or names the exact failed requirement. Current host inventories show installed tooling only; they do not prove ownership, SQLite semantics or protection. This absorbs ENV-01 mechanical qualification without creating a second implementation home.
+
+## Canonical source changes
+Create `seed/.loam/factory/src/platform/ownership.ts`, `src/platform/native-boundary.ts`, `tests/platform/qualification.test.ts`, `tests/platform/native-boundary.test.ts`; extend `assets/runtime-manifest.json`, factory-local build dependencies and `seed/docs/factory/SETUP.md`. Keep platform differences behind these boundaries.
+
+## Read before planning
+`first-run-ownership-storage-recovery.md`: Candidate choices, Physical homes, Starting and retaining the sole owner. `execution-environment-and-bootstrap.md`: Concrete package and setup plan, Required protection and recovery work. `engine-runtime-and-layout.md`: Runtime and storage baseline, Material gates. Refresh exact Node SQLite release source, SQLite URI specification, lock binding manifest/source, OS lock/inheritance and sandbox documentation cited there. Read `two-host-inventory.json` as historical baseline, not a current pin.
+
+Complete and retain all independent mechanical probe results even when containment fails. The required combined foundation gate still fails until protection is proved; do not discard the useful storage/lock report or stop independent investigation on the first failed probe. Keep one qualification report for this shared foundation rather than add another delivery ticket solely for reporting.
+
+## Acceptance
+- Qualify the same supported exact Node patch on both hosts; record executable digests, architecture, bundled SQLite, dependency/build closure and effective settings. Resolve child executables explicitly when noninteractive PATH omits user Node. Missing/incompatible binaries report precise unavailable status.
+- Probe encoded existing-only local SQLite URI open including metacharacters, file disappearance between precheck/open, missing/empty/foreign/corrupt stores, integer boundaries, backup/error behavior and busy storage with responsive event capture on a dedicated worker. No create fallback or arbitrary URI admission.
+- OS lifetime lock: competing owner refused, stopped owner still owns, killed process releases, child does not inherit ownership, replaced path detected. Never substitute heartbeat expiry or unlink a lock to steal it.
+- Demonstrate actual candidate/native-process denial of protected runtime, registry, state, locks, credentials, sockets and callback access through descendants, symlinks and path aliases, while admitted workspace operations work. Same-user permissions/process separation alone fail. Sanitize preload/module and Git redirection inputs before trusted process startup.
+- Future commands after build on each host: `node --test seed/.loam/factory/dist/tests/platform/qualification.test.js seed/.loam/factory/dist/tests/platform/native-boundary.test.js`. Required denial and lock/storage cases must produce observed expected failures inside an otherwise passing nonempty suite. Record both host reports for the same candidate.
+
+## Exclusions
+No live native/provider sessions, production installation or remote runner/GPU work. A failed required isolation gate blocks managed execution and requires a concrete remedy/user decision; do not weaken the contract. Binding alternatives remain narrow and tested, with TypeScript settled.
+
+## Campaign requirements
+
+Status: **planned; runtime implementation deferred; not ready-for-agent**. Empty blockers do not authorize execution. Read `docs/architecture-working/ticket-campaign.md` and `delivery-workflow.md` in full. They require a digest-verified accessible source packet, fresh fetched-main worktree, actual opposite-model plan and finished-work reviews, nonempty focused checks, one full-check owner, and verified integration before dependent work. Preserve all existing changes. Raw review evidence lives outside candidate/worktrees. Sources are evidence and inspiration; justified departures preserve user requirements and record a reason and check. Proposed files/commands are unimplemented at authoring time and must be reconciled against landed predecessors. Live provider/GPU work needs a declared bounded plan within user authority; mechanical checks do not launch it implicitly. Full recipient groups remain unavailable/non-passing until S6. No automatic model/effort changes or release/publication. Architecture basenames resolve under `docs/architecture-working/`; package-relative canonical paths resolve under `seed/.loam/factory/`.
+
+Every fixture-creating ticket registers its mandatory named population, expected nonempty cases and current availability in the fixed registry. CORE-01 declares the full installation/store/execution/complete-slice obligation groups as incomplete from the start; missing/unbuilt populations never disappear into a passing subset. NATIVE-02 explicitly registers coordination as mandatory execution work. Later tickets fill their declared populations; OPS-10 verifies closure rather than performing first registration.
+
+For host-sensitive acceptance, run the named focused population on both required hosts against the same candidate, recording environment identities and exact results. Mac-only evidence cannot certify Linux installation, storage, filesystem or isolation behavior.
+
+## Verification population assignment
+
+Canonical registry edits in `seed/.loam/factory/src/testing/verify.ts` are in scope wherever this ticket creates or extends a recipient fixture. Target groups: **installation**. Register the ticket-owned named population, expected nonempty case list/count and current availability; a missing fixture stays unavailable. No required population may remain outside its named group. Shared cases retain one identity when referenced by multiple groups. `release-only` names Loam release tooling, not a recipient command; `post-installation` is the separately scoped empirical follow-up and does not block initial S6 closure or claim empirical success early. OPS-10 verifies full declared initial populations; it cannot hide unbuilt work by first defining a smaller group.
+
+## Source packet and readiness
+
+Packet manifest SHA-256: `32b709e259817250c59c621ef1cdc95b0201c8430c353677a426683292339554`. Full per-file hashes are in this ticket entry in `docs/architecture-working/ticket-backlog.json`. This digest covers the listed source identities, not a claim all external originals have been read.
+
+**Readiness blocker:** these local records are untracked. Before execution, supply this exact source packet to the fresh worktree/seat and verify its manifest, or review and record a successor packet. Publishing the issue alone does not resolve this blocker. The named original upstream sections and current implementation/support callers must be inspected and added to the per-step reviewed packet before code changes.
+
+- `docs/architecture-working/START-NEXT-SESSION.md`
+- `docs/architecture-working/decision-delta.md`
+- `docs/architecture-working/delivery-workflow.md`
+- `docs/architecture-working/consolidated-implementation-plan.md`
+- `docs/architecture-working/ticket-campaign.md`
+- `docs/architecture-working/first-run-ownership-storage-recovery.md`
+- `docs/architecture-working/execution-environment-and-bootstrap.md`
+- `docs/architecture-working/engine-runtime-and-layout.md`
+- `docs/architecture-working/two-host-inventory.json`
+- `docs/architecture-working/delivery-step-plan.md`
+- `docs/architecture-working/first-run-step-plan.md`
+- `docs/architecture-working/runtime-step-plan.md`
+- `docs/architecture-working/schema-step-plan.md`
+
+
+Approved draft SHA-256: `27efe500c76a615e4339089af9e64473de5bd9bb33447a81955e33c1c13787a2`. Full source access must be verified before execution.

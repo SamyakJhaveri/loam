@@ -1,0 +1,285 @@
+{
+  "schema": "loam-application-asset-inventory-v1",
+  "generated_at": "2026-09-14T23:50:44.289699+00:00",
+  "audit_mode": "design_only_metadata_no_source_execution",
+  "projects": [
+    {
+      "path": "/Users/samyakjhaveri/Desktop/job_search_and_industry_connections",
+      "identity": "Job Search and Professional Relations",
+      "identity_evidence": "AGENTS.md heading"
+    },
+    {
+      "path": "/Users/samyakjhaveri/Desktop/content_search_engine",
+      "identity": "Instagram Organizer",
+      "identity_evidence": "README.md heading and pyproject.toml description"
+    }
+  ],
+  "coverage": {
+    "local_asset_roots": [
+      ".agents",
+      ".claude",
+      ".codex",
+      ".codex-plugin",
+      ".claude-plugin"
+    ],
+    "job_local_skill_count": 2,
+    "organizer_local_skill_count": 0,
+    "native_commands_agents_plugins_hooks_found": false,
+    "symlink_alias_count": 1,
+    "source_programs_run": false,
+    "tests_run": false,
+    "source_projects_modified": false,
+    "excluded_content": [
+      "private job/contact records",
+      "CV sources and rendered CVs",
+      "immigration records",
+      "social posts/media/archive database",
+      "credentials and .env",
+      "review transcripts",
+      "historical project plans",
+      "bytecode and unrelated caches"
+    ],
+    "duplicate_check": "Named skill paths scanned in Loam, ~/.agents/skills, ~/.claude/skills, ~/.codex/skills, and Claude/Codex plugin caches; no rendercv/company-research skill counterpart found; experiment-loop resolves to global source. This is named-candidate comparison, not semantic deduplication of every global skill."
+  },
+  "assets": [
+    {
+      "original_path": "/Users/samyakjhaveri/Desktop/job_search_and_industry_connections/.agents/skills/company-research-networking/SKILL.md",
+      "resolved_path": "/Users/samyakjhaveri/Desktop/job_search_and_industry_connections/.agents/skills/company-research-networking/SKILL.md",
+      "sha256": "aa067d1d46f0372d75bd5929ca1536179e0eaa790e7301d2d7ecd0865e735c9d",
+      "kind": "skill",
+      "disposition": "extract_generic_evidence_audit_core_keep_job_adapter_local",
+      "disposition_evidence": [
+        "Required repository context and Contact priorities sections bind execution to private RESEARCH-CONTACTS.md and project-specific designs.",
+        "Fresh-agent protocol freezes independent evidence before receiving comparison artifact; source coverage distinguishes blocked/source_limited from absent.",
+        "Report creation uses docs/superpowers/reviews but project AGENTS Internal workflow files requires hidden untracked .superpowers; reconcile when adapting.",
+        "Fresh-agent protocol mandates Codex fork_turns=none and blocked completion if unavailable; adapt to selected runtime capabilities without model overrides."
+      ],
+      "proposed_canonical_home": "cultivation/marketplace/research-lane/skills/evidence-audit/",
+      "dependencies": [
+        "references/evidence-contract.md",
+        "references/report-template.md",
+        "scripts/validate_company_research_report.py",
+        "tests/test_validate_company_research_report.py",
+        "root AGENTS.md",
+        "approved project research/discovery/triangulation designs",
+        "RESEARCH-CONTACTS.md only for local contact prioritization"
+      ],
+      "safe_inactive_text_snapshot": true
+    },
+    {
+      "original_path": "/Users/samyakjhaveri/Desktop/job_search_and_industry_connections/.agents/skills/company-research-networking/references/evidence-contract.md",
+      "resolved_path": "/Users/samyakjhaveri/Desktop/job_search_and_industry_connections/.agents/skills/company-research-networking/references/evidence-contract.md",
+      "sha256": "bec897505d41ec575b9f4f33429c0b660cc04d2d434561a8552efdbd0eeb3b72",
+      "kind": "skill_reference",
+      "disposition": "extract_general_source_capability_and_evidence_contract",
+      "disposition_evidence": [
+        "Separates current affiliation from authorship, roster membership from adjacency, displayed role from private authority.",
+        "Has no personal records but refers to private ledger filename and approved designs; remove these bindings from generic core."
+      ],
+      "proposed_canonical_home": "cultivation/marketplace/research-lane/skills/evidence-audit/references/",
+      "safe_inactive_text_snapshot": true
+    },
+    {
+      "original_path": "/Users/samyakjhaveri/Desktop/job_search_and_industry_connections/.agents/skills/company-research-networking/references/report-template.md",
+      "resolved_path": "/Users/samyakjhaveri/Desktop/job_search_and_industry_connections/.agents/skills/company-research-networking/references/report-template.md",
+      "sha256": "e34dd4e8506cd998c152ecddbec26451b20b18cc3fb809b566f4c09bb300e8c3",
+      "kind": "skill_reference",
+      "disposition": "adapt_report_schema_with_generic_entities",
+      "disposition_evidence": [
+        "Template uses placeholders; contains company/job-specific columns and approval assertions.",
+        "Preserve observed time, coverage, comparison categories, independent-freeze timestamps and explicit unresolved risks."
+      ],
+      "proposed_canonical_home": "cultivation/marketplace/research-lane/skills/evidence-audit/references/",
+      "safe_inactive_text_snapshot": true
+    },
+    {
+      "original_path": "/Users/samyakjhaveri/Desktop/job_search_and_industry_connections/.agents/skills/company-research-networking/scripts/validate_company_research_report.py",
+      "resolved_path": "/Users/samyakjhaveri/Desktop/job_search_and_industry_connections/.agents/skills/company-research-networking/scripts/validate_company_research_report.py",
+      "sha256": "725d021e495e390f7019074046047170526d337be2522d7999d016f4f5d8ea1c",
+      "kind": "skill_support_script",
+      "disposition": "keep_local_schema_until_generalized_validator_design",
+      "disposition_evidence": [
+        "Python standard-library imports; report schema and section names encode company-research-v1 and job/contact concepts.",
+        "CLI main defines positional report plus --json and optional --check-links; no source program execution in audit.",
+        "check_public_links uses urllib.request.urlopen on extracted report URLs. No explicit public-host/private-address or redirect validation in that function; harden before exposing to untrusted generic reports.",
+        "A structurally valid report is not independent verification of factual claims or agent creation mode."
+      ],
+      "proposed_canonical_home": "project_local_or_optional_research_bundle_after_hardening",
+      "validation": "static targeted source read only"
+    },
+    {
+      "original_path": "/Users/samyakjhaveri/Desktop/job_search_and_industry_connections/.agents/skills/company-research-networking/tests/test_validate_company_research_report.py",
+      "resolved_path": "/Users/samyakjhaveri/Desktop/job_search_and_industry_connections/.agents/skills/company-research-networking/tests/test_validate_company_research_report.py",
+      "sha256": "e7708e3e066c16e738357dafa9d7b26f018cc46b2b8c41576d440c9bad1938e4",
+      "kind": "skill_support_tests",
+      "disposition": "retain_with_validator_when_adapted",
+      "disposition_evidence": [
+        "unittest fixtures use Ada/Jane Example and example.com URLs; tests cover malformed tables, evidence fields, approval claims, timestamps and mocked HTTP responses.",
+        "Tests were inventoried and selectively read, not executed."
+      ],
+      "proposed_canonical_home": "with_generalized_validator",
+      "validation": "static source inventory only"
+    },
+    {
+      "original_path": "/Users/samyakjhaveri/Desktop/job_search_and_industry_connections/.agents/skills/rendercv/SKILL.md",
+      "resolved_path": "/Users/samyakjhaveri/Desktop/job_search_and_industry_connections/.agents/skills/rendercv/SKILL.md",
+      "sha256": "4565cadfdaf0373f3725cc9fac465ef399d2fabfd1ffa58ba1d34e22af5a4e4e",
+      "kind": "skill",
+      "disposition": "optional_document_tool_candidate_pending_provenance_and_runtime_validation",
+      "disposition_evidence": [
+        "Generic RenderCV reference uses sample John Doe CV and public schema URL, no actual user CV.",
+        "Description and schema URL claim v2.8, while quick-start installs unpinned rendercv[full]. Version compatibility and provenance/license need verification before adoption.",
+        "Long embedded schema and fictional performance/publication examples should move to references or be replaced with neutral examples; preserve no-invented-claims boundary."
+      ],
+      "proposed_canonical_home": "cultivation/marketplace/document-tools/skills/rendercv/",
+      "safe_inactive_text_snapshot": true,
+      "dependencies": [
+        "uv tool install rendercv[full] (instruction only, not executed)",
+        "RenderCV and Typst rendering runtime",
+        "render-and-preview workflow"
+      ]
+    },
+    {
+      "original_path": "/Users/samyakjhaveri/Desktop/job_search_and_industry_connections/.claude/skills/rendercv/SKILL.md",
+      "resolved_path": "/Users/samyakjhaveri/Desktop/job_search_and_industry_connections/.agents/skills/rendercv/SKILL.md",
+      "sha256": "4565cadfdaf0373f3725cc9fac465ef399d2fabfd1ffa58ba1d34e22af5a4e4e",
+      "kind": "skill_discovery_alias",
+      "disposition": "deduplicate_alias",
+      "disposition_evidence": [
+        "Directory .claude/skills/rendercv is a symlink to .agents/skills/rendercv. Same resolved source, not an independent project variant."
+      ],
+      "proposed_canonical_home": "/Users/samyakjhaveri/Desktop/job_search_and_industry_connections/.agents/skills/rendercv/SKILL.md"
+    },
+    {
+      "original_path": "/Users/samyakjhaveri/.claude/skills/experiment-loop/SKILL.md",
+      "resolved_path": "/Users/samyakjhaveri/.claude/skills/experiment-loop/SKILL.md",
+      "sha256": "6c1fa4e4496d5aafcffbe6432be1ef810661669beceb2da9d051dca5cf1ae14c",
+      "kind": "global_skill_referenced_by_organizer",
+      "disposition": "optional_research_bundle_candidate_existing_global_source",
+      "disposition_evidence": [
+        "Organizer CLAUDE.md explicitly routes candidate comparisons to personal experiment-loop.",
+        "Loam docs/BACKLOG.md already proposes vendoring experiment-loop in research-lane, but no experiment-loop SKILL.md exists in inspected Loam tree.",
+        "Useful protocol freeze, eval input hashes, scorer separation, deterministic metrics, positive controls, bounded repair and human final judgment.",
+        "Remove implication that cross-candidate agreement proves truth; use independent source or labeled uncertainty.",
+        "Replace Workflow-specific APIs, shell waiter assumptions and fixed cheaper/cross-model judge rules with runtime capabilities and inherited user-selected model/effort.",
+        "Do not carry historical token/cost claims as guarantees. Installation, model downloads, provider use, media consent and live browser access need explicit per-run contract."
+      ],
+      "proposed_canonical_home": "cultivation/marketplace/research-lane/skills/experiment-loop/",
+      "safe_inactive_text_snapshot": true
+    },
+    {
+      "original_path": "/Users/samyakjhaveri/Desktop/job_search_and_industry_connections/AGENTS.md",
+      "resolved_path": "/Users/samyakjhaveri/Desktop/job_search_and_industry_connections/AGENTS.md",
+      "sha256": "5766f797244f29ec00bfcb103bc526a3c724c8fd5fa35b70b3d1c020eedeaa4b",
+      "kind": "project_policy",
+      "disposition": "project_local_metadata_only",
+      "disposition_evidence": [
+        "Project-specific operating contract; do not snapshot body into Loam or import private workflows."
+      ],
+      "proposed_canonical_home": null,
+      "safe_inactive_text_snapshot": false
+    },
+    {
+      "original_path": "/Users/samyakjhaveri/Desktop/job_search_and_industry_connections/CLAUDE.md",
+      "resolved_path": "/Users/samyakjhaveri/Desktop/job_search_and_industry_connections/CLAUDE.md",
+      "sha256": "1c59ff6892037bdbc5af1da38def6062a6a5fb7edde73fab7e5881cddc40f4fe",
+      "kind": "project_policy",
+      "disposition": "project_local_metadata_only",
+      "disposition_evidence": [
+        "Project-specific operating contract; do not snapshot body into Loam or import private workflows."
+      ],
+      "proposed_canonical_home": null,
+      "safe_inactive_text_snapshot": false
+    },
+    {
+      "original_path": "/Users/samyakjhaveri/Desktop/content_search_engine/CLAUDE.md",
+      "resolved_path": "/Users/samyakjhaveri/Desktop/content_search_engine/CLAUDE.md",
+      "sha256": "191bd04b3bd1a193eb7611c23264dce4790939ab2a70ebd4d9d315c345796696",
+      "kind": "project_policy",
+      "disposition": "project_local_metadata_only",
+      "disposition_evidence": [
+        "Project-specific operating contract; do not snapshot body into Loam or import private workflows."
+      ],
+      "proposed_canonical_home": null,
+      "safe_inactive_text_snapshot": false
+    },
+    {
+      "original_path": "/Users/samyakjhaveri/Desktop/job_search_and_industry_connections/.claude/settings.local.json",
+      "resolved_path": "/Users/samyakjhaveri/Desktop/job_search_and_industry_connections/.claude/settings.local.json",
+      "sha256": "16e6a3076ee4399688065ee1a5f8ab23c8166b8dc5418f0af3ca4809f7c618c7",
+      "kind": "local_runtime_configuration",
+      "disposition": "exclude_machine_specific_settings",
+      "disposition_evidence": [
+        "Top-level structure checked only; permissions, server toggles and output style are local configuration, not portable assets."
+      ],
+      "proposed_canonical_home": null,
+      "safe_inactive_text_snapshot": false,
+      "top_level_keys": [
+        "enabledMcpjsonServers",
+        "enableAllProjectMcpServers"
+      ]
+    },
+    {
+      "original_path": "/Users/samyakjhaveri/Desktop/content_search_engine/.claude/settings.local.json",
+      "resolved_path": "/Users/samyakjhaveri/Desktop/content_search_engine/.claude/settings.local.json",
+      "sha256": "e29d5e242ee7f7bfe7aba3fcaa5f4defc3d8c2bf3bdf7ffa42d34c0510f14e02",
+      "kind": "local_runtime_configuration",
+      "disposition": "exclude_machine_specific_settings",
+      "disposition_evidence": [
+        "Top-level structure checked only; permissions, server toggles and output style are local configuration, not portable assets."
+      ],
+      "proposed_canonical_home": null,
+      "safe_inactive_text_snapshot": false,
+      "top_level_keys": [
+        "permissions",
+        "outputStyle"
+      ]
+    },
+    {
+      "original_path": "/Users/samyakjhaveri/Desktop/content_search_engine/README.md",
+      "resolved_path": "/Users/samyakjhaveri/Desktop/content_search_engine/README.md",
+      "sha256": "6f4f2a19f7017a61b45a7e3b50adcdca9ad6794f2ed8f231ee66848bb4317c78",
+      "kind": "project_identity",
+      "disposition": "identity_evidence_metadata_only",
+      "disposition_evidence": [
+        "README heading identifies Instagram Organizer; do not promote stale implementation-state prose."
+      ],
+      "proposed_canonical_home": null,
+      "safe_inactive_text_snapshot": false
+    },
+    {
+      "original_path": "/Users/samyakjhaveri/Desktop/content_search_engine/pyproject.toml",
+      "resolved_path": "/Users/samyakjhaveri/Desktop/content_search_engine/pyproject.toml",
+      "sha256": "46c0c2b92742c4b889b57c70fb297d0081aa839a4cb521a28104a1a1b5f93e04",
+      "kind": "project_metadata",
+      "disposition": "project_local_dependencies",
+      "disposition_evidence": [
+        "Project description identifies Instagram saved-posts knowledge-base pipeline; source project package dependencies are not agent skill dependencies."
+      ],
+      "proposed_canonical_home": null,
+      "safe_inactive_text_snapshot": false
+    },
+    {
+      "original_path": "/Users/samyakjhaveri/Desktop/loam/docs/ASSET-LAYERS.md",
+      "resolved_path": "/Users/samyakjhaveri/Desktop/loam/docs/ASSET-LAYERS.md",
+      "sha256": "3fe9efe0bbf940d6e580302a8fc357ca05790d9038ced5ab3384f1db8cae2ab9",
+      "kind": "destination_contract",
+      "disposition": "canonical_layer_evidence",
+      "disposition_evidence": [
+        "Optional skills belong to marketplace layer; always-on seed cost is paid every session; one directive one canonical home."
+      ],
+      "proposed_canonical_home": null
+    },
+    {
+      "original_path": "/Users/samyakjhaveri/Desktop/loam/docs/BACKLOG.md",
+      "resolved_path": "/Users/samyakjhaveri/Desktop/loam/docs/BACKLOG.md",
+      "sha256": "7add7cc980577de3b2b2f36f1e7c6eb0fd17bf5c0266f9ee049be3a9b4f2f1fc",
+      "kind": "destination_backlog",
+      "disposition": "existing_adoption_intent_evidence",
+      "disposition_evidence": [
+        "Research-lane entry proposes experiment-loop vendoring. Parked research-lane contains research-assets support/templates, no experiment-loop SKILL.md."
+      ],
+      "proposed_canonical_home": null
+    }
+  ]
+}

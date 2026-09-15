@@ -1,0 +1,395 @@
+{
+  "purpose": "Accepted queue-by-default/fail-fast and personal jhaveris simplification. No further scheduling questionnaire; runtime deferred.",
+  "previous_checkpoint": "offline-policy-checkpoint.json",
+  "validation": "Queue decision records: PASSED; prior files outside the named living-record edits retained; no tracked changes.",
+  "files": [
+    {
+      "file": "README.md",
+      "sha256": "4221f7e054545ea2ff27ad639e8d93d2fc03dce58839eb977681de5e6f961932"
+    },
+    {
+      "file": "START-NEXT-SESSION.md",
+      "sha256": "ba125cb4692b71554d039366b371eb2f382708123ef66c689e8626a77ab870c6"
+    },
+    {
+      "file": "asset-environment-checkpoint.json",
+      "sha256": "afc26b49c06ad3c031022d85d395e832ce3408a5065e1050c2c45f5906a691fa"
+    },
+    {
+      "file": "asset-environment-step-plan.md",
+      "sha256": "eadce1d0889793ebc48c4770374d768cf146558eb76a2a3789ffa8a06a5904a4"
+    },
+    {
+      "file": "asset-environment-validation.md",
+      "sha256": "af5ba235f38c618bfa903e7e401526d0abb8b0b5433952e685eea447489c436e"
+    },
+    {
+      "file": "asset-intake/README.md",
+      "sha256": "8febb86558a9fe8844452d6327105c4cadb2dfd83aca49ba92bf4ec79464a100"
+    },
+    {
+      "file": "asset-intake/application-inventory.json",
+      "sha256": "3d2d6c4736064e8e8b5d5c75126be71072dec6ac3d0fab177b8cc7d5460b0763"
+    },
+    {
+      "file": "asset-intake/baseline-adoption-map.json",
+      "sha256": "0ff31453f068a58d65bca1a7ec0ea6ab3ee5dbb9d5979ad6284408f1065e1dbb"
+    },
+    {
+      "file": "asset-intake/benchmark-inventory.json",
+      "sha256": "889561598c046e66c6592b30adb4449cdada66b84993c783a37a09ac716d8089"
+    },
+    {
+      "file": "asset-intake/loam-inventory.json",
+      "sha256": "85a27e4eb8b9f441a90cfd9df704f8496231e5c686fe6c49c7c1cd1fa8a678c7"
+    },
+    {
+      "file": "asset-intake/source-manifest.json",
+      "sha256": "c5ebfbba84d335b199257535a1b043e2615fa63d41a6d980db252ced1d54a1ee"
+    },
+    {
+      "file": "asset-intake/sources/distbench-claude-critique-swarm.txt",
+      "sha256": "05de74c6c8b67dfe3273eb4624ea78c1c9249eaeab41b7b0cb91a4e2a4c4998c"
+    },
+    {
+      "file": "asset-intake/sources/distbench-codex-agent-team.txt",
+      "sha256": "da791f10d11bcd4436e079a0cf1aa85581fd89c073174c703a08f3bee35b1c83"
+    },
+    {
+      "file": "asset-intake/sources/distbench-codex-critique-swarm.txt",
+      "sha256": "2b564618cf6ffde059ba576b6702a1cc98fee0e7d38d3de39a486bf9af081b0a"
+    },
+    {
+      "file": "asset-intake/sources/distbench-worktree-status.txt",
+      "sha256": "4800c0be179330ab870e7ff51f050541bc279f6b6cf51b0ff005d0739ee2b95e"
+    },
+    {
+      "file": "asset-intake/sources/job-search-company-research.txt",
+      "sha256": "aa067d1d46f0372d75bd5929ca1536179e0eaa790e7301d2d7ecd0865e735c9d"
+    },
+    {
+      "file": "asset-intake/sources/job-search-evidence-contract.txt",
+      "sha256": "bec897505d41ec575b9f4f33429c0b660cc04d2d434561a8552efdbd0eeb3b72"
+    },
+    {
+      "file": "asset-intake/sources/job-search-rendercv.txt",
+      "sha256": "4565cadfdaf0373f3725cc9fac465ef399d2fabfd1ffa58ba1d34e22af5a4e4e"
+    },
+    {
+      "file": "asset-intake/sources/job-search-report-template.txt",
+      "sha256": "e34dd4e8506cd998c152ecddbec26451b20b18cc3fb809b566f4c09bb300e8c3"
+    },
+    {
+      "file": "asset-intake/sources/organizer-referenced-experiment-loop.txt",
+      "sha256": "6c1fa4e4496d5aafcffbe6432be1ef810661669beceb2da9d051dca5cf1ae14c"
+    },
+    {
+      "file": "asset-intake/sources/parbench-elegance-reviewer.txt",
+      "sha256": "5a38c345016f934f3d3254bec52faf9038351d0d92419ef48a15598dcf066395"
+    },
+    {
+      "file": "curated-asset-adoption-plan.md",
+      "sha256": "a4e0785778b855c68dc2ad49bf8dbcd504b53fe13968ab116643aa20d7c2e612"
+    },
+    {
+      "file": "decision-delta.md",
+      "sha256": "a824d5ee1f4f5a38d7a853dc993dfafad6d90c0417012576b0757758c9709539"
+    },
+    {
+      "file": "engine-runtime-and-layout.md",
+      "sha256": "4d582597a3fe535bcbf0a861ceee223dd48c8c156f765a92f13c1f7e4889c937"
+    },
+    {
+      "file": "execution-environment-and-bootstrap.md",
+      "sha256": "f3163c55c91f8ce441819e03a46705360e66155447ae21d6d2c99b96408deb6e"
+    },
+    {
+      "file": "first-complete-slice.md",
+      "sha256": "4571c7714419f9880770b15043228d6db1880467ff9715265b83bc586764ec26"
+    },
+    {
+      "file": "first-run-ownership-storage-recovery.md",
+      "sha256": "a6c82395ef9f643e7f6140616e8a4be7fcd6437e0ef8ee801cfa622e370fb61d"
+    },
+    {
+      "file": "first-run-step-plan.md",
+      "sha256": "e0235e9deeaeb0efa45b658fc583a3720db8daa114aeef71c412d705a02f3cc2"
+    },
+    {
+      "file": "first-run-validation.md",
+      "sha256": "5247e00aec78115353a6ea4d8c6f7d2d091787ca2427b4f1a53ae25adfb46350"
+    },
+    {
+      "file": "improvement-evaluation.md",
+      "sha256": "77c3187ff704cb5b8a8e17f7a10099cf3c524bf38288dddc6ca8c934a3e36581"
+    },
+    {
+      "file": "language-choice-plan.md",
+      "sha256": "be6f76ac4cf504e84da0fb3aa5d7a23ef25d44486d312f85875658f2af4f78ee"
+    },
+    {
+      "file": "language-choice-swot.md",
+      "sha256": "fc148265f7a67858f8cf47c0b00824091ff0ad6480d2068cce87f24a58e03b5e"
+    },
+    {
+      "file": "maintenance-and-remote-work.md",
+      "sha256": "933bd9749ae256e72feaaa998952a359f1c99a3cb98f2c6e27130570a7539915"
+    },
+    {
+      "file": "maintenance-checkpoint.json",
+      "sha256": "fb45a77704be1d0c1efb540b3865f6b1bf8c8516edda34745b3257dbe7968eb7"
+    },
+    {
+      "file": "maintenance-remote-tickets.md",
+      "sha256": "b9be331a1927974135f004894ea2c45645f4525980d0eeaaba7bb04e8b0e3c3b"
+    },
+    {
+      "file": "maintenance-step-plan.md",
+      "sha256": "7eef1762d9000d2fc9a0233ed892e7bacc3be78e16e290554d8c18d10da809e3"
+    },
+    {
+      "file": "maintenance-validation.md",
+      "sha256": "cfe4fddb725347ef8b238f6c7add54a82d1ed23c7acbd22fccafd2e9df91dda4"
+    },
+    {
+      "file": "memory-loop-engineering.md",
+      "sha256": "d4db2056fc2140b48f4eaf56a20ab2fcf44a54db453d33a9dbb39b8df2fd8796"
+    },
+    {
+      "file": "memory-records-and-delivery.md",
+      "sha256": "87f24f1f3b756d8c3328cbb42d9e8275c4efce1f08946a35df8f6e5ab92a0731"
+    },
+    {
+      "file": "memory-story.md",
+      "sha256": "49bdbeb61b9d036b38492bf44a0f4cb9848a23fa687890de2ba68d01f3559226"
+    },
+    {
+      "file": "native-binding-checkpoint.json",
+      "sha256": "0b167072e7382bb04425251e7cf6780da010086eab0f30bfec92345b3392035c"
+    },
+    {
+      "file": "native-binding-step-plan.md",
+      "sha256": "afa1e6953720c2a3717c9f8c4ab5a2d7b5f1a6c36d3d12b7880246a33639fafc"
+    },
+    {
+      "file": "native-binding-validation.md",
+      "sha256": "733cf4ea611e46dedee6b4fddebe84def249a59413bcfcc32070b3e5c2a07e01"
+    },
+    {
+      "file": "native-profile-and-lead-binding.md",
+      "sha256": "0192109f35bb14f24afd8e36041c288029d9b14a29aef26ccad0059009d18e25"
+    },
+    {
+      "file": "offline-policy-checkpoint.json",
+      "sha256": "01ead6d50ceaf721f84c03eae23588e010fc2e721bc34560769a4e8c13d3888e"
+    },
+    {
+      "file": "offline-policy-step-plan.md",
+      "sha256": "087aa78e9b2fa3d7b71f6e6c60b2e4d210fdde1a523660a8d2948faba4ce0d4a"
+    },
+    {
+      "file": "offline-policy-validation.md",
+      "sha256": "ce6805a904a49b8f12df6eb56209b1174be4ce26914b190795d1d6577692fb56"
+    },
+    {
+      "file": "pause-checkpoint.json",
+      "sha256": "b6f76f637b4d1331fe8782387d2eafbb236ff0ce687ff419e2603ee468352c55"
+    },
+    {
+      "file": "prior-design/configuration-design.md",
+      "sha256": "f904d1e67579ee531dd8987416ad26081a2d385d5181d1ff9253848b67da7e81"
+    },
+    {
+      "file": "prior-design/cookbook-audit-plan.md",
+      "sha256": "ccd857b4a95538477939d95448c2ce375666425fbca5e03b713eb5beadd7716a"
+    },
+    {
+      "file": "prior-design/cookbook-claude-patterns-audit.md",
+      "sha256": "0118e9e8ebb728841ae562468cbe64efdbdc404ca87cb66bafc463d1faea3b1a"
+    },
+    {
+      "file": "prior-design/cookbook-claude-sdk-audit.md",
+      "sha256": "216670274676055cb27072bc4896a5a46f09f6523984a564ac2a20e17e2f727e"
+    },
+    {
+      "file": "prior-design/cookbook-codex-audit.md",
+      "sha256": "ed5e0b3bee532b4d34166e96505f505901e37c1a19e79a53d06e6c604023fb2d"
+    },
+    {
+      "file": "prior-design/cookbook-current-code-map.md",
+      "sha256": "86286351fe4c100f64e0c0fed629f39e37f2123321ee04d4336b857226657241"
+    },
+    {
+      "file": "prior-design/cookbook-index-coverage.md",
+      "sha256": "0540fa13d9815774de76295e9fc85b35245bdcc3acd66dfcf2289226c3c2546f"
+    },
+    {
+      "file": "prior-design/cookbook-integration-design.md",
+      "sha256": "935e90a4e71145a42e2beafd30e1ecf28f2427dc424d7593c7a1d5e7eb3bc96a"
+    },
+    {
+      "file": "prior-design/cookbook-long-horizon-audit.md",
+      "sha256": "d8da3aeb48f334d65af2e7147e1ecae6dc464da006ee3ca458ed2b88f4ab0032"
+    },
+    {
+      "file": "prior-design/cookbook-practice-registry.json",
+      "sha256": "6f4a1e1f97a23933ea916c4196bebba8967a5a94e098cd713ef97f97fb88cb55"
+    },
+    {
+      "file": "prior-design/cookbook-practice-registry.md",
+      "sha256": "d4874cb95c5da40e418daf0712496964beaebdd5c98e32fd93ff4e3d22ba59b0"
+    },
+    {
+      "file": "prior-design/current-evidence.md",
+      "sha256": "321c871fa8699e169b519cebaf27e88c5281d58bfae9923e05e8c739c0df0d66"
+    },
+    {
+      "file": "prior-design/decisions.md",
+      "sha256": "85099000dd93c3365e78c99618a82db98c2c1770d8bf4fa9fc4202f616bb2b79"
+    },
+    {
+      "file": "prior-design/distribution-design.md",
+      "sha256": "0e84f1d907c6ea64359fe529ad0ec3ee13d42c2706420ea4406e9be26f08bcd2"
+    },
+    {
+      "file": "prior-design/grounding-record.md",
+      "sha256": "202413b07b90862f8a3ecd81053b1e53cf8e236b2abe4ce8e4de0d4cbdb6294d"
+    },
+    {
+      "file": "prior-design/living-design.md",
+      "sha256": "007efdd8e3557565fdb8361815738ee3cb24b04a48678d24ae7031b2ec1ebc06"
+    },
+    {
+      "file": "prior-design/loop-design.md",
+      "sha256": "b885a28841e2a6506f29f248ea025fe490292e983079112cb6f111d51a113082"
+    },
+    {
+      "file": "prior-design/memory-design.md",
+      "sha256": "24160dbf7f78c5ab986ad4cdb547578aab6e7304ed650bc81884e204ced9e91c"
+    },
+    {
+      "file": "prior-design/memory-loop-step-plan.md",
+      "sha256": "a2fddf1a6688f9fc644e133f3bd18d65c926991a47460bcf3adfc2ab4955058d"
+    },
+    {
+      "file": "prior-design/native-adapter-design.md",
+      "sha256": "4d10285978e23dcaf2ae48bbb16bc64cdc5f702c040a9c327bd085328eadf5de"
+    },
+    {
+      "file": "prior-design/native-claude-evidence.md",
+      "sha256": "e703ec99c57cd44042145c5ac8b4d1840fad5d44bdd55cd4cae65ac5ba3702f1"
+    },
+    {
+      "file": "prior-design/native-codex-evidence.md",
+      "sha256": "b6ca54627446a2b3ed90848bf8ff0265e471887724c353e61d9d194f9993913b"
+    },
+    {
+      "file": "prior-design/native-step-checks.md",
+      "sha256": "012c4cd89da886f1e06f54e89d74f77c5b64382a70b1f067906c45cd4bf8228c"
+    },
+    {
+      "file": "prior-design/records-and-transitions.md",
+      "sha256": "bb90d900226df193515af42038caeca4455ea0353b074f8d183f7ab877e82026"
+    },
+    {
+      "file": "prior-design/records-step-checks.md",
+      "sha256": "90c0d9be81a1c32b4e956999b04d1cd63d3b1950dec3fd5cbbe8de9f506c8acc"
+    },
+    {
+      "file": "prior-design/reference-reading.md",
+      "sha256": "021870195d78543ff492f3117d1f87308a8f0b824dd790fb89f06ee7ca74b511"
+    },
+    {
+      "file": "prior-design/source-informed-design.md",
+      "sha256": "d4dbdcc55b20f72ee483aa9f59f8186953959c30e1408aa132d62ba0665c42c4"
+    },
+    {
+      "file": "prior-design/sources-community.md",
+      "sha256": "69ddecc37110da628f1b5520f07e6f1ed2ff69847b7030f2e39bf560abaf4fa1"
+    },
+    {
+      "file": "prior-design/sources-cookbooks.md",
+      "sha256": "86eed1d9e478c4d8da2ad17133b1c89d7ac12966c8e874d3c587cfd8284588c7"
+    },
+    {
+      "file": "prior-design/sources-loop-repos.md",
+      "sha256": "37c4fb268faf1d3f614d196111d5e321d59a8fcd6c47dc28ae9a8cdc22ad865d"
+    },
+    {
+      "file": "prior-design/sources-official.md",
+      "sha256": "588e15b3b85f411ec619dd9bb5dbf3f40f66a6506196c4a8c28abc688e7f9115"
+    },
+    {
+      "file": "prior-design/sources-research-memory.md",
+      "sha256": "e742fc30fd71cd117b7b63c86e269789deb11d384ae87db8cf71598a44beae49"
+    },
+    {
+      "file": "prior-design/sources-skills.md",
+      "sha256": "1737c1a3133019dcd69c9eccc335ebdb572d8f7a51171bf6037b925a6faf810b"
+    },
+    {
+      "file": "prior-design/sources-supplemental.md",
+      "sha256": "a11cab5923a0d0d8be5f1a9a2be0cd17a9e1372fc187a19272f699dcf456f3bd"
+    },
+    {
+      "file": "prior-design/state-design.md",
+      "sha256": "2ac00765494946ac9bbff518391e6991c3bc2591865d23493b1b4a294ad01f87"
+    },
+    {
+      "file": "proving-slice-step-plan.md",
+      "sha256": "dc2291023d65a996e4c6bbd57e12856683f1a70f11d6e88f096d9db94ff4cb6b"
+    },
+    {
+      "file": "remote-execution-contract.md",
+      "sha256": "1f7fd3570cdc14f37f937acb6f6cfa9ae6dde2496e50a8775d9b6315b194146b"
+    },
+    {
+      "file": "remote-job-and-operator-flow.md",
+      "sha256": "402b0bb4e2afdc946776b9acd9e6d4f4aea017095689dcd0bfdd84c882810efb"
+    },
+    {
+      "file": "remote-maintenance-evidence.json",
+      "sha256": "49b23f07fd8cdbc8a9649d11e097542a248f6908856d4d6306c11bcce9c97362"
+    },
+    {
+      "file": "resume-checkpoint.json",
+      "sha256": "cfef58522c07c431607a77243889c67ac9ecf2ac2097c31682a04c2452841201"
+    },
+    {
+      "file": "runtime-step-plan.md",
+      "sha256": "d27fa15a32bd1b40354a3bc91b2a01fad5fccfa9b68c71ef9fcf4fcf9350e0e7"
+    },
+    {
+      "file": "schema-step-plan.md",
+      "sha256": "5e3ae82142e7ea4efd4ed1380043f37c02c9eaa97dae7e3d68fed2601b4e6672"
+    },
+    {
+      "file": "schema-step-validation.md",
+      "sha256": "25c5fb4372afdd463a5b355f91ebde7779669307381dd371f42ecbba3dfb8bf5"
+    },
+    {
+      "file": "snapshot-manifest.json",
+      "sha256": "5abda91b74659ac9819d1d74b866586ab4cb6bc7b7809ecbdd6b4b32f9611e56"
+    },
+    {
+      "file": "two-host-checkpoint.json",
+      "sha256": "c2495b1beb9a4d42ef6aceef1648604e07eccc4c4c9b72ebc16f5e9c1c69309e"
+    },
+    {
+      "file": "two-host-inventory.json",
+      "sha256": "d0ec59e1e4f5e83ffa6b90767b37a9aac40c4f61a620e4b106664a97056d1f66"
+    },
+    {
+      "file": "two-host-step-plan.md",
+      "sha256": "fe8b2fba6927153a371a9d28b54f2f8020b8802bd6cf20f2763cc10237cfcf69"
+    },
+    {
+      "file": "two-host-validation.md",
+      "sha256": "8a92e9d381bef2a4005549a9ab29cdd91468a3b25f0f033722cd1bfdf8955f59"
+    },
+    {
+      "file": "validation.md",
+      "sha256": "af1ffd000c50d0da89965f06c05e9052658506d2d0006055828416150f487e17"
+    }
+  ]
+}

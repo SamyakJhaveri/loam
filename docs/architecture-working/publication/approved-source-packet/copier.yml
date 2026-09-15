@@ -1,0 +1,72 @@
+_min_copier_version: "9.4.0"
+_subdirectory: "seed"
+_templates_suffix: .jinja
+# Render checked-in symlinks (e.g. .claude/skills/catchup -> ../../.agents/skills/catchup)
+# as symlinks instead of dereferencing them.
+_preserve_symlinks: true
+_envops:
+  keep_trailing_newline: true
+
+# With _subdirectory: "seed", only seed/ contents are rendered.
+# These exclusions cover generic noise inside seed/.
+_exclude:
+  - ".DS_Store"
+  - "*.pyc"
+  - "__pycache__"
+  - "*.bak"
+  - ".git"
+  - ".claude/audit.log"
+  - ".claude/skill-usage.log"
+  # Loam-repo maintenance config (numeric-claim checker); never ships.
+  - ".claude/stale-counts.json"
+  - ".claude/.local-paths"
+  - ".claude/settings.local.json"
+  - ".claude/worktrees"
+  # Codex review transcripts written through the root .claude symlink; never ship.
+  - ".claude/codex-reviews"
+
+# Questions asked during `copier copy`
+project_name:
+  type: str
+  help: "What is your project name?"
+  validator: "{% if not project_name %}Project name is required{% endif %}"
+
+github_repo:
+  type: str
+  help: "GitHub repo (owner/repo) for this project? Leave empty to skip. Trailing .git is stripped automatically."
+  default: ""
+  validator: "{% if github_repo and not (github_repo | regex_search('^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$')) %}Invalid repo format — use owner/repo{% endif %}"
+
+project_kind:
+  type: str
+  help: "Project kind? Gates pyproject.toml and the pyright-lsp plugin (python, research, mixed get both)."
+  choices: [python, typescript, research, mixed, other]
+  default: python
+
+# Post-generation tasks (run in the generated project directory)
+_tasks:
+  # Strip the pyright-lsp plugin from settings for non-Python project kinds.
+  - >-
+    {% if project_kind not in ['python', 'research', 'mixed'] %}
+    python3 -c "import json; f='.claude/settings.json'; d=json.load(open(f)); d.get('enabledPlugins', {}).pop('pyright-lsp@claude-plugins-official', None); w=open(f, 'w'); json.dump(d, w, indent=2); w.write('\n')"
+    {% else %}
+    true
+    {% endif %}
+
+  # Initialize git repo (skip on copier update — .git already exists)
+  - "if [ ! -d .git ]; then (git init -b main 2>/dev/null || git init) && git add . && git commit -m 'Initial commit from loam'; fi"
+
+  # Optional: create or connect GitHub repo (skip on copier update)
+  - >-
+    {% if github_repo %}
+    if ! git remote get-url origin >/dev/null 2>&1; then
+      bash _gh_setup.sh "{{ github_repo }}"
+    else
+      echo '[copier] Remote origin already configured — skipping GitHub setup.'
+    fi
+    {% else %}
+    true
+    {% endif %}
+
+  # Clean up helper scripts
+  - "rm -f _gh_setup.sh"

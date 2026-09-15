@@ -1,0 +1,101 @@
+---
+name: company-research-networking
+description: >-
+  Discover, map, recheck, or refresh research people and research-like teams at
+  a company for job-search networking. Use for company research rosters,
+  adjacent AI/software/GPU/HPC/distributed-systems teams, attributable work,
+  current jobs, contact-priority proposals, and independent source audits. Do
+  not use for ordinary ledger-only edits, outreach sending, applications, or
+  LinkedIn automation.
+---
+
+# Company Research Networking
+
+## Required repository context
+
+Read the root `AGENTS.md`, the approved company-research skill design, the
+industry contact-discovery design, and the work-team-company triangulation
+design. Read `RESEARCH-CONTACTS.md` before contact prioritization, ledger
+comparison, or a proposed diff so current standing exclusions govern the
+assessment. Never treat a report as a person store.
+
+## Inputs and mode selection
+
+Require a company name. Accept official starting URLs, a comparison-report path,
+geographic or seniority constraints, and a post-inventory priority lens.
+
+Use `discover` when no current report exists. Use `recheck` when correctness of
+an existing report is the question. Use `refresh` when the user asks what has
+changed. If the prompt omits a mode, infer it from these rules and state the
+choice.
+
+## Source order
+
+Read `references/evidence-contract.md` completely. Use company-controlled
+sources first, then primary technical artifacts, scholarly indexes, public
+professional profiles, and general search. Search snippets locate evidence;
+they are not evidence. Verify every unstable current fact during the run.
+
+## Unfiltered inventory
+
+Before prioritization, inventory every public formal research area, formal
+member, relevant alumni conflict, current profile artifact, and adjacent
+research-like lane exposed by current sources. Mark each inventory `complete`,
+`source_limited`, or `blocked`. Never turn a zero-row parse, blocked page, or
+incomplete pagination result into a no-person claim.
+
+## Work-team-company mapping
+
+Keep work, team, and company production evidence separate. Keep formal roster
+membership separate from adjacent-team evidence. Do not infer a reporting line
+or hiring authority. Admit a generic engineering title only when attributable
+current evidence proves research-equivalent work.
+
+## Fresh-agent protocol
+
+Independent verification is mandatory. For `recheck`, spawn a fresh Codex
+agent with `fork_turns=none`. In phase one, give it the company, official
+starting URLs, evidence contract, output path, and freeze instruction. Withhold
+the comparison path. Explicitly forbid the agent from searching for or reading
+earlier company reports in the repository. Require the agent to freeze and
+timestamp its evidence, then notify the main session. Only then send the
+comparison path in a follow-up task. Require the final audit to record `creation_mode`,
+`evidence_frozen_at`, and `comparison_received_at`.
+
+For `discover` and `refresh`, a separate fresh-context audit agent must use the
+same freeze-before-comparison order after the draft report exists. A complete
+report requires `fresh_agent_state: completed`. If an independent agent is
+unavailable or fails, mark the run `blocked`.
+
+## Report creation
+
+Read `references/report-template.md` completely. Write a dated report under
+`docs/superpowers/reviews/`. Use a lowercase hyphenated company slug. Insert
+`-r2`, `-r3`, and later suffixes before `.md` when a path exists. Never
+overwrite an existing report without explicit approval.
+
+Run the static validator. Run its public-link mode when network access is
+available. A validation error blocks completion. A warning remains visible in
+the report and final response.
+
+## Contact priorities and ledger boundary
+
+Prioritize only after the complete or source-limited formal inventory is
+recorded. Apply the binding research-fit, connector-only, and standing-exclusion
+rules from the repository designs and current ledger. A priority candidate
+needs current identity, affiliation, and attributable-work evidence, or an
+explicit deferred state. Keep every proposal at `review_required` or `deferred`;
+do not claim outreach readiness. Present any ledger change as a proposed diff.
+Stop for approval before changing `RESEARCH-CONTACTS.md`.
+
+## Outward-action boundary
+
+Do not send outreach, submit an application, publish, follow, request an
+introduction, or automate LinkedIn. Do not infer an email address, mutual
+connection, reporting line, hiring authority, or willingness to talk.
+
+## Completion
+
+Report the artifact path, mode, completion state, validator result, fresh-agent
+result, material discrepancies, coverage limits, and proposed next action.
+Distinguish `Verified`, `Likely`, and `Assumption` claims.

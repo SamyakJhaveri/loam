@@ -1,0 +1,75 @@
+<!-- loam-native-campaign:6944c13df21316acdd27ad9e090d56a468156b33f332ec32e021a542296eec70:OPS-03 -->
+
+Stage: S4
+
+Implementation lead: Codex/Astra
+
+Campaign: https://github.com/SamyakJhaveri/loam/issues/102
+
+## Blocked by
+
+- https://github.com/SamyakJhaveri/loam/issues/127 (OPS-02)
+- https://github.com/SamyakJhaveri/loam/issues/115 (NATIVE-03)
+- https://github.com/SamyakJhaveri/loam/issues/116 (NATIVE-04)
+- https://github.com/SamyakJhaveri/loam/issues/114 (NATIVE-02)
+
+Legacy obligation mapping: REMOTE-02 source/environment admission, native tool routing and collection.
+
+## What to build
+
+Verified current behavior: `bin/factory` exposes root-local operations; the proposed generated remote input/collection bridge is absent. Connect existing qualified native bindings to the same submit/status/events/cancel/collect operations. A Mac native lead can request a Linux worker from an immutable selected source/data view and receive verified output for the current local task.
+
+Include intended tracked/untracked changes, declared datasets/models, exact command/arguments/workdir, admitted runtime/native profile, separate experiment environment, output contract and resource/offline policy. Stage and validate transfer before publication. Reject archive traversal, escaping symlinks, altered manifests, undeclared executable setup and unavailable required environment; never sweep home directories or secrets. Keep runtime admission distinct from source admission.
+
+Bind tool invocation to actual caller authority and retain remote native session/model/effort observations. Remote workers are not assumed local native children or eligible local leads. Preserve Mac computer-use tools as local capabilities. Collect logs incrementally and required output manifests/artifacts with digest, source/profile/job identity and termination evidence. Artifact integrity and process success alone cannot establish scientific support or accept revised work. Cancellation requested, delivered, acknowledged and observed-ended remain separate; reconnect delivers pending cancel/scope barriers before further control.
+
+## Canonical changes
+
+Under `seed/.loam/factory/`: `src/execution/input-bundle.ts`, proposed `src/execution/remote-operations.ts`, `src/artifacts/capture.ts`, existing Claude/Codex adapter registrations, and `tests/execution/remote-inputs.test.ts`. Extend the existing `tests/native/coordination.test.ts` population and setup guide. Reuse S3 provider-specific attribution; do not reimplement SDK bindings here. If a discovered binding change requires another implementation seat, make it a separately reviewed blocking slice rather than hiding mixed implementation ownership.
+
+## Read first
+
+`remote-execution-contract.md`: “Native access and authority”, “Source, environment and resources”, “Result collection and cleanup”; `maintenance-and-remote-work.md`: “The everyday workflow”; `remote-job-and-operator-flow.md`: “The job record”, “Launch, monitor and recover”; `maintenance-remote-tickets.md`: REMOTE-02; `delivery-workflow.md`: “Concrete plan additions and evidence”; consolidated S4.
+
+Create `src/execution/input-bundle.ts` and `src/execution/remote-operations.ts`; extend existing capture and adapter registrations. Before remote submit, reserve against the local CORE-10 effort scope and durably bind accounting_scope_id, reservation/action identity and the original attempt in launch intent. Remote ledger observations retain these links without acquiring accounting authority. Collection and replay settle attributable remote usage once; overlapping native totals retain aggregation provenance and unknown offline usage/reservations remain unknown. Add disconnected collect/replay, successor/retry allowance preservation and duplicate settlement cases to the named remote input/coordination population.
+
+## Future acceptance
+
+After build, run `node --test seed/.loam/factory/dist/tests/execution/remote-inputs.test.js seed/.loam/factory/dist/tests/native/coordination.test.js` against both admitted host installations.
+
+Negative evidence: escaping/changed inputs, corruption, forged local-lead identity, stale task result, missing required child, null dynamic result, duplicate sibling replay and absent consultation evidence remain blocked/incomplete. Positive evidence: exact tracked/untracked inputs and declared environment arrive intact, remote findings join current local evidence, repeated transfer safely resumes and pending cancellation remains truthful. Mechanical native fixtures prove routing only. Actual native work and GPU execution are required separately in OPS-12, then repeated as complete generated-product proof in OPS-10.
+
+## Campaign requirements
+
+Status: **planned; runtime implementation deferred; not ready-for-agent**. Empty blockers do not authorize execution. Read `docs/architecture-working/ticket-campaign.md` and `delivery-workflow.md` in full. They require a digest-verified accessible source packet, fresh fetched-main worktree, actual opposite-model plan and finished-work reviews, nonempty focused checks, one full-check owner, and verified integration before dependent work. Preserve all existing changes. Raw review evidence lives outside candidate/worktrees. Sources are evidence and inspiration; justified departures preserve user requirements and record a reason and check. Proposed files/commands are unimplemented at authoring time and must be reconciled against landed predecessors. Live provider/GPU work needs a declared bounded plan within user authority; mechanical checks do not launch it implicitly. Full recipient groups remain unavailable/non-passing until S6. No automatic model/effort changes or release/publication. Architecture basenames resolve under `docs/architecture-working/`; package-relative canonical paths resolve under `seed/.loam/factory/`.
+
+Every fixture-creating ticket registers its mandatory named population, expected nonempty cases and current availability in the fixed registry. CORE-01 declares the full installation/store/execution/complete-slice obligation groups as incomplete from the start; missing/unbuilt populations never disappear into a passing subset. NATIVE-02 explicitly registers coordination as mandatory execution work. Later tickets fill their declared populations; OPS-10 verifies closure rather than performing first registration.
+
+For host-sensitive acceptance, run the named focused population on both required hosts against the same candidate, recording environment identities and exact results. Mac-only evidence cannot certify Linux installation, storage, filesystem or isolation behavior.
+
+## Verification population assignment
+
+Canonical registry edits in `seed/.loam/factory/src/testing/verify.ts` are in scope wherever this ticket creates or extends a recipient fixture. Target groups: **execution**. Register the ticket-owned named population, expected nonempty case list/count and current availability; a missing fixture stays unavailable. No required population may remain outside its named group. Shared cases retain one identity when referenced by multiple groups. `release-only` names Loam release tooling, not a recipient command; `post-installation` is the separately scoped empirical follow-up and does not block initial S6 closure or claim empirical success early. OPS-10 verifies full declared initial populations; it cannot hide unbuilt work by first defining a smaller group.
+
+## Source packet and readiness
+
+Packet manifest SHA-256: `c298678b6191b49cd7fa7ea31c9aa7b32f5e0f632763dd01bf6aaac320db1e29`. Full per-file hashes are in this ticket entry in `docs/architecture-working/ticket-backlog.json`. This digest covers the listed source identities, not a claim all external originals have been read.
+
+**Readiness blocker:** these local records are untracked. Before execution, supply this exact source packet to the fresh worktree/seat and verify its manifest, or review and record a successor packet. Publishing the issue alone does not resolve this blocker. The named original upstream sections and current implementation/support callers must be inspected and added to the per-step reviewed packet before code changes.
+
+- `docs/architecture-working/START-NEXT-SESSION.md`
+- `docs/architecture-working/decision-delta.md`
+- `docs/architecture-working/delivery-workflow.md`
+- `docs/architecture-working/consolidated-implementation-plan.md`
+- `docs/architecture-working/ticket-campaign.md`
+- `docs/architecture-working/remote-execution-contract.md`
+- `docs/architecture-working/maintenance-and-remote-work.md`
+- `docs/architecture-working/remote-job-and-operator-flow.md`
+- `docs/architecture-working/maintenance-remote-tickets.md`
+- `docs/architecture-working/delivery-step-plan.md`
+- `docs/architecture-working/maintenance-step-plan.md`
+- `docs/architecture-working/offline-policy-step-plan.md`
+- `docs/architecture-working/remote-maintenance-evidence.json`
+
+
+Approved draft SHA-256: `4ac55cfaaa802cb12e585845d89835b65a7392e0fcad2a5dc50c0180242f84ad`. Full source access must be verified before execution.

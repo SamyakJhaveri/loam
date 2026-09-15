@@ -1,0 +1,34 @@
+---
+name: agent-team
+description: >
+  Codex-native, lead-mediated multi-worker orchestration from the root Codex
+  session. Use when the user wants coordinated workers with disjoint scopes
+  plus root-session synthesis. NOT for fully independent tasks (run workers
+  in parallel without a team), and NOT a replacement for Claude's shared-team
+  lifecycle.
+---
+
+# Agent Team (Codex)
+
+Run this only from the root Codex session, never from a spawned agent — this
+repository keeps `agents.max_depth = 1` so children must not spawn workers.
+
+## Procedure
+
+1. Propose the team first: list each worker, its task, and its disjoint
+   file/area scope (no two workers may edit the same file). Launch only
+   after the user explicitly approves.
+2. Spawn one worker agent per approved scope (the profiles under
+   `.codex/agents/` suit most worker roles). Optionally add the existing
+   `self-critic` agent (`.codex/agents/self-critic.toml`) as a quality-gate
+   pass.
+3. Wait for every worker to return before synthesizing.
+4. Synthesize in the root session from returned findings only — never
+   invent results a worker did not report.
+
+Codex provides lead-mediated coordination only: no shared team state, no
+inter-agent messaging — workers report only to the lead. This is weaker than
+Claude's `agent-team`; do not imply parity.
+
+If the multi-agent mechanism is unavailable or disabled, run the workers'
+tasks serially in the root session and state that fallback in the report.

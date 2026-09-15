@@ -1,0 +1,307 @@
+{
+  "scope": "Read-only host/tool inventory; version output is not authentication or runtime conformance proof. Installed versions are observations, not chosen factory pins.",
+  "hosts": {
+    "mac": {
+      "os": "Darwin",
+      "architecture": "arm64",
+      "kernel": "25.6.0",
+      "libc": [
+        "",
+        ""
+      ],
+      "tools": {
+        "node": {
+          "path": "/opt/homebrew/bin/node",
+          "result": {
+            "exit_code": 0,
+            "output": "v26.7.0"
+          }
+        },
+        "nodejs": {
+          "path": null,
+          "result": {
+            "status": "not on non-interactive PATH"
+          }
+        },
+        "npm": {
+          "path": "/opt/homebrew/bin/npm",
+          "result": {
+            "exit_code": 0,
+            "output": "11.19.0"
+          }
+        },
+        "git": {
+          "path": "/opt/homebrew/bin/git",
+          "result": {
+            "exit_code": 0,
+            "output": "git version 2.55.0"
+          }
+        },
+        "python3": {
+          "path": "/opt/homebrew/bin/python3",
+          "result": {
+            "exit_code": 0,
+            "output": "Python 3.14.7"
+          }
+        },
+        "uv": {
+          "path": "/opt/homebrew/bin/uv",
+          "result": {
+            "exit_code": 0,
+            "output": "uv 0.12.6 (Homebrew 2026-08-25 aarch64-apple-darwin)"
+          }
+        },
+        "gh": {
+          "path": "/opt/homebrew/bin/gh",
+          "result": {
+            "exit_code": 0,
+            "output": "gh version 2.98.0 (2026-08-20)\nhttps://github.com/cli/cli/releases/tag/v2.98.0"
+          }
+        },
+        "codex": {
+          "path": "/Users/samyakjhaveri/.local/bin/codex",
+          "result": {
+            "exit_code": 0,
+            "output": "codex-cli 0.154.0\nWARNING: proceeding, even though we could not create PATH aliases: Operation not permitted (os error 1)"
+          }
+        },
+        "claude": {
+          "path": "/opt/homebrew/bin/claude",
+          "result": {
+            "exit_code": 0,
+            "output": "2.1.266 (Claude Code)"
+          }
+        },
+        "cc": {
+          "path": "/usr/bin/cc",
+          "result": {
+            "exit_code": 0,
+            "output": "Apple clang version 21.0.0 (clang-2100.3.34.2)\nTarget: arm64-apple-darwin25.6.0\nThread model: posix\nInstalledDir: /Library/Developer/CommandLineTools/usr/bin"
+          }
+        },
+        "make": {
+          "path": "/usr/bin/make",
+          "result": {
+            "exit_code": 0,
+            "output": "GNU Make 3.81\nCopyright (C) 2006  Free Software Foundation, Inc.\nThis is free software; see the source for copying conditions.\nThere is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A\nPARTICULAR PURPOSE.\n\nThis program built for i386-apple-darwin11.3.0"
+          }
+        },
+        "bwrap": {
+          "path": null,
+          "result": {
+            "status": "not on non-interactive PATH"
+          }
+        },
+        "socat": {
+          "path": null,
+          "result": {
+            "status": "not on non-interactive PATH"
+          }
+        },
+        "sqlite3": {
+          "path": "/usr/bin/sqlite3",
+          "result": {
+            "exit_code": 0,
+            "output": "3.51.0 2025-06-12 13:14:41 f0ca7bba1c5e232e5d279fad6338121ab55af0c8c68c84cdfb18ba5114dcaapl (64-bit)"
+          }
+        }
+      },
+      "home_filesystem": {
+        "error": "Invalid file"
+      },
+      "alternative_locations": {
+        ".nvm/versions/node/*/bin/node": [],
+        ".local/bin/claude": [],
+        ".local/bin/codex": [
+          {
+            "path": "/Users/samyakjhaveri/.local/bin/codex",
+            "result": {
+              "exit_code": 0,
+              "output": "codex-cli 0.154.0\nWARNING: proceeding, even though we could not create PATH aliases: Operation not permitted (os error 1)"
+            }
+          }
+        ],
+        ".volta/bin/node": [],
+        ".local/share/mise/installs/node/*/bin/node": []
+      },
+      "distribution": {
+        "exit_code": 0,
+        "output": "ProductName:\t\tmacOS\nProductVersion:\t\t26.6.2\nBuildVersion:\t\t25G83"
+      },
+      "home_filesystem_followup": {
+        "method": "df -P for the home directory, then matching mount device",
+        "device": "/dev/disk3s5",
+        "mountpoint": "/System/Volumes/Data",
+        "initial_diskutil_probe": "failed; not filesystem evidence",
+        "filesystem": "apfs",
+        "mount_observation": {
+          "command": "/sbin/mount (filtered by df-resolved device)",
+          "exit_code": 0,
+          "output": "/dev/disk3s5 on /System/Volumes/Data (apfs, local, journaled, nobrowse, protect, root data)"
+        }
+      }
+    },
+    "jhaveris": {
+      "os": "Linux",
+      "architecture": "x86_64",
+      "kernel": "6.8.0-40-generic",
+      "libc": [
+        "glibc",
+        "2.39"
+      ],
+      "tools": {
+        "node": {
+          "path": null,
+          "result": {
+            "status": "not on non-interactive PATH"
+          }
+        },
+        "nodejs": {
+          "path": null,
+          "result": {
+            "status": "not on non-interactive PATH"
+          }
+        },
+        "npm": {
+          "path": "/usr/local/bin/npm",
+          "result": {
+            "exit_code": 127,
+            "output": "/usr/bin/env: \u2018node\u2019: No such file or directory"
+          }
+        },
+        "git": {
+          "path": "/usr/bin/git",
+          "result": {
+            "exit_code": 0,
+            "output": "git version 2.43.0"
+          }
+        },
+        "python3": {
+          "path": "/usr/bin/python3",
+          "result": {
+            "exit_code": 0,
+            "output": "Python 3.12.3"
+          }
+        },
+        "uv": {
+          "path": null,
+          "result": {
+            "status": "not on non-interactive PATH"
+          }
+        },
+        "gh": {
+          "path": "/usr/bin/gh",
+          "result": {
+            "exit_code": 0,
+            "output": "gh version 2.45.0 (2026-03-17 Ubuntu 2.45.0-1ubuntu0.3+esm3)\nhttps://github.com/cli/cli/releases/tag/v2.45.0"
+          }
+        },
+        "codex": {
+          "path": null,
+          "result": {
+            "status": "not on non-interactive PATH"
+          }
+        },
+        "claude": {
+          "path": null,
+          "result": {
+            "status": "not on non-interactive PATH"
+          }
+        },
+        "cc": {
+          "path": "/usr/bin/cc",
+          "result": {
+            "exit_code": 0,
+            "output": "cc (Ubuntu 12.4.0-2ubuntu1~24.04.1) 12.4.0\nCopyright (C) 2022 Free Software Foundation, Inc.\nThis is free software; see the source for copying conditions.  There is NO\nwarranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE."
+          }
+        },
+        "make": {
+          "path": "/usr/bin/make",
+          "result": {
+            "exit_code": 0,
+            "output": "GNU Make 4.3\nBuilt for x86_64-pc-linux-gnu\nCopyright (C) 1988-2020 Free Software Foundation, Inc.\nLicense GPLv3+: GNU GPL version 3 or later <http://gnu.org/licenses/gpl.html>\nThis is free software: you are free to change and redistribute it.\nThere is NO WARRANTY, to the extent permitted by law."
+          }
+        },
+        "bwrap": {
+          "path": "/usr/bin/bwrap",
+          "result": {
+            "exit_code": 0,
+            "output": "bubblewrap 0.9.0"
+          }
+        },
+        "socat": {
+          "path": "/usr/bin/socat",
+          "result": {
+            "exit_code": 0,
+            "output": "socat by Gerhard Rieger and contributors - see www.dest-unreach.org\nsocat version 1.8.0.0 on 03 Jul 2026 12:45:49\n   running on Linux version #40-Ubuntu SMP PREEMPT_DYNAMIC Fri Jul  5 10:34:03 UTC 2024, release 6.8.0-40-generic, machine x86_64\nfeatures:\n  #define WITH_HELP 1\n  #define WITH_STATS 1\n  #define WITH_STDIO 1\n  #define WITH_FDNUM 1\n  #define WITH_FILE 1\n  #define WITH_CREAT 1\n  #define WITH_GOPEN 1\n  #define WITH_TERMIOS 1\n  #define WITH_PIPE 1\n  #define WITH_SOCKETPAIR 1\n  #define WITH_UNIX 1\n  #define WITH_ABSTRACT_UNIXSOCKET 1\n  #define WITH_IP4 1\n  #define WITH_IP6 1\n  #define WITH_RAWIP 1\n  #define WITH_GENERICSOCKET 1\n  #define WITH_INTERFACE 1\n  #define WITH_TCP 1\n  #define WITH_UDP 1\n  #define WITH_SCTP 1\n  #define WITH_DCCP 1\n  #define WITH_UDPLITE 1\n  #define WITH_LISTEN 1\n  #define WITH_POSIXMQ 1\n  #define WITH_SOCKS4 1\n  #define WITH_SOCKS4A 1\n  #define WITH_SOCKS5"
+          }
+        },
+        "sqlite3": {
+          "path": null,
+          "result": {
+            "status": "not on non-interactive PATH"
+          }
+        }
+      },
+      "home_filesystem": {
+        "exit_code": 0,
+        "output": "ext4   /"
+      },
+      "alternative_locations": {
+        ".nvm/versions/node/*/bin/node": [
+          {
+            "path": "/home/samyak/.nvm/versions/node/v25.9.0/bin/node",
+            "result": {
+              "exit_code": 0,
+              "output": "v25.9.0"
+            }
+          }
+        ],
+        ".local/bin/claude": [
+          {
+            "path": "/home/samyak/.local/bin/claude",
+            "result": {
+              "exit_code": 0,
+              "output": "2.1.269 (Claude Code)"
+            }
+          }
+        ],
+        ".local/bin/codex": [
+          {
+            "path": "/home/samyak/.local/bin/codex",
+            "result": {
+              "exit_code": 127,
+              "output": "/usr/bin/env: \u2018node\u2019: No such file or directory"
+            }
+          }
+        ],
+        ".volta/bin/node": [],
+        ".local/share/mise/installs/node/*/bin/node": []
+      },
+      "distribution": {
+        "PRETTY_NAME": "Ubuntu 24.04.4 LTS",
+        "VERSION_ID": "24.04",
+        "ID": "ubuntu"
+      },
+      "explicit_path_followup": {
+        "method": "prepend discovered user Node bin and user .local/bin to the child process PATH only; absolute executable paths; no shell configuration edit",
+        "node": {
+          "exit_code": 0,
+          "version": "v25.9.0"
+        },
+        "npm": {
+          "exit_code": 0,
+          "version": "11.12.1"
+        },
+        "codex": {
+          "exit_code": 0,
+          "version": "codex-cli 0.153.4"
+        },
+        "claude": {
+          "exit_code": 0,
+          "version": "2.1.269 (Claude Code)"
+        }
+      }
+    }
+  }
+}

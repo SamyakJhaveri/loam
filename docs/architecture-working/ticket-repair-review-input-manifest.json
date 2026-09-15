@@ -1,0 +1,41 @@
+{
+  "scope": "Fresh bounded review of listed current ticket contracts and complete dependency graph; no previous reviews",
+  "ticket_ids": [
+    "CORE-01",
+    "CORE-03",
+    "CORE-05",
+    "CORE-09",
+    "CORE-10",
+    "NATIVE-01",
+    "NATIVE-02",
+    "NATIVE-09",
+    "NATIVE-11",
+    "OPS-03",
+    "OPS-04",
+    "OPS-05",
+    "OPS-10",
+    "OPS-12"
+  ],
+  "files": [
+    {
+      "file": "docs/architecture-working/ticket-backlog.json",
+      "sha256": "cbdcd8862a16612003d937e683dbe7da248b3a6eb9d4b34b153ba63198e8e8a3"
+    },
+    {
+      "file": "docs/architecture-working/first-run-ownership-storage-recovery.md",
+      "sha256": "a6c82395ef9f643e7f6140616e8a4be7fcd6437e0ef8ee801cfa622e370fb61d"
+    },
+    {
+      "file": "docs/architecture-working/prior-design/records-and-transitions.md",
+      "sha256": "bb90d900226df193515af42038caeca4455ea0353b074f8d183f7ab877e82026"
+    },
+    {
+      "file": "docs/architecture-working/remote-execution-contract.md",
+      "sha256": "1f7fd3570cdc14f37f937acb6f6cfa9ae6dde2496e50a8775d9b6315b194146b"
+    }
+  ],
+  "packet_sha256": "fa4caa3116b2021beac6a22466214a6d53b5b12df62b2e1a8914aa4ab053dccc",
+  "packet_bytes": 190528,
+  "requested_model": "claude-fable-5-1",
+  "requested_effort": "high"
+}

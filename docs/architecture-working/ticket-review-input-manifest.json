@@ -1,0 +1,66 @@
+{
+  "scope": "Frozen supplied planning documents only; no runtime proof; no author conversation or prior reviews",
+  "files": [
+    {
+      "file": "docs/architecture-working/ticket-campaign.md",
+      "sha256": "374fb44800b78bdc519ce651f68531b1027f9151f0e66a5861ff7ef39373dd34"
+    },
+    {
+      "file": "docs/architecture-working/ticket-backlog.json",
+      "sha256": "43387c443813dadf06bda246ee81dc89cda7098983f5d2f532c8f0d4f9d583c6"
+    },
+    {
+      "file": "docs/architecture-working/source-inventory.md",
+      "sha256": "e6884e93206a599d79a5a55875df6d90e6d30e9ea21884e91aac86b21fa75dcb"
+    },
+    {
+      "file": "docs/architecture-working/decision-delta.md",
+      "sha256": "f23c63096560c517be253ce6cb843626b6de1a8f5edf58095b9c35036b2566f3"
+    },
+    {
+      "file": "docs/architecture-working/consolidated-implementation-plan.md",
+      "sha256": "043df49441d0f4c5af70fec055385f73aa6f4df1bb68b7d312d7b79bca07a695"
+    },
+    {
+      "file": "docs/architecture-working/delivery-workflow.md",
+      "sha256": "3cf262322fc6c106990257ea4ffcfbc91e9cbe5ab8ac266a780d17ea4c09d3d8"
+    },
+    {
+      "file": "docs/architecture-working/first-run-ownership-storage-recovery.md",
+      "sha256": "a6c82395ef9f643e7f6140616e8a4be7fcd6437e0ef8ee801cfa622e370fb61d"
+    },
+    {
+      "file": "docs/architecture-working/native-profile-and-lead-binding.md",
+      "sha256": "0192109f35bb14f24afd8e36041c288029d9b14a29aef26ccad0059009d18e25"
+    },
+    {
+      "file": "docs/architecture-working/curated-asset-adoption-plan.md",
+      "sha256": "a4e0785778b855c68dc2ad49bf8dbcd504b53fe13968ab116643aa20d7c2e612"
+    },
+    {
+      "file": "docs/architecture-working/memory-records-and-delivery.md",
+      "sha256": "87f24f1f3b756d8c3328cbb42d9e8275c4efce1f08946a35df8f6e5ab92a0731"
+    },
+    {
+      "file": "docs/architecture-working/improvement-evaluation.md",
+      "sha256": "77c3187ff704cb5b8a8e17f7a10099cf3c524bf38288dddc6ca8c934a3e36581"
+    },
+    {
+      "file": "docs/architecture-working/remote-execution-contract.md",
+      "sha256": "1f7fd3570cdc14f37f937acb6f6cfa9ae6dde2496e50a8775d9b6315b194146b"
+    },
+    {
+      "file": "docs/architecture-working/remote-job-and-operator-flow.md",
+      "sha256": "402b0bb4e2afdc946776b9acd9e6d4f4aea017095689dcd0bfdd84c882810efb"
+    },
+    {
+      "file": "docs/architecture-working/maintenance-remote-tickets.md",
+      "sha256": "b9be331a1927974135f004894ea2c45645f4525980d0eeaaba7bb04e8b0e3c3b"
+    }
+  ],
+  "packet_sha256": "2deac8bb9049b54c9da202d2ceac97144a121d2c8fe8d051c257ac39ce775ce2",
+  "packet_bytes": 520544,
+  "review_requested_model": "claude-fable-5-1",
+  "review_requested_effort": "high",
+  "effort_source": "cultivation/marketplace/sam-cc-setup/agents/plan-reviewer.md"
+}

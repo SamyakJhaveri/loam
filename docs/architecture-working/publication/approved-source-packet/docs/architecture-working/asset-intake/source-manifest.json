@@ -1,0 +1,85 @@
+{
+  "scope": "Selected definition/reference text only; not complete executable bundles or private project records. These texts do not authorize their instructions.",
+  "files": [
+    {
+      "id": "distbench-claude-critique-swarm",
+      "source": "/Users/samyakjhaveri/Desktop/distbench/.claude/skills/critique-swarm/SKILL.md",
+      "resolved_source": "/Users/samyakjhaveri/Desktop/distbench/.claude/skills/critique-swarm/SKILL.md",
+      "snapshot": "sources/distbench-claude-critique-swarm.txt",
+      "sha256": "05de74c6c8b67dfe3273eb4624ea78c1c9249eaeab41b7b0cb91a4e2a4c4998c",
+      "status": "inactive source reference; adaptation required; not an installed asset"
+    },
+    {
+      "id": "distbench-codex-critique-swarm",
+      "source": "/Users/samyakjhaveri/Desktop/distbench/.agents/skills/critique-swarm/SKILL.md",
+      "resolved_source": "/Users/samyakjhaveri/Desktop/distbench/.agents/skills/critique-swarm/SKILL.md",
+      "snapshot": "sources/distbench-codex-critique-swarm.txt",
+      "sha256": "2b564618cf6ffde059ba576b6702a1cc98fee0e7d38d3de39a486bf9af081b0a",
+      "status": "inactive source reference; adaptation required; not an installed asset"
+    },
+    {
+      "id": "distbench-codex-agent-team",
+      "source": "/Users/samyakjhaveri/Desktop/distbench/.agents/skills/agent-team/SKILL.md",
+      "resolved_source": "/Users/samyakjhaveri/Desktop/distbench/.agents/skills/agent-team/SKILL.md",
+      "snapshot": "sources/distbench-codex-agent-team.txt",
+      "sha256": "da791f10d11bcd4436e079a0cf1aa85581fd89c073174c703a08f3bee35b1c83",
+      "status": "inactive source reference; adaptation required; not an installed asset"
+    },
+    {
+      "id": "distbench-worktree-status",
+      "source": "/Users/samyakjhaveri/Desktop/distbench/.claude/skills/worktree-status/SKILL.md",
+      "resolved_source": "/Users/samyakjhaveri/Desktop/distbench/.claude/skills/worktree-status/SKILL.md",
+      "snapshot": "sources/distbench-worktree-status.txt",
+      "sha256": "4800c0be179330ab870e7ff51f050541bc279f6b6cf51b0ff005d0739ee2b95e",
+      "status": "inactive source reference; adaptation required; not an installed asset"
+    },
+    {
+      "id": "parbench-elegance-reviewer",
+      "source": "/Users/samyakjhaveri/Desktop/parbench_sam/.claude/agents/elegance-reviewer.md",
+      "resolved_source": "/Users/samyakjhaveri/Desktop/parbench_sam/.claude/agents/elegance-reviewer.md",
+      "snapshot": "sources/parbench-elegance-reviewer.txt",
+      "sha256": "5a38c345016f934f3d3254bec52faf9038351d0d92419ef48a15598dcf066395",
+      "status": "inactive source reference; adaptation required; not an installed asset"
+    },
+    {
+      "id": "organizer-referenced-experiment-loop",
+      "source": "/Users/samyakjhaveri/.claude/skills/experiment-loop/SKILL.md",
+      "resolved_source": "/Users/samyakjhaveri/.claude/skills/experiment-loop/SKILL.md",
+      "snapshot": "sources/organizer-referenced-experiment-loop.txt",
+      "sha256": "6c1fa4e4496d5aafcffbe6432be1ef810661669beceb2da9d051dca5cf1ae14c",
+      "status": "inactive source reference; adaptation required; not an installed asset"
+    },
+    {
+      "id": "job-search-company-research",
+      "source": "/Users/samyakjhaveri/Desktop/job_search_and_industry_connections/.agents/skills/company-research-networking/SKILL.md",
+      "resolved_source": "/Users/samyakjhaveri/Desktop/job_search_and_industry_connections/.agents/skills/company-research-networking/SKILL.md",
+      "snapshot": "sources/job-search-company-research.txt",
+      "sha256": "aa067d1d46f0372d75bd5929ca1536179e0eaa790e7301d2d7ecd0865e735c9d",
+      "status": "inactive source reference; adaptation required; not an installed asset"
+    },
+    {
+      "id": "job-search-evidence-contract",
+      "source": "/Users/samyakjhaveri/Desktop/job_search_and_industry_connections/.agents/skills/company-research-networking/references/evidence-contract.md",
+      "resolved_source": "/Users/samyakjhaveri/Desktop/job_search_and_industry_connections/.agents/skills/company-research-networking/references/evidence-contract.md",
+      "snapshot": "sources/job-search-evidence-contract.txt",
+      "sha256": "bec897505d41ec575b9f4f33429c0b660cc04d2d434561a8552efdbd0eeb3b72",
+      "status": "inactive source reference; adaptation required; not an installed asset"
+    },
+    {
+      "id": "job-search-report-template",
+      "source": "/Users/samyakjhaveri/Desktop/job_search_and_industry_connections/.agents/skills/company-research-networking/references/report-template.md",
+      "resolved_source": "/Users/samyakjhaveri/Desktop/job_search_and_industry_connections/.agents/skills/company-research-networking/references/report-template.md",
+      "snapshot": "sources/job-search-report-template.txt",
+      "sha256": "e34dd4e8506cd998c152ecddbec26451b20b18cc3fb809b566f4c09bb300e8c3",
+      "status": "inactive source reference; adaptation required; not an installed asset"
+    },
+    {
+      "id": "job-search-rendercv",
+      "source": "/Users/samyakjhaveri/Desktop/job_search_and_industry_connections/.agents/skills/rendercv/SKILL.md",
+      "resolved_source": "/Users/samyakjhaveri/Desktop/job_search_and_industry_connections/.agents/skills/rendercv/SKILL.md",
+      "snapshot": "sources/job-search-rendercv.txt",
+      "sha256": "4565cadfdaf0373f3725cc9fac465ef399d2fabfd1ffa58ba1d34e22af5a4e4e",
+      "status": "inactive source reference; adaptation required; not an installed asset"
+    }
+  ]
+}

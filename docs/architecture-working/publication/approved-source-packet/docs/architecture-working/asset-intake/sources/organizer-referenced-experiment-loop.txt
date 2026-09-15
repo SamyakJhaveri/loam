@@ -1,0 +1,93 @@
+---
+name: experiment-loop
+description: Use when comparing candidate tools/models/libraries in a measured bake-off ("which X should we use", "run experiments on these", "compare these tools"). Runs a pre-registered, agent-team experiment loop - protocol first, generator/evaluator separation, human final judgment - and records everything on disk. Built from the P3a transcription bake-off (instagram_organizer, 2026-08-17).
+---
+
+# Experiment loop - measured tool bake-offs
+
+Purpose: pick between N candidate tools/models with evidence, cheaply, and leave a permanent record.
+Derived from Anthropic's loop-engineering playbook (generator/evaluator separation, persistence outside the chat, human keeps the "no").
+
+## The loop, in order
+
+### 1. Pre-register the protocol (before ANY run)
+
+Create `experiments/<topic>/PROTOCOL.md` containing, frozen before results exist:
+- the question (one sentence);
+- the fixed input set;
+- the metrics (measurable, and include a "does it lie" honesty metric, e.g. behavior on empty/adversarial input);
+- the decision rule (what wins, what disqualifies, what breaks ties);
+- who judges (evaluator agents rank; the human makes the final call).
+
+Changing metrics after seeing results invalidates the comparison. If the rule turns out ambiguous at the observed margin, present both readings to the human; never quietly pick.
+
+### 2. Freeze the eval set, then smoke-test it
+
+- Pick a small diverse input set (5-6 items: size/duration spread, distinct sources, one degenerate case).
+- Freeze it as `experiments/<topic>/evalset.json`.
+- Smoke-test ONE input per candidate before any batch. Smoke tests find eval-set defects (e.g. a "video" with no audio track).
+- Defects found before results exist may be fixed by a documented amendment inside the eval file (what changed, why, and that no results existed yet).
+- Always include a positive control: one input where you know roughly what the output should contain.
+
+### 3. Generator agents author the runners (fresh context, parallel)
+
+- One Workflow with one agent per candidate. Each agent reads that tool's docs and writes `run_<candidate>.py` plus `install_<candidate>.sh`.
+- Give every agent the SAME output contract: one JSON schema for results (per-item wall time, output, error field, totals). Identical schema = trivially comparable results.
+- Agents syntax-check only (`py_compile`, `bash -n`). They never install or run - execution is the orchestrator's job.
+- Runners must: process items sequentially, time each item, record per-item errors and continue, never install anything, fail with a clear message if their tool is missing.
+
+### 4. Execute sequentially, measure deterministically
+
+- Install all candidates up front (background shell tasks; prefetch big model files in parallel with authoring).
+- Run ONE candidate at a time on otherwise idle hardware, or timing is meaningless.
+- Long runs: background Bash with a `until [ -f results/x.json ]; do sleep 5; done` waiter for notification.
+- Compute every metric that CAN be computed in code, in code (timing, coverage, output-structure checks, honesty probes). Agents judge only what code cannot.
+
+### 5. Evaluator agents judge (separate from generators)
+
+- Fresh judge agents, one per eval item, on a cheaper model (ranking is not frontier work).
+- Judges READ the result files from disk themselves - do not paste transcripts/outputs through the orchestrator context.
+- Skeptical stance in the prompt: "every output contains errors until evidence says otherwise"; force a strict ranking; require quoted examples for findings.
+- With no ground truth, use agreement: where all candidates agree, that content is almost surely right; judge the disagreements.
+- Aggregate as rank sums in code.
+
+### 6. Persist, present, decide
+
+- Save verdicts JSON next to results. Write the experiment record (question, method, table, per-candidate defects, conclusion) into the project's experiment log.
+- Build a side-by-side HTML artifact for the human: scoreboard, per-item outputs in parallel columns, judge findings, and the decision options with trade-offs stated plainly.
+- The human picks. Record the decision back into the experiment log and the tooling/resources registry with dates.
+
+## Gotchas learned the hard way (P3a run)
+
+1. **Workflow `args` may arrive as a string.** If `args.files` is undefined, the args were stringified. Hardcode the small input list in the script body instead. Failed launches die in milliseconds at zero agent-token cost, so fail fast and relaunch.
+2. **Foreground `sleep` chains are blocked.** Use background Bash with an `until` loop as a completion waiter.
+3. **Time-expiring inputs** (signed URLs, sessions): download/capture inputs FIRST, experiment on local copies.
+4. **Judges on cheaper models are fine; generators are not.** Runner authoring needs doc-reading accuracy; use the session model. Ranking with quoted evidence works one tier down.
+5. **A candidate that outputs nothing may be the honest one.** Verify silence with a second candidate before calling it a miss (two engines agreeing on silence = music-only clip, not a bug).
+
+## Upgrades borrowed from the ecosystem (added 2026-08-18)
+
+Sources: autoresearch-claude-code (drivelineresearch), ARIS (wanshuiyin), AI-Scientist (SakanaAI), inspect_ai (UK AISI), promptfoo.
+
+1. **Noise-floor baseline** (autoresearch): before declaring a winner on a close metric, run the leading candidate's config twice on the same inputs and measure run-to-run variance. A margin smaller than that variance is a tie, not a win; the decision rule's tiebreaker then applies.
+2. **Scorer lockdown** (autoresearch): PROTOCOL.md names the eval-set and metric-computation files as immutable to generator agents. The agent that writes a runner may never edit the scorer.
+3. **Cross-model judge option** (ARIS): for high-stakes comparisons, include one judge on a different model family than the generators; a different model carries none of the same self-persuasion.
+4. **Structured judge schema** (AI-Scientist): verdicts as {score, decision, quoted weaknesses}, aggregated in code; never free-prose-only verdicts.
+5. **Budget caps** (autoresearch): if the loop ever iterates (optimize mode, not one-shot bake-off), PROTOCOL.md must set maxRuns / maxSeconds / target-metric before the first iteration.
+
+Frameworks worth adopting when the shape fits: promptfoo (candidates are prompts/models: YAML config, deterministic asserts + llm-rubric, side-by-side matrix), inspect_ai (bake-offs grow past ~6 items or need reusable tasks/scorers/logs).
+
+Second sweep (2026-08-18, 12 repos from Samyak's PhD-tools catalog; full verdicts in the project's experiments/experimentation-tools-assessment.json):
+
+6. **Three-tier judging** (AutoResearchClaw/ARC-Bench): before any LLM judge runs, a deterministic no-LLM pre-check verifies results exist, parse, and conform to schema; after the LLM judges, the human tier uses one canonical audit prompt. Kills wasted judge tokens on broken runs.
+7. **Hash-pinned eval sets** (DVC + lm-evaluation-harness converge on this): record sha256 per eval file inside the frozen evalset file; runners verify hashes before running. A silently changed input invalidates the comparison.
+8. **Declare metric direction** (lm-evaluation-harness): every metric in PROTOCOL.md states higher-is-better or lower-is-better, so the decision rule is mechanical.
+9. **Bounded repair attempts** (AI-Scientist-v2): a generator agent gets K fix attempts on a broken runner (K=2), then the candidate is recorded as "failed to run" instead of debugged forever.
+10. **For a future optimize mode** (MetaGPT AFlow): persist every attempted variant with its parent and result (experience log), and deterministically reject duplicate proposals before spending eval budget.
+
+Ecosystem verdicts worth remembering: dspy and mlflow are "watch" (adopt mlflow tracking only if experiment volume outgrows EXPERIMENTS.md); RD-Agent, AI-Scientist-v2, AI-Researcher, freephdlabor, langfuse, promptflow are "skip" for this loop (open-ended research agents or infra we do not need; AI-Researcher additionally has no license).
+
+## Cost profile (for calibration)
+
+The P3a run: 3 doc-reading authors (~107k agent tokens), 4 judges (~173k), 4 research agents earlier (~215k), all local compute $0.
+Orchestrator context stayed lean because bulk data moved file-to-file, never through chat.

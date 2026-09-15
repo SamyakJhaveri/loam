@@ -1,0 +1,58 @@
+{
+  "scope": "Frozen documentation plan review; not implementation or runtime verification.",
+  "requested_model": "claude-fable-5-1",
+  "requested_effort": "high (existing plan-reviewer profile)",
+  "host": "jhaveris",
+  "process_exit": 0,
+  "input_manifest": [
+    {
+      "file": "docs/architecture-working/delivery-workflow.md",
+      "sha256": "28ed1344228b270be3264f7340290680fef0a7751dc020339e4b6ec21b0d30f4"
+    },
+    {
+      "file": "docs/architecture-working/consolidated-implementation-plan.md",
+      "sha256": "9a0716ad52340d7efcb85f6888105bf61780ed7383920496a441088d1d115b7a"
+    },
+    {
+      "file": "docs/architecture-working/remote-execution-contract.md",
+      "sha256": "1f7fd3570cdc14f37f937acb6f6cfa9ae6dde2496e50a8775d9b6315b194146b"
+    },
+    {
+      "file": "docs/architecture-working/native-profile-and-lead-binding.md",
+      "sha256": "0192109f35bb14f24afd8e36041c288029d9b14a29aef26ccad0059009d18e25"
+    }
+  ],
+  "is_error": false,
+  "result": "**Verdict:** Not clean. Five concrete gaps need small textual repairs before the first S1 ticket is authored. None requires rescoping or new production code. The user's constraints on TypeScript, deferred runtime, model/effort preservation, one project authority and durable recovery are otherwise carried through consistently across the four documents.\n\n## Blocking gaps\n\n- **Direct-to-main exemption can bypass review of gate files.** `consolidated-implementation-plan.md`, Global constraints, last bullet allows \"Docs/small fixes\" on main. That scope is undefined and covers `bin/check`, `bin/tests/*` and the `seed/docs/factory/*` files that S1, S4, S5 and S6 list as stage deliverables. Under the sequential policy these commits are the only source of main drift, and they would skip the ticket cycle in `delivery-workflow.md`. Repair: restrict the exemption to files outside `seed/`, `bin/` and `copier.yml` that no stage Files list names, and state that any such commit still triggers step 6 rebase and evidence refresh for open steps.\n\n- **Mixed-model authorship makes opposite-model review undefined.** `delivery-workflow.md`, \"Who implements and who reviews\" fixes the reviewer by implementation lead and excludes advisors, but not helpers. Step 4 permits native helpers, and S3 bundles Claude and Codex adapter files in one stage. If a Fable-led ticket uses Codex helpers, the Codex reviewer co-authored the diff. Repair: add one sentence that every helper on a ticket uses the lead's model, so a single opposite seat can review the whole diff. Split S3 tickets by seat as the recommendation already implies.\n\n- **S3 focused acceptance omits the coordination fixture.** `delivery-workflow.md`, \"Concrete plan additions\" names `dist/tests/native/coordination.test.js` as the S3 focused command. The S3 focused acceptance command in the consolidated plan lists eight files and not this one, so the gate would pass without running the required cases. Repair: add it to the S3 command line.\n\n- **Shipping form of compiled JavaScript is unstated.** The consolidated plan says one implementation \"ships from seed as compiled JavaScript\" and later requires \"source/build/dependency equality\" in S6. It never says whether `dist/` is committed to `seed/.loam/factory/` or built on the recipient from `package-lock.json`. The S1 ticket, the staleness rule and the per-step `bin/check` differ materially between those readings. Repair: one sentence in S1 choosing committed output or recipient build, plus the matching staleness check in the S1 `bin/check` integration.\n\n- **S1 probe list drops the surfaces S3 depends on.** `delivery-workflow.md` states \"S1 qualifies the native surfaces needed by the planned patterns.\" The S1 native probe bullet in the consolidated plan covers profile discovery, attribution, model/effort and withdrawal only. Delegation/subagent, dynamic tool or workflow, and advisor surfaces are absent, yet S3 requires them and forbids inventing parity. Repair: add those surfaces to the S1 probe bullet with the same fixture-first and unavailable-on-failure rules.\n\n## Nonblocking recommendations\n\n- **Post-repair re-review.** Step 5 says \"revalidate the changed candidate.\" State that this includes a new opposite-model review receipt for the changed diff, since step 6 binds review to the final candidate.\n- **Reviewer provenance.** Require the review receipt to carry the native model identifier, not the Astra or Fable label, matching the label-mapping rule in `native-profile-and-lead-binding.md`.\n- **Receipt location.** \"Campaign review/base receipts can initially be recorded by the integration owner\" names no file. Name one durable place so a fresh session can verify a step before creating the next.\n- **Product review policy.** The coordination fixture's \"wrong-model review\" case risks hardcoding the campaign's opposite-model rule into every seeded factory, which the reuse section forbids. Test rejection against the admitted profile's declared reviewer requirement instead.\n- **Both-host evidence.** Step 6 records one `bin/check`. Where a stage gate requires both hosts, say both host runs bind to the candidate.\n- **Linger enablement.** `remote-execution-contract.md` verifies `Linger=no`. S4 should list enabling linger as an explicit operator-authorized host change, not an implied setup step.\n- **File ownership clarity.** S2's backup/restore transaction has no named source file, and S3's focused command references four `tests/assets/*` files absent from its Files list. Point both at their owning file or ticket.\n- **Release render test.** S1 and S6 both name `bin/tests/factory-release-render.test.mjs`. State S1's minimal scope so the S1 gate is not read as the S6 release gate.\n\n## Limitations\n\nThis is a document-only review. Referenced files were not supplied, including the maintenance tickets, adoption plan, first-run, memory and operator-flow contracts, the research index and `START-NEXT-SESSION.md`. Claims marked \"Verified\" about `bin/factory.d`, `bin/check`, `codex-cli 0.154.0`, the Claude SDK and `jhaveris` systemd state are taken as stated and were not confirmed. Existing `bin/check` behavior and whether a CI result exists could not be inspected.",
+  "reported_model_usage": {
+    "claude-haiku-4-5-20251001": {
+      "inputTokens": 17688,
+      "outputTokens": 15,
+      "cacheReadInputTokens": 0,
+      "cacheCreationInputTokens": 0,
+      "webSearchRequests": 0,
+      "costUSD": 0.017762999999999998,
+      "contextWindow": 200000,
+      "maxOutputTokens": 32000,
+      "thinkingTokens": 0,
+      "canonicalModel": "claude-haiku-4-5",
+      "provider": "firstParty",
+      "costBasis": "list"
+    },
+    "claude-fable-5-1": {
+      "inputTokens": 2,
+      "outputTokens": 10979,
+      "cacheReadInputTokens": 0,
+      "cacheCreationInputTokens": 29755,
+      "webSearchRequests": 0,
+      "costUSD": 1.14407,
+      "contextWindow": 1000000,
+      "maxOutputTokens": 64000,
+      "thinkingTokens": 9152,
+      "canonicalModel": "claude-fable-5-1",
+      "provider": "firstParty",
+      "costBasis": "list"
+    }
+  },
+  "attribution_limit": "Native result reports Fable use and additional Haiku use; purpose of additional usage was not verified. No claim of a fully qualified model-isolation profile."
+}

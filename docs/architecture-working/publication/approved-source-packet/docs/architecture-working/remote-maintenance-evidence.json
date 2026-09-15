@@ -1,0 +1,85 @@
+{
+  "scope": "Read-only local source inspection and authorized SSH command/help/manual inspection; no job launch, model call, installation, configuration edit, session inventory, or project script execution.",
+  "remote_host": "jhaveris",
+  "verified": {
+    "user_manager_version": "255.4-1ubuntu8.17",
+    "user_manager_state": "running",
+    "login_user_state": "active",
+    "linger": false,
+    "gpu_list": [
+      "NVIDIA GeForce RTX 4070"
+    ],
+    "nvidia_driver": "580.173.02",
+    "available_on_noninteractive_path": [
+      "bash",
+      "python3",
+      "tmux",
+      "systemctl",
+      "loginctl",
+      "systemd-run",
+      "journalctl",
+      "nohup",
+      "setsid",
+      "flock",
+      "nvidia-smi"
+    ],
+    "not_on_noninteractive_path": [
+      "node",
+      "claude",
+      "codex",
+      "sbatch",
+      "squeue",
+      "qsub",
+      "qstat",
+      "bsub"
+    ]
+  },
+  "project_sources": {
+    "/Users/samyakjhaveri/Desktop/parbench_sam/scripts/orchestration/run_conveyor.sh": [
+      "tmux prescribed in usage",
+      "absolute remote project path",
+      "explicit NVM and NVIDIA compiler PATH",
+      "native claude implementer and codex gate",
+      "flat per-task/round files overwritten on rerun",
+      "manual start-task resume",
+      "terminal marker verdicts instead of durable launch record"
+    ],
+    "/Users/samyakjhaveri/Desktop/parbench_sam/scripts/batch/run_phase3.sh": [
+      "tmux detached launcher",
+      "tee log",
+      "completion marker",
+      "same-name previous session killed at launcher start",
+      "existing eval resume flag"
+    ],
+    "/Users/samyakjhaveri/Desktop/distbench/Distbench-Harness-Architecture-v1-Fable.md": [
+      "proposal for distbench-mcp and SkyPilot",
+      "not evidence those execution dependencies are installed"
+    ]
+  },
+  "installed_manual_evidence": {
+    "loginctl": "Linger enabled starts user manager at boot and keeps it after logout.",
+    "logind.conf": "UserStopDelaySec controls manager termination after full logout; default documented as 10s, actual config not inspected.",
+    "systemd-run": "Service mode runs manager-parented in clean detached environment. Scope mode inherits caller environment and is synchronous. --remain-after-exit retains completed service runtime information.",
+    "systemd.service": "Type=exec catches executable/process setup failure but does not prove application initialization.",
+    "systemd.unit": "Transient user unit definitions are in XDG_RUNTIME_DIR/systemd/transient.",
+    "file-hierarchy": "/run is flushed at boot.",
+    "journald.conf": "Storage=auto can be volatile. Actual configuration not inspected.",
+    "tmux": "Sessions survive accidental SSH disconnection and intentional detach."
+  },
+  "design_implications": [
+    "Do not promise logout persistence with current Linger=no.",
+    "Persistent executor startup and disk ledger/spool are separate from transient child job survival.",
+    "Reboot interrupts running processes; reconcile durable job records instead of assuming automatic job resurrection.",
+    "Launch acknowledgement must include durable job identity and executable readiness, not SSH exit alone.",
+    "Use validated absolute executable profiles; remote noninteractive PATH lacks native agent CLIs."
+  ],
+  "not_verified": [
+    "Actual last-logout behavior",
+    "Systemd service launch permissions",
+    "Reboot recovery",
+    "Journal storage configuration",
+    "Remote installed native CLI paths outside noninteractive PATH",
+    "Scheduler presence outside noninteractive PATH",
+    "GPU job behavior"
+  ]
+}

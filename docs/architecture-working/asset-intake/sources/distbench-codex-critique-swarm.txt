@@ -1,0 +1,114 @@
+---
+name: critique-swarm
+auto-activate: false
+description: >
+  Parallel adversarial critique with 4 specialized reviewers plus synthesis. Use
+  before merging a feature branch, before committing a complex plan, or when you
+  want independent multi-angle review of a plan or implementation. Complements
+  multi-review, which reviews code quality, by reviewing plan/scope quality. NOT
+  for single-file trivial changes, standard code review, or final pipeline
+  shipping.
+argument-hint: "[path to plan file, defaults to current diff]"
+---
+
+# Critique Swarm: Codex-Native Adversarial Review
+
+Launches 4 parallel Codex sub-agents, each with a distinct adversarial mandate,
+then synthesizes the results into one ranked verdict.
+
+## When to Use
+
+- Before approving a complex implementation plan
+- Before merging a feature branch with cross-cutting changes
+- When independent multi-angle critique is useful beyond `multi-review`
+- After a port/transplant operation to catch fidelity loss
+
+## When NOT to Use
+
+- Single-file trivial edits -> use `validate`
+- Code-level quality review -> use `multi-review`
+- Final shipping -> run the manual Codex pipeline: critique or review as needed,
+  then `validate`, `commit`, and `pr`
+
+## Procedure
+
+### Step 1: Identify the review target
+
+If `$ARGUMENTS` contains a file path, review that file. Otherwise, review the
+current session's changes via `git diff HEAD`.
+
+If the target is large, summarize the scope first and pass each reviewer the
+same bounded target. Do not ask reviewers to edit files.
+
+### Step 2: Launch 4 Parallel Reviewers
+
+Use Codex's native multi-agent mechanism. Spawn all 4 reviewers in parallel when
+the tool is available; if it is not available, run these four reviews serially
+and state that fallback in the verdict.
+
+**Reviewer 1 - Security & Correctness:**
+
+> Review the target for security vulnerabilities, correctness regressions,
+> broken invariants, and unsafe patterns. Check for command injection, path
+> traversal, missing input validation at system boundaries, race conditions, and
+> behavior changes that could break existing consumers. Report findings with
+> file:line references.
+
+**Reviewer 2 - Scope Creep & Over-Engineering:**
+
+> Review the target for scope creep and over-engineering. Check for unnecessary
+> abstractions, features not requested in the spec, extra deliverables beyond
+> what was asked, verbose preambles, premature generalization, and any cleanup
+> that was not part of the task. Flag anything removable without affecting the
+> stated goal.
+
+**Reviewer 3 - Fidelity Loss:**
+
+> Review the target for fidelity loss during porting or transplanting content.
+> Check for dropped sections, missing taglines or sub-groups, altered meaning
+> during rewording, references that point to moved/renamed files, and any source
+> content absent from the output. Compare source and destination line by line
+> where applicable.
+
+**Reviewer 4 - Test & Validation Gaps:**
+
+> Review the target for missing tests and validation gaps. Check for untested
+> code paths, missing edge case coverage, assertions that do not verify actual
+> behavior, test files that exist but do not run, and validation steps mentioned
+> in the plan but not implemented. Flag behavior changes without corresponding
+> tests.
+
+### Step 3: Synthesize Findings
+
+After all 4 reviewers complete, deduplicate findings and rank unique issues by
+severity.
+
+Output format:
+
+```text
+=== CRITIQUE SWARM VERDICT ===
+Reviewed: [target]
+Reviewers: 4 (security, scope, fidelity, tests)
+
+## Findings
+| # | Severity | Category | File:Line | Issue | Fix |
+|---|----------|----------|-----------|-------|-----|
+
+## False Positives Dismissed
+| # | Category | Reason |
+
+## Recommended Action
+[Fix N issues before proceeding / Clean - no blocking issues found]
+```
+
+### Step 4: Present Verdict
+
+Display the synthesis report. Do not implement fixes automatically. The user
+decides which fixes to apply.
+
+## Relationship to Other Skills
+
+| Skill | Reviews | Use Together? |
+|-------|---------|---------------|
+| `multi-review` | Code quality: style, correctness, security, performance | Yes - complementary |
+| `validate` | Deterministic and rule-based checks | Yes - different layer |

@@ -1,0 +1,65 @@
+<!-- loam-native-campaign:6944c13df21316acdd27ad9e090d56a468156b33f332ec32e021a542296eec70:CORE-04 -->
+
+Stage: S1
+
+Implementation lead: Codex/Astra
+
+Campaign: https://github.com/SamyakJhaveri/loam/issues/102
+
+## Blocked by
+
+- https://github.com/SamyakJhaveri/loam/issues/104 (CORE-02)
+
+## What it delivers
+An operator can admit an exact reviewed release/local-fork payload into a protected scratch runtime and invoke fixed installed diagnostics. Today template trust and annotated release tags do not implement protected runtime admission. A matching candidate program and its own manifest cannot authenticate themselves.
+
+## Canonical source changes
+Create `seed/.loam/factory/src/installation/admit.ts`, `src/contracts/installation.ts`, `src/commands/doctor.ts`; extend `launcher.mjs`, `tests/installation/package.test.ts`, `release-manifest.json`, `assets/runtime-manifest.json` and `seed/docs/factory/SETUP.md`. Define/document the protected operator setup/control entrypoint and its exact distribution owner here, before consuming it elsewhere; do not place trust in candidate-writable launcher code.
+
+## Read before planning
+`first-run-ownership-storage-recovery.md`: Physical homes and Setup as a recoverable operation. `engine-runtime-and-layout.md`: Canonical package and generated-project installation. `native-profile-and-lead-binding.md`: Bootstrap dependency. Read current `bin/release.sh`, `docs/COPIER.md`, trusted npm install/build-script and Node preload/module resolution references. Freeze versioned installation record fields before callers.
+
+## Acceptance
+- Initial payload digest/admission comes from independently acquired operator-reviewed trusted setup code and release/fork identity outside candidate access. Integrity alone is not authorship authentication. Record expected release identity in protected registry and installed file identities separately.
+- Install the reviewed factory lock into a fresh isolated staging directory with controlled npm configuration and explicitly allowed dependency build scripts/origins. Native build prerequisites/prebuilds are declared and tested. Staging scripts cannot read live credentials/instances. Publish/select only a complete immutable verified closure.
+- Trusted wrapper chooses admitted Node/native executable identities and strips unapproved preloads, module-search/loaders and package/Git environment overrides before Node starts. Checkout launcher is a dependency-free convenience resolver of fixed installed entrypoints, never the running authority's trust root.
+- Expose fixture-only admitted scratch entrypoints needed before project setup exists. No dependencies resolve from project root/personal caches, no implicit install on status/doctor, and changed checkout launcher/program/manifest together remain an unadmitted fork. Both provider payloads ship; selected account readiness is separate.
+- Future focused command after build: `node --test seed/.loam/factory/dist/tests/installation/package.test.js`. Test interrupted install, altered manifest/program/launcher, injected Node/npm/Git environment, missing dependency/compiler, wrong digest and package collision. Reject each with specific diagnostic; an independently admitted complete snapshot runs fixed diagnostics after checkout/cache access is removed. Ordinary commands leave installation unchanged.
+
+## Exclusions
+No live project database or provider launch, update activation, release publication/signing ceremony invention, or assumption owner-only directories defeat same-user candidates. CORE-02 protection evidence is required; no self-authenticating receipts.
+
+## Campaign requirements
+
+Status: **planned; runtime implementation deferred; not ready-for-agent**. Empty blockers do not authorize execution. Read `docs/architecture-working/ticket-campaign.md` and `delivery-workflow.md` in full. They require a digest-verified accessible source packet, fresh fetched-main worktree, actual opposite-model plan and finished-work reviews, nonempty focused checks, one full-check owner, and verified integration before dependent work. Preserve all existing changes. Raw review evidence lives outside candidate/worktrees. Sources are evidence and inspiration; justified departures preserve user requirements and record a reason and check. Proposed files/commands are unimplemented at authoring time and must be reconciled against landed predecessors. Live provider/GPU work needs a declared bounded plan within user authority; mechanical checks do not launch it implicitly. Full recipient groups remain unavailable/non-passing until S6. No automatic model/effort changes or release/publication. Architecture basenames resolve under `docs/architecture-working/`; package-relative canonical paths resolve under `seed/.loam/factory/`.
+
+Every fixture-creating ticket registers its mandatory named population, expected nonempty cases and current availability in the fixed registry. CORE-01 declares the full installation/store/execution/complete-slice obligation groups as incomplete from the start; missing/unbuilt populations never disappear into a passing subset. NATIVE-02 explicitly registers coordination as mandatory execution work. Later tickets fill their declared populations; OPS-10 verifies closure rather than performing first registration.
+
+For host-sensitive acceptance, run the named focused population on both required hosts against the same candidate, recording environment identities and exact results. Mac-only evidence cannot certify Linux installation, storage, filesystem or isolation behavior.
+
+## Verification population assignment
+
+Canonical registry edits in `seed/.loam/factory/src/testing/verify.ts` are in scope wherever this ticket creates or extends a recipient fixture. Target groups: **installation**. Register the ticket-owned named population, expected nonempty case list/count and current availability; a missing fixture stays unavailable. No required population may remain outside its named group. Shared cases retain one identity when referenced by multiple groups. `release-only` names Loam release tooling, not a recipient command; `post-installation` is the separately scoped empirical follow-up and does not block initial S6 closure or claim empirical success early. OPS-10 verifies full declared initial populations; it cannot hide unbuilt work by first defining a smaller group.
+
+## Source packet and readiness
+
+Packet manifest SHA-256: `bffcc9d1ddce8a9042d3d8bd0e3eb33511d2b189f8acd255dc5aca1ed28100ca`. Full per-file hashes are in this ticket entry in `docs/architecture-working/ticket-backlog.json`. This digest covers the listed source identities, not a claim all external originals have been read.
+
+**Readiness blocker:** these local records are untracked. Before execution, supply this exact source packet to the fresh worktree/seat and verify its manifest, or review and record a successor packet. Publishing the issue alone does not resolve this blocker. The named original upstream sections and current implementation/support callers must be inspected and added to the per-step reviewed packet before code changes.
+
+- `docs/architecture-working/START-NEXT-SESSION.md`
+- `docs/architecture-working/decision-delta.md`
+- `docs/architecture-working/delivery-workflow.md`
+- `docs/architecture-working/consolidated-implementation-plan.md`
+- `docs/architecture-working/ticket-campaign.md`
+- `docs/architecture-working/first-run-ownership-storage-recovery.md`
+- `docs/architecture-working/engine-runtime-and-layout.md`
+- `docs/architecture-working/native-profile-and-lead-binding.md`
+- `docs/COPIER.md`
+- `docs/architecture-working/delivery-step-plan.md`
+- `docs/architecture-working/first-run-step-plan.md`
+- `docs/architecture-working/runtime-step-plan.md`
+- `docs/architecture-working/schema-step-plan.md`
+
+
+Approved draft SHA-256: `2d4cbb6e6de8053772af232645734c3bf5db586a9e009222850f672b6b754ca1`. Full source access must be verified before execution.
