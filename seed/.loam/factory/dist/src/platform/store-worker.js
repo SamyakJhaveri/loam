@@ -14,25 +14,21 @@ if (port) {
     catch (error) {
         const err = error;
         port.postMessage({ type: 'open', ok: false, code: err.code, errcode: err.errcode, message: err.message ?? String(error) });
+        port.close();
     }
-    port.on('message', (message) => {
-        if (message.type === 'run') {
-            try {
-                const rows = db ? db.prepare(message.sql ?? '').all() : [];
-                port.postMessage({ type: 'result', id: message.id, ok: true, rows });
+    const connection = db;
+    if (connection)
+        port.on('message', (message) => {
+            if (message.type === 'run') {
+                try {
+                    const rows = connection.prepare(message.sql ?? '').all();
+                    port.postMessage({ type: 'result', id: message.id, ok: true, rows });
+                }
+                catch (error) {
+                    const err = error;
+                    port.postMessage({ type: 'result', id: message.id, ok: false, code: err.code, errcode: err.errcode, message: err.message ?? String(error) });
+                }
             }
-            catch (error) {
-                const err = error;
-                port.postMessage({ type: 'result', id: message.id, ok: false, code: err.code, errcode: err.errcode, message: err.message ?? String(error) });
-            }
-        }
-        else if (message.type === 'close') {
-            try {
-                db?.close();
-            }
-            catch { /* already closed */ }
-            port.postMessage({ type: 'closed' });
-        }
-    });
+        });
 }
 //# sourceMappingURL=store-worker.js.map

@@ -15,6 +15,8 @@ export function storeURI(path) {
         throw new Error(`arbitrary store URI refused: ${path}`);
     if (!isAbsolute(path))
         throw new Error(`store path must be absolute: ${path}`);
+    if (path.startsWith('//'))
+        throw new Error(`ambiguous store path with leading double slash: ${path}`);
     return `file:${path.split('/').map((segment) => encodeURIComponent(segment)).join('/')}?mode=rw`;
 }
 function readPragmaInt(db, pragma) {
@@ -62,6 +64,7 @@ export function acquireOwnership(lockPath) {
         throw new OwnershipRefused(`lock file is missing: ${lockPath}`, 14);
     }
     let db;
+    let after;
     try {
         db = new DatabaseSync(storeURI(lockPath), { timeout: 0 });
         db.exec('PRAGMA locking_mode=exclusive');
@@ -71,6 +74,10 @@ export function acquireOwnership(lockPath) {
         if (journal !== 'delete')
             throw new Error(`unexpected journal mode for lock: ${journal}`);
         db.prepare('insert into owner(pid, started_at) values (?, ?)').run(process.pid, Date.now());
+        after = statSync(lockPath, { bigint: true });
+        if (after.dev !== before.dev || after.ino !== before.ino) {
+            throw new OwnershipRefused(`lock path replaced during acquisition: ${lockPath}`);
+        }
     }
     catch (error) {
         try {
@@ -83,11 +90,6 @@ export function acquireOwnership(lockPath) {
         throw error;
     }
     const connection = db;
-    const after = statSync(lockPath, { bigint: true });
-    if (after.dev !== before.dev || after.ino !== before.ino) {
-        connection.close();
-        throw new OwnershipRefused(`lock path replaced during acquisition: ${lockPath}`);
-    }
     const storedDev = after.dev;
     const storedIno = after.ino;
     let released = false;
@@ -124,15 +126,28 @@ export function openStoreOnWorker(path, options) {
     const worker = new Worker(new URL('./store-worker.js', import.meta.url), { workerData: { path, options } });
     const pending = new Map();
     let sequence = 0;
+    let terminalError;
+    let closing;
     let openResolve;
     let openReject;
     const opened = new Promise((resolve, reject) => { openResolve = resolve; openReject = reject; });
+    // run() also awaits opened; callers may use that path without reading opened.
+    void opened.catch(() => { });
+    function fail(error) {
+        terminalError ??= error;
+        openReject(terminalError);
+        for (const entry of pending.values())
+            entry.reject(terminalError);
+        pending.clear();
+    }
     worker.on('message', (message) => {
+        if (terminalError)
+            return;
         if (message.type === 'open') {
             if (message.ok && message.effective)
                 openResolve(message.effective);
             else
-                openReject(makeError(message));
+                fail(makeError(message));
         }
         else if (message.type === 'result' && typeof message.id === 'number') {
             const entry = pending.get(message.id);
@@ -145,14 +160,31 @@ export function openStoreOnWorker(path, options) {
                 entry.reject(makeError(message));
         }
     });
-    worker.on('error', (error) => { openReject(error); for (const entry of pending.values())
-        entry.reject(error); pending.clear(); });
+    worker.on('error', fail);
+    worker.on('exit', (code) => fail(new Error(`store worker exited with code ${code}`)));
     return {
         opened,
-        run(sql) {
-            return new Promise((resolve, reject) => { const id = ++sequence; pending.set(id, { resolve, reject }); worker.postMessage({ type: 'run', id, sql }); });
+        async run(sql) {
+            await opened;
+            if (terminalError)
+                throw terminalError;
+            return new Promise((resolve, reject) => {
+                const id = ++sequence;
+                pending.set(id, { resolve, reject });
+                try {
+                    worker.postMessage({ type: 'run', id, sql });
+                }
+                catch (error) {
+                    pending.delete(id);
+                    reject(error);
+                }
+            });
         },
-        async close() { worker.postMessage({ type: 'close' }); await worker.terminate(); },
+        close() {
+            fail(new Error('store worker closed'));
+            closing ??= worker.terminate().then(() => { });
+            return closing;
+        },
     };
 }
 //# sourceMappingURL=ownership.js.map

@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { appendFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
+import { appendFileSync, copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { spawnSync } from 'node:child_process';
@@ -85,11 +85,13 @@ const WORKSPACE_SCRIPT = 'const fs=require("node:fs");const cp=require("node:chi
     'const r=cp.spawnSync("node",["-e","process.stdout.write(String(1))"],{encoding:"utf8"});' +
     'if(c==="hello"&&list.includes("probe.txt")&&r.status===0&&r.stdout==="1")process.stdout.write("WORKSPACE-OK");' +
     'else{process.stderr.write("bad c="+c+" child="+r.stdout+" st="+r.status);process.exit(4);}';
-const RUNTIME_WRITE_SCRIPT = 'const fs=require("node:fs");const cp=require("node:child_process");const path=require("node:path");' +
-    'const bin=(process.env.PATH||"").split(":")[0];const rt=path.dirname(bin);' +
-    'const r=cp.spawnSync("node",["-e","0"],{encoding:"utf8"});const execOk=r.status===0;' +
-    'let writeDenied=false;try{fs.writeFileSync(path.join(rt,"intrusion.txt"),"x");}catch(e){writeDenied=true;}' +
-    'if(execOk&&writeDenied)process.stdout.write("RUNTIME-RO");else{process.stderr.write("exec="+r.status+" wd="+writeDenied);process.exit(5);}';
+function runtimeWriteScript(target) {
+    return 'const fs=require("node:fs");const cp=require("node:child_process");' +
+        'const r=cp.spawnSync("node",["-e","0"],{encoding:"utf8"});' +
+        'if(r.status!==0){process.stderr.write("exec="+r.status);process.exit(5);}' +
+        'try{fs.writeFileSync(' + JSON.stringify(target) + ',"x");process.stdout.write("RUNTIME-RW");}' +
+        'catch(e){process.stdout.write("RUNTIME-RO:"+e.code);}';
+}
 test('boundary.mechanism-available', () => {
     const a = boundaryAvailability();
     assert.ok(a.available, a.available ? '' : `mechanism unavailable: ${a.reasons.join('; ')}`);
@@ -109,20 +111,29 @@ test('boundary.workspace-admitted', () => {
     }
 });
 test('boundary.runtime-write-denied', () => {
-    const mech = requireMechanism();
     const s = setup();
     try {
-        const r = runContained(specFor(s, ['-e', RUNTIME_WRITE_SCRIPT]));
+        const scratchRuntime = join(s.base, 'runtime');
+        mkdirSync(join(scratchRuntime, 'bin'), { recursive: true });
+        const scratchNode = join(scratchRuntime, 'bin', 'node');
+        copyFileSync(nodeExe, scratchNode);
+        const target = join(scratchRuntime, `write-${randomUUID()}`);
+        const command = ['-e', runtimeWriteScript(target)];
+        const control = spawnSync(scratchNode, command, {
+            env: { ...sanitizedEnvironment(process.env), PATH: join(scratchRuntime, 'bin') }, encoding: 'utf8', timeout: 30000,
+        });
+        assert.equal(control.status, 0, control.stderr || String(control.error));
+        assert.equal(control.stdout, 'RUNTIME-RW', 'uncontained scratch runtime is writable');
+        assert.equal(readFileSync(target, 'utf8'), 'x');
+        rmSync(target);
+        const mech = requireMechanism();
+        const r = runContained({ ...specFor(s, command), runtimeDir: scratchRuntime, execPath: scratchNode });
         assert.equal(r.status, 0, r.stderr || String(r.error));
-        assert.match(r.stdout, /RUNTIME-RO/);
-        assert.equal(existsSync(join(runtimeDir, 'intrusion.txt')), false, 'no file created under runtimeDir');
+        assert.match(r.stdout, /^RUNTIME-RO:(EACCES|EPERM|EROFS)$/);
+        assert.equal(existsSync(target), false, 'no file created under scratch runtime');
         record('boundary.runtime-write-denied', mech, 'runtime write denied');
     }
     finally {
-        try {
-            rmSync(join(runtimeDir, 'intrusion.txt'), { force: true });
-        }
-        catch { /* best effort */ }
         s.cleanup();
     }
 });
@@ -171,6 +182,9 @@ test('boundary.descendant-denied', () => {
     try {
         const target = join(s.protectedPaths.registry, 'marker');
         const original = readFileSync(target, 'utf8');
+        const control = spawnSync(nodeExe, ['-e', descendantScript(target)], { env: sanitizedEnvironment(process.env), encoding: 'utf8', timeout: 30000 });
+        assert.equal(control.status, 0, control.stderr || String(control.error));
+        assert.equal(control.stdout, `LEAK:${original}`, 'uncontained descendant can read the same target');
         const r = runContained(specFor(s, ['-e', descendantScript(target)]));
         assert.equal(r.status, 0, r.stderr || String(r.error));
         assert.match(r.stdout, /DESC-DENIED/, `expected descendant denial, got ${r.stdout}`);

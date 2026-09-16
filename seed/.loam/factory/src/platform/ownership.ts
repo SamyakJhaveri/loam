@@ -1,4 +1,4 @@
-import { statSync } from 'node:fs';
+import { statSync, type BigIntStats } from 'node:fs';
 import { isAbsolute } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 import { Worker } from 'node:worker_threads';
@@ -34,6 +34,7 @@ export function storeURI(path: string): string {
   if (path.includes('\x00')) throw new Error(`store path contains a NUL byte: ${JSON.stringify(path)}`);
   if (path === ':memory:' || path.startsWith('file:')) throw new Error(`arbitrary store URI refused: ${path}`);
   if (!isAbsolute(path)) throw new Error(`store path must be absolute: ${path}`);
+  if (path.startsWith('//')) throw new Error(`ambiguous store path with leading double slash: ${path}`);
   return `file:${path.split('/').map((segment) => encodeURIComponent(segment)).join('/')}?mode=rw`;
 }
 
@@ -76,6 +77,7 @@ export function acquireOwnership(lockPath: string): Ownership {
   try { before = statSync(lockPath, { bigint: true }); }
   catch { throw new OwnershipRefused(`lock file is missing: ${lockPath}`, 14); }
   let db: DatabaseSync | undefined;
+  let after: BigIntStats;
   try {
     db = new DatabaseSync(storeURI(lockPath), { timeout: 0 });
     db.exec('PRAGMA locking_mode=exclusive');
@@ -84,6 +86,10 @@ export function acquireOwnership(lockPath: string): Ownership {
     const journal = readPragmaText(db, 'journal_mode');
     if (journal !== 'delete') throw new Error(`unexpected journal mode for lock: ${journal}`);
     db.prepare('insert into owner(pid, started_at) values (?, ?)').run(process.pid, Date.now());
+    after = statSync(lockPath, { bigint: true });
+    if (after.dev !== before.dev || after.ino !== before.ino) {
+      throw new OwnershipRefused(`lock path replaced during acquisition: ${lockPath}`);
+    }
   } catch (error) {
     try { db?.close(); } catch { /* already closed */ }
     const err = error as { errcode?: number; message?: string };
@@ -91,11 +97,6 @@ export function acquireOwnership(lockPath: string): Ownership {
     throw error;
   }
   const connection = db!;
-  const after = statSync(lockPath, { bigint: true });
-  if (after.dev !== before.dev || after.ino !== before.ino) {
-    connection.close();
-    throw new OwnershipRefused(`lock path replaced during acquisition: ${lockPath}`);
-  }
   const storedDev = after.dev;
   const storedIno = after.ino;
   let released = false;
@@ -124,13 +125,24 @@ export function openStoreOnWorker(path: string, options: StoreOptions): StoreWor
   const worker = new Worker(new URL('./store-worker.js', import.meta.url), { workerData: { path, options } });
   const pending = new Map<number, { resolve(rows: unknown[]): void; reject(error: Error): void }>();
   let sequence = 0;
+  let terminalError: Error | undefined;
+  let closing: Promise<void> | undefined;
   let openResolve!: (settings: EffectiveSettings) => void;
   let openReject!: (error: Error) => void;
   const opened = new Promise<EffectiveSettings>((resolve, reject) => { openResolve = resolve; openReject = reject; });
+  // run() also awaits opened; callers may use that path without reading opened.
+  void opened.catch(() => {});
+  function fail(error: Error): void {
+    terminalError ??= error;
+    openReject(terminalError);
+    for (const entry of pending.values()) entry.reject(terminalError);
+    pending.clear();
+  }
   worker.on('message', (message: WorkerMessage) => {
+    if (terminalError) return;
     if (message.type === 'open') {
       if (message.ok && message.effective) openResolve(message.effective);
-      else openReject(makeError(message));
+      else fail(makeError(message));
     } else if (message.type === 'result' && typeof message.id === 'number') {
       const entry = pending.get(message.id);
       if (!entry) return;
@@ -139,12 +151,24 @@ export function openStoreOnWorker(path: string, options: StoreOptions): StoreWor
       else entry.reject(makeError(message));
     }
   });
-  worker.on('error', (error) => { openReject(error); for (const entry of pending.values()) entry.reject(error); pending.clear(); });
+  worker.on('error', fail);
+  worker.on('exit', (code) => fail(new Error(`store worker exited with code ${code}`)));
   return {
     opened,
-    run(sql: string): Promise<unknown[]> {
-      return new Promise((resolve, reject) => { const id = ++sequence; pending.set(id, { resolve, reject }); worker.postMessage({ type: 'run', id, sql }); });
+    async run(sql: string): Promise<unknown[]> {
+      await opened;
+      if (terminalError) throw terminalError;
+      return new Promise((resolve, reject) => {
+        const id = ++sequence;
+        pending.set(id, { resolve, reject });
+        try { worker.postMessage({ type: 'run', id, sql }); }
+        catch (error) { pending.delete(id); reject(error); }
+      });
     },
-    async close(): Promise<void> { worker.postMessage({ type: 'close' }); await worker.terminate(); },
+    close(): Promise<void> {
+      fail(new Error('store worker closed'));
+      closing ??= worker.terminate().then(() => {});
+      return closing;
+    },
   };
 }

@@ -1,15 +1,15 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { appendFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, renameSync, rmSync, statSync, writeFileSync } from 'node:fs';
+import { appendFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, renameSync, rmSync, statSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
 import { spawn, spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { once } from 'node:events';
 import { DatabaseSync, backup } from 'node:sqlite';
 import { qualifyRuntime, runtimeIdentity, spawnRuntime } from '../../src/platform/runtime.js';
 import { acquireOwnership, openExistingStore, openStoreOnWorker, OwnershipRefused, storeURI } from '../../src/platform/ownership.js';
-import { sanitizedEnvironment, sanitizeProcessEnvironment } from '../../src/platform/native-boundary.js';
+import { containedCommand, PROTECTED_KINDS, sanitizedEnvironment, sanitizeProcessEnvironment } from '../../src/platform/native-boundary.js';
 const manifestPath = fileURLToPath(new URL('../../../assets/runtime-manifest.json', import.meta.url));
 const ownershipSource = fileURLToPath(new URL('../../src/platform/ownership.js', import.meta.url));
 const STORE_APPID = 0x4c4f414d;
@@ -128,6 +128,20 @@ test('runtime.child-resolved-explicitly', () => {
     assert.equal(result.status, 0, result.stderr);
     assert.equal(result.stdout.trim(), process.execPath);
 });
+test('runtime.foreign-executable-refused', () => {
+    const dir = tmp();
+    try {
+        const fake = join(dir, 'not-node');
+        writeFileSync(fake, 'not a runtime');
+        const result = qualifyRuntime(manifestPath, { execPath: fake });
+        assert.equal(result.status, 'unavailable');
+        assert.ok(result.status === 'unavailable' && result.reasons.some((reason) => reason.includes('running executable')));
+        assert.equal(qualifyRuntime(manifestPath, { execPath: process.execPath }).status, 'qualified');
+    }
+    finally {
+        rmSync(dir, { recursive: true, force: true });
+    }
+});
 test('storage.uri-encodes-metacharacters', () => {
     const dir = tmp();
     try {
@@ -159,6 +173,22 @@ test('storage.missing-refused', () => {
         assert.throws(() => openExistingStore(path, { applicationId: STORE_APPID }), (e) => { observed = e.errcode; return e.errcode === 14; });
         assert.equal(existsSync(path), false);
         record('storage.missing-refused', 'node:sqlite', observed);
+    }
+    finally {
+        rmSync(dir, { recursive: true, force: true });
+    }
+});
+test('storage.authority-shaped-path-refused', () => {
+    const dir = tmp();
+    try {
+        const path = join(dir, 'state.sqlite');
+        createStore(path, STORE_APPID);
+        const { db } = openExistingStore(path, { applicationId: STORE_APPID });
+        db.close();
+        for (const ambiguous of [`//localhost${path}`, `/${path}`]) {
+            assert.throws(() => openExistingStore(ambiguous, { applicationId: STORE_APPID }), /ambiguous.*path/i);
+            assert.throws(() => storeURI(ambiguous), /ambiguous.*path/i);
+        }
     }
     finally {
         rmSync(dir, { recursive: true, force: true });
@@ -339,6 +369,124 @@ test('lock.competing-owner-refused', async () => {
         rmSync(dir, { recursive: true, force: true });
     }
 });
+async function within(promise) {
+    let timer;
+    try {
+        return await Promise.race([promise, new Promise((_, reject) => {
+                timer = setTimeout(() => reject(new Error('worker request did not settle')), 2000);
+            })]);
+    }
+    finally {
+        clearTimeout(timer);
+    }
+}
+test('storage.worker-open-failure-rejects-queries', async () => {
+    const dir = tmp();
+    const handle = openStoreOnWorker(join(dir, 'missing.sqlite'), { applicationId: STORE_APPID });
+    try {
+        const open = assert.rejects(within(handle.opened), { errcode: 14 });
+        const queued = assert.rejects(within(handle.run('select 1')), { errcode: 14 });
+        await Promise.all([open, queued]);
+        await assert.rejects(within(handle.run('select 1')), { errcode: 14 });
+    }
+    finally {
+        await handle.close();
+        rmSync(dir, { recursive: true, force: true });
+    }
+});
+test('storage.worker-query-succeeds', async () => {
+    const dir = tmp();
+    const path = join(dir, 'state.sqlite');
+    createStore(path, STORE_APPID, 'create table t(v integer)');
+    const handle = openStoreOnWorker(path, { applicationId: STORE_APPID });
+    try {
+        assert.deepEqual(await within(handle.run('select 7 as v')), [{ v: 7 }]);
+        assert.equal((await handle.opened).applicationId, STORE_APPID);
+        await assert.rejects(within(handle.run('select * from missing_table')), /no such table/);
+        assert.deepEqual(await within(handle.run('select 8 as v')), [{ v: 8 }]);
+    }
+    finally {
+        await handle.close();
+        rmSync(dir, { recursive: true, force: true });
+    }
+});
+test('storage.worker-close-rejects-queries', async () => {
+    const dir = tmp();
+    const path = join(dir, 'state.sqlite');
+    createStore(path, STORE_APPID, 'create table t(v integer)');
+    const handle = openStoreOnWorker(path, { applicationId: STORE_APPID, busyTimeoutMs: 300 });
+    let holder;
+    try {
+        await handle.opened;
+        holder = spawnHolder(STORE_HOLDER, { LOAM_STORE_PATH: path });
+        await waitHeld(holder);
+        const pending = assert.rejects(within(handle.run('select * from t')), /closed/);
+        // Let run() post the query. The separate holder prevents a reply before close.
+        await new Promise((resolve) => setImmediate(resolve));
+        await handle.close();
+        await pending;
+        await assert.rejects(within(handle.run('select 1')), /closed/);
+        await handle.close();
+    }
+    finally {
+        await handle.close();
+        if (holder) {
+            holder.kill('SIGKILL');
+            await once(holder, 'exit');
+        }
+        rmSync(dir, { recursive: true, force: true });
+    }
+});
+test('storage.worker-exit-settles-requests', () => {
+    const dir = tmp();
+    try {
+        const path = join(dir, 'state.sqlite');
+        createStore(path, STORE_APPID);
+        const moduleURL = new URL('../../src/platform/ownership.js', import.meta.url).href;
+        const script = `
+      import assert from 'node:assert/strict';
+      import threads from 'node:worker_threads';
+      import { syncBuiltinESMExports } from 'node:module';
+      const OriginalWorker = threads.Worker;
+      let worker;
+      threads.Worker = class extends OriginalWorker { constructor(...args) { super(...args); worker = this; } };
+      syncBuiltinESMExports();
+      const { openStoreOnWorker } = await import(${JSON.stringify(moduleURL)});
+      const handle = openStoreOnWorker(${JSON.stringify(path)}, { applicationId: ${STORE_APPID} });
+      threads.Worker = OriginalWorker; syncBuiltinESMExports();
+      const timer = setTimeout(() => { console.error('requests did not settle after exit'); process.exit(2); }, 2000);
+      const open = assert.rejects(handle.opened, /exited/);
+      const queued = assert.rejects(handle.run('select 1'), /exited/);
+      // Terminate the real thread before startup, without handle.close().
+      await worker.terminate();
+      await Promise.all([open, queued]);
+      await assert.rejects(handle.run('select 1'), /exited/);
+      await handle.close();
+      clearTimeout(timer);
+    `;
+        const result = spawnRuntime(['--input-type=module', '-e', script]);
+        assert.equal(result.status, 0, result.stderr);
+    }
+    finally {
+        rmSync(dir, { recursive: true, force: true });
+    }
+});
+test('storage.worker-close-before-open-settles', async () => {
+    const dir = tmp();
+    const path = join(dir, 'state.sqlite');
+    createStore(path, STORE_APPID);
+    const handle = openStoreOnWorker(path, { applicationId: STORE_APPID });
+    try {
+        const open = assert.rejects(within(handle.opened), /closed/);
+        const queued = assert.rejects(within(handle.run('select 1')), /closed/);
+        const results = await Promise.all([open, queued, handle.close()]);
+        assert.equal(results.length, 3);
+    }
+    finally {
+        await handle.close();
+        rmSync(dir, { recursive: true, force: true });
+    }
+});
 test('lock.stopped-owner-still-owns', async () => {
     const dir = tmp();
     const lock = join(dir, 'owner.lock');
@@ -470,6 +618,47 @@ test('lock.never-unlinks', async () => {
         rmSync(dir, { recursive: true, force: true });
     }
 });
+test('lock.failed-acquisition-releases', () => {
+    const dir = tmp();
+    try {
+        const lock = join(dir, 'owner.lock');
+        createLock(lock);
+        const moduleURL = new URL('../../src/platform/ownership.js', import.meta.url).href;
+        // Inject the rename at the last stat in an isolated process. The competing
+        // process then proves OS lock release while the failed acquirer is alive.
+        const script = `
+      import assert from 'node:assert/strict';
+      import fs from 'node:fs';
+      import { syncBuiltinESMExports } from 'node:module';
+      import { spawnSync } from 'node:child_process';
+      import { acquireOwnership } from ${JSON.stringify(moduleURL)};
+      const lock = ${JSON.stringify(lock)}, moved = lock + '.moved';
+      const original = fs.statSync;
+      let visits = 0;
+      fs.statSync = function(path, ...args) {
+        if (path === lock && ++visits === 2) fs.renameSync(lock, moved);
+        return original(path, ...args);
+      };
+      syncBuiltinESMExports();
+      try { assert.throws(() => acquireOwnership(lock), { code: 'ENOENT' }); }
+      finally { fs.statSync = original; syncBuiltinESMExports(); }
+      assert.equal(visits, 2);
+      fs.renameSync(moved, lock);
+      const child = spawnSync(process.execPath, ['--input-type=module', '-e',
+        'import { acquireOwnership } from ' + ${JSON.stringify(JSON.stringify(moduleURL))} + ';' +
+        'const own = acquireOwnership(' + JSON.stringify(lock) + '); own.release(); console.log("acquired");'
+      ], { encoding: 'utf8', timeout: 10000 });
+      assert.equal(child.status, 0, child.stderr);
+      assert.equal(child.stdout.trim(), 'acquired');
+    `;
+        const result = spawnRuntime(['--input-type=module', '-e', script]);
+        assert.equal(result.status, 0, result.stderr);
+        record('lock.failed-acquisition-releases', 'sqlite-exclusive-lock', 'separate process reacquired restored inode');
+    }
+    finally {
+        rmSync(dir, { recursive: true, force: true });
+    }
+});
 test('env.preload-stripped', () => {
     const dir = tmp();
     try {
@@ -484,6 +673,73 @@ test('env.preload-stripped', () => {
         assert.equal(control.status, 0, control.stderr);
         assert.equal(existsSync(marker), true, 'unsanitised control must run the preload');
         record('env.preload-stripped', 'sanitized-env', existsSync(marker));
+    }
+    finally {
+        rmSync(dir, { recursive: true, force: true });
+    }
+});
+test('boundary.conflicting-layout-refused', () => {
+    const dir = tmp();
+    try {
+        const workspace = join(dir, 'workspace');
+        const runtimeDir = join(dir, 'runtime');
+        const control = join(dir, 'control');
+        for (const path of [workspace, runtimeDir, control])
+            mkdirSync(path);
+        const protectedPaths = Object.fromEntries(PROTECTED_KINDS.map((kind) => [kind, control]));
+        const spec = { workspace, runtimeDir, protectedPaths, execPath: process.execPath, command: ['-e', '0'] };
+        function expectRefusal(candidate) {
+            const result = containedCommand(candidate);
+            try {
+                assert.ok('status' in result, 'conflicting layout must not produce a command');
+                assert.match(result.reasons.join('; '), /overlap|resolve.*path/i);
+            }
+            finally {
+                if ('profile' in result && result.profile)
+                    rmSync(dirname(result.profile), { recursive: true, force: true });
+            }
+        }
+        for (const registry of [workspace, runtimeDir, dir, '/usr', join(dir, 'missing')]) {
+            expectRefusal({ ...spec, protectedPaths: { ...protectedPaths, registry } });
+        }
+        const alias = join(dir, 'workspace-alias');
+        symlinkSync(workspace, alias);
+        expectRefusal({ ...spec, protectedPaths: { ...protectedPaths, registry: alias } });
+        expectRefusal({ ...spec, runtimeDir: workspace });
+        const valid = containedCommand(spec);
+        try {
+            if ('status' in valid)
+                assert.match(valid.reasons.join('; '), /bwrap not found|sandbox-exec not found|unsupported platform/);
+            else
+                assert.ok(valid.file.length > 0, 'disjoint layout produces a command');
+        }
+        finally {
+            if ('profile' in valid && valid.profile)
+                rmSync(dirname(valid.profile), { recursive: true, force: true });
+        }
+    }
+    finally {
+        rmSync(dir, { recursive: true, force: true });
+    }
+});
+test('env.openssl-startup-stripped', () => {
+    const dir = tmp();
+    try {
+        const config = join(dir, 'openssl.cnf');
+        // An inert syntax error proves the control actually consumes this startup input.
+        writeFileSync(config, '[unterminated section\n');
+        const keys = ['OPENSSL_CONF', 'OPENSSL_CONF_INCLUDE', 'OPENSSL_MODULES', 'OPENSSL_ENGINES'];
+        const env = { ...sanitizedEnvironment(process.env), OPENSSL_CONF: config,
+            OPENSSL_CONF_INCLUDE: dir, OPENSSL_MODULES: dir, OPENSSL_ENGINES: dir };
+        const script = `process.stdout.write(JSON.stringify(${JSON.stringify(keys)}.map(k => process.env[k] ?? null)))`;
+        const control = spawnSync(process.execPath, ['-e', script], { env, encoding: 'utf8' });
+        assert.equal(control.error, undefined);
+        assert.notEqual(control.status, 0, 'control must consume the malformed configuration');
+        assert.match(control.stderr, /OpenSSL configuration error/i);
+        const clean = spawnRuntime(['-e', script], { env });
+        assert.equal(clean.status, 0, clean.stderr);
+        assert.deepEqual(JSON.parse(clean.stdout), keys.map(() => null));
+        record('env.openssl-startup-stripped', 'sanitized-env', 'control consumes config; clean child starts without overrides');
     }
     finally {
         rmSync(dir, { recursive: true, force: true });
@@ -513,7 +769,7 @@ test('env.git-redirection-stripped', () => {
     }
 });
 test('env.process-sanitized-before-children', () => {
-    const keys = ['NODE_OPTIONS', 'GIT_DIR', 'DYLD_INSERT_LIBRARIES'];
+    const keys = ['NODE_OPTIONS', 'GIT_DIR', 'DYLD_INSERT_LIBRARIES', 'OPENSSL_CONF', 'OPENSSL_CONF_INCLUDE', 'OPENSSL_MODULES', 'OPENSSL_ENGINES'];
     const saved = {};
     for (const key of keys)
         saved[key] = process.env[key];
@@ -521,6 +777,8 @@ test('env.process-sanitized-before-children', () => {
         process.env.NODE_OPTIONS = '--max-old-space-size=64';
         process.env.GIT_DIR = '/tmp/elsewhere/.git';
         process.env.DYLD_INSERT_LIBRARIES = '/tmp/evil.dylib';
+        for (const key of keys.filter((key) => key.startsWith('OPENSSL_')))
+            process.env[key] = '/unused/startup-input';
         sanitizeProcessEnvironment();
         for (const key of keys)
             assert.equal(process.env[key], undefined, `${key} removed from process.env`);

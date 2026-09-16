@@ -1,6 +1,6 @@
 import { existsSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { isAbsolute, join, relative } from 'node:path';
 import { spawnSync } from 'node:child_process';
 
 export const PROTECTED_KINDS = ['registry', 'state', 'locks', 'credentials', 'sockets', 'callbacks'] as const;
@@ -23,6 +23,7 @@ export type Availability = { available: true; mechanism: string } | { available:
 const STRIP_EXACT = new Set([
   'NODE_OPTIONS', 'NODE_PATH', 'NODE_REPL_EXTERNAL_MODULE', 'NODE_EXTRA_CA_CERTS',
   'NODE_PRESERVE_SYMLINKS_MAIN', 'NODE_TLS_REJECT_UNAUTHORIZED',
+  'OPENSSL_CONF', 'OPENSSL_CONF_INCLUDE', 'OPENSSL_MODULES', 'OPENSSL_ENGINES',
   'LD_PRELOAD', 'LD_LIBRARY_PATH', 'LD_AUDIT',
   'PYTHONPATH', 'PYTHONSTARTUP', 'PERL5OPT', 'BASH_ENV', 'ENV', 'PROMPT_COMMAND',
 ]);
@@ -59,6 +60,32 @@ function resolveBwrap(): string | null {
   return !probe.error && probe.status === 0 ? 'bwrap' : null;
 }
 function realpathOr(path: string): string { try { return realpathSync(path); } catch { return path; } }
+function containsPath(parent: string, child: string): boolean {
+  const path = relative(parent, child);
+  return path === '' || (!isAbsolute(path) && path !== '..' && !path.startsWith('../'));
+}
+function overlaps(a: string, b: string): boolean { return containsPath(a, b) || containsPath(b, a); }
+function canonicalSpec(spec: ContainSpec): ContainSpec {
+  function canonical(path: string): string {
+    if (!isAbsolute(path)) throw new Error(`cannot resolve containment path: ${path}`);
+    try { return realpathSync(path); }
+    catch { throw new Error(`cannot resolve containment path: ${path}`); }
+  }
+  const workspace = canonical(spec.workspace);
+  const runtimeDir = canonical(spec.runtimeDir);
+  if (overlaps(workspace, runtimeDir)) throw new Error('workspace and runtime paths overlap');
+  // Use one conservative layout contract on both hosts. Linux exposes these
+  // system roots in addition to the workspace and runtime bind mounts.
+  const exposed = [workspace, runtimeDir, ...LINUX_RO_BINDS.map(realpathOr), '/proc', '/dev'];
+  const protectedPaths = {} as Record<ProtectedKind, string>;
+  for (const kind of PROTECTED_KINDS) {
+    const path = canonical(spec.protectedPaths[kind]);
+    const conflict = exposed.find((root) => overlaps(root, path));
+    if (conflict) throw new Error(`protected ${kind} path ${path} overlaps exposed path ${conflict}`);
+    protectedPaths[kind] = path;
+  }
+  return { ...spec, workspace, runtimeDir, protectedPaths };
+}
 function sbplString(value: string): string { return `"${value.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`; }
 // Deny rules come last and name the same operations as the broad allow
 // (file-read* and file-write*). Seatbelt resolves rules per operation and a more
@@ -95,6 +122,8 @@ function linuxArgs(spec: ContainSpec): string[] {
 }
 
 export function containedCommand(spec: ContainSpec): ContainResult {
+  try { spec = canonicalSpec(spec); }
+  catch (error) { return { status: 'unavailable', reasons: [error instanceof Error ? error.message : String(error)] }; }
   const env = allowlistEnv(spec);
   if (process.platform === 'linux') {
     const bwrap = resolveBwrap();

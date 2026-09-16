@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import { readFileSync } from 'node:fs';
+import { readFileSync, realpathSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
 import { DatabaseSync } from 'node:sqlite';
 import { sanitizedEnvironment } from './native-boundary.js';
@@ -45,6 +45,10 @@ export function qualifyRuntime(manifestPath, options = {}) {
     let execSha256;
     try {
         execSha256 = digestOf(execPath);
+        // Identity above belongs to this process, never to an arbitrary hashed file.
+        if (realpathSync(execPath) !== realpathSync(process.execPath)) {
+            reasons.push(`executable ${execPath} is not the running executable ${process.execPath}`);
+        }
     }
     catch {
         reasons.push(`executable not found: ${execPath}`);

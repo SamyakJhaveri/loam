@@ -40,7 +40,16 @@ storage open (no create fallback, no arbitrary URI), the SQLite exclusive lifeti
 (a competing owner is refused, a stopped owner keeps the lock, a killed owner releases
 it, a child does not inherit it, a replaced path is detected, the lock is never
 unlinked), and that preload and Git-redirection environment inputs are stripped before
-a trusted child starts. It runs inside a sandbox and on CI, so it is part of `bin/check`.
+a trusted child starts. OpenSSL configuration and provider/engine directory overrides
+are stripped too. Worker queries reject after an open failure or closure. Closing
+rejects outstanding requests and waits for the worker to terminate. A database write
+may already have completed; rejection does not prove that its effects were rolled
+back. The gate runs inside a sandbox and on CI, so it is part of `bin/check`.
+
+Store paths must be absolute local paths with a single leading slash. Leading double
+slashes are refused because SQLite can interpret them as a URI authority. Runtime
+qualification describes the running executable; an override naming a different file
+is unavailable, even when its hash can be read.
 
 `qualify native-boundary` proves candidate containment: a contained process may work in
 its workspace but is denied the protected registry, state, locks, credentials, sockets
@@ -49,6 +58,12 @@ run without containment reads them. It needs a real sandbox mechanism (`sandbox-
 macOS, `bwrap` on Linux) that cannot nest inside another sandbox, so it is **not** part
 of `bin/check`. Run it from a plain terminal on macOS and directly on Linux; a nested or
 sandboxed session fails at `boundary.mechanism-available` with the mechanism's own reason.
+
+Containment requires existing, disjoint workspace and runtime roots. Protected paths
+must exist and must not overlap either root or the exposed system roots. The boundary
+resolves symlinks before checking these relationships and refuses conflicting layouts.
+The runtime-write fixture uses a scratch runtime and proves that its write succeeds
+without containment before checking the denial.
 
 Both commands are qualification only. No runtime is supported yet: the runtime manifest
 keeps `supportedRuntime: false` and records the Node and bundled SQLite versions and
