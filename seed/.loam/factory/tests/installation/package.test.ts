@@ -6,7 +6,7 @@ import { spawnSync } from 'node:child_process';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { test } from 'node:test';
 import { assertImportClosure, createReleaseManifest, payloadFiles, snapshot, verifyPackage } from '../../src/installation/package.js';
-import { assertCaseResults, GROUPS, PACKAGE_CASES, POPULATIONS, requireGroup } from '../../src/testing/verify.js';
+import { assertCaseResults, GROUPS, NATIVE_BOUNDARY_CASES, PACKAGE_CASES, POPULATIONS, QUALIFICATION_CASES, requireGroup } from '../../src/testing/verify.js';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '../../..');
 function clone(): string {
@@ -64,10 +64,18 @@ test('package.manifest-boundaries', () => {
 });
 test('package.registry-obligations', () => {
   assert.equal(new Set(POPULATIONS.map(value => value.id)).size, POPULATIONS.length);
-  const packageEntry = POPULATIONS.find(value => value.id === 'package-closure');
-  assert.ok(packageEntry?.available);
-  assert.deepEqual(packageEntry.expectedCases, PACKAGE_CASES);
-  assert.equal(packageEntry.fixture, 'dist/tests/installation/package.test.js');
+  const available = new Map<string, { fixture: string; cases: readonly string[] }>([
+    ['package-closure', { fixture: 'dist/tests/installation/package.test.js', cases: PACKAGE_CASES }],
+    ['platform-qualification', { fixture: 'dist/tests/platform/qualification.test.js', cases: QUALIFICATION_CASES }],
+    // native-boundary is host-only; see the OPS-10 note in verify.ts POPULATIONS.
+    ['native-boundary', { fixture: 'dist/tests/platform/native-boundary.test.js', cases: NATIVE_BOUNDARY_CASES }],
+  ]);
+  for (const [id, expected] of available) {
+    const entry = POPULATIONS.find(value => value.id === id);
+    assert.ok(entry?.available, `${id} available`);
+    assert.equal(entry.fixture, expected.fixture);
+    assert.deepEqual(entry.expectedCases, expected.cases);
+  }
   const owners = new Set(POPULATIONS.flatMap(value => [...value.owners]));
   for (const [prefix, count] of [['CORE', 10], ['NATIVE', 13], ['OPS', 12]] as const) {
     for (let index = 1; index <= count; index++) assert.ok(owners.has(`${prefix}-${String(index).padStart(2, '0')}`));
@@ -75,7 +83,7 @@ test('package.registry-obligations', () => {
   for (const population of POPULATIONS) {
     assert.ok(population.expectedCases.length > 0);
     if (population.scope !== 'recipient') assert.equal(population.groups.length, 0);
-    if (population.id !== 'package-closure') assert.equal(population.available, false);
+    if (!available.has(population.id)) assert.equal(population.available, false);
   }
   assert.deepEqual(POPULATIONS.find(value => value.id === 'curated-workflows')?.owners, ['NATIVE-06', 'NATIVE-07']);
 });
