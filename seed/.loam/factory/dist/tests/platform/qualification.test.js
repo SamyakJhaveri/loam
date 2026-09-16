@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { appendFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, renameSync, rmSync, statSync, symlinkSync, writeFileSync } from 'node:fs';
+import { appendFileSync, existsSync, linkSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, renameSync, rmSync, statSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { spawn, spawnSync } from 'node:child_process';
@@ -717,6 +717,108 @@ test('boundary.conflicting-layout-refused', () => {
             if ('profile' in valid && valid.profile)
                 rmSync(dirname(valid.profile), { recursive: true, force: true });
         }
+    }
+    finally {
+        rmSync(dir, { recursive: true, force: true });
+    }
+});
+test('boundary.hard-link-admission-refused', () => {
+    const dir = tmp();
+    function layout() {
+        const root = mkdtempSync(join(dir, 'layout-'));
+        const workspace = join(root, 'workspace');
+        const runtimeDir = join(root, 'runtime');
+        const neutral = join(root, 'neutral');
+        for (const path of [workspace, runtimeDir, neutral])
+            mkdirSync(path);
+        const protectedPaths = Object.fromEntries(PROTECTED_KINDS.map((kind) => {
+            const path = join(root, `protected-${kind}`);
+            mkdirSync(path);
+            return [kind, path];
+        }));
+        return { workspace, runtimeDir, neutral, protectedPaths,
+            spec: { workspace, runtimeDir, protectedPaths, execPath: process.execPath, command: ['-e', '0'] } };
+    }
+    function cleanup(result) {
+        if ('profile' in result && result.profile)
+            rmSync(dirname(result.profile), { recursive: true, force: true });
+    }
+    function expectRefusal(name, spec) {
+        const result = containedCommand(spec);
+        try {
+            assert.ok('status' in result, `${name} hard link must refuse admission before a launcher command is constructed`);
+            assert.match(result.reasons.join('; '), /hard.?link|link count|multiply linked/i, `${name} names its hard-link admission refusal`);
+        }
+        finally {
+            cleanup(result);
+        }
+    }
+    function expectAdmission(name, spec) {
+        const result = containedCommand(spec);
+        try {
+            if ('status' in result)
+                assert.match(result.reasons.join('; '), /bwrap not found|sandbox-exec not found|unsupported platform/, `${name} has no admission refusal`);
+            else
+                assert.ok(result.file.length > 0, `${name} produces a launcher command`);
+        }
+        finally {
+            cleanup(result);
+        }
+    }
+    function hardLink(source, alias) {
+        linkSync(source, alias);
+        assert.equal(statSync(source).ino, statSync(alias).ino, 'fixture aliases one inode');
+        assert.ok(statSync(source).nlink > 1, 'fixture establishes a multiply-linked regular file');
+    }
+    try {
+        const ordinary = layout();
+        const lock = join(ordinary.protectedPaths.locks, 'owner.lock');
+        createLock(lock);
+        const ownership = acquireOwnership(lock);
+        try {
+            assert.equal(ownership.isPathReplaced(), false, 'ordinary control retains its lifetime ownership lock');
+            expectAdmission('ordinary layout while its lock is held', ordinary.spec);
+        }
+        finally {
+            ownership.release();
+        }
+        const protectedWorkspace = layout();
+        const protectedWorkspaceFile = join(protectedWorkspace.protectedPaths.registry, 'marker');
+        writeFileSync(protectedWorkspaceFile, 'protected');
+        hardLink(protectedWorkspaceFile, join(protectedWorkspace.workspace, 'registry-alias'));
+        expectRefusal('protected-to-workspace', protectedWorkspace.spec);
+        const protectedRuntime = layout();
+        const protectedRuntimeFile = join(protectedRuntime.protectedPaths.registry, 'marker');
+        writeFileSync(protectedRuntimeFile, 'protected');
+        hardLink(protectedRuntimeFile, join(protectedRuntime.runtimeDir, 'registry-alias'));
+        expectRefusal('protected-to-runtime', protectedRuntime.spec);
+        const protectedNeutral = layout();
+        const protectedNeutralFile = join(protectedNeutral.protectedPaths.registry, 'marker');
+        writeFileSync(protectedNeutralFile, 'protected');
+        hardLink(protectedNeutralFile, join(protectedNeutral.neutral, 'registry-alias'));
+        expectRefusal('protected-to-neutral-sibling', protectedNeutral.spec);
+        const runtimeWorkspace = layout();
+        const runtimeFile = join(runtimeWorkspace.runtimeDir, 'marker');
+        writeFileSync(runtimeFile, 'runtime');
+        hardLink(runtimeFile, join(runtimeWorkspace.workspace, 'runtime-alias'));
+        expectRefusal('runtime-to-workspace', runtimeWorkspace.spec);
+        const workspaceInternal = layout();
+        const workspaceFile = join(workspaceInternal.workspace, 'marker');
+        writeFileSync(workspaceFile, 'workspace');
+        hardLink(workspaceFile, join(workspaceInternal.workspace, 'marker-alias'));
+        expectRefusal('workspace-internal', workspaceInternal.spec);
+        const cleanProtectedFileRoot = layout();
+        const cleanRootFile = join(dir, 'clean-protected-file-root');
+        writeFileSync(cleanRootFile, 'protected');
+        expectAdmission('single-link protected regular-file root', { ...cleanProtectedFileRoot.spec,
+            protectedPaths: { ...cleanProtectedFileRoot.protectedPaths, registry: cleanRootFile } });
+        const protectedFileRoot = layout();
+        const rootFile = join(dir, 'protected-file-root');
+        writeFileSync(rootFile, 'protected');
+        hardLink(rootFile, join(protectedFileRoot.neutral, 'protected-root-alias'));
+        expectRefusal('protected-regular-file-root', { ...protectedFileRoot.spec,
+            protectedPaths: { ...protectedFileRoot.protectedPaths, registry: rootFile } });
+        record('boundary.hard-link-admission-refused', 'hard-link-fixtures', 'all aliases rejected');
     }
     finally {
         rmSync(dir, { recursive: true, force: true });

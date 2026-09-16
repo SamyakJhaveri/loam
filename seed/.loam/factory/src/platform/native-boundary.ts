@@ -1,4 +1,4 @@
-import { existsSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, lstatSync, mkdtempSync, readdirSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { isAbsolute, join, relative } from 'node:path';
 import { spawnSync } from 'node:child_process';
@@ -86,6 +86,31 @@ function canonicalSpec(spec: ContainSpec): ContainSpec {
   }
   return { ...spec, workspace, runtimeDir, protectedPaths };
 }
+function inspectLinkCounts(role: string, root: string): void {
+  const visitedDirectories = new Set<string>();
+  function inspect(path: string): void {
+    let stat;
+    try { stat = lstatSync(path, { bigint: true }); }
+    catch (error) { throw new Error(`cannot inspect containment ${role} path ${path}: ${error instanceof Error ? error.message : String(error)}`); }
+    if (!stat.isDirectory()) {
+      if (stat.nlink !== 1n) throw new Error(`containment ${role} path has link count ${stat.nlink}: ${path}`);
+      return;
+    }
+    const identity = `${stat.dev}:${stat.ino}`;
+    if (visitedDirectories.has(identity)) return;
+    visitedDirectories.add(identity);
+    let entries: string[];
+    try { entries = readdirSync(path); }
+    catch (error) { throw new Error(`cannot inspect containment ${role} path ${path}: ${error instanceof Error ? error.message : String(error)}`); }
+    for (const entry of entries) inspect(join(path, entry));
+  }
+  inspect(root);
+}
+function inspectContainmentLinks(spec: ContainSpec): void {
+  inspectLinkCounts('workspace', spec.workspace);
+  inspectLinkCounts('runtime', spec.runtimeDir);
+  for (const kind of PROTECTED_KINDS) inspectLinkCounts(`protected ${kind}`, spec.protectedPaths[kind]);
+}
 function sbplString(value: string): string { return `"${value.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`; }
 // Deny rules come last and name the same operations as the broad allow
 // (file-read* and file-write*). Seatbelt resolves rules per operation and a more
@@ -122,7 +147,7 @@ function linuxArgs(spec: ContainSpec): string[] {
 }
 
 export function containedCommand(spec: ContainSpec): ContainResult {
-  try { spec = canonicalSpec(spec); }
+  try { spec = canonicalSpec(spec); inspectContainmentLinks(spec); }
   catch (error) { return { status: 'unavailable', reasons: [error instanceof Error ? error.message : String(error)] }; }
   const env = allowlistEnv(spec);
   if (process.platform === 'linux') {

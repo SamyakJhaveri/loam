@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { appendFileSync, copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
+import { appendFileSync, copyFileSync, existsSync, linkSync, mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { spawnSync } from 'node:child_process';
@@ -185,6 +185,11 @@ test('boundary.descendant-denied', () => {
         const control = spawnSync(nodeExe, ['-e', descendantScript(target)], { env: sanitizedEnvironment(process.env), encoding: 'utf8', timeout: 30000 });
         assert.equal(control.status, 0, control.stderr || String(control.error));
         assert.equal(control.stdout, `LEAK:${original}`, 'uncontained descendant can read the same target');
+        const workspaceTarget = join(s.workspace, 'descendant-control');
+        writeFileSync(workspaceTarget, 'workspace-descendant-control');
+        const admitted = runContained(specFor(s, ['-e', descendantScript(workspaceTarget)]));
+        assert.equal(admitted.status, 0, admitted.stderr || String(admitted.error));
+        assert.equal(admitted.stdout, 'LEAK:workspace-descendant-control', 'same shell and cat work inside containment');
         const r = runContained(specFor(s, ['-e', descendantScript(target)]));
         assert.equal(r.status, 0, r.stderr || String(r.error));
         assert.match(r.stdout, /DESC-DENIED/, `expected descendant denial, got ${r.stdout}`);
@@ -253,6 +258,56 @@ test('boundary.path-alias-denied', () => {
         finally {
             s.cleanup();
         }
+    }
+});
+test('boundary.hardlink-creation-denied', () => {
+    const mech = requireMechanism();
+    const s = setup();
+    try {
+        const scratchRuntime = join(s.base, 'runtime');
+        mkdirSync(join(scratchRuntime, 'bin'), { recursive: true });
+        const scratchNode = join(scratchRuntime, 'bin', 'node');
+        copyFileSync(nodeExe, scratchNode);
+        const runtimeMarker = join(scratchRuntime, 'marker');
+        writeFileSync(runtimeMarker, 'runtime-marker');
+        const targets = [join(s.protectedPaths.state, 'marker'), runtimeMarker];
+        const originals = targets.map((target) => readFileSync(target, 'utf8'));
+        const aliases = targets.map((_, index) => join(s.workspace, `alias-${index}`));
+        for (let index = 0; index < targets.length; index++) {
+            linkSync(targets[index], aliases[index]);
+            assert.equal(readFileSync(aliases[index], 'utf8'), originals[index], 'uncontained hard-link control');
+            rmSync(aliases[index]);
+        }
+        const workspaceMarker = join(s.workspace, 'link-control');
+        const workspaceAlias = join(s.workspace, 'link-control-alias');
+        writeFileSync(workspaceMarker, 'workspace-marker');
+        const script = 'const fs=require("node:fs");' +
+            'const targets=' + JSON.stringify(targets) + ';const aliases=' + JSON.stringify(aliases) + ';' +
+            'let control,controlError;try{fs.linkSync(' + JSON.stringify(workspaceMarker) + ',' + JSON.stringify(workspaceAlias) + ');}catch(e){controlError=e.code;}' +
+            'if(!controlError){control=fs.readFileSync(' + JSON.stringify(workspaceAlias) + ',"utf8");' +
+            'fs.unlinkSync(' + JSON.stringify(workspaceAlias) + ');}' +
+            'const errors=targets.map((target,index)=>{try{fs.linkSync(target,aliases[index]);return null;}catch(e){return e.code;}});' +
+            'process.stdout.write(JSON.stringify({control,controlError,errors}));';
+        const result = runContained({ ...specFor(s, ['-e', script]), runtimeDir: scratchRuntime, execPath: scratchNode });
+        assert.equal(result.status, 0, result.stderr || String(result.error));
+        const observed = JSON.parse(result.stdout);
+        if (process.platform === 'darwin' && observed.controlError) {
+            assert.match(observed.controlError, /^(EACCES|EPERM)$/, 'Mac may prohibit all contained link creation');
+        }
+        else {
+            assert.equal(observed.controlError, undefined);
+            assert.equal(observed.control, 'workspace-marker', 'contained workspace hard-link operation works');
+        }
+        assert.equal(observed.errors.length, targets.length);
+        for (let index = 0; index < targets.length; index++) {
+            assert.match(observed.errors[index] ?? '', /^(EACCES|EPERM|EXDEV|ENOENT)$/, 'protected/runtime link creation denied');
+            assert.equal(existsSync(aliases[index]), false, 'no protected/runtime alias created');
+            assert.equal(readFileSync(targets[index], 'utf8'), originals[index], 'original unchanged');
+        }
+        record('boundary.hardlink-creation-denied', mech, observed);
+    }
+    finally {
+        s.cleanup();
     }
 });
 test('boundary.same-user-control', () => {

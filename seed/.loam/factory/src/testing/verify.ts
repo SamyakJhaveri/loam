@@ -73,6 +73,7 @@ export const QUALIFICATION_CASES = [
   "lock.never-unlinks",
   "lock.failed-acquisition-releases",
   "boundary.conflicting-layout-refused",
+  "boundary.hard-link-admission-refused",
   "env.preload-stripped",
   "env.openssl-startup-stripped",
   "env.git-redirection-stripped",
@@ -92,6 +93,7 @@ export const NATIVE_BOUNDARY_CASES = [
   "boundary.descendant-denied",
   "boundary.symlink-denied",
   "boundary.path-alias-denied",
+  "boundary.hardlink-creation-denied",
   "boundary.same-user-control"
 ] as const;
 
