@@ -1,8 +1,8 @@
 # Resume Loam architecture with Astra
 
-## Current handoff: CORE-02 candidate ready, merge waits for the Codex review
+## Current handoff: CORE-02 merged; CORE-04 is next
 
-CORE-02 (#104) is implemented and qualified on both hosts on branch `core-02-storage-containment`, candidate commit `eacd020`, PR https://github.com/SamyakJhaveri/loam/pull/139. It is not merged. Read [core-02-handoff.md](core-02-handoff.md) for what shipped, the evidence locations, and the exact Codex review prompt to run on or after 2026-09-19. CORE-01 (#103) merged to main as `1ed2261` through PR #138 on 2026-09-15; its record is [core-01-handoff.md](core-01-handoff.md). Everything below this section describes earlier states.
+CORE-02 (#104) is merged through [PR #139](https://github.com/SamyakJhaveri/loam/pull/139) as `a5466f9d731e8a97eff51d527866fac6d4c82311`. The merge tree matches the repaired candidate `031795f` qualified on both hosts. Read [core-02-acceptance.md](core-02-acceptance.md) for final review dispositions, exact evidence, limits and the next step. Start the next bounded implementation with [CORE-04](tickets/03-core-04.md), installed-runtime admission, from refreshed main and its required source reading and opposite-model plan review. The receipt experiment remains scratch evidence; a real receipt command depends on runtime admission, the authoritative store and setup. Everything below this section describes earlier states.
 
 ## Earlier handoff: saved locally, Git commit blocked
 

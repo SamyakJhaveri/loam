@@ -1,4 +1,6 @@
-# CORE-02 handoff: candidate ready, merge waits for the Codex review
+# Historical CORE-02 handoff: candidate-03 before the repair review
+
+Superseded by [CORE-02 acceptance](core-02-acceptance.md). PR #139 is merged; the final reviewed and qualified candidate is `031795f`, not the candidate described below. Preserve this record as history, not current instructions.
 
 Status on 2026-09-16: the CORE-02 candidate is implemented, qualified on both hosts including the Mac plain-terminal containment run, checked with `bin/check`, and reviewed. It is not merged. Merge waits for one thing: a fresh Codex/Astra review on or after 2026-09-19.
 
