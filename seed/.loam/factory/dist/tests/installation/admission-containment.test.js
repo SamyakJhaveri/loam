@@ -124,7 +124,7 @@ function nativePrerequisites(fixture) {
             break;
         }
     }
-    return { [fixture]: { tools, loadSmoke: `node_modules/${fixture}/smoke.js` } };
+    return { [fixture]: { tools, loadSmoke: `node_modules/${fixture}/smoke.mjs` } };
 }
 function admitOptions(trusted, controlRoot, fixture, env) {
     const options = {

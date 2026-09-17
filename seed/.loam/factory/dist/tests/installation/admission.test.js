@@ -400,7 +400,7 @@ test('admission.build-requires-containment', async () => {
     const controlRoot = freshControlRoot();
     await refuses(() => admit(trusted, controlRoot, {
         containment: 'unavailable',
-        nativePrerequisites: prerequisites({ 'loam-dep-scripted': { tools: { sh: '/bin/sh' }, loadSmoke: 'node_modules/loam-dep-scripted/smoke.js' } }),
+        nativePrerequisites: prerequisites({ 'loam-dep-scripted': { tools: { sh: '/bin/sh' }, loadSmoke: 'node_modules/loam-dep-scripted/smoke.mjs' } }),
     }), 'containment-unavailable');
     assert.equal(existsSync(join(controlRoot, CONTROL_ROOT_LAYOUT.selected)), false);
 });
@@ -414,14 +414,14 @@ test('admission.native-prerequisite-missing', async () => {
     const missingTool = makeTrusted(deps, { installScript: ['loam-dep-scripted'] });
     allowScripts(missingTool.trusted, ['loam-dep-scripted']);
     await refuses(() => admit(missingTool.trusted, freshControlRoot(), {
-        nativePrerequisites: prerequisites({ 'loam-dep-scripted': { tools: { cc: join(base(), 'no/such/cc') }, loadSmoke: 'node_modules/loam-dep-scripted/smoke.js' } }),
+        nativePrerequisites: prerequisites({ 'loam-dep-scripted': { tools: { cc: join(base(), 'no/such/cc') }, loadSmoke: 'node_modules/loam-dep-scripted/smoke.mjs' } }),
     }), 'native-prerequisite-missing');
     // Linux only: a real path outside the exposed system roots.
     if (isLinux) {
         const outside = makeTrusted(deps, { installScript: ['loam-dep-scripted'] });
         allowScripts(outside.trusted, ['loam-dep-scripted']);
         await refuses(() => admit(outside.trusted, freshControlRoot(), {
-            nativePrerequisites: prerequisites({ 'loam-dep-scripted': { tools: { cc: '/opt/none/cc' }, loadSmoke: 'node_modules/loam-dep-scripted/smoke.js' } }),
+            nativePrerequisites: prerequisites({ 'loam-dep-scripted': { tools: { cc: '/opt/none/cc' }, loadSmoke: 'node_modules/loam-dep-scripted/smoke.mjs' } }),
         }), 'native-prerequisite-missing');
     }
 });

@@ -121,7 +121,7 @@ function nativePrerequisites(fixture: string): typeof NATIVE_PREREQUISITES {
   for (const candidate of ['/usr/bin/cc', '/usr/bin/gcc', '/bin/cc']) {
     if (existsSync(candidate)) { tools.cc = candidate; break; }
   }
-  return { [fixture]: { tools, loadSmoke: `node_modules/${fixture}/smoke.js` } } as typeof NATIVE_PREREQUISITES;
+  return { [fixture]: { tools, loadSmoke: `node_modules/${fixture}/smoke.mjs` } } as typeof NATIVE_PREREQUISITES;
 }
 
 function admitOptions(trusted: string, controlRoot: string, fixture: string, env?: Record<string, string>): AdmitOptions {
