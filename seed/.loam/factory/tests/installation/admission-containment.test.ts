@@ -84,7 +84,7 @@ function makeTrusted(scriptedFixture: string): { trusted: string; controller: st
     cpSync(join(factoryRoot, file), target);
   }
   const deps = { [scriptedFixture]: '1.0.0' };
-  const pkg = { name: '@loam/factory', version: '0.0.0', private: true, type: 'module', dependencies: deps, loam: { allowScripts: [scriptedFixture] } };
+  const pkg = { name: '@loam/factory', version: '0.0.0', private: true, type: 'module', dependencies: deps, allowScripts: { [`${scriptedFixture}@1.0.0`]: true } };
   writeFileSync(join(trusted, 'package.json'), `${JSON.stringify(pkg, null, 2)}\n`);
   const tarball = join(trusted, 'assets/admission-fixtures', `${scriptedFixture}-1.0.0.tgz`);
   const lock = {

@@ -131,7 +131,11 @@ function assertNoAncestorPackages(controlRoot) {
     let dir = dirname(realpathOr(controlRoot));
     let previous = '';
     while (dir !== previous) {
-        for (const marker of ['package.json', 'node_modules', '.npmrc']) {
+        // An ancestor .npmrc is not refused: npm reads project config only from the
+        // explicit --prefix directory and the user file only through --userconfig,
+        // which the fetch phase pins to an empty file and asserts. Ancestor package
+        // roots still refuse because Node walks parent node_modules directories.
+        for (const marker of ['package.json', 'node_modules']) {
             if (existsSync(join(dir, marker)))
                 throw new AdmissionError('ancestor-package-collision', `${marker} in control-root ancestor ${dir}`);
         }
