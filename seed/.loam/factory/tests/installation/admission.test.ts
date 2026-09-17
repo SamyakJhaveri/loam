@@ -689,6 +689,26 @@ test('admission.control-rejects-arguments', async () => {
   const line = nlRoot.stdout.trim().split('\n').filter(Boolean).at(-1) ?? '';
   assert.doesNotThrow(() => JSON.parse(line), `control-root refusal must be valid JSON: ${JSON.stringify(nlRoot.stdout)}`);
   assert.equal((JSON.parse(line) as { status?: string }).status, 'usage');
+  // (a) An unrecognized argument carrying an embedded control character is refused
+  // with a constant-detail usage line that stays valid JSON (repair R3).
+  const nlArg = spawnSync('/bin/sh',
+    [controller, '--control-root', controlRoot, 'foo\nEVIL'],
+    { env: cleanTestEnvironment(), encoding: 'utf8', timeout: 30000 });
+  assert.equal(nlArg.status, 2);
+  const nlArgLine = nlArg.stdout.trim().split('\n').filter(Boolean).at(-1) ?? '';
+  assert.doesNotThrow(() => JSON.parse(nlArgLine), `usage refusal must be valid JSON: ${JSON.stringify(nlArg.stdout)}`);
+  assert.equal((JSON.parse(nlArgLine) as { status?: string }).status, 'usage');
+  // (b) A literal __loam_end__ positional is just an unexpected admit argument now
+  // that the rotator counts the entry positionals instead of using a sentinel
+  // word; it is refused and nothing is admitted.
+  const admitRoot = freshControlRoot();
+  const litEnd = spawnSync('/bin/sh',
+    [controller, '--control-root', admitRoot, '--toolchain', toolchain, 'admit',
+      '--trusted-source', trusted, '--release-identity', 'loam v0.0.0', '__loam_end__'],
+    { env: cleanTestEnvironment(), encoding: 'utf8', timeout: 30000 });
+  assert.equal(litEnd.status, 2);
+  assert.equal(lastJson(litEnd.stdout).status, 'usage');
+  assert.equal(existsSync(join(admitRoot, 'runtimes')), false, 'nothing must be admitted');
 });
 
 test('admission.controller-verifies-before-dispatch', async () => {
@@ -710,6 +730,7 @@ test('admission.controller-verifies-before-dispatch', async () => {
   const corruptions = [
     `${H}  /etc/passwd\n`,                          // absolute path
     `${H}  ../../../etc/passwd\n`,                   // parent component
+    `${H}  x/../y\n`,                                // '..' as a mid-path component (rule 4, path-column anchored)
     `${H}  bin/node\n${H}  bin/node\n`,              // duplicate path
     `${'0'.repeat(63)}  bin/node\n`,                 // wrong digest length (63)
     orig.replace(/^.*  bin\/node\n/m, ''),           // required entry removed
@@ -982,6 +1003,52 @@ test('admission.altered-installed-file', async () => {
   tamper(runtimeRecordPath, `${canonicalJson(runtime)}\n`);
   expectInterrupted();
   writeFileSync(runtimeRecordPath, runtimeOriginal);
+
+  // N1: the sealed installed-files.json is normally gated by the controller's
+  // pre-dispatch checksum, so reach doctor directly (through the snapshot's own
+  // node, as environment-injected does) to prove doctor reads and parses it
+  // defensively: missing, non-regular, and hash-consistent malformed each yield a
+  // single installed-file-altered JSON line and exit 1, never a stack trace.
+  const snapshotNode = join(snapshotPath, SNAPSHOT_LAYOUT.node);
+  const doctorJs = join(snapshotPath, SNAPSHOT_LAYOUT.doctor);
+  const installedFilesPath = join(snapshotPath, SNAPSHOT_LAYOUT.installedFiles);
+  const installedFilesOriginal = readFileSync(installedFilesPath);
+  // The controller dispatches doctor under a minimal env (HOME/PATH/TMPDIR/LANG
+  // only); mirror it so no stripped-class variable trips environment-injected
+  // before the installed-file-altered classification we are exercising.
+  const directEnv = { HOME: process.env.HOME ?? '/tmp', PATH: dirname(snapshotNode), TMPDIR: process.env.TMPDIR ?? '/tmp', LANG: 'C' };
+  function expectAlteredDirect(): void {
+    const result = spawnSync(snapshotNode, [doctorJs, '--mode', 'doctor', '--control-root', controlRoot],
+      { env: directEnv, encoding: 'utf8', timeout: 60000 });
+    assert.equal(result.status, 1, `${result.stdout}${result.stderr}`);
+    assert.ok(hasDiagnostic(lastJson(result.stdout), 'installed-file-altered'), `installed-file-altered: ${result.stdout}`);
+    assert.ok(!/\n\s+at /.test(result.stderr) && !result.stderr.includes('SyntaxError')
+      && !result.stderr.includes('ENOENT') && !result.stderr.includes('EISDIR'),
+      `no stack trace on stderr: ${JSON.stringify(result.stderr)}`);
+  }
+  // (i) removed.
+  chmodSync(snapshotPath, 0o755);
+  chmodSync(installedFilesPath, 0o644);
+  rmSync(installedFilesPath);
+  expectAlteredDirect();
+  writeFileSync(installedFilesPath, installedFilesOriginal);
+  // (ii) replaced by a directory.
+  rmSync(installedFilesPath);
+  mkdirSync(installedFilesPath);
+  expectAlteredDirect();
+  rmSync(installedFilesPath, { recursive: true });
+  writeFileSync(installedFilesPath, installedFilesOriginal);
+  // (iii) hash-consistent non-JSON bytes: rewrite the runtime record's
+  // installedFilesSha256 to the new file's digest so the digest check passes and
+  // only the JSON parse fails.
+  const garbage = Buffer.from('this-is-not-json');
+  writeFileSync(installedFilesPath, garbage);
+  const runtimeForHash = JSON.parse(runtimeOriginal.toString('utf8')) as Record<string, unknown>;
+  runtimeForHash.installedFilesSha256 = createHash('sha256').update(garbage).digest('hex');
+  tamper(runtimeRecordPath, `${canonicalJson(runtimeForHash)}\n`);
+  expectAlteredDirect();
+  writeFileSync(runtimeRecordPath, runtimeOriginal);
+  writeFileSync(installedFilesPath, installedFilesOriginal);
 });
 
 test('admission.environment-injected', async () => {

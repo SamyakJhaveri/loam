@@ -108,8 +108,10 @@ validate_checksum_record() {
   # rule 3: every line is "<64 hex><2 spaces><relative path>"; grep -Ev prints any
   # non-conforming line, so a match (exit 0) means malformed.
   LC_ALL=C /usr/bin/grep -Ev '^[0-9a-f]{64}  [^/].*$' "$__sums" >/dev/null && return 1
-  # rule 4: reject a '..' path component (whole path, or bounded by '/').
-  LC_ALL=C /usr/bin/grep -Eq '  ([^ ].*/)?\.\.(/|$)' "$__sums" && return 1
+  # rule 4: reject a '..' path component. Key on the extracted path column (byte
+  # 67 on, as rule 5 does) so a path that merely contains two spaces is not a
+  # false positive; anchor '..' to a path-component boundary.
+  /usr/bin/cut -c67- "$__sums" | LC_ALL=C /usr/bin/grep -Eq '(^|/)\.\.(/|$)' && return 1
   # rule 5: no duplicate path. Path column starts at byte 67 (64 hex + 2 spaces).
   __total=$(/usr/bin/cut -c67- "$__sums" | /usr/bin/grep -c '')
   __uniq=$(/usr/bin/cut -c67- "$__sums" | LC_ALL=C /usr/bin/sort -u | /usr/bin/grep -c '')
@@ -207,7 +209,8 @@ while [ $# -gt 0 ]; do
     --control-root) [ $# -ge 2 ] || usage_exit 'missing value for --control-root'; CONTROL_ROOT=$2; shift 2 ;;
     admit|status|doctor) VERB=$1; shift; break ;;
     --clean) usage_exit 'unexpected --clean' ;;
-    *) usage_exit "unexpected argument: $1" ;;
+    *) contains_control "$1" && usage_exit 'unexpected argument contains control characters'
+       usage_exit "unexpected argument: $1" ;;
   esac
 done
 [ -n "$VERB" ] || usage_exit 'missing verb'
@@ -224,19 +227,25 @@ if [ "$VERB" = 'admit' ]; then
   is_absolute "$TOOLCHAIN" || usage_exit 'admit requires an absolute --toolchain'
   TRUSTED=''
   RELEASE_IDENTITY=''
-  set -- "$@" '__loam_end__'
-  while [ "$1" != '__loam_end__' ]; do
+  # Consume the admit arguments by inspecting exactly the positionals present at
+  # entry (counted once, up front). Value flags drop their pair; protect flags
+  # rotate their pair to the back of "$@". A bare positional that happens to match
+  # any internal marker is refused by the *) arm like any other, so nothing a
+  # caller types can survive into "$@".
+  __left=$#
+  while [ "$__left" -gt 0 ]; do
     case "$1" in
-      --trusted-source) [ $# -ge 2 ] || usage_exit 'missing value for --trusted-source'; TRUSTED=$2; shift 2 ;;
-      --release-identity) [ $# -ge 2 ] || usage_exit 'missing value for --release-identity'; RELEASE_IDENTITY=$2; shift 2 ;;
+      --trusted-source) [ $# -ge 2 ] || usage_exit 'missing value for --trusted-source'; TRUSTED=$2; shift 2; __left=$((__left - 2)) ;;
+      --release-identity) [ $# -ge 2 ] || usage_exit 'missing value for --release-identity'; RELEASE_IDENTITY=$2; shift 2; __left=$((__left - 2)) ;;
       --protect-registry) usage_exit '--protect-registry is not allowed' ;;
       --protect-state|--protect-locks|--protect-credentials|--protect-sockets|--protect-callbacks)
         [ $# -ge 2 ] || usage_exit "missing value for $1"
-        __flag=$1; __val=$2; shift 2; set -- "$@" "$__flag" "$__val" ;;
-      *) usage_exit "unexpected admit argument: $1" ;;
+        __flag=$1; __val=$2; shift 2; set -- "$@" "$__flag" "$__val"; __left=$((__left - 2)) ;;
+      *) contains_control "$1" && usage_exit 'unexpected admit argument contains control characters'
+         usage_exit "unexpected admit argument: $1" ;;
     esac
   done
-  shift # remove __loam_end__; remaining "$@" are the protect flags
+  # remaining "$@" are the rotated protect flags
   is_absolute "$TRUSTED" || usage_exit '--trusted-source must be an absolute path'
   { [ "${#RELEASE_IDENTITY}" -ge 1 ] && [ "${#RELEASE_IDENTITY}" -le 120 ]; } || usage_exit '--release-identity must be 1-120 characters'
   contains_control "$TRUSTED" && usage_exit '--trusted-source must not contain control characters'

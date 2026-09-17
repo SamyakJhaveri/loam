@@ -147,10 +147,21 @@ export function runDoctor(options) {
     // installed-file-altered: installed-files.json binds to the runtime record and
     // the observed inventory must match it exactly by path, digest and mode.
     const installedFilesPath = join(snapshotPath, SNAPSHOT_LAYOUT.installedFiles);
-    if (hashFile(installedFilesPath) !== runtimeRecord.installedFilesSha256) {
-        return fail('installed-file-altered', `${SNAPSHOT_LAYOUT.installedFiles} digest does not match the runtime record`);
+    // The sealed inventory is in the controller's pre-dispatch checksum set, so a
+    // tampered one is normally refused before doctor runs. When doctor is reached
+    // directly, read and parse it defensively: a missing, non-regular, unreadable,
+    // or malformed file (even one whose bytes match the recorded digest) is
+    // tampering, reported as installed-file-altered, never a raw exception.
+    let installed;
+    try {
+        if (hashFile(installedFilesPath) !== runtimeRecord.installedFilesSha256) {
+            return fail('installed-file-altered', `${SNAPSHOT_LAYOUT.installedFiles} digest does not match the runtime record`);
+        }
+        installed = readJson(installedFilesPath);
     }
-    const installed = readJson(installedFilesPath);
+    catch {
+        return fail('installed-file-altered', `${SNAPSHOT_LAYOUT.installedFiles} is missing or unreadable`);
+    }
     let observed;
     try {
         observed = collectFiles(snapshotPath).filter(path => path !== SNAPSHOT_LAYOUT.installedFiles);
