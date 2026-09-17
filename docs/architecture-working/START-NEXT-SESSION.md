@@ -1,6 +1,10 @@
 # Resume Loam architecture with Astra
 
-## Current handoff: CORE-02 merged; CORE-04 is next
+## Current handoff: NATIVE-05 catalog candidate on a branch, review and merge pending
+
+NATIVE-05 (#117) has an implementation candidate on branch `native-05-catalog-impl` from base `e4c6f474094340dd9829740d9004a0a36e1c121b`. Read [native-05-handoff.md](native-05-handoff.md) for what the candidate contains and what it does not claim. The catalog records conservation only: every method stays pending, nothing is activated, no wrapper file exists. Independent finished-work review, both-host qualification and the pull request are recorded in external receipts under the operator evidence root; this document does not claim them. Merge waits for Samyak's explicit instruction. CORE-04 (#105) remains the next core ticket and its worktree is untouched by this branch. Everything below this section describes earlier states.
+
+## Earlier handoff: CORE-02 merged; CORE-04 was next
 
 CORE-02 (#104) is merged through [PR #139](https://github.com/SamyakJhaveri/loam/pull/139) as `a5466f9d731e8a97eff51d527866fac6d4c82311`. The merge tree matches the repaired candidate `031795f` qualified on both hosts. Read [core-02-acceptance.md](core-02-acceptance.md) for final review dispositions, exact evidence, limits and the next step. Start the next bounded implementation with [CORE-04](tickets/03-core-04.md), installed-runtime admission, from refreshed main and its required source reading and opposite-model plan review. The receipt experiment remains scratch evidence; a real receipt command depends on runtime admission, the authoritative store and setup. Everything below this section describes earlier states.
 

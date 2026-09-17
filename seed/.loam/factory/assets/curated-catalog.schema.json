@@ -1,0 +1,343 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://loam.dev/schemas/curated-catalog.json",
+  "description": "Shape and vocabulary of the curated asset catalog (plan NATIVE-05 D3). Conservation, source-vs-delivery and closure rules live in the policy validator (src/assets/catalog.ts); this document fixes structure, enums, id and digest patterns only. Machine paths are repository- or recipient-relative POSIX paths with no absolute prefix, home or temporary directory, drive letter, backslash or dot component; the personal-path scanner enforces that separately.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["version", "ticket", "sourceRevisions", "entries", "targets", "nativeWrappers", "notSelected", "pluginReferences", "selectionAliases"],
+  "properties": {
+    "version": { "const": 1 },
+    "ticket": { "const": "NATIVE-05" },
+    "sourceRevisions": { "$ref": "#/$defs/sourceRevisions" },
+    "entries": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/entry" } },
+    "targets": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/target" } },
+    "nativeWrappers": { "type": "array", "items": { "$ref": "#/$defs/wrapper" } },
+    "notSelected": { "type": "array", "items": { "$ref": "#/$defs/notSelected" } },
+    "pluginReferences": { "type": "array", "items": { "$ref": "#/$defs/pluginReference" } },
+    "selectionAliases": { "type": "array", "items": { "$ref": "#/$defs/selectionAlias" } }
+  },
+  "$defs": {
+    "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "sha256OrNull": { "type": ["string", "null"], "pattern": "^[0-9a-f]{64}$" },
+    "entryId": { "type": "string", "pattern": "^(baseline|snapshot|support|pocock|remote):[^\\s]+$" },
+    "targetId": { "type": "string", "pattern": "^(method|reference|support):[^\\s]+$" },
+    "unitId": { "type": "string", "pattern": "^(baseline|snapshot|support|pocock|remote):.+:u[0-9]+$" },
+    "edgeId": { "type": "string", "pattern": "^(baseline|snapshot|support|pocock|remote):.+:e[0-9]+$" },
+    "prerequisiteId": { "type": "string", "pattern": "^(baseline|snapshot|support|pocock|remote):.+:p[0-9]+$" },
+    "sourceRevisions": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["baseCommit", "evidence", "pocockPin", "planSha256", "ticketSha256", "privateDispositionAmendmentSha256", "obligationsSha256"],
+      "properties": {
+        "baseCommit": { "type": "string", "pattern": "^[0-9a-f]{40}$" },
+        "evidence": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "description": "Repository-relative provenance files with the SHA-256 of their bytes at the base commit; the set is fixed by the obligations.",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["path", "sha256"],
+            "properties": {
+              "path": { "type": "string", "pattern": "^[A-Za-z0-9_.-]+(/[A-Za-z0-9_.-]+)*$" },
+              "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" }
+            }
+          }
+        },
+        "pocockPin": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["repo", "commit", "pluginVersion", "releasedSkillCount", "provenanceFileCount"],
+          "properties": {
+            "repo": { "type": "string" },
+            "commit": { "type": "string", "pattern": "^[0-9a-f]{40}$" },
+            "pluginVersion": { "type": "string" },
+            "releasedSkillCount": { "type": "integer" },
+            "provenanceFileCount": { "type": "integer" }
+          }
+        },
+        "planSha256": { "$ref": "#/$defs/sha256" },
+        "ticketSha256": { "$ref": "#/$defs/sha256" },
+        "privateDispositionAmendmentSha256": { "$ref": "#/$defs/sha256" },
+        "obligationsSha256": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "entry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "collection", "name", "kind", "assetKind", "source", "attribution", "providers", "declaredTools", "declaredServices", "sideEffects", "hardcodedModelOrEffort", "sourceUnits", "preservation", "targets", "dependencies", "referencedBy", "prerequisites", "status", "blockers", "activation", "notes", "consumers"],
+      "properties": {
+        "id": { "$ref": "#/$defs/entryId" },
+        "collection": { "type": "string", "enum": ["baseline", "snapshot", "support", "pocock", "remote"] },
+        "name": { "type": "string" },
+        "kind": { "type": "string", "enum": ["method", "reference", "support", "agent", "hook", "hook-registry", "test", "workflow", "manifest", "plugin-manifest", "license", "policy-config", "template", "script", "distribution-link", "private-session-record", "remote-bundle"] },
+        "assetKind": { "type": "string", "enum": ["advice", "executable-support", "authority-bearing-policy"] },
+        "applicability": { "type": "string", "enum": ["claude", "codex", "shared"] },
+        "pocockSkill": { "type": "string" },
+        "supplemental": { "type": "boolean" },
+        "source": { "$ref": "#/$defs/source" },
+        "attribution": { "$ref": "#/$defs/attribution" },
+        "providers": { "$ref": "#/$defs/providers" },
+        "declaredTools": { "type": ["array", "null"], "items": { "type": "string" } },
+        "declaredServices": { "type": ["array", "null"], "items": { "type": "string" } },
+        "sideEffects": { "type": ["array", "null"], "items": { "type": "string", "enum": ["none", "reads-repo", "writes-files", "runs-commands", "network", "spawns-agents", "changes-git-state", "publishes"] } },
+        "hardcodedModelOrEffort": { "type": ["array", "null"], "items": { "type": "string" } },
+        "sourceUnits": { "type": "array", "items": { "$ref": "#/$defs/sourceUnit" } },
+        "preservation": { "$ref": "#/$defs/preservation" },
+        "targets": { "type": "array", "items": { "$ref": "#/$defs/targetId" } },
+        "dependencies": { "type": "array", "items": { "$ref": "#/$defs/dependency" } },
+        "referencedBy": { "type": "array", "items": { "$ref": "#/$defs/edgeId" } },
+        "prerequisites": { "type": "array", "items": { "$ref": "#/$defs/prerequisite" } },
+        "status": { "type": "string", "enum": ["source-preserved", "shipped-pending-adaptation", "blocked-missing-support", "available", "not-selected", "local-only", "declared-unread", "rejected"] },
+        "blockers": { "type": "array", "items": { "type": "string" } },
+        "activation": { "$ref": "#/$defs/activation" },
+        "notes": { "type": "string" },
+        "consumers": { "type": "array", "items": { "$ref": "#/$defs/consumer" } }
+      }
+    },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "path"],
+      "properties": {
+        "type": { "type": "string", "enum": ["regular-file", "distribution-symlink", "remote-declaration", "private-local-metadata"] },
+        "path": { "type": "string" },
+        "sha256": { "$ref": "#/$defs/sha256" },
+        "originalSourceDigest": { "$ref": "#/$defs/sha256" },
+        "originalSourceProject": { "type": "string" },
+        "linkTarget": { "type": "string" },
+        "linkSha256": { "$ref": "#/$defs/sha256" },
+        "canonicalTarget": { "type": "string" },
+        "marketplaceKey": { "type": "string" },
+        "url": { "type": "string" },
+        "ref": { "type": "string" },
+        "revision": { "type": "string" },
+        "declaredLicense": { "type": "string" },
+        "declaredSkills": { "type": "array", "items": { "type": "string" } },
+        "defaultEnabled": { "type": "boolean" },
+        "remoteBodyDigest": { "type": ["string", "null"], "pattern": "^[0-9a-f]{64}$" },
+        "declarationFile": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["path", "sha256"],
+          "properties": { "path": { "type": "string" }, "sha256": { "$ref": "#/$defs/sha256" } }
+        },
+        "readingState": { "type": "string", "enum": ["metadata-only", "declared-unread"] },
+        "historicalSha256": { "$ref": "#/$defs/sha256" },
+        "currentSha256": { "type": ["string", "null"], "pattern": "^[0-9a-f]{64}$" },
+        "bodyVerification": { "type": "string", "enum": ["not-performed"] },
+        "inventory": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["path", "sha256"],
+          "properties": { "path": { "type": "string" }, "sha256": { "$ref": "#/$defs/sha256" } }
+        }
+      }
+    },
+    "attribution": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["author", "license", "licenseEvidence"],
+      "properties": {
+        "author": { "type": ["string", "null"] },
+        "license": { "type": ["string", "null"] },
+        "licenseEvidence": { "type": ["string", "null"] }
+      }
+    },
+    "providers": {
+      "type": ["object", "null"],
+      "additionalProperties": false,
+      "required": ["claude", "codex"],
+      "properties": {
+        "claude": { "type": "boolean" },
+        "codex": { "type": "boolean" },
+        "note": { "type": "string" }
+      }
+    },
+    "sourceUnit": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "role", "start", "end", "sha256"],
+      "properties": {
+        "id": { "$ref": "#/$defs/unitId" },
+        "role": { "type": "string", "enum": ["frontmatter", "heading", "paragraph", "body"] },
+        "start": { "type": "integer" },
+        "end": { "type": "integer" },
+        "sha256": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "preservation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["decision", "phase", "map"],
+      "properties": {
+        "decision": { "type": "string", "enum": ["retain", "adapt", "merge", "reject", "local-only", "not-selected", "declared-unread"] },
+        "phase": { "type": "string", "enum": ["assessed", "implemented"] },
+        "map": { "type": "array", "items": { "$ref": "#/$defs/mapRow" } }
+      }
+    },
+    "mapRow": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["unit"],
+      "properties": {
+        "unit": { "$ref": "#/$defs/unitId" },
+        "target": { "type": ["string", "null"], "pattern": "^(method|reference|support):[^\\s]+$" },
+        "section": { "type": "string" },
+        "exclude": { "type": "string", "enum": ["obsolete-policy", "provider-binding", "private-context", "not-adopted", "metadata-only"] },
+        "reason": { "type": "string" }
+      }
+    },
+    "dependency": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "sourceUnit", "relationship", "to", "disposition", "resolvedBy", "replacement", "blocker", "note"],
+      "properties": {
+        "id": { "$ref": "#/$defs/edgeId" },
+        "sourceUnit": { "type": ["string", "null"], "pattern": "^(baseline|snapshot|support|pocock|remote):.+:u[0-9]+$" },
+        "relationship": { "type": "string", "enum": ["required-file", "required-method", "optional-reference", "project-input", "generated-output", "external-prerequisite", "historical-policy"] },
+        "to": { "$ref": "#/$defs/edgeTarget" },
+        "disposition": { "type": "string", "enum": ["retained-resolved", "retained-unresolved", "replaced", "removed", "informational"] },
+        "resolvedBy": { "$ref": "#/$defs/resolvedBy" },
+        "replacement": { "$ref": "#/$defs/replacement" },
+        "blocker": { "type": ["string", "null"] },
+        "note": { "type": "string" }
+      }
+    },
+    "edgeTarget": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "entry": { "$ref": "#/$defs/entryId" },
+        "target": { "$ref": "#/$defs/targetId" },
+        "prerequisite": { "$ref": "#/$defs/prerequisiteId" },
+        "external": { "type": "string" }
+      }
+    },
+    "resolvedBy": {
+      "type": ["object", "null"],
+      "additionalProperties": false,
+      "properties": {
+        "target": { "$ref": "#/$defs/targetId" },
+        "prerequisite": { "$ref": "#/$defs/prerequisiteId" }
+      }
+    },
+    "replacement": {
+      "type": ["object", "null"],
+      "additionalProperties": false,
+      "properties": {
+        "reason": { "type": "string" },
+        "ticket": { "type": "string" },
+        "target": { "$ref": "#/$defs/targetId" }
+      }
+    },
+    "prerequisite": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "type", "name", "verification", "contract", "blocker"],
+      "properties": {
+        "id": { "$ref": "#/$defs/prerequisiteId" },
+        "type": { "type": "string", "enum": ["file", "command", "service"] },
+        "name": { "type": "string" },
+        "path": { "type": "string" },
+        "contract": { "type": ["string", "null"] },
+        "verification": { "type": "string", "enum": ["unverified", "verified"] },
+        "blocker": { "type": ["string", "null"] }
+      }
+    },
+    "activation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["activated", "owner"],
+      "properties": {
+        "activated": { "type": "boolean" },
+        "owner": { "type": ["string", "null"] }
+      }
+    },
+    "consumer": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["entry", "unit"],
+      "properties": {
+        "entry": { "$ref": "#/$defs/entryId" },
+        "unit": { "type": ["string", "null"], "description": "A free-text pointer to the consuming source location; not a strict unit id, so no pattern is imposed here." }
+      }
+    },
+    "target": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "path", "owner", "kind", "sectionKeys", "delivery", "expectedSha256"],
+      "properties": {
+        "id": { "$ref": "#/$defs/targetId" },
+        "path": { "type": "string" },
+        "owner": { "type": ["string", "null"] },
+        "kind": { "type": "string", "enum": ["method", "reference", "support"] },
+        "sectionKeys": { "type": "array", "items": { "type": "string" } },
+        "delivery": { "type": "string", "enum": ["planned", "present-unqualified", "verified"] },
+        "expectedSha256": { "$ref": "#/$defs/sha256OrNull" }
+      }
+    },
+    "wrapper": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "provider", "payloadPath", "wrappedSource", "method", "sharedTarget", "projection", "projectionMechanism", "prerequisiteEdges", "owner", "status"],
+      "properties": {
+        "id": { "type": "string", "pattern": "^wrapper:(claude|codex):[^\\s]+$" },
+        "provider": { "type": "string", "enum": ["claude", "codex"] },
+        "payloadPath": { "type": "string" },
+        "wrappedSource": { "type": "string" },
+        "method": { "$ref": "#/$defs/targetId" },
+        "sharedTarget": { "$ref": "#/$defs/targetId" },
+        "projection": { "type": "string" },
+        "projectionMechanism": { "type": "string" },
+        "prerequisiteEdges": { "type": "array", "items": { "$ref": "#/$defs/edgeId" } },
+        "owner": { "type": "string" },
+        "status": { "type": "string", "enum": ["planned-metadata-only"] }
+      }
+    },
+    "notSelected": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["inventory", "project", "path", "kind", "sha256", "disposition", "inventoryDisposition"],
+      "properties": {
+        "inventory": { "type": "string", "enum": ["benchmark", "application"] },
+        "project": { "type": "string" },
+        "path": { "type": "string" },
+        "kind": { "type": "string" },
+        "sha256": { "$ref": "#/$defs/sha256" },
+        "disposition": { "type": "string", "enum": ["not-selected"] },
+        "inventoryDisposition": { "type": "string" },
+        "reason": { "type": "string" }
+      }
+    },
+    "pluginReference": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["project", "name", "enabled", "declarationSource", "disposition", "reason"],
+      "properties": {
+        "project": { "type": "string" },
+        "name": { "type": "string" },
+        "enabled": { "type": "boolean" },
+        "declarationSource": { "type": "string" },
+        "disposition": { "type": "string", "enum": ["local-only"] },
+        "reason": { "type": "string" }
+      }
+    },
+    "selectionAlias": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["inventory", "project", "path", "kind", "sha256", "snapshot", "aliasRole", "note"],
+      "properties": {
+        "inventory": { "type": "string", "enum": ["benchmark", "application"] },
+        "project": { "type": "string" },
+        "path": { "type": "string" },
+        "kind": { "type": "string" },
+        "sha256": { "$ref": "#/$defs/sha256" },
+        "snapshot": { "type": "string", "pattern": "^snapshot:[^\\s]+$" },
+        "aliasRole": { "type": "string", "enum": ["primary-source", "symlink-alias", "discovery-alias"] },
+        "note": { "type": "string" }
+      }
+    }
+  }
+}

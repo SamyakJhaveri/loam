@@ -100,6 +100,18 @@ Both commands are qualification only. No runtime is supported yet: the runtime m
 keeps `supportedRuntime: false` and records the Node and bundled SQLite versions and
 per-platform executable digests as candidates, not a support declaration.
 
+## Catalog qualification
+
+```bash
+node .loam/factory/launcher.mjs qualify catalog
+```
+
+`qualify catalog` runs the fixed `curated-catalog` population against
+`assets/curated-catalog.json`, its schema and the obligations compiled into the package.
+It checks the catalog against the obligations compiled into the package and needs no
+compiler, network or source projects; see [ASSETS.md](ASSETS.md) for what is checked and
+what the catalog does not claim.
+
 ## Work on the factory source
 
 Use a separate official Node 24.21.0 distribution with bundled npm 11.19.0.

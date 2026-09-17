@@ -80,6 +80,23 @@ export const QUALIFICATION_CASES = [
   "env.process-sanitized-before-children"
 ] as const;
 
+export const CATALOG_CASES = [
+  "catalog.schema-and-payload",
+  "catalog.conservation-rejections",
+  "catalog.activation-honesty",
+  "catalog.selected-dependencies-mapped",
+  "catalog.pocock-collection"
+] as const;
+
+// Loam-only source provenance gate (bin/factory-catalog-provenance.mjs). The case
+// names are shared here so the registry can declare the release-only population;
+// no recipient command runs it and no root bin/ module is imported by the package.
+export const PROVENANCE_CASES = [
+  "provenance.sources-match-tree",
+  "provenance.baseline-map-agreement",
+  "provenance.inventory-dispositions"
+] as const;
+
 export const NATIVE_BOUNDARY_CASES = [
   "boundary.mechanism-available",
   "boundary.workspace-admitted",
@@ -401,13 +418,22 @@ export const POPULATIONS: readonly Population[] = [
       "installation"
     ],
     "scope": "recipient",
-    "available": false,
-    "fixture": null,
-    "expectedCases": [
-      "native-05/obligation-01",
-      "native-05/obligation-02",
-      "native-05/obligation-03"
-    ]
+    "available": true,
+    "fixture": "dist/tests/assets/catalog.test.js",
+    "expectedCases": [...CATALOG_CASES]
+  },
+  // Loam-only gate: source provenance for the curated catalog runs from the
+  // repository root (bin/factory-catalog-provenance.mjs), never from a recipient.
+  {
+    "id": "catalog-provenance",
+    "owners": [
+      "NATIVE-05"
+    ],
+    "groups": [],
+    "scope": "release-only",
+    "available": true,
+    "fixture": "bin/tests/factory-catalog-provenance.test.mjs",
+    "expectedCases": [...PROVENANCE_CASES]
   },
   {
     "id": "curated-workflows",
