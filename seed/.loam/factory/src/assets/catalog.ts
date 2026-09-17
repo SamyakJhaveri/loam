@@ -87,7 +87,11 @@ export interface CatalogReport {
 }
 export interface PathHit { path: string; value: string }
 export interface Prerequisite { id?: string; type: string; name?: string; path?: string; expectedSha256?: string | null; verification?: string }
-export interface ExpectedEntry { id: string; qualified: boolean; status: string; targets: { path: string; sha256: string }[]; prerequisites: Prerequisite[]; blockers: string[] }
+// A required dependency the trusted contract expects the candidate to declare and resolve: the edge
+// id, the target the edge must resolve to, and the recipient path plus digest of the support body
+// that target delivers. resolveEntry binds each candidate required edge to this fixed declaration.
+export interface ExpectedRequiredEdge { id: string; resolvesTo: string; path: string; sha256: string; to: EdgeTarget; relationship: string }
+export interface ExpectedEntry { id: string; qualified: boolean; status: string; targets: { path: string; sha256: string }[]; prerequisites: Prerequisite[]; blockers: string[]; requiredEdges?: readonly ExpectedRequiredEdge[] }
 export interface Resolution { activatable: boolean; activated: false; status: string; reasons: string[] }
 
 export class CatalogError extends Error {
@@ -142,11 +146,13 @@ export function containedPath(root: string, rel: string): string {
 // not treated as user data.
 // ---------------------------------------------------------------------------
 const PERSONAL_PATH = [
-  /(^|[^A-Za-z0-9_])~\/[^\s]/,          // tilde home path
-  /\/Users\/[^/\s]/,                     // macOS home
-  /\/home\/[^/\s]/,                      // linux home
-  /\/private\/tmp(\/|\b)/,               // macOS operator temp
+  /(^|[^A-Za-z0-9_])~([A-Za-z_][A-Za-z0-9_.-]*)?\/[^\s]/, // tilde home: bare ~/ or named-user ~operator/
+  /\/Users\/[^/\s]/i,                    // macOS home (case-insensitive: /users too)
+  /\/home\/[^/\s]/i,                     // linux home (case-insensitive)
+  /\/private\/tmp(\/|\b)/,               // macOS operator temp (symlink form)
+  /\/private\/var(\/|\b)/,               // macOS resolved private/var temp root
   /\/var\/folders\//,                    // macOS mkdtemp
+  /\/var\/tmp(\/|\b)/,                   // unix persistent temp
   /(^|[^A-Za-z0-9_])\/tmp\/[^\s]/,       // unix temp
   /(^|[^A-Za-z0-9_])[A-Za-z]:\\/,        // windows drive path
 ];
@@ -154,15 +160,19 @@ function isPersonalPath(value: string): boolean { return PERSONAL_PATH.some(re =
 
 export function scanPersonalPaths(value: unknown, path = '$'): PathHit[] {
   const hits: PathHit[] = [];
+  // The `pattern`-key exemption (schema regex literals are the scanner's own syntax, not user data)
+  // applies only when scanning the schema document itself. In any other document a `pattern` key is
+  // ordinary data and is scanned like any other value. (finding 7)
+  const patternExempt = path === 'schema';
   const walk = (node: unknown, where: string, keyContext: string | null): void => {
     if (typeof node === 'string') {
-      if (keyContext !== 'pattern' && isPersonalPath(node)) hits.push({ path: where, value: node });
+      if (!(patternExempt && keyContext === 'pattern') && isPersonalPath(node)) hits.push({ path: where, value: node });
       return;
     }
     if (Array.isArray(node)) { node.forEach((item, i) => walk(item, `${where}[${i}]`, null)); return; }
     if (isRecord(node)) {
       for (const [key, sub] of Object.entries(node)) {
-        if (key !== 'pattern' && isPersonalPath(key)) hits.push({ path: `${where}.<key>`, value: key });
+        if (!(patternExempt && key === 'pattern') && isPersonalPath(key)) hits.push({ path: `${where}.<key>`, value: key });
         walk(sub, `${where}.${key}`, key);
       }
     }
@@ -512,6 +522,14 @@ export function resolveEntry(entry: CatalogEntry, expected: ExpectedEntry, recip
     try { if (!lstatSync(abs).isFile()) { reasons.push(`missing file ${path}`); return null; } } catch { reasons.push(`missing file ${path}`); return null; }
     return sha256(readFileSync(abs));
   };
+  // Digest of a required support body without recording a generic reason, so the required-edge loop
+  // owns the message and names the failing edge id. Returns null when the file is absent or escapes.
+  const supportDigest = (path: string): string | null => {
+    let abs: string;
+    try { abs = containedPath(recipientRoot, path); } catch { return null; }
+    try { if (!lstatSync(abs).isFile()) return null; } catch { return null; }
+    return sha256(readFileSync(abs));
+  };
 
   // A private-session record is never activatable, whatever contract it is paired with.
   const isPrivate = entry.source?.type === 'private-local-metadata' || entry.kind === 'private-session-record';
@@ -543,15 +561,45 @@ export function resolveEntry(entry: CatalogEntry, expected: ExpectedEntry, recip
   }
   for (const blocker of expected.blockers) reasons.push(`blocker: ${blocker}`);
 
-  // Required-edge closure over the candidate's own declared edges, with a visited set so repeated
-  // and cyclic required edges terminate. Any unresolved required edge blocks activation.
+  // Resolve the full required-edge closure over the candidate's own declared edges with a visited
+  // set (repeated and cyclic required edges terminate). Every required edge is bound to the trusted
+  // contract: it must be a declared required edge (an added edge not in the contract is refused), it
+  // must be retained-resolved to the exact target the contract names (a retargeted or unresolved edge
+  // is refused), and the support body that target delivers must exist beneath the recipient root with
+  // the contract's expected digest (a missing body or digest mismatch is refused). Each rejection
+  // names the failing edge id. Untrusted candidate labels alone can no longer admit a dependency.
   const candidateEdges = (entry.dependencies ?? []).map(dep => projectEdge(entry, dep));
-  requiredClosure(entry.id, candidateEdges); // terminates on repeats/cycles; the return is unused here.
-  for (const edge of candidateEdges) {
-    if (!REQUIRED.has(edge.relationship)) continue;
-    const resolved = edge.disposition === 'retained-resolved' && edge.resolvedBy !== null && (typeof edge.resolvedBy.target === 'string' || typeof edge.resolvedBy.prerequisite === 'string');
-    if (!resolved) reasons.push(`required edge ${edge.id} is unresolved`);
+  const byEntry = new Map<string, Edge[]>();
+  for (const edge of candidateEdges) { const list = byEntry.get(edge.fromEntry) ?? []; list.push(edge); byEntry.set(edge.fromEntry, list); }
+  const expectedEdges = new Map((expected.requiredEdges ?? []).map(re => [re.id, re]));
+  const seenRequired = new Set<string>();
+  const visited = new Set<string>();
+  const stack: string[] = [entry.id];
+  while (stack.length) {
+    const current = stack.pop()!;
+    if (visited.has(current)) continue;
+    visited.add(current);
+    for (const edge of byEntry.get(current) ?? []) {
+      if (!REQUIRED.has(edge.relationship)) continue;
+      seenRequired.add(edge.id);
+      const contract = expectedEdges.get(edge.id);
+      if (!contract) { reasons.push(`required edge ${edge.id} is not declared by the trusted contract`); continue; }
+      // The trusted contract binds the edge's relationship and destination, not only its resolvedBy
+      // target: a required-file edge cannot be relabelled to another required kind, and its `to` cannot
+      // be repointed (e.g. at a D2a private-session record) while a different helper body is verified. (finding 6)
+      if (edge.relationship !== contract.relationship) { reasons.push(`required edge ${edge.id} relationship ${edge.relationship} does not match the trusted contract ${contract.relationship}`); continue; }
+      if (!deepEqual(edge.to, contract.to)) { reasons.push(`required edge ${edge.id} destination does not match the trusted contract`); continue; }
+      const target = edge.resolvedBy && typeof edge.resolvedBy.target === 'string' ? edge.resolvedBy.target : null;
+      if (edge.disposition !== 'retained-resolved' || target === null) { reasons.push(`required edge ${edge.id} is unresolved`); continue; }
+      if (target !== contract.resolvesTo) { reasons.push(`required edge ${edge.id} is retargeted to ${target}, expected ${contract.resolvesTo}`); continue; }
+      const digest = supportDigest(contract.path);
+      if (digest === null) { reasons.push(`required edge ${edge.id} support body ${contract.path} is missing`); continue; }
+      if (digest !== contract.sha256) { reasons.push(`required edge ${edge.id} support body ${contract.path} digest mismatch`); continue; }
+      if (edge.to.entry !== undefined && !visited.has(edge.to.entry)) stack.push(edge.to.entry);
+    }
   }
+  // A required edge the contract declares but the candidate omits shortens the required closure.
+  for (const id of expectedEdges.keys()) if (!seenRequired.has(id)) reasons.push(`required edge ${id} declared by the trusted contract is missing from the candidate`);
 
   return { activatable: reasons.length === 0 && !isPrivate, activated: false, status: expected.status, reasons };
 }

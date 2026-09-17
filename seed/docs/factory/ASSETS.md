@@ -51,11 +51,13 @@ required body, support file and prerequisite resolves; it certifies nothing on i
 `assets/native/claude/commands/`, `assets/native/claude/agents/`,
 `assets/native/claude/workflows/` and `assets/native/codex/`. Every row is
 `planned-metadata-only`; no wrapper file exists yet. A wrapper carries invocation metadata
-only; the shared method body lives under `.agents/skills/`. `projectionMechanism` names
-how a projection reaches a provider: `distribution-mirror` is a future Claude mirror of
-invocation-only metadata whose byte equality and native discovery are verified by its
-owning adapter ticket; `shared-skill-discovery` is the existing Codex shared-skill path
-plus the invocation reference the method's Codex branch reads.
+only; the shared method body lives under `.agents/skills/`. `projectionMechanism` is one
+sentence, fixed by the reviewed obligations, describing how a projection reaches a
+provider. The Claude wrappers describe a future distribution mirror of invocation-only
+metadata whose byte equality and native discovery are verified by the owning adapter
+ticket. The Codex wrappers describe the existing shared-skill discovery plus the
+invocation reference the method's future Codex branch reads at the factory package path
+and the payload path.
 
 ## Dependencies and prerequisites
 

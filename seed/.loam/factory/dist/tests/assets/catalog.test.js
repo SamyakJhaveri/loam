@@ -169,15 +169,44 @@ test('catalog.conservation-rejections', () => {
         e.dependencies = [...e.dependencies, structuredClone(dep)];
         validateCatalog(c);
     }, 'membership.duplicate');
-    // Privacy subcases: a prohibited path in notes, blockers, attribution, an object key, and a decoded string.
+    // Privacy subcases: a prohibited path in notes, blockers, attribution, an object key, and a decoded
+    // string. Every forbidden string is built at runtime, never a literal in the test source (D11).
     const p = personal();
+    const namedTilde = ['~', 'operator', '/', 'private', '/notes'].join(''); // named-user home tilde
+    const varTmp = ['/var', '/tmp/', 'operator', '/file'].join(''); // unix persistent temp root
+    const privateVar = ['/priv', 'ate/var/', 'root', '/x'].join(''); // macOS resolved private root
+    const escaped = (s) => JSON.parse(JSON.stringify(s).replace(/\//g, '\\/')); // JSON-escaped slashes, decoded
     expectRule(() => { const c = clone(catalog); entryOf(c, 'baseline:plan-review').notes = `see ${p} for context`; validateCatalog(c); }, 'privacy.personal-path');
     expectRule(() => { const c = clone(catalog); entryOf(c, 'baseline:plan-review').blockers = [`blocked by ${p}`]; validateCatalog(c); }, 'privacy.personal-path');
     expectRule(() => { const c = clone(catalog); entryOf(c, 'baseline:plan-review').attribution.author = p; validateCatalog(c); }, 'privacy.personal-path');
     expectRule(() => { const c = clone(catalog); entryOf(c, 'baseline:plan-review')[p] = true; validateCatalog(c); }, 'privacy.personal-path');
-    expectRule(() => { const c = clone(catalog); entryOf(c, 'baseline:plan-review').notes = `path=/Users/operator/x`; validateCatalog(c); }, 'privacy.personal-path');
-    // Positive control: a generic non-personal path is accepted.
+    expectRule(() => { const c = clone(catalog); entryOf(c, 'baseline:plan-review').notes = `path=${['/Users/', 'operator', '/x'].join('')}`; validateCatalog(c); }, 'privacy.personal-path');
+    // Finding 5: the newly recognized forms are caught end-to-end (named-user tilde in notes, /var/tmp
+    // in a blocker, /private/var in attribution).
+    expectRule(() => { const c = clone(catalog); entryOf(c, 'baseline:plan-review').notes = `moved to ${namedTilde}`; validateCatalog(c); }, 'privacy.personal-path');
+    expectRule(() => { const c = clone(catalog); entryOf(c, 'baseline:plan-review').blockers = [`temp at ${varTmp}`]; validateCatalog(c); }, 'privacy.personal-path');
+    expectRule(() => { const c = clone(catalog); entryOf(c, 'baseline:plan-review').attribution.author = privateVar; validateCatalog(c); }, 'privacy.personal-path');
+    // Finding 5: each new form is caught in each location by the scanner directly - nested value, array
+    // element, attribution field, object key and a JSON-escaped/decoded string.
+    for (const form of [namedTilde, varTmp, privateVar]) {
+        assert.ok(scanPersonalPaths({ notes: `x ${form} y` }).length > 0, `nested value: ${form}`);
+        assert.ok(scanPersonalPaths({ blockers: [`b ${form}`] }).length > 0, `array element: ${form}`);
+        assert.ok(scanPersonalPaths({ attribution: { author: form } }).length > 0, `attribution: ${form}`);
+        assert.ok(scanPersonalPaths({ [form]: true }).length > 0, `object key: ${form}`);
+        assert.ok(scanPersonalPaths({ note: escaped(form) }).length > 0, `decoded string: ${form}`);
+    }
+    // Positive control: a generic non-personal path is accepted; an approximation like ~5/10 is not a path.
     assert.doesNotThrow(() => { const c = clone(catalog); entryOf(c, 'baseline:plan-review').notes = 'see .agents/skills/plan-review/SKILL.md'; validateCatalog(c); });
+    assert.equal(scanPersonalPaths({ n: 'roughly ~5/10 of cases and ~2/3 done' }).length, 0);
+    // Finding 7 (round 2): the /Users and /home patterns are case-insensitive, so a lowercase /users
+    // home path in a note is caught end-to-end; and the `pattern`-key exemption is confined to the
+    // schema document, so a `pattern` key carrying a personal path in any other document is no longer
+    // exempt, while the same key stays exempt when the scan is labelled `schema`.
+    const lowerUsers = ['/us', 'ers/', 'operator', '/x'].join(''); // lowercase /users home path
+    expectRule(() => { const c = clone(catalog); entryOf(c, 'baseline:plan-review').notes = `moved to ${lowerUsers}`; validateCatalog(c); }, 'privacy.personal-path');
+    assert.ok(scanPersonalPaths({ note: lowerUsers }).length > 0, 'lowercase /users caught');
+    assert.ok(scanPersonalPaths({ attribution: { pattern: personal() } }).length > 0, 'pattern key not exempt outside the schema');
+    assert.equal(scanPersonalPaths({ pattern: personal() }, 'schema').length, 0, 'pattern key exempt only in the schema document');
     // scanPersonalPaths and the path validators directly.
     assert.equal(scanPersonalPaths({ a: '.agents/skills/x' }).length, 0);
     assert.ok(scanPersonalPaths({ a: `${p}` }).length > 0);
@@ -236,36 +265,55 @@ test('catalog.activation-honesty', () => {
         mkdirSync(join(recipient, 'skills', 'demo', 'references'), { recursive: true });
         const body = 'method body\n';
         const contract = 'contract body\n';
+        const helper = 'helper body\n';
         writeFileSync(join(recipient, 'skills', 'demo', 'SKILL.md'), body);
         writeFileSync(join(recipient, 'skills', 'demo', 'references', 'contract.md'), contract);
+        writeFileSync(join(recipient, 'skills', 'demo', 'references', 'helper.md'), helper);
         symlinkSync(tmpdir(), join(recipient, 'outside'));
         const bodyDigest = sha256(body);
         const contractDigest = sha256(contract);
+        const helperDigest = sha256(helper);
+        // The trusted contract now also declares one required support edge: the edge id, the target it
+        // must resolve to, and the recipient path and digest of the support body that target delivers.
         const qualified = {
             id: 'demo', qualified: true, status: 'available',
             targets: [{ path: 'skills/demo/SKILL.md', sha256: bodyDigest }],
             prerequisites: [{ id: 'demo:p1', type: 'file', name: 'contract', path: 'skills/demo/references/contract.md', expectedSha256: contractDigest, verification: 'unverified' }],
             blockers: [],
+            requiredEdges: [{ id: 'demo:e1', resolvesTo: 'reference:demo-helper', path: 'skills/demo/references/helper.md', sha256: helperDigest, to: { entry: 'support:demo-helper' }, relationship: 'required-file' }],
         };
-        // A synthetic candidate that matches the trusted contract.
+        // The matching required edge the good candidate declares: retained-resolved to the exact target.
+        const goodEdge = () => ({ id: 'demo:e1', sourceUnit: null, relationship: 'required-file', to: { entry: 'support:demo-helper' }, disposition: 'retained-resolved', resolvedBy: { target: 'reference:demo-helper' }, replacement: null, blocker: null, note: '' });
+        // A synthetic candidate that matches the trusted contract, including its required support edge.
         const candidate = () => ({
             id: 'demo', collection: 'baseline', name: 'demo', kind: 'method', assetKind: 'advice',
             source: { type: 'regular-file', path: 'skills/demo/SKILL.md', sha256: bodyDigest },
             status: 'available', preservation: { decision: 'adapt', phase: 'assessed', map: [] }, activation: { activated: false, owner: null },
-            targets: [], sourceUnits: [], dependencies: [], referencedBy: [],
+            targets: [], sourceUnits: [], dependencies: [goodEdge()], referencedBy: [],
             prerequisites: [{ id: 'demo:p1', type: 'file', name: 'contract', verification: 'unverified', contract: null, blocker: null, path: 'skills/demo/references/contract.md' }],
             providers: null, declaredTools: null, declaredServices: null, sideEffects: null,
             attribution: null, blockers: [], notes: '', consumers: null, hardcodedModelOrEffort: null,
         });
         const good = resolveEntry(candidate(), qualified, recipient);
         assert.deepEqual([good.activatable, good.activated], [true, false]);
-        // Candidate mutations: identity, status, activation, blockers, prerequisites and paths.
-        const rejectCandidate = (mutate) => {
+        assert.deepEqual(good.reasons, []);
+        // A valid required edge that points back at the entry itself is admitted and terminates: the
+        // visited set stops the required-closure traversal from re-processing the node. Its trusted
+        // contract declares the same self-cyclic destination, so the `to` binding (finding 6) still holds.
+        const cyclicContract = { ...qualified, requiredEdges: [{ ...qualified.requiredEdges[0], to: { entry: 'demo' } }] };
+        const cyclic = candidate();
+        cyclic.dependencies = [{ ...goodEdge(), to: { entry: 'demo' } }];
+        assert.deepEqual([resolveEntry(cyclic, cyclicContract, recipient).activatable, false], [true, false]);
+        // Candidate mutations: identity, status, activation, blockers, prerequisites and paths. An
+        // optional needle asserts the rejection reason names the failing element (e.g. the edge id).
+        const rejectCandidate = (mutate, needle) => {
             const c = candidate();
             mutate(c);
             const resolution = resolveEntry(c, qualified, recipient);
             assert.equal(resolution.activatable, false);
             assert.equal(resolution.activated, false);
+            if (needle !== undefined)
+                assert.ok(resolution.reasons.some(r => r.includes(needle)), `expected a reason mentioning ${needle}, got ${JSON.stringify(resolution.reasons)}`);
         };
         rejectCandidate(c => { c.id = 'other'; }); // wrong id
         rejectCandidate(c => { c.status = 'shipped-pending-adaptation'; }); // pending status
@@ -274,19 +322,39 @@ test('catalog.activation-honesty', () => {
         rejectCandidate(c => { c.prerequisites = []; }); // omitted prerequisite
         rejectCandidate(c => { c.prerequisites = [...c.prerequisites, { id: 'demo:p2', type: 'command', name: 'git', verification: 'unverified', contract: null, blocker: null }]; }); // unverified command
         rejectCandidate(c => { c.prerequisites[0].path = 'outside/x'; }); // escaping candidate path through a symlink
-        rejectCandidate(c => { c.dependencies = [{ id: 'demo:e1', sourceUnit: null, relationship: 'required-method', to: { entry: 'demo' }, disposition: 'retained-unresolved', resolvedBy: null, replacement: null, blocker: null, note: '' }]; }); // cyclic + unresolved required edge (must terminate)
         // A private-session record can never be admitted, even against a fully qualified contract.
         rejectCandidate(c => { c.source.type = 'private-local-metadata'; c.kind = 'private-session-record'; });
-        // Filesystem mutations (contract fixed): missing body and changed body.
-        const rejectFs = (setup) => {
+        // Finding 3: required-edge readiness is bound to the trusted contract, not to untrusted labels.
+        // Added required edge not declared by the contract.
+        rejectCandidate(c => { c.dependencies = [...c.dependencies, { id: 'demo:e2', sourceUnit: null, relationship: 'required-file', to: { entry: 'support:missing-helper' }, disposition: 'retained-resolved', resolvedBy: { target: 'reference:missing-helper' }, replacement: null, blocker: null, note: '' }]; }, 'demo:e2'); // NOSONAR
+        // Retargeted edge: the required edge resolves to a target the contract does not name.
+        rejectCandidate(c => { c.dependencies[0].resolvedBy = { target: 'reference:other' }; }, 'demo:e1');
+        // Edge left unresolved: the required edge is present but not retained-resolved.
+        rejectCandidate(c => { c.dependencies[0].disposition = 'retained-unresolved'; c.dependencies[0].resolvedBy = null; }, 'demo:e1');
+        // Cyclic required edge: a retargeted self-edge must terminate under the visited set.
+        rejectCandidate(c => { c.dependencies = [{ id: 'demo:e1', sourceUnit: null, relationship: 'required-method', to: { entry: 'demo' }, disposition: 'retained-resolved', resolvedBy: { target: 'reference:other' }, replacement: null, blocker: null, note: '' }]; }, 'demo:e1');
+        // Finding 6 (round 2): the trusted contract binds the edge's destination and relationship, not
+        // only its resolvedBy target. A `to` repointed at a D2a private-session record (id built at
+        // runtime, never read), a `to` omitted, and a relationship swapped to another required kind are
+        // each refused by edge id while the contract's own helper body is the one verified.
+        const d2aRecordId = ['support:seed', '.claude', 'codex-reviews', '2026-08-31-session.md'].join('/');
+        rejectCandidate(c => { c.dependencies[0].to = { entry: d2aRecordId }; }, 'demo:e1'); // to retargeted at a D2a record
+        rejectCandidate(c => { c.dependencies[0].to = {}; }, 'demo:e1'); // to omitted
+        rejectCandidate(c => { c.dependencies[0].relationship = 'external-prerequisite'; }, 'demo:e1'); // relationship swapped to another required kind
+        // Filesystem mutations (contract fixed): missing/changed method body, missing prerequisite body,
+        // and, for the required support edge, a missing support body and a corrupted support digest.
+        const rejectFs = (setup, needle) => {
             const rr = mkdtempSync(join(tmpdir(), 'loam-catalog-resolve-fs-'));
             try {
                 mkdirSync(join(rr, 'skills', 'demo', 'references'), { recursive: true });
                 writeFileSync(join(rr, 'skills', 'demo', 'SKILL.md'), body);
                 writeFileSync(join(rr, 'skills', 'demo', 'references', 'contract.md'), contract);
+                writeFileSync(join(rr, 'skills', 'demo', 'references', 'helper.md'), helper);
                 setup(rr);
                 const resolution = resolveEntry(candidate(), qualified, rr);
                 assert.equal(resolution.activatable, false);
+                if (needle !== undefined)
+                    assert.ok(resolution.reasons.some(r => r.includes(needle)), `expected a reason mentioning ${needle}, got ${JSON.stringify(resolution.reasons)}`);
             }
             finally {
                 rmSync(rr, { recursive: true, force: true });
@@ -295,6 +363,8 @@ test('catalog.activation-honesty', () => {
         rejectFs(rr => { rmSync(join(rr, 'skills', 'demo', 'SKILL.md')); }); // missing body
         rejectFs(rr => { writeFileSync(join(rr, 'skills', 'demo', 'SKILL.md'), 'changed body\n'); }); // changed body digest
         rejectFs(rr => { rmSync(join(rr, 'skills', 'demo', 'references', 'contract.md')); }); // missing prerequisite body
+        rejectFs(rr => { rmSync(join(rr, 'skills', 'demo', 'references', 'helper.md')); }, 'demo:e1'); // missing required support body
+        rejectFs(rr => { writeFileSync(join(rr, 'skills', 'demo', 'references', 'helper.md'), 'tampered helper\n'); }, 'demo:e1'); // required support digest mismatch
     }
     finally {
         rmSync(recipient, { recursive: true, force: true });

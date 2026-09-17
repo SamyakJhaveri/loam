@@ -41,6 +41,11 @@ const readJSON = (root, rel) => JSON.parse(readText(root, rel));
 const lstatTree = (root, rel) => lstatSync(join(root, guard(rel)));
 const readlinkTree = (root, rel) => readlinkSync(join(root, guard(rel)));
 
+// The five preservation exclusion classes, read from the curated-catalog schema so the gate binds an
+// exclusion to the same closed vocabulary the schema enforces (OBLIGATIONS-FORMAT.md preservation.map,
+// mapRow.exclude). A bogus class is not a valid cover form. (finding C)
+const EXCLUDE_CLASSES = new Set(readJSON(repo, 'seed/.loam/factory/assets/curated-catalog.schema.json').$defs.mapRow.properties.exclude.enum);
+
 // Real-path containment: resolve the real path of `rel` beneath `root` and reject any escape.
 // Returns the repository-relative canonical path (POSIX) of the resolved target.
 function containedReal(root, rel) {
@@ -103,7 +108,119 @@ function sourcesMatchTree(obligations, root) {
     if (edge.to.entry !== undefined && !entryIds.has(edge.to.entry)) throw new Error(`required edge ${edge.id} names a missing entry`);
     if (edge.to.target !== undefined && !targetIds.has(edge.to.target)) throw new Error(`required edge ${edge.id} names a missing target`);
   }
+  // Every edge that carries a source-unit anchor names one that exists and belongs to the source
+  // body of its own fromEntry: an edge cannot cite a span from a file it does not originate in.
+  edgeSourceUnitsOwned(obligations);
+  // Every source unit of a body-backed entry is accounted for by a preservation-map row (an adopted
+  // mapping or an explicit exclusion): a cleared or shortened map leaves adopted units unpreserved.
+  preservationMapCoverage(obligations);
   return bodies;
+}
+
+// An edge's source-unit anchor, when present, must be one of the fromEntry's own source units. This
+// binds the provenance graph to real spans and rejects a fabricated or foreign sourceUnit. (finding 2)
+function edgeSourceUnitsOwned(obligations) {
+  const byEntry = new Map(obligations.entries.map(e => [e.id, e]));
+  for (const edge of obligations.edges) {
+    const from = byEntry.get(edge.fromEntry);
+    // The fromEntry must exist before either the anchor rule or the ownership rule can bind. This
+    // check sits above the null-anchor branch: an edge whose anchor is nulled AND whose fromEntry is
+    // re-parented to a nonexistent entry used to fall through both rules (the null branch found no
+    // `from`, hit `continue`, and never reached the missing-fromEntry throw), erasing a required edge
+    // from its closure with its anchor gone. It is now caught first. (finding A)
+    if (!from) throw new Error(`edge ${edge.id} names a missing fromEntry ${edge.fromEntry}`);
+    // An edge is owned by its fromEntry: its id is `<fromEntry>:e<n>`. Without this, a required edge whose
+    // anchor is nulled could be re-parented to any existing non-regular-file entry (a distribution-symlink
+    // or remote-declaration entry) and escape both the anchor rule and the unit-ownership rule. (finding 1, round 4)
+    if (!edge.id.startsWith(`${edge.fromEntry}:`)) throw new Error(`edge ${edge.id} is not owned by fromEntry ${edge.fromEntry}`);
+    if (edge.sourceUnit === null || edge.sourceUnit === undefined) {
+      // A required edge must carry a source-unit anchor unless it originates in a distribution-symlink
+      // entry (a mirror whose lessons live in the mirrored skill). The ownership guard cannot be evaded by
+      // dropping the anchor: every such edge in production carries one, so a null anchor here is a
+      // corruption. (finding 1; symlink exemption finding 1, round 4)
+      if (REQUIRED.has(edge.relationship) && from.source.type !== 'distribution-symlink') {
+        throw new Error(`edge ${edge.id} from body-backed ${edge.fromEntry} has no source-unit anchor`);
+      }
+      continue;
+    }
+    if (!from.sourceUnits.some(u => u.id === edge.sourceUnit)) throw new Error(`edge ${edge.id} names source unit ${edge.sourceUnit} not owned by ${edge.fromEntry}`);
+  }
+}
+
+// Every source unit of a body-backed entry must appear in that entry's preservation map exactly once,
+// covered by a well-formed row. An entry that declares a successor target (`entry.targets`) maps each
+// adopted unit to a declared section of a real target; a target-less entry (D8 gives it no successor)
+// may carry a section-only lesson row, and only there is `section` alone a valid cover. Row fields are
+// bound: an exclusion names one of the five declared classes, a mapped target is a known target id,
+// and the named section is one that target declares (or a nonempty declaration on a target-less
+// entry). A cleared, shortened, section-only-on-a-targeted-entry, duplicated or ill-formed map is
+// rejected. (findings 2, B, C)
+function preservationMapCoverage(obligations) {
+  const targetsById = new Map(obligations.targets.map(t => [t.id, t]));
+  for (const entry of obligations.entries) {
+    if (entry.source.type !== 'regular-file' && entry.source.type !== 'distribution-symlink') continue;
+    if (entry.sourceUnits.length === 0) continue;
+    const ownUnits = new Set(entry.sourceUnits.map(u => u.id));
+    const hasTargets = entry.targets.length > 0;
+    const seen = new Set();
+    for (const row of entry.map ?? []) {
+      // Every row names one of the entry's own source units: a row citing a foreign or invented unit
+      // id cannot claim to preserve anything the entry contains. (finding 2)
+      if (!ownUnits.has(row.unit)) throw new Error(`entry ${entry.id} preservation-map row names unit ${row.unit} not owned by the entry`);
+      // Each unit is disposed of by exactly one row. Otherwise a unit mapped by one row and excluded
+      // by another double-counts, and the excluded copy silently drops the adopted mapping. (finding B)
+      if (seen.has(row.unit)) throw new Error(`entry ${entry.id} preservation-map has a duplicate row for unit ${row.unit}`);
+      seen.add(row.unit);
+      if (typeof row.exclude === 'string') {
+        // An exclusion covers its unit only when its class is one of the five declared classes. (finding C)
+        if (!EXCLUDE_CLASSES.has(row.exclude)) throw new Error(`entry ${entry.id} preservation-map row for unit ${row.unit} names an unknown exclude class ${row.exclude}`);
+        continue;
+      }
+      if (hasTargets) {
+        // An entry with a successor maps each adopted unit to a declared section of a real target. A
+        // section-only (target-stripped) row on such an entry is not a cover: the target must be a
+        // known id and the section one that target declares. (findings B, C)
+        if (typeof row.target !== 'string' || !targetsById.has(row.target)) throw new Error(`entry ${entry.id} preservation-map row for unit ${row.unit} names target ${row.target} not in obligations.targets`);
+        // The target must be one the entry itself declares, not merely a known id. Otherwise a row can be
+        // silently re-homed to another entry's successor, dropping the lesson from this entry's own
+        // target (the catalog gate only checks the id resolves, not that the entry declares it). (finding 2, round 4)
+        if (!entry.targets.includes(row.target)) throw new Error(`entry ${entry.id} preservation-map row for unit ${row.unit} names target ${row.target} not declared by the entry`);
+        const target = targetsById.get(row.target);
+        if (typeof row.section !== 'string' || !target.sectionKeys.includes(row.section)) throw new Error(`entry ${entry.id} preservation-map row for unit ${row.unit} names section ${row.section} not in target ${row.target}`);
+      } else {
+        // A target-less entry carries a section-only lesson row; the section must be a kebab-case
+        // declaration (OBLIGATIONS-FORMAT.md). `section` is a cover form only here, never on an entry
+        // with targets. (findings B, C; kebab requirement finding 3, round 4)
+        if (typeof row.section !== 'string' || !/^[a-z0-9]+(-[a-z0-9]+)*$/.test(row.section)) throw new Error(`entry ${entry.id} preservation-map row for unit ${row.unit} has no kebab-case section`);
+      }
+    }
+    for (const unit of entry.sourceUnits) {
+      if (!seen.has(unit.id)) throw new Error(`entry ${entry.id} source unit ${unit.id} is not covered by the preservation map`);
+    }
+  }
+}
+
+// Attribution and license evidence against the reviewed source material. Every body-backed entry
+// carries a non-empty author and license; every mattpocock upstream file (SKILL.md and its siblings,
+// wherever their entry lives) keeps the upstream author and MIT license and cites the UPSTREAM-LICENSE
+// evidence file, which must exist in the tree. Erasing an entry's attribution is rejected. (finding 2)
+const POCOCK_LICENSE = `${POCOCK}/UPSTREAM-LICENSE`;
+function attributionEvidence(obligations, root) {
+  let checked = 0;
+  for (const entry of obligations.entries) {
+    if (entry.source.type !== 'regular-file' && entry.source.type !== 'distribution-symlink') continue;
+    const a = entry.attribution;
+    if (!a || typeof a !== 'object') throw new Error(`body-backed entry has no attribution: ${entry.id}`);
+    if (typeof a.author !== 'string' || a.author === '') throw new Error(`body-backed entry has no attribution author: ${entry.id}`);
+    if (typeof a.license !== 'string' || a.license === '') throw new Error(`body-backed entry has no attribution license: ${entry.id}`);
+    if (entry.source.type === 'regular-file' && entry.source.path.includes(`${POCOCK}/`)) {
+      if (a.author !== 'Matt Pocock' || a.license !== 'MIT') throw new Error(`mattpocock source attribution differs from the upstream: ${entry.id}`);
+      if (a.licenseEvidence !== POCOCK_LICENSE) throw new Error(`mattpocock source does not cite the upstream license evidence: ${entry.id}`);
+      if (!lstatTree(root, POCOCK_LICENSE).isFile()) throw new Error(`mattpocock upstream license evidence file is missing: ${POCOCK_LICENSE}`);
+    }
+    checked++;
+  }
+  return checked;
 }
 
 function baselineMapAgreement(obligations, adoptionMap, provenance) {
@@ -134,9 +251,27 @@ function baselineMapAgreement(obligations, adoptionMap, provenance) {
   return { baselines: adoptionMap.entries.length, snapshots: Object.keys(D6).length, pocock: pocock.length };
 }
 
+// The originating project of an inventory asset and the path remainder beneath it, derived from the
+// asset's original path the way the intake labelled the disposition rows: a `Desktop/<project>/` asset
+// yields that project and the path below it; an asset in the operator home yields `user-global` and
+// the path below the home directory. Returning the remainder lets the application binding require exact
+// path equality rather than a suffix match, so a truncated row path no longer binds. (finding D) This
+// is read from the tracked inventory's own paths; no personal path is copied into the catalog.
+function projectOfPath(originalPath) {
+  const p = String(originalPath);
+  const desktop = p.match(/\/Desktop\/([^/]+)\/(.+)$/);
+  if (desktop) return { project: desktop[1], remainder: desktop[2] };
+  const home = p.match(/\/(?:Users|home)\/[^/]+\/(.+)$/);
+  if (home) return { project: 'user-global', remainder: home[1] };
+  return { project: 'user-global', remainder: p };
+}
+
 // Application dispositions match the application inventory by full identity: every disposition row
-// binds to exactly one inventory asset whose original path ends with the row path, whose kind
-// equals the row kind and whose digest equals the row digest, and the bijection covers every asset.
+// binds to exactly one inventory asset whose path remainder beneath its project root equals the row
+// path exactly, whose kind equals the row kind, whose digest equals the row digest and whose
+// originating project equals the row project, and the bijection covers every asset. The path is bound
+// by exact equality of the remainder, not a suffix match, so a row path truncated to a bare suffix no
+// longer binds to its asset, and relabelling a row's project is still rejected. (findings 2, D)
 function applicationTupleAgreement(obligations, application) {
   const rows = [
     ...obligations.dispositions.notSelected.filter(r => r.inventory === 'application'),
@@ -145,8 +280,12 @@ function applicationTupleAgreement(obligations, application) {
   const used = new Set();
   for (const row of rows) {
     if (typeof row.project !== 'string' || !row.project) throw new Error(`application row has no project: ${row.path}`);
-    const idx = application.assets.findIndex((a, i) => !used.has(i) && a.sha256 === row.sha256 && a.kind === row.kind && (a.original_path.endsWith(`/${row.path}`) || a.original_path === row.path));
-    if (idx < 0) throw new Error(`application row has no matching inventory asset (project/path/kind/sha256): ${row.path}`);
+    const idx = application.assets.findIndex((a, i) => {
+      if (used.has(i) || a.sha256 !== row.sha256 || a.kind !== row.kind) return false;
+      const { project, remainder } = projectOfPath(a.original_path);
+      return project === row.project && remainder === row.path;
+    });
+    if (idx < 0) throw new Error(`application row has no matching inventory asset (project/path/kind/sha256): ${row.project} ${row.path}`);
     used.add(idx);
   }
   if (used.size !== application.assets.length) throw new Error(`application dispositions do not cover the inventory exactly (${used.size} of ${application.assets.length})`);
@@ -202,23 +341,37 @@ function inventoryPartition(obligations, loamInventory) {
 }
 
 function inventoryDispositions(obligations, benchmark, application, loamInventory) {
-  const key = row => [row.project, row.relative_path ?? row.path, row.sha256].join('|');
-  const benchKeys = new Set(benchmark.rows.map(key));
+  // The benchmark identity tuple includes kind: a disposition may not silently change an asset's
+  // recorded kind while keeping its path and digest. (finding 2)
+  // Two key functions with no cross-field fallback: benchmark inventory rows key on their relative_path,
+  // obligation disposition rows key on their path. A `relative_path ?? path` fallback let an obligation
+  // row carry a real relative_path and a bogus path and be keyed on the harmless field. (finding 3)
+  const invKey = row => [row.project, row.relative_path, row.kind, row.sha256].join('|');
+  const obKey = row => [row.project, row.path, row.kind, row.sha256].join('|');
+  const benchKeys = new Set(benchmark.rows.map(invKey));
   const obBench = [
     ...obligations.dispositions.notSelected.filter(r => r.inventory === 'benchmark'),
     ...obligations.dispositions.selectionAliases.filter(r => r.inventory === 'benchmark'),
   ];
-  const obBenchKeys = new Set(obBench.map(key));
+  const obBenchKeys = new Set(obBench.map(obKey));
   if (benchKeys.size !== obBenchKeys.size) throw new Error('benchmark disposition count differs from the inventory');
   for (const k of benchKeys) if (!obBenchKeys.has(k)) throw new Error(`benchmark inventory row is undispositioned: ${k}`);
   for (const k of obBenchKeys) if (!benchKeys.has(k)) throw new Error(`disposition row is not in the benchmark inventory: ${k}`);
 
-  // Application dispositions are compared by full identity tuple, not digest alone.
+  // Application dispositions are compared by full identity tuple (project/path/kind/sha256), not digest alone.
   applicationTupleAgreement(obligations, application);
 
+  // Plugin references bind to the inventory by project, name, enabled state and declaration source:
+  // the inventory records the declaring file as an absolute path, so the obligation's relative
+  // declarationSource must be its project-scoped suffix. Relabelling declarationSource is rejected. (finding 2)
   if (obligations.dispositions.pluginReferences.length !== benchmark.plugin_references.length) throw new Error('plugin reference count differs');
-  const pluginKeys = new Set(benchmark.plugin_references.map(r => `${r.project}|${r.name}`));
-  for (const r of obligations.dispositions.pluginReferences) if (!pluginKeys.has(`${r.project}|${r.name}`)) throw new Error(`plugin reference is not in the inventory: ${r.name}`);
+  const pluginByKey = new Map(benchmark.plugin_references.map(r => [`${r.project}|${r.name}`, r]));
+  for (const r of obligations.dispositions.pluginReferences) {
+    const inv = pluginByKey.get(`${r.project}|${r.name}`);
+    if (!inv) throw new Error(`plugin reference is not in the inventory: ${r.name}`);
+    if (inv.enabled !== r.enabled) throw new Error(`plugin reference enabled state differs from the inventory: ${r.name}`);
+    if (typeof inv.source !== 'string' || !inv.source.endsWith(`/${r.project}/${r.declarationSource}`)) throw new Error(`plugin reference declarationSource differs from the inventory: ${r.name}`);
+  }
 
   // D2a private rows: compared against the tracked inventory only, never the private body.
   if (obligations.privateMetadata.length !== 5) throw new Error('D2a metadata partition is not exactly five rows');
@@ -297,6 +450,171 @@ test('provenance.sources-match-tree', () => {
   const helperId = 'support:cultivation/marketplace/sam-cc-setup/agents/plan-reviewer.md';
   missingHelper.entries = missingHelper.entries.filter(e => e.id !== helperId);
   assert.throws(() => sourcesMatchTree(missingHelper, repo), /names a missing entry/);
+
+  // Finding 2: a nonexistent edge source-unit anchor. An edge is retargeted to cite a span id that
+  // its fromEntry's source body does not contain; ownership binding rejects it by edge id.
+  const badUnit = cloneOb();
+  const anchored = badUnit.edges.find(e => e.sourceUnit !== null);
+  anchored.sourceUnit = `${anchored.fromEntry}:u-does-not-exist`;
+  assert.throws(() => edgeSourceUnitsOwned(badUnit), new RegExp(`edge ${anchored.id} names source unit .* not owned`));
+  // The same corruption is rejected by the full production check.
+  const badUnitFull = cloneOb();
+  const anchored2 = badUnitFull.edges.find(e => e.sourceUnit !== null);
+  anchored2.sourceUnit = `${anchored2.fromEntry}:u-does-not-exist`;
+  assert.throws(() => sourcesMatchTree(badUnitFull, repo), /not owned by/);
+
+  // Finding 2: a cleared preservation map on a body-backed entry leaves its adopted source units
+  // uncovered; coverage rejects it by entry id and the first uncovered unit.
+  const clearedMap = cloneOb();
+  const mapped = clearedMap.entries.find(e => (e.source.type === 'regular-file') && e.sourceUnits.length > 0 && e.map.length > 0);
+  mapped.map = [];
+  assert.throws(() => preservationMapCoverage(clearedMap), new RegExp(`entry ${mapped.id} source unit .* is not covered`));
+
+  // Finding 1 (round 2): a required edge whose fromEntry is body-backed (regular-file) has its
+  // source-unit anchor dropped to null. The ownership guard now refuses a missing anchor instead of
+  // skipping it, so the corruption cannot erase the provenance anchor and still pass. It names the edge.
+  const droppedAnchor = cloneOb();
+  const byEntryAnchor = new Map(droppedAnchor.entries.map(e => [e.id, e]));
+  const requiredAnchored = droppedAnchor.edges.find(e => {
+    const from = byEntryAnchor.get(e.fromEntry);
+    return e.sourceUnit !== null && from && from.source.type === 'regular-file' && REQUIRED.has(e.relationship);
+  });
+  assert.ok(requiredAnchored, 'a body-backed required edge carrying an anchor exists in production');
+  requiredAnchored.sourceUnit = null;
+  assert.throws(() => edgeSourceUnitsOwned(droppedAnchor), err => err.message.includes(`edge ${requiredAnchored.id} from body-backed ${requiredAnchored.fromEntry} has no source-unit anchor`));
+  // The same corruption is rejected by the full production check.
+  const droppedAnchorFull = cloneOb();
+  const byEntryAnchor2 = new Map(droppedAnchorFull.entries.map(e => [e.id, e]));
+  const requiredAnchored2 = droppedAnchorFull.edges.find(e => {
+    const from = byEntryAnchor2.get(e.fromEntry);
+    return e.sourceUnit !== null && from && from.source.type === 'regular-file' && REQUIRED.has(e.relationship);
+  });
+  requiredAnchored2.sourceUnit = null;
+  assert.throws(() => sourcesMatchTree(droppedAnchorFull, repo), /has no source-unit anchor/);
+
+  // Finding A (round 3): the fromEntry existence check now sits above the null-anchor branch. An edge
+  // whose anchor is nulled AND whose fromEntry is re-parented to a nonexistent entry used to slip past
+  // both the anchor rule and the ownership rule (the null branch found no fromEntry, hit `continue`,
+  // and never reached the missing-fromEntry throw), erasing a required edge from its closure with the
+  // anchor gone. It is now rejected as a missing fromEntry, naming the edge.
+  const missingFromEntry = cloneOb();
+  const byEntryFrom = new Map(missingFromEntry.entries.map(e => [e.id, e]));
+  const reParent = missingFromEntry.edges.find(e => {
+    const from = byEntryFrom.get(e.fromEntry);
+    return e.sourceUnit !== null && from && from.source.type === 'regular-file' && REQUIRED.has(e.relationship);
+  });
+  assert.ok(reParent, 'a body-backed required edge carrying an anchor exists in production');
+  reParent.sourceUnit = null;
+  reParent.fromEntry = 'support:nonexistent';
+  assert.throws(() => edgeSourceUnitsOwned(missingFromEntry), err => err.message.includes(`edge ${reParent.id} names a missing fromEntry support:nonexistent`));
+  // The same corruption is rejected by the full production check.
+  const missingFromEntryFull = cloneOb();
+  const byEntryFrom2 = new Map(missingFromEntryFull.entries.map(e => [e.id, e]));
+  const reParent2 = missingFromEntryFull.edges.find(e => {
+    const from = byEntryFrom2.get(e.fromEntry);
+    return e.sourceUnit !== null && from && from.source.type === 'regular-file' && REQUIRED.has(e.relationship);
+  });
+  reParent2.sourceUnit = null;
+  reParent2.fromEntry = 'support:nonexistent';
+  assert.throws(() => sourcesMatchTree(missingFromEntryFull, repo), /names a missing fromEntry/);
+
+  // Finding B (round 3): a section-only (target-stripped) row on an entry that declares a successor
+  // target. The critic stripped `target` from a catchup row while keeping `section` and it was still
+  // accepted; an entry with targets now requires every non-excluded row to name a real target, so the
+  // stripped row is no longer a cover. Rejected naming the entry and the unit.
+  const strippedTarget = cloneOb();
+  const targetedEntry = strippedTarget.entries.find(e => e.source.type === 'regular-file' && e.sourceUnits.length > 0 && e.targets.length > 0 && (e.map ?? []).some(r => typeof r.target === 'string'));
+  assert.ok(targetedEntry, 'an entry with a successor target and a target row exists in production');
+  const strippedRow = targetedEntry.map.find(r => typeof r.target === 'string');
+  const strippedUnit = strippedRow.unit;
+  delete strippedRow.target;
+  assert.throws(() => preservationMapCoverage(strippedTarget), err => err.message.includes(`entry ${targetedEntry.id} preservation-map row for unit ${strippedUnit} names target`));
+
+  // Finding B (round 3): a duplicate-unit row. A second row for a unit that is already disposed of can
+  // no longer double-count as coverage (a mapped row plus an exclude row for the same unit used to be
+  // accepted). Rejected naming the entry and the unit.
+  const dupUnit = cloneOb();
+  const dupEntry = dupUnit.entries.find(e => e.source.type === 'regular-file' && e.sourceUnits.length > 0 && e.map.length > 0);
+  const dupRow = structuredClone(dupEntry.map[0]);
+  dupEntry.map.push(dupRow);
+  assert.throws(() => preservationMapCoverage(dupUnit), err => err.message.includes(`entry ${dupEntry.id} preservation-map has a duplicate row for unit ${dupRow.unit}`));
+
+  // Finding C (round 3): a mapped target that is not a known target id. On an entry with targets the
+  // target must resolve in obligations.targets; a fabricated id is rejected, naming the unit and id.
+  const badTargetId = cloneOb();
+  const badTargetEntry = badTargetId.entries.find(e => e.source.type === 'regular-file' && e.sourceUnits.length > 0 && e.targets.length > 0 && (e.map ?? []).some(r => typeof r.target === 'string'));
+  const badTargetRow = badTargetEntry.map.find(r => typeof r.target === 'string');
+  badTargetRow.target = 'method:nonexistent';
+  assert.throws(() => preservationMapCoverage(badTargetId), err => err.message.includes(`entry ${badTargetEntry.id} preservation-map row for unit ${badTargetRow.unit} names target method:nonexistent not in obligations.targets`));
+
+  // Finding C (round 3): an exclusion whose class is not one of the five declared classes is not a
+  // cover; rejected naming the unit and the bogus class.
+  const badExclude = cloneOb();
+  const excludeEntry = badExclude.entries.find(e => e.source.type === 'regular-file' && e.sourceUnits.length > 0 && (e.map ?? []).some(r => typeof r.exclude === 'string'));
+  const excludeRow = excludeEntry.map.find(r => typeof r.exclude === 'string');
+  excludeRow.exclude = 'bogus-class';
+  assert.throws(() => preservationMapCoverage(badExclude), err => err.message.includes(`entry ${excludeEntry.id} preservation-map row for unit ${excludeRow.unit} names an unknown exclude class bogus-class`));
+
+  // Finding C (round 3): an empty section string on a target-less entry's section-only row is not a
+  // kebab-case declaration and does not cover its unit; rejected naming the unit.
+  const emptySection = cloneOb();
+  const targetlessEntry = emptySection.entries.find(e => e.source.type === 'regular-file' && e.sourceUnits.length > 0 && e.targets.length === 0 && (e.map ?? []).some(r => typeof r.section === 'string' && typeof r.target !== 'string' && typeof r.exclude !== 'string'));
+  assert.ok(targetlessEntry, 'a target-less entry with a section-only row exists in production');
+  const emptyRow = targetlessEntry.map.find(r => typeof r.section === 'string' && typeof r.target !== 'string' && typeof r.exclude !== 'string');
+  emptyRow.section = '';
+  assert.throws(() => preservationMapCoverage(emptySection), err => err.message.includes(`entry ${targetlessEntry.id} preservation-map row for unit ${emptyRow.unit} has no kebab-case section`));
+
+  // Finding 2 (round 2): a ghost-unit preservation-map row. A well-formed row (it carries a section)
+  // cites a unit id the entry does not own, so it cannot claim coverage; it is rejected by entry and unit.
+  const ghostRow = cloneOb();
+  const ghosted = ghostRow.entries.find(e => e.source.type === 'regular-file' && e.sourceUnits.length > 0 && e.map.length > 0);
+  const ghostUnitId = `${ghosted.id}:u-does-not-exist`;
+  ghosted.map = [{ unit: ghostUnitId, section: 'invented-section' }, ...ghosted.map];
+  assert.throws(() => preservationMapCoverage(ghostRow), err => err.message.includes(`entry ${ghosted.id} preservation-map row names unit ${ghostUnitId} not owned by the entry`));
+
+  // Finding 1 (round 4): a required edge whose anchor is nulled, re-parented to a distribution-symlink
+  // entry. The old rule fired only for regular-file sources, so this slipped past the anchor rule; the
+  // symlink exemption keeps the two real symlink e1 edges valid while ownership by edge id rejects the
+  // foreign re-parent, naming the edge. (link re-parent)
+  const linkReparent = cloneOb();
+  const symlinkEntry = linkReparent.entries.find(e => e.source.type === 'distribution-symlink');
+  assert.ok(symlinkEntry, 'a distribution-symlink entry exists in production');
+  const lrByEntry = new Map(linkReparent.entries.map(e => [e.id, e]));
+  const lrEdge = linkReparent.edges.find(e => { const f = lrByEntry.get(e.fromEntry); return e.sourceUnit !== null && f && f.source.type === 'regular-file' && REQUIRED.has(e.relationship); });
+  lrEdge.sourceUnit = null;
+  lrEdge.fromEntry = symlinkEntry.id;
+  assert.throws(() => sourcesMatchTree(linkReparent, repo), err => err.message.includes(`edge ${lrEdge.id} is not owned by fromEntry ${symlinkEntry.id}`));
+
+  // Finding 1 (round 4): the same nulled-anchor re-parent to a remote-declaration entry, which escaped
+  // all three cases before. Ownership by edge id rejects it, naming the edge. (remote re-parent)
+  const remoteReparent = cloneOb();
+  const remoteEntry = remoteReparent.entries.find(e => e.source.type === 'remote-declaration');
+  assert.ok(remoteEntry, 'a remote-declaration entry exists in production');
+  const rrByEntry = new Map(remoteReparent.entries.map(e => [e.id, e]));
+  const rrEdge = remoteReparent.edges.find(e => { const f = rrByEntry.get(e.fromEntry); return e.sourceUnit !== null && f && f.source.type === 'regular-file' && REQUIRED.has(e.relationship); });
+  rrEdge.sourceUnit = null;
+  rrEdge.fromEntry = remoteEntry.id;
+  assert.throws(() => sourcesMatchTree(remoteReparent, repo), err => err.message.includes(`edge ${rrEdge.id} is not owned by fromEntry ${remoteEntry.id}`));
+
+  // Finding 2 (round 4): a targeted entry's row retargeted to a known target the entry does not declare.
+  // Every baseline:catchup row could be re-homed to method:fable-prompting and accepted, so the lessons
+  // silently left method:catchup; the entry-declared-target rule rejects it, naming the entry and unit.
+  const foreignTarget = cloneOb();
+  const catchupEntry = foreignTarget.entries.find(e => e.id === 'baseline:catchup');
+  assert.ok(catchupEntry && catchupEntry.targets.length > 0, 'baseline:catchup is a targeted entry in production');
+  const catchupRow = catchupEntry.map.find(r => typeof r.target === 'string');
+  catchupRow.target = 'method:fable-prompting';
+  catchupRow.section = 'when-to-use';
+  assert.throws(() => preservationMapCoverage(foreignTarget), err => err.message.includes(`entry baseline:catchup preservation-map row for unit ${catchupRow.unit} names target method:fable-prompting not declared by the entry`));
+
+  // Finding 3 (round 4): a non-kebab section on a target-less entry's section-only row. Section keys are
+  // kebab-case declarations (OBLIGATIONS-FORMAT.md), so a free-text section no longer covers its unit.
+  const nonKebab = cloneOb();
+  const nkEntry = nonKebab.entries.find(e => e.source.type === 'regular-file' && e.sourceUnits.length > 0 && e.targets.length === 0 && (e.map ?? []).some(r => typeof r.section === 'string' && typeof r.target !== 'string' && typeof r.exclude !== 'string'));
+  assert.ok(nkEntry, 'a target-less entry with a section-only row exists in production');
+  const nkRow = nkEntry.map.find(r => typeof r.section === 'string' && typeof r.target !== 'string' && typeof r.exclude !== 'string');
+  nkRow.section = 'Not A Kebab Key!';
+  assert.throws(() => preservationMapCoverage(nonKebab), err => err.message.includes(`entry ${nkEntry.id} preservation-map row for unit ${nkRow.unit} has no kebab-case section`));
 });
 
 // ---------------------------------------------------------------------------
@@ -305,6 +623,21 @@ test('provenance.baseline-map-agreement', () => {
   const provenance = readJSON(repo, `${POCOCK}/provenance.json`);
   const report = baselineMapAgreement(OBLIGATIONS, adoptionMap, provenance);
   assert.deepEqual([report.baselines, report.snapshots, report.pocock], [30, 10, 25]);
+
+  // Finding 2: attribution and license evidence. Every body-backed source keeps a named author and
+  // license, and every mattpocock upstream file cites the UPSTREAM-LICENSE evidence in the tree.
+  assert.ok(attributionEvidence(OBLIGATIONS, repo) > 150);
+  // Erased sibling attribution: the handoff openai.yaml sibling loses its attribution record.
+  const erasedAttribution = cloneOb();
+  const siblingId = 'support:docs/architecture-working/tooling/mattpocock-skills/handoff/agents/openai.yaml';
+  const sib = erasedAttribution.entries.find(e => e.id === siblingId);
+  assert.ok(sib, 'handoff openai.yaml sibling entry present');
+  sib.attribution = null;
+  assert.throws(() => attributionEvidence(erasedAttribution, repo), new RegExp(`no attribution: ${siblingId}`));
+  // Dropping only the upstream license evidence pointer is also rejected for a mattpocock file.
+  const droppedEvidence = cloneOb();
+  droppedEvidence.entries.find(e => e.id === siblingId).attribution.licenseEvidence = null;
+  assert.throws(() => attributionEvidence(droppedEvidence, repo), /does not cite the upstream license evidence/);
 
   // Wrong baseline successor: a destination that no longer matches the adoption map.
   const wrongDestination = cloneOb();
@@ -380,6 +713,40 @@ test('provenance.inventory-dispositions', () => {
   const changedAppPath = cloneOb();
   changedAppPath.dispositions.notSelected.find(r => r.inventory === 'application').path = 'unrelated/file.md';
   assert.throws(() => inventoryDispositions(changedAppPath, benchmark, application, loamInventory), /no matching inventory asset/);
+  // Finding 2: an application disposition relabelled to an unrelated project (path/kind/digest intact).
+  const changedAppProject = cloneOb();
+  changedAppProject.dispositions.selectionAliases.find(r => r.inventory === 'application').project = 'unrelated-project';
+  assert.throws(() => inventoryDispositions(changedAppProject, benchmark, application, loamInventory), /no matching inventory asset \(project\/path\/kind\/sha256\): unrelated-project/);
+  // Finding D (round 3): an application row whose path is truncated to a bare suffix. The binding now
+  // requires the asset's path remainder beneath its project root to equal the row path exactly, not
+  // merely end with it, so the truncated path no longer binds to its asset (its digest, kind and
+  // project still pin it, but the recorded path is wrong). The truncation is built from the row's own
+  // relative path at runtime, so no personal path appears in the test source. (D11)
+  const truncatedAppPath = cloneOb();
+  const truncRow = truncatedAppPath.dispositions.notSelected.find(r => r.inventory === 'application' && r.path.includes('/'));
+  assert.ok(truncRow, 'a not-selected application row with a nested path exists in production');
+  truncRow.path = truncRow.path.split('/').pop();
+  assert.throws(() => inventoryDispositions(truncatedAppPath, benchmark, application, loamInventory), /no matching inventory asset/);
+  // Finding 2: a benchmark disposition whose kind is changed while its project/path/digest are intact.
+  const changedBenchKind = cloneOb();
+  changedBenchKind.dispositions.notSelected.find(r => r.inventory === 'benchmark').kind = 'not-the-real-kind';
+  assert.throws(() => inventoryDispositions(changedBenchKind, benchmark, application, loamInventory), /undispositioned/);
+  // Finding 3 (round 2): a benchmark disposition row that carries a real relative_path and a bogus
+  // path. With the fallback removed the obligation row keys on its path alone, so the bogus path no
+  // longer hides behind the harmless relative_path and the row is undispositioned.
+  const spoofedPath = cloneOb();
+  const spoofRow = spoofedPath.dispositions.notSelected.find(r => r.inventory === 'benchmark');
+  spoofRow.relative_path = spoofRow.path;
+  spoofRow.path = 'bogus/file.md';
+  assert.throws(() => inventoryDispositions(spoofedPath, benchmark, application, loamInventory), /undispositioned/);
+  // Finding 2: a plugin reference whose declaration source is changed to an unrelated file.
+  const changedPluginSource = cloneOb();
+  changedPluginSource.dispositions.pluginReferences[0].declarationSource = '.codex/config.toml';
+  assert.throws(() => inventoryDispositions(changedPluginSource, benchmark, application, loamInventory), /declarationSource differs from the inventory/);
+  // Finding 2: a plugin reference whose enabled state is flipped away from the inventory.
+  const changedPluginEnabled = cloneOb();
+  changedPluginEnabled.dispositions.pluginReferences[0].enabled = !changedPluginEnabled.dispositions.pluginReferences[0].enabled;
+  assert.throws(() => inventoryDispositions(changedPluginEnabled, benchmark, application, loamInventory), /enabled state differs from the inventory/);
   // Removing an inventoried support entry leaves its inventory file undispositioned.
   const droppedSupport = cloneOb();
   droppedSupport.entries = droppedSupport.entries.filter(e => e.id !== 'support:cultivation/marketplace/README.md');
@@ -400,8 +767,11 @@ test('provenance.inventory-dispositions', () => {
   assert.equal(scanPersonalPaths(schema).length, 0);
   assert.equal(scanPersonalPaths(OBLIGATIONS).length, 0);
   assert.equal(scanPersonalPaths(readText(repo, 'seed/docs/factory/ASSETS.md')).length, 0);
-  // Positive control: a schema regex literal that describes a forbidden shape is not user data.
-  assert.equal(scanPersonalPaths({ pattern: ['/Us', 'ers/', 'x'].join('') }).length, 0);
+  // Positive control: a schema regex literal that describes a forbidden shape is not user data - but
+  // only when the scan is labelled `schema`; the `pattern`-key exemption is confined to that document. (finding 7)
+  assert.equal(scanPersonalPaths({ pattern: ['/Us', 'ers/', 'x'].join('') }, 'schema').length, 0);
+  // Finding 7 (round 2): the same `pattern` key is NOT exempt outside the schema document.
+  assert.ok(scanPersonalPaths({ pattern: ['/Us', 'ers/', 'x'].join('') }).length > 0);
   // Negative control: the same shape leaking into prose is caught.
   assert.ok(scanPersonalPaths({ description: ['/Us', 'ers/', 'operator/secret'].join('') }).length > 0);
 });
