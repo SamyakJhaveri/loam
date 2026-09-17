@@ -18,7 +18,7 @@ function directRead(path) {
   catch (error) { return error && error.code ? error.code : 'error'; }
 }
 function childRead(path) {
-  const result = spawnSync('/bin/sh', ['-c', 'exec cat -- "$1"', 'sh', path], { encoding: 'utf8' });
+  const result = spawnSync('/bin/sh', ['-c', 'exec /bin/cat -- "$1"', 'sh', path], { encoding: 'utf8' });
   if (result.status === 0) return 'ok';
   const text = (result.stderr || '').toLowerCase();
   if (text.includes('operation not permitted')) return 'EPERM';
