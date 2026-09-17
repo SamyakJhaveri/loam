@@ -107,11 +107,10 @@ a clean checkout of the Loam template at an annotated release tag fetched over H
 and the official Node 24.21.0 toolchain distribution whose `bin/node` bytes the controller verifies against the runtime manifest before it runs.
 Integrity checking is not authorship authentication. The authority is your review, not the digests.
 
-The controller and the admit path call a fixed set of operating-system programs by absolute path and trust them as reviewed platform components.
-Those components are `/bin/sh`, `/usr/bin/env`, `/usr/bin/uname`, the digest tool (`/usr/bin/shasum` on macOS, `/usr/bin/sha256sum` on Linux), `/bin/mkdir`, `/bin/mv`, `/bin/chmod`, `/bin/rm`, `/usr/bin/grep`, `/usr/bin/sed`, `/usr/bin/cut` and `/usr/bin/tr`.
+The controller (`loam-control.sh`) calls a fixed set of platform programs by absolute path from a sanitized `PATH`, and trusts them as reviewed components: `/bin/sh`, `/usr/bin/env`, `/usr/bin/mktemp`, `/usr/bin/uname`, the digest tool (`/usr/bin/shasum` on macOS, `/usr/bin/sha256sum` on Linux), `/usr/bin/grep`, `/usr/bin/sed` and `/usr/bin/cut`.
+The admit path runs the digest-verified toolchain `node`, and `git` from `PATH` for a best-effort release tag; its filesystem work is in-process, not shelled out.
 
-The protected operator setup and control entrypoint is `scripts/loam-control.sh`, a dependency-free POSIX `sh` script inside the trusted payload.
-Its distribution owner is the existing Loam release channel: annotated tags cut by `bin/release.sh` and pushed to GitHub.
+The operator entrypoint is `scripts/loam-control.sh`, a dependency-free POSIX `sh` script in the trusted payload, delivered by the same release channel: annotated tags cut by `bin/release.sh`.
 Admit a runtime from the trusted checkout:
 
 ```bash
@@ -136,14 +135,13 @@ No dependency resolves from a project root or a personal cache, and `status` and
 
 ### Control root layout
 
-The control root holds the protected registry, the six protected homes, the sealed runtime snapshots, and a copy of the controller named `loam-control`.
+The control root holds the six protected homes (the registry among them), the sealed runtime snapshots, and a copy of the controller named `loam-control`.
 
 - `registry/` holds the admission records (`registry/admissions/<id>.json`), the runtime records (`registry/runtimes/<id>.json` and `registry/runtimes/<id>.sha256`), the current selection (`registry/selected.json`) and the exclusive-create lock (`registry/admit.lock`).
 - `runtimes/<id>/` is one sealed, read-only snapshot: `payload/`, `bin/node`, `lib/node_modules/npm/`, `bin/loam-control`, `snapshot.json` and `installed-files.json`.
 - The six protected homes `registry/`, `state/`, `locks/`, `credentials/`, `sockets/` and `callbacks/` are created empty at the first admission.
 
 A contained build script may write inside its own staging workspace but is denied every read of the six homes.
-The homes are the paths later tickets populate.
 
 ### States and recovery
 
@@ -169,12 +167,11 @@ A later ticket that introduces second admissions redefines that state.
 
 - Between runs, any process running as your user can rewrite the snapshot, both inventories, the registry records and the controller copy together, with no on-disk trace. The trust boundary is your review at admission plus CORE-02 containment during a contained build, not the at-rest bytes.
 - The controller cannot protect its own first startup. Native loader variables such as `DYLD_INSERT_LIBRARIES` and `LD_PRELOAD`, and the shell's own startup files, act before the controller re-execs under a clean environment. Run the controller non-interactively from a plain terminal. An already-compromised parent is out of scope.
-- On macOS the containment profile protects only the registered paths and permits reads elsewhere. It is not a general home-directory privacy boundary.
+- On macOS the containment profile is not a home-directory privacy boundary (see the qualification note above); it protects only the registered paths.
 
 Provider payloads are not shipped in this revision.
 By operator decision the "both provider payloads ship" acceptance clause is deferred to issue #140 (https://github.com/SamyakJhaveri/loam/issues/140).
 The admission record carries `providers.payloads` empty with `providers.successor` naming that issue, and `doctor` reports `providerReadiness: not-evaluated` as a field kept separate from installation availability.
-This acceptance clause is unmet here.
 
 ## Work on the factory source
 
