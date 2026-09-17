@@ -10,10 +10,10 @@
 // Precedence: plan-03 and the Codex implementation conditions C1-C5 over the
 // inherited plan-02 text. This module imports only node: builtins and relative
 // .js payload sources, so it satisfies the import-closure rule.
-import { createHash } from 'node:crypto';
+import { createHash, randomBytes } from 'node:crypto';
 import { chmodSync, closeSync, cpSync, existsSync, lstatSync, mkdirSync, openSync, readdirSync, readFileSync, realpathSync, renameSync, rmSync, statSync, writeFileSync, writeSync, } from 'node:fs';
 import { spawnSync } from 'node:child_process';
-import { dirname, isAbsolute, join, relative, sep } from 'node:path';
+import { basename, dirname, isAbsolute, join, relative, sep } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { AdmissionError, CONTROL_ROOT_LAYOUT, FETCH_PASSTHROUGH_ENVIRONMENT, FIXTURE_ORIGIN_PREFIX, GENERATED_TREE, NATIVE_PREREQUISITES, NO_GLOBAL_SEARCH_PATHS, REGISTRY_ORIGIN, STAGING_TRANSIENT, canonicalJson, } from '../contracts/installation.js';
 import { qualifyRuntime } from '../platform/runtime.js';
@@ -31,27 +31,51 @@ function readJson(path) { return JSON.parse(readFileSync(path, 'utf8')); }
 function isRecord(value) {
     return value !== null && typeof value === 'object' && !Array.isArray(value);
 }
-function writeCanonical(path, value) { writeFileSync(path, `${canonicalJson(value)}\n`); }
-function writeCanonicalAtomic(dir, name, value) {
-    const finalPath = join(dir, name);
-    const tempPath = join(dir, `.${name}.tmp`);
-    ensureNoSymlink(finalPath);
-    writeFileSync(tempPath, `${canonicalJson(value)}\n`);
+// Create a brand-new file at `path`. The 'wx' flag opens with O_CREAT|O_EXCL, so
+// it refuses to create through, follow or clobber any existing entry (a planted
+// symlink included); the write can never be redirected outside the target.
+function writeNewFile(path, bytes) {
+    const fd = openSync(path, 'wx');
+    try {
+        if (typeof bytes === 'string')
+            writeSync(fd, bytes);
+        else
+            writeSync(fd, bytes);
+    }
+    finally {
+        closeSync(fd);
+    }
+}
+// Publication write: the final target must be absent (a symlink or any file at it
+// is "unexpected" and nothing is overwritten), and the temporary file is created
+// with an exclusive open on a fresh random name, never through an existing path,
+// before the rename onto the target.
+function writeNewAtomic(finalPath, bytes) {
+    requireAbsent(finalPath);
+    const tempPath = join(dirname(finalPath), `.${basename(finalPath)}.${randomBytes(8).toString('hex')}.tmp`);
+    writeNewFile(tempPath, bytes);
     renameSync(tempPath, finalPath);
 }
-function ensureNoSymlink(path) {
+export function writeCanonicalAtomic(dir, name, value) {
+    writeNewAtomic(join(dir, name), `${canonicalJson(value)}\n`);
+}
+function requireAbsent(path) {
+    if (existsSync(path) || isSymlink(path))
+        throw new AdmissionError('install-interrupted', `unexpected ${path}`);
+}
+// A directory we are about to write into must be absent (create it) or an
+// existing real directory (reuse it). A symlink or non-directory is refused so a
+// planted link cannot redirect the writes underneath it.
+function ensureRealDir(path) {
     let stat;
     try {
         stat = lstatSync(path);
     }
     catch {
+        mkdirSync(path, { recursive: true });
         return;
     }
-    if (stat.isSymbolicLink())
-        throw new AdmissionError('install-interrupted', `unexpected ${path}`);
-}
-function requireAbsent(path) {
-    if (existsSync(path) || isSymlink(path))
+    if (stat.isSymbolicLink() || !stat.isDirectory())
         throw new AdmissionError('install-interrupted', `unexpected ${path}`);
 }
 function isSymlink(path) {
@@ -479,9 +503,16 @@ function runtimeRecordsComplete(controlRoot, id) {
         && existsSync(join(controlRoot, CONTROL_ROOT_LAYOUT.runtimeRecords, `${id}.json`));
 }
 function parseSelected(path) {
+    let bytes;
+    try {
+        bytes = readFileSync(path, 'utf8');
+    }
+    catch {
+        return null;
+    }
     let value;
     try {
-        value = readJson(path);
+        value = JSON.parse(bytes);
     }
     catch {
         return null;
@@ -492,15 +523,19 @@ function parseSelected(path) {
         return null;
     if (Object.keys(value).length !== 3)
         return null;
+    // Require the file to be exactly the canonical serialization the writer emits
+    // (sorted keys, two-space indent, one trailing newline). This rejects a
+    // duplicate key, extra whitespace or trailing content, matching the POSIX
+    // controller's line-exact grammar so both parsers agree.
+    if (bytes !== `${canonicalJson(value)}\n`)
+        return null;
     return { version: 1, snapshotId: value.snapshotId, admissionId: value.admissionId };
 }
 // ---- publication ----------------------------------------------------------
 function acquireLock(controlRoot) {
     const registry = join(controlRoot, CONTROL_ROOT_LAYOUT.registry);
-    ensureNoSymlink(registry);
-    mkdirSync(registry, { recursive: true });
+    ensureRealDir(registry);
     const lock = join(controlRoot, CONTROL_ROOT_LAYOUT.lock);
-    ensureNoSymlink(lock);
     let fd;
     try {
         fd = openSync(lock, 'wx');
@@ -603,7 +638,7 @@ export async function admitRuntime(options) {
     try {
         recheckUnderLock(controlRoot);
         createHomes(controlRoot, homes);
-        mkdirSync(runtimesDir, { recursive: true });
+        ensureRealDir(runtimesDir);
         const ws = layoutWorkspace(controlRoot, id, options.toolchain);
         copyReleaseFiles(source, ws.payload, files);
         runFetch(ws, filePolicy);
@@ -631,8 +666,8 @@ export async function admitRuntime(options) {
         faultCheck(options, 'rename');
         const admissionsDir = join(controlRoot, CONTROL_ROOT_LAYOUT.admissions);
         const runtimeRecordsDir = join(controlRoot, CONTROL_ROOT_LAYOUT.runtimeRecords);
-        mkdirSync(admissionsDir, { recursive: true });
-        mkdirSync(runtimeRecordsDir, { recursive: true });
+        ensureRealDir(admissionsDir);
+        ensureRealDir(runtimeRecordsDir);
         writeCanonicalAtomic(admissionsDir, `${id}.json`, record);
         faultCheck(options, 'admission-record');
         const installed = readJson(join(finalSnapshot, 'installed-files.json'));
@@ -692,9 +727,14 @@ function copyReleaseFiles(source, payload, files) {
             throw new AdmissionError('wrong-release-digest', `release file digest mismatch: ${rel}`);
     }
 }
-function sealSnapshot(ws, source, id) {
+export function sealSnapshot(ws, source, id) {
     for (const transient of STAGING_TRANSIENT)
         rmSync(join(ws.workspace, transient), { recursive: true, force: true });
+    // lstat every seal target and refuse a symlink or unexpected entry before
+    // writing anything into the workspace, so a planted link can never redirect a
+    // seal write outside the control root (item 9).
+    for (const target of ['bin', 'lib', 'snapshot.json', 'installed-files.json'])
+        requireAbsent(join(ws.workspace, target));
     mkdirSync(join(ws.workspace, 'bin'), { recursive: true });
     renameSync(join(ws.runtimeDir, 'bin/node'), join(ws.workspace, 'bin/node'));
     chmodSync(join(ws.workspace, 'bin/node'), 0o555);
@@ -705,28 +745,23 @@ function sealSnapshot(ws, source, id) {
         version: 1, id, admissionId: id, createdAt: new Date().toISOString(),
         layout: { payload: 'payload', node: 'bin/node', npm: 'lib/node_modules/npm', npmCli: 'lib/node_modules/npm/bin/npm-cli.js', controller: 'bin/loam-control', modules: 'payload/node_modules', installedFiles: 'installed-files.json', snapshot: 'snapshot.json', doctor: 'payload/dist/src/commands/doctor.js' },
     };
-    writeCanonical(join(ws.workspace, 'snapshot.json'), snapshotRecord);
+    writeNewFile(join(ws.workspace, 'snapshot.json'), `${canonicalJson(snapshotRecord)}\n`);
     const inventory = { version: 1, files: {} };
     walkInventory(ws.workspace, ws.workspace, 'installed-files.json', inventory.files);
     const bytes = `${canonicalJson(inventory)}\n`;
-    writeFileSync(join(ws.workspace, 'installed-files.json'), bytes);
+    writeNewFile(join(ws.workspace, 'installed-files.json'), bytes);
     return sha256(bytes);
 }
-function installController(source, controlRoot) {
-    const temp = join(controlRoot, `${CONTROL_ROOT_LAYOUT.controller}.tmp`);
+export function installController(source, controlRoot) {
     const finalPath = join(controlRoot, CONTROL_ROOT_LAYOUT.controller);
-    ensureNoSymlink(finalPath);
-    ensureNoSymlink(temp);
-    cpSync(join(source, 'scripts/loam-control.sh'), temp);
+    requireAbsent(finalPath);
+    const temp = join(controlRoot, `.${CONTROL_ROOT_LAYOUT.controller}.${randomBytes(8).toString('hex')}.tmp`);
+    writeNewFile(temp, readFileSync(join(source, 'scripts/loam-control.sh')));
     chmodSync(temp, 0o555);
     renameSync(temp, finalPath);
 }
-function writeTextAtomic(dir, name, text) {
-    const finalPath = join(dir, name);
-    const tempPath = join(dir, `.${name}.tmp`);
-    ensureNoSymlink(finalPath);
-    writeFileSync(tempPath, text);
-    renameSync(tempPath, finalPath);
+export function writeTextAtomic(dir, name, text) {
+    writeNewAtomic(join(dir, name), text);
 }
 function usage(detail) {
     process.stdout.write(`${JSON.stringify({ status: 'usage', detail })}\n`);

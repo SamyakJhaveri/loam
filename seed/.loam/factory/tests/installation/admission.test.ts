@@ -22,16 +22,18 @@ import assert from 'node:assert/strict';
 import { test, after } from 'node:test';
 import {
   chmodSync, cpSync, existsSync, lstatSync, mkdirSync, mkdtempSync, readdirSync,
-  readFileSync, readlinkSync, realpathSync, renameSync, rmSync, writeFileSync,
+  readFileSync, readlinkSync, realpathSync, renameSync, rmSync, symlinkSync, writeFileSync,
 } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join, relative, resolve } from 'node:path';
 import { spawnSync, type SpawnSyncReturns } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import { admitRuntime } from '../../src/installation/admit.js';
 import {
-  AdmissionError, CONTROL_ROOT_LAYOUT, FIXTURE_ORIGIN_PREFIX, SNAPSHOT_LAYOUT,
+  admitRuntime, controlRootState, installController, sealSnapshot, writeCanonicalAtomic, writeTextAtomic,
+} from '../../src/installation/admit.js';
+import {
+  AdmissionError, canonicalJson, CONTROL_ROOT_LAYOUT, FIXTURE_ORIGIN_PREFIX, SNAPSHOT_LAYOUT,
   type AdmissionRecord, type AdmitOptions, type NATIVE_PREREQUISITES,
 } from '../../src/contracts/installation.js';
 import { cleanTestEnvironment } from '../../src/testing/verify.js';
@@ -940,4 +942,89 @@ test('admission.ordinary-commands-unchanged', async () => {
   const qualify = spawnSync(toolchainNode, [join(checkout, 'launcher.mjs'), 'qualify', 'package'], { cwd: checkout, env: cleanTestEnvironment(), encoding: 'utf8', timeout: 120000 });
   assert.equal(qualify.status ?? 0, 0, qualify.stderr);
   assertUnchanged(before, hashTree(controlRoot));
+});
+
+// A planted symlink or unexpected file at a mkdir/temp/rename target must never
+// be followed or overwritten. This reproduces the four finished-work probes:
+// the atomic writers' temp path, the copied controller, the seal targets, and a
+// duplicate-key selection (the Node and sh parsers must agree).
+test('admission.preexisting-path-refused', async () => {
+  const HEX = 'a'.repeat(16);
+
+  // 1. The atomic writers create their temp on a fresh random name with an
+  // exclusive open, so a symlink planted at the fixed ".<name>.tmp" is ignored
+  // and the outside target it points at is never written.
+  for (const kind of ['canonical', 'text'] as const) {
+    const dir = join(base(), 'writer');
+    mkdirSync(dir, { recursive: true });
+    const sentinel = join(dir, '..', 'sentinel');
+    writeFileSync(sentinel, 'DO NOT CHANGE');
+    symlinkSync(sentinel, join(dir, '.record.tmp'));
+    const expected = kind === 'canonical' ? `${canonicalJson({ changed: true })}\n` : 'changed';
+    if (kind === 'canonical') writeCanonicalAtomic(dir, 'record', { changed: true });
+    else writeTextAtomic(dir, 'record', 'changed');
+    assert.equal(readFileSync(sentinel, 'utf8'), 'DO NOT CHANGE', `${kind}: sentinel unchanged`);
+    assert.equal(lstatSync(join(dir, 'record')).isSymbolicLink(), false, `${kind}: record is a real file`);
+    assert.equal(readFileSync(join(dir, 'record'), 'utf8'), expected, `${kind}: record content`);
+  }
+
+  // 2. A pre-existing controller at the copy target, a plain file or a symlink,
+  // is refused and never overwritten.
+  const { trusted: controllerSource } = makeTrusted();
+  for (const variant of ['file', 'symlink'] as const) {
+    const root = freshControlRoot();
+    const controllerPath = join(root, CONTROL_ROOT_LAYOUT.controller);
+    const sentinel = join(root, '..', 'controller-sentinel');
+    writeFileSync(sentinel, 'DO NOT CHANGE');
+    if (variant === 'file') writeFileSync(controllerPath, 'PREEXISTING CONTROLLER');
+    else symlinkSync(sentinel, controllerPath);
+    assert.throws(
+      () => installController(controllerSource, root),
+      (error: unknown) => error instanceof AdmissionError && error.diagnostic === 'install-interrupted'
+        && error.message === `unexpected ${controllerPath}`,
+      `${variant}: refused`,
+    );
+    assert.equal(readFileSync(sentinel, 'utf8'), 'DO NOT CHANGE', `${variant}: sentinel unchanged`);
+    if (variant === 'file') assert.equal(readFileSync(controllerPath, 'utf8'), 'PREEXISTING CONTROLLER', 'controller not overwritten');
+  }
+
+  // 3. The seal refuses a symlink at any seal target before writing anything
+  // into the workspace, so a planted link cannot redirect a seal write outside.
+  for (const target of ['installed-files.json', 'snapshot.json', 'bin'] as const) {
+    const dir = base();
+    const workspace = join(dir, 'workspace');
+    const runtimeDir = join(dir, 'runtime');
+    const source = join(dir, 'source');
+    const outside = join(dir, 'protected');
+    for (const p of [join(workspace, 'payload'), join(runtimeDir, 'bin'), join(runtimeDir, 'lib'), join(source, 'scripts'), outside]) mkdirSync(p, { recursive: true });
+    writeFileSync(join(runtimeDir, 'bin/node'), 'verified-node');
+    writeFileSync(join(source, 'scripts/loam-control.sh'), 'verified-controller');
+    const sentinel = join(outside, target === 'bin' ? 'node' : 'sentinel');
+    writeFileSync(sentinel, 'DO NOT CHANGE');
+    symlinkSync(target === 'bin' ? outside : sentinel, join(workspace, target));
+    assert.throws(
+      () => sealSnapshot({ workspace, runtimeDir }, source, HEX),
+      (error: unknown) => error instanceof AdmissionError && error.diagnostic === 'install-interrupted'
+        && error.message === `unexpected ${join(workspace, target)}`,
+      `seal ${target}: refused`,
+    );
+    assert.equal(readFileSync(sentinel, 'utf8'), 'DO NOT CHANGE', `seal ${target}: outside unchanged`);
+  }
+
+  // 4. A duplicate "version" key in selected.json is refused by the Node parser
+  // exactly as the POSIX controller's line-exact grammar refuses it: both report
+  // install-interrupted (selection), and the control root carries no symlink.
+  const controlRoot = freshControlRoot();
+  const { trusted, controller } = makeTrusted();
+  const { id } = await admit(trusted, controlRoot);
+  tamper(join(controlRoot, CONTROL_ROOT_LAYOUT.selected), `{\n  "admissionId": "${id}",\n  "snapshotId": "${id}",\n  "version": 1,\n  "version": 1\n}\n`);
+  const nodeState = controlRootState(controlRoot);
+  assert.equal(nodeState.kind, 'diagnostic', 'Node refuses the duplicate-key selection');
+  assert.ok(nodeState.kind === 'diagnostic' && nodeState.diagnostic === 'install-interrupted' && nodeState.detail === 'selection');
+  const shell = control(controller, controlRoot, ['status']);
+  assert.equal(shell.status, 1, `${shell.stdout}${shell.stderr}`);
+  const shReport = lastJson(shell.stdout);
+  assert.equal(shReport.diagnostic, 'install-interrupted');
+  assert.equal(shReport.detail, 'selection');
+  assert.equal(anySymlink(controlRoot), false, 'no symlink in the control root');
 });

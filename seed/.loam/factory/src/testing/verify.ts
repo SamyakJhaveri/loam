@@ -131,7 +131,8 @@ export const ADMISSION_CASES = [
   "admission.selection-retained",
   "admission.snapshot-link-counts",
   "admission.snapshot-runs-without-checkout",
-  "admission.ordinary-commands-unchanged"
+  "admission.ordinary-commands-unchanged",
+  "admission.preexisting-path-refused"
 ] as const;
 
 export const ADMISSION_CONTAINMENT_CASES = [
