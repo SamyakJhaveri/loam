@@ -3,7 +3,7 @@
 // Flat node:test leaves, one per ADMISSION_CASES id, in the frozen plan-03
 // order. The runner (src/testing/verify.ts) rejects any describe/skip/todo,
 // nested case or count mismatch, so every id below is a top-level test() and the
-// count equals ADMISSION_CASES.length (34).
+// count equals ADMISSION_CASES.length (35).
 //
 // These cases drive the real admit path through admitRuntime with the
 // fixture-only seam test.originPolicy 'file' (never a public CLI flag) and read
@@ -22,10 +22,10 @@ import { test, after } from 'node:test';
 import { chmodSync, cpSync, existsSync, lstatSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, readlinkSync, realpathSync, renameSync, rmSync, symlinkSync, writeFileSync, } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join, relative, resolve } from 'node:path';
-import { spawnSync } from 'node:child_process';
+import { spawn, spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import { admitRuntime, controlRootState, installController, sealSnapshot, writeCanonicalAtomic, writeTextAtomic, } from '../../src/installation/admit.js';
+import { admitRuntime, controlRootState, installController, sealSnapshot, toolShim, trustedSpawnEnvironment, writeCanonicalAtomic, writeTextAtomic, } from '../../src/installation/admit.js';
 import { AdmissionError, canonicalJson, CONTROL_ROOT_LAYOUT, FIXTURE_ORIGIN_PREFIX, SNAPSHOT_LAYOUT, } from '../../src/contracts/installation.js';
 import { cleanTestEnvironment } from '../../src/testing/verify.js';
 import { createReleaseManifest, payloadFiles } from '../../src/installation/package.js';
@@ -416,21 +416,60 @@ test('admission.native-prerequisite-missing', async () => {
     await refuses(() => admit(missingTool.trusted, freshControlRoot(), {
         nativePrerequisites: prerequisites({ 'loam-dep-scripted': { tools: { cc: join(base(), 'no/such/cc') }, loadSmoke: 'node_modules/loam-dep-scripted/smoke.mjs' } }),
     }), 'native-prerequisite-missing');
-    // Linux only: a real path outside the exposed system roots.
+    // Linux only: an existing, executable tool whose realpath lies outside the
+    // exposed system roots is refused for its root, not for absence.
     if (isLinux) {
+        const outsideDir = join(base(), 'outside-roots'); // under $TMPDIR, not /usr,/lib,/lib64,/bin,/sbin
+        mkdirSync(outsideDir, { recursive: true });
+        const outsideCc = join(outsideDir, 'cc');
+        writeFileSync(outsideCc, '#!/bin/sh\nexit 0\n');
+        chmodSync(outsideCc, 0o755);
         const outside = makeTrusted(deps, { installScript: ['loam-dep-scripted'] });
         allowScripts(outside.trusted, ['loam-dep-scripted']);
-        await refuses(() => admit(outside.trusted, freshControlRoot(), {
-            nativePrerequisites: prerequisites({ 'loam-dep-scripted': { tools: { cc: '/opt/none/cc' }, loadSmoke: 'node_modules/loam-dep-scripted/smoke.mjs' } }),
-        }), 'native-prerequisite-missing');
+        try {
+            await admit(outside.trusted, freshControlRoot(), {
+                nativePrerequisites: prerequisites({ 'loam-dep-scripted': { tools: { cc: outsideCc }, loadSmoke: 'node_modules/loam-dep-scripted/smoke.mjs' } }),
+            });
+            assert.fail('an executable outside the exposed roots must be refused');
+        }
+        catch (error) {
+            assert.ok(error instanceof AdmissionError, String(error));
+            assert.equal(error.diagnostic, 'native-prerequisite-missing');
+            assert.ok(String(error.message).includes('outside the exposed system roots'), 'must refuse for the root, not for absence');
+        }
     }
+    // The tool shim POSIX-quotes a space and a single quote so exec receives one
+    // literal path (offline, deterministic; the Linux root check confines the real
+    // tool path, so byte-exactness is the right proof of the quoting rule). (R4-B3)
+    assert.equal(toolShim("/tmp/a b/it's/cc"), "#!/bin/sh\nexec '/tmp/a b/it'\\''s/cc' \"$@\"\n");
 });
 test('admission.dependency-missing', async () => {
+    // A run-unique proxy sentinel, built at runtime so it appears in no source
+    // file. admit copies the payload dist (compiled test files included) into the
+    // staging workspace, so any static sentinel literal would be a false positive
+    // in the retained-file scan below; a runtime value is only present if the fetch
+    // child actually leaked it.
+    const SENTINEL = `https://user:leak-${Date.now()}-${Math.random().toString(36).slice(2)}@proxy-probe.invalid/`;
     const deps = { ...DEFAULT_DEPS, 'loam-dep-absent': '1.0.0' };
     const { trusted } = makeTrusted(deps, { missingTarball: ['loam-dep-absent'] });
     const controlRoot = freshControlRoot();
-    await refuses(() => admit(trusted, controlRoot), 'dependency-missing');
+    const savedProxy = process.env.HTTPS_PROXY;
+    try {
+        process.env.HTTPS_PROXY = SENTINEL; // fetch child inherits it via trustedSpawnEnvironment('fetch')
+        await refuses(() => admit(trusted, controlRoot), 'dependency-missing');
+    }
+    finally {
+        if (savedProxy === undefined)
+            delete process.env.HTTPS_PROXY;
+        else
+            process.env.HTTPS_PROXY = savedProxy;
+    }
     assert.equal(existsSync(join(controlRoot, CONTROL_ROOT_LAYOUT.selected)), false);
+    // No retained staging file carries the proxy sentinel (failed-fetch log cleanup, C1).
+    for (const rel of walkFiles(controlRoot)) {
+        const bytes = readFileSync(join(controlRoot, rel));
+        assert.equal(bytes.includes(Buffer.from(SENTINEL)), false, `proxy sentinel retained in ${rel}`);
+    }
 });
 test('admission.publication-order', async () => {
     // Each abrupt fault leaves the lock; the controller reports the lock first
@@ -500,6 +539,13 @@ test('admission.control-strips-environment', async () => {
     const controlRoot = freshControlRoot();
     const { trusted, controller } = makeTrusted();
     await admit(trusted, controlRoot);
+    // A caller cannot pass the internal --clean marker to skip sanitization.
+    const cleanFirst = spawnSync('/bin/sh', [controller, '--clean', 'status', '--control-root', controlRoot], { env: cleanTestEnvironment(), encoding: 'utf8', timeout: 30000 });
+    assert.equal(cleanFirst.status, 2);
+    assert.equal(lastJson(cleanFirst.stdout).status, 'usage');
+    const cleanLate = spawnSync('/bin/sh', [controller, '--control-root', controlRoot, 'status', '--clean'], { env: cleanTestEnvironment(), encoding: 'utf8', timeout: 30000 });
+    assert.equal(cleanLate.status, 2);
+    assert.equal(lastJson(cleanLate.stdout).status, 'usage');
     const dir = base();
     const marker = join(dir, 'preload-ran');
     const preload = join(dir, 'preload.cjs');
@@ -521,6 +567,28 @@ test('admission.control-strips-environment', async () => {
     assert.equal(status.status, 0, status.stderr);
     assert.equal(existsSync(marker), false, 'controller must strip NODE_OPTIONS preload');
     assert.equal(lastJson(status.stdout).status, 'healthy');
+    // The fetch child carries the proxy; the control/build/smoke env never does.
+    // An end-to-end capture is not offline-observable (fetch runs --ignore-scripts
+    // and --offline), so this is proved at the trustedSpawnEnvironment boundary; the
+    // executed build/smoke-absent half is the host case contain.build-no-proxy-or-credentials.
+    const savedProxy = process.env.HTTPS_PROXY;
+    try {
+        process.env.HTTPS_PROXY = 'https://user:secret@proxy.invalid/';
+        const b = { home: '/h', path: '/p', tmpdir: '/t' };
+        const fetchEnv = trustedSpawnEnvironment('fetch', b);
+        const controlEnv = trustedSpawnEnvironment('control', b);
+        assert.equal(fetchEnv.HTTPS_PROXY, 'https://user:secret@proxy.invalid/', 'fetch child carries the proxy');
+        assert.equal('HTTPS_PROXY' in controlEnv, false, 'control/build/smoke env never carries the proxy');
+        // Empty proxy values are dropped, not forwarded as empty strings.
+        process.env.HTTPS_PROXY = '';
+        assert.equal('HTTPS_PROXY' in trustedSpawnEnvironment('fetch', b), false, 'empty proxy is dropped');
+    }
+    finally {
+        if (savedProxy === undefined)
+            delete process.env.HTTPS_PROXY;
+        else
+            process.env.HTTPS_PROXY = savedProxy;
+    }
 });
 test('admission.control-helper-path-isolated', async () => {
     const controlRoot = freshControlRoot();
@@ -529,12 +597,14 @@ test('admission.control-helper-path-isolated', async () => {
     const fakeBin = join(base(), 'fakebin');
     mkdirSync(fakeBin);
     const marker = join(fakeBin, 'helper-ran');
-    for (const name of ['shasum', 'sha256sum', 'uname']) {
+    for (const name of ['shasum', 'sha256sum', 'uname', 'grep', 'sed', 'cut', 'mktemp', 'sort', 'env']) {
         const path = join(fakeBin, name);
         writeFileSync(path, `#!/bin/sh\necho ran >> ${JSON.stringify(marker)}\nexit 0\n`);
         chmodSync(path, 0o755);
     }
-    const withFakes = cleanTestEnvironment({ PATH: `${fakeBin}:/usr/bin:/bin` });
+    const startup = join(fakeBin, 'startup.sh');
+    writeFileSync(startup, `echo ran >> ${JSON.stringify(marker)}\n`);
+    const withFakes = cleanTestEnvironment({ PATH: `${fakeBin}:/usr/bin:/bin`, ENV: startup, BASH_ENV: startup });
     // Positive control: a fake helper runs when the caller PATH is honored.
     const positive = spawnSync('/bin/sh', ['-c', 'uname'], { env: withFakes, encoding: 'utf8', timeout: 30000 });
     assert.equal(positive.status, 0);
@@ -543,7 +613,7 @@ test('admission.control-helper-path-isolated', async () => {
     // The controller uses absolute helpers from a fixed PATH and still verifies.
     const status = control(controller, controlRoot, ['status'], withFakes);
     assert.equal(status.status, 0, status.stderr);
-    assert.equal(existsSync(marker), false, 'controller must not run caller-PATH helpers');
+    assert.equal(existsSync(marker), false, 'controller must not run caller-PATH or ENV-poisoned helpers');
     assert.equal(lastJson(status.stdout).status, 'healthy');
 });
 test('admission.control-rejects-arguments', async () => {
@@ -570,11 +640,30 @@ test('admission.control-rejects-arguments', async () => {
     const report = lastJson(malformed.stdout);
     assert.equal(report.diagnostic, 'install-interrupted');
     assert.ok(String(report.detail).includes('selection'));
+    // selected.json missing its canonical trailing newline is refused (shell/Node parity).
+    const good = { version: 1, snapshotId: 'a'.repeat(16), admissionId: 'a'.repeat(16) };
+    tamper(join(controlRoot, CONTROL_ROOT_LAYOUT.selected), canonicalJson(good)); // no trailing "\n"
+    let r = control(controller, controlRoot, ['status']);
+    assert.equal(r.status, 1);
+    assert.equal(lastJson(r.stdout).diagnostic, 'install-interrupted');
+    assert.ok(String(lastJson(r.stdout).detail).includes('selection'));
+    // trailing content after the canonical record is refused.
+    tamper(join(controlRoot, CONTROL_ROOT_LAYOUT.selected), `${canonicalJson(good)}\n{"x":1}\n`);
+    r = control(controller, controlRoot, ['status']);
+    assert.equal(r.status, 1);
+    assert.equal(lastJson(r.stdout).diagnostic, 'install-interrupted');
+    // A control character in an operator-supplied path is refused with valid JSON,
+    // never emitted raw into the diagnostic (C1; shell-json-probe.json).
+    const nlRoot = spawnSync('/bin/sh', [controller, '--control-root', '/definitely-missing\ncontrol-root', 'status'], { env: cleanTestEnvironment(), encoding: 'utf8', timeout: 30000 });
+    assert.equal(nlRoot.status, 2);
+    const line = nlRoot.stdout.trim().split('\n').filter(Boolean).at(-1) ?? '';
+    assert.doesNotThrow(() => JSON.parse(line), `control-root refusal must be valid JSON: ${JSON.stringify(nlRoot.stdout)}`);
+    assert.equal(JSON.parse(line).status, 'usage');
 });
 test('admission.controller-verifies-before-dispatch', async () => {
     const controlRoot = freshControlRoot();
     const { trusted, controller } = makeTrusted();
-    const { snapshotPath } = await admit(trusted, controlRoot);
+    const { id, snapshotPath } = await admit(trusted, controlRoot);
     const marker = join(base(), 'altered-doctor-ran');
     const doctorPath = join(snapshotPath, SNAPSHOT_LAYOUT.doctor);
     tamper(doctorPath, `${readFileSync(doctorPath, 'utf8')}\nrequire('node:fs').writeFileSync(${JSON.stringify(marker)}, 'ran');\n`);
@@ -582,6 +671,27 @@ test('admission.controller-verifies-before-dispatch', async () => {
     assert.equal(status.status, 1);
     assert.ok(hasDiagnostic(lastJson(status.stdout), 'installed-file-altered'));
     assert.equal(existsSync(marker), false, 'altered doctor must never execute');
+    // The pre-dispatch checksum grammar refuses a record that escapes the snapshot or
+    // is malformed, before the digest tool or any snapshot code runs (R3/C1).
+    const sums = join(controlRoot, CONTROL_ROOT_LAYOUT.runtimeRecords, `${id}.sha256`);
+    const orig = readFileSync(sums, 'utf8');
+    const H = '0'.repeat(64);
+    const corruptions = [
+        `${H}  /etc/passwd\n`, // absolute path
+        `${H}  ../../../etc/passwd\n`, // parent component
+        `${H}  bin/node\n${H}  bin/node\n`, // duplicate path
+        `${'0'.repeat(63)}  bin/node\n`, // wrong digest length (63)
+        orig.replace(/^.*  bin\/node\n/m, ''), // required entry removed
+        `${orig}${H}  extra-line`, // missing trailing newline (appended, unterminated)
+        `${H}\tbin/node\n`, // control byte (TAB) in the record
+    ];
+    for (const bad of corruptions) {
+        tamper(sums, bad);
+        const rr = control(controller, controlRoot, ['status']);
+        assert.equal(rr.status, 1, `record refused: ${JSON.stringify(bad)}`);
+        assert.ok(hasDiagnostic(lastJson(rr.stdout), 'installed-file-altered'), `installed-file-altered: ${JSON.stringify(bad)}`);
+    }
+    tamper(sums, orig); // restore so a later assertion/cleanup sees a valid record
 });
 test('admission.node-identity', async () => {
     const controlRoot = freshControlRoot();
@@ -746,7 +856,7 @@ test('admission.install-interrupted', async () => {
 test('admission.altered-installed-file', async () => {
     const controlRoot = freshControlRoot();
     const { trusted, controller } = makeTrusted();
-    const { snapshotPath } = await admit(trusted, controlRoot);
+    const { id, snapshotPath } = await admit(trusted, controlRoot);
     const moduleFile = walkFiles(snapshotPath).find((file) => file.startsWith(`${SNAPSHOT_LAYOUT.modules}/`) && file.endsWith('.json'));
     const modulePath = join(snapshotPath, moduleFile);
     // doctor covers the full inventory; the controller pre-dispatch sha256 covers
@@ -779,6 +889,48 @@ test('admission.altered-installed-file', async () => {
     tamper(snapshotJson, `${snapshotOriginal.toString('utf8')} `);
     expectAltered();
     writeFileSync(snapshotJson, snapshotOriginal);
+    // R2: pre-Node package metadata is caught before dispatch. A malformed
+    // payload/package.json would crash Node at bootstrap (ERR_INVALID_PACKAGE_CONFIG)
+    // before doctor runs, so only the controller pre-dispatch digest can refuse it;
+    // once payload/package.json is in the checksum set it is installed-file-altered.
+    const pkgPath = join(snapshotPath, 'payload/package.json');
+    const pkgOriginal = readFileSync(pkgPath);
+    tamper(pkgPath, '{');
+    expectAltered();
+    writeFileSync(pkgPath, pkgOriginal);
+    // A valid-JSON type change (drop "type") still changes the bytes, so the
+    // pre-dispatch digest refuses it too.
+    const pkg = JSON.parse(pkgOriginal.toString('utf8'));
+    delete pkg.type;
+    tamper(pkgPath, `${JSON.stringify(pkg, null, 2)}\n`);
+    expectAltered();
+    writeFileSync(pkgPath, pkgOriginal);
+    // R2: malformed / mismatched registry records reach doctor (they are outside
+    // the sealed snapshot) and must be a structured install-interrupted, never a
+    // raw SyntaxError.
+    function expectInterrupted() {
+        const result = control(controller, controlRoot, ['doctor']);
+        assert.equal(result.status, 1, `${result.stdout}${result.stderr}`);
+        assert.ok(hasDiagnostic(lastJson(result.stdout), 'install-interrupted'));
+    }
+    const admissionRecordPath = join(controlRoot, CONTROL_ROOT_LAYOUT.admissions, `${id}.json`);
+    const runtimeRecordPath = join(controlRoot, CONTROL_ROOT_LAYOUT.runtimeRecords, `${id}.json`);
+    const admissionOriginal = readFileSync(admissionRecordPath);
+    const runtimeOriginal = readFileSync(runtimeRecordPath);
+    // Malformed admission record.
+    tamper(admissionRecordPath, '{ not json');
+    expectInterrupted();
+    writeFileSync(admissionRecordPath, admissionOriginal);
+    // Malformed runtime record.
+    tamper(runtimeRecordPath, '{ not json');
+    expectInterrupted();
+    writeFileSync(runtimeRecordPath, runtimeOriginal);
+    // Relationship mismatch: valid JSON runtime record naming a different snapshot.
+    const runtime = JSON.parse(runtimeOriginal.toString('utf8'));
+    runtime.snapshotId = 'ffffffffffffffff';
+    tamper(runtimeRecordPath, `${canonicalJson(runtime)}\n`);
+    expectInterrupted();
+    writeFileSync(runtimeRecordPath, runtimeOriginal);
 });
 test('admission.environment-injected', async () => {
     const controlRoot = freshControlRoot();
@@ -847,6 +999,52 @@ test('admission.selection-retained', async () => {
     assert.equal(sealed.status, 70, `${sealed.stdout}${sealed.stderr}`);
     rmSync(join(fresh, CONTROL_ROOT_LAYOUT.lock)); // fixture-only: clear the crash lock
     await refuses(() => admit(first.trusted, fresh), 'install-interrupted');
+    // Late contender: a live admission A holds its lock and pauses just before
+    // selection; a contender B against the SAME control root refuses under A's lock
+    // and leaves A untouched; A resumes and selects; a third admission C refuses
+    // because a selection now exists.
+    const race = freshControlRoot();
+    const rendezvous = join(base(), 'rendezvous', 'pause');
+    mkdirSync(dirname(rendezvous), { recursive: true });
+    const raceRunner = admitChildRunner(base());
+    const a = spawn(toolchainNode, [raceRunner, JSON.stringify(admitOptions(first.trusted, race, { pauseBeforeSelect: rendezvous }))], { env: cleanTestEnvironment() });
+    const aDone = new Promise((resolve) => a.on('exit', (code) => resolve(code ?? -1)));
+    const raceDeadline = Date.now() + 60000;
+    while (!existsSync(`${rendezvous}.ready`)) {
+        if (Date.now() > raceDeadline) {
+            a.kill();
+            throw new Error('admission A never reached the pause');
+        }
+        await new Promise((r) => setTimeout(r, 25));
+    }
+    // A holds the lock, sealed and registered, but has not selected.
+    assert.equal(existsSync(join(race, CONTROL_ROOT_LAYOUT.lock)), true);
+    assert.equal(existsSync(join(race, CONTROL_ROOT_LAYOUT.selected)), false);
+    const pausedRegistry = hashTree(join(race, CONTROL_ROOT_LAYOUT.registry));
+    // Contender B: same control root, own lock attempt refuses; A's state untouched.
+    const second2 = makeTrusted();
+    await refuses(() => admit(second2.trusted, race), 'install-interrupted');
+    assertUnchanged(pausedRegistry, hashTree(join(race, CONTROL_ROOT_LAYOUT.registry)));
+    assert.equal(existsSync(join(race, CONTROL_ROOT_LAYOUT.selected)), false);
+    // Resume A; it selects and exits 0.
+    writeFileSync(`${rendezvous}.go`, '');
+    assert.equal(await aDone, 0, 'admission A must complete after resume');
+    const selected = JSON.parse(readFileSync(join(race, CONTROL_ROOT_LAYOUT.selected), 'utf8'));
+    assert.match(selected.snapshotId, /^[0-9a-f]{16}$/);
+    assert.equal(existsSync(join(race, CONTROL_ROOT_LAYOUT.lock)), false);
+    // Contender C: a selection now exists -> selection-exists, nothing changes.
+    const afterSelect = hashTree(race);
+    const third = makeTrusted();
+    await refuses(() => admit(third.trusted, race), 'selection-exists');
+    assertUnchanged(afterSelect, hashTree(race));
+    // A malformed selected.json blocks a NEW admission with unchanged prior state.
+    const malformed = freshControlRoot();
+    const seedTrusted = makeTrusted();
+    await admit(seedTrusted.trusted, malformed); // a complete, selected runtime
+    tamper(join(malformed, CONTROL_ROOT_LAYOUT.selected), '{ not json');
+    const beforeMalformed = hashTree(malformed);
+    await refuses(() => admit(seedTrusted.trusted, malformed), 'install-interrupted');
+    assertUnchanged(beforeMalformed, hashTree(malformed)); // the transient lock is created and removed; net unchanged
 });
 test('admission.snapshot-link-counts', async () => {
     const controlRoot = freshControlRoot();
@@ -861,13 +1059,27 @@ test('admission.snapshot-link-counts', async () => {
 test('admission.snapshot-runs-without-checkout', async () => {
     const controlRoot = freshControlRoot();
     const { trusted } = makeTrusted();
-    await admit(trusted, controlRoot);
-    // Rename away every name the checkout, toolchain and caches were known by.
+    // A disposable toolchain copy so renaming it away cannot destroy the shared
+    // toolchain the test runner itself uses.
+    const dispToolchain = join(base(), 'toolchain');
+    mkdirSync(join(dispToolchain, 'bin'), { recursive: true });
+    cpSync(join(toolchain, 'bin/node'), join(dispToolchain, 'bin/node'));
+    chmodSync(join(dispToolchain, 'bin/node'), 0o555);
+    cpSync(join(toolchain, 'lib/node_modules/npm'), join(dispToolchain, 'lib/node_modules/npm'), { recursive: true });
+    // Admit in a child run BY the disposable toolchain's node, so admitTools'
+    // running-executable identity check binds to the disposable copy.
+    const runner = admitChildRunner(base());
+    const options = { trustedSource: trusted, controlRoot, toolchain: dispToolchain, releaseIdentity: 'loam v0.0.0', test: { originPolicy: 'file' } };
+    const result = spawnSync(join(dispToolchain, 'bin/node'), [runner, JSON.stringify(options)], { env: cleanTestEnvironment(), encoding: 'utf8', timeout: 120000 });
+    assert.equal(result.status, 0, `${result.stdout}${result.stderr}`);
+    assert.ok(result.stdout.startsWith('OK:'), result.stdout);
+    // Rename away every external name the snapshot might have fallen back to.
     renameSync(trusted, `${trusted}.gone`);
+    renameSync(dispToolchain, `${dispToolchain}.gone`);
     const installedController = join(controlRoot, CONTROL_ROOT_LAYOUT.controller);
-    const result = control(installedController, controlRoot, ['doctor']);
-    assert.equal(result.status, 0, result.stderr);
-    assert.equal(lastJson(result.stdout).status, 'healthy');
+    const doctor = control(installedController, controlRoot, ['doctor']);
+    assert.equal(doctor.status, 0, doctor.stderr);
+    assert.equal(lastJson(doctor.stdout).status, 'healthy');
 });
 test('admission.ordinary-commands-unchanged', async () => {
     const controlRoot = freshControlRoot();
@@ -880,7 +1092,9 @@ test('admission.ordinary-commands-unchanged', async () => {
     const checkout = join(base(), 'checkout');
     copyPayload(trusted, checkout);
     const qualify = spawnSync(toolchainNode, [join(checkout, 'launcher.mjs'), 'qualify', 'package'], { cwd: checkout, env: cleanTestEnvironment(), encoding: 'utf8', timeout: 120000 });
-    assert.equal(qualify.status ?? 0, 0, qualify.stderr);
+    assert.equal(qualify.error, undefined, String(qualify.error));
+    assert.equal(qualify.status, 0, qualify.stderr);
+    assert.equal(qualify.signal, null, `killed by ${qualify.signal}`);
     assertUnchanged(before, hashTree(controlRoot));
 });
 // A planted symlink or unexpected file at a mkdir/temp/rename target must never

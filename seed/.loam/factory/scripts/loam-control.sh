@@ -72,10 +72,54 @@ case "$__os $__arch" in
 esac
 
 is_absolute() { case "$1" in /*) return 0 ;; *) return 1 ;; esac; }
+# True when a string contains a byte json_escape cannot represent: an embedded
+# newline (which splits it into more than one grep line) or any other C0/DEL
+# control byte within a line. LANG=C is already in effect; LC_ALL=C makes
+# [[:cntrl:]] byte-wise. (A NUL cannot occur in an sh variable.)
+contains_control() {
+  [ "$(printf '%s' "$1" | /usr/bin/grep -c '')" -gt 1 ] && return 0
+  printf '%s' "$1" | LC_ALL=C /usr/bin/grep -q '[[:cntrl:]]'
+}
 is_hex16() {
   [ "${#1}" -eq 16 ] || return 1
   case "$1" in *[!0-9a-f]*) return 1 ;; esac
   return 0
+}
+# True when the file's last byte is a newline. `read` returns nonzero at EOF; on a
+# file ending in newline the final read leaves $__seg empty, on a file lacking it
+# the final read leaves the unterminated last line in $__seg. Verified under
+# /bin/sh (bash 3.2 posix mode) and /bin/dash.
+has_final_newline() {
+  __seg=''
+  while IFS= read -r __seg; do :; done < "$1"
+  [ -z "$__seg" ]
+}
+# Validate the checksum record grammar (R3/C1) before the digest tool sees it.
+# The shell cannot enumerate the full payload/dist set; its job is to stop the
+# record from pointing outside the snapshot (rules 3-4) or being malformed
+# (rules 1-7), then let the digest tool verify each listed file. An extra
+# snapshot file the record omits is caught by doctor's Node inventory, not here.
+# Returns nonzero on any violation; the caller maps that to installed-file-altered.
+validate_checksum_record() {
+  __sums=$1
+  [ -f "$__sums" ] || return 1
+  # rule 2: no control byte (CR/TAB/etc.) anywhere.
+  ! LC_ALL=C /usr/bin/grep -q '[[:cntrl:]]' "$__sums" || return 1
+  # rule 3: every line is "<64 hex><2 spaces><relative path>"; grep -Ev prints any
+  # non-conforming line, so a match (exit 0) means malformed.
+  LC_ALL=C /usr/bin/grep -Ev '^[0-9a-f]{64}  [^/].*$' "$__sums" >/dev/null && return 1
+  # rule 4: reject a '..' path component (whole path, or bounded by '/').
+  LC_ALL=C /usr/bin/grep -Eq '  ([^ ].*/)?\.\.(/|$)' "$__sums" && return 1
+  # rule 5: no duplicate path. Path column starts at byte 67 (64 hex + 2 spaces).
+  __total=$(/usr/bin/cut -c67- "$__sums" | /usr/bin/grep -c '')
+  __uniq=$(/usr/bin/cut -c67- "$__sums" | LC_ALL=C /usr/bin/sort -u | /usr/bin/grep -c '')
+  [ "$__total" -eq "$__uniq" ] || return 1
+  # rule 6: each fixed entrypoint entry appears exactly once.
+  for __req in 'installed-files\.json' 'snapshot\.json' 'bin/node' 'bin/loam-control'; do
+    [ "$(LC_ALL=C /usr/bin/grep -Ec "^[0-9a-f]{64}  ${__req}$" "$__sums")" -eq 1 ] || return 1
+  done
+  # rule 7: canonical trailing newline.
+  has_final_newline "$__sums" || return 1
 }
 
 # --- selected.json parser (C1: validate the whole serialization) -----------
@@ -92,6 +136,9 @@ extract_snapshot_id() {
   [ -n "$__id" ] || return 1
   /usr/bin/sed -n '4p' "$__sel" | /usr/bin/grep -Eq '^  "version": 1$' || return 1
   [ "$(/usr/bin/sed -n '5p' "$__sel")" = '}' ] || return 1
+  # Require the canonical trailing newline so the shell accepts exactly the byte
+  # sequence Node's parseSelected() enforces (admit.ts:457).
+  has_final_newline "$__sel" || return 1
   printf '%s' "$__id"
 }
 
@@ -146,7 +193,7 @@ predispatch_check() {
   __root=$1; __id=$2
   __snap="$__root/runtimes/$__id"
   __sums="$__root/registry/runtimes/$__id.sha256"
-  [ -f "$__sums" ] || emit_unavailable installed-file-altered "$__sums"
+  validate_checksum_record "$__sums" || emit_unavailable installed-file-altered "$__sums"
   ( cd "$__snap" && $DIGEST_CHECK "$__sums" ) >/dev/null 2>&1 || emit_unavailable installed-file-altered "$__snap"
 }
 
@@ -166,7 +213,10 @@ done
 [ -n "$VERB" ] || usage_exit 'missing verb'
 # A present-but-relative control root is a usage error; an absent one is reported
 # as control-root-missing by resolve_state (status/doctor) or below (admit).
-if [ -n "$CONTROL_ROOT" ]; then is_absolute "$CONTROL_ROOT" || usage_exit '--control-root must be an absolute path'; fi
+if [ -n "$CONTROL_ROOT" ]; then
+  is_absolute "$CONTROL_ROOT" || usage_exit '--control-root must be an absolute path'
+  contains_control "$CONTROL_ROOT" && usage_exit '--control-root must not contain control characters'
+fi
 
 # --- admit -----------------------------------------------------------------
 if [ "$VERB" = 'admit' ]; then
@@ -189,9 +239,13 @@ if [ "$VERB" = 'admit' ]; then
   shift # remove __loam_end__; remaining "$@" are the protect flags
   is_absolute "$TRUSTED" || usage_exit '--trusted-source must be an absolute path'
   { [ "${#RELEASE_IDENTITY}" -ge 1 ] && [ "${#RELEASE_IDENTITY}" -le 120 ]; } || usage_exit '--release-identity must be 1-120 characters'
+  contains_control "$TRUSTED" && usage_exit '--trusted-source must not contain control characters'
+  contains_control "$TOOLCHAIN" && usage_exit '--toolchain must not contain control characters'
+  contains_control "$RELEASE_IDENTITY" && usage_exit '--release-identity must not contain control characters'
 
   # Trusted-source shape guard (item 3): admit.js re-checks it authoritatively.
   __real=$(cd "$TRUSTED" 2>/dev/null && pwd -P) || emit_unavailable trusted-source-shape "$TRUSTED"
+  contains_control "$__real" && emit_unavailable trusted-source-shape 'trusted source path contains control characters'
   case "$__real" in
     */seed/.loam/factory) : ;;
     *) emit_unavailable trusted-source-shape "$__real" ;;
@@ -234,6 +288,7 @@ case "$VERB" in
       [ "$1" = '--checkout' ] && [ $# -eq 2 ] || usage_exit 'doctor accepts only --checkout <dir>'
       CHECKOUT=$2
       is_absolute "$CHECKOUT" || usage_exit '--checkout must be an absolute path'
+      contains_control "$CHECKOUT" && usage_exit '--checkout must not contain control characters'
     fi ;;
 esac
 

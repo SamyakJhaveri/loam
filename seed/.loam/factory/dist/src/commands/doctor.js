@@ -25,6 +25,10 @@ function hashFile(path) {
 function readJson(path) {
     return JSON.parse(readFileSync(path, 'utf8'));
 }
+const HEX64 = /^[0-9a-f]{64}$/;
+function isObject(value) {
+    return value !== null && typeof value === 'object' && !Array.isArray(value);
+}
 function fileMode(path) {
     return (statSync(path).mode & 0o111) !== 0 ? 'executable' : 'regular';
 }
@@ -91,8 +95,38 @@ export function runDoctor(options) {
     }
     const root = options.controlRoot;
     const { selected, snapshotPath } = state;
-    const record = readJson(join(root, CONTROL_ROOT_LAYOUT.admissions, `${selected.admissionId}.json`));
-    const runtimeRecord = readJson(join(root, CONTROL_ROOT_LAYOUT.runtimeRecords, `${selected.snapshotId}.json`));
+    // Registry records live outside the sealed snapshot, so the controller's
+    // pre-dispatch digest set does not cover them. Parse defensively: a malformed
+    // or internally inconsistent record is a corrupt/interrupted registry,
+    // reported as a structured install-interrupted, never a raw SyntaxError. (R2)
+    const interrupt = (detail) => report('unhealthy', 'unavailable', [{ code: 'install-interrupted', detail }]);
+    let parsedAdmission;
+    try {
+        parsedAdmission = readJson(join(root, CONTROL_ROOT_LAYOUT.admissions, `${selected.admissionId}.json`));
+    }
+    catch {
+        return interrupt(`admission record is not valid JSON: ${selected.admissionId}`);
+    }
+    if (!isObject(parsedAdmission) || parsedAdmission.version !== 1 || parsedAdmission.id !== selected.admissionId
+        || !isObject(parsedAdmission.files) || !isObject(parsedAdmission.release) || !isObject(parsedAdmission.tools)) {
+        return interrupt(`admission record malformed or not matching the selection: ${selected.admissionId}`);
+    }
+    const record = parsedAdmission;
+    let parsedRuntime;
+    try {
+        parsedRuntime = readJson(join(root, CONTROL_ROOT_LAYOUT.runtimeRecords, `${selected.snapshotId}.json`));
+    }
+    catch {
+        return interrupt(`runtime record is not valid JSON: ${selected.snapshotId}`);
+    }
+    if (!isObject(parsedRuntime) || parsedRuntime.version !== 1
+        || parsedRuntime.snapshotId !== selected.snapshotId
+        || parsedRuntime.admissionId !== selected.admissionId
+        || typeof parsedRuntime.installedFilesSha256 !== 'string'
+        || !HEX64.test(parsedRuntime.installedFilesSha256)) {
+        return interrupt(`runtime record malformed or not matching the selection: ${selected.snapshotId}`);
+    }
+    const runtimeRecord = parsedRuntime;
     const snapshot = { id: selected.snapshotId, admissionId: selected.admissionId, release: record.release, tools: record.tools };
     const fail = (code, detail) => ({ ...report('unhealthy', 'admitted', [{ code, detail }]), snapshot });
     // not-admitted-runtime: this process must be the snapshot's own Node.

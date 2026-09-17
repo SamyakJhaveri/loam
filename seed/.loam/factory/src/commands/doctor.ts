@@ -36,6 +36,11 @@ function readJson<T>(path: string): T {
   return JSON.parse(readFileSync(path, 'utf8')) as T;
 }
 
+const HEX64 = /^[0-9a-f]{64}$/;
+function isObject(value: unknown): value is Record<string, unknown> {
+  return value !== null && typeof value === 'object' && !Array.isArray(value);
+}
+
 function fileMode(path: string): 'executable' | 'regular' {
   return (statSync(path).mode & 0o111) !== 0 ? 'executable' : 'regular';
 }
@@ -103,8 +108,41 @@ export function runDoctor(options: DoctorOptions): DoctorReport {
 
   const root = options.controlRoot as string;
   const { selected, snapshotPath } = state;
-  const record = readJson<AdmissionRecord>(join(root, CONTROL_ROOT_LAYOUT.admissions, `${selected.admissionId}.json`));
-  const runtimeRecord = readJson<RuntimeRecord>(join(root, CONTROL_ROOT_LAYOUT.runtimeRecords, `${selected.snapshotId}.json`));
+
+  // Registry records live outside the sealed snapshot, so the controller's
+  // pre-dispatch digest set does not cover them. Parse defensively: a malformed
+  // or internally inconsistent record is a corrupt/interrupted registry,
+  // reported as a structured install-interrupted, never a raw SyntaxError. (R2)
+  const interrupt = (detail: string): DoctorReport =>
+    report('unhealthy', 'unavailable', [{ code: 'install-interrupted', detail }]);
+
+  let parsedAdmission: unknown;
+  try {
+    parsedAdmission = readJson<unknown>(join(root, CONTROL_ROOT_LAYOUT.admissions, `${selected.admissionId}.json`));
+  } catch {
+    return interrupt(`admission record is not valid JSON: ${selected.admissionId}`);
+  }
+  if (!isObject(parsedAdmission) || parsedAdmission.version !== 1 || parsedAdmission.id !== selected.admissionId
+      || !isObject(parsedAdmission.files) || !isObject(parsedAdmission.release) || !isObject(parsedAdmission.tools)) {
+    return interrupt(`admission record malformed or not matching the selection: ${selected.admissionId}`);
+  }
+  const record = parsedAdmission as unknown as AdmissionRecord;
+
+  let parsedRuntime: unknown;
+  try {
+    parsedRuntime = readJson<unknown>(join(root, CONTROL_ROOT_LAYOUT.runtimeRecords, `${selected.snapshotId}.json`));
+  } catch {
+    return interrupt(`runtime record is not valid JSON: ${selected.snapshotId}`);
+  }
+  if (!isObject(parsedRuntime) || parsedRuntime.version !== 1
+      || parsedRuntime.snapshotId !== selected.snapshotId
+      || parsedRuntime.admissionId !== selected.admissionId
+      || typeof parsedRuntime.installedFilesSha256 !== 'string'
+      || !HEX64.test(parsedRuntime.installedFilesSha256)) {
+    return interrupt(`runtime record malformed or not matching the selection: ${selected.snapshotId}`);
+  }
+  const runtimeRecord = parsedRuntime as unknown as RuntimeRecord;
+
   const snapshot = { id: selected.snapshotId, admissionId: selected.admissionId, release: record.release, tools: record.tools };
   const fail = (code: Diagnostic, detail: string): DoctorReport => ({ ...report('unhealthy', 'admitted', [{ code, detail }]), snapshot });
 

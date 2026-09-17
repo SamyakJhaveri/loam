@@ -221,6 +221,8 @@ export interface AdmitOptions {
     originPolicy: 'file';
     nativePrerequisites?: typeof NATIVE_PREREQUISITES;
     containment?: 'unavailable';
+    simulateWrapperRefusal?: boolean;   // real contained child exits nonzero with no start marker
+    pauseBeforeSelect?: string;         // rendezvous path: pause after the lock/records, before selected.json
     faultAfter?: 'seal' | 'chmod' | 'rename' | 'admission-record' | 'sha256' | 'runtime-record' | 'controller' | 'selected';
   };
 }

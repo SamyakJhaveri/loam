@@ -31,6 +31,15 @@ function envLengths() {
   for (const name of Object.keys(process.env).sort()) out[name] = String(process.env[name] ?? '').length;
   return out;
 }
+// Invoke a declared native tool through its shim on PATH. `ran` means the shim was
+// found and exec'd a real binary (no ENOENT), which is the execution proof R4-B(1)
+// needs; `status`/`line` are evidence only. Some hosts (a sandboxed /usr/bin/cc
+// whose xcrun cache write is denied) exit nonzero without disproving execution.
+function runTool(name) {
+  const probe = spawnSync(name, ['--version'], { encoding: 'utf8' });
+  if (probe.error) return { ran: false, code: probe.error.code ?? 'error' };
+  return { ran: true, status: probe.status, line: String(probe.stdout || probe.stderr || '').split('\n')[0].slice(0, 80) };
+}
 
 const protectedReads = {};
 for (const home of homes) protectedReads[home] = directRead(join(controlRoot, home, 'canary'));
@@ -42,6 +51,7 @@ const result = {
   workspaceRead: directRead(join(payload, 'package.json')),
   protectedReads,
   descendant,
+  cc: runTool('cc'),   // proves the declared cc shim executed inside the boundary (R4-B1)
 };
 writeFileSync(join(here, 'marker'), '1');
 writeFileSync(join(here, 'result.json'), `${JSON.stringify(result, null, 2)}\n`);

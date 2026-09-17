@@ -139,6 +139,7 @@ interface ContainmentDump {
   workspaceRead: string;
   protectedReads: Record<string, string>;
   descendant: Record<string, string>;
+  cc: { ran: boolean; status?: number | null; line?: string; code?: string };
 }
 interface SmokeDump { credentials: string }
 
@@ -171,6 +172,11 @@ test('contain.build-workspace-read-allowed', async () => {
   const built = await build('SECRET-A');
   assert.equal(existsSync(fixtureFile(built.snapshotPath, 'loam-dep-scripted', 'marker')), true);
   assert.equal(built.result.workspaceRead, 'ok');
+  // The declared cc shim executed inside the boundary and the compiler answered
+  // `--version` with exit 0 and a version line (R4-B1).
+  assert.equal(built.result.cc.ran, true, `cc shim must execute inside containment: ${JSON.stringify(built.result.cc)}`);
+  assert.equal(built.result.cc.status, 0, `cc --version must exit 0 inside containment: ${JSON.stringify(built.result.cc)}`);
+  assert.ok((built.result.cc.line ?? '').length > 0, `cc must produce a version line: ${JSON.stringify(built.result.cc)}`);
 });
 
 test('contain.build-protected-read-denied', async () => {
@@ -243,6 +249,12 @@ test('contain.build-script-failed', async () => {
     assert.equal((error as AdmissionError).diagnostic, 'build-script-failed');
   }
   assert.equal(existsSync(join(controlRoot, CONTROL_ROOT_LAYOUT.selected)), false);
+  // The child DID start (distinguishes build-script-failed from a wrapper refusal):
+  // the start marker written by the /bin/sh prologue is present in the staging tmp.
+  const runtimesDir = join(controlRoot, CONTROL_ROOT_LAYOUT.runtimes);
+  const staging = readdirSync(runtimesDir).find((n) => n.startsWith(CONTROL_ROOT_LAYOUT.stagingPrefix));
+  assert.ok(staging, 'staging left as evidence');
+  assert.equal(existsSync(join(runtimesDir, staging!, 'tmp', '.loam-contained-started')), true);
 });
 
 test('contain.load-smoke-failed', async () => {
@@ -272,4 +284,41 @@ test('contain.load-smoke-failed', async () => {
   const report = JSON.parse(line) as { diagnostic?: string; detail?: string };
   assert.equal(report.diagnostic, 'install-interrupted');
   assert.ok(String(report.detail).includes('staging'));
+});
+
+test('contain.wrapper-refusal-unavailable', async () => {
+  requireMechanism();
+  const fixture = 'loam-dep-scripted';
+  const { trusted } = makeTrusted(fixture);
+  const controlRoot = controlRootWithCanaries('SECRET-W');
+  const options = admitOptions(trusted, controlRoot, fixture);
+  // A real contained child that exits nonzero WITHOUT writing the start marker,
+  // i.e. observationally a wrapper that refused before the instrumented child
+  // began. It must classify as containment-unavailable, not build-script-failed.
+  options.test!.simulateWrapperRefusal = true;
+  try {
+    await admitRuntime(options);
+    assert.fail('wrapper refusal must be classified containment-unavailable');
+  } catch (error) {
+    assert.ok(error instanceof AdmissionError, String(error));
+    assert.equal((error as AdmissionError).diagnostic, 'containment-unavailable');
+  }
+  assert.equal(existsSync(join(controlRoot, CONTROL_ROOT_LAYOUT.selected)), false);
+});
+
+test('contain.metachar-workspace', async () => {
+  requireMechanism();
+  const fixture = 'loam-dep-scripted';
+  const { trusted } = makeTrusted(fixture);
+  // A control root path with a space and a single quote: it flows into the staging
+  // workspace, the SBPL/bwrap binds, and the smoke file URL. Build and smoke must
+  // still run, proving the shim quoting and file-URL round-trip survive metachars.
+  const controlRoot = join(base(), "ctl a'b");
+  for (const home of HOMES) {
+    mkdirSync(join(controlRoot, home), { recursive: true });
+    writeFileSync(join(controlRoot, home, 'canary'), `SECRET-M-${home}`);
+  }
+  const { snapshotPath } = await admitRuntime(admitOptions(trusted, controlRoot, fixture));
+  assert.equal(existsSync(fixtureFile(snapshotPath, fixture, 'marker')), true);
+  assert.equal(existsSync(fixtureFile(snapshotPath, fixture, 'smoke-result.json')), true);
 });

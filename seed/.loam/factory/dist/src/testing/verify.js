@@ -127,7 +127,9 @@ export const ADMISSION_CONTAINMENT_CASES = [
     "contain.load-smoke-contained",
     "contain.build-altered-release-refused",
     "contain.build-script-failed",
-    "contain.load-smoke-failed"
+    "contain.load-smoke-failed",
+    "contain.wrapper-refusal-unavailable",
+    "contain.metachar-workspace"
 ];
 // Future case IDs reserve source obligations. Their owning tickets supply executable cases.
 export const POPULATIONS = [

@@ -6,9 +6,13 @@
 `dist`, fixed package tests, and locked development tools. TypeScript is the source
 we maintain. The compiler converts it into JavaScript that Node executes.
 
-This revision qualifies the package. Protected installation, store setup and native
-agent execution are not implemented. The runtime manifest marks its Node and npm
-versions as candidates, not a supported runtime declaration.
+This revision qualifies the package and admits a reviewed runtime: an operator
+admits a trusted source into a sealed snapshot under a control root and runs
+read-only `status` and `doctor` afterwards. Store setup and native managed agent
+execution are not implemented. The host-only `admission-containment` population
+runs from a real terminal on each host, not in `bin/check`. The runtime manifest
+marks its Node and npm versions as candidates, not a supported runtime
+declaration; `supportedRuntime` stays false.
 
 ## Inspect a received package
 
@@ -107,7 +111,7 @@ a clean checkout of the Loam template at an annotated release tag fetched over H
 and the official Node 24.21.0 toolchain distribution whose `bin/node` bytes the controller verifies against the runtime manifest before it runs.
 Integrity checking is not authorship authentication. The authority is your review, not the digests.
 
-The controller (`loam-control.sh`) calls a fixed set of platform programs by absolute path from a sanitized `PATH`, and trusts them as reviewed components: `/bin/sh`, `/usr/bin/env`, `/usr/bin/mktemp`, `/usr/bin/uname`, the digest tool (`/usr/bin/shasum` on macOS, `/usr/bin/sha256sum` on Linux), `/usr/bin/grep`, `/usr/bin/sed` and `/usr/bin/cut`.
+The controller (`loam-control.sh`) calls a fixed set of platform programs by absolute path from a sanitized `PATH`, and trusts them as reviewed components: `/bin/sh`, `/usr/bin/env`, `/usr/bin/mktemp`, `/usr/bin/uname`, the digest tool (`/usr/bin/shasum` on macOS, `/usr/bin/sha256sum` on Linux), `/usr/bin/grep`, `/usr/bin/sed`, `/usr/bin/cut` and `/usr/bin/sort`.
 The admit path runs the digest-verified toolchain `node`, and `git` from `PATH` for a best-effort release tag; its filesystem work is in-process, not shelled out.
 
 The operator entrypoint is `scripts/loam-control.sh`, a dependency-free POSIX `sh` script in the trusted payload, delivered by the same release channel: annotated tags cut by `bin/release.sh`.
@@ -130,7 +134,8 @@ node .loam/factory/launcher.mjs doctor --control-root <root> --checkout <checkou
 
 The launcher is a convenience resolver, not the trust root.
 It forwards the fixed verb to `<root>/loam-control`, the controller copy made at admission, which runs the snapshot's own Node under a clean environment with `--no-global-search-paths`.
-No dependency resolves from a project root or a personal cache, and `status` and `doctor` never write.
+No dependency resolves from a project root or a personal cache, and `status` and `doctor` change no installed bytes: the control root, its registry and every sealed snapshot stay as admitted.
+Each controller invocation creates one fresh scratch directory under `TMPDIR` (the sanitized `HOME` and `TMPDIR` of the clean re-exec) and does not remove it; that empty directory is the only trace a read-only command leaves.
 `status` and `doctor` also read `LOAM_CONTROL_ROOT` when `--control-root` is absent, and print `{"status":"unavailable","diagnostic":"control-root-missing"}` and exit nonzero when neither is set.
 
 ### Control root layout
@@ -205,5 +210,7 @@ missing compiler/types, ancestor-package collisions and provider-call sentinels.
 Source, compiled tests, build scripts, manifests and the dependency lock travel together.
 Development `node_modules`, `.cache`, `.state` and `runtime-installation` directories do
 not travel through Copier. Loam's release check verifies exact delivery separately;
-recipient checks inspect the received package. Neither check claims the later full
-render/update matrix or protected runtime admission has been implemented.
+recipient checks inspect the received package. Neither check establishes the later
+full render/update matrix. Runtime admission is proved by its own
+`qualify runtime-admission` and `qualify admission-containment` populations, not
+by the package or release checks.

@@ -15,7 +15,7 @@ import { chmodSync, closeSync, cpSync, existsSync, lstatSync, mkdirSync, openSyn
 import { spawnSync } from 'node:child_process';
 import { basename, dirname, isAbsolute, join, relative, sep } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import { AdmissionError, CONTROL_ROOT_LAYOUT, FETCH_PASSTHROUGH_ENVIRONMENT, FIXTURE_ORIGIN_PREFIX, GENERATED_TREE, NATIVE_PREREQUISITES, NO_GLOBAL_SEARCH_PATHS, REGISTRY_ORIGIN, STAGING_TRANSIENT, canonicalJson, } from '../contracts/installation.js';
+import { AdmissionError, CONTROL_ROOT_LAYOUT, FETCH_PASSTHROUGH_ENVIRONMENT, FIXTURE_ORIGIN_PREFIX, GENERATED_TREE, NATIVE_PREREQUISITES, NO_GLOBAL_SEARCH_PATHS, OS_HELPERS, REGISTRY_ORIGIN, STAGING_TRANSIENT, canonicalJson, } from '../contracts/installation.js';
 import { qualifyRuntime } from '../platform/runtime.js';
 import { boundaryAvailability, containedCommand, PROTECTED_KINDS } from '../platform/native-boundary.js';
 import { snapshot as payloadSnapshot, verifyPackage } from './package.js';
@@ -307,14 +307,18 @@ function runFetch(ws, filePolicy) {
     const env = trustedSpawnEnvironment('fetch', { home: ws.home, path: join(ws.runtimeDir, 'bin'), tmpdir: ws.tmp });
     const flags = fetchFlags(ws, filePolicy);
     assertEffectiveConfig(ws, env, flags);
-    const result = spawnSync(ws.node, ['--no-global-search-paths', ws.npmCli, 'ci', ...flags], { cwd: ws.payloadReal, env, encoding: 'utf8', timeout: NPM_TIMEOUT });
-    if (result.error || result.status !== 0) {
-        const code = extractNpmCode(result);
-        throw new AdmissionError('dependency-missing', `dependency fetch failed${code ? ` (${code})` : ''}`);
+    try {
+        const result = spawnSync(ws.node, ['--no-global-search-paths', ws.npmCli, 'ci', ...flags], { cwd: ws.payloadReal, env, encoding: 'utf8', timeout: NPM_TIMEOUT });
+        if (result.error || result.status !== 0) {
+            const code = extractNpmCode(result);
+            throw new AdmissionError('dependency-missing', `dependency fetch failed${code ? ` (${code})` : ''}`);
+        }
     }
-    // Delete the redirected npm logs before any lifecycle script runs, so no proxy
-    // URL is ever left on disk (C1).
-    rmSync(join(ws.npmCache, '_logs'), { recursive: true, force: true });
+    finally {
+        // Delete the redirected npm logs on success AND failure, so a secret-bearing
+        // proxy URL is never left on disk in a retained .staging-<id> workspace (C1).
+        rmSync(join(ws.npmCache, '_logs'), { recursive: true, force: true });
+    }
 }
 function extractNpmCode(result) {
     if (result.error && 'code' in result.error)
@@ -323,7 +327,7 @@ function extractNpmCode(result) {
     const match = text.match(/E[A-Z]{3,}/);
     return match ? match[0] : '';
 }
-function toolShim(path) {
+export function toolShim(path) {
     const quoted = `'${path.replace(/'/g, `'\\''`)}'`;
     return `#!/bin/sh\nexec ${quoted} "$@"\n`;
 }
@@ -346,20 +350,25 @@ function validateTool(shimName, toolPath) {
         }
     }
 }
-function containSpec(ws, homes, command) {
-    return { workspace: ws.workspace, runtimeDir: ws.runtimeDir, protectedPaths: homes, execPath: ws.node, command };
+const START_MARKER = '.loam-contained-started';
+// The child's first action inside the sandbox is to write START_MARKER, then it
+// exec's the real command. Marker present == the contained child actually began
+// (R4/C4). A wrapper that refuses before the child starts leaves it absent.
+function startWrapped(node, markerPath, inner) {
+    return { execPath: OS_HELPERS.sh, command: ['-c', ': > "$1"; shift; exec "$@"', 'loam-start', markerPath, node, ...inner] };
 }
-function runContained(spec, cwd) {
-    const contained = containedCommand(spec);
+function runContainedChild(ws, homes, command, cwd, markerPath) {
+    rmSync(markerPath, { force: true });
+    const contained = containedCommand({ workspace: ws.workspace, runtimeDir: ws.runtimeDir, protectedPaths: homes, execPath: command[0], command: command.slice(1) });
     if ('status' in contained)
-        return { status: null, error: true, output: contained.reasons.join('; ') };
-    const command = contained;
-    const result = spawnSync(command.file, command.args, { cwd, env: command.env, encoding: 'utf8', timeout: NPM_TIMEOUT, stdio: ['ignore', 'pipe', 'pipe'] });
-    if (command.profile)
-        rmSync(dirname(command.profile), { recursive: true, force: true });
-    return { status: result.status, error: Boolean(result.error), output: `${result.stdout || ''}${result.stderr || ''}` };
+        return { status: null, error: true, started: false, output: contained.reasons.join('; ') };
+    const result = spawnSync(contained.file, contained.args, { cwd, env: contained.env, encoding: 'utf8', timeout: NPM_TIMEOUT, stdio: ['ignore', 'pipe', 'pipe'] });
+    if (contained.profile)
+        rmSync(dirname(contained.profile), { recursive: true, force: true });
+    return { status: result.status, error: Boolean(result.error), started: existsSync(markerPath), output: `${result.stdout || ''}${result.stderr || ''}` };
 }
-function runBuildPhase(ws, homes, buildNames, prerequisites, containmentForced) {
+function runBuildPhase(ws, homes, buildNames, prerequisites, containmentForced, wrapperRefusal) {
+    const markerPath = join(realpathSync(ws.workspace), 'tmp', START_MARKER);
     for (const name of buildNames) {
         const prereq = prerequisites[name] ?? NATIVE_PREREQUISITES[name];
         if (!prereq)
@@ -368,26 +377,50 @@ function runBuildPhase(ws, homes, buildNames, prerequisites, containmentForced) 
             validateTool(shimName, toolPath);
             writeFileSync(join(ws.runtimeDir, 'bin', shimName), toolShim(toolPath), { mode: 0o555 });
         }
-        // boundaryAvailability() is the actual child-start observation (C4): a live
-        // smoke of the mechanism. If it fails, or the caller forced unavailability, a
-        // build never runs uncontained.
+        // boundaryAvailability() is a live smoke of the mechanism. If it fails, or the
+        // caller forced unavailability, a build never runs uncontained.
         if (containmentForced || !boundaryAvailability().available)
             throw new AdmissionError('containment-unavailable', `containment unavailable for ${name}`);
-        const build = runContained(containSpec(ws, homes, [
+        // The real classification observation (C4): the contained child writes the
+        // start marker as its first act. error || !started == the wrapper never ran
+        // the child -> containment-unavailable; started && status!==0 == the script
+        // itself failed -> build-script-failed. The wrapperRefusal seam (C5, fixture
+        // only) runs a real contained child that exits nonzero WITHOUT the marker.
+        const buildCommand = startWrapped(ws.node, markerPath, [
             NO_GLOBAL_SEARCH_PATHS, ws.npmCli, 'rebuild', name,
             '--foreground-scripts', '--script-shell', '/bin/sh', '--no-bin-links',
             '--prefix', ws.payloadReal, '--userconfig', ws.npmUser, '--globalconfig', ws.npmGlobal, '--cache', ws.npmCache, '--no-audit', '--no-fund',
-        ]), ws.payloadReal);
-        if (build.error)
-            throw new AdmissionError('containment-unavailable', `containment mechanism failed for ${name}: ${build.output}`);
+        ]);
+        const build = wrapperRefusal
+            ? runContainedChild(ws, homes, [OS_HELPERS.sh, '-c', 'exit 47'], ws.payloadReal, markerPath)
+            : runContainedChild(ws, homes, [buildCommand.execPath, ...buildCommand.command], ws.payloadReal, markerPath);
+        if (build.error || !build.started)
+            throw new AdmissionError('containment-unavailable', `contained build for ${name} never started: ${build.output}`);
         if (build.status !== 0)
             throw new AdmissionError('build-script-failed', `build script for ${name} exited ${build.status}`);
         const smokeUrl = pathToFileURL(join(ws.payloadReal, prereq.loadSmoke)).href;
-        const smoke = runContained(containSpec(ws, homes, [NO_GLOBAL_SEARCH_PATHS, '--input-type=module', '-e', 'await import(process.argv[1])', smokeUrl]), ws.payloadReal);
-        if (smoke.error)
-            throw new AdmissionError('containment-unavailable', `containment mechanism failed for ${name} smoke: ${smoke.output}`);
+        const smokeCommand = startWrapped(ws.node, markerPath, [NO_GLOBAL_SEARCH_PATHS, '--input-type=module', '-e', 'await import(process.argv[1])', smokeUrl]);
+        const smoke = runContainedChild(ws, homes, [smokeCommand.execPath, ...smokeCommand.command], ws.payloadReal, markerPath);
+        if (smoke.error || !smoke.started)
+            throw new AdmissionError('containment-unavailable', `contained smoke for ${name} never started: ${smoke.output}`);
         if (smoke.status !== 0)
             throw new AdmissionError('load-smoke-failed', `load smoke for ${name} exited ${smoke.status}`);
+    }
+}
+// Fixture-only rendezvous (R5/C3): pause after the lock is held and the snapshot,
+// all three registry records and the controller are written, but before
+// selected.json. Lets a test drive a contender while this admission's lock is
+// still held. Never reachable from a CLI flag (parseArgs exposes none).
+async function pauseBeforeSelect(options) {
+    const rendezvous = options.test?.pauseBeforeSelect;
+    if (!rendezvous)
+        return;
+    writeFileSync(`${rendezvous}.ready`, `${process.pid}\n`); // at the boundary, lock held, no selection yet
+    const deadline = Date.now() + 120000;
+    while (!existsSync(`${rendezvous}.go`)) {
+        if (Date.now() > deadline)
+            throw new AdmissionError('install-interrupted', 'pauseBeforeSelect timed out');
+        await new Promise((resolve) => setTimeout(resolve, 25));
     }
 }
 // ---- release binding, seal and inventory ---------------------------------
@@ -441,6 +474,11 @@ function checksumManifest(installed, installedFilesSha256) {
         ['snapshot.json', installed.files['snapshot.json'].sha256],
         ['bin/node', installed.files['bin/node'].sha256],
         ['bin/loam-control', installed.files['bin/loam-control'].sha256],
+        // Node reads payload/package.json (nearest-parent package.json of the
+        // dispatched entrypoint) before any snapshot code runs; cover it so a
+        // malformed or type-changed metadata file is installed-file-altered before
+        // dispatch, not a raw ERR_INVALID_PACKAGE_CONFIG. (R2)
+        ['payload/package.json', installed.files['payload/package.json'].sha256],
     ];
     for (const [rel, meta] of Object.entries(installed.files)) {
         if (rel.startsWith('payload/dist/'))
@@ -644,7 +682,7 @@ export async function admitRuntime(options) {
         runFetch(ws, filePolicy);
         const buildNames = deps.filter(dep => dep.entry.hasInstallScript).map(dep => dep.name);
         if (buildNames.length) {
-            runBuildPhase(ws, homes, buildNames, options.test?.nativePrerequisites ?? {}, options.test?.containment === 'unavailable');
+            runBuildPhase(ws, homes, buildNames, options.test?.nativePrerequisites ?? {}, options.test?.containment === 'unavailable', options.test?.simulateWrapperRefusal === true);
             checkReleaseBinding(ws.payload, files);
         }
         assertWorkspaceSiblings(ws);
@@ -678,6 +716,7 @@ export async function admitRuntime(options) {
         faultCheck(options, 'runtime-record');
         installController(source, controlRoot);
         faultCheck(options, 'controller');
+        await pauseBeforeSelect(options);
         writeCanonicalAtomic(join(controlRoot, CONTROL_ROOT_LAYOUT.registry), 'selected.json', { version: 1, snapshotId: id, admissionId: id });
         faultCheck(options, 'selected');
         releaseLock();
