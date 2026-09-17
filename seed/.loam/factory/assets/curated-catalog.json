@@ -95,7 +95,7 @@
     "planSha256": "1e966d332ea858ebae3bf3a97dc6de5ace7475f1ec0adf9173e1de23e93577e5",
     "ticketSha256": "3d90b5b7d45007554fac7da06e26e3bb8ce76fa48f74f29f2c3eb841e9eea036",
     "privateDispositionAmendmentSha256": "9884e3ffb7f2ecc11a78932513963ff3ec0d69ccabe63eb1d276c4a918b95ea0",
-    "obligationsSha256": "024402f0133646b6da0d4be560951806e6eda937aa224d5661971fd2abec8f86"
+    "obligationsSha256": "92fc1ef4e89dc82837001cbfa79533c5c37334b2194c498c4ea3c349295be504"
   },
   "entries": [
     {
@@ -11844,7 +11844,9 @@
           },
           "disposition": "removed",
           "resolvedBy": null,
-          "replacement": null,
+          "replacement": {
+            "ticket": "NATIVE-05"
+          },
           "blocker": null,
           "note": "The Phase-boundaries section says 'Read PHASE-BOUNDARIES.md' for the ordered tree. ask-matt is rejected so this required reference is not carried into any successor. Reason: rejected router; ticket NATIVE-05. The sibling file is separately source-preserved as its own support entry."
         },
@@ -12254,7 +12256,9 @@
           },
           "disposition": "removed",
           "resolvedBy": null,
-          "replacement": null,
+          "replacement": {
+            "ticket": "NATIVE-05"
+          },
           "blocker": null,
           "note": "Context-hygiene guidance leans on the Claude-only /compact verb. Not carried (rejected router; Claude-coupled). Ticket NATIVE-05."
         },
@@ -12267,7 +12271,9 @@
           },
           "disposition": "removed",
           "resolvedBy": null,
-          "replacement": null,
+          "replacement": {
+            "ticket": "NATIVE-05"
+          },
           "blocker": null,
           "note": "Flow guidance leans on the Claude-only /clear verb (clear context between /implement runs). Not carried (rejected router; Claude-coupled). Ticket NATIVE-05."
         },
@@ -16219,7 +16225,8 @@
           "disposition": "replaced",
           "resolvedBy": null,
           "replacement": {
-            "reason": "Loam supplies issue-tracker and triage-label conventions natively (AGENTS.md issue-tracker/triage-labels); the setup skill is a rejected Pocock entry that overlaps them"
+            "reason": "Loam supplies issue-tracker and triage-label conventions natively (AGENTS.md issue-tracker/triage-labels); the setup skill is a rejected Pocock entry that overlaps them",
+            "ticket": "NATIVE-05"
           },
           "blocker": null,
           "note": "Intro says that if the tracker/triage-label vocabulary was not provided, run /setup-matt-pocock-skills; that setup dependency is replaced by Loam's supplied conventions."
@@ -16588,7 +16595,8 @@
           "disposition": "replaced",
           "resolvedBy": null,
           "replacement": {
-            "reason": "Loam binds its own configured tracker (GitHub Issues for the loam repo per AGENTS.md and the issue-tracker doc) and label set instead of the unadopted /setup-matt-pocock-skills command; the method falls back to a local-markdown tracker when none is provided."
+            "reason": "Loam binds its own configured tracker (GitHub Issues for the loam repo per AGENTS.md and the issue-tracker doc) and label set instead of the unadopted /setup-matt-pocock-skills command; the method falls back to a local-markdown tracker when none is provided.",
+            "ticket": "NATIVE-05"
           },
           "blocker": null,
           "note": "Body says the tracker + triage-label vocabulary should have been provided and otherwise to run /setup-matt-pocock-skills; that skill is rejected in this catalog, its role replaced by Loam's own tracker binding."
@@ -16957,7 +16965,8 @@
           "disposition": "replaced",
           "resolvedBy": null,
           "replacement": {
-            "reason": "Loam binds its own GitHub Issues tracker + label set (per AGENTS.md and the issue-tracker doc) and its 'Wayfinding operations' equivalent, instead of the unadopted /setup-matt-pocock-skills command; the method falls back to a local-markdown tracker when none is provided."
+            "reason": "Loam binds its own GitHub Issues tracker + label set (per AGENTS.md and the issue-tracker doc) and its 'Wayfinding operations' equivalent, instead of the unadopted /setup-matt-pocock-skills command; the method falls back to a local-markdown tracker when none is provided.",
+            "ticket": "NATIVE-05"
           },
           "blocker": null,
           "note": "Body says the tracker and its 'Wayfinding operations' doc section should have been provided and otherwise to run /setup-matt-pocock-skills; that skill is rejected in this catalog."
@@ -32845,7 +32854,7 @@
       "declaredTools": [],
       "declaredServices": [],
       "sideEffects": [
-        "runs-commands"
+        "none"
       ],
       "hardcodedModelOrEffort": [],
       "supplemental": true,
@@ -32972,10 +32981,19 @@
         "codex": true,
         "note": "Loam repository helper referenced by a curated method body; not delivered to recipients by this catalog."
       },
-      "declaredTools": [],
-      "declaredServices": [],
+      "declaredTools": [
+        "skillspector (NVIDIA SkillSpector CLI, checked with command -v; the script prints an install hint when absent)",
+        "git (git clone --depth 1 for a repository URL target)",
+        "python3 (report parsing for the severity verdict, temporary-directory cleanup, and output-directory replacement under the safe mode)",
+        "mktemp"
+      ],
+      "declaredServices": [
+        "the remote Git host of a URL target, cloned read-only when a URL is given"
+      ],
       "sideEffects": [
-        "runs-commands"
+        "runs-commands",
+        "writes-files",
+        "network"
       ],
       "hardcodedModelOrEffort": [],
       "supplemental": true,
@@ -33013,12 +33031,108 @@
           "replacement": null,
           "blocker": "sourced shell helper; neither file is delivered to recipients by this catalog",
           "note": "bin/vet-skill.sh sources bin/lib.sh"
+        },
+        {
+          "id": "support:bin/vet-skill.sh:e2",
+          "sourceUnit": "support:bin/vet-skill.sh:u1",
+          "relationship": "external-prerequisite",
+          "to": {
+            "prerequisite": "support:bin/vet-skill.sh:p1"
+          },
+          "disposition": "retained-resolved",
+          "resolvedBy": {
+            "prerequisite": "support:bin/vet-skill.sh:p1"
+          },
+          "replacement": null,
+          "blocker": null,
+          "note": "the script exits with an install hint when the scanner is absent"
+        },
+        {
+          "id": "support:bin/vet-skill.sh:e3",
+          "sourceUnit": "support:bin/vet-skill.sh:u1",
+          "relationship": "external-prerequisite",
+          "to": {
+            "prerequisite": "support:bin/vet-skill.sh:p2"
+          },
+          "disposition": "retained-resolved",
+          "resolvedBy": {
+            "prerequisite": "support:bin/vet-skill.sh:p2"
+          },
+          "replacement": null,
+          "blocker": null,
+          "note": "a URL target is cloned read-only into a temporary directory"
+        },
+        {
+          "id": "support:bin/vet-skill.sh:e4",
+          "sourceUnit": "support:bin/vet-skill.sh:u1",
+          "relationship": "external-prerequisite",
+          "to": {
+            "prerequisite": "support:bin/vet-skill.sh:p3"
+          },
+          "disposition": "retained-resolved",
+          "resolvedBy": {
+            "prerequisite": "support:bin/vet-skill.sh:p3"
+          },
+          "replacement": null,
+          "blocker": null,
+          "note": "report parsing for the severity verdict, temporary-directory cleanup on exit, and output-directory replacement under the safe mode"
+        },
+        {
+          "id": "support:bin/vet-skill.sh:e5",
+          "sourceUnit": "support:bin/vet-skill.sh:u1",
+          "relationship": "project-input",
+          "to": {
+            "external": "the skill directory or repository URL passed as the target argument"
+          },
+          "disposition": "informational",
+          "resolvedBy": null,
+          "replacement": null,
+          "blocker": null,
+          "note": "a URL target is an optional remote input"
+        },
+        {
+          "id": "support:bin/vet-skill.sh:e6",
+          "sourceUnit": "support:bin/vet-skill.sh:u1",
+          "relationship": "generated-output",
+          "to": {
+            "external": "a JSON scanner report and, under the safe mode with an output directory, a stripped copy of the skill"
+          },
+          "disposition": "informational",
+          "resolvedBy": null,
+          "replacement": null,
+          "blocker": null,
+          "note": "written under a temporary directory or the requested output directory; an existing output directory carrying the tool marker file is removed and replaced, and a non-empty unmarked directory is refused"
         }
       ],
       "referencedBy": [
         "baseline:vet-skill:e1"
       ],
-      "prerequisites": [],
+      "prerequisites": [
+        {
+          "id": "support:bin/vet-skill.sh:p1",
+          "type": "command",
+          "name": "skillspector",
+          "contract": null,
+          "verification": "unverified",
+          "blocker": "scanner availability is checked at run time by the script, never by catalog checks"
+        },
+        {
+          "id": "support:bin/vet-skill.sh:p2",
+          "type": "command",
+          "name": "git",
+          "contract": null,
+          "verification": "unverified",
+          "blocker": "command availability is not verified by catalog checks; needed only for URL targets"
+        },
+        {
+          "id": "support:bin/vet-skill.sh:p3",
+          "type": "command",
+          "name": "python3",
+          "contract": null,
+          "verification": "unverified",
+          "blocker": "command availability is not verified by catalog checks; used for report parsing, cleanup and output-directory replacement"
+        }
+      ],
       "status": "source-preserved",
       "blockers": [
         "Repository helper is not part of the recipient payload; the consuming method stays pending until a delivered equivalent exists."
@@ -33059,7 +33173,7 @@
       "declaredTools": [],
       "declaredServices": [],
       "sideEffects": [
-        "runs-commands"
+        "none"
       ],
       "hardcodedModelOrEffort": [],
       "supplemental": true,

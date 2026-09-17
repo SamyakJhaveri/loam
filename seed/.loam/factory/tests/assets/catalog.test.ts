@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { mkdtempSync, mkdirSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
+import { cpSync, mkdtempSync, mkdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -8,7 +8,7 @@ import { assertSchemaDocument, validate } from '../../src/assets/schema.js';
 import { sha256 } from '../../src/assets/units.js';
 import {
   CatalogError, loadCatalog, validateCatalog, resolveEntry, scanPersonalPaths,
-  assertRelativePath, containedPath, requiredClosure, OBLIGATIONS,
+  assertRelativePath, containedPath, requiredClosure, checkRecipientDelivery, recipientRootOf, OBLIGATIONS,
   type Catalog, type CatalogEntry, type Edge, type ExpectedEntry,
 } from '../../src/assets/catalog.js';
 
@@ -104,6 +104,15 @@ test('catalog.schema-and-payload', () => {
     edge.to = { entry: privateId }; edge.disposition = 'retained-resolved';
     validateCatalog(c);
   }, 'edge.private-resolver');
+
+  // Finding 2: the schema restricts preservation.phase to the assessed enum; a promoted phase is a
+  // schema violation as well as a policy one.
+  assert.ok(validate(schema, { ...catalog, entries: catalog.entries.map(e => e.id === 'pocock:implement' ? { ...e, preservation: { ...e.preservation, phase: 'implemented' } } : e) }).length > 0);
+  // A private record can assert neither author nor license.
+  expectRule(() => { const c = clone(catalog); (entryOf(c, privateId).attribution as Record<string, unknown>).author = 'Invented Author'; validateCatalog(c); }, 'source.private-metadata');
+  expectRule(() => { const c = clone(catalog); (entryOf(c, privateId).attribution as Record<string, unknown>).license = 'MIT'; validateCatalog(c); }, 'source.private-metadata');
+  // Source revisions must equal the obligations' plan/ticket/obligations digests.
+  expectRule(() => { const c = clone(catalog); c.sourceRevisions.obligationsSha256 = '0'.repeat(64); validateCatalog(c); }, 'sourceRevisions.mismatch');
 });
 
 // ---------------------------------------------------------------------------
@@ -151,6 +160,17 @@ test('catalog.conservation-rejections', () => {
   }, 'map.title-only');
   // Remove a required source unit.
   expectRule(() => { const c = clone(catalog); const e = entryOf(c, 'baseline:plan-review'); e.sourceUnits = e.sourceUnits.slice(1); validateCatalog(c); }, 'unit.mismatch');
+  // Finding 2: promote a preservation phase; misalign a snapshot's provider flags with applicability.
+  expectRule(() => { const c = clone(catalog); entryOf(c, 'pocock:implement').preservation.phase = 'implemented'; validateCatalog(c); }, 'phase.promoted');
+  expectRule(() => { const c = clone(catalog); (entryOf(c, 'snapshot:distbench-claude-critique-swarm').providers as Record<string, unknown>).codex = true; (entryOf(c, 'snapshot:distbench-claude-critique-swarm').providers as Record<string, unknown>).claude = false; validateCatalog(c); }, 'provider.mismatch');
+  // Finding 3: a duplicated dependency whose destination is external (never seen by the inverse index).
+  expectRule(() => {
+    const c = clone(catalog);
+    const e = c.entries.find(x => x.dependencies.some(d => d.to.external !== undefined))!;
+    const dep = e.dependencies.find(d => d.to.external !== undefined)!;
+    e.dependencies = [...e.dependencies, structuredClone(dep)];
+    validateCatalog(c);
+  }, 'membership.duplicate');
 
   // Privacy subcases: a prohibited path in notes, blockers, attribution, an object key, and a decoded string.
   const p = personal();
@@ -188,7 +208,29 @@ test('catalog.activation-honesty', () => {
   expectRule(() => { const c = clone(catalog); const e = entryOf(c, 'baseline:plan-review'); e.status = 'available'; e.blockers = []; validateCatalog(c); }, 'status.promoted');
   expectRule(() => { const c = clone(catalog); entryOf(c, 'baseline:plan-review').activation.activated = true; validateCatalog(c); }, 'activation.claimed');
 
-  // Synthetic qualified entry under a temporary recipient root: resolveEntry admits it, but never activates it.
+  // Finding 5: recipient delivery. The recipient root is the package's `factory/../..`; every
+  // present-unqualified/verified target body is read and must carry its exact expectedSha256, while
+  // planned targets (whose bodies do not exist yet) are never read.
+  const recipientRoot = recipientRootOf(root);
+  assert.deepEqual(checkRecipientDelivery(catalog, recipientRoot), { checked: present.length });
+  // A scratch recipient with just the present bodies: pass, then remove one body and change a byte.
+  const scratchRecipient = mkdtempSync(join(tmpdir(), 'loam-catalog-delivery-'));
+  try {
+    for (const target of present) { const dst = join(scratchRecipient, target.path); mkdirSync(dirname(dst), { recursive: true }); cpSync(join(recipientRoot, target.path), dst); }
+    assert.deepEqual(checkRecipientDelivery(catalog, scratchRecipient), { checked: present.length });
+    const catchupBody = join(scratchRecipient, '.agents', 'skills', 'catchup', 'SKILL.md');
+    rmSync(catchupBody);
+    expectRule(() => checkRecipientDelivery(catalog, scratchRecipient), 'delivery.missing');
+    cpSync(join(recipientRoot, '.agents', 'skills', 'catchup', 'SKILL.md'), catchupBody);
+    const bytes = readFileSync(catchupBody); bytes[0] = bytes[0]! ^ 0x01; writeFileSync(catchupBody, bytes);
+    expectRule(() => checkRecipientDelivery(catalog, scratchRecipient), 'delivery.digest');
+  } finally {
+    rmSync(scratchRecipient, { recursive: true, force: true });
+  }
+
+  // Finding 4: resolveEntry binds an untrusted candidate to a fixed trusted contract under a
+  // temporary recipient root. The candidate is the input the negatives mutate; the expected
+  // contract stays fixed. resolveEntry admits a matching candidate but never activates it.
   const recipient = mkdtempSync(join(tmpdir(), 'loam-catalog-resolve-'));
   try {
     mkdirSync(join(recipient, 'skills', 'demo', 'references'), { recursive: true });
@@ -196,30 +238,60 @@ test('catalog.activation-honesty', () => {
     writeFileSync(join(recipient, 'skills', 'demo', 'SKILL.md'), body);
     writeFileSync(join(recipient, 'skills', 'demo', 'references', 'contract.md'), contract);
     symlinkSync(tmpdir(), join(recipient, 'outside'));
-    const sample = entryOf(catalog, 'baseline:plan-review');
     const bodyDigest = sha256(body); const contractDigest = sha256(contract);
     const qualified: ExpectedEntry = {
       id: 'demo', qualified: true, status: 'available',
       targets: [{ path: 'skills/demo/SKILL.md', sha256: bodyDigest }],
-      prerequisites: [{ id: 'demo:p1', type: 'file', path: 'skills/demo/references/contract.md', expectedSha256: contractDigest, verification: 'unverified' }],
+      prerequisites: [{ id: 'demo:p1', type: 'file', name: 'contract', path: 'skills/demo/references/contract.md', expectedSha256: contractDigest, verification: 'unverified' }],
       blockers: [],
     };
-    const good = resolveEntry(sample, qualified, recipient);
+    // A synthetic candidate that matches the trusted contract.
+    const candidate = (): CatalogEntry => ({
+      id: 'demo', collection: 'baseline', name: 'demo', kind: 'method', assetKind: 'advice',
+      source: { type: 'regular-file', path: 'skills/demo/SKILL.md', sha256: bodyDigest },
+      status: 'available', preservation: { decision: 'adapt', phase: 'assessed', map: [] }, activation: { activated: false, owner: null },
+      targets: [], sourceUnits: [], dependencies: [], referencedBy: [],
+      prerequisites: [{ id: 'demo:p1', type: 'file', name: 'contract', verification: 'unverified', contract: null, blocker: null, path: 'skills/demo/references/contract.md' }],
+      providers: null, declaredTools: null, declaredServices: null, sideEffects: null,
+      attribution: null, blockers: [], notes: '', consumers: null, hardcodedModelOrEffort: null,
+    } as unknown as CatalogEntry);
+
+    const good = resolveEntry(candidate(), qualified, recipient);
     assert.deepEqual([good.activatable, good.activated], [true, false]);
 
-    const reject = (mutate: (e: ExpectedEntry) => void): void => {
-      const expected = structuredClone(qualified); mutate(expected);
-      const resolution = resolveEntry(sample, expected, recipient);
+    // Candidate mutations: identity, status, activation, blockers, prerequisites and paths.
+    const rejectCandidate = (mutate: (c: CatalogEntry) => void): void => {
+      const c = candidate(); mutate(c);
+      const resolution = resolveEntry(c, qualified, recipient);
       assert.equal(resolution.activatable, false);
       assert.equal(resolution.activated, false);
     };
-    reject(e => { e.targets[0]!.sha256 = '0'.repeat(64); });                                                   // wrong body digest
-    reject(e => { e.targets[0]!.path = 'skills/demo/missing.md'; });                                            // missing support
-    reject(e => { e.prerequisites[0]!.expectedSha256 = '0'.repeat(64); });                                      // wrong prerequisite digest
-    reject(e => { e.prerequisites.push({ id: 'demo:p2', type: 'file', path: 'skills/demo/absent.md', expectedSha256: contractDigest, verification: 'unverified' }); }); // omitted required prerequisite file
-    reject(e => { e.blockers = ['unresolved blocker']; });                                                      // unresolved blocker
-    reject(e => { e.prerequisites.push({ id: 'demo:p3', type: 'command', name: 'git', verification: 'unverified' }); }); // unverified command
-    reject(e => { e.targets[0]!.path = 'outside/x'; });                                                         // escaping path through a symlink
+    rejectCandidate(c => { c.id = 'other'; });                                                                 // wrong id
+    rejectCandidate(c => { c.status = 'shipped-pending-adaptation'; });                                        // pending status
+    rejectCandidate(c => { c.activation.activated = true; });                                                  // activation claimed
+    rejectCandidate(c => { c.blockers = ['unresolved blocker']; });                                            // unresolved blocker
+    rejectCandidate(c => { c.prerequisites = []; });                                                           // omitted prerequisite
+    rejectCandidate(c => { c.prerequisites = [...c.prerequisites, { id: 'demo:p2', type: 'command', name: 'git', verification: 'unverified', contract: null, blocker: null }]; }); // unverified command
+    rejectCandidate(c => { c.prerequisites[0]!.path = 'outside/x'; });                                         // escaping candidate path through a symlink
+    rejectCandidate(c => { c.dependencies = [{ id: 'demo:e1', sourceUnit: null, relationship: 'required-method', to: { entry: 'demo' }, disposition: 'retained-unresolved', resolvedBy: null, replacement: null, blocker: null, note: '' }]; }); // cyclic + unresolved required edge (must terminate)
+    // A private-session record can never be admitted, even against a fully qualified contract.
+    rejectCandidate(c => { (c.source as Record<string, unknown>).type = 'private-local-metadata'; c.kind = 'private-session-record'; });
+
+    // Filesystem mutations (contract fixed): missing body and changed body.
+    const rejectFs = (setup: (rr: string) => void): void => {
+      const rr = mkdtempSync(join(tmpdir(), 'loam-catalog-resolve-fs-'));
+      try {
+        mkdirSync(join(rr, 'skills', 'demo', 'references'), { recursive: true });
+        writeFileSync(join(rr, 'skills', 'demo', 'SKILL.md'), body);
+        writeFileSync(join(rr, 'skills', 'demo', 'references', 'contract.md'), contract);
+        setup(rr);
+        const resolution = resolveEntry(candidate(), qualified, rr);
+        assert.equal(resolution.activatable, false);
+      } finally { rmSync(rr, { recursive: true, force: true }); }
+    };
+    rejectFs(rr => { rmSync(join(rr, 'skills', 'demo', 'SKILL.md')); });                                       // missing body
+    rejectFs(rr => { writeFileSync(join(rr, 'skills', 'demo', 'SKILL.md'), 'changed body\n'); });              // changed body digest
+    rejectFs(rr => { rmSync(join(rr, 'skills', 'demo', 'references', 'contract.md')); });                      // missing prerequisite body
   } finally {
     rmSync(recipient, { recursive: true, force: true });
   }
@@ -245,6 +317,9 @@ test('catalog.selected-dependencies-mapped', () => {
   expectRule(() => { const c = clone(catalog); c.nativeWrappers = c.nativeWrappers.slice(1); validateCatalog(c); }, 'wrapper.set');
   expectRule(() => { const c = clone(catalog); c.nativeWrappers[0]!.method = 'method:agent-team'; validateCatalog(c); }, 'wrapper.row');
   expectRule(() => { const c = clone(catalog); c.nativeWrappers[0]!.provider = 'codex'; validateCatalog(c); }, 'wrapper.row');
+  // Finding 3: a same-count missing wrapper (one wrapper replaced by a copy of another) is rejected
+  // as a duplicate id before any lookup map is built, so the dropped wrapper cannot hide.
+  expectRule(() => { const c = clone(catalog); c.nativeWrappers[1] = structuredClone(c.nativeWrappers[0]!); validateCatalog(c); }, 'membership.duplicate');
 
   // A required selected dependency has a named mapping or prerequisite.
   const planReview = entryOf(catalog, 'baseline:plan-review');

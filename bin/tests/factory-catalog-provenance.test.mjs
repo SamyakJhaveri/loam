@@ -6,11 +6,19 @@
 // Private session history under seed/.claude/codex-reviews is out of bounds: every filesystem
 // read is routed through a boundary that throws on that prefix, and two scratch controls prove
 // the metadata qualification is identical whether or not the private bodies are present.
+//
+// This gate enforces the full reviewed source contract in production (finding 1): body-backed
+// sources are re-verified with a regular-file type check and real-path containment, distribution
+// links resolve to a contained canonical target, every body-backed entry re-extracts its source
+// units unconditionally, snapshot successors are checked as complete tuples, application
+// dispositions are matched to the inventory by full identity, and the inventoried support, private
+// and remote partitions are compared exactly against loam-inventory.json. Each check carries an
+// accepted-control negative that mutates a copy of the obligations or the tree.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { chmodSync, lstatSync, mkdirSync, mkdtempSync, readFileSync, readlinkSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
+import { chmodSync, lstatSync, mkdirSync, mkdtempSync, readFileSync, readlinkSync, realpathSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { dirname, join, sep } from 'node:path';
+import { dirname, isAbsolute, join, relative, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { OBLIGATIONS, scanPersonalPaths } from '../../seed/.loam/factory/dist/src/assets/catalog.js';
 import { sha256, verifySourceUnits } from '../../seed/.loam/factory/dist/src/assets/units.js';
@@ -33,31 +41,51 @@ const readJSON = (root, rel) => JSON.parse(readText(root, rel));
 const lstatTree = (root, rel) => lstatSync(join(root, guard(rel)));
 const readlinkTree = (root, rel) => readlinkSync(join(root, guard(rel)));
 
-// The exact D6 snapshot provider tuple (source applicability, not runtime availability).
-const D6_PROVIDER = {
-  'snapshot:distbench-claude-critique-swarm': 'claude',
-  'snapshot:distbench-codex-critique-swarm': 'codex',
-  'snapshot:distbench-codex-agent-team': 'codex',
-  'snapshot:distbench-worktree-status': 'shared',
-  'snapshot:parbench-elegance-reviewer': 'claude',
-  'snapshot:organizer-referenced-experiment-loop': 'shared',
-  'snapshot:job-search-company-research': 'shared',
-  'snapshot:job-search-evidence-contract': 'shared',
-  'snapshot:job-search-report-template': 'shared',
-  'snapshot:job-search-rendercv': 'shared',
+// Real-path containment: resolve the real path of `rel` beneath `root` and reject any escape.
+// Returns the repository-relative canonical path (POSIX) of the resolved target.
+function containedReal(root, rel) {
+  const real = realpathSync(join(root, guard(rel)));
+  const relc = relative(realpathSync(root), real);
+  if (relc.startsWith('..') || isAbsolute(relc)) throw new Error(`source escapes the tree: ${rel}`);
+  return relc.split(sep).join('/');
+}
+
+// The exact D6 snapshot successor tuple: successor target, its recipient path, source applicability
+// (not runtime availability) and owner. The validator compares the whole tuple, not one field.
+const D6 = {
+  'snapshot:distbench-claude-critique-swarm': { target: 'method:critique-swarm', path: '.agents/skills/critique-swarm/SKILL.md', applicability: 'claude', owner: 'NATIVE-08' },
+  'snapshot:distbench-codex-critique-swarm': { target: 'method:critique-swarm', path: '.agents/skills/critique-swarm/SKILL.md', applicability: 'codex', owner: 'NATIVE-08' },
+  'snapshot:distbench-codex-agent-team': { target: 'method:agent-team', path: '.agents/skills/agent-team/SKILL.md', applicability: 'codex', owner: 'NATIVE-08' },
+  'snapshot:distbench-worktree-status': { target: 'method:worktree-status', path: '.agents/skills/worktree-status/SKILL.md', applicability: 'shared', owner: 'NATIVE-06' },
+  'snapshot:parbench-elegance-reviewer': { target: 'reference:elegance-review', path: '.agents/skills/plan-review/references/elegance-review.md', applicability: 'claude', owner: 'NATIVE-08' },
+  'snapshot:organizer-referenced-experiment-loop': { target: 'method:experiment-loop', path: '.agents/skills/experiment-loop/SKILL.md', applicability: 'shared', owner: 'NATIVE-12' },
+  'snapshot:job-search-company-research': { target: 'method:evidence-audit', path: '.agents/skills/evidence-audit/SKILL.md', applicability: 'shared', owner: 'NATIVE-12' },
+  'snapshot:job-search-evidence-contract': { target: 'reference:evidence-contract', path: '.agents/skills/evidence-audit/references/evidence-contract.md', applicability: 'shared', owner: 'NATIVE-12' },
+  'snapshot:job-search-report-template': { target: 'reference:report-template', path: '.agents/skills/evidence-audit/references/report-template.md', applicability: 'shared', owner: 'NATIVE-12' },
+  'snapshot:job-search-rendercv': { target: 'method:rendercv', path: '.agents/skills/rendercv/SKILL.md', applicability: 'shared', owner: 'OPS-08' },
 };
 
+// A body-backed source is a regular file (type-checked with lstat), contained beneath the tree
+// (real-path resolution), byte-identical to its recorded digest, and re-extracts its source units
+// exactly. An empty source-unit array on a body-backed entry fails. Distribution links keep their
+// literal target and link digest and resolve to a contained canonical in-repository target.
 function checkOneSource(entry, root) {
   const s = entry.source;
   if (s.type === 'regular-file') {
+    if (!lstatTree(root, s.path).isFile()) throw new Error(`expected a regular file: ${entry.id}`);
+    containedReal(root, s.path);
     const bytes = readBytes(root, s.path);
     if (sha256(bytes) !== s.sha256) throw new Error(`source bytes differ: ${entry.id}`);
-    if (entry.sourceUnits.length) verifySourceUnits(entry.id, s.path, bytes, s.sha256, entry.sourceUnits);
+    if (entry.sourceUnits.length === 0) throw new Error(`body-backed entry has no source units: ${entry.id}`);
+    verifySourceUnits(entry.id, s.path, bytes, s.sha256, entry.sourceUnits);
   } else if (s.type === 'distribution-symlink') {
     if (!lstatTree(root, s.path).isSymbolicLink()) throw new Error(`expected a symlink: ${entry.id}`);
     const link = readlinkTree(root, s.path);
     if (link !== s.linkTarget) throw new Error(`link target differs: ${entry.id}`);
     if (sha256(Buffer.from(link, 'utf8')) !== s.linkSha256) throw new Error(`link digest differs: ${entry.id}`);
+    let canonical;
+    try { canonical = containedReal(root, s.path); } catch { throw new Error(`link canonical target unresolved: ${entry.id}`); }
+    if (typeof s.canonicalTarget === 'string' && canonical !== s.canonicalTarget) throw new Error(`link canonical target differs: ${entry.id}`);
   }
 }
 
@@ -86,10 +114,14 @@ function baselineMapAgreement(obligations, adoptionMap, provenance) {
     if (`seed/${target.path}` !== adoption.planned_destination) throw new Error(`baseline ${adoption.id} destination differs from the adoption map`);
   }
   const byId = new Map(obligations.entries.map(e => [e.id, e]));
-  for (const [id, provider] of Object.entries(D6_PROVIDER)) {
+  for (const [id, expected] of Object.entries(D6)) {
     const entry = byId.get(id);
     if (!entry) throw new Error(`snapshot ${id} is missing`);
-    if (entry.applicability !== provider) throw new Error(`snapshot ${id} provider differs from the packet`);
+    if (!entry.targets.includes(expected.target)) throw new Error(`snapshot ${id} successor differs from the packet`);
+    const target = targetById.get(expected.target);
+    if (!target || target.path !== expected.path) throw new Error(`snapshot ${id} successor path differs from the packet`);
+    if (entry.applicability !== expected.applicability) throw new Error(`snapshot ${id} provider differs from the packet`);
+    if (target.owner !== expected.owner) throw new Error(`snapshot ${id} owner differs from the packet`);
   }
   const pocock = obligations.entries.filter(e => e.collection === 'pocock');
   if (pocock.length !== provenance.skill_count) throw new Error('pocock released count differs from provenance');
@@ -99,7 +131,74 @@ function baselineMapAgreement(obligations, adoptionMap, provenance) {
   for (const row of provenance.files) {
     if (digestByPath.get(`${POCOCK}/${row.file}`) !== row.sha256) throw new Error(`pocock provenance digest differs: ${row.file}`);
   }
-  return { baselines: adoptionMap.entries.length, snapshots: Object.keys(D6_PROVIDER).length, pocock: pocock.length };
+  return { baselines: adoptionMap.entries.length, snapshots: Object.keys(D6).length, pocock: pocock.length };
+}
+
+// Application dispositions match the application inventory by full identity: every disposition row
+// binds to exactly one inventory asset whose original path ends with the row path, whose kind
+// equals the row kind and whose digest equals the row digest, and the bijection covers every asset.
+function applicationTupleAgreement(obligations, application) {
+  const rows = [
+    ...obligations.dispositions.notSelected.filter(r => r.inventory === 'application'),
+    ...obligations.dispositions.selectionAliases.filter(r => r.inventory === 'application'),
+  ];
+  const used = new Set();
+  for (const row of rows) {
+    if (typeof row.project !== 'string' || !row.project) throw new Error(`application row has no project: ${row.path}`);
+    const idx = application.assets.findIndex((a, i) => !used.has(i) && a.sha256 === row.sha256 && a.kind === row.kind && (a.original_path.endsWith(`/${row.path}`) || a.original_path === row.path));
+    if (idx < 0) throw new Error(`application row has no matching inventory asset (project/path/kind/sha256): ${row.path}`);
+    used.add(idx);
+  }
+  if (used.size !== application.assets.length) throw new Error(`application dispositions do not cover the inventory exactly (${used.size} of ${application.assets.length})`);
+  return rows.length;
+}
+
+// The inventoried support, private and remote sets partition loam-inventory.json exactly:
+// 69 inventoried support records = 62 regular files + 2 distribution links + 5 private records,
+// plus the fixed supplemental (non-inventory) support entries. Every inventory file except the five
+// private rows is claimed by exactly one entry source with digest agreement; the private-typed
+// entries are exactly the five reviewed D2a rows and assert no body-backed claim.
+function inventoryPartition(obligations, loamInventory) {
+  const privatePaths = new Set(obligations.privateMetadata.map(r => r.path));
+  if (privatePaths.size !== obligations.privateMetadata.length) throw new Error('private metadata rows have a duplicate path');
+  const bodyByPath = new Map();
+  for (const e of obligations.entries) {
+    if (e.source.type === 'regular-file' || e.source.type === 'distribution-symlink') {
+      if (bodyByPath.has(e.source.path)) throw new Error(`duplicate source path across entries: ${e.source.path}`);
+      bodyByPath.set(e.source.path, e);
+    }
+  }
+  for (const file of loamInventory.files) {
+    if (privatePaths.has(file.source_path)) continue;
+    const entry = bodyByPath.get(file.source_path);
+    if (!entry) throw new Error(`inventory file is undispositioned: ${file.source_path}`);
+    if (entry.source.type === 'regular-file' && entry.source.sha256 !== file.sha256) throw new Error(`inventory digest differs: ${file.source_path}`);
+  }
+  const invPaths = new Set(loamInventory.files.map(f => f.source_path));
+  const support = obligations.entries.filter(e => e.collection === 'support');
+  const regInInv = support.filter(e => e.source.type === 'regular-file' && invPaths.has(e.source.path)).length;
+  const linkInInv = support.filter(e => e.source.type === 'distribution-symlink' && invPaths.has(e.source.path)).length;
+  const priv = obligations.privateMetadata.length;
+  if (regInInv !== 62) throw new Error(`inventoried regular support is ${regInInv}, expected 62`);
+  if (linkInInv !== 2) throw new Error(`inventoried distribution-link support is ${linkInInv}, expected 2`);
+  if (priv !== 5) throw new Error(`private records are ${priv}, expected 5`);
+  if (regInInv + linkInInv + priv !== 69) throw new Error('inventoried support partition is not 69');
+  if (obligations.entries.filter(e => e.collection === 'remote').length !== 5) throw new Error('remote entries are not exactly five');
+
+  const privateRowPaths = privatePaths;
+  const privateTyped = obligations.entries.filter(e => e.source.type === 'private-local-metadata');
+  if (privateTyped.length !== 5) throw new Error(`private-metadata-typed entries are ${privateTyped.length}, expected 5`);
+  for (const entry of privateTyped) if (!privateRowPaths.has(entry.source.path)) throw new Error(`entry uses private metadata identity but is not a reviewed D2a row: ${entry.id}`);
+
+  const byId = new Map(obligations.entries.map(e => [e.id, e]));
+  const privateIds = new Set(obligations.privateMetadata.map(r => r.id));
+  for (const row of obligations.privateMetadata) {
+    const entry = byId.get(row.id);
+    if (!entry) throw new Error(`private metadata row has no entry: ${row.id}`);
+    if (entry.source.type !== 'private-local-metadata') throw new Error(`private row entry is not typed as private metadata: ${row.id}`);
+    if (entry.sourceUnits.length || (entry.map && entry.map.length) || entry.targets.length || entry.prerequisites.length) throw new Error(`private metadata record carries a forbidden claim: ${row.id}`);
+  }
+  for (const edge of obligations.edges) if (privateIds.has(edge.fromEntry)) throw new Error(`private metadata record originates an edge: ${edge.fromEntry}`);
 }
 
 function inventoryDispositions(obligations, benchmark, application, loamInventory) {
@@ -114,12 +213,8 @@ function inventoryDispositions(obligations, benchmark, application, loamInventor
   for (const k of benchKeys) if (!obBenchKeys.has(k)) throw new Error(`benchmark inventory row is undispositioned: ${k}`);
   for (const k of obBenchKeys) if (!benchKeys.has(k)) throw new Error(`disposition row is not in the benchmark inventory: ${k}`);
 
-  const appSha = application.assets.map(a => a.sha256).sort();
-  const obAppSha = [
-    ...obligations.dispositions.notSelected.filter(r => r.inventory === 'application'),
-    ...obligations.dispositions.selectionAliases.filter(r => r.inventory === 'application'),
-  ].map(r => r.sha256).sort();
-  if (JSON.stringify(appSha) !== JSON.stringify(obAppSha)) throw new Error('application disposition set differs from the inventory');
+  // Application dispositions are compared by full identity tuple, not digest alone.
+  applicationTupleAgreement(obligations, application);
 
   if (obligations.dispositions.pluginReferences.length !== benchmark.plugin_references.length) throw new Error('plugin reference count differs');
   const pluginKeys = new Set(benchmark.plugin_references.map(r => `${r.project}|${r.name}`));
@@ -134,6 +229,9 @@ function inventoryDispositions(obligations, benchmark, application, loamInventor
     if (historical === undefined) throw new Error(`private metadata row is missing from the inventory: ${row.path}`);
     if (historical !== row.historicalSha256) throw new Error(`private metadata historical digest differs: ${row.path}`);
   }
+
+  // Exact inventoried support/private/remote partition and private-record restrictions.
+  inventoryPartition(obligations, loamInventory);
 
   const counts = obligations.counts;
   const actual = {
@@ -174,11 +272,18 @@ test('provenance.sources-match-tree', () => {
     writeInto(root, entry.source.path, 'mutated body\n');
     assert.throws(() => checkOneSource(entry, root), /source bytes differ/);
   });
-  // Directory where a file is expected.
+  // Directory where a file is expected: the regular-file type check rejects it.
   withScratch('loam-prov-dir-', root => {
     const entry = OBLIGATIONS.entries.find(e => e.id === 'baseline:plan-review');
     mkdirSync(join(root, entry.source.path), { recursive: true });
-    assert.throws(() => checkOneSource(entry, root));
+    assert.throws(() => checkOneSource(entry, root), /expected a regular file/);
+  });
+  // Erased source units: an empty array on a body-backed entry fails unconditionally.
+  withScratch('loam-prov-units-', root => {
+    const entry = structuredClone(OBLIGATIONS.entries.find(e => e.id === 'baseline:plan-review'));
+    writeInto(root, entry.source.path, readFileSync(join(repo, entry.source.path)));
+    entry.sourceUnits = [];
+    assert.throws(() => checkOneSource(entry, root), /no source units/);
   });
   // Link substitution: a distribution symlink repointed to a different target.
   withScratch('loam-prov-link-', root => {
@@ -201,14 +306,22 @@ test('provenance.baseline-map-agreement', () => {
   const report = baselineMapAgreement(OBLIGATIONS, adoptionMap, provenance);
   assert.deepEqual([report.baselines, report.snapshots, report.pocock], [30, 10, 25]);
 
-  // Wrong successor: a baseline destination that no longer matches the adoption map.
+  // Wrong baseline successor: a destination that no longer matches the adoption map.
+  const wrongDestination = cloneOb();
+  wrongDestination.targets.find(t => t.id === 'method:catchup').path = '.agents/skills/catchup/OTHER.md';
+  assert.throws(() => baselineMapAgreement(wrongDestination, adoptionMap, provenance), /destination differs/);
+  // Wrong snapshot successor: a snapshot regrouped onto a different method.
   const wrongSuccessor = cloneOb();
-  wrongSuccessor.targets.find(t => t.id === 'method:catchup').path = '.agents/skills/catchup/OTHER.md';
-  assert.throws(() => baselineMapAgreement(wrongSuccessor, adoptionMap, provenance), /destination differs/);
+  wrongSuccessor.entries.find(e => e.id === 'snapshot:distbench-worktree-status').targets = ['method:catchup'];
+  assert.throws(() => baselineMapAgreement(wrongSuccessor, adoptionMap, provenance), /successor differs/);
   // Wrong provider: a snapshot relabelled to the opposite model.
   const wrongProvider = cloneOb();
   wrongProvider.entries.find(e => e.id === 'snapshot:distbench-claude-critique-swarm').applicability = 'codex';
   assert.throws(() => baselineMapAgreement(wrongProvider, adoptionMap, provenance), /provider differs/);
+  // Wrong owner: a snapshot successor owner that no longer matches the packet.
+  const wrongOwner = cloneOb();
+  wrongOwner.targets.find(t => t.id === 'method:worktree-status').owner = 'OPS-99';
+  assert.throws(() => baselineMapAgreement(wrongOwner, adoptionMap, provenance), /owner differs/);
   // Lost sibling attribution: a mattpocock provenance-listed source removed from the packet.
   const lostSibling = cloneOb();
   const sibling = lostSibling.entries.find(e => e.source.type === 'regular-file' && e.source.path.includes(`${POCOCK}/`));
@@ -249,16 +362,36 @@ test('provenance.inventory-dispositions', () => {
     });
   });
 
-  // Missing metadata row, changed historical digest, and a retyped real support source all reject.
+  // Missing metadata row, changed historical digest, and a retyped private-row path all reject.
   const dropped = cloneOb();
   dropped.privateMetadata = dropped.privateMetadata.slice(1);
   assert.throws(() => inventoryDispositions(dropped, benchmark, application, loamInventory), /not exactly five rows/);
   const changedDigest = cloneOb();
   changedDigest.privateMetadata[0].historicalSha256 = '0'.repeat(64);
   assert.throws(() => inventoryDispositions(changedDigest, benchmark, application, loamInventory), /historical digest differs/);
-  const retyped = cloneOb();
-  retyped.privateMetadata[0].path = 'bin/lib.sh';
-  assert.throws(() => inventoryDispositions(retyped, benchmark, application, loamInventory), /not a session-history path/);
+  const retypedRow = cloneOb();
+  retypedRow.privateMetadata[0].path = 'bin/lib.sh';
+  assert.throws(() => inventoryDispositions(retypedRow, benchmark, application, loamInventory), /not a session-history path/);
+  // A duplicated private tuple replacing another loses a distinct path.
+  const dupPrivate = cloneOb();
+  dupPrivate.privateMetadata[1] = structuredClone(dupPrivate.privateMetadata[0]);
+  assert.throws(() => inventoryDispositions(dupPrivate, benchmark, application, loamInventory), /duplicate path/);
+  // An application disposition whose path no longer matches any inventory asset.
+  const changedAppPath = cloneOb();
+  changedAppPath.dispositions.notSelected.find(r => r.inventory === 'application').path = 'unrelated/file.md';
+  assert.throws(() => inventoryDispositions(changedAppPath, benchmark, application, loamInventory), /no matching inventory asset/);
+  // Removing an inventoried support entry leaves its inventory file undispositioned.
+  const droppedSupport = cloneOb();
+  droppedSupport.entries = droppedSupport.entries.filter(e => e.id !== 'support:cultivation/marketplace/README.md');
+  assert.throws(() => inventoryDispositions(droppedSupport, benchmark, application, loamInventory), /undispositioned/);
+  // Retyping a real support source as private metadata leaves six private-typed entries.
+  const retypedSupport = cloneOb();
+  retypedSupport.entries.find(e => e.id === 'support:bin/lib.sh').source = { type: 'private-local-metadata', path: 'bin/lib.sh', historicalSha256: '0'.repeat(64), currentSha256: null, readingState: 'metadata-only', bodyVerification: 'not-performed' };
+  assert.throws(() => inventoryDispositions(retypedSupport, benchmark, application, loamInventory), /private-metadata-typed entries are 6/);
+  // A private-metadata record that asserts a target claim.
+  const claimingPrivate = cloneOb();
+  claimingPrivate.entries.find(e => e.id === OBLIGATIONS.privateMetadata[0].id).targets = ['method:catchup'];
+  assert.throws(() => inventoryDispositions(claimingPrivate, benchmark, application, loamInventory), /forbidden claim/);
 
   // Privacy scans of the final outputs.
   const catalog = readJSON(repo, 'seed/.loam/factory/assets/curated-catalog.json');

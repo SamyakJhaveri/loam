@@ -8,7 +8,7 @@ Ticket [NATIVE-05 #117](https://github.com/SamyakJhaveri/loam/issues/117) delive
 
 ## What changed on the branch
 
-- `seed/.loam/factory/assets/curated-catalog.json` and `curated-catalog.schema.json`: the shipped data and its schema. The catalog is 1488174 bytes.
+- `seed/.loam/factory/assets/curated-catalog.json` and `curated-catalog.schema.json`: the shipped data and its schema. The catalog is 1492695 bytes.
 - `seed/.loam/factory/src/assets/obligations.ts`: compiled constants generated from the frozen, independently reviewed obligation table. The validator compares the catalog against these; the catalog cannot override them.
 - `seed/.loam/factory/src/assets/catalog.ts`, `schema.ts`, `units.ts`: validator, bounded JSON Schema subset, source-unit span algorithm.
 - `seed/.loam/factory/tests/assets/catalog.test.ts`: the five fixed `curated-catalog` cases (`CATALOG_CASES` in `src/testing/verify.ts`).

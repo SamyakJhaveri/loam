@@ -37,10 +37,13 @@ the campaign's supersession of its generic publish workflow.
 ## Activation authority
 
 `activation.activated` is `false` for every entry. Qualification never activates a method.
-`resolveEntry` returns `activatable: true` only for a fully available entry. Changing
-status, activation, blockers or prerequisites inside the catalog cannot promote a pending
-entry, because the validator compares the catalog against obligations compiled into the
-package (`src/assets/obligations.ts`), never against the catalog's own claims.
+Changing status, activation, blockers or prerequisites inside the catalog cannot promote a
+pending entry, because the validator compares the catalog against obligations compiled into
+the package (`src/assets/obligations.ts`), never against the catalog's own claims. Bodies
+recorded as present are read from the recipient tree and must match their expected digest.
+`resolveEntry` is a lower-level helper: it binds one candidate entry to a trusted expected
+contract and returns `activatable: true` only when that contract is qualified and every
+required body, support file and prerequisite resolves; it certifies nothing on its own.
 
 ## Wrappers and projections
 
