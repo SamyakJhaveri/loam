@@ -27,6 +27,7 @@ const PACKAGES = [
   'loam-dep-scripted',
   'loam-dep-mutating',
   'loam-dep-failing',
+  'loam-dep-badsmoke',
 ];
 const FIXED_MODE = 0o644;
 const FIXED_MTIME = 0;

@@ -244,3 +244,32 @@ test('contain.build-script-failed', async () => {
   }
   assert.equal(existsSync(join(controlRoot, CONTROL_ROOT_LAYOUT.selected)), false);
 });
+
+test('contain.load-smoke-failed', async () => {
+  requireMechanism();
+  const fixture = 'loam-dep-badsmoke';
+  const { trusted, controller } = makeTrusted(fixture);
+  const controlRoot = controlRootWithCanaries('SECRET-H');
+  try {
+    await admitRuntime(admitOptions(trusted, controlRoot, fixture));
+    assert.fail('bad-smoke admission must be refused');
+  } catch (error) {
+    assert.ok(error instanceof AdmissionError, String(error));
+    assert.equal((error as AdmissionError).diagnostic, 'load-smoke-failed');
+  }
+  // The postinstall wrote its marker in the staging payload: the build ran and
+  // only the later load smoke failed.
+  const runtimesDir = join(controlRoot, CONTROL_ROOT_LAYOUT.runtimes);
+  const staging = readdirSync(runtimesDir).find((name) => name.startsWith(CONTROL_ROOT_LAYOUT.stagingPrefix));
+  assert.ok(staging, 'staging workspace must be left as evidence');
+  assert.equal(existsSync(join(runtimesDir, staging, SNAPSHOT_LAYOUT.modules, fixture, 'marker')), true);
+  // No selection is published.
+  assert.equal(existsSync(join(controlRoot, CONTROL_ROOT_LAYOUT.selected)), false);
+  // A later status reports install-interrupted (staging) and never runs the payload.
+  const status = spawnSync('/bin/sh', [controller, '--control-root', controlRoot, 'status'], { encoding: 'utf8', timeout: 120000 });
+  assert.equal(status.status, 1);
+  const line = status.stdout.trim().split('\n').filter(Boolean).at(-1)!;
+  const report = JSON.parse(line) as { diagnostic?: string; detail?: string };
+  assert.equal(report.diagnostic, 'install-interrupted');
+  assert.ok(String(report.detail).includes('staging'));
+});
