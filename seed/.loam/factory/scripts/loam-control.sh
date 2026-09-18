@@ -72,13 +72,16 @@ case "$__os $__arch" in
 esac
 
 is_absolute() { case "$1" in /*) return 0 ;; *) return 1 ;; esac; }
-# True when a string contains a byte json_escape cannot represent: an embedded
-# newline (which splits it into more than one grep line) or any other C0/DEL
-# control byte within a line. LANG=C is already in effect; LC_ALL=C makes
-# [[:cntrl:]] byte-wise. (A NUL cannot occur in an sh variable.)
+# True when a string contains any C0/DEL control byte, at any position including a
+# trailing newline. The glob is matched against the whole value, so a trailing
+# newline (which a line-based grep misses because it is the line separator) is
+# caught. LANG=C is already in effect, so [[:cntrl:]] is byte-wise over the C0/DEL
+# range. (A NUL cannot occur in an sh variable.)
 contains_control() {
-  [ "$(printf '%s' "$1" | /usr/bin/grep -c '')" -gt 1 ] && return 0
-  printf '%s' "$1" | LC_ALL=C /usr/bin/grep -q '[[:cntrl:]]'
+  case "$1" in
+    *[[:cntrl:]]*) return 0 ;;
+  esac
+  return 1
 }
 is_hex16() {
   [ "${#1}" -eq 16 ] || return 1
@@ -116,8 +119,10 @@ validate_checksum_record() {
   __total=$(/usr/bin/cut -c67- "$__sums" | /usr/bin/grep -c '')
   __uniq=$(/usr/bin/cut -c67- "$__sums" | LC_ALL=C /usr/bin/sort -u | /usr/bin/grep -c '')
   [ "$__total" -eq "$__uniq" ] || return 1
-  # rule 6: each fixed entrypoint entry appears exactly once.
-  for __req in 'installed-files\.json' 'snapshot\.json' 'bin/node' 'bin/loam-control'; do
+  # rule 6: each fixed entrypoint entry appears exactly once. payload/package.json
+  # and the doctor entrypoint are required so a regenerated record cannot omit the
+  # startup metadata the pre-dispatch scan and Node itself depend on (B1).
+  for __req in 'installed-files\.json' 'snapshot\.json' 'bin/node' 'bin/loam-control' 'payload/package\.json' 'payload/dist/src/commands/doctor\.js'; do
     [ "$(LC_ALL=C /usr/bin/grep -Ec "^[0-9a-f]{64}  ${__req}$" "$__sums")" -eq 1 ] || return 1
   done
   # rule 7: canonical trailing newline.
@@ -188,6 +193,56 @@ resolve_state() {
   emit_unavailable nothing-admitted 'no runtime has been admitted'
 }
 
+# Reject startup metadata Node would read before any snapshot code runs (B1). Node
+# consults the nearest package.json walking up from each loaded module, and
+# node_modules only for bare specifiers. The dispatched doctor entrypoint and its
+# whole import graph live under payload/dist, are digest-checked, and have no bare
+# imports, so the only directories Node walks are payload/dist and the parent
+# directories of the recorded payload/dist/** files. Derive that directory set from
+# the record's path column and refuse any unexpected package.json or node_modules
+# in it; also require the legitimate payload/package.json (where Node's walk stops)
+# to be a regular file. The digest tool verifies recorded bytes but never rejects
+# an unrecorded extra file, so this is what stops a nearer package.json from
+# crashing Node before doctor can classify it. Do not walk above payload/.
+check_startup_metadata() {
+  __snap=$1; __sums=$2
+  [ -f "$__snap/payload/package.json" ] || emit_unavailable installed-file-altered "$__snap/payload/package.json"
+  __dist=$(/usr/bin/cut -c67- "$__sums" | LC_ALL=C /usr/bin/grep '^payload/dist/' || :)
+  __dirs='payload/dist'
+  __oldifs=$IFS
+  IFS='
+'
+  set -f
+  for __p in $__dist; do
+    __d=${__p%/*}
+    while : ; do
+      __dirs="$__dirs
+$__d"
+      [ "$__d" = 'payload/dist' ] && break
+      __d=${__d%/*}
+    done
+  done
+  set +f
+  IFS=$__oldifs
+  __dirs=$(printf '%s\n' "$__dirs" | LC_ALL=C /usr/bin/sort -u)
+  __oldifs=$IFS
+  IFS='
+'
+  set -f
+  for __d in $__dirs; do
+    if [ -e "$__snap/$__d/package.json" ] || [ -L "$__snap/$__d/package.json" ]; then
+      set +f; IFS=$__oldifs
+      emit_unavailable installed-file-altered "$__snap/$__d/package.json"
+    fi
+    if [ -e "$__snap/$__d/node_modules" ] || [ -L "$__snap/$__d/node_modules" ]; then
+      set +f; IFS=$__oldifs
+      emit_unavailable installed-file-altered "$__snap/$__d/node_modules"
+    fi
+  done
+  set +f
+  IFS=$__oldifs
+}
+
 # Pre-dispatch integrity check (item 8): verify the recorded entrypoint set with
 # the host digest tool, from the snapshot directory, before any snapshot code
 # runs. The .sha256 file lists only relative paths inside the snapshot.
@@ -197,6 +252,7 @@ predispatch_check() {
   __sums="$__root/registry/runtimes/$__id.sha256"
   validate_checksum_record "$__sums" || emit_unavailable installed-file-altered "$__sums"
   ( cd "$__snap" && $DIGEST_CHECK "$__sums" ) >/dev/null 2>&1 || emit_unavailable installed-file-altered "$__snap"
+  check_startup_metadata "$__snap" "$__sums"
 }
 
 # --- global flag parsing ---------------------------------------------------
@@ -240,7 +296,10 @@ if [ "$VERB" = 'admit' ]; then
       --protect-registry) usage_exit '--protect-registry is not allowed' ;;
       --protect-state|--protect-locks|--protect-credentials|--protect-sockets|--protect-callbacks)
         [ $# -ge 2 ] || usage_exit "missing value for $1"
-        __flag=$1; __val=$2; shift 2; set -- "$@" "$__flag" "$__val"; __left=$((__left - 2)) ;;
+        __flag=$1; __val=$2; shift 2
+        contains_control "$__val" && usage_exit "$__flag value must not contain control characters"
+        is_absolute "$__val" || usage_exit "$__flag value must be an absolute path"
+        set -- "$@" "$__flag" "$__val"; __left=$((__left - 2)) ;;
       *) contains_control "$1" && usage_exit 'unexpected admit argument contains control characters'
          usage_exit "unexpected admit argument: $1" ;;
     esac

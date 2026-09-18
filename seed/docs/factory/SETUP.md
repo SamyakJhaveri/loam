@@ -135,8 +135,10 @@ node .loam/factory/launcher.mjs doctor --control-root <root> --checkout <checkou
 The launcher is a convenience resolver, not the trust root.
 It forwards the fixed verb to `<root>/loam-control`, the controller copy made at admission, which runs the snapshot's own Node under a clean environment with `--no-global-search-paths`.
 No dependency resolves from a project root or a personal cache, and `status` and `doctor` change no installed bytes: the control root, its registry and every sealed snapshot stay as admitted.
-Each controller invocation creates one fresh scratch directory under `TMPDIR` (or `/tmp` when it is unset) (the sanitized `HOME` and `TMPDIR` of the clean re-exec) and does not remove it; that empty directory is the only trace a read-only command leaves.
-`status` and `doctor` also read `LOAM_CONTROL_ROOT` when `--control-root` is absent, and print `{"status":"unavailable","diagnostic":"control-root-missing"}` and exit nonzero when neither is set.
+Each controller invocation creates one fresh scratch directory under the caller's `TMPDIR` (or `/tmp` when it is unset) and does not remove it.
+The caller may point `TMPDIR` anywhere, including inside the control root, so a read-only command can leave an empty scratch directory there; it still changes no installed bytes.
+The checkout launcher (`launcher.mjs`) reads `LOAM_CONTROL_ROOT` when `--control-root` is absent and forwards it to `<root>/loam-control`, which itself always requires `--control-root`.
+With neither set the launcher prints `{"status":"unavailable","diagnostic":"control-root-missing"}` and exits nonzero.
 
 ### Control root layout
 

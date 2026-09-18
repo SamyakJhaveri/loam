@@ -26,8 +26,62 @@ function readJson(path) {
     return JSON.parse(readFileSync(path, 'utf8'));
 }
 const HEX64 = /^[0-9a-f]{64}$/;
+const HEX16 = /^[0-9a-f]{16}$/;
 function isObject(value) {
     return value !== null && typeof value === 'object' && !Array.isArray(value);
+}
+function isRelativePath(path) {
+    if (path.length === 0 || path.startsWith('/'))
+        return false;
+    return !path.split('/').includes('..');
+}
+// Structural validators for the registry records and the installed inventory
+// (B2). These run before any field is used so a malformed or vacuous record is a
+// structured diagnostic, never a raw TypeError and never a false healthy. They do
+// not authenticate the record; the integrity proof stays the byte re-hashing
+// below (installed-files.json, the release map) and the controller's pre-dispatch
+// digest set. An empty release file map must not certify: without it the release
+// binding loop is vacuous.
+function isReleaseFileMap(value) {
+    if (!isObject(value))
+        return false;
+    const entries = Object.entries(value);
+    if (entries.length === 0)
+        return false;
+    return entries.every(([path, digest]) => isRelativePath(path) && typeof digest === 'string' && HEX64.test(digest));
+}
+function isReleaseIdentity(value) {
+    if (!isObject(value))
+        return false;
+    return typeof value.label === 'string'
+        && typeof value.sourcePath === 'string'
+        && (value.gitDescribe === null || typeof value.gitDescribe === 'string')
+        && typeof value.sourceDigest === 'string' && HEX64.test(value.sourceDigest)
+        && typeof value.outputDigest === 'string' && HEX64.test(value.outputDigest)
+        && typeof value.dependencyDigest === 'string' && HEX64.test(value.dependencyDigest)
+        && typeof value.manifestSha256 === 'string' && HEX64.test(value.manifestSha256);
+}
+function isAdmittedTools(value) {
+    if (!isObject(value))
+        return false;
+    const { node, npm } = value;
+    return isObject(node) && typeof node.sha256 === 'string' && HEX64.test(node.sha256)
+        && isObject(npm) && typeof npm.cliSha256 === 'string' && HEX64.test(npm.cliSha256)
+        && typeof npm.packageSha256 === 'string' && HEX64.test(npm.packageSha256);
+}
+function isValidAdmissionRecord(value, admissionId) {
+    return isObject(value)
+        && value.version === 1
+        && typeof value.id === 'string' && HEX16.test(value.id) && value.id === admissionId
+        && isReleaseFileMap(value.files)
+        && isReleaseIdentity(value.release)
+        && isAdmittedTools(value.tools);
+}
+function isValidInventory(value) {
+    if (!isObject(value) || value.version !== 1 || !isObject(value.files))
+        return false;
+    return Object.values(value.files).every(entry => isObject(entry) && typeof entry.sha256 === 'string' && HEX64.test(entry.sha256)
+        && (entry.mode === 'executable' || entry.mode === 'regular'));
 }
 function fileMode(path) {
     return (statSync(path).mode & 0o111) !== 0 ? 'executable' : 'regular';
@@ -107,8 +161,7 @@ export function runDoctor(options) {
     catch {
         return interrupt(`admission record is not valid JSON: ${selected.admissionId}`);
     }
-    if (!isObject(parsedAdmission) || parsedAdmission.version !== 1 || parsedAdmission.id !== selected.admissionId
-        || !isObject(parsedAdmission.files) || !isObject(parsedAdmission.release) || !isObject(parsedAdmission.tools)) {
+    if (!isValidAdmissionRecord(parsedAdmission, selected.admissionId)) {
         return interrupt(`admission record malformed or not matching the selection: ${selected.admissionId}`);
     }
     const record = parsedAdmission;
@@ -152,16 +205,20 @@ export function runDoctor(options) {
     // directly, read and parse it defensively: a missing, non-regular, unreadable,
     // or malformed file (even one whose bytes match the recorded digest) is
     // tampering, reported as installed-file-altered, never a raw exception.
-    let installed;
+    let parsedInstalled;
     try {
         if (hashFile(installedFilesPath) !== runtimeRecord.installedFilesSha256) {
             return fail('installed-file-altered', `${SNAPSHOT_LAYOUT.installedFiles} digest does not match the runtime record`);
         }
-        installed = readJson(installedFilesPath);
+        parsedInstalled = readJson(installedFilesPath);
     }
     catch {
         return fail('installed-file-altered', `${SNAPSHOT_LAYOUT.installedFiles} is missing or unreadable`);
     }
+    if (!isValidInventory(parsedInstalled)) {
+        return fail('installed-file-altered', `${SNAPSHOT_LAYOUT.installedFiles} is malformed`);
+    }
+    const installed = parsedInstalled;
     let observed;
     try {
         observed = collectFiles(snapshotPath).filter(path => path !== SNAPSHOT_LAYOUT.installedFiles);

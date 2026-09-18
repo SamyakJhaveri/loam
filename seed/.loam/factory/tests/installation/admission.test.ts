@@ -680,24 +680,36 @@ test('admission.control-rejects-arguments', async () => {
   r = control(controller, controlRoot, ['status']);
   assert.equal(r.status, 1);
   assert.equal(lastJson(r.stdout).diagnostic, 'install-interrupted');
-  // A control character in an operator-supplied path is refused with valid JSON,
-  // never emitted raw into the diagnostic (C1; shell-json-probe.json).
-  const nlRoot = spawnSync('/bin/sh',
-    [controller, '--control-root', '/definitely-missing\ncontrol-root', 'status'],
-    { env: cleanTestEnvironment(), encoding: 'utf8', timeout: 30000 });
-  assert.equal(nlRoot.status, 2);
-  const line = nlRoot.stdout.trim().split('\n').filter(Boolean).at(-1) ?? '';
-  assert.doesNotThrow(() => JSON.parse(line), `control-root refusal must be valid JSON: ${JSON.stringify(nlRoot.stdout)}`);
-  assert.equal((JSON.parse(line) as { status?: string }).status, 'usage');
-  // (a) An unrecognized argument carrying an embedded control character is refused
-  // with a constant-detail usage line that stays valid JSON (repair R3).
-  const nlArg = spawnSync('/bin/sh',
-    [controller, '--control-root', controlRoot, 'foo\nEVIL'],
-    { env: cleanTestEnvironment(), encoding: 'utf8', timeout: 30000 });
-  assert.equal(nlArg.status, 2);
-  const nlArgLine = nlArg.stdout.trim().split('\n').filter(Boolean).at(-1) ?? '';
-  assert.doesNotThrow(() => JSON.parse(nlArgLine), `usage refusal must be valid JSON: ${JSON.stringify(nlArg.stdout)}`);
-  assert.equal((JSON.parse(nlArgLine) as { status?: string }).status, 'usage');
+  // A control byte in an operator-supplied argument is refused with one valid JSON
+  // usage line and no dispatch, at every position: leading, embedded and trailing.
+  // A trailing newline is the byte the old line-count check missed (B3); the
+  // constant-detail refusal keeps the JSON valid because it never echoes the bad
+  // value (C1; shell-json-probe.json).
+  function controllerUsage(args: string[], label: string): void {
+    const r = spawnSync('/bin/sh', [controller, ...args], { env: cleanTestEnvironment(), encoding: 'utf8', timeout: 30000 });
+    assert.equal(r.status, 2, `${label}: ${r.stdout}${r.stderr}`);
+    const usageLine = r.stdout.trim().split('\n').filter(Boolean).at(-1) ?? '';
+    assert.doesNotThrow(() => JSON.parse(usageLine), `${label}: refusal must be valid JSON: ${JSON.stringify(r.stdout)}`);
+    assert.equal((JSON.parse(usageLine) as { status?: string }).status, 'usage', `${label}: ${r.stdout}`);
+  }
+  const positions: Array<[string, (s: string) => string]> = [
+    ['leading', (s) => `\n${s}`],
+    ['embedded', (s) => `${s.slice(0, 2)}\n${s.slice(2)}`],
+    ['trailing', (s) => `${s}\n`],
+  ];
+  for (const [pos, mk] of positions) {
+    controllerUsage(['--control-root', mk('/missing-root'), 'status'], `${pos} newline in --control-root`);
+    controllerUsage(['--control-root', controlRoot, mk('badarg')], `${pos} newline in an unrecognized argument`);
+  }
+  // A rotated --protect-* value carrying a trailing newline is refused at the
+  // boundary before any dispatch (B3: fixing contains_control alone does not reach
+  // the rotated protect values).
+  const protectRoot = freshControlRoot();
+  controllerUsage(
+    ['--control-root', protectRoot, '--toolchain', toolchain, 'admit',
+      '--trusted-source', trusted, '--release-identity', 'loam v0.0.0', '--protect-state', '/tmp/x\n'],
+    'trailing newline in --protect-state');
+  assert.equal(existsSync(join(protectRoot, 'runtimes')), false, 'nothing must be admitted');
   // (b) A literal __loam_end__ positional is just an unexpected admit argument now
   // that the rotator counts the entry positionals instead of using a sentinel
   // word; it is refused and nothing is admitted.
@@ -715,27 +727,39 @@ test('admission.controller-verifies-before-dispatch', async () => {
   const controlRoot = freshControlRoot();
   const { trusted, controller } = makeTrusted();
   const { id, snapshotPath } = await admit(trusted, controlRoot);
+
+  // Altered doctor bytes: the pre-dispatch digest refuses before dispatch, so the
+  // marker appended to doctor.js never runs.
   const marker = join(base(), 'altered-doctor-ran');
   const doctorPath = join(snapshotPath, SNAPSHOT_LAYOUT.doctor);
-  tamper(doctorPath, `${readFileSync(doctorPath, 'utf8')}\nrequire('node:fs').writeFileSync(${JSON.stringify(marker)}, 'ran');\n`);
+  const doctorOriginal = readFileSync(doctorPath);
+  tamper(doctorPath, `${doctorOriginal.toString('utf8')}\nrequire('node:fs').writeFileSync(${JSON.stringify(marker)}, 'ran');\n`);
   const status = control(controller, controlRoot, ['status']);
   assert.equal(status.status, 1);
   assert.ok(hasDiagnostic(lastJson(status.stdout), 'installed-file-altered'));
   assert.equal(existsSync(marker), false, 'altered doctor must never execute');
-  // The pre-dispatch checksum grammar refuses a record that escapes the snapshot or
-  // is malformed, before the digest tool or any snapshot code runs (R3/C1).
+  // Restore the healthy doctor BEFORE the grammar regressions (departure 24).
+  // Otherwise a record the grammar failed to reject would still fail the later
+  // digest check on the altered doctor, masking a grammar hole. With healthy bytes,
+  // only the grammar can account for a refusal below.
+  writeFileSync(doctorPath, doctorOriginal);
+
+  // The pre-dispatch checksum grammar refuses a record that escapes the snapshot,
+  // is malformed, or omits a required entry, before the digest tool or any snapshot
+  // code runs (R3/C1). Each corruption edits one field of an otherwise-valid record
+  // whose remaining lines still reference real, intact bytes.
   const sums = join(controlRoot, CONTROL_ROOT_LAYOUT.runtimeRecords, `${id}.sha256`);
   const orig = readFileSync(sums, 'utf8');
-  const H = '0'.repeat(64);
+  const nodeLine = orig.split('\n').find((line) => line.endsWith('  bin/node'))!;
   const corruptions = [
-    `${H}  /etc/passwd\n`,                          // absolute path
-    `${H}  ../../../etc/passwd\n`,                   // parent component
-    `${H}  x/../y\n`,                                // '..' as a mid-path component (rule 4, path-column anchored)
-    `${H}  bin/node\n${H}  bin/node\n`,              // duplicate path
-    `${'0'.repeat(63)}  bin/node\n`,                 // wrong digest length (63)
-    orig.replace(/^.*  bin\/node\n/m, ''),           // required entry removed
-    `${orig}${H}  extra-line`,                        // missing trailing newline (appended, unterminated)
-    `${H}\tbin/node\n`,                              // control byte (TAB) in the record
+    orig.replace('  payload/package.json', '  /etc/passwd'),                   // absolute path (rule 3)
+    orig.replace('  payload/package.json', '  ../escape'),                     // leading '..' component (rule 4)
+    orig.replace('  bin/loam-control', '  x/../y'),                            // mid-path '..' component (rule 4)
+    `${orig}${nodeLine}\n`,                                                    // duplicate path (rule 5)
+    orig.replace(/^[0-9a-f]{64}  bin\/node$/m, `${'0'.repeat(63)}  bin/node`), // 63-hex digest (rule 3)
+    orig.replace(/^.*  bin\/node\n/m, ''),                                     // required entry removed (rule 6)
+    orig.replace(/\n$/, ''),                                                   // no trailing newline (rule 7)
+    orig.replace('  bin/node', '\tbin/node'),                                  // TAB control byte (rule 2)
   ];
   for (const bad of corruptions) {
     tamper(sums, bad);
@@ -743,7 +767,43 @@ test('admission.controller-verifies-before-dispatch', async () => {
     assert.equal(rr.status, 1, `record refused: ${JSON.stringify(bad)}`);
     assert.ok(hasDiagnostic(lastJson(rr.stdout), 'installed-file-altered'), `installed-file-altered: ${JSON.stringify(bad)}`);
   }
-  tamper(sums, orig); // restore so a later assertion/cleanup sees a valid record
+  tamper(sums, orig); // restore the healthy record
+
+  // B1: startup metadata inserted into the healthy snapshot is refused by the
+  // controller BEFORE Node is dispatched. The non-dispatch proof is the top-level
+  // {status:unavailable, diagnostic} the shell emits (a dispatched doctor would emit
+  // {diagnostics:[...]}), plus the absence of a Node bootstrap error on stderr.
+  const payloadDist = join(snapshotPath, 'payload/dist');
+  const besideDoctor = join(dirname(doctorPath), 'package.json');
+  function expectPredispatchAltered(label: string): void {
+    const rr = control(controller, controlRoot, ['status']);
+    assert.equal(rr.status, 1, `${label}: ${rr.stdout}${rr.stderr}`);
+    const json = lastJson(rr.stdout);
+    assert.equal(json.status, 'unavailable', `${label}: expected a pre-dispatch shell refusal: ${rr.stdout}`);
+    assert.equal(json.diagnostic, 'installed-file-altered', `${label}: ${rr.stdout}`);
+    assert.ok(!rr.stderr.includes('ERR_INVALID_PACKAGE_CONFIG') && !rr.stderr.includes('SyntaxError'),
+      `${label}: Node must not start: ${JSON.stringify(rr.stderr)}`);
+  }
+  function withInserted(path: string, make: () => void, run: () => void): void {
+    chmodSync(dirname(path), 0o755);
+    make();
+    try { run(); } finally { rmSync(path, { recursive: true, force: true }); }
+  }
+  const distPkg = join(payloadDist, 'package.json');
+  // (i) malformed nearer package.json crashes Node at bootstrap unless refused first.
+  withInserted(distPkg, () => writeFileSync(distPkg, '{'), () => expectPredispatchAltered('payload/dist/package.json = {'));
+  // (ii) valid-JSON type-changing nearer package.json.
+  withInserted(distPkg, () => writeFileSync(distPkg, '{"type":"commonjs"}'), () => expectPredispatchAltered('payload/dist/package.json commonjs'));
+  // (iii) package.json beside the doctor entrypoint.
+  withInserted(besideDoctor, () => writeFileSync(besideDoctor, '{"type":"commonjs"}'), () => expectPredispatchAltered('package.json beside doctor.js'));
+  // (iv) an empty node_modules directory under payload/dist.
+  withInserted(join(payloadDist, 'node_modules'), () => mkdirSync(join(payloadDist, 'node_modules')), () => expectPredispatchAltered('payload/dist/node_modules'));
+  // (v) the doctor.js line removed from the record with the file's bytes intact:
+  // rule 6 requires the entry, so the record is refused though doctor.js is healthy.
+  const doctorRel = SNAPSHOT_LAYOUT.doctor.replace(/[.]/g, '\\.').replace(/\//g, '\\/');
+  tamper(sums, orig.replace(new RegExp(`^.*  ${doctorRel}\\n`, 'm'), ''));
+  expectPredispatchAltered('doctor.js line removed');
+  tamper(sums, orig);
 });
 
 test('admission.node-identity', async () => {
@@ -1003,6 +1063,13 @@ test('admission.altered-installed-file', async () => {
   tamper(runtimeRecordPath, `${canonicalJson(runtime)}\n`);
   expectInterrupted();
   writeFileSync(runtimeRecordPath, runtimeOriginal);
+  // Valid-JSON admission record of the wrong shape: an empty release file map with
+  // empty release/tools objects must NOT certify as healthy (B2). Before the shape
+  // check the release-binding loop was vacuous and the report was healthy; now the
+  // dispatched doctor reports a structured install-interrupted.
+  tamper(admissionRecordPath, `${canonicalJson({ version: 1, id, files: {}, release: {}, tools: {} })}\n`);
+  expectInterrupted();
+  writeFileSync(admissionRecordPath, admissionOriginal);
 
   // N1: the sealed installed-files.json is normally gated by the controller's
   // pre-dispatch checksum, so reach doctor directly (through the snapshot's own
@@ -1038,17 +1105,25 @@ test('admission.altered-installed-file', async () => {
   expectAlteredDirect();
   rmSync(installedFilesPath, { recursive: true });
   writeFileSync(installedFilesPath, installedFilesOriginal);
-  // (iii) hash-consistent non-JSON bytes: rewrite the runtime record's
+  // (iii) hash-consistent bytes of the wrong shape: rewrite the runtime record's
   // installedFilesSha256 to the new file's digest so the digest check passes and
-  // only the JSON parse fails.
-  const garbage = Buffer.from('this-is-not-json');
-  writeFileSync(installedFilesPath, garbage);
-  const runtimeForHash = JSON.parse(runtimeOriginal.toString('utf8')) as Record<string, unknown>;
-  runtimeForHash.installedFilesSha256 = createHash('sha256').update(garbage).digest('hex');
-  tamper(runtimeRecordPath, `${canonicalJson(runtimeForHash)}\n`);
-  expectAlteredDirect();
-  writeFileSync(runtimeRecordPath, runtimeOriginal);
-  writeFileSync(installedFilesPath, installedFilesOriginal);
+  // only the structural/parse check can refuse. Non-JSON bytes and valid JSON of
+  // the wrong shape (null, {}, a null files map) must each be installed-file-altered
+  // with no stack trace (B2), never a raw TypeError from Object.keys.
+  function expectInventoryShapeAltered(bytes: string): void {
+    const buf = Buffer.from(bytes);
+    writeFileSync(installedFilesPath, buf);
+    const rt = JSON.parse(runtimeOriginal.toString('utf8')) as Record<string, unknown>;
+    rt.installedFilesSha256 = createHash('sha256').update(buf).digest('hex');
+    tamper(runtimeRecordPath, `${canonicalJson(rt)}\n`);
+    expectAlteredDirect();
+    writeFileSync(runtimeRecordPath, runtimeOriginal);
+    writeFileSync(installedFilesPath, installedFilesOriginal);
+  }
+  expectInventoryShapeAltered('this-is-not-json');
+  expectInventoryShapeAltered('null');
+  expectInventoryShapeAltered('{}');
+  expectInventoryShapeAltered('{"version":1,"files":null}');
 });
 
 test('admission.environment-injected', async () => {

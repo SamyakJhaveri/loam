@@ -20,5 +20,5 @@
       "doctor": "dist/src/commands/doctor.js"
     }
   },
-  "note": "Package and platform qualification only. Runtime support and protected installation require later qualification."
+  "note": "Package and platform qualification, plus the CORE-04 scratch runtime admission slice. Managed runtime execution stays unsupported and awaits later qualification."
 }
