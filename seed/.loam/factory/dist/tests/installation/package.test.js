@@ -6,7 +6,7 @@ import { spawnSync } from 'node:child_process';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { test } from 'node:test';
 import { assertImportClosure, createReleaseManifest, payloadFiles, snapshot, verifyPackage } from '../../src/installation/package.js';
-import { assertCaseResults, CATALOG_CASES, GROUPS, NATIVE_BOUNDARY_CASES, PACKAGE_CASES, POPULATIONS, PROVENANCE_CASES, QUALIFICATION_CASES, requireGroup } from '../../src/testing/verify.js';
+import { ADMISSION_CASES, ADMISSION_CONTAINMENT_CASES, assertCaseResults, CATALOG_CASES, GROUPS, NATIVE_BOUNDARY_CASES, PACKAGE_CASES, POPULATIONS, PROVENANCE_CASES, QUALIFICATION_CASES, requireGroup } from '../../src/testing/verify.js';
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '../../..');
 function clone() {
     const target = mkdtempSync(join(tmpdir(), 'loam-package-'));
@@ -80,6 +80,9 @@ test('package.registry-obligations', () => {
         ['curated-catalog', { fixture: 'dist/tests/assets/catalog.test.js', cases: CATALOG_CASES }],
         // catalog-provenance is Loam-only (release-only scope); its fixture lives under the repository bin/, not the payload.
         ['catalog-provenance', { fixture: 'bin/tests/factory-catalog-provenance.test.mjs', cases: PROVENANCE_CASES }],
+        ['runtime-admission', { fixture: 'dist/tests/installation/admission.test.js', cases: ADMISSION_CASES }],
+        // admission-containment is host-only; see the CORE-04 note in verify.ts POPULATIONS.
+        ['admission-containment', { fixture: 'dist/tests/installation/admission-containment.test.js', cases: ADMISSION_CONTAINMENT_CASES }],
     ]);
     for (const [id, expected] of available) {
         const entry = POPULATIONS.find(value => value.id === id);

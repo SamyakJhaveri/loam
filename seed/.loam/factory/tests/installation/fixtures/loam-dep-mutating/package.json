@@ -1,0 +1,9 @@
+{
+  "name": "loam-dep-mutating",
+  "version": "1.0.0",
+  "description": "CORE-04 containment fixture: a postinstall that rewrites an installed dist file and the release manifest consistently, to prove the release binding still refuses it.",
+  "main": "index.mjs",
+  "scripts": { "postinstall": "node postinstall.mjs" },
+  "license": "MIT",
+  "private": true
+}

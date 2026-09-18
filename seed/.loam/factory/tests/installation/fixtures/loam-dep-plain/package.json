@@ -1,0 +1,8 @@
+{
+  "name": "loam-dep-plain",
+  "version": "1.0.0",
+  "description": "CORE-04 offline admission fixture: a plain dependency with no lifecycle scripts and no bin.",
+  "main": "index.mjs",
+  "license": "MIT",
+  "private": true
+}

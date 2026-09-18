@@ -1,0 +1,9 @@
+{
+  "name": "loam-dep-badsmoke",
+  "version": "1.0.0",
+  "description": "CORE-04 containment fixture: a postinstall that succeeds, then a load smoke that throws so load-smoke-failed can be proven.",
+  "main": "index.mjs",
+  "scripts": { "postinstall": "node postinstall.mjs" },
+  "license": "MIT",
+  "private": true
+}

@@ -105,6 +105,8 @@ else
   # provenance against the repository tree and the intake inventories (NATIVE-05).
   "$FACTORY_NODE" seed/.loam/factory/launcher.mjs qualify catalog || bad "factory catalog qualification"
   "$FACTORY_NODE" bin/factory-catalog-provenance.mjs || bad "factory catalog provenance"
+  # Offline runtime admission. Containment (qualify admission-containment) is a host-only gate; see seed/docs/factory/SETUP.md.
+  "$FACTORY_NODE" seed/.loam/factory/launcher.mjs qualify runtime-admission || bad "factory runtime-admission qualification"
 fi
 
 if [ "$FAIL" -ne 0 ]; then echo; echo "check: FAILED"; exit 1; fi
