@@ -1176,6 +1176,47 @@ test('admission.altered-installed-file', async () => {
     const [firstKey] = Object.keys(rec.files);
     rec.files = { [firstKey]: rec.files[firstKey]! };
   });
+  // Aggregate release digests: each hex64 but no longer matching the byte-verified
+  // installed release manifest.
+  tamperAdmission((rec) => { rec.release.sourceDigest = '0'.repeat(64); });
+  tamperAdmission((rec) => { rec.release.outputDigest = '0'.repeat(64); });
+  tamperAdmission((rec) => { rec.release.dependencyDigest = '0'.repeat(64); });
+  // Tool metadata: each valid-typed but no longer matching this running admitted
+  // executable (platform/arch/node) or the installed npm package.json (npm version).
+  tamperAdmission((rec) => { rec.tools.platform = 'wrong'; });
+  tamperAdmission((rec) => { rec.tools.arch = 'wrong'; });
+  tamperAdmission((rec) => { rec.tools.node.version = 'wrong'; });
+  tamperAdmission((rec) => { rec.tools.node.sqlite = 'wrong'; });
+  tamperAdmission((rec) => { rec.tools.npm.version = 'wrong'; });
+  // Record-only per-file digest mismatch with the payload bytes intact: the file-map
+  // relationship refuses it as an inconsistent registry record BEFORE the payload
+  // byte re-hash, so it is install-interrupted, not build-altered-release.
+  tamperAdmission((rec) => { rec.files['package.json'] = '0'.repeat(64); });
+
+  // Deterministic ID relationship: a registry whose selection points the snapshot
+  // id at an admission record whose recorded inputs derive a different id is an
+  // inconsistent registry (install-interrupted). This is the smallest such state
+  // that passes every earlier field check: a copy of the healthy admission record
+  // under a second, wrong id, with the selection and runtime record's admissionId
+  // repointed at it. Its release and tools still match the installed snapshot, so
+  // only the id relationship is violated (computeId derives the true id, which
+  // differs from the record id and the selected snapshot id). Restored after.
+  const selectedPath = join(controlRoot, CONTROL_ROOT_LAYOUT.selected);
+  const selectedOriginal = readFileSync(selectedPath);
+  const wrongId = (id[0] === '0' ? '1' : '0') + id.slice(1);
+  const forkedAdmissionPath = join(controlRoot, CONTROL_ROOT_LAYOUT.admissions, `${wrongId}.json`);
+  const forked = JSON.parse(admissionOriginal.toString('utf8')) as AdmissionRecord;
+  forked.id = wrongId;
+  chmodSync(dirname(forkedAdmissionPath), 0o755);
+  writeFileSync(forkedAdmissionPath, `${canonicalJson(forked)}\n`);
+  const idRuntime = JSON.parse(runtimeOriginal.toString('utf8')) as Record<string, unknown>;
+  idRuntime.admissionId = wrongId;
+  tamper(runtimeRecordPath, `${canonicalJson(idRuntime)}\n`);
+  tamper(selectedPath, `${canonicalJson({ version: 1, snapshotId: id, admissionId: wrongId })}\n`);
+  expectInterrupted();
+  rmSync(forkedAdmissionPath);
+  writeFileSync(runtimeRecordPath, runtimeOriginal);
+  writeFileSync(selectedPath, selectedOriginal);
 
   // N1: the sealed installed-files.json is normally gated by the controller's
   // pre-dispatch checksum, so reach doctor directly (through the snapshot's own

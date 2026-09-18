@@ -196,7 +196,7 @@ function readReleaseIdentity(source: string, repoRoot: string, label: string): {
   return { identity, files };
 }
 
-function computeId(identity: ReleaseIdentity, tools: AdmissionRecord['tools']): string {
+export function computeId(identity: ReleaseIdentity, tools: AdmissionRecord['tools']): string {
   const material = [identity.sourceDigest, identity.outputDigest, identity.dependencyDigest, tools.node.sha256, `${tools.platform}-${tools.arch}`].join('|');
   return sha256(material).slice(0, 16);
 }

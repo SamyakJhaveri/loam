@@ -219,7 +219,7 @@ function readReleaseIdentity(source, repoRoot, label) {
     };
     return { identity, files };
 }
-function computeId(identity, tools) {
+export function computeId(identity, tools) {
     const material = [identity.sourceDigest, identity.outputDigest, identity.dependencyDigest, tools.node.sha256, `${tools.platform}-${tools.arch}`].join('|');
     return sha256(material).slice(0, 16);
 }

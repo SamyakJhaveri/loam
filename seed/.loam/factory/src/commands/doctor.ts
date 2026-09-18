@@ -5,7 +5,11 @@
 //
 // Diagnostic precedence (C4): the control-root state table first (via
 // controlRootState), then not-admitted-runtime, then environment-injected, then
-// installed-file-altered, then build-altered-release, then unadmitted-fork. The
+// installed-file-altered, then the registry identity relationships
+// (install-interrupted), then build-altered-release, then unadmitted-fork. The
+// identity relationships (B2) run after the installed inventory is byte-verified
+// and before the payload byte re-hash, so a record-only mismatch is
+// install-interrupted while an actual byte change stays build-altered-release. The
 // first failing check is the reported diagnostic. A checkout that does not match
 // the admitted release is a separate attestation on the `checkout` field and does
 // not by itself mark the installation unhealthy.
@@ -16,7 +20,7 @@ import { join, relative, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { CONTROL_ROOT_LAYOUT, NO_GLOBAL_SEARCH_PATHS, SNAPSHOT_LAYOUT, isStrippedVariable } from '../contracts/installation.js';
 import type { AdmissionRecord, Diagnostic, DoctorReport, InstalledFiles, RuntimeRecord } from '../contracts/installation.js';
-import { controlRootState } from '../installation/admit.js';
+import { computeId, controlRootState } from '../installation/admit.js';
 
 export interface DoctorOptions {
   mode: 'status' | 'doctor';
@@ -277,10 +281,19 @@ export function runDoctor(options: DoctorOptions): DoctorReport {
     if (actualMode !== entry.mode) return fail('installed-file-altered', `snapshot mode mismatch: ${path}`);
   }
 
-  // B2 identity relationships: the admission record's recorded tool digests must
-  // equal the byte-verified installed inventory entries. Pure comparison of already
-  // recorded material against already hashed material (no new hashing, no
-  // self-authentication); a mismatch is an inconsistent registry record.
+  // B2 identity relationships (install-interrupted): the admission and runtime
+  // records live outside the sealed snapshot, so the controller's pre-dispatch
+  // digest set does not cover them. Compare the recorded identity against the
+  // already byte-verified installed material and this running admitted executable.
+  // These are pure comparisons of recorded material against verified material (no
+  // new hashing, no self-authentication); a mismatch is an inconsistent registry
+  // record. They run before the payload byte re-hash so a record-only mismatch is
+  // install-interrupted, never miscategorised as a build alteration.
+  const payloadRoot = join(snapshotPath, SNAPSHOT_LAYOUT.payload);
+
+  // Tool identity: recorded tool digests must equal the installed inventory
+  // entries, and the recorded platform, architecture and runtime versions must
+  // equal this admitted executable's (doctor runs as the snapshot's own Node).
   const nodeInv = installed.files[SNAPSHOT_LAYOUT.node];
   const npmCliInv = installed.files[SNAPSHOT_LAYOUT.npmCli];
   const npmPkgInv = installed.files[`${SNAPSHOT_LAYOUT.npm}/package.json`];
@@ -291,10 +304,77 @@ export function runDoctor(options: DoctorOptions): DoctorReport {
       || !npmPkgInv || record.tools.npm.packageSha256 !== npmPkgInv.sha256) {
     return interrupt(`recorded npm digests do not match the installed npm: ${selected.admissionId}`);
   }
+  if (record.tools.platform !== process.platform || record.tools.arch !== process.arch) {
+    return interrupt(`recorded platform/arch does not match the running runtime: ${selected.admissionId}`);
+  }
+  if (record.tools.node.version !== process.version || record.tools.node.sqlite !== process.versions.sqlite) {
+    return interrupt(`recorded node version/sqlite does not match the running runtime: ${selected.admissionId}`);
+  }
+  // The installed npm package.json is in the byte-verified inventory, so its
+  // recorded version must equal the version those bytes carry.
+  let installedNpmVersion: unknown;
+  try {
+    installedNpmVersion = readJson<{ version?: unknown }>(join(snapshotPath, SNAPSHOT_LAYOUT.npm, 'package.json')).version;
+  } catch {
+    return fail('installed-file-altered', 'installed npm package.json is unreadable');
+  }
+  if (record.tools.npm.version !== installedNpmVersion) {
+    return interrupt(`recorded npm version does not match the installed npm: ${selected.admissionId}`);
+  }
 
-  // build-altered-release: the installed payload must still match the release
-  // bytes recorded independently in the admission record (C4).
-  const payloadRoot = join(snapshotPath, SNAPSHOT_LAYOUT.payload);
+  // Release identity and file map: the inventory check above verified
+  // payload/release-manifest.json against installed-files.json, so the manifest
+  // read here is trusted. Compare the recorded aggregate release digests and the
+  // complete recorded file map against it before re-hashing payload bytes, so a
+  // record-only mismatch is install-interrupted, not build-altered-release.
+  let manifest: { files?: unknown; sourceDigest?: unknown; outputDigest?: unknown; dependencyDigest?: unknown };
+  try {
+    manifest = readJson(join(payloadRoot, 'release-manifest.json'));
+  } catch {
+    return fail('build-altered-release', 'release-manifest.json is unreadable');
+  }
+  if (!isObject(manifest.files) || !Object.values(manifest.files).every(isHex64)
+      || !isHex64(manifest.sourceDigest) || !isHex64(manifest.outputDigest) || !isHex64(manifest.dependencyDigest)) {
+    return fail('build-altered-release', 'release-manifest.json is malformed');
+  }
+  const manifestFiles = manifest.files as Record<string, string>;
+  if (record.release.sourceDigest !== manifest.sourceDigest
+      || record.release.outputDigest !== manifest.outputDigest
+      || record.release.dependencyDigest !== manifest.dependencyDigest) {
+    return interrupt(`recorded release digests do not match the installed manifest: ${selected.admissionId}`);
+  }
+  // The recorded manifest self-entry must equal both the recorded aggregate manifest
+  // digest and the byte-verified installed manifest.
+  const manifestInv = installed.files[`${SNAPSHOT_LAYOUT.payload}/release-manifest.json`];
+  if (!manifestInv || record.release.manifestSha256 !== record.files['release-manifest.json']
+      || record.files['release-manifest.json'] !== manifestInv.sha256) {
+    return interrupt(`recorded manifest digest does not match the installed manifest: ${selected.admissionId}`);
+  }
+  // record.files must be exactly the manifest file-set plus the manifest self-entry,
+  // with matching digests. Driving this off the trusted manifest means a truncated
+  // or record-only-altered map cannot certify vacuously.
+  const expectedKeys = new Set([...Object.keys(manifestFiles), 'release-manifest.json']);
+  const recordKeys = new Set(Object.keys(record.files));
+  if (expectedKeys.size !== recordKeys.size || [...expectedKeys].some((key) => !recordKeys.has(key))) {
+    return interrupt(`recorded release map does not match the payload manifest: ${selected.admissionId}`);
+  }
+  for (const [key, digest] of Object.entries(manifestFiles)) {
+    if (record.files[key] !== digest) return interrupt(`recorded release digest differs from the manifest: ${key}`);
+  }
+
+  // Deterministic snapshot ID relationship (admit.ts computeId): the id derived
+  // from the recorded release and tool inputs must equal the record id and the
+  // selection. The comparisons above already pin those inputs to the installed
+  // material, so this is the final structural invariant binding a consistent record
+  // to its selected snapshot id.
+  if (computeId(record.release, record.tools) !== record.id || record.id !== selected.snapshotId) {
+    return interrupt(`recorded identity does not derive the selected snapshot id: ${selected.admissionId}`);
+  }
+
+  // build-altered-release: the installed payload bytes must still match the release
+  // bytes recorded independently in the admission record (C4). record.files is now
+  // confirmed consistent with the installed manifest, so this fires only for an
+  // actual payload byte change.
   for (const [path, digest] of Object.entries(record.files)) {
     let actual: string;
     try {
@@ -303,34 +383,6 @@ export function runDoctor(options: DoctorOptions): DoctorReport {
       return fail('build-altered-release', `recorded release file missing: ${path}`);
     }
     if (actual !== digest) return fail('build-altered-release', `release file altered: ${path}`);
-  }
-
-  // B2 release relationships: record.files must be the complete payload release map
-  // plus the manifest's self-entry, with matching digests, and the recorded manifest
-  // digest must equal that self-entry. The loop above already matched
-  // record.files['release-manifest.json'] against the payload bytes, so the manifest
-  // read here is trusted. This drives the release check off the manifest, so a
-  // truncated or inconsistent record.files cannot certify vacuously.
-  if (record.release.manifestSha256 !== record.files['release-manifest.json']) {
-    return interrupt(`recorded manifest digest does not match the recorded release map: ${selected.admissionId}`);
-  }
-  let manifest: { files?: unknown };
-  try {
-    manifest = readJson<{ files?: unknown }>(join(payloadRoot, 'release-manifest.json'));
-  } catch {
-    return fail('build-altered-release', 'release-manifest.json is unreadable');
-  }
-  if (!isObject(manifest.files) || !Object.values(manifest.files).every(isHex64)) {
-    return fail('build-altered-release', 'release-manifest.json is malformed');
-  }
-  const manifestFiles = manifest.files as Record<string, string>;
-  const expectedKeys = new Set([...Object.keys(manifestFiles), 'release-manifest.json']);
-  const recordKeys = new Set(Object.keys(record.files));
-  if (expectedKeys.size !== recordKeys.size || [...expectedKeys].some((key) => !recordKeys.has(key))) {
-    return interrupt(`recorded release map does not match the payload manifest: ${selected.admissionId}`);
-  }
-  for (const [key, digest] of Object.entries(manifestFiles)) {
-    if (record.files[key] !== digest) return interrupt(`recorded release digest differs from the manifest: ${key}`);
   }
 
   // unadmitted-fork: a supplied checkout is a separate attestation about bytes,
