@@ -1,6 +1,6 @@
 # NATIVE-05 handoff: curated catalog (ASSET-01)
 
-Status: implementation branch `native-05-catalog-impl`, base `e4c6f474094340dd9829740d9004a0a36e1c121b`. This document describes the candidate on the branch. Review, both-host qualification and pull-request outcomes are recorded in external receipts under the operator evidence root, not here.
+Status: implementation branch `native-05-catalog-impl`, started from `e4c6f474094340dd9829740d9004a0a36e1c121b` and integrated onto main `750a43a88481e73897f41eefcd81292d2213add4` (CORE-04 merged). This document describes the candidate on the branch. Review, both-host qualification and pull-request outcomes are recorded in external receipts under the operator evidence root, not here.
 
 ## Goal and why
 

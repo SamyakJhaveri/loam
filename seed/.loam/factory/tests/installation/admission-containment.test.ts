@@ -1,0 +1,324 @@
+// Host-only admission-containment qualification (CORE-04).
+//
+// Flat node:test leaves, one per ADMISSION_CONTAINMENT_CASES id. These run a
+// real admission that builds a scripted dependency inside CORE-02 containment,
+// so they need a working boundary mechanism. The nested agent sandbox cannot
+// nest sandbox-exec, so this population is a host gate (Mac from a plain
+// Terminal, Linux on the host) and never appears in bin/check; an unavailable
+// mechanism is a failed gate, not a skip, exactly like native-boundary.
+//
+// The scripted, mutating and failing dependency behaviors live in builder A's
+// committed fixture tarballs. This file selects them, seeds canaries in the real
+// protected homes, and reads back the dump each fixture writes.
+
+import assert from 'node:assert/strict';
+import { test, after } from 'node:test';
+import {
+  chmodSync, cpSync, existsSync, lstatSync, mkdirSync, mkdtempSync, readdirSync,
+  readFileSync, rmSync, writeFileSync,
+} from 'node:fs';
+import { tmpdir } from 'node:os';
+import { dirname, join, resolve } from 'node:path';
+import { createHash } from 'node:crypto';
+import { spawnSync } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
+import { admitRuntime } from '../../src/installation/admit.js';
+import {
+  AdmissionError, CONTROL_ROOT_LAYOUT, FIXTURE_ORIGIN_PREFIX, SNAPSHOT_LAYOUT,
+  type AdmitOptions, type NATIVE_PREREQUISITES,
+} from '../../src/contracts/installation.js';
+import { createReleaseManifest, payloadFiles } from '../../src/installation/package.js';
+import { boundaryAvailability } from '../../src/platform/native-boundary.js';
+
+const factoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), '../../..');
+const toolchain = process.env.LOAM_FACTORY_TOOLCHAIN ?? '';
+const HOMES = ['registry', 'state', 'locks', 'credentials', 'sockets', 'callbacks'] as const;
+const deniedCode = process.platform === 'darwin' ? 'EPERM' : 'ENOENT';
+
+const scratchRoots: string[] = [];
+function base(): string {
+  const root = mkdtempSync(join(tmpdir(), 'loam-core04-'));
+  scratchRoots.push(root);
+  return root;
+}
+function forceWritable(root: string): void {
+  const stack = [root];
+  while (stack.length) {
+    const path = stack.pop()!;
+    let entry;
+    try { entry = lstatSync(path); } catch { continue; }
+    try { if (!entry.isSymbolicLink()) chmodSync(path, entry.isDirectory() ? 0o755 : 0o644); } catch { /* best effort */ }
+    if (entry.isDirectory()) for (const name of readdirSync(path)) stack.push(join(path, name));
+  }
+}
+after(() => {
+  for (const root of scratchRoots) {
+    try { forceWritable(root); } catch { /* best effort */ }
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+// Require the boundary mechanism; a missing mechanism fails the host gate.
+function requireMechanism(): string {
+  const availability = boundaryAvailability();
+  assert.ok(availability.available, availability.available ? '' : `containment unavailable: ${availability.reasons.join('; ')}`);
+  return availability.mechanism;
+}
+
+function integrityOf(tarball: string): string {
+  return `sha512-${createHash('sha512').update(readFileSync(tarball)).digest('base64')}`;
+}
+
+// Build a scratch trusted repository whose only dependency is the named scripted
+// fixture, covered by allowScripts.
+function makeTrusted(scriptedFixture: string): { trusted: string; controller: string } {
+  const repo = join(base(), 'repo');
+  const trusted = join(repo, 'seed/.loam/factory');
+  mkdirSync(join(repo, 'bin'), { recursive: true });
+  writeFileSync(join(repo, 'copier.yml'), '# scratch\n');
+  writeFileSync(join(repo, 'VERSION'), '0.0.0\n');
+  writeFileSync(join(repo, 'bin/release.sh'), '#!/bin/sh\nexit 0\n');
+  for (const file of payloadFiles(factoryRoot)) {
+    const target = join(trusted, file);
+    mkdirSync(dirname(target), { recursive: true });
+    cpSync(join(factoryRoot, file), target);
+  }
+  const deps = { [scriptedFixture]: '1.0.0' };
+  const pkg = { name: '@loam/factory', version: '0.0.0', private: true, type: 'module', dependencies: deps, allowScripts: { [`${scriptedFixture}@1.0.0`]: true } };
+  writeFileSync(join(trusted, 'package.json'), `${JSON.stringify(pkg, null, 2)}\n`);
+  const tarball = join(trusted, 'assets/admission-fixtures', `${scriptedFixture}-1.0.0.tgz`);
+  const lock = {
+    name: '@loam/factory', version: '0.0.0', lockfileVersion: 3, requires: true,
+    packages: {
+      '': { name: '@loam/factory', version: '0.0.0', dependencies: deps },
+      [`node_modules/${scriptedFixture}`]: {
+        version: '1.0.0',
+        resolved: `${FIXTURE_ORIGIN_PREFIX}${scriptedFixture}-1.0.0.tgz`,
+        integrity: existsSync(tarball) ? integrityOf(tarball) : `sha512-${'A'.repeat(86)}==`,
+        hasInstallScript: true,
+      },
+    },
+  };
+  writeFileSync(join(trusted, 'package-lock.json'), `${JSON.stringify(lock, null, 2)}\n`);
+  writeFileSync(join(trusted, 'release-manifest.json'), `${JSON.stringify(createReleaseManifest(trusted), null, 2)}\n`);
+  return { trusted, controller: join(trusted, 'scripts', 'loam-control.sh') };
+}
+
+// A control root whose six homes exist with a canary, so the contained build's
+// protected reads have a real target to be denied.
+function controlRootWithCanaries(secret: string): string {
+  const root = join(base(), 'control');
+  for (const home of HOMES) {
+    const dir = join(root, home);
+    mkdirSync(dir, { recursive: true });
+    writeFileSync(join(dir, 'canary'), `${secret}-${home}`);
+  }
+  return root;
+}
+
+function nativePrerequisites(fixture: string): typeof NATIVE_PREREQUISITES {
+  const tools: Record<string, string> = { sh: '/bin/sh' };
+  for (const candidate of ['/usr/bin/cc', '/usr/bin/gcc', '/bin/cc']) {
+    if (existsSync(candidate)) { tools.cc = candidate; break; }
+  }
+  return { [fixture]: { tools, loadSmoke: `node_modules/${fixture}/smoke.mjs` } } as typeof NATIVE_PREREQUISITES;
+}
+
+function admitOptions(trusted: string, controlRoot: string, fixture: string, env?: Record<string, string>): AdmitOptions {
+  const options: AdmitOptions = {
+    trustedSource: trusted, controlRoot, toolchain, releaseIdentity: 'loam v0.0.0',
+    test: { originPolicy: 'file', nativePrerequisites: nativePrerequisites(fixture) },
+  };
+  if (env) for (const [key, value] of Object.entries(env)) process.env[key] = value;
+  return options;
+}
+
+interface Built { snapshotPath: string; result: ContainmentDump; smoke: SmokeDump; }
+interface ContainmentDump {
+  env: Record<string, number> | string[];
+  workspaceRead: string;
+  protectedReads: Record<string, string>;
+  descendant: Record<string, string>;
+  cc: { ran: boolean; status?: number | null; line?: string; code?: string };
+}
+interface SmokeDump { credentials: string }
+
+function fixtureFile(snapshotPath: string, fixture: string, name: string): string {
+  return join(snapshotPath, SNAPSHOT_LAYOUT.modules, fixture, name);
+}
+
+// Run a full contained admission of the normal scripted fixture and read its dumps.
+async function build(secret: string, env?: Record<string, string>): Promise<Built> {
+  const fixture = 'loam-dep-scripted';
+  const { trusted } = makeTrusted(fixture);
+  const controlRoot = controlRootWithCanaries(secret);
+  const { snapshotPath } = await admitRuntime(admitOptions(trusted, controlRoot, fixture, env));
+  const result = JSON.parse(readFileSync(fixtureFile(snapshotPath, fixture, 'result.json'), 'utf8')) as ContainmentDump;
+  const smoke = JSON.parse(readFileSync(fixtureFile(snapshotPath, fixture, 'smoke-result.json'), 'utf8')) as SmokeDump;
+  return { snapshotPath, result, smoke };
+}
+
+function envKeys(dump: ContainmentDump['env']): string[] {
+  return Array.isArray(dump) ? dump : Object.keys(dump);
+}
+
+test('contain.mechanism-available', () => {
+  const mechanism = requireMechanism();
+  assert.ok(mechanism.length > 0);
+});
+
+test('contain.build-workspace-read-allowed', async () => {
+  requireMechanism();
+  const built = await build('SECRET-A');
+  assert.equal(existsSync(fixtureFile(built.snapshotPath, 'loam-dep-scripted', 'marker')), true);
+  assert.equal(built.result.workspaceRead, 'ok');
+  // The declared cc shim executed inside the boundary and the compiler answered
+  // `--version` with exit 0 and a version line (R4-B1).
+  assert.equal(built.result.cc.ran, true, `cc shim must execute inside containment: ${JSON.stringify(built.result.cc)}`);
+  assert.equal(built.result.cc.status, 0, `cc --version must exit 0 inside containment: ${JSON.stringify(built.result.cc)}`);
+  assert.ok((built.result.cc.line ?? '').length > 0, `cc must produce a version line: ${JSON.stringify(built.result.cc)}`);
+});
+
+test('contain.build-protected-read-denied', async () => {
+  requireMechanism();
+  const built = await build('SECRET-B');
+  for (const home of HOMES) assert.equal(built.result.protectedReads[home], deniedCode, `${home} read must be denied`);
+});
+
+test('contain.build-descendant-denied', async () => {
+  requireMechanism();
+  const built = await build('SECRET-C');
+  assert.equal(built.result.descendant.workspace, 'ok');
+  for (const home of HOMES) assert.equal(built.result.descendant[home], deniedCode, `${home} descendant read must be denied`);
+});
+
+test('contain.build-no-proxy-or-credentials', async () => {
+  requireMechanism();
+  const built = await build('SECRET-D', {
+    HTTPS_PROXY: 'https://user:secret@proxy.invalid/',
+    LOAM_CANARY_SECRET: 'do-not-leak',
+    npm_config_loam_canary: 'do-not-leak',
+  });
+  const keys = envKeys(built.result.env);
+  for (const forbidden of ['HTTPS_PROXY', 'https_proxy', 'LOAM_CANARY_SECRET', 'NODE_OPTIONS', 'npm_config_loam_canary']) {
+    assert.ok(!keys.includes(forbidden), `env dump leaked ${forbidden}`);
+  }
+  assert.ok(!keys.some((key) => key.startsWith('GIT_')), 'env dump leaked a GIT_ variable');
+  // npm sets its own npm_config_* values for lifecycle scripts; only the caller-seeded one must be absent (asserted above).
+});
+
+test('contain.load-smoke-contained', async () => {
+  requireMechanism();
+  const built = await build('SECRET-E');
+  // smoke-result.json exists only when the module body ran inside the boundary, so its presence is the load proof.
+  assert.equal(built.smoke.credentials, deniedCode);
+});
+
+test('contain.build-altered-release-refused', async () => {
+  requireMechanism();
+  const fixture = 'loam-dep-mutating';
+  const { trusted, controller } = makeTrusted(fixture);
+  const controlRoot = controlRootWithCanaries('SECRET-F');
+  try {
+    await admitRuntime(admitOptions(trusted, controlRoot, fixture));
+    assert.fail('mutating build must be refused');
+  } catch (error) {
+    assert.ok(error instanceof AdmissionError, String(error));
+    assert.equal((error as AdmissionError).diagnostic, 'build-altered-release');
+  }
+  assert.equal(existsSync(join(controlRoot, CONTROL_ROOT_LAYOUT.selected)), false);
+  // The staging directory is left as evidence and a later status never runs the altered file.
+  const status = spawnSync('/bin/sh', [controller, '--control-root', controlRoot, 'status'], { encoding: 'utf8', timeout: 120000 });
+  assert.equal(status.status, 1);
+  const line = status.stdout.trim().split('\n').filter(Boolean).at(-1)!;
+  const report = JSON.parse(line) as { diagnostic?: string; detail?: string };
+  assert.equal(report.diagnostic, 'install-interrupted');
+  assert.ok(String(report.detail).includes('staging'));
+});
+
+test('contain.build-script-failed', async () => {
+  requireMechanism();
+  const fixture = 'loam-dep-failing';
+  const { trusted } = makeTrusted(fixture);
+  const controlRoot = controlRootWithCanaries('SECRET-G');
+  try {
+    await admitRuntime(admitOptions(trusted, controlRoot, fixture));
+    assert.fail('failing build must be refused');
+  } catch (error) {
+    assert.ok(error instanceof AdmissionError, String(error));
+    assert.equal((error as AdmissionError).diagnostic, 'build-script-failed');
+  }
+  assert.equal(existsSync(join(controlRoot, CONTROL_ROOT_LAYOUT.selected)), false);
+  // The child DID start (distinguishes build-script-failed from a wrapper refusal):
+  // the start marker written by the /bin/sh prologue is present in the staging tmp.
+  const runtimesDir = join(controlRoot, CONTROL_ROOT_LAYOUT.runtimes);
+  const staging = readdirSync(runtimesDir).find((n) => n.startsWith(CONTROL_ROOT_LAYOUT.stagingPrefix));
+  assert.ok(staging, 'staging left as evidence');
+  assert.equal(existsSync(join(runtimesDir, staging!, 'tmp', '.loam-contained-started')), true);
+});
+
+test('contain.load-smoke-failed', async () => {
+  requireMechanism();
+  const fixture = 'loam-dep-badsmoke';
+  const { trusted, controller } = makeTrusted(fixture);
+  const controlRoot = controlRootWithCanaries('SECRET-H');
+  try {
+    await admitRuntime(admitOptions(trusted, controlRoot, fixture));
+    assert.fail('bad-smoke admission must be refused');
+  } catch (error) {
+    assert.ok(error instanceof AdmissionError, String(error));
+    assert.equal((error as AdmissionError).diagnostic, 'load-smoke-failed');
+  }
+  // The postinstall wrote its marker in the staging payload: the build ran and
+  // only the later load smoke failed.
+  const runtimesDir = join(controlRoot, CONTROL_ROOT_LAYOUT.runtimes);
+  const staging = readdirSync(runtimesDir).find((name) => name.startsWith(CONTROL_ROOT_LAYOUT.stagingPrefix));
+  assert.ok(staging, 'staging workspace must be left as evidence');
+  assert.equal(existsSync(join(runtimesDir, staging, SNAPSHOT_LAYOUT.modules, fixture, 'marker')), true);
+  // No selection is published.
+  assert.equal(existsSync(join(controlRoot, CONTROL_ROOT_LAYOUT.selected)), false);
+  // A later status reports install-interrupted (staging) and never runs the payload.
+  const status = spawnSync('/bin/sh', [controller, '--control-root', controlRoot, 'status'], { encoding: 'utf8', timeout: 120000 });
+  assert.equal(status.status, 1);
+  const line = status.stdout.trim().split('\n').filter(Boolean).at(-1)!;
+  const report = JSON.parse(line) as { diagnostic?: string; detail?: string };
+  assert.equal(report.diagnostic, 'install-interrupted');
+  assert.ok(String(report.detail).includes('staging'));
+});
+
+test('contain.wrapper-refusal-unavailable', async () => {
+  requireMechanism();
+  const fixture = 'loam-dep-scripted';
+  const { trusted } = makeTrusted(fixture);
+  const controlRoot = controlRootWithCanaries('SECRET-W');
+  const options = admitOptions(trusted, controlRoot, fixture);
+  // A real contained child that exits nonzero WITHOUT writing the start marker,
+  // i.e. observationally a wrapper that refused before the instrumented child
+  // began. It must classify as containment-unavailable, not build-script-failed.
+  options.test!.simulateWrapperRefusal = true;
+  try {
+    await admitRuntime(options);
+    assert.fail('wrapper refusal must be classified containment-unavailable');
+  } catch (error) {
+    assert.ok(error instanceof AdmissionError, String(error));
+    assert.equal((error as AdmissionError).diagnostic, 'containment-unavailable');
+  }
+  assert.equal(existsSync(join(controlRoot, CONTROL_ROOT_LAYOUT.selected)), false);
+});
+
+test('contain.metachar-workspace', async () => {
+  requireMechanism();
+  const fixture = 'loam-dep-scripted';
+  const { trusted } = makeTrusted(fixture);
+  // A control root path with a space and a single quote: it flows into the staging
+  // workspace, the SBPL/bwrap binds, and the smoke file URL. Build and smoke must
+  // still run, proving the shim quoting and file-URL round-trip survive metachars.
+  const controlRoot = join(base(), "ctl a'b");
+  for (const home of HOMES) {
+    mkdirSync(join(controlRoot, home), { recursive: true });
+    writeFileSync(join(controlRoot, home, 'canary'), `SECRET-M-${home}`);
+  }
+  const { snapshotPath } = await admitRuntime(admitOptions(trusted, controlRoot, fixture));
+  assert.equal(existsSync(fixtureFile(snapshotPath, fixture, 'marker')), true);
+  assert.equal(existsSync(fixtureFile(snapshotPath, fixture, 'smoke-result.json')), true);
+});
