@@ -1,0 +1,9 @@
+{
+  "name": "loam-dep-scripted",
+  "version": "1.0.0",
+  "description": "CORE-04 admission fixture: a covered postinstall that probes containment and records its own reads.",
+  "main": "index.mjs",
+  "scripts": { "postinstall": "node postinstall.mjs" },
+  "license": "MIT",
+  "private": true
+}

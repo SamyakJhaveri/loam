@@ -97,6 +97,58 @@ export const NATIVE_BOUNDARY_CASES = [
   "boundary.same-user-control"
 ] as const;
 
+export const ADMISSION_CASES = [
+  "admission.trusted-source-identity",
+  "admission.trusted-source-fork",
+  "admission.trusted-source-shape",
+  "admission.wrong-release-digest",
+  "admission.identities-recorded-separately",
+  "admission.staging-writes-contained",
+  "admission.bin-links-absent",
+  "admission.lock-origin-refused",
+  "admission.build-script-refused",
+  "admission.build-requires-containment",
+  "admission.native-prerequisite-missing",
+  "admission.dependency-missing",
+  "admission.publication-order",
+  "admission.publish-complete-closure-only",
+  "admission.control-strips-environment",
+  "admission.control-helper-path-isolated",
+  "admission.control-rejects-arguments",
+  "admission.controller-verifies-before-dispatch",
+  "admission.node-identity",
+  "admission.runtime-digest-mismatch",
+  "admission.control-root-missing",
+  "admission.nothing-admitted",
+  "admission.no-project-root-resolution",
+  "admission.unadmitted-fork",
+  "admission.provider-readiness-separate",
+  "admission.install-interrupted",
+  "admission.altered-installed-file",
+  "admission.environment-injected",
+  "admission.not-admitted-runtime",
+  "admission.ancestor-package-collision",
+  "admission.selection-retained",
+  "admission.snapshot-link-counts",
+  "admission.snapshot-runs-without-checkout",
+  "admission.ordinary-commands-unchanged",
+  "admission.preexisting-path-refused"
+] as const;
+
+export const ADMISSION_CONTAINMENT_CASES = [
+  "contain.mechanism-available",
+  "contain.build-workspace-read-allowed",
+  "contain.build-protected-read-denied",
+  "contain.build-descendant-denied",
+  "contain.build-no-proxy-or-credentials",
+  "contain.load-smoke-contained",
+  "contain.build-altered-release-refused",
+  "contain.build-script-failed",
+  "contain.load-smoke-failed",
+  "contain.wrapper-refusal-unavailable",
+  "contain.metachar-workspace"
+] as const;
+
 // Future case IDs reserve source obligations. Their owning tickets supply executable cases.
 export const POPULATIONS: readonly Population[] = [
   {
@@ -186,15 +238,26 @@ export const POPULATIONS: readonly Population[] = [
       "installation"
     ],
     "scope": "recipient",
-    "available": false,
-    "fixture": null,
-    "expectedCases": [
-      "core-04/obligation-01",
-      "core-04/obligation-02",
-      "core-04/obligation-03",
-      "core-04/obligation-04",
-      "core-04/obligation-05"
-    ]
+    "available": true,
+    "fixture": "dist/tests/installation/admission.test.js",
+    "expectedCases": [...ADMISSION_CASES]
+  },
+  // CORE-04 obligation: admission-containment is available:true (its fixture exists) but is
+  // proved only by the two-host `qualify admission-containment` run; bin/check and CI do not
+  // run it. It mirrors native-boundary: the containment mechanism is unavailable inside the
+  // nested agent sandbox, so the Mac gate runs from a plain Terminal and Linux runs on the host.
+  {
+    "id": "admission-containment",
+    "owners": [
+      "CORE-04"
+    ],
+    "groups": [
+      "installation"
+    ],
+    "scope": "recipient",
+    "available": true,
+    "fixture": "dist/tests/installation/admission-containment.test.js",
+    "expectedCases": [...ADMISSION_CONTAINMENT_CASES]
   },
   {
     "id": "store-ownership",

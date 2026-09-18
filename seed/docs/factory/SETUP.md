@@ -6,9 +6,13 @@
 `dist`, fixed package tests, and locked development tools. TypeScript is the source
 we maintain. The compiler converts it into JavaScript that Node executes.
 
-This revision qualifies the package. Protected installation, store setup and native
-agent execution are not implemented. The runtime manifest marks its Node and npm
-versions as candidates, not a supported runtime declaration.
+This revision qualifies the package and admits a reviewed runtime: an operator
+admits a trusted source into a sealed snapshot under a control root and runs
+read-only `status` and `doctor` afterwards. Store setup and native managed agent
+execution are not implemented. The host-only `admission-containment` population
+runs from a real terminal on each host, not in `bin/check`. The runtime manifest
+marks its Node and npm versions as candidates, not a supported runtime
+declaration; `supportedRuntime` stays false.
 
 ## Inspect a received package
 
@@ -100,6 +104,82 @@ Both commands are qualification only. No runtime is supported yet: the runtime m
 keeps `supportedRuntime: false` and records the Node and bundled SQLite versions and
 per-platform executable digests as candidates, not a support declaration.
 
+## Admit a runtime from a trusted source
+
+The trust root is your own review of two independently acquired inputs:
+a clean checkout of the Loam template at an annotated release tag fetched over HTTPS from `github.com/SamyakJhaveri/loam`,
+and the official Node 24.21.0 toolchain distribution whose `bin/node` bytes the controller verifies against the runtime manifest before it runs.
+Integrity checking is not authorship authentication. The authority is your review, not the digests.
+
+The controller (`loam-control.sh`) calls a fixed set of platform programs by absolute path from a sanitized `PATH`, and trusts them as reviewed components: `/bin/sh`, `/usr/bin/env`, `/usr/bin/mktemp`, `/usr/bin/uname`, the digest tool (`/usr/bin/shasum` on macOS, `/usr/bin/sha256sum` on Linux), `/usr/bin/grep`, `/usr/bin/sed`, `/usr/bin/cut` and `/usr/bin/sort`.
+The admit path runs the digest-verified toolchain `node`, and `git` from `PATH` for a best-effort release tag; its filesystem work is in-process, not shelled out.
+
+The operator entrypoint is `scripts/loam-control.sh`, a dependency-free POSIX `sh` script in the trusted payload, delivered by the same release channel: annotated tags cut by `bin/release.sh`.
+Admit a runtime from the trusted checkout:
+
+```bash
+/bin/sh <checkout>/seed/.loam/factory/scripts/loam-control.sh \
+  --toolchain <node-24.21.0-distribution> --control-root <root> \
+  admit --trusted-source <checkout>/seed/.loam/factory --release-identity <label>
+```
+
+Each optional `--protect-state`, `--protect-locks`, `--protect-credentials`, `--protect-sockets` or `--protect-callbacks` flag redirects one protected home to an existing directory outside the control root.
+`--protect-registry` is refused, because the registry home is where the records are written.
+Run read-only diagnostics against an admitted control root:
+
+```bash
+node .loam/factory/launcher.mjs status --control-root <root>
+node .loam/factory/launcher.mjs doctor --control-root <root> --checkout <checkout>/seed/.loam/factory
+```
+
+The launcher is a convenience resolver, not the trust root.
+It forwards the fixed verb to `<root>/loam-control`, the controller copy made at admission, which runs the snapshot's own Node under a clean environment with `--no-global-search-paths`.
+No dependency resolves from a project root or a personal cache, and `status` and `doctor` change no installed bytes: the registry records and every sealed snapshot stay as admitted.
+Each controller invocation creates one fresh scratch directory under the caller's `TMPDIR` (or `/tmp` when it is unset) and does not remove it.
+The caller may point `TMPDIR` anywhere, including inside the control root, so a read-only command can leave an empty scratch directory there; it still changes no installed bytes.
+The checkout launcher (`launcher.mjs`) reads `LOAM_CONTROL_ROOT` when `--control-root` is absent and forwards it to `<root>/loam-control`, which itself always requires `--control-root`.
+With neither set the launcher prints `{"status":"unavailable","diagnostic":"control-root-missing"}` and exits nonzero.
+
+### Control root layout
+
+The control root holds the six protected homes (the registry among them), the sealed runtime snapshots, and a copy of the controller named `loam-control`.
+
+- `registry/` holds the admission records (`registry/admissions/<id>.json`), the runtime records (`registry/runtimes/<id>.json` and `registry/runtimes/<id>.sha256`), the current selection (`registry/selected.json`) and the exclusive-create lock (`registry/admit.lock`).
+- `runtimes/<id>/` is one sealed, read-only snapshot: `payload/`, `bin/node`, `lib/node_modules/npm/`, `bin/loam-control`, `snapshot.json` and `installed-files.json`.
+- The six protected homes `registry/`, `state/`, `locks/`, `credentials/`, `sockets/` and `callbacks/` are created empty at the first admission.
+
+A contained build script may write inside its own staging workspace but is denied every read of the six homes.
+
+### States and recovery
+
+The controller and `doctor` evaluate this table first, in order.
+The first match is the reported diagnostic, and each row states the single path to remove by hand.
+
+| Observed state | Diagnostic (detail) | Recover by hand |
+|---|---|---|
+| control root missing or the flag absent | `control-root-missing` | create the directory or pass `--control-root` |
+| `registry/admit.lock` present | `install-interrupted` (`lock`) | remove the lock if no admission is running |
+| a `runtimes/.staging-*` or `.tool-*` directory | `install-interrupted` (`staging`) | remove that directory |
+| a `runtimes/<id>` missing any of its three registry records | `install-interrupted` (`unregistered`) | remove `runtimes/<id>` and any partial records |
+| `registry/selected.json` malformed or naming a runtime that is not complete | `install-interrupted` (`selection`) | remove `selected.json` |
+| a complete registered runtime with no `selected.json` | `install-interrupted` (`unselected`) | remove the runtime and its records |
+| no `selected.json` and no runtimes | `nothing-admitted` | run `admit` |
+| `selected.json` well-formed and the runtime complete | dispatch (a pre-dispatch digest check may still report `installed-file-altered`) | none |
+
+This revision admits exactly one runtime per control root and never changes a selection.
+So a complete but unselected snapshot is treated as an interrupted transaction, not a runnable runtime.
+A later ticket that introduces second admissions redefines that state.
+
+### Residuals and limits
+
+- Between runs, any process running as your user can rewrite the snapshot, both inventories, the registry records and the controller copy together, with no on-disk trace. The trust boundary is your review at admission plus CORE-02 containment during a contained build, not the at-rest bytes.
+- The controller cannot protect its own first startup. Native loader variables such as `DYLD_INSERT_LIBRARIES` and `LD_PRELOAD`, and the shell's own startup files, act before the controller re-execs under a clean environment. Run the controller non-interactively from a plain terminal. An already-compromised parent is out of scope.
+- On macOS the containment profile is not a home-directory privacy boundary (see the qualification note above); it protects only the registered paths.
+
+Provider payloads are not shipped in this revision.
+By operator decision the "both provider payloads ship" acceptance clause is deferred to issue #140 (https://github.com/SamyakJhaveri/loam/issues/140).
+The admission record carries `providers.payloads` empty with `providers.successor` naming that issue, and `doctor` reports `providerReadiness: not-evaluated` as a field kept separate from installation availability.
+
 ## Work on the factory source
 
 Use a separate official Node 24.21.0 distribution with bundled npm 11.19.0.
@@ -132,5 +212,7 @@ missing compiler/types, ancestor-package collisions and provider-call sentinels.
 Source, compiled tests, build scripts, manifests and the dependency lock travel together.
 Development `node_modules`, `.cache`, `.state` and `runtime-installation` directories do
 not travel through Copier. Loam's release check verifies exact delivery separately;
-recipient checks inspect the received package. Neither check claims the later full
-render/update matrix or protected runtime admission has been implemented.
+recipient checks inspect the received package. Neither check establishes the later
+full render/update matrix. Runtime admission is proved by its own
+`qualify runtime-admission` and `qualify admission-containment` populations, not
+by the package or release checks.

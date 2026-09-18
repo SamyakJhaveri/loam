@@ -6,7 +6,7 @@ import { spawnSync } from 'node:child_process';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { test } from 'node:test';
 import { assertImportClosure, createReleaseManifest, payloadFiles, snapshot, verifyPackage } from '../../src/installation/package.js';
-import { assertCaseResults, GROUPS, NATIVE_BOUNDARY_CASES, PACKAGE_CASES, POPULATIONS, QUALIFICATION_CASES, requireGroup } from '../../src/testing/verify.js';
+import { ADMISSION_CASES, ADMISSION_CONTAINMENT_CASES, assertCaseResults, GROUPS, NATIVE_BOUNDARY_CASES, PACKAGE_CASES, POPULATIONS, QUALIFICATION_CASES, requireGroup } from '../../src/testing/verify.js';
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '../../..');
 function clone() {
     const target = mkdtempSync(join(tmpdir(), 'loam-package-'));
@@ -77,6 +77,9 @@ test('package.registry-obligations', () => {
         ['platform-qualification', { fixture: 'dist/tests/platform/qualification.test.js', cases: QUALIFICATION_CASES }],
         // native-boundary is host-only; see the OPS-10 note in verify.ts POPULATIONS.
         ['native-boundary', { fixture: 'dist/tests/platform/native-boundary.test.js', cases: NATIVE_BOUNDARY_CASES }],
+        ['runtime-admission', { fixture: 'dist/tests/installation/admission.test.js', cases: ADMISSION_CASES }],
+        // admission-containment is host-only; see the CORE-04 note in verify.ts POPULATIONS.
+        ['admission-containment', { fixture: 'dist/tests/installation/admission-containment.test.js', cases: ADMISSION_CONTAINMENT_CASES }],
     ]);
     for (const [id, expected] of available) {
         const entry = POPULATIONS.find(value => value.id === id);

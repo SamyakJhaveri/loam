@@ -1,0 +1,9 @@
+{
+  "name": "loam-dep-bin",
+  "version": "1.0.0",
+  "description": "CORE-04 offline admission fixture: declares a bin so --no-bin-links can be proven.",
+  "main": "index.mjs",
+  "bin": { "loam-dep-bin": "cli.js" },
+  "license": "MIT",
+  "private": true
+}
