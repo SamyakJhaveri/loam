@@ -403,7 +403,7 @@ function checkReleaseBinding(payload: string, files: Record<string, string>): vo
   }
 }
 function assertWorkspaceSiblings(ws: Workspace): void {
-  const allowed = new Set<string>(['payload', ...STAGING_TRANSIENT, 'bin', 'lib', 'snapshot.json', 'installed-files.json']);
+  const allowed = new Set<string>(['payload', ...STAGING_TRANSIENT, 'bin', 'lib', 'snapshot.json', 'installed-files.json', 'startup-closure']);
   for (const name of readdirSync(ws.workspace)) {
     if (!allowed.has(name)) throw new AdmissionError('build-altered-release', `unexpected workspace entry: ${name}`);
   }
@@ -427,6 +427,9 @@ function checksumManifest(installed: InstalledFiles, installedFilesSha256: strin
   const entries: Array<[string, string]> = [
     ['installed-files.json', installedFilesSha256],
     ['snapshot.json', installed.files['snapshot.json']!.sha256],
+    // The startup-closure manifest (B1): its bytes must be digest-covered so the
+    // controller can trust it before cross-checking the record against it.
+    ['startup-closure', installed.files['startup-closure']!.sha256],
     ['bin/node', installed.files['bin/node']!.sha256],
     ['bin/loam-control', installed.files['bin/loam-control']!.sha256],
     // Node reads payload/package.json (nearest-parent package.json of the
@@ -683,6 +686,47 @@ function copyReleaseFiles(source: string, payload: string, files: Record<string,
 // fields.
 export interface SealTarget { workspace: string; runtimeDir: string }
 
+// B1: the doctor entrypoint's transitive relative-import closure, as sorted
+// snapshot-relative paths. A static scan of the built payload follows only static
+// relative import and export specifiers (they sit at the start of their line in the
+// compiled ESM) and hard-fails on any real dynamic import so a future refactor
+// cannot silently shrink the closure. The patterns are built from String.raw
+// templates and strings, never regex literals, so this module still passes the
+// payload import scanner. The lone dynamic form in the closure is a smoke-child
+// string, stripped with the other string and comment content before the scan.
+function computeStartupClosure(payloadDir: string): string[] {
+  const blockComment = new RegExp(String.raw`/\*[\s\S]*?\*/`, 'g');
+  const lineComment = new RegExp(String.raw`//[^\n]*`, 'g');
+  const singleQuoted = new RegExp(String.raw`'(?:[^'\\]|\\.)*'`, 'g');
+  const doubleQuoted = new RegExp(String.raw`"(?:[^"\\]|\\.)*"`, 'g');
+  const backtickQuoted = new RegExp("`(?:[^`\\\\]|\\\\.)*`", 'g');
+  const dynamicForm = new RegExp(String.raw`\bimport\s*\(`);
+  const fromSpec = new RegExp(String.raw`^\s*(?:import|export)\b[^\n]*?\bfrom\s*['"]([^'"]+)['"]`, 'gm');
+  const bareSpec = new RegExp(String.raw`^\s*import\s+['"]([^'"]+)['"]`, 'gm');
+  const entry = 'dist/src/commands/doctor.js';
+  const seen = new Set<string>();
+  const queue = [entry];
+  while (queue.length) {
+    const rel = queue.shift()!;
+    if (seen.has(rel)) continue;
+    seen.add(rel);
+    const src = readFileSync(join(payloadDir, rel), 'utf8');
+    const stripped = src.replace(blockComment, '').replace(lineComment, '')
+      .replace(singleQuoted, '').replace(doubleQuoted, '').replace(backtickQuoted, '');
+    if (dynamicForm.test(stripped)) {
+      throw new AdmissionError('build-altered-release', `unresolvable dynamic import in startup module: ${rel}`);
+    }
+    const specs = new Set<string>();
+    for (const m of src.matchAll(fromSpec)) specs.add(m[1]!);
+    for (const m of src.matchAll(bareSpec)) specs.add(m[1]!);
+    for (const spec of specs) {
+      if (!spec.startsWith('./') && !spec.startsWith('../')) continue;
+      queue.push(join(dirname(rel), spec).split(sep).join('/'));
+    }
+  }
+  return [...seen].map((rel) => `payload/${rel}`).sort();
+}
+
 export function sealSnapshot(ws: SealTarget, source: string, id: string): string {
   for (const transient of STAGING_TRANSIENT) rmSync(join(ws.workspace, transient), { recursive: true, force: true });
   // lstat every seal target and refuse a symlink or unexpected entry before
@@ -700,6 +744,12 @@ export function sealSnapshot(ws: SealTarget, source: string, id: string): string
     layout: { payload: 'payload', node: 'bin/node', npm: 'lib/node_modules/npm', npmCli: 'lib/node_modules/npm/bin/npm-cli.js', controller: 'bin/loam-control', modules: 'payload/node_modules', installedFiles: 'installed-files.json', snapshot: 'snapshot.json', doctor: 'payload/dist/src/commands/doctor.js' },
   };
   writeNewFile(join(ws.workspace, 'snapshot.json'), `${canonicalJson(snapshotRecord)}\n`);
+  // B1: record the doctor entrypoint's startup import closure at the snapshot root,
+  // before the inventory walk so it is inventoried, digest-covered and sealed
+  // read-only. The controller cross-checks it against the checksum record before
+  // dispatch so a required startup module cannot disappear from that record.
+  const closure = computeStartupClosure(join(ws.workspace, 'payload'));
+  writeNewFile(join(ws.workspace, 'startup-closure'), `${closure.join('\n')}\n`);
   const inventory: InstalledFiles = { version: 1, files: {} };
   walkInventory(ws.workspace, ws.workspace, 'installed-files.json', inventory.files);
   const bytes = `${canonicalJson(inventory)}\n`;

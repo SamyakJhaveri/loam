@@ -121,8 +121,10 @@ validate_checksum_record() {
   [ "$__total" -eq "$__uniq" ] || return 1
   # rule 6: each fixed entrypoint entry appears exactly once. payload/package.json
   # and the doctor entrypoint are required so a regenerated record cannot omit the
-  # startup metadata the pre-dispatch scan and Node itself depend on (B1).
-  for __req in 'installed-files\.json' 'snapshot\.json' 'bin/node' 'bin/loam-control' 'payload/package\.json' 'payload/dist/src/commands/doctor\.js'; do
+  # startup metadata the pre-dispatch scan and Node itself depend on; startup-closure
+  # is required so the record always carries the import-closure manifest the
+  # cross-check below reads (B1).
+  for __req in 'installed-files\.json' 'snapshot\.json' 'startup-closure' 'bin/node' 'bin/loam-control' 'payload/package\.json' 'payload/dist/src/commands/doctor\.js'; do
     [ "$(LC_ALL=C /usr/bin/grep -Ec "^[0-9a-f]{64}  ${__req}$" "$__sums")" -eq 1 ] || return 1
   done
   # rule 7: canonical trailing newline.
@@ -243,6 +245,39 @@ $__d"
   IFS=$__oldifs
 }
 
+# Cross-check the startup-closure manifest against the checksum record (B1).
+# startup-closure lists the doctor entrypoint's transitive relative-import closure
+# as snapshot-relative paths; its own bytes are a fixed record entry, so the digest
+# check has already proven them, and rule 6 guarantees the record carries it.
+# Require its grammar, then require every listed path to appear as a record path
+# column entry. Because the record must then contain every startup module, an
+# imported module (or its whole directory) can never disappear from the record
+# before Node loads it, and the record-derived metadata scan below stays complete.
+verify_startup_closure() {
+  __snap=$1; __sums=$2
+  __closure="$__snap/startup-closure"
+  [ -f "$__closure" ] || emit_unavailable installed-file-altered "$__closure"
+  ! LC_ALL=C /usr/bin/grep -q '[[:cntrl:]]' "$__closure" || emit_unavailable installed-file-altered "$__closure"
+  # each line a nonempty relative path (no leading '/'); no '..' component.
+  LC_ALL=C /usr/bin/grep -Ev '^[^/].*$' "$__closure" >/dev/null && emit_unavailable installed-file-altered "$__closure"
+  LC_ALL=C /usr/bin/grep -Eq '(^|/)\.\.(/|$)' "$__closure" && emit_unavailable installed-file-altered "$__closure"
+  has_final_newline "$__closure" || emit_unavailable installed-file-altered "$__closure"
+  __paths=$(/usr/bin/cut -c67- "$__sums")
+  __oldifs=$IFS
+  IFS='
+'
+  set -f
+  while IFS= read -r __cl; do
+    [ -n "$__cl" ] || continue
+    printf '%s\n' "$__paths" | LC_ALL=C /usr/bin/grep -Fxq -- "$__cl" || {
+      set +f; IFS=$__oldifs
+      emit_unavailable installed-file-altered "$__snap/startup-closure: $__cl"
+    }
+  done < "$__closure"
+  set +f
+  IFS=$__oldifs
+}
+
 # Pre-dispatch integrity check (item 8): verify the recorded entrypoint set with
 # the host digest tool, from the snapshot directory, before any snapshot code
 # runs. The .sha256 file lists only relative paths inside the snapshot.
@@ -252,7 +287,15 @@ predispatch_check() {
   __sums="$__root/registry/runtimes/$__id.sha256"
   validate_checksum_record "$__sums" || emit_unavailable installed-file-altered "$__sums"
   ( cd "$__snap" && $DIGEST_CHECK "$__sums" ) >/dev/null 2>&1 || emit_unavailable installed-file-altered "$__snap"
+  verify_startup_closure "$__snap" "$__sums"
   check_startup_metadata "$__snap" "$__sums"
+  # B4: the digest tool verified bin/node's bytes but not that it is a runnable
+  # regular file. A mode-only change (e.g. chmod 0444) passes the byte check and
+  # then fails at exec with 126/Permission denied. Refuse a symlinked, missing,
+  # non-regular or non-executable selected Node here, before dispatch. Test the
+  # symlink first so [ -f ]/[ -x ] never follow a replaced link.
+  { [ ! -L "$__snap/bin/node" ] && [ -f "$__snap/bin/node" ] && [ -x "$__snap/bin/node" ]; } \
+    || emit_unavailable installed-file-altered "$__snap/bin/node"
 }
 
 # --- global flag parsing ---------------------------------------------------

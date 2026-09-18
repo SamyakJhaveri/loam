@@ -26,62 +26,74 @@ function readJson(path) {
     return JSON.parse(readFileSync(path, 'utf8'));
 }
 const HEX64 = /^[0-9a-f]{64}$/;
-const HEX16 = /^[0-9a-f]{16}$/;
 function isObject(value) {
     return value !== null && typeof value === 'object' && !Array.isArray(value);
 }
-function isRelativePath(path) {
-    if (path.length === 0 || path.startsWith('/'))
-        return false;
-    return !path.split('/').includes('..');
-}
 // Structural validators for the registry records and the installed inventory
-// (B2). These run before any field is used so a malformed or vacuous record is a
+// (B2). They run before any field is used, so a malformed or vacuous record is a
 // structured diagnostic, never a raw TypeError and never a false healthy. They do
 // not authenticate the record; the integrity proof stays the byte re-hashing
-// below (installed-files.json, the release map) and the controller's pre-dispatch
-// digest set. An empty release file map must not certify: without it the release
-// binding loop is vacuous.
+// (installed-files.json and the release map) and the controller's pre-dispatch
+// digest set.
+function isHex64(value) {
+    return typeof value === 'string' && HEX64.test(value);
+}
+function isReleaseIdentity(value) {
+    return isObject(value)
+        && typeof value.label === 'string' && value.label.length > 0
+        && typeof value.sourcePath === 'string' && value.sourcePath.length > 0
+        && (value.gitDescribe === null || typeof value.gitDescribe === 'string')
+        && isHex64(value.sourceDigest) && isHex64(value.outputDigest)
+        && isHex64(value.dependencyDigest) && isHex64(value.manifestSha256);
+}
+function isAdmittedTools(value) {
+    if (!isObject(value))
+        return false;
+    if (typeof value.platform !== 'string' || typeof value.arch !== 'string')
+        return false;
+    const node = value.node;
+    const npm = value.npm;
+    return isObject(node)
+        && typeof node.version === 'string' && typeof node.sqlite === 'string'
+        && isHex64(node.sha256) && typeof node.sourcePath === 'string'
+        && isObject(npm)
+        && typeof npm.version === 'string'
+        && isHex64(npm.cliSha256) && isHex64(npm.packageSha256) && typeof npm.sourcePath === 'string';
+}
+// The per-file release map: non-empty, each key a snapshot-relative path, each
+// value a sha256. An empty map must not certify (it would make the release loop a
+// no-op).
 function isReleaseFileMap(value) {
     if (!isObject(value))
         return false;
     const entries = Object.entries(value);
     if (entries.length === 0)
         return false;
-    return entries.every(([path, digest]) => isRelativePath(path) && typeof digest === 'string' && HEX64.test(digest));
+    return entries.every(([path, digest]) => path.length > 0 && !path.startsWith('/') && !path.split('/').includes('..') && isHex64(digest));
 }
-function isReleaseIdentity(value) {
-    if (!isObject(value))
-        return false;
-    return typeof value.label === 'string'
-        && typeof value.sourcePath === 'string'
-        && (value.gitDescribe === null || typeof value.gitDescribe === 'string')
-        && typeof value.sourceDigest === 'string' && HEX64.test(value.sourceDigest)
-        && typeof value.outputDigest === 'string' && HEX64.test(value.outputDigest)
-        && typeof value.dependencyDigest === 'string' && HEX64.test(value.dependencyDigest)
-        && typeof value.manifestSha256 === 'string' && HEX64.test(value.manifestSha256);
-}
-function isAdmittedTools(value) {
-    if (!isObject(value))
-        return false;
-    const { node, npm } = value;
-    return isObject(node) && typeof node.sha256 === 'string' && HEX64.test(node.sha256)
-        && isObject(npm) && typeof npm.cliSha256 === 'string' && HEX64.test(npm.cliSha256)
-        && typeof npm.packageSha256 === 'string' && HEX64.test(npm.packageSha256);
-}
-function isValidAdmissionRecord(value, admissionId) {
-    return isObject(value)
-        && value.version === 1
-        && typeof value.id === 'string' && HEX16.test(value.id) && value.id === admissionId
-        && isReleaseFileMap(value.files)
-        && isReleaseIdentity(value.release)
-        && isAdmittedTools(value.tools);
-}
-function isValidInventory(value) {
+function isInstalledFiles(value) {
     if (!isObject(value) || value.version !== 1 || !isObject(value.files))
         return false;
-    return Object.values(value.files).every(entry => isObject(entry) && typeof entry.sha256 === 'string' && HEX64.test(entry.sha256)
-        && (entry.mode === 'executable' || entry.mode === 'regular'));
+    return Object.values(value.files).every((entry) => isObject(entry) && isHex64(entry.sha256) && (entry.mode === 'executable' || entry.mode === 'regular'));
+}
+// Remaining AdmissionRecord fields the shape check completes (B2). protectedPaths
+// must carry exactly the six protected-home kinds, each an absolute path.
+const PROTECTED_KEYS = Object.keys(CONTROL_ROOT_LAYOUT.homes).sort();
+function isAllowedBuildScripts(value) {
+    return isObject(value) && Object.values(value).every((entry) => typeof entry === 'boolean');
+}
+function isProviders(value) {
+    return isObject(value) && Array.isArray(value.payloads)
+        && value.payloads.every((entry) => typeof entry === 'string')
+        && typeof value.successor === 'string';
+}
+function isProtectedPaths(value) {
+    if (!isObject(value))
+        return false;
+    const keys = Object.keys(value).sort();
+    return keys.length === PROTECTED_KEYS.length
+        && PROTECTED_KEYS.every((key, index) => key === keys[index])
+        && Object.values(value).every((entry) => typeof entry === 'string' && entry.startsWith('/'));
 }
 function fileMode(path) {
     return (statSync(path).mode & 0o111) !== 0 ? 'executable' : 'regular';
@@ -161,7 +173,14 @@ export function runDoctor(options) {
     catch {
         return interrupt(`admission record is not valid JSON: ${selected.admissionId}`);
     }
-    if (!isValidAdmissionRecord(parsedAdmission, selected.admissionId)) {
+    if (!isObject(parsedAdmission) || parsedAdmission.version !== 1 || parsedAdmission.id !== selected.admissionId
+        || typeof parsedAdmission.admittedAt !== 'string' || parsedAdmission.admittedAt.length === 0
+        || !isReleaseFileMap(parsedAdmission.files)
+        || !isReleaseIdentity(parsedAdmission.release)
+        || !isAdmittedTools(parsedAdmission.tools)
+        || !isAllowedBuildScripts(parsedAdmission.allowedBuildScripts)
+        || !isProviders(parsedAdmission.providers)
+        || !isProtectedPaths(parsedAdmission.protectedPaths)) {
         return interrupt(`admission record malformed or not matching the selection: ${selected.admissionId}`);
     }
     const record = parsedAdmission;
@@ -205,20 +224,20 @@ export function runDoctor(options) {
     // directly, read and parse it defensively: a missing, non-regular, unreadable,
     // or malformed file (even one whose bytes match the recorded digest) is
     // tampering, reported as installed-file-altered, never a raw exception.
-    let parsedInstalled;
+    let installed;
     try {
         if (hashFile(installedFilesPath) !== runtimeRecord.installedFilesSha256) {
             return fail('installed-file-altered', `${SNAPSHOT_LAYOUT.installedFiles} digest does not match the runtime record`);
         }
-        parsedInstalled = readJson(installedFilesPath);
+        const parsed = readJson(installedFilesPath);
+        if (!isInstalledFiles(parsed)) {
+            return fail('installed-file-altered', `${SNAPSHOT_LAYOUT.installedFiles} is malformed`);
+        }
+        installed = parsed;
     }
     catch {
         return fail('installed-file-altered', `${SNAPSHOT_LAYOUT.installedFiles} is missing or unreadable`);
     }
-    if (!isValidInventory(parsedInstalled)) {
-        return fail('installed-file-altered', `${SNAPSHOT_LAYOUT.installedFiles} is malformed`);
-    }
-    const installed = parsedInstalled;
     let observed;
     try {
         observed = collectFiles(snapshotPath).filter(path => path !== SNAPSHOT_LAYOUT.installedFiles);
@@ -236,10 +255,36 @@ export function runDoctor(options) {
             return fail('installed-file-altered', `missing snapshot file: ${path}`);
     for (const [path, entry] of Object.entries(installed.files)) {
         const abs = join(snapshotPath, path);
-        if (hashFile(abs) !== entry.sha256)
+        let actualDigest;
+        let actualMode;
+        try {
+            actualDigest = hashFile(abs);
+            actualMode = fileMode(abs);
+        }
+        catch {
+            // A recorded file that cannot be read or stat'd (EACCES, ENOENT, EISDIR, ...)
+            // is tampering, classified here rather than escaping as an uncaught
+            // exception (B4).
+            return fail('installed-file-altered', `snapshot file unreadable: ${path}`);
+        }
+        if (actualDigest !== entry.sha256)
             return fail('installed-file-altered', `snapshot digest mismatch: ${path}`);
-        if (fileMode(abs) !== entry.mode)
+        if (actualMode !== entry.mode)
             return fail('installed-file-altered', `snapshot mode mismatch: ${path}`);
+    }
+    // B2 identity relationships: the admission record's recorded tool digests must
+    // equal the byte-verified installed inventory entries. Pure comparison of already
+    // recorded material against already hashed material (no new hashing, no
+    // self-authentication); a mismatch is an inconsistent registry record.
+    const nodeInv = installed.files[SNAPSHOT_LAYOUT.node];
+    const npmCliInv = installed.files[SNAPSHOT_LAYOUT.npmCli];
+    const npmPkgInv = installed.files[`${SNAPSHOT_LAYOUT.npm}/package.json`];
+    if (!nodeInv || record.tools.node.sha256 !== nodeInv.sha256) {
+        return interrupt(`recorded node digest does not match the installed node: ${selected.admissionId}`);
+    }
+    if (!npmCliInv || record.tools.npm.cliSha256 !== npmCliInv.sha256
+        || !npmPkgInv || record.tools.npm.packageSha256 !== npmPkgInv.sha256) {
+        return interrupt(`recorded npm digests do not match the installed npm: ${selected.admissionId}`);
     }
     // build-altered-release: the installed payload must still match the release
     // bytes recorded independently in the admission record (C4).
@@ -254,6 +299,35 @@ export function runDoctor(options) {
         }
         if (actual !== digest)
             return fail('build-altered-release', `release file altered: ${path}`);
+    }
+    // B2 release relationships: record.files must be the complete payload release map
+    // plus the manifest's self-entry, with matching digests, and the recorded manifest
+    // digest must equal that self-entry. The loop above already matched
+    // record.files['release-manifest.json'] against the payload bytes, so the manifest
+    // read here is trusted. This drives the release check off the manifest, so a
+    // truncated or inconsistent record.files cannot certify vacuously.
+    if (record.release.manifestSha256 !== record.files['release-manifest.json']) {
+        return interrupt(`recorded manifest digest does not match the recorded release map: ${selected.admissionId}`);
+    }
+    let manifest;
+    try {
+        manifest = readJson(join(payloadRoot, 'release-manifest.json'));
+    }
+    catch {
+        return fail('build-altered-release', 'release-manifest.json is unreadable');
+    }
+    if (!isObject(manifest.files) || !Object.values(manifest.files).every(isHex64)) {
+        return fail('build-altered-release', 'release-manifest.json is malformed');
+    }
+    const manifestFiles = manifest.files;
+    const expectedKeys = new Set([...Object.keys(manifestFiles), 'release-manifest.json']);
+    const recordKeys = new Set(Object.keys(record.files));
+    if (expectedKeys.size !== recordKeys.size || [...expectedKeys].some((key) => !recordKeys.has(key))) {
+        return interrupt(`recorded release map does not match the payload manifest: ${selected.admissionId}`);
+    }
+    for (const [key, digest] of Object.entries(manifestFiles)) {
+        if (record.files[key] !== digest)
+            return interrupt(`recorded release digest differs from the manifest: ${key}`);
     }
     // unadmitted-fork: a supplied checkout is a separate attestation about bytes,
     // reported on `checkout` and never mutating installation health.

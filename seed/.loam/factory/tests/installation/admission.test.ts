@@ -555,6 +555,20 @@ test('admission.publish-complete-closure-only', async () => {
   const installed = JSON.parse(readFileSync(join(snapshotPath, SNAPSHOT_LAYOUT.installedFiles), 'utf8')) as { files: Record<string, unknown> };
   const recorded = new Set([...Object.keys(installed.files), SNAPSHOT_LAYOUT.installedFiles]);
   assert.deepEqual(new Set(walkFiles(snapshotPath)), recorded);
+  // B1: startup-closure is inventoried and lists exactly doctor.js's transitive
+  // relative-import closure (the six startup modules), sorted canonically.
+  assert.ok(recorded.has('startup-closure'), 'startup-closure must be inventoried');
+  assert.deepEqual(
+    readFileSync(join(snapshotPath, 'startup-closure'), 'utf8').split('\n').filter(Boolean),
+    [
+      'payload/dist/src/commands/doctor.js',
+      'payload/dist/src/contracts/installation.js',
+      'payload/dist/src/installation/admit.js',
+      'payload/dist/src/installation/package.js',
+      'payload/dist/src/platform/native-boundary.js',
+      'payload/dist/src/platform/runtime.js',
+    ],
+  );
 });
 
 // ---------------------------------------------------------------------------
@@ -728,8 +742,6 @@ test('admission.controller-verifies-before-dispatch', async () => {
   const { trusted, controller } = makeTrusted();
   const { id, snapshotPath } = await admit(trusted, controlRoot);
 
-  // Altered doctor bytes: the pre-dispatch digest refuses before dispatch, so the
-  // marker appended to doctor.js never runs.
   const marker = join(base(), 'altered-doctor-ran');
   const doctorPath = join(snapshotPath, SNAPSHOT_LAYOUT.doctor);
   const doctorOriginal = readFileSync(doctorPath);
@@ -738,72 +750,140 @@ test('admission.controller-verifies-before-dispatch', async () => {
   assert.equal(status.status, 1);
   assert.ok(hasDiagnostic(lastJson(status.stdout), 'installed-file-altered'));
   assert.equal(existsSync(marker), false, 'altered doctor must never execute');
-  // Restore the healthy doctor BEFORE the grammar regressions (departure 24).
-  // Otherwise a record the grammar failed to reject would still fail the later
-  // digest check on the altered doctor, masking a grammar hole. With healthy bytes,
-  // only the grammar can account for a refusal below.
+  // Restore the healthy doctor bytes so the grammar checks below are the sole
+  // refuser of the corrupt records (B3.3): the digest tool would accept every
+  // referenced file, so a controller with no grammar validation would dispatch.
   writeFileSync(doctorPath, doctorOriginal);
 
+  // B1: a package.json inserted anywhere under payload/dist is a nearer module
+  // scope Node reads before doctor, and a node_modules there is a bare-specifier
+  // root. Each is refused pre-dispatch with a structured installed-file-altered,
+  // and no Node process runs (the loader never reports ERR_INVALID_PACKAGE_CONFIG
+  // or an import SyntaxError on stderr).
+  const distDir = join(snapshotPath, 'payload/dist');
+  const commandsDir = join(snapshotPath, 'payload/dist/src/commands');
+  function expectMetadataRefused(target: string, make: () => void): void {
+    chmodSync(dirname(target), 0o755);
+    make();
+    const rr = control(controller, controlRoot, ['status']);
+    assert.equal(rr.status, 1, `${rr.stdout}${rr.stderr}`);
+    assert.ok(hasDiagnostic(lastJson(rr.stdout), 'installed-file-altered'), `metadata refused: ${target}`);
+    assert.ok(!rr.stderr.includes('ERR_INVALID_PACKAGE_CONFIG')
+      && !rr.stderr.includes('SyntaxError')
+      && !rr.stderr.includes('Cannot use import'),
+      `no Node loader crash means the shell refused before dispatch: ${JSON.stringify(rr.stderr)}`);
+    rmSync(target, { recursive: true, force: true });
+  }
+  expectMetadataRefused(join(distDir, 'package.json'), () => writeFileSync(join(distDir, 'package.json'), '{'));                          // malformed, nearest at dist
+  expectMetadataRefused(join(distDir, 'package.json'), () => writeFileSync(join(distDir, 'package.json'), '{"type":"commonjs"}'));        // valid JSON, type change
+  expectMetadataRefused(join(commandsDir, 'package.json'), () => writeFileSync(join(commandsDir, 'package.json'), '{"type":"commonjs"}'));// nearer, beside doctor.js
+  expectMetadataRefused(join(distDir, 'node_modules'), () => mkdirSync(join(distDir, 'node_modules')));                                   // bare-specifier root under payload/dist
+
   // The pre-dispatch checksum grammar refuses a record that escapes the snapshot,
-  // is malformed, or omits a required entry, before the digest tool or any snapshot
-  // code runs (R3/C1). Each corruption edits one field of an otherwise-valid record
-  // whose remaining lines still reference real, intact bytes.
+  // is malformed, or omits a required startup entry, before the digest tool or any
+  // snapshot code runs (R3/C1/B1). With the healthy snapshot restored, every
+  // grammar-only record below references bytes the digest tool would accept, so the
+  // grammar itself is provably what refuses each one.
   const sums = join(controlRoot, CONTROL_ROOT_LAYOUT.runtimeRecords, `${id}.sha256`);
   const orig = readFileSync(sums, 'utf8');
-  const nodeLine = orig.split('\n').find((line) => line.endsWith('  bin/node'))!;
-  const corruptions = [
-    orig.replace('  payload/package.json', '  /etc/passwd'),                   // absolute path (rule 3)
-    orig.replace('  payload/package.json', '  ../escape'),                     // leading '..' component (rule 4)
-    orig.replace('  bin/loam-control', '  x/../y'),                            // mid-path '..' component (rule 4)
-    `${orig}${nodeLine}\n`,                                                    // duplicate path (rule 5)
-    orig.replace(/^[0-9a-f]{64}  bin\/node$/m, `${'0'.repeat(63)}  bin/node`), // 63-hex digest (rule 3)
-    orig.replace(/^.*  bin\/node\n/m, ''),                                     // required entry removed (rule 6)
-    orig.replace(/\n$/, ''),                                                   // no trailing newline (rule 7)
-    orig.replace('  bin/node', '\tbin/node'),                                  // TAB control byte (rule 2)
+  const H = '0'.repeat(64);
+  const snapshotDir = join(controlRoot, 'runtimes', id);
+
+  // B3.3 isolation: a real, non-required snapshot file used as a disposable
+  // grammar target. Its digest is genuine, so the raw digest tool accepts every
+  // line of the records below and only the controller's path grammar refuses them.
+  // (doctor.js.map is shipped and recorded but is not a required startup entry.)
+  const dispose = orig.match(/^([0-9a-f]{64})  (payload\/dist\/src\/commands\/doctor\.js\.map)$/m)!;
+  const disposeDigest = dispose[1];
+  const disposePath = dispose[2];
+  const digestCheck = isLinux ? ['/usr/bin/sha256sum', '-c'] : ['/usr/bin/shasum', '-a', '256', '-c'];
+
+  // Grammar-only records: the full healthy record (every required entry present,
+  // every digest real) plus one extra line whose path breaks a grammar rule while
+  // still resolving to a real file with its true digest. Each must pass the raw
+  // digest tool from the snapshot dir (exit 0) yet be refused by the controller,
+  // proving the grammar - not a missing entry or a wrong digest - is the refuser.
+  const grammarOnly = [
+    `${orig}${disposeDigest}  ${join(snapshotDir, disposePath)}\n`,       // absolute path (rule 3)
+    `${orig}${disposeDigest}  payload/dist/src/commands/../commands/doctor.js.map\n`, // '..' component resolving inside (rule 4)
   ];
-  for (const bad of corruptions) {
+  for (const record of grammarOnly) {
+    tamper(sums, record);
+    const raw = spawnSync(digestCheck[0], [...digestCheck.slice(1), sums], { cwd: snapshotDir, encoding: 'utf8', timeout: 60000 });
+    assert.equal(raw.status, 0, `raw digest tool must accept the record: ${raw.stdout}${raw.stderr}`);
+    const rr = control(controller, controlRoot, ['status']);
+    assert.equal(rr.status, 1, `grammar must refuse: ${JSON.stringify(record)}`);
+    assert.ok(hasDiagnostic(lastJson(rr.stdout), 'installed-file-altered'), `installed-file-altered: ${JSON.stringify(record)}`);
+  }
+
+  // Omitted-required-entry records: a regenerated record that drops a required
+  // startup entry (bytes intact) is refused by rule 6, independently of the
+  // path-grammar cases above (B1/B3: required entries cannot simply disappear).
+  const omittedRequired = [
+    orig.replace(/^[0-9a-f]{64}  payload\/dist\/src\/commands\/doctor\.js\n/m, ''),
+    orig.replace(/^[0-9a-f]{64}  payload\/package\.json\n/m, ''),
+    orig.replace(/^[0-9a-f]{64}  bin\/node\n/m, ''),
+  ];
+  // Structural malformations of rules 2-7, each an obviously-malformed record.
+  const structural = [
+    `${H}  /etc/passwd\n`,                          // absolute path (rule 3)
+    `${H}  ../../../etc/passwd\n`,                   // parent component (rule 4)
+    `${H}  x/../y\n`,                                // '..' mid-path component (rule 4)
+    `${H}  bin/node\n${H}  bin/node\n`,              // duplicate path (rule 5)
+    `${'0'.repeat(63)}  bin/node\n`,                 // wrong digest length (rule 3)
+    `${orig}${H}  extra-line`,                       // missing trailing newline (rule 7)
+    `${H}\tbin/node\n`,                              // control byte, TAB (rule 2)
+  ];
+  for (const bad of [...omittedRequired, ...structural]) {
     tamper(sums, bad);
     const rr = control(controller, controlRoot, ['status']);
     assert.equal(rr.status, 1, `record refused: ${JSON.stringify(bad)}`);
     assert.ok(hasDiagnostic(lastJson(rr.stdout), 'installed-file-altered'), `installed-file-altered: ${JSON.stringify(bad)}`);
   }
-  tamper(sums, orig); // restore the healthy record
+  tamper(sums, orig); // restore so cleanup sees a valid record
 
-  // B1: startup metadata inserted into the healthy snapshot is refused by the
-  // controller BEFORE Node is dispatched. The non-dispatch proof is the top-level
-  // {status:unavailable, diagnostic} the shell emits (a dispatched doctor would emit
-  // {diagnostics:[...]}), plus the absence of a Node bootstrap error on stderr.
-  const payloadDist = join(snapshotPath, 'payload/dist');
-  const besideDoctor = join(dirname(doctorPath), 'package.json');
-  function expectPredispatchAltered(label: string): void {
+  // B1: the startup-closure cross-check enforces that every startup import stays in
+  // the checksum record before Node loads it. Each case starts from the healthy
+  // record/snapshot restored above and restores them after.
+  // (1) Remove only the admit.js record line, bytes intact. admit.js is in the
+  // closure, so the cross-check refuses before Node loads it (no ERR_MODULE_NOT_FOUND).
+  tamper(sums, orig.replace(/^[0-9a-f]{64}  payload\/dist\/src\/installation\/admit\.js\n/m, ''));
+  {
     const rr = control(controller, controlRoot, ['status']);
-    assert.equal(rr.status, 1, `${label}: ${rr.stdout}${rr.stderr}`);
-    const json = lastJson(rr.stdout);
-    assert.equal(json.status, 'unavailable', `${label}: expected a pre-dispatch shell refusal: ${rr.stdout}`);
-    assert.equal(json.diagnostic, 'installed-file-altered', `${label}: ${rr.stdout}`);
-    assert.ok(!rr.stderr.includes('ERR_INVALID_PACKAGE_CONFIG') && !rr.stderr.includes('SyntaxError'),
-      `${label}: Node must not start: ${JSON.stringify(rr.stderr)}`);
+    assert.equal(rr.status, 1, `${rr.stdout}${rr.stderr}`);
+    assert.ok(hasDiagnostic(lastJson(rr.stdout), 'installed-file-altered'));
+    assert.ok(!rr.stderr.includes('ERR_MODULE_NOT_FOUND') && !rr.stderr.includes('Cannot find'),
+      `no Node start: ${JSON.stringify(rr.stderr)}`);
   }
-  function withInserted(path: string, make: () => void, run: () => void): void {
-    chmodSync(dirname(path), 0o755);
-    make();
-    try { run(); } finally { rmSync(path, { recursive: true, force: true }); }
-  }
-  const distPkg = join(payloadDist, 'package.json');
-  // (i) malformed nearer package.json crashes Node at bootstrap unless refused first.
-  withInserted(distPkg, () => writeFileSync(distPkg, '{'), () => expectPredispatchAltered('payload/dist/package.json = {'));
-  // (ii) valid-JSON type-changing nearer package.json.
-  withInserted(distPkg, () => writeFileSync(distPkg, '{"type":"commonjs"}'), () => expectPredispatchAltered('payload/dist/package.json commonjs'));
-  // (iii) package.json beside the doctor entrypoint.
-  withInserted(besideDoctor, () => writeFileSync(besideDoctor, '{"type":"commonjs"}'), () => expectPredispatchAltered('package.json beside doctor.js'));
-  // (iv) an empty node_modules directory under payload/dist.
-  withInserted(join(payloadDist, 'node_modules'), () => mkdirSync(join(payloadDist, 'node_modules')), () => expectPredispatchAltered('payload/dist/node_modules'));
-  // (v) the doctor.js line removed from the record with the file's bytes intact:
-  // rule 6 requires the entry, so the record is refused though doctor.js is healthy.
-  const doctorRel = SNAPSHOT_LAYOUT.doctor.replace(/[.]/g, '\\.').replace(/\//g, '\\/');
-  tamper(sums, orig.replace(new RegExp(`^.*  ${doctorRel}\\n`, 'm'), ''));
-  expectPredispatchAltered('doctor.js line removed');
   tamper(sums, orig);
+  // (2) Remove the whole installation/ directory's record lines and plant a nearer
+  // package.json. admit.js and package.js are in the closure, so the cross-check
+  // refuses before the metadata scan and before Node reads the package.json.
+  const installDir = join(snapshotPath, 'payload/dist/src/installation');
+  tamper(sums, orig.replace(/^[0-9a-f]{64}  payload\/dist\/src\/installation\/[^\n]*\n/gm, ''));
+  chmodSync(installDir, 0o755);
+  writeFileSync(join(installDir, 'package.json'), '{');
+  {
+    const rr = control(controller, controlRoot, ['status']);
+    assert.equal(rr.status, 1, `${rr.stdout}${rr.stderr}`);
+    assert.ok(hasDiagnostic(lastJson(rr.stdout), 'installed-file-altered'));
+    assert.ok(!rr.stderr.includes('ERR_INVALID_PACKAGE_CONFIG') && !rr.stderr.includes('SyntaxError'),
+      `no Node loader crash: ${JSON.stringify(rr.stderr)}`);
+  }
+  rmSync(join(installDir, 'package.json'));
+  tamper(sums, orig);
+  // (3) Tamper startup-closure itself: its bytes are a fixed record entry, so the
+  // digest check refuses it (installed-file-altered), even with a real snapshot path.
+  const closurePath = join(snapshotPath, 'startup-closure');
+  const closureOrig = readFileSync(closurePath);
+  tamper(closurePath, `${closureOrig.toString('utf8')}payload/dist/src/platform/ownership.js\n`);
+  {
+    const rr = control(controller, controlRoot, ['status']);
+    assert.equal(rr.status, 1, `${rr.stdout}${rr.stderr}`);
+    assert.ok(hasDiagnostic(lastJson(rr.stdout), 'installed-file-altered'));
+  }
+  writeFileSync(closurePath, closureOrig);
+  tamper(sums, orig); // final restore for cleanup
 });
 
 test('admission.node-identity', async () => {
@@ -1071,6 +1151,32 @@ test('admission.altered-installed-file', async () => {
   expectInterrupted();
   writeFileSync(admissionRecordPath, admissionOriginal);
 
+  // B2: complete admission-record shape and internal-consistency relationships.
+  // Each is an isolated single-field corruption of the otherwise-healthy record;
+  // the dispatched doctor must report install-interrupted (never heal), one failure
+  // never masking another. Restored after each.
+  function tamperAdmission(mutate: (rec: AdmissionRecord) => void): void {
+    const rec = JSON.parse(admissionOriginal.toString('utf8')) as AdmissionRecord;
+    mutate(rec);
+    tamper(admissionRecordPath, `${canonicalJson(rec)}\n`);
+    expectInterrupted();
+    writeFileSync(admissionRecordPath, admissionOriginal);
+  }
+  // Missing required fields.
+  tamperAdmission((rec) => { delete (rec as { admittedAt?: string }).admittedAt; });
+  tamperAdmission((rec) => { delete (rec.tools.node as { version?: string }).version; });
+  tamperAdmission((rec) => { delete (rec as { protectedPaths?: unknown }).protectedPaths; });
+  // False identity digests: shape is valid (hex64) but they no longer match the
+  // installed inventory or the recorded release map.
+  tamperAdmission((rec) => { rec.tools.node.sha256 = '0'.repeat(64); });
+  tamperAdmission((rec) => { rec.release.manifestSha256 = '0'.repeat(64); });
+  // Truncated release map: the release loop passes vacuously, the completeness
+  // relationship does not.
+  tamperAdmission((rec) => {
+    const [firstKey] = Object.keys(rec.files);
+    rec.files = { [firstKey]: rec.files[firstKey]! };
+  });
+
   // N1: the sealed installed-files.json is normally gated by the controller's
   // pre-dispatch checksum, so reach doctor directly (through the snapshot's own
   // node, as environment-injected does) to prove doctor reads and parses it
@@ -1124,6 +1230,38 @@ test('admission.altered-installed-file', async () => {
   expectInventoryShapeAltered('null');
   expectInventoryShapeAltered('{}');
   expectInventoryShapeAltered('{"version":1,"files":null}');
+
+  // B4: mode-only changes from a healthy snapshot must be structured diagnostics,
+  // not raw exec/read failures. Restore the mode after each.
+  // (a) A non-executable selected Node passes the pre-dispatch byte digest but
+  // would fail at exec with 126/Permission denied; the controller refuses it
+  // before dispatch with installed-file-altered.
+  const nodePath = join(snapshotPath, SNAPSHOT_LAYOUT.node);
+  const nodeMode = lstatSync(nodePath).mode & 0o777;
+  chmodSync(dirname(nodePath), 0o755);
+  chmodSync(nodePath, 0o444);
+  {
+    const result = control(controller, controlRoot, ['doctor']);
+    assert.equal(result.status, 1, `${result.stdout}${result.stderr}`);
+    assert.ok(hasDiagnostic(lastJson(result.stdout), 'installed-file-altered'));
+    assert.ok(!result.stderr.includes('Permission denied'), `no exec permission failure: ${JSON.stringify(result.stderr)}`);
+  }
+  chmodSync(nodePath, nodeMode);
+
+  // (b) An installed dependency file that cannot be read (mode 000) is not in the
+  // controller's pre-dispatch checksum set, so the dispatched doctor reaches it in
+  // the installed inventory; the EACCES becomes installed-file-altered, never an
+  // uncaught exception with a stack trace.
+  chmodSync(dirname(modulePath), 0o755);
+  chmodSync(modulePath, 0o000);
+  {
+    const result = control(controller, controlRoot, ['doctor']);
+    assert.equal(result.status, 1, `${result.stdout}${result.stderr}`);
+    assert.ok(hasDiagnostic(lastJson(result.stdout), 'installed-file-altered'));
+    assert.ok(!/\n\s+at /.test(result.stderr) && !result.stderr.includes('EACCES'),
+      `no stack trace on stderr: ${JSON.stringify(result.stderr)}`);
+  }
+  chmodSync(modulePath, 0o644);
 });
 
 test('admission.environment-injected', async () => {
