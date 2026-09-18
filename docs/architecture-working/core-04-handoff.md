@@ -54,7 +54,7 @@ See `candidate-11/departures.md`, items 1-41. Items 1-8 carry from candidate-06;
 
 ## Follow-ups (not in this ticket)
 
-- The landed sanitizers disagree: `native-boundary.ts` `shouldStrip` does not strip `npm_config_*`; `toolchain.mjs` `cleanEnvironment` and `verify.ts` `cleanTestEnvironment` do not strip `LD_PRELOAD`, `DYLD_*`, `NODE_TLS_REJECT_UNAUTHORIZED`, `NODE_EXTRA_CA_CERTS` or `OPENSSL_CONF`. CORE-04 uses its own allowlists and did not edit those modules.
+- The landed sanitizers disagree: `native-boundary.ts` `shouldStrip` does not strip `npm_config_*`; `toolchain.mjs` `cleanEnvironment` and `verify.ts` `cleanTestEnvironment` do not strip `LD_PRELOAD`, `DYLD_*`, `NODE_TLS_REJECT_UNAUTHORIZED`, `NODE_EXTRA_CA_CERTS` or `OPENSSL_CONF`. CORE-04 uses its own allowlists and did not change those sanitizer functions (`verify.ts` gained only the two admission case registries).
 - `json_escape` (`loam-control.sh:36`) still does not escape the C0 range, so the staging-glob echo at `loam-control.sh:173` would emit a raw control byte if a same-user writer planted a control-character filename under `runtimes/`. Within the accepted same-user residual and not caller-reachable; noted for a future hardening pass.
 - SETUP.md should list `startup-closure` in the snapshot layout (Codex candidate-11, non-blocking).
 - Garbage collection of superseded snapshots (about 120 MB each with the copied Node and npm).
