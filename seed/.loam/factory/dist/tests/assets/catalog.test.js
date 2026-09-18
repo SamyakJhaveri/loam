@@ -5,7 +5,7 @@ import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { test } from 'node:test';
 import { assertSchemaDocument, validate } from '../../src/assets/schema.js';
-import { sha256 } from '../../src/assets/units.js';
+import { extractSourceUnits, sha256 } from '../../src/assets/units.js';
 import { CatalogError, loadCatalog, validateCatalog, resolveEntry, scanPersonalPaths, assertRelativePath, requiredClosure, checkRecipientDelivery, recipientRootOf, OBLIGATIONS, } from '../../src/assets/catalog.js';
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '../../..');
 const load = () => loadCatalog(root).catalog;
@@ -76,6 +76,32 @@ test('catalog.schema-and-payload', () => {
     assert.throws(() => assertSchemaDocument({ type: 'object', properties: { a: { $ref: '#/$defs/nope' } } }));
     assert.throws(() => assertSchemaDocument({ type: 'object', properties: { a: { $ref: 'https://example/x' } } }));
     assert.throws(() => assertSchemaDocument({ $defs: { a: { $ref: '#/$defs/b' }, b: { $ref: '#/$defs/a' } } }));
+    // Finding 1 (round 5): inherited Object.prototype names are neither declared properties nor
+    // definitions. A JSON-parsed top-level property named after an inherited member (constructor,
+    // toString, __proto__) is undeclared, so additionalProperties:false rejects it; a $ref to
+    // #/$defs/<such a name> with no such definition is an unresolved reference. `in` would find the
+    // inherited member on the prototype chain; Object.hasOwn does not. The inputs are JSON-parsed so a
+    // `__proto__` key is an own property, exactly as the shipped catalog is parsed.
+    const closedObject = { type: 'object', additionalProperties: false, properties: { x: { type: 'integer' } } };
+    for (const inherited of ['constructor', 'toString', '__proto__']) {
+        const parsed = JSON.parse(`{"${inherited}": 1}`);
+        const issues = validate(closedObject, parsed);
+        assert.ok(issues.some(i => i.keyword === 'additionalProperties'), `top-level ${inherited} must raise additionalProperties`);
+        assert.throws(() => assertSchemaDocument({ $defs: { real: { type: 'string' } }, type: 'object', additionalProperties: false, properties: { x: { $ref: `#/$defs/${inherited}` } } }), /unresolved reference/, `$ref to #/$defs/${inherited} must be unresolved`);
+        // The required-property lookup also uses hasOwn: an instance missing a required property named
+        // after an inherited member is reported missing, not treated as present through the prototype.
+        const requiresInherited = { type: 'object', properties: { [inherited]: { type: 'string' } }, required: [inherited] };
+        assert.ok(validate(requiresInherited, JSON.parse('{}')).some(i => i.keyword === 'required'), `missing required ${inherited} must be reported`);
+    }
+    // Finding 5 (round 5): a fence marker inside an open HTML comment is comment text, not a fence, so
+    // the comment's closing line and the later heading stay visible. extractSourceUnits on the verdict's
+    // input yields a heading unit (fence-first recognition returned a single paragraph and no heading).
+    const fence = '`'.repeat(3);
+    const commentThenHeading = new TextEncoder().encode(`<!-- comment\n${fence}\n-->\n# Real heading\nbody\n`);
+    const cfUnits = extractSourceUnits('demo:comment-fence', 'sample.md', commentThenHeading);
+    const heading = cfUnits.find(u => u.role === 'heading');
+    assert.ok(heading, 'the heading after the terminated comment is extracted');
+    assert.equal(heading.start, 4);
     // D2a exact tuples and typed null/empty fields.
     for (const row of OBLIGATIONS.privateMetadata) {
         const entry = entryOf(catalog, row.id);
@@ -158,6 +184,19 @@ test('catalog.conservation-rejections', () => {
     }, 'map.title-only');
     // Remove a required source unit.
     expectRule(() => { const c = clone(catalog); const e = entryOf(c, 'baseline:plan-review'); e.sourceUnits = e.sourceUnits.slice(1); validateCatalog(c); }, 'unit.mismatch');
+    // Finding 2 (round 5): a catalog exclusion map row must carry a non-whitespace reason (D7). Missing,
+    // empty and whitespace-only reasons on an `exclude` row are each rejected. The reason is stripped
+    // from the compiled projection, so this is a policy rule, not a schema keyword outside the D3 list;
+    // the accepted catalog (validated above) is the positive control that a real reason passes.
+    const briefExcludeRow = (c) => {
+        const row = entryOf(c, 'baseline:brief').preservation.map.find(r => r.exclude !== undefined);
+        if (!row)
+            throw new Error('fixture: baseline:brief has no exclude row');
+        return row;
+    };
+    expectRule(() => { const c = clone(catalog); delete briefExcludeRow(c).reason; validateCatalog(c); }, 'map.exclusion-reason');
+    expectRule(() => { const c = clone(catalog); briefExcludeRow(c).reason = ''; validateCatalog(c); }, 'map.exclusion-reason');
+    expectRule(() => { const c = clone(catalog); briefExcludeRow(c).reason = '  \t  '; validateCatalog(c); }, 'map.exclusion-reason');
     // Finding 2: promote a preservation phase; misalign a snapshot's provider flags with applicability.
     expectRule(() => { const c = clone(catalog); entryOf(c, 'pocock:implement').preservation.phase = 'implemented'; validateCatalog(c); }, 'phase.promoted');
     expectRule(() => { const c = clone(catalog); entryOf(c, 'snapshot:distbench-claude-critique-swarm').providers.codex = true; entryOf(c, 'snapshot:distbench-claude-critique-swarm').providers.claude = false; validateCatalog(c); }, 'provider.mismatch');

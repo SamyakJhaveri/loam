@@ -13,7 +13,8 @@
 //       character and run length; it closes only on a line of the same character with a run
 //       at least as long followed by whitespace only. An unclosed fence runs to the end.
 //     - HTML comments: outside a fence, /^ {0,3}<!--/ without "-->" enters comment state,
-//       which ends on the first line containing "-->". Nothing inside is a heading.
+//       which ends on the first line containing "-->". Nothing inside opens a fence or a heading;
+//       the active comment is closed before a new fence is recognized.
 //     - heading: outside fences and comments, an ATX line /^ {0,3}#{1,6}([ \t]|$)/ starts a
 //       unit spanning through the line before the next heading, or the last line.
 //     - body: when headings exist, the lines after the frontmatter and before the first
@@ -77,9 +78,12 @@ export function extractSourceUnits(entryId: string, path: string, bytes: Uint8Ar
         if (close && close[1]![0] === fence.char && close[1]!.length >= fence.length) fence = null;
         continue;
       }
+      // An active HTML comment is terminated before a new fence is recognized: a fence marker inside
+      // an open comment is comment text, not a fence, so its closing `-->` and any later heading stay
+      // visible. Checking the fence-open first would swallow the comment's close line into a fence.
+      if (comment) { if (value.includes('-->')) comment = false; continue; }
       const open = /^ {0,3}(`{3,}|~{3,})/.exec(value);
       if (open) { fence = { char: open[1]![0]!, length: open[1]!.length }; fencedLine[i] = true; continue; }
-      if (comment) { if (value.includes('-->')) comment = false; continue; }
       if (/^ {0,3}<!--/.test(value) && !value.includes('-->')) { comment = true; continue; }
       if (/^ {0,3}#{1,6}([ \t]|$)/.test(value)) headings.push(i);
     }

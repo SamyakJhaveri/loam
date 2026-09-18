@@ -121,6 +121,7 @@ function sourcesMatchTree(obligations, root) {
 // binds the provenance graph to real spans and rejects a fabricated or foreign sourceUnit. (finding 2)
 function edgeSourceUnitsOwned(obligations) {
   const byEntry = new Map(obligations.entries.map(e => [e.id, e]));
+  const mirrorSeen = new Set();
   for (const edge of obligations.edges) {
     const from = byEntry.get(edge.fromEntry);
     // The fromEntry must exist before either the anchor rule or the ownership rule can bind. This
@@ -134,11 +135,30 @@ function edgeSourceUnitsOwned(obligations) {
     // or remote-declaration entry) and escape both the anchor rule and the unit-ownership rule. (finding 1, round 4)
     if (!edge.id.startsWith(`${edge.fromEntry}:`)) throw new Error(`edge ${edge.id} is not owned by fromEntry ${edge.fromEntry}`);
     if (edge.sourceUnit === null || edge.sourceUnit === undefined) {
-      // A required edge must carry a source-unit anchor unless it originates in a distribution-symlink
-      // entry (a mirror whose lessons live in the mirrored skill). The ownership guard cannot be evaded by
-      // dropping the anchor: every such edge in production carries one, so a null anchor here is a
-      // corruption. (finding 1; symlink exemption finding 1, round 4)
-      if (REQUIRED.has(edge.relationship) && from.source.type !== 'distribution-symlink') {
+      // A required edge must carry a source-unit anchor. The only exemption is a distribution-symlink
+      // mirror edge: a required-file edge from a distribution-symlink entry whose `to.entry` is the
+      // exact SKILL.md of that entry's mirrored canonical target (`${canonicalTarget}/SKILL.md`),
+      // whose adopted lessons live in the mirrored skill's own body. A broad "any distribution-symlink
+      // fromEntry" exemption let a foreign required edge be re-parented onto a symlink entry, with its
+      // id rewritten to pass the ownership-by-id check, and then skip the anchor rule; binding the
+      // exemption to the mirrored SKILL.md destination closes that. The two production mirror edges
+      // (catchup, fable-prompting) still pass. (finding 1; symlink exemption finding 1, round 4;
+      // narrowed finding 3, round 5)
+      const dest = edge.to.entry !== undefined ? byEntry.get(edge.to.entry) : undefined;
+      const isMirrorEdge = edge.relationship === 'required-file'
+        && from.source.type === 'distribution-symlink'
+        && typeof from.source.canonicalTarget === 'string'
+        && dest !== undefined && dest.source
+        && dest.source.path === `${from.source.canonicalTarget}/SKILL.md`;
+      // A distribution-symlink entry mirrors exactly one skill, so it has exactly one mirror edge. A
+      // second required-file edge re-parented onto the same symlink entry, with its id rewritten and its
+      // to.entry set to the mirrored SKILL.md, would otherwise pass as a mirror edge and erase the entry's
+      // real edge. Reject a second mirror edge per distribution-symlink entry. (critic-01 round 6)
+      if (isMirrorEdge) {
+        if (mirrorSeen.has(edge.fromEntry)) throw new Error(`edge ${edge.id} is a duplicate mirror edge for ${edge.fromEntry}`);
+        mirrorSeen.add(edge.fromEntry);
+      }
+      if (REQUIRED.has(edge.relationship) && !isMirrorEdge) {
         throw new Error(`edge ${edge.id} from body-backed ${edge.fromEntry} has no source-unit anchor`);
       }
       continue;
@@ -158,7 +178,13 @@ function edgeSourceUnitsOwned(obligations) {
 function preservationMapCoverage(obligations) {
   const targetsById = new Map(obligations.targets.map(t => [t.id, t]));
   for (const entry of obligations.entries) {
-    if (entry.source.type !== 'regular-file' && entry.source.type !== 'distribution-symlink') continue;
+    if (entry.source.type !== 'regular-file' && entry.source.type !== 'distribution-symlink') {
+      // A non-body entry (D2a private-local-metadata, remote-declaration) has no readable body, so D7
+      // requires empty source units and an empty preservation map. Copied units or map rows on such an
+      // entry are a corruption; the skip must not accept them silently. (critic-01 round 6)
+      if (entry.sourceUnits.length > 0 || (entry.map ?? []).length > 0) throw new Error(`entry ${entry.id} is a non-body ${entry.source.type} entry but carries source units or preservation-map rows`);
+      continue;
+    }
     if (entry.sourceUnits.length === 0) continue;
     const ownUnits = new Set(entry.sourceUnits.map(u => u.id));
     const hasTargets = entry.targets.length > 0;
@@ -174,6 +200,10 @@ function preservationMapCoverage(obligations) {
       if (typeof row.exclude === 'string') {
         // An exclusion covers its unit only when its class is one of the five declared classes. (finding C)
         if (!EXCLUDE_CLASSES.has(row.exclude)) throw new Error(`entry ${entry.id} preservation-map row for unit ${row.unit} names an unknown exclude class ${row.exclude}`);
+        // An exclusion is not a mapping: it must not also carry a target or a section. A row that both
+        // excludes and names a target/section would double as a delivery mapping and slip an unreviewed
+        // successor past the class check, which `continue`s immediately. (critic-01 round 6)
+        if ((row.target !== null && row.target !== undefined) || row.section !== undefined) throw new Error(`entry ${entry.id} exclusion map row for unit ${row.unit} also carries a target or section`);
         continue;
       }
       if (hasTargets) {
@@ -188,9 +218,13 @@ function preservationMapCoverage(obligations) {
         const target = targetsById.get(row.target);
         if (typeof row.section !== 'string' || !target.sectionKeys.includes(row.section)) throw new Error(`entry ${entry.id} preservation-map row for unit ${row.unit} names section ${row.section} not in target ${row.target}`);
       } else {
-        // A target-less entry carries a section-only lesson row; the section must be a kebab-case
+        // A target-less entry carries a section-only lesson row; it names no successor, so `target`
+        // must be absent (null or omitted, the two production encodings). A non-null, non-undefined
+        // target injected onto such a row is rejected: the target-less branch used to validate only
+        // the section and silently accepted an invented target. The section must still be a kebab-case
         // declaration (OBLIGATIONS-FORMAT.md). `section` is a cover form only here, never on an entry
-        // with targets. (findings B, C; kebab requirement finding 3, round 4)
+        // with targets. (findings B, C; kebab requirement finding 3, round 4; target rejection finding 4, round 5)
+        if (row.target !== null && row.target !== undefined) throw new Error(`entry ${entry.id} preservation-map row for unit ${row.unit} carries a target on a target-less entry`);
         if (typeof row.section !== 'string' || !/^[a-z0-9]+(-[a-z0-9]+)*$/.test(row.section)) throw new Error(`entry ${entry.id} preservation-map row for unit ${row.unit} has no kebab-case section`);
       }
     }
@@ -615,6 +649,77 @@ test('provenance.sources-match-tree', () => {
   const nkRow = nkEntry.map.find(r => typeof r.section === 'string' && typeof r.target !== 'string' && typeof r.exclude !== 'string');
   nkRow.section = 'Not A Kebab Key!';
   assert.throws(() => preservationMapCoverage(nonKebab), err => err.message.includes(`entry ${nkEntry.id} preservation-map row for unit ${nkRow.unit} has no kebab-case section`));
+
+  // Finding 3 (round 5 / candidate-04): the narrowed distribution-symlink anchor exemption. A
+  // body-backed required edge is re-parented onto a distribution-symlink entry with its anchor nulled
+  // AND its id rewritten to `${symlink}:e2`, so it passes the ownership-by-id check. Its destination is
+  // not the mirrored `${canonicalTarget}/SKILL.md`, so the exemption (required-file to the mirrored
+  // SKILL.md only) does not apply and the missing anchor is rejected, naming the edge. The old broad
+  // "any distribution-symlink fromEntry" exemption accepted this unrelated required edge.
+  const rewrittenReparent = cloneOb();
+  const rwSymlink = rewrittenReparent.entries.find(e => e.source.type === 'distribution-symlink');
+  assert.ok(rwSymlink, 'a distribution-symlink entry exists in production');
+  const rwByEntry = new Map(rewrittenReparent.entries.map(e => [e.id, e]));
+  const rwEdge = rewrittenReparent.edges.find(e => { const f = rwByEntry.get(e.fromEntry); return e.sourceUnit !== null && f && f.source.type === 'regular-file' && REQUIRED.has(e.relationship); });
+  rwEdge.sourceUnit = null;
+  rwEdge.fromEntry = rwSymlink.id;
+  rwEdge.id = `${rwSymlink.id}:e2`;
+  assert.throws(() => sourcesMatchTree(rewrittenReparent, repo), err => err.message.includes(`edge ${rwEdge.id}`) && err.message.includes('has no source-unit anchor'));
+  // The two production mirror edges (catchup, fable-prompting) still resolve under the narrowed
+  // exemption: sourcesMatchTree already ran clean above, and both are required-file edges to their
+  // mirrored SKILL.md.
+  const mirrorEdges = OBLIGATIONS.edges.filter(e => { const f = OBLIGATIONS.entries.find(x => x.id === e.fromEntry); return f && f.source.type === 'distribution-symlink' && e.relationship === 'required-file'; });
+  assert.equal(mirrorEdges.length, 2);
+  for (const e of mirrorEdges) {
+    const f = OBLIGATIONS.entries.find(x => x.id === e.fromEntry);
+    const dest = OBLIGATIONS.entries.find(x => x.id === e.to.entry);
+    assert.equal(dest.source.path, `${f.source.canonicalTarget}/SKILL.md`);
+  }
+
+  // Finding 4 (round 5 / candidate-04): a target injected onto a target-less entry's section-only row.
+  // The target-less branch used to validate only the section and accepted an invented target; it now
+  // rejects any non-null, non-undefined target, naming the entry and unit. Production's 207 null-target
+  // and 15 target-omitting section rows still pass (sourcesMatchTree ran clean above).
+  const injectedTarget = cloneOb();
+  const itEntry = injectedTarget.entries.find(e => e.source.type === 'regular-file' && e.sourceUnits.length > 0 && e.targets.length === 0 && (e.map ?? []).some(r => typeof r.section === 'string' && typeof r.target !== 'string' && typeof r.exclude !== 'string'));
+  assert.ok(itEntry, 'a target-less entry with a section-only row exists in production');
+  const itRow = itEntry.map.find(r => typeof r.section === 'string' && typeof r.target !== 'string' && typeof r.exclude !== 'string');
+  itRow.target = 'method:nonexistent';
+  assert.throws(() => preservationMapCoverage(injectedTarget), err => err.message.includes(`entry ${itEntry.id} preservation-map row for unit ${itRow.unit} carries a target on a target-less entry`));
+
+  // critic-01 round 6 (a): a second mirror edge on a distribution-symlink entry. A foreign required-file
+  // edge re-parented onto the symlink entry, its id rewritten to `<symlink>:e2` and its to.entry set to
+  // the mirrored SKILL.md, would pass as a mirror edge and erase the entry's real edge. Rejected as a
+  // duplicate mirror edge, naming the edge and fromEntry.
+  const dupMirror = cloneOb();
+  const dmByEntry = new Map(dupMirror.entries.map(e => [e.id, e]));
+  const realMirror = dupMirror.edges.find(e => { const f = dmByEntry.get(e.fromEntry); return (e.sourceUnit === null || e.sourceUnit === undefined) && e.relationship === 'required-file' && f && f.source.type === 'distribution-symlink'; });
+  assert.ok(realMirror, 'a distribution-symlink mirror edge exists in production');
+  const secondMirror = structuredClone(realMirror);
+  secondMirror.id = `${realMirror.fromEntry}:e2`;
+  dupMirror.edges.push(secondMirror);
+  assert.throws(() => sourcesMatchTree(dupMirror, repo), err => err.message.includes(`edge ${secondMirror.id} is a duplicate mirror edge for ${realMirror.fromEntry}`));
+
+  // critic-01 round 6 (b): an exclusion row that also carries a target and a section. The class check
+  // used to `continue` immediately, so the row doubled as a delivery mapping to an unreviewed successor.
+  // Rejected naming the entry and unit.
+  const excludePlus = cloneOb();
+  const epEntry = excludePlus.entries.find(e => e.source.type === 'regular-file' && e.sourceUnits.length > 0 && (e.map ?? []).some(r => typeof r.exclude === 'string'));
+  assert.ok(epEntry, 'an entry with an exclusion row exists in production');
+  const epRow = epEntry.map.find(r => typeof r.exclude === 'string');
+  epRow.target = 'method:catchup';
+  epRow.section = 'zzz';
+  assert.throws(() => preservationMapCoverage(excludePlus), err => err.message.includes(`entry ${epEntry.id} exclusion map row for unit ${epRow.unit} also carries a target or section`));
+
+  // critic-01 round 6 (c): a D2a private-local-metadata entry given copied source units. Non-body entries
+  // are skipped before any emptiness check, so D7's empty-units/empty-map rule was unenforced. The id is
+  // taken from OBLIGATIONS.privateMetadata at runtime, never typed. Rejected naming the entry.
+  const d2aUnits = cloneOb();
+  const privId = d2aUnits.privateMetadata[0].id;
+  const privEntry = d2aUnits.entries.find(e => e.id === privId);
+  assert.ok(privEntry && privEntry.source.type === 'private-local-metadata', 'a D2a private-local-metadata entry exists in production');
+  privEntry.sourceUnits = [{ id: `${privId}:u1`, role: 'body', start: 1, end: 1, sha256: '0'.repeat(64) }];
+  assert.throws(() => preservationMapCoverage(d2aUnits), err => err.message.includes(`entry ${privId} is a non-body private-local-metadata entry but carries source units or preservation-map rows`));
 });
 
 // ---------------------------------------------------------------------------

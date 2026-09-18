@@ -334,6 +334,11 @@ export function validateCatalog(catalog: Catalog): CatalogReport {
     for (const row of entry.preservation.map) {
       if (!unitIds.has(row.unit)) fail('map.missing-unit', `${entry.id} map row references unknown unit ${row.unit}`);
       if (typeof row.target === 'string' && !targetIds.has(row.target)) fail('map.unknown-target', `${entry.id} map row references unknown target ${row.target}`);
+      // A catalog exclusion must state why (D7): an `exclude` row carries a non-whitespace reason.
+      // The reason is stripped from the compiled projection (projectMapRow), so this rule lives in
+      // policy, not in a schema keyword outside the D3 vocabulary; compiled provenance rows, whose
+      // reason is already gone, are never required to carry one.
+      if (row.exclude !== undefined && (typeof row.reason !== 'string' || row.reason.trim() === '')) fail('map.exclusion-reason', `${entry.id} exclusion map row for unit ${row.unit} has no non-empty reason`);
     }
     const bodyBacked = entry.sourceUnits.length > 0;
     const mapped = entry.preservation.map.filter(row => typeof row.target === 'string' || (typeof row.section === 'string' && row.exclude === undefined));

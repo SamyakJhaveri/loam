@@ -53,7 +53,9 @@ export function assertSchemaDocument(schema) {
             const ref = value.$ref;
             if (typeof ref !== 'string' || !/^#\/\$defs\/[A-Za-z0-9_-]+$/.test(ref))
                 return fail(path, 'only local #/$defs references are supported');
-            if (!(ref.slice('#/$defs/'.length) in defs))
+            // Object.hasOwn, not `in`: a `$ref` naming an inherited Object.prototype member (constructor,
+            // toString, __proto__) must be an unresolved reference, not a silently accepted definition.
+            if (!Object.hasOwn(defs, ref.slice('#/$defs/'.length)))
                 fail(path, `unresolved reference ${ref}`);
         }
         if ('$schema' in value && typeof value.$schema !== 'string')
@@ -181,11 +183,15 @@ export function validate(schema, instance) {
             issue(path, 'pattern', `value does not match ${String(node.pattern)}`);
         if (isRecord(value)) {
             const properties = isRecord(node.properties) ? node.properties : {};
+            // Object.hasOwn, not `in`, for every membership test against the untrusted instance and the
+            // schema's declared properties: an instance property named after an inherited Object.prototype
+            // member (constructor, toString, __proto__) must count as absent for `required` and as
+            // undeclared (so additionalProperties:false rejects it), never as present via the prototype.
             for (const name of node.required ?? [])
-                if (!(name in value))
+                if (!Object.hasOwn(value, name))
                     issue(path, 'required', `missing property ${name}`);
             for (const [name, sub] of Object.entries(value)) {
-                if (name in properties)
+                if (Object.hasOwn(properties, name))
                     check(properties[name], sub, `${path}/${name}`);
                 else if (node.additionalProperties === false)
                     issue(`${path}/${name}`, 'additionalProperties', 'property is not declared');
