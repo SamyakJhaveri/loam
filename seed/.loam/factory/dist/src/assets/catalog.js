@@ -74,7 +74,7 @@ export function containedPath(root, rel) {
 // not treated as user data.
 // ---------------------------------------------------------------------------
 const PERSONAL_PATH = [
-    /(^|[^A-Za-z0-9_])~([A-Za-z_][A-Za-z0-9_.-]*)?\/[^\s]/, // tilde home: bare ~/ or named-user ~operator/
+    /~([A-Za-z_][A-Za-z0-9_.-]*)?\/[^\s]/, // tilde home anywhere in prose: bare ~/ or named-user ~operator/, no leading boundary (finding 3)
     /\/Users\/[^/\s]/i, // macOS home (case-insensitive: /users too)
     /\/home\/[^/\s]/i, // linux home (case-insensitive)
     /\/private\/tmp(\/|\b)/, // macOS operator temp (symlink form)
