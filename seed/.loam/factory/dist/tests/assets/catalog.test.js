@@ -71,6 +71,19 @@ test('catalog.schema-and-payload', () => {
     const refSchema = { $defs: { id: { type: 'string' } }, type: 'object', additionalProperties: false, properties: { x: { $ref: '#/$defs/id' } } };
     ok(refSchema, { x: 'y' });
     bad(refSchema, { x: 1 });
+    // Finding 2 (round 6): a definition name is a dictionary key, not a schema keyword at that position
+    // (D3 distinguishes property/definition names from keywords). A $def named after a keyword (`type`,
+    // `items`, `description`) with a matching local $ref resolves, and its value still validates.
+    for (const kw of ['type', 'items', 'description']) {
+        const s = { $defs: { [kw]: { type: 'string' } }, type: 'object', additionalProperties: false, properties: { x: { $ref: `#/$defs/${kw}` } } };
+        assert.doesNotThrow(() => assertSchemaDocument(s), `$def named ${kw} must be accepted`);
+        ok(s, { x: 'v' });
+        bad(s, { x: 1 });
+    }
+    // The keyword-named definition's value is still a schema node: an unknown keyword inside it is
+    // rejected, and a $ref to an undeclared keyword-like name stays an unresolved reference.
+    assert.throws(() => assertSchemaDocument({ $defs: { type: { mystery: 1 } } }), /unknown keyword/);
+    assert.throws(() => assertSchemaDocument({ type: 'object', additionalProperties: false, properties: { x: { $ref: '#/$defs/items' } } }), /unresolved reference/);
     // unknown keyword, missing reference, non-local reference, cyclic reference are schema-document errors
     assert.throws(() => assertSchemaDocument({ type: 'object', mystery: 1 }));
     assert.throws(() => assertSchemaDocument({ type: 'object', properties: { a: { $ref: '#/$defs/nope' } } }));
@@ -237,6 +250,20 @@ test('catalog.conservation-rejections', () => {
     // Positive control: a generic non-personal path is accepted; an approximation like ~5/10 is not a path.
     assert.doesNotThrow(() => { const c = clone(catalog); entryOf(c, 'baseline:plan-review').notes = 'see .agents/skills/plan-review/SKILL.md'; validateCatalog(c); });
     assert.equal(scanPersonalPaths({ n: 'roughly ~5/10 of cases and ~2/3 done' }).length, 0);
+    // Finding 3 (round 6): a tilde-home path is recognized even when it directly adjoins preceding text
+    // (no leading word boundary), in nested values and in object keys. `see~operator/x` and `note~/x`
+    // must hit. Built at runtime so the forbidden string is never a literal in the test source (D11).
+    const adjNamed = ['see', '~', 'operator', '/x'].join(''); // adjacent named-user tilde: see~operator/x
+    const adjBare = ['note', '~', '/secret'].join(''); // adjacent bare-home tilde: note~/secret
+    for (const form of [adjNamed, adjBare]) {
+        assert.ok(scanPersonalPaths({ notes: form }).length > 0, `adjacent tilde nested value: ${form}`);
+        assert.ok(scanPersonalPaths({ blockers: [form] }).length > 0, `adjacent tilde array element: ${form}`);
+        assert.ok(scanPersonalPaths({ [form]: true }).length > 0, `adjacent tilde object key: ${form}`);
+    }
+    expectRule(() => { const c = clone(catalog); entryOf(c, 'baseline:plan-review').notes = `moved ${adjNamed}`; validateCatalog(c); }, 'privacy.personal-path');
+    expectRule(() => { const c = clone(catalog); entryOf(c, 'baseline:plan-review')[adjBare] = true; validateCatalog(c); }, 'privacy.personal-path');
+    // The bare `~/` and named `~word/` forms are also caught standing alone at the start of a string.
+    assert.ok(scanPersonalPaths({ n: '~/secret' }).length > 0, 'leading bare tilde still caught');
     // Finding 7 (round 2): the /Users and /home patterns are case-insensitive, so a lowercase /users
     // home path in a note is caught end-to-end; and the `pattern`-key exemption is confined to the
     // schema document, so a `pattern` key carrying a personal path in any other document is no longer

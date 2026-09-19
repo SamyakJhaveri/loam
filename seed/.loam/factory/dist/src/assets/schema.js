@@ -119,11 +119,12 @@ export function assertSchemaDocument(schema) {
     if ('$defs' in schema) {
         if (!isRecord(schema.$defs))
             fail('#/$defs', '$defs must be an object');
-        for (const [name, sub] of Object.entries(defs)) {
-            if (KEYWORDS.has(name))
-                fail(`#/$defs/${name}`, 'definition name collides with a keyword');
+        // Definition names are dictionary keys, not schema keywords at this position (D3): a $def may be
+        // named `type`, `items` or `description` and reached by a matching local $ref. Only its value is a
+        // schema node, validated by node(). Unknown keywords inside that node, and unresolved references
+        // (including inherited Object.prototype names), stay rejected by node() and the $ref resolver.
+        for (const [name, sub] of Object.entries(defs))
             node(sub, `#/$defs/${name}`, false);
-        }
     }
     // Reference graph must be acyclic: a definition may not reach itself through $ref.
     const refsOf = (value, out) => {
