@@ -1,8 +1,8 @@
 # Resume Loam architecture with Astra
 
-## Current handoff: NATIVE-05 candidate-05 on PR #142, Codex APPROVE, merge waits for the operator; CORE-04 merged
+## Current handoff: NATIVE-05 merged; next ticket CORE-03
 
-NATIVE-05 (#117) is the curated catalog candidate, integrated onto main `750a43a88481e73897f41eefcd81292d2213add4` after CORE-04. This merges the candidate branch `native-05-catalog-impl` (from base `e4c6f474094340dd9829740d9004a0a36e1c121b`) into refreshed main, keeping both features' additions with nothing dropped: the catalog and provenance gates run after platform in `bin/check`, `launcher.mjs` carries `qualify catalog` alongside CORE-04's admission subcommands, `verify.ts` and `package.test.ts` merge both populations and required lists, and `SETUP.md` keeps both sections. Read [native-05-handoff.md](native-05-handoff.md) for what the candidate contains and what it does not claim. The catalog records conservation only: every method stays pending, nothing is activated, no wrapper file exists. Independent finished-work review and both-host qualification are recorded under the operator evidence root. The integration merge is committed on the branch as the candidate under review; push and pull request wait for the finished-work review and Samyak's instruction. Everything below this section describes earlier states.
+NATIVE-05 (#117) is merged through [PR #142](https://github.com/SamyakJhaveri/loam/pull/142) as merge commit `aef2d892f0abc24f24a9d08f5cd6e97ed7fc27f4`; the merged `seed/.loam/factory` tree is `1ff30fb7ad386cc4bde5c48265f0d7f13198263e`, exactly candidate-05's. Read [native-05-acceptance.md](native-05-acceptance.md) for the evidence, the two Codex verdicts and the follow-ups #143, #144 and #145. Start the next bounded implementation with [CORE-03](tickets/04-core-03.md) from this main (its planning worktree at `8f0655b` rebases first); [CORE-05](tickets/05-core-05.md) is also eligible.
 
 ## Earlier handoff: CORE-04 merged; next ticket CORE-03
 
