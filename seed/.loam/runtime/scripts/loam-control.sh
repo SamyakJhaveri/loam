@@ -358,10 +358,10 @@ if [ "$VERB" = 'admit' ]; then
   __real=$(cd "$TRUSTED" 2>/dev/null && pwd -P) || emit_unavailable trusted-source-shape "$TRUSTED"
   contains_control "$__real" && emit_unavailable trusted-source-shape 'trusted source path contains control characters'
   case "$__real" in
-    */seed/.loam/factory) : ;;
+    */seed/.loam/runtime) : ;;
     *) emit_unavailable trusted-source-shape "$__real" ;;
   esac
-  __repo=${__real%/seed/.loam/factory}
+  __repo=${__real%/seed/.loam/runtime}
   for __sentinel in copier.yml VERSION bin/release.sh; do
     [ -e "$__repo/$__sentinel" ] || emit_unavailable trusted-source-shape "$__repo missing $__sentinel"
   done

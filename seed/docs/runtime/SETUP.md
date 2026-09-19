@@ -2,7 +2,7 @@
 
 ## What this package provides
 
-`.loam/factory` contains editable TypeScript source, the matching JavaScript in
+`.loam/runtime` contains editable TypeScript source, the matching JavaScript in
 `dist`, fixed package tests, and locked development tools. TypeScript is the source
 we maintain. The compiler converts it into JavaScript that Node executes.
 
@@ -19,8 +19,8 @@ declaration; `supportedRuntime` stays false.
 With Node available, run these from your generated project's root:
 
 ```bash
-node .loam/factory/launcher.mjs qualify package
-node .loam/factory/launcher.mjs status
+node .loam/runtime/launcher.mjs qualify package
+node .loam/runtime/launcher.mjs status
 ```
 
 The first command runs the supplied JavaScript tests and prints the exact case names
@@ -35,8 +35,8 @@ visible; a package pass cannot stand in for future installation or execution che
 Two further recipient commands qualify the mechanical foundation on a host:
 
 ```bash
-node .loam/factory/launcher.mjs qualify platform
-node .loam/factory/launcher.mjs qualify native-boundary
+node .loam/runtime/launcher.mjs qualify platform
+node .loam/runtime/launcher.mjs qualify native-boundary
 ```
 
 `qualify platform` proves runtime identity against the manifest, existing-only SQLite
@@ -107,7 +107,7 @@ per-platform executable digests as candidates, not a support declaration.
 ## Catalog qualification
 
 ```bash
-node .loam/factory/launcher.mjs qualify catalog
+node .loam/runtime/launcher.mjs qualify catalog
 ```
 
 `qualify catalog` runs the fixed `curated-catalog` population against
@@ -129,9 +129,9 @@ The operator entrypoint is `scripts/loam-control.sh`, a dependency-free POSIX `s
 Admit a runtime from the trusted checkout:
 
 ```bash
-/bin/sh <checkout>/seed/.loam/factory/scripts/loam-control.sh \
+/bin/sh <checkout>/seed/.loam/runtime/scripts/loam-control.sh \
   --toolchain <node-24.21.0-distribution> --control-root <root> \
-  admit --trusted-source <checkout>/seed/.loam/factory --release-identity <label>
+  admit --trusted-source <checkout>/seed/.loam/runtime --release-identity <label>
 ```
 
 Each optional `--protect-state`, `--protect-locks`, `--protect-credentials`, `--protect-sockets` or `--protect-callbacks` flag redirects one protected home to an existing directory outside the control root.
@@ -139,8 +139,8 @@ Each optional `--protect-state`, `--protect-locks`, `--protect-credentials`, `--
 Run read-only diagnostics against an admitted control root:
 
 ```bash
-node .loam/factory/launcher.mjs status --control-root <root>
-node .loam/factory/launcher.mjs doctor --control-root <root> --checkout <checkout>/seed/.loam/factory
+node .loam/runtime/launcher.mjs status --control-root <root>
+node .loam/runtime/launcher.mjs doctor --control-root <root> --checkout <checkout>/seed/.loam/runtime
 ```
 
 The launcher is a convenience resolver, not the trust root.
@@ -199,9 +199,9 @@ Set its absolute location before installing or building:
 ```bash
 export LOAM_FACTORY_TOOLCHAIN="/absolute/path/to/node-v24.21.0-distribution"
 export PATH="$LOAM_FACTORY_TOOLCHAIN/bin:$PATH"
-node .loam/factory/scripts/toolchain.mjs install "$PWD/.loam/factory"
-npm --prefix .loam/factory run build
-npm --prefix .loam/factory run verify:build
+node .loam/runtime/scripts/toolchain.mjs install "$PWD/.loam/runtime"
+npm --prefix .loam/runtime run build
+npm --prefix .loam/runtime run verify:build
 ```
 
 The install helper uses the committed lock, empty npm configuration files, a fresh

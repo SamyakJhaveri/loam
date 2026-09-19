@@ -18,4 +18,8 @@ Archived in S4 (2026-09-07), after S3 deleted the machinery they describe:
 - `specs/2026-09-01-harness-smoke-rig-design.md`, `specs/routing-doc-repair-plan.md`, `specs/sam-cc-consolidation-*.md`, `specs/clief-claude-code-plan-mode-handoff.md` - spent plans that route work through `bin/verify-template.sh`.
 - `superpowers/` - the rendered-harness-contract and agent-efficiency plans and specs, all built on deleted checkers.
 
+Archived 2026-09-19, after the factory inspection:
+
+- `architecture-working/` - the spent working design corpus of the native runtime campaign (2026-08 to 2026-09). The live index stays at `docs/architecture-working/tickets/README.md`; the catalog-bound sources, acceptance records, and ticket bodies stayed behind.
+
 `docs/plans/marketing/` did not exist on this branch at v3 time, so nothing from it was archived.

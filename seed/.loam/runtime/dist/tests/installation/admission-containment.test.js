@@ -75,7 +75,7 @@ function integrityOf(tarball) {
 // fixture, covered by allowScripts.
 function makeTrusted(scriptedFixture) {
     const repo = join(base(), 'repo');
-    const trusted = join(repo, 'seed/.loam/factory');
+    const trusted = join(repo, 'seed/.loam/runtime');
     mkdirSync(join(repo, 'bin'), { recursive: true });
     writeFileSync(join(repo, 'copier.yml'), '# scratch\n');
     writeFileSync(join(repo, 'VERSION'), '0.0.0\n');

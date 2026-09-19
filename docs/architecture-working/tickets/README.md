@@ -1,5 +1,7 @@
 # Generated factory ticket backlog
 
+The loop factory's own roadmap and its frozen items are in `docs/factory/ROADMAP.md`. The archived working corpus is in `docs/archive/architecture-working/`.
+
 **Status: complete draft for review; publication and runtime implementation have not started.**
 
 Read the [campaign contract](../ticket-campaign.md), [source inventory](../source-inventory.md), and [tool assessment](../ticketing-tool-assessment.md). Each link below opens the complete issue body. IDs are stable planning identifiers, not GitHub issue numbers. The order is topological; independent capability work is possible, but each integrated step still starts from latest main. Later tickets are revalidated against qualification results before their plan review.

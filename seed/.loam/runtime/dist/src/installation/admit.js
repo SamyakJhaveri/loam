@@ -132,15 +132,15 @@ function resolveTrustedSource(trustedSource, controlRoot) {
     catch {
         throw new AdmissionError('trusted-source-shape', `trusted source does not resolve: ${trustedSource}`);
     }
-    if (!source.split(sep).slice(-3).join('/').endsWith('seed/.loam/factory')) {
-        throw new AdmissionError('trusted-source-shape', 'trusted source realpath must end with seed/.loam/factory');
+    if (!source.split(sep).slice(-3).join('/').endsWith('seed/.loam/runtime')) {
+        throw new AdmissionError('trusted-source-shape', 'trusted source realpath must end with seed/.loam/runtime');
     }
     const repoRoot = dirname(dirname(dirname(source)));
     for (const sentinel of ['copier.yml', 'VERSION', 'bin/release.sh']) {
         if (!existsSync(join(repoRoot, sentinel)))
             throw new AdmissionError('trusted-source-shape', `trusted repository root missing ${sentinel}`);
     }
-    if (existsSync(join(repoRoot, '.loam/factory')))
+    if (existsSync(join(repoRoot, '.loam/runtime')))
         throw new AdmissionError('trusted-source-shape', 'trusted repository root looks like a rendered candidate');
     const control = realpathOr(controlRoot);
     if (contains(source, control) || contains(control, source))
