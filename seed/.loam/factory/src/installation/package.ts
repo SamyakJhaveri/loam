@@ -12,7 +12,7 @@ export interface ReleaseManifest {
 }
 const ignored = new Set(['node_modules', '.cache', '.state', 'runtime-installation']);
 const directories = new Set(['src', 'tests', 'scripts', 'assets', 'dist']);
-const required = ['.gitignore', 'package.json', 'package-lock.json', 'tsconfig.json', 'launcher.mjs', 'assets/runtime-manifest.json'];
+const required = ['.gitignore', 'package.json', 'package-lock.json', 'tsconfig.json', 'launcher.mjs', 'assets/runtime-manifest.json', 'assets/curated-catalog.json', 'assets/curated-catalog.schema.json'];
 const topFiles = new Set([...required.filter(p => !p.includes('/')), 'release-manifest.json']);
 const hash = (value: string | Uint8Array): string => createHash('sha256').update(value).digest('hex');
 const sorted = (paths: string[]): string[] => paths.sort((a, b) => Buffer.compare(Buffer.from(a), Buffer.from(b)));

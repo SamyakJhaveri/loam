@@ -28,9 +28,11 @@ checks that the factory payload exactly matches Git's index. Stage intended fact
 changes before running it. Build source changes explicitly with
 `npm --prefix seed/.loam/factory run build`, then stage the source, compiled output and
 release manifest together. A stale or missing compiled file fails the check.
-`bin/check` also runs `qualify platform` (storage, lifetime locks, runtime identity);
-candidate containment (`qualify native-boundary`) is a host-only gate run from a plain
-terminal, not by `bin/check` or CI. See [factory setup](seed/docs/factory/SETUP.md).
+
+`bin/check` also runs `qualify platform`, `qualify catalog` and
+`bin/factory-catalog-provenance.mjs`; `qualify native-boundary` is a host-only gate run
+from a plain terminal, not by `bin/check` or CI. See [factory setup](seed/docs/factory/SETUP.md)
+and [curated assets](seed/docs/factory/ASSETS.md).
 
 The factory's dependencies stay under `seed/.loam/factory/node_modules`. Project-root
 packages cannot supply a missing compiler or Node type package. Recipient package

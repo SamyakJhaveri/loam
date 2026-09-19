@@ -4,7 +4,7 @@ import { isBuiltin } from 'node:module';
 import { dirname, isAbsolute, join, relative, resolve, sep } from 'node:path';
 const ignored = new Set(['node_modules', '.cache', '.state', 'runtime-installation']);
 const directories = new Set(['src', 'tests', 'scripts', 'assets', 'dist']);
-const required = ['.gitignore', 'package.json', 'package-lock.json', 'tsconfig.json', 'launcher.mjs', 'assets/runtime-manifest.json'];
+const required = ['.gitignore', 'package.json', 'package-lock.json', 'tsconfig.json', 'launcher.mjs', 'assets/runtime-manifest.json', 'assets/curated-catalog.json', 'assets/curated-catalog.schema.json'];
 const topFiles = new Set([...required.filter(p => !p.includes('/')), 'release-manifest.json']);
 const hash = (value) => createHash('sha256').update(value).digest('hex');
 const sorted = (paths) => paths.sort((a, b) => Buffer.compare(Buffer.from(a), Buffer.from(b)));

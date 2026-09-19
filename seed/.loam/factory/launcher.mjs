@@ -16,6 +16,10 @@ try {
     const { QUALIFICATION_CASES, runFixedFixture } = await import('./dist/src/testing/verify.js');
     const report = await runFixedFixture(fileURLToPath(new URL('./dist/tests/platform/qualification.test.js', import.meta.url)), QUALIFICATION_CASES, 120000);
     console.log(JSON.stringify({ kind: 'platform-qualification', status: 'passed', ...report, environment }));
+  } else if (args.length === 2 && args[0] === 'qualify' && args[1] === 'catalog') {
+    const { CATALOG_CASES, runFixedFixture } = await import('./dist/src/testing/verify.js');
+    const report = await runFixedFixture(fileURLToPath(new URL('./dist/tests/assets/catalog.test.js', import.meta.url)), CATALOG_CASES, 120000);
+    console.log(JSON.stringify({ kind: 'catalog-qualification', status: 'passed', ...report, environment }));
   } else if (args.length === 2 && args[0] === 'qualify' && args[1] === 'native-boundary') {
     const { NATIVE_BOUNDARY_CASES, runFixedFixture } = await import('./dist/src/testing/verify.js');
     const report = await runFixedFixture(fileURLToPath(new URL('./dist/tests/platform/native-boundary.test.js', import.meta.url)), NATIVE_BOUNDARY_CASES, 120000);
@@ -59,7 +63,7 @@ try {
       process.exitCode = result.status === null ? 1 : result.status;
     }
   } else {
-    throw new Error('Usage: node launcher.mjs qualify package | qualify platform | qualify native-boundary | qualify runtime-admission | qualify admission-containment | verify <group> | status [--control-root <path>] | doctor [--control-root <path>] [--checkout <path>]');
+    throw new Error('Usage: node launcher.mjs qualify package | qualify platform | qualify catalog | qualify native-boundary | qualify runtime-admission | qualify admission-containment | verify <group> | status [--control-root <path>] | doctor [--control-root <path>] [--checkout <path>]');
   }
 } catch (error) {
   console.error(JSON.stringify({ status: 'failed', error: error instanceof Error ? error.message : String(error) }));

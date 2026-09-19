@@ -6,7 +6,7 @@ import { spawnSync } from 'node:child_process';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { test } from 'node:test';
 import { assertImportClosure, createReleaseManifest, payloadFiles, snapshot, verifyPackage } from '../../src/installation/package.js';
-import { ADMISSION_CASES, ADMISSION_CONTAINMENT_CASES, assertCaseResults, GROUPS, NATIVE_BOUNDARY_CASES, PACKAGE_CASES, POPULATIONS, QUALIFICATION_CASES, requireGroup } from '../../src/testing/verify.js';
+import { ADMISSION_CASES, ADMISSION_CONTAINMENT_CASES, assertCaseResults, CATALOG_CASES, GROUPS, NATIVE_BOUNDARY_CASES, PACKAGE_CASES, POPULATIONS, PROVENANCE_CASES, QUALIFICATION_CASES, requireGroup } from '../../src/testing/verify.js';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '../../..');
 function clone(): string {
@@ -69,6 +69,9 @@ test('package.registry-obligations', () => {
     ['platform-qualification', { fixture: 'dist/tests/platform/qualification.test.js', cases: QUALIFICATION_CASES }],
     // native-boundary is host-only; see the OPS-10 note in verify.ts POPULATIONS.
     ['native-boundary', { fixture: 'dist/tests/platform/native-boundary.test.js', cases: NATIVE_BOUNDARY_CASES }],
+    ['curated-catalog', { fixture: 'dist/tests/assets/catalog.test.js', cases: CATALOG_CASES }],
+    // catalog-provenance is Loam-only (release-only scope); its fixture lives under the repository bin/, not the payload.
+    ['catalog-provenance', { fixture: 'bin/tests/factory-catalog-provenance.test.mjs', cases: PROVENANCE_CASES }],
     ['runtime-admission', { fixture: 'dist/tests/installation/admission.test.js', cases: ADMISSION_CASES }],
     // admission-containment is host-only; see the CORE-04 note in verify.ts POPULATIONS.
     ['admission-containment', { fixture: 'dist/tests/installation/admission-containment.test.js', cases: ADMISSION_CONTAINMENT_CASES }],
@@ -89,6 +92,20 @@ test('package.registry-obligations', () => {
     if (!available.has(population.id)) assert.equal(population.available, false);
   }
   assert.deepEqual(POPULATIONS.find(value => value.id === 'curated-workflows')?.owners, ['NATIVE-06', 'NATIVE-07']);
+  // NATIVE-05 populations: the recipient catalog case group is mandatory in installation; provenance is release-only with no groups.
+  const catalog = POPULATIONS.find(value => value.id === 'curated-catalog')!;
+  assert.equal(catalog.scope, 'recipient');
+  assert.deepEqual(catalog.groups, ['installation']);
+  assert.deepEqual(catalog.owners, ['NATIVE-05']);
+  assert.ok(existsSync(join(root, catalog.fixture!)), 'catalog fixture must ship in the payload');
+  const provenance = POPULATIONS.find(value => value.id === 'catalog-provenance')!;
+  assert.equal(provenance.scope, 'release-only');
+  assert.deepEqual(provenance.groups, []);
+  assert.deepEqual(provenance.owners, ['NATIVE-05']);
+  assert.equal(existsSync(join(root, provenance.fixture!)), false, 'release-only fixture is not a recipient payload file');
+  for (const name of ['assets/curated-catalog.json', 'assets/curated-catalog.schema.json']) assert.ok(createReleaseManifest(root).files[name], `${name} is a required payload`);
+  changed(path => rmSync(join(path, 'assets/curated-catalog.json')));
+  changed(path => rmSync(join(path, 'assets/curated-catalog.schema.json')));
 });
 test('package.unknown-group', () => assert.throws(() => requireGroup('not-a-group')));
 test('package.unavailable-groups', () => {
