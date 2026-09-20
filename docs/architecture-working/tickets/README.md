@@ -2,7 +2,7 @@
 
 The loop factory's own roadmap and its frozen items are in `docs/factory/ROADMAP.md`. The archived working corpus is in `docs/archive/architecture-working/`.
 
-**Status: complete draft for review; publication and runtime implementation have not started.**
+**Status: live index; CORE-01, CORE-02, CORE-04 and NATIVE-05 are merged, the first method shipped in SLICE-01 (PR #148), every other ticket is a draft that is assessed before it is built.**
 
 Read the [campaign contract](../ticket-campaign.md), [source inventory](../source-inventory.md), and [tool assessment](../ticketing-tool-assessment.md). Each link below opens the complete issue body. IDs are stable planning identifiers, not GitHub issue numbers. The order is topological; independent capability work is possible, but each integrated step still starts from latest main. Later tickets are revalidated against qualification results before their plan review.
 
