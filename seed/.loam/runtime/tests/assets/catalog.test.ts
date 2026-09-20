@@ -165,8 +165,12 @@ test('catalog.conservation-rejections', () => {
   expectRule(() => { const c = clone(catalog); const e = entryOf(c, 'baseline:plan-review'); e.dependencies = e.dependencies.filter(d => d.id !== 'baseline:plan-review:e1'); validateCatalog(c); }, 'edge.inverse');
   // Retarget a required edge at an entry that does not exist: it no longer resolves.
   expectRule(() => { const c = clone(catalog); entryOf(c, 'baseline:plan-review').dependencies[0]!.to = { entry: 'support:does-not-exist' }; validateCatalog(c); }, 'edge.unresolved');
+  // A replacement that names a target the catalog does not carry: it no longer resolves.
+  expectRule(() => { const c = clone(catalog); entryOf(c, 'baseline:plan-review').dependencies[0]!.replacement = { reason: 'superseded', target: 'method:does-not-exist' }; validateCatalog(c); }, 'edge.unresolved');
   // Corrupt the reverse index while the edges are untouched.
   expectRule(() => { const c = clone(catalog); entryOf(c, 'support:cultivation/marketplace/sam-cc-setup/agents/plan-reviewer.md').referencedBy = []; validateCatalog(c); }, 'edge.inverse');
+  // An empty source digest is refused as a literal, before any tree re-hash.
+  expectRule(() => { const c = clone(catalog); entryOf(c, 'baseline:plan-review').source.sha256 = ''; validateCatalog(c); }, 'source.digest-empty');
   // Unknown / typo successor.
   expectRule(() => { const c = clone(catalog); entryOf(c, 'baseline:plan-review').targets = ['method:plan-reviewwww']; validateCatalog(c); }, 'target.unknown');
   // Section keys that are not the union of the mapped sections aimed at the target.
@@ -320,6 +324,8 @@ test('catalog.activation-honesty', () => {
     writeFileSync(join(recipient, 'skills', 'demo', 'references', 'contract.md'), contract);
     writeFileSync(join(recipient, 'skills', 'demo', 'references', 'helper.md'), helper);
     symlinkSync(tmpdir(), join(recipient, 'outside'));
+    // A recipient path that leaves the root through a link is refused by real-path containment.
+    expectRule(() => containedPath(recipient, 'outside/x'), 'path.escape');
     const bodyDigest = sha256(body); const contractDigest = sha256(contract); const helperDigest = sha256(helper);
     // The trusted contract now also declares one required support edge: the edge id, the target it
     // must resolve to, and the recipient path and digest of the support body that target delivers.

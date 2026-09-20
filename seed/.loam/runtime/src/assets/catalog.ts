@@ -312,8 +312,8 @@ export function validateCatalog(catalog: Catalog): CatalogReport {
 
   // Edges reconstructed from entry dependencies, fromEntry restored. Duplicate edge ids are rejected
   // before any lookup map is built. Each edge must resolve: its destination names an existing entry,
-  // target, prerequisite or an external reference, and a retained-resolved edge's resolvedBy names an
-  // existing target or prerequisite. A private-metadata record may never resolve a required edge.
+  // target, prerequisite or an external reference, a retained-resolved edge's resolvedBy names an
+  // existing target or prerequisite, and a replacement names an existing target. A private-metadata record may never resolve a required edge.
   const edges: Edge[] = [];
   const edgeSeen = new Set<string>();
   for (const entry of catalog.entries) for (const dep of entry.dependencies) {
@@ -332,6 +332,7 @@ export function validateCatalog(catalog: Catalog): CatalogReport {
       if (typeof edge.resolvedBy.target === 'string' && !targetIds.has(edge.resolvedBy.target)) fail('edge.unresolved', `edge ${edge.id} resolvedBy names unknown target ${edge.resolvedBy.target}`);
       if (typeof edge.resolvedBy.prerequisite === 'string' && !prereqIds.has(edge.resolvedBy.prerequisite)) fail('edge.unresolved', `edge ${edge.id} resolvedBy names unknown prerequisite ${edge.resolvedBy.prerequisite}`);
     }
+    if (edge.replacement && typeof edge.replacement.target === 'string' && !targetIds.has(edge.replacement.target)) fail('edge.unresolved', `edge ${edge.id} replacement names unknown target ${edge.replacement.target}`);
     // A required edge may never be resolved by a private-metadata record.
     if (edge.to.entry !== undefined && privateIds.has(edge.to.entry) && edge.disposition === 'retained-resolved') fail('edge.private-resolver', `edge ${edge.id} is resolved by a D2a record`);
     if (edge.resolvedBy && typeof edge.resolvedBy.target === 'string' && privateIds.has(edge.resolvedBy.target)) fail('edge.private-resolver', `edge ${edge.id} resolvedBy names a D2a record`);

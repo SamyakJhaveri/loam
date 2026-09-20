@@ -289,8 +289,8 @@ export function validateCatalog(catalog) {
     }
     // Edges reconstructed from entry dependencies, fromEntry restored. Duplicate edge ids are rejected
     // before any lookup map is built. Each edge must resolve: its destination names an existing entry,
-    // target, prerequisite or an external reference, and a retained-resolved edge's resolvedBy names an
-    // existing target or prerequisite. A private-metadata record may never resolve a required edge.
+    // target, prerequisite or an external reference, a retained-resolved edge's resolvedBy names an
+    // existing target or prerequisite, and a replacement names an existing target. A private-metadata record may never resolve a required edge.
     const edges = [];
     const edgeSeen = new Set();
     for (const entry of catalog.entries)
@@ -314,6 +314,8 @@ export function validateCatalog(catalog) {
             if (typeof edge.resolvedBy.prerequisite === 'string' && !prereqIds.has(edge.resolvedBy.prerequisite))
                 fail('edge.unresolved', `edge ${edge.id} resolvedBy names unknown prerequisite ${edge.resolvedBy.prerequisite}`);
         }
+        if (edge.replacement && typeof edge.replacement.target === 'string' && !targetIds.has(edge.replacement.target))
+            fail('edge.unresolved', `edge ${edge.id} replacement names unknown target ${edge.replacement.target}`);
         // A required edge may never be resolved by a private-metadata record.
         if (edge.to.entry !== undefined && privateIds.has(edge.to.entry) && edge.disposition === 'retained-resolved')
             fail('edge.private-resolver', `edge ${edge.id} is resolved by a D2a record`);
