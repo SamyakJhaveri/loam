@@ -168,6 +168,17 @@ test('catalog.conservation-rejections', () => {
     expectRule(() => { const c = clone(catalog); entryOf(c, 'baseline:plan-review').targets = ['method:plan-reviewwww']; validateCatalog(c); }, 'target.unknown');
     // Change an exact target path.
     expectRule(() => { const c = clone(catalog); c.targets.find(t => t.id === 'method:plan-review').path = '.agents/skills/plan-review/OTHER.md'; validateCatalog(c); }, 'target.path');
+    // D1: delivery truth is proven by bytes, so the delivery rule rejects each of its three branches: a
+    // present-unqualified target with a null digest (nothing to verify against the recipient body), an
+    // unknown delivery state, and a delivered target whose digest is not 64 lowercase hex.
+    for (const mutate of [
+        (t) => { t.expectedSha256 = null; },
+        (t) => { t.delivery = 'bogus'; },
+        (t) => { t.expectedSha256 = t.expectedSha256.toUpperCase(); },
+    ])
+        expectRule(() => { const c = clone(catalog); mutate(c.targets.find(t => t.id === 'method:hypothesis-tree')); validateCatalog(c); }, 'target.delivery');
+    // A planned target that carries a digest fails the same rule.
+    expectRule(() => { const c = clone(catalog); const t = c.targets.find(t => t.id === 'method:reflect'); t.expectedSha256 = 'a'.repeat(64); validateCatalog(c); }, 'target.delivery');
     // Collapse the critique variants by sharing a launch key.
     expectRule(() => {
         const c = clone(catalog);
@@ -264,9 +275,9 @@ test('catalog.activation-honesty', () => {
         assert.equal(entry.activation.activated, false);
         assert.notEqual(entry.status, 'available');
     }
-    // Present seed bodies carry a delivered digest; the two present targets are unqualified, not verified.
+    // Present seed bodies carry a delivered digest; the three present targets are unqualified, not verified.
     const present = catalog.targets.filter(t => t.delivery === 'present-unqualified');
-    assert.deepEqual(present.map(t => t.id).sort(), ['method:catchup', 'method:fable-prompting']);
+    assert.deepEqual(present.map(t => t.id).sort(), ['method:catchup', 'method:fable-prompting', 'method:hypothesis-tree']);
     for (const target of present)
         assert.match(String(target.expectedSha256), /^[0-9a-f]{64}$/);
     assert.equal(catalog.targets.some(t => t.delivery === 'verified'), false);

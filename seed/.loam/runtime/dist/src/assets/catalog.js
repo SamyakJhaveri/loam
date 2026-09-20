@@ -388,12 +388,16 @@ export function validateCatalog(catalog) {
             fail('edge.inverse', `${entry.id} referencedBy is not the recomputed inverse index`);
         void entryIds;
     }
-    // Targets, wrappers and dispositions equal the obligations exactly. Each id set is compared in
-    // both directions and duplicate ids are rejected before the lookup maps are built, so a repeated
-    // id cannot conceal a missing member behind a matching count. (Finding 3.)
+    // Wrappers and dispositions equal the obligations exactly. Targets equal the obligations on their
+    // invariant fields (id, path, owner, kind, sectionKeys); delivery and expectedSha256 are delivery
+    // truth, proven by bytes in checkRecipientDelivery rather than matched against the frozen
+    // obligation (plan D1). Each id set is compared in both directions and duplicate ids are rejected
+    // before the lookup maps are built, so a repeated id cannot conceal a missing member behind a
+    // matching count. (Finding 3.)
     const obTargets = new Map(obligations.targets.map(t => [t.id, t]));
     if (catalog.targets.length !== obligations.targets.length)
         fail('target.unknown', `catalog has ${catalog.targets.length} targets, obligations have ${obligations.targets.length}`);
+    const deliveryStates = new Set(['planned', 'present-unqualified', 'verified']);
     const targetSeen = new Set();
     for (const target of catalog.targets) {
         if (targetSeen.has(target.id))
@@ -403,12 +407,27 @@ export function validateCatalog(catalog) {
         const obTarget = obTargets.get(target.id);
         if (!obTarget)
             fail('target.unknown', `target ${target.id} is not an obligation`);
+        // Delivery truth: a known delivery state, with expectedSha256 null exactly when the body is still
+        // planned and otherwise a 64-character lowercase hex digest that checkRecipientDelivery verifies
+        // against the recipient body. This is proven by bytes, never by the frozen obligation. (Plan D1.)
+        if (!deliveryStates.has(target.delivery))
+            fail('target.delivery', `target ${target.id} has unknown delivery ${target.delivery}`);
+        if (target.delivery === 'planned') {
+            if (target.expectedSha256 !== null)
+                fail('target.delivery', `planned target ${target.id} carries a digest`);
+        }
+        else if (typeof target.expectedSha256 !== 'string' || !/^[0-9a-f]{64}$/.test(target.expectedSha256)) {
+            fail('target.delivery', `delivered target ${target.id} lacks a 64-character lowercase hex digest`);
+        }
+        // Invariant fields owned by the obligation. id is bound by the obTargets lookup key above.
         if (target.path !== obTarget.path)
             fail('target.path', `target ${target.id} path ${target.path} differs from ${obTarget.path}`);
-        if (target.delivery !== obTarget.delivery)
-            fail('target.delivery', `target ${target.id} delivery ${target.delivery} differs from ${obTarget.delivery}`);
-        if (!deepEqual(target, obTarget))
-            fail('target.unknown', `target ${target.id} differs from the obligation`);
+        if (target.owner !== obTarget.owner)
+            fail('target.unknown', `target ${target.id} owner differs from the obligation`);
+        if (target.kind !== obTarget.kind)
+            fail('target.unknown', `target ${target.id} kind differs from the obligation`);
+        if (!deepEqual(target.sectionKeys, obTarget.sectionKeys))
+            fail('target.unknown', `target ${target.id} section keys differ from the obligation`);
     }
     for (const id of obTargets.keys())
         if (!targetSeen.has(id))
@@ -694,7 +713,10 @@ function prerequisitesBind(candidate, expected) {
 // ---------------------------------------------------------------------------
 // Recipient delivery: derive the recipient root from the package location and, for every target
 // whose delivery is present-unqualified or verified, read the body at the contained recipient path
-// and require the exact expectedSha256. Planned targets are never read. (Plan D4/D16; finding 5.)
+// and require the exact expectedSha256. This byte comparison is the sole proof that a target's
+// delivery claim holds, in Loam and in every render; validateCatalog no longer matches delivery or
+// expectedSha256 against the frozen obligations (plan D1). Planned targets are never read.
+// (Plan D1/D4/D16; finding 5.)
 // ---------------------------------------------------------------------------
 export function recipientRootOf(packageRoot) { return resolve(packageRoot, '..', '..'); }
 export function checkRecipientDelivery(catalog, recipientRoot) {

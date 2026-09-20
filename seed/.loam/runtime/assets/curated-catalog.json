@@ -33596,8 +33596,8 @@
         "procedure-update",
         "subcommand-grammar"
       ],
-      "delivery": "planned",
-      "expectedSha256": null
+      "delivery": "present-unqualified",
+      "expectedSha256": "0dcb298710a006320f5cc03353e4358eb2ad7c5ed3eabdaee585d93ce7d6fffc"
     },
     {
       "id": "method:reflect",
