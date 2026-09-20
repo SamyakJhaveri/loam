@@ -59,7 +59,9 @@ _tasks:
     {% endif %}
 
   # Initialize git repo (skip on copier update — .git already exists)
-  - "if [ ! -d .git ]; then (git init -b main 2>/dev/null || git init) && git add . && git commit -m 'Initial commit from loam'; fi"
+  # _gh_setup.sh is left untracked: task 4 deletes it, and a tracked-then-deleted file makes the
+  # rendered bin/check fail on its first run (bash -n over git ls-files finds no such file).
+  - "if [ ! -d .git ]; then (git init -b main 2>/dev/null || git init) && git add . && git reset -q -- _gh_setup.sh && git commit -m 'Initial commit from loam'; fi"
 
   # Optional: create or connect GitHub repo (skip on copier update)
   - >-

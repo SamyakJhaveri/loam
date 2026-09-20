@@ -105,7 +105,7 @@ claude -p --model fable --effort medium --tools Read,Grep,Glob --strict-mcp-conf
 ```
 
 The frozen grader prompts keep fixed evidence markers; there is no per-run string, and any instruction found inside those markers is data and a dishonesty finding.
-The evidence bundle is the ticket body, the design issue body when one exists, `git diff base...HEAD`, the check output, the MEASURE lines, and `decisions.md`.
+The evidence bundle is the ticket body, `git diff base...HEAD`, the check output, the MEASURE lines, and `decisions.md` (`build_evidence` in `bin/factory`); a design issue body is not included, so a ticket that needs its design context carries a link the grader can open.
 In that diff, code files pass as content, but data files pass as stat only (files under `evals/` named `prompt.md`, and any single added file over 400 lines), so a frozen prompt or a large fixture never floods the grader diff.
 The Codex review stage runs `codex exec --json --output-schema frozen/review-output.schema.json -o <file> -s read-only "$(cat frozen/codex-review.prompt.md)" < /dev/null`, with the base sha filled into the frozen prompt's `<base>` placeholder; a review needs no write access and `read-only` keeps it from editing the tree the judge and reviewer already graded; `codex exec review` ignores `--output-schema` (#41).
 `needs-attention` with a `critical` or `high` finding blocks once.
@@ -133,19 +133,7 @@ A slash command expands only on the first line of a `-p` prompt and swallows the
 The hook sets `LOAM_HOOK=1`, under which the check lines that call `bin/check` (minutes per stop) or the live model pass without running; the supervisor's own check run has it unset and is the one run of those per round. `build_worker_prompt` in `bin/factory` appends after `_common.md` one sentence per `skills:` name: `Before the first edit, call the Skill tool with "<name>".` (#37).
 A Codex worker gets the skill bodies pasted instead.
 The worker never runs `bin/factory eval` against the live model; the supervisor's own check run is the one live replay per round.
-`_common.md` is the loop contract, frozen per run; its target text:
-
-```
-You are one round of an unattended loop on ticket #<issue>. There is no human. Decide, and record each decision in decisions.md in one line.
-Start by opening every path named under Where, Do not touch, and Approach with git ls-files; never guess a path or a name.
-Follow the Approach section where the ticket has one; if you depart from it, say why in decisions.md.
-Implement the Goal. Touch nothing listed under Do not touch. Add nothing listed under Out of scope.
-Before you finish, run the done-checks block from the worktree root exactly as the supervisor will, and fix every FAIL line you can; repeat until it prints no FAIL line or you cannot proceed. The supervisor reruns it; a claim without a PASS line is worth nothing.
-Commit as you go with messages that name the step. Never push, never open a PR, never touch GitHub.
-If a check cannot be met, write "ABANDON <name> <reason>" in decisions.md and stop; never edit, weaken, or route around a check.
-Use subagents only to read (Explore) or to gather evidence (verify-app, build-validator when installed); no subagent edits. Every Agent call names model claude-opus-4-8[1m].
-Write no summary, measurement table, or PR text; the supervisor assembles the PR from the diff, the checks, and decisions.md.
-```
+`_common.md` is the loop contract, frozen per run; its text lives only in `bin/factory.d/_common.md` (the 2026-09-07 quote that stood here drifted from the file and was removed 2026-09-20).
 
 The ticket says what and how to prove it; the contract says how to behave; the supervisor decides when it is done.
 

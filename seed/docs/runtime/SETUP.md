@@ -111,10 +111,10 @@ node .loam/runtime/launcher.mjs qualify catalog
 ```
 
 `qualify catalog` runs the fixed `curated-catalog` population against
-`assets/curated-catalog.json`, its schema and the obligations compiled into the package.
-It checks the catalog against the obligations compiled into the package and needs no
-compiler, network or source projects; see [ASSETS.md](ASSETS.md) for what is checked and
-what the catalog does not claim.
+`assets/curated-catalog.json` and its schema.
+The catalog proves itself consistent with its own fields, and delivered bodies are proved
+by recipient bytes; it needs no compiler, network or source projects. See
+[ASSETS.md](ASSETS.md) for what is checked and what the catalog does not claim.
 ## Admit a runtime from a trusted source
 
 The trust root is your own review of two independently acquired inputs:

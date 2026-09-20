@@ -16,10 +16,10 @@ Copier asks three questions: `project_name`, `github_repo` (blank skips GitHub s
 ## What you get
 
 - `CLAUDE.md` importing `AGENTS.md` (the one prose home), both with fill-in placeholders.
-- `.claude/`: Claude Code settings and hook scripts for audit logging, checkout safety, Python lint fixes, and turn-end verification.
-- `.agents/skills/catchup/`: session-bootstrap skill shared by Claude Code (via symlink) and Codex.
-- `.agents/skills/fable-prompting/`: index over the Fable 5.1 prompting guide, shared the same way.
-- `.codex/`: Codex configuration, force-push policy hook, and execution rules. Inert until you trust the project in Codex and review hooks via `/hooks`.
+- `.claude/`: Claude Code settings (deny list, sandbox) and two SessionStart-class hook scripts: the Fable session brief and the post-compaction reminder. See `docs/HARNESS.md`.
+- `.agents/skills/`: three skills shared by Claude Code (via symlink) and Codex: `catchup` (session bootstrap), `fable-prompting` (index over the Fable 5.1 guide), `hypothesis-tree` (persistent investigation tree).
+- `.codex/`: Codex configuration and execution rules (`rules/loam.rules`, the same deny families). No hooks ship; `features.hooks` is off. Inert until you trust the project in Codex.
+- `.loam/runtime/`: the qualification runtime; see `docs/runtime/SETUP.md`.
 
 ## After bootstrap
 

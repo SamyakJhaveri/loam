@@ -61,8 +61,9 @@ removing it would cause a mistake.
 
 - Prose (`CLAUDE.md` plus `AGENTS.md`): 400 tokens. The skill listing and the
   session brief are separate always-on costs and are not inside that number.
-- Skill listing: the two seed skills weigh 131 tokens, so a fresh project pays
-  about 400 + 131 tokens before any work starts.
+- Skill listing: the three seed skills weigh about 256 tokens (description
+  bytes divided by four), so a fresh project pays about 400 + 256 tokens before
+  any work starts.
 - In the Loam template repo the `sam-cc-setup` plugin listing weighs 565 tokens.
   That is the `LISTING_BUDGET` ratchet `bin/check` asserts. Lower it when the
   listing shrinks; never raise it without saying why. Raised from 448 on
