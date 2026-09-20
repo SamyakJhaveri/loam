@@ -76,7 +76,7 @@ const DEFAULT_DEPS = { 'loam-dep-plain': '1.0.0', 'loam-dep-bin': '1.0.0' };
 // dependencies, with the release manifest regenerated to stay self-consistent.
 function makeTrusted(deps = DEFAULT_DEPS, lock = {}, opts = {}) {
     const repo = join(base(), 'repo');
-    const trusted = join(repo, 'seed/.loam/factory');
+    const trusted = join(repo, 'seed/.loam/runtime');
     mkdirSync(join(repo, 'bin'), { recursive: true });
     if (!opts.dropSentinel)
         writeFileSync(join(repo, 'copier.yml'), '# scratch trusted source\n');
@@ -292,9 +292,9 @@ test('admission.trusted-source-fork', async () => {
     assert.equal(readRecord(controlRoot, id).release.label, 'local-fork loam v0.0.0');
 });
 test('admission.trusted-source-shape', async () => {
-    // A rendered .loam/factory (no seed/ segment): root holds .loam/factory.
+    // A rendered .loam/runtime (no seed/ segment): root holds .loam/runtime.
     const rendered = join(base(), 'rendered');
-    const renderedFactory = join(rendered, '.loam/factory');
+    const renderedFactory = join(rendered, '.loam/runtime');
     mkdirSync(join(rendered, 'bin'), { recursive: true });
     for (const name of ['copier.yml', 'VERSION'])
         writeFileSync(join(rendered, name), '0\n');
@@ -306,7 +306,7 @@ test('admission.trusted-source-shape', async () => {
     await refuses(() => admit(noSentinel.trusted, freshControlRoot()), 'trusted-source-shape');
     // Trusted source inside the control root.
     const controlRoot = freshControlRoot();
-    const inside = join(controlRoot, 'seed/.loam/factory');
+    const inside = join(controlRoot, 'seed/.loam/runtime');
     mkdirSync(join(controlRoot, 'bin'), { recursive: true });
     for (const name of ['copier.yml', 'VERSION'])
         writeFileSync(join(controlRoot, name), '0\n');

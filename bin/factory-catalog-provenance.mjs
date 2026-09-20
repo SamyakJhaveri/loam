@@ -3,8 +3,8 @@
 // inventories, so this check cannot live in the recipient package. Fixed case
 // accounting: a skipped, missing or renamed case fails.
 import { fileURLToPath } from 'node:url';
-import { toolchain } from '../seed/.loam/factory/scripts/toolchain.mjs';
-import { PROVENANCE_CASES, runFixedFixture } from '../seed/.loam/factory/dist/src/testing/verify.js';
+import { toolchain } from '../seed/.loam/runtime/scripts/toolchain.mjs';
+import { PROVENANCE_CASES, runFixedFixture } from '../seed/.loam/runtime/dist/src/testing/verify.js';
 
 try {
   const tools = toolchain();

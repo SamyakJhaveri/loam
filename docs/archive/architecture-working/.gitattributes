@@ -1,0 +1,4 @@
+# Preserve checksum-bound archival text exactly, including original whitespace.
+# These exceptions moved here with the archived snapshots on 2026-09-19.
+prior-design/cookbook-practice-registry.md whitespace=-blank-at-eof
+publication/approved-source-packet/docs/architecture-working/prior-design/cookbook-practice-registry.md whitespace=-blank-at-eof

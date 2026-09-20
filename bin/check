@@ -92,21 +92,21 @@ if [ -z "${LOAM_FACTORY_TOOLCHAIN:-}" ] || [ ! -x "$LOAM_FACTORY_TOOLCHAIN/bin/n
   bad "set LOAM_FACTORY_TOOLCHAIN to the candidate Node distribution; see CONTRIBUTING.md"
 else
   FACTORY_NODE="$LOAM_FACTORY_TOOLCHAIN/bin/node"
-  "$FACTORY_NODE" seed/.loam/factory/launcher.mjs qualify package || bad "factory package qualification"
+  "$FACTORY_NODE" seed/.loam/runtime/launcher.mjs qualify package || bad "factory package qualification"
   # Inspect the frozen candidate. Never run npm build before this comparison.
-  "$FACTORY_NODE" seed/.loam/factory/scripts/rebuild.mjs || bad "factory independent rebuild"
+  "$FACTORY_NODE" seed/.loam/runtime/scripts/rebuild.mjs || bad "factory independent rebuild"
   # Fixed case accounting: a skipped or missing render case fails the gate.
   "$FACTORY_NODE" bin/factory-release-render.mjs || bad "factory exact release render"
   # Storage, lifetime locks and runtime identity. Runs inside sandboxes and on CI;
   # after the pristine-tree rebuild/render gates so a leak cannot disturb them.
-  # Containment (qualify native-boundary) is a host-only gate; see seed/docs/factory/SETUP.md.
-  "$FACTORY_NODE" seed/.loam/factory/launcher.mjs qualify platform || bad "factory platform qualification"
+  # Containment (qualify native-boundary) is a host-only gate; see seed/docs/runtime/SETUP.md.
+  "$FACTORY_NODE" seed/.loam/runtime/launcher.mjs qualify platform || bad "factory platform qualification"
   # Curated catalog: recipient consistency (qualify catalog) and Loam-only source
   # provenance against the repository tree and the intake inventories (NATIVE-05).
-  "$FACTORY_NODE" seed/.loam/factory/launcher.mjs qualify catalog || bad "factory catalog qualification"
+  "$FACTORY_NODE" seed/.loam/runtime/launcher.mjs qualify catalog || bad "factory catalog qualification"
   "$FACTORY_NODE" bin/factory-catalog-provenance.mjs || bad "factory catalog provenance"
-  # Offline runtime admission. Containment (qualify admission-containment) is a host-only gate; see seed/docs/factory/SETUP.md.
-  "$FACTORY_NODE" seed/.loam/factory/launcher.mjs qualify runtime-admission || bad "factory runtime-admission qualification"
+  # Offline runtime admission. Containment (qualify admission-containment) is a host-only gate; see seed/docs/runtime/SETUP.md.
+  "$FACTORY_NODE" seed/.loam/runtime/launcher.mjs qualify runtime-admission || bad "factory runtime-admission qualification"
 fi
 
 if [ "$FAIL" -ne 0 ]; then echo; echo "check: FAILED"; exit 1; fi

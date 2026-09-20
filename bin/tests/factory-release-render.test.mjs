@@ -9,11 +9,11 @@ import {
 import { tmpdir } from 'node:os';
 import { dirname, isAbsolute, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { cleanEnvironment, toolchain } from '../../seed/.loam/factory/scripts/toolchain.mjs';
-import { payloadFiles, snapshot, verifyPackage } from '../../seed/.loam/factory/dist/src/installation/package.js';
+import { cleanEnvironment, toolchain } from '../../seed/.loam/runtime/scripts/toolchain.mjs';
+import { payloadFiles, snapshot, verifyPackage } from '../../seed/.loam/runtime/dist/src/installation/package.js';
 
 const repository = fileURLToPath(new URL('../../', import.meta.url));
-const factory = join(repository, 'seed/.loam/factory');
+const factory = join(repository, 'seed/.loam/runtime');
 const privateDirectories = ['node_modules', '.cache', '.state', 'runtime-installation'];
 const sortPaths = paths => paths.sort((a, b) => Buffer.compare(Buffer.from(a), Buffer.from(b)));
 
@@ -74,7 +74,7 @@ function copySeed(source, target, relative = '', fs = realFs) {
     if (name.startsWith('.env') || name === '.git') continue;
     const path = relative ? `${relative}/${name}` : name;
     if (privateSessionDirectories.includes(path)) continue;
-    if (privateDirectories.some(directory => path === `.loam/factory/${directory}`)) continue;
+    if (privateDirectories.some(directory => path === `.loam/runtime/${directory}`)) continue;
     const input = join(source, name);
     const output = join(target, name);
     const info = fs.lstatSync(input);
@@ -136,7 +136,7 @@ function withRenderedPayload(injectPrivate, inspect) {
     assert.equal(existsSync(join(template, '.git')), false);
     if (injectPrivate) {
       for (const directory of privateDirectories) {
-        const location = join(template, 'seed/.loam/factory', directory);
+        const location = join(template, 'seed/.loam/runtime', directory);
         mkdirSync(location, { recursive: true });
         writeFileSync(join(location, 'private-sentinel.txt'), `must not ship: ${directory}\n`);
       }
@@ -155,7 +155,7 @@ function withRenderedPayload(injectPrivate, inspect) {
     assert.equal(existsSync(join(project, '.git')), false, 'Copier tasks must not initialize Git');
     assert.ok(existsSync(join(project, '_gh_setup.sh')), 'skipped cleanup task must leave its helper unexecuted');
     assert.equal(existsSync(marker), false, 'render must not call native providers');
-    const rendered = join(project, '.loam/factory');
+    const rendered = join(project, '.loam/runtime');
     inspect({ rendered, before, env, root, copier });
     console.log(JSON.stringify({ kind: 'release-render', toolchain: tools.identity,
       copier: '9.16.0', injectedPrivateState: injectPrivate, qualification: verifyPackage(rendered) }));
@@ -168,9 +168,9 @@ function withRenderedPayload(injectPrivate, inspect) {
 
 test('render.exact-payload', () => {
   withRenderedPayload(false, ({ rendered, before, env }) => {
-    const indexed = execFileSync('git', ['-C', repository, 'ls-files', '-z', '--', 'seed/.loam/factory'],
+    const indexed = execFileSync('git', ['-C', repository, 'ls-files', '-z', '--', 'seed/.loam/runtime'],
       { env, encoding: 'utf8', timeout: 30_000 }).split('\0').filter(Boolean)
-      .map(path => path.slice('seed/.loam/factory/'.length));
+      .map(path => path.slice('seed/.loam/runtime/'.length));
     assert.deepEqual(sortPaths(indexed), payloadFiles(factory), 'Git index and complete factory payload must match both ways');
     assert.deepEqual(snapshot(rendered), before, 'Copier must deliver every source/build/manifest byte');
     assert.ok(verifyPackage(rendered).files > 0, 'rendered qualification must be nonempty');

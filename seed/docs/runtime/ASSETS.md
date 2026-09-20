@@ -2,7 +2,7 @@
 
 ## What the catalog is
 
-`.loam/factory/assets/curated-catalog.json` is a conservation record. It lists every
+`.loam/runtime/assets/curated-catalog.json` is a conservation record. It lists every
 curated Loam method and supporting file, the selected cross-project methods, the
 acquired Matt Pocock skill collection, the optional remote bundles, and the cross-project
 assets that were inventoried but not selected. Its shape is fixed by
@@ -71,7 +71,7 @@ any edge or prerequisite, carry no source units, and expose no capability claims
 ## Qualify the catalog
 
 ```bash
-node .loam/factory/launcher.mjs qualify catalog
+node .loam/runtime/launcher.mjs qualify catalog
 ```
 
 The command runs the fixed `curated-catalog` population

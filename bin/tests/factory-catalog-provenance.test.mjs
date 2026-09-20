@@ -20,8 +20,8 @@ import { chmodSync, lstatSync, mkdirSync, mkdtempSync, readFileSync, readlinkSyn
 import { tmpdir } from 'node:os';
 import { dirname, isAbsolute, join, relative, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { OBLIGATIONS, scanPersonalPaths } from '../../seed/.loam/factory/dist/src/assets/catalog.js';
-import { sha256, verifySourceUnits } from '../../seed/.loam/factory/dist/src/assets/units.js';
+import { OBLIGATIONS, scanPersonalPaths } from '../../seed/.loam/runtime/dist/src/assets/catalog.js';
+import { sha256, verifySourceUnits } from '../../seed/.loam/runtime/dist/src/assets/units.js';
 
 const repo = fileURLToPath(new URL('../../', import.meta.url));
 const INTAKE = 'docs/architecture-working/asset-intake';
@@ -44,7 +44,7 @@ const readlinkTree = (root, rel) => readlinkSync(join(root, guard(rel)));
 // The five preservation exclusion classes, read from the curated-catalog schema so the gate binds an
 // exclusion to the same closed vocabulary the schema enforces (OBLIGATIONS-FORMAT.md preservation.map,
 // mapRow.exclude). A bogus class is not a valid cover form. (finding C)
-const EXCLUDE_CLASSES = new Set(readJSON(repo, 'seed/.loam/factory/assets/curated-catalog.schema.json').$defs.mapRow.properties.exclude.enum);
+const EXCLUDE_CLASSES = new Set(readJSON(repo, 'seed/.loam/runtime/assets/curated-catalog.schema.json').$defs.mapRow.properties.exclude.enum);
 
 // Real-path containment: resolve the real path of `rel` beneath `root` and reject any escape.
 // Returns the repository-relative canonical path (POSIX) of the resolved target.
@@ -866,12 +866,12 @@ test('provenance.inventory-dispositions', () => {
   assert.throws(() => inventoryDispositions(claimingPrivate, benchmark, application, loamInventory), /forbidden claim/);
 
   // Privacy scans of the final outputs.
-  const catalog = readJSON(repo, 'seed/.loam/factory/assets/curated-catalog.json');
-  const schema = readJSON(repo, 'seed/.loam/factory/assets/curated-catalog.schema.json');
+  const catalog = readJSON(repo, 'seed/.loam/runtime/assets/curated-catalog.json');
+  const schema = readJSON(repo, 'seed/.loam/runtime/assets/curated-catalog.schema.json');
   assert.equal(scanPersonalPaths(catalog).length, 0);
   assert.equal(scanPersonalPaths(schema).length, 0);
   assert.equal(scanPersonalPaths(OBLIGATIONS).length, 0);
-  assert.equal(scanPersonalPaths(readText(repo, 'seed/docs/factory/ASSETS.md')).length, 0);
+  assert.equal(scanPersonalPaths(readText(repo, 'seed/docs/runtime/ASSETS.md')).length, 0);
   // Positive control: a schema regex literal that describes a forbidden shape is not user data - but
   // only when the scan is labelled `schema`; the `pattern`-key exemption is confined to that document. (finding 7)
   assert.equal(scanPersonalPaths({ pattern: ['/Us', 'ers/', 'x'].join('') }, 'schema').length, 0);

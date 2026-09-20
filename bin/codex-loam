@@ -1,0 +1,29 @@
+#!/usr/bin/env bash
+# Start Codex on Loam with workflow orchestration disabled for this session.
+set -euo pipefail
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+plugin_enabled=false
+if [[ "${1:-}" == "--superpowers" ]]; then
+  plugin_enabled=true
+  shift
+fi
+
+# Disable the separately installed shared copies in both modes. Codex's
+# project-level overrides did not disable these user-scoped skills in 0.154.0;
+# launch overrides were verified with the native skills/list API.
+shared_skills=(
+  brainstorming dispatching-parallel-agents executing-plans
+  finishing-a-development-branch receiving-code-review requesting-code-review
+  subagent-driven-development systematic-debugging test-driven-development
+  using-git-worktrees using-superpowers verification-before-completion
+  writing-plans writing-skills
+)
+skill_config='['
+for skill in "${shared_skills[@]}"; do
+  skill_config+="{path=\"~/.agents/skills/$skill/SKILL.md\",enabled=false},"
+done
+skill_config+=']'
+
+exec codex --cd "$ROOT" \
+  -c "plugins.superpowers@openai-curated.enabled=$plugin_enabled" \
+  -c "skills.config=$skill_config" "$@"

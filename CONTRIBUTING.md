@@ -26,18 +26,18 @@ the locked development dependencies into fresh scratch, so it needs access to th
 registry. It compares against the supplied `dist` files without changing them. It also
 checks that the factory payload exactly matches Git's index. Stage intended factory
 changes before running it. Build source changes explicitly with
-`npm --prefix seed/.loam/factory run build`, then stage the source, compiled output and
+`npm --prefix seed/.loam/runtime run build`, then stage the source, compiled output and
 release manifest together. A stale or missing compiled file fails the check.
 
 `bin/check` also runs `qualify platform`, `qualify catalog` and
 `bin/factory-catalog-provenance.mjs`; `qualify native-boundary` is a host-only gate run
-from a plain terminal, not by `bin/check` or CI. See [factory setup](seed/docs/factory/SETUP.md)
-and [curated assets](seed/docs/factory/ASSETS.md).
+from a plain terminal, not by `bin/check` or CI. See [factory setup](seed/docs/runtime/SETUP.md)
+and [curated assets](seed/docs/runtime/ASSETS.md).
 
-The factory's dependencies stay under `seed/.loam/factory/node_modules`. Project-root
+The factory's dependencies stay under `seed/.loam/runtime/node_modules`. Project-root
 packages cannot supply a missing compiler or Node type package. Recipient package
 checks execute supplied JavaScript without installing the compiler; see
-[factory setup](seed/docs/factory/SETUP.md).
+[factory setup](seed/docs/runtime/SETUP.md).
 Missing agent CLIs fail the gate; `LOAM_ALLOW_MISSING_AGENT_CLIS=1` permits a reduced local run (CI never sets it).
 
 **Windows note:** template *development* relies on the `.claude -> seed/.claude` symlink.

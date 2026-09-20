@@ -12,7 +12,7 @@ A duplicate across layers is a bug unless it is an explicit distribution mirror 
 
 Shipped, discoverable and loaded are three different facts:
 
-- **Shipped availability**: the file reaches the generated project and its delivered digest is qualified. The curated catalog (`seed/.loam/factory/assets/curated-catalog.json`, described in `seed/docs/factory/ASSETS.md`) records this per method. In the current revision every actual method is pending, not available.
+- **Shipped availability**: the file reaches the generated project and its delivered digest is qualified. The curated catalog (`seed/.loam/runtime/assets/curated-catalog.json`, described in `seed/docs/runtime/ASSETS.md`) records this per method. In the current revision every actual method is pending, not available.
 - **Native description discovery**: a provider lists the method by its description. Planned native wrappers project invocation metadata only. Discovery costs the description, not the body.
 - **On-demand body loading**: the shared body enters a session only when the method is invoked or judged relevant.
 

@@ -25,10 +25,10 @@ _exclude:
   # Codex review transcripts written through the root .claude symlink; never ship.
   - ".claude/codex-reviews"
   # Factory development dependencies and local state never ship.
-  - ".loam/factory/node_modules"
-  - ".loam/factory/.cache"
-  - ".loam/factory/.state"
-  - ".loam/factory/runtime-installation"
+  - ".loam/runtime/node_modules"
+  - ".loam/runtime/.cache"
+  - ".loam/runtime/.state"
+  - ".loam/runtime/runtime-installation"
 
 # Questions asked during `copier copy`
 project_name:

@@ -2,8 +2,8 @@
 // accounting. A skipped, missing, or renamed case fails; bare `node --test`
 // exits 0 when every case is skipped.
 import { fileURLToPath } from 'node:url';
-import { toolchain } from '../seed/.loam/factory/scripts/toolchain.mjs';
-import { runFixedFixture } from '../seed/.loam/factory/dist/src/testing/verify.js';
+import { toolchain } from '../seed/.loam/runtime/scripts/toolchain.mjs';
+import { runFixedFixture } from '../seed/.loam/runtime/dist/src/testing/verify.js';
 
 export const RENDER_CASES = ['render.exact-payload', 'render.private-exclusions'];
 
