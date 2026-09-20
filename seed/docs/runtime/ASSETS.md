@@ -36,14 +36,16 @@ the campaign's supersession of its generic publish workflow.
 
 ## Activation authority
 
-`activation.activated` is `false` for every entry. Qualification never activates a method.
-Changing status, activation, blockers or prerequisites inside the catalog cannot promote a
-pending entry, because the validator compares the catalog's invariant fields against
-obligations compiled into the package (`src/assets/obligations.ts`), never against the
-catalog's own claims. The obligations own a target's id, path, owner, kind and section keys;
-a target's delivery state and expected digest are not obligation-owned. The digest is proven
-by bytes: `checkRecipientDelivery` reads each present target body from the recipient tree and
-requires its exact expected digest, in Loam and in every render.
+`activation.activated` is `false` for every entry. Qualification never activates a method. The
+validator proves the catalog consistent with itself, reading only catalog fields: no entry is ever
+`available`, every edge resolves to a real entry, target or prerequisite, every wrapper resolves,
+each target's declared section keys equal the union of the map sections aimed at it, and the
+reverse index is the recomputed inverse of the edges. It does not compare the catalog to a second
+copy of itself. A target's delivery state and expected digest are proven by bytes, not by any frozen
+record: `checkRecipientDelivery` reads each present target body from the recipient tree and requires
+its exact expected digest, in Loam and in every render. Source bytes and source units are re-verified
+against the working tree by the Loam-only provenance gate, and recipient integrity rests on the
+release manifest, the admission seal and doctor.
 `resolveEntry` is a lower-level helper: it binds one candidate entry to a trusted expected
 contract and returns `activatable: true` only when that contract is qualified and every
 required body, support file and prerequisite resolves; it certifies nothing on its own.
@@ -54,9 +56,10 @@ required body, support file and prerequisite resolves; it certifies nothing on i
 `assets/native/claude/commands/`, `assets/native/claude/agents/`,
 `assets/native/claude/workflows/` and `assets/native/codex/`. Every row is
 `planned-metadata-only`; no wrapper file exists yet. A wrapper carries invocation metadata
-only; the shared method body lives under `.agents/skills/`. `projectionMechanism` is one
-sentence, fixed by the reviewed obligations, describing how a projection reaches a
-provider. The Claude wrappers describe a future distribution mirror of invocation-only
+only; the shared method body lives under `.agents/skills/`. Each wrapper resolves within the
+catalog: it wraps a real entry, names a real method target, and its payload path sits under its
+provider's own native directory. `projectionMechanism` is one sentence describing how a projection
+reaches a provider. The Claude wrappers describe a future distribution mirror of invocation-only
 metadata whose byte equality and native discovery are verified by the owning adapter
 ticket. The Codex wrappers describe the existing shared-skill discovery plus the
 invocation reference the method's future Codex branch reads at the factory package path
@@ -79,10 +82,12 @@ node .loam/runtime/launcher.mjs qualify catalog
 
 The command runs the fixed `curated-catalog` population
 (`dist/tests/assets/catalog.test.js`) and prints the exact case names and count. It checks
-schema validity, the required memberships, exact targets and edges, activation honesty,
-the selected-dependency mappings and the Pocock collection against the compiled
-obligations. It needs no compiler, network or source projects. Source provenance against
+schema validity, edge and wrapper resolution, activation honesty, the delivery digests proven by
+recipient bytes, the selected-dependency mappings and the Pocock collection, all from the catalog's
+own fields. It needs no compiler, network or source projects. Source provenance against
 the Loam repository tree runs only in Loam (`bin/factory-catalog-provenance.mjs`), because a
-rendered project has neither `cultivation/` nor the intake inventories. Neither command
+rendered project has neither `cultivation/` nor the intake inventories; that gate re-hashes the
+source bodies, re-extracts the source units, and anchors the recorded ticket digest to the archived
+ticket in the tree. Neither command
 delivers a method or makes the full installation group pass; that group stays
 unavailable until its remaining populations exist.

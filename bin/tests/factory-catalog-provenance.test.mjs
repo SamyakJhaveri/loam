@@ -1,33 +1,64 @@
 // Loam-only source-provenance gate for the curated catalog (plan NATIVE-05 D12/D14). It runs
 // from the repository root, where cultivation/, the reviewed intake inventories and the
 // mattpocock provenance are present; a rendered recipient project has none of these, which is
-// why this gate cannot live in the shipped package. It compares the compiled obligations (the
-// reviewed packet) against the actual working tree, never against personal source projects.
-// Private session history under seed/.claude/codex-reviews is out of bounds: every filesystem
-// read is routed through a boundary that throws on that prefix, and two scratch controls prove
-// the metadata qualification is identical whether or not the private bodies are present.
+// why this gate cannot live in the shipped package. It loads the shipped catalog directly
+// (loadCatalog) and checks it against the actual working tree, never against personal source
+// projects. Private session history under seed/.claude/codex-reviews is out of bounds: every
+// filesystem read is routed through a boundary that throws on that prefix, and two scratch controls
+// prove the metadata qualification is identical whether or not the private bodies are present.
 //
 // This gate enforces the full reviewed source contract in production (finding 1): body-backed
 // sources are re-verified with a regular-file type check and real-path containment, distribution
 // links resolve to a contained canonical target, every body-backed entry re-extracts its source
 // units unconditionally, snapshot successors are checked as complete tuples, application
 // dispositions are matched to the inventory by full identity, and the inventoried support, private
-// and remote partitions are compared exactly against loam-inventory.json. Each check carries an
-// accepted-control negative that mutates a copy of the obligations or the tree.
+// and remote partitions are compared exactly against loam-inventory.json. It also anchors the
+// catalog's recorded ticket digest to the archived ticket in the tree. Each check carries an
+// accepted-control negative that mutates a copy of the catalog view or the tree.
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { chmodSync, lstatSync, mkdirSync, mkdtempSync, readFileSync, readlinkSync, realpathSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, isAbsolute, join, relative, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { OBLIGATIONS, scanPersonalPaths } from '../../seed/.loam/runtime/dist/src/assets/catalog.js';
+import { loadCatalog, projectEdge, scanPersonalPaths } from '../../seed/.loam/runtime/dist/src/assets/catalog.js';
 import { sha256, verifySourceUnits } from '../../seed/.loam/runtime/dist/src/assets/units.js';
 
 const repo = fileURLToPath(new URL('../../', import.meta.url));
+const PACKAGE_ROOT = join(repo, 'seed/.loam/runtime');
 const INTAKE = 'docs/architecture-working/asset-intake';
 const POCOCK = 'docs/architecture-working/tooling/mattpocock-skills';
 const PRIVATE_PREFIX = 'seed/.claude/codex-reviews';
+const TICKET = 'docs/archive/architecture-working/publication/NATIVE-05.md';
 const REQUIRED = new Set(['required-file', 'required-method', 'external-prerequisite']);
+
+// The five reviewed D2a private-session records, carried here as metadata only. Their historical
+// digests never entered the catalog (its schema is closed and a recipient must never read them);
+// they are compared against the Loam tracked inventory alone. Copied byte-identical from the packet.
+const PRIVATE_METADATA = [
+  { id: 'support:seed/.claude/codex-reviews/2026-08-31-main-clief-batch.md', path: 'seed/.claude/codex-reviews/2026-08-31-main-clief-batch.md', historicalSha256: '4a006f7b32190d9b96480efc534a10318799f934cf557a42eaa751de6332263b' },
+  { id: 'support:seed/.claude/codex-reviews/2026-09-01-wave-f-harness-fixes-pass2.md', path: 'seed/.claude/codex-reviews/2026-09-01-wave-f-harness-fixes-pass2.md', historicalSha256: '1a7fc32ef0eacbc927b6d984f3a1e4e6424996be0f56dce4353d605aa92eea25' },
+  { id: 'support:seed/.claude/codex-reviews/2026-09-01-wave-f-harness-fixes.md', path: 'seed/.claude/codex-reviews/2026-09-01-wave-f-harness-fixes.md', historicalSha256: 'adac06561ab5932e02ef72ea4b420f3b6c9d594f50bee09fff9c5e943ac39639' },
+  { id: 'support:seed/.claude/codex-reviews/2026-09-03-fix-audit-s1-stop-the-bleeding.md', path: 'seed/.claude/codex-reviews/2026-09-03-fix-audit-s1-stop-the-bleeding.md', historicalSha256: '7a95ffb77cd11130dc288cf218129b5063bf9221496dba9818cc44a79f980e71' },
+  { id: 'support:seed/.claude/codex-reviews/2026-09-03-fix-audit-s2-prompts.md', path: 'seed/.claude/codex-reviews/2026-09-03-fix-audit-s2-prompts.md', historicalSha256: '882e06f3cd750eb9d925a9e1b8882e03ee1f0fcb0b57a375980faec71cd42d01' },
+];
+
+// The shipped catalog, projected once into the flattened view the checks below read: entry rows gain
+// a top-level `map` alias of their preservation map, edges are flattened from per-entry dependencies
+// (projectEdge), dispositions are the catalog's own three arrays, and privateMetadata is the inline
+// reviewed constant above. This replaces the deleted compiled table; the catalog is now its own source.
+function catalogView() {
+  const { catalog } = loadCatalog(PACKAGE_ROOT);
+  return {
+    catalog,
+    entries: catalog.entries.map(e => ({ ...e, map: e.preservation.map })),
+    edges: catalog.entries.flatMap(e => e.dependencies.map(d => projectEdge(e, d))),
+    targets: catalog.targets,
+    privateMetadata: PRIVATE_METADATA,
+    dispositions: { selectionAliases: catalog.selectionAliases, notSelected: catalog.notSelected, pluginReferences: catalog.pluginReferences },
+  };
+}
+const CATALOG = catalogView();
 
 // The filesystem boundary. Any read at or beneath the private session directory throws.
 function guard(rel) {
@@ -42,8 +73,8 @@ const lstatTree = (root, rel) => lstatSync(join(root, guard(rel)));
 const readlinkTree = (root, rel) => readlinkSync(join(root, guard(rel)));
 
 // The five preservation exclusion classes, read from the curated-catalog schema so the gate binds an
-// exclusion to the same closed vocabulary the schema enforces (OBLIGATIONS-FORMAT.md preservation.map,
-// mapRow.exclude). A bogus class is not a valid cover form. (finding C)
+// exclusion to the same closed vocabulary the schema enforces (the mapRow.exclude enum). A bogus
+// class is not a valid cover form. (finding C)
 const EXCLUDE_CLASSES = new Set(readJSON(repo, 'seed/.loam/runtime/assets/curated-catalog.schema.json').$defs.mapRow.properties.exclude.enum);
 
 // Real-path containment: resolve the real path of `rel` beneath `root` and reject any escape.
@@ -222,7 +253,7 @@ function preservationMapCoverage(obligations) {
         // must be absent (null or omitted, the two production encodings). A non-null, non-undefined
         // target injected onto such a row is rejected: the target-less branch used to validate only
         // the section and silently accepted an invented target. The section must still be a kebab-case
-        // declaration (OBLIGATIONS-FORMAT.md). `section` is a cover form only here, never on an entry
+        // declaration (kebab-case section key). `section` is a cover form only here, never on an entry
         // with targets. (findings B, C; kebab requirement finding 3, round 4; target rejection finding 4, round 5)
         if (row.target !== null && row.target !== undefined) throw new Error(`entry ${entry.id} preservation-map row for unit ${row.unit} carries a target on a target-less entry`);
         if (typeof row.section !== 'string' || !/^[a-z0-9]+(-[a-z0-9]+)*$/.test(row.section)) throw new Error(`entry ${entry.id} preservation-map row for unit ${row.unit} has no kebab-case section`);
@@ -420,23 +451,11 @@ function inventoryDispositions(obligations, benchmark, application, loamInventor
   // Exact inventoried support/private/remote partition and private-record restrictions.
   inventoryPartition(obligations, loamInventory);
 
-  const counts = obligations.counts;
-  const actual = {
-    baseline: obligations.entries.filter(e => e.collection === 'baseline').length,
-    snapshot: obligations.entries.filter(e => e.collection === 'snapshot').length,
-    pocock: obligations.entries.filter(e => e.collection === 'pocock').length,
-    remote: obligations.entries.filter(e => e.collection === 'remote').length,
-    notSelectedBenchmark: obligations.dispositions.notSelected.filter(r => r.inventory === 'benchmark').length,
-    notSelectedApplication: obligations.dispositions.notSelected.filter(r => r.inventory === 'application').length,
-    pluginReferences: obligations.dispositions.pluginReferences.length,
-    selectionAliases: obligations.dispositions.selectionAliases.length,
-  };
-  for (const [name, value] of Object.entries(actual)) if (counts[name] !== value) throw new Error(`count ${name} differs: ${counts[name]} vs ${value}`);
   return { private: obligations.privateMetadata.length, notSelected: obligations.dispositions.notSelected.length, aliases: obligations.dispositions.selectionAliases.length };
 }
 
 // Deep clone that survives readonly obligation typing at runtime.
-const cloneOb = () => structuredClone(OBLIGATIONS);
+const cloneOb = () => { const { catalog, ...view } = CATALOG; void catalog; return structuredClone(view); };
 function scratch(prefix) { return mkdtempSync(join(tmpdir(), prefix)); }
 function withScratch(prefix, body) {
   const root = scratch(prefix);
@@ -450,31 +469,31 @@ function writeInto(root, rel, bytes) {
 
 // ---------------------------------------------------------------------------
 test('provenance.sources-match-tree', () => {
-  const bodies = sourcesMatchTree(OBLIGATIONS, repo);
+  const bodies = sourcesMatchTree(CATALOG, repo);
   assert.ok(bodies > 150);
 
   // Changed content: a source whose bytes no longer match its recorded digest.
   withScratch('loam-prov-content-', root => {
-    const entry = OBLIGATIONS.entries.find(e => e.id === 'baseline:plan-review');
+    const entry = CATALOG.entries.find(e => e.id === 'baseline:plan-review');
     writeInto(root, entry.source.path, 'mutated body\n');
     assert.throws(() => checkOneSource(entry, root), /source bytes differ/);
   });
   // Directory where a file is expected: the regular-file type check rejects it.
   withScratch('loam-prov-dir-', root => {
-    const entry = OBLIGATIONS.entries.find(e => e.id === 'baseline:plan-review');
+    const entry = CATALOG.entries.find(e => e.id === 'baseline:plan-review');
     mkdirSync(join(root, entry.source.path), { recursive: true });
     assert.throws(() => checkOneSource(entry, root), /expected a regular file/);
   });
   // Erased source units: an empty array on a body-backed entry fails unconditionally.
   withScratch('loam-prov-units-', root => {
-    const entry = structuredClone(OBLIGATIONS.entries.find(e => e.id === 'baseline:plan-review'));
+    const entry = structuredClone(CATALOG.entries.find(e => e.id === 'baseline:plan-review'));
     writeInto(root, entry.source.path, readFileSync(join(repo, entry.source.path)));
     entry.sourceUnits = [];
     assert.throws(() => checkOneSource(entry, root), /no source units/);
   });
   // Link substitution: a distribution symlink repointed to a different target.
   withScratch('loam-prov-link-', root => {
-    const entry = OBLIGATIONS.entries.find(e => e.source.type === 'distribution-symlink');
+    const entry = CATALOG.entries.find(e => e.source.type === 'distribution-symlink');
     mkdirSync(join(root, dirname(entry.source.path)), { recursive: true });
     symlinkSync('../../.agents/skills/OTHER', join(root, entry.source.path));
     assert.throws(() => checkOneSource(entry, root), /link target differs/);
@@ -642,7 +661,7 @@ test('provenance.sources-match-tree', () => {
   assert.throws(() => preservationMapCoverage(foreignTarget), err => err.message.includes(`entry baseline:catchup preservation-map row for unit ${catchupRow.unit} names target method:fable-prompting not declared by the entry`));
 
   // Finding 3 (round 4): a non-kebab section on a target-less entry's section-only row. Section keys are
-  // kebab-case declarations (OBLIGATIONS-FORMAT.md), so a free-text section no longer covers its unit.
+  // kebab-case declarations, so a free-text section no longer covers its unit.
   const nonKebab = cloneOb();
   const nkEntry = nonKebab.entries.find(e => e.source.type === 'regular-file' && e.sourceUnits.length > 0 && e.targets.length === 0 && (e.map ?? []).some(r => typeof r.section === 'string' && typeof r.target !== 'string' && typeof r.exclude !== 'string'));
   assert.ok(nkEntry, 'a target-less entry with a section-only row exists in production');
@@ -668,11 +687,11 @@ test('provenance.sources-match-tree', () => {
   // The two production mirror edges (catchup, fable-prompting) still resolve under the narrowed
   // exemption: sourcesMatchTree already ran clean above, and both are required-file edges to their
   // mirrored SKILL.md.
-  const mirrorEdges = OBLIGATIONS.edges.filter(e => { const f = OBLIGATIONS.entries.find(x => x.id === e.fromEntry); return f && f.source.type === 'distribution-symlink' && e.relationship === 'required-file'; });
+  const mirrorEdges = CATALOG.edges.filter(e => { const f = CATALOG.entries.find(x => x.id === e.fromEntry); return f && f.source.type === 'distribution-symlink' && e.relationship === 'required-file'; });
   assert.equal(mirrorEdges.length, 2);
   for (const e of mirrorEdges) {
-    const f = OBLIGATIONS.entries.find(x => x.id === e.fromEntry);
-    const dest = OBLIGATIONS.entries.find(x => x.id === e.to.entry);
+    const f = CATALOG.entries.find(x => x.id === e.fromEntry);
+    const dest = CATALOG.entries.find(x => x.id === e.to.entry);
     assert.equal(dest.source.path, `${f.source.canonicalTarget}/SKILL.md`);
   }
 
@@ -713,7 +732,7 @@ test('provenance.sources-match-tree', () => {
 
   // critic-01 round 6 (c): a D2a private-local-metadata entry given copied source units. Non-body entries
   // are skipped before any emptiness check, so D7's empty-units/empty-map rule was unenforced. The id is
-  // taken from OBLIGATIONS.privateMetadata at runtime, never typed. Rejected naming the entry.
+  // taken from CATALOG.privateMetadata at runtime, never typed. Rejected naming the entry.
   const d2aUnits = cloneOb();
   const privId = d2aUnits.privateMetadata[0].id;
   const privEntry = d2aUnits.entries.find(e => e.id === privId);
@@ -726,12 +745,19 @@ test('provenance.sources-match-tree', () => {
 test('provenance.baseline-map-agreement', () => {
   const adoptionMap = readJSON(repo, `${INTAKE}/baseline-adoption-map.json`);
   const provenance = readJSON(repo, `${POCOCK}/provenance.json`);
-  const report = baselineMapAgreement(OBLIGATIONS, adoptionMap, provenance);
+  const report = baselineMapAgreement(CATALOG, adoptionMap, provenance);
   assert.deepEqual([report.baselines, report.snapshots, report.pocock], [30, 10, 25]);
+
+  // Ticket anchor: the catalog's recorded ticketSha256 must be the digest of the archived NATIVE-05
+  // ticket in the working tree (docs/archive/architecture-working/publication/NATIVE-05.md). This is
+  // the tree-side proof that replaces the compiled table's frozen ticketSha256.
+  const anchorTicket = recorded => { const actual = sha256(readBytes(repo, TICKET)); if (actual !== recorded) throw new Error(`ticket digest differs from catalog.sourceRevisions.ticketSha256`); };
+  assert.doesNotThrow(() => anchorTicket(CATALOG.catalog.sourceRevisions.ticketSha256));
+  assert.throws(() => anchorTicket('0'.repeat(64)), /ticket digest differs/);
 
   // Finding 2: attribution and license evidence. Every body-backed source keeps a named author and
   // license, and every mattpocock upstream file cites the UPSTREAM-LICENSE evidence in the tree.
-  assert.ok(attributionEvidence(OBLIGATIONS, repo) > 150);
+  assert.ok(attributionEvidence(CATALOG, repo) > 150);
   // Erased sibling attribution: the handoff openai.yaml sibling loses its attribution record.
   const erasedAttribution = cloneOb();
   const siblingId = 'support:docs/architecture-working/tooling/mattpocock-skills/handoff/agents/openai.yaml';
@@ -772,16 +798,16 @@ test('provenance.inventory-dispositions', () => {
   const benchmark = readJSON(repo, `${INTAKE}/benchmark-inventory.json`);
   const application = readJSON(repo, `${INTAKE}/application-inventory.json`);
   const loamInventory = readJSON(repo, `${INTAKE}/loam-inventory.json`);
-  const report = inventoryDispositions(OBLIGATIONS, benchmark, application, loamInventory);
+  const report = inventoryDispositions(CATALOG, benchmark, application, loamInventory);
   assert.deepEqual([report.private, report.notSelected, report.aliases], [5, 210, 12]);
 
   // Boundary controls: a clone without the private directory and a clone whose private body is
   // an unreadable sentinel must give identical metadata qualification, with no private-body read.
-  const miniInventory = { files: OBLIGATIONS.privateMetadata.map(row => ({ source_path: row.path, sha256: row.historicalSha256 })) };
+  const miniInventory = { files: CATALOG.privateMetadata.map(row => ({ source_path: row.path, sha256: row.historicalSha256 })) };
   const privateQualify = root => {
     const inventory = readJSON(root, `${INTAKE}/loam-inventory.json`);
     const bySource = new Map(inventory.files.map(f => [f.source_path, f.sha256]));
-    return OBLIGATIONS.privateMetadata.map(row => ({ id: row.id, path: row.path, matches: bySource.get(row.path) === row.historicalSha256 }));
+    return CATALOG.privateMetadata.map(row => ({ id: row.id, path: row.path, matches: bySource.get(row.path) === row.historicalSha256 }));
   };
   withScratch('loam-prov-clean-', cleanRoot => {
     writeInto(cleanRoot, `${INTAKE}/loam-inventory.json`, JSON.stringify(miniInventory));
@@ -862,7 +888,7 @@ test('provenance.inventory-dispositions', () => {
   assert.throws(() => inventoryDispositions(retypedSupport, benchmark, application, loamInventory), /private-metadata-typed entries are 6/);
   // A private-metadata record that asserts a target claim.
   const claimingPrivate = cloneOb();
-  claimingPrivate.entries.find(e => e.id === OBLIGATIONS.privateMetadata[0].id).targets = ['method:catchup'];
+  claimingPrivate.entries.find(e => e.id === CATALOG.privateMetadata[0].id).targets = ['method:catchup'];
   assert.throws(() => inventoryDispositions(claimingPrivate, benchmark, application, loamInventory), /forbidden claim/);
 
   // Privacy scans of the final outputs.
@@ -870,7 +896,9 @@ test('provenance.inventory-dispositions', () => {
   const schema = readJSON(repo, 'seed/.loam/runtime/assets/curated-catalog.schema.json');
   assert.equal(scanPersonalPaths(catalog).length, 0);
   assert.equal(scanPersonalPaths(schema).length, 0);
-  assert.equal(scanPersonalPaths(OBLIGATIONS).length, 0);
+  const { catalog: _rawCatalog, ...derivedView } = CATALOG;
+  void _rawCatalog;
+  assert.equal(scanPersonalPaths(derivedView).length, 0);
   assert.equal(scanPersonalPaths(readText(repo, 'seed/docs/runtime/ASSETS.md')).length, 0);
   // Positive control: a schema regex literal that describes a forbidden shape is not user data - but
   // only when the scan is labelled `schema`; the `pattern`-key exemption is confined to that document. (finding 7)
