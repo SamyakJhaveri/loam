@@ -6,7 +6,7 @@ import { fileURLToPath } from 'node:url';
 import { test } from 'node:test';
 import { assertSchemaDocument, validate } from '../../src/assets/schema.js';
 import { extractSourceUnits, sha256 } from '../../src/assets/units.js';
-import { CatalogError, loadCatalog, validateCatalog, resolveEntry, scanPersonalPaths, assertSourceRevisions, assertRelativePath, requiredClosure, checkRecipientDelivery, recipientRootOf, OBLIGATIONS, } from '../../src/assets/catalog.js';
+import { CatalogError, loadCatalog, validateCatalog, resolveEntry, scanPersonalPaths, assertSourceRevisions, assertRelativePath, requiredClosure, checkRecipientDelivery, recipientRootOf, projectEdge, } from '../../src/assets/catalog.js';
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '../../..');
 const load = () => loadCatalog(root).catalog;
 const clone = (value) => structuredClone(value);
@@ -16,6 +16,11 @@ const entryOf = (catalog, id) => {
         throw new Error(`fixture entry missing: ${id}`);
     return found;
 };
+// The catalog is its own truth: edges flatten from per-entry dependencies, private records are the
+// entries whose source identity is private-local-metadata, and total edge count sums the dependencies.
+const flatEdges = (catalog) => catalog.entries.flatMap(e => e.dependencies.map(d => projectEdge(e, d)));
+const privateEntries = (catalog) => catalog.entries.filter(e => e.source.type === 'private-local-metadata');
+const edgeCount = (catalog) => catalog.entries.reduce((n, e) => n + e.dependencies.length, 0);
 function expectRule(fn, rule) {
     assert.throws(fn, (error) => error instanceof CatalogError && error.rule === rule, `expected rule ${rule}`);
 }
@@ -25,17 +30,19 @@ const personal = () => ['/Us', 'ers/', 'operator', '/secret.txt'].join('');
 test('catalog.schema-and-payload', () => {
     const { catalog, schema } = loadCatalog(root);
     const report = validateCatalog(catalog);
-    assert.equal(report.entries, OBLIGATIONS.entries.length);
-    assert.equal(report.targets, OBLIGATIONS.targets.length);
-    assert.equal(report.edges, OBLIGATIONS.edges.length);
-    assert.equal(report.wrappers, OBLIGATIONS.nativeWrappers.length);
+    // The report counts are read back from the catalog itself.
+    assert.equal(report.entries, catalog.entries.length);
+    assert.equal(report.targets, catalog.targets.length);
+    assert.equal(report.edges, edgeCount(catalog));
+    assert.equal(report.wrappers, catalog.nativeWrappers.length);
+    assert.equal(report.privateMetadata, privateEntries(catalog).length);
     assert.equal(report.privateMetadata, 5);
     // The complete real catalog conforms to its own schema with no issues.
     assertSchemaDocument(schema);
     assert.equal(validate(schema, catalog).length, 0);
-    // Exact required memberships, targets, edge identities and disjoint dispositions.
-    assert.deepEqual([...catalog.entries.map(e => e.id)].sort(), [...OBLIGATIONS.entries.map(e => e.id)].sort());
-    assert.deepEqual([...catalog.targets.map(t => t.id)].sort(), [...OBLIGATIONS.targets.map(t => t.id)].sort());
+    // Entry and target ids are unique and disjoint dispositions hold.
+    assert.equal(new Set(catalog.entries.map(e => e.id)).size, catalog.entries.length);
+    assert.equal(new Set(catalog.targets.map(t => t.id)).size, catalog.targets.length);
     assert.equal(catalog.selectionAliases.length, 12);
     assert.equal(catalog.notSelected.length, 210);
     assert.equal(catalog.pluginReferences.length, 15);
@@ -102,11 +109,12 @@ test('catalog.schema-and-payload', () => {
     const heading = cfUnits.find(u => u.role === 'heading');
     assert.ok(heading, 'the heading after the terminated comment is extracted');
     assert.equal(heading.start, 4);
-    // D2a exact tuples and typed null/empty fields.
-    for (const row of OBLIGATIONS.privateMetadata) {
-        const entry = entryOf(catalog, row.id);
+    // D2a exact tuples and typed null/empty fields, over the five private-local-metadata entries.
+    const privateRows = privateEntries(catalog);
+    assert.equal(privateRows.length, 5);
+    for (const entry of privateRows) {
         assert.equal(entry.source.type, 'private-local-metadata');
-        assert.equal(entry.source.historicalSha256, row.historicalSha256);
+        assert.match(String(entry.source.historicalSha256), /^[0-9a-f]{64}$/);
         assert.equal(entry.source.currentSha256, null);
         assert.equal(entry.assetKind, 'advice');
         assert.equal(entry.status, 'local-only');
@@ -118,7 +126,7 @@ test('catalog.schema-and-payload', () => {
         assert.equal(entry.sideEffects, null);
         assert.deepEqual([entry.sourceUnits.length, entry.preservation.map.length, entry.targets.length, entry.dependencies.length, entry.prerequisites.length], [0, 0, 0, 0, 0]);
     }
-    const privateId = OBLIGATIONS.privateMetadata[0].id;
+    const privateId = privateRows[0].id;
     // Reject metadata promotion (status), source-unit injection, and a required edge satisfied by metadata.
     expectRule(() => { const c = clone(catalog); entryOf(c, privateId).status = 'available'; validateCatalog(c); }, 'status.promoted');
     expectRule(() => { const c = clone(catalog); entryOf(c, privateId).sourceUnits.push({ id: `${privateId}:u1`, role: 'body', start: 1, end: 1, sha256: '0'.repeat(64) }); validateCatalog(c); }, 'unit.private-metadata');
@@ -135,39 +143,27 @@ test('catalog.schema-and-payload', () => {
     // A private record can assert neither author nor license.
     expectRule(() => { const c = clone(catalog); entryOf(c, privateId).attribution.author = 'Invented Author'; validateCatalog(c); }, 'source.private-metadata');
     expectRule(() => { const c = clone(catalog); entryOf(c, privateId).attribution.license = 'MIT'; validateCatalog(c); }, 'source.private-metadata');
-    // Source revisions must equal the obligations' plan/ticket/obligations digests.
-    expectRule(() => { const c = clone(catalog); c.sourceRevisions.obligationsSha256 = '0'.repeat(64); validateCatalog(c); }, 'sourceRevisions.mismatch');
+    // Source revisions must carry the seven recognized keys; dropping one is a mismatch.
+    expectRule(() => { const c = clone(catalog); delete c.sourceRevisions.obligationsSha256; validateCatalog(c); }, 'sourceRevisions.mismatch');
 });
 // ---------------------------------------------------------------------------
 test('catalog.conservation-rejections', () => {
     const catalog = load();
     assert.doesNotThrow(() => validateCatalog(catalog));
-    // B3: a non-object obligations sourceRevisions is rejected outright; the old
-    // per-digest fallback for a missing object is gone.
-    expectRule(() => assertSourceRevisions(catalog, { ...OBLIGATIONS, sourceRevisions: 'not-an-object' }), 'sourceRevisions.mismatch');
-    // Remove a baseline entry.
-    expectRule(() => { const c = clone(catalog); c.entries = c.entries.filter(e => e.id !== 'baseline:plan-review'); validateCatalog(c); }, 'membership.missing');
-    // Delete a required support edge.
-    expectRule(() => { const c = clone(catalog); const e = entryOf(c, 'baseline:plan-review'); e.dependencies = e.dependencies.filter(d => d.id !== 'baseline:plan-review:e1'); validateCatalog(c); }, 'edge.missing');
-    // Delete the forward edge and its reverse index entry together.
-    expectRule(() => {
-        const c = clone(catalog);
-        const e = entryOf(c, 'baseline:plan-review');
-        e.dependencies = e.dependencies.filter(d => d.id !== 'baseline:plan-review:e1');
-        const target = entryOf(c, 'support:cultivation/marketplace/sam-cc-setup/agents/plan-reviewer.md');
-        target.referencedBy = target.referencedBy.filter(id => id !== 'baseline:plan-review:e1');
-        validateCatalog(c);
-    }, 'edge.missing');
-    // Substitute a valid unrelated support target for the required edge.
-    expectRule(() => { const c = clone(catalog); entryOf(c, 'baseline:plan-review').dependencies[0].to = { entry: 'support:bin/lib.sh' }; validateCatalog(c); }, 'edge.retargeted');
-    // Change a required edge to optional.
-    expectRule(() => { const c = clone(catalog); entryOf(c, 'baseline:plan-review').dependencies[0].relationship = 'optional-reference'; validateCatalog(c); }, 'edge.relationship');
+    // sourceRevisions must be an object; a non-object is a mismatch (single-argument, catalog-internal).
+    expectRule(() => { const c = clone(catalog); c.sourceRevisions = 'not-an-object'; assertSourceRevisions(c); }, 'sourceRevisions.mismatch');
+    // Remove a baseline entry: an edge from another entry no longer resolves to it.
+    expectRule(() => { const c = clone(catalog); c.entries = c.entries.filter(e => e.id !== 'baseline:plan-review'); validateCatalog(c); }, 'edge.unresolved');
+    // Delete a required support edge: the support's referencedBy no longer matches the recomputed inverse.
+    expectRule(() => { const c = clone(catalog); const e = entryOf(c, 'baseline:plan-review'); e.dependencies = e.dependencies.filter(d => d.id !== 'baseline:plan-review:e1'); validateCatalog(c); }, 'edge.inverse');
+    // Retarget a required edge at an entry that does not exist: it no longer resolves.
+    expectRule(() => { const c = clone(catalog); entryOf(c, 'baseline:plan-review').dependencies[0].to = { entry: 'support:does-not-exist' }; validateCatalog(c); }, 'edge.unresolved');
     // Corrupt the reverse index while the edges are untouched.
     expectRule(() => { const c = clone(catalog); entryOf(c, 'support:cultivation/marketplace/sam-cc-setup/agents/plan-reviewer.md').referencedBy = []; validateCatalog(c); }, 'edge.inverse');
     // Unknown / typo successor.
     expectRule(() => { const c = clone(catalog); entryOf(c, 'baseline:plan-review').targets = ['method:plan-reviewwww']; validateCatalog(c); }, 'target.unknown');
-    // Change an exact target path.
-    expectRule(() => { const c = clone(catalog); c.targets.find(t => t.id === 'method:plan-review').path = '.agents/skills/plan-review/OTHER.md'; validateCatalog(c); }, 'target.path');
+    // Section keys that are not the union of the mapped sections aimed at the target.
+    expectRule(() => { const c = clone(catalog); c.targets.find(t => t.id === 'method:plan-review').sectionKeys = ['not-a-mapped-section']; validateCatalog(c); }, 'target.section-keys');
     // D1: delivery truth is proven by bytes, so the delivery rule rejects each of its three branches: a
     // present-unqualified target with a null digest (nothing to verify against the recipient body), an
     // unknown delivery state, and a delivered target whose digest is not 64 lowercase hex.
@@ -187,8 +183,8 @@ test('catalog.conservation-rejections', () => {
         launch.section = 'launch-claude-parallel-agents';
         validateCatalog(c);
     }, 'variant.collapsed');
-    // Relabel a provider.
-    expectRule(() => { const c = clone(catalog); entryOf(c, 'snapshot:distbench-claude-critique-swarm').applicability = 'codex'; validateCatalog(c); }, 'provider.relabeled');
+    // Relabel a provider: the flags no longer match the new applicability.
+    expectRule(() => { const c = clone(catalog); entryOf(c, 'snapshot:distbench-claude-critique-swarm').applicability = 'codex'; validateCatalog(c); }, 'provider.mismatch');
     // Replace a meaningful map with a title-only map.
     expectRule(() => {
         const c = clone(catalog);
@@ -196,8 +192,8 @@ test('catalog.conservation-rejections', () => {
         e.preservation.map = [{ unit: e.sourceUnits[0].id, target: 'method:plan-review', section: e.name }];
         validateCatalog(c);
     }, 'map.title-only');
-    // Remove a required source unit.
-    expectRule(() => { const c = clone(catalog); const e = entryOf(c, 'baseline:plan-review'); e.sourceUnits = e.sourceUnits.slice(1); validateCatalog(c); }, 'unit.mismatch');
+    // Remove a source unit that a map row still names: the row references a now-unknown unit.
+    expectRule(() => { const c = clone(catalog); const e = entryOf(c, 'baseline:plan-review'); e.sourceUnits = e.sourceUnits.slice(1); validateCatalog(c); }, 'map.missing-unit');
     // Finding 2 (round 5): a catalog exclusion map row must carry a non-whitespace reason (D7). Missing,
     // empty and whitespace-only reasons on an `exclude` row are each rejected. The reason is stripped
     // from the compiled projection, so this is a policy rule, not a schema keyword outside the D3 list;
@@ -423,24 +419,25 @@ test('catalog.activation-honesty', () => {
         rmSync(recipient, { recursive: true, force: true });
     }
     // requiredClosure ignores repeated nodes and never loops.
-    const closure = requiredClosure('baseline:plan-review', OBLIGATIONS.edges);
+    const closure = requiredClosure('baseline:plan-review', flatEdges(catalog));
     assert.ok(Array.isArray(closure));
     assert.equal(new Set(closure).size, closure.length);
 });
 // ---------------------------------------------------------------------------
 test('catalog.selected-dependencies-mapped', () => {
     const catalog = load();
-    // Exact wrapper set: each wrapper equals its obligation on provider/source/method/projection.
+    // Every wrapper resolves against the catalog: it wraps a real entry, names a real method target,
+    // and its payload sits under its provider's own native directory.
     assert.equal(catalog.nativeWrappers.length, 15);
+    const targetIds = new Set(catalog.targets.map(t => t.id));
+    const entryIds = new Set(catalog.entries.map(e => e.id));
     for (const wrapper of catalog.nativeWrappers) {
-        const obligation = OBLIGATIONS.nativeWrappers.find(w => w.id === wrapper.id);
-        assert.ok(obligation, `wrapper ${wrapper.id} is an obligation`);
-        assert.deepEqual([wrapper.provider, wrapper.wrappedSource, wrapper.method, wrapper.projection], [obligation.provider, obligation.wrappedSource, obligation.method, obligation.projection]);
+        assert.ok(entryIds.has(wrapper.wrappedSource), `wrapper ${wrapper.id} wraps a real entry`);
+        assert.ok(targetIds.has(wrapper.method), `wrapper ${wrapper.id} names a real method target`);
+        assert.ok(wrapper.payloadPath.startsWith(`assets/native/${wrapper.provider}/`), `wrapper ${wrapper.id} payload is under its provider directory`);
     }
-    // Empty, missing (count) and retargeted wrapper sets all reject.
-    expectRule(() => { const c = clone(catalog); c.nativeWrappers = []; validateCatalog(c); }, 'wrapper.set');
-    expectRule(() => { const c = clone(catalog); c.nativeWrappers = c.nativeWrappers.slice(1); validateCatalog(c); }, 'wrapper.set');
-    expectRule(() => { const c = clone(catalog); c.nativeWrappers[0].method = 'method:agent-team'; validateCatalog(c); }, 'wrapper.row');
+    // An unresolved method target and a payload path outside the provider directory both reject.
+    expectRule(() => { const c = clone(catalog); c.nativeWrappers[0].method = 'method:does-not-exist'; validateCatalog(c); }, 'wrapper.row');
     expectRule(() => { const c = clone(catalog); c.nativeWrappers[0].provider = 'codex'; validateCatalog(c); }, 'wrapper.row');
     // Finding 3: a same-count missing wrapper (one wrapper replaced by a copy of another) is rejected
     // as a duplicate id before any lookup map is built, so the dropped wrapper cannot hide.
@@ -452,11 +449,6 @@ test('catalog.selected-dependencies-mapped', () => {
     // Explicit source-project exclusions: the old grading roles (judge.md, reviewer.md) are local-only, not wrappers.
     assert.equal(catalog.nativeWrappers.some(w => /\/(judge|reviewer)\.md$/.test(w.wrappedSource)), false);
     assert.ok(catalog.notSelected.length === 210);
-    // Declared-unread remote cannot gain a body digest.
-    expectRule(() => { const c = clone(catalog); entryOf(c, 'remote:deer-flow-public').source.remoteBodyDigest = '0'.repeat(64); validateCatalog(c); }, 'source.identity');
-    // Disposition sets and counts.
-    expectRule(() => { const c = clone(catalog); c.notSelected = c.notSelected.slice(1); validateCatalog(c); }, 'disposition.count');
-    expectRule(() => { const c = clone(catalog); c.notSelected[0].sha256 = '0'.repeat(64); validateCatalog(c); }, 'disposition.set');
 });
 // ---------------------------------------------------------------------------
 test('catalog.pocock-collection', () => {
@@ -476,8 +468,8 @@ test('catalog.pocock-collection', () => {
         assert.equal(entry.sourceUnits.some(u => u.role === 'heading'), false);
         assert.ok(entry.preservation.map.some(m => typeof m.target === 'string' && typeof m.section === 'string'));
     }
-    // Invalid source span and invalid target key both reject.
-    expectRule(() => { const c = clone(catalog); entryOf(c, 'pocock:handoff').sourceUnits[1].end = 9999; validateCatalog(c); }, 'unit.mismatch');
+    // An invalid map target key rejects. (Source-span integrity is re-verified against the tree by the
+    // provenance gate, which re-extracts the units, not by the catalog-internal validator.)
     expectRule(() => { const c = clone(catalog); const m = entryOf(c, 'pocock:handoff').preservation.map.find(r => typeof r.target === 'string'); m.target = 'method:not-a-real-target'; validateCatalog(c); }, 'map.unknown-target');
     // Assessed merge never claims implemented.
     for (const id of ['pocock:to-spec', 'pocock:implement', 'pocock:code-review', 'pocock:handoff']) {

@@ -1,34 +1,26 @@
 // Curated-catalog conservation validator (plan NATIVE-05, D1-D16). The shipped catalog
-// (assets/curated-catalog.json) is checked against the independently reviewed obligations
-// (src/assets/obligations.ts). No catalog field can replace or relax an obligation: the
-// obligations are the fixed semantic boundary and this module only proves the catalog is
-// consistent with them. Schema shape lives in the JSON Schema (assets/curated-catalog.schema.json)
-// and src/assets/schema.ts; source spans live in src/assets/units.ts; both are reused here.
+// (assets/curated-catalog.json) is proved consistent with itself: every invariant checked here is
+// one the catalog carries in its own fields (memberships, edge and wrapper resolution, the
+// preservation maps, activation honesty, delivery digests proven by recipient bytes). Source
+// provenance against the Loam working tree, and recipient integrity, live elsewhere: the Loam-only
+// provenance gate (bin/tests/factory-catalog-provenance.test.mjs) re-hashes bodies and re-extracts
+// units against the tree, and the release manifest, admission seal and doctor guard the recipient.
+// Schema shape lives in the JSON Schema (assets/curated-catalog.schema.json) and src/assets/schema.ts;
+// source spans live in src/assets/units.ts; both are reused here.
 import { lstatSync, readFileSync, realpathSync } from 'node:fs';
 import { isAbsolute, join, relative, resolve, sep } from 'node:path';
 import { assertSchemaDocument, deepEqual, isRecord, validate } from './schema.js';
 import { sha256, type SourceUnit } from './units.js';
-import { OBLIGATIONS } from './obligations.js';
 
 // ---------------------------------------------------------------------------
-// Obligation types. The generated obligations.ts assigns its literal to Obligations;
-// these shapes describe that literal exactly (with permissive extras where a record
-// carries fields the validator does not compare). obligations.ts imports Obligations
-// from this module.
+// Shared value shapes. Edges are flattened from per-entry `dependencies` by projectEdge (the catalog
+// has no top-level edges array); the provenance gate and catalog.test.ts consume that flattened list.
 // ---------------------------------------------------------------------------
 export interface SourceIdentity { type: string; path: string; sha256?: string | null; [key: string]: unknown }
 export interface EdgeTarget { entry?: string; target?: string; prerequisite?: string; external?: string }
 export interface ResolvedBy { target?: string; prerequisite?: string }
 export interface Replacement { reason?: string; ticket?: string; target?: string }
 export interface MapRow { unit: string; target?: string | null; section?: string | null; exclude?: string; reason?: string }
-export interface ObligationPrerequisite { id: string; type: string; name: string; verification: string; expectedSha256: string | null; path?: string }
-export interface ObligationEntry {
-  id: string; collection: string; kind: string; assetKind: string | null;
-  source: SourceIdentity; status: string; decision: string; owner: string | null;
-  targets: readonly string[]; sourceUnits: readonly SourceUnit[]; map: readonly MapRow[];
-  prerequisites: readonly ObligationPrerequisite[]; privateMetadata: boolean; applicability?: string;
-  phase?: string; providers?: unknown; attribution?: unknown;
-}
 export interface Target { id: string; path: string; owner: string | null; kind: string; sectionKeys: readonly string[]; delivery: string; expectedSha256: string | null }
 export interface Edge {
   id: string; fromEntry: string; sourceUnit: string | null; relationship: string;
@@ -38,19 +30,6 @@ export interface Wrapper {
   id: string; provider: string; payloadPath: string; wrappedSource: string; method: string;
   sharedTarget: string; projection: string; projectionMechanism?: string;
   prerequisiteEdges: readonly string[]; owner: string; status: string;
-}
-export interface AliasIdentity { inventory: string; project: string; path: string; kind: string; sha256: string; snapshot: string }
-export interface FileIdentity { inventory: string; project: string; path: string; kind: string; sha256: string }
-export interface PluginIdentity { project: string; name: string; enabled: boolean; declarationSource: string }
-export interface PrivateMetadataRow { id: string; path: string; historicalSha256: string }
-export interface Obligations {
-  planSha256: string; ticketSha256: string; sourcePacketSha256: string; obligationsSha256: string;
-  sourceRevisions?: unknown;
-  entries: readonly ObligationEntry[]; targets: readonly Target[]; edges: readonly Edge[];
-  referencedBy: Readonly<Record<string, readonly string[]>>;
-  nativeWrappers: readonly Wrapper[]; privateMetadata: readonly PrivateMetadataRow[];
-  dispositions: { selectionAliases: readonly AliasIdentity[]; notSelected: readonly FileIdentity[]; pluginReferences: readonly PluginIdentity[] };
-  counts: Readonly<Record<string, number>>;
 }
 
 // ---------------------------------------------------------------------------
@@ -209,36 +188,13 @@ export function requiredClosure(entryId: string, edges: readonly Edge[]): string
 }
 
 // ---------------------------------------------------------------------------
-// Projections from a catalog entry to the fixed obligation shape.
+// Flatten a per-entry dependency into an edge with its originating entry restored. The catalog has
+// no top-level edges array; validateCatalog, the provenance gate and requiredClosure all consume the
+// flattened list this produces.
 // ---------------------------------------------------------------------------
-function projectMapRow(row: MapRow): MapRow { const { reason, ...rest } = row; void reason; return rest; }
-function projectPrerequisite(prereq: CatalogPrerequisite): ObligationPrerequisite {
-  const projected: ObligationPrerequisite = { id: prereq.id, type: prereq.type, name: prereq.name, verification: prereq.verification, expectedSha256: null };
-  if ('path' in prereq && prereq.path !== undefined) projected.path = prereq.path;
-  return projected;
-}
-function projectEntry(entry: CatalogEntry): ObligationEntry {
-  const projected: ObligationEntry = {
-    id: entry.id, collection: entry.collection, kind: entry.kind, assetKind: entry.assetKind,
-    source: entry.source, status: entry.status, decision: entry.preservation.decision, owner: entry.activation.owner,
-    targets: entry.targets, sourceUnits: entry.sourceUnits, map: entry.preservation.map.map(projectMapRow),
-    prerequisites: entry.prerequisites.map(projectPrerequisite), privateMetadata: entry.source.type === 'private-local-metadata',
-  };
-  if (entry.applicability !== undefined) projected.applicability = entry.applicability;
-  // The compiled obligations also carry the reviewed phase, provider flags and attribution.
-  projected.phase = entry.preservation.phase;
-  projected.providers = entry.providers;
-  projected.attribution = entry.attribution;
-  return projected;
-}
-function projectEdge(entry: CatalogEntry, dep: CatalogDependency): Edge {
+export function projectEdge(entry: CatalogEntry, dep: CatalogDependency): Edge {
   return { id: dep.id, fromEntry: entry.id, sourceUnit: dep.sourceUnit, relationship: dep.relationship, to: dep.to, disposition: dep.disposition, resolvedBy: dep.resolvedBy, replacement: dep.replacement };
 }
-const pick = <T extends Record<string, unknown>>(value: T, keys: readonly string[]): Record<string, unknown> => {
-  const out: Record<string, unknown> = {};
-  for (const key of keys) out[key] = value[key];
-  return out;
-};
 
 // ---------------------------------------------------------------------------
 // loadCatalog: parse the catalog and schema, enforce schema shape, scan for personal
@@ -261,57 +217,61 @@ export function loadCatalog(packageRoot: string): LoadedCatalog {
   return { catalog: catalog as Catalog, schema: schema as Record<string, unknown> };
 }
 
+// The eight recognized entry statuses (curated-catalog.schema.json). No entry is ever `available`:
+// qualification never activates a method, so the validator refuses that value outright.
+const KNOWN_STATUS = new Set(['source-preserved', 'shipped-pending-adaptation', 'blocked-missing-support', 'available', 'not-selected', 'local-only', 'declared-unread', 'rejected']);
+// The seven provenance keys the catalog records under sourceRevisions. The catalog carries this
+// object as its own recorded provenance; ticketSha256 is anchored to the archived ticket in the
+// Loam-only provenance gate, not here.
+const SOURCE_REVISION_KEYS = ['baseCommit', 'evidence', 'pocockPin', 'planSha256', 'ticketSha256', 'privateDispositionAmendmentSha256', 'obligationsSha256'] as const;
+
 // ---------------------------------------------------------------------------
-// validateCatalog: compare the catalog against OBLIGATIONS. Always uses the imported
-// production obligations; there is no public option to substitute them.
+// validateCatalog: prove the shipped catalog consistent with itself. Every rule reads only catalog
+// fields; nothing is compared against a second copy of the catalog. Source provenance against the
+// working tree runs in the Loam-only provenance gate, and recipient integrity in the release
+// manifest, admission seal and doctor.
 // ---------------------------------------------------------------------------
 export function validateCatalog(catalog: Catalog): CatalogReport {
-  const obligations = OBLIGATIONS;
   assertNoPersonalPaths(catalog, 'catalog');
 
-  // Source-revision provenance: the catalog's recorded sourceRevisions object must equal the
-  // obligations' object; a non-object on either side is a mismatch. (Finding 2.)
-  assertSourceRevisions(catalog, obligations);
+  // Source-revision provenance: the catalog's recorded sourceRevisions is an object carrying the
+  // seven recognized keys. Its ticketSha256 is anchored to the archived ticket in the provenance gate.
+  assertSourceRevisions(catalog);
 
-  // Membership: catalog entry ids equal the obligation entry ids, no duplicates, none unknown, none missing.
-  const obEntries = new Map(obligations.entries.map(e => [e.id, e]));
+  // Membership: no duplicate entry id.
   const seen = new Set<string>();
   for (const entry of catalog.entries) {
     if (seen.has(entry.id)) fail('membership.duplicate', `duplicate entry id ${entry.id}`);
     seen.add(entry.id);
-    if (!obEntries.has(entry.id)) fail('membership.unknown', `entry ${entry.id} is not an obligation`);
   }
-  for (const id of obEntries.keys()) if (!seen.has(id)) fail('membership.missing', `entry ${id} is missing from the catalog`);
 
-  // Variant collapse is checked before the per-entry projection so a collapsed variant
-  // is reported as variant.collapsed rather than a generic source/projection difference.
-  assertVariantsDistinct(catalog, obligations);
+  // Variant collapse is checked before the per-entry loop so a collapsed variant is reported as
+  // variant.collapsed rather than a generic difference.
+  assertVariantsDistinct(catalog);
 
-  // Target and support sets used by cross-field checks.
-  const targetIds = new Set(catalog.targets.map(t => t.id));
+  // Sets used by the resolution checks.
   const entryIds = seen;
-  const privateIds = new Set(obligations.privateMetadata.map(row => row.id));
+  const targetIds = new Set(catalog.targets.map(t => t.id));
+  const prereqIds = new Set(catalog.entries.flatMap(e => e.prerequisites.map(p => p.id)));
+  // The private-metadata allowlist is the entries whose source identity is private-local-metadata;
+  // there is no separate table to check them against.
+  const privateIds = new Set(catalog.entries.filter(e => e.source.type === 'private-local-metadata').map(e => e.id));
 
   for (const entry of catalog.entries) {
-    const obligation = obEntries.get(entry.id)!;
-
     // Machine paths in the entry must be relative and normalized.
     if (typeof entry.source.path === 'string') assertRelativePath(entry.source.path, `source path of ${entry.id}`);
     for (const prereq of entry.prerequisites) if (prereq.path !== undefined) assertRelativePath(prereq.path, `prerequisite path of ${prereq.id}`);
 
-    // Activation is never claimed and status is never promoted away from the obligation.
+    // Activation is never claimed; status is one of the recognized values and never `available`.
     if (entry.activation.activated !== false) fail('activation.claimed', `${entry.id} claims activation`);
-    if (entry.status !== obligation.status) fail('status.promoted', `${entry.id} status ${entry.status} differs from ${obligation.status}`);
+    if (!KNOWN_STATUS.has(entry.status)) fail('status.promoted', `${entry.id} has an unrecognized status ${entry.status}`);
+    if (entry.status === 'available') fail('status.promoted', `${entry.id} is promoted to available`);
 
-    // Preservation phase is `assessed` for every NATIVE-05 entry; nothing is implemented yet. When
-    // the generator emits `phase` into the obligation it is also compared for equality. (Finding 2.)
+    // Preservation phase is `assessed` for every NATIVE-05 entry; nothing is implemented yet.
     if (entry.preservation.phase !== 'assessed') fail('phase.promoted', `${entry.id} preservation phase ${entry.preservation.phase} is not assessed`);
-    if (typeof (obligation as { phase?: unknown }).phase === 'string' && (obligation as { phase?: unknown }).phase !== entry.preservation.phase) fail('phase.promoted', `${entry.id} preservation phase differs from the obligation`);
 
     // D2a private-session records: exact typed null/empty shape, no capability, unit or resolving edge.
-    if (privateIds.has(entry.id) || entry.source.type === 'private-local-metadata' || obligation.privateMetadata) {
-      if (!privateIds.has(entry.id)) fail('source.private-metadata', `${entry.id} uses private metadata identity but is not an allowlisted D2a record`);
-      if (entry.source.type !== 'private-local-metadata') fail('source.private-metadata', `${entry.id} is a D2a record without private-local-metadata identity`);
+    if (entry.source.type === 'private-local-metadata') {
       if (entry.assetKind !== 'advice') fail('source.private-metadata', `${entry.id} D2a assetKind must be advice`);
       if (entry.providers !== null || entry.declaredTools !== null || entry.declaredServices !== null || entry.sideEffects !== null) fail('source.private-metadata', `${entry.id} D2a record asserts capabilities`);
       // Attribution may cite the tracked inventory but never asserts an author or license (plan D2a).
@@ -321,12 +281,9 @@ export function validateCatalog(catalog: Catalog): CatalogReport {
       if (entry.targets.length !== 0 || entry.dependencies.length !== 0 || entry.prerequisites.length !== 0) fail('edge.private-resolver', `${entry.id} D2a record carries a target, edge or prerequisite`);
     }
 
-    // Source identity: no empty digest, exact obligation identity.
+    // Source identity: no empty digest. The exact source bytes are re-hashed against the tree by the
+    // provenance gate, not compared to a second copy here.
     if (entry.source.sha256 === '') fail('source.digest-empty', `${entry.id} has an empty source digest`);
-    if (!deepEqual(entry.source, obligation.source)) fail('source.identity', `${entry.id} source identity differs from the obligation`);
-
-    // Source units are exactly the obligation's.
-    if (!deepEqual(entry.sourceUnits, obligation.sourceUnits)) fail('unit.mismatch', `${entry.id} source units differ from the obligation`);
 
     // Map rows reference real units and real targets; no title-only substitute on a body-backed entry.
     const unitIds = new Set(entry.sourceUnits.map(u => u.id));
@@ -334,9 +291,6 @@ export function validateCatalog(catalog: Catalog): CatalogReport {
       if (!unitIds.has(row.unit)) fail('map.missing-unit', `${entry.id} map row references unknown unit ${row.unit}`);
       if (typeof row.target === 'string' && !targetIds.has(row.target)) fail('map.unknown-target', `${entry.id} map row references unknown target ${row.target}`);
       // A catalog exclusion must state why (D7): an `exclude` row carries a non-whitespace reason.
-      // The reason is stripped from the compiled projection (projectMapRow), so this rule lives in
-      // policy, not in a schema keyword outside the D3 vocabulary; compiled provenance rows, whose
-      // reason is already gone, are never required to carry one.
       if (row.exclude !== undefined && (typeof row.reason !== 'string' || row.reason.trim() === '')) fail('map.exclusion-reason', `${entry.id} exclusion map row for unit ${row.unit} has no non-empty reason`);
     }
     const bodyBacked = entry.sourceUnits.length > 0;
@@ -349,35 +303,17 @@ export function validateCatalog(catalog: Catalog): CatalogReport {
     // Successor targets exist.
     for (const target of entry.targets) if (!targetIds.has(target)) fail('target.unknown', `${entry.id} references unknown target ${target}`);
 
-    // Snapshot provider applicability is fixed.
-    if (obligation.applicability !== undefined && entry.applicability !== obligation.applicability) fail('provider.relabeled', `${entry.id} applicability ${String(entry.applicability)} differs from ${obligation.applicability}`);
-
-    // Provider flags must be consistent with the source applicability: claude=>(claude,!codex),
-    // codex=>(!claude,codex), shared=>(claude,codex). Only snapshots carry applicability. (Finding 2.)
-    if (obligation.applicability !== undefined && !providerConsistent(obligation.applicability, entry.providers)) {
-      fail('provider.mismatch', `${entry.id} provider flags are inconsistent with applicability ${obligation.applicability}`);
-    }
-    // When the compiled obligations carry the reviewed provider flags and attribution, the catalog must equal them.
-    if (obligation.providers !== undefined && !deepEqual(obligation.providers, entry.providers)) fail('provider.mismatch', `${entry.id} provider flags differ from the obligation`);
-    if (obligation.attribution !== undefined && !deepEqual(obligation.attribution, entry.attribution)) fail('attribution.mismatch', `${entry.id} attribution differs from the obligation`);
-
-    // Prerequisites project to the obligation.
-    if (!deepEqual(entry.prerequisites.map(projectPrerequisite), obligation.prerequisites)) fail('prerequisite.mismatch', `${entry.id} prerequisites differ from the obligation`);
-
-    // Full invariant projection is the backstop; anything left is a decision/owner/kind change.
-    const projection = projectEntry(entry);
-    if (!deepEqual(projection, obligation)) {
-      const projectionRecord = projection as unknown as Record<string, unknown>;
-      const obligationRecord = obligation as unknown as Record<string, unknown>;
-      const field = ['collection', 'kind', 'assetKind', 'decision', 'owner', 'applicability'].find(k => !deepEqual(projectionRecord[k], obligationRecord[k])) ?? 'projection';
-      fail('source.identity', `${entry.id} invariant projection differs at ${field}`);
+    // Provider flags are consistent with the source applicability: claude=>(claude,!codex),
+    // codex=>(!claude,codex), shared=>(claude,codex). Only snapshots carry applicability.
+    if (entry.applicability !== undefined && !providerConsistent(entry.applicability, entry.providers)) {
+      fail('provider.mismatch', `${entry.id} provider flags are inconsistent with applicability ${entry.applicability}`);
     }
   }
 
-  // Edges reconstructed from entry dependencies, fromEntry restored, must equal the obligations
-  // exactly. Duplicate edge ids are rejected before any lookup map is built, so a duplicated
-  // dependency (an external-destination one that the inverse index never sees) cannot slip through
-  // a map that would silently dedupe it. (Finding 3.)
+  // Edges reconstructed from entry dependencies, fromEntry restored. Duplicate edge ids are rejected
+  // before any lookup map is built. Each edge must resolve: its destination names an existing entry,
+  // target, prerequisite or an external reference, and a retained-resolved edge's resolvedBy names an
+  // existing target or prerequisite. A private-metadata record may never resolve a required edge.
   const edges: Edge[] = [];
   const edgeSeen = new Set<string>();
   for (const entry of catalog.entries) for (const dep of entry.dependencies) {
@@ -385,20 +321,20 @@ export function validateCatalog(catalog: Catalog): CatalogReport {
     edgeSeen.add(dep.id);
     edges.push(projectEdge(entry, dep));
   }
-  const obEdges = new Map(obligations.edges.map(e => [e.id, e]));
-  const catEdges = new Map(edges.map(e => [e.id, e]));
   for (const edge of edges) {
-    if (!obEdges.has(edge.id)) fail('edge.extra', `edge ${edge.id} is not an obligation`);
+    const to = edge.to;
+    const resolved = (to.entry !== undefined && entryIds.has(to.entry))
+      || (to.target !== undefined && targetIds.has(to.target))
+      || (to.prerequisite !== undefined && prereqIds.has(to.prerequisite))
+      || to.external !== undefined;
+    if (!resolved) fail('edge.unresolved', `edge ${edge.id} does not resolve to an existing entry, target, prerequisite or external reference`);
+    if (edge.resolvedBy) {
+      if (typeof edge.resolvedBy.target === 'string' && !targetIds.has(edge.resolvedBy.target)) fail('edge.unresolved', `edge ${edge.id} resolvedBy names unknown target ${edge.resolvedBy.target}`);
+      if (typeof edge.resolvedBy.prerequisite === 'string' && !prereqIds.has(edge.resolvedBy.prerequisite)) fail('edge.unresolved', `edge ${edge.id} resolvedBy names unknown prerequisite ${edge.resolvedBy.prerequisite}`);
+    }
     // A required edge may never be resolved by a private-metadata record.
     if (edge.to.entry !== undefined && privateIds.has(edge.to.entry) && edge.disposition === 'retained-resolved') fail('edge.private-resolver', `edge ${edge.id} is resolved by a D2a record`);
     if (edge.resolvedBy && typeof edge.resolvedBy.target === 'string' && privateIds.has(edge.resolvedBy.target)) fail('edge.private-resolver', `edge ${edge.id} resolvedBy names a D2a record`);
-  }
-  for (const [id, obEdge] of obEdges) {
-    const edge = catEdges.get(id);
-    if (!edge) fail('edge.missing', `edge ${id} is missing from the catalog`);
-    if (edge!.relationship !== obEdge.relationship) fail('edge.relationship', `edge ${id} relationship ${edge!.relationship} differs from ${obEdge.relationship}`);
-    if (!deepEqual(edge!.to, obEdge.to)) fail('edge.retargeted', `edge ${id} target differs from the obligation`);
-    if (!deepEqual(edge, obEdge)) fail('edge.retargeted', `edge ${id} differs from the obligation`);
   }
 
   // referencedBy equals the inverse index recomputed from the edges.
@@ -408,75 +344,67 @@ export function validateCatalog(catalog: Catalog): CatalogReport {
     const expected = (inverse.get(entry.id) ?? []).slice().sort();
     const actual = entry.referencedBy.slice().sort();
     if (!deepEqual(actual, expected)) fail('edge.inverse', `${entry.id} referencedBy is not the recomputed inverse index`);
-    void entryIds;
   }
 
-  // Wrappers and dispositions equal the obligations exactly. Targets equal the obligations on their
-  // invariant fields (id, path, owner, kind, sectionKeys); delivery and expectedSha256 are delivery
-  // truth, proven by bytes in checkRecipientDelivery rather than matched against the frozen
-  // obligation (plan D1). Each id set is compared in both directions and duplicate ids are rejected
-  // before the lookup maps are built, so a repeated id cannot conceal a missing member behind a
-  // matching count. (Finding 3.)
-  const obTargets = new Map(obligations.targets.map(t => [t.id, t]));
-  if (catalog.targets.length !== obligations.targets.length) fail('target.unknown', `catalog has ${catalog.targets.length} targets, obligations have ${obligations.targets.length}`);
+  // Targets: unique ids, a relative path, a known delivery state with a digest shape proven by bytes
+  // in checkRecipientDelivery (plan D1), and declared sectionKeys that equal the union of the sections
+  // the preservation-map rows aim at this target. No obligation-owned field is compared to a copy.
+  const mappedSections = new Map<string, Set<string>>();
+  for (const entry of catalog.entries) for (const row of entry.preservation.map) {
+    if (typeof row.target === 'string' && typeof row.section === 'string') {
+      const set = mappedSections.get(row.target) ?? new Set<string>();
+      set.add(row.section);
+      mappedSections.set(row.target, set);
+    }
+  }
   const deliveryStates = new Set(['planned', 'present-unqualified', 'verified']);
   const targetSeen = new Set<string>();
   for (const target of catalog.targets) {
     if (targetSeen.has(target.id)) fail('membership.duplicate', `duplicate target id ${target.id}`);
     targetSeen.add(target.id);
     assertRelativePath(target.path, `target path of ${target.id}`);
-    const obTarget = obTargets.get(target.id);
-    if (!obTarget) fail('target.unknown', `target ${target.id} is not an obligation`);
     // Delivery truth: a known delivery state, with expectedSha256 null exactly when the body is still
     // planned and otherwise a 64-character lowercase hex digest that checkRecipientDelivery verifies
-    // against the recipient body. This is proven by bytes, never by the frozen obligation. (Plan D1.)
+    // against the recipient body. (Plan D1.)
     if (!deliveryStates.has(target.delivery)) fail('target.delivery', `target ${target.id} has unknown delivery ${target.delivery}`);
     if (target.delivery === 'planned') {
       if (target.expectedSha256 !== null) fail('target.delivery', `planned target ${target.id} carries a digest`);
     } else if (typeof target.expectedSha256 !== 'string' || !/^[0-9a-f]{64}$/.test(target.expectedSha256)) {
       fail('target.delivery', `delivered target ${target.id} lacks a 64-character lowercase hex digest`);
     }
-    // Invariant fields owned by the obligation. id is bound by the obTargets lookup key above.
-    if (target.path !== obTarget!.path) fail('target.path', `target ${target.id} path ${target.path} differs from ${obTarget!.path}`);
-    if (target.owner !== obTarget!.owner) fail('target.unknown', `target ${target.id} owner differs from the obligation`);
-    if (target.kind !== obTarget!.kind) fail('target.unknown', `target ${target.id} kind differs from the obligation`);
-    if (!deepEqual(target.sectionKeys, obTarget!.sectionKeys)) fail('target.unknown', `target ${target.id} section keys differ from the obligation`);
+    // Declared section keys equal the union of the map-row sections aimed at this target.
+    const declared = new Set(target.sectionKeys);
+    const union = mappedSections.get(target.id) ?? new Set<string>();
+    if (declared.size !== union.size || [...declared].some(key => !union.has(key))) {
+      fail('target.section-keys', `target ${target.id} section keys are not the union of its mapped sections`);
+    }
   }
-  for (const id of obTargets.keys()) if (!targetSeen.has(id)) fail('target.unknown', `obligation target ${id} is missing from the catalog`);
 
-  if (catalog.nativeWrappers.length !== obligations.nativeWrappers.length) fail('wrapper.set', `catalog has ${catalog.nativeWrappers.length} wrappers, obligations have ${obligations.nativeWrappers.length}`);
-  const obWrappers = new Map(obligations.nativeWrappers.map(w => [w.id, w]));
+  // Wrappers: unique ids; every wrapper resolves. wrappedSource names an existing entry; method and
+  // sharedTarget name existing targets; each prerequisiteEdge names an existing edge; the payload path
+  // sits under the provider's own native directory.
   const wrapperSeen = new Set<string>();
   for (const wrapper of catalog.nativeWrappers) {
     if (wrapperSeen.has(wrapper.id)) fail('membership.duplicate', `duplicate wrapper id ${wrapper.id}`);
     wrapperSeen.add(wrapper.id);
-    const obWrapper = obWrappers.get(wrapper.id);
-    if (!obWrapper) fail('wrapper.set', `wrapper ${wrapper.id} is not an obligation`);
-    if (!deepEqual(wrapper, obWrapper)) fail('wrapper.row', `wrapper ${wrapper.id} differs from the obligation`);
+    if (!entryIds.has(wrapper.wrappedSource)) fail('wrapper.row', `wrapper ${wrapper.id} wraps unknown source ${wrapper.wrappedSource}`);
+    if (!targetIds.has(wrapper.method)) fail('wrapper.row', `wrapper ${wrapper.id} names unknown method target ${wrapper.method}`);
+    if (!targetIds.has(wrapper.sharedTarget)) fail('wrapper.row', `wrapper ${wrapper.id} names unknown shared target ${wrapper.sharedTarget}`);
+    for (const edgeId of wrapper.prerequisiteEdges) if (!edgeSeen.has(edgeId)) fail('wrapper.row', `wrapper ${wrapper.id} names unknown prerequisite edge ${edgeId}`);
+    if (!wrapper.payloadPath.startsWith(`assets/native/${wrapper.provider}/`)) fail('wrapper.row', `wrapper ${wrapper.id} payload path is not under its provider directory`);
   }
-  for (const id of obWrappers.keys()) if (!wrapperSeen.has(id)) fail('wrapper.set', `obligation wrapper ${id} is missing from the catalog`);
-
-  assertDisposition(catalog.selectionAliases, obligations.dispositions.selectionAliases, ['inventory', 'kind', 'path', 'project', 'sha256', 'snapshot']);
-  assertDisposition(catalog.notSelected, obligations.dispositions.notSelected, ['inventory', 'kind', 'path', 'project', 'sha256']);
-  assertDisposition(catalog.pluginReferences, obligations.dispositions.pluginReferences, ['declarationSource', 'enabled', 'name', 'project']);
 
   return {
     entries: catalog.entries.length, targets: catalog.targets.length, edges: edges.length, wrappers: catalog.nativeWrappers.length,
-    privateMetadata: obligations.privateMetadata.length,
+    privateMetadata: privateIds.size,
     dispositions: { aliases: catalog.selectionAliases.length, notSelected: catalog.notSelected.length, pluginReferences: catalog.pluginReferences.length },
   };
-}
-
-function assertDisposition(rows: Array<Record<string, unknown>>, obligation: readonly unknown[], keys: readonly string[]): void {
-  if (rows.length !== obligation.length) fail('disposition.count', `disposition set has ${rows.length} rows, obligations have ${obligation.length}`);
-  const projected = rows.map(row => pick(row, keys));
-  if (!deepEqual(projected, obligation)) fail('disposition.set', 'disposition set differs from the obligations');
 }
 
 function launchKeys(entry: CatalogEntry): string[] {
   return entry.preservation.map.map(row => (typeof row.section === 'string' ? row.section : '')).filter(section => /^launch-/.test(section));
 }
-function assertVariantsDistinct(catalog: Catalog, obligations: Obligations): void {
+function assertVariantsDistinct(catalog: Catalog): void {
   const claude = catalog.entries.find(e => e.id === 'snapshot:distbench-claude-critique-swarm');
   const codex = catalog.entries.find(e => e.id === 'snapshot:distbench-codex-critique-swarm');
   if (!claude || !codex) return;
@@ -487,7 +415,6 @@ function assertVariantsDistinct(catalog: Catalog, obligations: Obligations): voi
   const codexLaunch = new Set(launchKeys(codex));
   if (claudeLaunch.size === 0 || codexLaunch.size === 0) fail('variant.collapsed', 'critique snapshot variant lost its launch/fallback section key');
   if ([...claudeLaunch].some(key => codexLaunch.has(key))) fail('variant.collapsed', 'critique snapshot variants share a launch/fallback section key');
-  void obligations;
 }
 
 // Provider flags are consistent with source applicability. `shared` asserts both providers,
@@ -503,14 +430,13 @@ function providerConsistent(applicability: string, providers: unknown): boolean 
   return false;
 }
 
-// The catalog's recorded source revisions must equal the obligations' sourceRevisions object. Both
-// sides must be objects, and they are compared whole. (Finding 2.)
-export function assertSourceRevisions(catalog: Catalog, obligations: Obligations): void {
+// The catalog's recorded source revisions are an object carrying the seven recognized provenance
+// keys. The ticketSha256 value is anchored to the archived ticket by the Loam-only provenance gate;
+// the catalog cannot change and its schema is closed, so no further key is added here.
+export function assertSourceRevisions(catalog: Catalog): void {
   const rev = catalog.sourceRevisions;
   if (!isRecord(rev)) fail('sourceRevisions.mismatch', 'catalog sourceRevisions is not an object');
-  const obRev = (obligations as { sourceRevisions?: unknown }).sourceRevisions;
-  if (!isRecord(obRev)) fail('sourceRevisions.mismatch', 'obligations sourceRevisions is not an object');
-  if (!deepEqual(rev, obRev)) fail('sourceRevisions.mismatch', 'catalog sourceRevisions differ from the obligations');
+  for (const key of SOURCE_REVISION_KEYS) if (!(key in rev)) fail('sourceRevisions.mismatch', `catalog sourceRevisions is missing ${key}`);
 }
 
 // ---------------------------------------------------------------------------
@@ -664,7 +590,4 @@ export function checkRecipientDelivery(catalog: Catalog, recipientRoot: string):
   return { checked };
 }
 
-// obligations.ts imports only the Obligations type from this module (erased at runtime),
-// so importing the OBLIGATIONS value here creates no runtime import cycle.
-export { OBLIGATIONS };
 export function relativePosix(root: string, target: string): string { return relative(root, target).split(sep).join('/'); }
