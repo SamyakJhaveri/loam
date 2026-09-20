@@ -16,6 +16,8 @@ The design that rests on this evidence is in `../factory/ARCHITECTURE.md`.
 | `sandbox-and-codex-keys.md` | sandbox and permission keys from primary docs (2026-09-06) | the deny-only role settings |
 | `advisor-and-managed-agents.md` | the Claude Code advisor page, the seven cookbook notebooks Samyak named on 2026-09-09, one local advisor probe | `--advisor fable` on the worker call (F11), the specialist shape for the large-ticket workflow (F12), nothing from PTC or tool search |
 | `primary-2026-09-08/` | the same sources read from their live pages, repos, and captions on 2026-09-08, with the fact-check corrections to the notes above | one fresh judge, human-decided checks, no loop inside a loop, remove one component per run and read the ledger (#38) |
+| `curation-2026-09-20.md` | the 2026-09-20 pass: the building-fast thread, the setup.md file, the memory design, and a change re-read of the four loop repos, each row cross-referenced to a file, ticket, or issue | nothing from the repos; the memory contradiction (below) and five ranked picks, memory reconciliation first |
+| `memory-design-2026-09-03.md` | Samyak's memory-layer design for the seed, 35 sources, verbatim | not yet taken; its evidence conflicts with the accepted NATIVE-09/10 design, see `curation-2026-09-20.md` |
 
 The three 2026-09-06 notes were copied from gitignored files under `.superpowers/lean-v3/research/`, deleted 2026-09-11 (archive: loam-lean-v3-archive-2026-09-11.tar.gz on both machines); the video transcripts live on under `.superpowers/transcripts/`.
 Transcripts for the five videos given on 2026-09-07 were unobtainable on that day; `primary-2026-09-08/videos.md` has them, pulled with yt-dlp auto-captions.
@@ -29,10 +31,10 @@ Scope: on-disk transcripts start 2026-08-26, so earlier sessions are not recover
 | URL | kind | given on | context | note file |
 |---|---|---|---|---|
 | https://github.com/huangruiteng/loopx | repo | 2026-09-06 | One of five loop repos to compare: pick the simplest, most direct fit | loop-repos.md |
-| https://github.com/AMAP-ML/LongHorizon-Harness | repo | 2026-09-06 | Same five-repo fit evaluation | loop-repos.md |
-| https://github.com/ray-r-ren/agent-apprenticeship | repo | 2026-09-06 | Same five-repo fit evaluation | loop-repos.md |
-| https://github.com/cobusgreyling/loop-engineering | repo | 2026-09-06 | Same five-repo fit evaluation | loop-repos.md |
-| https://github.com/Forward-Future/loopy | repo | 2026-09-06 | Same five-repo fit evaluation | loop-repos.md |
+| https://github.com/AMAP-ML/LongHorizon-Harness | repo | 2026-09-06, again 2026-09-20 | Same five-repo fit evaluation; re-read for changes 2026-09-20 | loop-repos.md, curation-2026-09-20.md |
+| https://github.com/ray-r-ren/agent-apprenticeship | repo | 2026-09-06, again 2026-09-20 | Same five-repo fit evaluation; re-read for changes 2026-09-20 | loop-repos.md, curation-2026-09-20.md |
+| https://github.com/cobusgreyling/loop-engineering | repo | 2026-09-06, again 2026-09-20 | Same five-repo fit evaluation; re-read for changes 2026-09-20 | loop-repos.md, curation-2026-09-20.md |
+| https://github.com/Forward-Future/loopy | repo | 2026-09-06, again 2026-09-20 | Same five-repo fit evaluation; re-read for changes 2026-09-20 | loop-repos.md, curation-2026-09-20.md |
 | https://github.com/Leonxlnx/unlazy | repo | 2026-09-07 | Named as a loop-engineering input | loop-repos.md |
 | https://github.com/Spielewoy/autoprompt-skill | repo | 2026-09-07 | Named as "autoprompt skill"; fits the reprompt-for-Fable stage | loop-repos.md |
 | https://github.com/chenxiachan/thoughtdag | repo | 2026-09-07 | Named as "thoughtdag"; fits the graph-engineering goal | loop-repos.md |
@@ -65,7 +67,7 @@ Scope: on-disk transcripts start 2026-08-26, so earlier sessions are not recover
 | https://www.youtube.com/watch?v=Uvl-tRga98g | video | 2026-09-07 | "Designing with Claude: From prompt to production", Anthropic; no captions, nothing extractable | community.md |
 | https://www.youtube.com/watch?v=VMvZuhcDdnw | video | 2026-09-07 | "Build $10,000 Websites using Claude Code", Metics Media; design tutorial, low relevance | community.md |
 | https://www.youtube.com/watch?v=Ysr7oNDajJI | video | 2026-09-07 | "Insane Claude Design Skills", AI LABS; seven design skills compared, medium relevance | community.md |
-| https://www.reddit.com/r/ClaudeCode/comments/1w97lh4/how_are_you_building_so_fast/ | reddit | 2026-09-07 | Loop engineering reading list | community.md |
+| https://www.reddit.com/r/ClaudeCode/comments/1w97lh4/how_are_you_building_so_fast/ | reddit | 2026-09-07, full thread again 2026-09-20 | Loop engineering reading list; every suggestion cross-referenced 2026-09-20 | community.md, curation-2026-09-20.md |
 | https://www.reddit.com/r/ClaudeCode/comments/1w71zqx/has_anyone_actually_tried_anthropics_ainative/ | reddit | 2026-09-07 | Reception of the AI-native SDLC playbook | community.md |
 | https://www.reddit.com/r/ClaudeAI/comments/1vzl6kk/anthropic_published_an_ainative_sdlc_playbook_the/ | reddit | 2026-09-07 | Reception of the AI-native SDLC playbook | community.md |
 | r/ClaudeCode threads 1w5o5zz, 1w5fed8, 1w59n28, 1w5tnlk, 1w4qs4p, 1vojj88 | reddit | 2026-09-03 | Fable 5.1 field reports gathered for the project design and prompt audit | community.md |
@@ -73,6 +75,13 @@ Scope: on-disk transcripts start 2026-08-26, so earlier sessions are not recover
 | https://www.reddit.com/r/ClaudeAI/wiki/survivalguideweekly/ | reddit | 2026-09-03 | Same audit brief | community.md |
 | https://news.ycombinator.com/item?id=49525809 | other | 2026-09-03 | Same audit brief | community.md |
 | https://x.com/RLanceMartin/status/2095170001175199771 | other | 2026-09-06 | "See this as well", sent beside the claude-api skill | community.md |
+
+### Memory and project setup
+
+| URL | kind | given on | context | note file |
+|---|---|---|---|---|
+| `~/Downloads/LOAM-MEMORY-DESIGN.md` (copied to `memory-design-2026-09-03.md`) | design doc | 2026-09-20 | Memory layer for the seed: raw traces, ripgrep recall, human-gated promotion, applicability gate, complexity ladder; written 2026-09-03 | memory-design-2026-09-03.md, curation-2026-09-20.md |
+| `~/Downloads/agent_software_factorysetup.md` (not copied; origin unknown) | setup.md | 2026-09-20 | A six-phase project setup an agent walks a non-programmer through, with human stops at every browser step | curation-2026-09-20.md |
 
 ### Advisor and Managed Agents
 
@@ -148,6 +157,7 @@ Verified against `main` 8305c9a on 2026-09-11 by reading the files named.
 | Codex plugin (openai-codex) | code | `bin/factory.d/review-output.schema.json` is the plugin's schema, byte-identical; the Codex worker and review calls (F4, F17) |
 | AMAP-ML/LongHorizon-Harness | shape | per-role model and effort resolution is the roles block in `bin/factory` |
 | cobusgreyling/loop-engineering | shape | stuck detection is the `stuck` exit (same failing set twice); the daily spend ledger is `ledger-daily.jsonl` |
+| The memory design of 2026-09-03 | read | not taken; pick 1 of `curation-2026-09-20.md` is to reconcile it with the accepted NATIVE-09/10 design before NATIVE-09 is built |
 | anthropics/cwc-long-running-agents | shape | the fresh-context evaluator with no write tools is the grader call with `--tools Read,Grep,Glob`; Apache-2.0; about eleven rules taken into `anthropic-engineering.md`, no code copied; its two `matcher: "*"` hooks rejected |
 | huangruiteng/loopx, ray-r-ren/agent-apprenticeship, Forward-Future/loopy, Spielewoy/autoprompt-skill, chenxiachan/thoughtdag | read | evaluated in `loop-repos.md`, re-read at the code level 2026-09-11 (autoprompt's `autoprompt-gate.js` included); nothing taken, each rejection with its reason there |
 | PTC and tool-search cookbooks | read | API betas with no CLI form; the Bash tool and native ToolSearch are the equivalents, so nothing was built |
