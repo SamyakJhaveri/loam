@@ -532,15 +532,17 @@ test('admission.publish-complete-closure-only', async () => {
     const recorded = new Set([...Object.keys(installed.files), SNAPSHOT_LAYOUT.installedFiles]);
     assert.deepEqual(new Set(walkFiles(snapshotPath)), recorded);
     // B1: startup-closure is inventoried and lists exactly doctor.js's transitive
-    // relative-import closure (the six startup modules), sorted canonically.
+    // relative-import closure (the eight startup modules), sorted canonically.
     assert.ok(recorded.has('startup-closure'), 'startup-closure must be inventoried');
     assert.deepEqual(readFileSync(join(snapshotPath, 'startup-closure'), 'utf8').split('\n').filter(Boolean), [
         'payload/dist/src/commands/doctor.js',
         'payload/dist/src/contracts/installation.js',
         'payload/dist/src/installation/admit.js',
         'payload/dist/src/installation/package.js',
+        'payload/dist/src/platform/env-policy.js',
         'payload/dist/src/platform/native-boundary.js',
         'payload/dist/src/platform/runtime.js',
+        'payload/dist/src/platform/util.js',
     ]);
 });
 // ---------------------------------------------------------------------------

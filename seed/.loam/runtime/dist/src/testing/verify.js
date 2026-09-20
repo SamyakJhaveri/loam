@@ -63,7 +63,10 @@ export const QUALIFICATION_CASES = [
     "env.preload-stripped",
     "env.openssl-startup-stripped",
     "env.git-redirection-stripped",
-    "env.process-sanitized-before-children"
+    "env.process-sanitized-before-children",
+    "env.enforcement-set-pinned",
+    "env.diagnostic-set-pinned",
+    "env.strip-sets-diverge"
 ];
 export const CATALOG_CASES = [
     "catalog.schema-and-payload",
@@ -146,668 +149,76 @@ export const ADMISSION_CONTAINMENT_CASES = [
     "contain.wrapper-refusal-unavailable",
     "contain.metachar-workspace"
 ];
+export const QUALIFY_VERBS = [
+    { verb: 'package', kind: 'package-qualification', fixture: 'dist/tests/installation/package.test.js', cases: PACKAGE_CASES, timeout: 60000 },
+    { verb: 'platform', kind: 'platform-qualification', fixture: 'dist/tests/platform/qualification.test.js', cases: QUALIFICATION_CASES, timeout: 120000 },
+    { verb: 'catalog', kind: 'catalog-qualification', fixture: 'dist/tests/assets/catalog.test.js', cases: CATALOG_CASES, timeout: 120000 },
+    { verb: 'native-boundary', kind: 'native-boundary-qualification', fixture: 'dist/tests/platform/native-boundary.test.js', cases: NATIVE_BOUNDARY_CASES, timeout: 120000 },
+    { verb: 'runtime-admission', kind: 'runtime-admission-qualification', fixture: 'dist/tests/installation/admission.test.js', cases: ADMISSION_CASES, timeout: 300000 },
+    { verb: 'admission-containment', kind: 'admission-containment-qualification', fixture: 'dist/tests/installation/admission-containment.test.js', cases: ADMISSION_CONTAINMENT_CASES, timeout: 300000 },
+];
+function verbRow(verb) {
+    const row = QUALIFY_VERBS.find(entry => entry.verb === verb);
+    if (!row)
+        throw new Error(`Unknown qualify verb: ${verb}`);
+    return row;
+}
+function stub(id, owner, groups, n, scope = 'recipient') {
+    const owners = typeof owner === 'string' ? [owner] : owner;
+    return {
+        id, owners, groups, scope, available: false, fixture: null,
+        expectedCases: owners.flatMap(entry => Array.from({ length: n }, (_, index) => `${entry.toLowerCase()}/obligation-${String(index + 1).padStart(2, '0')}`))
+    };
+}
 // Future case IDs reserve source obligations. Their owning tickets supply executable cases.
 export const POPULATIONS = [
-    {
-        "id": "package-closure",
-        "owners": [
-            "CORE-01"
-        ],
-        "groups": [
-            "installation"
-        ],
-        "scope": "recipient",
-        "available": true,
-        "fixture": "dist/tests/installation/package.test.js",
-        "expectedCases": [
-            "package.valid-payload",
-            "package.changed-source",
-            "package.missing-output",
-            "package.extra-output",
-            "package.changed-map",
-            "package.unsafe-path",
-            "package.symlink",
-            "package.manifest-boundaries",
-            "package.registry-obligations",
-            "package.unknown-group",
-            "package.unavailable-groups",
-            "package.case-accounting",
-            "package.compiler-free-recipient",
-            "package.import-closure"
-        ]
-    },
-    {
-        "id": "platform-qualification",
-        "owners": [
-            "CORE-02"
-        ],
-        "groups": [
-            "installation"
-        ],
-        "scope": "recipient",
-        "available": true,
-        "fixture": "dist/tests/platform/qualification.test.js",
-        "expectedCases": [...QUALIFICATION_CASES]
-    },
+    { id: 'package-closure', owners: ['CORE-01'], groups: ['installation'], scope: 'recipient', available: true, fixture: verbRow('package').fixture, expectedCases: [...verbRow('package').cases] },
+    { id: 'platform-qualification', owners: ['CORE-02'], groups: ['installation'], scope: 'recipient', available: true, fixture: verbRow('platform').fixture, expectedCases: [...verbRow('platform').cases] },
     // OPS-10 obligation: native-boundary is available:true (its fixture exists) but is
     // proved only by the two-host `qualify native-boundary` run; bin/check and CI do not
     // run it. OPS-10 closure adds a CI host with bwrap or accepts the host evidence as
     // the gate.
-    {
-        "id": "native-boundary",
-        "owners": [
-            "CORE-02"
-        ],
-        "groups": [
-            "installation"
-        ],
-        "scope": "recipient",
-        "available": true,
-        "fixture": "dist/tests/platform/native-boundary.test.js",
-        "expectedCases": [...NATIVE_BOUNDARY_CASES]
-    },
-    {
-        "id": "native-qualification",
-        "owners": [
-            "CORE-03"
-        ],
-        "groups": [
-            "installation",
-            "execution"
-        ],
-        "scope": "recipient",
-        "available": false,
-        "fixture": null,
-        "expectedCases": [
-            "core-03/obligation-01",
-            "core-03/obligation-02",
-            "core-03/obligation-03",
-            "core-03/obligation-04",
-            "core-03/obligation-05"
-        ]
-    },
-    {
-        "id": "runtime-admission",
-        "owners": [
-            "CORE-04"
-        ],
-        "groups": [
-            "installation"
-        ],
-        "scope": "recipient",
-        "available": true,
-        "fixture": "dist/tests/installation/admission.test.js",
-        "expectedCases": [...ADMISSION_CASES]
-    },
+    { id: 'native-boundary', owners: ['CORE-02'], groups: ['installation'], scope: 'recipient', available: true, fixture: verbRow('native-boundary').fixture, expectedCases: [...verbRow('native-boundary').cases] },
+    stub('native-qualification', 'CORE-03', ['installation', 'execution'], 5),
+    { id: 'runtime-admission', owners: ['CORE-04'], groups: ['installation'], scope: 'recipient', available: true, fixture: verbRow('runtime-admission').fixture, expectedCases: [...verbRow('runtime-admission').cases] },
     // CORE-04 obligation: admission-containment is available:true (its fixture exists) but is
     // proved only by the two-host `qualify admission-containment` run; bin/check and CI do not
     // run it. It mirrors native-boundary: the containment mechanism is unavailable inside the
     // nested agent sandbox, so the Mac gate runs from a plain Terminal and Linux runs on the host.
-    {
-        "id": "admission-containment",
-        "owners": [
-            "CORE-04"
-        ],
-        "groups": [
-            "installation"
-        ],
-        "scope": "recipient",
-        "available": true,
-        "fixture": "dist/tests/installation/admission-containment.test.js",
-        "expectedCases": [...ADMISSION_CONTAINMENT_CASES]
-    },
-    {
-        "id": "store-ownership",
-        "owners": [
-            "CORE-05"
-        ],
-        "groups": [
-            "store"
-        ],
-        "scope": "recipient",
-        "available": false,
-        "fixture": null,
-        "expectedCases": [
-            "core-05/obligation-01",
-            "core-05/obligation-02",
-            "core-05/obligation-03",
-            "core-05/obligation-04",
-            "core-05/obligation-05",
-            "core-05/obligation-06"
-        ]
-    },
-    {
-        "id": "project-setup",
-        "owners": [
-            "CORE-06"
-        ],
-        "groups": [
-            "installation",
-            "store"
-        ],
-        "scope": "recipient",
-        "available": false,
-        "fixture": null,
-        "expectedCases": [
-            "core-06/obligation-01",
-            "core-06/obligation-02",
-            "core-06/obligation-03",
-            "core-06/obligation-04",
-            "core-06/obligation-05"
-        ]
-    },
-    {
-        "id": "local-execution",
-        "owners": [
-            "CORE-07"
-        ],
-        "groups": [
-            "execution"
-        ],
-        "scope": "recipient",
-        "available": false,
-        "fixture": null,
-        "expectedCases": [
-            "core-07/obligation-01",
-            "core-07/obligation-02",
-            "core-07/obligation-03",
-            "core-07/obligation-04",
-            "core-07/obligation-05"
-        ]
-    },
-    {
-        "id": "ownership-recovery",
-        "owners": [
-            "CORE-08"
-        ],
-        "groups": [
-            "store",
-            "execution"
-        ],
-        "scope": "recipient",
-        "available": false,
-        "fixture": null,
-        "expectedCases": [
-            "core-08/obligation-01",
-            "core-08/obligation-02",
-            "core-08/obligation-03",
-            "core-08/obligation-04",
-            "core-08/obligation-05",
-            "core-08/obligation-06"
-        ]
-    },
-    {
-        "id": "backup-restore",
-        "owners": [
-            "CORE-09"
-        ],
-        "groups": [
-            "store"
-        ],
-        "scope": "recipient",
-        "available": false,
-        "fixture": null,
-        "expectedCases": [
-            "core-09/obligation-01",
-            "core-09/obligation-02",
-            "core-09/obligation-03",
-            "core-09/obligation-04",
-            "core-09/obligation-05",
-            "core-09/obligation-06"
-        ]
-    },
-    {
-        "id": "steering-accounting",
-        "owners": [
-            "CORE-10"
-        ],
-        "groups": [
-            "store",
-            "execution"
-        ],
-        "scope": "recipient",
-        "available": false,
-        "fixture": null,
-        "expectedCases": [
-            "core-10/obligation-01",
-            "core-10/obligation-02",
-            "core-10/obligation-03",
-            "core-10/obligation-04",
-            "core-10/obligation-05",
-            "core-10/obligation-06",
-            "core-10/obligation-07"
-        ]
-    },
-    {
-        "id": "native-profile",
-        "owners": [
-            "NATIVE-01"
-        ],
-        "groups": [
-            "installation"
-        ],
-        "scope": "recipient",
-        "available": false,
-        "fixture": null,
-        "expectedCases": [
-            "native-01/obligation-01",
-            "native-01/obligation-02",
-            "native-01/obligation-03",
-            "native-01/obligation-04"
-        ]
-    },
-    {
-        "id": "coordination",
-        "owners": [
-            "NATIVE-02"
-        ],
-        "groups": [
-            "execution"
-        ],
-        "scope": "recipient",
-        "available": false,
-        "fixture": null,
-        "expectedCases": [
-            "native-02/obligation-01",
-            "native-02/obligation-02",
-            "native-02/obligation-03",
-            "native-02/obligation-04",
-            "native-02/obligation-05"
-        ]
-    },
-    {
-        "id": "claude-binding",
-        "owners": [
-            "NATIVE-03"
-        ],
-        "groups": [
-            "execution"
-        ],
-        "scope": "recipient",
-        "available": false,
-        "fixture": null,
-        "expectedCases": [
-            "native-03/obligation-01",
-            "native-03/obligation-02",
-            "native-03/obligation-03",
-            "native-03/obligation-04"
-        ]
-    },
-    {
-        "id": "codex-binding",
-        "owners": [
-            "NATIVE-04"
-        ],
-        "groups": [
-            "execution"
-        ],
-        "scope": "recipient",
-        "available": false,
-        "fixture": null,
-        "expectedCases": [
-            "native-04/obligation-01",
-            "native-04/obligation-02",
-            "native-04/obligation-03",
-            "native-04/obligation-04",
-            "native-04/obligation-05"
-        ]
-    },
-    {
-        "id": "curated-catalog",
-        "owners": [
-            "NATIVE-05"
-        ],
-        "groups": [
-            "installation"
-        ],
-        "scope": "recipient",
-        "available": true,
-        "fixture": "dist/tests/assets/catalog.test.js",
-        "expectedCases": [...CATALOG_CASES]
-    },
+    { id: 'admission-containment', owners: ['CORE-04'], groups: ['installation'], scope: 'recipient', available: true, fixture: verbRow('admission-containment').fixture, expectedCases: [...verbRow('admission-containment').cases] },
+    stub('store-ownership', 'CORE-05', ['store'], 6),
+    stub('project-setup', 'CORE-06', ['installation', 'store'], 5),
+    stub('local-execution', 'CORE-07', ['execution'], 5),
+    stub('ownership-recovery', 'CORE-08', ['store', 'execution'], 6),
+    stub('backup-restore', 'CORE-09', ['store'], 6),
+    stub('steering-accounting', 'CORE-10', ['store', 'execution'], 7),
+    stub('native-profile', 'NATIVE-01', ['installation'], 4),
+    stub('coordination', 'NATIVE-02', ['execution'], 5),
+    stub('claude-binding', 'NATIVE-03', ['execution'], 4),
+    stub('codex-binding', 'NATIVE-04', ['execution'], 5),
+    { id: 'curated-catalog', owners: ['NATIVE-05'], groups: ['installation'], scope: 'recipient', available: true, fixture: verbRow('catalog').fixture, expectedCases: [...verbRow('catalog').cases] },
     // Loam-only gate: source provenance for the curated catalog runs from the
     // repository root (bin/factory-catalog-provenance.mjs), never from a recipient.
-    {
-        "id": "catalog-provenance",
-        "owners": [
-            "NATIVE-05"
-        ],
-        "groups": [],
-        "scope": "release-only",
-        "available": true,
-        "fixture": "bin/tests/factory-catalog-provenance.test.mjs",
-        "expectedCases": [...PROVENANCE_CASES]
-    },
-    {
-        "id": "curated-workflows",
-        "owners": [
-            "NATIVE-06",
-            "NATIVE-07"
-        ],
-        "groups": [
-            "execution"
-        ],
-        "scope": "recipient",
-        "available": false,
-        "fixture": null,
-        "expectedCases": [
-            "native-06/obligation-01",
-            "native-06/obligation-02",
-            "native-06/obligation-03",
-            "native-06/obligation-04",
-            "native-07/obligation-01",
-            "native-07/obligation-02",
-            "native-07/obligation-03",
-            "native-07/obligation-04"
-        ]
-    },
-    {
-        "id": "review-methods",
-        "owners": [
-            "NATIVE-08"
-        ],
-        "groups": [
-            "execution"
-        ],
-        "scope": "recipient",
-        "available": false,
-        "fixture": null,
-        "expectedCases": [
-            "native-08/obligation-01",
-            "native-08/obligation-02",
-            "native-08/obligation-03",
-            "native-08/obligation-04"
-        ]
-    },
-    {
-        "id": "memory-records",
-        "owners": [
-            "NATIVE-09"
-        ],
-        "groups": [
-            "store"
-        ],
-        "scope": "recipient",
-        "available": false,
-        "fixture": null,
-        "expectedCases": [
-            "native-09/obligation-01",
-            "native-09/obligation-02",
-            "native-09/obligation-03",
-            "native-09/obligation-04"
-        ]
-    },
-    {
-        "id": "memory-correction",
-        "owners": [
-            "NATIVE-10"
-        ],
-        "groups": [
-            "store",
-            "execution"
-        ],
-        "scope": "recipient",
-        "available": false,
-        "fixture": null,
-        "expectedCases": [
-            "native-10/obligation-01",
-            "native-10/obligation-02",
-            "native-10/obligation-03",
-            "native-10/obligation-04",
-            "native-10/obligation-05"
-        ]
-    },
-    {
-        "id": "improvement-adoption",
-        "owners": [
-            "NATIVE-11"
-        ],
-        "groups": [
-            "store",
-            "complete-slice"
-        ],
-        "scope": "recipient",
-        "available": false,
-        "fixture": null,
-        "expectedCases": [
-            "native-11/obligation-01",
-            "native-11/obligation-02",
-            "native-11/obligation-03",
-            "native-11/obligation-04",
-            "native-11/obligation-05"
-        ]
-    },
-    {
-        "id": "research-methods",
-        "owners": [
-            "NATIVE-12"
-        ],
-        "groups": [
-            "complete-slice"
-        ],
-        "scope": "recipient",
-        "available": false,
-        "fixture": null,
-        "expectedCases": [
-            "native-12/obligation-01",
-            "native-12/obligation-02",
-            "native-12/obligation-03",
-            "native-12/obligation-04"
-        ]
-    },
-    {
-        "id": "local-complete-slice",
-        "owners": [
-            "NATIVE-13"
-        ],
-        "groups": [
-            "complete-slice"
-        ],
-        "scope": "recipient",
-        "available": false,
-        "fixture": null,
-        "expectedCases": [
-            "native-13/obligation-01",
-            "native-13/obligation-02",
-            "native-13/obligation-03",
-            "native-13/obligation-04"
-        ]
-    },
-    {
-        "id": "readiness",
-        "owners": [
-            "OPS-01"
-        ],
-        "groups": [
-            "installation"
-        ],
-        "scope": "recipient",
-        "available": false,
-        "fixture": null,
-        "expectedCases": [
-            "ops-01/obligation-01",
-            "ops-01/obligation-02"
-        ]
-    },
-    {
-        "id": "remote-recovery",
-        "owners": [
-            "OPS-02"
-        ],
-        "groups": [
-            "execution"
-        ],
-        "scope": "recipient",
-        "available": false,
-        "fixture": null,
-        "expectedCases": [
-            "ops-02/obligation-01",
-            "ops-02/obligation-02"
-        ]
-    },
-    {
-        "id": "remote-inputs",
-        "owners": [
-            "OPS-03"
-        ],
-        "groups": [
-            "execution"
-        ],
-        "scope": "recipient",
-        "available": false,
-        "fixture": null,
-        "expectedCases": [
-            "ops-03/obligation-01",
-            "ops-03/obligation-02"
-        ]
-    },
-    {
-        "id": "remote-policy",
-        "owners": [
-            "OPS-04"
-        ],
-        "groups": [
-            "execution"
-        ],
-        "scope": "recipient",
-        "available": false,
-        "fixture": null,
-        "expectedCases": [
-            "ops-04/obligation-01",
-            "ops-04/obligation-02"
-        ]
-    },
-    {
-        "id": "runtime-update",
-        "owners": [
-            "OPS-05"
-        ],
-        "groups": [
-            "installation",
-            "store"
-        ],
-        "scope": "recipient",
-        "available": false,
-        "fixture": null,
-        "expectedCases": [
-            "ops-05/obligation-01",
-            "ops-05/obligation-02"
-        ]
-    },
-    {
-        "id": "maintenance",
-        "owners": [
-            "OPS-06"
-        ],
-        "groups": [
-            "store"
-        ],
-        "scope": "recipient",
-        "available": false,
-        "fixture": null,
-        "expectedCases": [
-            "ops-06/obligation-01",
-            "ops-06/obligation-02"
-        ]
-    },
-    {
-        "id": "owner-transfer",
-        "owners": [
-            "OPS-07"
-        ],
-        "groups": [
-            "store",
-            "execution"
-        ],
-        "scope": "recipient",
-        "available": false,
-        "fixture": null,
-        "expectedCases": [
-            "ops-07/obligation-01",
-            "ops-07/obligation-02"
-        ]
-    },
-    {
-        "id": "asset-delivery",
-        "owners": [
-            "OPS-08"
-        ],
-        "groups": [
-            "installation"
-        ],
-        "scope": "recipient",
-        "available": false,
-        "fixture": null,
-        "expectedCases": [
-            "ops-08/obligation-01",
-            "ops-08/obligation-02"
-        ]
-    },
-    {
-        "id": "release-render-matrix",
-        "owners": [
-            "OPS-09"
-        ],
-        "groups": [],
-        "scope": "release-only",
-        "available": false,
-        "fixture": null,
-        "expectedCases": [
-            "ops-09/obligation-01",
-            "ops-09/obligation-02"
-        ]
-    },
-    {
-        "id": "generated-product-closure",
-        "owners": [
-            "OPS-10"
-        ],
-        "groups": [
-            "installation",
-            "store",
-            "execution",
-            "complete-slice"
-        ],
-        "scope": "recipient",
-        "available": false,
-        "fixture": null,
-        "expectedCases": [
-            "ops-10/obligation-01",
-            "ops-10/obligation-02",
-            "ops-10/obligation-03"
-        ]
-    },
-    {
-        "id": "real-use-evidence",
-        "owners": [
-            "OPS-11"
-        ],
-        "groups": [],
-        "scope": "post-installation",
-        "available": false,
-        "fixture": null,
-        "expectedCases": [
-            "ops-11/obligation-01",
-            "ops-11/obligation-02",
-            "ops-11/obligation-03"
-        ]
-    },
-    {
-        "id": "remote-complete-slice",
-        "owners": [
-            "OPS-12"
-        ],
-        "groups": [
-            "complete-slice"
-        ],
-        "scope": "recipient",
-        "available": false,
-        "fixture": null,
-        "expectedCases": [
-            "ops-12/obligation-01",
-            "ops-12/obligation-02"
-        ]
-    }
+    { id: 'catalog-provenance', owners: ['NATIVE-05'], groups: [], scope: 'release-only', available: true, fixture: 'bin/tests/factory-catalog-provenance.test.mjs', expectedCases: [...PROVENANCE_CASES] },
+    stub('curated-workflows', ['NATIVE-06', 'NATIVE-07'], ['execution'], 4),
+    stub('review-methods', 'NATIVE-08', ['execution'], 4),
+    stub('memory-records', 'NATIVE-09', ['store'], 4),
+    stub('memory-correction', 'NATIVE-10', ['store', 'execution'], 5),
+    stub('improvement-adoption', 'NATIVE-11', ['store', 'complete-slice'], 5),
+    stub('research-methods', 'NATIVE-12', ['complete-slice'], 4),
+    stub('local-complete-slice', 'NATIVE-13', ['complete-slice'], 4),
+    stub('readiness', 'OPS-01', ['installation'], 2),
+    stub('remote-recovery', 'OPS-02', ['execution'], 2),
+    stub('remote-inputs', 'OPS-03', ['execution'], 2),
+    stub('remote-policy', 'OPS-04', ['execution'], 2),
+    stub('runtime-update', 'OPS-05', ['installation', 'store'], 2),
+    stub('maintenance', 'OPS-06', ['store'], 2),
+    stub('owner-transfer', 'OPS-07', ['store', 'execution'], 2),
+    stub('asset-delivery', 'OPS-08', ['installation'], 2),
+    stub('release-render-matrix', 'OPS-09', [], 2, 'release-only'),
+    stub('generated-product-closure', 'OPS-10', ['installation', 'store', 'execution', 'complete-slice'], 3),
+    stub('real-use-evidence', 'OPS-11', [], 3, 'post-installation'),
+    stub('remote-complete-slice', 'OPS-12', ['complete-slice'], 2),
 ];
 export function requireGroup(name) {
     if (!GROUPS.includes(name))

@@ -241,26 +241,6 @@ export interface DoctorReport {
   checkout?: 'matches-admitted-release' | 'unadmitted-fork';
 }
 
-// Environment names doctor refuses to see, giving `environment-injected` (item
-// 10, C1). The exact names below, plus these prefix families: DYLD_, LD_ and
-// NPM_CONFIG_; npm_config is matched case-insensitively so it also catches
-// NPM_CONFIG_ and mixed case; and any GIT_ name except GIT_TERMINAL_PROMPT.
-export const STRIPPED_VARIABLE_NAMES = [
-  'NODE_OPTIONS',
-  'NODE_PATH',
-  'NODE_REPL_EXTERNAL_MODULE',
-  'NODE_EXTRA_CA_CERTS',
-  'NODE_TLS_REJECT_UNAUTHORIZED',
-  'OPENSSL_CONF',
-] as const;
-export const STRIPPED_VARIABLE_PREFIXES = ['DYLD_', 'LD_', 'NPM_CONFIG_'] as const;
-export function isStrippedVariable(name: string): boolean {
-  if ((STRIPPED_VARIABLE_NAMES as readonly string[]).includes(name)) return true;
-  if (name.toLowerCase().startsWith('npm_config_')) return true;
-  if (STRIPPED_VARIABLE_PREFIXES.some(prefix => name.startsWith(prefix))) return true;
-  return name.startsWith('GIT_') && name !== 'GIT_TERMINAL_PROMPT';
-}
-
 // Canonical JSON serializer for every persisted record (selected.json, the
 // registry records, snapshot.json, installed-files.json). It recursively sorts
 // object keys and indents by two spaces, so a record's bytes and its sha256 are

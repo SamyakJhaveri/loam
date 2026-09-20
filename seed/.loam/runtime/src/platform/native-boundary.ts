@@ -1,7 +1,9 @@
 import { existsSync, lstatSync, mkdtempSync, readdirSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { isAbsolute, join, relative } from 'node:path';
+import { isAbsolute, join } from 'node:path';
 import { spawnSync } from 'node:child_process';
+import { shouldStrip } from './env-policy.js';
+import { contains, realpathOr } from './util.js';
 
 export const PROTECTED_KINDS = ['registry', 'state', 'locks', 'credentials', 'sockets', 'callbacks'] as const;
 export type ProtectedKind = typeof PROTECTED_KINDS[number];
@@ -17,22 +19,6 @@ export type ContainedCommand = { file: string; args: string[]; env: Record<strin
 export type ContainResult = ContainedCommand | { status: 'unavailable'; reasons: string[] };
 export type Availability = { available: true; mechanism: string } | { available: false; mechanism: string | null; reasons: string[] };
 
-// Preload, loader and package-manager environment inputs a JavaScript launcher
-// cannot undo once Node has started, so a trusted spawner strips them from a
-// child's environment before it runs.
-const STRIP_EXACT = new Set([
-  'NODE_OPTIONS', 'NODE_PATH', 'NODE_REPL_EXTERNAL_MODULE', 'NODE_EXTRA_CA_CERTS',
-  'NODE_PRESERVE_SYMLINKS_MAIN', 'NODE_TLS_REJECT_UNAUTHORIZED',
-  'OPENSSL_CONF', 'OPENSSL_CONF_INCLUDE', 'OPENSSL_MODULES', 'OPENSSL_ENGINES',
-  'LD_PRELOAD', 'LD_LIBRARY_PATH', 'LD_AUDIT',
-  'PYTHONPATH', 'PYTHONSTARTUP', 'PERL5OPT', 'BASH_ENV', 'ENV', 'PROMPT_COMMAND',
-]);
-function shouldStrip(name: string): boolean {
-  if (STRIP_EXACT.has(name)) return true;
-  if (name.startsWith('DYLD_')) return true;
-  if (name.startsWith('GIT_') && name !== 'GIT_TERMINAL_PROMPT') return true;
-  return false;
-}
 export function sanitizedEnvironment(env: NodeJS.ProcessEnv): Record<string, string> {
   const out: Record<string, string> = {};
   for (const [name, value] of Object.entries(env)) {
@@ -59,12 +45,7 @@ function resolveBwrap(): string | null {
   const probe = spawnSync('bwrap', ['--version'], { encoding: 'utf8', timeout: 10000 });
   return !probe.error && probe.status === 0 ? 'bwrap' : null;
 }
-function realpathOr(path: string): string { try { return realpathSync(path); } catch { return path; } }
-function containsPath(parent: string, child: string): boolean {
-  const path = relative(parent, child);
-  return path === '' || (!isAbsolute(path) && path !== '..' && !path.startsWith('../'));
-}
-function overlaps(a: string, b: string): boolean { return containsPath(a, b) || containsPath(b, a); }
+function overlaps(a: string, b: string): boolean { return contains(a, b) || contains(b, a); }
 function canonicalSpec(spec: ContainSpec): ContainSpec {
   function canonical(path: string): string {
     if (!isAbsolute(path)) throw new Error(`cannot resolve containment path: ${path}`);
@@ -135,10 +116,17 @@ function macProfile(spec: ContainSpec): string {
     '',
   ].join('\n');
 }
-function linuxArgs(spec: ContainSpec): string[] {
+// The bwrap arguments shared by the real contained command and the availability
+// smoke test: the unshare/clearenv flags, the read-only system binds and the
+// proc/dev/tmpfs setup. Both callers append their own tail in the same order.
+function linuxBaseArgs(): string[] {
   const args = ['--unshare-all', '--die-with-parent', '--new-session', '--clearenv'];
   for (const path of LINUX_RO_BINDS) if (existsSync(path)) args.push('--ro-bind', path, path);
   args.push('--proc', '/proc', '--dev', '/dev', '--tmpfs', '/tmp');
+  return args;
+}
+function linuxArgs(spec: ContainSpec): string[] {
+  const args = linuxBaseArgs();
   args.push('--ro-bind', spec.runtimeDir, spec.runtimeDir);
   args.push('--bind', spec.workspace, spec.workspace);
   args.push('--chdir', spec.workspace);
@@ -173,9 +161,8 @@ export function boundaryAvailability(): Availability {
   if (process.platform === 'linux') {
     const bwrap = resolveBwrap();
     if (!bwrap) return { available: false, mechanism: null, reasons: ['bwrap not found on PATH or standard locations'] };
-    const args = ['--unshare-all', '--die-with-parent', '--new-session', '--clearenv'];
-    for (const path of LINUX_RO_BINDS) if (existsSync(path)) args.push('--ro-bind', path, path);
-    args.push('--proc', '/proc', '--dev', '/dev', '--tmpfs', '/tmp', '--', '/bin/true');
+    const args = linuxBaseArgs();
+    args.push('--', '/bin/true');
     const result = spawnSync(bwrap, args, { encoding: 'utf8', timeout: 10000 });
     if (result.error) return { available: false, mechanism: 'bwrap', reasons: [`bwrap smoke test error: ${result.error.message}`] };
     if (result.status !== 0) return { available: false, mechanism: 'bwrap', reasons: [`bwrap smoke test failed: ${(result.stderr || '').trim() || `exit ${result.status}`}`] };

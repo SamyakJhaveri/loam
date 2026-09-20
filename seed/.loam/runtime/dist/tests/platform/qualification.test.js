@@ -10,6 +10,7 @@ import { DatabaseSync, backup } from 'node:sqlite';
 import { qualifyRuntime, runtimeIdentity, spawnRuntime } from '../../src/platform/runtime.js';
 import { acquireOwnership, openExistingStore, openStoreOnWorker, OwnershipRefused, storeURI } from '../../src/platform/ownership.js';
 import { containedCommand, PROTECTED_KINDS, sanitizedEnvironment, sanitizeProcessEnvironment } from '../../src/platform/native-boundary.js';
+import { STRIP_EXACT, STRIPPED_VARIABLE_NAMES, STRIPPED_VARIABLE_PREFIXES, isStrippedVariable, shouldStrip } from '../../src/platform/env-policy.js';
 const manifestPath = fileURLToPath(new URL('../../../assets/runtime-manifest.json', import.meta.url));
 const ownershipSource = fileURLToPath(new URL('../../src/platform/ownership.js', import.meta.url));
 const STORE_APPID = 0x4c4f414d;
@@ -896,5 +897,54 @@ test('env.process-sanitized-before-children', () => {
                 process.env[key] = saved[key];
         }
     }
+});
+// B2: env-policy.ts holds two environment-strip sets that differ on purpose - the
+// enforcement set a trusted spawner deletes before spawn, and the diagnostic set
+// doctor refuses to see. These pin each set exactly, so a merge or a silent drift
+// of either list fails here instead of shipping.
+test('env.enforcement-set-pinned', () => {
+    assert.deepStrictEqual([...STRIP_EXACT].sort(), [
+        'BASH_ENV', 'ENV', 'LD_AUDIT', 'LD_LIBRARY_PATH', 'LD_PRELOAD',
+        'NODE_EXTRA_CA_CERTS', 'NODE_OPTIONS', 'NODE_PATH', 'NODE_PRESERVE_SYMLINKS_MAIN',
+        'NODE_REPL_EXTERNAL_MODULE', 'NODE_TLS_REJECT_UNAUTHORIZED',
+        'OPENSSL_CONF', 'OPENSSL_CONF_INCLUDE', 'OPENSSL_ENGINES', 'OPENSSL_MODULES',
+        'PERL5OPT', 'PROMPT_COMMAND', 'PYTHONPATH', 'PYTHONSTARTUP',
+    ]);
+    assert.equal(shouldStrip('DYLD_INSERT_LIBRARIES'), true);
+    assert.equal(shouldStrip('GIT_DIR'), true);
+    assert.equal(shouldStrip('GIT_TERMINAL_PROMPT'), false);
+    assert.equal(shouldStrip('LD_FOO'), false);
+    assert.equal(shouldStrip('npm_config_registry'), false);
+    record('env.enforcement-set-pinned', 'env-policy', STRIP_EXACT.size);
+});
+test('env.diagnostic-set-pinned', () => {
+    assert.deepStrictEqual([...STRIPPED_VARIABLE_NAMES], [
+        'NODE_OPTIONS', 'NODE_PATH', 'NODE_REPL_EXTERNAL_MODULE', 'NODE_EXTRA_CA_CERTS',
+        'NODE_TLS_REJECT_UNAUTHORIZED', 'OPENSSL_CONF',
+    ]);
+    assert.deepStrictEqual([...STRIPPED_VARIABLE_PREFIXES], ['DYLD_', 'LD_', 'NPM_CONFIG_']);
+    assert.equal(isStrippedVariable('DYLD_INSERT_LIBRARIES'), true);
+    assert.equal(isStrippedVariable('GIT_DIR'), true);
+    assert.equal(isStrippedVariable('GIT_TERMINAL_PROMPT'), false);
+    assert.equal(isStrippedVariable('LD_FOO'), true);
+    assert.equal(isStrippedVariable('npm_config_registry'), true);
+    record('env.diagnostic-set-pinned', 'env-policy', STRIPPED_VARIABLE_NAMES.length);
+});
+test('env.strip-sets-diverge', () => {
+    // The enforcement set strips only the three exact LD_ names, so LD_FOO and npm
+    // config pass it; the diagnostic set strips every LD_ name and npm config via
+    // prefix. Both agree on the DYLD_ prefix and the GIT_-except-GIT_TERMINAL_PROMPT
+    // rule, and on every NODE_/OPENSSL_ exact name they share.
+    for (const name of ['LD_FOO', 'npm_config_registry', 'NPM_CONFIG_REGISTRY']) {
+        assert.equal(shouldStrip(name), false, `${name} is not enforcement-stripped`);
+        assert.equal(isStrippedVariable(name), true, `${name} is diagnostic-stripped`);
+    }
+    assert.equal(shouldStrip('GIT_TERMINAL_PROMPT'), false);
+    assert.equal(isStrippedVariable('GIT_TERMINAL_PROMPT'), false);
+    for (const name of ['GIT_DIR', 'DYLD_INSERT_LIBRARIES', 'NODE_OPTIONS', 'OPENSSL_CONF']) {
+        assert.equal(shouldStrip(name), true, `${name} is enforcement-stripped`);
+        assert.equal(isStrippedVariable(name), true, `${name} is diagnostic-stripped`);
+    }
+    record('env.strip-sets-diverge', 'env-policy', 'sets differ as pinned');
 });
 //# sourceMappingURL=qualification.test.js.map

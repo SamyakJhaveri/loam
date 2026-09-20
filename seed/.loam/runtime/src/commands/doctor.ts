@@ -18,8 +18,10 @@ import { createHash } from 'node:crypto';
 import { lstatSync, readFileSync, readdirSync, realpathSync, statSync } from 'node:fs';
 import { join, relative, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { CONTROL_ROOT_LAYOUT, NO_GLOBAL_SEARCH_PATHS, SNAPSHOT_LAYOUT, isStrippedVariable } from '../contracts/installation.js';
+import { CONTROL_ROOT_LAYOUT, NO_GLOBAL_SEARCH_PATHS, SNAPSHOT_LAYOUT } from '../contracts/installation.js';
 import type { AdmissionRecord, Diagnostic, DoctorReport, InstalledFiles, RuntimeRecord } from '../contracts/installation.js';
+import { isStrippedVariable } from '../platform/env-policy.js';
+import { isRecord, readJson } from '../platform/util.js';
 import { computeId, controlRootState } from '../installation/admit.js';
 
 export interface DoctorOptions {
@@ -36,14 +38,7 @@ function hashFile(path: string): string {
   return createHash('sha256').update(readFileSync(path)).digest('hex');
 }
 
-function readJson<T>(path: string): T {
-  return JSON.parse(readFileSync(path, 'utf8')) as T;
-}
-
 const HEX64 = /^[0-9a-f]{64}$/;
-function isObject(value: unknown): value is Record<string, unknown> {
-  return value !== null && typeof value === 'object' && !Array.isArray(value);
-}
 
 // Structural validators for the registry records and the installed inventory
 // (B2). They run before any field is used, so a malformed or vacuous record is a
@@ -55,7 +50,7 @@ function isHex64(value: unknown): value is string {
   return typeof value === 'string' && HEX64.test(value);
 }
 function isReleaseIdentity(value: unknown): boolean {
-  return isObject(value)
+  return isRecord(value)
     && typeof value.label === 'string' && value.label.length > 0
     && typeof value.sourcePath === 'string' && value.sourcePath.length > 0
     && (value.gitDescribe === null || typeof value.gitDescribe === 'string')
@@ -63,14 +58,14 @@ function isReleaseIdentity(value: unknown): boolean {
     && isHex64(value.dependencyDigest) && isHex64(value.manifestSha256);
 }
 function isAdmittedTools(value: unknown): boolean {
-  if (!isObject(value)) return false;
+  if (!isRecord(value)) return false;
   if (typeof value.platform !== 'string' || typeof value.arch !== 'string') return false;
   const node = value.node;
   const npm = value.npm;
-  return isObject(node)
+  return isRecord(node)
     && typeof node.version === 'string' && typeof node.sqlite === 'string'
     && isHex64(node.sha256) && typeof node.sourcePath === 'string'
-    && isObject(npm)
+    && isRecord(npm)
     && typeof npm.version === 'string'
     && isHex64(npm.cliSha256) && isHex64(npm.packageSha256) && typeof npm.sourcePath === 'string';
 }
@@ -78,30 +73,30 @@ function isAdmittedTools(value: unknown): boolean {
 // value a sha256. An empty map must not certify (it would make the release loop a
 // no-op).
 function isReleaseFileMap(value: unknown): boolean {
-  if (!isObject(value)) return false;
+  if (!isRecord(value)) return false;
   const entries = Object.entries(value);
   if (entries.length === 0) return false;
   return entries.every(([path, digest]) =>
     path.length > 0 && !path.startsWith('/') && !path.split('/').includes('..') && isHex64(digest));
 }
 function isInstalledFiles(value: unknown): value is InstalledFiles {
-  if (!isObject(value) || value.version !== 1 || !isObject(value.files)) return false;
+  if (!isRecord(value) || value.version !== 1 || !isRecord(value.files)) return false;
   return Object.values(value.files).every((entry) =>
-    isObject(entry) && isHex64(entry.sha256) && (entry.mode === 'executable' || entry.mode === 'regular'));
+    isRecord(entry) && isHex64(entry.sha256) && (entry.mode === 'executable' || entry.mode === 'regular'));
 }
 // Remaining AdmissionRecord fields the shape check completes (B2). protectedPaths
 // must carry exactly the six protected-home kinds, each an absolute path.
 const PROTECTED_KEYS = Object.keys(CONTROL_ROOT_LAYOUT.homes).sort();
 function isAllowedBuildScripts(value: unknown): boolean {
-  return isObject(value) && Object.values(value).every((entry) => typeof entry === 'boolean');
+  return isRecord(value) && Object.values(value).every((entry) => typeof entry === 'boolean');
 }
 function isProviders(value: unknown): boolean {
-  return isObject(value) && Array.isArray(value.payloads)
+  return isRecord(value) && Array.isArray(value.payloads)
     && value.payloads.every((entry) => typeof entry === 'string')
     && typeof value.successor === 'string';
 }
 function isProtectedPaths(value: unknown): boolean {
-  if (!isObject(value)) return false;
+  if (!isRecord(value)) return false;
   const keys = Object.keys(value).sort();
   return keys.length === PROTECTED_KEYS.length
     && PROTECTED_KEYS.every((key, index) => key === keys[index])
@@ -189,7 +184,7 @@ export function runDoctor(options: DoctorOptions): DoctorReport {
   } catch {
     return interrupt(`admission record is not valid JSON: ${selected.admissionId}`);
   }
-  if (!isObject(parsedAdmission) || parsedAdmission.version !== 1 || parsedAdmission.id !== selected.admissionId
+  if (!isRecord(parsedAdmission) || parsedAdmission.version !== 1 || parsedAdmission.id !== selected.admissionId
       || typeof parsedAdmission.admittedAt !== 'string' || parsedAdmission.admittedAt.length === 0
       || !isReleaseFileMap(parsedAdmission.files)
       || !isReleaseIdentity(parsedAdmission.release)
@@ -207,7 +202,7 @@ export function runDoctor(options: DoctorOptions): DoctorReport {
   } catch {
     return interrupt(`runtime record is not valid JSON: ${selected.snapshotId}`);
   }
-  if (!isObject(parsedRuntime) || parsedRuntime.version !== 1
+  if (!isRecord(parsedRuntime) || parsedRuntime.version !== 1
       || parsedRuntime.snapshotId !== selected.snapshotId
       || parsedRuntime.admissionId !== selected.admissionId
       || typeof parsedRuntime.installedFilesSha256 !== 'string'
@@ -333,7 +328,7 @@ export function runDoctor(options: DoctorOptions): DoctorReport {
   } catch {
     return fail('build-altered-release', 'release-manifest.json is unreadable');
   }
-  if (!isObject(manifest.files) || !Object.values(manifest.files).every(isHex64)
+  if (!isRecord(manifest.files) || !Object.values(manifest.files).every(isHex64)
       || !isHex64(manifest.sourceDigest) || !isHex64(manifest.outputDigest) || !isHex64(manifest.dependencyDigest)) {
     return fail('build-altered-release', 'release-manifest.json is malformed');
   }

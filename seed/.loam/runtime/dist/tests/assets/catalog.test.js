@@ -6,7 +6,7 @@ import { fileURLToPath } from 'node:url';
 import { test } from 'node:test';
 import { assertSchemaDocument, validate } from '../../src/assets/schema.js';
 import { extractSourceUnits, sha256 } from '../../src/assets/units.js';
-import { CatalogError, loadCatalog, validateCatalog, resolveEntry, scanPersonalPaths, assertRelativePath, requiredClosure, checkRecipientDelivery, recipientRootOf, OBLIGATIONS, } from '../../src/assets/catalog.js';
+import { CatalogError, loadCatalog, validateCatalog, resolveEntry, scanPersonalPaths, assertSourceRevisions, assertRelativePath, requiredClosure, checkRecipientDelivery, recipientRootOf, OBLIGATIONS, } from '../../src/assets/catalog.js';
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '../../..');
 const load = () => loadCatalog(root).catalog;
 const clone = (value) => structuredClone(value);
@@ -142,6 +142,9 @@ test('catalog.schema-and-payload', () => {
 test('catalog.conservation-rejections', () => {
     const catalog = load();
     assert.doesNotThrow(() => validateCatalog(catalog));
+    // B3: a non-object obligations sourceRevisions is rejected outright; the old
+    // per-digest fallback for a missing object is gone.
+    expectRule(() => assertSourceRevisions(catalog, { ...OBLIGATIONS, sourceRevisions: 'not-an-object' }), 'sourceRevisions.mismatch');
     // Remove a baseline entry.
     expectRule(() => { const c = clone(catalog); c.entries = c.entries.filter(e => e.id !== 'baseline:plan-review'); validateCatalog(c); }, 'membership.missing');
     // Delete a required support edge.
