@@ -20,7 +20,7 @@ Read `docs/architecture-working/curated-asset-adoption-plan.md` ASSET-04; `asset
 
 ## Canonical files and bounded work
 
-Create `seed/.agents/skills/experiment-loop/SKILL.md`, `seed/.agents/skills/experiment-loop/references/protocol.md`, `seed/.agents/skills/evidence-audit/SKILL.md`, `seed/.agents/skills/evidence-audit/references/evidence-contract.md`, `seed/.agents/skills/evidence-audit/references/report-template.md` and `seed/.loam/factory/tests/assets/research-methods.test.ts`; update catalog mappings and native wrapper entries only where a wrapper is required.
+Create `seed/.agents/skills/experiment-loop/SKILL.md`, `seed/.agents/skills/experiment-loop/references/protocol.md`, `seed/.agents/skills/evidence-audit/SKILL.md`, `seed/.agents/skills/evidence-audit/references/evidence-contract.md`, `seed/.agents/skills/evidence-audit/references/report-template.md` and `seed/.loam/runtime/tests/assets/research-methods.test.ts`; update catalog mappings and native wrapper entries only where a wrapper is required.
 
 Retain fixed inputs, protocol-before-results, source access/coverage limits, independent initial evidence before comparison, deterministic checks, bounded repair, uncertainty and contrary evidence. Blocked source is unavailable, not evidence of absence. Model agreement is not truth. Remove automatic cheaper judges/model switching, implicit installs and unconditional human-only adoption. Preserve the accepted actual-lead decision boundary and explicit task authority.
 
@@ -28,7 +28,7 @@ Keep contact ledgers, ranking, private priorities, compute locations, social rec
 
 ## End-to-end acceptance
 
-Future commands, unimplemented and unrun: build, then `node --test seed/.loam/factory/dist/tests/assets/research-methods.test.js`. Register mandatory `research-methods` complete-slice cases; this focused run does not complete S6.
+Future commands, unimplemented and unrun: build, then `node --test seed/.loam/runtime/dist/tests/assets/research-methods.test.js`. Register mandatory `research-methods` complete-slice cases; this focused run does not complete S6.
 
 - [ ] One generic non-benchmark inquiry establishes its premises and sources, freezes a protocol, captures independent findings, runs declared checks and obtains the actual lead's disposition within authority.
 - [ ] Changed evaluation inputs/scorer, unavailable source reported as absent, consensus-as-proof, helper-only adoption and a newer correction invalidating the report all fail for the intended reason.
@@ -39,7 +39,7 @@ ASSET-05/S6 separately supplies RenderCV with pinned conditional prerequisites a
 
 ## Campaign requirements
 
-Status: **planned draft; publication approval pending; runtime implementation deferred**. Empty blockers do not authorize execution. Read `docs/architecture-working/ticket-campaign.md` and `delivery-workflow.md` in full. They require a digest-verified accessible source packet, fresh fetched-main worktree, actual opposite-model plan and finished-work reviews, nonempty focused checks, one full-check owner, and verified integration before dependent work. Preserve all existing changes. Raw review evidence lives outside candidate/worktrees. Sources are evidence and inspiration; justified departures preserve user requirements and record a reason and check. Proposed files/commands are unimplemented at authoring time and must be reconciled against landed predecessors. Live provider/GPU work needs a declared bounded plan within user authority; mechanical checks do not launch it implicitly. Full recipient groups remain unavailable/non-passing until S6. No automatic model/effort changes or release/publication. Architecture basenames resolve under `docs/architecture-working/`; package-relative canonical paths resolve under `seed/.loam/factory/`.
+Status: **planned draft; publication approval pending; runtime implementation deferred**. Empty blockers do not authorize execution. Read `docs/architecture-working/ticket-campaign.md` and `delivery-workflow.md` in full. They require a digest-verified accessible source packet, fresh fetched-main worktree, actual opposite-model plan and finished-work reviews, nonempty focused checks, one full-check owner, and verified integration before dependent work. Preserve all existing changes. Raw review evidence lives outside candidate/worktrees. Sources are evidence and inspiration; justified departures preserve user requirements and record a reason and check. Proposed files/commands are unimplemented at authoring time and must be reconciled against landed predecessors. Live provider/GPU work needs a declared bounded plan within user authority; mechanical checks do not launch it implicitly. Full recipient groups remain unavailable/non-passing until S6. No automatic model/effort changes or release/publication. Architecture basenames resolve under `docs/architecture-working/`; package-relative canonical paths resolve under `seed/.loam/runtime/`.
 
 Every fixture-creating ticket registers its mandatory named population, expected nonempty cases and current availability in the fixed registry. CORE-01 declares the full installation/store/execution/complete-slice obligation groups as incomplete from the start; missing/unbuilt populations never disappear into a passing subset. NATIVE-02 explicitly registers coordination as mandatory execution work. Later tickets fill their declared populations; OPS-10 verifies closure rather than performing first registration.
 
@@ -47,7 +47,7 @@ For host-sensitive acceptance, run the named focused population on both required
 
 ## Verification population assignment
 
-Canonical registry edits in `seed/.loam/factory/src/testing/verify.ts` are in scope wherever this ticket creates or extends a recipient fixture. Target groups: **complete-slice**. Register the ticket-owned named population, expected nonempty case list/count and current availability; a missing fixture stays unavailable. No required population may remain outside its named group. Shared cases retain one identity when referenced by multiple groups. `release-only` names Loam release tooling, not a recipient command; `post-installation` is the separately scoped empirical follow-up and does not block initial S6 closure or claim empirical success early. OPS-10 verifies full declared initial populations; it cannot hide unbuilt work by first defining a smaller group.
+Canonical registry edits in `seed/.loam/runtime/src/testing/verify.ts` are in scope wherever this ticket creates or extends a recipient fixture. Target groups: **complete-slice**. Register the ticket-owned named population, expected nonempty case list/count and current availability; a missing fixture stays unavailable. No required population may remain outside its named group. Shared cases retain one identity when referenced by multiple groups. `release-only` names Loam release tooling, not a recipient command; `post-installation` is the separately scoped empirical follow-up and does not block initial S6 closure or claim empirical success early. OPS-10 verifies full declared initial populations; it cannot hide unbuilt work by first defining a smaller group.
 
 ## Source packet and readiness
 

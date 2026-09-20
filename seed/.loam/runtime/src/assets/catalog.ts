@@ -269,9 +269,8 @@ export function validateCatalog(catalog: Catalog): CatalogReport {
   const obligations = OBLIGATIONS;
   assertNoPersonalPaths(catalog, 'catalog');
 
-  // Source-revision provenance: the catalog's recorded revisions must equal the obligations'.
-  // The compiled obligations carry the plan/ticket/obligations digests directly today; when the
-  // generator emits a full sourceRevisions object the whole object is compared. (Finding 2.)
+  // Source-revision provenance: the catalog's recorded sourceRevisions object must equal the
+  // obligations' object; a non-object on either side is a mismatch. (Finding 2.)
   assertSourceRevisions(catalog, obligations);
 
   // Membership: catalog entry ids equal the obligation entry ids, no duplicates, none unknown, none missing.
@@ -489,25 +488,14 @@ function providerConsistent(applicability: string, providers: unknown): boolean 
   return false;
 }
 
-// The catalog's recorded source revisions must equal the obligations'. When the generator emits a
-// full sourceRevisions object it is compared whole; until then the plan/ticket/obligations digests
-// that the compiled obligations already carry are compared. (Finding 2.)
-function assertSourceRevisions(catalog: Catalog, obligations: Obligations): void {
+// The catalog's recorded source revisions must equal the obligations' sourceRevisions object. Both
+// sides must be objects, and they are compared whole. (Finding 2.)
+export function assertSourceRevisions(catalog: Catalog, obligations: Obligations): void {
   const rev = catalog.sourceRevisions;
   if (!isRecord(rev)) fail('sourceRevisions.mismatch', 'catalog sourceRevisions is not an object');
   const obRev = (obligations as { sourceRevisions?: unknown }).sourceRevisions;
-  if (isRecord(obRev)) {
-    if (!deepEqual(rev, obRev)) fail('sourceRevisions.mismatch', 'catalog sourceRevisions differ from the obligations');
-    return;
-  }
-  const digests: Array<[string, string]> = [
-    ['planSha256', obligations.planSha256],
-    ['ticketSha256', obligations.ticketSha256],
-    ['obligationsSha256', obligations.obligationsSha256],
-  ];
-  for (const [key, expected] of digests) {
-    if ((rev as Record<string, unknown>)[key] !== expected) fail('sourceRevisions.mismatch', `catalog sourceRevisions.${key} differs from the obligations`);
-  }
+  if (!isRecord(obRev)) fail('sourceRevisions.mismatch', 'obligations sourceRevisions is not an object');
+  if (!deepEqual(rev, obRev)) fail('sourceRevisions.mismatch', 'catalog sourceRevisions differ from the obligations');
 }
 
 // ---------------------------------------------------------------------------

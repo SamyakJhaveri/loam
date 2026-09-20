@@ -8,30 +8,11 @@ try {
   const { sanitizeProcessEnvironment } = await import('./dist/src/platform/native-boundary.js');
   sanitizeProcessEnvironment();
   const environment = { execPath: process.execPath, version: process.version, platform: process.platform, arch: process.arch };
-  if (args.length === 2 && args[0] === 'qualify' && args[1] === 'package') {
-    const { PACKAGE_CASES, runFixedFixture } = await import('./dist/src/testing/verify.js');
-    const report = await runFixedFixture(fileURLToPath(new URL('./dist/tests/installation/package.test.js', import.meta.url)), PACKAGE_CASES);
-    console.log(JSON.stringify({ kind: 'package-qualification', status: 'passed', ...report, environment }));
-  } else if (args.length === 2 && args[0] === 'qualify' && args[1] === 'platform') {
-    const { QUALIFICATION_CASES, runFixedFixture } = await import('./dist/src/testing/verify.js');
-    const report = await runFixedFixture(fileURLToPath(new URL('./dist/tests/platform/qualification.test.js', import.meta.url)), QUALIFICATION_CASES, 120000);
-    console.log(JSON.stringify({ kind: 'platform-qualification', status: 'passed', ...report, environment }));
-  } else if (args.length === 2 && args[0] === 'qualify' && args[1] === 'catalog') {
-    const { CATALOG_CASES, runFixedFixture } = await import('./dist/src/testing/verify.js');
-    const report = await runFixedFixture(fileURLToPath(new URL('./dist/tests/assets/catalog.test.js', import.meta.url)), CATALOG_CASES, 120000);
-    console.log(JSON.stringify({ kind: 'catalog-qualification', status: 'passed', ...report, environment }));
-  } else if (args.length === 2 && args[0] === 'qualify' && args[1] === 'native-boundary') {
-    const { NATIVE_BOUNDARY_CASES, runFixedFixture } = await import('./dist/src/testing/verify.js');
-    const report = await runFixedFixture(fileURLToPath(new URL('./dist/tests/platform/native-boundary.test.js', import.meta.url)), NATIVE_BOUNDARY_CASES, 120000);
-    console.log(JSON.stringify({ kind: 'native-boundary-qualification', status: 'passed', ...report, environment }));
-  } else if (args.length === 2 && args[0] === 'qualify' && args[1] === 'runtime-admission') {
-    const { ADMISSION_CASES, runFixedFixture } = await import('./dist/src/testing/verify.js');
-    const report = await runFixedFixture(fileURLToPath(new URL('./dist/tests/installation/admission.test.js', import.meta.url)), ADMISSION_CASES, 300000);
-    console.log(JSON.stringify({ kind: 'runtime-admission-qualification', status: 'passed', ...report, environment }));
-  } else if (args.length === 2 && args[0] === 'qualify' && args[1] === 'admission-containment') {
-    const { ADMISSION_CONTAINMENT_CASES, runFixedFixture } = await import('./dist/src/testing/verify.js');
-    const report = await runFixedFixture(fileURLToPath(new URL('./dist/tests/installation/admission-containment.test.js', import.meta.url)), ADMISSION_CONTAINMENT_CASES, 300000);
-    console.log(JSON.stringify({ kind: 'admission-containment-qualification', status: 'passed', ...report, environment }));
+  const verifyModule = args.length === 2 && args[0] === 'qualify' ? await import('./dist/src/testing/verify.js') : undefined;
+  const qualifyRow = verifyModule?.QUALIFY_VERBS.find(row => row.verb === args[1]);
+  if (qualifyRow) {
+    const report = await verifyModule.runFixedFixture(fileURLToPath(new URL('./' + qualifyRow.fixture, import.meta.url)), qualifyRow.cases, qualifyRow.timeout);
+    console.log(JSON.stringify({ kind: qualifyRow.kind, status: 'passed', ...report, environment }));
   } else if (args.length === 2 && args[0] === 'verify') {
     const { requireGroup } = await import('./dist/src/testing/verify.js');
     console.log(JSON.stringify({ kind: 'recipient-verification', group: args[1], status: 'unavailable', ...requireGroup(args[1]) }));

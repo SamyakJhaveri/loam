@@ -27,6 +27,7 @@ import {
 } from '../contracts/installation.js';
 import { qualifyRuntime } from '../platform/runtime.js';
 import { boundaryAvailability, containedCommand, PROTECTED_KINDS, type ProtectedKind } from '../platform/native-boundary.js';
+import { contains, isRecord, readJson, realpathOr } from '../platform/util.js';
 import { snapshot as payloadSnapshot, verifyPackage } from './package.js';
 
 const PROTECTED_HOMES = PROTECTED_KINDS;
@@ -40,16 +41,13 @@ const HEX16 = /^[0-9a-f]{16}$/;
 
 function sha256(data: Buffer | string): string { return createHash('sha256').update(data).digest('hex'); }
 function sha256File(path: string): string { return sha256(readFileSync(path)); }
-function readJson(path: string): unknown { return JSON.parse(readFileSync(path, 'utf8')); }
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return value !== null && typeof value === 'object' && !Array.isArray(value);
-}
 // Create a brand-new file at `path`. The 'wx' flag opens with O_CREAT|O_EXCL, so
 // it refuses to create through, follow or clobber any existing entry (a planted
 // symlink included); the write can never be redirected outside the target.
 function writeNewFile(path: string, bytes: string | Buffer): void {
   const fd = openSync(path, 'wx');
   try {
+    // Two branches for writeSync's overloads; the union does not match either.
     if (typeof bytes === 'string') writeSync(fd, bytes);
     else writeSync(fd, bytes);
   } finally { closeSync(fd); }
@@ -81,7 +79,6 @@ function ensureRealDir(path: string): void {
 function isSymlink(path: string): boolean {
   try { return lstatSync(path).isSymbolicLink(); } catch { return false; }
 }
-function realpathOr(path: string): string { try { return realpathSync(path); } catch { return path; } }
 
 // Recursively copy a tree of regular files and directories, refusing any symlink
 // or hard-linked file, so the copied Node/npm tree carries no aliases.
@@ -126,10 +123,6 @@ function resolveTrustedSource(trustedSource: string, controlRoot: string): { sou
   const control = realpathOr(controlRoot);
   if (contains(source, control) || contains(control, source)) throw new AdmissionError('trusted-source-shape', 'trusted source and control root overlap');
   return { source, repoRoot };
-}
-function contains(parent: string, child: string): boolean {
-  const rel = relative(parent, child);
-  return rel === '' || (!isAbsolute(rel) && rel !== '..' && !rel.startsWith(`..${sep}`));
 }
 function assertNoAncestorPackages(controlRoot: string): void {
   let dir = dirname(realpathOr(controlRoot));
@@ -446,6 +439,44 @@ function checksumManifest(installed: InstalledFiles, installedFilesSha256: strin
 
 // ---- control-root state (mirror of the sh controller, item 9) ------------
 
+// The runtimes-directory walk shared by controlRootState (no lock held) and
+// recheckUnderLock (our lock held). It scans for staging/tool leftovers, then
+// the complete HEX16 snapshots, then the selection, in that fixed order, and
+// returns which state won without deciding how to report it. The two callers map
+// the result to their own diagnostics: controlRootState returns them, while
+// recheckUnderLock throws, treating a valid selection as selection-exists and
+// the empty state as "proceed". The control-root existence and lock rows stay in
+// controlRootState alone.
+type RuntimeState =
+  | { kind: 'staging'; detail: string }
+  | { kind: 'unregistered'; detail: string }
+  | { kind: 'selection-invalid' }
+  | { kind: 'selected'; selected: Selected; snapshotPath: string }
+  | { kind: 'unselected'; detail: string }
+  | { kind: 'nothing' };
+function classifyRuntimes(controlRoot: string): RuntimeState {
+  const runtimesDir = join(controlRoot, CONTROL_ROOT_LAYOUT.runtimes);
+  const entries = safeReaddir(runtimesDir);
+  for (const name of entries) {
+    if (name.startsWith(CONTROL_ROOT_LAYOUT.stagingPrefix) || name.startsWith(CONTROL_ROOT_LAYOUT.toolPrefix)) {
+      return { kind: 'staging', detail: `staging ${join(runtimesDir, name)}` };
+    }
+  }
+  const complete: string[] = [];
+  for (const id of entries.filter(name => HEX16.test(name))) {
+    if (!runtimeRecordsComplete(controlRoot, id)) return { kind: 'unregistered', detail: `unregistered ${id}` };
+    complete.push(id);
+  }
+  const selectedPath = join(controlRoot, CONTROL_ROOT_LAYOUT.selected);
+  if (existsSync(selectedPath)) {
+    const selected = parseSelected(selectedPath);
+    if (!selected || !complete.includes(selected.snapshotId)) return { kind: 'selection-invalid' };
+    return { kind: 'selected', selected, snapshotPath: join(runtimesDir, selected.snapshotId) };
+  }
+  if (complete.length) return { kind: 'unselected', detail: `unselected ${complete[0]}` };
+  return { kind: 'nothing' };
+}
+
 export function controlRootState(controlRoot: string | undefined):
   | { kind: 'diagnostic'; diagnostic: Diagnostic; detail: string }
   | { kind: 'selected'; selected: Selected; snapshotPath: string } {
@@ -455,26 +486,15 @@ export function controlRootState(controlRoot: string | undefined):
   if (!stat.isDirectory()) return diag('control-root-missing', controlRoot);
   const lock = join(controlRoot, CONTROL_ROOT_LAYOUT.lock);
   if (existsSync(lock)) return diag('install-interrupted', `lock ${lock}`);
-  const runtimesDir = join(controlRoot, CONTROL_ROOT_LAYOUT.runtimes);
-  const entries = safeReaddir(runtimesDir);
-  for (const name of entries) {
-    if (name.startsWith(CONTROL_ROOT_LAYOUT.stagingPrefix) || name.startsWith(CONTROL_ROOT_LAYOUT.toolPrefix)) {
-      return diag('install-interrupted', `staging ${join(runtimesDir, name)}`);
-    }
+  const state = classifyRuntimes(controlRoot);
+  switch (state.kind) {
+    case 'staging': return diag('install-interrupted', state.detail);
+    case 'unregistered': return diag('install-interrupted', state.detail);
+    case 'selection-invalid': return diag('install-interrupted', 'selection');
+    case 'selected': return { kind: 'selected', selected: state.selected, snapshotPath: state.snapshotPath };
+    case 'unselected': return diag('install-interrupted', state.detail);
+    case 'nothing': return diag('nothing-admitted', 'no runtime has been admitted');
   }
-  const complete: string[] = [];
-  for (const id of entries.filter(name => HEX16.test(name))) {
-    if (!runtimeRecordsComplete(controlRoot, id)) return diag('install-interrupted', `unregistered ${id}`);
-    complete.push(id);
-  }
-  const selectedPath = join(controlRoot, CONTROL_ROOT_LAYOUT.selected);
-  if (existsSync(selectedPath)) {
-    const selected = parseSelected(selectedPath);
-    if (!selected || !complete.includes(selected.snapshotId)) return diag('install-interrupted', 'selection');
-    return { kind: 'selected', selected, snapshotPath: join(runtimesDir, selected.snapshotId) };
-  }
-  if (complete.length) return diag('install-interrupted', `unselected ${complete[0]}`);
-  return diag('nothing-admitted', 'no runtime has been admitted');
 }
 function diag(diagnostic: Diagnostic, detail: string): { kind: 'diagnostic'; diagnostic: Diagnostic; detail: string } {
   return { kind: 'diagnostic', diagnostic, detail };
@@ -517,26 +537,17 @@ function acquireLock(controlRoot: string): string {
 function recheckUnderLock(controlRoot: string): void {
   // Under our own lock, mirror the item 9 state table (minus the lock row, which
   // we hold). A valid selection is selection-exists; any staging, incomplete or
-  // complete-but-unselected runtime is the corresponding install-interrupted.
-  const runtimesDir = join(controlRoot, CONTROL_ROOT_LAYOUT.runtimes);
-  const entries = safeReaddir(runtimesDir);
-  for (const name of entries) {
-    if (name.startsWith(CONTROL_ROOT_LAYOUT.stagingPrefix) || name.startsWith(CONTROL_ROOT_LAYOUT.toolPrefix)) {
-      throw new AdmissionError('install-interrupted', `staging ${join(runtimesDir, name)}`);
-    }
+  // complete-but-unselected runtime is the corresponding install-interrupted; the
+  // empty state is the only one that lets this admission proceed.
+  const state = classifyRuntimes(controlRoot);
+  switch (state.kind) {
+    case 'staging': throw new AdmissionError('install-interrupted', state.detail);
+    case 'unregistered': throw new AdmissionError('install-interrupted', state.detail);
+    case 'selection-invalid': throw new AdmissionError('install-interrupted', 'selection');
+    case 'selected': throw new AdmissionError('selection-exists', 'a runtime is already selected for this control root');
+    case 'unselected': throw new AdmissionError('install-interrupted', state.detail);
+    case 'nothing': return;
   }
-  const complete: string[] = [];
-  for (const rid of entries.filter(name => HEX16.test(name))) {
-    if (!runtimeRecordsComplete(controlRoot, rid)) throw new AdmissionError('install-interrupted', `unregistered ${rid}`);
-    complete.push(rid);
-  }
-  const selectedPath = join(controlRoot, CONTROL_ROOT_LAYOUT.selected);
-  if (existsSync(selectedPath)) {
-    const selected = parseSelected(selectedPath);
-    if (!selected || !complete.includes(selected.snapshotId)) throw new AdmissionError('install-interrupted', 'selection');
-    throw new AdmissionError('selection-exists', 'a runtime is already selected for this control root');
-  }
-  if (complete.length) throw new AdmissionError('install-interrupted', `unselected ${complete[0]}`);
 }
 function resolveHomes(controlRoot: string, protect: AdmitOptions['protect']): Record<ProtectedKind, string> {
   const homes = {} as Record<ProtectedKind, string>;
@@ -599,7 +610,6 @@ export async function admitRuntime(options: AdmitOptions): Promise<{ id: string;
     const buildNames = deps.filter(dep => dep.entry.hasInstallScript).map(dep => dep.name);
     if (buildNames.length) {
       runBuildPhase(ws, homes, buildNames, options.test?.nativePrerequisites ?? {}, options.test?.containment === 'unavailable', options.test?.simulateWrapperRefusal === true);
-      checkReleaseBinding(ws.payload, files);
     }
     assertWorkspaceSiblings(ws);
     checkReleaseBinding(ws.payload, files);
