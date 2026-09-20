@@ -24,11 +24,11 @@ source digest never certifies a delivered body.
 | `source-preserved` | The source identity is retained. Nothing is delivered or certified as executable. |
 | `shipped-pending-adaptation` | The stated recipient body is present and its delivered digest matches, but repair or catalog qualification is pending. Not activatable. |
 | `blocked-missing-support` | A required selected dependency is unresolved. The inclusion obligation remains. |
-| `available` | The fixed obligations mark delivery qualified: every required body, support digest and prerequisite resolves and no blocker remains. Still not activated. |
+| `available` | Delivery is qualified: every required body and support digest matches its recipient bytes, every prerequisite resolves, and no blocker remains. Still not activated. |
 | `not-selected`, `local-only`, `declared-unread`, `rejected` | Informational dispositions. No delivered target, activation or wrapper claim. |
 
-Every actual method in this revision is pending. `catchup` and `fable-prompting` are
-present in the seed but unqualified. Existing seed policy and hooks are recorded as
+Every actual method in this revision is pending. `catchup`, `fable-prompting` and
+`hypothesis-tree` are present in the seed but unqualified. Existing seed policy and hooks are recorded as
 already distributed; the catalog neither enabled nor disabled them. Pocock same-name
 methods do not replace Loam baseline methods; an assessed merge names its baseline
 successor without claiming the merge is implemented. The `pocock:to-tickets` entry records
@@ -38,9 +38,12 @@ the campaign's supersession of its generic publish workflow.
 
 `activation.activated` is `false` for every entry. Qualification never activates a method.
 Changing status, activation, blockers or prerequisites inside the catalog cannot promote a
-pending entry, because the validator compares the catalog against obligations compiled into
-the package (`src/assets/obligations.ts`), never against the catalog's own claims. Bodies
-recorded as present are read from the recipient tree and must match their expected digest.
+pending entry, because the validator compares the catalog's invariant fields against
+obligations compiled into the package (`src/assets/obligations.ts`), never against the
+catalog's own claims. The obligations own a target's id, path, owner, kind and section keys;
+a target's delivery state and expected digest are not obligation-owned. The digest is proven
+by bytes: `checkRecipientDelivery` reads each present target body from the recipient tree and
+requires its exact expected digest, in Loam and in every render.
 `resolveEntry` is a lower-level helper: it binds one candidate entry to a trusted expected
 contract and returns `activatable: true` only when that contract is qualified and every
 required body, support file and prerequisite resolves; it certifies nothing on its own.

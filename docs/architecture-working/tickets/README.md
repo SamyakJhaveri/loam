@@ -44,6 +44,14 @@ Read the [campaign contract](../ticket-campaign.md), [source inventory](../sourc
 | 34 | [OPS-10: Prove the connected factory on both hosts and providers without retiring the old controller](31-ops-10.md) | S6 | OPS-09, NATIVE-12, CORE-09, NATIVE-11, NATIVE-03, NATIVE-04, NATIVE-02, OPS-04, OPS-07, NATIVE-13, OPS-12 |
 | 35 | [OPS-11: Evaluate installed memory on real project work and retain harmful outcomes](32-ops-11.md) | S7 | OPS-10, NATIVE-11 |
 
+## Session C verdicts (2026-09-20)
+
+Assessed before the first method slice (SLICE-01, `hypothesis-tree` delivered by Copier). None is cut; none is on the path to a runnable method.
+
+- CORE-05: keep open for the work-record line; delivers no method; reassess before building. Not part of SLICE-01.
+- CORE-06: keep open for the work-record line; delivers no method; reassess before building. Not part of SLICE-01.
+- CORE-07: keep open for the work-record line; delivers no method; reassess before building. Not part of SLICE-01.
+
 ## Approval covers publication only
 
 Recommended: publish this reviewed set under a new generated-factory campaign parent, with native dependency links, planned status and no assignees or `ready-for-agent` label. Existing historical maps stay unchanged. See [publication requirements](../ticket-campaign.md#publication-transaction). The separately scoped real-use evaluation follows S6 and does not block the initial controlled proof.
