@@ -68,7 +68,8 @@ harnesses and a session lands under the same repository key whichever one ran it
 `bin/memsearch` and `bin/mem-weekly.sh` are companion tools, not hooks.
 `memsearch PATTERN` greps the trace store and the repo's `docs/` with ripgrep
 (or `grep`) and cuts the output at 80 lines. `mem-weekly.sh` commits the store as
-a git baseline and rewrites `reports/recurring-errors.md`; add its cron line by
+a git baseline and rewrites `reports/recurring-errors.md` and `reports/counts.md`
+(capture, retrieval, and application counts); add its cron line by
 hand, it is not installed:
 
     0 9 * * 0 <project>/bin/mem-weekly.sh

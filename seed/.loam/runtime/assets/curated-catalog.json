@@ -32333,7 +32333,7 @@
         "owner": null
       },
       "consumers": [],
-      "notes": "Shipped Codex repo-scoped harness config: approval never, default_permissions loam, hooks off, multi_agent on with 6 concurrent threads, loam profile (extends :workspace) with network enabled and .env denied under workspace roots, glob_scan_max_depth cap (noted for codex 0.153.4). Codex-only; local-only already-distributed seed policy (the Codex side of the same runtime policy as seed/.claude/settings.json). Paired with loam.rules by Codex convention (not named in-body); no curated-skill consumers found by grep. Prior reading proposed 'retained', corrected to local-only. Digest matches the input."
+      "notes": "Shipped Codex repo-scoped harness config: approval never, default_permissions loam, hooks on (the memory hooks are registered in the sibling .codex/hooks.json), multi_agent on with 6 concurrent threads, loam profile (extends :workspace) with network enabled and .env denied under workspace roots, glob_scan_max_depth cap (noted for codex 0.153.4). Codex-only; local-only already-distributed seed policy (the Codex side of the same runtime policy as seed/.claude/settings.json). Paired with loam.rules by Codex convention (not named in-body); no curated-skill consumers found by grep. Prior reading proposed 'retained', corrected to local-only. Digest matches the input."
     },
     {
       "id": "support:seed/.codex/rules/loam.rules",
