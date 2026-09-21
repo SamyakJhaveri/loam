@@ -6,6 +6,8 @@
 #
 # Store root: $LOAM_MEMSTORE, default ~/memstore.
 # Usage: memsearch PATTERN [extra rg/grep args]
+# The pattern is passed with -e and the targets after --, so a pattern that starts
+# with a dash is never read as an option.
 
 set -uo pipefail
 
@@ -13,14 +15,15 @@ STORE="${LOAM_MEMSTORE:-$HOME/memstore}"
 ROOT="$(git rev-parse --show-toplevel 2>/dev/null)"
 REPO="$(basename "${ROOT:-$PWD}")"
 
+PATTERN="${1:-}"; [ -n "$PATTERN" ] || exit 0; shift
 TARGETS=()
 [ -d "$STORE/traces/$REPO" ] && TARGETS+=("$STORE/traces/$REPO")
 [ -n "$ROOT" ] && [ -d "$ROOT/docs" ] && TARGETS+=("$ROOT/docs")
 [ "${#TARGETS[@]}" -gt 0 ] || exit 0
 
 if command -v rg >/dev/null 2>&1; then
-  rg -n -C2 --max-count 20 "$@" "${TARGETS[@]}" 2>/dev/null | head -80
+  rg -n -C2 --max-count 20 "$@" -e "$PATTERN" -- "${TARGETS[@]}" 2>/dev/null | head -80
 else
-  grep -rn -C2 "$@" "${TARGETS[@]}" 2>/dev/null | head -80
+  grep -rn -C2 "$@" -e "$PATTERN" -- "${TARGETS[@]}" 2>/dev/null | head -80
 fi
 exit 0

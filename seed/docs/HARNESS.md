@@ -102,7 +102,9 @@ removing it would cause a mistake.
 - A captured transcript holds everything typed in the session, pasted secrets
   included. The store under `LOAM_MEMSTORE` (default `~/memstore`) is per user,
   outside every repository, never rendered and never committed to the project;
-  delete a trace file to forget it.
+  delete a trace file to forget it. The weekly baseline commit in the store covers
+  reports and native-memory caches only; `traces/` is gitignored there, so a
+  deleted transcript leaves no copy in git history.
 - Test tampering and mutation coverage have no gate. Pull-request review owns
   test integrity.
 - Editing any file under `.claude/` needs bypassPermissions mode. An unattended
