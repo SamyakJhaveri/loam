@@ -8,7 +8,7 @@
     "assets/admission-fixtures/loam-dep-mutating-1.0.0.tgz": "622574d716f11c86305574c0c8604fa60b87ca0e9ce8a785c6db66d62a1c6362",
     "assets/admission-fixtures/loam-dep-plain-1.0.0.tgz": "28937d8437f6c08ea71fe281c47ab75a070a8d23befd4fccc0726f81dde324f0",
     "assets/admission-fixtures/loam-dep-scripted-1.0.0.tgz": "1e2c031e8a15a2cd7750ff73fb0ea298e99ec47b8b3657ba8cbd615afde83732",
-    "assets/curated-catalog.json": "b589ea22d867c28603291e686f22c3eb23f332c3f06181d311bbb1e27c142330",
+    "assets/curated-catalog.json": "f0d7af58ec3e54bd6527881d89bc8fef0558f790a8822fd254740c8d3f411301",
     "assets/curated-catalog.schema.json": "1f2ffac55fbd67ff9b79310b4cb33620c2060438ae078fb72a2cbd0518ed7a04",
     "assets/runtime-manifest.json": "2fb47dbf5e125b8010d052e6f2b9f8d460001fa92b7f1bf2d0c8597b1244077c",
     "dist/src/assets/catalog.js": "0ac6baf995d266f1c53af9b300cdcf5a9e4ffb0f82760adb7693a8ca86b04591",
@@ -108,7 +108,7 @@
     "tests/platform/qualification.test.ts": "56c88da007715cff74d0d618cef3f1a6e26e14510f79a66254a0591eb674c3ab",
     "tsconfig.json": "89445fad719e12b5b787db90dc85fc652b925c094f32f0a165d89ad96b1b914c"
   },
-  "sourceDigest": "07e9891e84664e8aa554cf96c20622dd531fc3ba72c1852ed55c28f4dd5ab379",
+  "sourceDigest": "3823e44142104d47121f9b436187d53aafd8e8a010f2e59bebee371a99a81369",
   "outputDigest": "e04335a82896c899d1a873a5d754d84c8b1e4f54250e87aa4dcded7fda148273",
   "dependencyDigest": "4ef2138ee7efdc09605ce4a042fdfb64bdca4789fc611ba99e30f5e584884f8b"
 }

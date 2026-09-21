@@ -4794,7 +4794,7 @@
       ],
       "referencedBy": [],
       "prerequisites": [],
-      "status": "source-preserved",
+      "status": "shipped-pending-adaptation",
       "blockers": [],
       "activation": {
         "activated": false,
@@ -31327,7 +31327,7 @@
           "unit": null
         }
       ],
-      "notes": "Parked Workflow-tool script fanning plan review across three lenses (grounding: factual/code/rationale; aggregate checklist items 2-6; elegance step-back), adversarially verifying up to 14 BLOCK findings, then converging into a verdict plus a verbatim revised handoff plan. inventoryDisposition = preserve the distinct grounding/correctness/elegance/refutation criteria and merge canonical criteria into method:plan-review; the merged plan-review skill superseded this variant (mapped u1 with target null and a note rather than asserting a fixed method target the support rules do not fix). RECONCILIATION: the body contains NO model literal - only effort literals medium/high/xhigh; the prior reading's 'pins every agent to claude-opus-4-8[1m]' claim comes from an external UPGRADING.md that this body does not reference and that I did not read. The only consumer reference found is cultivation/marketplace/sam-cc-setup/README.md line 16, a preservation-inventory mention, not a runtime consumer. The prior reading's proposed native successor (seed/.loam/factory/assets/native/claude/workflows/plan-review-fanout.js) is absent; NATIVE-05 records conservation only, so no delivery, wrapper, or capability is claimed. Digest matches inventory."
+      "notes": "Parked Workflow-tool script fanning plan review across three lenses (grounding: factual/code/rationale; aggregate checklist items 2-6; elegance step-back), adversarially verifying up to 14 BLOCK findings, then converging into a verdict plus a verbatim revised handoff plan. inventoryDisposition = preserve the distinct grounding/correctness/elegance/refutation criteria and merge canonical criteria into method:plan-review; the merged plan-review skill superseded this variant (mapped u1 with target null and a note rather than asserting a fixed method target the support rules do not fix). RECONCILIATION: the body contains NO model literal - only effort literals medium/high/xhigh; the prior reading's 'pins every agent to claude-opus-4-8[1m]' claim comes from an external UPGRADING.md that this body does not reference and that I did not read. The only consumer reference found is cultivation/marketplace/sam-cc-setup/README.md line 16, a preservation-inventory mention, not a runtime consumer. The prior reading's proposed native successor (seed/.loam/runtime/assets/native/claude/workflows/plan-review-fanout.js) is absent; NATIVE-05 records conservation only, so no delivery, wrapper, or capability is claimed. Digest matches inventory."
     },
     {
       "id": "support:seed/.claude/codex-reviews/2026-08-31-main-clief-batch.md",
