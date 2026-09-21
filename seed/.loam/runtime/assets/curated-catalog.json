@@ -31765,7 +31765,7 @@
       "source": {
         "type": "regular-file",
         "path": "seed/.claude/settings.json",
-        "sha256": "7ba9133a80275f1c72fdede99307d6b39ec5380408ca0851356711ebaca163ee"
+        "sha256": "97669841e857bfa093305c6cce547359f1ac73d1f2e89676ee6f6eb19bd123fa"
       },
       "attribution": {
         "author": "Samyak Jhaveri",
@@ -31790,8 +31790,8 @@
           "id": "support:seed/.claude/settings.json:u1",
           "role": "body",
           "start": 1,
-          "end": 75,
-          "sha256": "7ba9133a80275f1c72fdede99307d6b39ec5380408ca0851356711ebaca163ee"
+          "end": 118,
+          "sha256": "97669841e857bfa093305c6cce547359f1ac73d1f2e89676ee6f6eb19bd123fa"
         }
       ],
       "preservation": {
