@@ -38,3 +38,11 @@ whole files or logs. The repository state wins over the handoff.
 
 A worker brief and its report use the same seven headings, so an interrupted
 worker's findings are read from its report, never rebuilt from a transcript.
+
+## Project checks
+
+`bin/check` carries a Project checks stage for the checks this project adds. Add
+a check at the second recurrence of a pattern the docs already ban, so the
+correction becomes a failure the agent cannot argue with. Keep each check one
+line, deterministic, and named. Never add a check that cannot fail. A check that
+only restates prose is a duplicate; remove it.
