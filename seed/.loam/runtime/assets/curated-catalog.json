@@ -14,11 +14,11 @@
       },
       {
         "path": "cultivation/marketplace/.claude-plugin/marketplace.json",
-        "sha256": "0e7ea899f14960fc6dffa541315d38085bc12272063d7b2b34a9999fb22bd582"
+        "sha256": "996cca2118700197b3e27458d576743bda564986ef8dbf461f32479d5ec5e79a"
       },
       {
         "path": "cultivation/marketplace/sam-cc-setup/.claude-plugin/plugin.json",
-        "sha256": "b6aaf92b25ca8504f7b9bdd63887d86e3f04c46d1096223f3432b10c0aea3507"
+        "sha256": "dde2a4ed699cffdebc3c97930abcbe03bbe582f75de6fbe162751721c08b44a6"
       },
       {
         "path": "cultivation/parked/impeccable/.claude-plugin/plugin.json",
@@ -22992,7 +22992,7 @@
       "source": {
         "type": "regular-file",
         "path": "cultivation/marketplace/.claude-plugin/marketplace.json",
-        "sha256": "0e7ea899f14960fc6dffa541315d38085bc12272063d7b2b34a9999fb22bd582"
+        "sha256": "996cca2118700197b3e27458d576743bda564986ef8dbf461f32479d5ec5e79a"
       },
       "attribution": {
         "author": "Samyak Jhaveri",
@@ -23024,7 +23024,7 @@
           "role": "body",
           "start": 1,
           "end": 113,
-          "sha256": "0e7ea899f14960fc6dffa541315d38085bc12272063d7b2b34a9999fb22bd582"
+          "sha256": "996cca2118700197b3e27458d576743bda564986ef8dbf461f32479d5ec5e79a"
         }
       ],
       "preservation": {
@@ -23554,7 +23554,7 @@
       "source": {
         "type": "regular-file",
         "path": "cultivation/marketplace/sam-cc-setup/.claude-plugin/plugin.json",
-        "sha256": "b6aaf92b25ca8504f7b9bdd63887d86e3f04c46d1096223f3432b10c0aea3507"
+        "sha256": "dde2a4ed699cffdebc3c97930abcbe03bbe582f75de6fbe162751721c08b44a6"
       },
       "attribution": {
         "author": "Samyak Jhaveri",
@@ -23578,7 +23578,7 @@
           "role": "body",
           "start": 1,
           "end": 10,
-          "sha256": "b6aaf92b25ca8504f7b9bdd63887d86e3f04c46d1096223f3432b10c0aea3507"
+          "sha256": "dde2a4ed699cffdebc3c97930abcbe03bbe582f75de6fbe162751721c08b44a6"
         }
       ],
       "preservation": {
@@ -23836,7 +23836,7 @@
       "source": {
         "type": "regular-file",
         "path": "cultivation/marketplace/sam-cc-setup/agents/judge.md",
-        "sha256": "fcc60f8eb7a95f8e1d85fb19e7a4096400b417298935f695b4aeb0c27799b679"
+        "sha256": "88f074d9124cd90cfe5ebb8414b053b8cffb95dc89ac05eb2defc73d200f604c"
       },
       "attribution": {
         "author": "Samyak Jhaveri",
@@ -23874,21 +23874,21 @@
           "id": "support:cultivation/marketplace/sam-cc-setup/agents/judge.md:u2",
           "role": "heading",
           "start": 10,
-          "end": 27,
-          "sha256": "401b9a8dd17b64bb27e6f13ea4276fe7cd45fb5f39ce1f5b4da2d6cee6e42aaa"
+          "end": 28,
+          "sha256": "9eb3db5fd470bb25cd8500b572337b3759baf6b345f95460205abe0db58194b8"
         },
         {
           "id": "support:cultivation/marketplace/sam-cc-setup/agents/judge.md:u3",
           "role": "heading",
-          "start": 28,
-          "end": 40,
-          "sha256": "99d49f2756b26fa5f932289bf8035d59dcb10c3d52faa24f7f2b0d25c16bc923"
+          "start": 29,
+          "end": 41,
+          "sha256": "e82c75e4fe5c8acec06bb805e70c7a5a78a41f37727ae15e69d0139829dd3def"
         },
         {
           "id": "support:cultivation/marketplace/sam-cc-setup/agents/judge.md:u4",
           "role": "heading",
-          "start": 41,
-          "end": 47,
+          "start": 42,
+          "end": 48,
           "sha256": "6f8ab5b1b0cee4df33a6524b319b550be2ecbac6172f86a8ac8a4fbb81cd67c8"
         }
       ],
@@ -24511,7 +24511,7 @@
       "source": {
         "type": "regular-file",
         "path": "cultivation/marketplace/sam-cc-setup/agents/reviewer.md",
-        "sha256": "e18d1d4b3d16f0e9f4f38eb5d948b44e156defc6ef2dbbea9950e6ab0f474863"
+        "sha256": "da6ff93c4c53ab2f7c4cfb30fbab9451b11fbd7804b6d60d7e9d181233b7bdbd"
       },
       "attribution": {
         "author": "Samyak Jhaveri",
@@ -24550,14 +24550,14 @@
           "role": "heading",
           "start": 10,
           "end": 32,
-          "sha256": "5cec8b018984bb026c937ea4c02b0b44b6c1bf146d81cff5cbe9440bbe21be7b"
+          "sha256": "bbb0081fbf1e2c3523099bb5e43d0f1f29e5dae6c8047c4a67421619fdc19954"
         },
         {
           "id": "support:cultivation/marketplace/sam-cc-setup/agents/reviewer.md:u3",
           "role": "heading",
           "start": 33,
           "end": 40,
-          "sha256": "d444fb199b534d7aa01ce25c297c9a4fb1d228a254435a0cdbc8acd00fa05dab"
+          "sha256": "be71d45d3cad0fd2f5e11587410d702ec7b7ebea487da4c5272ab9f264561e25"
         }
       ],
       "preservation": {
