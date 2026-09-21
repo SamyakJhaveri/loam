@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 # mem-weekly.sh - weekly maintenance for the memory store (run from cron).
 #
-# Deletes traces older than a year, commits the store as a git baseline, then
-# regenerates the recurring-errors and counts reports from the captured traces.
-# Zero model calls. The cron line is documented in seed/docs/HARNESS.md; this
-# ticket does not install it.
+# Deletes traces older than a year, commits the store as a git baseline, pulls and
+# pushes the shared remote when one is set, then regenerates the recurring-errors
+# and counts reports from the captured traces. Zero model calls. The cron line is
+# documented in seed/docs/HARNESS.md; this ticket does not install it.
 #
 # The error-signature normalizer (first 100 chars, digits -> N) is ported from
 # SuperClaude src/superclaude/pm_agent/reflexion.py (_create_error_signature, MIT);
@@ -30,14 +30,26 @@ if [ -d traces ]; then
   done
 fi
 
-# The baseline holds reports and native-memory caches only. Traces stay out of git so
-# that deleting a trace file forgets it (HARNESS.md, Accepted risks); a git history of
-# transcripts would keep a pasted secret after the file is gone.
-[ -d .git ] || git init -q 2>/dev/null
-printf 'traces/\n.throttle/\n' > .gitignore
+# The store syncs through git, so traces and INDEX.md are tracked and pushed once
+# MEM-04's scrub (in mem-capture.sh) has run over them. Only the throttle-mark
+# directory stays out of git; it is ephemeral local state, not memory.
+[ -d .git ] || git init -q -b main 2>/dev/null
+printf '.throttle/\n' > .gitignore
 git add -A 2>/dev/null \
   && git -c user.name=memstore -c user.email=memstore@localhost \
        commit -qm "weekly $(date +%F)" 2>/dev/null || true
+
+# Share the store: pull the remote's commits, then push this baseline. Foreground
+# (this runs from cron, not a hook). Done here, right after the commit while the
+# tree is clean, so the reports regenerated below never leave dirty tracked files
+# for the rebase. With no origin every step is skipped; a conflict or unreachable
+# remote logs one line and leaves the tree as it is.
+export GIT_TERMINAL_PROMPT=0
+if git remote get-url origin >/dev/null 2>&1; then
+  { git -c user.name=memstore -c user.email=memstore@localhost pull --rebase -q origin main \
+    && git push -q origin main ; } >> reports/sync.log 2>&1 \
+    || printf '%s weekly sync failed\n' "$(date +%F)" >> reports/sync.log
+fi
 
 # Recurring errors: extract error lines from every trace (gzipped and plain),
 # normalize each to a signature (first 100 chars, digits -> N) so runs that differ
