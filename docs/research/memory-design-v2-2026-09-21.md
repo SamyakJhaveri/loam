@@ -1,6 +1,6 @@
 # Memory design v2, 2026-09-21: five layers, stored where their update rule says
 
-Status: design of record, pending Samyak's picks R1 to R8.
+Status: design of record. Picks R1 to R8 approved 2026-09-21 with two changes: Graphify is out of the navigation trial (the graph grows fast and misses edges), and implementation is for later sessions; the plan is `docs/plans/2026-09-21-memory-v2/` (local).
 Supersedes the ordering in `memory-crossref-2026-09-21.md` and adds the navigation layer.
 Inputs: the Codex memo of 2026-09-20 (`memory-crossref-2026-09-21.md`), the storage criticisms of 2026-09-21, and two Codex briefs from `~/Downloads` (`LOAM-MEMORY-DESIGN.md`, 409 lines, and `codex-loam-agent-memory-brief.md`, 386 lines) naming 37 repositories and 14 papers.
 Method: every repository at or above 100 stars was cloned and read from source by an Opus 4.8 worker; every paper claim was checked against the paper; Fable judged.
@@ -42,17 +42,17 @@ SuperClaude's token-savings document is unvalidated estimates; do not cite its n
 ### Layer 2, navigation
 
 Your folder-and-file index, built from source by a parser, never by a model.
-Three trial arms, one at a time, five factory tickets each against five without, judged on the ledger the factory already writes (turns, tokens, cost, grader verdicts, turns to first correct file):
+Two trial arms, one at a time, five factory tickets each against five interleaved without, judged on the ledger the factory already writes (turns, tokens, cost, grader verdicts, turns to first correct file); the frozen protocol is `docs/plans/2026-09-21-memory-v2/nav-01-protocol.md`:
 
-- A. Graphify (Apache-2.0, 119,972 stars): tree-sitter AST graph, zero model calls, commits `graph.json` and `GRAPH_REPORT.md`, git-hook rebuild plus a merge driver fix the May 2026 stale-graph problem, `graphify update .` after a pull, 7 MCP tools or a Bash CLI.
-  The committed artifact travels to jhaveris by commit.
-  Its own code-intelligence benchmark is six questions.
 - B. The official Claude Code language-server plugin: first-party, go-to-definition, references, symbols, call hierarchy, diagnostics after edits, 11 languages, no daemon.
   Claude only; Codex has no equivalent and open feature requests.
 - C. Semble (MIT, 6,116 stars): local BM25 plus static Model2Vec embeddings over tree-sitter chunks, global path-hashed cache, reindex under a second, two MCP tools or `semble search "<q>" <path> --format json` from the factory worker with no schema cost.
 
-Not in the trial: Serena (6k to 7k tokens of standing instructions per session, GPL), CodeNib (84 stars), code-review-graph (30 tool schemas and a synchronous per-tool-call update hook; borrow its blast-radius query later as a CLI), jCodeMunch (free for academic use, license bars shipping it; personal install only), aider's repo map (ran on the seed in 3 s, ranked only the TypeScript runtime, missed every bash hook and the symlinked skills).
-Fallback if arm A fails: LocAgent's stdlib-ast graph builder (about 150 lines, Python only, 0.2 s on 25 files) and Agentless's libcst skeleton generator (about 120 lines).
+Not in the trial: Graphify (Samyak's call: the graph grows fast and misses edges; its git-hook rebuild fixed the May staleness but not that), Serena (see below), CodeNib (84 stars), code-review-graph (30 tool schemas and a synchronous per-tool-call update hook; borrow its blast-radius query later as a CLI), jCodeMunch (free for academic use, license bars shipping it; personal install only), aider's repo map (ran on the seed in 3 s, ranked only the TypeScript runtime, missed every bash hook and the symlinked skills).
+Why Serena was rejected, since it is the obvious symbol tool: it front-loads a 12.5 KB instruction manual plus a Claude-Code-specific override that forbids the built-in Read and Edit tools, about 3k tokens of prose and 3k to 4k of tool schemas every session before any code is read; its docs concede Claude Code drifts off its tools in long sessions and recommend alpha reminder hooks; it writes `.serena/` memories inside the repo and does not gitignore them; its source is GPL-3.0-or-later, fine to run, not fine to vendor.
+The official Claude Code plugin gives the same symbol operations first-party with a per-plugin context cost shown in `/plugin`.
+One honest gap: Codex has no language-server support, so Serena in `no-memories` mode is the only symbol tool a Codex session could use; if NAV-01 arm B wins and Codex sessions need the same, Serena becomes a Codex-only follow-up, measured the same way.
+Fallback if neither arm supplies a committed structural map: LocAgent's stdlib-ast graph builder (about 150 lines, Python only, 0.2 s on 25 files) and Agentless's libcst skeleton generator (about 120 lines).
 
 ### Layer 3, experience
 
@@ -107,16 +107,16 @@ No experiment used Opus 4.8, Fable 5.1, or GPT-5.6.
 | MEM-03 #162 | 3 | self-written note in the two-note format; corrections signature log | filed, human-gated; body to revise |
 | MEM-04 | 3, 5 | scrub, gzip and retention, symlink, inspect CLI, four-status manifest | to file, blocked by #154 |
 | MEM-05 | 3 | bare remote on jhaveris, commit on capture, pull at start, claim-once handoff | to file, blocked by MEM-04 |
-| NAV-01 | 2 | pre-registered trial: Graphify, language-server plugin, Semble CLI; five tickets each against five without | to file; protocol first |
+| NAV-01 | 2 | pre-registered trial: language-server plugin, Semble CLI; five tickets each against five interleaved without | protocol frozen in docs/plans; runs after MEM-05 |
 | REC-01 | 4 | basic-memory pilot on DistBench, four weeks | to file; personal install |
 
-Cut from the plan: a hand-written `docs/MAP.md` (NAV-01's winning artifact replaces it), the Serena trial, CodeNib.
+Cut from the plan: a hand-written `docs/MAP.md` (NAV-01's winning arm replaces it, or AGENTS.md pointers stay), Graphify, the Serena trial, CodeNib.
 
 ## Risks
 
-- Graphify, Semble, CodeGraphContext, and code-review-graph were each adopted by Loam once in 2026 and cut in the rebuilds without a measurement.
+- Semble, CodeGraphContext, and code-review-graph were each adopted by Loam once in 2026 and cut in the rebuilds without a measurement; Graphify was cut on evidence (inferred edges, staleness).
   NAV-01 exists so it does not happen a third time.
-- Neither Graphify nor Semble publishes turns or cost per solve.
+- Semble publishes token-per-question reductions, not turns or cost per solve.
   The 8-turn result must be shown on Loam's own tickets.
 - basic-memory's latest release number was not readable from a shallow clone.
 - No tool was run except aider's map on a copy of the seed.
