@@ -60,7 +60,16 @@ if gh api --method POST "/repos/${REPO}/rulesets" \
 }
 RULESET
 then
-  echo "[copier] Ruleset added: the default branch needs a PR and a green 'check'."
+  # Read the ruleset back: a POST that returns 2xx has still, in practice, left nothing
+  # active on some plans. The read is the proof; the POST is only the attempt.
+  # Capture first, then grep: a grep that exits early would SIGPIPE gh under pipefail.
+  readback=$(gh api "/repos/${REPO}/rulesets" --jq '.[] | select(.name=="loam-default-branch") | .enforcement' 2>/dev/null || true)
+  if grep -qx active <<<"$readback"; then
+    echo "[copier] Ruleset verified: the default branch needs a PR and a green 'check'."
+  else
+    echo "[copier] Ruleset call failed to read back; the default branch is directly pushable."
+    echo "  Add it by hand under repo Settings > Rules, or re-run with an admin token."
+  fi
 else
   echo "[copier] Ruleset call failed; the default branch is directly pushable."
   echo "  Add it by hand under repo Settings > Rules, or re-run with an admin token."

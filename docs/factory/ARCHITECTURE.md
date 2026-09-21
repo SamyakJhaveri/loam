@@ -2,7 +2,7 @@
 
 The factory takes a raw request to a merged pull request through unattended loops and independent Fable graders, on Loam and, after F8, on projects Loam seeds.
 This file is the one home of the stage table, the single sources of truth, the standing do-not-touch list, the model rules, and the placement table.
-The brief and ticket formats live in `CONTRACT.md`, the supervisor in `LOOP.md`, the build order in `ROADMAP.md`, the evidence in `../research/INDEX.md`.
+The brief and ticket formats live in `CONTRACT.md`, the supervisor in `LOOP.md`, the build order in `../architecture-working/tickets/README.md` (`ROADMAP.md` is the superseded loop-factory record), the evidence in `../research/INDEX.md`.
 Everything here describes the target; a thing that exists at the time of writing (2026-09-07) says so.
 
 ## Design rules

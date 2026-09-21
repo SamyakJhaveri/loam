@@ -52,6 +52,14 @@ Assessed before the first method slice (SLICE-01, `hypothesis-tree` delivered by
 - CORE-06: keep open for the work-record line; delivers no method; reassess before building. Not part of SLICE-01.
 - CORE-07: keep open for the work-record line; delivers no method; reassess before building. Not part of SLICE-01.
 
+## Curation verdicts (2026-09-20)
+
+From `docs/research/curation-2026-09-20.md`, section "The memory design, verified and placed". The accepted memory design and the 2026-09-03 design overlap on retrieval and storage of bodies and differ on who activates a lesson and when to measure; the evidence there (findings 1, 6, 7) says measure before building the store. None is cut.
+
+- NATIVE-09: blocked by the level-2 memory measurement (raw trace capture, recall, `memsearch`, the weekly recurring-errors report, zero model calls). Build only if that report shows recurring errors a card would have prevented; reassess before building.
+- NATIVE-10: same block as NATIVE-09.
+- NATIVE-11: same block as NATIVE-09; its improvement-evaluation shape stays the reference for OPS-11.
+
 ## Approval covers publication only
 
 Recommended: publish this reviewed set under a new generated-factory campaign parent, with native dependency links, planned status and no assignees or `ready-for-agent` label. Existing historical maps stay unchanged. See [publication requirements](../ticket-campaign.md#publication-transaction). The separately scoped real-use evaluation follows S6 and does not block the initial controlled proof.
