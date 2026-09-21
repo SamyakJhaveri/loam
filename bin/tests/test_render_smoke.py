@@ -133,6 +133,15 @@ class RenderSmoke(unittest.TestCase):
             ],
         )
 
+    def test_gitignore_ignores_the_memory_symlink(self):
+        lines = (self.out / ".gitignore").read_text().splitlines()
+        self.assertIn(".loam/memory", lines)
+
+    def test_mem_inspect_renders_executable(self):
+        script = self.out / "bin/mem-inspect"
+        self.assertTrue(script.exists(), "bin/mem-inspect not rendered")
+        self.assertTrue(os.access(script, os.X_OK), "bin/mem-inspect not executable")
+
     def test_codex_config_parses(self):
         config = (self.out / ".codex/config.toml").read_text()
         data = tomllib.loads(config)

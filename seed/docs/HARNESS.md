@@ -48,16 +48,22 @@ per-tool latency.
   fire there.
 - `post-compact-reinject.sh` (SessionStart `compact`): re-injects the task after
   a compaction.
-- `mem-capture.sh` (SessionEnd, PreCompact, Stop): copies the session transcript
-  into `$LOAM_MEMSTORE/traces/<repo>/` and appends one `INDEX.md` line, reading
-  the hook JSON with a single `python3` and no model call. It is idempotent on
-  the transcript's sha256, so a repeat capture adds no file and no line. The
-  `Stop` entry passes `--throttle 600`, so a burst of stops copies at most once
-  per ten minutes.
-- `mem-recall.sh` (SessionStart `startup|resume|clear`): prints the last five
-  `INDEX.md` lines for this repo and the applicability rule to stdout, which
-  Claude Code adds to the context; capped at 4000 bytes, silent when the store
-  has no index for the repo.
+- `mem-capture.sh` (SessionEnd, PreCompact, Stop): scrubs known secret shapes
+  from the session transcript, stores it gzipped at
+  `$LOAM_MEMSTORE/traces/<repo>/<date>-<sid8>.jsonl.gz`, and appends one
+  `INDEX.md` line, with no model call. It is idempotent on the scrubbed content's
+  sha256 (kept beside the trace as `<date>-<sid8>.sha`), so a repeat capture adds
+  no file and no line. After a capture it links `<repo>/.loam/memory` to the
+  store when that path is free. The `Stop` entry passes `--throttle 600`, so a
+  burst of stops captures at most once per ten minutes.
+- `mem-recall.sh` (SessionStart `startup|resume|clear`): prints a manifest to
+  stdout, which Claude Code adds to the context. A `Loaded:` line names how many
+  recent sessions, hint bullets, and handoffs it injected; the last five
+  `INDEX.md` lines follow; a `Not loaded:` line names the notes and traces it did
+  not open and points at `memsearch <pattern>` or `mem-inspect <session>` to
+  reach them; a trust rule closes it, labelling every recalled item supported,
+  contradicts, near-match, or insufficient. Capped at 4000 bytes, silent when the
+  store has no index for the repo.
 
 Codex runs the same two scripts through `.codex/hooks.json`, which registers
 `mem-capture.sh` on SessionEnd, PreCompact, and Stop (the Stop entry throttled)
@@ -65,12 +71,17 @@ and `mem-recall.sh` on SessionStart. The entries point at the `.claude/hooks/`
 scripts; each reads `cwd` from the hook payload, so one copy serves both
 harnesses and a session lands under the same repository key whichever one ran it.
 
-`bin/memsearch` and `bin/mem-weekly.sh` are companion tools, not hooks.
-`memsearch PATTERN` greps the trace store and the repo's `docs/` with ripgrep
-(or `grep`) and cuts the output at 80 lines. `mem-weekly.sh` commits the store as
-a git baseline and rewrites `reports/recurring-errors.md` and `reports/counts.md`
-(capture, retrieval, and application counts); add its cron line by
-hand, it is not installed:
+`bin/memsearch`, `bin/mem-inspect`, and `bin/mem-weekly.sh` are companion tools,
+not hooks. `memsearch PATTERN` greps the trace store (gzipped and plain traces
+alike) and the repo's `docs/` with ripgrep (or `grep`/`zgrep`) and cuts the
+output at 80 lines. `mem-inspect <session>` reads one captured trace by turn
+instead of grepping the raw file: `--summary` lists the turns, `--span A:B`
+prints a range, `--match RE` prints the turns whose text matches. `mem-weekly.sh`
+deletes traces older than a year, commits the store as a git baseline, and
+rewrites `reports/recurring-errors.md` (error lines normalized to a signature so
+runs differing only in a number collapse) and `reports/counts.md` (capture,
+retrieval, and application counts); add its cron line by hand, it is not
+installed:
 
     0 9 * * 0 <project>/bin/mem-weekly.sh
 
@@ -97,7 +108,8 @@ removing it would cause a mistake.
   2026-09-09 when `plan-review` became model-invocable, so its description
   now sits in the listing.
 - Memory hooks: recall adds at most 4000 bytes at SessionStart, and the Stop
-  capture runs one `python3` and one `cp` at most once per ten minutes.
+  capture runs at most once per ten minutes. The scrub adds one regex pass over
+  the transcript per capture.
 
 ## Accepted risks, stated rather than hidden
 
@@ -106,12 +118,14 @@ removing it would cause a mistake.
 - The `.env` deny rules do not stop a Python or Node subprocess opening the file.
   The sandbox filesystem deny is the real containment, where the host supports it.
 - Secrets typed into an ordinary source file are not caught locally.
-- A captured transcript holds everything typed in the session, pasted secrets
-  included. The store under `LOAM_MEMSTORE` (default `~/memstore`) is per user,
-  outside every repository, never rendered and never committed to the project;
-  delete a trace file to forget it. The weekly baseline commit in the store covers
-  reports and native-memory caches only; `traces/` is gitignored there, so a
-  deleted transcript leaves no copy in git history.
+- The capture scrubs known key shapes (API keys, Bearer and JWT tokens, PEM
+  private-key blocks, URL credentials, and the like) before a transcript is
+  stored; a secret with no recognizable shape can still be stored, so delete the
+  trace to forget it. The store under `LOAM_MEMSTORE` (default `~/memstore`) is
+  per user, outside every repository, never rendered and never committed to the
+  project. The weekly baseline commit in the store covers reports and
+  native-memory caches only; `traces/` is gitignored there, so a deleted
+  transcript leaves no copy in git history.
 - Codex runs a repository hook only after the user trusts the project's `.codex`
   layer and reviews the hook definition once (Codex keeps a hash of it in its
   hooks state, and an edit to `hooks.json` asks again), so a Codex session before

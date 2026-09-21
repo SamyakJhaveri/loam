@@ -1,8 +1,10 @@
 #!/usr/bin/env bash
 # memsearch - grep the memory store and the repo's docs for a pattern.
 #
-# Searches $STORE/traces/<repo> and <repo>/docs with ripgrep when it is on PATH,
-# else with grep. Zero model calls. Output cut at 80 lines.
+# Searches every repo's traces under $STORE/traces (gzipped .jsonl.gz and plain
+# .jsonl alike), $STORE/notes/<repo>, and the repo's docs/, with ripgrep when it
+# is on PATH, else grep/zgrep. Zero model calls. Output cut at 80 lines; when the
+# cut applies a final line points at mem-inspect to narrow.
 #
 # Store root: $LOAM_MEMSTORE, default ~/memstore.
 # Usage: memsearch PATTERN [extra rg/grep args]
@@ -13,9 +15,9 @@ set -uo pipefail
 
 STORE="${LOAM_MEMSTORE:-$HOME/memstore}"
 
-# Key by the origin remote so a search reads the same store directory mem-capture
-# writes across the factory's per-worktree checkouts. Fall back to the toplevel
-# basename with no origin, then to the cwd basename with no git.
+# Key notes by the origin remote so a search reads the same store directory
+# mem-capture writes across the factory's per-worktree checkouts. Fall back to the
+# toplevel basename with no origin, then to the cwd basename with no git.
 repo_key() {
   local dir="$1" url top
   url="$(git -C "$dir" remote get-url origin 2>/dev/null)"
@@ -33,14 +35,32 @@ ROOT="$(git rev-parse --show-toplevel 2>/dev/null)"
 REPO="$(repo_key "$PWD")"
 
 PATTERN="${1:-}"; [ -n "$PATTERN" ] || exit 0; shift
+# Traces are searched across every repo, not just this checkout's key: the factory
+# captures under the origin name while a worktree resolves to its own key, so a
+# per-repo scope would hide a just-captured trace.
 TARGETS=()
-[ -d "$STORE/traces/$REPO" ] && TARGETS+=("$STORE/traces/$REPO")
+[ -d "$STORE/traces" ] && TARGETS+=("$STORE/traces")
+[ -d "$STORE/notes/$REPO" ] && TARGETS+=("$STORE/notes/$REPO")
 [ -n "$ROOT" ] && [ -d "$ROOT/docs" ] && TARGETS+=("$ROOT/docs")
 [ "${#TARGETS[@]}" -gt 0 ] || exit 0
 
 if command -v rg >/dev/null 2>&1; then
-  rg -n -C2 --max-count 20 "$@" -e "$PATTERN" -- "${TARGETS[@]}" 2>/dev/null | head -80
+  # -z reads gzipped traces; --no-ignore keeps the store's own .gitignore (which
+  # excludes traces/) from hiding them once mem-weekly makes the store a git repo.
+  OUT="$(rg -z --no-ignore -n -C2 --max-count 20 "$@" -e "$PATTERN" -- "${TARGETS[@]}" 2>/dev/null)"
 else
-  grep -rn -C2 "$@" -e "$PATTERN" -- "${TARGETS[@]}" 2>/dev/null | head -80
+  # zgrep reads gzipped and plain files alike; feed it an explicit file list so a
+  # directory of mixed kinds works. No `-r`: macOS xargs rejects that flag, and an
+  # empty file list already yields no output (BSD xargs skips it; GNU runs zgrep
+  # once on empty stdin), which the `[ -n "$OUT" ]` guard below handles.
+  OUT="$(find "${TARGETS[@]}" -type f -print0 2>/dev/null \
+    | xargs -0 zgrep -n -C2 "$@" -e "$PATTERN" 2>/dev/null)"
+fi
+
+[ -n "$OUT" ] || exit 0
+N="$(printf '%s\n' "$OUT" | wc -l | tr -d ' ')"
+printf '%s\n' "$OUT" | head -80
+if [ "$N" -gt 80 ]; then
+  printf -- '-- 80 of %s matching lines shown; narrow the pattern or run mem-inspect <session> --match <pattern>\n' "$N"
 fi
 exit 0
