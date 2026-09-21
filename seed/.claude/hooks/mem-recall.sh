@@ -74,6 +74,13 @@ try:
     if r.returncode != 0:
         raise Exception((r.stderr or b"").decode("utf-8", "replace").strip()[:200] or "nonzero exit")
 except Exception as e:
+    # A conflicted or timed-out rebase must leave the tree untouched, so undo it.
+    # Harmless ("no rebase in progress") when the pull failed before rebasing.
+    try:
+        subprocess.run(["git", "-C", store, "rebase", "--abort"],
+                       stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=5)
+    except Exception:
+        pass
     os.makedirs(os.path.join(store, "reports"), exist_ok=True)
     with open(os.path.join(store, "reports", "sync.log"), "a", encoding="utf-8") as fh:
         fh.write("%s recall pull: %s\n" % (datetime.date.today().isoformat(), " ".join(str(e).split())[:200]))

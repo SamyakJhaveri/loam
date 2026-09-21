@@ -48,7 +48,7 @@ export GIT_TERMINAL_PROMPT=0
 if git remote get-url origin >/dev/null 2>&1; then
   { git -c user.name=memstore -c user.email=memstore@localhost pull --rebase -q origin main \
     && git push -q origin main ; } >> reports/sync.log 2>&1 \
-    || printf '%s weekly sync failed\n' "$(date +%F)" >> reports/sync.log
+    || { git rebase --abort 2>/dev/null; printf '%s weekly sync failed\n' "$(date +%F)" >> reports/sync.log; }
 fi
 
 # Recurring errors: extract error lines from every trace (gzipped and plain),
