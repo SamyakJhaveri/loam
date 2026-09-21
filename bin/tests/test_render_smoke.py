@@ -7,6 +7,7 @@ test_agent_parity.py with one cheap smoke that renders once per class.
 from __future__ import annotations
 
 import json
+import os
 import pathlib
 import shutil
 import subprocess
@@ -15,6 +16,23 @@ import tomllib
 import unittest
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
+
+# Disable git's automatic background maintenance for every git process these
+# tests spawn or cause (directly, and inside the copier tasks that inherit this
+# env). Git 2.47+ detaches `git maintenance run --auto` after a commit before
+# deciding whether work is needed; that child keeps writing under .git (packs,
+# multi-pack-index) after the parent returns, and TemporaryDirectory cleanup
+# then races it -> "OSError: [Errno 39] Directory not empty: .../render/.git" in
+# CI. GIT_CONFIG_COUNT injects the two disabling keys without touching any repo
+# config (honoured by git >= 2.31; both keys exist in modern git).
+GIT_ENV = {
+    **os.environ,
+    "GIT_CONFIG_COUNT": "2",
+    "GIT_CONFIG_KEY_0": "gc.auto",
+    "GIT_CONFIG_VALUE_0": "0",
+    "GIT_CONFIG_KEY_1": "maintenance.auto",
+    "GIT_CONFIG_VALUE_1": "false",
+}
 
 # The destructive families both harnesses must forbid. This is the parity check
 # that replaced agent-parity.toml: one list, asserted against the Claude deny
@@ -59,6 +77,7 @@ def _render(dest: pathlib.Path, ref: str = "HEAD") -> None:
         check=True,
         capture_output=True,
         text=True,
+        env=GIT_ENV,
     )
 
 
@@ -170,8 +189,8 @@ class UpdateSmoke(unittest.TestCase):
             # resolve(): macOS puts tmp under /var -> /private/var, and copier update rejects the unresolved path
             proj = pathlib.Path(d).resolve() / "p"
             _render(proj, ref="v2.3.0")
-            subprocess.run(["git", "init", "-q"], cwd=proj, check=True)
-            subprocess.run(["git", "add", "-A"], cwd=proj, check=True)
+            subprocess.run(["git", "init", "-q"], cwd=proj, check=True, env=GIT_ENV)
+            subprocess.run(["git", "add", "-A"], cwd=proj, check=True, env=GIT_ENV)
             subprocess.run(
                 [
                     "git",
@@ -185,12 +204,14 @@ class UpdateSmoke(unittest.TestCase):
                 ],
                 cwd=proj,
                 check=True,
+                env=GIT_ENV,
             )
             subprocess.run(
                 cmd + ["update", "--trust", "--defaults", "--vcs-ref=HEAD", str(proj)],
                 check=True,
                 capture_output=True,
                 cwd=proj,
+                env=GIT_ENV,
             )
             settings = json.loads((proj / ".claude/settings.json").read_text())
             for block in settings["hooks"].values():
