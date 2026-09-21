@@ -28,7 +28,7 @@ actors. Three cases, and the setup output says which one you got:
 | Case | Guard on the default branch |
 |---|---|
 | Ruleset created | Direct push rejected; PR plus a green `check` required. |
-| Ruleset call failed (token scope, plan, or permissions) | None. Add it by hand in repo Settings, Rules. |
+| Ruleset call failed, or posted but did not read back as active (token scope, plan, or permissions) | None. Add it by hand in repo Settings, Rules. |
 | No GitHub repo, or `gh` missing or unauthenticated | None. The branch is directly pushable. |
 
 There is no `ask` rule on `git push`, on purpose: an unattended run must not stop
@@ -61,8 +61,8 @@ removing it would cause a mistake.
 
 - Prose (`CLAUDE.md` plus `AGENTS.md`): 400 tokens. The skill listing and the
   session brief are separate always-on costs and are not inside that number.
-- Skill listing: the three seed skills weigh about 256 tokens (description
-  bytes divided by four), so a fresh project pays about 400 + 256 tokens before
+- Skill listing: the three seed skills weigh about 250 tokens (description
+  bytes divided by four), so a fresh project pays about 400 + 250 tokens before
   any work starts.
 - In the Loam template repo the `sam-cc-setup` plugin listing weighs 565 tokens.
   That is the `LISTING_BUDGET` ratchet `bin/check` asserts. Lower it when the
