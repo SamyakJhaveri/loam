@@ -102,11 +102,11 @@ No experiment used Opus 4.8, Fable 5.1, or GPT-5.6.
 
 | Ticket | Layer | Contents | State |
 |---|---|---|---|
-| MEM-01 #154 | 3 | capture, recall, memsearch, weekly report | running |
-| MEM-02 #161 | 3 | Codex capture, three counts; addendum: key by remote name | filed, blocked by #154 |
-| MEM-03 #162 | 3 | self-written note in the two-note format; corrections signature log | filed, human-gated; body to revise |
-| MEM-04 | 3, 5 | scrub, gzip and retention, symlink, inspect CLI, four-status manifest | to file, blocked by #154 |
-| MEM-05 | 3 | bare remote on jhaveris, commit on capture, pull at start, claim-once handoff | to file, blocked by MEM-04 |
+| MEM-01 #154 | 3 | capture, recall, memsearch, weekly report | PR #163 open, CI green, awaiting merge |
+| MEM-02 #161 | 3 | Codex capture, three counts; addendum: key by remote name | revised 2026-09-21, blocked by #154 |
+| MEM-03 #162 | 3 | self-written note in the two-note format; corrections signature log | revised 2026-09-21, human-gated |
+| MEM-04 #164 | 3, 5 | scrub, gzip and retention, symlink, inspect CLI, four-status manifest | filed 2026-09-21, blocked by #161 |
+| MEM-05 #165 | 3 | bare remote on jhaveris, commit on capture, pull at start, claim-once handoff | filed 2026-09-21, blocked by #164 |
 | NAV-01 | 2 | pre-registered trial: language-server plugin, Semble CLI; five tickets each against five interleaved without | protocol frozen in docs/plans; runs after MEM-05 |
 | REC-01 | 4 | basic-memory pilot on DistBench, four weeks | to file; personal install |
 
