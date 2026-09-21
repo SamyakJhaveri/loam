@@ -32252,7 +32252,7 @@
       "source": {
         "type": "regular-file",
         "path": "seed/.codex/config.toml",
-        "sha256": "64f5d0069afd8c9372a08c0478ac3a24da7509289699fbb3546822f737ca5b15"
+        "sha256": "c874a9599f28af31ab6077ca31c4b0f53a53ff4b5b814ce8bcf8e8fa6a0670a2"
       },
       "attribution": {
         "author": "Samyak Jhaveri",
@@ -32281,7 +32281,7 @@
           "role": "body",
           "start": 1,
           "end": 28,
-          "sha256": "64f5d0069afd8c9372a08c0478ac3a24da7509289699fbb3546822f737ca5b15"
+          "sha256": "c874a9599f28af31ab6077ca31c4b0f53a53ff4b5b814ce8bcf8e8fa6a0670a2"
         }
       ],
       "preservation": {
@@ -32333,7 +32333,7 @@
         "owner": null
       },
       "consumers": [],
-      "notes": "Shipped Codex repo-scoped harness config: approval never, default_permissions loam, hooks off, multi_agent on with 6 concurrent threads, loam profile (extends :workspace) with network enabled and .env denied under workspace roots, glob_scan_max_depth cap (noted for codex 0.153.4). Codex-only; local-only already-distributed seed policy (the Codex side of the same runtime policy as seed/.claude/settings.json). Paired with loam.rules by Codex convention (not named in-body); no curated-skill consumers found by grep. Prior reading proposed 'retained', corrected to local-only. Digest matches the input."
+      "notes": "Shipped Codex repo-scoped harness config: approval never, default_permissions loam, hooks on (the memory hooks are registered in the sibling .codex/hooks.json), multi_agent on with 6 concurrent threads, loam profile (extends :workspace) with network enabled and .env denied under workspace roots, glob_scan_max_depth cap (noted for codex 0.153.4). Codex-only; local-only already-distributed seed policy (the Codex side of the same runtime policy as seed/.claude/settings.json). Paired with loam.rules by Codex convention (not named in-body); no curated-skill consumers found by grep. Prior reading proposed 'retained', corrected to local-only. Digest matches the input."
     },
     {
       "id": "support:seed/.codex/rules/loam.rules",

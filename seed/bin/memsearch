@@ -12,8 +12,25 @@
 set -uo pipefail
 
 STORE="${LOAM_MEMSTORE:-$HOME/memstore}"
+
+# Key by the origin remote so a search reads the same store directory mem-capture
+# writes across the factory's per-worktree checkouts. Fall back to the toplevel
+# basename with no origin, then to the cwd basename with no git.
+repo_key() {
+  local dir="$1" url top
+  url="$(git -C "$dir" remote get-url origin 2>/dev/null)"
+  if [ -n "$url" ]; then
+    url="${url%/}"; url="${url%.git}"
+    basename "$url"
+    return
+  fi
+  top="$(git -C "$dir" rev-parse --show-toplevel 2>/dev/null)"
+  [ -n "$top" ] && { basename "$top"; return; }
+  basename "$dir"
+}
+
 ROOT="$(git rev-parse --show-toplevel 2>/dev/null)"
-REPO="$(basename "${ROOT:-$PWD}")"
+REPO="$(repo_key "$PWD")"
 
 PATTERN="${1:-}"; [ -n "$PATTERN" ] || exit 0; shift
 TARGETS=()

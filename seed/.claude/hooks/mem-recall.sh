@@ -24,7 +24,24 @@ if isinstance(payload, dict):
 ' 2>/dev/null)"
 
 [ -n "$CWD" ] || CWD="$PWD"
-REPO="$(basename "$(git -C "$CWD" rev-parse --show-toplevel 2>/dev/null || echo "$CWD")")"
+
+# Key by the origin remote so recall reads the same directory mem-capture writes
+# across the factory's per-worktree checkouts. Fall back to the toplevel basename
+# with no origin, then to the cwd basename with no git.
+repo_key() {
+  local dir="$1" url top
+  url="$(git -C "$dir" remote get-url origin 2>/dev/null)"
+  if [ -n "$url" ]; then
+    url="${url%/}"; url="${url%.git}"
+    basename "$url"
+    return
+  fi
+  top="$(git -C "$dir" rev-parse --show-toplevel 2>/dev/null)"
+  [ -n "$top" ] && { basename "$top"; return; }
+  basename "$dir"
+}
+
+REPO="$(repo_key "$CWD")"
 INDEX="$STORE/traces/$REPO/INDEX.md"
 [ -f "$INDEX" ] || exit 0
 

@@ -152,6 +152,13 @@ class RenderSmoke(unittest.TestCase):
         )
         self.assertLess(key, first_table)
 
+    def test_codex_hooks_json_registers_the_four_events(self):
+        hooks = json.loads((self.out / ".codex/hooks.json").read_text())["hooks"]
+        self.assertEqual(
+            sorted(hooks),
+            ["PreCompact", "SessionEnd", "SessionStart", "Stop"],
+        )
+
     def test_each_hook_runs_and_exits_zero(self):
         hooks = sorted((self.out / ".claude/hooks").glob("*.sh"))
         self.assertTrue(hooks, "no hooks rendered")
