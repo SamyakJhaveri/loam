@@ -95,7 +95,7 @@ class RenderSmoke(unittest.TestCase):
     def settings(self) -> dict:
         return json.loads((self.out / ".claude/settings.json").read_text())
 
-    def test_settings_parse_and_two_hooks(self):
+    def test_settings_parse_and_hooks(self):
         s = self.settings()
         cmds = [
             h["command"]
@@ -103,8 +103,17 @@ class RenderSmoke(unittest.TestCase):
             for entry in block
             for h in entry["hooks"]
         ]
-        names = sorted({c.rsplit("/", 1)[-1] for c in cmds})
-        self.assertEqual(names, ["fable-session-brief.sh", "post-compact-reinject.sh"])
+        # split()[0] drops the Stop entry's `--throttle 600` argument.
+        names = sorted({c.rsplit("/", 1)[-1].split()[0] for c in cmds})
+        self.assertEqual(
+            names,
+            [
+                "fable-session-brief.sh",
+                "mem-capture.sh",
+                "mem-recall.sh",
+                "post-compact-reinject.sh",
+            ],
+        )
         self.assertNotIn("allow", s["permissions"])
         self.assertNotIn("ask", s["permissions"])
         self.assertNotIn("defaultMode", s["permissions"])
@@ -112,10 +121,16 @@ class RenderSmoke(unittest.TestCase):
         self.assertIs(s["sandbox"]["enabled"], True)
         self.assertIn(".env", s["sandbox"]["filesystem"]["denyRead"])
 
-    def test_only_the_two_hooks_ship(self):
+    def test_only_the_expected_hooks_ship(self):
         shipped = sorted(p.name for p in (self.out / ".claude/hooks").glob("*"))
         self.assertEqual(
-            shipped, ["fable-session-brief.sh", "post-compact-reinject.sh"]
+            shipped,
+            [
+                "fable-session-brief.sh",
+                "mem-capture.sh",
+                "mem-recall.sh",
+                "post-compact-reinject.sh",
+            ],
         )
 
     def test_codex_config_parses(self):
@@ -136,6 +151,13 @@ class RenderSmoke(unittest.TestCase):
             if ln.strip().startswith("default_permissions")
         )
         self.assertLess(key, first_table)
+
+    def test_codex_hooks_json_registers_the_four_events(self):
+        hooks = json.loads((self.out / ".codex/hooks.json").read_text())["hooks"]
+        self.assertEqual(
+            sorted(hooks),
+            ["PreCompact", "SessionEnd", "SessionStart", "Stop"],
+        )
 
     def test_each_hook_runs_and_exits_zero(self):
         hooks = sorted((self.out / ".claude/hooks").glob("*.sh"))
@@ -218,8 +240,9 @@ class UpdateSmoke(unittest.TestCase):
                 for entry in block:
                     for h in entry["hooks"]:
                         # removeprefix, not lstrip: lstrip("./") would eat
-                        # the leading dot of ".claude/..." as well.
-                        rel = h["command"].removeprefix("./")
+                        # the leading dot of ".claude/..." as well. split()[0]
+                        # drops any argument (the Stop entry's `--throttle 600`).
+                        rel = h["command"].removeprefix("./").split()[0]
                         script = proj / rel
                         self.assertTrue(
                             script.exists(), f"orphan hook wiring: {h['command']}"

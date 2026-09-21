@@ -24,5 +24,8 @@ git diff --check "$(git hash-object -t tree /dev/null)" HEAD -- || bad "whitespa
 
 if { [ -d tests ] || [ -d test ]; } && command -v pytest >/dev/null 2>&1; then pytest -q || bad "pytest"; fi
 
+# Project checks: one line per deterministic check this project adds, each 'cmd || bad "name"'.
+# Add one at the second recurrence of a pattern the docs already ban; the rule is under Project checks in WORKERS.md.
+
 if [ "$FAIL" -ne 0 ]; then echo "check: FAILED"; exit 1; fi
 echo "check: PASSED"{% endraw %}

@@ -1,0 +1,46 @@
+#!/usr/bin/env bash
+# memsearch - grep the memory store and the repo's docs for a pattern.
+#
+# Searches $STORE/traces/<repo> and <repo>/docs with ripgrep when it is on PATH,
+# else with grep. Zero model calls. Output cut at 80 lines.
+#
+# Store root: $LOAM_MEMSTORE, default ~/memstore.
+# Usage: memsearch PATTERN [extra rg/grep args]
+# The pattern is passed with -e and the targets after --, so a pattern that starts
+# with a dash is never read as an option.
+
+set -uo pipefail
+
+STORE="${LOAM_MEMSTORE:-$HOME/memstore}"
+
+# Key by the origin remote so a search reads the same store directory mem-capture
+# writes across the factory's per-worktree checkouts. Fall back to the toplevel
+# basename with no origin, then to the cwd basename with no git.
+repo_key() {
+  local dir="$1" url top
+  url="$(git -C "$dir" remote get-url origin 2>/dev/null)"
+  if [ -n "$url" ]; then
+    url="${url%/}"; url="${url%.git}"
+    basename "$url"
+    return
+  fi
+  top="$(git -C "$dir" rev-parse --show-toplevel 2>/dev/null)"
+  [ -n "$top" ] && { basename "$top"; return; }
+  basename "$dir"
+}
+
+ROOT="$(git rev-parse --show-toplevel 2>/dev/null)"
+REPO="$(repo_key "$PWD")"
+
+PATTERN="${1:-}"; [ -n "$PATTERN" ] || exit 0; shift
+TARGETS=()
+[ -d "$STORE/traces/$REPO" ] && TARGETS+=("$STORE/traces/$REPO")
+[ -n "$ROOT" ] && [ -d "$ROOT/docs" ] && TARGETS+=("$ROOT/docs")
+[ "${#TARGETS[@]}" -gt 0 ] || exit 0
+
+if command -v rg >/dev/null 2>&1; then
+  rg -n -C2 --max-count 20 "$@" -e "$PATTERN" -- "${TARGETS[@]}" 2>/dev/null | head -80
+else
+  grep -rn -C2 "$@" -e "$PATTERN" -- "${TARGETS[@]}" 2>/dev/null | head -80
+fi
+exit 0

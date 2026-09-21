@@ -494,10 +494,7 @@ prepare_worktree() {
   fi
   base=$(cat "$RUN/base.sha")
   if [ ! -d "$WORKTREE" ]; then
-    # A file ticket is a rehearsal: it takes a detached worktree and leaves no branch behind.
-    if [ "$IS_FILE" = 1 ]; then
-      git -C "$MAIN_CHECKOUT" worktree add --detach "$WORKTREE" "$base" > /dev/null 2>&1
-    elif git -C "$MAIN_CHECKOUT" show-ref --verify --quiet "refs/heads/$BRANCH"; then
+    if git -C "$MAIN_CHECKOUT" show-ref --verify --quiet "refs/heads/$BRANCH"; then
       git -C "$MAIN_CHECKOUT" worktree add "$WORKTREE" "$BRANCH" > /dev/null 2>&1
     else
       git -C "$MAIN_CHECKOUT" worktree add "$WORKTREE" -b "$BRANCH" "$base" > /dev/null 2>&1
@@ -609,13 +606,37 @@ assert_parallel() {
     || finish stopped-environment "parallel cap: $n other live run(s), MAX_PARALLEL=$MAX_PARALLEL"
 }
 
-# A call with no result event (killed by CALL_TIMEOUT_SEC, or crashed) is the environment, not a round.
+# The result subtypes that mean the worker stopped on a cap this supervisor gave its call: --max-budget-usd
+# (ROUND_BUDGET_USD) and --max-turns (MAX_TURNS). The CLI reports them with is_error true, but the round
+# ran and may have committed, so it is a finished round and Step 6 decides (LOOP.md, Exits). Every other
+# is_error subtype is the environment; the list names caps, never failure names.
+CAPPED_SUBTYPES=" error_max_budget_usd error_max_turns "
+
+# result.json -> completed | environment | no-result. A missing file, or no result event (killed by
+# CALL_TIMEOUT_SEC, or crashed), is no-result; is_error true outside CAPPED_SUBTYPES is environment.
+classify_result() { # result.json
+  local st err
+  [ -s "$1" ] || { echo no-result; return 0; }
+  st=$(jq -r "$RESULT_OBJ | .subtype // \"no-result\"" "$1" 2> /dev/null) || st=no-result
+  err=$(jq -r "$RESULT_OBJ | .is_error // false" "$1" 2> /dev/null) || err=true
+  if [ "$st" = no-result ]; then echo no-result
+  elif [ "$err" != true ]; then echo completed
+  else case "$CAPPED_SUBTYPES" in *" $st "*) echo completed ;; *) echo environment ;; esac
+  fi
+}
+
+# no-result and environment stop the run; a capped round returns so the caller keeps its artifacts.
 assert_call_ok() { # role result.json
   local e
-  e=$(jq -r "$RESULT_OBJ | if .is_error == true then (.result // \"unknown error\") \
-elif .subtype == \"no-result\" then \"no result event (killed by CALL_TIMEOUT_SEC=$CALL_TIMEOUT_SEC, or crashed)\" \
-else empty end" "$2" 2> /dev/null) || e=""
-  [ -z "$e" ] || finish stopped-environment "the $1 call failed before doing work: $e"
+  case "$(classify_result "$2")" in
+    completed)
+      e=$(jq -r "$RESULT_OBJ | if .is_error == true then \"\\(.subtype) after \\(.num_turns // 0) turns\" else empty end" "$2" 2> /dev/null) || e=""
+      [ -z "$e" ] || log "$1 round $ROUND: hit its own cap ($e); a finished round, the checks decide"
+      return 0 ;;
+    no-result) e="no result event (killed by CALL_TIMEOUT_SEC=$CALL_TIMEOUT_SEC, or crashed)" ;;
+    *) e=$(jq -r "$RESULT_OBJ | .result // \"unknown error\"" "$2" 2> /dev/null) || e="unknown error" ;;
+  esac
+  finish stopped-environment "the $1 call failed before doing work: $e"
 }
 
 # Usage limits are per account, so on a limit reply switch to the other stored account and retry at once,
@@ -1193,12 +1214,16 @@ cmd_run() {
   [ -n "$WORKER_KIND" ] || WORKER_KIND=claude
   CODEX_REVIEW=$(section Worker | sed -n 's/^codex-review: *//p' | head -1)   # yes adds a Codex review stage after the graders (F4)
   [ -n "$CODEX_REVIEW" ] || CODEX_REVIEW=no
-  RUN="$RUNS_ROOT/$KEY/$(printf '%s' "$BODY" | sha256_of | cut -c1-8)"
+  local sha8
+  sha8=$(printf '%s' "$BODY" | sha256_of | cut -c1-8)
+  RUN="$RUNS_ROOT/$KEY/$sha8"
   mkdir -p "$RUN/frozen" "$RUN/worker" "$RUN/tasks" || { echo "factory run: cannot create $RUN" >&2; exit 4; }
   LOG="$RUN/factory.log"; LEDGER="$RUN/ledger.jsonl"; DAILY="$RUNS_ROOT/ledger-daily.jsonl"
   DECISIONS="$RUN/worker/decisions.md"
   touch "$LOG" "$LEDGER" "$DAILY" "$DECISIONS"
-  BRANCH="factory/$KEY"
+  # A file ticket's branch carries the run key too, so a relaunch with an edited body gets its own branch;
+  # the EXIT trap below removes the worktree at exit, and the branch keeps the commits.
+  BRANCH="factory/$KEY"; [ "$IS_FILE" = 1 ] && BRANCH="$BRANCH-$sha8"
   WORKTREE="${FACTORY_WORKTREE:-$MAIN_CHECKOUT-$(printf '%s' "$KEY" | tr '[:upper:]' '[:lower:]')}"
   [ -f "$RUN/started" ] || date -u +%s > "$RUN/started"
   date -u +%s > "$RUN/launched"

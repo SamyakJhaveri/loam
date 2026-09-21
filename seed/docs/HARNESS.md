@@ -34,9 +34,11 @@ actors. Three cases, and the setup output says which one you got:
 There is no `ask` rule on `git push`, on purpose: an unattended run must not stop
 on a prompt.
 
-## The two hooks
+## The hooks
 
-Both are SessionStart-class, so they add no per-tool latency.
+None runs on a tool matcher; every hook fires on a lifecycle event
+(SessionStart, SessionEnd, PreCompact, Stop, PostModelSwitch), so none adds
+per-tool latency.
 
 - `fable-session-brief.sh` (SessionStart, PostModelSwitch): prints the Fable
   judgment rules Claude Code does not inject, when the event names a Fable
@@ -46,6 +48,31 @@ Both are SessionStart-class, so they add no per-tool latency.
   fire there.
 - `post-compact-reinject.sh` (SessionStart `compact`): re-injects the task after
   a compaction.
+- `mem-capture.sh` (SessionEnd, PreCompact, Stop): copies the session transcript
+  into `$LOAM_MEMSTORE/traces/<repo>/` and appends one `INDEX.md` line, reading
+  the hook JSON with a single `python3` and no model call. It is idempotent on
+  the transcript's sha256, so a repeat capture adds no file and no line. The
+  `Stop` entry passes `--throttle 600`, so a burst of stops copies at most once
+  per ten minutes.
+- `mem-recall.sh` (SessionStart `startup|resume|clear`): prints the last five
+  `INDEX.md` lines for this repo and the applicability rule to stdout, which
+  Claude Code adds to the context; capped at 4000 bytes, silent when the store
+  has no index for the repo.
+
+Codex runs the same two scripts through `.codex/hooks.json`, which registers
+`mem-capture.sh` on SessionEnd, PreCompact, and Stop (the Stop entry throttled)
+and `mem-recall.sh` on SessionStart. The entries point at the `.claude/hooks/`
+scripts; each reads `cwd` from the hook payload, so one copy serves both
+harnesses and a session lands under the same repository key whichever one ran it.
+
+`bin/memsearch` and `bin/mem-weekly.sh` are companion tools, not hooks.
+`memsearch PATTERN` greps the trace store and the repo's `docs/` with ripgrep
+(or `grep`) and cuts the output at 80 lines. `mem-weekly.sh` commits the store as
+a git baseline and rewrites `reports/recurring-errors.md` and `reports/counts.md`
+(capture, retrieval, and application counts); add its cron line by
+hand, it is not installed:
+
+    0 9 * * 0 <project>/bin/mem-weekly.sh
 
 ## The one check
 
@@ -69,6 +96,8 @@ removing it would cause a mistake.
   listing shrinks; never raise it without saying why. Raised from 448 on
   2026-09-09 when `plan-review` became model-invocable, so its description
   now sits in the listing.
+- Memory hooks: recall adds at most 4000 bytes at SessionStart, and the Stop
+  capture runs one `python3` and one `cp` at most once per ten minutes.
 
 ## Accepted risks, stated rather than hidden
 
@@ -77,6 +106,16 @@ removing it would cause a mistake.
 - The `.env` deny rules do not stop a Python or Node subprocess opening the file.
   The sandbox filesystem deny is the real containment, where the host supports it.
 - Secrets typed into an ordinary source file are not caught locally.
+- A captured transcript holds everything typed in the session, pasted secrets
+  included. The store under `LOAM_MEMSTORE` (default `~/memstore`) is per user,
+  outside every repository, never rendered and never committed to the project;
+  delete a trace file to forget it. The weekly baseline commit in the store covers
+  reports and native-memory caches only; `traces/` is gitignored there, so a
+  deleted transcript leaves no copy in git history.
+- Codex runs a repository hook only after the user trusts the project's `.codex`
+  layer and reviews the hook definition once (Codex keeps a hash of it in its
+  hooks state, and an edit to `hooks.json` asks again), so a Codex session before
+  that step captures nothing.
 - Test tampering and mutation coverage have no gate. Pull-request review owns
   test integrity.
 - Editing any file under `.claude/` needs bypassPermissions mode. An unattended
