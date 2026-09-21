@@ -63,6 +63,42 @@ tp = payload.get("transcript_path") or ""
 sid = payload.get("session_id") or ""
 cwd = payload.get("cwd") or ""
 
+def user_text(rec):
+    # Return the user-message text for a transcript record, or None when the
+    # record is not a user message. Two transcript shapes:
+    #   Claude  - {"type":"user","message":{"content": str | [text blocks]}}
+    #   Codex   - {"type":"event_msg","payload": ...}, the rollout JSONL line, with
+    #             a "user_message" event or an "item_completed" wrapping a user item.
+    if not isinstance(rec, dict):
+        return None
+    kind = rec.get("type")
+    if kind == "user":
+        msg = rec.get("message", rec)
+        content = msg.get("content") if isinstance(msg, dict) else msg
+        if isinstance(content, list):
+            parts = []
+            for block in content:
+                if isinstance(block, dict):
+                    parts.append(str(block.get("text", "")))
+                else:
+                    parts.append(str(block))
+            content = " ".join(parts)
+        return str(content)
+    if kind == "event_msg":
+        payload = rec.get("payload")
+        if isinstance(payload, dict):
+            ptype = payload.get("type")
+            if ptype == "user_message":
+                return str(payload.get("message", ""))
+            if ptype == "item_completed":
+                item = payload.get("item")
+                if isinstance(item, dict) and item.get("type") == "user_message":
+                    text = item.get("text")
+                    if text is None:
+                        text = item.get("message")
+                    return str(text if text is not None else "")
+    return None
+
 first = ""
 if tp:
     try:
@@ -75,19 +111,14 @@ if tp:
                     rec = json.loads(line)
                 except Exception:
                     continue
-                if not isinstance(rec, dict) or rec.get("type") != "user":
+                text = user_text(rec)
+                if text is None:
                     continue
-                msg = rec.get("message", rec)
-                content = msg.get("content") if isinstance(msg, dict) else msg
-                if isinstance(content, list):
-                    parts = []
-                    for block in content:
-                        if isinstance(block, dict):
-                            parts.append(str(block.get("text", "")))
-                        else:
-                            parts.append(str(block))
-                    content = " ".join(parts)
-                first = str(content)
+                text = text.strip()
+                # Skip injected context (Claude wraps it in <...> tags) and empty turns.
+                if not text or text.startswith("<"):
+                    continue
+                first = text
                 break
     except Exception:
         first = ""
@@ -105,7 +136,24 @@ CWD="${REST%%$'\t'*}"; FIRST="${REST#*$'\t'}"
 [ -f "$TP" ] || exit 0
 [ -n "$SID" ] || exit 0
 
-REPO="$(basename "$(git -C "$CWD" rev-parse --show-toplevel 2>/dev/null || echo "$CWD")")"
+# Key a session's traces by the origin remote, not the checkout directory: the
+# factory renders many worktrees (loam-154, loam-161, ...) of one repo, and a
+# per-directory key would scatter their memory. Fall back to the toplevel
+# basename with no origin, then to the cwd basename with no git.
+repo_key() {
+  local dir="$1" url top
+  url="$(git -C "$dir" remote get-url origin 2>/dev/null)"
+  if [ -n "$url" ]; then
+    url="${url%/}"; url="${url%.git}"
+    basename "$url"
+    return
+  fi
+  top="$(git -C "$dir" rev-parse --show-toplevel 2>/dev/null)"
+  [ -n "$top" ] && { basename "$top"; return; }
+  basename "$dir"
+}
+
+REPO="$(repo_key "$CWD")"
 DST="$STORE/traces/$REPO"
 mkdir -p "$DST" 2>/dev/null || exit 0
 
