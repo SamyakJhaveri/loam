@@ -133,6 +133,10 @@ if [ -f "$OUT" ] && [ "$(sha "$OUT")" = "$(sha "$TP")" ]; then
 fi
 cp "$TP" "$OUT" 2>/dev/null || exit 0
 
+# One INDEX line per session: a transcript keeps growing after the Stop hook fires
+# (the docs say it is written asynchronously), so SessionEnd re-copies the file
+# under the same name and must not add a second line.
+grep -q " | $SID8 | " "$DST/INDEX.md" 2>/dev/null && exit 0
 BRANCH="$(git -C "$CWD" rev-parse --abbrev-ref HEAD 2>/dev/null)"
 SHORT="$(git -C "$CWD" rev-parse --short HEAD 2>/dev/null)"
 HOST="$(hostname -s 2>/dev/null || hostname 2>/dev/null)"
