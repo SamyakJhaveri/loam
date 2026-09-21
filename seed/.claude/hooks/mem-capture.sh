@@ -9,7 +9,9 @@
 #
 # Usage: mem-capture.sh [--throttle SECONDS]
 #   --throttle SECONDS  exit 0 without copying when this session_id was captured
-#                       less than SECONDS ago (used by the Stop entry).
+#                       less than SECONDS ago (used by the Stop entry). The gate
+#                       runs before python3 and cp, so a throttled Stop spawns
+#                       neither.
 #
 # Store root: $LOAM_MEMSTORE, default ~/memstore.
 # Exit codes: 0 = always (advisory hook, never blocks).
@@ -24,6 +26,27 @@ if [ "${1:-}" = "--throttle" ]; then
 fi
 
 PAYLOAD="$(cat)"
+
+# Throttle gate first, so a burst of Stop events copies at most once per THROTTLE
+# seconds for a session. The session_id is read with pure bash (no subprocess),
+# so a throttled Stop runs no python3 and no cp.
+if [ "$THROTTLE" -gt 0 ] 2>/dev/null; then
+  sid_tail="${PAYLOAD#*\"session_id\"}"
+  if [ "$sid_tail" != "$PAYLOAD" ]; then
+    sid_tail="${sid_tail#*:}"; sid_tail="${sid_tail#*\"}"
+    SID_CHEAP="${sid_tail%%\"*}"
+    if [ -n "$SID_CHEAP" ]; then
+      MARK="$STORE/.throttle/$SID_CHEAP"
+      NOW="$(date +%s)"
+      if [ -f "$MARK" ]; then
+        PREV="$(cat "$MARK" 2>/dev/null || echo 0)"
+        [ $((NOW - PREV)) -lt "$THROTTLE" ] && exit 0
+      fi
+      mkdir -p "$STORE/.throttle" 2>/dev/null || true
+      echo "$NOW" > "$MARK" 2>/dev/null || true
+    fi
+  fi
+fi
 
 # One python3 read: emit transcript_path, session_id, cwd, and the first user
 # message (whitespace collapsed, cut to 90 chars) as four tab-separated fields.
@@ -83,17 +106,6 @@ CWD="${REST%%$'\t'*}"; FIRST="${REST#*$'\t'}"
 REPO="$(basename "$(git -C "$CWD" rev-parse --show-toplevel 2>/dev/null || echo "$CWD")")"
 DST="$STORE/traces/$REPO"
 mkdir -p "$DST" 2>/dev/null || exit 0
-
-# Throttle: skip when this session was captured within THROTTLE seconds.
-if [ "$THROTTLE" -gt 0 ] 2>/dev/null; then
-  MARK="$DST/.last-$SID"
-  NOW="$(date +%s)"
-  if [ -f "$MARK" ]; then
-    PREV="$(cat "$MARK" 2>/dev/null || echo 0)"
-    [ $((NOW - PREV)) -lt "$THROTTLE" ] && exit 0
-  fi
-  echo "$NOW" > "$MARK" 2>/dev/null || true
-fi
 
 sha() {
   if command -v sha256sum >/dev/null 2>&1; then
