@@ -387,8 +387,11 @@ GRADER_EFFORT=medium
 GRADER_FAIL_ROUNDS=2      # grader-fail rounds allowed once the checks pass (LOOP.md, Grader-round cap)
 FENCE='~~~~~~~~~~~~ evidence'   # fixed marker; never a per-run string (#38)
 
-REPO=""; ISSUE=""; KEY=""; IS_FILE=0; RUN=""; ROUND=0; REVIEW_BLOCKED=0
-LOG=/dev/null; LEDGER=""; DAILY=""; DECISIONS=""; WORKTREE=""; BRANCH=""
+# REPO, RUN, and LOG keep a pre-set value: the sourced-test contract (file_backlog's backlog-filed-once
+# check) passes these three in the environment, and load_ticket and cmd_run set all three before a run
+# uses them, so `bin/factory run` is unchanged.
+REPO="${REPO:-}"; ISSUE=""; KEY=""; IS_FILE=0; RUN="${RUN:-}"; ROUND=0; REVIEW_BLOCKED=0
+LOG="${LOG:-/dev/null}"; LEDGER=""; DAILY=""; DECISIONS=""; WORKTREE=""; BRANCH=""
 # Worker kind and the Codex review stage, read from the ticket in cmd_run (F4). CODEX_REVIEW_BLOCKED is
 # separate from REVIEW_BLOCKED so a Claude-reviewer block never consumes the Codex review's one block.
 WORKER_KIND=claude; CODEX_REVIEW=no; CODEX_REVIEW_BLOCKED=0
@@ -1042,15 +1045,41 @@ run_codex_review() { # round -> 0 when nothing blocks; needs-attention with a cr
   return 1
 }
 
+# The sha256 (64 hex) of a dir's HEAD sha followed by its porcelain status: the graders run
+# read-only, so nothing should change between the signature taken before them and after the last one
+# (docs/research/curation-2026-09-20.md, the LongHorizon auditor snapshot guard).
+tree_signature() { # dir -> 64 hex
+  { git -C "$1" rev-parse HEAD; git -C "$1" status --porcelain; } | sha256_of | cut -d' ' -f1
+}
+
 graders() { # round -> 0 when the judge passes and nothing blocks
-  local ok=0
+  local ok=0 sig
+  sig=$(tree_signature "$WORKTREE")
   run_judge "$1" || ok=1
   run_review "$1" || ok=1
   [ "$CODEX_REVIEW" = yes ] && { run_codex_review "$1" || ok=1; }
+  [ "$(tree_signature "$WORKTREE")" = "$sig" ] || finish stopped-environment "grader changed the tree"
   return "$ok"
 }
 
 # ---- step 8: the pull request -----------------------------------------------
+
+# A judge backlog line lands only in the PR-body text, so a defect an unattended run finds is tracked
+# by nobody; file each line once per run as a needs-triage issue. Never calls finish: a filing failure
+# is logged and the run still opens its PR.
+file_backlog() { # judge.json issue pr-url
+  local judge="$1" issue="$2" prurl="$3" line GH="${FACTORY_GH:-gh}"
+  jq -r '.backlog[]?' "$judge" 2> /dev/null | while IFS= read -r line; do
+    [ -n "$line" ] || continue
+    grep -Fxq "$line" "$RUN/filed.txt" 2> /dev/null && continue
+    if printf 'From the judge backlog of #%s, %s.\n\n%s\n' "$issue" "$prurl" "$line" \
+      | "$GH" issue create -R "$REPO" --title "${line:0:80}" --label needs-triage --body-file - > /dev/null 2>&1; then
+      printf '%s\n' "$line" >> "$RUN/filed.txt"
+    else
+      log "file_backlog: gh issue create failed for backlog line: $line"
+    fi
+  done
+}
 
 open_pr() {
   local body="$RUN/pr-body.md" base url num title
@@ -1098,6 +1127,7 @@ open_pr() {
       || finish stopped-environment "gh pr create for $BRANCH failed: $url"
     url=$(printf '%s\n' "$url" | tail -1)
   fi
+  [ "$IS_FILE" = 0 ] && file_backlog "$RUN/round-$ROUND.judge.json" "$ISSUE" "$url"
   finish pr-opened "$url after $ROUND rounds, $(ticket_spent) usd"
 }
 
@@ -1504,12 +1534,14 @@ usage() { # [cmd...] - one line per named command, all six when none is named
   exit 2
 }
 
+# `FACTORY_SOURCED=1 . bin/factory` loads the functions for a test (bin/check's verdict gate, and the
+# sourced tree_signature and file_backlog checks) without running a subcommand and without consuming the
+# caller's positional parameters, which a `shift` here would strip from a no-arg source. `return` works
+# only in a sourced script; 2> /dev/null hides the error if the guard is ever hit while the file runs as
+# a program.
+[ "${FACTORY_SOURCED:-}" = 1 ] && return 0 2> /dev/null
 CMD="${1:-}"
 shift 2> /dev/null || true
-# `FACTORY_SOURCED=1 . bin/factory` loads the functions for a test (bin/check's verdict gate) without
-# running a subcommand. `return` works only in a sourced script; 2> /dev/null hides the error if the
-# guard is ever hit while the file runs as a program.
-[ "${FACTORY_SOURCED:-}" = 1 ] && return 0 2> /dev/null
 case "$CMD" in
   lint) [ $# -eq 1 ] || usage lint
         lint "$1" ;;
