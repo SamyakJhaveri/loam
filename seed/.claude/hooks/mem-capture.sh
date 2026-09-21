@@ -150,7 +150,11 @@ SUBS = [
     (re.compile(r"dop_v1_[a-f0-9]{64}"), "[REDACTED:digitalocean_token]"),
     (re.compile(r"eyJ[A-Za-z0-9_-]{6,}\.[A-Za-z0-9_-]{6,}\.[A-Za-z0-9_-]{6,}"), "[REDACTED:jwt]"),
     (re.compile(r"(?i)(bearer\s+)[A-Za-z0-9._~+/=-]{10,}"), r"\1[REDACTED:bearer]"),
-    (re.compile(r"(?i)((?:api[_-]?key|secret|token|password|passwd|pwd)[\"']?\s*[:=]\s*[\"']?)([^\s\"',;]{6,})"),
+    # The key and value may be wrapped in a bare or JSON-escaped quote (\" inside a
+    # JSONL transcript), so allow an optional \? before each quote. The value class
+    # excludes the backslash too, so an escaped newline (\n) or the closing \" ends
+    # the value instead of being swallowed into the next transcript line.
+    (re.compile(r"(?i)((?:api[_-]?key|secret|token|password|passwd|pwd)(?:\\?[\"'])?\s*[:=]\s*(?:\\?[\"'])?)([^\s\\\"',;]{6,})"),
      r"\1[REDACTED:secret]"),
 ]
 for rx, rep in SUBS:
