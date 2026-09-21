@@ -63,18 +63,28 @@ PY
 
 # Capture, retrieval, and application counts, so the weekly report says whether the
 # memory layer is used, not only which errors recur. All three read gzipped traces.
+# The recall manifest (mem-recall.sh) itself names memsearch and every trust word,
+# so its lines are skipped first - otherwise every session would score one
+# retrieval and one application from the injected manifest, not from real use.
+# Application requires the label form the manifest asks for (a "label" word near a
+# trust word), not the bare word, which occurs in ordinary prose ("not supported").
 read -r capture retrieval application < <(python3 - <<'PY'
 import glob, gzip, re
 
 files = glob.glob('traces/*/*.jsonl') + glob.glob('traces/*/*.jsonl.gz')
 RET = re.compile('memsearch')
-APP = re.compile('supported|contradicts|near-match|insufficient')
+APP = re.compile(r'\blabel\w*\b[^\n]{0,40}\b(supported|contradicts|near-match|insufficient)\b', re.I)
+# Markers unique to the recall manifest (mem-recall.sh); a line carrying one is the
+# injected manifest, not the agent's own use, so it is not counted.
+MANIFEST = re.compile('Not loaded:|Label every recalled item')
 retrieval = application = 0
 for fp in files:
     opener = gzip.open if fp.endswith('.gz') else open
     try:
         with opener(fp, 'rt', encoding='utf-8', errors='replace') as fh:
             for line in fh:
+                if MANIFEST.search(line):
+                    continue
                 if RET.search(line):
                     retrieval += 1
                 if APP.search(line):
