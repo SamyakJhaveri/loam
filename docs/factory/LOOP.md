@@ -56,6 +56,7 @@ The run resolves them from the installed plugin cache, falling back to the check
 6. Before grading, in order: scan `decisions.md` for an `ABANDON` line; re-hash the frozen set (a mismatch exits `stopped-environment`); `git status --porcelain` must be empty, else the round fails with the path list; `git diff --name-only "$(cat base.sha)"...HEAD` against Do not touch emits `FAIL do-not-touch <paths>`; then run the done-checks block from the worktree root.
 7. On green: the supervisor runs Rows measured and prints `MEASURE` lines, then calls the judge, the reviewer, and the Codex review stage if the ticket sets it, each fresh, on the frozen prompt and the same evidence bundle.
 8. On pass, or at the grader-round cap: assemble the PR body (first line `Closes #<issue>`, then goal, `git log --oneline base..HEAD`, the MEASURE table, the merge checklist as checkboxes, `decisions.md`, grader sections, backlog, metrics), push, `gh pr create` or update the existing PR through the REST API, notify, exit `pr-opened`.
+   Each judge backlog line is also filed once per run as a `needs-triage` issue, so a defect an unattended run finds is tracked outside the PR body.
 
 ## Exits
 
@@ -96,6 +97,7 @@ A grader whose output is absent or unparseable is a fail with one high finding "
 ## Grader calls
 
 Graders run from the worktree root.
+The supervisor takes a tree signature (the sha256 of the worktree HEAD and its porcelain status) before the judge and again after the last grader; a mismatch exits `stopped-environment`, since a read-only grader must not change the tree it graded.
 `--tools Read,Grep,Glob` on the call is what makes a grader read-only (#40 measured that it sets the tool list exactly); an agent file's `tools:` line governs its interactive use only, so `lean-critic.md` keeps Bash.
 `--strict-mcp-config` and `--disable-slash-commands` drop the MCP schemas and the skills listing a grader never uses: its prefix is then 9.9k tokens instead of 27k (probed on the runner 2026-09-09), and the prefix is most of a grader call's input.
 
