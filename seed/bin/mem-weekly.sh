@@ -15,7 +15,9 @@ mkdir -p "$STORE" || exit 0
 cd "$STORE" || exit 0
 
 [ -d .git ] || git init -q 2>/dev/null
-git add -A 2>/dev/null && git commit -qm "weekly $(date +%F)" 2>/dev/null || true
+git add -A 2>/dev/null \
+  && git -c user.name=memstore -c user.email=memstore@localhost \
+       commit -qm "weekly $(date +%F)" 2>/dev/null || true
 
 mkdir -p reports
 grep -rohE 'Error: .{0,60}|RuntimeError.{0,60}|Traceback.{0,60}' traces/ 2>/dev/null \

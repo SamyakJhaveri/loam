@@ -40,6 +40,7 @@ if [ "$THROTTLE" -gt 0 ] 2>/dev/null; then
       NOW="$(date +%s)"
       if [ -f "$MARK" ]; then
         PREV="$(cat "$MARK" 2>/dev/null || echo 0)"
+        case "$PREV" in ''|*[!0-9]*) PREV=0;; esac
         [ $((NOW - PREV)) -lt "$THROTTLE" ] && exit 0
       fi
       mkdir -p "$STORE/.throttle" 2>/dev/null || true
@@ -98,6 +99,7 @@ sys.stdout.write("\t".join((tp, sid, cwd, first)))
 TP="${FIELDS%%$'\t'*}"; REST="${FIELDS#*$'\t'}"
 SID="${REST%%$'\t'*}"; REST="${REST#*$'\t'}"
 CWD="${REST%%$'\t'*}"; FIRST="${REST#*$'\t'}"
+[ -n "$CWD" ] || CWD="$PWD"
 
 [ -n "$TP" ] || exit 0
 [ -f "$TP" ] || exit 0
@@ -116,7 +118,14 @@ sha() {
 }
 
 SID8="$(printf '%s' "$SID" | cut -c1-8)"
-OUT="$DST/$(date +%F)-$SID8.jsonl"
+# One session maps to one trace file no matter which calendar day it resumes on:
+# reuse an existing *-<sid8>.jsonl if this session was captured before, else name
+# a fresh file with today's date.
+OUT=""
+for existing in "$DST"/*-"$SID8".jsonl; do
+  [ -f "$existing" ] && { OUT="$existing"; break; }
+done
+[ -n "$OUT" ] || OUT="$DST/$(date +%F)-$SID8.jsonl"
 
 # Copy and index only when the transcript differs from the existing copy.
 if [ -f "$OUT" ] && [ "$(sha "$OUT")" = "$(sha "$TP")" ]; then
