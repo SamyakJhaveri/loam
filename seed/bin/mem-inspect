@@ -1,0 +1,263 @@
+#!/usr/bin/env python3
+# mem-inspect - read one captured trace by turn: summary, span, or match.
+#
+# Adapted from LongMemEval-V2
+# memory_modules/assets/agentrunbook_c/scripts/inspect_trajectory.py (Apache-2.0);
+# see the memory-v2 plan's "Borrowed code" note. Commit hash not pinned in this
+# checkout. stdlib only, zero model calls. This is the runbook's replacement for
+# grepping a raw trace: resolve a session by prefix, then read it by turn.
+#
+# Usage:
+#   mem-inspect <session-prefix> [--summary] [--span A:B] [--match RE] [--repo NAME]
+#
+#   Resolves the prefix against $STORE/traces/<repo>/*<prefix>*.jsonl[.gz]; <repo>
+#   defaults to every repo, --repo NAME narrows to one. Reads gzip or plain and
+#   both line shapes (Claude type user/assistant with message.content; Codex
+#   response_item and event_msg).
+#     --summary   one numbered line per turn: role, first 100 chars of text, a
+#                 tool_use's name and command, the first line of a tool_result.
+#     --span A:B  turns A..B in full (tool results cut at 40 lines).
+#     --match RE  only turns whose text matches RE, with their numbers.
+#   With no mode, --summary is assumed. Output capped at 200 lines.
+#
+# Store root: $LOAM_MEMSTORE, default ~/memstore.
+
+from __future__ import annotations
+
+import argparse
+import glob
+import gzip
+import json
+import os
+import re
+import sys
+
+CAP = 200
+RESULT_CUT = 40
+
+
+def store_root() -> str:
+    return os.environ.get("LOAM_MEMSTORE") or os.path.join(
+        os.path.expanduser("~"), "memstore"
+    )
+
+
+def resolve(prefix: str, repo: str | None) -> list[str]:
+    base = store_root()
+    repos = [repo] if repo else ["*"]
+    hits: list[str] = []
+    for rep in repos:
+        for ext in ("jsonl", "jsonl.gz"):
+            hits += glob.glob(
+                os.path.join(base, "traces", rep, "*%s*.%s" % (prefix, ext))
+            )
+    # Keep only trace files (drop the .sha sidecar, which the *.jsonl* glob would
+    # otherwise pull in).
+    hits = [h for h in hits if h.endswith(".jsonl") or h.endswith(".jsonl.gz")]
+    return sorted(set(hits))
+
+
+def read_records(path: str):
+    opener = gzip.open if path.endswith(".gz") else open
+    try:
+        with opener(path, "rt", encoding="utf-8", errors="replace") as fh:
+            for line in fh:
+                line = line.strip()
+                if not line:
+                    continue
+                try:
+                    yield json.loads(line)
+                except Exception:
+                    continue
+    except Exception:
+        return
+
+
+def _blocks_text(content) -> str:
+    if isinstance(content, str):
+        return content
+    if isinstance(content, list):
+        parts = []
+        for block in content:
+            if isinstance(block, dict):
+                if "text" in block:
+                    parts.append(str(block.get("text", "")))
+                elif block.get("type") in ("input_text", "output_text"):
+                    parts.append(str(block.get("text", "")))
+            else:
+                parts.append(str(block))
+        return " ".join(p for p in parts if p)
+    return str(content) if content else ""
+
+
+def turn_from(rec):
+    # Normalize one transcript record to {role, text, tool, cmd, result} or None.
+    if not isinstance(rec, dict):
+        return None
+    kind = rec.get("type")
+
+    # Claude user / assistant messages.
+    if kind in ("user", "assistant"):
+        msg = rec.get("message", rec)
+        content = msg.get("content") if isinstance(msg, dict) else msg
+        text_parts, tool, cmd, result = [], "", "", ""
+        if isinstance(content, list):
+            for block in content:
+                if not isinstance(block, dict):
+                    text_parts.append(str(block))
+                    continue
+                bt = block.get("type")
+                if bt == "tool_use":
+                    tool = str(block.get("name", ""))
+                    inp = block.get("input") or {}
+                    if isinstance(inp, dict):
+                        cmd = str(
+                            inp.get("command")
+                            or inp.get("file_path")
+                            or inp.get("path")
+                            or inp.get("pattern")
+                            or ""
+                        )
+                elif bt == "tool_result":
+                    result = _blocks_text(block.get("content"))
+                elif "text" in block:
+                    text_parts.append(str(block.get("text", "")))
+        else:
+            text_parts.append(str(content) if content else "")
+        return {
+            "role": kind,
+            "text": " ".join(t for t in text_parts if t),
+            "tool": tool,
+            "cmd": cmd,
+            "result": result,
+        }
+
+    # Codex rollout: response_item wraps a typed payload.
+    if kind == "response_item":
+        payload = rec.get("payload") if isinstance(rec.get("payload"), dict) else rec
+        pt = payload.get("type")
+        if pt == "message":
+            role = str(payload.get("role", "assistant"))
+            return {"role": role, "text": _blocks_text(payload.get("content")),
+                    "tool": "", "cmd": "", "result": ""}
+        if pt == "function_call":
+            return {"role": "assistant", "text": "", "tool": str(payload.get("name", "")),
+                    "cmd": str(payload.get("arguments", "")), "result": ""}
+        if pt == "function_call_output":
+            out = payload.get("output")
+            return {"role": "tool", "text": "", "tool": "", "cmd": "",
+                    "result": _blocks_text(out) if not isinstance(out, str) else out}
+        return None
+
+    # Codex rollout: event_msg carries user/agent message text.
+    if kind == "event_msg":
+        payload = rec.get("payload")
+        if isinstance(payload, dict):
+            pt = payload.get("type")
+            if pt in ("user_message", "agent_message"):
+                role = "user" if pt == "user_message" else "assistant"
+                return {"role": role, "text": str(payload.get("message", "")),
+                        "tool": "", "cmd": "", "result": ""}
+        return None
+
+    return None
+
+
+def collect(paths) -> list[dict]:
+    turns = []
+    for path in paths:
+        for rec in read_records(path):
+            t = turn_from(rec)
+            if t is not None:
+                turns.append(t)
+    return turns
+
+
+def summary_line(n: int, t: dict) -> str:
+    head = " ".join(t["text"].split())[:100]
+    line = "%d. %s: %s" % (n, t["role"], head)
+    extra = []
+    if t["tool"]:
+        extra.append("tool=%s %s" % (t["tool"], " ".join(t["cmd"].split())[:80]))
+    if t["result"]:
+        first = t["result"].splitlines()[0] if t["result"].splitlines() else ""
+        extra.append("result: " + first[:80])
+    if extra:
+        line += "  [" + "; ".join(extra) + "]"
+    return line
+
+
+def full_turn(n: int, t: dict) -> list[str]:
+    out = ["%d. %s:" % (n, t["role"])]
+    if t["text"]:
+        out.append(t["text"])
+    if t["tool"]:
+        out.append("  tool=%s %s" % (t["tool"], t["cmd"]))
+    if t["result"]:
+        lines = t["result"].splitlines()
+        out.append("  result:")
+        out.extend("    " + ln for ln in lines[:RESULT_CUT])
+        if len(lines) > RESULT_CUT:
+            out.append("    -- result cut at %d lines --" % RESULT_CUT)
+    return out
+
+
+def emit(lines: list[str]) -> None:
+    shown = lines[:CAP]
+    sys.stdout.write("\n".join(shown) + ("\n" if shown else ""))
+    if len(lines) > CAP:
+        sys.stdout.write(
+            "-- %d of %d lines shown; narrow with --span A:B or --match <re>\n"
+            % (CAP, len(lines))
+        )
+
+
+def main(argv) -> int:
+    ap = argparse.ArgumentParser(add_help=True)
+    ap.add_argument("prefix")
+    ap.add_argument("--summary", action="store_true")
+    ap.add_argument("--span")
+    ap.add_argument("--match")
+    ap.add_argument("--repo")
+    args = ap.parse_args(argv)
+
+    paths = resolve(args.prefix, args.repo)
+    if not paths:
+        sys.stderr.write("mem-inspect: no trace matches %r\n" % args.prefix)
+        return 0
+
+    turns = collect(paths)
+    if not turns:
+        sys.stderr.write("mem-inspect: trace has no readable turns\n")
+        return 0
+
+    lines: list[str] = []
+
+    if args.span:
+        m = re.match(r"^\s*(\d+)\s*:\s*(\d+)\s*$", args.span)
+        if not m:
+            sys.stderr.write("mem-inspect: --span wants A:B\n")
+            return 0
+        a, b = int(m.group(1)), int(m.group(2))
+        for n in range(a, b + 1):
+            if 1 <= n <= len(turns):
+                lines.extend(full_turn(n, turns[n - 1]))
+    elif args.match:
+        try:
+            rx = re.compile(args.match)
+        except re.error as exc:
+            sys.stderr.write("mem-inspect: bad --match regex: %s\n" % exc)
+            return 0
+        for n, t in enumerate(turns, 1):
+            if rx.search(t["text"]):
+                lines.append(summary_line(n, t))
+    else:
+        for n, t in enumerate(turns, 1):
+            lines.append(summary_line(n, t))
+
+    emit(lines)
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv[1:]))
