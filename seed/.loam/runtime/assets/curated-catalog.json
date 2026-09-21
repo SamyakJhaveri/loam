@@ -32252,7 +32252,7 @@
       "source": {
         "type": "regular-file",
         "path": "seed/.codex/config.toml",
-        "sha256": "64f5d0069afd8c9372a08c0478ac3a24da7509289699fbb3546822f737ca5b15"
+        "sha256": "c874a9599f28af31ab6077ca31c4b0f53a53ff4b5b814ce8bcf8e8fa6a0670a2"
       },
       "attribution": {
         "author": "Samyak Jhaveri",
@@ -32281,7 +32281,7 @@
           "role": "body",
           "start": 1,
           "end": 28,
-          "sha256": "64f5d0069afd8c9372a08c0478ac3a24da7509289699fbb3546822f737ca5b15"
+          "sha256": "c874a9599f28af31ab6077ca31c4b0f53a53ff4b5b814ce8bcf8e8fa6a0670a2"
         }
       ],
       "preservation": {
