@@ -60,6 +60,16 @@ From `docs/research/curation-2026-09-20.md`, section "The memory design, verifie
 - NATIVE-10: same block as NATIVE-09.
 - NATIVE-11: same block as NATIVE-09; its improvement-evaluation shape stays the reference for OPS-11.
 
+## Curation verdicts (2026-09-21)
+
+From `docs/research/memory-crossref-2026-09-21.md`. The Codex memory memo of 2026-09-20 was checked against its sources, the 2026-09-03 design, MEM-01, and current Claude Code and Codex source; it is a second draft of the same thread and changes no verdict above.
+
+- MEM-01 (#154): runs as written; running in the factory since 2026-09-21T04:51Z.
+- MEM-02 (#161): Codex capture through the same scripts, plus three counts (capture, retrieval, application) in the weekly report. Blocked by #154 (native edge). `ready-for-agent`.
+- MEM-03 (#162): a self-written trajectory note behind a Stop-hook gate. Blocked by #154 and a human gate: build only after MEM-01's first weekly report shows a repeat error with no note; close as `wontfix` if the report stays clean for a month. `ready-for-human`.
+- NATIVE-09, NATIVE-10, NATIVE-11: the 2026-09-20 block stands unchanged.
+- Cut from the memo: background LLM consolidation (the rewriting step Faulty Memories measures as harmful) and a cheap-model note writer (the model law).
+
 ## Approval covers publication only
 
 Recommended: publish this reviewed set under a new generated-factory campaign parent, with native dependency links, planned status and no assignees or `ready-for-agent` label. Existing historical maps stay unchanged. See [publication requirements](../ticket-campaign.md#publication-transaction). The separately scoped real-use evaluation follows S6 and does not block the initial controlled proof.

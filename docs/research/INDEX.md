@@ -18,6 +18,7 @@ The design that rests on this evidence is in `../factory/ARCHITECTURE.md`.
 | `primary-2026-09-08/` | the same sources read from their live pages, repos, and captions on 2026-09-08, with the fact-check corrections to the notes above | one fresh judge, human-decided checks, no loop inside a loop, remove one component per run and read the ledger (#38) |
 | `curation-2026-09-20.md` | the 2026-09-20 pass from primary sources: the building-fast thread, the setup.md file, the memory design with every cited paper opened, and the four loop repos read file by file, against captures of the factory, the seed, and the accepted design at `b03c0e7` | nothing from the repos beyond a five-line grader tree guard; eight prose-against-code drift rows; the memory ordering call (build levels 1 and 2, measure, then decide NATIVE-09); five ranked picks |
 | `memory-design-2026-09-03.md` | Samyak's memory-layer design for the seed, 35 sources, verbatim; all 15 findings verified against their sources 2026-09-20 | not yet taken; it overlaps the accepted NATIVE-09/10 design and differs on who activates a lesson and when to measure, see `curation-2026-09-20.md` |
+| `memory-crossref-2026-09-21.md` | the Codex memory memo of 2026-09-20 checked against its 13 research claims, the 2026-09-03 design, MEM-01, the Claude Code docs, and Codex source at `a866315` | MEM-01 runs as written; MEM-02 (Codex capture through the same script, three weekly counts) and MEM-03 (self-written note behind a Stop-hook gate) filed; the memo's LLM consolidation and cheap-model note writer cut |
 
 The three 2026-09-06 notes were copied from gitignored files under `.superpowers/lean-v3/research/`, deleted 2026-09-11 (archive: loam-lean-v3-archive-2026-09-11.tar.gz on both machines); the video transcripts live on under `.superpowers/transcripts/`.
 Transcripts for the five videos given on 2026-09-07 were unobtainable on that day; `primary-2026-09-08/videos.md` has them, pulled with yt-dlp auto-captions.
@@ -82,6 +83,7 @@ Scope: on-disk transcripts start 2026-08-26, so earlier sessions are not recover
 |---|---|---|---|---|
 | `~/Downloads/LOAM-MEMORY-DESIGN.md` (copied to `memory-design-2026-09-03.md`) | design doc | 2026-09-20 | Memory layer for the seed: raw traces, ripgrep recall, human-gated promotion, applicability gate, complexity ladder; written 2026-09-03 | memory-design-2026-09-03.md, curation-2026-09-20.md |
 | `~/Downloads/agent_software_factorysetup.md` (not copied; origin unknown) | setup.md | 2026-09-20 | A six-phase project setup an agent walks a non-programmer through, with human stops at every browser step | curation-2026-09-20.md |
+| Codex memory memo (pasted in chat, not copied) | design doc | 2026-09-20 | "Read this design for a memory system from codex, cross reference it, see how we can implement it"; a second draft of the 2026-09-03 thread | memory-crossref-2026-09-21.md |
 
 ### Advisor and Managed Agents
 
