@@ -50,9 +50,11 @@ if command -v rg >/dev/null 2>&1; then
   OUT="$(rg -z --no-ignore -n -C2 --max-count 20 "$@" -e "$PATTERN" -- "${TARGETS[@]}" 2>/dev/null)"
 else
   # zgrep reads gzipped and plain files alike; feed it an explicit file list so a
-  # directory of mixed kinds works.
+  # directory of mixed kinds works. No `-r`: macOS xargs rejects that flag, and an
+  # empty file list already yields no output (BSD xargs skips it; GNU runs zgrep
+  # once on empty stdin), which the `[ -n "$OUT" ]` guard below handles.
   OUT="$(find "${TARGETS[@]}" -type f -print0 2>/dev/null \
-    | xargs -0 -r zgrep -n -C2 "$@" -e "$PATTERN" 2>/dev/null)"
+    | xargs -0 zgrep -n -C2 "$@" -e "$PATTERN" 2>/dev/null)"
 fi
 
 [ -n "$OUT" ] || exit 0
