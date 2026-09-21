@@ -102,11 +102,12 @@ No experiment used Opus 4.8, Fable 5.1, or GPT-5.6.
 
 | Ticket | Layer | Contents | State |
 |---|---|---|---|
-| MEM-01 #154 | 3 | capture, recall, memsearch, weekly report | PR #163 open, CI green, awaiting merge |
-| MEM-02 #161 | 3 | Codex capture, three counts; addendum: key by remote name | revised 2026-09-21, blocked by #154 |
+| MEM-01 #154 | 3 | capture, recall, memsearch, weekly report | merged 2026-09-21 (PR #163) |
+| MEM-02 #161 | 3 | Codex capture, three counts; addendum: key by remote name | merged 2026-09-21 (PR #171) |
 | MEM-03 #162 | 3 | self-written note in the two-note format; corrections signature log | revised 2026-09-21, human-gated |
-| MEM-04 #164 | 3, 5 | scrub, gzip and retention, symlink, inspect CLI, four-status manifest | filed 2026-09-21, blocked by #161 |
+| MEM-04 #164 | 3, 5 | scrub, gzip and retention, symlink, inspect CLI, four-status manifest | PR #172 open, awaiting merge; three review residuals in MEM-04b |
 | MEM-05 #165 | 3 | bare remote on jhaveris, commit on capture, pull at start, claim-once handoff | filed 2026-09-21, blocked by #164 |
+| MEM-04b #173 | 3 | memsearch per-repo scope, mem-inspect single-trace resolution, dashed OpenAI key formats (PR #172 review residuals) | filed 2026-09-21, blocked by #165 |
 | NAV-00 #166 | 2 | FACTORY_NAV_ARM flag, arm-C prompt file, nav01-metrics.py in the factory | filed 2026-09-21, blocked by #165 |
 | NAV-01 | 2 | pre-registered trial: language-server plugin, Semble CLI; five tickets each against five interleaved without | protocol frozen in docs/plans; runs after MEM-05 |
 | REC-01 | 4 | basic-memory pilot on DistBench, four weeks | installed and seeded 2026-09-21; results in docs/research/rec-01-results.md |
