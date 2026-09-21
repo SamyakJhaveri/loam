@@ -66,14 +66,15 @@ REPO="$(repo_key "$CWD")"
 # exit logs one line to reports/sync.log and leaves the local store as it is.
 if git -C "$STORE" remote get-url origin >/dev/null 2>&1; then
   GIT_TERMINAL_PROMPT=0 python3 -c '
-import subprocess, sys, os, datetime
+import subprocess, sys, os, signal, tempfile, datetime
 store = sys.argv[1]
-try:
-    r = subprocess.run(sys.argv[2:], stdout=subprocess.DEVNULL,
-                       stderr=subprocess.PIPE, timeout=5)
-    if r.returncode != 0:
-        raise Exception((r.stderr or b"").decode("utf-8", "replace").strip()[:200] or "nonzero exit")
-except Exception as e:
+
+def logline(msg):
+    os.makedirs(os.path.join(store, "reports"), exist_ok=True)
+    with open(os.path.join(store, "reports", "sync.log"), "a", encoding="utf-8") as fh:
+        fh.write("%s recall pull: %s\n" % (datetime.date.today().isoformat(), " ".join(str(msg).split())[:200]))
+
+def abort():
     # A conflicted or timed-out rebase must leave the tree untouched, so undo it.
     # Harmless ("no rebase in progress") when the pull failed before rebasing.
     try:
@@ -81,9 +82,47 @@ except Exception as e:
                        stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=5)
     except Exception:
         pass
-    os.makedirs(os.path.join(store, "reports"), exist_ok=True)
-    with open(os.path.join(store, "reports", "sync.log"), "a", encoding="utf-8") as fh:
-        fh.write("%s recall pull: %s\n" % (datetime.date.today().isoformat(), " ".join(str(e).split())[:200]))
+
+# Run the pull in its own session so a real ssh remote that hangs can be killed
+# whole: killpg reaches the git fetch and ssh grandchildren, which a plain
+# subprocess timeout leaves running (they inherit the pipe and keep it open, so
+# the five-second bound would not hold). stderr goes to a file, not a pipe, so
+# there is nothing to drain after the kill and wait() returns at once.
+fd, errpath = tempfile.mkstemp()
+os.close(fd)
+try:
+    ef = open(errpath, "wb")
+    p = subprocess.Popen(sys.argv[2:], stdout=subprocess.DEVNULL,
+                         stderr=ef, start_new_session=True)
+    try:
+        rc = p.wait(timeout=5)
+    except subprocess.TimeoutExpired:
+        try:
+            os.killpg(os.getpgid(p.pid), signal.SIGKILL)
+        except Exception:
+            pass
+        try:
+            p.wait(timeout=5)
+        except Exception:
+            pass
+        ef.close()
+        abort()
+        logline("timeout")
+    else:
+        ef.close()
+        if rc != 0:
+            try:
+                with open(errpath, "rb") as rf:
+                    msg = rf.read().decode("utf-8", "replace").strip()[:200]
+            except Exception:
+                msg = ""
+            abort()
+            logline(msg or "nonzero exit")
+finally:
+    try:
+        os.unlink(errpath)
+    except Exception:
+        pass
 ' "$STORE" git -C "$STORE" -c user.name=memstore -c user.email=memstore@localhost pull --rebase -q origin main 2>/dev/null || true
 fi
 

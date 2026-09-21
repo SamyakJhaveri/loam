@@ -82,11 +82,11 @@ alike) and the repo's `docs/` with ripgrep (or `grep`/`zgrep`) and cuts the
 output at 80 lines. `mem-inspect <session>` reads one captured trace by turn
 instead of grepping the raw file: `--summary` lists the turns, `--span A:B`
 prints a range, `--match RE` prints the turns whose text matches. `mem-weekly.sh`
-deletes traces older than a year, commits the store as a git baseline, pulls and
-pushes the store's remote when one is set, and rewrites
-`reports/recurring-errors.md` (error lines normalized to a signature so runs
-differing only in a number collapse) and `reports/counts.md` (capture, retrieval,
-and application counts); add its cron line by hand, it is not installed:
+deletes traces older than a year, rewrites `reports/recurring-errors.md` (error
+lines normalized to a signature so runs differing only in a number collapse) and
+`reports/counts.md` (capture, retrieval, and application counts), commits the
+store as a git baseline with those reports included, then pulls and pushes the
+store's remote when one is set; add its cron line by hand, it is not installed:
 
     0 9 * * 0 <project>/bin/mem-weekly.sh
 

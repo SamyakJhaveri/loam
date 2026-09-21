@@ -284,12 +284,18 @@ fi
 export GIT_TERMINAL_PROMPT=0
 if [ ! -d "$STORE/.git" ]; then
   git -C "$STORE" init -q -b main 2>/dev/null || true
-  printf '.throttle/\n' > "$STORE/.gitignore" 2>/dev/null || true
   if [ -n "${LOAM_MEMSTORE_REMOTE:-}" ] && ! git -C "$STORE" remote get-url origin >/dev/null 2>&1; then
     git -C "$STORE" remote add origin "$LOAM_MEMSTORE_REMOTE" 2>/dev/null || true
   fi
 fi
 if [ -d "$STORE/.git" ]; then
+  # Keep the ephemeral throttle marks and the sync log out of git: the marks are
+  # local per-session timestamps, and the log is appended on every failed push and
+  # by recall, so tracking it would dirty the tree and make the next pull --rebase
+  # refuse. Written on every capture, not only on init, so a store an older
+  # mem-weekly left with a stale 'traces/' ignore line is corrected and its traces
+  # resume syncing. Byte-identical to the string mem-weekly.sh writes.
+  printf '.throttle/\nreports/sync.log\n' > "$STORE/.gitignore" 2>/dev/null || true
   mkdir -p "$STORE/reports" 2>/dev/null || true
   git -C "$STORE" add -A 2>/dev/null || true
   git -C "$STORE" -c user.name=memstore -c user.email=memstore@localhost \
