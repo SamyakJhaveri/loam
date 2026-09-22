@@ -84,9 +84,10 @@ instead of grepping the raw file: `--summary` lists the turns, `--span A:B`
 prints a range, `--match RE` prints the turns whose text matches. `mem-weekly.sh`
 deletes traces older than a year, rewrites `reports/recurring-errors.md` (error
 lines normalized to a signature so runs differing only in a number collapse) and
-`reports/counts.md` (capture, retrieval, and application counts), commits the
-store as a git baseline with those reports included, then pulls and pushes the
-store's remote when one is set; add its cron line by hand, it is not installed:
+`reports/counts.md` (capture, retrieval, and application counts), which stay
+local and untracked, commits the store as a git baseline, then pulls and pushes
+the store's remote when one is set; add its cron line by hand, it is not
+installed:
 
     0 9 * * 0 <project>/bin/mem-weekly.sh
 
@@ -119,9 +120,17 @@ risks). A capture commits and pushes in the background; recall pulls at
 SessionStart and `mem-weekly.sh` pulls then pushes from cron. Every git call runs
 with `GIT_TERMINAL_PROMPT=0`, and recall's pull is bounded to five seconds, so an
 unreachable remote never blocks a session; it logs one line to
-`reports/sync.log` and continues with the local store. Store files are
-append-only, so a rebase does not conflict; on the rare conflict the hook logs
-one line and leaves the working tree untouched.
+`reports/sync.log` and continues with the local store.
+
+Two machines that each write before pulling do not strand either one. `INDEX.md`
+lines from two machines merge by union (the store's `.gitattributes` holds
+`traces/*/INDEX.md merge=union`), so both lines survive the rebase. The reports
+`mem-weekly.sh` regenerates are local and never shared: `reports/` is
+gitignored. A handoff claimed on two machines at once is archived under two names
+and injected once on each machine, because the pull disables rename detection
+(`-c merge.renames=false -s recursive`) so the two archive moves do not conflict.
+For anything else, the pull aborts the rebase, logs one line, and leaves the
+working tree untouched.
 
 ### The handoff
 
@@ -131,6 +140,10 @@ manifest's heading). The next session on any machine or harness, in the same
 repo, injects that file once under `## Handoff (claimed now)`, then archives it to
 `.loam/memory/handoff/<repo>/archive/<date>-<sid8>.md` and never reads it again.
 One writer per workstream, claimed once: it is not a shared last-writer-wins file.
+If sessions start on two machines at the same moment, before either has pulled
+the other's claim, each injects the handoff once (read twice in total) and
+archives it under its own session; both archives are kept and neither store is
+stranded.
 
 ## The one check
 
