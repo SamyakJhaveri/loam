@@ -162,6 +162,8 @@ Each run has its own worktree, branch, and run directory, so unblocked tickets m
 Two tickets may run together only when neither names a path the other's Goal creates or rewrites; the stage-2 grader pass checks this over a breakdown, and native blocking edges hold the rest apart.
 The daily ledger is written under a lock.
 `bin/factory next` launches up to `MAX_PARALLEL` runs (default 1; raise it after two clean single runs, as `status` reports them).
+A run holds a slot while its status reads `running` or `waiting-limit`.
+A run directory with `launched` and no `status` file holds a slot until its run writes one or the operator removes it.
 
 ## Notify
 

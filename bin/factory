@@ -592,14 +592,25 @@ assert_caps() { # before every model call; the daily cap is "the next call could
 stop_requested() { [ -f "$RUN/FACTORY_STOP" ] || [ -f "$RUNS_ROOT/FACTORY_STOP" ]; }
 
 # MAX_PARALLEL counts the other tickets already holding a slot: a run is live while its
-# status reads running or waiting-limit.
+# status reads running or waiting-limit, or while it has written `launched` and no status yet
+# (round 0, #156 #167). A run that ends through finish always writes a status, so only a
+# hard-killed round-0 run leaves `launched` alone; it holds the slot until the operator removes
+# its directory, as a hard-killed running run does.
+holds_slot() { # <run dir>
+  local st
+  if [ -f "$1/status" ]; then
+    st=$(cat "$1/status")
+    [ "$st" = running ] || [ "$st" = waiting-limit ]
+  else
+    [ -f "$1/launched" ]
+  fi
+}
+
 assert_parallel() {
-  local d n=0 st
+  local d n=0
   for d in "$RUNS_ROOT"/*/*/; do
-    [ -f "$d/status" ] || continue
     [ "$(basename "$(dirname "$d")")" = "$KEY" ] && continue
-    st=$(cat "$d/status")
-    [ "$st" = running ] || [ "$st" = waiting-limit ] || continue
+    holds_slot "$d" || continue
     n=$((n + 1))
   done
   [ "$n" -lt "$MAX_PARALLEL" ] \
@@ -1346,19 +1357,18 @@ cmd_next() { # [--dry-run|--install]
     return 1
   fi
 
-  # 2. A run whose status is running or waiting-limit holds a slot (assert_parallel's rule), and so
-  #    does a pr-opened run whose ticket worktree still exists: the merge ritual removes the worktree,
+  # 2. A run holds a slot when holds_slot says so (assert_parallel's rule: running, waiting-limit,
+  #    or launched with no status yet), and so does a pr-opened run whose ticket worktree still exists: the merge ritual removes the worktree,
   #    so until then the PR awaits merge and the next ticket waits (LOOP.md: after each merge).
   #    FACTORY_MAX_PARALLEL bounds the count, as it does in cmd_run through apply_caps; default 1.
   local d st n=0 max="${FACTORY_MAX_PARALLEL:-$MAX_PARALLEL}"
   for d in "$RUNS_ROOT"/*/*/; do
-    [ -f "$d/status" ] || continue
-    st=$(cat "$d/status")
+    st=$(cat "$d/status" 2> /dev/null || true)
     if [ "$st" = pr-opened ]; then
       [ -d "$MAIN_CHECKOUT-$(basename "$(dirname "$d")")" ] && n=$((n + 1))
       continue
     fi
-    [ "$st" = running ] || [ "$st" = waiting-limit ] || continue
+    holds_slot "$d" || continue
     n=$((n + 1))
   done
   if [ "$n" -ge "$max" ]; then
