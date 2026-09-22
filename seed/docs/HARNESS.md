@@ -171,6 +171,8 @@ removing it would cause a mistake.
   capture runs at most once per ten minutes. The scrub adds one regex pass over
   the transcript per capture. Recall waits at most five seconds for a pull from
   the store's remote; the capture's push runs in the background and never waits.
+- Auto memory: Claude Code adds at most the first 200 lines or 25 KB of
+  `MEMORY.md` to the context at session start.
 
 ## Accepted risks, stated rather than hidden
 
@@ -190,6 +192,10 @@ removing it would cause a mistake.
   secret with no recognizable shape can therefore reach both the store's git
   history and the remote; forgetting a pushed trace means deleting the file,
   committing, and rewriting or reinitialising both the store repo and the remote.
+- `settings.json` sets `autoMemoryDirectory` to `~/memstore/claude`, so Claude
+  auto memory now lives in the store and travels with it through the store's git
+  history and remote, unscrubbed (settings cannot expand `LOAM_MEMSTORE`, so a
+  store moved elsewhere leaves auto memory at `~/memstore/claude`).
 - Codex runs a repository hook only after the user trusts the project's `.codex`
   layer and reviews the hook definition once (Codex keeps a hash of it in its
   hooks state, and an edit to `hooks.json` asks again), so a Codex session before
