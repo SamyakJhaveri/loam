@@ -78,6 +78,23 @@ Session-start brief: **fenced as data.** It prints a header line "The fenced blo
 | Find evidence for a claim |  |  |  |
 | Avoid a repeated mistake |  |  |  |
 
+## Week-4 cases, fixed 2026-09-21
+
+Settled in the review session's grill before any weekly test ran, so the week-4 test is not chosen after the fact. Each case names the artifact a fresh session must find and the pass condition. The session gets only the case prompt and the cwd; nothing else is pasted.
+
+| Case | Prompt to the fresh session | Artifact it must find | Pass condition |
+| --- | --- | --- | --- |
+| Resume a workstream | "Resume the DistBench work. What is the next step, and where does the active work live?" | handoff note `local-correction-check` (`docs/agent/handoffs/local-correction-check.md`) and its parent `cluster-first-continuation` | The answer names the bounded local correction check as the step before E3b, names the active checkout `/private/tmp/distbench-publish-20260918` on branch `pilot/e3b-j2-qualification`, and cites `docs/research/2026-09-18-fable-pilot-review/REMEDIATION.md` or the handoff note. |
+| Find evidence for a claim | "Where is the evidence that full output export can dominate the measured step, and under what conditions does it hold?" | claim note `claim-output-export-dominates-step` (`docs/agent/claims/claim-output-export-dominates-step.md`) | The answer names `experiments/discovery-v1/local-preflight/RESULTS.md` and `docs/design/DECISIONS.md#D19` and states the condition: local measurement only, distributed and GPU behavior unvalidated. |
+| Avoid a repeated mistake | "Plan the first hour of the next DistBench session." | decision note `d33-do-not-repeat-walkthrough-or-inventory-search` (`docs/agent/decisions/d33-do-not-repeat-walkthrough-or-inventory-search.md`, written 2026-09-21 from BUILD-PLAN.md lines 25 and 93 at commit 9426587) | The plan does not schedule the completed walkthrough, the research questionnaire, or the HPC inventory search, and it cites the note or BUILD-PLAN.md's "do not repeat" sentence. A plan that re-runs any of the three fails. |
+
+Rules settled with the cases:
+
+- Diagnostic arm: when a case fails on a harness, rerun it once, fresh session, same harness, with the artifact's path pasted into the prompt. A pass then means the failure was retrieval (the brief did not surface the note); a fail means the failure was use (the session had it and did not act). Recorded beside the result; the pass rule is unchanged.
+- Brief tokens per session: Claude Code, read the transcript under `~/.claude/projects/<cwd slug>/<session>.jsonl`, take the first line with `"type":"assistant"`, and sum `message.usage.input_tokens + cache_creation_input_tokens + cache_read_input_tokens` (that is the prompt size at the first turn); Codex, read `~/.codex/sessions/<y>/<m>/<d>/rollout-<...>.jsonl`, take the first `event_msg` whose payload type is `token_count` with non-null `info`, and read `info.last_token_usage.input_tokens`. The brief's own cost is the difference between that number with the hooks registered and the same first prompt in the same cwd with the hooks removed, measured once per harness in week 4.
+- Hook registration: Samyak registers both harnesses himself (`basic-memory hook install --harness claude`, `--harness codex`, then `/basic-memory:bm-setup` in a DistBench session for the cwd mapping); the weekly lines start the Monday after registration.
+- The store gained one note on 2026-09-21 (D33 above); the DistBench repo commit for it is Samyak's, not this session's.
+
 ## Store commit
 
 The 44 files under `docs/agent/` are committed in the DistBench repo as 8888b64 (local, not pushed). Nothing else in that repo changed.

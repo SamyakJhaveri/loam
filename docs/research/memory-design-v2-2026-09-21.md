@@ -111,10 +111,10 @@ No experiment used Opus 4.8, Fable 5.1, or GPT-5.6.
 | MEM-04b #173 | 3 | memsearch per-repo scope, mem-inspect single-trace resolution, dashed OpenAI key formats (PR #172 review residuals) | filed 2026-09-21, blocked by #165 |
 | MEM-06 #174 | 1 | AGENTS.md names memsearch, mem-inspect, and the four labels | filed 2026-09-21, blocked by #173 |
 | MEM-07 #175 | 1, 3 | autoMemoryDirectory into the store, cleanupPeriodDays 365 (the 2026-09-03 design's settings keys) | filed 2026-09-21, blocked by #173 |
-| NAV-00 #166 | 2 | FACTORY_NAV_ARM flag, arm-C prompt file, nav01-metrics.py in the factory | filed 2026-09-21, blocked by #165 |
-| NAV-01 | 2 | pre-registered trial: language-server plugin, Semble CLI; five tickets each against five interleaved without | protocol frozen in docs/plans; runs after MEM-05 |
+| NAV-00 #166 | 2 | arm from FACTORY_NAV_ARM or popped from the runs-root order file nav-order, arm-C prompt file, nav_arm ledger field, nav01-metrics.py in the factory | filed 2026-09-21, reviewed and rescoped 2026-09-21 (order file added so the timer launches labeled runs), blocked by #165 |
+| NAV-01 | 2 | pre-registered trial: Semble CLI first, language-server plugin only if five .py or .ts tickets exist (no bash plugin in the official marketplace); five tickets each against five interleaved without | protocol frozen in docs/plans, Risks section added 2026-09-21; execution decided (ADR 0002, local): runs after NAV-00 merges and a stage-2 session files a 20-ticket pool |
 | NAV-02 | 2 | follow-on trial: a Loam-owned stdlib `bin/nav` (where, outline, grep, refs) as arm D | protocol frozen in docs/plans 2026-09-21; launches only if both NAV-01 arms are not adopted |
-| REC-01 | 4 | basic-memory pilot on DistBench, four weeks | installed and seeded 2026-09-21; results in docs/research/rec-01-results.md |
+| REC-01 | 4 | basic-memory pilot on DistBench, four weeks | installed and seeded 2026-09-21; week-4 cases fixed 2026-09-21 in docs/research/rec-01-results.md; hooks registered by Samyak |
 
 Cut from the plan: a hand-written `docs/MAP.md` (NAV-01's winning arm replaces it, or AGENTS.md pointers stay), Graphify, the Serena trial, CodeNib.
 
