@@ -11,14 +11,17 @@
 #   mem-inspect <session-prefix> [--summary] [--span A:B] [--match RE] [--repo NAME]
 #
 #   Resolves the prefix against $STORE/traces/<repo>/*<prefix>*.jsonl[.gz]; <repo>
-#   defaults to every repo, --repo NAME narrows to one. Reads gzip or plain and
-#   both line shapes (Claude type user/assistant with message.content; Codex
-#   response_item and event_msg).
+#   defaults to every repo, --repo NAME narrows to one. Reads exactly one trace:
+#   a prefix matching several lists them newest first and exits 1. Reads gzip or
+#   plain and both line shapes (Claude type user/assistant with message.content;
+#   Codex response_item and event_msg).
 #     --summary   one numbered line per turn: role, first 100 chars of text, a
 #                 tool_use's name and command, the first line of a tool_result.
 #     --span A:B  turns A..B in full (tool results cut at 40 lines).
 #     --match RE  only turns whose text matches RE, with their numbers.
 #   With no mode, --summary is assumed. Output capped at 200 lines.
+#   Exits 1 when no trace or several match, the trace has no readable turns, or
+#   --span or --match is malformed.
 #
 # Store root: $LOAM_MEMSTORE, default ~/memstore.
 
@@ -163,13 +166,12 @@ def turn_from(rec):
     return None
 
 
-def collect(paths) -> list[dict]:
+def collect(path: str) -> list[dict]:
     turns = []
-    for path in paths:
-        for rec in read_records(path):
-            t = turn_from(rec)
-            if t is not None:
-                turns.append(t)
+    for rec in read_records(path):
+        t = turn_from(rec)
+        if t is not None:
+            turns.append(t)
     return turns
 
 
@@ -224,12 +226,23 @@ def main(argv) -> int:
     paths = resolve(args.prefix, args.repo)
     if not paths:
         sys.stderr.write("mem-inspect: no trace matches %r\n" % args.prefix)
-        return 0
+        return 1
+    if len(paths) > 1:
+        # Turn numbers index one session, so never merge two traces: list the
+        # matches newest first and let the caller narrow the prefix.
+        sys.stderr.write(
+            "mem-inspect: %r matches %d traces; narrow the prefix or pass --repo:\n"
+            % (args.prefix, len(paths))
+        )
+        traces = os.path.join(store_root(), "traces")
+        for path in sorted(paths, key=lambda p: (os.path.getmtime(p), p), reverse=True):
+            sys.stderr.write(os.path.relpath(path, traces) + "\n")
+        return 1
 
-    turns = collect(paths)
+    turns = collect(paths[0])
     if not turns:
         sys.stderr.write("mem-inspect: trace has no readable turns\n")
-        return 0
+        return 1
 
     lines: list[str] = []
 
@@ -237,7 +250,7 @@ def main(argv) -> int:
         m = re.match(r"^\s*(\d+)\s*:\s*(\d+)\s*$", args.span)
         if not m:
             sys.stderr.write("mem-inspect: --span wants A:B\n")
-            return 0
+            return 1
         a, b = int(m.group(1)), int(m.group(2))
         for n in range(a, b + 1):
             if 1 <= n <= len(turns):
@@ -247,7 +260,7 @@ def main(argv) -> int:
             rx = re.compile(args.match)
         except re.error as exc:
             sys.stderr.write("mem-inspect: bad --match regex: %s\n" % exc)
-            return 0
+            return 1
         for n, t in enumerate(turns, 1):
             if rx.search(t["text"]):
                 lines.append(summary_line(n, t))
