@@ -606,6 +606,20 @@ assert_parallel() {
     || finish stopped-environment "parallel cap: $n other live run(s), MAX_PARALLEL=$MAX_PARALLEL"
 }
 
+# bin/check's toolchain gate needs both exports; without them a run finishes its work and then fails
+# guard bin/check (#158). Same predicate as bin/check; one stderr line naming the variable, return 1.
+assert_toolchain_env() {
+  local fix="export it in ~/.profile on the runner; see CONTRIBUTING.md"
+  if [ -z "${LOAM_FACTORY_TOOLCHAIN:-}" ] || [ ! -x "$LOAM_FACTORY_TOOLCHAIN/bin/node" ]; then
+    echo "LOAM_FACTORY_TOOLCHAIN is unset or has no node binary under it: $fix" >&2
+    return 1
+  fi
+  if [ -z "${LOAM_FACTORY_COPIER:-}" ] || [ ! -x "$LOAM_FACTORY_COPIER" ]; then
+    echo "LOAM_FACTORY_COPIER is unset or not executable: $fix" >&2
+    return 1
+  fi
+}
+
 # The result subtypes that mean the worker stopped on a cap this supervisor gave its call: --max-budget-usd
 # (ROUND_BUDGET_USD) and --max-turns (MAX_TURNS). The CLI reports them with is_error true, but the round
 # ran and may have committed, so it is a finished round and Step 6 decides (LOOP.md, Exits). Every other
@@ -1243,6 +1257,8 @@ cmd_run() {
   date -u +%s > "$RUN/launched"
   nav_arm_resolve   # NAV-01: fix this launch's arm before freeze and round 0, so the whole run carries one arm
   stop_requested && finish stopped "FACTORY_STOP is present at launch"
+  local envmsg
+  envmsg=$(assert_toolchain_env 2>&1) || finish stopped-environment "$envmsg"
   assert_parallel
   prepare_worktree
   freeze
@@ -1321,7 +1337,9 @@ cmd_next() { # [--dry-run|--install]
   #     read-only and shared with precondition_lines; it runs under --dry-run too, since a check from
   #     inside a worktree may run it. The line goes to stderr (cron mails it) and returns 1, the same
   #     shape as `frontier query failed`; the ticket stays unassigned and launches on the first tick
-  #     after the login returns.
+  #     after the login returns. The toolchain exports gate the same way: without them the run fails
+  #     guard bin/check after its work is done (#158).
+  assert_toolchain_env || return 1
   if ! claude_logged_in; then
     echo "login expired: claude auth status reports logged out; run claude login on the runner" >&2
     return 1
@@ -1493,6 +1511,16 @@ precondition_lines() { # LOOP.md, Preconditions
   for t in claude gh git jq python3 uv tmux timeout socat node; do
     command -v "$t" > /dev/null 2>&1 && echo "  PASS $t on PATH" || echo "  FAIL $t not on PATH"
   done
+  if [ -n "${LOAM_FACTORY_TOOLCHAIN:-}" ] && [ -x "$LOAM_FACTORY_TOOLCHAIN/bin/node" ]; then
+    echo "  PASS LOAM_FACTORY_TOOLCHAIN $LOAM_FACTORY_TOOLCHAIN"
+  else
+    echo "  FAIL LOAM_FACTORY_TOOLCHAIN unset or no node binary under it"
+  fi
+  if [ -n "${LOAM_FACTORY_COPIER:-}" ] && [ -x "$LOAM_FACTORY_COPIER" ]; then
+    echo "  PASS LOAM_FACTORY_COPIER $LOAM_FACTORY_COPIER"
+  else
+    echo "  FAIL LOAM_FACTORY_COPIER unset or not executable"
+  fi
   if claude_logged_in; then
     echo "  PASS claude login"
   else
