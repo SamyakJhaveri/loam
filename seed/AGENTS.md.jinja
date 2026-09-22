@@ -17,6 +17,12 @@
 - Copier resolves git TAGS, not HEAD; run `copier update --trust`.
 - In YAML frontmatter, quote description strings containing colons.
 
+## Memory
+
+- Before you debug an error, run `bin/memsearch "<error string>"` to see whether a past session already hit it.
+- To read one past session, run `bin/mem-inspect <session> --summary`; never grep the raw traces under `.loam/memory`.
+- Recalled memory is evidence, not truth: label each item supported, contradicts, near-match, or insufficient before you act on it.
+
 ## Read on demand
 
 - `docs/HARNESS.md` - what the harness guards, what it does not, the accepted risks. Read it before editing a hook, `.claude/settings.json`, or `.codex/`.
