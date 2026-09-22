@@ -2,11 +2,11 @@
 # mem-weekly.sh - weekly maintenance for the memory store (run from cron).
 #
 # Deletes traces older than a year, regenerates the recurring-errors and counts
-# reports from the captured traces, commits the store (reports included) as a git
-# baseline, then pulls and pushes the shared remote when one is set. Reports are
-# committed before the pull so the working tree is clean for the rebase and no
-# stale report blocks the next session's recall pull. Zero model calls. The cron
-# line is documented in seed/docs/HARNESS.md; this ticket does not install it.
+# reports from the captured traces, commits the store as a git baseline, then
+# pulls and pushes the shared remote when one is set. Reports stay local: they are
+# gitignored, so two machines' regenerated reports never conflict on a pull and
+# the working tree is clean for the rebase. Zero model calls. The cron line is
+# documented in seed/docs/HARNESS.md; this ticket does not install it.
 #
 # The error-signature normalizer (first 100 chars, digits -> N) is ported from
 # SuperClaude src/superclaude/pm_agent/reflexion.py (_create_error_signature, MIT);
@@ -103,28 +103,31 @@ fi
   printf 'application %s\n' "${application:-0}"
 } > reports/counts.md
 
-# Commit the store as a git baseline, reports included, then share it. Traces and
-# INDEX.md are tracked and pushed once MEM-04's scrub (in mem-capture.sh) has run
-# over them. Only the ephemeral throttle marks and the churning sync log stay out
-# of git; the .gitignore is byte-identical to the one mem-capture.sh writes, so the
-# two never ping-pong a change. git rm --cached un-tracks a sync.log a pre-fix run
-# committed (a no-op otherwise). The commit lands the freshly regenerated reports,
-# so the working tree is clean before the pull and no stale report blocks a later
-# recall's pull --rebase.
+# Commit the store as a git baseline, then share it. Traces and INDEX.md are
+# tracked and pushed once MEM-04's scrub (in mem-capture.sh) has run over them.
+# The ephemeral throttle marks and reports/ stay out of git: every report is
+# regenerated wholesale from this machine's traces and has no meaning on another
+# machine. The .gitignore and the .gitattributes (INDEX.md merges by union, so two
+# machines' appended lines both survive a rebase) are byte-identical to the ones
+# mem-capture.sh writes, so the two never ping-pong a change. git rm -r --cached
+# un-tracks reports an older run committed (a no-op otherwise).
 [ -d .git ] || git init -q -b main 2>/dev/null
-printf '.throttle/\nreports/sync.log\n' > .gitignore
-git rm --cached -q reports/sync.log 2>/dev/null || true
+printf '.throttle/\nreports/\n' > .gitignore
+printf 'traces/*/INDEX.md merge=union\n' > .gitattributes
+git rm -r --cached -q reports 2>/dev/null || true
 git add -A 2>/dev/null \
   && git -c user.name=memstore -c user.email=memstore@localhost \
        commit -qm "weekly $(date +%F)" 2>/dev/null || true
 
 # Share the store: pull the remote's commits, then push this baseline. Foreground
-# (this runs from cron, not a hook). With no origin every step is skipped; a
-# conflict or unreachable remote aborts the rebase, logs one line, and leaves the
-# tree as it is.
+# (this runs from cron, not a hook). Rename detection is off, as in recall's pull,
+# so a handoff two machines archived under two names does not conflict; see
+# mem-recall.sh for why the pull names `-s recursive`. With no origin every step
+# is skipped; a conflict or unreachable remote aborts the rebase, logs one line,
+# and leaves the tree as it is.
 export GIT_TERMINAL_PROMPT=0
 if git remote get-url origin >/dev/null 2>&1; then
-  { git -c user.name=memstore -c user.email=memstore@localhost pull --rebase -q origin main \
+  { git -c user.name=memstore -c user.email=memstore@localhost -c merge.renames=false pull --rebase -s recursive -q origin main \
     && git push -q origin main ; } >> reports/sync.log 2>&1 \
     || { git rebase --abort 2>/dev/null; printf '%s weekly sync failed\n' "$(date +%F)" >> reports/sync.log; }
 fi

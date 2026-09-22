@@ -292,13 +292,18 @@ if [ ! -d "$STORE/.git" ]; then
   fi
 fi
 if [ -d "$STORE/.git" ]; then
-  # Keep the ephemeral throttle marks and the sync log out of git: the marks are
-  # local per-session timestamps, and the log is appended on every failed push and
-  # by recall, so tracking it would dirty the tree and make the next pull --rebase
-  # refuse. Written on every capture, not only on init, so a store an older
-  # mem-weekly left with a stale 'traces/' ignore line is corrected and its traces
-  # resume syncing. Byte-identical to the string mem-weekly.sh writes.
-  printf '.throttle/\nreports/sync.log\n' > "$STORE/.gitignore" 2>/dev/null || true
+  # Keep the ephemeral throttle marks and reports/ out of git: the marks are local
+  # per-session timestamps, the sync log is appended on every failed push and by
+  # recall, and mem-weekly regenerates the other reports wholesale from this
+  # machine's traces, so tracking any of them would dirty the tree or conflict on
+  # the next pull --rebase. The attributes line merges INDEX.md by union, so two
+  # machines that each append a line before pulling both keep both lines instead
+  # of conflicting. Both files are written on every capture, not only on init, so
+  # a store an older mem-weekly left with a stale 'traces/' ignore line is
+  # corrected and its traces resume syncing. Byte-identical to what mem-weekly.sh
+  # writes.
+  printf '.throttle/\nreports/\n' > "$STORE/.gitignore" 2>/dev/null || true
+  printf 'traces/*/INDEX.md merge=union\n' > "$STORE/.gitattributes" 2>/dev/null || true
   mkdir -p "$STORE/reports" 2>/dev/null || true
   git -C "$STORE" add -A 2>/dev/null || true
   git -C "$STORE" -c user.name=memstore -c user.email=memstore@localhost \
