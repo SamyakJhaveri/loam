@@ -561,16 +561,16 @@ record() { # round role model result.json [advisor_calls] [advisor_usd] [workflo
   # not bound Codex, #41) and `usage` carries its verbatim token counters; ticket_spent, daily_spent, and
   # cmd_status all read cost_usd // 0, so null is safe.
   local line acalls="${5:-0}" ausd="${6:-0}" wagents="${7:-0}" wusd="${8:-0}" codex="${9:-0}"
-  line=$(jq -c --argjson round "$1" --arg role "$2" --arg model "$3" --arg ts "$(now)" \
+  line=$(jq -c --argjson round "$1" --arg role "$2" --arg model "$3" --arg ts "$(now)" --arg nav "${FACTORY_NAV_ARM:-base}" \
     --argjson acalls "$acalls" --argjson ausd "$ausd" --argjson wagents "$wagents" --argjson wusd "$wusd" --argjson codex "$codex" \
     "$RESULT_OBJ | {round:\$round, role:\$role, model:\$model, cost_usd:(if \$codex == 1 then null else (.total_cost_usd // 0) end), \
 duration_ms:(.duration_ms // 0), num_turns:(.num_turns // 0), denials:((.permission_denials // []) | length), \
 subtype:(.subtype // \"unknown\"), usage:(.usage // null), advisor_calls:\$acalls, advisor_usd:\$ausd, \
 workflow_agents:\$wagents, workflow_usd:\$wusd, \
-ts:\$ts}" "$4" 2> /dev/null) \
-    || line=$(jq -nc --argjson round "$1" --arg role "$2" --arg model "$3" --arg ts "$(now)" \
+nav_arm:\$nav, ts:\$ts}" "$4" 2> /dev/null) \
+    || line=$(jq -nc --argjson round "$1" --arg role "$2" --arg model "$3" --arg ts "$(now)" --arg nav "${FACTORY_NAV_ARM:-base}" \
       --argjson acalls "$acalls" --argjson ausd "$ausd" --argjson wagents "$wagents" --argjson wusd "$wusd" --argjson codex "$codex" \
-      '{round:$round, role:$role, model:$model, cost_usd:(if $codex == 1 then null else 0 end), duration_ms:0, num_turns:0, denials:0, subtype:"unknown", usage:null, advisor_calls:$acalls, advisor_usd:$ausd, workflow_agents:$wagents, workflow_usd:$wusd, ts:$ts}')
+      '{round:$round, role:$role, model:$model, cost_usd:(if $codex == 1 then null else 0 end), duration_ms:0, num_turns:0, denials:0, subtype:"unknown", usage:null, advisor_calls:$acalls, advisor_usd:$ausd, workflow_agents:$wagents, workflow_usd:$wusd, nav_arm:$nav, ts:$ts}')
   printf '%s\n' "$line" >> "$LEDGER"
   printf '%s' "$line" | jq -c --arg date "$(today)" --arg ticket "$KEY" \
     '{date:$date, ticket:$ticket, role:.role, cost_usd:.cost_usd}' >> "$DAILY"
@@ -738,9 +738,21 @@ workflow_ledger() { # round stream.jsonl result.json -> "<agents> <usd>" on stdo
   printf '%s %s\n' "$agents" "$usd"
 }
 
+# NAV-01 (docs/research/memory-design-v2-2026-09-21.md): the arm-C worker prompt gets the Semble
+# search instruction appended; base and arm B append nothing. Reads the immutable source through
+# $ROOT, so no freeze copy is needed and nobody hand-edits the frozen _common.md between launches.
+nav_c_append() { [ "${FACTORY_NAV_ARM:-}" = C ] && cat "$ROOT/bin/factory.d/_nav_c.md" >> "$1"; return 0; }
+
+# NAV-01: the arm of a launch. An environment FACTORY_NAV_ARM (even empty) wins and nothing is popped;
+# otherwise the first line of $RUNS_ROOT/nav-order becomes the arm and is removed, so the timer launches
+# the pre-registered order. No file, an empty file, or a blank first line means base. Runs once per
+# launch: exec_frozen re-execs with the exported value, which stops a second pop.
+nav_arm_resolve() { [ -n "${FACTORY_NAV_ARM+x}" ] && return 0; local f="$RUNS_ROOT/nav-order" a; [ -s "$f" ] || return 0; a=$(head -n 1 "$f"); [ -n "$a" ] || return 0; export FACTORY_NAV_ARM="$a"; tail -n +2 "$f" > "$f.tmp" && mv "$f.tmp" "$f"; return 0; }
+
 build_worker_prompt() { # round -> prompt path (pending until the call returns a result); non-zero when a Codex skill will not resolve
   local round="$1" pf="$RUN/pending.prompt.md" prev=$((round - 1)) s sf
   { printf '%s\n\n' "$BODY"; cat "$RUN/frozen/_common.md"; } > "$pf"
+  nav_c_append "$pf"   # arm C appends the Semble instruction; base and arm B append nothing (NAV-01)
   # Skills per role (LOOP.md): a Claude worker gets one Skill-tool sentence per `skills:` name (never a
   # slash command, which would swallow the body, #37/#40); a Codex worker has no Skill tool and swallows
   # an unknown `/<skill>` line (#41), so it gets each named skill's body pasted (skill_file resolves it).
@@ -1229,6 +1241,7 @@ cmd_run() {
   WORKTREE="${FACTORY_WORKTREE:-$MAIN_CHECKOUT-$(printf '%s' "$KEY" | tr '[:upper:]' '[:lower:]')}"
   [ -f "$RUN/started" ] || date -u +%s > "$RUN/started"
   date -u +%s > "$RUN/launched"
+  nav_arm_resolve   # NAV-01: fix this launch's arm before freeze and round 0, so the whole run carries one arm
   stop_requested && finish stopped "FACTORY_STOP is present at launch"
   assert_parallel
   prepare_worktree
