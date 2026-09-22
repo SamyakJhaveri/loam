@@ -22,7 +22,7 @@ import { tmpdir } from 'node:os';
 import { dirname, isAbsolute, join, relative, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { loadCatalog, projectEdge, scanPersonalPaths } from '../../seed/.loam/runtime/dist/src/assets/catalog.js';
-import { sha256, verifySourceUnits } from '../../seed/.loam/runtime/dist/src/assets/units.js';
+import { extractSourceUnits, sha256, verifySourceUnits } from '../../seed/.loam/runtime/dist/src/assets/units.js';
 
 const repo = fileURLToPath(new URL('../../', import.meta.url));
 const PACKAGE_ROOT = join(repo, 'seed/.loam/runtime');
@@ -172,8 +172,8 @@ function edgeSourceUnitsOwned(obligations) {
       // whose adopted lessons live in the mirrored skill's own body. A broad "any distribution-symlink
       // fromEntry" exemption let a foreign required edge be re-parented onto a symlink entry, with its
       // id rewritten to pass the ownership-by-id check, and then skip the anchor rule; binding the
-      // exemption to the mirrored SKILL.md destination closes that. The two production mirror edges
-      // (catchup, fable-prompting) still pass. (finding 1; symlink exemption finding 1, round 4;
+      // exemption to the mirrored SKILL.md destination closes that. A real mirror edge still passes (the
+      // synthetic mirror in the sources-match-tree test). (finding 1; symlink exemption finding 1, round 4;
       // narrowed finding 3, round 5)
       const dest = edge.to.entry !== undefined ? byEntry.get(edge.to.entry) : undefined;
       const isMirrorEdge = edge.relationship === 'required-file'
@@ -358,7 +358,7 @@ function applicationTupleAgreement(obligations, application) {
 }
 
 // The inventoried support, private and remote sets partition loam-inventory.json exactly:
-// 69 inventoried support records = 62 regular files + 2 distribution links + 5 private records,
+// 51 inventoried support records = 46 regular files + 0 distribution links + 5 private records,
 // plus the fixed supplemental (non-inventory) support entries. Every inventory file except the five
 // private rows is claimed by exactly one entry source with digest agreement; the private-typed
 // entries are exactly the five reviewed D2a rows and assert no body-backed claim.
@@ -383,10 +383,10 @@ function inventoryPartition(obligations, loamInventory) {
   const regInInv = support.filter(e => e.source.type === 'regular-file' && invPaths.has(e.source.path)).length;
   const linkInInv = support.filter(e => e.source.type === 'distribution-symlink' && invPaths.has(e.source.path)).length;
   const priv = obligations.privateMetadata.length;
-  if (regInInv !== 62) throw new Error(`inventoried regular support is ${regInInv}, expected 62`);
-  if (linkInInv !== 2) throw new Error(`inventoried distribution-link support is ${linkInInv}, expected 2`);
+  if (regInInv !== 46) throw new Error(`inventoried regular support is ${regInInv}, expected 46`);
+  if (linkInInv !== 0) throw new Error(`inventoried distribution-link support is ${linkInInv}, expected 0`);
   if (priv !== 5) throw new Error(`private records are ${priv}, expected 5`);
-  if (regInInv + linkInInv + priv !== 69) throw new Error('inventoried support partition is not 69');
+  if (regInInv + linkInInv + priv !== 51) throw new Error('inventoried support partition is not 51');
   if (obligations.entries.filter(e => e.collection === 'remote').length !== 5) throw new Error('remote entries are not exactly five');
 
   const privateRowPaths = privatePaths;
@@ -466,6 +466,27 @@ function writeInto(root, rel, bytes) {
   mkdirSync(dirname(abs), { recursive: true });
   writeFileSync(abs, bytes);
 }
+// The catalog pins no distribution symlink (a live working file of Loam is never pinned, #183), so the
+// symlink controls run on a synthetic mirror written into a scratch tree: a skill body, the link that
+// mirrors its directory, the one required-file mirror edge between them, and one anchored required edge
+// from the body for the re-parent controls to corrupt. Each call returns fresh objects to mutate.
+function syntheticMirror(root) {
+  const canonicalTarget = 'demo/.agents/skills/mirrored';
+  const linkPath = 'demo/.claude/skills/mirrored';
+  const linkTarget = '../../.agents/skills/mirrored';
+  const skillPath = `${canonicalTarget}/SKILL.md`;
+  const body = Buffer.from('# Mirrored\n\nA synthetic skill body behind a distribution link.\n');
+  writeInto(root, skillPath, body);
+  mkdirSync(join(root, dirname(linkPath)), { recursive: true });
+  symlinkSync(linkTarget, join(root, linkPath));
+  const skillId = `support:${skillPath}`;
+  const units = extractSourceUnits(skillId, skillPath, body);
+  const skill = { id: skillId, collection: 'support', source: { type: 'regular-file', path: skillPath, sha256: sha256(body) }, sourceUnits: units, targets: [], map: units.map(u => ({ unit: u.id, section: 'mirrored-lesson' })) };
+  const link = { id: `support:${linkPath}`, collection: 'support', source: { type: 'distribution-symlink', path: linkPath, linkTarget, linkSha256: sha256(Buffer.from(linkTarget, 'utf8')), canonicalTarget }, sourceUnits: [], targets: [], map: [] };
+  const mirror = { id: `${link.id}:e1`, fromEntry: link.id, relationship: 'required-file', to: { entry: skill.id }, sourceUnit: null };
+  const anchored = { id: `${skill.id}:e1`, fromEntry: skill.id, relationship: 'required-file', to: { external: 'a synthetic helper' }, sourceUnit: units[0].id };
+  return { skill, link, mirror, anchored, view: { entries: [skill, link], edges: [mirror, anchored], targets: [] } };
+}
 
 // ---------------------------------------------------------------------------
 test('provenance.sources-match-tree', () => {
@@ -474,33 +495,33 @@ test('provenance.sources-match-tree', () => {
 
   // Changed content: a source whose bytes no longer match its recorded digest.
   withScratch('loam-prov-content-', root => {
-    const entry = CATALOG.entries.find(e => e.id === 'baseline:plan-review');
+    const entry = CATALOG.entries.find(e => e.id === 'baseline:agent-team');
     writeInto(root, entry.source.path, 'mutated body\n');
     assert.throws(() => checkOneSource(entry, root), /source bytes differ/);
   });
   // Directory where a file is expected: the regular-file type check rejects it.
   withScratch('loam-prov-dir-', root => {
-    const entry = CATALOG.entries.find(e => e.id === 'baseline:plan-review');
+    const entry = CATALOG.entries.find(e => e.id === 'baseline:agent-team');
     mkdirSync(join(root, entry.source.path), { recursive: true });
     assert.throws(() => checkOneSource(entry, root), /expected a regular file/);
   });
   // Erased source units: an empty array on a body-backed entry fails unconditionally.
   withScratch('loam-prov-units-', root => {
-    const entry = structuredClone(CATALOG.entries.find(e => e.id === 'baseline:plan-review'));
+    const entry = structuredClone(CATALOG.entries.find(e => e.id === 'baseline:agent-team'));
     writeInto(root, entry.source.path, readFileSync(join(repo, entry.source.path)));
     entry.sourceUnits = [];
     assert.throws(() => checkOneSource(entry, root), /no source units/);
   });
   // Link substitution: a distribution symlink repointed to a different target.
   withScratch('loam-prov-link-', root => {
-    const entry = CATALOG.entries.find(e => e.source.type === 'distribution-symlink');
-    mkdirSync(join(root, dirname(entry.source.path)), { recursive: true });
-    symlinkSync('../../.agents/skills/OTHER', join(root, entry.source.path));
-    assert.throws(() => checkOneSource(entry, root), /link target differs/);
+    const { link } = syntheticMirror(root);
+    rmSync(join(root, link.source.path));
+    symlinkSync('../../.agents/skills/OTHER', join(root, link.source.path));
+    assert.throws(() => checkOneSource(link, root), /link target differs/);
   });
   // Omitted transitive helper: a required edge's target entry removed.
   const missingHelper = cloneOb();
-  const helperId = 'support:cultivation/marketplace/sam-cc-setup/agents/plan-reviewer.md';
+  const helperId = 'support:cultivation/parked/sam-cc-setup/skills/agent-team/teammate-prompt.md';
   missingHelper.entries = missingHelper.entries.filter(e => e.id !== helperId);
   assert.throws(() => sourcesMatchTree(missingHelper, repo), /names a missing entry/);
 
@@ -627,16 +648,14 @@ test('provenance.sources-match-tree', () => {
 
   // Finding 1 (round 4): a required edge whose anchor is nulled, re-parented to a distribution-symlink
   // entry. The old rule fired only for regular-file sources, so this slipped past the anchor rule; the
-  // symlink exemption keeps the two real symlink e1 edges valid while ownership by edge id rejects the
-  // foreign re-parent, naming the edge. (link re-parent)
-  const linkReparent = cloneOb();
-  const symlinkEntry = linkReparent.entries.find(e => e.source.type === 'distribution-symlink');
-  assert.ok(symlinkEntry, 'a distribution-symlink entry exists in production');
-  const lrByEntry = new Map(linkReparent.entries.map(e => [e.id, e]));
-  const lrEdge = linkReparent.edges.find(e => { const f = lrByEntry.get(e.fromEntry); return e.sourceUnit !== null && f && f.source.type === 'regular-file' && REQUIRED.has(e.relationship); });
-  lrEdge.sourceUnit = null;
-  lrEdge.fromEntry = symlinkEntry.id;
-  assert.throws(() => sourcesMatchTree(linkReparent, repo), err => err.message.includes(`edge ${lrEdge.id} is not owned by fromEntry ${symlinkEntry.id}`));
+  // symlink exemption keeps a real mirror edge valid while ownership by edge id rejects the foreign
+  // re-parent, naming the edge. (link re-parent, on the synthetic mirror)
+  withScratch('loam-prov-link-reparent-', root => {
+    const { link, anchored, view } = syntheticMirror(root);
+    anchored.sourceUnit = null;
+    anchored.fromEntry = link.id;
+    assert.throws(() => sourcesMatchTree(view, root), err => err.message.includes(`edge ${anchored.id} is not owned by fromEntry ${link.id}`));
+  });
 
   // Finding 1 (round 4): the same nulled-anchor re-parent to a remote-declaration entry, which escaped
   // all three cases before. Ownership by edge id rejects it, naming the edge. (remote re-parent)
@@ -650,15 +669,15 @@ test('provenance.sources-match-tree', () => {
   assert.throws(() => sourcesMatchTree(remoteReparent, repo), err => err.message.includes(`edge ${rrEdge.id} is not owned by fromEntry ${remoteEntry.id}`));
 
   // Finding 2 (round 4): a targeted entry's row retargeted to a known target the entry does not declare.
-  // Every baseline:catchup row could be re-homed to method:fable-prompting and accepted, so the lessons
-  // silently left method:catchup; the entry-declared-target rule rejects it, naming the entry and unit.
+  // Every baseline:agent-team row could be re-homed to method:validate and accepted, so the lessons
+  // silently left method:agent-team; the entry-declared-target rule rejects it, naming the entry and unit.
   const foreignTarget = cloneOb();
-  const catchupEntry = foreignTarget.entries.find(e => e.id === 'baseline:catchup');
-  assert.ok(catchupEntry && catchupEntry.targets.length > 0, 'baseline:catchup is a targeted entry in production');
-  const catchupRow = catchupEntry.map.find(r => typeof r.target === 'string');
-  catchupRow.target = 'method:fable-prompting';
-  catchupRow.section = 'when-to-use';
-  assert.throws(() => preservationMapCoverage(foreignTarget), err => err.message.includes(`entry baseline:catchup preservation-map row for unit ${catchupRow.unit} names target method:fable-prompting not declared by the entry`));
+  const agentTeamEntry = foreignTarget.entries.find(e => e.id === 'baseline:agent-team');
+  assert.ok(agentTeamEntry && agentTeamEntry.targets.length > 0, 'baseline:agent-team is a targeted entry in production');
+  const agentTeamRow = agentTeamEntry.map.find(r => typeof r.target === 'string');
+  agentTeamRow.target = 'method:validate';
+  agentTeamRow.section = 'fix-loop';
+  assert.throws(() => preservationMapCoverage(foreignTarget), err => err.message.includes(`entry baseline:agent-team preservation-map row for unit ${agentTeamRow.unit} names target method:validate not declared by the entry`));
 
   // Finding 3 (round 4): a non-kebab section on a target-less entry's section-only row. Section keys are
   // kebab-case declarations, so a free-text section no longer covers its unit.
@@ -675,25 +694,22 @@ test('provenance.sources-match-tree', () => {
   // not the mirrored `${canonicalTarget}/SKILL.md`, so the exemption (required-file to the mirrored
   // SKILL.md only) does not apply and the missing anchor is rejected, naming the edge. The old broad
   // "any distribution-symlink fromEntry" exemption accepted this unrelated required edge.
-  const rewrittenReparent = cloneOb();
-  const rwSymlink = rewrittenReparent.entries.find(e => e.source.type === 'distribution-symlink');
-  assert.ok(rwSymlink, 'a distribution-symlink entry exists in production');
-  const rwByEntry = new Map(rewrittenReparent.entries.map(e => [e.id, e]));
-  const rwEdge = rewrittenReparent.edges.find(e => { const f = rwByEntry.get(e.fromEntry); return e.sourceUnit !== null && f && f.source.type === 'regular-file' && REQUIRED.has(e.relationship); });
-  rwEdge.sourceUnit = null;
-  rwEdge.fromEntry = rwSymlink.id;
-  rwEdge.id = `${rwSymlink.id}:e2`;
-  assert.throws(() => sourcesMatchTree(rewrittenReparent, repo), err => err.message.includes(`edge ${rwEdge.id}`) && err.message.includes('has no source-unit anchor'));
-  // The two production mirror edges (catchup, fable-prompting) still resolve under the narrowed
-  // exemption: sourcesMatchTree already ran clean above, and both are required-file edges to their
-  // mirrored SKILL.md.
-  const mirrorEdges = CATALOG.edges.filter(e => { const f = CATALOG.entries.find(x => x.id === e.fromEntry); return f && f.source.type === 'distribution-symlink' && e.relationship === 'required-file'; });
-  assert.equal(mirrorEdges.length, 2);
-  for (const e of mirrorEdges) {
-    const f = CATALOG.entries.find(x => x.id === e.fromEntry);
-    const dest = CATALOG.entries.find(x => x.id === e.to.entry);
-    assert.equal(dest.source.path, `${f.source.canonicalTarget}/SKILL.md`);
-  }
+  withScratch('loam-prov-link-rewrite-', root => {
+    const { link, anchored, view } = syntheticMirror(root);
+    anchored.sourceUnit = null;
+    anchored.fromEntry = link.id;
+    anchored.id = `${link.id}:e2`;
+    assert.throws(() => sourcesMatchTree(view, root), err => err.message.includes(`edge ${anchored.id}`) && err.message.includes('has no source-unit anchor'));
+  });
+  // A real mirror edge still resolves under the narrowed exemption: the synthetic mirror passes the full
+  // check, and its one required-file edge lands on the mirrored SKILL.md. Production pins no symlink.
+  withScratch('loam-prov-mirror-', root => {
+    const { skill, link, mirror, view } = syntheticMirror(root);
+    assert.equal(sourcesMatchTree(view, root), 2);
+    assert.equal(mirror.to.entry, skill.id);
+    assert.equal(skill.source.path, `${link.source.canonicalTarget}/SKILL.md`);
+  });
+  assert.equal(CATALOG.entries.filter(e => e.source.type === 'distribution-symlink').length, 0);
 
   // Finding 4 (round 5 / candidate-04): a target injected onto a target-less entry's section-only row.
   // The target-less branch used to validate only the section and accepted an invented target; it now
@@ -710,14 +726,13 @@ test('provenance.sources-match-tree', () => {
   // edge re-parented onto the symlink entry, its id rewritten to `<symlink>:e2` and its to.entry set to
   // the mirrored SKILL.md, would pass as a mirror edge and erase the entry's real edge. Rejected as a
   // duplicate mirror edge, naming the edge and fromEntry.
-  const dupMirror = cloneOb();
-  const dmByEntry = new Map(dupMirror.entries.map(e => [e.id, e]));
-  const realMirror = dupMirror.edges.find(e => { const f = dmByEntry.get(e.fromEntry); return (e.sourceUnit === null || e.sourceUnit === undefined) && e.relationship === 'required-file' && f && f.source.type === 'distribution-symlink'; });
-  assert.ok(realMirror, 'a distribution-symlink mirror edge exists in production');
-  const secondMirror = structuredClone(realMirror);
-  secondMirror.id = `${realMirror.fromEntry}:e2`;
-  dupMirror.edges.push(secondMirror);
-  assert.throws(() => sourcesMatchTree(dupMirror, repo), err => err.message.includes(`edge ${secondMirror.id} is a duplicate mirror edge for ${realMirror.fromEntry}`));
+  withScratch('loam-prov-dup-mirror-', root => {
+    const { mirror, view } = syntheticMirror(root);
+    const secondMirror = structuredClone(mirror);
+    secondMirror.id = `${mirror.fromEntry}:e2`;
+    view.edges.push(secondMirror);
+    assert.throws(() => sourcesMatchTree(view, root), err => err.message.includes(`edge ${secondMirror.id} is a duplicate mirror edge for ${mirror.fromEntry}`));
+  });
 
   // critic-01 round 6 (b): an exclusion row that also carries a target and a section. The class check
   // used to `continue` immediately, so the row doubled as a delivery mapping to an unreviewed successor.
@@ -880,11 +895,11 @@ test('provenance.inventory-dispositions', () => {
   assert.throws(() => inventoryDispositions(changedPluginEnabled, benchmark, application, loamInventory), /enabled state differs from the inventory/);
   // Removing an inventoried support entry leaves its inventory file undispositioned.
   const droppedSupport = cloneOb();
-  droppedSupport.entries = droppedSupport.entries.filter(e => e.id !== 'support:cultivation/marketplace/README.md');
+  droppedSupport.entries = droppedSupport.entries.filter(e => e.id !== 'support:cultivation/parked/README.md');
   assert.throws(() => inventoryDispositions(droppedSupport, benchmark, application, loamInventory), /undispositioned/);
   // Retyping a real support source as private metadata leaves six private-typed entries.
   const retypedSupport = cloneOb();
-  retypedSupport.entries.find(e => e.id === 'support:bin/lib.sh').source = { type: 'private-local-metadata', path: 'bin/lib.sh', historicalSha256: '0'.repeat(64), currentSha256: null, readingState: 'metadata-only', bodyVerification: 'not-performed' };
+  retypedSupport.entries.find(e => e.id === 'support:docs/architecture-working/tooling/mattpocock-skills/ask-matt/PHASE-BOUNDARIES.md').source = { type: 'private-local-metadata', path: 'docs/architecture-working/tooling/mattpocock-skills/ask-matt/PHASE-BOUNDARIES.md', historicalSha256: '0'.repeat(64), currentSha256: null, readingState: 'metadata-only', bodyVerification: 'not-performed' };
   assert.throws(() => inventoryDispositions(retypedSupport, benchmark, application, loamInventory), /private-metadata-typed entries are 6/);
   // A private-metadata record that asserts a target claim.
   const claimingPrivate = cloneOb();
