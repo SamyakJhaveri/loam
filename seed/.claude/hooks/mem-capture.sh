@@ -8,7 +8,8 @@
 # Zero model calls. Idempotent on the scrubbed content's sha256 (kept beside the
 # trace as <date>-<sid8>.sha), so a repeat capture adds no file and no line.
 # After a capture it links <repo-toplevel>/.loam/memory -> $STORE when absent.
-# Prints nothing.
+# It then commits the store and, when an `origin` remote is set, pushes it in the
+# background so a second machine sees what this session learned. Prints nothing.
 #
 # Usage: mem-capture.sh [--throttle SECONDS]
 #   --throttle SECONDS  exit 0 without capturing when this session_id was captured
@@ -26,6 +27,14 @@
 set -uo pipefail
 
 STORE="${LOAM_MEMSTORE:-$HOME/memstore}"
+
+# First capture on a new machine with no local store: clone the shared remote so
+# this machine starts from what other machines already learned, not from empty.
+# When the remote is empty or unreachable the clone is a no-op and the sync step
+# below inits a fresh main branch instead.
+if [ ! -d "$STORE" ] && [ -n "${LOAM_MEMSTORE_REMOTE:-}" ]; then
+  GIT_TERMINAL_PROMPT=0 git clone -q -b main "$LOAM_MEMSTORE_REMOTE" "$STORE" 2>/dev/null || true
+fi
 
 THROTTLE=0
 if [ "${1:-}" = "--throttle" ]; then
@@ -256,12 +265,43 @@ fi
 
 # Only an actual write earns an INDEX line, and one session gets one line: a
 # transcript keeps growing after Stop fires, so SessionEnd re-copies under the
-# same name (sha unchanged -> changed=0) and must not add a second line.
+# same name (sha unchanged -> changed=0, exited above) and must not add a second
+# line. A resumed session that changed only its trace skips the line but still
+# syncs the new trace below.
 [ "$CHANGED" = "1" ] || exit 0
-grep -q " | $SID8 | " "$DST/INDEX.md" 2>/dev/null && exit 0
-BRANCH="$(git -C "$CWD" rev-parse --abbrev-ref HEAD 2>/dev/null)"
-SHORT="$(git -C "$CWD" rev-parse --short HEAD 2>/dev/null)"
-HOST="$(hostname -s 2>/dev/null || hostname 2>/dev/null)"
-printf '%s | %s | %s@%s | %s | %s\n' \
-  "$(date +%F)" "$SID8" "$BRANCH" "$SHORT" "$HOST" "$FIRST" >> "$DST/INDEX.md"
+if ! grep -q " | $SID8 | " "$DST/INDEX.md" 2>/dev/null; then
+  BRANCH="$(git -C "$CWD" rev-parse --abbrev-ref HEAD 2>/dev/null)"
+  SHORT="$(git -C "$CWD" rev-parse --short HEAD 2>/dev/null)"
+  HOST="$(hostname -s 2>/dev/null || hostname 2>/dev/null)"
+  printf '%s | %s | %s@%s | %s | %s\n' \
+    "$(date +%F)" "$SID8" "$BRANCH" "$SHORT" "$HOST" "$FIRST" >> "$DST/INDEX.md"
+fi
+
+# Sync the store through git: commit the new trace and INDEX line, then push to the
+# shared remote in the background so the hook never waits on the network. With no
+# origin every step is a local commit and nothing leaves the machine. The scrub
+# (above) runs before this, so only scrubbed transcripts ever reach the history.
+export GIT_TERMINAL_PROMPT=0
+if [ ! -d "$STORE/.git" ]; then
+  git -C "$STORE" init -q -b main 2>/dev/null || true
+  if [ -n "${LOAM_MEMSTORE_REMOTE:-}" ] && ! git -C "$STORE" remote get-url origin >/dev/null 2>&1; then
+    git -C "$STORE" remote add origin "$LOAM_MEMSTORE_REMOTE" 2>/dev/null || true
+  fi
+fi
+if [ -d "$STORE/.git" ]; then
+  # Keep the ephemeral throttle marks and the sync log out of git: the marks are
+  # local per-session timestamps, and the log is appended on every failed push and
+  # by recall, so tracking it would dirty the tree and make the next pull --rebase
+  # refuse. Written on every capture, not only on init, so a store an older
+  # mem-weekly left with a stale 'traces/' ignore line is corrected and its traces
+  # resume syncing. Byte-identical to the string mem-weekly.sh writes.
+  printf '.throttle/\nreports/sync.log\n' > "$STORE/.gitignore" 2>/dev/null || true
+  mkdir -p "$STORE/reports" 2>/dev/null || true
+  git -C "$STORE" add -A 2>/dev/null || true
+  git -C "$STORE" -c user.name=memstore -c user.email=memstore@localhost \
+    commit -qm "capture $(date +%F) $REPO $SID8" 2>/dev/null || true
+  if git -C "$STORE" remote get-url origin >/dev/null 2>&1; then
+    ( git -C "$STORE" push -q origin main </dev/null >>"$STORE/reports/sync.log" 2>&1 & )
+  fi
+fi
 exit 0

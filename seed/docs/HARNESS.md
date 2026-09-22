@@ -55,15 +55,20 @@ per-tool latency.
   sha256 (kept beside the trace as `<date>-<sid8>.sha`), so a repeat capture adds
   no file and no line. After a capture it links `<repo>/.loam/memory` to the
   store when that path is free. The `Stop` entry passes `--throttle 600`, so a
-  burst of stops captures at most once per ten minutes.
+  burst of stops captures at most once per ten minutes. It then commits the store
+  and, when an `origin` remote is set, pushes it in the background, so a second
+  machine sees the trace; the hook never waits on the network.
 - `mem-recall.sh` (SessionStart `startup|resume|clear`): prints a manifest to
-  stdout, which Claude Code adds to the context. A `Loaded:` line names how many
-  recent sessions, hint bullets, and handoffs it injected; the last five
-  `INDEX.md` lines follow; a `Not loaded:` line names the notes and traces it did
-  not open and points at `memsearch <pattern>` or `mem-inspect <session>` to
-  reach them; a trust rule closes it, labelling every recalled item supported,
-  contradicts, near-match, or insufficient. Capped at 4000 bytes, silent when the
-  store has no index for the repo.
+  stdout, which Claude Code adds to the context. When an `origin` remote is set it
+  first pulls the store (bounded to five seconds) so a line another machine
+  committed shows up here. A `Loaded:` line names how many recent sessions, hint
+  bullets, and handoffs it injected; a claimed handoff, the last five `INDEX.md`
+  lines, and the newest hint bullets follow; a `Not loaded:` line names the notes
+  and traces it did not open and points at `memsearch <pattern>` or
+  `mem-inspect <session>` to reach them, and at the handoff path; a trust rule
+  closes it, labelling every recalled item supported, contradicts, near-match, or
+  insufficient. Capped at 4000 bytes, silent when the store has no index and no
+  handoff for the repo.
 
 Codex runs the same two scripts through `.codex/hooks.json`, which registers
 `mem-capture.sh` on SessionEnd, PreCompact, and Stop (the Stop entry throttled)
@@ -77,13 +82,55 @@ alike) and the repo's `docs/` with ripgrep (or `grep`/`zgrep`) and cuts the
 output at 80 lines. `mem-inspect <session>` reads one captured trace by turn
 instead of grepping the raw file: `--summary` lists the turns, `--span A:B`
 prints a range, `--match RE` prints the turns whose text matches. `mem-weekly.sh`
-deletes traces older than a year, commits the store as a git baseline, and
-rewrites `reports/recurring-errors.md` (error lines normalized to a signature so
-runs differing only in a number collapse) and `reports/counts.md` (capture,
-retrieval, and application counts); add its cron line by hand, it is not
-installed:
+deletes traces older than a year, rewrites `reports/recurring-errors.md` (error
+lines normalized to a signature so runs differing only in a number collapse) and
+`reports/counts.md` (capture, retrieval, and application counts), commits the
+store as a git baseline with those reports included, then pulls and pushes the
+store's remote when one is set; add its cron line by hand, it is not installed:
 
     0 9 * * 0 <project>/bin/mem-weekly.sh
+
+## Sharing the store between machines
+
+The store is a git repository, so a second machine can see what the first
+learned by giving the store a remote. Use a machine you own; no third-party host
+is involved.
+
+1. On the machine that will hold the remote, create a bare repository:
+
+        git init --bare -b main ~/memstore.git
+
+2. On every machine, point the local store at it over an ssh alias (say
+   `jhaveris`, the same alias `bin/runner` uses):
+
+        git -C ~/memstore remote add origin jhaveris:memstore.git
+
+   A store an older `mem-weekly.sh` created may sit on `master`; run
+   `git -C ~/memstore branch -M main` once so `origin main` matches.
+
+3. On a brand-new machine with no `~/memstore` yet, set `LOAM_MEMSTORE_REMOTE`
+   to the same URL. The first capture then clones the shared store instead of
+   starting empty, so the machine sees the shared history from its first session.
+
+The remote holds scrubbed transcripts, the same content as the local store.
+Keep it on a machine you own and never point it at a public host: a secret with
+no recognizable shape can reach the store's history and the remote (see Accepted
+risks). A capture commits and pushes in the background; recall pulls at
+SessionStart and `mem-weekly.sh` pulls then pushes from cron. Every git call runs
+with `GIT_TERMINAL_PROMPT=0`, and recall's pull is bounded to five seconds, so an
+unreachable remote never blocks a session; it logs one line to
+`reports/sync.log` and continues with the local store. Store files are
+append-only, so a rebase does not conflict; on the rare conflict the hook logs
+one line and leaves the working tree untouched.
+
+### The handoff
+
+To hand the next session a single instruction, write
+`.loam/memory/handoff/<repo>.md` (the repo key is the name in the recall
+manifest's heading). The next session on any machine or harness, in the same
+repo, injects that file once under `## Handoff (claimed now)`, then archives it to
+`.loam/memory/handoff/<repo>/archive/<date>-<sid8>.md` and never reads it again.
+One writer per workstream, claimed once: it is not a shared last-writer-wins file.
 
 ## The one check
 
@@ -109,7 +156,8 @@ removing it would cause a mistake.
   now sits in the listing.
 - Memory hooks: recall adds at most 4000 bytes at SessionStart, and the Stop
   capture runs at most once per ten minutes. The scrub adds one regex pass over
-  the transcript per capture.
+  the transcript per capture. Recall waits at most five seconds for a pull from
+  the store's remote; the capture's push runs in the background and never waits.
 
 ## Accepted risks, stated rather than hidden
 
@@ -123,9 +171,12 @@ removing it would cause a mistake.
   stored; a secret with no recognizable shape can still be stored, so delete the
   trace to forget it. The store under `LOAM_MEMSTORE` (default `~/memstore`) is
   per user, outside every repository, never rendered and never committed to the
-  project. The weekly baseline commit in the store covers reports and
-  native-memory caches only; `traces/` is gitignored there, so a deleted
-  transcript leaves no copy in git history.
+  project. The store is itself a git repository: `traces/` and `INDEX.md` are
+  tracked and pushed to the store's own remote once the scrub has run over them,
+  so the trace history and any configured remote hold scrubbed transcripts. A
+  secret with no recognizable shape can therefore reach both the store's git
+  history and the remote; forgetting a pushed trace means deleting the file,
+  committing, and rewriting or reinitialising both the store repo and the remote.
 - Codex runs a repository hook only after the user trusts the project's `.codex`
   layer and reviews the hook definition once (Codex keeps a hash of it in its
   hooks state, and an edit to `hooks.json` asks again), so a Codex session before
