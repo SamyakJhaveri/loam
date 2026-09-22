@@ -713,7 +713,7 @@ test('provenance.sources-match-tree', () => {
 
   // Finding 4 (round 5 / candidate-04): a target injected onto a target-less entry's section-only row.
   // The target-less branch used to validate only the section and accepted an invented target; it now
-  // rejects any non-null, non-undefined target, naming the entry and unit. Production's 207 null-target
+  // rejects any non-null, non-undefined target, naming the entry and unit. Production's 199 null-target
   // and 15 target-omitting section rows still pass (sourcesMatchTree ran clean above).
   const injectedTarget = cloneOb();
   const itEntry = injectedTarget.entries.find(e => e.source.type === 'regular-file' && e.sourceUnits.length > 0 && e.targets.length === 0 && (e.map ?? []).some(r => typeof r.section === 'string' && typeof r.target !== 'string' && typeof r.exclude !== 'string'));
