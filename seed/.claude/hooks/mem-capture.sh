@@ -147,7 +147,10 @@ SUBS = [
     (re.compile(r"([a-zA-Z][a-zA-Z0-9+.\-]*://[^:@/\s]+:)[^@/\s]+@"),
      r"\1[REDACTED:url_credentials]@"),
     (re.compile(r"sk-ant-[A-Za-z0-9_-]{10,}"), "[REDACTED:anthropic_key]"),
-    (re.compile(r"sk-[A-Za-z0-9]{20,}"), "[REDACTED:openai_key]"),
+    # Dashes and underscores cover the sk-proj- and sk-svcacct- formats. The
+    # lookbehind skips kebab-case words (task-runner-...) but still matches after a
+    # JSON-escaped \n, \r, or \t, where the character before sk- is a letter.
+    (re.compile(r"(?:(?<=\\[nrt])|(?<![A-Za-z0-9]))sk-[A-Za-z0-9_-]{20,}"), "[REDACTED:openai_key]"),
     (re.compile(r"ghp_[A-Za-z0-9]{36,255}"), "[REDACTED:github_token]"),
     (re.compile(r"github_pat_[A-Za-z0-9_]{22,}"), "[REDACTED:github_token]"),
     (re.compile(r"gh[ousr]_[A-Za-z0-9]{36,255}"), "[REDACTED:github_token]"),
