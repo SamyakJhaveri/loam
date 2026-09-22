@@ -1232,6 +1232,9 @@ main_loop() {
 }
 
 cmd_run() {
+  # Before load_ticket, so a missing toolchain export stops ahead of every GitHub call; exit 4 is
+  # stopped-environment's code, direct because finish needs RUN and its notify may comment on the issue.
+  assert_toolchain_env || exit 4
   load_ticket "$1"
   apply_caps
   WORKER_EFFORT=$(section Worker | sed -n 's/^effort: *//p' | head -1)
@@ -1257,8 +1260,6 @@ cmd_run() {
   date -u +%s > "$RUN/launched"
   nav_arm_resolve   # NAV-01: fix this launch's arm before freeze and round 0, so the whole run carries one arm
   stop_requested && finish stopped "FACTORY_STOP is present at launch"
-  local envmsg
-  envmsg=$(assert_toolchain_env 2>&1) || finish stopped-environment "$envmsg"
   assert_parallel
   prepare_worktree
   freeze
