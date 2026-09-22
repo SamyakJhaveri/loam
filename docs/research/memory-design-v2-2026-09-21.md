@@ -106,7 +106,7 @@ No experiment used Opus 4.8, Fable 5.1, or GPT-5.6.
 | MEM-02 #161 | 3 | Codex capture, three counts; addendum: key by remote name | merged 2026-09-21 (PR #171) |
 | MEM-03 #162 | 3 | self-written note in the two-note format; corrections signature log | revised 2026-09-21, human-gated |
 | MEM-04 #164 | 3, 5 | scrub, gzip and retention, symlink, inspect CLI, four-status manifest | merged 2026-09-21 (PR #172); three review residuals in MEM-04b |
-| MEM-05 #165 | 3 | bare remote on jhaveris, commit on capture, pull at start, claim-once handoff | PR #176 open 2026-09-22, awaiting merge |
+| MEM-05 #165 | 3 | bare remote on jhaveris, commit on capture, pull at start, claim-once handoff | merged 2026-09-22 (PR #176); two-machine proof done |
 | MEM-05b #179 | 3 | INDEX.md union merge, reports local, rename detection off on the pull (two-machine race from the PR #176 review and the two-store proof) | filed 2026-09-22, blocked by #173 |
 | MEM-04b #173 | 3 | memsearch per-repo scope, mem-inspect single-trace resolution, dashed OpenAI key formats (PR #172 review residuals) | filed 2026-09-21, blocked by #165 |
 | MEM-06 #174 | 1 | AGENTS.md names memsearch, mem-inspect, and the four labels | filed 2026-09-21, blocked by #173 |
