@@ -31,7 +31,9 @@ Each documents instance frontmatter carrying: id, kind, project_id, statement, s
 
 Indexer compatibility: basic-memory requires only `title` and `type` in frontmatter; it auto-injects `permalink` on sync and reformats `tags` to block style (`ensure_frontmatter_on_sync: True`). All our extra fields are preserved verbatim. Notes are searchable through `basic-memory tool search-notes` (verified for decision, handoff, and claim notes).
 
-## Hook registration state: NOT registered (reported for Samyak)
+## Hook registration state: registered 2026-09-21 by Samyak on both harnesses (Claude SessionStart 20 s and PreCompact 120 s; Codex SessionStart and PreCompact). The DistBench cwd mapping is still pending: a probe of the session-start hook from the DistBench cwd on 2026-09-21 returned the 756-character default-project brief with no notes, so `/basic-memory:bm-setup` must run in a DistBench session before the first Monday line. The earlier state follows.
+
+### Earlier state (before registration)
 
 The real command is `basic-memory hook install` (the plan's `bm hook` names the `hook` group; `bm` is the alias). It is **user-level / global only** - its only option is `--harness <claude|codex>`, no project scope. Its docstring: "Wire the lifecycle hooks into the user-level harness config." Per the task constraint (global-only registration must not be run), I did **not** run it.
 
