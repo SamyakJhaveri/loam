@@ -8,7 +8,10 @@ n_fail=0
 
 pass() { echo "PASS $1"; n_pass=$((n_pass + 1)); }
 fail() { echo "FAIL $1: ${2:-}"; n_fail=$((n_fail + 1)); }
-guard() { "$@"; }   # a regression guard: runs CMD and returns its status; allowed to pass on main
+# guard: a regression guard; runs CMD and returns its status; allowed to pass on main.
+# Under LOAM_HOOK (the worker's Stop hook) a guarded bin/check passes without running:
+# it takes minutes per stop, and the supervisor's own check run is the one run per round (LOOP.md).
+guard() { [ -n "${LOAM_HOOK:-}" ] && [ "${1:-}" = bin/check ] && return 0; "$@"; }
 
 # MEASURE prints one measured row for the supervisor to collect (CONTRACT.md, Rows measured).
 MEASURE() { echo "MEASURE $1 ${2:-}"; }
