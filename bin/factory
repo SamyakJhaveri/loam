@@ -1167,7 +1167,9 @@ main_loop() {
     stop_requested && finish stopped "FACTORY_STOP before the round-$ROUND call"
     worker_round "$ROUND"
     # Step 6, in order: abandon, the frozen set, a clean tree, do-not-touch, then the checks.
-    grep -q '^ABANDON ' "$DECISIONS" && finish abandon "$(grep -m1 '^ABANDON ' "$DECISIONS")"
+    # A worker sometimes writes the line as a markdown bullet (#158); accept `- ` or `* ` and strip it.
+    abandon=$(grep -m1 -E '^(- |\* )?ABANDON ' "$DECISIONS" | sed -E 's/^(- |\* )//')
+    [ -n "$abandon" ] && finish abandon "$abandon"
     check_frozen
     # The round signature is HEAD plus the digest of decisions.md, so a round that only relabels
     # decisions.md after a grader-only fail (#78) proceeds to the checks and graders; no-change fires
