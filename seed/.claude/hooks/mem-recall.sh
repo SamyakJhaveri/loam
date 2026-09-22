@@ -14,8 +14,11 @@
 # Before building the manifest it pulls the shared store from its `origin` remote
 # (when one is set), bounded to five seconds, so a line another machine committed
 # shows up here; a timeout or failure logs one line to reports/sync.log and falls
-# back to the local store. It then claims a single per-repo handoff note left by
-# an earlier session on any machine: injects it once, archives it, and pushes.
+# back to the local store. The pull runs with rename detection off, so a handoff
+# two machines claimed at once rebases as two independent archive adds plus a
+# delete both sides agree on, not a rename/rename conflict. It then claims a
+# single per-repo handoff note left by an earlier session on any machine: injects
+# it once, archives it, and pushes.
 #
 # Store root: $LOAM_MEMSTORE, default ~/memstore.
 # Exit codes: 0 = always (advisory hook).
@@ -123,7 +126,7 @@ finally:
         os.unlink(errpath)
     except Exception:
         pass
-' "$STORE" git -C "$STORE" -c user.name=memstore -c user.email=memstore@localhost pull --rebase -q origin main 2>/dev/null || true
+' "$STORE" git -C "$STORE" -c user.name=memstore -c user.email=memstore@localhost -c merge.renames=false pull --rebase -q origin main 2>/dev/null || true
 fi
 
 # Handoff: claim the one per-repo handoff note, if present. Read it (cut at 1500
