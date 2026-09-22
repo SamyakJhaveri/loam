@@ -132,7 +132,7 @@ test('catalog.schema-and-payload', () => {
     expectRule(() => { const c = clone(catalog); entryOf(c, privateId).sourceUnits.push({ id: `${privateId}:u1`, role: 'body', start: 1, end: 1, sha256: '0'.repeat(64) }); validateCatalog(c); }, 'unit.private-metadata');
     expectRule(() => {
         const c = clone(catalog);
-        const edge = entryOf(c, 'baseline:plan-review').dependencies[0];
+        const edge = entryOf(c, 'baseline:validate').dependencies[0];
         edge.to = { entry: privateId };
         edge.disposition = 'retained-resolved';
         validateCatalog(c);
@@ -153,21 +153,21 @@ test('catalog.conservation-rejections', () => {
     // sourceRevisions must be an object; a non-object is a mismatch (single-argument, catalog-internal).
     expectRule(() => { const c = clone(catalog); c.sourceRevisions = 'not-an-object'; assertSourceRevisions(c); }, 'sourceRevisions.mismatch');
     // Remove a baseline entry: an edge from another entry no longer resolves to it.
-    expectRule(() => { const c = clone(catalog); c.entries = c.entries.filter(e => e.id !== 'baseline:plan-review'); validateCatalog(c); }, 'edge.unresolved');
+    expectRule(() => { const c = clone(catalog); c.entries = c.entries.filter(e => e.id !== 'baseline:validate'); validateCatalog(c); }, 'edge.unresolved');
     // Delete a required support edge: the support's referencedBy no longer matches the recomputed inverse.
-    expectRule(() => { const c = clone(catalog); const e = entryOf(c, 'baseline:plan-review'); e.dependencies = e.dependencies.filter(d => d.id !== 'baseline:plan-review:e1'); validateCatalog(c); }, 'edge.inverse');
+    expectRule(() => { const c = clone(catalog); const e = entryOf(c, 'baseline:validate'); e.dependencies = e.dependencies.filter(d => d.id !== 'baseline:validate:e2'); validateCatalog(c); }, 'edge.inverse');
     // Retarget a required edge at an entry that does not exist: it no longer resolves.
-    expectRule(() => { const c = clone(catalog); entryOf(c, 'baseline:plan-review').dependencies[0].to = { entry: 'support:does-not-exist' }; validateCatalog(c); }, 'edge.unresolved');
+    expectRule(() => { const c = clone(catalog); entryOf(c, 'baseline:validate').dependencies[0].to = { entry: 'support:does-not-exist' }; validateCatalog(c); }, 'edge.unresolved');
     // A replacement that names a target the catalog does not carry: it no longer resolves.
-    expectRule(() => { const c = clone(catalog); entryOf(c, 'baseline:plan-review').dependencies[0].replacement = { reason: 'superseded', target: 'method:does-not-exist' }; validateCatalog(c); }, 'edge.unresolved');
+    expectRule(() => { const c = clone(catalog); entryOf(c, 'baseline:validate').dependencies[0].replacement = { reason: 'superseded', target: 'method:does-not-exist' }; validateCatalog(c); }, 'edge.unresolved');
     // Corrupt the reverse index while the edges are untouched.
-    expectRule(() => { const c = clone(catalog); entryOf(c, 'support:cultivation/marketplace/sam-cc-setup/agents/plan-reviewer.md').referencedBy = []; validateCatalog(c); }, 'edge.inverse');
+    expectRule(() => { const c = clone(catalog); entryOf(c, 'support:cultivation/parked/sam-cc-setup/agents/build-validator.md').referencedBy = []; validateCatalog(c); }, 'edge.inverse');
     // An empty source digest is refused as a literal, before any tree re-hash.
-    expectRule(() => { const c = clone(catalog); entryOf(c, 'baseline:plan-review').source.sha256 = ''; validateCatalog(c); }, 'source.digest-empty');
+    expectRule(() => { const c = clone(catalog); entryOf(c, 'baseline:validate').source.sha256 = ''; validateCatalog(c); }, 'source.digest-empty');
     // Unknown / typo successor.
-    expectRule(() => { const c = clone(catalog); entryOf(c, 'baseline:plan-review').targets = ['method:plan-reviewwww']; validateCatalog(c); }, 'target.unknown');
+    expectRule(() => { const c = clone(catalog); entryOf(c, 'baseline:validate').targets = ['method:validatewww']; validateCatalog(c); }, 'target.unknown');
     // Section keys that are not the union of the mapped sections aimed at the target.
-    expectRule(() => { const c = clone(catalog); c.targets.find(t => t.id === 'method:plan-review').sectionKeys = ['not-a-mapped-section']; validateCatalog(c); }, 'target.section-keys');
+    expectRule(() => { const c = clone(catalog); c.targets.find(t => t.id === 'method:validate').sectionKeys = ['not-a-mapped-section']; validateCatalog(c); }, 'target.section-keys');
     // D1: delivery truth is proven by bytes, so the delivery rule rejects each of its three branches: a
     // present-unqualified target with a null digest (nothing to verify against the recipient body), an
     // unknown delivery state, and a delivered target whose digest is not 64 lowercase hex.
@@ -192,25 +192,25 @@ test('catalog.conservation-rejections', () => {
     // Replace a meaningful map with a title-only map.
     expectRule(() => {
         const c = clone(catalog);
-        const e = entryOf(c, 'baseline:plan-review');
-        e.preservation.map = [{ unit: e.sourceUnits[0].id, target: 'method:plan-review', section: e.name }];
+        const e = entryOf(c, 'baseline:validate');
+        e.preservation.map = [{ unit: e.sourceUnits[0].id, target: 'method:validate', section: e.name }];
         validateCatalog(c);
     }, 'map.title-only');
     // Remove a source unit that a map row still names: the row references a now-unknown unit.
-    expectRule(() => { const c = clone(catalog); const e = entryOf(c, 'baseline:plan-review'); e.sourceUnits = e.sourceUnits.slice(1); validateCatalog(c); }, 'map.missing-unit');
+    expectRule(() => { const c = clone(catalog); const e = entryOf(c, 'baseline:validate'); e.sourceUnits = e.sourceUnits.slice(1); validateCatalog(c); }, 'map.missing-unit');
     // Finding 2 (round 5): a catalog exclusion map row must carry a non-whitespace reason (D7). Missing,
     // empty and whitespace-only reasons on an `exclude` row are each rejected. The reason is stripped
     // from the compiled projection, so this is a policy rule, not a schema keyword outside the D3 list;
     // the accepted catalog (validated above) is the positive control that a real reason passes.
-    const briefExcludeRow = (c) => {
-        const row = entryOf(c, 'baseline:brief').preservation.map.find(r => r.exclude !== undefined);
+    const validateExcludeRow = (c) => {
+        const row = entryOf(c, 'baseline:validate').preservation.map.find(r => r.exclude !== undefined);
         if (!row)
-            throw new Error('fixture: baseline:brief has no exclude row');
+            throw new Error('fixture: baseline:validate has no exclude row');
         return row;
     };
-    expectRule(() => { const c = clone(catalog); delete briefExcludeRow(c).reason; validateCatalog(c); }, 'map.exclusion-reason');
-    expectRule(() => { const c = clone(catalog); briefExcludeRow(c).reason = ''; validateCatalog(c); }, 'map.exclusion-reason');
-    expectRule(() => { const c = clone(catalog); briefExcludeRow(c).reason = '  \t  '; validateCatalog(c); }, 'map.exclusion-reason');
+    expectRule(() => { const c = clone(catalog); delete validateExcludeRow(c).reason; validateCatalog(c); }, 'map.exclusion-reason');
+    expectRule(() => { const c = clone(catalog); validateExcludeRow(c).reason = ''; validateCatalog(c); }, 'map.exclusion-reason');
+    expectRule(() => { const c = clone(catalog); validateExcludeRow(c).reason = '  \t  '; validateCatalog(c); }, 'map.exclusion-reason');
     // Finding 2: promote a preservation phase; misalign a snapshot's provider flags with applicability.
     expectRule(() => { const c = clone(catalog); entryOf(c, 'pocock:implement').preservation.phase = 'implemented'; validateCatalog(c); }, 'phase.promoted');
     expectRule(() => { const c = clone(catalog); entryOf(c, 'snapshot:distbench-claude-critique-swarm').providers.codex = true; entryOf(c, 'snapshot:distbench-claude-critique-swarm').providers.claude = false; validateCatalog(c); }, 'provider.mismatch');
@@ -229,16 +229,16 @@ test('catalog.conservation-rejections', () => {
     const varTmp = ['/var', '/tmp/', 'operator', '/file'].join(''); // unix persistent temp root
     const privateVar = ['/priv', 'ate/var/', 'root', '/x'].join(''); // macOS resolved private root
     const escaped = (s) => JSON.parse(JSON.stringify(s).replace(/\//g, '\\/')); // JSON-escaped slashes, decoded
-    expectRule(() => { const c = clone(catalog); entryOf(c, 'baseline:plan-review').notes = `see ${p} for context`; validateCatalog(c); }, 'privacy.personal-path');
-    expectRule(() => { const c = clone(catalog); entryOf(c, 'baseline:plan-review').blockers = [`blocked by ${p}`]; validateCatalog(c); }, 'privacy.personal-path');
-    expectRule(() => { const c = clone(catalog); entryOf(c, 'baseline:plan-review').attribution.author = p; validateCatalog(c); }, 'privacy.personal-path');
-    expectRule(() => { const c = clone(catalog); entryOf(c, 'baseline:plan-review')[p] = true; validateCatalog(c); }, 'privacy.personal-path');
-    expectRule(() => { const c = clone(catalog); entryOf(c, 'baseline:plan-review').notes = `path=${['/Users/', 'operator', '/x'].join('')}`; validateCatalog(c); }, 'privacy.personal-path');
+    expectRule(() => { const c = clone(catalog); entryOf(c, 'baseline:validate').notes = `see ${p} for context`; validateCatalog(c); }, 'privacy.personal-path');
+    expectRule(() => { const c = clone(catalog); entryOf(c, 'baseline:validate').blockers = [`blocked by ${p}`]; validateCatalog(c); }, 'privacy.personal-path');
+    expectRule(() => { const c = clone(catalog); entryOf(c, 'baseline:validate').attribution.author = p; validateCatalog(c); }, 'privacy.personal-path');
+    expectRule(() => { const c = clone(catalog); entryOf(c, 'baseline:validate')[p] = true; validateCatalog(c); }, 'privacy.personal-path');
+    expectRule(() => { const c = clone(catalog); entryOf(c, 'baseline:validate').notes = `path=${['/Users/', 'operator', '/x'].join('')}`; validateCatalog(c); }, 'privacy.personal-path');
     // Finding 5: the newly recognized forms are caught end-to-end (named-user tilde in notes, /var/tmp
     // in a blocker, /private/var in attribution).
-    expectRule(() => { const c = clone(catalog); entryOf(c, 'baseline:plan-review').notes = `moved to ${namedTilde}`; validateCatalog(c); }, 'privacy.personal-path');
-    expectRule(() => { const c = clone(catalog); entryOf(c, 'baseline:plan-review').blockers = [`temp at ${varTmp}`]; validateCatalog(c); }, 'privacy.personal-path');
-    expectRule(() => { const c = clone(catalog); entryOf(c, 'baseline:plan-review').attribution.author = privateVar; validateCatalog(c); }, 'privacy.personal-path');
+    expectRule(() => { const c = clone(catalog); entryOf(c, 'baseline:validate').notes = `moved to ${namedTilde}`; validateCatalog(c); }, 'privacy.personal-path');
+    expectRule(() => { const c = clone(catalog); entryOf(c, 'baseline:validate').blockers = [`temp at ${varTmp}`]; validateCatalog(c); }, 'privacy.personal-path');
+    expectRule(() => { const c = clone(catalog); entryOf(c, 'baseline:validate').attribution.author = privateVar; validateCatalog(c); }, 'privacy.personal-path');
     // Finding 5: each new form is caught in each location by the scanner directly - nested value, array
     // element, attribution field, object key and a JSON-escaped/decoded string.
     for (const form of [namedTilde, varTmp, privateVar]) {
@@ -249,14 +249,14 @@ test('catalog.conservation-rejections', () => {
         assert.ok(scanPersonalPaths({ note: escaped(form) }).length > 0, `decoded string: ${form}`);
     }
     // Positive control: a generic non-personal path is accepted; an approximation like ~5/10 is not a path.
-    assert.doesNotThrow(() => { const c = clone(catalog); entryOf(c, 'baseline:plan-review').notes = 'see .agents/skills/plan-review/SKILL.md'; validateCatalog(c); });
+    assert.doesNotThrow(() => { const c = clone(catalog); entryOf(c, 'baseline:validate').notes = 'see .agents/skills/validate/SKILL.md'; validateCatalog(c); });
     assert.equal(scanPersonalPaths({ n: 'roughly ~5/10 of cases and ~2/3 done' }).length, 0);
     // Finding 7 (round 2): the /Users and /home patterns are case-insensitive, so a lowercase /users
     // home path in a note is caught end-to-end; and the `pattern`-key exemption is confined to the
     // schema document, so a `pattern` key carrying a personal path in any other document is no longer
     // exempt, while the same key stays exempt when the scan is labelled `schema`.
     const lowerUsers = ['/us', 'ers/', 'operator', '/x'].join(''); // lowercase /users home path
-    expectRule(() => { const c = clone(catalog); entryOf(c, 'baseline:plan-review').notes = `moved to ${lowerUsers}`; validateCatalog(c); }, 'privacy.personal-path');
+    expectRule(() => { const c = clone(catalog); entryOf(c, 'baseline:validate').notes = `moved to ${lowerUsers}`; validateCatalog(c); }, 'privacy.personal-path');
     assert.ok(scanPersonalPaths({ note: lowerUsers }).length > 0, 'lowercase /users caught');
     assert.ok(scanPersonalPaths({ attribution: { pattern: personal() } }).length > 0, 'pattern key not exempt outside the schema');
     assert.equal(scanPersonalPaths({ pattern: personal() }, 'schema').length, 0, 'pattern key exempt only in the schema document');
@@ -282,8 +282,8 @@ test('catalog.activation-honesty', () => {
         assert.match(String(target.expectedSha256), /^[0-9a-f]{64}$/);
     assert.equal(catalog.targets.some(t => t.delivery === 'verified'), false);
     // Production pending-to-available fails even with blockers erased; activation=true always fails.
-    expectRule(() => { const c = clone(catalog); const e = entryOf(c, 'baseline:plan-review'); e.status = 'available'; e.blockers = []; validateCatalog(c); }, 'status.promoted');
-    expectRule(() => { const c = clone(catalog); entryOf(c, 'baseline:plan-review').activation.activated = true; validateCatalog(c); }, 'activation.claimed');
+    expectRule(() => { const c = clone(catalog); const e = entryOf(c, 'baseline:validate'); e.status = 'available'; e.blockers = []; validateCatalog(c); }, 'status.promoted');
+    expectRule(() => { const c = clone(catalog); entryOf(c, 'baseline:validate').activation.activated = true; validateCatalog(c); }, 'activation.claimed');
     // Finding 5: recipient delivery. The recipient root is the package's `factory/../..`; every
     // present-unqualified/verified target body is read and must carry its exact expectedSha256, while
     // planned targets (whose bodies do not exist yet) are never read.
@@ -425,7 +425,7 @@ test('catalog.activation-honesty', () => {
         rmSync(recipient, { recursive: true, force: true });
     }
     // requiredClosure ignores repeated nodes and never loops.
-    const closure = requiredClosure('baseline:plan-review', flatEdges(catalog));
+    const closure = requiredClosure('baseline:validate', flatEdges(catalog));
     assert.ok(Array.isArray(closure));
     assert.equal(new Set(closure).size, closure.length);
 });
@@ -434,7 +434,7 @@ test('catalog.selected-dependencies-mapped', () => {
     const catalog = load();
     // Every wrapper resolves against the catalog: it wraps a real entry, names a real method target,
     // and its payload sits under its provider's own native directory.
-    assert.equal(catalog.nativeWrappers.length, 15);
+    assert.equal(catalog.nativeWrappers.length, 13);
     const targetIds = new Set(catalog.targets.map(t => t.id));
     const entryIds = new Set(catalog.entries.map(e => e.id));
     for (const wrapper of catalog.nativeWrappers) {
@@ -449,9 +449,9 @@ test('catalog.selected-dependencies-mapped', () => {
     // as a duplicate id before any lookup map is built, so the dropped wrapper cannot hide.
     expectRule(() => { const c = clone(catalog); c.nativeWrappers[1] = structuredClone(c.nativeWrappers[0]); validateCatalog(c); }, 'membership.duplicate');
     // A required selected dependency has a named mapping or prerequisite.
-    const planReview = entryOf(catalog, 'baseline:plan-review');
-    assert.ok(planReview.dependencies.some(d => d.relationship === 'required-file' && d.disposition === 'retained-resolved' && d.resolvedBy?.target));
-    assert.ok(planReview.prerequisites.some(p => p.type === 'file' && p.path));
+    const experimentLoop = entryOf(catalog, 'snapshot:organizer-referenced-experiment-loop');
+    assert.ok(experimentLoop.dependencies.some(d => d.relationship === 'required-file' && d.disposition === 'retained-resolved' && d.resolvedBy?.target));
+    assert.ok(experimentLoop.prerequisites.some(p => p.type === 'file' && p.path));
     // Explicit source-project exclusions: the old grading roles (judge.md, reviewer.md) are local-only, not wrappers.
     assert.equal(catalog.nativeWrappers.some(w => /\/(judge|reviewer)\.md$/.test(w.wrappedSource)), false);
     assert.ok(catalog.notSelected.length === 210);

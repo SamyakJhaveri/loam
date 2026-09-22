@@ -8,7 +8,7 @@
     "assets/admission-fixtures/loam-dep-mutating-1.0.0.tgz": "622574d716f11c86305574c0c8604fa60b87ca0e9ce8a785c6db66d62a1c6362",
     "assets/admission-fixtures/loam-dep-plain-1.0.0.tgz": "28937d8437f6c08ea71fe281c47ab75a070a8d23befd4fccc0726f81dde324f0",
     "assets/admission-fixtures/loam-dep-scripted-1.0.0.tgz": "1e2c031e8a15a2cd7750ff73fb0ea298e99ec47b8b3657ba8cbd615afde83732",
-    "assets/curated-catalog.json": "715e4018ae10af1f0bb4dac04ca83338dc2c53665a65d2aa2ce51fdb610916ab",
+    "assets/curated-catalog.json": "0fd8309595c3f4095d755b5e99b828a67b253868c7c9fbc204af11ced21064e6",
     "assets/curated-catalog.schema.json": "1f2ffac55fbd67ff9b79310b4cb33620c2060438ae078fb72a2cbd0518ed7a04",
     "assets/runtime-manifest.json": "2fb47dbf5e125b8010d052e6f2b9f8d460001fa92b7f1bf2d0c8597b1244077c",
     "dist/src/assets/catalog.js": "0ac6baf995d266f1c53af9b300cdcf5a9e4ffb0f82760adb7693a8ca86b04591",
@@ -41,8 +41,8 @@
     "dist/src/platform/util.js.map": "c28f529dba24073852315c4fb9f963ca60e5261ad8d4c703fed9f011faddfeda",
     "dist/src/testing/verify.js": "448b6ccacb44504a13d8fd647b55ca9f9cec6525e6ac7f58de2792e0b00bda72",
     "dist/src/testing/verify.js.map": "97174d9c0e2509eaeea0f37b2ae3ee9cbe98626e9e144ad24ebadbccd23c829c",
-    "dist/tests/assets/catalog.test.js": "9fab4ace05f346d40d06ee6ce906d870002d204cd7725636772c6e26ae28a61b",
-    "dist/tests/assets/catalog.test.js.map": "a7e329a8b159523d6b131841038f09295e0bd31ed83a7bedfea177bd40caefeb",
+    "dist/tests/assets/catalog.test.js": "bd3c7aeba1e2d30a136c3a4cd9594b5971a2b6717a078ea52706668aac306737",
+    "dist/tests/assets/catalog.test.js.map": "264ebbc9703698dcd4bba03a8e4abd2f030359ce2b5fa3ea5419da462691fe74",
     "dist/tests/build/rebuild.test.js": "2daca3d24e8fff9d629c5938ff9c48b69c74aa32d5341e0fb45d8e591d08bcef",
     "dist/tests/build/rebuild.test.js.map": "41764df3b5e7ef6f5ff1a2d0202248696aae74d792182da4878dd40af79f4b08",
     "dist/tests/installation/admission-containment.test.js": "a241a1483018c234c57b767f8e0f515da1b5c3b7dbdff19932c7bb13793c6aab",
@@ -78,7 +78,7 @@
     "src/platform/store-worker.ts": "5bd513ae7ef5c050c2860eb1dfe302c6a4f37c39c121305e5340011b4444dcca",
     "src/platform/util.ts": "9d195e5ab257b5157626ef6df6633974e5e4e060eafbef0ff02b445e095df05e",
     "src/testing/verify.ts": "daa51e8808dd925cf04c94ad007414cb258a506187dcce57bfbfc5a863ad2d6c",
-    "tests/assets/catalog.test.ts": "7bb03f0f4328637f20a845ee5abbba2989bc3be67b6ce83f3ee3f67e0fc98ac1",
+    "tests/assets/catalog.test.ts": "cc4567801698d300623c5fceae1e8b168e73c5c4c3e0b14a422990d1d7131943",
     "tests/build/rebuild.test.ts": "70e50f8f4b25db1901d821c92d8719274863f783631137d44b4edc6c88066608",
     "tests/installation/admission-containment.test.ts": "9dd1708b96d74b38d805e58fb2536ff5049139579f2beb2660f25a063c745f29",
     "tests/installation/admission.test.ts": "03da35cd81221d26d720e2ba11d92a1981ed64c890a28a4cca0ad7c685dd883e",
@@ -108,7 +108,7 @@
     "tests/platform/qualification.test.ts": "56c88da007715cff74d0d618cef3f1a6e26e14510f79a66254a0591eb674c3ab",
     "tsconfig.json": "89445fad719e12b5b787db90dc85fc652b925c094f32f0a165d89ad96b1b914c"
   },
-  "sourceDigest": "324b5b85916005272383f26e9b1710c60d9b8c6cc6de95149a0ad8e496edabb4",
-  "outputDigest": "e04335a82896c899d1a873a5d754d84c8b1e4f54250e87aa4dcded7fda148273",
+  "sourceDigest": "66be4496a01a729a6723bc4c988bac7b05ca36282350c07f154f16385a5fed29",
+  "outputDigest": "5362a318a37ed54fa82c9ffe424523bb0b83e50063684ac0e6fe6575b987a151",
   "dependencyDigest": "4ef2138ee7efdc09605ce4a042fdfb64bdca4789fc611ba99e30f5e584884f8b"
 }
