@@ -16,9 +16,11 @@
 # shows up here; a timeout or failure logs one line to reports/sync.log and falls
 # back to the local store. The pull runs with rename detection off, so a handoff
 # two machines claimed at once rebases as two independent archive adds plus a
-# delete both sides agree on, not a rename/rename conflict. It then claims a
-# single per-repo handoff note left by an earlier session on any machine: injects
-# it once, archives it, and pushes.
+# delete both sides agree on, not a rename/rename conflict. `-s recursive` is
+# what makes the switch hold: before git 2.50 the default ort backend ignores
+# merge.renames=false and the recursive backend honors it; from 2.50 `recursive`
+# names ort, which honors it. It then claims a single per-repo handoff note left
+# by an earlier session on any machine: injects it once, archives it, and pushes.
 #
 # Store root: $LOAM_MEMSTORE, default ~/memstore.
 # Exit codes: 0 = always (advisory hook).
@@ -126,7 +128,7 @@ finally:
         os.unlink(errpath)
     except Exception:
         pass
-' "$STORE" git -C "$STORE" -c user.name=memstore -c user.email=memstore@localhost -c merge.renames=false pull --rebase -q origin main 2>/dev/null || true
+' "$STORE" git -C "$STORE" -c user.name=memstore -c user.email=memstore@localhost -c merge.renames=false pull --rebase -s recursive -q origin main 2>/dev/null || true
 fi
 
 # Handoff: claim the one per-repo handoff note, if present. Read it (cut at 1500

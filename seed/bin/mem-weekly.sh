@@ -121,12 +121,13 @@ git add -A 2>/dev/null \
 
 # Share the store: pull the remote's commits, then push this baseline. Foreground
 # (this runs from cron, not a hook). Rename detection is off, as in recall's pull,
-# so a handoff two machines archived under two names does not conflict. With no
-# origin every step is skipped; a conflict or unreachable remote aborts the
-# rebase, logs one line, and leaves the tree as it is.
+# so a handoff two machines archived under two names does not conflict; see
+# mem-recall.sh for why the pull names `-s recursive`. With no origin every step
+# is skipped; a conflict or unreachable remote aborts the rebase, logs one line,
+# and leaves the tree as it is.
 export GIT_TERMINAL_PROMPT=0
 if git remote get-url origin >/dev/null 2>&1; then
-  { git -c user.name=memstore -c user.email=memstore@localhost -c merge.renames=false pull --rebase -q origin main \
+  { git -c user.name=memstore -c user.email=memstore@localhost -c merge.renames=false pull --rebase -s recursive -q origin main \
     && git push -q origin main ; } >> reports/sync.log 2>&1 \
     || { git rebase --abort 2>/dev/null; printf '%s weekly sync failed\n' "$(date +%F)" >> reports/sync.log; }
 fi
