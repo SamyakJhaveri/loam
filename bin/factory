@@ -1140,12 +1140,15 @@ file_backlog() { # judge.json issue pr-url
 }
 
 open_pr() { # [draft]: opened at the grader-round cap
-  local draft="${1:-}" body="$RUN/pr-body.md" base url num title
+  local draft="${1:-}" body="$RUN/pr-body.md" base url num title rows
   base=$(cat "$RUN/base.sha")
   {
     [ "$IS_FILE" = 1 ] || printf 'Closes #%s\n\n' "$ISSUE"
-    [ -n "$draft" ] && printf 'Draft: opened at the grader-round cap; the judge failed %s. Read the Judge section before marking it ready.\n\n' \
-      "$(jq -r '[(.rows // {}) | to_entries[] | select(.value == "fail") | .key] | join(", ") | if . == "" then "no row; a reviewer or Codex finding blocked" else . end' "$RUN/round-$ROUND.judge.json")"
+    if [ -n "$draft" ]; then
+      # An absent, empty, or invalid judge file counts as a fail (LOOP.md), so jq may print nothing.
+      rows=$(jq -r '[(.rows // {}) | to_entries[] | select(.value == "fail") | .key] | join(", ") | if . == "" then "no row; a reviewer or Codex finding blocked" else . end' "$RUN/round-$ROUND.judge.json" 2> /dev/null)
+      printf 'Draft: opened at the grader-round cap; the judge failed %s. Read the Judge section before marking it ready.\n\n' "${rows:-no row; the judge output was absent or not parseable}"
+    fi
     printf '## Goal\n\n%s\n\n' "$(section "Goal and why" | sed '/./,$!d')"
     printf '## Commits\n\n```\n%s\n```\n\n' "$(git -C "$WORKTREE" log --oneline "$base..HEAD")"
     [ -s "$RUN/round-$ROUND.measure" ] && { printf '## Rows measured\n\n```\n'; cat "$RUN/round-$ROUND.measure"; printf '```\n\n'; }
