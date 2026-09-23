@@ -1310,6 +1310,12 @@ cmd_stop() { # <issue|stem>
   [ "$n" -gt 0 ] || { echo "factory stop: no run directory under $RUNS_ROOT/$1" >&2; return 1; }
 }
 
+park_status() { # <issue> <body> -> the status of the run for this body, or none
+  local k
+  k=$(printf '%s' "$2" | sha256_of | cut -c1-8)   # the key cmd_run names the run dir by
+  cat "$RUNS_ROOT/$1/$k/status" 2> /dev/null || echo none
+}
+
 # The F9 frontier timer's one step: launch the next unblocked ready-for-agent ticket, or say why not.
 # --dry-run reports without launching or pulling, so a check can run it from inside a worktree.
 # --install writes the ten-minute runner timer from bin/factory.d/next.crontab.
@@ -1397,37 +1403,37 @@ cmd_next() { # [--dry-run|--install]
   #    number first. A gh failure (offline, unauthenticated, off cron's PATH, empty repo) prints
   #    `frontier query failed` and returns 1, so cron mails it rather than the timer stalling silent;
   #    only a successful, empty query falls through to `nothing to launch`.
-  local repo ready num
+  local repo ready num b64 body
   repo=$(gh repo view --json nameWithOwner -q .nameWithOwner 2> /dev/null)
   if [ -z "$repo" ]; then
     echo "frontier query failed: gh repo view" >&2
     return 1
   fi
   if ! ready=$(gh api "repos/$repo/issues?labels=ready-for-agent&state=open&assignee=none&per_page=100" \
-    --jq 'sort_by(.number)[] | select(.pull_request == null) | select(.issue_dependencies_summary.blocked_by == 0) | .number' 2> /dev/null); then
+    --jq 'sort_by(.number)[] | select(.pull_request == null) | select(.issue_dependencies_summary.blocked_by == 0) | "\(.number) \(.body // "" | @base64)"' 2> /dev/null); then
     echo "frontier query failed: gh api issues" >&2
     return 1
   fi
 
-  # An issue's newest run dir (by launch time) decides: no run dir launches; stopped-environment and
-  # stopped relaunch (the environment, not the ticket, ended them); every other exit parks the issue
+  # The run of the issue's current body decides (park_status): no such run launches; stopped-environment
+  # and stopped relaunch (the environment, not the ticket, ended them); every other exit parks the issue
   # until a human edits the body or removes the label, since the same body would fail the same way.
+  # A run of an earlier body no longer parks the issue, so an edited body launches on the next tick.
+  # The body travels as base64 so its newlines stay on one line; $(...) strips its trailing newlines
+  # the way load_ticket's $(gh issue view ...) does, so the key matches the one cmd_run computes.
   # A ticket at pr-opened is assigned at launch, so it is not in the frontier; if a human unassigns
   # it, its slot is already counted above while its worktree exists.
-  local pick="" rd newest st_last
-  for num in $ready; do
-    newest=""
-    for rd in "$RUNS_ROOT/$num"/*/; do
-      [ -f "$rd/status" ] || continue
-      [ -z "$newest" ] || [ "$(cat "$rd/launched" 2> /dev/null || echo 0)" -gt "$(cat "$newest/launched" 2> /dev/null || echo 0)" ] && newest="$rd"
-    done
-    st_last=$(cat "$newest/status" 2> /dev/null || echo none)
+  local pick="" st_last
+  while read -r num b64; do
+    [ -n "$num" ] || continue
+    body=$(printf '%s' "$b64" | base64 -d)
+    st_last=$(park_status "$num" "$body")
     case "$st_last" in
       none|stopped-environment|stopped) [ -n "$pick" ] || pick="$num" ;;
       pr-opened) ;;
       *) echo "parked #$num: last run exited $st_last; edit the body or remove ready-for-agent" >&2 ;;
     esac
-  done
+  done <<< "$ready"
 
   if [ -z "$pick" ]; then
     echo "nothing to launch"
@@ -1445,8 +1451,10 @@ cmd_next() { # [--dry-run|--install]
   fi
   # cmd_run creates the run dir, but the detached shell opens the tmux log first; on a fresh install
   # RUNS_ROOT does not exist yet, so the redirection would fail before the run ever starts.
+  # tmux gives the session the tmux server's environment, not this shell's, so the toolchain exports
+  # checked above travel with -e; a server started without them would make the run exit 4 unrecorded.
   mkdir -p "$RUNS_ROOT"
-  if tmux new-session -d -s "loam-$pick" "cd '$ROOT' && bin/factory run $pick >> '$RUNS_ROOT/$pick.tmux.log' 2>&1"; then
+  if tmux new-session -d -s "loam-$pick" -e "LOAM_FACTORY_TOOLCHAIN=$LOAM_FACTORY_TOOLCHAIN" -e "LOAM_FACTORY_COPIER=$LOAM_FACTORY_COPIER" "cd '$ROOT' && bin/factory run $pick >> '$RUNS_ROOT/$pick.tmux.log' 2>&1"; then
     echo "launched #$pick"
   else
     echo "launch failed: tmux new-session -s loam-$pick" >&2
