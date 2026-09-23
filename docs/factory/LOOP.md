@@ -178,6 +178,7 @@ It also shows a `clean` column (D09 Option A): `yes` when the run reached `pr-op
 It also checks the preconditions below.
 The manager is a Fable session that runs `status`, merges, and writes one learn line when the same first-failing grader appears in two consecutive runs.
 After F9, `bin/factory next` on a ten-minute runner timer launches the next frontier ticket after each merge; removing the `ready-for-agent` label parks a ticket, and `FACTORY_STOP` at the runs root pauses the timer; a logged-out runner makes `next` print `login expired` on stderr and exit 1 without launching.
+A ticket is parked only by a run of its current body, so editing the body relaunches it on the next tick.
 
 ## Stop
 
