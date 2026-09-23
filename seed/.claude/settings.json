@@ -2,7 +2,6 @@
   "enabledPlugins": {
     "pyright-lsp@claude-plugins-official": true
   },
-  "autoMemoryDirectory": "~/memstore/claude",
   "cleanupPeriodDays": 365,
   "permissions": {
     "deny": [

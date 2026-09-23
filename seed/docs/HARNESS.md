@@ -192,10 +192,10 @@ removing it would cause a mistake.
   secret with no recognizable shape can therefore reach both the store's git
   history and the remote; forgetting a pushed trace means deleting the file,
   committing, and rewriting or reinitialising both the store repo and the remote.
-- `settings.json` sets `autoMemoryDirectory` to `~/memstore/claude`, so Claude
-  auto memory now lives in the store and travels with it through the store's git
-  history and remote, unscrubbed (settings cannot expand `LOAM_MEMSTORE`, so a
-  store moved elsewhere leaves auto memory at `~/memstore/claude`).
+- Claude auto memory stays in Claude Code's default per-project folder and is
+  not moved into the store: `autoMemoryDirectory` takes one fixed path, which
+  every project on the machine would share. The store keeps each session's
+  scrubbed transcript per repository instead.
 - Codex runs a repository hook only after the user trusts the project's `.codex`
   layer and reviews the hook definition once (Codex keeps a hash of it in its
   hooks state, and an edit to `hooks.json` asks again), so a Codex session before
