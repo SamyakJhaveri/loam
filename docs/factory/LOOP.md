@@ -193,6 +193,21 @@ Grader prompts are production prompts.
 `evals/<grader>/<case>/` holds a frozen `prompt.md` from a real round and an `expected.json` with the verdict and, when listed, the failing-row set; the first cases come from the runner's lean-v3 runs: the S2 stale-tree round, the S3 ownership round, the S4 unmeetable check, and S2 round 8.
 `bin/factory eval <grader>` replays each case through the grader call above, compares the verdict exactly and the failing-row set only when the case lists one, and exits 1 on any mismatch.
 `evals/clean/` holds the last round of each runner run that both graders passed, frozen by `bin/factory eval-freeze` from `~/.local/state/loam-factory/runs/*/*/`, and `bin/factory eval <grader> --evals-dir evals/clean` replays the corpus.
+A grader model comparison plants known defects in that corpus and scores the saved replies offline, in three commands:
+
+```sh
+python3 bin/factory.d/mutate.py evals/clean <scratch>/cases
+EVAL_OUT=<scratch>/replies/<model>/r<k> EVAL_EFFORT=high EVAL_BUDGET_USD=<usd> bin/factory eval <grader> --evals-dir <scratch>/cases --model <model>
+python3 bin/factory.d/eval_score.py <scratch>/cases <scratch>/replies
+```
+
+`mutate.py` writes a `--clean` copy of every base and one copy per defect class that applies (`scope`, `check-fail`, `false-claim`, `logic-bug`, `stale-ref`), labeled in its `expected.json`; reviewer bases also feed `lean-critic/`.
+The mutants are generated into the scratch directory at eval time and never committed.
+Run the middle command once per grader (`judge`, `reviewer`, `lean-critic`), model, and repeat `k`.
+It exits 1 when any case misses its expected verdict, which a missed mutant does, so a loop around it must not stop on its status.
+`EVAL_BUDGET_USD` (default 10) must cover the whole set: the eval stops at the cap, and a case it never reaches has no reply, which scores as a miss on a mutant and a false alarm on a clean copy.
+`eval_score.py` prints one TSV row per grader, model, and metric: recall per defect class, false alarms on clean copies (`cut_rate` for the lean-critic, whose job is cuts), run-to-run agreement, cost, and `n:` trial counts.
+Each pair of models also gets an `A+B` row, the recall and false alarms of a two-model jury, scored from the same replies with no extra call.
 A case may not depend on the live tree: its expected verdict must follow from `prompt.md` alone, since the grader reads the checkout it runs in and a case whose verdict rests on that checkout drifts as the repo changes (the lean-critic s4-round-4 case did, and was dropped 2026-09-11). If a second case drifts, the fix is a `base_sha` per case and a replay in a checkout of that commit.
 No grader edit lands without the replay run before and after, recorded in the PR body; it never runs in `bin/check`.
 After a model upgrade: replay with the new model, then once more with each rubric body replaced by its one-line stance; a rubric row that changes no verdict is a deletion candidate.
