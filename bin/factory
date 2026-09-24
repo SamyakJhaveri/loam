@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
-# bin/factory - factory tooling. Subcommands: lint, eval, run, status, stop, next.
+# bin/factory - factory tooling. Subcommands: lint, eval, eval-freeze, run, status, stop, next.
 #   bin/factory lint <file|issue>   statically checks a ticket body against docs/factory/CONTRACT.md.
 #   bin/factory eval <grader>       replays the frozen evals/ cases through the production grader call.
+#   bin/factory eval-freeze <run-dir>...  freezes each run's last round, when both graders passed it, into evals/clean/.
 #   bin/factory run <issue|file>    the supervisor: one ticket to a pull request (docs/factory/LOOP.md).
 #   bin/factory status              run states, spend, denials, worktrees, PRs, preconditions.
 #   bin/factory stop <issue>        writes FACTORY_STOP into the run dir; the run halts before its next call.
@@ -329,6 +330,59 @@ duration_ms:(.duration_ms // 0), num_turns:(.num_turns // 0), denials:0, subtype
   echo "eval $grader: $cases cases, $mism mismatch, \$$spent"
   [ "$cases" -gt 0 ] || return 2
   [ "$mism" -eq 0 ]
+}
+
+# ---- eval-freeze ----
+# Copies the last round of a finished run into <evals-dir>/clean/{judge,reviewer}/<key>-<sha8>/ when
+# that round passed both graders: the clean bases F37 plants defects in, whose clean copies measure
+# false alarms. A run freezes as a pair or not at all, and never over an existing case.
+FREEZE_KEY_RE='sk-(proj-|ant-)?[A-Za-z0-9_-]{20,}|ghp_[A-Za-z0-9]{30,}'
+
+# A saved grader prompt from its `## Ticket` line on, since run_eval prepends the live rubric. Trailing
+# whitespace goes: a blank diff context line is a lone space, which bin/check's `git diff --check` rejects.
+freeze_prompt() { awk 'f || $0 == "## Ticket" {f = 1; print}' "$1" | sed 's/[[:space:]]*$//'; }
+
+cmd_eval_freeze() { # run-dir...
+  local run d k key sha name why g p jv rv tmp rc=0
+  tmp=$(mktemp -d "${TMPDIR:-/tmp}/factory-freeze.XXXXXX")
+  for run in "$@"; do
+    [ -d "$run" ] || { echo "eval-freeze: $run is not a directory" >&2; rc=1; continue; }
+    d=${run%/}
+    sha=$(basename "$d"); key=$(basename "$(dirname "$d")"); name="$key-$sha"
+    k=$(ls "$d" | sed -n 's/^round-\([0-9]*\)\.judge\.json$/\1/p' | sort -n | tail -1)
+    jv=""; rv=""; why=""
+    if [ -n "$k" ]; then
+      jv=$(jq -r '.verdict // empty' "$d/round-$k.judge.json" 2> /dev/null)
+      rv=$(jq -r '.verdict // empty' "$d/round-$k.review.json" 2> /dev/null)
+    fi
+    if [ -z "$jv" ]; then why="no judge verdict"
+    elif [ "$jv" != pass ]; then why="round-$k judge verdict $jv"
+    elif [ -z "$rv" ]; then why="no reviewer verdict"
+    elif [ "$rv" != merge ]; then why="round-$k reviewer verdict $rv"
+    elif [ -e "$EVALS_DIR/clean/judge/$name" ] || [ -e "$EVALS_DIR/clean/reviewer/$name" ]; then why="exists"
+    fi
+    for g in judge review; do
+      [ -z "$why" ] || break
+      p="$d/round-$k.$g.prompt.md"
+      [ -f "$p" ] || { why="no round-$k.$g.prompt.md"; break; }
+      freeze_prompt "$p" > "$tmp/$g"
+      if [ ! -s "$tmp/$g" ]; then why="no ## Ticket line in round-$k.$g.prompt.md"
+      elif [ "$(wc -c < "$tmp/$g")" -gt 100000 ]; then why="prompt too large"
+      elif grep -qE "$FREEZE_KEY_RE" "$tmp/$g"; then why="key-shaped string"
+      fi
+    done
+    [ -z "$why" ] || { echo "not frozen $run: $why"; continue; }
+    for g in judge reviewer; do
+      mkdir -p "$EVALS_DIR/clean/$g/$name"
+      jq -nc --arg source "$key/$sha round-$k" --arg verdict "$([ "$g" = judge ] && echo pass || echo merge)" \
+        '{source: $source, verdict: $verdict}' > "$EVALS_DIR/clean/$g/$name/expected.json"
+    done
+    cp "$tmp/judge" "$EVALS_DIR/clean/judge/$name/prompt.md"
+    cp "$tmp/review" "$EVALS_DIR/clean/reviewer/$name/prompt.md"
+    echo "frozen $run: $name round-$k"
+  done
+  rm -rf "$tmp"
+  return "$rc"
 }
 
 lint() {
@@ -1612,17 +1666,18 @@ precondition_lines() { # LOOP.md, Preconditions
     || echo "  INFO no pushover.env; notifications comment on the ticket"
 }
 
-usage() { # [cmd...] - one line per named command, all six when none is named
+usage() { # [cmd...] - one line per named command, all seven when none is named
   local c
-  for c in ${@:-lint eval run status stop next}; do
+  for c in ${@:-lint eval eval-freeze run status stop next}; do
     case "$c" in
       lint)   echo "usage: bin/factory lint <file|issue>" ;;
       eval)   echo "usage: bin/factory eval <grader> [--evals-dir D] [--graders-dir D] [--model M]" ;;
+      eval-freeze) echo "usage: bin/factory eval-freeze [--evals-dir D] <run-dir>..." ;;
       run)    echo "usage: bin/factory run <issue|ticket-file>" ;;
       status) echo "usage: bin/factory status" ;;
       stop)   echo "usage: bin/factory stop <issue|ticket-stem>" ;;
       next)   echo "usage: bin/factory next [--dry-run|--install]" ;;
-      *)      echo "usage: bin/factory <lint|eval|run|status|stop|next>" ;;
+      *)      echo "usage: bin/factory <lint|eval|eval-freeze|run|status|stop|next>" ;;
     esac
   done >&2
   exit 2
@@ -1652,6 +1707,10 @@ case "$CMD" in
           shift 2
         done
         run_eval "$GRADER" ;;
+  eval-freeze)
+        [ "${1:-}" = --evals-dir ] && { [ $# -ge 2 ] || usage eval-freeze; EVALS_DIR="$2"; shift 2; }
+        [ $# -ge 1 ] || usage eval-freeze
+        cmd_eval_freeze "$@" ;;
   run)    [ $# -eq 1 ] || usage run
           cmd_run "$1" ;;
   status) [ $# -eq 0 ] || usage status
