@@ -612,6 +612,23 @@ exec_frozen() {
 ticket_spent() { jq -s '[.[].cost_usd // 0] | add // 0' "$LEDGER"; }
 daily_spent()  { jq -s --arg d "$(today)" '[.[] | select(.date == $d) | .cost_usd // 0] | add // 0' "$DAILY"; }
 
+# Advisor usd for a worker round's result.json, or null with no transcript. Splits each advisor model's
+# modelUsage cost by its transcript advisor_message tokens (weights 1/5/0.1/2): exact for a distinct model, an estimate when shared.
+advisor_usd() {
+  local sid tr
+  sid=$(jq -r "$RESULT_OBJ | .session_id // empty" "$1" 2> /dev/null)
+  [ -n "$sid" ] && tr=$(find "${CLAUDE_CONFIG_DIR:-$HOME/.claude}/projects" -maxdepth 2 -name "$sid.jsonl" 2> /dev/null | head -1)
+  [ -n "${tr:-}" ] || { echo null; return 0; }
+  jq -r --slurpfile t "$tr" "$RESULT_OBJ"' | (.modelUsage // {}) as $mu
+    | def w: (.inputTokens // .input_tokens // 0) + 5 * (.outputTokens // .output_tokens // 0)
+        + 0.1 * (.cacheReadInputTokens // .cache_read_input_tokens // 0)
+        + 2 * (.cacheCreationInputTokens // .cache_creation_input_tokens // 0);
+    [$t[] | select(.type == "assistant" and .message.id != null)] | unique_by(.message.id)
+    | [.[].message.usage.iterations[]? | select(.type == "advisor_message")] | group_by(.model)
+    | map(($mu[.[0].model] // {}) as $u | if ($u | w) == 0 then 0 else $u.costUSD * (map(w) | add) / ($u | w) end)
+    | add // 0 | . * 10000 | round / 10000' "$1" 2> /dev/null || echo null
+}
+
 record() { # round role model result.json [advisor_calls] [advisor_usd] [workflow_agents] [workflow_usd] [codex]
   # workflow_agents and workflow_usd come from workflow_ledger (0 0 on every round but a claude worker's
   # round 1, and on every Codex round). codex is 1 for a Codex call: cost_usd is null (the dollar caps do
@@ -976,15 +993,12 @@ worker_round() { # round; leaves round-N.* only once the call produced a result
     fi
     assert_caps
   done
-  # Advisor spend on this round: calls from the server_tool_use blocks in the stream, usd from the
-  # result's modelUsage minus the worker's own line (docs/research/advisor-and-managed-agents.md).
+  # Advisor spend on this round: calls from the server_tool_use blocks in the stream, usd from advisor_usd.
   local acalls ausd
   acalls=$(jq -s '[.[] | select(.type == "assistant") | .message.content[]?
     | select(.type == "server_tool_use" and .name == "advisor")] | length' "$out" 2> /dev/null) || acalls=0
   [ -n "$acalls" ] || acalls=0
-  ausd=$(jq -r --arg m "$WORKER_MODEL" \
-    '[(.modelUsage // {}) | to_entries[] | select(.key != $m) | .value.costUSD] | add // 0' "$res" 2> /dev/null) || ausd=0
-  [ -n "$ausd" ] || ausd=0
+  ausd=$(advisor_usd "$res")
   # workflow_agents and workflow_usd for this round: 0 0 unless this is a large claude ticket's round 1 (F12).
   local wl wagents wusd
   wl=$(workflow_ledger "$round" "$out" "$res"); wagents=${wl% *}; wusd=${wl#* }
