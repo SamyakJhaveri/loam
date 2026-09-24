@@ -2,8 +2,8 @@
 name: judge
 description: "Fresh-context judge for one factory ticket: scores the rubric rows over the frozen evidence and returns pass or fail with fixes."
 tools: Read, Grep, Glob
-model: claude-fable-5-1
-effort: medium
+model: claude-opus-5-5
+effort: high
 maxTurns: 40
 ---
 

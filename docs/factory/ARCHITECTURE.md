@@ -1,6 +1,6 @@
 # Loam Factory: architecture
 
-The factory takes a raw request to a merged pull request through unattended loops and independent Fable graders, on Loam and, after F8, on projects Loam seeds.
+The factory takes a raw request to a merged pull request through unattended loops and independent Opus 5.5 graders, on Loam and, after F8, on projects Loam seeds.
 This file is the one home of the stage table, the single sources of truth, the standing do-not-touch list, the model rules, and the placement table.
 The brief and ticket formats live in `CONTRACT.md`, the supervisor in `LOOP.md`, the build order in `../architecture-working/tickets/README.md` (`ROADMAP.md` is the superseded loop-factory record), the evidence in `../research/INDEX.md`.
 Everything here describes the target; a thing that exists at the time of writing (2026-09-07) says so.
@@ -40,7 +40,7 @@ flowchart LR
 | 1 Design (Track C) | design issue | when the brief is `Mode: figure-out`, `surprise-me` in panel mode and `research` subagents first; then Fable plan mode with Opus Explore subagents; `/plan-review` blind on Fable, whose elegance gate writes two competing designs before a verdict; `grill-with-docs` with `domain-modeling` writes ADRs; `wayfinder` when unknowns remain; lean-critic on the design issue | reacts to the options, answers the grill, approves | design issue body (brief, destination, deliverables, constraints, proof, no implementation detail), ADRs in `docs/adr/`, map if used | review verdict recorded, ADRs committed |
 | 2 Tickets | design issue, or the one Track B ticket | Fable runs `to-tickets`; issue bodies use the ticket contract; `bin/factory lint` (F2); `plan-reviewer` by hand and lean-critic once over the breakdown | approves the breakdown | GitHub issues, native blocking edges, label `ready-for-agent` | lint exit 0, `plan-reviewer` pass |
 | 3 Loop | one ticket | `bin/factory run <issue>` on the runner (F1): round 0, then worker rounds on `claude-opus-5-5` xhigh or `codex exec` | nothing; may run `bin/factory stop`, or edit the issue body and relaunch | branch, commits, a run directory | checks exit 0, clean tree, do-not-touch clean |
-| 4 Grade | diff and evidence | Fable medium judge and reviewer, read-only, fresh, frozen per run; Codex review stage when the ticket sets it | nothing | JSON verdicts, PR with metrics and merge checklist | judge pass and no blocking finding, or the grader-round cap with a backlog |
+| 4 Grade | diff and evidence | Opus 5.5 high judge and reviewer, read-only, fresh, frozen per run; Codex review stage when the ticket sets it | nothing | JSON verdicts, PR with metrics and merge checklist | judge pass and no blocking finding, or the grader-round cap with a backlog |
 | 5 Merge | PR | Samyak with `bin/runner bin/factory status`; `claude ultrareview --json` optional on high risk | ticks the merge checklist, merges | merged main; the PR's `Closes #N` closes the ticket | human merge, never the loop |
 | 6 Learn | `bin/factory status` | the manager session (rule in `LOOP.md`) | nothing | a `CLAUDE.md` line, a lint rule, or nothing | none |
 
@@ -75,12 +75,14 @@ Scope beyond the ticket goal outside this list is a judge finding, not a stall.
 
 ## Models and roles
 
-- Graders are picked by eval, not price (#186, 2026-09-23): judge and reviewer are fresh Fable 5.1 at high in the loop; the lean-critic is Opus 5.5 at high, by hand on the PR; the plan-reviewer is Fable 5.1 at high (F0 sets its frontmatter).
-- `claude-opus-5-5` does exploration, retrieval, and implementation only: loop worker at xhigh, never high, Explore subagents. Replaced claude-opus-4-8[1m] on 2026-09-22.
-- The loop worker carries a Fable 5.1 advisor (`--advisor fable`, F11, 2026-09-10): the worker decides when to consult it; `FACTORY_WORKER_ADVISOR=` (explicit empty) turns it off; each worker ledger line records `advisor_calls` and `advisor_usd`. Kept while the ledger shows lower usd per ticket or fewer and less severe grader findings.
+- Every loop role is `claude-opus-5-5` (Samyak, 2026-09-24): worker, its subagents, advisor, judge, reviewer, and eval replay.
+- Graders are picked by eval, not price (#186, 2026-09-23): judge and reviewer are fresh Opus 5.5 at high in the loop (2026-09-24; F38 measures what the graders miss); the lean-critic is Opus 5.5 at high, by hand on the PR.
+- The plan-reviewer is Fable 5.1 at high, by hand outside the loop (F0 sets its frontmatter).
+- The loop worker is `claude-opus-5-5` at xhigh, never high, with Explore subagents on the same model. Replaced claude-opus-4-8[1m] on 2026-09-22.
+- The loop worker carries an Opus 5.5 advisor (`--advisor claude-opus-5-5`, F11 2026-09-10, Opus 5.5 since 2026-09-24): the worker decides when to consult it; `FACTORY_WORKER_ADVISOR=` (explicit empty) turns it off; each worker ledger line records `advisor_calls` and `advisor_usd`. Kept while the ledger shows lower usd per ticket or fewer and less severe grader findings.
 - Brief and design sessions are Fable 5.1 at high, interactive.
 - Never Sonnet or Haiku; any flag that defaults to Haiku is overridden or unused; every `Agent` call names its model.
-- The one named exception: Codex may be the worker (`worker: codex`) or an added reviewer (`codex-review: yes`); the Fable graders always run.
+- The one named exception: Codex may be the worker (`worker: codex`) or an added reviewer (`codex-review: yes`); the judge and reviewer always run.
 
 ## Where things live
 
