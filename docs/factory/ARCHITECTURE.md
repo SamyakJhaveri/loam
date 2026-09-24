@@ -75,7 +75,7 @@ Scope beyond the ticket goal outside this list is a judge finding, not a stall.
 
 ## Models and roles
 
-- Every reviewing or judging agent is a fresh Fable 5.1: judge and reviewer at medium in the loop, the lean-critic at medium by hand on the PR; the plan-reviewer at high (F0 sets its frontmatter).
+- Graders are picked by eval, not price (#186, 2026-09-23): judge and reviewer are fresh Fable 5.1 at high in the loop; the lean-critic is Opus 5.5 at high, by hand on the PR; the plan-reviewer is Fable 5.1 at high (F0 sets its frontmatter).
 - `claude-opus-5-5` does exploration, retrieval, and implementation only: loop worker at xhigh, never high, Explore subagents. Replaced claude-opus-4-8[1m] on 2026-09-22.
 - The loop worker carries a Fable 5.1 advisor (`--advisor fable`, F11, 2026-09-10): the worker decides when to consult it; `FACTORY_WORKER_ADVISOR=` (explicit empty) turns it off; each worker ledger line records `advisor_calls` and `advisor_usd`. Kept while the ledger shows lower usd per ticket or fewer and less severe grader findings.
 - Brief and design sessions are Fable 5.1 at high, interactive.
