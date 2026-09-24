@@ -103,7 +103,7 @@ The supervisor takes a tree signature (the sha256 of the worktree HEAD and its p
 `--strict-mcp-config` and `--disable-slash-commands` drop the MCP schemas and the skills listing a grader never uses: its prefix is then 9.9k tokens instead of 27k (probed on the runner 2026-09-09), and the prefix is most of a grader call's input.
 
 ```
-claude -p --model fable --effort medium --tools Read,Grep,Glob --strict-mcp-config --disable-slash-commands --no-session-persistence \
+claude -p --model fable --effort high --tools Read,Grep,Glob --strict-mcp-config --disable-slash-commands --no-session-persistence \
   --json-schema "$(cat frozen/<grader>.schema.json)" --max-budget-usd "$GRADER_BUDGET_USD" \
   --setting-sources user --settings frozen/role-settings.json --output-format json < frozen/<grader>.prompt.md
 ```

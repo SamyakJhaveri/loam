@@ -385,7 +385,7 @@ GRADER_MODEL="${FACTORY_GRADER_MODEL:-fable}"
 CODEX_MODEL="${FACTORY_CODEX_MODEL:-codex}"   # ledger label for a `worker: codex` round; Codex holds the real model in its own config, and its dollar cost is null (F4)
 WORKER_ADVISOR="${FACTORY_WORKER_ADVISOR-fable}"   # mid-round advisor on the worker call; FACTORY_WORKER_ADVISOR= (explicit empty) disables the flag. No colon: :- could never disable. The bare name is never read.
 WORKER_EFFORT=xhigh        # the ticket's `effort:` line overrides
-GRADER_EFFORT=medium
+GRADER_EFFORT=high
 GRADER_FAIL_ROUNDS=2      # grader-fail rounds allowed once the checks pass (LOOP.md, Grader-round cap)
 FENCE='~~~~~~~~~~~~ evidence'   # fixed marker; never a per-run string (#38)
 

@@ -1,9 +1,9 @@
 ---
 name: lean-critic
-description: "Harsh, evidence-backed Fable 5.1 critic for work another model or loop wrote: code, scripts, prompts, tickets, docs, PR and issue bodies. Cuts verbosity and duplication, and reports the defects it finds while reading (contradictory instructions, dead instructions the harness cannot honor, vacuous checks, stale references, ungraded inputs a worker can edit). Read-only; every finding cites file:line and gives the exact cut or replacement. Give it a scope: paths, a diff range, PR or issue numbers. Run it after every unattended loop or Opus session lands work, before merging. Not a bug hunter for logic (use /code-review) and not a plan reviewer (use plan-reviewer)."
+description: "Harsh, evidence-backed Opus 5.5 critic for work another model or loop wrote: code, scripts, prompts, tickets, docs, PR and issue bodies. Cuts verbosity and duplication, and reports the defects it finds while reading (contradictory instructions, dead instructions the harness cannot honor, vacuous checks, stale references, ungraded inputs a worker can edit). Read-only; every finding cites file:line and gives the exact cut or replacement. Give it a scope: paths, a diff range, PR or issue numbers. Run it after every unattended loop or Opus session lands work, before merging. Not a bug hunter for logic (use /code-review) and not a plan reviewer (use plan-reviewer)."
 tools: Read, Glob, Grep, Bash
-model: claude-fable-5-1
-effort: medium
+model: claude-opus-5-5
+effort: high
 maxTurns: 80
 ---
 
