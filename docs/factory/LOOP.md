@@ -10,7 +10,7 @@ Rubric text lives only in the grader files.
 | Command | Does | Built in |
 |---|---|---|
 | `bin/factory lint <issue|file>` | static ticket lint, rules in `CONTRACT.md` | F2 |
-| `bin/factory eval <grader> [--model M]` | replays frozen cases through the production grader call and compares verdicts | F6 |
+| `bin/factory eval <grader> [--model M]` | replays frozen cases through the production grader call and compares verdicts; `EVAL_EFFORT` sets the effort (default medium), `EVAL_OUT=<dir>` keeps each raw reply | F6 |
 | `bin/factory run <issue>` | round 0, then worker rounds, graders, PR | F1 |
 | `bin/factory status` | run states, spend, denials per round, worktree and PR readiness, preconditions | F1 |
 | `bin/factory stop <issue>` | writes `FACTORY_STOP` into the run dir | F1 |

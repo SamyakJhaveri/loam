@@ -267,7 +267,7 @@ run_eval() {
       # way the loop does: --json-schema routes the reply through the schema, --strict-mcp-config and
       # --disable-slash-commands drop the prefix the grader never uses. Each call gets the remaining
       # headroom, so EVAL_BUDGET_USD caps the sum over cases.
-      out=$(cat "$rubric" "$dir/prompt.md" | claude -p --model "$EVAL_MODEL" --effort medium \
+      out=$(cat "$rubric" "$dir/prompt.md" | claude -p --model "$EVAL_MODEL" --effort "${EVAL_EFFORT:-medium}" \
         --tools Read,Grep,Glob --strict-mcp-config --disable-slash-commands --no-session-persistence \
         --json-schema "$schema" \
         --max-budget-usd "$(awk -v b="$budget" -v s="$spent" 'BEGIN {printf "%.4f", b - s}')" \
@@ -305,6 +305,8 @@ duration_ms:(.duration_ms // 0), num_turns:(.num_turns // 0), denials:0, subtype
       jq -e .verdict <<<"$res" > /dev/null 2>&1 && break
       echo "eval $grader/$name: attempt $attempt output not parseable" >&2
     done
+    # EVAL_OUT keeps each case's raw reply, so a comparison can read findings, not only verdicts.
+    [ -z "${EVAL_OUT:-}" ] || { mkdir -p "$EVAL_OUT"; printf '%s\n' "$out" > "$EVAL_OUT/$grader-$name.json"; }
     exp=$(jq -r .verdict "$dir/expected.json")
     got=$(jq -r '.verdict // "unparseable"' <<<"$res" 2>/dev/null) || got=unparseable
     [ -n "$got" ] || got=unparseable
