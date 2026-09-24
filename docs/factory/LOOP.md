@@ -103,7 +103,7 @@ The supervisor takes a tree signature (the sha256 of the worktree HEAD and its p
 `--strict-mcp-config` and `--disable-slash-commands` drop the MCP schemas and the skills listing a grader never uses: its prefix is then 9.9k tokens instead of 27k (probed on the runner 2026-09-09), and the prefix is most of a grader call's input.
 
 ```
-claude -p --model fable --effort high --tools Read,Grep,Glob --strict-mcp-config --disable-slash-commands --no-session-persistence \
+claude -p --model claude-opus-5-5 --effort high --tools Read,Grep,Glob --strict-mcp-config --disable-slash-commands --no-session-persistence \
   --json-schema "$(cat frozen/<grader>.schema.json)" --max-budget-usd "$GRADER_BUDGET_USD" \
   --setting-sources user --settings frozen/role-settings.json --output-format json < frozen/<grader>.prompt.md
 ```
@@ -117,7 +117,7 @@ The Codex review stage runs `codex exec --json --output-schema frozen/review-out
 ## Worker calls
 
 ```
-claude -p --model claude-opus-5-5 --effort xhigh --advisor fable --permission-mode bypassPermissions --strict-mcp-config \
+claude -p --model claude-opus-5-5 --effort xhigh --advisor claude-opus-5-5 --permission-mode bypassPermissions --strict-mcp-config \
   --setting-sources user --settings frozen/worker-settings.json --max-turns "$MAX_TURNS" \
   --max-budget-usd "$ROUND_BUDGET_USD" --output-format stream-json --verbose --include-hook-events < round-<k>.prompt.md
 ```
