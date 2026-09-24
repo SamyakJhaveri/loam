@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# bin/factory - factory tooling. Subcommands: lint, eval, eval-freeze, run, status, stop, next.
+# bin/factory - factory tooling. Subcommands: lint, eval, eval-freeze, run, status, stop, next, graders-check.
 #   bin/factory lint <file|issue>   statically checks a ticket body against docs/factory/CONTRACT.md.
 #   bin/factory eval <grader>       replays the frozen evals/ cases through the production grader call.
 #   bin/factory eval-freeze <run-dir>...  freezes each run's last round, when both graders passed it, into evals/clean/.
@@ -7,6 +7,7 @@
 #   bin/factory status              run states, spend, denials, worktrees, PRs, preconditions.
 #   bin/factory stop <issue>        writes FACTORY_STOP into the run dir; the run halts before its next call.
 #   bin/factory next [--install]    the F9 frontier timer's step: launch the next unblocked ready-for-agent ticket.
+#   bin/factory graders-check       fails when judge.md or reviewer.md drifts from GRADER_MODEL and GRADER_EFFORT.
 # Lint never executes a check; it reads the body and shells out only to `bash -n` and `gh`.
 set -uo pipefail
 
@@ -1309,8 +1310,9 @@ cmd_run() {
   assert_toolchain_env || exit 4
   load_ticket "$1"
   apply_caps
-  WORKER_EFFORT=$(section Worker | sed -n 's/^effort: *//p' | head -1)
-  [ -n "$WORKER_EFFORT" ] || WORKER_EFFORT=xhigh
+  local effort
+  effort=$(section Worker | sed -n 's/^effort: *//p' | head -1)
+  WORKER_EFFORT="${effort:-$WORKER_EFFORT}"   # the top-level default when the ticket names none
   WORKER_SIZE=$(section Worker | sed -n 's/^size: *//p' | head -1)   # small|large; large routes round 1 to the workflow (F12)
   [ -n "$WORKER_SIZE" ] || WORKER_SIZE=small
   WORKER_KIND=$(section Worker | sed -n 's/^worker: *//p' | head -1)   # claude|codex; codex routes the worker call to Codex (F4)
@@ -1666,9 +1668,30 @@ precondition_lines() { # LOOP.md, Preconditions
     || echo "  INFO no pushover.env; notifications comment on the ticket"
 }
 
-usage() { # [cmd...] - one line per named command, all seven when none is named
+# ---- graders-check ----
+# The loop strips the grader files' front matter and passes GRADER_MODEL and GRADER_EFFORT itself; a
+# by-hand Agent call reads the front matter instead. This fails when judge.md or reviewer.md names another
+# model or effort. The directory defaults to the checkout's plugin copy, relative to the working directory
+# like EVALS_DIR, so bin/check compares one tree's agent files with the same tree's bin/factory.
+cmd_graders_check() { # [agents-dir]
+  local dir="${1:-cultivation/marketplace/sam-cc-setup/agents}" want g f got rc=0
+  # The defaults, not a FACTORY_GRADER_MODEL override in the caller's environment: re-source this file without it.
+  want=$(env -u FACTORY_GRADER_MODEL FACTORY_SOURCED=1 "$BASH" -c '. "$0"; printf "%s/%s\n" "$GRADER_MODEL" "$GRADER_EFFORT"' "${BASH_SOURCE[0]}")
+  for g in judge reviewer; do
+    f="$dir/$g.md"
+    [ -f "$f" ] || { echo "DRIFT $g: no $f"; rc=1; continue; }
+    # model: and effort: from the first front-matter block only.
+    got=$(awk '/^---$/ {if (++n == 2) exit; next} n == 1 && sub(/^model: */, "") {m = $0}
+               n == 1 && sub(/^effort: */, "") {e = $0} END {print m "/" e}' "$f")
+    [ "$got" = "$want" ] || { echo "DRIFT $g: $f says $got, bin/factory says $want"; rc=1; }
+  done
+  [ "$rc" -eq 0 ] && echo "graders-check: OK"
+  return "$rc"
+}
+
+usage() { # [cmd...] - one line per named command, all eight when none is named
   local c
-  for c in ${@:-lint eval eval-freeze run status stop next}; do
+  for c in ${@:-lint eval eval-freeze run status stop next graders-check}; do
     case "$c" in
       lint)   echo "usage: bin/factory lint <file|issue>" ;;
       eval)   echo "usage: bin/factory eval <grader> [--evals-dir D] [--graders-dir D] [--model M]" ;;
@@ -1677,7 +1700,8 @@ usage() { # [cmd...] - one line per named command, all seven when none is named
       status) echo "usage: bin/factory status" ;;
       stop)   echo "usage: bin/factory stop <issue|ticket-stem>" ;;
       next)   echo "usage: bin/factory next [--dry-run|--install]" ;;
-      *)      echo "usage: bin/factory <lint|eval|eval-freeze|run|status|stop|next>" ;;
+      graders-check) echo "usage: bin/factory graders-check [--agents-dir D]" ;;
+      *)      echo "usage: bin/factory <lint|eval|eval-freeze|run|status|stop|next|graders-check>" ;;
     esac
   done >&2
   exit 2
@@ -1718,5 +1742,11 @@ case "$CMD" in
   stop)   [ $# -eq 1 ] || usage stop
           cmd_stop "$1" ;;
   next)   cmd_next "$@" ;;
+  graders-check)
+        case "$#/${1:-}" in
+          0/)             cmd_graders_check ;;
+          2/--agents-dir) cmd_graders_check "$2" ;;
+          *)              usage graders-check ;;
+        esac ;;
   *)      usage ;;
 esac
