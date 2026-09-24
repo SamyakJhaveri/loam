@@ -204,7 +204,8 @@ python3 bin/factory.d/eval_score.py <scratch>/cases <scratch>/replies
 `mutate.py` writes a `--clean` copy of every base and one copy per defect class that applies (`scope`, `check-fail`, `false-claim`, `logic-bug`, `stale-ref`), labeled in its `expected.json`; reviewer bases also feed `lean-critic/`.
 The mutants are generated into the scratch directory at eval time and never committed.
 Run the middle command once per grader (`judge`, `reviewer`, `lean-critic`), model, and repeat `k`.
-It exits 1 on every missed mutant, so a loop around it must not stop on its status; `EVAL_BUDGET_USD` (default 10) must cover the whole set, since a case it never reaches scores as a miss.
+It exits 1 when any case misses its expected verdict, which a missed mutant does, so a loop around it must not stop on its status.
+`EVAL_BUDGET_USD` (default 10) must cover the whole set: the eval stops at the cap, and a case it never reaches has no reply, which scores as a miss on a mutant and a false alarm on a clean copy.
 `eval_score.py` prints one TSV row per grader, model, and metric: recall per defect class, false alarms on clean copies (`cut_rate` for the lean-critic, whose job is cuts), run-to-run agreement, cost, and `n:` trial counts.
 Each pair of models also gets an `A+B` row, the recall and false alarms of a two-model jury, scored from the same replies with no extra call.
 A case may not depend on the live tree: its expected verdict must follow from `prompt.md` alone, since the grader reads the checkout it runs in and a case whose verdict rests on that checkout drifts as the repo changes (the lean-critic s4-round-4 case did, and was dropped 2026-09-11). If a second case drifts, the fix is a `base_sha` per case and a replay in a checkout of that commit.
