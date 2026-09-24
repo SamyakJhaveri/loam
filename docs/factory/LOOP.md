@@ -117,7 +117,7 @@ The Codex review stage runs `codex exec --json --output-schema frozen/review-out
 ## Worker calls
 
 ```
-claude -p --model claude-opus-4-8[1m] --effort xhigh --advisor fable --permission-mode bypassPermissions --strict-mcp-config \
+claude -p --model claude-opus-5-5 --effort xhigh --advisor fable --permission-mode bypassPermissions --strict-mcp-config \
   --setting-sources user --settings frozen/worker-settings.json --max-turns "$MAX_TURNS" \
   --max-budget-usd "$ROUND_BUDGET_USD" --output-format stream-json --verbose --include-hook-events < round-<k>.prompt.md
 ```
