@@ -612,10 +612,8 @@ exec_frozen() {
 ticket_spent() { jq -s '[.[].cost_usd // 0] | add // 0' "$LEDGER"; }
 daily_spent()  { jq -s --arg d "$(today)" '[.[] | select(.date == $d) | .cost_usd // 0] | add // 0' "$DAILY"; }
 
-# Advisor usd for a worker round's result.json, or null when its session transcript is missing.
-# modelUsage merges the advisor into the worker's key when they share a model, so each advisor
-# model's cost is split by the transcript's advisor_message tokens at list-price weights (input 1,
-# output 5, cache read 0.1, cache write 2): exact when the advisor's model differs, an estimate when shared.
+# Advisor usd for a worker round's result.json, or null with no transcript. Splits each advisor model's
+# modelUsage cost by its transcript advisor_message tokens (weights 1/5/0.1/2): exact for a distinct model, an estimate when shared.
 advisor_usd() {
   local sid tr
   sid=$(jq -r "$RESULT_OBJ | .session_id // empty" "$1" 2> /dev/null)
@@ -1000,7 +998,7 @@ worker_round() { # round; leaves round-N.* only once the call produced a result
   acalls=$(jq -s '[.[] | select(.type == "assistant") | .message.content[]?
     | select(.type == "server_tool_use" and .name == "advisor")] | length' "$out" 2> /dev/null) || acalls=0
   [ -n "$acalls" ] || acalls=0
-  ausd=$(advisor_usd "$res"); [ -n "$ausd" ] || ausd=null
+  ausd=$(advisor_usd "$res")
   # workflow_agents and workflow_usd for this round: 0 0 unless this is a large claude ticket's round 1 (F12).
   local wl wagents wusd
   wl=$(workflow_ledger "$round" "$out" "$res"); wagents=${wl% *}; wusd=${wl#* }
