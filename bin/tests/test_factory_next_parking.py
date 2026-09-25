@@ -1,7 +1,7 @@
 """`bin/factory next` parks a ticket only on a run of its current body, so a body edit relaunches it.
 
 `bin/factory` is sourced (FACTORY_SOURCED=1) with a temp runs root. park_status is called directly,
-and cmd_next --dry-run runs with gh, the login probe, and the toolchain gate stubbed as shell functions,
+and cmd_next --dry-run runs with gh, the origin, the login probe, and the toolchain gate stubbed as shell functions,
 so the frontier line carries the body the way the real query does. No network, no tmux, no `claude`.
 """
 
@@ -51,8 +51,8 @@ class ParkingTests(unittest.TestCase):
 
     def next_dry_run(self, issue: int, body: str) -> subprocess.CompletedProcess[str]:
         line = f"{issue} {base64.b64encode(body.encode()).decode()}"
-        stubs = ("assert_toolchain_env() { :; }; claude_logged_in() { :; }; "
-                 f"gh() {{ case $1 in repo) echo o/r ;; api) echo '{line}' ;; esac; }}; cmd_next --dry-run")
+        stubs = ("assert_toolchain_env() { :; }; claude_logged_in() { :; }; target_repo() { echo o/r; }; "
+                 f"gh() {{ case $1 in api) echo '{line}' ;; esac; }}; cmd_next --dry-run")
         return sourced(stubs, {"FACTORY_RUNS_ROOT": str(self.runs)})
 
     def test_old_body_abandon_does_not_park_a_new_body(self) -> None:

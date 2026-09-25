@@ -18,16 +18,19 @@ RUNS_BASE="${FACTORY_RUNS_ROOT:-$HOME/.local/state/loam-factory/runs}"
 
 # ROOT is the factory home: bin/factory, bin/factory.d/, bin/claude-account, and the graders' fallback copy.
 # TARGET is the repository a command works on: its tree, origin, issues, worktrees, and bin/check. It is ROOT
-# unless `-C <repo>` names another (F8); exec_frozen passes it on with -C, never through the environment, so a
-# done-check that sets FACTORY_ROOT to its worktree still reads that worktree's tree.
+# unless `-C <repo>` names another (F8); exec_frozen passes another target on with -C, never through the environment,
+# so a done-check that sets FACTORY_ROOT to its worktree still reads that worktree's tree.
 # Worktrees are siblings of the target's main checkout. Loam's runs live in RUNS_BASE itself, as before F8;
 # another target's live in RUNS_BASE/<owner>__<repo>/, so two repositories' #12 never share a run directory.
 git_common() { git -C "$1" rev-parse --path-format=absolute --git-common-dir 2> /dev/null; }
 target_is_loam() { [ "$TARGET_IS_LOAM" = 1 ]; }
-target_slug() { # <owner>__<repo> from the target's GitHub origin URL, read locally; empty without one
+# <owner>/<repo> from the target's GitHub origin URL, read locally; empty without one. Every gh call about the
+# target passes it as -R, so a fork's issues and PRs never go to the parent gh would pick by default.
+target_repo() {
   git -C "$TARGET" remote get-url origin 2> /dev/null \
-    | sed -nE 's#^.*github\.com[:/]([^/]+)/([^/]+)$#\1__\2#p' | sed 's/\.git$//'
+    | sed -nE 's#^.*github\.com[:/]([^/]+)/([^/]+)$#\1/\2#p' | sed 's/\.git$//'
 }
+target_slug() { target_repo | sed 's#/#__#'; }   # a GitHub owner name has no _, so the first __ splits it
 use_target() { # dir -> 1 when dir is not in a git checkout, or is another repository with no GitHub origin
   local common slug
   TARGET=$(cd "$1" 2> /dev/null && git rev-parse --show-toplevel 2> /dev/null) || return 1
@@ -435,7 +438,7 @@ lint() {
       head -n 1 "$SRC" | grep -q '^# ' || err "first line is not a '# ' title"
     fi
   elif [[ "$SRC" =~ ^[0-9]+$ ]]; then
-    BODY=$(cd "$TARGET" && gh issue view "$SRC" --json body -q .body) \
+    BODY=$(gh issue view "$SRC" -R "$(target_repo)" --json body -q .body) \
       || { echo "LINT $SRC: could not read the issue body with gh" >&2; return 1; }
   else
     echo "no such file: $SRC" >&2
@@ -531,8 +534,8 @@ load_ticket() { # <issue|file>
     KEY=$(basename "$SRC"); KEY=${KEY%.md}
   elif [[ "$SRC" =~ ^[0-9]+$ ]]; then
     ISSUE="$SRC"; KEY="$SRC"
-    REPO=$(cd "$TARGET" && gh repo view --json nameWithOwner -q .nameWithOwner) \
-      || { echo "factory run: gh repo view failed in $TARGET; the target needs a GitHub remote" >&2; exit 4; }
+    REPO=$(target_repo)
+    [ -n "$REPO" ] || { echo "factory run: $TARGET has no GitHub origin to read the issue from" >&2; exit 4; }
     BODY=$(gh issue view "$ISSUE" -R "$REPO" --json body -q .body) \
       || { echo "factory run: could not read issue #$ISSUE" >&2; exit 4; }
   else
@@ -556,7 +559,8 @@ apply_caps() { # the ticket's Worker section, then any FACTORY_<NAME> override
 ticket_paths() { tokens | grep -E '^[.A-Za-z0-9_][A-Za-z0-9_./-]*$' | only_tracked_tops | sort -u; }
 
 # The standing do-not-touch list: the `- ` lines under `## Standing do-not-touch list` in the target's one home
-# for it, Loam's docs/factory/ARCHITECTURE.md or another target's docs/factory/STANDING.md (F8). No file, no list.
+# for it, Loam's docs/factory/ARCHITECTURE.md or another target's docs/factory/STANDING.md (F8). An entry counts only
+# when its first segment is tracked in the target; another target with no entry is refused by assert_target_ready.
 standing_file() {
   if target_is_loam; then echo "$TARGET/docs/factory/ARCHITECTURE.md"; else echo "$TARGET/docs/factory/STANDING.md"; fi
 }
@@ -642,6 +646,8 @@ check_frozen() {
 exec_frozen() {
   [ "${FACTORY_FROZEN:-}" = "$RUN/frozen/factory" ] && return 0
   export FACTORY_FROZEN="$RUN/frozen/factory" FACTORY_ROOT="$ROOT"
+  # A Loam run re-execs exactly as before F8, so a resumed run whose frozen copy predates -C still starts.
+  if target_is_loam; then exec "$RUN/frozen/factory" run "$SRC"; fi
   exec "$RUN/frozen/factory" -C "$TARGET" run "$SRC"
 }
 
@@ -743,12 +749,15 @@ assert_toolchain_env() {
   fi
 }
 
-# The launch gate for the target: Loam's bin/check needs the toolchain exports above; another target needs
-# only its own executable bin/check, which every done-checks block guards (F8). One stderr line, return 1.
+# The launch gate for the target: Loam's bin/check needs the toolchain exports above; another target needs its
+# own executable bin/check, which every done-checks block guards, and a standing do-not-touch list with at least
+# one entry, so an unattended worker never runs with nothing fenced off (F8). One stderr line, return 1.
 assert_target_ready() {
+  local how="a factory target needs one (LOOP.md, Run the factory on another repository)"
   if target_is_loam; then assert_toolchain_env; return; fi
-  [ -x "$TARGET/bin/check" ] && return 0
-  echo "$TARGET has no executable bin/check; a factory target needs one (LOOP.md, Run the factory on another repository)" >&2
+  [ -x "$TARGET/bin/check" ] || { echo "$TARGET has no executable bin/check; $how" >&2; return 1; }
+  [ -n "$(standing_list)" ] && return 0
+  echo "$(standing_file) is missing or has no tracked path under '## Standing do-not-touch list'; $how" >&2
   return 1
 }
 
@@ -1537,9 +1546,9 @@ cmd_next() { # [--dry-run|--install]
   #    `frontier query failed` and returns 1, so cron mails it rather than the timer stalling silent;
   #    only a successful, empty query falls through to `nothing to launch`.
   local repo ready num b64 body
-  repo=$(cd "$TARGET" && gh repo view --json nameWithOwner -q .nameWithOwner 2> /dev/null)
+  repo=$(target_repo)
   if [ -z "$repo" ]; then
-    echo "frontier query failed: gh repo view" >&2
+    echo "frontier query failed: $TARGET has no GitHub origin" >&2
     return 1
   fi
   if ! ready=$(gh api "repos/$repo/issues?labels=ready-for-agent&state=open&assignee=none&per_page=100" \
@@ -1622,8 +1631,8 @@ cmd_status() {
   done
   printf '\n== worktrees and PRs\n'
   git -C "$MAIN_CHECKOUT" worktree list 2> /dev/null | sed 's/^/  /'
-  ( cd "$TARGET" && gh pr list --json number,headRefName,title \
-    --jq '.[] | select(.headRefName | startswith("factory/")) | "  #\(.number) \(.headRefName) \(.title)"' 2> /dev/null ) \
+  gh pr list -R "$(target_repo)" --json number,headRefName,title \
+    --jq '.[] | select(.headRefName | startswith("factory/")) | "  #\(.number) \(.headRefName) \(.title)"' 2> /dev/null \
     || echo "  (no PR list: gh is unavailable from here; run status on the runner)"
   printf '\n== preconditions\n'
   precondition_lines
@@ -1684,8 +1693,13 @@ precondition_lines() { # LOOP.md, Preconditions
       echo "  FAIL LOAM_FACTORY_COPIER unset or not executable"
     fi
   fi
-  [ -f "$(standing_file)" ] && echo "  PASS standing do-not-touch list: $(standing_list | grep -c .) paths from $(standing_file)" \
-    || echo "  INFO no $(standing_file); only each ticket's Do not touch section fences paths"
+  if [ -n "$(standing_list)" ]; then
+    echo "  PASS standing do-not-touch list: $(standing_list | grep -c .) paths from $(standing_file)"
+  elif target_is_loam; then
+    echo "  INFO no standing do-not-touch list in $(standing_file); only each ticket's Do not touch section fences paths"
+  else
+    echo "  FAIL $(standing_file) is missing or has no tracked path under '## Standing do-not-touch list'; run and next refuse this target"
+  fi
   if claude_logged_in; then
     echo "  PASS claude login"
   else

@@ -19,7 +19,7 @@ Rubric text lives only in the grader files.
 | `bin/factory next [--install]` | launches up to `MAX_PARALLEL` `ready-for-agent` issues with no assignee and no open native blocker (read through `gh api`); `--install` writes the ten-minute runner timer | F9 |
 
 `-C <repo>`, before the subcommand or right after it, points `lint`, `run`, `status`, `stop`, and `next` at another repository (F8 step 1; Run the factory on another repository, below).
-`REPO` comes from `gh repo view --json nameWithOwner` in the target: that repository, else the checkout the run was launched from.
+`REPO` is `<owner>/<repo>` read from the target's `origin` URL, and every `gh` call about the target passes it as `-R`, so a fork's issues and PRs never go to the parent `gh` would pick by default.
 `status` runs on the runner; from the Mac it is `bin/runner bin/factory status`.
 
 ## Layout
@@ -222,14 +222,24 @@ Each new grader agent costs about 200 always-on tokens in every session of every
 F8 step 1 keeps the factory's code, graders, and prompts in this checkout and adds `-C <repo>`, which points `lint`, `run`, `status`, `stop`, and `next` at another repository, such as a project Loam seeded.
 Without `-C` the target is this checkout, and a Loam run behaves as before.
 
-The target supplies the tree lint reads, the issues and PRs (`gh` runs in the target), the worktrees (siblings of its main checkout, `<checkout>-<issue>`), and the `bin/check` a done-checks block guards.
+The target supplies the tree lint reads, the issues and PRs (`gh -R` its origin), the worktrees (siblings of its main checkout, `<checkout>-<issue>`), and the `bin/check` a done-checks block guards.
 Its run dirs sit under `<runs root>/<owner>__<repo>/`, and so do its `FACTORY_STOP`, `nav-order`, `MAX_PARALLEL` count, and tmux logs: the runs root's own `FACTORY_STOP` pauses Loam only, and one target's runs do not count against another's `MAX_PARALLEL`.
 The daily ledger stays at `<runs root>/ledger-daily.jsonl`, so `DAILY_BUDGET_USD` bounds every target's spend together.
-The launch gate is the target's executable `bin/check`; the toolchain exports gate Loam only.
-The standing do-not-touch list is the `- ` lines under a `## Standing do-not-touch list` heading in the target's `docs/factory/STANDING.md`, in the format of Loam's own list in `ARCHITECTURE.md`; no file means no standing list, and `status` says so.
+The toolchain exports gate Loam only.
+Another target's gate is an executable `bin/check` and a standing do-not-touch list with at least one entry: `run` and `next` refuse the target without either, and `status` prints FAIL.
+That list is the `- ` lines under a `## Standing do-not-touch list` heading in the target's `docs/factory/STANDING.md`, in the format of Loam's own list in `ARCHITECTURE.md`; other lines and other sections are not read.
+A token on a `- ` line is an entry when its first path segment is tracked in the target (a bare word that names a tracked top-level entry counts too); anything else on the line is dropped, and a changed path equal to or under an entry fails the round as `do-not-touch`.
+The list cannot say append-only or add-only: a ticket that must append to a listed file or add a file under a listed directory names that path on its `Except:` line.
 
-A target needs a GitHub `origin` whose default branch is `main` (runs branch from `origin/main`, and PRs target `main`), an executable `bin/check`, the `ready-for-agent` and `needs-triage` labels, a clone on the runner beside Loam's, and whatever its `bin/check` needs there.
-Setup from the Mac, once per project (here `SamyakJhaveri/parbench_ipdps`):
+A target needs a GitHub `origin` whose default branch is `main` (runs branch from `origin/main`, and PRs target `main`), an executable `bin/check`, `docs/factory/STANDING.md` committed on `main`, the `ready-for-agent` and `needs-triage` labels, a clone on the runner beside Loam's, and whatever its `bin/check` needs there.
+Setup, once per project (here `SamyakJhaveri/parbench_ipdps`): commit its `docs/factory/STANDING.md` to `main`, shaped like this, then run the commands below from the Mac.
+
+```markdown
+## Standing do-not-touch list
+
+- `bin/check`
+- `.claude/` and `.codex/`
+```
 
 ```sh
 bin/runner 'gh label create ready-for-agent -R SamyakJhaveri/parbench_ipdps'
@@ -262,7 +272,7 @@ exec "${LOAM_HOME:-$HOME/Desktop/loam}/bin/factory" -C "$(git rev-parse --show-t
 - The runner is Ubuntu with `claude`, `codex`, `gh` (logged in), `uv`, `git`, `jq`, `python3`, coreutils `timeout`, `tmux`, and `socat` on a login-shell PATH; ssh commands use `bash -lc`.
 - `claude auth status` reports `loggedIn: true` on the runner; `claude` on PATH is not `claude` logged in, so a logged-out Claude fails every worker call while `status` still shows it on PATH, and `bin/factory status` prints `FAIL claude login` (#78). `bin/factory next` refuses to launch on the same probe: a logged-out runner makes it print `login expired` on stderr and exit 1 before it queries the frontier.
 - When the target is Loam, `LOAM_FACTORY_TOOLCHAIN` (a Node distribution with `bin/node`) and `LOAM_FACTORY_COPIER` (an executable `copier`) are exported in `~/.profile` on the runner, as CONTRIBUTING.md sets them; without them a run fails `guard bin/check` after its work is done (#158), so `bin/factory run` and `bin/factory next` refuse to launch and `bin/factory status` prints a PASS or FAIL line per variable.
-- A target named by `-C` has an executable `bin/check` and a GitHub `origin`: `run` and `next` refuse to launch without the first, and `status` prints its PASS or FAIL line; `-C` exits 2 on a checkout without the second.
+- A target named by `-C` has a GitHub `origin`, an executable `bin/check`, and at least one entry in its `docs/factory/STANDING.md`: `-C` exits 2 on a checkout without the first, `run` and `next` refuse to launch without the other two, and `status` prints a PASS or FAIL line for each.
 - `bin/claude-account status` names an active account and at least one other stored account on the runner when the usage-limit switch is wanted; with a single stored account the loop sleeps through a usage limit as before.
 - `gh api rate_limit` succeeds on the seat that runs stages 0, 1, 2, and 5 (F0 fixes the Mac).
 - `grill-with-docs`, `wayfinder`, and `to-tickets` are invocable on that seat.

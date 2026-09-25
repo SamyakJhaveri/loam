@@ -69,6 +69,12 @@ class TargetTests(unittest.TestCase):
         })
         self.bare = repo(top / "bare", None, {"README.md": "x\n"})
         self.nocheck = repo(top / "nocheck", "https://github.com/acme/nocheck", {"README.md": "x\n"})
+        # bin/check but no STANDING.md; the tests below write an empty or untracked-only one into it.
+        self.nolist = repo(top / "nolist", "https://github.com/acme/nolist.git", {"bin/check": "#!/usr/bin/env bash\n"})
+        self.gh_log = top / "gh.log"
+        # A fork: gh's default repository would be the parent, so any call that reaches it without -R is caught.
+        self.gh_stub = (f'gh() {{ printf "%s\\n" "$*" >> "{self.gh_log}"; '
+                        'case "$1 $2" in "repo view") echo parent/widget ;; "issue view") echo "# t" ;; esac; }\n')
 
     def target(self, repo_dir: pathlib.Path | None, script: str = "", **env: str) -> subprocess.CompletedProcess[str]:
         pick = f'use_target "{repo_dir}" || echo use_target-failed\n' if repo_dir else ""
@@ -124,13 +130,16 @@ class TargetTests(unittest.TestCase):
         self.assertTrue((loam_run / "FACTORY_STOP").exists())
         self.assertFalse((widget_run / "FACTORY_STOP").exists())
 
-    def test_the_frozen_copy_gets_the_target_on_its_command_line(self) -> None:
+    def test_the_frozen_copy_gets_another_target_on_its_command_line_and_loam_none(self) -> None:
         frozen = self.runs / "run" / "frozen"
         frozen.mkdir(parents=True)
         (frozen / "factory").write_text('#!/usr/bin/env bash\necho "args: $*"\n')
         (frozen / "factory").chmod(0o755)
         proc = self.target(self.proj, f'RUN="{frozen.parent}"; SRC=12; exec_frozen')
         self.assertEqual(proc.stdout.strip(), f"args: -C {self.proj} run 12", proc.stderr)
+        # A Loam run re-execs as before F8, so a resumed run's pre-F8 frozen copy never sees -C.
+        proc = self.target(None, f'RUN="{frozen.parent}"; SRC=12; exec_frozen')
+        self.assertEqual(proc.stdout.strip(), "args: run 12", proc.stderr)
 
     def test_gate_is_the_toolchain_for_loam_and_bin_check_for_another_target(self) -> None:
         loam = self.target(None, "assert_target_ready; echo rc=$?")
@@ -141,12 +150,42 @@ class TargetTests(unittest.TestCase):
         self.assertIn("rc=1", nocheck.stdout)
         self.assertIn("has no executable bin/check", nocheck.stderr)
 
+    def test_another_target_without_standing_entries_is_refused_and_status_fails(self) -> None:
+        standing = self.nolist / "docs/factory/STANDING.md"
+        status = "claude() { :; }; gh() { :; }; codex() { :; }; precondition_lines"
+        for text in (None, "## Standing do-not-touch list\n\nNothing yet.\n",
+                     "## Standing do-not-touch list\n\n- `nowhere/` is not tracked\n"):
+            if text is not None:
+                standing.parent.mkdir(parents=True, exist_ok=True)
+                standing.write_text(text)
+            gate = self.target(self.nolist, "assert_target_ready; echo rc=$?")
+            self.assertIn("rc=1", gate.stdout, text)
+            self.assertIn(f"{standing} is missing or has no tracked path", gate.stderr, text)
+            self.assertIn(f"FAIL {standing} is missing or has no tracked path", self.target(self.nolist, status).stdout, text)
+        self.assertIn("PASS standing do-not-touch list: 2 paths", self.target(self.proj, status).stdout)
+
+    def test_every_gh_call_names_the_origin_repository(self) -> None:
+        self.target(self.proj, self.gh_stub + "lint 5")  # the stub body fails lint; only its gh call matters
+        load = self.target(self.proj, self.gh_stub + "load_ticket 5; echo REPO=$REPO")
+        self.assertIn("REPO=acme/widget", load.stdout, load.stderr)
+        stat = self.target(self.proj, self.gh_stub + "precondition_lines() { :; }; cmd_status > /dev/null")
+        nxt = self.target(self.proj, self.gh_stub + "claude_logged_in() { :; }; cmd_next --dry-run")
+        for proc in (stat, nxt):
+            self.assertEqual(proc.returncode, 0, proc.stderr)
+        calls = self.gh_log.read_text().splitlines()
+        self.assertEqual(calls, ["issue view 5 -R acme/widget --json body -q .body"] * 2 + [
+            "pr list -R acme/widget --json number,headRefName,title --jq "
+            '.[] | select(.headRefName | startswith("factory/")) | "  #\\(.number) \\(.headRefName) \\(.title)"',
+            "api repos/acme/widget/issues?labels=ready-for-agent&state=open&assignee=none&per_page=100 --jq "
+            'sort_by(.number)[] | select(.pull_request == null) | select(.issue_dependencies_summary.blocked_by == 0)'
+            ' | "\\(.number) \\(.body // "" | @base64)"'])
+
     def test_next_parks_by_the_targets_own_runs_without_the_toolchain(self) -> None:
         body = "the same body"
         key = hashlib.sha256(body.encode()).hexdigest()[:8]
         line = f"7 {base64.b64encode(body.encode()).decode()}"
         stubs = ("claude_logged_in() { :; }; "
-                 f"gh() {{ case $1 in repo) echo acme/widget ;; api) echo '{line}' ;; esac; }}; cmd_next --dry-run")
+                 f"gh() {{ case $1 in api) echo '{line}' ;; esac; }}; cmd_next --dry-run")
 
         def status(where: pathlib.Path, text: str) -> None:
             (where / key).mkdir(parents=True)
