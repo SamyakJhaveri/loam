@@ -11,7 +11,7 @@ Rubric text lives only in the grader files.
 |---|---|---|
 | `bin/factory lint <issue|file>` | static ticket lint, rules in `CONTRACT.md` | F2 |
 | `bin/factory eval <grader> [--model M]` | replays frozen cases through the production grader call and compares verdicts; `EVAL_EFFORT` sets the effort (default medium), `EVAL_OUT=<dir>` keeps each raw reply | F6 |
-| `bin/factory eval-freeze [--evals-dir D] <run-dir>...` | copies each run's last round, when the judge passed it and the reviewer said merge, into `<evals-dir>/clean/<grader>/<key>-<sha8>/` (default `evals/clean/`), the prompt cut at `## Ticket`; prints `not frozen <run-dir>: <reason>` for the rest | #205 |
+| `bin/factory eval-freeze [--evals-dir D] <run-dir>...` | copies each run's last round, when the judge passed it and the reviewer said merge, into `<evals-dir>/clean/<grader>/<key>-<sha8>/` (default `evals/clean/`), the prompt cut at `## Ticket`; prints `not frozen <run-dir>: <reason>` for the rest | F36 |
 | `bin/factory run <issue>` | round 0, then worker rounds, graders, PR | F1 |
 | `bin/factory status` | run states, spend, denials per round, worktree and PR readiness, preconditions | F1 |
 | `bin/factory stop <issue>` | writes `FACTORY_STOP` into the run dir | F1 |

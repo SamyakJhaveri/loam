@@ -77,10 +77,10 @@ Scope beyond the ticket goal outside this list is a judge finding, not a stall.
 
 - The loop's model and effort defaults live in `bin/factory`; `bin/factory graders-check`, a `bin/check` step, fails when `judge.md` or `reviewer.md` front matter disagrees with `GRADER_MODEL` or `GRADER_EFFORT`.
 - Every loop role is `claude-opus-5-5` (Samyak, 2026-09-24): worker, its subagents, advisor, judge, reviewer, and eval replay.
-- Graders are picked by eval, not price (#186, 2026-09-23): judge and reviewer are fresh Opus 5.5 at high in the loop (2026-09-24; F38 measures what the graders miss); the lean-critic is Opus 5.5 at high, by hand on the PR.
+- Judge and reviewer are fresh Opus 5.5 at high in the loop (Samyak 2026-09-24, overriding the #186 eval; F38 measures what they miss); the lean-critic, picked by #186, is Opus 5.5 at high, by hand on the PR.
 - The plan-reviewer is Fable 5.1 at high, by hand outside the loop (F0 sets its frontmatter).
-- The loop worker is `claude-opus-5-5` at xhigh, never high, with Explore subagents on the same model. Replaced claude-opus-4-8[1m] on 2026-09-22.
-- The loop worker carries an Opus 5.5 advisor (`--advisor claude-opus-5-5`, F11 2026-09-10, Opus 5.5 since 2026-09-24): the worker decides when to consult it; `FACTORY_WORKER_ADVISOR=` (explicit empty) turns it off; each worker ledger line records `advisor_calls` and `advisor_usd` (from the session transcript: a token-weighted estimate while the advisor shares the worker's model, null when the transcript is missing). Kept while the ledger shows lower usd per ticket or fewer and less severe grader findings.
+- The loop worker, with Explore subagents on the same model, runs at the effort its ticket sets: high by default, xhigh when the ticket needs deeper reasoning (Samyak 2026-09-24). Replaced claude-opus-4-8[1m] on 2026-09-22.
+- The loop worker carries an advisor (`--advisor claude-opus-5-5`, F11 2026-09-10): the worker decides when to consult it; `FACTORY_WORKER_ADVISOR=` (explicit empty) turns it off; each worker ledger line records `advisor_calls` and `advisor_usd` (from the session transcript: a token-weighted estimate while the advisor shares the worker's model, null when the transcript is missing). Kept while the ledger shows lower usd per ticket or fewer and less severe grader findings.
 - Brief and design sessions are Fable 5.1 at high, interactive.
 - Never Sonnet or Haiku; any flag that defaults to Haiku is overridden or unused; every `Agent` call names its model.
 - The one named exception: Codex may be the worker (`worker: codex`) or an added reviewer (`codex-review: yes`); the judge and reviewer always run.
