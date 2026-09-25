@@ -22,7 +22,8 @@ from pathlib import Path
 
 FENCE = "~~~~~~~~~~~~ evidence"  # FENCE in bin/factory: opens and closes every evidence section
 CLAIM = "Measured: grader cost per round fell 40% (see the Rows measured section)."
-STALE = " See docs/factory/RUNBOOK.md."  # a factory runbook doc that does not exist in the tree
+RUNBOOK = "docs/factory/RUNBOOK.md"  # must not exist in the tree: graders can Read it, and the stale-ref label needs it absent
+STALE = f" See {RUNBOOK}."
 # Operator and its opposite, in the order a logic-bug line is searched.
 SWAPS = [("-eq", "-ne"), ("-ne", "-eq"), ("==", "!="), ("!=", "=="), ("&&", "||"), ("||", "&&")]
 
@@ -107,8 +108,7 @@ def scope(lines, spans):
             on = line.startswith("## Do not touch")
         elif on:
             dnt.append(line)
-    dnt = "\n".join(dnt)
-    exempt = "Except" in dnt and "bin/release.sh" in dnt[dnt.index("Except"):]
+    exempt = any(re.search(r"[Ee]xcept:.*bin/release\.sh", line) for line in dnt)  # as bin/factory's freeze reads it
     target = "VERSION" if exempt else "bin/release.sh"
     ins, dels, hunk = SCOPE_DIFFS[target]
     if diff is None:
@@ -172,7 +172,7 @@ def false_claim(lines, spans):
 def logic_bug(lines, spans):
     """The first operator swap that can change behavior, on an added shell or bin/ line."""
     for i, path, text in added_lines(lines, spans):
-        if not (path.endswith(".sh") or path.startswith("bin/")) or text.lstrip().startswith("#"):
+        if not (path.endswith(".sh") or path.startswith("bin/")) or path.endswith(".md") or text.lstrip().startswith("#"):
             continue
         hit = next(((op, to) for op, to in SWAPS if f" {op} " in text), None)
         if hit is None:
@@ -217,6 +217,9 @@ def main(argv):
         print("usage: mutate.py <clean-root> <out-root>", file=sys.stderr)
         return 2
     clean, out = Path(argv[1]), Path(argv[2])
+    if (Path(__file__).resolve().parents[2] / RUNBOOK).exists():
+        print(f"mutate.py: {RUNBOOK} exists, so a stale-ref label would be false", file=sys.stderr)
+        return 2
     if out.exists() and any(out.iterdir()):
         print(f"mutate.py: {out} is not empty", file=sys.stderr)
         return 2

@@ -48,7 +48,7 @@ def load_reply(path):
             reply = json.loads(cand)
         except ValueError:
             continue
-        if isinstance(reply, dict) and "verdict" in reply:
+        if isinstance(reply, dict) and isinstance(reply.get("verdict"), str):
             return reply, cost
     return None, cost
 
@@ -73,7 +73,8 @@ def hit(grader, exp, reply):
     if grader == "judge":
         return reply.get("verdict") == "fail" and set(exp.get("failing_rows", [])) <= failing_rows(reply)
     f = exp["defect_file"]
-    files = [x.get("file") for x in reply.get("findings") or [] if isinstance(x, dict)]
+    found = reply.get("findings")
+    files = [x.get("file") for x in (found if isinstance(found, list) else []) if isinstance(x, dict)]
     return reply.get("verdict") == "fix" and any(isinstance(p, str) and (p == f or p.endswith("/" + f)) for p in files)
 
 
@@ -116,12 +117,13 @@ def main(argv):
             for name, (hits, trials) in tally(grader, cases, by_rep,
                                               lambda c, e, r: hit(grader, e, by_rep[r][c][0])).items():
                 rows += [(grader, m, name, rate(hits, trials)), (grader, m, f"n:{name}", str(trials))]
-            agree = 0
-            for case, _ in cases:
-                sigs = [(rep[case][0]["verdict"], failing_rows(rep[case][0]) if grader == "judge" else None)
-                        if rep[case][0] is not None else None for rep in by_rep.values()]
-                agree += None not in sigs and len(set(sigs)) == 1
-            rows += [(grader, m, "agreement", rate(agree, len(cases))), (grader, m, "n:agreement", str(len(cases)))]
+            if len(by_rep) > 1:  # one repeat always agrees with itself, which measures nothing
+                agree = 0
+                for case, _ in cases:
+                    sigs = [(rep[case][0]["verdict"], failing_rows(rep[case][0]) if grader == "judge" else None)
+                            if rep[case][0] is not None else None for rep in by_rep.values()]
+                    agree += None not in sigs and len(set(sigs)) == 1
+                rows += [(grader, m, "agreement", rate(agree, len(cases))), (grader, m, "n:agreement", str(len(cases)))]
             usd = sum(cost for rep in by_rep.values() for _, cost in rep.values())
             rows.append((grader, m, "usd", f"{usd:.2f}"))
         for a, b in itertools.combinations(sorted(got), 2):
