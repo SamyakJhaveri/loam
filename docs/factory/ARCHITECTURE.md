@@ -61,6 +61,7 @@ No `PLAN.md`, `NOTES.md`, `BACKLOG.md`, or scope file is created per effort.
 ## Standing do-not-touch list
 
 Every ticket's Do not touch section starts from this list and may add paths.
+This list is Loam's; another target's lives under the same heading in its own `docs/factory/STANDING.md` (`LOOP.md`, Run the factory on another repository).
 It may exempt a listed path only with an `Except:` line naming a path its Goal creates or rewrites; nothing else leaves the list.
 The supervisor execs its frozen copy of `bin/factory`, so a ticket that edits the factory takes effect on the next run.
 
@@ -91,7 +92,7 @@ Scope beyond the ticket goal outside this list is a judge finding, not a stall.
 |---|---|---|
 | Graders | `cultivation/marketplace/sam-cc-setup/agents/`: `lean-critic.md` exists; `judge.md` and `reviewer.md` move there in F1 | through the plugin, or `bin/loam-attach.sh` |
 | `/brief` skill | `cultivation/marketplace/sam-cc-setup/skills/brief/` (F5) | through the plugin |
-| `bin/factory`, `bin/factory.d/` | Loam `bin/` (F2, F6, F1) | not until F8 |
+| `bin/factory`, `bin/factory.d/` | Loam `bin/` (F2, F6, F1) | any repo via `-C` (F8 step 1); the code stays in Loam (`LOOP.md`, Run the factory on another repository) |
 | `evals/` | Loam root (F6) | no |
 | Design docs | `docs/factory/` | no |
 | Research | `docs/research/` | no |

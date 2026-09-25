@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# bin/runner <cmd>   runs <cmd> on the runner from the repo root there.
+# bin/runner [-C <dir>] <cmd>   runs <cmd> on the runner from <dir> there, ~/Desktop/loam by default.
+#   Quote a tilde (-C '~/Desktop/parbench_ipdps') so the runner's shell expands it, not this one (F8).
 # bin/runner sync    mirrors the gitignored factory tree to the runner (#36).
 set -euo pipefail
 HOST="${LOOP_HOST:-jhaveris}"
@@ -10,5 +11,7 @@ if [ "${1:-}" = sync ]; then
   done
   exit 0
 fi
-[ $# -eq 1 ] || { echo "usage: bin/runner <cmd> | bin/runner sync" >&2; exit 2; }
-ssh "$HOST" bash -lc "'cd ~/Desktop/loam && $1'"
+DIR='~/Desktop/loam'
+if [ "${1:-}" = -C ] && [ $# -ge 2 ]; then DIR="$2"; shift 2; fi
+[ $# -eq 1 ] || { echo "usage: bin/runner [-C <dir>] <cmd> | bin/runner sync" >&2; exit 2; }
+ssh "$HOST" bash -lc "'cd $DIR && $1'"

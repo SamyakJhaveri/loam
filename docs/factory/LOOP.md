@@ -15,10 +15,11 @@ Rubric text lives only in the grader files.
 | `bin/factory run <issue>` | round 0, then worker rounds, graders, PR | F1 |
 | `bin/factory status` | run states, spend, denials per round, worktree and PR readiness, preconditions | F1 |
 | `bin/factory stop <issue>` | writes `FACTORY_STOP` into the run dir | F1 |
-| `bin/runner <cmd>` | runs `<cmd>` on the runner: `ssh jhaveris bash -lc 'cd ~/Desktop/loam && <cmd>'`; `bin/runner sync` mirrors `.superpowers/lean-v3/` and `.superpowers/factory/` to the same paths on the runner with `rsync -az --delete`, excluding `runs/` and `__pycache__`; it never pulls (#36) | F0 |
+| `bin/runner [-C <dir>] <cmd>` | runs `<cmd>` on the runner: `ssh jhaveris bash -lc 'cd ~/Desktop/loam && <cmd>'`, or from `<dir>` there (quote a tilde, F8); `bin/runner sync` mirrors `.superpowers/lean-v3/` and `.superpowers/factory/` to the same paths on the runner with `rsync -az --delete`, excluding `runs/` and `__pycache__`; it never pulls (#36) | F0 |
 | `bin/factory next [--install]` | launches up to `MAX_PARALLEL` `ready-for-agent` issues with no assignee and no open native blocker (read through `gh api`); `--install` writes the ten-minute runner timer | F9 |
 
-`REPO` comes from `gh repo view --json nameWithOwner` in the checkout the run was launched from.
+`-C <repo>`, before the subcommand or right after it, points `lint`, `run`, `status`, `stop`, and `next` at another repository (F8 step 1; Run the factory on another repository, below).
+`REPO` is `<owner>/<repo>` read from the target's `origin` URL, and every `gh` call about the target passes it as `-R`, so a fork's issues and PRs never go to the parent `gh` would pick by default.
 `status` runs on the runner; from the Mac it is `bin/runner bin/factory status`.
 
 ## Layout
@@ -35,6 +36,7 @@ bin/factory.d/fixtures/        lint fixtures (CONTRACT.md)
 evals/<grader>/<case>/{prompt.md,expected.json}
 ~/.local/state/loam-factory/runs/<issue>/<sha8>/   on the runner, outside every checkout:
     status  ledger.jsonl  base.sha  frozen/  round-<k>.*  worker/decisions.md  pr-body.md  notify.failed
+~/.local/state/loam-factory/runs/<owner>__<repo>/<issue>/<sha8>/   the same, for a target named by -C (F8)
 ```
 
 Graders are plugin agents (home in `ARCHITECTURE.md`): `judge.md` and `reviewer.md`.
@@ -46,6 +48,7 @@ The run resolves them from the installed plugin cache, falling back to the check
 1. Read the ticket: an issue number reads the body from GitHub, a file path reads it from disk and makes no GitHub call, keying the run directory by the file stem instead of the issue number.
    `sha8` is the first eight hex of the body's sha256 and, with the issue number or file stem, names the run dir under `FACTORY_RUNS_ROOT` (default `~/.local/state/loam-factory/runs`).
    A changed body is a new run; old rounds stay on disk.
+   A target named by `-C` keys its run dirs one level down, under `<owner>__<repo>/` read from its `origin` URL, so its issue numbers never meet Loam's.
 2. Record the `origin/main` sha as `base.sha`; create the sibling worktree on branch `factory/<issue>` from it, or `factory/<stem>-<sha8>` for a file ticket, so a relaunch with an edited body gets its own branch; assign the issue to the operator (skipped for a file ticket).
    A file ticket's worktree is removed when the run exits; its branch keeps the commits and is never pushed or deleted by the loop, so drop finished rehearsal branches by hand with `git branch -D factory/<stem>-<sha8>`.
 3. Extract the done-checks block; freeze `bin/factory`, the graders, `lib.sh`, `_common.md`, `role-settings.json`, `worker-settings.json`, the grader schemas, and the body into `frozen/`, owned outside the worker's write scope; the frozen grader prompts keep fixed evidence markers, there is no per-run string (#38).
@@ -85,7 +88,7 @@ A call with no result event (killed by `CALL_TIMEOUT_SEC`, or crashed) exits `st
 
 Defaults from lean-v3, overridable per ticket in its Worker section and then by `FACTORY_<NAME>` in the environment, never by the bare name, which a Claude Code session already exports for `WORKER_MODEL` and `CALL_TIMEOUT_SEC`: `MAX_ROUNDS=6`, `ROUND_BUDGET_USD=15`, `GRADER_BUDGET_USD=5`, `TICKET_BUDGET_USD=60`, `DAILY_BUDGET_USD=150`, `MAX_HOURS=8`, `MAX_TURNS=200`, `CALL_TIMEOUT_SEC=5400`, `MAX_PARALLEL=1`.
 No research source gives a numeric anchor (`../research/anthropic-loop-engineering.md`); re-measure after two real runs.
-The daily ledger `runs/ledger-daily.jsonl` is keyed by UTC date across all runs.
+The daily ledger `runs/ledger-daily.jsonl` is keyed by UTC date across all runs of every target.
 Codex token counts come from its `--json` events and land in the ledger with `cost_usd` null, so the dollar caps do not bound a Codex worker; the PR body says so.
 
 ## Grader-round cap and precedence
@@ -214,11 +217,62 @@ No grader edit lands without the replay run before and after, recorded in the PR
 After a model upgrade: replay with the new model, then once more with each rubric body replaced by its one-line stance; a rubric row that changes no verdict is a deletion candidate.
 Each new grader agent costs about 200 always-on tokens in every session of every seeded project; `bin/skill_listing_weight.py` gates each plugin bump.
 
+## Run the factory on another repository
+
+F8 step 1 keeps the factory's code, graders, and prompts in this checkout and adds `-C <repo>`, which points `lint`, `run`, `status`, `stop`, and `next` at another repository, such as a project Loam seeded.
+Without `-C` the target is this checkout, and a Loam run behaves as before.
+
+The target supplies the tree lint reads, the issues and PRs (`gh -R` its origin), the worktrees (siblings of its main checkout, `<checkout>-<issue>`), and the `bin/check` a done-checks block guards.
+Its run dirs sit under `<runs root>/<owner>__<repo>/`, and so do its `FACTORY_STOP`, `nav-order`, `MAX_PARALLEL` count, and tmux logs: the runs root's own `FACTORY_STOP` pauses Loam only, and one target's runs do not count against another's `MAX_PARALLEL`.
+The daily ledger stays at `<runs root>/ledger-daily.jsonl`, so `DAILY_BUDGET_USD` bounds every target's spend together.
+The toolchain exports gate Loam only.
+Another target's gate is an executable `bin/check` and a standing do-not-touch list with at least one entry: `run` and `next` refuse the target without either, and `status` prints FAIL.
+That list is the `- ` lines under a `## Standing do-not-touch list` heading in the target's `docs/factory/STANDING.md`, in the format of Loam's own list in `ARCHITECTURE.md`; other lines and other sections are not read.
+A token on a `- ` line is an entry when its first path segment is tracked in the target (a bare word that names a tracked top-level entry counts too); anything else on the line is dropped, and a changed path equal to or under an entry fails the round as `do-not-touch`.
+The list cannot say append-only or add-only: a ticket that must append to a listed file or add a file under a listed directory names that path on its `Except:` line.
+
+A target needs a GitHub `origin` whose default branch is `main` (runs branch from `origin/main`, and PRs target `main`), an executable `bin/check`, `docs/factory/STANDING.md` committed on `main`, the `ready-for-agent` and `needs-triage` labels, a clone on the runner beside Loam's, and whatever its `bin/check` needs there.
+Setup, once per project (here `SamyakJhaveri/parbench_ipdps`): commit its `docs/factory/STANDING.md` to `main`, shaped like this, then run the commands below from the Mac.
+
+```markdown
+## Standing do-not-touch list
+
+- `bin/check`
+- `.claude/` and `.codex/`
+```
+
+```sh
+bin/runner 'gh label create ready-for-agent -R SamyakJhaveri/parbench_ipdps'
+bin/runner 'gh label create needs-triage -R SamyakJhaveri/parbench_ipdps'
+bin/runner 'gh repo clone SamyakJhaveri/parbench_ipdps ~/Desktop/parbench_ipdps'
+bin/runner 'bin/factory -C ~/Desktop/parbench_ipdps status'
+```
+
+Then per ticket, or once for the ten-minute timer:
+
+```sh
+bin/runner 'bin/factory -C ~/Desktop/parbench_ipdps lint 12'
+bin/runner 'tmux new -d -s SamyakJhaveri__parbench_ipdps-12 "bin/factory -C ~/Desktop/parbench_ipdps run 12"'
+bin/runner 'bin/factory -C ~/Desktop/parbench_ipdps stop 12'
+bin/runner 'bin/factory -C ~/Desktop/parbench_ipdps next --install'
+bin/runner 'touch ~/.local/state/loam-factory/runs/SamyakJhaveri__parbench_ipdps/FACTORY_STOP'
+```
+
+`next --install` adds one cron line per target beside Loam's, `cd ~/Desktop/loam && bin/factory -C <dir> next`; a reinstall replaces only that target's line.
+After a merge, remove the ticket worktree (`git -C ~/Desktop/parbench_ipdps worktree remove ~/Desktop/parbench_ipdps-12`) so `next` frees the slot, as for Loam.
+A project may carry a `bin/factory` that forwards to Loam's with itself as the target; it is not in `seed/` yet:
+
+```sh
+#!/usr/bin/env bash
+exec "${LOAM_HOME:-$HOME/Desktop/loam}/bin/factory" -C "$(git rev-parse --show-toplevel)" "$@"
+```
+
 ## Preconditions
 
 - The runner is Ubuntu with `claude`, `codex`, `gh` (logged in), `uv`, `git`, `jq`, `python3`, coreutils `timeout`, `tmux`, and `socat` on a login-shell PATH; ssh commands use `bash -lc`.
 - `claude auth status` reports `loggedIn: true` on the runner; `claude` on PATH is not `claude` logged in, so a logged-out Claude fails every worker call while `status` still shows it on PATH, and `bin/factory status` prints `FAIL claude login` (#78). `bin/factory next` refuses to launch on the same probe: a logged-out runner makes it print `login expired` on stderr and exit 1 before it queries the frontier.
-- `LOAM_FACTORY_TOOLCHAIN` (a Node distribution with `bin/node`) and `LOAM_FACTORY_COPIER` (an executable `copier`) are exported in `~/.profile` on the runner, as CONTRIBUTING.md sets them; without them a run fails `guard bin/check` after its work is done (#158), so `bin/factory run` and `bin/factory next` refuse to launch and `bin/factory status` prints a PASS or FAIL line per variable.
+- When the target is Loam, `LOAM_FACTORY_TOOLCHAIN` (a Node distribution with `bin/node`) and `LOAM_FACTORY_COPIER` (an executable `copier`) are exported in `~/.profile` on the runner, as CONTRIBUTING.md sets them; without them a run fails `guard bin/check` after its work is done (#158), so `bin/factory run` and `bin/factory next` refuse to launch and `bin/factory status` prints a PASS or FAIL line per variable.
+- A target named by `-C` has a GitHub `origin`, an executable `bin/check`, and at least one entry in its `docs/factory/STANDING.md`: `-C` exits 2 on a checkout without the first, `run` and `next` refuse to launch without the other two, and `status` prints a PASS or FAIL line for each.
 - `bin/claude-account status` names an active account and at least one other stored account on the runner when the usage-limit switch is wanted; with a single stored account the loop sleeps through a usage limit as before.
 - `gh api rate_limit` succeeds on the seat that runs stages 0, 1, 2, and 5 (F0 fixes the Mac).
 - `grill-with-docs`, `wayfinder`, and `to-tickets` are invocable on that seat.
