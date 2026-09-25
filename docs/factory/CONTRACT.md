@@ -17,7 +17,7 @@ The body starts at `Brief:` or `Part of`; in a file the first `#` line is the ti
 1. Title, then `Part of <design issue>` for Track C or `Brief:` followed by the four brief lines for Track B, then `Blocked by:` with issue links or `none` (display only; native blocking edges are what the loop reads).
    The `Brief:` lines are display only; lint and the loop read the sections below.
 2. `## Goal and why`: two to four lines, linking the decision, ADR, or design doc.
-3. `## Do not touch`: the standing list from `ARCHITECTURE.md`, ticket-specific paths, and any `Except:` line.
+3. `## Do not touch`: the standing list from `ARCHITECTURE.md` (another target's `docs/factory/STANDING.md`), ticket-specific paths, and any `Except:` line.
 4. `## Out of scope`: one line each.
 5. `## Approach` (optional): the how where it matters to Samyak, in a few lines: patterns to follow, files to model on, approaches tried and rejected.
    The worker follows it; a departure needs a `decisions.md` line, which the judge reads.

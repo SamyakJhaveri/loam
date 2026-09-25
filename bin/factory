@@ -8,13 +8,41 @@
 #   bin/factory stop <issue>        writes FACTORY_STOP into the run dir; the run halts before its next call.
 #   bin/factory next [--install]    the F9 frontier timer's step: launch the next unblocked ready-for-agent ticket.
 #   bin/factory graders-check       fails when judge.md or reviewer.md drifts from GRADER_MODEL and GRADER_EFFORT.
+#   -C <repo>, before the subcommand or right after it, points lint, run, status, stop, and next at another repository (F8).
 # Lint never executes a check; it reads the body and shells out only to `bash -n` and `gh`.
 set -uo pipefail
 
 # FACTORY_ROOT is set when a run execs its frozen copy of this file out of the run directory.
 ROOT="${FACTORY_ROOT:-$(cd "$(dirname "$0")/.." && pwd)}"
-GIT_COMMON="$(cd "$ROOT" && cd "$(git rev-parse --git-common-dir 2> /dev/null || echo .)" && pwd)"
-MAIN_CHECKOUT="$(dirname "$GIT_COMMON")"
+RUNS_BASE="${FACTORY_RUNS_ROOT:-$HOME/.local/state/loam-factory/runs}"
+
+# ROOT is the factory home: bin/factory, bin/factory.d/, bin/claude-account, and the graders' fallback copy.
+# TARGET is the repository a command works on: its tree, origin, issues, worktrees, and bin/check. It is ROOT
+# unless `-C <repo>` names another (F8); exec_frozen passes it on with -C, never through the environment, so a
+# done-check that sets FACTORY_ROOT to its worktree still reads that worktree's tree.
+# Worktrees are siblings of the target's main checkout. Loam's runs live in RUNS_BASE itself, as before F8;
+# another target's live in RUNS_BASE/<owner>__<repo>/, so two repositories' #12 never share a run directory.
+git_common() { git -C "$1" rev-parse --path-format=absolute --git-common-dir 2> /dev/null; }
+target_is_loam() { [ "$TARGET_IS_LOAM" = 1 ]; }
+target_slug() { # <owner>__<repo> from the target's GitHub origin URL, read locally; empty without one
+  git -C "$TARGET" remote get-url origin 2> /dev/null \
+    | sed -nE 's#^.*github\.com[:/]([^/]+)/([^/]+)$#\1__\2#p' | sed 's/\.git$//'
+}
+use_target() { # dir -> 1 when dir is not in a git checkout, or is another repository with no GitHub origin
+  local common slug
+  TARGET=$(cd "$1" 2> /dev/null && git rev-parse --show-toplevel 2> /dev/null) || return 1
+  common=$(git_common "$TARGET")
+  MAIN_CHECKOUT=$(dirname "$common")
+  TARGET_IS_LOAM=0; [ "$common" = "$(git_common "$ROOT")" ] && TARGET_IS_LOAM=1
+  RUNS_ROOT="$RUNS_BASE"
+  target_is_loam && return 0
+  slug=$(target_slug)
+  [ -n "$slug" ] || return 1
+  RUNS_ROOT="$RUNS_BASE/$slug"
+}
+# A test that sources this file through `bash -c` has $0 = bash, so ROOT is the parent of its cwd and may sit
+# outside any checkout; there the default target keeps the values the pre-F8 code derived.
+use_target "$ROOT" || { TARGET="$ROOT"; MAIN_CHECKOUT=$(dirname "$ROOT"); TARGET_IS_LOAM=1; RUNS_ROOT="$RUNS_BASE"; }
 
 # The ticket sections, in contract order. Six are required; Approach, Merge checklist,
 # and Rows measured are optional.
@@ -53,7 +81,7 @@ paths() { tokens | grep -E '^[.A-Za-z0-9_][A-Za-z0-9_./-]*/[A-Za-z0-9_./-]*$' | 
 only_tracked_tops() {
   local tops
   # tops is space-joined: macOS awk rejects a newline inside a -v value.
-  tops=$(git -C "$ROOT" ls-files | cut -d/ -f1 | sort -u | tr '\n' ' ')
+  tops=$(git -C "$TARGET" ls-files | cut -d/ -f1 | sort -u | tr '\n' ' ')
   awk -v tops="$tops" 'BEGIN {n = split(tops, a, " "); for (i = 1; i <= n; i++) t[a[i]] = 1}
                        {s = $0; sub(/\/.*/, "", s); if (s in t) print}'
 }
@@ -179,7 +207,7 @@ check_paths() {
   created=$(section "Do not touch" | grep -F 'Except:' | paths)
   while IFS= read -r p; do
     [ -n "$p" ] || continue
-    [ -e "$ROOT/$p" ] && continue
+    [ -e "$TARGET/$p" ] && continue
     grep -qxF "$p" <<<"$created" && continue
     err "names $p, which is not in the tree and is not one the ticket creates"
   done < <( { { header | grep -E '^Where:'; } | paths; { section "Do not touch"; section Approach; } | promised_paths; } | sort -u)
@@ -407,7 +435,7 @@ lint() {
       head -n 1 "$SRC" | grep -q '^# ' || err "first line is not a '# ' title"
     fi
   elif [[ "$SRC" =~ ^[0-9]+$ ]]; then
-    BODY=$(gh issue view "$SRC" --json body -q .body) \
+    BODY=$(cd "$TARGET" && gh issue view "$SRC" --json body -q .body) \
       || { echo "LINT $SRC: could not read the issue body with gh" >&2; return 1; }
   else
     echo "no such file: $SRC" >&2
@@ -430,9 +458,8 @@ lint() {
 
 # ---- run, status, stop ----
 # The supervisor: one ticket to a pull request, in the steps docs/factory/LOOP.md sets out.
-# Run state lives under FACTORY_RUNS_ROOT, outside every checkout.
+# Run state lives under RUNS_ROOT, outside every checkout; use_target sets it from FACTORY_RUNS_ROOT.
 
-RUNS_ROOT="${FACTORY_RUNS_ROOT:-$HOME/.local/state/loam-factory/runs}"
 CAP_NAMES="MAX_ROUNDS ROUND_BUDGET_USD GRADER_BUDGET_USD TICKET_BUDGET_USD DAILY_BUDGET_USD \
 MAX_HOURS MAX_TURNS CALL_TIMEOUT_SEC MAX_PARALLEL"
 # Defaults, then the ticket's Worker section, then FACTORY_<NAME> in the environment. The bare names
@@ -504,8 +531,8 @@ load_ticket() { # <issue|file>
     KEY=$(basename "$SRC"); KEY=${KEY%.md}
   elif [[ "$SRC" =~ ^[0-9]+$ ]]; then
     ISSUE="$SRC"; KEY="$SRC"
-    REPO=$(gh repo view --json nameWithOwner -q .nameWithOwner) \
-      || { echo "factory run: gh repo view failed; run it from a checkout with a remote" >&2; exit 4; }
+    REPO=$(cd "$TARGET" && gh repo view --json nameWithOwner -q .nameWithOwner) \
+      || { echo "factory run: gh repo view failed in $TARGET; the target needs a GitHub remote" >&2; exit 4; }
     BODY=$(gh issue view "$ISSUE" -R "$REPO" --json body -q .body) \
       || { echo "factory run: could not read issue #$ISSUE" >&2; exit 4; }
   else
@@ -528,10 +555,16 @@ apply_caps() { # the ticket's Worker section, then any FACTORY_<NAME> override
 # What a ticket section fences off: like promised_paths, but a bare name (VERSION) counts too.
 ticket_paths() { tokens | grep -E '^[.A-Za-z0-9_][A-Za-z0-9_./-]*$' | only_tracked_tops | sort -u; }
 
-# The standing do-not-touch list, read from its one home (ARCHITECTURE.md).
+# The standing do-not-touch list: the `- ` lines under `## Standing do-not-touch list` in the target's one home
+# for it, Loam's docs/factory/ARCHITECTURE.md or another target's docs/factory/STANDING.md (F8). No file, no list.
+standing_file() {
+  if target_is_loam; then echo "$TARGET/docs/factory/ARCHITECTURE.md"; else echo "$TARGET/docs/factory/STANDING.md"; fi
+}
 standing_list() {
-  awk '/^## Standing do-not-touch list$/ {inb = 1; next} /^## / {inb = 0} inb && /^- /' \
-    "$ROOT/docs/factory/ARCHITECTURE.md" | ticket_paths
+  local f
+  f=$(standing_file)
+  [ -f "$f" ] || return 0
+  awk '/^## Standing do-not-touch list$/ {inb = 1; next} /^## / {inb = 0} inb && /^- /' "$f" | ticket_paths
 }
 
 under() { # path list -> 0 when path equals or sits under a list entry
@@ -609,7 +642,7 @@ check_frozen() {
 exec_frozen() {
   [ "${FACTORY_FROZEN:-}" = "$RUN/frozen/factory" ] && return 0
   export FACTORY_FROZEN="$RUN/frozen/factory" FACTORY_ROOT="$ROOT"
-  exec "$RUN/frozen/factory" run "$SRC"
+  exec "$RUN/frozen/factory" -C "$TARGET" run "$SRC"
 }
 
 # ---- ledger and caps --------------------------------------------------------
@@ -708,6 +741,15 @@ assert_toolchain_env() {
     echo "LOAM_FACTORY_COPIER is unset or not executable: $fix" >&2
     return 1
   fi
+}
+
+# The launch gate for the target: Loam's bin/check needs the toolchain exports above; another target needs
+# only its own executable bin/check, which every done-checks block guards (F8). One stderr line, return 1.
+assert_target_ready() {
+  if target_is_loam; then assert_toolchain_env; return; fi
+  [ -x "$TARGET/bin/check" ] && return 0
+  echo "$TARGET has no executable bin/check; a factory target needs one (LOOP.md, Run the factory on another repository)" >&2
+  return 1
 }
 
 # The result subtypes that mean the worker stopped on a cap this supervisor gave its call: --max-budget-usd
@@ -1325,9 +1367,9 @@ main_loop() {
 }
 
 cmd_run() {
-  # Before load_ticket, so a missing toolchain export stops ahead of every GitHub call; exit 4 is
-  # stopped-environment's code, direct because finish needs RUN and its notify may comment on the issue.
-  assert_toolchain_env || exit 4
+  # Before load_ticket, so a missing toolchain export or bin/check stops ahead of every GitHub call; exit 4
+  # is stopped-environment's code, direct because finish needs RUN and its notify may comment on the issue.
+  assert_target_ready || exit 4
   load_ticket "$1"
   apply_caps
   local effort
@@ -1343,7 +1385,8 @@ cmd_run() {
   sha8=$(printf '%s' "$BODY" | sha256_of | cut -c1-8)
   RUN="$RUNS_ROOT/$KEY/$sha8"
   mkdir -p "$RUN/frozen" "$RUN/worker" "$RUN/tasks" || { echo "factory run: cannot create $RUN" >&2; exit 4; }
-  LOG="$RUN/factory.log"; LEDGER="$RUN/ledger.jsonl"; DAILY="$RUNS_ROOT/ledger-daily.jsonl"
+  # The daily ledger stays in RUNS_BASE for every target, so DAILY_BUDGET_USD bounds the runner's whole day.
+  LOG="$RUN/factory.log"; LEDGER="$RUN/ledger.jsonl"; DAILY="$RUNS_BASE/ledger-daily.jsonl"
   DECISIONS="$RUN/worker/decisions.md"
   touch "$LOG" "$LEDGER" "$DAILY" "$DECISIONS"
   # A file ticket's branch carries the run key too, so a relaunch with an edited body gets its own branch;
@@ -1418,10 +1461,12 @@ cmd_next() { # [--dry-run|--install]
     command -v crontab > /dev/null 2>&1 || { echo "factory next --install: crontab not found" >&2; return 1; }
     # Install the cron line only (the comments would accumulate on reinstall); grep -vF strips the
     # prior copy so the result is idempotent.
-    # The template names ~/Desktop/loam; the installed line names the checkout that ran --install.
-    local line
-    line=$(grep -v '^#' "$tmpl" | grep -m1 . | sed "s|cd ~/Desktop/loam|cd $ROOT|")
-    ( crontab -l 2> /dev/null | grep -vF 'bin/factory next'; printf '%s\n' "$line" ) | crontab - \
+    # The template names ~/Desktop/loam; the installed line names the checkout that ran --install, and
+    # another target by -C, so each target keeps one line and a reinstall strips only its own (F8).
+    local line cmd="bin/factory next"
+    target_is_loam || cmd="bin/factory -C $TARGET next"
+    line=$(grep -v '^#' "$tmpl" | grep -m1 . | sed -e "s|cd ~/Desktop/loam|cd $ROOT|" -e "s|bin/factory next|$cmd|")
+    ( crontab -l 2> /dev/null | grep -vF "$cmd"; printf '%s\n' "$line" ) | crontab - \
       || { echo "factory next --install: crontab rejected the update" >&2; return 1; }
     echo "installed: $line"
     return 0
@@ -1438,9 +1483,9 @@ cmd_next() { # [--dry-run|--install]
   #     read-only and shared with precondition_lines; it runs under --dry-run too, since a check from
   #     inside a worktree may run it. The line goes to stderr (cron mails it) and returns 1, the same
   #     shape as `frontier query failed`; the ticket stays unassigned and launches on the first tick
-  #     after the login returns. The toolchain exports gate the same way: without them the run fails
-  #     guard bin/check after its work is done (#158).
-  assert_toolchain_env || return 1
+  #     after the login returns. The target gate works the same way: without the toolchain exports
+  #     (Loam) or a bin/check (another target) the run fails guard bin/check after its work is done (#158).
+  assert_target_ready || return 1
   if ! claude_logged_in; then
     echo "login expired: claude auth status reports logged out; run claude login on the runner" >&2
     return 1
@@ -1469,17 +1514,22 @@ cmd_next() { # [--dry-run|--install]
   #    (freeze copies bin/factory from here) before the launch. Never under --dry-run, and only
   #    with a clean tree, since a dirty tree would abort the --ff-only merge mid-launch.
   #    A refused pull is logged (log writes to stderr, which cron mails) and never aborts the launch:
-  #    the run proceeds on the stale checkout, with the cause on record.
+  #    the run proceeds on the stale checkout, with the cause on record. Another target's checkout is
+  #    pulled the same way, since lint and the standing list read its tree (F8).
   if [ "$dry" = 0 ]; then
-    if [ "$(git -C "$ROOT" rev-parse --abbrev-ref HEAD 2> /dev/null)" != main ]; then
-      log "refused pull: not on main"
-    elif [ -n "$(git -C "$ROOT" status --porcelain 2> /dev/null)" ]; then
-      log "refused pull: dirty checkout"
-    elif ! git -C "$ROOT" fetch -q origin 2> /dev/null; then
-      log "refused pull: git fetch origin failed"
-    elif ! git -C "$ROOT" merge --ff-only origin/main > /dev/null 2>&1; then
-      log "refused pull: not fast-forward"
-    fi
+    local co pulls=("$ROOT")
+    target_is_loam || pulls+=("$TARGET")
+    for co in "${pulls[@]}"; do
+      if [ "$(git -C "$co" rev-parse --abbrev-ref HEAD 2> /dev/null)" != main ]; then
+        log "refused pull of $co: not on main"
+      elif [ -n "$(git -C "$co" status --porcelain 2> /dev/null)" ]; then
+        log "refused pull of $co: dirty checkout"
+      elif ! git -C "$co" fetch -q origin 2> /dev/null; then
+        log "refused pull of $co: git fetch origin failed"
+      elif ! git -C "$co" merge --ff-only origin/main > /dev/null 2>&1; then
+        log "refused pull of $co: not fast-forward"
+      fi
+    done
   fi
 
   # 4. The frontier: open, ready-for-agent, unassigned issues with no open native blocker, lowest
@@ -1487,7 +1537,7 @@ cmd_next() { # [--dry-run|--install]
   #    `frontier query failed` and returns 1, so cron mails it rather than the timer stalling silent;
   #    only a successful, empty query falls through to `nothing to launch`.
   local repo ready num b64 body
-  repo=$(gh repo view --json nameWithOwner -q .nameWithOwner 2> /dev/null)
+  repo=$(cd "$TARGET" && gh repo view --json nameWithOwner -q .nameWithOwner 2> /dev/null)
   if [ -z "$repo" ]; then
     echo "frontier query failed: gh repo view" >&2
     return 1
@@ -1528,7 +1578,11 @@ cmd_next() { # [--dry-run|--install]
   fi
 
   # Launch bin/factory run <N> detached in one tmux session per issue, output appended to the runs root.
-  if tmux has-session -t "loam-$pick" 2> /dev/null; then
+  # Another target's session is named by its slug, with . and : (which tmux refuses in a name) as _, so
+  # #12 of two repositories never shares a session.
+  local sess="loam-$pick" envs=()
+  target_is_loam || sess="$(target_slug | tr '.:' '__')-$pick"
+  if tmux has-session -t "$sess" 2> /dev/null; then
     echo "nothing to launch"
     return 0
   fi
@@ -1537,10 +1591,11 @@ cmd_next() { # [--dry-run|--install]
   # tmux gives the session the tmux server's environment, not this shell's, so the toolchain exports
   # checked above travel with -e; a server started without them would make the run exit 4 unrecorded.
   mkdir -p "$RUNS_ROOT"
-  if tmux new-session -d -s "loam-$pick" -e "LOAM_FACTORY_TOOLCHAIN=$LOAM_FACTORY_TOOLCHAIN" -e "LOAM_FACTORY_COPIER=$LOAM_FACTORY_COPIER" "cd '$ROOT' && bin/factory run $pick >> '$RUNS_ROOT/$pick.tmux.log' 2>&1"; then
+  target_is_loam && envs=(-e "LOAM_FACTORY_TOOLCHAIN=$LOAM_FACTORY_TOOLCHAIN" -e "LOAM_FACTORY_COPIER=$LOAM_FACTORY_COPIER")
+  if tmux new-session -d -s "$sess" ${envs[@]+"${envs[@]}"} "cd '$ROOT' && bin/factory -C '$TARGET' run $pick >> '$RUNS_ROOT/$pick.tmux.log' 2>&1"; then
     echo "launched #$pick"
   else
-    echo "launch failed: tmux new-session -s loam-$pick" >&2
+    echo "launch failed: tmux new-session -s $sess" >&2
     return 1
   fi
 }
@@ -1567,8 +1622,8 @@ cmd_status() {
   done
   printf '\n== worktrees and PRs\n'
   git -C "$MAIN_CHECKOUT" worktree list 2> /dev/null | sed 's/^/  /'
-  gh pr list --json number,headRefName,title \
-    --jq '.[] | select(.headRefName | startswith("factory/")) | "  #\(.number) \(.headRefName) \(.title)"' 2> /dev/null \
+  ( cd "$TARGET" && gh pr list --json number,headRefName,title \
+    --jq '.[] | select(.headRefName | startswith("factory/")) | "  #\(.number) \(.headRefName) \(.title)"' 2> /dev/null ) \
     || echo "  (no PR list: gh is unavailable from here; run status on the runner)"
   printf '\n== preconditions\n'
   precondition_lines
@@ -1613,16 +1668,24 @@ precondition_lines() { # LOOP.md, Preconditions
   for t in claude gh git jq python3 uv tmux timeout socat node; do
     command -v "$t" > /dev/null 2>&1 && echo "  PASS $t on PATH" || echo "  FAIL $t not on PATH"
   done
-  if [ -n "${LOAM_FACTORY_TOOLCHAIN:-}" ] && [ -x "$LOAM_FACTORY_TOOLCHAIN/bin/node" ]; then
-    echo "  PASS LOAM_FACTORY_TOOLCHAIN $LOAM_FACTORY_TOOLCHAIN"
+  echo "  INFO target $TARGET; runs root $RUNS_ROOT"
+  # Only Loam's bin/check reads the toolchain exports; another target needs its own bin/check instead (F8).
+  if ! target_is_loam; then
+    [ -x "$TARGET/bin/check" ] && echo "  PASS bin/check in the target" || echo "  FAIL no executable bin/check in the target"
   else
-    echo "  FAIL LOAM_FACTORY_TOOLCHAIN unset or no node binary under it"
+    if [ -n "${LOAM_FACTORY_TOOLCHAIN:-}" ] && [ -x "$LOAM_FACTORY_TOOLCHAIN/bin/node" ]; then
+      echo "  PASS LOAM_FACTORY_TOOLCHAIN $LOAM_FACTORY_TOOLCHAIN"
+    else
+      echo "  FAIL LOAM_FACTORY_TOOLCHAIN unset or no node binary under it"
+    fi
+    if [ -n "${LOAM_FACTORY_COPIER:-}" ] && [ -x "$LOAM_FACTORY_COPIER" ]; then
+      echo "  PASS LOAM_FACTORY_COPIER $LOAM_FACTORY_COPIER"
+    else
+      echo "  FAIL LOAM_FACTORY_COPIER unset or not executable"
+    fi
   fi
-  if [ -n "${LOAM_FACTORY_COPIER:-}" ] && [ -x "$LOAM_FACTORY_COPIER" ]; then
-    echo "  PASS LOAM_FACTORY_COPIER $LOAM_FACTORY_COPIER"
-  else
-    echo "  FAIL LOAM_FACTORY_COPIER unset or not executable"
-  fi
+  [ -f "$(standing_file)" ] && echo "  PASS standing do-not-touch list: $(standing_list | grep -c .) paths from $(standing_file)" \
+    || echo "  INFO no $(standing_file); only each ticket's Do not touch section fences paths"
   if claude_logged_in; then
     echo "  PASS claude login"
   else
@@ -1713,15 +1776,15 @@ usage() { # [cmd...] - one line per named command, all eight when none is named
   local c
   for c in ${@:-lint eval eval-freeze run status stop next graders-check}; do
     case "$c" in
-      lint)   echo "usage: bin/factory lint <file|issue>" ;;
+      lint)   echo "usage: bin/factory [-C <repo>] lint <file|issue>" ;;
       eval)   echo "usage: bin/factory eval <grader> [--evals-dir D] [--graders-dir D] [--model M]" ;;
       eval-freeze) echo "usage: bin/factory eval-freeze [--evals-dir D] <run-dir>..." ;;
-      run)    echo "usage: bin/factory run <issue|ticket-file>" ;;
-      status) echo "usage: bin/factory status" ;;
-      stop)   echo "usage: bin/factory stop <issue|ticket-stem>" ;;
-      next)   echo "usage: bin/factory next [--dry-run|--install]" ;;
+      run)    echo "usage: bin/factory [-C <repo>] run <issue|ticket-file>" ;;
+      status) echo "usage: bin/factory [-C <repo>] status" ;;
+      stop)   echo "usage: bin/factory [-C <repo>] stop <issue|ticket-stem>" ;;
+      next)   echo "usage: bin/factory [-C <repo>] next [--dry-run|--install]" ;;
       graders-check) echo "usage: bin/factory graders-check [--agents-dir D]" ;;
-      *)      echo "usage: bin/factory <lint|eval|eval-freeze|run|status|stop|next|graders-check>" ;;
+      *)      echo "usage: bin/factory [-C <repo>] <lint|eval|eval-freeze|run|status|stop|next|graders-check>" ;;
     esac
   done >&2
   exit 2
@@ -1733,8 +1796,13 @@ usage() { # [cmd...] - one line per named command, all eight when none is named
 # only in a sourced script; 2> /dev/null hides the error if the guard is ever hit while the file runs as
 # a program.
 [ "${FACTORY_SOURCED:-}" = 1 ] && return 0 2> /dev/null
+C_DIR=""
+[ "${1:-}" = -C ] && { [ $# -ge 2 ] || usage; C_DIR="$2"; shift 2; }
 CMD="${1:-}"
 shift 2> /dev/null || true
+[ "${1:-}" = -C ] && { [ $# -ge 2 ] || usage; C_DIR="$2"; shift 2; }
+[ -z "$C_DIR" ] || use_target "$C_DIR" \
+  || { echo "factory: -C $C_DIR is not a git checkout, or is another repository with no GitHub origin" >&2; exit 2; }
 case "$CMD" in
   lint) [ $# -eq 1 ] || usage lint
         lint "$1" ;;
