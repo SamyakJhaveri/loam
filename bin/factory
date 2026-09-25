@@ -574,7 +574,7 @@ freeze() {
   cp "$ROOT/bin/factory.d/factory-round.js" "$RUN/frozen/factory-round.js"  # the worker runs its frozen copy, so it cannot edit the script (F12)
   cp "$ROOT/bin/factory.d/review-output.schema.json" "$RUN/frozen/review-output.schema.json"  # the Codex review reads the frozen copy, so a mid-run edit of it cannot change the review (#38, F4)
   cp "$ROOT/bin/factory.d/codex-review.prompt.md" "$RUN/frozen/codex-review.prompt.md"  # the Codex review reads the frozen prompt, so a mid-run edit of it cannot change the review (#38, F4)
-  cp "$ROOT/bin/factory.d/unattended.md" "$RUN/frozen/unattended.md"  # the Opus 5.5 guide's "Unattended agentic runs" paragraph, appended to every Claude worker call
+  cp "$ROOT/bin/factory.d/unattended.md" "$RUN/frozen/unattended.md"  # the Opus 5.5 guide's "Unattended agentic runs" paragraph, appended to every Claude worker call (#210)
   cp "$ROOT/bin/factory.d/lib.sh" "$RUN/frozen/lib.sh"
   cp "$ROOT/bin/factory.d/role-settings.json" "$RUN/frozen/role-settings.json"
   cp "$ROOT/bin/factory.d/worker-settings.json" "$RUN/frozen/worker-settings.json"
