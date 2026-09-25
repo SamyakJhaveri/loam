@@ -51,7 +51,7 @@ The run resolves them from the installed plugin cache, falling back to the check
 3. Extract the done-checks block; freeze `bin/factory`, the graders, `lib.sh`, `_common.md`, `role-settings.json`, `worker-settings.json`, the grader schemas, and the body into `frozen/`, owned outside the worker's write scope; the frozen grader prompts keep fixed evidence markers, there is no per-run string (#38).
 4. Round 0: run the block at `base.sha` in a detached temporary worktree, never in the ticket worktree, which a relaunch with an edited body may leave ahead of base; every non-guard check must print FAIL, else exit `ticket-defect`.
    The temporary worktree is added at `base.sha` and removed once the block has run, on both the defect and the clean path, so a relaunch still proves the checks on base rather than at the worker's HEAD.
-5. Worker round k: a fresh `claude -p` (`claude-opus-5-5` xhigh) or a fresh `codex exec` in the worktree with the body, `_common.md`, and from round 2 the failing check lines and every blocking finding verbatim.
+5. Worker round k: a fresh `claude -p` (`claude-opus-5-5` at the ticket's effort, default high) or a fresh `codex exec` in the worktree with the body, `_common.md`, and from round 2 the failing check lines and every blocking finding verbatim.
    The worker writes code and `decisions.md` only.
    Every round is a fresh process for either worker; there is no fixer role.
 6. Before grading, in order: scan `decisions.md` for an `ABANDON` line; re-hash the frozen set (a mismatch exits `stopped-environment`); `git status --porcelain` must be empty, else the round fails with the path list; `git diff --name-only "$(cat base.sha)"...HEAD` against Do not touch emits `FAIL do-not-touch <paths>`; then run the done-checks block from the worktree root.
@@ -118,7 +118,7 @@ The Codex review stage runs `codex exec --json --output-schema frozen/review-out
 ## Worker calls
 
 ```
-claude -p --model claude-opus-5-5 --effort xhigh --advisor claude-opus-5-5 --permission-mode bypassPermissions --strict-mcp-config \
+claude -p --model claude-opus-5-5 --effort high --advisor claude-opus-5-5 --permission-mode bypassPermissions --strict-mcp-config \
   --setting-sources user --settings frozen/worker-settings.json --max-turns "$MAX_TURNS" \
   --append-system-prompt "$(cat frozen/unattended.md)" \
   --max-budget-usd "$ROUND_BUDGET_USD" --output-format stream-json --verbose --include-hook-events < round-<k>.prompt.md
