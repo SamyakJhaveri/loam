@@ -334,10 +334,8 @@ duration_ms:(.duration_ms // 0), num_turns:(.num_turns // 0), denials:0, subtype
 }
 
 # ---- eval-freeze ----
-# Copies the last round of a finished run into <evals-dir>/clean/{judge,reviewer}/<key>-<sha8>/ when
-# that round passed both graders: the clean bases F37 plants defects in, whose clean copies measure
-# false alarms. A run freezes as a pair or not at all, and never over an existing case.
-FREEZE_KEY_RE='sk-(proj-|ant-)?[A-Za-z0-9_-]{20,}|ghp_[A-Za-z0-9]{30,}'
+# Copies a run's last round into <evals-dir>/clean/{judge,reviewer}/<key>-<sha8>/ when both graders passed it; never over an existing case.
+FREEZE_KEY_RE='(^|[^A-Za-z0-9])sk-[A-Za-z0-9_-]{20,}|ghp_[A-Za-z0-9]{30,}'
 
 # A saved grader prompt from its `## Ticket` line on, since run_eval prepends the live rubric. Trailing
 # whitespace goes: a blank diff context line is a lone space, which bin/check's `git diff --check` rejects.
@@ -345,7 +343,7 @@ freeze_prompt() { awk 'f || $0 == "## Ticket" {f = 1; print}' "$1" | sed 's/[[:s
 
 cmd_eval_freeze() { # run-dir...
   local run d k key sha name why g p jv rv tmp rc=0
-  tmp=$(mktemp -d "${TMPDIR:-/tmp}/factory-freeze.XXXXXX")
+  tmp=$(mktemp -d "${TMPDIR:-/tmp}/factory-freeze.XXXXXX") || return 1
   for run in "$@"; do
     [ -d "$run" ] || { echo "eval-freeze: $run is not a directory" >&2; rc=1; continue; }
     d=${run%/}
@@ -366,20 +364,26 @@ cmd_eval_freeze() { # run-dir...
       [ -z "$why" ] || break
       p="$d/round-$k.$g.prompt.md"
       [ -f "$p" ] || { why="no round-$k.$g.prompt.md"; break; }
-      freeze_prompt "$p" > "$tmp/$g"
+      freeze_prompt "$p" > "$tmp/$g" || { why="write failed"; break; }
       if [ ! -s "$tmp/$g" ]; then why="no ## Ticket line in round-$k.$g.prompt.md"
       elif [ "$(wc -c < "$tmp/$g")" -gt 100000 ]; then why="prompt too large"
       elif grep -qE "$FREEZE_KEY_RE" "$tmp/$g"; then why="key-shaped string"
       fi
     done
     [ -z "$why" ] || { echo "not frozen $run: $why"; continue; }
-    for g in judge reviewer; do
-      mkdir -p "$EVALS_DIR/clean/$g/$name"
-      jq -nc --arg source "$key/$sha round-$k" --arg verdict "$([ "$g" = judge ] && echo pass || echo merge)" \
-        '{source: $source, verdict: $verdict}' > "$EVALS_DIR/clean/$g/$name/expected.json"
-    done
-    cp "$tmp/judge" "$EVALS_DIR/clean/judge/$name/prompt.md"
-    cp "$tmp/review" "$EVALS_DIR/clean/reviewer/$name/prompt.md"
+    rm -rf "$tmp/case"
+    if ! { mkdir -p "$tmp/case/judge" "$tmp/case/reviewer" \
+      && jq -nc --arg source "$key/$sha round-$k" '{source: $source, verdict: "pass"}' > "$tmp/case/judge/expected.json" \
+      && jq -nc --arg source "$key/$sha round-$k" '{source: $source, verdict: "merge"}' > "$tmp/case/reviewer/expected.json" \
+      && mv "$tmp/judge" "$tmp/case/judge/prompt.md" \
+      && mv "$tmp/review" "$tmp/case/reviewer/prompt.md" \
+      && mkdir -p "$EVALS_DIR/clean/judge" "$EVALS_DIR/clean/reviewer" \
+      && mv "$tmp/case/judge" "$EVALS_DIR/clean/judge/$name" \
+      && mv "$tmp/case/reviewer" "$EVALS_DIR/clean/reviewer/$name"; }; then
+      rm -rf "$EVALS_DIR/clean/judge/$name" "$EVALS_DIR/clean/reviewer/$name"
+      echo "not frozen $run: write failed"
+      continue
+    fi
     echo "frozen $run: $name round-$k"
   done
   rm -rf "$tmp"
@@ -439,7 +443,7 @@ WORKER_MODEL="${FACTORY_WORKER_MODEL:-claude-opus-5-5}"   # ARCHITECTURE.md, Mod
 GRADER_MODEL="${FACTORY_GRADER_MODEL:-claude-opus-5-5}"   # ARCHITECTURE.md, Models and roles (2026-09-24)
 CODEX_MODEL="${FACTORY_CODEX_MODEL:-codex}"   # ledger label for a `worker: codex` round; Codex holds the real model in its own config, and its dollar cost is null (F4)
 WORKER_ADVISOR="${FACTORY_WORKER_ADVISOR-claude-opus-5-5}"   # mid-round advisor on the worker call (ARCHITECTURE.md, Models and roles, 2026-09-24); FACTORY_WORKER_ADVISOR= (explicit empty) disables the flag. No colon: :- could never disable. The bare name is never read.
-WORKER_EFFORT=xhigh        # the ticket's `effort:` line overrides
+WORKER_EFFORT=high         # the ticket's `effort:` line overrides (ARCHITECTURE.md, Models and roles)
 GRADER_EFFORT=high
 GRADER_FAIL_ROUNDS=2      # grader-fail rounds allowed once the checks pass (LOOP.md, Grader-round cap)
 FENCE='~~~~~~~~~~~~ evidence'   # fixed marker; never a per-run string (#38)
@@ -1328,7 +1332,7 @@ cmd_run() {
   apply_caps
   local effort
   effort=$(section Worker | sed -n 's/^effort: *//p' | head -1)
-  WORKER_EFFORT="${effort:-$WORKER_EFFORT}"   # the top-level default when the ticket names none
+  WORKER_EFFORT="${effort:-$WORKER_EFFORT}"
   WORKER_SIZE=$(section Worker | sed -n 's/^size: *//p' | head -1)   # small|large; large routes round 1 to the workflow (F12)
   [ -n "$WORKER_SIZE" ] || WORKER_SIZE=small
   WORKER_KIND=$(section Worker | sed -n 's/^worker: *//p' | head -1)   # claude|codex; codex routes the worker call to Codex (F4)
