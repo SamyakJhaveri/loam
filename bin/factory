@@ -1334,7 +1334,7 @@ cmd_run() {
   apply_caps
   local effort
   effort=$(section Worker | sed -n 's/^effort: *//p' | head -1)
-  WORKER_EFFORT="${effort:-$WORKER_EFFORT}"   # the top-level default when the ticket names none
+  WORKER_EFFORT="${effort:-$WORKER_EFFORT}"
   WORKER_SIZE=$(section Worker | sed -n 's/^size: *//p' | head -1)   # small|large; large routes round 1 to the workflow (F12)
   [ -n "$WORKER_SIZE" ] || WORKER_SIZE=small
   WORKER_KIND=$(section Worker | sed -n 's/^worker: *//p' | head -1)   # claude|codex; codex routes the worker call to Codex (F4)

@@ -88,7 +88,6 @@ out=$(FACTORY_SOURCED=1 bash -c '. bin/factory; verdict_consistent bin/factory.d
 [ "$r" -eq 0 ] || bad "verdict_consistent refuted the consistent grader fixture (exit $r): $out"
 
 step "factory grader model and effort"
-# judge.md and reviewer.md must name the GRADER_MODEL and GRADER_EFFORT defaults bin/factory holds.
 bin/factory graders-check || bad "bin/factory graders-check"
 
 step "factory package qualification and independent rebuild"
