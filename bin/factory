@@ -613,7 +613,7 @@ ticket_spent() { jq -s '[.[].cost_usd // 0] | add // 0' "$LEDGER"; }
 daily_spent()  { jq -s --arg d "$(today)" '[.[] | select(.date == $d) | .cost_usd // 0] | add // 0' "$DAILY"; }
 
 # Advisor usd for a worker round's result.json, or null with no transcript. Splits each advisor model's
-# modelUsage cost by its transcript advisor_message tokens (weights 1/5/0.1/2): exact for a distinct model, an estimate when shared.
+# modelUsage cost by its transcript advisor_message tokens (weights 1/5/0.05/2): exact for a distinct model, an estimate when shared.
 advisor_usd() {
   local sid tr
   sid=$(jq -r "$RESULT_OBJ | .session_id // empty" "$1" 2> /dev/null)
@@ -621,7 +621,7 @@ advisor_usd() {
   [ -n "${tr:-}" ] || { echo null; return 0; }
   jq -r --slurpfile t "$tr" "$RESULT_OBJ"' | (.modelUsage // {}) as $mu
     | def w: (.inputTokens // .input_tokens // 0) + 5 * (.outputTokens // .output_tokens // 0)
-        + 0.1 * (.cacheReadInputTokens // .cache_read_input_tokens // 0)
+        + 0.05 * (.cacheReadInputTokens // .cache_read_input_tokens // 0)
         + 2 * (.cacheCreationInputTokens // .cache_creation_input_tokens // 0);
     [$t[] | select(.type == "assistant" and .message.id != null)] | unique_by(.message.id)
     | [.[].message.usage.iterations[]? | select(.type == "advisor_message")] | group_by(.model)
