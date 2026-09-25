@@ -107,12 +107,12 @@ No experiment used Opus 4.8, Fable 5.1, or GPT-5.6.
 | MEM-03 #162 | 3 | self-written note in the two-note format; corrections signature log | revised 2026-09-21, human-gated |
 | MEM-04 #164 | 3, 5 | scrub, gzip and retention, symlink, inspect CLI, four-status manifest | merged 2026-09-21 (PR #172); three review residuals in MEM-04b |
 | MEM-05 #165 | 3 | bare remote on jhaveris, commit on capture, pull at start, claim-once handoff | merged 2026-09-22 (PR #176); two-machine proof done |
-| MEM-05b #179 | 3 | INDEX.md union merge, reports local, rename detection off on the pull (two-machine race from the PR #176 review and the two-store proof) | filed 2026-09-22, blocked by #173 |
-| MEM-04b #173 | 3 | memsearch per-repo scope, mem-inspect single-trace resolution, dashed OpenAI key formats (PR #172 review residuals) | filed 2026-09-21, blocked by #165 |
-| MEM-06 #174 | 1 | AGENTS.md names memsearch, mem-inspect, and the four labels | filed 2026-09-21, blocked by #173 |
-| MEM-07 #175 | 1, 3 | autoMemoryDirectory into the store, cleanupPeriodDays 365 (the 2026-09-03 design's settings keys) | filed 2026-09-21, blocked by #173 |
-| NAV-00 #166 | 2 | arm from FACTORY_NAV_ARM or popped from the runs-root order file nav-order, arm-C prompt file, nav_arm ledger field, nav01-metrics.py in the factory | filed 2026-09-21, reviewed and rescoped 2026-09-21 (order file added so the timer launches labeled runs), blocked by #165 |
-| NAV-01 | 2 | pre-registered trial: Semble CLI first, language-server plugin only if five .py or .ts tickets exist (no bash plugin in the official marketplace); five tickets each against five interleaved without | protocol frozen in docs/plans, Risks section added 2026-09-21; execution decided (ADR 0002, local): runs after NAV-00 merges and a stage-2 session files a 20-ticket pool |
+| MEM-05b #179 | 3 | INDEX.md union merge, reports local, rename detection off on the pull (two-machine race from the PR #176 review and the two-store proof) | merged 2026-09-22 (PR #189); live two-machine race proof still owed, see #221 |
+| MEM-04b #173 | 3 | memsearch per-repo scope, mem-inspect single-trace resolution, dashed OpenAI key formats (PR #172 review residuals) | merged 2026-09-22 (PR #187); render proof owed, see #221 |
+| MEM-06 #174 | 1 | AGENTS.md names memsearch, mem-inspect, and the four labels | merged 2026-09-22 (PR #188); render proof owed, see #221 |
+| MEM-07 #175 | 1, 3 | cleanupPeriodDays 365; the fixed autoMemoryDirectory path was undone by #197 | merged (PR #193, amended by PR #199); render proof owed, see #221 |
+| NAV-00 #166 | 2 | arm from FACTORY_NAV_ARM or popped from the runs-root order file nav-order, arm-C prompt file, nav_arm ledger field, nav01-metrics.py in the factory | merged 2026-09-22 (PR #181); metrics script proven on ten real runs |
+| NAV-01 | 2 | pre-registered trial: Semble CLI first, language-server plugin only if five .py or .ts tickets exist (no bash plugin in the official marketplace); five tickets each against five interleaved without | pool tickets filed by the pool session 2026-09-22 (#182 onward, most merged); trial not started, no nav-order on the runner; paused 2026-09-24 with the Loam work, resume per docs/adr/0002 |
 | NAV-02 | 2 | follow-on trial: a Loam-owned stdlib `bin/nav` (where, outline, grep, refs) as arm D | protocol frozen in docs/plans 2026-09-21; launches only if both NAV-01 arms are not adopted |
 | REC-01 | 4 | basic-memory pilot on DistBench, four weeks | installed and seeded 2026-09-21; week-4 cases fixed 2026-09-21 in docs/research/rec-01-results.md; hooks registered by Samyak |
 
@@ -126,3 +126,5 @@ Cut from the plan: a hand-written `docs/MAP.md` (NAV-01's winning arm replaces i
   The 8-turn result must be shown on Loam's own tickets.
 - basic-memory's latest release number was not readable from a shallow clone.
 - No tool was run except aider's map on a copy of the seed.
+
+Paused 2026-09-24: Loam work stopped for the parbench project. The open follow-ups are #221 (merge proofs and the first release since v3.0.0), #162 (MEM-03, human-gated), and the NAV-01 launch. Copier resolves tags, so a project bootstrapped from `gh:samyakjhaveri/loam` gets v3.0.0 without memory v2 until that release is cut; a local render with `--vcs-ref HEAD` carries main.
