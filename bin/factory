@@ -334,9 +334,7 @@ duration_ms:(.duration_ms // 0), num_turns:(.num_turns // 0), denials:0, subtype
 }
 
 # ---- eval-freeze ----
-# Copies the last round of a finished run into <evals-dir>/clean/{judge,reviewer}/<key>-<sha8>/ when
-# that round passed both graders: the clean bases F37 plants defects in, whose clean copies measure
-# false alarms. A run freezes as a pair or not at all, and never over an existing case.
+# Copies a run's last round into <evals-dir>/clean/{judge,reviewer}/<key>-<sha8>/ when both graders passed it; never over an existing case.
 FREEZE_KEY_RE='(^|[^A-Za-z0-9])sk-[A-Za-z0-9_-]{20,}|ghp_[A-Za-z0-9]{30,}'
 
 # A saved grader prompt from its `## Ticket` line on, since run_eval prepends the live rubric. Trailing
@@ -373,13 +371,21 @@ cmd_eval_freeze() { # run-dir...
       fi
     done
     [ -z "$why" ] || { echo "not frozen $run: $why"; continue; }
+    rm -rf "$tmp/case"
+    mkdir -p "$tmp/case/judge" "$tmp/case/reviewer"
     for g in judge reviewer; do
-      mkdir -p "$EVALS_DIR/clean/$g/$name"
       jq -nc --arg source "$key/$sha round-$k" --arg verdict "$([ "$g" = judge ] && echo pass || echo merge)" \
-        '{source: $source, verdict: $verdict}' > "$EVALS_DIR/clean/$g/$name/expected.json"
+        '{source: $source, verdict: $verdict}' > "$tmp/case/$g/expected.json"
     done
-    cp "$tmp/judge" "$EVALS_DIR/clean/judge/$name/prompt.md"
-    cp "$tmp/review" "$EVALS_DIR/clean/reviewer/$name/prompt.md"
+    mv "$tmp/judge" "$tmp/case/judge/prompt.md"
+    mv "$tmp/review" "$tmp/case/reviewer/prompt.md"
+    if ! { mkdir -p "$EVALS_DIR/clean/judge" "$EVALS_DIR/clean/reviewer" \
+      && mv "$tmp/case/judge" "$EVALS_DIR/clean/judge/$name" \
+      && mv "$tmp/case/reviewer" "$EVALS_DIR/clean/reviewer/$name"; }; then
+      rm -rf "$EVALS_DIR/clean/judge/$name" "$EVALS_DIR/clean/reviewer/$name"
+      echo "not frozen $run: write failed"
+      continue
+    fi
     echo "frozen $run: $name round-$k"
   done
   rm -rf "$tmp"
