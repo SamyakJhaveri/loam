@@ -1,0 +1,4 @@
+# Fixture config for run_selftest.sh (PAPER_TOOLS_CONFIG): the small-caps name that
+# validate_findings.py joins back after pdftotext splits it ("E XAMPLE S YS").
+[paper]
+smallcaps_names = ["ExampleSys"]

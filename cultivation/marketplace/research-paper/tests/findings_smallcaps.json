@@ -1,0 +1,19 @@
+[
+  {
+    "id": "f3443d8005aabfc436b5e2a1da0ee6ce4d88e06c",
+    "file": "paper_fixture.txt",
+    "line": 4,
+    "locus": "Abstract",
+    "lens": "domain",
+    "severity": "minor",
+    "rule": "Methodology",
+    "claim": "Self-test finding F: ExampleSys in a quote matches E XAMPLE S YS as pdftotext extracts it.",
+    "evidence": "\"We present ExampleSys, a trace-driven tuner\" (line 4)",
+    "failing_case": "Self-test fixture; no failing case.",
+    "suggested_fix": "None; self-test fixture.",
+    "mechanical": false,
+    "confidence": "high",
+    "not_established": "This fixture shows only that a name in paper.smallcaps_names still matches after pdftotext splits its small caps.",
+    "about_placeholder": false
+  }
+]

@@ -1,0 +1,19 @@
+[
+  {
+    "id": "0bd26713c2cf9af25d88ffaaee8e8264cb731edd",
+    "file": "paper_fixture.txt",
+    "line": 9,
+    "locus": "Abstract, replay harness",
+    "lens": "critic",
+    "severity": "minor",
+    "rule": "Methodology",
+    "claim": "Self-test finding H: a finding from a critic seat, with lens critic and a real quote.",
+    "evidence": "\"compares every candidate policy with\" (line 9)",
+    "failing_case": "Self-test fixture; no failing case.",
+    "suggested_fix": "None; self-test fixture.",
+    "mechanical": false,
+    "confidence": "high",
+    "not_established": "This fixture shows only that the critic lens passes the schema and the quote gate.",
+    "about_placeholder": false
+  }
+]

@@ -1,0 +1,19 @@
+[
+  {
+    "id": "bfcb40fb154eb0b835f8425bf7a0e6fa429bb809",
+    "file": "paper_fixture.txt",
+    "line": 1,
+    "locus": "Abstract",
+    "lens": "methods",
+    "severity": "minor",
+    "rule": "Methodology",
+    "claim": "Self-test finding G: a real quote at the wrong line must fail the gate.",
+    "evidence": "\"because the sample is replayed offline\" (line 1)",
+    "failing_case": "Self-test fixture; no failing case.",
+    "suggested_fix": "None; self-test fixture.",
+    "mechanical": false,
+    "confidence": "high",
+    "not_established": "This fixture shows only that a line more than 3 lines off fails the gate.",
+    "about_placeholder": false
+  }
+]

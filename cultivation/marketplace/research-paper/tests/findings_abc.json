@@ -1,0 +1,53 @@
+[
+  {
+    "id": "a883e11854f031be5a634fac58c7920a31f077a9",
+    "file": "paper_fixture.txt",
+    "line": 8,
+    "locus": "Abstract",
+    "lens": "methods",
+    "severity": "minor",
+    "rule": "Methodology",
+    "claim": "Self-test finding A: its quote is a real span of the file.",
+    "evidence": "\"because the sample is replayed offline\" (line 8)",
+    "failing_case": "Self-test fixture; no failing case.",
+    "suggested_fix": "None; self-test fixture.",
+    "mechanical": false,
+    "confidence": "high",
+    "not_established": "This fixture shows only that a real quote passes the gate.",
+    "about_placeholder": false
+  },
+  {
+    "id": "69218c8fdf76a96c2bb3e10eabbb457df1080974",
+    "file": "paper_fixture.txt",
+    "line": 9,
+    "locus": "Section III, Design",
+    "lens": "domain",
+    "severity": "major",
+    "rule": "Methodology",
+    "claim": "Self-test finding B: its quote is invented and must fail the gate.",
+    "evidence": "\"the tuner is provably optimal on every workload\" (line 9)",
+    "failing_case": "Self-test fixture; no failing case.",
+    "suggested_fix": "None; self-test fixture.",
+    "mechanical": false,
+    "confidence": "high",
+    "not_established": "This fixture shows only that an invented quote fails the gate.",
+    "about_placeholder": false
+  },
+  {
+    "id": "29d4631e27e2a222aec3b02d34ff593a19e16d55",
+    "file": "paper_fixture.txt",
+    "line": 11,
+    "locus": "Section IV, Evaluation",
+    "lens": "generalist",
+    "severity": "minor",
+    "rule": "Methodology",
+    "claim": "Self-test finding C: it has no quote and a normal locus, so --require-quotes must fail it.",
+    "evidence": "The section reports latency without a per-trace breakdown (paraphrase, no quotation).",
+    "failing_case": "Self-test fixture; no failing case.",
+    "suggested_fix": "None; self-test fixture.",
+    "mechanical": false,
+    "confidence": "high",
+    "not_established": "This fixture shows only that an unquoted finding fails under --require-quotes.",
+    "about_placeholder": false
+  }
+]

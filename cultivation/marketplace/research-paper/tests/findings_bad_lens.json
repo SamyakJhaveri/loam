@@ -1,0 +1,19 @@
+[
+  {
+    "id": "6a3abbab851586f06989b9d7f41eae767a194578",
+    "file": "paper_fixture.txt",
+    "line": 8,
+    "locus": "Abstract, offline replay",
+    "lens": "not-a-lens",
+    "severity": "minor",
+    "rule": "Soundness",
+    "claim": "Self-test finding I: valid in every field except its lens, which is not in the enum.",
+    "evidence": "\"because the sample is replayed offline\" (line 8)",
+    "failing_case": "Self-test fixture; no failing case.",
+    "suggested_fix": "None; self-test fixture.",
+    "mechanical": false,
+    "confidence": "high",
+    "not_established": "This fixture shows only that a lens outside the enum is rejected.",
+    "about_placeholder": false
+  }
+]

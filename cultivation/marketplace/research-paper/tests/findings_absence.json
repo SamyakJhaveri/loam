@@ -1,0 +1,19 @@
+[
+  {
+    "id": "9f435fbd53a75ba904d2409f2b9f115caf555308",
+    "file": "paper_fixture.txt",
+    "line": 1,
+    "locus": "absence: per-trace latency breakdown",
+    "lens": "generalist",
+    "severity": "minor",
+    "rule": "Methodology",
+    "claim": "Self-test finding D: an absence finding with no quote passes --require-quotes.",
+    "evidence": "Searched lines 1 to 12 of the fixture; no per-trace latency breakdown appears.",
+    "failing_case": "Self-test fixture; no failing case.",
+    "suggested_fix": "None; self-test fixture.",
+    "mechanical": false,
+    "confidence": "high",
+    "not_established": "This fixture shows only that an absence: locus exempts a finding from --require-quotes.",
+    "about_placeholder": false
+  }
+]

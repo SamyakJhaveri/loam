@@ -1,0 +1,58 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Research paper review finding",
+  "description": "One finding from a review seat of the research-paper plugin. Reports are ARRAYS of these objects. Adapted from claude-code-my-workflow .claude/references/finding-schema.json (MIT, Pedro H. C. Sant'Anna, commit ae72617). Validate with validate_findings.py.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "id",
+    "file",
+    "line",
+    "locus",
+    "lens",
+    "severity",
+    "rule",
+    "claim",
+    "evidence",
+    "failing_case",
+    "suggested_fix",
+    "mechanical",
+    "confidence",
+    "not_established",
+    "about_placeholder"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{40}$",
+      "description": "sha1('file:line:locus'), filled by validate_findings.py --fill-ids; lens is not part of it, so two seats finding the same defect at the same place get the same id."
+    },
+    "file": {"type": "string", "description": "the reviewed text, relative to --root"},
+    "line": {"type": "integer", "minimum": 1},
+    "locus": {"type": "string", "description": "section, table, figure, gate or channel; 'absence:<where>' for a missing item"},
+    "lens": {
+      "enum": ["methods", "domain", "generalist", "devils-advocate", "consistency", "forensic", "reader-first", "citation", "critic", "adjudicator"]
+    },
+    "severity": {"enum": ["blocker", "major", "minor", "nit"]},
+    "rule": {"type": "string", "description": "CFP criterion or aspect, or the named rule or norm; '[FIELD-NORM UNVERIFIED]' prefix when the norm has no checkable source"},
+    "claim": {"type": "string"},
+    "evidence": {"type": "string", "description": "exact quoted spans of 12+ characters with line numbers; for absence: the sections searched"},
+    "failing_case": {"type": "string"},
+    "suggested_fix": {"type": "string"},
+    "mechanical": {"type": "boolean"},
+    "confidence": {"enum": ["high", "medium", "low"]},
+    "not_established": {"type": "string", "description": "one sentence naming what this finding does not show"},
+    "about_placeholder": {"type": "boolean"},
+    "audit_status": {
+      "enum": ["confirmed_internal_error", "aggregation_ambiguity", "provenance_gap", "suspected_duplication", "unresolved_input_needed"],
+      "description": "forensic audit findings only (from nature-skills forensic-consistency-audit.md)"
+    },
+    "verdict": {
+      "enum": ["confirmed", "refuted", "downgraded", "held"],
+      "description": "set by the adjudicator; held = an owner decision, recorded and not acted on"
+    },
+    "adjudication": {"type": "string", "description": "set by the adjudicator: the source text or check behind the verdict"},
+    "tier": {"enum": ["must-fix", "should-fix", "optional"], "description": "set by the adjudicator for confirmed and downgraded findings"},
+    "merged_ids": {"type": "array", "items": {"type": "string"}, "description": "set by the adjudicator: ids of duplicates merged into this finding"}
+  }
+}

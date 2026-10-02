@@ -1,0 +1,12 @@
+Key-value stores serve most reads from memory, and the choice
+of eviction policy decides how often a request must go to disk.
+Operators tune that choice by hand, one deployment at a time.
+We present E XAMPLE S YS, a trace-driven tuner that picks an
+eviction policy for each workload from a short sample of its
+requests. On the synthetic traces we use, the tuner’s choice
+lowers the median read latency in most runs we measured, and
+because the sample is replayed offline it never touches the
+live store. E XAMPLE S YS compares every candidate policy with
+a fixed replay harness, and we report each comparison with
+the number of runs behind it. The tuner, the traces and the
+scripts that produce every figure are released with the paper.

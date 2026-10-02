@@ -1,0 +1,19 @@
+[
+  {
+    "id": "07424a4d630fc7eff67da1cee378881f90849a40",
+    "file": "paper_fixture.tex",
+    "line": 4,
+    "locus": "Section I, Introduction",
+    "lens": "methods",
+    "severity": "major",
+    "rule": "Methodology",
+    "claim": "Self-test finding E: its quote exists only in a % comment and must fail the gate.",
+    "evidence": "\"the tuner always picks the policy with the lowest\" (line 4)",
+    "failing_case": "Self-test fixture; no failing case.",
+    "suggested_fix": "None; self-test fixture.",
+    "mechanical": false,
+    "confidence": "high",
+    "not_established": "This fixture shows only that text inside a .tex comment is not the paper's text.",
+    "about_placeholder": false
+  }
+]

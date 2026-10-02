@@ -1,0 +1,19 @@
+[
+  {
+    "id": "a883e11854f031be5a634fac58c7920a31f077a9",
+    "file": "paper_fixture.txt",
+    "line": 8,
+    "locus": "Abstract",
+    "lens": "methods",
+    "severity": "minor",
+    "rule": "Methodology",
+    "claim": "Self-test finding A: its quote is a real span of the file.",
+    "evidence": "\"because the sample is replayed offline\" (line 8)",
+    "failing_case": "Self-test fixture; no failing case.",
+    "suggested_fix": "None; self-test fixture.",
+    "mechanical": false,
+    "confidence": "high",
+    "not_established": "This fixture shows only that a real quote passes the gate.",
+    "about_placeholder": false
+  }
+]
