@@ -1,0 +1,15 @@
+A Neutral Title for the Anonymity Fixture
+Anonymous Author(s)
+Anonymous Institution(s)
+
+Abstract-We present E XAMPLE S YS, a fixture for the scanner.
+I. I NTRODUCTION
+Earlier measurements by Quillon et al. [1] set the baseline, and Stroud
+et al. [2] extended them. Each target also goes through the same gate.
+ExampleSys keeps every host name out of the text.
+II. M ETHOD
+The method section names no machine.
+R EFERENCES
+[1] A. Quillon and B. Stroud, "Earlier measurements," in Proc. CoT, 2025.
+[2] B. Stroud, "Later measurements," 2026.
+

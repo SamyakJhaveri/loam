@@ -1,0 +1,8 @@
+% Fixture for check_tikz_prevention.py: a % after a \\ line break starts a comment.
+% The comment on line 5 holds a bare edge label; the checker must ignore it.
+\begin{tikzpicture}
+\node (b) at (3,0) {check};
+\node[align=left] (a) at (0,0) {load\\% old: \draw (a) -- (b) node {dead};
+  rows};
+\draw[->] (a) -- (b) node[midway, above] {50\% done};
+\end{tikzpicture}

@@ -1,0 +1,8 @@
+# banned_terms.txt - regexes section_gate refuses outside % comments.
+# Copy to paper/tools/banned_terms.txt (terms.banned in paper-tools.toml).
+#
+# Format: one Python regex per line, then "#" and the reason; a line that starts with "#" is a
+# comment. A regex cannot hold "#": everything after it is the reason.
+# Add the project's own rulings below these, one per line, each with its reason.
+---                   # LaTeX em dash
+\u2014                # em dash character (U+2014), written as a regex escape

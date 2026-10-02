@@ -1,0 +1,2 @@
+# Fixture baseline whose one row has no reason (no tab): the scan stops with exit 2.
+title: ExampleSys: A Fixture Title for Anonymity Scanning

@@ -1,0 +1,28 @@
+\section{TPU Results}\label{sec:RDMA}
+A graphics processing unit (GPU) runs each kernel of \examplesys{}. % XYZ is a comment
+In 80\% of runs, the message passing interface (MPI) carries the data.
+Each MPI rank reads its input (Section~\ref{sec:RDMA}; see \cite{HBM, NVLink}).
+The error is $\mathrm{RMSE} < 10^{-3}$, \(\mathrm{MAE}\) stays small, and
+\[ \mathrm{SNR} = 1 \]
+\begin{equation}
+  \mathrm{PSNR} = 2
+\end{equation}
+The tool sets \texttt{LD\_PRELOAD} and prints \verb|FPGA| once.\\% the ASIC note
+\begin{verbatim}
+CPU_COUNT=4 VHDL
+\end{verbatim}
+\begin{lstlisting}
+#pragma omp target DSP
+\end{lstlisting}
+\begin{figure}[t]
+\centering
+\includegraphics[width=\linewidth]{figs/NPU.pdf}
+\caption{The SRAM layout.}
+\label{fig:DRAM}
+\end{figure}
+\begin{table}[t]
+\begin{tabular}{lr}
+LUT & 1 \\
+\end{tabular}
+\end{table}
+Both GPU and MPI appear again here.

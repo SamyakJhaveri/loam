@@ -1,0 +1,20 @@
+cff-version: 1.2.0
+message: "Fixture for anonymity_scan.py; the people and places are invented."
+title: "ExampleSys"
+repository-code: "https://github.com/Example-Lab/ExampleSys"
+authors:
+  - given-names: "Ada"
+    family-names: "Quillon"
+    affiliation: "Northfield University, Example Institute"
+  - given-names: "Bartholomew"
+    family-names: "Stroud"
+    affiliation: "Acme Research Lab"
+preferred-citation:
+  type: conference-paper
+  title: "ExampleSys: A Fixture Title for Anonymity Scanning"
+  conference:
+    name: "Conference on Testing"
+  authors:
+    - given-names: "Ada"
+      family-names: "Quillon"
+      affiliation: "Northfield University, Example Institute"

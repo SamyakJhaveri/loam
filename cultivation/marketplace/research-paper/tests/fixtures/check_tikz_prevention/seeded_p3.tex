@@ -1,0 +1,14 @@
+% Fixture for check_tikz_prevention.py (tests/test_check_tikz_prevention.py).
+% Dead prior revision, commented out as in a figure under revision; the checker must ignore it:
+% \begin{tikzpicture}[scale=0.8]
+% \draw[->] (a) -- (b) node[midway] {dead label};
+\begin{tikzpicture}[
+  x=1cm, y=1cm, scale=0.9,
+  box/.style={draw, align=center, inner sep=2pt}
+]
+\node[box, text width=2cm] (a) at (0,0) {load};
+\node[box, text width=2cm] (b) at (3,0) {check};
+\draw[->] (a) -- (b)
+  node[midway, above] {rows};
+\draw[->] (b) -- (3,-1.5) node[pos=0.5, right, align=left] {result};
+\end{tikzpicture}

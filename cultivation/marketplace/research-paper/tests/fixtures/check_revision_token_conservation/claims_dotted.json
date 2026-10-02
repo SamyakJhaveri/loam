@@ -1,0 +1,9 @@
+{
+  "note": "Fixture claims file whose member names hold dots, as model names do (vendor-model-1.5), for the claims: rows of tests/test_check_revision_token_conservation.py. The decoys vendor-model-1 -> 5 and a -> b -> c hold other values, so only a walk by the longest dotted member name reads 2.5.",
+  "models": {
+    "vendor-model-1.5": {"score_pct": 2.5, "runs": [{"value": "2.5%"}]},
+    "vendor-model-1": {"5": {"score_pct": 9.9}}
+  },
+  "a.b": {"c": 2.5},
+  "a": {"b": {"c": 1.0}}
+}

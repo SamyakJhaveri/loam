@@ -1,0 +1,10 @@
+# Fixture terms for anonymity_scan.py (invented names and places).
+lab: Quillon Systems Lab
+org: Example-Lab
+url: github.com/Example-Lab/ExampleSys
+host: testbox07
+path: /home/ada
+title: ExampleSys: A Fixture Title for Anonymity Scanning
+arxiv: 9999.00001
+phrase: as we showed before
+system: ExampleSys

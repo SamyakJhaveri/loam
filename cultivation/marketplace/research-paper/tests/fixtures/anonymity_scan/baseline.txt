@@ -1,0 +1,3 @@
+# Fixture baseline for anonymity_scan.py --baseline: the fixture title is a known hit.
+# The reason holds a "#", which is text, not a comment.
+title: ExampleSys: A Fixture Title for Anonymity Scanning	fixture decision T-1 (#1, title kept until renamed)

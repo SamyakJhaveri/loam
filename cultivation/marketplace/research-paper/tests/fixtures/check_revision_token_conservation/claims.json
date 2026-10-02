@@ -1,0 +1,5 @@
+{
+  "note": "Fixture claims file for the claims: rows of tests/test_check_revision_token_conservation.py.",
+  "audit": {"error_bound_pct": 2.5, "jobs_reviewed": 1200, "catch_pct": 75, "old_catch_pct": 70},
+  "claims": [{"claim_id": "error_bound", "value": "2.5%"}]
+}

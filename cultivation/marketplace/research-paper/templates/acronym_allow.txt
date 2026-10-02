@@ -1,0 +1,18 @@
+# acronym_allow.txt - acronyms check_acronyms accepts without a definition.
+# Copy to paper/tools/acronym_allow.txt (terms.acronym_allow in paper-tools.toml).
+#
+# Format: one acronym per line; "#" starts a comment; blank lines are ignored.
+# List the singular: the checker reads "GPUs" as "GPU".
+# The checker already accepts a short built-in list (DNA, PDF, PhD, URL and a few more).
+# Add a term only when a reader of the venue knows it without a definition, or when it is not an
+# acronym at all (a product name or a label); put the reason after "#".
+# A term a reader may not know gets a definition at first use instead of a line here.
+#
+# A few widely known examples; keep the ones your venue's readers know.
+AI
+API
+CPU
+GPU
+HTTP
+JSON
+SQL

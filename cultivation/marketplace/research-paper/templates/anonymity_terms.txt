@@ -1,0 +1,35 @@
+# anonymity_terms.txt - terms anonymity_scan searches the built paper and its figures for.
+# Copy to paper/tools/anonymity_terms.txt (terms.anonymity in paper-tools.toml).
+#
+# PRIVATE once filled: it names real people, places and machines. Keep the filled file out of
+# any public repository and out of the submission.
+#
+# Format: one "<kind>: <term>" per line; a line that starts with "#" is a comment; blank lines
+# are ignored. Matching ignores case, and a line break may fall between the words of a term.
+# Author names and affiliations come from the citation file (paper.citation_cff); list here only
+# what that file does not hold.
+# Kinds (a hit anywhere, the references included, unless the line says otherwise):
+#   affiliation  a university, institute or company
+#   lab          a lab or group name
+#   org          a code-hosting organisation or account
+#   host         a machine or cluster name
+#   path         a home or project path
+#   url          a URL that leads to the authors, without the scheme
+#   title        the title of a preprint or an earlier version of the paper
+#   arxiv        the preprint id
+#   phrase       a self-revealing phrase
+#   venue        the venue of an earlier submission (a note inside the references)
+#   system       the system name (always a note, never a hit)
+#
+# Every line below is a synthetic example: replace each one.
+affiliation: Example Institute of Technology
+lab: Example Systems Lab
+org: example-lab
+host: examplehost01
+path: /home/aauthor
+url: github.com/example-lab/examplesys
+title: ExampleSys: A Synthetic Title for an Example Paper
+arxiv: 2901.00001
+phrase: as we showed before
+venue: Example Conference 2029
+system: ExampleSys

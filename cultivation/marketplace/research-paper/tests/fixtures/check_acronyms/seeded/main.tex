@@ -1,0 +1,16 @@
+% Fixture for check_acronyms.py. Every acronym in the text is defined before its
+% first use in its scope. Each construct the LaTeX reader skips holds an acronym
+% that would be a finding if it were read.
+\documentclass{article}
+\newcommand{\examplesys}{ExampleSys}
+\newcommand{\pending}[1]{[PENDING #1]}
+\title{A TPU Study}
+\begin{document}
+\maketitle
+\begin{abstract}
+We study graphics processing units (GPUs) with \examplesys{} on \pending{P1} jobs.
+\end{abstract}
+\input{sections/body}
+\bibliographystyle{plain}
+\bibliography{refs}
+\end{document}

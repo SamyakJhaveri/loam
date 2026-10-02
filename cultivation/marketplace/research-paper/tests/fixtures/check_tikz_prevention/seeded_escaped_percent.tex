@@ -1,0 +1,6 @@
+% Fixture for check_tikz_prevention.py: an escaped \% is text, not a comment.
+% Line 5 has a bare edge label after the \%; the checker must report it (P4).
+\begin{tikzpicture}
+\node (a) at (0,0) {load};
+\draw[->] (a) -- (3,0) node[midway, above] {50\% done} -- (6,0) node {bare};
+\end{tikzpicture}
