@@ -16,6 +16,18 @@ focused checks and return bounded reports; only the validation owner runs
 `bin/check` on a given source snapshot. Reviewers inspect one fixed diff and do
 not rerun an unchanged suite unless they name a concrete unresolved risk.
 
+- Measured on Claude Code 2.1.287, 2026-10: a subagent's final report reaches
+  the lead cut near 4,000 characters, and near 16,000 in total for reports that
+  arrive together.
+  So a worker writes its full report to a file and returns only the path; when
+  the Write tool refuses a subagent's report file, a Bash heredoc writes it.
+- Measured on Claude Code 2.1.287, 2026-10: an agent started inside a Workflow
+  script is not listed by ListAgents and cannot be messaged afterwards.
+  To repair its output, start a fresh agent of the same type and give it that
+  output.
+- Measured on Claude Code 2.1.287, 2026-10: a custom subagent gets its own file
+  as its system prompt, not the main one, so that file states its own stop rule.
+
 ## HANDOFF.md
 
 Before stopping mid-task, write `HANDOFF.md` at the repo root with these seven

@@ -252,3 +252,20 @@ tokenizer result.
 - Under the sandbox, git writes its credential lock outside the workspace, so
   `git ls-remote origin` prints `fatal: unable to get credential storage lock in
   1000 ms: Read-only file system` on stderr and still exits 0. The line is noise.
+
+## Tool facts
+
+- Measured on Claude Code 2.1.287, 2026-10: a `sandbox.excludedCommands` entry
+  matches only a bare command.
+  A pipe, redirect, `;`, `&&`, or `$(` anywhere in the line, even inside a
+  quoted argument, runs the whole line in the sandbox, where the excluded
+  program meets the sandbox's network and file limits and can fail.
+- Measured on Claude Code 2.1.287, 2026-10: `HANDOFF.md` is git-ignored, so a
+  worktree, a fresh clone, or another machine never sees it.
+  A memory note that must outlive the session points at committed files, not at
+  `HANDOFF.md`.
+- Measured on Claude Code 2.1.287, 2026-10: Codex started from a Claude Code
+  Bash call (`codex exec`, or the Codex plugin's `codex-companion.mjs`) fails
+  inside the sandbox.
+  It runs only as a bare command matched by a `sandbox.excludedCommands` entry,
+  such as `node */codex-companion.mjs *` in `.claude/settings.local.json`.
