@@ -1,0 +1,21 @@
+\section{Discussion}
+\label{sec:discussion}
+
+\examplesys{} serves more requests from the cache than a recency-only cache on the synthetic trace (Table~\ref{tab:hits}).
+The gain comes from requests that repeat in pairs.
+
+\begin{table}[t]
+\caption{Cache hit rate on the synthetic trace.}
+\label{tab:hits}
+\centering
+\begin{tabular}{lr}
+Cache & Hit rate \\
+Recency only & 48.0\% \\
+\examplesys{} & 61.5\% \\
+\end{tabular}
+\end{table}
+
+\textbf{Limitations.} The trace is synthetic, so the gain on real traffic is not measured.
+A trace of real traffic would settle it.
+
+Prediction from recent pairs is a cheap way to cut misses when request patterns shift.

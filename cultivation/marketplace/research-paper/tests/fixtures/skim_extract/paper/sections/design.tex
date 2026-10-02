@@ -1,0 +1,16 @@
+\section{Design}
+\label{sec:design}
+
+\examplesys{} has two parts, a predictor and a fetcher (Figure~\ref{fig:arch}).
+The predictor reads the request log; the fetcher acts on its ranking.
+
+\begin{figure}[t]
+\centering
+\input{figures/arch.tex}
+\caption{\examplesys{} sits between the client and the cache.}
+\label{fig:arch}
+\end{figure}
+
+\subsection{Predictor}
+\textbf{Ranking.} The predictor counts how often two requests follow each other within ten steps.
+It ranks the candidates by that count.

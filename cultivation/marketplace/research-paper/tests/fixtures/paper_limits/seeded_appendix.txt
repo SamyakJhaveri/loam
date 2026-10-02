@@ -1,0 +1,36 @@
+A Test Paper Title for the Limits Fixture
+Anonymous Author(s)
+Anonymous Institution(s)
+
+Abstract-This abstract stands in for the text that pdftotext
+prints between the abstract heading and the index terms. We present
+E XAMPLE S YS, a fixture whose small caps split one word into four
+tokens, and a placeholder [PENDING P3] that prints as two.
+Index Terms-fixture, word count
+I. I NTRODUCTION
+Body text on page 1.
+Body text on page 2.
+More body text on page 2.
+The reproducibility appendix is due after acceptance.
+Body text on page 3.
+More body text on page 3.
+Body text on page 4.
+More body text on page 4.
+Body text on page 5.
+More body text on page 5.
+Body text on page 6.
+More body text on page 6.
+Body text on page 7.
+More body text on page 7.
+Body text on page 8.
+More body text on page 8.
+Body text on page 9.
+More body text on page 9.
+Body text on page 10 ends here.
+R EFERENCES
+[1] A. Writer, "A cited work," in Proc. Fixture, 2026.
+[2] B. Writer, "Another cited work," 2026.
+A PPENDIX A
+P ROOF DETAILS
+The appendix text goes here.
+

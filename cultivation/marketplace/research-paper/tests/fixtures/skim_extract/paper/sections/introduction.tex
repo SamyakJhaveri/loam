@@ -1,0 +1,16 @@
+\section{Introduction}
+\label{sec:intro}
+
+% A comment the extracts drop.
+Edge caches serve requests close to the user, and a miss costs a round trip to the origin~\cite{Doe2029}.
+When request patterns shift, a cache that keeps only recent items misses often.
+
+\textbf{Approach.} \examplesys{} predicts the next request from the last ten and fetches it early.
+It needs no change to the client.
+
+This paper makes three contributions:
+\begin{itemize}
+\item A predictor that ranks candidate requests by how often they follow each other (Section~\ref{sec:design}).
+\item A fetch policy that bounds the bandwidth spent on wrong guesses.
+\item An evaluation on a synthetic trace (Section~\ref{sec:discussion}).
+\end{itemize}

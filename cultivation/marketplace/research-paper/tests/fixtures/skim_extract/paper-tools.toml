@@ -1,0 +1,6 @@
+# Config of the synthetic skim_extract fixture; every other key keeps its default.
+[paper]
+sections = ["introduction", "design", "discussion"]
+
+[paper.macros]
+'\examplesys{}' = "ExampleSys"

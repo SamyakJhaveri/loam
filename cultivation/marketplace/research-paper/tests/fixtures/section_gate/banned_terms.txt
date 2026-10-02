@@ -1,0 +1,4 @@
+# Regexes section_gate.py refuses outside % comments; one per line, the reason after "#".
+# Synthetic rulings for the test: the paper names each rule instead of its internal label.
+\bR[1-4]\b            # internal rule labels; the paper says "the timing rule", "the size rule"
+---                   # LaTeX em dash
