@@ -24,7 +24,7 @@ The full loop, the reader briefs per section type and the skim-reader test are i
    Change what the reader could not restate and apply the moves.
    Keep every fact, number, citation and caveat of the previous version, and check any number you add against its source file.
    Done when each control finding is fixed or listed as the owner's decision.
-4. **Gate.** Run the project's mechanical checks in one command (`paper-tool section_gate <file>`, or `python3 ${CLAUDE_PLUGIN_ROOT}/scripts/section_gate.py <file>`): no number, citation or cross-reference lost against the base commit, no banned term, style lint, a clean build, page limit, page slack.
+4. **Gate.** Run the project's mechanical checks in one command (`paper-tool section_gate <file>`): no number, citation or cross-reference lost against the base commit, no banned term, style lint, a clean build, page limit, page slack.
    Done at exit 0, with the `slack` line no worse than the one the gate printed before you edited.
 5. **Blind read again.** A new fresh reader on the new extract; fix what it could not restate; rerun the gate; read once more.
    Done when the restatement is complete and correct and no score is below the control's.

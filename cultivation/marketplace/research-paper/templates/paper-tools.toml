@@ -39,6 +39,7 @@ smallcaps_names = ["ExampleSys"]
 [build]
 # Command that builds the paper, run from the project root (section_gate); set the project's own command here.
 # The default runs latexmk inside paper/ (-cd), so its -outdir=build is the paper/build/ of pdf and log below.
+# An argv list run without a shell; wrap a multi-step build as ["sh", "-c", "..."].
 command = ["latexmk", "-pdf", "-cd", "-interaction=nonstopmode", "-outdir=build", "paper/main.tex"]
 # PDF the build writes (paper_limits, anonymity_scan, section_gate).
 pdf = "paper/build/main.pdf"
@@ -49,7 +50,7 @@ text = "paper/build/main.txt"
 
 [limits]
 # Body pages allowed, references excluded (paper_limits).
-max_pages = 10
+max_pages = 12
 # Words allowed in the abstract (paper_limits).
 max_abstract_words = 250
 # true when the venue allows an appendix in the submission; false fails on an appendix heading.

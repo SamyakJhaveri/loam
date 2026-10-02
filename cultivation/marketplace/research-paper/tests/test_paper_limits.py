@@ -11,10 +11,11 @@ Fixtures in fixtures/paper_limits/ (text dumps with a form feed after each page)
 - clean_abstract.tex: 23 words once comments, \\cite, the \\href URL and command names are gone;
 - seeded defects: seeded_pages.txt (11 body pages), seeded_refs_in_body.txt (the same with a
   lone "References" table header on page 2, which must not end the body),
-  seeded_appendix.txt (an "A PPENDIX A" heading after the references), seeded_abstract.txt (501-word PDF abstract),
-  seeded_abstract.tex (501 words).
+  seeded_appendix.txt (an "A PPENDIX A" heading after the references), seeded_abstract.txt (251-word PDF abstract),
+  seeded_abstract.tex (251 words).
 Every run sets PAPER_TOOLS_ROOT to the fixture folder, which has no config file, so the limits
-are the defaults (10 pages, 500 words, no appendix) unless a test passes PAPER_TOOLS_CONFIG.
+are the defaults (12 pages, 250 words, no appendix) unless a test passes PAPER_TOOLS_CONFIG or a
+flag; the seeded-defect runs pass --max-pages 10, one page under the 11-page fixtures.
 """
 
 import os
@@ -43,7 +44,7 @@ def run(*args, config=None):
 def test_clean_copy_passes():
     r = run("--text", FIX / "clean.txt", "--abstract-tex", CLEAN_TEX)
     assert r.returncode == 0, r.stdout + r.stderr
-    assert "PASS body pages 10 (limit 10)" in r.stdout
+    assert "PASS body pages 10 (limit 12)" in r.stdout
     assert "that page counts" in r.stdout
     assert "PASS abstract words (PDF text) 44 " in r.stdout
     assert "PASS abstract words (.tex, commands stripped) 23 " in r.stdout
@@ -54,7 +55,7 @@ def test_clean_copy_passes():
 def test_references_heading_at_page_top_does_not_count():
     r = run("--text", FIX / "refs_top.txt", "--abstract-tex", CLEAN_TEX)
     assert r.returncode == 0, r.stdout + r.stderr
-    assert "PASS body pages 10 (limit 10)" in r.stdout
+    assert "PASS body pages 10 (limit 12)" in r.stdout
     assert "(page 11); top of page" in r.stdout
 
 
@@ -64,12 +65,12 @@ def test_references_heading_at_page_top_does_not_count():
         ("seeded_pages.txt", "clean_abstract.tex", "FAIL body pages 11 (limit 10)"),
         ("seeded_refs_in_body.txt", "clean_abstract.tex", "FAIL body pages 11 (limit 10)"),
         ("seeded_appendix.txt", "clean_abstract.tex", "FAIL appendix heading at"),
-        ("seeded_abstract.txt", "clean_abstract.tex", "FAIL abstract words (PDF text) 501 "),
-        ("clean.txt", "seeded_abstract.tex", "FAIL abstract words (.tex, commands stripped) 501 "),
+        ("seeded_abstract.txt", "clean_abstract.tex", "FAIL abstract words (PDF text) 251 "),
+        ("clean.txt", "seeded_abstract.tex", "FAIL abstract words (.tex, commands stripped) 251 "),
     ],
 )
 def test_seeded_defect_fails(text, tex, expect):
-    r = run("--text", FIX / text, "--abstract-tex", FIX / tex)
+    r = run("--text", FIX / text, "--abstract-tex", FIX / tex, "--max-pages", "10")
     assert r.returncode == 1, r.stdout + r.stderr
     assert expect in r.stdout
     assert r.stdout.count("\nFAIL ") == 1, r.stdout  # only the seeded defect fails
@@ -104,9 +105,9 @@ def test_empty_tex_abstract_fails_closed(tmp_path):
 
 def test_abstract_limit_is_inclusive(tmp_path):
     tex = tmp_path / "abstract.tex"
-    tex.write_text("\\begin{abstract}\n" + "word " * 500 + "\n\\end{abstract}\n")
+    tex.write_text("\\begin{abstract}\n" + "word " * 250 + "\n\\end{abstract}\n")
     assert run("--text", FIX / "clean.txt", "--abstract-tex", tex).returncode == 0
-    tex.write_text("\\begin{abstract}\n" + "word " * 501 + "\n\\end{abstract}\n")
+    tex.write_text("\\begin{abstract}\n" + "word " * 251 + "\n\\end{abstract}\n")
     assert run("--text", FIX / "clean.txt", "--abstract-tex", tex).returncode == 1
 
 
@@ -192,7 +193,7 @@ def test_pdf_path(tmp_path):
     )
     r = run("--pdf", build_pdf(tmp_path, "clean"), "--abstract-tex", tex)
     assert r.returncode == 0, r.stdout + r.stderr
-    assert "PASS body pages 1 (limit 10)" in r.stdout
+    assert "PASS body pages 1 (limit 12)" in r.stdout
     assert "PASS abstract words (PDF text) 10 " in r.stdout
     seeded = build_pdf(tmp_path, "seeded", r"\section*{Appendix A: Proofs}Proof text.")
     r = run("--pdf", seeded, "--abstract-tex", tex)

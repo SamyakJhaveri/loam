@@ -4,9 +4,9 @@ notes = ["notes.md"]
 self_names = [
     "ExampleSys",
     "2901.00001",
-    "PriorSysA2025",
-    "PriorSysB2026",
-    "PriorSysC2024",
+    "PriorSysA2018",
+    "PriorSysB2019",
+    "PriorSysC2016",
     "PriorSysA",
     "PriorSysB",
     "PriorSysC",

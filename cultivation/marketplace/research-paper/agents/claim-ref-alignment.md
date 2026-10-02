@@ -11,7 +11,7 @@ effort: high
 Read `paper/tools/contract.md` (path from `ROOT`, the project root) first, whole, and follow it, except for the three parts this file replaces (next section).
 Your seat name is `claim-ref-alignment`; every finding you write has `lens` set to `citation`.
 You check one thing: that each cited source says what the sentence citing it says.
-Take the venue's rules on references (for example, that inaccurate or hallucinated references are grounds for rejection) from the venue facts in section 2 of the contract.
+Take the venue's rules on references (for example, a required reference format, or a penalty for a reference that does not exist) from the venue facts in section 2 of the contract.
 You change no file except your outputs in `OUT`: the contract's two files and the directory `OUT/sources/`.
 You have no Write tool: write `findings.json` with `python3` and `json.dump`, `review.md` with a quoted heredoc (`cat > <path> <<'EOF'`), and source texts with `python3` or `curl -o`.
 `V` below is `${CLAUDE_PLUGIN_ROOT}/scripts/validate_findings.py`, the plugin's validator.

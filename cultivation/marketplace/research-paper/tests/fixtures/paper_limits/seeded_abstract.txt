@@ -27,38 +27,13 @@ word word word word word word word word word word
 word word word word word word word word word word
 word word word word word word word word word word
 word word word word word word word word word word
-word word word word word word word word word word
-word word word word word word word word word word
-word word word word word word word word word word
-word word word word word word word word word word
-word word word word word word word word word word
-word word word word word word word word word word
-word word word word word word word word word word
-word word word word word word word word word word
-word word word word word word word word word word
-word word word word word word word word word word
-word word word word word word word word word word
-word word word word word word word word word word
-word word word word word word word word word word
-word word word word word word word word word word
-word word word word word word word word word word
-word word word word word word word word word word
-word word word word word word word word word word
-word word word word word word word word word word
-word word word word word word word word word word
-word word word word word word word word word word
-word word word word word word word word word word
-word word word word word word word word word word
-word word word word word word word word word word
-word word word word word word word word word word
-word word word word word word word word word word
 one
 Index Terms-fixture, word count
 I. I NTRODUCTION
 Body text on page 1.
 Body text on page 2.
 More body text on page 2.
-The reproducibility appendix is due after acceptance.
+The library's yearly report lists branch opening hours in its appendix.
 Body text on page 3.
 More body text on page 3.
 Body text on page 4.

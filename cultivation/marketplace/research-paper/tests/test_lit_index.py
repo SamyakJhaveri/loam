@@ -164,7 +164,7 @@ def test_doi_url_with_a_query_string_joins_the_bib(tmp_path):
     assert sorted(papers) == ["Baz2022", "Qux2021"]
 
 
-SELF_KEYS = ["PriorSysA2025", "PriorSysB2026", "PriorSysC2024"]
+SELF_KEYS = ["PriorSysA2018", "PriorSysB2019", "PriorSysC2016"]
 
 
 def self_index(tmp_path, *self_args):

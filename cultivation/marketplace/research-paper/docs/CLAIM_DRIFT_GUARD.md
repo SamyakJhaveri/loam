@@ -99,7 +99,7 @@ Add this line after the block [H, not measured]:
 ## 5. Token check commands
 
 Run from the project root.
-`paper-tool` is the plugin's `bin/paper-tool`; an agent runs `python3 ${CLAUDE_PLUGIN_ROOT}/scripts/check_revision_token_conservation.py` with the same arguments.
+`paper-tool` is the plugin's `bin/paper-tool`; an agent runs `paper-tool check_revision_token_conservation` with the same arguments.
 Keep the `.tex` suffix on the copy: it tells the script to drop `%` comments (a `\%` stays text).
 
 One section, before committing the revision:
@@ -184,7 +184,7 @@ Read the JSON output:
 - `strength_delta.strong_added`: strong words the revision adds (prove, proves, proven, demonstrate(s) that, shows that, causes, determines, guarantee(s), establish(es), confirm(s), always, never, cannot, all, every, first, only); apply section 3 to each sentence.
 - `strength_delta.hedges_removed`: hedges the revision drops (suggest(s), may, might, indicate(s), at least, at most, about, approximately); apply section 3 to each sentence.
   A strong word removed or a hedge added is not reported, so a move down still needs the reader.
-  A negated strong word counts as added: a new "does not prove equivalence" reports `prove`; authorize it with the finding or decision that asked for the caveat.
+  A negated strong word counts as added: a new "does not prove the waiver raised loans" reports `prove`; authorize it with the finding or decision that asked for the caveat.
 - `citations_delta` and `protected_terms_delta`: upstream's Markdown and author-year forms; empty for `.tex` input unless `--protected-terms` is given.
 - `authorization` (only with `--authorize`): `authorized` (true exactly when the exit code is 0), `unauthorized` (each delta with no passing row and each fill with no passing `claims:` row: its delta, its side or placeholder, and its token) and `failing_rows` (each failing row with its line number and reason).
 

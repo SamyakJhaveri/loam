@@ -115,7 +115,7 @@ A devil's advocate is especially prone to it: adversarial intensity turns a norm
 Run it at severity-assignment time on every finding whose severity rests on "the field should do X" (a reproducibility, reporting, evidence-completeness or data-release expectation):
 - Can I name the field's actual accepted-practice boundary from an external checkable source, not from my own prior?
 - Is the paper's evidence genuinely crossing that boundary, or am I applying a reference class from a different subfield?
-  Example: demanding a released artifact or reproducibility appendix in the submission, when the venue's call for papers (contract section 2) asks for it only after acceptance.
+  Example: demanding a user study, when neither the venue's call for papers (contract section 2) nor the field's accepted practice for this kind of paper asks for one.
 - Does my "would addressing this change the core result?" judgment under-rate methodological rigour, scope or practical relevance, or over-rate a presentation issue dressed in technical terminology?
 
 Contract section 5 says what to do when the norm has no checkable source.

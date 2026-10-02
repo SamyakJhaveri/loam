@@ -12,7 +12,7 @@ Why it is built this way: `docs/how-the-toolchain-works.md`.
 2. Enable the plugin for one project; it installs disabled.
    Add `"enabledPlugins": {"research-paper@seed-skills": true}` to the project's `.claude/settings.json` (or enable it with `/plugin`), then start a new session or run `/reload-plugins`.
    Check: the Agent tool lists `research-paper:reviewer-methods` and the nine other agents below.
-3. Copy the templates into the project: `mkdir -p paper/tools && cp <plugin>/templates/* paper/tools/`, where `<plugin>` is this folder.
+3. Copy the templates into the project: `mkdir -p paper/tools && cp <plugin>/templates/{contract.md,paper-tools.toml,banned_terms.txt,acronym_allow.txt,anonymity_terms.txt} paper/tools/`, where `<plugin>` is this folder.
 4. Fill in every `FILL IN` block of `paper/tools/contract.md` (venue, review criteria, anonymity, the project's own review rules, reviewer persona), then edit `paper/tools/paper-tools.toml` (paths, build command, limits, macros, term files, and the `[codex]` keys if you use the experimental parts).
    Both templates hold synthetic examples ("ExampleSys", "Example Conference 2030"); replace every one.
 5. Check the config: `paper-tool paper_config` prints the resolved config as JSON, and `paper-tool paper_config build.pdf` prints one value.
@@ -22,6 +22,7 @@ Why it is built this way: `docs/how-the-toolchain-works.md`.
 While the plugin is enabled it is on the `PATH` of Claude's Bash tool; in your own shell, run it by its path or link it onto your `PATH` (it follows symlinks).
 `paper-tool` with no argument lists the scripts; `paper-tool <name> [args]` runs `scripts/<name>.py`.
 Agents call the same scripts as `python3 ${CLAUDE_PLUGIN_ROOT}/scripts/<name>.py`.
+The variable is replaced in agent files when they load; it is not set in Bash, so any other text (a doc, a workflow prompt, the contract) uses `paper-tool`.
 
 The scripts take the project root from `PAPER_TOOLS_ROOT` if set, else the git top level of the working directory, else the working directory.
 They read `PAPER_TOOLS_CONFIG` if set, else `<root>/paper/tools/paper-tools.toml` if it exists, else the defaults alone.

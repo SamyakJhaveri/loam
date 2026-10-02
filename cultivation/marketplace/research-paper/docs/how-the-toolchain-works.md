@@ -46,7 +46,7 @@ Checkable means an exit code (0 is pass, 1 is a problem found) or a quote that m
 ### Scripts
 
 A deterministic check gives the same answer every run and involves no model.
-The scripts exist because a venue's hard rules (page limit, anonymity, a DOI or link per reference, abstract length, no appendix) can cause rejection without review.
+The scripts exist because a venue's hard rules (page limit, anonymity, reference format, abstract length) can cause rejection without review.
 `cite_check` fails closed: a network error counts as a defect, never a pass.
 
 ### Fixture tests

@@ -105,7 +105,7 @@ When it says they do not count:
    Are the obvious competitors cited?
    Are they mischaracterized?
    An omitted peer-reviewed competitor is an `absence:` finding naming the sections you searched.
-6. Check the reference list against the reference format contract section 2 gives (for example, every author named, and a DOI or direct link where one exists).
+6. Check the reference list against the reference format contract section 2 gives (the entry fields and the completeness its reference style requires).
 7. Form your recommendation from the holistic picture, weighted by your domain lens.
 8. Write both files and run the validator (contract section 6).
 

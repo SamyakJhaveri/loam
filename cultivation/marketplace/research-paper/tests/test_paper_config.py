@@ -27,8 +27,8 @@ def test_defaults_without_a_config_file(tmp_path):
     assert cfg["paper"]["main_tex"] == root / "paper/main.tex"
     assert cfg["build"]["pdf"] == root / "paper/build/main.pdf"
     assert cfg["limits"] == {
-        "max_pages": 10,
-        "max_abstract_words": 500,
+        "max_pages": 12,
+        "max_abstract_words": 250,
         "appendix_allowed": False,
     }
     assert cfg["paper"]["sections"] == []
@@ -53,7 +53,7 @@ def test_config_file_from_the_environment(tmp_path, monkeypatch):
     cfg = paper_config.load(root=tmp_path)
     assert cfg["project"]["config"] == config
     assert cfg["limits"]["max_pages"] == 8
-    assert cfg["limits"]["max_abstract_words"] == 500
+    assert cfg["limits"]["max_abstract_words"] == 250
     assert cfg["paper"]["sections"] == ["intro", "eval"]
 
 
@@ -87,7 +87,7 @@ def test_relative_paths_resolve_against_the_root(tmp_path):
     [
         ("[paper]\nmain = 'x.tex'\n", "unknown key paper.main"),
         ("[venue]\nname = 'x'\n", "unknown table [venue]"),
-        ("[limits]\nmax_pages = '10'\n", "limits.max_pages must be a TOML int"),
+        ("[limits]\nmax_pages = '12'\n", "limits.max_pages must be a TOML int"),
         ("[limits\n", "cannot read"),
     ],
 )
@@ -126,7 +126,7 @@ def test_command_line_prints_json_and_one_value(tmp_path):
     script = str(PLUGIN / "scripts" / "paper_config.py")
     whole = run([sys.executable, script], tmp_path)
     assert whole.returncode == 0, whole.stderr
-    assert json.loads(whole.stdout)["limits"]["max_pages"] == 10
+    assert json.loads(whole.stdout)["limits"]["max_pages"] == 12
     one = run([sys.executable, script, "build.pdf"], tmp_path)
     assert one.stdout.strip() == str(tmp_path.resolve() / "paper/build/main.pdf")
     assert run([sys.executable, script, "build.nope"], tmp_path).returncode == 2
@@ -138,7 +138,7 @@ def test_dispatcher_lists_runs_and_refuses(tmp_path):
     assert listing.returncode == 0
     assert "  paper_config" in listing.stdout.splitlines()
     value = run(["bash", tool, "paper_config", "limits.max_pages"], tmp_path)
-    assert (value.returncode, value.stdout.strip()) == (0, "10")
+    assert (value.returncode, value.stdout.strip()) == (0, "12")
     for name in ("no_such_script", "../scripts/paper_config"):
         bad = run(["bash", tool, name], tmp_path)
         assert bad.returncode == 2

@@ -49,7 +49,7 @@ def test_strip_comments_drops_indented_comment_lines():
 
 
 def test_slack_finds_references_page_and_section_pages():
-    text = "I. I NTRODUCTION\nbody\n\fVI. R ESULTS\nbody\n\fmore\nVII. D ISCUSSION\nend\nR EFERENCES\n[1] A\n[1] B\n\f[2] C"
+    text = "I. I NTRODUCTION\nbody\n\fIII. R ESULTS\nbody\n\fmore\nIV. D ISCUSSION\nend\nR EFERENCES\n[1] A\n[1] B\n\f[2] C"
     info = section_gate.slack(text, "Results")
     assert info == {"refs_page": 3, "lines_after_refs": 2, "section_pages": [2, 3]}
 

@@ -106,5 +106,5 @@ Items 53 to 62 come from the same guides and hold for most venues; drop one only
   Licensed CC BY-NC 4.0 (Copyright (c) 2026 Cheng-I Wu, https://creativecommons.org/licenses/by-nc/4.0/).
   Changes made in this copy (the research-paper plugin): items 23-35 restate C3 and C4 as yes-or-no items, with the project's claims file and placeholder registry in place of the Figure Package trace and the experiment passport; no text is copied.
 - CCW: https://github.com/pedrohcgs/claude-code-my-workflow at ae726177e23426b665e0a1eef5fb5bd83bd5b831, MIT license; `scripts/check-tikz-prevention.py`, copied to this plugin's `scripts/check_tikz_prevention.py` with the changes listed in its header.
-- contract: the venue's rules in `paper/tools/contract.md` section 2, quoted there from the call for papers (for example a rule that figures be readable by color-blind readers).
+- contract: the venue's rules in `paper/tools/contract.md` section 2, quoted there from the call for papers (for example a rule on figure size or the use of color).
 - project: the project's own files that the items name (the claims file, the placeholder registry, the figure sources and the scripts that draw them).

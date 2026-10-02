@@ -76,14 +76,14 @@ Introduction:
 19. The prior-work paragraphs form one chain: the general difficulty, then each group of prior work with its limitation and the technical reason for it, ending on the limitation that is exactly this paper's gap [RPW-I:184-201].
 20. Each contribution names the gap it answers, its concrete mechanism and the section that holds it; nothing enters the contribution list without a gap [AIRS-WP:38-44,220-221; RPW-I:372-380].
     A contribution with no gap reads as a feature list.
-21. A reader can point to the paragraph that answers each review aspect the call for papers names, such as motivation, the limits of the state of the art, and the contributions.
+21. A reader can point to the paragraph that answers each review aspect the call for papers names, such as novelty, soundness and significance.
     Reviewers score those aspects and look for them.
 
 Related work:
 22. Each paragraph that names prior work says how this paper differs from it; no paragraph only lists papers [AIRS-SB:335].
     With four or more close prior systems, add a comparison table with one row per system and one column per gap [AIRS-SB:336-346].
 23. Marks in tables and figures read in greyscale: text or distinct symbols, never colour alone.
-    Many readers print in greyscale or cannot tell colours apart, and some venues require accessible figures.
+    Many readers print in greyscale or cannot tell colours apart.
 
 Design:
 24. Each design subsection opens by naming the gap it answers, and each major design decision names one alternative and why it was rejected [AIRS-WP:20-24,229-230].
@@ -118,8 +118,8 @@ Before a section goes to review:
    A smoother sentence that says more than the code does is the first thing a reviewer attacks.
 2. When a nicer wording and a true wording differ, write the true one, and do not offer the author a choice between them.
    When a reviewer's suggested rewrite would state something the code does not do, keep the true statement and fix its clarity another way.
-3. State results as percentages with the systems named ("41.2% for SystemA and 37.5% for SystemB"), never as "about three in five".
-   A vague fraction hides both the number and the system it belongs to.
+3. State results as percentages with the systems named ("41.2% for SystemA and 37.5% for SystemB"), never as "a clear majority".
+   A vague phrase hides both the number and the system it belongs to.
 4. No claim gets stronger without new evidence in the same edit: apply `CLAIM_DRIFT_GUARD.md` to each changed sentence, and run `paper-tool check_revision_token_conservation` after every revision and every placeholder fill.
    The check catches a lost number, citation or reference that a reader would miss.
 5. A placeholder `\tofill{Tn}` stands for one quantity; no text gives it a stand-in value or "about N".
@@ -134,13 +134,13 @@ Before a section goes to review:
 ## Citations
 
 1. A key enters the bibliography only after its DOI, arXiv id or URL was fetched in the session and the fetched title, authors and year match the entry.
-   Some venues make an inaccurate or invented reference grounds for rejection.
+   A reference that does not exist, or that says something else than the paper claims, can sink a submission on its own.
 2. Each `\cite` sits on the sentence whose claim it supports: `research-paper:claim-ref-alignment` labels every citing sentence, and any label below "supported" means move the citation, replace it, or weaken the sentence.
 3. `research-paper:citation-finder` covers factual sentences that have no citation; it proposes keys and entries and never edits the paper.
 4. `paper-tool cite_check` fails closed on a network error: rerun it, never waive it.
 5. Only identifiers, URLs, cited titles and topic keywords leave the machine; never send the paper's sentences to an outside service.
    Manuscript text sent to a search service is out of the author's control.
-6. AI-use disclosure follows the venue's rule exactly, for example a citation of the AI system in each section that holds AI-generated text; check the call for papers before adding or removing one.
+6. AI-use disclosure follows the venue's rule exactly, for example a statement in the acknowledgements or a note in each affected section; check the call for papers before adding or removing one.
    Venues differ, and an author may rule differently for each venue.
 
 ## Review rounds

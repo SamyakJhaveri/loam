@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-r"""Check the venue's length rules from `limits.*` in paper-tools.toml on the built paper.
+r"""Check the built paper against the length limits in `limits.*` of paper-tools.toml.
 
-The rules: a body page limit that includes all figures and tables (limits.max_pages); no page
-limit for references; no appendix or supplementary section unless limits.appendix_allowed; an
-abstract word limit (limits.max_abstract_words).
+The limits come from the project's config: body pages (limits.max_pages), counted with figures
+and tables up to the references heading; an appendix or supplementary heading, a failure
+unless limits.appendix_allowed; abstract words (limits.max_abstract_words).
 
     paper-tool paper_limits                  # build.pdf and paper.abstract_tex of the config
     paper-tool paper_limits --pdf main.pdf --abstract-tex abstract.tex

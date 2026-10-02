@@ -78,8 +78,8 @@ DEFAULTS = {
         "text": "paper/build/main.txt",
     },
     "limits": {
-        "max_pages": 10,
-        "max_abstract_words": 500,
+        "max_pages": 12,
+        "max_abstract_words": 250,
         "appendix_allowed": False,
     },
     "terms": {

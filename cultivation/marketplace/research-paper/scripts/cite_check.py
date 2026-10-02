@@ -43,9 +43,10 @@
 #       \input@path, drops % comments, and reads natbib optional arguments, starred forms and
 #       \nocite, and key lists that span lines (source: one file, no optional arguments,
 #       comments counted).
-#   C9  Venue reference rules: full author list ("and others", "and {others}", "et al.",
-#       empty or missing), a DOI or URL per entry, arXiv-only entries; cite.warn_only in
-#       paper-tools.toml lowers each of these to WARN; unknown entry types are defects.
+#   C9  Reference checks added here: full author list ("and others", "and {others}", "et al.",
+#       empty or missing), a DOI or URL per entry, arXiv-only entries; which of them fail comes
+#       from the project's config (cite.warn_only in paper-tools.toml lowers each to WARN);
+#       unknown entry types are defects.
 #   C10 [A] requests replaced by urllib (standard library only). The User-Agent carries no
 #       email; only the identifier is sent. Canned replies (--responses) and --offline.
 #   C11 [B] one resolver (Crossref) instead of OpenAlex plus Crossref. Retraction events are
