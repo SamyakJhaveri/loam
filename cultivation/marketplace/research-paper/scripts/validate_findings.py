@@ -24,13 +24,12 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 #
-# Patches for a private research-paper project, kept in the research-paper plugin. Our use:
-# reviewer seats quote PAPER, a pdftotext dump of the built PDF or a .tex section, and this
-# script gates the quotes. Defects are the ones measured when that project reviewed the
-# upstream script and probed it with fixtures.
+# Changes made in this copy (the research-paper plugin): reviewer seats quote PAPER, a
+# pdftotext dump of the built PDF or a .tex section, and this script gates the quotes. Each
+# patch below fixes a defect measured by probing the upstream script with fixtures.
 # Applied:
 #   P1 SCHEMA is finding_schema.json next to this script (was ../.claude/references/;
-#      the script failed with exit 2 when copied alone, and .claude/ edits need bypass mode).
+#      the script failed with exit 2 when copied alone).
 #   P2 --require-quotes (with --check-quotes): a finding whose evidence has no double-quoted
 #      span of 12+ characters fails unless its locus starts with "absence:". Measured: such a
 #      finding passed unchecked (the old "if not quotes: continue").

@@ -3,6 +3,6 @@
 #
 # Format: one Python regex per line, then "#" and the reason; a line that starts with "#" is a
 # comment. A regex cannot hold "#": everything after it is the reason.
-# Add the project's own rulings below these, one per line, each with its reason.
----                   # LaTeX em dash
-\u2014                # em dash character (U+2014), written as a regex escape
+# The em dash needs no line here: style_lint, which section_gate also runs, refuses both the
+# character and the LaTeX three-hyphen form.
+# Add the project's own rulings below, one per line, each with its reason.

@@ -4,12 +4,11 @@
 #         (the whole file except its patch-mode tests, lines 208-330 and 369-394)
 # License: CC BY-NC 4.0, Copyright (c) 2026 Cheng-I Wu,
 #          https://creativecommons.org/licenses/by-nc/4.0/ (non-commercial research use only).
-# Changes made in this copy (a private research-paper project, 2026-09-29; change 10 for the
-# research-paper plugin):
+# Changes made in this copy (the research-paper plugin):
 #   1. This header, and "# fmt: off" below it, so ruff keeps the upstream layout.
 #   2. Docstring: the patch-mode clause is gone, the cases of this copy are listed, and the run
 #      command names this path. The em dash (banned in this repository) is written "-".
-#   3. Imports: the script is loaded by path from ../check_revision_token_conservation.py
+#   3. Imports: the script is loaded by path from ../scripts/check_revision_token_conservation.py
 #      (importlib), not from a scripts package; REPO_ROOT and its sys.path insert are gone;
 #      audit_patch and the unused main are no longer imported.
 #   4. Removed with patch mode: PATCH_BASE, _patch, AuditPatchTests and
@@ -21,17 +20,15 @@
 #   7. A \cite locator (optional argument) is a number, and one placeholder filled with two
 #      values is a fill conflict (script header changes 5 and 7); changed_locator.tex added.
 #   8. Number words, strength_delta, unverified fills and --authorize (script header changes 9
-#      to 12, 2026-09-29): filled.tex now exits 1 (its fills are unverified without
-#      --authorize); base.tex's "one-sided" gives the number word "one"; the audit_pair calls
-#      that expect a conserved fill pass verified; run_cli takes a source and extra arguments
-#      and runs in the fixture directory; new words_*.tex pairs, claims.json, findings.md,
-#      decisions.md and the --authorize cases (their TSV rows are written by the test).
-#   9. Dotted member names (script header change 13, 2026-09-29): claims_dotted.json, two
-#      --authorize cases whose claims: row names models.vendor-model-1.5 (one passes, one names a
-#      missing member), and test_claims_key_walks_the_longest_dotted_member_name.
-#  10. Plugin port: SCRIPT is ../scripts/check_revision_token_conservation.py; the fixtures,
-#      the tokens the tests expect from them, the claims keys and the model name are synthetic;
-#      the author-year examples of CitationExtractionTests name other surnames.
+#      to 12): filled.tex exits 1 (its fills are unverified without --authorize); base.tex's
+#      "two weekends" gives the number word "two"; the audit_pair calls that expect a conserved
+#      fill pass verified; run_cli takes a source and extra arguments and runs in the fixture
+#      directory; new words_*.tex pairs, claims.json, findings.md, decisions.md and the
+#      --authorize cases (their TSV rows are written by the test).
+#   9. Dotted member names (script header change 13): claims_dotted.json, two --authorize
+#      cases whose claims: row names shelves.dewey-641.5 (one passes, one names a missing
+#      member), and test_claims_key_walks_the_longest_dotted_member_name.
+#  10. The author-year examples of CitationExtractionTests name other surnames.
 # fmt: off
 r"""Mutation tests for check_revision_token_conservation.py (#570).
 
@@ -315,15 +312,15 @@ def check_deltas(report: dict, deltas: dict) -> None:
     [
         ("reworded.tex", 0, {}, []),
         # Without --authorize no fill is verified, so a fill-only pass exits 1 (change 8).
-        ("filled.tex", 1, {}, [{"placeholder": "P40", "value": "180"},
-                               {"placeholder": "P96", "value": "120"},
-                               {"placeholder": "P100", "value": "2.5%"}]),
-        ("dropped_number.tex", 1, {"numbers_delta": {"removed": {"312": 1}, "added": {}}}, []),
+        ("filled.tex", 1, {}, [{"placeholder": "T23", "value": "58"},
+                               {"placeholder": "T26", "value": "17"},
+                               {"placeholder": "T29", "value": "6.41%"}]),
+        ("dropped_number.tex", 1, {"numbers_delta": {"removed": {"46": 1}, "added": {}}}, []),
         ("changed_number.tex", 1,
-         {"numbers_delta": {"removed": {"70%": 1}, "added": {"75%": 1}}}, []),
+         {"numbers_delta": {"removed": {"35%": 1}, "added": {"40%": 1}}}, []),
         ("dropped_cite.tex", 1,
-         {"latex_keys_delta": {"removed": {"\\cite{Beta2022}": 1}, "added": {}}}, []),
-        ("changed_locator.tex", 1, {"numbers_delta": {"removed": {"3": 1}, "added": {"4": 1}}}, []),
+         {"latex_keys_delta": {"removed": {"\\cite{Tasker2019}": 1}, "added": {}}}, []),
+        ("changed_locator.tex", 1, {"numbers_delta": {"removed": {"6": 1}, "added": {"7": 1}}}, []),
     ],
 )
 def test_fixture_pairs(revision: str, status: int, deltas: dict, fills: list) -> None:
@@ -339,12 +336,12 @@ def test_fixture_pairs(revision: str, status: int, deltas: dict, fills: list) ->
 def test_base_fixture_tokens() -> None:
     text = CHECKER.read_text(FIXTURES / "base.tex")
     assert dict(extract_numbers(text)) == {
-        "312": 1, "70%": 1, "0%": 1, "1": 1, "150": 1, "48,512": 1, "95": 1, "3": 1, "one": 1,
+        "46": 1, "35%": 1, "9": 1, "57,306": 1, "two": 1, "6": 1,
     }
-    assert dict(CHECKER.extract_placeholders(text)) == {"P40": 1, "P96": 1, "P100": 1}
+    assert dict(CHECKER.extract_placeholders(text)) == {"T23": 1, "T26": 1, "T29": 1}
     assert dict(CHECKER.extract_latex_keys(text)) == {
-        "\\label{sec:results}": 1, "\\ref{tab:filter}": 1, "\\cite{Alpha2021}": 1,
-        "\\cite{Beta2022}": 1, "\\cite{Gamma2027Example}": 1, "\\cite{Delta2028}": 1,
+        "\\label{sec:holdings}": 1, "\\ref{tab:drawers}": 1, "\\cite{Rowan2017}": 1,
+        "\\cite{Tasker2019}": 1, "\\cite{Ilves2024Example}": 1, "\\cite{Okafor2022}": 1,
     }
     assert dict(extract_citation_tokens(text)) == {}
 
@@ -352,7 +349,7 @@ def test_base_fixture_tokens() -> None:
 @pytest.mark.parametrize(
     ("line", "kept"),
     [
-        ("80\\% of runs % a comment", "80\\% of runs "),
+        ("65\\% of loans % a comment", "65\\% of loans "),
         ("a line break\\\\% a comment", "a line break\\\\"),
         ("a line break, then a percent sign \\\\\\% stay",
          "a line break, then a percent sign \\\\\\% stay"),
@@ -364,9 +361,9 @@ def test_tex_comment_starts_after_an_even_number_of_backslashes(line: str, kept:
 
 
 def test_comments_are_stripped_only_from_tex_files(tmp_path: Path) -> None:
-    for suffix, numbers in ((".tex", {"80%": 1}), (".txt", {"80%": 1, "75": 1, "1": 1})):
+    for suffix, numbers in ((".tex", {"65%": 1}), (".txt", {"65%": 1, "83": 1, "2": 1})):
         path = tmp_path / f"a{suffix}"
-        path.write_text("80\\% of runs % 75 in draft 1\n", encoding="utf-8")
+        path.write_text("65\\% of loans % 83 in copy 2\n", encoding="utf-8")
         assert dict(extract_numbers(CHECKER.read_text(path))) == numbers
 
 
@@ -394,44 +391,44 @@ def test_changed_ref_target_and_dropped_label_are_deltas() -> None:
 
 
 def test_built_text_placeholder_fill_is_a_fill_not_a_loss() -> None:
-    result = audit_pair("pass@1 ranges from [PENDING P3] to [PENDING P4].",
-                        "pass@1 ranges from 12.5% to 31.0%.", verified={"12.5%", "31.0%"})
+    result = audit_pair("Daily visitors range from [TOFILL T31] to [TOFILL T32] per branch.",
+                        "Daily visitors range from 14 to 63 per branch.", verified={"14", "63"})
     assert result["conserved"]
-    assert result["fills"] == [{"placeholder": "P3", "value": "12.5%"},
-                               {"placeholder": "P4", "value": "31.0%"}]
+    assert result["fills"] == [{"placeholder": "T31", "value": "14"},
+                               {"placeholder": "T32", "value": "63"}]
     assert result["numbers_delta"] == EMPTY and result["placeholders_delta"] == EMPTY
-    unchecked = audit_pair("from [PENDING P3] to [PENDING P4].", "from 12.5% to 31.0%.",
-                           verified={"12.5%"})
+    unchecked = audit_pair("from [TOFILL T31] to [TOFILL T32].", "from 14 to 63.", verified={"14"})
     assert not unchecked["conserved"]
-    assert unchecked["unverified_fills"] == [{"placeholder": "P4", "value": "31.0%"}]
+    assert unchecked["unverified_fills"] == [{"placeholder": "T32", "value": "63"}]
 
 
 def test_fill_next_to_a_changed_number_reports_both() -> None:
-    result = audit_pair("\\pending{P40} of the 204 pairs", "180 of the 205 pairs")
+    result = audit_pair("Week 14 brought \\tofill{T35} loans.", "Week 15 brought 52 loans.")
     assert not result["conserved"]
-    assert result["fills"] == [{"placeholder": "P40", "value": "180"}]
-    assert result["numbers_delta"] == {"removed": {"204": 1}, "added": {"205": 1}}
+    assert result["fills"] == [{"placeholder": "T35", "value": "52"}]
+    assert result["numbers_delta"] == {"removed": {"14": 1}, "added": {"15": 1}}
 
 
 def test_dropped_placeholder_is_a_loss_not_a_fill() -> None:
-    result = audit_pair("Kept \\pending{P40} of 204. Dropped \\pending{P41}.", "Kept 180 of 204.")
+    result = audit_pair("Week 14 brought \\tofill{T35} loans and \\tofill{T36} holds.",
+                        "Week 14 brought 52 loans and holds.")
     assert not result["conserved"]
-    assert result["fills"] == [{"placeholder": "P40", "value": "180"}]
-    assert result["placeholders_delta"] == {"removed": {"P41": 1}, "added": {}}
+    assert result["fills"] == [{"placeholder": "T35", "value": "52"}]
+    assert result["placeholders_delta"] == {"removed": {"T36": 1}, "added": {}}
 
 
 def test_one_placeholder_filled_with_two_values_is_a_conflict() -> None:
-    result = audit_pair("Keep \\pending{P40} pairs; later \\pending{P40} pairs.",
-                        "Keep 180 pairs; later 181 pairs.")
+    result = audit_pair("Monday drew \\tofill{T35} visitors; Friday drew \\tofill{T35} visitors.",
+                        "Monday drew 52 visitors; Friday drew 53 visitors.")
     assert not result["conserved"]
-    assert result["fill_conflicts"] == {"P40": ["180", "181"]}
-    same = audit_pair("Keep \\pending{P40} pairs; later \\pending{P40} pairs.",
-                      "Keep 180 pairs; later 180 pairs.", verified={"180"})
+    assert result["fill_conflicts"] == {"T35": ["52", "53"]}
+    same = audit_pair("Monday drew \\tofill{T35} visitors; Friday drew \\tofill{T35} visitors.",
+                      "Monday drew 52 visitors; Friday drew 52 visitors.", verified={"52"})
     assert same["conserved"] and same["fill_conflicts"] == {}
 
 
 def test_moved_placeholder_is_not_a_fill() -> None:
-    result = audit_pair("\\pending{P1} then 5 and 6.", "7 then 5 and \\pending{P1}.")
+    result = audit_pair("\\tofill{T44} then 5 and 6.", "7 then 5 and \\tofill{T44}.")
     assert result["fills"] == []
     assert result["numbers_delta"] == {"removed": {"6": 1}, "added": {"7": 1}}
     assert result["placeholders_delta"] == EMPTY
@@ -441,31 +438,31 @@ def test_moved_placeholder_is_not_a_fill() -> None:
 
 
 def test_number_words_are_number_tokens() -> None:
-    text = ("Six channels, twenty percent of runs, half of them and twice as many; "
-            "seventy-one sixty. On behalf of \\half none; sixes stay words.")
+    text = ("Six reading rooms, twenty percent of the loans, half of the holds and twice the "
+            "returns; seventy-one sixty. On behalf of \\half none; sixes stay words.")
     assert dict(extract_numbers(text)) == {
         "six": 1, "twenty percent": 1, "half": 1, "twice": 1, "seventy": 1, "one": 1, "sixty": 1,
     }
 
 
 def test_a_number_word_in_place_of_a_placeholder_is_not_a_fill() -> None:
-    result = audit_pair("\\pending{P5} channels", "six channels")
+    result = audit_pair("\\tofill{T43} reading rooms", "six reading rooms")
     assert result["fills"] == []
-    assert result["placeholders_delta"] == {"removed": {"P5": 1}, "added": {}}
+    assert result["placeholders_delta"] == {"removed": {"T43": 1}, "added": {}}
     assert result["numbers_delta"] == {"removed": {}, "added": {"six": 1}}
 
 
 def test_strong_word_added_is_a_delta_and_a_move_down_is_not() -> None:
-    result = audit_pair("The audit bounds the rate.", "The audit proves the rate.")
+    result = audit_pair("The logbook records the loss.", "The logbook proves the loss.")
     assert not result["conserved"]
     assert result["strength_delta"] == {"strong_added": {"proves": 1}, "hedges_removed": {}}
-    down = audit_pair("The audit proves the rate.", "The audit suggests the rate.")
+    down = audit_pair("The logbook proves the loss.", "The logbook suggests the loss.")
     assert down["conserved"] and down["strength_delta"] == EMPTY_STRENGTH
 
 
 def test_words_base_fixture_tokens() -> None:
     text = CHECKER.read_text(FIXTURES / "words_base.tex")
-    assert dict(extract_numbers(text)) == {"six": 1, "four": 1, "80": 1}
+    assert dict(extract_numbers(text)) == {"six": 1, "four": 1, "55": 1}
     assert dict(CHECKER._word_tokens(CHECKER.STRONG_RE, text)) == {}
     assert dict(CHECKER._word_tokens(CHECKER.HEDGE_RE, text)) == {"suggests": 1, "at least": 1}
 
@@ -481,7 +478,7 @@ def test_words_base_fixture_tokens() -> None:
          []),
         ("words_no_at_least.tex", 1,
          {"strength_delta": {"strong_added": {}, "hedges_removed": {"at least": 1}}}, []),
-        ("words_filled.tex", 1, {}, [{"placeholder": "P100", "value": "2.5%"}]),
+        ("words_filled.tex", 1, {}, [{"placeholder": "T29", "value": "6.41%"}]),
     ],
 )
 def test_words_fixture_pairs(revision: str, status: int, deltas: dict, fills: list) -> None:
@@ -492,49 +489,50 @@ def test_words_fixture_pairs(revision: str, status: int, deltas: dict, fills: li
     check_deltas(report, deltas)
 
 
-CLAIMS = "claims:claims.json#audit."
+CLAIMS = "claims:claims.json#shelving."
 
 
 @pytest.mark.parametrize(
     ("revision", "rows", "status", "unauthorized", "failing"),
     [
-        pytest.param("words_filled.tex", "# no row for the fill\nsix\tdecision:D13",
-                     1, ["2.5%"], 0, id="invented-fill-no-row-fails"),
-        pytest.param("words_filled.tex", "2.5%\tdecision:D13",
-                     1, ["2.5%"], 0, id="fill-with-a-decision-row-only-fails"),
-        pytest.param("words_filled.tex", f"2.5%\t{CLAIMS}error_bound_pct\tP100 fill",
+        pytest.param("words_filled.tex", "# no row for the fill\nsix\tdecision:DEC-08",
+                     1, ["6.41%"], 0, id="invented-fill-no-row-fails"),
+        pytest.param("words_filled.tex", "6.41%\tdecision:DEC-08",
+                     1, ["6.41%"], 0, id="fill-with-a-decision-row-only-fails"),
+        pytest.param("words_filled.tex", f"6.41%\t{CLAIMS}misfile_pct\tT29 fill",
                      0, [], 0, id="fill-claims-value-matches-passes"),
-        pytest.param("words_filled.tex", "2.5%\tclaims:claims.json#claims.0.value",
+        pytest.param("words_filled.tex", "6.41%\tclaims:claims.json#claims.0.value",
                      0, [], 0, id="fill-claims-list-index-string-value-passes"),
-        pytest.param("words_filled.tex", f"2.5%\t{CLAIMS}jobs_reviewed\tP100 fill",
-                     1, ["2.5%"], 1, id="fill-claims-wrong-value-fails"),
-        pytest.param("words_filled.tex", "2.5%\tclaims:missing.json#audit.x",
-                     1, ["2.5%"], 1, id="fill-claims-missing-file-fails"),
+        pytest.param("words_filled.tex", f"6.41%\t{CLAIMS}books_checked\tT29 fill",
+                     1, ["6.41%"], 1, id="fill-claims-wrong-value-fails"),
+        pytest.param("words_filled.tex", "6.41%\tclaims:missing.json#shelving.x",
+                     1, ["6.41%"], 1, id="fill-claims-missing-file-fails"),
         pytest.param("words_filled.tex",
-                     "2.5%\tclaims:claims_dotted.json#models.vendor-model-1.5.score_pct\tP100 fill",
-                     0, [], 0, id="fill-claims-dotted-model-name-passes"),
+                     "6.41%\tclaims:claims_dotted.json#shelves.dewey-641.5.misfile_pct\tT29 fill",
+                     0, [], 0, id="fill-claims-dotted-member-name-passes"),
         pytest.param("words_filled.tex",
-                     "2.5%\tclaims:claims_dotted.json#models.vendor-model-1.5.recall_pct",
-                     1, ["2.5%"], 1, id="fill-claims-dotted-model-name-missing-member-fails"),
-        pytest.param("words_dropped_six.tex", "six\tfinding:1a2b3c4d\tthe count was wrong",
+                     "6.41%\tclaims:claims_dotted.json#shelves.dewey-641.5.loans_pct",
+                     1, ["6.41%"], 1, id="fill-claims-dotted-member-name-missing-member-fails"),
+        pytest.param("words_dropped_six.tex", "six\tfinding:5e7d20c4\tthe day count was wrong",
                      0, [], 0, id="finding-present-passes"),
-        pytest.param("words_dropped_six.tex", "six\tfinding:0badc0de",
+        pytest.param("words_dropped_six.tex", "six\tfinding:77aa00ff",
                      1, ["six"], 1, id="finding-absent-fails"),
-        pytest.param("words_dropped_six.tex", "six\tfinding:D13",
+        pytest.param("words_dropped_six.tex", "six\tfinding:DEC-08",
                      1, ["six"], 1, id="finding-not-8-hex-fails"),
-        pytest.param("words_dropped_six.tex", "six\tdecision:D13",
+        pytest.param("words_dropped_six.tex", "six\tdecision:DEC-08",
                      0, [], 0, id="decision-present-passes"),
-        pytest.param("words_dropped_six.tex", "six\tdecision:D99",
+        pytest.param("words_dropped_six.tex", "six\tdecision:DEC-99",
                      1, ["six"], 1, id="decision-absent-fails"),
         pytest.param("words_dropped_six.tex", "six\towner:yes",
                      1, ["six"], 1, id="unknown-authority-fails"),
-        pytest.param("words_proves.tex", "proves\tdecision:D13\nsuggests\tdecision:D13",
+        pytest.param("words_proves.tex", "proves\tdecision:DEC-08\nsuggests\tdecision:DEC-08",
                      0, [], 0, id="strength-words-authorized-pass"),
-        pytest.param("changed_number.tex", f"75%\t{CLAIMS}catch_pct\n70%\t{CLAIMS}old_catch_pct",
-                     1, ["70%"], 0, id="claims-row-cannot-authorize-a-removed-number"),
-        pytest.param("changed_number.tex", f"75%\t{CLAIMS}catch_pct\n70%\tdecision:D13",
+        pytest.param("changed_number.tex",
+                     f"40%\t{CLAIMS}loan_rise_pct\n35%\t{CLAIMS}old_loan_rise_pct",
+                     1, ["35%"], 0, id="claims-row-cannot-authorize-a-removed-number"),
+        pytest.param("changed_number.tex", f"40%\t{CLAIMS}loan_rise_pct\n35%\tdecision:DEC-08",
                      0, [], 0, id="added-number-by-claims-removed-by-decision-passes"),
-        pytest.param("dropped_cite.tex", "\\cite{Beta2022}\tdecision:D13",
+        pytest.param("dropped_cite.tex", "\\cite{Tasker2019}\tdecision:DEC-08",
                      0, [], 0, id="cite-key-authorized-passes"),
     ],
 )
@@ -556,9 +554,9 @@ def test_authorize(tmp_path: Path, revision: str, rows: str, status: int,
 
 @pytest.mark.parametrize(
     ("token", "value", "equal"),
-    [("180", 180, True), ("180", 180.0, True), ("2.5%", 2.5, True), ("2.5%", "2.5%", True),
-     ("24,994", 24994, True), ("1,200", "1,200", True), ("20.3%", 0.2034, False),
-     ("2.5%", True, False), ("six", 6, False)],
+    [("58", 58, True), ("58", 58.0, True), ("6.41%", 6.41, True), ("6.41%", "6.41%", True),
+     ("57,306", 57306, True), ("1,587", "1,587", True), ("4.38%", 0.0438, False),
+     ("6.41%", True, False), ("six", 6, False)],
 )
 def test_claims_value_equals_token_without_percent_and_separators(
     tmp_path: Path, token: str, value, equal: bool
@@ -571,13 +569,13 @@ def test_claims_value_equals_token_without_percent_and_separators(
 @pytest.mark.parametrize(
     ("key", "token", "problem"),
     [
-        # The member vendor-model-1.5 is longer than the decoy vendor-model-1 -> 5 (9.9).
-        ("models.vendor-model-1.5.score_pct", "2.5", None),
-        ("models.vendor-model-1.5.score_pct", "9.9", "holds 2.5, not 9.9"),
-        ("models.vendor-model-1.5.runs.0.value", "2.5%", None),
-        ("a.b.c", "2.5", None),
-        ("models.vendor-model-1.score_pct", "9.9", "has no key models.vendor-model-1.score_pct"),
-        ("models.vendor-model-1.5.runs.1.value", "2.5%", "has no key"),
+        # The member dewey-641.5 is longer than the decoy dewey-641 -> 5 (2.76).
+        ("shelves.dewey-641.5.misfile_pct", "6.41", None),
+        ("shelves.dewey-641.5.misfile_pct", "2.76", "holds 6.41, not 2.76"),
+        ("shelves.dewey-641.5.counts.0.value", "6.41%", None),
+        ("a.b.c", "6.41", None),
+        ("shelves.dewey-641.misfile_pct", "2.76", "has no key shelves.dewey-641.misfile_pct"),
+        ("shelves.dewey-641.5.counts.1.value", "6.41%", "has no key"),
     ],
 )
 def test_claims_key_walks_the_longest_dotted_member_name(

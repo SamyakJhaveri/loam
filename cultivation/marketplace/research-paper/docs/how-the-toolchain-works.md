@@ -5,8 +5,8 @@ Commands and the run order are in `../README.md`.
 
 ## 1. The one fact behind the design
 
-An AI reviewer is often confidently wrong, so nothing it says counts until a program has checked it.
-A seat will claim, for example, that the paper never gives a figure the paper states plainly a few pages later; when the adjudicator checks seat findings against the text, a real share of them are refuted.
+An AI reviewer can be wrong while sounding certain, so nothing it says counts until it has been checked against the paper.
+A seat can quote a sentence the paper does not contain, which the quote gate rejects, or call something missing that another section states, which carries no quote and is left to the adjudicator to check.
 So every tool either produces something checkable, or checks another tool's output.
 Checkable means an exit code (0 is pass, 1 is a problem found) or a quote that must exist at a named line of the paper.
 
@@ -52,8 +52,8 @@ The scripts exist because a venue's hard rules (page limit, anonymity, a DOI or 
 ### Fixture tests
 
 A fixture is a small made-up input with a known answer.
-Each script has one input with a planted defect (it must exit 1) and one clean input (it must exit 0).
-They exist because separate verifier agents found real defects in freshly built scripts that the builders' own tests passed, for example a `\cite` split over two lines being skipped.
+Each gate script is tested on input with a defect, which it must report, and on clean input, which it must pass: the tests in `tests/`, `tests/run_selftest.sh` for the quote gate, and `style_lint --test` for the style rules.
+A check that has never failed on a known defect gives no evidence that it would catch one.
 
 ### Review seats
 
@@ -76,7 +76,7 @@ With `KEYS` it adds a known-issue coverage section: the known problems that stil
 
 ### Keys and vaccination
 
-A key is a list of known problems, for example the objections of an earlier review or the issues found in a trial run.
+A key is a JSON list of problems the paper is already known to have (the `KEYS` input of `adjudicate-review`, which names its fields).
 Vaccination means running the seats, seeing which known problems they miss, and adding a named check for each miss to the seat that should have caught it; then the seats run again.
 
 ### Routing the result
@@ -88,9 +88,8 @@ The writer never answers an open author decision; it leaves a `% OWNER:` comment
 
 | Decision | Chosen | Rejected | Why |
 |----|----|----|----|
-| Source of tools | Single files and line ranges from upstream repositories, with attribution | Installing whole repositories or plugins | The value was in the prompt text; the repositories' machinery did not fit, and some was broken (one citation checker crashed on any DOI entry) |
-| Trust in agents | Quote gate plus adjudicator | Using seat output as is | Seats are confidently wrong at a real rate |
-| Script verification | A separate agent attacks each script | The builder's own tests only | The attackers found defects the builders' tests passed |
+| Source of tools | Single files and line ranges from upstream repositories, with attribution | Installing whole repositories or plugins | A single file can be read whole, credited and changed under its own licence; the licence table in `../README.md` names each one |
+| Trust in agents | Quote gate plus adjudicator | Using seat output as is | A finding can rest on a quote or an absence that the paper does not bear out (section 1) |
 | Network use | Only DOIs, arXiv ids, URLs, cited titles and topic keywords leave the machine | Services that take manuscript sentences | Manuscript text must not go to an outside service |
 | Configuration | One contract and one config file per project, in `paper/tools/` | Venue, field and paths written into each agent and script | One plugin serves any paper; a project fills in two files |
 | Agent location | One copy, shipped in the plugin | A hand-made copy in each project | A hand-made copy goes stale |

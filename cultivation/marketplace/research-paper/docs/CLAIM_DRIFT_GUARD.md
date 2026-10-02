@@ -1,6 +1,6 @@
 # Claim drift guard for revisions
 
-Run it each time the writer revises a section or fills `\pending{Pn}` placeholders.
+Run it each time the writer revises a section or fills `\tofill{Tn}` placeholders.
 It has two parts: the ladder rule, which a reader applies to each revised sentence, and the token check, a script run on the old and new copy of each changed file.
 Sections 1 to 2 and the block in section 4 are taken from academic-research-skills (attribution at the end); [H] marks our additions.
 
@@ -37,20 +37,20 @@ Not a move:
 
 The hedges of the draft that a revision keeps unless section 3 authorizes a change [H]: list them once per paper, each with its file and line at a named commit.
 Keep the list where the reader of section 3 finds it, for example as a project rule in `paper/tools/contract.md` section 3.
-A synthetic example, for a paper on ExampleSys:
+A synthetic example, for a paper on loans at a city's public libraries:
 
-- Scope: "on the evaluated jobs and machines" (`paper/sections/introduction.tex:12`).
-- Design caveat: "does not prove that the two outputs are equal" (`introduction.tex:12`); "is not a proof of equality" (`discussion.tex:5`).
-- Status of a bound: "a 90 percent interval" (`abstract.tex:2`, `evaluation.tex:40`).
-- Limit of a control: "it does not show that ExampleSys catches a fault it was never shown" (`evaluation.tex:81`).
-- Limit of the sample: "it does not show that the sample jobs represent workloads in general" (`design.tex:40`).
+- Scope: "in the four branches we visited" (`paper/sections/introduction.tex:12`).
+- Design caveat: "loans rose in the same months as the fee waiver, and every branch had the waiver" (`introduction.tex:15`); "an association over one year" (`discussion.tex:5`).
+- Status of a result: "preliminary, from a single term of records" (`abstract.tex:2`, `results.tex:40`).
+- Limit of a measure: "door counts include staff and deliveries" (`method.tex:22`).
+- Limit of the sample: "all four branches sit in the city centre" (`method.tex:9`).
 
 ## 3. The rule for each revised sentence
 
 1. Place the claim of the old sentence on the ladder (verb, modal, hedges).
 2. Place the claim of the new sentence on the ladder the same way.
 3. New rung above old rung, or a hedge from section 2 deleted: a confirmed finding or an owner decision must authorize the strength change, and the same edit must add the new evidence that supports the higher rung.
-   New evidence is one of: a `\pending{Pn}` filled from its source in the project's placeholder registry (the file that names, for each placeholder, the claims file and key its value comes from), a new or changed table or figure value from the claims file the registry names for it, or a new `\cite` of a peer-reviewed source that states the claim.
+   New evidence is one of: a `\tofill{Tn}` filled from its source in the project's placeholder registry (the file that names, for each placeholder, the claims file and key its value comes from), a new or changed table or figure value from the claims file the registry names for it, or a new `\cite` of a peer-reviewed source that states the claim.
    Without both, restore the old wording.
 4. Evidence in an earlier or later edit does not count; it must be in the same diff.
 5. New rung below old rung: needs a confirmed finding or an owner decision that authorizes it, but no new evidence; name it and the sentence in the commit message.
@@ -128,8 +128,8 @@ for F in paper/sections/*.tex; do
 done
 ```
 
-Built text (optional): copy the built text (`build.text` in the config; `paper-tool paper_config build.text` prints its path) to `$TMPDIR/main_before.txt` before you rebuild the paper and extract its text again, then run `pair` on the two `.txt` files; `[PENDING Pn]` fills are found there too.
-A `\pendingcell{Pn}` table cell prints as a bare `Pn` in the built text, so its fill shows there as a number added; check table fills on the `.tex` files.
+Built text (optional): copy the built text (`build.text` in the config; `paper-tool paper_config build.text` prints its path) to `$TMPDIR/main_before.txt` before you rebuild the paper and extract its text again, then run `pair` on the two `.txt` files; `[TOFILL Tn]` fills are found there too.
+A `\tofillcell{Tn}` table cell prints as a bare `Tn` in the built text, so its fill shows there as a number added; check table fills on the `.tex` files.
 
 Authorize the deltas (`--authorize`), before committing:
 
@@ -143,9 +143,9 @@ Example `$TMPDIR/authorize.tsv` (every token, id, path and key in it is illustra
 
 ```
 # token	authority	note
-312	claims:results/claims.json#counts.sample_jobs	P40, sample jobs
-six	finding:1a2b3c4d	confirmed finding: the count was wrong
-\cite{Beta2022}	decision:D13	owner decision drops this comparison
+58	claims:results/claims.json#shelving.atlases_east	T23 fill, atlases at the east branch
+six	finding:5e7d20c4	confirmed finding: the day count was wrong
+\cite{Tasker2019}	decision:DEC-08	owner decision drops this comparison
 ```
 
 `$RUN` below is the folder of the review round whose adjudicator wrote `adjudication.md`; the `--decisions` file is the one where the project records owner decisions with their ids (`paper/notes/decisions.md` in this example).
@@ -161,9 +161,9 @@ echo "exit=$?"
 The three authority forms:
 
 - `finding:<id>`: the 8 lowercase hex characters that start a confirmed finding's id, as `adjudication.md` writes them; the id must appear as a whole word in a `--findings` file (the option repeats).
-- `decision:<id>`: an owner decision id such as `D13`; it must appear as a whole word in a `--decisions` file (the option repeats).
+- `decision:<id>`: an owner decision id such as `DEC-08`; it must appear as a whole word in a `--decisions` file (the option repeats).
 - `claims:<path>#<dotted.json.key>`: only for a fill or an added number, and the only form that authorizes a fill.
-  The path is relative to the working directory; the key is read from the left, and in an object each step takes the longest run of dotted parts that names a member, so `models.vendor-model-1.5.score.value` reaches the member `vendor-model-1.5` (in a list, a part is an index); the value there must equal the token once `%` and thousands separators are removed: `2.5%` matches `2.5` and `48,512` matches `48512`, but `20.3%` does not match `0.2034`.
+  The path is relative to the working directory; the key is read from the left, and in an object each step takes the longest run of dotted parts that names a member, so `shelves.dewey-641.5.misfile_pct` reaches the member `dewey-641.5` (in a list, a part is an index); the value there must equal the token once `%` and thousands separators are removed: `6.41%` matches `6.41` and `57,306` matches `57306`, but `4.38%` does not match `0.0438`.
   Point the key at the value the paper prints; an added number that no claims file holds can carry a finding or a decision row instead, a fill cannot.
   For a percent, point the key at the value as the paper prints it (already rounded), not at the raw ratio.
 
@@ -173,9 +173,9 @@ A row fails when its id is not found, its file or key is missing, or its value d
 Read the JSON output:
 
 - Exit 0, `"conserved": true`: no number, citation, key, target or placeholder was lost, changed or added, no strong word was added and no hedge dropped, and a passing `claims:` row checked every fill (so without `--authorize` any fill gives exit 1 under `--strict`).
-- `fills`: each `{"placeholder": "Pn", "value": "..."}` is a placeholder replaced in place by a digit number; a number word in its place shows as a placeholder removed and a number added.
+- `fills`: each `{"placeholder": "Tn", "value": "..."}` is a placeholder replaced in place by a digit number; a number word in its place shows as a placeholder removed and a number added.
 - `unverified_fills`: the fills that no passing `claims:` row checked; without `--authorize` that is every fill; write a `claims:` row from the registry row's source for each.
-- `fill_conflicts`: `{"Pn": [values]}` when one placeholder was filled with two different values; exit 1; fix the wrong value.
+- `fill_conflicts`: `{"Tn": [values]}` when one placeholder was filled with two different values; exit 1; fix the wrong value.
 - Exit 1 under `--strict`: some delta is non-empty (each entry needs a reason from section 3, step 7), a fill is unverified, or `fill_conflicts` is non-empty.
 - `numbers_delta`: digit numbers, and the number words zero to twenty, thirty to ninety by tens, hundred, thousand, dozen, half and twice, lowercased (`twenty percent` is one token); the same count removed and added is a changed number.
 - `placeholders_delta.removed` with no fill: a placeholder deleted or replaced by words; drop or update its registry row.
@@ -228,4 +228,4 @@ Taken from https://github.com/imbad0202/academic-research-skills at commit e7908
   Changes: the ladder is a table with an [H] column; the rule and lists are reworded as bullet lines, "roadmap item" becomes the authorization of section 3, and the upstream `→` arrows are written "to"; em dashes removed.
 - `evals/heldout/revision_claim_drift/runs/2026-08-07/RUN_PLAN.md`, lines 72-95: the guard block in section 4, verbatim except that its five em dashes are written "-".
 - Section 7 reports numbers read from `evals/heldout/revision_claim_drift/measurement-2026-08-07.json` and `runs/2026-08-07/` (deterministic, judge and adjudication records, `anon_map.json`, `RUN_NOTES.md`); no text is taken from them.
-- Sections 3, 5, 6, the hedge list in section 2, line 5 after the block, and the [H] column are ours (written for a private research-paper project, 2026-09-29, and made generic for this plugin).
+- Sections 3, 5, 6, the hedge list in section 2, line 5 after the block, and the [H] column are ours (added in this copy for the research-paper plugin).

@@ -45,20 +45,20 @@ Something outside your two lenses that you see while reading (an overclaim, a mi
 The paper disagrees with itself, or points at something that is not there.
 These are the defects that cost the most revision rounds; report every one you find.
 
-- **Placeholder wiring.** Each `[PENDING Pn]` id stands for one quantity.
+- **Placeholder wiring.** Each `[TOFILL Tn]` id stands for one quantity.
   Report one id used for two quantities, two ids for one quantity, a table cell and the sentence that cites it carrying different ids, and an identity (two parts and their total) stated with numbers in one place and with placeholders in another.
   Do not report that a number is missing (contract section 3).
-- **Duplicate or dangling ids and labels.** A table, figure, section, equation, gate, channel, research question or contribution number cited in the text that the paper never defines; one id defined twice for different things; `??` or `[?]` left by an unresolved reference; a list counted as three items in one section and four in another.
-- **Contradictions between sections.** The same quantity, set or design step stated two ways (abstract against evaluation, method against setup, introduction against conclusion): a count of items, cases, systems or samples; the order of pipeline steps; what a gate accepts; "all" or "every" in one place and an exception in another.
+- **Duplicate or dangling ids and labels.** A table, figure, section, equation, stage, component, research question or contribution number cited in the text that the paper never defines; one id defined twice for different things; `??` or `[?]` left by an unresolved reference; a list counted as three items in one section and four in another.
+- **Contradictions between sections.** The same quantity, set or design step stated two ways (abstract against evaluation, method against setup, introduction against conclusion): a count of items, cases, systems or samples; the order of pipeline steps; what a stage accepts; "all" or "every" in one place and an exception in another.
 - **Dead promises.** A pointer the paper cannot honor: "we show in Section V", "see the appendix" (when contract section 2 allows none), "discussed below", "Fig. 4 shows", where the target does not do what the sentence says; a research question posed and never answered; a limitation announced early and absent from the limitations text; an artifact or release promised with nothing a reader could follow.
 - **Terminology drift.** One term per concept.
-  Report one concept under two or more names (a metric, a control, a gate or a component renamed between sections), one name used for two concepts, an abbreviation defined twice or used before its definition, and case or hyphen variants of a named component.
+  Report one concept under two or more names (a metric, a control, a stage or a component renamed between sections), one name used for two concepts, an abbreviation defined twice or used before its definition, and case or hyphen variants of a named component.
   Count every variant with `grep -c` before you report drift, and give the counts in `evidence`.
 - **Claims of verification with no evidence beside them.** "verified", "validated", "confirmed", "measured", "guarantees" with no number, table, figure or method next to it or pointed to.
 - **Estimated numbers presented as measured.** An approximate, projected or expected value in a results table or results sentence with no label saying so.
-- **Vacuous checks.** A check or control the paper describes that passes without checking anything on the inputs it runs on: it compares a thing with itself, or its pass follows from how it was built.
-  Read what feeds it before you call it vacuous; never judge a check from its name.
-- **Self-graded inputs.** An evaluation in which the system under test controls an input to its own verdict.
+- **Controls that cannot fail.** A test or control the paper reports whose outcome was settled before any data reached it, so its result carries no information about the data: for example a scale checked against the same reference weight that was used to set it, or two figures called consistent when one formula produced both.
+  Read what feeds such a control before you report it; never judge a check from its name.
+- **A measured party that shapes its own measure.** A result where the thing being assessed also picks or alters part of what it is assessed against: for example a supplier that chooses which batches the inspector samples, or a forecaster that chooses which days count toward its accuracy score.
 - **Restatement.** The same sentence or result stated again beyond the summary role of the abstract and conclusion costs space under the page limit of contract section 2: report it as a `nit` with the exact cut.
   Never cut a fact, qualifier or number that is stated nowhere else.
 
@@ -67,7 +67,7 @@ These are the defects that cost the most revision rounds; report every one you f
 Run layers 1 to 6 on every number, metric and provenance statement in `PAPER`.
 Use only values printed in `PAPER`.
 Compute with `python3 -c`, and put the arithmetic in `failing_case` so another reader can redo it.
-An identity with a `[PENDING Pn]` operand cannot be checked numerically: record it as `not_assessable` in the ledger unless its wiring is wrong (a consistency finding).
+An identity with a `[TOFILL Tn]` operand cannot be checked numerically: record it as `not_assessable` in the ledger unless its wiring is wrong (a consistency finding).
 
 ### Layer 1. Arithmetic and identities
 
@@ -82,10 +82,10 @@ An identity with a `[PENDING Pn]` operand cannot be checked numerically: record 
 ### Layer 2. Metric bounds and identities
 
 Before checking bounds, find the metric's definition, its aggregation level, its denominator, what counts as a pass, and how a failed run or empty output is scored.
-- A score over k of n samples per task (for example a best-of-k success rate) is defined only for k <= n; report one computed with fewer than k samples, or with n unstated.
-- On the same tasks and samples, a best-of-k success rate never falls as k grows (best-of-3 >= best-of-1).
+- A best-of-k score (a task counts as solved when any of k tries solves it) needs at least k tries per task; report one computed from fewer tries, or with the number of tries per task unstated.
+- On the same tasks and tries, a best-of-k score cannot drop as k rises (best-of-10 is at least best-of-5).
 - A detection or recall rate states its denominator, and uses the same denominator wherever it is reported.
-- A one-sided bound states its direction and level (a one-sided 95% bound is not a two-sided 95% interval), and every bound or interval names its method (Wilson, Clopper-Pearson, bootstrap).
+- A one-sided bound states its direction and level (a one-sided 99% bound is not a two-sided 99% interval), and every bound or interval names its method (for example an exact interval or a bootstrap).
 - A value impossible under one aggregation and possible under another is an `aggregation_ambiguity`, not an error.
 If a metric is never defined in the paper, report `aggregation_ambiguity` or `provenance_gap`, not a numerical error.
 
@@ -105,12 +105,12 @@ A `pdftotext` dump keeps only a figure's text; when a check needs the drawn mark
 
 ### Layer 4. Aggregation and inferential unit
 
-State the unit at every level: sample, record, task, item, program, condition, system, campaign.
-- Macro against micro: a mean over programs is not a rate pooled over records; find which one each number is and whether the paper says so.
-- Equal-program, equal-task or equal-record weighting.
-- Pairing and nesting across system, condition, item and sample.
-- Whether an interval or bootstrap resamples at the right level: records from one program are not independent, so an interval over records that ignores clustering by program is too narrow.
-- Whether overlapping or near-duplicate units (one item in two datasets, one program in several conditions) make an interval too narrow.
+State the unit at every level: observation, subject, task, item, site, condition, system, study wave.
+- Macro against micro: the mean of per-school attendance rates differs from the attendance rate of all pupils pooled; find which kind each number is and whether the paper says so.
+- Equal weight per site, per task or per observation.
+- Pairing and nesting across system, condition, item and subject.
+- Whether an interval or bootstrap resamples at the right level: pupils in one school are not independent of each other, so an interval that treats every pupil as independent and ignores clustering by school is too narrow.
+- Whether overlapping or near-duplicate units (one item in two datasets, one subject in several conditions) make an interval too narrow.
 A number is only auditable after its aggregation level is defined.
 
 ### Layer 5. Provenance and leakage
@@ -121,7 +121,7 @@ Check that every central comparison can be rebuilt from the paper.
 - Preregistration or hashing: what was fixed, when, and whether any results were seen first.
 - Overlap between data used to build or tune the method and data used to evaluate it.
 - Whether the evaluated systems could have seen the test data while they were built, trained or tuned, and what the paper says about it.
-- Pilot runs, separate campaigns, and configuration differences between them.
+- Pilot runs, separate data-collection rounds, and configuration differences between them.
 - Hardware, run count and wall-clock time where a comparison depends on them.
 
 ### Layer 6. Dispersion and sensitivity anomalies
@@ -186,8 +186,8 @@ A blocking error only the audit found is still reported at its true severity, as
 ## Procedure
 
 1. Read `contract.md`, then `PAPER` whole.
-2. Build inventories from `PAPER` with Bash: every section heading; every `[PENDING Pn]` with its line; every table, figure, section, equation and named id (gate, channel, research question, contribution) where it is defined and where it is cited; every number with its unit and line; the names used for each key concept.
-   For example: `grep -n -o '\[PENDING P[0-9]*\]' <PAPER>` and `grep -n -E 'Table [IVX0-9]+|Fig(ure|\.) ?[0-9]+|Section [IVX0-9]+' <PAPER>`.
+2. Build inventories from `PAPER` with Bash: every section heading; every `[TOFILL Tn]` with its line; every table, figure, section, equation and named id (stage, component, research question, contribution) where it is defined and where it is cited; every number with its unit and line; the names used for each key concept.
+   For example: `grep -n -o '\[TOFILL T[0-9]*\]' <PAPER>` and `grep -n -E 'Table [IVX0-9]+|Fig(ure|\.) ?[0-9]+|Section [IVX0-9]+' <PAPER>`.
 3. Consistency pass: work through every pattern of lens 1 against the inventories.
 4. Forensic pass: run layers 1 to 6 in order, and give each check a ledger row even when it passes.
 5. Write both files and run both validator commands (contract section 6).

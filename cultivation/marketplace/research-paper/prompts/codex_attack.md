@@ -15,7 +15,7 @@ Judge against the code and result files the project's config (its `AGENTS.md` or
 ## Files
 
 - The proposals: every file in `<SUGGESTIONS>`, one per section of the paper.
-  Each entry has an id (for example `results-05`), an action (KEEP, REVISE or DROP), "Ours" (the paper's current text) and "Proposal" (the replacement text or an instruction).
+  Each entry has an id of the form `<section key>-<rank>` (for example `design-02`), an action (KEEP, REVISE or DROP), "Ours" (the paper's current text) and "Proposal" (the replacement text or an instruction).
   Read every entry of every file in full.
   Audit every entry whose action is KEEP or REVISE; ignore DROP entries.
 - The paper as a reader sees it: `<PAPER>`; its source: `<SECTIONS_DIR>/*.tex`.

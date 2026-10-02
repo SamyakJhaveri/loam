@@ -1,6 +1,6 @@
 \section{TPU Results}\label{sec:RDMA}
-A graphics processing unit (GPU) runs each kernel of \examplesys{}. % XYZ is a comment
-In 80\% of runs, the message passing interface (MPI) carries the data.
+A graphics processing unit (GPU) renders each frame of \examplesys{}. % XYZ is a comment
+In 65\% of the frames, the message passing interface (MPI) carries the data.
 Each MPI rank reads its input (Section~\ref{sec:RDMA}; see \cite{HBM, NVLink}).
 The error is $\mathrm{RMSE} < 10^{-3}$, \(\mathrm{MAE}\) stays small, and
 \[ \mathrm{SNR} = 1 \]
@@ -12,7 +12,7 @@ The tool sets \texttt{LD\_PRELOAD} and prints \verb|FPGA| once.\\% the ASIC note
 CPU_COUNT=4 VHDL
 \end{verbatim}
 \begin{lstlisting}
-#pragma omp target DSP
+render_frame(DSP, scale=2)
 \end{lstlisting}
 \begin{figure}[t]
 \centering

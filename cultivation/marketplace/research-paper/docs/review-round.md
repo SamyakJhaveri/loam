@@ -20,14 +20,15 @@ Both workflows launch the same 10 seats in parallel, each on the built paper tex
 - `critic`, an `escalate` agent that judges the paper on the criteria and aspects of contract section 2;
 - `taste`, an `escalate` agent that judges six writing moves: argument chain, gap-to-answer mapping, claim headings, what Fig. 1 shows, numbers in the claiming sentence, and machine-sounding prose.
 
-Each seat writes `<seat>.findings.json`, `<seat>.review.md` and `<seat>.scores.md` (a score from 1 to 5 per criterion and aspect, weakest first).
+Each seat writes `<seat>.findings.json` and `<seat>.review.md`; every seat but `reviewer-devils-advocate`, which only challenges, also writes `<seat>.scores.md` (a score from 1 to 5 per criterion and aspect, weakest first).
+In this round `claim-ref-alignment` skips its uncited-assertion step, because `citation-finder` covers those sentences.
 
 ## What each workflow does
 
 `attack-round-full`:
 
 1. Seats: the 10 seats above.
-2. Gate: as each seat finishes, a `worker` runs `paper-tool validate_findings <file>` and `paper-tool validate_findings --check-quotes --require-quotes <file> --root <ROOT>`, and copies the seat's three files into `findings/` when both exit 0.
+2. Gate: as each seat finishes, a `worker` runs `paper-tool validate_findings <file>` and `paper-tool validate_findings --check-quotes --require-quotes <file> --root <ROOT>`, and copies the seat's files into `findings/` when both exit 0.
    On failure, one fresh agent of the seat's own type gets the seat's findings file and the rejection list, fixes only those findings, and the gate runs once more.
    At most 8 repairs run in one round; a seat that still fails stays out of `findings/` and is named in the result.
 3. Adjudicate: `research-paper:adjudicate-review` verifies, merges and tiers the findings of the seats that passed, adds a "Scores" table, and, when given, uses the decisions file, the known-issue keys and the prior round.
@@ -41,7 +42,7 @@ paper-tool validate_findings <out>/seats/<seat>/<seat>.findings.json
 paper-tool validate_findings --check-quotes --require-quotes <out>/seats/<seat>/<seat>.findings.json --root .
 ```
 
-Copy the three files of each seat that passes both into `<out>/findings/`, then launch `research-paper:adjudicate-review` with `FINDINGS_DIR`, `PAPER`, `ROOT`, `OUT = <out>/adjudicated` and any of `DECISIONS`, `KEYS` and `PRIOR`.
+Copy the files of each seat that passes both into `<out>/findings/`, then launch `research-paper:adjudicate-review` with `FINDINGS_DIR`, `PAPER`, `ROOT`, `OUT = <out>/adjudicated` and any of `DECISIONS`, `KEYS` and `PRIOR`.
 The workflow returns these steps with the round's paths filled in.
 
 ## Agent count
@@ -70,7 +71,7 @@ Use a new `out` for each round, so a second round does not overwrite the first.
 ## Outputs
 
 ```
-<out>/seats/<seat>/      each seat's findings, review and scores
+<out>/seats/<seat>/      each seat's findings, review and scores (no scores from reviewer-devils-advocate)
 <out>/findings/          copies from the seats that passed the quote gate
 <out>/adjudicated/       adjudicated.findings.json and adjudication.md
 <out>/completeness/      completeness.md

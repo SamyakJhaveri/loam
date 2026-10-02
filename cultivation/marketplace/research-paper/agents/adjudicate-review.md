@@ -129,8 +129,8 @@ In `adjudication`, quote the confirming or refuting span of `PAPER` in straight 
 When a check needs material outside `PAPER`, adjudicate what `PAPER` shows (for example, that a unit is undefined), and write "not checked: needs <what>" in `adjudication`.
 
 Apply the contract to the seats as well:
-- a finding that only reports a `[PENDING Pn]` number is refuted (contract section 3);
-- a finding or fix that breaks a project rule of contract section 3 (for example, one that brings in a number from an earlier version the contract rules out) is refuted, or its fix is replaced;
+- a finding that only reports a `[TOFILL Tn]` number is refuted (contract section 3);
+- a finding or fix that breaks a project rule of contract section 3 (for example, one that brings in a number that matches none of the result files or tables that section names) is refuted, or its fix is replaced;
 - a severity that rests on a field norm with no checkable source in `rule` is downgraded to `minor`, with `rule` starting `[FIELD-NORM UNVERIFIED]` (contract section 5).
 
 ### 5. Never add a blocker

@@ -15,7 +15,7 @@ Index mode (the default):
   --main exactly as cite_check.py does (its parser and scanner are imported, not copied);
 - reads every paper named in the --notes files: a row of a Markdown table that has a
   "Paper" or "Work" column, a list item that holds a DOI or an arXiv id, and a bib-key
-  token (a key of --bib anywhere in a line, or a key-shaped token such as `Kaizen2026`
+  token (a key of --bib anywhere in a line, or a key-shaped token such as `Hartwell2027`
   inside backticks or quotes). FILE::HEADING reads only the section under the first
   heading whose text starts with HEADING (for example "## 8."), up to the next heading of
   the same or a higher level;
@@ -121,7 +121,7 @@ def cell_papers(segment):
     head = re.split(r"[(\"\u201c]", text, maxsplit=1)[0].strip().rstrip(",").strip()
     pieces = [piece.strip() for piece in head.split(",")]
     if not title and len(pieces) > 1 and all(piece and " " not in piece for piece in pieces):
-        return [([piece], "", paren_text) for piece in pieces]  # "TRACE, RepoTransBench"
+        return [([piece], "", paren_text) for piece in pieces]  # "Almanac, Gazetteer"
     names = [name.strip() for name in head.split(" / ") if name.strip()]
     return [(names, title, paren_text)]
 

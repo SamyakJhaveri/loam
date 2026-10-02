@@ -29,7 +29,7 @@
     },
     "file": {"type": "string", "description": "the reviewed text, relative to --root"},
     "line": {"type": "integer", "minimum": 1},
-    "locus": {"type": "string", "description": "section, table, figure, gate or channel; 'absence:<where>' for a missing item"},
+    "locus": {"type": "string", "description": "section, table, figure, stage or component; 'absence:<where>' for a missing item"},
     "lens": {
       "enum": ["methods", "domain", "generalist", "devils-advocate", "consistency", "forensic", "reader-first", "citation", "critic", "adjudicator"]
     },

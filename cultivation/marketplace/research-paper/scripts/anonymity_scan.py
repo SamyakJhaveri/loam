@@ -12,7 +12,7 @@ otherwise disclose who the authors are.
 
 Terms:
 - the citation file (paper.citation_cff, default CITATION.cff), read at run time: each author's
-  family name, each given name of 4 or more letters ("Le", "Tom", "Gal" alone match ordinary
+  family name, each given name of 4 or more letters ("Ash", "May", "Kit" alone match ordinary
   words; their family names still match), each affiliation whole and each comma-separated part
   of it.
 - the terms file (terms.anonymity; keep it private, it names real people): one "<kind>: <term>"
@@ -29,8 +29,10 @@ Scanned:
   XMP stream (pdfinfo -meta) are scanned for terms;
 - the raster images inside each PDF (pdfimages -list): listed, not scanned;
 - every file under --figures (default paper.figures_dir; "" in the config skips it with a
-  note): a PDF as above; a raster file listed, not scanned; any other file (TikZ, draw.io
-  source) scanned as text, its matches notes, since source text does not render.
+  note, and so does the default paper/figures when it does not exist; a folder given by
+  --figures, or any other folder the config names, must exist): a PDF as above; a raster file
+  listed, not scanned; any other file (TikZ, draw.io source) scanned as text, its matches
+  notes, since source text does not render.
 
 Classes:
 - HIT: an author name or the earlier venue outside a third-person citation; any affiliation,
@@ -62,7 +64,7 @@ import re
 import sys
 from pathlib import Path
 
-from paper_config import load
+from paper_config import DEFAULTS, load
 from paper_limits import REFS, die, is_heading, load_text, page_count, run_tool, show, shown
 
 HIT_KINDS = set("affiliation lab org host path url title arxiv phrase venue".split())
@@ -381,8 +383,13 @@ def main(argv=None):
     args = ap.parse_args(argv)
     cfg = load()
     figures = args.figures if args.figures is not None else cfg["paper"]["figures_dir"]
+    skipped = "paper.figures_dir (empty)"  # why the figures are not scanned when figures is None
     if figures is not None and not figures.is_dir():
-        die(f'no figures directory at {figures} (paper.figures_dir; "" for none)')
+        default = cfg["project"]["root"] / DEFAULTS["paper"]["figures_dir"]
+        if args.figures is not None or figures != default:
+            die(f'no figures directory at {figures} (paper.figures_dir; "" for none)')
+        skipped = f"paper.figures_dir (default; no folder at {shown(figures)})"
+        figures = None
     notes = []
     citation = config_file(
         args.citation,
@@ -422,7 +429,7 @@ def main(argv=None):
             die("no PDF: pass --pdf or --text, or set build.pdf in paper-tools.toml")
         scan_pdf(pdf, terms, rep)
     if figures is None:
-        rep.emit("NOTE", "figures not scanned", "paper.figures_dir (empty)")
+        rep.emit("NOTE", "figures not scanned", skipped)
     else:
         scan_figures(figures, terms, rep)
     code = 1 if rep.hits else 0

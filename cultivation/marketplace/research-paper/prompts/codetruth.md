@@ -10,7 +10,7 @@ Judge against the code and result files the project's config (its `AGENTS.md` or
 
 ## Task
 
-1. Read in full the paper's sections that describe the system, how its inputs were built and the experimental setup, and every sentence elsewhere (abstract, introduction, results, discussion) that states what the system does: an input, a step, a decision rule, a threshold, a tolerance, a count of programs or runs, a gate, an output, a file format, a model setting.
+1. Read in full the paper's sections that describe the system, how its inputs were built and the experimental setup, and every sentence elsewhere (abstract, introduction, results, discussion) that states what the system does: what it takes in, a processing stage or component, a decision rule or threshold, a tolerance, how many items or repetitions it covers, what it writes out and in which file format, a model or tool setting.
 2. For each such sentence, find the code or configuration that implements it, and read enough of it to know what it really does.
 3. Judge each sentence: `matches` (the code does exactly this), `imprecise` (true in spirit, but a reader rebuilding it from the sentence would build something different), `contradicts` (the code does something else), or `not-found` (you could not find the implementing code; say where you looked).
 

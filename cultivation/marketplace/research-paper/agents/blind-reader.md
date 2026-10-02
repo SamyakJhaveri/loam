@@ -34,10 +34,3 @@ Be harsh and specific. Do not praise.
 Do not suggest adding material you cannot know is true; report only where the text as written fails a first-time reader.
 A term deferred by a `\ref` may be defined in text you did not see; report it as a first-reader gap, never as a claim that the paper lacks it.
 End with a `Risks:` line naming what you could not judge from one file.
-
-## How the lead uses this seat
-
-1. Extract the section or half-section to a file under `$TMPDIR` with LaTeX comments removed, for example `awk '/\\subsection{Next Title}/{exit} {print}' paper/sections/<file>.tex | grep -v '^%' > "$TMPDIR/<name>.tex"`.
-2. Spawn this agent with that path, the venue and field, and the macro-to-text map from `paper.macros` in `paper/tools/paper-tools.toml`; give it no other project context, no owner rules and no history.
-3. Fix the section, then run the seat again on the new extract; the scores in item 5 must not fall.
-4. The report is evidence for the owner, not an instruction: the lead re-reads every quoted line before acting on a finding.

@@ -1,3 +1,3 @@
-# Fixture decisions for the decision: rows
+# Decisions file for the decision: rows
 
-- D13: drop the check count from the probe sentence.
+- DEC-08: drop the day count from the opening-hours sentence.

@@ -1,9 +1,9 @@
 [
   {
-    "id": "0bd26713c2cf9af25d88ffaaee8e8264cb731edd",
+    "id": "ee7be363cf8a286f7ed2f606f12a8ff0b29818c8",
     "file": "paper_fixture.txt",
     "line": 9,
-    "locus": "Abstract, replay harness",
+    "locus": "Abstract, request log",
     "lens": "critic",
     "severity": "minor",
     "rule": "Methodology",

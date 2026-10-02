@@ -2,14 +2,14 @@
 # Format: one acronym per line; "#" starts a comment; blank lines are ignored.
 #
 # Left out on purpose. Each needs a definition on first use:
-#   SLoC   source lines of code; the fixture counts program size in it.
-#   AST    abstract syntax tree; a compiler term.
+#   SoC    state of charge; the fixture logs battery level in it.
+#   MSL    mean sea level; a survey term.
 
 # Known without definition
-CUDA
-GPU
-OpenMP
+GPS
+LoRa
+NTP
 
 # Not acronyms: status labels
-FAIL      # status label
-PASS      # status label
+DOWN      # status label
+LOST      # status label

@@ -3,13 +3,12 @@
 # taken from https://github.com/yuan1z0825/nature-skills, commit
 # 84880815fb37317b3766bff2c2abba395b8993c3, skills/nature-shared/tests/test_check_consistency.py,
 # lines 1-59 (the file without its "__main__" block), Apache License 2.0.
-# Changes made in this copy (a private research-paper project, 2026-09-29): this header; SCRIPT
-# points at the script; imports json, subprocess and pytest; the "__main__" block is dropped
-# (pytest runs the file); everything after ConsistencyCheckerTests is new (fixture tests with
-# fixtures in fixtures/check_consistency/, and tests of the two fixes).
-# For the research-paper plugin: SCRIPT is ../scripts/check_consistency.py and scripts/ is put on
-# sys.path (the script imports paper_config); imports os; subprocess runs set PAPER_TOOLS_ROOT;
-# the fixtures and the hash test hold synthetic text; new tests of the config defaults at the end.
+# Changes made in this copy (the research-paper plugin): this header; SCRIPT is
+# ../scripts/check_consistency.py and scripts/ is put on sys.path (the script imports
+# paper_config); imports json, os, subprocess and pytest; the "__main__" block is dropped (pytest
+# runs the file); everything after ConsistencyCheckerTests is new (fixture tests with fixtures in
+# fixtures/check_consistency/, tests of the two fixes, and tests of the config defaults at the
+# end); subprocess runs set PAPER_TOOLS_ROOT; the fixtures and the hash test hold synthetic text.
 from __future__ import annotations
 
 import importlib.util
@@ -130,7 +129,7 @@ def test_fixture_exit_status(name: str, codes: list[str]) -> None:
 @pytest.mark.parametrize(
     ("line", "visible"),
     [
-        (r"80\% of runs % a comment", r"80\% of runs "),
+        (r"65\% of loans % a comment", r"65\% of loans "),
         (r"a line break\\% a comment", r"a line break\\"),
         (
             r"a line break and a percent sign \\\% stay",

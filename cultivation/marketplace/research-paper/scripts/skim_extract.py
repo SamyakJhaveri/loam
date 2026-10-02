@@ -16,7 +16,7 @@ paper.sections_dir), and writes four text files, comments stripped and the paper
 - pass4.txt: the section headings and the first sentence of every paragraph; a bold run-in header
   is kept in [brackets] before its sentence.
 
-Each file is what one fresh `blind-reader` gets for its pass, with the files of the passes before
+Each file is what one fresh read-only reader gets for its pass, with the files of the passes before
 it. The reading order is that of "How I read a scientific paper in 20 minutes" and of McGill's
 "The 5 pivotal paragraphs in a paper" (sources in the skim test of docs/section-loop.md).
 """

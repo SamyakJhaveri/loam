@@ -34,8 +34,8 @@ Checks:
       word (the text-macro idiom, e.g. \examplesys{}), and other command names dropped with their
       argument text kept.
    A word is a whitespace-separated token with a letter or digit in it. The PDF count runs
-   high: small caps split words ("E XAMPLE S YS" is 4 tokens) and \pending{P3} prints
-   "[PENDING P3]" (2 tokens, 1 in the .tex count).
+   high: small caps split words ("E XAMPLE S YS" is 4 tokens) and \tofill{T12} prints
+   "[TOFILL T12]" (2 tokens, 1 in the .tex count).
    A missing abstract heading or end marker, or a .tex abstract with no words, fails (the check
    does not pass on what it cannot see).
 

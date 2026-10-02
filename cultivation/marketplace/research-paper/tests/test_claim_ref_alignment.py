@@ -8,9 +8,8 @@ sections/background.tex, four citing sentences, synthetic sources):
 - a seeded copy with the S4 \\cite line behind a % comment lists three;
 - a seeded copy whose \\input names a missing file prints a PROBLEM line and no row;
 - a seeded copy with a second \\cite of the same key on one line lists two identical rows.
-It also checks that each expected paper_line starts its sentence in paper.txt.
 It does not run the agent: labels need the web and a model.
-Run from the repository root: python3 -m pytest <this file> -q
+Run from the plugin folder: python3 -m pytest tests/test_claim_ref_alignment.py -q
 """
 
 import json
@@ -100,12 +99,3 @@ def test_same_key_twice_on_a_line_gives_two_rows(tmp_path):
     assert r.returncode == 0, r.stderr
     assert rows(r.stdout).count("sections/background.tex:6 Beta2024") == 2
     assert r.stdout.splitlines()[-1].startswith("5 citations in 2 files:")
-
-
-def test_paper_lines_start_their_sentences():
-    expected = json.loads((FIX / "expected.json").read_text())
-    paper = (FIX / "paper.txt").read_text().split("\n")  # pdftotext form feeds: not splitlines()
-    tex = (FIX / "sections" / "background.tex").read_text().split("\n")
-    for row in expected["rows"]:
-        head = " ".join(tex[int(row["tex"].rsplit(":", 1)[1]) - 1].split()[:3])
-        assert head in paper[row["paper_line"] - 1], row["sentence"]

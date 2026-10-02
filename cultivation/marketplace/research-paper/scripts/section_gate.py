@@ -37,7 +37,7 @@ STYLE_LINT = HERE / "style_lint.py"
 
 
 def strip_comments(tex: str) -> str:
-    return "\n".join(line for line in tex.splitlines() if not line.startswith("%"))
+    return "\n".join(line for line in tex.splitlines() if not line.lstrip().startswith("%"))
 
 
 def lost_tokens(removed: dict, revision: str) -> list:
@@ -63,7 +63,7 @@ def lost_tokens(removed: dict, revision: str) -> list:
 def banned_hits(revision: str, patterns: list) -> list:
     hits = []
     for number, line in enumerate(revision.splitlines(), 1):
-        if line.startswith("%"):
+        if line.lstrip().startswith("%"):
             continue
         for pattern in patterns:
             if re.search(pattern, line):
@@ -87,7 +87,7 @@ def slack(pdf_text: str, section_title: str) -> dict:
     for number, page in enumerate(pages, 1):
         lines = page.splitlines()
         for index, line in enumerate(lines):
-            if squash(line) == "REFERENCES" and out["refs_page"] is None:
+            if squash(line) in ("REFERENCES", "BIBLIOGRAPHY") and out["refs_page"] is None:
                 out["refs_page"] = number
                 out["lines_after_refs"] = len([x for x in lines[index + 1 :] if x.strip()])
     title = squash(section_title)

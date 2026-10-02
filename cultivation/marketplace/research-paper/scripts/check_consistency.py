@@ -4,8 +4,7 @@
 # Path:   skills/nature-shared/scripts/check_consistency.py, lines 1-273 (the whole file)
 # License: Apache License 2.0, https://www.apache.org/licenses/LICENSE-2.0
 #          (no NOTICE file and no named copyright holder upstream).
-# Changes made in this copy (a private research-paper project, 2026-09-29; change 4 for the
-# research-paper plugin):
+# Changes made in this copy (the research-paper plugin):
 #   1. This header, and "# fmt: off" below it, so ruff keeps the upstream layout and a diff
 #      against upstream shows only these changes.
 #   2. LaTeX comments (upstream L61): COMMENT_PATTERN drops a comment from a % that follows

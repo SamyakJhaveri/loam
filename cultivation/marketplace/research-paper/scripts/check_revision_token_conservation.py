@@ -5,8 +5,7 @@
 #         file except its patch mode, lines 157-219)
 # License: CC BY-NC 4.0, Copyright (c) 2026 Cheng-I Wu,
 #          https://creativecommons.org/licenses/by-nc/4.0/ (non-commercial research use only).
-# Changes made in this copy (a private research-paper project, 2026-09-29; change 14 for the
-# research-paper plugin):
+# Changes made in this copy (the research-paper plugin):
 #   1. This header, and "# fmt: off" below it, so ruff keeps the upstream layout and a diff
 #      against upstream shows only these changes.
 #   2. Pair mode only. Removed: patch mode (upstream L157-219: _op_texts, _summarize_delta,
@@ -19,19 +18,19 @@
 #   4. LaTeX input: read_text drops the % comments of a .tex file (a % after an even number of
 #      backslashes starts a comment; \% is a percent sign and stays; TEX_COMMENT_RE is
 #      COMMENT_PATTERN of check_consistency.py next to this file, made multi-line). _prose
-#      also folds \% to % and {,} to ",", so 80\% is the token 80% and 24{,}994 is 24,994, as
+#      also folds \% to % and {,} to ",", so 35\% is the token 35% and 57{,}306 is 57,306, as
 #      in the built PDF text. main reads both files through read_text.
 #   5. New delta latex_keys_delta: the keys of \cite, \citep and \citet (one token "\cite{key}"
 #      per key, whatever the variant, star or optional arguments) and the targets of \ref and
 #      \label ("\ref{x}", "\label{x}"). _prose blanks these commands but keeps the text of a
 #      \cite's optional arguments, so digits in a key are never read as numbers, a key is never
-#      read as an author-year citation, and a changed locator (Sec.~3 to Sec.~4) is still a
+#      read as an author-year citation, and a changed locator (ch.~6 to ch.~7) is still a
 #      number delta, as upstream reports it.
-#   6. Placeholders: \pending{Pn} and \pendingcell{Pn} (defined in the paper's macros) and the
-#      built-text form "[PENDING Pn]". audit_pair aligns the ordered numbers and placeholders
+#   6. Placeholders: \tofill{Tn} and \tofillcell{Tn} (two macros a paper defines) and the
+#      built-text form "[TOFILL Tn]". audit_pair aligns the ordered numbers and placeholders
 #      of both texts (difflib); where the revision puts a number in place of a placeholder
 #      that it no longer has (a moved placeholder is not filled), it records a fill
-#      {"placeholder": "Pn", "value": "<number>"} in the new "fills" list, and that
+#      {"placeholder": "Tn", "value": "<number>"} in the new "fills" list, and that
 #      placeholder and that number enter no delta, so a pass that only fills placeholders
 #      is conserved. A number replaced by a different number stays a change (removed and added
 #      in numbers_delta). A placeholder dropped, added or renamed without a fill goes to the new
@@ -39,10 +38,10 @@
 #      and find_fills. extract_numbers now takes the numbers from _values (the same NUMBER_RE,
 #      matched in one pass with the placeholders), so a placeholder id is never a number.
 #   7. "conserved" also requires empty latex_keys_delta and placeholders_delta, and no
-#      placeholder filled with two different values (the new "fill_conflicts", {"Pn": [values]});
+#      placeholder filled with two different values (the new "fill_conflicts", {"Tn": [values]});
 #      "fills" and "fill_conflicts" are added to the report after the deltas.
 #   8. main: --source and --revision get help text ("the old file", "the new file").
-#   9. Number words (2026-09-29): zero to twenty, thirty to ninety by tens, hundred, thousand,
+#   9. Number words: zero to twenty, thirty to ninety by tens, hundred, thousand,
 #      dozen, half and twice, each with an optional "percent" after it, are number tokens
 #      (NUMBER_WORD_RE: whole words, any case, lowercased, "\half" is no word); extract_numbers
 #      adds them to the digit numbers. They are not in _values, so a fill is a digit number.
@@ -59,14 +58,11 @@
 #      row with its token (a claims: row counts only for an added number) and every fill a
 #      passing claims: row with its value; the report gets "authorization" and the exit code
 #      is 0 only when it is authorized (--strict is then ignored).
-#  13. Dotted member names (2026-09-29): _claims_problem walks the key from the left, and in an
-#      object each step takes the longest run of dotted parts that names a member, so a model
-#      name such as vendor-model-1.5 is one step (models.vendor-model-1.5.score.value); a list
-#      still takes one integer index per part. Before, each part was one step and such a key
-#      had "no key".
-#  14. Plugin port: the project name, a model name in change 13 and a source path in change 6
-#      are made generic, the ladder is docs/CLAIM_DRIFT_GUARD.md of the plugin, and the
-#      author-year example in the comment above _NARRATIVE_AUTHOR names other surnames.
+#  13. Dotted member names: _claims_problem walks the key from the left, and in an object each
+#      step takes the longest run of dotted parts that names a member, so a call number such
+#      as dewey-641.5 is one step (shelves.dewey-641.5.misfile_pct); a list still takes one
+#      integer index per part. Before, each part was one step and such a key had "no key".
+#  14. The author-year example in the comment above _NARRATIVE_AUTHOR names other surnames.
 # fmt: off
 r"""Deterministic token-conservation audit between revision rounds (#570).
 
@@ -76,7 +72,7 @@ parentheticals), and optional protected terms between a source text and
 its revision, as a plain pair of drafts (this copy has no patch mode).
 This copy also compares LaTeX \cite, \citep and \citet keys and \ref and
 \label targets, reads a .tex file without its % comments, and reports a
-placeholder (\pending{Pn}, [PENDING Pn]) replaced by a number as a fill,
+placeholder (\tofill{Tn}, [TOFILL Tn]) replaced by a number as a fill,
 not as a delta. Number words (six, twenty percent) are numbers, a fixed
 list of strong words and hedges gives strength_delta, and a fill stays
 unverified unless a claims: row of --authorize matches its value.
@@ -172,10 +168,10 @@ LATEX_KEY_RE = re.compile(
     r"\\(?:(?P<cite>cite[pt]?)\*?(?P<opts>(?:\s*\[[^\]]*\]){0,2})|(?P<target>ref|label))"
     r"\s*\{(?P<keys>[^{}]*)\}"
 )
-# \pending{Pn} and \pendingcell{Pn} in the sources, [PENDING Pn] in the built text.
+# \tofill{Tn} and \tofillcell{Tn} in the sources, [TOFILL Tn] in the built text.
 PLACEHOLDER_RE = re.compile(
-    r"\\pending(?:cell)?\s*\{\s*(?P<tex_id>[^{}]*?)\s*\}"
-    r"|\[PENDING\s+(?P<text_id>[^\]]*?)\s*\]"
+    r"\\tofill(?:cell)?\s*\{\s*(?P<tex_id>[^{}]*?)\s*\}"
+    r"|\[TOFILL\s+(?P<text_id>[^\]]*?)\s*\]"
 )
 # Placeholders and numbers in one left-to-right pass, so both keep their reading order.
 VALUE_RE = re.compile(rf"{PLACEHOLDER_RE.pattern}|(?P<number>{NUMBER_RE.pattern})")

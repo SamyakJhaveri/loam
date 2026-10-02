@@ -1,17 +1,20 @@
 #!/usr/bin/env python3
 r"""Run a paper-writing seat on a Codex model (codex.model in paper-tools.toml) from a Claude Code session.
 
-    paper-tool codex_seat blind paper/sections/abstract.tex --venue "Example Conference 2030 (distributed systems)"
+    paper-tool codex_seat blind paper/sections/abstract.tex --venue "Example Conference 2030 (transit planning)"
     paper-tool codex_seat exemplar intro <paper id> paper/sections/abstract.tex paper/sections/introduction.tex
+    paper-tool codex_seat whole all
+    paper-tool codex_seat codetruth
     paper-tool codex_seat seat reviewer-generalist paper/build/main.txt
     paper-tool codex_seat save <codex output file> <report.md>
+    paper-tool codex_seat merge <reports folder> <out folder>
 
-Run from the project root. Each command writes a work folder and a prompt under $TMPDIR/codex_seats/ and
-prints the one command that runs Codex. Run that command exactly as printed: the sandbox lets only a bare
-`node .../codex-companion.mjs ...` command reach OpenAI (the project's sandbox.excludedCommands setting), so
-a `cd`, a redirect or a pipe added to it puts it back in the sandbox and it fails with EPERM or
-"workspace routing discovery failed". Long runs belong in the lead session's background: run it with
-run_in_background; the task output file holds the report, and `save` strips the progress lines from it.
+Run from the project root. Each seat command (blind, exemplar, whole, codetruth, seat) writes a work folder
+and a prompt under $TMPDIR/codex_seats/ and prints the one command that runs Codex. If your sandbox excludes
+only the bare `node .../codex-companion.mjs` command, run it exactly as printed: a `cd`, a redirect or a pipe
+added to it puts it back in the sandbox and it fails with EPERM or "workspace routing discovery failed".
+Long runs belong in the lead session's background: run it with run_in_background; the task output file holds
+the report, and `save` strips the progress lines from it.
 The companion script is codex.companion, or else the one in the newest installed version of the Codex plugin.
 
 - blind: the blind-reader seat (the plugin's agents/blind-reader.md) on one section, comments removed. The
@@ -20,10 +23,14 @@ The companion script is codex.companion, or else the one in the newest installed
 - exemplar: one exemplar paper (codex.manifest), read in full from its local text (codex.corpus_dir/<id>.txt),
   with the questions of section 2 of the plugin's docs/section-loop.md for the section type, then compared
   with our sections.
+- whole: each named exemplar paper (or all) read in full against our whole built text (build.text).
+- codetruth: one read-only pass, in the project root, that checks what the paper says the code does.
 - seat: a review seat (the plugin's agents/<seat>.md) on PAPER. The work folder holds PAPER at its project
   path, the project's contract (paper/tools/contract.md) and config, and the plugin's scripts under plugin/,
   where the seat text's ${CLAUDE_PLUGIN_ROOT} now points; Codex runs with --write inside that folder only
   and writes OUT there. Copy OUT back yourself.
+- save: copies a run's report without the progress lines; --text counts the lines of a file the model read.
+- merge: pools the jsonl suggestions of saved reports (<paper>__<model>.md) into one file per section.
 """
 
 import argparse
@@ -147,7 +154,8 @@ def manifest(cfg) -> dict:
 
 
 def question_row(row: str) -> tuple:
-    table = GUIDE.read_text()
+    # section 2 only: section 3 has a "Method" row too
+    table = GUIDE.read_text().partition("\n## 2.")[2].partition("\n## 3.")[0]
     m = re.search(rf"^\| {re.escape(row)} \| (.+?) \| (.+?) \|$", table, re.M)
     if not m:
         sys.exit(f"codex_seat: no row {row!r} in the section 2 table of {GUIDE.name}")
@@ -281,7 +289,7 @@ def cmd_seat(a, cfg) -> None:
         f"{body}\n\n## Inputs\n\n{inputs}\n"
         "Your working directory is ROOT. Write only inside OUT. Do not use web search unless your seat file allows it.\n"
     )
-    finish(cfg, d, prompt, a.model, a.effort, write=True)
+    finish(cfg, d, prompt, a.model, a.effort, write=True, tools="Read,Grep,Glob,Bash")
 
 
 def cmd_save(a, cfg) -> None:
@@ -469,7 +477,7 @@ def parser() -> argparse.ArgumentParser:
             s.add_argument(
                 "--venue",
                 required=True,
-                help='the venue and its field, for example "Example Conference 2030 (distributed systems)"',
+                help='the venue and its field, for example "Example Conference 2030 (transit planning)"',
             )
         elif name == "exemplar":
             s.add_argument("type", choices=SECTION_TYPES)

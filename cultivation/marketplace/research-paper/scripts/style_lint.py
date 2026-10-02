@@ -2,8 +2,8 @@
 """Deterministic style checks for outward-facing research text.
 
 Catches mechanically what is mechanical, so the human pass can spend itself on
-what is not. Every rule here traces to a defect that actually shipped: its
-message names the failure it prevents (see --list).
+what is not. Each rule targets one common defect in research prose, and its
+message names the defect and the fix (see --list).
 
 Usage:
     python3 style_lint.py FILE [FILE ...]        # core rules
@@ -29,7 +29,7 @@ import sys
 # Rules. Each is (id, group, compiled regex, message).
 # group "core"  -> always on: defects no research prose wants.
 # group "house" -> opt-in: tightenings for reviewer responses and rebuttals,
-#                  where the published corpus does NOT support a blanket ban.
+#                  where published papers do NOT support a blanket ban.
 # --------------------------------------------------------------------------
 
 # Passive constructions whose hidden agent is us, describing our own action.
@@ -37,7 +37,7 @@ import sys
 # listing only verbs that name something a person did.
 # Split deliberately. The core set is verbs performed on a document or a claim,
 # where an agentless passive is almost always us hiding. The advisory set is
-# ordinary mechanism verbs ("the halo region is updated at every timestep"),
+# ordinary mechanism verbs ("the station log is updated every hour"),
 # where the passive is usually correct and a flag is a prompt, not a defect.
 OUR_ACTIONS = "corrected|fixed|resolved|audited|recomputed|re-run|rerun|retracted"
 OUR_ACTIONS_ADVISORY = (
@@ -46,7 +46,7 @@ OUR_ACTIONS_ADVISORY = (
 )
 
 # Shared by both branches of adjective-near-count so they cannot drift apart.
-SOFT_ADJ = "low|negligible|minimal|small|tiny|modest"
+SOFT_ADJ = "low|marginal|minimal|modest|negligible|slight|small|tiny"
 COUNT_NOUN = r"false positives?|error rate|failure rate|mismatch(?:es)?|defects?"
 
 RULES = [
@@ -74,15 +74,15 @@ RULES = [
     (
         "meta-commentary",
         "core",
-        # Sentence-anchored, not line-anchored: rebuttal text is unwrapped prose,
-        # so ^ with re.M would miss every mid-paragraph instance.
+        # Sentence-anchored, not line-anchored: text pasted into a web form is
+        # unwrapped prose, so ^ with re.M would miss every mid-paragraph instance.
         re.compile(
             r"(?:^|(?<=[.!?]\s))(This (response|reply|document|paper|section) "
             r"(shows|demonstrates|argues)"
-            r"|One point runs through"
-            r"|All numbers below"
+            r"|(One|A) (point|thread|theme) runs through"
+            r"|(All|The) (numbers|figures) (below|above)"
             r"|For the record"
-            r"|One (methods )?note for the record)",
+            r"|(One|A) (\w+ )?note for the record)",
             re.I | re.M,
         ),
         "Sentence about the document itself. Outward text makes claims about the "
@@ -102,14 +102,14 @@ RULES = [
     (
         "passive-our-action",
         "core",
-        # "is fixed BY the thread count" states its agent and is not about us;
+        # "is fixed BY the timetable" states its agent and is not about us;
         # "is fixed" with no agent is the defect.
         re.compile(
             r"\b(is|are|was|were|has been|have been|will be)\s+(" + OUR_ACTIONS + r")\b(?!\s+by\b)",
             re.I,
         ),
         "Passive report of our own action. Use first person with a tense that says "
-        "whether it is done: 'We have corrected X', not 'X is corrected'.",
+        "whether it is done: 'We have fixed X', not 'X is fixed'.",
     ),
     (
         "passive-mechanism-verb",
@@ -120,8 +120,8 @@ RULES = [
             + r")\b(?!\s+by\b)",
             re.I,
         ),
-        "Agentless passive. Often correct for a mechanism ('the halo region is "
-        "updated each timestep'); a defect when the hidden agent is us.",
+        "Agentless passive. Often correct for a mechanism ('the station log is "
+        "updated every hour'); a defect when the hidden agent is us.",
     ),
     (
         "hedged-diligence",
@@ -175,8 +175,8 @@ RULES = [
             r"|\b(" + COUNT_NOUN + r")[^.]{0,60}?\b(" + SOFT_ADJ + r")\b",
             re.I,
         ),
-        "Evaluative adjective next to an unfinished measurement. Raw counts only, "
-        "with the denominator.",
+        "Evaluative adjective next to an error count or rate. Give the count with "
+        "its denominator and let the reader judge the size.",
     ),
     (
         "bare-numerator",
@@ -197,23 +197,23 @@ RULES = [
             r"[^.\n]{0,60}?\d+(\.\d+)?\s*(%|/\s*\d)",
             re.I,
         ),
-        "Ranking superlative in a results sentence. Re-derive it against the current "
-        "data cut before shipping - superlatives survive silently across cuts and go "
-        "false. Prefer a named comparison ('substantially harder than the pooled rest').",
+        "Ranking superlative next to a number. A ranking can stop being true when "
+        "the data changes, so recheck it against the final data before release. "
+        "Prefer a comparison that gives both values.",
     ),
     (
         "false-equivalence",
         "core",
         # Not a bare "equivalent", which is often a defined term ("an equivalent
-        # test suite"), and not a bare "no difference", which is a legitimate
+        # anemometer"), and not a bare "no difference", which is a legitimate
         # finding when it has evidence behind it.
         re.compile(
             r"(?<![-\w])(statistically\s+)?(inseparable|indistinguishable)\b"
             r"|(?<![-\w])statistically\s+(equivalent|the same)\b",
             re.I,
         ),
-        "Overlapping intervals do not establish equivalence. Say 'near-tied' or "
-        "state the test that supports the claim.",
+        "Overlapping intervals do not establish equivalence. Report both values "
+        "with their intervals, or name the equivalence test that supports the claim.",
     ),
     # ---- reference and precision ------------------------------------------
     (
@@ -250,9 +250,13 @@ RULES = [
     (
         "house-provenance-furniture",
         "house",
-        re.compile(r"\((proven|verified|confirmed) by command\)", re.I),
-        "Provenance format contract leaking into prose. Move the command to a "
-        "companion table with a `command` column.",
+        re.compile(
+            r"\((proven|verified|confirmed|checked|reproduced) (by|with|via) "
+            r"(a |the )?(command|script)\)",
+            re.I,
+        ),
+        "Provenance tag in running prose. State the claim plainly and list the "
+        "command that produced it in a methods appendix.",
     ),
     # ---- ported from the avoid-ai-writing skill ---------------------------
     # Only the rows that are real tells in research prose. `robust` and
@@ -366,8 +370,8 @@ def check(text, groups, only=None):
         if rid == "bare-numerator":
             # Sentence-scoped, with two suppressions. The bare count is only a
             # defect when it stands alone as a claim: a denominator anywhere in the
-            # sentence, and a parenthesised label breakdown ("(12 Confirmed, 2 False
-            # positive, 5 Indeterminate)") whose total precedes it, both carry the
+            # sentence, and a parenthesised label breakdown ("(57 reporting, 4
+            # failures, 2 offline)") whose total precedes it, both carry the
             # population by construction. Every match is reported - two orphaned
             # counts in one sentence is a worse defect than one, not an exemption.
             for sent, start in sentences_with_offsets(text):
@@ -423,130 +427,131 @@ FIXTURES = [
     # (rule_id, dirty, clean)
     (
         "latex-emdash",
-        "The cache---which we profiled---evicts the oldest entry.",
-        "The cache, which we profiled, evicts the oldest entry.",
+        "The north depot---the one by the river---ships pallets on Tuesdays.",
+        "The north depot, the one by the river, ships pallets on Tuesdays.",
     ),
     (
         "disposition",
-        "We have not run a fourth workload, and we want to be straight about why.",
-        "We have not run a fourth workload.",
+        "The timetable omits the night buses, and we feel that readers deserve to know why.",
+        "The timetable omits the night buses because their routes change weekly.",
     ),
     (
         "meta-commentary",
-        "One point runs through all three items: every change makes the estimate more cautious.",
-        "We completed the check the reviewers asked for: a rerun of all 120 trials.",
+        "One thread runs through every section: each station reports on its own clock.",
+        "We moved the clock at each of the 27 stations to network time on 9 June.",
     ),
     (
         "self-congratulation",
-        "One caveat we state ourselves: the label appears once in a derived table.",
-        "One caveat: the label appears once in a derived table.",
+        "A gap we disclose ourselves: the catalogue lists 7 atlases that no branch holds.",
+        "A gap: the catalogue lists 7 atlases that no branch holds.",
     ),
     (
         "passive-our-action",
-        "The timing table is corrected in this version.",
-        "We have corrected the timing table in this version.",
+        "The overdue-fines table was fixed before the branch reopened.",
+        "We fixed the overdue-fines table before the branch reopened.",
     ),
     (
         "passive-mechanism-verb",
-        "The outlier run is marked as excluded.",
-        "We marked the outlier run as excluded.",
+        "The damaged crate is labelled for return.",
+        "We labelled the damaged crate for return.",
     ),
     (
         "hedged-diligence",
-        "We did our best to cover the remaining cases.",
-        "We covered 18 of the 60 cases; the rest are untested.",
+        "Due to time constraints, we skipped the cold-storage aisles.",
+        "We recounted 23 of the 47 cold-storage aisles and did not recount the others.",
     ),
     (
         "should-work",
-        "The patched allocator should work on the multi-socket path.",
-        "The patched allocator passes 5 of 5 multi-socket tests.",
+        "The revised Sunday timetable should work for the airport line.",
+        "The revised Sunday timetable meets all 17 airport-line connections we timed on 2 July.",
     ),
     (
         "vague-timing",
-        "We will complete the analysis during the discussion period.",
-        "We will complete the analysis by March 3 and post it in this thread.",
+        "We will publish the corrected rainfall series in the coming weeks.",
+        "We will publish the corrected rainfall series on 14 November on the project mailing list.",
     ),
     (
         "deferred-correction",
-        "The rounding defect will be corrected for camera-ready.",
-        "We correct the rounding defect here: under the corrected rule, one result changes.",
+        "The swapped station coordinates in Table 2 will be addressed in the camera-ready version.",
+        "Table 2 now lists the corrected coordinates for the two swapped stations.",
     ),
     (
         "adjective-near-count",
-        "The false positive rate is low across the checked samples.",
-        "We found 2 false positives in 30 checked samples and quote no rate.",
+        "The scanner's error rate stayed small during the spring stocktake.",
+        "The scanner misread 22 of 8,263 barcodes during the spring stocktake.",
     ),
     (
         "bare-numerator",
-        "The manual check found 2 false positives.",
-        "The manual check found 2 false positives in 30 samples.",
+        "The night count turned up 7 mismatches.",
+        "The night count turned up 7 mismatches among 5,730 shelf bins.",
     ),
     (
         "unscoped-superlative",
-        "The sparse suite stays hardest, at 41.0% against the pooled rest.",
-        "The sparse suite is substantially harder than the pooled rest, 41.0% against 68.5%.",
+        "Route 12 is the worst performer, with 56% of trips on time.",
+        "Route 12 ran fewer trips on time than the other express routes combined, 56% against 79%.",
     ),
     (
         "false-equivalence",
-        "The two top configurations are statistically inseparable.",
-        "Both builds run an equivalent test suite; the top two configurations are near-tied.",
+        "Mean wind speeds at the hill and valley stations are statistically the same.",
+        "Both stations use an equivalent anemometer; their mean wind speeds differ by 0.3 m/s, "
+        "inside the 0.5 m/s instrument error.",
     ),
     (
         "bare-this",
-        "This is a fast path under the new allocator.",
-        "This path is fast under the new allocator.",
+        "This is the busiest platform on weekday mornings.",
+        "This platform is the busiest on weekday mornings.",
     ),
     (
         "various-reasons",
-        "We excluded four inputs for various reasons.",
-        "We excluded four inputs: two for missing files, two for a timeout.",
+        "Three branches closed early for various reasons.",
+        "Three branches closed early: two for a power cut and one for a burst pipe.",
     ),
     (
         "non-ascii",
-        "The change \u2014 which we found late \u2014 moves one result.",
-        "The change, which we found late, moves one result.",
+        "The 07:40 departure \u2014 the first after the bridge works \u2014 now leaves from stand C.",
+        "The 07:40 departure, the first after the bridge works, now leaves from stand C.",
     ),
     (
         "house-connectives",
-        "Moreover, the rerun reproduces every recorded result.",
-        "The rerun also reproduces every recorded result.",
+        "Furthermore, the reading room keeps its weekend hours.",
+        "The reading room also keeps its weekend hours.",
     ),
     (
         "house-provenance-furniture",
-        "No trial uses either input file (verified by command).",
-        "No trial uses either input file, so no timing changes.",
+        "Every branch reopened after the flood (reproduced with a script).",
+        "Every branch reopened after the flood.",
     ),
     (
         "sycophantic-tone",
-        "Great question! We will post the fix by March 3, 2030 in this thread.",
-        "We thank the reviewer for this excellent point; we will post the fix by "
-        "March 3, 2030 in this thread.",
+        "Excellent point! The winter timetable adds two late trains on Fridays.",
+        "We thank the reviewer for this excellent point; the winter timetable adds two late "
+        "trains on Fridays.",
     ),
     (
         "cutoff-disclaimer",
-        "As of my last update, the skip list held nine inputs.",
-        "As of 2030-01-15, the skip list holds ten inputs.",
+        "As of my last update, the depot stocked 47 spare tyres.",
+        "As of 2031-03-17, the depot stocks 58 spare tyres.",
     ),
     (
         "significance-inflation",
-        "This release marks a pivotal moment in the evolution of the scheduler.",
-        "This release changes three defaults in the scheduler.",
+        "The new loan card marks a pivotal moment for the city libraries.",
+        "The new loan card lets members borrow from all 11 city libraries.",
     ),
     (
         "acknowledgment-loop",
-        "To answer your question, the gap comes from a stale cached log.",
-        "The gap comes from a stale cached log.",
+        "To answer your question, the shortfall comes from a pallet booked to the wrong bay.",
+        "The shortfall comes from a pallet booked to the wrong bay.",
     ),
     (
         "tier1-jargon",
-        "This cutting-edge, seamless pipeline is a testament to careful engineering; "
-        "we won't delve into implementation details here.",
-        "This pipeline runs without manual steps; we describe the implementation in section 4.",
+        "This cutting-edge, seamless booking system is a testament to careful planning; "
+        "we won't delve into its setup here.",
+        "The booking system needs no manual steps; the appendix describes its setup.",
     ),
     (
         "hollow-intensifier",
-        "The fix is genuinely, truly the right call here, to be honest.",
-        "The fix removes the race condition in queue.c:88.",
+        "The new shelving plan is genuinely, truly the right call, to be honest.",
+        "The new shelving plan frees 38 metres of aisle in the east store.",
     ),
 ]
 

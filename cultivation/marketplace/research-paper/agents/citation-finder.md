@@ -89,12 +89,12 @@ The first lists every sentence of the build (the leak check reads it); the secon
 Each line is `FILE:LINE<TAB>cite|nocite<TAB>TEXT`, in build order, following `\input` from `MAIN` with `%` comments dropped; `LINE` is where the sentence starts.
 1. Number the `nocite` rows of `cf_rows.tsv` `N1`, `N2`, ... in printed order; `cite` rows are `claim-ref-alignment.md`'s job and are not checked here.
 2. Find each `nocite` sentence in `PAPER` and record the `PAPER` line where it starts.
-   Macros render differently in `PAPER` (for example `\textsc{\examplesys{}}` as `E XAMPLE S YS`, `\pending{P7}` as `[PENDING P7]`); read the macro file the build lists to map them.
+   Macros render differently in `PAPER` (for example `\textsc{\examplesys{}}` as `E XAMPLE S YS`, `\tofill{T7}` as `[TOFILL T7]`); read the macro file the build lists to map them.
 3. A row that is not a sentence (a run-in heading such as `\textbf{Design goals.}`) is classed `no-claim`.
 4. When `ADJ` is named, read its section 11 ("Known-issue coverage"): the table, and the list of items that apply and were not raised that ends it.
-   Take every item marked `not raised` there whose status or line says a claim lacks a source (for example K13: "cites no prior work").
+   Take every item marked `not raised` there whose status or line says a claim lacks a source (for example K57: "the growth figure in the opening paragraph has no source").
    Find the span it quotes in `PAPER` (the line number is a hint: `ADJ` may be of an earlier `PAPER`), then the sentence of `cf_build.tsv` that holds it.
-   If that sentence is a `nocite` row, tag the row with the item id (for example `N1 [K13]`); otherwise add it as a row named by the item id (`K13`), even when it is outside `ONLY` or has a `\cite`.
+   If that sentence is a `nocite` row, tag the row with the item id (for example `N1 [K57]`); otherwise add it as a row named by the item id (`K57`), even when it is outside `ONLY` or has a `\cite`.
    Step 2 classes the row for the outside fact the item names, never `own-work` or `no-claim`; its abstract rule applies to it as to any row.
    An item whose span is no longer in `PAPER` gets no row; list it under the sentence table as `gone from PAPER`.
 
@@ -103,7 +103,7 @@ Each line is `FILE:LINE<TAB>cite|nocite<TAB>TEXT`, in build order, following `\i
 Give each row (the step 1 `nocite` rows and the rows step 1.4 adds) one class:
 - `needs-cite`: it states at least one outside fact: what another work, system, tool, model, benchmark or suite is or does; what "existing", "prior", "most", "widely used", "increasingly", "often" or "common" work or practice does; a number this paper did not measure; or a property of an API, language or hardware that a reader could dispute.
 - `covered`: every outside fact in it is restated with a `\cite` in the previous or next sentence of the same paragraph; name that sentence's `FILE:LINE`.
-- `own-work`: it states only this paper's design, method, corpus, measurement, result, `[PENDING Pn]` value or plan.
+- `own-work`: it states only this paper's design, method, corpus, measurement, result, `[TOFILL Tn]` value or plan.
 - `self-earlier`: its outside fact is about an earlier version of this paper or benchmark (such as its arXiv preprint); do not search for it (anonymity, contract section 3).
   A fact about the authors' other prior works (step 3's self hits) is `needs-cite` like any other.
 - `abstract`: an abstract row whose outside fact an introduction sentence states (the abstract rule below).
@@ -117,7 +117,7 @@ The abstract carries no `\cite` (most venues do not allow one there), so no fix 
 For an abstract row that states an outside fact, find in `cf_build.tsv` the introduction sentence that states the same claim (in `<SECTIONS>/<paper.intro_section>.tex`):
 - If one does, class the abstract row `abstract` and name that sentence; the claim is checked, and any finding filed, on the introduction sentence, never on the abstract.
   An introduction sentence with a `\cite` is `claim-ref-alignment.md`'s to check, and this seat files nothing.
-  One without a `\cite` is a row of its own: the `nocite` row step 1 numbered or, outside `ONLY`, a row named `I` and the abstract row's name (`IN3`, `IK13`); it is classed and searched like any row, and its finding's `evidence` also quotes the abstract span.
+  One without a `\cite` is a row of its own: the `nocite` row step 1 numbered or, outside `ONLY`, a row named `I` and the abstract row's name (`IN3`, `IK57`); it is classed and searched like any row, and its finding's `evidence` also quotes the abstract span.
 - If none does, that is itself the finding: class the abstract row `needs-cite`, search for its source (steps 3 to 6), and file the finding on the abstract sentence; its `claim` says no introduction sentence states the claim, and its `suggested_fix` adds an introduction sentence that states it with the proposed `\cite`, or, for `no source found`, drops the claim from the abstract.
 
 ### 3. Search the saved literature first
@@ -184,7 +184,7 @@ When several keys cover one sentence, each key is `supported` for the sub-claims
    Fix a defect that the fetched record shows to be an entry error and run it again; an `arxiv-only` defect stays, and the entry is marked `arXiv-only` in `cite_map.md`.
 2. `citation-finder.findings.json`: one finding per `needs-cite` row, fields as in contract section 6, with:
    - `file`: `PAPER` as given; `line`: the `PAPER` line where the sentence starts.
-   - `locus`: section number and title, then `uncited:` and the row name, for example `I Introduction uncited:N3` or `I Introduction uncited:K13`.
+   - `locus`: section number and title, then `uncited:` and the row name, for example `I Introduction uncited:N3` or `I Introduction uncited:K57`.
    - `severity`: `major` for `no source found`, and for `partial` when a sub-claim is contradicted; `minor` otherwise.
    - `rule`: `Correctness: an empirical statement about other work names its source`.
    - `claim`: the outcome and the kind of outside fact, in one sentence.
@@ -194,7 +194,7 @@ When several keys cover one sentence, each key is `supported` for the sub-claims
      Self-citation rule: a proposed key for one of the authors' own works (step 3) is written in the third person, naming the work by its system name with a numeric `\cite` (for example `PriorSys~\cite{PriorSys2028}`), never `\citet`, "our" or "we"; and it is never clustered: it stands in a `\cite` of its own, never beside another self-citation key.
    - `confidence`: `high` when saved `curl` text states the sub-claims; `medium` when the text came through WebFetch or is an abstract alone; `low` for `no source found`.
    - `not_established`: one sentence, for example "This shows the abstract states it, not that this is the earliest or best source".
-   - `mechanical`: false; `about_placeholder`: false unless the finding exists only because a number is `[PENDING Pn]`.
+   - `mechanical`: false; `about_placeholder`: false unless the finding exists only because a number is `[TOFILL Tn]`.
    In the same `python3` step, run the source-span check of `claim-ref-alignment.md` step 7 on every backticked span; then run the two validator commands of contract section 6 with `V`.
 3. `cite_map.md`, in this order:
    - the commands of steps 1, 3 and 7 with their exit codes and summary lines;
@@ -267,9 +267,9 @@ A flagged Consensus query that is not yet sent is rewritten, and the line in `qu
 
 ---
 
-Adapted from: this directory's `agents/claim-ref-alignment.md` (2026-09-28), reused by reference for the data rules, the fetch routes (step 3), the identity check (step 4), the sub-claim labels (step 5) and the source-span check (step 7).
+Adapted from: this plugin's `agents/claim-ref-alignment.md`, reused by reference for the data rules, the fetch routes (step 3), the identity check (step 4), the sub-claim labels (step 5) and the source-span check (step 7).
 Its uncited-assertion rule (its step 6) is the seed of step 2 here; that rule was adapted from https://github.com/imbad0202/academic-research-skills, commit e79085d (e79085d0d38609984ef8cfe0faf2d254aac9e0a9), `academic-pipeline/agents/claim_ref_alignment_audit_agent.md` lines 321-328, CC BY-NC 4.0 (https://creativecommons.org/licenses/by-nc/4.0/), Copyright (c) 2026 Cheng-I Wu; the credit is carried from `claim-ref-alignment.md`, and the upstream file was not re-read for this file.
-Changes made: the four conditions of that rule became the classes of step 2 (a `needs-cite` sentence need not hold a number, quantifier or empirical verb; tools, models, benchmarks and outside numbers count); a search for the missing source was added (the repository index, then Consensus, then a title search), sending only topic keywords, titles, public names and identifiers, gated by the leak check; the output is a proposal (keys, BibTeX entries, a cite map), never an edit.
-Added 2026-09-29, not from academic-research-skills: the abstract rule and the `abstract` class of step 2 (IEEE abstracts carry no `\cite`); the known-issue rows of step 1.4, read from section 11 of the `ADJ` that `agents/adjudicate-review.md` step 11 writes; the self-citation handling of steps 2, 3 and 7, from `WRITING_GUIDE.md` rule 3.8 and `05_paper_plan.md` section 7 rows 19 and 20, with the `--self-name` list of `lit_index.py`; the leak check's rejection of a `-` or blank field (each field is stripped before the test).
+Changes made in this copy (the research-paper plugin): the four conditions of that rule became the classes of step 2 (a `needs-cite` sentence need not hold a number, quantifier or empirical verb; tools, models, benchmarks and outside numbers count); a search for the missing source was added (the repository index, then Consensus, then a title search), sending only topic keywords, titles, public names and identifiers, gated by the leak check; the output is a proposal (keys, BibTeX entries, a cite map), never an edit.
+Also added in this copy, not from academic-research-skills: the abstract rule and the `abstract` class of step 2 (IEEE abstracts carry no `\cite`); the known-issue rows of step 1.4, read from section 11 of the `ADJ` that `agents/adjudicate-review.md` step 11 writes; the self-citation handling of steps 2, 3 and 7, with the `--self-name` list of `lit_index.py`; the leak check's rejection of a `-` or blank field (each field is stripped before the test).
 Non-commercial use only for the parts from academic-research-skills; the source is provided as-is, without warranties.
-The Consensus call rules (the `query` field only, no filters, at most 3 calls at a time, 30 seconds after a rate-limit error, the usage message copied word for word) follow the Consensus MCP server's own instructions as served on 2026-09-28.
+The Consensus call rules (the `query` field only, no filters, at most 3 calls at a time, 30 seconds after a rate-limit error, the usage message copied word for word) follow the Consensus MCP server's own instructions.

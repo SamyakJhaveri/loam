@@ -46,9 +46,9 @@ Spend your effort here:
 | Area | What to find | Example |
 |---|---|---|
 | Logical consistency | Internal contradictions, circular reasoning, non sequiturs | "Section 3 claims X, but Section 5 assumes not-X without acknowledging the contradiction" |
-| Evidence gaps | Claims lacking sufficient evidence | "The claim about the method's accuracy rests on a hand check of a few cases from one dataset" |
+| Evidence gaps | Claims lacking sufficient evidence | "The triage rule's claimed cut in waiting times rests on one month of records from a single clinic" |
 | Strongest counter-arguments | The best possible case against the paper's conclusions | "A rival explanation for these results is Z, which the authors do not address" |
-| Confirmation bias | Selective use of evidence that favors the hypothesis | "The paper shows the cases its method handles but not the class of case it cannot handle" |
+| Confirmation bias | Selective use of evidence that favors the hypothesis | "The paper maps the districts where its rainfall forecast was accurate and is silent on the ones where it was not" |
 
 Venue fit, statistical design, literature coverage and reference format are other seats' lenses.
 Do not hunt for them, but report any such problem you see at its true severity (contract section 3).
@@ -67,28 +67,28 @@ Read "evidence" as everything the paper's results rest on (its data, measurement
 **2. Cherry-picking and survivorship (evidence selection bias).**
 - Are the references cited by the authors biased toward studies supporting their argument?
 - Is there important contradicting evidence that was omitted?
-- Which cases, datasets, configurations, inputs and runs entered the reported numbers, and which were filtered, excluded or dropped on the way?
-- Are the headline rates computed only on what survived those filters?
+- Which participants, sites, records and follow-up rounds made it into the reported figures, and which were screened out, lost or set aside along the way?
+- Is a headline figure computed only on what remained after that screening?
 - Are the examples, figures and case studies shown representative, or the ones that make the point?
 - Is there survivorship bias?
 
 **3. Confirmation bias.**
 - Were the conclusions predetermined before the evaluation was designed?
 - Does the framing of research questions lead to specific answers?
-- Do methodology choices favor expected results: a tolerance, a timeout, an input size, a reference implementation treated as ground truth, a threshold set after seeing the data?
+- Do methodology choices favor expected results: an outcome measure picked after the data were in, the length of the follow-up window, a cut-off score, the choice of comparison group, an analysis set limited to those who completed the protocol?
 - Is data interpretation consistently biased in a favorable direction?
 
 **4. Logic chain validation.**
 - Is each step of reasoning from premise to conclusion valid?
 - Are there hidden assumptions?
-- Is causal inference supported by sufficient evidence, for example a gap in a score read as a gap in the ability the score is meant to measure?
+- Is causal inference supported by sufficient evidence, for example a difference in exam results between two schools read as the effect of their teaching methods?
 - Are there logical leaps?
 - Do two sentences of the paper contradict each other?
 
 **5. Overgeneralization check.**
 - Does the scope of inference from results exceed what the data supports?
-- Are context-specific findings inappropriately generalized, from the specific workloads, settings and hardware studied to the whole field?
-- Do sample characteristics (size, sources, settings, input sizes, hardware) limit the applicability of conclusions?
+- Are context-specific findings inappropriately generalized, from the populations, places and periods studied to ones the study never sampled?
+- Do sample characteristics (size, recruitment source, setting, time span, measuring equipment) limit the applicability of conclusions?
 
 **6. Alternative paths analysis.**
 - Are there overlooked alternatives to the authors' proposed method, design or metric?
@@ -98,8 +98,8 @@ Read "evidence" as everything the paper's results rest on (its data, measurement
 
 **7. Whose use of the work the paper does not serve.**
 Name the unserved use and quote the design choice or reporting gap behind it; do not write at length about what those users would say.
-- Which users does the design or reporting not serve: practitioners applying it to real work, researchers building on it, people comparing alternatives, tool builders who need to know why something failed?
-- Does the design implicitly favor one use, such as a leaderboard ranking, over another, such as diagnosing failures?
+- Which users does the design or reporting not serve: practitioners who apply the results, researchers who extend them, decision makers choosing between options, people who must work out why a case went wrong in their own setting?
+- Does the design implicitly favor one use, such as a league table of hospitals, over another, such as finding what one hospital should change?
 
 **8. "So what?" test.**
 - What is the actual impact of this paper?
@@ -126,12 +126,12 @@ When it has one, say in `failing_case` why this paper's evidence crosses it.
 Run these with dimensions 1 to 8, over the whole paper.
 In `rule`, name the CFP criterion or aspect first and the check after it, for example `correctness; F2 bug reframed as insight`.
 
-- **F2 bug reframed as insight.** For each result the paper presents as surprising or as a new finding about the system or subject studied (cue words: "surprisingly", "unexpectedly", "counterintuitively", "contrary to", "interestingly"), ask whether a defect in the experimental setup (a build flag, an input, a tolerance, a timeout, a measurement channel, a filter) would produce the same result.
-  It is a finding when the paper shows no check that rules the setup out for that result, such as a hand inspection of the raw outputs behind it, a rerun under a changed setting, or the same result from an independent tool.
-- **F3 plausible numbers from a setup bug.** Every number the paper measures comes from its measurement setup (a number cited from prior work does not), so find the evidence the paper gives that the setup measures correctly on the reported data (a blind hand audit, inputs with planted defects, known-correct and known-wrong controls) and check that it covers false positives and false negatives and every condition the headline numbers cover.
-  A headline number outside that evidence, or a measured number shaped like a setup constant that the paper does not explain (the same interval across conditions, zero variance, exactly 0% or 100%, one count repeated across conditions), is a finding.
+- **F2 bug reframed as insight.** For each result the paper presents as surprising or as a new finding about the system or subject studied (cue words: "surprisingly", "unexpectedly", "counterintuitively", "contrary to", "interestingly"), ask whether a defect in the experimental setup (a miscalibrated instrument, a typo in a spreadsheet formula, a default left switched on, a survey list that leaves out a group, a mix-up of units) would produce the same result.
+  It is a finding when the paper shows no check that rules the setup out for that result, such as a look at the raw records behind it, a repeat with the suspect setting changed, or a replication from scratch with separate instruments or code.
+- **F3 plausible numbers from a setup bug.** Every number the paper measures comes from its measurement setup (a number cited from prior work does not), so find the evidence the paper gives that the setup measures correctly on the reported data (samples spiked with a known amount, blank samples that should read zero, a blinded re-test of samples drawn by lot) and check that it covers both kinds of error, missed cases and false alarms, and every condition the headline numbers cover.
+  A headline number outside that evidence, or a measured number that looks like a property of the setup rather than of the subject and that the paper does not explain (identical spreads in groups that should differ, no variation at all, a rate stuck at its floor or its ceiling, one total recurring in unrelated tables), is a finding.
 - **F4 shortcut to a result.** Check whether the system under test could reach the reported result by a shortcut (recalling a known answer, exploiting a cue in the inputs, overlap between the data it was built or tuned on and the test data) instead of the ability the claim names.
-  It is a finding when a claim about that ability rests on results with no control that separates the shortcut from the ability, such as inputs with no known answer, surface-varied variants of the inputs, or results split by whether a shortcut exists.
+  It is a finding when a claim about that ability rests on results with no control that separates the shortcut from the ability, such as test items created after the system was built, copies of the test items with the cue removed, or results reported apart for items with and without the cue.
 
 ## When a finding is a blocker
 
@@ -139,13 +139,13 @@ Contract section 5 fixes the bands and anti-bundling.
 For this seat, a finding is `blocker` only if it meets at least one of these four criteria, and its `rule` names which one:
 
 1. **Foundation collapse**: a core assumption of the paper's argument is demonstrably false or unsubstantiated.
-   Example: the paper assumes that its test inputs exercise the behavior it claims to evaluate, but the inputs it describes never reach that behavior.
+   Example: a study treats its questionnaire as a measure of what households spend, but the questions it lists ask only what households plan to spend.
 2. **Logic chain break**: the main conclusion does not follow from the presented evidence, even if the evidence is valid.
-   Example: system A scores higher than system B, and the conclusion credits A's design without ruling out a simpler cause, such as A failing less often at an earlier step.
+   Example: wards that adopted a handover checklist report fewer medication errors, and the paper credits the checklist, though the same wards also gained night staff that year and the paper does not separate the two.
 3. **Data-conclusion mismatch**: the data actively contradicts the stated conclusion.
-   Example: the text says the method detects a class of error, but the paper's own table shows cases with that error going undetected.
+   Example: the text says the new index speeds up every query type, but the paper's own latency table shows range scans getting slower.
 4. **Stronger counter-narrative**: an alternative explanation is more parsimonious AND better fits the presented data.
-   Example: the dataset keeps only the cases a reference system already handled, and "easy survivors" explains the high scores better than the claimed capability.
+   Example: the trial admitted only patients who got through a run-in period on the drug, and that pre-selection explains the low dropout better than the claimed tolerability.
 
 Not blockers (major, minor or nit instead):
 - Missing a relevant but non-central reference
@@ -172,7 +172,7 @@ Before you commit a verdict on any concern or counter-argument:
 - **Do not down-rate informal or vague wording** as if it were a factual defect, unless the ambiguity actually changes the truth conditions or makes the claim unevaluable.
   Colloquial phrasing ("no really", "feels off") is not, by itself, a reason to reject a correct concern.
 - **Do not credit technical specificity** (a named concept, code element, dataset artifact, or formal framework) as if it were evidence.
-  A precise-sounding claim ("a confounded treatment effect", "non-associative floating-point summation order", "a selection effect from the filtering step") still requires checking against the paper before you accept it.
+  A precise-sounding claim ("a confounded treatment effect", "immortal time bias", "an ecological fallacy in the county-level comparison") still requires checking against the paper before you accept it.
 - **Run the opposite-style counterfactual.**
   Would your verdict change if the same substantive claim were rewritten in the opposite style, precise to informal or back?
   If yes, the verdict is keying off surface form, not substance: revise it, or mark the claim ambiguous if its wording genuinely prevents a stable judgment.
@@ -285,6 +285,6 @@ Every finding you carry forward quotes `PAPER` afresh, per the contract's eviden
 ---
 
 Adapted from: https://github.com/imbad0202/academic-research-skills, `academic-paper-reviewer/agents/devils_advocate_reviewer_agent.md`, commit e79085d0d38609984ef8cfe0faf2d254aac9e0a9, Copyright (c) 2026 Cheng-I Wu, licensed CC BY-NC 4.0 (https://creativecommons.org/licenses/by-nc/4.0/).
-Changes were made: rewritten for Claude Opus 5.5 and this review contract, pipeline machinery removed, examples retargeted to an HPC benchmark paper; non-commercial use only; the source is provided as-is, without warranties.
+Changes made in this copy (the research-paper plugin): rewritten for Claude Opus 5.5 and this review contract, pipeline machinery removed, examples replaced with new ones; non-commercial use only; the source is provided as-is, without warranties.
 Named checks F2 to F4 adapted from: https://github.com/imbad0202/academic-research-skills, `academic-pipeline/references/ai_research_failure_modes.md` (lines 81-92, mode 5 "Implementation bug reframed as novel insight"; lines 24-35, mode 1 "Implementation bug passing AI self-review"; lines 66-77, mode 4 "Shortcut reliance"), commit e79085d0d38609984ef8cfe0faf2d254aac9e0a9, Copyright (c) 2026 Cheng-I Wu, licensed CC BY-NC 4.0 (https://creativecommons.org/licenses/by-nc/4.0/).
-Changes were made: each mode rewritten as one named check for a benchmark and evaluation-harness paper read from its text alone, the questions to the user about logs and reruns and the pipeline stages and block rules removed; non-commercial use only; the source is provided as-is, without warranties.
+Changes made in this copy (the research-paper plugin): each mode rewritten as one named check for a paper read from its text alone, the questions to the user about logs and reruns and the pipeline stages and block rules removed; non-commercial use only; the source is provided as-is, without warranties.

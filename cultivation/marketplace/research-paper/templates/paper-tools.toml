@@ -37,13 +37,14 @@ smallcaps_names = ["ExampleSys"]
 '\baselinesys{}' = "BaselineSys"
 
 [build]
-# Command that builds the paper, run from the project root (section_gate).
-command = ["latexmk", "-pdf", "-interaction=nonstopmode", "-outdir=paper/build", "paper/main.tex"]
+# Command that builds the paper, run from the project root (section_gate); set the project's own command here.
+# The default runs latexmk inside paper/ (-cd), so its -outdir=build is the paper/build/ of pdf and log below.
+command = ["latexmk", "-pdf", "-cd", "-interaction=nonstopmode", "-outdir=build", "paper/main.tex"]
 # PDF the build writes (paper_limits, anonymity_scan, section_gate).
 pdf = "paper/build/main.pdf"
 # LaTeX log the build writes; section_gate counts undefined references in it.
 log = "paper/build/main.log"
-# Text the review seats read: `pdftotext <pdf> <text>`, without -layout.
+# Text the review seats read: `pdftotext <pdf> <text>`, without -layout; pass it as the workflows' `paper` arg when it differs from the default.
 text = "paper/build/main.txt"
 
 [limits]
@@ -57,7 +58,7 @@ appendix_allowed = false
 [terms]
 # Regexes section_gate refuses outside % comments, one per line, "#" starts a comment; used when the file exists.
 banned = "paper/tools/banned_terms.txt"
-# "<kind>: <term>" lines that anonymity_scan searches for (names, hosts, paths, URLs, the system name).
+# "<kind>: <term>" lines that anonymity_scan searches for (affiliations, labs, hosts, paths, URLs, titles, the system name; author names come from citation_cff).
 anonymity = "paper/tools/anonymity_terms.txt"
 # Accepted anonymity hits: "<kind>: <term>", a tab, the decision that keeps it; used when the file exists.
 anonymity_baseline = "paper/tools/anonymity_baseline.txt"
@@ -69,7 +70,8 @@ acronym_baseline = "paper/tools/acronym_baseline.txt"
 [literature]
 # Literature notes lit_index reads; "FILE::HEADING" reads only the section under that heading.
 notes = ["paper/notes/related_work.md", "paper/notes/plan.md::## 4."]
-# This paper's own names, keys and preprint ids, and the authors' prior works: flagged self_citation, never proposed.
+# This paper's names and preprint id, and the authors' prior works (bib key or system name); lit_index flags each self_citation.
+# This paper's names and preprint id are never searched or proposed; the authors' prior works may be proposed in the third person.
 self_names = ["ExampleSys", "ExampleSys2030", "2901.00001"]
 
 [cite]

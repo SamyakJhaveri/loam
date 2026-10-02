@@ -151,7 +151,7 @@ Scan the sentences of the build files from step 1 for any that meets all four co
 1. it has a number, a percentage, a quantifier (most, several, two-thirds, the majority), or an empirical verb (showed, demonstrated, observed, proved, confirmed, found, reported);
 2. neither it nor its adjacent clause holds a `\cite`;
 3. it is not a definition (refers to, is defined as, we define, for the purposes of);
-4. it describes other work or the field, not this paper's own design, measurement or `[PENDING Pn]` result.
+4. it describes other work or the field, not this paper's own design, measurement or `[TOFILL Tn]` result.
 Each hit gets a row under "Uncited assertions" and a finding with severity `minor` and mismatch kind `uncited`.
 
 ### 7. Write the findings
@@ -167,7 +167,7 @@ One finding per `partly supported` or `not supported` row, one per key from step
 - `suggested_fix`: the smallest wording or key change; never a number the source does not print.
 - `confidence`: `high` when saved `curl` text states or contradicts the point; `medium` when the text came through WebFetch or rests on an abstract alone; `low` for `NOT_FOUND`.
 - `not_established`: one sentence naming what the finding does not show (for example, "This shows the abstract and Section 3 do not state twelve models, not that no other version of the source does").
-- `mechanical`: false; `about_placeholder`: true only when the finding exists solely because a cited number is `[PENDING Pn]`.
+- `mechanical`: false; `about_placeholder`: true only when the finding exists solely because a cited number is `[TOFILL Tn]`.
 
 In the same `python3` step that writes `findings.json`, check each source span: after collapsing whitespace and case on both sides, it must occur in `OUT/sources/<key>.txt`; exit 1 on a miss, then copy the span again from the file.
 Then run the two validator commands of contract section 6 with `V`; the second is `--check-quotes --require-quotes`.
@@ -193,7 +193,7 @@ Then add, after "Sections read":
 ---
 
 Adapted from: https://github.com/imbad0202/academic-research-skills, commit e79085d (e79085d0d38609984ef8cfe0faf2d254aac9e0a9), CC BY-NC 4.0 (https://creativecommons.org/licenses/by-nc/4.0/), Copyright (c) 2026 Cheng-I Wu; `academic-pipeline/agents/claim_ref_alignment_audit_agent.md` line 60 (a reference text aimed at the judge is a finding), lines 136-144 (retrieval outcomes: paywall, not found, transient failure), lines 203-239 (judge prompt: data-not-instructions text, sub-claim decomposition, verdict set, defect-stage hints), lines 264-275 (defect-stage table, including "shows" instead of "suggests" as an overclaim) and lines 321-328 (uncited-assertion rule, conditions 1-4); `academic-pipeline/agents/integrity_verification_agent.md` lines 14-21 (anti-hallucination mandate), line 37 (a directive in fetched text is reported, not obeyed), 39-59 (hallucination types and compound patterns), 127-165 (existence check, identity fields, audit trail) and 180-191 (citation accuracy).
-Changes made: rewritten as a Claude Code review seat over a LaTeX build and a `pdftotext` dump, under this directory's `contract.md`; the pipeline passport, claim manifests, anchor markers, cache, sampling, calibration and finalizer tiers are not kept.
+Changes made in this copy (the research-paper plugin): rewritten as a Claude Code review seat over a LaTeX build and a `pdftotext` dump, under the plugin's `templates/contract.md`; the pipeline passport, claim manifests, anchor markers, cache, sampling, calibration and finalizer tiers are not kept.
 The verdicts SUPPORTED, PARTIAL, UNSUPPORTED and AMBIGUOUS became `supported`, `partly supported` and `not supported` (AMBIGUOUS folds into `not supported` or `not checked` by the abstract-only rule of step 5); RETRIEVAL_FAILED became `not checked` with a fixed list of reasons; VIOLATED is dropped (no author constraints here).
 The defect-stage hints became six mismatch kinds; the sub-claim decomposition is kept as step 5.1.
 The uncited-assertion rule tests for `\cite` instead of `<!--ref:slug-->`, adds the verbs found and reported, and rewrites condition 4 (experiment-backed claims) as "this paper's own design, measurement or result".

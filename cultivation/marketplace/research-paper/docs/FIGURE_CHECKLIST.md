@@ -34,12 +34,12 @@ Commands the items refer to, run from the project root, with `PDF=$(paper-tool p
 13. No encoding uses colour alone: each colour-coded category also differs by line style, marker, hatching, position or a text label. [PB data/guidelines/ieee/plot_style_guide.md:98-99; PB data/guidelines/ieee/methodology_style_guide.md:110-111; contract]
 14. No two categories differ only by a red-green hue contrast. [contract]
 15. A plot uses at most 5 categorical colours and a diagram at most 4. [PB data/guidelines/ieee/plot_style_guide.md:41-42; PB data/guidelines/ieee/methodology_style_guide.md:58-59]
-16. A heatmap uses a greyscale or viridis colour scale, and each cell carries its value or status letter. [PB data/guidelines/ieee/plot_style_guide.md:43,86-88]
+16. A heatmap uses a greyscale or viridis colour scale, and each cell is annotated with its value. [PB data/guidelines/ieee/plot_style_guide.md:43,86-88]
 17. Every bar has a thin black outline and carries hatching or a direct label. [PB data/guidelines/ieee/plot_style_guide.md:44-45,77-80]
 18. In a line chart, each series differs from every other in both line style and marker. [PB data/guidelines/ieee/plot_style_guide.md:71-75]
 19. In a scatter plot, groups differ by marker shape or by open versus filled markers. [PB data/guidelines/ieee/plot_style_guide.md:82-84]
 20. The legend shows each series' line style or marker, not only a colour swatch. [PB data/guidelines/ieee/plot_style_guide.md:61-62]
-21. A colour or line style means the same thing in every figure of the paper, for example one colour per result status. [PB data/guidelines/ieee/plot_style_guide.md:102]
+21. A colour or line style means the same thing in every figure of the paper, for example one colour per bus route. [PB data/guidelines/ieee/plot_style_guide.md:102]
 22. Diagram blocks are white or light grey with dark borders, and any colour only adds to a difference that a label or shape already shows. [PB data/guidelines/ieee/methodology_style_guide.md:43-49,55-56]
 
 ## Caption fidelity trace
@@ -48,7 +48,7 @@ Scope: this group checks captions and claims against their recorded sources; it 
 
 23. The figure has a trace entry with six fields: figure label, source data file, transformation, caption claims, body sentences that use the figure, and known limitations (an empty limitations list is allowed; a missing field fails). [ARS academic-pipeline/agents/integrity_verification_agent.md:233-241]
 24. The source data is a real file in the project, and the transformation is a script path or a claims-file `json_path`; "computed by hand" or "see paper" fails. [ARS academic-pipeline/agents/integrity_verification_agent.md:243-247]
-25. Every number in the caption and every number drawn in the figure has a source in the trace: a `claim_id` in the project's claims file, a `\pending{Pn}` id, or a file and line for a design constant (for example a plan or a config file). [ARS academic-pipeline/agents/integrity_verification_agent.md:243-247; project: the claims file and the placeholder registry]
+25. Every number in the caption and every number drawn in the figure has a source in the trace: a `claim_id` in the project's claims file, a `\tofill{Tn}` id, or a file and line for a design constant (for example a plan or a config file). [ARS academic-pipeline/agents/integrity_verification_agent.md:243-247; project: the claims file and the placeholder registry]
 26. Each traced number equals its source value at the printed precision, and so do its interval and n where the claims entry has `ci_lower`, `ci_upper` and `n`. [ARS academic-pipeline/agents/integrity_verification_agent.md:368-383; project: the claims file]
 27. Each interpretive statement in the caption (a comparison, a trend, "most", "all") follows from the traced data; not being contradicted is not enough. [ARS academic-pipeline/agents/integrity_verification_agent.md:249-255]
 28. Each compound caption statement is split into single claims, and every one of them passes; one unsupported part fails the caption. [ARS academic-pipeline/agents/integrity_verification_agent.md:256-262]
@@ -58,7 +58,7 @@ Scope: this group checks captions and claims against their recorded sources; it 
 32. No caption or figure claim rests on a run that did not execute, or on a pending value presented as final. [ARS academic-pipeline/agents/integrity_verification_agent.md:361-366]
 33. No caption or figure claim is stronger than its claims entry supports; "overstated" or "not supported" fails, and "insufficient detail" is recorded as a note, never passed silently. [ARS academic-pipeline/agents/integrity_verification_agent.md:375-378]
 34. No caption or figure claim asserts an effect that a null or negative result reported in the paper contradicts. [ARS academic-pipeline/agents/integrity_verification_agent.md:369-374]
-35. Every pending value in a figure or caption is set with `\pending` or `\pendingcell` (red), and its id has a row in the project's placeholder registry. [project: the macro file that defines `\pending`; the placeholder registry]
+35. Every pending value in a figure or caption is set with `\tofill` or `\tofillcell` (red), and its id has a row in the project's placeholder registry. [project: the macro file that defines `\tofill`; the placeholder registry]
 
 ## Faithfulness to data
 
@@ -68,7 +68,7 @@ Scope: this group checks captions and claims against their recorded sources; it 
 39. For the same figures, a dry run of the script that writes them would change nothing. [project: the figure generator]
 40. Numbers are read from the live part of a figure source, not from a commented prior revision. [project: the figure sources]
 41. A comment that mirrors data inside a figure source (for example values written beside the table that draws them) equals that data. [project: the figure sources]
-42. In a heatmap, each cell's fill colour and its letter give the same status. [project: the figure sources]
+42. Where a mark shows its category twice, for example a station on a map drawn with both a colour and a symbol, the two name the same category. [project: the figure sources]
 43. Every box, arrow and label in a diagram has a direct basis in the method text or its plan file, with no invented module, entity or connection. [PB prompts/evaluation/faithfulness.txt:13,21; PB prompts/diagram/critic.txt:13]
 44. The diagram's flow matches the described method, with no reversed data direction, no skipped step and no missing required connection. [PB prompts/evaluation/faithfulness.txt:22]
 45. The diagram shows only what its caption says it shows. [PB prompts/evaluation/faithfulness.txt:23]
@@ -104,7 +104,7 @@ Items 53 to 62 come from the same guides and hold for most venues; drop one only
   The items cite the lines actually used.
 - ARS: https://github.com/imbad0202/academic-research-skills at e79085d0d38609984ef8cfe0faf2d254aac9e0a9, `academic-pipeline/agents/integrity_verification_agent.md` lines 226-312 (C3, caption fidelity) and 314-400 (C4, claim alignment).
   Licensed CC BY-NC 4.0 (Copyright (c) 2026 Cheng-I Wu, https://creativecommons.org/licenses/by-nc/4.0/).
-  Changed: items 23-35 restate C3 and C4 as yes-or-no items for this paper, with this repository's claims file and placeholder register in place of the Figure Package trace and the experiment passport; no text is copied.
+  Changes made in this copy (the research-paper plugin): items 23-35 restate C3 and C4 as yes-or-no items, with the project's claims file and placeholder registry in place of the Figure Package trace and the experiment passport; no text is copied.
 - CCW: https://github.com/pedrohcgs/claude-code-my-workflow at ae726177e23426b665e0a1eef5fb5bd83bd5b831, MIT license; `scripts/check-tikz-prevention.py`, copied to this plugin's `scripts/check_tikz_prevention.py` with the changes listed in its header.
 - contract: the venue's rules in `paper/tools/contract.md` section 2, quoted there from the call for papers (for example a rule that figures be readable by color-blind readers).
 - project: the project's own files that the items name (the claims file, the placeholder registry, the figure sources and the scripts that draw them).

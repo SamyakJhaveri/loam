@@ -48,7 +48,12 @@ log(`PAPER ${PAPER}; output ${ROUND}; KEYS ${KEYS || 'none'}; DECISIONS ${DECISI
 
 const VALIDATE_NOTE = `Run the validator as ${VALIDATE} wherever your instructions say python3 <V> or python3 VALIDATOR.`
 
-const SCORES = (key) => `Besides your other outputs, write OUT/${key}.scores.md: score each review criterion and each aspect that ${CONTRACT} section 2 quotes from the call for papers, from 1 (fatal) to 5 (strong), in one table ordered weakest first; each row has the score, one quoted span of PAPER with its line number, and one sentence on what would raise it. End with two lines: "Strongest story:" (the strongest story the results support) and "First attack:" (the claim a reviewer would attack first). Never use the em dash character in anything you write.`
+const NO_EM_DASH = 'Never use the em dash character in anything you write.'
+
+const SCORES = (key) => `This round adds one output file to the two of contract section 6, an exception to any rule that limits you to those two. Write OUT/${key}.scores.md: score each review criterion and each aspect that ${CONTRACT} section 2 quotes from the call for papers, from 1 (fatal) to 5 (strong), in one table ordered weakest first; each row has the score, one quoted span of PAPER with its line number, and one sentence on what would raise it. End with two lines: "Strongest story:" (the strongest story the results support) and "First attack:" (the claim a reviewer would attack first). ${NO_EM_DASH}`
+
+// The devil's advocate only challenges and never scores (its agent file), so it writes no scores file.
+const UNSCORED = 'reviewer-devils-advocate'
 
 const BASE = (key, extra) => `Run your review procedure on this draft.
 PAPER = ${PAPER}
@@ -56,10 +61,11 @@ ROOT = ${ROOT}
 OUT = ${ROUND}/seats/${key} under ROOT
 ${extra || ''}
 Use an absolute path for OUT. Create OUT if it does not exist. ${VALIDATE_NOTE}
-${SCORES(key)}
-Return the output paths, the recommendation line and your three weakest scores.`
+${key === UNSCORED ? NO_EM_DASH : SCORES(key)}
+Return the output paths${key === UNSCORED ? ' and the recommendation line.' : ', the recommendation line and your three weakest scores.'}`
 
 const CONFIG_PATHS = 'MAIN, BIB and SECTIONS = the paths that paper-tool paper_config prints for paper.main_tex, paper.bib and paper.sections_dir (one key per call).'
+const SKIP_UNCITED = '\nSkip step 6 (uncited assertions): citation-finder covers them in this round. In review.md write "skipped (citation-finder covers them)" under Uncited assertions and in place of their count in the Summary.'
 const SCHEMA_FILE = 'finding_schema.json in the scripts folder that paper-tool prints when run with no argument'
 
 const CRITIC = `You are a blind whole-paper critic for a submission to the venue that ${CONTRACT} section 2 names. Your seat name is "critic" and every finding has lens "critic".
@@ -88,7 +94,7 @@ const SEATS = [
   { key: 'reviewer-generalist', type: TYPE.reviewerGeneralist },
   { key: 'reviewer-devils-advocate', type: TYPE.devilsAdvocate },
   { key: 'lean-critic-forensic', type: TYPE.leanCritic },
-  { key: 'claim-ref-alignment', type: TYPE.claimRef, extra: CONFIG_PATHS },
+  { key: 'claim-ref-alignment', type: TYPE.claimRef, extra: CONFIG_PATHS + SKIP_UNCITED },
   { key: 'reader-first-intro', type: TYPE.readerFirstIntro },
   { key: 'citation-finder', type: TYPE.citationFinder, extra: CONFIG_PATHS + '\nNo ONLY: check every build file.' },
   { key: 'critic', type: TYPE.escalate, prompt: CRITIC },
@@ -164,7 +170,7 @@ ${KEYS ? `KEYS = ${KEYS}` : 'No KEYS is named.'}
 ${priorBlock}
 Seats whose files passed the quote gate and are in FINDINGS_DIR: ${passed.join(', ') || 'none'}. Seats not in FINDINGS_DIR (failed the gate): ${failed.join(', ') || 'none'}.
 The seats "critic" and "taste" are blind critics on the strongest model, with lens "critic"; "taste" judges narrative, taste and machine-sounding prose on six writing moves.
-FINDINGS_DIR also holds a <seat>.scores.md per seat: each scores the review criteria and aspects of ${CONTRACT} section 2 from 1 to 5. Add a section "Scores" to adjudication.md: one table, one row per criterion and aspect, one column per seat plus the median, rows ordered weakest median first${PRIOR ? ", and one column with the median from PRIOR's adjudication.md for comparison" : ''}; then list each seat's "Strongest story" and "First attack" lines.
+FINDINGS_DIR also holds a <seat>.scores.md per scoring seat (every seat but ${UNSCORED}, which only challenges and writes none): each scores the review criteria and aspects of ${CONTRACT} section 2 from 1 to 5. Add a section "Scores" to adjudication.md: one table, one row per criterion and aspect, one column per scoring seat plus the median, rows ordered weakest median first${PRIOR ? ", and one column with the median from PRIOR's adjudication.md for comparison" : ''}; then list each scoring seat's "Strongest story" and "First attack" lines.
 For each confirmed or downgraded finding, say whether its fix is text only (the writer can apply it) or needs new analysis or a decision by the authors.
 ${VALIDATE_NOTE}
 Never use the em dash character. Return the two output paths and one line of counts per verdict and per tier${PRIOR ? ', plus the prior closed and still open counts' : ''}.`,

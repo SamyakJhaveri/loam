@@ -1,2 +1,2 @@
 # Fixture baseline whose one row has no reason (no tab): the check stops with exit 2.
-SLoC
+SoC

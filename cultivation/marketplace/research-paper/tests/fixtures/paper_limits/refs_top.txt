@@ -5,7 +5,7 @@ Anonymous Institution(s)
 Abstract-This abstract stands in for the text that pdftotext
 prints between the abstract heading and the index terms. We present
 E XAMPLE S YS, a fixture whose small caps split one word into four
-tokens, and a placeholder [PENDING P3] that prints as two.
+tokens, and a placeholder [TOFILL T12] that prints as two.
 Index Terms-fixture, word count
 I. I NTRODUCTION
 Body text on page 1.

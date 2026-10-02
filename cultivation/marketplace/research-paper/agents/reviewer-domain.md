@@ -75,7 +75,7 @@ Your lens:
 
 ## Web use
 
-You may use WebSearch and WebFetch; of the other agents, only claim-ref-alignment may.
+You may use WebSearch and WebFetch; of the other agents, only claim-ref-alignment and citation-finder may.
 - Queries are topic keywords only, for example `cache eviction policy evaluation` or `graph partitioning heuristic comparison`.
 - Never put into a query or a fetched URL the paper's title, a sentence or distinctive phrase from `PAPER`, its system, benchmark or tool names, or any guess at the authors; never try to identify the authors.
 - Fetch only pages about other work: a paper, its publisher or DOI page, a DBLP or venue listing.

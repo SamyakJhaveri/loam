@@ -12,7 +12,7 @@ The full loop, the reader briefs per section type and the skim-reader test are i
 
 ## Steps
 
-1. **Read first.** Strip comments from the section as it stands and give it to a fresh reader: the `research-paper:blind-reader` agent (brief below).
+1. **Read first.** Strip comments from the section as it stands and give it to a fresh reader: the `research-paper:blind-reader` agent (inputs below).
    Done when you hold the restatement, the scores, and the list of terms and numbers the reader could not trace.
    This control read is the diagnosis and the baseline.
 2. **Exemplars.** Look for a move table for this section type in the project (saved by an earlier run of this step).
@@ -25,7 +25,7 @@ The full loop, the reader briefs per section type and the skim-reader test are i
    Keep every fact, number, citation and caveat of the previous version, and check any number you add against its source file.
    Done when each control finding is fixed or listed as the owner's decision.
 4. **Gate.** Run the project's mechanical checks in one command (`paper-tool section_gate <file>`, or `python3 ${CLAUDE_PLUGIN_ROOT}/scripts/section_gate.py <file>`): no number, citation or cross-reference lost against the base commit, no banned term, style lint, a clean build, page limit, page slack.
-   Done at exit 0 with no less page slack than the base commit had.
+   Done at exit 0, with the `slack` line no worse than the one the gate printed before you edited.
 5. **Blind read again.** A new fresh reader on the new extract; fix what it could not restate; rerun the gate; read once more.
    Done when the restatement is complete and correct and no score is below the control's.
    One reader per version is noisy: a one-point move means nothing, a change in what the reader restates does.
@@ -34,12 +34,7 @@ The full loop, the reader briefs per section type and the skim-reader test are i
 
 ## The reader brief
 
-The `research-paper:blind-reader` agent carries this brief; give it the extract path, the venue and field, the macro-to-text map (`paper.macros` in `paper/tools/paper-tools.toml`) and the add-on for the section type from `${CLAUDE_PLUGIN_ROOT}/docs/section-loop.md`.
-Without it, spawn a fresh agent on the strongest model, with read access to the one extract and nothing else: no project rules, no history, no other file.
-
-> You are a program committee member for VENUE, competent in FIELD, who has never seen this paper. Read exactly one file, once: PATH. Report, with a verbatim quote and line number for every point, in one message under 3,800 characters, in this order: (1) RESTATE in at most 150 words what the text claims and on what evidence, marking every guess; (2) VERDICT, three scores out of 10: could you explain this to a colleague, SECOND SCORE, how engaging is it against a specification manual; (3) every term, mechanism or number you could not follow, with the line where you needed it and the line that explains it or "never"; (4) the hardest sentences with a one-line rewrite that keeps every fact; (5) contradictions between two sentences, numbers that do not add up, order that fights the reader. Be harsh and specific. Do not suggest adding material you cannot know is true. End with Risks: what you could not judge from one file.
-
-SECOND SCORE by section type: method, "could you re-implement it from this text"; results, "could you state which number supports each claim"; discussion, "could you state what each limitation leaves unmeasured and what would fix it"; abstract or introduction, "could you list the contributions and the evidence for each".
+The `research-paper:blind-reader` agent carries the reader brief; give it the extract path, the venue and field, the macro-to-text map (`paper.macros` in `paper/tools/paper-tools.toml`) and the add-on for the section type from `${CLAUDE_PLUGIN_ROOT}/docs/section-loop.md`.
 
 Re-read every quoted line before acting on it: a term the reader calls undefined may be defined in a section it did not see, and a reported mismatch between two numbers is worth checking against the data.
 

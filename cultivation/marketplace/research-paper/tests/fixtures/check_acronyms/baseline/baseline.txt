@@ -1,3 +1,3 @@
-# Fixture baseline for check_acronyms.py --baseline: SLoC is a known finding.
+# Fixture baseline for check_acronyms.py --baseline: SoC is a known finding.
 # The reason holds a "#", which is text, not a comment.
-SLoC	fixture ticket T-1 (#1, defined in a later rewrite)
+SoC	fixture ticket T-1 (#1, defined in a later rewrite)

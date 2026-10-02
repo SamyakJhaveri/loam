@@ -1,10 +1,10 @@
 # Writing subagent prompts for paper review and paper writing
 
 Rules for writing a Claude Code subagent prompt (an agent file or a task message) for the work this plugin does: review seats, critics, the adjudicator, gates and writers.
-Written in 2026-09 for subagents on `claude-opus-5-5`; recheck the sources when the model changes.
+Written for subagents on `claude-opus-5-5`; recheck the sources when the model changes.
 The agents in `../agents/` follow these rules.
 
-Tags: [A] = Anthropic, [U] = users or third-party tests, [H] = a house rule of the private research-paper project these tools came from.
+Tags: [A] = Anthropic, [U] = users or third-party tests, [H] = a house rule of this plugin.
 Source keys:
 G55 = https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/prompting-claude-opus-5-5 ;
 G5 = https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/prompting-claude-opus-5 ;

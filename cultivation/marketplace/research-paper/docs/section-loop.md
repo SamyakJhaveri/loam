@@ -19,7 +19,7 @@ Each step ends on a condition; move on only when it holds.
    Verify any number you add against its results file before it enters the text.
    Done when each control finding is fixed in the text or listed as the owner's to decide.
 4. **Gate.** `paper-tool section_gate paper/sections/<file>.tex`.
-   Done at exit 0, with the references no later on the page than they were at the base commit (the `slack` line).
+   Done at exit 0, with the `slack` line no worse than the one the gate printed before you edited.
 5. **Blind read again.** Run `research-paper:blind-reader` on the new extract, fix what it could not restate, rerun the gate, and read once more.
    Done when the restatement is complete and correct and no score is below the control's.
    A one-point move between two reads is noise; a change in what the reader restates is the evidence.
@@ -36,7 +36,6 @@ Pick the exemplars in three rings: the papers this paper cites (the field's regi
 
 One reader per paper, a read-only agent at high effort.
 A read-only agent's final report reaches the lead cut at about 4,000 characters, and at 16,000 for all reports that arrive together, so the brief asks for two parts and the lead collects part 2 by `SendMessage`, three or four agents per turn.
-Messages an agent sends to the lead with its own `SendMessage` tool are not cut, so the faster brief asks for the report as three such messages of under 3,000 characters each and a one-line final report.
 
 > Read ONE paper in full, every section, not the abstract: TITLE (VENUE; arXiv ID or DOI).
 > Fetch the PDF or HTML; say which URL fetched.
@@ -69,8 +68,8 @@ Give it the extract path, the venue and field, the macro-to-text map (`paper.mac
 | Discussion | what the results mean, what a positive result does and does not establish, what each limitation costs | could you state what each limitation leaves unmeasured and what would fix it |
 | Abstract, introduction | the problem, the gap, what was built, the headline result | could you list the contributions and the evidence for each |
 | Related work | how the prior work is grouped, what each group is said to lack, what this paper does that the others do not | could you state, for each prior work named, what it does and what this paper adds over it |
-| Corpus, curation | what the corpus is, where it comes from, how it was selected, what being in it does and does not establish | could you rebuild the selection and reconcile every count with the others |
-| Experimental setup | which systems were run, how each result was produced and judged, on what platform, how results are counted and compared | could you re-run the experiment and recompute the metrics |
+| Data and materials | what was collected or chosen, from where, by what rule, and what inclusion does not imply | could you repeat the selection and arrive at the same counts |
+| Measurement setup | what was compared, on which hardware and software, with which inputs, and how each metric is computed | could you repeat the runs and recompute every reported metric |
 
 Ask for one message under 3,800 characters with RESTATE and VERDICT first.
 Re-read every quoted line before acting: a term it calls undefined may be defined in a section it did not see, and a contradiction it reports between two numbers is worth checking against the data.
@@ -102,7 +101,7 @@ The run:
 
 1. Fix the message the paper must leave, in one sentence, with the owner.
 2. `paper-tool skim_extract <dir>/control` writes `pass1.txt` to `pass4.txt` from the working tree.
-3. One fresh `research-paper:blind-reader` per pass, four in one turn, each told to ignore its standard output format, to use nothing but the files named, and to reply in one message under 3,300 characters:
+3. One fresh read-only agent per pass (not `research-paper:blind-reader`, whose file fixes one file and its own report), four in one turn, each told to use nothing but the files named and to reply in one message under 3,300 characters:
    - pass 1 reads `pass1.txt`: the question in one sentence; a restatement with every number retained; the one finding it would repeat; stop or continue; the two sentences that carried most and the two that cost most; what it would cite the paper for.
    - pass 2 reads `pass1.txt` and `pass2.txt`: the objectives; for each display the finding it shows, whether the caption states it or only labels the display, and whether caption and display alone give it; the main result from the displays; which parts of the abstract's story have no display; numbers it could not rebuild.
    - pass 3 reads `pass1.txt` to `pass3.txt`: the whole story in six sentences; each sentence of the first discussion paragraph as finding, caveat or method detail; whether the last paragraph says what the findings mean; conflicts between the pivotal paragraphs and the displays; what it would cite the paper for.
@@ -112,4 +111,4 @@ The run:
    Done when each reader's "what I would cite it for" is the message of step 1.
    The change in that sentence is the evidence; counts of point and setup sentences from one reader are noisy.
 
-Traps: a blind reader can see the project's memory index, so tell it to ignore it; a finding-first caption or a longer first sentence costs a line the page may not have.
+Trap: a finding-first caption or a longer first sentence costs a line the page may not have.

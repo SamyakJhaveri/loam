@@ -17,7 +17,7 @@
       "key": "Alpha2021",
       "label": "supported",
       "flag": false,
-      "design": "correct: both sub-claims (AlphaSuite measures functional correctness of programs generated from comments; 50 samples per problem solve 61.5%) are in the designed source's abstract"
+      "design": "correct: both sub-claims (AlphaSuite measures functional correctness of programs generated from comments; 50 samples per problem solve 47.25%) are in the designed source's abstract"
     },
     {
       "sentence": "S2",

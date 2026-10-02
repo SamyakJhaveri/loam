@@ -23,19 +23,19 @@ Treat a deliberate authorial or venue convention as evidence, not as a defect.
 
 ## Done condition
 
-You are done when the contract's stop condition holds and "Sections read" lists the abstract, the introduction and the contribution list, each marked "findings" or "no finding".
+You are done when the contract's stop condition holds and "Sections read" lists every section heading of `PAPER`, with the abstract, the introduction and the contribution list each marked "findings" or "no finding".
 Do not stop after the first attribution problem, on a plan, or on an offer to continue.
 
 ## Lens
 
 1. **Attribution.** Every claimed contribution solves a problem that exists independently of a defect the authors themselves introduced, and its evidence comes from a valid comparison, never from the authors' own earlier broken version.
-   Classify every claimed advance as one of: a research contribution (a method, oracle, dataset or finding built for a research problem); an engineering contribution (an intentional capability meeting a stated requirement); a development correction (a change that restores intended behavior); process history (debugging effort, discarded attempts).
+   Classify every claimed advance as one of: a research contribution (a method, model, dataset or finding built for a research problem); an engineering contribution (an intentional capability meeting a stated requirement); a development correction (a change that restores intended behavior); process history (debugging effort, discarded attempts).
    Apply four tests before a claim stands: independent problem (would the difficulty remain under a correct implementation?); final design (is the mechanism still necessary and intentional in the final system?); valid comparison (is the effect measured against a legitimate baseline or ablation, not the authors' broken earlier version?); corrected evidence (were runs affected by an error repeated after the error was removed?).
    A correction is disclosed where readers need it to interpret exclusions, changed results or reproducibility; it is not listed as a contribution.
 2. **Argument map.** From the abstract and introduction alone, a first-time reader can answer in one line each: what need makes this work worth doing now; why the task is hard in practice; what was built; what changes when it is used; what evidence supports that change; what readers can use the result for; where the demonstrated boundary ends.
    A question the text does not answer is an `absence:` finding.
-3. **Meaning before names.** Every internal term, abbreviation, stage, channel or gate name has a plain-language meaning before its label; the method is introduced before its mechanisms and failure modes; the thing evaluated is named before the evaluation labels.
-4. **Numbers as evidence.** Every headline number in the abstract carries its measured quantity, comparison, sample and meaning; a `[PENDING Pn]` placeholder is judged by the shape of the sentence around it.
+3. **Meaning before names.** Every internal term, abbreviation, stage or component name has a plain-language meaning before its label; the method is introduced before its mechanisms and failure modes; the thing evaluated is named before the evaluation labels.
+4. **Numbers as evidence.** Every headline number in the abstract carries its measured quantity, comparison, sample and meaning; a `[TOFILL Tn]` placeholder is judged by the shape of the sentence around it.
 5. **Contribution list.** Each bullet names a need, the mechanism that meets it and the evidence, not an activity ("we evaluate", "we validate") alone.
 
 ## Procedure
@@ -49,7 +49,7 @@ Do not stop after the first attribution problem, on a plan, or on an offer to co
 ## What this pass does not establish
 
 It judges attribution and reader access, not correctness of the method or novelty against the literature; those belong to the methods, domain and generalist seats.
-It does not decide whether the history of an earlier version stays as motivation; that is the authors' decision, and the pass only reports where the text claims improvement by comparison with an earlier version.
+How much development history the paper keeps is the authors' call, not this pass's; it reports only a claimed gain whose point of comparison is a faulty build of the authors' own system.
 
 ## Polish guard (for the writer, not this seat)
 

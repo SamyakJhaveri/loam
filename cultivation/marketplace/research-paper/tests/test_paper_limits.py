@@ -5,7 +5,7 @@ Run from the plugin folder:
 
 Fixtures in fixtures/paper_limits/ (text dumps with a form feed after each page):
 - clean.txt: 10 body pages, the references heading on page 10 after body text, one appendix
-  mention in running text, a 44-token abstract ("E XAMPLE S YS" is 4 tokens, "[PENDING P3]" 2);
+  mention in running text, a 44-token abstract ("E XAMPLE S YS" is 4 tokens, "[TOFILL T12]" 2);
 - refs_top.txt: 10 body pages, the references heading at the top of page 11 after a bare page
   number (page 11 must not count);
 - clean_abstract.tex: 23 words once comments, \\cite, the \\href URL and command names are gone;

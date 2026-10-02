@@ -1,7 +1,7 @@
 # Paper-writing rules
 
 Rules for writing any research paper with this plugin.
-Most were learned from a mistake made while writing one paper in a private research-paper project; each says why it exists.
+Each rule is followed by the reason for it.
 The section-by-section rules restate published writing guides and carry a source tag; the sources are listed at the end.
 "The author" below is the person who owns the paper and its decisions; "the writer" is whoever drafts, human or agent.
 Commands and agents are described in `../README.md`.
@@ -15,7 +15,7 @@ Commands and agents are described in `../README.md`.
 3. When a written procedure's order of steps no longer fits the current state, flag the mismatch before following it.
    Following the order literally can spend a whole review round on the wrong text.
 4. Read every exemplar paper in full, from its own PDF or source, one read-only agent per paper; never use an excerpt, a summary, an abstract or memory of the paper.
-   Advice on register and structure drawn from a summary was once reported as if the papers had been read, and it was wrong.
+   A summary keeps neither the wording nor the layout that advice on register and structure is drawn from, so such advice cannot be traced to the paper.
 5. Pick exemplars in three rings: papers this paper cites, strong papers of the same kind outside the field, and two recent accepted papers at the target venue.
    List each paper read by title and source, and say "not read" plainly for any paper not opened, so the advice can be traced to real papers.
 6. Revise the existing draft in place, starting from the author's text on disk, not from a blank page.
@@ -29,7 +29,7 @@ Commands and agents are described in `../README.md`.
 
 1. Rewrite a section only through the loop in `section-loop.md` (or the `section-from-exemplars` skill): blind read of the current text, exemplar moves, edit to the findings, `paper-tool section_gate`, blind read again.
    The first blind read, the control, finds most of what the later reads find before a word changes, so the rewrite gets smaller.
-2. Give `research-paper:blind-reader` the extracted section and nothing else: no rules, no history, no repository access.
+2. Give `research-paper:blind-reader` the extracted section, the venue and field, and the macro map; nothing else: no rules, no history, no repository access.
    The missing context is the point; it reads the way a first-time reader does.
 3. A section is done when the blind reader's restatement is complete and correct and no score is below the control's.
    Scores from one reader are noisy; a change in what the reader can restate is the evidence.
@@ -46,14 +46,14 @@ Commands and agents are described in `../README.md`.
    Most readers, and many reviewers, stop after these places, so a finding that sits only mid-paragraph is not received.
 8. In results and discussion, the first sentence of each paragraph states a finding and the rest gives its context and qualification.
    Read alone, the first sentences should rebuild the argument.
-9. Test the structure with `paper-tool skim_extract`: give each extract to a fresh reader, one extract per reader, and compare each restatement with the message the paper must deliver.
+9. Test the structure with `paper-tool skim_extract` and the skim-reader test of `section-loop.md` section 4: one fresh read-only agent per pass, given only that pass's files, then compare each restatement with the message the paper must deliver.
 10. A run-in paragraph header names what the paragraph holds, as a phrase, never a full sentence; do not add new labels or split paragraphs as a fix.
     A header that says nothing invites the reader to skip, and each extra label is one more thing to track.
 
 ### Register
 
 11. "Easier to read" means fewer bookkeeping numbers and less internal process, not simpler sentences: keep the technical vocabulary and the sentence shape, and never explain a term the field already knows.
-    A section rewritten into short primer sentences was rejected as reading like a child wrote it.
+    Short explanatory sentences talk down to an expert reader and lose the precision that the field's terms carry.
 12. Commit the author's version before replacing a whole section.
     The author can then compare and restore it.
 13. Present tense for what the system is, past tense for what was run; a result "shows", never "proves".
@@ -89,7 +89,7 @@ Design:
 24. Each design subsection opens by naming the gap it answers, and each major design decision names one alternative and why it was rejected [AIRS-WP:20-24,229-230].
     When a table is shorter than the prose, the alternatives go in one table with the columns Decision, Choice, Alternative, Why not [AIRS-SB:211-221].
 25. Cut provenance and implementation detail that does not advance the central claim [NS:46], but keep any detail needed to reproduce a result or judge its integrity, even when the page limit binds [NS:170-172].
-26. Beside each pass rule or metric, one sentence says what a pass establishes and what it does not.
+26. Beside each metric or acceptance rule, one sentence says what meeting it shows and what it leaves open.
     Without it a reader takes the metric to mean more than it measures.
 
 Evaluation:
@@ -122,14 +122,14 @@ Before a section goes to review:
    A vague fraction hides both the number and the system it belongs to.
 4. No claim gets stronger without new evidence in the same edit: apply `CLAIM_DRIFT_GUARD.md` to each changed sentence, and run `paper-tool check_revision_token_conservation` after every revision and every placeholder fill.
    The check catches a lost number, citation or reference that a reader would miss.
-5. A placeholder `\pending{Pn}` stands for one quantity; no text gives it a stand-in value or "about N".
+5. A placeholder `\tofill{Tn}` stands for one quantity; no text gives it a stand-in value or "about N".
    A stand-in value survives into the submission more often than anyone expects.
 6. When a claim appears in several places (abstract, introduction, contribution list), change all of them in the same edit or none.
    Otherwise the paper contradicts itself.
 7. Measure page fit with a forced build and read where the references start; never estimate it from word counts.
-   Word-count estimates of an overflow have been wrong by many lines, and TeX can add a line when words are removed.
-8. Never cut text elsewhere to hold a page limit: when an edit overflows, report the measured overflow and let the author choose the cut.
-   A cut the author did not ask for removes text the author chose to keep.
+   Line breaking and float placement decide where a page ends, and no word count models them; a cut can move a float and leave the page no shorter.
+8. When an edit pushes the paper past its page limit, report the overflow as the build measured it and leave the choice of what to cut to the author; do not trim other text to make room.
+   Text the writer trims on its own was text the author had decided to keep.
 
 ## Citations
 
@@ -154,7 +154,7 @@ Before a section goes to review:
 
 ## Anonymity (double-anonymous venues)
 
-1. Copying sentences verbatim from public text, such as an earlier preprint's abstract, can make the submission findable by a text search; flag each such reuse to the author, whose call it is.
+1. Copying sentences verbatim from public text, such as a thesis chapter or a workshop version, can make the submission findable by a text search; flag each such reuse to the author, whose call it is.
 2. Self-citations are written in the third person, named by system with a numeric citation, and not clustered together.
    A self-citation in the first person names the authors.
 3. The title, abstract and body name no URL, host, lab, cluster or repository of the authors; `paper-tool anonymity_scan` checks the PDF text, its metadata and the figure files.
@@ -162,9 +162,9 @@ Before a section goes to review:
 
 ## Sources
 
-Rules without a tag come from the private research-paper project's own work.
+Rules without a tag are this plugin's own.
 The tagged rules restate passages of three published guides as plain rules; only short labels are copied (the NS result classes, the AIRS table header).
-Line numbers are those the project's own writing guide cited at the commits below; they were not re-read for this file.
+Line numbers refer to each file at the commit named below; they were not re-checked against those files for this page.
 
 - AIRS: https://github.com/Orchestra-Research/AI-Research-SKILLs at 773a52944ba4747a18bd4ae9ade53fff041adcbc, MIT license, Copyright (c) 2025 Claude AI Research Skills Contributors.
   AIRS-WP is `20-ml-paper-writing/systems-paper-writing/references/writing-patterns.md`; AIRS-SB is `20-ml-paper-writing/systems-paper-writing/references/section-blueprints.md`.

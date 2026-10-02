@@ -5,7 +5,7 @@ entry point for projects that consume the Loam marketplace.
 
 ## research-paper v0.1.0 new optional plugin for LaTeX papers
 
-New plugin `research-paper`, promoted from a private research-paper project.
+New plugin `research-paper`.
 It holds review agents behind a quote gate, citation agents, gate scripts, a section rewrite skill, two review-round workflows, writing guides, and the templates a project copies into `paper/tools/`.
 It installs disabled (`defaultEnabled:false`).
 Upgrade step: none for existing projects; to use it, enable it per project and follow the setup in `cultivation/marketplace/research-paper/README.md`.

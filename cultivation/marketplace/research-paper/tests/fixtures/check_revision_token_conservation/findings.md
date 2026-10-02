@@ -1,5 +1,5 @@
-# Fixture adjudication for the finding: rows
+# Adjudication file for the finding: rows
 
-Short ids are the first 8 characters of a finding's id.
+A short id is the first 8 characters of a finding's id.
 
-- `1a2b3c4d` confirmed: the probe sentence names a check count the text does not support.
+- `5e7d20c4` confirmed: the opening-hours sentence gives a day count that the branch timetable does not show.

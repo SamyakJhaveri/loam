@@ -13,7 +13,7 @@ Why it is built this way: `docs/how-the-toolchain-works.md`.
    Add `"enabledPlugins": {"research-paper@seed-skills": true}` to the project's `.claude/settings.json` (or enable it with `/plugin`), then start a new session or run `/reload-plugins`.
    Check: the Agent tool lists `research-paper:reviewer-methods` and the nine other agents below.
 3. Copy the templates into the project: `mkdir -p paper/tools && cp <plugin>/templates/* paper/tools/`, where `<plugin>` is this folder.
-4. Fill in every `FILL IN` block of `paper/tools/contract.md` (venue, review criteria, anonymity, the project's own review rules, reviewer persona), then edit `paper/tools/paper-tools.toml` (paths, build command, limits, macros, term files).
+4. Fill in every `FILL IN` block of `paper/tools/contract.md` (venue, review criteria, anonymity, the project's own review rules, reviewer persona), then edit `paper/tools/paper-tools.toml` (paths, build command, limits, macros, term files, and the `[codex]` keys if you use the experimental parts).
    Both templates hold synthetic examples ("ExampleSys", "Example Conference 2030"); replace every one.
 5. Check the config: `paper-tool paper_config` prints the resolved config as JSON, and `paper-tool paper_config build.pdf` prints one value.
    It exits 2 and names the problem on an unknown key, a wrong value type or an unreadable file.
@@ -33,7 +33,7 @@ A command-line flag always wins over the config.
 - LaTeX sources: a main file, one `.tex` file per section in a sections folder, an abstract file, a `.bib` file, and a preamble that defines the title macro (`paper.*` keys).
 - A build command that writes the PDF and its log (`build.command`, `build.pdf`, `build.log`), and the text dump the seats read, made with `pdftotext <build.pdf> <build.text>`.
 - `paper/tools/contract.md` and `paper/tools/paper-tools.toml`, filled in.
-- Term files in `paper/tools/`: `banned_terms.txt` (regexes `section_gate` refuses), `acronym_allow.txt` (acronyms a reader of the venue knows), and for a double-anonymous venue `anonymity_terms.txt` (author names, affiliations, hosts, paths, URLs, the system name).
+- Term files in `paper/tools/`: `banned_terms.txt` (regexes `section_gate` refuses), `acronym_allow.txt` (acronyms a reader of the venue knows), and for a double-anonymous venue `anonymity_terms.txt` (affiliations, labs, hosts, paths, URLs, titles, the system name; author names come from `CITATION.cff`).
   `anonymity_terms.txt` names real people: keep the filled copy in a private repository only.
   Optional: `anonymity_baseline.txt` and `acronym_baseline.txt`, known hits each with the decision that keeps it; with a baseline, a check fails only on a new hit.
 - Optional inputs: a `CITATION.cff` whose authors `anonymity_scan` also searches for; literature notes and the paper's own names for `lit_index` and `citation-finder` (`literature.*`); for the adjudicator, a file of decisions already made (`DECISIONS`), known-issue lists (`KEYS`) and the previous round's adjudicated findings (`PRIOR`).
@@ -46,7 +46,7 @@ A paper with other heading forms needs those patterns changed.
 
 - Python 3.11 or later; the scripts use only the standard library (`tomllib` needs 3.11).
 - `pdftotext` from poppler; `paper_limits` and `anonymity_scan` also use `pdfinfo` and `pdfimages` from the same package.
-- A LaTeX build command that writes the PDF, set in `build.command` (default `latexmk -pdf -interaction=nonstopmode -outdir=paper/build paper/main.tex`).
+- A LaTeX build command that writes the PDF, set in `build.command` (default `latexmk -pdf -cd -interaction=nonstopmode -outdir=build paper/main.tex`).
 - Network for `cite_check`: `api.crossref.org` and `export.arxiv.org` only.
   `research-paper:claim-ref-alignment` and `research-paper:citation-finder` also fetch from `arxiv.org`, `api.openalex.org`, `api.semanticscholar.org`, `doi.org` and publisher pages; they send identifiers, URLs, cited titles and topic keywords, never the paper's text.
 - Optional: the claude.ai Consensus connector (`mcp__claude_ai_Consensus__search`) for `citation-finder`; without it the agent falls back to a web search by title.
@@ -63,11 +63,11 @@ Do not use `-layout`: two-column layout text makes the quote gate reject real qu
 
 While drafting each section:
 1. Follow `docs/writing-rules.md`, and for a rewrite the loop in `docs/section-loop.md` (the `section-from-exemplars` skill runs the same loop).
-2. After each revision or placeholder fill, run the token check on the before and after copy with an `--authorize` file: `git show HEAD:<file> > "$TMPDIR/before.tex"`, then `paper-tool check_revision_token_conservation pair --source "$TMPDIR/before.tex" --revision <file> --strict --authorize <tsv>`.
+2. After each revision or placeholder fill, run the token check on the before and after copy with an `--authorize` file: `git show HEAD:<file> > "$TMPDIR/before.tex"`, then `paper-tool check_revision_token_conservation pair --source "$TMPDIR/before.tex" --revision <file> --authorize <tsv>`.
    Every changed number, key, fill and strength word needs a row naming a confirmed finding, an author decision, or a `claims:` source.
    Apply `docs/CLAIM_DRIFT_GUARD.md` to each changed sentence; its commands are in that file.
 3. Run the `research-paper:citation-finder` agent on the changed sentences.
-4. `paper-tool style_lint <file>.tex` on each changed file (the only check for the LaTeX em dash, three hyphens); `paper-tool section_gate <file>` runs it with the other section checks.
+4. `paper-tool style_lint <file>.tex` on each changed file (the plugin's only em dash check, for the character and for LaTeX's three hyphens); `paper-tool section_gate <file>` runs it with the other section checks.
 
 Before each full review:
 1. Cite check: `paper-tool cite_check` (network: `api.crossref.org`, `export.arxiv.org`).
@@ -79,7 +79,7 @@ Before each full review:
 4. Consistency and acronyms: `paper-tool check_consistency --fail-on-findings` (default files: the abstract and the `paper.sections` files, checked together for cross-section variants) and `paper-tool check_acronyms --scopes body,abstract_en --fail-on-findings` (default input `paper.main_tex`, with the allow list and baseline from the config).
 5. Figures: `paper-tool check_tikz_prevention <figures>/*.tex` on the TikZ sources, then `docs/FIGURE_CHECKLIST.md` on each figure.
    Findings go to a note for the author.
-6. Review pipeline, at effort `high`: the four seats (`research-paper:reviewer-methods`, `research-paper:reviewer-domain`, `research-paper:reviewer-generalist`, `research-paper:reviewer-devils-advocate`), `research-paper:lean-critic-forensic`, `research-paper:claim-ref-alignment` and `research-paper:citation-finder` (both with `MAIN`, `BIB` and `SECTIONS`; `citation-finder` takes any it is not given from the config), each with `PAPER`, `ROOT` and its own `OUT` (contract section 1).
+6. Review pipeline, at effort `high`: the four seats (`research-paper:reviewer-methods`, `research-paper:reviewer-domain`, `research-paper:reviewer-generalist`, `research-paper:reviewer-devils-advocate`), `research-paper:lean-critic-forensic`, `research-paper:claim-ref-alignment` and `research-paper:citation-finder` (both with `MAIN`, `BIB` and `SECTIONS`; both take any not given from the config), each with `PAPER`, `ROOT` and its own `OUT` (contract section 1).
    Add a blind critic through the `escalate` agent type, lens `critic`, writing `critic.findings.json` beside the other seats' files.
    Then `research-paper:adjudicate-review` with `FINDINGS_DIR` holding the outputs, and `DECISIONS`, `KEYS` and `PRIOR` when the project has them.
    The adjudicator reads only `PAPER`, so it cannot re-check a citation finding's fetched source; those stay as the claim-ref seat reported them.
@@ -113,7 +113,7 @@ Before each full review:
 - `paper_config`: loads `paper/tools/paper-tools.toml`, fills the defaults, and prints the resolved config or one key.
 - `validate_findings`: the quote gate; checks findings against `finding_schema.json` (beside it), fills ids (`--fill-ids`), and confirms each quote at its line (`--check-quotes --require-quotes`).
 - `section_gate`: one command for the mechanical checks on a rewritten section against a base commit (no number, `\cite` or `\ref` lost, no banned term, style lint, build, page limits, where the references start, the section's pages) and the extract for `blind-reader`.
-- `skim_extract`: the four extracts a skimming reader sees (title and abstract; last introduction paragraph and the displays; first introduction paragraph and first and last discussion paragraphs; the first sentence of every paragraph), one per `blind-reader`.
+- `skim_extract`: the four extracts a skimming reader sees (title and abstract; last introduction paragraph and the displays; first introduction paragraph and first and last discussion paragraphs; the first sentence of every paragraph), one per pass of the skim-reader test (`docs/section-loop.md` section 4).
 - `lit_index`: an index of the `.bib` file and the literature notes, with search; flags the paper's own names as self-citations.
 - `cite_check`: bib fields, duplicate keys, cited keys against the bib, a DOI or URL per entry, full author lists, arXiv-only entries, and Crossref and arXiv resolution with title and year compared; fails closed.
 - `paper_limits`: body pages with references excluded, appendix headings, and abstract words.
@@ -138,10 +138,11 @@ Before each full review:
 
 - `contract.md`: the review contract every seat reads first (inputs, venue, rules, evidence, severity, output, stop condition, persona), with `FILL IN` blocks.
 - `paper-tools.toml`: every config key with a one-line comment and synthetic values.
-- `banned_terms.txt`: the format of the banned-regex list, with generic entries.
-- `anonymity_terms.txt`: the format of the anonymity terms file, empty.
+- `banned_terms.txt`: the format of the banned-regex list, for the project's own rulings.
+- `anonymity_terms.txt`: the format of the anonymity terms file, with synthetic entries to replace.
 - `acronym_allow.txt`: the format of the acronym allow list, with a few neutral examples.
 - `next-session-prompt.md`: the five headings of a handoff prompt for the next session.
+- `exemplar_manifest.tsv`: the exemplar list `codex_seat` reads, with one synthetic entry; for the experimental parts, copy it to `codex.manifest` (default `paper/exemplars/manifest.tsv`), not to `paper/tools/`.
 
 ### Workflows (`workflows/`, run as `/research-paper:<name>` with the `name` in each file's `meta` block)
 
@@ -159,15 +160,20 @@ State the agent count before launching: 22 to 38 agents for the full round, 10 f
 
 ## Placeholder convention
 
-A number not yet computed is written `\pending{Pn}` in the text and `\pendingcell{Pn}` in a table cell, where `Pn` is a placeholder id such as `P12`; the built text prints it as `[PENDING Pn]`.
-The project defines the two macros, for example `\newcommand{\pending}[1]{[PENDING #1]}`.
+A number not yet computed is written `\tofill{Tn}` in the text and `\tofillcell{Tn}` in a table cell, where `Tn` is a placeholder id such as `T23`; the built text prints it as `[TOFILL Tn]`.
+The project defines the two macros, for example `\newcommand{\tofill}[1]{[TOFILL #1]}`.
 The seats do not report a pending number as missing, and `check_revision_token_conservation` records a placeholder replaced by a number as a fill, not a loss.
-Before submission, `grep -c 'PENDING' <build.text>` must print 0.
+Before submission, `grep -c '\[TOFILL ' <build.text>` must print 0.
 
 ## Experimental
 
-Three parts are experimental: a cross-model seat runner (`scripts/codex_seat.py`), its prompt files (`prompts/`), and an exemplar-advisor workflow (`workflows/exemplar_advisor.js`, which also uses the user-level `scout` and `escalate` agent types).
-They ran once in their source project, are not covered by the tests, and need the Codex plugin for Claude Code.
+Three parts are experimental: a cross-model seat runner (`scripts/codex_seat.py`), its prompt files (`prompts/`), and an exemplar-advisor workflow (`workflows/exemplar_advisor.js`, which also uses the user-level `scout` and `escalate` agent types; `scripts/build_suggestions.py` turns its journal into a suggestions file for each section).
+They are covered only by offline tests of `codex_seat.py` (`tests/test_codex_seat.py`, with no call to Codex, a model or the network), and they need the Codex plugin for Claude Code.
+They read four `[codex]` keys of `paper-tools.toml`:
+- `codex.corpus_dir` (default `paper/exemplars`): the exemplar papers as `pdftotext` output, one `<id>.txt` per paper.
+- `codex.manifest` (default `paper/exemplars/manifest.tsv`): the exemplar list, tab-separated id, title and URL (`templates/exemplar_manifest.tsv`).
+- `codex.companion` (default `""`): the path of `codex-companion.mjs`; `""` finds the newest installed Codex plugin.
+- `codex.model`: the Codex model `codex_seat` runs when `--model` is not given; `paper-tool paper_config codex.model` prints the default.
 
 ## Tests
 
@@ -195,12 +201,14 @@ Material from an upstream with no licence file is adapted with credit and not re
 | `scripts/check_revision_token_conservation.py` | `imbad0202/academic-research-skills` (e79085d), `scripts/check_revision_token_conservation.py` without its patch mode | CC BY-NC 4.0, Copyright (c) 2026 Cheng-I Wu, non-commercial research use only |
 | `scripts/cite_check.py` | [A] `K-Dense-AI/scientific-agent-skills` (065b734), `skills/citation-management/scripts/`, logic read and rewritten; [B] `imbad0202/academic-research-skills` (e79085d), `scripts/retraction_status.py` lines 152-229, the retraction verdict rule | [A] MIT, Copyright (c) 2025 K-Dense Inc.; licence text in the file. [B] CC BY-NC 4.0, Copyright (c) 2026 Cheng-I Wu |
 | `scripts/validate_findings.py` | `pedrohcgs/claude-code-my-workflow` (ae72617), `scripts/validate-findings.py` | MIT, Copyright (c) 2026 Pedro H. C. Sant'Anna; licence text in the file |
+| `scripts/finding_schema.json` | `pedrohcgs/claude-code-my-workflow` (ae72617), `.claude/references/finding-schema.json` | MIT, Pedro H. C. Sant'Anna |
 | `scripts/anonymity_scan.py` | `sohan-shingade/paper-reviewer` (6a5c484), `scripts/extract_pdf.sh` lines 38 and 44; idea only, no text copied | no licence upstream |
 | `docs/CLAIM_DRIFT_GUARD.md` | `imbad0202/academic-research-skills` (e79085d), `shared/references/claim_strength_ladder.md` lines 19-58 and the guard block of `evals/heldout/revision_claim_drift/runs/2026-08-07/RUN_PLAN.md` lines 72-95 | CC BY-NC 4.0, Copyright (c) 2026 Cheng-I Wu, non-commercial research use only |
 | `docs/FIGURE_CHECKLIST.md` | `llmsresearch/paperbanana` (87e01fd); `imbad0202/academic-research-skills` (e79085d), `academic-pipeline/agents/integrity_verification_agent.md`, items restated with no text copied; `pedrohcgs/claude-code-my-workflow` (ae72617), the TikZ check | paperbanana: MIT, Copyright (c) 2025 PaperBanana Contributors. academic-research-skills: CC BY-NC 4.0, Copyright (c) 2026 Cheng-I Wu. claude-code-my-workflow: MIT |
 | `docs/writing-rules.md`, section-by-section rules | `Orchestra-Research/AI-Research-SKILLs` (773a529); `yuan1z0825/nature-skills` (8488081); `Master-cai/Research-Paper-Writing-Skills` (77e7c2c); rules restated, short labels only copied | AI-Research-SKILLs: MIT, Copyright (c) 2025 Claude AI Research Skills Contributors. nature-skills: Apache License 2.0, no named copyright holder. Research-Paper-Writing-Skills: MIT, Copyright (c) 2026 Master-cai |
 | `tests/test_check_revision_token_conservation.py` | `imbad0202/academic-research-skills` (e79085d), `scripts/test_check_revision_token_conservation.py` without its patch-mode tests | CC BY-NC 4.0, Copyright (c) 2026 Cheng-I Wu, non-commercial research use only |
-| `agents/adjudicate-review.md` | `pedrohcgs/claude-code-my-workflow` (ae72617), the `adjudicate-review` skill and three reference files; `sohan-shingade/paper-reviewer` (6a5c484), `.claude/agents/handling-editor.md` lines 35-100, the merge and conflict rules; `yuan1z0825/nature-skills` (8488081), `forensic-consistency-audit.md`, the isolation rule | claude-code-my-workflow: MIT, Copyright (c) 2026 Pedro H. C. Sant'Anna. paper-reviewer: no licence file, adapted with credit, not relicensed. nature-skills: Apache License 2.0 |
+| `tests/test_check_consistency.py` | `yuan1z0825/nature-skills` (8488081), `skills/nature-shared/tests/test_check_consistency.py` lines 1-59 | Apache License 2.0 |
+| `agents/adjudicate-review.md` | `pedrohcgs/claude-code-my-workflow` (ae72617), the `adjudicate-review` skill, two reference files and lines 56 and 70 of the `seven-pass-review` skill; `sohan-shingade/paper-reviewer` (6a5c484), `.claude/agents/handling-editor.md` lines 35-100, the merge and conflict rules; `yuan1z0825/nature-skills` (8488081), `forensic-consistency-audit.md`, the isolation rule | claude-code-my-workflow: MIT, Copyright (c) 2026 Pedro H. C. Sant'Anna. paper-reviewer: no licence file, adapted with credit, not relicensed. nature-skills: Apache License 2.0 |
 | `agents/blind-reader.md` | none | the repository licence |
 | `agents/citation-finder.md` | `imbad0202/academic-research-skills` (e79085d), `academic-pipeline/agents/claim_ref_alignment_audit_agent.md` lines 321-328, the uncited-assertion rule, carried from `claim-ref-alignment` | CC BY-NC 4.0, Copyright (c) 2026 Cheng-I Wu; non-commercial use only for those parts |
 | `agents/claim-ref-alignment.md` | `imbad0202/academic-research-skills` (e79085d), `academic-pipeline/agents/claim_ref_alignment_audit_agent.md` and `academic-pipeline/agents/integrity_verification_agent.md` | CC BY-NC 4.0, Copyright (c) 2026 Cheng-I Wu |

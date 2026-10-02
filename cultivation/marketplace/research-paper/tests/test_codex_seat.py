@@ -72,10 +72,15 @@ def test_companion_is_configured_or_the_newest_installed(tmp_path, monkeypatch):
     assert codex_seat.companion(cfg) == tmp_path / "pinned.mjs"
 
 
-def test_exemplar_questions_come_from_the_section_loop_doc():
+def test_exemplar_questions_come_from_section_2_of_the_section_loop_doc():
+    # section 3 of the doc has a "Method" row too; the questions are the cells of the section 2 row
+    lines = codex_seat.GUIDE.read_text().splitlines()
+    start = next(i for i, line in enumerate(lines) if line.startswith("## 2."))
+    end = next(i for i, line in enumerate(lines) if line.startswith("## 3."))
     for row in codex_seat.SECTION_TYPES.values():
-        part_1, part_2 = codex_seat.question_row(row)
-        assert part_1 and part_2
+        cells = [line.split(" | ") for line in lines[start:end] if line.startswith(f"| {row} | ")]
+        assert len(cells) == 1, row
+        assert codex_seat.question_row(row) == (cells[0][1], cells[0][2].removesuffix(" |"))
 
 
 def test_blind_reader_edits_apply_to_the_plugin_agent(tmp_path, monkeypatch, capsys):

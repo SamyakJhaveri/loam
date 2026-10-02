@@ -39,14 +39,14 @@ def test_first_sentence_keeps_the_run_in_header_and_stops_at_the_sentence_end():
     assert skim_extract.first_sentence("We evaluate three caches: A; B; and C. Each ran once.") == (
         "We evaluate three caches: A; B; and C."
     )
-    assert skim_extract.first_sentence("Version 2.5 serves 30.5% of requests. It misses more.") == (
-        "Version 2.5 serves 30.5% of requests."
+    assert skim_extract.first_sentence("Station 4.2 logged 17.25% of the rain. Then it froze.") == (
+        "Station 4.2 logged 17.25% of the rain."
     )
 
 
 def test_spell_out_drops_comments_and_names_the_macros():
-    text = "% a comment\n\\examplesys{} serves~\\cite{X2029} 61.5\\% (Table~\\ref{tab:a})."
-    assert skim_extract.spell_out(text, MACROS) == "ExampleSys serves [cite] 61.5% (Table X)."
+    text = "% a comment\n\\examplesys{} serves~\\cite{X2029} 59.25\\% (Table~\\ref{tab:a})."
+    assert skim_extract.spell_out(text, MACROS) == "ExampleSys serves [cite] 59.25% (Table X)."
 
 
 def test_the_paper_gives_four_extracts_with_every_display():

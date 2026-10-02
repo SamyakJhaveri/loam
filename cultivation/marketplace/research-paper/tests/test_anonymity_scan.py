@@ -147,6 +147,15 @@ def test_missing_figures_dir_is_a_usage_error(tmp_path):
     assert scan(CLEAN, figures=tmp_path / "absent").returncode == 2
 
 
+def test_missing_default_figures_dir_is_a_note(tmp_path):
+    r = run("--text", CLEAN, "--citation", CFF, "--terms", TERMS, root=tmp_path)
+    assert r.returncode == 0, r.stdout + r.stderr
+    assert "NOTE figures not scanned: paper.figures_dir (default; no folder at " in r.stdout
+    config = config_project(tmp_path, figures_dir=tmp_path / "absent")
+    r = run("--text", CLEAN, "--citation", CFF, "--terms", TERMS, root=tmp_path, config=config)
+    assert r.returncode == 2, r.stdout + r.stderr  # a folder the config names must exist
+
+
 def known_lines(stdout):
     return [line for line in stdout.splitlines() if line.startswith("KNOWN ")]
 

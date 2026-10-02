@@ -1,6 +1,6 @@
 export const meta = {
   name: 'attack-round-seats',
-  description: 'Seats-only review round on the built paper text: 10 review seats write findings and scores; the lead then runs the quote gate and the adjudicator by hand (10 agents)',
+  description: 'Seats-only review round on the built paper text: 10 review seats write findings, and all but the devil\'s advocate write scores; the lead then runs the quote gate and the adjudicator by hand (10 agents)',
   phases: [
     { title: 'Seats', detail: '10 blind review seats on the built paper text' },
   ],
@@ -43,7 +43,12 @@ log(`PAPER ${PAPER}; output ${ROUND}`)
 
 const VALIDATE_NOTE = `Run the validator as ${VALIDATE} wherever your instructions say python3 <V> or python3 VALIDATOR.`
 
-const SCORES = (key) => `Besides your other outputs, write OUT/${key}.scores.md: score each review criterion and each aspect that ${CONTRACT} section 2 quotes from the call for papers, from 1 (fatal) to 5 (strong), in one table ordered weakest first; each row has the score, one quoted span of PAPER with its line number, and one sentence on what would raise it. End with two lines: "Strongest story:" (the strongest story the results support) and "First attack:" (the claim a reviewer would attack first). Never use the em dash character in anything you write.`
+const NO_EM_DASH = 'Never use the em dash character in anything you write.'
+
+const SCORES = (key) => `This round adds one output file to the two of contract section 6, an exception to any rule that limits you to those two. Write OUT/${key}.scores.md: score each review criterion and each aspect that ${CONTRACT} section 2 quotes from the call for papers, from 1 (fatal) to 5 (strong), in one table ordered weakest first; each row has the score, one quoted span of PAPER with its line number, and one sentence on what would raise it. End with two lines: "Strongest story:" (the strongest story the results support) and "First attack:" (the claim a reviewer would attack first). ${NO_EM_DASH}`
+
+// The devil's advocate only challenges and never scores (its agent file), so it writes no scores file.
+const UNSCORED = 'reviewer-devils-advocate'
 
 const BASE = (key, extra) => `Run your review procedure on this draft.
 PAPER = ${PAPER}
@@ -51,10 +56,11 @@ ROOT = ${ROOT}
 OUT = ${ROUND}/seats/${key} under ROOT
 ${extra || ''}
 Use an absolute path for OUT. Create OUT if it does not exist. ${VALIDATE_NOTE}
-${SCORES(key)}
-Return the output paths, the recommendation line and your three weakest scores.`
+${key === UNSCORED ? NO_EM_DASH : SCORES(key)}
+Return the output paths${key === UNSCORED ? ' and the recommendation line.' : ', the recommendation line and your three weakest scores.'}`
 
 const CONFIG_PATHS = 'MAIN, BIB and SECTIONS = the paths that paper-tool paper_config prints for paper.main_tex, paper.bib and paper.sections_dir (one key per call).'
+const SKIP_UNCITED = '\nSkip step 6 (uncited assertions): citation-finder covers them in this round. In review.md write "skipped (citation-finder covers them)" under Uncited assertions and in place of their count in the Summary.'
 const SCHEMA_FILE = 'finding_schema.json in the scripts folder that paper-tool prints when run with no argument'
 
 const CRITIC = `You are a blind whole-paper critic for a submission to the venue that ${CONTRACT} section 2 names. Your seat name is "critic" and every finding has lens "critic".
@@ -83,7 +89,7 @@ const SEATS = [
   { key: 'reviewer-generalist', type: TYPE.reviewerGeneralist },
   { key: 'reviewer-devils-advocate', type: TYPE.devilsAdvocate },
   { key: 'lean-critic-forensic', type: TYPE.leanCritic },
-  { key: 'claim-ref-alignment', type: TYPE.claimRef, extra: CONFIG_PATHS },
+  { key: 'claim-ref-alignment', type: TYPE.claimRef, extra: CONFIG_PATHS + SKIP_UNCITED },
   { key: 'reader-first-intro', type: TYPE.readerFirstIntro },
   { key: 'citation-finder', type: TYPE.citationFinder, extra: CONFIG_PATHS + '\nNo ONLY: check every build file.' },
   { key: 'critic', type: TYPE.escalate, prompt: CRITIC },
@@ -101,7 +107,7 @@ const missing = SEATS.map((s) => s.key).filter((k) => !results.some((r) => r && 
 log(`seats finished: ${results.filter((r) => r && r.done).length}/${SEATS.length}; no output from: ${missing.join(', ') || 'none'}`)
 
 const next = [
-  `Quote gate, from the project root, for each seat: ${VALIDATE} ${ROUND}/seats/<seat>/<seat>.findings.json, then ${VALIDATE} --check-quotes --require-quotes ${ROUND}/seats/<seat>/<seat>.findings.json --root .; copy the .findings.json, .review.md and .scores.md of each seat that passes both into ${ROUND}/findings/.`,
+  `Quote gate, from the project root, for each seat: ${VALIDATE} ${ROUND}/seats/<seat>/<seat>.findings.json, then ${VALIDATE} --check-quotes --require-quotes ${ROUND}/seats/<seat>/<seat>.findings.json --root .; copy the .findings.json, .review.md and .scores.md (every seat but ${UNSCORED} writes one) of each seat that passes both into ${ROUND}/findings/.`,
   `Adjudicator (${TYPE.adjudicator}): FINDINGS_DIR = ${ROUND}/findings, PAPER = ${PAPER}, ROOT = the project root, OUT = ${ROUND}/adjudicated${DECISIONS ? `, DECISIONS = ${DECISIONS}` : ''}${KEYS ? `, KEYS = ${KEYS}` : ''}${PRIOR ? `, PRIOR = ${PRIOR}` : ''}.`,
 ]
 

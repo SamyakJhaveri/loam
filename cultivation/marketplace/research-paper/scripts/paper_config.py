@@ -68,8 +68,9 @@ DEFAULTS = {
         "command": [
             "latexmk",
             "-pdf",
+            "-cd",
             "-interaction=nonstopmode",
-            "-outdir=paper/build",
+            "-outdir=build",
             "paper/main.tex",
         ],
         "pdf": "paper/build/main.pdf",

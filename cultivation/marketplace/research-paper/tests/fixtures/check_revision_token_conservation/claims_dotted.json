@@ -1,9 +1,9 @@
 {
-  "note": "Fixture claims file whose member names hold dots, as model names do (vendor-model-1.5), for the claims: rows of tests/test_check_revision_token_conservation.py. The decoys vendor-model-1 -> 5 and a -> b -> c hold other values, so only a walk by the longest dotted member name reads 2.5.",
-  "models": {
-    "vendor-model-1.5": {"score_pct": 2.5, "runs": [{"value": "2.5%"}]},
-    "vendor-model-1": {"5": {"score_pct": 9.9}}
+  "note": "Claims file whose member names hold dots, as library call numbers do (dewey-641.5), for the claims: rows of tests/test_check_revision_token_conservation.py. The decoys dewey-641 -> 5 and a -> b -> c hold other values, so only a walk by the longest dotted member name reads 6.41.",
+  "shelves": {
+    "dewey-641.5": {"misfile_pct": 6.41, "counts": [{"value": "6.41%"}]},
+    "dewey-641": {"5": {"misfile_pct": 2.76}}
   },
-  "a.b": {"c": 2.5},
+  "a.b": {"c": 6.41},
   "a": {"b": {"c": 1.0}}
 }

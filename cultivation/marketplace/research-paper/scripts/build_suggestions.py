@@ -419,7 +419,7 @@ def main(argv=None) -> None:
             "Entries with no finding: " + ", ".join(f"`{i}`" for i in clean) + ".",
             "",
         ]
-    R += ["## The coordinator's top 15, in order", ""]
+    R += [f"## The coordinator's top {len(top)}, in order", ""]
     for n, i in enumerate(top, 1):
         note = ""
         if attack_files:

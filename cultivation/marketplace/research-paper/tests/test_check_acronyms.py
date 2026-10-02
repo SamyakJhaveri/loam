@@ -7,10 +7,10 @@ a caption, a figure path, a tabular) holds an acronym that would be a finding if
 fixtures/check_acronyms/seeded/ is the same document plus one undefined acronym on
 sections/body.tex line 29.
 fixtures/check_acronyms/allowlist/ tests --allow-file with allow.txt: clean.tex uses only
-allowlisted acronyms, undefined; seeded.tex adds SLoC, which the allowlist leaves out.
+allowlisted acronyms, undefined; seeded.tex adds SoC, which the allowlist leaves out.
 fixtures/check_acronyms/baseline/ tests --baseline: known.tex has one undefined acronym
-(SLoC), the one row of baseline.txt; new.tex adds AST, which the baseline does not list;
-baseline_no_reason.txt holds the SLoC row with no reason.
+(SoC), the one row of baseline.txt; new.tex adds MSL, which the baseline does not list;
+baseline_no_reason.txt holds the SoC row with no reason.
 Every subprocess run sets PAPER_TOOLS_ROOT, so the config defaults of paper-tools.toml come
 from a fixture or a temporary folder, never from the repository the tests sit in.
 """
@@ -39,7 +39,7 @@ SPEC.loader.exec_module(CHECKER)
 
 # Acronyms that sit only inside constructs the reader skips.
 HIDDEN = {"XYZ", "TPU", "RDMA", "HBM", "NVLink", "RMSE", "MAE", "SNR", "PSNR", "LD", "FPGA"}
-HIDDEN |= {"ASIC", "CPU", "COUNT", "VHDL", "DSP", "NPU", "SRAM", "DRAM", "LUT", "PENDING"}
+HIDDEN |= {"ASIC", "CPU", "COUNT", "VHDL", "DSP", "NPU", "SRAM", "DRAM", "LUT", "TOFILL"}
 
 
 def env_for(root: Path, config: Path | None = None) -> dict[str, str]:
@@ -99,7 +99,7 @@ def test_skipped_constructs_are_blank_and_lines_keep_their_source() -> None:
     text, where = CHECKER.read_latex(FIXTURES / "clean" / "main.tex")
     words = set(re.findall(r"[A-Za-z]+", text))
     assert not words & HIDDEN
-    assert {"GPU", "GPUs", "ExampleSys", "MPI", "P1"} <= set(re.findall(r"[A-Za-z0-9]+", text))
+    assert {"GPU", "GPUs", "ExampleSys", "MPI", "T6"} <= set(re.findall(r"[A-Za-z0-9]+", text))
     lines = text.split("\n")
     assert len(lines) == len(where)
     body = str(FIXTURES / "clean" / "sections" / "body.tex")
@@ -111,7 +111,7 @@ def test_skipped_constructs_are_blank_and_lines_keep_their_source() -> None:
 @pytest.mark.parametrize(
     ("line", "kept"),
     [
-        (r"80\% of runs % a comment", r"80\% of runs "),
+        (r"65\% of loans % a comment", r"65\% of loans "),
         (r"a line break\\% a comment", r"a line break\\"),
         (
             r"a line break and a percent sign \\\% stay",
@@ -155,7 +155,7 @@ def test_review_fixes(name: str, status: int, rows: list[str]) -> None:
 ALLOW = FIXTURES / "allowlist" / "allow.txt"
 TEMPLATE = PLUGIN / "templates" / "acronym_allow.txt"
 # Terms allow.txt leaves out on purpose; its header gives each one's reason.
-LEFT_OUT = {"SLoC", "AST"}
+LEFT_OUT = {"SoC", "MSL"}
 
 
 def run_allowlist(name: str, *flags: str) -> subprocess.CompletedProcess[str]:
@@ -168,11 +168,11 @@ def test_allowlist_silences_an_allowed_term() -> None:
     bare = run_allowlist("clean.tex")
     assert bare.returncode == 1, bare.stdout + bare.stderr
     assert {row.split("|")[4].strip() for row in finding_rows(bare.stdout)} == {
-        "CUDA",
-        "FAIL",
-        "GPU",
-        "OpenMP",
-        "PASS",
+        "DOWN",
+        "GPS",
+        "LOST",
+        "LoRa",
+        "NTP",
     }
     allowed = run_allowlist("clean.tex", "--allow-file", str(ALLOW))
     assert allowed.returncode == 0, allowed.stdout + allowed.stderr
@@ -182,7 +182,7 @@ def test_allowlist_silences_an_allowed_term() -> None:
 def test_allowlist_still_reports_a_left_out_term() -> None:
     result = run_allowlist("seeded.tex", "--allow-file", str(ALLOW))
     assert result.returncode == 1, result.stdout + result.stderr
-    assert finding_rows(result.stdout) == ["| Body | seeded.tex:5 | Not defined | SLoC | 1 |"]
+    assert finding_rows(result.stdout) == ["| Body | seeded.tex:5 | Not defined | SoC | 1 |"]
 
 
 def test_allowlist_leaves_out_the_terms_its_header_names() -> None:
@@ -209,16 +209,16 @@ def run_baseline(name: str, *flags: str) -> subprocess.CompletedProcess[str]:
 
 def test_baseline_only_paper_passes(tmp_path: Path) -> None:
     bare = run_baseline("known.tex", "--fail-on-findings")
-    assert bare.returncode == 1, bare.stdout + bare.stderr  # without the baseline SLoC fails
+    assert bare.returncode == 1, bare.stdout + bare.stderr  # without the baseline SoC fails
     out = tmp_path / "report.json"
     result = run_baseline("known.tex", "--baseline", "baseline.txt", "--json-out", str(out))
     assert result.returncode == 0, result.stdout + result.stderr
     assert finding_rows(result.stdout) == []
-    assert f"- KNOWN Body, known.tex:4: SLoC (Not defined; {KNOWN_REASON})" in result.stdout
+    assert f"- KNOWN Body, known.tex:4: SoC (Not defined; {KNOWN_REASON})" in result.stdout
     assert "No findings outside the baseline." in result.stdout
     report = json.loads(out.read_text(encoding="utf-8"))
     assert report["findings"] == []
-    assert [(k["acronym"], k["reason"]) for k in report["known"]] == [("SLoC", KNOWN_REASON)]
+    assert [(k["acronym"], k["reason"]) for k in report["known"]] == [("SoC", KNOWN_REASON)]
 
 
 # --baseline fails on a new finding with or without --fail-on-findings.
@@ -226,15 +226,15 @@ def test_baseline_only_paper_passes(tmp_path: Path) -> None:
 def test_new_finding_fails_with_the_baseline(flags: tuple[str, ...]) -> None:
     result = run_baseline("new.tex", "--baseline", "baseline.txt", *flags)
     assert result.returncode == 1, result.stdout + result.stderr
-    assert finding_rows(result.stdout) == ["| Body | new.tex:5 | Not defined | AST | 1 |"]
-    assert f"- KNOWN Body, new.tex:4: SLoC (Not defined; {KNOWN_REASON})" in result.stdout
+    assert finding_rows(result.stdout) == ["| Body | new.tex:5 | Not defined | MSL | 1 |"]
+    assert f"- KNOWN Body, new.tex:4: SoC (Not defined; {KNOWN_REASON})" in result.stdout
 
 
 @pytest.mark.parametrize(
     "row",
     [
         None,  # baseline_no_reason.txt: no tab
-        "SLoC\t",  # a tab, then nothing
+        "SoC\t",  # a tab, then nothing
         "\tfixture ticket T-1",  # a reason, no acronym
     ],
 )
@@ -280,9 +280,9 @@ def test_config_names_the_input_allowlist_and_baseline(tmp_path: Path) -> None:
     result = run_config(tmp_path, config)
     assert result.returncode == 1, result.stdout + result.stderr  # the baseline gates
     assert finding_rows(result.stdout) == [
-        f"| Body | {BASELINE_DIR / 'new.tex'}:5 | Not defined | AST | 1 |"
+        f"| Body | {BASELINE_DIR / 'new.tex'}:5 | Not defined | MSL | 1 |"
     ]
-    assert f"SLoC (Not defined; {KNOWN_REASON})" in result.stdout
+    assert f"SoC (Not defined; {KNOWN_REASON})" in result.stdout
     flagged = run_config(
         tmp_path, config, "--baseline", str(BASELINE_DIR / "baseline_no_reason.txt")
     )

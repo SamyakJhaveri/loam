@@ -13,7 +13,7 @@ placeholder) and queries_title.tsv (a Consensus query holding a 4-word run of th
 A row whose origin field is empty, blank or a padded "-" ends in whitespace, which git diff
 --check rejects in a committed fixture, so test_empty_origin_field_is_flagged writes those rows
 at run time.
-Run from the repository root: python3 -m pytest <this file> -q
+Run from the plugin folder: python3 -m pytest tests/test_citation_finder.py -q
 """
 
 import os

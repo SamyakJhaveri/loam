@@ -4,8 +4,8 @@
 # Path:   scripts/check_acronyms.py, lines 1-1023 (the whole file)
 # License: CC BY-NC 4.0, Copyright (c) 2026 Cheng-I Wu,
 #          https://creativecommons.org/licenses/by-nc/4.0/ (non-commercial research use only).
-# Changes made in this copy (a private research-paper project, 2026-09-29), to read LaTeX (1 to
-# 7, 9) and to gate on findings (8, 10), and for the research-paper plugin (11):
+# Changes made in this copy (the research-paper plugin):
+# 1 to 7 and 9 read LaTeX, 8 and 10 gate on findings, 11 takes defaults from the plugin config.
 #   1. This header, and "# fmt: off" below it, so ruff keeps the upstream layout and a diff
 #      against upstream shows only these changes.
 #   2. Docstring: r-prefix (it now holds backslashes), a "LaTeX input" paragraph, the new
@@ -45,8 +45,7 @@
 #      --input help): --input defaults to paper.main_tex, --allow-file to terms.acronym_allow
 #      and --baseline to terms.acronym_baseline of paper-tools.toml; a flag wins. A configured
 #      allowlist or baseline file that does not exist is not used, with a note on stderr, and
-#      --input with no paper.main_tex is a usage error. The docstring and a comment say "this
-#      copy" where they named the project, and the Usage line names the plugin command.
+#      --input with no paper.main_tex is a usage error. The Usage line names the plugin command.
 # fmt: off
 r"""Deterministic acronym check for a manuscript (#849).
 
