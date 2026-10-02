@@ -1,0 +1,40 @@
+#!/usr/bin/env bash
+# paper-tool - run one script of the research-paper plugin by name.
+#   paper-tool                      list the scripts
+#   paper-tool <script> [args...]   exec python3 <plugin>/scripts/<script>.py args...
+# The plugin folder is found from this file's own location (symlinks followed).
+set -euo pipefail
+
+src="${BASH_SOURCE[0]}"
+while [ -L "$src" ]; do
+  dir="$(cd -P "$(dirname "$src")" && pwd)"
+  src="$(readlink "$src")"
+  case "$src" in /*) ;; *) src="$dir/$src" ;; esac
+done
+SCRIPTS="$(cd -P "$(dirname "$src")/../scripts" && pwd)"
+
+list() {
+  for f in "$SCRIPTS"/*.py; do
+    [ -e "$f" ] || continue
+    name="$(basename "$f" .py)"
+    case "$name" in _* | test_*) continue ;; esac
+    echo "  $name"
+  done
+}
+
+if [ "$#" -eq 0 ] || [ "$1" = "-h" ] || [ "$1" = "--help" ]; then
+  echo "usage: paper-tool <script> [args...]"
+  echo "scripts in $SCRIPTS:"
+  list
+  exit 0
+fi
+
+name="$1"
+shift
+case "$name" in
+  */* | _* | test_* | "") ;;
+  *) [ -f "$SCRIPTS/$name.py" ] && exec python3 "$SCRIPTS/$name.py" "$@" ;;
+esac
+echo "paper-tool: no script named '$name' in $SCRIPTS" >&2
+echo "run paper-tool with no argument to list the scripts" >&2
+exit 2

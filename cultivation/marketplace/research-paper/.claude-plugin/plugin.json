@@ -1,0 +1,9 @@
+{
+  "name": "research-paper",
+  "version": "0.1.0",
+  "description": "Review seats, gate scripts and writing guides for a LaTeX research paper: a quote-checked review panel, citation checks, a section rewrite loop and pre-submission gates, configured per project in paper/tools/.",
+  "author": {
+    "name": "Samyak Jhaveri",
+    "email": "39847642+SamyakJhaveri@users.noreply.github.com"
+  }
+}

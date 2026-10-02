@@ -1,0 +1,81 @@
+# paper-tools.toml - project config for the research-paper plugin.
+# Copy to paper/tools/paper-tools.toml and edit. Every key is optional: a key left out
+# keeps its default (python3 <plugin>/scripts/paper_config.py prints the resolved values).
+# Relative paths resolve against the project root (the git top level); "" means none.
+# A command-line flag of a script wins over the value here.
+# The values below are synthetic examples: a paper on "ExampleSys" for "Example Conference 2030".
+
+[paper]
+# Main LaTeX file of the build that is submitted (cite_check, lit_index, check_acronyms).
+main_tex = "paper/main.tex"
+# Folder that holds one .tex file per section.
+sections_dir = "paper/sections"
+# Section file names without .tex, in paper order, abstract excluded; [] means every .tex file in sections_dir except the abstract, in name order.
+sections = ["introduction", "background", "design", "evaluation", "related-work", "discussion"]
+# The abstract source, between \begin{abstract} and \end{abstract} (paper_limits, skim_extract).
+abstract_tex = "paper/sections/abstract.tex"
+# Name in `sections` of the introduction; its last paragraph holds the word "contributions" (skim_extract).
+intro_section = "introduction"
+# Name in `sections` of the discussion or conclusion section (skim_extract).
+discussion_section = "discussion"
+# File that defines the title macro (skim_extract).
+preamble_tex = "paper/preamble.tex"
+# Title macro name without the backslash: \newcommand{\ExampleTitle}{...} in preamble_tex.
+title_macro = "ExampleTitle"
+# Bibliography file (cite_check, lit_index).
+bib = "paper/references.bib"
+# Figures folder: anonymity_scan scans every file in it; TikZ sources live under it.
+figures_dir = "paper/figures"
+# Citation File Format file whose authors and affiliations anonymity_scan searches for; "" for none.
+citation_cff = "CITATION.cff"
+# Names typeset in small caps; pdftotext splits them ("E XAMPLE S YS") and the quote check joins them back.
+smallcaps_names = ["ExampleSys"]
+
+# Text macros and the words they print, for extracts and prompts that show plain text.
+[paper.macros]
+'\examplesys{}' = "ExampleSys"
+'\baselinesys{}' = "BaselineSys"
+
+[build]
+# Command that builds the paper, run from the project root (section_gate).
+command = ["latexmk", "-pdf", "-interaction=nonstopmode", "-outdir=paper/build", "paper/main.tex"]
+# PDF the build writes (paper_limits, anonymity_scan, section_gate).
+pdf = "paper/build/main.pdf"
+# LaTeX log the build writes; section_gate counts undefined references in it.
+log = "paper/build/main.log"
+# Text the review seats read: `pdftotext <pdf> <text>`, without -layout.
+text = "paper/build/main.txt"
+
+[limits]
+# Body pages allowed, references excluded (paper_limits).
+max_pages = 10
+# Words allowed in the abstract (paper_limits).
+max_abstract_words = 250
+# true when the venue allows an appendix in the submission; false fails on an appendix heading.
+appendix_allowed = false
+
+[terms]
+# Regexes section_gate refuses outside % comments, one per line, "#" starts a comment; used when the file exists.
+banned = "paper/tools/banned_terms.txt"
+# "<kind>: <term>" lines that anonymity_scan searches for (names, hosts, paths, URLs, the system name).
+anonymity = "paper/tools/anonymity_terms.txt"
+# Accepted anonymity hits: "<kind>: <term>", a tab, the decision that keeps it; used when the file exists.
+anonymity_baseline = "paper/tools/anonymity_baseline.txt"
+# Acronyms a reader of the venue knows without a definition, one per line (check_acronyms --allow-file).
+acronym_allow = "paper/tools/acronym_allow.txt"
+# Accepted acronym findings: the acronym, a tab, the decision that keeps it; used when the file exists.
+acronym_baseline = "paper/tools/acronym_baseline.txt"
+
+[literature]
+# Literature notes lit_index reads; "FILE::HEADING" reads only the section under that heading.
+notes = ["paper/notes/related_work.md", "paper/notes/plan.md::## 4."]
+# This paper's own names, keys and preprint ids, and the authors' prior works: flagged self_citation, never proposed.
+self_names = ["ExampleSys", "ExampleSys2030", "2901.00001"]
+
+[cite]
+# cite_check checks reported as WARN instead of DEFECT when the venue does not require them: "authors", "no-link", "arxiv-only".
+warn_only = []
+
+# Extra terminology groups check_consistency reports when a file mixes their variants.
+[consistency.term_groups]
+system-name = ["ExampleSys", "Example-Sys", "Example system"]
