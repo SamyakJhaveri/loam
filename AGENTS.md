@@ -35,7 +35,7 @@ bin/check
 |------|---------|
 | `seed/` | Copier source. Everything here renders into projects. |
 | `seed/.agents/skills/` | Skills shared by Claude Code and Codex. |
-| `seed/.claude/` | Claude Code settings, deny rules, and two hooks. |
+| `seed/.claude/` | Claude Code settings, deny rules, and four lifecycle hooks. |
 | `seed/.codex/` | Codex configuration and execution rules. |
 | `cultivation/marketplace/` | Optional plugin agents, skills, hooks, and bundles. |
 | `cultivation/parked/` | Skills, agents, and hooks removed from the shipped plugin. Not installed. |

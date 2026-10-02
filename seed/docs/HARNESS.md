@@ -167,11 +167,13 @@ removing it would cause a mistake.
 - Skill listing: the three seed skills weigh about 250 tokens (description
   bytes divided by four), so a fresh project pays about 400 + 250 tokens before
   any work starts.
-- In the Loam template repo the `sam-cc-setup` plugin listing weighs 565 tokens.
+- In the Loam template repo the `sam-cc-setup` plugin listing weighs 634 tokens.
   That is the `LISTING_BUDGET` ratchet `bin/check` asserts. Lower it when the
-  listing shrinks; never raise it without saying why. Raised from 448 on
+  listing shrinks; never raise it without saying why. Raised from 448 to 565 on
   2026-09-09 when `plan-review` became model-invocable, so its description
   now sits in the listing.
+  Raised to 634 the same day when the `judge` and `reviewer` agents joined the
+  plugin, because agent descriptions count toward the same listing.
 - Memory hooks: recall adds at most 4000 bytes at SessionStart, and the Stop
   capture runs at most once per ten minutes. The scrub adds one regex pass over
   the transcript per capture. Recall waits at most five seconds for a pull from
