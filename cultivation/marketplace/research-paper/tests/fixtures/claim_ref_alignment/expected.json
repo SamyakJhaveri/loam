@@ -1,0 +1,55 @@
+{
+  "agent": "agents/claim-ref-alignment.md",
+  "inputs": {
+    "ROOT": "<plugin folder>",
+    "PAPER": "tests/fixtures/claim_ref_alignment/paper.txt",
+    "BIB": "tests/fixtures/claim_ref_alignment/references.bib",
+    "MAIN": "tests/fixtures/claim_ref_alignment/main.tex",
+    "SECTIONS": "tests/fixtures/claim_ref_alignment/sections/"
+  },
+  "paper_built_with": "written by hand in the shape of a pdftotext dump (reading order, no -layout) of main.tex built with natbib numbers and unsrtnat; the three sources are synthetic, so the labels below are the designed ones, not the result of a fetch",
+  "step1_citations": 4,
+  "rows": [
+    {
+      "sentence": "S1",
+      "tex": "sections/background.tex:3",
+      "paper_line": 10,
+      "key": "Alpha2021",
+      "label": "supported",
+      "flag": false,
+      "design": "correct: both sub-claims (AlphaSuite measures functional correctness of programs generated from comments; 50 samples per problem solve 61.5%) are in the designed source's abstract"
+    },
+    {
+      "sentence": "S2",
+      "tex": "sections/background.tex:4",
+      "paper_line": 11,
+      "key": "Beta2024",
+      "label": "partly supported",
+      "flag": true,
+      "mismatch": ["wrong number"],
+      "design": "misstates its source: 300 coding tasks is right; the designed source reports four programming models (and nine problem types), not nine programming models"
+    },
+    {
+      "sentence": "S3",
+      "tex": "sections/background.tex:5",
+      "paper_line": 12,
+      "key": "Gamma2025",
+      "label": "supported",
+      "flag": false,
+      "design": "correct: the designed source evaluates whether language models write vector kernels that are correct and faster than the reference library"
+    },
+    {
+      "sentence": "S4",
+      "tex": "sections/background.tex:6",
+      "paper_line": 13,
+      "key": "Beta2024",
+      "label": "not supported",
+      "flag": true,
+      "mismatch": ["wrong key"],
+      "right_key": "Gamma2025",
+      "design": "attributes a GammaEval result (180 library workloads; models match the reference library in fewer than 15% of cases) to Beta2024"
+    }
+  ],
+  "uncited_assertions": [],
+  "pass_rule": "the run flags exactly S2 and S4, gives each row its label, and both validator commands exit 0"
+}

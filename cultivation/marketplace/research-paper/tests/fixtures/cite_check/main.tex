@@ -1,0 +1,10 @@
+% Fixture main file: shared/part.tex is found only through \input@path.
+\documentclass{article}
+\makeatletter
+\def\input@path{{shared/}}
+\makeatother
+\begin{document}
+Loops~\cite{good2020, wrongtitle2021} and a dead link~\citep[p.~2]{deaddoi2019}.
+% \cite{commented2000} sits in a comment and must not count.
+\input{part}
+\end{document}

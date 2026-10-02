@@ -1,0 +1,26 @@
+Benchmarks for Generated Code
+Anonymous
+Abstract
+We describe benchmarks that evaluate code written by language models.
+
+1
+
+Background
+
+AlphaSuite measures the functional correctness of programs generated from
+comments, and sampling 50 programs per problem solves 61.5% of its problems [1]. BetaBench contains prompts for 300 coding
+tasks that span nine programming models [2]. GammaEval evaluates whether language models can write vector kernels that are both correct and
+faster than a reference library [3]. On a suite of 180 library workloads, current
+models match the reference library in fewer than 15% of cases [2].
+
+References
+[1] Ann Author, Ben Author, and Cleo Writer. Measuring programs generated from comments. 2021.
+[2] Jane Doe, Richard Roe, and Edgar Poe.
+Can language models write code for many programming models?
+In Proceedings of the Example Symposium on Software, pages 1-14. Example Press, 2024. doi: 10.5555/beta.2024. URL
+https://doi.org/10.5555/beta.2024.
+[3] Dana Coder and Eli Tester. GammaEval: Can language models write fast vector kernels? 2025. URL https://arxiv.org/abs/2901.00013.
+
+1
+
+

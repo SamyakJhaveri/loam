@@ -1,0 +1,100 @@
+{
+  "https://api.crossref.org/works/10.5555/good.2020": {
+    "status": 200,
+    "body": {
+      "status": "ok",
+      "message-type": "work",
+      "message": {
+        "DOI": "10.5555/good.2020",
+        "title": [
+          "A good paper on parallel loops"
+        ],
+        "issued": {
+          "date-parts": [
+            [
+              2020,
+              5
+            ]
+          ]
+        },
+        "published-print": {
+          "date-parts": [
+            [
+              2020,
+              6,
+              1
+            ]
+          ]
+        }
+      }
+    }
+  },
+  "https://api.crossref.org/works/10.5555/wrong.2021": {
+    "status": 200,
+    "body": {
+      "status": "ok",
+      "message-type": "work",
+      "message": {
+        "DOI": "10.5555/wrong.2021",
+        "title": [
+          "Sparse Tensor Compression on Mobile Devices"
+        ],
+        "issued": {
+          "date-parts": [
+            [
+              2021,
+              5
+            ]
+          ]
+        },
+        "published-print": {
+          "date-parts": [
+            [
+              2021,
+              6,
+              1
+            ]
+          ]
+        }
+      }
+    }
+  },
+  "https://api.crossref.org/works/10.5555/dead.2019": {
+    "status": 404,
+    "body": "Resource not found."
+  },
+  "https://api.crossref.org/works/10.5555/etal.2022": {
+    "status": 200,
+    "body": {
+      "status": "ok",
+      "message-type": "work",
+      "message": {
+        "DOI": "10.5555/etal.2022",
+        "title": [
+          "Truncated Author Lists in Practice"
+        ],
+        "issued": {
+          "date-parts": [
+            [
+              2022,
+              5
+            ]
+          ]
+        },
+        "published-print": {
+          "date-parts": [
+            [
+              2022,
+              6,
+              1
+            ]
+          ]
+        }
+      }
+    }
+  },
+  "https://export.arxiv.org/api/query?id_list=2401.01234": {
+    "status": 200,
+    "body": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<feed xmlns=\"http://www.w3.org/2005/Atom\" xmlns:arxiv=\"http://arxiv.org/schemas/atom\">\n  <entry>\n    <id>http://arxiv.org/abs/2401.01234v2</id>\n    <updated>2024-03-02T00:00:00Z</updated>\n    <published>2024-01-03T00:00:00Z</published>\n    <title>A Preprint About\n      Code Translation</title>\n    <author><name>Ana Lee</name></author>\n    <author><name>Sam Brown</name></author>\n  </entry>\n</feed>\n"
+  }
+}

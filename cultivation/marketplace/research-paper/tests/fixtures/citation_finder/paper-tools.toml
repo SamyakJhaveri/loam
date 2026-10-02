@@ -1,0 +1,3 @@
+# Fixture config for tests/test_citation_finder.py: the self names the leak check flags.
+[literature]
+self_names = ["ExampleSys", "2901.00001"]

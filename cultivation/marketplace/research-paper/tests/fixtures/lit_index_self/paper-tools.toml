@@ -1,0 +1,13 @@
+# Fixture config for tests/test_lit_index.py: the self names of a synthetic project.
+[literature]
+notes = ["notes.md"]
+self_names = [
+    "ExampleSys",
+    "2901.00001",
+    "PriorSysA2025",
+    "PriorSysB2026",
+    "PriorSysC2024",
+    "PriorSysA",
+    "PriorSysB",
+    "PriorSysC",
+]

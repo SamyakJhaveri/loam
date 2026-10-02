@@ -1,0 +1,5 @@
+ExampleSys: A Toolkit for Careful Measurement of
+Sparse Graph Partitioning Quality
+Anonymous Author(s)
+
+Graph codes often need to move between shared memory and message passing as clusters change.
