@@ -3,6 +3,14 @@
 This file records why a promoted plugin change traveled. It is also the upgrade
 entry point for projects that consume the Loam marketplace.
 
+## research-paper v0.1.0 new optional plugin for LaTeX papers
+
+New plugin `research-paper`, promoted from a private research-paper project.
+It holds review agents behind a quote gate, citation agents, gate scripts, a section rewrite skill, two review-round workflows, writing guides, and the templates a project copies into `paper/tools/`.
+It installs disabled (`defaultEnabled:false`).
+Upgrade step: none for existing projects; to use it, enable it per project and follow the setup in `cultivation/marketplace/research-paper/README.md`.
+Its licence is mixed, including CC BY-NC 4.0 (non-commercial) material; the README's licence table lists each file.
+
 ## sam-cc-setup v0.9.12 install-pstack-skills joins the plugin
 
 `/sam-cc-setup:install-pstack-skills` copies 23 pstack skills (blast-radius, interrogate, how, why, tdd, the principle skills and more) into `~/.claude/skills/` without `disable-model-invocation`, so agents and workers can invoke them; a re-run after a pstack update refreshes the copies.

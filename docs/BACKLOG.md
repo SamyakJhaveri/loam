@@ -14,6 +14,7 @@ Ship the parked bundle at `cultivation/parked/research-lane/` as one plugin: ven
 Promote to shipped only when a new distbench dogfoods it and a session measures it.
 No hooks, no commit gates: file conventions plus verifiers.
 Why first: it is the one thing Loam was for and the one thing never built.
+Partly started by the `research-paper` plugin (review seats and gates); the parked research-lane bundle itself is not shipped.
 
 ## 2. Experiment contract as a file convention
 
