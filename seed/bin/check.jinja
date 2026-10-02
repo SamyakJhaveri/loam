@@ -4,6 +4,8 @@
 {% raw %}set -uo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
+# Prefer the project venv's python3, ruff, and pytest when one exists.
+if [ -d "$ROOT/.venv/bin" ]; then PATH="$ROOT/.venv/bin:$PATH"; fi
 FAIL=0
 bad() { echo "FAIL: $*"; FAIL=1; }
 
@@ -11,8 +13,8 @@ bad() { echo "FAIL: $*"; FAIL=1; }
 PY=()
 while IFS= read -r f; do PY+=("$f"); done < <(git ls-files '*.py')
 if [ "${#PY[@]}" -gt 0 ] && command -v ruff >/dev/null 2>&1; then
-  ruff check "${PY[@]}"          || bad "ruff check"
-  ruff format --check "${PY[@]}" || bad "ruff format --check"
+  ruff check --force-exclude "${PY[@]}"          || bad "ruff check"
+  ruff format --check --force-exclude "${PY[@]}" || bad "ruff format --check"
 fi
 
 while IFS= read -r sh; do
