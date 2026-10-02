@@ -9,12 +9,17 @@ matcher. Two native deny lists do the blocking.
   spellings (`-fr`, `-Rf`, `-r -f`, `-f -r`), `git push --force` / `-f` /
   `--force-with-lease` / `--force-if-includes`, `git reset --hard`,
   `git clean -f|-d|-x`, `git checkout -- .` / `git checkout .` /
-  `git restore .`, `git stash clear|drop`, and read or edit of `.env*`.
+  `git restore .`, `git stash clear|drop`, read or edit of `.env*`, read of
+  `~/.ssh/**`, `cat ~/.ssh/*`, and `ssh-keygen`.
   Deny applies in every permission mode, including bypassPermissions.
-- Codex, `.codex/rules/loam.rules`: the same families, one `prefix_rule` per
-  spelling, `decision = "forbidden"`. Codex splits command chains itself.
+- Codex, `.codex/rules/loam.rules`: the same command families, one
+  `prefix_rule` per spelling, `decision = "forbidden"`, including `ssh-keygen`.
+  A token prefix cannot match the `cat ~/.ssh/*` glob, so Codex has no rule
+  for it.
+  Codex splits command chains itself.
 - The Claude sandbox is on (`sandbox.enabled`), with `.env*` denied for read and
-  write. `failIfUnavailable` is false, so a host without sandbox support still
+  write, and `~/.ssh/id_*` and `~/.ssh/known_hosts` denied for read.
+  `failIfUnavailable` is false, so a host without sandbox support still
   runs; the deny list is then the only file guard.
 - `.codex/config.toml` denies `.env*` in the workspace and leaves network on.
   All of `.codex/` is inert until you mark this project trusted in Codex.
