@@ -16,17 +16,17 @@ focused checks and return bounded reports; only the validation owner runs
 `bin/check` on a given source snapshot. Reviewers inspect one fixed diff and do
 not rerun an unchanged suite unless they name a concrete unresolved risk.
 
-- Measured on Claude Code 2.1.287, 2026-10: a subagent's final report reaches
-  the lead cut near 4,000 characters, and near 16,000 in total for reports that
-  arrive together.
-  So a worker writes its full report to a file and returns only the path; when
-  the Write tool refuses a subagent's report file, a Bash heredoc writes it.
-- Measured on Claude Code 2.1.287, 2026-10: an agent started inside a Workflow
-  script is not listed by ListAgents and cannot be messaged afterwards.
-  To repair its output, start a fresh agent of the same type and give it that
-  output.
-- Measured on Claude Code 2.1.287, 2026-10: a custom subagent gets its own file
-  as its system prompt, not the main one, so that file states its own stop rule.
+## Subagent limits (Claude Code, observed 2026-09-30)
+
+- A subagent's final report reaches the lead cut near 4,000 characters, and near
+  16,000 in total for reports that arrive together.
+  For a longer report, the lead's brief asks for a file written by Bash heredoc
+  and a one-line `DONE <path>`; the brief overrides Claude Code's default
+  return-as-text note.
+- A Workflow-script agent is not in ListAgents and cannot be messaged; repair
+  its output with a fresh agent of the same type.
+- A custom subagent's system prompt is its own file, so the file says when to
+  stop.
 
 ## HANDOFF.md
 
@@ -43,7 +43,9 @@ headings, in this order:
 
 `/catchup` reads it on resume and calls it stale when that hash is no longer
 HEAD, when its mtime predates the last commit, or when its status words
-contradict git. It is gitignored and local-only; delete it when the task ends.
+contradict git. It is gitignored and local-only, so a worktree, clone or other
+machine never sees it; a memory note that must outlive the session points at
+committed files. Delete it when the task ends.
 
 Keep it bounded: cite file sections and command summaries instead of pasting
 whole files or logs. The repository state wins over the handoff.

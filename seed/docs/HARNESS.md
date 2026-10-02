@@ -12,10 +12,11 @@ matcher. Two native deny lists do the blocking.
   `git restore .`, `git stash clear|drop`, read or edit of `.env*`, read of
   `~/.ssh/**`, `cat ~/.ssh/*`, and `ssh-keygen`.
   Deny applies in every permission mode, including bypassPermissions.
-- Codex, `.codex/rules/loam.rules`: the same command families, one
-  `prefix_rule` per spelling, `decision = "forbidden"`, including `ssh-keygen`.
-  A token prefix cannot match the `cat ~/.ssh/*` glob, so Codex has no rule
-  for it.
+- Codex, `.codex/rules/loam.rules`: one `prefix_rule` with
+  `decision = "forbidden"` for each command spelling in the Claude list above,
+  `ssh-keygen` included, except `cat ~/.ssh/*`.
+  A token prefix cannot match that glob, so Codex has no rule for it.
+  Codex does not guard reads of `~/.ssh`.
   Codex splits command chains itself.
 - The Claude sandbox is on (`sandbox.enabled`), with `.env*` denied for read and
   write, and `~/.ssh/id_*` and `~/.ssh/known_hosts` denied for read.
@@ -38,6 +39,12 @@ actors. Three cases, and the setup output says which one you got:
 
 There is no `ask` rule on `git push`, on purpose: an unattended run must not stop
 on a prompt.
+`git push`, `git fetch`, `git pull` and `gh` run outside the sandbox
+(`sandbox.excludedCommands`), so sandbox auto-approval does not cover them.
+Observed 2026-10-02 on Claude Code 2.1.288 in a fresh render: `git fetch` runs
+without a prompt in `auto` mode, asks for approval in `default` mode, and is
+denied in `dontAsk` mode.
+An unattended run therefore needs `auto` or `bypassPermissions`.
 
 ## The hooks
 
@@ -106,8 +113,8 @@ is involved.
 
         git init --bare -b main ~/memstore.git
 
-2. On every machine, point the local store at it over an ssh alias (say
-   `<alias>`, a `Host` entry in `~/.ssh/config`):
+2. On every machine, point the local store at it over an ssh alias (a
+   `Host` entry in `~/.ssh/config`):
 
         git -C ~/memstore remote add origin <alias>:memstore.git
 
@@ -167,13 +174,6 @@ removing it would cause a mistake.
 - Skill listing: the three seed skills weigh about 250 tokens (description
   bytes divided by four), so a fresh project pays about 400 + 250 tokens before
   any work starts.
-- In the Loam template repo the `sam-cc-setup` plugin listing weighs 634 tokens.
-  That is the `LISTING_BUDGET` ratchet `bin/check` asserts. Lower it when the
-  listing shrinks; never raise it without saying why. Raised from 448 to 565 on
-  2026-09-09 when `plan-review` became model-invocable, so its description
-  now sits in the listing.
-  Raised to 634 the same day when the `judge` and `reviewer` agents joined the
-  plugin, because agent descriptions count toward the same listing.
 - Memory hooks: recall adds at most 4000 bytes at SessionStart, and the Stop
   capture runs at most once per ten minutes. The scrub adds one regex pass over
   the transcript per capture. Recall waits at most five seconds for a pull from
@@ -190,6 +190,10 @@ removing it would cause a mistake.
   user's credentials (ssh keys, the `gh` token, git credential helpers).
   The sandbox's file and network limits do not apply to them; the deny list
   still does, so a force push stays blocked.
+  An entry matches only a bare command.
+  A pipe, redirect, `;` or `&&` outside quotes, or `$(` anywhere (even inside
+  quotes), runs the whole line in the sandbox, where the excluded program fails.
+  `git -C <dir> push` does not match `git push*`.
 - The `.env` deny rules do not stop a Python or Node subprocess opening the file.
   The sandbox filesystem deny is the real containment, where the host supports it.
 - Secrets typed into an ordinary source file are not caught locally.
@@ -260,19 +264,8 @@ tokenizer result.
   `git ls-remote origin` prints `fatal: unable to get credential storage lock in
   1000 ms: Read-only file system` on stderr and still exits 0. The line is noise.
 
-## Tool facts
+## Claude Code and Codex, observed 2026-10-01
 
-- Measured on Claude Code 2.1.287, 2026-10: a `sandbox.excludedCommands` entry
-  matches only a bare command.
-  A pipe, redirect, `;`, `&&`, or `$(` anywhere in the line, even inside a
-  quoted argument, runs the whole line in the sandbox, where the excluded
-  program meets the sandbox's network and file limits and can fail.
-- Measured on Claude Code 2.1.287, 2026-10: `HANDOFF.md` is git-ignored, so a
-  worktree, a fresh clone, or another machine never sees it.
-  A memory note that must outlive the session points at committed files, not at
-  `HANDOFF.md`.
-- Measured on Claude Code 2.1.287, 2026-10: Codex started from a Claude Code
-  Bash call (`codex exec`, or the Codex plugin's `codex-companion.mjs`) fails
-  inside the sandbox.
-  It runs only as a bare command matched by a `sandbox.excludedCommands` entry,
-  such as `node */codex-companion.mjs *` in `.claude/settings.local.json`.
+- Codex started from a Claude Code Bash call fails inside the sandbox.
+  Run it bare, excluded in `.claude/settings.local.json`
+  (`node */codex-companion.mjs *` for the plugin).

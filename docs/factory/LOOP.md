@@ -232,7 +232,7 @@ A token on a `- ` line is an entry when its first path segment is tracked in the
 The list cannot say append-only or add-only: a ticket that must append to a listed file or add a file under a listed directory names that path on its `Except:` line.
 
 A target needs a GitHub `origin` whose default branch is `main` (runs branch from `origin/main`, and PRs target `main`), an executable `bin/check`, `docs/factory/STANDING.md` committed on `main`, the `ready-for-agent` and `needs-triage` labels, a clone on the runner beside Loam's, and whatever its `bin/check` needs there.
-Setup, once per project (here `<owner>/<project>`): commit its `docs/factory/STANDING.md` to `main`, shaped like this, then run the commands below from the Mac.
+Setup, once per project `<owner>/<project>`: commit its `docs/factory/STANDING.md` to `main`, shaped like this, then run the commands below from the Mac.
 
 ```markdown
 ## Standing do-not-touch list

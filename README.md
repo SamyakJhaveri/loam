@@ -57,7 +57,7 @@ Loam supports Claude Code and Codex through different native mechanisms. Both re
 loam/
 ├── seed/                    # Copier subdirectory: everything rendered to projects
 │   ├── .agents/skills/      # Skills shared by Claude Code and Codex
-│   ├── .claude/             # Claude Code settings, deny rules, two hooks
+│   ├── .claude/             # Claude Code settings, deny rules, four lifecycle hooks
 │   ├── .codex/              # Codex config and execution rules
 │   └── *.jinja              # Template files (CLAUDE.md, AGENTS.md, README.md, ...)
 ├── cultivation/marketplace/ # Optional plugin bundles

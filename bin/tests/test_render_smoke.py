@@ -46,6 +46,7 @@ FORBIDDEN_FAMILIES = (
     "git restore .",
     "git stash clear",
     "git stash drop",
+    "ssh-keygen",
 )
 
 

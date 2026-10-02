@@ -27,7 +27,7 @@
       "Edit(.env*)",
       "Read(~/.ssh/**)",
       "Bash(cat ~/.ssh/*)",
-      "Bash(ssh-keygen*)"
+      "Bash(ssh-keygen:*)"
     ]
   },
   "sandbox": {

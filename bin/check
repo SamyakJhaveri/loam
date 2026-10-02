@@ -52,6 +52,9 @@ while IFS= read -r skill; do
 done < <(find seed cultivation/marketplace -name SKILL.md -not -path '*/node_modules/*')
 
 step "skill-listing token weight"
+# LISTING_BUDGET is a ratchet on the sam-cc-setup plugin listing: lower it when the listing shrinks, never raise it
+# without saying why. Raised from 448 to 565 on 2026-09-09 when plan-review became model-invocable, then to 634 the
+# same day when the judge and reviewer agents joined the plugin (agent descriptions count toward the same listing).
 python3 bin/skill_listing_weight.py --root "$ROOT" --budget-tokens "${LISTING_BUDGET:-634}" \
   || bad "skill-listing weight over budget"
 

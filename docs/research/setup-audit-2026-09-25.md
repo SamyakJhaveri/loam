@@ -14,7 +14,7 @@ Built-in system prompt and built-in tools are excluded because they cannot be co
 
 ## Per-item table
 
-Usage columns: L = loam, P = `<project>`, O = other projects. Numbers are 30-day counts.
+Usage columns: L = loam, P = a second project, O = other projects. Numbers are 30-day counts.
 
 | Name | Type | Scope | Always-on tokens | Uses (30 d) | Verdict | Exact change | Invoke on demand |
 |---|---|---|---|---|---|---|---|
