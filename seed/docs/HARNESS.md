@@ -107,9 +107,9 @@ is involved.
         git init --bare -b main ~/memstore.git
 
 2. On every machine, point the local store at it over an ssh alias (say
-   `jhaveris`, the same alias `bin/runner` uses):
+   `<alias>`, a `Host` entry in `~/.ssh/config`):
 
-        git -C ~/memstore remote add origin jhaveris:memstore.git
+        git -C ~/memstore remote add origin <alias>:memstore.git
 
    A store an older `mem-weekly.sh` created may sit on `master`; run
    `git -C ~/memstore branch -M main` once so `origin main` matches.
