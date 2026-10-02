@@ -31,7 +31,7 @@
     ]
   },
   "sandbox": {
-    "excludedCommands": ["ssh *", "scp *", "rsync *"],
+    "excludedCommands": ["ssh *", "scp *", "rsync *", "gh *", "git push*", "git fetch*", "git pull*"],
     "enabled": true,
     "failIfUnavailable": false,
     "autoAllowBashIfSandboxed": true,

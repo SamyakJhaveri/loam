@@ -183,6 +183,11 @@ removing it would cause a mistake.
 
 - Git recovers committed work only. A command that dodges the deny prefixes and
   destroys uncommitted or untracked files is unrecoverable.
+- `sandbox.excludedCommands` runs `ssh`, `scp`, `rsync`, `gh`, `git push`,
+  `git fetch`, and `git pull` outside the sandbox, with network access and the
+  user's credentials (ssh keys, the `gh` token, git credential helpers).
+  The sandbox's file and network limits do not apply to them; the deny list
+  still does, so a force push stays blocked.
 - The `.env` deny rules do not stop a Python or Node subprocess opening the file.
   The sandbox filesystem deny is the real containment, where the host supports it.
 - Secrets typed into an ordinary source file are not caught locally.
