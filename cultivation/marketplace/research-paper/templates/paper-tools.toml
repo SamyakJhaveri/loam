@@ -79,3 +79,13 @@ warn_only = []
 # Extra terminology groups check_consistency reports when a file mixes their variants.
 [consistency.term_groups]
 system-name = ["ExampleSys", "Example-Sys", "Example system"]
+
+[codex]
+# Folder of exemplar papers as pdftotext output, one <id>.txt per paper (codex_seat).
+corpus_dir = "paper/exemplars"
+# Tab-separated list of the exemplar papers: id, title, url (templates/exemplar_manifest.tsv shows it).
+manifest = "paper/exemplars/manifest.tsv"
+# Path of codex-companion.mjs; "" finds the newest installed Codex plugin version under ~/.claude/plugins/cache/.
+companion = ""
+# Codex model codex_seat runs when --model is not given.
+model = "gpt-6.1-sol"

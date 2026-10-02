@@ -98,6 +98,12 @@ DEFAULTS = {
     "consistency": {
         "term_groups": {},
     },
+    "codex": {
+        "corpus_dir": "paper/exemplars",
+        "manifest": "paper/exemplars/manifest.tsv",
+        "companion": "",
+        "model": "gpt-6.1-sol",
+    },
 }
 
 # Keys whose values are paths; literature.notes is a list of them.
@@ -113,6 +119,7 @@ PATH_KEYS = {
     },
     "build": {"pdf", "log", "text"},
     "terms": set(DEFAULTS["terms"]),
+    "codex": {"corpus_dir", "manifest", "companion"},
 }
 
 
