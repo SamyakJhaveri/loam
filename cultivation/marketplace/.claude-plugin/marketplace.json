@@ -17,7 +17,7 @@
       }
     },
     {
-      "name": "web-frontend-anthropics",
+      "name": "web-frontend-build-test",
       "description": "Vetted web/UI skills from anthropics/skills, SHA-pinned via git-subdir: web-artifacts-builder (claude.ai bundle.html artifacts), webapp-testing (Playwright UI verification), theme-factory (challenger vs ui-ux-pro-max). Installs DISABLED (defaultEnabled:false) \u2014 enable to trial.",
       "strict": false,
       "defaultEnabled": false,

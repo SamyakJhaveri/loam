@@ -28477,9 +28477,9 @@
       "notes": "Private session record. Only the tracked intake inventory identity is asserted; the body was neither read nor copied and may not exist."
     },
     {
-      "id": "remote:web-frontend-anthropics",
+      "id": "remote:web-frontend-build-test",
       "collection": "remote",
-      "name": "web-frontend-anthropics",
+      "name": "web-frontend-build-test",
       "kind": "remote-bundle",
       "assetKind": "authority-bearing-policy",
       "source": {
@@ -28488,7 +28488,7 @@
           "path": "cultivation/marketplace/.claude-plugin/marketplace.json",
           "sha256": "0e7ea899f14960fc6dffa541315d38085bc12272063d7b2b34a9999fb22bd582"
         },
-        "marketplaceKey": "web-frontend-anthropics",
+        "marketplaceKey": "web-frontend-build-test",
         "url": "https://github.com/anthropics/skills.git",
         "path": "skills",
         "ref": "main",

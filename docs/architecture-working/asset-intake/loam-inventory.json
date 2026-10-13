@@ -2550,7 +2550,7 @@
   ],
   "remote_declarations": [
     {
-      "name": "web-frontend-anthropics",
+      "name": "web-frontend-build-test",
       "declared_source": {
         "source": "git-subdir",
         "url": "https://github.com/anthropics/skills.git",
