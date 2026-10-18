@@ -38,7 +38,7 @@ The public repo restarted history at v1.0.0, so older `_commit` refs no longer r
 **Copier always resolves the latest tag, never main's HEAD.** Push without tagging and nothing ships.
 
 ```bash
-bin/release.sh 5.0.0    # green CI run + IP sweep, bump VERSION, commit, tag, push
+bin/release.sh 5.0.0    # green CI + a clean verify-loam run of HEAD + IP sweep; bump VERSION, commit, tag, push, render the tag
 uvx copier copy --trust --vcs-ref v5.0.0 gh:samyakjhaveri/loam ./proj   # pin a version
 ```
 
