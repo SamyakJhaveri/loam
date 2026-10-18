@@ -3,6 +3,14 @@
 This file records why a promoted plugin change traveled. It is also the upgrade
 entry point for projects that consume the Loam marketplace.
 
+## sam-cc-setup v0.9.5 pstack audit fixes
+
+The plugin description and READMEs now list what ships: 4 skills and 4 agents.
+plan-review and surprise-me are manual-only, so the always-on listing drops from 634 to 377 estimated tokens; type them to use them.
+codex-review gives Codex a one-paragraph intent and triages findings into Act on, Consider, Noted, and Dismissed.
+Stale references to parked or unshipped skills are fixed.
+Upgrade step: `claude plugin update sam-cc-setup`.
+
 ## Unreleased: sam-cc-setup review consolidation
 
 The critique-swarm skill is removed because session-critique covers decision-aware
