@@ -38,7 +38,8 @@ The factory's dependencies stay under `seed/.loam/runtime/node_modules`. Project
 packages cannot supply a missing compiler or Node type package. Recipient package
 checks execute supplied JavaScript without installing the compiler; see
 [factory setup](seed/docs/runtime/SETUP.md).
-Missing agent CLIs fail the gate; `LOAM_ALLOW_MISSING_AGENT_CLIS=1` permits a reduced local run (CI never sets it).
+A missing `claude` CLI fails the gate unless `LOAM_ALLOW_MISSING_AGENT_CLIS=1` (CI never sets it); a missing `codex` CLI skips its test.
+A reduced run ends `check: PASSED (skipped: ...)` and names each step or test count that did not run.
 
 **Windows note:** template *development* relies on the `.claude -> seed/.claude` symlink.
 Use WSL, or enable Developer Mode and `git config core.symlinks true` before cloning.

@@ -5,12 +5,29 @@
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
 FAIL=0
+SKIPS=""
 bad() { echo "FAIL: $*"; FAIL=1; }
+# A step that did not run is named on the final line, so a reduced run never reads as a full pass.
+skip() { echo "SKIPPED: $1${2:+ ($2)}"; SKIPS="${SKIPS:+$SKIPS, }$1"; }  # $1 = what, $2 = why
+
+# Tracked scripts by extension or shebang: extensionless scripts such as bin/memsearch carry only the shebang.
+scripts() {  # $1 = extension, $2 = interpreter regex
+  local re="^#!.*[/ ]($2)([[:space:]]|\$)"
+  { git ls-files -- "*.$1"
+    git grep -I -l -E "$re" -- . | while IFS= read -r f; do
+      head -n 1 "$f" | grep -qE "$re" && echo "$f"
+    done
+  } | sort -u
+}
 
 # No `mapfile` (bash 4+); macOS ships bash 3.2. Read into an indexed array.
 PY=()
-while IFS= read -r f; do PY+=("$f"); done < <(git ls-files '*.py')
-if [ "${#PY[@]}" -gt 0 ] && command -v ruff >/dev/null 2>&1; then
+while IFS= read -r f; do PY+=("$f"); done < <(scripts py 'python[0-9.]*')
+if [ "${#PY[@]}" -eq 0 ]; then
+  skip ruff "no tracked Python files"
+elif ! command -v ruff >/dev/null 2>&1; then
+  skip ruff "ruff not installed"
+else
   ruff check "${PY[@]}"          || bad "ruff check"
   ruff format --check "${PY[@]}" || bad "ruff format --check"
 fi
@@ -18,14 +35,65 @@ fi
 while IFS= read -r sh; do
   [ -n "$sh" ] || continue
   bash -n "$sh" || bad "bash -n $sh"
-done < <(git ls-files '*.sh')
-# Diff against the empty tree: HEAD vs working tree passes vacuously on a clean checkout.
+done < <(scripts sh 'bash|sh')
+# Two diffs: empty tree vs HEAD covers every committed line (the clean checkout CI has), and
+# HEAD vs index and working tree covers the change about to be committed.
 git diff --check "$(git hash-object -t tree /dev/null)" HEAD -- || bad "whitespace or conflict markers"
+git diff --check HEAD -- || bad "whitespace or conflict markers in staged or unstaged edits"
 
-if { [ -d tests ] || [ -d test ]; } && command -v pytest >/dev/null 2>&1; then pytest -q || bad "pytest"; fi
+if ! [ -d tests ] && ! [ -d test ]; then
+  skip pytest "no tests/ directory"
+elif ! command -v pytest >/dev/null 2>&1; then
+  skip pytest "pytest not installed"
+else
+  pytest -q || bad "pytest"
+fi
+
+# Harness checks. Always-on prose: CLAUDE.md plus AGENTS.md load into every session, and
+# docs/HARNESS.md budgets them at 400 tokens, about 1600 bytes.
+PROSE="$(cat CLAUDE.md AGENTS.md 2>/dev/null | wc -c | tr -d ' ')"
+[ "$PROSE" -le 1600 ] || bad "CLAUDE.md + AGENTS.md are $PROSE bytes, over the 1600-byte always-on budget (docs/HARNESS.md)"
+# Skill frontmatter keys and hook event names: Claude Code ignores a wrong one silently.
+python3 - <<'PY' || bad "skill frontmatter or hook event names"
+import json, re, subprocess
+
+SKILL_KEYS = {
+    "name", "description", "when_to_use", "argument-hint", "arguments", "disable-model-invocation",
+    "user-invocable", "allowed-tools", "disallowed-tools", "model", "effort", "context", "agent",
+    "background", "hooks", "paths", "shell", "metadata", "license", "compatibility",
+}
+HOOK_EVENTS = {
+    "SessionStart", "Setup", "UserPromptSubmit", "UserPromptExpansion", "PreToolUse",
+    "PermissionRequest", "PermissionDenied", "PostToolUse", "PostToolUseFailure", "PostToolBatch",
+    "Notification", "MessageDisplay", "SubagentStart", "SubagentStop", "TaskCreated",
+    "TaskCompleted", "Stop", "StopFailure", "TeammateIdle", "InstructionsLoaded", "ConfigChange",
+    "CwdChanged", "DirectoryAdded", "FileChanged", "WorktreeCreate", "WorktreeRemove", "PreCompact",
+    "PostCompact", "PreModelSwitch", "PostModelSwitch", "Elicitation", "ElicitationResult",
+    "SessionEnd",
+}
+errors = []
+skills = subprocess.run(["git", "ls-files", "*SKILL.md"], capture_output=True, text=True).stdout.splitlines()
+for path in skills:
+    fm = re.match(r"---\n(.*?)\n---", open(path, encoding="utf-8").read(), re.S)
+    pairs = re.findall(r"^([A-Za-z0-9_-]+):(.*)$", fm.group(1), re.M) if fm else []
+    keys = {k for k, _ in pairs}
+    errors += [f"{path}: frontmatter lacks {k}:" for k in ("name", "description") if k not in keys]
+    errors += [f"{path}: '{k}' is not a skill frontmatter key" for k in sorted(keys - SKILL_KEYS)]
+    # An unquoted ': ' ends the YAML scalar early or breaks the parse.
+    errors += [f"{path}: quote the {k}: value, it contains ': '" for k, v in pairs
+               if ": " in v and v.strip()[:1] not in ("'", '"', ">", "|")]
+try:
+    hooks = json.load(open(".claude/settings.json", encoding="utf-8")).get("hooks", {})
+except FileNotFoundError:
+    hooks = {}
+errors += [f".claude/settings.json: '{e}' is not a Claude Code hook event" for e in hooks if e not in HOOK_EVENTS]
+for e in errors:
+    print("FAIL:", e)
+raise SystemExit(1 if errors else 0)
+PY
 
 # Project checks: one line per deterministic check this project adds, each 'cmd || bad "name"'.
 # Add one at the second recurrence of a pattern the docs already ban; the rule is under Project checks in WORKERS.md.
 
 if [ "$FAIL" -ne 0 ]; then echo "check: FAILED"; exit 1; fi
-echo "check: PASSED"{% endraw %}
+echo "check: PASSED${SKIPS:+ (skipped: $SKIPS)}"{% endraw %}

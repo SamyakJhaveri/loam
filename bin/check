@@ -5,22 +5,39 @@ set -uo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
 FAIL=0
+SKIPS=""
 step() { printf '\n== %s ==\n' "$1"; }
 bad()  { echo "FAIL: $*"; FAIL=1; }
+# A step that did not run is named on the final line, so a reduced run never reads as a full pass.
+skip() { echo "SKIPPED: $1${2:+ ($2)}"; SKIPS="${SKIPS:+$SKIPS, }$1"; }  # $1 = what, $2 = why
 
-step "ruff (tracked .py)"
+# Tracked scripts by extension or shebang: bin/check, bin/factory and other extensionless scripts
+# carry only the shebang. Templates (*.jinja) are skipped; the render smoke checks them rendered.
+scripts() {  # $1 = extension, $2 = interpreter regex
+  local re="^#!.*[/ ]($2)([[:space:]]|\$)"
+  { git ls-files -- "*.$1"
+    git grep -I -l -E "$re" -- . ':(exclude)*.jinja' | while IFS= read -r f; do
+      head -n 1 "$f" | grep -qE "$re" && echo "$f"
+    done
+  } | sort -u
+}
+
+step "ruff (tracked Python)"
 # No `mapfile` (bash 4+): macOS ships bash 3.2, where it fails and the step would silently skip.
 PY=()
-while IFS= read -r f; do PY+=("$f"); done < <(git ls-files '*.py')
+while IFS= read -r f; do PY+=("$f"); done < <(scripts py 'python[0-9.]*')
 [ "${#PY[@]}" -eq 0 ] || ruff check "${PY[@]}" || bad "ruff check"
 
 step "shell syntax + whitespace"
 while IFS= read -r sh; do
   [ -n "$sh" ] || continue
   bash -n "$sh" || bad "bash -n $sh"
-done < <(git ls-files '*.sh')
-# Diff against the empty tree: HEAD vs working tree passes vacuously on the clean checkout CI has.
-git diff --check "$(git hash-object -t tree /dev/null)" HEAD -- . ":(exclude)*.patch" ":(exclude)*.diff" || bad "git diff --check (trailing whitespace or conflict markers)"
+done < <(scripts sh 'bash|sh')
+# Two diffs: empty tree vs HEAD covers every committed line (the clean checkout CI has), and
+# HEAD vs index and working tree covers the change about to be committed.
+WS_EXCLUDE=(":(exclude)*.patch" ":(exclude)*.diff")
+git diff --check "$(git hash-object -t tree /dev/null)" HEAD -- . "${WS_EXCLUDE[@]}" || bad "git diff --check (trailing whitespace or conflict markers)"
+git diff --check HEAD -- . "${WS_EXCLUDE[@]}" || bad "git diff --check HEAD (whitespace or conflict markers in staged or unstaged edits)"
 
 step "pytest"
 # Always `python3 -m pytest`: hook tests mint a receipt with sys.executable and re-validate it with `python3`.
@@ -39,20 +56,71 @@ if ! python3 -c 'import xdist' 2>/dev/null; then
     echo "NOTE: could not provide pytest-xdist; running serial"
   fi
 fi
-PYTEST_ARGS=(bin/tests)
+# -rs prints each skip reason; the skip count goes on the final line.
+PYTEST_ARGS=(-rs bin/tests)
 "$PYTEST_PY" -c 'import xdist' 2>/dev/null && PYTEST_ARGS=(-n auto "${PYTEST_ARGS[@]}")
-"$PYTEST_PY" -m pytest "${PYTEST_ARGS[@]}" || bad "pytest"
+PYTEST_LOG="$(mktemp)"
+"$PYTEST_PY" -m pytest "${PYTEST_ARGS[@]}" | tee "$PYTEST_LOG" || bad "pytest"
+n="$(tail -n 1 "$PYTEST_LOG" | grep -oE '[0-9]+ skipped' | cut -d' ' -f1)"
+[ -z "$n" ] || skip "$n pytest test(s)" "reasons in the short test summary above"
+rm -f "$PYTEST_LOG"
 
-step "SKILL.md frontmatter name gate"
-# name: must sit in the first frontmatter block; auto-activate is not a real field.
-while IFS= read -r skill; do
-  [ -n "$skill" ] || continue
-  awk '/^---$/{n++; next} n==1 && /^name:/{ok=1} n==1 && /^auto-activate:/{bad=1} END{exit !(ok && !bad)}' "$skill" \
-    || bad "$skill lacks name: in frontmatter or uses the non-existent auto-activate field"
-done < <(find seed cultivation/marketplace -name SKILL.md -not -path '*/node_modules/*')
+step "skill and agent frontmatter + references"
+# SKILL.md needs name: and description: in its first frontmatter block; auto-activate is not a real field.
+# Every SKILL.md and agent .md must name only paths, skills and agents that exist.
+python3 - <<'PY' || bad "skill or agent frontmatter or reference (see the lines above)"
+import pathlib, re, subprocess
+
+# Paths a skill or agent writes, or reads only if present, in the project it runs in.
+OPTIONAL = {".claude/rules/", ".claude/codex-reviews/", "docs/findings/FINDINGS.md", "docs/hypothesis_tree.md"}
+SPAN = re.compile(r"(?<!`)`([^`\n]+)`(?!`)")
+PATH = re.compile(r"[A-Za-z0-9_.][A-Za-z0-9_.-]*(/[A-Za-z0-9_.-]+)+/?")
+NAMED = re.compile(r"(?<!`)`([a-z0-9][a-z0-9:-]*)` (?:skill|subagent|agent)s?\b")
+
+
+tracked = subprocess.run(["git", "ls-files", "--", "seed", "cultivation/marketplace"],
+                         capture_output=True, text=True, check=True).stdout.splitlines()
+skills = [pathlib.Path(f) for f in tracked if f.endswith("/SKILL.md")]
+agents = [pathlib.Path(f) for f in tracked if f.endswith(".md") and pathlib.Path(f).parent.name == "agents"]
+known = {p.parent.name for p in skills} | {p.stem for p in agents}
+errors = []
+for doc in skills + agents:
+    text = doc.read_text(encoding="utf-8")
+    if doc.name == "SKILL.md":
+        fm = re.match(r"---\n(.*?)\n---", text, re.S)
+        keys = set(re.findall(r"^([A-Za-z0-9_-]+):", fm.group(1), re.M)) if fm else set()
+        errors += [f"{doc}: frontmatter lacks {k}:" for k in ("name", "description") if k not in keys]
+        if "auto-activate" in keys:
+            errors.append(f"{doc}: auto-activate is not a skill field")
+    bases = [pathlib.Path("."), pathlib.Path("seed"), *doc.parents]
+    fenced = False
+    for n, line in enumerate(text.splitlines(), 1):
+        if line.lstrip().startswith("```"):
+            fenced = not fenced
+        if fenced:
+            continue
+        for span in SPAN.findall(line):
+            if not PATH.fullmatch(span) or span in OPTIONAL:
+                continue
+            # A file path names a file type, a directory, or a directory that exists; `origin/main` does none.
+            first, last = span.split("/")[0], span.rstrip("/").rsplit("/", 1)[-1]
+            if not (span.endswith("/") or "." in last.lstrip(".") or any((b / first).is_dir() for b in bases)):
+                continue
+            if not any((b / span).exists() for b in bases):
+                errors.append(f"{doc}:{n}: path `{span}` does not exist")
+        for name in NAMED.findall(line):
+            if name.split(":")[-1] not in known:
+                errors.append(f"{doc}:{n}: no skill or agent named `{name}`")
+for e in errors:
+    print("FAIL:", e)
+raise SystemExit(1 if errors else 0)
+PY
 
 step "skill-listing token weight"
-python3 bin/skill_listing_weight.py --root "$ROOT" --budget-tokens "${LISTING_BUDGET:-634}" \
+# No-growth ceilings on the uncalibrated chars/4 estimate, each set to the measured weight:
+# seed 2026-10-18, sam-cc-setup after plan-review and surprise-me went manual-only.
+# Lower one when its listing shrinks; never raise it without saying why.
+python3 bin/skill_listing_weight.py --root "$ROOT" --budget seed=255 --budget "sam-cc-setup=${LISTING_BUDGET:-377}" \
   || bad "skill-listing weight over budget"
 
 step "claude plugin validate"
@@ -64,7 +132,7 @@ if command -v claude >/dev/null 2>&1; then
     claude plugin validate --strict "$t" || bad "claude plugin validate --strict $t"
   done
 elif [ "${LOAM_ALLOW_MISSING_AGENT_CLIS:-0}" = "1" ]; then
-  echo "SKIPPED: claude CLI not found (LOAM_ALLOW_MISSING_AGENT_CLIS=1)"
+  skip "claude plugin validate" "claude CLI not found, LOAM_ALLOW_MISSING_AGENT_CLIS=1"
 else
   bad "claude CLI not found; install it or set LOAM_ALLOW_MISSING_AGENT_CLIS=1"
 fi
@@ -113,4 +181,4 @@ else
 fi
 
 if [ "$FAIL" -ne 0 ]; then echo; echo "check: FAILED"; exit 1; fi
-echo; echo "check: PASSED"
+echo; echo "check: PASSED${SKIPS:+ (skipped: $SKIPS)}"

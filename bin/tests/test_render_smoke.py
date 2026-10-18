@@ -168,18 +168,57 @@ class RenderSmoke(unittest.TestCase):
             ["PreCompact", "SessionEnd", "SessionStart", "Stop"],
         )
 
-    def test_each_hook_runs_and_exits_zero(self):
-        hooks = sorted((self.out / ".claude/hooks").glob("*.sh"))
-        self.assertTrue(hooks, "no hooks rendered")
-        for hook in hooks:
-            r = subprocess.run(
-                ["bash", str(hook)],
-                input='{"model":"opus"}',
-                capture_output=True,
-                text=True,
-                timeout=10,
+    def test_memory_hooks_capture_then_recall(self):
+        # Both hooks always exit 0, so the exit code proves nothing: assert what they write and print.
+        with tempfile.TemporaryDirectory() as d:
+            tmp = pathlib.Path(d)
+            transcript = tmp / "transcript.jsonl"
+            transcript.write_text(
+                json.dumps({"type": "user", "message": {"role": "user", "content": "Probe the smoke capture"}})
+                + "\n"
+                + json.dumps({"type": "assistant", "message": {"role": "assistant", "content": [{"type": "text", "text": "Done."}]}})
+                + "\n"
             )
-            self.assertEqual(r.returncode, 0, f"{hook.name}: {r.stderr}")
+            # A temp store, and no remote, so the hooks never touch the developer's real ~/memstore.
+            env = {**GIT_ENV, "LOAM_MEMSTORE": str(tmp / "store")}
+            env.pop("LOAM_MEMSTORE_REMOTE", None)
+
+            def hook(name: str, payload: dict) -> subprocess.CompletedProcess:
+                return subprocess.run(
+                    ["bash", str(self.out / ".claude/hooks" / name)],
+                    input=json.dumps(payload),
+                    capture_output=True,
+                    text=True,
+                    timeout=30,
+                    cwd=self.out,
+                    env=env,
+                )
+
+            hook(
+                "mem-capture.sh",
+                {
+                    "hook_event_name": "SessionEnd",
+                    "transcript_path": str(transcript),
+                    "session_id": "smoke123-capture",
+                    "cwd": str(self.out),
+                },
+            )
+            traces = tmp / "store/traces" / self.out.name
+            self.assertTrue(list(traces.glob("*-smoke123.jsonl.gz")), "mem-capture wrote no trace")
+            index = (traces / "INDEX.md").read_text() if (traces / "INDEX.md").exists() else ""
+            self.assertIn(" | smoke123 | ", index, "mem-capture wrote no INDEX line")
+
+            r = hook(
+                "mem-recall.sh",
+                {
+                    "hook_event_name": "SessionStart",
+                    "source": "startup",
+                    "session_id": "smoke456-recall",
+                    "cwd": str(self.out),
+                },
+            )
+            self.assertIn(f"## Memory ({self.out.name})", r.stdout)
+            self.assertIn("Probe the smoke capture", r.stdout)
 
     def test_deny_and_rules_share_forbidden_families(self):
         deny = self.settings()["permissions"]["deny"]
@@ -188,11 +227,24 @@ class RenderSmoke(unittest.TestCase):
             self.assertTrue(any(fam in d for d in deny), f"deny missing {fam}")
             self.assertIn(fam, rules, f"loam.rules missing {fam}")
 
-    def test_rendered_check_exists(self):
-        check = self.out / "bin/check"
-        self.assertTrue(check.exists())
-        r = subprocess.run(["bash", "-n", str(check)], capture_output=True, text=True)
-        self.assertEqual(r.returncode, 0, r.stderr)
+    def test_rendered_check_passes_then_fails_on_a_planted_defect(self):
+        def check(project: pathlib.Path) -> subprocess.CompletedProcess:
+            return subprocess.run(
+                ["bash", "bin/check"], capture_output=True, text=True, cwd=project, env=GIT_ENV, timeout=300
+            )
+
+        r = check(self.out)
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertTrue(r.stdout.strip().splitlines()[-1].startswith("check: PASSED"), r.stdout)
+        with tempfile.TemporaryDirectory() as d:
+            project = pathlib.Path(d) / "planted"
+            shutil.copytree(self.out, project, symlinks=True)
+            settings = json.loads((project / ".claude/settings.json").read_text())
+            settings["hooks"]["SessionStop"] = settings["hooks"].pop("Stop")
+            (project / ".claude/settings.json").write_text(json.dumps(settings, indent=2) + "\n")
+            r = check(project)
+        self.assertEqual(r.returncode, 1, r.stdout)
+        self.assertIn("'SessionStop' is not a Claude Code hook event", r.stdout)
 
     def test_codex_execpolicy_forbids_the_force_families(self):
         if not shutil.which("codex"):
@@ -214,12 +266,22 @@ class RenderSmoke(unittest.TestCase):
 
 
 class UpdateSmoke(unittest.TestCase):
-    def test_update_from_v230_leaves_no_orphan_hook(self):
+    def test_update_from_latest_release_leaves_no_orphan_hook(self):
         cmd = _copier()
+        # Existing projects update from the latest release. HEAD^ keeps the base a real older
+        # release on the release commit itself, where HEAD carries the new tag.
+        tag = subprocess.run(
+            ["git", "describe", "--tags", "--abbrev=0", "--match", "v[0-9]*", "HEAD^"],
+            cwd=ROOT,
+            capture_output=True,
+            text=True,
+        )
+        if tag.returncode != 0:
+            self.skipTest("no release tag reachable from HEAD^ (shallow or tagless clone)")
         with tempfile.TemporaryDirectory() as d:
             # resolve(): macOS puts tmp under /var -> /private/var, and copier update rejects the unresolved path
             proj = pathlib.Path(d).resolve() / "p"
-            _render(proj, ref="v2.3.0")
+            _render(proj, ref=tag.stdout.strip())
             subprocess.run(["git", "init", "-q"], cwd=proj, check=True, env=GIT_ENV)
             subprocess.run(["git", "add", "-A"], cwd=proj, check=True, env=GIT_ENV)
             subprocess.run(
