@@ -148,7 +148,11 @@ stranded.
 
 ## The one check
 
-`bin/check` runs ruff, shell syntax, whitespace, and pytest. The agent runs it by
+`bin/check` runs ruff, shell syntax, whitespace (committed, staged, and unstaged),
+and pytest. It also fails when `CLAUDE.md` plus `AGENTS.md` exceed the always-on
+budget below, when a skill's frontmatter has an unknown key, and when a hook event
+name in `.claude/settings.json` is not a real Claude Code event. A step that cannot
+run prints `SKIPPED`, and the last line names every skip. The agent runs it by
 choice; `.github/workflows/check.yml` runs the same script on every push and pull
 request. Nothing else lints or tests.
 
@@ -158,7 +162,7 @@ request. Nothing else lints or tests.
 via `CLAUDE.md`, Codex reads it directly. Add a line to either file only if
 removing it would cause a mistake.
 
-- Prose (`CLAUDE.md` plus `AGENTS.md`): 400 tokens. The skill listing and the
+- Prose (`CLAUDE.md` plus `AGENTS.md`): 400 tokens, enforced as a 1600-byte cap in `bin/check`; edit the number there to change it. The skill listing and the
   session brief are separate always-on costs and are not inside that number.
 - Skill listing: the two listed seed skills weigh about 85 tokens (description
   bytes divided by four; hypothesis-tree is manual-only and unlisted), so a fresh
