@@ -1,5 +1,6 @@
 ---
 name: surprise-me
+disable-model-invocation: true
 description: Generate ranked, evidence-backed creative ideas the user has not asked for, aimed at a named goal, then execute the cheapest one immediately as proof. Use when the user says "surprise me", "what am I missing", "creative or elegant ideas", "how can we do this better", asks how to increase the chances of a goal succeeding, or asks "what are we not seeing/doing/thinking about" or "what capabilities do you have that I am not asking you to use yet". NOT for routine task execution, and never for ideas that only sound good but the user cannot verify.
 argument-hint: [the goal to optimize for, e.g. "ship the release on time"]
 ---
@@ -57,8 +58,8 @@ The output is a short ranked table of ideas plus one already-executed proof, nev
 
 An idea costing more than ~1 hour must, before execution: (a) carry a measurable success criterion
 written down in advance ("byte-identical output or it changed nothing"), and (b) survive an
-adversarial pass - run an interrogation of the idea (e.g. the `grill-research` skill if available)
-rather than re-implementing interrogation here.
+adversarial pass - write the idea as a short plan file and run this plugin's `plan-reviewer`
+agent on it blind, rather than re-implementing interrogation here.
 
 ## Rules
 

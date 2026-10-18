@@ -7,9 +7,9 @@ entry point for projects that consume the Loam marketplace.
 
 The critique-swarm skill is removed because session-critique covers decision-aware
 session review and the plan-review-fanout workflow covers pre-execution plan review, so
-the skill was a fifth review entry point with no job of its own. The plugin now ships 26
-skills, counted by
-`find cultivation/marketplace/sam-cc-setup/skills -name SKILL.md | wc -l`.
+the skill was a fifth review entry point with no job of its own. The plugin then shipped 26
+skills. That count is historical: v3.0.0 cut the plugin to three skills, and today
+`find cultivation/marketplace/sam-cc-setup -name SKILL.md | wc -l` prints 4.
 plan-review-fanout pins every agent to claude-opus-4-8[1m] and adversarially
 verifies only BLOCK findings. validate is now a thin caller of the build-validator
 agent, which absorbed the lint, type check, whitespace, shell syntax, test suite, and
