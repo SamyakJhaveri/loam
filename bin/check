@@ -83,6 +83,11 @@ tracked = subprocess.run(["git", "ls-files", "--", "seed", "cultivation/marketpl
 skills = [pathlib.Path(f) for f in tracked if f.endswith("/SKILL.md")]
 agents = [pathlib.Path(f) for f in tracked if f.endswith(".md") and pathlib.Path(f).parent.name == "agents"]
 known = {p.parent.name for p in skills} | {p.stem for p in agents}
+# `plugin:name` resolves only inside that marketplace plugin.
+owned = {}
+for p in skills + agents:
+    if p.parts[:2] == ("cultivation", "marketplace"):
+        owned.setdefault(p.parts[2], set()).add(p.parent.name if p.name == "SKILL.md" else p.stem)
 errors = []
 for doc in skills + agents:
     text = doc.read_text(encoding="utf-8")
@@ -112,7 +117,7 @@ for doc in skills + agents:
             plugin, _, short = name.rpartition(":")
             if plugin and not pathlib.Path("cultivation/marketplace", plugin).is_dir():
                 continue  # another plugin's skill or agent; this repo cannot resolve it
-            if short not in known:
+            if short not in (owned.get(plugin, set()) if plugin else known):
                 errors.append(f"{doc}:{n}: no skill or agent named `{name}`")
 for e in errors:
     print("FAIL:", e)
