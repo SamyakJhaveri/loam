@@ -8,7 +8,7 @@ disable-model-invocation: true
 
 Loam's product is the project it renders.
 A change is proven when a fresh render of this checkout behaves right under a real Claude Code session, not when `bin/check` passes.
-`bin/check` and `bin/tests/test_render_smoke.py` check files; this skill checks behavior: hooks fire, memory carries across sessions, deny rules hold, the rendered check passes.
+`bin/check` and `bin/tests/test_render_smoke.py` check files; this skill checks behavior: hooks fire, memory carries across sessions, deny rules hold, the rendered check passes clean and fails on a planted defect.
 
 All driving goes through one CLI, run from the Loam root:
 
@@ -37,7 +37,7 @@ $C render --run <id> --ref v3.0.0 --kind typescript
 $C doctor <id>
 ```
 
-Read-only. Checks: the render exists and holds the copier initial commit, `_commit` matches the recorded commit (or the run rendered a dirty tree), every hook command in the rendered `.claude/settings.json` exists and is executable, and `claude` is on PATH (with its version).
+Read-only on the render; it records its result in `run.json`. Checks: the render exists and holds the copier initial commit, `_commit` matches the recorded commit (or the run rendered a dirty tree), every hook command in the rendered `.claude/settings.json` exists and is executable, and `claude` is on PATH (with its version).
 Run it before the first drive and again after any drive that surprised you.
 
 ## Drive
@@ -68,6 +68,10 @@ Rendered checks:
 $C check <id>      # the render's bin/check; expect "check: PASSED"
 ```
 
+On a fresh render that check runs only `bash -n` and the whitespace scan; [`features/render.md`](features/render.md) shows how to see it fail.
+`doctor` and `check` record their last outcome in `run.json`.
+`bin/release.sh` tags only a HEAD with a clean-tree run (`"dirty": false`) whose doctor and check are both ok.
+
 ## Evidence
 
 Everything lands in `<run>/evidence/`: `render.log`, `<name>.jsonl` (the stream-json with hook events), `<name>.stderr`, `<name>.transcript.jsonl`, `<name>.screen.txt`, `check.txt`.
@@ -95,4 +99,5 @@ After cleanup, list `<run>/evidence/` to confirm the proof is still there.
 
 The behavior inventory is in [`features/README.md`](features/README.md), one file per feature with the same four sections.
 For a broad regression sweep, walk the index top to bottom.
-Keep it honest with pstack's `maintain-verification-skill` (source wave plus one live pass; edits stay inside this directory).
+Upkeep is `/pstack:maintain-verification-skill` once the pstack plugin is installed (source wave plus one live pass; edits stay inside this directory).
+Until then, rerun the feature map recipes by hand after a seed change.

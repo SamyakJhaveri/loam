@@ -30,7 +30,7 @@ Each file has an H1, one paragraph on the user-visible behavior, then four H2s i
 
 ## Features
 
-- [Render](./render.md): `copier copy` produces a git-initialized project whose own `bin/check` passes.
+- [Render](./render.md): `copier copy` produces a git-initialized project whose own `bin/check` passes clean and fails on a planted defect.
 - [Session memory](./session-memory.md): each session is captured; the next session starts with it recalled.
 - [Deny rules](./deny-rules.md): destructive commands are refused even in bypass mode.
 - [Fable brief](./fable-brief.md): a Fable session starts with the prompting brief; other models get nothing.

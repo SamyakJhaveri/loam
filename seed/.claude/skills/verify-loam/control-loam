@@ -5,7 +5,7 @@ Every command prints one JSON object on stdout. A run lives in one directory:
   <root>/<run>/render/     the rendered project (copier copy of this checkout)
   <root>/<run>/memstore/   the memory store the hooks write to (LOAM_MEMSTORE)
   <root>/<run>/evidence/   session streams, check output; survives cleanup
-  <root>/<run>/run.json    ref, commit, sessions started
+  <root>/<run>/run.json    ref, commit, sessions started, last doctor and check outcome
 <root> is $LOAM_VERIFY_ROOT, default $TMPDIR/loam-verify.
 """
 
@@ -29,9 +29,9 @@ PROJECTS = pathlib.Path.home() / ".claude" / "projects"
 GIT_ENV = {
     **os.environ,
     "GIT_CONFIG_COUNT": "2",
-    "GIT_CONFIG_KEY_0": "maintenance.auto",
-    "GIT_CONFIG_VALUE_0": "false",
-    "GIT_CONFIG_KEY_1": "gc.autoDetach",
+    "GIT_CONFIG_KEY_0": "gc.auto",
+    "GIT_CONFIG_VALUE_0": "0",
+    "GIT_CONFIG_KEY_1": "maintenance.auto",
     "GIT_CONFIG_VALUE_1": "false",
 }
 
@@ -71,9 +71,17 @@ def save(d: pathlib.Path, meta: dict) -> None:
     (d / "run.json").write_text(json.dumps(meta, indent=2) + "\n")
 
 
+def record(d: pathlib.Path, key: str, ok: bool, **extra) -> None:
+    # bin/release.sh reads these: it tags only a commit with a clean run whose doctor and check are ok.
+    meta = load(d)
+    meta[key] = {"ok": ok, "at": time.strftime("%Y-%m-%dT%H:%M:%S%z"), **extra}
+    save(d, meta)
+
+
 def cmd_render(a) -> None:
     src = loam_root()
-    rev = sh(["git", "-C", str(src), "rev-parse", a.ref])
+    # ^{commit}: an annotated tag names a tag object; record the commit it points at.
+    rev = sh(["git", "-C", str(src), "rev-parse", "-q", "--verify", a.ref + "^{commit}"])
     if rev.returncode != 0:
         die(f"unknown ref {a.ref!r}")
     commit = rev.stdout.strip()
@@ -113,7 +121,9 @@ def cmd_doctor(a) -> None:
     if meta["dirty"]:
         check("render came from the working tree", bool(pinned), f"_commit={pinned} (copier WIP commit on top of {meta['commit'][:12]})")
     else:
-        check("render came from the recorded commit", meta["commit"][:7] in pinned, f"_commit={pinned} commit={meta['commit'][:12]}")
+        # _commit is `git describe` output, or a bare tag name when the commit is tagged; resolve it in the source.
+        got = sh(["git", "-C", meta["source"], "rev-parse", "-q", "--verify", pinned + "^{commit}"]).stdout.strip()
+        check("render came from the recorded commit", got == meta["commit"], f"_commit={pinned} commit={meta['commit'][:12]}")
     try:
         settings = json.loads((render / ".claude/settings.json").read_text())
         cmds = {h["command"].split()[0] for evs in settings.get("hooks", {}).values() for e in evs for h in e["hooks"]}
@@ -125,6 +135,7 @@ def cmd_doctor(a) -> None:
     ver = sh([claude, "--version"]).stdout.strip() if claude else ""
     check("claude CLI on PATH", bool(ver), f"{claude} {ver}")
     ok = all(c["ok"] for c in checks)
+    record(d, "doctor", ok)
     out({"ok": ok, "run": a.run, "checks": checks}, 0 if ok else 1)
 
 
@@ -173,6 +184,7 @@ def cmd_check(a) -> None:
     r = sh(["bin/check"], cwd=d / "render", env=GIT_ENV)
     (d / "evidence" / "check.txt").write_text(r.stdout + r.stderr)
     last = (r.stdout.strip().splitlines() or [""])[-1]
+    record(d, "check", r.returncode == 0, last_line=last)
     out({"ok": r.returncode == 0, "run": a.run, "exit_code": r.returncode, "last_line": last,
          "evidence": str(d / "evidence" / "check.txt")}, 0 if r.returncode == 0 else 1)
 
@@ -275,7 +287,7 @@ def main() -> None:
     s.add_argument("--kind", default="python", choices=["python", "typescript", "research", "mixed", "other"])
     s.add_argument("--run", help="run id (default: timestamp + commit)")
     s.set_defaults(fn=cmd_render)
-    s = sub.add_parser("doctor", help="read-only: is this run worth driving?")
+    s = sub.add_parser("doctor", help="is this run worth driving? (reads the render, records the result in run.json)")
     s.add_argument("run")
     s.set_defaults(fn=cmd_doctor)
     s = sub.add_parser("session", help="one headless claude -p session in the render, hook events captured")
