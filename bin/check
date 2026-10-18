@@ -109,7 +109,10 @@ for doc in skills + agents:
             if not any((b / span).exists() for b in bases):
                 errors.append(f"{doc}:{n}: path `{span}` does not exist")
         for name in NAMED.findall(line):
-            if name.split(":")[-1] not in known:
+            plugin, _, short = name.rpartition(":")
+            if plugin and not pathlib.Path("cultivation/marketplace", plugin).is_dir():
+                continue  # another plugin's skill or agent; this repo cannot resolve it
+            if short not in known:
                 errors.append(f"{doc}:{n}: no skill or agent named `{name}`")
 for e in errors:
     print("FAIL:", e)
