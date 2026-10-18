@@ -159,7 +159,10 @@ def cmd_session(a) -> None:
     env = {**GIT_ENV, "LOAM_MEMSTORE": str(d / "memstore")}
     env.pop("LOAM_MEMSTORE_REMOTE", None)
     with stream.open("w") as so, err.open("w") as se:
-        rc = subprocess.run(argv, cwd=d / "render", stdout=so, stderr=se, env=env, timeout=a.timeout).returncode
+        try:
+            rc = subprocess.run(argv, cwd=d / "render", stdout=so, stderr=se, env=env, timeout=a.timeout).returncode
+        except subprocess.TimeoutExpired:
+            rc = None  # claude was killed at --timeout; the partial stream is still read and kept below
     events = []
     for line in stream.read_text().splitlines():
         try:
@@ -179,7 +182,7 @@ def cmd_session(a) -> None:
     meta["sessions"].append({"name": name, "session_id": sid})
     save(d, meta)
     out({"ok": rc == 0 and not result.get("is_error"), "run": a.run, "name": name, "exit_code": rc,
-         "session_id": sid, "model": init.get("model"), "skills": init.get("skills"),
+         "timed_out": rc is None, "session_id": sid, "model": init.get("model"), "skills": init.get("skills"),
          "hooks": hooks, "permission_denials": result.get("permission_denials", []),
          "result": (result.get("result") or "")[:1500], "cost_usd": result.get("total_cost_usd"),
          "evidence": str(stream)}, 0 if rc == 0 else 1)
