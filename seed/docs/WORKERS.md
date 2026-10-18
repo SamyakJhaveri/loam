@@ -16,10 +16,12 @@ focused checks and return bounded reports; only the validation owner runs
 `bin/check` on a given source snapshot. Reviewers inspect one fixed diff and do
 not rerun an unchanged suite unless they name a concrete unresolved risk.
 
-## HANDOFF.md
+## Handoff
 
-Before stopping mid-task, write `HANDOFF.md` at the repo root with these seven
-headings, in this order:
+Before stopping mid-task, commit uncommitted edits as one `wip:` commit on the
+current branch; if the tree is broken, say so in one line of the commit body.
+Then write `.loam/memory/handoff/<repo>.md` with these seven headings, in this
+order:
 
 1. Goal
 2. Files touched
@@ -27,14 +29,16 @@ headings, in this order:
 4. Tried and failed
 5. Open assumptions
 6. Next single action
-7. Written at (the output of `git rev-parse HEAD`)
+7. Written at (the output of `git rev-parse HEAD`, after the `wip:` commit)
 
-`/catchup` reads it on resume and calls it stale when that hash is no longer
-HEAD, when its mtime predates the last commit, or when its status words
-contradict git. It is gitignored and local-only; delete it when the task ends.
+The next session on any machine injects it once at startup and archives it
+under `.loam/memory/handoff/<repo>/archive/`; `docs/HARNESS.md` (The handoff)
+names the repo key. Treat it as stale when that hash is no longer HEAD or its
+status words contradict git.
 
-Keep it bounded: cite file sections and command summaries instead of pasting
-whole files or logs. The repository state wins over the handoff.
+Keep it under 1500 bytes, the most recall injects: cite file sections and
+command summaries instead of pasting whole files or logs. The repository state
+wins over the handoff.
 
 A worker brief and its report use the same seven headings, so an interrupted
 worker's findings are read from its report, never rebuilt from a transcript.

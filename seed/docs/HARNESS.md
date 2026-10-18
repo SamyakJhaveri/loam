@@ -46,8 +46,8 @@ per-tool latency.
   PostModelSwitch. Measured on Claude Code 2.1.263: a non-interactive
   `claude -p` startup payload carries no `model` field, so the brief does not
   fire there.
-- `post-compact-reinject.sh` (SessionStart `compact`): re-injects the task after
-  a compaction.
+- `post-compact-reinject.sh` (SessionStart `compact`): prints one fixed line
+  after a compaction that points back at the handoff note (see The handoff).
 - `mem-capture.sh` (SessionEnd, PreCompact, Stop): scrubs known secret shapes
   from the session transcript, stores it gzipped at
   `$LOAM_MEMSTORE/traces/<repo>/<date>-<sid8>.jsonl.gz`, and appends one
@@ -101,10 +101,10 @@ is involved.
 
         git init --bare -b main ~/memstore.git
 
-2. On every machine, point the local store at it over an ssh alias (say
-   `jhaveris`, the same alias `bin/runner` uses):
+2. On every machine, point the local store at it over an ssh alias for that
+   machine:
 
-        git -C ~/memstore remote add origin jhaveris:memstore.git
+        git -C ~/memstore remote add origin <host>:memstore.git
 
    A store an older `mem-weekly.sh` created may sit on `master`; run
    `git -C ~/memstore branch -M main` once so `origin main` matches.
@@ -134,10 +134,11 @@ working tree untouched.
 
 ### The handoff
 
-To hand the next session a single instruction, write
-`.loam/memory/handoff/<repo>.md` (the repo key is the name in the recall
-manifest's heading). The next session on any machine or harness, in the same
-repo, injects that file once under `## Handoff (claimed now)`, then archives it to
+To hand the next session a resume note, write
+`.loam/memory/handoff/<repo>.md` in the format `docs/WORKERS.md` defines (the
+repo key is the name in the recall manifest's heading). The next session on any
+machine or harness, in the same repo, injects that file once under
+`## Handoff (claimed now)`, then archives it to
 `.loam/memory/handoff/<repo>/archive/<date>-<sid8>.md` and never reads it again.
 One writer per workstream, claimed once: it is not a shared last-writer-wins file.
 If sessions start on two machines at the same moment, before either has pulled
@@ -162,17 +163,15 @@ removing it would cause a mistake.
 - Skill listing: the three seed skills weigh about 250 tokens (description
   bytes divided by four), so a fresh project pays about 400 + 250 tokens before
   any work starts.
-- In the Loam template repo the `sam-cc-setup` plugin listing weighs 565 tokens.
-  That is the `LISTING_BUDGET` ratchet `bin/check` asserts. Lower it when the
-  listing shrinks; never raise it without saying why. Raised from 448 on
-  2026-09-09 when `plan-review` became model-invocable, so its description
-  now sits in the listing.
 - Memory hooks: recall adds at most 4000 bytes at SessionStart, and the Stop
   capture runs at most once per ten minutes. The scrub adds one regex pass over
   the transcript per capture. Recall waits at most five seconds for a pull from
   the store's remote; the capture's push runs in the background and never waits.
 - Auto memory: Claude Code adds at most the first 200 lines or 25 KB of
   `MEMORY.md` to the context at session start.
+
+Token figures anywhere in this file are byte counts divided by four, not a
+tokenizer result.
 
 ## Accepted risks, stated rather than hidden
 
@@ -204,31 +203,6 @@ removing it would cause a mistake.
   test integrity.
 - Editing any file under `.claude/` needs bypassPermissions mode. An unattended
   `dontAsk` agent cannot change its own harness.
-
-## Owner global config, outside this project
-
-The owner's `~/.claude/` files are personal and are not shipped by the template.
-A global hook in `~/.claude/hooks/` repeats the "prefer targeted edits" rule for
-every project on that machine, so the owner sees it twice; nobody else does.
-
-## Measured cost, v2.3.0 to v3.0.0
-
-Rendered-project rows measured in a `copier copy` render of each version;
-repo-side rows measured in the repo itself.
-
-| Row | Before (v2.3.0) | After (v3.0.0) |
-|---|---|---|
-| Hooks shipped in `.claude/hooks/` | 15 | 2 |
-| `PreToolUse` hook entries matching Bash | 7 | 0 |
-| Hook runs per Edit or Write | 1 ruff run | 0 |
-| Always-on prose bytes (`CLAUDE.md` + `AGENTS.md`) | 7862 | 1125 |
-| Check wall time, one script | 207 s (`bin/verify-template.sh`) | 5 s local, 7 s in CI |
-| Seed hook and lib lines | 2309 | 71 |
-| `bin/` plus `bin/tests/` lines | 11377 | 1525 |
-| Marketplace skills shipped | 26 | 3 |
-
-Token figures anywhere in this file are byte counts divided by four, not a
-tokenizer result.
 
 ## Accepted risks measured in v3.0.0
 
