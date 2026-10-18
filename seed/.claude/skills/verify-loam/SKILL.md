@@ -66,10 +66,10 @@ When a prompt such as a permission request waits on you, `send` exits 1 with `"s
 Rendered checks:
 
 ```bash
-$C check <id>      # the render's bin/check; expect "check: PASSED"
+$C check <id>      # the render's bin/check; expect a last line starting "check: PASSED"
 ```
 
-On a fresh render that check runs only `bash -n` and the whitespace scan; [`features/render.md`](features/render.md) shows how to see it fail.
+A fresh render has no `tests/`, so that check runs no pytest and a pass alone proves little; [`features/render.md`](features/render.md) shows how to see it fail.
 `doctor` and `check` record their last outcome in `run.json`.
 `bin/release.sh` tags only a HEAD with a clean-tree run (`"dirty": false`) whose doctor and check are both ok, the check run on a pristine render (`"pristine": true`: copier's one commit, nothing edited).
 

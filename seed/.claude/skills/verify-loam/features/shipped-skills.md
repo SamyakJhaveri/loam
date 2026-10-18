@@ -1,6 +1,6 @@
 # Shipped skills
 
-A rendered project lists the seed skills (`catchup`, `fable-prompting`, `hypothesis-tree`) in every Claude Code session, through checked-in symlinks from `.claude/skills/` to `.agents/skills/`.
+A rendered project makes the seed skills (`catchup`, `fable-prompting`, `hypothesis-tree`) available in every Claude Code session, through checked-in symlinks from `.claude/skills/` to `.agents/skills/`.
 
 ## Sub-features
 
@@ -9,7 +9,7 @@ A rendered project lists the seed skills (`catchup`, `fable-prompting`, `hypothe
 
 ## How to get to it (user POV)
 
-- Type `/` in a session and see the skills, or let Claude pick one by description.
+- Type `/` in a session and see the skills. Claude can also pick one by description, unless its frontmatter sets `disable-model-invocation: true`.
 
 ## Driving it with control-loam
 
@@ -25,3 +25,4 @@ Preconditions:
 
 - The `skills` array also holds Claude Code built-ins (`verify`, `run`, `debug` and others); check for the seed names, not the count.
 - User-level skills and plugins are absent because sessions use `--setting-sources project,local`. A user's real session lists more.
+- The `skills` array holds every user-invocable skill, including one with `disable-model-invocation: true` that the model's own skill listing leaves out. **Listed** does not show which skills Claude can pick.

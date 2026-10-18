@@ -34,7 +34,7 @@ Each file has an H1, one paragraph on the user-visible behavior, then four H2s i
 - [Session memory](./session-memory.md): each session is captured; the next session starts with it recalled.
 - [Deny rules](./deny-rules.md): destructive commands are refused even in bypass mode.
 - [Fable brief](./fable-brief.md): a Fable session starts with the prompting brief; other models get nothing.
-- [Shipped skills](./shipped-skills.md): the seed skills are listed in every session.
+- [Shipped skills](./shipped-skills.md): the seed skills are available in every session.
 
 ## Not yet mapped
 

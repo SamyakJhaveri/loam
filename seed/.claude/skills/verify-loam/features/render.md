@@ -24,9 +24,9 @@ Preconditions:
 - **Copy.** Run `$C render --run r1`. JSON has `"ok": true` and a `render` path.
 - **Git.** Run `$C doctor r1`. The check `render is a git repo with the initial commit` passes.
 - **Kind.** Run `$C render --run r2 --kind typescript`. `<root>/r2/render/pyproject.toml` does not exist, and `enabledPlugins` in its `.claude/settings.json` has no `pyright-lsp@claude-plugins-official`. With the default kind, both are present.
-- **Check.** Run `$C check r1`. `"last_line": "check: PASSED"`, exit 0. Alone this proves little: a fresh render has no tracked `*.py` and no `tests/`, so ruff and pytest are skipped and `check.txt` holds only `check: PASSED`.
+- **Check.** Run `$C check r1`. `last_line` starts with `check: PASSED`, `"pristine": true`, exit 0. Alone this proves little: a fresh render has no `tests/`, so pytest does not run.
 - **Exclude.** List `<root>/r1/render/.claude/skills/`. It holds `catchup`, `fable-prompting`, `hypothesis-tree` and no `verify-loam`.
-- **Check can fail.** Commit a defect in the render: `printf 'trailing space \n' > <root>/r1/render/defect.txt && git -C <root>/r1/render add defect.txt && git -C <root>/r1/render -c user.name=verify -c user.email=verify@example.invalid commit -qm defect`. Run `$C check r1`. Exit 1, `"last_line": "check: FAILED"`, and `check.txt` reads `defect.txt:1: trailing whitespace.` then `FAIL: whitespace or conflict markers`. A pass here means the check is broken.
+- **Check can fail.** Commit a defect in the render: `printf 'trailing space \n' > <root>/r1/render/defect.txt && git -C <root>/r1/render add defect.txt && git -C <root>/r1/render -c user.name=verify -c user.email=verify@example.invalid commit -qm defect`. Run `$C check r1`. Exit 1, `"last_line": "check: FAILED"`, and `check.txt` contains `defect.txt:1: trailing whitespace.` and `FAIL: whitespace or conflict markers`. A pass here means the check is broken.
 - **Clean up.** Run `$C cleanup r1` and `$C cleanup r2`.
 
 ## Gotchas
@@ -34,5 +34,5 @@ Preconditions:
 - `--ref HEAD` on a dirty checkout renders the working tree as a copier WIP commit (`_commit` reads one past `git describe HEAD`). Commit first if you need the exact HEAD.
 - A `--ref` other than HEAD ignores uncommitted edits.
 - Released projects come from tags, not `main`; render the tag to reproduce a user's project.
-- The rendered whitespace scan reads committed files only (`git diff --check` from the empty tree to `HEAD`). A staged trailing-space file still gave `check: PASSED`, so commit the defect.
-- Each `$C check` overwrites `check.txt` and the `check` record in `run.json`. After the defect step, `r1` records a failed check, so it cannot satisfy the `bin/release.sh` gate; use a separate run for that.
+- Commit the defect: the scan that must catch it is the one over committed files (`git diff --check` from the empty tree to `HEAD`), which is what CI's clean checkout sees.
+- Each `$C check` overwrites `check.txt` and the `check` record in `run.json`. After the defect step `r1` is no longer pristine, so no later check of it can satisfy the `bin/release.sh` gate; use a separate run for that.
