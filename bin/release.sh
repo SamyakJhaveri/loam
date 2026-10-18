@@ -46,12 +46,12 @@ STATUS="$(gh run list --commit "$(git rev-parse HEAD)" --workflow Test --limit 1
 # CI checks files; a live render of this exact HEAD must also pass verify-loam's doctor and check (no model calls).
 VERIFY_ROOT="${LOAM_VERIFY_ROOT:-${TMPDIR:-/tmp}/loam-verify}"
 RUN="v$VERSION-$(git rev-parse --short=8 HEAD)"
-python3 - "$VERIFY_ROOT" "$(git rev-parse HEAD)" <<'PY' || die "no clean-tree verify-loam run of HEAD with doctor and check ok under $VERIFY_ROOT; make one: C=.claude/skills/verify-loam/control-loam; \$C render --run $RUN && \$C doctor $RUN && \$C check $RUN"
+python3 - "$VERIFY_ROOT" "$(git rev-parse HEAD)" <<'PY' || die "no clean-tree verify-loam run of HEAD with doctor ok and check ok on the unedited render under $VERIFY_ROOT; make one: C=.claude/skills/verify-loam/control-loam; \$C render --run $RUN && \$C doctor $RUN && \$C check $RUN"
 import json, pathlib, sys
 root, head = pathlib.Path(sys.argv[1]), sys.argv[2]
 runs = [json.loads(f.read_text()) for f in root.glob("*/run.json")]
 sys.exit(not any(m.get("commit") == head and m.get("dirty") is False and m.get("doctor", {}).get("ok")
-                 and m.get("check", {}).get("ok") for m in runs))
+                 and m.get("check", {}).get("ok") and m.get("check", {}).get("pristine") for m in runs))
 PY
 
 # The one local gate CI cannot run: the private IP terms file is off-GitHub.

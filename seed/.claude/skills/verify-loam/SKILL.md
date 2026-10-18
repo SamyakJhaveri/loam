@@ -71,7 +71,7 @@ $C check <id>      # the render's bin/check; expect "check: PASSED"
 
 On a fresh render that check runs only `bash -n` and the whitespace scan; [`features/render.md`](features/render.md) shows how to see it fail.
 `doctor` and `check` record their last outcome in `run.json`.
-`bin/release.sh` tags only a HEAD with a clean-tree run (`"dirty": false`) whose doctor and check are both ok.
+`bin/release.sh` tags only a HEAD with a clean-tree run (`"dirty": false`) whose doctor and check are both ok, the check run on a pristine render (`"pristine": true`: copier's one commit, nothing edited).
 
 ## Evidence
 

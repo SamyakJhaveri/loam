@@ -72,7 +72,7 @@ def save(d: pathlib.Path, meta: dict) -> None:
 
 
 def record(d: pathlib.Path, key: str, ok: bool, **extra) -> None:
-    # bin/release.sh reads these: it tags only a commit with a clean run whose doctor and check are ok.
+    # bin/release.sh reads these: it tags only a commit with a clean run whose doctor and check are ok, the check on a pristine render.
     meta = load(d)
     meta[key] = {"ok": ok, "at": time.strftime("%Y-%m-%dT%H:%M:%S%z"), **extra}
     save(d, meta)
@@ -190,11 +190,15 @@ def cmd_session(a) -> None:
 
 def cmd_check(a) -> None:
     d = run_dir(a.run)
-    r = sh(["bin/check"], cwd=d / "render", env=GIT_ENV)
+    render = str(d / "render")
+    # pristine: the render is still copier's output (one commit, nothing changed), so the check judged the template.
+    pristine = (not sh(["git", "-C", render, "status", "--porcelain"]).stdout.strip()
+                and sh(["git", "-C", render, "rev-list", "--count", "HEAD"]).stdout.strip() == "1")
+    r = sh(["bin/check"], cwd=render, env=GIT_ENV)
     (d / "evidence" / "check.txt").write_text(r.stdout + r.stderr)
     last = (r.stdout.strip().splitlines() or [""])[-1]
-    record(d, "check", r.returncode == 0, last_line=last)
-    out({"ok": r.returncode == 0, "run": a.run, "exit_code": r.returncode, "last_line": last,
+    record(d, "check", r.returncode == 0, last_line=last, pristine=pristine)
+    out({"ok": r.returncode == 0, "run": a.run, "exit_code": r.returncode, "last_line": last, "pristine": pristine,
          "evidence": str(d / "evidence" / "check.txt")}, 0 if r.returncode == 0 else 1)
 
 
