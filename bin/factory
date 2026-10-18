@@ -58,6 +58,12 @@ MAX_HOURS MAX_TURNS CALL_TIMEOUT_SEC MAX_PARALLEL "
 # `claude --output-format json` prints one object, or an array whose last result element is it.
 RESULT_OBJ='if type == "array" then ((last(.[] | select(.type == "result")) // .[-1]) // {}) else . end'
 
+# The one rule for whether a reviewer reply blocks a round: a finding rated high or medium (LOOP.md, Grader-round
+# cap). run_review, eval, eval-freeze, and status read it here, and eval_score.py's BLOCKING names the same set.
+# The reviewer's verdict word is never read: it is not bound to a severity (2026-09-12), so it carries no weight.
+REVIEW_BLOCKING='[.findings[]? | select(.severity == "high" or .severity == "medium")]'
+REVIEW_OUTCOME="if ($REVIEW_BLOCKING | length) > 0 then \"fix\" else \"merge\" end"
+
 SRC=""
 BODY=""
 ERRS=0
@@ -195,6 +201,22 @@ check_worker() {
       err "unrecognized Worker line: $line"
     fi
   done <<<"$w"
+}
+
+# A check that greps source text proves the text, not the behavior. A rejection, not a warning: every S1-S5
+# fixture and every frozen ticket under evals/clean has at least one other check (2026-10-18).
+check_not_grep_only() {
+  local line n=0 g=0
+  while IFS= read -r line; do
+    line=${line#"${line%%[![:space:]]*}"}
+    [ -n "$line" ] || continue
+    case "$line" in \#*|guard[[:space:]]*) continue ;; esac
+    n=$((n + 1))
+    grep -qE '^(![[:space:]]*)?grep[[:space:]]' <<<"$line" && g=$((g + 1))
+  done < <(dc_block | sed -e :a -e '/\\$/N; s/\\\n//; ta')
+  [ "$n" -gt 0 ] && [ "$g" -eq "$n" ] \
+    && err "all $n non-guard done-checks grep source text; drive the real behavior in at least one (run the command, render the template, or call the function and check its output)"
+  return 0
 }
 
 check_merge_checklist() {
@@ -343,6 +365,8 @@ duration_ms:(.duration_ms // 0), num_turns:(.num_turns // 0), denials:0, subtype
     exp=$(jq -r .verdict "$dir/expected.json")
     got=$(jq -r '.verdict // "unparseable"' <<<"$res" 2>/dev/null) || got=unparseable
     [ -n "$got" ] || got=unparseable
+    # A reviewer reply is scored on what the loop does with it, REVIEW_OUTCOME, never on its verdict word.
+    [ "$grader" = reviewer ] && [ "$got" != unparseable ] && got=$(jq -r "$REVIEW_OUTCOME" <<<"$res")
     ok=1
     [ "$got" = "$exp" ] || ok=0
     # The failing-row set is compared only for a case that lists one.
@@ -365,7 +389,8 @@ duration_ms:(.duration_ms // 0), num_turns:(.num_turns // 0), denials:0, subtype
 }
 
 # ---- eval-freeze ----
-# Copies a run's last round into <evals-dir>/clean/{judge,reviewer}/<key>-<sha8>/ when both graders passed it; never over an existing case.
+# Copies a run's last round into <evals-dir>/clean/{judge,reviewer}/<key>-<sha8>/ when the judge passed it and no
+# reviewer finding blocks (REVIEW_OUTCOME merge); never over an existing case.
 FREEZE_KEY_RE='(^|[^A-Za-z0-9])sk-[A-Za-z0-9_-]{20,}|ghp_[A-Za-z0-9]{30,}'
 
 # A saved grader prompt from its `## Ticket` line on, since run_eval prepends the live rubric. Trailing
@@ -383,12 +408,12 @@ cmd_eval_freeze() { # run-dir...
     jv=""; rv=""; why=""
     if [ -n "$k" ]; then
       jv=$(jq -r '.verdict // empty' "$d/round-$k.judge.json" 2> /dev/null)
-      rv=$(jq -r '.verdict // empty' "$d/round-$k.review.json" 2> /dev/null)
+      rv=$(jq -r "select(.verdict != null) | $REVIEW_OUTCOME" "$d/round-$k.review.json" 2> /dev/null)
     fi
     if [ -z "$jv" ]; then why="no judge verdict"
     elif [ "$jv" != pass ]; then why="round-$k judge verdict $jv"
     elif [ -z "$rv" ]; then why="no reviewer verdict"
-    elif [ "$rv" != merge ]; then why="round-$k reviewer verdict $rv"
+    elif [ "$rv" != merge ]; then why="round-$k reviewer has a high or medium finding"
     elif [ -e "$EVALS_DIR/clean/judge/$name" ] || [ -e "$EVALS_DIR/clean/reviewer/$name" ]; then why="exists"
     fi
     for g in judge review; do
@@ -452,6 +477,7 @@ lint() {
   check_check_lines
   check_worker
   check_merge_checklist
+  check_not_grep_only
   # Fixture bodies are historical tickets that name paths later tickets removed.
   case "$SRC" in *bin/factory.d/fixtures/*) ;; *) check_paths ;; esac
 
@@ -481,7 +507,7 @@ FENCE='~~~~~~~~~~~~ evidence'   # fixed marker; never a per-run string (#38)
 # REPO, RUN, and LOG keep a pre-set value: the sourced-test contract (file_backlog's backlog-filed-once
 # check) passes these three in the environment, and load_ticket and cmd_run set all three before a run
 # uses them, so `bin/factory run` is unchanged.
-REPO="${REPO:-}"; ISSUE=""; KEY=""; IS_FILE=0; RUN="${RUN:-}"; ROUND=0; REVIEW_BLOCKED=0
+REPO="${REPO:-}"; ISSUE=""; KEY=""; IS_FILE=0; RUN="${RUN:-}"; ROUND=0; REVIEW_BLOCKED=0; GRADED_SHA=""
 LOG="${LOG:-/dev/null}"; LEDGER=""; DAILY=""; DECISIONS=""; WORKTREE=""; BRANCH=""
 # Worker kind and the Codex review stage, read from the ticket in cmd_run (F4). CODEX_REVIEW_BLOCKED is
 # separate from REVIEW_BLOCKED so a Claude-reviewer block never consumes the Codex review's one block.
@@ -1075,8 +1101,17 @@ do_not_touch_hits() { # -> the changed paths the ticket fenced off
   done
 }
 
-measure_rows() { # round; Rows measured is `<row>: <command> | <baseline>` per line (CONTRACT.md)
-  local out="$RUN/round-$1.measure" line row rest
+# A row whose label or command names one of these words measures time, tokens, or cost, so one run is one
+# sample; without a `runs=N` its MEASURE line says single sample, so the judge reads no trend from it (F9).
+NOISY_ROW_RE='(^|[^A-Za-z])(time|seconds|latency|duration|wall|tokens?|cost|usd|spend|ms)([^A-Za-z]|$)'
+
+median_range() { # numbers on stdin, one per line -> "median min max"; non-zero when a line is not a number
+  sort -n | awk '!/^[[:space:]]*-?[0-9]+(\.[0-9]+)?[[:space:]]*$/ {bad = 1} {v[NR] = $1 + 0}
+    END {if (bad || NR == 0) exit 1; print (NR % 2 ? v[(NR + 1) / 2] : (v[NR / 2] + v[NR / 2 + 1]) / 2), v[1], v[NR]}'
+}
+
+measure_rows() { # round; Rows measured is `[runs=N] [<row>:] <command> | <baseline>` per line (CONTRACT.md)
+  local out="$RUN/round-$1.measure" line row rest cmd note n i v lo hi vals
   # The row's command runs with the run's ledger, daily ledger, ticket key, and round in its environment
   # only, so a `bin/factory eval` row books its cost to this run (#76) and no later child of the
   # supervisor inherits a stale round; run_eval reads these four names, mirroring apply_caps's FACTORY_<NAME>.
@@ -1085,10 +1120,30 @@ measure_rows() { # round; Rows measured is `<row>: <command> | <baseline>` per l
   while IFS= read -r line; do
     line=${line#- }
     [ -n "${line//[[:space:]]/}" ] || continue
-    row=${line%%:*}; rest=${line#*:}
-    printf 'MEASURE %s %s (baseline %s)\n' "$row" \
-      "$( cd "$WORKTREE" && export "${env[@]}" && eval "${rest%%|*}" 2>&1 | tail -1 )" "$(printf '%s' "${rest#*|}" | tr -d ' ')" \
-      | tee -a "$out" >&2
+    n=""
+    [[ "$line" =~ ^runs=([1-9][0-9]*)[[:space:]]+(.*)$ ]] && { n=${BASH_REMATCH[1]}; line=${BASH_REMATCH[2]}; }
+    row=${line%%:*}; rest=${line#*:}; cmd=${rest%%|*}
+    note="baseline $(printf '%s' "${rest#*|}" | tr -d ' ')"
+    if [ -z "$n" ]; then
+      n=1
+      # The label counts only when the line has one; with no colon, row is the whole line, baseline included.
+      v=$cmd; [ "$row" = "$line" ] || v="$row $cmd"
+      grep -qiE "$NOISY_ROW_RE" <<< "$v" && note="$note; single sample, no runs=N"
+    fi
+    vals=()
+    for ((i = 0; i < n; i++)); do
+      vals+=("$( cd "$WORKTREE" && export "${env[@]}" && eval "$cmd" 2>&1 | tail -1 )")
+    done
+    v=${vals[0]}
+    if [ "$n" -gt 1 ]; then
+      if read -r v lo hi < <(printf '%s\n' "${vals[@]}" | median_range); then
+        note="median of $n runs, range $lo to $hi; $note"
+      else
+        v=$(printf '%s / ' "${vals[@]}"); v=${v% / }
+        note="$n runs, not all numbers, so no median; $note"
+      fi
+    fi
+    printf 'MEASURE %s %s (%s)\n' "$row" "$v" "$note" | tee -a "$out" >&2
   done <<< "$(section "Rows measured")"
 }
 
@@ -1129,9 +1184,11 @@ build_evidence() { # rubric_file diff_cap -> stdout
 }
 
 # A pass with fixes to apply, or a fail with nothing to point at, refutes itself (LOOP.md, precedence).
+# A reviewer's verdict word is not checked against its severities: run_review blocks on REVIEW_BLOCKING, and
+# a refutation that ties the word to a severity pushes the model to lower its severities (2026-09-12).
 verdict_consistent() { # json file
   jq -e '(.verdict // "") as $v
-    | (((.fixes // []) | length) + ([.findings[]? | select(.severity == "high")] | length)) as $blocking
+    | ((.fixes // []) | length) as $blocking
     | (((.backlog // []) | length) + ((.findings // []) | length)) as $other
     | if ($v == "pass" or $v == "merge") then $blocking == 0
       elif ($v == "fail" or $v == "fix") then ($blocking > 0 or $other > 0)
@@ -1188,7 +1245,7 @@ run_review() { # round -> 0 when nothing blocks
   local round="$1" pf="$RUN/round-$1.review.prompt.md" f="$RUN/round-$1.review.json" blocking
   build_evidence "$RUN/frozen/reviewer.md" 6000 > "$pf"
   call_json "$round" review reviewer "$pf" "$RUN/frozen/reviewer.schema.json"
-  blocking=$(jq '[.findings[]? | select(.severity == "high" or .severity == "medium")] | length' "$f")
+  blocking=$(jq "$REVIEW_BLOCKING | length" "$f")
   log "reviewer verdict: $(jq -r .verdict "$f") findings=$(jq '(.findings // []) | length' "$f") blocking=$blocking (high or medium)"
   [ "$blocking" -gt 0 ] || return 0
   if [ "$REVIEW_BLOCKED" = 1 ]; then
@@ -1197,7 +1254,7 @@ run_review() { # round -> 0 when nothing blocks
   fi
   REVIEW_BLOCKED=1
   # highs before mediums: sort_by(.severity != "high") keys false (high) before true (medium), and jq's sort is stable.
-  jq -r '[.findings[]? | select(.severity == "high" or .severity == "medium")] | sort_by(.severity != "high") | .[]
+  jq -r "$REVIEW_BLOCKING"' | sort_by(.severity != "high") | .[]
     | "- " + (.file // "?") + ":" + ((.line // 0) | tostring) + " " + .defect + " Fix: " + .fix' "$f" >> "$RUN/round-$round.fixes"
   return 1
 }
@@ -1241,6 +1298,7 @@ tree_signature() { # dir -> 64 hex
 graders() { # round -> 0 when the judge passes and nothing blocks
   local ok=0 sig
   sig=$(tree_signature "$WORKTREE")
+  GRADED_SHA=$(git -C "$WORKTREE" rev-parse HEAD)   # open_pr prints it, so a later push shows the verdict is stale
   run_judge "$1" || ok=1
   run_review "$1" || ok=1
   [ "$CODEX_REVIEW" = yes ] && { run_codex_review "$1" || ok=1; }
@@ -1282,7 +1340,8 @@ open_pr() { # [draft]: opened at the grader-round cap
     [ -s "$RUN/round-$ROUND.measure" ] && { printf '## Rows measured\n\n```\n'; cat "$RUN/round-$ROUND.measure"; printf '```\n\n'; }
     printf '## Merge checklist\n\n'; section "Merge checklist" | grep '^- ' | sed 's/^- /- [ ] /'; printf '\n'
     printf '## Decisions\n\n```\n'; cat "$DECISIONS"; printf '```\n\n'
-    printf '## Judge\n\n```json\n%s\n```\n\n' "$(jq -c '{verdict, rows: (.rows // {}), evidence: (.evidence // {})}' "$RUN/round-$ROUND.judge.json")"
+    printf '## Judge\n\ngraded at %s\n\n```json\n%s\n```\n\n' "$GRADED_SHA" \
+      "$(jq -c '{verdict, rows: (.rows // {}), evidence: (.evidence // {})}' "$RUN/round-$ROUND.judge.json")"
     printf '## Reviewer\n\n'
     jq -r '.findings[]? | "- [" + .severity + "] " + (.file // "?") + ":" + ((.line // 0) | tostring) + " " + .defect + " Fix: " + .fix' "$RUN/round-$ROUND.review.json"
     jq -r '.unverified[]? | "- unverified: " + .' "$RUN/round-$ROUND.review.json"
@@ -1643,7 +1702,7 @@ grader_first_fail() { # run dir -> the first grader item that failed in the last
   j=$(find "$1" -maxdepth 1 -name 'round-*.judge.json' 2> /dev/null | sort -V | tail -1)
   [ -n "$j" ] || return 0
   r=$(jq -r 'first((.rows // {}) | to_entries[] | select(.value != "pass") | "judge:" + .key) // empty' "$j" 2> /dev/null)
-  [ -n "$r" ] || r=$(jq -r 'first(.findings[]? | select(.severity == "high") | "review:" + (.file // "?")) // empty' \
+  [ -n "$r" ] || r=$(jq -r "first($REVIEW_BLOCKING"'[] | "review:" + (.file // "?")) // empty' \
     "${j%judge.json}review.json" 2> /dev/null)
   printf '%s' "$r"
 }
