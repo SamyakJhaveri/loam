@@ -3,6 +3,14 @@
 This file records why a promoted plugin change traveled. It is also the upgrade
 entry point for projects that consume the Loam marketplace.
 
+## sam-cc-setup v0.9.6 factory grader fixes
+
+judge.md cites only evidence the bundle carries (Rows measured, decisions.md) and drops the SKIP rule lint already forbids.
+reviewer.md no longer ties its verdict word to a severity; the loop and the eval both block on a high or medium finding.
+Both drop "ticket of Loam v3", since `-C` grades other repositories.
+A grader replay is owed before the runner relies on these prompts (docs/factory/LOOP.md).
+Upgrade step: `claude plugin update sam-cc-setup`.
+
 ## sam-cc-setup v0.9.5 pstack audit fixes
 
 The plugin description and READMEs now list what ships: 4 skills and 4 agents.
