@@ -37,7 +37,7 @@ $C render --run <id> --ref v3.0.0 --kind typescript
 $C doctor <id>
 ```
 
-Read-only on the render; it records its result in `run.json`. Checks: the render exists and holds the copier initial commit, `_commit` matches the recorded commit (or the run rendered a dirty tree), every hook command in the rendered `.claude/settings.json` exists and is executable, and `claude` is on PATH (with its version).
+Read-only on the render; it records its result in `run.json`. Checks: the render exists and holds the copier initial commit, `_commit` matches the recorded commit (for a dirty tree, copier's WIP commit one past it), every hook command in the rendered `.claude/settings.json` exists and is executable, and `claude` is on PATH (with its version).
 Run it before the first drive and again after any drive that surprised you.
 
 ## Drive
