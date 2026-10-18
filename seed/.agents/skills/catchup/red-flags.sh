@@ -53,7 +53,13 @@ stale() {
     hit="$(says "$f" 'pushed')"
     [ -n "$hit" ] && echo "FLAG: STALE $f: says pushed, but the branch is $AHEAD commits ahead of its upstream (line $hit)"
   fi
-  written="$(grep -i -A3 'written at' "$f" 2>/dev/null | grep -o -E '\b[0-9a-f]{7,40}\b' | head -1)"
+  # The hash sits on or under a line that starts with the "Written at" label, and
+  # is a full object name or a short one naming a commit, so a hash quoted in
+  # prose, an epoch number, or a word like "defaced" is never taken for it.
+  written="$(grep -i -E -A3 '^[-#*[:space:]]*([0-9]+\.)?[*[:space:]]*written at' "$f" 2>/dev/null \
+    | grep -o -E '\b[0-9a-f]{7,64}\b' | while read -r w; do
+        if [ "${#w}" -ge 40 ] || git cat-file -e "$w^{commit}" 2>/dev/null; then echo "$w"; break; fi
+      done)"
   if [ -n "$written" ]; then
     case "$HEAD_SHA" in
       "$written"*) ;;
@@ -74,11 +80,23 @@ if [ -f STATE.md ]; then
 fi
 
 # Loam pin: only for a project seeded from Loam. A pin must be a vX.Y.Z release
-# tag and the newest one. The low-speed bound aborts ls-remote after about 5 s
-# offline without `timeout`; the gh: shorthand is Copier-only and fails in git.
+# tag and the newest one. ls-remote gets 5 s of wall clock: git's low-speed
+# settings do not bound a stalled connect, and stock macOS has no `timeout`.
+# set -m puts git in its own process group, so the kill also reaches its
+# remote-https helpers. The gh: shorthand is Copier-only and fails in git.
 ANSWERS=.copier-answers.yml
 answer() { sed -n "s/^$1:[[:space:]]*//p" "$ANSWERS" | tr -d "\"'" | head -1; }
 newest() { grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | sort -t. -k1.2,1n -k2,2n -k3,3n | tail -1; }
+tags() {
+  local pid n=0
+  set -m
+  git ls-remote --tags https://github.com/samyakjhaveri/loam 2>/dev/null &
+  pid=$!
+  set +m
+  while kill -0 "$pid" 2>/dev/null && [ "$n" -lt 50 ]; do sleep 0.1; n=$((n + 1)); done
+  kill -KILL -- "-$pid" 2>/dev/null
+  wait "$pid" 2>/dev/null
+}
 pin() {
   [ -f "$ANSWERS" ] || { PIN="not a Loam project"; return; }
   local commit latest src
@@ -87,8 +105,7 @@ pin() {
     echo "FLAG: Loam pin $commit is not a release tag"
     PIN="$commit (not a release tag)"; return
   fi
-  latest="$(git -c http.lowSpeedLimit=1 -c http.lowSpeedTime=5 ls-remote --tags https://github.com/samyakjhaveri/loam 2>/dev/null \
-    | grep -v '\^{}$' | sed 's#.*refs/tags/##' | newest)"
+  latest="$(tags | grep -v '\^{}$' | sed 's#.*refs/tags/##' | newest)"
   if [ -z "$latest" ]; then
     # Offline: fall back to VERSION in a reachable local template checkout.
     src="$(answer _src_path)"
@@ -98,8 +115,11 @@ pin() {
       PIN="$commit (pin check skipped: offline)"; return
     fi
   fi
-  if [ "$(printf '%s\n%s\n' "$commit" "$latest" | newest)" = "$commit" ]; then
+  if [ "$commit" = "$latest" ]; then
     PIN="$commit (latest)"
+  elif [ "$(printf '%s\n%s\n' "$commit" "$latest" | newest)" = "$commit" ]; then
+    echo "FLAG: Loam pin $commit is newer than the newest release $latest"
+    PIN="$commit (newer than the newest release)"
   else
     echo "FLAG: Loam pin $commit is not the latest release $latest; run uvx copier update --trust"
     PIN="$commit (not the latest)"
