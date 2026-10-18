@@ -20,6 +20,12 @@ not rerun an unchanged suite unless they name a concrete unresolved risk.
 
 Before stopping mid-task, commit uncommitted edits as one `wip:` commit on the
 current branch; if the tree is broken, say so in one line of the commit body.
+`.loam/memory` is the link to the memory store that the first session capture
+makes. If it does not exist yet, make the link first; a plain directory there
+hides the note from recall and stops capture from ever linking it:
+
+    mkdir -p "${LOAM_MEMSTORE:-$HOME/memstore}" .loam && ln -s "${LOAM_MEMSTORE:-$HOME/memstore}" .loam/memory
+
 Then write `.loam/memory/handoff/<repo>.md` with these seven headings, in this
 order:
 
