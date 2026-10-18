@@ -34,6 +34,7 @@ CASES = {
     "merge-medium": ({"verdict": "merge", "findings": [finding("medium")]}, "fix"),
     "merge-high": ({"verdict": "merge", "findings": [finding("high")]}, "fix"),
     "fix-low": ({"verdict": "fix", "findings": [finding("low")]}, "merge"),
+    "fix-empty": ({"verdict": "fix", "findings": []}, "merge"),
 }
 
 

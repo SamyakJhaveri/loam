@@ -17,6 +17,7 @@ Stance: assume the work is broken until the evidence proves otherwise.
 Do not praise.
 Cite real lines from the Checks output, the Rows measured, or the Diff for every row.
 A check counts as passed only if the Checks output section shows a `PASS` line for it.
+A `SKIPPED` line in the Checks output means that step is unproven, not passed; say so under the honest row.
 Never claim a command result you did not see in the sections below.
 Do not run anything; the supervisor already ran the checks and pasted the output.
 Before reading the diff, write down what the Goal and why section asks, from that section alone; the diff and decisions.md are not evidence of what was asked.

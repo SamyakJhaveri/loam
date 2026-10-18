@@ -97,7 +97,7 @@ After the checks first pass, at most two grader-fail rounds per ticket; then the
 The judge decides pass or fail.
 The reviewer blocks only on a `high` or `medium` finding (`REVIEW_BLOCKING` in `bin/factory`; its verdict word is not read), the Codex review only on a `critical` or `high` finding, and each may block at most once per ticket.
 A grader whose output is absent or unparseable is a fail with one high finding "grader unparseable", never a pass.
-`verdict_consistent` runs on every grader JSON: a pass with non-empty fixes, or a fail with empty fixes and empty backlog, is refuted, and the grader is called once more, fresh, with the refutation appended to its prompt.
+`verdict_consistent` runs on every judge JSON: a pass with non-empty fixes, or a fail with empty fixes and empty backlog, is refuted, and the judge is called once more, fresh, with the refutation appended to its prompt.
 
 ## Grader calls
 
@@ -215,6 +215,7 @@ It exits 1 when any case misses its expected verdict, which a missed mutant does
 Each pair of models also gets an `A+B` row, the recall and false alarms of a two-model jury, scored from the same replies with no extra call.
 A case may not depend on the live tree: its expected verdict must follow from `prompt.md` alone, since the grader reads the checkout it runs in and a case whose verdict rests on that checkout drifts as the repo changes (the lean-critic s4-round-4 case did, and was dropped 2026-09-11). If a second case drifts, the fix is a `base_sha` per case and a replay in a checkout of that commit.
 No grader edit lands without the replay run before and after, recorded in the PR body; it never runs in `bin/check`.
+The replay is local: `bin/factory eval` runs `claude -p` on the machine that calls it, so it needs no runner.
 After a model upgrade: replay with the new model, then once more with each rubric body replaced by its one-line stance; a rubric row that changes no verdict is a deletion candidate.
 Each new grader agent costs about 200 always-on tokens in every session of every seeded project; `bin/skill_listing_weight.py` gates each plugin bump.
 

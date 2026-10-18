@@ -214,8 +214,11 @@ check_not_grep_only() {
     n=$((n + 1))
     grep -qE '^(![[:space:]]*)?grep[[:space:]]' <<<"$line" && g=$((g + 1))
   done < <(dc_block | sed -e :a -e '/\\$/N; s/\\\n//; ta')
-  [ "$n" -gt 0 ] && [ "$g" -eq "$n" ] \
-    && err "all $n non-guard done-checks grep source text; drive the real behavior in at least one (run the command, render the template, or call the function and check its output)"
+  if [ "$n" -eq 0 ]; then
+    err "every done-check is a guard; add one that fails on main and drives the real behavior"
+  elif [ "$g" -eq "$n" ]; then
+    err "all $n non-guard done-checks grep source text; drive the real behavior in at least one (run the command, render the template, or call the function and check its output)"
+  fi
   return 0
 }
 
@@ -1103,11 +1106,12 @@ do_not_touch_hits() { # -> the changed paths the ticket fenced off
 
 # A row whose label or command names one of these words measures time, tokens, or cost, so one run is one
 # sample; without a `runs=N` its MEASURE line says single sample, so the judge reads no trend from it (F9).
-NOISY_ROW_RE='(^|[^A-Za-z])(time|seconds|latency|duration|wall|tokens?|cost|usd|spend|ms)([^A-Za-z]|$)'
+NOISY_ROW_RE='(^|[^A-Za-z])(time|seconds|latency|duration|wall|tokens?|cost|usd|spend)([^A-Za-z]|$)'
 
 median_range() { # numbers on stdin, one per line -> "median min max"; non-zero when a line is not a number
   sort -n | awk '!/^[[:space:]]*-?[0-9]+(\.[0-9]+)?[[:space:]]*$/ {bad = 1} {v[NR] = $1 + 0}
-    END {if (bad || NR == 0) exit 1; print (NR % 2 ? v[(NR + 1) / 2] : (v[NR / 2] + v[NR / 2 + 1]) / 2), v[1], v[NR]}'
+    END {if (bad || NR == 0) exit 1
+      printf "%.15g %.15g %.15g\n", (NR % 2 ? v[(NR + 1) / 2] : (v[NR / 2] + v[NR / 2 + 1]) / 2), v[1], v[NR]}'
 }
 
 measure_rows() { # round; Rows measured is `[runs=N] [<row>:] <command> | <baseline>` per line (CONTRACT.md)
@@ -1183,15 +1187,15 @@ build_evidence() { # rubric_file diff_cap -> stdout
   printf '%s\n' "$FENCE"
 }
 
-# A pass with fixes to apply, or a fail with nothing to point at, refutes itself (LOOP.md, precedence).
-# A reviewer's verdict word is not checked against its severities: run_review blocks on REVIEW_BLOCKING, and
-# a refutation that ties the word to a severity pushes the model to lower its severities (2026-09-12).
+# A judge pass with fixes to apply, or a fail with nothing to point at, refutes itself (LOOP.md, precedence).
+# A reviewer's verdict word is never checked: run_review reads REVIEW_OUTCOME, and a refutation of the word
+# pushes the model to change its findings to fit it (2026-09-12).
 verdict_consistent() { # json file
   jq -e '(.verdict // "") as $v
     | ((.fixes // []) | length) as $blocking
     | (((.backlog // []) | length) + ((.findings // []) | length)) as $other
-    | if ($v == "pass" or $v == "merge") then $blocking == 0
-      elif ($v == "fail" or $v == "fix") then ($blocking > 0 or $other > 0)
+    | if $v == "pass" then $blocking == 0
+      elif $v == "fail" then ($blocking > 0 or $other > 0)
       else true end' "$1" > /dev/null 2>&1
 }
 

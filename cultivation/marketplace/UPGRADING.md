@@ -5,10 +5,29 @@ entry point for projects that consume the Loam marketplace.
 
 ## sam-cc-setup v0.9.6 factory grader fixes
 
-judge.md cites only evidence the bundle carries (Rows measured, decisions.md) and drops the SKIP rule lint already forbids.
+judge.md cites only evidence the bundle carries (Rows measured, decisions.md), and its skip rule now names the `SKIPPED:` lines `bin/check` prints.
 reviewer.md no longer ties its verdict word to a severity; the loop and the eval both block on a high or medium finding.
 Both drop "ticket of Loam v3", since `-C` grades other repositories.
-A grader replay is owed before the runner relies on these prompts (docs/factory/LOOP.md).
+A grader replay before and after is owed before this version merges (docs/factory/LOOP.md, Grader change protocol).
+It runs on this Mac, not the runner, from a checkout of this branch:
+
+```sh
+mkdir -p ~/replay-w4/before-agents
+for g in judge reviewer; do git show origin/main:cultivation/marketplace/sam-cc-setup/agents/$g.md > ~/replay-w4/before-agents/$g.md; done
+# the hand cases (evals/judge, evals/reviewer)
+for g in judge reviewer; do
+  EVAL_OUT=~/replay-w4/hand/before/r1 EVAL_EFFORT=high bin/factory eval $g --graders-dir ~/replay-w4/before-agents
+  EVAL_OUT=~/replay-w4/hand/after/r1  EVAL_EFFORT=high bin/factory eval $g --graders-dir cultivation/marketplace/sam-cc-setup/agents
+done
+# the clean corpus, for false alarms and severity direction
+for g in judge reviewer; do
+  EVAL_OUT=~/replay-w4/clean/before/r1 EVAL_EFFORT=high bin/factory eval $g --evals-dir evals/clean --graders-dir ~/replay-w4/before-agents
+  EVAL_OUT=~/replay-w4/clean/after/r1  EVAL_EFFORT=high bin/factory eval $g --evals-dir evals/clean --graders-dir cultivation/marketplace/sam-cc-setup/agents
+done
+python3 bin/factory.d/eval_score.py evals/clean ~/replay-w4/clean   # ignore the before+after jury row
+```
+
+Read the raw replies under `~/replay-w4` case by case for finding identity and severity direction, not only the counts.
 Upgrade step: `claude plugin update sam-cc-setup`.
 
 ## sam-cc-setup v0.9.5 pstack audit fixes
