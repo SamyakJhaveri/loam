@@ -61,6 +61,7 @@ $C tui <id> stop --name fable-tui  # saves the screen to evidence, sends /exit (
 ```
 
 Watch it live with `tmux attach -t loamv-<id>`.
+When a prompt such as a permission request waits on you, `send` exits 1 with `"state": "dialog"`; answer it there.
 
 Rendered checks:
 

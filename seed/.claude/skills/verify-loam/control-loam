@@ -210,15 +210,30 @@ def tmux_alive(t: str) -> bool:
     return sh(["tmux", "has-session", "-t", t]).returncode == 0
 
 
-def wait_idle(t: str, timeout: float) -> bool:
-    # The TUI shows "esc to interrupt" while a turn runs; idle means it is gone twice in a row.
-    end, quiet = time.time() + timeout, 0
+def turn_state(s: str) -> str:
+    # busy: a turn runs ("esc to interrupt"). idle: the input box is back, a ❯ line between two ─ rules.
+    # dialog: anything else, such as a permission prompt, whose ❯ marks a menu option and which waits on the user.
+    if "esc to interrupt" in s:
+        return "busy"
+    lines = s.rstrip().splitlines()
+    last = max((i for i, ln in enumerate(lines) if ln.lstrip().startswith("❯")), default=-1)
+
+    def rule(i: int) -> bool:
+        return 0 <= i < len(lines) and set(lines[i].strip()) == {"─"}
+
+    return "idle" if last >= 0 and rule(last - 1) and rule(last + 1) else "dialog"
+
+
+def wait_idle(t: str, timeout: float) -> str:
+    # Returns "idle" or "dialog" once the same one shows twice in a row, else "timeout" (or "exited").
+    end, prev = time.time() + timeout, ""
     while time.time() < end and tmux_alive(t):
         time.sleep(1)
-        quiet = quiet + 1 if "esc to interrupt" not in screen(t) else 0
-        if quiet >= 2:
-            return True
-    return False
+        state = turn_state(screen(t))
+        if state != "busy" and state == prev:
+            return state
+        prev = state
+    return "timeout" if tmux_alive(t) else "exited"
 
 
 def cmd_tui(a) -> None:
@@ -234,6 +249,7 @@ def cmd_tui(a) -> None:
         if a.model:
             cmd += ["--model", a.model]
         sh(["tmux", "new-session", "-d", "-s", t, "-x", "200", "-y", "50", "-c", str(d / "render"), shlex.join(cmd)])
+        ready = False
         for _ in range(40):
             time.sleep(0.5)
             s = screen(t)
@@ -241,9 +257,11 @@ def cmd_tui(a) -> None:
             if "trust this folder" in s and f"{a.run}/render" in s:
                 sh(["tmux", "send-keys", "-t", t, "Down"])
                 sh(["tmux", "send-keys", "-t", t, "Enter"])
-            elif "❯" in s and "trust this folder" not in s:
+            elif turn_state(s) == "idle":
+                ready = True
                 break
-        out({"ok": tmux_alive(t), "run": a.run, "tmux": t, "attach": f"tmux attach -t {t}", "screen": screen(t)[-1500:]})
+        out({"ok": ready, "run": a.run, "tmux": t, "attach": f"tmux attach -t {t}", "screen": screen(t)[-1500:]},
+            0 if ready else 1)
     if not tmux_alive(t):
         die(f"no tmux session {t}; run: control-loam tui {a.run} start")
     if a.action == "send":
@@ -252,9 +270,9 @@ def cmd_tui(a) -> None:
         time.sleep(0.5)
         sh(["tmux", "send-keys", "-t", t, "C-m"])
         time.sleep(2)
-        idle = wait_idle(t, a.timeout)
+        state = wait_idle(t, a.timeout)
         s = screen(t)
-        out({"ok": idle, "run": a.run, "tmux": t, "screen": s[-3000:]}, 0 if idle else 1)
+        out({"ok": state == "idle", "state": state, "run": a.run, "tmux": t, "screen": s[-3000:]}, 0 if state == "idle" else 1)
     if a.action == "stop":
         (ev / f"{a.name or 'tui'}.screen.txt").write_text(screen(t))
         sh(["tmux", "send-keys", "-t", t, "-l", "/exit"])
