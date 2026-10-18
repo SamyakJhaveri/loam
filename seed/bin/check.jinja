@@ -46,7 +46,12 @@ if ! [ -d tests ] && ! [ -d test ]; then
 elif ! command -v pytest >/dev/null 2>&1; then
   skip pytest "pytest not installed"
 else
-  pytest -q || bad "pytest"
+  # -rs prints each skip reason; the skip count goes on the final line.
+  PYTEST_LOG="$(mktemp)"
+  pytest -q -rs | tee "$PYTEST_LOG" || bad "pytest"
+  n="$(tail -n 1 "$PYTEST_LOG" | grep -oE '[0-9]+ skipped' | cut -d' ' -f1)"
+  [ -z "$n" ] || skip "$n pytest test(s)" "reasons in the short test summary above"
+  rm -f "$PYTEST_LOG"
 fi
 
 # Harness checks. Always-on prose: CLAUDE.md plus AGENTS.md load into every session, and
@@ -57,6 +62,7 @@ PROSE="$(cat CLAUDE.md AGENTS.md 2>/dev/null | wc -c | tr -d ' ')"
 python3 - <<'PY' || bad "skill frontmatter or hook event names"
 import json, re, subprocess
 
+# Both sets match Claude Code 2.1.302 (code.claude.com/docs/en/skills and /hooks); add a name a newer release documents.
 SKILL_KEYS = {
     "name", "description", "when_to_use", "argument-hint", "arguments", "disable-model-invocation",
     "user-invocable", "allowed-tools", "disallowed-tools", "model", "effort", "context", "agent",
@@ -79,9 +85,10 @@ for path in skills:
     keys = {k for k, _ in pairs}
     errors += [f"{path}: frontmatter lacks {k}:" for k in ("name", "description") if k not in keys]
     errors += [f"{path}: '{k}' is not a skill frontmatter key" for k in sorted(keys - SKILL_KEYS)]
-    # An unquoted ': ' ends the YAML scalar early or breaks the parse.
+    # An unquoted ': ' ends the YAML scalar early or breaks the parse; a whole flow mapping or list may hold one.
     errors += [f"{path}: quote the {k}: value, it contains ': '" for k, v in pairs
-               if ": " in v and v.strip()[:1] not in ("'", '"', ">", "|")]
+               if ": " in v and v.strip()[:1] not in ("'", '"', ">", "|")
+               and v.strip()[:1] + v.strip()[-1:] not in ("{}", "[]")]
 try:
     hooks = json.load(open(".claude/settings.json", encoding="utf-8")).get("hooks", {})
 except FileNotFoundError:
