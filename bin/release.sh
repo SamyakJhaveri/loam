@@ -35,9 +35,11 @@ if [[ "$(git log -1 --format=%s)" == "release: v$VERSION" &&
   publish
   exit 0
 fi
-[[ "$(git rev-parse HEAD)" == "$(git rev-parse origin/main)" ]] || die "main is not equal to origin/main"
+[[ "$(git rev-parse HEAD)" == "$(git rev-parse origin/main)" ]] \
+  || die "main is not equal to origin/main; run git pull --ff-only. If HEAD is an unpushed 'release:' commit from an earlier run, drop it and its tag first: git tag -d vX.Y.Z && git reset --keep HEAD^"
 [[ -z "$(git status --porcelain --untracked-files=all)" ]] || die "working tree is dirty"
-[[ -z "$(git tag -l "v$VERSION")" ]] || die "tag v$VERSION already exists"
+[[ -z "$(git tag -l "v$VERSION")" ]] \
+  || die "tag v$VERSION already exists. If origin has it (git ls-remote --tags origin v$VERSION) it is public: fix main and release the next version. If not, delete it (git tag -d v$VERSION) and rerun"
 
 # The latest run on HEAD must be green. Keyed off the workflow NAME in test.yml.
 STATUS="$(gh run list --commit "$(git rev-parse HEAD)" --workflow Test --limit 1 --json conclusion --jq '.[0].conclusion' 2>/dev/null || echo "")"
