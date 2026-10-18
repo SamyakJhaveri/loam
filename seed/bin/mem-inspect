@@ -8,7 +8,7 @@
 # grepping a raw trace: resolve a session by prefix, then read it by turn.
 #
 # Usage:
-#   mem-inspect <session-prefix> [--summary] [--span A:B] [--match RE] [--repo NAME]
+#   mem-inspect <session-prefix> [--summary] [--span A:B] [--match RE] [--repo NAME] [--json]
 #
 #   Resolves the prefix against $STORE/traces/<repo>/*<prefix>*.jsonl[.gz]; <repo>
 #   defaults to every repo, --repo NAME narrows to one. Reads exactly one trace:
@@ -19,7 +19,9 @@
 #                 tool_use's name and command, the first line of a tool_result.
 #     --span A:B  turns A..B in full (tool results cut at 40 lines).
 #     --match RE  only turns whose text matches RE, with their numbers.
-#   With no mode, --summary is assumed. Output capped at 200 lines.
+#     --json      the same turns as one JSON object {trace, turns, omitted}.
+#   With no mode, --summary is assumed. Output capped at 200 lines (200 turns
+#   with --json).
 #   Exits 1 when no trace or several match, the trace has no readable turns, or
 #   --span or --match is malformed.
 #
@@ -204,6 +206,18 @@ def full_turn(n: int, t: dict) -> list[str]:
     return out
 
 
+def summary_record(n: int, t: dict) -> dict:
+    lines = t["result"].splitlines()
+    return {"turn": n, "role": t["role"], "text": " ".join(t["text"].split())[:100],
+            "tool": t["tool"], "cmd": " ".join(t["cmd"].split())[:80],
+            "result": lines[0][:80] if lines else ""}
+
+
+def full_record(n: int, t: dict) -> dict:
+    return {"turn": n, "role": t["role"], "text": t["text"], "tool": t["tool"],
+            "cmd": t["cmd"], "result": "\n".join(t["result"].splitlines()[:RESULT_CUT])}
+
+
 def emit(lines: list[str]) -> None:
     shown = lines[:CAP]
     sys.stdout.write("\n".join(shown) + ("\n" if shown else ""))
@@ -215,12 +229,18 @@ def emit(lines: list[str]) -> None:
 
 
 def main(argv) -> int:
-    ap = argparse.ArgumentParser(add_help=True)
-    ap.add_argument("prefix")
-    ap.add_argument("--summary", action="store_true")
-    ap.add_argument("--span")
-    ap.add_argument("--match")
-    ap.add_argument("--repo")
+    ap = argparse.ArgumentParser(
+        prog="mem-inspect",
+        description="Read one captured trace by turn. Store root: $LOAM_MEMSTORE, default ~/memstore.",
+    )
+    ap.add_argument("prefix", help="session id or any part of the trace file name that matches one trace")
+    ap.add_argument("--summary", action="store_true",
+                    help="one numbered line per turn (the default mode)")
+    ap.add_argument("--span", metavar="A:B", help="turns A..B in full, tool results cut at 40 lines")
+    ap.add_argument("--match", metavar="RE", help="only the turns whose text matches this regex")
+    ap.add_argument("--repo", metavar="NAME", help="search only this repo's traces (default: every repo)")
+    ap.add_argument("--json", action="store_true",
+                    help="print the selected turns as one JSON object instead of text")
     args = ap.parse_args(argv)
 
     paths = resolve(args.prefix, args.repo)
@@ -244,30 +264,38 @@ def main(argv) -> int:
         sys.stderr.write("mem-inspect: trace has no readable turns\n")
         return 1
 
-    lines: list[str] = []
-
     if args.span:
         m = re.match(r"^\s*(\d+)\s*:\s*(\d+)\s*$", args.span)
         if not m:
             sys.stderr.write("mem-inspect: --span wants A:B\n")
             return 1
         a, b = int(m.group(1)), int(m.group(2))
-        for n in range(a, b + 1):
-            if 1 <= n <= len(turns):
-                lines.extend(full_turn(n, turns[n - 1]))
+        picked = [(n, turns[n - 1]) for n in range(a, b + 1) if 1 <= n <= len(turns)]
     elif args.match:
         try:
             rx = re.compile(args.match)
         except re.error as exc:
             sys.stderr.write("mem-inspect: bad --match regex: %s\n" % exc)
             return 1
-        for n, t in enumerate(turns, 1):
-            if rx.search(t["text"]):
-                lines.append(summary_line(n, t))
+        picked = [(n, t) for n, t in enumerate(turns, 1) if rx.search(t["text"])]
     else:
-        for n, t in enumerate(turns, 1):
-            lines.append(summary_line(n, t))
+        picked = list(enumerate(turns, 1))
 
+    if args.json:
+        record = full_record if args.span else summary_record
+        rows = [record(n, t) for n, t in picked]
+        trace = os.path.relpath(paths[0], os.path.join(store_root(), "traces"))
+        json.dump({"trace": trace, "turns": rows[:CAP], "omitted": max(0, len(rows) - CAP)},
+                  sys.stdout, ensure_ascii=False)
+        sys.stdout.write("\n")
+        return 0
+
+    lines: list[str] = []
+    for n, t in picked:
+        if args.span:
+            lines.extend(full_turn(n, t))
+        else:
+            lines.append(summary_line(n, t))
     emit(lines)
     return 0
 
