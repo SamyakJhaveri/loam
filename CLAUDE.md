@@ -1,4 +1,4 @@
-# CLAUDE.md — Loam
+# CLAUDE.md - Loam
 
 @AGENTS.md
 
