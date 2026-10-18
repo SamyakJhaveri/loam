@@ -160,9 +160,9 @@ removing it would cause a mistake.
 
 - Prose (`CLAUDE.md` plus `AGENTS.md`): 400 tokens. The skill listing and the
   session brief are separate always-on costs and are not inside that number.
-- Skill listing: the three seed skills weigh about 250 tokens (description
-  bytes divided by four), so a fresh project pays about 400 + 250 tokens before
-  any work starts.
+- Skill listing: the two listed seed skills weigh about 85 tokens (description
+  bytes divided by four; hypothesis-tree is manual-only and unlisted), so a fresh
+  project pays about 400 + 85 tokens before any work starts.
 - Memory hooks: recall adds at most 4000 bytes at SessionStart, and the Stop
   capture runs at most once per ten minutes. The scrub adds one regex pass over
   the transcript per capture. Recall waits at most five seconds for a pull from
