@@ -74,9 +74,11 @@ IDENTITY_RANGE="HEAD"
 git cat-file -e "$IDENTITY_BASELINE" 2>/dev/null && IDENTITY_RANGE="${IDENTITY_BASELINE}..HEAD"
 NOREPLY_AUTHOR_RE='^[^@[:space:]]+@users\.noreply\.github\.com$'
 NOREPLY_COMMITTER_RE='^([^@[:space:]]+@users\.noreply\.github\.com|noreply@github\.com)$'
-# One "<sha> <email>" line per commit, minus the accepted SHAs.
-# printf splits the list on whitespace, so no empty pattern reaches grep (an empty -F pattern matches every line).
-identities() { git log --format="%H $1" $IDENTITY_RANGE | grep -vF -f <(printf '%s\n' $IDENTITY_ACCEPTED) | cut -d' ' -f2- || true; }
+# One email per commit whose full SHA is not accepted. awk compares whole SHAs, and an empty list exempts nothing.
+identities() {
+  git log --format="%H $1" $IDENTITY_RANGE |
+    awk -v accepted="$IDENTITY_ACCEPTED" 'BEGIN { n = split(accepted, s); for (i = 1; i <= n; i++) ok[s[i]] = 1 } !($1 in ok) { print $2 }'
+}
 BAD_AUTHORS=$(identities '%ae' | sort -u | grep -vE "$NOREPLY_AUTHOR_RE" || true)
 if [ -n "$BAD_AUTHORS" ]; then
   echo "WARN: non-noreply author identities (must be clean in the public repo):"
