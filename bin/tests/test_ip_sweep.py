@@ -63,6 +63,42 @@ class IpSweepTest(unittest.TestCase):
             self.assertEqual(0, result.returncode, result.stdout + result.stderr)
             self.assertEqual("ip-sweep: PASS (identity only)\n", result.stdout)
 
+    def test_identity_only_checks_every_commit_when_no_sha_is_accepted(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            repo = self.make_repo(temp_dir, {"README.md": "nothing to see\n"})
+            self.commit_edu(repo)
+            self.set_accepted(repo, "")
+
+            result = self.sweep(repo, IP_SWEEP_IDENTITY_ONLY="1")
+
+            self.assertEqual(1, result.returncode, result.stdout + result.stderr)
+            self.assertIn("someone@example.edu", result.stdout)
+
+    def test_identity_only_skips_exactly_the_accepted_sha(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            repo = self.make_repo(temp_dir, {"README.md": "nothing to see\n"})
+            sha = self.commit_edu(repo)
+            self.set_accepted(repo, sha)
+
+            result = self.sweep(repo, IP_SWEEP_IDENTITY_ONLY="1")
+
+            self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+            self.set_accepted(repo, sha[:12])
+            self.assertEqual(1, self.sweep(repo, IP_SWEEP_IDENTITY_ONLY="1").returncode)
+
+    def commit_edu(self, repo: pathlib.Path) -> str:
+        (repo / "README.md").write_text("edited\n", encoding="utf-8")
+        self.run_git(repo, "commit", "-qam", "edit", "--author", "Someone <someone@example.edu>")
+        return subprocess.run(["git", "rev-parse", "HEAD"], cwd=repo, text=True,
+                              capture_output=True, check=True).stdout.strip()
+
+    def set_accepted(self, repo: pathlib.Path, shas: str) -> None:
+        script = repo / "bin/ip-sweep.sh"
+        text = script.read_text(encoding="utf-8")
+        start = text.index('IDENTITY_ACCEPTED="')
+        end = text.index('"', start + len('IDENTITY_ACCEPTED="')) + 1
+        script.write_text(text[:start] + f'IDENTITY_ACCEPTED="{shas}"' + text[end:], encoding="utf-8")
+
     def make_repo(self, temp_dir: str, files: dict[str, str]) -> pathlib.Path:
         repo = pathlib.Path(temp_dir)
         (repo / "bin").mkdir()
