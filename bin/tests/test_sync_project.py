@@ -38,6 +38,7 @@ import json, os, pathlib, re, subprocess, sys
 prompt = sys.stdin.read()
 with open(os.environ["SYNC_STUB_LOG"], "a") as log:
     log.write(json.dumps({"argv": sys.argv[1:], "LOAM_MEMSTORE": os.environ.get("LOAM_MEMSTORE"),
+                          "LOAM_MEMSTORE_REMOTE": os.environ.get("LOAM_MEMSTORE_REMOTE"),
                           "TMPDIR": os.environ.get("TMPDIR"), "prompt": prompt}) + "\n")
 files = re.findall(r"`([^`\n]+)`[^`\n]* is at `([^`\n]+)`", prompt)
 if not files:
@@ -70,6 +71,9 @@ for path, copy in files:
             out.append("||||||| last update\n")
         copy.write_text("".join(out))
     print(f"### {path}\n- hunk 1: kept the project's line in {path}, because the stub always does")
+if os.environ.get("SYNC_STUB_MODE") == "redirect":  # point any path record it can reach outside the clone
+    for meta in pathlib.Path(sys.argv[sys.argv.index("--add-dir") + 1]).glob("**/path"):
+        meta.write_text(os.path.join(os.environ["SYNC_STUB_OUTSIDE"], os.path.basename(meta.read_text().strip())) + "\n")
 print("Notes:\n- the stub read no other file\n- for the reviewer:\n  - a nested note")
 """
 
@@ -179,11 +183,48 @@ class SyncProjectTests(unittest.TestCase):
     def sync(self, *flags: str, project: str | None = None, mode: str = "",
              loam: pathlib.Path | None = None, sha: str | None = None,
              env: dict[str, str] | None = None) -> subprocess.CompletedProcess:
+        # The project is named on GitHub, as a real sync needs; git's insteadOf points both names
+        # at the local bare repo. github_repo in the answers is example/demo.
         env = {**GIT_ENV, "PATH": f"{self.stubs}:{os.environ['PATH']}", "TMPDIR": str(self.base),
+               "GIT_CONFIG_COUNT": "4",
+               "GIT_CONFIG_KEY_2": f"url.{self.remote}.insteadOf",
+               "GIT_CONFIG_VALUE_2": "https://github.com/example/demo.git",
+               "GIT_CONFIG_KEY_3": f"url.{self.remote}.insteadOf",
+               "GIT_CONFIG_VALUE_3": "https://github.com/example/renamed.git",
                "SYNC_STUB_LOG": str(self.claude_log), "SYNC_GH_LOG": str(self.gh_log),
                "SYNC_STUB_MODE": mode, **(env or {})}
         return run(["bash", str(SYNC), "--loam", str(loam or self.tpl), "--work", str(self.work), *flags,
-                    project or str(self.remote), sha or self.sha], env=env, check=False)
+                    project or "example/demo", sha or self.sha], env=env, check=False)
+
+    def fixture(self, name: str, v1: dict[str, str], edits: dict[str, str], v2: dict[str, str],
+                *data: str) -> tuple[pathlib.Path, pathlib.Path, str]:
+        """Return a template with tag v1.0.0 holding the files v1 and a later commit holding v2,
+        a bare repo of a project rendered from v1.0.0 with the `data` answers and the `edits`,
+        and the template's later commit."""
+        tpl, proj, remote = (self.base / f"{name}-{p}" for p in ("tpl", "proj", "remote.git"))
+
+        def write(root: pathlib.Path, files: dict[str, str]) -> None:
+            for path, text in files.items():
+                (root / path).parent.mkdir(parents=True, exist_ok=True)
+                (root / path).write_text(text)
+
+        write(tpl, {"copier.yml": "_subdirectory: seed\nproject_kind:\n  type: str\n  default: python\n",
+                    "seed/.copier-answers.yml.jinja": "{{ _copier_answers|to_nice_yaml -}}\n",
+                    **{f"seed/{p}": t for p, t in v1.items()}})
+        git("init", "-q", "-b", "main", cwd=tpl)
+        git("add", "-A", cwd=tpl)
+        git("commit", "-q", "-m", "v1", cwd=tpl)
+        git("tag", "v1.0.0", cwd=tpl)
+        run(self.copier + ["copy", "--trust", "--defaults", "--vcs-ref", "v1.0.0", *data, str(tpl), str(proj)])
+        write(proj, edits)
+        git("init", "-q", "-b", "main", cwd=proj)
+        git("add", "-A", cwd=proj)
+        git("commit", "-q", "-m", "init", cwd=proj)
+        git("clone", "-q", "--bare", str(proj), str(remote), cwd=self.base)
+        write(tpl, {f"seed/{p}": t for p, t in v2.items()})
+        git("add", "-A", cwd=tpl)
+        git("commit", "-q", "-m", "v2", cwd=tpl)
+        return tpl, remote, git("rev-parse", "HEAD", cwd=tpl)
 
     def claude_calls(self) -> list[dict]:
         if not self.claude_log.exists():
@@ -197,7 +238,7 @@ class SyncProjectTests(unittest.TestCase):
         return git("show", f"{rev}:{path}", cwd=self.remote)
 
     def test_opens_a_pr_with_copier_and_port_commits(self) -> None:
-        r = self.sync("--draft")
+        r = self.sync("--draft", env={"LOAM_MEMSTORE_REMOTE": str(self.base / "shared-memstore.git")})
         self.assertEqual(0, r.returncode, r.stdout + r.stderr)
         subjects = git("log", "--format=%s", f"main..{self.branch}", cwd=self.remote).splitlines()
         self.assertEqual(2, len(subjects), subjects)
@@ -218,6 +259,7 @@ class SyncProjectTests(unittest.TestCase):
         for call in calls:
             self.assertIn("claude-opus-5-5", call["argv"])
             self.assertTrue(call["LOAM_MEMSTORE"].startswith(str(self.work)), call)
+            self.assertIsNone(call["LOAM_MEMSTORE_REMOTE"], call)  # the scratch store must not push
             self.assertTrue(call["TMPDIR"].startswith(str(self.work)), call)
         gh = self.gh_log.read_text()
         self.assertIn("pr create", gh)
@@ -231,6 +273,73 @@ class SyncProjectTests(unittest.TestCase):
             self.assertIn(needle, body)
         message = git("log", "-1", "--format=%B", port_commit, cwd=self.remote)
         self.assertIn("notes.md\n- hunk 1: kept the project's line in notes.md,", message)
+
+    def test_opens_the_pr_in_the_repo_it_pushed_to(self) -> None:
+        # A renamed or forked project: github_repo in the answers still says example/demo.
+        r = self.sync(project="example/renamed")
+        self.assertEqual(0, r.returncode, r.stdout + r.stderr)
+        self.assertIn(self.branch, self.remote_branches())
+        gh = self.gh_log.read_text()
+        self.assertIn("--repo example/renamed", gh)
+        self.assertNotIn("example/demo", gh)
+
+    def test_refuses_a_project_with_no_github_repo_before_any_model_call(self) -> None:
+        r = self.sync(project=str(self.remote))
+        self.assertEqual(1, r.returncode, r.stdout + r.stderr)
+        self.assertIn("no GitHub repo", r.stderr)
+        self.assertEqual([], self.claude_calls())
+        self.assertFalse((self.work / "project").exists())
+        self.assertEqual("", self.remote_branches())
+        self.assertFalse(self.gh_log.exists())
+
+    def test_a_conflicted_file_may_share_a_name_with_the_port_bookkeeping(self) -> None:
+        # Each conflicted file's port dir also holds path, old, new and template.diff.
+        names = ("a/path", "b/old", "c/new", "d/template.diff")
+        tpl, remote, sha = self.fixture("names", dict.fromkeys(names, "v1\n"), dict.fromkeys(names, "project\n"),
+                                        dict.fromkeys(names, "v2\n"))
+        r = self.sync("--dry-run", project=str(remote), loam=tpl, sha=sha)
+        self.assertEqual(0, r.returncode, r.stdout + r.stderr)
+        for name in names:
+            self.assertEqual("project\n", (self.work / "project" / name).read_text(), name)
+        self.assertEqual(4, self.claude_calls()[0]["prompt"].count("\n-v1\n+v2\n"))
+
+    def test_the_port_cannot_redirect_the_copy_back(self) -> None:
+        # The model can edit anything under the port dir it is given.
+        outside = self.base / "outside"
+        outside.mkdir()
+        r = self.sync("--dry-run", mode="redirect", env={"SYNC_STUB_OUTSIDE": str(outside)})
+        self.assertEqual(0, r.returncode, r.stdout + r.stderr)
+        self.assertEqual([], list(outside.iterdir()))
+        self.assertEqual('{"a": 3}', git("show", "HEAD:conf.json", cwd=self.work / "project"))
+
+    def test_the_pr_body_names_the_rulings_when_nothing_conflicts(self) -> None:
+        tpl, remote, sha = self.fixture("clean", {"a.md": "v1\n"}, {}, {"a.md": "v2\n"})
+        trial = self.base / "trial-rulings.md"
+        trial.write_text("- a.md: keep ours.\n")
+        blob = run(["git", "hash-object", str(trial)]).stdout.strip()
+        r = self.sync("--dry-run", "--rulings", str(trial), project=str(remote), loam=tpl, sha=sha)
+        self.assertEqual(0, r.returncode, r.stdout + r.stderr)
+        self.assertEqual([], self.claude_calls())
+        body = (self.work / "pr-body.md").read_text()
+        self.assertTrue(any(str(trial) in line and blob in line for line in body.splitlines()), body)
+
+    def test_a_typescript_project_keeps_the_pyright_strip_without_a_conflict(self) -> None:
+        # copier.yml task 1 strips the pyright-lsp plugin for a non-Python kind in all three
+        # renders. With tasks skipped, the strip in the project conflicts with the template's new
+        # key beside it, and the template's side of that hunk re-adds the plugin.
+        def dump(d: dict) -> str:
+            return json.dumps(d, indent=2) + "\n"
+
+        plugin = {"pyright-lsp@claude-plugins-official": True}
+        v1 = {"enabledPlugins": plugin, "permissions": {"deny": ["Bash(rm -rf:*)"]}}
+        v2 = {"enabledPlugins": plugin, "cleanupPeriodDays": 365, "permissions": {"deny": ["Bash(rm -rf:*)"]}}
+        path = ".claude/settings.json"
+        tpl, remote, sha = self.fixture("ts", {path: dump(v1)}, {path: dump({**v1, "enabledPlugins": {}})},
+                                        {path: dump(v2)}, "-d", "project_kind=typescript")
+        r = self.sync("--dry-run", project=str(remote), loam=tpl, sha=sha)
+        self.assertEqual(0, r.returncode, r.stdout + r.stderr)
+        self.assertEqual([], self.claude_calls())  # nothing left for the port
+        self.assertEqual(dump({**v2, "enabledPlugins": {}}), (self.work / "project" / path).read_text())
 
     def commit_rulings(self, text: str) -> str:
         clone = self.base / "rulings-clone"
