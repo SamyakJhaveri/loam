@@ -345,5 +345,81 @@ class UpdateSmoke(unittest.TestCase):
                         )
 
 
+class UpdateTasks(unittest.TestCase):
+    """`copier update` also runs _tasks in two temp renders that have no .git and no origin.
+
+    A first-render task there commits "Initial commit from loam" and runs _gh_setup.sh, which
+    pushes and posts a ruleset to the real repo. Stub gh and git push, and log what runs.
+    """
+
+    def test_update_runs_no_first_render_task(self):
+        cmd = _copier()
+        with tempfile.TemporaryDirectory() as d:
+            tmp = pathlib.Path(d).resolve()
+            tpl, stubs, log, proj = tmp / "tpl", tmp / "stubs", tmp / "calls.log", tmp / "p"
+            env = {
+                **GIT_ENV,
+                "PATH": f"{stubs}{os.pathsep}{os.environ['PATH']}",
+                # A push the stub misses goes to a missing local path, never to GitHub.
+                "GIT_CONFIG_COUNT": "3",
+                "GIT_CONFIG_KEY_2": f"url.{tmp}/offline/.insteadOf",
+                "GIT_CONFIG_VALUE_2": "https://github.com/",
+            }
+            stubs.mkdir()
+            (stubs / "gh").write_text(f'#!/bin/sh\necho "gh $* (in $PWD)" >> "{log}"\n')
+            (stubs / "git").write_text(
+                "#!/bin/sh\n"
+                f'case "$1" in push|commit) echo "git $* (in $PWD)" >> "{log}";; esac\n'
+                '[ "$1" = push ] && exit 0\n'
+                f'exec "{shutil.which("git")}" "$@"\n'
+            )
+            for stub in stubs.iterdir():
+                stub.chmod(0o755)
+
+            def git(cwd: pathlib.Path, *args: str) -> str:
+                return subprocess.run(
+                    ["git", "-c", "user.email=t@t", "-c", "user.name=t", *args],
+                    cwd=cwd, check=True, capture_output=True, text=True, env=env,
+                ).stdout
+
+            def copier(*args: str) -> None:
+                r = subprocess.run(cmd + [*args, "--trust", "--defaults"], capture_output=True, text=True, env=env)
+                self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+
+            # Both template versions carry this checkout's tasks: copier runs the old
+            # version's tasks in the old temp render, so a real older tag would test that tag.
+            listed = git(ROOT, "ls-files", "-z", "--cached", "--others", "--exclude-standard", "copier.yml", "seed")
+            for rel in filter(None, listed.split("\0")):
+                if os.path.lexists(ROOT / rel):
+                    (tpl / rel).parent.mkdir(parents=True, exist_ok=True)
+                    shutil.copy2(ROOT / rel, tpl / rel, follow_symlinks=False)
+            git(tpl, "init", "-q")
+            git(tpl, "add", "-A")
+            git(tpl, "commit", "-qm", "old")
+            git(tpl, "tag", "v1.0.0")
+            git(tpl, "commit", "-q", "--allow-empty", "-m", "new")
+            git(tpl, "tag", "v1.0.1")
+
+            copier("copy", "--vcs-ref=v1.0.0", "--data", "project_name=smoke",
+                   "--data", "github_repo=loam-test/never-created", str(tpl), str(proj))
+            # The copy path still runs every task in the new project.
+            calls = log.read_text()
+            self.assertEqual(git(proj, "log", "--format=%s"), "Initial commit from loam\n")
+            self.assertIn(f"gh repo view loam-test/never-created (in {proj})", calls)
+            self.assertIn(f"git push -u origin main (in {proj})", calls)
+            self.assertFalse((proj / "_gh_setup.sh").exists())
+            self.assertEqual(git(proj, "status", "--porcelain"), "")
+
+            log.unlink()
+            copier("update", "--vcs-ref=v1.0.1", str(proj))
+            calls = log.read_text() if log.exists() else ""
+            bad = [
+                ln for ln in calls.splitlines()
+                if ln.startswith(("gh ", "git push")) or "Initial commit from loam" in ln
+            ]
+            if bad:
+                self.fail("first-render tasks ran during copier update:\n" + "\n".join(bad))
+
+
 if __name__ == "__main__":
     unittest.main()
