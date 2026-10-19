@@ -95,21 +95,32 @@ REPO="$(sed -n 's/^github_repo: //p' "$ANSWERS" | tr -d "'\"")"
 if [ -z "$RULINGS" ] && [ -f .loam/sync-rulings.md ]; then RULINGS=.loam/sync-rulings.md; fi
 RULINGS_SHA=""
 [ -z "$RULINGS" ] || RULINGS_SHA="$(git hash-object "$RULINGS")"
-# The rulings' `## Copier flags` block holds keep-ours paths as copier flags, one per line. Any
-# other line refuses the run, so a typo cannot drop a ruling and leave it to the port.
+# The rulings' `## Copier flags` section is one fenced block of keep-ours paths as copier flags,
+# one per line. Anything else in the section, a quote, a second such heading, or a near miss of
+# it refuses the run, so a typo cannot drop a ruling and leave it to the port.
 FLAGS=()
 if [ -n "$RULINGS" ]; then
+  block="$(awk 'function bad(m) { err = m; exit }
+    { sub(/\r$/, "") }
+    f == 1 { if (/^```/) f = 2; else out = out $0 "\n"; next }
+    /^[ \t]*#/ && tolower($0) ~ /copier[^a-z]*flags/ {
+      if ($0 !~ /^## Copier flags[ \t]*$/) bad("heading \"" $0 "\" is not exactly ## Copier flags")
+      if (h++) bad("a second ## Copier flags heading")
+      s = 1; next }
+    /^#/ { s = 0 }
+    s && !f && /^```/ { f = 1; next }
+    s && /[^ \t]/ { bad("\"" $0 "\" under ## Copier flags is outside its one fenced block") }
+    END { if (err == "" && h && out !~ /[^ \t\n]/) err = "## Copier flags has no flag lines in a fenced block right under it"
+          if (err != "") { print err; exit 1 }
+          printf "%s", out }' "$RULINGS")" || die "$RULINGS: $block"
   while IFS= read -r line; do
     read -r flag pat extra <<< "$line"
     [ -n "$flag" ] || continue
-    case "$flag" in --skip|--exclude) [ -n "$pat" ] && [ -z "$extra" ] ;; *) false ;; esac ||
-      die "$RULINGS: '$line' under ## Copier flags is not --skip or --exclude and one pattern"
+    case "$flag" in --skip|--exclude) [ -n "$pat" ] && [ -z "$extra" ] ;; *) false ;; esac &&
+      case "$pat" in *[\"\']*) false ;; esac ||
+      die "$RULINGS: '$line' under ## Copier flags is not --skip or --exclude and one unquoted pattern"
     FLAGS+=("$flag" "$pat")
-  done < <(awk '/^```/ && s { if (f) exit; f = 1; next } f { print; next }
-                /^## / { s = ($0 ~ /^## Copier flags[[:space:]]*$/) }' "$RULINGS")
-  if grep -q '^## Copier flags[[:space:]]*$' "$RULINGS" && [ "${#FLAGS[@]}" -eq 0 ]; then
-    die "$RULINGS has a ## Copier flags heading but no flag lines in a fenced block under it"
-  fi
+  done <<< "$block"
 fi
 git checkout -q -b "$BRANCH"
 

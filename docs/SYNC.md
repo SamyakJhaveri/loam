@@ -93,10 +93,13 @@ A ruling that a path must take no template change at all also goes in a `## Copi
 `--skip` keeps a file the project has exactly as it is.
 Copier neither renders over it nor applies the template's diff to it, so even a change Copier would merge cleanly stays out.
 `--skip` still lets Copier create the file when the project lacks it, and delete it when the template removes it.
+So `--skip` re-creates a file the project deleted on purpose, at the template's new content; give such a path `--exclude` instead.
 `--exclude` keeps the path from rendering at all, so Copier never creates, changes or deletes it.
 Patterns follow `.gitignore` rules, and a leading `/` anchors one at the project root, so `/AGENTS.md` does not also match a nested `AGENTS.md`.
-Any other line in the block, or the heading without a fenced block under it, refuses the run before Copier starts.
-The port still reads the whole file, with a line saying these paths need no note, so keep the prose ruling and its reasons beside the block.
+Write patterns without quotes.
+The section holds only blank lines and that one fenced block, up to the next heading.
+The run refuses before Copier starts when a line in the block is anything else, when the section holds any other line or a second block, when the heading appears twice, or when a heading names Copier flags in another form, such as `## Copier Flags` or `### Copier flags`.
+The port still reads the whole file, with a line saying these paths need no note, so keep the prose ruling and its reasons elsewhere in the file.
 The PR body and Copier's commit message show the full command with the flags.
 
 ### Release note: projects rendered from v3.0.0 start dirty

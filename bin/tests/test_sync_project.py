@@ -291,6 +291,45 @@ class SyncProjectTests(unittest.TestCase):
         self.assertIn("--keep /conf.json", r.stderr)
         self.assertEqual([], self.claude_calls())
 
+    def test_refuses_copier_flags_that_could_drop_a_ruling(self) -> None:
+        section = "## Copier flags\n\n```text\n--skip /notes.md\n```\n"
+        cases = {
+            "double-quoted pattern": ('## Copier flags\n\n```text\n--skip "/notes.md"\n```\n', '"/notes.md"'),
+            "single-quoted pattern": ("## Copier flags\n\n```text\n--skip '/notes.md'\n```\n", "'/notes.md'"),
+            "second heading": (section + "\n" + section.replace("notes", "plain"), "second"),
+            "second fence": (section + "\n```text\n--skip /plain.md\n```\n", "```text"),
+            "flag line below the fence": (section + "--skip /plain.md\n", "--skip /plain.md"),
+            "other case": (section.replace("flags", "Flags"), "## Copier Flags"),
+            "other level": ("#" + section, "### Copier flags"),
+            "extra words": (section.replace("flags", "flags (keep ours)"), "keep ours"),
+            "quoted example above": ("````markdown\n" + section.replace("notes", "conf") + "````\n\n" + section,
+                                     "````"),
+            "fence under a subheading": ("## Copier flags\n\n### Keep ours\n\n```text\n--skip /notes.md\n```\n",
+                                         "no flag lines"),
+            "heading only": ("## Copier flags\n\n## Other\n", "no flag lines"),
+            "empty fence": ("## Copier flags\n\n```text\n```\n", "no flag lines"),
+        }
+        for i, (name, (text, needle)) in enumerate(cases.items()):
+            with self.subTest(name):
+                rulings = self.base / f"rulings-{i}.md"
+                rulings.write_text(text)
+                self.work, self.claude_log = self.base / f"work-{i}", self.base / f"claude-{i}.log"
+                r = self.sync("--dry-run", "--rulings", str(rulings))
+                self.assertEqual(1, r.returncode, r.stdout + r.stderr)
+                self.assertIn(needle, r.stderr)
+                self.assertEqual([], self.claude_calls())
+
+    def test_exclude_keeps_a_file_the_project_changed_with_crlf_rulings(self) -> None:
+        # The first test is the control: without the flag conf.json conflicts. CRLF line ends
+        # would otherwise leave a carriage return in the pattern, which then matches nothing.
+        self.commit_rulings("## Copier flags\r\n\r\n```text\r\n--exclude /conf.json\r\n```\r\n")
+        r = self.sync("--dry-run")
+        self.assertEqual(0, r.returncode, r.stdout + r.stderr)
+        self.assertEqual('{"a": 3}', git("show", "HEAD~1:conf.json", cwd=self.work / "project"))
+        prompt = self.claude_calls()[0]["prompt"]
+        self.assertIn("`notes.md` is at", prompt)
+        self.assertNotIn("`conf.json` is at", prompt)
+
     def test_without_rulings_the_prompt_has_no_rulings_section(self) -> None:
         # The two tests above are the control: with a rulings file this sentence is in the prompt.
         r = self.sync("--dry-run")
