@@ -1,6 +1,7 @@
 ---
 name: hypothesis-tree
 description: Persistent hypothesis tree for multi-step, multi-session investigations. Use when a "why does X fail" question branches into sub-hypotheses that must survive across sessions, or when falsifiable claims need tracking with dated, linked evidence. Maintains one markdown file with add, update, review, and prune subcommands, each gated on verifying the cited evidence file exists and supports the claim. NOT for a single-session bug hunt, a one-command question, or general note-taking.
+disable-model-invocation: true
 ---
 
 # hypothesis-tree

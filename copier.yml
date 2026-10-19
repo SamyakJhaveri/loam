@@ -19,6 +19,8 @@ _exclude:
   - ".claude/skill-usage.log"
   # Loam-repo maintenance config (numeric-claim checker); never ships.
   - ".claude/stale-counts.json"
+  # Loam's own verification skill (renders Loam and drives sessions in the render); never ships.
+  - ".claude/skills/verify-loam"
   - ".claude/.local-paths"
   - ".claude/settings.local.json"
   - ".claude/worktrees"
