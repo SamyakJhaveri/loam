@@ -22,6 +22,7 @@ report.md and claude.jsonl stay in the run directory.
 
 Env: VERIFY_DAILY_ROOT (default ~/.local/state/loam/evidence/verify-daily).
 VERIFY_DAILY_TIMEOUT: seconds before claude is killed (default 14400, 4 h).
+VERIFY_DAILY_ORIGIN: the repo to clone (default: this checkout's origin).
 The run's own TMPDIR and LOAM_MEMSTORE live inside the clone, so it never
 writes to ~/memstore or another run's files.
 EOF
@@ -38,7 +39,7 @@ for arg in "$@"; do
 done
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-origin="$(git -C "$ROOT" remote get-url origin)"
+origin="${VERIFY_DAILY_ORIGIN:-$(git -C "$ROOT" remote get-url origin)}"
 stamp="$(date +%Y-%m-%dT%H%M%S)"
 run="${VERIFY_DAILY_ROOT:-$HOME/.local/state/loam/evidence/verify-daily}/$stamp"
 clone="$run/loam"

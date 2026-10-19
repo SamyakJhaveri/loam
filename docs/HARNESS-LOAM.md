@@ -43,7 +43,11 @@ A `changed` run keeps its clone in `<stamp>/loam` for the owner to review; every
 `--probe` checks claude, login and an enabled pstack plugin at $0.
 
 The daily schedule is a launchd job the owner installs after merge; nothing in the repo installs it.
-Save this as `~/Library/LaunchAgents/com.samyakjhaveri.verify-loam-daily.plist`.
+macOS privacy rules refuse a launchd job any read under `~/Desktop` ("Operation not permitted", checked 2026-10-18), so the job runs an installed copy and clones from GitHub:
+
+    install -m 755 bin/verify-loam-daily ~/.local/bin/verify-loam-daily
+
+Reinstall the copy after the script changes. Save this as `~/Library/LaunchAgents/com.samyakjhaveri.verify-loam-daily.plist`.
 Its PATH must name the directories that hold the toolchain `claude`, `uvx` (`~/.local/bin`), `jq` (Homebrew), and `git` and `perl` (`/usr/bin`); change the node directory when the toolchain moves to a new node version.
 
 ```xml
@@ -55,7 +59,7 @@ Its PATH must name the directories that hold the toolchain `claude`, `uvx` (`~/.
   <string>com.samyakjhaveri.verify-loam-daily</string>
   <key>ProgramArguments</key>
   <array>
-    <string>/Users/samyakjhaveri/Desktop/loam/bin/verify-loam-daily</string>
+    <string>/Users/samyakjhaveri/.local/bin/verify-loam-daily</string>
   </array>
   <key>StartCalendarInterval</key>
   <dict>
@@ -68,6 +72,8 @@ Its PATH must name the directories that hold the toolchain `claude`, `uvx` (`~/.
   <dict>
     <key>PATH</key>
     <string>/Users/samyakjhaveri/.local/state/loam/toolchains/node-v24.21.0-darwin-arm64/bin:/Users/samyakjhaveri/.local/bin:/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
+    <key>VERIFY_DAILY_ORIGIN</key>
+    <string>https://github.com/SamyakJhaveri/loam.git</string>
   </dict>
   <key>StandardOutPath</key>
   <string>/Users/samyakjhaveri/Library/Logs/verify-loam-daily.log</string>
