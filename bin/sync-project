@@ -271,7 +271,8 @@ for s in .claude/skills/verify-*/SKILL.md; do
   {
     echo "Use the \`$name\` skill in this checkout: read \`$s\` first and follow it."
     echo "Prove that the project still works after a Loam template sync. Files changed since $BASE_SHA:"
-    git diff --name-status "$BASE_SHA" HEAD | head -n 200
+    # Not head: it exits after 200 lines, git dies of SIGPIPE, and pipefail ends the run.
+    git diff --name-status "$BASE_SHA" HEAD | sed -n '1,200p'
     echo "Run the skill's launch and doctor, drive the features the changed files touch, then run its cleanup."
     echo "Do not edit, stage or commit tracked files."
     echo "End your reply with exactly one line: \`VERIFY: PASS\`, \`VERIFY: FAIL <reason>\` or \`VERIFY: BLOCKED <reason>\`."
