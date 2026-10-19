@@ -10,7 +10,8 @@
 #
 # The error-signature normalizer (first 100 chars, digits -> N) is ported from
 # SuperClaude src/superclaude/pm_agent/reflexion.py (_create_error_signature, MIT);
-# see the memory-v2 plan's "Borrowed code" note. Commit hash not pinned here.
+# license text in THIRD_PARTY_NOTICES; see the memory-v2 plan's "Borrowed code"
+# note. Commit hash not pinned here.
 #
 # Store root: $LOAM_MEMSTORE, default ~/memstore.
 # Usage: mem-weekly.sh [--dry-run]

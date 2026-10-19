@@ -18,8 +18,9 @@
 #
 # The secret scrubber ports key patterns from agentmemory src/functions/privacy.ts
 # (Apache-2.0) and the PEM-block and URL-credential patterns from Hindsight
-# hindsight-api-slim/tests/test_memory_defense.py (MIT); see the memory-v2 plan's
-# "Borrowed code" note. Commit hashes are not pinned in this checkout.
+# hindsight-api-slim/tests/test_memory_defense.py (MIT); license texts in
+# THIRD_PARTY_NOTICES; see the memory-v2 plan's "Borrowed code" note. Commit
+# hashes are not pinned in this checkout.
 #
 # Store root: $LOAM_MEMSTORE, default ~/memstore.
 # Exit codes: 0 = always (advisory hook, never blocks).
