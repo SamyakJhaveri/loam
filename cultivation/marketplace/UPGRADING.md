@@ -3,6 +3,15 @@
 This file records why a promoted plugin change traveled. It is also the upgrade
 entry point for projects that consume the Loam marketplace.
 
+## sam-cc-setup v0.9.10 codex-review runs one bare codex exec
+
+`/codex-review` no longer pipes `git diff` into Codex.
+It runs one Bash call that starts with `codex exec`, with no pipe or redirect, and Codex runs `git diff` itself.
+A sandbox exclusion such as `codex exec *` now matches the call, so Codex no longer runs inside Claude's sandbox, where it can fail to reach its API or to start its own sandbox.
+Findings left unfixed go to the project's issue tracker once the user agrees, not to the retired `docs/findings/FINDINGS.md`.
+No agent prompt changed, so no grader replay is owed.
+Upgrade step: `claude plugin update sam-cc-setup`.
+
 ## sam-cc-setup v0.9.7 brief names the render proof
 
 The `/brief` skill's Track B now says a Loam ticket that changes rendered-project behavior proves it with `control-loam`, in the form `docs/factory/CONTRACT.md` gives.

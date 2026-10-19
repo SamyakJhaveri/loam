@@ -31,7 +31,6 @@ workspace-write, which would violate this rule). Findings come back as text; Cla
 # assuming `main` (repos on master/trunk would otherwise fail here).
 DEFAULT_BRANCH=$(git symbolic-ref --short refs/remotes/origin/HEAD 2>/dev/null | sed 's#^origin/##')
 SCOPE="${ARGUMENTS:-${DEFAULT_BRANCH:-main}...HEAD}"   # $ARGUMENTS if provided, else the branch diff
-BRANCH=$(git rev-parse --abbrev-ref HEAD)
 set -o pipefail
 
 # Custom scopes must be one Git revision or revision range, never options/pathspecs.
@@ -92,37 +91,45 @@ git --no-pager diff "$SCOPE" | git hash-object --stdin
 
 If the diff is empty, stop and report "nothing to review for `<scope>`".
 
-### Step 2 - Run Codex (read-only, diff piped via stdin)
+### Step 2 - Run Codex (read-only, one bare command)
 
 First write one paragraph of intent: what the change is meant to do, from the user's request and
 the commit messages in scope (`git log --format='%s%n%b' "$LEFT..${RIGHT:-HEAD}"`). State only
 the intended behavior, never why it was built this way: the reviewer stays blind to the author's
 reasoning, as in `plan-review`. If the intent is unclear, ask the user before running Codex.
 
-Pipe the fixed diff on **stdin**. Keep the sandbox read-only. Use the configured Codex
-model with high review effort. Inspect `codex --help` and the active provider config before
-adding any model ID or unsupported effort value. `-o` saves the durable final report.
+Codex reads the diff itself with `git diff`; nothing is piped in. Keep the sandbox read-only.
+Use the configured Codex model with high review effort. Inspect `codex --help` and the active
+provider config before adding any model ID or unsupported effort value. `-o` saves the durable
+final report. Pick its path:
 
 ```bash
 mkdir -p .claude/codex-reviews
-SAFE_BRANCH="${BRANCH//\//-}"
-OUT=".claude/codex-reviews/$(date +%F)-${SAFE_BRANCH}.md"
-INTENT='<one paragraph: what the change is meant to do>'   # no single quotes inside
+echo ".claude/codex-reviews/$(date +%F)-$(git rev-parse --abbrev-ref HEAD | tr / -).md"
+```
 
-git --no-pager diff "$SCOPE" | codex exec --sandbox read-only \
-  -c model_reasoning_effort=high -o "$OUT" \
-  "You are a second-opinion code reviewer. The change is meant to do this: $INTENT \
+Then run Codex as its own Bash call that starts with `codex exec`, with `<out>`, `<scope>`, and
+`<intent>` written in literally. A sandbox exclusion such as `codex exec *` matches only that bare
+command. Behind a pipe, an assignment, `&&`, or any redirect, even `< /dev/null`, Claude Code runs
+Codex inside its sandbox, where Codex can fail to reach its API or to start its own sandbox. Leave
+no `<` anywhere in the command, prompt included: then Claude Code gives the call an empty stdin;
+with one, it leaves stdin open and Codex waits on it forever (both checked on Claude Code 2.1.303).
+Write `<intent>` as plain prose without quotes, backticks, `$`, `\`, or `<`.
+
+```bash
+codex exec --sandbox read-only -c model_reasoning_effort=high -o "<out>" \
+  "You are a second-opinion code reviewer. The change is meant to do this: <intent> \
 Review whether the diff achieves that intent well; do not question the intent itself. \
-Review the diff in the <stdin> block against \
-the current repository (you may read files read-only for context). Respond in <=60 lines: \
-first line a single verdict - SHIP, FIX FIRST, or REWORK - then findings grouped under \
-Critical / High / Medium / Low, each with file:line and a one-line fix. Omit empty groups. \
+Read the diff yourself by running git --no-pager diff <scope>, and read files in the \
+current repository read-only for context. Respond in at most 60 lines: first line a single \
+verdict - SHIP, FIX FIRST, or REWORK - then findings grouped under Critical / High / \
+Medium / Low, each with file:line and a one-line fix. Omit empty groups. \
 Be terse; no preamble."
 ```
 
 ### Step 3 - Triage back into the session
 
-- Read the verdict block from `$OUT` (Codex prints nothing inline with `-o`).
+- Read the verdict block from `<out>` (Codex prints nothing inline with `-o`).
 - Judge each finding yourself; Codex's verdict and severity are input, not the decision. Check
   it against the code first: a hypothetical input is a finding only if a real caller can pass it.
 - Put every finding in exactly one bucket, with a one-line reason:
@@ -135,11 +142,11 @@ Be terse; no preamble."
     Codex could not see. Look harder at a security or correctness finding before dismissing it.
 - If every finding is a nit or a preference, say the change is probably fine.
 - Report the four buckets in that order.
-- Append every Act on or Consider finding you do not fix in this session as a row to
-  `docs/findings/FINDINGS.md` (columns: Date | Source | Severity | Path:line | Finding |
-  Status | Closing commit; create the file with that header if it is missing). When you
-  later fix a row, fill its closing commit instead of deleting the row.
-- Record the diff fingerprint in `$OUT`. Reuse this report while the fingerprint and
+- For every Act on or Consider finding you do not fix in this session, file an issue in the
+  project's tracker once the user agrees: follow `docs/agents/issue-tracker.md` when the
+  project has one (in Loam, `gh issue create`); with no tracker, list them in the reply.
+  Close the issue from the commit that later fixes it.
+- Record the diff fingerprint in `<out>`. Reuse this report while the fingerprint and
   criteria are unchanged. Review again only after material changes or for a named risk.
 
 ## What NOT to do
