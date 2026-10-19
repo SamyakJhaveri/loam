@@ -4,12 +4,12 @@ Each standing rule for Loam work, paired with what fails when an agent breaks it
 "Prose" means nothing fails; prefer a check, and keep prose for judgment calls.
 When the owner corrects an agent, fix the mistake and add or update its row here.
 If the row already says "prose" and the rule is checkable, add the check in the same change.
-Drop a row once its mistake cannot happen.
+Keep rows a check enforces, so each enforcer stays findable; drop a row only when its mistake can no longer happen at all.
 
 | Rule | Home | Enforcer |
 |------|------|----------|
-| No em dash (U+2014) in Loam-owned text | owner rule, #237 | check: `bin/check` step "no em dash in Loam-owned text" (exempt paths listed there) |
-| Run `bin/check` before every commit | `AGENTS.md` rule 3 | prose, kept by ruling; CI runs `bin/check` on every push and PR, and the GitHub ruleset "main requires CI" gates `main` |
+| No em dash (U+2014), raw or JSON-escaped, in Loam-owned text | owner rule, #237 | check: `bin/check` step "no em dash in Loam-owned text" (exempt paths listed there) |
+| Run `bin/check` before every commit | `AGENTS.md` rule 3 | prose, kept by ruling; CI runs `bin/check` after every push and on PRs, and the GitHub ruleset "main requires CI" requires it for PR merges, but an admin push to `main` bypasses it |
 | Commit identities are public or noreply | `bin/ip-sweep.sh` | check: `bin/check` step "commit identities" |
 | A plugin file change bumps its version | `bin/plugin_versions.py` | check: `bin/check` step "plugin versions" |
 | Skills and agents name only paths, skills and agents that exist | `bin/check` | check: `bin/check` step "skill and agent frontmatter + references" |
@@ -24,12 +24,12 @@ Drop a row once its mistake cannot happen.
 
 ## Checkable, not yet enforced
 
-Repeated mistakes found by the `/pstack:correct` pass of 2026-10-19.
-Each has a cheap check; none is built yet.
+Mistakes that have a cheap check but no enforcer yet, each tracked as an issue.
+Move a row into the table above when its check lands.
 
-| Mistake | Evidence | Live instance | Cheapest check |
-|---------|----------|---------------|----------------|
-| `cmd \| grep -q` or `\| head` under `pipefail`, where the early exit fails the pipe | 687fc04, b086ef1, a2ec7df | `bin/factory:1869` | grep tracked `pipefail` shell files for a pipe into `grep -q` or `head`; capture output first instead |
-| bash 4 or GNU-only forms that break on macOS bash 3.2 and BSD tools | c29ef01, dfd7f3b, 0171ae5, 4c008a2 | `bin/factory:1224` (`mapfile`) | grep tracked shell files for `mapfile`, `readarray`, `xargs -r`, `stat -c`, `timeout`, `grep -P`; or a macOS CI job |
-| Docs name paths that no longer exist | 40297f1, 3fc894f, c9ccc45 | not measured | run the `bin/check` path check on `docs/**/*.md` (not `docs/archive/`) and `seed/docs/` |
-| Trailing whitespace in a new file not yet added passes locally, then fails in CI | blast-radius pass of 2026-10-19 | `bin/check` `git diff --check` steps skip untracked files | add `git diff --check --no-index /dev/null <file>` for each `git ls-files --others --exclude-standard` file |
+| Mistake | Evidence | Issue |
+|---------|----------|-------|
+| `cmd \| grep -q` or `\| head` under `pipefail`, where the early exit fails the pipe | 687fc04, b086ef1, a2ec7df; live in `bin/factory` `precondition_lines` | #279 |
+| bash 4 or GNU-only forms that break on macOS bash 3.2 and BSD tools | c29ef01, dfd7f3b, 0171ae5, 4c008a2; live in `bin/factory` `build_evidence` (`mapfile`) | #280 |
+| Docs name paths that no longer exist | 40297f1, 3fc894f, c9ccc45 | #281 |
+| Trailing whitespace in a new file not yet added passes locally, then fails in CI | `git diff --check` in `bin/check` reads only tracked files | #282 |

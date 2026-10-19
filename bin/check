@@ -138,24 +138,32 @@ python3 bin/skill_listing_weight.py --root "$ROOT" --budget seed=85 --budget "sa
 
 step "always-loaded prose cap"
 # Root CLAUDE.md, AGENTS.md and what they load reach every Loam session. No-growth cap in bytes,
-# set to the measured size on 2026-10-18. Lower it when the prose shrinks; raise it only in the
-# PR that grows the prose, with the reason in that PR. 4643 (2026-10-19): +46 for the docs/RULES.md row (#237).
-python3 bin/always_loaded_prose.py --root "$ROOT" --cap 4643 || bad "always-loaded prose over its cap"
+# set to the measured size. Lower it when the prose shrinks; raise it only in the
+# PR that grows the prose, with the reason in that PR.
+python3 bin/always_loaded_prose.py --root "$ROOT" --cap 4681 || bad "always-loaded prose over its cap"
 
 step "no em dash in Loam-owned text"
-# The owner's standing rule (#237). Exempt only text Loam does not own or must not rewrite.
+# The owner's standing rule (#237), raw or JSON-escaped. Exempt only text Loam does not own or must not rewrite.
 EM_EXEMPT=(
-  ":(exclude)cultivation/parked/"                             # removed upstream assets, not shipped
-  ":(exclude)docs/archive/"                                   # frozen historical records
-  ":(exclude)docs/architecture-working/asset-intake/sources/" # verbatim captured sources
-  ":(exclude)docs/research/primary-2026-09-08/"               # quoted upstream pages
-  ":(exclude)evals/"                                          # recorded grader prompts; a replay must see them unchanged
-  ":(exclude)seed/.loam/runtime/assets/curated-catalog.json"  # pinned catalog body quoting upstream metadata
+  ":(exclude)cultivation/parked/"                                       # byte-pinned by the curated catalog; an edit needs a re-pin
+  ":(exclude)docs/archive/"                                             # frozen historical records
+  ":(exclude)docs/architecture-working/asset-intake/sources/"           # verbatim captured sources
+  ":(exclude)docs/architecture-working/asset-intake/loam-inventory.json" # generated inventory quoting other files
+  ":(exclude)docs/research/primary-2026-09-08/"                         # quoted upstream pages
+  ":(exclude)evals/"                                                    # recorded grader prompts; a replay must see them unchanged
+  ":(exclude)seed/.loam/runtime/assets/curated-catalog.json"            # sha256-pinned in seed/.loam/runtime/release-manifest.json
 )
-# --untracked: a new file not yet added fails here, as it will in CI. git grep exits 1 only when
-# nothing matched; 0 is a hit and anything else is an error, so both fail.
-git grep --untracked -n -I $'\xe2\x80\x94' -- . "${EM_EXEMPT[@]}"
-[ "$?" -eq 1 ] || bad "em dash (U+2014) in the lines above, or git grep failed; use a plain dash '-' instead"
+# --untracked: a new file not yet added fails here, as it will in CI. git grep exits 1 when nothing
+# matched, and also after an error it does not treat as fatal, so any stderr fails the step too.
+# The [4] keeps this line from matching its own escape pattern.
+EM_ERR="$(mktemp)"
+git grep --untracked -n -I -e $'\xe2\x80\x94' -e '\\u201[4]' -- . "${EM_EXEMPT[@]}" 2>"$EM_ERR"
+case "$?:$(wc -c <"$EM_ERR" | tr -d ' ')" in
+  1:0) ;;
+  0:0) bad "em dash in the lines above (raw or JSON-escaped); use a plain dash '-' instead" ;;
+  *)   cat "$EM_ERR"; bad "the em-dash search did not read every file; fix the git grep errors above" ;;
+esac
+rm -f "$EM_ERR"
 
 step "claude plugin validate"
 if command -v claude >/dev/null 2>&1; then
