@@ -1356,7 +1356,7 @@ blocking_findings() {
 # unattended run finds is tracked by nobody; file each line once per run as a needs-triage issue. Never calls
 # finish: a filing failure is logged and the run still opens its PR.
 file_backlog() { # judge.json issue pr-url
-  jq -r '.backlog[]?' "$1" 2> /dev/null | file_issues "judge backlog" "$2" "$3"
+  jq -r '.backlog[]? | gsub("\\s*\n\\s*"; " ")' "$1" 2> /dev/null | file_issues "judge backlog" "$2" "$3"
 }
 
 file_issues() { # source issue pr-url, one issue per stdin line
