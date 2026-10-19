@@ -868,26 +868,17 @@ limit_wait() { # result.json -> 0 after waiting, 1 when the reply is not a usage
 # ---- step 4: round 0 --------------------------------------------------------
 # Every non-guard check must fail on base; one that passes there cannot prove the ticket.
 
-check_names() { # pass|fail, a block on stdin -> the names it reports with that word, sorted
-  grep -oE "(^|[[:space:]])$1[[:space:]]+\"?[A-Za-z0-9_.-]+" | awk '{print $NF}' | tr -d '"' | sort -u
-}
-
-# Run the frozen checks from dir into out. A block that aborts, or leaves a check without a result, is never
-# green (#180): a non-zero exit with no FAIL line adds FAIL checks-aborted, and each name the block writes as
-# both `pass NAME` and `fail NAME` that printed neither line adds FAIL missing-result NAME. Requiring both
-# words skips the word after "pass" in a fail reason ("does not pass both").
+# Run the frozen checks from dir into out. A block that aborts before it prints a FAIL line is never green
+# (#180): a non-zero exit with no FAIL line adds FAIL checks-aborted. Check names are not read from the block,
+# because a check can quote a ticket body or a script whose pass and fail words are not top-level checks.
 run_checks() { # dir out
-  local rc b printed
+  local rc
   ( cd "$1" && "$RUN/frozen/checks.sh" ) > "$2" 2>&1
   rc=$?
   if [ "$rc" -ne 0 ] && ! grep -q '^FAIL' "$2"; then
     log "checks.sh exited $rc with no FAIL line"
     printf 'FAIL checks-aborted: checks.sh exited %s with no FAIL line\n' "$rc" >> "$2"
   fi
-  b=$(dc_block | grep -v '^[[:space:]]*#')
-  printed=$(sed -nE 's/^(PASS|FAIL) ([A-Za-z0-9_.-]+).*/\2/p' "$2" | sort -u)
-  comm -23 <(comm -12 <(check_names pass <<<"$b") <(check_names fail <<<"$b")) <(printf '%s\n' "$printed") \
-    | sed 's/^/FAIL missing-result /' >> "$2"
 }
 
 round_zero() {
@@ -907,9 +898,10 @@ round_zero() {
   fi
   run_checks "$wt" "$out"
   git -C "$MAIN_CHECKOUT" worktree remove --force "$wt" > /dev/null 2>&1
-  msg=$(grep -E '^FAIL (checks-aborted|missing-result)' "$out" | sed 's/^FAIL //' | paste -sd ',' -)
-  [ -z "$msg" ] || finish ticket-defect "the block does not report every check on $(cut -c1-8 "$RUN/base.sha") ($msg); see $out"
-  guards=$(dc_block | grep 'guard' | check_names pass)
+  grep -q '^FAIL checks-aborted' "$out" \
+    && finish ticket-defect "checks.sh aborted on $(cut -c1-8 "$RUN/base.sha") before it printed a FAIL line; see $out"
+  guards=$(dc_block | grep 'guard' | grep -oE '(^|[[:space:]])pass[[:space:]]+"?[A-Za-z0-9_.-]+' \
+    | awk '{print $NF}' | tr -d '"' | sort -u)
   while read -r _ name _; do
     printf '%s\n' "$guards" | grep -qxF "$name" && continue
     finish ticket-defect "check $name passes on $(cut -c1-8 "$RUN/base.sha"), so it cannot prove the ticket; see $out"
