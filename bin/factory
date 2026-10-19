@@ -79,6 +79,13 @@ section() { awk -v want="## $1" '$0 == want {inb=1; next} /^## /{inb=0} inb {pri
 # The done-checks fenced block, without its fences.
 dc_block() { awk '/^```done-checks$/{inb=1; next} /^```/{if (inb) exit} inb {print}' <<<"$BODY"; }
 
+# The block's checks one per line: continuations joined; indentation, blank lines, and comments dropped.
+dc_checks() { dc_block | sed -e :a -e '/\\$/N; s/\\\n//; ta' -e 's/^[[:space:]]*//' -e '/^#/d' -e '/^$/d'; }
+
+# A check prefixed `guard` is a regression guard allowed to pass on base (CONTRACT.md, Done checks). Lint and
+# round 0 both match dc_checks against this, so a check that only mentions the word, like "safeguard", is not one.
+GUARD_RE='^guard[[:space:]]'
+
 # Word-like tokens in stdin, backticks and sentence punctuation stripped. A token holding a glob or a
 # shell expansion is not a path a ticket promises.
 tokens() { tr -s ' \t' '\n\n' | tr -d '`",' | sed 's/[.,;:)]*$//' | grep -vE '[*$?{}]'; }
@@ -208,12 +215,9 @@ check_worker() {
 check_not_grep_only() {
   local line n=0 g=0
   while IFS= read -r line; do
-    line=${line#"${line%%[![:space:]]*}"}
-    [ -n "$line" ] || continue
-    case "$line" in \#*|guard[[:space:]]*) continue ;; esac
     n=$((n + 1))
     grep -qE '^(![[:space:]]*)?grep[[:space:]]' <<<"$line" && g=$((g + 1))
-  done < <(dc_block | sed -e :a -e '/\\$/N; s/\\\n//; ta')
+  done < <(dc_checks | grep -vE "$GUARD_RE")
   if [ "$n" -eq 0 ]; then
     err "every done-check is a guard; add one that fails on main and drives the real behavior"
   elif [ "$g" -eq "$n" ]; then
@@ -885,7 +889,7 @@ round_zero() {
   fi
   ( cd "$wt" && "$RUN/frozen/checks.sh" ) > "$out" 2>&1
   git -C "$MAIN_CHECKOUT" worktree remove --force "$wt" > /dev/null 2>&1
-  guards=$(dc_block | grep 'guard' | grep -oE '(^|[[:space:]])pass[[:space:]]+"?[A-Za-z0-9_.-]+' \
+  guards=$(dc_checks | grep -E "$GUARD_RE" | grep -oE '(^|[[:space:]])pass[[:space:]]+"?[A-Za-z0-9_.-]+' \
     | awk '{print $NF}' | tr -d '"' | sort -u)
   while read -r _ name _; do
     printf '%s\n' "$guards" | grep -qxF "$name" && continue
