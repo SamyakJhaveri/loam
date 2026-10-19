@@ -869,7 +869,9 @@ limit_wait() { # result.json -> 0 after waiting, 1 when the reply is not a usage
 # Every non-guard check must fail on base; one that passes there cannot prove the ticket.
 
 round_zero() {
-  local out="$RUN/round-0.checks" guards name base wt msg
+  # The block writes round-0.out; only a clean verdict renames it to round-0.checks, the file cmd_run
+  # resumes on, so a relaunch after a defect, or after a kill mid-block, runs round 0 again.
+  local out="$RUN/round-0.out" guards name base wt msg
   base=$(cat "$RUN/base.sha"); wt="${WORKTREE}-base"
   # Round 0 belongs to base only: run the frozen checks at base.sha in a detached temporary
   # worktree, never in the ticket worktree, which a relaunch may leave ahead of base with the
@@ -891,6 +893,7 @@ round_zero() {
     printf '%s\n' "$guards" | grep -qxF "$name" && continue
     finish ticket-defect "check $name passes on $(cut -c1-8 "$RUN/base.sha"), so it cannot prove the ticket; see $out"
   done < <(grep '^PASS ' "$out")
+  mv "$out" "$RUN/round-0.checks"
   log "round 0 at $(cut -c1-8 "$RUN/base.sha"): every non-guard check fails on base"
 }
 
@@ -1486,8 +1489,8 @@ cmd_run() {
   fi
   # A relaunch with an edited body is a new run over a ticket worktree the last run left ahead of
   # base, where the checks may already pass; round 0 runs at base in its own detached worktree, so
-  # base is what it proves. A resume (round-0.checks present) leaves round 0 out: the rounds on disk
-  # already proved base, and ROUND resumes past them.
+  # base is what it proves. A resume (round-0.checks present, written only by a clean round 0) leaves
+  # round 0 out: the rounds on disk already proved base, and ROUND resumes past them.
   if [ ! -f "$RUN/round-0.checks" ]; then
     round_zero
   else

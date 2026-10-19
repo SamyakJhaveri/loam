@@ -70,6 +70,9 @@ class RoundZeroRelaunchTests(unittest.TestCase):
         first = self.launch()
         self.assertEqual(first.returncode, 3, first.stderr)
         self.assertEqual(self.status(), "ticket-defect")
+        # The exit line names the file that holds the passing check.
+        evidence = self.log().splitlines()[-1].rsplit("see ", 1)[1]
+        self.assertIn("PASS has-marker", pathlib.Path(evidence).read_text())
         again = self.launch()
         self.assertNotIn("resuming after round", self.log())
         self.assertNotIn("main_loop from round", again.stdout)
