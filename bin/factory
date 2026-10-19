@@ -250,27 +250,29 @@ EVAL_MODEL=claude-opus-5-5   # ARCHITECTURE.md, Models and roles (2026-09-24)
 EVALS_DIR=evals
 GRADERS_DIR=""
 
-# Graders are plugin agents; a run and an eval both resolve them from the installed plugin cache at the
-# version this checkout's plugin.json names, so both grade with the prompts the repo ships, and the ledger
-# records which file. --graders-dir replaces the search.
+# Graders are plugin agents; a run and an eval both resolve them from the installed plugin cache, taking only a
+# cached file whose sha256 equals this checkout's copy, so both grade with the prompts the repo ships, and the
+# ledger records which file. --graders-dir replaces the search.
 grader_file() {
-  local dirs=("$GRADERS_DIR") want other="" d v f
+  local dirs=("$GRADERS_DIR") ship="$ROOT/cultivation/marketplace/sam-cc-setup/agents" want other="" d f
   if [ -z "$GRADERS_DIR" ]; then
     # `claude plugin update` leaves old versions in the cache, and the newest cached one can still trail the
-    # checkout (every distbench run of 2026-10-13 to 10-17 graded with 0.9.4), so only plugin.json's version counts.
-    want=$(jq -r .version "$ROOT/cultivation/marketplace/sam-cc-setup/.claude-plugin/plugin.json")
+    # checkout (every distbench run of 2026-10-13 to 10-17 graded with 0.9.4). Only the prompt's bytes count:
+    # a version bump that leaves this file alone still matches, and a prompt edit not yet installed does not.
+    want=$(sha256_of < "$ship/$1.md" | cut -d' ' -f1)
+    # Newest version first, so the ledger names the newest matching copy; bash 3.2 (macOS) has no mapfile.
     dirs=()
-    for d in "$HOME"/.claude/plugins/cache/*/sam-cc-setup/*/agents; do
+    while IFS= read -r d; do
       [ -d "$d" ] || continue
-      v=$(basename "$(dirname "$d")")
-      if [ "$v" = "$want" ]; then dirs+=("$d"); else other="$other $v"; fi
-    done
+      if [ -f "$d/$1.md" ] && [ "$(sha256_of < "$d/$1.md" | cut -d' ' -f1)" = "$want" ]; then dirs+=("$d")
+      else other="$other $(basename "$(dirname "$d")")"; fi
+    done < <(printf '%s\n' "$HOME"/.claude/plugins/cache/*/sam-cc-setup/*/agents | sort -rV)
     if [ ${#dirs[@]} -eq 0 ] && [ -n "$other" ]; then
-      echo "the plugin cache holds sam-cc-setup$other, not $want, the version $ROOT ships; run claude plugin update sam-cc-setup@seed-skills (cultivation/marketplace/UPGRADING.md)" >&2
+      echo "$1.md in the plugin cache (sam-cc-setup$other) differs from $ship/$1.md; run claude plugin update sam-cc-setup@seed-skills (cultivation/marketplace/UPGRADING.md)" >&2
       return 1
     fi
-    # With no sam-cc-setup installed at all, the checkout's own copy is the shipped version by construction.
-    [ ${#dirs[@]} -gt 0 ] || dirs=("$ROOT/cultivation/marketplace/sam-cc-setup/agents")
+    # With no sam-cc-setup installed at all, the checkout's own copy is the shipped prompt by construction.
+    [ ${#dirs[@]} -gt 0 ] || dirs=("$ship")
   fi
   for d in "${dirs[@]}"; do
     f="$d/$1.md"
@@ -1612,10 +1614,10 @@ cmd_next() { # [--dry-run|--install]
         log "refused pull of $co: not fast-forward"
       fi
     done
-    # 3b. The pull may bring a sam-cc-setup version the plugin cache does not hold yet. A launched run would
+    # 3b. The pull may bring a judge.md or reviewer.md the plugin cache does not hold yet. A launched run would
     #     assign the ticket and then stop at freeze, and the frontier skips assigned issues, so every tick
     #     would burn one more ticket; refuse on stderr with grader_file's line, as the login gate does.
-    #     Not under --dry-run: a check in a worktree whose plugin.json bump is not installed runs it.
+    #     Not under --dry-run: a check in a worktree whose grader edit is not installed runs it.
     local g
     for g in judge reviewer; do grader_file "$g" > /dev/null || return 1; done
   fi
