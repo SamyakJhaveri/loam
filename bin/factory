@@ -212,7 +212,8 @@ check_worker() {
 }
 
 # A check that greps source text proves the text, not the behavior. A rejection, not a warning: every S1-S5
-# fixture and every frozen ticket under evals/clean has at least one other check (2026-10-18).
+# fixture has at least one other check. Frozen evals/clean tickets 81, 84 and 89 do not once a guarded bin/check
+# counts as a guard (2026-10-19); they are old eval cases, not tickets that run again.
 check_not_grep_only() {
   local line n=0 g=0
   while IFS= read -r line; do
