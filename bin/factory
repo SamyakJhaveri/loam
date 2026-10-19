@@ -1330,9 +1330,10 @@ file_backlog() { # judge.json issue pr-url
 }
 
 # A capped block keeps the body under GitHub's 65536-character limit; the full file stays in the run dir.
+# Blank lines are dropped and not counted, since lib.sh may print one before each result.
 checks_section() { # heading checks-file
   printf '## %s\n\n```\n' "$1"
-  awk -v max=50 -v f="$2" 'NR <= max {print} END {if (NR > max) printf "... %d more lines in %s\n", NR - max, f}' "$2"
+  awk -v max=50 -v f="$2" 'NF {n++; if (n <= max) print} END {if (n > max) printf "... %d more lines in %s\n", n - max, f}' "$2"
   printf '```\n\n'
 }
 
@@ -1352,7 +1353,7 @@ open_pr() { # [draft]: opened at the grader-round cap
     printf '## Merge checklist\n\n'; section "Merge checklist" | grep '^- ' | sed 's/^- /- [ ] /'; printf '\n'
     printf '## Decisions\n\n```\n'; cat "$DECISIONS"; printf '```\n\n'
     checks_section "Checks at base ${base:0:8} (round 0)" "$RUN/round-0.checks"
-    checks_section "Checks at $GRADED_SHA (round $ROUND)" "$RUN/round-$ROUND.checks"
+    checks_section "Checks at the graded sha (round $ROUND)" "$RUN/round-$ROUND.checks"
     printf '## Judge\n\ngraded at %s\n\n```json\n%s\n```\n\n' "$GRADED_SHA" \
       "$(jq -c '{verdict, rows: (.rows // {}), evidence: (.evidence // {})}' "$RUN/round-$ROUND.judge.json")"
     printf '## Reviewer\n\n'
