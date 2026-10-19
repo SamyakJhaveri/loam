@@ -9,7 +9,7 @@ uvx copier copy --trust gh:samyakjhaveri/loam ./my-project
 cd ./my-project
 ```
 
-> **`--trust` is required.** The template runs `_tasks` after rendering (git init, optional GitHub setup). Without `--trust`, Copier skips them silently and the project comes out incomplete.
+> **`--trust` is required.** The template runs `_tasks` after rendering (git init, optional GitHub setup). Without `--trust`, Copier 9.16 refuses the template: it prints `Template uses potentially unsafe feature: tasks.`, exits 4, and renders nothing.
 
 Copier asks three questions: `project_name`, `github_repo` (blank skips GitHub setup), and `project_kind` (gates `pyproject.toml` and the pyright-lsp plugin; python, research, mixed get both).
 

@@ -38,7 +38,8 @@ The factory's dependencies stay under `seed/.loam/runtime/node_modules`. Project
 packages cannot supply a missing compiler or Node type package. Recipient package
 checks execute supplied JavaScript without installing the compiler; see
 [factory setup](seed/docs/runtime/SETUP.md).
-Missing agent CLIs fail the gate; `LOAM_ALLOW_MISSING_AGENT_CLIS=1` permits a reduced local run (CI never sets it).
+A missing `claude` CLI fails the gate unless `LOAM_ALLOW_MISSING_AGENT_CLIS=1` (CI never sets it); a missing `codex` CLI skips its test.
+A reduced run ends `check: PASSED (skipped: ...)` and names each step or test count that did not run.
 
 **Windows note:** template *development* relies on the `.claude -> seed/.claude` symlink.
 Use WSL, or enable Developer Mode and `git config core.symlinks true` before cloning.
@@ -73,7 +74,7 @@ Promotion PRs should state which project battle-tested the skill and what it was
 Copier resolves from **git tags**, not HEAD. After merging significant changes:
 
 ```bash
-bin/release.sh <version>   # needs a green CI run on HEAD; runs the IP sweep, bumps VERSION, tags, pushes
+bin/release.sh <version>   # needs green CI on HEAD and a verify-loam render of HEAD whose doctor and rendered check pass (no sessions); IP sweep, bump VERSION, tag, push, then render the tag from GitHub; a rerun after a failed push resumes at the push
 ```
 
 ## Reporting issues

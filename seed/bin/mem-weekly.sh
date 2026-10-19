@@ -13,20 +13,35 @@
 # see the memory-v2 plan's "Borrowed code" note. Commit hash not pinned here.
 #
 # Store root: $LOAM_MEMSTORE, default ~/memstore.
-# Usage: mem-weekly.sh
+# Usage: mem-weekly.sh [--dry-run]
+#   --dry-run  print the traces the retention step would delete, then exit;
+#              nothing is deleted, written, committed or pushed.
 
 set -uo pipefail
 
 STORE="${LOAM_MEMSTORE:-$HOME/memstore}"
+
+# Retention picks trace files older than 365 days by mtime. Never INDEX.md, never
+# anything under notes/ or reports/.
+old_traces() { find traces -type f -mtime +365 ! -name 'INDEX.md' -print 2>/dev/null; }
+
+case "${1:-}" in
+  "") ;;
+  --dry-run)
+    cd "$STORE" 2>/dev/null && [ -d traces ] || exit 0
+    old_traces | sed 's/^/would delete /'
+    exit 0 ;;
+  *) echo "usage: mem-weekly.sh [--dry-run]" >&2; exit 2 ;;
+esac
+
 mkdir -p "$STORE" || exit 0
 cd "$STORE" || exit 0
 mkdir -p reports
 
-# Retention: drop trace files older than 365 days by mtime, before the reports
-# read them. Never INDEX.md, never anything under notes/ or reports/. Each
-# deletion is logged so a forgotten transcript leaves an audit line.
+# Retention: drop old traces (old_traces above) before the reports read them.
+# Each deletion is logged so a forgotten transcript leaves an audit line.
 if [ -d traces ]; then
-  find traces -type f -mtime +365 ! -name 'INDEX.md' -print 2>/dev/null | while IFS= read -r old; do
+  old_traces | while IFS= read -r old; do
     printf '%s deleted %s\n' "$(date +%F)" "$old" >> reports/retention.log
     rm -f -- "$old" 2>/dev/null || true
   done
