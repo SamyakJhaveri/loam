@@ -39,6 +39,10 @@ WS_EXCLUDE=(":(exclude)*.patch" ":(exclude)*.diff")
 git diff --check "$(git hash-object -t tree /dev/null)" HEAD -- . "${WS_EXCLUDE[@]}" || bad "git diff --check (trailing whitespace or conflict markers)"
 git diff --check HEAD -- . "${WS_EXCLUDE[@]}" || bad "git diff --check HEAD (whitespace or conflict markers in staged or unstaged edits)"
 
+step "commit identities (ip-sweep identity only)"
+# Needs no private term file, so it gates every PR; release.sh still runs the full strict sweep.
+IP_SWEEP_IDENTITY_ONLY=1 bash bin/ip-sweep.sh || bad "ip-sweep identity check"
+
 step "pytest"
 # Always `python3 -m pytest`: hook tests mint a receipt with sys.executable and re-validate it with `python3`.
 # Without pytest-xdist the suite takes ~117 s serial, so build a venv from the CI pins (.venv/ is gitignored).
@@ -127,10 +131,16 @@ PY
 step "skill-listing token weight"
 # No-growth ceilings on the uncalibrated chars/4 estimate, each set to the measured weight:
 # seed after the catchup trim and hypothesis-tree went manual-only, sam-cc-setup after
-# plan-review and surprise-me went manual-only.
+# plan-review and surprise-me went manual-only and the plan-reviewer description was trimmed.
 # Lower one when its listing shrinks; never raise it without saying why.
-python3 bin/skill_listing_weight.py --root "$ROOT" --budget seed=85 --budget "sam-cc-setup=${LISTING_BUDGET:-377}" \
+python3 bin/skill_listing_weight.py --root "$ROOT" --budget seed=85 --budget "sam-cc-setup=${LISTING_BUDGET:-365}" \
   || bad "skill-listing weight over budget"
+
+step "always-loaded prose cap"
+# Root CLAUDE.md, AGENTS.md and what they load reach every Loam session. No-growth cap in bytes,
+# set to the measured size on 2026-10-18. Lower it when the prose shrinks; raise it only in the
+# PR that grows the prose, with the reason in that PR.
+python3 bin/always_loaded_prose.py --root "$ROOT" --cap 4597 || bad "always-loaded prose over its cap"
 
 step "claude plugin validate"
 if command -v claude >/dev/null 2>&1; then
@@ -145,6 +155,15 @@ elif [ "${LOAM_ALLOW_MISSING_AGENT_CLIS:-0}" = "1" ]; then
 else
   bad "claude CLI not found; install it or set LOAM_ALLOW_MISSING_AGENT_CLIS=1"
 fi
+
+step "plugin versions"
+# The bump rule diffs against the merge base with origin/main; test.yml's fetch-depth 0 gives CI that ref.
+python3 -I bin/plugin_versions.py --root "$ROOT"
+case $? in
+  0) ;;
+  3) skip "plugin version-bump rule" "no merge base with origin/main or main" ;;
+  *) bad "plugin versions (see the lines above)" ;;
+esac
 
 step "factory ticket lint"
 for t in bin/factory.d/fixtures/S[1-5].md; do

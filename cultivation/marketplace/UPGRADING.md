@@ -14,6 +14,14 @@ Findings left unfixed go to the project's issue tracker once the user agrees, no
 No agent prompt changed, so no grader replay is owed.
 Upgrade step: `claude plugin update sam-cc-setup`.
 
+## sam-cc-setup v0.9.9 plan-reviewer is manual-only
+
+The `plan-reviewer` agent's description now says it runs only when the user asks for a plan review, and it no longer tells the model to start it before non-trivial work.
+An agent has no `disable-model-invocation` field, so its description is what keeps it manual.
+The always-on listing drops from 377 to 365 estimated tokens.
+plan-reviewer is not a factory grader, so no grader replay is owed.
+Upgrade step: `claude plugin update sam-cc-setup`.
+
 ## sam-cc-setup v0.9.7 brief names the render proof
 
 The `/brief` skill's Track B now says a Loam ticket that changes rendered-project behavior proves it with `control-loam`, in the form `docs/factory/CONTRACT.md` gives.
