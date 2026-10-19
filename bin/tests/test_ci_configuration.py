@@ -31,6 +31,12 @@ class CIConfig(unittest.TestCase):
         self.assertNotIn("continue-on-error:", job)
         self.assertNotIn("if:", job)
 
+    def test_verify_job_fetches_main(self):
+        """bin/plugin_versions.py diffs against origin/main; a shallow checkout would skip its bump rule."""
+        w = TEST.read_text()
+        job = w[w.index("  verify:"):w.index("  stub-sweep:")]
+        self.assertIn("- uses: actions/checkout@v4\n        with:\n          fetch-depth: 0", job)
+
     def test_stub_sweep_job_runs_the_sweep(self):
         """verify-loam's stub sweep runs on every push and PR; a dropped step or a gate would let a break pass."""
         w = TEST.read_text()
