@@ -479,15 +479,16 @@ def cmd_cleanup(a) -> None:
 
 
 def cmd_sweep(a) -> None:
-    # The $0 stub recipes of features/ in one pass, for CI: render, doctor, mem-1 then mem-2 recall, the deny probe
-    # with its ls control, the rendered check. Each step runs one control-loam command and judges its JSON; the first
-    # failure exits 1 naming its recipe, so a break never reads as a pass.
+    # The $0 stub recipes of features/ in one pass, for CI: render, doctor, mem-1 then mem-2 recall, the handoff claimed
+    # once and flagged stale, the deny probe with its ls control, the rendered check. Each step runs one control-loam
+    # command and judges its JSON; the first failure exits 1 naming its recipe, so a break never reads as a pass.
     run = a.run or time.strftime("sweep-%Y%m%d-%H%M%S")
     d = ROOT / run
     passed = []
 
     def fail(recipe: str, why: str) -> None:
-        log = d / "evidence" / {"render": "render.log", "check": "check.txt"}.get(recipe, f"{recipe}.stderr")
+        log = d / "evidence" / {"render": "render.log", "check": "check.txt",
+                                "handoff-stale": "handoff-stale.txt"}.get(recipe, f"{recipe}.stderr")
         out({"ok": False, "run": run, "failed": recipe, "error": f"sweep recipe {recipe} failed: {why}",
              "passed": passed, "log": str(log), "log_tail": log.read_text()[-1500:] if log.is_file() else ""}, 1)
 
@@ -531,6 +532,50 @@ def cmd_sweep(a) -> None:
                for h in s["hooks"]):
         fail("mem-2", f"no SessionStart hook printed '## Memory (render)' with mem-1's INDEX line ({sid8}): mem-1 was not recalled")
     passed.append({"recipe": "mem-2", "proof": f"SessionStart printed '## Memory (render)' with mem-1's INDEX line ({sid8})"})
+
+    # A handoff note in the docs/WORKERS.md format at the path it names, stale on purpose: Written at is not HEAD.
+    note, stale_at = d / "render/.loam/memory/handoff/render.md", "0" * 40
+    note.parent.mkdir(parents=True, exist_ok=True)
+    note.write_text(f"## Goal\nsweep handoff probe {run}\n## Files touched\nnone\n## Commands run\nnone\n## Tried and failed\n"
+                    f"none\n## Open assumptions\nnone\n## Next single action\nnone\n## Written at\n{stale_at}\n")
+    text, archive_dir = note.read_text(), d / "memstore/handoff/render/archive"
+
+    def recall(s: dict) -> str:
+        # mem-recall's whole stdout from the stream; the session summary keeps only its first 400 characters.
+        return next((e["stdout"] for e in stream_events(pathlib.Path(s["evidence"])) if e.get("subtype") == "hook_response"
+                     and (e.get("stdout") or "").startswith("## Memory (render)")), "")
+
+    s = session("handoff-1", "Reply with the single word OK.")
+    hid8 = (s["session_id"] or "")[:8]
+    if not re.search(r"^Loaded: .*, 1 handoff\n## Handoff \(claimed now\)\n" + re.escape(text), recall(s), re.M):
+        fail("handoff-1", "no SessionStart hook printed 'Loaded: ... 1 handoff' and then the whole note under '## Handoff (claimed now)'")
+    archived = sorted(archive_dir.glob("*.md"))
+    if note.exists() or [p.name[-12:] for p in archived] != [f"-{hid8}.md"] or archived[0].read_text() != text:
+        fail("handoff-1", f"the note was not moved to handoff/render/archive/<date>-{hid8}.md: live note "
+                          f"{'still there' if note.exists() else 'gone'}, archive {[p.name for p in archived]}")
+    rel = f"handoff/render/archive/{archived[0].name}"
+    added = sh(["git", "-C", str(d / "memstore"), "log", "--diff-filter=A", "--format=%s", "--", rel]).stdout.strip()
+    if not re.fullmatch(rf"handoff \d{{4}}-\d{{2}}-\d{{2}} render {hid8}", added):
+        fail("handoff-1", f"no store commit 'handoff <date> render {hid8}' added {rel}: {added!r}")
+    passed.append({"recipe": "handoff-1", "proof": f"SessionStart injected the note under '## Handoff (claimed now)' "
+                                                   f"and commit {added!r} archived it as {rel}"})
+
+    s = session("handoff-2", "Reply with the single word OK.")
+    block = recall(s)
+    if not re.search(r"^Loaded: .*, 0 handoff$", block, re.M) or "## Handoff (claimed now)" in block:
+        fail("handoff-2", f"the next start did not print 'Loaded: ... 0 handoff' without the note: {block[:300]!r}")
+    if sorted(archive_dir.glob("*.md")) != archived:
+        fail("handoff-2", f"the archive changed: {[p.name for p in archive_dir.glob('*.md')]}")
+    passed.append({"recipe": "handoff-2", "proof": "the next SessionStart printed 'Loaded: ... 0 handoff' and no note"})
+
+    # mem-recall injects a stale note as it is; catchup's red-flags.sh is the check that calls it stale.
+    r = sh(["bash", ".agents/skills/catchup/red-flags.sh"], cwd=d / "render", env=child_env(d))
+    (d / "evidence" / "handoff-stale.txt").write_text(r.stdout + r.stderr)
+    lines, rel = r.stdout.splitlines(), ".loam/memory/" + rel
+    if f"Handoff: {rel}" not in lines or not any(ln.startswith(f"FLAG: STALE {rel}: Written at {stale_at} is not HEAD")
+                                                 for ln in lines):
+        fail("handoff-stale", f"red-flags.sh did not name {rel} and flag its Written at {stale_at} as not HEAD")
+    passed.append({"recipe": "handoff-stale", "proof": f"red-flags.sh flagged {rel}: Written at {stale_at[:7]}... is not HEAD"})
 
     probe = d / "render/deny-probe"
     probe.mkdir()
@@ -610,7 +655,7 @@ def main() -> None:
     s.add_argument("run")
     s.add_argument("--dry-run", action="store_true")
     s.set_defaults(fn=cmd_cleanup)
-    s = sub.add_parser("sweep", help="render, then the $0 stub recipes (memory, deny, check); exits 1 naming the first failed recipe")
+    s = sub.add_parser("sweep", help="render, then the $0 stub recipes (memory, handoff, deny, check); exits 1 naming the first failed recipe")
     s.add_argument("--run", help="run id (default: sweep- + timestamp)")
     s.set_defaults(fn=cmd_sweep)
     a = p.parse_args()

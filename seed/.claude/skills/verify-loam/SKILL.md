@@ -111,7 +111,7 @@ A fresh render has no `tests/`, so that check runs no pytest and a pass alone pr
 ## Sweep
 
 ```bash
-$C sweep          # render, doctor, mem-1 then mem-2 recall, the deny probe with its ls control, the rendered check
+$C sweep          # render, doctor, mem-1 then mem-2 recall, the handoff claimed once and flagged stale, the deny probe with its ls control, the rendered check
 ```
 
 It runs the `--stub` recipes of the feature map in one $0 pass of about 10 seconds and cleans up after a pass; a failed run is kept.
