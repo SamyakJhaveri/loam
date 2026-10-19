@@ -15,6 +15,8 @@
 // and remote partitions are compared exactly against loam-inventory.json. It also anchors the
 // catalog's recorded ticket digest to the archived ticket in the tree. Each check carries an
 // accepted-control negative that mutates a copy of the catalog view or the tree.
+// The exact partition counts are a deliberate freeze: adding or removing a catalog entry
+// must edit this test in the same change.
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { chmodSync, lstatSync, mkdirSync, mkdtempSync, readFileSync, readlinkSync, realpathSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
