@@ -75,17 +75,22 @@ git cat-file -e "$IDENTITY_BASELINE" 2>/dev/null && IDENTITY_RANGE="${IDENTITY_B
 NOREPLY_AUTHOR_RE='^[^@[:space:]]+@users\.noreply\.github\.com$'
 NOREPLY_COMMITTER_RE='^([^@[:space:]]+@users\.noreply\.github\.com|noreply@github\.com)$'
 # One email per commit whose full SHA is not accepted. awk compares whole SHAs, and an empty list exempts nothing.
+# The list goes through ENVIRON: macOS awk rejects a newline in an `awk -v` value.
 identities() {
   git log --format="%H $1" $IDENTITY_RANGE |
-    awk -v accepted="$IDENTITY_ACCEPTED" 'BEGIN { n = split(accepted, s); for (i = 1; i <= n; i++) ok[s[i]] = 1 } !($1 in ok) { print $2 }'
+    ACCEPTED="$IDENTITY_ACCEPTED" awk 'BEGIN { n = split(ENVIRON["ACCEPTED"], s); for (i = 1; i <= n; i++) ok[s[i]] = 1 } !($1 in ok) { print $2 }'
 }
-BAD_AUTHORS=$(identities '%ae' | sort -u | grep -vE "$NOREPLY_AUTHOR_RE" || true)
+# Read first, filter second: a failed git log or awk fails the check instead of reading as "no bad
+# identities" (the `|| true` below only absorbs grep's no-match exit).
+AUTHORS=$(identities '%ae') || { echo "FAIL: could not read commit author identities."; FAIL=1; }
+COMMITTERS=$(identities '%ce') || { echo "FAIL: could not read commit committer identities."; FAIL=1; }
+BAD_AUTHORS=$(sort -u <<<"$AUTHORS" | grep -vE "$NOREPLY_AUTHOR_RE" || true)
 if [ -n "$BAD_AUTHORS" ]; then
   echo "WARN: non-noreply author identities (must be clean in the public repo):"
   echo "$BAD_AUTHORS"
   [[ "$STRICT" = 1 ]] && FAIL=1
 fi
-BAD_COMMITTERS=$(identities '%ce' | sort -u | grep -vE "$NOREPLY_COMMITTER_RE" || true)
+BAD_COMMITTERS=$(sort -u <<<"$COMMITTERS" | grep -vE "$NOREPLY_COMMITTER_RE" || true)
 if [ -n "$BAD_COMMITTERS" ]; then
   echo "WARN: non-noreply committer identities (must be clean in the public repo):"
   echo "$BAD_COMMITTERS"
