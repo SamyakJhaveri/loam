@@ -145,6 +145,16 @@ def cmd_doctor(a) -> None:
     out({"ok": ok, "run": a.run, "checks": checks}, 0 if ok else 1)
 
 
+def start_stub(log: pathlib.Path) -> tuple[subprocess.Popen, int]:
+    # The stub binds a free port before it prints it, so the port is listening once the line arrives.
+    p = subprocess.Popen([sys.executable, "-I", str(HERE / "stub-model.py"), "0", str(log)], stdout=subprocess.PIPE, text=True)
+    port = p.stdout.readline().strip()
+    if not port.isdigit():
+        p.kill()
+        die("stub-model.py did not start; its error is on stderr")
+    return p, int(port)
+
+
 def cmd_session(a) -> None:
     d = run_dir(a.run)
     meta = load(d)
@@ -158,11 +168,22 @@ def cmd_session(a) -> None:
         argv += ["--permission-mode", "bypassPermissions"]
     env = {**GIT_ENV, "LOAM_MEMSTORE": str(d / "memstore")}
     env.pop("LOAM_MEMSTORE_REMOTE", None)
-    with stream.open("w") as so, err.open("w") as se:
-        try:
-            rc = subprocess.run(argv, cwd=d / "render", stdout=so, stderr=se, env=env, timeout=a.timeout).returncode
-        except subprocess.TimeoutExpired:
-            rc = None  # claude was killed at --timeout; the partial stream is still read and kept below
+    stub = None
+    if a.stub:
+        reqs = d / "evidence" / f"{name}.stub-requests.jsonl"
+        stub, port = start_stub(reqs)
+        env.update(ANTHROPIC_BASE_URL=f"http://127.0.0.1:{port}", ANTHROPIC_API_KEY="stub-not-a-secret",
+                   CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC="1")
+    try:
+        with stream.open("w") as so, err.open("w") as se:
+            try:
+                rc = subprocess.run(argv, cwd=d / "render", stdout=so, stderr=se, env=env, timeout=a.timeout).returncode
+            except subprocess.TimeoutExpired:
+                rc = None  # claude was killed at --timeout; the partial stream is still read and kept below
+    finally:
+        if stub:
+            stub.terminate()
+            stub.wait()
     events = []
     for line in stream.read_text().splitlines():
         try:
@@ -181,11 +202,22 @@ def cmd_session(a) -> None:
         shutil.copy2(transcripts[0], d / "evidence" / f"{name}.transcript.jsonl")
     meta["sessions"].append({"name": name, "session_id": sid})
     save(d, meta)
-    out({"ok": rc == 0 and not result.get("is_error"), "run": a.run, "name": name, "exit_code": rc,
-         "timed_out": rc is None, "session_id": sid, "model": init.get("model"), "skills": init.get("skills"),
-         "hooks": hooks, "permission_denials": result.get("permission_denials", []),
-         "result": (result.get("result") or "")[:1500], "cost_usd": result.get("total_cost_usd"),
-         "evidence": str(stream)}, 0 if rc == 0 else 1)
+    summary = {"ok": rc == 0 and not result.get("is_error"), "run": a.run, "name": name, "exit_code": rc,
+               "timed_out": rc is None, "session_id": sid, "model": init.get("model"), "skills": init.get("skills"),
+               "hooks": hooks, "permission_denials": result.get("permission_denials", []),
+               "result": (result.get("result") or "")[:1500], "cost_usd": result.get("total_cost_usd"),
+               "evidence": str(stream)}
+    code = 0 if rc == 0 else 1
+    if a.stub:
+        # A Claude Code wire-format change shows up as no requests or a failed session; it must never read as a pass.
+        n = len(reqs.read_text().splitlines())
+        summary.update(stub=True, stub_requests=n)
+        if not n:
+            summary.update(ok=False, error=f"the stub got no requests: claude never reached ANTHROPIC_BASE_URL; read {err}")
+        elif not summary["ok"]:
+            summary["error"] = f"claude failed against the stub; read {err} and {reqs}"
+        code = 0 if summary["ok"] else 1
+    out(summary, code)
 
 
 def cmd_check(a) -> None:
@@ -327,6 +359,8 @@ def main() -> None:
     s.add_argument("--name", help="evidence file stem (default session-N)")
     s.add_argument("--model", help="claude --model value, e.g. fable (default: the account default)")
     s.add_argument("--bypass", action="store_true", help="--permission-mode bypassPermissions; deny rules still apply")
+    s.add_argument("--stub", action="store_true",
+                   help="answer from stub-model.py on 127.0.0.1, not the API: real hooks and deny rules, scripted model, $0")
     s.add_argument("--timeout", type=int, default=300)
     s.set_defaults(fn=cmd_session)
     s = sub.add_parser("tui", help="drive an interactive claude session in tmux (start | send TEXT | stop)")

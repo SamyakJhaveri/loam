@@ -48,9 +48,17 @@ Headless, one turn, full hook stream:
 $C session <id> "Reply with the single word OK." --name mem-1
 $C session <id> "<prompt>" --model fable      # any claude --model value
 $C session <id> "<prompt>" --bypass           # bypassPermissions; deny rules still apply
+$C session <id> "<prompt>" --stub             # scripted model on 127.0.0.1; $0
 ```
 
 The JSON gives `hooks` (event, name, exit code, first 400 characters of stdout), `skills` from the init event, `permission_denials`, the reply, and `cost_usd` (about $0.12 per one-word turn on the default model; Fable costs about five times as much).
+
+`--stub` answers from [`stub-model.py`](stub-model.py), a scripted Messages API started on a free 127.0.0.1 port for that session alone; only the `claude` child gets `ANTHROPIC_BASE_URL` and a dummy key.
+It replies `OK`, or, for a prompt holding `STUB_BASH: cmd1 ;; cmd2`, runs each command through Bash in turn.
+Claude Code, hooks, settings and deny rules stay real, so it proves wiring at $0 in 1 to 4 seconds: hooks fire, memory is captured and recalled, a deny rule refuses.
+It cannot prove that a real model reads or obeys injected text; quote-back and the Fable brief stay paid.
+The JSON adds `"stub": true` and `stub_requests`, and its `cost_usd` is an estimate from fake token counts.
+Zero requests or a failed session give `"ok": false`, so a Claude Code wire-format change never reads as a pass.
 
 Interactive, in tmux, for anything headless cannot show:
 
@@ -75,7 +83,7 @@ A fresh render has no `tests/`, so that check runs no pytest and a pass alone pr
 
 ## Evidence
 
-Everything lands in `<run>/evidence/`: `render.log`, `<name>.jsonl` (the stream-json with hook events), `<name>.stderr`, `<name>.transcript.jsonl`, `<name>.screen.txt`, `check.txt`.
+Everything lands in `<run>/evidence/`: `render.log`, `<name>.jsonl` (the stream-json with hook events), `<name>.stderr`, `<name>.transcript.jsonl`, `<name>.stub-requests.jsonl` (one line per stub request), `<name>.screen.txt`, `check.txt`.
 
 Proof standards:
 

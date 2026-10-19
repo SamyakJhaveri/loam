@@ -15,7 +15,7 @@ The user is someone who renders a project with Copier and then works in it with 
 - Headless (`$C session`) for anything the stream-json hook events show; interactive (`$C tui`) only when headless cannot reach the behavior.
 - Treat quoted prompts as literal.
 - Ask the model to quote injected text verbatim; a paraphrase is not proof that the text arrived.
-- Each session costs money; one-word prompts keep a turn near $0.12.
+- A paid session costs money (one-word prompts keep a turn near $0.12); `session --stub` costs $0 where a scripted model is enough.
 
 ## Proof and skip reporting
 
