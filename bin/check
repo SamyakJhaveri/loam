@@ -142,6 +142,20 @@ step "always-loaded prose cap"
 # PR that grows the prose, with the reason in that PR.
 python3 bin/always_loaded_prose.py --root "$ROOT" --cap 4597 || bad "always-loaded prose over its cap"
 
+step "no em dash in Loam-owned text"
+# The owner's standing rule (#237). Exempt only text Loam does not own or must not rewrite.
+EM_EXEMPT=(
+  ":(exclude)cultivation/parked/"                             # removed upstream assets, not shipped
+  ":(exclude)docs/archive/"                                   # frozen historical records
+  ":(exclude)docs/architecture-working/asset-intake/sources/" # verbatim captured sources
+  ":(exclude)docs/research/primary-2026-09-08/"               # quoted upstream pages
+  ":(exclude)evals/"                                          # recorded grader prompts; a replay must see them unchanged
+  ":(exclude)seed/.loam/runtime/assets/curated-catalog.json"  # pinned catalog body quoting upstream metadata
+)
+# git grep exits 1 only when nothing matched; 0 is a hit and anything else is an error, so both fail.
+git grep -n -I $'\xe2\x80\x94' -- . "${EM_EXEMPT[@]}"
+[ "$?" -eq 1 ] || bad "em dash (U+2014) in the lines above, or git grep failed; use a plain dash '-' instead"
+
 step "claude plugin validate"
 if command -v claude >/dev/null 2>&1; then
   # seed/.claude holds internal symlinks the validator skips with a warning, and --strict fails on warnings,
