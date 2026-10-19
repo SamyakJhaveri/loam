@@ -1,0 +1,334 @@
+#!/usr/bin/env bash
+# sync-project - carry one Loam commit into a project rendered from Loam, as a pull request.
+#
+# Works in a scratch clone, so the project's own checkout is never touched:
+#   1. copier update against a local Loam checkout at an exact commit, tasks skipped,
+#      committed as is (conflict markers included);
+#   2. one claude call resolves only the files copier left conflicted, committed separately,
+#      following the owner's rulings in the project's .loam/sync-rulings.md when it has one;
+#   3. the project's bin/check and its verify-* skill run, and their results go in the PR body;
+#   4. the branch is pushed and a PR opened with gh.
+# docs/SYNC.md explains each choice.
+#
+# Usage:
+#   bin/sync-project [options] <project> [<loam-ref>]
+#     <project>     owner/repo on GitHub, a git URL, or a bare repo path (any path with --dry-run)
+#     <loam-ref>    the Loam commit to carry (default: HEAD of --loam)
+#     --loam DIR    the Loam checkout to render from (default: this one)
+#     --branch NAME the branch to push (default: loam-sync/<sha8>)
+#     --work DIR    the scratch dir (default: a new one under $TMPDIR)
+#     --rulings FILE  the owner's rulings for the port (default: the project's .loam/sync-rulings.md)
+#     --dry-run     stop before the push
+#     --no-port     skip the claude port; any conflict then stops the run
+#     --draft       open the PR as a draft
+#
+# Exit codes: 0 PR opened, dry run done, or nothing to sync; 1 refusal or failure; 2 usage.
+
+set -euo pipefail
+
+ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+# shellcheck disable=SC2034
+LIB_PREFIX="sync-project"
+# shellcheck source=bin/lib.sh
+. "$ROOT/bin/lib.sh"
+
+MODEL=claude-opus-5-5
+ANSWERS=.copier-answers.yml
+
+usage() { sed -n '/^# Usage:/,/^# Exit codes/p' "$0" | sed 's/^# \{0,1\}//' >&2; }
+
+LOAM="$ROOT" BRANCH="" WORK="" RULINGS="" PROJECT="" REF="" DRY=0 PORT=1 DRAFT=0
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --loam|--branch|--work|--rulings)
+      [ $# -ge 2 ] || { usage; exit 2; }
+      case "$1" in --loam) LOAM="$2" ;; --branch) BRANCH="$2" ;; --work) WORK="$2" ;; --rulings) RULINGS="$2" ;; esac
+      shift ;;
+    --dry-run) DRY=1 ;;
+    --no-port) PORT=0 ;;
+    --draft) DRAFT=1 ;;
+    -h|--help) usage; exit 0 ;;
+    -*) usage; exit 2 ;;
+    *) if [ -z "$PROJECT" ]; then PROJECT="$1"; elif [ -z "$REF" ]; then REF="$1"; else usage; exit 2; fi ;;
+  esac
+  shift
+done
+[ -n "$PROJECT" ] || { usage; exit 2; }
+
+[ -d "$LOAM" ] || die "no Loam checkout at $LOAM"
+LOAM="$(cd "$LOAM" && pwd)"
+SHA="$(git -C "$LOAM" rev-parse --verify --quiet "${REF:-HEAD}^{commit}")" || die "no commit ${REF:-HEAD} in $LOAM"
+BRANCH="${BRANCH:-loam-sync/${SHA:0:8}}"
+if [ -n "$RULINGS" ]; then
+  [ -f "$RULINGS" ] || die "no rulings file at $RULINGS"
+  RULINGS="$(cd "$(dirname "$RULINGS")" && pwd)/$(basename "$RULINGS")"
+fi
+
+SRC="$PROJECT"
+if [ ! -e "$PROJECT" ] && printf '%s' "$PROJECT" | grep -qE '^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$'; then
+  SRC="https://github.com/$PROJECT.git"
+fi
+if [ "$DRY" -eq 0 ] && [ -d "$PROJECT" ] && [ "$(git -C "$PROJECT" rev-parse --is-bare-repository 2>/dev/null)" = false ]; then
+  die "$PROJECT is a working checkout and the push would land in it; pass owner/repo, or --dry-run"
+fi
+# A taken branch name would otherwise fail only at the push, after the paid steps.
+if [ "$DRY" -eq 0 ] && [ -n "$(git ls-remote --heads "$SRC" "refs/heads/$BRANCH")" ]; then
+  die "branch $BRANCH already exists in $SRC; pass another --branch"
+fi
+if command -v copier >/dev/null 2>&1; then COPIER=(copier); else COPIER=(uvx copier); fi
+
+WORK="${WORK:-$(mktemp -d "${TMPDIR:-/tmp}/loam-sync.XXXXXX")}"
+mkdir -p "$WORK"
+WORK="$(cd "$WORK" && pwd)"
+P="$WORK/project"
+[ ! -e "$P" ] || die "$P already exists; pass an empty --work"
+info "cloning $SRC into $P"
+git clone -q "$SRC" "$P"
+cd "$P"
+[ -f "$ANSWERS" ] || die "$PROJECT has no $ANSWERS, so Copier did not render it"
+BASE="$(git rev-parse --abbrev-ref HEAD)"
+BASE_SHA="$(git rev-parse HEAD)"
+OLD="$(sed -n 's/^_commit: //p' "$ANSWERS")"
+SRC_LINE="$(grep '^_src_path:' "$ANSWERS")" || die "$ANSWERS has no _src_path"
+REPO="$(sed -n 's/^github_repo: //p' "$ANSWERS" | tr -d "'\"")"
+# The owner's calls from earlier syncs, prose for the port; --rulings tries a draft instead.
+if [ -z "$RULINGS" ] && [ -f .loam/sync-rulings.md ]; then RULINGS=.loam/sync-rulings.md; fi
+RULINGS_SHA=""
+[ -z "$RULINGS" ] || RULINGS_SHA="$(git hash-object "$RULINGS")"
+git checkout -q -b "$BRANCH"
+
+set_src() {  # $1 = the whole _src_path line to write
+  awk -v l="$1" '/^_src_path:/ { print l; next } { print }' "$ANSWERS" > "$ANSWERS.tmp"
+  mv "$ANSWERS.tmp" "$ANSWERS"
+}
+# copier update has no source flag; it reads _src_path and refuses a dirty tree. Point it at
+# the local checkout in a throwaway commit, then put the project's own value back. An exact
+# --vcs-ref makes copier clone that commit, so the checkout's uncommitted files cannot leak in.
+set_src "_src_path: $LOAM"
+git commit -q --allow-empty -m "sync-project: temporary _src_path" -- "$ANSWERS"
+COPIER_V="$("${COPIER[@]}" --version 2>&1 | tail -n 1)"
+CMD="copier update --trust --defaults --skip-tasks --conflict inline --vcs-ref $SHA"
+info "running $CMD ($COPIER_V)"
+# Tasks are skipped: on update copier also runs them inside its temporary renders, where
+# Loam's _gh_setup.sh task tries a push and GitHub API writes. Copier's git merge-file follows
+# merge.conflictStyle, and diff3 or zdiff3 would add a base section to every hunk, so the
+# two-sided style is forced on top of any GIT_CONFIG_* entries the caller set.
+n="${GIT_CONFIG_COUNT:-0}"
+env "GIT_CONFIG_COUNT=$((n + 1))" "GIT_CONFIG_KEY_$n=merge.conflictStyle" "GIT_CONFIG_VALUE_$n=merge" \
+  "${COPIER[@]}" update --trust --defaults --skip-tasks --conflict inline --vcs-ref "$SHA" \
+  > "$WORK/copier.log" 2>&1 || { tail -n 20 "$WORK/copier.log" >&2; die "copier update failed; log in $WORK/copier.log"; }
+set_src "$SRC_LINE"
+# The one task an update needs. Projects rendered from v3.0.0 track this file; staging its
+# deletion here keeps the next update from starting dirty.
+rm -f _gh_setup.sh
+
+rejects() { find . -name '*.rej' -not -path './.git/*'; }
+[ -z "$(rejects)" ] || die "copier left patch rejects in $P: $(rejects | tr '\n' ' ')"
+CONFLICTS="$(git grep -l -e '^<<<<<<< before updating' -e '^>>>>>>> after updating' || true)"
+
+# Copier records each conflicted file's old and new template renders as index stages 1 and 3;
+# keep their diff for the port before git add drops the stages.
+mkdir -p "$WORK/port"
+N=0
+while IFS= read -r f; do
+  [ -n "$f" ] || continue
+  N=$((N + 1)); d="$WORK/port/$N"; mkdir -p "$d"
+  printf '%s\n' "$f" > "$d/path"
+  git show ":1:$f" > "$d/old" 2>/dev/null || : > "$d/old"
+  if git show ":3:$f" > "$d/new" 2>/dev/null; then
+    diff -u "$d/old" "$d/new" | tail -n +3 > "$d/template.diff" || true
+  else
+    echo "(this copier version did not record the template's versions)" > "$d/template.diff"
+  fi
+done <<< "$CONFLICTS"
+
+git add -A
+git reset -q --soft "$BASE_SHA"
+if git diff --cached --quiet; then
+  ok "$PROJECT already matches Loam ${SHA:0:8}; nothing to sync"
+  exit 0
+fi
+{
+  echo "Update to Loam ${SHA:0:8} with copier, no hand edits"
+  echo
+  echo "Ran in a scratch clone with $COPIER_V:"
+  echo "  $CMD"
+  echo "The template came from a local Loam checkout at that commit; _src_path"
+  echo "keeps the project's value. Tasks were skipped, and _gh_setup.sh deleted."
+  if [ "$N" -gt 0 ]; then
+    echo
+    echo "Copier left conflict markers in these files; the next commit resolves them:"
+    printf '%s\n' "$CONFLICTS" | sed 's/^/  /'
+  fi
+} > "$WORK/copier-commit.txt"
+git commit -q -F "$WORK/copier-commit.txt"
+C1="$(git rev-parse --short HEAD)"
+ok "committed copier's result as $C1 ($N conflicted files)"
+
+claude_env() { LOAM_MEMSTORE="$WORK/memstore" TMPDIR="$WORK/claude-tmp" "$@"; }
+mkdir -p "$WORK/memstore" "$WORK/claude-tmp"
+
+copy_of() { printf '%s/%s\n' "$WORK/port/$1" "$(basename "$(cat "$WORK/port/$1/path")")"; }
+
+port_prompt() {
+  echo "You are porting a project rendered from the Loam Copier template. Your working directory is the project root."
+  echo "Copier updated the project from Loam $OLD to Loam ${SHA:0:8} and could not merge $N files. A copy of each, conflict hunks included, is in \`$WORK/port\`:"
+  i=1
+  while [ "$i" -le "$N" ]; do echo "- \`$(cat "$WORK/port/$i/path")\` is at \`$(copy_of "$i")\`"; i=$((i + 1)); done
+  cat <<EOF
+Each conflict hunk holds the project's current text between \`<<<<<<< before updating\` and \`=======\`, and the template's new text between \`=======\` and \`>>>>>>> after updating\`.
+Resolve every hunk in every copy:
+1. Keep the project's own content.
+2. Adopt the template's change where it does not contradict the project's content. A contradiction means the project changed or removed that same content. Template content the project never had is not contradicted.
+3. Decide each question once and apply it the same way in every file. One change, such as where the handoff lives or which hooks run, can span several of these files. Read the project's own docs (AGENTS.md, CLAUDE.md, docs/) to learn which design the project chose, and keep that design wherever the template assumes another.
+4. Before you keep a reference to another file, such as a script path, confirm that the file exists in this checkout. This is a fresh clone, so a path that \`.gitignore\` lists can be missing and still be real.
+5. Remove every conflict marker line. Keep each file valid for its type: JSON stays parseable, scripts stay runnable.
+6. Edit only the copies. Read any project file you need. The conflicted files in the tree still hold their markers, so read the copies for those.
+EOF
+  if [ -n "$RULINGS" ]; then
+    echo "The project's owner settled questions like these in \`$RULINGS\`. Where a ruling and rules 1 to 3 disagree, the ruling wins. Follow every ruling; if a ruling does not cover a hunk, use the brief. A ruling about a file not listed above is for the reviewer: leave that file alone and name the ruling under \`Notes:\`. The rulings:"
+    echo '````markdown'
+    awk 1 "$RULINGS"
+    echo '````'
+  fi
+  cat <<EOF
+End your reply with a line \`Choices:\`. Under it, for each file, write a line \`### <path>\` with the path as listed above, then one line per hunk in the form \`- <where>: <choice>, because <reason>\`.
+If a reviewer should check something, add a line \`Notes:\` after them and one \`- \` line per note.
+The template's own change to each file, from the old render to the new render:
+EOF
+  i=1
+  while [ "$i" -le "$N" ]; do
+    printf '\n### %s\n````diff\n' "$(cat "$WORK/port/$i/path")"
+    cat "$WORK/port/$i/template.diff"
+    echo '````'
+    i=$((i + 1))
+  done
+}
+
+choices() {  # $1 = a conflicted path; prints the lines under its ### heading in the port's Choices: list
+  awk -v f="$1" '
+    /^Choices:/ { on = 1; next }
+    /^Notes:/ { on = 0 }
+    on && /^### / { h = substr($0, 5); gsub(/`/, "", h); sub(/:?[ \t]*$/, "", h); here = (h == f); next }
+    on && here && NF { print; n++ }
+    END { if (!n) print "- (no choice list for this file in the reply)" }' "$WORK/port/reply"
+}
+notes() { sed -n '/^Notes:/,$p' "$WORK/port/reply" | grep -E '^[[:space:]]*- ' || true; }
+
+C2=""
+if [ "$N" -gt 0 ] && [ "$PORT" -eq 1 ]; then
+  i=1
+  while [ "$i" -le "$N" ]; do cp "$(cat "$WORK/port/$i/path")" "$(copy_of "$i")"; i=$((i + 1)); done
+  port_prompt > "$WORK/port/prompt"
+  # One call sees every conflicted file, so a decision that spans files is made once.
+  info "porting the $N conflicted files in one call with $MODEL"
+  # The model edits copies outside the tree: Claude Code refuses .claude/ writes in
+  # acceptEdits, and the project's own settings may hold markers, so only user settings load.
+  claude_env claude -p --model "$MODEL" --setting-sources user --tools Read,Edit \
+    --permission-mode acceptEdits --add-dir "$WORK/port" --no-session-persistence \
+    < "$WORK/port/prompt" > "$WORK/port/reply" 2> "$WORK/port/stderr" || die "claude failed on the port; see $WORK/port/stderr"
+  i=1
+  while [ "$i" -le "$N" ]; do cp "$(copy_of "$i")" "$(cat "$WORK/port/$i/path")"; i=$((i + 1)); done
+fi
+
+if [ "$N" -gt 0 ]; then
+  LEFT="$(while IFS= read -r f; do grep -qE '^(<{7}|>{7}|\|{7})( |$)|^={7}$' "$f" && printf '%s ' "$f"; done <<< "$CONFLICTS" || true)"
+  [ -z "$LEFT$(rejects)" ] || die "conflict markers remain in ${LEFT% }$(rejects | tr '\n' ' '); the copier commit $C1 is in $P"
+  # A broken settings.json silently disables a project's hooks and deny rules.
+  while IFS= read -r f; do
+    case "$f" in *.json) python3 -m json.tool "$f" > /dev/null 2>&1 || die "the port left invalid JSON in $f; see $P" ;; esac
+  done <<< "$CONFLICTS"
+  OTHER="$({ git diff --name-only; git ls-files --others --exclude-standard; } | grep -vxF -f <(printf '%s\n' "$CONFLICTS") || true)"
+  [ -z "$OTHER" ] || die "the port changed files copier did not conflict on: $(printf '%s' "$OTHER" | tr '\n' ' ')"
+  {
+    echo "Resolve the $N files copier left conflicted, with $MODEL"
+    echo
+    echo "One claude -p call over all $N files. The brief: keep the project's own"
+    echo "content, adopt the template's change where it does not contradict it, decide"
+    echo "each cross-file question once, remove every marker."
+    [ -z "$RULINGS" ] || echo "The owner's rulings in $RULINGS (git blob $RULINGS_SHA) won over the brief where they disagreed."
+    echo "The model's choices:"
+    i=1
+    while [ "$i" -le "$N" ]; do
+      f="$(cat "$WORK/port/$i/path")"
+      echo; echo "$f"
+      choices "$f"
+      i=$((i + 1))
+    done
+    if [ -n "$(notes)" ]; then echo; echo "Notes from the port:"; notes; fi
+  } > "$WORK/port-commit.txt"
+  printf '%s\n' "$CONFLICTS" | while IFS= read -r f; do git add -- "$f"; done
+  git commit -q -F "$WORK/port-commit.txt"
+  C2="$(git rev-parse --short HEAD)"
+  ok "committed the port as $C2"
+fi
+# bin/check and the verify agent, which has Bash, run next; the push carries only this commit.
+PORTED="$(git rev-parse HEAD)"
+
+CHECK="not run: the project has no bin/check"
+if [ -x bin/check ]; then
+  info "running bin/check"
+  if bin/check > "$WORK/check.log" 2>&1; then CHECK="exit 0"; else CHECK="exit $?"; fi
+fi
+
+# A verification skill is prose plus a project-specific CLI with no shared entry point,
+# so an agent reads the SKILL.md and picks the recipes the change touches.
+VERIFY=""
+for s in .claude/skills/verify-*/SKILL.md; do
+  [ -f "$s" ] || continue
+  name="$(basename "$(dirname "$s")")"
+  info "running the $name skill with $MODEL"
+  {
+    echo "Use the \`$name\` skill in this checkout: read \`$s\` first and follow it."
+    echo "Prove that the project still works after a Loam template sync. Files changed since $BASE_SHA:"
+    # Not head: it exits after 200 lines, git dies of SIGPIPE, and pipefail ends the run.
+    git diff --name-status "$BASE_SHA" HEAD | sed -n '1,200p'
+    echo "Run the skill's launch and doctor, drive the features the changed files touch, then run its cleanup."
+    echo "Do not edit, stage or commit tracked files."
+    echo "End your reply with exactly one line: \`VERIFY: PASS\`, \`VERIFY: FAIL <reason>\` or \`VERIFY: BLOCKED <reason>\`."
+  } > "$WORK/$name.prompt"
+  claude_env claude -p --model "$MODEL" --allowedTools "Bash Read Grep Glob" --no-session-persistence \
+    < "$WORK/$name.prompt" > "$WORK/$name.log" 2>&1 || true
+  line="$(grep '^VERIFY:' "$WORK/$name.log" | tail -n 1 || true)"
+  VERIFY="$VERIFY- \`$name\`: ${line:-no VERIFY line; see $WORK/$name.log}"$'\n'
+done
+if [ "$(git rev-parse HEAD)" != "$PORTED" ] || [ -n "$(git status --porcelain --untracked-files=no)" ]; then
+  die "HEAD or a tracked file changed after the port, in bin/check or a verify skill; nothing pushed; see $P"
+fi
+
+{
+  echo "Carries Loam commit \`$SHA\` into this project. Loam's \`bin/sync-project\` made this branch from \`$BASE\` at \`${BASE_SHA:0:8}\`."
+  echo
+  echo "## How it ran"
+  echo "- \`$CMD\` in a scratch clone, with $COPIER_V. The template came from a local Loam checkout at that commit. \`_src_path\` keeps its value."
+  echo "- Copier tasks were skipped, because on update copier also runs them inside its temporary renders. \`_gh_setup.sh\` was deleted by hand."
+  echo "- \`$C1\` is copier's result as is, conflict markers included."
+  [ -z "$C2" ] || echo "- \`$C2\` is the port. $MODEL resolved every conflicted file in one call."
+  [ -z "$C2" ] || [ -z "$RULINGS" ] || echo "- The port followed the owner's rulings in \`$RULINGS\` (git blob \`$RULINGS_SHA\`). They win over the brief where they disagree."
+  echo
+  echo "## Conflicts"
+  [ "$N" -gt 0 ] || echo "None."
+  i=1
+  while [ "$i" -le "$N" ]; do
+    f="$(cat "$WORK/port/$i/path")"
+    echo "- \`$f\`"
+    choices "$f" | sed 's/^/  /'
+    i=$((i + 1))
+  done
+  if [ "$N" -gt 0 ] && [ -n "$(notes)" ]; then echo; echo "Notes from the port:"; notes; fi
+  echo
+  echo "## Checks"
+  echo "- \`bin/check\`: $CHECK"
+  if [ -f "$WORK/check.log" ]; then echo; echo '```'; tail -n 15 "$WORK/check.log"; echo '```'; echo; fi
+  if [ -n "$VERIFY" ]; then printf '%s' "$VERIFY"; else echo "- No \`verify-*\` skill in \`.claude/skills/\`."; fi
+} > "$WORK/pr-body.md"
+
+if [ "$DRY" -eq 1 ]; then
+  ok "dry run: stopped before the push. Branch $BRANCH is in $P; the PR body is $WORK/pr-body.md"
+  exit 0
+fi
+git push -q -u origin "$BRANCH"
+PR_ARGS=(--base "$BASE" --head "$BRANCH" --title "chore: sync the Loam template to ${SHA:0:8}" --body-file "$WORK/pr-body.md")
+[ -z "$REPO" ] || PR_ARGS+=(--repo "$REPO")
+[ "$DRAFT" -eq 0 ] || PR_ARGS+=(--draft)
+gh pr create "${PR_ARGS[@]}"

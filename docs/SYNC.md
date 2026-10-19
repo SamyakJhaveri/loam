@@ -5,8 +5,84 @@ Since the 2026-08 rebuild there are three distribution mechanisms: Copier forwar
 ## Forward: Copier (template -> projects)
 
 - `uvx copier copy --trust gh:samyakjhaveri/loam ./my-project` bootstraps.
-- `uvx copier update --trust` pulls template updates into an existing project.
-- Copier resolves git TAGS, not HEAD. Nothing ships until `bin/release.sh <version>` tags it.
+- `bin/sync-project <owner/repo> [<loam-commit>]` carries one Loam commit into a rendered project as a pull request.
+  Use it for every update.
+- A plain `uvx copier update --trust` in the project still works.
+  It resolves the latest tag, reads the template from the project's `_src_path`, and runs the template's tasks (see below).
+- Copier `copy` and a plain `update` resolve git TAGS, not HEAD, so nothing reaches them until `bin/release.sh <version>` tags it.
+  `bin/sync-project` takes any commit.
+
+### bin/sync-project
+
+```bash
+bin/sync-project --dry-run SamyakJhaveri/distbench            # Loam HEAD; stop before the push
+bin/sync-project --draft SamyakJhaveri/distbench e90bfce0     # push loam-sync/e90bfce0, open a draft PR
+```
+
+Flags: `--loam DIR` (the Loam checkout to render from, default the script's own), `--branch NAME` (default `loam-sync/<sha8>`), `--work DIR` (the scratch dir, default a new one under `$TMPDIR`), `--rulings FILE` (default the project's `.loam/sync-rulings.md`), `--dry-run`, `--no-port`, `--draft`.
+It needs `git`, `copier` (or `uvx`), `claude` and `gh`.
+
+What it does, in order:
+
+1. It clones the project into the scratch dir and works only there.
+   `<project>` is `owner/repo`, a git URL, or a bare repo path.
+   A local working checkout is accepted only with `--dry-run`, because the push would land in it.
+   Without `--dry-run` it first refuses a branch name the project already has, so a push that would fail costs no model call.
+2. It points `_src_path` at the local Loam checkout in a throwaway commit, runs `copier update --trust --defaults --skip-tasks --conflict inline --vcs-ref <sha>`, and then puts the project's own `_src_path` back.
+   Copier `update` has no source flag and refuses a dirty tree, hence the throwaway commit.
+   Copier runs with `merge.conflictStyle=merge` forced, because `diff3` and `zdiff3` add a base section to every hunk.
+   The exact `--vcs-ref` makes Copier clone that commit, and Copier folds a checkout's uncommitted files in only when the ref is `HEAD`, so they cannot leak in.
+   In `.copier-answers.yml` only `_commit` changes, so the PR never rewrites where the project says its template lives.
+3. It deletes `_gh_setup.sh`, the one task an update needs, and commits Copier's result as is, conflict markers included.
+   This first commit is deterministic: the same Loam commit on the same project base gives the same tree.
+4. It runs one `claude -p` on `claude-opus-5-5` over every file Copier left conflicted, with a fixed brief.
+   The brief says to keep the project's content, adopt the template's change where it does not contradict it, decide each question once and apply it the same way in every file, remove every marker, and list each choice per file.
+   It points the model at the project's own docs to learn which design the project chose, and gives it the project's sync rulings when it has them (see Sync rulings).
+   It also carries the template's own diff for each file, from the old and new renders that Copier records as index stages 1 and 3.
+   The model edits copies outside the tree with only the Read and Edit tools, and the script copies them back.
+   `LOAM_MEMSTORE` and `TMPDIR` point into the scratch dir.
+5. It refuses to go on if a marker or a `.rej` file remains, if a conflicted JSON file no longer parses, or if any other file changed.
+   Otherwise the port becomes the second commit, with the model's choices in its message, so a reviewer reads Copier's part and the model's part apart.
+6. It runs the project's `bin/check`, and each `.claude/skills/verify-*` skill through `claude -p`, and puts the results in the PR body.
+   Neither gates the PR, because a sandbox can fail a check that CI passes; the PR's CI is the gate.
+   The verify agent has Bash, so the script saves HEAD after the port and refuses to push if HEAD or a tracked file changed since.
+7. It pushes the branch without force and opens the PR with `gh`.
+   The body names the command, each conflicted file with the model's choices, and the check lines.
+   `--dry-run` stops before the push and leaves the clone and `pr-body.md` in the scratch dir.
+   `--no-port` skips step 4, so any conflict stops the run at step 5 with the first commit in the scratch clone.
+
+Why these choices:
+
+- Tasks are skipped because on `update` Copier runs `_tasks` three times: in its temporary old render, in the project, and in its temporary new render.
+  The temporary renders have no `.git` and no origin, so Loam's tasks there run `git init` and then `_gh_setup.sh`, which tries a push and GitHub API writes.
+- Inline markers beat `.rej` files here.
+  Copier 9 merges each rejected file with `git merge-file` and records the template's old and new renders in the index, so the model sees each hunk in place and gets the template's own diff.
+  A `.rej` file holds only the failed hunk.
+- One call over every conflicted file lets the model make a decision that spans files once.
+  With one call per file, the distbench port moved the catchup skill to the memory-store handoff, while the project's `docs/WORKERS.md` keeps the handoff at the root `HANDOFF.md`.
+- The model edits copies because Claude Code refuses writes under `.claude/` in `acceptEdits` mode.
+  It loads only user settings because a conflicted `.claude/settings.json` is invalid JSON while the port runs.
+- A verification skill is prose plus a project-specific CLI with no shared entry point, so an agent reads its `SKILL.md` and picks the recipes.
+
+After a sync to an untagged commit, `_commit` reads like `v3.0.0-361-ge90bfce0`.
+A plain `copier update` from `gh:` then refuses, because the latest tag is older and Copier does not downgrade.
+Keep using `bin/sync-project` until a newer tag exists.
+
+### Sync rulings
+
+Some conflicts are owner calls that no brief can infer, such as whether the project wires the template's hooks or where its handoff lives.
+The project's tracked file `.loam/sync-rulings.md` records them as plain prose that the owner writes, one short line per call.
+`bin/sync-project` puts its text in the port prompt, where a ruling wins over the brief's keep-or-adopt rules, and names the file and its git blob sha in the PR body.
+A ruling about a file Copier did not conflict on lands in the PR's notes, because the port edits only conflicted files.
+Each sync PR that makes a new owner call adds a line to the file, so the next sync repeats the call.
+`--rulings FILE` tries a draft in place of the tracked file.
+
+### Release note: projects rendered from v3.0.0 start dirty
+
+Loam v3.0.0's first commit tracked `_gh_setup.sh`, and its last task deletes the file.
+A project that still tracks it shows ` D _gh_setup.sh` in `git status` after the first render and after every plain `copier update`, and Copier refuses the next update until that deletion is committed.
+`bin/sync-project` deletes `_gh_setup.sh` and commits the deletion with Copier's result, so the project ends clean.
+Later updates leave the file out, because Copier skips template files the project has deleted.
 
 ## Reverse: the plugin marketplace (improvements -> other projects)
 
