@@ -43,9 +43,11 @@ Owner Mixed means both: set the effort level and quote the guide's instruction.
 For a P row, quote the guide's instruction into the prompt. For an H row, change
 the effort level or the harness, and add nothing to the prompt.
 
-## Handoff rubric
+## Plan rubric
 
-A handoff file for a fresh Fable 5.1 session carries five headings, in order.
+A plan for a fresh Fable 5.1 session carries five headings, in order. A handoff
+note uses the seven headings in `docs/WORKERS.md` instead; the `catchup` staleness
+check reads its `Written at` hash.
 
 1. **Goal and why.** What the work is for and what it unblocks. The guide notes
    Fable 5.1 runs very long tasks well "especially when the goal is clear".
