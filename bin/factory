@@ -1612,6 +1612,12 @@ cmd_next() { # [--dry-run|--install]
         log "refused pull of $co: not fast-forward"
       fi
     done
+    # 3b. The pull may bring a sam-cc-setup version the plugin cache does not hold yet. A launched run would
+    #     assign the ticket and then stop at freeze, and the frontier skips assigned issues, so every tick
+    #     would burn one more ticket; refuse on stderr with grader_file's line, as the login gate does.
+    #     Not under --dry-run: a check in a worktree whose plugin.json bump is not installed runs it.
+    local g
+    for g in judge reviewer; do grader_file "$g" > /dev/null || return 1; done
   fi
 
   # 4. The frontier: open, ready-for-agent, unassigned issues with no open native blocker, lowest

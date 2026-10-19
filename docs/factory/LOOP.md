@@ -282,6 +282,7 @@ exec "${LOAM_HOME:-$HOME/Desktop/loam}/bin/factory" -C "$(git rev-parse --show-t
 - `codex login status` succeeds when any ticket uses Codex.
 - Every `codex` call on the runner exports `PATH=$HOME/.local/bin:$PATH` and ends in `< /dev/null`, or Codex is not found or eats the caller's stdin (#41).
 - The plugin cache holds the grader files at the version `cultivation/marketplace/sam-cc-setup/.claude-plugin/plugin.json` names; `bin/factory status` prints a FAIL line naming both versions otherwise, and `claude plugin update sam-cc-setup@seed-skills` fixes it.
+  After its pull, `bin/factory next` refuses to launch on the same check, printing the same message on stderr and exiting 1, so a merged version bump pauses the timer instead of assigning tickets to runs that stop at freeze.
 - Neither `DISABLE_TELEMETRY` nor `CLAUDE_CODE_DISABLE_ADVISOR_TOOL` is set in the runner's environment: either turns the worker's advisor silently off, and `bin/factory run` refuses to launch when one is set (F11). `FACTORY_STATUS_PROBE=1 bin/factory status` makes one paid Opus call to prove the advisor attaches.
 - Sessions that edit `bin/factory` run in `acceptEdits`, not auto mode, because the auto-mode classifier blocks tool calls whose text names a permission mode (observed, not documented).
 - `gh pr edit` has failed on a GraphQL deprecation; PR bodies are updated through the REST API.
