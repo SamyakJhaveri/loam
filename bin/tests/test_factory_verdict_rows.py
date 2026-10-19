@@ -88,6 +88,12 @@ class VerdictRowsTests(unittest.TestCase):
         self.assertEqual((rc, calls), (0, 1))
         self.assertNotIn("## Refutation", prompt)
 
+    def test_refutation_shows_the_failing_row(self) -> None:
+        _, _, prompt = self.judge_round("row-shown", ROW_FAILS_VERDICT_PASSES)
+        refutation = prompt.split("## Refutation", 1)[1]
+        self.assertIn('"verified":"fail"', refutation)
+        self.assertIn("contradicts the rows,", refutation)
+
 
 if __name__ == "__main__":
     unittest.main()
