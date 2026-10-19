@@ -4,7 +4,8 @@
 # Works in a scratch clone, so the project's own checkout is never touched:
 #   1. copier update against a local Loam checkout at an exact commit, tasks skipped,
 #      committed as is (conflict markers included);
-#   2. one claude call resolves only the files copier left conflicted, committed separately;
+#   2. one claude call resolves only the files copier left conflicted, committed separately,
+#      following the owner's rulings in the project's .loam/sync-rulings.md when it has one;
 #   3. the project's bin/check and its verify-* skill run, and their results go in the PR body;
 #   4. the branch is pushed and a PR opened with gh.
 # docs/SYNC.md explains each choice.
@@ -16,6 +17,7 @@
 #     --loam DIR    the Loam checkout to render from (default: this one)
 #     --branch NAME the branch to push (default: loam-sync/<sha8>)
 #     --work DIR    the scratch dir (default: a new one under $TMPDIR)
+#     --rulings FILE  the owner's rulings for the port (default: the project's .loam/sync-rulings.md)
 #     --dry-run     stop before the push
 #     --no-port     skip the claude port; any conflict then stops the run
 #     --draft       open the PR as a draft
@@ -35,12 +37,12 @@ ANSWERS=.copier-answers.yml
 
 usage() { sed -n '/^# Usage:/,/^# Exit codes/p' "$0" | sed 's/^# \{0,1\}//' >&2; }
 
-LOAM="$ROOT" BRANCH="" WORK="" PROJECT="" REF="" DRY=0 PORT=1 DRAFT=0
+LOAM="$ROOT" BRANCH="" WORK="" RULINGS="" PROJECT="" REF="" DRY=0 PORT=1 DRAFT=0
 while [ $# -gt 0 ]; do
   case "$1" in
-    --loam|--branch|--work)
+    --loam|--branch|--work|--rulings)
       [ $# -ge 2 ] || { usage; exit 2; }
-      case "$1" in --loam) LOAM="$2" ;; --branch) BRANCH="$2" ;; --work) WORK="$2" ;; esac
+      case "$1" in --loam) LOAM="$2" ;; --branch) BRANCH="$2" ;; --work) WORK="$2" ;; --rulings) RULINGS="$2" ;; esac
       shift ;;
     --dry-run) DRY=1 ;;
     --no-port) PORT=0 ;;
@@ -57,6 +59,10 @@ done
 LOAM="$(cd "$LOAM" && pwd)"
 SHA="$(git -C "$LOAM" rev-parse --verify --quiet "${REF:-HEAD}^{commit}")" || die "no commit ${REF:-HEAD} in $LOAM"
 BRANCH="${BRANCH:-loam-sync/${SHA:0:8}}"
+if [ -n "$RULINGS" ]; then
+  [ -f "$RULINGS" ] || die "no rulings file at $RULINGS"
+  RULINGS="$(cd "$(dirname "$RULINGS")" && pwd)/$(basename "$RULINGS")"
+fi
 
 SRC="$PROJECT"
 if [ ! -e "$PROJECT" ] && printf '%s' "$PROJECT" | grep -qE '^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$'; then
@@ -81,6 +87,10 @@ BASE_SHA="$(git rev-parse HEAD)"
 OLD="$(sed -n 's/^_commit: //p' "$ANSWERS")"
 SRC_LINE="$(grep '^_src_path:' "$ANSWERS")" || die "$ANSWERS has no _src_path"
 REPO="$(sed -n 's/^github_repo: //p' "$ANSWERS" | tr -d "'\"")"
+# The owner's calls from earlier syncs, prose for the port; --rulings tries a draft instead.
+if [ -z "$RULINGS" ] && [ -f .loam/sync-rulings.md ]; then RULINGS=.loam/sync-rulings.md; fi
+RULINGS_SHA=""
+[ -z "$RULINGS" ] || RULINGS_SHA="$(git hash-object "$RULINGS")"
 git checkout -q -b "$BRANCH"
 
 set_src() {  # $1 = the whole _src_path line to write
@@ -166,6 +176,14 @@ Resolve every hunk in every copy:
 4. Before you keep a reference to another file, such as a script path, confirm that the file exists in this checkout. This is a fresh clone, so a path that \`.gitignore\` lists can be missing and still be real.
 5. Remove every conflict marker line. Keep each file valid for its type: JSON stays parseable, scripts stay runnable.
 6. Edit only the copies. Read any project file you need. The conflicted files in the tree still hold their markers, so read the copies for those.
+EOF
+  if [ -n "$RULINGS" ]; then
+    echo "The project's owner settled questions like these in \`$RULINGS\`. Where a ruling and rules 1 to 3 disagree, the ruling wins. Follow every ruling; if a ruling does not cover a hunk, use the brief. A ruling about a file not listed above is for the reviewer: leave that file alone and name the ruling under \`Notes:\`. The rulings:"
+    echo '````markdown'
+    awk 1 "$RULINGS"
+    echo '````'
+  fi
+  cat <<EOF
 End your reply with a line \`Choices:\`. Under it, for each file, write a line \`### <path>\` with the path as listed above, then one line per hunk in the form \`- <where>: <choice>, because <reason>\`.
 If a reviewer should check something, add a line \`Notes:\` after them and one \`- \` line per note.
 The template's own change to each file, from the old render to the new render:
@@ -219,7 +237,9 @@ if [ "$N" -gt 0 ]; then
     echo
     echo "One claude -p call over all $N files. The brief: keep the project's own"
     echo "content, adopt the template's change where it does not contradict it, decide"
-    echo "each cross-file question once, remove every marker. The model's choices:"
+    echo "each cross-file question once, remove every marker."
+    [ -z "$RULINGS" ] || echo "The owner's rulings in $RULINGS (git blob $RULINGS_SHA) won over the brief where they disagreed."
+    echo "The model's choices:"
     i=1
     while [ "$i" -le "$N" ]; do
       f="$(cat "$WORK/port/$i/path")"
@@ -270,6 +290,7 @@ done
   echo "- Copier tasks were skipped, because on update copier also runs them inside its temporary renders. \`_gh_setup.sh\` was deleted by hand."
   echo "- \`$C1\` is copier's result as is, conflict markers included."
   [ -z "$C2" ] || echo "- \`$C2\` is the port. $MODEL resolved every conflicted file in one call."
+  [ -z "$C2" ] || [ -z "$RULINGS" ] || echo "- The port followed the owner's rulings in \`$RULINGS\` (git blob \`$RULINGS_SHA\`). They win over the brief where they disagree."
   echo
   echo "## Conflicts"
   [ "$N" -gt 0 ] || echo "None."

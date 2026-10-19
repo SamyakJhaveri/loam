@@ -19,7 +19,7 @@ bin/sync-project --dry-run SamyakJhaveri/distbench            # Loam HEAD; stop 
 bin/sync-project --draft SamyakJhaveri/distbench e90bfce0     # push loam-sync/e90bfce0, open a draft PR
 ```
 
-Flags: `--loam DIR` (the Loam checkout to render from, default the script's own), `--branch NAME` (default `loam-sync/<sha8>`), `--work DIR` (the scratch dir, default a new one under `$TMPDIR`), `--dry-run`, `--no-port`, `--draft`.
+Flags: `--loam DIR` (the Loam checkout to render from, default the script's own), `--branch NAME` (default `loam-sync/<sha8>`), `--work DIR` (the scratch dir, default a new one under `$TMPDIR`), `--rulings FILE` (default the project's `.loam/sync-rulings.md`), `--dry-run`, `--no-port`, `--draft`.
 It needs `git`, `copier` (or `uvx`), `claude` and `gh`.
 
 What it does, in order:
@@ -35,7 +35,7 @@ What it does, in order:
    This first commit is deterministic: the same Loam commit on the same project base gives the same tree.
 4. It runs one `claude -p` on `claude-opus-5-5` over every file Copier left conflicted, with a fixed brief.
    The brief says to keep the project's content, adopt the template's change where it does not contradict it, decide each question once and apply it the same way in every file, remove every marker, and list each choice per file.
-   It points the model at the project's own docs to learn which design the project chose.
+   It points the model at the project's own docs to learn which design the project chose, and gives it the project's sync rulings when it has them (see Sync rulings).
    It also carries the template's own diff for each file, from the old and new renders that Copier records as index stages 1 and 3.
    The model edits copies outside the tree with only the Read and Edit tools, and the script copies them back.
    `LOAM_MEMSTORE` and `TMPDIR` point into the scratch dir.
@@ -64,6 +64,15 @@ Why these choices:
 After a sync to an untagged commit, `_commit` reads like `v3.0.0-361-ge90bfce0`.
 A plain `copier update` from `gh:` then refuses, because the latest tag is older and Copier does not downgrade.
 Keep using `bin/sync-project` until a newer tag exists.
+
+### Sync rulings
+
+Some conflicts are owner calls that no brief can infer, such as whether the project wires the template's hooks or where its handoff lives.
+The project's tracked file `.loam/sync-rulings.md` records them as plain prose that the owner writes, one short line per call.
+`bin/sync-project` puts its text in the port prompt, where a ruling wins over the brief's keep-or-adopt rules, and names the file and its git blob sha in the PR body.
+A ruling about a file Copier did not conflict on lands in the PR's notes, because the port edits only conflicted files.
+Each sync PR that makes a new owner call adds a line to the file, so the next sync repeats the call.
+`--rulings FILE` tries a draft in place of the tracked file.
 
 ### Release note: projects rendered from v3.0.0 start dirty
 
