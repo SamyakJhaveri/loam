@@ -133,6 +133,10 @@ class RenderSmoke(unittest.TestCase):
             ],
         )
 
+    def test_verify_loam_skill_does_not_render(self):
+        # Loam-only skill kept out by a copier.yml _exclude line.
+        self.assertFalse((self.out / ".claude/skills/verify-loam").exists())
+
     def test_gitignore_ignores_the_memory_symlink(self):
         lines = (self.out / ".gitignore").read_text().splitlines()
         self.assertIn(".loam/memory", lines)
