@@ -113,7 +113,7 @@ Then run Codex as its own Bash call that starts with `codex exec`, with `<out>`,
 command. Behind a pipe, an assignment, `&&`, or any redirect, even `< /dev/null`, Claude Code runs
 Codex inside its sandbox, where Codex can fail to reach its API or to start its own sandbox. Leave
 no `<` anywhere in the command, prompt included: then Claude Code gives the call an empty stdin;
-with one, it leaves stdin open and Codex waits on it forever (both checked on Claude Code 2.1.303).
+with one, it leaves stdin open and Codex waits on it forever.
 Write `<intent>` as plain prose without quotes, backticks, `$`, `\`, or `<`.
 
 ```bash
