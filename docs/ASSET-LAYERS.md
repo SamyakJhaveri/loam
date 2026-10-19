@@ -13,7 +13,8 @@ A duplicate across layers is a bug unless it is an explicit distribution mirror 
 Shipped, discoverable and loaded are three different facts:
 
 - **Shipped availability**: the file reaches the generated project and its delivered digest is qualified. The curated catalog (`seed/.loam/runtime/assets/curated-catalog.json`, described in `seed/docs/runtime/ASSETS.md`) records this per method. In the current revision every actual method is pending, not available.
-  The catalog byte-pins intake sources under `docs/architecture-working/` and parked material under `cultivation/parked/` only; a live working file of Loam is never pinned, so editing one needs no catalog re-pin.
+  The catalog byte-pins intake sources under `docs/architecture-working/`, parked material under `cultivation/parked/`, and three live seed skill bodies: `seed/.agents/skills/{catchup,fable-prompting,hypothesis-tree}/SKILL.md`.
+  Editing one of those three needs a re-pin (its `expectedSha256` in the catalog, then the catalog digest and `sourceDigest` in `seed/.loam/runtime/release-manifest.json`); no other live working file of Loam is pinned.
 - **Native description discovery**: a provider lists the method by its description. Planned native wrappers project invocation metadata only. Discovery costs the description, not the body.
 - **On-demand body loading**: the shared body enters a session only when the method is invoked or judged relevant.
 
@@ -25,3 +26,5 @@ Rules of thumb:
 - A seed skill may be pure reference material when the owner requires it in every generated project; keep its description near 40 tokens, because the listing is paid in every session.
 - The seed ships lifecycle hooks (SessionStart, SessionEnd, PreCompact, Stop, PostModelSwitch) and no tool-matcher hooks. Command policy is native: `.claude/settings.json` deny rules and `.codex/rules/loam.rules`. See `seed/docs/HARNESS.md`.
 - `cultivation/parked/` holds assets removed from the shipped plugin. Nothing installs from it.
+- Loam-only maintenance assets are the one exception to the three layers: they sit under `seed/.claude/` so Loam's own sessions reach them through the root `.claude` symlink, and `copier.yml` `_exclude` keeps them out of every render (`seed/.claude/skills/verify-loam/`, `seed/.claude/stale-counts.json`).
+  Keep them there and list each new one in `_exclude`.
