@@ -43,7 +43,7 @@ Drop the rest or answer them from the codebase.
 
 `Mode: figure-out` is set when the ask is a question, names no solution, or says "help me figure out".
 It is always Track C.
-Stage 1 then opens with `surprise-me` in panel mode and `research` subagents against primary sources before any plan is written; the actors and order are in the `docs/factory/ARCHITECTURE.md` stage table.
+Stage 1 then opens with `/surprise-me` in panel mode, which the user types (it is manual-only), and the `mattpocock-skills:research` skill against primary sources before any plan is written; the actors and order are in the `docs/factory/ARCHITECTURE.md` stage table.
 The design issue records the options considered, the evidence for each, and the ones rejected with a reason.
 
 ## Tracks, by blast radius
@@ -59,7 +59,7 @@ The design issue records the options considered, the evidence for each, and the 
   The brief becomes the top section of a design issue; stage 1 follows, then `to-tickets`.
 
 Risk high means anything Track A excludes, plus outward-facing behavior.
-It sets `codex-review: yes` on every ticket once F4 ships the stage, and asks for a human diff read before merge; until F4, `codex-review: no` is valid on a high-risk ticket and the diff read carries the weight.
+It sets `codex-review: yes` on every ticket, which adds the Codex review stage after the graders (`docs/factory/LOOP.md`), and asks for a human diff read before merge.
 
 ## Worked brief, Track A
 
