@@ -13,12 +13,12 @@ Upgrade step: `claude plugin update sam-cc-setup`.
 
 reviewer.md no longer ties its verdict word to a severity; the loop and the eval both block on a high or medium finding.
 Among agent prompt changes, v0.9.6 carries only that deletion of the reviewer's verdict line; judge.md is unchanged.
-A reviewer replay before and after is owed before this version merges (docs/factory/LOOP.md, Grader change protocol).
-It runs on this Mac, not the runner, from a checkout of this branch:
+It merged in #228 with no recorded reviewer replay before and after (docs/factory/LOOP.md, Grader change protocol), so the replay is still owed.
+It runs on this Mac, not the runner, from a checkout of main; `d80474af^1` is main before #228:
 
 ```sh
 mkdir -p ~/replay-w4/before-agents
-for g in reviewer; do git show origin/main:cultivation/marketplace/sam-cc-setup/agents/$g.md > ~/replay-w4/before-agents/$g.md; done
+for g in reviewer; do git show d80474af^1:cultivation/marketplace/sam-cc-setup/agents/$g.md > ~/replay-w4/before-agents/$g.md; done
 # the hand cases (evals/reviewer)
 for g in reviewer; do
   EVAL_OUT=~/replay-w4/hand/before/r1 EVAL_EFFORT=high bin/factory eval $g --graders-dir ~/replay-w4/before-agents
@@ -43,7 +43,7 @@ codex-review gives Codex a one-paragraph intent and triages findings into Act on
 Stale references to parked or unshipped skills are fixed.
 Upgrade step: `claude plugin update sam-cc-setup`.
 
-## Unreleased: sam-cc-setup review consolidation
+## sam-cc-setup v0.8.0 review consolidation
 
 The critique-swarm skill is removed because session-critique covers decision-aware
 session review and the plan-review-fanout workflow covers pre-execution plan review, so
@@ -56,10 +56,9 @@ agent, which absorbed the lint, type check, whitespace, shell syntax, test suite
 smoke-path checks. ship, auto-phase, gen-spec, codex-review, and codex-plan-review are
 manual-only (disable-model-invocation: true) now that anthropics/claude-code#26251 is
 closed. codex-review appends open findings to docs/findings/FINDINGS.md. Upgrade step:
-`claude plugin update sam-cc-setup` after the next release; the version bump happens in
-the release loop.
+`claude plugin update sam-cc-setup`.
 
-## Current: sam-cc-setup v0.7.0 external-skill vetting
+## sam-cc-setup v0.7.0 external-skill vetting
 
 Adds the `vet-skill` skill (manual-only): security-scan any external skill or bundle
 with NVIDIA SkillSpector before installing it. Pairs with the repo tool
