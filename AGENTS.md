@@ -71,6 +71,7 @@ bin/check
 | Resource | Read when |
 |----------|-----------|
 | `seed/docs/HARNESS.md`, `docs/HARNESS-LOAM.md` | Changing hooks, settings, or the deny lists; or needing the accepted risks. The second holds the Loam-only notes. |
+| `.claude/skills/verify-loam/SKILL.md` | Proving a seed, hook, settings, or `copier.yml` change in a real rendered project before shipping it. |
 | `docs/ASSET-LAYERS.md` | Deciding where an agent asset belongs. |
 | `docs/SYNC.md` | Updating projects or promoting a reusable asset. |
 | `docs/BOOTSTRAP.md`, `docs/COPIER.md` | Changing bootstrap or update behavior. |
