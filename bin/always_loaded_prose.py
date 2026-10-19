@@ -5,7 +5,8 @@ The set: the root CLAUDE.md (or .claude/CLAUDE.md) and AGENTS.md, every
 .claude/rules/ file without `paths:` frontmatter, and every file those
 @-import, recursively. Claude Code skips an @path inside a code span or a
 fenced block, and so does this. Files outside --root, such as ~/.claude and
-an @~/ import, are not counted; neither is the gitignored CLAUDE.local.md.
+an @~/ import, are not counted. Only files git tracks count, so a local
+untracked rule or CLAUDE.local.md cannot fail bin/check where CI passes.
 
 Exit status: 0 at or under --cap bytes, 1 over it.
 """
@@ -15,6 +16,7 @@ from __future__ import annotations
 import argparse
 import pathlib
 import re
+import subprocess
 import sys
 
 ENTRY = ("CLAUDE.md", ".claude/CLAUDE.md", "AGENTS.md")
@@ -42,6 +44,8 @@ def _scoped(path: pathlib.Path) -> bool:
 def measure(root: pathlib.Path) -> list[tuple[str, int, int]]:
     """Return (path relative to root, bytes, lines) for each always-loaded file."""
     root = root.resolve()
+    listed = subprocess.run(["git", "-C", str(root), "ls-files", "-z"], capture_output=True, check=True).stdout
+    tracked = {(root / name).resolve() for name in listed.decode("utf-8").split("\0") if name}
     rules = sorted((root / ".claude/rules").rglob("*.md"))
     queue = [root / name for name in ENTRY]
     queue += [p for p in rules if not _scoped(p)]
@@ -49,7 +53,7 @@ def measure(root: pathlib.Path) -> list[tuple[str, int, int]]:
     while queue:
         path = queue.pop(0)
         real = path.resolve()
-        if real in seen or not real.is_file() or not real.is_relative_to(root):
+        if real in seen or real not in tracked or not real.is_file() or not real.is_relative_to(root):
             continue
         seen.add(real)
         data = real.read_bytes()
