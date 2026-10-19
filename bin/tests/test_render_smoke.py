@@ -146,6 +146,15 @@ class RenderSmoke(unittest.TestCase):
         self.assertTrue(script.exists(), "bin/mem-inspect not rendered")
         self.assertTrue(os.access(script, os.X_OK), "bin/mem-inspect not executable")
 
+    def test_third_party_notices_render_with_full_license_texts(self):
+        notices = (self.out / "THIRD_PARTY_NOTICES").read_text()
+        for adapted in ("bin/mem-weekly.sh", ".claude/hooks/mem-capture.sh", "bin/mem-inspect"):
+            self.assertIn(adapted, notices)
+            self.assertIn("THIRD_PARTY_NOTICES", (self.out / adapted).read_text())
+        # Two Apache-2.0 upstreams and two MIT upstreams, each carried in full.
+        self.assertEqual(notices.count("TERMS AND CONDITIONS FOR USE, REPRODUCTION, AND DISTRIBUTION"), 2)
+        self.assertEqual(notices.count("Permission is hereby granted, free of charge"), 2)
+
     def test_codex_config_parses(self):
         config = (self.out / ".codex/config.toml").read_text()
         data = tomllib.loads(config)
