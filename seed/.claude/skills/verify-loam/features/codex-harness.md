@@ -31,7 +31,7 @@ Preconditions:
 - **A rule Codex lacks.** Run `$C codex r1 "STUB_BASH: ls deny-probe ;; git reset --hard" --name cx-reset`; the second output contains `rejected: Hard reset blocked.`. Save `<root>/r1/render/.codex/rules/loam.rules`, delete its `"reset", "--hard"` line, and rerun with `--name cx-reset-norule`: the command now runs and exits 128 with `fatal: Unable to create '<render>/.git/index.lock': Operation not permitted`, because the sandbox keeps `.git` read-only. Put the saved file back.
 - **.env denied.** Run `printf 'PROBE=1\n' > <root>/r1/render/.env`, then `$C codex r1 "STUB_BASH: ls deny-probe ;; cat .env" --name cx-env`. The second output is `cat: .env: Operation not permitted` with exit code 1. Control: with `--untrusted --name cx-env-untrusted` it prints `PROBE=1` with exit code 0.
 - **Hooks wait for review.** With no memstore yet, run `$C codex r1 "Reply with the single word OK." --name cx-hooks`. No `<root>/r1/memstore/traces/render/INDEX.md` appears.
-- **Hooks run once reviewed.** Run the same with `--bypass-hook-trust --name cx-hooks-bypass`, which stands in for the review. `notices` warns that `--dangerously-bypass-hook-trust` is enabled, and INDEX.md gains one line keyed by the thread id's first 8 characters.
+- **Hooks run once reviewed.** Run the same with `--bypass-hook-trust --name cx-hooks-bypass`, which stands in for the review. `notices` warns that `--dangerously-bypass-hook-trust` is enabled, and INDEX.md gains one line keyed by the full thread id, with the prompt in its last column.
 - **Recall.** Run it again with `--bypass-hook-trust --name cx-recall`. `cx-recall.rollout.jsonl` holds a `developer` message starting `## Memory (render)` with `Loaded: 1 recent sessions`.
 - **Proof.** `<name>.jsonl` (exec events), `<name>.rollout.jsonl` (effective settings and every tool output) and `<name>.stub-requests.jsonl` in evidence; copy INDEX.md into evidence before cleanup.
 
@@ -40,8 +40,6 @@ Preconditions:
 - A policy rejection or a sandbox-denied command does not appear as a `command_execution` item in the `--json` stream. Read `tool_outputs`, which come from the rollout.
 - The user's shell may wrap `codex` in a function with its own flags (here `--ask-for-approval on-request`), which override the project's `approval_policy`. control-loam calls the binary on PATH.
 - The model is pinned to `gpt-5.5`: under the catalog default (`gpt-6.1-sol` in 0.163.0) the request carries no tools, so `STUB_BASH` cannot run a command.
-- Product gap: Codex thread ids are time-ordered, so sessions started within about a minute share their first 8 characters, and `mem-capture.sh` gives them one trace file. The later capture overwrote the earlier trace and added no INDEX line: `cx-hooks-bypass` and `cx-recall` both became `01a15274`. Space capture drives more than 66 seconds apart, or expect one line for both.
-- Product gap: a Codex capture leaves the prompt column of its INDEX.md line empty.
 - The interactive trust prompt and the one-time hook review are not driven. `--bypass-hook-trust` skips the review for one invocation and saves nothing.
 - `CODEX_HOME` is isolated, but the user-level skills root `~/.agents/skills` still loads (`r0` in the skills list).
 - Cleanup removes `codex-home`, so `$C codex` copies each rollout into evidence.
