@@ -1,7 +1,7 @@
 """Behavior of bin/sync-project.
 
 Builds a tiny Copier template (tag v1.0.0, then one untagged commit that edits a
-line the project also edited), renders a project from v1.0.0 the way Loam v3.0.0
+line the project also edited and a file the project left alone), renders a project from v1.0.0 the way Loam v3.0.0
 left it (_gh_setup.sh tracked), and keeps it in a bare repo that stands in for
 GitHub. Stubs for `claude` and `gh` on PATH log every call; the claude stub
 resolves the conflict hunks in every copy a prompt names by keeping the project's side.
@@ -117,6 +117,7 @@ class SyncProjectTests(unittest.TestCase):
         (tpl / "seed/notes.md").write_text("line one\nshared line v1\nline three\n")
         (tpl / "seed/_gh_setup.sh").write_text("#!/bin/sh\necho v1\n")
         (tpl / "seed/conf.json").write_text('{"a": 1}\n')
+        (tpl / "seed/plain.md").write_text("plain v1\n")
         git("init", "-q", "-b", "main", cwd=tpl)
         git("add", "-A", cwd=tpl)
         git("commit", "-q", "-m", "v1", cwd=tpl)
@@ -148,6 +149,7 @@ class SyncProjectTests(unittest.TestCase):
         (tpl / "seed/_gh_setup.sh").write_text("#!/bin/sh\necho v2\n")
         (tpl / "seed/new.md").write_text("new in v2\n")
         (tpl / "seed/conf.json").write_text('{"a": 2}\n')
+        (tpl / "seed/plain.md").write_text("plain v2\n")
         git("add", "-A", cwd=tpl)
         git("commit", "-q", "-m", "v2", cwd=tpl)
         cls.sha = git("rev-parse", "HEAD", cwd=tpl)
@@ -203,6 +205,7 @@ class SyncProjectTests(unittest.TestCase):
         self.assertIn("<<<<<<< before updating", self.show(copier_commit, "notes.md"))
         self.assertEqual("line one\nshared line (project)\nline three", self.show(port_commit, "notes.md"))
         self.assertEqual("new in v2", self.show(copier_commit, "new.md"))
+        self.assertEqual("plain v2", self.show(copier_commit, "plain.md"))
         answers = self.show(port_commit, ".copier-answers.yml")
         self.assertIn("_src_path: gh:example/loam", answers)
         self.assertIn(f"_commit: v1.0.0-1-g{self.sha[:7]}", answers)
@@ -261,6 +264,71 @@ class SyncProjectTests(unittest.TestCase):
         self.assertNotIn("the tracked ruling", prompt)
         body = (self.work / "pr-body.md").read_text()
         self.assertTrue(any(str(trial) in line and blob in line for line in body.splitlines()), body)
+
+    def test_copier_flags_in_the_rulings_keep_paths_out_of_the_update(self) -> None:
+        # The first test is the control: without flags notes.md conflicts, plain.md takes v2,
+        # and new.md renders.
+        self.commit_rulings("# Rulings\n\n- notes.md: keep ours.\n\n## Copier flags\n\n```text\n"
+                            "--skip /notes.md\n--skip /plain.md\n\n--exclude /new.md\n```\n")
+        r = self.sync("--dry-run")
+        self.assertEqual(0, r.returncode, r.stdout + r.stderr)
+        project = self.work / "project"
+        self.assertEqual("line one\nshared line (project)\nline three", git("show", "HEAD~1:notes.md", cwd=project))
+        self.assertEqual("plain v1", git("show", "HEAD~1:plain.md", cwd=project))
+        self.assertNotIn("new.md", git("ls-tree", "-r", "--name-only", "HEAD", cwd=project).splitlines())
+        prompt = self.claude_calls()[0]["prompt"]
+        self.assertIn("`conf.json` is at", prompt)
+        self.assertNotIn("`notes.md` is at", prompt)
+        self.assertIn("passed the lines under `## Copier flags` to Copier", prompt)
+        flags = "--skip /notes.md --skip /plain.md --exclude /new.md"
+        self.assertIn(flags, (self.work / "pr-body.md").read_text())
+        self.assertIn(flags, git("log", "-1", "--format=%B", "HEAD~1", cwd=project))
+
+    def test_refuses_a_bad_copier_flag_line_before_any_model_call(self) -> None:
+        self.commit_rulings("## Copier flags\n\n```text\n--skip /notes.md\n--keep /conf.json\n```\n")
+        r = self.sync("--dry-run")
+        self.assertEqual(1, r.returncode, r.stdout + r.stderr)
+        self.assertIn("--keep /conf.json", r.stderr)
+        self.assertEqual([], self.claude_calls())
+
+    def test_refuses_copier_flags_that_could_drop_a_ruling(self) -> None:
+        section = "## Copier flags\n\n```text\n--skip /notes.md\n```\n"
+        cases = {
+            "double-quoted pattern": ('## Copier flags\n\n```text\n--skip "/notes.md"\n```\n', '"/notes.md"'),
+            "single-quoted pattern": ("## Copier flags\n\n```text\n--skip '/notes.md'\n```\n", "'/notes.md'"),
+            "second heading": (section + "\n" + section.replace("notes", "plain"), "second"),
+            "second fence": (section + "\n```text\n--skip /plain.md\n```\n", "```text"),
+            "flag line below the fence": (section + "--skip /plain.md\n", "--skip /plain.md"),
+            "other case": (section.replace("flags", "Flags"), "## Copier Flags"),
+            "other level": ("#" + section, "### Copier flags"),
+            "extra words": (section.replace("flags", "flags (keep ours)"), "keep ours"),
+            "quoted example above": ("````markdown\n" + section.replace("notes", "conf") + "````\n\n" + section,
+                                     "````"),
+            "fence under a subheading": ("## Copier flags\n\n### Keep ours\n\n```text\n--skip /notes.md\n```\n",
+                                         "no flag lines"),
+            "heading only": ("## Copier flags\n\n## Other\n", "no flag lines"),
+            "empty fence": ("## Copier flags\n\n```text\n```\n", "no flag lines"),
+        }
+        for i, (name, (text, needle)) in enumerate(cases.items()):
+            with self.subTest(name):
+                rulings = self.base / f"rulings-{i}.md"
+                rulings.write_text(text)
+                self.work, self.claude_log = self.base / f"work-{i}", self.base / f"claude-{i}.log"
+                r = self.sync("--dry-run", "--rulings", str(rulings))
+                self.assertEqual(1, r.returncode, r.stdout + r.stderr)
+                self.assertIn(needle, r.stderr)
+                self.assertEqual([], self.claude_calls())
+
+    def test_exclude_keeps_a_file_the_project_changed_with_crlf_rulings(self) -> None:
+        # The first test is the control: without the flag conf.json conflicts. CRLF line ends
+        # would otherwise leave a carriage return in the pattern, which then matches nothing.
+        self.commit_rulings("## Copier flags\r\n\r\n```text\r\n--exclude /conf.json\r\n```\r\n")
+        r = self.sync("--dry-run")
+        self.assertEqual(0, r.returncode, r.stdout + r.stderr)
+        self.assertEqual('{"a": 3}', git("show", "HEAD~1:conf.json", cwd=self.work / "project"))
+        prompt = self.claude_calls()[0]["prompt"]
+        self.assertIn("`notes.md` is at", prompt)
+        self.assertNotIn("`conf.json` is at", prompt)
 
     def test_without_rulings_the_prompt_has_no_rulings_section(self) -> None:
         # The two tests above are the control: with a rulings file this sentence is in the prompt.
