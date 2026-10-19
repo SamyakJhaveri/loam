@@ -5,6 +5,7 @@
 #   bin/factory eval-freeze <run-dir>...  freezes each run's last round, when both graders passed it, into evals/clean/.
 #   bin/factory run <issue|file>    the supervisor: one ticket to a pull request (docs/factory/LOOP.md).
 #   bin/factory status              run states, spend, denials, worktrees, PRs, preconditions.
+#   bin/factory status --criteria   the ARCHITECTURE.md trust criteria, measured from the run dirs; reads files only.
 #   bin/factory stop <issue>        writes FACTORY_STOP into the run dir; the run halts before its next call.
 #   bin/factory next [--install]    the F9 frontier timer's step: launch the next unblocked ready-for-agent ticket.
 #   bin/factory graders-check       fails when judge.md or reviewer.md drifts from GRADER_MODEL and GRADER_EFFORT.
@@ -1701,6 +1702,12 @@ cmd_status() {
   precondition_lines
 }
 
+# The criteria and thresholds stay in ARCHITECTURE.md; criteria.py reads them there and calls nothing.
+cmd_criteria() {
+  python3 -I "$ROOT/bin/factory.d/criteria.py" "$RUNS_ROOT" "$ROOT/docs/factory/ARCHITECTURE.md" \
+    "$ROOT/cultivation/marketplace/sam-cc-setup/agents" "$TARGET"
+}
+
 grader_first_fail() { # run dir -> the first grader item that failed in the last graded round
   local j r
   j=$(find "$1" -maxdepth 1 -name 'round-*.judge.json' 2> /dev/null | sort -V | tail -1)
@@ -1857,7 +1864,7 @@ usage() { # [cmd...] - one line per named command, all eight when none is named
       eval)   echo "usage: bin/factory eval <grader> [--evals-dir D] [--graders-dir D] [--model M]" ;;
       eval-freeze) echo "usage: bin/factory eval-freeze [--evals-dir D] <run-dir>..." ;;
       run)    echo "usage: bin/factory [-C <repo>] run <issue|ticket-file>" ;;
-      status) echo "usage: bin/factory [-C <repo>] status" ;;
+      status) echo "usage: bin/factory [-C <repo>] status [--criteria]" ;;
       stop)   echo "usage: bin/factory [-C <repo>] stop <issue|ticket-stem>" ;;
       next)   echo "usage: bin/factory [-C <repo>] next [--dry-run|--install]" ;;
       graders-check) echo "usage: bin/factory graders-check [--agents-dir D]" ;;
@@ -1902,8 +1909,11 @@ case "$CMD" in
         cmd_eval_freeze "$@" ;;
   run)    [ $# -eq 1 ] || usage run
           cmd_run "$1" ;;
-  status) [ $# -eq 0 ] || usage status
-          cmd_status ;;
+  status) case "$#/${1:-}" in
+            0/)           cmd_status ;;
+            1/--criteria) cmd_criteria ;;
+            *)            usage status ;;
+          esac ;;
   stop)   [ $# -eq 1 ] || usage stop
           cmd_stop "$1" ;;
   next)   cmd_next "$@" ;;
