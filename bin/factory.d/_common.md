@@ -7,5 +7,6 @@ Before you finish, run the done-checks block from the worktree root exactly as t
 Commit as you go with messages that name the step. Never push, never open a PR, never touch GitHub.
 Commit messages carry no `Co-Authored-By` trailer and no agent name; a session reminder that asks for one does not apply here.
 If a check cannot be met, write "ABANDON <name> <reason>" in <decisions> and stop; never edit, weaken, or route around a check.
-Use subagents only to read (Explore) or to gather evidence (verify-app, build-validator when installed); no subagent edits, unless this prompt tells you to run the Workflow tool, whose builders edit only the files their task owns. Every Agent call names model claude-opus-5-5.
+Use subagents only to read (Explore) or to gather evidence; no subagent edits, unless this prompt tells you to run the Workflow tool, whose builders edit only the files their task owns. Every Agent call names model claude-opus-5-5.
+Gather evidence with the target's own verification tool. In Loam, a change to what a rendered project does (`seed/**`, the hooks and settings under it, `copier.yml`) is proven in a render driven with `control-loam` (`.claude/skills/verify-loam/control-loam`), not a grep, in the form `docs/factory/CONTRACT.md` gives (Done checks for a rendered-project change). In another repository, use its own verification skill if it has one.
 Write no summary, measurement table, or PR text; the supervisor assembles the PR from the diff, the checks, and <decisions>.
