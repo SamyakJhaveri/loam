@@ -50,9 +50,9 @@ per-tool latency.
   after a compaction that points back at the handoff note (see The handoff).
 - `mem-capture.sh` (SessionEnd, PreCompact, Stop): scrubs known secret shapes
   from the session transcript, stores it gzipped at
-  `$LOAM_MEMSTORE/traces/<repo>/<date>-<sid8>.jsonl.gz`, and appends one
+  `$LOAM_MEMSTORE/traces/<repo>/<date>-<session_id>.jsonl.gz`, and appends one
   `INDEX.md` line, with no model call. It is idempotent on the scrubbed content's
-  sha256 (kept beside the trace as `<date>-<sid8>.sha`), so a repeat capture adds
+  sha256 (kept beside the trace as `<date>-<session_id>.sha`), so a repeat capture adds
   no file and no line. After a capture it links `<repo>/.loam/memory` to the
   store when that path is free. The `Stop` entry passes `--throttle 600`, so a
   burst of stops captures at most once per ten minutes. It then commits the store

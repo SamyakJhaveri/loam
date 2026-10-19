@@ -6,6 +6,7 @@ test_agent_parity.py with one cheap smoke that renders once per class.
 
 from __future__ import annotations
 
+import gzip
 import json
 import os
 import pathlib
@@ -227,9 +228,9 @@ class RenderSmoke(unittest.TestCase):
                 },
             )
             traces = tmp / "store/traces" / self.out.name
-            self.assertTrue(list(traces.glob("*-smoke123.jsonl.gz")), "mem-capture wrote no trace")
+            self.assertTrue(list(traces.glob("*-smoke123-capture.jsonl.gz")), "mem-capture wrote no trace")
             index = (traces / "INDEX.md").read_text() if (traces / "INDEX.md").exists() else ""
-            self.assertIn(" | smoke123 | ", index, "mem-capture wrote no INDEX line")
+            self.assertIn(" | smoke123-capture | ", index, "mem-capture wrote no INDEX line")
 
             r = hook(
                 "mem-recall.sh",
@@ -242,6 +243,82 @@ class RenderSmoke(unittest.TestCase):
             )
             self.assertIn(f"## Memory ({self.out.name})", r.stdout)
             self.assertIn("Probe the smoke capture", r.stdout)
+
+    # Codex thread ids are time-ordered UUIDv7, so sessions started within about 65 s
+    # share their first 8 characters.
+    CODEX_PROMPTS = {
+        "01a15274-5d2e-7c41-9a3b-2f1e0d9c8b7a": "first codex session prompt",
+        "01a15274-e8f0-7a12-8c4d-6b5a49382716": "second codex session prompt",
+    }
+
+    def _codex_capture(self, store: pathlib.Path, sid: str, rollout: pathlib.Path) -> None:
+        env = {**GIT_ENV, "LOAM_MEMSTORE": str(store)}
+        env.pop("LOAM_MEMSTORE_REMOTE", None)
+        payload = {"hook_event_name": "Stop", "session_id": sid, "transcript_path": str(rollout), "cwd": str(self.out)}
+        subprocess.run(
+            ["bash", str(self.out / ".claude/hooks/mem-capture.sh")],
+            input=json.dumps(payload),
+            capture_output=True,
+            text=True,
+            timeout=30,
+            cwd=self.out,
+            env=env,
+        )
+
+    def _codex_rollout(self, tmp: pathlib.Path, sid: str, prompt: str) -> pathlib.Path:
+        # The record shapes `codex exec` 0.153 writes: the prompt is a response_item and
+        # an item_completed UserMessage, with no user_message event.
+        records = [
+            {"type": "session_meta", "payload": {"id": sid, "source": "exec", "originator": "codex_exec"}},
+            {"type": "response_item", "payload": {"type": "message", "role": "user", "content": [
+                {"type": "input_text", "text": "<environment_context>probe</environment_context>"}]}},
+            {"type": "response_item", "payload": {"type": "message", "role": "user", "content": [
+                {"type": "input_text", "text": prompt}]}},
+            {"type": "event_msg", "payload": {"type": "item_completed", "thread_id": sid, "item": {
+                "type": "UserMessage", "id": "u1", "content": [{"type": "text", "text": prompt, "text_elements": []}]}}},
+        ]
+        rollout = tmp / f"rollout-{sid}.jsonl"
+        rollout.write_text("".join(json.dumps(r) + "\n" for r in records))
+        return rollout
+
+    def test_codex_sessions_sharing_an_id_prefix_keep_their_own_trace(self):
+        with tempfile.TemporaryDirectory() as d:
+            tmp = pathlib.Path(d)
+            rollouts = {sid: self._codex_rollout(tmp, sid, p) for sid, p in self.CODEX_PROMPTS.items()}
+            for sid, rollout in rollouts.items():
+                self._codex_capture(tmp / "store", sid, rollout)
+            # A repeat capture of the same session updates its trace and adds no INDEX line.
+            first = next(iter(rollouts))
+            with rollouts[first].open("a") as fh:
+                fh.write(json.dumps({"type": "event_msg", "payload": {"type": "task_complete"}}) + "\n")
+            self._codex_capture(tmp / "store", first, rollouts[first])
+
+            traces = tmp / "store/traces" / self.out.name
+            bodies = [gzip.decompress(p.read_bytes()).decode() for p in sorted(traces.glob("*.jsonl.gz"))]
+            self.assertEqual(len(bodies), 2, "one Codex session's capture overwrote the other's trace")
+            for sid in rollouts:
+                self.assertEqual(sum(sid in b for b in bodies), 1, f"session {sid} has no trace of its own")
+            self.assertIn("task_complete", next(b for b in bodies if first in b), "the repeat capture did not update")
+            lines = (traces / "INDEX.md").read_text().splitlines()
+            self.assertEqual(len(lines), 2, lines)
+            for sid in rollouts:
+                r = subprocess.run(
+                    [str(self.out / "bin/mem-inspect"), sid, "--json"],
+                    capture_output=True,
+                    text=True,
+                    env={**os.environ, "LOAM_MEMSTORE": str(tmp / "store")},
+                )
+                self.assertEqual(r.returncode, 0, f"mem-inspect cannot resolve {sid}: {r.stderr}")
+
+    def test_codex_capture_indexes_the_rollout_prompt(self):
+        with tempfile.TemporaryDirectory() as d:
+            tmp = pathlib.Path(d)
+            sid, prompt = next(iter(self.CODEX_PROMPTS.items()))
+            self._codex_capture(tmp / "store", sid, self._codex_rollout(tmp, sid, prompt))
+            index = tmp / "store/traces" / self.out.name / "INDEX.md"
+            lines = index.read_text().splitlines() if index.exists() else []
+            self.assertEqual(len(lines), 1, lines)
+            self.assertTrue(lines[0].endswith(" | " + prompt), f"INDEX prompt column lacks {prompt!r}: {lines}")
 
     def test_every_claude_deny_spelling_has_a_codex_rule(self):
         deny = self.settings()["permissions"]["deny"]
