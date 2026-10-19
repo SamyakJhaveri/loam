@@ -1,0 +1,84 @@
+#!/usr/bin/env bash
+# Daily upkeep of verify-loam: a fresh clone of origin/main runs
+# /pstack:maintain-verification-skill headless. Never pushes; a "changed"
+# outcome stays on a local branch in the run's clone for the owner to review.
+set -euo pipefail
+
+usage() {
+  cat <<'EOF'
+usage: bin/verify-loam-daily [--probe] [--dry-run]
+
+Clones origin/main into $VERIFY_DAILY_ROOT/<stamp>/loam and runs
+/pstack:maintain-verification-skill on .claude/skills/verify-loam with claude -p.
+Prints one JSON line: ok, run, outcome, cost_usd, branch, report.
+
+  --probe     clone and check claude, auth and pstack only; no model call ($0)
+  --dry-run   print the clone and claude commands, run nothing
+
+Env: VERIFY_DAILY_ROOT (default ~/.local/state/loam/evidence/verify-daily).
+The run's own TMPDIR and LOAM_MEMSTORE live inside the clone, so it never
+writes to ~/memstore or another run's files.
+EOF
+}
+
+probe=0 dry=0
+for arg in "$@"; do
+  case "$arg" in
+    --probe) probe=1 ;;
+    --dry-run) dry=1 ;;
+    -h|--help) usage; exit 0 ;;
+    *) echo "unknown argument: $arg (see --help)" >&2; exit 2 ;;
+  esac
+done
+
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+origin="$(git -C "$ROOT" remote get-url origin)"
+stamp="$(date +%Y-%m-%dT%H%M%S)"
+run="${VERIFY_DAILY_ROOT:-$HOME/.local/state/loam/evidence/verify-daily}/$stamp"
+clone="$run/loam"
+branch="verify/maintain-$stamp"
+prompt="/pstack:maintain-verification-skill Target: .claude/skills/verify-loam. \
+Do not push and do not open a PR. If the outcome is changed, commit the proven \
+corrections on a new local branch named $branch in this clone. Write the run \
+notes and the outcome word (clean, changed or blocked) on its own first line \
+as 'outcome: <word>' to .verify-daily/report.md."
+
+if [[ "$dry" == 1 ]]; then
+  echo "git clone -q $origin $clone"
+  echo "claude -p '$prompt' --permission-mode auto --output-format stream-json --verbose"
+  exit 0
+fi
+
+command -v claude >/dev/null || { echo "claude not on PATH; set PATH in the launchd plist" >&2; exit 3; }
+mkdir -p "$run"
+git clone -q "$origin" "$clone"
+git -C "$clone" config user.email 39847642+SamyakJhaveri@users.noreply.github.com
+git -C "$clone" config user.name "Samyak Jhaveri"
+printf '.tmp/\n.memstore/\n.verify-daily/\n' >> "$clone/.git/info/exclude"
+mkdir -p "$clone/.tmp" "$clone/.memstore" "$clone/.verify-daily"
+
+if [[ "$probe" == 1 ]]; then
+  logged_in="$(claude auth status 2>/dev/null | jq -r '.loggedIn // false' 2>/dev/null || echo false)"
+  pstack=false
+  [[ -f "$HOME/.claude/rules/pstack-models.md" ]] && \
+    jq -e '.plugins | keys[] | select(startswith("pstack@"))' "$HOME/.claude/plugins/installed_plugins.json" >/dev/null 2>&1 && pstack=true
+  ok=false; [[ "$logged_in" == true && "$pstack" == true ]] && ok=true
+  printf '{"ok":%s,"run":"%s","probe":true,"claude":"%s","logged_in":%s,"pstack":%s,"head":"%s"}\n' \
+    "$ok" "$run" "$(claude --version | head -1)" "$logged_in" "$pstack" "$(git -C "$clone" rev-parse --short HEAD)" | tee "$run/probe.json"
+  [[ "$ok" == true ]]; exit
+fi
+
+rc=0
+( cd "$clone" && env -u LOAM_MEMSTORE_REMOTE TMPDIR="$clone/.tmp" LOAM_MEMSTORE="$clone/.memstore" \
+    claude -p "$prompt" --permission-mode auto --output-format stream-json --verbose \
+    > "$run/claude.jsonl" 2> "$run/claude.stderr" ) || rc=$?
+
+report="$clone/.verify-daily/report.md"
+[[ -f "$report" ]] && cp "$report" "$run/report.md"
+outcome="$(sed -n 's/^outcome: *\([a-z]*\).*/\1/p' "$run/report.md" 2>/dev/null | head -1)"
+cost="$(jq -s '[.[] | select(.type == "result") | .total_cost_usd] | last // 0' "$run/claude.jsonl" 2>/dev/null || echo 0)"
+git -C "$clone" rev-parse --verify -q "$branch" >/dev/null || branch=""
+ok=false; [[ "$rc" == 0 && -n "$outcome" ]] && ok=true
+printf '{"ok":%s,"run":"%s","exit":%s,"outcome":"%s","cost_usd":%s,"branch":"%s","report":"%s"}\n' \
+  "$ok" "$run" "$rc" "${outcome:-none}" "$cost" "$branch" "$run/report.md" | tee "$run/result.json"
+[[ "$ok" == true ]]

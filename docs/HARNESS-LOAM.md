@@ -31,3 +31,11 @@ Rendered-project rows were measured in a `copier copy` render of each version; r
 | Seed hook and lib lines | 2309 | 71 |
 | `bin/` plus `bin/tests/` lines | 11377 | 1525 |
 | Marketplace skills shipped | 26 | 3 |
+
+## Daily verify-loam upkeep
+
+`bin/verify-loam-daily` clones origin/main and runs `/pstack:maintain-verification-skill` on verify-loam with `claude -p` in auto permission mode.
+It never pushes; a `changed` outcome stays on a local `verify/maintain-<stamp>` branch in the run's clone, under `~/.local/state/loam/evidence/verify-daily/<stamp>/`, with `result.json`, `report.md` and the stream-json transcript.
+`--probe` checks claude, login and pstack at $0.
+The owner's Mac runs it daily at 06:00 from `~/Library/LaunchAgents/com.samyakjhaveri.verify-loam-daily.plist`, whose `EnvironmentVariables` PATH names the toolchain `claude`, `uvx` and Homebrew.
+Load it with `launchctl bootstrap gui/$(id -u) <plist>`; read the last run with `launchctl print gui/$(id -u)/com.samyakjhaveri.verify-loam-daily | grep 'last exit'`.
