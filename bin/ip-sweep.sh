@@ -94,18 +94,53 @@ fi
 # publicly via PRs #27 to #32 (last: ef7e9be) were made on jhaveris with the
 # pre-noreply identity and are accepted as already public; that clone now commits
 # as noreply. The first baseline above stays for the record.
+#
+# Third baseline (Samyak's ruling, 2026-10-18): 25 commits dated 2026-09-11 to
+# 2026-09-18, already on the public main, carry the uci.edu identity (24 as author and
+# committer, 76b8527 as committer only). They are accepted by exact SHA, not by range,
+# so no later commit can slip in.
+IDENTITY_ACCEPTED="
+8f0655bdd446c5cbf1ab2b6a6a68bee0b2c9197c
+8488af8b5afecde3782d3feec269d21be5d02011
+60efc16ab4dc833eb2273516423d373e2b9f54fa
+27cbcff5c4269eb32c4ed45d9912036ec532074e
+06ce3e84f547464fc6ce6126908469de8022461c
+7c4cfaf7e2a77b173f26ed1056c16fd023a8cc22
+0f24cf202806c9292cf38af389f9f4e6db93fd65
+d99e76411d0553a44b3ea09b02e5c049f9824a9e
+f410b509b912fa42bfad8371aade7ae6656ffdfe
+4949a5a5b939269051617d67a128d3871c9935cd
+edf0ccd1568e7ebd84bc27c92cd2c542e5c16f3a
+161e99749d960a8be3761143657540c87887370d
+90aafd9be08b9fa3fa42ec55d00028d5756dcf45
+1dd2b32a71c660ac857e59d7a9036450c5bffdfc
+58763412a7ae633b4c55594a299b39f6cb9e2e0a
+b5335e43ffdc1f1c38c3cc524f50707067490b6e
+a809d4c556beb383fc0347fc9c24416c8f91b699
+14af8938265bae28a4837ba2f245500df2dc5954
+5bbfc598ccc0c619e4f88016aed63cdeb53183c5
+4e8ee8ae1b6adf370e97405fa8a638818005be41
+ef241270125e1c5aa6dd89577b7000fae3749887
+e4c6f474094340dd9829740d9004a0a36e1c121b
+0f35813a2275ec5ddb81853784b7ffbf734769e6
+8200eef8a7ab1224b98d45e491e91ce528369a59
+76b85275bf99a379b3ae7a49c0f30f7750f72617
+"
 IDENTITY_BASELINE="ef7e9be19bd50caf1407a9ada1db5ae7c6df8864"
 IDENTITY_RANGE="HEAD"
 git cat-file -e "$IDENTITY_BASELINE" 2>/dev/null && IDENTITY_RANGE="${IDENTITY_BASELINE}..HEAD"
 NOREPLY_AUTHOR_RE='^[^@[:space:]]+@users\.noreply\.github\.com$'
 NOREPLY_COMMITTER_RE='^([^@[:space:]]+@users\.noreply\.github\.com|noreply@github\.com)$'
-BAD_AUTHORS=$(git log --format='%ae' $IDENTITY_RANGE | sort -u | grep -vE "$NOREPLY_AUTHOR_RE" || true)
+# One "<sha> <email>" line per commit, minus the accepted SHAs.
+# printf splits the list on whitespace, so no empty pattern reaches grep (an empty -F pattern matches every line).
+identities() { git log --format="%H $1" $IDENTITY_RANGE | grep -vF -f <(printf '%s\n' $IDENTITY_ACCEPTED) | cut -d' ' -f2- || true; }
+BAD_AUTHORS=$(identities '%ae' | sort -u | grep -vE "$NOREPLY_AUTHOR_RE" || true)
 if [ -n "$BAD_AUTHORS" ]; then
   echo "WARN: non-noreply author identities (must be clean in the public repo):"
   echo "$BAD_AUTHORS"
   [[ "$STRICT" = 1 ]] && FAIL=1
 fi
-BAD_COMMITTERS=$(git log --format='%ce' $IDENTITY_RANGE | sort -u | grep -vE "$NOREPLY_COMMITTER_RE" || true)
+BAD_COMMITTERS=$(identities '%ce' | sort -u | grep -vE "$NOREPLY_COMMITTER_RE" || true)
 if [ -n "$BAD_COMMITTERS" ]; then
   echo "WARN: non-noreply committer identities (must be clean in the public repo):"
   echo "$BAD_COMMITTERS"
