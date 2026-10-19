@@ -86,6 +86,18 @@ class IpSweepTest(unittest.TestCase):
             self.set_accepted(repo, sha[:12])
             self.assertEqual(1, self.sweep(repo, IP_SWEEP_IDENTITY_ONLY="1").returncode)
 
+    def test_identity_only_fails_when_awk_fails(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir, tempfile.TemporaryDirectory() as bin_dir:
+            repo = self.make_repo(temp_dir, {"README.md": "nothing to see\n"})
+            fake_awk = pathlib.Path(bin_dir) / "awk"
+            fake_awk.write_text("#!/bin/sh\nexit 2\n", encoding="utf-8")
+            fake_awk.chmod(0o755)
+
+            result = self.sweep(repo, IP_SWEEP_IDENTITY_ONLY="1", PATH=f"{bin_dir}:{os.environ['PATH']}")
+
+            self.assertEqual(1, result.returncode, result.stdout + result.stderr)
+            self.assertNotIn("PASS", result.stdout)
+
     def commit_edu(self, repo: pathlib.Path) -> str:
         (repo / "README.md").write_text("edited\n", encoding="utf-8")
         self.run_git(repo, "commit", "-qam", "edit", "--author", "Someone <someone@example.edu>")
