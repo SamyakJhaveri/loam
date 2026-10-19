@@ -165,12 +165,13 @@ class SyncProjectTests(unittest.TestCase):
         self.claude_log = self.base / "claude.log"
         self.gh_log = self.base / "gh.log"
 
-    def sync(self, *flags: str, project: str | None = None, mode: str = "") -> subprocess.CompletedProcess:
+    def sync(self, *flags: str, project: str | None = None, mode: str = "",
+             loam: pathlib.Path | None = None, sha: str | None = None) -> subprocess.CompletedProcess:
         env = {**GIT_ENV, "PATH": f"{self.stubs}:{os.environ['PATH']}", "TMPDIR": str(self.base),
                "SYNC_STUB_LOG": str(self.claude_log), "SYNC_GH_LOG": str(self.gh_log),
                "SYNC_STUB_MODE": mode}
-        return run(["bash", str(SYNC), "--loam", str(self.tpl), "--work", str(self.work), *flags,
-                    project or str(self.remote), self.sha], env=env, check=False)
+        return run(["bash", str(SYNC), "--loam", str(loam or self.tpl), "--work", str(self.work), *flags,
+                    project or str(self.remote), sha or self.sha], env=env, check=False)
 
     def claude_calls(self) -> list[dict]:
         if not self.claude_log.exists():
@@ -257,6 +258,23 @@ class SyncProjectTests(unittest.TestCase):
         self.assertEqual(0, r.returncode, r.stdout + r.stderr)
         self.assertNotIn("Follow every ruling", self.claude_calls()[0]["prompt"])
         self.assertNotIn("owner's rulings", (self.work / "pr-body.md").read_text())
+
+    def test_a_long_change_list_still_reaches_the_verify_skill(self) -> None:
+        # Over 64 KiB of `git diff --name-status`: a reader that stops early sends git SIGPIPE,
+        # and pipefail would then end the run before the verify skill.
+        tpl = self.base / "tpl-big"
+        git("clone", "-q", str(self.tpl), str(tpl), cwd=self.base)
+        (tpl / "seed/many").mkdir()
+        for i in range(800):
+            (tpl / "seed/many" / f"{i:03d}-{'x' * 200}.md").write_text(f"{i}\n")
+        git("add", "-A", cwd=tpl)
+        git("commit", "-q", "-m", "v3", cwd=tpl)
+        r = self.sync("--dry-run", loam=tpl, sha=git("rev-parse", "HEAD", cwd=tpl))
+        self.assertEqual(0, r.returncode, r.stdout + r.stderr)
+        calls = self.claude_calls()
+        self.assertEqual(2, len(calls), calls)
+        self.assertEqual(200, sum("\t" in line for line in calls[1]["prompt"].splitlines()))
+        self.assertIn("VERIFY: PASS", (self.work / "pr-body.md").read_text())
 
     def test_dry_run_stops_before_the_push(self) -> None:
         r = self.sync("--dry-run")
