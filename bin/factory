@@ -1187,14 +1187,15 @@ build_evidence() { # rubric_file diff_cap -> stdout
   printf '%s\n' "$FENCE"
 }
 
-# A judge pass with fixes to apply, or a fail with nothing to point at, refutes itself (LOOP.md, precedence).
+# A judge pass with a fix or a failing row, or a fail with nothing to point at, refutes itself (LOOP.md, precedence).
 # A reviewer's verdict word is never checked: run_review reads REVIEW_OUTCOME, and a refutation of the word
 # pushes the model to change its findings to fit it (2026-09-12).
 verdict_consistent() { # json file
   jq -e '(.verdict // "") as $v
     | ((.fixes // []) | length) as $blocking
     | (((.backlog // []) | length) + ((.findings // []) | length)) as $other
-    | if $v == "pass" then $blocking == 0
+    | ([.rows[]?] | all(. == "pass")) as $rows_pass
+    | if $v == "pass" then $blocking == 0 and $rows_pass
       elif $v == "fail" then ($blocking > 0 or $other > 0)
       else true end' "$1" > /dev/null 2>&1
 }
