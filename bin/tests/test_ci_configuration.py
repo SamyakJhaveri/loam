@@ -31,6 +31,14 @@ class CIConfig(unittest.TestCase):
         self.assertNotIn("continue-on-error:", job)
         self.assertNotIn("if:", job)
 
+    def test_stub_sweep_job_runs_the_sweep(self):
+        """verify-loam's stub sweep runs on every push and PR; a dropped step or a gate would let a break pass."""
+        w = TEST.read_text()
+        job = w[w.index("  stub-sweep:"):]
+        self.assertIn("- name: Run verify-loam stub sweep\n        run: .claude/skills/verify-loam/control-loam sweep", job)
+        self.assertNotIn("continue-on-error:", job)
+        self.assertNotIn("if:", job)
+
     def test_release_workflow_publishes_only(self):
         w = RELEASE.read_text()
         self.assertIn("tags:", w)

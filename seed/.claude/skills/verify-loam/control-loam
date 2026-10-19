@@ -155,6 +155,16 @@ def start_stub(log: pathlib.Path) -> tuple[subprocess.Popen, int]:
     return p, int(port)
 
 
+def stream_events(stream: pathlib.Path) -> list[dict]:
+    events = []
+    for line in stream.read_text().splitlines():
+        try:
+            events.append(json.loads(line))
+        except ValueError:
+            pass
+    return events
+
+
 def cmd_session(a) -> None:
     d = run_dir(a.run)
     meta = load(d)
@@ -166,7 +176,9 @@ def cmd_session(a) -> None:
         argv += ["--model", a.model]
     if a.bypass:
         argv += ["--permission-mode", "bypassPermissions"]
-    env = {**GIT_ENV, "LOAM_MEMSTORE": str(d / "memstore")}
+    # The run's own TMPDIR: claude and its Bash children never share temp files with the caller or another run.
+    (d / "tmp").mkdir(exist_ok=True)
+    env = {**GIT_ENV, "LOAM_MEMSTORE": str(d / "memstore"), "TMPDIR": str(d / "tmp")}
     env.pop("LOAM_MEMSTORE_REMOTE", None)
     stub = None
     if a.stub:
@@ -177,20 +189,17 @@ def cmd_session(a) -> None:
     try:
         with stream.open("w") as so, err.open("w") as se:
             try:
-                rc = subprocess.run(argv, cwd=d / "render", stdout=so, stderr=se, env=env, timeout=a.timeout).returncode
+                # stdin closed: an open one makes claude -p wait 3 s for piped input before it starts.
+                rc = subprocess.run(argv, cwd=d / "render", stdin=subprocess.DEVNULL, stdout=so, stderr=se, env=env,
+                                    timeout=a.timeout).returncode
             except subprocess.TimeoutExpired:
                 rc = None  # claude was killed at --timeout; the partial stream is still read and kept below
     finally:
         if stub:
             stub.terminate()
             stub.wait()
-    events = []
-    for line in stream.read_text().splitlines():
-        try:
-            events.append(json.loads(line))
-        except ValueError:
-            pass
-    init = next((e for e in events if e.get("subtype") == "init"), {})
+    events = stream_events(stream)
+    init =next((e for e in events if e.get("subtype") == "init"), {})
     result = next((e for e in events if e.get("type") == "result"), {})
     sid = init.get("session_id") or result.get("session_id")
     hooks = [{"event": e.get("hook_event"), "name": e.get("hook_name"), "exit_code": e.get("exit_code"),
@@ -329,7 +338,7 @@ def cmd_cleanup(a) -> None:
     t = tmux_name(a.run)
     if shutil.which("tmux") and tmux_alive(t) and not a.dry_run:
         sh(["tmux", "kill-session", "-t", t])
-    targets = [d / "render", d / "memstore"]
+    targets = [d / "render", d / "memstore", d / "tmp"]
     # Claude Code keeps each session's transcript under ~/.claude/projects/<render path, non-alphanumerics as ->.
     # Sessions copy their transcript into evidence first; this dir belongs to this run's render only.
     targets.append(PROJECTS / re.sub(r"[^A-Za-z0-9]", "-", str((d / "render").resolve())))
@@ -340,6 +349,84 @@ def cmd_cleanup(a) -> None:
     kept = sorted(str(p) for p in (d / "evidence").iterdir())
     out({"ok": True, "run": a.run, "dry_run": a.dry_run, "removed": [str(t) for t in targets],
          "evidence_kept": kept})
+
+
+def cmd_sweep(a) -> None:
+    # The $0 stub recipes of features/ in one pass, for CI: render, doctor, mem-1 then mem-2 recall, the deny probe
+    # with its ls control, the rendered check. Each step runs one control-loam command and judges its JSON; the first
+    # failure exits 1 naming its recipe, so a break never reads as a pass.
+    run = a.run or time.strftime("sweep-%Y%m%d-%H%M%S")
+    d = ROOT / run
+    passed = []
+
+    def fail(recipe: str, why: str) -> None:
+        log = d / "evidence" / {"render": "render.log", "check": "check.txt"}.get(recipe, f"{recipe}.stderr")
+        out({"ok": False, "run": run, "failed": recipe, "error": f"sweep recipe {recipe} failed: {why}",
+             "passed": passed, "log": str(log), "log_tail": log.read_text()[-1500:] if log.is_file() else ""}, 1)
+
+    def step(recipe: str, *args: str) -> dict:
+        r = sh([sys.executable, str(pathlib.Path(__file__).resolve()), *args])
+        try:
+            res = json.loads(r.stdout)
+        except ValueError:
+            res = {"error": f"control-loam {args[0]} printed no JSON: {r.stderr.strip()[-600:]}"}
+        if not res.get("ok"):
+            bad = [f"{c['name']} ({c['detail']})" for c in res.get("checks", []) if not c["ok"]]
+            fail(recipe, res.get("error") or "; ".join(bad) or f"control-loam {args[0]} exited {r.returncode}")
+        return res
+
+    def session(recipe: str, prompt: str, *flags: str) -> dict:
+        s = step(recipe, "session", run, prompt, "--name", recipe, "--stub", "--timeout", "120", *flags)
+        broken = [f"{h['name']} exited {h['exit_code']}" for h in s["hooks"] if h["exit_code"] != 0]
+        if broken:
+            fail(recipe, "hook " + ", ".join(broken))
+        return s
+
+    res = step("render", "render", "--run", run)
+    passed.append({"recipe": "render", "proof": res["render"]})
+    res = step("doctor", "doctor", run)
+    passed.append({"recipe": "doctor", "proof": next(c["detail"] for c in res["checks"] if c["name"] == "claude CLI on PATH")})
+
+    s = session("mem-1", "Reply with the single word OK.")
+    events = {h["event"] for h in s["hooks"]}
+    if not {"SessionStart", "Stop"} <= events:
+        fail("mem-1", f"hook events {sorted(events)} lack SessionStart or Stop")
+    index, sid8 = d / "memstore/traces/render/INDEX.md", (s["session_id"] or "")[:8]
+    if not (sid8 and index.is_file() and f" | {sid8} | " in index.read_text()):
+        fail("mem-1", f"Stop captured nothing: {index} has no line for session {sid8 or '?'}")
+    link = d / "render/.loam/memory"
+    if not (link.is_symlink() and link.resolve() == (d / "memstore").resolve()):
+        fail("mem-1", f"{link} is not a link to the memstore")
+    passed.append({"recipe": "mem-1", "proof": f"Stop captured session {sid8} into INDEX.md; .loam/memory links the store"})
+
+    s = session("mem-2", "Reply with the single word OK.")
+    if not any(h["event"] == "SessionStart" and h["stdout"].startswith("## Memory (render)") for h in s["hooks"]):
+        fail("mem-2", "no SessionStart hook printed '## Memory (render)': mem-1 was not recalled")
+    passed.append({"recipe": "mem-2", "proof": "SessionStart printed '## Memory (render)'"})
+
+    probe = d / "render/deny-probe"
+    probe.mkdir()
+    (probe / "keep").touch()
+    s = session("deny", "STUB_BASH: ls deny-probe ;; rm -rf deny-probe", "--bypass")
+    denied = [p.get("tool_input", {}).get("command") for p in s["permission_denials"]]
+    if denied != ["rm -rf deny-probe"]:
+        fail("deny", f"permission_denials is {denied}, want exactly ['rm -rf deny-probe']")
+    if not (probe / "keep").exists():
+        fail("deny", "the sentinel deny-probe/keep is gone")
+    results = {b.get("tool_use_id"): b for e in stream_events(pathlib.Path(s["evidence"])) if e.get("type") == "user"
+               for b in e.get("message", {}).get("content") or [] if isinstance(b, dict) and b.get("type") == "tool_result"}
+    control = results.get("toolu_stub_0", {})  # stub-model.py numbers its tool calls from 0
+    if control.get("is_error") or "keep" not in json.dumps(control.get("content")):
+        fail("deny", f"the control 'ls deny-probe' did not list keep: {control.get('content')!r}")
+    shutil.rmtree(probe)  # an untracked sentinel would stay in the render the check judges
+    passed.append({"recipe": "deny", "proof": "'rm -rf deny-probe' denied under bypass, sentinel kept; control 'ls deny-probe' listed keep"})
+
+    res = step("check", "check", run)
+    if not res["last_line"].startswith("check: PASSED"):
+        fail("check", f"last line is {res['last_line']!r}")
+    passed.append({"recipe": "check", "proof": res["last_line"]})
+    step("cleanup", "cleanup", run)
+    out({"ok": True, "run": run, "passed": passed, "evidence": str(d / "evidence")})
 
 
 def main() -> None:
@@ -378,6 +465,9 @@ def main() -> None:
     s.add_argument("run")
     s.add_argument("--dry-run", action="store_true")
     s.set_defaults(fn=cmd_cleanup)
+    s = sub.add_parser("sweep", help="render, then the $0 stub recipes (memory, deny, check); exits 1 naming the first failed recipe")
+    s.add_argument("--run", help="run id (default: sweep- + timestamp)")
+    s.set_defaults(fn=cmd_sweep)
     a = p.parse_args()
     a.fn(a)
 

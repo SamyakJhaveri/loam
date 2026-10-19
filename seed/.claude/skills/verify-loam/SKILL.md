@@ -28,7 +28,7 @@ $C render --run <id> --ref v3.0.0 --kind typescript
 
 - Default `--ref HEAD` renders the working tree: copier turns a dirty checkout into a temporary commit, so uncommitted seed edits are included. `doctor` says which case you got.
 - Ready means `render` printed `"ok": true` and `doctor` passes. A render takes about 4 seconds.
-- Every run is its own directory, so runs can go in parallel. Sessions point the memory hooks at `<run>/memstore` through `LOAM_MEMSTORE` and unset `LOAM_MEMSTORE_REMOTE`, so a run never touches `~/memstore` or pushes anywhere.
+- Every run is its own directory, so runs can go in parallel. Sessions point the memory hooks at `<run>/memstore` through `LOAM_MEMSTORE`, unset `LOAM_MEMSTORE_REMOTE` and set `TMPDIR` to `<run>/tmp`, so a run never touches `~/memstore`, pushes anywhere, or shares temp files.
 - Sessions use `--setting-sources project,local`: the render's own settings and hooks apply, your user-level hooks and plugins do not.
 
 ## Doctor
@@ -81,6 +81,16 @@ A fresh render has no `tests/`, so that check runs no pytest and a pass alone pr
 `doctor` and `check` record their last outcome in `run.json`.
 `bin/release.sh` tags only a HEAD with a clean-tree run (`"dirty": false`) whose doctor and check are both ok, the check run on a pristine render (`"pristine": true`: copier's one commit, nothing edited).
 
+## Sweep
+
+```bash
+$C sweep          # render, doctor, mem-1 then mem-2 recall, the deny probe with its ls control, the rendered check
+```
+
+It runs the `--stub` recipes of the feature map in one $0 pass of about 10 seconds and cleans up after a pass; a failed run is kept.
+The first failure exits 1 with `failed` naming the recipe and `log_tail` from its evidence; zero stub requests is a failure.
+CI runs it on every push and PR (job `stub-sweep` in `.github/workflows/test.yml`).
+
 ## Evidence
 
 Everything lands in `<run>/evidence/`: `render.log`, `<name>.jsonl` (the stream-json with hook events), `<name>.stderr`, `<name>.transcript.jsonl`, `<name>.stub-requests.jsonl` (one line per stub request), `<name>.screen.txt`, `check.txt`.
@@ -100,7 +110,7 @@ $C cleanup <id> --dry-run   # lists what it would remove
 $C cleanup <id>
 ```
 
-It kills the run's tmux session, removes `render/`, `memstore/` and the `~/.claude/projects/` directory of this render, and keeps `evidence/` and `run.json`.
+It kills the run's tmux session, removes `render/`, `memstore/`, `tmp/` and the `~/.claude/projects/` directory of this render, and keeps `evidence/` and `run.json`.
 It never kills by process name and never touches another run.
 After cleanup, list `<run>/evidence/` to confirm the proof is still there.
 
