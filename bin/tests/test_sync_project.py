@@ -38,7 +38,7 @@ import json, os, pathlib, re, sys
 prompt = sys.stdin.read()
 with open(os.environ["SYNC_STUB_LOG"], "a") as log:
     log.write(json.dumps({"argv": sys.argv[1:], "LOAM_MEMSTORE": os.environ.get("LOAM_MEMSTORE"),
-                          "TMPDIR": os.environ.get("TMPDIR")}) + "\n")
+                          "TMPDIR": os.environ.get("TMPDIR"), "prompt": prompt}) + "\n")
 files = re.findall(r"`([^`\n]+)`[^`\n]* is at `([^`\n]+)`", prompt)
 if not files:
     print("VERIFY: PASS")
@@ -216,6 +216,46 @@ class SyncProjectTests(unittest.TestCase):
             self.assertIn(needle, body)
         message = git("log", "-1", "--format=%B", port_commit, cwd=self.remote)
         self.assertIn("notes.md\n- hunk 1: kept the project's line in notes.md,", message)
+
+    def commit_rulings(self, text: str) -> str:
+        clone = self.base / "rulings-clone"
+        git("clone", "-q", str(self.remote), str(clone), cwd=self.base)
+        (clone / ".loam").mkdir()
+        (clone / ".loam/sync-rulings.md").write_text(text)
+        git("add", "-A", cwd=clone)
+        git("commit", "-q", "-m", "rulings", cwd=clone)
+        git("push", "-q", "origin", "main", cwd=clone)
+        return git("rev-parse", "main:.loam/sync-rulings.md", cwd=self.remote)
+
+    def test_tracked_rulings_reach_the_port_prompt(self) -> None:
+        blob = self.commit_rulings("- conf.json: the tracked ruling.\n")
+        r = self.sync("--dry-run")
+        self.assertEqual(0, r.returncode, r.stdout + r.stderr)
+        prompt = self.claude_calls()[0]["prompt"]
+        self.assertIn("- conf.json: the tracked ruling.", prompt)
+        self.assertIn("Follow every ruling; if a ruling does not cover a hunk, use the brief.", prompt)
+        body = (self.work / "pr-body.md").read_text()
+        self.assertTrue(any(".loam/sync-rulings.md" in line and blob in line for line in body.splitlines()), body)
+
+    def test_rulings_flag_overrides_the_tracked_file(self) -> None:
+        self.commit_rulings("- conf.json: the tracked ruling.\n")
+        trial = self.base / "trial-rulings.md"
+        trial.write_text("- notes.md: the trial ruling.\n")
+        blob = run(["git", "hash-object", str(trial)]).stdout.strip()
+        r = self.sync("--dry-run", "--rulings", str(trial))
+        self.assertEqual(0, r.returncode, r.stdout + r.stderr)
+        prompt = self.claude_calls()[0]["prompt"]
+        self.assertIn("- notes.md: the trial ruling.", prompt)
+        self.assertNotIn("the tracked ruling", prompt)
+        body = (self.work / "pr-body.md").read_text()
+        self.assertTrue(any(str(trial) in line and blob in line for line in body.splitlines()), body)
+
+    def test_without_rulings_the_prompt_has_no_rulings_section(self) -> None:
+        # The two tests above are the control: with a rulings file this sentence is in the prompt.
+        r = self.sync("--dry-run")
+        self.assertEqual(0, r.returncode, r.stdout + r.stderr)
+        self.assertNotIn("Follow every ruling", self.claude_calls()[0]["prompt"])
+        self.assertNotIn("rulings", (self.work / "pr-body.md").read_text())
 
     def test_dry_run_stops_before_the_push(self) -> None:
         r = self.sync("--dry-run")
