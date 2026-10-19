@@ -83,9 +83,10 @@ dc_block() { awk '/^```done-checks$/{inb=1; next} /^```/{if (inb) exit} inb {pri
 dc_checks() { dc_block | sed -e :a -e '/\\$/N; s/\\\n//; ta' -e 's/^[[:space:]]*//' -e '/^#/d' -e '/^$/d'; }
 
 # A check that calls `guard` is a regression guard allowed to pass on base (CONTRACT.md, Done checks): `guard` in
-# command position, at the start or after ; & | ( { or !, as in `out=$(guard cmd)`. Lint and round 0 both match
-# dc_checks against this, so a word that only holds it, like "safeguard" or a check named env-guard, is not one.
-GUARD_RE='(^|[;&|({!])[[:space:]]*guard[[:space:]]'
+# command position, at the start or after ; & | ( { or !, as in `out=$(guard cmd)`, with any of the keywords if then
+# else elif do while until between, as in `if guard cmd; then`. Lint and round 0 both match dc_checks against this,
+# so a word that only holds it, like "safeguard" or a check named env-guard, is not one.
+GUARD_RE='(^|[;&|({!])([[:space:]]*(if|then|else|elif|do|while|until)[[:space:]])*[[:space:]]*guard[[:space:]]'
 
 # Word-like tokens in stdin, backticks and sentence punctuation stripped. A token holding a glob or a
 # shell expansion is not a path a ticket promises.
