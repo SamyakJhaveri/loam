@@ -1,7 +1,7 @@
 {
   "name": "sam-cc-setup",
   "license": "MIT",
-  "version": "0.9.6",
+  "version": "0.9.7",
   "description": "Loam's optional Claude Code plugin. Skills: plan-review (blind plan review), codex-review (read-only Codex second opinion on a diff), surprise-me (ranked ideas plus one executed proof), brief (factory ticket intake). Agents: plan-reviewer, lean-critic (verbosity critic), and the factory graders judge and reviewer.",
   "author": {
     "name": "Samyak Jhaveri",

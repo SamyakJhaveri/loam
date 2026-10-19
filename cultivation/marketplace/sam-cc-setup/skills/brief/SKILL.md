@@ -53,6 +53,7 @@ The design issue records the options considered, the evidence for each, and the 
   The commit or PR body is the spec.
 - Track B is one feature that fits one ticket.
   The brief becomes the ticket: the ask becomes Goal and why, Done means becomes the done-checks block, Out of scope carries over.
+  When the ticket changes what a rendered project does (`seed/**`, its hooks and settings, `copier.yml`), Done means names a behavior seen in a render, and its check drives that render with `control-loam`, not a grep, in the form `docs/factory/CONTRACT.md` gives (Done checks for a rendered-project change).
   The author runs the block on `main` by hand once and confirms every non-guard check prints FAIL; lint never runs it; round 0 repeats it on the runner.
   Then lint, then publish.
 - Track C is several tickets.
