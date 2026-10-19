@@ -55,14 +55,16 @@ Each run of the block exports its own `LOAM_VERIFY_ROOT` from `mktemp -d`, so ro
 `render` copies the working tree, so the check sees uncommitted edits under the Stop hook and the committed tree in the supervisor's run.
 The recipe for each behavior (memory, deny rules, the Fable brief, the rendered check) is in `.claude/skills/verify-loam/features/`.
 
-This block proves memory recall: after one session, the next session's `SessionStart` hook prints the `## Memory (render)` block.
-It passes on today's `main` and fails when `seed/.claude/hooks/mem-recall.sh` prints nothing; a ticket that adds a behavior writes its check in this shape, and the check prints FAIL on `main`.
+This block proves memory recall: every hook in both stub sessions exits 0, and the second session's `SessionStart` hook prints the `## Memory (render)` block holding the INDEX line `mem-capture.sh` wrote for the first session, found by that session's first 8 `session_id` characters.
+`session` does not fail when a hook exits nonzero, so the block reads each hook's `exit_code` itself.
+It passes on today's `main` and fails when `seed/.claude/hooks/mem-recall.sh` prints nothing, prints only its heading, or exits nonzero; a ticket that adds a behavior writes its check in this shape, and the check prints FAIL on `main`.
 
 ```bash
 C=.claude/skills/verify-loam/control-loam; export LOAM_VERIFY_ROOT=$(mktemp -d "${TMPDIR:-/tmp}/verify.XXXXXX"); \
-  $C render --run t >/dev/null && $C session t "Reply OK." --stub --name s1 >/dev/null && out=$($C session t "Reply OK." --stub --name s2) && \
-  jq -e 'any(.hooks[]; .event == "SessionStart" and (.stdout | startswith("## Memory (render)")))' <<<"$out" >/dev/null \
-  && pass memory-recalled || fail memory-recalled "no ## Memory block in the second stub session; evidence in $LOAM_VERIFY_ROOT/t/evidence"
+  $C render --run t >/dev/null && s1=$($C session t "Reply OK." --stub --name s1) && s2=$($C session t "Reply OK." --stub --name s2) && \
+  jq -e 'all(.hooks[]; .exit_code == 0)' <<<"$s1" >/dev/null && \
+  jq -e --arg sid "$(jq -r '.session_id[:8]' <<<"$s1")" 'all(.hooks[]; .exit_code == 0) and any(.hooks[]; .event == "SessionStart" and (.stdout | startswith("## Memory (render)")) and (.stdout | contains(" | " + $sid + " | ")))' <<<"$s2" >/dev/null \
+  && pass memory-recalled || fail memory-recalled "a hook exited nonzero, or the second stub session's ## Memory block does not hold the first session's INDEX line; evidence in $LOAM_VERIFY_ROOT/t/evidence"
 guard $C cleanup t >/dev/null && pass verify-cleanup || fail verify-cleanup "control-loam cleanup t"
 ```
 
