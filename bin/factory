@@ -1385,6 +1385,15 @@ file_issues() { # source issue pr-url, one issue per stdin line
   done
 }
 
+# Only result lines show, at most 50, each cut to 300 characters: raw check output may hold a secret
+# (the repo is public), push the results past the cap, close the fence, or exceed GitHub's 65536-character
+# body limit. The full file stays in the run dir.
+checks_section() { # heading checks-file
+  printf '## %s\n\n```\n' "$1"
+  awk -v max=50 -v f="$2" '/^(PASS|FAIL|MEASURE) / {n++; if (n <= max) print substr($0, 1, 300)} END {if (n > max) printf "... %d more lines in %s\n", n - max, f}' "$2"
+  printf '```\n\n'
+}
+
 open_pr() { # [draft]: opened at the grader-round cap
   local draft="${1:-}" body="$RUN/pr-body.md" base url num title rows blocking
   base=$(cat "$RUN/base.sha")
@@ -1405,6 +1414,8 @@ open_pr() { # [draft]: opened at the grader-round cap
     [ -s "$RUN/round-$ROUND.measure" ] && { printf '## Rows measured\n\n```\n'; cat "$RUN/round-$ROUND.measure"; printf '```\n\n'; }
     printf '## Merge checklist\n\n'; section "Merge checklist" | grep '^- ' | sed 's/^- /- [ ] /'; printf '\n'
     printf '## Decisions\n\n```\n'; cat "$DECISIONS"; printf '```\n\n'
+    checks_section "Checks at base ${base:0:8} (round 0)" "$RUN/round-0.checks"
+    checks_section "Checks at the graded sha (round $ROUND)" "$RUN/round-$ROUND.checks"
     printf '## Judge\n\ngraded at %s\n\n```json\n%s\n```\n\n' "$GRADED_SHA" \
       "$(jq -c '{verdict, rows: (.rows // {}), evidence: (.evidence // {})}' "$RUN/round-$ROUND.judge.json")"
     printf '## Reviewer\n\n'
