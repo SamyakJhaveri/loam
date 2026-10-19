@@ -5,7 +5,7 @@ When a session runs on a Fable model, `fable-session-brief.sh` adds a short prom
 ## Sub-features
 
 - `fable-start` prints the brief on `SessionStart` when the payload's `model` contains `fable`.
-- `fable-switch` prints the brief on `PostModelSwitch` when `to_model` contains `fable`.
+- `fable-switch` prints the brief on `PostModelSwitch` when `to_model` contains `fable`; [Model switch brief](./model-switch.md) drives it.
 - `fable-silent` prints nothing for other models or a missing model field.
 
 ## How to get to it (user POV)

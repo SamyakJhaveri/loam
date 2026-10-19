@@ -11,7 +11,7 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  # Job id is the required-status context in the branch ruleset. Keep it `verify`.
+  # Job ids `verify` and `stub-sweep` are the intended required-status contexts; no ruleset enforces them yet. Keep the ids.
   verify:
     runs-on: ubuntu-latest
     timeout-minutes: 15
@@ -57,3 +57,45 @@ jobs:
 
       - name: Run check
         run: bin/check
+
+  # verify-loam's $0 stub recipes in a fresh render: hooks fire, memory is recalled, a deny rule refuses, the rendered check passes.
+  stub-sweep:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+          cache-dependency-path: .github/ci/python-requirements.txt
+
+      - name: Install Python dependencies
+        run: python3 -m pip install -r .github/ci/python-requirements.txt
+
+      - name: Select Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24.21.0'
+
+      - name: Cache npm downloads
+        uses: actions/cache@v4
+        with:
+          path: ~/.npm
+          key: ${{ runner.os }}-npm-${{ hashFiles('.github/ci/npm-packages.txt') }}
+
+      - name: Install agent CLIs
+        run: xargs npm install -g < .github/ci/npm-packages.txt
+
+      - name: Configure Git identity
+        run: |
+          git config --global user.name "CI"
+          git config --global user.email "ci@loam"
+
+      - name: Run verify-loam stub sweep
+        run: .claude/skills/verify-loam/control-loam sweep

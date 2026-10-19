@@ -4,6 +4,8 @@
 Every command prints one JSON object on stdout. A run lives in one directory:
   <root>/<run>/render/     the rendered project (copier copy of this checkout)
   <root>/<run>/memstore/   the memory store the hooks write to (LOAM_MEMSTORE)
+  <root>/<run>/tmp/        TMPDIR for every claude and codex child
+  <root>/<run>/codex-home/ CODEX_HOME for `codex` drives (trust entry for this render only, no login)
   <root>/<run>/evidence/   session streams, check output; survives cleanup
   <root>/<run>/run.json    ref, commit, sessions started, last doctor and check outcome
 <root> is $LOAM_VERIFY_ROOT, default $TMPDIR/loam-verify.
@@ -71,6 +73,23 @@ def save(d: pathlib.Path, meta: dict) -> None:
     (d / "run.json").write_text(json.dumps(meta, indent=2) + "\n")
 
 
+def child_env(d: pathlib.Path) -> dict:
+    # The run's own memstore and TMPDIR: claude, codex, their hooks and Codex's shell commands never touch ~/memstore,
+    # never push to the store's remote, and never share temp files with the caller or another run.
+    # Claude Code's sandboxed Bash tool still swaps in its own TMPDIR (/tmp/claude-<uid>).
+    (d / "tmp").mkdir(exist_ok=True)
+    env = {**GIT_ENV, "LOAM_MEMSTORE": str(d / "memstore"), "TMPDIR": str(d / "tmp")}
+    env.pop("LOAM_MEMSTORE_REMOTE", None)
+    return env
+
+
+def pinned_commit(render: pathlib.Path) -> str:
+    answers = render / ".copier-answers.yml"
+    if not answers.is_file():
+        return ""
+    return next((ln.split(":", 1)[1].strip() for ln in answers.read_text().splitlines() if ln.startswith("_commit:")), "")
+
+
 def record(d: pathlib.Path, key: str, ok: bool, **extra) -> None:
     # bin/release.sh reads these: it tags only a commit with a clean run whose doctor and check are ok, the check on a pristine render.
     meta = load(d)
@@ -116,8 +135,7 @@ def cmd_doctor(a) -> None:
     check("render exists", render.is_dir(), str(render))
     log = sh(["git", "-C", str(render), "log", "--format=%s", "-1"])
     check("render is a git repo with the initial commit", log.stdout.strip() == "Initial commit from loam", log.stdout.strip() or log.stderr.strip())
-    answers = render / ".copier-answers.yml"
-    pinned = next((ln.split(":", 1)[1].strip() for ln in answers.read_text().splitlines() if ln.startswith("_commit:")), "") if answers.is_file() else ""
+    pinned = pinned_commit(render)
     if meta["dirty"]:
         # copier commits the dirty tree on top of the recorded commit and pins `git describe --tags` of that WIP commit:
         # the recorded commit's tag, one commit further, and a sha the source does not have.
@@ -155,19 +173,42 @@ def start_stub(log: pathlib.Path) -> tuple[subprocess.Popen, int]:
     return p, int(port)
 
 
+def stream_events(stream: pathlib.Path) -> list[dict]:
+    events = []
+    for line in stream.read_text().splitlines():
+        try:
+            events.append(json.loads(line))
+        except ValueError:
+            pass
+    return events
+
+
 def cmd_session(a) -> None:
     d = run_dir(a.run)
     meta = load(d)
     name = a.name or f"session-{len(meta['sessions']) + 1}"
     stream, err = d / "evidence" / f"{name}.jsonl", d / "evidence" / f"{name}.stderr"
-    argv = [shutil.which("claude") or "claude", "-p", a.prompt, "--output-format", "stream-json", "--verbose",
+    argv = [shutil.which("claude") or "claude", "-p", "--output-format", "stream-json", "--verbose",
             "--include-hook-events", "--setting-sources", "project,local"]
+    stdin = None
+    if a.switch_model:
+        # The SDK's set_model control request, then the prompt, on stream-json stdin. It fires PostModelSwitch
+        # for this session only; `/model` in the TUI also saves the model to the user's ~/.claude/settings.json.
+        argv += ["--input-format", "stream-json"]
+        stdin = "\n".join(json.dumps(m) for m in (
+            {"type": "control_request", "request_id": "switch-1", "request": {"subtype": "set_model", "model": a.switch_model}},
+            {"type": "user", "message": {"role": "user", "content": a.prompt}, "parent_tool_use_id": None, "session_id": ""},
+        )) + "\n"
+    else:
+        argv.insert(2, a.prompt)
+    if a.resume:
+        # A --name from this run's sessions, else a raw session id.
+        argv += ["--resume", next((s["session_id"] for s in reversed(meta["sessions"]) if s["name"] == a.resume), a.resume)]
     if a.model:
         argv += ["--model", a.model]
     if a.bypass:
         argv += ["--permission-mode", "bypassPermissions"]
-    env = {**GIT_ENV, "LOAM_MEMSTORE": str(d / "memstore")}
-    env.pop("LOAM_MEMSTORE_REMOTE", None)
+    env = child_env(d)
     stub = None
     if a.stub:
         reqs = d / "evidence" / f"{name}.stub-requests.jsonl"
@@ -177,19 +218,16 @@ def cmd_session(a) -> None:
     try:
         with stream.open("w") as so, err.open("w") as se:
             try:
-                rc = subprocess.run(argv, cwd=d / "render", stdout=so, stderr=se, env=env, timeout=a.timeout).returncode
+                # stdin closed unless --switch-model feeds it: an open one makes claude -p wait 3 s for piped input.
+                rc = subprocess.run(argv, cwd=d / "render", stdin=None if stdin else subprocess.DEVNULL, input=stdin,
+                                    stdout=so, stderr=se, env=env, text=True, timeout=a.timeout).returncode
             except subprocess.TimeoutExpired:
                 rc = None  # claude was killed at --timeout; the partial stream is still read and kept below
     finally:
         if stub:
             stub.terminate()
             stub.wait()
-    events = []
-    for line in stream.read_text().splitlines():
-        try:
-            events.append(json.loads(line))
-        except ValueError:
-            pass
+    events = stream_events(stream)
     init = next((e for e in events if e.get("subtype") == "init"), {})
     result = next((e for e in events if e.get("type") == "result"), {})
     sid = init.get("session_id") or result.get("session_id")
@@ -232,6 +270,102 @@ def cmd_check(a) -> None:
     record(d, "check", r.returncode == 0, last_line=last, pristine=pristine)
     out({"ok": r.returncode == 0, "run": a.run, "exit_code": r.returncode, "last_line": last, "pristine": pristine,
          "evidence": str(d / "evidence" / "check.txt")}, 0 if r.returncode == 0 else 1)
+
+
+def cmd_update(a) -> None:
+    d = run_dir(a.run)
+    meta, render, src = load(d), d / "render", loam_root()
+    rev = sh(["git", "-C", str(src), "rev-parse", "-q", "--verify", a.ref + "^{commit}"])
+    if rev.returncode != 0:
+        die(f"unknown ref {a.ref!r}")
+    before = pinned_commit(render)
+    copier = shutil.which("copier") and ["copier"] or ["uvx", "copier"]
+    # --defaults reuses the recorded answers; copier 3-way merges template changes into the project and commits nothing.
+    r = sh(copier + ["update", "--trust", "--defaults", f"--vcs-ref={a.ref}"], cwd=render, env=GIT_ENV)
+    status = sh(["git", "-C", str(render), "status", "--porcelain"]).stdout
+    log = d / "evidence" / f"{a.name}.log"
+    log.write_text(r.stdout + r.stderr + "\n== git status --porcelain ==\n" + status)
+    changed = [ln[3:] for ln in status.splitlines()]
+
+    def conflicted(f: str) -> bool:
+        p = render / f
+        return f.endswith(".rej") or (p.is_file() and "<<<<<<< " in p.read_text(errors="replace"))
+
+    if r.returncode == 0:
+        # doctor now checks the render against the ref it was updated to.
+        dirty = a.ref == "HEAD" and bool(sh(["git", "-C", str(src), "status", "--porcelain"]).stdout.strip())
+        meta.update(ref=a.ref, commit=rev.stdout.strip(), dirty=dirty)
+        save(d, meta)
+    out({"ok": r.returncode == 0, "run": a.run, "exit_code": r.returncode, "commit_before": before,
+         "commit_after": pinned_commit(render), "changed": len(changed), "conflicts": sorted(filter(conflicted, changed)),
+         "tail": (r.stdout + r.stderr).strip().splitlines()[-3:], "evidence": str(log)}, 0 if r.returncode == 0 else 1)
+
+
+def cmd_codex(a) -> None:
+    d = run_dir(a.run)
+    render, ev, home = d / "render", d / "evidence", d / "codex-home"
+    codex = shutil.which("codex")
+    if not codex:
+        die("codex not on PATH")
+    name = a.name or "codex"
+    # Never the user's ~/.codex: this home holds no login (the stub needs none) and trusts this render alone.
+    # --untrusted writes no trust entry, which leaves the project's .codex/ layer inert.
+    home.mkdir(exist_ok=True)
+    (home / "config.toml").write_text("" if a.untrusted else f'[projects."{render.resolve()}"]\ntrust_level = "trusted"\n')
+    reqs = ev / f"{name}.stub-requests.jsonl"
+    stub, port = start_stub(reqs)
+    provider = (f'{{name="stub", base_url="http://127.0.0.1:{port}/v1", wire_api="responses", env_key="LOAM_STUB_KEY",'
+                ' request_max_retries=0, stream_max_retries=0}')
+    # model pinned: the catalog default in 0.163.0 (gpt-6.1-sol) sends no tools, so no STUB_BASH command could run.
+    argv = [codex, "exec", "--json", "--skip-git-repo-check", "-c", 'model_provider="stub"',
+            "-c", f"model_providers.stub={provider}", "-c", 'model="gpt-5.5"']
+    if a.bypass_hook_trust:
+        argv.append("--dangerously-bypass-hook-trust")
+    argv.append(a.prompt)
+    env = {**child_env(d), "CODEX_HOME": str(home), "LOAM_STUB_KEY": "stub-not-a-secret"}
+    stream, err = ev / f"{name}.jsonl", ev / f"{name}.stderr"
+    try:
+        with stream.open("w") as so, err.open("w") as se:
+            try:
+                rc = subprocess.run(argv, cwd=render, stdin=subprocess.DEVNULL, stdout=so, stderr=se, env=env,
+                                    timeout=a.timeout).returncode
+            except subprocess.TimeoutExpired:
+                rc = None
+    finally:
+        stub.terminate()
+        stub.wait()
+
+    events = stream_events(stream)
+    thread = next((e.get("thread_id") for e in events if e.get("type") == "thread.started"), None)
+    items = [e.get("item", {}) for e in events if e.get("type") == "item.completed"]
+    # Copy the rollout into evidence (cleanup removes codex-home): it holds the effective settings and every tool
+    # output, including policy rejections, which never reach the --json stream.
+    rollouts = sorted(home.glob(f"sessions/*/*/*/rollout-*{thread}.jsonl")) if thread else []
+    if rollouts:
+        shutil.copy2(rollouts[0], ev / f"{name}.rollout.jsonl")
+    lines = stream_events(rollouts[0]) if rollouts else []
+    rows = [r["payload"] for r in lines if isinstance(r.get("payload"), dict)]
+    ctx = next((r["payload"] for r in lines if r.get("type") == "turn_context"), {})  # the settings the session ran with
+    entries = ((ctx.get("permission_profile") or {}).get("file_system") or {}).get("entries", [])
+    n = len(reqs.read_text().splitlines())
+    summary = {
+        "ok": rc == 0 and n > 0 and any(e.get("type") == "turn.completed" for e in events), "run": a.run, "name": name,
+        "exit_code": rc, "timed_out": rc is None, "thread_id": thread, "trusted": not a.untrusted,
+        "approval_policy": ctx.get("approval_policy"),
+        "permission_profile": (ctx.get("active_permission_profile") or {}).get("id"),
+        "sandbox": (ctx.get("sandbox_policy") or {}).get("type"),
+        "network": (ctx.get("sandbox_policy") or {}).get("network_access"),
+        "denied": [e["path"].get("pattern") or e["path"].get("path") for e in entries if e.get("access") == "deny"],
+        "commands": [{"command": i.get("command"), "exit_code": i.get("exit_code"), "output": (i.get("aggregated_output") or "")[:400]}
+                     for i in items if i.get("type") == "command_execution"],
+        "tool_outputs": [str(p.get("output"))[:400] for p in rows if p.get("type") == "function_call_output"],
+        "notices": [i.get("message") for i in items if i.get("type") == "error"],
+        "reply": next((i.get("text") for i in reversed(items) if i.get("type") == "agent_message"), ""),
+        "stub": True, "stub_requests": n, "evidence": str(stream),
+    }
+    if not n:
+        summary["error"] = f"the stub got no requests: codex never reached the stub provider; read {err}"
+    out(summary, 0 if summary["ok"] else 1)
 
 
 def tmux_name(run: str) -> str:
@@ -280,7 +414,9 @@ def cmd_tui(a) -> None:
     if a.action == "start":
         if tmux_alive(t):
             die(f"tmux session {t} already running; stop it first")
-        cmd = ["env", "-u", "LOAM_MEMSTORE_REMOTE", f"LOAM_MEMSTORE={d / 'memstore'}",
+        # tmux starts the command in its server's environment, so child_env() cannot reach it; set the same keys here.
+        (d / "tmp").mkdir(exist_ok=True)
+        cmd = ["env", "-u", "LOAM_MEMSTORE_REMOTE", f"LOAM_MEMSTORE={d / 'memstore'}", f"TMPDIR={d / 'tmp'}",
                shutil.which("claude") or "claude", "--setting-sources", "project,local"]
         if a.model:
             cmd += ["--model", a.model]
@@ -329,7 +465,7 @@ def cmd_cleanup(a) -> None:
     t = tmux_name(a.run)
     if shutil.which("tmux") and tmux_alive(t) and not a.dry_run:
         sh(["tmux", "kill-session", "-t", t])
-    targets = [d / "render", d / "memstore"]
+    targets = [d / "render", d / "memstore", d / "tmp", d / "codex-home"]
     # Claude Code keeps each session's transcript under ~/.claude/projects/<render path, non-alphanumerics as ->.
     # Sessions copy their transcript into evidence first; this dir belongs to this run's render only.
     targets.append(PROJECTS / re.sub(r"[^A-Za-z0-9]", "-", str((d / "render").resolve())))
@@ -340,6 +476,85 @@ def cmd_cleanup(a) -> None:
     kept = sorted(str(p) for p in (d / "evidence").iterdir())
     out({"ok": True, "run": a.run, "dry_run": a.dry_run, "removed": [str(t) for t in targets],
          "evidence_kept": kept})
+
+
+def cmd_sweep(a) -> None:
+    # The $0 stub recipes of features/ in one pass, for CI: render, doctor, mem-1 then mem-2 recall, the deny probe
+    # with its ls control, the rendered check. Each step runs one control-loam command and judges its JSON; the first
+    # failure exits 1 naming its recipe, so a break never reads as a pass.
+    run = a.run or time.strftime("sweep-%Y%m%d-%H%M%S")
+    d = ROOT / run
+    passed = []
+
+    def fail(recipe: str, why: str) -> None:
+        log = d / "evidence" / {"render": "render.log", "check": "check.txt"}.get(recipe, f"{recipe}.stderr")
+        out({"ok": False, "run": run, "failed": recipe, "error": f"sweep recipe {recipe} failed: {why}",
+             "passed": passed, "log": str(log), "log_tail": log.read_text()[-1500:] if log.is_file() else ""}, 1)
+
+    def step(recipe: str, *args: str) -> dict:
+        r = sh([sys.executable, str(pathlib.Path(__file__).resolve()), *args])
+        try:
+            res = json.loads(r.stdout)
+        except ValueError:
+            res = {"error": f"control-loam {args[0]} printed no JSON: {r.stderr.strip()[-600:]}"}
+        if not res.get("ok"):
+            bad = [f"{c['name']} ({c['detail']})" for c in res.get("checks", []) if not c["ok"]]
+            fail(recipe, res.get("error") or "; ".join(bad) or f"control-loam {args[0]} exited {r.returncode}")
+        return res
+
+    def session(recipe: str, prompt: str, *flags: str) -> dict:
+        s = step(recipe, "session", run, prompt, "--name", recipe, "--stub", "--timeout", "120", *flags)
+        broken = [f"{h['name']} exited {h['exit_code']}" for h in s["hooks"] if h["exit_code"] != 0]
+        if broken:
+            fail(recipe, "hook " + ", ".join(broken))
+        return s
+
+    res = step("render", "render", "--run", run)
+    passed.append({"recipe": "render", "proof": res["render"]})
+    res = step("doctor", "doctor", run)
+    passed.append({"recipe": "doctor", "proof": next(c["detail"] for c in res["checks"] if c["name"] == "claude CLI on PATH")})
+
+    s = session("mem-1", "Reply with the single word OK.")
+    events = {h["event"] for h in s["hooks"]}
+    if not {"SessionStart", "Stop"} <= events:
+        fail("mem-1", f"hook events {sorted(events)} lack SessionStart or Stop")
+    index, sid8 = d / "memstore/traces/render/INDEX.md", (s["session_id"] or "")[:8]
+    if not (sid8 and index.is_file() and f" | {sid8} | " in index.read_text()):
+        fail("mem-1", f"Stop captured nothing: {index} has no line for session {sid8 or '?'}")
+    link = d / "render/.loam/memory"
+    if not (link.is_symlink() and link.resolve() == (d / "memstore").resolve()):
+        fail("mem-1", f"{link} is not a link to the memstore")
+    passed.append({"recipe": "mem-1", "proof": f"Stop captured session {sid8} into INDEX.md; .loam/memory links the store"})
+
+    s = session("mem-2", "Reply with the single word OK.")
+    if not any(h["event"] == "SessionStart" and h["stdout"].startswith("## Memory (render)") and f" | {sid8} | " in h["stdout"]
+               for h in s["hooks"]):
+        fail("mem-2", f"no SessionStart hook printed '## Memory (render)' with mem-1's INDEX line ({sid8}): mem-1 was not recalled")
+    passed.append({"recipe": "mem-2", "proof": f"SessionStart printed '## Memory (render)' with mem-1's INDEX line ({sid8})"})
+
+    probe = d / "render/deny-probe"
+    probe.mkdir()
+    (probe / "keep").touch()
+    s = session("deny", "STUB_BASH: ls deny-probe ;; rm -rf deny-probe", "--bypass")
+    denied = [p.get("tool_input", {}).get("command") for p in s["permission_denials"]]
+    if denied != ["rm -rf deny-probe"]:
+        fail("deny", f"permission_denials is {denied}, want exactly ['rm -rf deny-probe']")
+    if not (probe / "keep").exists():
+        fail("deny", "the sentinel deny-probe/keep is gone")
+    results = {b.get("tool_use_id"): b for e in stream_events(pathlib.Path(s["evidence"])) if e.get("type") == "user"
+               for b in e.get("message", {}).get("content") or [] if isinstance(b, dict) and b.get("type") == "tool_result"}
+    control = results.get("toolu_stub_0", {})  # stub-model.py numbers its tool calls from 0
+    if control.get("is_error") or "keep" not in json.dumps(control.get("content")):
+        fail("deny", f"the control 'ls deny-probe' did not list keep: {control.get('content')!r}")
+    shutil.rmtree(probe)  # an untracked sentinel would stay in the render the check judges
+    passed.append({"recipe": "deny", "proof": "'rm -rf deny-probe' denied under bypass, sentinel kept; control 'ls deny-probe' listed keep"})
+
+    res = step("check", "check", run)
+    if not res["last_line"].startswith("check: PASSED"):
+        fail("check", f"last line is {res['last_line']!r}")
+    passed.append({"recipe": "check", "proof": res["last_line"]})
+    step("cleanup", "cleanup", run)
+    out({"ok": True, "run": run, "passed": passed, "evidence": str(d / "evidence")})
 
 
 def main() -> None:
@@ -361,8 +576,25 @@ def main() -> None:
     s.add_argument("--bypass", action="store_true", help="--permission-mode bypassPermissions; deny rules still apply")
     s.add_argument("--stub", action="store_true",
                    help="answer from stub-model.py on 127.0.0.1, not the API: real hooks and deny rules, scripted model, $0")
+    s.add_argument("--resume", metavar="NAME", help="resume an earlier session of this run (its --name, or a session id)")
+    s.add_argument("--switch-model", metavar="MODEL",
+                   help="switch to MODEL before the prompt (SDK set_model: fires PostModelSwitch, saves nothing)")
     s.add_argument("--timeout", type=int, default=300)
     s.set_defaults(fn=cmd_session)
+    s = sub.add_parser("update", help="copier update the render to a newer ref (the user's `copier update`)")
+    s.add_argument("run")
+    s.add_argument("--ref", default="HEAD", help="git ref to update to (default HEAD; copier refuses a downgrade)")
+    s.add_argument("--name", default="update", help="evidence file stem (default update)")
+    s.set_defaults(fn=cmd_update)
+    s = sub.add_parser("codex", help="one codex exec in the render against stub-model.py; isolated CODEX_HOME, $0")
+    s.add_argument("run")
+    s.add_argument("prompt")
+    s.add_argument("--name", help="evidence file stem (default codex)")
+    s.add_argument("--untrusted", action="store_true", help="leave the render untrusted, so its .codex/ layer stays inert")
+    s.add_argument("--bypass-hook-trust", action="store_true",
+                   help="--dangerously-bypass-hook-trust: run .codex/hooks.json without the one-time review")
+    s.add_argument("--timeout", type=int, default=300)
+    s.set_defaults(fn=cmd_codex)
     s = sub.add_parser("tui", help="drive an interactive claude session in tmux (start | send TEXT | stop)")
     s.add_argument("run")
     s.add_argument("action", choices=["start", "send", "stop"])
@@ -378,6 +610,9 @@ def main() -> None:
     s.add_argument("run")
     s.add_argument("--dry-run", action="store_true")
     s.set_defaults(fn=cmd_cleanup)
+    s = sub.add_parser("sweep", help="render, then the $0 stub recipes (memory, deny, check); exits 1 naming the first failed recipe")
+    s.add_argument("--run", help="run id (default: sweep- + timestamp)")
+    s.set_defaults(fn=cmd_sweep)
     a = p.parse_args()
     a.fn(a)
 
