@@ -1,0 +1,196 @@
+{
+  "multi_skill": true,
+  "skill_count": 3,
+  "max_risk_score": 8,
+  "execution_successful": true,
+  "skills": [
+    {
+      "name": "catchup",
+      "path": "catchup",
+      "risk_score": 8,
+      "risk_severity": "LOW",
+      "finding_count": 1,
+      "execution_successful": true,
+      "skill": {
+        "name": "catchup",
+        "source": "seed/.agents/skills/catchup",
+        "scanned_at": "2026-10-19T04:02:25.573332+00:00"
+      },
+      "risk_assessment": {
+        "score": 8,
+        "severity": "LOW",
+        "recommendation": "SAFE"
+      },
+      "components": [
+        {
+          "path": "SKILL.md",
+          "type": "markdown",
+          "lines": 47,
+          "executable": false,
+          "size_bytes": 2714
+        },
+        {
+          "path": "red-flags.sh",
+          "type": "shell",
+          "lines": 132,
+          "executable": true,
+          "size_bytes": 6106
+        }
+      ],
+      "issues": [
+        {
+          "id": "RP1",
+          "finding_id": "finding-10d2ae8687fd40a1a009ff6e7efcb727",
+          "category": "MCP Rug Pull",
+          "pattern": null,
+          "severity": "MEDIUM",
+          "confidence": 0.65,
+          "location": {
+            "file": "red-flags.sh",
+            "start_line": 124,
+            "end_line": null
+          },
+          "finding": null,
+          "explanation": "uvx/uv tool run commands without ==version create a rug-pull risk.",
+          "remediation": "Pin the version: uvx package-name==1.2.3",
+          "code_snippet": null,
+          "intent": null,
+          "tags": [
+            "ASI16"
+          ]
+        }
+      ],
+      "suppressed_count": 0,
+      "suppressed": [],
+      "metadata": {
+        "has_executable_scripts": true,
+        "skillspector_version": "2.9.1",
+        "llm_requested": false,
+        "llm_available": false,
+        "meta_analysis_applied": false,
+        "inference_usage": [],
+        "filtering_mode": "heuristic"
+      },
+      "analysis_completeness": {
+        "total_components": 2,
+        "scanned_components": 2,
+        "coverage_percent": 100.0,
+        "is_complete": false,
+        "execution_successful": true,
+        "fully_inspected_files": 2,
+        "partially_inspected_files": 0,
+        "entirely_uninspected_files": 0,
+        "ledger_exceptions": [],
+        "scope_exclusions": [],
+        "findings_before_filtering": 1,
+        "findings_after_filtering": 1
+      }
+    },
+    {
+      "name": "fable-prompting",
+      "path": "fable-prompting",
+      "risk_score": 0,
+      "risk_severity": "LOW",
+      "finding_count": 0,
+      "execution_successful": true,
+      "skill": {
+        "name": "fable-prompting",
+        "source": "seed/.agents/skills/fable-prompting",
+        "scanned_at": "2026-10-19T04:02:25.610699+00:00"
+      },
+      "risk_assessment": {
+        "score": 0,
+        "severity": "LOW",
+        "recommendation": "SAFE"
+      },
+      "components": [
+        {
+          "path": "SKILL.md",
+          "type": "markdown",
+          "lines": 72,
+          "executable": false,
+          "size_bytes": 3956
+        }
+      ],
+      "issues": [],
+      "suppressed_count": 0,
+      "suppressed": [],
+      "metadata": {
+        "has_executable_scripts": false,
+        "skillspector_version": "2.9.1",
+        "llm_requested": false,
+        "llm_available": false,
+        "meta_analysis_applied": false,
+        "inference_usage": [],
+        "filtering_mode": "heuristic"
+      },
+      "analysis_completeness": {
+        "total_components": 1,
+        "scanned_components": 1,
+        "coverage_percent": 100.0,
+        "is_complete": false,
+        "execution_successful": true,
+        "fully_inspected_files": 1,
+        "partially_inspected_files": 0,
+        "entirely_uninspected_files": 0,
+        "ledger_exceptions": [],
+        "scope_exclusions": [],
+        "findings_before_filtering": 0,
+        "findings_after_filtering": 0
+      }
+    },
+    {
+      "name": "hypothesis-tree",
+      "path": "hypothesis-tree",
+      "risk_score": 0,
+      "risk_severity": "LOW",
+      "finding_count": 0,
+      "execution_successful": true,
+      "skill": {
+        "name": "hypothesis-tree",
+        "source": "seed/.agents/skills/hypothesis-tree",
+        "scanned_at": "2026-10-19T04:02:25.660480+00:00"
+      },
+      "risk_assessment": {
+        "score": 0,
+        "severity": "LOW",
+        "recommendation": "SAFE"
+      },
+      "components": [
+        {
+          "path": "SKILL.md",
+          "type": "markdown",
+          "lines": 116,
+          "executable": false,
+          "size_bytes": 5670
+        }
+      ],
+      "issues": [],
+      "suppressed_count": 0,
+      "suppressed": [],
+      "metadata": {
+        "has_executable_scripts": false,
+        "skillspector_version": "2.9.1",
+        "llm_requested": false,
+        "llm_available": false,
+        "meta_analysis_applied": false,
+        "inference_usage": [],
+        "filtering_mode": "heuristic"
+      },
+      "analysis_completeness": {
+        "total_components": 1,
+        "scanned_components": 1,
+        "coverage_percent": 100.0,
+        "is_complete": false,
+        "execution_successful": true,
+        "fully_inspected_files": 1,
+        "partially_inspected_files": 0,
+        "entirely_uninspected_files": 0,
+        "ledger_exceptions": [],
+        "scope_exclusions": [],
+        "findings_before_filtering": 0,
+        "findings_after_filtering": 0
+      }
+    }
+  ]
+}

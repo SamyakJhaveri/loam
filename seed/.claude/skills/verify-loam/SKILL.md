@@ -95,7 +95,7 @@ Template update, the user's `copier update`:
 $C update <id> --ref HEAD     # copier update --trust --defaults in the render
 ```
 
-It commits nothing and reports `commit_before`, `commit_after` (`_commit` in `.copier-answers.yml`), the number of changed paths and the files with conflict markers, then points `run.json` at the new ref so `doctor` checks it.
+It commits nothing and reports `commit_before`, `commit_after` (`_commit` in `.copier-answers.yml`), the number of changed paths and the files with conflict markers, then points `run.json` at the new ref so `doctor` checks it, and drops the old `doctor` and `check` records.
 Copier refuses a dirty tree and a downgrade; [`features/copier-update.md`](features/copier-update.md) has the recipe.
 
 Rendered checks:
@@ -146,4 +146,4 @@ After cleanup, list `<run>/evidence/` to confirm the proof is still there.
 The behavior inventory is in [`features/README.md`](features/README.md), one file per feature with the same four sections.
 `$C sweep` runs only the `--stub` recipes; for a broad regression pass, walk the index top to bottom.
 Upkeep is `/pstack:maintain-verification-skill` (pstack is installed): a source wave plus one live pass, with edits inside this directory.
-A daily launchd job runs it; see `docs/HARNESS-LOAM.md`.
+A daily launchd job can run it; the owner installs that job, and nothing in the repo does (see `docs/HARNESS-LOAM.md`).

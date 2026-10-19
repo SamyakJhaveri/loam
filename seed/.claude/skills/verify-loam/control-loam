@@ -203,7 +203,10 @@ def cmd_session(a) -> None:
         argv.insert(2, a.prompt)
     if a.resume:
         # A --name from this run's sessions, else a raw session id.
-        argv += ["--resume", next((s["session_id"] for s in reversed(meta["sessions"]) if s["name"] == a.resume), a.resume)]
+        sid = next((s["session_id"] for s in reversed(meta["sessions"]) if s["name"] == a.resume), a.resume)
+        if not sid:
+            die(f"session {a.resume!r} recorded no session id (claude printed no init); read evidence/{a.resume}.stderr")
+        argv += ["--resume", sid]
     if a.model:
         argv += ["--model", a.model]
     if a.bypass:
@@ -292,9 +295,12 @@ def cmd_update(a) -> None:
         return f.endswith(".rej") or (p.is_file() and "<<<<<<< " in p.read_text(errors="replace"))
 
     if r.returncode == 0:
-        # doctor now checks the render against the ref it was updated to.
+        # doctor now checks the render against the ref it was updated to. The old doctor and check judged the old
+        # render; kept, they would let bin/release.sh take this updated render as a check of the new commit.
         dirty = a.ref == "HEAD" and bool(sh(["git", "-C", str(src), "status", "--porcelain"]).stdout.strip())
         meta.update(ref=a.ref, commit=rev.stdout.strip(), dirty=dirty)
+        meta.pop("doctor", None)
+        meta.pop("check", None)
         save(d, meta)
     out({"ok": r.returncode == 0, "run": a.run, "exit_code": r.returncode, "commit_before": before,
          "commit_after": pinned_commit(render), "changed": len(changed), "conflicts": sorted(filter(conflicted, changed)),
@@ -519,19 +525,19 @@ def cmd_sweep(a) -> None:
     events = {h["event"] for h in s["hooks"]}
     if not {"SessionStart", "Stop"} <= events:
         fail("mem-1", f"hook events {sorted(events)} lack SessionStart or Stop")
-    index, sid8 = d / "memstore/traces/render/INDEX.md", (s["session_id"] or "")[:8]
-    if not (sid8 and index.is_file() and f" | {sid8} | " in index.read_text()):
-        fail("mem-1", f"Stop captured nothing: {index} has no line for session {sid8 or '?'}")
+    index, sid = d / "memstore/traces/render/INDEX.md", s["session_id"] or ""
+    if not (sid and index.is_file() and f" | {sid} | " in index.read_text()):
+        fail("mem-1", f"Stop captured nothing: {index} has no line for session {sid or '?'}")
     link = d / "render/.loam/memory"
     if not (link.is_symlink() and link.resolve() == (d / "memstore").resolve()):
         fail("mem-1", f"{link} is not a link to the memstore")
-    passed.append({"recipe": "mem-1", "proof": f"Stop captured session {sid8} into INDEX.md; .loam/memory links the store"})
+    passed.append({"recipe": "mem-1", "proof": f"Stop captured session {sid} into INDEX.md; .loam/memory links the store"})
 
     s = session("mem-2", "Reply with the single word OK.")
-    if not any(h["event"] == "SessionStart" and h["stdout"].startswith("## Memory (render)") and f" | {sid8} | " in h["stdout"]
+    if not any(h["event"] == "SessionStart" and h["stdout"].startswith("## Memory (render)") and f" | {sid} | " in h["stdout"]
                for h in s["hooks"]):
-        fail("mem-2", f"no SessionStart hook printed '## Memory (render)' with mem-1's INDEX line ({sid8}): mem-1 was not recalled")
-    passed.append({"recipe": "mem-2", "proof": f"SessionStart printed '## Memory (render)' with mem-1's INDEX line ({sid8})"})
+        fail("mem-2", f"no SessionStart hook printed '## Memory (render)' with mem-1's INDEX line ({sid}): mem-1 was not recalled")
+    passed.append({"recipe": "mem-2", "proof": f"SessionStart printed '## Memory (render)' with mem-1's INDEX line ({sid})"})
 
     # A handoff note in the docs/WORKERS.md format at the path it names, stale on purpose: Written at is not HEAD.
     note, stale_at = d / "render/.loam/memory/handoff/render.md", "0" * 40

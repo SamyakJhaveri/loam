@@ -6,11 +6,11 @@
 # pulls and pushes the shared remote when one is set. Reports stay local: they are
 # gitignored, so two machines' regenerated reports never conflict on a pull and
 # the working tree is clean for the rebase. Zero model calls. The cron line is
-# documented in seed/docs/HARNESS.md; this ticket does not install it.
+# documented in docs/HARNESS.md; nothing installs it.
 #
 # The error-signature normalizer (first 100 chars, digits -> N) is ported from
 # SuperClaude src/superclaude/pm_agent/reflexion.py (_create_error_signature, MIT);
-# see the memory-v2 plan's "Borrowed code" note. Commit hash not pinned here.
+# license text in THIRD_PARTY_NOTICES. Commit hash not pinned here.
 #
 # Store root: $LOAM_MEMSTORE, default ~/memstore.
 # Usage: mem-weekly.sh [--dry-run]
@@ -119,7 +119,7 @@ fi
 } > reports/counts.md
 
 # Commit the store as a git baseline, then share it. Traces and INDEX.md are
-# tracked and pushed once MEM-04's scrub (in mem-capture.sh) has run over them.
+# tracked and pushed once mem-capture.sh's secret scrub has run over them.
 # The ephemeral throttle marks and reports/ stay out of git: every report is
 # regenerated wholesale from this machine's traces and has no meaning on another
 # machine. The .gitignore and the .gitattributes (INDEX.md merges by union, so two

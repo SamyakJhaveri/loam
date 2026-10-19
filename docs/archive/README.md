@@ -22,4 +22,8 @@ Archived 2026-09-19, after the factory inspection:
 
 - `architecture-working/` - the spent working design corpus of the native runtime campaign (2026-08 to 2026-09). The live index stays at `docs/architecture-working/tickets/README.md`; the catalog-bound sources, acceptance records, and ticket bodies stayed behind.
 
+Archived 2026-10-18, after an audit found its state lines stale:
+
+- `2026-09-03-distbench-archive-note.md` - the session 5 record of distbench's pin and what Loam promoted from it. Its HEAD, pin, and `VERSION` lines no longer hold.
+
 `docs/plans/marketing/` did not exist on this branch at v3 time, so nothing from it was archived.

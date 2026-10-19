@@ -24,7 +24,9 @@
 #   1  REVIEW  - severity MEDIUM; a human must read the findings and decide
 #   2  REJECT  - severity HIGH or CRITICAL; do not adopt
 #   3  no scanner - SkillSpector not installed (prints install + update hint)
-#   4  scan error - the scan could not run or produced no verdict
+#   4  scan error - the scan could not run, found no skill, or produced no
+#      verdict, a skill has no known severity, or a skill's scan did not
+#      report that it finished
 #
 # The scan is static (--no-llm): no API key, no network beyond the optional
 # clone, deterministic. Records nothing; the caller records the verdict.
@@ -112,16 +114,43 @@ read -r VERDICT SEVERITY SCORE ISSUES <<EOF
 $(python3 - "$REPORT" <<'PY'
 import json, sys
 data = json.load(open(sys.argv[1]))
-# A report is one object (single skill) or a list (recursive, many skills).
-records = data if isinstance(data, list) else [data]
+# Fail closed: a report with no skills, a skill with no known severity or no
+# scanned components, or a scan that does not report execution_successful
+# true gives no verdict (exit 4) instead of defaulting to NONE.
+errors = []
+# A report is one object (single skill), {"multi_skill": true, "skills": [...]}
+# (recursive scan of many skills), or a list.
+if isinstance(data, dict) and isinstance(data.get("skills"), list):
+    records = data["skills"]
+    if data.get("execution_successful") is not True:
+        errors.append("the multi-skill scan did not report execution_successful true"
+                      f" (got {data.get('execution_successful')!r})")
+else:
+    records = data if isinstance(data, list) else [data]
+if not records:
+    errors.append("the report lists no skills")
 rank = {"NONE": 0, "LOW": 1, "MEDIUM": 2, "HIGH": 3, "CRITICAL": 4}
 worst = 0
 score = 0
 issue_titles = []
-for rec in records:
-    ra = rec.get("risk_assessment", {}) if isinstance(rec, dict) else {}
-    sev = str(ra.get("severity", "NONE")).upper()
-    worst = max(worst, rank.get(sev, 0))
+for n, rec in enumerate(records, 1):
+    rec = rec if isinstance(rec, dict) else {}
+    skill = rec.get("skill") if isinstance(rec.get("skill"), dict) else {}
+    label = f"skill {n} ({skill.get('name', 'unnamed')})"
+    if rec.get("execution_successful") is not True:
+        errors.append(f"{label} did not report execution_successful true"
+                      f" (got {rec.get('execution_successful')!r})")
+    # SkillSpector rates a directory with nothing to scan LOW; that is no verdict.
+    ac = rec.get("analysis_completeness") if isinstance(rec.get("analysis_completeness"), dict) else {}
+    if ac.get("total_components") == 0:
+        errors.append(f"{label}: no skill found to scan (analysis_completeness.total_components is 0)")
+    ra = rec.get("risk_assessment") if isinstance(rec.get("risk_assessment"), dict) else {}
+    sev = ra.get("severity")
+    sev = sev.upper() if isinstance(sev, str) else None
+    if sev not in rank:
+        errors.append(f"{label} has no known risk_assessment.severity (got {ra.get('severity')!r})")
+        continue
+    worst = max(worst, rank[sev])
     try:
         score = max(score, int(ra.get("score", 0)))
     except (TypeError, ValueError):
@@ -130,12 +159,25 @@ for rec in records:
         t = issue.get("title") or issue.get("rule") or issue.get("id")
         if t:
             issue_titles.append(str(t).replace(" ", "_"))
+if errors:
+    print("ERROR - - " + "; ".join(errors))
+    sys.exit()
 severity = {v: k for k, v in rank.items()}[worst]
 verdict = {0: "PASS", 1: "PASS", 2: "REVIEW", 3: "REJECT", 4: "REJECT"}[worst]
 print(verdict, severity, score, ",".join(issue_titles[:4]) or "none")
 PY
 )
 EOF
+
+# Stop before --json and --out: an untrusted report gets no verdict and no tree.
+case "$VERDICT" in
+  PASS|REVIEW|REJECT) ;;
+  *)
+    echo "FAIL: no trustworthy verdict for $TARGET - ${ISSUES:-the report could not be parsed}" >&2
+    echo "  Do not adopt on this scan. Run 'skillspector scan <path> --no-llm --format json' by hand and read the report:" >&2
+    echo "  fix an unreadable or unscannable file, or update bin/vet-skill.sh if the report shape changed, then vet again." >&2
+    exit 4 ;;
+esac
 
 if [ "$JSON_OUT" -eq 1 ]; then
   printf '{"target":"%s","verdict":"%s","severity":"%s","score":%s,"top_issues":"%s","safe":%s}\n' \

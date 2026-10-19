@@ -43,6 +43,34 @@ Every path under Where, Do not touch, and Approach is verified with `git ls-file
 
 `lib.sh` (`bin/factory.d/lib.sh`): F2 ships `pass`, `fail`, and `guard CMD...` (runs CMD and returns its status); F1 adds `MEASURE`, `render_into`, `check_clean`.
 
+### Done checks for a rendered-project change
+
+A ticket that changes what a rendered project does proves it in a real render: any change under `seed/`, hooks and settings included, or to `copier.yml`.
+A grep of the source proves the text, and a hook script fed JSON by hand proves the script; neither proves the harness.
+At least one non-guard check renders the checkout and drives a session in the render with `control-loam`, the verify-loam CLI at `.claude/skills/verify-loam/control-loam`, and reads the result from the JSON it prints.
+Use `--stub`: a scripted model on 127.0.0.1 answers, so a session costs $0 and a second or two, and the check also runs under the worker's Stop hook.
+A paid session (no `--stub`) is only for what a real model must read, such as quote-back or the Fable brief; write its line to pass under `LOAM_HOOK` (`LOOP.md`, The worker prompt).
+Each run of the block exports its own `LOAM_VERIFY_ROOT` from `mktemp -d`, so round 0, the Stop hook, and the supervisor never share a render.
+`control-loam` points the session's hooks at `<run>/memstore` and unsets `LOAM_MEMSTORE_REMOTE`, so a check never writes `~/memstore`.
+`render` copies the working tree, so the check sees uncommitted edits under the Stop hook and the committed tree in the supervisor's run.
+The recipe for each behavior (memory, deny rules, the Fable brief, the rendered check) is in `.claude/skills/verify-loam/features/`.
+
+This block proves memory recall: every hook in both stub sessions exits 0, and the second session's `SessionStart` hook prints the `## Memory (render)` block holding the INDEX line `mem-capture.sh` wrote for the first session, found by that session's `session_id`.
+`session` does not fail when a hook exits nonzero, so the block reads each hook's `exit_code` itself.
+It passes on today's `main` and fails when `seed/.claude/hooks/mem-recall.sh` prints nothing, prints only its heading, or exits nonzero; a ticket that adds a behavior writes its check in this shape, and the check prints FAIL on `main`.
+
+```bash
+C=.claude/skills/verify-loam/control-loam; export LOAM_VERIFY_ROOT=$(mktemp -d "${TMPDIR:-/tmp}/verify.XXXXXX"); \
+  $C render --run t >/dev/null && s1=$($C session t "Reply OK." --stub --name s1) && s2=$($C session t "Reply OK." --stub --name s2) && \
+  jq -e 'all(.hooks[]; .exit_code == 0)' <<<"$s1" >/dev/null && \
+  jq -e --arg sid "$(jq -r '.session_id' <<<"$s1")" 'all(.hooks[]; .exit_code == 0) and any(.hooks[]; .event == "SessionStart" and (.stdout | startswith("## Memory (render)")) and (.stdout | contains(" | " + $sid + " | ")))' <<<"$s2" >/dev/null \
+  && pass memory-recalled || fail memory-recalled "a hook exited nonzero, or the second stub session's ## Memory block does not hold the first session's INDEX line; evidence in $LOAM_VERIFY_ROOT/t/evidence"
+guard $C cleanup t >/dev/null && pass verify-cleanup || fail verify-cleanup "control-loam cleanup t"
+```
+
+Every `control-loam` command exits 1 when it fails, and `session --stub` also fails when no request reaches the stub, so a broken render or a wire-format change reads FAIL, never PASS.
+The guarded `cleanup` removes the render (about 4 MB), its memstore, and its `~/.claude/projects/` directory, and keeps `evidence/`.
+
 ### Seam with to-tickets
 
 `to-tickets` owns the breakdown into vertical slices, the blocking edges, the quiz, and publishing to GitHub.

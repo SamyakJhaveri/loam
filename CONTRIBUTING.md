@@ -49,10 +49,13 @@ Rendered projects are unaffected: Copier writes real directories.
 
 - **Docs, content, small fixes**: commit directly to `main` (or open a PR if you're external).
 - **Behavior changes** (`seed/` guidance, skills, hooks, policy, `copier.yml`, or release tooling): branch and PR, always.
-- Run `bin/check` before every PR. CI runs the same script; a red run blocks merge.
+- Run `bin/check` before every PR. CI runs the same script in the `verify` job.
+  A ruleset on `main` requires the `verify` and `stub-sweep` jobs, so a red run blocks merge.
+  Repository admins can bypass it.
 - Before merging any PR, run `bin/check && bash bin/ip-sweep.sh`.
   Without `bin/.ip-terms`, the non-strict IP sweep warns that it skips the content
   sweep and can still pass.
+- Commit with your GitHub noreply address (`git config user.email <id>+<user>@users.noreply.github.com`); `bin/check` fails any other author or committer email.
 - Skills follow the [agentskills.io](https://agentskills.io/specification) SKILL.md format.
   A skill that must reach every rendered project goes in `seed/.agents/skills/`.
   Reusable optional skills go in the appropriate marketplace plugin.
@@ -74,7 +77,7 @@ Promotion PRs should state which project battle-tested the skill and what it was
 Copier resolves from **git tags**, not HEAD. After merging significant changes:
 
 ```bash
-bin/release.sh <version>   # needs green CI on HEAD and a verify-loam render of HEAD whose doctor and rendered check pass (no sessions); IP sweep, bump VERSION, tag, push, then render the tag from GitHub; a rerun after a failed push resumes at the push
+bin/release.sh <version>   # needs main's ruleset to require verify and stub-sweep, green CI on HEAD, and a verify-loam render of HEAD whose doctor and rendered check pass (no sessions); IP sweep, bump VERSION, tag, push, then render the tag from GitHub; a rerun after a failed push resumes at the push
 ```
 
 ## Reporting issues

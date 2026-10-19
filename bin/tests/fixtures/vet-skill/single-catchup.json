@@ -1,0 +1,77 @@
+{
+  "skill": {
+    "name": "catchup",
+    "source": "seed/.agents/skills/catchup",
+    "scanned_at": "2026-10-19T04:02:04.304276+00:00"
+  },
+  "risk_assessment": {
+    "score": 8,
+    "severity": "LOW",
+    "recommendation": "SAFE"
+  },
+  "components": [
+    {
+      "path": "SKILL.md",
+      "type": "markdown",
+      "lines": 47,
+      "executable": false,
+      "size_bytes": 2714
+    },
+    {
+      "path": "red-flags.sh",
+      "type": "shell",
+      "lines": 132,
+      "executable": true,
+      "size_bytes": 6106
+    }
+  ],
+  "issues": [
+    {
+      "id": "RP1",
+      "finding_id": "finding-a8fd4f4a43c94e72a2e4d69dc4679b9e",
+      "category": "MCP Rug Pull",
+      "pattern": null,
+      "severity": "MEDIUM",
+      "confidence": 0.65,
+      "location": {
+        "file": "red-flags.sh",
+        "start_line": 124,
+        "end_line": null
+      },
+      "finding": null,
+      "explanation": "uvx/uv tool run commands without ==version create a rug-pull risk.",
+      "remediation": "Pin the version: uvx package-name==1.2.3",
+      "code_snippet": null,
+      "intent": null,
+      "tags": [
+        "ASI16"
+      ]
+    }
+  ],
+  "suppressed_count": 0,
+  "suppressed": [],
+  "metadata": {
+    "has_executable_scripts": true,
+    "skillspector_version": "2.9.1",
+    "llm_requested": false,
+    "llm_available": false,
+    "meta_analysis_applied": false,
+    "inference_usage": [],
+    "filtering_mode": "heuristic"
+  },
+  "execution_successful": true,
+  "analysis_completeness": {
+    "total_components": 2,
+    "scanned_components": 2,
+    "coverage_percent": 100.0,
+    "is_complete": false,
+    "execution_successful": true,
+    "fully_inspected_files": 2,
+    "partially_inspected_files": 0,
+    "entirely_uninspected_files": 0,
+    "ledger_exceptions": [],
+    "scope_exclusions": [],
+    "findings_before_filtering": 1,
+    "findings_after_filtering": 1
+  }
+}

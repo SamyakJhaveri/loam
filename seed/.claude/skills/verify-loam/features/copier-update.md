@@ -40,6 +40,6 @@ Preconditions:
 - copier never prints the word conflict. It exits 0; only `git status` (`UU`) and the markers show the clash. The `conflicts` list is control-loam's scan of changed files for markers and `.rej` files.
 - copier's output includes the git tasks it ran in its temporary old and new copies (`Initialized empty Git repository in .../copier._main.old_copy...`, `[main (root-commit) ...] Initial commit from loam`). They do not touch the project's repository.
 - `Make sure Git >= 2.24 is installed to improve updates.` printed with git 2.55.0. It is noise.
-- `$C update` points `run.json` at the new ref, so `doctor` checks `_commit` against it. An updated render is not pristine; use a fresh run for the `bin/release.sh` gate.
+- `$C update` points `run.json` at the new ref, so `doctor` checks `_commit` against it, and drops the old `doctor` and `check` records. An updated render is not pristine; use a fresh run for the `bin/release.sh` gate.
 - `$C update` defaults to `--ref HEAD`; a user's plain `copier update` takes the newest release tag instead (see [Render](./render.md) Gotchas).
 - `--ref HEAD` on a dirty checkout updates to copier's WIP commit, as `render` does.
