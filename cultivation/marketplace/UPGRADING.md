@@ -3,6 +3,12 @@
 This file records why a promoted plugin change traveled. It is also the upgrade
 entry point for projects that consume the Loam marketplace.
 
+## sam-cc-setup v0.9.7 brief names the render proof
+
+The `/brief` skill's Track B now says a Loam ticket that changes rendered-project behavior proves it with `control-loam`, in the form `docs/factory/CONTRACT.md` gives.
+No agent prompt changed, so no grader replay is owed.
+Upgrade step: `claude plugin update sam-cc-setup`.
+
 ## sam-cc-setup v0.9.6 factory grader fixes
 
 reviewer.md no longer ties its verdict word to a severity; the loop and the eval both block on a high or medium finding.
