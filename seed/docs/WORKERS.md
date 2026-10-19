@@ -11,10 +11,12 @@ macOS). Build no other lock.
 
 ## Roles
 
-Parallel work has one integration owner and one validation owner. Workers run
-focused checks and return bounded reports; only the validation owner runs
-`bin/check` on a given source snapshot. Reviewers inspect one fixed diff and do
-not rerun an unchanged suite unless they name a concrete unresolved risk.
+Parallel work has one integration owner and one independent verifier per merge.
+Each worker runs `bin/check` on its own unit before it reports; a fresh project's
+check takes under a second. Once the suite takes minutes, workers run focused
+checks and only the verifier runs the full `bin/check` on a source snapshot.
+Reviewers inspect one fixed diff and do not rerun an unchanged suite unless they
+name a concrete unresolved risk.
 
 ## Handoff
 
