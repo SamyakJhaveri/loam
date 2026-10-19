@@ -127,9 +127,9 @@ PY
 step "skill-listing token weight"
 # No-growth ceilings on the uncalibrated chars/4 estimate, each set to the measured weight:
 # seed after the catchup trim and hypothesis-tree went manual-only, sam-cc-setup after
-# plan-review and surprise-me went manual-only.
+# plan-review and surprise-me went manual-only and the plan-reviewer description was trimmed.
 # Lower one when its listing shrinks; never raise it without saying why.
-python3 bin/skill_listing_weight.py --root "$ROOT" --budget seed=85 --budget "sam-cc-setup=${LISTING_BUDGET:-377}" \
+python3 bin/skill_listing_weight.py --root "$ROOT" --budget seed=85 --budget "sam-cc-setup=${LISTING_BUDGET:-365}" \
   || bad "skill-listing weight over budget"
 
 step "claude plugin validate"
