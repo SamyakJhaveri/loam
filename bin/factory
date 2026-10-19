@@ -323,13 +323,15 @@ run_eval() {
     for attempt in 1 2; do
       # The same flags as the production grader call (LOOP.md, Grader calls), so the replay grades the
       # way the loop does: --json-schema routes the reply through the schema, --strict-mcp-config and
-      # --disable-slash-commands drop the prefix the grader never uses. Each call gets the remaining
-      # headroom, so EVAL_BUDGET_USD caps the sum over cases.
-      out=$(cat "$rubric" "$dir/prompt.md" | claude -p --model "$EVAL_MODEL" --effort "${EVAL_EFFORT:-medium}" \
+      # --disable-slash-commands drop the prefix the grader never uses. Two things differ: the call runs
+      # in the caller's directory, not a ticket worktree, and each call gets the remaining headroom, so
+      # EVAL_BUDGET_USD caps the sum over cases. role-settings.json is read beside the schema, for the
+      # reason schema_for gives.
+      out=$(cat "$rubric" "$dir/prompt.md" | claude -p --model "$EVAL_MODEL" --effort "${EVAL_EFFORT:-$GRADER_EFFORT}" \
         --tools Read,Grep,Glob --strict-mcp-config --disable-slash-commands --no-session-persistence \
         --json-schema "$schema" \
         --max-budget-usd "$(awk -v b="$budget" -v s="$spent" 'BEGIN {printf "%.4f", b - s}')" \
-        --setting-sources user --output-format json 2>/dev/null)
+        --setting-sources user --settings "$(dirname "$0")/factory.d/role-settings.json" --output-format json 2>/dev/null)
       spent=$(awk -v a="$spent" -v b="$(jq -r "$RESULT_OBJ | .total_cost_usd // 0" <<<"$out" 2>/dev/null)" \
         'BEGIN {printf "%.4f", a + (b + 0)}')
       # When a run's measure step drives this eval (FACTORY_LEDGER is set), book each reply's cost to
