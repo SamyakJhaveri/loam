@@ -7,6 +7,7 @@ maps it to the right verdict and exit code. No network, no real scan.
 
 from __future__ import annotations
 
+import copy
 import json
 import os
 import pathlib
@@ -16,6 +17,13 @@ import unittest
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
 VET = ROOT / "bin/vet-skill.sh"
+# Real SkillSpector 2.9.1 reports from `skillspector scan --recursive --no-llm`,
+# trimmed: skill.source made relative, per-analyzer status lists dropped.
+FIXTURES = ROOT / "bin/tests/fixtures/vet-skill"
+
+
+def load_fixture(name: str) -> dict:
+    return json.loads((FIXTURES / name).read_text("utf-8"))
 
 
 class VetSkillTests(unittest.TestCase):
@@ -69,6 +77,76 @@ class VetSkillTests(unittest.TestCase):
             timeout=60,
             check=False,
         )
+
+    def run_report(
+        self, report: dict, *args: str
+    ) -> subprocess.CompletedProcess[str]:
+        """Run the wrapper with a fake scanner that writes `report` verbatim."""
+        fake_bin = self.root / "bin"
+        fake_bin.mkdir(exist_ok=True)
+        saved = self.root / "report.json"
+        saved.write_text(json.dumps(report), "utf-8")
+        (fake_bin / "skillspector").write_text(
+            "#!/usr/bin/env bash\n"
+            'out=""\n'
+            'while [ $# -gt 0 ]; do if [ "$1" = "--output" ]; then out="$2"; shift; fi; shift; done\n'
+            f'cp "{saved}" "$out"\n',
+            "utf-8",
+        )
+        (fake_bin / "skillspector").chmod(0o755)
+        env = dict(os.environ)
+        env["PATH"] = f"{fake_bin}:{env['PATH']}"
+        return subprocess.run(
+            ["bash", str(VET), str(self.target), *(args or ("--json",))],
+            capture_output=True, text=True, env=env, timeout=60, check=False,
+        )
+
+    def test_real_single_skill_report(self) -> None:
+        r = self.run_report(load_fixture("single-catchup.json"))
+        self.assertEqual(0, r.returncode, r.stderr)
+        self.assertIn('"verdict":"PASS","severity":"LOW","score":8,"top_issues":"RP1"', r.stdout)
+
+    def test_real_multi_skill_report_reads_every_skill(self) -> None:
+        # A recursive scan of several skills nests them under "skills".
+        r = self.run_report(load_fixture("multi-seed-skills.json"))
+        self.assertEqual(0, r.returncode, r.stderr)
+        self.assertIn('"verdict":"PASS","severity":"LOW","score":8,"top_issues":"RP1"', r.stdout)
+
+    def test_missing_or_unknown_severity_fails_closed(self) -> None:
+        single = load_fixture("single-catchup.json")
+        no_severity = copy.deepcopy(single)
+        del no_severity["risk_assessment"]["severity"]
+        no_assessment = copy.deepcopy(single)
+        del no_assessment["risk_assessment"]
+        unknown = copy.deepcopy(single)
+        unknown["risk_assessment"]["severity"] = "SEVERE"
+        multi = load_fixture("multi-seed-skills.json")
+        del multi["skills"][1]["risk_assessment"]["severity"]
+        cases = {
+            "no severity": (no_severity, "catchup"),
+            "no risk_assessment": (no_assessment, "catchup"),
+            "unknown severity": (unknown, "catchup"),
+            "one of three skills lacks severity": (multi, "fable-prompting"),
+        }
+        for label, (report, skill) in cases.items():
+            with self.subTest(label):
+                r = self.run_report(report)
+                self.assertEqual(4, r.returncode, r.stdout + r.stderr)
+                self.assertIn("risk_assessment.severity", r.stderr)
+                self.assertIn(skill, r.stderr)
+                self.assertNotIn('"verdict"', r.stdout)
+
+    def test_failed_scan_fails_closed(self) -> None:
+        # Real report for a skill with an unreadable file: SkillSpector rates
+        # it LOW but sets execution_successful false. No verdict, no --out tree.
+        report = load_fixture("failed-unreadable-file.json")
+        r = self.run_report(report)
+        self.assertEqual(4, r.returncode, r.stdout + r.stderr)
+        self.assertIn("execution_successful", r.stderr)
+        out = self.root / "stripped"
+        r = self.run_report(report, "--safe", "--out", str(out))
+        self.assertEqual(4, r.returncode, r.stdout + r.stderr)
+        self.assertFalse(out.exists(), "a failed scan must not emit an installable tree")
 
     def test_low_passes(self) -> None:
         r = self.run_vet(severity="LOW")
