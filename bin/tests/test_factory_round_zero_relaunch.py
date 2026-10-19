@@ -93,6 +93,8 @@ class RoundZeroRelaunchTests(unittest.TestCase):
         self.assertNotIn("resuming after round", self.log())
         self.assertEqual(again.returncode, 3, again.stderr)
         self.assertEqual(self.status(), "ticket-defect")
+        # One launch line per launch, the stopped one too, so status --criteria charges an early exit to no round.
+        self.assertEqual(self.log().count(" ===== launch =====\n"), 3)
 
     def test_run_that_passed_round_zero_resumes_past_it(self) -> None:
         # The control: a stop after a clean round 0 resumes, as runs/66, runs/78, and distbench/293 did.

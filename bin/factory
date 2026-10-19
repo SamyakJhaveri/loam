@@ -1553,6 +1553,9 @@ cmd_run() {
   WORKTREE="${FACTORY_WORKTREE:-$MAIN_CHECKOUT-$(printf '%s' "$KEY" | tr '[:upper:]' '[:lower:]')}"
   [ -f "$RUN/started" ] || date -u +%s > "$RUN/started"
   date -u +%s > "$RUN/launched"
+  # One line per launch, before any exit and not again from the frozen re-exec: status --criteria resets the
+  # round on it, so a relaunch's early exit is not charged to the round a killed launch left open.
+  [ "${FACTORY_FROZEN:-}" = "$RUN/frozen/factory" ] || log "===== launch ====="
   nav_arm_resolve   # NAV-01: fix this launch's arm before freeze and round 0, so the whole run carries one arm
   stop_requested && finish stopped "FACTORY_STOP is present at launch"
   assert_parallel
