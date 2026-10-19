@@ -114,3 +114,5 @@ Criteria written in advance, measured on the first four factory tickets:
 - SKIP lines per round: 0
 - median rounds to PR: at most 5 (lean-v3 median)
 - judge fails citing a worker-written measurement: 0 (S2 had at least four)
+
+Measure with `bin/factory status --criteria` on the runner, where the run directories live.
