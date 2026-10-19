@@ -95,7 +95,7 @@ class RoundZeroGuardTests(unittest.TestCase):
     def test_word_ending_in_a_keyword_before_guard_is_not_a_guard(self) -> None:
         out = self.round_zero(
             'guard true && pass check || fail check "base is broken"\n'
-            'grep -q safeguard README.md && pass readme || fail readme "redo guard"')
+            'grep -q safeguard README.md && pass readme || fail readme "redo guard first"')
         self.assertIn("FINISH ticket-defect: check readme passes on", out)
 
     def test_check_named_with_guard_is_not_a_guard(self) -> None:
