@@ -35,6 +35,8 @@ class AlwaysLoadedProseCapTest(unittest.TestCase):
             path.write_text(text, encoding="utf-8")
         with (self.root / "CLAUDE.md").open("a", encoding="utf-8") as handle:
             handle.write("```\n@docs/fenced.md\n```\nNot `see @docs/spanned.md here` either.\n")
+        subprocess.run(["git", "init", "-q"], cwd=self.root, check=True)
+        subprocess.run(["git", "add", "-A"], cwd=self.root, check=True)
         self.total = sum((self.root / name).stat().st_size for name in COUNTED)
 
     def run_cap(self, cap: int) -> subprocess.CompletedProcess:
@@ -62,6 +64,13 @@ class AlwaysLoadedProseCapTest(unittest.TestCase):
         self.assertIn(f"{self.total}-byte cap", result.stderr)
         self.assertIn("docs/extra.md", result.stderr)
         self.assertIn("raise the cap", result.stderr)
+
+    def test_untracked_rules_file_does_not_count(self) -> None:
+        # Root .claude is a symlink into seed/, so a local untracked rule would fail bin/check here but not on CI.
+        (self.root / ".claude/rules/local.md").write_text("local only\n", encoding="utf-8")
+        result = self.run_cap(self.total)
+        self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+        self.assertNotIn("local.md", result.stdout)
 
 
 if __name__ == "__main__":
