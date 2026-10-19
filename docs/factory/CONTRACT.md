@@ -24,7 +24,7 @@ The body starts at `Brief:` or `Part of`; in a file the first `#` line is the ti
 6. `## Done checks`: one fenced block tagged `done-checks`, a bash body sourced after `lib.sh`, run from the worktree root.
    A check is one line of the block and ends in `pass NAME` or `fail NAME reason`, in the form `A && pass N || fail N "why"`.
    A line prefixed `guard` is a regression guard allowed to pass on `main`; every other check must print FAIL on `main`.
-   The block is green when it prints no FAIL line and every named check prints exactly one PASS or FAIL line.
+   The block is green when it prints no FAIL line and every named check prints exactly one PASS or FAIL line; the supervisor adds `FAIL checks-aborted` for a non-zero exit with no FAIL line and `FAIL missing-result NAME` for a check named by both `pass NAME` and `fail NAME` that printed neither (#180).
    No `skip`.
    The block runs under `pipefail`, so a check never pipes a command that is meant to exit non-zero into `grep`; it captures the output first (`out=$(cmd 2>&1); grep -q pattern <<<"$out"`).
    Written before implementation.
