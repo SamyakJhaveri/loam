@@ -32,6 +32,8 @@ The body starts at `Brief:` or `Part of`; in a file the first `#` line is the ti
 7. `## Merge checklist` (optional): steps a human or a post-merge action performs, one line each with its command.
    Rendered into the PR body as checkboxes; lint accepts it; the judge ignores it; the loop never converts a done check into one.
 8. `## Rows measured` (optional): one line per row, `command | baseline`, run by the supervisor after the checks pass and printed as `MEASURE <row> <value>`.
+   A row that measures time, tokens, or cost starts with `runs=N`: the supervisor runs it N times and prints the median and range of its last output lines, which must be numbers.
+   A row whose label or command names such a word (`NOISY_ROW_RE` in `bin/factory`) and has no `runs=N` runs once, and its MEASURE line says single sample; `runs=1` marks a row deterministic.
    This is the only per-project extension point.
 9. `## Worker`: `worker: claude|codex`, `codex-review: yes|no`, `effort: low|medium|high|xhigh`, `size: small|large` (optional, default small; large routes round 1 through the fan-out workflow, F12), `goal:` the condition the round's `/goal` holds until, always the done-checks block printing no FAIL line, ending "or stop after 60 turns", `skills:` (optional) a comma list of skill names the worker must invoke, each a line of `bin/factory.d/skills.txt` written as the Skill tool lists it (`mattpocock-skills:research`, `rigor`), and any cap override from `LOOP.md`.
     Samyak adds a line by hand, direct to `main`, after `bin/runner 'claude -p --setting-sources user --max-turns 1 "print skill names"'` prints the name on the runner; a worker runs with `--setting-sources user`, so a project skill such as `catchup` never loads there and never enters the file (#37).
@@ -56,6 +58,7 @@ This contract owns the issue body: the stage-2 session hands the sections above 
 - Every path named under Where, Do not touch, and Approach exists in the tree or is named by the Goal as created.
   The path rule is skipped under `bin/factory.d/fixtures/`, whose bodies are historical tickets and name paths that later tickets removed.
 - At most three merge-checklist lines on a Track B ticket.
+- At least one non-guard check line does not start with `grep`: checks that only grep source text prove the text, not the behavior.
 - Lint is static; it never executes a check.
 
 Lint runs inside `bin/check` on its fixtures.

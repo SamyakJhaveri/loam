@@ -11,11 +11,11 @@ Rubric text lives only in the grader files.
 |---|---|---|
 | `bin/factory lint <issue|file>` | static ticket lint, rules in `CONTRACT.md` | F2 |
 | `bin/factory eval <grader> [--model M]` | replays frozen cases through the production grader call and compares verdicts; `EVAL_EFFORT` sets the effort (default medium), `EVAL_OUT=<dir>` keeps each raw reply | F6 |
-| `bin/factory eval-freeze [--evals-dir D] <run-dir>...` | copies each run's last round, when the judge passed it and the reviewer said merge, into `<evals-dir>/clean/<grader>/<key>-<sha8>/` (default `evals/clean/`), the prompt cut at `## Ticket`; prints `not frozen <run-dir>: <reason>` for the rest | F36 |
+| `bin/factory eval-freeze [--evals-dir D] <run-dir>...` | copies each run's last round, when the judge passed it and no reviewer finding was high or medium, into `<evals-dir>/clean/<grader>/<key>-<sha8>/` (default `evals/clean/`), the prompt cut at `## Ticket`; prints `not frozen <run-dir>: <reason>` for the rest | F36 |
 | `bin/factory run <issue>` | round 0, then worker rounds, graders, PR | F1 |
 | `bin/factory status` | run states, spend, denials per round, worktree and PR readiness, preconditions | F1 |
 | `bin/factory stop <issue>` | writes `FACTORY_STOP` into the run dir | F1 |
-| `bin/runner [-C <dir>] <cmd>` | runs `<cmd>` on the runner: `ssh jhaveris bash -lc 'cd ~/Desktop/loam && <cmd>'`, or from `<dir>` there (quote a tilde, F8); `bin/runner sync` mirrors `.superpowers/lean-v3/` and `.superpowers/factory/` to the same paths on the runner with `rsync -az --delete`, excluding `runs/` and `__pycache__`; it never pulls (#36) | F0 |
+| `bin/runner [-C <dir>] <cmd>` | runs `<cmd>` on the runner: `ssh jhaveris bash -lc 'cd ~/Desktop/loam && <cmd>'`, or from `<dir>` there (quote a tilde, F8); `bin/runner sync` mirrors `.superpowers/factory/` to the same path on the runner with `rsync -az --delete`, excluding `runs/` and `__pycache__`; it never pulls (#36) | F0 |
 | `bin/factory next [--install]` | launches up to `MAX_PARALLEL` `ready-for-agent` issues with no assignee and no open native blocker (read through `gh api`); `--install` writes the ten-minute runner timer | F9 |
 
 `-C <repo>`, before the subcommand or right after it, points `lint`, `run`, `status`, `stop`, and `next` at another repository (F8 step 1; Run the factory on another repository, below).
@@ -58,8 +58,8 @@ The run resolves them from the installed plugin cache, falling back to the check
    The worker writes code and `decisions.md` only.
    Every round is a fresh process for either worker; there is no fixer role.
 6. Before grading, in order: scan `decisions.md` for an `ABANDON` line; re-hash the frozen set (a mismatch exits `stopped-environment`); `git status --porcelain` must be empty, else the round fails with the path list; `git diff --name-only "$(cat base.sha)"...HEAD` against Do not touch emits `FAIL do-not-touch <paths>`; then run the done-checks block from the worktree root.
-7. On green: the supervisor runs Rows measured and prints `MEASURE` lines, then calls the judge, the reviewer, and the Codex review stage if the ticket sets it, each fresh, on the frozen prompt and the same evidence bundle.
-8. On pass, or at the grader-round cap: assemble the PR body (first line `Closes #<issue>`, then the ticket's Goal and why, `git log --oneline base..HEAD`, the MEASURE table, the merge checklist as checkboxes, `decisions.md`, grader sections, backlog, metrics), push, `gh pr create` or update the existing PR through the REST API, notify, exit `pr-opened`.
+7. On green: the supervisor runs Rows measured (a `runs=N` row N times, `CONTRACT.md`) and prints `MEASURE` lines, then calls the judge, the reviewer, and the Codex review stage if the ticket sets it, each fresh, on the frozen prompt and the same evidence bundle.
+8. On pass, or at the grader-round cap: assemble the PR body (first line `Closes #<issue>`, then the ticket's Goal and why, `git log --oneline base..HEAD`, the MEASURE table, the merge checklist as checkboxes, `decisions.md`, grader sections (the Judge section opens with `graded at <sha>`, the HEAD the graders read), backlog, metrics), push, `gh pr create` or update the existing PR through the REST API, notify, exit `pr-opened`.
    A PR opened at the grader-round cap is a draft: `gh pr create --draft`, and a line under `Closes #<issue>` names the failing judge rows, so no automatic merge takes it before a human reads the Judge section; an already-open PR is only updated, not converted.
    Each judge backlog line is also filed once per run as a `needs-triage` issue, so a defect an unattended run finds is tracked outside the PR body.
 
@@ -95,9 +95,9 @@ Codex token counts come from its `--json` events and land in the ledger with `co
 
 After the checks first pass, at most two grader-fail rounds per ticket; then the remaining non-blocking findings go to the PR body backlog and the PR opens as a draft.
 The judge decides pass or fail.
-The reviewer blocks only on a `high` or `medium` finding, the Codex review only on a `critical` or `high` finding, and each may block at most once per ticket.
+The reviewer blocks only on a `high` or `medium` finding (`REVIEW_BLOCKING` in `bin/factory`; its verdict word is not read), the Codex review only on a `critical` or `high` finding, and each may block at most once per ticket.
 A grader whose output is absent or unparseable is a fail with one high finding "grader unparseable", never a pass.
-`verdict_consistent` runs on every grader JSON: a pass with non-empty fixes, or a fail with empty fixes and empty backlog, is refuted, and the grader is called once more, fresh, with the refutation appended to its prompt.
+`verdict_consistent` runs on every judge JSON: a pass with non-empty fixes, or a fail with empty fixes and empty backlog, is refuted, and the judge is called once more, fresh, with the refutation appended to its prompt.
 
 ## Grader calls
 
@@ -153,7 +153,7 @@ Skills are given at the moment they apply, never all at once; the listing is pai
 | Role | Skills | How they arrive |
 |---|---|---|
 | Brief (stage 0) | `/brief` (F5) | Samyak invokes it |
-| Design (stage 1) | `surprise-me` (panel), `research`, plan mode, `/plan-review`, `grill-with-docs`, `domain-modeling`, `wayfinder` | the design session invokes them in that order for `Mode: figure-out`; from plan mode on for `build` |
+| Design (stage 1) | `surprise-me` (panel), `mattpocock-skills:research`, plan mode, `/plan-review`, `grill-with-docs`, `domain-modeling`, `wayfinder` | in that order for `Mode: figure-out`, from plan mode on for `build`; Samyak types `/surprise-me` and `/plan-review`, which are manual-only, and the design session invokes the rest |
 | Tickets (stage 2) | `to-tickets`, `plan-reviewer`, lean-critic | the stage-2 session; `plan-reviewer` and lean-critic after `bin/factory lint` exits 0 |
 | Worker | the skills the ticket's `skills:` field names, each a line of `bin/factory.d/skills.txt` | one Skill-tool sentence per name in the worker prompt |
 | Graders | none; their prompt is the whole instruction | frozen files |
@@ -196,6 +196,7 @@ There is no other steering channel: to change course, edit the issue body and re
 Grader prompts are production prompts.
 `evals/<grader>/<case>/` holds a frozen `prompt.md` from a real round and an `expected.json` with the verdict and, when listed, the failing-row set; the first cases come from the runner's lean-v3 runs: the S2 stale-tree round, the S3 ownership round, the S4 unmeetable check, and S2 round 8.
 `bin/factory eval <grader>` replays each case through the grader call above, compares the verdict exactly and the failing-row set only when the case lists one, and exits 1 on any mismatch.
+A reviewer reply's verdict is what the loop does with it, `fix` when a finding is high or medium and `merge` otherwise, never its own verdict word; `eval_score.py` scores the reviewer the same way.
 `evals/clean/` holds the last round of each runner run that both graders passed, frozen by `bin/factory eval-freeze` from `~/.local/state/loam-factory/runs/*/*/`, and `bin/factory eval <grader> --evals-dir evals/clean` replays the corpus.
 A grader model comparison plants known defects in that corpus and scores the saved replies offline, in three commands:
 
@@ -214,6 +215,7 @@ It exits 1 when any case misses its expected verdict, which a missed mutant does
 Each pair of models also gets an `A+B` row, the recall and false alarms of a two-model jury, scored from the same replies with no extra call.
 A case may not depend on the live tree: its expected verdict must follow from `prompt.md` alone, since the grader reads the checkout it runs in and a case whose verdict rests on that checkout drifts as the repo changes (the lean-critic s4-round-4 case did, and was dropped 2026-09-11). If a second case drifts, the fix is a `base_sha` per case and a replay in a checkout of that commit.
 No grader edit lands without the replay run before and after, recorded in the PR body; it never runs in `bin/check`.
+The replay is local: `bin/factory eval` runs `claude -p` on the machine that calls it, so it needs no runner.
 After a model upgrade: replay with the new model, then once more with each rubric body replaced by its one-line stance; a rubric row that changes no verdict is a deletion candidate.
 Each new grader agent costs about 200 always-on tokens in every session of every seeded project; `bin/skill_listing_weight.py` gates each plugin bump.
 
