@@ -2,6 +2,7 @@
 # Daily upkeep of verify-loam: a fresh clone of origin/main runs
 # /pstack:maintain-verification-skill headless. Never pushes; a "changed"
 # outcome stays on a local branch in the run's clone for the owner to review.
+# Every other outcome deletes the clone and keeps only the evidence files.
 set -euo pipefail
 
 usage() {
@@ -9,13 +10,18 @@ usage() {
 usage: bin/verify-loam-daily [--probe] [--dry-run]
 
 Clones origin/main into $VERIFY_DAILY_ROOT/<stamp>/loam and runs
-/pstack:maintain-verification-skill on .claude/skills/verify-loam with claude -p.
-Prints one JSON line: ok, run, outcome, cost_usd, branch, report.
+/pstack:maintain-verification-skill on .claude/skills/verify-loam with claude -p
+(claude-opus-5-5, effort xhigh). Prints one JSON line, also saved as
+result.json: ok, run, exit, outcome, cost_usd, branch, report. ok is true only
+for outcome clean, or changed with a commit on the named branch beyond
+origin/main. The clone is deleted unless the outcome is changed; result.json,
+report.md and claude.jsonl stay in the run directory.
 
   --probe     clone and check claude, auth and pstack only; no model call ($0)
   --dry-run   print the clone and claude commands, run nothing
 
 Env: VERIFY_DAILY_ROOT (default ~/.local/state/loam/evidence/verify-daily).
+VERIFY_DAILY_TIMEOUT: seconds before claude is killed (default 14400, 4 h).
 The run's own TMPDIR and LOAM_MEMSTORE live inside the clone, so it never
 writes to ~/memstore or another run's files.
 EOF
@@ -42,10 +48,12 @@ Do not push and do not open a PR. If the outcome is changed, commit the proven \
 corrections on a new local branch named $branch in this clone. Write the run \
 notes and the outcome word (clean, changed or blocked) on its own first line \
 as 'outcome: <word>' to .verify-daily/report.md."
+flags=(--model claude-opus-5-5 --effort xhigh --permission-mode auto --output-format stream-json --verbose)
+limit="${VERIFY_DAILY_TIMEOUT:-14400}"
 
 if [[ "$dry" == 1 ]]; then
   echo "git clone -q $origin $clone"
-  echo "claude -p '$prompt' --permission-mode auto --output-format stream-json --verbose"
+  echo "claude -p '$prompt' ${flags[*]}  # killed after ${limit}s"
   exit 0
 fi
 
@@ -59,26 +67,36 @@ mkdir -p "$clone/.tmp" "$clone/.memstore" "$clone/.verify-daily"
 
 if [[ "$probe" == 1 ]]; then
   logged_in="$(claude auth status 2>/dev/null | jq -r '.loggedIn // false' 2>/dev/null || echo false)"
-  pstack=false
-  [[ -f "$HOME/.claude/rules/pstack-models.md" ]] && \
-    jq -e '.plugins | keys[] | select(startswith("pstack@"))' "$HOME/.claude/plugins/installed_plugins.json" >/dev/null 2>&1 && pstack=true
+  pstack="$(cd "$clone" && claude plugin list --json 2>/dev/null | \
+    jq -r 'any(.[]; (.id | startswith("pstack@")) and .enabled)' 2>/dev/null || echo false)"
   ok=false; [[ "$logged_in" == true && "$pstack" == true ]] && ok=true
   printf '{"ok":%s,"run":"%s","probe":true,"claude":"%s","logged_in":%s,"pstack":%s,"head":"%s"}\n' \
     "$ok" "$run" "$(claude --version | head -1)" "$logged_in" "$pstack" "$(git -C "$clone" rev-parse --short HEAD)" | tee "$run/probe.json"
+  rm -rf "$clone"
   [[ "$ok" == true ]]; exit
 fi
 
+# macOS has no timeout(1). perl's alarm survives exec, so SIGALRM ends claude
+# after $limit seconds (exit 142) and launchd can start the next day's run.
 rc=0
 ( cd "$clone" && env -u LOAM_MEMSTORE_REMOTE TMPDIR="$clone/.tmp" LOAM_MEMSTORE="$clone/.memstore" \
-    claude -p "$prompt" --permission-mode auto --output-format stream-json --verbose \
+    perl -e 'alarm shift; exec @ARGV or die "exec: $!\n"' "$limit" claude -p "$prompt" "${flags[@]}" \
     > "$run/claude.jsonl" 2> "$run/claude.stderr" ) || rc=$?
 
 report="$clone/.verify-daily/report.md"
 [[ -f "$report" ]] && cp "$report" "$run/report.md"
-outcome="$(sed -n 's/^outcome: *\([a-z]*\).*/\1/p' "$run/report.md" 2>/dev/null | head -1)"
+outcome=""
+[[ -f "$run/report.md" ]] && outcome="$(sed -n 's/^outcome: *\([a-z]*\).*/\1/p' "$run/report.md" | head -1)"
 cost="$(jq -s '[.[] | select(.type == "result") | .total_cost_usd] | last // 0' "$run/claude.jsonl" 2>/dev/null || echo 0)"
 git -C "$clone" rev-parse --verify -q "$branch" >/dev/null || branch=""
-ok=false; [[ "$rc" == 0 && -n "$outcome" ]] && ok=true
+ok=false
+if [[ "$rc" == 0 ]]; then
+  case "$outcome" in
+    clean) ok=true ;;
+    changed) [[ -n "$branch" && "$(git -C "$clone" rev-list --count "origin/main..$branch")" -gt 0 ]] && ok=true ;;
+  esac
+fi
 printf '{"ok":%s,"run":"%s","exit":%s,"outcome":"%s","cost_usd":%s,"branch":"%s","report":"%s"}\n' \
   "$ok" "$run" "$rc" "${outcome:-none}" "$cost" "$branch" "$run/report.md" | tee "$run/result.json"
+[[ "$outcome" == changed ]] || rm -rf "$clone"
 [[ "$ok" == true ]]
