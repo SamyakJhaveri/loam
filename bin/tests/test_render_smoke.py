@@ -9,6 +9,8 @@ from __future__ import annotations
 import json
 import os
 import pathlib
+import re
+import shlex
 import shutil
 import subprocess
 import tempfile
@@ -34,9 +36,9 @@ GIT_ENV = {
     "GIT_CONFIG_VALUE_1": "false",
 }
 
-# The destructive families both harnesses must forbid. This is the parity check
-# that replaced agent-parity.toml: one list, asserted against the Claude deny
-# list and against the Codex rules file.
+# The destructive families the Claude deny list must keep. This is the parity
+# check that replaced agent-parity.toml: the families are asserted against the
+# deny list, then every deny spelling is asserted against the Codex rules file.
 FORBIDDEN_FAMILIES = (
     "rm -rf",
     "git push --force",
@@ -94,6 +96,14 @@ class RenderSmoke(unittest.TestCase):
 
     def settings(self) -> dict:
         return json.loads((self.out / ".claude/settings.json").read_text())
+
+    def bash_deny_spellings(self) -> list[list[str]]:
+        # "Bash(rm -r -f:*)" -> ["rm", "-r", "-f"]
+        return [
+            shlex.split(d[len("Bash(") : -1].removesuffix(":*"))
+            for d in self.settings()["permissions"]["deny"]
+            if d.startswith("Bash(")
+        ]
 
     def test_settings_parse_and_hooks(self):
         s = self.settings()
@@ -224,12 +234,17 @@ class RenderSmoke(unittest.TestCase):
             self.assertIn(f"## Memory ({self.out.name})", r.stdout)
             self.assertIn("Probe the smoke capture", r.stdout)
 
-    def test_deny_and_rules_share_forbidden_families(self):
+    def test_every_claude_deny_spelling_has_a_codex_rule(self):
         deny = self.settings()["permissions"]["deny"]
-        rules = (self.out / ".codex/rules/loam.rules").read_text()
         for fam in FORBIDDEN_FAMILIES:
             self.assertTrue(any(fam in d for d in deny), f"deny missing {fam}")
-            self.assertIn(fam, rules, f"loam.rules missing {fam}")
+        rules = (self.out / ".codex/rules/loam.rules").read_text()
+        patterns = [json.loads(p) for p in re.findall(r"pattern = (\[[^\]]*\])", rules)]
+        # A prefix_rule matches every command whose leading tokens equal its pattern.
+        missing = [
+            " ".join(s) for s in self.bash_deny_spellings() if not any(s[: len(p)] == p for p in patterns)
+        ]
+        self.assertEqual(missing, [], "loam.rules has no prefix_rule for these Claude deny spellings")
 
     def test_rendered_check_passes_then_fails_on_a_planted_defect(self):
         def check(project: pathlib.Path) -> subprocess.CompletedProcess:
@@ -250,23 +265,20 @@ class RenderSmoke(unittest.TestCase):
         self.assertEqual(r.returncode, 1, r.stdout)
         self.assertIn("'SessionStop' is not a Claude Code hook event", r.stdout)
 
-    def test_codex_execpolicy_forbids_the_force_families(self):
+    def test_codex_execpolicy_forbids_every_claude_deny_spelling(self):
         if not shutil.which("codex"):
             self.skipTest("codex CLI absent")
         rules = str(self.out / ".codex/rules/loam.rules")
-        for cmd in (
-            ["rm", "-rf", "x"],
-            ["git", "push", "--force", "origin", "main"],
-            ["git", "checkout", "."],
-        ):
+        allowed = []
+        for cmd in self.bash_deny_spellings():
             r = subprocess.run(
                 ["codex", "execpolicy", "check", "--rules", rules, "--"] + cmd,
                 capture_output=True,
                 text=True,
             )
-            self.assertEqual(
-                json.loads(r.stdout).get("decision"), "forbidden", " ".join(cmd)
-            )
+            if json.loads(r.stdout).get("decision") != "forbidden":
+                allowed.append(" ".join(cmd))
+        self.assertEqual(allowed, [], "codex execpolicy does not forbid these Claude deny spellings")
 
 
 class UpdateSmoke(unittest.TestCase):
