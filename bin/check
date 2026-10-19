@@ -139,8 +139,8 @@ python3 bin/skill_listing_weight.py --root "$ROOT" --budget seed=85 --budget "sa
 step "always-loaded prose cap"
 # Root CLAUDE.md, AGENTS.md and what they load reach every Loam session. No-growth cap in bytes,
 # set to the measured size on 2026-10-18. Lower it when the prose shrinks; raise it only in the
-# PR that grows the prose, with the reason in that PR.
-python3 bin/always_loaded_prose.py --root "$ROOT" --cap 4597 || bad "always-loaded prose over its cap"
+# PR that grows the prose, with the reason in that PR. 4643 (2026-10-19): +46 for the docs/RULES.md row (#237).
+python3 bin/always_loaded_prose.py --root "$ROOT" --cap 4643 || bad "always-loaded prose over its cap"
 
 step "no em dash in Loam-owned text"
 # The owner's standing rule (#237). Exempt only text Loam does not own or must not rewrite.
