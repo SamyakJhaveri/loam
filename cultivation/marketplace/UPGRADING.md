@@ -3,7 +3,7 @@
 This file records why a promoted plugin change traveled. It is also the upgrade
 entry point for projects that consume the Loam marketplace.
 
-## sam-cc-setup v0.9.7 grader prompt edits
+## sam-cc-setup v0.9.8 grader prompt edits
 
 judge.md and reviewer.md cite only the sections build_evidence sends (Rows measured, decisions.md), judge.md counts a `SKIP` or `SKIPPED` line in the Checks output as unproven, and both drop "of Loam v3", since `-C` grades other repositories; before merging, run the v0.9.6 replay with `judge reviewer` in each `for g in` list.
 Upgrade step: `claude plugin update sam-cc-setup`.
