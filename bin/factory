@@ -250,29 +250,39 @@ EVAL_MODEL=claude-opus-5-5   # ARCHITECTURE.md, Models and roles (2026-09-24)
 EVALS_DIR=evals
 GRADERS_DIR=""
 
-# Graders are plugin agents; a run and an eval both resolve them from the installed plugin cache,
-# so both grade with the version the ledger records. --graders-dir replaces the search.
+# Graders are plugin agents; a run and an eval both resolve them from the installed plugin cache at the
+# version this checkout's plugin.json names, so both grade with the prompts the repo ships, and the ledger
+# records which file. --graders-dir replaces the search.
 grader_file() {
-  local dirs=("$GRADERS_DIR") d f
-  # The installed plugin cache is searched newest version first; the checkout's own marketplace copy
-  # is the last-resort fallback, so a run works from a branch whose grader edits are not installed yet.
-  # `claude plugin update` leaves old versions in the cache, so sort by version, not by glob order.
+  local dirs=("$GRADERS_DIR") want other="" d v f
   if [ -z "$GRADERS_DIR" ]; then
-    dirs=() # bash 3.2 (macOS) has no mapfile, so read the sorted glob in a plain loop, like skill_file
-    while IFS= read -r d; do dirs+=("$d"); done < <(printf '%s\n' "$HOME"/.claude/plugins/cache/*/sam-cc-setup/*/agents | sort -rV)
-    dirs+=("$ROOT/cultivation/marketplace/sam-cc-setup/agents")
+    # `claude plugin update` leaves old versions in the cache, and the newest cached one can still trail the
+    # checkout (every distbench run of 2026-10-13 to 10-17 graded with 0.9.4), so only plugin.json's version counts.
+    want=$(jq -r .version "$ROOT/cultivation/marketplace/sam-cc-setup/.claude-plugin/plugin.json")
+    dirs=()
+    for d in "$HOME"/.claude/plugins/cache/*/sam-cc-setup/*/agents; do
+      [ -d "$d" ] || continue
+      v=$(basename "$(dirname "$d")")
+      if [ "$v" = "$want" ]; then dirs+=("$d"); else other="$other $v"; fi
+    done
+    if [ ${#dirs[@]} -eq 0 ] && [ -n "$other" ]; then
+      echo "the plugin cache holds sam-cc-setup$other, not $want, the version $ROOT ships; run claude plugin update sam-cc-setup@seed-skills (cultivation/marketplace/UPGRADING.md)" >&2
+      return 1
+    fi
+    # With no sam-cc-setup installed at all, the checkout's own copy is the shipped version by construction.
+    [ ${#dirs[@]} -gt 0 ] || dirs=("$ROOT/cultivation/marketplace/sam-cc-setup/agents")
   fi
   for d in "${dirs[@]}"; do
     f="$d/$1.md"
     [ -f "$f" ] && { printf '%s\n' "$f"; return 0; }
   done
-  echo "eval: found no $1.md in ${dirs[*]}" >&2
+  echo "found no $1.md in ${dirs[*]}" >&2
   return 1
 }
 
 # A worker's skill name (a line of bin/factory.d/skills.txt, lint-checked) -> its SKILL.md body path.
 # A bare name lives under ~/.claude/skills/<name>/; a plugin:name lives in the installed plugin cache,
-# the way grader_file resolves agents, newest version first. Plugin skills nest under a category dir
+# newest version first. Plugin skills nest under a category dir
 # (mattpocock-skills:research is skills/engineering/research/SKILL.md), so match SKILL.md at any depth
 # under the plugin's skills tree, not only skills/<name>/.
 skill_file() { # skill-name -> SKILL.md path on stdout, non-zero when it resolves to no file
@@ -651,7 +661,7 @@ freeze() {
   sed -e "s|<issue>|${ISSUE:-$KEY}|g" -e "s|<decisions>|$DECISIONS|g" \
     "$ROOT/bin/factory.d/_common.md" > "$RUN/frozen/_common.md"
   for g in judge reviewer; do
-    src=$(grader_file "$g") || finish stopped-environment "no $g.md in the installed plugin cache"
+    src=$(grader_file "$g" 2>&1) || finish stopped-environment "$src"
     grader_rubric "$src" > "$RUN/frozen/$g.md"
     schema_for "$g" > "$RUN/frozen/$g.schema.json"
     printf '{"ts":"%s","event":"grader","role":"%s","file":"%s","sha256":"%s"}\n' \
@@ -1736,7 +1746,7 @@ claude_logged_in() {
 }
 
 precondition_lines() { # LOOP.md, Preconditions
-  local t
+  local t f
   for t in claude gh git jq python3 uv tmux timeout socat node; do
     command -v "$t" > /dev/null 2>&1 && echo "  PASS $t on PATH" || echo "  FAIL $t not on PATH"
   done
@@ -1772,7 +1782,7 @@ precondition_lines() { # LOOP.md, Preconditions
   claude -p --help 2>&1 | grep -q -- '--json-schema' && echo "  PASS claude -p accepts --json-schema" \
     || echo "  FAIL claude -p lacks --json-schema; every grader call needs it"
   for t in judge reviewer; do
-    grader_file "$t" > /dev/null 2>&1 && echo "  PASS $t.md in the plugin cache" || echo "  FAIL no $t.md in the plugin cache"
+    if f=$(grader_file "$t" 2>&1); then echo "  PASS $t.md at $f"; else echo "  FAIL $f"; fi
   done
   # Every worker skills.txt line must resolve to a SKILL.md, or a `worker: codex` ticket naming it stops
   # at build_worker_prompt (skill_file); a bare name and a plugin:name both, newest version first.

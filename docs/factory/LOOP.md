@@ -41,7 +41,8 @@ evals/<grader>/<case>/{prompt.md,expected.json}
 
 Graders are plugin agents (home in `ARCHITECTURE.md`): `judge.md` and `reviewer.md`.
 `lean-critic.md` is a grader file under the same change protocol, but the manager runs it by hand on the PR, outside the round loop: on the 2026-09-09 ledger 3 of its 6 round calls were unparseable.
-The run resolves them from the installed plugin cache, falling back to the checkout's own `cultivation/marketplace/sam-cc-setup/agents/` when a branch's grader edits are not installed yet, and records each file's sha256 in the ledger.
+The run resolves them from the installed plugin cache at the version `cultivation/marketplace/sam-cc-setup/.claude-plugin/plugin.json` names, and records each file's sha256 in the ledger.
+When the cache holds only other versions of sam-cc-setup, the run stops `stopped-environment` and names both versions; the checkout's own `cultivation/marketplace/sam-cc-setup/agents/` is used only when no sam-cc-setup is installed at all.
 
 ## A run
 
@@ -280,7 +281,7 @@ exec "${LOAM_HOME:-$HOME/Desktop/loam}/bin/factory" -C "$(git rev-parse --show-t
 - `grill-with-docs`, `wayfinder`, and `to-tickets` are invocable on that seat.
 - `codex login status` succeeds when any ticket uses Codex.
 - Every `codex` call on the runner exports `PATH=$HOME/.local/bin:$PATH` and ends in `< /dev/null`, or Codex is not found or eats the caller's stdin (#41).
-- The plugin cache holds the grader files at the version the ledger records.
+- The plugin cache holds the grader files at the version `cultivation/marketplace/sam-cc-setup/.claude-plugin/plugin.json` names; `bin/factory status` prints a FAIL line naming both versions otherwise, and `claude plugin update sam-cc-setup@seed-skills` fixes it.
 - Neither `DISABLE_TELEMETRY` nor `CLAUDE_CODE_DISABLE_ADVISOR_TOOL` is set in the runner's environment: either turns the worker's advisor silently off, and `bin/factory run` refuses to launch when one is set (F11). `FACTORY_STATUS_PROBE=1 bin/factory status` makes one paid Opus call to prove the advisor attaches.
 - Sessions that edit `bin/factory` run in `acceptEdits`, not auto mode, because the auto-mode classifier blocks tool calls whose text names a permission mode (observed, not documented).
 - `gh pr edit` has failed on a GraphQL deprecation; PR bodies are updated through the REST API.
