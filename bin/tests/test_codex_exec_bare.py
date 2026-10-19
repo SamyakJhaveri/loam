@@ -3,7 +3,9 @@
 
 Claude Code honors a sandbox exclusion such as `codex exec *` only for that bare command. A pipe,
 a prefix, or any redirect (even `< /dev/null`) puts Codex back inside Claude's sandbox, and a `<`
-anywhere, even quoted, leaves Codex waiting on an open stdin. `<name>` placeholders are filled in.
+anywhere, even quoted, leaves Codex waiting on an open stdin. A command substitution (`$(...)` or
+backticks), even quoted, runs a second command in the call, so it is not bare either.
+`<name>` placeholders are filled in.
 """
 
 from __future__ import annotations
@@ -40,6 +42,7 @@ def is_bare(cmd: str) -> bool:
     lex.whitespace_split = True
     tokens = list(lex)
     return (tokens[:2] == ["codex", "exec"] and "<" not in PLACEHOLDER.sub("", cmd)
+            and "$(" not in cmd and "`" not in cmd
             and not any(set(t) <= set("();<>|&") for t in tokens))
 
 
@@ -64,7 +67,7 @@ class CodexExecBare(unittest.TestCase):
         self.assertTrue(is_bare('codex exec -o "<out>" "Review <scope>; map a -> b; no preamble."'))
         for cmd in ('git diff | codex exec "x"', 'OUT=a codex exec "x"', 'mkdir -p d && codex exec "x"',
                     'codex exec "x" < /dev/null', 'codex exec "x" > log 2>&1', 'codex exec "x"; echo done',
-                    'codex exec "Respond in <=60 lines."'):
+                    'codex exec "Respond in <=60 lines."', 'codex exec "$(git diff)"', 'codex exec "`git diff`"'):
             self.assertFalse(is_bare(cmd), cmd)
 
 

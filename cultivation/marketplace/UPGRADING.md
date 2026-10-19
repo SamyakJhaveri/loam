@@ -7,6 +7,7 @@ entry point for projects that consume the Loam marketplace.
 
 `/codex-review` no longer pipes `git diff` into Codex.
 It runs one Bash call that starts with `codex exec`, with no pipe or redirect, and Codex runs `git diff` itself.
+Codex lists the changed paths with `git diff --numstat` and reads each path's diff in its own call, because Codex cuts long command output short.
 When your settings exclude `codex exec *` from the sandbox, that exclusion now matches the call, so Codex runs outside Claude's sandbox, where it can reach its API and start its own sandbox.
 Loam's seed does not ship that exclusion (`seed/.claude/settings.json` excludes only `ssh`, `scp` and `rsync`).
 Findings left unfixed go to the project's issue tracker once the user agrees, not to the retired `docs/findings/FINDINGS.md`.

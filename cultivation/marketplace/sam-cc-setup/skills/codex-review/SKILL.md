@@ -78,6 +78,8 @@ elif [ "$DIFF_STATUS" -ne 1 ]; then
   exit "$DIFF_STATUS"
 fi
 
+# Codex cuts long command output short, so Step 2 has it read this diff one path at a time.
+# The cap bounds the whole diff, not each read.
 MAX_DIFF_BYTES=200000
 DIFF_BYTES=$(git --no-pager diff "$SCOPE" | wc -c | tr -d '[:space:]')
 if [ "$DIFF_BYTES" -gt "$MAX_DIFF_BYTES" ]; then
@@ -98,10 +100,11 @@ the commit messages in scope (`git log --format='%s%n%b' "$LEFT..${RIGHT:-HEAD}"
 the intended behavior, never why it was built this way: the reviewer stays blind to the author's
 reasoning, as in `plan-review`. If the intent is unclear, ask the user before running Codex.
 
-Codex reads the diff itself with `git diff`; nothing is piped in. Keep the sandbox read-only.
-Use the configured Codex model with high review effort. Inspect `codex --help` and the active
-provider config before adding any model ID or unsupported effort value. `-o` saves the durable
-final report. Pick its path:
+Codex reads the diff itself; nothing is piped in. It lists the changed paths, then runs one
+`git diff` per path, because Codex cuts long command output short and a whole-diff read can
+come back cut. Keep the sandbox read-only. Use the configured Codex model with high review
+effort. Inspect `codex --help` and the active provider config before adding any model ID or
+unsupported effort value. `-o` saves the durable final report. Pick its path:
 
 ```bash
 mkdir -p .claude/codex-reviews
@@ -120,8 +123,10 @@ Write `<intent>` as plain prose without quotes, backticks, `$`, `\`, or `<`.
 codex exec --sandbox read-only -c model_reasoning_effort=high -o "<out>" \
   "You are a second-opinion code reviewer. The change is meant to do this: <intent> \
 Review whether the diff achieves that intent well; do not question the intent itself. \
-Read the diff yourself by running git --no-pager diff <scope>, and read files in the \
-current repository read-only for context. Respond in at most 60 lines: first line a single \
+List the changed paths with git --no-pager diff --numstat <scope>, then read each path's \
+diff with its own git --no-pager diff <scope> -- followed by that path, since one long output \
+gets cut short. Read files in the current repository read-only for context. \
+Respond in at most 60 lines: first line a single \
 verdict - SHIP, FIX FIRST, or REWORK - then findings grouped under Critical / High / \
 Medium / Low, each with file:line and a one-line fix. Omit empty groups. \
 Be terse; no preamble."
