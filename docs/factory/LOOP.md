@@ -1,7 +1,6 @@
 # Loam Factory: the loop
 
 This file is the one home of `bin/factory`, the supervisor that runs one ticket to a pull request on the runner.
-It generalizes `.superpowers/lean-v3/loops/loop.sh`, which stays the live loop until F1 lands.
 The ticket it consumes is defined in `CONTRACT.md`; the stage table and model rules are in `ARCHITECTURE.md`.
 Rubric text lives only in the grader files.
 
