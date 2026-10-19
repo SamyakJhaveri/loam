@@ -24,6 +24,18 @@ publish() {
   ok "released v$VERSION; rendered from gh:samyakjhaveri/loam into $OUT/render"
 }
 
+# Main's rules must make a red CI run block a merge. The contexts are the job ids in test.yml.
+require_ci_checks() {
+  local have missing="" c
+  have="$(gh api 'repos/{owner}/{repo}/rules/branches/main' \
+    --jq '.[] | select(.type == "required_status_checks") | .parameters.required_status_checks[].context')" \
+    || die "cannot read the rules on main (gh api repos/{owner}/{repo}/rules/branches/main failed)"
+  for c in verify stub-sweep; do
+    grep -qxF "$c" <<<"$have" || missing="${missing:+$missing, }$c"
+  done
+  [[ -z "$missing" ]] || die "main's active rules do not require the status check(s) $missing; a red CI run would not block a merge. Add them to the main ruleset in Settings, Rules"
+}
+
 SELF="$(cd "$(dirname "$0")/.." && pwd)"; cd "$SELF"
 [[ "$(git branch --show-current)" == "main" ]] || die "release from main only"
 git fetch origin main --quiet
@@ -40,6 +52,8 @@ fi
 [[ -z "$(git status --porcelain --untracked-files=all)" ]] || die "working tree is dirty"
 [[ -z "$(git tag -l "v$VERSION")" ]] \
   || die "tag v$VERSION already exists. If origin has it (git ls-remote --tags origin v$VERSION) it is public: fix main and release the next version. If not, delete it (git tag -d v$VERSION) and rerun"
+
+require_ci_checks
 
 # The latest run on HEAD must be green. Keyed off the workflow NAME in test.yml.
 STATUS="$(gh run list --commit "$(git rev-parse HEAD)" --workflow Test --limit 1 --json conclusion --jq '.[0].conclusion' 2>/dev/null || echo "")"
