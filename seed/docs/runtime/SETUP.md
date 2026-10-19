@@ -48,7 +48,8 @@ a trusted child starts. OpenSSL configuration and provider/engine directory over
 are stripped too. Worker queries reject after an open failure or closure. Closing
 rejects outstanding requests and waits for the worker to terminate. A database write
 may already have completed; rejection does not prove that its effects were rolled
-back. The gate runs inside a sandbox and on CI, so it is part of `bin/check`.
+back. The gate runs inside a sandbox and on CI, so Loam's own `bin/check` runs it;
+this project's `bin/check` does not.
 
 Store paths must be absolute local paths with a single leading slash. Leading double
 slashes are refused because SQLite can interpret them as a URI authority. Runtime
