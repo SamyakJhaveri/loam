@@ -61,7 +61,7 @@ for path, copy in files:
             out.append("not json\n")
         copy.write_text("".join(out))
     print(f"### {path}\n- hunk 1: kept the project's line in {path}, because the stub always does")
-print("Notes:\n- the stub read no other file")
+print("Notes:\n- the stub read no other file\n- for the reviewer:\n  - a nested note")
 """
 
 GH_STUB = """#!/usr/bin/env bash
@@ -212,7 +212,8 @@ class SyncProjectTests(unittest.TestCase):
         body = (self.work / "pr-body.md").read_text()
         for needle in ("- `conf.json`\n  - hunk 1: kept the project's line in conf.json,",
                        "- `notes.md`\n  - hunk 1: kept the project's line in notes.md,",
-                       "- the stub read no other file", "check: PASSED", "VERIFY: PASS", self.sha):
+                       "- the stub read no other file",
+                       "- for the reviewer:\n  - a nested note", "check: PASSED", "VERIFY: PASS", self.sha):
             self.assertIn(needle, body)
         message = git("log", "-1", "--format=%B", port_commit, cwd=self.remote)
         self.assertIn("notes.md\n- hunk 1: kept the project's line in notes.md,", message)
@@ -255,7 +256,7 @@ class SyncProjectTests(unittest.TestCase):
         r = self.sync("--dry-run")
         self.assertEqual(0, r.returncode, r.stdout + r.stderr)
         self.assertNotIn("Follow every ruling", self.claude_calls()[0]["prompt"])
-        self.assertNotIn("rulings", (self.work / "pr-body.md").read_text())
+        self.assertNotIn("owner's rulings", (self.work / "pr-body.md").read_text())
 
     def test_dry_run_stops_before_the_push(self) -> None:
         r = self.sync("--dry-run")
