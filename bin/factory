@@ -1324,14 +1324,16 @@ graders() { # round -> 0 when the judge passes and nothing blocks
 
 # The reviewer's and the Codex review's blocking findings in the final round's files, highest severity first.
 # After the graders pass, these are what a grader past its one block still reports, an unparseable reply included.
+# Each finding is joined onto one line, since file_issues files one issue per line.
 blocking_findings() {
   jq -r "$REVIEW_BLOCKING"' | sort_by(.severity != "high") | .[]
-    | "reviewer [" + .severity + "] " + (.file // "?") + ":" + ((.line // 0) | tostring) + " " + (.defect // "?") + " Fix: " + (.fix // "-")' \
-    "$RUN/round-$ROUND.review.json" 2> /dev/null
+    | "reviewer [" + .severity + "] " + (.file // "?") + ":" + ((.line // 0) | tostring) + " " + (.defect // "?") + " Fix: " + (.fix // "-")
+    | gsub("\\s*\n\\s*"; " ")' "$RUN/round-$ROUND.review.json" 2> /dev/null
   [ "$CODEX_REVIEW" = yes ] || return 0
   jq -r "$CODEX_BLOCKING"' | sort_by(.severity != "critical") | .[]
     | "Codex review [" + .severity + "] " + (.file // "?") + ":" + ((.line_start // 0) | tostring) + " " + (.title // "?") + ": "
-      + (.body // "") + " Fix: " + (.recommendation // "-")' "$RUN/round-$ROUND.codex-review.json" 2> /dev/null
+      + (.body // "") + " Fix: " + (.recommendation // "-")
+    | gsub("\\s*\n\\s*"; " ")' "$RUN/round-$ROUND.codex-review.json" 2> /dev/null
 }
 
 # A judge backlog line, or a blocking finding left in a PR, lands only in the PR-body text, so a defect an
