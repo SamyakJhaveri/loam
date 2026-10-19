@@ -52,17 +52,21 @@ class PrBodyChecksTests(unittest.TestCase):
         (self.run_dir / "round-2.review.json").write_text('{"verdict": "merge", "findings": []}\n')
         self.sent = top / "sent-body.md"
 
-    def open_pr(self) -> str:
-        """Run the real open_pr for issue 7 at round 2 and return the body handed to `gh pr create`."""
+    def open_pr(self, existing: bool = False) -> str:
+        """Run the real open_pr for issue 7 at round 2 and return the body handed to GitHub.
+
+        With existing, PR 9 is already open, so the body goes through the REST PATCH; else through `gh pr create`.
+        """
         script = (
             f"RUN='{self.run_dir}'; WORKTREE='{self.wt}'; BRANCH=factory/7; ISSUE=7; KEY=7; IS_FILE=0\n"
             f"ROUND=2; GRADED_SHA={self.graded}; LEDGER=\"$RUN/ledger.jsonl\"; DECISIONS=\"$RUN/decisions.md\"\n"
             "BODY=\"$TICKET\"\n"
             "notify() { :; }\n"
             'gh() { case "$1 $2" in\n'
-            '  "pr view") return 1 ;;\n'
+            f'  "pr view") {"echo 9" if existing else "return 1"} ;;\n'
             f'  "pr create") while [ $# -gt 0 ]; do [ "$1" = --body-file ] && cp "$2" "{self.sent}"; shift; done\n'
             "    echo https://github.com/acme/widget/pull/9 ;;\n"
+            f'  "api -X") while [ $# -gt 0 ]; do [ "$1" = -f ] && printf %s "${{2#body=}}" > "{self.sent}"; shift; done ;;\n'
             "esac; }\n"
             "open_pr\n"
         )
@@ -111,6 +115,19 @@ class PrBodyChecksTests(unittest.TestCase):
         self.assertIn(f"(round 0)\n\n```\n{long_fail[:300]}\nMEASURE speed 3\nPASS guard\n```\n", body)
         for leaked in ("ghp_not_a_real_token", "@someone", "test_x.py", "x" * 288):
             self.assertNotIn(leaked, body)
+
+    def test_a_fail_reason_never_reaches_the_body_on_create_or_update(self) -> None:
+        # lib.sh's `fail NAME "$out"` puts captured output in the reason: here render_into's Copier stderr.
+        # Loam is public and GitHub keeps every body edit, so a reason must not reach either path (H1).
+        secret = "Authorization: Bearer ghp_000000000000000000000000000000000000"
+        (self.run_dir / "round-0.checks").write_text(f"\nFAIL render: copier copy exit 1; {secret}\nPASS guard\n")
+        for existing in (False, True):
+            with self.subTest(existing=existing):
+                body = self.open_pr(existing)
+                for leaked in ("ghp_0000", "Bearer", "copier copy exit"):
+                    self.assertNotIn(leaked, body)
+                self.assertIn("```\nFAIL render\nPASS guard\n```\n", body)
+                self.assertIn(f"Reasons and full output: {self.run_dir / 'round-0.checks'}\n", body)
 
 
 if __name__ == "__main__":
