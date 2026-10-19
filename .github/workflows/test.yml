@@ -11,7 +11,7 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  # Job id is the required-status context in the branch ruleset. Keep it `verify`.
+  # Job ids `verify` and `stub-sweep` are the intended required-status contexts; no ruleset enforces them yet. Keep the ids.
   verify:
     runs-on: ubuntu-latest
     timeout-minutes: 15

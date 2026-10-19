@@ -199,7 +199,7 @@ def cmd_session(a) -> None:
             stub.terminate()
             stub.wait()
     events = stream_events(stream)
-    init =next((e for e in events if e.get("subtype") == "init"), {})
+    init = next((e for e in events if e.get("subtype") == "init"), {})
     result = next((e for e in events if e.get("type") == "result"), {})
     sid = init.get("session_id") or result.get("session_id")
     hooks = [{"event": e.get("hook_event"), "name": e.get("hook_name"), "exit_code": e.get("exit_code"),
@@ -400,9 +400,10 @@ def cmd_sweep(a) -> None:
     passed.append({"recipe": "mem-1", "proof": f"Stop captured session {sid8} into INDEX.md; .loam/memory links the store"})
 
     s = session("mem-2", "Reply with the single word OK.")
-    if not any(h["event"] == "SessionStart" and h["stdout"].startswith("## Memory (render)") for h in s["hooks"]):
-        fail("mem-2", "no SessionStart hook printed '## Memory (render)': mem-1 was not recalled")
-    passed.append({"recipe": "mem-2", "proof": "SessionStart printed '## Memory (render)'"})
+    if not any(h["event"] == "SessionStart" and h["stdout"].startswith("## Memory (render)") and f" | {sid8} | " in h["stdout"]
+               for h in s["hooks"]):
+        fail("mem-2", f"no SessionStart hook printed '## Memory (render)' with mem-1's INDEX line ({sid8}): mem-1 was not recalled")
+    passed.append({"recipe": "mem-2", "proof": f"SessionStart printed '## Memory (render)' with mem-1's INDEX line ({sid8})"})
 
     probe = d / "render/deny-probe"
     probe.mkdir()
