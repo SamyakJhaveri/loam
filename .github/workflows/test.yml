@@ -11,7 +11,7 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  # Job ids `verify` and `stub-sweep` are the intended required-status contexts; no ruleset enforces them yet. Keep the ids.
+  # Job ids `verify` and `stub-sweep` are the status checks main's ruleset requires, and bin/release.sh refuses to release without them. Keep the ids.
   verify:
     runs-on: ubuntu-latest
     timeout-minutes: 15

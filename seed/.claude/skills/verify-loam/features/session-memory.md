@@ -22,9 +22,9 @@ Preconditions:
 - A fresh render `r1`; `$C doctor r1` passes.
 
 - **First session.** Run `$C session r1 "Reply with the single word OK." --name mem-1`. `hooks` shows two `SessionStart:startup` entries with exit 0 and empty stdout (the store is empty), and one `Stop` with exit 0.
-- **Captured.** Read `<root>/r1/memstore/traces/render/INDEX.md`. It has one line with the session's first 8 id characters and the prompt. `<root>/r1/render/.loam/memory` is a symlink to `<root>/r1/memstore`.
+- **Captured.** Read `<root>/r1/memstore/traces/render/INDEX.md`. It has one line with the session id and the prompt. `<root>/r1/render/.loam/memory` is a symlink to `<root>/r1/memstore`.
 - **Recalled.** Run `$C session r1 "Quote the line that starts with 'Loaded:' under '## Memory (' in your context, verbatim, or say NONE." --name mem-2`. One `SessionStart:startup` stdout starts with `## Memory (render)`, and `result` is `Loaded: 1 recent sessions, 0 hint bullets, 0 handoff`.
-- **Stub variant ($0).** Add `--stub` to `mem-1`, and run `$C session r1 "Reply with the single word OK." --name mem-2 --stub`. `hooks` and INDEX.md read as above, and one `SessionStart:startup` stdout starts with `## Memory (render)` and holds mem-1's INDEX line, the one with mem-1's first 8 id characters; a bare heading does not count. `result` is the stub's `OK`, so this proves the block was produced, not that a model read it.
+- **Stub variant ($0).** Add `--stub` to `mem-1`, and run `$C session r1 "Reply with the single word OK." --name mem-2 --stub`. `hooks` and INDEX.md read as above, and one `SessionStart:startup` stdout starts with `## Memory (render)` and holds mem-1's INDEX line, the one with mem-1's session id; a bare heading does not count. `result` is the stub's `OK`, so this proves the block was produced, not that a model read it.
 - **SessionEnd.** Run `$C tui r1 start`, then `$C tui r1 stop`. INDEX.md gains a line for that session.
 - **Proof.** `mem-1.jsonl`, `mem-2.jsonl` in evidence; copy INDEX.md into evidence before cleanup if the change touched capture.
 

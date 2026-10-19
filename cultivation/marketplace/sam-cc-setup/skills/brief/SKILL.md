@@ -44,6 +44,7 @@ Drop the rest or answer them from the codebase.
 `Mode: figure-out` is set when the ask is a question, names no solution, or says "help me figure out".
 It is always Track C.
 Stage 1 then opens with `/surprise-me` in panel mode, which the user types (it is manual-only), and the `mattpocock-skills:research` skill against primary sources before any plan is written; the actors and order are in the `docs/factory/ARCHITECTURE.md` stage table.
+When an open question is a fact a quick throwaway prototype could observe, build it in a scratch directory (`mattpocock-skills:prototype`) and let its output answer before you ask.
 The design issue records the options considered, the evidence for each, and the ones rejected with a reason.
 
 ## Tracks, by blast radius
