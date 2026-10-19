@@ -1,6 +1,6 @@
 ---
 name: fable-prompting
-description: Which Claude Fable 5.1 guide sections you can act on from a session, and which Claude Code already injects. Use before writing a Fable prompt or handoff.
+description: Which Claude Fable 5.1 guide sections you can act on from a session, and which Claude Code already injects. Use before writing a Fable prompt or plan.
 ---
 
 # Fable 5.1 prompting, inside Claude Code
