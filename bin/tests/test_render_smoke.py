@@ -209,9 +209,9 @@ class RenderSmoke(unittest.TestCase):
                 },
             )
             traces = tmp / "store/traces" / self.out.name
-            self.assertTrue(list(traces.glob("*-smoke123.jsonl.gz")), "mem-capture wrote no trace")
+            self.assertTrue(list(traces.glob("*-smoke123-capture.jsonl.gz")), "mem-capture wrote no trace")
             index = (traces / "INDEX.md").read_text() if (traces / "INDEX.md").exists() else ""
-            self.assertIn(" | smoke123 | ", index, "mem-capture wrote no INDEX line")
+            self.assertIn(" | smoke123-capture | ", index, "mem-capture wrote no INDEX line")
 
             r = hook(
                 "mem-recall.sh",

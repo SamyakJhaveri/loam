@@ -4,9 +4,9 @@
 # Hook events: SessionEnd, PreCompact, and Stop (Stop is throttled). Reads the
 # hook JSON on stdin (transcript_path, session_id, cwd), scrubs known secret
 # shapes from the transcript before anything is written, and stores the result
-# gzipped at $STORE/traces/<repo>/<date>-<sid8>.jsonl.gz plus one INDEX.md line.
-# Zero model calls. Idempotent on the scrubbed content's sha256 (kept beside the
-# trace as <date>-<sid8>.sha), so a repeat capture adds no file and no line.
+# gzipped at $STORE/traces/<repo>/<date>-<session_id>.jsonl.gz plus one INDEX.md
+# line. Zero model calls. Idempotent on the scrubbed content's sha256 (kept beside
+# the trace as <date>-<session_id>.sha), so a repeat capture adds no file and no line.
 # After a capture it links <repo-toplevel>/.loam/memory -> $STORE when absent.
 # It then commits the store and, when an `origin` remote is set, pushes it in the
 # background so a second machine sees what this session learned. Prints nothing.
@@ -113,15 +113,18 @@ REPO="$(repo_key "$CWD")"
 DST="$STORE/traces/$REPO"
 mkdir -p "$DST" 2>/dev/null || exit 0
 
-SID8="$(printf '%s' "$SID" | cut -c1-8)"
+# Key by the whole session id, not a prefix: Codex thread ids are time-ordered
+# UUIDv7, so Codex sessions started within about 65 s share their first 8
+# characters. Traces captured under the older 8-character key keep their names;
+# mem-inspect still resolves them by prefix.
 # One session maps to one trace file no matter which calendar day it resumes on:
-# reuse an existing *-<sid8>.jsonl.gz if this session was captured before, else
-# name a fresh file with today's date.
+# reuse an existing *-<session_id>.jsonl.gz if this session was captured before,
+# else name a fresh file with today's date.
 OUT=""
-for existing in "$DST"/*-"$SID8".jsonl.gz; do
+for existing in "$DST"/*-"$SID".jsonl.gz; do
   [ -f "$existing" ] && { OUT="$existing"; break; }
 done
-[ -n "$OUT" ] || OUT="$DST/$(date +%F)-$SID8.jsonl.gz"
+[ -n "$OUT" ] || OUT="$DST/$(date +%F)-$SID.jsonl.gz"
 SHAFILE="${OUT%.jsonl.gz}.sha"
 
 # The one transcript-reading pass: scrub secrets, hash the scrubbed bytes, and
@@ -202,11 +205,15 @@ def user_text(rec):
             if ptype == "user_message":
                 return str(payload.get("message", ""))
             if ptype == "item_completed":
+                # codex exec (0.153) records the prompt only as a UserMessage item
+                # whose content is a list of text blocks, with no user_message event.
                 item = payload.get("item")
-                if isinstance(item, dict) and item.get("type") == "user_message":
+                if isinstance(item, dict) and item.get("type") in ("user_message", "UserMessage"):
                     txt = item.get("text")
                     if txt is None:
                         txt = item.get("message")
+                    if txt is None and isinstance(item.get("content"), list):
+                        txt = " ".join(str(b.get("text", "")) for b in item["content"] if isinstance(b, dict))
                     return str(txt if txt is not None else "")
     return None
 
@@ -272,12 +279,12 @@ fi
 # line. A resumed session that changed only its trace skips the line but still
 # syncs the new trace below.
 [ "$CHANGED" = "1" ] || exit 0
-if ! grep -q " | $SID8 | " "$DST/INDEX.md" 2>/dev/null; then
+if ! grep -qF " | $SID | " "$DST/INDEX.md" 2>/dev/null; then
   BRANCH="$(git -C "$CWD" rev-parse --abbrev-ref HEAD 2>/dev/null)"
   SHORT="$(git -C "$CWD" rev-parse --short HEAD 2>/dev/null)"
   HOST="$(hostname -s 2>/dev/null || hostname 2>/dev/null)"
   printf '%s | %s | %s@%s | %s | %s\n' \
-    "$(date +%F)" "$SID8" "$BRANCH" "$SHORT" "$HOST" "$FIRST" >> "$DST/INDEX.md"
+    "$(date +%F)" "$SID" "$BRANCH" "$SHORT" "$HOST" "$FIRST" >> "$DST/INDEX.md"
 fi
 
 # Sync the store through git: commit the new trace and INDEX line, then push to the
@@ -307,7 +314,7 @@ if [ -d "$STORE/.git" ]; then
   mkdir -p "$STORE/reports" 2>/dev/null || true
   git -C "$STORE" add -A 2>/dev/null || true
   git -C "$STORE" -c user.name=memstore -c user.email=memstore@localhost \
-    commit -qm "capture $(date +%F) $REPO $SID8" 2>/dev/null || true
+    commit -qm "capture $(date +%F) $REPO $SID" 2>/dev/null || true
   if git -C "$STORE" remote get-url origin >/dev/null 2>&1; then
     ( git -C "$STORE" push -q origin main </dev/null >>"$STORE/reports/sync.log" 2>&1 & )
   fi
