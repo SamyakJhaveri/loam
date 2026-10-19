@@ -23,6 +23,7 @@ import sys
 
 MARKER = "Criteria written in advance"
 GRADER_ROLES = ("judge", "reviewer", "codex-review")
+LIVE = ("running", "waiting-limit")  # holds_slot's statuses in bin/factory: the run may still open its PR
 
 
 def read(path):
@@ -215,7 +216,7 @@ def main(argv):
         ("runs", len(runs)),
         ("PR opened", len(prs)),
         ("spend", f"{sum(r.spend for r in runs):.2f} usd"),
-        ("spend on runs with no PR", f"{sum(r.spend for r in runs if r.status != 'pr-opened'):.2f} usd"),
+        ("spend on runs with no PR", f"{sum(r.spend for r in runs if r.status not in ('pr-opened', *LIVE)):.2f} usd"),
         ("median rounds to PR", "-" if med is None else num(med)),
         ("grader spend", f"{sum(r.grader_spend for r in runs):.2f} usd"),
         ("PR runs the judge sent back", f"{len([r for r in prs if r.sendbacks])} of {len(prs)}"),
