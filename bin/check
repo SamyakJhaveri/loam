@@ -76,7 +76,7 @@ python3 - <<'PY' || bad "skill or agent frontmatter or reference (see the lines 
 import pathlib, re, subprocess
 
 # Paths a skill or agent writes, or reads only if present, in the project it runs in.
-OPTIONAL = {".claude/rules/", ".claude/codex-reviews/", "docs/findings/FINDINGS.md", "docs/hypothesis_tree.md"}
+OPTIONAL = {".claude/rules/", ".claude/codex-reviews/", "docs/hypothesis_tree.md"}
 SPAN = re.compile(r"(?<!`)`([^`\n]+)`(?!`)")
 PATH = re.compile(r"[A-Za-z0-9_.][A-Za-z0-9_.-]*(/[A-Za-z0-9_.-]+)+/?")
 NAMED = re.compile(r"(?<!`)`([a-z0-9][a-z0-9:-]*)` (?:skill|subagent|agent)s?\b")
@@ -131,9 +131,9 @@ PY
 step "skill-listing token weight"
 # No-growth ceilings on the uncalibrated chars/4 estimate, each set to the measured weight:
 # seed after the catchup trim and hypothesis-tree went manual-only, sam-cc-setup after
-# plan-review and surprise-me went manual-only.
+# plan-review and surprise-me went manual-only and the plan-reviewer description was trimmed.
 # Lower one when its listing shrinks; never raise it without saying why.
-python3 bin/skill_listing_weight.py --root "$ROOT" --budget seed=85 --budget "sam-cc-setup=${LISTING_BUDGET:-377}" \
+python3 bin/skill_listing_weight.py --root "$ROOT" --budget seed=85 --budget "sam-cc-setup=${LISTING_BUDGET:-365}" \
   || bad "skill-listing weight over budget"
 
 step "always-loaded prose cap"
