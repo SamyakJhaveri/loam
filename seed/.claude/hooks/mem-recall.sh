@@ -8,8 +8,8 @@
 #
 # The manifest names what it loaded (recent sessions, hint bullets, handoff), the
 # last INDEX lines, what exists but was not loaded and the one command to reach
-# it, and the four trust labels every recalled item must carry (layers 3 and 5 of
-# docs/research/memory-design-v2-2026-09-21.md). Output is capped at 4000 bytes.
+# it, and the four trust labels every recalled item must carry. Output is capped
+# at 4000 bytes.
 #
 # Before building the manifest it pulls the shared store from its `origin` remote
 # (when one is set), bounded to five seconds, so a line another machine committed
@@ -168,7 +168,7 @@ fi
 TRACES_DIR="$STORE/traces/$REPO"
 TRACES_COUNT="$(find "$TRACES_DIR" -type f \( -name '*.jsonl' -o -name '*.jsonl.gz' \) 2>/dev/null | wc -l | tr -d ' ')"
 
-# The newest note's first three hint bullets, when MEM-03 has written notes here.
+# The newest note's first three hint bullets, when the store holds notes here.
 NOTES_DIR="$STORE/notes/$REPO"
 NOTES_COUNT=0
 HINT_BULLETS=""

@@ -205,7 +205,7 @@ tokenizer result.
   that step captures nothing.
 - Test tampering and mutation coverage have no gate. Pull-request review owns
   test integrity.
-- Editing any file under `.claude/` needs bypassPermissions mode. An unattended
+- Claude Code denies writes under `.claude/` in `dontAsk` mode, so an unattended
   `dontAsk` agent cannot change its own harness.
 
 ## Accepted risks measured in v3.0.0
