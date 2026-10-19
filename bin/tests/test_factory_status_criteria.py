@@ -125,6 +125,14 @@ class StatusCriteriaTests(unittest.TestCase):
             "judge send-backs                2 rounds with a non-pass judge verdict, in 1 run",
         ])
 
+    def test_spend_on_runs_with_no_pr_leaves_out_live_runs(self) -> None:
+        run_dir(self.runs, "6/aaaa0006", "running", [call(1, "worker", 8.0)], ["===== round 1 ====="], {0: "FAIL a\n"}, {})
+        run_dir(self.runs, "8/aaaa0008", "waiting-limit", [call(1, "worker", 16.0)], ["===== round 1 ====="],
+                {0: "FAIL a\n"}, {})
+        lines = factory("status", "--criteria", runs=self.runs).stdout.splitlines()
+        self.assertIn("spend                           37.75 usd", lines)
+        self.assertIn("spend on runs with no PR        4.00 usd", lines)
+
     def test_each_criterion_from_architecture_md_gets_a_verdict_or_unmeasured(self) -> None:
         out = factory("status", "--criteria", runs=self.runs).stdout
         crit = dict(zip(*[iter(block(out, "criteria"))] * 2))
