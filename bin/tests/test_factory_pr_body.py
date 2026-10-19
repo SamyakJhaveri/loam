@@ -101,6 +101,17 @@ class PrBodyChecksTests(unittest.TestCase):
         self.assertIn(f"(round 0)\n\n```\n{results}```\n", body)
         self.assertNotIn("more lines in", body)
 
+    def test_only_result_lines_show_each_cut_to_300_characters(self) -> None:
+        # Raw output can hold a secret (Loam is public), push the results past the cap, or close the fence.
+        noise = "```\n@someone see this\nGH_TOKEN=ghp_not_a_real_token\n"
+        noise += "".join(f"tests/test_x.py::test_{i} PASSED\n" for i in range(1, 61))
+        long_fail = "FAIL widget: " + "x" * 5000
+        (self.run_dir / "round-0.checks").write_text(f"{noise}{long_fail}\nMEASURE speed 3\nPASS guard\n")
+        body = self.open_pr()
+        self.assertIn(f"(round 0)\n\n```\n{long_fail[:300]}\nMEASURE speed 3\nPASS guard\n```\n", body)
+        for leaked in ("ghp_not_a_real_token", "@someone", "test_x.py", "x" * 288):
+            self.assertNotIn(leaked, body)
+
 
 if __name__ == "__main__":
     unittest.main()

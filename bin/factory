@@ -1329,11 +1329,12 @@ file_backlog() { # judge.json issue pr-url
   done
 }
 
-# A capped block keeps the body under GitHub's 65536-character limit; the full file stays in the run dir.
-# Blank lines are dropped and not counted, since lib.sh may print one before each result.
+# Only result lines show, at most 50, each cut to 300 characters: raw check output may hold a secret
+# (the repo is public), push the results past the cap, close the fence, or exceed GitHub's 65536-character
+# body limit. The full file stays in the run dir.
 checks_section() { # heading checks-file
   printf '## %s\n\n```\n' "$1"
-  awk -v max=50 -v f="$2" 'NF {n++; if (n <= max) print} END {if (n > max) printf "... %d more lines in %s\n", n - max, f}' "$2"
+  awk -v max=50 -v f="$2" '/^(PASS|FAIL|MEASURE) / {n++; if (n <= max) print substr($0, 1, 300)} END {if (n > max) printf "... %d more lines in %s\n", n - max, f}' "$2"
   printf '```\n\n'
 }
 
