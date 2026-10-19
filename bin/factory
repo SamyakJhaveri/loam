@@ -1329,6 +1329,13 @@ file_backlog() { # judge.json issue pr-url
   done
 }
 
+# A capped block keeps the body under GitHub's 65536-character limit; the full file stays in the run dir.
+checks_section() { # heading checks-file
+  printf '## %s\n\n```\n' "$1"
+  awk -v max=50 -v f="$2" 'NR <= max {print} END {if (NR > max) printf "... %d more lines in %s\n", NR - max, f}' "$2"
+  printf '```\n\n'
+}
+
 open_pr() { # [draft]: opened at the grader-round cap
   local draft="${1:-}" body="$RUN/pr-body.md" base url num title rows
   base=$(cat "$RUN/base.sha")
@@ -1344,6 +1351,8 @@ open_pr() { # [draft]: opened at the grader-round cap
     [ -s "$RUN/round-$ROUND.measure" ] && { printf '## Rows measured\n\n```\n'; cat "$RUN/round-$ROUND.measure"; printf '```\n\n'; }
     printf '## Merge checklist\n\n'; section "Merge checklist" | grep '^- ' | sed 's/^- /- [ ] /'; printf '\n'
     printf '## Decisions\n\n```\n'; cat "$DECISIONS"; printf '```\n\n'
+    checks_section "Checks at base ${base:0:8} (round 0)" "$RUN/round-0.checks"
+    checks_section "Checks at $GRADED_SHA (round $ROUND)" "$RUN/round-$ROUND.checks"
     printf '## Judge\n\ngraded at %s\n\n```json\n%s\n```\n\n' "$GRADED_SHA" \
       "$(jq -c '{verdict, rows: (.rows // {}), evidence: (.evidence // {})}' "$RUN/round-$ROUND.judge.json")"
     printf '## Reviewer\n\n'
