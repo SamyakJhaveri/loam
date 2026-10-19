@@ -39,6 +39,8 @@ require_ci_checks() {
 SELF="$(cd "$(dirname "$0")/.." && pwd)"; cd "$SELF"
 [[ "$(git branch --show-current)" == "main" ]] || die "release from main only"
 git fetch origin main --quiet
+# Before any push, on the resume path too: the rules could have changed since the first run.
+require_ci_checks
 # Rerun after a failed push: HEAD is the release commit, its tag points at it, origin/main is its parent.
 if [[ "$(git log -1 --format=%s)" == "release: v$VERSION" &&
       "$(git rev-parse -q --verify "refs/tags/v$VERSION^{commit}")" == "$(git rev-parse HEAD)" &&
@@ -52,8 +54,6 @@ fi
 [[ -z "$(git status --porcelain --untracked-files=all)" ]] || die "working tree is dirty"
 [[ -z "$(git tag -l "v$VERSION")" ]] \
   || die "tag v$VERSION already exists. If origin has it (git ls-remote --tags origin v$VERSION) it is public: fix main and release the next version. If not, delete it (git tag -d v$VERSION) and rerun"
-
-require_ci_checks
 
 # The latest run on HEAD must be green. Keyed off the workflow NAME in test.yml.
 STATUS="$(gh run list --commit "$(git rev-parse HEAD)" --workflow Test --limit 1 --json conclusion --jq '.[0].conclusion' 2>/dev/null || echo "")"
@@ -71,7 +71,8 @@ sys.exit(not any(m.get("commit") == head and m.get("dirty") is False and m.get("
 PY
 
 # The one local gate CI cannot run: the private IP terms file is off-GitHub.
-IP_SWEEP_STRICT=1 bash "$SELF/bin/ip-sweep.sh" || die "ip-sweep failed"
+# IDENTITY_ONLY=0: an exported IP_SWEEP_IDENTITY_ONLY=1 must not shrink this to the identity check.
+IP_SWEEP_STRICT=1 IP_SWEEP_IDENTITY_ONLY=0 bash "$SELF/bin/ip-sweep.sh" || die "ip-sweep failed"
 
 echo "$VERSION" > VERSION
 git add VERSION

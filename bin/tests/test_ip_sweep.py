@@ -98,6 +98,17 @@ class IpSweepTest(unittest.TestCase):
             self.assertEqual(1, result.returncode, result.stdout + result.stderr)
             self.assertNotIn("PASS", result.stdout)
 
+    def test_identity_only_judges_the_whole_email_field(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            repo = self.make_repo(temp_dir, {"README.md": "nothing to see\n"})
+            (repo / "README.md").write_text("edited\n", encoding="utf-8")
+            self.run_git(repo, "commit", "-qam", "edit", "--author", f"Someone <{NOREPLY} someone@example.edu>")
+
+            result = self.sweep(repo, IP_SWEEP_IDENTITY_ONLY="1")
+
+            self.assertEqual(1, result.returncode, result.stdout + result.stderr)
+            self.assertIn(f"{NOREPLY} someone@example.edu", result.stdout)
+
     def commit_edu(self, repo: pathlib.Path) -> str:
         (repo / "README.md").write_text("edited\n", encoding="utf-8")
         self.run_git(repo, "commit", "-qam", "edit", "--author", "Someone <someone@example.edu>")
