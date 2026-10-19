@@ -115,14 +115,4 @@ Criteria written in advance, measured on the first four factory tickets:
 - median rounds to PR: at most 5 (lean-v3 median)
 - judge fails citing a worker-written measurement: 0 (S2 had at least four)
 
-First measured 2026-10-19 by `bin/factory status --criteria` on the runner's run record: Loam's 57 runs, and distbench's 29 through `-C`.
-
-| Criterion | Loam, 57 runs | distbench, 29 runs |
-|---|---|---|
-| operator actions from voice note to a running loop | UNMEASURED: a run directory starts at launch, after the brief and the ticket, and records no operator action | UNMEASURED, same reason |
-| operator actions after the PR opens | UNMEASURED: a run directory ends at pr-opened; what the operator does on the PR happens on GitHub | UNMEASURED, same reason |
-| stalls whose first failing grader row is scope | UNMEASURED: no judge.json has a scope row (rows seen: correct, honest, verified) | UNMEASURED, same reason |
-| rounds lost to environment failures | FAIL: measured 4 (66, 78, 152, 154, each in round 1) | FAIL: measured 1 (293, round 1) |
-| SKIP lines per round | PASS: measured 0 (0 in all 122 round-N.checks) | PASS: measured 0 (0 in all 70) |
-| median rounds to PR | PASS: measured 1 (over 44 PR runs) | PASS: measured 2 (over 23 PR runs) |
-| judge fails citing a worker-written measurement | UNMEASURED: a judge.json fix is free text | UNMEASURED, same reason |
+Measure with `bin/factory status --criteria`; first run 2026-10-19 is in PR #266.
