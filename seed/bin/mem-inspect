@@ -4,10 +4,9 @@
 #
 # Adapted from LongMemEval-V2
 # memory_modules/assets/agentrunbook_c/scripts/inspect_trajectory.py (Apache-2.0);
-# license text in THIRD_PARTY_NOTICES; see the memory-v2 plan's "Borrowed code"
-# note. Commit hash not pinned in this checkout. stdlib only, zero model calls.
-# This is the runbook's replacement for grepping a raw trace: resolve a session
-# by prefix, then read it by turn.
+# license text in THIRD_PARTY_NOTICES. Commit hash not pinned in this checkout.
+# stdlib only, zero model calls. This is the runbook's replacement for grepping
+# a raw trace: resolve a session by prefix, then read it by turn.
 #
 # Usage:
 #   mem-inspect <session-prefix> [--summary] [--span A:B] [--match RE] [--repo NAME] [--json]
