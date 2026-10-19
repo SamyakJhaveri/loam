@@ -27,8 +27,10 @@ What it does, in order:
 1. It clones the project into the scratch dir and works only there.
    `<project>` is `owner/repo`, a git URL, or a bare repo path.
    A local working checkout is accepted only with `--dry-run`, because the push would land in it.
+   Without `--dry-run` it first refuses a branch name the project already has, so a push that would fail costs no model call.
 2. It points `_src_path` at the local Loam checkout in a throwaway commit, runs `copier update --trust --defaults --skip-tasks --conflict inline --vcs-ref <sha>`, and then puts the project's own `_src_path` back.
    Copier `update` has no source flag and refuses a dirty tree, hence the throwaway commit.
+   Copier runs with `merge.conflictStyle=merge` forced, because `diff3` and `zdiff3` add a base section to every hunk.
    The exact `--vcs-ref` makes Copier clone that commit, and Copier folds a checkout's uncommitted files in only when the ref is `HEAD`, so they cannot leak in.
    In `.copier-answers.yml` only `_commit` changes, so the PR never rewrites where the project says its template lives.
 3. It deletes `_gh_setup.sh`, the one task an update needs, and commits Copier's result as is, conflict markers included.
@@ -43,6 +45,7 @@ What it does, in order:
    Otherwise the port becomes the second commit, with the model's choices in its message, so a reviewer reads Copier's part and the model's part apart.
 6. It runs the project's `bin/check`, and each `.claude/skills/verify-*` skill through `claude -p`, and puts the results in the PR body.
    Neither gates the PR, because a sandbox can fail a check that CI passes; the PR's CI is the gate.
+   The verify agent has Bash, so the script saves HEAD after the port and refuses to push if HEAD or a tracked file changed since.
 7. It pushes the branch without force and opens the PR with `gh`.
    The body names the command, each conflicted file with the model's choices, and the check lines.
    `--dry-run` stops before the push and leaves the clone and `pr-body.md` in the scratch dir.

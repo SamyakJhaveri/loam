@@ -71,6 +71,10 @@ fi
 if [ "$DRY" -eq 0 ] && [ -d "$PROJECT" ] && [ "$(git -C "$PROJECT" rev-parse --is-bare-repository 2>/dev/null)" = false ]; then
   die "$PROJECT is a working checkout and the push would land in it; pass owner/repo, or --dry-run"
 fi
+# A taken branch name would otherwise fail only at the push, after the paid steps.
+if [ "$DRY" -eq 0 ] && [ -n "$(git ls-remote --heads "$SRC" "refs/heads/$BRANCH")" ]; then
+  die "branch $BRANCH already exists in $SRC; pass another --branch"
+fi
 if command -v copier >/dev/null 2>&1; then COPIER=(copier); else COPIER=(uvx copier); fi
 
 WORK="${WORK:-$(mktemp -d "${TMPDIR:-/tmp}/loam-sync.XXXXXX")}"
@@ -101,13 +105,17 @@ set_src() {  # $1 = the whole _src_path line to write
 # the local checkout in a throwaway commit, then put the project's own value back. An exact
 # --vcs-ref makes copier clone that commit, so the checkout's uncommitted files cannot leak in.
 set_src "_src_path: $LOAM"
-git commit -q -m "sync-project: temporary _src_path" -- "$ANSWERS"
+git commit -q --allow-empty -m "sync-project: temporary _src_path" -- "$ANSWERS"
 COPIER_V="$("${COPIER[@]}" --version 2>&1 | tail -n 1)"
 CMD="copier update --trust --defaults --skip-tasks --conflict inline --vcs-ref $SHA"
 info "running $CMD ($COPIER_V)"
 # Tasks are skipped: on update copier also runs them inside its temporary renders, where
-# Loam's _gh_setup.sh task tries a push and GitHub API writes.
-"${COPIER[@]}" update --trust --defaults --skip-tasks --conflict inline --vcs-ref "$SHA" \
+# Loam's _gh_setup.sh task tries a push and GitHub API writes. Copier's git merge-file follows
+# merge.conflictStyle, and diff3 or zdiff3 would add a base section to every hunk, so the
+# two-sided style is forced on top of any GIT_CONFIG_* entries the caller set.
+n="${GIT_CONFIG_COUNT:-0}"
+env "GIT_CONFIG_COUNT=$((n + 1))" "GIT_CONFIG_KEY_$n=merge.conflictStyle" "GIT_CONFIG_VALUE_$n=merge" \
+  "${COPIER[@]}" update --trust --defaults --skip-tasks --conflict inline --vcs-ref "$SHA" \
   > "$WORK/copier.log" 2>&1 || { tail -n 20 "$WORK/copier.log" >&2; die "copier update failed; log in $WORK/copier.log"; }
 set_src "$SRC_LINE"
 # The one task an update needs. Projects rendered from v3.0.0 track this file; staging its
@@ -224,7 +232,7 @@ if [ "$N" -gt 0 ] && [ "$PORT" -eq 1 ]; then
 fi
 
 if [ "$N" -gt 0 ]; then
-  LEFT="$(while IFS= read -r f; do grep -qE '^(<{7}|>{7})( |$)|^={7}$' "$f" && printf '%s ' "$f"; done <<< "$CONFLICTS" || true)"
+  LEFT="$(while IFS= read -r f; do grep -qE '^(<{7}|>{7}|\|{7})( |$)|^={7}$' "$f" && printf '%s ' "$f"; done <<< "$CONFLICTS" || true)"
   [ -z "$LEFT$(rejects)" ] || die "conflict markers remain in ${LEFT% }$(rejects | tr '\n' ' '); the copier commit $C1 is in $P"
   # A broken settings.json silently disables a project's hooks and deny rules.
   while IFS= read -r f; do
@@ -254,6 +262,8 @@ if [ "$N" -gt 0 ]; then
   C2="$(git rev-parse --short HEAD)"
   ok "committed the port as $C2"
 fi
+# bin/check and the verify agent, which has Bash, run next; the push carries only this commit.
+PORTED="$(git rev-parse HEAD)"
 
 CHECK="not run: the project has no bin/check"
 if [ -x bin/check ]; then
@@ -282,6 +292,9 @@ for s in .claude/skills/verify-*/SKILL.md; do
   line="$(grep '^VERIFY:' "$WORK/$name.log" | tail -n 1 || true)"
   VERIFY="$VERIFY- \`$name\`: ${line:-no VERIFY line; see $WORK/$name.log}"$'\n'
 done
+if [ "$(git rev-parse HEAD)" != "$PORTED" ] || [ -n "$(git status --porcelain --untracked-files=no)" ]; then
+  die "HEAD or a tracked file changed after the port, in bin/check or a verify skill; nothing pushed; see $P"
+fi
 
 {
   echo "Carries Loam commit \`$SHA\` into this project. Loam's \`bin/sync-project\` made this branch from \`$BASE\` at \`${BASE_SHA:0:8}\`."

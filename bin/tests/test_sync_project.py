@@ -34,13 +34,20 @@ GIT_ENV = {
 }
 
 CLAUDE_STUB = r"""#!/usr/bin/env python3
-import json, os, pathlib, re, sys
+import json, os, pathlib, re, subprocess, sys
 prompt = sys.stdin.read()
 with open(os.environ["SYNC_STUB_LOG"], "a") as log:
     log.write(json.dumps({"argv": sys.argv[1:], "LOAM_MEMSTORE": os.environ.get("LOAM_MEMSTORE"),
                           "TMPDIR": os.environ.get("TMPDIR"), "prompt": prompt}) + "\n")
 files = re.findall(r"`([^`\n]+)`[^`\n]* is at `([^`\n]+)`", prompt)
 if not files:
+    if os.environ.get("SYNC_STUB_MODE") == "commit":
+        pathlib.Path("stray.txt").write_text("stray\n")
+        subprocess.run(["git", "add", "stray.txt"], check=True)
+        subprocess.run(["git", "commit", "-q", "-m", "stray commit by the verify agent"], check=True)
+    elif os.environ.get("SYNC_STUB_MODE") == "edit":
+        with open("notes.md", "a") as f:
+            f.write("stray edit by the verify agent\n")
     print("VERIFY: PASS")
     sys.exit(0)
 print("Choices:")
@@ -59,6 +66,8 @@ for path, copy in files:
                 out.append(line)
         if os.environ.get("SYNC_STUB_MODE") == "badjson":
             out.append("not json\n")
+        elif os.environ.get("SYNC_STUB_MODE") == "base":
+            out.append("||||||| last update\n")
         copy.write_text("".join(out))
     print(f"### {path}\n- hunk 1: kept the project's line in {path}, because the stub always does")
 print("Notes:\n- the stub read no other file\n- for the reviewer:\n  - a nested note")
@@ -166,10 +175,11 @@ class SyncProjectTests(unittest.TestCase):
         self.gh_log = self.base / "gh.log"
 
     def sync(self, *flags: str, project: str | None = None, mode: str = "",
-             loam: pathlib.Path | None = None, sha: str | None = None) -> subprocess.CompletedProcess:
+             loam: pathlib.Path | None = None, sha: str | None = None,
+             env: dict[str, str] | None = None) -> subprocess.CompletedProcess:
         env = {**GIT_ENV, "PATH": f"{self.stubs}:{os.environ['PATH']}", "TMPDIR": str(self.base),
                "SYNC_STUB_LOG": str(self.claude_log), "SYNC_GH_LOG": str(self.gh_log),
-               "SYNC_STUB_MODE": mode}
+               "SYNC_STUB_MODE": mode, **(env or {})}
         return run(["bash", str(SYNC), "--loam", str(loam or self.tpl), "--work", str(self.work), *flags,
                     project or str(self.remote), sha or self.sha], env=env, check=False)
 
@@ -302,6 +312,60 @@ class SyncProjectTests(unittest.TestCase):
         self.assertEqual(1, r.returncode, r.stdout + r.stderr)
         self.assertIn("invalid JSON in conf.json", r.stderr)
         self.assertEqual("", self.remote_branches())
+
+    def test_refuses_when_the_port_leaves_a_base_marker(self) -> None:
+        r = self.sync(mode="base")
+        self.assertEqual(1, r.returncode, r.stdout + r.stderr)
+        self.assertIn("conflict markers remain in conf.json notes.md", r.stderr)
+        self.assertEqual("", self.remote_branches())
+
+    def test_a_diff3_conflict_style_still_gives_two_sided_hunks(self) -> None:
+        # git merge-file follows merge.conflictStyle; under diff3 each hunk also carries a
+        # `||||||| last update` section with the old template text.
+        config = self.base / "diff3.gitconfig"
+        config.write_text("[merge]\n\tconflictStyle = diff3\n")
+        r = self.sync("--dry-run", env={"GIT_CONFIG_GLOBAL": str(config)})
+        self.assertEqual(0, r.returncode, r.stdout + r.stderr)
+        project = self.work / "project"
+        self.assertNotIn("|||||||", git("show", "HEAD~1:notes.md", cwd=project))
+        self.assertEqual("line one\nshared line (project)\nline three", git("show", "HEAD:notes.md", cwd=project))
+
+    def test_refuses_to_push_what_the_verify_agent_commits(self) -> None:
+        r = self.sync(mode="commit")
+        self.assertEqual(1, r.returncode, r.stdout + r.stderr)
+        self.assertIn("changed after the port", r.stderr)
+        self.assertEqual("", self.remote_branches())
+        self.assertFalse(self.gh_log.exists())
+
+    def test_refuses_to_push_after_the_verify_agent_edits_a_tracked_file(self) -> None:
+        r = self.sync(mode="edit")
+        self.assertEqual(1, r.returncode, r.stdout + r.stderr)
+        self.assertIn("changed after the port", r.stderr)
+        self.assertEqual("", self.remote_branches())
+        self.assertFalse(self.gh_log.exists())
+
+    def test_refuses_a_taken_branch_before_any_model_call(self) -> None:
+        git("branch", self.branch, "main", cwd=self.remote)
+        r = self.sync()
+        self.assertEqual(1, r.returncode, r.stdout + r.stderr)
+        self.assertIn(f"{self.branch} already exists", r.stderr)
+        self.assertEqual([], self.claude_calls())
+        self.assertFalse((self.work / "project").exists())
+        self.assertFalse(self.gh_log.exists())
+
+    def test_runs_when_src_path_already_names_the_loam_checkout(self) -> None:
+        # The throwaway _src_path commit then changes nothing.
+        clone = self.base / "local-src"
+        git("clone", "-q", str(self.remote), str(clone), cwd=self.base)
+        answers = clone / ".copier-answers.yml"
+        answers.write_text(answers.read_text().replace("gh:example/loam", str(self.tpl)))
+        git("commit", "-q", "-am", "local src", cwd=clone)
+        git("push", "-q", "origin", "main", cwd=clone)
+        r = self.sync("--dry-run")
+        self.assertEqual(0, r.returncode, r.stdout + r.stderr)
+        answers = (self.work / "project/.copier-answers.yml").read_text()
+        self.assertIn(f"_src_path: {self.tpl}\n", answers)
+        self.assertIn(f"_commit: v1.0.0-1-g{self.sha[:7]}", answers)
 
     def test_refuses_to_push_into_a_working_checkout(self) -> None:
         checkout = self.base / "checkout"
