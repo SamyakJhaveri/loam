@@ -53,6 +53,7 @@ class VetSkillTests(unittest.TestCase):
                     "recommendation": "TEST",
                 },
                 "issues": [{"title": "planted"}] if severity not in ("NONE", "LOW") else [],
+                "execution_successful": True,
             }
             script = (
                 "#!/usr/bin/env bash\n"
@@ -79,7 +80,7 @@ class VetSkillTests(unittest.TestCase):
         )
 
     def run_report(
-        self, report: dict, *args: str
+        self, report: dict | list, *args: str
     ) -> subprocess.CompletedProcess[str]:
         """Run the wrapper with a fake scanner that writes `report` verbatim."""
         fake_bin = self.root / "bin"
@@ -148,6 +149,62 @@ class VetSkillTests(unittest.TestCase):
         self.assertEqual(4, r.returncode, r.stdout + r.stderr)
         self.assertFalse(out.exists(), "a failed scan must not emit an installable tree")
 
+    def test_missing_execution_successful_fails_closed(self) -> None:
+        # Only an explicit true counts as a finished scan; a missing key does not.
+        single = load_fixture("single-catchup.json")
+        del single["execution_successful"]
+        multi_top = load_fixture("multi-seed-skills.json")
+        del multi_top["execution_successful"]
+        multi_one = load_fixture("multi-seed-skills.json")
+        del multi_one["skills"][1]["execution_successful"]
+        cases = {
+            "single report": (single, "catchup"),
+            "multi report, top level": (multi_top, "multi-skill scan"),
+            "multi report, one of three skills": (multi_one, "fable-prompting"),
+        }
+        for label, (report, where) in cases.items():
+            with self.subTest(label):
+                r = self.run_report(report)
+                self.assertEqual(4, r.returncode, r.stdout + r.stderr)
+                self.assertIn("execution_successful", r.stderr)
+                self.assertIn(where, r.stderr)
+                self.assertNotIn('"verdict"', r.stdout)
+
+    def test_empty_report_fails_closed(self) -> None:
+        # A report that lists no skills gives no verdict and no --out tree.
+        out = self.root / "stripped"
+        cases = {
+            "empty list": [],
+            "multi report with no skills":
+                {"multi_skill": True, "execution_successful": True, "skills": []},
+        }
+        for label, report in cases.items():
+            with self.subTest(label):
+                r = self.run_report(report, "--json", "--safe", "--out", str(out))
+                self.assertEqual(4, r.returncode, r.stdout + r.stderr)
+                self.assertIn("lists no skills", r.stderr)
+                self.assertNotIn('"verdict"', r.stdout)
+                self.assertFalse(out.exists(), "an empty report must not emit an installable tree")
+
+    def test_no_skill_found_fails_closed(self) -> None:
+        # Real report for an empty directory: SkillSpector rates it LOW, but
+        # total_components is 0, so nothing was scanned and there is no verdict.
+        out = self.root / "stripped"
+        r = self.run_report(load_fixture("empty-dir.json"), "--json", "--safe", "--out", str(out))
+        self.assertEqual(4, r.returncode, r.stdout + r.stderr)
+        self.assertIn("no skill found to scan", r.stderr)
+        self.assertNotIn('"verdict"', r.stdout)
+        self.assertFalse(out.exists(), "an empty scan must not emit an installable tree")
+
+    def test_nested_critical_skill_rejects(self) -> None:
+        # The worst skill wins wherever it sits. CRITICAL goes in the middle
+        # record, so a verdict read from only the first or last skill fails.
+        multi = load_fixture("multi-seed-skills.json")
+        multi["skills"][1]["risk_assessment"].update(severity="CRITICAL", score=95)
+        r = self.run_report(multi)
+        self.assertEqual(2, r.returncode, r.stdout + r.stderr)
+        self.assertIn('"verdict":"REJECT","severity":"CRITICAL","score":95', r.stdout)
+
     def test_low_passes(self) -> None:
         r = self.run_vet(severity="LOW")
         self.assertEqual(0, r.returncode, r.stderr)
@@ -180,7 +237,8 @@ class VetSkillTests(unittest.TestCase):
         out = self.root / "stripped"
         fake_bin = self.root / "bin"
         fake_bin.mkdir(exist_ok=True)
-        report = {"risk_assessment": {"severity": "LOW", "score": 2}, "issues": []}
+        report = {"risk_assessment": {"severity": "LOW", "score": 2}, "issues": [],
+                  "execution_successful": True}
         (fake_bin / "skillspector").write_text(
             "#!/usr/bin/env bash\n"
             'out=""\n'
@@ -209,7 +267,7 @@ class VetSkillTests(unittest.TestCase):
         fake_bin = self.root / "bin"
         fake_bin.mkdir(exist_ok=True)
         report = {"risk_assessment": {"severity": "CRITICAL", "score": 100},
-                  "issues": [{"title": "bad"}]}
+                  "issues": [{"title": "bad"}], "execution_successful": True}
         (fake_bin / "skillspector").write_text(
             "#!/usr/bin/env bash\n"
             'out=""\n'
@@ -237,7 +295,8 @@ class VetSkillTests(unittest.TestCase):
         keep.write_text("important\n", "utf-8")
         fake_bin = self.root / "bin"
         fake_bin.mkdir(exist_ok=True)
-        report = {"risk_assessment": {"severity": "LOW", "score": 2}, "issues": []}
+        report = {"risk_assessment": {"severity": "LOW", "score": 2}, "issues": [],
+                  "execution_successful": True}
         (fake_bin / "skillspector").write_text(
             "#!/usr/bin/env bash\n"
             'out=""\n'
