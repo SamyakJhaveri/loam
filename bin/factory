@@ -870,6 +870,19 @@ limit_wait() { # result.json -> 0 after waiting, 1 when the reply is not a usage
 # ---- step 4: round 0 --------------------------------------------------------
 # Every non-guard check must fail on base; one that passes there cannot prove the ticket.
 
+# Run the frozen checks from dir into out. A block that aborts before it prints a FAIL line is never green
+# (#180): a non-zero exit with no FAIL line adds FAIL checks-aborted. Check names are not read from the block,
+# because a check can quote a ticket body or a script whose pass and fail words are not top-level checks.
+run_checks() { # dir out
+  local rc
+  ( cd "$1" && "$RUN/frozen/checks.sh" ) > "$2" 2>&1
+  rc=$?
+  if [ "$rc" -ne 0 ] && ! grep -q '^FAIL' "$2"; then
+    log "checks.sh exited $rc with no FAIL line"
+    printf 'FAIL checks-aborted: checks.sh exited %s with no FAIL line\n' "$rc" >> "$2"
+  fi
+}
+
 round_zero() {
   local out="$RUN/round-0.checks" guards name base wt msg
   base=$(cat "$RUN/base.sha"); wt="${WORKTREE}-base"
@@ -885,8 +898,10 @@ round_zero() {
     [ -e "$wt" ] && msg="$msg; the path exists but is not a registered worktree, delete it by hand"
     finish stopped-environment "$msg"
   fi
-  ( cd "$wt" && "$RUN/frozen/checks.sh" ) > "$out" 2>&1
+  run_checks "$wt" "$out"
   git -C "$MAIN_CHECKOUT" worktree remove --force "$wt" > /dev/null 2>&1
+  grep -q '^FAIL checks-aborted' "$out" \
+    && finish ticket-defect "checks.sh aborted on $(cut -c1-8 "$RUN/base.sha") before it printed a FAIL line; see $out"
   guards=$(dc_block | grep 'guard' | grep -oE '(^|[[:space:]])pass[[:space:]]+"?[A-Za-z0-9_.-]+' \
     | awk '{print $NF}' | tr -d '"' | sort -u)
   while read -r _ name _; do
@@ -1453,7 +1468,7 @@ main_loop() {
     elif [ -n "$touched" ]; then
       printf 'FAIL do-not-touch %s\n' "$touched" > "$checks"
     else
-      ( cd "$WORKTREE" && "$RUN/frozen/checks.sh" ) > "$checks" 2>&1
+      run_checks "$WORKTREE" "$checks"
     fi
     if grep -q '^FAIL' "$checks"; then
       fails=$(grep '^FAIL' "$checks" | awk '{print $2}' | tr -d ':' | sort -u | tr '\n' ',')
