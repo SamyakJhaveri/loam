@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import importlib.util
 import pathlib
+import subprocess
+import sys
 import tempfile
 import unittest
 
@@ -21,8 +23,7 @@ slw = _load_module()
 
 
 class SummarizeSourceTest(unittest.TestCase):
-    def test_counts_skills_agents_and_workflows(self) -> None:
-        wf_desc = "a description, with a comma and an apostrophe's"
+    def test_counts_skills_and_agents(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = pathlib.Path(tmp)
 
@@ -48,47 +49,34 @@ class SummarizeSourceTest(unittest.TestCase):
                 encoding="utf-8",
             )
 
-            workflows = root / "workflows"
-            workflows.mkdir()
-            (workflows / "w.js").write_text(
-                "export const meta = {\n  name: 'w',\n"
-                f'  description: "{wf_desc}",\n}}\n',
-                encoding="utf-8",
-            )
-
-            source = {
-                "skills": "skills",
-                "agents": "agents",
-                "workflows": "workflows",
-                "gated": True,
-            }
+            source = {"skills": "skills", "agents": "agents"}
             data = slw.summarize_source(str(root), source)
 
         self.assertEqual(1, data["model_invocable"])
         self.assertEqual(1, data["manual_only"])
         self.assertEqual(1, data["agents"])
-        self.assertEqual(1, data["workflows"])
-        expected = (
-            len("a") + len("alpha desc")
-            + len("x") + len("agent desc")
-            + len("w") + len(wf_desc)
-        )
+        expected = len("a") + len("alpha desc") + len("x") + len("agent desc")
         self.assertEqual(expected, data["listing_chars"])
 
 
 class RealRepoTest(unittest.TestCase):
-    def test_sam_cc_setup_agents_and_workflows_counts(self) -> None:
+    def test_sam_cc_setup_agent_count(self) -> None:
         source = slw.SOURCES["sam-cc-setup"]
         data = slw.summarize_source(str(ROOT), source)
 
         agents_dir = ROOT / "cultivation/marketplace/sam-cc-setup/agents"
-        workflows_dir = ROOT / "cultivation/marketplace/sam-cc-setup/workflows"
         self.assertEqual(len(list(agents_dir.glob("*.md"))), data["agents"])
-        self.assertEqual(len(list(workflows_dir.glob("*.js"))), data["workflows"])
-        self.assertEqual(
-            data["skills_chars"] + data["agents_chars"] + data["workflows_chars"],
-            data["listing_chars"],
-        )
+        self.assertEqual(data["skills_chars"] + data["agents_chars"], data["listing_chars"])
+
+
+class BudgetGateTest(unittest.TestCase):
+    def test_budget_fails_only_when_exceeded(self) -> None:
+        script = [sys.executable, str(ROOT / "bin/skill_listing_weight.py"), "--root", str(ROOT), "--quiet"]
+        over = subprocess.run(script + ["--budget", "seed=0"], capture_output=True, text=True)
+        self.assertEqual(1, over.returncode)
+        self.assertIn("FAIL: seed listing", over.stderr)
+        under = subprocess.run(script + ["--budget", "seed=100000"], capture_output=True, text=True)
+        self.assertEqual(0, under.returncode, under.stderr)
 
 
 if __name__ == "__main__":

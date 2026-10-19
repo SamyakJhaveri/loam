@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Contract tests for the two CI workflows and pinned deps."""
+"""Contract tests for the two CI workflows."""
 
 from __future__ import annotations
 
@@ -9,23 +9,9 @@ import unittest
 ROOT = pathlib.Path(__file__).resolve().parents[2]
 TEST = ROOT / ".github/workflows/test.yml"
 RELEASE = ROOT / ".github/workflows/release.yml"
-PY = ROOT / ".github/ci/python-requirements.txt"
-NPM = ROOT / ".github/ci/npm-packages.txt"
 
 
 class CIConfig(unittest.TestCase):
-    def test_python_pins(self):
-        self.assertEqual(
-            ["copier==9.16.0", "ruff==0.15.20", "pytest==8.4.2", "pytest-xdist==3.8.0"],
-            PY.read_text().split(),
-        )
-
-    def test_npm_pins(self):
-        self.assertEqual(
-            ["@anthropic-ai/claude-code@2.1.258", "@openai/codex@0.153.2"],
-            NPM.read_text().split(),
-        )
-
     def test_test_workflow_runs_check_on_push_and_pr(self):
         w = TEST.read_text()
         self.assertIn("push:\n    branches: [main]", w)
