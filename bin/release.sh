@@ -71,11 +71,7 @@ sys.exit(not any(m.get("commit") == head and m.get("dirty") is False and m.get("
 PY
 
 # The one local gate CI cannot run: the private IP terms file is off-GitHub.
-if [[ -x "$SELF/bin/ip-sweep.sh" ]]; then
-  IP_SWEEP_STRICT=1 bash "$SELF/bin/ip-sweep.sh" || die "ip-sweep failed"
-else
-  warn "bin/ip-sweep.sh absent - skipping IP gate"
-fi
+IP_SWEEP_STRICT=1 bash "$SELF/bin/ip-sweep.sh" || die "ip-sweep failed"
 
 echo "$VERSION" > VERSION
 git add VERSION

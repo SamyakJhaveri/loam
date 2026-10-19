@@ -39,6 +39,10 @@ WS_EXCLUDE=(":(exclude)*.patch" ":(exclude)*.diff")
 git diff --check "$(git hash-object -t tree /dev/null)" HEAD -- . "${WS_EXCLUDE[@]}" || bad "git diff --check (trailing whitespace or conflict markers)"
 git diff --check HEAD -- . "${WS_EXCLUDE[@]}" || bad "git diff --check HEAD (whitespace or conflict markers in staged or unstaged edits)"
 
+step "commit identities (ip-sweep identity only)"
+# Needs no private term file, so it gates every PR; release.sh still runs the full strict sweep.
+IP_SWEEP_IDENTITY_ONLY=1 bash bin/ip-sweep.sh || bad "ip-sweep identity check"
+
 step "pytest"
 # Always `python3 -m pytest`: hook tests mint a receipt with sys.executable and re-validate it with `python3`.
 # Without pytest-xdist the suite takes ~117 s serial, so build a venv from the CI pins (.venv/ is gitignored).

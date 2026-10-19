@@ -55,6 +55,7 @@ Rendered projects are unaffected: Copier writes real directories.
 - Before merging any PR, run `bin/check && bash bin/ip-sweep.sh`.
   Without `bin/.ip-terms`, the non-strict IP sweep warns that it skips the content
   sweep and can still pass.
+- Commit with your GitHub noreply address (`git config user.email <id>+<user>@users.noreply.github.com`); `bin/check` fails any other author or committer email.
 - Skills follow the [agentskills.io](https://agentskills.io/specification) SKILL.md format.
   A skill that must reach every rendered project goes in `seed/.agents/skills/`.
   Reusable optional skills go in the appropriate marketplace plugin.
