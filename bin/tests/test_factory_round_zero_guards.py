@@ -75,6 +75,29 @@ class RoundZeroGuardTests(unittest.TestCase):
             'test -e NEW.md && pass new-file || fail new-file "NEW.md is missing"')
         self.assertEqual(out.strip(), "ROUND0-OK")
 
+    def test_guard_in_a_condition_after_a_keyword_is_a_guard(self) -> None:
+        out = self.round_zero(
+            'if guard true; then pass if-cond; else fail if-cond "x"; fi\n'
+            'if false; then :; elif guard true; then pass elif-cond; fi\n'
+            'while guard true; do pass while-cond; break; done\n'
+            'until guard true; do :; done && pass until-cond || fail until-cond "x"\n'
+            'test -e NEW.md && pass new-file || fail new-file "NEW.md is missing"')
+        self.assertEqual(out.strip(), "ROUND0-OK")
+
+    def test_guard_in_a_body_after_a_keyword_is_a_guard(self) -> None:
+        out = self.round_zero(
+            'if true; then guard true && pass then-arm || fail then-arm "x"; fi\n'
+            'if false; then :; else guard true && pass else-arm || fail else-arm "x"; fi\n'
+            'for i in 1; do guard true && pass do-body || fail do-body "x"; done\n'
+            'test -e NEW.md && pass new-file || fail new-file "NEW.md is missing"')
+        self.assertEqual(out.strip(), "ROUND0-OK")
+
+    def test_word_ending_in_a_keyword_before_guard_is_not_a_guard(self) -> None:
+        out = self.round_zero(
+            'guard true && pass check || fail check "base is broken"\n'
+            'grep -q safeguard README.md && pass readme || fail readme "redo guard"')
+        self.assertIn("FINISH ticket-defect: check readme passes on", out)
+
     def test_check_named_with_guard_is_not_a_guard(self) -> None:
         out = self.round_zero(
             'guard true && pass check || fail check "base is broken"\n'
