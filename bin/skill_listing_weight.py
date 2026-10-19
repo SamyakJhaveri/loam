@@ -5,8 +5,8 @@ Every model-invocable skill spends its `name` + `description` in the skill
 listing on *every* request, whether or not it is invoked (Claude Code docs:
 "Low (descriptions every request)"). Every agent spends its `name` +
 `description` in the Agent tool listing the same way, on every request. This
-script sums that weight per source so a budget can gate listing growth, and so
-the harness smoke rig has a Score B.
+script sums that weight per source so a budget can gate listing growth;
+`bin/check` runs it and sets the budgets.
 
 A skill with `disable-model-invocation: true` is not in the listing and costs
 nothing here (docs: "Description not in context").
