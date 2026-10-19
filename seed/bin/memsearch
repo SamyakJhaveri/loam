@@ -34,7 +34,12 @@ repo_key() {
 ROOT="$(git rev-parse --show-toplevel 2>/dev/null)"
 REPO="$(repo_key "$PWD")"
 
-PATTERN="${1:-}"; [ -n "$PATTERN" ] || exit 0; shift
+PATTERN="${1:-}"
+if [ -z "$PATTERN" ]; then
+  echo "usage: memsearch PATTERN [extra rg/grep args]" >&2
+  exit 2
+fi
+shift
 # Traces are scoped to this repo's key, so a search in one project never returns
 # another project's transcripts. The key is the origin-remote key mem-capture
 # writes under, so every factory worktree of one repo still sees its own traces.
@@ -45,8 +50,8 @@ TARGETS=()
 [ "${#TARGETS[@]}" -gt 0 ] || exit 0
 
 if command -v rg >/dev/null 2>&1; then
-  # -z reads gzipped traces; --no-ignore keeps the store's own .gitignore (which
-  # excludes traces/) from hiding them once mem-weekly makes the store a git repo.
+  # -z reads gzipped traces; --no-ignore keeps any .gitignore (the store's lists
+  # only .throttle/ and reports/; the repo's may cover docs/) from hiding a file.
   OUT="$(rg -z --no-ignore -n -C2 --max-count 20 "$@" -e "$PATTERN" -- "${TARGETS[@]}" 2>/dev/null)"
 else
   # zgrep reads gzipped and plain files alike; feed it an explicit file list so a
