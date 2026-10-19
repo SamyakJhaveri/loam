@@ -79,7 +79,7 @@ class PrBodyChecksTests(unittest.TestCase):
         (self.run_dir / "round-0.checks").write_text("FAIL widget: the widget does not work\nPASS guard\n")
         body = self.open_pr()
         before = f"## Checks at base {self.base[:8]} (round 0)\n\n```\nFAIL widget: the widget does not work\nPASS guard\n```\n"
-        after = f"## Checks at {self.graded} (round 2)\n\n```\nPASS widget\nPASS guard\n```\n"
+        after = "## Checks at the graded sha (round 2)\n\n```\nPASS widget\nPASS guard\n```\n"
         self.assertIn(before, body)
         self.assertIn(after, body)
         self.assertLess(body.index(before), body.index(after))
@@ -92,6 +92,14 @@ class PrBodyChecksTests(unittest.TestCase):
         self.assertIn("FAIL widget: line 50\n", body)
         self.assertNotIn("FAIL widget: line 51\n", body)
         self.assertIn(f"FAIL widget: line 50\n... 30 more lines in {self.run_dir / 'round-0.checks'}\n```\n", body)
+
+    def test_blank_lines_before_each_result_neither_show_nor_count_toward_the_cap(self) -> None:
+        # With #259, lib.sh starts each result on a fresh line, so 30 checks write 60 lines.
+        (self.run_dir / "round-0.checks").write_text("".join(f"\nFAIL widget-{i}: no\n" for i in range(1, 31)))
+        body = self.open_pr()
+        results = "".join(f"FAIL widget-{i}: no\n" for i in range(1, 31))
+        self.assertIn(f"(round 0)\n\n```\n{results}```\n", body)
+        self.assertNotIn("more lines in", body)
 
 
 if __name__ == "__main__":
