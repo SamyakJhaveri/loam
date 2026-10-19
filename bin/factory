@@ -1314,10 +1314,10 @@ graders() { # round -> 0 when the judge passes and nothing blocks
 
 # A judge backlog line lands only in the PR-body text, so a defect an unattended run finds is tracked
 # by nobody; file each line once per run as a needs-triage issue. Never calls finish: a filing failure
-# is logged and the run still opens its PR.
+# is logged and the run still opens its PR. Each item is joined onto one line, since one line files one issue.
 file_backlog() { # judge.json issue pr-url
   local judge="$1" issue="$2" prurl="$3" line GH="${FACTORY_GH:-gh}"
-  jq -r '.backlog[]?' "$judge" 2> /dev/null | while IFS= read -r line; do
+  jq -r '.backlog[]? | gsub("\\s*\n\\s*"; " ")' "$judge" 2> /dev/null | while IFS= read -r line; do
     [ -n "$line" ] || continue
     grep -Fxq "$line" "$RUN/filed.txt" 2> /dev/null && continue
     if printf 'From the judge backlog of #%s, %s.\n\n%s\n' "$issue" "$prurl" "$line" \
