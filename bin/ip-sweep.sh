@@ -17,68 +17,11 @@ set -euo pipefail
 cd "$(git rev-parse --show-toplevel)"
 
 STRICT="${IP_SWEEP_STRICT:-0}"
-
-# Blocklist lives OUTSIDE this tracked script (gitignored) so the scrubbed names
-# never ship in a file that could become public. Format: comment lines (#...) are
-# ignored; the rest is joined into one extended-regex alternation.
-IP_TERMS_FILE="${IP_TERMS_FILE:-bin/.ip-terms}"
-# `|| true` so a present-but-empty/comment-only file yields TERMS="" and flows into
-# the empty-TERMS WARN branch below, instead of aborting here under set -e/pipefail
-# (the greps exit 1 when they match nothing).
-TERMS="$(grep -vE '^[[:space:]]*#' "$IP_TERMS_FILE" 2>/dev/null | grep -vE '^[[:space:]]*$' | paste -sd '|' - || true)"
-
-# Exclude private-archive-only paths + the binary hero-art renders (loam-hero-*,
-# which grep -I skips as binary anyway): session plans, ADRs, human-only reference
-# material. Public text docs (POST-RELEASE-BACKLOG, design-philosophy.md,
-# concepts.yaml) are deliberately NOT excluded — if ever tracked they must be
-# scanned. Terms under these paths are expected private history, not a leak.
-EXCLUDE='^docs/(plans|adr)/|^_archive/|^docs/diagrams/loam-hero-.*\.(png|qa\.yaml)$'
+# IP_SWEEP_IDENTITY_ONLY=1 runs only check (3), as a hard FAIL. It needs no term file, so
+# bin/check runs it on every PR, before a non-noreply identity reaches the public main.
+IDENTITY_ONLY="${IP_SWEEP_IDENTITY_ONLY:-0}"
+[[ "$IDENTITY_ONLY" = 1 ]] && STRICT=1
 FAIL=0
-
-# Content check: validate the assembled ERE before scanning. A malformed term
-# must fail closed instead of being mistaken for a clean no-match result.
-if [[ -n "$TERMS" ]]; then
-  if grep -E "$TERMS" </dev/null >/dev/null 2>&1; then
-    :
-  else
-    REGEX_RC=$?
-    if [[ "$REGEX_RC" -gt 1 ]]; then
-      echo "FAIL: invalid extended regex in $IP_TERMS_FILE; content sweep aborted."
-      FAIL=1
-    fi
-  fi
-
-  HITS=""
-  if [[ "$FAIL" -eq 0 ]]; then
-    while IFS=$'\t' read -r -d '' META FILE_PATH; do
-      [[ "$META" =~ ^([0-9]{6})[[:space:]]([0-9a-f]{40})[[:space:]][0-3]$ ]] || continue
-      MODE="${BASH_REMATCH[1]}"
-      OID="${BASH_REMATCH[2]}"
-      [[ "$MODE" == 160000 ]] && continue
-      [[ "$FILE_PATH" =~ $EXCLUDE ]] && continue
-      if [[ "$MODE" == 120000 ]]; then
-        MATCH_CMD=(grep -niE "$TERMS")
-      else
-        MATCH_CMD=(grep -niIE "$TERMS")
-      fi
-      if git cat-file blob "$OID" | "${MATCH_CMD[@]}" >/dev/null; then
-        HITS+="$FILE_PATH"$'\n'
-      fi
-    done < <(git ls-files -z --stage)
-  fi
-  if [[ -n "$HITS" ]]; then
-    echo "FAIL: foreign-IP terms found in tracked files:"; echo "$HITS"; FAIL=1
-  fi
-else
-  echo "WARN: no term file at $IP_TERMS_FILE — content sweep SKIPPED (copy bin/.ip-terms.example to bin/.ip-terms and fill in the blocklist)."
-  [[ "$STRICT" = 1 ]] && { echo "FAIL: strict mode requires a term file."; FAIL=1; }
-fi
-
-if command -v git-lfs >/dev/null 2>&1 && [ -n "$(git lfs ls-files 2>/dev/null)" ]; then
-  echo "WARN: git-LFS objects tracked (must be empty in the public repo):"
-  git lfs ls-files | sed 5q || true  # sed 5q avoids head's SIGPIPE under pipefail
-  [[ "$STRICT" = 1 ]] && FAIL=1
-fi
 
 # Authors must use a complete GitHub noreply address. Committers may additionally
 # be GitHub's exact web-merge identity; checking both fields preserves the public
@@ -131,19 +74,91 @@ IDENTITY_RANGE="HEAD"
 git cat-file -e "$IDENTITY_BASELINE" 2>/dev/null && IDENTITY_RANGE="${IDENTITY_BASELINE}..HEAD"
 NOREPLY_AUTHOR_RE='^[^@[:space:]]+@users\.noreply\.github\.com$'
 NOREPLY_COMMITTER_RE='^([^@[:space:]]+@users\.noreply\.github\.com|noreply@github\.com)$'
-# One "<sha> <email>" line per commit, minus the accepted SHAs.
-# printf splits the list on whitespace, so no empty pattern reaches grep (an empty -F pattern matches every line).
-identities() { git log --format="%H $1" $IDENTITY_RANGE | grep -vF -f <(printf '%s\n' $IDENTITY_ACCEPTED) | cut -d' ' -f2- || true; }
-BAD_AUTHORS=$(identities '%ae' | sort -u | grep -vE "$NOREPLY_AUTHOR_RE" || true)
+# One email per commit whose full SHA is not accepted. awk compares whole SHAs, and an empty list exempts nothing.
+# The list goes through ENVIRON: macOS awk rejects a newline in an `awk -v` value.
+identities() {
+  git log --format="%H $1" $IDENTITY_RANGE |
+    ACCEPTED="$IDENTITY_ACCEPTED" awk 'BEGIN { n = split(ENVIRON["ACCEPTED"], s); for (i = 1; i <= n; i++) ok[s[i]] = 1 } !($1 in ok) { print $2 }'
+}
+# Read first, filter second: a failed git log or awk fails the check instead of reading as "no bad
+# identities" (the `|| true` below only absorbs grep's no-match exit).
+AUTHORS=$(identities '%ae') || { echo "FAIL: could not read commit author identities."; FAIL=1; }
+COMMITTERS=$(identities '%ce') || { echo "FAIL: could not read commit committer identities."; FAIL=1; }
+BAD_AUTHORS=$(sort -u <<<"$AUTHORS" | grep -vE "$NOREPLY_AUTHOR_RE" || true)
 if [ -n "$BAD_AUTHORS" ]; then
   echo "WARN: non-noreply author identities (must be clean in the public repo):"
   echo "$BAD_AUTHORS"
   [[ "$STRICT" = 1 ]] && FAIL=1
 fi
-BAD_COMMITTERS=$(identities '%ce' | sort -u | grep -vE "$NOREPLY_COMMITTER_RE" || true)
+BAD_COMMITTERS=$(sort -u <<<"$COMMITTERS" | grep -vE "$NOREPLY_COMMITTER_RE" || true)
 if [ -n "$BAD_COMMITTERS" ]; then
   echo "WARN: non-noreply committer identities (must be clean in the public repo):"
   echo "$BAD_COMMITTERS"
+  [[ "$STRICT" = 1 ]] && FAIL=1
+fi
+
+if [[ "$IDENTITY_ONLY" = 1 ]]; then
+  [ "$FAIL" -eq 0 ] && echo "ip-sweep: PASS (identity only)"
+  exit "$FAIL"
+fi
+
+# Blocklist lives OUTSIDE this tracked script (gitignored) so the scrubbed names
+# never ship in a file that could become public. Format: comment lines (#...) are
+# ignored; the rest is joined into one extended-regex alternation.
+IP_TERMS_FILE="${IP_TERMS_FILE:-bin/.ip-terms}"
+# `|| true` so a present-but-empty/comment-only file yields TERMS="" and flows into
+# the empty-TERMS WARN branch below, instead of aborting here under set -e/pipefail
+# (the greps exit 1 when they match nothing).
+TERMS="$(grep -vE '^[[:space:]]*#' "$IP_TERMS_FILE" 2>/dev/null | grep -vE '^[[:space:]]*$' | paste -sd '|' - || true)"
+
+# Exclude private-archive-only paths + the binary hero-art renders (loam-hero-*,
+# which grep -I skips as binary anyway): session plans, ADRs, human-only reference
+# material. Public text docs (POST-RELEASE-BACKLOG, design-philosophy.md,
+# concepts.yaml) are deliberately NOT excluded — if ever tracked they must be
+# scanned. Terms under these paths are expected private history, not a leak.
+EXCLUDE='^docs/(plans|adr)/|^_archive/|^docs/diagrams/loam-hero-.*\.(png|qa\.yaml)$'
+# Content check: validate the assembled ERE before scanning. A malformed term
+# must fail closed instead of being mistaken for a clean no-match result.
+if [[ -n "$TERMS" ]]; then
+  if grep -E "$TERMS" </dev/null >/dev/null 2>&1; then
+    :
+  else
+    REGEX_RC=$?
+    if [[ "$REGEX_RC" -gt 1 ]]; then
+      echo "FAIL: invalid extended regex in $IP_TERMS_FILE; content sweep aborted."
+      FAIL=1
+    fi
+  fi
+
+  HITS=""
+  if [[ "$FAIL" -eq 0 ]]; then
+    while IFS=$'\t' read -r -d '' META FILE_PATH; do
+      [[ "$META" =~ ^([0-9]{6})[[:space:]]([0-9a-f]{40})[[:space:]][0-3]$ ]] || continue
+      MODE="${BASH_REMATCH[1]}"
+      OID="${BASH_REMATCH[2]}"
+      [[ "$MODE" == 160000 ]] && continue
+      [[ "$FILE_PATH" =~ $EXCLUDE ]] && continue
+      if [[ "$MODE" == 120000 ]]; then
+        MATCH_CMD=(grep -niE "$TERMS")
+      else
+        MATCH_CMD=(grep -niIE "$TERMS")
+      fi
+      if git cat-file blob "$OID" | "${MATCH_CMD[@]}" >/dev/null; then
+        HITS+="$FILE_PATH"$'\n'
+      fi
+    done < <(git ls-files -z --stage)
+  fi
+  if [[ -n "$HITS" ]]; then
+    echo "FAIL: foreign-IP terms found in tracked files:"; echo "$HITS"; FAIL=1
+  fi
+else
+  echo "WARN: no term file at $IP_TERMS_FILE — content sweep SKIPPED (copy bin/.ip-terms.example to bin/.ip-terms and fill in the blocklist)."
+  [[ "$STRICT" = 1 ]] && { echo "FAIL: strict mode requires a term file."; FAIL=1; }
+fi
+
+if command -v git-lfs >/dev/null 2>&1 && [ -n "$(git lfs ls-files 2>/dev/null)" ]; then
+  echo "WARN: git-LFS objects tracked (must be empty in the public repo):"
+  git lfs ls-files | sed 5q || true  # sed 5q avoids head's SIGPIPE under pipefail
   [[ "$STRICT" = 1 ]] && FAIL=1
 fi
 

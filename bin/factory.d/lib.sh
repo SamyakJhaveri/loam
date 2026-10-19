@@ -6,8 +6,10 @@ set -uo pipefail
 n_pass=0
 n_fail=0
 
-pass() { echo "PASS $1"; n_pass=$((n_pass + 1)); }
-fail() { echo "FAIL $1: ${2:-}"; n_fail=$((n_fail + 1)); }
+# A result starts on a fresh line: after a command's output with no trailing newline it would land
+# mid-line, where the supervisor's ^PASS and ^FAIL reads miss it (#180).
+pass() { printf '\nPASS %s\n' "$1"; n_pass=$((n_pass + 1)); }
+fail() { printf '\nFAIL %s: %s\n' "$1" "${2:-}"; n_fail=$((n_fail + 1)); }
 # guard: a regression guard; runs CMD and returns its status; allowed to pass on main.
 # Under LOAM_HOOK (the worker's Stop hook) a guarded bin/check passes without running:
 # it takes minutes per stop, and the supervisor's own check run is the one run per round (LOOP.md).

@@ -4,4 +4,4 @@
 
 ## Claude-specific gotchas
 
-- Editing any file under `.claude/` needs bypassPermissions mode; other modes deny or prompt.
+- `.claude/` is a protected path: writes prompt in default and acceptEdits, go to the classifier in auto, and are denied in dontAsk. Allow rules do not pre-approve them.

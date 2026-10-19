@@ -1,6 +1,6 @@
 ---
 name: verify-loam
-description: "Prove a Loam change in a real rendered project: copier-render this checkout, then drive headless and interactive Claude Code sessions in the render and capture hook, memory, deny-rule and check evidence. Use before shipping any seed, hook, settings or copier.yml change."
+description: "Prove a Loam change in a real rendered project: copier-render this checkout, then drive headless and interactive Claude Code sessions, stubbed Codex runs and copier updates in the render and capture hook, memory, deny-rule, update and check evidence. Use before shipping any seed, hook, settings or copier.yml change."
 disable-model-invocation: true
 ---
 
@@ -28,7 +28,7 @@ $C render --run <id> --ref v3.0.0 --kind typescript
 
 - Default `--ref HEAD` renders the working tree: copier turns a dirty checkout into a temporary commit, so uncommitted seed edits are included. `doctor` says which case you got.
 - Ready means `render` printed `"ok": true` and `doctor` passes. A render takes about 4 seconds.
-- Every run is its own directory, so runs can go in parallel. Sessions point the memory hooks at `<run>/memstore` through `LOAM_MEMSTORE`, unset `LOAM_MEMSTORE_REMOTE` and set `TMPDIR` to `<run>/tmp`, so a run never touches `~/memstore`, pushes anywhere, or shares temp files.
+- Every run is its own directory, so runs can go in parallel. Every `claude` and `codex` child points the memory hooks at `<run>/memstore` through `LOAM_MEMSTORE`, unsets `LOAM_MEMSTORE_REMOTE` and gets `TMPDIR=<run>/tmp`, so a run never touches `~/memstore`, pushes anywhere, or shares temp files; only Claude Code's sandboxed Bash tool swaps in its own `/tmp/claude-<uid>`.
 - Sessions use `--setting-sources project,local`: the render's own settings and hooks apply, your user-level hooks and plugins do not.
 
 ## Doctor
@@ -49,6 +49,8 @@ $C session <id> "Reply with the single word OK." --name mem-1
 $C session <id> "<prompt>" --model fable      # any claude --model value
 $C session <id> "<prompt>" --bypass           # bypassPermissions; deny rules still apply
 $C session <id> "<prompt>" --stub             # scripted model on 127.0.0.1; $0
+$C session <id> "/compact" --resume mem-1     # continue an earlier session of this run
+$C session <id> "<prompt>" --switch-model fable   # switch models first; fires PostModelSwitch
 ```
 
 The JSON gives `hooks` (event, name, exit code, first 400 characters of stdout), `skills` from the init event, `permission_denials`, the reply, and `cost_usd` (about $0.12 per one-word turn on the default model; Fable costs about five times as much).
@@ -60,6 +62,10 @@ It cannot prove that a real model reads or obeys injected text; quote-back and t
 The JSON adds `"stub": true` and `stub_requests`, and its `cost_usd` is an estimate from fake token counts.
 Zero requests or a failed session give `"ok": false`, so a Claude Code wire-format change never reads as a pass.
 
+`--resume` takes a `--name` recorded in this run's `run.json`, or a raw session id; the resumed session keeps its id.
+`--switch-model` sends a `set_model` control request, then the prompt, on stream-json stdin; it fires `PostModelSwitch` and saves nothing.
+Never type `/model` in `tui`: it writes the model to the user's `~/.claude/settings.json`.
+
 Interactive, in tmux, for anything headless cannot show:
 
 ```bash
@@ -70,6 +76,27 @@ $C tui <id> stop --name fable-tui  # saves the screen to evidence, sends /exit (
 
 Watch it live with `tmux attach -t loamv-<id>`.
 When a prompt such as a permission request waits on you, `send` exits 1 with `"state": "dialog"`; answer it there.
+
+Codex, one `codex exec` in the render against the stub, $0:
+
+```bash
+$C codex <id> "<prompt>" --name cx-1          # trusted render; STUB_BASH works as for session --stub
+$C codex <id> "<prompt>" --untrusted          # the project's .codex/ layer stays inert
+$C codex <id> "<prompt>" --bypass-hook-trust  # runs .codex/hooks.json without the one-time review
+```
+
+It sets `CODEX_HOME=<run>/codex-home`, which holds no login and trusts only this render, so the user's `~/.codex` is never read or changed; stub-model.py answers the Responses API.
+The JSON gives the settings the session ran with (`approval_policy`, `permission_profile`, `sandbox`, `network`, `denied`), each command, every tool output (a policy rejection shows only there), Codex's notices, the reply and `stub_requests`.
+Zero requests or a failed turn give `"ok": false`.
+
+Template update, the user's `copier update`:
+
+```bash
+$C update <id> --ref HEAD     # copier update --trust --defaults in the render
+```
+
+It commits nothing and reports `commit_before`, `commit_after` (`_commit` in `.copier-answers.yml`), the number of changed paths and the files with conflict markers, then points `run.json` at the new ref so `doctor` checks it, and drops the old `doctor` and `check` records.
+Copier refuses a dirty tree and a downgrade; [`features/copier-update.md`](features/copier-update.md) has the recipe.
 
 Rendered checks:
 
@@ -84,7 +111,7 @@ A fresh render has no `tests/`, so that check runs no pytest and a pass alone pr
 ## Sweep
 
 ```bash
-$C sweep          # render, doctor, mem-1 then mem-2 recall, the deny probe with its ls control, the rendered check
+$C sweep          # render, doctor, mem-1 then mem-2 recall, the handoff claimed once and flagged stale, the deny probe with its ls control, the rendered check
 ```
 
 It runs the `--stub` recipes of the feature map in one $0 pass of about 10 seconds and cleans up after a pass; a failed run is kept.
@@ -93,7 +120,7 @@ CI runs it on every push and PR (job `stub-sweep` in `.github/workflows/test.yml
 
 ## Evidence
 
-Everything lands in `<run>/evidence/`: `render.log`, `<name>.jsonl` (the stream-json with hook events), `<name>.stderr`, `<name>.transcript.jsonl`, `<name>.stub-requests.jsonl` (one line per stub request), `<name>.screen.txt`, `check.txt`.
+Everything lands in `<run>/evidence/`: `render.log`, `<name>.jsonl` (the stream-json with hook events), `<name>.stderr`, `<name>.transcript.jsonl`, `<name>.stub-requests.jsonl` (one line per stub request), `<name>.rollout.jsonl` (Codex), `<name>.screen.txt`, `check.txt`, `update.log`.
 
 Proof standards:
 
@@ -110,13 +137,13 @@ $C cleanup <id> --dry-run   # lists what it would remove
 $C cleanup <id>
 ```
 
-It kills the run's tmux session, removes `render/`, `memstore/`, `tmp/` and the `~/.claude/projects/` directory of this render, and keeps `evidence/` and `run.json`.
+It kills the run's tmux session, removes `render/`, `memstore/`, `tmp/`, `codex-home/` and the `~/.claude/projects/` directory of this render, and keeps `evidence/` and `run.json`.
 It never kills by process name and never touches another run.
 After cleanup, list `<run>/evidence/` to confirm the proof is still there.
 
 ## Feature map
 
 The behavior inventory is in [`features/README.md`](features/README.md), one file per feature with the same four sections.
-For a broad regression sweep, walk the index top to bottom.
-Upkeep is `/pstack:maintain-verification-skill` once the pstack plugin is installed (source wave plus one live pass; edits stay inside this directory).
-Until then, rerun the feature map recipes by hand after a seed change.
+`$C sweep` runs only the `--stub` recipes; for a broad regression pass, walk the index top to bottom.
+Upkeep is `/pstack:maintain-verification-skill` (pstack is installed): a source wave plus one live pass, with edits inside this directory.
+A daily launchd job can run it; the owner installs that job, and nothing in the repo does (see `docs/HARNESS-LOAM.md`).

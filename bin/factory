@@ -63,6 +63,8 @@ RESULT_OBJ='if type == "array" then ((last(.[] | select(.type == "result")) // .
 # The reviewer's verdict word is never read: it is not bound to a severity (2026-09-12), so it carries no weight.
 REVIEW_BLOCKING='[.findings[]? | select(.severity == "high" or .severity == "medium")]'
 REVIEW_OUTCOME="if ($REVIEW_BLOCKING | length) > 0 then \"fix\" else \"merge\" end"
+# The Codex review's rule: a critical or high finding blocks; its verdict word is not read either.
+CODEX_BLOCKING='[.findings[]? | select(.severity == "critical" or .severity == "high")]'
 
 SRC=""
 BODY=""
@@ -875,6 +877,19 @@ limit_wait() { # result.json -> 0 after waiting, 1 when the reply is not a usage
 # ---- step 4: round 0 --------------------------------------------------------
 # Every non-guard check must fail on base; one that passes there cannot prove the ticket.
 
+# Run the frozen checks from dir into out. A block that aborts before it prints a FAIL line is never green
+# (#180): a non-zero exit with no FAIL line adds FAIL checks-aborted. Check names are not read from the block,
+# because a check can quote a ticket body or a script whose pass and fail words are not top-level checks.
+run_checks() { # dir out
+  local rc
+  ( cd "$1" && "$RUN/frozen/checks.sh" ) > "$2" 2>&1
+  rc=$?
+  if [ "$rc" -ne 0 ] && ! grep -q '^FAIL' "$2"; then
+    log "checks.sh exited $rc with no FAIL line"
+    printf 'FAIL checks-aborted: checks.sh exited %s with no FAIL line\n' "$rc" >> "$2"
+  fi
+}
+
 round_zero() {
   local out="$RUN/round-0.checks" guards name base wt msg
   base=$(cat "$RUN/base.sha"); wt="${WORKTREE}-base"
@@ -890,8 +905,10 @@ round_zero() {
     [ -e "$wt" ] && msg="$msg; the path exists but is not a registered worktree, delete it by hand"
     finish stopped-environment "$msg"
   fi
-  ( cd "$wt" && "$RUN/frozen/checks.sh" ) > "$out" 2>&1
+  run_checks "$wt" "$out"
   git -C "$MAIN_CHECKOUT" worktree remove --force "$wt" > /dev/null 2>&1
+  grep -q '^FAIL checks-aborted' "$out" \
+    && finish ticket-defect "checks.sh aborted on $(cut -c1-8 "$RUN/base.sha") before it printed a FAIL line; see $out"
   guards=$(dc_checks | grep -E "$GUARD_RE" | grep -oE '(^|[[:space:]])pass[[:space:]]+"?[A-Za-z0-9_.-]+' \
     | awk '{print $NF}' | tr -d '"' | sort -u)
   while read -r _ name _; do
@@ -1194,14 +1211,15 @@ build_evidence() { # rubric_file diff_cap -> stdout
   printf '%s\n' "$FENCE"
 }
 
-# A judge pass with fixes to apply, or a fail with nothing to point at, refutes itself (LOOP.md, precedence).
+# A judge pass with a fix or a failing row, or a fail with nothing to point at, refutes itself (LOOP.md, precedence).
 # A reviewer's verdict word is never checked: run_review reads REVIEW_OUTCOME, and a refutation of the word
 # pushes the model to change its findings to fit it (2026-09-12).
 verdict_consistent() { # json file
   jq -e '(.verdict // "") as $v
     | ((.fixes // []) | length) as $blocking
     | (((.backlog // []) | length) + ((.findings // []) | length)) as $other
-    | if $v == "pass" then $blocking == 0
+    | ([.rows[]?] | all(. == "pass")) as $rows_pass
+    | if $v == "pass" then $blocking == 0 and $rows_pass
       elif $v == "fail" then ($blocking > 0 or $other > 0)
       else true end' "$1" > /dev/null 2>&1
 }
@@ -1229,8 +1247,8 @@ call_json() { # round stem role prompt_file schema_file
       printf '%s' "$res" | jq '.' > "$final"
       verdict_consistent "$final" && return 0
       log "$role verdict is inconsistent with its own lists; calling once more with the refutation"
-      printf '\n\n## Refutation\n\nYour previous reply was `%s`, which contradicts the fixes, findings, and backlog you listed. Grade again and return a consistent object.\n' \
-        "$(jq -c '{verdict, fixes: (.fixes // []), findings: ((.findings // []) | length), backlog: (.backlog // [])}' "$final")" >> "$pf"
+      printf '\n\n## Refutation\n\nYour previous reply was `%s`, which contradicts the rows, fixes, findings, and backlog you listed. Grade again and return a consistent object.\n' \
+        "$(jq -c '{verdict, rows: (.rows // {}), fixes: (.fixes // []), findings: ((.findings // []) | length), backlog: (.backlog // [])}' "$final")" >> "$pf"
       continue
     fi
     log "$role output not parseable"
@@ -1260,7 +1278,7 @@ run_review() { # round -> 0 when nothing blocks
   log "reviewer verdict: $(jq -r .verdict "$f") findings=$(jq '(.findings // []) | length' "$f") blocking=$blocking (high or medium)"
   [ "$blocking" -gt 0 ] || return 0
   if [ "$REVIEW_BLOCKED" = 1 ]; then
-    log "the reviewer already blocked once on this ticket; its findings go to the backlog"
+    log "the reviewer already blocked once on this ticket; its blocking findings make the PR a draft and are filed as issues"
     return 0
   fi
   REVIEW_BLOCKED=1
@@ -1285,16 +1303,24 @@ run_codex_review() { # round -> 0 when nothing blocks; needs-attention with a cr
   [ "$rc" -eq 0 ] || log "codex review call exited $rc"
   codex_result "$jsonl" "$rc" "$(( (SECONDS - start) * 1000 ))" > "$res"
   record "$round" codex-review "$CODEX_MODEL" "$res" 0 0 0 0 1
-  blocking=$(jq '[.findings[]? | select(.severity == "critical" or .severity == "high")] | length' "$f" 2> /dev/null) || blocking=0
-  [ -n "$blocking" ] || blocking=0
+  # An absent, empty, or unparseable review is a fail with one high finding, never a pass (LOOP.md), as call_json
+  # writes for the reviewer; -s also refuses a file holding more than one JSON value.
+  if ! jq -se 'length == 1 and (.[0].verdict | type) == "string"' "$f" > /dev/null 2>&1; then
+    log "codex review output absent or unparseable; see $jsonl"
+    jq -n '{verdict: "needs-attention", unparseable: true, summary: "Codex review output absent or unparseable", next_steps: [],
+      findings: [{severity: "high", file: "-", line_start: 0, line_end: 0, confidence: 0,
+                  title: "codex review output unparseable", body: "the -o file was absent, empty, or not one review object.",
+                  recommendation: "rerun the Codex review on this round"}]}' > "$f"
+  fi
+  blocking=$(jq "$CODEX_BLOCKING | length" "$f")
   log "codex review verdict: $(jq -r '.verdict // "unparseable"' "$f" 2> /dev/null) findings=$(jq '(.findings // []) | length' "$f" 2> /dev/null) blocking=$blocking"
   [ "$blocking" -gt 0 ] || return 0
   if [ "$CODEX_REVIEW_BLOCKED" = 1 ]; then
-    log "the Codex review already blocked once on this ticket; its findings go to the backlog"
+    log "the Codex review already blocked once on this ticket; its blocking findings make the PR a draft and are filed as issues"
     return 0
   fi
   CODEX_REVIEW_BLOCKED=1
-  jq -r '[.findings[]? | select(.severity == "critical" or .severity == "high")] | .[]
+  jq -r "$CODEX_BLOCKING"' | .[]
     | "- " + (.file // "?") + ":" + ((.line_start // 0) | tostring) + " [" + .severity + "] " + .title + ": " + .body + " Fix: " + (.recommendation // "-")' "$f" >> "$RUN/round-$round.fixes"
   return 1
 }
@@ -1319,29 +1345,52 @@ graders() { # round -> 0 when the judge passes and nothing blocks
 
 # ---- step 8: the pull request -----------------------------------------------
 
-# A judge backlog line lands only in the PR-body text, so a defect an unattended run finds is tracked
-# by nobody; file each line once per run as a needs-triage issue. Never calls finish: a filing failure
-# is logged and the run still opens its PR.
+# The reviewer's and the Codex review's blocking findings in the final round's files, highest severity first.
+# After the graders pass, these are what a grader past its one block still reports, an unparseable reply included.
+# Each finding is joined onto one line, since file_issues files one issue per line.
+blocking_findings() {
+  jq -r "$REVIEW_BLOCKING"' | sort_by(.severity != "high") | .[]
+    | "reviewer [" + .severity + "] " + (.file // "?") + ":" + ((.line // 0) | tostring) + " " + (.defect // "?") + " Fix: " + (.fix // "-")
+    | gsub("\\s*\n\\s*"; " ")' "$RUN/round-$ROUND.review.json" 2> /dev/null
+  [ "$CODEX_REVIEW" = yes ] || return 0
+  jq -r "$CODEX_BLOCKING"' | sort_by(.severity != "critical") | .[]
+    | "Codex review [" + .severity + "] " + (.file // "?") + ":" + ((.line_start // 0) | tostring) + " " + (.title // "?") + ": "
+      + (.body // "") + " Fix: " + (.recommendation // "-")
+    | gsub("\\s*\n\\s*"; " ")' "$RUN/round-$ROUND.codex-review.json" 2> /dev/null
+}
+
+# A judge backlog line, or a blocking finding left in a PR, lands only in the PR-body text, so a defect an
+# unattended run finds is tracked by nobody; file each line once per run as a needs-triage issue. Never calls
+# finish: a filing failure is logged and the run still opens its PR.
 file_backlog() { # judge.json issue pr-url
-  local judge="$1" issue="$2" prurl="$3" line GH="${FACTORY_GH:-gh}"
-  jq -r '.backlog[]?' "$judge" 2> /dev/null | while IFS= read -r line; do
+  jq -r '.backlog[]?' "$1" 2> /dev/null | file_issues "judge backlog" "$2" "$3"
+}
+
+file_issues() { # source issue pr-url, one issue per stdin line
+  local src="$1" issue="$2" prurl="$3" line GH="${FACTORY_GH:-gh}"
+  while IFS= read -r line; do
     [ -n "$line" ] || continue
     grep -Fxq "$line" "$RUN/filed.txt" 2> /dev/null && continue
-    if printf 'From the judge backlog of #%s, %s.\n\n%s\n' "$issue" "$prurl" "$line" \
+    if printf 'From the %s of #%s, %s.\n\n%s\n' "$src" "$issue" "$prurl" "$line" \
       | "$GH" issue create -R "$REPO" --title "${line:0:80}" --label needs-triage --body-file - > /dev/null 2>&1; then
       printf '%s\n' "$line" >> "$RUN/filed.txt"
     else
-      log "file_backlog: gh issue create failed for backlog line: $line"
+      log "file_issues: gh issue create failed for a $src line: $line"
     fi
   done
 }
 
 open_pr() { # [draft]: opened at the grader-round cap
-  local draft="${1:-}" body="$RUN/pr-body.md" base url num title rows
+  local draft="${1:-}" body="$RUN/pr-body.md" base url num title rows blocking
   base=$(cat "$RUN/base.sha")
+  blocking=$(blocking_findings)
+  [ -n "$draft" ] || [ -z "$blocking" ] || draft=blocking
   {
     [ "$IS_FILE" = 1 ] || printf 'Closes #%s\n\n' "$ISSUE"
-    if [ -n "$draft" ]; then
+    if [ "$draft" = blocking ]; then
+      printf 'Draft: the judge passed, but %s blocking reviewer or Codex finding(s) remain past the one block each grader may make, and each is filed as an issue. Read them before marking it ready. The first is %s\n\n' \
+        "$(printf '%s\n' "$blocking" | grep -c .)" "$(printf '%s\n' "$blocking" | head -1)"
+    elif [ -n "$draft" ]; then
       # An absent, empty, or invalid judge file counts as a fail (LOOP.md), so jq may print nothing.
       rows=$(jq -r '[(.rows // {}) | to_entries[] | select(.value == "fail") | .key] | join(", ") | if . == "" then "no row; a reviewer or Codex finding blocked" else . end' "$RUN/round-$ROUND.judge.json" 2> /dev/null)
       printf 'Draft: opened at the grader-round cap; the judge failed %s. Read the Judge section before marking it ready.\n\n' "${rows:-no row; the judge output was absent or not parseable}"
@@ -1389,6 +1438,7 @@ open_pr() { # [draft]: opened at the grader-round cap
     url=$(printf '%s\n' "$url" | tail -1)
   fi
   [ "$IS_FILE" = 0 ] && file_backlog "$RUN/round-$ROUND.judge.json" "$ISSUE" "$url"
+  [ "$IS_FILE" = 0 ] && printf '%s\n' "$blocking" | file_issues "blocking review findings" "$ISSUE" "$url"
   finish pr-opened "$url after $ROUND rounds, $(ticket_spent) usd"
 }
 
@@ -1425,7 +1475,7 @@ main_loop() {
     elif [ -n "$touched" ]; then
       printf 'FAIL do-not-touch %s\n' "$touched" > "$checks"
     else
-      ( cd "$WORKTREE" && "$RUN/frozen/checks.sh" ) > "$checks" 2>&1
+      run_checks "$WORKTREE" "$checks"
     fi
     if grep -q '^FAIL' "$checks"; then
       fails=$(grep '^FAIL' "$checks" | awk '{print $2}' | tr -d ':' | sort -u | tr '\n' ',')

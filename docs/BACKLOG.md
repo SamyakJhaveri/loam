@@ -79,5 +79,4 @@ Why: real, but not the template's job.
 
 These exist only because v3.0.0 parked code that other files still point at. Each must land before `cultivation/parked/` can be treated as inert reference material.
 
-- Re-add version-parity coverage for the `sam-cc-setup` plugin. `bin/tests/test_marketplace_skill_routes.py` was deleted in v3.0.0, and it held the only assertion that `plugin.json` and `marketplace.json` versions stay equal, so `cultivation/marketplace/sam-cc-setup/README.md` still claims a parity that nothing now enforces.
 - Bump the `sam-cc-setup` plugin version and add an `UPGRADING.md` entry before the v3.0.0 tag. v3 removed 23 skills, 5 agents, the plugin hooks, and the fanout workflow, but the ticket froze the `marketplace.json` entry, so installed consumers running `/plugin update` currently see no change.
