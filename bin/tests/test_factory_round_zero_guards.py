@@ -1,4 +1,4 @@
-"""Round 0 exempts only a check prefixed `guard` (CONTRACT.md, Done checks), read the way lint reads it.
+"""Round 0 exempts only a check that calls `guard` (CONTRACT.md, Done checks), read the way lint reads it.
 
 bin/factory is sourced (FACTORY_SOURCED=1) and the real round_zero runs the block at the base commit of a scratch
 repository whose README mentions a safeguard; `finish` is replaced so a ticket defect prints instead of exiting.
@@ -62,6 +62,30 @@ class RoundZeroGuardTests(unittest.TestCase):
             '  && pass check || fail check "base is broken"\n'
             'test -e NEW.md && pass new-file || fail new-file "NEW.md is missing"')
         self.assertEqual(out.strip(), "ROUND0-OK")
+
+    def test_guard_called_in_a_capture_is_a_guard(self) -> None:
+        out = self.round_zero(
+            'out=$(guard cat README.md) ; grep -q safeguard <<<"$out" && pass package || fail package "x"\n'
+            'test -e NEW.md && pass new-file || fail new-file "NEW.md is missing"')
+        self.assertEqual(out.strip(), "ROUND0-OK")
+
+    def test_guard_called_in_a_brace_group_is_a_guard(self) -> None:
+        out = self.round_zero(
+            '[ -n "${LOAM_HOOK:-}" ] && pass green || { guard true && pass green || fail green "x"; }\n'
+            'test -e NEW.md && pass new-file || fail new-file "NEW.md is missing"')
+        self.assertEqual(out.strip(), "ROUND0-OK")
+
+    def test_check_named_with_guard_is_not_a_guard(self) -> None:
+        out = self.round_zero(
+            'guard true && pass check || fail check "base is broken"\n'
+            'grep -q safeguard README.md && pass env-guard || fail env-guard "no safeguard"')
+        self.assertIn("FINISH ticket-defect: check env-guard passes on", out)
+
+    def test_reason_naming_guard_is_not_a_guard(self) -> None:
+        out = self.round_zero(
+            'guard true && pass check || fail check "base is broken"\n'
+            'grep -q safeguard README.md && pass readme || fail readme "README has no guard line"')
+        self.assertIn("FINISH ticket-defect: check readme passes on", out)
 
 
 if __name__ == "__main__":
