@@ -3,6 +3,13 @@
 This file records why a promoted plugin change traveled. It is also the upgrade
 entry point for projects that consume the Loam marketplace.
 
+## sam-cc-setup v0.9.11 brief settles open questions by prototype
+
+In `/brief`, a `Mode: figure-out` open question that a quick throwaway prototype could observe is answered by building the prototype, before anyone is asked.
+It traveled because a prototype answers with evidence instead of waiting for the user (pstack guide, part 2).
+No agent prompt changed, so no grader replay is owed.
+Upgrade step: `claude plugin update sam-cc-setup`.
+
 ## sam-cc-setup v0.9.7 brief names the render proof
 
 The `/brief` skill's Track B now says a Loam ticket that changes rendered-project behavior proves it with `control-loam`, in the form `docs/factory/CONTRACT.md` gives.
