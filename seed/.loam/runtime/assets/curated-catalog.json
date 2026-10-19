@@ -28832,7 +28832,7 @@
       "kind": "method",
       "sectionKeys": [],
       "delivery": "present-unqualified",
-      "expectedSha256": "b21bd5fae2d8ab89e625be93969de66f64e9a4e793c0968451716146bf1f90dd"
+      "expectedSha256": "2c9d72a2b936eb23e44581833b8b25d6c18bdf3b99eefc18ee56da8690cf62bd"
     },
     {
       "id": "method:fable-prompting",
@@ -29159,7 +29159,7 @@
         "subcommand-grammar"
       ],
       "delivery": "present-unqualified",
-      "expectedSha256": "0dcb298710a006320f5cc03353e4358eb2ad7c5ed3eabdaee585d93ce7d6fffc"
+      "expectedSha256": "2ec44dd6a301c956ca1f878d7b4b75c8b5cce202f8ba930575a341f32b212354"
     },
     {
       "id": "method:reflect",

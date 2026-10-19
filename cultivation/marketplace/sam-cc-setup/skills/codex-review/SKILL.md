@@ -94,6 +94,11 @@ If the diff is empty, stop and report "nothing to review for `<scope>`".
 
 ### Step 2 - Run Codex (read-only, diff piped via stdin)
 
+First write one paragraph of intent: what the change is meant to do, from the user's request and
+the commit messages in scope (`git log --format='%s%n%b' "$LEFT..${RIGHT:-HEAD}"`). State only
+the intended behavior, never why it was built this way: the reviewer stays blind to the author's
+reasoning, as in `plan-review`. If the intent is unclear, ask the user before running Codex.
+
 Pipe the fixed diff on **stdin**. Keep the sandbox read-only. Use the configured Codex
 model with high review effort. Inspect `codex --help` and the active provider config before
 adding any model ID or unsupported effort value. `-o` saves the durable final report.
@@ -102,10 +107,13 @@ adding any model ID or unsupported effort value. `-o` saves the durable final re
 mkdir -p .claude/codex-reviews
 SAFE_BRANCH="${BRANCH//\//-}"
 OUT=".claude/codex-reviews/$(date +%F)-${SAFE_BRANCH}.md"
+INTENT='<one paragraph: what the change is meant to do>'   # no single quotes inside
 
 git --no-pager diff "$SCOPE" | codex exec --sandbox read-only \
   -c model_reasoning_effort=high -o "$OUT" \
-  "You are a second-opinion code reviewer. Review the diff in the <stdin> block against \
+  "You are a second-opinion code reviewer. The change is meant to do this: $INTENT \
+Review whether the diff achieves that intent well; do not question the intent itself. \
+Review the diff in the <stdin> block against \
 the current repository (you may read files read-only for context). Respond in <=60 lines: \
 first line a single verdict - SHIP, FIX FIRST, or REWORK - then findings grouped under \
 Critical / High / Medium / Low, each with file:line and a one-line fix. Omit empty groups. \
@@ -115,11 +123,19 @@ Be terse; no preamble."
 ### Step 3 - Triage back into the session
 
 - Read the verdict block from `$OUT` (Codex prints nothing inline with `-o`).
-- Treat findings as **advisory**: Claude decides which to act on, then applies fixes in the
-  Claude checkout. Codex does not edit.
-- For a FIX FIRST / REWORK verdict, fold the confirmed Critical/High findings into the work
-  before shipping; note Medium/Low as follow-ups.
-- Append every confirmed finding you do not fix in this session as a row to
+- Judge each finding yourself; Codex's verdict and severity are input, not the decision. Check
+  it against the code first: a hypothetical input is a finding only if a real caller can pass it.
+- Put every finding in exactly one bucket, with a one-line reason:
+  - **Act on:** a real correctness, security, or maintainability problem for the stated intent;
+    it would block a real PR. Fix it in this session.
+  - **Consider:** legitimate, but not clearly worth its cost now. Show it to the user with the
+    tradeoff.
+  - **Noted:** valid but not actionable now (premature, low impact, context-dependent).
+  - **Dismissed:** wrong, a nit, a preference with no concrete problem, or missing context
+    Codex could not see. Look harder at a security or correctness finding before dismissing it.
+- If every finding is a nit or a preference, say the change is probably fine.
+- Report the four buckets in that order.
+- Append every Act on or Consider finding you do not fix in this session as a row to
   `docs/findings/FINDINGS.md` (columns: Date | Source | Severity | Path:line | Finding |
   Status | Closing commit; create the file with that header if it is missing). When you
   later fix a row, fill its closing commit instead of deleting the row.

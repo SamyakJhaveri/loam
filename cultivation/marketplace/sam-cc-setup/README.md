@@ -2,14 +2,16 @@
 
 The portable core of Sam's Claude Code setup.
 Cut to three skills in v3.0.0 under design law 7: the burden of proof is on keeping, and everything with zero recorded use is parked, not shipped.
+Since v3.0.0 it has gained the `brief` skill and the factory grader agents `judge` and `reviewer`.
 
 **Audience:** repositories that want optional planning-review and cross-model review skills.
 This includes projects rendered by [Loam](https://github.com/SamyakJhaveri/loam).
 
 ## What the plugin exposes after installation
 
-- **Skills:** `plan-review` (blind merged plan review: correctness checklist plus elegance gate in one unit), `codex-review` (cross-model second opinion; requires the Codex CLI), `surprise-me` (ranked, evidence-backed unsolicited ideas).
-- **Agents:** `plan-reviewer`, used by `plan-review`; `lean-critic`, a read-only Opus 5.5 critic that cuts verbosity from code and prose another model wrote.
+- **Skills (4), all manual-only, so type `/<name>`:** `brief` (turns a raw request into a factory brief and ticket), `codex-review` (read-only cross-model second opinion on a diff; requires the Codex CLI), `plan-review` (blind merged plan review: correctness checklist plus elegance gate in one unit), `surprise-me` (ranked, evidence-backed unsolicited ideas).
+- **Agents (4):** `plan-reviewer`, used by `plan-review`; `lean-critic`, a read-only Opus 5.5 critic that cuts verbosity from code and prose another model wrote; `judge` and `reviewer`, the fresh-context graders the Loam factory runs on each ticket (`docs/factory/LOOP.md`).
+- Regenerate both counts with `find cultivation/marketplace/sam-cc-setup -name SKILL.md | wc -l` and `ls cultivation/marketplace/sam-cc-setup/agents`.
 - **Hooks:** none. The plugin installs no hook on any tool matcher (design law 3).
 - **Workflows:** none.
 

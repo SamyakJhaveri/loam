@@ -74,7 +74,7 @@ Promotion PRs should state which project battle-tested the skill and what it was
 Copier resolves from **git tags**, not HEAD. After merging significant changes:
 
 ```bash
-bin/release.sh <version>   # needs a green CI run on HEAD; runs the IP sweep, bumps VERSION, tags, pushes
+bin/release.sh <version>   # needs green CI on HEAD and a verify-loam render of HEAD whose doctor and rendered check pass (no sessions); IP sweep, bump VERSION, tag, push, then render the tag from GitHub; a rerun after a failed push resumes at the push
 ```
 
 ## Reporting issues

@@ -1,0 +1,352 @@
+#!/usr/bin/env python3
+"""control-loam - render Loam into a throwaway project and drive real Claude Code sessions in it.
+
+Every command prints one JSON object on stdout. A run lives in one directory:
+  <root>/<run>/render/     the rendered project (copier copy of this checkout)
+  <root>/<run>/memstore/   the memory store the hooks write to (LOAM_MEMSTORE)
+  <root>/<run>/evidence/   session streams, check output; survives cleanup
+  <root>/<run>/run.json    ref, commit, sessions started, last doctor and check outcome
+<root> is $LOAM_VERIFY_ROOT, default $TMPDIR/loam-verify.
+"""
+
+from __future__ import annotations
+
+import argparse
+import json
+import os
+import pathlib
+import re
+import shlex
+import shutil
+import subprocess
+import sys
+import time
+
+HERE = pathlib.Path(__file__).resolve().parent
+ROOT = pathlib.Path(os.environ.get("LOAM_VERIFY_ROOT") or pathlib.Path(os.environ.get("TMPDIR", "/tmp")) / "loam-verify")
+PROJECTS = pathlib.Path.home() / ".claude" / "projects"
+# Disable git background maintenance in every git child (copier tasks included); see bin/tests/test_render_smoke.py.
+GIT_ENV = {
+    **os.environ,
+    "GIT_CONFIG_COUNT": "2",
+    "GIT_CONFIG_KEY_0": "gc.auto",
+    "GIT_CONFIG_VALUE_0": "0",
+    "GIT_CONFIG_KEY_1": "maintenance.auto",
+    "GIT_CONFIG_VALUE_1": "false",
+}
+
+
+def out(obj: dict, code: int = 0) -> None:
+    print(json.dumps(obj, indent=2))
+    sys.exit(code)
+
+
+def die(msg: str, **extra) -> None:
+    out({"ok": False, "error": msg, **extra}, 1)
+
+
+def sh(cmd: list[str], **kw) -> subprocess.CompletedProcess:
+    return subprocess.run(cmd, capture_output=True, text=True, **kw)
+
+
+def loam_root() -> pathlib.Path:
+    r = sh(["git", "-C", str(HERE), "rev-parse", "--show-toplevel"])
+    if r.returncode != 0:
+        die("control-loam must run from inside a Loam checkout")
+    return pathlib.Path(r.stdout.strip())
+
+
+def run_dir(run: str) -> pathlib.Path:
+    d = ROOT / run
+    if not (d / "run.json").is_file():
+        die(f"no run {run!r} under {ROOT}; start one with: control-loam render")
+    return d
+
+
+def load(d: pathlib.Path) -> dict:
+    return json.loads((d / "run.json").read_text())
+
+
+def save(d: pathlib.Path, meta: dict) -> None:
+    (d / "run.json").write_text(json.dumps(meta, indent=2) + "\n")
+
+
+def record(d: pathlib.Path, key: str, ok: bool, **extra) -> None:
+    # bin/release.sh reads these: it tags only a commit with a clean run whose doctor and check are ok, the check on a pristine render.
+    meta = load(d)
+    meta[key] = {"ok": ok, "at": time.strftime("%Y-%m-%dT%H:%M:%S%z"), **extra}
+    save(d, meta)
+
+
+def cmd_render(a) -> None:
+    src = loam_root()
+    # ^{commit}: an annotated tag names a tag object; record the commit it points at.
+    rev = sh(["git", "-C", str(src), "rev-parse", "-q", "--verify", a.ref + "^{commit}"])
+    if rev.returncode != 0:
+        die(f"unknown ref {a.ref!r}")
+    commit = rev.stdout.strip()
+    run = a.run or time.strftime("%Y%m%d-%H%M%S-") + commit[:8]
+    d = ROOT / run
+    if d.exists():
+        die(f"run {run!r} already exists at {d}; pick another --run or clean it up")
+    (d / "evidence").mkdir(parents=True)
+    copier = shutil.which("copier") and ["copier"] or ["uvx", "copier"]
+    r = sh(copier + ["copy", "--trust", "--defaults", f"--vcs-ref={a.ref}",
+                     "--data", "project_name=verify", "--data", "github_repo=",
+                     "--data", f"project_kind={a.kind}", str(src), str(d / "render")], env=GIT_ENV)
+    (d / "evidence" / "render.log").write_text(r.stdout + r.stderr)
+    # copier renders a dirty checkout's working tree (for ref HEAD) as a temporary commit, so uncommitted seed edits are included.
+    dirty = a.ref == "HEAD" and bool(sh(["git", "-C", str(src), "status", "--porcelain"]).stdout.strip())
+    meta = {"run": run, "ref": a.ref, "commit": commit, "dirty": dirty, "kind": a.kind, "source": str(src), "sessions": []}
+    save(d, meta)
+    if r.returncode != 0:
+        die("copier copy failed", run=run, log=str(d / "evidence" / "render.log"))
+    out({"ok": True, "run": run, "render": str(d / "render"), "memstore": str(d / "memstore"),
+         "evidence": str(d / "evidence"), "commit": commit})
+
+
+def cmd_doctor(a) -> None:
+    d = run_dir(a.run)
+    meta, render = load(d), d / "render"
+    checks = []
+
+    def check(name: str, ok: bool, detail: str = "") -> None:
+        checks.append({"name": name, "ok": bool(ok), "detail": detail})
+
+    check("render exists", render.is_dir(), str(render))
+    log = sh(["git", "-C", str(render), "log", "--format=%s", "-1"])
+    check("render is a git repo with the initial commit", log.stdout.strip() == "Initial commit from loam", log.stdout.strip() or log.stderr.strip())
+    answers = render / ".copier-answers.yml"
+    pinned = next((ln.split(":", 1)[1].strip() for ln in answers.read_text().splitlines() if ln.startswith("_commit:")), "") if answers.is_file() else ""
+    if meta["dirty"]:
+        # copier commits the dirty tree on top of the recorded commit and pins `git describe --tags` of that WIP commit:
+        # the recorded commit's tag, one commit further, and a sha the source does not have.
+        desc = sh(["git", "-C", meta["source"], "describe", "--tags", "--long", meta["commit"]]).stdout.strip()
+        m = re.fullmatch(r"(.+)-(\d+)-g[0-9a-f]+", desc)
+        want = f"{m[1]}-{int(m[2]) + 1}-g" if m else ""
+        check("render came from the working tree", want and re.fullmatch(re.escape(want) + "[0-9a-f]+", pinned),
+              f"_commit={pinned} want={want}<sha> (copier WIP commit on top of {meta['commit'][:12]})")
+    else:
+        # _commit is `git describe` output, or a bare tag name when the commit is tagged; resolve it in the source.
+        got = sh(["git", "-C", meta["source"], "rev-parse", "-q", "--verify", pinned + "^{commit}"]).stdout.strip()
+        check("render came from the recorded commit", got == meta["commit"], f"_commit={pinned} commit={meta['commit'][:12]}")
+    try:
+        settings = json.loads((render / ".claude/settings.json").read_text())
+        cmds = {h["command"].split()[0] for evs in settings.get("hooks", {}).values() for e in evs for h in e["hooks"]}
+        missing = [c for c in sorted(cmds) if not os.access(render / c, os.X_OK)]
+        check("every hook command exists and is executable", not missing, ", ".join(missing) or f"{len(cmds)} hook scripts")
+    except (OSError, ValueError, KeyError) as e:
+        check(".claude/settings.json parses", False, str(e))
+    claude = shutil.which("claude")
+    ver = sh([claude, "--version"]).stdout.strip() if claude else ""
+    check("claude CLI on PATH", bool(ver), f"{claude} {ver}")
+    ok = all(c["ok"] for c in checks)
+    record(d, "doctor", ok)
+    out({"ok": ok, "run": a.run, "checks": checks}, 0 if ok else 1)
+
+
+def cmd_session(a) -> None:
+    d = run_dir(a.run)
+    meta = load(d)
+    name = a.name or f"session-{len(meta['sessions']) + 1}"
+    stream, err = d / "evidence" / f"{name}.jsonl", d / "evidence" / f"{name}.stderr"
+    argv = [shutil.which("claude") or "claude", "-p", a.prompt, "--output-format", "stream-json", "--verbose",
+            "--include-hook-events", "--setting-sources", "project,local"]
+    if a.model:
+        argv += ["--model", a.model]
+    if a.bypass:
+        argv += ["--permission-mode", "bypassPermissions"]
+    env = {**GIT_ENV, "LOAM_MEMSTORE": str(d / "memstore")}
+    env.pop("LOAM_MEMSTORE_REMOTE", None)
+    with stream.open("w") as so, err.open("w") as se:
+        try:
+            rc = subprocess.run(argv, cwd=d / "render", stdout=so, stderr=se, env=env, timeout=a.timeout).returncode
+        except subprocess.TimeoutExpired:
+            rc = None  # claude was killed at --timeout; the partial stream is still read and kept below
+    events = []
+    for line in stream.read_text().splitlines():
+        try:
+            events.append(json.loads(line))
+        except ValueError:
+            pass
+    init = next((e for e in events if e.get("subtype") == "init"), {})
+    result = next((e for e in events if e.get("type") == "result"), {})
+    sid = init.get("session_id") or result.get("session_id")
+    hooks = [{"event": e.get("hook_event"), "name": e.get("hook_name"), "exit_code": e.get("exit_code"),
+              "outcome": e.get("outcome"), "stdout": (e.get("stdout") or "")[:400]}
+             for e in events if e.get("subtype") == "hook_response"]
+    # Copy the transcript into evidence: cleanup removes the projects dir it lives in.
+    transcripts = sorted(PROJECTS.glob(f"*/{sid}.jsonl")) if sid else []
+    if transcripts:
+        shutil.copy2(transcripts[0], d / "evidence" / f"{name}.transcript.jsonl")
+    meta["sessions"].append({"name": name, "session_id": sid})
+    save(d, meta)
+    out({"ok": rc == 0 and not result.get("is_error"), "run": a.run, "name": name, "exit_code": rc,
+         "timed_out": rc is None, "session_id": sid, "model": init.get("model"), "skills": init.get("skills"),
+         "hooks": hooks, "permission_denials": result.get("permission_denials", []),
+         "result": (result.get("result") or "")[:1500], "cost_usd": result.get("total_cost_usd"),
+         "evidence": str(stream)}, 0 if rc == 0 else 1)
+
+
+def cmd_check(a) -> None:
+    d = run_dir(a.run)
+    render = str(d / "render")
+    # pristine: the render is still copier's output (one commit, nothing changed), so the check judged the template.
+    pristine = (not sh(["git", "-C", render, "status", "--porcelain"]).stdout.strip()
+                and sh(["git", "-C", render, "rev-list", "--count", "HEAD"]).stdout.strip() == "1")
+    r = sh(["bin/check"], cwd=render, env=GIT_ENV)
+    (d / "evidence" / "check.txt").write_text(r.stdout + r.stderr)
+    last = (r.stdout.strip().splitlines() or [""])[-1]
+    record(d, "check", r.returncode == 0, last_line=last, pristine=pristine)
+    out({"ok": r.returncode == 0, "run": a.run, "exit_code": r.returncode, "last_line": last, "pristine": pristine,
+         "evidence": str(d / "evidence" / "check.txt")}, 0 if r.returncode == 0 else 1)
+
+
+def tmux_name(run: str) -> str:
+    return "loamv-" + re.sub(r"[^A-Za-z0-9_-]", "-", run)
+
+
+def screen(t: str) -> str:
+    return sh(["tmux", "capture-pane", "-p", "-t", t, "-S", "-200"]).stdout
+
+
+def tmux_alive(t: str) -> bool:
+    return sh(["tmux", "has-session", "-t", t]).returncode == 0
+
+
+def turn_state(s: str) -> str:
+    # busy: a turn runs ("esc to interrupt"). idle: the input box is back, a ❯ line between two ─ rules.
+    # dialog: anything else, such as a permission prompt, whose ❯ marks a menu option and which waits on the user.
+    if "esc to interrupt" in s:
+        return "busy"
+    lines = s.rstrip().splitlines()
+    last = max((i for i, ln in enumerate(lines) if ln.lstrip().startswith("❯")), default=-1)
+
+    def rule(i: int) -> bool:
+        return 0 <= i < len(lines) and set(lines[i].strip()) == {"─"}
+
+    return "idle" if last >= 0 and rule(last - 1) and rule(last + 1) else "dialog"
+
+
+def wait_idle(t: str, timeout: float) -> str:
+    # Returns "idle" or "dialog" once the same one shows twice in a row, else "timeout" (or "exited").
+    end, prev = time.time() + timeout, ""
+    while time.time() < end and tmux_alive(t):
+        time.sleep(1)
+        state = turn_state(screen(t))
+        if state != "busy" and state == prev:
+            return state
+        prev = state
+    return "timeout" if tmux_alive(t) else "exited"
+
+
+def cmd_tui(a) -> None:
+    d = run_dir(a.run)
+    t, ev = tmux_name(a.run), d / "evidence"
+    if not shutil.which("tmux"):
+        die("tmux not on PATH")
+    if a.action == "start":
+        if tmux_alive(t):
+            die(f"tmux session {t} already running; stop it first")
+        cmd = ["env", "-u", "LOAM_MEMSTORE_REMOTE", f"LOAM_MEMSTORE={d / 'memstore'}",
+               shutil.which("claude") or "claude", "--setting-sources", "project,local"]
+        if a.model:
+            cmd += ["--model", a.model]
+        sh(["tmux", "new-session", "-d", "-s", t, "-x", "200", "-y", "50", "-c", str(d / "render"), shlex.join(cmd)])
+        ready = False
+        for _ in range(40):
+            time.sleep(0.5)
+            s = screen(t)
+            # First launch in a new directory asks for workspace trust; accept it only for our own render.
+            if "trust this folder" in s and f"{a.run}/render" in s:
+                sh(["tmux", "send-keys", "-t", t, "Down"])
+                sh(["tmux", "send-keys", "-t", t, "Enter"])
+            elif turn_state(s) == "idle":
+                ready = True
+                break
+        out({"ok": ready, "run": a.run, "tmux": t, "attach": f"tmux attach -t {t}", "screen": screen(t)[-1500:]},
+            0 if ready else 1)
+    if not tmux_alive(t):
+        die(f"no tmux session {t}; run: control-loam tui {a.run} start")
+    if a.action == "send":
+        # Text and Enter in one send-keys arrives as a paste and is not submitted; send C-m on its own.
+        sh(["tmux", "send-keys", "-t", t, "-l", a.text])
+        time.sleep(0.5)
+        sh(["tmux", "send-keys", "-t", t, "C-m"])
+        time.sleep(2)
+        state = wait_idle(t, a.timeout)
+        s = screen(t)
+        out({"ok": state == "idle", "state": state, "run": a.run, "tmux": t, "screen": s[-3000:]}, 0 if state == "idle" else 1)
+    if a.action == "stop":
+        (ev / f"{a.name or 'tui'}.screen.txt").write_text(screen(t))
+        sh(["tmux", "send-keys", "-t", t, "-l", "/exit"])
+        time.sleep(0.5)
+        sh(["tmux", "send-keys", "-t", t, "C-m"])
+        for _ in range(20):
+            time.sleep(0.5)
+            if not tmux_alive(t):
+                break
+        killed = tmux_alive(t)
+        if killed:
+            sh(["tmux", "kill-session", "-t", t])
+        out({"ok": True, "run": a.run, "exited_cleanly": not killed, "evidence": str(ev / f"{a.name or 'tui'}.screen.txt")})
+
+
+def cmd_cleanup(a) -> None:
+    d = run_dir(a.run)
+    t = tmux_name(a.run)
+    if shutil.which("tmux") and tmux_alive(t) and not a.dry_run:
+        sh(["tmux", "kill-session", "-t", t])
+    targets = [d / "render", d / "memstore"]
+    # Claude Code keeps each session's transcript under ~/.claude/projects/<render path, non-alphanumerics as ->.
+    # Sessions copy their transcript into evidence first; this dir belongs to this run's render only.
+    targets.append(PROJECTS / re.sub(r"[^A-Za-z0-9]", "-", str((d / "render").resolve())))
+    targets = [p for p in targets if p.exists()]
+    if not a.dry_run:
+        for p in targets:
+            shutil.rmtree(p)
+    kept = sorted(str(p) for p in (d / "evidence").iterdir())
+    out({"ok": True, "run": a.run, "dry_run": a.dry_run, "removed": [str(t) for t in targets],
+         "evidence_kept": kept})
+
+
+def main() -> None:
+    p = argparse.ArgumentParser(prog="control-loam", description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    sub = p.add_subparsers(dest="cmd", required=True)
+    s = sub.add_parser("render", help="copier copy this checkout into a new run")
+    s.add_argument("--ref", default="HEAD", help="git ref to render (default HEAD; a dirty checkout renders its working tree)")
+    s.add_argument("--kind", default="python", choices=["python", "typescript", "research", "mixed", "other"])
+    s.add_argument("--run", help="run id (default: timestamp + commit)")
+    s.set_defaults(fn=cmd_render)
+    s = sub.add_parser("doctor", help="is this run worth driving? (reads the render, records the result in run.json)")
+    s.add_argument("run")
+    s.set_defaults(fn=cmd_doctor)
+    s = sub.add_parser("session", help="one headless claude -p session in the render, hook events captured")
+    s.add_argument("run")
+    s.add_argument("prompt")
+    s.add_argument("--name", help="evidence file stem (default session-N)")
+    s.add_argument("--model", help="claude --model value, e.g. fable (default: the account default)")
+    s.add_argument("--bypass", action="store_true", help="--permission-mode bypassPermissions; deny rules still apply")
+    s.add_argument("--timeout", type=int, default=300)
+    s.set_defaults(fn=cmd_session)
+    s = sub.add_parser("tui", help="drive an interactive claude session in tmux (start | send TEXT | stop)")
+    s.add_argument("run")
+    s.add_argument("action", choices=["start", "send", "stop"])
+    s.add_argument("text", nargs="?", default="", help="for send: the message to submit")
+    s.add_argument("--model", help="for start: claude --model value")
+    s.add_argument("--name", help="for stop: evidence file stem (default tui)")
+    s.add_argument("--timeout", type=int, default=300, help="for send: seconds to wait for the turn to finish")
+    s.set_defaults(fn=cmd_tui)
+    s = sub.add_parser("check", help="run the rendered project's bin/check")
+    s.add_argument("run")
+    s.set_defaults(fn=cmd_check)
+    s = sub.add_parser("cleanup", help="remove the render, memstore and session dirs; keep evidence/")
+    s.add_argument("run")
+    s.add_argument("--dry-run", action="store_true")
+    s.set_defaults(fn=cmd_cleanup)
+    a = p.parse_args()
+    a.fn(a)
+
+
+if __name__ == "__main__":
+    main()
