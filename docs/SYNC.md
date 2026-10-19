@@ -33,10 +33,11 @@ What it does, in order:
    In `.copier-answers.yml` only `_commit` changes, so the PR never rewrites where the project says its template lives.
 3. It deletes `_gh_setup.sh`, the one task an update needs, and commits Copier's result as is, conflict markers included.
    This first commit is deterministic: the same Loam commit on the same project base gives the same tree.
-4. For each file Copier left conflicted, it runs `claude -p` on `claude-opus-5-5` with a fixed brief.
-   The brief says to keep the project's content, adopt the template's change where it does not contradict it, remove every marker, and list each choice.
-   It also carries the template's own diff for that file, from the old and new renders that Copier records as index stages 1 and 3.
-   The model edits a copy outside the tree with only the Read and Edit tools, and the script copies it back.
+4. It runs one `claude -p` on `claude-opus-5-5` over every file Copier left conflicted, with a fixed brief.
+   The brief says to keep the project's content, adopt the template's change where it does not contradict it, decide each question once and apply it the same way in every file, remove every marker, and list each choice per file.
+   It points the model at the project's own docs to learn which design the project chose.
+   It also carries the template's own diff for each file, from the old and new renders that Copier records as index stages 1 and 3.
+   The model edits copies outside the tree with only the Read and Edit tools, and the script copies them back.
    `LOAM_MEMSTORE` and `TMPDIR` point into the scratch dir.
 5. It refuses to go on if a marker or a `.rej` file remains, if a conflicted JSON file no longer parses, or if any other file changed.
    Otherwise the port becomes the second commit, with the model's choices in its message, so a reviewer reads Copier's part and the model's part apart.
@@ -54,8 +55,9 @@ Why these choices:
 - Inline markers beat `.rej` files here.
   Copier 9 merges each rejected file with `git merge-file` and records the template's old and new renders in the index, so the model sees each hunk in place and gets the template's own diff.
   A `.rej` file holds only the failed hunk.
-- One call per conflicted file ties each choice list to one file, and a file the model cannot resolve fails alone.
-- The model edits a copy because Claude Code refuses writes under `.claude/` in `acceptEdits` mode.
+- One call over every conflicted file lets the model make a decision that spans files once.
+  With one call per file, the distbench port moved the catchup skill to the memory-store handoff, while the project's `docs/WORKERS.md` keeps the handoff at the root `HANDOFF.md`.
+- The model edits copies because Claude Code refuses writes under `.claude/` in `acceptEdits` mode.
   It loads only user settings because a conflicted `.claude/settings.json` is invalid JSON while the port runs.
 - A verification skill is prose plus a project-specific CLI with no shared entry point, so an agent reads its `SKILL.md` and picks the recipes.
 

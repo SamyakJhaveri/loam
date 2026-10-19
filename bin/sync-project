@@ -4,7 +4,7 @@
 # Works in a scratch clone, so the project's own checkout is never touched:
 #   1. copier update against a local Loam checkout at an exact commit, tasks skipped,
 #      committed as is (conflict markers included);
-#   2. claude resolves only the files copier left conflicted, committed separately;
+#   2. one claude call resolves only the files copier left conflicted, committed separately;
 #   3. the project's bin/check and its verify-* skill run, and their results go in the PR body;
 #   4. the branch is pushed and a PR opened with gh.
 # docs/SYNC.md explains each choice.
@@ -150,47 +150,59 @@ ok "committed copier's result as $C1 ($N conflicted files)"
 claude_env() { LOAM_MEMSTORE="$WORK/memstore" TMPDIR="$WORK/claude-tmp" "$@"; }
 mkdir -p "$WORK/memstore" "$WORK/claude-tmp"
 
-port_prompt() {  # $1 = project path, $2 = the copy to edit, $3 = the template's diff
+copy_of() { printf '%s/%s\n' "$WORK/port/$1" "$(basename "$(cat "$WORK/port/$1/path")")"; }
+
+port_prompt() {
+  echo "You are porting a project rendered from the Loam Copier template. Your working directory is the project root."
+  echo "Copier updated the project from Loam $OLD to Loam ${SHA:0:8} and could not merge $N files. A copy of each, conflict hunks included, is in \`$WORK/port\`:"
+  i=1
+  while [ "$i" -le "$N" ]; do echo "- \`$(cat "$WORK/port/$i/path")\` is at \`$(copy_of "$i")\`"; i=$((i + 1)); done
   cat <<EOF
-You are porting one file of a project rendered from the Loam Copier template. Your working directory is the project root.
-Copier updated the project from Loam $OLD to Loam ${SHA:0:8} and could not merge \`$1\`. A copy of it, conflict hunks included, is at \`$2\`.
 Each conflict hunk holds the project's current text between \`<<<<<<< before updating\` and \`=======\`, and the template's new text between \`=======\` and \`>>>>>>> after updating\`.
-Resolve every hunk in the copy:
+Resolve every hunk in every copy:
 1. Keep the project's own content.
 2. Adopt the template's change where it does not contradict the project's content. A contradiction means the project changed or removed that same content. Template content the project never had is not contradicted.
-3. Before you keep a reference to another file, such as a script path, confirm that the file exists in this checkout. This is a fresh clone, so a path that \`.gitignore\` lists can be missing and still be real.
-4. Remove every conflict marker line. Keep the file valid for its type: JSON stays parseable, scripts stay runnable.
-5. Edit only the copy. Read any project file you need. Each conflicted file gets its own call, so markers in the others are expected: $(printf '%s' "$CONFLICTS" | tr '\n' ' ')
-End your reply with a line \`Choices:\` and then one line per hunk, in the form \`- <where>: <choice>, because <reason>\`.
-If a reviewer should check something outside this file, add a line \`Notes:\` after them and one \`- \` line per note.
-The template's own change to this file, from the old render to the new render:
-\`\`\`\`diff
-$(cat "$3")
-\`\`\`\`
+3. Decide each question once and apply it the same way in every file. One change, such as where the handoff lives or which hooks run, can span several of these files. Read the project's own docs (AGENTS.md, CLAUDE.md, docs/) to learn which design the project chose, and keep that design wherever the template assumes another.
+4. Before you keep a reference to another file, such as a script path, confirm that the file exists in this checkout. This is a fresh clone, so a path that \`.gitignore\` lists can be missing and still be real.
+5. Remove every conflict marker line. Keep each file valid for its type: JSON stays parseable, scripts stay runnable.
+6. Edit only the copies. Read any project file you need. The conflicted files in the tree still hold their markers, so read the copies for those.
+End your reply with a line \`Choices:\`. Under it, for each file, write a line \`### <path>\` with the path as listed above, then one line per hunk in the form \`- <where>: <choice>, because <reason>\`.
+If a reviewer should check something, add a line \`Notes:\` after them and one \`- \` line per note.
+The template's own change to each file, from the old render to the new render:
 EOF
+  i=1
+  while [ "$i" -le "$N" ]; do
+    printf '\n### %s\n````diff\n' "$(cat "$WORK/port/$i/path")"
+    cat "$WORK/port/$i/template.diff"
+    echo '````'
+    i=$((i + 1))
+  done
 }
 
-choices() {  # $1 = a port reply; prints what follows its Choices: line, or every bullet
-  if grep -q '^Choices:' "$1"; then sed -n '/^Choices:/,$p' "$1" | tail -n +2
-  else grep '^- ' "$1" || echo "- (no choice list in the reply)"; fi
+choices() {  # $1 = a conflicted path; prints the lines under its ### heading in the port's Choices: list
+  awk -v f="$1" '
+    /^Choices:/ { on = 1; next }
+    /^Notes:/ { on = 0 }
+    on && /^### / { h = substr($0, 5); gsub(/`/, "", h); sub(/:?[ \t]*$/, "", h); here = (h == f); next }
+    on && here && NF { print; n++ }
+    END { if (!n) print "- (no choice list for this file in the reply)" }' "$WORK/port/reply"
 }
+notes() { sed -n '/^Notes:/,$p' "$WORK/port/reply" | grep '^- ' || true; }
 
 C2=""
 if [ "$N" -gt 0 ] && [ "$PORT" -eq 1 ]; then
   i=1
-  while [ "$i" -le "$N" ]; do
-    d="$WORK/port/$i"; f="$(cat "$d/path")"; copy="$d/$(basename "$f")"
-    cp "$f" "$copy"
-    port_prompt "$f" "$copy" "$d/template.diff" > "$d/prompt"
-    info "porting $f with $MODEL"
-    # The model edits a copy outside the tree: Claude Code refuses .claude/ writes in
-    # acceptEdits, and the project's own settings may hold markers, so only user settings load.
-    claude_env claude -p --model "$MODEL" --setting-sources user --tools Read,Edit \
-      --permission-mode acceptEdits --add-dir "$d" --no-session-persistence \
-      < "$d/prompt" > "$d/reply" 2> "$d/stderr" || die "claude failed on $f; see $d/stderr"
-    cp "$copy" "$f"
-    i=$((i + 1))
-  done
+  while [ "$i" -le "$N" ]; do cp "$(cat "$WORK/port/$i/path")" "$(copy_of "$i")"; i=$((i + 1)); done
+  port_prompt > "$WORK/port/prompt"
+  # One call sees every conflicted file, so a decision that spans files is made once.
+  info "porting the $N conflicted files in one call with $MODEL"
+  # The model edits copies outside the tree: Claude Code refuses .claude/ writes in
+  # acceptEdits, and the project's own settings may hold markers, so only user settings load.
+  claude_env claude -p --model "$MODEL" --setting-sources user --tools Read,Edit \
+    --permission-mode acceptEdits --add-dir "$WORK/port" --no-session-persistence \
+    < "$WORK/port/prompt" > "$WORK/port/reply" 2> "$WORK/port/stderr" || die "claude failed on the port; see $WORK/port/stderr"
+  i=1
+  while [ "$i" -le "$N" ]; do cp "$(copy_of "$i")" "$(cat "$WORK/port/$i/path")"; i=$((i + 1)); done
 fi
 
 if [ "$N" -gt 0 ]; then
@@ -205,15 +217,17 @@ if [ "$N" -gt 0 ]; then
   {
     echo "Resolve the $N files copier left conflicted, with $MODEL"
     echo
-    echo "One claude -p call per file. The brief: keep the project's own content,"
-    echo "adopt the template's change where it does not contradict it, remove every"
-    echo "marker. The model's choices:"
+    echo "One claude -p call over all $N files. The brief: keep the project's own"
+    echo "content, adopt the template's change where it does not contradict it, decide"
+    echo "each cross-file question once, remove every marker. The model's choices:"
     i=1
     while [ "$i" -le "$N" ]; do
-      echo; cat "$WORK/port/$i/path"
-      choices "$WORK/port/$i/reply"
+      f="$(cat "$WORK/port/$i/path")"
+      echo; echo "$f"
+      choices "$f"
       i=$((i + 1))
     done
+    if [ -n "$(notes)" ]; then echo; echo "Notes from the port:"; notes; fi
   } > "$WORK/port-commit.txt"
   printf '%s\n' "$CONFLICTS" | while IFS= read -r f; do git add -- "$f"; done
   git commit -q -F "$WORK/port-commit.txt"
@@ -255,16 +269,18 @@ done
   echo "- \`$CMD\` in a scratch clone, with $COPIER_V. The template came from a local Loam checkout at that commit. \`_src_path\` keeps its value."
   echo "- Copier tasks were skipped, because on update copier also runs them inside its temporary renders. \`_gh_setup.sh\` was deleted by hand."
   echo "- \`$C1\` is copier's result as is, conflict markers included."
-  [ -z "$C2" ] || echo "- \`$C2\` is the port. $MODEL resolved each conflicted file in its own call."
+  [ -z "$C2" ] || echo "- \`$C2\` is the port. $MODEL resolved every conflicted file in one call."
   echo
   echo "## Conflicts"
   [ "$N" -gt 0 ] || echo "None."
   i=1
   while [ "$i" -le "$N" ]; do
-    echo "- \`$(cat "$WORK/port/$i/path")\`"
-    choices "$WORK/port/$i/reply" | sed 's/^/  /'
+    f="$(cat "$WORK/port/$i/path")"
+    echo "- \`$f\`"
+    choices "$f" | sed 's/^/  /'
     i=$((i + 1))
   done
+  if [ "$N" -gt 0 ] && [ -n "$(notes)" ]; then echo; echo "Notes from the port:"; notes; fi
   echo
   echo "## Checks"
   echo "- \`bin/check\`: $CHECK"
