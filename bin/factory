@@ -85,11 +85,26 @@ dc_block() { awk '/^```done-checks$/{inb=1; next} /^```/{if (inb) exit} inb {pri
 # The block's checks one per line: continuations joined; indentation, blank lines, and comments dropped.
 dc_checks() { dc_block | sed -e :a -e '/\\$/N; s/\\\n//; ta' -e 's/^[[:space:]]*//' -e '/^#/d' -e '/^$/d'; }
 
-# A check that calls `guard` is a regression guard allowed to pass on base (CONTRACT.md, Done checks): `guard` in
-# command position, at the start or after ; & | ( { or !, as in `out=$(guard cmd)`, with any of the keywords if then
-# else elif do while until between, as in `if guard cmd; then`. Lint and round 0 both match dc_checks against this,
-# so a word that only holds it, like "safeguard" or a check named env-guard, is not one.
-GUARD_RE='(^|[;&|({!])([[:space:]]*(if|then|else|elif|do|while|until)[[:space:]])*[[:space:]]*guard[[:space:]]'
+# A check that calls `guard` is a regression guard allowed to pass on base (CONTRACT.md, Done checks): `guard` as the
+# command word, at the start or after ; & | ( { or !, as in `out=$(guard cmd)`, with any of the keywords if then else
+# elif do while until time, or NAME=value assignments, between, as in `if guard cmd; then` or `LOAM_HOOK= guard cmd`.
+# guard_checks matches each check against this with quoted strings and # comments removed, so a word that only holds
+# it, like "safeguard", a check named env-guard, or a reason like "x; guard y", is not one.
+GUARD_RE='(^|[;&|({!])([[:space:]]*((if|then|else|elif|do|while|until|time)[[:space:]]|[A-Za-z_][A-Za-z0-9_]*=[^[:space:]]*[[:space:]]))*[[:space:]]*guard[[:space:]]'
+
+# The dc_checks lines that call guard, or with -v the lines that do not; lint and round 0 both read guards here.
+# A whole "$(...)" capture is unquoted first, so `<<<"$(guard cmd)"` stays a guard.
+guard_checks() { # [-v]
+  local line
+  while IFS= read -r line; do
+    if sed -E -e 's/"(\$\([^"]*\))"/\1/g' -e "s/'[^']*'|\"([^\"\\\\]|\\\\.)*\"//g" -e 's/(^|[[:space:]])#.*//' \
+      <<<"$line" | grep -qE "$GUARD_RE"; then
+      [ "${1:-}" = -v ] || printf '%s\n' "$line"
+    elif [ "${1:-}" = -v ]; then
+      printf '%s\n' "$line"
+    fi
+  done < <(dc_checks)
+}
 
 # Word-like tokens in stdin, backticks and sentence punctuation stripped. A token holding a glob or a
 # shell expansion is not a path a ticket promises.
@@ -223,7 +238,7 @@ check_not_grep_only() {
   while IFS= read -r line; do
     n=$((n + 1))
     grep -qE '^(![[:space:]]*)?grep[[:space:]]' <<<"$line" && g=$((g + 1))
-  done < <(dc_checks | grep -vE "$GUARD_RE")
+  done < <(guard_checks -v)
   if [ "$n" -eq 0 ]; then
     err "every done-check is a guard; add one that fails on main and drives the real behavior"
   elif [ "$g" -eq "$n" ]; then
@@ -926,7 +941,7 @@ round_zero() {
   git -C "$MAIN_CHECKOUT" worktree remove --force "$wt" > /dev/null 2>&1
   grep -q '^FAIL checks-aborted' "$out" \
     && finish ticket-defect "checks.sh aborted on $(cut -c1-8 "$RUN/base.sha") before it printed a FAIL line; see $out"
-  guards=$(dc_checks | grep -E "$GUARD_RE" | grep -oE '(^|[[:space:]])pass[[:space:]]+"?[A-Za-z0-9_.-]+' \
+  guards=$(guard_checks | grep -oE '(^|[[:space:]])pass[[:space:]]+"?[A-Za-z0-9_.-]+' \
     | awk '{print $NF}' | tr -d '"' | sort -u)
   while read -r _ name _; do
     printf '%s\n' "$guards" | grep -qxF "$name" && continue
