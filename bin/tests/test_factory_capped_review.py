@@ -174,6 +174,25 @@ class CappedReviewTests(unittest.TestCase):
                 self.assertIn("codex review output unparseable", (self.run_dir / "round-1.fixes").read_text())
                 self.assert_draft_with_filed_finding(stderr, calls, "codex review output unparseable")
 
+    def test_a_multi_paragraph_finding_files_one_issue_with_the_whole_finding(self) -> None:
+        codex = json.dumps({"verdict": "needs-attention", "summary": "s", "next_steps": [], "findings": [
+            {"severity": "high", "file": "bin/x", "line_start": 3, "line_end": 3, "confidence": 0.9, "title": "t",
+             "body": "first para\n\nsecond para", "recommendation": "r1\nr2"}]})
+        for name, reviews, codex_replies, finding in (
+            ("reviewer", [{"verdict": "fix", "findings": [review_finding("high", "first defect")]},
+                          {"verdict": "merge", "findings": [review_finding("medium", "second\n\nIt spans\n  two.")]}],
+             None, "reviewer [medium] bin/x:3 second It spans two. Fix: f"),
+            ("codex", [CLEAN_REVIEW, CLEAN_REVIEW], [codex, codex],
+             "Codex review [high] bin/x:3 t: first para second para Fix: r1 r2"),
+        ):
+            with self.subTest(name):
+                self.new_run()
+                stderr, calls = self.run_loop(reviews, codex=codex_replies)
+                self.assert_draft_with_filed_finding(stderr, calls, finding)
+                self.assertIn("but 1 blocking", self.pr_create(calls)["body"])
+                args = self.issues(calls)[0]["args"]
+                self.assertEqual(args[args.index("--title") + 1], finding[:80])
+
     def test_clean_reviewer_and_clean_codex_open_a_ready_pr_and_file_nothing(self) -> None:
         for name, codex in (("reviewer only", None), ("with codex", [json.dumps(CLEAN_CODEX)] * 2)):
             with self.subTest(name):
