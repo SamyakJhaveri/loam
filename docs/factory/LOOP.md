@@ -14,7 +14,7 @@ Rubric text lives only in the grader files.
 | `bin/factory eval-freeze [--evals-dir D] <run-dir>...` | copies each run's last round, when the judge passed it and no reviewer finding was high or medium, into `<evals-dir>/clean/<grader>/<key>-<sha8>/` (default `evals/clean/`), the prompt cut at `## Ticket`; prints `not frozen <run-dir>: <reason>` for the rest | F36 |
 | `bin/factory run <issue>` | round 0, then worker rounds, graders, PR | F1 |
 | `bin/factory status` | run states, spend, denials per round, worktree and PR readiness, preconditions | F1 |
-| `bin/factory status --criteria` | measures the trust criteria in `ARCHITECTURE.md` (Metrics) from the target's run directories, and adds the run table, the stop counts, and each run's grader version against the checkout's grader files; reads files only, no model or `gh` call | 2026-10-19 |
+| `bin/factory status --criteria` | measures the trust criteria in `ARCHITECTURE.md` (Metrics) from the target's run directories; a criterion the run record cannot show prints `UNMEASURED` with the reason; reads files only, no model or `gh` call | 2026-10-19 |
 | `bin/factory stop <issue>` | writes `FACTORY_STOP` into the run dir | F1 |
 | `bin/runner [-C <dir>] <cmd>` | runs `<cmd>` on the runner: `ssh jhaveris bash -lc 'cd ~/Desktop/loam && <cmd>'`, or from `<dir>` there (quote a tilde, F8); `bin/runner sync` mirrors `.superpowers/factory/` to the same path on the runner with `rsync -az --delete`, excluding `runs/` and `__pycache__`; it never pulls (#36) | F0 |
 | `bin/factory next [--install]` | launches up to `MAX_PARALLEL` `ready-for-agent` issues with no assignee and no open native blocker (read through `gh api`); `--install` writes the ten-minute runner timer | F9 |

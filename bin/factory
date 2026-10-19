@@ -1704,8 +1704,7 @@ cmd_status() {
 
 # The criteria and thresholds stay in ARCHITECTURE.md; criteria.py reads them there and calls nothing.
 cmd_criteria() {
-  python3 -I "$ROOT/bin/factory.d/criteria.py" "$RUNS_ROOT" "$ROOT/docs/factory/ARCHITECTURE.md" \
-    "$ROOT/cultivation/marketplace/sam-cc-setup/agents" "$TARGET"
+  python3 -I "$ROOT/bin/factory.d/criteria.py" "$RUNS_ROOT" "$ROOT/docs/factory/ARCHITECTURE.md" "$TARGET"
 }
 
 grader_first_fail() { # run dir -> the first grader item that failed in the last graded round
