@@ -1223,8 +1223,8 @@ call_json() { # round stem role prompt_file schema_file
       printf '%s' "$res" | jq '.' > "$final"
       verdict_consistent "$final" && return 0
       log "$role verdict is inconsistent with its own lists; calling once more with the refutation"
-      printf '\n\n## Refutation\n\nYour previous reply was `%s`, which contradicts the fixes, findings, and backlog you listed. Grade again and return a consistent object.\n' \
-        "$(jq -c '{verdict, fixes: (.fixes // []), findings: ((.findings // []) | length), backlog: (.backlog // [])}' "$final")" >> "$pf"
+      printf '\n\n## Refutation\n\nYour previous reply was `%s`, which contradicts the rows, fixes, findings, and backlog you listed. Grade again and return a consistent object.\n' \
+        "$(jq -c '{verdict, rows: (.rows // {}), fixes: (.fixes // []), findings: ((.findings // []) | length), backlog: (.backlog // [])}' "$final")" >> "$pf"
       continue
     fi
     log "$role output not parseable"
