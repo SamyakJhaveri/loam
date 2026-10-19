@@ -152,8 +152,9 @@ EM_EXEMPT=(
   ":(exclude)evals/"                                          # recorded grader prompts; a replay must see them unchanged
   ":(exclude)seed/.loam/runtime/assets/curated-catalog.json"  # pinned catalog body quoting upstream metadata
 )
-# git grep exits 1 only when nothing matched; 0 is a hit and anything else is an error, so both fail.
-git grep -n -I $'\xe2\x80\x94' -- . "${EM_EXEMPT[@]}"
+# --untracked: a new file not yet added fails here, as it will in CI. git grep exits 1 only when
+# nothing matched; 0 is a hit and anything else is an error, so both fail.
+git grep --untracked -n -I $'\xe2\x80\x94' -- . "${EM_EXEMPT[@]}"
 [ "$?" -eq 1 ] || bad "em dash (U+2014) in the lines above, or git grep failed; use a plain dash '-' instead"
 
 step "claude plugin validate"
