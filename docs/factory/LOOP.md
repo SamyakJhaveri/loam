@@ -101,7 +101,7 @@ After the checks first pass, at most two grader-fail rounds per ticket; then the
 The judge decides pass or fail.
 The reviewer blocks only on a `high` or `medium` finding (`REVIEW_BLOCKING` in `bin/factory`; its verdict word is not read), the Codex review only on a `critical` or `high` finding, and each may block at most once per ticket.
 A grader whose output is absent or unparseable is a fail with one high finding "grader unparseable", never a pass.
-`verdict_consistent` runs on every judge JSON: a pass with non-empty fixes or a failing row, or a fail with empty fixes and empty backlog, is refuted, and the judge is called once more, fresh, with the refutation appended to its prompt.
+`verdict_consistent` runs on every judge JSON: a pass with non-empty fixes or a failing row, or without a row `judge.schema.json` requires, or a fail with empty fixes and empty backlog, is refuted, and the judge is called once more, fresh, with the refutation appended to its prompt.
 
 ## Grader calls
 
