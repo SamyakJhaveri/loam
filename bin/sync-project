@@ -2,8 +2,8 @@
 # sync-project - carry one Loam commit into a project rendered from Loam, as a pull request.
 #
 # Works in a scratch clone, so the project's own checkout is never touched:
-#   1. copier update against a local Loam checkout at an exact commit, tasks skipped,
-#      committed as is (conflict markers included);
+#   1. copier update against a local Loam checkout at an exact commit, tasks skipped, with the
+#      --skip and --exclude flags the rulings list, committed as is (conflict markers included);
 #   2. one claude call resolves only the files copier left conflicted, committed separately,
 #      following the owner's rulings in the project's .loam/sync-rulings.md when it has one;
 #   3. the project's bin/check and its verify-* skill run, and their results go in the PR body;
@@ -95,6 +95,22 @@ REPO="$(sed -n 's/^github_repo: //p' "$ANSWERS" | tr -d "'\"")"
 if [ -z "$RULINGS" ] && [ -f .loam/sync-rulings.md ]; then RULINGS=.loam/sync-rulings.md; fi
 RULINGS_SHA=""
 [ -z "$RULINGS" ] || RULINGS_SHA="$(git hash-object "$RULINGS")"
+# The rulings' `## Copier flags` block holds keep-ours paths as copier flags, one per line. Any
+# other line refuses the run, so a typo cannot drop a ruling and leave it to the port.
+FLAGS=()
+if [ -n "$RULINGS" ]; then
+  while IFS= read -r line; do
+    read -r flag pat extra <<< "$line"
+    [ -n "$flag" ] || continue
+    case "$flag" in --skip|--exclude) [ -n "$pat" ] && [ -z "$extra" ] ;; *) false ;; esac ||
+      die "$RULINGS: '$line' under ## Copier flags is not --skip or --exclude and one pattern"
+    FLAGS+=("$flag" "$pat")
+  done < <(awk '/^```/ && s { if (f) exit; f = 1; next } f { print; next }
+                /^## / { s = ($0 ~ /^## Copier flags[[:space:]]*$/) }' "$RULINGS")
+  if grep -q '^## Copier flags[[:space:]]*$' "$RULINGS" && [ "${#FLAGS[@]}" -eq 0 ]; then
+    die "$RULINGS has a ## Copier flags heading but no flag lines in a fenced block under it"
+  fi
+fi
 git checkout -q -b "$BRANCH"
 
 set_src() {  # $1 = the whole _src_path line to write
@@ -107,7 +123,7 @@ set_src() {  # $1 = the whole _src_path line to write
 set_src "_src_path: $LOAM"
 git commit -q --allow-empty -m "sync-project: temporary _src_path" -- "$ANSWERS"
 COPIER_V="$("${COPIER[@]}" --version 2>&1 | tail -n 1)"
-CMD="copier update --trust --defaults --skip-tasks --conflict inline --vcs-ref $SHA"
+CMD="copier update --trust --defaults --skip-tasks --conflict inline --vcs-ref $SHA${FLAGS[*]+ ${FLAGS[*]}}"
 info "running $CMD ($COPIER_V)"
 # Tasks are skipped: on update copier also runs them inside its temporary renders, where
 # Loam's _gh_setup.sh task tries a push and GitHub API writes. Copier's git merge-file follows
@@ -116,7 +132,7 @@ info "running $CMD ($COPIER_V)"
 n="${GIT_CONFIG_COUNT:-0}"
 env "GIT_CONFIG_COUNT=$((n + 1))" "GIT_CONFIG_KEY_$n=merge.conflictStyle" "GIT_CONFIG_VALUE_$n=merge" \
   "${COPIER[@]}" update --trust --defaults --skip-tasks --conflict inline --vcs-ref "$SHA" \
-  > "$WORK/copier.log" 2>&1 || { tail -n 20 "$WORK/copier.log" >&2; die "copier update failed; log in $WORK/copier.log"; }
+  ${FLAGS[@]+"${FLAGS[@]}"} > "$WORK/copier.log" 2>&1 || { tail -n 20 "$WORK/copier.log" >&2; die "copier update failed; log in $WORK/copier.log"; }
 set_src "$SRC_LINE"
 # The one task an update needs. Projects rendered from v3.0.0 track this file; staging its
 # deletion here keeps the next update from starting dirty.
@@ -155,6 +171,7 @@ fi
   echo "  $CMD"
   echo "The template came from a local Loam checkout at that commit; _src_path"
   echo "keeps the project's value. Tasks were skipped, and _gh_setup.sh deleted."
+  [ "${#FLAGS[@]}" -eq 0 ] || echo "The --skip and --exclude flags come from the owner's rulings in $RULINGS."
   if [ "$N" -gt 0 ]; then
     echo
     echo "Copier left conflict markers in these files; the next commit resolves them:"
@@ -190,6 +207,7 @@ EOF
     echo '````markdown'
     awk 1 "$RULINGS"
     echo '````'
+    [ "${#FLAGS[@]}" -eq 0 ] || echo "The script passed the lines under \`## Copier flags\` to Copier, so those paths took no template change and need no note."
   fi
   cat <<EOF
 End your reply with a line \`Choices:\`. Under it, for each file, write a line \`### <path>\` with the path as listed above, then one line per hunk in the form \`- <where>: <choice>, because <reason>\`.
@@ -301,6 +319,7 @@ fi
   echo
   echo "## How it ran"
   echo "- \`$CMD\` in a scratch clone, with $COPIER_V. The template came from a local Loam checkout at that commit. \`_src_path\` keeps its value."
+  [ "${#FLAGS[@]}" -eq 0 ] || echo "- The \`--skip\` and \`--exclude\` flags came from the \`## Copier flags\` block in \`$RULINGS\` (git blob \`$RULINGS_SHA\`)."
   echo "- Copier tasks were skipped, because on update copier also runs them inside its temporary renders. \`_gh_setup.sh\` was deleted by hand."
   echo "- \`$C1\` is copier's result as is, conflict markers included."
   [ -z "$C2" ] || echo "- \`$C2\` is the port. $MODEL resolved every conflicted file in one call."

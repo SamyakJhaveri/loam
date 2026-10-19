@@ -28,7 +28,7 @@ What it does, in order:
    `<project>` is `owner/repo`, a git URL, or a bare repo path.
    A local working checkout is accepted only with `--dry-run`, because the push would land in it.
    Without `--dry-run` it first refuses a branch name the project already has, so a push that would fail costs no model call.
-2. It points `_src_path` at the local Loam checkout in a throwaway commit, runs `copier update --trust --defaults --skip-tasks --conflict inline --vcs-ref <sha>`, and then puts the project's own `_src_path` back.
+2. It points `_src_path` at the local Loam checkout in a throwaway commit, runs `copier update --trust --defaults --skip-tasks --conflict inline --vcs-ref <sha>` plus the rulings' Copier flags (see Sync rulings), and then puts the project's own `_src_path` back.
    Copier `update` has no source flag and refuses a dirty tree, hence the throwaway commit.
    Copier runs with `merge.conflictStyle=merge` forced, because `diff3` and `zdiff3` add a base section to every hunk.
    The exact `--vcs-ref` makes Copier clone that commit, and Copier folds a checkout's uncommitted files in only when the ref is `HEAD`, so they cannot leak in.
@@ -76,6 +76,28 @@ The project's tracked file `.loam/sync-rulings.md` records them as plain prose t
 A ruling about a file Copier did not conflict on lands in the PR's notes, because the port edits only conflicted files.
 Each sync PR that makes a new owner call adds a line to the file, so the next sync repeats the call.
 `--rulings FILE` tries a draft in place of the tracked file.
+
+A ruling that a path must take no template change at all also goes in a `## Copier flags` section, as a fenced block with one Copier flag and one pattern per line:
+
+````markdown
+## Copier flags
+
+```text
+--skip /bin/check
+--skip /AGENTS.md
+--exclude /docs/runtime
+```
+````
+
+`bin/sync-project` passes these lines to `copier update` as they are, so the ruling holds by structure instead of through the port.
+`--skip` keeps a file the project has exactly as it is.
+Copier neither renders over it nor applies the template's diff to it, so even a change Copier would merge cleanly stays out.
+`--skip` still lets Copier create the file when the project lacks it, and delete it when the template removes it.
+`--exclude` keeps the path from rendering at all, so Copier never creates, changes or deletes it.
+Patterns follow `.gitignore` rules, and a leading `/` anchors one at the project root, so `/AGENTS.md` does not also match a nested `AGENTS.md`.
+Any other line in the block, or the heading without a fenced block under it, refuses the run before Copier starts.
+The port still reads the whole file, with a line saying these paths need no note, so keep the prose ruling and its reasons beside the block.
+The PR body and Copier's commit message show the full command with the flags.
 
 ### Release note: projects rendered from v3.0.0 start dirty
 
