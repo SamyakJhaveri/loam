@@ -39,6 +39,10 @@ WS_EXCLUDE=(":(exclude)*.patch" ":(exclude)*.diff")
 git diff --check "$(git hash-object -t tree /dev/null)" HEAD -- . "${WS_EXCLUDE[@]}" || bad "git diff --check (trailing whitespace or conflict markers)"
 git diff --check HEAD -- . "${WS_EXCLUDE[@]}" || bad "git diff --check HEAD (whitespace or conflict markers in staged or unstaged edits)"
 
+step "commit identities (ip-sweep identity only)"
+# Needs no private term file, so it gates every PR; release.sh still runs the full strict sweep.
+IP_SWEEP_IDENTITY_ONLY=1 bash bin/ip-sweep.sh || bad "ip-sweep identity check"
+
 step "pytest"
 # Always `python3 -m pytest`: hook tests mint a receipt with sys.executable and re-validate it with `python3`.
 # Without pytest-xdist the suite takes ~117 s serial, so build a venv from the CI pins (.venv/ is gitignored).
@@ -131,6 +135,12 @@ step "skill-listing token weight"
 # Lower one when its listing shrinks; never raise it without saying why.
 python3 bin/skill_listing_weight.py --root "$ROOT" --budget seed=85 --budget "sam-cc-setup=${LISTING_BUDGET:-377}" \
   || bad "skill-listing weight over budget"
+
+step "always-loaded prose cap"
+# Root CLAUDE.md, AGENTS.md and what they load reach every Loam session. No-growth cap in bytes,
+# set to the measured size on 2026-10-18. Lower it when the prose shrinks; raise it only in the
+# PR that grows the prose, with the reason in that PR.
+python3 bin/always_loaded_prose.py --root "$ROOT" --cap 4597 || bad "always-loaded prose over its cap"
 
 step "claude plugin validate"
 if command -v claude >/dev/null 2>&1; then
