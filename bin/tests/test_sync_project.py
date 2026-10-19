@@ -4,7 +4,7 @@ Builds a tiny Copier template (tag v1.0.0, then one untagged commit that edits a
 line the project also edited), renders a project from v1.0.0 the way Loam v3.0.0
 left it (_gh_setup.sh tracked), and keeps it in a bare repo that stands in for
 GitHub. Stubs for `claude` and `gh` on PATH log every call; the claude stub
-resolves conflict hunks by keeping the project's side.
+resolves the conflict hunks in every copy a prompt names by keeping the project's side.
 """
 
 from __future__ import annotations
@@ -39,26 +39,29 @@ prompt = sys.stdin.read()
 with open(os.environ["SYNC_STUB_LOG"], "a") as log:
     log.write(json.dumps({"argv": sys.argv[1:], "LOAM_MEMSTORE": os.environ.get("LOAM_MEMSTORE"),
                           "TMPDIR": os.environ.get("TMPDIR")}) + "\n")
-m = re.search(r"is at `([^`]+)`", prompt)
-if not m:
+files = re.findall(r"`([^`\n]+)`[^`\n]* is at `([^`\n]+)`", prompt)
+if not files:
     print("VERIFY: PASS")
     sys.exit(0)
-copy = pathlib.Path(m.group(1))
-if os.environ.get("SYNC_STUB_MODE") != "leave":
-    out, keep = [], True
-    for line in copy.read_text().splitlines(keepends=True):
-        if line.startswith("<<<<<<< "):
-            keep = True
-        elif line.rstrip("\n") == "=======":
-            keep = False
-        elif line.startswith(">>>>>>> "):
-            keep = True
-        elif keep:
-            out.append(line)
-    if os.environ.get("SYNC_STUB_MODE") == "badjson":
-        out.append("not json\n")
-    copy.write_text("".join(out))
-print("Choices:\n- hunk 1: kept the project's line, because the stub always does")
+print("Choices:")
+for path, copy in files:
+    copy = pathlib.Path(copy)
+    if os.environ.get("SYNC_STUB_MODE") != "leave":
+        out, keep = [], True
+        for line in copy.read_text().splitlines(keepends=True):
+            if line.startswith("<<<<<<< "):
+                keep = True
+            elif line.rstrip("\n") == "=======":
+                keep = False
+            elif line.startswith(">>>>>>> "):
+                keep = True
+            elif keep:
+                out.append(line)
+        if os.environ.get("SYNC_STUB_MODE") == "badjson":
+            out.append("not json\n")
+        copy.write_text("".join(out))
+    print(f"### {path}\n- hunk 1: kept the project's line in {path}, because the stub always does")
+print("Notes:\n- the stub read no other file")
 """
 
 GH_STUB = """#!/usr/bin/env bash
@@ -197,7 +200,7 @@ class SyncProjectTests(unittest.TestCase):
         self.assertFalse(self.task_log.exists(), "a copier task ran during the sync")
         self.assertEqual('{"a": 3}', self.show(port_commit, "conf.json"))
         calls = self.claude_calls()
-        self.assertEqual(3, len(calls), calls)  # one per conflicted file, then the verify skill
+        self.assertEqual(2, len(calls), calls)  # one over both conflicted files, then the verify skill
         for call in calls:
             self.assertIn("claude-opus-5-5", call["argv"])
             self.assertTrue(call["LOAM_MEMSTORE"].startswith(str(self.work)), call)
@@ -207,8 +210,12 @@ class SyncProjectTests(unittest.TestCase):
         self.assertIn("--draft", gh)
         self.assertIn("--repo example/demo", gh)
         body = (self.work / "pr-body.md").read_text()
-        for needle in ("notes.md", "kept the project's line", "check: PASSED", "VERIFY: PASS", self.sha):
+        for needle in ("- `conf.json`\n  - hunk 1: kept the project's line in conf.json,",
+                       "- `notes.md`\n  - hunk 1: kept the project's line in notes.md,",
+                       "- the stub read no other file", "check: PASSED", "VERIFY: PASS", self.sha):
             self.assertIn(needle, body)
+        message = git("log", "-1", "--format=%B", port_commit, cwd=self.remote)
+        self.assertIn("notes.md\n- hunk 1: kept the project's line in notes.md,", message)
 
     def test_dry_run_stops_before_the_push(self) -> None:
         r = self.sync("--dry-run")
