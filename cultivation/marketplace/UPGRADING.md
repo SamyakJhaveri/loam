@@ -10,6 +10,25 @@ It traveled because a prototype answers with evidence instead of waiting for the
 No agent prompt changed, so no grader replay is owed.
 Upgrade step: `claude plugin update sam-cc-setup`.
 
+## sam-cc-setup v0.9.10 codex-review runs one bare codex exec
+
+`/codex-review` no longer pipes `git diff` into Codex.
+It runs one Bash call that starts with `codex exec`, with no pipe or redirect, and Codex runs `git diff` itself.
+Codex lists the changed paths with `git diff --numstat` and reads each path's diff in its own call, because Codex cuts long command output short.
+When your settings exclude `codex exec *` from the sandbox, that exclusion now matches the call, so Codex runs outside Claude's sandbox, where it can reach its API and start its own sandbox.
+Loam's seed does not ship that exclusion (`seed/.claude/settings.json` excludes only `ssh`, `scp` and `rsync`).
+Findings left unfixed go to the project's issue tracker once the user agrees, not to the retired `docs/findings/FINDINGS.md`.
+No agent prompt changed, so no grader replay is owed.
+Upgrade step: `claude plugin update sam-cc-setup`.
+
+## sam-cc-setup v0.9.9 plan-reviewer is manual-only
+
+The `plan-reviewer` agent's description now says it runs only when the user asks for a plan review, and it no longer tells the model to start it before non-trivial work.
+An agent has no `disable-model-invocation` field, so its description is what keeps it manual.
+The always-on listing drops from 377 to 365 estimated tokens.
+plan-reviewer is not a factory grader, so no grader replay is owed.
+Upgrade step: `claude plugin update sam-cc-setup`.
+
 ## sam-cc-setup v0.9.7 brief names the render proof
 
 The `/brief` skill's Track B now says a Loam ticket that changes rendered-project behavior proves it with `control-loam`, in the form `docs/factory/CONTRACT.md` gives.
