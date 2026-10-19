@@ -16,7 +16,7 @@ class CIConfig(unittest.TestCase):
         w = TEST.read_text()
         self.assertIn("push:\n    branches: [main]", w)
         self.assertIn("pull_request:\n    branches: [main]", w)
-        self.assertIn("  verify:", w)  # job id = intended required-status context; no ruleset enforces it yet
+        self.assertIn("  verify:", w)  # job id = a status check main's ruleset requires
         # Exact step block: a commented-out or renamed step must fail here.
         self.assertIn("- name: Run check\n        run: bin/check", w)
         self.assertIn("run: python3 -m pip install -r .github/ci/python-requirements.txt", w)
