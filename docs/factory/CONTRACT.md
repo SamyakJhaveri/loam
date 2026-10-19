@@ -23,7 +23,7 @@ The body starts at `Brief:` or `Part of`; in a file the first `#` line is the ti
    The worker follows it; a departure needs a `decisions.md` line, which the judge reads.
 6. `## Done checks`: one fenced block tagged `done-checks`, a bash body sourced after `lib.sh`, run from the worktree root.
    A check is one line of the block and ends in `pass NAME` or `fail NAME reason`, in the form `A && pass N || fail N "why"`.
-   A line prefixed `guard` is a regression guard allowed to pass on `main`; every other check must print FAIL on `main`.
+   A check that calls `guard` (for example `guard bin/check` or `out=$(guard cmd)`) is a regression guard allowed to pass on `main`; every other check must print FAIL on `main`.
    The block is green when it prints no FAIL line and every named check prints exactly one PASS or FAIL line.
    No `skip`.
    The block runs under `pipefail`, so a check never pipes a command that is meant to exit non-zero into `grep`; it captures the output first (`out=$(cmd 2>&1); grep -q pattern <<<"$out"`).
