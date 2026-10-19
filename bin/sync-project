@@ -205,7 +205,7 @@ choices() {  # $1 = a conflicted path; prints the lines under its ### heading in
     on && here && NF { print; n++ }
     END { if (!n) print "- (no choice list for this file in the reply)" }' "$WORK/port/reply"
 }
-notes() { sed -n '/^Notes:/,$p' "$WORK/port/reply" | grep '^- ' || true; }
+notes() { sed -n '/^Notes:/,$p' "$WORK/port/reply" | grep -E '^[[:space:]]*- ' || true; }
 
 C2=""
 if [ "$N" -gt 0 ] && [ "$PORT" -eq 1 ]; then
