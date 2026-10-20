@@ -65,6 +65,12 @@ class AlwaysLoadedProseCapTest(unittest.TestCase):
         self.assertIn("docs/extra.md", result.stderr)
         self.assertIn("raise the cap", result.stderr)
 
+    def test_one_byte_under_fails(self) -> None:
+        # A cap left above a shrunk total would let a later PR regrow the prose with no cap edit in its diff.
+        result = self.run_cap(self.total + 1)
+        self.assertEqual(1, result.returncode, result.stdout + result.stderr)
+        self.assertIn(f"lower the cap in bin/check to {self.total}", result.stderr)
+
     def test_untracked_rules_file_does_not_count(self) -> None:
         # Root .claude is a symlink into seed/, so a local untracked rule would fail bin/check here but not on CI.
         (self.root / ".claude/rules/local.md").write_text("local only\n", encoding="utf-8")

@@ -8,7 +8,8 @@ fenced block, and so does this. Files outside --root, such as ~/.claude and
 an @~/ import, are not counted. Only files git tracks count, so a local
 untracked rule or CLAUDE.local.md cannot fail bin/check where CI passes.
 
-Exit status: 0 at or under --cap bytes, 1 over it.
+Exit status: 0 at exactly --cap bytes, 1 over it or under it. Failing
+under it makes a shrink lower the cap, so later growth must edit the cap.
 """
 
 from __future__ import annotations
@@ -65,7 +66,7 @@ def measure(root: pathlib.Path) -> list[tuple[str, int, int]]:
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--root", default=".")
-    parser.add_argument("--cap", type=int, required=True, help="Fail when the total exceeds this many bytes.")
+    parser.add_argument("--cap", type=int, required=True, help="The measured total in bytes; any other total fails.")
     args = parser.parse_args()
 
     files = measure(pathlib.Path(args.root))
@@ -76,6 +77,13 @@ def main() -> int:
         print(
             f"FAIL: always-loaded prose is {total} bytes ({lines} lines), over the {args.cap}-byte cap. "
             f"Files: {listing}. Cut something, or raise the cap in bin/check in the same PR and say why.",
+            file=sys.stderr,
+        )
+        return 1
+    if total < args.cap:
+        print(
+            f"FAIL: always-loaded prose is {total} bytes, under the {args.cap}-byte cap. "
+            f"In this PR, lower the cap in bin/check to {total}.",
             file=sys.stderr,
         )
         return 1
