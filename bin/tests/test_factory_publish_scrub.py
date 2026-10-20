@@ -153,10 +153,25 @@ class PublishScrubTests(unittest.TestCase):
         return found
 
     def test_notify_issue_comment_is_scrubbed(self) -> None:
-        # main_loop's notify after an even failing round posts up to ten FAIL lines with their reasons.
-        calls = self.run_factory('notify "7 checks failing after round 2" "FAIL widget: $(cat "$DECISIONS")"\n')
+        # finish's notify can carry worker text, such as the ABANDON line from decisions.md.
+        calls = self.run_factory('notify "7 abandon" "ABANDON widget $(cat "$DECISIONS")"\n')
         for call in self.calls(calls, "issue", "comment"):
             self.assert_scrubbed(call)
+
+    def test_failing_round_notify_names_checks_never_reasons(self) -> None:
+        # main_loop's notify after an even failing round names each failing check, never its reason: the reason
+        # is command output, and a path or hostname in it has no token shape for scrub to catch.
+        reason = "cat: /home/runner/.config/db.acme.internal/creds: No such file"
+        calls = self.run_factory(
+            "ROUND=1; MAX_ROUNDS=2\n"
+            "worker_round() { :; }; check_frozen() { :; }; assert_caps() { :; }; do_not_touch_hits() { :; }\n"
+            f"run_checks() {{ printf '%s\\n' 'PASS ok' 'FAIL widget: {reason}' > \"$2\"; }}\n"
+            "(main_loop) || :\n")
+        bodies = [c["body"] for c in self.calls(calls, "issue", "comment") if "after round 2" in c["body"]]
+        self.assertEqual(len(bodies), 1, calls)
+        self.assertIn("FAIL widget\n", bodies[0])
+        self.assertIn("round-2.checks", bodies[0])
+        self.assertNotIn("db.acme.internal", bodies[0])
 
     def test_pr_create_and_filed_issues_are_scrubbed(self) -> None:
         calls = self.run_factory("open_pr\n")
