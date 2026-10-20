@@ -296,7 +296,8 @@ test('catalog.activation-honesty', () => {
   // Finding 5: recipient delivery. The recipient root is the package's `factory/../..`; every
   // present-unqualified/verified target body is read, while planned targets (whose bodies do not
   // exist yet) are never read. A project may keep its own wording of a pending method, so this
-  // recipient's adapted list is not asserted here; the Loam provenance gate requires it empty.
+  // recipient's adapted list is not asserted here; `qualify catalog` prints it, and the Loam
+  // provenance gate requires it empty.
   const recipientRoot = recipientRootOf(root);
   assert.equal(checkRecipientDelivery(catalog, recipientRoot).checked, present.length);
   // A scratch recipient with Loam's present bodies: pass, then remove one body and change a byte.
@@ -312,8 +313,25 @@ test('catalog.activation-honesty', () => {
     const catchupBody = join(scratchRecipient, '.agents', 'skills', 'catchup', 'SKILL.md');
     rmSync(catchupBody);
     expectRule(() => checkRecipientDelivery(loamBodies, scratchRecipient), 'delivery.missing');
-    writeFileSync(catchupBody, 'the project\'s own wording\n');
+    // An adapted SKILL.md passes when it is non-empty, opens with frontmatter naming the skill and
+    // holds no merge-conflict marker; a setext underline of eight `=` is not a marker.
+    const adaptedBody = '---\nname: catchup\ndescription: the project\'s own wording\n---\n\nTitle\n========\n';
+    writeFileSync(catchupBody, adaptedBody);
     assert.deepEqual(checkRecipientDelivery(loamBodies, scratchRecipient), { checked: present.length, adapted: ['method:catchup'] });
+    // What a bad sync merge leaves fails, each under its own rule.
+    writeFileSync(catchupBody, `${adaptedBody}<<<<<<< ours\nmine\n=======\ntheirs\n>>>>>>> theirs\n`);
+    expectRule(() => checkRecipientDelivery(loamBodies, scratchRecipient), 'delivery.adapted-conflict');
+    writeFileSync(catchupBody, `${adaptedBody}=======\r\n`);
+    expectRule(() => checkRecipientDelivery(loamBodies, scratchRecipient), 'delivery.adapted-conflict');
+    for (const empty of ['', ' \n\n']) {
+      writeFileSync(catchupBody, empty);
+      expectRule(() => checkRecipientDelivery(loamBodies, scratchRecipient), 'delivery.adapted-empty');
+    }
+    for (const broken of ['the project\'s own wording\n', '---\nname: catchup\ndescrip', '---\ndescription: no name\n---\nbody\n', '---\nname:\n---\nbody\n']) {
+      writeFileSync(catchupBody, broken);
+      expectRule(() => checkRecipientDelivery(loamBodies, scratchRecipient), 'delivery.adapted-frontmatter');
+    }
+    writeFileSync(catchupBody, adaptedBody);
     // A verified body is held to its exact bytes.
     loamBodies.targets.find(t => t.id === 'method:catchup')!.delivery = 'verified';
     expectRule(() => checkRecipientDelivery(loamBodies, scratchRecipient), 'delivery.digest');
