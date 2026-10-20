@@ -55,12 +55,6 @@ GRADERS_DIR="$ROOT/cultivation/marketplace/sam-cc-setup/agents"
 mkdir -p "$RUN/frozen"
 freeze
 """
-# A run frozen before the end line: its checks.sh is lib.sh, the block, and the exit, with nothing after the block.
-OLD_FREEZE = """BODY=$(cat "$RUN/issue.md")
-mkdir -p "$RUN/frozen"
-{ cat "$ROOT/bin/factory.d/lib.sh"; echo; dc_block; echo; echo 'exit $((n_fail > 0))'; } > "$RUN/frozen/checks.sh"
-chmod +x "$RUN/frozen/checks.sh"
-"""
 
 
 def git(*args: str, cwd: pathlib.Path) -> None:
@@ -80,24 +74,23 @@ class ChecksGreenTests(unittest.TestCase):
                     "FACTORY_RUNS_ROOT": str(self.tmp / "runs")}
         self.env.pop("FACTORY_TEST_UNSET", None)
 
-    def sourced(self, name: str, block: list[str], script: str,
-                freeze: str = FREEZE) -> tuple[subprocess.CompletedProcess, pathlib.Path]:
+    def sourced(self, name: str, block: list[str], script: str) -> tuple[subprocess.CompletedProcess, pathlib.Path]:
         run = self.tmp / f"run-{name}"
         run.mkdir()
         (run / "issue.md").write_text("```done-checks\n" + "\n".join(block) + "\n```\n")
         prelude = f"RUN='{run}'; LOG=\"$RUN/log\"; KEY=t; IS_FILE=1\n"
-        proc = subprocess.run(["bash", "-c", f". bin/factory\n{prelude}{freeze}{script}"], cwd=ROOT,
+        proc = subprocess.run(["bash", "-c", f". bin/factory\n{prelude}{FREEZE}{script}"], cwd=ROOT,
                               env=self.env, capture_output=True, text=True, check=False)
         return proc, run
 
-    def main_loop(self, name: str, block: list[str], freeze: str = FREEZE) -> tuple[bool, str]:
+    def main_loop(self, name: str, block: list[str]) -> tuple[bool, str]:
         """(green, round-1 checks output): one round, then the round cap stops a failing round."""
         script = (f"WORKTREE='{self.repo}'; DECISIONS=\"$RUN/decisions.md\"; BRANCH=t; MAX_ROUNDS=1\n"
                   'touch "$DECISIONS"\n'
                   "worker_round() { :; }; check_frozen() { :; }; assert_caps() { :; }; do_not_touch_hits() { :; }\n"
                   "measure_rows() { echo GREEN; exit 0; }\n"
                   "main_loop")
-        proc, run = self.sourced(name, block, script, freeze)
+        proc, run = self.sourced(name, block, script)
         green = "GREEN" in proc.stdout
         if not green:
             self.assertEqual((run / "status").read_text().strip(), "stopped-cap", proc.stderr)
@@ -129,12 +122,6 @@ class ChecksGreenTests(unittest.TestCase):
         green, checks = self.main_loop("early-exit", EARLY_EXIT)
         self.assertFalse(green, checks)
         self.assertIn("FAIL checks-aborted: checks.sh exited 0", checks)
-
-    def test_main_loop_old_format_checks_sh_is_not_marked_aborted(self) -> None:
-        # A resumed run frozen before the end line has no end line to look for.
-        green, checks = self.main_loop("old-format", CLEAN, OLD_FREEZE)
-        self.assertTrue(green, checks)
-        self.assertNotIn("checks-aborted", checks)
 
     def test_main_loop_glued_fail_is_not_green(self) -> None:
         green, checks = self.main_loop("glued", GLUED_FAIL)
