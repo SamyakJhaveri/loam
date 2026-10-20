@@ -86,8 +86,10 @@ if [ -f STATE.md ]; then
 fi
 
 # Loam pin: only for a project seeded from Loam. A pin must be a vX.Y.Z release
-# tag and the newest one. ls-remote gets 5 s of wall clock: git's low-speed
-# settings do not bound a stalled connect, and stock macOS has no `timeout`.
+# tag, or vX.Y.Z-N-g<sha>, the form Copier records when bin/sync-project carries
+# a commit N past that tag, and must not be behind the newest release.
+# ls-remote gets 5 s of wall clock: git's low-speed settings do not bound a
+# stalled connect, and stock macOS has no `timeout`.
 # set -m puts git in its own process group, so the kill also reaches its
 # remote-https helpers. The gh: shorthand is Copier-only and fails in git.
 ANSWERS=.copier-answers.yml
@@ -105,9 +107,10 @@ tags() {
 }
 pin() {
   [ -f "$ANSWERS" ] || { PIN="not a Loam project"; return; }
-  local commit latest src
+  local commit base latest src
   commit="$(answer _commit)"
-  if ! printf '%s\n' "$commit" | grep -Eq '^v[0-9]+\.[0-9]+\.[0-9]+$'; then
+  base="$(printf '%s\n' "$commit" | sed -nE 's/^(v[0-9]+\.[0-9]+\.[0-9]+)(-[0-9]+-g[0-9a-f]+)?$/\1/p')"
+  if [ -z "$base" ]; then
     echo "FLAG: Loam pin $commit is not a release tag"
     PIN="$commit (not a release tag)"; return
   fi
@@ -123,11 +126,14 @@ pin() {
   fi
   if [ "$commit" = "$latest" ]; then
     PIN="$commit (latest)"
-  elif [ "$(printf '%s\n%s\n' "$commit" "$latest" | newest)" = "$commit" ]; then
+  elif [ "$base" = "$latest" ]; then
+    local past="${commit#"$base"-}"
+    PIN="$commit (${past%%-*} commits after the latest release)"
+  elif [ "$(printf '%s\n%s\n' "$base" "$latest" | newest)" = "$base" ]; then
     echo "FLAG: Loam pin $commit is newer than the newest release $latest"
     PIN="$commit (newer than the newest release)"
   else
-    echo "FLAG: Loam pin $commit is not the latest release $latest; run uvx copier update --trust"
+    echo "FLAG: Loam pin $commit is behind the latest release $latest; run bin/sync-project <owner/repo> from a Loam checkout"
     PIN="$commit (not the latest)"
   fi
 }
