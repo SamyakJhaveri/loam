@@ -100,6 +100,7 @@ Write patterns without quotes.
 The section holds only blank lines and that one fenced block, up to the next heading.
 The run refuses before Copier starts when a line in the block is anything else, when the section holds any other line or a second block, when the heading appears twice, or when a heading names Copier flags in another form, such as `## Copier Flags`, `### Copier flags` or `## Copier flag`.
 Inside another fenced block only the exact heading counts, so a code comment such as `# copier flags are set below` does not refuse the run.
+When the file has no exact heading, such a line refuses it, so a fence left open cannot hide a misspelled heading below it.
 The port still reads the whole file, with a line saying these paths need no note, so keep the prose ruling and its reasons elsewhere in the file.
 The PR body and Copier's commit message show the full command with the flags.
 

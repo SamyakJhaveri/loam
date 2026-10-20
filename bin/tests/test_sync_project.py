@@ -311,6 +311,8 @@ class SyncProjectTests(unittest.TestCase):
                                          "no flag lines"),
             "heading only": ("## Copier flags\n\n## Other\n", "no flag lines"),
             "empty fence": ("## Copier flags\n\n```text\n```\n", "no flag lines"),
+            "near miss after an unclosed fence": ("```bash\necho hi\n\n" + section.replace("flags", "Flags"),
+                                                  "inside a fenced block"),
         }
         for i, (name, (text, needle)) in enumerate(cases.items()):
             with self.subTest(name):
