@@ -139,8 +139,16 @@ class RoundZeroGuardTests(unittest.TestCase):
     def test_guard_in_a_quoted_capture_is_a_guard(self) -> None:
         out = self.round_zero(
             'grep -q safeguard <<<"$(guard cat README.md)" && pass quoted || fail quoted "x"\n'
+            'grep -q safeguard <<<"$(guard cat "README.md")" && pass inner-quote || fail inner-quote "x"\n'
+            'grep -q safeguard <<<"text: $(guard cat README.md)" && pass in-text || fail in-text "x"\n'
             'test -e NEW.md && pass new-file || fail new-file "NEW.md is missing"')
         self.assertEqual(out.strip(), "ROUND0-OK")
+
+    def test_reason_after_a_quoted_capture_is_not_a_guard(self) -> None:
+        out = self.round_zero(
+            'guard true && pass check || fail check "base is broken"\n'
+            'grep -q safeguard <<<"$(cat README.md)" && pass readme || fail readme "x; guard y"')
+        self.assertIn("FINISH ticket-defect: check readme passes on", out)
 
     def test_lint_reads_guards_as_round_zero_does(self) -> None:
         for checks in ('guard bin/check >/dev/null && pass g || fail g "x"\n'
