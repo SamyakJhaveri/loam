@@ -54,6 +54,7 @@ project_kind:
 _tasks:
   # Strip the pyright-lsp plugin from settings for non-Python project kinds. Runs on update too:
   # the update's temp renders must match the stripped file, or the merge re-adds the plugin as a conflict.
+  # bin/sync-project repeats this strip and the kind list; change both together.
   - >-
     {% if project_kind not in ['python', 'research', 'mixed'] %}
     python3 -c "import json; f='.claude/settings.json'; d=json.load(open(f)); d.get('enabledPlugins', {}).pop('pyright-lsp@claude-plugins-official', None); w=open(f, 'w'); json.dump(d, w, indent=2); w.write('\n')"

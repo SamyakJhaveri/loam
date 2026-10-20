@@ -36,7 +36,7 @@ class RoundZeroGuardTests(unittest.TestCase):
         script = (f"RUN='{run}'; WORKTREE='{run}/wt'; MAIN_CHECKOUT='{self.tmp}/repo'; LOG=\"$RUN/log\"\n"
                   'finish() { echo "FINISH $1: $2"; exit 0; }\n'
                   'BODY=$(cat "$RUN/issue.md"); git -C "$MAIN_CHECKOUT" rev-parse HEAD > "$RUN/base.sha"\n'
-                  "{ cat bin/factory.d/lib.sh; echo; dc_block; echo; echo 'exit $((n_fail > 0))'; }"
+                  "{ cat bin/factory.d/lib.sh; echo; dc_block; echo; echo \"$CHECKS_END\"; echo 'exit $((n_fail > 0))'; }"
                   ' > "$RUN/frozen/checks.sh"; chmod +x "$RUN/frozen/checks.sh"\n'
                   "round_zero; echo ROUND0-OK")
         proc = subprocess.run(["bash", "-c", f". bin/factory\n{script}"], cwd=ROOT,
