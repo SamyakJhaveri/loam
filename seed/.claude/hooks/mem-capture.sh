@@ -146,7 +146,10 @@ text = raw.decode("utf-8", "replace")
 # the generic, Bearer, and URL-credential subs keep a capture group so only the
 # secret value is replaced and the surrounding JSON stays valid.
 SUBS = [
-    (re.compile(r"-----BEGIN [A-Z0-9 ]*PRIVATE KEY(?: BLOCK)?-----.*?(?:-----END [A-Z0-9 ]*PRIVATE KEY(?: BLOCK)?-----|$)", re.DOTALL),
+    # A key with no END line loses only its header lines and its base64 body, with
+    # line breaks real or JSON-escaped; a quote or another backslash stops it. So a
+    # BEGIN marker named in prose costs a few words, not the rest of the trace.
+    (re.compile(r"-----BEGIN [A-Z0-9 ]*PRIVATE KEY(?: BLOCK)?-----(?:.*?-----END [A-Z0-9 ]*PRIVATE KEY(?: BLOCK)?-----|(?:(?:\r?\n|(?:\\r)?\\n)[A-Za-z][A-Za-z0-9-]*: [^\"\\\r\n]*)*(?:(?:\s|\\[nr])+[A-Za-z0-9+/=]+)*)", re.DOTALL),
      "[REDACTED:private_key]"),
     (re.compile(r"([a-zA-Z][a-zA-Z0-9+.\-]*://[^:@/\s]+:)[^@/\s]+@"),
      r"\1[REDACTED:url_credentials]@"),
