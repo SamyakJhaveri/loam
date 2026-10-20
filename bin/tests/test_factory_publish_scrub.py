@@ -80,6 +80,11 @@ PROSE = "The scrub matches -----BEGIN RSA PRIVATE KEY----- markers, and this cla
 CUT = "-----BEGIN RSA PRIVATE KEY----- markers"
 
 
+def indented(text: str, pad: str) -> str:
+    """Every line of text with pad in front, as a key pasted into a code block or a YAML value is."""
+    return pad + text.replace("\n", "\n" + pad)
+
+
 def subs(path: pathlib.Path) -> list[str]:
     """The re.compile(...) calls, flags included, in a file's `SUBS = [` block."""
     block = path.read_text().split("SUBS = [", 1)[1].split("\n]", 1)[0]
@@ -193,17 +198,22 @@ class ScrubRulesTests(unittest.TestCase):
         self.assertEqual([rule for rule in memory if rule not in factory], [])
 
     def test_factory_scrub_stops_a_key_with_no_end_line(self) -> None:
-        text = f"{PROSE}\n## Next\n{OPEN_KEY}\n\n## Metrics\nrounds: 2\n"
+        text = f"{PROSE}\n## Next\n{OPEN_KEY}\n\n## Indented\n{indented(OPEN_KEY, '    ')}\n\n## Metrics\nrounds: 2\n"
         env = {k: v for k, v in os.environ.items() if k not in INHERITED}
         out = subprocess.run(["bash", "-c", ". bin/factory; scrub"], cwd=ROOT, env={**env, "FACTORY_SOURCED": "1"},
                              input=text, capture_output=True, text=True, check=True).stdout
-        self.assertEqual(out, PROSE.replace(CUT, "[redacted]") + "\n## Next\n[redacted]\n\n## Metrics\nrounds: 2\n")
+        self.assertEqual(out, PROSE.replace(CUT, "[redacted]") + "\n## Next\n[redacted]\n\n## Indented\n    [redacted]"
+                         "\n\n## Metrics\nrounds: 2\n")
 
     def test_mem_capture_scrubs_private_key_blocks(self) -> None:
         # The memory store gets the key samples, one per transcript line as Claude writes it, so each line
         # break in a key is the two characters \n inside a JSON string. Every line must stay valid JSON.
+        # The open key also comes inside a JSON string in a message (\\n in the trace, depth 2 and 3),
+        # indented with tabs (\t), and indented with spaces, headers included.
         closed = [text for text in SECRETS if "PRIVATE KEY" in text and text != OPEN_KEY]
-        texts = closed + [PROSE, OPEN_KEY, "a later message stays"]
+        nested = [json.dumps({"cmd": OPEN_KEY}), json.dumps(json.dumps({"cmd": OPEN_KEY}))]
+        texts = closed + [PROSE, OPEN_KEY, *nested, indented(OPEN_KEY, "\t"), indented(OPEN_KEY, "    "),
+                          "a later message stays"]
         with tempfile.TemporaryDirectory() as tmp:
             top = pathlib.Path(tmp)
             transcript = top / "t.jsonl"
@@ -215,7 +225,9 @@ class ScrubRulesTests(unittest.TestCase):
             trace = gzip.decompress(next(top.glob("store/traces/*/*-scrub1.jsonl.gz")).read_bytes()).decode()
         stored = [json.loads(line)["message"]["content"] for line in trace.splitlines()]
         tag = "[REDACTED:private_key]"
-        self.assertEqual(stored, [tag] * len(closed) + [PROSE.replace(CUT, tag), tag, "a later message stays"])
+        nested_tag = [json.dumps({"cmd": tag}), json.dumps(json.dumps({"cmd": tag}))]   # still parses as JSON
+        self.assertEqual(stored, [tag] * len(closed) + [PROSE.replace(CUT, tag), tag, *nested_tag, "\t" + tag,
+                                                        "    " + tag, "a later message stays"])
 
 
 if __name__ == "__main__":
