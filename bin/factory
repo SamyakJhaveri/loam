@@ -1401,13 +1401,21 @@ file_issues() { # source issue pr-url, one issue per stdin line
   done
 }
 
-# Only result lines show, at most 50, each cut to 300 characters: raw check output may hold a secret
-# (the repo is public), push the results past the cap, close the fence, or exceed GitHub's 65536-character
-# body limit. The full file stays in the run dir.
+# Only each result's word and check name show, never its reason: lib.sh's `fail NAME "$out"` puts captured
+# command output in the reason, which may hold a secret, and the repo is public with every body edit kept.
+# A MEASURE value shows only when it is a number; a name outside lib.sh's [A-Za-z0-9_.-] is dropped, so a raw
+# output line that starts with FAIL cannot close the fence. At most 50 lines, each cut to 300 characters, stay
+# under GitHub's 65536-character body limit. The full file stays in the run dir, and the section names it.
 checks_section() { # heading checks-file
   printf '## %s\n\n```\n' "$1"
-  awk -v max=50 -v f="$2" '/^(PASS|FAIL|MEASURE) / {n++; if (n <= max) print substr($0, 1, 300)} END {if (n > max) printf "... %d more lines in %s\n", n - max, f}' "$2"
-  printf '```\n\n'
+  awk -v max=50 -v f="$2" '/^(PASS|FAIL|MEASURE) / {
+      n++; if (n > max) next
+      name = $2; sub(/:$/, "", name); line = $1
+      if (name ~ /^[A-Za-z0-9_.-]+$/) line = line " " name
+      if ($1 == "MEASURE" && NF == 3 && $3 ~ /^-?[0-9]+(\.[0-9]+)?$/) line = line " " $3
+      print substr(line, 1, 300)}
+    END {if (n > max) printf "... %d more lines in %s\n", n - max, f}' "$2"
+  printf '```\n\nReasons and full output: %s\n\n' "$2"
 }
 
 open_pr() { # [draft]: opened at the grader-round cap
