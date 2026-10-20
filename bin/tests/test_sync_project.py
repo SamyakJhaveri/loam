@@ -464,8 +464,8 @@ class SyncProjectTests(unittest.TestCase):
         r = self.sync("--dry-run")
         self.assertEqual(0, r.returncode, r.stdout + r.stderr)
         self.assertIn("no .loam/sync-rulings.md on main and no --rulings", r.stdout + r.stderr)
-        self.assertIn("- No `.loam/sync-rulings.md` on `main`; Copier ran with no flags and the port with the brief "
-                      "alone.", (self.work / "pr-body.md").read_text())
+        self.assertIn("- No `.loam/sync-rulings.md` on `main`; Copier ran with no --skip or --exclude flags and the "
+                      "port with the brief alone.", (self.work / "pr-body.md").read_text())
         # The control: with the file on main, neither appears.
         self.commit_rulings("- conf.json: the tracked ruling.\n")
         self.work = self.base / "work-rulings"

@@ -375,7 +375,7 @@ fi
   elif [ -n "$RULINGS" ]; then
     echo "- Nothing conflicted, so no port read the owner's rulings in \`$RULINGS\` (git blob \`$RULINGS_SHA\`); check the diff against them."
   else
-    echo "- No \`.loam/sync-rulings.md\` on \`$BASE\`; Copier ran with no flags${C2:+ and the port with the brief alone}."
+    echo "- No \`.loam/sync-rulings.md\` on \`$BASE\`; Copier ran with no --skip or --exclude flags${C2:+ and the port with the brief alone}."
   fi
   echo
   echo "## Conflicts"
