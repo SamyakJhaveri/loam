@@ -1,7 +1,7 @@
 {
   "type": "object",
   "properties": {
-    "rows": { "type": "object" },
+    "rows": { "type": "object", "required": ["correct", "verified", "honest"] },
     "evidence": { "type": "object" },
     "fixes": { "type": "array", "items": { "type": "string" } },
     "backlog": { "type": "array", "items": { "type": "string" } },

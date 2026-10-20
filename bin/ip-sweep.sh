@@ -1,18 +1,18 @@
 #!/usr/bin/env bash
-# ip-sweep.sh — repeatable IP gate before any public push.
+# ip-sweep.sh - repeatable IP gate before any public push.
 #
 # This gate is tracked in the public Loam repo but is not rendered into projects.
 # The blocklist itself lives in a gitignored term file (see IP_TERMS_FILE), never
 # in this tracked script.
 #
 # Checks:
-#   (1) no foreign-IP terms in tracked text files   — hard FAIL
-#   (2) no git-LFS objects                           — WARN; FAIL under STRICT
-#   (3) public author/committer identities only        — WARN; FAIL under STRICT
+#   (1) no foreign-IP terms in tracked text files   - hard FAIL
+#   (2) no git-LFS objects                           - WARN; FAIL under STRICT
+#   (3) public author/committer identities only        - WARN; FAIL under STRICT
 #
 # The private dev archive has legitimately dirty authors/LFS, so (2) and (3) are
 # WARN by default. Set IP_SWEEP_STRICT=1 (release.sh does, and any public run
-# should) to make them hard failures — a real exit-code gate, not a note.
+# should) to make them hard failures - a real exit-code gate, not a note.
 set -euo pipefail
 cd "$(git rev-parse --show-toplevel)"
 
@@ -174,7 +174,7 @@ if [[ -f "$EXAMPLE_FILE" ]]; then
   PLACEHOLDERS='^(example-project-name|another vendored term|\\bacronym\\b)$'
   STRAY="$(grep -vE '^[[:space:]]*#' "$EXAMPLE_FILE" | grep -vE '^[[:space:]]*$' | grep -vE "$PLACEHOLDERS" || true)"
   if [ -n "$STRAY" ]; then
-    echo "WARN: $EXAMPLE_FILE has non-placeholder line(s) — real terms belong ONLY in the gitignored bin/.ip-terms:"
+    echo "WARN: $EXAMPLE_FILE has non-placeholder line(s) - real terms belong ONLY in the gitignored bin/.ip-terms:"
     echo "$STRAY"
     [[ "$STRICT" = 1 ]] && FAIL=1
   fi
