@@ -49,9 +49,9 @@ use_target() { # dir -> 1 when dir is not in a git checkout, or is another repos
 use_target "$ROOT" || { TARGET="$ROOT"; MAIN_CHECKOUT=$(dirname "$ROOT"); TARGET_IS_LOAM=1; RUNS_ROOT="$RUNS_BASE"; }
 
 # The ticket sections, in contract order. Six are required; Approach, Merge checklist,
-# and Rows measured are optional.
+# Rows measured, and a trailing Comments are optional.
 CANON=("Goal and why" "Do not touch" "Out of scope" "Approach" "Done checks" \
-       "Merge checklist" "Rows measured" "Worker" "Decisions")
+       "Merge checklist" "Rows measured" "Worker" "Decisions" "Comments")
 REQUIRED=("Goal and why" "Do not touch" "Out of scope" "Done checks" "Worker" "Decisions")
 CAPS=" MAX_ROUNDS ROUND_BUDGET_USD GRADER_BUDGET_USD TICKET_BUDGET_USD DAILY_BUDGET_USD \
 MAX_HOURS MAX_TURNS CALL_TIMEOUT_SEC MAX_PARALLEL "

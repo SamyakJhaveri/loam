@@ -27,6 +27,7 @@ Keep rows a check enforces, so each enforcer stays findable; drop a row only whe
 | `/pstack:poteto-mode` only for a contested design, concurrency, or a cross-cutting change; small or obvious edits go straight to one worker (pilot: 1.9x cost, no quality gain, #236) | owner ruling 2026-10-19; `seed/docs/WORKERS.md.jinja` pstack | prose (judgment) |
 | A project can opt out of the session-memory system with the Copier question `memory` (default `true`): `false` renders none of its hooks, hook registration, tools or prose, and `bin/sync-project --data memory=false` carries the answer. Reason: distbench keeps its no-hooks harness | owner ruling 2026-10-19; `copier.yml`, `docs/COPIER.md` | prose; the verify-loam render recipe `render-memory` proves a render |
 | Fable and Codex review finished work read-only; an Opus worker confirms or rejects each finding and fixes only the confirmed ones | owner ruling 2026-10-19; `seed/docs/WORKERS.md.jinja` Roles | prose (judgment) |
+| Factory ticket lint accepts a `## Comments` section, and only as the last section | owner ruling 2026-10-19; `docs/factory/CONTRACT.md` ticket contract, item 11 | check: `bin/tests/test_factory_ticket_sections.py` in `bin/check` step "pytest" |
 
 ## Checkable, not yet enforced
 
