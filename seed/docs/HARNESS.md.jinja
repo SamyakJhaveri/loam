@@ -37,7 +37,7 @@ on a prompt.
 ## The hooks
 
 None runs on a tool matcher; every hook fires on a lifecycle event
-(SessionStart, SessionEnd, PreCompact, Stop, PostModelSwitch), so none adds
+(SessionStart, {% if memory %}SessionEnd, PreCompact, Stop, {% endif %}PostModelSwitch), so none adds
 per-tool latency.
 
 - `fable-session-brief.sh` (SessionStart, PostModelSwitch): prints the Fable
@@ -47,8 +47,8 @@ per-tool latency.
   `claude -p` startup payload carries no `model` field, so the brief does not
   fire there.
 - `post-compact-reinject.sh` (SessionStart `compact`): prints one fixed line
-  after a compaction that points back at the handoff note (see The handoff).
-- `mem-capture.sh` (SessionEnd, PreCompact, Stop): scrubs known secret shapes
+  after a compaction that points back at the handoff note (see {% if memory %}The handoff{% else %}`docs/WORKERS.md`, Handoff{% endif %}).
+{% if memory %}- `mem-capture.sh` (SessionEnd, PreCompact, Stop): scrubs known secret shapes
   from the session transcript, stores it gzipped at
   `$LOAM_MEMSTORE/traces/<repo>/<date>-<session_id>.jsonl.gz`, and appends one
   `INDEX.md` line, with no model call. It is idempotent on the scrubbed content's
@@ -145,7 +145,7 @@ If sessions start on two machines at the same moment, before either has pulled
 the other's claim, each injects the handoff once (read twice in total) and
 archives it under its own session; both archives are kept and neither store is
 stranded.
-
+{% endif %}
 ## The one check
 
 `bin/check` runs ruff, shell syntax, whitespace (committed, staged, and unstaged),
@@ -167,11 +167,11 @@ removing it would cause a mistake.
 - Skill listing: the two listed seed skills weigh about 85 tokens (description
   bytes divided by four; hypothesis-tree is manual-only and unlisted), so a fresh
   project pays about 400 + 85 tokens before any work starts.
-- Memory hooks: recall adds at most 4000 bytes at SessionStart, and the Stop
+{% if memory %}- Memory hooks: recall adds at most 4000 bytes at SessionStart, and the Stop
   capture runs at most once per ten minutes. The scrub adds one regex pass over
   the transcript per capture. Recall waits at most five seconds for a pull from
   the store's remote; the capture's push runs in the background and never waits.
-- Auto memory: Claude Code adds at most the first 200 lines or 25 KB of
+{% endif %}- Auto memory: Claude Code adds at most the first 200 lines or 25 KB of
   `MEMORY.md` to the context at session start.
 
 Token figures anywhere in this file are byte counts divided by four, not a
@@ -184,7 +184,7 @@ tokenizer result.
 - The `.env` deny rules do not stop a Python or Node subprocess opening the file.
   The sandbox filesystem deny is the real containment, where the host supports it.
 - Secrets typed into an ordinary source file are not caught locally.
-- The capture scrubs known key shapes (API keys, Bearer and JWT tokens, PEM
+{% if memory %}- The capture scrubs known key shapes (API keys, Bearer and JWT tokens, PEM
   private-key blocks, URL credentials, and the like) before a transcript is
   stored; a secret with no recognizable shape can still be stored, so delete the
   trace to forget it. The store under `LOAM_MEMSTORE` (default `~/memstore`) is
@@ -203,7 +203,7 @@ tokenizer result.
   layer and reviews the hook definition once (Codex keeps a hash of it in its
   hooks state, and an edit to `hooks.json` asks again), so a Codex session before
   that step captures nothing.
-- Test tampering and mutation coverage have no gate. Pull-request review owns
+{% endif %}- Test tampering and mutation coverage have no gate. Pull-request review owns
   test integrity.
 - Claude Code denies writes under `.claude/` in `dontAsk` mode, so an unattended
   `dontAsk` agent cannot change its own harness.
