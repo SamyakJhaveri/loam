@@ -549,23 +549,39 @@ set_status() { printf '%s\n' "$1" > "$RUN/status"; log "status: $1"; }
 
 # Every factory write to GitHub passes through scrub: notify's issue comment, each filed issue's title and body,
 # and the PR title and body. Check output and model text can hold a secret, and the repo may be public.
-# Token-shaped strings become [redacted]; the patterns follow seed/.claude/hooks/mem-capture.sh's scrubber.
+# Token-shaped strings become [redacted]. SUBS holds every pattern of seed/.claude/hooks/mem-capture.sh's
+# scrubber verbatim, so the public path redacts at least what the private memory store does
+# (bin/tests/test_factory_publish_scrub.py checks), then two of the factory's own.
 # -X utf8 passes bytes that are not UTF-8 through unchanged.
-scrub() {
-  python3 -I -X utf8 -c '
+IFS= read -r -d '' SCRUB_PY << 'PY' || :
 import re, sys
+SUBS = [
+    (re.compile(r"-----BEGIN [A-Z0-9 ]*PRIVATE KEY-----.*?-----END [A-Z0-9 ]*PRIVATE KEY-----", re.DOTALL), "[redacted]"),
+    (re.compile(r"([a-zA-Z][a-zA-Z0-9+.\-]*://[^:@/\s]+:)[^@/\s]+@"), r"\1[redacted]@"),
+    (re.compile(r"sk-ant-[A-Za-z0-9_-]{10,}"), "[redacted]"),
+    (re.compile(r"(?:(?<=\\[nrt])|(?<![A-Za-z0-9]))sk-[A-Za-z0-9_-]{20,}"), "[redacted]"),
+    (re.compile(r"ghp_[A-Za-z0-9]{36,255}"), "[redacted]"),
+    (re.compile(r"github_pat_[A-Za-z0-9_]{22,}"), "[redacted]"),
+    (re.compile(r"gh[ousr]_[A-Za-z0-9]{36,255}"), "[redacted]"),
+    (re.compile(r"xox[abpr]-[A-Za-z0-9-]{10,}"), "[redacted]"),
+    (re.compile(r"AKIA[0-9A-Z]{16}"), "[redacted]"),
+    (re.compile(r"AIza[0-9A-Za-z_-]{35}"), "[redacted]"),
+    (re.compile(r"npm_[A-Za-z0-9]{36}"), "[redacted]"),
+    (re.compile(r"glpat-[A-Za-z0-9_-]{20,}"), "[redacted]"),
+    (re.compile(r"dop_v1_[a-f0-9]{64}"), "[redacted]"),
+    (re.compile(r"eyJ[A-Za-z0-9_-]{6,}\.[A-Za-z0-9_-]{6,}\.[A-Za-z0-9_-]{6,}"), "[redacted]"),
+    (re.compile(r"(?i)(bearer\s+)[A-Za-z0-9._~+/=-]{10,}"), r"\1[redacted]"),
+    (re.compile(r"(?i)((?:api[_-]?key|secret|token|password|passwd|pwd)(?:\\?[\"'])?\s*[:=]\s*(?:\\?[\"'])?)([^\s\\\"',;]{6,})"), r"\1[redacted]"),
+    # The factory's own: any Authorization value of 8 or more characters, and Slack's xoxs- tokens.
+    (re.compile(r"(?i)(authorization[\"']?\s*[:=]\s*[\"']?(?:(?:bearer|basic|token)\s+)?)[^\s\\\"',]{8,}"), r"\1[redacted]"),
+    (re.compile(r"xoxs-[A-Za-z0-9-]{10,}"), "[redacted]"),
+]
 text = sys.stdin.read()
-for rx, rep in (
-    (r"-----BEGIN [A-Z0-9 ]*PRIVATE KEY-----.*?-----END [A-Z0-9 ]*PRIVATE KEY-----", "[redacted]"),
-    (r"([A-Za-z][A-Za-z0-9+.-]*://[^:@/\s]+:)[^@/\s]+@", r"\1[redacted]@"),
-    (r"(?i)(authorization[\x22\x27]?\s*[:=]\s*[\x22\x27]?(?:(?:bearer|basic|token)\s+)?)[^\s\\\x22\x27,]+", r"\1[redacted]"),
-    (r"(?i)(bearer\s+)[A-Za-z0-9._~+/=-]{10,}", r"\1[redacted]"),
-    (r"gh[pousr]_[A-Za-z0-9]{20,}|github_pat_[A-Za-z0-9_]{20,}|xox[abprs]-[A-Za-z0-9-]{10,}|AKIA[0-9A-Z]{16}", "[redacted]"),
-    (r"(?:(?<=\\[nrt])|(?<![A-Za-z0-9]))sk-[A-Za-z0-9_-]{20,}", "[redacted]"),
-):
-    text = re.sub(rx, rep, text, flags=re.S)
-sys.stdout.write(text)'
-}
+for rx, rep in SUBS:
+    text = rx.sub(rep, text)
+sys.stdout.write(text)
+PY
+scrub() { python3 -I -X utf8 -c "$SCRUB_PY"; }
 
 # Pushover when it is configured, else a comment on the ticket; a failure leaves notify.failed.
 notify() { # title message
@@ -1472,7 +1488,7 @@ open_pr() { # [draft]: opened at the grader-round cap
     printf '\n## Metrics\n\nrounds: %s, spend: %s usd, wall: %s min, denials: %s\nrun directory: %s\n' \
       "$ROUND" "$(ticket_spent)" "$(( ( $(date -u +%s) - $(cat "$RUN/started") ) / 60 ))" \
       "$(jq -s '[.[].denials // 0] | add // 0' "$LEDGER")" "$RUN"
-  } | scrub > "$body"
+  } | scrub > "$body" || finish stopped-environment "could not scrub the PR body"
   [ "$IS_FILE" = 1 ] && finish pr-opened "file ticket: no GitHub call; the PR body is at $body"
   git -C "$WORKTREE" push -u origin "$BRANCH" >> "$LOG" 2>&1 || finish stopped-environment "git push of $BRANCH failed"
   if num=$(gh pr view "$BRANCH" -R "$REPO" --json number --jq .number 2> /dev/null) && [ -n "$num" ]; then
