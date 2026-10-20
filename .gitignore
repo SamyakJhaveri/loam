@@ -53,17 +53,17 @@ env/
 *.d
 !bin/factory.d/
 
-# ANL credentials — never commit
+# ANL credentials - never commit
 *.pem
 *_key*
 *_secret*
 *credentials*
 .codegraphcontext/
-# IP-sweep blocklist — the real term list is private; never commit (template: bin/.ip-terms.example)
+# IP-sweep blocklist - the real term list is private; never commit (template: bin/.ip-terms.example)
 bin/.ip-terms
 reassess-bin/.ip-terms
 
-# Personal reference docs — not part of the template (audit Session C)
+# Personal reference docs - not part of the template (audit Session C)
 internal_docs/
 # Brainstorm / scratch outputs from Cowork sessions
 outputs/
@@ -84,19 +84,19 @@ IMG_*
 # session state, never shipped (previously hidden only by the 2026-* glob above).
 seed/.claude/codex-reviews/
 
-# Copyrighted Yoshida reference scans — never commit (style refs only, local-only)
+# Copyrighted Yoshida reference scans - never commit (style refs only, local-only)
 yoshida_hiroshi/
 
-# Local-only knowledge base — private notes and references, never committed.
+# Local-only knowledge base - private notes and references, never committed.
 # Anchored to the repo root so it can't accidentally ignore a nested dir named "soil".
 /soil/
 
-# Track-B proof renders (large 4K candidates) — judge locally, commit chosen winners deliberately.
+# Track-B proof renders (large 4K candidates) - judge locally, commit chosen winners deliberately.
 # Scoped to loam-hero-*.png so committed *.drawio.png diagrams are unaffected.
 docs/diagrams/loam-hero-*.png
 docs/diagrams/loam-hero-*.qa.yaml
 
-# Private working material — lives locally in the canonical repo, never committed publicly.
+# Private working material - lives locally in the canonical repo, never committed publicly.
 docs/plans/
 docs/adr/
 _archive/
