@@ -12,6 +12,7 @@ Before is main's graders at the merge base, after is the branch head; take both 
 
 ```sh
 base=$(git merge-base origin/main audit/grader-prompts)
+git diff --quiet "$base" origin/main -- cultivation/marketplace/sam-cc-setup/agents || echo "STOP: main changed a grader; merge origin/main into audit/grader-prompts first"
 mkdir -p ~/replay-239/before-agents ~/replay-239/after-agents
 for g in judge reviewer; do
   git show "$base":cultivation/marketplace/sam-cc-setup/agents/$g.md > ~/replay-239/before-agents/$g.md
@@ -21,6 +22,7 @@ diff -rq ~/replay-239/before-agents ~/replay-239/after-agents
 ```
 
 `diff -rq` must name both judge.md and reviewer.md as differing; then pass each folder as `--graders-dir` and keep every `EVAL_OUT` under `~/replay-239/`.
+Replay the labeled set the #239 body names (scored F38 replies plus owner labels), not the hand cases under `evals/judge` and `evals/reviewer`, which cannot judge this change.
 Upgrade step: `claude plugin update sam-cc-setup`.
 
 ## sam-cc-setup v0.9.11 brief settles open questions by prototype
