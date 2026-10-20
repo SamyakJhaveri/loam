@@ -13,6 +13,7 @@ import json
 import os
 import pathlib
 import re
+import shlex
 import subprocess
 import tempfile
 import unittest
@@ -158,20 +159,38 @@ class PublishScrubTests(unittest.TestCase):
         for call in self.calls(calls, "issue", "comment"):
             self.assert_scrubbed(call)
 
+    def main_loop(self, last_done: int, max_rounds: int, *lines: str) -> list[str]:
+        """Run the real main_loop after round `last_done` up to `max_rounds`, every round's checks printing `lines`,
+        and return the bodies of its issue comments. The stub worker appends to decisions.md, so no-change never
+        fires."""
+        calls = self.run_factory(
+            f"ROUND={last_done}; MAX_ROUNDS={max_rounds}\n"
+            'worker_round() { echo "round $1" >> "$DECISIONS"; }; check_frozen() { :; }; assert_caps() { :; }\n'
+            f"do_not_touch_hits() {{ :; }}; run_checks() {{ printf '%s\\n' {shlex.join(lines)} > \"$2\"; }}\n"
+            "(main_loop) || :\n")
+        return [c["body"] for c in self.calls(calls, "issue", "comment")]
+
     def test_failing_round_notify_names_checks_never_reasons(self) -> None:
         # main_loop's notify after an even failing round names each failing check, never its reason: the reason
         # is command output, and a path or hostname in it has no token shape for scrub to catch.
-        reason = "cat: /home/runner/.config/db.acme.internal/creds: No such file"
-        calls = self.run_factory(
-            "ROUND=1; MAX_ROUNDS=2\n"
-            "worker_round() { :; }; check_frozen() { :; }; assert_caps() { :; }; do_not_touch_hits() { :; }\n"
-            f"run_checks() {{ printf '%s\\n' 'PASS ok' 'FAIL widget: {reason}' > \"$2\"; }}\n"
-            "(main_loop) || :\n")
-        bodies = [c["body"] for c in self.calls(calls, "issue", "comment") if "after round 2" in c["body"]]
-        self.assertEqual(len(bodies), 1, calls)
+        bodies = self.main_loop(1, 2, "PASS ok", "FAIL widget: cat: /home/runner/.config/db.acme.internal/creds: no")
+        bodies = [b for b in bodies if "after round 2" in b]
+        self.assertEqual(len(bodies), 1)
         self.assertIn("FAIL widget\n", bodies[0])
         self.assertIn("round-2.checks", bodies[0])
         self.assertNotIn("db.acme.internal", bodies[0])
+
+    def test_stuck_notify_names_checks_never_raw_lines(self) -> None:
+        # The same checks failing twice ends the run stuck. The comparison reads every raw ^FAIL line, so pytest's
+        # FAILED, go test's FAIL<tab>package, or a reason's later line count; the comment shows only safe names.
+        bodies = self.main_loop(0, 3, "FAIL widget: x", "FAIL /home/runner/.config/db.acme.internal/creds",
+                                "FAIL\tgithub.com/acme/private-repo/internal")
+        self.assertEqual((self.run_dir / "status").read_text().strip(), "stuck")
+        bodies = [b for b in bodies if "7 stuck" in b]
+        self.assertEqual(len(bodies), 1)
+        self.assertIn("widget", bodies[0])
+        self.assertNotIn("db.acme.internal", bodies[0])
+        self.assertNotIn("private-repo", bodies[0])
 
     def test_pr_create_and_filed_issues_are_scrubbed(self) -> None:
         calls = self.run_factory("open_pr\n")
