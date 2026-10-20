@@ -42,6 +42,18 @@ class IpSweepTest(unittest.TestCase):
             self.assertEqual(1, result.returncode, result.stdout + result.stderr)
             self.assertIn("strict mode requires a term file", result.stdout)
 
+    def test_strict_reports_identity_and_term_failures_together(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            repo = self.make_repo(temp_dir, {"README.md": "nothing to see\n", "notes.md": "contains forbidden-term\n"})
+            self.commit_edu(repo)
+            (repo / "bin/.ip-terms").write_text("forbidden-term\n", encoding="utf-8")
+
+            result = self.sweep(repo, IP_SWEEP_STRICT="1")
+
+            self.assertEqual(1, result.returncode, result.stdout + result.stderr)
+            self.assertIn("someone@example.edu", result.stdout)
+            self.assertIn("foreign-IP terms found in tracked files:\nnotes.md", result.stdout)
+
     def test_identity_only_fails_on_non_noreply_author(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             repo = self.make_repo(temp_dir, {"README.md": "nothing to see\n"})

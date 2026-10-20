@@ -120,6 +120,7 @@ EXCLUDE='^docs/(plans|adr)/|^_archive/|^docs/diagrams/loam-hero-.*\.(png|qa\.yam
 # Content check: validate the assembled ERE before scanning. A malformed term
 # must fail closed instead of being mistaken for a clean no-match result.
 if [[ -n "$TERMS" ]]; then
+  REGEX_RC=0
   if grep -E "$TERMS" </dev/null >/dev/null 2>&1; then
     :
   else
@@ -131,7 +132,8 @@ if [[ -n "$TERMS" ]]; then
   fi
 
   HITS=""
-  if [[ "$FAIL" -eq 0 ]]; then
+  # Gate on the regex alone: an identity failure above must not hide a term hit.
+  if [[ "$REGEX_RC" -le 1 ]]; then
     while IFS=$'\t' read -r -d '' META FILE_PATH; do
       [[ "$META" =~ ^([0-9]{6})[[:space:]]([0-9a-f]{40})[[:space:]][0-3]$ ]] || continue
       MODE="${BASH_REMATCH[1]}"
