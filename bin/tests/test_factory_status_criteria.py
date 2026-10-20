@@ -1,7 +1,8 @@
 """`bin/factory status --criteria` measures the ARCHITECTURE.md trust criteria from one target's run directories.
 
-A synthetic runs root holds a PR in one round, a PR after a parallel-cap exit and an environment-lost round, and
-an abandoned run with more rounds than either PR. Another target's run sits under <owner>__<repo>/ and counts only
+A synthetic runs root holds a PR in one round, a PR after a parallel-cap exit and an environment-lost round, a PR
+whose first launch died mid-round and whose relaunch hit the parallel cap, a file-ticket rehearsal that opens no PR,
+and an abandoned run with more rounds than any PR. Another target's run sits under <owner>__<repo>/ and counts only
 with -C. No network, no model.
 """
 
@@ -37,6 +38,16 @@ def loam_runs(runs: pathlib.Path) -> None:
              "EXIT stopped-environment (4): the worker call failed before doing work: unknown error",
              "===== round 1 =====", "===== round 2 =====", "===== round 3 =====",
              "EXIT pr-opened (0): https://github.com/o/loam/pull/3 after 3 rounds"], 3)
+    # The first launch dies in round 2 with no EXIT line; the relaunch's parallel-cap exit loses no round.
+    run_dir(runs, "3/aaaa0003", "pr-opened",
+            ["===== launch =====", "===== round 1 =====", "===== round 2 =====",
+             "===== launch =====", "EXIT stopped-environment (4): parallel cap: 1 other live run(s), MAX_PARALLEL=1",
+             "===== launch =====", "resuming after round 1", "===== round 2 =====",
+             "EXIT pr-opened (0): https://github.com/o/loam/pull/4 after 2 rounds"], 2)
+    # A file ticket reaches pr-opened with no GitHub call, so its six rounds stay out of the median.
+    run_dir(runs, "f7-rehearsal/cccc0005", "pr-opened",
+            ["===== launch ====="] + [f"===== round {n} =====" for n in range(1, 7)]
+            + ["EXIT pr-opened (0): file ticket: no GitHub call; the PR body is at /runs/f7-rehearsal/pr-body.md"], 6)
     # Not a PR run, so its five rounds stay out of the median.
     run_dir(runs, "4/aaaa0004", "abandon",
             [f"===== round {n} =====" for n in range(1, 6)] + ["EXIT abandon (5): ABANDON needs a do-not-touch path"], 5)
@@ -68,7 +79,7 @@ class StatusCriteriaTests(unittest.TestCase):
         self.assertEqual(verdict["- rounds lost to environment failures: 0 (baseline 2)"],
                          "    FAIL: measured 1 (2/aaaa0002 round 1)")
         self.assertEqual(verdict["- median rounds to PR: at most 5 (lean-v3 median)"],
-                         "    PASS: measured 2 (over 2 PR runs)")
+                         "    PASS: measured 2 (over 3 PR runs)")
         for line in ("- operator actions from voice note to a running loop on Track B: at most 3",
                      "- operator actions after the PR opens: at most 1 once F9 lands",
                      "- stalls whose first failing grader row is scope: 0 (baseline 3 of 4)",
@@ -76,7 +87,7 @@ class StatusCriteriaTests(unittest.TestCase):
             self.assertTrue(verdict[line].startswith("    UNMEASURED: "), (line, verdict[line]))
         self.assertEqual(len(verdict), 7, verdict)
         # One header line and the seven criteria: no run table, stop counts, or grader versions.
-        self.assertIn(f": 3 runs under {self.runs} ", lines[0])
+        self.assertIn(f": 5 runs under {self.runs} ", lines[0])
         self.assertEqual(len(lines), 1 + 2 * 7, proc.stdout)
 
     def test_dash_C_reports_only_the_other_targets_runs(self) -> None:
@@ -90,6 +101,19 @@ class StatusCriteriaTests(unittest.TestCase):
         self.assertIn(": 1 run under ", lines[0])
         self.assertIn("    PASS: measured 4 (over 1 PR run)", lines)
 
+    def test_a_missing_factory_log_is_unmeasured_not_zero(self) -> None:
+        # Exits come only from factory.log, so a run without one has unknown exits, not none.
+        runs = pathlib.Path(self.tmp.name) / "nolog"
+        run_dir(runs, "2/aaaa0002", "pr-opened", [], 1)
+        (runs / "2/aaaa0002/factory.log").unlink()
+        proc = factory("status", "--criteria", runs=runs)
+        self.assertEqual(proc.returncode, 0, proc.stderr)
+        lines = proc.stdout.splitlines()
+        verdict = {line: lines[i + 1] for i, line in enumerate(lines) if line.startswith("- ")}
+        for line in ("- rounds lost to environment failures: 0 (baseline 2)",
+                     "- median rounds to PR: at most 5 (lean-v3 median)"):
+            self.assertEqual(verdict[line], "    UNMEASURED: no factory.log in 2/aaaa0002", line)
+
     def test_thresholds_come_from_the_doc(self) -> None:
         arch = pathlib.Path(self.tmp.name) / "ARCHITECTURE.md"
         arch.write_text("Criteria written in advance:\n\n- median rounds to PR: at most 1\n- a new criterion: 0\n"
@@ -102,7 +126,7 @@ class StatusCriteriaTests(unittest.TestCase):
             return proc.stdout.splitlines()[1:]
 
         self.assertEqual(criteria(self.runs), [
-            "- median rounds to PR: at most 1", "    FAIL: measured 2 (over 2 PR runs)",
+            "- median rounds to PR: at most 1", "    FAIL: measured 2 (over 3 PR runs)",
             "- a new criterion: 0", "    UNMEASURED: criteria.py has no measure for this line",
         ])
         self.assertEqual(criteria(self.runs / "none")[1], f"    UNMEASURED: no run directory under {self.runs / 'none'}")
