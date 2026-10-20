@@ -52,6 +52,7 @@ Rendered projects are unaffected: Copier writes real directories.
 - Run `bin/check` before every PR. CI runs the same script in the `verify` job.
   A ruleset on `main` requires the `verify` and `stub-sweep` jobs, so a red run blocks merge.
   Repository admins can bypass it.
+  `bin/release.sh` pushes the release commit straight to `main` through that bypass, so keep the admin bypass mode at "Always"; with "pull requests only", every release push fails after the local commit and tag.
 - Before merging any PR, run `bin/check && bash bin/ip-sweep.sh`.
   Without `bin/.ip-terms`, the non-strict IP sweep warns that it skips the content
   sweep and can still pass.
