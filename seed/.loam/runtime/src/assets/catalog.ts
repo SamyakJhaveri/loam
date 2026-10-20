@@ -564,15 +564,18 @@ function prerequisitesBind(candidate: readonly CatalogPrerequisite[] | undefined
 // ---------------------------------------------------------------------------
 // Recipient delivery: derive the recipient root from the package location and, for every target
 // whose delivery is present-unqualified or verified, read the body at the contained recipient path
-// and require the exact expectedSha256. This byte comparison is the sole proof that a target's
-// delivery claim holds, in Loam and in every render; validateCatalog no longer matches delivery or
+// and compare it with expectedSha256. A verified body must match exactly. A present-unqualified
+// body is a pending method the project owns once rendered, and Copier keeps a project's own
+// wording, so a differing body is returned as adapted rather than failed; in Loam the provenance
+// gate requires the seed bodies to match exactly. validateCatalog no longer matches delivery or
 // expectedSha256 against the frozen obligations (plan D1). Planned targets are never read.
 // (Plan D1/D4/D16; finding 5.)
 // ---------------------------------------------------------------------------
 export function recipientRootOf(packageRoot: string): string { return resolve(packageRoot, '..', '..'); }
 
-export function checkRecipientDelivery(catalog: Catalog, recipientRoot: string): { checked: number } {
+export function checkRecipientDelivery(catalog: Catalog, recipientRoot: string): { checked: number; adapted: string[] } {
   let checked = 0;
+  const adapted: string[] = [];
   for (const target of catalog.targets) {
     if (target.delivery !== 'present-unqualified' && target.delivery !== 'verified') continue;
     let abs: string;
@@ -585,10 +588,13 @@ export function checkRecipientDelivery(catalog: Catalog, recipientRoot: string):
       if (error instanceof CatalogError) throw error;
       return fail('delivery.missing', `delivered target ${target.id} body is missing at ${target.path}`);
     }
-    if (sha256(bytes) !== target.expectedSha256) fail('delivery.digest', `delivered target ${target.id} body digest differs from expectedSha256`);
+    if (sha256(bytes) !== target.expectedSha256) {
+      if (target.delivery === 'verified') fail('delivery.digest', `delivered target ${target.id} body digest differs from expectedSha256`);
+      adapted.push(target.id);
+    }
     checked++;
   }
-  return { checked };
+  return { checked, adapted };
 }
 
 export function relativePosix(root: string, target: string): string { return relative(root, target).split(sep).join('/'); }

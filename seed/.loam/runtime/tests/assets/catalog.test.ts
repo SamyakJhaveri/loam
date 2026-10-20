@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { cpSync, mkdtempSync, mkdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -294,21 +294,29 @@ test('catalog.activation-honesty', () => {
   expectRule(() => { const c = clone(catalog); entryOf(c, 'baseline:validate').activation.activated = true; validateCatalog(c); }, 'activation.claimed');
 
   // Finding 5: recipient delivery. The recipient root is the package's `factory/../..`; every
-  // present-unqualified/verified target body is read and must carry its exact expectedSha256, while
-  // planned targets (whose bodies do not exist yet) are never read.
+  // present-unqualified/verified target body is read, while planned targets (whose bodies do not
+  // exist yet) are never read. A project may keep its own wording of a pending method, so this
+  // recipient's adapted list is not asserted here; the Loam provenance gate requires it empty.
   const recipientRoot = recipientRootOf(root);
-  assert.deepEqual(checkRecipientDelivery(catalog, recipientRoot), { checked: present.length });
-  // A scratch recipient with just the present bodies: pass, then remove one body and change a byte.
+  assert.equal(checkRecipientDelivery(catalog, recipientRoot).checked, present.length);
+  // A scratch recipient with Loam's present bodies: pass, then remove one body and change a byte.
   const scratchRecipient = mkdtempSync(join(tmpdir(), 'loam-catalog-delivery-'));
   try {
-    for (const target of present) { const dst = join(scratchRecipient, target.path); mkdirSync(dirname(dst), { recursive: true }); cpSync(join(recipientRoot, target.path), dst); }
-    assert.deepEqual(checkRecipientDelivery(catalog, scratchRecipient), { checked: present.length });
+    for (const target of present) {
+      const dst = join(scratchRecipient, target.path); mkdirSync(dirname(dst), { recursive: true });
+      writeFileSync(dst, `${target.id}\n`);
+    }
+    const loamBodies = clone(catalog);
+    for (const target of loamBodies.targets) if (target.delivery === 'present-unqualified') target.expectedSha256 = sha256(Buffer.from(`${target.id}\n`));
+    assert.deepEqual(checkRecipientDelivery(loamBodies, scratchRecipient), { checked: present.length, adapted: [] });
     const catchupBody = join(scratchRecipient, '.agents', 'skills', 'catchup', 'SKILL.md');
     rmSync(catchupBody);
-    expectRule(() => checkRecipientDelivery(catalog, scratchRecipient), 'delivery.missing');
-    cpSync(join(recipientRoot, '.agents', 'skills', 'catchup', 'SKILL.md'), catchupBody);
-    const bytes = readFileSync(catchupBody); bytes[0] = bytes[0]! ^ 0x01; writeFileSync(catchupBody, bytes);
-    expectRule(() => checkRecipientDelivery(catalog, scratchRecipient), 'delivery.digest');
+    expectRule(() => checkRecipientDelivery(loamBodies, scratchRecipient), 'delivery.missing');
+    writeFileSync(catchupBody, 'the project\'s own wording\n');
+    assert.deepEqual(checkRecipientDelivery(loamBodies, scratchRecipient), { checked: present.length, adapted: ['method:catchup'] });
+    // A verified body is held to its exact bytes.
+    loamBodies.targets.find(t => t.id === 'method:catchup')!.delivery = 'verified';
+    expectRule(() => checkRecipientDelivery(loamBodies, scratchRecipient), 'delivery.digest');
   } finally {
     rmSync(scratchRecipient, { recursive: true, force: true });
   }

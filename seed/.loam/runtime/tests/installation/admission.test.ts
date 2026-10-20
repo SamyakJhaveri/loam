@@ -538,6 +538,23 @@ test('admission.publication-order', async () => {
       const before = hashTree(controlRoot);
       await refuses(() => admit(trusted, controlRoot), 'install-interrupted');
       assertUnchanged(before, hashTree(controlRoot));
+      if (fault.after === 'controller') {
+        // The SETUP.md recovery. Removing the runtime and its records alone leaves the
+        // controller copy, its own row, which admit refuses before any build work.
+        const id = String(report.detail).split(' ')[1]!;
+        forceWritable(controlRoot);
+        for (const rel of [join(CONTROL_ROOT_LAYOUT.runtimes, id), join(CONTROL_ROOT_LAYOUT.admissions, `${id}.json`),
+          join(CONTROL_ROOT_LAYOUT.runtimeRecords, `${id}.sha256`), join(CONTROL_ROOT_LAYOUT.runtimeRecords, `${id}.json`)]) rmSync(join(controlRoot, rel), { recursive: true });
+        const leftover = lastJson(control(join(trusted, 'scripts', 'loam-control.sh'), controlRoot, ['status']).stdout);
+        assert.equal(leftover.diagnostic, 'install-interrupted');
+        assert.ok(String(leftover.detail).includes('controller'), `detail ${String(leftover.detail)}`);
+        const kept = hashTree(controlRoot);
+        await refuses(() => admit(trusted, controlRoot), 'install-interrupted');
+        assertUnchanged(kept, hashTree(controlRoot));
+        rmSync(join(controlRoot, CONTROL_ROOT_LAYOUT.controller));
+        await admit(trusted, controlRoot);
+        assert.ok(existsSync(join(controlRoot, CONTROL_ROOT_LAYOUT.selected)), 'admit completes after the recovery');
+      }
     }
   }
 });
@@ -1049,6 +1066,11 @@ test('admission.install-interrupted', async () => {
   assertRow('selection', (root) => writeFileSync(join(root, CONTROL_ROOT_LAYOUT.selected), JSON.stringify({ version: 1, snapshotId: 'ffffffffffffffff', admissionId: 'ffffffffffffffff' })));
   // A complete registered runtime with no selection.
   assertRow('unselected', (root) => rmSync(join(root, CONTROL_ROOT_LAYOUT.selected)));
+  // The controller copy left once the runtime, its records and the selection are gone.
+  assertRow('controller', (root) => {
+    for (const rel of [CONTROL_ROOT_LAYOUT.selected, join(CONTROL_ROOT_LAYOUT.runtimes, id), join(CONTROL_ROOT_LAYOUT.admissions, `${id}.json`),
+      join(CONTROL_ROOT_LAYOUT.runtimeRecords, `${id}.sha256`), join(CONTROL_ROOT_LAYOUT.runtimeRecords, `${id}.json`)]) rmSync(join(root, rel), { recursive: true });
+  });
 
   // A fresh admit into a control root with a leftover lock refuses too.
   const relock = join(base(), 'relock');

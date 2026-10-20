@@ -174,7 +174,8 @@ The first match is the reported diagnostic, and each row states the single path 
 | a `runtimes/.staging-*` or `.tool-*` directory | `install-interrupted` (`staging`) | remove that directory |
 | a `runtimes/<id>` missing any of its three registry records | `install-interrupted` (`unregistered`) | remove `runtimes/<id>` and any partial records |
 | `registry/selected.json` malformed or naming a runtime that is not complete | `install-interrupted` (`selection`) | remove `selected.json` |
-| a complete registered runtime with no `selected.json` | `install-interrupted` (`unselected`) | remove the runtime and its records |
+| a complete registered runtime with no `selected.json` | `install-interrupted` (`unselected`) | remove the runtime, its records and `loam-control` |
+| `loam-control` with no runtime and no `selected.json` | `install-interrupted` (`controller`) | remove `loam-control` |
 | no `selected.json` and no runtimes | `nothing-admitted` | run `admit` |
 | `selected.json` well-formed and the runtime complete | dispatch (a pre-dispatch digest check may still report `installed-file-altered`) | none |
 

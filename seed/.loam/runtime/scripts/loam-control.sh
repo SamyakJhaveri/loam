@@ -192,6 +192,7 @@ resolve_state() {
     set -f; set -- $__complete; set +f
     emit_unavailable install-interrupted "unselected $1"
   fi
+  { [ ! -e "$__root/loam-control" ] && [ ! -L "$__root/loam-control" ]; } || emit_unavailable install-interrupted "controller $__root/loam-control"
   emit_unavailable nothing-admitted 'no runtime has been admitted'
 }
 

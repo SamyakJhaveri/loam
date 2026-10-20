@@ -42,8 +42,11 @@ validator proves the catalog consistent with itself, reading only catalog fields
 each target's declared section keys equal the union of the map sections aimed at it, and the
 reverse index is the recomputed inverse of the edges. It does not compare the catalog to a second
 copy of itself. A target's delivery state and expected digest are proven by bytes, not by any frozen
-record: `checkRecipientDelivery` reads each present target body from the recipient tree and requires
-its exact expected digest, in Loam and in every render. Source bytes and source units are re-verified
+record: `checkRecipientDelivery` reads each present target body from the recipient tree. A
+`verified` body must carry its exact expected digest. A `present-unqualified` body is a pending
+method the project owns once rendered, so a project that keeps its own wording is reported as
+adapted, not failed; Loam's own seed must still match exactly, which the Loam-only provenance gate
+checks. Source bytes and source units are re-verified
 against the working tree by the Loam-only provenance gate, and recipient integrity rests on the
 release manifest, the admission seal and doctor.
 `resolveEntry` is a lower-level helper: it binds one candidate entry to a trusted expected
