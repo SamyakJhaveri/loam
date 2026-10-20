@@ -1362,28 +1362,35 @@ run_review() { # round -> 0 when nothing blocks
 }
 
 run_codex_review() { # round -> 0 when nothing blocks; needs-attention with a critical or high finding blocks once (LOOP.md)
-  local round="$1" f="$RUN/round-$1.codex-review.json" jsonl="$RUN/round-$1.codex-review.jsonl" res="$RUN/round-$1.codex-review.result.json" base blocking rc start
+  local round="$1" f="$RUN/round-$1.codex-review.json" jsonl res="$RUN/round-$1.codex-review.result.json" base blocking rc start call parsed=0
   base=$(cat "$RUN/base.sha")
-  assert_caps
-  stop_requested && finish stopped "FACTORY_STOP before the Codex review call"
-  log "codex review call: round $round schema=frozen/review-output.schema.json"
-  # A review needs no write access, so it runs read-only: under workspace-write it could edit the tree the
-  # judge and reviewer already graded. `codex exec review` ignores --output-schema, so the review is plain
-  # `codex exec` with the schema (#41): the -o file holds the schema-validated JSON, the JSONL stream
-  # (stdout) carries usage for the ledger. The one-line prompt is the frozen file with <base> filled in.
-  start=$SECONDS
-  ( cd "$WORKTREE" && PATH="$CODEX_PATH:$PATH" ${TIMEOUT_G[@]+"${TIMEOUT_G[@]}"} codex exec --json --output-schema "$RUN/frozen/review-output.schema.json" -o "$f" -s read-only "$(sed "s/<base>/$base/" "$RUN/frozen/codex-review.prompt.md")" > "$jsonl" < /dev/null ); rc=$?
-  [ "$rc" -eq 0 ] || log "codex review call exited $rc"
-  codex_result "$jsonl" "$rc" "$(( (SECONDS - start) * 1000 ))" > "$res"
-  record "$round" codex-review "$CODEX_MODEL" "$res" 0 0 0 0 1
-  # An absent, empty, or unparseable review is a fail with one high finding, never a pass (LOOP.md), as call_json
-  # writes for the reviewer; -s also refuses a file holding more than one JSON value.
-  if ! jq -se 'length == 1 and (.[0].verdict | type) == "string"' "$f" > /dev/null 2>&1; then
-    log "codex review output absent or unparseable; see $jsonl"
+  for call in 1 2; do
+    jsonl="$RUN/round-$round.codex-review.$call.jsonl"   # one stream per call, so each log line points at its own call
+    assert_caps
+    stop_requested && finish stopped "FACTORY_STOP before the Codex review call"
+    log "codex review call $call of 2: round $round schema=frozen/review-output.schema.json"
+    # A review needs no write access, so it runs read-only: under workspace-write it could edit the tree the
+    # judge and reviewer already graded. `codex exec review` ignores --output-schema, so the review is plain
+    # `codex exec` with the schema (#41): the -o file holds the schema-validated JSON, the JSONL stream
+    # (stdout) carries usage for the ledger. The one-line prompt is the frozen file with <base> filled in.
+    start=$SECONDS
+    ( cd "$WORKTREE" && PATH="$CODEX_PATH:$PATH" ${TIMEOUT_G[@]+"${TIMEOUT_G[@]}"} codex exec --json --output-schema "$RUN/frozen/review-output.schema.json" -o "$f" -s read-only "$(sed "s/<base>/$base/" "$RUN/frozen/codex-review.prompt.md")" > "$jsonl" < /dev/null ); rc=$?
+    [ "$rc" -eq 0 ] || log "codex review call exited $rc"
+    codex_result "$jsonl" "$rc" "$(( (SECONDS - start) * 1000 ))" > "$res"
+    record "$round" codex-review "$CODEX_MODEL" "$res" 0 0 0 0 1
+    # An absent, empty, or unparseable -o file gets one more call; -s also refuses a file holding more than one JSON value.
+    if jq -se 'length == 1 and (.[0].verdict | type) == "string"' "$f" > /dev/null 2>&1; then parsed=1; break; fi
+    log "codex review output absent or unparseable on call $call of 2; see $jsonl"
+  done
+  if [ "$parsed" = 0 ]; then
+    # Two bad replies leave one high finding, never a pass (LOOP.md): it drafts the PR and is filed as an issue.
+    # A worker cannot rerun Codex, so it is not a fix for the next round and does not fail the graders.
     jq -n '{verdict: "needs-attention", unparseable: true, summary: "Codex review output absent or unparseable", next_steps: [],
       findings: [{severity: "high", file: "-", line_start: 0, line_end: 0, confidence: 0,
                   title: "codex review output unparseable", body: "the -o file was absent, empty, or not one review object.",
                   recommendation: "rerun the Codex review on this round"}]}' > "$f"
+    log "codex review unparseable twice; not sent to the worker, and in the final round it drafts the PR and is filed as an issue"
+    return 0
   fi
   blocking=$(jq "$CODEX_BLOCKING | length" "$f")
   log "codex review verdict: $(jq -r '.verdict // "unparseable"' "$f" 2> /dev/null) findings=$(jq '(.findings // []) | length' "$f" 2> /dev/null) blocking=$blocking"
@@ -1419,7 +1426,7 @@ graders() { # round -> 0 when the judge passes and nothing blocks
 # ---- step 8: the pull request -----------------------------------------------
 
 # The reviewer's and the Codex review's blocking findings in the final round's files, highest severity first.
-# After the graders pass, these are what a grader past its one block still reports, an unparseable reply included.
+# After the graders pass, these are what a grader past its one block, or a Codex review unparseable twice, still reports.
 # Each finding is joined onto one line, since file_issues files one issue per line.
 blocking_findings() {
   jq -r "$REVIEW_BLOCKING"' | sort_by(.severity != "high") | .[]
@@ -1478,7 +1485,7 @@ open_pr() { # [draft]: opened at the grader-round cap
   {
     [ "$IS_FILE" = 1 ] || printf 'Closes #%s\n\n' "$ISSUE"
     if [ "$draft" = blocking ]; then
-      printf 'Draft: the judge passed, but %s blocking reviewer or Codex finding(s) remain past the one block each grader may make, and each is filed as an issue. Read them before marking it ready. The first is %s\n\n' \
+      printf 'Draft: the judge passed, but %s blocking reviewer or Codex finding(s) remain past the one block each grader may make or come from a Codex review unparseable twice, and each is filed as an issue. Read them before marking it ready. The first is %s\n\n' \
         "$(printf '%s\n' "$blocking" | grep -c .)" "$(printf '%s\n' "$blocking" | head -1)"
     elif [ -n "$draft" ]; then
       # An absent, empty, or invalid judge file counts as a fail (LOOP.md), so jq may print nothing.
@@ -1877,8 +1884,9 @@ grader_first_fail() { # run dir -> the first grader item that failed in the last
 # run_clean: yes|no|- for the status clean column (D09 Option A). A run is clean when it reached
 # pr-opened with zero grader-fail rounds and no other exit on the way; a hand fix after pr-opened
 # does not change it. From the run dir: status is pr-opened, the only EXIT line in factory.log is
-# pr-opened, and every round-<k>.fixes for k>=1 is empty (a grader that fails or blocks queues fixes
-# there). `-` marks a run not yet at pr-opened.
+# pr-opened, every round-<k>.fixes for k>=1 is empty (a grader that fails or blocks queues fixes
+# there), and no Codex review was unparseable twice (it queues no fix, but that review never ran).
+# `-` marks a run not yet at pr-opened.
 run_clean() { # run dir -> yes|no|-
   local d="$1" f
   [ "$(cat "$d/status" 2> /dev/null)" = pr-opened ] || { printf -- '-'; return; }
@@ -1888,6 +1896,7 @@ run_clean() { # run dir -> yes|no|-
     case "$f" in */round-0.fixes) continue ;; esac
     [ -s "$f" ] && { printf 'no'; return; }
   done
+  jq -se 'any(.[]; .unparseable == true)' "$d"/round-*.codex-review.json > /dev/null 2>&1 && { printf 'no'; return; }
   printf 'yes'
 }
 

@@ -65,14 +65,14 @@ When no cached copy matches, the run stops `stopped-environment` and names the c
 8. On pass, or at the grader-round cap: assemble the PR body (first line `Closes #<issue>`, then the ticket's Goal and why, `git log --oneline base..HEAD`, the MEASURE table, the merge checklist as checkboxes, `decisions.md`, the done-check output from round 0 at base and from the graded round (each block shows only the result word and check name of its `PASS`, `FAIL` and `MEASURE` lines, never a FAIL reason, and a MEASURE value only when it is a number, at most 50 lines, each cut to 300 characters; the full file stays in the run directory, and the block names it), grader sections (the Judge section opens with `graded at <sha>`, the HEAD the graders read), backlog, metrics), push, `gh pr create` or update the existing PR through the REST API, notify, exit `pr-opened`.
    A PR opened at the grader-round cap is a draft: `gh pr create --draft`, and a line under `Closes #<issue>` names the failing judge rows, so no automatic merge takes it before a human reads the Judge section; an already-open PR is only updated, not converted.
    Each judge backlog line is also filed once per run as a `needs-triage` issue, so a defect an unattended run finds is tracked outside the PR body.
-   A blocking reviewer or Codex finding left in the final round, an unparseable reply included, is filed the same way; when the judge passed, that finding is past its grader's one block, and the PR opens as a draft whose line under `Closes #<issue>` names the first one.
+   A blocking reviewer or Codex finding left in the final round, an unparseable reply included, is filed the same way; when the judge passed, that finding is past its grader's one block or comes from a Codex review unparseable twice, and the PR opens as a draft whose line under `Closes #<issue>` names the first one.
    Every text the factory composes for GitHub, the PR title and body, each filed issue's title and body, and notify's issue comment, first passes through `scrub`, which replaces token-shaped strings with `[redacted]`: every pattern of the memory scrubber in `seed/.claude/hooks/mem-capture.sh` (API keys and tokens, `key=value` secrets, JWTs, `Bearer` values, private-key blocks, URL passwords), plus any `Authorization` value and Slack `xoxs-` tokens.
 
 ## Exits
 
 | Status | Meaning | Counts a round |
 |---|---|---|
-| `pr-opened` | checks and graders pass, or the grader-round cap reached with a backlog (a draft PR), or a judge pass with a review finding past its one block (a draft PR) | yes |
+| `pr-opened` | checks and graders pass, or the grader-round cap reached with a backlog (a draft PR), or a judge pass with a review finding past its one block or a Codex review unparseable twice (a draft PR) | yes |
 | `no-change` | HEAD and `decisions.md` are both unchanged since the previous round | yes |
 | `stuck` | the same failing check set twice in a row | yes |
 | `ticket-defect` | round 0 found a check that passes on base | no |
@@ -101,7 +101,7 @@ Codex token counts come from its `--json` events and land in the ledger with `co
 After the checks first pass, at most two grader-fail rounds per ticket; then the remaining non-blocking findings go to the PR body backlog and the PR opens as a draft.
 The judge decides pass or fail.
 The reviewer blocks only on a `high` or `medium` finding (`REVIEW_BLOCKING` in `bin/factory`; its verdict word is not read), the Codex review only on a `critical` or `high` finding, and each may block at most once per ticket.
-A grader whose output is absent or unparseable is a fail with one high finding "grader unparseable", never a pass.
+A grader whose output is absent or unparseable is a fail with one high finding "grader unparseable", never a pass; the Codex review is called once more, and a second bad reply drafts the PR without blocking (Grader calls).
 `verdict_consistent` runs on every judge JSON: a pass with non-empty fixes or a failing row, or without a row `judge.schema.json` requires, or a fail with empty fixes and empty backlog, is refuted, and the judge is called once more, fresh, with the refutation appended to its prompt.
 
 ## Grader calls
@@ -122,7 +122,8 @@ The evidence bundle is the ticket body, `git diff base...HEAD`, the check output
 In that diff, code files pass as content, but data files pass as stat only (files under `evals/` named `prompt.md`, and any single added file over 400 lines), so a frozen prompt or a large fixture never floods the grader diff.
 The Codex review stage runs `codex exec --json --output-schema frozen/review-output.schema.json -o <file> -s read-only "$(cat frozen/codex-review.prompt.md)" < /dev/null`, with the base sha filled into the frozen prompt's `<base>` placeholder; a review needs no write access and `read-only` keeps it from editing the tree the judge and reviewer already graded; `codex exec review` ignores `--output-schema` (#41).
 `needs-attention` with a `critical` or `high` finding blocks once.
-An absent or empty `-o` file, or one that is not a single object with a `verdict`, is replaced by a `needs-attention` object with one high finding "codex review output unparseable".
+An absent or empty `-o` file, or one that is not a single object with a `verdict`, gets one more Codex call; after a second bad reply it is replaced by a `needs-attention` object with one high finding "codex review output unparseable".
+A worker cannot rerun Codex, so that finding is not sent to the worker and does not fail the round; in the final round it drafts the PR and is filed as an issue.
 
 ## Worker calls
 
