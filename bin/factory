@@ -711,6 +711,9 @@ prepare_worktree() {
 FROZEN_SET="factory lib.sh _common.md role-settings.json worker-settings.json checks.sh \
 judge.md reviewer.md judge.schema.json reviewer.schema.json issue.md protected.txt exempt.txt \
 factory-round.js review-output.schema.json codex-review.prompt.md unattended.md"
+# The line freeze writes after the block, before checks.sh exits; run_checks reads output that does not end
+# on CHECKS-END as an abort (#277).
+CHECKS_END="printf '\nCHECKS-END\n'"
 
 freeze() {
   local g src
@@ -733,7 +736,7 @@ freeze() {
     printf '{"ts":"%s","event":"grader","role":"%s","file":"%s","sha256":"%s"}\n' \
       "$(now)" "$g" "$src" "$(sha256_of < "$src" | cut -d' ' -f1)" >> "$LEDGER"
   done
-  { cat "$RUN/frozen/lib.sh"; echo; dc_block; echo; echo 'exit $((n_fail > 0))'; } > "$RUN/frozen/checks.sh"
+  { cat "$RUN/frozen/lib.sh"; echo; dc_block; echo; echo "$CHECKS_END"; echo 'exit $((n_fail > 0))'; } > "$RUN/frozen/checks.sh"
   { standing_list; section "Do not touch" | sed 's/[Ee]xcept:.*//' | ticket_paths; } | sort -u > "$RUN/frozen/protected.txt"
   section "Do not touch" | grep -o '[Ee]xcept:.*' | ticket_paths > "$RUN/frozen/exempt.txt"
   chmod +x "$RUN/frozen/checks.sh" "$RUN/frozen/factory"
@@ -944,18 +947,19 @@ limit_wait() { # result.json -> 0 after waiting, 1 when the reply is not a usage
 # ---- step 4: round 0 --------------------------------------------------------
 # Every non-guard check must fail on base; one that passes there cannot prove the ticket.
 
-# Run the frozen checks from dir into out. A block that aborts before it prints a FAIL line is never green
-# (#180): a non-zero exit with no FAIL line adds FAIL checks-aborted, on a fresh line as lib.sh's results are,
-# so output with no trailing newline cannot hide it from the ^FAIL reads. Check names are not read from the block,
-# because a check can quote a ticket body or a script whose pass and fail words are not top-level checks.
+# Run the frozen checks from dir into out. A block that aborts or exits early is never green (#180, #277): output
+# whose last line is not checks.sh's CHECKS-END line adds FAIL checks-aborted, whatever the exit code and the
+# other FAIL lines say. A resumed run re-execs the frozen factory that froze its checks.sh, so the two always
+# match. The added line starts a fresh line as lib.sh's results do, so output with no trailing newline cannot
+# hide it from the ^FAIL reads. Check names are not read from the block, because a check can quote a ticket
+# body or a script whose pass and fail words are not top-level checks.
 run_checks() { # dir out
   local rc
   ( cd "$1" && "$RUN/frozen/checks.sh" ) > "$2" 2>&1
   rc=$?
-  if [ "$rc" -ne 0 ] && ! grep -q '^FAIL' "$2"; then
-    log "checks.sh exited $rc with no FAIL line"
-    printf '\nFAIL checks-aborted: checks.sh exited %s with no FAIL line\n' "$rc" >> "$2"
-  fi
+  [ "$(tail -n 1 "$2")" = CHECKS-END ] && return 0
+  log "checks.sh exited $rc before its end line"
+  printf '\nFAIL checks-aborted: checks.sh exited %s before its end line\n' "$rc" >> "$2"
 }
 
 round_zero() {
@@ -978,7 +982,7 @@ round_zero() {
   run_checks "$wt" "$out"
   git -C "$MAIN_CHECKOUT" worktree remove --force "$wt" > /dev/null 2>&1
   grep -q '^FAIL checks-aborted' "$out" \
-    && finish ticket-defect "checks.sh aborted on $(cut -c1-8 "$RUN/base.sha") before it printed a FAIL line; see $out"
+    && finish ticket-defect "checks.sh aborted on $(cut -c1-8 "$RUN/base.sha") before the block ended; see $out"
   guards=$(guard_checks | grep -oE '(^|[[:space:]])pass[[:space:]]+"?[A-Za-z0-9_.-]+' \
     | awk '{print $NF}' | tr -d '"' | sort -u)
   while read -r _ name _; do
