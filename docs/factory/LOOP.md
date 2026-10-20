@@ -160,7 +160,7 @@ Skills are given at the moment they apply, never all at once; the listing is pai
 |---|---|---|
 | Brief (stage 0) | `/brief` (F5) | Samyak invokes it |
 | Design (stage 1) | `surprise-me` (panel), `mattpocock-skills:research`, plan mode, `/plan-review`, `grill-with-docs`, `domain-modeling`, `wayfinder` | in that order for `Mode: figure-out`, from plan mode on for `build`; Samyak types `/surprise-me` and `/plan-review`, which are manual-only, and the design session invokes the rest |
-| Tickets (stage 2) | `to-tickets`, `plan-reviewer`, lean-critic | the stage-2 session; `plan-reviewer` and lean-critic after `bin/factory lint` exits 0 |
+| Tickets (stage 2) | `to-tickets`, `plan-reviewer`, lean-critic | the stage-2 session invokes `to-tickets`, and lean-critic after `bin/factory lint` exits 0; `plan-reviewer` is manual-only, run by hand over the breakdown when Samyak asks |
 | Worker | the skills the ticket's `skills:` field names, each a line of `bin/factory.d/skills.txt` | one Skill-tool sentence per name in the worker prompt |
 | Graders | none; their prompt is the whole instruction | frozen files |
 | Manager (stage 5, 6) | `handoff` when stopping mid-stream | the manager session |
