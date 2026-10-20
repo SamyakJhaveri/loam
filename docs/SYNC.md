@@ -7,6 +7,8 @@ Since the 2026-08 rebuild there are three distribution mechanisms: Copier forwar
 - `uvx copier copy --trust gh:samyakjhaveri/loam ./my-project` bootstraps.
 - `bin/sync-project <owner/repo> [<loam-commit>]` carries one Loam commit into a rendered project as a pull request.
   Use it for every update.
+- Every Loam pull request body states its port class on a `Port:` line: `seed` (travels by `bin/sync-project`), `runner` (a host change on the factory runner, applied the same day with no project sync), or `Loam-only` (say whether a project needs its own copy).
+  The pull request template asks for it.
 - A plain `uvx copier update --trust` in the project still works.
   It resolves the latest tag, reads the template from the project's `_src_path`, and runs the template's tasks (see below).
 - Copier `copy` and a plain `update` resolve git TAGS, not HEAD, so nothing reaches them until `bin/release.sh <version>` tags it.

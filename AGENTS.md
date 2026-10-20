@@ -22,8 +22,8 @@ renders into a generated project. The root `.claude/` symlink points to
 # Bootstrap from the latest release tag.
 uvx copier copy --trust gh:samyakjhaveri/loam ./my-project
 
-# Pull the latest released template into an existing project.
-cd my-project && uvx copier update --trust
+# Carry a Loam commit into a project as a pull request.
+bin/sync-project <owner/repo> [<loam-commit>]
 
 # Check Loam before a commit or release.
 bin/check
