@@ -1,9 +1,11 @@
 """A reviewer or Codex review past its one block that still blocks, or replies with nothing parseable, opens a draft PR.
 
+A Codex review with no parseable reply is called once more; two bad replies draft the PR but never reach a worker.
+
 `bin/factory` is sourced (FACTORY_SOURCED=1) and two rounds run the loop's `graders "$ROUND" && open_pr` line with the
 real graders, call_json, run_codex_review, open_pr, and file_backlog. Fake `claude`, `codex`, and `gh` scripts sit
-on PATH: claude answers with the reply named in its prompt, codex writes the reply file for its round (or nothing),
-and gh records its arguments and body. The worktree's origin is a local bare repository. No network.
+on PATH: claude answers with the reply named in its prompt, codex logs its -o file and writes the reply for its call
+number (or nothing), and gh records its arguments and body. The worktree's origin is a local bare repository. No network.
 """
 
 from __future__ import annotations
@@ -29,7 +31,10 @@ print(json.dumps({"type": "result", "subtype": "success", "is_error": False, "to
 FAKE_CODEX = """#!/usr/bin/env python3
 import pathlib, sys
 out = pathlib.Path(sys.argv[sys.argv.index("-o") + 1])
-reply = out.parent / ("codex-reply." + out.name.split(".")[0])
+calls = out.parent / "codex-calls"
+with calls.open("a") as f:
+    f.write(out.name + "\\n")
+reply = out.parent / ("codex-reply.%d" % len(calls.read_text().splitlines()))
 if reply.exists():
     out.write_text(reply.read_text())
 """
@@ -101,14 +106,14 @@ class CappedReviewTests(unittest.TestCase):
         """Run rounds 1 and 2 of `graders "$ROUND" && open_pr`; return the loop's stderr and the gh calls.
 
         reviews[k] is the reviewer's reply in round k+1 (a string goes verbatim, anything else as JSON).
-        codex, when given, turns the Codex review on: codex[k] is the -o file text in round k+1, None for no file.
+        codex, when given, turns the Codex review on: codex[k] is the -o file text of Codex call k+1, None for no file.
         """
         for k, reply in enumerate(reviews, start=1):
             (self.run_dir / f"reply.judge.{k}").write_text(json.dumps(JUDGE_PASS))
             (self.run_dir / f"reply.reviewer.{k}").write_text(reply if isinstance(reply, str) else json.dumps(reply))
         for k, text in enumerate(codex or [], start=1):
             if text is not None:
-                (self.run_dir / f"codex-reply.round-{k}").write_text(text)
+                (self.run_dir / f"codex-reply.{k}").write_text(text)
         script = (
             f"RUN='{self.run_dir}'; WORKTREE='{self.wt}'; BRANCH=factory/7; ISSUE=7; KEY=7; IS_FILE=0\n"
             'LEDGER="$RUN/ledger.jsonl"; DAILY="$RUN/daily.jsonl"; DECISIONS="$RUN/decisions.md"; LOG="$RUN/factory.log"\n'
@@ -137,8 +142,8 @@ class CappedReviewTests(unittest.TestCase):
     def issues(self, calls: list[dict]) -> list[dict]:
         return [c for c in calls if c["args"][:2] == ["issue", "create"]]
 
-    def assert_draft_with_filed_finding(self, stderr: str, calls: list[dict], finding: str) -> None:
-        self.assertIn(f"EXIT pr-opened (0): {PR_URL} after 2 rounds", stderr)
+    def assert_draft_with_filed_finding(self, stderr: str, calls: list[dict], finding: str, rounds: int = 2) -> None:
+        self.assertIn(f"EXIT pr-opened (0): {PR_URL} after {rounds} rounds", stderr)
         pr = self.pr_create(calls)
         self.assertIn("--draft", pr["args"])
         # The reason is the first line under `Closes #<issue>` (LOOP.md, step 8), and it names the finding.
@@ -165,14 +170,33 @@ class CappedReviewTests(unittest.TestCase):
                 self.assertIn("first defect", (self.run_dir / "round-1.fixes").read_text())
                 self.assert_draft_with_filed_finding(stderr, calls, finding)
 
-    def test_codex_review_with_no_parseable_output_blocks_once_then_opens_a_draft(self) -> None:
+    def codex_fixes(self) -> list[str]:
+        fixes = self.run_dir / "round-1.fixes"
+        return [x for x in fixes.read_text().splitlines() if "codex" in x.lower()] if fixes.exists() else []
+
+    def codex_calls(self) -> list[str]:
+        return (self.run_dir / "codex-calls").read_text().splitlines()
+
+    def test_a_codex_review_with_no_parseable_output_is_called_once_more(self) -> None:
+        for name, text in (("missing", None), ("empty", ""), ("not-json", "this is not json")):
+            with self.subTest(name):
+                self.new_run()
+                stderr, calls = self.run_loop([CLEAN_REVIEW, CLEAN_REVIEW], codex=[text, json.dumps(CLEAN_CODEX)])
+                self.assertEqual(self.codex_fixes(), [])
+                self.assertEqual(self.codex_calls(), ["round-1.codex-review.json"] * 2)
+                self.assertIn(f"EXIT pr-opened (0): {PR_URL} after 1 rounds", stderr)
+                self.assertNotIn("--draft", self.pr_create(calls)["args"])
+                self.assertEqual(self.issues(calls), [])
+
+    def test_two_unparseable_codex_reviews_open_a_draft_without_a_worker_round(self) -> None:
         for name, text in (("missing", None), ("empty", ""), ("not-json", "this is not json")):
             with self.subTest(name):
                 self.new_run()
                 stderr, calls = self.run_loop([CLEAN_REVIEW, CLEAN_REVIEW], codex=[text, text])
-                # Round 1: the absent or unparseable review is a blocking high finding, never 0 blocking.
-                self.assertIn("codex review output unparseable", (self.run_dir / "round-1.fixes").read_text())
-                self.assert_draft_with_filed_finding(stderr, calls, "codex review output unparseable")
+                # The finding is kept for the draft and the issue, but a worker cannot rerun Codex, so it gets nothing.
+                self.assertEqual(self.codex_fixes(), [])
+                self.assertEqual(self.codex_calls(), ["round-1.codex-review.json"] * 2)
+                self.assert_draft_with_filed_finding(stderr, calls, "codex review output unparseable", rounds=1)
 
     def test_a_multi_paragraph_finding_files_one_issue_with_the_whole_finding(self) -> None:
         codex = json.dumps({"verdict": "needs-attention", "summary": "s", "next_steps": [], "findings": [
