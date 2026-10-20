@@ -13,7 +13,7 @@ Keep rows a check enforces, so each enforcer stays findable; drop a row only whe
 | Commit identities are public or noreply | `bin/ip-sweep.sh` | check: `bin/check` step "commit identities" |
 | A plugin file change bumps its version | `bin/plugin_versions.py` | check: `bin/check` step "plugin versions" |
 | Skills and agents name only paths, skills and agents that exist | `bin/check` | check: `bin/check` step "skill and agent frontmatter + references" |
-| Always-loaded prose does not grow | `bin/always_loaded_prose.py` | check: `bin/check` step "always-loaded prose cap" |
+| Always-loaded prose does not grow, and its cap equals the measured size (a shrink lowers the cap in the same PR) | `bin/always_loaded_prose.py` | check: `bin/check` step "always-loaded prose cap" fails over and under the cap (#303) |
 | Skill listings stay within their token budget | `bin/skill_listing_weight.py` | check: `bin/check` step "skill-listing token weight" |
 | No trailing whitespace or conflict markers | `bin/check` | check: `git diff --check` in `bin/check` |
 | Graders run on their pinned model and effort | `bin/factory` | check: `bin/check` step "factory grader model and effort" |
