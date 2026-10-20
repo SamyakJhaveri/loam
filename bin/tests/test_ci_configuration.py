@@ -16,7 +16,7 @@ class CIConfig(unittest.TestCase):
         w = TEST.read_text()
         self.assertIn("push:\n    branches: [main]", w)
         self.assertIn("pull_request:\n    branches: [main]", w)
-        self.assertIn("  verify:", w)  # job name = ruleset status context
+        self.assertIn("  verify:", w)  # job id = a status check main's ruleset requires
         # Exact step block: a commented-out or renamed step must fail here.
         self.assertIn("- name: Run check\n        run: bin/check", w)
         self.assertIn("run: python3 -m pip install -r .github/ci/python-requirements.txt", w)
@@ -28,6 +28,20 @@ class CIConfig(unittest.TestCase):
         """An `if:` or `continue-on-error:` in the verify job would make check advisory."""
         w = TEST.read_text()
         job = w[w.index("  verify:"):]
+        self.assertNotIn("continue-on-error:", job)
+        self.assertNotIn("if:", job)
+
+    def test_verify_job_fetches_main(self):
+        """bin/plugin_versions.py diffs against origin/main; a shallow checkout would skip its bump rule."""
+        w = TEST.read_text()
+        job = w[w.index("  verify:"):w.index("  stub-sweep:")]
+        self.assertIn("- uses: actions/checkout@v4\n        with:\n          fetch-depth: 0", job)
+
+    def test_stub_sweep_job_runs_the_sweep(self):
+        """verify-loam's stub sweep runs on every push and PR; a dropped step or a gate would let a break pass."""
+        w = TEST.read_text()
+        job = w[w.index("  stub-sweep:"):]
+        self.assertIn("- name: Run verify-loam stub sweep\n        run: .claude/skills/verify-loam/control-loam sweep", job)
         self.assertNotIn("continue-on-error:", job)
         self.assertNotIn("if:", job)
 

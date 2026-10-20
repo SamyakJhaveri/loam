@@ -2,14 +2,6 @@
   "enabledPlugins": {
     "pyright-lsp@claude-plugins-official": true
   },
-  "extraKnownMarketplaces": {
-    "cursor-plugins": {
-      "source": {
-        "source": "github",
-        "repo": "cursor/plugins"
-      }
-    }
-  },
   "cleanupPeriodDays": 365,
   "permissions": {
     "deny": [

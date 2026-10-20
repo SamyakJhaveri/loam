@@ -44,6 +44,7 @@ Drop the rest or answer them from the codebase.
 `Mode: figure-out` is set when the ask is a question, names no solution, or says "help me figure out".
 It is always Track C.
 Stage 1 then opens with `/surprise-me` in panel mode, which the user types (it is manual-only), and the `mattpocock-skills:research` skill against primary sources before any plan is written; the actors and order are in the `docs/factory/ARCHITECTURE.md` stage table.
+When an open question is a fact a quick throwaway prototype could observe, build it in a scratch directory (`mattpocock-skills:prototype`) and let its output answer before you ask.
 The design issue records the options considered, the evidence for each, and the ones rejected with a reason.
 
 ## Tracks, by blast radius
@@ -53,6 +54,7 @@ The design issue records the options considered, the evidence for each, and the 
   The commit or PR body is the spec.
 - Track B is one feature that fits one ticket.
   The brief becomes the ticket: the ask becomes Goal and why, Done means becomes the done-checks block, Out of scope carries over.
+  When the target is Loam and the ticket changes what a rendered project does (`seed/**`, the hooks and settings under it, `copier.yml`), Done means names a behavior seen in a render, and its check drives that render with `control-loam`, not a grep, in the form `docs/factory/CONTRACT.md` gives (Done checks for a rendered-project change).
   The author runs the block on `main` by hand once and confirms every non-guard check prints FAIL; lint never runs it; round 0 repeats it on the runner.
   Then lint, then publish.
 - Track C is several tickets.

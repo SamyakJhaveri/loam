@@ -7,7 +7,8 @@
 ## Commands
 
 - Check: `bin/check` (lint, shell syntax, whitespace, tests). Run it before you call work done.
-- Behavior proof comes from a project verify skill. In Claude Code, create one with `/pstack:create-verification-skill` after `/plugin install pstack@cursor-plugins`.
+- Behavior proof comes from a project run skill. In Claude Code, ask the user to type `/run-skill-generator` (manual-only) to create one, with a doctor step and an evidence folder; where pstack is installed, ask for `/pstack:create-verification-skill` instead, which names it `verify-<project>`.
+- Proof runs on the real target. A step run on a stand-in stays marked unverified until it runs there.
 
 ## Conventions
 
@@ -20,4 +21,4 @@
 ## Read on demand
 
 - `docs/HARNESS.md` - what the harness guards, what it does not, the accepted risks. Read it before editing a hook, `.claude/settings.json`, or `.codex/`.
-- `docs/WORKERS.md` - parallel-worker roles and the handoff format.
+- `docs/WORKERS.md` - parallel-worker roles, review, pstack use, and the handoff format.

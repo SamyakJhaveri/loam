@@ -1,0 +1,40 @@
+{
+  "skill": {
+    "name": "unknown",
+    "source": "empty",
+    "scanned_at": "2026-10-19T04:51:50.326690+00:00"
+  },
+  "risk_assessment": {
+    "score": 0,
+    "severity": "LOW",
+    "recommendation": "SAFE"
+  },
+  "components": [],
+  "issues": [],
+  "suppressed_count": 0,
+  "suppressed": [],
+  "metadata": {
+    "has_executable_scripts": false,
+    "skillspector_version": "2.9.1",
+    "llm_requested": false,
+    "llm_available": false,
+    "meta_analysis_applied": false,
+    "inference_usage": [],
+    "filtering_mode": "heuristic"
+  },
+  "execution_successful": true,
+  "analysis_completeness": {
+    "total_components": 0,
+    "scanned_components": 0,
+    "coverage_percent": 100.0,
+    "is_complete": false,
+    "execution_successful": true,
+    "fully_inspected_files": 0,
+    "partially_inspected_files": 0,
+    "entirely_uninspected_files": 0,
+    "ledger_exceptions": [],
+    "scope_exclusions": [],
+    "findings_before_filtering": 0,
+    "findings_after_filtering": 0
+  }
+}

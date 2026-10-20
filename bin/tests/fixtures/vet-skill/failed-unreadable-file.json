@@ -1,0 +1,94 @@
+{
+  "skill": {
+    "name": "broken",
+    "source": "broken",
+    "scanned_at": "2026-10-19T04:03:04.772566+00:00"
+  },
+  "risk_assessment": {
+    "score": 0,
+    "severity": "LOW",
+    "recommendation": "CAUTION"
+  },
+  "components": [
+    {
+      "path": "SKILL.md",
+      "type": "markdown",
+      "lines": 5,
+      "executable": false,
+      "size_bytes": 41
+    },
+    {
+      "path": "run.sh",
+      "type": "shell",
+      "lines": 0,
+      "executable": true,
+      "size_bytes": 8
+    }
+  ],
+  "issues": [],
+  "suppressed_count": 0,
+  "suppressed": [],
+  "metadata": {
+    "has_executable_scripts": true,
+    "skillspector_version": "2.9.1",
+    "llm_requested": false,
+    "llm_available": false,
+    "meta_analysis_applied": false,
+    "inference_usage": [],
+    "filtering_mode": "heuristic"
+  },
+  "execution_successful": false,
+  "analysis_completeness": {
+    "total_components": 2,
+    "scanned_components": 1,
+    "coverage_percent": 50.0,
+    "is_complete": false,
+    "execution_successful": false,
+    "fully_inspected_files": 1,
+    "partially_inspected_files": 0,
+    "entirely_uninspected_files": 1,
+    "ledger_exceptions": [
+      {
+        "outcome": "failed",
+        "phase": "cache",
+        "reason_code": "read_error",
+        "message": "File content could not be read.",
+        "path": "run.sh",
+        "start_line": null,
+        "end_line": null,
+        "fatal": true,
+        "error_class": "PermissionError"
+      },
+      {
+        "outcome": "failed",
+        "phase": "static",
+        "reason_code": "missing_file_cache",
+        "message": "Applicable analyzer could not obtain file content.",
+        "path": "run.sh",
+        "start_line": null,
+        "end_line": null,
+        "fatal": true,
+        "analyzers": [
+          "static_patterns_agent_snooping",
+          "static_patterns_anti_refusal",
+          "static_patterns_data_exfiltration",
+          "static_patterns_excessive_agency",
+          "static_patterns_harmful_content",
+          "static_patterns_memory_poisoning",
+          "static_patterns_output_handling",
+          "static_patterns_privilege_escalation",
+          "static_patterns_prompt_injection",
+          "static_patterns_rogue_agent",
+          "static_patterns_ssrf",
+          "static_patterns_supply_chain",
+          "static_patterns_system_prompt_leakage",
+          "static_patterns_tool_misuse",
+          "static_yara"
+        ]
+      }
+    ],
+    "scope_exclusions": [],
+    "findings_before_filtering": 0,
+    "findings_after_filtering": 0
+  }
+}

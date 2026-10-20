@@ -11,7 +11,7 @@ The brief becomes the ticket: the ask becomes Goal and why, Done means becomes t
 ## The ticket contract
 
 A ticket is a GitHub issue whose body has these sections in this order.
-It is the shipped `fable-prompting` handoff rubric with fixed names: Goal and why, Do not touch (Constraints), Done checks (Done check per task), Worker (Target model and effort); Session conduct is always unattended.
+It is the shipped `fable-prompting` plan rubric with fixed names: Goal and why, Do not touch (Constraints), Done checks (Done check per task), Worker (Target model and effort); Session conduct is always unattended.
 The body starts at `Brief:` or `Part of`; in a file the first `#` line is the title, or the file opens with the `title:` front matter publish.sh reads, ending in `---`.
 
 1. Title, then `Part of <design issue>` for Track C or `Brief:` followed by the four brief lines for Track B, then `Blocked by:` with issue links or `none` (display only; native blocking edges are what the loop reads).
@@ -23,8 +23,8 @@ The body starts at `Brief:` or `Part of`; in a file the first `#` line is the ti
    The worker follows it; a departure needs a `decisions.md` line, which the judge reads.
 6. `## Done checks`: one fenced block tagged `done-checks`, a bash body sourced after `lib.sh`, run from the worktree root.
    A check is one line of the block and ends in `pass NAME` or `fail NAME reason`, in the form `A && pass N || fail N "why"`.
-   A line prefixed `guard` is a regression guard allowed to pass on `main`; every other check must print FAIL on `main`.
-   The block is green when it prints no FAIL line and every named check prints exactly one PASS or FAIL line.
+   A check that calls `guard` (for example `guard bin/check` or `out=$(guard cmd)`) is a regression guard allowed to pass on `main`; every other check must print FAIL on `main`.
+   The block is green when it prints no FAIL line; the supervisor adds `FAIL checks-aborted` when `checks.sh` exits non-zero with no FAIL line (#180).
    No `skip`.
    The block runs under `pipefail`, so a check never pipes a command that is meant to exit non-zero into `grep`; it captures the output first (`out=$(cmd 2>&1); grep -q pattern <<<"$out"`).
    Written before implementation.
@@ -42,6 +42,34 @@ The body starts at `Brief:` or `Part of`; in a file the first `#` line is the ti
 Every path under Where, Do not touch, and Approach is verified with `git ls-files` when the ticket is written, or is a path the Goal creates; a guessed path is the commonest small defect and lint rejects it.
 
 `lib.sh` (`bin/factory.d/lib.sh`): F2 ships `pass`, `fail`, and `guard CMD...` (runs CMD and returns its status); F1 adds `MEASURE`, `render_into`, `check_clean`.
+
+### Done checks for a rendered-project change
+
+A ticket that changes what a rendered project does proves it in a real render: any change under `seed/`, hooks and settings included, or to `copier.yml`.
+A grep of the source proves the text, and a hook script fed JSON by hand proves the script; neither proves the harness.
+At least one non-guard check renders the checkout and drives a session in the render with `control-loam`, the verify-loam CLI at `.claude/skills/verify-loam/control-loam`, and reads the result from the JSON it prints.
+Use `--stub`: a scripted model on 127.0.0.1 answers, so a session costs $0 and a second or two, and the check also runs under the worker's Stop hook.
+A paid session (no `--stub`) is only for what a real model must read, such as quote-back or the Fable brief; write its line to pass under `LOAM_HOOK` (`LOOP.md`, The worker prompt).
+Each run of the block exports its own `LOAM_VERIFY_ROOT` from `mktemp -d`, so round 0, the Stop hook, and the supervisor never share a render.
+`control-loam` points the session's hooks at `<run>/memstore` and unsets `LOAM_MEMSTORE_REMOTE`, so a check never writes `~/memstore`.
+`render` copies the working tree, so the check sees uncommitted edits under the Stop hook and the committed tree in the supervisor's run.
+The recipe for each behavior (memory, deny rules, the Fable brief, the rendered check) is in `.claude/skills/verify-loam/features/`.
+
+This block proves memory recall: every hook in both stub sessions exits 0, and the second session's `SessionStart` hook prints the `## Memory (render)` block holding the INDEX line `mem-capture.sh` wrote for the first session, found by that session's `session_id`.
+`session` does not fail when a hook exits nonzero, so the block reads each hook's `exit_code` itself.
+It passes on today's `main` and fails when `seed/.claude/hooks/mem-recall.sh` prints nothing, prints only its heading, or exits nonzero; a ticket that adds a behavior writes its check in this shape, and the check prints FAIL on `main`.
+
+```bash
+C=.claude/skills/verify-loam/control-loam; export LOAM_VERIFY_ROOT=$(mktemp -d "${TMPDIR:-/tmp}/verify.XXXXXX"); \
+  $C render --run t >/dev/null && s1=$($C session t "Reply OK." --stub --name s1) && s2=$($C session t "Reply OK." --stub --name s2) && \
+  jq -e 'all(.hooks[]; .exit_code == 0)' <<<"$s1" >/dev/null && \
+  jq -e --arg sid "$(jq -r '.session_id' <<<"$s1")" 'all(.hooks[]; .exit_code == 0) and any(.hooks[]; .event == "SessionStart" and (.stdout | startswith("## Memory (render)")) and (.stdout | contains(" | " + $sid + " | ")))' <<<"$s2" >/dev/null \
+  && pass memory-recalled || fail memory-recalled "a hook exited nonzero, or the second stub session's ## Memory block does not hold the first session's INDEX line; evidence in $LOAM_VERIFY_ROOT/t/evidence"
+guard $C cleanup t >/dev/null && pass verify-cleanup || fail verify-cleanup "control-loam cleanup t"
+```
+
+Every `control-loam` command exits 1 when it fails, and `session --stub` also fails when no request reaches the stub, so a broken render or a wire-format change reads FAIL, never PASS.
+The guarded `cleanup` removes the render (about 4 MB), its memstore, and its `~/.claude/projects/` directory, and keeps `evidence/`.
 
 ### Seam with to-tickets
 

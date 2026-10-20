@@ -1,4 +1,4 @@
-_min_copier_version: "9.4.0"
+_min_copier_version: "9.16.0"
 _subdirectory: "seed"
 _templates_suffix: .jinja
 # Render checked-in symlinks (e.g. .claude/skills/catchup -> ../../.agents/skills/catchup)
@@ -42,7 +42,7 @@ github_repo:
   type: str
   help: "GitHub repo (owner/repo) for this project? Leave empty to skip. Trailing .git is stripped automatically."
   default: ""
-  validator: "{% if github_repo and not (github_repo | regex_search('^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$')) %}Invalid repo format — use owner/repo{% endif %}"
+  validator: "{% if github_repo and not (github_repo | regex_search('^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$')) %}Invalid repo format - use owner/repo{% endif %}"
 
 project_kind:
   type: str
@@ -52,7 +52,8 @@ project_kind:
 
 # Post-generation tasks (run in the generated project directory)
 _tasks:
-  # Strip the pyright-lsp plugin from settings for non-Python project kinds.
+  # Strip the pyright-lsp plugin from settings for non-Python project kinds. Runs on update too:
+  # the update's temp renders must match the stripped file, or the merge re-adds the plugin as a conflict.
   - >-
     {% if project_kind not in ['python', 'research', 'mixed'] %}
     python3 -c "import json; f='.claude/settings.json'; d=json.load(open(f)); d.get('enabledPlugins', {}).pop('pyright-lsp@claude-plugins-official', None); w=open(f, 'w'); json.dump(d, w, indent=2); w.write('\n')"
@@ -60,22 +61,28 @@ _tasks:
     true
     {% endif %}
 
-  # Initialize git repo (skip on copier update — .git already exists)
+  # Initialize git repo on copy only: `copier update` also runs every task in two temp renders
+  # that have no .git, where this would commit and task 3 would push and post a ruleset.
   # _gh_setup.sh is left untracked: task 4 deletes it, and a tracked-then-deleted file makes the
   # rendered bin/check fail on its first run (bash -n over git ls-files finds no such file).
-  - "if [ ! -d .git ]; then (git init -b main 2>/dev/null || git init) && git add . && git reset -q -- _gh_setup.sh && git commit -m 'Initial commit from loam'; fi"
-
-  # Optional: create or connect GitHub repo (skip on copier update)
   - >-
-    {% if github_repo %}
+    {% if _copier_operation == 'copy' %}
+    if [ ! -d .git ]; then (git init -b main 2>/dev/null || git init) && git add . && git reset -q -- _gh_setup.sh && git commit -m 'Initial commit from loam'; fi
+    {% else %}
+    true
+    {% endif %}
+
+  # Optional: create or connect GitHub repo, on copy only (see task 2)
+  - >-
+    {% if github_repo and _copier_operation == 'copy' %}
     if ! git remote get-url origin >/dev/null 2>&1; then
       bash _gh_setup.sh "{{ github_repo }}"
     else
-      echo '[copier] Remote origin already configured — skipping GitHub setup.'
+      echo '[copier] Remote origin already configured - skipping GitHub setup.'
     fi
     {% else %}
     true
     {% endif %}
 
-  # Clean up helper scripts
+  # Clean up helper scripts. Runs on update too, where the render writes _gh_setup.sh again.
   - "rm -f _gh_setup.sh"

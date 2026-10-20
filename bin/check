@@ -39,6 +39,10 @@ WS_EXCLUDE=(":(exclude)*.patch" ":(exclude)*.diff")
 git diff --check "$(git hash-object -t tree /dev/null)" HEAD -- . "${WS_EXCLUDE[@]}" || bad "git diff --check (trailing whitespace or conflict markers)"
 git diff --check HEAD -- . "${WS_EXCLUDE[@]}" || bad "git diff --check HEAD (whitespace or conflict markers in staged or unstaged edits)"
 
+step "commit identities (ip-sweep identity only)"
+# Needs no private term file, so it gates every PR; release.sh still runs the full strict sweep.
+IP_SWEEP_IDENTITY_ONLY=1 bash bin/ip-sweep.sh || bad "ip-sweep identity check"
+
 step "pytest"
 # Always `python3 -m pytest`: hook tests mint a receipt with sys.executable and re-validate it with `python3`.
 # Without pytest-xdist the suite takes ~117 s serial, so build a venv from the CI pins (.venv/ is gitignored).
@@ -72,7 +76,7 @@ python3 - <<'PY' || bad "skill or agent frontmatter or reference (see the lines 
 import pathlib, re, subprocess
 
 # Paths a skill or agent writes, or reads only if present, in the project it runs in.
-OPTIONAL = {".claude/rules/", ".claude/codex-reviews/", "docs/findings/FINDINGS.md", "docs/hypothesis_tree.md"}
+OPTIONAL = {".claude/rules/", ".claude/codex-reviews/", "docs/hypothesis_tree.md"}
 SPAN = re.compile(r"(?<!`)`([^`\n]+)`(?!`)")
 PATH = re.compile(r"[A-Za-z0-9_.][A-Za-z0-9_.-]*(/[A-Za-z0-9_.-]+)+/?")
 NAMED = re.compile(r"(?<!`)`([a-z0-9][a-z0-9:-]*)` (?:skill|subagent|agent)s?\b")
@@ -127,10 +131,39 @@ PY
 step "skill-listing token weight"
 # No-growth ceilings on the uncalibrated chars/4 estimate, each set to the measured weight:
 # seed after the catchup trim and hypothesis-tree went manual-only, sam-cc-setup after
-# plan-review and surprise-me went manual-only.
+# plan-review and surprise-me went manual-only and the plan-reviewer description was trimmed.
 # Lower one when its listing shrinks; never raise it without saying why.
-python3 bin/skill_listing_weight.py --root "$ROOT" --budget seed=85 --budget "sam-cc-setup=${LISTING_BUDGET:-377}" \
+python3 bin/skill_listing_weight.py --root "$ROOT" --budget seed=85 --budget "sam-cc-setup=${LISTING_BUDGET:-365}" \
   || bad "skill-listing weight over budget"
+
+step "always-loaded prose cap"
+# Root CLAUDE.md, AGENTS.md and what they load reach every Loam session. No-growth cap in bytes,
+# set to the measured size. Lower it when the prose shrinks; raise it only in the
+# PR that grows the prose, with the reason in that PR.
+python3 bin/always_loaded_prose.py --root "$ROOT" --cap 4681 || bad "always-loaded prose over its cap"
+
+step "no em dash in Loam-owned text"
+# The owner's standing rule (#237), raw or JSON-escaped. Exempt only text Loam does not own or must not rewrite.
+EM_EXEMPT=(
+  ":(exclude)cultivation/parked/"                                       # byte-pinned by the curated catalog; an edit needs a re-pin
+  ":(exclude)docs/archive/"                                             # frozen historical records
+  ":(exclude)docs/architecture-working/asset-intake/sources/"           # verbatim captured sources
+  ":(exclude)docs/architecture-working/asset-intake/loam-inventory.json" # generated inventory quoting other files
+  ":(exclude)docs/research/primary-2026-09-08/"                         # quoted upstream pages
+  ":(exclude)evals/"                                                    # recorded grader prompts; a replay must see them unchanged
+  ":(exclude)seed/.loam/runtime/assets/curated-catalog.json"            # sha256-pinned in seed/.loam/runtime/release-manifest.json
+)
+# --untracked: a new file not yet added fails here, as it will in CI. git grep exits 1 when nothing
+# matched, and also after an error it does not treat as fatal, so any stderr fails the step too.
+# The [4] keeps this line from matching its own escape pattern.
+EM_ERR="$(mktemp)"
+git grep --untracked -n -I -e $'\xe2\x80\x94' -e '\\u201[4]' -- . "${EM_EXEMPT[@]}" 2>"$EM_ERR"
+case "$?:$(wc -c <"$EM_ERR" | tr -d ' ')" in
+  1:0) ;;
+  0:0) bad "em dash in the lines above (raw or JSON-escaped); use a plain dash '-' instead" ;;
+  *)   cat "$EM_ERR"; bad "the em-dash search did not read every file; fix the git grep errors above" ;;
+esac
+rm -f "$EM_ERR"
 
 step "claude plugin validate"
 if command -v claude >/dev/null 2>&1; then
@@ -146,6 +179,15 @@ else
   bad "claude CLI not found; install it or set LOAM_ALLOW_MISSING_AGENT_CLIS=1"
 fi
 
+step "plugin versions"
+# The bump rule diffs against the merge base with origin/main; test.yml's fetch-depth 0 gives CI that ref.
+python3 -I bin/plugin_versions.py --root "$ROOT"
+case $? in
+  0) ;;
+  3) skip "plugin version-bump rule" "no merge base with origin/main or main" ;;
+  *) bad "plugin versions (see the lines above)" ;;
+esac
+
 step "factory ticket lint"
 for t in bin/factory.d/fixtures/S[1-5].md; do
   bin/factory lint "$t" || bad "bin/factory lint $t"
@@ -157,11 +199,12 @@ reject_out=$(bin/factory lint bin/factory.d/fixtures/S5.before.md 2>&1); reject_
 
 step "factory verdict gate"
 # verdict_consistent must refute a pass that ships a fix, and accept the same object as a fail (#64).
+# Both fixtures carry every row the judge schema requires, so only the fix decides.
 # Capture first (these checks run under pipefail), then compare. The refute half also requires empty
 # output: a broken guard exits non-zero with usage text, and that must not count as a refutation.
-out=$(FACTORY_SOURCED=1 bash -c '. bin/factory; verdict_consistent bin/factory.d/fixtures/grader-inconsistent.json' 2>&1); r=$?
+out=$(FACTORY_SOURCED=1 bash -c '. bin/factory; verdict_consistent bin/factory.d/fixtures/grader-inconsistent.json bin/factory.d/judge.schema.json' 2>&1); r=$?
 { [ "$r" -ne 0 ] && [ -z "$out" ]; } || bad "verdict_consistent did not refute the inconsistent grader fixture (exit $r): $out"
-out=$(FACTORY_SOURCED=1 bash -c '. bin/factory; verdict_consistent bin/factory.d/fixtures/grader-consistent.json' 2>&1); r=$?
+out=$(FACTORY_SOURCED=1 bash -c '. bin/factory; verdict_consistent bin/factory.d/fixtures/grader-consistent.json bin/factory.d/judge.schema.json' 2>&1); r=$?
 [ "$r" -eq 0 ] || bad "verdict_consistent refuted the consistent grader fixture (exit $r): $out"
 
 step "factory grader model and effort"

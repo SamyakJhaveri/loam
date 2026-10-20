@@ -1,6 +1,6 @@
 ---
 name: plan-reviewer
-description: "Blind adversarial review of a plan, spec, or design doc before execution: correctness checklist plus frame-breaking elegance pass in one unit. Invoke BLIND: give it the artifact path and its constraints, never the author's reasoning. Emits bounded, evidence-capped findings, a coverage ledger, a verdict, and a self-contained revised handoff plan. Use BEFORE any non-trivial implementation, especially architecture decisions, pipeline changes, or anything hard to reverse. Not a code/diff reviewer (use /code-review for shipped changes)."
+description: "Manual only: run it only when the user explicitly asks for a plan review, directly or through a skill they invoked such as /plan-review; never start it on your own. Blind adversarial review of a plan, spec, or design doc: correctness checklist plus elegance pass. Invoke BLIND: give it the artifact path and its constraints, never the author's reasoning. Returns findings, a coverage ledger, a verdict, and a revised plan. Not a code/diff reviewer (use /code-review for shipped changes)."
 tools: Read, Glob, Grep, Bash, WebSearch
 model: claude-fable-5-1
 effort: high

@@ -24,9 +24,23 @@ publish() {
   ok "released v$VERSION; rendered from gh:samyakjhaveri/loam into $OUT/render"
 }
 
+# Main's rules must make a red CI run block a merge. The contexts are the job ids in test.yml.
+require_ci_checks() {
+  local have missing="" c
+  have="$(gh api 'repos/{owner}/{repo}/rules/branches/main' \
+    --jq '.[] | select(.type == "required_status_checks") | .parameters.required_status_checks[].context')" \
+    || die "cannot read the rules on main (gh api repos/{owner}/{repo}/rules/branches/main failed)"
+  for c in verify stub-sweep; do
+    grep -qxF "$c" <<<"$have" || missing="${missing:+$missing, }$c"
+  done
+  [[ -z "$missing" ]] || die "main's active rules do not require the status check(s) $missing; a red CI run would not block a merge. Add them to the main ruleset in Settings, Rules"
+}
+
 SELF="$(cd "$(dirname "$0")/.." && pwd)"; cd "$SELF"
 [[ "$(git branch --show-current)" == "main" ]] || die "release from main only"
 git fetch origin main --quiet
+# Before any push, on the resume path too: the rules could have changed since the first run.
+require_ci_checks
 # Rerun after a failed push: HEAD is the release commit, its tag points at it, origin/main is its parent.
 if [[ "$(git log -1 --format=%s)" == "release: v$VERSION" &&
       "$(git rev-parse -q --verify "refs/tags/v$VERSION^{commit}")" == "$(git rev-parse HEAD)" &&
@@ -57,11 +71,8 @@ sys.exit(not any(m.get("commit") == head and m.get("dirty") is False and m.get("
 PY
 
 # The one local gate CI cannot run: the private IP terms file is off-GitHub.
-if [[ -x "$SELF/bin/ip-sweep.sh" ]]; then
-  IP_SWEEP_STRICT=1 bash "$SELF/bin/ip-sweep.sh" || die "ip-sweep failed"
-else
-  warn "bin/ip-sweep.sh absent - skipping IP gate"
-fi
+# IDENTITY_ONLY=0: an exported IP_SWEEP_IDENTITY_ONLY=1 must not shrink this to the identity check.
+IP_SWEEP_STRICT=1 IP_SWEEP_IDENTITY_ONLY=0 bash "$SELF/bin/ip-sweep.sh" || die "ip-sweep failed"
 
 echo "$VERSION" > VERSION
 git add VERSION

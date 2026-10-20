@@ -1,7 +1,6 @@
 # Loam Factory: the loop
 
 This file is the one home of `bin/factory`, the supervisor that runs one ticket to a pull request on the runner.
-It generalizes `.superpowers/lean-v3/loops/loop.sh`, which stays the live loop until F1 lands.
 The ticket it consumes is defined in `CONTRACT.md`; the stage table and model rules are in `ARCHITECTURE.md`.
 Rubric text lives only in the grader files.
 
@@ -10,10 +9,11 @@ Rubric text lives only in the grader files.
 | Command | Does | Built in |
 |---|---|---|
 | `bin/factory lint <issue|file>` | static ticket lint, rules in `CONTRACT.md` | F2 |
-| `bin/factory eval <grader> [--model M]` | replays frozen cases through the production grader call and compares verdicts; `EVAL_EFFORT` sets the effort (default medium), `EVAL_OUT=<dir>` keeps each raw reply | F6 |
+| `bin/factory eval <grader> [--model M]` | replays frozen cases through the production grader call and compares verdicts; `EVAL_EFFORT` sets the effort (default `GRADER_EFFORT`), `EVAL_OUT=<dir>` keeps each raw reply | F6 |
 | `bin/factory eval-freeze [--evals-dir D] <run-dir>...` | copies each run's last round, when the judge passed it and no reviewer finding was high or medium, into `<evals-dir>/clean/<grader>/<key>-<sha8>/` (default `evals/clean/`), the prompt cut at `## Ticket`; prints `not frozen <run-dir>: <reason>` for the rest | F36 |
 | `bin/factory run <issue>` | round 0, then worker rounds, graders, PR | F1 |
 | `bin/factory status` | run states, spend, denials per round, worktree and PR readiness, preconditions | F1 |
+| `bin/factory status --criteria` | measures the trust criteria in `ARCHITECTURE.md` (Metrics) from the target's run directories; a criterion the run record cannot show prints `UNMEASURED` with the reason; reads files only, no model or `gh` call | 2026-10-19 |
 | `bin/factory stop <issue>` | writes `FACTORY_STOP` into the run dir | F1 |
 | `bin/runner [-C <dir>] <cmd>` | runs `<cmd>` on the runner: `ssh jhaveris bash -lc 'cd ~/Desktop/loam && <cmd>'`, or from `<dir>` there (quote a tilde, F8); `bin/runner sync` mirrors `.superpowers/factory/` to the same path on the runner with `rsync -az --delete`, excluding `runs/` and `__pycache__`; it never pulls (#36) | F0 |
 | `bin/factory next [--install]` | launches up to `MAX_PARALLEL` `ready-for-agent` issues with no assignee and no open native blocker (read through `gh api`); `--install` writes the ten-minute runner timer | F9 |
@@ -41,7 +41,9 @@ evals/<grader>/<case>/{prompt.md,expected.json}
 
 Graders are plugin agents (home in `ARCHITECTURE.md`): `judge.md` and `reviewer.md`.
 `lean-critic.md` is a grader file under the same change protocol, but the manager runs it by hand on the PR, outside the round loop: on the 2026-09-09 ledger 3 of its 6 round calls were unparseable.
-The run resolves them from the installed plugin cache, falling back to the checkout's own `cultivation/marketplace/sam-cc-setup/agents/` when a branch's grader edits are not installed yet, and records each file's sha256 in the ledger.
+The run resolves each from the installed plugin cache, taking only a cached copy whose sha256 equals the checkout's `cultivation/marketplace/sam-cc-setup/agents/` copy, and records the file's sha256 in the ledger.
+The plugin version does not count: a version bump that leaves `judge.md` and `reviewer.md` alone still resolves.
+When no cached copy matches, the run stops `stopped-environment` and names the cached versions and the checkout file; the checkout's own copy is used only when no sam-cc-setup is installed at all.
 
 ## A run
 
@@ -54,20 +56,23 @@ The run resolves them from the installed plugin cache, falling back to the check
 3. Extract the done-checks block; freeze `bin/factory`, the graders, `lib.sh`, `_common.md`, `role-settings.json`, `worker-settings.json`, the grader schemas, and the body into `frozen/`, owned outside the worker's write scope; the frozen grader prompts keep fixed evidence markers, there is no per-run string (#38).
 4. Round 0: run the block at `base.sha` in a detached temporary worktree, never in the ticket worktree, which a relaunch with an edited body may leave ahead of base; every non-guard check must print FAIL, else exit `ticket-defect`.
    The temporary worktree is added at `base.sha` and removed once the block has run, on both the defect and the clean path, so a relaunch still proves the checks on base rather than at the worker's HEAD.
+   The block's output goes to `round-0.out`, renamed to `round-0.checks` only on a clean verdict; a relaunch resumes past round 0 only when `round-0.checks` exists, so a relaunch of a body round 0 stopped runs round 0 again at the same `base.sha` and stops again.
 5. Worker round k: a fresh `claude -p` (`claude-opus-5-5` at the ticket's effort, default high) or a fresh `codex exec` in the worktree with the body, `_common.md`, and from round 2 the failing check lines and every blocking finding verbatim.
    The worker writes code and `decisions.md` only.
    Every round is a fresh process for either worker; there is no fixer role.
 6. Before grading, in order: scan `decisions.md` for an `ABANDON` line; re-hash the frozen set (a mismatch exits `stopped-environment`); `git status --porcelain` must be empty, else the round fails with the path list; `git diff --name-only "$(cat base.sha)"...HEAD` against Do not touch emits `FAIL do-not-touch <paths>`; then run the done-checks block from the worktree root.
 7. On green: the supervisor runs Rows measured (a `runs=N` row N times, `CONTRACT.md`) and prints `MEASURE` lines, then calls the judge, the reviewer, and the Codex review stage if the ticket sets it, each fresh, on the frozen prompt and the same evidence bundle.
-8. On pass, or at the grader-round cap: assemble the PR body (first line `Closes #<issue>`, then the ticket's Goal and why, `git log --oneline base..HEAD`, the MEASURE table, the merge checklist as checkboxes, `decisions.md`, grader sections (the Judge section opens with `graded at <sha>`, the HEAD the graders read), backlog, metrics), push, `gh pr create` or update the existing PR through the REST API, notify, exit `pr-opened`.
+8. On pass, or at the grader-round cap: assemble the PR body (first line `Closes #<issue>`, then the ticket's Goal and why, `git log --oneline base..HEAD`, the MEASURE table, the merge checklist as checkboxes, `decisions.md`, the done-check output from round 0 at base and from the graded round (each block shows only the result word and check name of its `PASS`, `FAIL` and `MEASURE` lines, never a FAIL reason, and a MEASURE value only when it is a number, at most 50 lines, each cut to 300 characters; the full file stays in the run directory, and the block names it), grader sections (the Judge section opens with `graded at <sha>`, the HEAD the graders read), backlog, metrics), push, `gh pr create` or update the existing PR through the REST API, notify, exit `pr-opened`.
    A PR opened at the grader-round cap is a draft: `gh pr create --draft`, and a line under `Closes #<issue>` names the failing judge rows, so no automatic merge takes it before a human reads the Judge section; an already-open PR is only updated, not converted.
    Each judge backlog line is also filed once per run as a `needs-triage` issue, so a defect an unattended run finds is tracked outside the PR body.
+   A blocking reviewer or Codex finding left in the final round, an unparseable reply included, is filed the same way; when the judge passed, that finding is past its grader's one block, and the PR opens as a draft whose line under `Closes #<issue>` names the first one.
+   Every text the factory composes for GitHub, the PR title and body, each filed issue's title and body, and notify's issue comment, first passes through `scrub`, which replaces token-shaped strings with `[redacted]`: every pattern of the memory scrubber in `seed/.claude/hooks/mem-capture.sh` (API keys and tokens, `key=value` secrets, JWTs, `Bearer` values, private-key blocks, URL passwords), plus any `Authorization` value and Slack `xoxs-` tokens.
 
 ## Exits
 
 | Status | Meaning | Counts a round |
 |---|---|---|
-| `pr-opened` | checks and graders pass, or the grader-round cap reached with a backlog (a draft PR) | yes |
+| `pr-opened` | checks and graders pass, or the grader-round cap reached with a backlog (a draft PR), or a judge pass with a review finding past its one block (a draft PR) | yes |
 | `no-change` | HEAD and `decisions.md` are both unchanged since the previous round | yes |
 | `stuck` | the same failing check set twice in a row | yes |
 | `ticket-defect` | round 0 found a check that passes on base | no |
@@ -97,7 +102,7 @@ After the checks first pass, at most two grader-fail rounds per ticket; then the
 The judge decides pass or fail.
 The reviewer blocks only on a `high` or `medium` finding (`REVIEW_BLOCKING` in `bin/factory`; its verdict word is not read), the Codex review only on a `critical` or `high` finding, and each may block at most once per ticket.
 A grader whose output is absent or unparseable is a fail with one high finding "grader unparseable", never a pass.
-`verdict_consistent` runs on every judge JSON: a pass with non-empty fixes, or a fail with empty fixes and empty backlog, is refuted, and the judge is called once more, fresh, with the refutation appended to its prompt.
+`verdict_consistent` runs on every judge JSON: a pass with non-empty fixes or a failing row, or without a row `judge.schema.json` requires, or a fail with empty fixes and empty backlog, is refuted, and the judge is called once more, fresh, with the refutation appended to its prompt.
 
 ## Grader calls
 
@@ -117,6 +122,7 @@ The evidence bundle is the ticket body, `git diff base...HEAD`, the check output
 In that diff, code files pass as content, but data files pass as stat only (files under `evals/` named `prompt.md`, and any single added file over 400 lines), so a frozen prompt or a large fixture never floods the grader diff.
 The Codex review stage runs `codex exec --json --output-schema frozen/review-output.schema.json -o <file> -s read-only "$(cat frozen/codex-review.prompt.md)" < /dev/null`, with the base sha filled into the frozen prompt's `<base>` placeholder; a review needs no write access and `read-only` keeps it from editing the tree the judge and reviewer already graded; `codex exec review` ignores `--output-schema` (#41).
 `needs-attention` with a `critical` or `high` finding blocks once.
+An absent or empty `-o` file, or one that is not a single object with a `verdict`, is replaced by a `needs-attention` object with one high finding "codex review output unparseable".
 
 ## Worker calls
 
@@ -129,7 +135,7 @@ claude -p --model claude-opus-5-5 --effort high --advisor claude-opus-5-5 --perm
 
 `--strict-mcp-config` drops the MCP schemas, 2k tokens of prefix on every worker turn; the worker keeps its skills listing because the `skills:` sentence names a Skill-tool call (#37).
 `--max-turns` is accepted by Claude Code 2.1.263, the runner's login-shell binary (#40; a plain shell resolves an older nvm copy), though absent from its `--help`.
-`worker-settings.json` is deny-only, the lean-v3 list plus `Bash(gh:*)` so a worker cannot touch GitHub at all, plus the `Stop` hook (see The worker prompt); `role-settings.json`, loaded only by grader calls, carries the same deny rules with no hook.
+`worker-settings.json` is deny-only, the lean-v3 list plus `Bash(gh:*)` so a worker cannot touch GitHub at all, plus the `Stop` hook (see The worker prompt); `role-settings.json`, loaded only by grader calls and `bin/factory eval`, carries the same deny rules with no hook.
 The Codex worker runs `codex exec --json -s workspace-write "$(cat round-<k>.prompt.md)" > round-<k>.jsonl -o round-<k>.last.txt < /dev/null`: the JSONL stream is stdout and `-o` is the last-message file.
 Because that sandbox mounts `.codex` read-only and bubblewrap refuses the root `.codex` symlink into `seed/`, a Codex round swaps that symlink for a real copy of its target for the call and restores it before grading (D12, #77).
 The call also carries four `--add-dir` roots derived from git, the worktree gitdir plus `objects`, `refs`, and `logs` under the common dir, so the commit from the worktree can land.
@@ -154,7 +160,7 @@ Skills are given at the moment they apply, never all at once; the listing is pai
 |---|---|---|
 | Brief (stage 0) | `/brief` (F5) | Samyak invokes it |
 | Design (stage 1) | `surprise-me` (panel), `mattpocock-skills:research`, plan mode, `/plan-review`, `grill-with-docs`, `domain-modeling`, `wayfinder` | in that order for `Mode: figure-out`, from plan mode on for `build`; Samyak types `/surprise-me` and `/plan-review`, which are manual-only, and the design session invokes the rest |
-| Tickets (stage 2) | `to-tickets`, `plan-reviewer`, lean-critic | the stage-2 session; `plan-reviewer` and lean-critic after `bin/factory lint` exits 0 |
+| Tickets (stage 2) | `to-tickets`, `plan-reviewer`, lean-critic | the stage-2 session invokes `to-tickets`, and lean-critic after `bin/factory lint` exits 0; `plan-reviewer` is manual-only, run by hand over the breakdown when Samyak asks |
 | Worker | the skills the ticket's `skills:` field names, each a line of `bin/factory.d/skills.txt` | one Skill-tool sentence per name in the worker prompt |
 | Graders | none; their prompt is the whole instruction | frozen files |
 | Manager (stage 5, 6) | `handoff` when stopping mid-stream | the manager session |
@@ -280,7 +286,8 @@ exec "${LOAM_HOME:-$HOME/Desktop/loam}/bin/factory" -C "$(git rev-parse --show-t
 - `grill-with-docs`, `wayfinder`, and `to-tickets` are invocable on that seat.
 - `codex login status` succeeds when any ticket uses Codex.
 - Every `codex` call on the runner exports `PATH=$HOME/.local/bin:$PATH` and ends in `< /dev/null`, or Codex is not found or eats the caller's stdin (#41).
-- The plugin cache holds the grader files at the version the ledger records.
+- The plugin cache holds a `judge.md` and a `reviewer.md` byte-identical to the checkout's `cultivation/marketplace/sam-cc-setup/agents/` copies; `bin/factory status` prints a FAIL line naming the cached versions and the checkout file otherwise, and `claude plugin update sam-cc-setup@seed-skills` fixes it.
+  After its pull, `bin/factory next` refuses to launch on the same check, printing the same message on stderr and exiting 1, so a merged grader prompt edit pauses the timer instead of assigning tickets to runs that stop at freeze.
 - Neither `DISABLE_TELEMETRY` nor `CLAUDE_CODE_DISABLE_ADVISOR_TOOL` is set in the runner's environment: either turns the worker's advisor silently off, and `bin/factory run` refuses to launch when one is set (F11). `FACTORY_STATUS_PROBE=1 bin/factory status` makes one paid Opus call to prove the advisor attaches.
 - Sessions that edit `bin/factory` run in `acceptEdits`, not auto mode, because the auto-mode classifier blocks tool calls whose text names a permission mode (observed, not documented).
 - `gh pr edit` has failed on a GraphQL deprecation; PR bodies are updated through the REST API.

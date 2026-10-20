@@ -21,6 +21,7 @@ Preconditions:
 - Make a sentinel: `mkdir -p <root>/r1/render/deny-probe && touch <root>/r1/render/deny-probe/keep`.
 
 - **Control and denial in one turn.** Run `$C session r1 "Run these two Bash commands one after the other and report each outcome: first 'ls deny-probe', then 'rm -rf deny-probe'." --name deny --bypass`. `permission_denials` lists exactly `rm -rf deny-probe`; `result` reports that `ls` listed `keep`.
+- **Stub variant ($0).** Run `$C session r1 "STUB_BASH: ls deny-probe ;; rm -rf deny-probe" --name deny --bypass --stub`. The stub always issues both commands, so the model cannot decline. `permission_denials` lists exactly `rm -rf deny-probe`; in `deny.jsonl` the first `tool_result` lists `keep` and the second says permission was denied. With the `Bash(rm ...)` entries removed from the render's `.claude/settings.json`, the same session shows no denial and the sentinel gone.
 - **Survived.** `ls <root>/r1/render/deny-probe` still shows `keep`.
 - **Other rules.** Swap the second command for the rule under test, for example `git reset --hard`, and keep the `ls` control.
 - **Proof.** `deny.jsonl` in evidence plus the surviving sentinel.

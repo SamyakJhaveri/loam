@@ -11,10 +11,27 @@ macOS). Build no other lock.
 
 ## Roles
 
-Parallel work has one integration owner and one validation owner. Workers run
-focused checks and return bounded reports; only the validation owner runs
-`bin/check` on a given source snapshot. Reviewers inspect one fixed diff and do
-not rerun an unchanged suite unless they name a concrete unresolved risk.
+Parallel work has one integration owner and one independent verifier per merge.
+Each worker runs `bin/check` on its own unit before it reports; a fresh project's
+check takes under a second. Once the suite takes minutes, workers run focused
+checks and only the verifier runs the full `bin/check` on a source snapshot.
+Reviewers inspect one fixed diff and do not rerun an unchanged suite unless they
+name a concrete unresolved risk.
+
+Review finished work with Fable and Codex, both read-only.
+An Opus worker then confirms or rejects each finding against the source and fixes only the confirmed ones.
+
+## pstack
+
+These hold where the pstack plugin is installed.
+
+Use `/pstack:poteto-mode` only for a contested design, concurrency, or a cross-cutting change.
+Give a small or obvious edit straight to one worker.
+
+A project with costly concurrency also keeps a skill from `/pstack:create-formal-verification-skill` for its single costliest property.
+
+To change a role's effort, edit the pstack rule file (`~/.claude/rules/pstack-models.md`) by hand.
+Do not re-run `/pstack:setup-pstack` for that: a re-run keeps only the roles changed by family, list or alias, so an effort-only change reverts to the budget level.
 
 ## Handoff
 
