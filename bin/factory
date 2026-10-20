@@ -1574,7 +1574,12 @@ main_loop() {
       log "checks failing: $fails"
       [ "$fails" = "$prev_fails" ] && finish stuck "the same checks failed twice: $fails"
       prev_fails="$fails"
-      [ $((ROUND % 2)) -eq 0 ] && notify "$KEY checks failing after round $ROUND" "$(grep '^FAIL' "$checks" | head -10)"
+      # Up to ten failing check names, never a reason: as in checks_section, a reason is command output.
+      [ $((ROUND % 2)) -eq 0 ] && notify "$KEY checks failing after round $ROUND" "$(awk -v f="$checks" '
+          /^FAIL / && n++ < 10 {name = $2; sub(/:$/, "", name); line = $1
+            if (name ~ /^[A-Za-z0-9_.-]+$/) line = line " " name
+            print line}
+          END {print "Reasons and full output: " f}' "$checks")"
       continue
     fi
     prev_fails=""
