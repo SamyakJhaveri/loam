@@ -22,7 +22,7 @@ import json, os, sys
 sys.stdin.read()
 with open(os.environ["ARGS_LOG"], "a") as f:
     f.write(json.dumps(sys.argv[1:]) + "\\n")
-reply = json.dumps({"verdict": "pass", "rows": {}, "fixes": []})
+reply = json.dumps({"verdict": "pass", "rows": {"correct": "pass", "verified": "pass", "honest": "pass"}, "fixes": []})
 print(json.dumps({"type": "result", "subtype": "success", "is_error": False, "total_cost_usd": 0, "result": reply}))
 """
 
