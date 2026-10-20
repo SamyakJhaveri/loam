@@ -26,6 +26,7 @@ Keep rows a check enforces, so each enforcer stays findable; drop a row only whe
 | A project with costly concurrency keeps a pstack formal verification skill for its single costliest property | owner ruling 2026-10-19; `seed/docs/WORKERS.md` pstack | prose (judgment) |
 | `/pstack:poteto-mode` only for a contested design, concurrency, or a cross-cutting change; small or obvious edits go straight to one worker (pilot: 1.9x cost, no quality gain, #236) | owner ruling 2026-10-19; `seed/docs/WORKERS.md` pstack | prose (judgment) |
 | Fable and Codex review finished work read-only; an Opus worker confirms or rejects each finding and fixes only the confirmed ones | owner ruling 2026-10-19; `seed/docs/WORKERS.md` Roles | prose (judgment) |
+| Factory ticket lint accepts a `## Comments` section, and only as the last section | owner ruling 2026-10-19; `docs/factory/CONTRACT.md` ticket contract, item 11 | check: `bin/tests/test_factory_ticket_sections.py` in `bin/check` step "pytest" |
 
 ## Checkable, not yet enforced
 
