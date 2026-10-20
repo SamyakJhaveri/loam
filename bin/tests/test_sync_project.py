@@ -42,10 +42,12 @@ with open(os.environ["SYNC_STUB_LOG"], "a") as log:
                           "TMPDIR": os.environ.get("TMPDIR"), "prompt": prompt}) + "\n")
 files = re.findall(r"`([^`\n]+)`[^`\n]* is at `([^`\n]+)`", prompt)
 if not files:
-    if os.environ.get("SYNC_STUB_MODE") == "commit":
+    if os.environ.get("SYNC_STUB_MODE") in ("commit", "detach"):
         pathlib.Path("stray.txt").write_text("stray\n")
         subprocess.run(["git", "add", "stray.txt"], check=True)
         subprocess.run(["git", "commit", "-q", "-m", "stray commit by the verify agent"], check=True)
+        if os.environ.get("SYNC_STUB_MODE") == "detach":
+            subprocess.run(["git", "checkout", "-q", "--detach", "HEAD~1"], check=True)
     elif os.environ.get("SYNC_STUB_MODE") == "edit":
         with open("notes.md", "a") as f:
             f.write("stray edit by the verify agent\n")
@@ -409,6 +411,7 @@ class SyncProjectTests(unittest.TestCase):
             "second fence": (section + "\n```text\n--skip /plain.md\n```\n", "```text"),
             "flag line below the fence": (section + "--skip /plain.md\n", "--skip /plain.md"),
             "other case": (section.replace("flags", "Flags"), "## Copier Flags"),
+            "singular": (section.replace("flags", "flag"), '"## Copier flag"'),
             "other level": ("#" + section, "### Copier flags"),
             "extra words": (section.replace("flags", "flags (keep ours)"), "keep ours"),
             "quoted example above": ("````markdown\n" + section.replace("notes", "conf") + "````\n\n" + section,
@@ -417,6 +420,8 @@ class SyncProjectTests(unittest.TestCase):
                                          "no flag lines"),
             "heading only": ("## Copier flags\n\n## Other\n", "no flag lines"),
             "empty fence": ("## Copier flags\n\n```text\n```\n", "no flag lines"),
+            "near miss after an unclosed fence": ("```bash\necho hi\n\n" + section.replace("flags", "Flags"),
+                                                  "inside a fenced block"),
         }
         for i, (name, (text, needle)) in enumerate(cases.items()):
             with self.subTest(name):
@@ -428,9 +433,17 @@ class SyncProjectTests(unittest.TestCase):
                 self.assertIn(needle, r.stderr)
                 self.assertEqual([], self.claude_calls())
 
+    def test_a_comment_in_another_fenced_block_is_not_a_near_miss_heading(self) -> None:
+        # Outside a fence the comment line refuses, as "other level" above does.
+        self.commit_rulings("# Rulings\n\n```bash\n# copier flags are set below\n```\n\n"
+                            "## Copier flags\n\n```text\n--skip /notes.md\n```\n")
+        r = self.sync("--dry-run")
+        self.assertEqual(0, r.returncode, r.stdout + r.stderr)
+        self.assertNotIn("`notes.md` is at", self.claude_calls()[0]["prompt"])
+
     def test_exclude_keeps_a_file_the_project_changed_with_crlf_rulings(self) -> None:
-        # The first test is the control: without the flag conf.json conflicts. CRLF line ends
-        # would otherwise leave a carriage return in the pattern, which then matches nothing.
+        # The first test is the control: without the flag conf.json conflicts. A carriage return
+        # must not fail the exact heading match; copier 9.16 itself ignores one left in a pattern.
         self.commit_rulings("## Copier flags\r\n\r\n```text\r\n--exclude /conf.json\r\n```\r\n")
         r = self.sync("--dry-run")
         self.assertEqual(0, r.returncode, r.stdout + r.stderr)
@@ -509,6 +522,15 @@ class SyncProjectTests(unittest.TestCase):
 
     def test_refuses_to_push_what_the_verify_agent_commits(self) -> None:
         r = self.sync(mode="commit")
+        self.assertEqual(1, r.returncode, r.stdout + r.stderr)
+        self.assertIn("changed after the port", r.stderr)
+        self.assertEqual("", self.remote_branches())
+        self.assertFalse(self.gh_log.exists())
+
+    def test_refuses_to_push_a_verify_commit_behind_a_detached_head(self) -> None:
+        # The agent commits, then detaches HEAD back at the port: HEAD and the tree match the
+        # port, but the push carries the branch.
+        r = self.sync(mode="detach")
         self.assertEqual(1, r.returncode, r.stdout + r.stderr)
         self.assertIn("changed after the port", r.stderr)
         self.assertEqual("", self.remote_branches())

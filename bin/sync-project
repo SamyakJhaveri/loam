@@ -103,20 +103,26 @@ RULINGS_SHA=""
 [ -z "$RULINGS" ] || RULINGS_SHA="$(git hash-object "$RULINGS")"
 # The rulings' `## Copier flags` section is one fenced block of keep-ours paths as copier flags,
 # one per line. Anything else in the section, a quote, a second such heading, or a near miss of
-# it refuses the run, so a typo cannot drop a ruling and leave it to the port.
+# it refuses the run, so a typo cannot drop a ruling and leave it to the port. Inside other
+# fenced blocks only the exact heading counts, so a code comment is not a near miss; one there
+# still refuses when the file has no exact heading, so a fence left open cannot hide a near miss.
 FLAGS=()
 if [ -n "$RULINGS" ]; then
   block="$(awk 'function bad(m) { err = m; exit }
     { sub(/\r$/, "") }
     f == 1 { if (/^```/) f = 2; else out = out $0 "\n"; next }
-    /^[ \t]*#/ && tolower($0) ~ /copier[^a-z]*flags/ {
+    g != "" && !/^## Copier flags[ \t]*$/ { if (nm == "" && /^[ \t]*#/ && tolower($0) ~ /copier[^a-z]*flag/) nm = $0
+      t = $0; if (sub("^" g "+", "", t) && t !~ /[^ \t]/) g = ""; next }
+    /^[ \t]*#/ && tolower($0) ~ /copier[^a-z]*flag/ {
       if ($0 !~ /^## Copier flags[ \t]*$/) bad("heading \"" $0 "\" is not exactly ## Copier flags")
       if (h++) bad("a second ## Copier flags heading")
-      s = 1; next }
+      g = ""; s = 1; next }
     /^#/ { s = 0 }
     s && !f && /^```/ { f = 1; next }
     s && /[^ \t]/ { bad("\"" $0 "\" under ## Copier flags is outside its one fenced block") }
+    /^(```|~~~)/ { match($0, /^(`+|~+)/); g = substr($0, 1, RLENGTH) }
     END { if (err == "" && h && out !~ /[^ \t\n]/) err = "## Copier flags has no flag lines in a fenced block right under it"
+          if (err == "" && !h && nm != "") err = "heading \"" nm "\" inside a fenced block is not exactly ## Copier flags"
           if (err != "") { print err; exit 1 }
           printf "%s", out }' "$RULINGS")" || die "$RULINGS: $block"
   while IFS= read -r line; do
@@ -348,8 +354,9 @@ for s in .claude/skills/verify-*/SKILL.md; do
   line="$(grep '^VERIFY:' "$WORK/$name.log" | tail -n 1 || true)"
   VERIFY="$VERIFY- \`$name\`: ${line:-no VERIFY line; see $WORK/$name.log}"$'\n'
 done
-if [ "$(git rev-parse HEAD)" != "$PORTED" ] || [ -n "$(git status --porcelain --untracked-files=no)" ]; then
-  die "HEAD or a tracked file changed after the port, in bin/check or a verify skill; nothing pushed; see $P"
+# Compare the branch the push carries, not HEAD: an agent can commit, then detach HEAD back.
+if [ "$(git rev-parse --verify --quiet "refs/heads/$BRANCH")" != "$PORTED" ] || ! git diff --quiet "$PORTED"; then
+  die "branch $BRANCH or a tracked file changed after the port, in bin/check or a verify skill; nothing pushed; see $P"
 fi
 
 {

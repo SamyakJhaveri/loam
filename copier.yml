@@ -42,7 +42,7 @@ github_repo:
   type: str
   help: "GitHub repo (owner/repo) for this project? Leave empty to skip. Trailing .git is stripped automatically."
   default: ""
-  validator: "{% if github_repo and not (github_repo | regex_search('^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$')) %}Invalid repo format — use owner/repo{% endif %}"
+  validator: "{% if github_repo and not (github_repo | regex_search('^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$')) %}Invalid repo format - use owner/repo{% endif %}"
 
 project_kind:
   type: str
@@ -78,7 +78,7 @@ _tasks:
     if ! git remote get-url origin >/dev/null 2>&1; then
       bash _gh_setup.sh "{{ github_repo }}"
     else
-      echo '[copier] Remote origin already configured — skipping GitHub setup.'
+      echo '[copier] Remote origin already configured - skipping GitHub setup.'
     fi
     {% else %}
     true

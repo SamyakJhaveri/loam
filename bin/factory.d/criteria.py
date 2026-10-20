@@ -19,14 +19,15 @@ import statistics
 import sys
 
 MARKER = "Criteria written in advance"
+REHEARSAL = "file ticket: no GitHub call"  # open_pr's pr-opened message for a file ticket, which opens no PR
 
 
-def read(path):
+def read(path, missing=""):
     try:
         with open(path, encoding="utf-8", errors="replace") as fh:
             return fh.read()
     except OSError:
-        return ""
+        return missing
 
 
 def round_files(run, suffix):
@@ -40,17 +41,21 @@ def round_files(run, suffix):
 
 
 def exits(log):
-    """[(kind, round)] per EXIT line of factory.log; round is the last `===== round N =====` since the
-    previous EXIT, or None when the launch stopped before a round began (a parallel-cap exit)."""
+    """[(kind, round, message)] per EXIT line of factory.log; round is the last `===== round N =====` since the
+    previous EXIT or `===== launch =====`, or None when the launch stopped before a round began (a parallel-cap
+    exit). The launch line keeps a relaunch's early exit off the round a killed launch left with no EXIT."""
     out, rnd = [], None
     for line in log.splitlines():
+        if re.fullmatch(r"\S+ ===== launch =====", line):
+            rnd = None
+            continue
         m = re.fullmatch(r"\S+ ===== round (\d+) =====", line)
         if m:
             rnd = int(m.group(1))
             continue
-        m = re.match(r"\S+ EXIT (\S+) \(\d+\)", line)
+        m = re.match(r"\S+ EXIT (\S+) \(\d+\):? ?(.*)", line)
         if m:
-            out.append((m.group(1), rnd))
+            out.append((m.group(1), rnd, m.group(2)))
             rnd = None
     return out
 
@@ -60,7 +65,8 @@ class Run:
         self.label = os.path.relpath(run, root)
         self.status = read(os.path.join(run, "status")).strip()
         self.rounds = len([n for n in round_files(run, "checks") if n > 0])
-        self.exits = exits(read(os.path.join(run, "factory.log")))
+        log = read(os.path.join(run, "factory.log"), None)
+        self.exits = None if log is None else exits(log)  # None: the exits are unknown, not absent
 
 
 def count(n, word):
@@ -77,15 +83,26 @@ def unmeasured(why):
     return lambda runs: (None, why)
 
 
+def no_log(runs):
+    missing = [r.label for r in runs if r.exits is None]
+    return f"no factory.log in {', '.join(missing)}" if missing else None
+
+
 def median_rounds(runs):
-    prs = [r.rounds for r in runs if r.status == "pr-opened"]
+    done = [r for r in runs if r.status == "pr-opened"]
+    if why := no_log(done):
+        return None, why
+    prs = [r.rounds for r in done
+           if not any(kind == "pr-opened" and msg.startswith(REHEARSAL) for kind, _, msg in r.exits)]
     if not prs:
-        return None, "no run reached pr-opened"
+        return None, "no run opened a PR"
     return statistics.median(prs), f"over {count(len(prs), 'PR run')}"
 
 
 def environment_rounds(runs):
-    lost = [f"{r.label} round {n}" for r in runs for kind, n in r.exits if kind == "stopped-environment" and n is not None]
+    if why := no_log(runs):
+        return None, why
+    lost = [f"{r.label} round {n}" for r in runs for kind, n, _ in r.exits if kind == "stopped-environment" and n is not None]
     return len(lost), ", ".join(lost)
 
 

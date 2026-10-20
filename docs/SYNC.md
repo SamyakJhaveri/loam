@@ -46,7 +46,7 @@ What it does, in order:
    Otherwise the port becomes the second commit, with the model's choices in its message, so a reviewer reads Copier's part and the model's part apart.
 6. It runs the project's `bin/check`, and each `.claude/skills/verify-*` skill through `claude -p`, and puts the results in the PR body.
    Neither gates the PR, because a sandbox can fail a check that CI passes; the PR's CI is the gate.
-   The verify agent has Bash, so the script saves HEAD after the port and refuses to push if HEAD or a tracked file changed since.
+   The verify agent has Bash, so the script saves the port's commit and refuses to push if the pushed branch or a tracked file changed since.
 7. It pushes the branch without force and opens the PR with `gh` in the repo it pushed to, not the `github_repo` answer, which a renamed or forked project leaves stale.
    The body names the command, each conflicted file with the model's choices, and the check lines.
    `--dry-run` stops before the push and leaves the clone and `pr-body.md` in the scratch dir.
@@ -101,7 +101,9 @@ So `--skip` re-creates a file the project deleted on purpose, at the template's 
 Patterns follow `.gitignore` rules, and a leading `/` anchors one at the project root, so `/AGENTS.md` does not also match a nested `AGENTS.md`.
 Write patterns without quotes.
 The section holds only blank lines and that one fenced block, up to the next heading.
-The run refuses before Copier starts when a line in the block is anything else, when the section holds any other line or a second block, when the heading appears twice, or when a heading names Copier flags in another form, such as `## Copier Flags` or `### Copier flags`.
+The run refuses before Copier starts when a line in the block is anything else, when the section holds any other line or a second block, when the heading appears twice, or when a heading names Copier flags in another form, such as `## Copier Flags`, `### Copier flags` or `## Copier flag`.
+Inside another fenced block only the exact heading counts, so a code comment such as `# copier flags are set below` does not refuse the run.
+When the file has no exact heading, such a line refuses it, so a fence left open cannot hide a misspelled heading below it.
 The port still reads the whole file, with a line saying these paths need no note, so keep the prose ruling and its reasons elsewhere in the file.
 The PR body and Copier's commit message show the full command with the flags.
 
