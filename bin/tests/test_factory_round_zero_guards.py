@@ -2,6 +2,7 @@
 
 bin/factory is sourced (FACTORY_SOURCED=1) and the real round_zero runs the block at the base commit of a scratch
 repository whose README mentions a safeguard; `finish` is replaced so a ticket defect prints instead of exiting.
+Lint's check_not_grep_only reads the same block through the same guard reading.
 """
 
 from __future__ import annotations
@@ -30,7 +31,7 @@ class RoundZeroGuardTests(unittest.TestCase):
     def round_zero(self, checks: str) -> str:
         """stdout of the real round_zero over a done-checks block run at the scratch repo's base commit."""
         run = self.tmp / "run"
-        (run / "frozen").mkdir(parents=True)
+        (run / "frozen").mkdir(parents=True, exist_ok=True)
         (run / "issue.md").write_text(f"## Done checks\n\n```done-checks\n{checks}\n```\n")
         script = (f"RUN='{run}'; WORKTREE='{run}/wt'; MAIN_CHECKOUT='{self.tmp}/repo'; LOG=\"$RUN/log\"\n"
                   'finish() { echo "FINISH $1: $2"; exit 0; }\n'
@@ -42,6 +43,15 @@ class RoundZeroGuardTests(unittest.TestCase):
                               env={**os.environ, "FACTORY_SOURCED": "1"}, capture_output=True, text=True, check=False)
         self.assertEqual(proc.returncode, 0, proc.stderr)
         return proc.stdout
+
+    def lint_errors(self, checks: str) -> str:
+        """stderr of the real check_not_grep_only, the lint rule that drops guards, over a done-checks block."""
+        body = f"## Done checks\n\n```done-checks\n{checks}\n```\n"
+        proc = subprocess.run(["bash", "-c", '. bin/factory; SRC=t; BODY=$1; check_not_grep_only', "_", body],
+                              cwd=ROOT, env={**os.environ, "FACTORY_SOURCED": "1"}, capture_output=True, text=True,
+                              check=False)
+        self.assertEqual(proc.returncode, 0, proc.stderr)
+        return proc.stderr
 
     def test_check_mentioning_safeguard_is_not_a_guard(self) -> None:
         out = self.round_zero(
@@ -109,6 +119,44 @@ class RoundZeroGuardTests(unittest.TestCase):
             'guard true && pass check || fail check "base is broken"\n'
             'grep -q safeguard README.md && pass readme || fail readme "README has no guard line"')
         self.assertIn("FINISH ticket-defect: check readme passes on", out)
+
+    def test_reason_or_comment_holding_guard_after_a_separator_is_not_a_guard(self) -> None:
+        for tail in ('fail readme "README lacks the word; guard the docs"', 'fail readme "see (guard rules)"',
+                     'fail readme "x| guard y"', "fail readme 'x; guard y'", 'fail readme "x" # old; guard y'):
+            with self.subTest(tail=tail):
+                out = self.round_zero('guard true && pass check || fail check "base is broken"\n'
+                                      f'grep -q safeguard README.md && pass readme || {tail}')
+                self.assertIn("FINISH ticket-defect: check readme passes on", out)
+
+    def test_guard_after_time_or_an_assignment_is_a_guard(self) -> None:
+        out = self.round_zero(
+            'time guard true && pass timed || fail timed "x"\n'
+            'LOAM_HOOK= guard true && pass hook-off || fail hook-off "x"\n'
+            'A=1 B="two words" guard true && pass two-vars || fail two-vars "x"\n'
+            'test -e NEW.md && pass new-file || fail new-file "NEW.md is missing"')
+        self.assertEqual(out.strip(), "ROUND0-OK")
+
+    def test_guard_in_a_quoted_capture_is_a_guard(self) -> None:
+        out = self.round_zero(
+            'grep -q safeguard <<<"$(guard cat README.md)" && pass quoted || fail quoted "x"\n'
+            'grep -q safeguard <<<"$(guard cat "README.md")" && pass inner-quote || fail inner-quote "x"\n'
+            'grep -q safeguard <<<"text: $(guard cat README.md)" && pass in-text || fail in-text "x"\n'
+            'test -e NEW.md && pass new-file || fail new-file "NEW.md is missing"')
+        self.assertEqual(out.strip(), "ROUND0-OK")
+
+    def test_reason_after_a_quoted_capture_is_not_a_guard(self) -> None:
+        out = self.round_zero(
+            'guard true && pass check || fail check "base is broken"\n'
+            'grep -q safeguard <<<"$(cat README.md)" && pass readme || fail readme "x; guard y"')
+        self.assertIn("FINISH ticket-defect: check readme passes on", out)
+
+    def test_lint_reads_guards_as_round_zero_does(self) -> None:
+        for checks in ('guard bin/check >/dev/null && pass g || fail g "x"\n'
+                       'grep -q a README.md && pass a || fail a "README lacks the word; guard the docs"',
+                       'time guard true && pass t || fail t "x"\n'
+                       'grep -q a README.md && pass a || fail a "x"'):
+            with self.subTest(checks=checks):
+                self.assertIn("all 1 non-guard done-checks grep source text", self.lint_errors(checks))
 
 
 if __name__ == "__main__":
