@@ -12,6 +12,7 @@ from __future__ import annotations
 import json
 import os
 import pathlib
+import re
 import subprocess
 import tempfile
 import unittest
@@ -57,8 +58,21 @@ SECRETS = {
     "AKIA" + fake("AWS", 16): "AKIA" + fake("AWS", 16),
     "-----BEGIN RSA PRIVATE KEY-----\n" + fake("pem", 64) + "\n-----END RSA PRIVATE KEY-----": fake("pem", 64),
     "git push https://bot:" + fake("pw", 12) + "@example.com/acme/widget.git": fake("pw", 12),
+    "PUSHOVER_TOKEN=" + fake("push", 30): fake("push", 30),
+    "password: " + fake("pass", 16): fake("pass", 16),
+    "eyJ" + ".".join(fake(t, 20) for t in ("hdr", "claims", "sig")): fake("claims", 20),
+    "glpat-" + fake("gl", 20): fake("gl", 20),
+    "AIza" + fake("goog", 35): fake("goog", 35),
+    "npm_" + fake("npm", 36): fake("npm", 36),
+    "dop_v1_" + "a1b2c3d4" * 8: "a1b2c3d4" * 8,
 }
 PLANTED = "\n".join(SECRETS)
+
+
+def subs(path: pathlib.Path) -> list[str]:
+    """The re.compile(...) calls, flags included, in a file's `SUBS = [` block."""
+    block = path.read_text().split("SUBS = [", 1)[1].split("\n]", 1)[0]
+    return re.findall(r're\.compile\(r"(?:[^"\\]|\\.)*"(?:, re\.[A-Z]+)?\)', block)
 
 
 def git(*args: str, cwd: pathlib.Path) -> str:
@@ -157,6 +171,15 @@ class PublishScrubTests(unittest.TestCase):
         patch = self.calls(calls, "api", "-X", "PATCH")
         self.assertIn("## Decisions", patch[0]["args"][-1])
         self.assert_scrubbed(patch[0])
+
+
+class ScrubRulesTests(unittest.TestCase):
+    def test_scrub_holds_every_mem_capture_rule(self) -> None:
+        # The public GitHub path must redact at least what the private memory store does.
+        memory = subs(ROOT / "seed/.claude/hooks/mem-capture.sh")
+        self.assertTrue(memory)
+        factory = subs(ROOT / "bin/factory")
+        self.assertEqual([rule for rule in memory if rule not in factory], [])
 
 
 if __name__ == "__main__":
