@@ -16,10 +16,11 @@
 #                       less than SECONDS ago (used by the Stop entry). The gate
 #                       runs before any python3, so a throttled Stop spawns none.
 #
-# The secret scrubber ports key patterns from agentmemory src/functions/privacy.ts
-# (Apache-2.0) and the PEM-block and URL-credential patterns from Hindsight
-# hindsight-api-slim/tests/test_memory_defense.py (MIT); license texts in
-# THIRD_PARTY_NOTICES. Commit hashes are not pinned in this checkout.
+# The secret scrubber ports the key patterns and the private-key block pattern from
+# agentmemory src/functions/privacy.ts (Apache-2.0). Its URL-credential pattern joins
+# agentmemory's any-scheme prefix to the user and password classes of Hindsight's
+# database-URL patterns in hindsight-api-slim/hindsight_api/extensions/memory_defense.py
+# (MIT). License texts in THIRD_PARTY_NOTICES. Commit hashes are not pinned in this checkout.
 #
 # Store root: $LOAM_MEMSTORE, default ~/memstore.
 # Exit codes: 0 = always (advisory hook, never blocks).
@@ -145,7 +146,7 @@ text = raw.decode("utf-8", "replace")
 # the generic, Bearer, and URL-credential subs keep a capture group so only the
 # secret value is replaced and the surrounding JSON stays valid.
 SUBS = [
-    (re.compile(r"-----BEGIN [A-Z0-9 ]*PRIVATE KEY-----.*?-----END [A-Z0-9 ]*PRIVATE KEY-----", re.DOTALL),
+    (re.compile(r"-----BEGIN [A-Z0-9 ]*PRIVATE KEY(?: BLOCK)?-----.*?(?:-----END [A-Z0-9 ]*PRIVATE KEY(?: BLOCK)?-----|$)", re.DOTALL),
      "[REDACTED:private_key]"),
     (re.compile(r"([a-zA-Z][a-zA-Z0-9+.\-]*://[^:@/\s]+:)[^@/\s]+@"),
      r"\1[REDACTED:url_credentials]@"),
