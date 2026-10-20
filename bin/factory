@@ -563,6 +563,42 @@ log()   { printf '%s %s\n' "$(now)" "$*" | tee -a "$LOG" >&2; }
 sha256_of() { if command -v sha256sum > /dev/null 2>&1; then sha256sum "$@"; else shasum -a 256 "$@"; fi; }
 set_status() { printf '%s\n' "$1" > "$RUN/status"; log "status: $1"; }
 
+# Every factory write to GitHub passes through scrub: notify's issue comment, each filed issue's title and body,
+# and the PR title and body. Check output and model text can hold a secret, and the repo may be public.
+# Token-shaped strings become [redacted]. SUBS holds every pattern of seed/.claude/hooks/mem-capture.sh's
+# scrubber verbatim, so the public path redacts at least what the private memory store does
+# (bin/tests/test_factory_publish_scrub.py checks), then two of the factory's own.
+# -X utf8 passes bytes that are not UTF-8 through unchanged.
+IFS= read -r -d '' SCRUB_PY << 'PY' || :
+import re, sys
+SUBS = [
+    (re.compile(r"-----BEGIN [A-Z0-9 ]*PRIVATE KEY-----.*?-----END [A-Z0-9 ]*PRIVATE KEY-----", re.DOTALL), "[redacted]"),
+    (re.compile(r"([a-zA-Z][a-zA-Z0-9+.\-]*://[^:@/\s]+:)[^@/\s]+@"), r"\1[redacted]@"),
+    (re.compile(r"sk-ant-[A-Za-z0-9_-]{10,}"), "[redacted]"),
+    (re.compile(r"(?:(?<=\\[nrt])|(?<![A-Za-z0-9]))sk-[A-Za-z0-9_-]{20,}"), "[redacted]"),
+    (re.compile(r"ghp_[A-Za-z0-9]{36,255}"), "[redacted]"),
+    (re.compile(r"github_pat_[A-Za-z0-9_]{22,}"), "[redacted]"),
+    (re.compile(r"gh[ousr]_[A-Za-z0-9]{36,255}"), "[redacted]"),
+    (re.compile(r"xox[abpr]-[A-Za-z0-9-]{10,}"), "[redacted]"),
+    (re.compile(r"AKIA[0-9A-Z]{16}"), "[redacted]"),
+    (re.compile(r"AIza[0-9A-Za-z_-]{35}"), "[redacted]"),
+    (re.compile(r"npm_[A-Za-z0-9]{36}"), "[redacted]"),
+    (re.compile(r"glpat-[A-Za-z0-9_-]{20,}"), "[redacted]"),
+    (re.compile(r"dop_v1_[a-f0-9]{64}"), "[redacted]"),
+    (re.compile(r"eyJ[A-Za-z0-9_-]{6,}\.[A-Za-z0-9_-]{6,}\.[A-Za-z0-9_-]{6,}"), "[redacted]"),
+    (re.compile(r"(?i)(bearer\s+)[A-Za-z0-9._~+/=-]{10,}"), r"\1[redacted]"),
+    (re.compile(r"(?i)((?:api[_-]?key|secret|token|password|passwd|pwd)(?:\\?[\"'])?\s*[:=]\s*(?:\\?[\"'])?)([^\s\\\"',;]{6,})"), r"\1[redacted]"),
+    # The factory's own: any Authorization value of 8 or more characters, and Slack's xoxs- tokens.
+    (re.compile(r"(?i)(authorization[\"']?\s*[:=]\s*[\"']?(?:(?:bearer|basic|token)\s+)?)[^\s\\\"',]{8,}"), r"\1[redacted]"),
+    (re.compile(r"xoxs-[A-Za-z0-9-]{10,}"), "[redacted]"),
+]
+text = sys.stdin.read()
+for rx, rep in SUBS:
+    text = rx.sub(rep, text)
+sys.stdout.write(text)
+PY
+scrub() { python3 -I -X utf8 -c "$SCRUB_PY"; }
+
 # Pushover when it is configured, else a comment on the ticket; a failure leaves notify.failed.
 notify() { # title message
   local pe="$HOME/.config/loam-loops/pushover.env"
@@ -574,7 +610,7 @@ notify() { # title message
     if [ -n "${PUSHOVER_TOKEN:-}" ] && [ -n "${PUSHOVER_USER:-}" ] \
       && curl -s --max-time 15 -F "token=$PUSHOVER_TOKEN" -F "user=$PUSHOVER_USER" \
          -F "title=$1" -F "message=${2:0:1000}" https://api.pushover.net/1/messages.json > /dev/null; then return 0; fi
-  elif [ -n "$ISSUE" ] && printf '**%s**\n\n%s\n' "$1" "$2" \
+  elif [ -n "$ISSUE" ] && printf '**%s**\n\n%s\n' "$1" "$2" | scrub \
     | gh issue comment "$ISSUE" -R "$REPO" --body-file - > /dev/null 2>&1; then return 0
   fi
   printf '%s %s: %s\n' "$(now)" "$1" "$2" >> "$RUN/notify.failed"
@@ -909,7 +945,8 @@ limit_wait() { # result.json -> 0 after waiting, 1 when the reply is not a usage
 # Every non-guard check must fail on base; one that passes there cannot prove the ticket.
 
 # Run the frozen checks from dir into out. A block that aborts before it prints a FAIL line is never green
-# (#180): a non-zero exit with no FAIL line adds FAIL checks-aborted. Check names are not read from the block,
+# (#180): a non-zero exit with no FAIL line adds FAIL checks-aborted, on a fresh line as lib.sh's results are,
+# so output with no trailing newline cannot hide it from the ^FAIL reads. Check names are not read from the block,
 # because a check can quote a ticket body or a script whose pass and fail words are not top-level checks.
 run_checks() { # dir out
   local rc
@@ -917,7 +954,7 @@ run_checks() { # dir out
   rc=$?
   if [ "$rc" -ne 0 ] && ! grep -q '^FAIL' "$2"; then
     log "checks.sh exited $rc with no FAIL line"
-    printf 'FAIL checks-aborted: checks.sh exited %s with no FAIL line\n' "$rc" >> "$2"
+    printf '\nFAIL checks-aborted: checks.sh exited %s with no FAIL line\n' "$rc" >> "$2"
   fi
 }
 
@@ -1245,14 +1282,16 @@ build_evidence() { # rubric_file diff_cap -> stdout
   printf '%s\n' "$FENCE"
 }
 
-# A judge pass with a fix or a failing row, or a fail with nothing to point at, refutes itself (LOOP.md, precedence).
+# A judge pass with a fix or a failing or missing row, or a fail with nothing to point at, refutes itself (LOOP.md,
+# precedence). The rows a pass needs are the ones the schema requires, since all() is true on an empty set.
 # A reviewer's verdict word is never checked: run_review reads REVIEW_OUTCOME, and a refutation of the word
 # pushes the model to change its findings to fit it (2026-09-12).
-verdict_consistent() { # json file
-  jq -e '(.verdict // "") as $v
+verdict_consistent() { # json file, schema file
+  jq -e --slurpfile s "$2" '(.verdict // "") as $v
     | ((.fixes // []) | length) as $blocking
     | (((.backlog // []) | length) + ((.findings // []) | length)) as $other
-    | ([.rows[]?] | all(. == "pass")) as $rows_pass
+    | (.rows // {}) as $r
+    | (([$r[]?] | all(. == "pass")) and ($s[0].properties.rows.required // [] | all($r[.] == "pass"))) as $rows_pass
     | if $v == "pass" then $blocking == 0 and $rows_pass
       elif $v == "fail" then ($blocking > 0 or $other > 0)
       else true end' "$1" > /dev/null 2>&1
@@ -1279,7 +1318,7 @@ call_json() { # round stem role prompt_file schema_file
     res=$(jq -r "$RESULT_OBJ | .result // \"\"" "$out" 2> /dev/null | sed -e 's/^```json//' -e 's/^```//' -e 's/```$//') || res=""
     if printf '%s' "$res" | jq -e '.verdict' > /dev/null 2>&1; then
       printf '%s' "$res" | jq '.' > "$final"
-      verdict_consistent "$final" && return 0
+      verdict_consistent "$final" "$schema" && return 0
       log "$role verdict is inconsistent with its own lists; calling once more with the refutation"
       printf '\n\n## Refutation\n\nYour previous reply was `%s`, which contradicts the rows, fixes, findings, and backlog you listed. Grade again and return a consistent object.\n' \
         "$(jq -c '{verdict, rows: (.rows // {}), fixes: (.fixes // []), findings: ((.findings // []) | length), backlog: (.backlog // [])}' "$final")" >> "$pf"
@@ -1400,9 +1439,9 @@ file_backlog() { # judge.json issue pr-url
   jq -r '.backlog[]? | gsub("\\s*\n\\s*"; " ")' "$1" 2> /dev/null | file_issues "judge backlog" "$2" "$3"
 }
 
-file_issues() { # source issue pr-url, one issue per stdin line
+file_issues() { # source issue pr-url, one issue per stdin line, scrubbed before the title cuts it
   local src="$1" issue="$2" prurl="$3" line GH="${FACTORY_GH:-gh}"
-  while IFS= read -r line; do
+  scrub | while IFS= read -r line; do
     [ -n "$line" ] || continue
     grep -Fxq "$line" "$RUN/filed.txt" 2> /dev/null && continue
     if printf 'From the %s of #%s, %s.\n\n%s\n' "$src" "$issue" "$prurl" "$line" \
@@ -1414,13 +1453,21 @@ file_issues() { # source issue pr-url, one issue per stdin line
   done
 }
 
-# Only result lines show, at most 50, each cut to 300 characters: raw check output may hold a secret
-# (the repo is public), push the results past the cap, close the fence, or exceed GitHub's 65536-character
-# body limit. The full file stays in the run dir.
+# Only each result's word and check name show, never its reason: lib.sh's `fail NAME "$out"` puts captured
+# command output in the reason, which may hold a secret, and the repo is public with every body edit kept.
+# A MEASURE value shows only when it is a number; a name outside lib.sh's [A-Za-z0-9_.-] is dropped, so a raw
+# output line that starts with FAIL cannot close the fence. At most 50 lines, each cut to 300 characters, stay
+# under GitHub's 65536-character body limit. The full file stays in the run dir, and the section names it.
 checks_section() { # heading checks-file
   printf '## %s\n\n```\n' "$1"
-  awk -v max=50 -v f="$2" '/^(PASS|FAIL|MEASURE) / {n++; if (n <= max) print substr($0, 1, 300)} END {if (n > max) printf "... %d more lines in %s\n", n - max, f}' "$2"
-  printf '```\n\n'
+  awk -v max=50 -v f="$2" '/^(PASS|FAIL|MEASURE) / {
+      n++; if (n > max) next
+      name = $2; sub(/:$/, "", name); line = $1
+      if (name ~ /^[A-Za-z0-9_.-]+$/) line = line " " name
+      if ($1 == "MEASURE" && NF == 3 && $3 ~ /^-?[0-9]+(\.[0-9]+)?$/) line = line " " $3
+      print substr(line, 1, 300)}
+    END {if (n > max) printf "... %d more lines in %s\n", n - max, f}' "$2"
+  printf '```\n\nReasons and full output: %s\n\n' "$2"
 }
 
 open_pr() { # [draft]: opened at the grader-round cap
@@ -1468,7 +1515,7 @@ open_pr() { # [draft]: opened at the grader-round cap
     printf '\n## Metrics\n\nrounds: %s, spend: %s usd, wall: %s min, denials: %s\nrun directory: %s\n' \
       "$ROUND" "$(ticket_spent)" "$(( ( $(date -u +%s) - $(cat "$RUN/started") ) / 60 ))" \
       "$(jq -s '[.[].denials // 0] | add // 0' "$LEDGER")" "$RUN"
-  } > "$body"
+  } | scrub > "$body" || finish stopped-environment "could not scrub the PR body"
   [ "$IS_FILE" = 1 ] && finish pr-opened "file ticket: no GitHub call; the PR body is at $body"
   git -C "$WORKTREE" push -u origin "$BRANCH" >> "$LOG" 2>&1 || finish stopped-environment "git push of $BRANCH failed"
   if num=$(gh pr view "$BRANCH" -R "$REPO" --json number --jq .number 2> /dev/null) && [ -n "$num" ]; then
@@ -1477,7 +1524,7 @@ open_pr() { # [draft]: opened at the grader-round cap
       || finish stopped-environment "could not update the body of PR #$num"
     url="https://github.com/$REPO/pull/$num"
   else
-    title=$(grep -m1 '^# ' "$RUN/frozen/issue.md" | sed 's/^# //')
+    title=$(grep -m1 '^# ' "$RUN/frozen/issue.md" | sed 's/^# //' | scrub)
     url=$(gh pr create -R "$REPO" --head "$BRANCH" --base main --title "${title:-$KEY}" --body-file "$body" ${draft:+--draft} 2>&1) \
       || finish stopped-environment "gh pr create for $BRANCH failed: $url"
     url=$(printf '%s\n' "$url" | tail -1)
@@ -1569,6 +1616,9 @@ cmd_run() {
   WORKTREE="${FACTORY_WORKTREE:-$MAIN_CHECKOUT-$(printf '%s' "$KEY" | tr '[:upper:]' '[:lower:]')}"
   [ -f "$RUN/started" ] || date -u +%s > "$RUN/started"
   date -u +%s > "$RUN/launched"
+  # One line per launch, before any exit and not again from the frozen re-exec: status --criteria resets the
+  # round on it, so a relaunch's early exit is not charged to the round a killed launch left open.
+  [ "${FACTORY_FROZEN:-}" = "$RUN/frozen/factory" ] || log "===== launch ====="
   nav_arm_resolve   # NAV-01: fix this launch's arm before freeze and round 0, so the whole run carries one arm
   stop_requested && finish stopped "FACTORY_STOP is present at launch"
   assert_parallel

@@ -1,6 +1,7 @@
-"""A judge pass with a failing row refutes itself, like a pass that ships a fix.
+"""A judge pass with a failing or missing row refutes itself, like a pass that ships a fix.
 
-judge.md says "`verdict` is `pass` only if every row is `pass`", and verdict_consistent enforces it. bin/factory is sourced (FACTORY_SOURCED=1) and the real verdict_consistent, call_json, and run_judge run. A fake
+judge.md says "`verdict` is `pass` only if every row is `pass`", and verdict_consistent enforces it for every row
+judge.schema.json requires. bin/factory is sourced (FACTORY_SOURCED=1) and the real verdict_consistent, call_json, and run_judge run. A fake
 `claude` on PATH answers every call with the reply named in its prompt, so no model is called.
 """
 
@@ -9,11 +10,14 @@ from __future__ import annotations
 import json
 import os
 import pathlib
+import re
+import shutil
 import subprocess
 import tempfile
 import unittest
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
+SCHEMA = ROOT / "bin/factory.d/judge.schema.json"
 
 FAKE_CLAUDE = """#!/usr/bin/env python3
 import json, sys
@@ -30,6 +34,8 @@ def reply(verdict: str, verified: str, fixes: list[str]) -> dict[str, object]:
 ROW_FAILS_VERDICT_PASSES = reply("pass", "fail", [])
 ALL_ROWS_PASS = reply("pass", "pass", [])
 FAIL_WITH_FIX = reply("fail", "fail", ["add the missing test to bin/x"])
+EMPTY_ROWS_PASS = {**ALL_ROWS_PASS, "rows": {}}
+PARTIAL_ROWS_PASS = {**ALL_ROWS_PASS, "rows": {"correct": "pass", "honest": "pass"}}
 
 
 class VerdictRowsTests(unittest.TestCase):
@@ -51,7 +57,7 @@ class VerdictRowsTests(unittest.TestCase):
     def consistent(self, obj: dict[str, object]) -> bool:
         path = self.tmp / "reply.json"
         path.write_text(json.dumps(obj))
-        proc = self.sourced('verdict_consistent "$1"', str(path))
+        proc = self.sourced('verdict_consistent "$1" "$2"', str(path), str(SCHEMA))
         # A broken guard exits non-zero with usage text, and that must not count as a refutation.
         self.assertEqual(proc.stdout + proc.stderr, "")
         return proc.returncode == 0
@@ -60,7 +66,7 @@ class VerdictRowsTests(unittest.TestCase):
         """(run_judge exit, judge calls in the ledger, last prompt) for one reply through the real call_json."""
         run = self.tmp / f"run-{name}"
         (run / "frozen").mkdir(parents=True)
-        (run / "frozen/judge.schema.json").write_text("{}")
+        shutil.copy(SCHEMA, run / "frozen/judge.schema.json")
         script = (f"RUN='{run}'; WORKTREE='{run}'; LEDGER=\"$RUN/ledger.jsonl\"; DAILY=\"$RUN/daily.jsonl\"; KEY=t\n"
                   'touch "$LEDGER" "$DAILY"; date -u +%s > "$RUN/launched"\n'
                   f"build_evidence() {{ printf 'REPLY %s\\n' '{json.dumps(obj)}'; }}\n"
@@ -73,6 +79,22 @@ class VerdictRowsTests(unittest.TestCase):
 
     def test_failing_row_with_pass_verdict_is_inconsistent(self) -> None:
         self.assertFalse(self.consistent(ROW_FAILS_VERDICT_PASSES))
+
+    def test_missing_rows_with_pass_verdict_are_inconsistent(self) -> None:
+        # jq's all() is true on an empty set, so a judge that leaves a row out must not pass by omission.
+        self.assertFalse(self.consistent(EMPTY_ROWS_PASS))
+        self.assertFalse(self.consistent(PARTIAL_ROWS_PASS))
+        rc, calls, prompt = self.judge_round("rows-empty", EMPTY_ROWS_PASS)
+        self.assertEqual((rc, calls), (1, 3))
+        self.assertIn("## Refutation", prompt)
+
+    def test_schema_requires_the_rubric_rows(self) -> None:
+        # The schema carries the row names verdict_consistent requires; they must match judge.md's rubric table.
+        judge = (ROOT / "cultivation/marketplace/sam-cc-setup/agents/judge.md").read_text()
+        table = judge.split("## Rubric", 1)[1].split("\n## ", 1)[0]
+        rubric_rows = [r for r in re.findall(r"^\| (\w+) \|", table, re.M) if r != "Row"]
+        required = json.loads(SCHEMA.read_text())["properties"]["rows"].get("required", [])
+        self.assertEqual(sorted(required), sorted(rubric_rows))
 
     def test_controls_stay_consistent(self) -> None:
         self.assertTrue(self.consistent(ALL_ROWS_PASS))

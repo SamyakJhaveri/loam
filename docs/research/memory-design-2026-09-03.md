@@ -1,4 +1,4 @@
-# loam memory layer — design, evidence, implementation, testing
+# loam memory layer - design, evidence, implementation, testing
 
 Status: v0 design for the loam seed. Written 2026-09-03. Every claim below is tied to a source in §8.
 
@@ -35,14 +35,14 @@ Complexity is a *constraint*, not a term in the score. Raise the ceiling only wh
 | 3 | **Embedding choice (+6.2pp) is as large as claimed architectural gains.** Swapping MiniLM→cloud embeddings flipped the Mem0-vs-RAG verdict. | Strong | MemDelta |
 | 4 | **Never dump full history into Claude.** Sonnet refused 63% of full-context queries with the answer present in 115K tokens; RAG beat full-context by +31pp on Sonnet, while Gemini gained +14pp from full context. Model family reverses the conclusion. | Strong | MemDelta §4.2 |
 | 5 | **Write-side loss exceeds retrieval-side loss** on LongMemEval for 4/6 baselines; the key decision is what to retain at write time. | Moderate | WhenLoss, arXiv 2605.24579 |
-| 6 | **Structured store beats files by 28.7pp on long haystacks; files win where memory is small, human-owned, secondary — and files win abstention.** Consolidation pass: null. Hybrid ≈ flat vector index on LoCoMo, +15 on LongMemEval-M. | Strong, single author, code public | Ping-Lin Chang, pinglin.tw + a40-labs/memory |
+| 6 | **Structured store beats files by 28.7pp on long haystacks; files win where memory is small, human-owned, secondary - and files win abstention.** Consolidation pass: null. Hybrid ≈ flat vector index on LoCoMo, +15 on LongMemEval-M. | Strong, single author, code public | Ping-Lin Chang, pinglin.tw + a40-labs/memory |
 | 7 | **Frontier actors gain ~0 task success from experience banks.** claude-sonnet-5: +1.4pp ALFWorld (p=0.5), +0.6 SR WebShop (p=0.8). Weak actors gain ~4pp. | Moderate (2 tasks, 2 actors) | Ping-Lin Chang, agentic section |
 | 8 | **Cheap trajectory notes are the highest-ROI step.** Raw-slice RAG 42.8% → + notes 51.0% at 0.1→0.2 s. Agentic search reaches 74.9% at 108 s. | Strong (public benchmark) | LongMemEval-V2, arXiv 2605.12493 |
 | 9 | **Simpler harness + better model beats elaborate orchestration.** AgentRunbook-C V2 (shell + file-edit only): 75.17% @ 49 s vs V1 73.61% @ 102 s (Luna, xhigh). Its second trick: a per-question consolidated *retrieval strategy note*. | Moderate | LME-V2 research update, Aug 2026 |
 | 10 | **Curated skills: +16.2pp avg (+4.5pp in SWE). One-shot self-generated skills: no benefit on average.** Execution feedback is essential for skill improvement. | Strong (87 tasks, 18 configs) | SkillsBench 2602.12670; SkillLearnBench 2604.20087 |
 | 11 | **A structural codebase index is the only intervention with a measured resolve-rate gain on a frontier model** (Opus 4.7, SWE-PolyBench Verified + SWE-bench Pro, 3 seeds, lower cost per solve). | Strong | "Code Isn't Memory", arXiv 2606.22417 |
 | 12 | **Recurrence-triggered consolidation cuts memory-construction tokens up to 87% while improving accuracy.** | Moderate (LoCoMo only) | RecMem, ACL 2026 Findings |
-| 13 | **ReasoningBank: +4.6pp SWE-Bench-Verified, ~3 fewer steps/task — on Gemini-2.5-Flash.** Success+failure lessons > success-only. | Moderate (weak actor) | Google Research, ICLR 2026 |
+| 13 | **ReasoningBank: +4.6pp SWE-Bench-Verified, ~3 fewer steps/task - on Gemini-2.5-Flash.** Success+failure lessons > success-only. | Moderate (weak actor) | Google Research, ICLR 2026 |
 | 14 | **Vendor numbers do not survive reproduction.** Mem0's 94.4 LongMemEval → 73.8 under a third-party harness; LoCoMo numbers for one system span 25 points depending on scoring. | Strong | Mnemoverse Q3-2026 review; Ping-Lin Chang |
 | 15 | **OpenAI's own harness team: "one big AGENTS.md" failed.** ~100-line AGENTS.md as a *map* with pointers to deeper sources of truth. Anthropic: CLAUDE.md < 200 lines; /doctor trims derivable content. | Authoritative | openai.com/index/harness-engineering; code.claude.com/docs/en/memory |
 
@@ -62,7 +62,7 @@ Complexity is a *constraint*, not a term in the score. Raise the ceiling only wh
 | Transcript retention | Deleted after `cleanupPeriodDays` | Rollouts in state DB; summaries pruned by selection |
 | Compaction | Re-reads project-root CLAUDE.md after `/compact`; nested files reload on touch | Compaction replaces history with a compressed representation |
 
-Two facts that shape the design: (a) both native systems are *continuous LLM rewriters* (finding #1 applies to them); (b) Claude's auto memory deliberately excludes debugging fixes — the highest-value category for research→production work.
+Two facts that shape the design: (a) both native systems are *continuous LLM rewriters* (finding #1 applies to them); (b) Claude's auto memory deliberately excludes debugging fixes - the highest-value category for research→production work.
 
 ---
 
@@ -75,7 +75,7 @@ loam/
 ├── .claude/
 │   ├── settings.json              # hooks + autoMemoryDirectory + cleanupPeriodDays
 │   ├── rules/
-│   │   ├── memory.md              # the two memory rules (§5) — always loaded
+│   │   ├── memory.md              # the two memory rules (§5) - always loaded
 │   │   └── hpc.md                 # paths: ["slurm/**","mpi/**","**/launch*.sh"]
 │   └── skills/
 │       └── _template/SKILL.md     # curated-only; see §5.3
@@ -192,7 +192,7 @@ no_memories_if_mcp_or_web_search = true
 ### 4.6 `AGENTS.md` skeleton (the map)
 
 ```
-# <project> — agent map (≤100 lines)
+# <project> - agent map (≤100 lines)
 ## What this is        (2 lines)
 ## Where truth lives   docs/DECISIONS.md · docs/HOSTS.md · docs/GOTCHAS.md · docs/CARDS.md
 ## Build / test        exact commands
@@ -219,7 +219,7 @@ no_memories_if_mcp_or_web_search = true
    ```
    Append-only. Never edit prior cards (finding #1: rewrites compound errors).
 
-### 5.2 Promotion ladder (human-gated, recurrence-triggered — RecMem's trigger, done by you)
+### 5.2 Promotion ladder (human-gated, recurrence-triggered - RecMem's trigger, done by you)
 ```
 raw trace ──(non-obvious fix)──▶ CARD ──(seen ≥2×)──▶ GOTCHA line ──(procedure worked ≥2×)──▶ SKILL
 ```
@@ -240,13 +240,13 @@ Keep Claude auto-memory and Codex memories on. Both are cheap, and Codex's usage
 
 | Level | Add | Trigger to advance |
 |---|---|---|
-| 0 | Native memories + AGENTS.md map + skills + docs/* | — |
-| 1 | Raw trace capture + INDEX + SessionStart manifest | none — always do this |
+| 0 | Native memories + AGENTS.md map + skills + docs/* | - |
+| 1 | Raw trace capture + INDEX + SessionStart manifest | none - always do this |
 | 2 | `memsearch` = ripgrep | none |
-| 3 | SQLite FTS5 + local embeddings (bge-m3 or similar), RRF fusion, top-k 10 | `rg` misses a lesson you *know* is in traces because wording differs (≥3 occurrences in a month). Embedding choice matters more than architecture — test two. |
+| 3 | SQLite FTS5 + local embeddings (bge-m3 or similar), RRF fusion, top-k 10 | `rg` misses a lesson you *know* is in traces because wording differs (≥3 occurrences in a month). Embedding choice matters more than architecture - test two. |
 | 4 | Per-session index card auto-generated by a cheap model (Luna/Haiku-class), *only* for sessions with test fail→pass, a user correction, or a commit | recurring-errors report shows ≥5 repeat errors/month that never got a card |
 | 5 | Retrieval strategy note (AgentRunbook-C V2 pattern): `docs/RETRIEVAL.md` the agent appends to after a successful memsearch | memsearch usage is high but hit-rate is low |
-| 6 | Structural code index (Serena / LSP plugin) | localization is the visible bottleneck — this is the one step with a measured resolve gain on a frontier model; consider earlier |
+| 6 | Structural code index (Serena / LSP plugin) | localization is the visible bottleneck - this is the one step with a measured resolve gain on a frontier model; consider earlier |
 | 7 | Agentic iterative retrieval over traces | single-pass retrieval leaves known evidence unfound |
 | ✗ | Knowledge graph, LLM consolidation, RL memory policy | not until 3–7 have demonstrably plateaued |
 
@@ -290,17 +290,17 @@ Follow MemDelta: change one variable, same model, same prompts, same embedding, 
 ## 8. Sources
 
 Research
-- Faulty Memories — Zhang et al., "Useful Memories Become Faulty When Continuously Updated by LLMs", arXiv 2605.12978, https://arxiv.org/abs/2605.12978 · site https://dylanzsz.github.io/faulty-memory/
-- MemDelta — Wang, "Controlled Baselines and Hidden Confounds in Agent Memory Evaluation", arXiv 2606.29914, https://arxiv.org/abs/2606.29914
-- WhenLoss — arXiv 2605.24579, https://arxiv.org/abs/2605.24579
-- LongMemEval-V2 — Wu et al., arXiv 2605.12493, https://arxiv.org/abs/2605.12493 · site https://xiaowu0162.github.io/longmemeval-v2/ · AgentRunbook-C V2 https://xiaowu0162.github.io/longmemeval-v2/agentrunbook-c-v2/ · code https://github.com/xiaowu0162/LongMemEval-V2
-- RecMem — Dai et al., ACL 2026 Findings, arXiv 2605.16045, https://github.com/CaiusDai/RecMem
-- ReasoningBank — Ouyang et al., ICLR 2026, arXiv 2509.25140, https://research.google/blog/reasoningbank-enabling-agents-to-learn-from-experience/
-- MemTrace — Long et al., arXiv 2606.17328; MEMPROBE — arXiv 2606.24595; RaMem — arXiv 2606.22844; MemConflict — arXiv 2605.20926
-- SkillsBench — arXiv 2602.12670; SkillLearnBench — arXiv 2604.20087; procedural-memory survey — arXiv 2606.23127
-- "Code Isn't Memory" — arXiv 2606.22417, https://arxiv.org/abs/2606.22417
-- MemCoder — arXiv 2603.13258; SWE-MeM — arXiv 2606.28434 (RL route, future)
-- MemHarness — arXiv 2607.28272, https://github.com/KnowledgeXLab/MemHarness (RL route, future)
+- Faulty Memories - Zhang et al., "Useful Memories Become Faulty When Continuously Updated by LLMs", arXiv 2605.12978, https://arxiv.org/abs/2605.12978 · site https://dylanzsz.github.io/faulty-memory/
+- MemDelta - Wang, "Controlled Baselines and Hidden Confounds in Agent Memory Evaluation", arXiv 2606.29914, https://arxiv.org/abs/2606.29914
+- WhenLoss - arXiv 2605.24579, https://arxiv.org/abs/2605.24579
+- LongMemEval-V2 - Wu et al., arXiv 2605.12493, https://arxiv.org/abs/2605.12493 · site https://xiaowu0162.github.io/longmemeval-v2/ · AgentRunbook-C V2 https://xiaowu0162.github.io/longmemeval-v2/agentrunbook-c-v2/ · code https://github.com/xiaowu0162/LongMemEval-V2
+- RecMem - Dai et al., ACL 2026 Findings, arXiv 2605.16045, https://github.com/CaiusDai/RecMem
+- ReasoningBank - Ouyang et al., ICLR 2026, arXiv 2509.25140, https://research.google/blog/reasoningbank-enabling-agents-to-learn-from-experience/
+- MemTrace - Long et al., arXiv 2606.17328; MEMPROBE - arXiv 2606.24595; RaMem - arXiv 2606.22844; MemConflict - arXiv 2605.20926
+- SkillsBench - arXiv 2602.12670; SkillLearnBench - arXiv 2604.20087; procedural-memory survey - arXiv 2606.23127
+- "Code Isn't Memory" - arXiv 2606.22417, https://arxiv.org/abs/2606.22417
+- MemCoder - arXiv 2603.13258; SWE-MeM - arXiv 2606.28434 (RL route, future)
+- MemHarness - arXiv 2607.28272, https://github.com/KnowledgeXLab/MemHarness (RL route, future)
 
 Independent comparisons / practitioner writeups
 - Ping-Lin Chang, "The Shapes of Agent Memory", Aug 2026, https://pinglin.tw/blog/the-shapes-of-agent-memory/ · data https://github.com/a40-labs/memory
