@@ -32,6 +32,10 @@ NESTED_QUOTE = ['body=\'true && pass a || fail a "x"\'; grep -qF \'pass a\' <<<"
 ABORT_ON_BASE = ['guard true && pass g || fail g "x"',
                  'echo "$FACTORY_TEST_UNSET" > /dev/null && pass b || fail b "x"',
                  'false && pass c || fail c "x"']
+# The block exits right after output with no trailing newline, so the supervisor's checks-aborted line must start
+# its own line.
+ABORT_UNTERMINATED = ['guard true && pass g || fail g "x"',
+                      '[ -e NEW.md ] || { printf "NEW.md missing"; exit 3; }']
 GLUED_PASS = ['false && pass a || fail a "x"',
               '{ printf "no newline"; true; } && pass b || fail b "x"']
 FAILS_ON_BASE = ['guard true && pass g || fail g "x"',
@@ -101,6 +105,11 @@ class ChecksGreenTests(unittest.TestCase):
         self.assertFalse(green, checks)
         self.assertIn("FAIL checks-aborted: checks.sh exited 1", checks)
 
+    def test_main_loop_block_that_aborts_mid_line_is_not_green(self) -> None:
+        green, checks = self.main_loop("abort-mid-line", ABORT_UNTERMINATED)
+        self.assertFalse(green, checks)
+        self.assertIn("\nFAIL checks-aborted: checks.sh exited 3", checks)
+
     def test_main_loop_glued_fail_is_not_green(self) -> None:
         green, checks = self.main_loop("glued", GLUED_FAIL)
         self.assertFalse(green, checks)
@@ -117,6 +126,11 @@ class ChecksGreenTests(unittest.TestCase):
 
     def test_round_zero_rejects_a_block_that_aborts_on_base(self) -> None:
         accepted, log = self.round_zero("abort", ABORT_ON_BASE)
+        self.assertFalse(accepted, log)
+        self.assertIn("checks.sh aborted on", log)
+
+    def test_round_zero_rejects_a_block_that_aborts_mid_line_on_base(self) -> None:
+        accepted, log = self.round_zero("abort-mid-line", ABORT_UNTERMINATED)
         self.assertFalse(accepted, log)
         self.assertIn("checks.sh aborted on", log)
 

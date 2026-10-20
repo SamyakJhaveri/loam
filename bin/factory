@@ -929,7 +929,8 @@ limit_wait() { # result.json -> 0 after waiting, 1 when the reply is not a usage
 # Every non-guard check must fail on base; one that passes there cannot prove the ticket.
 
 # Run the frozen checks from dir into out. A block that aborts before it prints a FAIL line is never green
-# (#180): a non-zero exit with no FAIL line adds FAIL checks-aborted. Check names are not read from the block,
+# (#180): a non-zero exit with no FAIL line adds FAIL checks-aborted, on a fresh line as lib.sh's results are,
+# so output with no trailing newline cannot hide it from the ^FAIL reads. Check names are not read from the block,
 # because a check can quote a ticket body or a script whose pass and fail words are not top-level checks.
 run_checks() { # dir out
   local rc
@@ -937,7 +938,7 @@ run_checks() { # dir out
   rc=$?
   if [ "$rc" -ne 0 ] && ! grep -q '^FAIL' "$2"; then
     log "checks.sh exited $rc with no FAIL line"
-    printf 'FAIL checks-aborted: checks.sh exited %s with no FAIL line\n' "$rc" >> "$2"
+    printf '\nFAIL checks-aborted: checks.sh exited %s with no FAIL line\n' "$rc" >> "$2"
   fi
 }
 
@@ -1265,14 +1266,16 @@ build_evidence() { # rubric_file diff_cap -> stdout
   printf '%s\n' "$FENCE"
 }
 
-# A judge pass with a fix or a failing row, or a fail with nothing to point at, refutes itself (LOOP.md, precedence).
+# A judge pass with a fix or a failing or missing row, or a fail with nothing to point at, refutes itself (LOOP.md,
+# precedence). The rows a pass needs are the ones the schema requires, since all() is true on an empty set.
 # A reviewer's verdict word is never checked: run_review reads REVIEW_OUTCOME, and a refutation of the word
 # pushes the model to change its findings to fit it (2026-09-12).
-verdict_consistent() { # json file
-  jq -e '(.verdict // "") as $v
+verdict_consistent() { # json file, schema file
+  jq -e --slurpfile s "$2" '(.verdict // "") as $v
     | ((.fixes // []) | length) as $blocking
     | (((.backlog // []) | length) + ((.findings // []) | length)) as $other
-    | ([.rows[]?] | all(. == "pass")) as $rows_pass
+    | (.rows // {}) as $r
+    | (([$r[]?] | all(. == "pass")) and ($s[0].properties.rows.required // [] | all($r[.] == "pass"))) as $rows_pass
     | if $v == "pass" then $blocking == 0 and $rows_pass
       elif $v == "fail" then ($blocking > 0 or $other > 0)
       else true end' "$1" > /dev/null 2>&1
@@ -1299,7 +1302,7 @@ call_json() { # round stem role prompt_file schema_file
     res=$(jq -r "$RESULT_OBJ | .result // \"\"" "$out" 2> /dev/null | sed -e 's/^```json//' -e 's/^```//' -e 's/```$//') || res=""
     if printf '%s' "$res" | jq -e '.verdict' > /dev/null 2>&1; then
       printf '%s' "$res" | jq '.' > "$final"
-      verdict_consistent "$final" && return 0
+      verdict_consistent "$final" "$schema" && return 0
       log "$role verdict is inconsistent with its own lists; calling once more with the refutation"
       printf '\n\n## Refutation\n\nYour previous reply was `%s`, which contradicts the rows, fixes, findings, and backlog you listed. Grade again and return a consistent object.\n' \
         "$(jq -c '{verdict, rows: (.rows // {}), fixes: (.fixes // []), findings: ((.findings // []) | length), backlog: (.backlog // [])}' "$final")" >> "$pf"
@@ -1434,13 +1437,21 @@ file_issues() { # source issue pr-url, one issue per stdin line, scrubbed before
   done
 }
 
-# Only result lines show, at most 50, each cut to 300 characters: raw check output may hold a secret
-# (the repo is public), push the results past the cap, close the fence, or exceed GitHub's 65536-character
-# body limit. The full file stays in the run dir.
+# Only each result's word and check name show, never its reason: lib.sh's `fail NAME "$out"` puts captured
+# command output in the reason, which may hold a secret, and the repo is public with every body edit kept.
+# A MEASURE value shows only when it is a number; a name outside lib.sh's [A-Za-z0-9_.-] is dropped, so a raw
+# output line that starts with FAIL cannot close the fence. At most 50 lines, each cut to 300 characters, stay
+# under GitHub's 65536-character body limit. The full file stays in the run dir, and the section names it.
 checks_section() { # heading checks-file
   printf '## %s\n\n```\n' "$1"
-  awk -v max=50 -v f="$2" '/^(PASS|FAIL|MEASURE) / {n++; if (n <= max) print substr($0, 1, 300)} END {if (n > max) printf "... %d more lines in %s\n", n - max, f}' "$2"
-  printf '```\n\n'
+  awk -v max=50 -v f="$2" '/^(PASS|FAIL|MEASURE) / {
+      n++; if (n > max) next
+      name = $2; sub(/:$/, "", name); line = $1
+      if (name ~ /^[A-Za-z0-9_.-]+$/) line = line " " name
+      if ($1 == "MEASURE" && NF == 3 && $3 ~ /^-?[0-9]+(\.[0-9]+)?$/) line = line " " $3
+      print substr(line, 1, 300)}
+    END {if (n > max) printf "... %d more lines in %s\n", n - max, f}' "$2"
+  printf '```\n\nReasons and full output: %s\n\n' "$2"
 }
 
 open_pr() { # [draft]: opened at the grader-round cap
