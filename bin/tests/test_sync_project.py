@@ -480,6 +480,21 @@ class SyncProjectTests(unittest.TestCase):
         self.assertNotIn("Follow every ruling", self.claude_calls()[0]["prompt"])
         self.assertNotIn("owner's rulings", (self.work / "pr-body.md").read_text())
 
+    def test_a_missing_rulings_file_is_named_in_the_run_and_the_pr_body(self) -> None:
+        # Otherwise Copier runs with no flags and the port on the brief alone, and nothing says so.
+        r = self.sync("--dry-run")
+        self.assertEqual(0, r.returncode, r.stdout + r.stderr)
+        self.assertIn("no .loam/sync-rulings.md on main and no --rulings", r.stdout + r.stderr)
+        self.assertIn("- No `.loam/sync-rulings.md` on `main`; Copier ran with no --skip or --exclude flags and the "
+                      "port with the brief alone.", (self.work / "pr-body.md").read_text())
+        # The control: with the file on main, neither appears.
+        self.commit_rulings("- conf.json: the tracked ruling.\n")
+        self.work = self.base / "work-rulings"
+        r = self.sync("--dry-run")
+        self.assertEqual(0, r.returncode, r.stdout + r.stderr)
+        self.assertNotIn("no .loam/sync-rulings.md", r.stdout + r.stderr)
+        self.assertNotIn("No `.loam/sync-rulings.md`", (self.work / "pr-body.md").read_text())
+
     def test_a_long_change_list_still_reaches_the_verify_skill(self) -> None:
         # Over 64 KiB of `git diff --name-status`: a reader that stops early sends git SIGPIPE,
         # and pipefail would then end the run before the verify skill.

@@ -102,6 +102,7 @@ OLD="$(sed -n 's/^_commit: //p' "$ANSWERS")"
 SRC_LINE="$(grep '^_src_path:' "$ANSWERS")" || die "$ANSWERS has no _src_path"
 # The owner's calls from earlier syncs, prose for the port; --rulings tries a draft instead.
 if [ -z "$RULINGS" ] && [ -f .loam/sync-rulings.md ]; then RULINGS=.loam/sync-rulings.md; fi
+[ -n "$RULINGS" ] || warn "no .loam/sync-rulings.md on $BASE and no --rulings: Copier runs with no --skip or --exclude flags, and any port with the brief alone"
 RULINGS_SHA=""
 [ -z "$RULINGS" ] || RULINGS_SHA="$(git hash-object "$RULINGS")"
 # The rulings' `## Copier flags` section is one fenced block of keep-ours paths as copier flags,
@@ -412,6 +413,8 @@ fi
     echo "- The port followed the owner's rulings in \`$RULINGS\` (git blob \`$RULINGS_SHA\`). They win over the brief where they disagree."
   elif [ -n "$RULINGS" ]; then
     echo "- Nothing conflicted, so no port read the owner's rulings in \`$RULINGS\` (git blob \`$RULINGS_SHA\`); check the diff against them."
+  else
+    echo "- No \`.loam/sync-rulings.md\` on \`$BASE\`; Copier ran with no --skip or --exclude flags${C2:+ and the port with the brief alone}."
   fi
   echo
   echo "## Conflicts"
