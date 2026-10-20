@@ -52,17 +52,21 @@ class PrBodyChecksTests(unittest.TestCase):
         (self.run_dir / "round-2.review.json").write_text('{"verdict": "merge", "findings": []}\n')
         self.sent = top / "sent-body.md"
 
-    def open_pr(self) -> str:
-        """Run the real open_pr for issue 7 at round 2 and return the body handed to `gh pr create`."""
+    def open_pr(self, existing: bool = False) -> str:
+        """Run the real open_pr for issue 7 at round 2 and return the body handed to GitHub.
+
+        With existing, PR 9 is already open, so the body goes through the REST PATCH; else through `gh pr create`.
+        """
         script = (
             f"RUN='{self.run_dir}'; WORKTREE='{self.wt}'; BRANCH=factory/7; ISSUE=7; KEY=7; IS_FILE=0\n"
             f"ROUND=2; GRADED_SHA={self.graded}; LEDGER=\"$RUN/ledger.jsonl\"; DECISIONS=\"$RUN/decisions.md\"\n"
             "BODY=\"$TICKET\"\n"
             "notify() { :; }\n"
             'gh() { case "$1 $2" in\n'
-            '  "pr view") return 1 ;;\n'
+            f'  "pr view") {"echo 9" if existing else "return 1"} ;;\n'
             f'  "pr create") while [ $# -gt 0 ]; do [ "$1" = --body-file ] && cp "$2" "{self.sent}"; shift; done\n'
             "    echo https://github.com/acme/widget/pull/9 ;;\n"
+            f'  "api -X") while [ $# -gt 0 ]; do [ "$1" = -f ] && printf %s "${{2#body=}}" > "{self.sent}"; shift; done ;;\n'
             "esac; }\n"
             "open_pr\n"
         )
@@ -78,39 +82,55 @@ class PrBodyChecksTests(unittest.TestCase):
     def test_body_shows_checks_failing_at_base_and_passing_at_the_graded_sha(self) -> None:
         (self.run_dir / "round-0.checks").write_text("FAIL widget: the widget does not work\nPASS guard\n")
         body = self.open_pr()
-        before = f"## Checks at base {self.base[:8]} (round 0)\n\n```\nFAIL widget: the widget does not work\nPASS guard\n```\n"
+        before = f"## Checks at base {self.base[:8]} (round 0)\n\n```\nFAIL widget\nPASS guard\n```\n"
         after = "## Checks at the graded sha (round 2)\n\n```\nPASS widget\nPASS guard\n```\n"
         self.assertIn(before, body)
         self.assertIn(after, body)
         self.assertLess(body.index(before), body.index(after))
         self.assertLess(body.index(after), body.index("## Judge"))
         self.assertNotIn("round one is not the final round", body)
+        self.assertNotIn("the widget does not work", body)
 
     def test_a_long_checks_file_is_capped_with_a_pointer_to_the_run_directory(self) -> None:
-        (self.run_dir / "round-0.checks").write_text("".join(f"FAIL widget: line {i}\n" for i in range(1, 81)))
+        (self.run_dir / "round-0.checks").write_text("".join(f"FAIL widget-{i}: line {i}\n" for i in range(1, 81)))
         body = self.open_pr()
-        self.assertIn("FAIL widget: line 50\n", body)
-        self.assertNotIn("FAIL widget: line 51\n", body)
-        self.assertIn(f"FAIL widget: line 50\n... 30 more lines in {self.run_dir / 'round-0.checks'}\n```\n", body)
+        self.assertNotIn("FAIL widget-51\n", body)
+        self.assertIn(f"FAIL widget-50\n... 30 more lines in {self.run_dir / 'round-0.checks'}\n```\n", body)
 
     def test_blank_lines_before_each_result_neither_show_nor_count_toward_the_cap(self) -> None:
         # With #259, lib.sh starts each result on a fresh line, so 30 checks write 60 lines.
         (self.run_dir / "round-0.checks").write_text("".join(f"\nFAIL widget-{i}: no\n" for i in range(1, 31)))
         body = self.open_pr()
-        results = "".join(f"FAIL widget-{i}: no\n" for i in range(1, 31))
+        results = "".join(f"FAIL widget-{i}\n" for i in range(1, 31))
         self.assertIn(f"(round 0)\n\n```\n{results}```\n", body)
         self.assertNotIn("more lines in", body)
 
-    def test_only_result_lines_show_each_cut_to_300_characters(self) -> None:
+    def test_only_result_words_names_and_numeric_measures_show_each_cut_to_300_characters(self) -> None:
         # Raw output can hold a secret (Loam is public), push the results past the cap, or close the fence.
         noise = "```\n@someone see this\nGH_TOKEN=ghp_not_a_real_token\n"
         noise += "".join(f"tests/test_x.py::test_{i} PASSED\n" for i in range(1, 61))
-        long_fail = "FAIL widget: " + "x" * 5000
-        (self.run_dir / "round-0.checks").write_text(f"{noise}{long_fail}\nMEASURE speed 3\nPASS guard\n")
+        long_name = "FAIL " + "n" * 5000
+        results = (f"FAIL widget: {'x' * 5000}\n{long_name}: why\nFAIL ```: closes the fence\n"
+                   "MEASURE speed 3\nMEASURE log error: ghp_measured_token\nPASS guard\n")
+        (self.run_dir / "round-0.checks").write_text(noise + results)
         body = self.open_pr()
-        self.assertIn(f"(round 0)\n\n```\n{long_fail[:300]}\nMEASURE speed 3\nPASS guard\n```\n", body)
-        for leaked in ("ghp_not_a_real_token", "@someone", "test_x.py", "x" * 288):
+        shown = f"FAIL widget\n{long_name[:300]}\nFAIL\nMEASURE speed 3\nMEASURE log\nPASS guard\n"
+        self.assertIn(f"(round 0)\n\n```\n{shown}```\n", body)
+        for leaked in ("ghp_", "@someone", "test_x.py", "xxx", "why", "closes the fence", "n" * 296):
             self.assertNotIn(leaked, body)
+
+    def test_a_fail_reason_never_reaches_the_body_on_create_or_update(self) -> None:
+        # lib.sh's `fail NAME "$out"` puts captured output in the reason: here render_into's Copier stderr.
+        # Loam is public and GitHub keeps every body edit, so a reason must not reach either path (H1).
+        secret = "Authorization: Bearer ghp_000000000000000000000000000000000000"
+        (self.run_dir / "round-0.checks").write_text(f"\nFAIL render: copier copy exit 1; {secret}\nPASS guard\n")
+        for existing in (False, True):
+            with self.subTest(existing=existing):
+                body = self.open_pr(existing)
+                for leaked in ("ghp_0000", "Bearer", "copier copy exit"):
+                    self.assertNotIn(leaked, body)
+                self.assertIn("```\nFAIL render\nPASS guard\n```\n", body)
+                self.assertIn(f"Reasons and full output: {self.run_dir / 'round-0.checks'}\n", body)
 
 
 if __name__ == "__main__":

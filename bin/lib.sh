@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
-# lib.sh — shared helpers for bin/ scripts. Source, don't execute.
+# lib.sh - shared helpers for bin/ scripts. Source, don't execute.
 
-# Colored output — set LIB_PREFIX before sourcing to customize.
+# Colored output - set LIB_PREFIX before sourcing to customize.
 LIB_PREFIX="${LIB_PREFIX:-loam}"
 
 die()  { printf '%s: %s\n' "$LIB_PREFIX" "$*" >&2; exit 1; }
