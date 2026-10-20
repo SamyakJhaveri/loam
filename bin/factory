@@ -547,6 +547,26 @@ log()   { printf '%s %s\n' "$(now)" "$*" | tee -a "$LOG" >&2; }
 sha256_of() { if command -v sha256sum > /dev/null 2>&1; then sha256sum "$@"; else shasum -a 256 "$@"; fi; }
 set_status() { printf '%s\n' "$1" > "$RUN/status"; log "status: $1"; }
 
+# Every factory write to GitHub passes through scrub: notify's issue comment, each filed issue's title and body,
+# and the PR title and body. Check output and model text can hold a secret, and the repo may be public.
+# Token-shaped strings become [redacted]; the patterns follow seed/.claude/hooks/mem-capture.sh's scrubber.
+# -X utf8 passes bytes that are not UTF-8 through unchanged.
+scrub() {
+  python3 -I -X utf8 -c '
+import re, sys
+text = sys.stdin.read()
+for rx, rep in (
+    (r"-----BEGIN [A-Z0-9 ]*PRIVATE KEY-----.*?-----END [A-Z0-9 ]*PRIVATE KEY-----", "[redacted]"),
+    (r"([A-Za-z][A-Za-z0-9+.-]*://[^:@/\s]+:)[^@/\s]+@", r"\1[redacted]@"),
+    (r"(?i)(authorization[\x22\x27]?\s*[:=]\s*[\x22\x27]?(?:(?:bearer|basic|token)\s+)?)[^\s\\\x22\x27,]+", r"\1[redacted]"),
+    (r"(?i)(bearer\s+)[A-Za-z0-9._~+/=-]{10,}", r"\1[redacted]"),
+    (r"gh[pousr]_[A-Za-z0-9]{20,}|github_pat_[A-Za-z0-9_]{20,}|xox[abprs]-[A-Za-z0-9-]{10,}|AKIA[0-9A-Z]{16}", "[redacted]"),
+    (r"(?:(?<=\\[nrt])|(?<![A-Za-z0-9]))sk-[A-Za-z0-9_-]{20,}", "[redacted]"),
+):
+    text = re.sub(rx, rep, text, flags=re.S)
+sys.stdout.write(text)'
+}
+
 # Pushover when it is configured, else a comment on the ticket; a failure leaves notify.failed.
 notify() { # title message
   local pe="$HOME/.config/loam-loops/pushover.env"
@@ -558,7 +578,7 @@ notify() { # title message
     if [ -n "${PUSHOVER_TOKEN:-}" ] && [ -n "${PUSHOVER_USER:-}" ] \
       && curl -s --max-time 15 -F "token=$PUSHOVER_TOKEN" -F "user=$PUSHOVER_USER" \
          -F "title=$1" -F "message=${2:0:1000}" https://api.pushover.net/1/messages.json > /dev/null; then return 0; fi
-  elif [ -n "$ISSUE" ] && printf '**%s**\n\n%s\n' "$1" "$2" \
+  elif [ -n "$ISSUE" ] && printf '**%s**\n\n%s\n' "$1" "$2" | scrub \
     | gh issue comment "$ISSUE" -R "$REPO" --body-file - > /dev/null 2>&1; then return 0
   fi
   printf '%s %s: %s\n' "$(now)" "$1" "$2" >> "$RUN/notify.failed"
@@ -1384,9 +1404,9 @@ file_backlog() { # judge.json issue pr-url
   jq -r '.backlog[]? | gsub("\\s*\n\\s*"; " ")' "$1" 2> /dev/null | file_issues "judge backlog" "$2" "$3"
 }
 
-file_issues() { # source issue pr-url, one issue per stdin line
+file_issues() { # source issue pr-url, one issue per stdin line, scrubbed before the title cuts it
   local src="$1" issue="$2" prurl="$3" line GH="${FACTORY_GH:-gh}"
-  while IFS= read -r line; do
+  scrub | while IFS= read -r line; do
     [ -n "$line" ] || continue
     grep -Fxq "$line" "$RUN/filed.txt" 2> /dev/null && continue
     if printf 'From the %s of #%s, %s.\n\n%s\n' "$src" "$issue" "$prurl" "$line" \
@@ -1452,7 +1472,7 @@ open_pr() { # [draft]: opened at the grader-round cap
     printf '\n## Metrics\n\nrounds: %s, spend: %s usd, wall: %s min, denials: %s\nrun directory: %s\n' \
       "$ROUND" "$(ticket_spent)" "$(( ( $(date -u +%s) - $(cat "$RUN/started") ) / 60 ))" \
       "$(jq -s '[.[].denials // 0] | add // 0' "$LEDGER")" "$RUN"
-  } > "$body"
+  } | scrub > "$body"
   [ "$IS_FILE" = 1 ] && finish pr-opened "file ticket: no GitHub call; the PR body is at $body"
   git -C "$WORKTREE" push -u origin "$BRANCH" >> "$LOG" 2>&1 || finish stopped-environment "git push of $BRANCH failed"
   if num=$(gh pr view "$BRANCH" -R "$REPO" --json number --jq .number 2> /dev/null) && [ -n "$num" ]; then
@@ -1461,7 +1481,7 @@ open_pr() { # [draft]: opened at the grader-round cap
       || finish stopped-environment "could not update the body of PR #$num"
     url="https://github.com/$REPO/pull/$num"
   else
-    title=$(grep -m1 '^# ' "$RUN/frozen/issue.md" | sed 's/^# //')
+    title=$(grep -m1 '^# ' "$RUN/frozen/issue.md" | sed 's/^# //' | scrub)
     url=$(gh pr create -R "$REPO" --head "$BRANCH" --base main --title "${title:-$KEY}" --body-file "$body" ${draft:+--draft} 2>&1) \
       || finish stopped-environment "gh pr create for $BRANCH failed: $url"
     url=$(printf '%s\n' "$url" | tail -1)
