@@ -75,10 +75,11 @@ git cat-file -e "$IDENTITY_BASELINE" 2>/dev/null && IDENTITY_RANGE="${IDENTITY_B
 NOREPLY_AUTHOR_RE='^[^@[:space:]]+@users\.noreply\.github\.com$'
 NOREPLY_COMMITTER_RE='^([^@[:space:]]+@users\.noreply\.github\.com|noreply@github\.com)$'
 # One email per commit whose full SHA is not accepted. awk compares whole SHAs, and an empty list exempts nothing.
+# It prints the whole email field after the SHA, so a second address after a space is judged too.
 # The list goes through ENVIRON: macOS awk rejects a newline in an `awk -v` value.
 identities() {
   git log --format="%H $1" $IDENTITY_RANGE |
-    ACCEPTED="$IDENTITY_ACCEPTED" awk 'BEGIN { n = split(ENVIRON["ACCEPTED"], s); for (i = 1; i <= n; i++) ok[s[i]] = 1 } !($1 in ok) { print $2 }'
+    ACCEPTED="$IDENTITY_ACCEPTED" awk 'BEGIN { n = split(ENVIRON["ACCEPTED"], s); for (i = 1; i <= n; i++) ok[s[i]] = 1 } !($1 in ok) { print substr($0, length($1) + 2) }'
 }
 # Read first, filter second: a failed git log or awk fails the check instead of reading as "no bad
 # identities" (the `|| true` below only absorbs grep's no-match exit).
