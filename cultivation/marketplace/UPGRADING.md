@@ -5,7 +5,22 @@ entry point for projects that consume the Loam marketplace.
 
 ## sam-cc-setup v0.9.12 grader prompt edits
 
-judge.md and reviewer.md cite only the sections build_evidence sends (Rows measured, decisions.md), judge.md counts a `SKIP` or `SKIPPED` line in the Checks output as unproven, and both drop "of Loam v3", since `-C` grades other repositories; before merging, run the v0.9.6 replay with `judge reviewer` in each `for g in` list.
+judge.md and reviewer.md cite only the sections build_evidence sends (Rows measured, decisions.md), judge.md counts a `SKIP` or `SKIPPED` line in the Checks output as unproven, and both drop "of Loam v3", since `-C` grades other repositories.
+A judge and reviewer replay before and after is owed before #239 merges (docs/factory/LOOP.md, Grader change protocol).
+It is not the v0.9.6 replay below, which compares `d80474af^1` with `d80474af`, a change main already has.
+Before is main's graders at the merge base, after is the branch head; take both snapshots from an up-to-date checkout of `audit/grader-prompts`:
+
+```sh
+base=$(git merge-base origin/main audit/grader-prompts)
+mkdir -p ~/replay-239/before-agents ~/replay-239/after-agents
+for g in judge reviewer; do
+  git show "$base":cultivation/marketplace/sam-cc-setup/agents/$g.md > ~/replay-239/before-agents/$g.md
+  git show audit/grader-prompts:cultivation/marketplace/sam-cc-setup/agents/$g.md > ~/replay-239/after-agents/$g.md
+done
+diff -rq ~/replay-239/before-agents ~/replay-239/after-agents
+```
+
+`diff -rq` must name both judge.md and reviewer.md as differing; then pass each folder as `--graders-dir` and keep every `EVAL_OUT` under `~/replay-239/`.
 Upgrade step: `claude plugin update sam-cc-setup`.
 
 ## sam-cc-setup v0.9.11 brief settles open questions by prototype
