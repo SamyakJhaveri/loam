@@ -9,6 +9,7 @@ and the body it reads from `--body-file`. HOME is a temp dir, so notify finds no
 
 from __future__ import annotations
 
+import gzip
 import json
 import os
 import pathlib
@@ -57,6 +58,7 @@ SECRETS = {
     "xoxs-" + fake("slacks", 30): fake("slacks", 30),
     "AKIA" + fake("AWS", 16): "AKIA" + fake("AWS", 16),
     "-----BEGIN RSA PRIVATE KEY-----\n" + fake("pem", 64) + "\n-----END RSA PRIVATE KEY-----": fake("pem", 64),
+    "-----BEGIN PGP PRIVATE KEY BLOCK-----\n\n" + fake("pgp", 64) + "\n-----END PGP PRIVATE KEY BLOCK-----": fake("pgp", 64),
     "git push https://bot:" + fake("pw", 12) + "@example.com/acme/widget.git": fake("pw", 12),
     "PUSHOVER_TOKEN=" + fake("push", 30): fake("push", 30),
     "password: " + fake("pass", 16): fake("pass", 16),
@@ -67,6 +69,10 @@ SECRETS = {
     "dop_v1_" + "a1b2c3d4" * 8: "a1b2c3d4" * 8,
 }
 PLANTED = "\n".join(SECRETS)
+# A key with no END line is redacted up to the next END marker or the end of the text, which would hide the
+# headings these tests look for, so it is planted only last: at the end of decisions.md and of the transcript.
+OPEN_KEY = "-----BEGIN PRIVATE KEY-----\n" + fake("open", 64)
+SECRETS[OPEN_KEY] = fake("open", 64)
 
 
 def subs(path: pathlib.Path) -> list[str]:
@@ -110,7 +116,7 @@ class PublishScrubTests(unittest.TestCase):
         (self.run_dir / "base.sha").write_text(base + "\n")
         (self.run_dir / "started").write_text("0\n")
         (self.run_dir / "ledger.jsonl").write_text("")
-        (self.run_dir / "decisions.md").write_text(f"- kept it small\n{PLANTED}\n")
+        (self.run_dir / "decisions.md").write_text(f"- kept it small\n{PLANTED}\n{OPEN_KEY}\n")
         (self.run_dir / "round-0.checks").write_text("FAIL widget\n")
         (self.run_dir / "round-2.checks").write_text("PASS widget\n")
         (self.run_dir / "round-2.measure").write_text(f"MEASURE speed {PLANTED} (baseline 3)\n")
@@ -180,6 +186,22 @@ class ScrubRulesTests(unittest.TestCase):
         self.assertTrue(memory)
         factory = subs(ROOT / "bin/factory")
         self.assertEqual([rule for rule in memory if rule not in factory], [])
+
+    def test_mem_capture_scrubs_private_key_blocks(self) -> None:
+        # The memory store gets the same key samples, one per transcript line as Claude writes it.
+        keys = {text: secret for text, secret in SECRETS.items() if "PRIVATE KEY" in text}
+        with tempfile.TemporaryDirectory() as tmp:
+            top = pathlib.Path(tmp)
+            transcript = top / "t.jsonl"
+            transcript.write_text("".join(json.dumps({"type": "user", "message": {"content": t}}) + "\n" for t in keys))
+            env = {k: v for k, v in os.environ.items() if k != "LOAM_MEMSTORE_REMOTE"}
+            subprocess.run(["bash", str(ROOT / "seed/.claude/hooks/mem-capture.sh")], cwd=top, check=True,
+                           input=json.dumps({"transcript_path": str(transcript), "session_id": "scrub1", "cwd": tmp}),
+                           env={**env, "LOAM_MEMSTORE": str(top / "store")}, capture_output=True, text=True)
+            trace = gzip.decompress(next(top.glob("store/traces/*/*-scrub1.jsonl.gz")).read_bytes()).decode()
+        for text, secret in keys.items():
+            self.assertNotIn(secret, trace, f"mem-capture stored {text!r}")
+        self.assertIn("[REDACTED:private_key]", trace)
 
 
 if __name__ == "__main__":
