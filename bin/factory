@@ -93,12 +93,13 @@ dc_checks() { dc_block | sed -e :a -e '/\\$/N; s/\\\n//; ta' -e 's/^[[:space:]]*
 GUARD_RE='(^|[;&|({!])([[:space:]]*((if|then|else|elif|do|while|until|time)[[:space:]]|[A-Za-z_][A-Za-z0-9_]*=[^[:space:]]*[[:space:]]))*[[:space:]]*guard[[:space:]]'
 
 # The dc_checks lines that call guard, or with -v the lines that do not; lint and round 0 both read guards here.
-# A whole "$(...)" capture is unquoted first, so `<<<"$(guard cmd)"` stays a guard.
+# A double-quoted string is kept up to its first inner quote when it opens a $(...) capture, so
+# `<<<"$(guard cmd "$x")"` stays a guard; a later quoted reason is still removed.
 guard_checks() { # [-v]
   local line
   while IFS= read -r line; do
-    if sed -E -e 's/"(\$\([^"]*\))"/\1/g' -e "s/'[^']*'|\"([^\"\\\\]|\\\\.)*\"//g" -e 's/(^|[[:space:]])#.*//' \
-      <<<"$line" | grep -qE "$GUARD_RE"; then
+    if sed -E -e "s/(\"[^\"]*\\\$\\([^\"]*\")|'[^']*'|\"([^\"\\\\\$]|\\\\.|\\\$[^(\"])*\"/\\1/g" \
+      -e 's/(^|[[:space:]])#.*//' <<<"$line" | grep -qE "$GUARD_RE"; then
       [ "${1:-}" = -v ] || printf '%s\n' "$line"
     elif [ "${1:-}" = -v ]; then
       printf '%s\n' "$line"
