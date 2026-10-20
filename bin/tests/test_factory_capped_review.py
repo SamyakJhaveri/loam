@@ -177,6 +177,13 @@ class CappedReviewTests(unittest.TestCase):
     def codex_calls(self) -> list[str]:
         return (self.run_dir / "codex-calls").read_text().splitlines()
 
+    def run_clean(self) -> str:
+        """The run's `bin/factory status` clean column."""
+        env = {k: v for k, v in os.environ.items() if k not in INHERITED}
+        return subprocess.run(["bash", "-c", f". bin/factory\nrun_clean '{self.run_dir}'"], cwd=ROOT,
+                              env={**env, "FACTORY_SOURCED": "1", "FACTORY_ROOT": str(ROOT)},
+                              capture_output=True, text=True, check=True).stdout
+
     def test_a_codex_review_with_no_parseable_output_is_called_once_more(self) -> None:
         for name, text in (("missing", None), ("empty", ""), ("not-json", "this is not json")):
             with self.subTest(name):
@@ -187,6 +194,7 @@ class CappedReviewTests(unittest.TestCase):
                 self.assertIn(f"EXIT pr-opened (0): {PR_URL} after 1 rounds", stderr)
                 self.assertNotIn("--draft", self.pr_create(calls)["args"])
                 self.assertEqual(self.issues(calls), [])
+                self.assertEqual(self.run_clean(), "yes")
 
     def test_two_unparseable_codex_reviews_open_a_draft_without_a_worker_round(self) -> None:
         for name, text in (("missing", None), ("empty", ""), ("not-json", "this is not json")):
@@ -197,6 +205,11 @@ class CappedReviewTests(unittest.TestCase):
                 self.assertEqual(self.codex_fixes(), [])
                 self.assertEqual(self.codex_calls(), ["round-1.codex-review.json"] * 2)
                 self.assert_draft_with_filed_finding(stderr, calls, "codex review output unparseable", rounds=1)
+                # Each bad call's log line points at its own stream, and a run whose Codex review never ran is not clean.
+                log = (self.run_dir / "factory.log").read_text()
+                for call in (1, 2):
+                    self.assertIn(f"on call {call} of 2; see {self.run_dir}/round-1.codex-review.{call}.jsonl", log)
+                self.assertEqual(self.run_clean(), "no")
 
     def test_a_multi_paragraph_finding_files_one_issue_with_the_whole_finding(self) -> None:
         codex = json.dumps({"verdict": "needs-attention", "summary": "s", "next_steps": [], "findings": [
