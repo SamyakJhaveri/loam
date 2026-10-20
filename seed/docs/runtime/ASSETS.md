@@ -42,8 +42,16 @@ validator proves the catalog consistent with itself, reading only catalog fields
 each target's declared section keys equal the union of the map sections aimed at it, and the
 reverse index is the recomputed inverse of the edges. It does not compare the catalog to a second
 copy of itself. A target's delivery state and expected digest are proven by bytes, not by any frozen
-record: `checkRecipientDelivery` reads each present target body from the recipient tree and requires
-its exact expected digest, in Loam and in every render. Source bytes and source units are re-verified
+record: `checkRecipientDelivery` reads each present target body from the recipient tree. A
+`verified` body must carry its exact expected digest. A `present-unqualified` body is a pending
+method the project owns once rendered, so a project that keeps its own wording is reported as
+adapted, not failed: `qualify catalog` prints its target id under `adapted`. An adapted body still
+fails `qualify catalog` on what a bad sync merge leaves, each under its own rule: an empty body
+(`delivery.adapted-empty`), a merge-conflict marker line, `<<<<<<<`, `=======` or `>>>>>>>` as Git
+writes them (`delivery.adapted-conflict`), or a `SKILL.md` without a closed `---` frontmatter block
+holding a top-level `name:` value (`delivery.adapted-frontmatter`). That last check reads the
+block's shape, not its YAML. Loam's own seed must still match exactly, which the Loam-only
+provenance gate checks. Source bytes and source units are re-verified
 against the working tree by the Loam-only provenance gate, and recipient integrity rests on the
 release manifest, the admission seal and doctor.
 `resolveEntry` is a lower-level helper: it binds one candidate entry to a trusted expected
@@ -81,7 +89,8 @@ node .loam/runtime/launcher.mjs qualify catalog
 ```
 
 The command runs the fixed `curated-catalog` population
-(`dist/tests/assets/catalog.test.js`) and prints the exact case names and count. It checks
+(`dist/tests/assets/catalog.test.js`) and prints the exact case names and count, and the ids of
+any adapted bodies under `adapted`. It checks
 schema validity, edge and wrapper resolution, activation honesty, the delivery digests proven by
 recipient bytes, the selected-dependency mappings and the Pocock collection, all from the catalog's
 own fields. It needs no compiler, network or source projects. Source provenance against

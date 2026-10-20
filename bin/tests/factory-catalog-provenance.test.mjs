@@ -23,7 +23,7 @@ import { chmodSync, lstatSync, mkdirSync, mkdtempSync, readFileSync, readlinkSyn
 import { tmpdir } from 'node:os';
 import { dirname, isAbsolute, join, relative, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { loadCatalog, projectEdge, scanPersonalPaths } from '../../seed/.loam/runtime/dist/src/assets/catalog.js';
+import { checkRecipientDelivery, loadCatalog, projectEdge, scanPersonalPaths } from '../../seed/.loam/runtime/dist/src/assets/catalog.js';
 import { extractSourceUnits, sha256, verifySourceUnits } from '../../seed/.loam/runtime/dist/src/assets/units.js';
 
 const repo = fileURLToPath(new URL('../../', import.meta.url));
@@ -494,6 +494,9 @@ function syntheticMirror(root) {
 test('provenance.sources-match-tree', () => {
   const bodies = sourcesMatchTree(CATALOG, repo);
   assert.ok(bodies > 150);
+  // Loam's own seed delivers every present target body at its exact digest. A render may adapt a
+  // pending one (checkRecipientDelivery lists it as adapted); Loam's seed may not.
+  assert.deepEqual(checkRecipientDelivery(CATALOG.catalog, join(repo, 'seed')).adapted, []);
 
   // Changed content: a source whose bytes no longer match its recorded digest.
   withScratch('loam-prov-content-', root => {

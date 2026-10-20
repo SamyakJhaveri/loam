@@ -2,14 +2,14 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { appendFileSync, existsSync, linkSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, renameSync, rmSync, statSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { dirname, join } from 'node:path';
+import { delimiter, dirname, join } from 'node:path';
 import { spawn, spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { once } from 'node:events';
 import { DatabaseSync, backup } from 'node:sqlite';
 import { qualifyRuntime, runtimeIdentity, spawnRuntime } from '../../src/platform/runtime.js';
 import { acquireOwnership, openExistingStore, openStoreOnWorker, OwnershipRefused, storeURI } from '../../src/platform/ownership.js';
-import { containedCommand, PROTECTED_KINDS, sanitizedEnvironment, sanitizeProcessEnvironment } from '../../src/platform/native-boundary.js';
+import { containedCommand, PROTECTED_KINDS, resolveBwrap, sanitizedEnvironment, sanitizeProcessEnvironment } from '../../src/platform/native-boundary.js';
 import { STRIP_EXACT, STRIPPED_VARIABLE_NAMES, STRIPPED_VARIABLE_PREFIXES, isStrippedVariable, shouldStrip } from '../../src/platform/env-policy.js';
 const manifestPath = fileURLToPath(new URL('../../../assets/runtime-manifest.json', import.meta.url));
 const ownershipSource = fileURLToPath(new URL('../../src/platform/ownership.js', import.meta.url));
@@ -718,6 +718,25 @@ test('boundary.conflicting-layout-refused', () => {
             if ('profile' in valid && valid.profile)
                 rmSync(dirname(valid.profile), { recursive: true, force: true });
         }
+    }
+    finally {
+        rmSync(dir, { recursive: true, force: true });
+    }
+});
+test('boundary.bwrap-resolved-absolute', () => {
+    // The contained command runs with PATH set to the runtime's own bin directory, so a bwrap
+    // found only on the caller's PATH must come back as its absolute path, never the bare name.
+    const dir = tmp();
+    try {
+        const bin = join(dir, 'bin');
+        mkdirSync(bin);
+        const fake = join(bin, 'bwrap');
+        writeFileSync(fake, '#!/bin/sh\nexit 0\n', { mode: 0o755 });
+        assert.equal(resolveBwrap(['relative-dir', join(dir, 'missing'), bin].join(delimiter), []), fake);
+        assert.equal(resolveBwrap(join(dir, 'missing'), []), null);
+        writeFileSync(fake, '#!/bin/sh\nexit 1\n', { mode: 0o755 });
+        assert.equal(resolveBwrap(bin, []), null, 'a bwrap whose --version fails is not available');
+        record('boundary.bwrap-resolved-absolute', 'path-lookup', fake);
     }
     finally {
         rmSync(dir, { recursive: true, force: true });
