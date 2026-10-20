@@ -9,6 +9,7 @@ and the body it reads from `--body-file`. HOME is a temp dir, so notify finds no
 
 from __future__ import annotations
 
+import gzip
 import json
 import os
 import pathlib
@@ -58,6 +59,8 @@ SECRETS = {
     "xoxs-" + fake("slacks", 30): fake("slacks", 30),
     "AKIA" + fake("AWS", 16): "AKIA" + fake("AWS", 16),
     "-----BEGIN RSA PRIVATE KEY-----\n" + fake("pem", 64) + "\n-----END RSA PRIVATE KEY-----": fake("pem", 64),
+    "-----BEGIN PGP PRIVATE KEY BLOCK-----\nVersion: GnuPG v2\n\n" + fake("pgp", 64) + "\n-----END PGP PRIVATE KEY BLOCK-----":
+        fake("pgp", 64),
     "git push https://bot:" + fake("pw", 12) + "@example.com/acme/widget.git": fake("pw", 12),
     "PUSHOVER_TOKEN=" + fake("push", 30): fake("push", 30),
     "password: " + fake("pass", 16): fake("pass", 16),
@@ -68,6 +71,19 @@ SECRETS = {
     "dop_v1_" + "a1b2c3d4" * 8: "a1b2c3d4" * 8,
 }
 PLANTED = "\n".join(SECRETS)
+# A key with no END line loses its header lines and body. It is planted only where no END marker follows it,
+# since the scrub would take it on to that marker (the known over-span) and hide the headings checked here.
+OPEN_KEY = ("-----BEGIN RSA PRIVATE KEY-----\nProc-Type: 4,ENCRYPTED\nDEK-Info: AES-256-CBC," + fake("iv", 16)
+            + "\n\n" + fake("head", 64) + "\n" + fake("open", 40))
+SECRETS[OPEN_KEY] = fake("open", 40)
+# Prose that names a BEGIN marker loses the marker and the word run after it, and nothing more.
+PROSE = "The scrub matches -----BEGIN RSA PRIVATE KEY----- markers, and this clause stays."
+CUT = "-----BEGIN RSA PRIVATE KEY----- markers"
+
+
+def indented(text: str, pad: str) -> str:
+    """Every line of text with pad in front, as a key pasted into a code block or a YAML value is."""
+    return pad + text.replace("\n", "\n" + pad)
 
 
 def subs(path: pathlib.Path) -> list[str]:
@@ -111,7 +127,7 @@ class PublishScrubTests(unittest.TestCase):
         (self.run_dir / "base.sha").write_text(base + "\n")
         (self.run_dir / "started").write_text("0\n")
         (self.run_dir / "ledger.jsonl").write_text("")
-        (self.run_dir / "decisions.md").write_text(f"- kept it small\n{PLANTED}\n")
+        (self.run_dir / "decisions.md").write_text(f"- kept it small\n{PLANTED}\n{OPEN_KEY}\n")
         (self.run_dir / "round-0.checks").write_text("FAIL widget\n")
         (self.run_dir / "round-2.checks").write_text("PASS widget\n")
         (self.run_dir / "round-2.measure").write_text(f"MEASURE speed {PLANTED} (baseline 3)\n")
@@ -214,6 +230,38 @@ class ScrubRulesTests(unittest.TestCase):
         self.assertTrue(memory)
         factory = subs(ROOT / "bin/factory")
         self.assertEqual([rule for rule in memory if rule not in factory], [])
+
+    def test_factory_scrub_stops_a_key_with_no_end_line(self) -> None:
+        text = f"{PROSE}\n## Next\n{OPEN_KEY}\n\n## Indented\n{indented(OPEN_KEY, '    ')}\n\n## Metrics\nrounds: 2\n"
+        env = {k: v for k, v in os.environ.items() if k not in INHERITED}
+        out = subprocess.run(["bash", "-c", ". bin/factory; scrub"], cwd=ROOT, env={**env, "FACTORY_SOURCED": "1"},
+                             input=text, capture_output=True, text=True, check=True).stdout
+        self.assertEqual(out, PROSE.replace(CUT, "[redacted]") + "\n## Next\n[redacted]\n\n## Indented\n    [redacted]"
+                         "\n\n## Metrics\nrounds: 2\n")
+
+    def test_mem_capture_scrubs_private_key_blocks(self) -> None:
+        # The memory store gets the key samples, one per transcript line as Claude writes it, so each line
+        # break in a key is the two characters \n inside a JSON string. Every line must stay valid JSON.
+        # The open key also comes inside a JSON string in a message (\\n in the trace, depth 2 and 3),
+        # indented with tabs (\t), and indented with spaces, headers included.
+        closed = [text for text in SECRETS if "PRIVATE KEY" in text and text != OPEN_KEY]
+        nested = [json.dumps({"cmd": OPEN_KEY}), json.dumps(json.dumps({"cmd": OPEN_KEY}))]
+        texts = closed + [PROSE, OPEN_KEY, *nested, indented(OPEN_KEY, "\t"), indented(OPEN_KEY, "    "),
+                          "a later message stays"]
+        with tempfile.TemporaryDirectory() as tmp:
+            top = pathlib.Path(tmp)
+            transcript = top / "t.jsonl"
+            transcript.write_text("".join(json.dumps({"type": "user", "message": {"content": t}}) + "\n" for t in texts))
+            env = {k: v for k, v in os.environ.items() if k != "LOAM_MEMSTORE_REMOTE"}
+            subprocess.run(["bash", str(ROOT / "seed/.claude/hooks/mem-capture.sh")], cwd=top, check=True,
+                           input=json.dumps({"transcript_path": str(transcript), "session_id": "scrub1", "cwd": tmp}),
+                           env={**env, "LOAM_MEMSTORE": str(top / "store")}, capture_output=True, text=True)
+            trace = gzip.decompress(next(top.glob("store/traces/*/*-scrub1.jsonl.gz")).read_bytes()).decode()
+        stored = [json.loads(line)["message"]["content"] for line in trace.splitlines()]
+        tag = "[REDACTED:private_key]"
+        nested_tag = [json.dumps({"cmd": tag}), json.dumps(json.dumps({"cmd": tag}))]   # still parses as JSON
+        self.assertEqual(stored, [tag] * len(closed) + [PROSE.replace(CUT, tag), tag, *nested_tag, "\t" + tag,
+                                                        "    " + tag, "a later message stays"])
 
 
 if __name__ == "__main__":
