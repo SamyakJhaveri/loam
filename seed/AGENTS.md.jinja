@@ -14,11 +14,11 @@
 
 (Record only what an agent cannot derive from the code: naming, layout, review etiquette. Replace or delete.)
 
-## Memory
+{% if memory %}## Memory
 
 - Before you debug an error, run `bin/memsearch "<error string>"` to see whether a past session already hit it.
 
-## Read on demand
+{% endif %}## Read on demand
 
 - `docs/HARNESS.md` - what the harness guards, what it does not, the accepted risks. Read it before editing a hook, `.claude/settings.json`, or `.codex/`.
 - `docs/WORKERS.md` - parallel-worker roles, review, pstack use, and the handoff format.

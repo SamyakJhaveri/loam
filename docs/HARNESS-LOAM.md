@@ -1,6 +1,6 @@
 # Harness notes for Loam only
 
-`seed/docs/HARNESS.md` ships to every generated project, so facts that hold only for the Loam repository or its owner's machines live here.
+`seed/docs/HARNESS.md.jinja` ships to every generated project, so facts that hold only for the Loam repository or its owner's machines live here.
 Token figures are byte counts divided by four, not a tokenizer result.
 
 ## Skill-listing budget

@@ -18,6 +18,7 @@ Template content lives in `seed/` (`_subdirectory: "seed"` in `copier.yml`); eve
 | `project_name` | string | (required) | Substituted into the top-level `.jinja` files |
 | `github_repo` | string `owner/name` | `""` | `gh repo create` after init if non-empty |
 | `project_kind` | choice | `python` | Gates `pyproject.toml` and the pyright-lsp plugin (python, research, mixed get both) |
+| `memory` | bool | `true` | Gates the session-memory system: the `mem-*` hooks, their registration in `.claude/settings.json` and `.codex/hooks.json`, Codex's `features.hooks`, `bin/memsearch`, `bin/mem-inspect`, `bin/mem-weekly.sh`, `THIRD_PARTY_NOTICES`, and the memory prose in `AGENTS.md`, `.gitignore`, `docs/HARNESS.md` and `docs/WORKERS.md`; with `false` the handoff is `HANDOFF.md` |
 
 ## Updating a project
 

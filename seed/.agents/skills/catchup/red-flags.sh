@@ -24,15 +24,21 @@ git symbolic-ref -q HEAD >/dev/null || echo "FLAG: detached HEAD at $(git rev-pa
 SESSIONS="$(tmux list-sessions -F '#S' 2>/dev/null | tr '\n' ' ')"
 [ -n "$SESSIONS" ] && echo "FLAG: tmux sessions active (may be running long jobs): ${SESSIONS% }"
 
-# The handoff note (docs/WORKERS.md owns its path and format): the live note,
-# else the newest one the SessionStart recall archived. The repo key is the one
-# mem-recall uses: the origin remote's name, else the toplevel directory's.
-URL="$(git remote get-url origin 2>/dev/null)"; URL="${URL%/}"; URL="${URL%.git}"
-KEY="$(basename "${URL:-$ROOT}")"
-MEM="$ROOT/.loam/memory"; [ -d "$MEM" ] || MEM="${LOAM_MEMSTORE:-$HOME/memstore}"
-HANDOFF="$MEM/handoff/$KEY.md"
-# shellcheck disable=SC2012 # archive names are <date>-<sid8>.md, no odd characters
-[ -f "$HANDOFF" ] || HANDOFF="$(ls -t "$MEM/handoff/$KEY/archive/"*.md 2>/dev/null | head -1)"
+# The handoff note (docs/WORKERS.md owns its path and format). Without the memory
+# hooks (memory=false) it is HANDOFF.md. With them, the live note, else the newest
+# one the SessionStart recall archived; the repo key is the one mem-recall uses:
+# the origin remote's name, else the toplevel directory's.
+HANDOFF=""
+if [ ! -f .claude/hooks/mem-recall.sh ]; then
+  [ -f HANDOFF.md ] && HANDOFF=HANDOFF.md
+else
+  URL="$(git remote get-url origin 2>/dev/null)"; URL="${URL%/}"; URL="${URL%.git}"
+  KEY="$(basename "${URL:-$ROOT}")"
+  MEM="$ROOT/.loam/memory"; [ -d "$MEM" ] || MEM="${LOAM_MEMSTORE:-$HOME/memstore}"
+  HANDOFF="$MEM/handoff/$KEY.md"
+  # shellcheck disable=SC2012 # archive names are <date>-<sid8>.md, no odd characters
+  [ -f "$HANDOFF" ] || HANDOFF="$(ls -t "$MEM/handoff/$KEY/archive/"*.md 2>/dev/null | head -1)"
+fi
 
 # Staleness: status words that contradict git, or a "Written at" hash that is
 # not HEAD; STATE.md also when it was modified before the last commit. Words

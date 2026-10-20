@@ -112,11 +112,13 @@ def cmd_render(a) -> None:
     copier = shutil.which("copier") and ["copier"] or ["uvx", "copier"]
     r = sh(copier + ["copy", "--trust", "--defaults", f"--vcs-ref={a.ref}",
                      "--data", "project_name=verify", "--data", "github_repo=",
-                     "--data", f"project_kind={a.kind}", str(src), str(d / "render")], env=GIT_ENV)
+                     "--data", f"project_kind={a.kind}", "--data", f"memory={str(not a.no_memory).lower()}",
+                     str(src), str(d / "render")], env=GIT_ENV)
     (d / "evidence" / "render.log").write_text(r.stdout + r.stderr)
     # copier renders a dirty checkout's working tree (for ref HEAD) as a temporary commit, so uncommitted seed edits are included.
     dirty = a.ref == "HEAD" and bool(sh(["git", "-C", str(src), "status", "--porcelain"]).stdout.strip())
-    meta = {"run": run, "ref": a.ref, "commit": commit, "dirty": dirty, "kind": a.kind, "source": str(src), "sessions": []}
+    meta = {"run": run, "ref": a.ref, "commit": commit, "dirty": dirty, "kind": a.kind, "memory": not a.no_memory,
+            "source": str(src), "sessions": []}
     save(d, meta)
     if r.returncode != 0:
         die("copier copy failed", run=run, log=str(d / "evidence" / "render.log"))
@@ -614,6 +616,7 @@ def main() -> None:
     s = sub.add_parser("render", help="copier copy this checkout into a new run")
     s.add_argument("--ref", default="HEAD", help="git ref to render (default HEAD; a dirty checkout renders its working tree)")
     s.add_argument("--kind", default="python", choices=["python", "typescript", "research", "mixed", "other"])
+    s.add_argument("--no-memory", action="store_true", help="answer memory=false: no memory hooks, tools or prose")
     s.add_argument("--run", help="run id (default: timestamp + commit)")
     s.set_defaults(fn=cmd_render)
     s = sub.add_parser("doctor", help="is this run worth driving? (reads the render, records the result in run.json)")

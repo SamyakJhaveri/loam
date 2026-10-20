@@ -21,11 +21,12 @@ Keep rows a check enforces, so each enforcer stays findable; drop a row only whe
 | One behavior change per session | `AGENTS.md` rule 5 | prose (judgment) |
 | Rendered content stays generic | `AGENTS.md` rule 2 | prose (judgment) |
 | Verification searches are case-insensitive and repository-wide | `AGENTS.md` Gotchas | prose (judgment) |
-| pstack planning, review and judgment roles, hardest tasks and arena runners run on Opus xhigh; implementation and exploration roles on Opus high (Opus 5.5 works well at high; subagent effort leaves the lead's prompt cache alone) | owner ruling 2026-10-19; `~/.claude/rules/pstack-models.md`, outside the repo | setting: that rule file, edited by hand, since a `/pstack:setup-pstack` re-run reverts effort-only changes (`seed/docs/WORKERS.md` pstack) |
+| pstack planning, review and judgment roles, hardest tasks and arena runners run on Opus xhigh; implementation and exploration roles on Opus high (Opus 5.5 works well at high; subagent effort leaves the lead's prompt cache alone) | owner ruling 2026-10-19; `~/.claude/rules/pstack-models.md`, outside the repo | setting: that rule file, edited by hand, since a `/pstack:setup-pstack` re-run reverts effort-only changes (`seed/docs/WORKERS.md.jinja` pstack) |
 | A project's `verify-<project>` skill proves on the real target; a step run on a stand-in stays marked unverified until it runs there. Renders without pstack keep `/run-skill-generator` (pstack scope ruling 2026-10-18: Loam and distbench) | owner ruling 2026-10-19; `seed/AGENTS.md.jinja` Commands | prose (judgment) |
-| A project with costly concurrency keeps a pstack formal verification skill for its single costliest property | owner ruling 2026-10-19; `seed/docs/WORKERS.md` pstack | prose (judgment) |
-| `/pstack:poteto-mode` only for a contested design, concurrency, or a cross-cutting change; small or obvious edits go straight to one worker (pilot: 1.9x cost, no quality gain, #236) | owner ruling 2026-10-19; `seed/docs/WORKERS.md` pstack | prose (judgment) |
-| Fable and Codex review finished work read-only; an Opus worker confirms or rejects each finding and fixes only the confirmed ones | owner ruling 2026-10-19; `seed/docs/WORKERS.md` Roles | prose (judgment) |
+| A project with costly concurrency keeps a pstack formal verification skill for its single costliest property | owner ruling 2026-10-19; `seed/docs/WORKERS.md.jinja` pstack | prose (judgment) |
+| `/pstack:poteto-mode` only for a contested design, concurrency, or a cross-cutting change; small or obvious edits go straight to one worker (pilot: 1.9x cost, no quality gain, #236) | owner ruling 2026-10-19; `seed/docs/WORKERS.md.jinja` pstack | prose (judgment) |
+| A project can opt out of the session-memory system with the Copier question `memory` (default `true`): `false` renders none of its hooks, hook registration, tools or prose, and `bin/sync-project --data memory=false` carries the answer. Reason: distbench keeps its no-hooks harness | owner ruling 2026-10-19; `copier.yml`, `docs/COPIER.md` | prose; the verify-loam render recipe `render-memory` proves a render |
+| Fable and Codex review finished work read-only; an Opus worker confirms or rejects each finding and fixes only the confirmed ones | owner ruling 2026-10-19; `seed/docs/WORKERS.md.jinja` Roles | prose (judgment) |
 
 ## Checkable, not yet enforced
 

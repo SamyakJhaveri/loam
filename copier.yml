@@ -31,6 +31,15 @@ _exclude:
   - ".loam/runtime/.cache"
   - ".loam/runtime/.state"
   - ".loam/runtime/runtime-installation"
+  # The memory system, for a project that answers memory=false. Task 1 strips its hook entries
+  # from settings.json; the .jinja docs drop its prose.
+  - "{% if not memory %}.claude/hooks/mem-capture.sh{% endif %}"
+  - "{% if not memory %}.claude/hooks/mem-recall.sh{% endif %}"
+  - "{% if not memory %}.codex/hooks.json{% endif %}"
+  - "{% if not memory %}bin/memsearch{% endif %}"
+  - "{% if not memory %}bin/mem-inspect{% endif %}"
+  - "{% if not memory %}bin/mem-weekly.sh{% endif %}"
+  - "{% if not memory %}THIRD_PARTY_NOTICES{% endif %}"
 
 # Questions asked during `copier copy`
 project_name:
@@ -50,13 +59,20 @@ project_kind:
   choices: [python, typescript, research, mixed, other]
   default: python
 
+memory:
+  type: bool
+  help: "Ship the session-memory system (capture and recall hooks, memsearch, mem-inspect, mem-weekly)? Answer no for a project that runs no hooks."
+  default: true
+
 # Post-generation tasks (run in the generated project directory)
 _tasks:
-  # Strip the pyright-lsp plugin from settings for non-Python project kinds. Runs on update too:
-  # the update's temp renders must match the stripped file, or the merge re-adds the plugin as a conflict.
+  # Strip from settings what the answers turn off: the pyright-lsp plugin for non-Python project
+  # kinds; when memory is off, the memory hook entries and Codex's features.hooks, which only the
+  # memory hooks need. Runs on update too: the update's temp renders must match the stripped
+  # files, or the merge re-adds them as a conflict.
   - >-
-    {% if project_kind not in ['python', 'research', 'mixed'] %}
-    python3 -c "import json; f='.claude/settings.json'; d=json.load(open(f)); d.get('enabledPlugins', {}).pop('pyright-lsp@claude-plugins-official', None); w=open(f, 'w'); json.dump(d, w, indent=2); w.write('\n')"
+    {% if project_kind not in ['python', 'research', 'mixed'] or not memory %}
+    python3 -c "import json; f='.claude/settings.json'; d=json.load(open(f)); {% if project_kind not in ['python', 'research', 'mixed'] %}d.get('enabledPlugins', {}).pop('pyright-lsp@claude-plugins-official', None); {% endif %}{% if not memory %}d.update(hooks={e: k for e, k in ((e, [g for g in v if not any('/mem-' in h['command'] for h in g['hooks'])]) for e, v in d['hooks'].items()) if k}) if 'hooks' in d else None; c='.codex/config.toml'; t=open(c).read(); open(c, 'w').write(t.replace('\nhooks = true\n', '\nhooks = false\n')); {% endif %}w=open(f, 'w'); json.dump(d, w, indent=2); w.write('\n')"
     {% else %}
     true
     {% endif %}
