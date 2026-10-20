@@ -72,6 +72,7 @@ Why these choices:
 After a sync to an untagged commit, `_commit` reads like `v3.0.0-361-ge90bfce0`.
 A plain `copier update` from `gh:` then refuses, because the latest tag is older and Copier does not downgrade.
 Keep using `bin/sync-project` until a newer tag exists.
+Sync only from a Loam commit that is on `main`, or is about to be merged into it: a later update renders the old side from `_commit`, so that commit must exist on GitHub.
 
 ### Sync rulings
 
