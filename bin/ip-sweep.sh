@@ -1,18 +1,18 @@
 #!/usr/bin/env bash
-# ip-sweep.sh — repeatable IP gate before any public push.
+# ip-sweep.sh - repeatable IP gate before any public push.
 #
 # This gate is tracked in the public Loam repo but is not rendered into projects.
 # The blocklist itself lives in a gitignored term file (see IP_TERMS_FILE), never
 # in this tracked script.
 #
 # Checks:
-#   (1) no foreign-IP terms in tracked text files   — hard FAIL
-#   (2) no git-LFS objects                           — WARN; FAIL under STRICT
-#   (3) public author/committer identities only        — WARN; FAIL under STRICT
+#   (1) no foreign-IP terms in tracked text files   - hard FAIL
+#   (2) no git-LFS objects                           - WARN; FAIL under STRICT
+#   (3) public author/committer identities only        - WARN; FAIL under STRICT
 #
 # The private dev archive has legitimately dirty authors/LFS, so (2) and (3) are
 # WARN by default. Set IP_SWEEP_STRICT=1 (release.sh does, and any public run
-# should) to make them hard failures — a real exit-code gate, not a note.
+# should) to make them hard failures - a real exit-code gate, not a note.
 set -euo pipefail
 cd "$(git rev-parse --show-toplevel)"
 
@@ -115,12 +115,13 @@ TERMS="$(grep -vE '^[[:space:]]*#' "$IP_TERMS_FILE" 2>/dev/null | grep -vE '^[[:
 # Exclude private-archive-only paths + the binary hero-art renders (loam-hero-*,
 # which grep -I skips as binary anyway): session plans, ADRs, human-only reference
 # material. Public text docs (POST-RELEASE-BACKLOG, design-philosophy.md,
-# concepts.yaml) are deliberately NOT excluded — if ever tracked they must be
+# concepts.yaml) are deliberately NOT excluded - if ever tracked they must be
 # scanned. Terms under these paths are expected private history, not a leak.
 EXCLUDE='^docs/(plans|adr)/|^_archive/|^docs/diagrams/loam-hero-.*\.(png|qa\.yaml)$'
 # Content check: validate the assembled ERE before scanning. A malformed term
 # must fail closed instead of being mistaken for a clean no-match result.
 if [[ -n "$TERMS" ]]; then
+  REGEX_RC=0
   if grep -E "$TERMS" </dev/null >/dev/null 2>&1; then
     :
   else
@@ -132,7 +133,8 @@ if [[ -n "$TERMS" ]]; then
   fi
 
   HITS=""
-  if [[ "$FAIL" -eq 0 ]]; then
+  # Gate on the regex alone: an identity failure above must not hide a term hit.
+  if [[ "$REGEX_RC" -le 1 ]]; then
     while IFS=$'\t' read -r -d '' META FILE_PATH; do
       [[ "$META" =~ ^([0-9]{6})[[:space:]]([0-9a-f]{40})[[:space:]][0-3]$ ]] || continue
       MODE="${BASH_REMATCH[1]}"
@@ -153,7 +155,7 @@ if [[ -n "$TERMS" ]]; then
     echo "FAIL: foreign-IP terms found in tracked files:"; echo "$HITS"; FAIL=1
   fi
 else
-  echo "WARN: no term file at $IP_TERMS_FILE — content sweep SKIPPED (copy bin/.ip-terms.example to bin/.ip-terms and fill in the blocklist)."
+  echo "WARN: no term file at $IP_TERMS_FILE - content sweep SKIPPED (copy bin/.ip-terms.example to bin/.ip-terms and fill in the blocklist)."
   [[ "$STRICT" = 1 ]] && { echo "FAIL: strict mode requires a term file."; FAIL=1; }
 fi
 
@@ -173,7 +175,7 @@ if [[ -f "$EXAMPLE_FILE" ]]; then
   PLACEHOLDERS='^(example-project-name|another vendored term|\\bacronym\\b)$'
   STRAY="$(grep -vE '^[[:space:]]*#' "$EXAMPLE_FILE" | grep -vE '^[[:space:]]*$' | grep -vE "$PLACEHOLDERS" || true)"
   if [ -n "$STRAY" ]; then
-    echo "WARN: $EXAMPLE_FILE has non-placeholder line(s) — real terms belong ONLY in the gitignored bin/.ip-terms:"
+    echo "WARN: $EXAMPLE_FILE has non-placeholder line(s) - real terms belong ONLY in the gitignored bin/.ip-terms:"
     echo "$STRAY"
     [[ "$STRICT" = 1 ]] && FAIL=1
   fi

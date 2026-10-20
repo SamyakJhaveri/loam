@@ -1,1 +1,1 @@
-{"verdict":"fail","rows":{},"fixes":["one fix"],"backlog":[]}
+{"verdict":"fail","rows":{"correct":"pass","verified":"pass","honest":"pass"},"fixes":["one fix"],"backlog":[]}

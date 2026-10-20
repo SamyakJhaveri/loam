@@ -12,7 +12,7 @@
 #
 # Usage:
 #   bin/sync-project [options] <project> [<loam-ref>]
-#     <project>     owner/repo on GitHub, a git URL, or a bare repo path (any path with --dry-run)
+#     <project>     owner/repo on GitHub or its git URL (any repo path with --dry-run)
 #     <loam-ref>    the Loam commit to carry (default: HEAD of --loam)
 #     --loam DIR    the Loam checkout to render from (default: this one)
 #     --branch NAME the branch to push (default: loam-sync/<sha8>)
@@ -71,6 +71,13 @@ fi
 if [ "$DRY" -eq 0 ] && [ -d "$PROJECT" ] && [ "$(git -C "$PROJECT" rev-parse --is-bare-repository 2>/dev/null)" = false ]; then
   die "$PROJECT is a working checkout and the push would land in it; pass owner/repo, or --dry-run"
 fi
+# The PR goes to the repo the branch is pushed to; github_repo in the answers can name another,
+# for a renamed or forked project.
+REPO="$(printf '%s\n' "$SRC" | sed -nE 's#^(https://|ssh://git@|git@)github\.com[/:]([A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+)$#\2#p')"
+REPO="${REPO%.git}"
+if [ "$DRY" -eq 0 ] && [ -z "$REPO" ]; then
+  die "$PROJECT names no GitHub repo to open the PR in; pass owner/repo or a github.com URL, or --dry-run"
+fi
 # A taken branch name would otherwise fail only at the push, after the paid steps.
 if [ "$DRY" -eq 0 ] && [ -n "$(git ls-remote --heads "$SRC" "refs/heads/$BRANCH")" ]; then
   die "branch $BRANCH already exists in $SRC; pass another --branch"
@@ -90,27 +97,32 @@ BASE="$(git rev-parse --abbrev-ref HEAD)"
 BASE_SHA="$(git rev-parse HEAD)"
 OLD="$(sed -n 's/^_commit: //p' "$ANSWERS")"
 SRC_LINE="$(grep '^_src_path:' "$ANSWERS")" || die "$ANSWERS has no _src_path"
-REPO="$(sed -n 's/^github_repo: //p' "$ANSWERS" | tr -d "'\"")"
 # The owner's calls from earlier syncs, prose for the port; --rulings tries a draft instead.
 if [ -z "$RULINGS" ] && [ -f .loam/sync-rulings.md ]; then RULINGS=.loam/sync-rulings.md; fi
 RULINGS_SHA=""
 [ -z "$RULINGS" ] || RULINGS_SHA="$(git hash-object "$RULINGS")"
 # The rulings' `## Copier flags` section is one fenced block of keep-ours paths as copier flags,
 # one per line. Anything else in the section, a quote, a second such heading, or a near miss of
-# it refuses the run, so a typo cannot drop a ruling and leave it to the port.
+# it refuses the run, so a typo cannot drop a ruling and leave it to the port. Inside other
+# fenced blocks only the exact heading counts, so a code comment is not a near miss; one there
+# still refuses when the file has no exact heading, so a fence left open cannot hide a near miss.
 FLAGS=()
 if [ -n "$RULINGS" ]; then
   block="$(awk 'function bad(m) { err = m; exit }
     { sub(/\r$/, "") }
     f == 1 { if (/^```/) f = 2; else out = out $0 "\n"; next }
-    /^[ \t]*#/ && tolower($0) ~ /copier[^a-z]*flags/ {
+    g != "" && !/^## Copier flags[ \t]*$/ { if (nm == "" && /^[ \t]*#/ && tolower($0) ~ /copier[^a-z]*flag/) nm = $0
+      t = $0; if (sub("^" g "+", "", t) && t !~ /[^ \t]/) g = ""; next }
+    /^[ \t]*#/ && tolower($0) ~ /copier[^a-z]*flag/ {
       if ($0 !~ /^## Copier flags[ \t]*$/) bad("heading \"" $0 "\" is not exactly ## Copier flags")
       if (h++) bad("a second ## Copier flags heading")
-      s = 1; next }
+      g = ""; s = 1; next }
     /^#/ { s = 0 }
     s && !f && /^```/ { f = 1; next }
     s && /[^ \t]/ { bad("\"" $0 "\" under ## Copier flags is outside its one fenced block") }
+    /^(```|~~~)/ { match($0, /^(`+|~+)/); g = substr($0, 1, RLENGTH) }
     END { if (err == "" && h && out !~ /[^ \t\n]/) err = "## Copier flags has no flag lines in a fenced block right under it"
+          if (err == "" && !h && nm != "") err = "heading \"" nm "\" inside a fenced block is not exactly ## Copier flags"
           if (err != "") { print err; exit 1 }
           printf "%s", out }' "$RULINGS")" || die "$RULINGS: $block"
   while IFS= read -r line; do
@@ -145,22 +157,40 @@ env "GIT_CONFIG_COUNT=$((n + 1))" "GIT_CONFIG_KEY_$n=merge.conflictStyle" "GIT_C
   "${COPIER[@]}" update --trust --defaults --skip-tasks --conflict inline --vcs-ref "$SHA" \
   ${FLAGS[@]+"${FLAGS[@]}"} > "$WORK/copier.log" 2>&1 || { tail -n 20 "$WORK/copier.log" >&2; die "copier update failed; log in $WORK/copier.log"; }
 set_src "$SRC_LINE"
-# The one task an update needs. Projects rendered from v3.0.0 track this file; staging its
+# Task 4, which an update needs. Projects rendered from v3.0.0 track this file; staging its
 # deletion here keeps the next update from starting dirty.
 rm -f _gh_setup.sh
+# Task 1 strips the pyright-lsp plugin from settings.json for a non-Python kind, in copier's two
+# temporary renders too. Skipped, it leaves the strip a project change, and a template change
+# beside it conflicts with a template side that re-adds the plugin. So a conflicted settings.json
+# is merged again over stripped copies of the renders, which copier records as stages 1 and 3.
+SETTINGS=.claude/settings.json STRIPPED=0
+case "$(sed -n 's/^project_kind: //p' "$ANSWERS" | tr -d "'\"")" in
+  python|research|mixed|"") ;;
+  *) if git show ":1:$SETTINGS" > "$WORK/settings.old" 2>/dev/null && git show ":3:$SETTINGS" > "$WORK/settings.new" 2>/dev/null; then
+       for f in "$WORK/settings.old" "$WORK/settings.new"; do
+         python3 -c "import json, sys; f=sys.argv[1]; d=json.load(open(f)); d.get('enabledPlugins', {}).pop('pyright-lsp@claude-plugins-official', None); w=open(f, 'w'); json.dump(d, w, indent=2); w.write('\n')" "$f"
+       done
+       git show ":2:$SETTINGS" > "$SETTINGS"
+       git -c merge.conflictStyle=merge merge-file -L "before updating" -L "last update" -L "after updating" \
+         "$SETTINGS" "$WORK/settings.old" "$WORK/settings.new" || true
+       STRIPPED=1
+     fi ;;
+esac
 
 rejects() { find . -name '*.rej' -not -path './.git/*'; }
 [ -z "$(rejects)" ] || die "copier left patch rejects in $P: $(rejects | tr '\n' ' ')"
 CONFLICTS="$(git grep -l -e '^<<<<<<< before updating' -e '^>>>>>>> after updating' || true)"
 
 # Copier records each conflicted file's old and new template renders as index stages 1 and 3;
-# keep their diff for the port before git add drops the stages.
+# keep their diff for the port before git add drops the stages. The paths stay in PATHS, not in
+# a file: the port model can edit anything under $WORK/port, and the copy-back writes to them.
 mkdir -p "$WORK/port"
-N=0
+N=0 PATHS=()
 while IFS= read -r f; do
   [ -n "$f" ] || continue
-  N=$((N + 1)); d="$WORK/port/$N"; mkdir -p "$d"
-  printf '%s\n' "$f" > "$d/path"
+  N=$((N + 1)); d="$WORK/port/$N"; mkdir -p "$d/copy"
+  PATHS[N]="$f"
   git show ":1:$f" > "$d/old" 2>/dev/null || : > "$d/old"
   if git show ":3:$f" > "$d/new" 2>/dev/null; then
     diff -u "$d/old" "$d/new" | tail -n +3 > "$d/template.diff" || true
@@ -182,6 +212,7 @@ fi
   echo "  $CMD"
   echo "The template came from a local Loam checkout at that commit; _src_path"
   echo "keeps the project's value. Tasks were skipped, and _gh_setup.sh deleted."
+  [ "$STRIPPED" -eq 0 ] || echo "Task 1's pyright-lsp strip was applied to both renders of $SETTINGS and the file merged again."
   [ "${#FLAGS[@]}" -eq 0 ] || echo "The --skip and --exclude flags come from the owner's rulings in $RULINGS."
   if [ "$N" -gt 0 ]; then
     echo
@@ -193,16 +224,18 @@ git commit -q -F "$WORK/copier-commit.txt"
 C1="$(git rev-parse --short HEAD)"
 ok "committed copier's result as $C1 ($N conflicted files)"
 
-claude_env() { LOAM_MEMSTORE="$WORK/memstore" TMPDIR="$WORK/claude-tmp" "$@"; }
+# Without LOAM_MEMSTORE_REMOTE the memory hooks cannot push the scratch store's traces anywhere.
+claude_env() { env -u LOAM_MEMSTORE_REMOTE LOAM_MEMSTORE="$WORK/memstore" TMPDIR="$WORK/claude-tmp" "$@"; }
 mkdir -p "$WORK/memstore" "$WORK/claude-tmp"
 
-copy_of() { printf '%s/%s\n' "$WORK/port/$1" "$(basename "$(cat "$WORK/port/$1/path")")"; }
+# In its own dir, so a file named old, new or template.diff cannot overwrite those.
+copy_of() { printf '%s/copy/%s\n' "$WORK/port/$1" "$(basename "${PATHS[$1]}")"; }
 
 port_prompt() {
   echo "You are porting a project rendered from the Loam Copier template. Your working directory is the project root."
   echo "Copier updated the project from Loam $OLD to Loam ${SHA:0:8} and could not merge $N files. A copy of each, conflict hunks included, is in \`$WORK/port\`:"
   i=1
-  while [ "$i" -le "$N" ]; do echo "- \`$(cat "$WORK/port/$i/path")\` is at \`$(copy_of "$i")\`"; i=$((i + 1)); done
+  while [ "$i" -le "$N" ]; do echo "- \`${PATHS[i]}\` is at \`$(copy_of "$i")\`"; i=$((i + 1)); done
   cat <<EOF
 Each conflict hunk holds the project's current text between \`<<<<<<< before updating\` and \`=======\`, and the template's new text between \`=======\` and \`>>>>>>> after updating\`.
 Resolve every hunk in every copy:
@@ -227,7 +260,7 @@ The template's own change to each file, from the old render to the new render:
 EOF
   i=1
   while [ "$i" -le "$N" ]; do
-    printf '\n### %s\n````diff\n' "$(cat "$WORK/port/$i/path")"
+    printf '\n### %s\n````diff\n' "${PATHS[i]}"
     cat "$WORK/port/$i/template.diff"
     echo '````'
     i=$((i + 1))
@@ -247,7 +280,7 @@ notes() { sed -n '/^Notes:/,$p' "$WORK/port/reply" | grep -E '^[[:space:]]*- ' |
 C2=""
 if [ "$N" -gt 0 ] && [ "$PORT" -eq 1 ]; then
   i=1
-  while [ "$i" -le "$N" ]; do cp "$(cat "$WORK/port/$i/path")" "$(copy_of "$i")"; i=$((i + 1)); done
+  while [ "$i" -le "$N" ]; do cp "${PATHS[i]}" "$(copy_of "$i")"; i=$((i + 1)); done
   port_prompt > "$WORK/port/prompt"
   # One call sees every conflicted file, so a decision that spans files is made once.
   info "porting the $N conflicted files in one call with $MODEL"
@@ -257,7 +290,7 @@ if [ "$N" -gt 0 ] && [ "$PORT" -eq 1 ]; then
     --permission-mode acceptEdits --add-dir "$WORK/port" --no-session-persistence \
     < "$WORK/port/prompt" > "$WORK/port/reply" 2> "$WORK/port/stderr" || die "claude failed on the port; see $WORK/port/stderr"
   i=1
-  while [ "$i" -le "$N" ]; do cp "$(copy_of "$i")" "$(cat "$WORK/port/$i/path")"; i=$((i + 1)); done
+  while [ "$i" -le "$N" ]; do cp "$(copy_of "$i")" "${PATHS[i]}"; i=$((i + 1)); done
 fi
 
 if [ "$N" -gt 0 ]; then
@@ -279,7 +312,7 @@ if [ "$N" -gt 0 ]; then
     echo "The model's choices:"
     i=1
     while [ "$i" -le "$N" ]; do
-      f="$(cat "$WORK/port/$i/path")"
+      f="${PATHS[i]}"
       echo; echo "$f"
       choices "$f"
       i=$((i + 1))
@@ -321,8 +354,9 @@ for s in .claude/skills/verify-*/SKILL.md; do
   line="$(grep '^VERIFY:' "$WORK/$name.log" | tail -n 1 || true)"
   VERIFY="$VERIFY- \`$name\`: ${line:-no VERIFY line; see $WORK/$name.log}"$'\n'
 done
-if [ "$(git rev-parse HEAD)" != "$PORTED" ] || [ -n "$(git status --porcelain --untracked-files=no)" ]; then
-  die "HEAD or a tracked file changed after the port, in bin/check or a verify skill; nothing pushed; see $P"
+# Compare the branch the push carries, not HEAD: an agent can commit, then detach HEAD back.
+if [ "$(git rev-parse --verify --quiet "refs/heads/$BRANCH")" != "$PORTED" ] || ! git diff --quiet "$PORTED"; then
+  die "branch $BRANCH or a tracked file changed after the port, in bin/check or a verify skill; nothing pushed; see $P"
 fi
 
 {
@@ -332,15 +366,20 @@ fi
   echo "- \`$CMD\` in a scratch clone, with $COPIER_V. The template came from a local Loam checkout at that commit. \`_src_path\` keeps its value."
   [ "${#FLAGS[@]}" -eq 0 ] || echo "- The \`--skip\` and \`--exclude\` flags came from the \`## Copier flags\` block in \`$RULINGS\` (git blob \`$RULINGS_SHA\`)."
   echo "- Copier tasks were skipped, because on update copier also runs them inside its temporary renders. \`_gh_setup.sh\` was deleted by hand."
+  [ "$STRIPPED" -eq 0 ] || echo "- Copier conflicted on \`$SETTINGS\`, so it was merged again over both renders with task 1's pyright-lsp strip applied."
   echo "- \`$C1\` is copier's result as is, conflict markers included."
   [ -z "$C2" ] || echo "- \`$C2\` is the port. $MODEL resolved every conflicted file in one call."
-  [ -z "$C2" ] || [ -z "$RULINGS" ] || echo "- The port followed the owner's rulings in \`$RULINGS\` (git blob \`$RULINGS_SHA\`). They win over the brief where they disagree."
+  if [ -n "$RULINGS" ] && [ -n "$C2" ]; then
+    echo "- The port followed the owner's rulings in \`$RULINGS\` (git blob \`$RULINGS_SHA\`). They win over the brief where they disagree."
+  elif [ -n "$RULINGS" ]; then
+    echo "- Nothing conflicted, so no port read the owner's rulings in \`$RULINGS\` (git blob \`$RULINGS_SHA\`); check the diff against them."
+  fi
   echo
   echo "## Conflicts"
   [ "$N" -gt 0 ] || echo "None."
   i=1
   while [ "$i" -le "$N" ]; do
-    f="$(cat "$WORK/port/$i/path")"
+    f="${PATHS[i]}"
     echo "- \`$f\`"
     choices "$f" | sed 's/^/  /'
     i=$((i + 1))
