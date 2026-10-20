@@ -184,6 +184,7 @@ A run directory with `launched` and no `status` file holds a slot until its run 
 Pushover when `~/.config/loam-loops/pushover.env` exists, else a comment on the ticket.
 A failed notification writes `notify.failed` in the run dir; `status` shows it.
 Events: run started, `pr-opened` with the URL, every other exit, checks failing after round k every two rounds.
+The checks-failing and `stuck` messages name the failing checks, never a FAIL line or its reason, as the PR body's checks blocks do; a name outside `[A-Za-z0-9_.-]` shows as `?`, and the checks-failing message names at most ten plus the `round-<k>.checks` file.
 
 ## Status and the manager
 

@@ -70,6 +70,7 @@ _tasks:
   # kinds; when memory is off, the memory hook entries and Codex's features.hooks, which only the
   # memory hooks need. Runs on update too: the update's temp renders must match the stripped
   # files, or the merge re-adds them as a conflict.
+  # bin/sync-project repeats these strips and the kind list; change both together.
   - >-
     {% if project_kind not in ['python', 'research', 'mixed'] or not memory %}
     python3 -c "import json; f='.claude/settings.json'; d=json.load(open(f)); {% if project_kind not in ['python', 'research', 'mixed'] %}d.get('enabledPlugins', {}).pop('pyright-lsp@claude-plugins-official', None); {% endif %}{% if not memory %}d.update(hooks={e: k for e, k in ((e, [g for g in v if not any('/mem-' in h['command'] for h in g['hooks'])]) for e, v in d['hooks'].items()) if k}) if 'hooks' in d else None; c='.codex/config.toml'; t=open(c).read(); open(c, 'w').write(t.replace('\nhooks = true\n', '\nhooks = false\n')); {% endif %}w=open(f, 'w'); json.dump(d, w, indent=2); w.write('\n')"

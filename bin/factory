@@ -1481,6 +1481,13 @@ checks_section() { # heading checks-file
   printf '```\n\nReasons and full output: %s\n\n' "$2"
 }
 
+# Each ^FAIL line's check name, once, in order; a name outside lib.sh's [A-Za-z0-9_.-] prints as ?. notify posts
+# these and never a FAIL line: a reason is command output, and a raw output line can start with FAIL (pytest's
+# FAILED, go test's FAIL<tab>package).
+fail_names() { # checks-file
+  awk '/^FAIL/ {n = $2; sub(/:$/, "", n); if (n !~ /^[A-Za-z0-9_.-]+$/) n = "?"; if (!seen[n]++) print n}' "$1"
+}
+
 open_pr() { # [draft]: opened at the grader-round cap
   local draft="${1:-}" body="$RUN/pr-body.md" base url num title rows blocking
   base=$(cat "$RUN/base.sha")
@@ -1583,9 +1590,10 @@ main_loop() {
     if grep -q '^FAIL' "$checks"; then
       fails=$(grep '^FAIL' "$checks" | awk '{print $2}' | tr -d ':' | sort -u | tr '\n' ',')
       log "checks failing: $fails"
-      [ "$fails" = "$prev_fails" ] && finish stuck "the same checks failed twice: $fails"
+      [ "$fails" = "$prev_fails" ] && finish stuck "the same checks failed twice: $(fail_names "$checks" | paste -sd, -)"
       prev_fails="$fails"
-      [ $((ROUND % 2)) -eq 0 ] && notify "$KEY checks failing after round $ROUND" "$(grep '^FAIL' "$checks" | head -10)"
+      [ $((ROUND % 2)) -eq 0 ] && notify "$KEY checks failing after round $ROUND" \
+        "$(fail_names "$checks" | head -10 | sed 's/^/FAIL /'; printf 'Reasons and full output: %s\n' "$checks")"
       continue
     fi
     prev_fails=""
