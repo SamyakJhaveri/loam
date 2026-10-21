@@ -1,6 +1,6 @@
-import { existsSync, lstatSync, mkdtempSync, readdirSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
+import { accessSync, constants, existsSync, lstatSync, mkdtempSync, readdirSync, realpathSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { isAbsolute, join } from 'node:path';
+import { delimiter, isAbsolute, join } from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { shouldStrip } from './env-policy.js';
 import { contains, realpathOr } from './util.js';
@@ -40,10 +40,18 @@ function allowlistEnv(spec: ContainSpec): Record<string, string> {
     LANG: process.env.LANG ?? 'C',
   };
 }
-function resolveBwrap(): string | null {
-  for (const candidate of ['/usr/bin/bwrap', '/bin/bwrap', '/usr/local/bin/bwrap']) if (existsSync(candidate)) return candidate;
-  const probe = spawnSync('bwrap', ['--version'], { encoding: 'utf8', timeout: 10000 });
-  return !probe.error && probe.status === 0 ? 'bwrap' : null;
+function isExecutableFile(path: string): boolean {
+  try { accessSync(path, constants.X_OK); return statSync(path).isFile(); } catch { return false; }
+}
+// Always an absolute path: containedCommand spawns bwrap with PATH set to the
+// runtime's own bin directory, where a bare name found on the caller's PATH does
+// not resolve. Relative PATH entries are skipped, as they name the cwd.
+export function resolveBwrap(searchPath = process.env.PATH ?? '', standard: readonly string[] = ['/usr/bin/bwrap', '/bin/bwrap', '/usr/local/bin/bwrap']): string | null {
+  for (const candidate of standard) if (existsSync(candidate)) return candidate;
+  const found = searchPath.split(delimiter).filter(dir => isAbsolute(dir)).map(dir => join(dir, 'bwrap')).find(isExecutableFile);
+  if (!found) return null;
+  const probe = spawnSync(found, ['--version'], { encoding: 'utf8', timeout: 10000 });
+  return !probe.error && probe.status === 0 ? found : null;
 }
 function overlaps(a: string, b: string): boolean { return contains(a, b) || contains(b, a); }
 function canonicalSpec(spec: ContainSpec): ContainSpec {

@@ -76,7 +76,7 @@ Run `bin/check` when changing Loam. It lints, checks shell syntax and whitespace
 - `docs/COPIER.md` - Template configuration details
 - `docs/SYNC.md` - Forward updates, reverse promotion, and attach mode
 - `docs/ASSET-LAYERS.md` - Asset organization
-- `seed/docs/HARNESS.md` - What the shipped harness guards, and the accepted risks
+- `seed/docs/HARNESS.md.jinja` - What the shipped harness guards, and the accepted risks
 
 ## Roadmap
 

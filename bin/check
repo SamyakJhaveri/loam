@@ -115,7 +115,8 @@ for doc in skills + agents:
             first, last = span.split("/")[0], span.rstrip("/").rsplit("/", 1)[-1]
             if not (span.endswith("/") or "." in last.lstrip(".") or any((b / first).is_dir() for b in bases)):
                 continue
-            if not any((b / span).exists() for b in bases):
+            # A rendered path also exists when the seed holds it as a template (`docs/WORKERS.md.jinja`).
+            if not any((b / span).exists() or (b / (span + ".jinja")).exists() for b in bases):
                 errors.append(f"{doc}:{n}: path `{span}` does not exist")
         for name in NAMED.findall(line):
             plugin, _, short = name.rpartition(":")
@@ -138,9 +139,9 @@ python3 bin/skill_listing_weight.py --root "$ROOT" --budget seed=85 --budget "sa
 
 step "always-loaded prose cap"
 # Root CLAUDE.md, AGENTS.md and what they load reach every Loam session. No-growth cap in bytes,
-# set to the measured size. Lower it when the prose shrinks; raise it only in the
-# PR that grows the prose, with the reason in that PR.
-python3 bin/always_loaded_prose.py --root "$ROOT" --cap 4681 || bad "always-loaded prose over its cap"
+# equal to the measured size: the step fails over it and under it, so a PR that shrinks the
+# prose lowers it. Raise it only in the PR that grows the prose, with the reason in that PR.
+python3 bin/always_loaded_prose.py --root "$ROOT" --cap 4675 || bad "always-loaded prose not at its cap"
 
 step "no em dash in Loam-owned text"
 # The owner's standing rule (#237), raw or JSON-escaped. Exempt only text Loam does not own or must not rewrite.

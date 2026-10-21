@@ -9,7 +9,7 @@ This includes projects rendered by [Loam](https://github.com/SamyakJhaveri/loam)
 
 ## What the plugin exposes after installation
 
-- **Skills (4), all manual-only, so type `/<name>`:** `brief` (turns a raw request into a factory brief and ticket), `codex-review` (read-only cross-model second opinion on a diff; requires the Codex CLI), `plan-review` (blind merged plan review: correctness checklist plus elegance gate in one unit), `surprise-me` (ranked, evidence-backed unsolicited ideas).
+- **Skills (5), all manual-only, so type `/<name>`:** `brief` (turns a raw request into a factory brief and ticket), `codex-review` (read-only cross-model second opinion on a diff; requires the Codex CLI), `install-pstack-skills` (copies 23 pstack skills into `~/.claude/skills/` so agents can invoke them; re-run after a pstack update), `plan-review` (blind merged plan review: correctness checklist plus elegance gate in one unit), `surprise-me` (ranked, evidence-backed unsolicited ideas).
 - **Agents (4):** `plan-reviewer`, used by `plan-review`; `lean-critic`, a read-only Opus 5.5 critic that cuts verbosity from code and prose another model wrote; `judge` and `reviewer`, the fresh-context graders the Loam factory runs on each ticket (`docs/factory/LOOP.md`).
 - Regenerate both counts with `find cultivation/marketplace/sam-cc-setup -name SKILL.md | wc -l` and `ls cultivation/marketplace/sam-cc-setup/agents`.
 - **Hooks:** none. The plugin installs no hook on any tool matcher (design law 3).

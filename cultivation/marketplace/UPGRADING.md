@@ -3,7 +3,7 @@
 This file records why a promoted plugin change traveled. It is also the upgrade
 entry point for projects that consume the Loam marketplace.
 
-## sam-cc-setup v0.9.12 grader prompt edits
+## sam-cc-setup v0.9.13 grader prompt edits
 
 judge.md and reviewer.md cite only the sections build_evidence sends (Rows measured, decisions.md), judge.md counts a `SKIP` or `SKIPPED` line in the Checks output as unproven, and both drop "of Loam v3", since `-C` grades other repositories.
 A judge and reviewer replay before and after is owed before #239 merges (docs/factory/LOOP.md, Grader change protocol).
@@ -24,6 +24,14 @@ diff -rq ~/replay-239/before-agents ~/replay-239/after-agents
 `diff -rq` must name both judge.md and reviewer.md as differing; then pass each folder as `--graders-dir` and keep every `EVAL_OUT` under `~/replay-239/`.
 Replay the labeled set the #239 body names (scored F38 replies plus owner labels), not the hand cases under `evals/judge` and `evals/reviewer`, which cannot judge this change.
 Upgrade step: `claude plugin update sam-cc-setup`.
+
+## sam-cc-setup v0.9.12 install-pstack-skills joins the plugin
+
+`/sam-cc-setup:install-pstack-skills` copies 23 pstack skills (blast-radius, interrogate, how, why, tdd, the principle skills and more) into `~/.claude/skills/` without `disable-model-invocation`, so agents and workers can invoke them; a re-run after a pstack update refreshes the copies.
+It traveled because the install changes the whole host, so one copy per rendered project was the duplicate `docs/ASSET-LAYERS.md` calls a bug; the seed's `docs/WORKERS.md` and `docs/HARNESS.md` now point at the skill.
+The installer takes a lock, stages each copy beside its destination and keeps the old copy until the new one is in place.
+No agent prompt changed, so no grader replay is owed.
+Upgrade step: `claude plugin update sam-cc-setup`, then `/sam-cc-setup:install-pstack-skills` on each host.
 
 ## sam-cc-setup v0.9.11 brief settles open questions by prototype
 

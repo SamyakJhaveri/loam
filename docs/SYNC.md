@@ -7,6 +7,8 @@ Since the 2026-08 rebuild there are three distribution mechanisms: Copier forwar
 - `uvx copier copy --trust gh:samyakjhaveri/loam ./my-project` bootstraps.
 - `bin/sync-project <owner/repo> [<loam-commit>]` carries one Loam commit into a rendered project as a pull request.
   Use it for every update.
+- Every Loam pull request body states its port class on a `Port:` line: `seed` (travels by `bin/sync-project`), `runner` (a host change on the factory runner, applied the same day with no project sync), or `Loam-only` (say whether a project needs its own copy).
+  The pull request template asks for it.
 - A plain `uvx copier update --trust` in the project still works.
   It resolves the latest tag, reads the template from the project's `_src_path`, and runs the template's tasks (see below).
 - Copier `copy` and a plain `update` resolve git TAGS, not HEAD, so nothing reaches them until `bin/release.sh <version>` tags it.
@@ -19,7 +21,8 @@ bin/sync-project --dry-run SamyakJhaveri/distbench            # Loam HEAD; stop 
 bin/sync-project --draft SamyakJhaveri/distbench e90bfce0     # push loam-sync/e90bfce0, open a draft PR
 ```
 
-Flags: `--loam DIR` (the Loam checkout to render from, default the script's own), `--branch NAME` (default `loam-sync/<sha8>`), `--work DIR` (the scratch dir, default a new one under `$TMPDIR`), `--rulings FILE` (default the project's `.loam/sync-rulings.md`), `--dry-run`, `--no-port`, `--draft`.
+Flags: `--loam DIR` (the Loam checkout to render from, default the script's own), `--branch NAME` (default `loam-sync/<sha8>`), `--work DIR` (the scratch dir, default a new one under `$TMPDIR`), `--rulings FILE` (default the project's `.loam/sync-rulings.md`), `--data KEY=VALUE` (a Copier answer, repeatable), `--dry-run`, `--no-port`, `--draft`.
+`--data` is how a project changes an answer, since nobody edits `.copier-answers.yml` by hand: a project that runs no hooks syncs once with `--data memory=false`, Copier records `memory: false`, and later syncs keep it.
 It needs `git`, `copier` (or `uvx`), `claude` and `gh`.
 
 What it does, in order:
@@ -27,14 +30,16 @@ What it does, in order:
 1. It clones the project into the scratch dir and works only there.
    `<project>` is `owner/repo` or its github.com git URL; with `--dry-run` any repo path works too.
    Without `--dry-run` it first refuses a project that names no GitHub repo and a branch name the project already has, so a push or PR that would fail costs no model call.
-2. It points `_src_path` at the local Loam checkout in a throwaway commit, runs `copier update --trust --defaults --skip-tasks --conflict inline --vcs-ref <sha>` plus the rulings' Copier flags (see Sync rulings), and then puts the project's own `_src_path` back.
+2. It points `_src_path` at the local Loam checkout in a throwaway commit, runs `copier update --trust --defaults --skip-tasks --conflict inline --vcs-ref <sha>` plus any `--data` answers and the rulings' Copier flags (see Sync rulings), and then puts the project's own `_src_path` back.
    Copier `update` has no source flag and refuses a dirty tree, hence the throwaway commit.
    Copier runs with `merge.conflictStyle=merge` forced, because `diff3` and `zdiff3` add a base section to every hunk.
    The exact `--vcs-ref` makes Copier clone that commit, and Copier folds a checkout's uncommitted files in only when the ref is `HEAD`, so they cannot leak in.
-   In `.copier-answers.yml` only `_commit` changes, so the PR never rewrites where the project says its template lives.
+   In `.copier-answers.yml` `_src_path` keeps its value, so the PR never rewrites where the project says its template lives; `_commit` changes, and so does an answer a `--data` flag or a new question's default sets.
 3. It does by hand the two tasks an update needs, and commits Copier's result, conflict markers included.
    It deletes `_gh_setup.sh`.
-   For a non-Python `project_kind`, when Copier conflicts on `.claude/settings.json`, it strips the pyright-lsp plugin from both renders, as task 1 does, and merges the file again.
+   Task 1 strips from `.claude/settings.json` what the answers turn off: the pyright-lsp plugin for a non-Python `project_kind`, the memory hooks for `memory=false`.
+   For `memory=false` it also sets `hooks = false` in `.codex/config.toml`, and the script does the same when that file has no conflict.
+   When Copier conflicts on that file, the script applies the strip to both renders and merges the file again; once the file has no conflict, it strips the file itself when that removes something, as a plain update does.
    This first commit is deterministic: the same Loam commit on the same project base gives the same tree.
 4. It runs one `claude -p` on `claude-opus-5-5` over every file Copier left conflicted, with a fixed brief.
    The brief says to keep the project's content, adopt the template's change where it does not contradict it, decide each question once and apply it the same way in every file, remove every marker, and list each choice per file.
@@ -56,7 +61,7 @@ Why these choices:
 
 - Tasks are skipped because on `update` Copier runs `_tasks` three times: in its temporary old render, in the project, and in its temporary new render.
   The temporary renders have no `.git` and no origin, so Loam's tasks there run `git init` and then `_gh_setup.sh`, which tries a push and GitHub API writes.
-  Skipping task 1 there leaves its pyright-lsp strip a project change, and a template change beside it conflicts with a template side that re-adds the plugin; hence the second merge in step 3.
+  Skipping task 1 there leaves its settings strip a project change, and a template change beside it conflicts with a template side that re-adds what it stripped; hence the second merge in step 3.
 - Inline markers beat `.rej` files here.
   Copier 9 merges each rejected file with `git merge-file` and records the template's old and new renders in the index, so the model sees each hunk in place and gets the template's own diff.
   A `.rej` file holds only the failed hunk.
@@ -69,6 +74,7 @@ Why these choices:
 After a sync to an untagged commit, `_commit` reads like `v3.0.0-361-ge90bfce0`.
 A plain `copier update` from `gh:` then refuses, because the latest tag is older and Copier does not downgrade.
 Keep using `bin/sync-project` until a newer tag exists.
+Sync only from a Loam commit that is on `main`, or is about to be merged into it: a later update renders the old side from `_commit`, so that commit must exist on GitHub.
 
 ### Sync rulings
 

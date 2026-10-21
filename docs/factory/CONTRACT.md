@@ -24,7 +24,7 @@ The body starts at `Brief:` or `Part of`; in a file the first `#` line is the ti
 6. `## Done checks`: one fenced block tagged `done-checks`, a bash body sourced after `lib.sh`, run from the worktree root.
    A check is one line of the block and ends in `pass NAME` or `fail NAME reason`, in the form `A && pass N || fail N "why"`.
    A check that calls `guard` (for example `guard bin/check` or `out=$(guard cmd)`) is a regression guard allowed to pass on `main`; every other check must print FAIL on `main`.
-   The block is green when it prints no FAIL line; the supervisor adds `FAIL checks-aborted` when `checks.sh` exits non-zero with no FAIL line (#180).
+   The block is green when it prints no FAIL line; an abort or an `exit` anywhere in the block, at base or in a later round, adds `FAIL checks-aborted`, because `checks.sh` then stops before the end line freeze writes after the block (#180, #277).
    No `skip`.
    The block runs under `pipefail`, so a check never pipes a command that is meant to exit non-zero into `grep`; it captures the output first (`out=$(cmd 2>&1); grep -q pattern <<<"$out"`).
    Written before implementation.
@@ -38,6 +38,8 @@ The body starts at `Brief:` or `Part of`; in a file the first `#` line is the ti
 9. `## Worker`: `worker: claude|codex`, `codex-review: yes|no`, `effort: low|medium|high|xhigh`, `size: small|large` (optional, default small; large routes round 1 through the fan-out workflow, F12), `goal:` the condition the round's `/goal` holds until, always the done-checks block printing no FAIL line, ending "or stop after 60 turns", `skills:` (optional) a comma list of skill names the worker must invoke, each a line of `bin/factory.d/skills.txt` written as the Skill tool lists it (`mattpocock-skills:research`, `rigor`), and any cap override from `LOOP.md`.
     Samyak adds a line by hand, direct to `main`, after `bin/runner 'claude -p --setting-sources user --max-turns 1 "print skill names"'` prints the name on the runner; a worker runs with `--setting-sources user`, so a project skill such as `catchup` never loads there and never enters the file (#37).
 10. `## Decisions`: links to ADRs, closed decision tickets, or the design doc.
+11. `## Comments` (optional, always last): answers and notes appended to a ticket file after it is written, where the target's `docs/agents/issue-tracker.md` says comments go there (owner ruling 2026-10-19).
+    Lint rejects any section after it.
 
 Every path under Where, Do not touch, and Approach is verified with `git ls-files` when the ticket is written, or is a path the Goal creates; a guessed path is the commonest small defect and lint rejects it.
 

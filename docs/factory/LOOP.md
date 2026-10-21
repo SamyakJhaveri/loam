@@ -55,6 +55,7 @@ When no cached copy matches, the run stops `stopped-environment` and names the c
    A file ticket's worktree is removed when the run exits; its branch keeps the commits and is never pushed or deleted by the loop, so drop finished rehearsal branches by hand with `git branch -D factory/<stem>-<sha8>`.
 3. Extract the done-checks block; freeze `bin/factory`, the graders, `lib.sh`, `_common.md`, `role-settings.json`, `worker-settings.json`, the grader schemas, and the body into `frozen/`, owned outside the worker's write scope; the frozen grader prompts keep fixed evidence markers, there is no per-run string (#38).
 4. Round 0: run the block at `base.sha` in a detached temporary worktree, never in the ticket worktree, which a relaunch with an edited body may leave ahead of base; every non-guard check must print FAIL, else exit `ticket-defect`.
+   A block that aborts or exits before its end line, at base or in a later round, is a `FAIL checks-aborted` failure whatever it printed before; at base it exits `ticket-defect` before any paid round.
    The temporary worktree is added at `base.sha` and removed once the block has run, on both the defect and the clean path, so a relaunch still proves the checks on base rather than at the worker's HEAD.
    The block's output goes to `round-0.out`, renamed to `round-0.checks` only on a clean verdict; a relaunch resumes past round 0 only when `round-0.checks` exists, so a relaunch of a body round 0 stopped runs round 0 again at the same `base.sha` and stops again.
 5. Worker round k: a fresh `claude -p` (`claude-opus-5-5` at the ticket's effort, default high) or a fresh `codex exec` in the worktree with the body, `_common.md`, and from round 2 the failing check lines and every blocking finding verbatim.
@@ -65,17 +66,18 @@ When no cached copy matches, the run stops `stopped-environment` and names the c
 8. On pass, or at the grader-round cap: assemble the PR body (first line `Closes #<issue>`, then the ticket's Goal and why, `git log --oneline base..HEAD`, the MEASURE table, the merge checklist as checkboxes, `decisions.md`, the done-check output from round 0 at base and from the graded round (each block shows only the result word and check name of its `PASS`, `FAIL` and `MEASURE` lines, never a FAIL reason, and a MEASURE value only when it is a number, at most 50 lines, each cut to 300 characters; the full file stays in the run directory, and the block names it), grader sections (the Judge section opens with `graded at <sha>`, the HEAD the graders read), backlog, metrics), push, `gh pr create` or update the existing PR through the REST API, notify, exit `pr-opened`.
    A PR opened at the grader-round cap is a draft: `gh pr create --draft`, and a line under `Closes #<issue>` names the failing judge rows, so no automatic merge takes it before a human reads the Judge section; an already-open PR is only updated, not converted.
    Each judge backlog line is also filed once per run as a `needs-triage` issue, so a defect an unattended run finds is tracked outside the PR body.
-   A blocking reviewer or Codex finding left in the final round, an unparseable reply included, is filed the same way; when the judge passed, that finding is past its grader's one block, and the PR opens as a draft whose line under `Closes #<issue>` names the first one.
+   A blocking reviewer or Codex finding left in the final round, an unparseable reply included, is filed the same way; when the judge passed, that finding is past its grader's one block or comes from a reviewer or Codex review with no parseable reply, and the PR opens as a draft whose line under `Closes #<issue>` names the first one.
+   A judge with no parseable reply after its three calls is not a pass and gets no worker round, since a worker cannot rerun a grader (#312): when no reviewer or Codex fix is queued in that round, the round opens the PR as a draft at once, with the finding as the judge backlog line, so it is filed as an issue; when one is queued, the round is a normal fail, the next worker round takes those fixes and the judge runs again.
    Every text the factory composes for GitHub, the PR title and body, each filed issue's title and body, and notify's issue comment, first passes through `scrub`, which replaces token-shaped strings with `[redacted]`: every pattern of the memory scrubber in `seed/.claude/hooks/mem-capture.sh` (API keys and tokens, `key=value` secrets, JWTs, `Bearer` values, private-key blocks, URL passwords), plus any `Authorization` value and Slack `xoxs-` tokens.
 
 ## Exits
 
 | Status | Meaning | Counts a round |
 |---|---|---|
-| `pr-opened` | checks and graders pass, or the grader-round cap reached with a backlog (a draft PR), or a judge pass with a review finding past its one block (a draft PR) | yes |
+| `pr-opened` | checks and graders pass, or the grader-round cap reached with a backlog (a draft PR), or a judge pass with a review finding past its one block or a reviewer or Codex review with no parseable reply (a draft PR), or a judge with no parseable reply after three calls (a draft PR) | yes |
 | `no-change` | HEAD and `decisions.md` are both unchanged since the previous round | yes |
 | `stuck` | the same failing check set twice in a row | yes |
-| `ticket-defect` | round 0 found a check that passes on base | no |
+| `ticket-defect` | round 0 found a check that passes on base, or the block aborted on base (`FAIL checks-aborted`) | no |
 | `abandon` | an `ABANDON NAME reason` line in `decisions.md`; the owner is paged | yes |
 | `stopped-environment` | a `claude` result with `is_error` outside the capped set (`error_max_budget_usd`, `error_max_turns`) or with no result event, a Codex exit other than 0 or no `turn.completed` event, a `gh` or `git` failure, or a frozen-set hash mismatch | no, and it pages at once |
 | `stopped-cap` | `MAX_ROUNDS`, `TICKET_BUDGET_USD`, `DAILY_BUDGET_USD`, or `MAX_HOURS` reached; `ROUND_BUDGET_USD` and `MAX_TURNS` bound one worker call and are not an exit: a call that hits either (`error_max_budget_usd`, `error_max_turns`) is a finished round and step 6 decides | yes |
@@ -88,6 +90,8 @@ Usage limits are per account, so the supervisor first switches to the other stor
 It sleeps only when no other account exists or a switch already happened in the last five minutes; then it writes `waiting-limit` to `status`, sleeps until the reset time the reply names or twenty minutes when it names none, and repeats the same call.
 A reset past `MAX_HOURS` exits `stopped-environment`.
 A call with no result event (killed by `CALL_TIMEOUT_SEC`, or crashed) exits `stopped-environment` and counts no round.
+A killed or crashed Claude worker call left no cost to read but may have spent up to its `--max-budget-usd` ceiling, so its ledger row charges `ROUND_BUDGET_USD` (subtype `no-result` marks it as a charge) and the ticket and daily caps stay bounds (#319); a Codex worker call keeps `cost_usd` null.
+The stop message lists the commits made since the round began, or says `no commits`.
 
 ## Caps
 
@@ -101,7 +105,7 @@ Codex token counts come from its `--json` events and land in the ledger with `co
 After the checks first pass, at most two grader-fail rounds per ticket; then the remaining non-blocking findings go to the PR body backlog and the PR opens as a draft.
 The judge decides pass or fail.
 The reviewer blocks only on a `high` or `medium` finding (`REVIEW_BLOCKING` in `bin/factory`; its verdict word is not read), the Codex review only on a `critical` or `high` finding, and each may block at most once per ticket.
-A grader whose output is absent or unparseable is a fail with one high finding "grader unparseable", never a pass.
+A grader whose output is absent or unparseable is a fail with one high finding "<role> output unparseable", never a pass, and that finding is never sent to the worker, who cannot rerun a grader (#306, #312); the judge and reviewer are called three times and the Codex review twice, after which the reviewer's or Codex finding drafts the PR without blocking and the judge's opens the draft at once unless reviewer or Codex fixes are queued, in which case the next worker round takes them and the judge runs again (Grader calls).
 `verdict_consistent` runs on every judge JSON: a pass with non-empty fixes or a failing row, or without a row `judge.schema.json` requires, or a fail with empty fixes and empty backlog, is refuted, and the judge is called once more, fresh, with the refutation appended to its prompt.
 
 ## Grader calls
@@ -122,7 +126,9 @@ The evidence bundle is the ticket body, `git diff base...HEAD`, the check output
 In that diff, code files pass as content, but data files pass as stat only (files under `evals/` named `prompt.md`, and any single added file over 400 lines), so a frozen prompt or a large fixture never floods the grader diff.
 The Codex review stage runs `codex exec --json --output-schema frozen/review-output.schema.json -o <file> -s read-only "$(cat frozen/codex-review.prompt.md)" < /dev/null`, with the base sha filled into the frozen prompt's `<base>` placeholder; a review needs no write access and `read-only` keeps it from editing the tree the judge and reviewer already graded; `codex exec review` ignores `--output-schema` (#41).
 `needs-attention` with a `critical` or `high` finding blocks once.
-An absent or empty `-o` file, or one that is not a single object with a `verdict`, is replaced by a `needs-attention` object with one high finding "codex review output unparseable".
+An absent or empty `-o` file, or one that is not a single object with a `verdict`, gets one more Codex call; after a second bad reply it is replaced by a `needs-attention` object with one high finding "codex review output unparseable".
+A worker cannot rerun Codex, so that finding is not sent to the worker and does not fail the round; in the final round it drafts the PR and is filed as an issue.
+The judge and reviewer get three calls each; after three bad replies the reviewer's finding is handled the same way, without spending its one block, and the judge's, since no row was graded, opens the PR as a draft from `graders` with the finding in the judge backlog, so no worker round is spent on it, unless reviewer or Codex fixes are queued in that round: then the next worker round takes them and the judge runs again (#312).
 
 ## Worker calls
 
@@ -182,6 +188,7 @@ A run directory with `launched` and no `status` file holds a slot until its run 
 Pushover when `~/.config/loam-loops/pushover.env` exists, else a comment on the ticket.
 A failed notification writes `notify.failed` in the run dir; `status` shows it.
 Events: run started, `pr-opened` with the URL, every other exit, checks failing after round k every two rounds.
+The checks-failing and `stuck` messages name the failing checks, never a FAIL line or its reason, as the PR body's checks blocks do; a name outside `[A-Za-z0-9_.-]` shows as `?`, and the checks-failing message names at most ten plus the `round-<k>.checks` file.
 
 ## Status and the manager
 
@@ -191,6 +198,7 @@ It also checks the preconditions below.
 The manager is a Fable session that runs `status`, merges, and writes one learn line when the same first-failing grader appears in two consecutive runs.
 After F9, `bin/factory next` on a ten-minute runner timer launches the next frontier ticket after each merge; removing the `ready-for-agent` label parks a ticket, and `FACTORY_STOP` at the runs root pauses the timer; a logged-out runner makes `next` print `login expired` on stderr and exit 1 without launching.
 A ticket is parked only by a run of its current body, so editing the body relaunches it on the next tick.
+Before it picks a ticket, `next` runs the `lint` rules on each candidate's body; a candidate that fails is skipped with one stderr line (`lint failed #N: <first error>; edit the body or remove ready-for-agent`) and the next candidate is tried, so a labelled issue with no done-checks block never launches (#314).
 
 ## Stop
 

@@ -18,6 +18,8 @@
 #     --branch NAME the branch to push (default: loam-sync/<sha8>)
 #     --work DIR    the scratch dir (default: a new one under $TMPDIR)
 #     --rulings FILE  the owner's rulings for the port (default: the project's .loam/sync-rulings.md)
+#     --data KEY=VALUE  a Copier answer to set, such as memory=false; Copier records it in
+#                   .copier-answers.yml, so later syncs keep it (repeatable)
 #     --dry-run     stop before the push
 #     --no-port     skip the claude port; any conflict then stops the run
 #     --draft       open the PR as a draft
@@ -37,12 +39,13 @@ ANSWERS=.copier-answers.yml
 
 usage() { sed -n '/^# Usage:/,/^# Exit codes/p' "$0" | sed 's/^# \{0,1\}//' >&2; }
 
-LOAM="$ROOT" BRANCH="" WORK="" RULINGS="" PROJECT="" REF="" DRY=0 PORT=1 DRAFT=0
+LOAM="$ROOT" BRANCH="" WORK="" RULINGS="" PROJECT="" REF="" DRY=0 PORT=1 DRAFT=0 DATA=()
 while [ $# -gt 0 ]; do
   case "$1" in
-    --loam|--branch|--work|--rulings)
+    --loam|--branch|--work|--rulings|--data)
       [ $# -ge 2 ] || { usage; exit 2; }
-      case "$1" in --loam) LOAM="$2" ;; --branch) BRANCH="$2" ;; --work) WORK="$2" ;; --rulings) RULINGS="$2" ;; esac
+      case "$1" in --loam) LOAM="$2" ;; --branch) BRANCH="$2" ;; --work) WORK="$2" ;; --rulings) RULINGS="$2" ;;
+        --data) case "$2" in [A-Za-z_]*=*) DATA+=(--data "$2") ;; *) usage; exit 2 ;; esac ;; esac
       shift ;;
     --dry-run) DRY=1 ;;
     --no-port) PORT=0 ;;
@@ -99,6 +102,7 @@ OLD="$(sed -n 's/^_commit: //p' "$ANSWERS")"
 SRC_LINE="$(grep '^_src_path:' "$ANSWERS")" || die "$ANSWERS has no _src_path"
 # The owner's calls from earlier syncs, prose for the port; --rulings tries a draft instead.
 if [ -z "$RULINGS" ] && [ -f .loam/sync-rulings.md ]; then RULINGS=.loam/sync-rulings.md; fi
+[ -n "$RULINGS" ] || warn "no .loam/sync-rulings.md on $BASE and no --rulings: Copier runs with no --skip or --exclude flags, and any port with the brief alone"
 RULINGS_SHA=""
 [ -z "$RULINGS" ] || RULINGS_SHA="$(git hash-object "$RULINGS")"
 # The rulings' `## Copier flags` section is one fenced block of keep-ours paths as copier flags,
@@ -146,7 +150,7 @@ set_src() {  # $1 = the whole _src_path line to write
 set_src "_src_path: $LOAM"
 git commit -q --allow-empty -m "sync-project: temporary _src_path" -- "$ANSWERS"
 COPIER_V="$("${COPIER[@]}" --version 2>&1 | tail -n 1)"
-CMD="copier update --trust --defaults --skip-tasks --conflict inline --vcs-ref $SHA${FLAGS[*]+ ${FLAGS[*]}}"
+CMD="copier update --trust --defaults --skip-tasks --conflict inline --vcs-ref $SHA${DATA[*]+ ${DATA[*]}}${FLAGS[*]+ ${FLAGS[*]}}"
 info "running $CMD ($COPIER_V)"
 # Tasks are skipped: on update copier also runs them inside its temporary renders, where
 # Loam's _gh_setup.sh task tries a push and GitHub API writes. Copier's git merge-file follows
@@ -155,28 +159,62 @@ info "running $CMD ($COPIER_V)"
 n="${GIT_CONFIG_COUNT:-0}"
 env "GIT_CONFIG_COUNT=$((n + 1))" "GIT_CONFIG_KEY_$n=merge.conflictStyle" "GIT_CONFIG_VALUE_$n=merge" \
   "${COPIER[@]}" update --trust --defaults --skip-tasks --conflict inline --vcs-ref "$SHA" \
-  ${FLAGS[@]+"${FLAGS[@]}"} > "$WORK/copier.log" 2>&1 || { tail -n 20 "$WORK/copier.log" >&2; die "copier update failed; log in $WORK/copier.log"; }
+  ${DATA[@]+"${DATA[@]}"} ${FLAGS[@]+"${FLAGS[@]}"} > "$WORK/copier.log" 2>&1 || { tail -n 20 "$WORK/copier.log" >&2; die "copier update failed; log in $WORK/copier.log"; }
 set_src "$SRC_LINE"
 # Task 4, which an update needs. Projects rendered from v3.0.0 track this file; staging its
 # deletion here keeps the next update from starting dirty.
 rm -f _gh_setup.sh
-# Task 1 strips the pyright-lsp plugin from settings.json for a non-Python kind, in copier's two
-# temporary renders too. Skipped, it leaves the strip a project change, and a template change
-# beside it conflicts with a template side that re-adds the plugin. So a conflicted settings.json
-# is merged again over stripped copies of the renders, which copier records as stages 1 and 3.
-SETTINGS=.claude/settings.json STRIPPED=0
-case "$(sed -n 's/^project_kind: //p' "$ANSWERS" | tr -d "'\"")" in
-  python|research|mixed|"") ;;
-  *) if git show ":1:$SETTINGS" > "$WORK/settings.old" 2>/dev/null && git show ":3:$SETTINGS" > "$WORK/settings.new" 2>/dev/null; then
-       for f in "$WORK/settings.old" "$WORK/settings.new"; do
-         python3 -c "import json, sys; f=sys.argv[1]; d=json.load(open(f)); d.get('enabledPlugins', {}).pop('pyright-lsp@claude-plugins-official', None); w=open(f, 'w'); json.dump(d, w, indent=2); w.write('\n')" "$f"
-       done
-       git show ":2:$SETTINGS" > "$SETTINGS"
-       git -c merge.conflictStyle=merge merge-file -L "before updating" -L "last update" -L "after updating" \
-         "$SETTINGS" "$WORK/settings.old" "$WORK/settings.new" || true
-       STRIPPED=1
-     fi ;;
-esac
+# Task 1 strips from settings.json what the answers turn off, the pyright-lsp plugin for a
+# non-Python kind and the memory hooks for memory=false, in copier's two temporary renders too.
+# Skipped, it leaves the strip a project change, and a template change beside it conflicts with a
+# template side that re-adds them. So a conflicted settings.json is merged again over stripped
+# copies of the renders, which copier records as stages 1 and 3. A file with no conflict left is
+# then stripped itself, as task 1 strips it in a plain update; a clean merge can add entries too.
+# For memory=false task 1 also turns off Codex's features.hooks, which only the memory hooks need.
+SETTINGS=.claude/settings.json CODEX=.codex/config.toml MERGED=0 STRIPPED="" STRIPS=""
+answer() { sed -n "s/^$1: //p" "$ANSWERS" | tr -d "'\""; }
+case "$(answer project_kind)" in python|research|mixed|"") ;; *) STRIPS="the pyright-lsp plugin" ;; esac
+[ "$(answer memory)" != false ] || STRIPS="${STRIPS:+$STRIPS and }the memory hooks"
+# Both renders are always rewritten, so their diff carries no formatting change; the project's
+# file only when the strip removes something, and only once it parses.
+strip() {  # $1 = a settings.json; $2 = "changed" to leave it as it is unless the strip removes something
+  python3 - "$1" "$STRIPS" "${2:-}" <<'PY'
+import json, sys
+f, strips, mode = sys.argv[1:4]
+try:
+    d = json.load(open(f))
+except ValueError:
+    sys.exit(0 if mode else 1)
+before = json.dumps(d)
+if "pyright-lsp" in strips:
+    d.get("enabledPlugins", {}).pop("pyright-lsp@claude-plugins-official", None)
+if "memory" in strips and "hooks" in d:
+    d["hooks"] = {e: k for e, k in ((e, [g for g in v if not any("/mem-" in h["command"] for h in g["hooks"])])
+                                   for e, v in d["hooks"].items()) if k}
+if mode and json.dumps(d) == before:
+    sys.exit(0)
+with open(f, "w") as w:
+    json.dump(d, w, indent=2)
+    w.write("\n")
+if mode:
+    print("stripped")
+PY
+}
+if [ -n "$STRIPS" ]; then
+  if git show ":1:$SETTINGS" > "$WORK/settings.old" 2>/dev/null && git show ":3:$SETTINGS" > "$WORK/settings.new" 2>/dev/null; then
+    strip "$WORK/settings.old"
+    strip "$WORK/settings.new"
+    git show ":2:$SETTINGS" > "$SETTINGS"
+    git -c merge.conflictStyle=merge merge-file -L "before updating" -L "last update" -L "after updating" \
+      "$SETTINGS" "$WORK/settings.old" "$WORK/settings.new" || true
+    MERGED=1
+  fi
+  if [ -f "$SETTINGS" ] && [ -n "$(strip "$SETTINGS" changed)" ]; then STRIPPED="$SETTINGS"; fi
+fi
+if [ "$(answer memory)" = false ] && [ -f "$CODEX" ] && grep -qx 'hooks = true' "$CODEX" && ! grep -q '^<<<<<<< ' "$CODEX"; then
+  python3 -c "import sys; f=sys.argv[1]; t=open(f).read(); open(f, 'w').write(t.replace('\nhooks = true\n', '\nhooks = false\n'))" "$CODEX"
+  STRIPPED="${STRIPPED:+$STRIPPED and }$CODEX"
+fi
 
 rejects() { find . -name '*.rej' -not -path './.git/*'; }
 [ -z "$(rejects)" ] || die "copier left patch rejects in $P: $(rejects | tr '\n' ' ')"
@@ -212,7 +250,8 @@ fi
   echo "  $CMD"
   echo "The template came from a local Loam checkout at that commit; _src_path"
   echo "keeps the project's value. Tasks were skipped, and _gh_setup.sh deleted."
-  [ "$STRIPPED" -eq 0 ] || echo "Task 1's pyright-lsp strip was applied to both renders of $SETTINGS and the file merged again."
+  [ "$MERGED" -eq 0 ] || echo "Task 1's strip of $STRIPS was applied to both renders of $SETTINGS and the file merged again."
+  [ -z "$STRIPPED" ] || echo "Task 1's strip of $STRIPS was applied to $STRIPPED, as a plain update does."
   [ "${#FLAGS[@]}" -eq 0 ] || echo "The --skip and --exclude flags come from the owner's rulings in $RULINGS."
   if [ "$N" -gt 0 ]; then
     echo
@@ -366,13 +405,16 @@ fi
   echo "- \`$CMD\` in a scratch clone, with $COPIER_V. The template came from a local Loam checkout at that commit. \`_src_path\` keeps its value."
   [ "${#FLAGS[@]}" -eq 0 ] || echo "- The \`--skip\` and \`--exclude\` flags came from the \`## Copier flags\` block in \`$RULINGS\` (git blob \`$RULINGS_SHA\`)."
   echo "- Copier tasks were skipped, because on update copier also runs them inside its temporary renders. \`_gh_setup.sh\` was deleted by hand."
-  [ "$STRIPPED" -eq 0 ] || echo "- Copier conflicted on \`$SETTINGS\`, so it was merged again over both renders with task 1's pyright-lsp strip applied."
+  [ "$MERGED" -eq 0 ] || echo "- Copier conflicted on \`$SETTINGS\`, so it was merged again over both renders with task 1's strip of $STRIPS applied."
+  [ -z "$STRIPPED" ] || echo "- Task 1's strip of $STRIPS was applied to $STRIPPED, as a plain \`copier update\` does."
   echo "- \`$C1\` is copier's result as is, conflict markers included."
   [ -z "$C2" ] || echo "- \`$C2\` is the port. $MODEL resolved every conflicted file in one call."
   if [ -n "$RULINGS" ] && [ -n "$C2" ]; then
     echo "- The port followed the owner's rulings in \`$RULINGS\` (git blob \`$RULINGS_SHA\`). They win over the brief where they disagree."
   elif [ -n "$RULINGS" ]; then
     echo "- Nothing conflicted, so no port read the owner's rulings in \`$RULINGS\` (git blob \`$RULINGS_SHA\`); check the diff against them."
+  else
+    echo "- No \`.loam/sync-rulings.md\` on \`$BASE\`; Copier ran with no --skip or --exclude flags${C2:+ and the port with the brief alone}."
   fi
   echo
   echo "## Conflicts"

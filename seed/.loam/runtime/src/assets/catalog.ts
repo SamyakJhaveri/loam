@@ -564,15 +564,36 @@ function prerequisitesBind(candidate: readonly CatalogPrerequisite[] | undefined
 // ---------------------------------------------------------------------------
 // Recipient delivery: derive the recipient root from the package location and, for every target
 // whose delivery is present-unqualified or verified, read the body at the contained recipient path
-// and require the exact expectedSha256. This byte comparison is the sole proof that a target's
-// delivery claim holds, in Loam and in every render; validateCatalog no longer matches delivery or
-// expectedSha256 against the frozen obligations (plan D1). Planned targets are never read.
+// and compare it with expectedSha256. A verified body must match exactly. A present-unqualified
+// body is a pending method the project owns once rendered, and Copier keeps a project's own
+// wording, so a differing body is returned as adapted rather than failed (`qualify catalog` prints
+// the adapted ids) once checkAdaptedBody passes; in Loam the provenance gate requires the seed
+// bodies to match exactly. validateCatalog no longer matches delivery or expectedSha256 against
+// the frozen obligations (plan D1). Planned targets are never read.
 // (Plan D1/D4/D16; finding 5.)
 // ---------------------------------------------------------------------------
 export function recipientRootOf(packageRoot: string): string { return resolve(packageRoot, '..', '..'); }
 
-export function checkRecipientDelivery(catalog: Catalog, recipientRoot: string): { checked: number } {
+// An adapted body's digest proves nothing, so it gets cheap checks for what a bad sync merge
+// leaves: an empty body, a merge-conflict marker line (git's exact shapes, so an `========` setext
+// underline passes) and, for a SKILL.md, no closed `---` frontmatter block with a top-level `name:`
+// value. That last check is structural, not a YAML parse: the recipient package has no parser.
+function checkAdaptedBody(target: Target, bytes: Uint8Array): void {
+  const lines = Buffer.from(bytes).toString('utf8').replace(/^\uFEFF/, '').split(/\r?\n/);
+  const where = `adapted target ${target.id} body at ${target.path}`;
+  if (lines.every(line => line.trim() === '')) fail('delivery.adapted-empty', `${where} is empty`);
+  const marker = lines.findIndex(line => /^(<{7}|>{7})( |$)|^={7}$/.test(line));
+  if (marker >= 0) fail('delivery.adapted-conflict', `${where} has a merge-conflict marker at line ${marker + 1}`);
+  if (!/(^|\/)SKILL\.md$/.test(target.path)) return;
+  const close = lines[0] === '---' ? lines.indexOf('---', 1) : -1;
+  if (close < 0 || !lines.slice(1, close).some(line => /^name:[ \t]*[^\s#]/.test(line))) {
+    fail('delivery.adapted-frontmatter', `${where} lacks a closed --- frontmatter block with a name: value`);
+  }
+}
+
+export function checkRecipientDelivery(catalog: Catalog, recipientRoot: string): { checked: number; adapted: string[] } {
   let checked = 0;
+  const adapted: string[] = [];
   for (const target of catalog.targets) {
     if (target.delivery !== 'present-unqualified' && target.delivery !== 'verified') continue;
     let abs: string;
@@ -585,10 +606,14 @@ export function checkRecipientDelivery(catalog: Catalog, recipientRoot: string):
       if (error instanceof CatalogError) throw error;
       return fail('delivery.missing', `delivered target ${target.id} body is missing at ${target.path}`);
     }
-    if (sha256(bytes) !== target.expectedSha256) fail('delivery.digest', `delivered target ${target.id} body digest differs from expectedSha256`);
+    if (sha256(bytes) !== target.expectedSha256) {
+      if (target.delivery === 'verified') fail('delivery.digest', `delivered target ${target.id} body digest differs from expectedSha256`);
+      checkAdaptedBody(target, bytes);
+      adapted.push(target.id);
+    }
     checked++;
   }
-  return { checked };
+  return { checked, adapted };
 }
 
 export function relativePosix(root: string, target: string): string { return relative(root, target).split(sep).join('/'); }

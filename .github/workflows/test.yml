@@ -57,6 +57,11 @@ jobs:
 
       - name: Run check
         run: bin/check
+        # The runner's /tmp is a tmpfs with a user quota; the runtime admission qualification copies the
+        # node toolchain into a temp tree per case and hits that quota (EDQUOT, 2026-10-21). The runner's
+        # temp directory is on the root disk.
+        env:
+          TMPDIR: ${{ runner.temp }}
 
   # verify-loam's $0 stub recipes in a fresh render: hooks fire, memory is recalled, a deny rule refuses, the rendered check passes.
   stub-sweep:

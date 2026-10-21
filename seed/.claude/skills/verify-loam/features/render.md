@@ -7,6 +7,7 @@ A user runs `copier copy` and gets a project that is already a git repository wi
 - `render-copy` renders the template into a new directory with no prompts when data is given.
 - `render-git` initializes git and makes the commit `Initial commit from loam`.
 - `render-kind` gates `pyproject.toml` and the pyright-lsp plugin on `project_kind` (python, research, mixed get both).
+- `render-memory` gates the session-memory system on `memory`: with `false` no `mem-*` hook, tool or registration and no memory prose renders, and the handoff is `HANDOFF.md`.
 - `render-check` passes the rendered `bin/check` on the fresh project and fails it on a committed defect.
 - `render-exclude` keeps Loam-only files (`.claude/stale-counts.json`, `.claude/skills/verify-loam`) out of the render.
 
@@ -24,10 +25,11 @@ Preconditions:
 - **Copy.** Run `$C render --run r1`. JSON has `"ok": true` and a `render` path.
 - **Git.** Run `$C doctor r1`. The check `render is a git repo with the initial commit` passes.
 - **Kind.** Run `$C render --run r2 --kind typescript`. `<root>/r2/render/pyproject.toml` does not exist, and `enabledPlugins` in its `.claude/settings.json` has no `pyright-lsp@claude-plugins-official`. With the default kind, both are present.
+- **Memory.** Run `$C render --run r3 --no-memory`, then `$C doctor r3` and `$C check r3`; both pass. `<root>/r3/render` has no `.claude/hooks/mem-capture.sh`, `.claude/hooks/mem-recall.sh`, `.codex/hooks.json`, `bin/memsearch`, `bin/mem-inspect`, `bin/mem-weekly.sh` or `THIRD_PARTY_NOTICES`; its `.claude/settings.json` registers only `fable-session-brief.sh` and `post-compact-reinject.sh`, and its `.codex/config.toml` has `hooks = false`; and `grep -rliE 'memsearch|mem-inspect|memstore|loam/memory' AGENTS.md CLAUDE.md docs .gitignore` there prints nothing. `.copier-answers.yml` says `memory: false`. With the default, all of them are present.
 - **Check.** Run `$C check r1`. `last_line` starts with `check: PASSED`, `"pristine": true`, exit 0. Alone this proves little: a fresh render has no `tests/`, so pytest does not run.
 - **Exclude.** List `<root>/r1/render/.claude/skills/`. It holds `catchup`, `fable-prompting`, `hypothesis-tree` and no `verify-loam`.
 - **Check can fail.** Commit a defect in the render: `printf 'trailing space \n' > <root>/r1/render/defect.txt && git -C <root>/r1/render add defect.txt && git -C <root>/r1/render -c user.name=verify -c user.email=verify@example.invalid commit -qm defect`. Run `$C check r1`. Exit 1, `"last_line": "check: FAILED"`, and `check.txt` contains `defect.txt:1: trailing whitespace.` and `FAIL: whitespace or conflict markers`. A pass here means the check is broken.
-- **Clean up.** Run `$C cleanup r1` and `$C cleanup r2`.
+- **Clean up.** Run `$C cleanup r1`, `$C cleanup r2` and `$C cleanup r3`.
 
 ## Gotchas
 

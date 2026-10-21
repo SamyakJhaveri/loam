@@ -11,7 +11,7 @@ cd ./my-project
 
 > **`--trust` is required.** The template runs `_tasks` after rendering (git init, optional GitHub setup). Without `--trust`, Copier 9.16 refuses the template: it prints `Template uses potentially unsafe feature: tasks.`, exits 4, and renders nothing.
 
-Copier asks three questions: `project_name`, `github_repo` (blank skips GitHub setup), and `project_kind` (gates `pyproject.toml` and the pyright-lsp plugin; python, research, mixed get both).
+Copier asks four questions: `project_name`, `github_repo` (blank skips GitHub setup), `project_kind` (gates `pyproject.toml` and the pyright-lsp plugin; python, research, mixed get both), and `memory` (default yes; no leaves out the memory hooks, tools and prose below).
 
 ## What you get
 

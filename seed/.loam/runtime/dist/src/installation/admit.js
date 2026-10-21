@@ -500,6 +500,9 @@ function classifyRuntimes(controlRoot) {
     }
     if (complete.length)
         return { kind: 'unselected', detail: `unselected ${complete[0]}` };
+    const controller = join(controlRoot, CONTROL_ROOT_LAYOUT.controller);
+    if (existsSync(controller) || isSymlink(controller))
+        return { kind: 'controller', detail: `controller ${controller}` };
     return { kind: 'nothing' };
 }
 export function controlRootState(controlRoot) {
@@ -524,6 +527,7 @@ export function controlRootState(controlRoot) {
         case 'selection-invalid': return diag('install-interrupted', 'selection');
         case 'selected': return { kind: 'selected', selected: state.selected, snapshotPath: state.snapshotPath };
         case 'unselected': return diag('install-interrupted', state.detail);
+        case 'controller': return diag('install-interrupted', state.detail);
         case 'nothing': return diag('nothing-admitted', 'no runtime has been admitted');
     }
 }
@@ -598,6 +602,7 @@ function recheckUnderLock(controlRoot) {
         case 'selection-invalid': throw new AdmissionError('install-interrupted', 'selection');
         case 'selected': throw new AdmissionError('selection-exists', 'a runtime is already selected for this control root');
         case 'unselected': throw new AdmissionError('install-interrupted', state.detail);
+        case 'controller': throw new AdmissionError('install-interrupted', state.detail);
         case 'nothing': return;
     }
 }

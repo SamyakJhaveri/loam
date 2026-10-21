@@ -10,7 +10,7 @@ bad() { echo "FAIL: $*"; FAIL=1; }
 # A step that did not run is named on the final line, so a reduced run never reads as a full pass.
 skip() { echo "SKIPPED: $1${2:+ ($2)}"; SKIPS="${SKIPS:+$SKIPS, }$1"; }  # $1 = what, $2 = why
 
-# Tracked scripts by extension or shebang: extensionless scripts such as bin/memsearch carry only the shebang.
+# Tracked scripts by extension or shebang: extensionless scripts such as bin/check carry only the shebang.
 scripts() {  # $1 = extension, $2 = interpreter regex
   local re="^#!.*[/ ]($2)([[:space:]]|\$)"
   { git ls-files -- "*.$1"

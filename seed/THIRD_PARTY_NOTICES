@@ -49,7 +49,8 @@ SOFTWARE.
 2. agentmemory (Apache-2.0)
 ========================================================================
 
-Used in:       .claude/hooks/mem-capture.sh (the secret scrubber's key patterns)
+Used in:       .claude/hooks/mem-capture.sh (the secret scrubber's key patterns,
+               private-key block pattern, and URL-credential scheme prefix)
 Upstream:      https://github.com/rohitg00/agentmemory
 Upstream file: src/functions/privacy.ts
 License:       Apache License 2.0
@@ -252,10 +253,10 @@ License text:  LICENSE at commit e01540ec187ec06f2e94ff73891e0e370d144484
 3. Hindsight (MIT)
 ========================================================================
 
-Used in:       .claude/hooks/mem-capture.sh (the secret scrubber's PEM-block and
-               URL-credential patterns)
+Used in:       .claude/hooks/mem-capture.sh (the user and password classes of
+               the secret scrubber's URL-credential pattern)
 Upstream:      https://github.com/vectorize-io/hindsight
-Upstream file: hindsight-api-slim/tests/test_memory_defense.py
+Upstream file: hindsight-api-slim/hindsight_api/extensions/memory_defense.py
 License:       MIT
 License text:  LICENSE at commit 5331da2f4db369528bb122075341a7de9c3df6df
 

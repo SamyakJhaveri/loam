@@ -49,9 +49,9 @@ use_target() { # dir -> 1 when dir is not in a git checkout, or is another repos
 use_target "$ROOT" || { TARGET="$ROOT"; MAIN_CHECKOUT=$(dirname "$ROOT"); TARGET_IS_LOAM=1; RUNS_ROOT="$RUNS_BASE"; }
 
 # The ticket sections, in contract order. Six are required; Approach, Merge checklist,
-# and Rows measured are optional.
+# Rows measured, and a trailing Comments are optional.
 CANON=("Goal and why" "Do not touch" "Out of scope" "Approach" "Done checks" \
-       "Merge checklist" "Rows measured" "Worker" "Decisions")
+       "Merge checklist" "Rows measured" "Worker" "Decisions" "Comments")
 REQUIRED=("Goal and why" "Do not touch" "Out of scope" "Done checks" "Worker" "Decisions")
 CAPS=" MAX_ROUNDS ROUND_BUDGET_USD GRADER_BUDGET_USD TICKET_BUDGET_USD DAILY_BUDGET_USD \
 MAX_HOURS MAX_TURNS CALL_TIMEOUT_SEC MAX_PARALLEL "
@@ -512,7 +512,12 @@ lint() {
     echo "no such file: $SRC" >&2
     return 1
   fi
+  lint_body
+}
 
+# The rules over BODY, each error on stderr as `LINT $SRC: ...`; returns 1 on any. lint resolves a file or
+# an issue into BODY first, and cmd_next calls this directly with the body the frontier query already holds.
+lint_body() {
   check_sections
   check_header
   check_no_skip
@@ -572,7 +577,7 @@ set_status() { printf '%s\n' "$1" > "$RUN/status"; log "status: $1"; }
 IFS= read -r -d '' SCRUB_PY << 'PY' || :
 import re, sys
 SUBS = [
-    (re.compile(r"-----BEGIN [A-Z0-9 ]*PRIVATE KEY-----.*?-----END [A-Z0-9 ]*PRIVATE KEY-----", re.DOTALL), "[redacted]"),
+    (re.compile(r"-----BEGIN [A-Z0-9 ]*PRIVATE KEY(?: BLOCK)?-----(?:.*?-----END [A-Z0-9 ]*PRIVATE KEY(?: BLOCK)?-----|(?:(?:\r?\n|(?:\\+r)?\\+n)(?:[ \t]|\\+t)*[A-Za-z][A-Za-z0-9-]*: [^\"\\\r\n]*)*(?:(?:\s|\\+[nrt])+[A-Za-z0-9+/=]+)*)", re.DOTALL), "[redacted]"),
     (re.compile(r"([a-zA-Z][a-zA-Z0-9+.\-]*://[^:@/\s]+:)[^@/\s]+@"), r"\1[redacted]@"),
     (re.compile(r"sk-ant-[A-Za-z0-9_-]{10,}"), "[redacted]"),
     (re.compile(r"(?:(?<=\\[nrt])|(?<![A-Za-z0-9]))sk-[A-Za-z0-9_-]{20,}"), "[redacted]"),
@@ -711,6 +716,9 @@ prepare_worktree() {
 FROZEN_SET="factory lib.sh _common.md role-settings.json worker-settings.json checks.sh \
 judge.md reviewer.md judge.schema.json reviewer.schema.json issue.md protected.txt exempt.txt \
 factory-round.js review-output.schema.json codex-review.prompt.md unattended.md"
+# The line freeze writes after the block, before checks.sh exits; run_checks reads output that does not end
+# on CHECKS-END as an abort (#277).
+CHECKS_END="printf '\nCHECKS-END\n'"
 
 freeze() {
   local g src
@@ -733,7 +741,7 @@ freeze() {
     printf '{"ts":"%s","event":"grader","role":"%s","file":"%s","sha256":"%s"}\n' \
       "$(now)" "$g" "$src" "$(sha256_of < "$src" | cut -d' ' -f1)" >> "$LEDGER"
   done
-  { cat "$RUN/frozen/lib.sh"; echo; dc_block; echo; echo 'exit $((n_fail > 0))'; } > "$RUN/frozen/checks.sh"
+  { cat "$RUN/frozen/lib.sh"; echo; dc_block; echo; echo "$CHECKS_END"; echo 'exit $((n_fail > 0))'; } > "$RUN/frozen/checks.sh"
   { standing_list; section "Do not touch" | sed 's/[Ee]xcept:.*//' | ticket_paths; } | sort -u > "$RUN/frozen/protected.txt"
   section "Do not touch" | grep -o '[Ee]xcept:.*' | ticket_paths > "$RUN/frozen/exempt.txt"
   chmod +x "$RUN/frozen/checks.sh" "$RUN/frozen/factory"
@@ -885,15 +893,25 @@ classify_result() { # result.json
   fi
 }
 
-# no-result and environment stop the run; a capped round returns so the caller keeps its artifacts.
-assert_call_ok() { # role result.json
-  local e
+# no-result and environment stop the run; a capped round returns so the caller keeps its artifacts. A killed
+# call may have committed (#319): with the round's start sha the stop message lists the commits since it, or
+# says "no commits", and names the charge the result object carries.
+assert_call_ok() { # role result.json [round-start-sha]
+  local e c l
   case "$(classify_result "$2")" in
     completed)
       e=$(jq -r "$RESULT_OBJ | if .is_error == true then \"\\(.subtype) after \\(.num_turns // 0) turns\" else empty end" "$2" 2> /dev/null) || e=""
       [ -z "$e" ] || log "$1 round $ROUND: hit its own cap ($e); a finished round, the checks decide"
       return 0 ;;
-    no-result) e="no result event (killed by CALL_TIMEOUT_SEC=$CALL_TIMEOUT_SEC, or crashed)" ;;
+    no-result)
+      e="no result event (killed by CALL_TIMEOUT_SEC=$CALL_TIMEOUT_SEC, or crashed)"
+      c=$(jq -r "$RESULT_OBJ | .total_cost_usd // empty" "$2" 2> /dev/null) || c=""
+      [ -z "$c" ] || e="$e; charged $c usd, the call's ROUND_BUDGET_USD ceiling"
+      if [ -n "${3:-}" ]; then
+        l=$(git -C "$WORKTREE" log --oneline "$3..HEAD" 2> /dev/null | paste -sd ';' - | sed 's/;/; /g')
+        e="$e; commits since the round began: ${l:-no commits}"
+      fi
+      finish stopped-environment "the $1 call ended with $e" ;;
     *) e=$(jq -r "$RESULT_OBJ | .result // \"unknown error\"" "$2" 2> /dev/null) || e="unknown error" ;;
   esac
   finish stopped-environment "the $1 call failed before doing work: $e"
@@ -944,18 +962,19 @@ limit_wait() { # result.json -> 0 after waiting, 1 when the reply is not a usage
 # ---- step 4: round 0 --------------------------------------------------------
 # Every non-guard check must fail on base; one that passes there cannot prove the ticket.
 
-# Run the frozen checks from dir into out. A block that aborts before it prints a FAIL line is never green
-# (#180): a non-zero exit with no FAIL line adds FAIL checks-aborted, on a fresh line as lib.sh's results are,
-# so output with no trailing newline cannot hide it from the ^FAIL reads. Check names are not read from the block,
-# because a check can quote a ticket body or a script whose pass and fail words are not top-level checks.
+# Run the frozen checks from dir into out. A block that aborts or exits early is never green (#180, #277): output
+# whose last line is not checks.sh's CHECKS-END line adds FAIL checks-aborted, whatever the exit code and the
+# other FAIL lines say. A resumed run re-execs the frozen factory that froze its checks.sh, so the two always
+# match. The added line starts a fresh line as lib.sh's results do, so output with no trailing newline cannot
+# hide it from the ^FAIL reads. Check names are not read from the block, because a check can quote a ticket
+# body or a script whose pass and fail words are not top-level checks.
 run_checks() { # dir out
   local rc
   ( cd "$1" && "$RUN/frozen/checks.sh" ) > "$2" 2>&1
   rc=$?
-  if [ "$rc" -ne 0 ] && ! grep -q '^FAIL' "$2"; then
-    log "checks.sh exited $rc with no FAIL line"
-    printf '\nFAIL checks-aborted: checks.sh exited %s with no FAIL line\n' "$rc" >> "$2"
-  fi
+  [ "$(tail -n 1 "$2")" = CHECKS-END ] && return 0
+  log "checks.sh exited $rc before its end line"
+  printf '\nFAIL checks-aborted: checks.sh exited %s before its end line\n' "$rc" >> "$2"
 }
 
 round_zero() {
@@ -978,7 +997,7 @@ round_zero() {
   run_checks "$wt" "$out"
   git -C "$MAIN_CHECKOUT" worktree remove --force "$wt" > /dev/null 2>&1
   grep -q '^FAIL checks-aborted' "$out" \
-    && finish ticket-defect "checks.sh aborted on $(cut -c1-8 "$RUN/base.sha") before it printed a FAIL line; see $out"
+    && finish ticket-defect "checks.sh aborted on $(cut -c1-8 "$RUN/base.sha") before the block ended; see $out"
   guards=$(guard_checks | grep -oE '(^|[[:space:]])pass[[:space:]]+"?[A-Za-z0-9_.-]+' \
     | awk '{print $NF}' | tr -d '"' | sort -u)
   while read -r _ name _; do
@@ -1094,8 +1113,10 @@ codex_result() { # jsonl exit_code [duration_ms] -> result JSON on stdout; durat
 }
 
 worker_round() { # round; leaves round-N.* only once the call produced a result
-  local round="$1" pf out="$RUN/pending.jsonl" res="$RUN/pending.result.json" t=() login_retried=0 le
+  local round="$1" pf out="$RUN/pending.jsonl" res="$RUN/pending.result.json" t=() login_retried=0 le head0
   command -v timeout > /dev/null 2>&1 && t=(timeout --foreground "$CALL_TIMEOUT_SEC")
+  # The round's start, so a stop after a killed call can name the commits the call made (#319).
+  head0=$(git -C "$WORKTREE" rev-parse HEAD 2> /dev/null) || head0=""
   # The first round this process runs; a login expired at launch retries only its call. A global,
   # not a local, so it survives the loop's later rounds.
   [ -n "${FIRST_WORKER_ROUND+x}" ] || FIRST_WORKER_ROUND="$round"
@@ -1146,7 +1167,7 @@ worker_round() { # round; leaves round-N.* only once the call produced a result
     codex_result "$out" "$rc" "$(( (SECONDS - start) * 1000 ))" > "$res"
     wl=$(workflow_ledger "$round" "$out" "$res"); wagents=${wl% *}; wusd=${wl#* }
     record "$round" worker "$CODEX_MODEL" "$res" 0 0 "$wagents" "$wusd" 1
-    assert_call_ok worker "$res"
+    assert_call_ok worker "$res" "$head0"
     mv "$pf" "$RUN/round-$round.prompt.md"
     mv "$out" "$RUN/round-$round.jsonl"
     mv "$res" "$RUN/round-$round.result.json"
@@ -1162,7 +1183,11 @@ worker_round() { # round; leaves round-N.* only once the call produced a result
         --max-budget-usd "$ROUND_BUDGET_USD" --output-format stream-json --verbose --include-hook-events \
         < "$pf" > "$out" 2>> "$LOG" ) || log "worker exited non-zero (the result event decides)"
     jq -c 'select(.type == "result")' "$out" 2> /dev/null | tail -1 > "$res"
-    [ -s "$res" ] || echo '{"subtype":"no-result"}' > "$res"
+    # No result event (killed by CALL_TIMEOUT_SEC, or crashed) leaves no cost to read, yet the call may have
+    # spent up to its --max-budget-usd ceiling. Charge that ceiling here, so record, ticket_spent, daily_spent
+    # and cmd_status book one number and the ticket and daily caps stay bounds (#319). The ledger row keeps
+    # subtype no-result, which tells a charge from a measured cost.
+    [ -s "$res" ] || jq -nc --argjson usd "$ROUND_BUDGET_USD" '{subtype:"no-result", total_cost_usd:$usd}' > "$res"
     # An `OAuth session expired` on the first call of a launch is a stale login, not a round: wait
     # once and relaunch the call. A second failure, or the same on a later round, stops as today.
     if ! limit_wait "$res"; then
@@ -1184,7 +1209,7 @@ worker_round() { # round; leaves round-N.* only once the call produced a result
   local wl wagents wusd
   wl=$(workflow_ledger "$round" "$out" "$res"); wagents=${wl% *}; wusd=${wl#* }
   record "$round" worker "$WORKER_MODEL" "$res" "$acalls" "$ausd" "$wagents" "$wusd"
-  assert_call_ok worker "$res"
+  assert_call_ok worker "$res" "$head0"
   mv "$pf" "$RUN/round-$round.prompt.md"
   mv "$out" "$RUN/round-$round.jsonl"
   mv "$res" "$RUN/round-$round.result.json"
@@ -1326,10 +1351,14 @@ call_json() { # round stem role prompt_file schema_file
     fi
     log "$role output not parseable"
   done
-  # An absent or unparseable grader is a fail with one high finding, never a pass (LOOP.md).
+  # An absent or unparseable grader is a fail with one high finding, never a pass (LOOP.md). A worker cannot
+  # rerun a grader, so the finding never goes to round-N.fixes (#312, the #306 shape): the reviewer's drafts
+  # the PR and is filed from blocking_findings; the judge's is also its backlog line, which open_pr prints
+  # and file_backlog files, since the PR body and the issues read a judge's backlog, not its findings.
   log "$role output unparseable or inconsistent after 3 attempts; see $out"
   jq -n --arg r "$role" '{verdict: (if $r == "judge" then "fail" else "fix" end), unparseable: true,
-    rows: {}, evidence: {}, fixes: [], backlog: [],
+    rows: {}, evidence: {}, fixes: [],
+    backlog: (if $r == "judge" then ["judge output unparseable or inconsistent after 3 calls; rerun the judge on this round"] else [] end),
     findings: [{severity: "high", file: "-", line: 0, defect: ($r + " output unparseable"),
                 fix: ("rerun the " + $r + " on this round")}]}' > "$final"
 }
@@ -1350,6 +1379,12 @@ run_review() { # round -> 0 when nothing blocks
   blocking=$(jq "$REVIEW_BLOCKING | length" "$f")
   log "reviewer verdict: $(jq -r .verdict "$f") findings=$(jq '(.findings // []) | length' "$f") blocking=$blocking (high or medium)"
   [ "$blocking" -gt 0 ] || return 0
+  if jq -e '.unparseable == true' "$f" > /dev/null 2>&1; then
+    # A worker cannot rerun the reviewer (#312): the finding is not a fix, does not spend the one block, and
+    # does not fail the graders; in the final round it drafts the PR and is filed as an issue.
+    log "reviewer unparseable after 3 calls; not sent to the worker, and in the final round it drafts the PR and is filed as an issue"
+    return 0
+  fi
   if [ "$REVIEW_BLOCKED" = 1 ]; then
     log "the reviewer already blocked once on this ticket; its blocking findings make the PR a draft and are filed as issues"
     return 0
@@ -1362,28 +1397,35 @@ run_review() { # round -> 0 when nothing blocks
 }
 
 run_codex_review() { # round -> 0 when nothing blocks; needs-attention with a critical or high finding blocks once (LOOP.md)
-  local round="$1" f="$RUN/round-$1.codex-review.json" jsonl="$RUN/round-$1.codex-review.jsonl" res="$RUN/round-$1.codex-review.result.json" base blocking rc start
+  local round="$1" f="$RUN/round-$1.codex-review.json" jsonl res="$RUN/round-$1.codex-review.result.json" base blocking rc start call parsed=0
   base=$(cat "$RUN/base.sha")
-  assert_caps
-  stop_requested && finish stopped "FACTORY_STOP before the Codex review call"
-  log "codex review call: round $round schema=frozen/review-output.schema.json"
-  # A review needs no write access, so it runs read-only: under workspace-write it could edit the tree the
-  # judge and reviewer already graded. `codex exec review` ignores --output-schema, so the review is plain
-  # `codex exec` with the schema (#41): the -o file holds the schema-validated JSON, the JSONL stream
-  # (stdout) carries usage for the ledger. The one-line prompt is the frozen file with <base> filled in.
-  start=$SECONDS
-  ( cd "$WORKTREE" && PATH="$CODEX_PATH:$PATH" ${TIMEOUT_G[@]+"${TIMEOUT_G[@]}"} codex exec --json --output-schema "$RUN/frozen/review-output.schema.json" -o "$f" -s read-only "$(sed "s/<base>/$base/" "$RUN/frozen/codex-review.prompt.md")" > "$jsonl" < /dev/null ); rc=$?
-  [ "$rc" -eq 0 ] || log "codex review call exited $rc"
-  codex_result "$jsonl" "$rc" "$(( (SECONDS - start) * 1000 ))" > "$res"
-  record "$round" codex-review "$CODEX_MODEL" "$res" 0 0 0 0 1
-  # An absent, empty, or unparseable review is a fail with one high finding, never a pass (LOOP.md), as call_json
-  # writes for the reviewer; -s also refuses a file holding more than one JSON value.
-  if ! jq -se 'length == 1 and (.[0].verdict | type) == "string"' "$f" > /dev/null 2>&1; then
-    log "codex review output absent or unparseable; see $jsonl"
+  for call in 1 2; do
+    jsonl="$RUN/round-$round.codex-review.$call.jsonl"   # one stream per call, so each log line points at its own call
+    assert_caps
+    stop_requested && finish stopped "FACTORY_STOP before the Codex review call"
+    log "codex review call $call of 2: round $round schema=frozen/review-output.schema.json"
+    # A review needs no write access, so it runs read-only: under workspace-write it could edit the tree the
+    # judge and reviewer already graded. `codex exec review` ignores --output-schema, so the review is plain
+    # `codex exec` with the schema (#41): the -o file holds the schema-validated JSON, the JSONL stream
+    # (stdout) carries usage for the ledger. The one-line prompt is the frozen file with <base> filled in.
+    start=$SECONDS
+    ( cd "$WORKTREE" && PATH="$CODEX_PATH:$PATH" ${TIMEOUT_G[@]+"${TIMEOUT_G[@]}"} codex exec --json --output-schema "$RUN/frozen/review-output.schema.json" -o "$f" -s read-only "$(sed "s/<base>/$base/" "$RUN/frozen/codex-review.prompt.md")" > "$jsonl" < /dev/null ); rc=$?
+    [ "$rc" -eq 0 ] || log "codex review call exited $rc"
+    codex_result "$jsonl" "$rc" "$(( (SECONDS - start) * 1000 ))" > "$res"
+    record "$round" codex-review "$CODEX_MODEL" "$res" 0 0 0 0 1
+    # An absent, empty, or unparseable -o file gets one more call; -s also refuses a file holding more than one JSON value.
+    if jq -se 'length == 1 and (.[0].verdict | type) == "string"' "$f" > /dev/null 2>&1; then parsed=1; break; fi
+    log "codex review output absent or unparseable on call $call of 2; see $jsonl"
+  done
+  if [ "$parsed" = 0 ]; then
+    # Two bad replies leave one high finding, never a pass (LOOP.md): it drafts the PR and is filed as an issue.
+    # A worker cannot rerun Codex, so it is not a fix for the next round and does not fail the graders.
     jq -n '{verdict: "needs-attention", unparseable: true, summary: "Codex review output absent or unparseable", next_steps: [],
       findings: [{severity: "high", file: "-", line_start: 0, line_end: 0, confidence: 0,
                   title: "codex review output unparseable", body: "the -o file was absent, empty, or not one review object.",
                   recommendation: "rerun the Codex review on this round"}]}' > "$f"
+    log "codex review unparseable twice; not sent to the worker, and in the final round it drafts the PR and is filed as an issue"
+    return 0
   fi
   blocking=$(jq "$CODEX_BLOCKING | length" "$f")
   log "codex review verdict: $(jq -r '.verdict // "unparseable"' "$f" 2> /dev/null) findings=$(jq '(.findings // []) | length' "$f" 2> /dev/null) blocking=$blocking"
@@ -1413,13 +1455,22 @@ graders() { # round -> 0 when the judge passes and nothing blocks
   run_review "$1" || ok=1
   [ "$CODEX_REVIEW" = yes ] && { run_codex_review "$1" || ok=1; }
   [ "$(tree_signature "$WORKTREE")" = "$sig" ] || finish stopped-environment "grader changed the tree"
+  if [ ! -s "$RUN/round-$1.fixes" ] && jq -e '.unparseable == true' "$RUN/round-$1.judge.json" > /dev/null 2>&1; then
+    # Not a pass, and not a worker round either: the judge's fallback queues no fix, so the next round would
+    # have nothing to do and end no-change with no PR (#312). The draft PR carries the finding in the judge
+    # backlog, so a human reads it and file_backlog files it. With reviewer or Codex fixes queued in this
+    # round, it is a normal fail: the next worker round takes them and the judge runs again.
+    log "judge unparseable or inconsistent after 3 calls: not a pass, and a worker cannot rerun the judge, so the PR opens as a draft with the finding in the judge backlog; with reviewer or Codex fixes queued, the next worker round takes them and the judge runs again"
+    open_pr draft
+  fi
   return "$ok"
 }
 
 # ---- step 8: the pull request -----------------------------------------------
 
 # The reviewer's and the Codex review's blocking findings in the final round's files, highest severity first.
-# After the graders pass, these are what a grader past its one block still reports, an unparseable reply included.
+# After the graders pass, these are what a grader past its one block, or a reviewer or Codex review with no
+# parseable reply, still reports.
 # Each finding is joined onto one line, since file_issues files one issue per line.
 blocking_findings() {
   jq -r "$REVIEW_BLOCKING"' | sort_by(.severity != "high") | .[]
@@ -1470,6 +1521,13 @@ checks_section() { # heading checks-file
   printf '```\n\nReasons and full output: %s\n\n' "$2"
 }
 
+# Each ^FAIL line's check name, once, in order; a name outside lib.sh's [A-Za-z0-9_.-] prints as ?. notify posts
+# these and never a FAIL line: a reason is command output, and a raw output line can start with FAIL (pytest's
+# FAILED, go test's FAIL<tab>package).
+fail_names() { # checks-file
+  awk '/^FAIL/ {n = $2; sub(/:$/, "", n); if (n !~ /^[A-Za-z0-9_.-]+$/) n = "?"; if (!seen[n]++) print n}' "$1"
+}
+
 open_pr() { # [draft]: opened at the grader-round cap
   local draft="${1:-}" body="$RUN/pr-body.md" base url num title rows blocking
   base=$(cat "$RUN/base.sha")
@@ -1478,8 +1536,10 @@ open_pr() { # [draft]: opened at the grader-round cap
   {
     [ "$IS_FILE" = 1 ] || printf 'Closes #%s\n\n' "$ISSUE"
     if [ "$draft" = blocking ]; then
-      printf 'Draft: the judge passed, but %s blocking reviewer or Codex finding(s) remain past the one block each grader may make, and each is filed as an issue. Read them before marking it ready. The first is %s\n\n' \
+      printf 'Draft: the judge passed, but %s blocking reviewer or Codex finding(s) remain past the one block each grader may make or come from a reviewer or Codex review with no parseable reply, and each is filed as an issue. Read them before marking it ready. The first is %s\n\n' \
         "$(printf '%s\n' "$blocking" | grep -c .)" "$(printf '%s\n' "$blocking" | head -1)"
+    elif [ -n "$draft" ] && jq -e '.unparseable == true' "$RUN/round-$ROUND.judge.json" > /dev/null 2>&1; then
+      printf 'Draft: judge output unparseable or inconsistent after 3 calls, so this round is not a pass and no worker round followed; the Backlog section files it as an issue. Read the Judge section before marking it ready.\n\n'
     elif [ -n "$draft" ]; then
       # An absent, empty, or invalid judge file counts as a fail (LOOP.md), so jq may print nothing.
       rows=$(jq -r '[(.rows // {}) | to_entries[] | select(.value == "fail") | .key] | join(", ") | if . == "" then "no row; a reviewer or Codex finding blocked" else . end' "$RUN/round-$ROUND.judge.json" 2> /dev/null)
@@ -1572,9 +1632,10 @@ main_loop() {
     if grep -q '^FAIL' "$checks"; then
       fails=$(grep '^FAIL' "$checks" | awk '{print $2}' | tr -d ':' | sort -u | tr '\n' ',')
       log "checks failing: $fails"
-      [ "$fails" = "$prev_fails" ] && finish stuck "the same checks failed twice: $fails"
+      [ "$fails" = "$prev_fails" ] && finish stuck "the same checks failed twice: $(fail_names "$checks" | paste -sd, -)"
       prev_fails="$fails"
-      [ $((ROUND % 2)) -eq 0 ] && notify "$KEY checks failing after round $ROUND" "$(grep '^FAIL' "$checks" | head -10)"
+      [ $((ROUND % 2)) -eq 0 ] && notify "$KEY checks failing after round $ROUND" \
+        "$(fail_names "$checks" | head -10 | sed 's/^/FAIL /'; printf 'Reasons and full output: %s\n' "$checks")"
       continue
     fi
     prev_fails=""
@@ -1786,13 +1847,25 @@ cmd_next() { # [--dry-run|--install]
   # the way load_ticket's $(gh issue view ...) does, so the key matches the one cmd_run computes.
   # A ticket at pr-opened is assigned at launch, so it is not in the frontier; if a human unassigns
   # it, its slot is already counted above while its worktree exists.
-  local pick="" st_last
+  # A launchable body is linted first (#314): the label alone does not make an issue a ticket, and a run of
+  # a body with no done-checks block would burn a round. lint_body runs in a subshell on the body in hand
+  # (no second gh call), its stdout dropped; its first LINT line is reported the way a parked issue is
+  # (bash -n prints its own line about the deleted temp file first; the first line is the fallback),
+  # and the frontier goes on to the next candidate, so one bad issue does not stall the timer.
+  local pick="" st_last lint_err lint_line
   while read -r num b64; do
     [ -n "$num" ] || continue
     body=$(printf '%s' "$b64" | base64 -d)
     st_last=$(park_status "$num" "$body")
     case "$st_last" in
-      none|stopped-environment|stopped) [ -n "$pick" ] || pick="$num" ;;
+      none|stopped-environment|stopped)
+        if ! lint_err=$( { SRC="#$num"; BODY="$body"; ERRS=0; lint_body > /dev/null; } 2>&1 ); then
+          lint_line=$(grep -m1 "^LINT #$num: " <<<"$lint_err") || lint_line=${lint_err%%$'\n'*}
+          lint_err=${lint_line#"LINT #$num: "}
+          echo "lint failed #$num: $lint_err; edit the body or remove ready-for-agent" >&2
+        elif [ -z "$pick" ]; then
+          pick="$num"
+        fi ;;
       pr-opened) ;;
       *) echo "parked #$num: last run exited $st_last; edit the body or remove ready-for-agent" >&2 ;;
     esac
@@ -1877,8 +1950,9 @@ grader_first_fail() { # run dir -> the first grader item that failed in the last
 # run_clean: yes|no|- for the status clean column (D09 Option A). A run is clean when it reached
 # pr-opened with zero grader-fail rounds and no other exit on the way; a hand fix after pr-opened
 # does not change it. From the run dir: status is pr-opened, the only EXIT line in factory.log is
-# pr-opened, and every round-<k>.fixes for k>=1 is empty (a grader that fails or blocks queues fixes
-# there). `-` marks a run not yet at pr-opened.
+# pr-opened, every round-<k>.fixes for k>=1 is empty (a grader that fails or blocks queues fixes
+# there), and no grader reply was unparseable in any round (that queues no fix, but the grader never ran).
+# `-` marks a run not yet at pr-opened.
 run_clean() { # run dir -> yes|no|-
   local d="$1" f
   [ "$(cat "$d/status" 2> /dev/null)" = pr-opened ] || { printf -- '-'; return; }
@@ -1887,6 +1961,10 @@ run_clean() { # run dir -> yes|no|-
     [ -e "$f" ] || continue
     case "$f" in */round-0.fixes) continue ;; esac
     [ -s "$f" ] && { printf 'no'; return; }
+  done
+  for f in "$d"/round-*.judge.json "$d"/round-*.review.json "$d"/round-*.codex-review.json; do
+    [ -e "$f" ] || continue
+    jq -e '.unparseable == true' "$f" > /dev/null 2>&1 && { printf 'no'; return; }
   done
   printf 'yes'
 }

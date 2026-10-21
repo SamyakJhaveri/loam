@@ -12,7 +12,15 @@ try {
   const qualifyRow = verifyModule?.QUALIFY_VERBS.find(row => row.verb === args[1]);
   if (qualifyRow) {
     const report = await verifyModule.runFixedFixture(fileURLToPath(new URL('./' + qualifyRow.fixture, import.meta.url)), qualifyRow.cases, qualifyRow.timeout);
-    console.log(JSON.stringify({ kind: qualifyRow.kind, status: 'passed', ...report, environment }));
+    // The catalog fixture fails a broken delivered body. A pending method body the project
+    // reworded passes as adapted, so name each one here, where the project sees it.
+    let delivery = {};
+    if (qualifyRow.verb === 'catalog') {
+      const { checkRecipientDelivery, loadCatalog, recipientRootOf } = await import('./dist/src/assets/catalog.js');
+      const packageRoot = fileURLToPath(new URL('.', import.meta.url));
+      delivery = { adapted: checkRecipientDelivery(loadCatalog(packageRoot).catalog, recipientRootOf(packageRoot)).adapted };
+    }
+    console.log(JSON.stringify({ kind: qualifyRow.kind, status: 'passed', ...report, ...delivery, environment }));
   } else if (args.length === 2 && args[0] === 'verify') {
     const { requireGroup } = await import('./dist/src/testing/verify.js');
     console.log(JSON.stringify({ kind: 'recipient-verification', group: args[1], status: 'unavailable', ...requireGroup(args[1]) }));

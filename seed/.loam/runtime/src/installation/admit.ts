@@ -442,7 +442,10 @@ function checksumManifest(installed: InstalledFiles, installedFilesSha256: strin
 // The runtimes-directory walk shared by controlRootState (no lock held) and
 // recheckUnderLock (our lock held). It scans for staging/tool leftovers, then
 // the complete HEX16 snapshots, then the selection, in that fixed order, and
-// returns which state won without deciding how to report it. The two callers map
+// returns which state won without deciding how to report it. With no runtime
+// and no selection, a controller copy is left from an admission interrupted
+// before selected.json, so it is reported here rather than refused by
+// installController after a full build. The two callers map
 // the result to their own diagnostics: controlRootState returns them, while
 // recheckUnderLock throws, treating a valid selection as selection-exists and
 // the empty state as "proceed". The control-root existence and lock rows stay in
@@ -453,6 +456,7 @@ type RuntimeState =
   | { kind: 'selection-invalid' }
   | { kind: 'selected'; selected: Selected; snapshotPath: string }
   | { kind: 'unselected'; detail: string }
+  | { kind: 'controller'; detail: string }
   | { kind: 'nothing' };
 function classifyRuntimes(controlRoot: string): RuntimeState {
   const runtimesDir = join(controlRoot, CONTROL_ROOT_LAYOUT.runtimes);
@@ -474,6 +478,8 @@ function classifyRuntimes(controlRoot: string): RuntimeState {
     return { kind: 'selected', selected, snapshotPath: join(runtimesDir, selected.snapshotId) };
   }
   if (complete.length) return { kind: 'unselected', detail: `unselected ${complete[0]}` };
+  const controller = join(controlRoot, CONTROL_ROOT_LAYOUT.controller);
+  if (existsSync(controller) || isSymlink(controller)) return { kind: 'controller', detail: `controller ${controller}` };
   return { kind: 'nothing' };
 }
 
@@ -493,6 +499,7 @@ export function controlRootState(controlRoot: string | undefined):
     case 'selection-invalid': return diag('install-interrupted', 'selection');
     case 'selected': return { kind: 'selected', selected: state.selected, snapshotPath: state.snapshotPath };
     case 'unselected': return diag('install-interrupted', state.detail);
+    case 'controller': return diag('install-interrupted', state.detail);
     case 'nothing': return diag('nothing-admitted', 'no runtime has been admitted');
   }
 }
@@ -546,6 +553,7 @@ function recheckUnderLock(controlRoot: string): void {
     case 'selection-invalid': throw new AdmissionError('install-interrupted', 'selection');
     case 'selected': throw new AdmissionError('selection-exists', 'a runtime is already selected for this control root');
     case 'unselected': throw new AdmissionError('install-interrupted', state.detail);
+    case 'controller': throw new AdmissionError('install-interrupted', state.detail);
     case 'nothing': return;
   }
 }

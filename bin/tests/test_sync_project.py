@@ -210,7 +210,8 @@ class SyncProjectTests(unittest.TestCase):
                 (root / path).parent.mkdir(parents=True, exist_ok=True)
                 (root / path).write_text(text)
 
-        write(tpl, {"copier.yml": "_subdirectory: seed\nproject_kind:\n  type: str\n  default: python\n",
+        write(tpl, {"copier.yml": "_subdirectory: seed\nproject_kind:\n  type: str\n  default: python\n"
+                                  "memory:\n  type: bool\n  default: true\n",
                     "seed/.copier-answers.yml.jinja": "{{ _copier_answers|to_nice_yaml -}}\n",
                     **{f"seed/{p}": t for p, t in v1.items()}})
         git("init", "-q", "-b", "main", cwd=tpl)
@@ -343,6 +344,26 @@ class SyncProjectTests(unittest.TestCase):
         self.assertEqual([], self.claude_calls())  # nothing left for the port
         self.assertEqual(dump({**v2, "enabledPlugins": {}}), (self.work / "project" / path).read_text())
 
+    def test_data_memory_false_strips_the_memory_hooks_a_clean_merge_adds(self) -> None:
+        # The template adds memory hooks and turns Codex hooks on where the project never changed
+        # either file, so Copier merges both in cleanly; task 1, skipped, undoes both in a plain update.
+        def hooks(*names: str) -> dict:
+            return {"hooks": [{"type": "command", "command": f".claude/hooks/{n}"} for n in names]}
+
+        v1 = {"hooks": {"SessionStart": [hooks("brief.sh")]}}
+        v2 = {"hooks": {"SessionStart": [hooks("brief.sh"), hooks("mem-recall.sh")], "Stop": [hooks("mem-capture.sh")]}}
+        path = ".claude/settings.json"
+        codex = ".codex/config.toml"
+        tpl, remote, sha = self.fixture("mem", {path: json.dumps(v1), codex: "[features]\nhooks = false\n"}, {},
+                                        {path: json.dumps(v2), codex: "[features]\nhooks = true\n"})
+        r = self.sync("--dry-run", "--data", "memory=false", project=str(remote), loam=tpl, sha=sha)
+        self.assertEqual(0, r.returncode, r.stdout + r.stderr)
+        project = self.work / "project"
+        self.assertEqual(json.dumps(v1, indent=2) + "\n", git("show", f"HEAD:{path}", cwd=project) + "\n")
+        self.assertEqual("[features]\nhooks = false", git("show", f"HEAD:{codex}", cwd=project))
+        self.assertIn("memory: false", git("show", "HEAD:.copier-answers.yml", cwd=project))
+        self.assertIn("--data memory=false", git("log", "-1", "--format=%B", cwd=project))
+
     def commit_rulings(self, text: str) -> str:
         clone = self.base / "rulings-clone"
         git("clone", "-q", str(self.remote), str(clone), cwd=self.base)
@@ -458,6 +479,21 @@ class SyncProjectTests(unittest.TestCase):
         self.assertEqual(0, r.returncode, r.stdout + r.stderr)
         self.assertNotIn("Follow every ruling", self.claude_calls()[0]["prompt"])
         self.assertNotIn("owner's rulings", (self.work / "pr-body.md").read_text())
+
+    def test_a_missing_rulings_file_is_named_in_the_run_and_the_pr_body(self) -> None:
+        # Otherwise Copier runs with no flags and the port on the brief alone, and nothing says so.
+        r = self.sync("--dry-run")
+        self.assertEqual(0, r.returncode, r.stdout + r.stderr)
+        self.assertIn("no .loam/sync-rulings.md on main and no --rulings", r.stdout + r.stderr)
+        self.assertIn("- No `.loam/sync-rulings.md` on `main`; Copier ran with no --skip or --exclude flags and the "
+                      "port with the brief alone.", (self.work / "pr-body.md").read_text())
+        # The control: with the file on main, neither appears.
+        self.commit_rulings("- conf.json: the tracked ruling.\n")
+        self.work = self.base / "work-rulings"
+        r = self.sync("--dry-run")
+        self.assertEqual(0, r.returncode, r.stdout + r.stderr)
+        self.assertNotIn("no .loam/sync-rulings.md", r.stdout + r.stderr)
+        self.assertNotIn("No `.loam/sync-rulings.md`", (self.work / "pr-body.md").read_text())
 
     def test_a_long_change_list_still_reaches_the_verify_skill(self) -> None:
         # Over 64 KiB of `git diff --name-status`: a reader that stops early sends git SIGPIPE,

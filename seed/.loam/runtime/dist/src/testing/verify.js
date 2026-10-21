@@ -60,6 +60,7 @@ export const QUALIFICATION_CASES = [
     "lock.failed-acquisition-releases",
     "boundary.conflicting-layout-refused",
     "boundary.hard-link-admission-refused",
+    "boundary.bwrap-resolved-absolute",
     "env.preload-stripped",
     "env.openssl-startup-stripped",
     "env.git-redirection-stripped",
