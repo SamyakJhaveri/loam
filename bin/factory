@@ -1335,10 +1335,14 @@ call_json() { # round stem role prompt_file schema_file
     fi
     log "$role output not parseable"
   done
-  # An absent or unparseable grader is a fail with one high finding, never a pass (LOOP.md).
+  # An absent or unparseable grader is a fail with one high finding, never a pass (LOOP.md). A worker cannot
+  # rerun a grader, so the finding never goes to round-N.fixes (#312, the #306 shape): the reviewer's drafts
+  # the PR and is filed from blocking_findings; the judge's is also its backlog line, which open_pr prints
+  # and file_backlog files, since the PR body and the issues read a judge's backlog, not its findings.
   log "$role output unparseable or inconsistent after 3 attempts; see $out"
   jq -n --arg r "$role" '{verdict: (if $r == "judge" then "fail" else "fix" end), unparseable: true,
-    rows: {}, evidence: {}, fixes: [], backlog: [],
+    rows: {}, evidence: {}, fixes: [],
+    backlog: (if $r == "judge" then ["judge output unparseable or inconsistent after 3 calls; rerun the judge on this round"] else [] end),
     findings: [{severity: "high", file: "-", line: 0, defect: ($r + " output unparseable"),
                 fix: ("rerun the " + $r + " on this round")}]}' > "$final"
 }
@@ -1359,6 +1363,12 @@ run_review() { # round -> 0 when nothing blocks
   blocking=$(jq "$REVIEW_BLOCKING | length" "$f")
   log "reviewer verdict: $(jq -r .verdict "$f") findings=$(jq '(.findings // []) | length' "$f") blocking=$blocking (high or medium)"
   [ "$blocking" -gt 0 ] || return 0
+  if jq -e '.unparseable == true' "$f" > /dev/null 2>&1; then
+    # A worker cannot rerun the reviewer (#312): the finding is not a fix, does not spend the one block, and
+    # does not fail the graders; in the final round it drafts the PR and is filed as an issue.
+    log "reviewer unparseable after 3 calls; not sent to the worker, and in the final round it drafts the PR and is filed as an issue"
+    return 0
+  fi
   if [ "$REVIEW_BLOCKED" = 1 ]; then
     log "the reviewer already blocked once on this ticket; its blocking findings make the PR a draft and are filed as issues"
     return 0
@@ -1429,13 +1439,22 @@ graders() { # round -> 0 when the judge passes and nothing blocks
   run_review "$1" || ok=1
   [ "$CODEX_REVIEW" = yes ] && { run_codex_review "$1" || ok=1; }
   [ "$(tree_signature "$WORKTREE")" = "$sig" ] || finish stopped-environment "grader changed the tree"
+  if [ ! -s "$RUN/round-$1.fixes" ] && jq -e '.unparseable == true' "$RUN/round-$1.judge.json" > /dev/null 2>&1; then
+    # Not a pass, and not a worker round either: the judge's fallback queues no fix, so the next round would
+    # have nothing to do and end no-change with no PR (#312). The draft PR carries the finding in the judge
+    # backlog, so a human reads it and file_backlog files it. With reviewer or Codex fixes queued in this
+    # round, it is a normal fail: the next worker round takes them and the judge runs again.
+    log "judge unparseable or inconsistent after 3 calls: not a pass, and a worker cannot rerun the judge, so the PR opens as a draft with the finding in the judge backlog; with reviewer or Codex fixes queued, the next worker round takes them and the judge runs again"
+    open_pr draft
+  fi
   return "$ok"
 }
 
 # ---- step 8: the pull request -----------------------------------------------
 
 # The reviewer's and the Codex review's blocking findings in the final round's files, highest severity first.
-# After the graders pass, these are what a grader past its one block, or a Codex review unparseable twice, still reports.
+# After the graders pass, these are what a grader past its one block, or a reviewer or Codex review with no
+# parseable reply, still reports.
 # Each finding is joined onto one line, since file_issues files one issue per line.
 blocking_findings() {
   jq -r "$REVIEW_BLOCKING"' | sort_by(.severity != "high") | .[]
@@ -1501,8 +1520,10 @@ open_pr() { # [draft]: opened at the grader-round cap
   {
     [ "$IS_FILE" = 1 ] || printf 'Closes #%s\n\n' "$ISSUE"
     if [ "$draft" = blocking ]; then
-      printf 'Draft: the judge passed, but %s blocking reviewer or Codex finding(s) remain past the one block each grader may make or come from a Codex review unparseable twice, and each is filed as an issue. Read them before marking it ready. The first is %s\n\n' \
+      printf 'Draft: the judge passed, but %s blocking reviewer or Codex finding(s) remain past the one block each grader may make or come from a reviewer or Codex review with no parseable reply, and each is filed as an issue. Read them before marking it ready. The first is %s\n\n' \
         "$(printf '%s\n' "$blocking" | grep -c .)" "$(printf '%s\n' "$blocking" | head -1)"
+    elif [ -n "$draft" ] && jq -e '.unparseable == true' "$RUN/round-$ROUND.judge.json" > /dev/null 2>&1; then
+      printf 'Draft: judge output unparseable or inconsistent after 3 calls, so this round is not a pass and no worker round followed; the Backlog section files it as an issue. Read the Judge section before marking it ready.\n\n'
     elif [ -n "$draft" ]; then
       # An absent, empty, or invalid judge file counts as a fail (LOOP.md), so jq may print nothing.
       rows=$(jq -r '[(.rows // {}) | to_entries[] | select(.value == "fail") | .key] | join(", ") | if . == "" then "no row; a reviewer or Codex finding blocked" else . end' "$RUN/round-$ROUND.judge.json" 2> /dev/null)
@@ -1914,7 +1935,7 @@ grader_first_fail() { # run dir -> the first grader item that failed in the last
 # pr-opened with zero grader-fail rounds and no other exit on the way; a hand fix after pr-opened
 # does not change it. From the run dir: status is pr-opened, the only EXIT line in factory.log is
 # pr-opened, every round-<k>.fixes for k>=1 is empty (a grader that fails or blocks queues fixes
-# there), and no Codex review was unparseable twice (it queues no fix, but that review never ran).
+# there), and no grader reply was unparseable in any round (that queues no fix, but the grader never ran).
 # `-` marks a run not yet at pr-opened.
 run_clean() { # run dir -> yes|no|-
   local d="$1" f
@@ -1925,7 +1946,10 @@ run_clean() { # run dir -> yes|no|-
     case "$f" in */round-0.fixes) continue ;; esac
     [ -s "$f" ] && { printf 'no'; return; }
   done
-  jq -se 'any(.[]; .unparseable == true)' "$d"/round-*.codex-review.json > /dev/null 2>&1 && { printf 'no'; return; }
+  for f in "$d"/round-*.judge.json "$d"/round-*.review.json "$d"/round-*.codex-review.json; do
+    [ -e "$f" ] || continue
+    jq -e '.unparseable == true' "$f" > /dev/null 2>&1 && { printf 'no'; return; }
+  done
   printf 'yes'
 }
 
