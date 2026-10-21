@@ -273,6 +273,21 @@ class CappedReviewTests(unittest.TestCase):
                 self.assertIn(PR_URL, issues[0]["body"])
                 self.assertEqual(self.run_clean(), "no")
 
+    def test_an_unparseable_judge_with_reviewer_fixes_queued_takes_a_worker_round(self) -> None:
+        for name, text in UNPARSEABLE:
+            with self.subTest(name):
+                self.new_run()
+                # Round 1: the judge is unparseable and the reviewer blocks for the first time with a real finding.
+                # That finding is a fix for the worker, so the round is a normal fail, not a draft; round 2 passes.
+                stderr, calls = self.run_loop(
+                    [{"verdict": "fix", "findings": [review_finding("high", "real defect")]}, CLEAN_REVIEW],
+                    judges=[text, JUDGE_PASS])
+                self.assertIn("real defect", self.fixes(1))
+                self.assertNotIn("rerun", self.fixes(1))
+                self.assertIn(f"EXIT pr-opened (0): {PR_URL} after 2 rounds", stderr)
+                self.assertNotIn("--draft", self.pr_create(calls)["args"])
+                self.assertEqual(self.issues(calls), [])
+
     def test_a_parseable_judge_fail_still_sends_its_fixes_to_the_worker(self) -> None:
         self.new_run()
         stderr, calls = self.run_loop([CLEAN_REVIEW, CLEAN_REVIEW], judges=[JUDGE_FAIL, JUDGE_PASS])

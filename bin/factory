@@ -1337,7 +1337,7 @@ call_json() { # round stem role prompt_file schema_file
   log "$role output unparseable or inconsistent after 3 attempts; see $out"
   jq -n --arg r "$role" '{verdict: (if $r == "judge" then "fail" else "fix" end), unparseable: true,
     rows: {}, evidence: {}, fixes: [],
-    backlog: (if $r == "judge" then ["judge output unparseable after 3 calls; rerun the judge on this round"] else [] end),
+    backlog: (if $r == "judge" then ["judge output unparseable or inconsistent after 3 calls; rerun the judge on this round"] else [] end),
     findings: [{severity: "high", file: "-", line: 0, defect: ($r + " output unparseable"),
                 fix: ("rerun the " + $r + " on this round")}]}' > "$final"
 }
@@ -1434,11 +1434,12 @@ graders() { # round -> 0 when the judge passes and nothing blocks
   run_review "$1" || ok=1
   [ "$CODEX_REVIEW" = yes ] && { run_codex_review "$1" || ok=1; }
   [ "$(tree_signature "$WORKTREE")" = "$sig" ] || finish stopped-environment "grader changed the tree"
-  if jq -e '.unparseable == true' "$RUN/round-$1.judge.json" > /dev/null 2>&1; then
+  if [ ! -s "$RUN/round-$1.fixes" ] && jq -e '.unparseable == true' "$RUN/round-$1.judge.json" > /dev/null 2>&1; then
     # Not a pass, and not a worker round either: the judge's fallback queues no fix, so the next round would
     # have nothing to do and end no-change with no PR (#312). The draft PR carries the finding in the judge
-    # backlog, so a human reads it and file_backlog files it.
-    log "judge unparseable after 3 calls: not a pass, and a worker cannot rerun the judge, so the PR opens as a draft with the finding in the judge backlog"
+    # backlog, so a human reads it and file_backlog files it. With reviewer or Codex fixes queued in this
+    # round, it is a normal fail: the next worker round takes them and the judge runs again.
+    log "judge unparseable or inconsistent after 3 calls: not a pass, and a worker cannot rerun the judge, so the PR opens as a draft with the finding in the judge backlog; with reviewer or Codex fixes queued, the next worker round takes them and the judge runs again"
     open_pr draft
   fi
   return "$ok"
@@ -1517,7 +1518,7 @@ open_pr() { # [draft]: opened at the grader-round cap
       printf 'Draft: the judge passed, but %s blocking reviewer or Codex finding(s) remain past the one block each grader may make or come from a reviewer or Codex review with no parseable reply, and each is filed as an issue. Read them before marking it ready. The first is %s\n\n' \
         "$(printf '%s\n' "$blocking" | grep -c .)" "$(printf '%s\n' "$blocking" | head -1)"
     elif [ -n "$draft" ] && jq -e '.unparseable == true' "$RUN/round-$ROUND.judge.json" > /dev/null 2>&1; then
-      printf 'Draft: judge output unparseable after 3 calls, so this round is not a pass and no worker round followed; the Backlog section files it as an issue. Read the Judge section before marking it ready.\n\n'
+      printf 'Draft: judge output unparseable or inconsistent after 3 calls, so this round is not a pass and no worker round followed; the Backlog section files it as an issue. Read the Judge section before marking it ready.\n\n'
     elif [ -n "$draft" ]; then
       # An absent, empty, or invalid judge file counts as a fail (LOOP.md), so jq may print nothing.
       rows=$(jq -r '[(.rows // {}) | to_entries[] | select(.value == "fail") | .key] | join(", ") | if . == "" then "no row; a reviewer or Codex finding blocked" else . end' "$RUN/round-$ROUND.judge.json" 2> /dev/null)
