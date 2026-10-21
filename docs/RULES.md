@@ -28,7 +28,7 @@ Keep rows a check enforces, so each enforcer stays findable; drop a row only whe
 | A project can opt out of the session-memory system with the Copier question `memory` (default `true`): `false` renders none of its hooks, hook registration, tools or prose, and `bin/sync-project --data memory=false` carries the answer. Reason: distbench keeps its no-hooks harness | owner ruling 2026-10-19; `copier.yml`, `docs/COPIER.md` | prose; the verify-loam render recipe `render-memory` proves a render |
 | Fable and Codex review finished work read-only; an Opus worker confirms or rejects each finding and fixes only the confirmed ones | owner ruling 2026-10-19; `seed/docs/WORKERS.md.jinja` Roles | prose (judgment) |
 | Factory ticket lint accepts a `## Comments` section, and only as the last section | owner ruling 2026-10-19; `docs/factory/CONTRACT.md` ticket contract, item 11 | check: `bin/tests/test_factory_ticket_sections.py` in `bin/check` step "pytest" |
-| Agents and workers invoke the installed pstack copies on their own judgement; the lead's session never runs them inline and names them in briefs; the owner types `/pstack:<name>` to read output | owner ruling 2026-10-20; `seed/CLAUDE.md.jinja` | prose (judgment) |
+| Agents and workers invoke the installed pstack copies on their own judgment; the lead's session never runs them inline and names them in briefs; the owner types `/pstack:<name>` to read output | owner ruling 2026-10-20; `seed/CLAUDE.md.jinja` | prose (judgment) |
 
 ## Checkable, not yet enforced
 

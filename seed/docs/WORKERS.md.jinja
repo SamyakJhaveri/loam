@@ -33,7 +33,7 @@ A project with costly concurrency also keeps a skill from `/pstack:create-formal
 To change a role's effort, edit the pstack rule file (`~/.claude/rules/pstack-models.md`) by hand.
 Do not re-run `/pstack:setup-pstack` for that: a re-run keeps only the roles changed by family, list or alias, so an effort-only change reverts to the budget level.
 
-pstack ships every skill as manual-only, so agents and workers invoke one on their own judgement only through the copies that `/sam-cc-setup:install-pstack-skills` makes in `~/.claude/skills/`.
+pstack ships every skill as manual-only, so agents and workers invoke one on their own judgment only through the copies that `/sam-cc-setup:install-pstack-skills` makes in `~/.claude/skills/`.
 Type `/sam-cc-setup:install-pstack-skills` on each host after each pstack update; it refreshes every copy it marked and refuses any other folder of the same name.
 A review agent runs `blast-radius` on a change that could break code outside its diff, and `interrogate` on a diff it does not trust.
 An agent runs `benchmark-checklist` on a timing or performance number before it reports it, and an agent on long unattended work keeps a `show-me-your-work` decision log.

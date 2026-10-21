@@ -44,7 +44,22 @@ mkdir "$LOCK" 2>/dev/null || {
   echo "install-pstack-skills: $LOCK exists, another install is running (remove it if none is)"
   exit 1
 }
-trap 'rmdir "$LOCK"' EXIT
+# Stages sit one level below the skills folder, so no direct child of it holds a SKILL.md before
+# the copy is finished, and on its filesystem, so each final move is one rename.
+STAGING="$SKILLS_DIR/.pstack-staging"
+dest=""
+old_copy=""
+# On any exit, TERM and INT included: put back an old copy whose swap was cut off, then drop the
+# stages and the lock.
+cleanup() {
+  if [ -n "$old_copy" ] && [ -e "$old_copy" ] && [ ! -e "$dest" ]; then mv "$old_copy" "$dest"; fi
+  rm -rf "$STAGING"
+  rmdir "$LOCK"
+}
+trap cleanup EXIT
+# A killed run leaves its stages behind; holding the lock says no other run owns them.
+rm -rf "$STAGING"
+mkdir "$STAGING"
 
 FAIL=0
 for name in $SKILLS; do
@@ -65,8 +80,7 @@ for name in $SKILLS; do
     old="$(cut -d' ' -f2 "$dest/$MARKER")"
   fi
 
-  # The stage sits beside its destination, so the final move is one rename on one filesystem.
-  stage="$(mktemp -d "$SKILLS_DIR/.pstack-stage.XXXXXX")"
+  stage="$(mktemp -d "$STAGING/$name.XXXXXX")"
   cp -R "$src/." "$stage/"
   # A link that leaves the skill's folder (../other-skill/SKILL.md, ../../docs/...) would resolve
   # under ~/.claude after the copy, so point it at the plugin. "../" counts up from each file's depth.
@@ -98,16 +112,18 @@ for name in $SKILLS; do
   chmod 755 "$stage"
 
   # Swap: keep the old copy until the new one is in place, and put it back if the move fails.
-  if [ -n "$old" ]; then mv "$dest" "$stage.old"; fi
+  if [ -n "$old" ]; then old_copy="$stage.old"; mv "$dest" "$old_copy"; fi
   if ! mv "$stage" "$dest"; then
-    if [ -n "$old" ]; then mv "$stage.old" "$dest"; fi
+    if [ -n "$old" ]; then mv "$old_copy" "$dest"; fi
+    old_copy=""
     rm -r "$stage"
     echo "$name: FAILED, could not move the new copy into $dest; the old copy stays"
     FAIL=1
     continue
   fi
   if [ -n "$old" ]; then
-    rm -r "$stage.old"
+    rm -r "$old_copy"
+    old_copy=""
     echo "$name: refreshed, pstack $old to $VERSION"
   else
     echo "$name: installed from pstack $VERSION"
