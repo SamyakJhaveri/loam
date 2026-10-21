@@ -888,15 +888,25 @@ classify_result() { # result.json
   fi
 }
 
-# no-result and environment stop the run; a capped round returns so the caller keeps its artifacts.
-assert_call_ok() { # role result.json
-  local e
+# no-result and environment stop the run; a capped round returns so the caller keeps its artifacts. A killed
+# call may have committed (#319): with the round's start sha the stop message lists the commits since it, or
+# says "no commits", and names the charge the result object carries.
+assert_call_ok() { # role result.json [round-start-sha]
+  local e c l
   case "$(classify_result "$2")" in
     completed)
       e=$(jq -r "$RESULT_OBJ | if .is_error == true then \"\\(.subtype) after \\(.num_turns // 0) turns\" else empty end" "$2" 2> /dev/null) || e=""
       [ -z "$e" ] || log "$1 round $ROUND: hit its own cap ($e); a finished round, the checks decide"
       return 0 ;;
-    no-result) e="no result event (killed by CALL_TIMEOUT_SEC=$CALL_TIMEOUT_SEC, or crashed)" ;;
+    no-result)
+      e="no result event (killed by CALL_TIMEOUT_SEC=$CALL_TIMEOUT_SEC, or crashed)"
+      c=$(jq -r "$RESULT_OBJ | .total_cost_usd // empty" "$2" 2> /dev/null) || c=""
+      [ -z "$c" ] || e="$e; charged $c usd, the call's ROUND_BUDGET_USD ceiling"
+      if [ -n "${3:-}" ]; then
+        l=$(git -C "$WORKTREE" log --oneline "$3..HEAD" 2> /dev/null | paste -sd ';' - | sed 's/;/; /g')
+        e="$e; commits since the round began: ${l:-no commits}"
+      fi
+      finish stopped-environment "the $1 call ended with $e" ;;
     *) e=$(jq -r "$RESULT_OBJ | .result // \"unknown error\"" "$2" 2> /dev/null) || e="unknown error" ;;
   esac
   finish stopped-environment "the $1 call failed before doing work: $e"
@@ -1098,8 +1108,10 @@ codex_result() { # jsonl exit_code [duration_ms] -> result JSON on stdout; durat
 }
 
 worker_round() { # round; leaves round-N.* only once the call produced a result
-  local round="$1" pf out="$RUN/pending.jsonl" res="$RUN/pending.result.json" t=() login_retried=0 le
+  local round="$1" pf out="$RUN/pending.jsonl" res="$RUN/pending.result.json" t=() login_retried=0 le head0
   command -v timeout > /dev/null 2>&1 && t=(timeout --foreground "$CALL_TIMEOUT_SEC")
+  # The round's start, so a stop after a killed call can name the commits the call made (#319).
+  head0=$(git -C "$WORKTREE" rev-parse HEAD 2> /dev/null) || head0=""
   # The first round this process runs; a login expired at launch retries only its call. A global,
   # not a local, so it survives the loop's later rounds.
   [ -n "${FIRST_WORKER_ROUND+x}" ] || FIRST_WORKER_ROUND="$round"
@@ -1150,7 +1162,7 @@ worker_round() { # round; leaves round-N.* only once the call produced a result
     codex_result "$out" "$rc" "$(( (SECONDS - start) * 1000 ))" > "$res"
     wl=$(workflow_ledger "$round" "$out" "$res"); wagents=${wl% *}; wusd=${wl#* }
     record "$round" worker "$CODEX_MODEL" "$res" 0 0 "$wagents" "$wusd" 1
-    assert_call_ok worker "$res"
+    assert_call_ok worker "$res" "$head0"
     mv "$pf" "$RUN/round-$round.prompt.md"
     mv "$out" "$RUN/round-$round.jsonl"
     mv "$res" "$RUN/round-$round.result.json"
@@ -1166,7 +1178,11 @@ worker_round() { # round; leaves round-N.* only once the call produced a result
         --max-budget-usd "$ROUND_BUDGET_USD" --output-format stream-json --verbose --include-hook-events \
         < "$pf" > "$out" 2>> "$LOG" ) || log "worker exited non-zero (the result event decides)"
     jq -c 'select(.type == "result")' "$out" 2> /dev/null | tail -1 > "$res"
-    [ -s "$res" ] || echo '{"subtype":"no-result"}' > "$res"
+    # No result event (killed by CALL_TIMEOUT_SEC, or crashed) leaves no cost to read, yet the call may have
+    # spent up to its --max-budget-usd ceiling. Charge that ceiling here, so record, ticket_spent, daily_spent
+    # and cmd_status book one number and the ticket and daily caps stay bounds (#319). The ledger row keeps
+    # subtype no-result, which tells a charge from a measured cost.
+    [ -s "$res" ] || jq -nc --argjson usd "$ROUND_BUDGET_USD" '{subtype:"no-result", total_cost_usd:$usd}' > "$res"
     # An `OAuth session expired` on the first call of a launch is a stale login, not a round: wait
     # once and relaunch the call. A second failure, or the same on a later round, stops as today.
     if ! limit_wait "$res"; then
@@ -1188,7 +1204,7 @@ worker_round() { # round; leaves round-N.* only once the call produced a result
   local wl wagents wusd
   wl=$(workflow_ledger "$round" "$out" "$res"); wagents=${wl% *}; wusd=${wl#* }
   record "$round" worker "$WORKER_MODEL" "$res" "$acalls" "$ausd" "$wagents" "$wusd"
-  assert_call_ok worker "$res"
+  assert_call_ok worker "$res" "$head0"
   mv "$pf" "$RUN/round-$round.prompt.md"
   mv "$out" "$RUN/round-$round.jsonl"
   mv "$res" "$RUN/round-$round.result.json"
