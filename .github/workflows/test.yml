@@ -55,6 +55,17 @@ jobs:
           echo "LOAM_FACTORY_TOOLCHAIN=$(node -p 'require("node:path").dirname(require("node:path").dirname(process.execPath))')" >> "$GITHUB_ENV"
           echo "LOAM_FACTORY_COPIER=$(command -v copier)" >> "$GITHUB_ENV"
 
+      - name: Probe runner tmp (night 1020 diagnostic, not for merge)
+        run: |
+          set -x
+          df -h /tmp /home/runner/work "$RUNNER_TEMP" || true
+          mount | grep -E ' / | /tmp | /home ' || true
+          stat -f -c '%T %a %f %i %d' /tmp /home/runner/work || true
+          ls -la /opt/hostedtoolcache/node/*/x64/bin/node || true
+          node -e "const fs=require('fs');const d=fs.mkdtempSync('/tmp/probe-');try{fs.copyFileSync(process.execPath,d+'/node');console.log('copy to /tmp ok',fs.statSync(d+'/node').size)}catch(e){console.log('copy to /tmp failed',e.code,e.errno,e.message)}"
+          node -e "const fs=require('fs');const d=fs.mkdtempSync(process.env.RUNNER_TEMP+'/probe-');try{fs.copyFileSync(process.execPath,d+'/node');console.log('copy to RUNNER_TEMP ok')}catch(e){console.log('copy to RUNNER_TEMP failed',e.code,e.message)}"
+          node -e "const fs=require('fs');const d=fs.mkdtempSync('/tmp/probe2-');try{fs.copyFileSync(process.execPath,d+'/node',fs.constants.COPYFILE_FICLONE_FORCE);console.log('reflink ok')}catch(e){console.log('reflink failed',e.code)}"
+
       - name: Run check
         run: bin/check
 
