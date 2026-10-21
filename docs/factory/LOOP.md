@@ -67,7 +67,7 @@ When no cached copy matches, the run stops `stopped-environment` and names the c
    A PR opened at the grader-round cap is a draft: `gh pr create --draft`, and a line under `Closes #<issue>` names the failing judge rows, so no automatic merge takes it before a human reads the Judge section; an already-open PR is only updated, not converted.
    Each judge backlog line is also filed once per run as a `needs-triage` issue, so a defect an unattended run finds is tracked outside the PR body.
    A blocking reviewer or Codex finding left in the final round, an unparseable reply included, is filed the same way; when the judge passed, that finding is past its grader's one block or comes from a reviewer or Codex review with no parseable reply, and the PR opens as a draft whose line under `Closes #<issue>` names the first one.
-   A judge with no parseable reply after its three calls is not a pass and gets no worker round, since a worker cannot rerun a grader (#312): the round opens the PR as a draft at once, with the finding as the judge backlog line, so it is filed as an issue.
+   A judge with no parseable reply after its three calls is not a pass and gets no worker round, since a worker cannot rerun a grader (#312): when no reviewer or Codex fix is queued in that round, the round opens the PR as a draft at once, with the finding as the judge backlog line, so it is filed as an issue; when one is queued, the round is a normal fail, the next worker round takes those fixes and the judge runs again.
    Every text the factory composes for GitHub, the PR title and body, each filed issue's title and body, and notify's issue comment, first passes through `scrub`, which replaces token-shaped strings with `[redacted]`: every pattern of the memory scrubber in `seed/.claude/hooks/mem-capture.sh` (API keys and tokens, `key=value` secrets, JWTs, `Bearer` values, private-key blocks, URL passwords), plus any `Authorization` value and Slack `xoxs-` tokens.
 
 ## Exits
@@ -103,7 +103,7 @@ Codex token counts come from its `--json` events and land in the ledger with `co
 After the checks first pass, at most two grader-fail rounds per ticket; then the remaining non-blocking findings go to the PR body backlog and the PR opens as a draft.
 The judge decides pass or fail.
 The reviewer blocks only on a `high` or `medium` finding (`REVIEW_BLOCKING` in `bin/factory`; its verdict word is not read), the Codex review only on a `critical` or `high` finding, and each may block at most once per ticket.
-A grader whose output is absent or unparseable is a fail with one high finding "<role> output unparseable", never a pass, and that finding is never sent to the worker, who cannot rerun a grader (#306, #312); the judge and reviewer are called three times and the Codex review twice, after which the reviewer's or Codex finding drafts the PR without blocking and the judge's opens the draft at once (Grader calls).
+A grader whose output is absent or unparseable is a fail with one high finding "<role> output unparseable", never a pass, and that finding is never sent to the worker, who cannot rerun a grader (#306, #312); the judge and reviewer are called three times and the Codex review twice, after which the reviewer's or Codex finding drafts the PR without blocking and the judge's opens the draft at once unless reviewer or Codex fixes are queued, in which case the next worker round takes them and the judge runs again (Grader calls).
 `verdict_consistent` runs on every judge JSON: a pass with non-empty fixes or a failing row, or without a row `judge.schema.json` requires, or a fail with empty fixes and empty backlog, is refuted, and the judge is called once more, fresh, with the refutation appended to its prompt.
 
 ## Grader calls
@@ -126,7 +126,7 @@ The Codex review stage runs `codex exec --json --output-schema frozen/review-out
 `needs-attention` with a `critical` or `high` finding blocks once.
 An absent or empty `-o` file, or one that is not a single object with a `verdict`, gets one more Codex call; after a second bad reply it is replaced by a `needs-attention` object with one high finding "codex review output unparseable".
 A worker cannot rerun Codex, so that finding is not sent to the worker and does not fail the round; in the final round it drafts the PR and is filed as an issue.
-The judge and reviewer get three calls each; after three bad replies the reviewer's finding is handled the same way, without spending its one block, and the judge's, since no row was graded, opens the PR as a draft from `graders` with the finding in the judge backlog, so no worker round is spent on it (#312).
+The judge and reviewer get three calls each; after three bad replies the reviewer's finding is handled the same way, without spending its one block, and the judge's, since no row was graded, opens the PR as a draft from `graders` with the finding in the judge backlog, so no worker round is spent on it, unless reviewer or Codex fixes are queued in that round: then the next worker round takes them and the judge runs again (#312).
 
 ## Worker calls
 
