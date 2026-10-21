@@ -3,6 +3,14 @@
 This file records why a promoted plugin change traveled. It is also the upgrade
 entry point for projects that consume the Loam marketplace.
 
+## sam-cc-setup v0.9.12 install-pstack-skills joins the plugin
+
+`/sam-cc-setup:install-pstack-skills` copies 23 pstack skills (blast-radius, interrogate, how, why, tdd, the principle skills and more) into `~/.claude/skills/` without `disable-model-invocation`, so agents and workers can invoke them; a re-run after a pstack update refreshes the copies.
+It traveled because the install changes the whole host, so one copy per rendered project was the duplicate `docs/ASSET-LAYERS.md` calls a bug; the seed's `docs/WORKERS.md` and `docs/HARNESS.md` now point at the skill.
+The installer takes a lock, stages each copy beside its destination and keeps the old copy until the new one is in place.
+No agent prompt changed, so no grader replay is owed.
+Upgrade step: `claude plugin update sam-cc-setup`, then `/sam-cc-setup:install-pstack-skills` on each host.
+
 ## sam-cc-setup v0.9.11 brief settles open questions by prototype
 
 In `/brief`, a `Mode: figure-out` open question that a quick throwaway prototype could observe is answered by building the prototype, before anyone is asked.
