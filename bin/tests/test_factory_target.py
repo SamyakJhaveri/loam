@@ -181,7 +181,8 @@ class TargetTests(unittest.TestCase):
             ' | "\\(.number) \\(.body // "" | @base64)"'])
 
     def test_next_parks_by_the_targets_own_runs_without_the_toolchain(self) -> None:
-        body = "the same body"
+        # next launches only a body that passes lint (#314); gh returns the body with no trailing newline.
+        body = (ROOT / "bin/tests/fixtures/clean-ticket.md").read_text().rstrip("\n")
         key = hashlib.sha256(body.encode()).hexdigest()[:8]
         line = f"7 {base64.b64encode(body.encode()).decode()}"
         stubs = ("claude_logged_in() { :; }; "
