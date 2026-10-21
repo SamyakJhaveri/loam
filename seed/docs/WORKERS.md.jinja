@@ -33,6 +33,16 @@ A project with costly concurrency also keeps a skill from `/pstack:create-formal
 To change a role's effort, edit the pstack rule file (`~/.claude/rules/pstack-models.md`) by hand.
 Do not re-run `/pstack:setup-pstack` for that: a re-run keeps only the roles changed by family, list or alias, so an effort-only change reverts to the budget level.
 
+pstack ships every skill as manual-only, so agents and workers invoke one on their own judgement only through the copies that `bin/install-pstack-skills` makes in `~/.claude/skills/`.
+Run `bash bin/install-pstack-skills` on each host after each pstack update; it refreshes every copy this script marked, whichever project ran it, and refuses any other folder of the same name.
+A review agent runs `blast-radius` on a change that could break code outside its diff, and `interrogate` on a diff it does not trust.
+An agent runs `benchmark-checklist` on a timing or performance number before it reports it, and an agent on long unattended work keeps a `show-me-your-work` decision log.
+After merges that changed code a formal-verification skill models without rechecking it, an agent runs `maintain-formal-verification-skill` on that skill.
+Any worker uses `how`, `why`, `tdd` and the principle skills the script lists where the work fits.
+An agent stays within its sub-agent cap, so it skips a step that runs `arena`, `swarm` or `architect`.
+The lead's own session does not invoke these skills inline, to save its context; it names them in briefs.
+The other pstack skills stay human-only, typed as `/pstack:<name>`: `poteto-mode`, `arena`, `swarm`, `architect` and the other fan-out and one-off setup skills, `maintain-verification-skill` (a sub-agent per feature, then a PR), `figure-it-out`, `reflect`, `no-comments`, and `unslop` and `technical-writing`, since writing skills stay hidden from the model.
+
 ## Handoff
 
 Before stopping mid-task, commit uncommitted edits as one `wip:` commit on the
