@@ -1,6 +1,8 @@
 """A reviewer or Codex review past its one block that still blocks, or replies with nothing parseable, opens a draft PR.
 
 A Codex review with no parseable reply is called once more; two bad replies draft the PR but never reach a worker.
+A judge or reviewer with no parseable reply after its three calls never reaches a worker either (#312): the
+reviewer's finding drafts the PR without spending its one block, and the judge's opens the draft at once.
 
 `bin/factory` is sourced (FACTORY_SOURCED=1) and two rounds run the loop's `graders "$ROUND" && open_pr` line with the
 real graders, call_json, run_codex_review, open_pr, and file_backlog. Fake `claude`, `codex`, and `gh` scripts sit
@@ -57,6 +59,9 @@ if args[:2] == ["issue", "create"]:
 """
 
 JUDGE_PASS = {"verdict": "pass", "rows": {"widget": "pass"}, "evidence": {"widget": "ok"}, "fixes": [], "backlog": []}
+JUDGE_FAIL = {"verdict": "fail", "rows": {"widget": "fail"}, "evidence": {}, "fixes": ["make the widget work"], "backlog": []}
+# An empty result is what a reply with no text looks like to call_json; the other is text that is not JSON.
+UNPARSEABLE = (("missing", ""), ("not-json", "this is not json"))
 CLEAN_REVIEW = {"verdict": "merge", "findings": []}
 CLEAN_CODEX = {"verdict": "approve", "summary": "looks fine", "findings": [], "next_steps": []}
 
@@ -102,14 +107,17 @@ class CappedReviewTests(unittest.TestCase):
             (self.bin / name).write_text(text)
             (self.bin / name).chmod(0o755)
 
-    def run_loop(self, reviews: list[object], codex: list[str | None] | None = None) -> tuple[str, list[dict]]:
-        """Run rounds 1 and 2 of `graders "$ROUND" && open_pr`; return the loop's stderr and the gh calls.
+    def run_loop(self, reviews: list[object], codex: list[str | None] | None = None,
+                 judges: list[object] | None = None) -> tuple[str, list[dict]]:
+        """Run one round per reply of `graders "$ROUND" && open_pr`; return the loop's stderr and the gh calls.
 
         reviews[k] is the reviewer's reply in round k+1 (a string goes verbatim, anything else as JSON).
+        judges[k], when given, is the judge's reply in round k+1 the same way; the judge passes otherwise.
         codex, when given, turns the Codex review on: codex[k] is the -o file text of Codex call k+1, None for no file.
         """
         for k, reply in enumerate(reviews, start=1):
-            (self.run_dir / f"reply.judge.{k}").write_text(json.dumps(JUDGE_PASS))
+            judge = judges[k - 1] if judges else JUDGE_PASS
+            (self.run_dir / f"reply.judge.{k}").write_text(judge if isinstance(judge, str) else json.dumps(judge))
             (self.run_dir / f"reply.reviewer.{k}").write_text(reply if isinstance(reply, str) else json.dumps(reply))
         for k, text in enumerate(codex or [], start=1):
             if text is not None:
@@ -121,7 +129,7 @@ class CappedReviewTests(unittest.TestCase):
             f"BODY=\"$TICKET\"; CODEX_REVIEW={'yes' if codex is not None else 'no'}; CODEX_PATH='{self.bin}'\n"
             "notify() { :; }\n"
             'build_evidence() { printf \'REPLY %s\\n\' "$(cat "$RUN/reply.$(basename "$1" .md).$ROUND")"; }\n'
-            'for ROUND in 1 2; do graders "$ROUND" && open_pr; done\n'
+            f'for ROUND in $(seq 1 {len(reviews)}); do graders "$ROUND" && open_pr; done\n'
             "echo 'no PR opened' >&2; exit 9\n"
         )
         env = {k: v for k, v in os.environ.items() if k not in INHERITED}
@@ -210,6 +218,84 @@ class CappedReviewTests(unittest.TestCase):
                 for call in (1, 2):
                     self.assertIn(f"on call {call} of 2; see {self.run_dir}/round-1.codex-review.{call}.jsonl", log)
                 self.assertEqual(self.run_clean(), "no")
+
+    def fixes(self, round_: int) -> str:
+        f = self.run_dir / f"round-{round_}.fixes"
+        return f.read_text() if f.exists() else ""
+
+    def test_an_unparseable_reviewer_drafts_the_pr_and_is_not_sent_to_the_worker(self) -> None:
+        for name, text in UNPARSEABLE:
+            with self.subTest(name):
+                self.new_run()
+                stderr, calls = self.run_loop([text])
+                # The finding is kept for the draft and the issue, but a worker cannot rerun the reviewer, so it gets nothing.
+                self.assertEqual(self.fixes(1), "")
+                review = json.loads((self.run_dir / "round-1.review.json").read_text())
+                self.assertIs(review["unparseable"], True)
+                self.assertEqual([f["severity"] for f in review["findings"]], ["high"])
+                self.assert_draft_with_filed_finding(stderr, calls, "reviewer output unparseable", rounds=1)
+                self.assertEqual(self.run_clean(), "no")
+
+    def test_an_unparseable_reviewer_does_not_spend_its_one_block(self) -> None:
+        for name, text in UNPARSEABLE:
+            with self.subTest(name):
+                self.new_run()
+                # Round 1: the judge fails and the reviewer is unparseable. Round 2: the reviewer's first real block.
+                # Round 3: clean, so the PR is ready.
+                stderr, calls = self.run_loop(
+                    [text, {"verdict": "fix", "findings": [review_finding("high", "real defect")]}, CLEAN_REVIEW],
+                    judges=[JUDGE_FAIL, JUDGE_PASS, JUDGE_PASS])
+                self.assertEqual(self.fixes(1), "- make the widget work\n")
+                self.assertIn("real defect", self.fixes(2))
+                self.assertIn(f"EXIT pr-opened (0): {PR_URL} after 3 rounds", stderr)
+                self.assertNotIn("--draft", self.pr_create(calls)["args"])
+                self.assertEqual(self.issues(calls), [])
+
+    def test_an_unparseable_judge_opens_a_draft_without_a_worker_round(self) -> None:
+        for name, text in UNPARSEABLE:
+            with self.subTest(name):
+                self.new_run()
+                stderr, calls = self.run_loop([CLEAN_REVIEW], judges=[text])
+                # Not a pass: the PR is a draft, and nothing is queued for a worker, who cannot rerun the judge.
+                self.assertEqual(self.fixes(1), "")
+                self.assertEqual((self.run_dir / "status").read_text(), "pr-opened\n")
+                self.assertIn(f"EXIT pr-opened (0): {PR_URL} after 1 rounds", stderr)
+                pr = self.pr_create(calls)
+                self.assertIn("--draft", pr["args"])
+                reason = pr["body"].split("\n\n", 2)[1]
+                self.assertTrue(reason.startswith("Draft: "), reason)
+                self.assertIn("judge output unparseable", reason)
+                self.assertIn("- judge output unparseable", pr["body"].split("## Backlog", 1)[1])
+                issues = self.issues(calls)
+                self.assertEqual(len(issues), 1, calls)
+                self.assertIn("needs-triage", issues[0]["args"])
+                self.assertIn("judge output unparseable", issues[0]["body"])
+                self.assertIn(PR_URL, issues[0]["body"])
+                self.assertEqual(self.run_clean(), "no")
+
+    def test_an_unparseable_judge_with_reviewer_fixes_queued_takes_a_worker_round(self) -> None:
+        for name, text in UNPARSEABLE:
+            with self.subTest(name):
+                self.new_run()
+                # Round 1: the judge is unparseable and the reviewer blocks for the first time with a real finding.
+                # That finding is a fix for the worker, so the round is a normal fail, not a draft; round 2 passes.
+                stderr, calls = self.run_loop(
+                    [{"verdict": "fix", "findings": [review_finding("high", "real defect")]}, CLEAN_REVIEW],
+                    judges=[text, JUDGE_PASS])
+                self.assertIn("real defect", self.fixes(1))
+                self.assertNotIn("rerun", self.fixes(1))
+                self.assertIn(f"EXIT pr-opened (0): {PR_URL} after 2 rounds", stderr)
+                self.assertNotIn("--draft", self.pr_create(calls)["args"])
+                self.assertEqual(self.issues(calls), [])
+
+    def test_a_parseable_judge_fail_still_sends_its_fixes_to_the_worker(self) -> None:
+        self.new_run()
+        stderr, calls = self.run_loop([CLEAN_REVIEW, CLEAN_REVIEW], judges=[JUDGE_FAIL, JUDGE_PASS])
+        self.assertEqual(self.fixes(1), "- make the widget work\n")
+        self.assertIn(f"EXIT pr-opened (0): {PR_URL} after 2 rounds", stderr)
+        self.assertNotIn("--draft", self.pr_create(calls)["args"])
+        self.assertEqual(self.issues(calls), [])
+        self.assertEqual(self.run_clean(), "no")
 
     def test_a_multi_paragraph_finding_files_one_issue_with_the_whole_finding(self) -> None:
         codex = json.dumps({"verdict": "needs-attention", "summary": "s", "next_steps": [], "findings": [

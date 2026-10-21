@@ -512,7 +512,12 @@ lint() {
     echo "no such file: $SRC" >&2
     return 1
   fi
+  lint_body
+}
 
+# The rules over BODY, each error on stderr as `LINT $SRC: ...`; returns 1 on any. lint resolves a file or
+# an issue into BODY first, and cmd_next calls this directly with the body the frontier query already holds.
+lint_body() {
   check_sections
   check_header
   check_no_skip
@@ -888,15 +893,25 @@ classify_result() { # result.json
   fi
 }
 
-# no-result and environment stop the run; a capped round returns so the caller keeps its artifacts.
-assert_call_ok() { # role result.json
-  local e
+# no-result and environment stop the run; a capped round returns so the caller keeps its artifacts. A killed
+# call may have committed (#319): with the round's start sha the stop message lists the commits since it, or
+# says "no commits", and names the charge the result object carries.
+assert_call_ok() { # role result.json [round-start-sha]
+  local e c l
   case "$(classify_result "$2")" in
     completed)
       e=$(jq -r "$RESULT_OBJ | if .is_error == true then \"\\(.subtype) after \\(.num_turns // 0) turns\" else empty end" "$2" 2> /dev/null) || e=""
       [ -z "$e" ] || log "$1 round $ROUND: hit its own cap ($e); a finished round, the checks decide"
       return 0 ;;
-    no-result) e="no result event (killed by CALL_TIMEOUT_SEC=$CALL_TIMEOUT_SEC, or crashed)" ;;
+    no-result)
+      e="no result event (killed by CALL_TIMEOUT_SEC=$CALL_TIMEOUT_SEC, or crashed)"
+      c=$(jq -r "$RESULT_OBJ | .total_cost_usd // empty" "$2" 2> /dev/null) || c=""
+      [ -z "$c" ] || e="$e; charged $c usd, the call's ROUND_BUDGET_USD ceiling"
+      if [ -n "${3:-}" ]; then
+        l=$(git -C "$WORKTREE" log --oneline "$3..HEAD" 2> /dev/null | paste -sd ';' - | sed 's/;/; /g')
+        e="$e; commits since the round began: ${l:-no commits}"
+      fi
+      finish stopped-environment "the $1 call ended with $e" ;;
     *) e=$(jq -r "$RESULT_OBJ | .result // \"unknown error\"" "$2" 2> /dev/null) || e="unknown error" ;;
   esac
   finish stopped-environment "the $1 call failed before doing work: $e"
@@ -1098,8 +1113,10 @@ codex_result() { # jsonl exit_code [duration_ms] -> result JSON on stdout; durat
 }
 
 worker_round() { # round; leaves round-N.* only once the call produced a result
-  local round="$1" pf out="$RUN/pending.jsonl" res="$RUN/pending.result.json" t=() login_retried=0 le
+  local round="$1" pf out="$RUN/pending.jsonl" res="$RUN/pending.result.json" t=() login_retried=0 le head0
   command -v timeout > /dev/null 2>&1 && t=(timeout --foreground "$CALL_TIMEOUT_SEC")
+  # The round's start, so a stop after a killed call can name the commits the call made (#319).
+  head0=$(git -C "$WORKTREE" rev-parse HEAD 2> /dev/null) || head0=""
   # The first round this process runs; a login expired at launch retries only its call. A global,
   # not a local, so it survives the loop's later rounds.
   [ -n "${FIRST_WORKER_ROUND+x}" ] || FIRST_WORKER_ROUND="$round"
@@ -1150,7 +1167,7 @@ worker_round() { # round; leaves round-N.* only once the call produced a result
     codex_result "$out" "$rc" "$(( (SECONDS - start) * 1000 ))" > "$res"
     wl=$(workflow_ledger "$round" "$out" "$res"); wagents=${wl% *}; wusd=${wl#* }
     record "$round" worker "$CODEX_MODEL" "$res" 0 0 "$wagents" "$wusd" 1
-    assert_call_ok worker "$res"
+    assert_call_ok worker "$res" "$head0"
     mv "$pf" "$RUN/round-$round.prompt.md"
     mv "$out" "$RUN/round-$round.jsonl"
     mv "$res" "$RUN/round-$round.result.json"
@@ -1166,7 +1183,11 @@ worker_round() { # round; leaves round-N.* only once the call produced a result
         --max-budget-usd "$ROUND_BUDGET_USD" --output-format stream-json --verbose --include-hook-events \
         < "$pf" > "$out" 2>> "$LOG" ) || log "worker exited non-zero (the result event decides)"
     jq -c 'select(.type == "result")' "$out" 2> /dev/null | tail -1 > "$res"
-    [ -s "$res" ] || echo '{"subtype":"no-result"}' > "$res"
+    # No result event (killed by CALL_TIMEOUT_SEC, or crashed) leaves no cost to read, yet the call may have
+    # spent up to its --max-budget-usd ceiling. Charge that ceiling here, so record, ticket_spent, daily_spent
+    # and cmd_status book one number and the ticket and daily caps stay bounds (#319). The ledger row keeps
+    # subtype no-result, which tells a charge from a measured cost.
+    [ -s "$res" ] || jq -nc --argjson usd "$ROUND_BUDGET_USD" '{subtype:"no-result", total_cost_usd:$usd}' > "$res"
     # An `OAuth session expired` on the first call of a launch is a stale login, not a round: wait
     # once and relaunch the call. A second failure, or the same on a later round, stops as today.
     if ! limit_wait "$res"; then
@@ -1188,7 +1209,7 @@ worker_round() { # round; leaves round-N.* only once the call produced a result
   local wl wagents wusd
   wl=$(workflow_ledger "$round" "$out" "$res"); wagents=${wl% *}; wusd=${wl#* }
   record "$round" worker "$WORKER_MODEL" "$res" "$acalls" "$ausd" "$wagents" "$wusd"
-  assert_call_ok worker "$res"
+  assert_call_ok worker "$res" "$head0"
   mv "$pf" "$RUN/round-$round.prompt.md"
   mv "$out" "$RUN/round-$round.jsonl"
   mv "$res" "$RUN/round-$round.result.json"
@@ -1330,10 +1351,14 @@ call_json() { # round stem role prompt_file schema_file
     fi
     log "$role output not parseable"
   done
-  # An absent or unparseable grader is a fail with one high finding, never a pass (LOOP.md).
+  # An absent or unparseable grader is a fail with one high finding, never a pass (LOOP.md). A worker cannot
+  # rerun a grader, so the finding never goes to round-N.fixes (#312, the #306 shape): the reviewer's drafts
+  # the PR and is filed from blocking_findings; the judge's is also its backlog line, which open_pr prints
+  # and file_backlog files, since the PR body and the issues read a judge's backlog, not its findings.
   log "$role output unparseable or inconsistent after 3 attempts; see $out"
   jq -n --arg r "$role" '{verdict: (if $r == "judge" then "fail" else "fix" end), unparseable: true,
-    rows: {}, evidence: {}, fixes: [], backlog: [],
+    rows: {}, evidence: {}, fixes: [],
+    backlog: (if $r == "judge" then ["judge output unparseable or inconsistent after 3 calls; rerun the judge on this round"] else [] end),
     findings: [{severity: "high", file: "-", line: 0, defect: ($r + " output unparseable"),
                 fix: ("rerun the " + $r + " on this round")}]}' > "$final"
 }
@@ -1354,6 +1379,12 @@ run_review() { # round -> 0 when nothing blocks
   blocking=$(jq "$REVIEW_BLOCKING | length" "$f")
   log "reviewer verdict: $(jq -r .verdict "$f") findings=$(jq '(.findings // []) | length' "$f") blocking=$blocking (high or medium)"
   [ "$blocking" -gt 0 ] || return 0
+  if jq -e '.unparseable == true' "$f" > /dev/null 2>&1; then
+    # A worker cannot rerun the reviewer (#312): the finding is not a fix, does not spend the one block, and
+    # does not fail the graders; in the final round it drafts the PR and is filed as an issue.
+    log "reviewer unparseable after 3 calls; not sent to the worker, and in the final round it drafts the PR and is filed as an issue"
+    return 0
+  fi
   if [ "$REVIEW_BLOCKED" = 1 ]; then
     log "the reviewer already blocked once on this ticket; its blocking findings make the PR a draft and are filed as issues"
     return 0
@@ -1424,13 +1455,22 @@ graders() { # round -> 0 when the judge passes and nothing blocks
   run_review "$1" || ok=1
   [ "$CODEX_REVIEW" = yes ] && { run_codex_review "$1" || ok=1; }
   [ "$(tree_signature "$WORKTREE")" = "$sig" ] || finish stopped-environment "grader changed the tree"
+  if [ ! -s "$RUN/round-$1.fixes" ] && jq -e '.unparseable == true' "$RUN/round-$1.judge.json" > /dev/null 2>&1; then
+    # Not a pass, and not a worker round either: the judge's fallback queues no fix, so the next round would
+    # have nothing to do and end no-change with no PR (#312). The draft PR carries the finding in the judge
+    # backlog, so a human reads it and file_backlog files it. With reviewer or Codex fixes queued in this
+    # round, it is a normal fail: the next worker round takes them and the judge runs again.
+    log "judge unparseable or inconsistent after 3 calls: not a pass, and a worker cannot rerun the judge, so the PR opens as a draft with the finding in the judge backlog; with reviewer or Codex fixes queued, the next worker round takes them and the judge runs again"
+    open_pr draft
+  fi
   return "$ok"
 }
 
 # ---- step 8: the pull request -----------------------------------------------
 
 # The reviewer's and the Codex review's blocking findings in the final round's files, highest severity first.
-# After the graders pass, these are what a grader past its one block, or a Codex review unparseable twice, still reports.
+# After the graders pass, these are what a grader past its one block, or a reviewer or Codex review with no
+# parseable reply, still reports.
 # Each finding is joined onto one line, since file_issues files one issue per line.
 blocking_findings() {
   jq -r "$REVIEW_BLOCKING"' | sort_by(.severity != "high") | .[]
@@ -1496,8 +1536,10 @@ open_pr() { # [draft]: opened at the grader-round cap
   {
     [ "$IS_FILE" = 1 ] || printf 'Closes #%s\n\n' "$ISSUE"
     if [ "$draft" = blocking ]; then
-      printf 'Draft: the judge passed, but %s blocking reviewer or Codex finding(s) remain past the one block each grader may make or come from a Codex review unparseable twice, and each is filed as an issue. Read them before marking it ready. The first is %s\n\n' \
+      printf 'Draft: the judge passed, but %s blocking reviewer or Codex finding(s) remain past the one block each grader may make or come from a reviewer or Codex review with no parseable reply, and each is filed as an issue. Read them before marking it ready. The first is %s\n\n' \
         "$(printf '%s\n' "$blocking" | grep -c .)" "$(printf '%s\n' "$blocking" | head -1)"
+    elif [ -n "$draft" ] && jq -e '.unparseable == true' "$RUN/round-$ROUND.judge.json" > /dev/null 2>&1; then
+      printf 'Draft: judge output unparseable or inconsistent after 3 calls, so this round is not a pass and no worker round followed; the Backlog section files it as an issue. Read the Judge section before marking it ready.\n\n'
     elif [ -n "$draft" ]; then
       # An absent, empty, or invalid judge file counts as a fail (LOOP.md), so jq may print nothing.
       rows=$(jq -r '[(.rows // {}) | to_entries[] | select(.value == "fail") | .key] | join(", ") | if . == "" then "no row; a reviewer or Codex finding blocked" else . end' "$RUN/round-$ROUND.judge.json" 2> /dev/null)
@@ -1805,13 +1847,25 @@ cmd_next() { # [--dry-run|--install]
   # the way load_ticket's $(gh issue view ...) does, so the key matches the one cmd_run computes.
   # A ticket at pr-opened is assigned at launch, so it is not in the frontier; if a human unassigns
   # it, its slot is already counted above while its worktree exists.
-  local pick="" st_last
+  # A launchable body is linted first (#314): the label alone does not make an issue a ticket, and a run of
+  # a body with no done-checks block would burn a round. lint_body runs in a subshell on the body in hand
+  # (no second gh call), its stdout dropped; its first LINT line is reported the way a parked issue is
+  # (bash -n prints its own line about the deleted temp file first; the first line is the fallback),
+  # and the frontier goes on to the next candidate, so one bad issue does not stall the timer.
+  local pick="" st_last lint_err lint_line
   while read -r num b64; do
     [ -n "$num" ] || continue
     body=$(printf '%s' "$b64" | base64 -d)
     st_last=$(park_status "$num" "$body")
     case "$st_last" in
-      none|stopped-environment|stopped) [ -n "$pick" ] || pick="$num" ;;
+      none|stopped-environment|stopped)
+        if ! lint_err=$( { SRC="#$num"; BODY="$body"; ERRS=0; lint_body > /dev/null; } 2>&1 ); then
+          lint_line=$(grep -m1 "^LINT #$num: " <<<"$lint_err") || lint_line=${lint_err%%$'\n'*}
+          lint_err=${lint_line#"LINT #$num: "}
+          echo "lint failed #$num: $lint_err; edit the body or remove ready-for-agent" >&2
+        elif [ -z "$pick" ]; then
+          pick="$num"
+        fi ;;
       pr-opened) ;;
       *) echo "parked #$num: last run exited $st_last; edit the body or remove ready-for-agent" >&2 ;;
     esac
@@ -1897,7 +1951,7 @@ grader_first_fail() { # run dir -> the first grader item that failed in the last
 # pr-opened with zero grader-fail rounds and no other exit on the way; a hand fix after pr-opened
 # does not change it. From the run dir: status is pr-opened, the only EXIT line in factory.log is
 # pr-opened, every round-<k>.fixes for k>=1 is empty (a grader that fails or blocks queues fixes
-# there), and no Codex review was unparseable twice (it queues no fix, but that review never ran).
+# there), and no grader reply was unparseable in any round (that queues no fix, but the grader never ran).
 # `-` marks a run not yet at pr-opened.
 run_clean() { # run dir -> yes|no|-
   local d="$1" f
@@ -1908,7 +1962,10 @@ run_clean() { # run dir -> yes|no|-
     case "$f" in */round-0.fixes) continue ;; esac
     [ -s "$f" ] && { printf 'no'; return; }
   done
-  jq -se 'any(.[]; .unparseable == true)' "$d"/round-*.codex-review.json > /dev/null 2>&1 && { printf 'no'; return; }
+  for f in "$d"/round-*.judge.json "$d"/round-*.review.json "$d"/round-*.codex-review.json; do
+    [ -e "$f" ] || continue
+    jq -e '.unparseable == true' "$f" > /dev/null 2>&1 && { printf 'no'; return; }
+  done
   printf 'yes'
 }
 

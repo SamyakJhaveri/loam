@@ -127,7 +127,8 @@ class GraderVersionTests(unittest.TestCase):
         it. A real pull changes the checkout's copy; the stub edits the cached one, the same mismatch, so the
         test never writes to the real checkout."""
         calls = self.tmp / "tmux.calls"
-        line = f"7 {base64.b64encode(b'a ready ticket').decode()}"
+        body = (ROOT / "bin/tests/fixtures/clean-ticket.md").read_text().rstrip("\n")
+        line = f"7 {base64.b64encode(body.encode()).decode()}"
         pull = f'for f in "{stale_on_pull}"/*.md; do echo edit >> "$f"; done' if stale_on_pull else ":"
         proc = self.sourced(
             "LOAM_FACTORY_TOOLCHAIN=t LOAM_FACTORY_COPIER=c; "
