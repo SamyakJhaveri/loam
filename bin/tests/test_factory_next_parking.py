@@ -29,7 +29,7 @@ def sourced(script: str, env: dict[str, str] | None = None) -> subprocess.Comple
     """Run `script` in a bash that has sourced bin/factory from the repo root."""
     return subprocess.run(
         ["bash", "-c", f". bin/factory\n{script}"],
-        cwd=ROOT, env={**os.environ, "FACTORY_SOURCED": "1", **(env or {})},
+        cwd=ROOT, env={**os.environ, "FACTORY_SOURCED": "1", "FACTORY_ROOT": str(ROOT), **(env or {})},
         capture_output=True, text=True, check=False,
     )
 
@@ -115,6 +115,16 @@ class LintTests(ParkingTests):
         self.assertEqual(proc.stdout.strip(), "nothing to launch", proc.stderr)
         self.assertIn("lint failed #5:", proc.stderr)
         self.assertIn("lint failed #6:", proc.stderr)
+
+    def test_syntax_error_reports_the_lint_line_not_bash_s_temp_file(self) -> None:
+        # bash -n names the deleted temp file on its own first stderr line; the timer keeps the LINT line.
+        broken = CLEAN.replace('true && pass ok || fail ok "no"', "if then ( pass ok")
+        self.assertNotEqual(broken, CLEAN)
+        proc = self.next_dry_run((7, broken))
+        self.assertEqual(proc.returncode, 0, proc.stderr)
+        self.assertEqual(proc.stdout.strip(), "nothing to launch", proc.stderr)
+        self.assertIn("lint failed #7: the done-checks block plus lib.sh does not pass bash -n", proc.stderr)
+        self.assertNotIn("factory-lint", proc.stderr)
 
 
 if __name__ == "__main__":
