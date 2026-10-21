@@ -89,7 +89,7 @@ Usage limits are per account, so the supervisor first switches to the other stor
 It sleeps only when no other account exists or a switch already happened in the last five minutes; then it writes `waiting-limit` to `status`, sleeps until the reset time the reply names or twenty minutes when it names none, and repeats the same call.
 A reset past `MAX_HOURS` exits `stopped-environment`.
 A call with no result event (killed by `CALL_TIMEOUT_SEC`, or crashed) exits `stopped-environment` and counts no round.
-A killed Claude worker call left no cost to read but may have spent up to its `--max-budget-usd` ceiling, so its ledger row charges `ROUND_BUDGET_USD` (subtype `no-result` marks it as a charge) and the ticket and daily caps stay bounds (#319); a Codex worker call keeps `cost_usd` null.
+A killed or crashed Claude worker call left no cost to read but may have spent up to its `--max-budget-usd` ceiling, so its ledger row charges `ROUND_BUDGET_USD` (subtype `no-result` marks it as a charge) and the ticket and daily caps stay bounds (#319); a Codex worker call keeps `cost_usd` null.
 The stop message lists the commits made since the round began, or says `no commits`.
 
 ## Caps
