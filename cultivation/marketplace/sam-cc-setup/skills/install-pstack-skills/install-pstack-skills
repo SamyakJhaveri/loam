@@ -1,14 +1,15 @@
 #!/usr/bin/env bash
-# bin/install-pstack-skills - let agents invoke the pstack skills listed below.
+# install-pstack-skills - let agents invoke the pstack skills listed below.
 # pstack ships each skill with `disable-model-invocation: true`, and skillOverrides cannot change a
 # plugin skill, so this copies each skill below from the newest installed pstack to
 # ~/.claude/skills/<name>/ without that line, with its links into the plugin made absolute.
-# Run it on each host after every pstack update (docs/WORKERS.md, pstack); a re-run refreshes the
-# copies this script made from any project, refuses any other folder of the same name, and never
-# writes to the plugin cache. Exit 0 means every skill below is installed from that version.
+# The /sam-cc-setup:install-pstack-skills skill runs it; run it on each host after every pstack
+# update. A re-run refreshes the copies this script made, refuses any other folder of the same
+# name, and never writes to the plugin cache. Exit 0 means every skill below is installed from
+# that version.
 set -euo pipefail
 
-# When agents use these, and which pstack skills stay human-only: docs/WORKERS.md, pstack.
+# When agents use these, and which pstack skills stay human-only: the project's docs/WORKERS.md, pstack.
 SKILLS="blast-radius benchmark-checklist show-me-your-work maintain-formal-verification-skill
 interrogate how why tdd
 principle-attack-the-premise principle-boundary-discipline principle-build-the-lever
@@ -17,8 +18,8 @@ principle-guard-the-context-window principle-laziness-protocol principle-make-op
 principle-migrate-callers-then-delete-legacy-apis principle-minimize-reader-load
 principle-prove-it-works principle-separate-before-serializing-shared-state
 principle-sequence-verifiable-units principle-test-behavior-not-implementation"
-# "pstack <version> <source folder>", naming no project, so any project's copy of this script owns
-# the folder; a folder without it is not this script's.
+# "pstack <version> <source folder>", naming no project, so any copy of this script owns the
+# folder; a folder without it is not this script's.
 MARKER=.pstack-install
 
 CACHE="$HOME/.claude/plugins/cache/cursor-plugins/pstack"
@@ -35,11 +36,20 @@ fi
 ROOT="$CACHE/$VERSION"
 echo "pstack $VERSION at $ROOT"
 
+SKILLS_DIR="$HOME/.claude/skills"
+mkdir -p "$SKILLS_DIR"
+# One install at a time: two runs would swap the same folders under each other.
+LOCK="$SKILLS_DIR/.pstack-install.lock"
+mkdir "$LOCK" 2>/dev/null || {
+  echo "install-pstack-skills: $LOCK exists, another install is running (remove it if none is)"
+  exit 1
+}
+trap 'rmdir "$LOCK"' EXIT
+
 FAIL=0
-mkdir -p "$HOME/.claude/skills"
 for name in $SKILLS; do
   src="$ROOT/skills/$name"
-  dest="$HOME/.claude/skills/$name"
+  dest="$SKILLS_DIR/$name"
   if [ ! -f "$src/SKILL.md" ]; then
     echo "$name: FAILED, pstack $VERSION has no such skill"
     FAIL=1
@@ -55,7 +65,8 @@ for name in $SKILLS; do
     old="$(cut -d' ' -f2 "$dest/$MARKER")"
   fi
 
-  stage="$(mktemp -d "${TMPDIR:-/tmp}/pstack-skill.XXXXXX")"
+  # The stage sits beside its destination, so the final move is one rename on one filesystem.
+  stage="$(mktemp -d "$SKILLS_DIR/.pstack-stage.XXXXXX")"
   cp -R "$src/." "$stage/"
   # A link that leaves the skill's folder (../other-skill/SKILL.md, ../../docs/...) would resolve
   # under ~/.claude after the copy, so point it at the plugin. "../" counts up from each file's depth.
@@ -69,7 +80,8 @@ for name in $SKILLS; do
   done
   # Drop the line from the frontmatter only, and say where <pstack> is for the skills the text
   # names without a link (the Claude Code adapter's rule: <pstack>/skills/<name>/SKILL.md).
-  note="Copied from pstack $VERSION by \`bin/install-pstack-skills\`. Here \`<pstack>\` is \`$ROOT\`: read a pstack skill named below at \`<pstack>/skills/<name>/SKILL.md\`."
+  # Claude Code deletes an orphaned pstack version 14 days after it writes .orphaned_at there.
+  note="Copied from pstack $VERSION by \`/sam-cc-setup:install-pstack-skills\`. Here \`<pstack>\` is \`$ROOT\`: read a pstack skill named below at \`<pstack>/skills/<name>/SKILL.md\`. If \`<pstack>\` is missing or holds \`.orphaned_at\`, tell the user to re-run \`/sam-cc-setup:install-pstack-skills\`."
   awk -v note="$note" '
     NR == 1 && $0 == "---" { fm = 1; print; next }
     fm && $0 == "disable-model-invocation: true" { next }
@@ -78,15 +90,24 @@ for name in $SKILLS; do
   mv "$stage/SKILL.md.new" "$stage/SKILL.md"
   if grep -q '^disable-model-invocation:' "$stage/SKILL.md"; then
     echo "$name: FAILED, its SKILL.md still sets disable-model-invocation after the edit"
+    rm -r "$stage"
     FAIL=1
     continue
   fi
   printf 'pstack %s %s\n' "$VERSION" "$src" > "$stage/$MARKER"
   chmod 755 "$stage"
 
-  if [ -n "$old" ]; then rm -r "$dest"; fi
-  mv "$stage" "$dest"
+  # Swap: keep the old copy until the new one is in place, and put it back if the move fails.
+  if [ -n "$old" ]; then mv "$dest" "$stage.old"; fi
+  if ! mv "$stage" "$dest"; then
+    if [ -n "$old" ]; then mv "$stage.old" "$dest"; fi
+    rm -r "$stage"
+    echo "$name: FAILED, could not move the new copy into $dest; the old copy stays"
+    FAIL=1
+    continue
+  fi
   if [ -n "$old" ]; then
+    rm -r "$stage.old"
     echo "$name: refreshed, pstack $old to $VERSION"
   else
     echo "$name: installed from pstack $VERSION"
