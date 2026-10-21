@@ -194,6 +194,7 @@ It also checks the preconditions below.
 The manager is a Fable session that runs `status`, merges, and writes one learn line when the same first-failing grader appears in two consecutive runs.
 After F9, `bin/factory next` on a ten-minute runner timer launches the next frontier ticket after each merge; removing the `ready-for-agent` label parks a ticket, and `FACTORY_STOP` at the runs root pauses the timer; a logged-out runner makes `next` print `login expired` on stderr and exit 1 without launching.
 A ticket is parked only by a run of its current body, so editing the body relaunches it on the next tick.
+Before it picks a ticket, `next` runs the `lint` rules on each candidate's body; a candidate that fails is skipped with one stderr line (`lint failed #N: <first error>; edit the body or remove ready-for-agent`) and the next candidate is tried, so a labelled issue with no done-checks block never launches (#314).
 
 ## Stop
 

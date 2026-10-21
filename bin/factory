@@ -512,7 +512,12 @@ lint() {
     echo "no such file: $SRC" >&2
     return 1
   fi
+  lint_body
+}
 
+# The rules over BODY, each error on stderr as `LINT $SRC: ...`; returns 1 on any. lint resolves a file or
+# an issue into BODY first, and cmd_next calls this directly with the body the frontier query already holds.
+lint_body() {
   check_sections
   check_header
   check_no_skip
@@ -1805,13 +1810,25 @@ cmd_next() { # [--dry-run|--install]
   # the way load_ticket's $(gh issue view ...) does, so the key matches the one cmd_run computes.
   # A ticket at pr-opened is assigned at launch, so it is not in the frontier; if a human unassigns
   # it, its slot is already counted above while its worktree exists.
-  local pick="" st_last
+  # A launchable body is linted first (#314): the label alone does not make an issue a ticket, and a run of
+  # a body with no done-checks block would burn a round. lint_body runs in a subshell on the body in hand
+  # (no second gh call), its stdout dropped; its first LINT line is reported the way a parked issue is
+  # (bash -n prints its own line about the deleted temp file first; the first line is the fallback),
+  # and the frontier goes on to the next candidate, so one bad issue does not stall the timer.
+  local pick="" st_last lint_err lint_line
   while read -r num b64; do
     [ -n "$num" ] || continue
     body=$(printf '%s' "$b64" | base64 -d)
     st_last=$(park_status "$num" "$body")
     case "$st_last" in
-      none|stopped-environment|stopped) [ -n "$pick" ] || pick="$num" ;;
+      none|stopped-environment|stopped)
+        if ! lint_err=$( { SRC="#$num"; BODY="$body"; ERRS=0; lint_body > /dev/null; } 2>&1 ); then
+          lint_line=$(grep -m1 "^LINT #$num: " <<<"$lint_err") || lint_line=${lint_err%%$'\n'*}
+          lint_err=${lint_line#"LINT #$num: "}
+          echo "lint failed #$num: $lint_err; edit the body or remove ready-for-agent" >&2
+        elif [ -z "$pick" ]; then
+          pick="$num"
+        fi ;;
       pr-opened) ;;
       *) echo "parked #$num: last run exited $st_last; edit the body or remove ready-for-agent" >&2 ;;
     esac
