@@ -7,6 +7,8 @@
 #   calls; exit 0 in a repo, 2 outside one.
 
 set -uo pipefail
+# Read-only: git status must not refresh the index of this or any other worktree.
+export GIT_OPTIONAL_LOCKS=0
 
 git rev-parse --git-dir >/dev/null 2>&1 || { echo "red-flags: not a git repository" >&2; exit 2; }
 ROOT="$(git rev-parse --show-toplevel)"
@@ -19,6 +21,26 @@ git symbolic-ref -q HEAD >/dev/null || echo "FLAG: detached HEAD at $(git rev-pa
 [ -e "$(git rev-parse --git-path MERGE_HEAD)" ] && echo "FLAG: merge in progress"
 { [ -d "$(git rev-parse --git-path rebase-merge)" ] || [ -d "$(git rev-parse --git-path rebase-apply)" ]; } \
   && echo "FLAG: rebase in progress"
+
+# Work in only one copy: commits on a local branch, tag or stash that no
+# remote-tracking ref reaches, and uncommitted paths in the other worktrees (this
+# one is counted above). No fetch: remotes are as of the last fetch.
+STASHES="$(git stash list --format=%H 2>/dev/null)"
+# shellcheck disable=SC2086 # object names, one word each
+ONLY="$(git rev-list --count --branches --tags $STASHES --not --remotes 2>/dev/null)"
+if [ "${ONLY:-0}" -gt 0 ]; then
+  BY="$({ git for-each-ref --format='%(refname)' refs/heads refs/tags; git stash list --format=%gd; } \
+    | while read -r ref; do
+        n="$(git rev-list --count "$ref" --not --remotes 2>/dev/null)"
+        [ "${n:-0}" -gt 0 ] && printf ', %s %s' "${ref#refs/}" "$n"
+      done)"
+  echo "FLAG: $ONLY commits exist only in this clone, on no remote-tracking ref; by local ref: ${BY#, }"
+fi
+git worktree list --porcelain | sed -n 's/^worktree //p' | while IFS= read -r wt; do
+  [ "$(git -C "$wt" rev-parse --show-toplevel 2>/dev/null)" = "$ROOT" ] && continue
+  n="$(git -C "$wt" status --porcelain 2>/dev/null | wc -l | tr -d ' ')"
+  [ "$n" -gt 0 ] && echo "FLAG: uncommitted changes in $n paths in worktree $wt"
+done
 
 # Active tmux sessions may be running long jobs.
 SESSIONS="$(tmux list-sessions -F '#S' 2>/dev/null | tr '\n' ' ')"

@@ -28832,7 +28832,7 @@
       "kind": "method",
       "sectionKeys": [],
       "delivery": "present-unqualified",
-      "expectedSha256": "2c9d72a2b936eb23e44581833b8b25d6c18bdf3b99eefc18ee56da8690cf62bd"
+      "expectedSha256": "ef26c06c49207be150b25efbf21993093bf991d9a74d42d712f1a40021448652"
     },
     {
       "id": "method:fable-prompting",

@@ -21,8 +21,9 @@ An optional numeric argument sets how many recent commits to show (default 10).
 
 ## Red flags - put these at the TOP of the briefing
 
-- Every `FLAG:` line from `red-flags.sh`: uncommitted changes, a detached HEAD, a merge or rebase in progress, active tmux sessions, a stale handoff or `STATE.md`, and Loam pin drift.
+- Every `FLAG:` line from `red-flags.sh`: uncommitted changes, a detached HEAD, a merge or rebase in progress, work in only one copy (commits no remote-tracking ref reaches, uncommitted changes in another worktree), active tmux sessions, a stale handoff or `STATE.md`, and Loam pin drift.
   The script matches words, not meaning: drop a status-word flag whose quoted line does not claim that state (for example "not pushed").
+  The one-copy check does not fetch and compares commits, not content: a squash-merged branch or a pushed tag off every remote branch still counts.
 - Memory files untouched for 14+ days.
 - In-progress tasks from a previous session.
 
