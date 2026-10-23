@@ -149,13 +149,28 @@ def git_summary(files, ins, dels):
     return out
 
 
-def check_fail(lines, spans):
-    """The last `PASS <name>` line of the Checks output becomes `FAIL <name>: regression`."""
+def last_pass(lines, spans):
+    """Index of the last `PASS <name>` line of the Checks output, or None."""
     span = fence(spans, "## Checks output")
     hits = [i for i in range(span[0] + 1, span[1]) if re.fullmatch(r"PASS \S+", lines[i])] if span else []
-    if not hits:
+    return hits[-1] if hits else None
+
+
+def check_fail(lines, spans):
+    """The last `PASS <name>` line of the Checks output becomes `FAIL <name>: regression`."""
+    i = last_pass(lines, spans)
+    if i is None:
         return None
-    lines[hits[-1]] = f"FAIL {lines[hits[-1]][5:]}: regression"
+    lines[i] = f"FAIL {lines[i][5:]}: regression"
+    return lines, None
+
+
+def skip(lines, spans):
+    """The last `PASS <name>` line of the Checks output becomes `SKIPPED: <name> (not run)`, bin/check's form."""
+    i = last_pass(lines, spans)
+    if i is None:
+        return None
+    lines[i] = f"SKIPPED: {lines[i][5:]} (not run)"
     return lines, None
 
 
@@ -199,6 +214,7 @@ def stale_ref(lines, spans):
 CLASSES = [
     ("scope", scope, ("judge",), ["correct"]),
     ("check-fail", check_fail, ("judge",), ["verified"]),
+    ("skip", skip, ("judge",), ["verified"]),
     ("false-claim", false_claim, ("judge",), ["honest"]),
     ("logic-bug", logic_bug, ("judge", "reviewer"), ["correct"]),
     ("stale-ref", stale_ref, ("reviewer", "lean-critic"), None),

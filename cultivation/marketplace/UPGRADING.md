@@ -3,6 +3,43 @@
 This file records why a promoted plugin change traveled. It is also the upgrade
 entry point for projects that consume the Loam marketplace.
 
+## sam-cc-setup v0.9.13 grader prompt edits
+
+judge.md and reviewer.md cite only the sections build_evidence sends (Rows measured, decisions.md), judge.md counts a `SKIP` or `SKIPPED` line in the Checks output as unproven, and both drop "of Loam v3", since `-C` grades other repositories.
+The judge and reviewer replay before and after (docs/factory/LOOP.md, Grader change protocol) ran on 2026-10-23 with one repeat, Opus 5.5 at high.
+Before is main's graders at `f8d15428`; after is `audit/grader-prompts` at `0ea85105`.
+Both sides graded the same set, `mutate.py evals/clean` with the new `skip` class: 182 judge cases and 81 reviewer cases, every reply parseable.
+
+| Grader | Metric | Before | After |
+|---|---|---|---|
+| judge | recall, skip | 27/32 | 32/32 |
+| judge | recall, scope + check-fail + false-claim + logic-bug | 118/118 | 118/118 |
+| judge | false alarms on clean copies | 5/32 | 4/32 |
+| reviewer | recall, logic-bug | 22/22 | 22/22 |
+| reviewer | recall, stale-ref | 17/27 | 18/27 |
+| reviewer | false alarms on clean copies | 19/32 | 18/32 |
+| both | cost, USD | 55.54 | 58.15 |
+
+The five skip misses before each returned verdict `fail` on the honest row alone, so every skip mutant blocked its round on both sides; the edit moves the skip to the verified row, where the label puts it.
+With one repeat, a one-case move in false alarms or stale-ref recall is within run-to-run noise.
+It is not the v0.9.6 replay below, which compares `d80474af^1` with `d80474af`, a change main already has.
+To repeat it, before is main's graders at the merge base and after is the branch head; take both snapshots from an up-to-date checkout of `audit/grader-prompts`:
+
+```sh
+base=$(git merge-base origin/main audit/grader-prompts)
+git diff --quiet "$base" origin/main -- cultivation/marketplace/sam-cc-setup/agents || echo "STOP: main changed a grader; merge origin/main into audit/grader-prompts first"
+mkdir -p ~/replay-239/before-agents ~/replay-239/after-agents
+for g in judge reviewer; do
+  git show "$base":cultivation/marketplace/sam-cc-setup/agents/$g.md > ~/replay-239/before-agents/$g.md
+  git show audit/grader-prompts:cultivation/marketplace/sam-cc-setup/agents/$g.md > ~/replay-239/after-agents/$g.md
+done
+diff -rq ~/replay-239/before-agents ~/replay-239/after-agents
+```
+
+`diff -rq` must name both judge.md and reviewer.md as differing; then pass each folder as `--graders-dir` and keep every `EVAL_OUT` under `~/replay-239/`.
+Replay the mutant set above and score each side with `eval_score.py`, not the hand cases under `evals/judge` and `evals/reviewer`, which cannot judge this change.
+Upgrade step: `claude plugin update sam-cc-setup`.
+
 ## sam-cc-setup v0.9.12 install-pstack-skills joins the plugin
 
 `/sam-cc-setup:install-pstack-skills` copies 23 pstack skills (blast-radius, interrogate, how, why, tdd, the principle skills and more) into `~/.claude/skills/` without `disable-model-invocation`, so agents and workers can invoke them; a re-run after a pstack update refreshes the copies.
