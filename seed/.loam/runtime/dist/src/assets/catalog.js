@@ -75,13 +75,15 @@ export function containedPath(root, rel) {
 // start. `pattern` values (schema regex literals) are the scanner's own syntax and are
 // not treated as user data.
 // ---------------------------------------------------------------------------
-// Tilde home anywhere in prose: bare ~/ or named-user ~operator/, no leading boundary (#144).
-// URL tokens are removed before this check only, so a tilde in a URL path (https://host/a~b/docs) is not a hit.
-const TILDE_PATH = /~([A-Za-z_][A-Za-z0-9_.-]*)?\/[^\s]/;
-const URL_TOKEN = /[a-z][a-z0-9+.-]*:\/\/\S*/gi;
-const PERSONAL_PATH = [
+// Home paths. URL tokens are removed before these checks, so a URL path (https://host/a~b/docs,
+// https://host/home/x) is not a hit. A file: URL names a local path, so it is never removed.
+const HOME_PATH = [
+    /~([A-Za-z_][A-Za-z0-9_.-]*)?\/[^\s]/, // tilde home anywhere in prose: ~/ or ~operator/, no leading boundary (#144)
     /\/Users\/[^/\s]/i, // macOS home (case-insensitive: /users too)
     /\/home\/[^/\s]/i, // linux home (case-insensitive)
+];
+const URL_TOKEN = /\b(?!file:)[a-z][a-z0-9+.-]*:\/\/\S*/gi;
+const PERSONAL_PATH = [
     /\/private\/tmp(\/|\b)/, // macOS operator temp (symlink form)
     /\/private\/var(\/|\b)/, // macOS resolved private/var temp root
     /\/var\/folders\//, // macOS mkdtemp
@@ -90,7 +92,8 @@ const PERSONAL_PATH = [
     /(^|[^A-Za-z0-9_])[A-Za-z]:\\/, // windows drive path
 ];
 function isPersonalPath(value) {
-    return TILDE_PATH.test(value.replace(URL_TOKEN, ' ')) || PERSONAL_PATH.some(re => re.test(value));
+    const withoutUrls = value.replace(URL_TOKEN, ' ');
+    return HOME_PATH.some(re => re.test(withoutUrls)) || PERSONAL_PATH.some(re => re.test(value));
 }
 export function scanPersonalPaths(value, path = '$') {
     const hits = [];
