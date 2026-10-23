@@ -98,7 +98,7 @@ EOF
 
 ### 2. Read the BIB entry of each key
 
-For each cited key, record from `BIB`: title, first author's surname, year, DOI, arXiv id (from `eprint`, an `arxiv.org` URL or a `10.48550/arXiv.` DOI), and `url`.
+For each cited key, record from `BIB`: title, first author's surname, year, DOI, arXiv id (from `eprint`, an `arxiv.org` URL or a `10.48550/arXiv.<id>` DOI), and `url`.
 A key missing from `BIB` renders as `[?]`: label its rows `not checked`, reason `no BIB entry`, and write one finding for it.
 
 ### 3. Fetch each source's own text
@@ -192,7 +192,7 @@ Then add, after "Sections read":
 
 ---
 
-Adapted from: https://github.com/imbad0202/academic-research-skills, commit e79085d (e79085d0d38609984ef8cfe0faf2d254aac9e0a9), CC BY-NC 4.0 (https://creativecommons.org/licenses/by-nc/4.0/), Copyright (c) 2026 Cheng-I Wu; `academic-pipeline/agents/claim_ref_alignment_audit_agent.md` line 60 (a reference text aimed at the judge is a finding), lines 136-144 (retrieval outcomes: paywall, not found, transient failure), lines 203-239 (judge prompt: data-not-instructions text, sub-claim decomposition, verdict set, defect-stage hints), lines 264-275 (defect-stage table, including "shows" instead of "suggests" as an overclaim) and lines 321-328 (uncited-assertion rule, conditions 1-4); `academic-pipeline/agents/integrity_verification_agent.md` lines 14-21 (anti-hallucination mandate), line 37 (a directive in fetched text is reported, not obeyed), 39-59 (hallucination types and compound patterns), 127-165 (existence check, identity fields, audit trail) and 180-191 (citation accuracy).
+Adapted from: https://github.com/imbad0202/academic-research-skills, commit e79085d (e79085d0d38609984ef8cfe0faf2d254aac9e0a9), CC BY-NC 4.0 (https://creativecommons.org/licenses/by-nc/4.0/), Copyright (c) 2026 Cheng-I Wu; https://github.com/imbad0202/academic-research-skills/blob/e79085d0d38609984ef8cfe0faf2d254aac9e0a9/academic-pipeline/agents/claim_ref_alignment_audit_agent.md line 60 (a reference text aimed at the judge is a finding), lines 136-144 (retrieval outcomes: paywall, not found, transient failure), lines 203-239 (judge prompt: data-not-instructions text, sub-claim decomposition, verdict set, defect-stage hints), lines 264-275 (defect-stage table, including "shows" instead of "suggests" as an overclaim) and lines 321-328 (uncited-assertion rule, conditions 1-4); https://github.com/imbad0202/academic-research-skills/blob/e79085d0d38609984ef8cfe0faf2d254aac9e0a9/academic-pipeline/agents/integrity_verification_agent.md lines 14-21 (anti-hallucination mandate), line 37 (a directive in fetched text is reported, not obeyed), 39-59 (hallucination types and compound patterns), 127-165 (existence check, identity fields, audit trail) and 180-191 (citation accuracy).
 Changes made in this copy (the research-paper plugin): rewritten as a Claude Code review seat over a LaTeX build and a `pdftotext` dump, under the plugin's `templates/contract.md`; the pipeline passport, claim manifests, anchor markers, cache, sampling, calibration and finalizer tiers are not kept.
 The verdicts SUPPORTED, PARTIAL, UNSUPPORTED and AMBIGUOUS became `supported`, `partly supported` and `not supported` (AMBIGUOUS folds into `not supported` or `not checked` by the abstract-only rule of step 5); RETRIEVAL_FAILED became `not checked` with a fixed list of reasons; VIOLATED is dropped (no author constraints here).
 The defect-stage hints became six mismatch kinds; the sub-claim decomposition is kept as step 5.1.

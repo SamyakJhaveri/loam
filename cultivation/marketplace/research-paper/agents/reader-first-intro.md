@@ -57,4 +57,4 @@ When a later language-only pass edits these sections, it changes only the smalle
 
 ---
 
-Adapted from: https://github.com/ysyecust/write-reader-first-papers, `skills/write-reader-first-papers/SKILL.md` (lines 20-29, 47-72, 106-120, 122-124) and `references/style-rules.md` (section 9, lines 149-179; section "Respect source style and edit scope", lines 3-7), commit b184250, MIT License; the polish guard from SKILL.md lines 41, 90, 114-115.
+Adapted from: https://github.com/ysyecust/write-reader-first-papers, https://github.com/ysyecust/write-reader-first-papers/blob/b184250c33e191306d207d7012830c04f83817c1/skills/write-reader-first-papers/SKILL.md (lines 20-29, 47-72, 106-120, 122-124) and https://github.com/ysyecust/write-reader-first-papers/blob/b184250c33e191306d207d7012830c04f83817c1/skills/write-reader-first-papers/references/style-rules.md (section 9, lines 149-179; section "Respect source style and edit scope", lines 3-7), commit b184250, MIT License; the polish guard from SKILL.md lines 41, 90, 114-115.
