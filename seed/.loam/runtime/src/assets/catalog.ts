@@ -124,8 +124,11 @@ export function containedPath(root: string, rel: string): string {
 // start. `pattern` values (schema regex literals) are the scanner's own syntax and are
 // not treated as user data.
 // ---------------------------------------------------------------------------
+// Tilde home anywhere in prose: bare ~/ or named-user ~operator/, no leading boundary (#144).
+// URL tokens are removed before this check only, so a tilde in a URL path (https://host/a~b/docs) is not a hit.
+const TILDE_PATH = /~([A-Za-z_][A-Za-z0-9_.-]*)?\/[^\s]/;
+const URL_TOKEN = /[a-z][a-z0-9+.-]*:\/\/\S*/gi;
 const PERSONAL_PATH = [
-  /~([A-Za-z_][A-Za-z0-9_.-]*)?\/[^\s]/, // tilde home anywhere in prose: bare ~/ or named-user ~operator/, no leading boundary (#144)
   /\/Users\/[^/\s]/i,                    // macOS home (case-insensitive: /users too)
   /\/home\/[^/\s]/i,                     // linux home (case-insensitive)
   /\/private\/tmp(\/|\b)/,               // macOS operator temp (symlink form)
@@ -135,7 +138,9 @@ const PERSONAL_PATH = [
   /(^|[^A-Za-z0-9_])\/tmp\/[^\s]/,       // unix temp
   /(^|[^A-Za-z0-9_])[A-Za-z]:\\/,        // windows drive path
 ];
-function isPersonalPath(value: string): boolean { return PERSONAL_PATH.some(re => re.test(value)); }
+function isPersonalPath(value: string): boolean {
+  return TILDE_PATH.test(value.replace(URL_TOKEN, ' ')) || PERSONAL_PATH.some(re => re.test(value));
+}
 
 export function scanPersonalPaths(value: unknown, path = '$'): PathHit[] {
   const hits: PathHit[] = [];
