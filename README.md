@@ -22,15 +22,16 @@ Loam fixes both:
 
 - **One shared prose home.** Codex reads `AGENTS.md` directly. Claude Code imports it from `CLAUDE.md` and adds only Claude-specific guidance.
 - **Tag-based updates.** `copier update` pulls released template changes into an existing project. Reusable optional assets move back into the plugin marketplace by a reviewed manual promotion.
-- **Native policy, no text parsing.** Claude Code deny rules and `.codex/rules/loam.rules` block the destructive command families in both harnesses, and a repository ruleset guards the default branch. Two SessionStart-class hooks remain, so a tool call pays no hook latency.
+- **Native policy, no text parsing.** Claude Code deny rules and `.codex/rules/loam.rules` block the destructive command families in both harnesses, and a repository ruleset guards the default branch. Hooks run only on lifecycle events, none on a tool matcher, so a tool call pays no hook latency.
 - **One check.** `bin/check` runs lint, shell syntax, tests, plugin validation, and a render smoke. The agent and CI run the same script.
 
 ## What you get
 
 - `AGENTS.md` and `CLAUDE.md` with fill-in project guidance.
-- `.claude/` settings, deny rules, and two SessionStart-class hooks.
+- `.claude/` settings, deny rules, and lifecycle hooks.
 - A shared `/catchup` skill under `.agents/skills/`.
 - A shared `/fable-prompting` skill under `.agents/skills/`: which Fable 5.1 guide sections a prompt can act on.
+- A shared `/hypothesis-tree` skill under `.agents/skills/`: a persistent hypothesis tree for an investigation that spans sessions.
 - `.codex/` configuration and execution rules.
 - `bin/check` and a CI workflow that runs it.
 - `docs/HARNESS.md` and `docs/WORKERS.md`, read on demand.
