@@ -78,6 +78,19 @@ test('catalog.schema-and-payload', () => {
     const refSchema = { $defs: { id: { type: 'string' } }, type: 'object', additionalProperties: false, properties: { x: { $ref: '#/$defs/id' } } };
     ok(refSchema, { x: 'y' });
     bad(refSchema, { x: 1 });
+    // A definition name is a dictionary key, not a schema keyword at that position (D3 distinguishes
+    // property/definition names from keywords). A $def named after a keyword (`type`, `items`,
+    // `description`) with a matching local $ref resolves, and its value still validates.
+    for (const kw of ['type', 'items', 'description']) {
+        const s = { $defs: { [kw]: { type: 'string' } }, type: 'object', additionalProperties: false, properties: { x: { $ref: `#/$defs/${kw}` } } };
+        assert.doesNotThrow(() => assertSchemaDocument(s), `$def named ${kw} must be accepted`);
+        ok(s, { x: 'v' });
+        bad(s, { x: 1 });
+    }
+    // The keyword-named definition's value is still a schema node: an unknown keyword inside it is
+    // rejected, and a $ref to an undeclared keyword-like name stays an unresolved reference.
+    assert.throws(() => assertSchemaDocument({ $defs: { type: { mystery: 1 } } }), /unknown keyword/);
+    assert.throws(() => assertSchemaDocument({ type: 'object', additionalProperties: false, properties: { x: { $ref: '#/$defs/items' } } }), /unresolved reference/);
     // unknown keyword, missing reference, non-local reference, cyclic reference are schema-document errors
     assert.throws(() => assertSchemaDocument({ type: 'object', mystery: 1 }));
     assert.throws(() => assertSchemaDocument({ type: 'object', properties: { a: { $ref: '#/$defs/nope' } } }));
