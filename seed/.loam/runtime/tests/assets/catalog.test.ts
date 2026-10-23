@@ -283,15 +283,28 @@ test('catalog.conservation-rejections', () => {
   expectRule(() => { const c = clone(catalog); (entryOf(c, 'baseline:validate') as unknown as Record<string, unknown>)[adjBare] = true; validateCatalog(c); }, 'privacy.personal-path');
   // The bare `~/` form is also caught standing alone at the start of a string.
   assert.ok(scanPersonalPaths({ n: '~/secret' }).length > 0, 'leading bare tilde still caught');
-  // A tilde inside a URL path is not a home path: URL tokens are removed before the tilde check,
-  // in plain prose, in a markdown link and in an object key. A home path beside a URL still hits.
-  const urls = ['https://example.org/a~b/docs', 'https://host/path/foo~bar/baz', '[x](https://example.org/a~b/docs)'];
+  // A tilde, /home or /Users segment inside a URL path is not a home path: URL tokens are removed
+  // before the home checks, in plain prose, in a markdown link and in an object key. A home path
+  // beside a URL still hits.
+  const urls = ['https://example.org/a~b/docs', 'https://host/path/foo~bar/baz', '[x](https://example.org/a~b/docs)',
+    ['https://host', '/home/', 'x'].join(''), ['https://example.org', '/Users/', 'guide'].join(''), ['[g](https://example.org', '/Users/', 'guide)'].join('')];
   for (const url of urls) {
-    assert.equal(scanPersonalPaths({ notes: `see ${url} for details` }).length, 0, `URL tilde in prose: ${url}`);
-    assert.equal(scanPersonalPaths({ [url]: true }).length, 0, `URL tilde in object key: ${url}`);
+    assert.equal(scanPersonalPaths({ notes: `see ${url} for details` }).length, 0, `URL path in prose: ${url}`);
+    assert.equal(scanPersonalPaths({ [url]: true }).length, 0, `URL path in object key: ${url}`);
   }
   assert.doesNotThrow(() => { const c = clone(catalog); entryOf(c, 'baseline:validate').notes = `docs at ${urls[0]}`; validateCatalog(c); });
+  assert.doesNotThrow(() => { const c = clone(catalog); entryOf(c, 'baseline:validate').notes = `guide at ${urls[4]}`; validateCatalog(c); });
   assert.ok(scanPersonalPaths({ notes: `${urls[0]} and ${adjBare}` }).length > 0, 'home path beside a URL still caught');
+  // Real /home and /Users paths in prose still hit, alone, in an object key and beside a URL. A file:
+  // URL names a local path, so the home path inside it still hits.
+  const realHome = ['/home/', 'alice', '/x'].join('');
+  const realUsers = ['/Users/', 'bob', '/notes'].join('');
+  for (const form of [realHome, realUsers, `file://${realHome}`, `file://${realUsers}`]) {
+    assert.ok(scanPersonalPaths({ notes: `see ${form} here` }).length > 0, `real home path: ${form}`);
+    assert.ok(scanPersonalPaths({ [form]: true }).length > 0, `real home path object key: ${form}`);
+    assert.ok(scanPersonalPaths({ notes: `${urls[3]} and ${form}` }).length > 0, `real home path beside a URL: ${form}`);
+  }
+  expectRule(() => { const c = clone(catalog); entryOf(c, 'baseline:validate').notes = `see ${urls[4]} and ${realHome}`; validateCatalog(c); }, 'privacy.personal-path');
 
   // Finding 7 (round 2): the /Users and /home patterns are case-insensitive, so a lowercase /users
   // home path in a note is caught end-to-end; and the `pattern`-key exemption is confined to the
