@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # bin/runner [-C <dir>] <cmd>   runs <cmd> on the runner from <dir> there, ~/Desktop/loam by default.
-#   Quote a tilde (-C '~/Desktop/parbench_ipdps') so the runner's shell expands it, not this one (F8).
+#   Quote a tilde (-C '~/Desktop/<project>') so the runner's shell expands it, not this one (F8).
 # bin/runner sync    mirrors the gitignored factory tree to the runner (#36).
 set -euo pipefail
 HOST="${LOOP_HOST:-jhaveris}"

@@ -248,7 +248,7 @@ A token on a `- ` line is an entry when its first path segment is tracked in the
 The list cannot say append-only or add-only: a ticket that must append to a listed file or add a file under a listed directory names that path on its `Except:` line.
 
 A target needs a GitHub `origin` whose default branch is `main` (runs branch from `origin/main`, and PRs target `main`), an executable `bin/check`, `docs/factory/STANDING.md` committed on `main`, the `ready-for-agent` and `needs-triage` labels, a clone on the runner beside Loam's, and whatever its `bin/check` needs there.
-Setup, once per project (here `SamyakJhaveri/parbench_ipdps`): commit its `docs/factory/STANDING.md` to `main`, shaped like this, then run the commands below from the Mac.
+Setup, once per project `<owner>/<project>`: commit its `docs/factory/STANDING.md` to `main`, shaped like this, then run the commands below from the Mac.
 
 ```markdown
 ## Standing do-not-touch list
@@ -258,24 +258,24 @@ Setup, once per project (here `SamyakJhaveri/parbench_ipdps`): commit its `docs/
 ```
 
 ```sh
-bin/runner 'gh label create ready-for-agent -R SamyakJhaveri/parbench_ipdps'
-bin/runner 'gh label create needs-triage -R SamyakJhaveri/parbench_ipdps'
-bin/runner 'gh repo clone SamyakJhaveri/parbench_ipdps ~/Desktop/parbench_ipdps'
-bin/runner 'bin/factory -C ~/Desktop/parbench_ipdps status'
+bin/runner 'gh label create ready-for-agent -R <owner>/<project>'
+bin/runner 'gh label create needs-triage -R <owner>/<project>'
+bin/runner 'gh repo clone <owner>/<project> ~/Desktop/<project>'
+bin/runner 'bin/factory -C ~/Desktop/<project> status'
 ```
 
 Then per ticket, or once for the ten-minute timer:
 
 ```sh
-bin/runner 'bin/factory -C ~/Desktop/parbench_ipdps lint 12'
-bin/runner 'tmux new -d -s SamyakJhaveri__parbench_ipdps-12 "bin/factory -C ~/Desktop/parbench_ipdps run 12"'
-bin/runner 'bin/factory -C ~/Desktop/parbench_ipdps stop 12'
-bin/runner 'bin/factory -C ~/Desktop/parbench_ipdps next --install'
-bin/runner 'touch ~/.local/state/loam-factory/runs/SamyakJhaveri__parbench_ipdps/FACTORY_STOP'
+bin/runner 'bin/factory -C ~/Desktop/<project> lint 12'
+bin/runner 'tmux new -d -s <owner>__<project>-12 "bin/factory -C ~/Desktop/<project> run 12"'
+bin/runner 'bin/factory -C ~/Desktop/<project> stop 12'
+bin/runner 'bin/factory -C ~/Desktop/<project> next --install'
+bin/runner 'touch ~/.local/state/loam-factory/runs/<owner>__<project>/FACTORY_STOP'
 ```
 
 `next --install` adds one cron line per target beside Loam's, `cd ~/Desktop/loam && bin/factory -C <dir> next`; a reinstall replaces only that target's line.
-After a merge, remove the ticket worktree (`git -C ~/Desktop/parbench_ipdps worktree remove ~/Desktop/parbench_ipdps-12`) so `next` frees the slot, as for Loam.
+After a merge, remove the ticket worktree (`git -C ~/Desktop/<project> worktree remove ~/Desktop/<project>-12`) so `next` frees the slot, as for Loam.
 A project may carry a `bin/factory` that forwards to Loam's with itself as the target; it is not in `seed/` yet:
 
 ```sh

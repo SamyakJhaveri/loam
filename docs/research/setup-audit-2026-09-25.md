@@ -9,12 +9,12 @@ Built-in system prompt and built-in tools are excluded because they cannot be co
 
 - Measured baseline: the current Loam lead session transcript (`~/.claude/projects/-Users-samyakjhaveri-Desktop-loam/b56e5520-...jsonl`), which records the exact injected blocks: `skill_listing` (18,068 chars, 53 skills), `agent_listing_delta` (7,016 chars, 21 agents), `deferred_tools_delta` (78 names), `mcp_instructions_delta` (4 blocks, 6,469 chars), `instructions` (CLAUDE.md files + MEMORY.md), SessionStart and UserPromptSubmit hook output.
 - Usage: every `*.jsonl` under `~/.claude/projects/` (including subagent transcripts) modified in the last 30 days, records filtered to timestamp >= 2026-08-26. Counted `tool_use` names `mcp__<server>__*`, `Skill` inputs, `Agent` `subagent_type`, `<command-name>` slash commands, and hook attachments. Script: `scratchpad/usage.py`, output `scratchpad/usage.txt`.
-- Sessions in window: loam 147, /private/tmp worktrees 71, distbench (+ E0x clones) ~31, parbench_ipdps 1 (today, no tool calls yet), other ~20.
+- Sessions in window: loam 147, /private/tmp worktrees 71, distbench (+ E0x clones) ~31, `<project>` 1 (today, no tool calls yet), other ~20.
 - Caveat: `~/.claude/settings.json` was edited today at 13:19, after the lead session started. That edit enabled context7, playwright, github, playground, and code-review plugins and disabled `cowork-plugin-management@synced` (diff vs `settings.json.bak-2026-09-25`). No session has loaded that config yet, so those rows are estimates.
 
 ## Per-item table
 
-Usage columns: L = loam, P = parbench_ipdps, O = other projects. Numbers are 30-day counts.
+Usage columns: L = loam, P = a second project, O = other projects. Numbers are 30-day counts.
 
 | Name | Type | Scope | Always-on tokens | Uses (30 d) | Verdict | Exact change | Invoke on demand |
 |---|---|---|---|---|---|---|---|
@@ -23,13 +23,13 @@ Usage columns: L = loam, P = parbench_ipdps, O = other projects. Numbers are 30-
 | write-rewrite-guard.sh | PreToolUse(Write) hook | user | 0 (output only when it blocks) | fires on each Write | keep | none | n/a |
 | basic-memory session-start | SessionStart hook | user | 189 per session | 22 firings last week (L); 0 Basic Memory tool calls; output says "Basic Memory isn't set up" and tells Claude to search a graph that has no MCP server configured | remove (pure waste, misleading) | `~/.claude/settings.json` delete `hooks.SessionStart` block `basic-memory hook session-start --harness claude` | `basic-memory` CLI by hand |
 | basic-memory pre-compact | PreCompact hook | user | 0 (auto-compaction is off) | ~0 | remove | delete `hooks.PreCompact` block (120 s timeout) | n/a |
-| mem-recall.sh | SessionStart hook | project (loam, parbench_ipdps) | ~300 (774-2,570 chars, avg 1,200) | 22 firings last week (L) | keep (Loam memory v2 product) | none | n/a |
+| mem-recall.sh | SessionStart hook | project (loam, `<project>`) | ~300 (774-2,570 chars, avg 1,200) | 22 firings last week (L) | keep (Loam memory v2 product) | none | n/a |
 | fable-session-brief.sh | SessionStart + PostModelSwitch hook | project | 213 only when model is Fable; 0 on Opus | 11 firings last week (L) | keep | none | n/a |
 | post-compact-reinject.sh, mem-capture.sh | SessionStart(compact), Stop, SessionEnd, PreCompact | project | 0 | background | keep | none | n/a |
 | codex plugin hooks | SessionStart/SessionEnd/Stop | plugin | 0 observed | stop-review-gate 2 firings last week | keep | none | n/a |
 | ~/.claude/CLAUDE.md | instructions | user | 1,262 | every session | keep | none | n/a |
 | loam CLAUDE.md + AGENTS.md | instructions | project | 1,180 | every loam session | keep | none | n/a |
-| parbench_ipdps CLAUDE.md + AGENTS.md | instructions | project | 679 | - | keep | none | n/a |
+| `<project>` CLAUDE.md + AGENTS.md | instructions | project | 679 | - | keep | none | n/a |
 | loam MEMORY.md (auto memory) | instructions | user/project | 3,170 (12,678 chars, 76 lines) - largest single item | every loam session | trim | move DONE/CLOSED "Active Initiatives" entries to `memory/ARCHIVE.md`; est. -1,200 | read ARCHIVE.md on demand |
 | claude-in-chrome | built-in MCP + skill | user (`claudeInChromeDefaultEnabled: true` in ~/.claude.json) | ~600 (22 names 206 + instructions 256 + skill 137) | L 103, O 18 | keep always-on (heavily used) | optional: `/chrome` -> turn off "Enabled by default" | `claude --chrome` |
 | claude.ai Exa | connector | claude.ai account | 24 (3 names, no instructions) | L 54, O 4 | keep | none | n/a |
@@ -38,7 +38,7 @@ Usage columns: L = loam, P = parbench_ipdps, O = other projects. Numbers are 30-
 | claude.ai HyperFrames by HeyGen | connector | claude.ai account | 654 (10 names + 2,096-char instructions, cut at 2,048) | 0 everywhere; its own instructions say compose/render are disabled in CLI clients | remove (pure waste) | disconnect on claude.ai (Settings > Connectors), or `/mcp` toggle off per project | claude.ai web |
 | claude.ai Mobbin | connector | claude.ai account | 28 | L 0, O 1 | disable per project | `/mcp` toggle off | `/mcp` toggle on |
 | claude.ai Whimsical | connector | claude.ai account | 22 | 0; status "Needs authentication" | remove | disconnect on claude.ai or `/mcp` toggle off | - |
-| shadcn | MCP (stdio, npx) | user (`~/.claude.json` mcpServers) | 67 + an npx process each session | 0 (already disabled in parbench_sam) | make project-scoped | `claude mcp remove shadcn -s user`; in a frontend repo `claude mcp add shadcn -s project -- npx shadcn@latest mcp` | per-project `.mcp.json` |
+| shadcn | MCP (stdio, npx) | user (`~/.claude.json` mcpServers) | 67 + an npx process each session | 0 (already disabled in another project) | make project-scoped | `claude mcp remove shadcn -s user`; in a frontend repo `claude mcp add shadcn -s project -- npx shadcn@latest mcp` | per-project `.mcp.json` |
 | github@claude-plugins-official | plugin (HTTP MCP) | user | est. ~450 (tool names; count NOT VERIFIED) | 0 (owner uses `gh`) | remove | `claude plugin disable github@claude-plugins-official --scope user` | `gh` CLI |
 | playwright@claude-plugins-official | plugin (npx MCP) | user | est. ~250 (~22 names) | plugin server 0; older `playwright` server L 6, O 3 | make on-demand | `claude plugin disable playwright@claude-plugins-official --scope user`; enable in a repo via `"enabledPlugins": {"playwright@claude-plugins-official": true}` in its `.claude/settings.local.json` | claude-in-chrome covers most browser work |
 | context7@claude-plugins-official | plugin (HTTP MCP) | user | est. 20-500 (2 names + unknown instructions) | 0 (lifetime 7, last 2026-07) | make on-demand | same pattern as playwright | enable per project |
@@ -52,7 +52,7 @@ Usage columns: L = loam, P = parbench_ipdps, O = other projects. Numbers are 30-
 | web-frontend-anthropics + web-frontend-vercel | plugins (7 listed skills) | user; off in loam local | ~645 outside loam; 0 in loam | 0 everywhere | disable globally, enable per frontend repo | `~/.claude/settings.json` set both to `false`; enable in a repo's `.claude/settings.local.json` | per-project enable |
 | cowork-plugin-management@synced | synced plugin (2 skills) | claude.ai account | 181 in lead session; set false today | 0 | already disabled (effect NOT VERIFIED; it loaded in the pre-edit session) | if it still loads: `"syncClaudeAiPlugins": false` in user settings | - |
 | synced anthropic-skills (brainstorming, docs, import-memory, morning, skill-creator) | synced skills | claude.ai account | 534 in loam | 0 | turn off | user `skillOverrides`: `"anthropic-skills:<name>": "off"` for each (works: loam's local entries hide pdf/pptx/xlsx/docx) or `"syncClaudeAiSkills": false` | `/anthropic-skills:<name>` still runs only if not "off"; use `"user-invocable-only"` to keep `/name` |
-| synced anthropic-skills pdf/pptx/xlsx/docx | synced skills | claude.ai account | 0 in loam (off locally); up to ~820 in parbench_ipdps | 0 | turn off at user level | add the 4 `anthropic-skills:*: "off"` entries to `~/.claude/settings.json` (today only in loam local) | - |
+| synced anthropic-skills pdf/pptx/xlsx/docx | synced skills | claude.ai account | 0 in loam (off locally); up to ~820 in `<project>` | 0 | turn off at user level | add the 4 `anthropic-skills:*: "off"` entries to `~/.claude/settings.json` (today only in loam local) | - |
 | User skills unused 30 d: fable-mode 705, rigor 430, experiment-loop 404, find-skills 319, humanizer 306, test-driven-development 220 (chars) | user skills | user | 566 | 0 each (rigor referenced as `/rigor` in CLAUDE.md) | make on-demand | `~/.claude/settings.json` `skillOverrides`: `"<name>": "user-invocable-only"` (hidden from Claude, still `/name`) or `"name-only"` | `/fable-mode`, `/rigor`, ... |
 | new-model-workflow, claude-api (name-only) | user skills | user | 91 + 4 | 2 + 3 | keep | none | - |
 | team-voice | user skill | user; off in loam local | 85 outside loam | O 1 (+ lifetime 9) | name-only | user `skillOverrides` `"team-voice": "name-only"` | `/team-voice` |
@@ -68,7 +68,7 @@ Usage columns: L = loam, P = parbench_ipdps, O = other projects. Numbers are 30-
 
 ## Totals (configurable always-on tokens per session, ~10 user turns)
 
-| | Loam now | Loam after | parbench_ipdps now (est.) | parbench_ipdps after (est.) |
+| | Loam now | Loam after | `<project>` now (est.) | `<project>` after (est.) |
 |---|---|---|---|---|
 | CLAUDE.md files | 2,442 | 2,442 | 1,941 | 1,941 |
 | Auto memory MEMORY.md | 3,170 | ~1,970 | 0 (none yet) | 0 |
