@@ -1,0 +1,86 @@
+#!/bin/bash
+# bin/limit-alarm-install: test bin/limit-alarm (copied to ~/.distbench/la-new.sh) against a fake pane, fake tokens,
+# fake transcripts and a fake stop file; on PASS install it as ~/.distbench/limit-alarm.sh, seed uci's known reset,
+# and restart tmux limit-alarm. Never touches the lead, the real accounts or the real rental stop file.
+# Run on jhaveris: ~/Desktop/loam/bin/limit-alarm-install (after a pull). The Claude classifier blocks agents from
+# running it, so the owner runs it himself.
+set -u
+mkdir -p "$HOME/.distbench"; cp "$(dirname "$0")/limit-alarm" "$HOME/.distbench/la-new.sh"
+export TZ=America/Los_Angeles
+D=$HOME/.distbench/la-test; rm -rf "$D"; mkdir -p "$D"
+now=$(date +%s)
+err='{"type":"assistant","uuid":"%s","sessionId":"%s","isApiErrorMessage":true,"error":"rate_limit","message":{"content":[{"type":"text","text":"You'"'"'ve hit your monthly spend limit · raise it at https://claude.ai/settings/usage?from=cc_cli_limit_message · your weekly limit resets 6am (America/Los_Angeles)"}]}}'
+ok='{"type":"assistant","uuid":"a2","sessionId":"%s","message":{"content":[{"type":"text","text":"working"}]}}'
+usr='{"type":"user","uuid":"u1","message":{"content":"relayed: You'"'"'ve hit your limit"}}'
+setup() { # scenario dir, active account
+  mkdir -p "$1/acc" "$1/proj" "$1/state"
+  for n in gmail npds uci; do echo "fake-$n" > "$1/acc/$n.token"; done
+  echo "$2" > "$1/acc/active"; echo '{}' > "$1/settings.json"
+  tmux kill-session -t la-test-pane 2>/dev/null; tmux new -d -s la-test-pane; tmux send-keys -t la-test-pane 'sleep 1000' Enter; sleep 1
+}
+run() { # scenario dir, seconds
+  T=la-test-pane S=$1/state PROJ=$1/proj ALERT="echo ALERT:" LAUNCH="echo FAKE-CLAUDE" STOPF=$1/STOP ORDER="gmail uci npds" BOOT_S=2 \
+    CLAUDE_ACCOUNTS_DIR=$1/acc CLAUDE_SETTINGS_FILE=$1/settings.json timeout "$2" bash "$HOME/.distbench/la-new.sh"
+}
+fail=0
+chk() { if eval "$2"; then echo "ok   $1"; else echo "FAIL $1"; fail=1; fi; }
+
+# 1. The real 23 Oct limit text on gmail; gmail limited, uci limited till later, npds free -> npds.
+A=$D/a; setup "$A" gmail
+printf '%s\n' "$usr" > "$A/proj/sessA.jsonl"; printf "$err\n" e1 sessA >> "$A/proj/sessA.jsonl"
+echo $(( now + 40000 )) > "$A/state/uci.until"
+outA=$(run "$A" 20); paneA=$(tmux capture-pane -p -t la-test-pane -S -50)
+chk "detects the spend-limit/weekly text on gmail" 'grep -q "limit on gmail (e1)" <<< "$outA"'
+chk "records gmail usable again at the next 6am" '[ "$(date -d @$(cat $A/state/gmail.until) +%H:%M)" = 06:00 ]'
+chk "switches to npds (gmail and uci limited)" '[ "$(cat $A/acc/active)" = npds ] && [ "$(jq -r .env.CLAUDE_CODE_OAUTH_TOKEN $A/settings.json)" = fake-npds ]'
+chk "old process stopped, relaunched with --resume sessA" '! pgrep -f "^sleep 1000$" >/dev/null && grep -q "FAKE-CLAUDE --resume sessA" <<< "$paneA"'
+chk "resume message pasted and Slack alert sent" 'grep -q "Watch alarm" <<< "$paneA" && grep -q "ALERT: WATCH: .*from gmail to npds" <<< "$outA"'
+chk "no stop file in a normal switch" '[ ! -e $A/STOP ]'
+
+# 2. Every account limited for hours -> stop file touched once, Slack alert, no switch.
+B=$D/b; setup "$B" npds
+printf "$err\n" e2 sessB > "$B/proj/sessB.jsonl"
+for n in gmail uci; do echo $(( now + 20000 )) > "$B/state/$n.until"; done
+outB=$(run "$B" 8)
+chk "all limited for hours -> stop file touched" '[ -e $B/STOP ] && grep -q "touched $B/STOP" <<< "$outB"'
+chk "all limited -> Slack alert, no switch" 'grep -q "ALERT: WATCH: every Claude account" <<< "$outB" && [ "$(cat $B/acc/active)" = npds ]'
+
+# 3. All limited but one resets within HOLD_S -> pair kept.
+C=$D/c; setup "$C" npds
+printf "$err\n" e3 sessC > "$C/proj/sessC.jsonl"
+echo $(( now + 1200 )) > "$C/state/gmail.until"; echo $(( now + 20000 )) > "$C/state/uci.until"
+outC=$(run "$C" 8)
+chk "reset within 2 h -> pair kept, no stop file" '[ ! -e $C/STOP ] && grep -q "pair kept" <<< "$outC"'
+
+# 4. On npds, no limit, gmail usable again, lead idle 10 min -> back to gmail.
+E=$D/e; setup "$E" npds
+printf "$ok\n" sessE > "$E/proj/sessE.jsonl"; touch -d '10 minutes ago' "$E/proj/sessE.jsonl"
+outE=$(run "$E" 20)
+chk "switches back to gmail when usable and the lead is idle" '[ "$(cat $E/acc/active)" = gmail ] && grep -q "switched npds -> gmail" <<< "$outE"'
+
+# 5. On npds, no limit, gmail usable, lead busy (fresh transcript) -> stays.
+F=$D/f; setup "$F" npds
+printf "$ok\n" sessF > "$F/proj/sessF.jsonl"
+outF=$(run "$F" 5)
+chk "no switch back while the lead is busy" '[ "$(cat $F/acc/active)" = npds ]'
+
+# 6. A relayed user line or a normal last line never triggers.
+# 7. gmail limited, uci usable -> uci before npds (Samyak's order).
+G=$D/g; setup "$G" gmail
+printf "$err\n" e7 sessG > "$G/proj/sessG.jsonl"
+outG=$(run "$G" 20)
+chk "gmail limited, uci usable -> switches to uci, not npds" '[ "$(cat $G/acc/active)" = uci ] && grep -q "switched gmail -> uci" <<< "$outG"'
+
+chk "no trigger on a normal last line" '! grep -q "limit on" <<< "$outE$outF"'
+
+tmux kill-session -t la-test-pane
+echo "--- run logs:"; printf '%s\n' "$outA" "$outB" "$outC" "$outE" | sed 's/^/  /'
+if [ "$fail" = 0 ]; then
+  mv "$HOME/.distbench/la-new.sh" "$HOME/.distbench/limit-alarm.sh"
+  mkdir -p "$HOME/.local/state/distbench/limit-alarm"
+    tmux kill-session -t limit-alarm 2>/dev/null
+  tmux new -d -s limit-alarm 'bash ~/.distbench/limit-alarm.sh 2>&1 | tee -a ~/.local/state/distbench/limit-alarm.log'
+  sleep 3; echo "PASS: installed; tmux limit-alarm restarted:"; tail -3 "$HOME/.local/state/distbench/limit-alarm.log"
+else
+  echo "FAILED: nothing installed; the old alarm keeps running"
+fi
