@@ -10,7 +10,7 @@ Verified: the previous [first-run validation](first-run-validation.md) owns the 
 
 ## Investigations and source scope
 
-Verified: independent static audits covered the Loam curated asset roots, the canonical ParBench/DistBench native asset surfaces, and job-search/organizer asset locations. Inventories distinguish definitions, support files, aliases, archives, external plugin references and reviewed versus metadata-only entries. They do not represent every discovered path as a unique active skill or every body as fully semantically reviewed.
+Verified: independent static audits covered the Loam curated asset roots, the canonical DistBench/DistBench native asset surfaces, and job-search/organizer asset locations. Inventories distinguish definitions, support files, aliases, archives, external plugin references and reviewed versus metadata-only entries. They do not represent every discovered path as a unique active skill or every body as fully semantically reviewed.
 
 Verified: the source-intake command staged 10 selected text references. Their manifest records exact original/resolved paths and SHA-256 hashes. Loam's current source remains in its canonical location, with an explicit adoption destination map. Inventories were copied only after their investigators finished; the integration owner rechecked recorded source hashes while copying them.
 
@@ -50,7 +50,7 @@ Second attack: each staged external reference now maps to ASSET-02, ASSET-03, AS
 |---|---|
 | Select option C | Native-profile status, decision delta and handoff record acceptance |
 | Include already curated Loam skills | Every local curated skill has an adoption-map entry; ASSET-01/02 require conservation and repair, including parked methods |
-| Consider ParBench and DistBench assets | Static inventory with aliases/archives/review scope; selected critique/team/readiness/elegance references staged |
+| Consider DistBench and DistBench assets | Static inventory with aliases/archives/review scope; selected critique/team/readiness/elegance references staged |
 | Consider organizer and job-search skills/plugins/commands | Located organizer; inventoried both projects; staged referenced experiment method, generic evidence method/references and RenderCV guidance |
 | Get suitable material into Loam | Inactive source-reference files and source manifests saved in `asset-intake/`; original source projects untouched |
 | Add implementation plan and files | ASSET-01 through ASSET-05 name destinations, dependencies and failure/success obligations; ENV-01 names the next environment probe |

@@ -39,7 +39,7 @@ Future commands, unimplemented and unrun: build, then `node --test seed/.loam/fa
 - [ ] Preserved method sections/support files match the catalog; distinct local variants cannot disappear under same-name merging. A declared limitation is visible at invocation.
 - [ ] The user's scope governs `surprise-me`/team follow-on actions; no automatic wider work or publication follows suggestions.
 
-The continuity, validation, execution and reference batch is NATIVE-07. DistBench/ParBench semantic additions are NATIVE-08. This split completes only its named ASSET-02 population.
+The continuity, validation, execution and reference batch is NATIVE-07. DistBench/DistBench semantic additions are NATIVE-08. This split completes only its named ASSET-02 population.
 
 ## Campaign requirements
 

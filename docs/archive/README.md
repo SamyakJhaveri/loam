@@ -3,6 +3,7 @@
 Spent documents, kept as a record and not maintained.
 Nothing here is a live instruction.
 Numbers, paths, and file names inside these documents were true when written and many are now wrong.
+Digests recorded in archived records describe the original bytes from before the 2026-10-23 rename of a private project name to DistBench, so a rewritten file no longer matches its recorded digest.
 
 Archived in v3.0.0 (2026-09-06):
 

@@ -58,7 +58,7 @@
   "docs/architecture-working/asset-intake/sources/distbench-claude-critique-swarm.txt": "05de74c6c8b67dfe3273eb4624ea78c1c9249eaeab41b7b0cb91a4e2a4c4998c",
   "docs/architecture-working/asset-intake/sources/distbench-codex-critique-swarm.txt": "2b564618cf6ffde059ba576b6702a1cc98fee0e7d38d3de39a486bf9af081b0a",
   "docs/architecture-working/asset-intake/sources/distbench-codex-agent-team.txt": "da791f10d11bcd4436e079a0cf1aa85581fd89c073174c703a08f3bee35b1c83",
-  "docs/architecture-working/asset-intake/sources/parbench-elegance-reviewer.txt": "5a38c345016f934f3d3254bec52faf9038351d0d92419ef48a15598dcf066395",
+  "docs/architecture-working/asset-intake/sources/distbench-elegance-reviewer.txt": "5a38c345016f934f3d3254bec52faf9038351d0d92419ef48a15598dcf066395",
   "docs/architecture-working/memory-loop-engineering.md": "d4db2056fc2140b48f4eaf56a20ab2fcf44a54db453d33a9dbb39b8df2fd8796",
   "docs/architecture-working/memory-records-and-delivery.md": "87f24f1f3b756d8c3328cbb42d9e8275c4efce1f08946a35df8f6e5ab92a0731",
   "docs/agents/domain.md": "8685f38159abe6438b9386d8fad3b978d7ef06209cde13210fa950193871aaf4",

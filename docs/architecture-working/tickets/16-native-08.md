@@ -10,13 +10,13 @@ Recommended implementation lead: Codex/Astra
 
 ## What it delivers
 
-A generated project can run a bounded critique swarm with real independent native reviewers, then consider simpler alternatives using the existing plan-review gate. DistBench's provider differences and ParBench's useful review criteria survive in one shared method contract.
+A generated project can run a bounded critique swarm with real independent native reviewers, then consider simpler alternatives using the existing plan-review gate. DistBench's provider differences and DistBench's useful review criteria survive in one shared method contract.
 
 ## Current behavior and source packet
 
-Verified from `asset-intake/README.md` and `source-manifest.json`: selected DistBench Claude/Codex critique-swarm, Codex agent-team and ParBench elegance-reviewer texts are inactive snapshots, not installed bundles. Loam already has an elegance review concept.
+Verified from `asset-intake/README.md` and `source-manifest.json`: selected DistBench Claude/Codex critique-swarm, Codex agent-team and DistBench elegance-reviewer texts are inactive snapshots, not installed bundles. Loam already has an elegance review concept.
 
-Read `docs/architecture-working/curated-asset-adoption-plan.md` ASSET-03; `asset-intake/source-manifest.json`; `asset-intake/sources/distbench-claude-critique-swarm.txt`, `distbench-codex-critique-swarm.txt`, `distbench-codex-agent-team.txt` and `parbench-elegance-reviewer.txt`; exact original source paths/digests recorded by the manifest; the catalog; the now-shared `agent-team` and `plan-review` sources; `prior-design/cookbook-practice-registry.md` (independent/adversarial/recall); and `delivery-workflow.md`. Inspect support/aliases declared by `benchmark-inventory.json` before asserting delivery.
+Read `docs/architecture-working/curated-asset-adoption-plan.md` ASSET-03; `asset-intake/source-manifest.json`; `asset-intake/sources/distbench-claude-critique-swarm.txt`, `distbench-codex-critique-swarm.txt`, `distbench-codex-agent-team.txt` and `distbench-elegance-reviewer.txt`; exact original source paths/digests recorded by the manifest; the catalog; the now-shared `agent-team` and `plan-review` sources; `prior-design/cookbook-practice-registry.md` (independent/adversarial/recall); and `delivery-workflow.md`. Inspect support/aliases declared by `benchmark-inventory.json` before asserting delivery.
 
 ## Canonical files and bounded work
 
@@ -64,7 +64,7 @@ Packet manifest SHA-256: `968392b3b61b189da39f6b3aff3c04b76e90c87f00b066dfb1665b
 - `docs/architecture-working/asset-intake/sources/distbench-claude-critique-swarm.txt`
 - `docs/architecture-working/asset-intake/sources/distbench-codex-critique-swarm.txt`
 - `docs/architecture-working/asset-intake/sources/distbench-codex-agent-team.txt`
-- `docs/architecture-working/asset-intake/sources/parbench-elegance-reviewer.txt`
+- `docs/architecture-working/asset-intake/sources/distbench-elegance-reviewer.txt`
 - `docs/architecture-working/prior-design/cookbook-practice-registry.md`
 - `docs/architecture-working/asset-intake/benchmark-inventory.json`
 - `docs/architecture-working/delivery-step-plan.md`

@@ -127,4 +127,4 @@ Cut from the plan: a hand-written `docs/MAP.md` (NAV-01's winning arm replaces i
 - basic-memory's latest release number was not readable from a shallow clone.
 - No tool was run except aider's map on a copy of the seed.
 
-Paused 2026-09-24: Loam work stopped for the parbench project. The open follow-ups are #221 (merge proofs and the first release since v3.0.0), #162 (MEM-03, human-gated), and the NAV-01 launch. Copier resolves tags, so a project bootstrapped from `gh:samyakjhaveri/loam` gets v3.0.0 without memory v2 until that release is cut; a local render with `--vcs-ref HEAD` carries main.
+Paused 2026-09-24: Loam work stopped for the distbench project. The open follow-ups are #221 (merge proofs and the first release since v3.0.0), #162 (MEM-03, human-gated), and the NAV-01 launch. Copier resolves tags, so a project bootstrapped from `gh:samyakjhaveri/loam` gets v3.0.0 without memory v2 until that release is cut; a local render with `--vcs-ref HEAD` carries main.
