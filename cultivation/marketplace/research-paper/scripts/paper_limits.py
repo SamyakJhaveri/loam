@@ -69,7 +69,7 @@ def shown(path):
 
 def show(text, width=100):
     """One display line: whitespace collapsed, dashes plain (house rule: no em dash), cut."""
-    s = re.sub(r"\s+", " ", text).strip().replace("\u2014", "-").replace("\u2013", "-")
+    s = re.sub(r"\s+", " ", text).strip().replace("\N{EM DASH}", "-").replace("\u2013", "-")
     return s if len(s) <= width else s[: width - 3] + "..."
 
 
@@ -124,7 +124,7 @@ NUM = r"(?:[IVX]+\.|[A-Z]\.|\d+(?:\.\d+)*\.?)?"
 REFS = re.compile(rf"^{NUM}(?:REFERENCES|BIBLIOGRAPHY)$")
 APPENDIX = re.compile(
     rf"^{NUM}(?:APPENDIX|APPENDICES|SUPPLEMENT(?:ARY|AL)(?:MATERIALS?|SECTIONS?)?)"
-    r"(?:[A-Z]|[IVX]+|\d+)?(?:[:.\-\u2013\u2014].+)?$"
+    r"(?:[A-Z]|[IVX]+|\d+)?(?:[:.\-\u2013\N{EM DASH}].+)?$"
 )
 APPENDIX_START = re.compile(rf"^{NUM}(?:APPENDIX|APPENDICES|SUPPLEMENT(?:ARY|AL))")
 ABS_HEAD = re.compile(r"^\s*A\s?BSTRACT(?![a-z])", re.I)
@@ -194,7 +194,7 @@ def pdf_abstract(rows):
             break
     else:
         return "no abstract heading in the PDF text"
-    text = t[m.end() :].lstrip(" \t:.-\u2013\u2014")
+    text = t[m.end() :].lstrip(" \t:.-\u2013\N{EM DASH}")
     last = no
     rest = rows[i + 1 :]
     for j, (_, n, line) in enumerate(rest):

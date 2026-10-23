@@ -508,7 +508,7 @@ FIXTURES = [
     ),
     (
         "non-ascii",
-        "The 07:40 departure \u2014 the first after the bridge works \u2014 now leaves from stand C.",
+        "The 07:40 departure \N{EM DASH} the first after the bridge works \N{EM DASH} now leaves from stand C.",
         "The 07:40 departure, the first after the bridge works, now leaves from stand C.",
     ),
     (

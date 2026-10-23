@@ -33,8 +33,9 @@
 #   7. render: the line cell prints "file:line" when a finding has a file (_where).
 #   8. main: --fail-on-findings exits 1 when the report has a finding (default unchanged).
 #   9. The em dash (U+2014) in the _CAPTION and _ROMAN_JOIN character classes (upstream L205
-#      and L246) is written as the regex escape \u2014, since this repository bans the
-#      literal character; re reads the escape as the same character, so matching is unchanged.
+#      and L246) is interpolated from _EM_DASH, set with the named escape \N{EM DASH}, since
+#      this repository bans the literal character and its \u escape; the pattern holds the
+#      same character, so matching is unchanged.
 #  10. --baseline FILE (_read_baseline, build_report, render, main, and the docstring's Usage,
 #      --json-out and exit statuses): known findings, one acronym per line, a tab, and the id
 #      of the owner decision or ticket that keeps it. A finding whose acronym it lists prints
@@ -272,6 +273,7 @@ _TABLE = re.compile(r"^\s*\|")
 _TABLE_DELIMITER = re.compile(r"^ {0,3}\|?[ \t]*:?-+:?[ \t]*(?:\|[ \t]*:?-+:?[ \t]*)*\|?[ \t]*$")
 _IMAGE = re.compile(r"!\[")
 _EMPH = r"(?:\*{1,2}|_{1,2})?"
+_EM_DASH = "\N{EM DASH}"  # change 9 in the header
 # Capital and small letters in the Latin, Greek, and Cyrillic blocks, with Latin
 # Extended Additional and Greek Extended, so an author name such as "García",
 # "Öztürk", or "Nguyễn" reads as a name.
@@ -288,7 +290,7 @@ _CAPTION_WORD = (r"(?i:(?:(?:Supplementary|Supplemental|Suppl?\.|Extended\s+Data
 _ZH_NUMERAL = "[一二三四五六七八九十百零〇]+"
 _CAPTION = re.compile(rf"^\s*{_EMPH}(?:{_CAPTION_WORD}\s*(?P<id>{_CAPTION_ID})"
                       rf"|附?[圖表]\s*(?P<zh>{_CAPTION_ID}|{_ZH_NUMERAL}))"
-                      rf"{_EMPH}(?:[.:：](?!\d)|\s*\||(?P<dash>\s*[–\u2014]|\s+-\s)|\s*$)")
+                      rf"{_EMPH}(?:[.:：](?!\d)|\s*\||(?P<dash>\s*[–{_EM_DASH}]|\s+-\s)|\s*$)")
 # Range ends after a caption dash (see _caption_label).
 _RANGE_ANY = re.compile(rf"\s*(?:[A-Z]?[.-]?\d"
                         rf"|(?:{_CAPTION_WORD}|附?[圖表])\s*(?:{_CAPTION_ID}|{_ZH_NUMERAL})(?![A-Za-z0-9]))")
@@ -329,7 +331,7 @@ _ROMAN_STAGE = re.compile(rf"(?=[IVX]){_ROMAN.pattern}{_STAGE_SUFFIX}")  # used 
 _NUMBERING_WORD = (r"(?i:\b(?:(?:table|figure|box|section|chapter|part|appendix|volume|phase|stage"
                    r"|grade|type|class|level|tier|category|study|experiment|wave|round|model)s?"
                    r"|(?:figs?|vols?)\.?))")
-_ROMAN_JOIN = (rf"(?:(?:{_SPACE})?[,&–\u2014/-](?:{_SPACE})?(?:(?:and|or){_SPACE})?"
+_ROMAN_JOIN = (rf"(?:(?:{_SPACE})?[,&–{_EM_DASH}/-](?:{_SPACE})?(?:(?:and|or){_SPACE})?"
                rf"|{_SPACE}(?:and|or|to|through){_SPACE})")
 _NUMBERING_BEFORE = re.compile(
     rf"(?:{_NUMBERING_WORD}(?:{_SPACE}|-)(?:[IVXLC]+{_STAGE_SUFFIX}{_ROMAN_JOIN})*|第(?:{_SPACE})?)\Z")

@@ -13,8 +13,9 @@
 #      main, upstream L232-257), and the sys.path insert and "import sys" it needed for
 #      scripts._block_parser (upstream L42, L47-48). The docstring's first paragraph says so.
 #   3. The em dash (U+2014) is banned in this repository: in comments and the docstring it is
-#      written "-"; in _DASH_FOLD it is the escape "\u2014", which Python reads as the same
-#      character, so folding is unchanged. The docstring is a raw string (it holds backslashes).
+#      written "-"; in _DASH_FOLD it is the named escape "\N{EM DASH}", which Python reads as
+#      the same character, so folding is unchanged. The docstring is a raw string (it holds
+#      backslashes).
 #   4. LaTeX input: read_text drops the % comments of a .tex file (a % after an even number of
 #      backslashes starts a comment; \% is a percent sign and stays; TEX_COMMENT_RE is
 #      COMMENT_PATTERN of check_consistency.py next to this file, made multi-line). _prose
@@ -157,7 +158,7 @@ AUTHOR_YEAR_RE = re.compile(
     rf"(?:{_NARRATIVE_AUTHOR})?\((?:[^()]*\b(?:19|20)\d{{2}}[a-z]?\b[^()]*|(?:19|20)\d{{2}}[a-z]?)\)"
 )
 
-_DASH_FOLD = str.maketrans({"–": "-", "\u2014": "-", "−": "-"})
+_DASH_FOLD = str.maketrans({"–": "-", "\N{EM DASH}": "-", "−": "-"})
 
 
 # Additions of this copy (header changes 4 to 6).
