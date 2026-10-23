@@ -22,14 +22,15 @@ git symbolic-ref -q HEAD >/dev/null || echo "FLAG: detached HEAD at $(git rev-pa
 { [ -d "$(git rev-parse --git-path rebase-merge)" ] || [ -d "$(git rev-parse --git-path rebase-apply)" ]; } \
   && echo "FLAG: rebase in progress"
 
-# Work in only one copy: commits on a local branch, tag or stash that no
+# Work in only one copy: commits on a local branch or stash that no
 # remote-tracking ref reaches, and uncommitted paths in the other worktrees (this
-# one is counted above). No fetch: remotes are as of the last fetch.
+# one is counted above). No fetch: remotes are as of the last fetch. Tags are
+# skipped: a pushed tag has no remote-tracking ref, so it would always count.
 STASHES="$(git stash list --format=%H 2>/dev/null)"
 # shellcheck disable=SC2086 # object names, one word each
-ONLY="$(git rev-list --count --branches --tags $STASHES --not --remotes 2>/dev/null)"
+ONLY="$(git rev-list --count --branches $STASHES --not --remotes 2>/dev/null)"
 if [ "${ONLY:-0}" -gt 0 ]; then
-  BY="$({ git for-each-ref --format='%(refname)' refs/heads refs/tags; git stash list --format=%gd; } \
+  BY="$({ git for-each-ref --format='%(refname)' refs/heads; git stash list --format=%gd; } \
     | while read -r ref; do
         n="$(git rev-list --count "$ref" --not --remotes 2>/dev/null)"
         [ "${n:-0}" -gt 0 ] && printf ', %s %s' "${ref#refs/}" "$n"

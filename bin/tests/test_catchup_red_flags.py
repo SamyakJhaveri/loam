@@ -56,6 +56,18 @@ class RedFlagsOneCopyTests(unittest.TestCase):
         self.assertEqual(["FLAG: 1 commits exist only in this clone, on no remote-tracking ref;"
                           " by local ref: heads/wip 1"], self.flags())
 
+    def test_tag_off_every_remote_branch_is_not_flagged(self) -> None:
+        # A pushed tag has no remote-tracking ref, so the check skips tags rather than always flag them.
+        self.git(self.clone, "switch", "-qc", "gone")
+        (self.clone / "notes.md").write_text("tagged only\n", encoding="utf-8")
+        self.git(self.clone, "add", "notes.md")
+        self.git(self.clone, "commit", "-qm", "tagged only")
+        self.git(self.clone, "tag", "archive/gone")
+        self.git(self.clone, "switch", "-q", "main")
+        self.git(self.clone, "branch", "-qD", "gone")
+
+        self.assertEqual([], self.flags())
+
     def test_dirty_other_worktree_is_counted(self) -> None:
         wt = self.tmp / "wt"
         self.git(self.clone, "worktree", "add", "-q", str(wt), "-b", "side")
