@@ -4,6 +4,7 @@
 {% raw %}set -uo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
+if [ -d "$ROOT/.venv/bin" ]; then PATH="$ROOT/.venv/bin:$PATH"; fi
 FAIL=0
 SKIPS=""
 bad() { echo "FAIL: $*"; FAIL=1; }
@@ -28,8 +29,10 @@ if [ "${#PY[@]}" -eq 0 ]; then
 elif ! command -v ruff >/dev/null 2>&1; then
   skip ruff "ruff not installed"
 else
-  ruff check "${PY[@]}"          || bad "ruff check"
-  ruff format --check "${PY[@]}" || bad "ruff format --check"
+  # --force-exclude applies the project's ruff excludes and ruff's default excludes
+  # (dist, venv, _build, node_modules, ...) to these paths, which are named on the command line.
+  ruff check --force-exclude "${PY[@]}"          || bad "ruff check"
+  ruff format --check --force-exclude "${PY[@]}" || bad "ruff format --check"
 fi
 
 while IFS= read -r sh; do
