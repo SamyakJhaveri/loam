@@ -1,6 +1,6 @@
 #!/bin/bash
 # bin/limit-alarm-install: test bin/limit-alarm (copied to ~/.distbench/la-new.sh) against a fake pane, fake tokens,
-# fake transcripts and a fake stop file; on PASS install it as ~/.distbench/limit-alarm.sh, seed uci's known reset,
+# fake transcripts, a fake pair status and a fake stop file; on PASS install it as ~/.distbench/limit-alarm.sh, seed uci's known reset,
 # and restart tmux limit-alarm. Never touches the lead, the real accounts or the real rental stop file.
 # Run on jhaveris: ~/Desktop/loam/bin/limit-alarm-install (after a pull). The Claude classifier blocks agents from
 # running it, so the owner runs it himself.
@@ -19,7 +19,8 @@ setup() { # scenario dir, active account
   tmux kill-session -t la-test-pane 2>/dev/null; tmux new -d -s la-test-pane; tmux send-keys -t la-test-pane 'sleep 1000' Enter; sleep 1
 }
 run() { # scenario dir, seconds
-  T=la-test-pane S=$1/state PROJ=$1/proj ALERT="echo ALERT:" LAUNCH="echo FAKE-CLAUDE" STOPF=$1/STOP ORDER="gmail uci npds" BOOT_S=2 \
+  T=la-test-pane S=$1/state PROJ=$1/proj ALERT="echo ALERT:" LAUNCH="echo FAKE-CLAUDE" STOPF=$1/STOP PAIR=$1/pair-status.json \
+    IDLE_S=1800 ORDER="gmail uci npds" BOOT_S=2 \
     CLAUDE_ACCOUNTS_DIR=$1/acc CLAUDE_SETTINGS_FILE=$1/settings.json timeout "$2" bash "$HOME/.distbench/la-new.sh"
 }
 fail=0
@@ -37,13 +38,30 @@ chk "old process stopped, relaunched with --resume sessA" '! pgrep -f "^sleep 10
 chk "resume message pasted and Slack alert sent" 'grep -q "Watch alarm" <<< "$paneA" && grep -q "ALERT: WATCH: .*from gmail to npds" <<< "$outA"'
 chk "no stop file in a normal switch" '[ ! -e $A/STOP ]'
 
-# 2. Every account limited for hours -> stop file touched once, Slack alert, no switch.
+# 2. Every account limited for hours, pair idle 40 min -> stop file touched once, Slack alert, no switch.
+pair='{"t":%s,"rented":true,"idle_s":%s,"left":["s1"],"alert":null}'
 B=$D/b; setup "$B" npds
 printf "$err\n" e2 sessB > "$B/proj/sessB.jsonl"
 for n in gmail uci; do echo $(( now + 20000 )) > "$B/state/$n.until"; done
+printf "$pair\n" "$now" 2400.5 > "$B/pair-status.json"
 outB=$(run "$B" 8)
-chk "all limited for hours -> stop file touched" '[ -e $B/STOP ] && grep -q "touched $B/STOP" <<< "$outB"'
+chk "all limited for hours, pair idle -> stop file touched" '[ -e $B/STOP ] && grep -q "pair idle 2400s; touched $B/STOP" <<< "$outB"'
 chk "all limited -> Slack alert, no switch" 'grep -q "ALERT: WATCH: every Claude account" <<< "$outB" && [ "$(cat $B/acc/active)" = npds ]'
+
+# 2b. Same, but the pair is busy (the core runs on OpenRouter) -> no stop file, logged with idle_s, one alert.
+H=$D/h; setup "$H" npds
+printf "$err\n" e2b sessH > "$H/proj/sessH.jsonl"
+for n in gmail uci; do echo $(( now + 20000 )) > "$H/state/$n.until"; done
+printf "$pair\n" "$now" 0.0 > "$H/pair-status.json"
+outH=$(run "$H" 8)
+chk "all limited for hours, pair busy -> no stop file, skip logged" '[ ! -e $H/STOP ] && grep -q "stop file not touched: pair idle 0s, under 1800s" <<< "$outH" && grep -q "ALERT: WATCH: .*the pair is kept" <<< "$outH"'
+
+# 2c. Same, but no pair-status.json -> no stop file, logged why.
+I=$D/i; setup "$I" npds
+printf "$err\n" e2c sessI > "$I/proj/sessI.jsonl"
+for n in gmail uci; do echo $(( now + 20000 )) > "$I/state/$n.until"; done
+outI=$(run "$I" 8)
+chk "all limited for hours, no pair status -> no stop file, skip logged" '[ ! -e $I/STOP ] && grep -q "stop file not touched: no idle_s in $I/pair-status.json" <<< "$outI"'
 
 # 3. All limited but one resets within HOLD_S -> pair kept.
 C=$D/c; setup "$C" npds
@@ -74,7 +92,7 @@ chk "gmail limited, uci usable -> switches to uci, not npds" '[ "$(cat $G/acc/ac
 chk "no trigger on a normal last line" '! grep -q "limit on" <<< "$outE$outF"'
 
 tmux kill-session -t la-test-pane
-echo "--- run logs:"; printf '%s\n' "$outA" "$outB" "$outC" "$outE" | sed 's/^/  /'
+echo "--- run logs:"; printf '%s\n' "$outA" "$outB" "$outH" "$outI" "$outC" "$outE" | sed 's/^/  /'
 if [ "$fail" = 0 ]; then
   mv "$HOME/.distbench/la-new.sh" "$HOME/.distbench/limit-alarm.sh"
   mkdir -p "$HOME/.local/state/distbench/limit-alarm"

@@ -7,11 +7,14 @@
 #   or the pane layout cannot trigger or hide it. The "resets 6am" time in it marks when that account is usable.
 # - On a limit: switch (claude-account use) to the first usable account in ORDER (Samyak, 23 Oct: gmail, then uci,
 #   npds only when both are out); restart the lead on the same conversation with --resume, paste a resume message, post to Slack.
-# - No usable account: if the soonest reset is more than HOLD_S away, touch the live rental's stop file so the
-#   driver tears the pair down (Samyak, 23 Oct: do not pay for an idle pair); else post the wait and retry.
+# - No usable account: if the soonest reset is more than HOLD_S away and the pair has been idle IDLE_S or more
+#   (idle_s in the runner's PAIR status file), touch the live rental's stop file so the driver tears the pair down
+#   (Samyak, 23 Oct: do not pay for an idle pair). A busy pair, or a PAIR file that is missing, unreadable or has no
+#   idle_s, keeps the pair and is checked again each minute: the core's sessions run on OpenRouter, not on these
+#   accounts, so a live run must outlast them. A reset within HOLD_S: post the wait and retry.
 # - Back up the ORDER: when an account ranked above the active one is usable again and the lead is idle for 3 min,
 #   switch to it.
-# Test overrides: T, PROJ, S, ALERT, LAUNCH, STOPF, ORDER, HOLD_S, BOOT_S, and claude-account's
+# Test overrides: T, PROJ, S, ALERT, LAUNCH, STOPF, PAIR, ORDER, HOLD_S, IDLE_S, BOOT_S, and claude-account's
 # CLAUDE_ACCOUNTS_DIR / CLAUDE_SETTINGS_FILE.
 set -u
 export PATH=$HOME/.local/bin:$PATH TZ=America/Los_Angeles
@@ -22,7 +25,9 @@ ALERT=${ALERT:-sh $HOME/.distbench/alert.sh}
 LAUNCH=${LAUNCH:-cd ~/distbench-lead && claude --remote-control distbench-lead-jhaveris --model claude-opus-5-5 --effort xhigh --permission-mode auto --settings ~/.distbench/night-1021-settings.json}
 STOPF=${STOPF:-$HOME/.distbench/hyperstack.STOP}
 ORDER=${ORDER:-gmail uci npds}
+PAIR=${PAIR:-$HOME/.local/state/distbench/block-1/state/pair-status.json}   # the runner's watchdog rewrites it
 HOLD_S=${HOLD_S:-7200}
+IDLE_S=${IDLE_S:-1800}
 BOOT_S=${BOOT_S:-45}
 ACC=${CLAUDE_ACCOUNTS_DIR:-$HOME/.config/claude-accounts}
 mkdir -p "$S"
@@ -47,6 +52,9 @@ until_of() {
 }
 usable() { [ "$(num "$S/$1.until")" -le "$(date +%s)" ]; }
 stored() { for p in "$ACC"/*.token; do [ -f "$p" ] && basename "$p" .token; done; }
+# Whole seconds since the pair last ran work; empty when PAIR is missing or unreadable or no rental is open
+# (idle_s null). The caller keeps the pair then: a teardown is the step that cannot be undone.
+pair_idle() { jq -r '.idle_s // empty | floor' "$PAIR" 2>/dev/null; }
 
 # The first usable stored account in ORDER other than $1; none -> empty. rank: its place in ORDER (99 if absent).
 pick() { for n in $ORDER; do [ "$n" != "$1" ] && [ -f "$ACC/$n.token" ] && usable "$n" && { echo "$n"; return; }; done; }
@@ -86,18 +94,27 @@ while true; do
     to=$(pick "$cur")
     if [ -n "$to" ] && [ "$gap" -ge 900 ]; then
       switch "$cur" "$to" "$sid" "the lead hit its Claude usage limit on $cur" && told=""
-    elif [ -z "$to" ] && [ -z "$told" ]; then
+    elif [ -z "$to" ] && [ "$told" != 1 ]; then   # told: empty, held (pair busy, alert sent, check again) or 1
       soon="" who=""
       for n in $(stored); do u=$(num "$S/$n.until"); if [ -z "$soon" ] || [ "$u" -lt "$soon" ]; then soon=$u; who=$n; fi; done
       at=$(date -d @"$soon" '+%a %H:%M %Z')
       if [ $(( soon - now )) -gt "$HOLD_S" ]; then
-        if [ ! -e "$STOPF" ]; then touch "$STOPF"; log "all accounts limited; next is $who at $at; touched $STOPF"; fi
-        $ALERT "WATCH: every Claude account is at its usage limit (next: $who at $at). limit-alarm touched $STOPF, so the driver tears the paid pair down now. The lead resumes on $who after the reset; a new rental is needed for the remaining lines."
+        idle=$(pair_idle)
+        if [ -n "$idle" ] && [ "$idle" -ge "$IDLE_S" ]; then
+          if [ ! -e "$STOPF" ]; then touch "$STOPF"; log "all accounts limited; next is $who at $at; pair idle ${idle}s; touched $STOPF"; fi
+          $ALERT "WATCH: every Claude account is at its usage limit (next: $who at $at) and the pair has been idle $((idle / 60)) min. limit-alarm touched $STOPF, so the driver tears the paid pair down now. The lead resumes on $who after the reset; a new rental is needed for the remaining lines."
+          told=1
+        else
+          why="pair idle ${idle}s, under ${IDLE_S}s"; [ -n "$idle" ] || why="no idle_s in $PAIR (missing, unreadable or no rental open)"
+          log "all accounts limited; next is $who at $at; stop file not touched: $why"
+          [ -n "$told" ] || $ALERT "WATCH: every Claude account is at its usage limit (next: $who at $at), but the pair is kept: $why. limit-alarm checks each minute and touches $STOPF once the pair has been idle $((IDLE_S / 60)) min."
+          told=held
+        fi
       else
         log "all accounts limited; next is $who at $at, within $((HOLD_S / 60)) min; pair kept"
         $ALERT "WATCH: every Claude account is at its usage limit; next: $who at $at, within $((HOLD_S / 60)) min, so the pair is kept. The lead restarts on $who then."
+        told=1
       fi
-      told=1
     fi
   elif to=$(pick "$cur") && [ -n "$to" ] && [ "$(rank "$to")" -lt "$(rank "$cur")" ] && [ "$gap" -ge 900 ]; then
     f=$(ls -t "$PROJ"/*.jsonl 2>/dev/null | head -1)
