@@ -2,7 +2,7 @@
 # bin/claude-account - hold one long-lived Claude Code token per account and switch between them.
 #   bin/claude-account set <name>   read a `claude setup-token` value from stdin into <dir>/<name>.token (0600)
 #   bin/claude-account use <name>   write that token into the env block of the settings file (new claude processes use it)
-#   bin/claude-account other        print one stored account that is not the active one, non-zero when there is none
+#   bin/claude-account other        print the next stored account after the active one (name order, wrapping), non-zero when there is none
 #   bin/claude-account status       print `active: <name>; stored: <names>` and nothing else
 # Tokens live outside the settings file so a switch never needs the browser; each is valid one year.
 # No command prints, echoes, or logs a token value; `set -x` is never used here.
@@ -47,14 +47,18 @@ case "$cmd" in
     echo "active: $name" >&2
     ;;
   other)
+    # Round robin in name order: the first stored account after the active one, wrapping to the first, so
+    # repeated switches visit every stored account instead of bouncing between the first two.
     a=$(active_name)
+    first="" next=""
     for p in "$dir"/*.token; do
       [ -f "$p" ] || continue
       n=$(basename "$p" .token)
       [ "$n" = "$a" ] && continue
-      printf '%s\n' "$n"
-      exit 0
+      [ -n "$first" ] || first=$n
+      if [[ -z "$next" && "$n" > "$a" ]]; then next=$n; fi
     done
+    [ -n "${next:-$first}" ] && { printf '%s\n' "${next:-$first}"; exit 0; }
     echo "no stored account other than '${a:-none}'" >&2
     exit 1
     ;;
