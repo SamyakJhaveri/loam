@@ -24,7 +24,9 @@
       "Bash(git stash clear:*)",
       "Bash(git stash drop:*)",
       "Read(.env*)",
-      "Edit(.env*)"
+      "Edit(.env*)",
+      "Read(~/.ssh/**)",
+      "Bash(ssh-keygen:*)"
     ]
   },
   "sandbox": {
