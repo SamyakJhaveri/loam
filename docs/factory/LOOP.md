@@ -86,7 +86,7 @@ When no cached copy matches, the run stops `stopped-environment` and names the c
 Exit code, `status`, and the final log line are decided together and cannot disagree.
 These read loop-control files to decide exit, never safety; safety stays with deny rules, the sandbox, git, and CI.
 A usage-limit reply (`hit your session limit`, `reached your Fable limit`) is neither an exit nor a round.
-Usage limits are per account, so the supervisor first switches to the other stored account through `bin/claude-account` and retries the same call at once.
+Usage limits are per account, so the supervisor first switches to the next stored account through `bin/claude-account` (round robin in name order, so a third account is reached too) and retries the same call at once.
 It sleeps only when no other account exists or a switch already happened in the last five minutes; then it writes `waiting-limit` to `status`, sleeps until the reset time the reply names or twenty minutes when it names none, and repeats the same call.
 A reset past `MAX_HOURS` exits `stopped-environment`.
 A call with no result event (killed by `CALL_TIMEOUT_SEC`, or crashed) exits `stopped-environment` and counts no round.
@@ -290,6 +290,7 @@ exec "${LOAM_HOME:-$HOME/Desktop/loam}/bin/factory" -C "$(git rev-parse --show-t
 - When the target is Loam, `LOAM_FACTORY_TOOLCHAIN` (a Node distribution with `bin/node`) and `LOAM_FACTORY_COPIER` (an executable `copier`) are exported in `~/.profile` on the runner, as CONTRIBUTING.md sets them; without them a run fails `guard bin/check` after its work is done (#158), so `bin/factory run` and `bin/factory next` refuse to launch and `bin/factory status` prints a PASS or FAIL line per variable.
 - A target named by `-C` has a GitHub `origin`, an executable `bin/check`, and at least one entry in its `docs/factory/STANDING.md`: `-C` exits 2 on a checkout without the first, `run` and `next` refuse to launch without the other two, and `status` prints a PASS or FAIL line for each.
 - `bin/claude-account status` names an active account and at least one other stored account on the runner when the usage-limit switch is wanted; with a single stored account the loop sleeps through a usage limit as before.
+- Outside the factory, `bin/limit-alarm` (installed on jhaveris by `bin/limit-alarm-install`, which the owner runs) keeps a long-running lead session on an account with usage and stops the paid rental when every account is limited for more than two hours.
 - `gh api rate_limit` succeeds on the seat that runs stages 0, 1, 2, and 5 (F0 fixes the Mac).
 - `grill-with-docs`, `wayfinder`, and `to-tickets` are invocable on that seat.
 - `codex login status` succeeds when any ticket uses Codex.
