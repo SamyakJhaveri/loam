@@ -14,7 +14,7 @@ Verified: the user selected option C and explicitly included existing curated Lo
 
 Verified: the [Loam inventory](asset-intake/loam-inventory.json) records 30 local skills: 2 in seed, 4 in the optional marketplace and 24 parked. Its per-file dispositions describe preservation and adaptation. These are not interchangeable duplicates: the audit found semantic overlap, not byte-identical implementations. Remote marketplace declarations are catalogued separately; their implementations were not fetched or certified in this step.
 
-Verified: [source intake](asset-intake/README.md) now preserves selected distinctive methods from ParBench, DistBench and job-search, plus the global experiment-loop referenced by the Instagram organizer. The [benchmark](asset-intake/benchmark-inventory.json) and [application](asset-intake/application-inventory.json) inventories retain other discoveries and scope limits. Source projects were read only.
+Verified: [source intake](asset-intake/README.md) now preserves selected distinctive methods from DistBench, DistBench and job-search, plus the global experiment-loop referenced by the Instagram organizer. The [benchmark](asset-intake/benchmark-inventory.json) and [application](asset-intake/application-inventory.json) inventories retain other discoveries and scope limits. Source projects were read only.
 
 ## Canonical destinations and preservation rule
 
@@ -66,9 +66,9 @@ Proposed acceptance: `node .loam/factory/launcher.mjs verify execution`, mandato
 
 Dependencies: ASSET-01/02 and admitted native delegation/lead binding.
 
-Create `seed/.agents/skills/critique-swarm/SKILL.md` and `seed/.agents/skills/critique-swarm/references/review-contract.md`; merge DistBench's team method into the canonical `agent-team`; merge ParBench's additional method into `seed/.agents/skills/plan-review/references/elegance-review.md`. Loam already has an elegance gate; this adds useful criteria, not another mandatory review stage. Provider wrappers go in the native adapter's declared asset view, with exact wrapper destinations recorded in ASSET-01 before implementation. Add `seed/.loam/factory/tests/assets/review-methods.test.ts`.
+Create `seed/.agents/skills/critique-swarm/SKILL.md` and `seed/.agents/skills/critique-swarm/references/review-contract.md`; merge DistBench's team method into the canonical `agent-team`; merge DistBench's additional method into `seed/.agents/skills/plan-review/references/elegance-review.md`. Loam already has an elegance gate; this adds useful criteria, not another mandatory review stage. Provider wrappers go in the native adapter's declared asset view, with exact wrapper destinations recorded in ASSET-01 before implementation. Add `seed/.loam/factory/tests/assets/review-methods.test.ts`.
 
-Inputs: staged DistBench Claude/Codex critique variants, its Codex team method and ParBench elegance reviewer. Preserve each variant's supported orchestration; do not replace Codex calls with Claude team APIs or pretend native feature parity. Elegance review considers existing simpler alternatives and requirements, not deletion counts as a quality score. Wider changes remain proposed scope, not authorized action.
+Inputs: staged DistBench Claude/Codex critique variants, its Codex team method and DistBench elegance reviewer. Preserve each variant's supported orchestration; do not replace Codex calls with Claude team APIs or pretend native feature parity. Elegance review considers existing simpler alternatives and requirements, not deletion counts as a quality score. Wider changes remain proposed scope, not authorized action.
 
 - [ ] Prove that a child claiming root authority cannot decide adoption, and that unavailable independent review cannot be labeled completed.
 - [ ] Prove a supported native wrapper preserves the shared review contract and chosen model/effort; perform real-provider capability checks only in the later authorized probe stage.

@@ -95,7 +95,7 @@ const D6 = {
   'snapshot:distbench-codex-critique-swarm': { target: 'method:critique-swarm', path: '.agents/skills/critique-swarm/SKILL.md', applicability: 'codex', owner: 'NATIVE-08' },
   'snapshot:distbench-codex-agent-team': { target: 'method:agent-team', path: '.agents/skills/agent-team/SKILL.md', applicability: 'codex', owner: 'NATIVE-08' },
   'snapshot:distbench-worktree-status': { target: 'method:worktree-status', path: '.agents/skills/worktree-status/SKILL.md', applicability: 'shared', owner: 'NATIVE-06' },
-  'snapshot:parbench-elegance-reviewer': { target: 'reference:elegance-review', path: '.agents/skills/plan-review/references/elegance-review.md', applicability: 'claude', owner: 'NATIVE-08' },
+  'snapshot:distbench-elegance-reviewer': { target: 'reference:elegance-review', path: '.agents/skills/plan-review/references/elegance-review.md', applicability: 'claude', owner: 'NATIVE-08' },
   'snapshot:organizer-referenced-experiment-loop': { target: 'method:experiment-loop', path: '.agents/skills/experiment-loop/SKILL.md', applicability: 'shared', owner: 'NATIVE-12' },
   'snapshot:job-search-company-research': { target: 'method:evidence-audit', path: '.agents/skills/evidence-audit/SKILL.md', applicability: 'shared', owner: 'NATIVE-12' },
   'snapshot:job-search-evidence-contract': { target: 'reference:evidence-contract', path: '.agents/skills/evidence-audit/references/evidence-contract.md', applicability: 'shared', owner: 'NATIVE-12' },

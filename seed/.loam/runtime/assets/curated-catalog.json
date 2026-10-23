@@ -7799,17 +7799,17 @@
       "notes": "Fixed successor: method:worktree-status at .agents/skills/worktree-status/SKILL.md, applicability shared, owner NATIVE-06, decision adapt. Dominant body is a deterministic git/gh reporting procedure that explicitly excludes LLM judgment ('every cell comes from git/gh'); classified assetKind advice as a SKILL.md method (agent-followed guidance), noting it embeds runnable git/gh commands (executable-support character) and an authority-bearing Iron Law in u3 (no worktree writes). priorReading reconciliation: its assetKind 'mixed' is disallowed by the format and is resolved to advice with this note; it listed /catchup and /validate under declaredTools, but these are non-replacement cross-references the method never runs, so they are recorded as optional-reference edges (e5/e6) and declaredTools is git/gh only; its proposedDisposition 'merged' and proposedSuccessor 'seed/.agents/skills/worktree-status/SKILL.md' are superseded by the fixed successor table (decision adapt, recipient .agents/skills/worktree-status/SKILL.md). Per the collection rule the shell-cwd-reset advice (u4) maps to root-anchoring. sideEffects includes changes-git-state because git fetch --prune refreshes and prunes remote-tracking refs; that ref refresh is the ONLY git-state mutation - the Iron Law forbids any worktree/branch/commit/push/delete. known-issues.md does not exist anywhere in the repo (verified by find), so it is recorded only as an informational optional-reference edge (e7) and not as a supplemental candidate."
     },
     {
-      "id": "snapshot:parbench-elegance-reviewer",
+      "id": "snapshot:distbench-elegance-reviewer",
       "collection": "snapshot",
-      "name": "parbench-elegance-reviewer",
+      "name": "distbench-elegance-reviewer",
       "kind": "reference",
       "assetKind": "advice",
       "source": {
         "type": "regular-file",
-        "path": "docs/architecture-working/asset-intake/sources/parbench-elegance-reviewer.txt",
+        "path": "docs/architecture-working/asset-intake/sources/distbench-elegance-reviewer.txt",
         "sha256": "5a38c345016f934f3d3254bec52faf9038351d0d92419ef48a15598dcf066395",
         "originalSourceDigest": "5a38c345016f934f3d3254bec52faf9038351d0d92419ef48a15598dcf066395",
-        "originalSourceProject": "parbench_sam"
+        "originalSourceProject": "distbench_sam"
       },
       "attribution": {
         "author": "unspecified",
@@ -7839,77 +7839,77 @@
       "applicability": "claude",
       "sourceUnits": [
         {
-          "id": "snapshot:parbench-elegance-reviewer:u1",
+          "id": "snapshot:distbench-elegance-reviewer:u1",
           "role": "frontmatter",
           "start": 1,
           "end": 8,
           "sha256": "733b32b2f45e64309d2bbddbfaaafaade6af6a64068c920dc53a317aafc91121"
         },
         {
-          "id": "snapshot:parbench-elegance-reviewer:u2",
+          "id": "snapshot:distbench-elegance-reviewer:u2",
           "role": "heading",
           "start": 10,
           "end": 17,
           "sha256": "3e842bd4cc5a389c7a5bd86d5f9f33e50219cf4abe53f82f915cfdc598a18674"
         },
         {
-          "id": "snapshot:parbench-elegance-reviewer:u3",
+          "id": "snapshot:distbench-elegance-reviewer:u3",
           "role": "heading",
           "start": 18,
           "end": 19,
           "sha256": "d25c56288d2d4108a0995ad03adcfc8d89051c359328f7b82ecfc67aa2fa51c4"
         },
         {
-          "id": "snapshot:parbench-elegance-reviewer:u4",
+          "id": "snapshot:distbench-elegance-reviewer:u4",
           "role": "heading",
           "start": 20,
           "end": 25,
           "sha256": "0453a3b37df4f6df0a5a00b287038b72c709ede6d0bd3f87acbd7742662e94f1"
         },
         {
-          "id": "snapshot:parbench-elegance-reviewer:u5",
+          "id": "snapshot:distbench-elegance-reviewer:u5",
           "role": "heading",
           "start": 26,
           "end": 34,
           "sha256": "2e935e5f743b6bedeb36b1e86a8a2cd644cc7acf69e67ae146553e51e7f21078"
         },
         {
-          "id": "snapshot:parbench-elegance-reviewer:u6",
+          "id": "snapshot:distbench-elegance-reviewer:u6",
           "role": "heading",
           "start": 35,
           "end": 42,
           "sha256": "b29787961b2f2c2c93a81bda88c266441c7ad9029838b5b5d50b49ae2a72f4ce"
         },
         {
-          "id": "snapshot:parbench-elegance-reviewer:u7",
+          "id": "snapshot:distbench-elegance-reviewer:u7",
           "role": "heading",
           "start": 43,
           "end": 48,
           "sha256": "911f2b366e785c5166c93538bb360a7482b8d2a44fad7b986ca9ce5e3fddb709"
         },
         {
-          "id": "snapshot:parbench-elegance-reviewer:u8",
+          "id": "snapshot:distbench-elegance-reviewer:u8",
           "role": "heading",
           "start": 49,
           "end": 56,
           "sha256": "c06a347e790de99dc779f9ec0cc3695a2afdb86400c35f91a028af1c9c036c45"
         },
         {
-          "id": "snapshot:parbench-elegance-reviewer:u9",
+          "id": "snapshot:distbench-elegance-reviewer:u9",
           "role": "heading",
           "start": 57,
           "end": 63,
           "sha256": "85c157fe926a94b00c7b18674fa1cc37fa56ff5ae156e6dc9067566a26d74272"
         },
         {
-          "id": "snapshot:parbench-elegance-reviewer:u10",
+          "id": "snapshot:distbench-elegance-reviewer:u10",
           "role": "heading",
           "start": 64,
           "end": 71,
           "sha256": "41de353374b68cd28b2c543c6e9a57a90bb83f10bef2f10b0ec701abbdd1a5f9"
         },
         {
-          "id": "snapshot:parbench-elegance-reviewer:u11",
+          "id": "snapshot:distbench-elegance-reviewer:u11",
           "role": "heading",
           "start": 72,
           "end": 77,
@@ -7921,57 +7921,57 @@
         "phase": "assessed",
         "map": [
           {
-            "unit": "snapshot:parbench-elegance-reviewer:u1",
+            "unit": "snapshot:distbench-elegance-reviewer:u1",
             "exclude": "provider-binding",
             "reason": "Claude agent frontmatter: it names Claude-only agent fields (tools, model, effort, maxTurns) that are dropped on adaptation and folded into the plan-reviewer agent's admitted native choices. Its description restates when-to-use, when-not-to-use, review scope and the sibling-reviewer relationship, all of which the body units (u2) and the edges also carry."
           },
           {
-            "unit": "snapshot:parbench-elegance-reviewer:u2",
+            "unit": "snapshot:distbench-elegance-reviewer:u2",
             "target": "reference:elegance-review",
             "section": "review-target"
           },
           {
-            "unit": "snapshot:parbench-elegance-reviewer:u3",
+            "unit": "snapshot:distbench-elegance-reviewer:u3",
             "target": "reference:elegance-review",
             "section": "review-sequence"
           },
           {
-            "unit": "snapshot:parbench-elegance-reviewer:u4",
+            "unit": "snapshot:distbench-elegance-reviewer:u4",
             "target": "reference:elegance-review",
             "section": "steel-man-first"
           },
           {
-            "unit": "snapshot:parbench-elegance-reviewer:u5",
+            "unit": "snapshot:distbench-elegance-reviewer:u5",
             "target": "reference:elegance-review",
             "section": "competing-designs"
           },
           {
-            "unit": "snapshot:parbench-elegance-reviewer:u6",
+            "unit": "snapshot:distbench-elegance-reviewer:u6",
             "target": "reference:elegance-review",
             "section": "inversion-pass"
           },
           {
-            "unit": "snapshot:parbench-elegance-reviewer:u7",
+            "unit": "snapshot:distbench-elegance-reviewer:u7",
             "target": "reference:elegance-review",
             "section": "reuse-obligation"
           },
           {
-            "unit": "snapshot:parbench-elegance-reviewer:u8",
+            "unit": "snapshot:distbench-elegance-reviewer:u8",
             "target": "reference:elegance-review",
             "section": "speculative-generality-checks"
           },
           {
-            "unit": "snapshot:parbench-elegance-reviewer:u9",
+            "unit": "snapshot:distbench-elegance-reviewer:u9",
             "target": "reference:elegance-review",
             "section": "finding-contract"
           },
           {
-            "unit": "snapshot:parbench-elegance-reviewer:u10",
+            "unit": "snapshot:distbench-elegance-reviewer:u10",
             "target": "reference:elegance-review",
             "section": "anti-patterns"
           },
           {
-            "unit": "snapshot:parbench-elegance-reviewer:u11",
+            "unit": "snapshot:distbench-elegance-reviewer:u11",
             "target": "reference:elegance-review",
             "section": "output-verdicts"
           }
@@ -7982,8 +7982,8 @@
       ],
       "dependencies": [
         {
-          "id": "snapshot:parbench-elegance-reviewer:e1",
-          "sourceUnit": "snapshot:parbench-elegance-reviewer:u1",
+          "id": "snapshot:distbench-elegance-reviewer:e1",
+          "sourceUnit": "snapshot:distbench-elegance-reviewer:u1",
           "relationship": "optional-reference",
           "to": {
             "external": "the code-simplifier style/trimming review skill, named as the separate reviewer that owns style and formatting scope"
@@ -7995,8 +7995,8 @@
           "note": "The body delineates its scope against a style/trimming reviewer (also restated in the anti-patterns unit u10, 'other reviewers own it'); that sibling reviewer owns formatting and is out of scope for elegance review. Not required to run. Referenced as an external plugin skill (pr-review-toolkit:code-simplifier), not a repository file, so no supplemental candidate."
         },
         {
-          "id": "snapshot:parbench-elegance-reviewer:e3",
-          "sourceUnit": "snapshot:parbench-elegance-reviewer:u2",
+          "id": "snapshot:distbench-elegance-reviewer:e3",
+          "sourceUnit": "snapshot:distbench-elegance-reviewer:u2",
           "relationship": "project-input",
           "to": {
             "external": "the plan or implementation artifact under review, supplied with its constraints and, per the blind rule, without the author's reasoning"
@@ -8008,8 +8008,8 @@
           "note": "The reviewer reads the artifact and its constraints as input; blind invocation deliberately withholds the author's rationale."
         },
         {
-          "id": "snapshot:parbench-elegance-reviewer:e4",
-          "sourceUnit": "snapshot:parbench-elegance-reviewer:u5",
+          "id": "snapshot:distbench-elegance-reviewer:e4",
+          "sourceUnit": "snapshot:distbench-elegance-reviewer:u5",
           "relationship": "project-input",
           "to": {
             "external": "the repository under review together with its helpers/scripts, the stdlib, installed dependencies and framework features, searched to build the reuse-only Design A and to name the closest existing thing"
@@ -8021,8 +8021,8 @@
           "note": "Passes 2 and 4 Grep/Glob the repo and check installed-dependency docs to enforce reuse-before-new; read-only search plus scratch-check verification via Bash."
         },
         {
-          "id": "snapshot:parbench-elegance-reviewer:e5",
-          "sourceUnit": "snapshot:parbench-elegance-reviewer:u11",
+          "id": "snapshot:distbench-elegance-reviewer:e5",
+          "sourceUnit": "snapshot:distbench-elegance-reviewer:u11",
           "relationship": "generated-output",
           "to": {
             "external": "an elegance review report: a short steel-man summary, ranked per-surface KEEP or COUNTER-PROPOSAL verdicts, one overall verdict, and a three-question frame check"
@@ -8048,7 +8048,7 @@
         "owner": "NATIVE-08"
       },
       "consumers": [],
-      "notes": "Body read in full at docs/architecture-working/asset-intake/sources/parbench-elegance-reviewer.txt; SHA matches the input (5a38c345...). Reconciled against priorReading: (1) kept its confirmed model/effort pins and sideEffects; (2) trimmed declaredTools to the four frontmatter harness tools (Read, Glob, Grep, Bash) and moved the two referenced reviewers (code-simplifier, plan-reviewer) out of declaredTools into edges where they belong; (3) confirmed maxTurns:25 is a turn cap, not a model/effort literal, so it is not in hardcodedModelOrEffort but is still removed on adaptation (recorded as a blocker). kind set to reference because the fixed successor is reference:elegance-review, folded into the plan-review skill's references as added evidence-based criteria (not a new mandatory review stage). Decision adapt per the snapshot successor table. u2 is mapped to review-target but also carries the when-to-use/when-not-to-use and blind-invocation lessons; u1's frontmatter description restated the same scope plus the sibling-reviewer relationship, which the edges preserve. Attribution: source-manifest.json records provenance from the repo owner's own personal project with no license file and no author field, so license is unspecified with null evidence (no personal path reproduced here per collection rules). The scratch-check import verification in the finding contract uses Bash against whatever runtime the reviewed project uses; no pinned command/service/file, so prerequisites is empty."
+      "notes": "Body read in full at docs/architecture-working/asset-intake/sources/distbench-elegance-reviewer.txt; SHA matches the input (5a38c345...). Reconciled against priorReading: (1) kept its confirmed model/effort pins and sideEffects; (2) trimmed declaredTools to the four frontmatter harness tools (Read, Glob, Grep, Bash) and moved the two referenced reviewers (code-simplifier, plan-reviewer) out of declaredTools into edges where they belong; (3) confirmed maxTurns:25 is a turn cap, not a model/effort literal, so it is not in hardcodedModelOrEffort but is still removed on adaptation (recorded as a blocker). kind set to reference because the fixed successor is reference:elegance-review, folded into the plan-review skill's references as added evidence-based criteria (not a new mandatory review stage). Decision adapt per the snapshot successor table. u2 is mapped to review-target but also carries the when-to-use/when-not-to-use and blind-invocation lessons; u1's frontmatter description restated the same scope plus the sibling-reviewer relationship, which the edges preserve. Attribution: source-manifest.json records provenance from the repo owner's own personal project with no license file and no author field, so license is unspecified with null evidence (no personal path reproduced here per collection rules). The scratch-check import verification in the finding contract uses Bash against whatever runtime the reviewed project uses; no pinned command/service/file, so prerequisites is empty."
     },
     {
       "id": "snapshot:organizer-referenced-experiment-loop",
@@ -29808,7 +29808,7 @@
   "notSelected": [
     {
       "inventory": "benchmark",
-      "project": "parbench_sam",
+      "project": "distbench_sam",
       "path": ".claude/settings.json",
       "kind": "config",
       "sha256": "45709cafa39fa8e593468cc68e8822ad3eefaa1770d53fa866c67ea07950289f",
@@ -29817,7 +29817,7 @@
     },
     {
       "inventory": "benchmark",
-      "project": "parbench_sam",
+      "project": "distbench_sam",
       "path": ".claude/workflows/plan-review-fanout.js",
       "kind": "workflow",
       "sha256": "ddc91310b6c878d0a9a2f77daffddb7d50ddbe62ba2edff8e2449d893977e433",
@@ -29826,7 +29826,7 @@
     },
     {
       "inventory": "benchmark",
-      "project": "parbench_sam",
+      "project": "distbench_sam",
       "path": ".claude/workflows/layer-b-draft-fanout.js",
       "kind": "workflow",
       "sha256": "452f582a3a3a20a22152b8effd2b155194bc3e6b33a4923d0bcd1a3567cae5ea",
@@ -29835,7 +29835,7 @@
     },
     {
       "inventory": "benchmark",
-      "project": "parbench_sam",
+      "project": "distbench_sam",
       "path": ".claude/agents/team-advisor.md",
       "kind": "agent",
       "sha256": "4493b721813c88f19f8dc88544f8d2ba422b021f98744ed03d21fd3fa65bb6d5",
@@ -29844,7 +29844,7 @@
     },
     {
       "inventory": "benchmark",
-      "project": "parbench_sam",
+      "project": "distbench_sam",
       "path": ".claude/agents/rodinia-verifier.md",
       "kind": "agent",
       "sha256": "4ba591f9af771d7d82089a1e7c65ea75025ca691704477447b5230eb27a04e09",
@@ -29853,7 +29853,7 @@
     },
     {
       "inventory": "benchmark",
-      "project": "parbench_sam",
+      "project": "distbench_sam",
       "path": ".claude/agents/verify-app.md",
       "kind": "agent",
       "sha256": "a2dab3fc6a30498bd4278b0b34b3714430d9ff3ff53c15c69986b2df71aec627",
@@ -29862,7 +29862,7 @@
     },
     {
       "inventory": "benchmark",
-      "project": "parbench_sam",
+      "project": "distbench_sam",
       "path": ".claude/agents/consistency-checker.md",
       "kind": "agent",
       "sha256": "62559859f763a67e638eb939c39c87ea626b9138448cf37ed92ea0236506c98c",
@@ -29871,7 +29871,7 @@
     },
     {
       "inventory": "benchmark",
-      "project": "parbench_sam",
+      "project": "distbench_sam",
       "path": ".claude/agents/team-critic.md",
       "kind": "agent",
       "sha256": "c7cb052c4a79c1674d9e3f7fd161e55d2c39fc01e647e4002da843b0cef95cde",
@@ -29880,7 +29880,7 @@
     },
     {
       "inventory": "benchmark",
-      "project": "parbench_sam",
+      "project": "distbench_sam",
       "path": ".claude/agents/team-implementer.md",
       "kind": "agent",
       "sha256": "c6815cbd1aad3369c01b7bb309582481e3f0e531b593cfedf94949a965071d95",
@@ -29889,7 +29889,7 @@
     },
     {
       "inventory": "benchmark",
-      "project": "parbench_sam",
+      "project": "distbench_sam",
       "path": ".claude/agents/plan-reviewer.md",
       "kind": "agent",
       "sha256": "faf0f8bf4ed585949282108a1950e2300766b6409dc9baf2979aa10c95778fd3",
@@ -29898,7 +29898,7 @@
     },
     {
       "inventory": "benchmark",
-      "project": "parbench_sam",
+      "project": "distbench_sam",
       "path": ".claude/hooks/protect-benchmark-sources.sh",
       "kind": "hook",
       "sha256": "350acfe445e07f7eb4a503cd9086e4799c198e4ef9313f3c4b9ca9e0ca4ebc30",
@@ -29907,7 +29907,7 @@
     },
     {
       "inventory": "benchmark",
-      "project": "parbench_sam",
+      "project": "distbench_sam",
       "path": ".claude/hooks/test_surviving_profile.py",
       "kind": "hook_support",
       "sha256": "589215c768a43ff1176c0aab8dc3d453a47df6704451d842a8e8906e00934064",
@@ -29916,7 +29916,7 @@
     },
     {
       "inventory": "benchmark",
-      "project": "parbench_sam",
+      "project": "distbench_sam",
       "path": ".claude/hooks/protect-eval-results.sh",
       "kind": "hook",
       "sha256": "3fad835a391b037f6c91e1832f532d3aa729bbb0916740f684fe6b45d0aaa69d",
@@ -29925,7 +29925,7 @@
     },
     {
       "inventory": "benchmark",
-      "project": "parbench_sam",
+      "project": "distbench_sam",
       "path": ".claude/hooks/check_stale_counts.py",
       "kind": "hook_support",
       "sha256": "0b903bfb55dd2be5f2f0924d2f99f12d5e38133b61638887f1320dd35374528e",
@@ -29934,7 +29934,7 @@
     },
     {
       "inventory": "benchmark",
-      "project": "parbench_sam",
+      "project": "distbench_sam",
       "path": ".claude/hooks/result-immutability.sh",
       "kind": "hook",
       "sha256": "9def007884409131ff2e797e4d1310f2547402c089405c6dd3adda72fb5e0b5b",
@@ -29943,7 +29943,7 @@
     },
     {
       "inventory": "benchmark",
-      "project": "parbench_sam",
+      "project": "distbench_sam",
       "path": ".claude/hooks/generated-file-guard.sh",
       "kind": "hook",
       "sha256": "2e456070bb1ecb297ffd98d412609d438b18ec0c29921817b80b01db0849463d",
@@ -29952,7 +29952,7 @@
     },
     {
       "inventory": "benchmark",
-      "project": "parbench_sam",
+      "project": "distbench_sam",
       "path": ".claude/hooks/gate_tier.py",
       "kind": "hook_support",
       "sha256": "9a4f419e9ddca5c6e61629f136523b159c30e0650ccd46778e6277e9f21269e6",
@@ -29961,7 +29961,7 @@
     },
     {
       "inventory": "benchmark",
-      "project": "parbench_sam",
+      "project": "distbench_sam",
       "path": ".claude/hooks/bash-guard.py",
       "kind": "hook",
       "sha256": "91e471e9d545deda4960627cda2c3cb313f208846b77455da658c548b6de6ddb",
@@ -29970,7 +29970,7 @@
     },
     {
       "inventory": "benchmark",
-      "project": "parbench_sam",
+      "project": "distbench_sam",
       "path": ".claude/hooks/codex-review-reminder.sh",
       "kind": "hook",
       "sha256": "3d72a005bce17328f091a6ef7d6b48e292fa1a7013bab47b183e2fda230d5d46",
@@ -29979,7 +29979,7 @@
     },
     {
       "inventory": "benchmark",
-      "project": "parbench_sam",
+      "project": "distbench_sam",
       "path": ".claude/hooks/test_check_stale_counts.py",
       "kind": "hook_support",
       "sha256": "b5391cc0daf81f8a0a2cbebc8864870d2b40b44e3b02f07288541a044e178722",
@@ -29988,7 +29988,7 @@
     },
     {
       "inventory": "benchmark",
-      "project": "parbench_sam",
+      "project": "distbench_sam",
       "path": ".claude/skills/hypothesis-tree/SKILL.md",
       "kind": "skill",
       "sha256": "ca8f4cca4c672c8938a9481f3669549ec7a640d71ab411162a0e4bba0e93cfcb",
@@ -29997,7 +29997,7 @@
     },
     {
       "inventory": "benchmark",
-      "project": "parbench_sam",
+      "project": "distbench_sam",
       "path": ".claude/skills/validate/SKILL.md",
       "kind": "skill",
       "sha256": "801935a690b3f5a499ce1eb71e9be9a4d0f3b2ee83e56c2a6a3269df8df4fd0a",
@@ -30006,7 +30006,7 @@
     },
     {
       "inventory": "benchmark",
-      "project": "parbench_sam",
+      "project": "distbench_sam",
       "path": ".claude/skills/gen-spec/SKILL.md",
       "kind": "skill",
       "sha256": "4eff9f18c903b27531c13f69cba0861014814fd20b20e47245fef3c46c7b827b",
@@ -30015,7 +30015,7 @@
     },
     {
       "inventory": "benchmark",
-      "project": "parbench_sam",
+      "project": "distbench_sam",
       "path": ".claude/skills/grill-research/SKILL.md",
       "kind": "skill",
       "sha256": "9b41436a8b8e76556f74b511c1c1d95730992436c3e4f2033ea078573411a2ee",
@@ -30024,7 +30024,7 @@
     },
     {
       "inventory": "benchmark",
-      "project": "parbench_sam",
+      "project": "distbench_sam",
       "path": ".claude/skills/codex-plan-review/SKILL.md",
       "kind": "skill",
       "sha256": "96c199ffc50486d35941ee50c03a09a3a3aa7e0c5d7daf76557c17f03cf61d0a",
@@ -30033,7 +30033,7 @@
     },
     {
       "inventory": "benchmark",
-      "project": "parbench_sam",
+      "project": "distbench_sam",
       "path": ".claude/skills/augment-test/SKILL.md",
       "kind": "skill",
       "sha256": "0fce2816bba9cb3162cba2ebc7d5760da3b0342c492dc93705ce3f0f97728cd1",
@@ -30042,7 +30042,7 @@
     },
     {
       "inventory": "benchmark",
-      "project": "parbench_sam",
+      "project": "distbench_sam",
       "path": ".claude/skills/paper-claim-audit/SKILL.md",
       "kind": "skill",
       "sha256": "248988810b7ee7bd30ff57d51266ff9a0249b267109220738c71f8838b6e3cb5",
@@ -30051,7 +30051,7 @@
     },
     {
       "inventory": "benchmark",
-      "project": "parbench_sam",
+      "project": "distbench_sam",
       "path": ".claude/skills/sync-to-hub/SKILL.md",
       "kind": "skill",
       "sha256": "3dfa431903ce6c90206656457f50f9b13e9f6e175510137c2b25cd2f002c5f11",
@@ -30060,7 +30060,7 @@
     },
     {
       "inventory": "benchmark",
-      "project": "parbench_sam",
+      "project": "distbench_sam",
       "path": ".claude/skills/interpret-results/SKILL.md",
       "kind": "skill",
       "sha256": "e880a068b6d7c3a7b4aaf372387702051ea7094516d0697e245864897508b00c",
@@ -30069,7 +30069,7 @@
     },
     {
       "inventory": "benchmark",
-      "project": "parbench_sam",
+      "project": "distbench_sam",
       "path": ".claude/skills/spec-check/SKILL.md",
       "kind": "skill",
       "sha256": "649afa991763962d1a9732030403eac57871616ac0b4650e2715645922a6b599",
@@ -30078,7 +30078,7 @@
     },
     {
       "inventory": "benchmark",
-      "project": "parbench_sam",
+      "project": "distbench_sam",
       "path": ".claude/skills/scaffold-context/SKILL.md",
       "kind": "skill",
       "sha256": "5d621abddff2ff1a3d2c285b8f134fefbf4f3b97973218cf4e11e6100ccc989f",
@@ -30087,7 +30087,7 @@
     },
     {
       "inventory": "benchmark",
-      "project": "parbench_sam",
+      "project": "distbench_sam",
       "path": ".claude/skills/spec-validator/SKILL.md",
       "kind": "skill",
       "sha256": "dd9e1e27b5fc048c067ce52fdb9e9c39827a846f22bdef061b4581c70e6ab2f9",
@@ -30096,7 +30096,7 @@
     },
     {
       "inventory": "benchmark",
-      "project": "parbench_sam",
+      "project": "distbench_sam",
       "path": ".claude/skills/authoring-context-docs/SKILL.md",
       "kind": "skill",
       "sha256": "21f97de65eec6f94e41c8af7d62dad4f433b557067fe4f714ec255dbde530638",
@@ -30105,7 +30105,7 @@
     },
     {
       "inventory": "benchmark",
-      "project": "parbench_sam",
+      "project": "distbench_sam",
       "path": ".claude/skills/model-route/SKILL.md",
       "kind": "skill",
       "sha256": "2e3d5fb37a78d8f0043cfb3d96974a096e76d8a468250a958e86e166c042763f",
@@ -30114,7 +30114,7 @@
     },
     {
       "inventory": "benchmark",
-      "project": "parbench_sam",
+      "project": "distbench_sam",
       "path": ".claude/skills/reflect/SKILL.md",
       "kind": "skill",
       "sha256": "b7f2bccb358d04443990c77e191cb14246160d9eeeb7fe85da0341263a3e79e3",
@@ -30123,7 +30123,7 @@
     },
     {
       "inventory": "benchmark",
-      "project": "parbench_sam",
+      "project": "distbench_sam",
       "path": ".claude/skills/unknowns/SKILL.md",
       "kind": "skill",
       "sha256": "456296200023b8641bf075bdbd487de9c1b7681966e743b3553f959bdd1307e2",
@@ -30132,7 +30132,7 @@
     },
     {
       "inventory": "benchmark",
-      "project": "parbench_sam",
+      "project": "distbench_sam",
       "path": ".claude/skills/surprise-me/SKILL.md",
       "kind": "skill",
       "sha256": "8e5cfb0193c0804fff817756be83a6d942aa41156bb6185f0b0c5f4f52b80a78",
@@ -30141,7 +30141,7 @@
     },
     {
       "inventory": "benchmark",
-      "project": "parbench_sam",
+      "project": "distbench_sam",
       "path": ".claude/skills/workflow-ref/SKILL.md",
       "kind": "skill",
       "sha256": "cdb48419f6937d9b35ee282e8f2edb419e463f2dcb177c2b068cada218c63630",
@@ -30150,7 +30150,7 @@
     },
     {
       "inventory": "benchmark",
-      "project": "parbench_sam",
+      "project": "distbench_sam",
       "path": ".claude/skills/cuda-omp-translator/SKILL.md",
       "kind": "skill",
       "sha256": "ccdf7eb171ff887f3e9b101dd3d26597db7f52376e2c423ffbcca5230f84089a",
@@ -30159,7 +30159,7 @@
     },
     {
       "inventory": "benchmark",
-      "project": "parbench_sam",
+      "project": "distbench_sam",
       "path": ".claude/skills/paper-review-sim/SKILL.md",
       "kind": "skill",
       "sha256": "767611cc41bf90ae3193d4ad2046aa7914bb6c10d10abbd92b6a39b54f0fce45",
@@ -30168,7 +30168,7 @@
     },
     {
       "inventory": "benchmark",
-      "project": "parbench_sam",
+      "project": "distbench_sam",
       "path": ".claude/skills/fix-bug/SKILL.md",
       "kind": "skill",
       "sha256": "d15904c7eedb9e72eba9561d00b6b4d8937daa5e8b42f303030dd636341757be",
@@ -30177,7 +30177,7 @@
     },
     {
       "inventory": "benchmark",
-      "project": "parbench_sam",
+      "project": "distbench_sam",
       "path": ".claude/skills/agent-team/SKILL.md",
       "kind": "skill",
       "sha256": "9cae251c5d5be0f8cf1f18e9d74846ba18feca9178255f9a57155bc5a980a3d4",
@@ -30186,7 +30186,7 @@
     },
     {
       "inventory": "benchmark",
-      "project": "parbench_sam",
+      "project": "distbench_sam",
       "path": ".claude/skills/eval-run/SKILL.md",
       "kind": "skill",
       "sha256": "850e26c5e95b62523be4c8be6385d945155e6c500cb5e1dd2ac27b24d16707f3",
@@ -30195,7 +30195,7 @@
     },
     {
       "inventory": "benchmark",
-      "project": "parbench_sam",
+      "project": "distbench_sam",
       "path": ".claude/skills/eval-grader/SKILL.md",
       "kind": "skill",
       "sha256": "b070c1b2bb336c623caaed5805309c73b22c505bae64e1de521151ac15baf534",
@@ -30204,7 +30204,7 @@
     },
     {
       "inventory": "benchmark",
-      "project": "parbench_sam",
+      "project": "distbench_sam",
       "path": ".claude/skills/citation-audit/SKILL.md",
       "kind": "skill",
       "sha256": "d817ffd94323cfbe74792c9effbbe9cefd30fea742aa7090cf898800185feedb",
@@ -30213,7 +30213,7 @@
     },
     {
       "inventory": "benchmark",
-      "project": "parbench_sam",
+      "project": "distbench_sam",
       "path": ".claude/skills/session-critique/SKILL.md",
       "kind": "skill",
       "sha256": "4460e12d4dfcaf07bfc9852b943bd49eaf4385589a2f043a05d03d717df06a6b",
@@ -30222,7 +30222,7 @@
     },
     {
       "inventory": "benchmark",
-      "project": "parbench_sam",
+      "project": "distbench_sam",
       "path": ".claude/skills/post-eval/SKILL.md",
       "kind": "skill",
       "sha256": "6480d46d97c2db48e550316b469a840248c521a905f3e75acb090207de01c0d5",
@@ -30231,7 +30231,7 @@
     },
     {
       "inventory": "benchmark",
-      "project": "parbench_sam",
+      "project": "distbench_sam",
       "path": ".claude/skills/sam_handoff/SKILL.md",
       "kind": "skill",
       "sha256": "9c69b7543da12497f9d5d24cdd2d94db51c46c01b25f617d3e9c6830cbdcc406",
@@ -30240,7 +30240,7 @@
     },
     {
       "inventory": "benchmark",
-      "project": "parbench_sam",
+      "project": "distbench_sam",
       "path": ".claude/skills/catchup/SKILL.md",
       "kind": "skill",
       "sha256": "9b64baa653645b66c61b755560087fbd2912c69812b373e0ed8b9a6f9b5e236f",
@@ -30249,7 +30249,7 @@
     },
     {
       "inventory": "benchmark",
-      "project": "parbench_sam",
+      "project": "distbench_sam",
       "path": ".claude/skills/elegance-review/SKILL.md",
       "kind": "skill",
       "sha256": "e2db1fbc6559598fea0873b58f7a08d9dc5cfff3fcdfece8675e62b3b3bdc712",
@@ -30258,7 +30258,7 @@
     },
     {
       "inventory": "benchmark",
-      "project": "parbench_sam",
+      "project": "distbench_sam",
       "path": ".claude/skills/dream/SKILL.md",
       "kind": "skill",
       "sha256": "2d9800fb8cfb94519150f276921ee7a1a78460d86b033aa7e52962c9ac8370af",
@@ -30267,7 +30267,7 @@
     },
     {
       "inventory": "benchmark",
-      "project": "parbench_sam",
+      "project": "distbench_sam",
       "path": ".claude/skills/plan-review-invoke/SKILL.md",
       "kind": "skill",
       "sha256": "ade9712d68cfbae502153e6fe0407135419a6a874ea004134be5b177db0c9aba",
@@ -30276,7 +30276,7 @@
     },
     {
       "inventory": "benchmark",
-      "project": "parbench_sam",
+      "project": "distbench_sam",
       "path": ".claude/skills/hpc-code-reviewer/SKILL.md",
       "kind": "skill",
       "sha256": "a6dd41f82ef9e17d815481ed67951806cfc4c151c3e9ff2f9040569ba6b7e054",
@@ -30285,7 +30285,7 @@
     },
     {
       "inventory": "benchmark",
-      "project": "parbench_sam",
+      "project": "distbench_sam",
       "path": ".claude/skills/overnight-eval/SKILL.md",
       "kind": "skill",
       "sha256": "0fa9fa971772e162762b4800d0f1b2aa2268e83ce242fb36ddcde580f3aa1d57",
@@ -30294,7 +30294,7 @@
     },
     {
       "inventory": "benchmark",
-      "project": "parbench_sam",
+      "project": "distbench_sam",
       "path": ".claude/skills/codex-review/SKILL.md",
       "kind": "skill",
       "sha256": "4bbd2d1d3fdac7965a1997f660d78d32e4384213c44776c0cfdb52841e3af24e",
@@ -30303,7 +30303,7 @@
     },
     {
       "inventory": "benchmark",
-      "project": "parbench_sam",
+      "project": "distbench_sam",
       "path": ".claude/skills/cite-check/SKILL.md",
       "kind": "skill",
       "sha256": "f60f471535fed984206dd25cb86f4c2612eaa7430090666dca449c6105f88993",
@@ -30312,7 +30312,7 @@
     },
     {
       "inventory": "benchmark",
-      "project": "parbench_sam",
+      "project": "distbench_sam",
       "path": ".claude/skills/rebuttal/SKILL.md",
       "kind": "skill",
       "sha256": "8a4865c7b4910628eb1b65c419dece3b3be38d5d8b913f5677d00cc17e6eeffb",
@@ -30321,7 +30321,7 @@
     },
     {
       "inventory": "benchmark",
-      "project": "parbench_sam",
+      "project": "distbench_sam",
       "path": ".claude/reference/ticket7-generalization/workflows/plan-review-fanout.js",
       "kind": "workflow",
       "sha256": "5cb97652f2dbc978a05262b7adac4f9fd2ad38276ca2ce84bda9845246415746",
@@ -30330,7 +30330,7 @@
     },
     {
       "inventory": "benchmark",
-      "project": "parbench_sam",
+      "project": "distbench_sam",
       "path": ".claude/reference/ticket7-generalization/agents/consistency-checker.md",
       "kind": "agent",
       "sha256": "747159a9c5fd083ca9b9c2cdbdb8e224ec586217814d437af5eca0143486432c",
@@ -31710,7 +31710,7 @@
   ],
   "pluginReferences": [
     {
-      "project": "parbench_sam",
+      "project": "distbench_sam",
       "name": "pyright-lsp@claude-plugins-official",
       "enabled": true,
       "declarationSource": ".claude/settings.json",
@@ -31718,7 +31718,7 @@
       "reason": "Settings-only enablement pointer with no local plugin manifest in the audited surfaces, so it is a retain-local configuration reference with no asset to import."
     },
     {
-      "project": "parbench_sam",
+      "project": "distbench_sam",
       "name": "clangd-lsp@claude-plugins-official",
       "enabled": true,
       "declarationSource": ".claude/settings.json",
@@ -31726,7 +31726,7 @@
       "reason": "Settings-only enablement pointer with no shipped manifest, so it is a retain-local configuration reference carrying no portable asset."
     },
     {
-      "project": "parbench_sam",
+      "project": "distbench_sam",
       "name": "pr-review-toolkit@claude-plugins-official",
       "enabled": true,
       "declarationSource": ".claude/settings.json",
@@ -31734,7 +31734,7 @@
       "reason": "Local settings reference to an external plugin, no manifest found, so retain-local with no import or portability claim."
     },
     {
-      "project": "parbench_sam",
+      "project": "distbench_sam",
       "name": "code-review@claude-plugins-official",
       "enabled": false,
       "declarationSource": ".claude/settings.json",
@@ -31742,7 +31742,7 @@
       "reason": "Disabled local settings reference to an external plugin, no manifest present, so it is retain-local configuration only."
     },
     {
-      "project": "parbench_sam",
+      "project": "distbench_sam",
       "name": "code-simplifier@claude-plugins-official",
       "enabled": false,
       "declarationSource": ".claude/settings.json",
@@ -31750,7 +31750,7 @@
       "reason": "Disabled local settings reference with no shipped manifest, so it is a retain-local configuration reference and not an asset."
     },
     {
-      "project": "parbench_sam",
+      "project": "distbench_sam",
       "name": "feature-dev@claude-plugins-official",
       "enabled": false,
       "declarationSource": ".claude/settings.json",
@@ -31758,7 +31758,7 @@
       "reason": "Disabled local settings reference to an external plugin, no manifest audited, so retain-local with nothing to import."
     },
     {
-      "project": "parbench_sam",
+      "project": "distbench_sam",
       "name": "skill-creator@claude-plugins-official",
       "enabled": true,
       "declarationSource": ".claude/settings.json",
@@ -31766,7 +31766,7 @@
       "reason": "Settings-only enablement of an external plugin with no local manifest, so it is a retain-local configuration reference."
     },
     {
-      "project": "parbench_sam",
+      "project": "distbench_sam",
       "name": "session-report@claude-plugins-official",
       "enabled": true,
       "declarationSource": ".claude/settings.json",
@@ -31774,7 +31774,7 @@
       "reason": "Settings-only enablement pointer, no manifest in the audited surfaces, so retain-local with no portability claim."
     },
     {
-      "project": "parbench_sam",
+      "project": "distbench_sam",
       "name": "context7@claude-plugins-official",
       "enabled": false,
       "declarationSource": ".claude/settings.json",
@@ -31782,7 +31782,7 @@
       "reason": "Disabled local settings reference to an external plugin, no manifest found, so it is retain-local configuration only."
     },
     {
-      "project": "parbench_sam",
+      "project": "distbench_sam",
       "name": "document-skills@anthropic-agent-skills",
       "enabled": false,
       "declarationSource": ".claude/settings.json",
@@ -31790,7 +31790,7 @@
       "reason": "Disabled local settings reference to an external plugin bundle with no local manifest, so retain-local with no asset to import."
     },
     {
-      "project": "parbench_sam",
+      "project": "distbench_sam",
       "name": "claude-md-management@claude-plugins-official",
       "enabled": false,
       "declarationSource": ".claude/settings.json",
@@ -31798,7 +31798,7 @@
       "reason": "Disabled local settings reference with no shipped manifest, so it is a retain-local configuration reference."
     },
     {
-      "project": "parbench_sam",
+      "project": "distbench_sam",
       "name": "sam-cc-setup@seed-skills",
       "enabled": false,
       "declarationSource": ".claude/settings.json",
@@ -31833,13 +31833,13 @@
   "selectionAliases": [
     {
       "inventory": "benchmark",
-      "project": "parbench_sam",
+      "project": "distbench_sam",
       "path": ".claude/agents/elegance-reviewer.md",
       "kind": "agent",
       "sha256": "5a38c345016f934f3d3254bec52faf9038351d0d92419ef48a15598dcf066395",
-      "snapshot": "snapshot:parbench-elegance-reviewer",
+      "snapshot": "snapshot:distbench-elegance-reviewer",
       "aliasRole": "primary-source",
-      "note": "Primary source whose sha256 equals the parbench-elegance-reviewer snapshot digest; the separate elegance-review skill is a not-selected merge idea folded into this agent snapshot."
+      "note": "Primary source whose sha256 equals the distbench-elegance-reviewer snapshot digest; the separate elegance-review skill is a not-selected merge idea folded into this agent snapshot."
     },
     {
       "inventory": "benchmark",

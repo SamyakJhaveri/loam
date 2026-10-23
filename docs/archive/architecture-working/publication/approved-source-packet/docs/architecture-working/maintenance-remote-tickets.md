@@ -18,7 +18,7 @@ Acceptance: `node .loam/factory/launcher.mjs verify installation` in a generated
 
 ### REMOTE-01: one SSH transport and persistent Linux execution
 
-Existing behavior: the accepted execution host is a local reconnectable process proposal. Inspected ParBench scripts use tmux and flat logs, without the proposed durable launch protocol.
+Existing behavior: the accepted execution host is a local reconnectable process proposal. Inspected DistBench scripts use tmux and flat logs, without the proposed durable launch protocol.
 
 Proposed changes under `seed/.loam/factory/`: `src/contracts/remote-job.ts`, `src/execution/ssh-transport.ts`, `src/execution/runner.ts`, `src/execution/job-ledger.ts`, `src/platform/linux-services.ts` and existing host/spool modules. Add `tests/execution/remote-recovery.test.ts`. The project store remains the task authority. The remote ledger holds dispatch/resource/evidence facts. Persist request/body identity before dispatch, enforce owner generation, reconcile ambiguous starts and replay captured events without launching twice.
 

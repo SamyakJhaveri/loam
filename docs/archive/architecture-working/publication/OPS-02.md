@@ -16,7 +16,7 @@ Legacy obligation mapping: REMOTE-01 durable SSH runner and request replay.
 
 ## What to build
 
-Verified current behavior: `bin/factory` is a root Bash controller; it is not the proposed SSH runner. Saved ParBench tmux/log observations are design references, not this implementation. Extend the accepted execution host so a Mac controller submits one bounded deterministic scratch command to an enrolled protected Linux runner and recovers the same request after losing the reply.
+Verified current behavior: `bin/factory` is a root Bash controller; it is not the proposed SSH runner. Saved DistBench tmux/log observations are design references, not this implementation. Extend the accepted execution host so a Mac controller submits one bounded deterministic scratch command to an enrolled protected Linux runner and recovers the same request after losing the reply.
 
 Persist validated project/attempt/task-revision, body digest, target/runner and owner-generation identity before dispatch. Repeated identical submit returns durable state; changed body is refused. Preserve unknown dispatch when host/service evidence cannot settle whether execution began. Query/reconcile the same request; never mint a retry from absent PID, lost log or reboot. The Linux ledger records execution/resource/evidence facts only. Local project SQLite retains task/acceptance/memory/lead authority.
 
