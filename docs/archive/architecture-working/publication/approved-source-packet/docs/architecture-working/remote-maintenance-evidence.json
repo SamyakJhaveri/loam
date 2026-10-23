@@ -35,7 +35,7 @@
     ]
   },
   "project_sources": {
-    "/Users/samyakjhaveri/Desktop/parbench_sam/scripts/orchestration/run_conveyor.sh": [
+    "/Users/samyakjhaveri/Desktop/distbench_sam/scripts/orchestration/run_conveyor.sh": [
       "tmux prescribed in usage",
       "absolute remote project path",
       "explicit NVM and NVIDIA compiler PATH",
@@ -44,7 +44,7 @@
       "manual start-task resume",
       "terminal marker verdicts instead of durable launch record"
     ],
-    "/Users/samyakjhaveri/Desktop/parbench_sam/scripts/batch/run_phase3.sh": [
+    "/Users/samyakjhaveri/Desktop/distbench_sam/scripts/batch/run_phase3.sh": [
       "tmux detached launcher",
       "tee log",
       "completion marker",
