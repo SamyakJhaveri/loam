@@ -7,7 +7,8 @@
 #   or the pane layout cannot trigger or hide it. The "resets 6am" time in it marks when that account is usable.
 # - On a limit: switch (claude-account use) to the first usable account in ORDER (Samyak, 23 Oct: gmail, then uci,
 #   npds only when both are out); restart the lead on the same conversation with --resume, paste a resume message, post to Slack.
-#   When no other account is usable but the active one's own reset has passed, restart the lead on it the same way.
+#   When no other account is usable but the active one's own reset has passed, paste a resume message into the
+#   running lead instead (no restart, so its background agents survive).
 # - No usable account: if the soonest reset is more than HOLD_S away and the pair has been idle IDLE_S or more
 #   (idle_s in the runner's PAIR status file), touch the live rental's stop file so the driver tears the pair down
 #   (Samyak, 23 Oct: do not pay for an idle pair). A busy pair, or a PAIR file that is missing, unreadable or has no
@@ -72,7 +73,11 @@ restart() {
   sleep 2
   tmux send-keys -t "$T" "$LAUNCH --resume $1" Enter
   sleep "$BOOT_S"
-  printf '%s\n' "$2" > "$S/msg.txt"
+  nudge "$2"
+}
+# Paste message $1 into the lead's pane and submit it.
+nudge() {
+  printf '%s\n' "$1" > "$S/msg.txt"
   tmux load-buffer -b limitmsg "$S/msg.txt"; tmux paste-buffer -b limitmsg -t "$T"
   sleep 1; tmux send-keys -t "$T" Enter; sleep 2; tmux send-keys -t "$T" Enter
 }
@@ -97,10 +102,10 @@ while true; do
     to=$(pick "$cur")
     if [ -n "$to" ] && [ "$gap" -ge 900 ]; then
       switch "$cur" "$to" "$sid" "the lead hit its Claude usage limit on $cur" && told=""
-    elif [ -z "$to" ] && usable "$cur" && [ "$gap" -ge 900 ]; then   # cur's reset came first: resume on it
-      date +%s > "$S/switched"; log "$cur usable again, no other account is; restarting lead on $sid"; told=""
-      restart "$sid" "Watch alarm ($(date -u +%H:%MZ)): the Claude usage limit on $cur has reset. limit-alarm.sh on jhaveris restarted you on $cur with --resume. Your background shells, monitors and agents from before the restart are gone. Resume from the ledger RESUME POINTER: re-arm the monitors you need, check block 1's driver and op-* panes, then carry on. Record this restart in the ledger."
-      $ALERT "WATCH: the Claude usage limit on $cur has reset. limit-alarm restarted the distbench lead on $cur with --resume. Nothing to do unless the lead stays idle; check tmux distbench-lead."
+    elif [ -z "$to" ] && usable "$cur" && [ "$gap" -ge 900 ]; then   # cur's reset came first: wake the lead, no restart
+      date +%s > "$S/switched"; log "$cur usable again, no other account is; pasted a resume message into the lead"; told=""
+      nudge "Watch alarm ($(date -u +%H:%MZ)): the Claude usage limit on $cur has reset. limit-alarm.sh on jhaveris did not restart you, so your background shells, monitors and agents are still running. Carry on from where the limit stopped you, and record this in the ledger."
+      $ALERT "WATCH: the Claude usage limit on $cur has reset. limit-alarm pasted a resume message into the distbench lead on $cur (no restart). Nothing to do unless the lead stays idle; check tmux distbench-lead."
     elif [ -z "$to" ] && [ "$told" != 1 ]; then   # told: empty, held (pair busy, alert sent, check again) or 1
       soon="" who=""
       for n in $(stored); do u=$(num "$S/$n.until"); if [ -z "$soon" ] || [ "$u" -lt "$soon" ]; then soon=$u; who=$n; fi; done
