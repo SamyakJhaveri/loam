@@ -20,7 +20,7 @@ setup() { # scenario dir, active account
 }
 run() { # scenario dir, seconds
   T=la-test-pane S=$1/state PROJ=$1/proj ALERT="echo ALERT:" LAUNCH="echo FAKE-CLAUDE" STOPF=$1/STOP PAIR=$1/pair-status.json \
-    IDLE_S=1800 ORDER="gmail uci npds" BOOT_S=2 \
+    IDLE_S=1800 ORDER="gmail uci npds" BOOT_S=2 BACK=${BACK:-0} \
     CLAUDE_ACCOUNTS_DIR=$1/acc CLAUDE_SETTINGS_FILE=$1/settings.json timeout "$2" bash "$HOME/.distbench/la-new.sh"
 }
 fail=0
@@ -73,13 +73,19 @@ chk "reset within 2 h -> pair kept, no stop file" '[ ! -e $C/STOP ] && grep -q "
 # 4. On npds, no limit, gmail usable again, lead idle 10 min -> back to gmail.
 E=$D/e; setup "$E" npds
 printf "$ok\n" sessE > "$E/proj/sessE.jsonl"; touch -d '10 minutes ago' "$E/proj/sessE.jsonl"
-outE=$(run "$E" 20)
-chk "switches back to gmail when usable and the lead is idle" '[ "$(cat $E/acc/active)" = gmail ] && grep -q "switched npds -> gmail" <<< "$outE"'
+outE=$(BACK=1 run "$E" 20)
+chk "BACK=1: switches back to gmail when usable and the lead is idle" '[ "$(cat $E/acc/active)" = gmail ] && grep -q "switched npds -> gmail" <<< "$outE"'
+
+# 4b. Same as 4 with the default BACK=0 -> stays on npds.
+K=$D/k; setup "$K" npds
+printf "$ok\n" sessK > "$K/proj/sessK.jsonl"; touch -d '10 minutes ago' "$K/proj/sessK.jsonl"
+outK=$(run "$K" 20)
+chk "BACK=0 (default): no switch back even when the lead looks idle" '[ "$(cat $K/acc/active)" = npds ] && ! grep -q "switched" <<< "$outK"'
 
 # 5. On npds, no limit, gmail usable, lead busy (fresh transcript) -> stays.
 F=$D/f; setup "$F" npds
 printf "$ok\n" sessF > "$F/proj/sessF.jsonl"
-outF=$(run "$F" 5)
+outF=$(BACK=1 run "$F" 5)
 chk "no switch back while the lead is busy" '[ "$(cat $F/acc/active)" = npds ]'
 
 # 6. A relayed user line or a normal last line never triggers.

@@ -12,9 +12,10 @@
 #   (Samyak, 23 Oct: do not pay for an idle pair). A busy pair, or a PAIR file that is missing, unreadable or has no
 #   idle_s, keeps the pair and is checked again each minute: the core's sessions run on OpenRouter, not on these
 #   accounts, so a live run must outlast them. A reset within HOLD_S: post the wait and retry.
-# - Back up the ORDER: when an account ranked above the active one is usable again and the lead is idle for 3 min,
-#   switch to it.
-# Test overrides: T, PROJ, S, ALERT, LAUNCH, STOPF, PAIR, ORDER, HOLD_S, IDLE_S, BOOT_S, and claude-account's
+# - Back up the ORDER (only when BACK=1): when an account ranked above the active one is usable again and the lead
+#   is idle for 3 min, switch to it. Off by default (Samyak, 23 Oct): a restart kills the lead's background agents,
+#   and an idle prompt does not mean no agent is running.
+# Test overrides: T, PROJ, S, ALERT, LAUNCH, STOPF, PAIR, ORDER, HOLD_S, IDLE_S, BOOT_S, BACK, and claude-account's
 # CLAUDE_ACCOUNTS_DIR / CLAUDE_SETTINGS_FILE.
 set -u
 export PATH=$HOME/.local/bin:$PATH TZ=America/Los_Angeles
@@ -29,6 +30,7 @@ PAIR=${PAIR:-$HOME/.local/state/distbench/block-1/state/pair-status.json}   # th
 HOLD_S=${HOLD_S:-7200}
 IDLE_S=${IDLE_S:-1800}
 BOOT_S=${BOOT_S:-45}
+BACK=${BACK:-0}
 ACC=${CLAUDE_ACCOUNTS_DIR:-$HOME/.config/claude-accounts}
 mkdir -p "$S"
 log() { echo "$(date -u +%m-%dT%H:%M:%SZ) $*"; }
@@ -116,7 +118,7 @@ while true; do
         told=1
       fi
     fi
-  elif to=$(pick "$cur") && [ -n "$to" ] && [ "$(rank "$to")" -lt "$(rank "$cur")" ] && [ "$gap" -ge 900 ]; then
+  elif [ "$BACK" = 1 ] && to=$(pick "$cur") && [ -n "$to" ] && [ "$(rank "$to")" -lt "$(rank "$cur")" ] && [ "$gap" -ge 900 ]; then
     f=$(ls -t "$PROJ"/*.jsonl 2>/dev/null | head -1)
     if [ -n "$f" ] && [ $(( now - $(stat -c %Y "$f") )) -ge 180 ]; then
       sid=$(basename "$f" .jsonl)
