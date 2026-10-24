@@ -97,6 +97,14 @@ chk "gmail limited, uci usable -> switches to uci, not npds" '[ "$(cat $G/acc/ac
 
 chk "no trigger on a normal last line" '! grep -q "limit on" <<< "$outE$outF"'
 
+# 8. gmail's limit (already seen) has reset, uci and npds limited for hours, pair idle -> lead resumed on gmail.
+L=$D/l; setup "$L" gmail
+printf "$err\n" e8 sessL > "$L/proj/sessL.jsonl"; echo e8 > "$L/state/seen"; echo $(( now - 60 )) > "$L/state/gmail.until"
+for n in uci npds; do echo $(( now + 20000 )) > "$L/state/$n.until"; done
+printf "$pair\n" "$now" 2400.5 > "$L/pair-status.json"
+outL=$(run "$L" 20); paneL=$(tmux capture-pane -p -t la-test-pane -S -50)
+chk "own reset first, others limited -> lead resumed on gmail, no stop file" '[ "$(cat $L/acc/active)" = gmail ] && grep -q "FAKE-CLAUDE --resume sessL" <<< "$paneL" && grep -q "ALERT: WATCH: .*restarted the distbench lead on gmail" <<< "$outL" && [ ! -e $L/STOP ]'
+
 tmux kill-session -t la-test-pane
 echo "--- run logs:"; printf '%s\n' "$outA" "$outB" "$outH" "$outI" "$outC" "$outE" | sed 's/^/  /'
 if [ "$fail" = 0 ]; then
