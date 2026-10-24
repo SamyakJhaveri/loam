@@ -97,6 +97,24 @@ chk "gmail limited, uci usable -> switches to uci, not npds" '[ "$(cat $G/acc/ac
 
 chk "no trigger on a normal last line" '! grep -q "limit on" <<< "$outE$outF"'
 
+# 8. gmail's limit (already seen) has reset, uci and npds limited for hours, pair idle -> resume message pasted
+#    into the running lead on gmail, no restart.
+L=$D/l; setup "$L" gmail
+printf "$err\n" e8 sessL > "$L/proj/sessL.jsonl"; echo e8 > "$L/state/seen"; echo $(( now - 60 )) > "$L/state/gmail.until"
+for n in uci npds; do echo $(( now + 20000 )) > "$L/state/$n.until"; done
+printf "$pair\n" "$now" 2400.5 > "$L/pair-status.json"
+outL=$(run "$L" 10); paneL=$(tmux capture-pane -p -t la-test-pane -S -50)
+chk "own reset first, others limited -> no kill, no relaunch" 'pgrep -f "^sleep 1000$" >/dev/null && ! grep -q "FAKE-CLAUDE" <<< "$paneL"'
+chk "own reset first -> resume message pasted, Slack line, on gmail, no stop file" 'grep -q "Watch alarm" <<< "$paneL" && grep -q "ALERT: WATCH: the Claude usage limit on gmail has reset" <<< "$outL" && [ "$(cat $L/acc/active)" = gmail ] && [ ! -e $L/STOP ]'
+
+# 8b. Same, but the last switch or wake-up was 5 min ago -> nothing pasted yet (900 s guard).
+M=$D/m; setup "$M" gmail
+printf "$err\n" e8b sessM > "$M/proj/sessM.jsonl"; echo e8b > "$M/state/seen"; echo $(( now - 60 )) > "$M/state/gmail.until"
+for n in uci npds; do echo $(( now + 20000 )) > "$M/state/$n.until"; done
+echo $(( $(date +%s) - 300 )) > "$M/state/switched"
+outM=$(run "$M" 8); paneM=$(tmux capture-pane -p -t la-test-pane -S -50)
+chk "own reset first, woken 5 min ago -> nothing pasted" '! grep -q "Watch alarm" <<< "$paneM" && ! grep -q "has reset" <<< "$outM"'
+
 tmux kill-session -t la-test-pane
 echo "--- run logs:"; printf '%s\n' "$outA" "$outB" "$outH" "$outI" "$outC" "$outE" | sed 's/^/  /'
 if [ "$fail" = 0 ]; then
