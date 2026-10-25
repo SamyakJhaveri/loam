@@ -1,0 +1,3 @@
+# Search tools (ripgrep, Claude Code Grep and Glob) skip these paths; Read still opens them by name.
+# Outdated material lives here so agents do not take it as current. bin/check does not use ripgrep.
+docs/archive/
