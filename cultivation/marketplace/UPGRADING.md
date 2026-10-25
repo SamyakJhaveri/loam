@@ -3,10 +3,16 @@
 This file records why a promoted plugin change traveled. It is also the upgrade
 entry point for projects that consume the Loam marketplace.
 
+<<<<<<< HEAD
 ## sam-cc-setup v0.9.7 brief names the render proof
 
 The `/brief` skill's Track B now says a Loam ticket that changes rendered-project behavior proves it with `control-loam`, in the form `docs/factory/CONTRACT.md` gives.
 No agent prompt changed, so no grader replay is owed.
+=======
+## sam-cc-setup v0.9.8 grader prompt edits
+
+judge.md and reviewer.md cite only the sections build_evidence sends (Rows measured, decisions.md), judge.md counts a `SKIP` or `SKIPPED` line in the Checks output as unproven, and both drop "of Loam v3", since `-C` grades other repositories; before merging, run the v0.9.6 replay with `judge reviewer` in each `for g in` list.
+>>>>>>> origin/audit/grader-prompts
 Upgrade step: `claude plugin update sam-cc-setup`.
 
 ## sam-cc-setup v0.9.6 factory grader fixes
