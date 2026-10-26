@@ -1,6 +1,6 @@
 # Loam Factory: roadmap
 
-> Superseded 2026-09-19. F0, F2, F5, F6, F1, F3, F4, F9 shipped. F7 and F8 are frozen (inspection pick 4). The live plan is the campaign ticket index at `docs/architecture-working/tickets/README.md`. This file stays as the record of order and dependency for the loop factory.
+> Superseded 2026-09-19. F0, F2, F5, F6, F1, F3, F4, F9 shipped. F7 and F8 are frozen (inspection pick 4). The campaign ticket index that replaced it, `docs/architecture-working/tickets/README.md`, is parked by ruling R6 (2026-10-25). This file stays as the record of order and dependency for the loop factory.
 
 One behavior change per session.
 Items are in short form here until F0 publishes them as GitHub issues in the contract form; then this file keeps only the order, the dependency, and the issue link.
