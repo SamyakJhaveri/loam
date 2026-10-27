@@ -18,8 +18,8 @@ matcher. Two native deny lists do the blocking.
 - The Claude sandbox is on (`sandbox.enabled`), with `.env*` denied for read and
   write. The `Read(~/.ssh/**)` deny also applies inside the sandbox, so a
   sandboxed command cannot read `~/.ssh`. It does not cover the excluded `ssh`,
-  `scp` and `rsync` (see Accepted risks). `failIfUnavailable` is false, so a
-  host without sandbox support still runs; the deny list is then the only file
+  `scp`, `rsync` and `gh` (see Accepted risks). `failIfUnavailable` is false, so
+  a host without sandbox support still runs; the deny list is then the only file
   guard, and `Read(~/.ssh/**)` covers only the Read tool, not a shell command.
 - `.codex/config.toml` denies `.env*` in the workspace and leaves network on.
   All of `.codex/` is inert until you mark this project trusted in Codex.
@@ -196,13 +196,18 @@ tokenizer result.
   sandbox's file and network limits do not apply to them, and neither the
   `Read(~/.ssh/**)` deny nor the `ssh-keygen` deny covers them: they can copy
   key files or run local commands (`ssh -o ProxyCommand=...`, `rsync -e ...`),
-  and `gh` can read or write anything its token reaches. `gh` is excluded
-  because inside the macOS sandbox it cannot reach the system trust service and
-  fails TLS with `x509: OSStatus -26276`. `git push`, `git fetch` and `git pull`
-  are not excluded and stay sandboxed.
-  An entry matches only a bare command. A pipe, redirect, `;` or `&&` outside
-  quotes, or `$(` anywhere (even inside quotes), runs the whole line in the
-  sandbox, where `ssh` cannot resolve the host and `gh` fails TLS.
+  and `gh` can read or write anything its token reaches, including force-moving
+  a branch through `gh api` (the `git push --force` deny covers `git` only),
+  merging, deleting a repository, printing the token with `gh auth token`, and
+  running local code outside the sandbox through `gh alias set --shell` or a
+  `gh` extension. `gh` is excluded because inside the macOS sandbox it cannot
+  reach the system trust service and fails TLS with `x509: OSStatus -26276`.
+  `git push`, `git fetch` and `git pull` are not excluded and stay sandboxed.
+  A call runs outside the sandbox only when every command in it matches an
+  entry: `gh pr list && gh pr view 1` runs outside, while
+  `gh pr list && git fetch` and `gh pr list | cat` stay sandboxed. A redirect
+  to a file, a `cd`, or `$(...)` anywhere keeps the whole call sandboxed, where
+  `ssh` cannot resolve the host and `gh` fails TLS.
 - The `.env` deny rules do not stop a Python or Node subprocess opening the file.
   The sandbox filesystem deny is the real containment, where the host supports it.
 - Secrets typed into an ordinary source file are not caught locally.
