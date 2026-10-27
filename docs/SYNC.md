@@ -94,7 +94,7 @@ A ruling that a path must take no template change at all also goes in a `## Copi
 ```text
 --skip /bin/check
 --skip /AGENTS.md
---exclude /docs/runtime
+--exclude /docs/HARNESS.md
 ```
 ````
 

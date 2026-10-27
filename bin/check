@@ -146,13 +146,10 @@ python3 bin/always_loaded_prose.py --root "$ROOT" --cap 4675 || bad "always-load
 step "no em dash in Loam-owned text"
 # The owner's standing rule (#237), raw or JSON-escaped. Exempt only text Loam does not own or must not rewrite.
 EM_EXEMPT=(
-  ":(exclude)cultivation/parked/"                                       # byte-pinned by the curated catalog; an edit needs a re-pin
+  ":(exclude)cultivation/parked/"                                       # parked assets kept as they were removed; not live text
   ":(exclude)docs/archive/"                                             # frozen historical records
-  ":(exclude)docs/architecture-working/asset-intake/sources/"           # verbatim captured sources
-  ":(exclude)docs/architecture-working/asset-intake/loam-inventory.json" # generated inventory quoting other files
   ":(exclude)docs/research/primary-2026-09-08/"                         # quoted upstream pages
   ":(exclude)evals/"                                                    # recorded grader prompts; a replay must see them unchanged
-  ":(exclude)seed/.loam/runtime/assets/curated-catalog.json"            # sha256-pinned in seed/.loam/runtime/release-manifest.json
 )
 # --untracked: a new file not yet added fails here, as it will in CI. git grep exits 1 when nothing
 # matched, and also after an error it does not treat as fatal, so any stderr fails the step too.
@@ -210,28 +207,6 @@ out=$(FACTORY_SOURCED=1 bash -c '. bin/factory; verdict_consistent bin/factory.d
 
 step "factory grader model and effort"
 bin/factory graders-check || bad "bin/factory graders-check"
-
-step "factory package qualification and independent rebuild"
-if [ -z "${LOAM_FACTORY_TOOLCHAIN:-}" ] || [ ! -x "$LOAM_FACTORY_TOOLCHAIN/bin/node" ]; then
-  bad "set LOAM_FACTORY_TOOLCHAIN to the candidate Node distribution; see CONTRIBUTING.md"
-else
-  FACTORY_NODE="$LOAM_FACTORY_TOOLCHAIN/bin/node"
-  "$FACTORY_NODE" seed/.loam/runtime/launcher.mjs qualify package || bad "factory package qualification"
-  # Inspect the frozen candidate. Never run npm build before this comparison.
-  "$FACTORY_NODE" seed/.loam/runtime/scripts/rebuild.mjs || bad "factory independent rebuild"
-  # Fixed case accounting: a skipped or missing render case fails the gate.
-  "$FACTORY_NODE" bin/factory-release-render.mjs || bad "factory exact release render"
-  # Storage, lifetime locks and runtime identity. Runs inside sandboxes and on CI;
-  # after the pristine-tree rebuild/render gates so a leak cannot disturb them.
-  # Containment (qualify native-boundary) is a host-only gate; see seed/docs/runtime/SETUP.md.
-  "$FACTORY_NODE" seed/.loam/runtime/launcher.mjs qualify platform || bad "factory platform qualification"
-  # Curated catalog: recipient consistency (qualify catalog) and Loam-only source
-  # provenance against the repository tree and the intake inventories (NATIVE-05).
-  "$FACTORY_NODE" seed/.loam/runtime/launcher.mjs qualify catalog || bad "factory catalog qualification"
-  "$FACTORY_NODE" bin/factory-catalog-provenance.mjs || bad "factory catalog provenance"
-  # Offline runtime admission. Containment (qualify admission-containment) is a host-only gate; see seed/docs/runtime/SETUP.md.
-  "$FACTORY_NODE" seed/.loam/runtime/launcher.mjs qualify runtime-admission || bad "factory runtime-admission qualification"
-fi
 
 if [ "$FAIL" -ne 0 ]; then echo; echo "check: FAILED"; exit 1; fi
 echo; echo "check: PASSED${SKIPS:+ (skipped: $SKIPS)}"

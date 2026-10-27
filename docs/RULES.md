@@ -34,7 +34,7 @@ Keep rows a check enforces, so each enforcer stays findable; drop a row only whe
 | A Loam capability reaches DistBench by a tailored transfer, one capability at a time, merged so DistBench's own instructions, rules, workflows, skills, operating procedures and learnings survive; `bin/sync-project` output is a diff source, not the delivery | owner ruling 2026-10-26; `docs/SYNC.md` | prose (judgment) |
 | Snapshots of unpushed work live in a private archive repo, never as tags on the public Loam origin (they leak unlicensed files and make Copier record `archive/...` as the version) | owner ruling 2026-10-26 | prose until the archive-tag unit adds its check |
 | Research-lane items are decided one at a time against how DistBench actually runs and builds, not built or parked wholesale; marketing material is out of scope | owner ruling 2026-10-26; `docs/BACKLOG.md` | prose (judgment) |
-| The native-factory campaign (#102 and its children) is parked: no agent builds or reopens its tickets, and renders stop shipping `.loam/runtime` | owner ruling R6 2026-10-25; `docs/architecture-working/tickets/README.md` | prose until the render-removal unit lands its render check |
+| The native-factory campaign (#102 and its children) is parked: no agent builds or reopens its tickets, and renders stop shipping `.loam/runtime` or `docs/runtime` | owner ruling R6 2026-10-25; `docs/archive/architecture-working/tickets/README.md` | `bin/tests/test_render_smoke.py` `test_factory_runtime_does_not_render` |
 
 ## Checkable, not yet enforced
 

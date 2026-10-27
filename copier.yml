@@ -26,11 +26,6 @@ _exclude:
   - ".claude/worktrees"
   # Codex review transcripts written through the root .claude symlink; never ship.
   - ".claude/codex-reviews"
-  # Factory development dependencies and local state never ship.
-  - ".loam/runtime/node_modules"
-  - ".loam/runtime/.cache"
-  - ".loam/runtime/.state"
-  - ".loam/runtime/runtime-installation"
   # The memory system, for a project that answers memory=false. Task 1 strips its hook entries
   # from settings.json; the .jinja docs drop its prose.
   - "{% if not memory %}.claude/hooks/mem-capture.sh{% endif %}"

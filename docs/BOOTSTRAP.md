@@ -19,7 +19,6 @@ Copier asks four questions: `project_name`, `github_repo` (blank skips GitHub se
 - `.claude/`: Claude Code settings (deny list, sandbox) and the lifecycle hook scripts: the Fable session brief and post-compaction reminder, plus the zero-model memory layer (`mem-capture.sh` on SessionEnd/PreCompact/Stop copies each transcript to the per-user store; `mem-recall.sh` on SessionStart injects the last few sessions). Companion tools `bin/memsearch` and `bin/mem-weekly.sh` search the store and report recurring errors. See `docs/HARNESS.md`.
 - `.agents/skills/`: three skills shared by Claude Code (via symlink) and Codex: `catchup` (session bootstrap), `fable-prompting` (index over the Fable 5.1 guide), `hypothesis-tree` (persistent investigation tree).
 - `.codex/`: Codex configuration and execution rules (`rules/loam.rules`, the same deny families), plus `.codex/hooks.json`, which registers the memory hooks; `features.hooks` is on. All of it is inert until you trust the project in Codex.
-- `.loam/runtime/`: the qualification runtime; see `docs/runtime/SETUP.md`.
 
 ## After bootstrap
 
