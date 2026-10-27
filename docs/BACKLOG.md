@@ -1,6 +1,6 @@
 # Backlog
 
-Everything from the v3 audit that is still worth doing after v3.0.0 ships.
+Everything from the v3 audit that was still worth doing after v3.0.0 ships; an item with a Decided line is closed or filed as an issue.
 Source: `.superpowers/lean-v3/01-PENDING-WORK.md`, the ranked LATER list.
 Ranked by value to the stated goal, a research partner. Highest first.
 One item per session, same verification protocol as the v3 sessions.
@@ -10,7 +10,7 @@ Nothing here is scheduled. An item moves out of this file only when a real proje
 ## 1. Research-lane bundle
 
 Sources: RD, S6-2, S6-4, G6, W1, W2, W3, RG.
-Ship the parked bundle at `cultivation/parked/research-lane/` as one plugin: vendored skills (rigor, experiment-loop, research-writing, ml-paper-writing), the empty doc templates, the `run.json` plus run-folder convention, and `bin/` verifiers (claims ledger, citation, figure) the agent runs by choice.
+Proposed: ship the parked bundle (formerly at `cultivation/parked/research-lane/`, deleted 2026-10-27) as one plugin: vendored skills (rigor, experiment-loop, research-writing, ml-paper-writing), the empty doc templates, the `run.json` plus run-folder convention, and `bin/` verifiers (claims ledger, citation, figure) the agent runs by choice.
 Promote to shipped only when a new distbench dogfoods it and a session measures it.
 No hooks, no commit gates: file conventions plus verifiers.
 Why first: it is the one thing Loam was for and the one thing never built.
@@ -31,14 +31,14 @@ A thin `bin/conveyor.sh`: `claude -p` in tmux on the eval host, results sync, Pu
 Drop the in-loop Codex gate; it is harness-policing.
 Notification via the script or a Routine, never a hook.
 Why: the owner runs walk-away work on a remote host, but this waits until the contract exists to feed it.
-Decided 2026-10-27 (U18 part 2, `docs/RULES.md` row "Research lane, headless conveyor"): closed; the factory and DistBench's agent swarm do this, with Slack and healthchecks.io alerts.
+Decided 2026-10-27 (U18 part 2, `docs/RULES.md` row "Research lane, headless conveyor"): closed; walk-away work runs on Loam's factory and DistBench's agent swarm on jhaveris, and the owner's alerts are Slack and healthchecks.io, not Pushover; `bin/factory` still sends Pushover.
 
 ## 4. Ideation chain
 
 Sources: S6-3, G5.
 One parked `ideate` skill: frame, diverge with a mandatory retrieval pass, react, ground on an external anchor, plan.
 Reuses the already-parked `unknowns` and the shipped `surprise-me`.
-Why: retrieval-grounded ideas measured 2.5x impact, but it duplicates native plan mode, so it waits behind the lane it serves.
+Why: retrieval-grounded ideas measured 2.5x impact (HindSight, Jiang, arXiv 2603.15164: 2.5x higher matched-future-paper impact score, 200 ideas, one LLM judge that saw no difference), but it duplicates native plan mode, so it waits behind the lane it serves.
 Decided 2026-10-27 (U18 part 2, `docs/RULES.md` row "Research lane, ideation chain"): build later in its own session (#361).
 
 ## 5. Reading room and skill acquisition
