@@ -35,6 +35,7 @@ Keep rows a check enforces, so each enforcer stays findable; drop a row only whe
 | Snapshots of unpushed work live in a private archive repo, never as tags on the public Loam origin (they leak unlicensed files and make Copier record `archive/...` as the version) | owner ruling 2026-10-26 | prose until the archive-tag unit adds its check |
 | Research-lane items are decided one at a time against how DistBench actually runs and builds, not built or parked wholesale; marketing material is out of scope | owner ruling 2026-10-26; `docs/BACKLOG.md` | prose (judgment) |
 | The native-factory campaign (#102 and its children) is parked: no agent builds or reopens its tickets, and renders stop shipping `.loam/runtime` or `docs/runtime` | owner ruling R6 2026-10-25; `docs/archive/architecture-working/tickets/README.md` | `bin/tests/test_render_smoke.py` `test_factory_runtime_does_not_render` |
+| The template sandbox runs `gh` outside (inside the macOS sandbox it fails TLS); `git push`, `git fetch` and `git pull` stay sandboxed (2d6070e's git exclusions are not ported) | owner ruling P8 2026-10-26; `seed/.claude/settings.json` `sandbox.excludedCommands`, `seed/docs/HARNESS.md.jinja` Accepted risks | `bin/tests/test_render_smoke.py` `test_sandbox_excludes_gh_but_not_git` |
 
 ## Checkable, not yet enforced
 

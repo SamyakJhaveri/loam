@@ -16,6 +16,10 @@ On the owner's machines the store remote uses the ssh alias `jhaveris`, the same
 
     git -C ~/memstore remote add origin jhaveris:memstore.git
 
+## Sandbox exclusions in Loam's own sessions
+
+Loam's own sessions run `gh` outside the sandbox too, because the root `.claude/` links to `seed/.claude/`, so the seed's `sandbox.excludedCommands` applies here.
+
 ## Measured cost, v2.3.0 to v3.0.0
 
 A record of the v3.0.0 cut, not maintained.
