@@ -1,5 +1,7 @@
 # REC-01 results: basic-memory pilot on DistBench
 
+**Stopped 2026-10-26 by Samyak's ruling (S1, decision P3): the pilot is removed and its Mac install is uninstalled in unit U8 (#347). No outcome was recorded; every instruction below is historical.**
+
 Pilot started 2026-09-21. Personal install on the Mac; nothing from it is in the seed until the week-4 outcome. Spec: `docs/plans/2026-09-21-memory-v2/rec-01.md` (local). Store notes live in the DistBench repo under `docs/agent/`.
 
 ## Outcome that decides it (quoted from rec-01.md)
