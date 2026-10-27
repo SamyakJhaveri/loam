@@ -133,6 +133,13 @@ class RenderSmoke(unittest.TestCase):
         self.assertIs(s["sandbox"]["enabled"], True)
         self.assertIn(".env", s["sandbox"]["filesystem"]["denyRead"])
 
+    def test_sandbox_excludes_gh_but_not_git(self):
+        # P8: gh fails TLS inside the macOS sandbox; git push, fetch and pull stay in.
+        self.assertEqual(
+            self.settings()["sandbox"]["excludedCommands"],
+            ["ssh *", "scp *", "rsync *", "gh *"],
+        )
+
     def test_only_the_expected_hooks_ship(self):
         shipped = sorted(p.name for p in (self.out / ".claude/hooks").glob("*"))
         self.assertEqual(
