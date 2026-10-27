@@ -1,1 +1,1 @@
-Skills, agents, hooks, and workflows removed from the shipped `sam-cc-setup` plugin in v3.0.0, plus the `impeccable` plugin and the never-dogfooded research lane; kept for reference, not installed; see the "S3-owned cleanups" section of `docs/BACKLOG.md` before deleting this tree.
+Skills, agents, hooks, and workflows removed from the shipped `sam-cc-setup` plugin in v3.0.0, plus the `impeccable` plugin; kept for reference, not installed; see the "S3-owned cleanups" section of `docs/BACKLOG.md` before deleting this tree.

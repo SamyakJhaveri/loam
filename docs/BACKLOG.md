@@ -14,6 +14,7 @@ Ship the parked bundle at `cultivation/parked/research-lane/` as one plugin: ven
 Promote to shipped only when a new distbench dogfoods it and a session measures it.
 No hooks, no commit gates: file conventions plus verifiers.
 Why first: it is the one thing Loam was for and the one thing never built.
+Decided 2026-10-27 (U18 part 2, `docs/RULES.md` row "Research lane, parked bundle"): closed; the parked folder was deleted, and experiment and paper tooling is built in DistBench first.
 
 ## 2. Experiment contract as a file convention
 
@@ -21,6 +22,7 @@ Sources: S6-1, G7 contract half.
 A `CONTRACT.md` (question, done-when shell command, budget, seeds, protocol hash) plus a `bin/` verifier.
 The done-when check is native `/goal`, not a Stop hook.
 Why: the smallest unit of the research lane; it makes unattended runs verifiable without the deleted gate machinery.
+Decided 2026-10-27 (U18 part 2, `docs/RULES.md` row "Research lane, experiment contract"): closed for now; DistBench has its own, and Loam copies it when a second research project starts.
 
 ## 3. Headless conveyor for the remote eval host
 
@@ -29,6 +31,7 @@ A thin `bin/conveyor.sh`: `claude -p` in tmux on the eval host, results sync, Pu
 Drop the in-loop Codex gate; it is harness-policing.
 Notification via the script or a Routine, never a hook.
 Why: the owner runs walk-away work on a remote host, but this waits until the contract exists to feed it.
+Decided 2026-10-27 (U18 part 2, `docs/RULES.md` row "Research lane, headless conveyor"): closed; the factory and DistBench's agent swarm do this, with Slack and healthchecks.io alerts.
 
 ## 4. Ideation chain
 
@@ -36,6 +39,7 @@ Sources: S6-3, G5.
 One parked `ideate` skill: frame, diverge with a mandatory retrieval pass, react, ground on an external anchor, plan.
 Reuses the already-parked `unknowns` and the shipped `surprise-me`.
 Why: retrieval-grounded ideas measured 2.5x impact, but it duplicates native plan mode, so it waits behind the lane it serves.
+Decided 2026-10-27 (U18 part 2, `docs/RULES.md` row "Research lane, ideation chain"): build later in its own session (#361).
 
 ## 5. Reading room and skill acquisition
 
@@ -43,6 +47,7 @@ Sources: S6-4, G2.
 Parked skills `read` (labelled Verified/Likely/Relayed readings into `RESOURCES.md`) and `adopt-skill` (find, vet, eval, adopt).
 Plus the "write a skill at the second repetition" rule as one `docs/WORKERS.md` line.
 Why: genuine hygiene, low urgency, no platform gap forcing it now.
+Decided 2026-10-27 (U18 part 2, `docs/RULES.md` row "Research lane, reading room"): build the reading-log skill later (#362); no adopt-skill, no second-repetition rule.
 
 ## 6. Decision ledger and structured handoff prose
 
@@ -50,6 +55,7 @@ Sources: G1 RULINGS half, RC, S6-5, S6-8, G3 brief/report half.
 An on-demand `RULINGS.md`, plus the seven-field handoff, worktree isolation, loop, and inline-mermaid guidance, all as `docs/WORKERS.md` prose.
 Never always-loaded.
 Why: cheap and useful for multi-session work, but it must stay out of the 400-token always-on budget.
+Decided 2026-10-27 (U18 part 2, `docs/RULES.md` row "Research lane, decision ledger and handoff prose"): closed; rulings live in `docs/RULES.md` and the handoff and worktree prose already ships in the seed.
 
 ## 7. Attach mode
 
