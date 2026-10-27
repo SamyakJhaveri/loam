@@ -848,8 +848,8 @@ assert_parallel() {
     || finish stopped-environment "parallel cap: $n other live run(s), MAX_PARALLEL=$MAX_PARALLEL"
 }
 
-# bin/check's toolchain gate needs both exports; without them a run finishes its work and then fails
-# guard bin/check (#158). Same predicate as bin/check; one stderr line naming the variable, return 1.
+# A Loam run still requires both exports, though bin/check stopped reading them when ruling R6 removed its
+# Node gate; the gate stays until the factory tests stop expecting it. One stderr line naming the variable, return 1.
 assert_toolchain_env() {
   local fix="export it in ~/.profile on the runner; see CONTRIBUTING.md"
   if [ -z "${LOAM_FACTORY_TOOLCHAIN:-}" ] || [ ! -x "$LOAM_FACTORY_TOOLCHAIN/bin/node" ]; then
@@ -862,7 +862,7 @@ assert_toolchain_env() {
   fi
 }
 
-# The launch gate for the target: Loam's bin/check needs the toolchain exports above; another target needs its
+# The launch gate for the target: Loam needs the toolchain exports above; another target needs its
 # own executable bin/check, which every done-checks block guards, and a standing do-not-touch list with at least
 # one entry, so an unattended worker never runs with nothing fenced off (F8). One stderr line, return 1.
 assert_target_ready() {
@@ -1768,8 +1768,8 @@ cmd_next() { # [--dry-run|--install]
   #     read-only and shared with precondition_lines; it runs under --dry-run too, since a check from
   #     inside a worktree may run it. The line goes to stderr (cron mails it) and returns 1, the same
   #     shape as `frontier query failed`; the ticket stays unassigned and launches on the first tick
-  #     after the login returns. The target gate works the same way: without the toolchain exports
-  #     (Loam) or a bin/check (another target) the run fails guard bin/check after its work is done (#158).
+  #     after the login returns. The target gate works the same way: it refuses Loam without the toolchain
+  #     exports and another target without a bin/check, which would fail guard bin/check after its work (#158).
   assert_target_ready || return 1
   if ! claude_logged_in; then
     echo "login expired: claude auth status reports logged out; run claude login on the runner" >&2
@@ -1982,7 +1982,7 @@ precondition_lines() { # LOOP.md, Preconditions
     command -v "$t" > /dev/null 2>&1 && echo "  PASS $t on PATH" || echo "  FAIL $t not on PATH"
   done
   echo "  INFO target $TARGET; runs root $RUNS_ROOT"
-  # Only Loam's bin/check reads the toolchain exports; another target needs its own bin/check instead (F8).
+  # Only a Loam target needs the toolchain exports; another target needs its own bin/check instead (F8).
   if ! target_is_loam; then
     [ -x "$TARGET/bin/check" ] && echo "  PASS bin/check in the target" || echo "  FAIL no executable bin/check in the target"
   else
