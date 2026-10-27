@@ -12,9 +12,7 @@ A duplicate across layers is a bug unless it is an explicit distribution mirror 
 
 Shipped, discoverable and loaded are three different facts:
 
-- **Shipped availability**: the file reaches the generated project and its delivered digest is qualified. The curated catalog (`seed/.loam/runtime/assets/curated-catalog.json`, described in `seed/docs/runtime/ASSETS.md`) records this per method. In the current revision every actual method is pending, not available.
-  The catalog byte-pins intake sources under `docs/architecture-working/`, parked material under `cultivation/parked/`, and three live seed skill bodies: `seed/.agents/skills/{catchup,fable-prompting,hypothesis-tree}/SKILL.md`.
-  Editing one of those three needs a re-pin (its `expectedSha256` in the catalog, then the catalog digest and `sourceDigest` in `seed/.loam/runtime/release-manifest.json`); no other live working file of Loam is pinned.
+- **Shipped availability**: the file reaches the generated project. No file of Loam is byte-pinned: the curated catalog that pinned them left the seed with the factory runtime (ruling R6, 2026-10-25).
 - **Native description discovery**: a provider lists the method by its description. Planned native wrappers project invocation metadata only. Discovery costs the description, not the body.
 - **On-demand body loading**: the shared body enters a session only when the method is invoked or judged relevant.
 

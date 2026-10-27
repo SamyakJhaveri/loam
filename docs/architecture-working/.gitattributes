@@ -1,3 +1,0 @@
-# Preserve checksum-bound archival text exactly, including original whitespace.
-# These exceptions apply only to named source snapshots, not living documents.
-asset-intake/sources/job-search-rendercv.txt whitespace=-blank-at-eol,-blank-at-eof

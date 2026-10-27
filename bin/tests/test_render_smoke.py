@@ -352,34 +352,11 @@ class RenderSmoke(unittest.TestCase):
         self.assertEqual(r.returncode, 1, r.stdout)
         self.assertIn("'SessionStop' is not a Claude Code hook event", r.stdout)
 
-    def test_qualify_catalog_names_an_adapted_skill_and_fails_a_conflicted_one(self):
-        # A project may reword a pending method: qualify catalog passes and names it as adapted.
-        # A body a sync merge left with conflict markers fails under its own rule.
-        node = shutil.which("node")
-        if node is None:
-            self.skipTest("node not on PATH")
-        with tempfile.TemporaryDirectory() as d:
-            project = pathlib.Path(d) / "adapted"
-            shutil.copytree(self.out, project, symlinks=True)
-            skill = project / ".agents/skills/catchup/SKILL.md"
-
-            def qualify() -> subprocess.CompletedProcess:
-                return subprocess.run(
-                    [node, ".loam/runtime/launcher.mjs", "qualify", "catalog"],
-                    capture_output=True, text=True, cwd=project, timeout=120,
-                )
-
-            r = qualify()
-            self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
-            self.assertEqual(json.loads(r.stdout)["adapted"], [])
-            skill.write_text(skill.read_text() + "\nThis project's own note.\n")
-            r = qualify()
-            self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
-            self.assertEqual(json.loads(r.stdout)["adapted"], ["method:catchup"])
-            skill.write_text(skill.read_text() + "<<<<<<< ours\nmine\n=======\ntheirs\n>>>>>>> theirs\n")
-            r = qualify()
-        self.assertEqual(r.returncode, 1, r.stdout)
-        self.assertIn("delivery.adapted-conflict", r.stderr)
+    def test_factory_runtime_does_not_render(self):
+        # Ruling R6 (2026-10-25) parked the native factory: no render ships its runtime or its docs.
+        self.assertTrue((self.out / "docs").is_dir(), "render has no docs/ to check")
+        for path in (".loam/runtime", "docs/runtime"):
+            self.assertFalse((self.out / path).exists(), f"{path} rendered")
 
     def test_codex_execpolicy_forbids_every_claude_deny_spelling(self):
         if not shutil.which("codex"):

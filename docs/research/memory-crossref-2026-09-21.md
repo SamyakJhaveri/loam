@@ -119,7 +119,7 @@ Not taken: SQLite, FTS5, embeddings, and rank fusion (wait for a named ripgrep m
 - P2 Three grep counts in `mem-weekly.sh`. Folded into MEM-02.
 - P3 File MEM-02 (#161), blocked by MEM-01.
 - P4 File MEM-03 (#162), blocked by MEM-01's first weekly report.
-- P5 This document, and the ordering note in `docs/architecture-working/tickets/README.md`.
+- P5 This document, and the ordering note in `docs/archive/architecture-working/tickets/README.md`.
 - P6 Codex native memories in Samyak's own config: skipped.
 
 ## Risks
