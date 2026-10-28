@@ -28,7 +28,13 @@ Before step 1 the lead gives the owner both costs and asks which mode; an unatte
 - Picking research questions: steps 1 to 6, in the chosen mode.
 - Checking one gap, novelty or "first to" sentence: write it as the only idea in `merged.md`, marked owner, and start at step 3.
 - Surveying prior work for one claim (the academic-research workflow): write the claim as the only idea in `merged.md`, marked owner, and run steps 3 and 4 only; the result is its `gap.md`.
-- Logging one paper read in full: step 4 for that paper only, with its note in `<repo>/docs/research/readings/notes/` and no run folder.
+- Logging one paper read in full, outside any run: no run folder and none of steps 1 to 6.
+  1. Store the PDF in `<repo>/papers/` and write its note in `<repo>/docs/research/readings/notes/`, both named and written as `READINGS.md` beside this file says.
+  2. Log it: `python3 ${CLAUDE_SKILL_DIR}/scripts/readings-index.py add --paper <arXiv:id or doi:doi> --note <note path from the repo root> --depth full --reader <reader> --date <YYYY-MM-DD>` (`add` comes first; that folder carries no date, so give one).
+  3. Check it: `python3 ${CLAUDE_SKILL_DIR}/scripts/quotecheck.py <note path>`; on a SPLIT or MISS fix the quote from the PDF, trim it, or relabel the line Inferred, and run it again until it exits 0.
+  4. Rebuild the index: `python3 ${CLAUDE_SKILL_DIR}/scripts/readings-index.py`.
+
+  Done when: the check exits 0 with a nonzero checked count, and `<repo>/docs/research/readings/INDEX.md` has a row for the paper and that note at depth full.
 
 ## Where the owner is needed
 
@@ -71,7 +77,7 @@ Each lens is its own seat on a different model, with different seeds:
 | Seat | Lens | Model and effort | Seeds |
 |---|---|---|---|
 | assets | dormant-assets hunter (Panel mode's step 2) | Opus, xhigh | the project's data paths, opened to the seat with `--add-dir` |
-| reframe | reframing hunter | Fable, high; read the `fable-prompting` skill (Loam ships it at `.agents/skills/fable-prompting/SKILL.md`) before writing this seat's section | the target venue's call for papers or reviewer guide, plus one paper that venue published on a neighbouring problem |
+| reframe | reframing hunter | Fable, high; read the `fable-prompting` skill (`.agents/skills/fable-prompting/SKILL.md` in a rendered project) before writing this seat's section | the target venue's call for papers or reviewer guide, plus one paper that venue published on a neighbouring problem |
 | codex | adversary | Codex, xhigh | the closest known competitor's PDF |
 | analogist | analogist (Panel mode's step-3 analogy move) | Opus, xhigh | one paper from an adjacent field |
 
@@ -97,14 +103,15 @@ jq -r .result <run>/proposals/<seat>.json > <run>/proposals/<seat>.md
 Probed on Claude Code 2.1.312 for Opus 5.5 and Fable 5.1, 28 Oct 2026: a context canary, the session's own init list and a tool run.
 `--bare` is blind too but cannot sign in with a subscription, and a worker or escalate subagent inherits the lead's CLAUDE.md and memory, so neither serves as a seat.
 
-The Codex seat is one bare command, with no pipe, redirect, `cd`, `;` or `<`, and its prompt one line that points at the file (long inline prompts have hung):
+The Codex seat reads its brief from its own folder, so its prompt names no path in the run folder: first `cp <run>/brief-codex.md <dir>/`.
+Its launch is one bare command, with no pipe, redirect, `cd`, `;` or `<`, and its prompt one line that points at the file (long inline prompts have hung):
 
 ```bash
-codex exec -s read-only --skip-git-repo-check -C <dir> -c model_reasoning_effort=xhigh -o <run>/proposals/codex.md "Read <run>/brief-codex.md and follow it as seat codex."
+codex exec -s read-only --skip-git-repo-check -C "<dir>" -c model_reasoning_effort=xhigh -o "<run>/proposals/codex.md" "Read brief-codex.md in this folder and follow it as seat codex."
 ```
 
 The empty folder keeps the repository's AGENTS.md out; Codex still reads the owner's global `~/.codex/AGENTS.md`, so keep project conclusions out of that file.
-`-o` saves only the final message, which is why the brief asks every seat to make its whole document that message.
+`-o` is read by the launcher, not the model, and saves only the final message, which is why the brief asks every seat to make its whole document that message.
 Record the model from Codex's config (or `-m`) in `seats.tsv`.
 
 Why separate seats: one model resampled stops producing new ideas (about 200 unique from 4000 seeds per topic, 2409.04109), and shared-context debate converges early (2604.18005).
@@ -151,7 +158,6 @@ Each keeps every helper script and scratch file in `gap/<idea>/scripts/`, never 
      Encode a phrase's quotes as `%22` and its spaces as `+`, and keep a query to two or three terms: long AND queries return nothing.
      Its feed lags by days, so an empty answer never proves absence; check an id at `https://arxiv.org/abs/<id>`.
    - Citation crawls of papers from the last few months return almost nothing, since the indexes lag; log them, but lean on kill queries for recent work.
-   - In auto mode, list `api.semanticscholar.org`, `api.openalex.org`, `export.arxiv.org` and `arxiv.org` in the Bash call's `allowed_domains`.
    - Append each query and its top 10 hits to `searches.tsv` as it runs: qid, index, kind (seed, topic, kill, citations), query as sent, rank, paper id, title, year; a query with no hits, or one that failed, gets one row with rank 0 and the reason.
    - A research agent's "no prior work" (Consensus `create_thread`, Exa `agent_run`, the `deep-research` workflow) adds hits to the pool; it is never the verdict.
 4. Rerank: pool all hits, dedupe by arXiv id or DOI through `aliases.tsv` (one row per alias: the id as logged, the canonical id; for Consensus title keys, publisher DOIs of preprints and mirror pages), mark each facet matched, partial or none from title and abstract, and sort by matches, then partials.

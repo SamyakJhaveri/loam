@@ -105,6 +105,18 @@ def test_a_minus_sign_or_comparison_changes_a_number():
     assert result("was -0.85, with p > 0.05 for GPT-4", raw).status == "not found"
 
 
+def test_a_minus_parted_from_its_number_still_counts():
+    for gap in (" ", "\n", "-\n"):
+        raw = f"the measured correlation between variables was \u2212{gap}0.85"
+        r = result("the measured correlation between variables was 0.85", raw.replace("-\n", " "))
+        assert r.status == "not found"
+    assert result("the measured correlation between variables was - 0.85", raw).status == "match"
+    raw = "between 3 - 5 nodes for GPT - 4 and N \u2212 1 ranks, or GPT-4 alone"
+    assert result("between 3-5 nodes for GPT-4 and N-1 ranks", raw).status == "match"
+    assert result("between 3 - 5 nodes for GPT-4 and N - 1 ranks", raw).status == "match"
+    assert result("N - 1 ranks, or GPT 4 alone", raw).status == "match"
+
+
 def test_a_short_part_must_lie_beside_its_neighbour():
     raw = "the method is consistently reliable"
     assert result("not ... the method is consistently reliable", raw).status == "not found"
@@ -335,6 +347,25 @@ def test_a_doi_alias_joins_the_arxiv_papers_row(tmp_path, monkeypatch):
     assert len(rows) == 1
     assert rows[0].startswith(f"| arXiv:2401.12554 | papers/2401.12554v3.pdf | `{note}` (r1) | 2026-10-28 | skimmed | 1 | 1/1 |")
     assert "1 readings of 1 papers." in index
+
+
+def test_one_line_citing_a_paper_by_two_ids_counts_once(tmp_path, monkeypatch):
+    note = tmp_path / readings_repo(tmp_path, monkeypatch)
+    note.write_text(READING.replace("node\"", 'node" (arXiv:2401.12554, doi:10.1145/3625549.3658689)'))
+    rows, _ = ri.from_notes(tmp_path, [], [note])
+    assert [(r["paper"], r["lines"], r["quotes"], r["matched"]) for r in rows.values()] == [
+        ("arXiv:2401.12554", 1, 1, 1)
+    ]
+
+
+def test_a_note_outside_the_repo_by_a_relative_path_is_indexed(tmp_path, monkeypatch):
+    readings_repo(tmp_path / "repo", monkeypatch)
+    (tmp_path / "outside").mkdir()
+    (tmp_path / "outside/n.md").write_text(READING)
+    (tmp_path / "a/b").mkdir(parents=True)
+    monkeypatch.chdir(tmp_path / "a/b")  # not the repo, so the path is not from the repo either
+    rows, _ = ri.from_notes(tmp_path / "repo", [], [Path("../../outside/n.md")])
+    assert [(r["note"], r["depth"]) for r in rows.values()] == [("../../outside/n.md", "full")]
 
 
 def test_the_index_never_replaces_one_it_did_not_write(tmp_path, monkeypatch):

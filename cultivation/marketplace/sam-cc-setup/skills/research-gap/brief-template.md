@@ -23,7 +23,7 @@
 
 ## Output
 
-One Markdown document with 3 to 8 ideas, one `###` section each, holding these five fields:
+One Markdown document with 3 to 8 ideas, one `###` section each, numbered in order (`### 1. <short title>`, `### 2. <short title>`, ...), holding these five fields:
 
 - **Plain words.** The question in one or two sentences an undergraduate can follow.
 - **Gap.** The strongest quote showing the gap, with its locator and Verified or Inferred.

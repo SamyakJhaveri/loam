@@ -31,7 +31,9 @@ order and in `-raw` content order
 and digits only, after Unicode NFKD (ligatures, accents), with a decimal point kept between digits,
 a minus sign kept before a number (`-0.85` is not `0.85`) and the comparisons `<`, `>`, `=`, `≤`,
 `≥` and `≠` kept: spacing, line-end hyphenation, other dashes, quote marks and other punctuation
-never cause a miss. A quote part the PDF text holds only split once by MIN_SPLIT to MAX_SPLIT
+never cause a miss. A minus that whitespace or a line break parts from its number (`− 0.85`, a
+subtraction `N − 1`, a range `3 - 5`) needs a dash at that point in the quote (`3-5` and `N - 1`
+match, `0.85` does not). A quote part the PDF text holds only split once by MIN_SPLIT to MAX_SPLIT
 letters of other text that start and end at line breaks (a figure, table or footnote placed
 mid-sentence, or prose the quote leaves out) is a SPLIT: it names the omitted text and fails like a
 miss, so the note trims the quote to one side, marks the gap with `...`, or relabels it. A shorter
@@ -89,6 +91,7 @@ PAGE = re.compile(r"\bpp?\.\s?(\d+)(?:\s?[-\u2013]\s?(\d+))?(?![\d.])")
 DOI_NAME = re.compile(r"doi-(10\.\d{4,9})_(.+)")  # doi-<DOI with its first / as _>.pdf
 DASHES = dict.fromkeys([*range(0x2010, 0x2016), 0x2212], "-")  # hyphens, dashes, minus
 MINUS = "-\u2212\u2013"  # a minus sign as typed, as typeset, and as some PDFs render it
+SPACED_MINUS = re.compile(rf"(?<!\w)[{MINUS}]\s+(?=\d)")  # parted from its number: `− 0.85`
 COMPARE = {"<": "<", ">": ">", "=": "=", "≤": "<=", "⩽": "<=", "≥": ">=", "⩾": ">=", "≠": "!="}
 
 
@@ -127,6 +130,13 @@ def key(text):
     return canon(text)[0]
 
 
+def dashes_in(text):
+    """The indices of the canonical form of `text` that have a dash just before them in `text`."""
+    flat = text.translate(DASHES)
+    where = canon(flat)[1]
+    return {k for k in range(1, len(where)) if "-" in flat[where[k - 1] + 1 : where[k]]}
+
+
 class View:
     """One pdftotext rendering of a PDF: its raw text and the canonical form of it."""
 
@@ -134,9 +144,26 @@ class View:
         self.raw = raw
         self.text, self.where = canon(raw)
         self.feeds = [i for i, ch in enumerate(raw) if ch == "\f"]  # page ends
+        # canonical index of each digit a spaced minus stands before
+        self.signs = [bisect.bisect_left(self.where, m.end()) for m in SPACED_MINUS.finditer(raw)]
 
-    def found(self, part):
-        return next(self.spans(part), None) is not None
+    def found(self, part, dashes):
+        return any(self.signed(o, dashes) for o in self.spans(part))
+
+    def signed(self, o, dashes):
+        """Whether occurrence `o` of a quote part faces each spaced minus inside it with a dash:
+        `dashes` holds the part's indices with a dash in the quote just before them."""
+        s, e, cut = o
+        for j in self.signs[bisect.bisect_right(self.signs, s) : bisect.bisect_left(self.signs, e)]:
+            if cut is None or j < cut[0]:
+                k = j - s
+            elif j > cut[1]:
+                k = cut[0] - s + j - cut[1]
+            else:
+                continue  # the minus is in the omitted text, or just before the part's tail
+            if k not in dashes:
+                return False
+        return True
 
     def spans(self, part, split=True):
         """Each (start, end, cut) of `part` in this text: whole, with cut None, then, if `split`,
@@ -174,12 +201,16 @@ class View:
         """The PDF page index (1 for the first page) of canonical character i."""
         return bisect.bisect(self.feeds, self.where[i]) + 1
 
-    def chain(self, parts, split, pages=()):
+    def chain(self, parts, dashes, split, pages=()):
         """One (start, end, cut) per part of a quote, in the quoted order and not overlapping, with
         some part touching one of the (first, last) PDF page ranges `pages` if any are given; None
         if there is none. A part under MIN_PART lies within NEAR of the part before or after it.
-        `split` allows a part split by an insertion, as `spans` finds."""
-        occ = [sorted(self.spans(x, split), key=lambda o: o[:2]) for x in parts]
+        `split` allows a part split by an insertion, as `spans` finds; `dashes` holds each part's
+        dash indices, as `signed` takes them."""
+        occ = [
+            sorted((o for o in self.spans(x, split) if self.signed(o, d)), key=lambda o: o[:2])
+            for x, d in zip(parts, dashes)
+        ]
         starts = [[o[0] for o in os] for os in occ]
 
         def touches(s, e):
@@ -434,6 +465,7 @@ def check(quote, refs, pages=()):
     page ranges `pages` when any are given, and if not, why."""
     segments = [s for s in GAP.split(quote) if key(s)] or [quote]  # a quote all in [...]
     parts = [key(s) for s in segments]
+    dashes = [dashes_in(s) for s in segments]
     local = list(dict.fromkeys(p for r in refs for p in r.papers))
     if not local:
         return Result("no PDF found", "no PDF found for " + ", ".join(r.label for r in refs))
@@ -444,14 +476,14 @@ def check(quote, refs, pages=()):
     pv = [(p, v) for p in readable for v in p.views]
     for split in (False, True):
         for p, v in pv:
-            if c := v.chain(parts, split, pages):
+            if c := v.chain(parts, dashes, split, pages):
                 if not split:
                     return Result("match", paper=p.path.name)
                 reason = f"found only with other text removed from inside it: {v.omitted(c)}"
                 return Result("split", reason, paper=p.path.name)
     for split in (False, True) if pages else ():
         for p, v in pv:
-            if c := v.chain(parts, split):
+            if c := v.chain(parts, dashes, split):
                 cited = ", ".join(f"p.{lo}" if lo == hi else f"pp.{lo}-{hi}" for lo, hi in pages)
                 where = ", ".join(f"p.{n}" for n in sorted({v.page(s) for s, _, _ in c}))
                 reason = f"cited {cited}, found on {where}"
@@ -459,7 +491,7 @@ def check(quote, refs, pages=()):
                     reason += f", and only with other text removed from inside it: {v.omitted(c)}"
                 return Result("page mismatch", reason, paper=p.path.name)
     views = [v for _, v in pv]
-    unfound = [i for i, x in enumerate(parts) if not any(v.found(x) for v in views)]
+    unfound = [i for i, x in enumerate(parts) if not any(v.found(x, dashes[i]) for v in views)]
     if not unfound:
         reason = f"every part found in {', '.join(p.path.name for p in readable)}, but not in the"
         reason += f" quoted order, or a part under {MIN_PART} letters is not within {NEAR} of"

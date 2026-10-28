@@ -71,14 +71,17 @@ def from_notes(repo, paper_dirs, note_paths):
     for c, q, r in checked:
         quotes.setdefault(id(c), []).append((q, r))
     readings, preambles = {}, {}
+    paths = {quotecheck.note_name(p, repo): p for p in note_paths}
     for c in cited:
+        pdfs = {}  # paper id -> its PDFs, so a line citing one paper by two ids counts once
         for ref in c.refs:
-            pid = ref.papers[0].id if ref.papers else ref.label
+            pdfs.setdefault(ref.papers[0].id if ref.papers else ref.label, set()).update(ref.papers)
+        for pid, local in pdfs.items():
             r = readings.setdefault(
                 (pid, c.note),
                 {
                     "paper": pid,
-                    "files": sorted({file_of(p, repo) for p in ref.papers}),
+                    "files": sorted({file_of(p, repo) for p in local}),
                     "note": c.note,
                     "date": (re.search(r"\d{4}-\d{2}-\d{2}", c.note) or [""])[0],
                     "lines": 0,
@@ -90,7 +93,7 @@ def from_notes(repo, paper_dirs, note_paths):
             )
             r["lines"] += 1
             r["context"] += [c.section, c.text]
-            names = {p.path.name for p in ref.papers}
+            names = {p.path.name for p in local}
             for q, res in quotes.get(id(c), []):
                 if res.status == "match" and res.paper not in names:
                     continue  # matched in another paper this line cites
@@ -100,7 +103,7 @@ def from_notes(repo, paper_dirs, note_paths):
                     r["misses"].append(c.line)
     for r in readings.values():
         if r["note"] not in preambles:
-            body = (repo / r["note"]).read_text(encoding="utf-8").splitlines()
+            body = paths[r["note"]].read_text(encoding="utf-8").splitlines()
             first = next((i for i, s in enumerate(body) if re.match(r"##+\s", s)), len(body))
             preambles[r["note"]] = body[:first]
         depth = depth_in(r.pop("context"))

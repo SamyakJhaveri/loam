@@ -12,7 +12,7 @@ Inputs: `proposals/<seat>.md` for <the seats that returned>, `owner-ideas.md` an
 | <seat id> | <lens> | <as seats.tsv says> | <as seats.tsv says> |
 
 - N = <seats with a proposal file>; <name any seat that did not return, and why>.
-- Locator: `<seat>#<n>` is the idea headed `### <n>` in `proposals/<seat>.md`.
+- Locator: `<seat>#<n>` is the idea headed `### <n>.` in `proposals/<seat>.md`.
 - Support k/N: k seats proposed the idea as one of their `###` ideas.
 - "+k cite": k more seats raise the same gap inside an idea mapped to another id, by quoting the same passage ("quote") or reporting the same evidence ("evidence"); they are named.
 - "owner" marks an idea from `owner-ideas.md`.
