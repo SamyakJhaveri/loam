@@ -23,7 +23,7 @@ A skill stays in the lead's list only if Claude should pick it unprompted and no
 | 4. Build | a few lines inline, else one `worker`; `run`, `loop` | `tdd` (cheap test path only), the principles, `show-me-your-work` on long unattended runs | `/sam-cc-setup:run-spec` (spec with tickets), `bin/factory` (queued tickets), `/pstack:poteto-mode` (pushes a branch, never merges) |
 | 5. Review | `code-review` (bugs), `simplify` (quality) | `interrogate`, `blast-radius` | `/sam-cc-setup:codex-review` (Codex second opinion on a diff), `/pstack:no-comments`; after a loop: the `lean-critic` agent |
 | 6. Debug and measure | none | `principle-fix-root-causes`, `principle-attack-the-premise`, `benchmark-checklist`, `principle-explain-the-number` | `/hypothesis-tree`, `/experiment-loop` |
-| 7. Research | none | | the `deep-research` workflow, the academic-research workflow (step 5), `/new-model-workflow` |
+| 7. Research | none | | `/sam-cc-setup:research-gap` (research questions, a gap or novelty claim, prior work for one claim, logging a paper read in full), the `deep-research` workflow, `/new-model-workflow` |
 | 8. Write | `artifact-design`, `artifact-diagramming`, `dataviz` | | `/pstack:technical-writing`, `/pstack:unslop` |
 
 Side lanes.
@@ -57,9 +57,8 @@ To turn it back on, set `enabledPlugins["codex@openai-codex"]` to `true` in `~/.
 
 ## Open steps
 
-Steps 2 (pstack by path, `docs/PSTACK.md`), 3 (Codex, above) and 4 (`/sam-cc-setup:run-spec`, parallel workers in worktrees) are done.
+Steps 2 (pstack by path, `docs/PSTACK.md`), 3 (Codex, above), 4 (`/sam-cc-setup:run-spec`, parallel workers in worktrees) and 5 (the academic-research workflow is step 3 of `/sam-cc-setup:research-gap`, owner decision 2026-10-28) are done.
 
 | Step | Change |
 |------|--------|
-| 5 | Academic-research workflow. |
 | 6 | Try `anthropic-skills:setup-writing-style` for DistBench's paper (the global "no writing or voice skill" rule was removed for this trial, 2026-10-27). |
