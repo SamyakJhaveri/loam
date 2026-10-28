@@ -102,17 +102,19 @@ reasoning, as in `plan-review`. If the intent is unclear, ask the user before ru
 
 Codex reads the diff itself; nothing is piped in. It lists the changed paths, then runs one
 `git diff` per path, because Codex cuts long command output short and a whole-diff read can
-come back cut. Keep the sandbox read-only. Use the configured Codex model with high review
-effort. Inspect `codex --help` and the active provider config before adding any model ID or
-unsupported effort value. `-o` saves the durable final report. Pick its path:
+come back cut. Keep the sandbox read-only. Choose the model and effort for this diff: `high` on
+the configured model by default, `xhigh` or a stronger model for a large or risky diff, `medium`
+for a few trivial lines; never `max` or `ultra`. Drop `-m` to keep the configured model, and
+check a model ID against the provider's model list before passing it. `-o` saves the durable
+final report. Pick its path:
 
 ```bash
 mkdir -p .claude/codex-reviews
 echo ".claude/codex-reviews/$(date +%F)-$(git rev-parse --abbrev-ref HEAD | tr / -).md"
 ```
 
-Then run Codex as its own Bash call that starts with `codex exec`, with `<out>`, `<scope>`, and
-`<intent>` written in literally. A sandbox exclusion such as `codex exec *` matches only that bare
+Then run Codex as its own Bash call that starts with `codex exec`, with `<model>`, `<effort>`,
+`<out>`, `<scope>`, and `<intent>` written in literally. A sandbox exclusion such as `codex exec *` matches only that bare
 command. Behind a pipe, an assignment, `&&`, or any redirect, even `< /dev/null`, Claude Code runs
 Codex inside its sandbox, where Codex can fail to reach its API or to start its own sandbox. Leave
 no `<` anywhere in the command, prompt included: then Claude Code gives the call an empty stdin;
@@ -120,7 +122,7 @@ with one, it leaves stdin open and Codex waits on it forever.
 Write `<intent>` as plain prose without quotes, backticks, `$`, `\`, or `<`.
 
 ```bash
-codex exec --sandbox read-only -c model_reasoning_effort=high -o "<out>" \
+codex exec --sandbox read-only -m "<model>" -c "model_reasoning_effort=<effort>" -o "<out>" \
   "You are a second-opinion code reviewer. The change is meant to do this: <intent> \
 Review whether the diff achieves that intent well; do not question the intent itself. \
 List the changed paths with git --no-pager diff --numstat <scope>, then read each path's \
