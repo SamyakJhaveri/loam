@@ -20,8 +20,8 @@ A skill stays in the lead's list only if Claude should pick it unprompted and no
 | 1. Intake | `catchup` | | `/sam-cc-setup:brief`, `/pstack:sharpen`, `/pstack:in-your-own-words`; too big for one session: `/pstack:figure-it-out` |
 | 2. Understand | none; send a scout or worker | `how`, `why` | `/pstack:teach`, `/pstack:how`, `/pstack:why` |
 | 3. Plan and design | none | | `/sam-cc-setup:plan-review`; contested design, concurrency or cross-cutting: `/pstack:poteto-mode` |
-| 4. Build | a few lines inline, else one `worker`; `run`, `loop` | `tdd` (cheap test path only), the principles, `show-me-your-work` on long unattended runs | `/implement-spec` (spec with tickets), `bin/factory` (queued tickets), `/pstack:poteto-mode` (pushes a branch, never merges) |
-| 5. Review | `code-review` (bugs), `simplify` (quality) | `interrogate`, `blast-radius` | Codex second opinion (one command, set in step 3), `/pstack:no-comments`; after a loop: the `lean-critic` agent |
+| 4. Build | a few lines inline, else one `worker`; `run`, `loop` | `tdd` (cheap test path only), the principles, `show-me-your-work` on long unattended runs | `/sam-cc-setup:run-spec` (spec with tickets), `bin/factory` (queued tickets), `/pstack:poteto-mode` (pushes a branch, never merges) |
+| 5. Review | `code-review` (bugs), `simplify` (quality) | `interrogate`, `blast-radius` | `/sam-cc-setup:codex-review` (Codex second opinion on a diff), `/pstack:no-comments`; after a loop: the `lean-critic` agent |
 | 6. Debug and measure | none | `principle-fix-root-causes`, `principle-attack-the-premise`, `benchmark-checklist`, `principle-explain-the-number` | `/hypothesis-tree`, `/experiment-loop` |
 | 7. Research | none | | the `deep-research` workflow, the academic-research workflow (step 5), `/new-model-workflow` |
 | 8. Write | `artifact-design`, `artifact-diagramming`, `dataviz` | | `/pstack:technical-writing`, `/pstack:unslop` |
@@ -44,13 +44,22 @@ Third-party descriptions (Codex, pstack, built-ins) are not edited; only visibil
 - To hide a whole plugin, turn it off in `enabledPlugins`.
 - pstack ships every skill user-only, and its author flag cannot be overridden.
 
+## Codex
+
+One way, set in step 3 (2026-10-28): a bare `codex exec` with sandbox, model, effort and prompt chosen per task.
+The rule lives in the Codex line of `~/.claude/CLAUDE.md`; Claude may call it itself, for example for the read-only Codex review in `docs/RULES.md`.
+The sandbox flag matters because `~/.codex/config.toml` defaults to a write-capable profile (`default_permissions = "loam-auto"`): a call without `-s read-only` can edit the checkout it runs in (tested 2026-10-28).
+For a diff review you type `/sam-cc-setup:codex-review`: the same command plus a scope check, a blind intent paragraph and triage buckets.
+
+The Codex plugin (`codex@openai-codex`) is off (owner decision 2026-10-28).
+Its rescue agent told Claude to use it proactively, ran on Sonnet and wrote by default; it also put four skills in the lead's list and three hooks in every session, and was used in three sessions.
+To turn it back on, set `enabledPlugins["codex@openai-codex"]` to `true` in `~/.claude/settings.json`.
+
 ## Open steps
 
-Step 2 (pstack by path) is done: see `docs/PSTACK.md`.
+Steps 2 (pstack by path, `docs/PSTACK.md`), 3 (Codex, above) and 4 (`/sam-cc-setup:run-spec`, parallel workers in worktrees) are done.
 
 | Step | Change |
 |------|--------|
-| 3 | One way to call Codex; decide the Codex plugin. |
-| 4 | `implement-spec`: parallel implementers in worktrees. |
 | 5 | Academic-research workflow. |
 | 6 | Try `anthropic-skills:setup-writing-style` for DistBench's paper (the global "no writing or voice skill" rule was removed for this trial, 2026-10-27). |
