@@ -35,10 +35,10 @@ The body starts at `Brief:` or `Part of`; in a file the first `#` line is the ti
    A row that measures time, tokens, or cost starts with `runs=N`: the supervisor runs it N times and prints the median and range of its last output lines, which must be numbers.
    A row whose label or command names such a word (`NOISY_ROW_RE` in `bin/factory`) and has no `runs=N` runs once, and its MEASURE line says single sample; `runs=1` marks a row deterministic.
    This is the only per-project extension point.
-9. `## Worker`: `worker: claude|codex`, `codex-review: yes|no`, `effort: low|medium|high|xhigh`, `size: small|large` (optional, default small; large routes round 1 through the fan-out workflow, F12), `goal:` the condition the round's `/goal` holds until, always the done-checks block printing no FAIL line, ending "or stop after 60 turns", `skills:` (optional) a comma list of skill names the worker must invoke, each a line of `bin/factory.d/skills.txt` written as the Skill tool lists it (`mattpocock-skills:research`, `rigor`), and any cap override from `LOOP.md`.
+9. `## Worker`: `worker: claude|codex`, `codex-review: yes|no`, `effort: low|medium|high|xhigh`, `size: small|large` (optional, default small; large routes round 1 through the fan-out workflow, F12), `goal:` the condition the round's `/goal` holds until, always the done-checks block printing no FAIL line, ending "or stop after 60 turns", `skills:` (optional) a comma list of skill names the worker must invoke, each a line of `bin/factory.d/skills.txt` written as the Skill tool lists it (a bare `rigor`, or `plugin:name` for a plugin skill), and any cap override from `LOOP.md`.
     Samyak adds a line by hand, direct to `main`, after `bin/runner 'claude -p --setting-sources user --max-turns 1 "print skill names"'` prints the name on the runner; a worker runs with `--setting-sources user`, so a project skill such as `catchup` never loads there and never enters the file (#37).
 10. `## Decisions`: links to ADRs, closed decision tickets, or the design doc.
-11. `## Comments` (optional, always last): answers and notes appended to a ticket file after it is written, where the target's `docs/agents/issue-tracker.md` says comments go there (owner ruling 2026-10-19).
+11. `## Comments` (optional, always last): answers and notes appended to a ticket file after it is written, where the target keeps tickets as files and its own tracker rules say comments go there, as DistBench's `docs/tickets/` does (owner ruling 2026-10-19).
     Lint rejects any section after it.
 
 Every path under Where, Do not touch, and Approach is verified with `git ls-files` when the ticket is written, or is a path the Goal creates; a guessed path is the commonest small defect and lint rejects it.
@@ -73,10 +73,11 @@ guard $C cleanup t >/dev/null && pass verify-cleanup || fail verify-cleanup "con
 Every `control-loam` command exits 1 when it fails, and `session --stub` also fails when no request reaches the stub, so a broken render or a wire-format change reads FAIL, never PASS.
 The guarded `cleanup` removes the render (about 4 MB), its memstore, and its `~/.claude/projects/` directory, and keeps `evidence/`.
 
-### Seam with to-tickets
+### Publishing a breakdown
 
-`to-tickets` owns the breakdown into vertical slices, the blocking edges, the quiz, and publishing to GitHub.
-This contract owns the issue body: the stage-2 session hands the sections above to `/to-tickets` as its issue template, and the acceptance checkboxes become the done-checks block.
+The stage-2 session owns the breakdown into vertical slices, the native blocking edges, and publishing to GitHub once Samyak approves the breakdown.
+It adds each edge with `gh api --method POST repos/<owner>/<repo>/issues/<child>/dependencies/blocked_by -F issue_id=<id>`, where `<id>` is the blocker's database id (`gh api repos/<owner>/<repo>/issues/<n> --jq .id`), not its `#number`; `bin/factory next` reads `issue_dependencies_summary.blocked_by`.
+This contract owns the issue body: each issue carries the sections above, and the acceptance checkboxes become the done-checks block.
 
 ### Lint rules (`bin/factory lint <issue|file>`, F2)
 

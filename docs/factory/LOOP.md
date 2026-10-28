@@ -165,11 +165,11 @@ Skills are given at the moment they apply, never all at once; the listing is pai
 | Role | Skills | How they arrive |
 |---|---|---|
 | Brief (stage 0) | `/brief` (F5) | Samyak invokes it |
-| Design (stage 1) | `surprise-me` (panel), `mattpocock-skills:research`, plan mode, `/plan-review`, `grill-with-docs`, `domain-modeling`, `wayfinder` | in that order for `Mode: figure-out`, from plan mode on for `build`; Samyak types `/surprise-me` and `/plan-review`, which are manual-only, and the design session invokes the rest |
-| Tickets (stage 2) | `to-tickets`, `plan-reviewer`, lean-critic | the stage-2 session invokes `to-tickets`, and lean-critic after `bin/factory lint` exits 0; `plan-reviewer` is manual-only, run by hand over the breakdown when Samyak asks |
+| Design (stage 1) | `surprise-me` (panel), a research pass against primary sources, plan mode, `/plan-review` | in that order for `Mode: figure-out`, from plan mode on for `build`; Samyak types `/surprise-me` and `/plan-review`, which are manual-only |
+| Tickets (stage 2) | `plan-reviewer`, lean-critic | the stage-2 session writes and publishes the breakdown itself (`CONTRACT.md`, Publishing a breakdown) and invokes lean-critic after `bin/factory lint` exits 0; `plan-reviewer` is manual-only, run by hand over the breakdown when Samyak asks |
 | Worker | the skills the ticket's `skills:` field names, each a line of `bin/factory.d/skills.txt` | one Skill-tool sentence per name in the worker prompt |
 | Graders | none; their prompt is the whole instruction | frozen files |
-| Manager (stage 5, 6) | `handoff` when stopping mid-stream | the manager session |
+| Manager (stage 5, 6) | none; a handoff file in the `seed/docs/WORKERS.md.jinja` Handoff form when stopping mid-stream | the manager session |
 
 A worker may name only a line of `bin/factory.d/skills.txt`, and lint reads that file (#37).
 The worker runs with `--setting-sources user`, which loads `~/.claude/skills/` and user-scope plugins but no project skill and not the root `CLAUDE.md` or `AGENTS.md`, so the seed skills (`catchup`, `fable-prompting`, `hypothesis-tree`) are not in the file.
@@ -292,7 +292,6 @@ exec "${LOAM_HOME:-$HOME/Desktop/loam}/bin/factory" -C "$(git rev-parse --show-t
 - `bin/claude-account status` names an active account and at least one other stored account on the runner when the usage-limit switch is wanted; with a single stored account the loop sleeps through a usage limit as before.
 - Outside the factory, `bin/limit-alarm` (installed on jhaveris by `bin/limit-alarm-install`, which the owner runs) keeps a long-running lead session on an account with usage and stops the paid rental when every account is limited for more than two hours.
 - `gh api rate_limit` succeeds on the seat that runs stages 0, 1, 2, and 5 (F0 fixes the Mac).
-- `grill-with-docs`, `wayfinder`, and `to-tickets` are invocable on that seat.
 - `codex login status` succeeds when any ticket uses Codex.
 - Every `codex` call on the runner exports `PATH=$HOME/.local/bin:$PATH` and ends in `< /dev/null`, or Codex is not found or eats the caller's stdin (#41).
 - The plugin cache holds a `judge.md` and a `reviewer.md` byte-identical to the checkout's `cultivation/marketplace/sam-cc-setup/agents/` copies; `bin/factory status` prints a FAIL line naming the cached versions and the checkout file otherwise, and `claude plugin update sam-cc-setup@seed-skills` fixes it.

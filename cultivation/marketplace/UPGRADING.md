@@ -3,6 +3,12 @@
 This file records why a promoted plugin change traveled. It is also the upgrade
 entry point for projects that consume the Loam marketplace.
 
+## sam-cc-setup v0.9.17 Matt Pocock's skills removed
+
+`/sam-cc-setup:brief` no longer names `mattpocock-skills:research`, `:prototype` or `to-tickets`, and `codex-review` no longer points at `docs/agents/issue-tracker.md` (owner ruling 2026-10-28, `docs/RULES.md`).
+No grader prompt changed, so no grader replay is owed.
+Upgrade step: `claude plugin update sam-cc-setup`.
+
 ## sam-cc-setup v0.9.16 run-spec
 
 `/sam-cc-setup:run-spec` builds a spec whose tickets form a task graph as one branch and one PR, in Loam or DistBench.

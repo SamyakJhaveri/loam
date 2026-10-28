@@ -32,16 +32,7 @@ Challenge false premises and flawed proposals, and offer a concrete repair.
 - `docs/BOOTSTRAP.md`, `docs/COPIER.md`: bootstrapping a project, or changing bootstrap or update behavior.
 - `docs/factory/ARCHITECTURE.md`: running or changing the loop factory (brief, tickets, `bin/factory`, graders).
 
-## Agent skills
+## Issues
 
-### Issue tracker
-
-GitHub Issues for `SamyakJhaveri/loam`, via the `gh` CLI. See `docs/agents/issue-tracker.md`.
-
-### Triage labels
-
-The five default labels. See `docs/agents/triage-labels.md`.
-
-### Domain docs
-
-Single-context: root `CONTEXT.md` plus `docs/adr/`. See `docs/agents/domain.md`.
+GitHub Issues for `SamyakJhaveri/loam`, via the `gh` CLI. Labels: `needs-triage`, `needs-info`, `ready-for-agent` (the factory's frontier), `ready-for-human`, `wontfix`.
+Domain glossary: root `CONTEXT.md`.
