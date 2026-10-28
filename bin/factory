@@ -603,7 +603,11 @@ text = sys.stdin.read()
 for rx, rep in SUBS:
     text = rx.sub(rep, text)
 conf = os.path.expanduser("~/.config/loam/alerts")
-for name in os.listdir(conf) if os.path.isdir(conf) else []:
+try:
+    names = os.listdir(conf)
+except OSError:
+    names = []
+for name in names:
     try:
         for word in open(os.path.join(conf, name)).read().split():
             text = text.replace(word, "[redacted]") if len(word) >= 8 else text
@@ -663,12 +667,14 @@ heartbeat_start() {
 }
 
 # Another live run on this host, Loam's or another target's; a hard-killed run holds its slot too, so its
-# silence stays red.
+# silence stays red. A relaunch keeps its last exit's status through round 0, so `launched` newer than
+# `status` counts as live here too.
 other_live_run() {
   local d
   for d in "$RUNS_BASE"/*/*/ "$RUNS_BASE"/*/*/*/; do
     [ "${d%/}" = "${RUN%/}" ] && continue
     holds_slot "$d" && return 0
+    [ "$d/launched" -nt "$d/status" ] && [ -f "$d/status" ] && return 0
   done
   return 1
 }
