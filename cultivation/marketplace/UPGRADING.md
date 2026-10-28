@@ -3,6 +3,14 @@
 This file records why a promoted plugin change traveled. It is also the upgrade
 entry point for projects that consume the Loam marketplace.
 
+## sam-cc-setup v0.9.18 research-gap
+
+`/sam-cc-setup:research-gap` picks research questions and checks research gaps: independent proposer seats, a merge with support counts, logged searches across four paper indexes, the closest papers read in full into a reading log, an owner decision, and one cheap validation.
+Its scripts check every Verified quote in the notes against the cited PDF and build the reading-log index; they need Python 3 and poppler's `pdftotext`.
+Carried from DistBench's `research-tools` branch (`fcaca843`), which ran it on two real questions on 27-28 Oct 2026 (Loam #361, #362).
+No grader prompt changed, so no grader replay is owed.
+Upgrade step: `claude plugin update sam-cc-setup`.
+
 ## sam-cc-setup v0.9.17 Matt Pocock's skills removed
 
 `/sam-cc-setup:brief` no longer names `mattpocock-skills:research`, `:prototype` or `to-tickets`, and `codex-review` no longer points at `docs/agents/issue-tracker.md` (owner ruling 2026-10-28, `docs/RULES.md`).

@@ -1,8 +1,8 @@
 {
   "name": "sam-cc-setup",
   "license": "MIT",
-  "version": "0.9.17",
-  "description": "Loam's optional Claude Code plugin. Skills: plan-review (blind plan review), codex-review (read-only Codex second opinion on a diff), surprise-me (ranked ideas plus one executed proof), brief (factory ticket intake), run-spec (a spec's ticket graph as one PR, parallel workers in worktrees). Agents: plan-reviewer, lean-critic (verbosity critic), and the factory graders judge and reviewer.",
+  "version": "0.9.18",
+  "description": "Loam's optional Claude Code plugin. Skills: plan-review (blind plan review), codex-review (read-only Codex second opinion on a diff), surprise-me (ranked ideas plus one executed proof), brief (factory ticket intake), run-spec (a spec's ticket graph as one PR, parallel workers in worktrees), research-gap (research questions and literature gap checks, ending in one cheap validation, with a quote-checked reading log). Agents: plan-reviewer, lean-critic (verbosity critic), and the factory graders judge and reviewer.",
   "author": {
     "name": "Samyak Jhaveri",
     "email": "39847642+SamyakJhaveri@users.noreply.github.com"
