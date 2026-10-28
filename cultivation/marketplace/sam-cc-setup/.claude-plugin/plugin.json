@@ -1,8 +1,8 @@
 {
   "name": "sam-cc-setup",
   "license": "MIT",
-  "version": "0.9.13",
-  "description": "Loam's optional Claude Code plugin. Skills: plan-review (blind plan review), codex-review (read-only Codex second opinion on a diff), surprise-me (ranked ideas plus one executed proof), brief (factory ticket intake), install-pstack-skills (agent-invocable copies of 23 pstack skills). Agents: plan-reviewer, lean-critic (verbosity critic), and the factory graders judge and reviewer.",
+  "version": "0.9.14",
+  "description": "Loam's optional Claude Code plugin. Skills: plan-review (blind plan review), codex-review (read-only Codex second opinion on a diff), surprise-me (ranked ideas plus one executed proof), brief (factory ticket intake). Agents: plan-reviewer, lean-critic (verbosity critic), and the factory graders judge and reviewer.",
   "author": {
     "name": "Samyak Jhaveri",
     "email": "39847642+SamyakJhaveri@users.noreply.github.com"

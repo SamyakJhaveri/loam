@@ -3,6 +3,14 @@
 This file records why a promoted plugin change traveled. It is also the upgrade
 entry point for projects that consume the Loam marketplace.
 
+## sam-cc-setup v0.9.14 install-pstack-skills removed
+
+`/sam-cc-setup:install-pstack-skills` is gone.
+Its copies in `~/.claude/skills/` went stale after each pstack update and doubled every pstack skill in the lead's skill list.
+Agents now read pstack skills from the enabled plugin folder by path, pstack's own Claude Code method (owner ruling 2026-10-27, `docs/SKILLS.md`, `seed/docs/WORKERS.md.jinja` pstack).
+No agent prompt changed, so no grader replay is owed.
+Upgrade step: `claude plugin update sam-cc-setup`, then on each host move the folders in `~/.claude/skills/` that hold a `.pstack-install` marker out of that folder.
+
 ## sam-cc-setup v0.9.13 grader prompt edits
 
 judge.md and reviewer.md cite only the sections build_evidence sends (Rows measured, decisions.md), judge.md counts a `SKIP` or `SKIPPED` line in the Checks output as unproven, and both drop "of Loam v3", since `-C` grades other repositories.
