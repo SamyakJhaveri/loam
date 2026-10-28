@@ -28,7 +28,7 @@ Talk to workers through pointers (the spec, the ticket, `<run>/notes.md`, a comm
 
 ## 2. Plan the schedule
 
-`<run>` is `~/.local/state/implement-spec/<repo>-<spec>/`, outside the repo; notes, the plan, reports and worktrees live there.
+`<run>` is `~/.local/state/<repo>/implement-spec/<spec>/`, outside the repo and inside the sandbox's writable state folder; notes, the plan, reports and worktrees live there.
 If `<run>/plan.md` exists, this is a resume: keep the plan and the `spec-<spec>` branch, and schedule only tickets not yet merged.
 List the paths each ticket will touch from its own text (Where, Approach, Do not touch).
 When the tickets do not say, spawn one agent with `subagent_type: scout` to map them and write `<run>/notes.md`: the paths per ticket and the code facts an implementer needs.
@@ -42,10 +42,11 @@ Write `<run>/plan.md` as one row per ticket (ticket, blocked by, touches, effort
 ## 3. Branches and worktrees
 
 `<base>` is the base the spec names, else the default branch; with a remote, run `git fetch origin` and use `origin/<base>`.
-Make the integration branch in its own worktree, never in the shared checkout (on a resume, drop `-b` and attach the existing branch):
+Make the integration branch in its own worktree, never in the shared checkout.
+On a resume, reuse any worktree `git worktree list` already shows, and attach an existing branch without `-b`.
 
 ```bash
-git worktree add -b spec-<spec> <run>/wt/spec <base>
+git worktree add --no-track -b spec-<spec> <run>/wt/spec <base>
 ```
 
 Give each ticket its worktree when it starts, branched from the integration tip so it carries every merged blocker:
@@ -72,22 +73,22 @@ The brief names the ticket and the spec by number or path, `<run>/notes.md` when
 The quick check is the project's lint plus the tests for the files the merge touched.
 The lead is the only writer on the integration branch, so merge one ticket at a time, and only a report whose first line is `Status: done` and whose acceptance commands exited 0.
 In `<run>/wt/spec`, run `git merge --no-ff spec-<spec>-t<n>`, then the quick check.
-On a conflict or a red quick check, spawn one worker in `<run>/wt/spec` to repair it, with both tickets' reports as pointers.
+On any other conflict or a red quick check, spawn one worker in `<run>/wt/spec` to repair it, with both tickets' reports as pointers.
 Hold every merge and every new start until the repair is committed and the quick check passes; if the repair fails, stop integration and report.
 A `wip` ticket, or one that failed its checks, gets one fresh worker on the same branch with the first report as a pointer.
-A `blocked` ticket is not retried: resolve the blocker or mark it blocked.
+A `blocked` ticket is not retried: mark it blocked, report the evidence, and go on with tickets that do not wait on it.
 After a second failure, mark it blocked in the plan, go on with tickets that do not wait on it, and report it.
 After each merge, update `plan.md` and start the tickets the merge unblocked, up to the cap.
 
 ## 6. Finish
 
 1. Run the project's full check on the final integration tip; this is the validation run, rerun only after review fixes.
-2. Run `/code-review high` on the integration branch against `<base>`, plus any extra review the project's rules require for this kind of change.
+2. Run `/code-review high spec-<spec>`, plus any extra review the project's rules require for this kind of change.
    Give the findings you confirm to one fresh worker in `<run>/wt/spec`, then rerun the full check.
 3. Typing this skill is Samyak's word to push this one branch and open its PR, never to merge it.
    Push and open the PR; draft when a ticket is blocked or a check is red.
    The body opens with a short paragraph on how the change works and why that makes it correct, then `Closes #<n>` for each finished ticket and for the spec only when no ticket is blocked, then the blocked tickets.
    With no remote, skip this and name the branch.
-4. For each merged ticket, confirm `git -C <run>/wt/t<n> status --porcelain --untracked-files=no` prints nothing, then `git worktree remove --force <run>/wt/t<n>` (the force drops only untracked build files) and `git branch -d spec-<spec>-t<n>`.
+4. For each merged ticket, confirm `git -C <run>/wt/t<n> status --porcelain --untracked-files=no` prints nothing, then `git worktree remove --force <run>/wt/t<n>` (the force also drops untracked files such as build output) and `git -C <run>/wt/spec branch -d spec-<spec>-t<n>` (`-d` checks merged-ness against the branch checked out where it runs).
    Keep a blocked ticket's worktree and branch and name them in the report; remove `<run>/wt/spec` last and keep its branch.
 5. Report the plan table with final status, the PR link, the full check's exit code, and end with `Risks:`.
