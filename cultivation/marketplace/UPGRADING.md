@@ -3,6 +3,13 @@
 This file records why a promoted plugin change traveled. It is also the upgrade
 entry point for projects that consume the Loam marketplace.
 
+## sam-cc-setup v0.9.16 run-spec
+
+`/sam-cc-setup:run-spec` builds a spec whose tickets form a task graph as one branch and one PR, in Loam or DistBench.
+It plans a schedule from the blocking edges and the files each ticket touches, runs up to four workers at once in worktrees branched from the integration tip, merges only tickets whose report says `Status: done`, and runs one full check and one `/code-review high` at the end.
+No grader prompt changed, so no grader replay is owed.
+Upgrade step: `claude plugin update sam-cc-setup`.
+
 ## sam-cc-setup v0.9.15 codex-review picks model and effort per diff
 
 `/sam-cc-setup:codex-review` no longer pins `model_reasoning_effort=high`.
@@ -139,7 +146,7 @@ The critique-swarm skill is removed because session-critique covers decision-awa
 session review and the plan-review-fanout workflow covers pre-execution plan review, so
 the skill was a fifth review entry point with no job of its own. The plugin then shipped 26
 skills. That count is historical: v3.0.0 cut the plugin to three skills, and today
-`find cultivation/marketplace/sam-cc-setup -name SKILL.md | wc -l` prints 4.
+`find cultivation/marketplace/sam-cc-setup -name SKILL.md | wc -l` prints 5.
 plan-review-fanout pins every agent to claude-opus-4-8[1m] and adversarially
 verifies only BLOCK findings. validate is now a thin caller of the build-validator
 agent, which absorbed the lint, type check, whitespace, shell syntax, test suite, and
