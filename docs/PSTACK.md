@@ -5,6 +5,9 @@ This page says how Samyak's hosts use it.
 The full map of skills is `docs/SKILLS.md`; the rulings are in `docs/RULES.md`.
 `<pstack>` below is the enabled plugin folder: `jq -r '.plugins["pstack@cursor-plugins"][0].installPath' ~/.claude/plugins/installed_plugins.json`.
 
+Installed: pstack 0.15.36 (updated 2026-10-27).
+The five short principle cards (laziness, context window, encode lessons, design space, migrate callers) stay as the author wrote them: she cut them on purpose and tested the cuts (owner ruling 2026-10-27).
+
 ## The one fact that shapes everything
 
 pstack ships every skill with `disable-model-invocation: true` (only `setup-pstack` is model-invocable).
@@ -17,7 +20,7 @@ There are no copies in `~/.claude/skills/`, so a pstack update reaches every age
 
 | Who | How | Which skills |
 |-----|-----|--------------|
-| `worker` agent | reads by path, from the index in `~/.claude/agents/worker.md`, when the brief names a skill or the work fits | `how`, `why`, `tdd`, `blast-radius`, `interrogate`, `benchmark-checklist`, `show-me-your-work`, `maintain-formal-verification-skill`, 15 principles |
+| `worker` agent | reads by path, from the index in `~/.claude/agents/worker.md`, grouped by stage (understand, shape, build, debug, measure, review, finish), when the brief names a skill or the work reaches its row | `how`, `why`, `tdd`, `blast-radius`, `interrogate`, `benchmark-checklist`, `show-me-your-work`, `maintain-formal-verification-skill`, 15 principles |
 | `scout` agent | reads by path, index in `~/.claude/agents/scout.md`; never edits | `how`, `why`, `blast-radius`, `principle-explain-the-number` |
 | Lead session | never runs pstack inline; names the skill in a worker's brief | none |
 | Samyak | types `/pstack:<name>` | everything else, below |
@@ -40,7 +43,8 @@ A scout has none, so it runs `how` or `why` as their single explainer or investi
 - `/pstack:interrogate`: a multi-model review of a diff you do not trust; use it on a diff, not an abstract plan.
 - `/pstack:unslop`, `/pstack:technical-writing`, `/pstack:no-comments`: clean prose or comments.
 - `/pstack:reflect`, `/pstack:correct`: after a session, turn repeated mistakes into structure (architecture, then types or lint, then tests, docs last).
-- `/pstack:ketchup`, `/pstack:bro`: catch up, or say the last message plainly.
+- `/pstack:ketchup`, `/pstack:ketchup-video`, `/pstack:bro`: catch up (the video version adds subtitled slides), or say the last message plainly.
+- `/pstack:statechart`: check a TLA+ model of a flow and draw it as a statechart, or show a bug as a path through states.
 - `/pstack:create-verification-skill`, `/pstack:create-formal-verification-skill`, `/pstack:maintain-verification-skill`: a project's proof skills.
 
 ## Not used
@@ -66,4 +70,4 @@ do not list skills in the prompt; give a finish condition that can pass or fail 
 
 Nothing to re-run: `installPath` moves to the new version.
 Check after an update that the adapter still says to read skills by path, and that the agent indexes still name skills that exist:
-`for s in $(grep -o '^| `[a-z-]*`' ~/.claude/agents/worker.md | tr -d '|` '); do test -f "$(jq -r '.plugins["pstack@cursor-plugins"][0].installPath' ~/.claude/plugins/installed_plugins.json)/skills/$s/SKILL.md" || echo "missing $s"; done`
+`P=$(jq -r '.plugins["pstack@cursor-plugins"][0].installPath' ~/.claude/plugins/installed_plugins.json); for s in $(grep -oE '`[a-z-]+` \|$' ~/.claude/agents/worker.md | cut -d'`' -f2); do test -f "$P/skills/$s/SKILL.md" || echo "missing $s"; done`
