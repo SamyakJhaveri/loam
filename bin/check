@@ -141,7 +141,7 @@ step "always-loaded prose cap"
 # Root CLAUDE.md, AGENTS.md and what they load reach every Loam session. No-growth cap in bytes,
 # equal to the measured size: the step fails over it and under it, so a PR that shrinks the
 # prose lowers it. Raise it only in the PR that grows the prose, with the reason in that PR.
-python3 bin/always_loaded_prose.py --root "$ROOT" --cap 2447 || bad "always-loaded prose not at its cap"
+python3 bin/always_loaded_prose.py --root "$ROOT" --cap 2727 || bad "always-loaded prose not at its cap"
 
 step "no em dash in Loam-owned text"
 # The owner's standing rule (#237), raw or JSON-escaped. Exempt only text Loam does not own or must not rewrite.

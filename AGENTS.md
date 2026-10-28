@@ -1,9 +1,10 @@
 # AGENTS.md - Loam
 
-> Loads in every Claude Code and Codex session; keep only what prevents a real mistake.
+> Loads in every interactive Claude Code and Codex session and in factory Codex runs (factory Claude runs use `--setting-sources user` and skip it); keep only what prevents a real mistake.
 
 Loam is a Copier template: everything under `seed/` renders into generated projects.
 The root `.claude/` and `.codex/` are symlinks to `seed/.claude/` and `seed/.codex/`, so editing either path changes the shipped harness, which also runs in Loam's own sessions.
+Challenge false premises and flawed proposals, and offer a concrete repair.
 
 ## Rules when editing Loam
 
@@ -12,8 +13,8 @@ The root `.claude/` and `.codex/` are symlinks to `seed/.claude/` and `seed/.cod
 3. Run `bin/check` before every commit and require `check: PASSED`.
 4. Source and command output outrank prose; repair prose that disagrees.
 5. Keep one behavior change per session.
-6. Read `docs/ASSET-LAYERS.md` before placing a new asset or directive: each directive has one home.
-7. In parallel work, one owner integrates the final snapshot and runs the single full `bin/check` on it; other workers run focused checks and return bounded reports.
+6. Read `docs/ASSET-LAYERS.md` before placing a new asset or directive, or to learn why the tree is laid out as it is: each directive has one home.
+7. In parallel work, one integration owner holds the final snapshot and one validation owner runs the single full `bin/check` on it; other workers run focused checks and return bounded reports.
 
 ## Gotchas
 
@@ -28,7 +29,7 @@ The root `.claude/` and `.codex/` are symlinks to `seed/.claude/` and `seed/.cod
 - `docs/RULES.md`: which check enforces each rule; update it after a correction.
 - `.claude/skills/verify-loam/SKILL.md`: proving a seed, hook, settings or `copier.yml` change in a real rendered project before shipping it.
 - `docs/SYNC.md`: `bin/sync-project`, updating projects, or promoting a reusable asset.
-- `docs/BOOTSTRAP.md`, `docs/COPIER.md`: changing bootstrap or update behavior.
+- `docs/BOOTSTRAP.md`, `docs/COPIER.md`: bootstrapping a project, or changing bootstrap or update behavior.
 - `docs/factory/ARCHITECTURE.md`: running or changing the loop factory (brief, tickets, `bin/factory`, graders).
 
 ## Agent skills
