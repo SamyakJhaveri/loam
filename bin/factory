@@ -310,8 +310,8 @@ grader_file() {
 
 # A worker's skill name (a line of bin/factory.d/skills.txt, lint-checked) -> its SKILL.md body path.
 # A bare name lives under ~/.claude/skills/<name>/; a plugin:name lives in the installed plugin cache,
-# newest version first. Plugin skills nest under a category dir
-# (mattpocock-skills:research is skills/engineering/research/SKILL.md), so match SKILL.md at any depth
+# newest version first. A plugin may nest its skills under a category dir
+# (skills/<category>/<name>/SKILL.md), so match SKILL.md at any depth
 # under the plugin's skills tree, not only skills/<name>/.
 skill_file() { # skill-name -> SKILL.md path on stdout, non-zero when it resolves to no file
   local name="$1" plugin sub f

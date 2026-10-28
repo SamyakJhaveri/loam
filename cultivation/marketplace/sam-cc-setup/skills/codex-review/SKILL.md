@@ -148,8 +148,8 @@ Be terse; no preamble."
 - If every finding is a nit or a preference, say the change is probably fine.
 - Report the four buckets in that order.
 - For every Act on or Consider finding you do not fix in this session, file an issue in the
-  project's tracker once the user agrees: follow `docs/agents/issue-tracker.md` when the
-  project has one (in Loam, `gh issue create`); with no tracker, list them in the reply.
+  project's tracker once the user agrees, by the tracker rules its `AGENTS.md` names (in Loam,
+  `gh issue create`); with no tracker, list them in the reply.
   Close the issue from the commit that later fixes it.
 - Record the diff fingerprint in `<out>`. Reuse this report while the fingerprint and
   criteria are unchanged. Review again only after material changes or for a named risk.

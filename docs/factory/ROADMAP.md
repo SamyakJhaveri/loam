@@ -25,7 +25,7 @@ Items marked Track A need no ticket and no loop.
 - Fix `gh` on the Mac: re-login the keyring and trust the proxy CA, or install a three-line shim over `ssh jhaveris gh "$@"` that rewrites `--body-file X` to stdin; prove it with `gh api rate_limit`.
 - Add `bin/runner` (`LOOP.md` Commands) and use it for every remote command from then on.
 - Commit `bin/factory.d/fixtures/`: `S1.before.md`, `S4.before.md`, `S5.before.md` (the pre-addendum bodies from the lean-v3 tickets directory) and `S1.md` to `S5.md`, the lean-v3 tickets rewritten into the contract form (`CONTRACT.md`).
-- Chart the factory as a `wayfinder` map, convert F1 to F9 below into the contract form, publish them through `to-tickets` as GitHub issues with native blocking edges, and replace the bodies here with links. Each ticket then runs as its own loop and merges to `main` before the next starts, so every merged ticket improves the loop that runs the following one.
+- Convert F1 to F9 below into the contract form, publish them as GitHub issues with native blocking edges, and replace the bodies here with links. Each ticket then runs as its own loop and merges to `main` before the next starts, so every merged ticket improves the loop that runs the following one.
 - Reinstall bradautomates/claude-video, run it on the four unparsed videos, append findings to `../research/community.md`.
 
 ## F2 ticket contract and lint
