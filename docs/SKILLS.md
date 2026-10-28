@@ -20,7 +20,7 @@ A skill stays in the lead's list only if Claude should pick it unprompted and no
 | 1. Intake | `catchup` | | `/sam-cc-setup:brief`, `/pstack:sharpen`, `/pstack:in-your-own-words`, `/mattpocock-skills:grill-with-docs`; too big for one session: `/pstack:figure-it-out` or `/mattpocock-skills:wayfinder` |
 | 2. Understand | none; send a scout or worker | `how`, `why` | `/pstack:teach`, `/pstack:how`, `/pstack:why` |
 | 3. Plan and design | `mattpocock-skills:codebase-design`, `:domain-modeling`, `:prototype` | | `/mattpocock-skills:to-spec` (only for a full spec first), `/mattpocock-skills:to-tickets`, `/sam-cc-setup:plan-review`, `/mattpocock-skills:improve-codebase-architecture`; contested design, concurrency or cross-cutting: `/pstack:poteto-mode` |
-| 4. Build | a few lines inline, else one `worker`; `resolving-merge-conflicts`, `run`, `loop` | `tdd` (cheap test path only), the principles, `show-me-your-work` on long unattended runs | `/implement-spec` (spec with tickets), `bin/factory` (queued tickets), `/pstack:poteto-mode` (pushes a branch, never merges) |
+| 4. Build | a few lines inline, else one `worker`; `resolving-merge-conflicts`, `run`, `loop` | `tdd` (cheap test path only), the principles, `show-me-your-work` on long unattended runs | `/sam-cc-setup:implement-spec` (spec with tickets), `bin/factory` (queued tickets), `/pstack:poteto-mode` (pushes a branch, never merges) |
 | 5. Review | `code-review` (bugs), `simplify` (quality) | `interrogate`, `blast-radius` | `/sam-cc-setup:codex-review` (Codex second opinion on a diff), `/pstack:no-comments`; after a loop: the `lean-critic` agent |
 | 6. Debug and measure | `mattpocock-skills:diagnosing-bugs` | `principle-fix-root-causes`, `principle-attack-the-premise`, `benchmark-checklist`, `principle-explain-the-number` | `/hypothesis-tree`, `/experiment-loop` |
 | 7. Research | `mattpocock-skills:research` | | the `deep-research` workflow, the academic-research workflow (step 5), `/new-model-workflow` |
@@ -58,10 +58,9 @@ To turn it back on, set `enabledPlugins["codex@openai-codex"]` to `true` in `~/.
 
 ## Open steps
 
-Steps 2 (pstack by path, `docs/PSTACK.md`) and 3 (Codex, above) are done.
+Steps 2 (pstack by path, `docs/PSTACK.md`), 3 (Codex, above) and 4 (`/sam-cc-setup:implement-spec`, parallel workers in worktrees) are done.
 
 | Step | Change |
 |------|--------|
-| 4 | `implement-spec`: parallel implementers in worktrees. |
 | 5 | Academic-research workflow. |
 | 6 | Try `anthropic-skills:setup-writing-style` for DistBench's paper (the global "no writing or voice skill" rule was removed for this trial, 2026-10-27). |
