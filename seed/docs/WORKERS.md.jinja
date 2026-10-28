@@ -39,14 +39,17 @@ A project with costly concurrency also keeps a skill from `/pstack:create-formal
 To change a role's effort, edit the pstack rule file (`~/.claude/rules/pstack-models.md`) by hand.
 Do not re-run `/pstack:setup-pstack` for that: a re-run keeps only the roles changed by family, list or alias, so an effort-only change reverts to the budget level.
 
-pstack ships every skill as manual-only, so agents and workers invoke one on their own judgment only through the copies that `/sam-cc-setup:install-pstack-skills` makes in `~/.claude/skills/`.
-Type `/sam-cc-setup:install-pstack-skills` on each host after each pstack update; it refreshes every copy it marked and refuses any other folder of the same name.
+pstack ships every skill as manual-only, so the Skill tool refuses it; an agent reads it by path instead, pstack's own Claude Code method.
+`<pstack>` is the enabled plugin folder, the pstack `installPath` in `~/.claude/plugins/installed_plugins.json`, so a pstack update moves every reader to the new version with nothing to re-run.
+An agent reads `<pstack>/docs/harness/claude-code.md` once per session, then `<pstack>/skills/<name>/SKILL.md` for the skill the brief names or the work fits.
+Keep no copies in `~/.claude/skills/`: a copy goes stale after a pstack update and doubles the skill in the lead's list.
+A short index (skill name, when to use it) in a user-level agent file, such as `~/.claude/agents/worker.md`, lets that agent pick a skill unprompted.
 A review agent runs `blast-radius` on a change that could break code outside its diff, and `interrogate` on a diff it does not trust.
 An agent runs `benchmark-checklist` on a timing or performance number before it reports it, and an agent on long unattended work keeps a `show-me-your-work` decision log.
 After merges that changed code a formal-verification skill models without rechecking it, an agent runs `maintain-formal-verification-skill` on that skill.
 Any worker uses `how`, `why`, `tdd` and the principle skills the script lists where the work fits.
 An agent stays within its sub-agent cap, so it skips a step that runs `arena`, `swarm` or `architect`.
-An agent without the Agent tool skips `how`, `why`, `interrogate` and `show-me-your-work`, which spawn sub-agents.
+An agent without the Agent tool runs `how` or `why` as their single explainer or investigator itself, and skips `interrogate` and the review spawn of `show-me-your-work`.
 The other pstack skills stay human-only, typed as `/pstack:<name>`: `poteto-mode`, `arena`, `swarm`, `architect` and the other fan-out and one-off setup skills, `maintain-verification-skill` (a sub-agent per feature, then a PR), `figure-it-out`, `reflect`, `no-comments`, and `unslop` and `technical-writing`, since writing skills stay hidden from the model.
 
 ## Handoff

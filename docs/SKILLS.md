@@ -47,9 +47,10 @@ Third-party descriptions (Matt Pocock, Codex, pstack, built-ins) are not edited;
 
 ## Open steps
 
+Step 2 (pstack by path) is done: see `docs/PSTACK.md`.
+
 | Step | Change |
 |------|--------|
-| 2 | pstack by path (owner choice C, 2026-10-27): add the index to the `worker` and `scout` agent files, delete the 23 copies in `~/.claude/skills` and both installers, update `seed/docs/WORKERS.md.jinja`; drop inert plugin entries from `skillOverrides`. Until then the 23 copies stay in the lead's list. |
 | 3 | One way to call Codex; decide the Codex plugin. |
 | 4 | `implement-spec`: parallel implementers in worktrees. |
 | 5 | Academic-research workflow. |
