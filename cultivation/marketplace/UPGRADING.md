@@ -3,6 +3,13 @@
 This file records why a promoted plugin change traveled. It is also the upgrade
 entry point for projects that consume the Loam marketplace.
 
+## sam-cc-setup v0.9.15 codex-review picks model and effort per diff
+
+`/sam-cc-setup:codex-review` no longer pins `model_reasoning_effort=high`.
+It passes `-m <model>` and `-c model_reasoning_effort=<effort>` chosen for the diff's size and risk, never `max` or `ultra`, so it matches the one way to call Codex (`docs/SKILLS.md` Codex).
+No grader prompt changed, so no grader replay is owed.
+Upgrade step: `claude plugin update sam-cc-setup`.
+
 ## sam-cc-setup v0.9.14 install-pstack-skills removed
 
 `/sam-cc-setup:install-pstack-skills` is gone.
