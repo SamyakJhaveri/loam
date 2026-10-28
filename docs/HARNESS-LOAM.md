@@ -20,6 +20,12 @@ On the owner's machines the store remote uses the ssh alias `jhaveris`, the same
 
 Loam's own sessions run `gh` outside the sandbox too, because the root `.claude/` links to `seed/.claude/`, so the seed's `sandbox.excludedCommands` applies here.
 
+## Claude Code gotchas for hook and rule authors
+
+- Hooks receive a JSON envelope on standard input. They do not receive a `CLAUDE_TOOL_NAME` environment variable.
+- Hook event and matcher names are exact. A wrong name fails silently.
+- A rule's `paths:` frontmatter fires when Claude reads a matching file, not when Claude writes one.
+
 ## Measured cost, v2.3.0 to v3.0.0
 
 A record of the v3.0.0 cut, not maintained.
