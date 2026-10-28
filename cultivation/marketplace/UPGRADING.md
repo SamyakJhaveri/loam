@@ -6,9 +6,9 @@ entry point for projects that consume the Loam marketplace.
 ## sam-cc-setup v0.9.16 implement-spec joins the plugin
 
 `/sam-cc-setup:implement-spec` replaces the user-level `implement-spec` copied from `mattpocock/skills`.
-It plans a schedule from the blocking edges and the files each ticket touches, runs up to four workers at once in worktrees branched from the integration tip, merges each ticket itself, and runs one full check and one `/code-review` at the end.
+It plans a schedule from the blocking edges and the files each ticket touches, runs up to four workers at once in worktrees branched from the integration tip, merges only tickets whose report says `Status: done`, and runs one full check and one `/code-review high` at the end.
 No grader prompt changed, so no grader replay is owed.
-Upgrade step: `claude plugin update sam-cc-setup`, then remove the old copy (`~/.claude/skills/implement-spec`, `~/.agents/skills/implement-spec` and its `~/.agents/.skill-lock.json` entry) so only one skill of that name loads.
+Upgrade step: `claude plugin update sam-cc-setup`, then remove any old copy still present (`~/.claude/skills/implement-spec`, `~/.agents/skills/implement-spec` and its `~/.agents/.skill-lock.json` entry) so only one skill of that name loads.
 
 ## sam-cc-setup v0.9.15 codex-review picks model and effort per diff
 
@@ -146,7 +146,7 @@ The critique-swarm skill is removed because session-critique covers decision-awa
 session review and the plan-review-fanout workflow covers pre-execution plan review, so
 the skill was a fifth review entry point with no job of its own. The plugin then shipped 26
 skills. That count is historical: v3.0.0 cut the plugin to three skills, and today
-`find cultivation/marketplace/sam-cc-setup -name SKILL.md | wc -l` prints 4.
+`find cultivation/marketplace/sam-cc-setup -name SKILL.md | wc -l` prints 5.
 plan-review-fanout pins every agent to claude-opus-4-8[1m] and adversarially
 verifies only BLOCK findings. validate is now a thin caller of the build-validator
 agent, which absorbed the lint, type check, whitespace, shell syntax, test suite, and
