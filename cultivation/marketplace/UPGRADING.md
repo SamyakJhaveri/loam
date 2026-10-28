@@ -3,12 +3,12 @@
 This file records why a promoted plugin change traveled. It is also the upgrade
 entry point for projects that consume the Loam marketplace.
 
-## sam-cc-setup v0.9.16 implement-spec joins the plugin
+## sam-cc-setup v0.9.16 run-spec
 
-`/sam-cc-setup:implement-spec` replaces the user-level `implement-spec` copied from `mattpocock/skills`.
+`/sam-cc-setup:run-spec` builds a spec whose tickets form a task graph as one branch and one PR, in Loam or DistBench.
 It plans a schedule from the blocking edges and the files each ticket touches, runs up to four workers at once in worktrees branched from the integration tip, merges only tickets whose report says `Status: done`, and runs one full check and one `/code-review high` at the end.
 No grader prompt changed, so no grader replay is owed.
-Upgrade step: `claude plugin update sam-cc-setup`, then remove any old copy still present (`~/.claude/skills/implement-spec`, `~/.agents/skills/implement-spec` and its `~/.agents/.skill-lock.json` entry) so only one skill of that name loads.
+Upgrade step: `claude plugin update sam-cc-setup`.
 
 ## sam-cc-setup v0.9.15 codex-review picks model and effort per diff
 
