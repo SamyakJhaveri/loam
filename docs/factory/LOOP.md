@@ -172,7 +172,7 @@ Skills are given at the moment they apply, never all at once; the listing is pai
 | Manager (stage 5, 6) | `handoff` when stopping mid-stream | the manager session |
 
 A worker may name only a line of `bin/factory.d/skills.txt`, and lint reads that file (#37).
-The worker runs with `--setting-sources user`, which loads `~/.claude/skills/` and user-scope plugins but no project skill, so the seed skills (`catchup`, `fable-prompting`, `hypothesis-tree`) are not in the file.
+The worker runs with `--setting-sources user`, which loads `~/.claude/skills/` and user-scope plugins but no project skill and not the root `CLAUDE.md` or `AGENTS.md`, so the seed skills (`catchup`, `fable-prompting`, `hypothesis-tree`) are not in the file.
 
 ## Parallel runs
 

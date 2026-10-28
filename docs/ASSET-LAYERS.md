@@ -1,6 +1,6 @@
 # Asset layers
 
-Since the 2026-08 rebuild, every agent asset belongs to exactly one of three layers.
+Since the 2026-08 rebuild (rationale for the current tree: `docs/archive/specs/rebuild-structure-design.md`), every agent asset belongs to exactly one of three layers.
 One directive, one canonical home.
 A duplicate across layers is a bug unless it is an explicit distribution mirror with a verifier-enforced equality contract.
 
