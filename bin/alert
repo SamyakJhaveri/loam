@@ -24,6 +24,7 @@ import datetime
 import http.client
 import json
 import os
+import re
 import socket
 import stat
 import sys
@@ -105,8 +106,11 @@ def alert(args: argparse.Namespace) -> int:
         print(f"bin/alert: Slack {sent}", file=sys.stderr)
     try:
         EVENTS.parent.mkdir(parents=True, exist_ok=True)
-        with EVENTS.open("a") as log:  # one write of one short line, so concurrent writers do not interleave
-            log.write(json.dumps(event) + "\n")
+        fd = os.open(EVENTS, os.O_WRONLY | os.O_APPEND | os.O_CREAT, 0o644)
+        try:  # one write(2) of the whole line, so concurrent writers never interleave inside a line
+            os.write(fd, (json.dumps(event) + "\n").encode())
+        finally:
+            os.close(fd)
     except OSError as error:
         print(f"bin/alert: cannot append to {EVENTS}: {type(error).__name__}", file=sys.stderr)
         ok = False
@@ -143,8 +147,8 @@ def main() -> int:
     args = p.parse_args()
     if (args.ping is None) == (args.text is None):
         p.error("give either an alert line or --ping, not both")
-    if args.project and not args.project.replace("-", "").replace("_", "").isalnum():
-        p.error("--project takes letters, digits, - and _")
+    if args.project and (args.project.startswith(".") or not re.fullmatch(r"[A-Za-z0-9._-]+", args.project)):
+        p.error("--project takes a repository name: letters, digits, '.', '-' and '_', not starting with '.'")
     return ping(args.ping) if args.ping else alert(args)
 
 

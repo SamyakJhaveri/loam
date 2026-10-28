@@ -93,6 +93,11 @@ class AlertScriptTests(unittest.TestCase):
         (event,) = self.events()
         self.assertTrue(event["slack"].startswith("failed: ") and "mode 644" in event["slack"], event["slack"])
 
+    def test_a_dotted_repository_name_is_a_project(self) -> None:
+        self.hook("slack", self.url)
+        self.assertEqual(self.alert("--project", "foo.bar", "hi").returncode, 0)
+        self.assertEqual(self.alert("--project", "../x", "hi").returncode, 2)
+
     def test_no_webhook_still_logs_the_event_and_fails(self) -> None:
         done = self.alert("--level", "fail", "run died")
         self.assertEqual(done.returncode, 1)
@@ -126,7 +131,7 @@ class FactoryAlertTests(unittest.TestCase):
     def factory(self, script: str, **env: str) -> list[list[str]]:
         """Source bin/factory for issue 7 of acme/Widget, swap ROOT for the recording bin/alert, run script."""
         setup = (f"ROOT='{self.fake}'; RUNS_BASE='{self.runs}'; RUN='{self.run_dir}'; ISSUE=7; KEY=7; IS_FILE=0\n"
-                 "gh() { cat > /dev/null; echo comment >> \"$RUN/gh-called\"; }\n")
+                 "gh() { cat > /dev/null; echo comment >> \"$RUN/gh-called\"; return ${FAKE_GH_EXIT:-0}; }\n")
         base = {k: v for k, v in os.environ.items() if k not in INHERITED}
         proc = subprocess.run(["bash", "-c", f". bin/factory\n{setup}{script}"], cwd=ROOT,
                               env={**base, "FACTORY_SOURCED": "1", "REPO": "acme/Widget", "HOME": str(self.home),
@@ -163,6 +168,21 @@ class FactoryAlertTests(unittest.TestCase):
         self.factory("notify fail 'issue 7 stopped' 'detail'", FAKE_ALERT_EXIT="1")
         self.assertTrue((self.run_dir / "gh-called").exists())
         self.assertFalse((self.run_dir / "notify.failed").exists())
+
+    def test_slack_and_comment_both_failing_writes_notify_failed(self) -> None:
+        self.factory("notify fail 'issue 7 stopped' 'detail'", FAKE_ALERT_EXIT="1", FAKE_GH_EXIT="1")
+        self.assertIn("issue 7 stopped: detail", (self.run_dir / "notify.failed").read_text())
+
+    def test_notify_scrubs_alert_secrets(self) -> None:
+        # A worker's error text can quote a webhook or ping URL, or the API key from the config files.
+        conf = self.home / ".config" / "loam" / "alerts"
+        conf.mkdir(parents=True)
+        (conf / "hc-api-key").write_text("Kq" * 16 + "\n")
+        hook = "https://hooks.slack.com/services/T00/B00/" + "Zx" * 12
+        calls = self.factory(f"notify fail 'issue 7 stopped' 'saw {hook} and {'Kq' * 16} and https://hc-ping.com/abc'")
+        self.assertNotIn("Zx" * 12, calls[-1][-1])
+        self.assertNotIn("Kq" * 16, calls[-1][-1])
+        self.assertNotIn("hc-ping.com/abc", calls[-1][-1])
 
     def test_notify_scrubs_before_slack(self) -> None:
         key = "sk-ant-api03-" + "Q0" * 20

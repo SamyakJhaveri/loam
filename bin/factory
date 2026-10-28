@@ -572,10 +572,10 @@ set_status() { printf '%s\n' "$1" > "$RUN/status"; log "status: $1"; }
 # and the PR title and body. Check output and model text can hold a secret, and the repo may be public.
 # Token-shaped strings become [redacted]. SUBS holds every pattern of seed/.claude/hooks/mem-capture.sh's
 # scrubber verbatim, so the public path redacts at least what the private memory store does
-# (bin/tests/test_factory_publish_scrub.py checks), then two of the factory's own.
+# (bin/tests/test_factory_publish_scrub.py checks), then the factory's own and bin/alert's secrets.
 # -X utf8 passes bytes that are not UTF-8 through unchanged.
 IFS= read -r -d '' SCRUB_PY << 'PY' || :
-import re, sys
+import os, re, sys
 SUBS = [
     (re.compile(r"-----BEGIN [A-Z0-9 ]*PRIVATE KEY(?: BLOCK)?-----(?:.*?-----END [A-Z0-9 ]*PRIVATE KEY(?: BLOCK)?-----|(?:(?:\r?\n|(?:\\+r)?\\+n)(?:[ \t]|\\+t)*[A-Za-z][A-Za-z0-9-]*: [^\"\\\r\n]*)*(?:(?:\s|\\+[nrt])+[A-Za-z0-9+/=]+)*)", re.DOTALL), "[redacted]"),
     (re.compile(r"([a-zA-Z][a-zA-Z0-9+.\-]*://[^:@/\s]+:)[^@/\s]+@"), r"\1[redacted]@"),
@@ -596,10 +596,19 @@ SUBS = [
     # The factory's own: any Authorization value of 8 or more characters, and Slack's xoxs- tokens.
     (re.compile(r"(?i)(authorization[\"']?\s*[:=]\s*[\"']?(?:(?:bearer|basic|token)\s+)?)[^\s\\\"',]{8,}"), r"\1[redacted]"),
     (re.compile(r"xoxs-[A-Za-z0-9-]{10,}"), "[redacted]"),
+    # bin/alert's secrets: Slack webhook and healthchecks ping URLs, and every value in its config files.
+    (re.compile(r"https://(?:hooks\.slack\.com|hc-ping\.com)/[^\s\"'<>]+"), "[redacted]"),
 ]
 text = sys.stdin.read()
 for rx, rep in SUBS:
     text = rx.sub(rep, text)
+conf = os.path.expanduser("~/.config/loam/alerts")
+for name in os.listdir(conf) if os.path.isdir(conf) else []:
+    try:
+        for word in open(os.path.join(conf, name)).read().split():
+            text = text.replace(word, "[redacted]") if len(word) >= 8 else text
+    except (OSError, UnicodeDecodeError):
+        pass
 sys.stdout.write(text)
 PY
 scrub() { python3 -I -X utf8 -c "$SCRUB_PY"; }
@@ -611,13 +620,16 @@ ticket_name() {
   printf 'issue %s%s' "$KEY" "${title:+ ($title)}"
 }
 
+# The run's frozen bin/alert, or the live one before freeze (an exit at launch).
+alert() { if [ -x "$RUN/frozen/alert" ]; then "$RUN/frozen/alert" "$@"; else "$ROOT/bin/alert" "$@"; fi; }
+
 # Slack, the event log and healthchecks through bin/alert (LOOP.md, Notify), else a comment on the ticket;
 # a failure of both leaves notify.failed. The text passes scrub first: it can carry worker text.
 notify() { # level title message
   log "[notify] $2: $3"
   [ "$IS_FILE" = 1 ] && return 0   # a file ticket is a rehearsal with no issue to comment on
   printf '%s. %s' "$2" "$3" | scrub | {
-    "$ROOT/bin/alert" --level "$1" --source factory --project "$(printf '%s' "${REPO#*/}" | tr 'A-Z' 'a-z')" \
+    alert --level "$1" --source factory --project "$(printf '%s' "${REPO#*/}" | tr 'A-Z' 'a-z')" \
       --run "issue $ISSUE" "$(cat)"; } 2>> "$LOG" && return 0
   if [ -n "$ISSUE" ] && printf '**%s**\n\n%s\n' "$2" "$3" | scrub \
     | gh issue comment "$ISSUE" -R "$REPO" --body-file - > /dev/null 2>&1; then return 0
@@ -640,22 +652,35 @@ exit_words() { # status -> "<level> <words>"
   esac
 }
 
-# The host's healthchecks check: a beat now, then every 5 minutes while this run's process lives, so a killed
-# run or host goes red. finish kills the loop, and the host's last live run pauses the check.
+# The host's healthchecks check: a beat at launch, then every 5 minutes while this run's process lives, so a
+# killed run or host goes red. The loop's TERM trap runs only after an in-flight beat returns (the sleep is
+# waited on, so it does not delay the trap), and heartbeat_stop waits for it, so no beat lands after the pause.
 heartbeat_start() {
-  "$ROOT/bin/alert" --ping beat >> "$LOG" 2>&1 || log "healthchecks beat failed; see bin/alert's line above"
-  ( while sleep 300 && kill -0 "$$"; do "$ROOT/bin/alert" --ping beat; done ) < /dev/null > /dev/null 2>&1 &
+  alert --ping beat >> "$LOG" 2>&1 || log "healthchecks beat failed; see bin/alert's line above"
+  ( trap 'exit 0' TERM
+    while sleep 300 & wait $!; kill -0 "$$"; do alert --ping beat; done ) < /dev/null > /dev/null 2>&1 &
   HEARTBEAT=$!
 }
 
-heartbeat_stop() {
+# Another live run on this host, Loam's or another target's; a hard-killed run holds its slot too, so its
+# silence stays red.
+other_live_run() {
   local d
-  [ -n "${HEARTBEAT:-}" ] && kill "$HEARTBEAT" 2> /dev/null
-  for d in "$RUNS_BASE"/*/*/ "$RUNS_BASE"/*/*/*/; do   # Loam's runs, then every other target's
+  for d in "$RUNS_BASE"/*/*/ "$RUNS_BASE"/*/*/*/; do
     [ "${d%/}" = "${RUN%/}" ] && continue
-    holds_slot "$d" && return 0   # a hard-killed run holds its slot too, so its silence stays red
+    holds_slot "$d" && return 0
   done
-  "$ROOT/bin/alert" --ping pause >> "$LOG" 2>&1 || log "healthchecks pause failed; see bin/alert's line above"
+  return 1
+}
+
+# The host's last live run pauses the check. A run launched meanwhile wrote `launched` before its first beat,
+# so the second look sees it and beats again, and the pause never outlives a live run.
+heartbeat_stop() {
+  [ -n "${HEARTBEAT:-}" ] && kill "$HEARTBEAT" 2> /dev/null && wait "$HEARTBEAT" 2> /dev/null
+  other_live_run && return 0
+  alert --ping pause >> "$LOG" 2>&1 || log "healthchecks pause failed; see bin/alert's line above"
+  other_live_run && { alert --ping beat >> "$LOG" 2>&1 || log "healthchecks beat failed"; }
+  return 0
 }
 
 # Exit code, status, and the final log line are decided together (LOOP.md, Exits).
@@ -754,7 +779,7 @@ prepare_worktree() {
 
 FROZEN_SET="factory lib.sh _common.md role-settings.json worker-settings.json checks.sh \
 judge.md reviewer.md judge.schema.json reviewer.schema.json issue.md protected.txt exempt.txt \
-factory-round.js review-output.schema.json codex-review.prompt.md unattended.md"
+factory-round.js review-output.schema.json codex-review.prompt.md unattended.md alert"
 # The line freeze writes after the block, before checks.sh exits; run_checks reads output that does not end
 # on CHECKS-END as an abort (#277).
 CHECKS_END="printf '\nCHECKS-END\n'"
@@ -769,6 +794,7 @@ freeze() {
   cp "$ROOT/bin/factory.d/codex-review.prompt.md" "$RUN/frozen/codex-review.prompt.md"  # the Codex review reads the frozen prompt, so a mid-run edit of it cannot change the review (#38, F4)
   cp "$ROOT/bin/factory.d/unattended.md" "$RUN/frozen/unattended.md"  # the Opus 5.5 guide's "Unattended agentic runs" paragraph, appended to every Claude worker call (#210)
   cp "$ROOT/bin/factory.d/lib.sh" "$RUN/frozen/lib.sh"
+  cp "$ROOT/bin/alert" "$RUN/frozen/alert"   # a mid-run edit of bin/alert cannot change this run's alerts
   cp "$ROOT/bin/factory.d/role-settings.json" "$RUN/frozen/role-settings.json"
   cp "$ROOT/bin/factory.d/worker-settings.json" "$RUN/frozen/worker-settings.json"
   sed -e "s|<issue>|${ISSUE:-$KEY}|g" -e "s|<decisions>|$DECISIONS|g" \
@@ -783,7 +809,7 @@ freeze() {
   { cat "$RUN/frozen/lib.sh"; echo; dc_block; echo; echo "$CHECKS_END"; echo 'exit $((n_fail > 0))'; } > "$RUN/frozen/checks.sh"
   { standing_list; section "Do not touch" | sed 's/[Ee]xcept:.*//' | ticket_paths; } | sort -u > "$RUN/frozen/protected.txt"
   section "Do not touch" | grep -o '[Ee]xcept:.*' | ticket_paths > "$RUN/frozen/exempt.txt"
-  chmod +x "$RUN/frozen/checks.sh" "$RUN/frozen/factory"
+  chmod +x "$RUN/frozen/checks.sh" "$RUN/frozen/factory" "$RUN/frozen/alert"
   # shellcheck disable=SC2086
   ( cd "$RUN/frozen" && sha256_of $FROZEN_SET > sha256 )
   chmod a-w "$RUN/frozen"/*
@@ -1639,7 +1665,6 @@ main_loop() {
   local prev_fails="" prev_sig="" grader_fails=0 fails dirty touched checks sig_now
   notify info "$(ticket_name) started" \
     "Branch $BRANCH in $WORKTREE; it stops at $MAX_ROUNDS rounds, $TICKET_BUDGET_USD USD or $MAX_HOURS hours"
-  heartbeat_start
   while :; do
     ROUND=$((ROUND + 1))
     [ "$ROUND" -le "$MAX_ROUNDS" ] || finish stopped-cap "round cap: $MAX_ROUNDS rounds"
@@ -1727,6 +1752,7 @@ cmd_run() {
   prepare_worktree
   freeze
   exec_frozen
+  heartbeat_start   # after the re-exec, so the loop's pid lives in the process that runs finish
   BODY=$(cat "$RUN/frozen/issue.md")   # from here on the frozen body is the ticket
   [ "$IS_FILE" = 1 ] && trap 'git -C "$MAIN_CHECKOUT" worktree remove --force "$WORKTREE" > /dev/null 2>&1' EXIT
   TIMEOUT_G=()
