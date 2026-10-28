@@ -1,0 +1,152 @@
+#!/usr/bin/env python3
+"""bin/alert: one alert from unattended work to an event log, Slack, and healthchecks.io.
+
+  bin/alert [--level info|needs-you|fail] [--source NAME] [--project NAME] [--run TEXT] "<one plain line>"
+  bin/alert --ping beat|pause
+
+An alert appends one JSON line to ~/.local/state/loam/alerts.jsonl, the log watch sessions read, after it
+posts the line to the project's Slack webhook, so the log line says whether the post went out. needs-you and
+fail post with @channel; info posts quietly. Exits 0 when the post and the log line both succeed, 1 when either
+fails (the caller falls back, as bin/factory's notify posts a ticket comment), 2 on a usage error.
+
+`--ping beat` GETs this host's healthchecks.io check; `--ping pause` pauses it through the healthchecks API,
+so a run that ends on purpose raises no alarm (a later beat resumes it). With no ping URL configured both exit 0.
+
+Config, one secret per file, each mode 600 (a symlink to such a file works), under ~/.config/loam/alerts/:
+  slack-<project>  the project's Slack incoming-webhook URL; `slack` is the fallback for every project
+  hc-ping-url      this host's check, https://hc-ping.com/<uuid>
+  hc-api-key       a healthchecks API key for the check's project, read by --ping pause
+No URL or key is ever printed: an error names only its type (as DistBench's bin/pair-alert).
+"""
+
+import argparse
+import datetime
+import http.client
+import json
+import os
+import socket
+import stat
+import sys
+import urllib.error
+import urllib.parse
+import urllib.request
+from pathlib import Path
+
+CONF = Path.home() / ".config" / "loam" / "alerts"
+EVENTS = Path.home() / ".local" / "state" / "loam" / "alerts.jsonl"
+TIMEOUT_S = 10
+SLACK_CUT = 3000  # characters of the line in one Slack post
+LOG_CUT = 4000  # characters of the line in one log line
+LOUD = {"needs-you", "fail"}
+HC_API = "https://healthchecks.io/api/v3/checks/"
+
+
+def secret(name: str) -> str:
+    """The one word in CONF/name, or ValueError saying why the file is missing or wrong."""
+    path = CONF / name
+    try:
+        mode = stat.S_IMODE(path.stat().st_mode)
+        words = path.read_text().split()
+    except (OSError, UnicodeDecodeError) as error:
+        raise ValueError(f"cannot read {path}: {type(error).__name__}") from None
+    if mode & 0o077:
+        raise ValueError(f"{path} is mode {mode:o}; it holds a secret, so it must be mode 600")
+    if len(words) != 1:
+        raise ValueError(f"{path} must hold one line")
+    return words[0]
+
+
+def request(url: str, data: bytes | None = None, headers: dict | None = None) -> None:
+    """One HTTP call; ValueError naming only the error's type, since its text can quote the URL."""
+    try:
+        with urllib.request.urlopen(urllib.request.Request(url, data=data, headers=headers or {}),
+                                    timeout=TIMEOUT_S) as answer:
+            answer.read()
+    except urllib.error.HTTPError as error:
+        raise ValueError(f"HTTP {error.code}") from None
+    except (OSError, ValueError, http.client.HTTPException) as error:
+        why = type(error).__name__
+        if isinstance(getattr(error, "reason", None), BaseException):  # a URLError's cause
+            why += f" ({type(error.reason).__name__})"
+        raise ValueError(why) from None
+
+
+def slack_text(level: str, project: str, source: str, text: str) -> str:
+    """The Slack line: @channel when it needs Samyak, then who speaks, with Slack's three characters escaped."""
+    head = " ".join(w for w in (project, source) if w)
+    line = f"{head}: {text}" if head else text
+    line = line.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")[:SLACK_CUT]
+    return f"<!channel> {line}" if level in LOUD else line
+
+
+def post(project: str, text: str) -> str:
+    """Post text to the project's webhook, else the shared one; returns the log's slack field."""
+    try:
+        url = secret(f"slack-{project}") if project and (CONF / f"slack-{project}").exists() else secret("slack")
+        request(url, json.dumps({"text": text}).encode(), {"Content-Type": "application/json"})
+    except ValueError as error:
+        return f"failed: {error}"
+    return "sent"
+
+
+def alert(args: argparse.Namespace) -> int:
+    text = " ".join(args.text.split())  # one line, so a log line is one event
+    if not text:
+        print("bin/alert: the alert text is empty", file=sys.stderr)
+        return 2
+    sent = post(args.project, slack_text(args.level, args.project, args.source, text))
+    event = {
+        "t": datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "host": socket.gethostname().split(".")[0], "project": args.project, "source": args.source,
+        "run": args.run, "level": args.level, "slack": sent, "text": text[:LOG_CUT],
+    }
+    ok = sent == "sent"
+    if not ok:
+        print(f"bin/alert: Slack {sent}", file=sys.stderr)
+    try:
+        EVENTS.parent.mkdir(parents=True, exist_ok=True)
+        with EVENTS.open("a") as log:  # one write of one short line, so concurrent writers do not interleave
+            log.write(json.dumps(event) + "\n")
+    except OSError as error:
+        print(f"bin/alert: cannot append to {EVENTS}: {type(error).__name__}", file=sys.stderr)
+        ok = False
+    return 0 if ok else 1
+
+
+def ping(what: str) -> int:
+    if not (CONF / "hc-ping-url").exists():
+        return 0
+    try:
+        url = secret("hc-ping-url")
+        parts = urllib.parse.urlsplit(url)
+        uuid = parts.path.strip("/")
+        if parts.scheme != "https" or not parts.hostname or "/" in uuid or len(uuid) != 36:
+            raise ValueError(f"{CONF / 'hc-ping-url'} must hold https://hc-ping.com/<uuid>")
+        if what == "beat":
+            request(url)
+        else:
+            request(f"{HC_API}{uuid}/pause", b"", {"X-Api-Key": secret("hc-api-key")})
+    except ValueError as error:
+        print(f"bin/alert: healthchecks {what} failed: {error}", file=sys.stderr)
+        return 1
+    return 0
+
+
+def main() -> int:
+    p = argparse.ArgumentParser(prog="bin/alert", description="One alert to the event log, Slack and healthchecks.")
+    p.add_argument("--level", choices=["info", "needs-you", "fail"], default="info")
+    p.add_argument("--source", default="")
+    p.add_argument("--project", default="")
+    p.add_argument("--run", default="")
+    p.add_argument("--ping", choices=["beat", "pause"])
+    p.add_argument("text", nargs="?")
+    args = p.parse_args()
+    if (args.ping is None) == (args.text is None):
+        p.error("give either an alert line or --ping, not both")
+    if args.project and not args.project.replace("-", "").replace("_", "").isalnum():
+        p.error("--project takes letters, digits, - and _")
+    return ping(args.ping) if args.ping else alert(args)
+
+
+if __name__ == "__main__":
+    sys.exit(main())

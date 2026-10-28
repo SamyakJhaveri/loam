@@ -604,31 +604,70 @@ sys.stdout.write(text)
 PY
 scrub() { python3 -I -X utf8 -c "$SCRUB_PY"; }
 
-# Pushover when it is configured, else a comment on the ticket; a failure leaves notify.failed.
-notify() { # title message
-  local pe="$HOME/.config/loam-loops/pushover.env"
-  log "[notify] $1: $2"
+# "issue <n> (<title>)": how every alert names the ticket, so Samyak need not look the number up.
+ticket_name() {
+  local title
+  title=$(grep -m1 '^# ' "$RUN/frozen/issue.md" 2> /dev/null | sed 's/^# //')
+  printf 'issue %s%s' "$KEY" "${title:+ ($title)}"
+}
+
+# Slack, the event log and healthchecks through bin/alert (LOOP.md, Notify), else a comment on the ticket;
+# a failure of both leaves notify.failed. The text passes scrub first: it can carry worker text.
+notify() { # level title message
+  log "[notify] $2: $3"
   [ "$IS_FILE" = 1 ] && return 0   # a file ticket is a rehearsal with no issue to comment on
-  if [ -f "$pe" ]; then
-    # shellcheck disable=SC1090
-    . "$pe"
-    if [ -n "${PUSHOVER_TOKEN:-}" ] && [ -n "${PUSHOVER_USER:-}" ] \
-      && curl -s --max-time 15 -F "token=$PUSHOVER_TOKEN" -F "user=$PUSHOVER_USER" \
-         -F "title=$1" -F "message=${2:0:1000}" https://api.pushover.net/1/messages.json > /dev/null; then return 0; fi
-  elif [ -n "$ISSUE" ] && printf '**%s**\n\n%s\n' "$1" "$2" | scrub \
+  printf '%s. %s' "$2" "$3" | scrub | {
+    "$ROOT/bin/alert" --level "$1" --source factory --project "$(printf '%s' "${REPO#*/}" | tr 'A-Z' 'a-z')" \
+      --run "issue $ISSUE" "$(cat)"; } 2>> "$LOG" && return 0
+  if [ -n "$ISSUE" ] && printf '**%s**\n\n%s\n' "$2" "$3" | scrub \
     | gh issue comment "$ISSUE" -R "$REPO" --body-file - > /dev/null 2>&1; then return 0
   fi
-  printf '%s %s: %s\n' "$(now)" "$1" "$2" >> "$RUN/notify.failed"
+  printf '%s %s: %s\n' "$(now)" "$2" "$3" >> "$RUN/notify.failed"
+}
+
+# Each exit in words Samyak reads without the status table, and how loud it is (LOOP.md, Notify).
+exit_words() { # status -> "<level> <words>"
+  case "$1" in
+    pr-opened) echo "needs-you opened a pull request; it waits for your review and merge" ;;
+    ticket-defect) echo "needs-you cannot run as the ticket is written; fix the ticket" ;;
+    abandon) echo "needs-you gave up: the worker says the ticket cannot be done as written" ;;
+    stopped) echo "info stopped, as FACTORY_STOP asked" ;;
+    stopped-cap) echo "fail stopped at a limit on rounds, money or hours" ;;
+    stuck) echo "fail stopped: the same checks failed twice in a row" ;;
+    no-change) echo "fail stopped: a round changed nothing" ;;
+    stopped-environment) echo "fail stopped on a machine or tool problem, not on the ticket" ;;
+    *) echo "fail stopped ($1)" ;;
+  esac
+}
+
+# The host's healthchecks check: a beat now, then every 5 minutes while this run's process lives, so a killed
+# run or host goes red. finish kills the loop, and the host's last live run pauses the check.
+heartbeat_start() {
+  "$ROOT/bin/alert" --ping beat >> "$LOG" 2>&1 || log "healthchecks beat failed; see bin/alert's line above"
+  ( while sleep 300 && kill -0 "$$"; do "$ROOT/bin/alert" --ping beat; done ) < /dev/null > /dev/null 2>&1 &
+  HEARTBEAT=$!
+}
+
+heartbeat_stop() {
+  local d
+  [ -n "${HEARTBEAT:-}" ] && kill "$HEARTBEAT" 2> /dev/null
+  for d in "$RUNS_BASE"/*/*/ "$RUNS_BASE"/*/*/*/; do   # Loam's runs, then every other target's
+    [ "${d%/}" = "${RUN%/}" ] && continue
+    holds_slot "$d" && return 0   # a hard-killed run holds its slot too, so its silence stays red
+  done
+  "$ROOT/bin/alert" --ping pause >> "$LOG" 2>&1 || log "healthchecks pause failed; see bin/alert's line above"
 }
 
 # Exit code, status, and the final log line are decided together (LOOP.md, Exits).
 finish() { # status message
-  local code
+  local code words
   case "$1" in
     pr-opened) code=0 ;; ticket-defect) code=3 ;; stopped-environment) code=4 ;; abandon) code=5 ;; *) code=2 ;;
   esac
   set_status "$1"
-  notify "$KEY $1" "$2"
+  heartbeat_stop
+  words=$(exit_words "$1")
+  notify "${words%% *}" "$(ticket_name) ${words#* }" "$2"
   log "EXIT $1 ($code): $2"
   exit "$code"
 }
@@ -1598,7 +1637,9 @@ open_pr() { # [draft]: opened at the grader-round cap
 
 main_loop() {
   local prev_fails="" prev_sig="" grader_fails=0 fails dirty touched checks sig_now
-  notify "$KEY run started" "$KEY on $BRANCH in $WORKTREE; caps: $MAX_ROUNDS rounds, $TICKET_BUDGET_USD usd, ${MAX_HOURS}h"
+  notify info "$(ticket_name) started" \
+    "Branch $BRANCH in $WORKTREE; it stops at $MAX_ROUNDS rounds, $TICKET_BUDGET_USD USD or $MAX_HOURS hours"
+  heartbeat_start
   while :; do
     ROUND=$((ROUND + 1))
     [ "$ROUND" -le "$MAX_ROUNDS" ] || finish stopped-cap "round cap: $MAX_ROUNDS rounds"
@@ -1634,7 +1675,7 @@ main_loop() {
       log "checks failing: $fails"
       [ "$fails" = "$prev_fails" ] && finish stuck "the same checks failed twice: $(fail_names "$checks" | paste -sd, -)"
       prev_fails="$fails"
-      [ $((ROUND % 2)) -eq 0 ] && notify "$KEY checks failing after round $ROUND" \
+      [ $((ROUND % 2)) -eq 0 ] && notify info "$(ticket_name): checks still fail after round $ROUND; it keeps working" \
         "$(fail_names "$checks" | head -10 | sed 's/^/FAIL /'; printf 'Reasons and full output: %s\n' "$checks")"
       continue
     fi
@@ -2065,8 +2106,12 @@ precondition_lines() { # LOOP.md, Preconditions
   else
     echo "  INFO advisor off (FACTORY_WORKER_ADVISOR is empty)"
   fi
-  [ -f "$HOME/.config/loam-loops/pushover.env" ] && echo "  INFO pushover.env present" \
-    || echo "  INFO no pushover.env; notifications comment on the ticket"
+  local a="$HOME/.config/loam/alerts" p
+  p=$(printf '%s' "$(target_repo)" | sed 's#.*/##' | tr 'A-Z' 'a-z')
+  if [ -f "$a/slack-$p" ] || [ -f "$a/slack" ]; then echo "  INFO Slack webhook for $p present (bin/alert)"
+  else echo "  INFO no Slack webhook for $p ($a/slack-$p or $a/slack); notifications comment on the ticket"; fi
+  [ -f "$a/hc-ping-url" ] && echo "  INFO healthchecks check for this host present" \
+    || echo "  INFO no healthchecks check ($a/hc-ping-url); a killed run raises no alarm"
 }
 
 # ---- graders-check ----
