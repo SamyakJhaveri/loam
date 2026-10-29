@@ -3,6 +3,13 @@
 This file records why a promoted plugin change traveled. It is also the upgrade
 entry point for projects that consume the Loam marketplace.
 
+## sam-cc-setup v0.9.20 research-gap audit fixes
+
+`/sam-cc-setup:research-gap` text fixed where an audit after its first packaged run found it wrong or incomplete: `--repo` applies to `quotecheck.py` and `readings-index.py` only, the merge template now carries the step-2 rules (preamble locator, whole-idea cites, ties, owner ideas of both kinds, unchecked seat claims in the small mode), the true reason a quote across a page break fails, `paper_<hash>` stems as paper ids, Inferred headings mark nothing, saved check output includes stderr, and `split-brief.sh` deletes `brief.md`.
+No script behavior changed.
+No grader prompt changed, so no grader replay is owed.
+Upgrade step: `claude plugin update sam-cc-setup`.
+
 ## sam-cc-setup v0.9.19 research-gap after its first packaged run
 
 `/sam-cc-setup:research-gap` text fixed where its first packaged run (DistBench, small mode, 28 Oct 2026; Loam #361, #362) found it wrong or unclear: `--repo` for agents outside the repository, a `cost.md` record, the merge's edge cases (preamble locator, owner ideas that are both kinds, ties), seed and search fallbacks (no readings index yet, Exa not signed in, batch 429s, crawls without abstracts), the step-3 placeholder and Inferred headings, who completes `gap.md`, per-reader exit codes, note layout and naming for papers with neither an arXiv id nor a DOI, and the measured small-mode cost.

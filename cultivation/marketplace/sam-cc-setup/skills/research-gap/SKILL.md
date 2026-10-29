@@ -12,7 +12,7 @@ This procedure turns a question into candidate research questions, checks each g
 `${CLAUDE_SKILL_DIR}` below is this skill's folder; Claude Code fills it in when the skill is invoked, and if you read this file by path it is the folder holding it.
 Subagents and seats do not see it: give them the resolved path.
 The scripts in `scripts/` need Python 3 and poppler's `pdftotext`, nothing else.
-They find the repository from the current folder; an agent whose current folder is elsewhere (another repository, or a lead driving a worktree) passes `--repo <repo>` to every script command below.
+They find the repository from the current folder; an agent whose current folder is elsewhere (another repository, or a lead driving a worktree) passes `--repo <repo>` to every `quotecheck.py` and `readings-index.py` command below; `split-brief.sh` takes only the run folder.
 The evidence behind each step is in Loam's `docs/research/research-lane-evidence-2026-10.md`.
 
 ## Modes and their cost
@@ -31,7 +31,7 @@ Before step 1 the lead gives the owner both costs and asks which mode; an unatte
 - Surveying prior work for one claim (the academic-research workflow): write the claim as the only idea in `merged.md`, marked owner, and run steps 3 and 4 only; the result is its `gap.md`.
 - Logging one paper read in full, outside any run: no run folder and none of steps 1 to 6.
   1. Store the PDF in `<repo>/papers/` and write its note in `<repo>/docs/research/readings/notes/`, both named and written as `READINGS.md` beside this file says.
-  2. Log it: `python3 ${CLAUDE_SKILL_DIR}/scripts/readings-index.py add --paper <arXiv:id or doi:doi> --note <note path from the repo root> --depth full --reader <reader> --date <YYYY-MM-DD>` (`add` comes first; that folder carries no date, so give one).
+  2. Log it: `python3 ${CLAUDE_SKILL_DIR}/scripts/readings-index.py add --paper <arXiv:id, doi:doi, or paper_<hash> stem> --note <note path from the repo root> --depth full --reader <reader> --date <YYYY-MM-DD>` (`add` comes first; that folder carries no date, so give one).
   3. Check it: `python3 ${CLAUDE_SKILL_DIR}/scripts/quotecheck.py <note path>`; on a SPLIT or MISS fix the quote from the PDF, trim it, or relabel the line Inferred, and run it again until it exits 0.
   4. Rebuild the index: `python3 ${CLAUDE_SKILL_DIR}/scripts/readings-index.py`.
 
@@ -51,7 +51,7 @@ A run writes under `<repo>/docs/research/<YYYY-MM-DD>-<slug>/` (below, `<run>`),
 
 | File | Step | Holds |
 |---|---|---|
-| `brief.md`, then `brief-<seat>.md` | 1 | The brief from `brief-template.md` beside this file, split by `scripts/split-brief.sh` into one file per seat: the shared part plus that seat's section only |
+| `brief-<seat>.md` | 1 | The brief from `brief-template.md` beside this file, written as `brief.md` and split by `scripts/split-brief.sh` into one file per seat: the shared part plus that seat's section only; the script then deletes `brief.md` so no seat can read another seat's seed |
 | `seeds/<seat>/` | 1 | That seat's seed files (PDFs, data excerpts), copied into the seat's own folder at launch |
 | `owner-ideas.md` | 1 | The owner's own ideas, written before any proposal is read |
 | `seats.tsv` | 1 | seat, lens, model and effort, seeds, launch command, output file, returned (`pending`, `yes`, or `no: <why>`) |
@@ -171,6 +171,7 @@ Each keeps every helper script and scratch file in `gap/<idea>/scripts/`, never 
    The top 3 to 5, plus any paper two seats named for this idea, go to step 4 as the read list in `gap.md`.
    End `gap.md` with the heading `## Paper-by-facet table` and the line `Pending step 4.`
    Mark every section written from abstracts `Inferred` in its heading; never write "not Verified" there, since quotecheck reads the word Verified as a V mark.
+   An Inferred heading marks nothing for quotecheck; under a Verified heading each line still needs its own I mark.
 
 Why: gap detection fell from 89.66% to 13.79% without facet reranking (2506.22026), AI Scientist papers had a median of five citations (2502.14297), and retrieval-grounded ideas scored 0.297 against 0.119 on matched later papers' impact (2603.15164).
 Done when: `searches.tsv` holds the seed and citation rows plus at least 10 topic and kill queries, at least 2 in each of the four indexes (OpenAlex stands in for Semantic Scholar when its failed rows are logged) and half of them kill queries, every pooled hit is in `rerank.tsv`, and `gap.md` holds the read list.
@@ -184,20 +185,20 @@ Each reader:
 1. Stores each PDF in `<repo>/papers/`, named as `READINGS.md` says.
 2. Reads the main text and appendices and writes one note per paper in `<run>/notes/`, by the rules in `READINGS.md` (give the reader its resolved path): each facet answered YES, PARTLY, NO or NOT FOUND (searched the full text, found nothing), with a page-located Verified quote, a fact from the authors' code or pages written as "repo:" with no V mark, and the parts it did not read.
    A quote is Verified only when read in the stored PDF this session.
-3. Logs each paper: `python3 ${CLAUDE_SKILL_DIR}/scripts/readings-index.py add --paper <arXiv:id or doi:doi> --note <note path from the repo root> --depth full --reader <reader>` (`add` comes first).
-4. Checks its own notes and saves the output with its exit code: `{ python3 ${CLAUDE_SKILL_DIR}/scripts/quotecheck.py <its notes>; echo "exit: $?"; } > <run>/quotecheck-<reader>.out`.
+3. Logs each paper: `python3 ${CLAUDE_SKILL_DIR}/scripts/readings-index.py add --paper <arXiv:id, doi:doi, or paper_<hash> stem> --note <note path from the repo root> --depth full --reader <reader>` (`add` comes first).
+4. Checks its own notes and saves the output with its exit code: `{ python3 ${CLAUDE_SKILL_DIR}/scripts/quotecheck.py <its notes> 2>&1; echo "exit: $?"; } > <run>/quotecheck-<reader>.out`.
    On a SPLIT or MISS it fixes the quote from the PDF, trims it, or relabels the line Inferred, and runs the check again until it exits 0.
 
 Then the lead, or one worker it gives every `gap.md` and the readers' notes, completes each `gap.md`:
 
-- The paper-by-facet table: one row per paper read, with its arXiv id or DOI in the row's first cell, and one column per facet.
+- The paper-by-facet table: one row per paper read, with its arXiv id, DOI, or its `paper_<hash>` stem in the row's first cell, and one column per facet.
   Each cell holds the verdict and the note's V-marked quote with its page, or its "repo:" fact, or NOT FOUND.
   The quote checker ties a quote to the paper ids on its own line, so a row holds one paper and the table is never turned the other way.
   A cell never says "not in the note": send the reader back.
 - The gap status: open, narrowed to the named unmatched facets, or closed by the named paper.
 - "The claim may say" and "The claim must not say": facts only, each with its paper and page.
 
-Then the run's one check: write `<run>/quotecheck.sh`, which runs `quotecheck.py` over every `gap/*/gap.md` plus every note they use, with one `--papers <dir>` per PDF folder, and saves the command, its exit code and the output as `quotecheck.out`.
+Then the run's one check: write `<run>/quotecheck.sh`, which runs `quotecheck.py` over every `gap/*/gap.md` plus every note they use, with one `--papers <dir>` per PDF folder, and saves the command, its exit code and the output, stderr included, as `quotecheck.out`.
 The per-reader outputs are working files; `quotecheck.out` is the run's record.
 The checker exits 1 on any SPLIT or MISS, a missing PDF included, and 2 when no Verified quote cites a paper: a zero count proves nothing, so check the paths.
 A note from an earlier run that fails here is fixed in place by this run's lead, from the PDF or by relabelling the line Inferred, and the fix is named at the top of `quotecheck.out`; never copy a note to get around a miss.
