@@ -388,7 +388,7 @@ def test_the_index_never_replaces_one_it_did_not_write(tmp_path, monkeypatch):
 def split_brief(run, brief):
     run.mkdir()
     (run / "brief.md").write_text(brief)
-    return subprocess.run(["bash", str(SCRIPTS / "split-brief.sh"), str(run)], capture_output=True, text=True)
+    return subprocess.run(["bash", str(SCRIPTS / "split-brief.sh"), str(run)], capture_output=True, text=True, check=False)
 
 
 def test_split_brief_gives_each_seat_only_its_own_seed(tmp_path):
@@ -403,3 +403,117 @@ def test_split_brief_refuses_a_seat_id_used_twice(tmp_path):
     assert r.returncode == 1
     assert "seat id used twice" in r.stderr
     assert [p.name for p in (tmp_path / "dup").iterdir()] == ["brief.md"]
+
+
+def searchlog(gap, *argv):
+    r = subprocess.run([sys.executable, str(SCRIPTS / "searchlog.py"), *argv[:1], str(gap), *argv[1:]],
+                       capture_output=True, text=True, check=False)
+    assert r.returncode == 0, r.stderr
+    return r.stdout
+
+
+def tsv(path):
+    return [line.split("\t") for line in path.read_text().splitlines()]
+
+
+def log_hits(gap, qid, kind, hits, index="OpenAlex"):
+    f = gap / f"{qid}.json"
+    f.write_text(json.dumps(hits))
+    searchlog(gap, "log", "--qid", qid, "--index", index, "--kind", kind, "--query", "q " + qid, "--hits", str(f))
+
+
+def test_searchlog_rows_keep_the_schema_and_log_misses_at_rank_0(tmp_path):
+    hits = [{"id": f"arXiv:2401.{i:05d}", "title": f"Paper\t{i}", "year": 2024} for i in range(12)]
+    log_hits(tmp_path, "Q1", "topic", hits)
+    log_hits(tmp_path, "S1-cit", "citations", hits)
+    log_hits(tmp_path, "Q2", "kill", [])
+    searchlog(tmp_path, "log", "--qid", "Q3", "--index", "Semantic Scholar", "--kind", "kill", "--query", "x",
+              "--failed", "HTTP 429 after one retry")
+    rows = tsv(tmp_path / "searches.tsv")
+    assert rows[0] == ["qid", "index", "kind", "query", "rank", "paper_id", "title", "year"]
+    assert all(len(r) == 8 for r in rows)
+    assert [r[0] for r in rows[1:]].count("Q1") == 10  # top 10 for a search
+    assert [r[0] for r in rows[1:]].count("S1-cit") == 12  # every hit for a citation crawl
+    assert rows[1][4:] == ["1", "arXiv:2401.00000", "Paper 0", "2024"]
+    assert rows[-2] == ["Q2", "OpenAlex", "kill", "q Q2", "0", "", "no hits", ""]
+    assert rows[-1] == ["Q3", "Semantic Scholar", "kill", "x", "0", "", "HTTP 429 after one retry", ""]
+
+
+def test_searchlog_pool_merges_aliases_and_title_keys_and_keeps_marks(tmp_path):
+    log_hits(tmp_path, "S1", "seed", [{"id": "arXiv:2502.10517", "title": "KernelBench", "year": 2025}])
+    log_hits(tmp_path, "S1-cit", "citations", [{"id": "DOI:10.1145/1", "title": "Cited Only", "year": 2024},
+                                                {"id": "DOI:10.1145/2", "title": "Not Read", "year": 2024}])
+    log_hits(tmp_path, "C1", "topic", [{"id": "", "title": "KernelBench: Can LLMs Write Kernels?", "year": 2025},
+                                       {"id": "", "title": "Ünseen Paper", "year": None}], index="Consensus")
+    log_hits(tmp_path, "Q1", "kill", [{"id": "DOI:10.48550/arxiv.2502.10517", "title": "KernelBench (DOI)",
+                                       "year": 2025}])
+    (tmp_path / "aliases.tsv").write_text(
+        "alias\tcanonical\tnote\n"
+        "title:kernelbench-can-llms-write-kernels\tDOI:10.48550/arxiv.2502.10517\tConsensus title key\n"
+        "DOI:10.48550/arxiv.2502.10517\tarXiv:2502.10517\tarXiv DOI form\n")
+    (tmp_path / "rerank.tsv").write_text(  # marks made under an id that is now an alias, and a dropped paper
+        "paper_id\ttitle\tfacets_matched\tfacets_partial\tqids\tread\tmarked_by\n"
+        "DOI:10.48550/arxiv.2502.10517\tKernelBench\tF3,F4\tF2\tQ1\tyes\thand\n"
+        "DOI:10.1145/1\tCited Only\t\t\tS1-cit\tyes\n"
+        "arXiv:9999.00001\tGone\tF1\t-\tQ9\tno\thand\n")
+    out = searchlog(tmp_path, "pool")
+    rows = tsv(tmp_path / "rerank.tsv")
+    assert rows[0] == ["paper_id", "title", "facets_matched", "facets_partial", "qids", "read", "marked_by"]
+    assert rows[1] == ["arXiv:2502.10517", "KernelBench", "F3,F4", "F2", "S1,C1,Q1", "yes", "hand"]
+    assert sorted(r[0] for r in rows[2:]) == ["DOI:10.1145/1", "DOI:10.1145/2", "title:unseen-paper"]
+    assert all(r[2:4] == ["", ""] and r[6] == "" for r in rows[2:])
+    assert [r[5] for r in rows[2:]] == ["yes", "no", "no"]
+    assert out.startswith("4 pooled papers")
+    # only read-list papers are named; KernelBench is read but a kill query found it too
+    assert out.splitlines()[1:] == ["seed-or-citation-only\tDOI:10.1145/1\tCited Only"]
+    (tmp_path / "rerank.tsv").write_text((tmp_path / "rerank.tsv").read_text().replace(
+        "title:unseen-paper\tÜnseen Paper\t\t", "title:unseen-paper\tÜnseen Paper\tF1,F2,F3\t"))
+    searchlog(tmp_path, "pool")
+    assert [r[0] for r in tsv(tmp_path / "rerank.tsv")[1:3]] == ["title:unseen-paper", "arXiv:2502.10517"]
+
+
+def test_searchlog_pool_merges_the_alias_rows_marks_into_the_canonical_row(tmp_path):
+    log_hits(tmp_path, "S1", "seed", [{"id": "DOI:10.1145/9", "title": "Paper A", "year": 2024},
+                                      {"id": "arXiv:2610.12345", "title": "Paper A preprint", "year": 2026}])
+    (tmp_path / "rerank.tsv").write_text(  # marked under the DOI before the alias was known
+        "paper_id\ttitle\tfacets_matched\tfacets_partial\tqids\tread\tnote\n"
+        "DOI:10.1145/9\tPaper A\tF1,F2\tF3\tS1\tyes\tby hand\n"
+        "arXiv:2610.12345\tPaper A preprint\t\t\tS1\tno\t\n")
+    (tmp_path / "aliases.tsv").write_text("alias\tcanonical\nDOI:10.1145/9\tarXiv:2610.12345\n")
+    out = searchlog(tmp_path, "pool")
+    assert tsv(tmp_path / "rerank.tsv")[1] == ["arXiv:2610.12345", "Paper A preprint", "F1,F2", "F3", "S1", "yes",
+                                               "by hand"]
+    assert out.splitlines()[1:] == ["seed-or-citation-only\tarXiv:2610.12345\tPaper A preprint"]
+
+
+def test_searchlog_pool_keeps_the_canonical_rows_mark_on_a_conflict_and_names_it(tmp_path):
+    log_hits(tmp_path, "S1", "seed", [{"id": "DOI:10.1145/9", "title": "Paper A", "year": 2024},
+                                      {"id": "arXiv:2610.12345", "title": "Paper A preprint", "year": 2026}])
+    (tmp_path / "rerank.tsv").write_text(
+        "paper_id\ttitle\tfacets_matched\tfacets_partial\tqids\tread\n"
+        "arXiv:2610.12345\tPaper A preprint\tF1\t\tS1\tno\n"
+        "DOI:10.1145/9\tPaper A\tF1,F2\tF3\tS1\tyes\n")
+    (tmp_path / "aliases.tsv").write_text("alias\tcanonical\nDOI:10.1145/9\tarXiv:2610.12345\n")
+    r = subprocess.run([sys.executable, str(SCRIPTS / "searchlog.py"), "pool", str(tmp_path)],
+                       capture_output=True, text=True, check=True)
+    assert tsv(tmp_path / "rerank.tsv")[1][2:6] == ["F1", "F3", "S1", "yes"]
+    [conflict] = r.stderr.splitlines()
+    assert conflict.startswith("mark-conflict\tarXiv:2610.12345\t") and "'F1' over 'F1,F2'" in conflict
+
+
+def test_searchlog_title_keys_keep_other_scripts_apart(tmp_path):
+    log_hits(tmp_path, "Q1", "topic", [{"id": "", "title": t, "year": 2020}
+                                       for t in ("分布式系统", "机器学习", "が", "か", "Naïve Café", "???")])
+    assert [r[5] for r in tsv(tmp_path / "searches.tsv")[1:]] == [
+        "title:分布式系统", "title:机器学习", "title:が", "title:か", "title:naive-cafe", "title:???"]
+    # a log written before this fix holds the colliding key `title:`; pool keys those rows anew
+    (tmp_path / "searches.tsv").write_text(
+        "qid\tindex\tkind\tquery\trank\tpaper_id\ttitle\tyear\n"
+        "Q1\ts2\ttopic\tx\t1\ttitle:\t分布式系统\t2020\nQ1\ts2\ttopic\tx\t2\ttitle:\t机器学习\t2021\n")
+    assert searchlog(tmp_path, "pool").startswith("2 pooled papers")
+
+
+def test_searchlog_logs_the_query_as_sent(tmp_path):
+    searchlog(tmp_path, "log", "--qid", "Q1", "--index", "OpenAlex", "--kind", "topic",
+              "--query", '"exact  phrase"\tAND\nx y ', "--failed", "boom")
+    assert tsv(tmp_path / "searches.tsv")[1][3] == '"exact  phrase" AND x y '
