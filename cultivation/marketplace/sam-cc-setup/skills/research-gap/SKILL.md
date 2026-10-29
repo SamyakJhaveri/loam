@@ -19,10 +19,12 @@ The evidence behind each step is in Loam's `docs/research/research-lane-evidence
 
 | Mode | Seats | Gap checks | Cost |
 |---|---|---|---|
-| Full | four: assets, reframe, codex, analogist | every shortlisted gap claim | Trial, 27-28 Oct 2026: two full runs together took about 30 Claude runs plus 3 Codex runs (one a review), most Claude runs at 150K to 300K tokens, over one night; more than an hour of it was gap workers waiting on Semantic Scholar's rate limit. |
-| Small | two: assets (Opus) and codex | the owner's ideas only | First run, 28 Oct 2026, two owner ideas: 8 Claude runs and 1 Codex run in about 75 minutes; the assets seat used 61 turns (about 7.2M tokens, mostly cache reads), the 7 subagents about 1.1M tokens together, Codex about 105K. Each owner idea adds a gap worker and a reader or two. |
+| Full | four: assets, reframe, codex, analogist | every shortlisted gap claim | At most 5 + G + ceil(P/3) Claude runs and 2 Codex runs. Trial, 27-28 Oct 2026: two full runs took about 30 Claude runs, most at 150K to 300K tokens; over an hour went on Semantic Scholar's rate limit. |
+| Small | two: assets (Opus) and codex | the owner's ideas only | At most 3 + G + ceil(P/3) Claude runs and 2 Codex runs. First run, 28 Oct 2026, before the review existed: G=2 and P=8 gave 8 Claude runs and 1 Codex run in about 75 minutes; the assets seat cost $5.78 at list price, the 7 subagents about 1.1M tokens together. |
 
-Before step 1 the lead gives the owner both costs and asks which mode; an unattended run uses the mode its brief names.
+The bound counts the Claude seats, 1 merge, G gap workers (G is the shortlisted gap claims), ceil(P/3) readers (P is the deduped read list) and 1 gap completion; the 2 Codex runs are the codex seat and step 4's review.
+Before step 1 the lead gives the owner both bounds and asks which mode; an unattended run uses the mode its brief names.
+The lead writes the predicted bound in `cost.md` once step 3 fixes G and P, before any reader launches, and the actuals at the end.
 
 ## Entry points
 
@@ -61,9 +63,10 @@ A run writes under `<repo>/docs/research/<YYYY-MM-DD>-<slug>/` (below, `<run>`),
 | `notes/<paper>.md` | 4 | One reading note per paper, in the form `READINGS.md` beside this file sets |
 | `quotecheck-<reader>.out` | 4 | Each reader's check of its own notes |
 | `quotecheck.sh`, `quotecheck.out` | 4 | The run's one check over every `gap.md` and every note they use |
+| `review-brief.md`, `review.md` | 4 | The hostile review's brief, and its findings, each marked fixed in `gap.md` or rejected with a reason |
 | `decisions.md` | 5 | Each decision put to the owner, its recommended answer, the owner's answer |
 | `validation.md`, `validation/` | 6 | Criteria, command, exit code, output, result |
-| `cost.md` | all | Each agent run (step, model and effort, tokens, tool uses, minutes) against this mode's cost above: a Claude seat's from `proposals/<seat>.json`, Codex's from the "tokens used" line it prints, a subagent's from its completion notice |
+| `cost.md` | all | The bound predicted after step 3, then each agent run (step, model and effort, tokens, tool uses, minutes) against it: a Claude seat's from `proposals/<seat>.json`, Codex's from the "tokens used" line it prints, a subagent's from its completion notice |
 
 Besides its folder, a run writes only PDFs to `<repo>/papers/` and readings to the shared reading log, `<repo>/docs/research/readings/`, so later runs reuse them.
 The project's results and data are read-only for a run.
@@ -97,12 +100,13 @@ Make it and copy the seat's seeds in, if it has any: `mkdir -p <dir> && cp <run>
 A Claude seat, Opus here; the Fable seat takes `--model claude-fable-5-1 --effort high`, and the assets seat adds one `--add-dir <path>` per data folder:
 
 ```bash
-env -C <dir> claude -p --safe-mode --model opus --effort xhigh --tools "Read,Grep,Glob,Bash,WebSearch,WebFetch" --allowedTools "Read,Grep,Glob,WebSearch,WebFetch,Bash(pdftotext *)" --output-format json < <run>/brief-<seat>.md > <run>/proposals/<seat>.json
+env -C <dir> claude -p --safe-mode --model opus --effort xhigh --max-budget-usd 10 --tools "Read,Grep,Glob,Bash,WebSearch,WebFetch" --allowedTools "Read,Grep,Glob,WebSearch,WebFetch,Bash(pdftotext *)" --output-format json < <run>/brief-<seat>.md > <run>/proposals/<seat>.json
 jq -r .result <run>/proposals/<seat>.json > <run>/proposals/<seat>.md
 ```
 
 `--safe-mode` loads no CLAUDE.md, rules, auto-memory, hooks, MCP servers, plugin or user skills, or custom agents, and the brief arrives on stdin and the proposal leaves on stdout, so the seat never opens the run folder.
 Probed on Claude Code 2.1.312 for Opus 5.5 and Fable 5.1, 28 Oct 2026: a context canary, the session's own init list and a tool run.
+`--max-budget-usd 10` stops a seat at $10 at list price (the first run's assets seat cost $5.78); a seat that hits it gets `no: budget` in `seats.tsv`.
 `--bare` is blind too but cannot sign in with a subscription, and a worker or escalate subagent inherits the lead's CLAUDE.md and memory, so neither serves as a seat.
 
 The Codex seat reads its brief from its own folder, so its prompt names no path in the run folder: first `cp <run>/brief-codex.md <dir>/`.
@@ -169,6 +173,7 @@ Each keeps every helper script and scratch file in `gap/<idea>/scripts/`, never 
 4. Rerank: pool all hits, dedupe by arXiv id or DOI through `aliases.tsv` (one row per alias: the id as logged, the canonical id; for Consensus title keys, publisher DOIs of preprints and mirror pages), mark each facet matched, partial or none from title and abstract (from the title alone when the index gave no abstract, as citation crawls usually do), and sort by matches, then partials.
    Write `rerank.tsv`: paper id, title, facets matched, facets partial, the qids that found it, read (yes or no).
    The top 3 to 5, plus any paper two seats named for this idea, go to step 4 as the read list in `gap.md`.
+   Under `## Searches` in `gap.md`, name each read-list paper that no topic or kill query found (only a seed or a citation crawl did): it shows where the search alone would have missed; in the first run 2 of the 8 papers read were, M1's top threat 2610.20673 among them.
    End `gap.md` with the heading `## Paper-by-facet table` and the line `Pending step 4.`
    Mark every section written from abstracts `Inferred` in its heading; never write "not Verified" there, since quotecheck reads the word Verified as a V mark.
    An Inferred heading marks nothing for quotecheck; under a Verified heading each line still needs its own I mark.
@@ -179,7 +184,7 @@ Done when: `searches.tsv` holds the seed and citation rows plus at least 10 topi
 ### 4. Read the closest papers in full
 
 Dedupe the read list across ideas: one paper is read once and serves every idea that lists it.
-Give each reader, a `worker`, 2 or 3 related papers (one reader per paper cost too much in the trial), plus every `gap.md` whose read list holds one of them: its note answers every facet of every such gap.
+Split the P deduped papers among ceil(P/3) readers, each a `worker` with at most 3 related papers (one reader per paper cost too much in the trial), plus every `gap.md` whose read list holds one of them: its note answers every facet of every such gap.
 Each reader:
 
 1. Stores each PDF in `<repo>/papers/`, named as `READINGS.md` says.
@@ -202,13 +207,24 @@ Then the run's one check: write `<run>/quotecheck.sh`, which runs `quotecheck.py
 The per-reader outputs are working files; `quotecheck.out` is the run's record.
 The checker exits 1 on any SPLIT or MISS, a missing PDF included, and 2 when no Verified quote cites a paper: a zero count proves nothing, so check the paths.
 A note from an earlier run that fails here is fixed in place by this run's lead, from the PDF or by relabelling the line Inferred, and the fix is named at the top of `quotecheck.out`; never copy a note to get around a miss.
+
+Then a hostile review, in both modes: one Codex run, read-only, from its own empty folder made as a seat's is.
+Write `<run>/review-brief.md`: the absolute paths of every `gap/*/gap.md` and every note they use, and the task, to attack each open or narrowed verdict and hunt for a paper that matches every facet, making its findings, each with its paper and page, its final message.
+Copy it into the folder and launch it in the codex seat's bare form:
+
+```bash
+codex exec -s read-only --skip-git-repo-check -C "<dir>" -c model_reasoning_effort=xhigh -o "<run>/review.md" "Read review-brief.md in this folder and follow it as the reviewer."
+```
+
+The lead checks each finding against the PDFs and notes, fixes `gap.md` or rejects the finding with a reason written under it in `review.md`, and reruns `quotecheck.sh`.
+
 Last, rebuild the index: `python3 ${CLAUDE_SKILL_DIR}/scripts/readings-index.py`; with no note paths it reads every `docs/research/**/notes/**/*.md`, so name notes kept elsewhere.
 It merges a reading logged by DOI into the row its notes cite by arXiv id, and refuses to replace an `INDEX.md` it did not write.
-Done when: `quotecheck.out` shows exit 0 with a nonzero checked count over every `gap.md`, and every shortlisted gap claim has a full table, a gap status, and both the may-say and must-not-say lists.
+Done when: every finding in `review.md` is marked fixed or rejected, `quotecheck.out` from after the fixes shows exit 0 with a nonzero checked count over every `gap.md`, and every shortlisted gap claim has a full table, a gap status, and both the may-say and must-not-say lists.
 
 ### 5. The owner decides
 
-The lead puts each open decision to the owner as a plain walk-through: what the decision is, how it came up, the facts from the `gap.md` files that bear on it, the options with what each costs and changes, and a recommended answer.
+The lead puts each open decision to the owner as a plain walk-through: what the decision is, how it came up, the facts from the `gap.md` files that bear on it, what earlier steps already report for each candidate check (step 6), the options with what each costs and changes, and a recommended answer.
 Only decisions the facts cannot settle go to the owner; the lead makes the routine ones and says so.
 The decisions are: for each owner idea, the claim wording that survives its competitors; and which idea and which check go to step 6, with the result that would kill the idea.
 Record each decision, the recommendation and the owner's answer in `decisions.md`.
@@ -217,7 +233,11 @@ Done when: the owner has named the idea and the check for step 6.
 
 ### 6. End in a cheap validation
 
-Pick the cheapest check that can kill the chosen idea, in this order:
+A check must be able to fail.
+Before choosing one, the lead lists for each candidate what earlier steps already report (the seat proposals, and `merged.md`'s "Already reported by" column): a check whose result is already known re-derives it and validates nothing.
+Aim the check at the chosen idea's strongest threat in `merged.md`: the seats arguing against it, or a confound such as a grader that flips on the same submission.
+In the first run step 6 recounted numbers the assets seat had already reported, so its "dies if 0 of 30" could not fire.
+Pick the cheapest such check, in this order:
 
 1. An executed check over data already collected, such as a read-only script over the project's results.
 2. A pilot: the smallest run that can show the effect.

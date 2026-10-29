@@ -87,9 +87,9 @@ Named in `owner-ideas.md`: <id, title, or none>.
 
 ### Questions about the project's own data, for step 6
 
-| Id | Support | Cheapest check and its cost |
-| --- | --- | --- |
-| M<n> | <support> | <the check, its cost word and its place in the cost order> |
+| Id | Support | Cheapest check and its cost | Already reported by |
+| --- | --- | --- | --- |
+| M<n> | <support> | <the check, its cost word and its place in the cost order> | <the seat locator whose proposal already gives this check's result, with that result, or none> |
 
 ### Not shortlisted
 
