@@ -4,7 +4,7 @@ create and on the PATCH update.
 
 `bin/factory` is sourced (FACTORY_SOURCED=1) and the real functions run on a fake run directory over a
 throwaway worktree whose origin is a local bare repository. A fake `gh` first on PATH records its arguments,
-and the body it reads from `--body-file`. HOME is a temp dir, so notify finds no Pushover config. No network.
+and the body it reads from `--body-file`. HOME is a temp dir, so bin/alert finds no Slack webhook and notify comments. No network.
 """
 
 from __future__ import annotations
@@ -171,7 +171,7 @@ class PublishScrubTests(unittest.TestCase):
 
     def test_notify_issue_comment_is_scrubbed(self) -> None:
         # finish's notify can carry worker text, such as the ABANDON line from decisions.md.
-        calls = self.run_factory('notify "7 abandon" "ABANDON widget $(cat "$DECISIONS")"\n')
+        calls = self.run_factory('notify needs-you "issue 7 gave up" "ABANDON widget $(cat "$DECISIONS")"\n')
         for call in self.calls(calls, "issue", "comment"):
             self.assert_scrubbed(call)
 
@@ -202,7 +202,7 @@ class PublishScrubTests(unittest.TestCase):
         bodies = self.main_loop(0, 3, "FAIL widget: x", "FAIL /home/runner/.config/db.acme.internal/creds",
                                 "FAIL\tgithub.com/acme/private-repo/internal")
         self.assertEqual((self.run_dir / "status").read_text().strip(), "stuck")
-        bodies = [b for b in bodies if "7 stuck" in b]
+        bodies = [b for b in bodies if "the same checks failed twice in a row" in b]
         self.assertEqual(len(bodies), 1)
         self.assertIn("widget", bodies[0])
         self.assertNotIn("db.acme.internal", bodies[0])

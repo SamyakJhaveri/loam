@@ -31,7 +31,7 @@ A thin `bin/conveyor.sh`: `claude -p` in tmux on the eval host, results sync, Pu
 Drop the in-loop Codex gate; it is harness-policing.
 Notification via the script or a Routine, never a hook.
 Why: the owner runs walk-away work on a remote host, but this waits until the contract exists to feed it.
-Decided 2026-10-27 (U18 part 2, `docs/RULES.md` row "Research lane, headless conveyor"): closed; walk-away work runs on Loam's factory and DistBench's agent swarm on jhaveris, and the owner's alerts are Slack and healthchecks.io, not Pushover; `bin/factory` still sends Pushover.
+Decided 2026-10-27 (U18 part 2, `docs/RULES.md` row "Research lane, headless conveyor"): closed; walk-away work runs on Loam's factory and DistBench's agent swarm on jhaveris, and the owner's alerts are Slack and healthchecks.io, not Pushover; `bin/factory` sends them through `bin/alert`.
 
 ## 4. Ideation chain
 

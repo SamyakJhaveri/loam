@@ -185,10 +185,41 @@ A run directory with `launched` and no `status` file holds a slot until its run 
 
 ## Notify
 
-Pushover when `~/.config/loam-loops/pushover.env` exists, else a comment on the ticket.
-A failed notification writes `notify.failed` in the run dir; `status` shows it.
+`notify` hands each alert to `bin/alert`, which appends one line to the host's event log and posts the line to the project's Slack webhook; when the post fails, `notify` comments on the ticket instead.
+A failure of both writes `notify.failed` in the run dir; `status` shows it.
 Events: run started, `pr-opened` with the URL, every other exit, checks failing after round k every two rounds.
+Each message names the ticket as `issue <n> (<title>)` and says the exit in words (`exit_words`), never a bare status.
+`pr-opened`, `ticket-defect` and `abandon` are `needs-you` and `stopped-cap`, `stuck`, `no-change` and `stopped-environment` are `fail`; both post with `@channel`, and the rest post quietly as `info`.
+The text passes `scrub` before Slack, the log and the comment; `scrub` also removes Slack webhook and healthchecks ping URLs and every value of 8 or more characters in the alert config files.
 The checks-failing and `stuck` messages name the failing checks, never a FAIL line or its reason, as the PR body's checks blocks do; a name outside `[A-Za-z0-9_.-]` shows as `?`, and the checks-failing message names at most ten plus the `round-<k>.checks` file.
+
+Config lives in `~/.config/loam/alerts/`, one secret per file, mode 600: `slack-<project>` (the project is the target repo's name in lower case) with `slack` as the shared fallback, `hc-ping-url` (this host's healthchecks.io check, `https://hc-ping.com/<uuid>`), and `hc-api-key`.
+`status` reports which of them are present.
+On jhaveris, `slack-distbench` may be a link to `~/.distbench/slack-webhook`, the file DistBench's own scripts read.
+
+healthchecks: one check per host.
+Set the check once in the healthchecks UI: period 5 minutes, grace 10 minutes, the Slack integration on (or a red check reaches no one), and manual resume off (or a beat cannot resume a paused check).
+A run beats the check at launch, right after the frozen re-exec and before round 0, and every 5 minutes while its process lives.
+At its end it stops beating (waiting for a beat in flight), and the host's last live run pauses the check through the API, so a run that ends on purpose raises no alarm and the next run's beat resumes it.
+After the pause it looks for live runs once more and beats again if one launched meanwhile, since a run writes `launched` before its first beat; a relaunched run counts as live while its `launched` is newer than its `status`.
+A killed run, or a dead host, stops the beats without a pause, so the check goes red and healthchecks posts to Slack.
+A hard-killed run keeps its slot (above), so no later run pauses the check while its directory stands.
+
+### The event log and watch sessions
+
+The log is `~/.local/state/loam/alerts.jsonl` on each host, one JSON object per line, appended after the Slack post: `t` (UTC), `host`, `project`, `source`, `run`, `level`, `slack` (`sent`, or `failed: <why>`), `text`.
+Every caller of `bin/alert` writes here, the factory (through the run's frozen copy) and later stall-watch, limit-alarm and supervisor sessions, so a watch session reads one file per host.
+
+A watch session reads it two ways.
+1. A Monitor on `tail -n0 -F ~/.local/state/loam/alerts.jsonl`, for jhaveris through `ssh jhaveris tail -n0 -F '$HOME/.local/state/loam/alerts.jsonl'`; re-arm it every 30 minutes.
+2. A line-cursor check on each watch tick, which shows every line after the last one it showed, because a Monitor can die without a sound.
+
+Each line goes to Samyak in plain words in that tick, and a line whose `slack` is not `sent` goes as a line he has not seen.
+The watch may make only these moves on its own, and reports each one with the line that caused it (owner ruling 2026-10-27):
+- re-arm a dead Monitor or rerun its own check;
+- stop a factory run that the log shows looping or spending with no progress: `bin/factory [-C <repo>] stop <issue>`, which halts the run before its next call;
+- pause the host's healthchecks check with `bin/alert --ping pause`, after it has checked that no factory process runs there and `bin/factory status` shows no live run.
+Everything else is Samyak's: merging or pushing, launching, relaunching or rerunning a ticket, editing a ticket, deleting a run directory or worktree, starting paid compute, and any change to results.
 
 ## Status and the manager
 
