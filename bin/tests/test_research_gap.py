@@ -470,3 +470,50 @@ def test_searchlog_pool_merges_aliases_and_title_keys_and_keeps_marks(tmp_path):
         "title:unseen-paper\tÜnseen Paper\t\t", "title:unseen-paper\tÜnseen Paper\tF1,F2,F3\t"))
     searchlog(tmp_path, "pool")
     assert [r[0] for r in tsv(tmp_path / "rerank.tsv")[1:3]] == ["title:unseen-paper", "arXiv:2502.10517"]
+
+
+def test_searchlog_pool_merges_the_alias_rows_marks_into_the_canonical_row(tmp_path):
+    log_hits(tmp_path, "S1", "seed", [{"id": "DOI:10.1145/9", "title": "Paper A", "year": 2024},
+                                      {"id": "arXiv:2610.12345", "title": "Paper A preprint", "year": 2026}])
+    (tmp_path / "rerank.tsv").write_text(  # marked under the DOI before the alias was known
+        "paper_id\ttitle\tfacets_matched\tfacets_partial\tqids\tread\tnote\n"
+        "DOI:10.1145/9\tPaper A\tF1,F2\tF3\tS1\tyes\tby hand\n"
+        "arXiv:2610.12345\tPaper A preprint\t\t\tS1\tno\t\n")
+    (tmp_path / "aliases.tsv").write_text("alias\tcanonical\nDOI:10.1145/9\tarXiv:2610.12345\n")
+    out = searchlog(tmp_path, "pool")
+    assert tsv(tmp_path / "rerank.tsv")[1] == ["arXiv:2610.12345", "Paper A preprint", "F1,F2", "F3", "S1", "yes",
+                                               "by hand"]
+    assert out.splitlines()[1:] == ["seed-or-citation-only\tarXiv:2610.12345\tPaper A preprint"]
+
+
+def test_searchlog_pool_keeps_the_canonical_rows_mark_on_a_conflict_and_names_it(tmp_path):
+    log_hits(tmp_path, "S1", "seed", [{"id": "DOI:10.1145/9", "title": "Paper A", "year": 2024},
+                                      {"id": "arXiv:2610.12345", "title": "Paper A preprint", "year": 2026}])
+    (tmp_path / "rerank.tsv").write_text(
+        "paper_id\ttitle\tfacets_matched\tfacets_partial\tqids\tread\n"
+        "arXiv:2610.12345\tPaper A preprint\tF1\t\tS1\tno\n"
+        "DOI:10.1145/9\tPaper A\tF1,F2\tF3\tS1\tyes\n")
+    (tmp_path / "aliases.tsv").write_text("alias\tcanonical\nDOI:10.1145/9\tarXiv:2610.12345\n")
+    r = subprocess.run([sys.executable, str(SCRIPTS / "searchlog.py"), "pool", str(tmp_path)],
+                       capture_output=True, text=True, check=True)
+    assert tsv(tmp_path / "rerank.tsv")[1][2:6] == ["F1", "F3", "S1", "yes"]
+    [conflict] = r.stderr.splitlines()
+    assert conflict.startswith("mark-conflict\tarXiv:2610.12345\t") and "'F1' over 'F1,F2'" in conflict
+
+
+def test_searchlog_title_keys_keep_other_scripts_apart(tmp_path):
+    log_hits(tmp_path, "Q1", "topic", [{"id": "", "title": t, "year": 2020}
+                                       for t in ("分布式系统", "机器学习", "が", "か", "Naïve Café", "???")])
+    assert [r[5] for r in tsv(tmp_path / "searches.tsv")[1:]] == [
+        "title:分布式系统", "title:机器学习", "title:が", "title:か", "title:naive-cafe", "title:???"]
+    # a log written before this fix holds the colliding key `title:`; pool keys those rows anew
+    (tmp_path / "searches.tsv").write_text(
+        "qid\tindex\tkind\tquery\trank\tpaper_id\ttitle\tyear\n"
+        "Q1\ts2\ttopic\tx\t1\ttitle:\t分布式系统\t2020\nQ1\ts2\ttopic\tx\t2\ttitle:\t机器学习\t2021\n")
+    assert searchlog(tmp_path, "pool").startswith("2 pooled papers")
+
+
+def test_searchlog_logs_the_query_as_sent(tmp_path):
+    searchlog(tmp_path, "log", "--qid", "Q1", "--index", "OpenAlex", "--kind", "topic",
+              "--query", '"exact  phrase"\tAND\nx y ', "--failed", "boom")
+    assert tsv(tmp_path / "searches.tsv")[1][3] == '"exact  phrase" AND x y '

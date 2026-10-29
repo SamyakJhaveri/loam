@@ -22,9 +22,9 @@ The evidence behind each step is in Loam's `docs/research/research-lane-evidence
 | Full | four: assets, reframe, codex, analogist | every shortlisted gap claim | At most 5 + G + ceil(P/3) Claude runs and 2 Codex runs. Trial, 27-28 Oct 2026: two full runs took about 30 Claude runs, most at 150K to 300K tokens; over an hour went on Semantic Scholar's rate limit. |
 | Small | two: assets (Opus) and codex | the owner's ideas only | At most 3 + G + ceil(P/3) Claude runs and 2 Codex runs. First run, 28 Oct 2026, before the review existed: G=2 and P=8 gave 8 Claude runs and 1 Codex run in about 75 minutes; the assets seat cost $5.78 at list price, the 7 subagents about 1.1M tokens together. |
 
-The bound counts the Claude seats, 1 merge, G gap workers (G is the shortlisted gap claims), ceil(P/3) readers (P is the deduped read list) and 1 gap completion; the 2 Codex runs are the codex seat and step 4's review.
+The bound counts the Claude seats, 1 merge, G gap workers (G is the gap claims sent to step 3), ceil(P/3) readers (P is the deduped read list) and 1 gap completion; the 2 Codex runs are the codex seat and step 4's review.
 Before step 1 the lead gives the owner both bounds and asks which mode; an unattended run uses the mode its brief names.
-The lead writes the predicted bound in `cost.md` once step 3 fixes G and P, before any reader launches, and the actuals at the end.
+The lead writes the predicted run bound in `cost.md` once step 3 fixes G and P, before any reader launches, and the actuals at the end.
 
 ## Entry points
 
@@ -66,7 +66,7 @@ A run writes under `<repo>/docs/research/<YYYY-MM-DD>-<slug>/` (below, `<run>`),
 | `review-brief.md`, `review.md` | 4 | The hostile review's brief, and its findings, each marked fixed in `gap.md` or rejected with a reason |
 | `decisions.md` | 5 | Each decision put to the owner, its recommended answer, the owner's answer |
 | `validation.md`, `validation/` | 6 | Criteria, command, exit code, output, result |
-| `cost.md` | all | The bound predicted after step 3, then each agent run (step, model and effort, tokens, tool uses, minutes) against it: a Claude seat's from `proposals/<seat>.json`, Codex's from the "tokens used" line it prints, a subagent's from its completion notice |
+| `cost.md` | all | The run bound predicted after step 3, then each agent run (step, model and effort, tokens, tool uses, minutes) against it: a Claude seat's from `proposals/<seat>.json`, Codex's from the "tokens used" line it prints, a subagent's from its completion notice |
 
 Besides its folder, a run writes only PDFs to `<repo>/papers/` and readings to the shared reading log, `<repo>/docs/research/readings/`, so later runs reuse them.
 The project's results and data are read-only for a run.
@@ -106,7 +106,9 @@ jq -r .result <run>/proposals/<seat>.json > <run>/proposals/<seat>.md
 
 `--safe-mode` loads no CLAUDE.md, rules, auto-memory, hooks, MCP servers, plugin or user skills, or custom agents, and the brief arrives on stdin and the proposal leaves on stdout, so the seat never opens the run folder.
 Probed on Claude Code 2.1.312 for Opus 5.5 and Fable 5.1, 28 Oct 2026: a context canary, the session's own init list and a tool run.
-`--max-budget-usd 10` stops a seat at $10 at list price (the first run's assets seat cost $5.78); a seat that hits it gets `no: budget` in `seats.tsv`.
+`--max-budget-usd 10` stops a seat after the turn that crosses $10 at list price (the first run's assets seat cost $5.78).
+A stopped seat exits 1 with `.subtype` `error_max_budget_usd` and `.result` null (probed on Claude Code 2.1.312, 28 Oct 2026: a $0.005 cap stopped at $0.0072).
+Give it `no: budget` in `seats.tsv` with its `.total_cost_usd`, and do not run its `jq -r .result` line, which would write "null".
 `--bare` is blind too but cannot sign in with a subscription, and a worker or escalate subagent inherits the lead's CLAUDE.md and memory, so neither serves as a seat.
 
 The Codex seat reads its brief from its own folder, so its prompt names no path in the run folder: first `cp <run>/brief-codex.md <dir>/`.
@@ -148,9 +150,9 @@ Done when: the map covers every `###` idea in every proposal file, and every gap
 
 ### 3. Check each gap (the academic-research workflow)
 
-One `worker` per shortlisted gap claim; each writes only its own `gap/<idea>/`, so they run in parallel.
-Each keeps every helper script and scratch file in `gap/<idea>/scripts/`, never in a shared scratch folder: in the trial, parallel workers overwrote each other's helpers there.
-They log and pool with `${CLAUDE_SKILL_DIR}/scripts/searchlog.py` and write no logging or pooling helper of their own.
+One `worker` per shortlisted gap claim; each writes only its own `<run>/gap/<idea>/`, so they run in parallel.
+Each keeps every helper script and scratch file in `<run>/gap/<idea>/scripts/`, never in a shared scratch folder: in the trial, parallel workers overwrote each other's helpers there.
+They log and pool with `python3 ${CLAUDE_SKILL_DIR}/scripts/searchlog.py` and write no logging or pooling helper of their own.
 
 1. Write 3 to 5 facets in `gap.md`: the parts a prior paper must all match to close the gap (for example setting, method, measurement, scale, claim).
 2. Seed by name first: the papers the seats named as closest, the readings index (`<repo>/docs/research/readings/INDEX.md`, built by `scripts/readings-index.py`; absent before a project's first run) for papers already read, and any paper list the project keeps by hand.
@@ -168,15 +170,16 @@ They log and pool with `${CLAUDE_SKILL_DIR}/scripts/searchlog.py` and write no l
      Encode a phrase's quotes as `%22` and its spaces as `+`, and keep a query to two or three terms: long AND queries return nothing.
      Its feed lags by days, so an empty answer never proves absence; check an id at `https://arxiv.org/abs/<id>`.
    - Citation crawls of papers from the last few months return almost nothing, since the indexes lag; log them, but lean on kill queries for recent work.
-   - Append each query and its top 10 hits (every hit, for a citation crawl) to `searches.tsv` as it runs: qid, index, kind (seed, topic, kill, citations), query as sent, rank, paper id, title, year; a query with no hits, or one that failed, gets one row with rank 0 and the reason.
-     After each search, save its hits as a JSON list of {"id", "title", "year"} (an empty id when there is no arXiv id or DOI) and run `python3 ${CLAUDE_SKILL_DIR}/scripts/searchlog.py log gap/<idea> --qid <qid> --index <index> --kind <kind> --query "<as sent>" --hits <hits.json>`, or `--failed "<reason>"` in place of `--hits`.
+   - Log each query and its top 10 hits (every hit, for a citation crawl) to `searches.tsv` as it runs: save the hits as a JSON list of {"id", "title", "year"} (an empty id when there is no arXiv id or DOI) and run `python3 ${CLAUDE_SKILL_DIR}/scripts/searchlog.py log <run>/gap/<idea> --qid <qid> --index <index> --kind <kind> --query "<as sent>" --hits <hits.json>`, or `--failed "<reason>"` in place of `--hits`.
+     `searches.tsv` columns: qid, index, kind (seed, topic, kill, citations), query as sent, rank, paper id, title, year; a query with no hits, or one that failed, gets one row with rank 0 and the reason.
      A hit with no arXiv id or DOI is keyed by its normalized title, as a Consensus hit is.
    - A research agent's "no prior work" (Consensus `create_thread`, Exa `agent_run`, the `deep-research` workflow) adds hits to the pool; it is never the verdict.
 4. Rerank: pool all hits, dedupe by arXiv id or DOI through `aliases.tsv` (one row per alias: the id as logged, the canonical id; for Consensus title keys, publisher DOIs of preprints and mirror pages), mark each facet matched, partial or none from title and abstract (from the title alone when the index gave no abstract, as citation crawls usually do), and sort by matches, then partials.
-   `searchlog.py pool gap/<idea>`, run after each edit of `aliases.tsv`, writes `rerank.tsv` and keeps the facet marks and read flags already in it; fill the empty marks, then run it again to re-sort.
-   Write `rerank.tsv`: paper id, title, facets matched, facets partial, the qids that found it, read (yes or no).
+   `python3 ${CLAUDE_SKILL_DIR}/scripts/searchlog.py pool <run>/gap/<idea>`, run after each edit of `aliases.tsv`, writes `rerank.tsv` and keeps the facet marks and read flags already in it; fill the empty marks, then run it again to re-sort.
+   When an alias joins two rows, `pool` keeps each field's non-empty value (read is yes if either says yes); if both rows hold different marks it keeps the canonical row's and prints a `mark-conflict` line on stderr: settle each one by hand.
+   `rerank.tsv` columns: paper id, title, facets matched, facets partial, the qids that found it, read (yes or no).
    The top 3 to 5, plus any paper two seats named for this idea, go to step 4 as the read list in `gap.md`.
-   Under `## Searches` in `gap.md`, name each read-list paper that `pool`, run once more after the read flags are set, prints as found only by seed or citation queries: it shows where the search alone would have missed; in the first run 2 of the 8 papers read were, M1's top threat 2610.20673 among them.
+   Under `## Searches` in `gap.md`, name each read-list paper that `pool`, run once more after the read flags are set, prints as found only by seed or citation queries: it shows where the search alone would have missed; in the first run 2 of the 8 papers read were.
    End `gap.md` with the heading `## Paper-by-facet table` and the line `Pending step 4.`
    Mark every section written from abstracts `Inferred` in its heading; never write "not Verified" there, since quotecheck reads the word Verified as a V mark.
    An Inferred heading marks nothing for quotecheck; under a Verified heading each line still needs its own I mark.
@@ -187,7 +190,7 @@ Done when: `searches.tsv` holds the seed and citation rows plus at least 10 topi
 ### 4. Read the closest papers in full
 
 Dedupe the read list across ideas: one paper is read once and serves every idea that lists it.
-Split the P deduped papers among ceil(P/3) readers, each a `worker` with at most 3 related papers (one reader per paper cost too much in the trial), plus every `gap.md` whose read list holds one of them: its note answers every facet of every such gap.
+Split the P deduped papers among ceil(P/3) readers, each a `worker` with at most 3 papers (one reader per paper cost too much in the trial), plus every `gap.md` whose read list holds one of them: its note answers every facet of every such gap.
 Each reader:
 
 1. Stores each PDF in `<repo>/papers/`, named as `READINGS.md` says.
@@ -202,7 +205,7 @@ Then the lead, or one worker it gives every `gap.md` and the readers' notes, com
 - The paper-by-facet table: one row per paper read, with its arXiv id, DOI, or its `paper_<hash>` stem in the row's first cell, and one column per facet.
   Each cell holds the verdict and the note's V-marked quote with its page, or its "repo:" fact, or NOT FOUND.
   The quote checker ties a quote to the paper ids on its own line, so a row holds one paper and the table is never turned the other way.
-  A cell never says "not in the note": send the reader back.
+  A cell never says "not in the note": resume the reader, or the completer answers the facet from the PDF.
 - The gap status: open, narrowed to the named unmatched facets, or closed by the named paper.
 - "The claim may say" and "The claim must not say": facts only, each with its paper and page.
 
@@ -212,7 +215,8 @@ The checker exits 1 on any SPLIT or MISS, a missing PDF included, and 2 when no 
 A note from an earlier run that fails here is fixed in place by this run's lead, from the PDF or by relabelling the line Inferred, and the fix is named at the top of `quotecheck.out`; never copy a note to get around a miss.
 
 Then a hostile review, in both modes: one Codex run, read-only, from its own empty folder made as a seat's is.
-Write `<run>/review-brief.md`: the absolute paths of every `gap/*/gap.md` and every note they use, and the task, to attack each open or narrowed verdict and hunt for a paper that matches every facet, making its findings, each with its paper and page, its final message.
+Write `<run>/review-brief.md`: the absolute paths of every `<run>/gap/*/gap.md`, every note they use and `<repo>/papers/`, and the task: for each open or narrowed verdict hunt for a paper matching every facet; for each closed verdict check the closing paper matches every facet in its PDF; findings, each with paper and page, are its final message.
+The hunt relies on Codex web search, which the owner's `~/.codex/config.toml` turns on with `web_search = "live"`; without it the review can only check the papers on disk.
 Copy it into the folder and launch it in the codex seat's bare form:
 
 ```bash
@@ -236,11 +240,11 @@ Done when: the owner has named the idea and the check for step 6.
 
 ### 6. End in a cheap validation
 
-A check must be able to fail.
-Before choosing one, the lead lists for each candidate what earlier steps already report (the seat proposals, and `merged.md`'s "Already reported by" column): a check whose result is already known re-derives it and validates nothing.
-Aim the check at the chosen idea's strongest threat in `merged.md`: the seats arguing against it, or a confound such as a grader that flips on the same submission.
-In the first run step 6 recounted numbers the assets seat had already reported, so its "dies if 0 of 30" could not fire.
-Pick the cheapest such check, in this order:
+The owner's check must be able to fail.
+Before step 5 the lead lists, per candidate, what the seat proposals and `merged.md`'s "Already reported by" column already give: a check whose result is known re-derives it and validates nothing.
+The recommended check aims at the chosen idea's strongest threat in `merged.md` (the seats arguing against it, or a confound such as a grader that flips on the same submission).
+In the first run step 6 recounted numbers the assets seat had reported, so "dies if 0 of 30" could not fire.
+Cheapest, in this order:
 
 1. An executed check over data already collected, such as a read-only script over the project's results.
 2. A pilot: the smallest run that can show the effect.
