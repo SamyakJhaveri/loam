@@ -441,7 +441,8 @@ def test_searchlog_rows_keep_the_schema_and_log_misses_at_rank_0(tmp_path):
 
 def test_searchlog_pool_merges_aliases_and_title_keys_and_keeps_marks(tmp_path):
     log_hits(tmp_path, "S1", "seed", [{"id": "arXiv:2502.10517", "title": "KernelBench", "year": 2025}])
-    log_hits(tmp_path, "S1-cit", "citations", [{"id": "DOI:10.1145/1", "title": "Cited Only", "year": 2024}])
+    log_hits(tmp_path, "S1-cit", "citations", [{"id": "DOI:10.1145/1", "title": "Cited Only", "year": 2024},
+                                                {"id": "DOI:10.1145/2", "title": "Not Read", "year": 2024}])
     log_hits(tmp_path, "C1", "topic", [{"id": "", "title": "KernelBench: Can LLMs Write Kernels?", "year": 2025},
                                        {"id": "", "title": "Ünseen Paper", "year": None}], index="Consensus")
     log_hits(tmp_path, "Q1", "kill", [{"id": "DOI:10.48550/arxiv.2502.10517", "title": "KernelBench (DOI)",
@@ -451,18 +452,20 @@ def test_searchlog_pool_merges_aliases_and_title_keys_and_keeps_marks(tmp_path):
         "title:kernelbench-can-llms-write-kernels\tDOI:10.48550/arxiv.2502.10517\tConsensus title key\n"
         "DOI:10.48550/arxiv.2502.10517\tarXiv:2502.10517\tarXiv DOI form\n")
     (tmp_path / "rerank.tsv").write_text(  # marks made under an id that is now an alias, and a dropped paper
-        "paper_id\ttitle\tfacets_matched\tfacets_partial\tqids\tread\n"
-        "DOI:10.48550/arxiv.2502.10517\tKernelBench\tF3,F4\tF2\tQ1\tyes\n"
-        "arXiv:9999.00001\tGone\tF1\t-\tQ9\tno\n")
+        "paper_id\ttitle\tfacets_matched\tfacets_partial\tqids\tread\tmarked_by\n"
+        "DOI:10.48550/arxiv.2502.10517\tKernelBench\tF3,F4\tF2\tQ1\tyes\thand\n"
+        "DOI:10.1145/1\tCited Only\t\t\tS1-cit\tyes\n"
+        "arXiv:9999.00001\tGone\tF1\t-\tQ9\tno\thand\n")
     out = searchlog(tmp_path, "pool")
     rows = tsv(tmp_path / "rerank.tsv")
-    assert rows[0] == ["paper_id", "title", "facets_matched", "facets_partial", "qids", "read"]
-    assert rows[1] == ["arXiv:2502.10517", "KernelBench", "F3,F4", "F2", "S1,C1,Q1", "yes"]
-    assert sorted(r[0] for r in rows[2:]) == ["DOI:10.1145/1", "title:unseen-paper"]
-    assert all(r[2:4] == ["", ""] and r[5] == "no" for r in rows[2:])
-    assert out.startswith("3 pooled papers")
-    assert "seed-or-citation-only\tDOI:10.1145/1\tCited Only" in out
-    assert "arXiv:2502.10517" not in out  # a kill query found it too
+    assert rows[0] == ["paper_id", "title", "facets_matched", "facets_partial", "qids", "read", "marked_by"]
+    assert rows[1] == ["arXiv:2502.10517", "KernelBench", "F3,F4", "F2", "S1,C1,Q1", "yes", "hand"]
+    assert sorted(r[0] for r in rows[2:]) == ["DOI:10.1145/1", "DOI:10.1145/2", "title:unseen-paper"]
+    assert all(r[2:4] == ["", ""] and r[6] == "" for r in rows[2:])
+    assert [r[5] for r in rows[2:]] == ["yes", "no", "no"]
+    assert out.startswith("4 pooled papers")
+    # only read-list papers are named; KernelBench is read but a kill query found it too
+    assert out.splitlines()[1:] == ["seed-or-citation-only\tDOI:10.1145/1\tCited Only"]
     (tmp_path / "rerank.tsv").write_text((tmp_path / "rerank.tsv").read_text().replace(
         "title:unseen-paper\tÜnseen Paper\t\t", "title:unseen-paper\tÜnseen Paper\tF1,F2,F3\t"))
     searchlog(tmp_path, "pool")

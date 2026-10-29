@@ -14,10 +14,10 @@ list, or no --hits) or --failed logs one rank-0 row with the reason in the title
 
 `pool` pools every hit in searches.tsv under its canonical id from GAP/aliases.tsv (alias,
 canonical, optional note; chains are followed) and rewrites GAP/rerank.tsv with one row per
-pooled paper and the qids that found it. Facet marks and read flags already in rerank.tsv are
-kept for papers still pooled (a row under an id that is now an alias moves to its canonical id);
-a new paper gets empty marks and read `no`. Rows sort by facets matched, then partial. It prints
-the pooled count and each paper that only seed or citation queries found.
+pooled paper and the qids that found it. Facet marks, read flags and any columns a worker added
+after the schema's six are kept for papers still pooled (a row under an id that is now an alias
+moves to its canonical id); a new paper gets empty marks and read `no`. Rows sort by facets matched, then partial. It prints
+the pooled count and each read-list paper (read `yes`) that only seed or citation queries found.
 """
 
 import argparse
@@ -111,8 +111,9 @@ def pool(args):
         if row["qid"] not in entry["qids"]:
             entry["qids"].append(row["qid"])
         entry["kinds"].add(row["kind"])
-    kept = {}
-    for row in read_tsv(gap / "rerank.tsv"):
+    kept, old_rows = {}, read_tsv(gap / "rerank.tsv")
+    extra = [column for column in (old_rows[0] if old_rows else {}) if column not in RERANK]
+    for row in old_rows:
         paper = canonical(row["paper_id"], aliases)
         if paper in papers and (row["paper_id"] == paper or paper not in kept):
             kept[paper] = row
@@ -121,13 +122,14 @@ def pool(args):
         old = kept.get(paper, {})
         matched, partial = old.get("facets_matched", ""), old.get("facets_partial", "")
         read = old.get("read") or "no"
-        rows.append([paper, entry["title"], matched, partial, ",".join(entry["qids"]), read])
+        rows.append([paper, entry["title"], matched, partial, ",".join(entry["qids"]), read]
+                    + [old.get(column, "") for column in extra])
     rows.sort(key=lambda r: (-count(r[2]), -count(r[3]), r[0]))
-    write_rows(gap / "rerank.tsv", RERANK, rows, append=False)
-    linked = [(p, e) for p, e in papers.items() if e["kinds"] <= {"seed", "citations"}]
-    print(f"{len(rows)} pooled papers in {gap / 'rerank.tsv'}; {len(linked)} found only by seed or citation queries:")
-    for paper, entry in sorted(linked):
-        print(f"seed-or-citation-only\t{paper}\t{clean(entry['title'])}")
+    write_rows(gap / "rerank.tsv", RERANK + extra, rows, append=False)
+    linked = [r for r in rows if r[5] == "yes" and papers[r[0]]["kinds"] <= {"seed", "citations"}]
+    print(f"{len(rows)} pooled papers in {gap / 'rerank.tsv'}; {len(linked)} read-list papers found only by seed or citation queries:")
+    for row in linked:
+        print(f"seed-or-citation-only\t{row[0]}\t{clean(row[1])}")
 
 
 def main(argv=None):
