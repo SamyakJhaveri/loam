@@ -3,6 +3,62 @@
 This file records why a promoted plugin change traveled. It is also the upgrade
 entry point for projects that consume the Loam marketplace.
 
+## sam-cc-setup v0.9.21 research-gap runs that can fail and stay within a run bound
+
+From the audit of the first packaged run (surprise-me, 28 Oct 2026): step 6 names what earlier steps already report and aims its check at the idea's strongest threat, so it can fail; `gap.md` names read-list papers only a seed or citation crawl found; each mode bounds its runs (Claude runs at most seats + 2 + G + ceil(P/3)), predicted in `cost.md` before readers launch, and Claude seats run with `--max-budget-usd 10`; after step 4 a read-only Codex review hunts for a paper that closes each open or narrowed gap and checks each closed verdict against its PDF (`review.md`); and gap workers log and pool searches with the new `scripts/searchlog.py` instead of their own helpers.
+No grader prompt changed, so no grader replay is owed.
+Upgrade step: `claude plugin update sam-cc-setup`.
+
+## sam-cc-setup v0.9.20 research-gap audit fixes
+
+`/sam-cc-setup:research-gap` text fixed where an audit after its first packaged run found it wrong or incomplete: `--repo` applies to `quotecheck.py` and `readings-index.py` only, the merge template now carries the step-2 rules (preamble locator, whole-idea cites, ties, owner ideas of both kinds, unchecked seat claims in the small mode), the true reason a quote across a page break fails, `paper_<hash>` stems as paper ids, Inferred headings mark nothing, saved check output includes stderr, and `split-brief.sh` deletes `brief.md`.
+No script behavior changed.
+No grader prompt changed, so no grader replay is owed.
+Upgrade step: `claude plugin update sam-cc-setup`.
+
+## sam-cc-setup v0.9.19 research-gap after its first packaged run
+
+`/sam-cc-setup:research-gap` text fixed where its first packaged run (DistBench, small mode, 28 Oct 2026; Loam #361, #362) found it wrong or unclear: `--repo` for agents outside the repository, a `cost.md` record, the merge's edge cases (preamble locator, owner ideas that are both kinds, ties), seed and search fallbacks (no readings index yet, Exa not signed in, batch 429s, crawls without abstracts), the step-3 placeholder and Inferred headings, who completes `gap.md`, per-reader exit codes, note layout and naming for papers with neither an arXiv id nor a DOI, and the measured small-mode cost.
+No script behavior changed; one docstring sentence was reworded.
+No grader prompt changed, so no grader replay is owed.
+Upgrade step: `claude plugin update sam-cc-setup`.
+
+## sam-cc-setup v0.9.18 research-gap
+
+`/sam-cc-setup:research-gap` picks research questions and checks research gaps: independent proposer seats, a merge with support counts, logged searches across four paper indexes, the closest papers read in full into a reading log, an owner decision, and one cheap validation.
+Its scripts check every Verified quote in the notes against the cited PDF and build the reading-log index; they need Python 3 and poppler's `pdftotext`.
+Carried from DistBench's `research-tools` branch (`fcaca843`), which ran it on two real questions on 27-28 Oct 2026 (Loam #361, #362).
+No grader prompt changed, so no grader replay is owed.
+Upgrade step: `claude plugin update sam-cc-setup`.
+
+## sam-cc-setup v0.9.17 Matt Pocock's skills removed
+
+`/sam-cc-setup:brief` no longer names `mattpocock-skills:research`, `:prototype` or `to-tickets`, and `codex-review` no longer points at `docs/agents/issue-tracker.md` (owner ruling 2026-10-28, `docs/RULES.md`).
+No grader prompt changed, so no grader replay is owed.
+Upgrade step: `claude plugin update sam-cc-setup`.
+
+## sam-cc-setup v0.9.16 run-spec
+
+`/sam-cc-setup:run-spec` builds a spec whose tickets form a task graph as one branch and one PR, in Loam or DistBench.
+It plans a schedule from the blocking edges and the files each ticket touches, runs up to four workers at once in worktrees branched from the integration tip, merges only tickets whose report says `Status: done`, and runs one full check and one `/code-review high` at the end.
+No grader prompt changed, so no grader replay is owed.
+Upgrade step: `claude plugin update sam-cc-setup`.
+
+## sam-cc-setup v0.9.15 codex-review picks model and effort per diff
+
+`/sam-cc-setup:codex-review` no longer pins `model_reasoning_effort=high`.
+It passes `-m <model>` and `-c model_reasoning_effort=<effort>` chosen for the diff's size and risk, never `max` or `ultra`, so it matches the one way to call Codex (`docs/SKILLS.md` Codex).
+No grader prompt changed, so no grader replay is owed.
+Upgrade step: `claude plugin update sam-cc-setup`.
+
+## sam-cc-setup v0.9.14 install-pstack-skills removed
+
+`/sam-cc-setup:install-pstack-skills` is gone.
+Its copies in `~/.claude/skills/` went stale after each pstack update and doubled every pstack skill in the lead's skill list.
+Agents now read pstack skills from the enabled plugin folder by path, pstack's own Claude Code method (owner ruling 2026-10-27, `docs/SKILLS.md`, `seed/docs/WORKERS.md.jinja` pstack).
+No agent prompt changed, so no grader replay is owed.
+Upgrade step: `claude plugin update sam-cc-setup`, then on each host move the folders in `~/.claude/skills/` that hold a `.pstack-install` marker out of that folder.
+
 ## sam-cc-setup v0.9.13 grader prompt edits
 
 judge.md and reviewer.md cite only the sections build_evidence sends (Rows measured, decisions.md), judge.md counts a `SKIP` or `SKIPPED` line in the Checks output as unproven, and both drop "of Loam v3", since `-C` grades other repositories.
@@ -124,7 +180,7 @@ The critique-swarm skill is removed because session-critique covers decision-awa
 session review and the plan-review-fanout workflow covers pre-execution plan review, so
 the skill was a fifth review entry point with no job of its own. The plugin then shipped 26
 skills. That count is historical: v3.0.0 cut the plugin to three skills, and today
-`find cultivation/marketplace/sam-cc-setup -name SKILL.md | wc -l` prints 4.
+`find cultivation/marketplace/sam-cc-setup -name SKILL.md | wc -l` prints 5.
 plan-review-fanout pins every agent to claude-opus-4-8[1m] and adversarially
 verifies only BLOCK findings. validate is now a thin caller of the build-validator
 agent, which absorbed the lint, type check, whitespace, shell syntax, test suite, and

@@ -1,9 +1,9 @@
 # Sample: publish a Track B ticket from one session
 Brief:
 Add a `bin/factory publish` subcommand that turns a linted ticket file into a GitHub issue.
-Where: bin/factory (a new publish subcommand), docs/factory/CONTRACT.md (the Seam with to-tickets section).
+Where: bin/factory (a new publish subcommand), docs/factory/CONTRACT.md (the Publishing a breakdown section).
 Done means: bin/factory publish FILE opens an issue whose body is the file, and bin/factory lint still accepts every committed fixture.
-Out of scope: editing an issue after it is opened; any change to the loop, the grader, or to-tickets.
+Out of scope: editing an issue after it is opened; any change to the loop, the grader, or the stage-2 breakdown.
 Track: B    Risk: high    Mode: build    Open question: none
 Blocked by: none
 
@@ -12,10 +12,10 @@ A Track B brief should reach GitHub without a second tool.
 Today the author copies the linted body into the web UI by hand; a `publish` subcommand closes stage 2 in one session (ROADMAP.md F5).
 
 ## Do not touch
-The standing list. Except: bin/factory (this ticket adds the publish subcommand), docs/factory/CONTRACT.md (the Seam with to-tickets section).
+The standing list. Except: bin/factory (this ticket adds the publish subcommand), docs/factory/CONTRACT.md (the Publishing a breakdown section).
 
 ## Out of scope
-Editing an issue after it is opened; any change to the loop, the grader, or to-tickets.
+Editing an issue after it is opened; any change to the loop, the grader, or the stage-2 breakdown.
 
 ## Done checks
 ```done-checks

@@ -10,11 +10,11 @@ Everything here describes the target; a thing that exists at the time of writing
 - Deterministic steps run in code; judgment steps run in a model; one human checkpoint at PR merge.
 - A known command is code, not an agent: anything a ticket can name as a command runs in the supervisor.
 - The agent that does the work never grades the work; graders run fresh, read-only, on frozen prompts, in a context separate from the worker's; Models and roles names their model.
-- What Samyak does not want is written down as firmly as what he wants: Out of scope in every brief and ticket, Do not touch per ticket, ADRs from the grill, and the lean-critic on every diff.
+- What Samyak does not want is written down as firmly as what he wants: Out of scope in every brief and ticket, Do not touch per ticket, ADRs from the design session, and the lean-critic on every diff.
 - One ticket, one worktree, one branch, one run directory; parallel runs gated by `MAX_PARALLEL` (`LOOP.md`).
 - One directive has one home; a duplicate is a bug.
 - Every harness component is a dated bet on a model weakness and must justify its keep after each upgrade: remove one at a time and replay the graders.
-- When Samyak does not know the solution, the factory proposes before it asks: options with evidence first, then the grill picks.
+- When Samyak does not know the solution, the factory proposes before it asks: options with evidence first, then Samyak picks.
 
 ## Stages
 
@@ -23,8 +23,8 @@ flowchart LR
   R[raw request] --> B["0 Brief (/brief, Fable)"]
   B -->|Track A| S[normal session + bin/check]
   B -->|Track B| T2
-  B -->|Track C| D["1 Design (plan mode, grill-with-docs, wayfinder)"]
-  D --> T2["2 Tickets (to-tickets, lint, plan-reviewer)"]
+  B -->|Track C| D["1 Design (plan mode, plan-review)"]
+  D --> T2["2 Tickets (breakdown, lint, plan-reviewer)"]
   T2 --> L["3 Loop (bin/factory run, runner)"]
   L --> G["4 Grade (judge, reviewer; Codex review if set)"]
   G -->|fail| L
@@ -37,8 +37,8 @@ flowchart LR
 | Stage | Input | Actor, model, effort | Samyak does | Output | Gate to next |
 |---|---|---|---|---|---|
 | 0 Brief | raw request | Fable 5.1 high, interactive, `/brief` (F5) | corrects the echoed brief, accepts | Track A: nothing. Track B: one ticket. Track C: a design issue whose top section is the brief | A exits; B to stage 2; C to stage 1 |
-| 1 Design (Track C) | design issue | when the brief is `Mode: figure-out`, `surprise-me` in panel mode and the `mattpocock-skills:research` skill first; then Fable plan mode with Opus Explore subagents; `/plan-review` blind on Fable, whose elegance gate writes two competing designs before a verdict; `grill-with-docs` with `domain-modeling` writes ADRs; `wayfinder` when unknowns remain; lean-critic on the design issue | reacts to the options, answers the grill, approves | design issue body (brief, destination, deliverables, constraints, proof, no implementation detail), ADRs in `docs/adr/`, map if used | review verdict recorded, ADRs committed |
-| 2 Tickets | design issue, or the one Track B ticket | Fable runs `to-tickets`; issue bodies use the ticket contract; `bin/factory lint` (F2); `plan-reviewer` by hand and lean-critic once over the breakdown | approves the breakdown | GitHub issues, native blocking edges, label `ready-for-agent` | lint exit 0, `plan-reviewer` pass |
+| 1 Design (Track C) | design issue | when the brief is `Mode: figure-out`, `surprise-me` in panel mode and a research pass against primary sources first; then Fable plan mode with Opus Explore subagents; `/plan-review` blind on Fable, whose elegance gate writes two competing designs before a verdict; the design session writes ADRs for the decisions Samyak makes; lean-critic on the design issue | reacts to the options, answers the design session's questions, approves | design issue body (brief, destination, deliverables, constraints, proof, no implementation detail), ADRs in `docs/adr/` | review verdict recorded, ADRs committed |
+| 2 Tickets | design issue, or the one Track B ticket | Fable breaks the design into tickets and publishes them (`CONTRACT.md`, Publishing a breakdown); issue bodies use the ticket contract; `bin/factory lint` (F2); `plan-reviewer` by hand and lean-critic once over the breakdown | approves the breakdown | GitHub issues, native blocking edges, label `ready-for-agent` | lint exit 0, `plan-reviewer` pass |
 | 3 Loop | one ticket | `bin/factory run <issue>` on the runner (F1): round 0, then worker rounds on `claude-opus-5-5` at the ticket's effort (default high) or `codex exec` | nothing; may run `bin/factory stop`, or edit the issue body and relaunch | branch, commits, a run directory | checks exit 0, clean tree, do-not-touch clean |
 | 4 Grade | diff and evidence | Opus 5.5 high judge and reviewer, read-only, fresh, frozen per run; Codex review stage when the ticket sets it | nothing | JSON verdicts, PR with metrics and merge checklist | judge pass and no blocking finding, or the grader-round cap with a backlog, or a judge pass with a review finding past its one block or from a reviewer or Codex review with no parseable reply (a draft PR), or a judge with no parseable reply after three calls (a draft PR) |
 | 5 Merge | PR | Samyak with `bin/runner bin/factory status`; `claude ultrareview --json` optional on high risk | ticks the merge checklist, merges | merged main; the PR's `Closes #N` closes the ticket | human merge, never the loop |
