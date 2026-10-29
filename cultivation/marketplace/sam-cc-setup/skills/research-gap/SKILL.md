@@ -150,6 +150,7 @@ Done when: the map covers every `###` idea in every proposal file, and every gap
 
 One `worker` per shortlisted gap claim; each writes only its own `gap/<idea>/`, so they run in parallel.
 Each keeps every helper script and scratch file in `gap/<idea>/scripts/`, never in a shared scratch folder: in the trial, parallel workers overwrote each other's helpers there.
+They log and pool with `${CLAUDE_SKILL_DIR}/scripts/searchlog.py` and write no logging or pooling helper of their own.
 
 1. Write 3 to 5 facets in `gap.md`: the parts a prior paper must all match to close the gap (for example setting, method, measurement, scale, claim).
 2. Seed by name first: the papers the seats named as closest, the readings index (`<repo>/docs/research/readings/INDEX.md`, built by `scripts/readings-index.py`; absent before a project's first run) for papers already read, and any paper list the project keeps by hand.
@@ -168,12 +169,14 @@ Each keeps every helper script and scratch file in `gap/<idea>/scripts/`, never 
      Its feed lags by days, so an empty answer never proves absence; check an id at `https://arxiv.org/abs/<id>`.
    - Citation crawls of papers from the last few months return almost nothing, since the indexes lag; log them, but lean on kill queries for recent work.
    - Append each query and its top 10 hits (every hit, for a citation crawl) to `searches.tsv` as it runs: qid, index, kind (seed, topic, kill, citations), query as sent, rank, paper id, title, year; a query with no hits, or one that failed, gets one row with rank 0 and the reason.
+     After each search, save its hits as a JSON list of {"id", "title", "year"} (an empty id when there is no arXiv id or DOI) and run `python3 ${CLAUDE_SKILL_DIR}/scripts/searchlog.py log gap/<idea> --qid <qid> --index <index> --kind <kind> --query "<as sent>" --hits <hits.json>`, or `--failed "<reason>"` in place of `--hits`.
      A hit with no arXiv id or DOI is keyed by its normalized title, as a Consensus hit is.
    - A research agent's "no prior work" (Consensus `create_thread`, Exa `agent_run`, the `deep-research` workflow) adds hits to the pool; it is never the verdict.
 4. Rerank: pool all hits, dedupe by arXiv id or DOI through `aliases.tsv` (one row per alias: the id as logged, the canonical id; for Consensus title keys, publisher DOIs of preprints and mirror pages), mark each facet matched, partial or none from title and abstract (from the title alone when the index gave no abstract, as citation crawls usually do), and sort by matches, then partials.
+   `searchlog.py pool gap/<idea>`, run after each edit of `aliases.tsv`, writes `rerank.tsv` and keeps the facet marks and read flags already in it; fill the empty marks, then run it again to re-sort.
    Write `rerank.tsv`: paper id, title, facets matched, facets partial, the qids that found it, read (yes or no).
    The top 3 to 5, plus any paper two seats named for this idea, go to step 4 as the read list in `gap.md`.
-   Under `## Searches` in `gap.md`, name each read-list paper that no topic or kill query found (only a seed or a citation crawl did): it shows where the search alone would have missed; in the first run 2 of the 8 papers read were, M1's top threat 2610.20673 among them.
+   Under `## Searches` in `gap.md`, name each read-list paper that `pool`, run once more after the read flags are set, prints as found only by seed or citation queries: it shows where the search alone would have missed; in the first run 2 of the 8 papers read were, M1's top threat 2610.20673 among them.
    End `gap.md` with the heading `## Paper-by-facet table` and the line `Pending step 4.`
    Mark every section written from abstracts `Inferred` in its heading; never write "not Verified" there, since quotecheck reads the word Verified as a V mark.
    An Inferred heading marks nothing for quotecheck; under a Verified heading each line still needs its own I mark.

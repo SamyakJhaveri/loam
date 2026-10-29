@@ -3,6 +3,12 @@
 This file records why a promoted plugin change traveled. It is also the upgrade
 entry point for projects that consume the Loam marketplace.
 
+## sam-cc-setup v0.9.21 research-gap runs that can fail and cost what they say
+
+From the audit of the first packaged run (surprise-me, 28 Oct 2026): step 6 names what earlier steps already report and aims its check at the idea's strongest threat, so it can fail; `gap.md` names read-list papers only a seed or citation crawl found; each mode's cost is a bound (Claude runs at most seats + 2 + G + ceil(P/3)), predicted in `cost.md` before readers launch, and Claude seats run with `--max-budget-usd 10`; a read-only Codex review attacks every gap verdict after step 4 (`review.md`); and gap workers log and pool searches with the new `scripts/searchlog.py` instead of their own helpers.
+No grader prompt changed, so no grader replay is owed.
+Upgrade step: `claude plugin update sam-cc-setup`.
+
 ## sam-cc-setup v0.9.20 research-gap audit fixes
 
 `/sam-cc-setup:research-gap` text fixed where an audit after its first packaged run found it wrong or incomplete: `--repo` applies to `quotecheck.py` and `readings-index.py` only, the merge template now carries the step-2 rules (preamble locator, whole-idea cites, ties, owner ideas of both kinds, unchecked seat claims in the small mode), the true reason a quote across a page break fails, `paper_<hash>` stems as paper ids, Inferred headings mark nothing, saved check output includes stderr, and `split-brief.sh` deletes `brief.md`.
