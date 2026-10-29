@@ -57,7 +57,7 @@ quotecheck checks every double-quoted span of 20 or more letters and digits on a
   A marker belongs to the quote nearest it on the line, the later one on a tie, as in `[V, p.3] "..."` or `"..." (p.3)`.
   A quote with no marker of its own, on a line that names no paper id, takes the markers of the nearest heading above it that has any, but no higher than the heading that names its paper.
   quotecheck fails a quote found only on other pages ("page mismatch").
-- Quote one stretch of text, on one page: a quote across a page break is not found, so split it into two quotes, each with its page.
+- Quote one stretch of text: a quote may cross a page break only where nothing sits between its halves in the PDF text; a page number or running header there makes it a MISS, or a SPLIT when the header has 40 or more letters, so split it into two quotes, each with its page.
   A quote the PDF holds only with other text removed from its middle (a figure, a footnote, or prose the quote leaves out) is a SPLIT and fails: trim it to one side, mark the gap with `...`, or relabel the line.
   Parts around a `...` must appear in the quoted order, and a part under 8 letters and digits must lie within 100 of its neighbour.
   A quote that both splits and cites the wrong page reports both.

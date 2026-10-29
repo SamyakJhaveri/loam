@@ -13,10 +13,11 @@ Inputs: `proposals/<seat>.md` for <the seats that returned>, `owner-ideas.md` an
 
 - N = <seats with a proposal file>; <name any seat that did not return, and why>.
 - Locator: `<seat>#<n>` is the idea headed `### <n>.` in `proposals/<seat>.md`.
+  `<seat>#0` is the text above a seat's first `###` idea; it can be cited but is not an idea.
 - Support k/N: k seats proposed the idea as one of their `###` ideas.
 - "+k cite": k more seats raise the same gap inside an idea mapped to another id, by quoting the same passage ("quote") or reporting the same evidence ("evidence"); they are named.
 - "owner" marks an idea from `owner-ideas.md`.
-  "owner; briefed" is an owner idea the brief itself states: every seat saw it, so no seat can support it independently, and the seats whose ideas take up a part of it are listed as cites.
+  "owner; briefed" is an owner idea the brief itself states: every seat saw it, so no seat can support it independently, and the seats whose ideas take up a part of it are listed as cites, including a seat idea that maps onto it whole.
   An owner idea kept out of the briefs gets k/N like any other, and 0/N is a real count.
 - Support counts independent proposers; it is not a score, since models can share a blind spot.
 - Cost words, as the seats use them: FREE (data in hand), SMALL (one analysis or one logged field), NEW ARM (new runs).
@@ -67,6 +68,9 @@ Recorded as each seat states them; this merge does not pick one.
 Rule: every owner idea, every idea with support 2 or more, and at most three single-seat ideas with the cheapest kill.
 Cheapest means first in this order: (1) a read or analysis of data already collected, with no hardware time and no money; (2) hardware time with no model spend; (3) runs already planned; (4) a new arm, new runs that spend money.
 In the small mode only the owner's ideas go to step 3.
+On a tie among single-seat ideas the merge picks one and says why.
+An owner idea that is both a gap claim and a data question goes to step 3 and is also listed under the step-6 questions.
+In the small mode a shortlisted seat claim stays here, unchecked, for a later run.
 
 ### Gap claims for step 3
 
