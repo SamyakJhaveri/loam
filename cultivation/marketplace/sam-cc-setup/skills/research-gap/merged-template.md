@@ -1,6 +1,6 @@
 # Merged ideas: <the question in one line>
 
-<!-- Copy to <run>/merged.md and fill every <...>. Read only <run>/proposals/, <run>/owner-ideas.md and <run>/seats.tsv; no earlier merge and no owner notes, which carry the owner's conclusions. Re-check nothing: every number and quote is as the named seat wrote it, under its own Verified or Inferred mark. Keep the section order; write "none" in an empty section rather than dropping it. -->
+<!-- Copy to <run>/merged.md and fill every <...>. Read only <run>/proposals/*.md, <run>/owner-ideas.md and <run>/seats.tsv; no earlier merge and no owner notes, which carry the owner's conclusions. Re-check nothing: every number and quote is as the named seat wrote it, under its own Verified or Inferred mark. Keep the section order; write "none" in an empty section rather than dropping it. -->
 
 Run `<date>-<slug>`, step 2 of the research-gap skill, <date>.
 Inputs: `proposals/<seat>.md` for <the seats that returned>, `owner-ideas.md` and `seats.tsv` in this folder.

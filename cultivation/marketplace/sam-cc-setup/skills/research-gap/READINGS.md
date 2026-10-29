@@ -11,7 +11,7 @@ Below, `<repo>` is the project's root and `<skill>` is the research-gap skill's 
 - `<repo>/docs/research/readings/log.jsonl`: one JSON object per reading that the notes alone do not show, appended by `readings-index.py add`; never rewrite a line.
   Fields: `paper` (`arXiv:<id>` without version, `doi:<doi>`, or a file stem), `note` (path from the repo root), `depth`, `reader`, `date`.
   Depth is `abstract`, `skimmed`, `full`, or `repo` (read from the project's public code only, the paper text not read).
-- Notes: one note per paper, named `<arXiv id>.md` or `doi-<DOI with its first / as _>.md`, in the `notes/` folder of the study that read it (`<repo>/docs/research/<date>-<slug>/notes/`), or in `<repo>/docs/research/readings/notes/` for a paper logged outside any study.
+- Notes: one note per paper, named `<arXiv id>.md`, `doi-<DOI with its first / as _>.md`, or, for a paper with neither, `paper_<md5 of its PDF's URL>.md`, in the `notes/` folder of the study that read it (`<repo>/docs/research/<date>-<slug>/notes/`), or in `<repo>/docs/research/readings/notes/` for a paper logged outside any study.
 - PDFs: `<repo>/papers/`, the scripts' default; pass `--papers DIR`, once per folder, for PDFs kept elsewhere.
 
 ## Where a row comes from
@@ -27,7 +27,10 @@ An entry with no Verified line behind it, such as a paper quoted without V marks
 1. Save each open-access PDF it reads to `<repo>/papers/`.
    Name an arXiv paper `<arXiv id>v<N>.pdf`, taking N from the stamp on its first page, not from the listing you fetched it from: `pdftotext -l 1 <file>.pdf - | grep -o 'arXiv:[0-9.]*v[0-9]*'`.
    Name a paper with no arXiv version `doi-<DOI with its first / as _>.pdf`, such as `doi-10.1145_2807591.2807644.pdf`; quotecheck ties that name to the DOI even when page 1 prints none.
-2. Write its note, with a V mark, a page and the paper's arXiv id or DOI on each Verified line, or the id in the section heading above it.
+   Name a paper with neither `paper_<md5 of its PDF's URL>.pdf`, and cite it by that stem.
+2. Write its note: a preamble (the paper's id and title, the stored PDF, the depth, and the parts not read), then one `##` section per facet with its verdict, YES, PARTLY, NO or NOT FOUND, and its evidence.
+   Put a V mark, a page and the paper's id on each Verified line, or the id in the section heading above it.
+   When the paper and the authors' code disagree, the verdict follows the paper, and the code's fact sits on its own "repo:" line.
 3. Log each paper: `python3 <skill>/scripts/readings-index.py add --paper arXiv:<id> --note <note path from the repo root> --depth full --reader "<run or reader name>"` (`add` comes first; `--date YYYY-MM-DD` for a note outside a dated folder).
 4. Check its quotes: `python3 <skill>/scripts/quotecheck.py <note> ...`.
    It exits 0 when every quote matches, 1 on any SPLIT or MISS (a missing PDF included), and 2 when no Verified quote cites a paper: a zero count proves nothing, so check the note paths and `--papers`.
@@ -46,7 +49,7 @@ quotecheck checks every double-quoted span of 20 or more letters and digits on a
 - A line is Verified when it carries a V mark (`[V]`, `[V, p.3]`, `**V**`, `(V)`) or the bare word "Verified" anywhere, as in "not Verified" (a benchmark name such as "SWE-bench Verified" does not count); an Inferred mark on the same line does not undo it, so reword the line.
   Under a heading marked Verified, every line is Verified unless it carries an I mark (`[I]`, `(I)`, `Inferred`).
 - Give a fact read from a project repository or web page no V mark: quotecheck would check it against the paper and report a miss.
-  Say where it came from in words instead, as "repo:" with the file and line.
+  Say where it came from in words instead, as "repo:" with the file and line, and put no double quotes in it: on a Verified line, as in a `gap.md` table row, a quoted span is checked against the paper.
 - The paper ids on a Verified line replace the heading's and the preamble's.
   A second paper's id on the line, or in the heading above it, sends that line's quotes to that paper; name the note's own paper on the line too, or move the other id off it.
   So a paper-by-facet table in `gap.md` holds one paper per row, with its id in the row's first cell.
@@ -54,7 +57,7 @@ quotecheck checks every double-quoted span of 20 or more letters and digits on a
   A marker belongs to the quote nearest it on the line, the later one on a tie, as in `[V, p.3] "..."` or `"..." (p.3)`.
   A quote with no marker of its own, on a line that names no paper id, takes the markers of the nearest heading above it that has any, but no higher than the heading that names its paper.
   quotecheck fails a quote found only on other pages ("page mismatch").
-- Quote one stretch of text.
+- Quote one stretch of text, on one page: a quote across a page break is not found, so split it into two quotes, each with its page.
   A quote the PDF holds only with other text removed from its middle (a figure, a footnote, or prose the quote leaves out) is a SPLIT and fails: trim it to one side, mark the gap with `...`, or relabel the line.
   Parts around a `...` must appear in the quoted order, and a part under 8 letters and digits must lie within 100 of its neighbour.
   A quote that both splits and cites the wrong page reports both.

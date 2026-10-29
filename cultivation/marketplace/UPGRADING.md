@@ -3,6 +3,13 @@
 This file records why a promoted plugin change traveled. It is also the upgrade
 entry point for projects that consume the Loam marketplace.
 
+## sam-cc-setup v0.9.19 research-gap after its first packaged run
+
+`/sam-cc-setup:research-gap` text fixed where its first packaged run (DistBench, small mode, 28 Oct 2026; Loam #361, #362) found it wrong or unclear: `--repo` for agents outside the repository, a `cost.md` record, the merge's edge cases (preamble locator, owner ideas that are both kinds, ties), seed and search fallbacks (no readings index yet, Exa not signed in, batch 429s, crawls without abstracts), the step-3 placeholder and Inferred headings, who completes `gap.md`, per-reader exit codes, note layout and naming for papers with neither an arXiv id nor a DOI, and the measured small-mode cost.
+No script behavior changed; one docstring sentence was reworded.
+No grader prompt changed, so no grader replay is owed.
+Upgrade step: `claude plugin update sam-cc-setup`.
+
 ## sam-cc-setup v0.9.18 research-gap
 
 `/sam-cc-setup:research-gap` picks research questions and checks research gaps: independent proposer seats, a merge with support counts, logged searches across four paper indexes, the closest papers read in full into a reading log, an owner decision, and one cheap validation.
