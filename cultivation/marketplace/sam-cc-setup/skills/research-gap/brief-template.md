@@ -38,7 +38,7 @@ Make the whole document your final message, with nothing before or after it: the
 
 Seat: <seat id>.
 Lens: <dormant-assets hunter | reframing hunter | adversary | analogist>.
-<Paste this lens's definition from surprise-me's Panel mode; for the analogist also paste its step 3, the analogy move; for the dormant-assets hunter its step 2.>
+<Paste this lens's definition from surprise-me's Panel mode; for the analogist also paste its step 3, the analogy move; for the dormant-assets hunter its step 2's first two sentences and its last, leaving out the agent's own capabilities and the filing to another plan, which do not fit a blind seat.>
 Model and effort: <for example Opus 5.5 at xhigh, Fable 5.1 at high, or Codex with the model from its config at xhigh>.
 Seed papers: <ids and URLs, different for every seat>.
 Seed files in your working folder: <file names copied from <run>/seeds/<seat id>/, or none>.

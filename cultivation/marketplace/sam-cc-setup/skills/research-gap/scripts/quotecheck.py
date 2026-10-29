@@ -40,8 +40,8 @@ miss, so the note trims the quote to one side, marks the gap with `...`, or rela
 insertion, such as a dropped word, or one inside a line, is not found.
 
 A page marker (`p.N`, `pp.N-M`) on a Verified line belongs to the quoted span nearest it, the later
-one on a tie, as in `[V, p.3] "..."` or `"..." (p.3)`. A quote no marker on its line belongs to,
-on a line that names no paper id, takes the markers of the nearest heading above it that has any,
+one on a tie, as in `[V, p.3] "..."` or `"..." (p.3)`. A quote that no marker on its line belongs
+to, on a line that names no paper id, takes the markers of the nearest heading above it that has any,
 as in `### Case studies (Appendix G, p.35-36) (Verified)`, but no higher than the nearest heading
 that names a paper. A quote with markers must touch one of their pages; one with none is not
 page-checked. N is the PDF page index (1 for the PDF's first page, as a PDF viewer counts;
