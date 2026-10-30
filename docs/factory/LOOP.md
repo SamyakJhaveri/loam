@@ -152,7 +152,7 @@ claude -p --model claude-opus-5-5 --effort high --advisor claude-opus-5-5 --perm
 The call sets `CLAUDE_CODE_SUBAGENT_MODEL`, `ANTHROPIC_DEFAULT_SONNET_MODEL` and `ANTHROPIC_DEFAULT_HAIKU_MODEL` to the worker model and `CLAUDE_CODE_SUBAGENT_MODEL_FORCE=1`, both inline on its command line and in the `env` of `frozen/worker-settings.json`, which freeze writes into the copy, so no subagent, workflow agent or `sonnet`/`haiku` alias runs on another model (#379).
 Claude Code copies each settings tier's `env` over the launch environment, user settings first and `--settings` after, so the inline values alone lose to a `~/.claude/settings.json` env entry and the frozen `--settings` env beats it; the force exists from Claude Code 2.1.257, and `run` and `next` refuse an older or unreadable `claude --version` and `status` prints a FAIL line for it.
 The force stays off the manager, overnight and interactive sessions because it would also move a Fable role such as `escalate` onto the worker model.
-`--strict-mcp-config` drops the MCP schemas, 2k tokens of prefix on every worker turn; the worker keeps its skills listing because the `skills:` sentence names a Skill-tool call (#37).
+`--strict-mcp-config` drops the MCP schemas, 2k tokens of prefix on every worker turn; the `skills:` sentence names a SKILL.md path to read, so the worker needs no Skill-tool call (#37, #385).
 `--max-turns` is accepted by Claude Code 2.1.263, the runner's login-shell binary (#40; a plain shell resolves an older nvm copy), though absent from its `--help`.
 `worker-settings.json` holds the deny rules, the lean-v3 list plus `Bash(gh:*)` so a worker cannot touch GitHub at all, the auto memory settings below, and the `Stop` hook (see The worker prompt), and its frozen copy adds the four pins above; `role-settings.json`, loaded only by grader calls and `bin/factory eval`, carries the same deny rules and memory settings with no hook.
 Both files set `"autoMemoryEnabled": false` and pin `CLAUDE_CODE_DISABLE_AUTO_MEMORY=1` in their `env`, because Claude Code keeps one auto memory folder per repository, shared by every worktree and filled by interactive sessions, and `--setting-sources user` does not turn it off, so a worker or grader prompt would otherwise load that folder's `MEMORY.md` and could write notes a later run reads (#380).
@@ -166,7 +166,9 @@ Its workspace-write sandbox does not block `.env` reads (#41); no deny is config
 
 Every worker round receives, in this order: the issue body verbatim, which carries its `goal:` line as text, `_common.md`, and from round 2 a `## Previous round` block holding the failing check lines and every blocking finding verbatim; a Claude worker also gets `frozen/unattended.md` as an appended system prompt.
 A slash command expands only on the first line of a `-p` prompt and swallows the rest as its argument (#40), so no worker prompt carries `/goal` or a `/<skill>` line; a `Stop` hook in `worker-settings.json`, the worker-only settings file, runs the frozen check script from the worktree root and exits 2 with the FAIL lines while any check fails, and `--max-turns` bounds the round (#36, route B).
-The hook sets `LOAM_HOOK=1`, under which the check lines that call `bin/check` (minutes per stop) or the live model pass without running; the supervisor's own check run has it unset and is the one run of those per round. `build_worker_prompt` in `bin/factory` appends after `_common.md` one sentence per `skills:` name: `Before the first edit, call the Skill tool with "<name>".` (#37).
+The hook sets `LOAM_HOOK=1`, under which the check lines that call `bin/check` (minutes per stop) or the live model pass without running; the supervisor's own check run has it unset and is the one run of those per round. `build_worker_prompt` in `bin/factory` appends after `_common.md` one sentence per `skills:` name: `Before the first edit, read <path> and follow its steps.`, where `<path>` is the SKILL.md `skill_file` resolves (#37, #385); before the first `pstack:` name it adds one sentence naming pstack's Claude Code adapter, `docs/harness/claude-code.md` beside that skills tree, when the file exists.
+The Skill tool would not do: every pstack skill sets `disable-model-invocation`, so the tool refuses it (`docs/PSTACK.md`).
+A name that resolves to no SKILL.md stops the round, for either worker.
 A Codex worker gets the skill bodies pasted instead.
 The worker never runs `bin/factory eval` against the live model; the supervisor's own check run is the one live replay per round.
 `_common.md` is the loop contract, frozen per run; its text lives only in `bin/factory.d/_common.md` (the 2026-09-07 quote that stood here drifted from the file and was removed 2026-09-20).
@@ -182,11 +184,12 @@ Skills are given at the moment they apply, never all at once; the listing is pai
 | Brief (stage 0) | `/brief` (F5) | Samyak invokes it |
 | Design (stage 1) | `surprise-me` (panel), a research pass against primary sources, plan mode, `/plan-review` | in that order for `Mode: figure-out`, from plan mode on for `build`; Samyak types `/surprise-me` and `/plan-review`, which are manual-only |
 | Tickets (stage 2) | `plan-reviewer`, lean-critic | the stage-2 session writes and publishes the breakdown itself (`CONTRACT.md`, Publishing a breakdown) and invokes lean-critic after `bin/factory lint` exits 0; `plan-reviewer` is manual-only, run by hand over the breakdown when Samyak asks |
-| Worker | the skills the ticket's `skills:` field names, each a line of `bin/factory.d/skills.txt` | one Skill-tool sentence per name in the worker prompt |
+| Worker | the skills the ticket's `skills:` field names, each a line of `bin/factory.d/skills.txt` or a `pstack:<name>` of a worker pstack skill `docs/PSTACK.md` lists | one sentence per name in the worker prompt, naming the SKILL.md path to read |
 | Graders | none; their prompt is the whole instruction | frozen files |
 | Manager (stage 5, 6) | none; a handoff file in the `seed/docs/WORKERS.md.jinja` Handoff form when stopping mid-stream | the manager session |
 
-A worker may name only a line of `bin/factory.d/skills.txt`, and lint reads that file (#37).
+A worker may name a line of `bin/factory.d/skills.txt`, and lint reads that file (#37), or with no line any of the worker pstack skills `docs/PSTACK.md` lists, as `pstack:<name>` (#385).
+Either way lint refuses a name `skill_file` resolves to no SKILL.md.
 The worker runs with `--setting-sources user`, which loads `~/.claude/skills/` and user-scope plugins but no project skill and not the root `CLAUDE.md` or `AGENTS.md`, so the seed skills (`catchup`, `fable-prompting`, `hypothesis-tree`) are not in the file.
 
 ## Parallel runs

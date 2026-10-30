@@ -35,8 +35,10 @@ The body starts at `Brief:` or `Part of`; in a file the first `#` line is the ti
    A row that measures time, tokens, or cost starts with `runs=N`: the supervisor runs it N times and prints the median and range of its last output lines, which must be numbers.
    A row whose label or command names such a word (`NOISY_ROW_RE` in `bin/factory`) and has no `runs=N` runs once, and its MEASURE line says single sample; `runs=1` marks a row deterministic.
    This is the only per-project extension point.
-9. `## Worker`: `worker: claude|codex`, `codex-review: yes|no`, `effort: low|medium|high|xhigh`, `size: small|large` (optional, default small; large routes round 1 through the fan-out workflow, F12), `goal:` the condition the round's `/goal` holds until, always the done-checks block printing no FAIL line, ending "or stop after 60 turns", `skills:` (optional) a comma list of skill names the worker must invoke, each a line of `bin/factory.d/skills.txt` written as the Skill tool lists it (a bare `rigor`, or `plugin:name` for a plugin skill), and any cap override from `LOOP.md`.
-    Samyak adds a line by hand, direct to `main`, after `bin/runner 'claude -p --setting-sources user --max-turns 1 "print skill names"'` prints the name on the runner; a worker runs with `--setting-sources user`, so a project skill such as `catchup` never loads there and never enters the file (#37).
+9. `## Worker`: `worker: claude|codex`, `codex-review: yes|no`, `effort: low|medium|high|xhigh`, `size: small|large` (optional, default small; large routes round 1 through the fan-out workflow, F12), `goal:` the condition the round's `/goal` holds until, always the done-checks block printing no FAIL line, ending "or stop after 60 turns", `skills:` (optional) a comma list of skill names the worker must read and follow, each a line of `bin/factory.d/skills.txt` written as the Skill tool lists it (a bare `rigor`, or `plugin:name` for a plugin skill) or a `pstack:<name>` of a worker pstack skill `docs/PSTACK.md` lists, which needs no line, and any cap override from `LOOP.md`.
+    A Claude worker's prompt names each skill's SKILL.md path, resolved by `skill_file` in `bin/factory`, for it to read; a Codex worker's prompt holds the body (#385).
+    A `pstack:` skill sets `disable-model-invocation`, so the Skill tool never lists it, and it needs no line.
+    Samyak adds any other line by hand, direct to `main`, after `bin/runner 'claude -p --setting-sources user --max-turns 1 "print skill names"'` prints the name on the runner; a worker runs with `--setting-sources user`, so a project skill such as `catchup` never loads there and never enters the file (#37).
 10. `## Decisions`: links to ADRs, closed decision tickets, or the design doc.
 11. `## Comments` (optional, always last): answers and notes appended to a ticket file after it is written, where the target keeps tickets as files and its own tracker rules say comments go there, as DistBench's `docs/tickets/` does (owner ruling 2026-10-19).
     Lint rejects any section after it.
@@ -85,12 +87,12 @@ This contract owns the issue body: each issue carries the sections above, and th
 - The done-checks block plus `lib.sh` pass `bash -n`.
 - Every check line ends in `pass` or `fail`; no `skip` anywhere.
 - A check line containing a token matching `*test*.py`, `*_test.sh`, or `pytest` that names a path not listed under Do not touch is flagged as a self-graded oracle.
-- `worker`, `codex-review`, `effort`, `goal`, and caps take valid values; every `skills:` name is a line of `bin/factory.d/skills.txt`, matched byte for byte (#37).
+- `worker`, `codex-review`, `effort`, `goal`, and caps take valid values; every `skills:` name is a line of `bin/factory.d/skills.txt`, matched byte for byte (#37), or a `pstack:<name>` of letters, digits, `-` or `_` that is one of the worker pstack skills `docs/PSTACK.md` lists (#385), and resolves through `skill_file` to a SKILL.md under `$HOME`, so a skill missing on the host fails lint there.
 - Every path named under Where, Do not touch, and Approach exists in the tree or is named by the Goal as created.
   The path rule is skipped under `bin/factory.d/fixtures/`, whose bodies are historical tickets and name paths that later tickets removed.
 - At most three merge-checklist lines on a Track B ticket.
 - At least one non-guard check line does not start with `grep`: checks that only grep source text prove the text, not the behavior.
-- Lint is static; it never executes a check.
+- Lint is static; it never executes a check, though the `skills:` rule reads the installed skills and plugin cache.
 
 Lint runs inside `bin/check` on its fixtures.
 Fixtures live in `bin/factory.d/fixtures/`, committed by F0: `S5.before.md`, which lint must reject on its `skip` (the release check becomes a merge-checklist line), `S1.before.md` and `S4.before.md`, the pre-addendum bodies for the F3 evals, and `S1.md` to `S5.md`, the lean-v3 tickets rewritten into the contract form, which lint must accept.
