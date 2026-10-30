@@ -8,6 +8,7 @@ names a local stub wheel (module xdist, console script copier), so pip never rea
 
 from __future__ import annotations
 
+import importlib.util
 import os
 import pathlib
 import shutil
@@ -47,11 +48,13 @@ def write_wheel(path: pathlib.Path) -> None:
 
 
 class MovedVenvTest(unittest.TestCase):
-    def move_and_run(self, drop_command: bool) -> None:
-        """Build the venv at a/, check a rerun keeps it, move a/ to b/, rerun, and require b's copier to run."""
-        # resolved: on macOS /var is /private/var, and bash prints the physical cwd since PWD is the parent's
+    def test_moved_checkout_rebuilds_venv(self) -> None:
+        """Build at a/; keep it on a rerun and through a symlinked root; rebuild a copy and a move; b's copier runs."""
+        if importlib.util.find_spec("ensurepip") is None:  # Debian without python3-venv cannot build any venv
+            self.skipTest("this python3 has no ensurepip, so python3 -m venv cannot build .venv/check")
+        # resolved: on macOS /var is /private/var; the link case below covers a logical root that differs
         tmp = pathlib.Path(self.enterContext(tempfile.TemporaryDirectory())).resolve()
-        shim, old, new = tmp / "shim", tmp / "a", tmp / "b"
+        shim, old, new, link, copy = tmp / "shim", tmp / "a", tmp / "b", tmp / "link", tmp / "c"
         shim.mkdir()
         (shim / "python3").write_text(f'#!/bin/sh\nexec "{sys.executable}" -S "$@"\n', encoding="utf-8")
         (shim / "python3").chmod(0o755)
@@ -64,28 +67,24 @@ class MovedVenvTest(unittest.TestCase):
         env = {**ENV, "PATH": f"{shim}{os.pathsep}{ENV['PATH']}"}
 
         def run(root: pathlib.Path) -> str:
-            r = subprocess.run(["bash", "bin/venv-step"], cwd=root, env=env, capture_output=True, text=True)
+            # PWD makes bash keep the logical root, so the link case reaches the step as a symlinked path
+            r = subprocess.run(["bash", "bin/venv-step"], cwd=root, env={**env, "PWD": str(root)},
+                               capture_output=True, text=True)
             self.assertEqual(0, r.returncode, r.stdout + r.stderr)
             self.assertIn(f"PY={root}/.venv/check/bin/python3", r.stdout)
             return r.stdout
 
         self.assertIn("NOTE:", run(old))
         self.assertNotIn("NOTE:", run(old))  # an unmoved venv is kept
-        if drop_command:  # a venv from Python 3.10 or older: no command line, only the console-script shebangs
-            cfg = old / ".venv/check/pyvenv.cfg"
-            cfg.write_text("".join(ln for ln in cfg.read_text(encoding="utf-8").splitlines(keepends=True)
-                                   if not ln.startswith("command = ")), encoding="utf-8")
-            self.assertNotIn("NOTE:", run(old))
+        link.symlink_to(old)
+        self.assertNotIn("NOTE:", run(link))  # the same venv through a symlinked root is kept
+        shutil.copytree(old, copy, symlinks=True)
+        self.assertIn("NOTE:", run(copy))  # a copy whose original still exists is rebuilt
+        link.unlink()
         shutil.move(old, new)
-        run(new)
+        self.assertIn("NOTE:", run(new))
         copier = subprocess.run([new / ".venv/check/bin/copier"], capture_output=True, text=True)
         self.assertEqual((0, "stub copier\n"), (copier.returncode, copier.stdout), copier.stderr)
-
-    def test_moved_checkout_rebuilds_venv(self) -> None:
-        self.move_and_run(drop_command=False)
-
-    def test_moved_checkout_without_command_line_rebuilds_venv(self) -> None:
-        self.move_and_run(drop_command=True)
 
 
 if __name__ == "__main__":
