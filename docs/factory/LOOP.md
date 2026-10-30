@@ -28,8 +28,8 @@ Rubric text lives only in the grader files.
 bin/factory                    the supervisor
 bin/factory.d/lib.sh           pass, fail, guard (F2); MEASURE, render_into, check_clean (F1)
 bin/factory.d/_common.md       the loop contract appended to every worker prompt
-bin/factory.d/role-settings.json   grader-call settings: the deny rules and auto memory off
-bin/factory.d/worker-settings.json   worker-only settings: the same deny rules and auto memory off, plus the Stop hook that runs the done-checks block
+bin/factory.d/role-settings.json   grader-call settings: the deny rules and auto memory off (key and env pin)
+bin/factory.d/worker-settings.json   worker-only settings: the same deny rules and auto memory off (key and env pin), plus the Stop hook that runs the done-checks block
 bin/factory.d/review-output.schema.json   copied from the Codex plugin
 bin/factory.d/summarize_sample.py  stream-json summarizer (moved in F1)
 bin/factory.d/fixtures/        lint fixtures (CONTRACT.md)
@@ -144,8 +144,9 @@ Claude Code copies each settings tier's `env` over the launch environment, user 
 The force stays off the manager, overnight and interactive sessions because it would also move a Fable role such as `escalate` onto the worker model.
 `--strict-mcp-config` drops the MCP schemas, 2k tokens of prefix on every worker turn; the worker keeps its skills listing because the `skills:` sentence names a Skill-tool call (#37).
 `--max-turns` is accepted by Claude Code 2.1.263, the runner's login-shell binary (#40; a plain shell resolves an older nvm copy), though absent from its `--help`.
-`worker-settings.json` holds the deny rules, the lean-v3 list plus `Bash(gh:*)` so a worker cannot touch GitHub at all, `"autoMemoryEnabled": false`, and the `Stop` hook (see The worker prompt), and its frozen copy adds the four pins above; `role-settings.json`, loaded only by grader calls and `bin/factory eval`, carries the same deny rules and memory key with no hook.
-The memory key is there because Claude Code keeps one auto memory folder per repository, shared by every worktree and filled by interactive sessions, and `--setting-sources user` does not turn it off, so without the key a worker or grader prompt would load that folder's `MEMORY.md` and could write notes a later run reads (#380); a call with the key reports no `memory_paths` in its init event.
+`worker-settings.json` holds the deny rules, the lean-v3 list plus `Bash(gh:*)` so a worker cannot touch GitHub at all, the auto memory settings below, and the `Stop` hook (see The worker prompt), and its frozen copy adds the four pins above; `role-settings.json`, loaded only by grader calls and `bin/factory eval`, carries the same deny rules and memory settings with no hook.
+Both files set `"autoMemoryEnabled": false` and pin `CLAUDE_CODE_DISABLE_AUTO_MEMORY=1` in their `env`, because Claude Code keeps one auto memory folder per repository, shared by every worktree and filled by interactive sessions, and `--setting-sources user` does not turn it off, so a worker or grader prompt would otherwise load that folder's `MEMORY.md` and could write notes a later run reads (#380).
+The env pin is there because that variable set to `0`, in the launch environment or a user-tier `env`, overrides the key, and the `--settings` env is applied last; the frozen worker copy keeps the pin beside the four model pins.
 The Codex worker runs `codex exec --json -s workspace-write "$(cat round-<k>.prompt.md)" > round-<k>.jsonl -o round-<k>.last.txt < /dev/null`: the JSONL stream is stdout and `-o` is the last-message file.
 Because that sandbox mounts `.codex` read-only and bubblewrap refuses the root `.codex` symlink into `seed/`, a Codex round swaps that symlink for a real copy of its target for the call and restores it before grading (D12, #77).
 The call also carries four `--add-dir` roots derived from git, the worktree gitdir plus `objects`, `refs`, and `logs` under the common dir, so the commit from the worktree can land.
