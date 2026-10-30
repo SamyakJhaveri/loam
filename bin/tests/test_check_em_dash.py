@@ -83,7 +83,7 @@ class EmDashStep(unittest.TestCase):
 
     def test_claude_md_before_plain_dash_fails(self) -> None:
         # c0f630f replaced the em dash in CLAUDE.md's title; the file before it must fail the step.
-        old = subprocess.run(["git", "show", "c0f630f^:CLAUDE.md"], cwd=ROOT, capture_output=True, text=True, check=True)
+        old = subprocess.run(["git", "show", "c0f630f^:CLAUDE.md"], cwd=ROOT, capture_output=True, text=True, encoding="utf-8", check=True)
         self.assert_fails(self.run_step({"CLAUDE.md": old.stdout}), "CLAUDE.md:1:", "FAIL: em dash")
 
 
