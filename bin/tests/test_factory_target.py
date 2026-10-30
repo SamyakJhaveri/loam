@@ -178,19 +178,19 @@ class TargetTests(unittest.TestCase):
             '.[] | select(.headRefName | startswith("factory/")) | "  #\\(.number) \\(.headRefName) \\(.title)"',
             "api repos/acme/widget/issues?labels=ready-for-agent&state=open&assignee=none&per_page=100 --jq "
             'sort_by(.number)[] | select(.pull_request == null) | select(.issue_dependencies_summary.blocked_by == 0)'
-            ' | "\\(.number) \\(.body // "" | @base64)"',
+            ' | "\\(.number) \\(.user.login) \\(.body // "" | @base64)"',
             # /issues has no repository in its path; the runner's own issues are kept to this one by the filter.
-            "api issues?filter=assigned&labels=ready-for-agent&state=open&per_page=100 --paginate --jq "
-            '.[] | select(.pull_request == null) | select((.repository.full_name | ascii_downcase) == "acme/widget")'
-            ' | select(.issue_dependencies_summary.blocked_by == 0) | "\\(.number) \\(.body // "" | @base64)"'])
+            "api /issues?filter=assigned&labels=ready-for-agent&state=open&per_page=100 --paginate --jq "
+            '.[] | select(.pull_request == null) | select((.repository.full_name // "" | ascii_downcase) == "acme/widget")'
+            ' | select(.issue_dependencies_summary.blocked_by == 0) | "\\(.number) \\(.user.login) \\(.body // "" | @base64)"'])
 
     def test_next_parks_by_the_targets_own_runs_without_the_toolchain(self) -> None:
         # next launches only a body that passes lint (#314); gh returns the body with no trailing newline.
         body = (ROOT / "bin/tests/fixtures/clean-ticket.md").read_text().rstrip("\n")
         key = hashlib.sha256(body.encode()).hexdigest()[:8]
-        line = f"7 {base64.b64encode(body.encode()).decode()}"
+        line = f"7 SamyakJhaveri {base64.b64encode(body.encode()).decode()}"
         stubs = ("claude_logged_in() { :; }; claude_version_ok() { :; }; "
-                 f"gh() {{ case $1 in api) echo '{line}' ;; esac; }}; cmd_next --dry-run")
+                 f"gh() {{ case $1$2 in apigraphql) ;; api*) echo '{line}' ;; esac; }}; cmd_next --dry-run")
 
         def status(where: pathlib.Path, text: str) -> None:
             (where / key).mkdir(parents=True)

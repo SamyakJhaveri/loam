@@ -10,7 +10,7 @@
 #   bin/factory next [--install]    the F9 frontier timer's step: launch the next unblocked ready-for-agent ticket.
 #   bin/factory graders-check       fails when judge.md or reviewer.md drifts from GRADER_MODEL and GRADER_EFFORT.
 #   -C <repo>, before the subcommand or right after it, points lint, run, status, stop, and next at another repository (F8).
-# Lint never executes a check; it reads the body and shells out only to `bash -n` and `gh`.
+# Lint never executes a check; it reads the body and shells out only to `bash -n`, `gh`, and python3 for the hidden-text rule.
 set -uo pipefail
 # Only round_zero sets FACTORY_ROUND0 (lib.sh, predict); a run nested in another's round 0 must not inherit it.
 unset FACTORY_ROUND0
@@ -108,6 +108,8 @@ CODEX_BLOCKING='[.findings[]? | select(.severity == "critical" or .severity == "
 SRC=""
 BODY=""
 ERRS=0
+# The one account whose issues next launches: it must have written the body and, when edited, last edited it.
+TICKET_OWNER=SamyakJhaveri
 
 err() { echo "LINT $SRC: $*" >&2; ERRS=$((ERRS + 1)); }
 
@@ -211,6 +213,31 @@ check_header() {
 check_no_skip() {
   grep -qiE '(^|[^A-Za-z_-])skip(s|ped|ping)?([^A-Za-z_-]|$)' <<<"$BODY" && err "the body says 'skip'; a check leaves a ticket only through the abandon exit"
   return 0
+}
+
+# Text a reader of the issue on GitHub cannot see still reaches the worker, so lint rejects it by Unicode category,
+# never by a fixed list (loop-engineering, MIT, scripts/github-triage.mjs: /[\p{Cc}\p{Cf}]/gu): a Cf (zero-width,
+# bidi controls, tags, BOM, word joiner), a Cc other than tab, newline and CR, a variation selector (Mn, so a Cf
+# rule misses it, yet a run of them carries bytes), and an HTML comment. The body is read as UTF-8 by Python, since
+# BSD and GNU grep differ on Unicode ranges; split('\n'), not splitlines(), so VT, FF and U+2028 are still read.
+# Each error names the line and the code point, never the hidden text.
+IFS= read -r -d '' HIDDEN_PY << 'PY' || :
+import sys, unicodedata
+for n, line in enumerate(sys.stdin.buffer.read().decode("utf-8", "surrogateescape").split("\n"), 1):
+    if "<!--" in line:
+        print(f"line {n} holds an HTML comment (<!--), which GitHub does not show")
+    for c in line:
+        o, cat = ord(c), unicodedata.category(c)
+        if cat == "Cf" or (cat == "Cc" and c not in "\t\r") or 0xFE00 <= o <= 0xFE0F or 0xE0100 <= o <= 0xE01EF:
+            print(f"line {n} holds U+{o:04X} ({cat}), a character GitHub does not show")
+PY
+check_hidden_text() {
+  local out e
+  out=$(printf '%s' "$BODY" | python3 -I -X utf8 -c "$HIDDEN_PY") \
+    || { err "python3 could not read the body for hidden text"; return; }
+  while IFS= read -r e; do
+    [ -z "$e" ] || err "$e; delete it"
+  done <<<"$out"
 }
 
 check_block_syntax() {
@@ -651,6 +678,7 @@ lint_body() {
   check_sections
   check_header
   check_no_skip
+  check_hidden_text
   check_block_syntax
   check_check_lines
   check_worker
@@ -2301,7 +2329,7 @@ cmd_next() { # [--dry-run|--install]
     return 1
   fi
   if ! ready=$(net gh api "repos/$repo/issues?labels=ready-for-agent&state=open&assignee=none&per_page=100" \
-    --jq 'sort_by(.number)[] | select(.pull_request == null) | select(.issue_dependencies_summary.blocked_by == 0) | "\(.number) \(.body // "" | @base64)"' 2> /dev/null); then
+    --jq 'sort_by(.number)[] | select(.pull_request == null) | select(.issue_dependencies_summary.blocked_by == 0) | "\(.number) \(.user.login) \(.body // "" | @base64)"' 2> /dev/null); then
     echo "frontier query failed: gh api issues (failed, or no reply in ${NET_TIMEOUT_SEC}s)" >&2
     return 1
   fi
@@ -2311,8 +2339,8 @@ cmd_next() { # [--dry-run|--install]
   # one of those only at stopped-daily, since any other is in flight, awaits merge, or parks.
   local mine lrepo
   lrepo=$(printf '%s' "$repo" | tr '[:upper:]' '[:lower:]')
-  if ! mine=$(net gh api "issues?filter=assigned&labels=ready-for-agent&state=open&per_page=100" --paginate \
-    --jq '.[] | select(.pull_request == null) | select((.repository.full_name | ascii_downcase) == "'"$lrepo"'") | select(.issue_dependencies_summary.blocked_by == 0) | "\(.number) \(.body // "" | @base64)"' 2> /dev/null); then
+  if ! mine=$(net gh api "/issues?filter=assigned&labels=ready-for-agent&state=open&per_page=100" --paginate \
+    --jq '.[] | select(.pull_request == null) | select((.repository.full_name // "" | ascii_downcase) == "'"$lrepo"'") | select(.issue_dependencies_summary.blocked_by == 0) | "\(.number) \(.user.login) \(.body // "" | @base64)"' 2> /dev/null); then
     echo "frontier query failed: gh api issues assigned to the runner (failed, or no reply in ${NET_TIMEOUT_SEC}s)" >&2
     return 1
   fi
@@ -2332,8 +2360,11 @@ cmd_next() { # [--dry-run|--install]
   # (no second gh call), its stdout dropped; its first LINT line is reported the way a parked issue is
   # (bash -n prints its own line about the deleted temp file first; the first line is the fallback),
   # and the frontier goes on to the next candidate, so one bad issue does not stall the timer.
-  local pick="" st_last lint_err lint_line
-  while read -r who num b64; do
+  # Before lint, the owner check: the worker runs the body unattended and Loam is public, so a body another account
+  # wrote, or last edited (GraphQL's editor, null for a body never edited), is passed over, and so is one whose
+  # editor gh could not read. </dev/null keeps gh off the candidate list this loop reads on stdin.
+  local pick="" st_last lint_err lint_line author editor
+  while read -r who num author b64; do
     [ -n "$num" ] || continue
     body=$(printf '%s' "$b64" | base64 -d)
     st_last=$(park_status "$num" "$body")
@@ -2344,6 +2375,20 @@ cmd_next() { # [--dry-run|--install]
     fi
     case "$st_last" in
       none|stopped-environment|stopped|stopped-daily)
+        if [ "$author" != "$TICKET_OWNER" ]; then
+          echo "not owner #$num: written or last edited by $author; edit the body as $TICKET_OWNER or remove ready-for-agent" >&2
+          continue
+        fi
+        if ! editor=$(net gh api graphql -f owner="${repo%%/*}" -f name="${repo#*/}" -F number="$num" \
+          -f query='query($owner: String!, $name: String!, $number: Int!) { repository(owner: $owner, name: $name) { issue(number: $number) { editor { login } } } }' \
+          --jq '.data.repository.issue.editor.login // ""' < /dev/null 2> /dev/null); then
+          echo "not owner #$num: could not read the last editor with gh (failed, or no reply in ${NET_TIMEOUT_SEC}s); passed over" >&2
+          continue
+        fi
+        if [ -n "$editor" ] && [ "$editor" != "$TICKET_OWNER" ]; then
+          echo "not owner #$num: written or last edited by $editor; edit the body as $TICKET_OWNER or remove ready-for-agent" >&2
+          continue
+        fi
         if ! lint_err=$( { SRC="#$num"; BODY="$body"; ERRS=0; lint_body > /dev/null; } 2>&1 ); then
           lint_line=$(grep -m1 "^LINT #$num: " <<<"$lint_err") || lint_line=${lint_err%%$'\n'*}
           lint_err=${lint_line#"LINT #$num: "}

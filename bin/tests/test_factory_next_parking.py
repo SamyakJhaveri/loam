@@ -58,14 +58,20 @@ class ParkingTests(unittest.TestCase):
         self.assertEqual(proc.returncode, 0, proc.stderr)
         return proc.stdout.strip()
 
-    def next_dry_run(self, *frontier: tuple[int, str],
-                     mine: tuple[tuple[int, str], ...] = (), **env: str) -> subprocess.CompletedProcess[str]:
+    def next_dry_run(self, *frontier: tuple[int, str], mine: tuple[tuple[int, str], ...] = (),
+                     authors: dict[int, str] | None = None, editors: dict[int, str | None] | None = None,
+                     **env: str) -> subprocess.CompletedProcess[str]:
         """cmd_next --dry-run over the given unassigned (issue, body) frontier, lowest number first as gh sorts it,
-        and `mine`, the ready-for-agent issues assigned to the runner."""
+        and `mine`, the ready-for-agent issues assigned to the runner. Each issue is written by `authors`' login,
+        SamyakJhaveri by default, and last edited by `editors`' login (None: the editor call fails), by no one by default."""
         def lines(issues: tuple[tuple[int, str], ...]) -> str:
-            return " ".join(f"'{issue} {base64.b64encode(body.encode()).decode()}'" for issue, body in issues) or "''"
+            return " ".join(f"'{issue} {(authors or {}).get(issue, 'SamyakJhaveri')} {base64.b64encode(body.encode()).decode()}'"
+                            for issue, body in issues) or "''"
+        edits = "".join(f'*" number={issue} "*) {"return 1" if who is None else f"echo {who}"} ;; '
+                        for issue, who in (editors or {}).items())
         stubs = ("assert_toolchain_env() { :; }; claude_logged_in() { :; }; claude_version_ok() { :; }; target_repo() { echo o/r; }; "
-                 f"gh() {{ case $2 in repos/*) printf '%s\\n' {lines(frontier)} ;; issues\\?*) printf '%s\\n' {lines(mine)} ;; esac; }}; "
+                 f"gh() {{ case $2 in graphql) case \"$* \" in {edits}esac ;; repos/*) printf '%s\\n' {lines(frontier)} ;; "
+                 f"/issues\\?*) printf '%s\\n' {lines(mine)} ;; esac; }}; "
                  "cmd_next --dry-run")
         return sourced(stubs, {"FACTORY_RUNS_ROOT": str(self.runs), **env})
 
@@ -281,6 +287,32 @@ class LintTests(ParkingTests):
         self.assertEqual(proc.stdout.strip(), "nothing to launch", proc.stderr)
         self.assertIn("lint failed #7: the done-checks block plus lib.sh does not pass bash -n", proc.stderr)
         self.assertNotIn("factory-lint", proc.stderr)
+
+    # A candidate another account wrote or last edited is passed over with one stderr line, as is one whose
+    # editor gh could not read; the owner's own edit launches (#389).
+
+    def test_issue_another_account_wrote_is_passed_over(self) -> None:
+        proc = self.next_dry_run((7, CLEAN), (8, CLEAN), authors={7: "someone-else"})
+        self.assertEqual(proc.stdout.strip(), "would launch #8", proc.stderr)
+        self.assertIn("not owner #7: written or last edited by someone-else; edit the body as SamyakJhaveri", proc.stderr)
+
+    def test_issue_another_account_last_edited_is_passed_over(self) -> None:
+        proc = self.next_dry_run((7, CLEAN), (8, CLEAN), editors={7: "someone-else", 8: "SamyakJhaveri"})
+        self.assertEqual(proc.stdout.strip(), "would launch #8", proc.stderr)
+        self.assertIn("not owner #7: written or last edited by someone-else", proc.stderr)
+        self.assertNotIn("#8", proc.stderr)
+
+    def test_failed_editor_call_never_launches(self) -> None:
+        proc = self.next_dry_run((7, CLEAN), editors={7: None})
+        self.assertEqual(proc.stdout.strip(), "nothing to launch", proc.stderr)
+        self.assertIn("not owner #7: could not read the last editor with gh", proc.stderr)
+
+    def test_runner_assigned_issue_another_account_edited_does_not_relaunch(self) -> None:
+        self.run_dir(7, CLEAN, "stopped-daily")
+        os.utime(self.runs / "7" / key(CLEAN) / "status", (86400, 86400))
+        proc = self.next_dry_run(mine=((7, CLEAN),), editors={7: "someone-else"})
+        self.assertEqual(proc.stdout.strip(), "nothing to launch", proc.stderr)
+        self.assertIn("not owner #7", proc.stderr)
 
 
 if __name__ == "__main__":
