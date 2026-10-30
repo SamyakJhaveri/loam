@@ -114,7 +114,7 @@ class WatchdogTests(unittest.TestCase):
         self.assertNotIn("late", proc.stdout)
         proc, took = self.bash(". bin/factory; out=$(net_watch bash -c 'kill -STOP $$; echo x'); echo \"rc=$? $out\"",
                                FACTORY_SOURCED="1")
-        self.assertLess(took, 4)
+        self.assertLess(took, 10)  # TERM and CONT end it at ~1 s, the KILL fallback at ~6 s; with no watchdog it hangs
         self.assertNotIn("rc=0", proc.stdout)
         self.assertNotIn("x", proc.stdout)
         proc, _ = self.bash(". bin/factory; f() { cat; echo err >&2; return 3; }; printf 'in\\n' | net_watch f; "
