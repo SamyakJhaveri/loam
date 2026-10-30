@@ -199,7 +199,7 @@ def commands(toks: list[str]) -> list[tuple[str, int]]:
             continue
         if at and tok not in ENDS:
             found.append((tok.rsplit("/", 1)[-1], i + 1))
-        at = tok in ENDS
+        at = tok in ENDS or tok in ("<(", ">(")  # a process substitution starts a command
     return found
 
 
