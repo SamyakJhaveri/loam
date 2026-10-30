@@ -91,10 +91,10 @@ This contract owns the issue body: each issue carries the sections above, and th
 - Every section present, in order.
 - The done-checks block plus `lib.sh` pass `bash -n`.
 - Every check line ends in `pass` or `fail`; no `skip` anywhere.
+  A line that starts with `predict` is not a check line and is accepted in every body, unless it has no command after the name, holds an unquoted `;`, `&`, `|`, `<` or `>`, or its command is a shell keyword.
 - No text a reader on GitHub cannot see (#389): a character of Unicode category `Cf` (zero-width, bidi controls, tags, BOM, word joiner), a `Cc` other than tab, newline and carriage return, a variation selector (U+FE00 to U+FE0F, U+E0100 to U+E01EF), or an HTML comment `<!--`.
   Lint matches by category, as loop-engineering's triage does (`/[\p{Cc}\p{Cf}]/gu`, MIT), reads the body as UTF-8 through `python3`, names the line and the code point but never the hidden text, and never edits the body; ordinary non-ASCII text such as `café 如果` passes.
   The rule runs on every body, fixtures included.
-  A line that starts with `predict` is not a check line and is accepted in every body, unless it has no command after the name, holds an unquoted `;`, `&`, `|`, `<` or `>`, or its command is a shell keyword.
 - In a body whose Worker section says `contract: 2`, each non-guard check name has exactly one predict line; a predict line that names a guard, a name no non-guard check reports, or a name another predict line already names is an error that names it, as is a non-guard check line with no literal name after a command-word `pass`.
   The contract line is exactly one line `contract: 2`; anything else is an error, and a body with no contract line lints as before #388.
   The rule is skipped under `bin/factory.d/fixtures/`, as the path rule is.
