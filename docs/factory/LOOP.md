@@ -96,7 +96,7 @@ A call with no result event (killed by `CALL_TIMEOUT_SEC`, or crashed) exits `st
 Every model call (the worker, a grader, the Codex review) runs in a session of its own, so its process group holds every process it starts; `CALL_TIMEOUT_SEC` signals that whole group, KILL 5 s after TERM.
 However the call ends, by exit or by the limit, the supervisor sends what is left of its group TERM, then KILL after 5 s, before any check or grader reads the tree, since a child left writing the worktree would race them.
 Claude Code starts each Bash tool shell in a new session, out of that group, so the call also carries a `FACTORY_CALL_TAG` unique to it, and on Linux the same TERM and KILL reach every process whose environment holds it; a host with no `/proc` (a Mac) has the group kill alone.
-Any of them still alive 5 s after KILL exits `stopped-environment` and counts no round.
+Any of them still alive 5 s after KILL exits `stopped-environment` and counts no round, once the call's ledger row is written (a Claude worker call with no result event charges `ROUND_BUDGET_USD` as below).
 A call in its own session no longer gets the supervisor's Ctrl-C, TERM or HUP, so while a call runs the supervisor traps those signals, sends the call's group and tagged processes the same TERM and KILL, and only then exits (status 130, 143 or 129) and its EXIT trap removes the worktree.
 A killed or crashed Claude worker call left no cost to read but may have spent up to its `--max-budget-usd` ceiling, so its ledger row charges `ROUND_BUDGET_USD` (subtype `no-result` marks it as a charge) and the ticket and daily caps stay bounds (#319); a Codex worker call keeps `cost_usd` null.
 The stop message lists the commits made since the round began, or says `no commits`.

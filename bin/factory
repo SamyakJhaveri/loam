@@ -1320,7 +1320,7 @@ codex_result() { # jsonl exit_code [duration_ms] -> result JSON on stdout; durat
 # processes before it exits and its EXIT trap removes the worktree.
 call_start() { # dir cmd... -> CALL_PID, CALL_TAG
   local dir="$1"; shift
-  CALL_TAG="$$.$SECONDS.$RANDOM"; CALL_PID=
+  CALL_TAG="$$.$SECONDS.$RANDOM"; CALL_PID=; CALL_STUCK=
   trap 'call_abort INT 130' INT; trap 'call_abort TERM 143' TERM; trap 'call_abort HUP 129' HUP
   ( cd "$dir" && export FACTORY_CALL_TAG="$CALL_TAG" \
       && exec perl -MPOSIX -e 'POSIX::setsid() == $$ or die "setsid: $!\n"; exec { $ARGV[0] } @ARGV or die "exec $ARGV[0]: $!\n"' "$@" ) <&0 &
@@ -1331,7 +1331,7 @@ call_start() { # dir cmd... -> CALL_PID, CALL_TAG
 # However the call ends, by exit or by its limit, whatever it left behind, in its group or carrying its tag, gets
 # TERM, then KILL after a 5 s grace, and must be gone 5 s later, or the run stops: a child left writing the tree would
 # race the checks and the graders (LOOP.md, Exits). The leader is reaped first, since a zombie leader keeps its group
-# alive.
+# alive. A survivor sets CALL_STUCK, and the caller stops the run once its ledger row for the call is written.
 call_end() { # role -> the call's own exit status
   local rc=0
   wait "$CALL_PID" || rc=$?
@@ -1347,7 +1347,9 @@ call_reap() { # role
   log "the $1 call's processes outlived TERM by 5 s; sending KILL"
   call_signal KILL
   call_gone 50 && return
-  finish stopped-environment "the $1 call's processes (group $CALL_PID or tag $CALL_TAG) are still alive 5 s after KILL"
+  CALL_STUCK="the $1 call's processes (group $CALL_PID or tag $CALL_TAG) are still alive 5 s after KILL"
+  log "$CALL_STUCK"
+  return 1
 }
 # The supervisor got a signal mid-call: it sends the call TERM, and KILL 5 s later if the leader is still up, reaps the
 # leader, ends what is left as call_end would, then exits as the signal would have. A second Ctrl-C is ignored until
@@ -1438,6 +1440,7 @@ worker_round() { # round; leaves round-N.* only once the call produced a result
     codex_result "$out" "$rc" "$(( (SECONDS - start) * 1000 ))" > "$res"
     wl=$(workflow_ledger "$round" "$out" "$res"); wagents=${wl% *}; wusd=${wl#* }
     record "$round" worker "$CODEX_MODEL" "$res" 0 0 "$wagents" "$wusd" 1
+    [ -z "$CALL_STUCK" ] || finish stopped-environment "$CALL_STUCK"
     assert_call_ok worker "$res" "$head0"
     mv "$pf" "$RUN/round-$round.prompt.md"
     mv "$out" "$RUN/round-$round.jsonl"
@@ -1462,6 +1465,7 @@ worker_round() { # round; leaves round-N.* only once the call produced a result
     # and cmd_status book one number and the ticket and daily caps stay bounds (#319). The ledger row keeps
     # subtype no-result, which tells a charge from a measured cost.
     [ -s "$res" ] || jq -nc --argjson usd "$ROUND_BUDGET_USD" '{subtype:"no-result", total_cost_usd:$usd}' > "$res"
+    [ -z "$CALL_STUCK" ] || break   # recorded below, then the run stops
     # An `OAuth session expired` on the first call of a launch is a stale login, not a round: wait
     # once and relaunch the call. A second failure, or the same on a later round, stops as today.
     if ! limit_wait "$res"; then
@@ -1483,6 +1487,7 @@ worker_round() { # round; leaves round-N.* only once the call produced a result
   local wl wagents wusd
   wl=$(workflow_ledger "$round" "$out" "$res"); wagents=${wl% *}; wusd=${wl#* }
   record "$round" worker "$WORKER_MODEL" "$res" "$acalls" "$ausd" "$wagents" "$wusd"
+  [ -z "$CALL_STUCK" ] || finish stopped-environment "$CALL_STUCK"
   assert_call_ok worker "$res" "$head0"
   mv "$pf" "$RUN/round-$round.prompt.md"
   mv "$out" "$RUN/round-$round.jsonl"
@@ -1613,8 +1618,9 @@ call_json() { # round stem role prompt_file schema_file
         --max-budget-usd "$GRADER_BUDGET_USD" --setting-sources user --settings "$RUN/frozen/role-settings.json" \
         --output-format json < "$pf" > "$out" 2>> "$LOG"
     call_end "$role" || log "$role exited non-zero"
-    if limit_wait "$out"; then attempt=$((attempt - 1)); continue; fi
+    if [ -z "$CALL_STUCK" ] && limit_wait "$out"; then attempt=$((attempt - 1)); continue; fi
     record "$round" "$role" "$GRADER_MODEL" "$out"
+    [ -z "$CALL_STUCK" ] || finish stopped-environment "$CALL_STUCK"
     res=$(jq -r "$RESULT_OBJ | .result // \"\"" "$out" 2> /dev/null | sed -e 's/^```json//' -e 's/^```//' -e 's/```$//') || res=""
     if printf '%s' "$res" | jq -e '.verdict' > /dev/null 2>&1; then
       printf '%s' "$res" | jq '.' > "$final"
@@ -1689,6 +1695,7 @@ run_codex_review() { # round -> 0 when nothing blocks; needs-attention with a cr
     [ "$rc" -eq 0 ] || log "codex review call exited $rc"
     codex_result "$jsonl" "$rc" "$(( (SECONDS - start) * 1000 ))" > "$res"
     record "$round" codex-review "$CODEX_MODEL" "$res" 0 0 0 0 1
+    [ -z "$CALL_STUCK" ] || finish stopped-environment "$CALL_STUCK"
     # An absent, empty, or unparseable -o file gets one more call; -s also refuses a file holding more than one JSON value.
     if jq -se 'length == 1 and (.[0].verdict | type) == "string"' "$f" > /dev/null 2>&1; then parsed=1; break; fi
     log "codex review output absent or unparseable on call $call of 2; see $jsonl"

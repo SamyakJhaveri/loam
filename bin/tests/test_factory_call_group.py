@@ -176,6 +176,21 @@ class CallGroupTests(unittest.TestCase):
         left = subprocess.run(["pgrep", "-f", str(self.top)], capture_output=True, text=True, check=False).stdout
         self.assertEqual(left, "", "a process the call started outlived the supervisor")
 
+    def test_stuck_call_is_recorded_before_the_run_stops(self) -> None:
+        # A process that outlives KILL cannot be faked, so call_gone is stubbed to never see the call gone. The run
+        # stops stopped-environment only after the call's ledger row is written.
+        for call, role in (("worker_round 1", "worker"), ("run_codex_review 1", "codex-review"),
+                           ('call_json 1 judge judge "$RUN/prompt.md" "$RUN/frozen/judge.schema.json"', "judge")):
+            with self.subTest(role=role):
+                proc = self.run_call("call_gone() { return 1; }; " + call)
+                self.assertEqual(proc.returncode, 4, proc.stderr)
+                self.assertNotIn("returned:", proc.stdout)
+                rows = (self.run_dir / "ledger.jsonl").read_text().splitlines()
+                self.assertIn(f'"role":"{role}"', rows[-1])
+                log = (self.run_dir / "factory.log").read_text().splitlines()
+                self.assertRegex(log[-1], "EXIT stopped-environment .*still alive 5 s after KILL")
+                subprocess.run(["pkill", "-KILL", "-f", str(self.top)], check=False)
+
     def test_worker_call_keeps_its_prompt_and_env(self) -> None:
         proc = self.run_call("worker_round 1", FACTORY_WORKER_MODEL="claude-pin-1")
         self.assert_no_survivor(proc)
