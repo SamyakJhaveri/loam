@@ -614,7 +614,7 @@ FENCE='~~~~~~~~~~~~ evidence'   # fixed marker; never a per-run string (#38)
 # REPO, RUN, and LOG keep a pre-set value: the sourced-test contract (file_backlog's backlog-filed-once
 # check) passes these three in the environment, and load_ticket and cmd_run set all three before a run
 # uses them, so `bin/factory run` is unchanged.
-REPO="${REPO:-}"; ISSUE=""; KEY=""; IS_FILE=0; RUN="${RUN:-}"; ROUND=0; REVIEW_BLOCKED=0; GRADED_SHA=""
+REPO="${REPO:-}"; ISSUE=""; KEY=""; IS_FILE=0; RUN="${RUN:-}"; ROUND=0; REVIEW_BLOCKED=0; GRADED_SHA=""; GRADER_FAILS=0
 LOG="${LOG:-/dev/null}"; LEDGER=""; DAILY=""; DECISIONS=""; WORKTREE=""; BRANCH=""
 # Worker kind and the Codex review stage, read from the ticket in cmd_run (F4). CODEX_REVIEW_BLOCKED is
 # separate from REVIEW_BLOCKED so a Claude-reviewer block never consumes the Codex review's one block.
@@ -708,6 +708,7 @@ exit_words() { # status -> "<level> <words>"
     abandon) echo "needs-you gave up: the worker says the ticket cannot be done as written" ;;
     stopped) echo "info stopped, as FACTORY_STOP asked" ;;
     stopped-cap) echo "fail stopped at a limit on rounds, money or hours" ;;
+    stopped-daily) echo "info stopped at today's daily budget; the timer relaunches it tomorrow" ;;
     stuck) echo "fail stopped: the same checks failed twice in a row" ;;
     no-change) echo "fail stopped: a round changed nothing" ;;
     stopped-environment) echo "fail stopped on a machine or tool problem, not on the ticket" ;;
@@ -950,6 +951,7 @@ nav_arm:\$nav, ts:\$ts}" "$4" 2> /dev/null) \
   log "$2 round $1: $(printf '%s' "$line" | jq -r '"cost=\(.cost_usd) usd, turns=\(.num_turns), denials=\(.denials), \(.duration_ms)ms, \(.subtype)" + (if .role == "worker" then ", advisor_calls=\(.advisor_calls), advisor_usd=\(.advisor_usd)" else "" end)')"
 }
 
+# The daily cap says nothing about the ticket, so it has its own status, which next relaunches on a later UTC day.
 assert_caps() { # before every model call; the daily cap is "the next call could exceed it"
   local spent daily hours
   spent=$(ticket_spent); daily=$(daily_spent)
@@ -958,7 +960,7 @@ assert_caps() { # before every model call; the daily cap is "the next call could
   hours=$(( ( $(date -u +%s) - $(cat "$RUN/launched") ) / 3600 ))
   [ "$hours" -lt "$MAX_HOURS" ] || finish stopped-cap "wall clock: ${hours}h of ${MAX_HOURS}h since this launch"
   jq -en --argjson a "$daily" --argjson b "$ROUND_BUDGET_USD" --argjson c "$DAILY_BUDGET_USD" '($a + $b) > $c' > /dev/null \
-    && finish stopped-cap "daily budget: $daily spent today, the next call could exceed $DAILY_BUDGET_USD usd"
+    && finish stopped-daily "daily budget: $daily spent today, the next call could exceed $DAILY_BUDGET_USD usd"
   return 0
 }
 
@@ -1907,8 +1909,30 @@ open_pr() { # [draft]: opened at the grader-round cap
 
 # ---- the loop ---------------------------------------------------------------
 
+# Step 7 on a round whose checks passed: a pass opens the PR, and the GRADER_FAIL_ROUNDS-th fail drafts it.
+grade_round() {
+  measure_rows "$ROUND"
+  graders "$ROUND" && open_pr
+  GRADER_FAILS=$((GRADER_FAILS + 1))
+  [ "$GRADER_FAILS" -lt "$GRADER_FAIL_ROUNDS" ] \
+    || { log "grader-round cap: $GRADER_FAIL_ROUNDS grader-fail rounds; the rest goes to the PR backlog"; open_pr draft; }
+}
+
+round_checks() { # out: a dirty tree or a do-not-touch hit fails the round without running the checks
+  local dirty touched
+  dirty=$(git -C "$WORKTREE" status --porcelain)
+  touched=$(do_not_touch_hits)
+  if [ -n "$dirty" ]; then
+    printf 'FAIL worktree-dirty: %s\n' "$(printf '%s' "$dirty" | tr '\n' ' ')" > "$1"
+  elif [ -n "$touched" ]; then
+    printf 'FAIL do-not-touch %s\n' "$touched" > "$1"
+  else
+    run_checks "$WORKTREE" "$1"
+  fi
+}
+
 main_loop() {
-  local prev_fails="" prev_sig="" grader_fails=0 fails dirty touched checks sig_now
+  local prev_fails="" prev_sig="" fails checks sig_now
   notify info "$(ticket_name) started" \
     "Branch $BRANCH in $WORKTREE; it stops at $MAX_ROUNDS rounds, $TICKET_BUDGET_USD USD or $MAX_HOURS hours"
   while :; do
@@ -1932,15 +1956,7 @@ main_loop() {
     [ "$sig_now" = "$prev_sig" ] && finish no-change "HEAD and decisions.md are unchanged since round $((ROUND - 1))"
     prev_sig="$sig_now"
     checks="$RUN/round-$ROUND.checks"
-    dirty=$(git -C "$WORKTREE" status --porcelain)
-    touched=$(do_not_touch_hits)
-    if [ -n "$dirty" ]; then
-      printf 'FAIL worktree-dirty: %s\n' "$(printf '%s' "$dirty" | tr '\n' ' ')" > "$checks"
-    elif [ -n "$touched" ]; then
-      printf 'FAIL do-not-touch %s\n' "$touched" > "$checks"
-    else
-      run_checks "$WORKTREE" "$checks"
-    fi
+    round_checks "$checks"
     if grep -q '^FAIL' "$checks"; then
       fails=$(grep '^FAIL' "$checks" | awk '{print $2}' | tr -d ':' | sort -u | tr '\n' ',')
       log "checks failing: $fails"
@@ -1952,11 +1968,7 @@ main_loop() {
     fi
     prev_fails=""
     log "checks: all pass"
-    measure_rows "$ROUND"
-    graders "$ROUND" && open_pr
-    grader_fails=$((grader_fails + 1))
-    [ "$grader_fails" -lt "$GRADER_FAIL_ROUNDS" ] \
-      || { log "grader-round cap: $GRADER_FAIL_ROUNDS grader-fail rounds; the rest goes to the PR backlog"; open_pr draft; }
+    grade_round
   done
 }
 
@@ -2033,6 +2045,15 @@ cmd_run() {
     ROUND=$(find "$RUN" -maxdepth 1 -name 'round-*.checks' | sed -n 's/.*round-\([0-9][0-9]*\)\.checks$/\1/p' \
       | sort -n | tail -1)
     log "resuming after round $ROUND"
+    # The cap spans relaunches: count the graded rounds (a graded.sha) whose graders failed, which is a judge
+    # verdict other than pass or a non-empty fixes file, since a reviewer or Codex block always queues a fix there
+    # and a judge pass queues none. A pass whose push or PR create failed has a graded.sha but is not a fail.
+    local g
+    for g in "$RUN"/round-*.graded.sha; do
+      [ -e "$g" ] || continue
+      g=${g%.graded.sha}
+      { [ -s "$g.fixes" ] || [ "$(jq -r .verdict "$g.judge.json" 2> /dev/null)" != pass ]; } && GRADER_FAILS=$((GRADER_FAILS + 1))
+    done
     # A round whose graders passed at HEAD with nothing blocking lost only its push or PR create: publish it,
     # with no new worker round. A judge fail, a blocking finding, or a moved HEAD resumes into the loop.
     if [ "$(jq -r .verdict "$RUN/round-$ROUND.judge.json" 2> /dev/null)" = pass ] && [ -z "$(blocking_findings)" ] \
@@ -2041,6 +2062,20 @@ cmd_run() {
       log "round $ROUND passed the graders at HEAD $GRADED_SHA; opening the PR with no worker round"
       check_frozen   # freeze returns early on a resume, so re-hash here as main_loop does before each round
       open_pr
+    # A round whose checks passed on a clean tree but whose graders never finished (a cap or FACTORY_STOP before
+    # a grader call) is graded now, so the relaunch does not pay for, or cap out on, a new worker round. HEAD may
+    # have moved while the run was stopped, so its checks run again at HEAD first, and only a pass is graded.
+    elif [ "$ROUND" -ge 1 ] && ! grep -q '^FAIL' "$RUN/round-$ROUND.checks" \
+      && [ "$(tail -n 1 "$RUN/round-$ROUND.checks")" = CHECKS-END ] && [ ! -e "$RUN/round-$ROUND.graded.sha" ] \
+      && [ -z "$(git -C "$WORKTREE" status --porcelain)" ]; then
+      check_frozen
+      round_checks "$RUN/round-$ROUND.checks"
+      if grep -q '^FAIL' "$RUN/round-$ROUND.checks"; then
+        log "round $ROUND's graders did not finish, and its checks now fail at HEAD; resuming into the loop"
+      else
+        log "round $ROUND's graders did not finish, and its checks pass again at HEAD; grading it with no worker round"
+        grade_round
+      fi
     fi
   fi
   main_loop
@@ -2056,10 +2091,22 @@ cmd_stop() { # <issue|stem>
   [ "$n" -gt 0 ] || { echo "factory stop: no run directory under $RUNS_ROOT/$1" >&2; return 1; }
 }
 
+run_dir_of() { # <issue> <body> -> the run dir cmd_run names for this body
+  printf '%s/%s/%s' "$RUNS_ROOT" "$1" "$(printf '%s' "$2" | sha256_of | cut -c1-8)"
+}
+
 park_status() { # <issue> <body> -> the status of the run for this body, or none
-  local k
-  k=$(printf '%s' "$2" | sha256_of | cut -c1-8)   # the key cmd_run names the run dir by
-  cat "$RUNS_ROOT/$1/$k/status" 2> /dev/null || echo none
+  cat "$(run_dir_of "$1" "$2")/status" 2> /dev/null || echo none
+}
+
+stopped_daily_today() { # <run dir> -> 0 when its run stopped at the daily budget on today's UTC date
+  [ "$(cat "$1/status" 2> /dev/null)" = stopped-daily ] && [ "$(date -u -r "$1/status" +%Y-%m-%d)" = "$(today)" ]
+}
+
+# A ticket's Worker section can lower its own caps, so its daily stop alone does not show the shared ledger is spent.
+daily_spent_at_runner_caps() { # -> 0 when the shared daily ledger has no room for one round at the runner's own caps
+  ( BODY=""; apply_caps; DAILY="$RUNS_BASE/ledger-daily.jsonl"; [ -f "$DAILY" ] || exit 1
+    jq -en --argjson a "$(daily_spent)" --argjson b "$ROUND_BUDGET_USD" --argjson c "$DAILY_BUDGET_USD" '($a + $b) > $c' > /dev/null )
 }
 
 # The F9 frontier timer's one step: launch the next unblocked ready-for-agent ticket, or say why not.
@@ -2164,7 +2211,7 @@ cmd_next() { # [--dry-run|--install]
   fi
 
   # 4. The frontier: open, ready-for-agent, unassigned issues with no open native blocker, lowest
-  #    number first. A gh failure (offline, unauthenticated, off cron's PATH, empty repo) prints
+  #    number first, plus the runner's own such issues whose run stopped at the daily budget. A gh failure (offline, unauthenticated, off cron's PATH, empty repo) prints
   #    `frontier query failed` and returns 1, so cron mails it rather than the timer stalling silent;
   #    only a successful, empty query falls through to `nothing to launch`.
   local repo ready num b64 body
@@ -2178,27 +2225,45 @@ cmd_next() { # [--dry-run|--install]
     echo "frontier query failed: gh api issues (failed, or no reply in ${NET_TIMEOUT_SEC}s)" >&2
     return 1
   fi
+  # A launch assigns the issue to the runner and nothing unassigns it, so a stopped-daily run's issue comes from
+  # the runner's own ready-for-agent issues in this repository (/issues is the authenticated user's, so no login
+  # lookup, and every page, since it spans all the runner's repositories and gh applies --jq per page); the loop takes
+  # one of those only at stopped-daily, since any other is in flight, awaits merge, or parks.
+  local mine lrepo
+  lrepo=$(printf '%s' "$repo" | tr '[:upper:]' '[:lower:]')
+  if ! mine=$(net gh api "issues?filter=assigned&labels=ready-for-agent&state=open&per_page=100" --paginate \
+    --jq '.[] | select(.pull_request == null) | select((.repository.full_name | ascii_downcase) == "'"$lrepo"'") | select(.issue_dependencies_summary.blocked_by == 0) | "\(.number) \(.body // "" | @base64)"' 2> /dev/null); then
+    echo "frontier query failed: gh api issues assigned to the runner (failed, or no reply in ${NET_TIMEOUT_SEC}s)" >&2
+    return 1
+  fi
 
   # The run of the issue's current body decides (park_status): no such run launches; stopped-environment
   # and stopped relaunch (the environment, not the ticket, ended them); every other exit parks the issue
   # until a human edits the body or removes the label, since the same body would fail the same way.
+  # stopped-daily relaunches once the UTC date of its status file has passed, and until then waits without
+  # launching, so the timer does not spin the issue against the spent budget every tick.
   # A run of an earlier body no longer parks the issue, so an edited body launches on the next tick.
   # The body travels as base64 so its newlines stay on one line; $(...) strips its trailing newlines
   # the way load_ticket's $(gh issue view ...) does, so the key matches the one cmd_run computes.
-  # A ticket at pr-opened is assigned at launch, so it is not in the frontier; if a human unassigns
-  # it, its slot is already counted above while its worktree exists.
+  # A ticket at pr-opened is assigned at launch, so it is skipped among the runner's own; if a human
+  # unassigns it, its slot is already counted above while its worktree exists.
   # A launchable body is linted first (#314): the label alone does not make an issue a ticket, and a run of
   # a body with no done-checks block would burn a round. lint_body runs in a subshell on the body in hand
   # (no second gh call), its stdout dropped; its first LINT line is reported the way a parked issue is
   # (bash -n prints its own line about the deleted temp file first; the first line is the fallback),
   # and the frontier goes on to the next candidate, so one bad issue does not stall the timer.
   local pick="" st_last lint_err lint_line
-  while read -r num b64; do
+  while read -r who num b64; do
     [ -n "$num" ] || continue
     body=$(printf '%s' "$b64" | base64 -d)
     st_last=$(park_status "$num" "$body")
+    [ "$who" = mine ] && [ "$st_last" != stopped-daily ] && continue
+    if stopped_daily_today "$(run_dir_of "$num" "$body")"; then
+      echo "waiting #$num: daily budget spent; relaunches after 00:00 UTC" >&2
+      continue
+    fi
     case "$st_last" in
-      none|stopped-environment|stopped)
+      none|stopped-environment|stopped|stopped-daily)
         if ! lint_err=$( { SRC="#$num"; BODY="$body"; ERRS=0; lint_body > /dev/null; } 2>&1 ); then
           lint_line=$(grep -m1 "^LINT #$num: " <<<"$lint_err") || lint_line=${lint_err%%$'\n'*}
           lint_err=${lint_line#"LINT #$num: "}
@@ -2209,7 +2274,18 @@ cmd_next() { # [--dry-run|--install]
       pr-opened) ;;
       *) echo "parked #$num: last run exited $st_last; edit the body or remove ready-for-agent" >&2 ;;
     esac
-  done <<< "$ready"
+  done <<< "$( { sed 's/^/none /' <<< "$ready"; sed 's/^/mine /' <<< "$mine"; } | sort -s -n -k2,2 )"
+
+  # A run stopped at today's daily budget, with the shared ledger (RUNS_BASE, every target's) also spent at the
+  # runner's own caps, means a new launch would only assign, build, run round 0 and stop at its first cap check;
+  # nothing launches today. The stop alone is not enough: that run's ticket may have set a lower DAILY_BUDGET_USD.
+  if [ -n "$pick" ] && daily_spent_at_runner_caps; then
+    for d in "$RUNS_BASE"/*/*/ "$RUNS_BASE"/*/*/*/; do
+      stopped_daily_today "$d" || continue
+      echo "waiting: a run stopped at today's daily budget; nothing launches before 00:00 UTC" >&2
+      pick=""; break
+    done
+  fi
 
   if [ -z "$pick" ]; then
     echo "nothing to launch"
