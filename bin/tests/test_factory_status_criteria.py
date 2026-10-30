@@ -281,7 +281,8 @@ class StatusCriteriaTests(unittest.TestCase):
         run_dir(self.runs, "9/aaaa0009", "pr-opened", ["EXIT pr-opened (0): https://github.com/o/loam/pull/10"], 1)
         (pathlib.Path(self.tmp.name) / "co-9").mkdir()
         script = (
-            '. bin/factory; MAIN_CHECKOUT="$1/co"; assert_target_ready() { :; }; net() { "$@"; }; '
+            '. bin/factory; MAIN_CHECKOUT="$1/co"; assert_target_ready() { :; }; claude_logged_in() { :; }; '
+            'claude_version_ok() { :; }; net() { "$@"; }; '
             'gh() { [ "$2" = repos/o/loam/issues/10 ] && echo closed; }; '
             'owner_events() { echo "{\\"phase\\":\\"$2\\"}" >> "$1/owner-events.jsonl"; }; cmd_next'
         )
