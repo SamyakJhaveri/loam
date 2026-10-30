@@ -1,5 +1,5 @@
 """A reviewer or Codex review past its one block that still blocks, or replies with nothing parseable, opens a draft PR.
-The graders run at once, one after another near a cap, and a stop one of them asks for still ends the run.
+The Codex review runs beside the judge and the reviewer, which run one after the other, and ends with the run.
 
 A Codex review with no parseable reply is called once more; two bad replies draft the PR but never reach a worker.
 A judge or reviewer with no parseable reply after its three calls never reaches a worker either (#312): the
@@ -16,8 +16,10 @@ from __future__ import annotations
 import json
 import os
 import pathlib
+import signal
 import subprocess
 import tempfile
+import time
 import unittest
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
@@ -25,19 +27,22 @@ INHERITED = ("FACTORY_ROOT", "FACTORY_GH", "LOAM_FACTORY_TOOLCHAIN", "LOAM_FACTO
 TICKET = "## Goal and why\n\nMake the widget work.\n\n## Merge checklist\n\n- read the diff\n"
 PR_URL = "https://github.com/acme/widget/pull/9"
 
-# FAKE_SPANS names a file each fake call appends "<start> <end>" to after a 1 s sleep. A reply of STOP writes
-# FACTORY_STOP into the run dir 1 s in, then answers with text that is not JSON, so the grader calls again.
+# FAKE_SPANS names a file each fake call appends "<who> <start> <end>" to after sleeping FAKE_SLEEP (claude) or
+# FAKE_CODEX_SLEEP (codex) seconds, 3 by default. A reply of STOP writes FACTORY_STOP into the run dir 1 s in, then
+# answers with text that is not JSON, so the grader calls again.
 SPAN = """
 start = time.time()
 if os.environ.get("FAKE_SPANS"):
-    time.sleep(1)
+    time.sleep(float(os.environ.get(SLEEP, "3")))
     with open(os.environ["FAKE_SPANS"], "a") as f:
-        f.write("%f %f\\n" % (start, time.time()))
+        f.write("%s %f %f\\n" % (WHO, start, time.time()))
 """
 
 FAKE_CLAUDE = """#!/usr/bin/env python3
 import json, os, sys, time
-reply = sys.stdin.read().rsplit("REPLY ", 1)[1].splitlines()[0]
+prompt = sys.stdin.read()
+reply = prompt.rsplit("REPLY ", 1)[1].splitlines()[0]
+WHO, SLEEP = prompt.split("ROLE ", 1)[1].split()[0], "FAKE_SLEEP"
 if reply == "STOP":
     time.sleep(1)
     open(os.path.join(os.environ["FAKE_RUN"], "FACTORY_STOP"), "w").close()
@@ -47,6 +52,7 @@ if reply == "STOP":
 
 FAKE_CODEX = """#!/usr/bin/env python3
 import os, pathlib, sys, time
+WHO, SLEEP = "codex", "FAKE_CODEX_SLEEP"
 """ + SPAN + """out = pathlib.Path(sys.argv[sys.argv.index("-o") + 1])
 calls = out.parent / "codex-calls"
 with calls.open("a") as f:
@@ -96,6 +102,7 @@ class CappedReviewTests(unittest.TestCase):
         tmp = tempfile.TemporaryDirectory()
         self.addCleanup(tmp.cleanup)
         self.top = pathlib.Path(tmp.name)
+        self.addCleanup(subprocess.run, ["pkill", "-f", str(self.top)], check=False)
         origin = self.top / "origin.git"
         git("init", "-q", "--bare", str(origin), cwd=self.top)
         self.wt = self.top / "wt"
@@ -125,7 +132,15 @@ class CappedReviewTests(unittest.TestCase):
     def run_loop(self, reviews: list[object], codex: list[str | None] | None = None,
                  judges: list[object] | None = None, env_extra: dict[str, str] | None = None,
                  status: int = 0) -> tuple[str, list[dict]]:
-        """Run one round per reply of `graders "$ROUND" && open_pr`; return the loop's stderr and the gh calls.
+        """Run one round per reply of `graders "$ROUND" && open_pr`; return the loop's stderr and the gh calls."""
+        proc = subprocess.run(**self.loop_cmd(reviews, codex, judges, env_extra), capture_output=True, check=False)
+        self.assertEqual(proc.returncode, status, proc.stderr)
+        calls = [json.loads(x) for x in self.gh_log.read_text().splitlines()] if self.gh_log.exists() else []
+        return proc.stderr, calls
+
+    def loop_cmd(self, reviews: list[object], codex: list[str | None] | None = None,
+                 judges: list[object] | None = None, env_extra: dict[str, str] | None = None) -> dict:
+        """subprocess arguments for run_loop's loop.
 
         reviews[k] is the reviewer's reply in round k+1 (a string goes verbatim, anything else as JSON).
         judges[k], when given, is the judge's reply in round k+1 the same way; the judge passes otherwise.
@@ -144,20 +159,16 @@ class CappedReviewTests(unittest.TestCase):
             'touch "$LEDGER" "$DAILY"; date -u +%s > "$RUN/launched"; date -u +%s > "$RUN/started"\n'
             f"BODY=\"$TICKET\"; CODEX_REVIEW={'yes' if codex is not None else 'no'}; CODEX_PATH='{self.bin}'\n"
             "notify() { :; }; alert() { :; }\n"
-            'build_evidence() { printf \'REPLY %s\\n\' "$(cat "$RUN/reply.$(basename "$1" .md).$ROUND")"; }\n'
+            'build_evidence() { printf \'ROLE %s\\nREPLY %s\\n\' "$(basename "$1" .md)" "$(cat "$RUN/reply.$(basename "$1" .md).$ROUND")"; }\n'
             f'for ROUND in $(seq 1 {len(reviews)}); do graders "$ROUND" && open_pr; done\n'
             "echo 'no PR opened' >&2; exit 9\n"
         )
         env = {k: v for k, v in os.environ.items() if k not in INHERITED}
-        proc = subprocess.run(["bash", "-c", f". bin/factory\n{script}"], cwd=ROOT,
-                              env={**env, "FACTORY_SOURCED": "1", "FACTORY_ROOT": str(ROOT),
-                                   "FACTORY_RUNS_ROOT": str(self.top / "runs"), "REPO": "acme/widget",
-                                   "TICKET": TICKET, "PATH": f"{self.bin}:{env['PATH']}",
-                                   "FAKE_RUN": str(self.run_dir), **(env_extra or {})},
-                              capture_output=True, text=True, check=False)
-        self.assertEqual(proc.returncode, status, proc.stderr)
-        calls = [json.loads(x) for x in self.gh_log.read_text().splitlines()] if self.gh_log.exists() else []
-        return proc.stderr, calls
+        return {"args": ["bash", "-c", f". bin/factory\n{script}"], "cwd": ROOT, "text": True,
+                "env": {**env, "FACTORY_SOURCED": "1", "FACTORY_ROOT": str(ROOT),
+                        "FACTORY_RUNS_ROOT": str(self.top / "runs"), "REPO": "acme/widget",
+                        "TICKET": TICKET, "PATH": f"{self.bin}:{env['PATH']}",
+                        "FAKE_RUN": str(self.run_dir), **(env_extra or {})}}
 
     def pr_create(self, calls: list[dict]) -> dict:
         creates = [c for c in calls if c["args"][:2] == ["pr", "create"]]
@@ -344,41 +355,57 @@ class CappedReviewTests(unittest.TestCase):
                 self.assertNotIn("Draft:", pr["body"])
                 self.assertEqual(self.issues(calls), [])
 
-    def spans(self, spent: float) -> list[list[float]]:
-        """The (start, end) of each grader call in one clean round with the ticket ledger at `spent` usd."""
+    def assert_codex_gone(self) -> None:
+        """No fake call outlives the supervisor, and no call file holds the run's slot."""
+        time.sleep(0.5)
+        left = subprocess.run(["pgrep", "-f", str(self.top)], capture_output=True, text=True, check=False).stdout
+        self.assertEqual(left, "", "a fake call outlived the supervisor")
+        self.assertEqual(sorted(x.name for x in self.run_dir.glob("call*")), [])
+
+    def test_the_codex_review_runs_beside_the_judge_and_the_reviewer(self) -> None:
+        # The Codex review only reads the tree, so its call overlaps both Claude graders, which still run one after
+        # the other. Each fake call takes 3 s, the Codex one 6 s, so a slow runner still shows the overlap.
         self.new_run()
-        (self.run_dir / "ledger.jsonl").write_text(json.dumps({"round": 1, "role": "worker", "cost_usd": spent}) + "\n")
-        spans = self.top / "spans"
-        stderr, calls = self.run_loop([CLEAN_REVIEW], codex=[json.dumps(CLEAN_CODEX)],
-                                      env_extra={"FAKE_SPANS": str(spans)})
+        spans_file = self.top / "spans"
+        stderr, _ = self.run_loop([CLEAN_REVIEW], codex=[json.dumps(CLEAN_CODEX)],
+                                  env_extra={"FAKE_SPANS": str(spans_file), "FAKE_CODEX_SLEEP": "6"})
         self.assertIn(f"EXIT pr-opened (0): {PR_URL} after 1 rounds", stderr)
-        return sorted([float(x) for x in line.split()] for line in spans.read_text().splitlines())
+        spans = {who: (float(a), float(b)) for who, a, b in (x.split() for x in spans_file.read_text().splitlines())}
+        self.assertEqual(sorted(spans), ["codex", "judge", "reviewer"])
+        self.assertLessEqual(spans["judge"][1], spans["reviewer"][0], spans)
+        self.assertLess(spans["codex"][0], spans["judge"][1], spans)
+        self.assertGreater(spans["codex"][1], spans["reviewer"][0], spans)
 
-    def test_the_graders_run_at_once_unless_a_cap_is_near(self) -> None:
-        # The judge, the reviewer and the Codex review only read the tree, so their calls overlap.
-        spans = self.spans(0)
-        self.assertEqual(len(spans), 3)
-        self.assertLess(max(s for s, _ in spans), min(e for _, e in spans), spans)
-        # 56 of the 60 usd ticket budget leaves no room for two 5 usd grader calls at once, so they run one after
-        # another, and each still passes the cap check it would have passed alone.
-        spans = self.spans(56)
-        self.assertEqual(len(spans), 3)
-        for (_, end), (start, _) in zip(spans, spans[1:]):
-            self.assertLessEqual(end, start, spans)
-        self.assertIn("so they run one after another", (self.run_dir / "factory.log").read_text())
-
-    def test_a_stop_one_grader_asks_for_ends_the_run_once_the_others_end(self) -> None:
-        # The reviewer's first reply writes FACTORY_STOP, so its second call stops the run from its subshell; the
-        # supervisor replays that stop after the judge and the Codex review ended, and grades nothing.
+    def test_a_stop_the_reviewer_asks_for_ends_the_codex_review_running_beside_it(self) -> None:
+        # The reviewer's first reply writes FACTORY_STOP, so its second call stops the run while the Codex review's
+        # 60 s call still runs: the supervisor ends that call and exits at once, and grades nothing.
         self.new_run()
-        stderr, calls = self.run_loop(["STOP"], codex=[json.dumps(CLEAN_CODEX)], status=2)
+        started = time.time()
+        stderr, calls = self.run_loop(["STOP"], codex=[json.dumps(CLEAN_CODEX)], status=2,
+                                      env_extra={"FAKE_SPANS": str(self.top / "spans"), "FAKE_SLEEP": "0",
+                                                 "FAKE_CODEX_SLEEP": "60"})
+        self.assertLess(time.time() - started, 30)
         self.assertEqual(calls, [])
         self.assertEqual((self.run_dir / "status").read_text(), "stopped\n")
         self.assertFalse((self.run_dir / "round-1.graded.sha").exists())
         log = (self.run_dir / "factory.log").read_text()
         self.assertIn("judge verdict: pass", log)
-        self.assertIn("codex review verdict: approve", log)
+        self.assertNotIn("codex review verdict", log)
         self.assertRegex(log.splitlines()[-1], "EXIT stopped \\(2\\): FACTORY_STOP before the reviewer call$")
+        self.assert_codex_gone()
+
+    def test_term_to_the_supervisor_ends_the_codex_review(self) -> None:
+        # TERM to the supervisor alone, while the judge's call and the Codex review's call both run, ends both.
+        self.new_run()
+        proc = subprocess.Popen(**self.loop_cmd([CLEAN_REVIEW], codex=[json.dumps(CLEAN_CODEX)], env_extra={
+            "FAKE_SPANS": str(self.top / "spans"), "FAKE_SLEEP": "60", "FAKE_CODEX_SLEEP": "60"}),
+            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, start_new_session=True)
+        deadline = time.time() + 20
+        while not all((self.run_dir / f).exists() for f in ("call", "call-codex-review")) and time.time() < deadline:
+            time.sleep(0.1)
+        proc.send_signal(signal.SIGTERM)
+        self.assertEqual(proc.wait(timeout=30), 143)
+        self.assert_codex_gone()
 
 
 if __name__ == "__main__":
