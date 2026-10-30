@@ -11,9 +11,11 @@ A quote-aware scan of each line finds its comment, carries open quotes across li
 pulls out each "$(...)" or `...` inside double quotes, over all its lines, as code of its own
 scanned the same way; the enclosing code holds one word in its place. Each piece of code
 is then split into words and operators with shlex, so a `| grep -q` inside a quoted string is
-one word and is not a pipe. Heredoc bodies are skipped.
+one word and is not a pipe. Heredoc bodies are skipped, also inside a substitution, so a quote
+in one is text. A file that ends with a quote, substitution or heredoc still open fails, naming
+the line that opened it, since the lint could not read past it.
 
-Exit status: 0 when no file has a hit, 1 otherwise.
+Exit status: 0 when no file has a hit or an open end, 1 otherwise.
 """
 
 from __future__ import annotations
@@ -29,7 +31,7 @@ SHEBANG = re.compile(r"^#!.*[/ ](bash|sh)(\s|$)")
 EXCLUDE = ("cultivation/parked/", "docs/archive/")
 PIPES = {"|", "|&"}
 SUBS = ("$(", "`")
-CASE = re.compile(r"case\s+\S+\s+in(?=[\s;]|$)")
+CASE = re.compile(r"""case\s+(?:"[^"]*"|'[^']*'|\S+)\s+in(?=[\s;]|$)""")
 ESAC = re.compile(r"esac(?=[\s;&|)]|$)")
 # Tokens that end grep's argument list: the next pipeline stage, list operator or group end.
 ENDS = {"|", "|&", "||", "&&", ";", ";;", "&", ")", "(", "{", "}"}
@@ -162,21 +164,44 @@ def sets_pipefail(toks: list[str]) -> bool:
     return False
 
 
-def scan(text: str) -> tuple[bool, list[int]]:
-    """Return whether the file sets pipefail, and the lines that pipe into grep -q."""
+def heredocs_in(toks: list[str]) -> list[tuple[str, bool]]:
+    """The heredocs these words open, as (delimiter, strip leading tabs)."""
+    docs = []
+    for i, tok in enumerate(toks[:-1]):
+        before = "".join(toks[:i])
+        if tok == "<<" and before.count("((") <= before.count("))"):  # not a shift in $(( ))
+            delim = toks[i + 1]
+            if delim == "-" and i + 2 < len(toks):
+                delim = "-" + toks[i + 2]
+            docs.append((delim.lstrip("-"), delim.startswith("-")))
+    return docs
+
+
+def scan(text: str) -> tuple[bool, list[int], int | None]:
+    """Return whether the file sets pipefail, the lines that pipe into grep -q, and the line
+    that opened a quote, substitution or heredoc still open at the end (None when all closed)."""
     pipefail, found = False, set()
     heredocs: list[tuple[str, bool]] = []  # pending (delimiter, strip leading tabs)
-    carry: tuple[str, int] | None = None  # a pipe that ended the line before, and its line
+    carry: tuple[list[str], int] | None = None  # an unfinished command's words, and its first line
     stack: list[str] = []  # quotes and substitutions left open by the line before
     pending: list[str] = []  # the lines so far of a substitution left open, from line opened
-    opened = 0
+    opened = open_at = doc_at = 0
+    inner: int | None = None  # the first open line a substitution's own scan reported
     for n, line in enumerate(text.splitlines(), 1):
         if heredocs:
+            if pending:  # the body belongs to the open substitution, whose own scan skips it
+                pending.append(line)
             delim, tabs = heredocs[0]
             if (line.lstrip("\t") if tabs else line) == delim:
                 heredocs.pop(0)
             continue
+        in_code = not stack or stack[-1] not in ("'", '"')  # the line does not begin inside a quote
+        if not stack:
+            open_at = n
+        cont = line.rstrip().endswith("\\")  # an escaped newline: the command goes on
         top, bodies, head, tail, stack = split(line.rstrip().removesuffix("\\"), stack)
+        if tail is not None and cont:
+            tail += "\\"  # the substitution's own scan joins the next line too
         subs = [(n, body) for body in bodies]
         if head is not None:
             subs.insert(0, (opened, "\n".join([*pending, head])))
@@ -185,23 +210,29 @@ def scan(text: str) -> tuple[bool, list[int]]:
             opened = opened if pending else n
             pending.append(tail)
         for first, body in subs:  # a substitution's body is code of its own, carry and all
-            found.update(first + k - 1 for k in scan(body)[1])
+            _, lines, gap = scan(body)
+            found.update(first + k - 1 for k in lines)
+            if gap is not None and inner is None:
+                inner = first + gap - 1
         toks = words(top)
         pipefail = pipefail or sets_pipefail(toks)
         if hits(toks):
             found.add(n)
-        elif carry and toks and hits([carry[0], *toks]):
+        elif carry and toks and hits([*carry[0], *toks]):
             found.add(carry[1])
-        if toks:
-            carry = (toks[-1], n) if toks[-1] in PIPES else None
-        for i, tok in enumerate(toks[:-1]):
-            before = "".join(toks[:i])
-            if tok == "<<" and before.count("((") <= before.count("))"):  # not a shift in $(( ))
-                delim = toks[i + 1]
-                if delim == "-" and i + 2 < len(toks):
-                    delim = "-" + toks[i + 2]
-                heredocs.append((delim.lstrip("-"), delim.startswith("-")))
-    return pipefail, sorted(found)
+        if toks and cont:
+            carry = ([*carry[0], *toks], carry[1]) if carry else (toks, n)
+        elif toks:
+            carry = ([toks[-1]], n) if toks[-1] in PIPES else None
+        docs = heredocs_in(toks)
+        if tail is not None and in_code:  # a heredoc opened inside a substitution left open
+            docs += heredocs_in(words(tail))
+        if docs and not heredocs:
+            doc_at = n
+        heredocs += docs
+    if heredocs:
+        return pipefail, sorted(found), doc_at
+    return pipefail, sorted(found), open_at if stack else inner
 
 
 def shell_files(root: pathlib.Path) -> list[str]:
@@ -227,7 +258,11 @@ def main() -> int:
     root = pathlib.Path(ap.parse_args().root)
     bad = 0
     for rel in shell_files(root):
-        pipefail, found = scan((root / rel).read_text(encoding="utf-8", errors="replace"))
+        pipefail, found, gap = scan((root / rel).read_text(encoding="utf-8", errors="replace"))
+        if gap is not None:  # fail closed: a parsing gap must be loud, never a silent skip
+            print(f"FAIL: {rel}:{gap}: the lint could not find the end of the quote, substitution "
+                  f"or heredoc opened here, so it could not read the lines after it")
+            bad += 1
         if not pipefail:
             continue
         for n in found:

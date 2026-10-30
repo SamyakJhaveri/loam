@@ -13,7 +13,8 @@ SCRIPT = ROOT / "bin/shell_lint.py"
 
 BAD = "#!/usr/bin/env bash\nset -o pipefail\necho hi | grep -q hi && echo yes\necho hi | grep -vq x || echo no\n"
 NO_PIPEFAIL = "#!/usr/bin/env bash\necho hi | grep -q hi && echo yes\n"
-# Lines that must not count, then lines that must (lines 18 to 34), then substitutions from line 35.
+# Lines that must not count, then lines that must (lines 18 to 34), then substitutions from line 35,
+# then heredocs inside a substitution, case words and grep continuations from line 50.
 CASES = """#!/usr/bin/env bash
 set -euo pipefail
 fail a "lacks | grep -q"  # a quoted pipe is one word
@@ -63,6 +64,30 @@ out="$(yes needle | \\
 out="$(case check in
   check) yes needle | grep -q needle ;;
 esac)"
+out="$(cat <<'EOF'
+It's ready.
+EOF
+)"
+yes needle | grep -q needle
+out="$(cat <<'EOF'
+1) Run "cmd | grep -q needle".
+EOF
+)"
+out="$(case " $* " in
+  *) yes needle | grep -q needle ;;
+esac)"
+out="$(case "$(printf x)" in
+  x) yes needle | grep -q needle ;;
+esac)"
+yes needle | grep \\
+  -q needle
+out="$(yes needle | grep \\
+  -q needle)"
+out="$(cat <<'EOF'
+It's
+EOF
+yes needle | grep -q needle
+)"
 """
 
 
@@ -95,7 +120,14 @@ class ShellLintTest(unittest.TestCase):
         res = lint({"cases.sh": CASES})
         self.assertEqual(res.returncode, 1, res.stdout + res.stderr)
         self.assertEqual([line.split(": ")[1] for line in res.stdout.splitlines()],
-                         [f"cases.sh:{n}" for n in (18, 19, 20, 21, 23, 25, *range(26, 35), 43, 45, 48)])
+                         [f"cases.sh:{n}" for n in (18, 19, 20, 21, 23, 25, *range(26, 35), 43, 45, 48,
+                                                    54, 60, 63, 65, 67, 72)])
+
+    def test_open_quote_fails_closed(self) -> None:
+        res = lint({"open.sh": "#!/usr/bin/env bash\necho 'oops\nset -o pipefail\nyes | grep -q x\n"})
+        self.assertEqual(res.returncode, 1, res.stdout + res.stderr)
+        self.assertEqual([line.split(": ")[1] for line in res.stdout.splitlines()], ["open.sh:2"])
+        self.assertIn("could not find the end of the quote, substitution or heredoc", res.stdout)
 
     def test_clean_tree_passes(self) -> None:
         res = lint({"ok.sh": "#!/bin/sh\nset -o pipefail\nout=$(echo hi); grep -q hi <<<\"$out\"\n"})
