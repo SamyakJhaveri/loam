@@ -2,9 +2,9 @@
 
 `bin/factory` is sourced (FACTORY_SOURCED=1) and the real call_json, run_codex_review, and worker_round run with a
 fake `claude` or `codex` first on PATH. Each fake backgrounds a writer that appends to a marker file every 0.2 s and
-then exits 0 with a usable reply, so the call ends normally and only call_end's group kill can stop the writer. The
-done-checks cover the worker call; these cover the grader and Codex review calls, a writer that ignores TERM, and
-that the worker call still gets its prompt on stdin and its env pins. No network.
+then exits 0 with a usable reply, so the call ends normally and only call_end can stop the writer. The done-checks
+cover the worker call; these cover the grader and Codex review calls, a writer that ignores TERM, one in a session of
+its own, and that the worker call still gets its prompt on stdin and its env pins. No network.
 """
 
 from __future__ import annotations
@@ -20,8 +20,12 @@ import unittest
 ROOT = pathlib.Path(__file__).resolve().parents[2]
 INHERITED = ("FACTORY_ROOT", "FACTORY_GH", "LOAM_FACTORY_TOOLCHAIN", "LOAM_FACTORY_COPIER", "REPO", "RUN", "LOG")
 
-# FAKE_IGNORE_TERM makes the writer ignore TERM, so only KILL stops it.
-WRITER = """( [ -z "${FAKE_IGNORE_TERM:-}" ] || trap '' TERM; while :; do echo x >> "$FAKE_DIR/mark"; sleep 0.2; done ) > /dev/null 2>&1 &
+# FAKE_IGNORE_TERM makes the writer ignore TERM, so only KILL stops it. FAKE_OWN_SESSION starts it in a session of its
+# own, out of the call's group, as Claude Code starts each Bash tool shell, so only the FACTORY_CALL_TAG sweep finds it.
+WRITER = """w="[ -z '${FAKE_IGNORE_TERM:-}' ] || trap '' TERM; while :; do echo x >> '$FAKE_DIR/mark'; sleep 0.2; done"
+if [ -n "${FAKE_OWN_SESSION:-}" ]; then perl -MPOSIX -e 'setsid; exec @ARGV' bash -c "$w" > /dev/null 2>&1 &
+else ( eval "$w" ) > /dev/null 2>&1 &
+fi
 sleep 0.5
 """
 FAKE_CLAUDE = """#!/usr/bin/env bash
@@ -64,7 +68,7 @@ class CallGroupTests(unittest.TestCase):
         for name, text in (("claude", FAKE_CLAUDE), ("codex", FAKE_CODEX)):
             (self.bin / name).write_text(text)
             (self.bin / name).chmod(0o755)
-        self.addCleanup(subprocess.run, ["pkill", "-f", str(self.bin)], check=False)
+        self.addCleanup(subprocess.run, ["pkill", "-f", str(self.top)], check=False)
 
     def run_call(self, call: str, **extra: str) -> subprocess.CompletedProcess[str]:
         script = (
@@ -90,13 +94,13 @@ class CallGroupTests(unittest.TestCase):
         before = mark.stat().st_size
         time.sleep(1)
         self.assertEqual(mark.stat().st_size, before, "the writer kept writing after the call returned")
-        left = subprocess.run(["pgrep", "-f", str(self.bin)], capture_output=True, text=True, check=False).stdout
+        left = subprocess.run(["pgrep", "-f", str(self.top)], capture_output=True, text=True, check=False).stdout
         self.assertEqual(left, "", "a process the call started is still running")
 
     def test_grader_call_leaves_no_child(self) -> None:
         proc = self.run_call('call_json 1 judge judge "$RUN/prompt.md" "$RUN/frozen/judge.schema.json"')
         self.assert_no_survivor(proc)
-        self.assertIn("left processes in its group", (self.run_dir / "factory.log").read_text())
+        self.assertIn("left processes behind", (self.run_dir / "factory.log").read_text())
 
     def test_codex_review_call_leaves_no_child(self) -> None:
         proc = self.run_call("run_codex_review 1")
@@ -108,6 +112,11 @@ class CallGroupTests(unittest.TestCase):
                              FAKE_IGNORE_TERM="1")
         self.assert_no_survivor(proc)
         self.assertIn("outlived TERM by 5 s; sending KILL", (self.run_dir / "factory.log").read_text())
+
+    def test_writer_in_its_own_session_is_killed(self) -> None:
+        proc = self.run_call("worker_round 1", FAKE_OWN_SESSION="1")
+        self.assert_no_survivor(proc)
+        self.assertIn("left processes behind", (self.run_dir / "factory.log").read_text())
 
     def test_worker_call_keeps_its_prompt_and_env(self) -> None:
         proc = self.run_call("worker_round 1", FACTORY_WORKER_MODEL="claude-pin-1")

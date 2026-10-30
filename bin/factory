@@ -1305,30 +1305,46 @@ codex_result() { # jsonl exit_code [duration_ms] -> result JSON on stdout; durat
 # no setsid(1)), so every process it starts shares its process group, whose id is the call's pid. In that session GNU
 # timeout needs no --foreground, and at CALL_TIMEOUT_SEC signals the whole group, KILL 5 s after TERM: --foreground
 # signalled the call alone, so a child it started kept editing the worktree while the supervisor checked and graded
-# it. The call keeps the caller's stdin (<&0, since a background command would get /dev/null), stdout and stderr.
-call_start() { # dir cmd... -> CALL_PID
+# it. Claude Code starts each Bash tool shell in a new session, out of that group, but the shell keeps the call's
+# environment, so the call also carries FACTORY_CALL_TAG, unique to it, which call_tagged finds. The call keeps the
+# caller's stdin (<&0, since a background command would get /dev/null), stdout and stderr.
+call_start() { # dir cmd... -> CALL_PID, CALL_TAG
   local dir="$1"; shift
-  ( cd "$dir" && exec perl -MPOSIX -e 'POSIX::setsid() == $$ or die "setsid: $!\n"; exec { $ARGV[0] } @ARGV or die "exec $ARGV[0]: $!\n"' "$@" ) <&0 &
+  CALL_TAG="$$.$SECONDS.$RANDOM"
+  ( cd "$dir" && export FACTORY_CALL_TAG="$CALL_TAG" \
+      && exec perl -MPOSIX -e 'POSIX::setsid() == $$ or die "setsid: $!\n"; exec { $ARGV[0] } @ARGV or die "exec $ARGV[0]: $!\n"' "$@" ) <&0 &
   CALL_PID=$!
 }
-# However the call ends, by exit or by its limit, whatever it left in its group gets TERM, then KILL after a 5 s
-# grace, and must be gone 5 s later, or the run stops: a child left writing the tree would race the checks and the
-# graders (LOOP.md, Exits). The leader is reaped first, since a zombie leader keeps its group alive.
+# However the call ends, by exit or by its limit, whatever it left behind, in its group or carrying its tag, gets
+# TERM, then KILL after a 5 s grace, and must be gone 5 s later, or the run stops: a child left writing the tree would
+# race the checks and the graders (LOOP.md, Exits). The leader is reaped first, since a zombie leader keeps its group
+# alive.
 call_end() { # role -> the call's own exit status
   local rc=0
   wait "$CALL_PID" || rc=$?
-  group_gone 0 && return "$rc"
-  log "the $1 call left processes in its group $CALL_PID; sending TERM"
-  kill -TERM -- "-$CALL_PID" 2> /dev/null; kill -CONT -- "-$CALL_PID" 2> /dev/null
-  group_gone 50 && return "$rc"
-  log "the $1 call's group $CALL_PID outlived TERM by 5 s; sending KILL"
-  kill -KILL -- "-$CALL_PID" 2> /dev/null
-  group_gone 50 && return "$rc"
-  finish stopped-environment "the $1 call's process group $CALL_PID is still alive 5 s after KILL"
+  call_gone 0 && return "$rc"
+  log "the $1 call left processes behind (group $CALL_PID or tag $CALL_TAG); sending TERM"
+  call_signal TERM; call_signal CONT
+  call_gone 50 && return "$rc"
+  log "the $1 call's processes outlived TERM by 5 s; sending KILL"
+  call_signal KILL
+  call_gone 50 && return "$rc"
+  finish stopped-environment "the $1 call's processes (group $CALL_PID or tag $CALL_TAG) are still alive 5 s after KILL"
 }
-group_gone() { # tenths of a second to wait -> 0 once CALL_PID's group has no process
+call_signal() { kill -"$1" -- "-$CALL_PID" 2> /dev/null; call_tagged "$1"; }
+# Linux only: a host with no /proc (a Mac) finds no tagged process, and the group kill alone stands. A zombie's
+# environ reads empty, so a zombie never counts.
+call_tagged() { # signal, or 0 to look -> 0 when a process carries FACTORY_CALL_TAG=CALL_TAG
+  perl -e '($t, $s) = @ARGV; $n = 0;
+    for $f (glob "/proc/[0-9]*/environ") {
+      open($h, "<", $f) or next; local $/; $e = <$h>; close $h;
+      next unless defined $e && grep { $_ eq $t } split /\0/, $e;
+      ($p) = $f =~ m{^/proc/(\d+)/}; kill($s, $p); $n++ }
+    exit($n ? 0 : 1)' "FACTORY_CALL_TAG=$CALL_TAG" "$1"
+}
+call_gone() { # tenths of a second to wait -> 0 once nothing is left in CALL_PID's group or carries CALL_TAG
   local i=0
-  while kill -0 -- "-$CALL_PID" 2> /dev/null; do
+  while kill -0 -- "-$CALL_PID" 2> /dev/null || call_tagged 0; do
     [ "$i" -lt "$1" ] || return 1
     sleep 0.1; i=$((i + 1))
   done

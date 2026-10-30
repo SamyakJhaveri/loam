@@ -81,7 +81,7 @@ When no cached copy matches, the run stops `stopped-environment` and names the c
 | `stuck` | the same failing check set twice in a row | yes |
 | `ticket-defect` | round 0 found a check that passes on base, or the block aborted on base (`FAIL checks-aborted`) | no |
 | `abandon` | an `ABANDON NAME reason` line in `decisions.md`; the owner is paged | yes |
-| `stopped-environment` | a `claude` result with `is_error` outside the capped set (`error_max_budget_usd`, `error_max_turns`) or with no result event, a Codex exit other than 0 or no `turn.completed` event, a `gh` or `git` failure, including a call cut off at `NET_TIMEOUT_SEC` (a cut-off `gh issue view` in the frozen pass too, since the run already reads `running`), a model call's process group still alive 5 s after KILL, or a frozen-set hash mismatch | no, and it pages at once |
+| `stopped-environment` | a `claude` result with `is_error` outside the capped set (`error_max_budget_usd`, `error_max_turns`) or with no result event, a Codex exit other than 0 or no `turn.completed` event, a `gh` or `git` failure, including a call cut off at `NET_TIMEOUT_SEC` (a cut-off `gh issue view` in the frozen pass too, since the run already reads `running`), a process a model call left behind still alive 5 s after KILL, or a frozen-set hash mismatch | no, and it pages at once |
 | `stopped-cap` | `MAX_ROUNDS`, `TICKET_BUDGET_USD`, `DAILY_BUDGET_USD`, or `MAX_HOURS` reached; `ROUND_BUDGET_USD` and `MAX_TURNS` bound one worker call and are not an exit: a call that hits either (`error_max_budget_usd`, `error_max_turns`) is a finished round and step 6 decides | yes |
 | `stopped` | `FACTORY_STOP` present before a call | no |
 
@@ -95,7 +95,8 @@ A reset past `MAX_HOURS` exits `stopped-environment`.
 A call with no result event (killed by `CALL_TIMEOUT_SEC`, or crashed) exits `stopped-environment` and counts no round.
 Every model call (the worker, a grader, the Codex review) runs in a session of its own, so its process group holds every process it starts; `CALL_TIMEOUT_SEC` signals that whole group, KILL 5 s after TERM.
 However the call ends, by exit or by the limit, the supervisor sends what is left of its group TERM, then KILL after 5 s, before any check or grader reads the tree, since a child left writing the worktree would race them.
-A group still alive 5 s after KILL exits `stopped-environment` and counts no round.
+Claude Code starts each Bash tool shell in a new session, out of that group, so the call also carries a `FACTORY_CALL_TAG` unique to it, and on Linux the same TERM and KILL reach every process whose environment holds it; a host with no `/proc` (a Mac) has the group kill alone.
+Any of them still alive 5 s after KILL exits `stopped-environment` and counts no round.
 A killed or crashed Claude worker call left no cost to read but may have spent up to its `--max-budget-usd` ceiling, so its ledger row charges `ROUND_BUDGET_USD` (subtype `no-result` marks it as a charge) and the ticket and daily caps stay bounds (#319); a Codex worker call keeps `cost_usd` null.
 The stop message lists the commits made since the round began, or says `no commits`.
 
