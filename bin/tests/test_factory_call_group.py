@@ -102,6 +102,7 @@ class CallGroupTests(unittest.TestCase):
         self.assertEqual(mark.stat().st_size, before, "the writer kept writing after the call returned")
         left = subprocess.run(["pgrep", "-f", str(self.top)], capture_output=True, text=True, check=False).stdout
         self.assertEqual(left, "", "a process the call started is still running")
+        self.assertFalse((self.run_dir / "call").exists(), "call_end left the run's call file")
 
     def test_grader_call_leaves_no_child(self) -> None:
         proc = self.run_call('call_json 1 judge judge "$RUN/prompt.md" "$RUN/frozen/judge.schema.json"')

@@ -203,7 +203,8 @@ The frozen re-exec is an `exec`, which keeps the pid and its start time, so the 
 It does so under `owner.lock` (a lock older than 60 s is removed first), and only while `owner` still reads the line it judged and the status still reads `running` or `waiting-limit`, so a relaunch that rewrote `owner` keeps its slot.
 A missing or malformed `owner` holds the slot, as does a run that started before `owner` existed.
 A `ps` or `date` that fails or prints nothing cannot tell, so it holds the slot; a failed `kill -0` still means the pid is gone.
-A gone or zombie pid still holds the slot while a live process has that pid as its process group id, such as a worker call left running after a SIGKILL outside tmux; the heartbeat loop is one such member and exits within 300 s of its supervisor, so a reap waits at most one beat.
+A gone or zombie pid still holds the slot while a live process has that pid as its process group id; the heartbeat loop is one such member and exits within 300 s of its supervisor, so a reap waits at most one beat.
+A model call runs in a session of its own, so it outlives a SIGKILLed supervisor and keeps writing the worktree until `CALL_TIMEOUT_SEC`; each call writes `call` in the run directory (its process group id and its `FACTORY_CALL_TAG`, through a temp file and `mv`), removed once the call's processes are confirmed gone, and a gone owner still holds the slot while that group has a member that is not a zombie or, on Linux, a process carries that tag.
 A run directory with `launched` and no `status` file holds a slot until its run writes one or the operator removes it.
 
 ## Notify
