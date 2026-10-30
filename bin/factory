@@ -708,6 +708,7 @@ exit_words() { # status -> "<level> <words>"
     abandon) echo "needs-you gave up: the worker says the ticket cannot be done as written" ;;
     stopped) echo "info stopped, as FACTORY_STOP asked" ;;
     stopped-cap) echo "fail stopped at a limit on rounds, money or hours" ;;
+    stopped-daily) echo "info stopped at today's daily budget; the timer relaunches it tomorrow" ;;
     stuck) echo "fail stopped: the same checks failed twice in a row" ;;
     no-change) echo "fail stopped: a round changed nothing" ;;
     stopped-environment) echo "fail stopped on a machine or tool problem, not on the ticket" ;;
@@ -950,6 +951,7 @@ nav_arm:\$nav, ts:\$ts}" "$4" 2> /dev/null) \
   log "$2 round $1: $(printf '%s' "$line" | jq -r '"cost=\(.cost_usd) usd, turns=\(.num_turns), denials=\(.denials), \(.duration_ms)ms, \(.subtype)" + (if .role == "worker" then ", advisor_calls=\(.advisor_calls), advisor_usd=\(.advisor_usd)" else "" end)')"
 }
 
+# The daily cap says nothing about the ticket, so it has its own status, which next relaunches on a later UTC day.
 assert_caps() { # before every model call; the daily cap is "the next call could exceed it"
   local spent daily hours
   spent=$(ticket_spent); daily=$(daily_spent)
@@ -958,7 +960,7 @@ assert_caps() { # before every model call; the daily cap is "the next call could
   hours=$(( ( $(date -u +%s) - $(cat "$RUN/launched") ) / 3600 ))
   [ "$hours" -lt "$MAX_HOURS" ] || finish stopped-cap "wall clock: ${hours}h of ${MAX_HOURS}h since this launch"
   jq -en --argjson a "$daily" --argjson b "$ROUND_BUDGET_USD" --argjson c "$DAILY_BUDGET_USD" '($a + $b) > $c' > /dev/null \
-    && finish stopped-cap "daily budget: $daily spent today, the next call could exceed $DAILY_BUDGET_USD usd"
+    && finish stopped-daily "daily budget: $daily spent today, the next call could exceed $DAILY_BUDGET_USD usd"
   return 0
 }
 
@@ -2056,10 +2058,12 @@ cmd_stop() { # <issue|stem>
   [ "$n" -gt 0 ] || { echo "factory stop: no run directory under $RUNS_ROOT/$1" >&2; return 1; }
 }
 
+run_dir_of() { # <issue> <body> -> the run dir cmd_run names for this body
+  printf '%s/%s/%s' "$RUNS_ROOT" "$1" "$(printf '%s' "$2" | sha256_of | cut -c1-8)"
+}
+
 park_status() { # <issue> <body> -> the status of the run for this body, or none
-  local k
-  k=$(printf '%s' "$2" | sha256_of | cut -c1-8)   # the key cmd_run names the run dir by
-  cat "$RUNS_ROOT/$1/$k/status" 2> /dev/null || echo none
+  cat "$(run_dir_of "$1" "$2")/status" 2> /dev/null || echo none
 }
 
 # The F9 frontier timer's one step: launch the next unblocked ready-for-agent ticket, or say why not.
@@ -2182,6 +2186,8 @@ cmd_next() { # [--dry-run|--install]
   # The run of the issue's current body decides (park_status): no such run launches; stopped-environment
   # and stopped relaunch (the environment, not the ticket, ended them); every other exit parks the issue
   # until a human edits the body or removes the label, since the same body would fail the same way.
+  # stopped-daily relaunches once the UTC date of its status file has passed, and until then waits without
+  # launching, so the timer does not spin the issue against the spent budget every tick.
   # A run of an earlier body no longer parks the issue, so an edited body launches on the next tick.
   # The body travels as base64 so its newlines stay on one line; $(...) strips its trailing newlines
   # the way load_ticket's $(gh issue view ...) does, so the key matches the one cmd_run computes.
@@ -2197,8 +2203,13 @@ cmd_next() { # [--dry-run|--install]
     [ -n "$num" ] || continue
     body=$(printf '%s' "$b64" | base64 -d)
     st_last=$(park_status "$num" "$body")
+    if [ "$st_last" = stopped-daily ] \
+      && [ "$(date -u -r "$(run_dir_of "$num" "$body")/status" +%Y-%m-%d)" = "$(today)" ]; then
+      echo "waiting #$num: daily budget spent; relaunches after 00:00 UTC" >&2
+      continue
+    fi
     case "$st_last" in
-      none|stopped-environment|stopped)
+      none|stopped-environment|stopped|stopped-daily)
         if ! lint_err=$( { SRC="#$num"; BODY="$body"; ERRS=0; lint_body > /dev/null; } 2>&1 ); then
           lint_line=$(grep -m1 "^LINT #$num: " <<<"$lint_err") || lint_line=${lint_err%%$'\n'*}
           lint_err=${lint_line#"LINT #$num: "}
