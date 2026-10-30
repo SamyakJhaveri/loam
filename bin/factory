@@ -2370,7 +2370,7 @@ cmd_next() { # [--dry-run|--install]
   # launching, so the timer does not spin the issue against the spent budget every tick.
   # A run of an earlier body no longer parks the issue, so an edited body launches on the next tick.
   # The body travels as base64 so its newlines stay on one line; $(...) strips its trailing newlines
-  # the way load_ticket's $(gh issue view ...) does, so the key matches the one cmd_run computes.
+  # the way load_ticket's $(jq -r .body) of its gh api graphql read does, so the key matches the one cmd_run computes.
   # A ticket at pr-opened is assigned at launch, so it is skipped among the runner's own; if a human
   # unassigns it, its slot is already counted above while its worktree exists.
   # A launchable body is linted first (#314): the label alone does not make an issue a ticket, and a run of
