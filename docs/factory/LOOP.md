@@ -8,13 +8,13 @@ Rubric text lives only in the grader files.
 
 | Command | Does | Built in |
 |---|---|---|
-| `bin/factory lint <issue|file>` | static ticket lint, rules in `CONTRACT.md` | F2 |
+| `bin/factory lint <issue|file>` | static ticket lint, rules in `CONTRACT.md`; lint of an issue outside a Claude Code session (`CLAUDECODE`; the stage-2 session's own lint is not the operator's) adds a `lint` line to the issue's own `<issue>/owner-events.jsonl`, beside its run dirs, which the issue's next launch on that host moves into its run dir's `owner-events.jsonl` | F2 |
 | `bin/factory eval <grader> [--model M]` | replays frozen cases through the production grader call and compares verdicts; `EVAL_EFFORT` sets the effort (default `GRADER_EFFORT`), `EVAL_OUT=<dir>` keeps each raw reply | F6 |
 | `bin/factory eval-freeze [--evals-dir D] <run-dir>...` | copies each run's last round, when the judge passed it and no reviewer finding was high or medium, into `<evals-dir>/clean/<grader>/<key>-<sha8>/` (default `evals/clean/`), the prompt cut at `## Ticket`; prints `not frozen <run-dir>: <reason>` for the rest | F36 |
-| `bin/factory run <issue>` | round 0, then worker rounds, graders, PR | F1 |
+| `bin/factory run <issue>` | round 0, then worker rounds, graders, PR; each launch first appends the operator's events on the issue to `owner-events.jsonl` as `phase` `launch`, and a `run` line unless `next` (`FACTORY_BY_NEXT`) or a Claude Code session launched it | F1 |
 | `bin/factory status` | run states, spend, denials per round, worktree and PR readiness, preconditions | F1 |
-| `bin/factory status --criteria` | measures the trust criteria in `ARCHITECTURE.md` (Metrics) from the target's run directories; a criterion the run record cannot show prints `UNMEASURED` with the reason; reads files only, no model or `gh` call | 2026-10-19 |
-| `bin/factory stop <issue>` | writes `FACTORY_STOP` into the run dir | F1 |
+| `bin/factory status --criteria` | measures the trust criteria in `ARCHITECTURE.md` (Metrics) from the target's run directories; a criterion the run record cannot show prints `UNMEASURED` with the reason, a lower bound within its threshold (the operator actions, `at least n`) prints `INCONCLUSIVE`, or `FAIL` over it, and the premature-done count, a text matcher's estimate, always prints `INCONCLUSIVE: estimate: n of m failing rounds` (#443) with a line per counted round (its first `FAIL` line and the sentence read as a claim); a `FAIL` ends with `latest <date>`, the last `factory.log` date of the runs it names; reads files only, no model or `gh` call | 2026-10-19 |
+| `bin/factory stop <issue>` | writes `FACTORY_STOP` into the run dir, and, outside a Claude Code session, a `stop` line into its `owner-events.jsonl` | F1 |
 | `bin/runner [-C <dir>] <cmd>` | runs `<cmd>` on the runner: `ssh jhaveris bash -lc 'cd ~/Desktop/loam && <cmd>'`, or from `<dir>` there (quote a tilde, F8); `bin/runner sync` mirrors `.superpowers/factory/` to the same path on the runner with `rsync -az --delete`, excluding `runs/` and `__pycache__`; it never pulls (#36) | F0 |
 | `bin/factory next [--install]` | launches up to `MAX_PARALLEL` `ready-for-agent` issues with no assignee and no open native blocker, or assigned to the runner with a `stopped-daily` run (read through `gh api`); `--install` writes the ten-minute runner timer | F9 |
 
@@ -36,6 +36,8 @@ bin/factory.d/fixtures/        lint fixtures (CONTRACT.md)
 evals/<grader>/<case>/{prompt.md,expected.json}
 ~/.local/state/loam-factory/runs/<issue>/<sha8>/   on the runner, outside every checkout:
     status  ledger.jsonl  base.sha  frozen/  round-<k>.*  worker/decisions.md  pr-body.md  notify.failed
+    owner-events.jsonl  pr-closed   the operator actions status --criteria counts (ARCHITECTURE.md, Metrics)
+~/.local/state/loam-factory/runs/<issue>/owner-events.jsonl   lint's lines until the issue's next launch moves them into its run dir
 ~/.local/state/loam-factory/runs/<owner>__<repo>/<issue>/<sha8>/   the same, for a target named by -C (F8)
 ```
 
@@ -82,7 +84,7 @@ When no cached copy matches, the run stops `stopped-environment` and names the c
 | `stuck` | the same failing check set twice in a row | yes |
 | `ticket-defect` | round 0 found a check that passes on base, a `predict` line whose command exits non-zero on base, or the block aborted on base (`FAIL checks-aborted`) | no |
 | `abandon` | an `ABANDON NAME reason` line in `decisions.md`; the owner is paged | yes |
-| `stopped-environment` | a `claude` result with `is_error` outside the capped set (`error_max_budget_usd`, `error_max_turns`) or with no result event, a Codex exit other than 0 or no `turn.completed` event, a `gh` or `git` failure, including a call cut off at `NET_TIMEOUT_SEC` (a cut-off `gh issue view` in the frozen pass too, since the run already reads `running`), a process a model call left behind still alive 5 s after KILL, or a frozen-set hash mismatch | no, and it pages at once |
+| `stopped-environment` | a `claude` result with `is_error` outside the capped set (`error_max_budget_usd`, `error_max_turns`) or with no result event, a Codex exit other than 0 or no `turn.completed` event, a `gh` or `git` failure, including a call cut off at `NET_TIMEOUT_SEC` (a cut-off `gh api graphql` body read, or a body another account wrote or last edited, in the frozen pass too, since the run already reads `running`), a process a model call left behind still alive 5 s after KILL, or a frozen-set hash mismatch | no, and it pages at once |
 | `stopped-cap` | `MAX_ROUNDS`, `TICKET_BUDGET_USD`, or `MAX_HOURS` reached; `ROUND_BUDGET_USD` and `MAX_TURNS` bound one worker call and are not an exit: a call that hits either (`error_max_budget_usd`, `error_max_turns`) is a finished round and step 6 decides | yes |
 | `stopped-daily` | the next model call could take the runner's spend for the UTC day past `DAILY_BUDGET_USD`; it says nothing about the ticket, so the issue stays assigned to the runner and `next` relaunches it on a later UTC day, and launches no other ticket the same day while the daily ledger is spent at the runner's own caps | yes |
 | `stopped` | `FACTORY_STOP` present before a call | no |
@@ -201,7 +203,7 @@ Two tickets may run together only when neither names a path the other's Goal cre
 The daily ledger is written under a lock.
 `bin/factory next` launches up to `MAX_PARALLEL` runs (default 1; raise it after two clean single runs, as `status` reports them).
 A run holds a slot while its status reads `running` or `waiting-limit` and its supervisor lives.
-Each launch writes `owner` in its run directory right after its launch log line, before it prepares the worktree and freezes: one line, the supervisor's pid, a space, then `TZ=UTC LC_ALL=C ps -o lstart= -p <pid>`, through a temp file and `mv`, with the status `running`, under `owner.lock`.
+Each launch writes `owner` in its run directory right after its launch log line, before it prepares the worktree and freezes: one line, the supervisor's pid, a space, then `TZ=UTC LC_ALL=C ps -o lstart= -p <pid>` with trailing spaces trimmed (macOS pads it), through a temp file and `mv`, with the status `running`, under `owner.lock`.
 So a relaunch holds its slot from the start, and one killed during preparation is reaped like any dead owner.
 The frozen re-exec is an `exec`, which keeps the pid and its start time, so the line still names the loop that runs `finish`.
 `holds_slot` frees the slot when that pid is gone, a zombie, or alive with a start time more than 300 s from the stored one (a reused pid; `lstart` moves when the wall clock is stepped, so a small gap is the same process): the first caller writes `stopped-environment` to the run's `status` and sends one `fail` alert to the run's own project, read from where its directory sits under the runs root (Loam's directly, another target's under `<owner>__<repo>/`), since a finishing run looks at every target's runs before it pauses the host check.
@@ -260,8 +262,12 @@ After F9, `bin/factory next` on a ten-minute runner timer launches the next fron
 A ticket is parked only by a run of its current body, so editing the body relaunches it on the next tick.
 A run at `stopped-environment` or `stopped` relaunches on the next tick, and one at `stopped-daily` on the first tick after the UTC date of its `status` file; until then `next` prints `waiting #N: daily budget spent; relaunches after 00:00 UTC` on stderr and launches nothing for it.
 Every other exit except `pr-opened` parks the ticket.
-A launch assigns the issue to the runner and no exit unassigns it, so `next` also reads the runner's own `ready-for-agent` issues in the repository (`gh api issues?filter=assigned --paginate`, every page, since the query spans all the runner's repositories) and takes one only when its run is `stopped-daily`; it skips every other one without a line.
+A launch assigns the issue to the runner and no exit unassigns it, so `next` also reads the runner's own `ready-for-agent` issues in the repository (`gh api /issues?filter=assigned --paginate`, every page, since the query spans all the runner's repositories) and takes one only when its run is `stopped-daily`; it skips every other one without a line.
 The daily ledger is the runner's across targets, so while any run under the runs base reads `stopped-daily` with a `status` file dated today (UTC), and that ledger has no room for one more `ROUND_BUDGET_USD` under `DAILY_BUDGET_USD` at the runner's own caps (the defaults and any `FACTORY_<NAME>` override, not a ticket's Worker section, which may have stopped that run lower), `next` launches nothing and prints `waiting: a run stopped at today's daily budget; nothing launches before 00:00 UTC` on stderr.
+Each tick that is not a `--dry-run`, is not paused and passes the login, version and target gates reads, before the slot count, for each `pr-opened` run with no `pr-closed` file, its PR's state through `gh api`; once the PR is closed it appends the operator's events on the PR to the run's `owner-events.jsonl` as `phase` `pr` and writes `pr-closed`, and a `gh` failure leaves the run for the next tick.
+Before it lints a candidate, `next` checks its owner (#389): the worker runs the body unattended and the repository is public, so an issue whose author (`user.login` in the frontier query), or whose last editor (one `gh api graphql` call for `repository.issue.editor.login`, null for a body never edited), is not `SamyakJhaveri` is passed over with one stderr line (`not owner #N: written or last edited by <login>; edit the body as SamyakJhaveri or remove ready-for-agent`), and so is one whose editor call fails, or whose editor is null with a `lastEditedAt` (an account GitHub no longer names); the next candidate is tried.
+Once a candidate is picked, later ones skip the editor call, so a stalled GraphQL costs one tick one timeout.
+`run` makes the same check again on the body it freezes, which it reads with its author, editor and `lastEditedAt` in one `gh api graphql` call, so an edit by another account after `next`'s check, or between the run's first pass and its frozen one, is refused there (exit 4, or `stopped-environment` once the run is recorded) and never runs.
 Before it picks a ticket, `next` runs the `lint` rules on each candidate's body; a candidate that fails is skipped with one stderr line (`lint failed #N: <first error>; edit the body or remove ready-for-agent`) and the next candidate is tried, so a labelled issue with no done-checks block never launches (#314).
 
 ## Stop

@@ -128,12 +128,12 @@ class GraderVersionTests(unittest.TestCase):
         test never writes to the real checkout."""
         calls = self.tmp / "tmux.calls"
         body = (ROOT / "bin/tests/fixtures/clean-ticket.md").read_text().rstrip("\n")
-        line = f"7 {base64.b64encode(body.encode()).decode()}"
+        line = f"7 SamyakJhaveri {base64.b64encode(body.encode()).decode()}"
         pull = f'for f in "{stale_on_pull}"/*.md; do echo edit >> "$f"; done' if stale_on_pull else ":"
         proc = self.sourced(
             "LOAM_FACTORY_TOOLCHAIN=t LOAM_FACTORY_COPIER=c; "
             "assert_toolchain_env() { :; }; claude_logged_in() { :; }; claude_version_ok() { :; }; target_repo() { echo o/r; }; "
-            f"gh() {{ case $1 in api) echo '{line}' ;; esac; }}; "
+            f"gh() {{ case $1$2 in apigraphql) ;; api*) echo '{line}' ;; esac; }}; "
             f'git() {{ case "$*" in *"rev-parse --abbrev-ref HEAD") echo main ;; *"merge --ff-only"*) {pull} ;; esac; }}; '
             f'tmux() {{ echo "$1" >> "{calls}"; [ "$1" != has-session ]; }}; '
             f'cmd_next {" ".join(args)}; echo "rc=$?"')
