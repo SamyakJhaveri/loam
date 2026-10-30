@@ -117,7 +117,8 @@ class StatusCriteriaTests(unittest.TestCase):
                 ["===== launch =====", "===== round 1 =====", "===== round 2 =====", "===== round 3 =====",
                  "EXIT stuck (1): same failing set"], 3)
         d = runs / "7/abcd1234"
-        (d / "round-1.checks").write_text("SKIPPED: gpu\nSKIPPED: node\nFAIL a: b\n")
+        long_fail = "FAIL a: " + "b" * 70 + " the reason"
+        (d / "round-1.checks").write_text(f"SKIPPED: gpu\nSKIPPED: node\n{long_fail}\n")
         (d / "round-2.checks").write_text("FAIL a: b\n")
         (d / "round-3.checks").write_text("FAIL do-not-touch seed/x\nFAIL a: b\n")
         (d / "owner-events.jsonl").write_text("".join(
@@ -130,7 +131,9 @@ class StatusCriteriaTests(unittest.TestCase):
         (d / "round-1.result.json").write_text('[{"type":"system"},{"type":"result","result":"Done: all checks pass."}]')
         (d / "round-2.result.json").write_text('{"result":"ignored for a Codex round"}')
         (d / "round-2.last.txt").write_text("The done-checks still fail; this is not done yet.\n")
-        (d / "round-3.last.txt").write_text("Finished the change.\n")
+        # A claim past the first 100 characters of its sentence.
+        long_claim = "Details " + "x" * 100 + " complete."
+        (d / "round-3.last.txt").write_text(long_claim + "\n")
         proc = factory("status", "--criteria", runs=runs)
         self.assertEqual(proc.returncode, 0, proc.stderr)
         self.assertNotIn("UNMEASURED", proc.stdout)
@@ -150,8 +153,8 @@ class StatusCriteriaTests(unittest.TestCase):
         # Each counted round, its first FAIL line and the sentence read as a claim, so a reader can settle the estimate.
         lines = proc.stdout.splitlines()
         self.assertEqual(lines[lines.index(verdict["rounds whose last worker message claims done while the checks printed FAIL"])
-                               + 1:], ["      7/abcd1234 round 1 (claude): FAIL a: b | Done: all checks pass.",
-                                       "      7/abcd1234 round 3 (codex): FAIL do-not-touch seed/x | Finished the change."])
+                               + 1:], [f"      7/abcd1234 round 1 (claude): {long_fail} | Done: all checks pass.",
+                                       f"      7/abcd1234 round 3 (codex): FAIL do-not-touch seed/x | {long_claim}"])
 
     def test_a_completion_claim_is_a_claim_and_a_failure_report_is_not(self) -> None:
         spec = importlib.util.spec_from_file_location("criteria", CRITERIA)

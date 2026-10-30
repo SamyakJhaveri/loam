@@ -261,7 +261,7 @@ def premature_done(runs):
                 kinds[kind] += 1
                 # The round, its first FAIL line and the claim, so a reader can settle the estimate.
                 fail = next(line for line in lines if line.startswith("FAIL"))
-                rows.append(f"{r.label} round {n} ({kind}): {fail[:60]} | {said[:100]}")
+                rows.append(f"{r.label} round {n} ({kind}): {fail} | {said}")
     detail = f"claude {kinds['claude']}, codex {kinds['codex']}"
     if silent:
         detail += f"; {count(silent, 'failing round')} with no worker message"
