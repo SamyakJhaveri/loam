@@ -49,7 +49,8 @@ def write_wheel(path: pathlib.Path) -> None:
 class MovedVenvTest(unittest.TestCase):
     def move_and_run(self, drop_command: bool) -> None:
         """Build the venv at a/, check a rerun keeps it, move a/ to b/, rerun, and require b's copier to run."""
-        tmp = pathlib.Path(self.enterContext(tempfile.TemporaryDirectory()))
+        # resolved: on macOS /var is /private/var, and bash prints the physical cwd since PWD is the parent's
+        tmp = pathlib.Path(self.enterContext(tempfile.TemporaryDirectory())).resolve()
         shim, old, new = tmp / "shim", tmp / "a", tmp / "b"
         shim.mkdir()
         (shim / "python3").write_text(f'#!/bin/sh\nexec "{sys.executable}" -S "$@"\n', encoding="utf-8")
