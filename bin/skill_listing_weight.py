@@ -16,7 +16,8 @@ been recorded against it, so treat a budget as the measured weight on this
 estimate, not as a real token count.
 
 Exit status: 0 if every budgeted source equals its budget,
-1 if any budgeted source is over or under it, so a shrink lowers the budget.
+1 if any budgeted source is over or under it (so a shrink lowers the budget)
+or is missing from `--root`.
 """
 
 from __future__ import annotations
@@ -146,7 +147,10 @@ def main() -> int:
             f"budget. In this PR, lower its budget in bin/check to {tokens}.",
             file=sys.stderr,
         )
-    return 1 if over_budget or under_budget else 0
+    missing = [label for label in budgets if label not in report]
+    for label in missing:
+        print(f"FAIL: {label} has a budget but {SOURCES[label]['skills']} is missing.", file=sys.stderr)
+    return 1 if over_budget or under_budget or missing else 0
 
 
 if __name__ == "__main__":

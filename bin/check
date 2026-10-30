@@ -146,7 +146,7 @@ step "skill-listing token weight"
 # No-growth budgets on the uncalibrated chars/4 estimate, each equal to the measured weight:
 # the step fails over a budget and under it, so a PR that shrinks a listing lowers its budget.
 # Raise one only in the PR that grows the listing, with the reason in that PR.
-python3 bin/skill_listing_weight.py --root "$ROOT" --budget seed=84 --budget "sam-cc-setup=${LISTING_BUDGET:-365}" \
+python3 bin/skill_listing_weight.py --root "$ROOT" --budget seed=84 --budget sam-cc-setup=365 \
   || bad "skill-listing weight not at its budget"
 
 step "always-loaded prose cap"
