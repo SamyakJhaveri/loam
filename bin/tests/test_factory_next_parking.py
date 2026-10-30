@@ -85,6 +85,17 @@ class ParkingTests(unittest.TestCase):
         proc = self.next_dry_run((7, body))
         self.assertEqual(proc.stdout.strip(), "would launch #7", proc.stderr)
 
+    def test_same_body_stopped_daily_waits_today_and_relaunches_on_a_later_day(self) -> None:
+        # A daily-budget stop says nothing about the ticket (#386): the UTC date of its status file decides.
+        self.run_dir(7, CLEAN, "stopped-daily")
+        proc = self.next_dry_run((7, CLEAN))
+        self.assertEqual(proc.stdout.strip(), "nothing to launch", proc.stderr)
+        self.assertIn("waiting #7: daily budget spent", proc.stderr)
+        self.assertNotIn("parked", proc.stderr)
+        os.utime(self.runs / "7" / key(CLEAN) / "status", (86400, 86400))
+        proc = self.next_dry_run((7, CLEAN))
+        self.assertEqual(proc.stdout.strip(), "would launch #7", proc.stderr)
+
     def test_trailing_newlines_strip_as_load_ticket_does(self) -> None:
         # gh returns the body raw; load_ticket's $(...) strips its trailing newlines before cmd_run keys it.
         self.run_dir(7, CLEAN, "abandon")

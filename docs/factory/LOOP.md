@@ -258,7 +258,7 @@ The manager is a Fable session that runs `status`, merges, and writes one learn 
 After F9, `bin/factory next` on a ten-minute runner timer launches the next frontier ticket after each merge; removing the `ready-for-agent` label parks a ticket, and `FACTORY_STOP` at the runs root pauses the timer; a logged-out runner makes `next` print `login expired` on stderr and exit 1 without launching.
 A ticket is parked only by a run of its current body, so editing the body relaunches it on the next tick.
 A run at `stopped-environment` or `stopped` relaunches on the next tick, and one at `stopped-daily` on the first tick after the UTC date of its `status` file; until then `next` prints `waiting #N: daily budget spent; relaunches after 00:00 UTC` on stderr and launches nothing for it.
-Every other exit parks the ticket.
+Every other exit except `pr-opened` parks the ticket.
 Before it picks a ticket, `next` runs the `lint` rules on each candidate's body; a candidate that fails is skipped with one stderr line (`lint failed #N: <first error>; edit the body or remove ready-for-agent`) and the next candidate is tried, so a labelled issue with no done-checks block never launches (#314).
 
 ## Stop
