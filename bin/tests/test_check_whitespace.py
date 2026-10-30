@@ -40,9 +40,11 @@ class UntrackedWhitespace(unittest.TestCase):
         return subprocess.run(["bash", "bin/ws-step"], cwd=repo, capture_output=True, text=True)
 
     def test_untracked_trailing_whitespace_fails(self) -> None:
-        r = self.run_step({"kept.txt": "clean\n"}, {"new.txt": "trailing   \n"})
+        # A name starting with "-" is read as an option unless "--" comes first.
+        r = self.run_step({"kept.txt": "clean\n"}, {"new.txt": "trailing   \n", "-notes.txt": "trailing   \n"})
         self.assertEqual(r.returncode, 1, r.stdout + r.stderr)
         self.assertIn("new.txt:1: trailing whitespace", r.stdout + r.stderr)
+        self.assertIn("-notes.txt:1: trailing whitespace", r.stdout + r.stderr)
 
     def test_clean_untracked_patch_and_ignored_pass(self) -> None:
         r = self.run_step({".gitignore": "ignored.txt\n"},

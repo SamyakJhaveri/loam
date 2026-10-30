@@ -38,13 +38,14 @@ done < <(scripts sh 'bash|sh')
 WS_EXCLUDE=(":(exclude)*.patch" ":(exclude)*.diff")
 git diff --check "$(git hash-object -t tree /dev/null)" HEAD -- . "${WS_EXCLUDE[@]}" || bad "git diff --check (trailing whitespace or conflict markers)"
 git diff --check HEAD -- . "${WS_EXCLUDE[@]}" || bad "git diff --check HEAD (whitespace or conflict markers in staged or unstaged edits)"
+git diff --cached --check HEAD -- . "${WS_EXCLUDE[@]}" || bad "git diff --cached --check HEAD (whitespace or conflict markers staged but gone from the working tree)"
 # Untracked, non-ignored files: neither diff reads them, and CI will once they are added (#282).
-# --no-index implies --exit-code, so 1 is a clean file; bit 2 (exit 3) is a whitespace error.
+# --no-index implies --exit-code, so 1 is a clean file, 3 a whitespace error, 128 or 129 a git error.
 # A directory here is an untracked nested repo, which git would add as a gitlink, not as lines.
 while IFS= read -r -d '' f; do
   [ -d "$f" ] && continue
-  git diff --check --no-index /dev/null "$f"
-  [ $(( $? & 2 )) -eq 0 ] || bad "git diff --check $f (whitespace or conflict markers in an untracked file)"
+  git diff --check --no-index -- /dev/null "$f"
+  [ $? -le 1 ] || bad "git diff --check $f (whitespace or conflict markers in an untracked file, or git could not read it)"
 done < <(git ls-files -z --others --exclude-standard -- . "${WS_EXCLUDE[@]}")
 
 step "shell lint"
