@@ -248,13 +248,18 @@ check_worker() {
   if grep -qE '^size:' <<<"$w"; then
     grep -qE '^size: (small|large)$' <<<"$w" || err "Worker 'size:' must be 'small' or 'large'"
   fi
-  # Every `skills:` name is a line of bin/factory.d/skills.txt, matched byte for byte (#37).
-  # Skipped under fixtures/, whose historical bodies predate the allowlist, as check_paths is (lint).
+  # Every `skills:` name is a line of bin/factory.d/skills.txt, matched byte for byte (#37), or a
+  # pstack:<name>, which needs no line (#385); either must resolve through skill_file, since the worker
+  # reads that SKILL.md by path. Skipped under fixtures/, whose historical bodies predate the allowlist,
+  # as check_paths is (lint).
   case "$SRC" in *bin/factory.d/fixtures/*) ;; *)
     while IFS= read -r skill; do
       [ -n "$skill" ] || continue
-      grep -qxF "$skill" "$ROOT/bin/factory.d/skills.txt" \
-        || err "unknown skill '$skill': not a line of bin/factory.d/skills.txt"
+      case "$skill" in pstack:*) ;; *)
+        grep -qxF "$skill" "$ROOT/bin/factory.d/skills.txt" \
+          || { err "unknown skill '$skill': not a line of bin/factory.d/skills.txt"; continue; } ;;
+      esac
+      skill_file "$skill" > /dev/null || err "skill '$skill' resolves to no SKILL.md"
     done < <(sed -n 's/^skills: *//p' <<<"$w" | head -1 | tr ',' '\n' | sed 's/^ *//;s/ *$//')
   ;; esac
   while IFS= read -r line; do
@@ -344,7 +349,7 @@ grader_file() {
   return 1
 }
 
-# A worker's skill name (a line of bin/factory.d/skills.txt, lint-checked) -> its SKILL.md body path.
+# A worker's skill name (a line of bin/factory.d/skills.txt or a pstack:<name>, lint-checked) -> its SKILL.md path.
 # A bare name lives under ~/.claude/skills/<name>/; a plugin:name lives in the installed plugin cache,
 # newest version first. A plugin may nest its skills under a category dir
 # (skills/<category>/<name>/SKILL.md), so match SKILL.md at any depth
@@ -1248,26 +1253,25 @@ build_worker_prompt() { # round -> prompt path (pending until the call returns a
   local round="$1" pf="$RUN/pending.prompt.md" prev=$((round - 1)) s sf
   { printf '%s\n\n' "$BODY"; cat "$RUN/frozen/_common.md"; } > "$pf"
   nav_c_append "$pf"   # arm C appends the Semble instruction; base and arm B append nothing (NAV-01)
-  # Skills per role (LOOP.md): a Claude worker gets one Skill-tool sentence per `skills:` name (never a
-  # slash command, which would swallow the body, #37/#40); a Codex worker has no Skill tool and swallows
-  # an unknown `/<skill>` line (#41), so it gets each named skill's body pasted (skill_file resolves it).
-  if [ "$WORKER_KIND" = codex ]; then
-    while IFS= read -r s; do
-      [ -n "$s" ] || continue
-      if sf=$(skill_file "$s"); then
-        printf '\n## Skill: %s\n\n%s\n' "$s" "$(cat "$sf")" >> "$pf"
-      else
-        # Lint guaranteed the name is a skills.txt line, so no resolution is an install gap, not a typo;
-        # a "use the X skill" sentence Codex has no Skill tool to honor would be worse than stopping.
-        # build_worker_prompt runs in $(...), so return non-zero; worker_round turns it into finish.
-        log "skill \"$s\" resolves to no SKILL.md; a Codex worker cannot be given its body"
-        return 3
-      fi
-    done < <(section Worker | sed -n 's/^skills: *//p' | head -1 | tr ',' '\n' | sed 's/^ *//;s/ *$//' | grep .)
-  else
-    section Worker | sed -n 's/^skills: *//p' | head -1 | tr ',' '\n' | sed 's/^ *//;s/ *$//' | grep . \
-      | while read -r s; do printf 'Before the first edit, call the Skill tool with "%s".\n' "$s"; done >> "$pf"
-  fi
+  # Skills per role (LOOP.md), each `skills:` name resolved by skill_file: a Claude worker gets one
+  # sentence naming the SKILL.md path to read, since every pstack skill refuses the Skill tool
+  # (disable-model-invocation, docs/PSTACK.md) and a slash command would swallow the body (#37/#40, #385);
+  # a Codex worker swallows an unknown `/<skill>` line (#41), so it gets each named skill's body pasted.
+  while IFS= read -r s; do
+    [ -n "$s" ] || continue
+    if ! sf=$(skill_file "$s"); then
+      # Lint guaranteed the name resolved, so no resolution now is an install gap, not a typo; a prompt
+      # naming a skill the worker cannot read would be worse than stopping.
+      # build_worker_prompt runs in $(...), so return non-zero; worker_round turns it into finish.
+      log "skill \"$s\" resolves to no SKILL.md; the worker cannot be given it"
+      return 3
+    fi
+    if [ "$WORKER_KIND" = codex ]; then
+      printf '\n## Skill: %s\n\n%s\n' "$s" "$(cat "$sf")" >> "$pf"
+    else
+      printf 'Before the first edit, read %s and follow its steps.\n' "$sf" >> "$pf"
+    fi
+  done < <(section Worker | sed -n 's/^skills: *//p' | head -1 | tr ',' '\n' | sed 's/^ *//;s/ *$//' | grep .)
   # A large claude ticket runs round 1 as the fan-out workflow; a Codex worker gets the ordinary round-1
   # prompt (runs_workflow is false for it). The F11 advisor is the second check on the split (F12).
   if runs_workflow "$round"; then
@@ -2353,11 +2357,11 @@ precondition_lines() { # LOOP.md, Preconditions
   for t in judge reviewer; do
     if f=$(grader_file "$t" 2>&1); then echo "  PASS $t.md at $f"; else echo "  FAIL $f"; fi
   done
-  # Every worker skills.txt line must resolve to a SKILL.md, or a `worker: codex` ticket naming it stops
-  # at build_worker_prompt (skill_file); a bare name and a plugin:name both, newest version first.
+  # Every worker skills.txt line must resolve to a SKILL.md, or lint refuses a ticket naming it and
+  # build_worker_prompt stops (skill_file); a bare name and a plugin:name both, newest version first.
   while IFS= read -r t; do
     [ -n "$t" ] || continue
-    skill_file "$t" > /dev/null 2>&1 && echo "  PASS skill $t resolves" || echo "  INFO skill $t resolves to no SKILL.md (a worker: codex ticket naming it stops)"
+    skill_file "$t" > /dev/null 2>&1 && echo "  PASS skill $t resolves" || echo "  INFO skill $t resolves to no SKILL.md (lint refuses a ticket naming it)"
   done < "$ROOT/bin/factory.d/skills.txt"
   # Codex login: Codex is not on the bare PATH (#41), so probe it under CODEX_PATH. Only a worker: codex
   # ticket needs it, so a logged-out or absent Codex is INFO here, not FAIL.
