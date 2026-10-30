@@ -15,7 +15,7 @@ Keep rows a check enforces, so each enforcer stays findable; drop a row only whe
 | Skills and agents name only paths, skills and agents that exist | `bin/check` | check: `bin/check` step "skill and agent frontmatter + references" |
 | Always-loaded prose does not grow, and its cap equals the measured size (a shrink lowers the cap in the same PR) | `bin/always_loaded_prose.py` | check: `bin/check` step "always-loaded prose cap" fails over and under the cap (#303) |
 | Skill listings stay within their token budget | `bin/skill_listing_weight.py` | check: `bin/check` step "skill-listing token weight" |
-| No trailing whitespace or conflict markers | `bin/check` | check: `git diff --check` in `bin/check` |
+| No trailing whitespace or conflict markers in committed, staged, unstaged or untracked non-ignored files (`*.patch` and `*.diff` exempt) | `bin/check` | check: `bin/check` step "shell syntax + whitespace" (`git diff --check`; untracked files since #282, guarded by `bin/tests/test_check_whitespace.py`) |
 | Graders run on their pinned model and effort | `bin/factory` | check: `bin/check` step "factory grader model and effort" |
 | Release only from a verified HEAD | `bin/release.sh` | script: `bin/release.sh` refuses without a clean verify-loam run |
 | One behavior change per session | `AGENTS.md` rule 5 | prose (judgment) |
@@ -60,4 +60,3 @@ Move a row into the table above when its check lands.
 |---------|----------|-------|
 | `cmd \| head` under `pipefail`, where the early exit fails the pipe | a2ec7df; 22 `\| head` sites remain (the `grep -q` half of #279 is enforced above) | #279 |
 | Docs name paths that no longer exist | 40297f1, 3fc894f, c9ccc45 | #281 |
-| Trailing whitespace in a new file not yet added passes locally, then fails in CI | `git diff --check` in `bin/check` reads only tracked files | #282 |
