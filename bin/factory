@@ -1515,8 +1515,8 @@ call_end() { # role -> the call's own exit status
   local rc=0
   wait "$CALL_PID" || rc=$?
   call_reap "$1" && rm -f "$CALL_FILE"
-  trap - INT TERM HUP
-  [ -z "$CODEX_JOB" ] || graders_traps
+  # While the Codex review runs, graders_abort replaces call_abort with no default-action gap between them.
+  if [ -n "$CODEX_JOB" ]; then graders_traps; else trap - INT TERM HUP; fi
   return "$rc"
 }
 call_reap() { # role
@@ -1537,7 +1537,8 @@ call_reap() { # role
 call_abort() { # signal status
   local killer
   trap '' INT TERM HUP
-  log "the supervisor got $1 during a model call; ending the call's processes"
+  if [ -n "${GRADER_JOB:-}" ]; then log "the supervisor ended the $GRADER_JOB job ($1) during its model call; ending the call's processes"
+  else log "the supervisor got $1 during a model call; ending the call's processes"; fi
   call_signal TERM; call_signal CONT
   ( sleep 5; call_signal KILL ) & killer=$!
   wait "$CALL_PID" 2> /dev/null
@@ -1917,9 +1918,19 @@ tree_signature() { # dir -> 64 hex
 # Its fixes (round-N.fixes.codex-review), its status and one-block flag (round-N.done.codex-review), and a finish it
 # asks for (round-N.finish.codex-review) come back through files read after it ends, since a finish in a subshell
 # would end only the subshell. Any exit of the supervisor while it runs (finish, a signal) ends and reaps it first.
+# A supervisor gone without ending the job (SIGKILL, or a signal no handler saw) is the backstop's case: a watcher
+# checks the supervisor every second, as the heartbeat loop does, and once it is gone sends the job TERM, whose
+# call_abort ends the Codex call and removes its call file. The job's EXIT trap ends the watcher.
 codex_job() { # round: the body of the Codex review's background subshell
-  local rc=0
+  local rc=0 me
   GRADER_JOB=codex-review; CODEX_FINISH="$RUN/round-$1.finish.codex-review"
+  me=$(exec sh -c 'echo "$PPID"')   # the job's own pid: bash 3.2 has no BASHPID
+  ( trap 'exit 0' TERM
+    while sleep 1 & wait $!; kill -0 "$$" && kill -0 "$me"; do :; done
+    kill -0 "$me" || exit 0
+    log "the supervisor is gone; ending the Codex review"
+    kill -TERM "$me" ) < /dev/null > /dev/null 2>&1 &
+  trap "kill $! 2> /dev/null" EXIT
   finish() { # status message: recorded for the supervisor to take once the Codex review has ended
     printf '%s\n%s\n' "$1" "$2" > "$CODEX_FINISH"
     log "the Codex review asks to stop the run ($1: $2); it stops once the judge and the reviewer have ended"
@@ -1929,14 +1940,14 @@ codex_job() { # round: the body of the Codex review's background subshell
   printf '%s %s\n' "$rc" "$CODEX_REVIEW_BLOCKED" > "$RUN/round-$1.done.codex-review"
 }
 # TERM reaches the Codex review's call through its call_abort trap, which removes its call file once the call is gone.
+# Signals are ignored, and the job's pid kept, until it is reaped, so none can leave it running; every caller exits next.
 codex_job_end() {
   [ -n "$CODEX_JOB" ] || return 0
-  local pid="$CODEX_JOB"
-  CODEX_JOB=""
+  trap '' INT TERM HUP
   log "ending the Codex review running beside the other graders"
-  kill -TERM "$pid" 2> /dev/null
-  wait "$pid" 2> /dev/null
-  return 0
+  kill -TERM "$CODEX_JOB" 2> /dev/null
+  wait "$CODEX_JOB" 2> /dev/null
+  CODEX_JOB=""
 }
 graders_traps() { trap 'graders_abort INT 130' INT; trap 'graders_abort TERM 143' TERM; trap 'graders_abort HUP 129' HUP; }
 graders_abort() { # signal status: the supervisor got a signal outside a model call while the Codex review runs

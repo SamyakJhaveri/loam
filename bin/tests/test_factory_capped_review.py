@@ -131,16 +131,17 @@ class CappedReviewTests(unittest.TestCase):
 
     def run_loop(self, reviews: list[object], codex: list[str | None] | None = None,
                  judges: list[object] | None = None, env_extra: dict[str, str] | None = None,
-                 status: int = 0) -> tuple[str, list[dict]]:
+                 status: int = 0, inject: str = "") -> tuple[str, list[dict]]:
         """Run one round per reply of `graders "$ROUND" && open_pr`; return the loop's stderr and the gh calls."""
-        proc = subprocess.run(**self.loop_cmd(reviews, codex, judges, env_extra), capture_output=True, check=False)
+        proc = subprocess.run(**self.loop_cmd(reviews, codex, judges, env_extra, inject), capture_output=True, check=False)
         self.assertEqual(proc.returncode, status, proc.stderr)
         calls = [json.loads(x) for x in self.gh_log.read_text().splitlines()] if self.gh_log.exists() else []
         return proc.stderr, calls
 
     def loop_cmd(self, reviews: list[object], codex: list[str | None] | None = None,
-                 judges: list[object] | None = None, env_extra: dict[str, str] | None = None) -> dict:
-        """subprocess arguments for run_loop's loop.
+                 judges: list[object] | None = None, env_extra: dict[str, str] | None = None,
+                 inject: str = "") -> dict:
+        """subprocess arguments for run_loop's loop; `inject` is shell run after bin/factory is sourced.
 
         reviews[k] is the reviewer's reply in round k+1 (a string goes verbatim, anything else as JSON).
         judges[k], when given, is the judge's reply in round k+1 the same way; the judge passes otherwise.
@@ -158,7 +159,7 @@ class CappedReviewTests(unittest.TestCase):
             'LEDGER="$RUN/ledger.jsonl"; DAILY="$RUN/daily.jsonl"; DECISIONS="$RUN/decisions.md"; LOG="$RUN/factory.log"\n'
             'touch "$LEDGER" "$DAILY"; date -u +%s > "$RUN/launched"; date -u +%s > "$RUN/started"\n'
             f"BODY=\"$TICKET\"; CODEX_REVIEW={'yes' if codex is not None else 'no'}; CODEX_PATH='{self.bin}'\n"
-            "notify() { :; }; alert() { :; }\n"
+            "notify() { :; }; alert() { :; }\n" + inject +
             'build_evidence() { printf \'ROLE %s\\nREPLY %s\\n\' "$(basename "$1" .md)" "$(cat "$RUN/reply.$(basename "$1" .md).$ROUND")"; }\n'
             f'for ROUND in $(seq 1 {len(reviews)}); do graders "$ROUND" && open_pr; done\n'
             "echo 'no PR opened' >&2; exit 9\n"
@@ -355,12 +356,16 @@ class CappedReviewTests(unittest.TestCase):
                 self.assertNotIn("Draft:", pr["body"])
                 self.assertEqual(self.issues(calls), [])
 
-    def assert_codex_gone(self) -> None:
-        """No fake call outlives the supervisor, and no call file holds the run's slot."""
-        time.sleep(0.5)
-        left = subprocess.run(["pgrep", "-f", str(self.top)], capture_output=True, text=True, check=False).stdout
+    def assert_codex_gone(self, calls: list[str] | None = None) -> None:
+        """Within 15 s no fake call or job is left, and no call file but `calls` is left to hold the run's slot."""
+        deadline = time.time() + 15
+        while True:
+            left = subprocess.run(["pgrep", "-f", str(self.top)], capture_output=True, text=True, check=False).stdout
+            if not left or time.time() > deadline:
+                break
+            time.sleep(0.2)
         self.assertEqual(left, "", "a fake call outlived the supervisor")
-        self.assertEqual(sorted(x.name for x in self.run_dir.glob("call*")), [])
+        self.assertEqual(sorted(x.name for x in self.run_dir.glob("call*")), calls or [])
 
     def test_the_codex_review_runs_beside_the_judge_and_the_reviewer(self) -> None:
         # The Codex review only reads the tree, so its call overlaps both Claude graders, which still run one after
@@ -406,6 +411,48 @@ class CappedReviewTests(unittest.TestCase):
         proc.send_signal(signal.SIGTERM)
         self.assertEqual(proc.wait(timeout=30), 143)
         self.assert_codex_gone()
+
+    def test_term_as_the_judge_call_ends_still_ends_the_codex_review(self) -> None:
+        # TERM lands on the first trap change after the judge's call is reaped, while the Codex review runs: the
+        # supervisor must never be left with TERM's default action there, or it dies and leaves the job running.
+        self.new_run()
+        inject = ('trap() { builtin trap "$@"; if [ -n "$CODEX_JOB" ] && [ -z "${INJECTED:-}" ] '
+                  '&& [[ " ${FUNCNAME[*]} " == *" call_end "* ]]; then INJECTED=1; builtin kill -TERM $$; fi; }\n')
+        self.run_loop([CLEAN_REVIEW], codex=[json.dumps(CLEAN_CODEX)], status=143, inject=inject,
+                      env_extra={"FAKE_SPANS": str(self.top / "spans"), "FAKE_SLEEP": "0", "FAKE_CODEX_SLEEP": "60"})
+        self.assertIn("ending the Codex review", (self.run_dir / "factory.log").read_text())
+        self.assert_codex_gone()
+
+    def test_term_while_the_supervisor_ends_the_codex_review_is_held_until_it_is_reaped(self) -> None:
+        # The reviewer's FACTORY_STOP finishes the run; TERM lands as finish signals the Codex review. The supervisor
+        # keeps the job's pid and holds the signal until the job is reaped, then exits as finish decided.
+        self.new_run()
+        inject = ('kill() { if [ "${FUNCNAME[1]:-}" = codex_job_end ] && [ -z "${INJECTED:-}" ]; then INJECTED=1; '
+                  'builtin kill -TERM $$; fi; builtin kill "$@"; }\n')
+        self.run_loop(["STOP"], codex=[json.dumps(CLEAN_CODEX)], status=2, inject=inject,
+                      env_extra={"FAKE_SPANS": str(self.top / "spans"), "FAKE_SLEEP": "0", "FAKE_CODEX_SLEEP": "60"})
+        self.assertEqual((self.run_dir / "status").read_text(), "stopped\n")
+        log = (self.run_dir / "factory.log").read_text()
+        self.assertIn("the supervisor ended the codex-review job", log)
+        self.assertNotIn("the supervisor got TERM during a model call", log)
+        self.assert_codex_gone()
+
+    def test_a_sigkilled_supervisor_leaves_no_codex_review_running(self) -> None:
+        # Nothing traps SIGKILL, so the Codex review watches the supervisor and, once it is gone, ends its own call.
+        # The judge's call has a session of its own and outlives the supervisor by design (holds_slot); the test ends
+        # it, and its call file stays for holds_slot to judge.
+        self.new_run()
+        proc = subprocess.Popen(**self.loop_cmd([CLEAN_REVIEW], codex=[json.dumps(CLEAN_CODEX)], env_extra={
+            "FAKE_SPANS": str(self.top / "spans"), "FAKE_SLEEP": "60", "FAKE_CODEX_SLEEP": "60"}),
+            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, start_new_session=True)
+        deadline = time.time() + 20
+        while not all((self.run_dir / f).exists() for f in ("call", "call-codex-review")) and time.time() < deadline:
+            time.sleep(0.1)
+        proc.kill()
+        proc.wait(timeout=10)
+        os.killpg(int((self.run_dir / "call").read_text().split()[0]), signal.SIGKILL)
+        self.assert_codex_gone(["call"])
+        self.assertIn("the supervisor is gone; ending the Codex review", (self.run_dir / "factory.log").read_text())
 
 
 if __name__ == "__main__":

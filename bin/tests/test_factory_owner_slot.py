@@ -199,8 +199,16 @@ class OwnerSlotTests(unittest.TestCase):
     def test_dead_owner_holds_while_its_model_call_lives(self) -> None:
         # call_start puts the call in a session of its own, so a SIGKILL to the supervisor's group leaves it running
         # (reparented to init) and writing the worktree; the slot holds until the call is gone.
+        self.held_while_call_lives("", "call")
+
+    def test_dead_owner_holds_while_its_codex_review_call_lives(self) -> None:
+        # The Codex review runs beside the other graders and names its call in call-codex-review; once that call's
+        # process is dead, its file no longer holds the slot.
+        self.held_while_call_lives("GRADER_JOB=codex-review", "call-codex-review")
+
+    def held_while_call_lives(self, job: str, call_file: str) -> None:
         ready = self.top / "ready"
-        script = (f". bin/factory\nRUN='{self.run_dir}'; LOG='{self.top}/factory.log'\n"
+        script = (f". bin/factory\nRUN='{self.run_dir}'; LOG='{self.top}/factory.log'; {job}\n"
                   f"call_start '{self.top}' sh -c 'echo $$ > \"{ready}\"; exec sleep 60'\nwait")
         base = {k: v for k, v in os.environ.items() if k not in INHERITED}
         sup = subprocess.Popen(["bash", "-c", script], cwd=ROOT,
@@ -211,6 +219,7 @@ class OwnerSlotTests(unittest.TestCase):
         os.killpg(sup.pid, signal.SIGKILL)
         sup.wait()
         self.owner(f"{sup.pid} {OLD}")
+        self.assertEqual(sorted(x.name for x in self.run_dir.glob("call*")), [call_file])
         self.assert_held()
         os.killpg(call, signal.SIGKILL)
         wait_until(lambda: not self.holds())
