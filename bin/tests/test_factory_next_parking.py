@@ -96,6 +96,17 @@ class ParkingTests(unittest.TestCase):
         proc = self.next_dry_run((7, CLEAN))
         self.assertEqual(proc.stdout.strip(), "would launch #7", proc.stderr)
 
+    def test_stopped_daily_exit_unassigns_the_issue(self) -> None:
+        # next's frontier asks for assignee=none, and the launch assigned the issue to the operator (#386).
+        def gh_calls(status: str) -> str:
+            proc = sourced(
+                'RUN=$(mktemp -d); LOG=/dev/null; ISSUE=7; REPO=o/r; heartbeat_stop() { :; }; notify() { :; }; '
+                f'gh() {{ echo "gh $*" >> "$RUN/gh.log"; }}; (finish {status} why); cat "$RUN/gh.log" 2> /dev/null; rm -rf "$RUN"',
+                {"FACTORY_RUNS_ROOT": str(self.runs)})
+            return proc.stdout
+        self.assertIn("gh issue edit 7 -R o/r --remove-assignee @me", gh_calls("stopped-daily"))
+        self.assertNotIn("--remove-assignee", gh_calls("stopped-cap"))
+
     def test_trailing_newlines_strip_as_load_ticket_does(self) -> None:
         # gh returns the body raw; load_ticket's $(...) strips its trailing newlines before cmd_run keys it.
         self.run_dir(7, CLEAN, "abandon")

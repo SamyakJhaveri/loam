@@ -83,7 +83,7 @@ When no cached copy matches, the run stops `stopped-environment` and names the c
 | `abandon` | an `ABANDON NAME reason` line in `decisions.md`; the owner is paged | yes |
 | `stopped-environment` | a `claude` result with `is_error` outside the capped set (`error_max_budget_usd`, `error_max_turns`) or with no result event, a Codex exit other than 0 or no `turn.completed` event, a `gh` or `git` failure, including a call cut off at `NET_TIMEOUT_SEC` (a cut-off `gh issue view` in the frozen pass too, since the run already reads `running`), a process a model call left behind still alive 5 s after KILL, or a frozen-set hash mismatch | no, and it pages at once |
 | `stopped-cap` | `MAX_ROUNDS`, `TICKET_BUDGET_USD`, or `MAX_HOURS` reached; `ROUND_BUDGET_USD` and `MAX_TURNS` bound one worker call and are not an exit: a call that hits either (`error_max_budget_usd`, `error_max_turns`) is a finished round and step 6 decides | yes |
-| `stopped-daily` | the next model call could take the runner's spend for the UTC day past `DAILY_BUDGET_USD`; it says nothing about the ticket, so `next` relaunches it on a later UTC day | yes |
+| `stopped-daily` | the next model call could take the runner's spend for the UTC day past `DAILY_BUDGET_USD`; it says nothing about the ticket, so the run unassigns the issue and `next` relaunches it on a later UTC day | yes |
 | `stopped` | `FACTORY_STOP` present before a call | no |
 
 Exit code, `status`, and the final log line are decided together and cannot disagree.

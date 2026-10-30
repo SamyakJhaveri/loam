@@ -757,6 +757,10 @@ finish() { # status message
   esac
   set_status "$1"
   heartbeat_stop
+  # next's frontier asks for assignee=none, so a daily stop gives the issue back for tomorrow's relaunch.
+  if [ "$1" = stopped-daily ] && [ -n "$ISSUE" ]; then
+    net gh issue edit "$ISSUE" -R "$REPO" --remove-assignee @me > /dev/null 2>&1 || log "could not unassign #$ISSUE; next skips it until it is unassigned"
+  fi
   words=$(exit_words "$1")
   notify "${words%% *}" "$(ticket_name) ${words#* }" "$2"
   log "EXIT $1 ($code): $2"
