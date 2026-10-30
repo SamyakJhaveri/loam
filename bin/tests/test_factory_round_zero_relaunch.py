@@ -24,7 +24,7 @@ if [ -f marker ]; then pass has-marker; else fail has-marker "no marker at the r
 ```
 """
 # The worker loop stops the way a lost login does in round 1: before any round-1 file exists.
-STUBS = ("assert_target_ready() { :; }; exec_frozen() { :; }; "
+STUBS = ("assert_target_ready() { :; }; claude_version_ok() { :; }; exec_frozen() { :; }; "
          'main_loop() { echo "main_loop from round $ROUND"; finish stopped-environment "stub worker round"; }')
 
 

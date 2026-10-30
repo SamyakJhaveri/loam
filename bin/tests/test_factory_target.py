@@ -169,7 +169,7 @@ class TargetTests(unittest.TestCase):
         load = self.target(self.proj, self.gh_stub + "load_ticket 5; echo REPO=$REPO")
         self.assertIn("REPO=acme/widget", load.stdout, load.stderr)
         stat = self.target(self.proj, self.gh_stub + "precondition_lines() { :; }; cmd_status > /dev/null")
-        nxt = self.target(self.proj, self.gh_stub + "claude_logged_in() { :; }; cmd_next --dry-run")
+        nxt = self.target(self.proj, self.gh_stub + "claude_logged_in() { :; }; claude_version_ok() { :; }; cmd_next --dry-run")
         for proc in (stat, nxt):
             self.assertEqual(proc.returncode, 0, proc.stderr)
         calls = self.gh_log.read_text().splitlines()
@@ -185,7 +185,7 @@ class TargetTests(unittest.TestCase):
         body = (ROOT / "bin/tests/fixtures/clean-ticket.md").read_text().rstrip("\n")
         key = hashlib.sha256(body.encode()).hexdigest()[:8]
         line = f"7 {base64.b64encode(body.encode()).decode()}"
-        stubs = ("claude_logged_in() { :; }; "
+        stubs = ("claude_logged_in() { :; }; claude_version_ok() { :; }; "
                  f"gh() {{ case $1 in api) echo '{line}' ;; esac; }}; cmd_next --dry-run")
 
         def status(where: pathlib.Path, text: str) -> None:
