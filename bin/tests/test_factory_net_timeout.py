@@ -6,7 +6,7 @@ and calls load_ticket from a sourced bin/factory with FACTORY_FROZEN naming the 
 process, the cut-off call ends through finish (status, alert, exit 4); when it names another, load_ticket only exits 4.
 WatchdogTests check that nothing escapes the limit: a gh function exported into the environment, a program that
 ignores TERM (timeout -k), and net_watch, the path without GNU timeout, on both a TERM-ignoring program and a
-function that returns 0 after the deadline.
+function that returns 0 after the deadline, and a call that stops itself.
 """
 
 from __future__ import annotations
@@ -111,6 +111,11 @@ class WatchdogTests(unittest.TestCase):
         self.assertLess(took, 8)
         self.assertNotEqual(proc.stdout.split()[0], "0", proc.stdout)
         self.assertNotIn("late", proc.stdout)
+        proc, took = self.bash(". bin/factory; out=$(net_watch bash -c 'kill -TTIN $$; echo x'); echo \"rc=$? $out\"",
+                               FACTORY_SOURCED="1")
+        self.assertLess(took, 4)
+        self.assertNotIn("rc=0", proc.stdout)
+        self.assertNotIn("x", proc.stdout)
         proc, _ = self.bash(". bin/factory; f() { cat; echo err >&2; return 3; }; printf 'in\\n' | net_watch f; "
                             "echo \"rc=$?\"", FACTORY_SOURCED="1")
         self.assertEqual((proc.stdout, proc.stderr), ("in\nrc=3\n", "err\n"))

@@ -43,16 +43,20 @@ net() {
   else net_watch "$@"
   fi
 }
-# net's watchdog: job control gives the call its own process group, which gets TERM at NET_TIMEOUT_SEC and KILL
-# 5 s later. The subshell's stderr goes to /dev/null so job notices stay out of the output; the call keeps the
-# caller's stdin and stderr.
+# net's watchdog: job control gives the call its own process group, which gets TERM (and CONT, so a stopped call
+# takes it) at NET_TIMEOUT_SEC and KILL 5 s later. Under job control wait may return when the call stops, not only
+# when it exits (bash manual, wait -f), so a call still alive then is killed rather than left holding the pipes.
+# The subshell's stderr goes to /dev/null so job notices stay out of the output; the call keeps the caller's stdin
+# and stderr.
 net_watch() {
   ( exec 3>&2 2> /dev/null; set -m
     "$@" <&0 2>&3 3>&- &
     local pid=$! wd rc=0
-    { sleep "$NET_TIMEOUT_SEC"; kill -TERM -- "-$pid"; sleep 5; kill -KILL -- "-$pid"; } > /dev/null 2>&1 < /dev/null &
+    { sleep "$NET_TIMEOUT_SEC"; kill -TERM -- "-$pid"; kill -CONT -- "-$pid"; sleep 5; kill -KILL -- "-$pid"; } \
+      > /dev/null 2>&1 < /dev/null &
     wd=$!
     wait "$pid" || rc=$?
+    kill -0 "$pid" && { kill -KILL -- "-$pid"; wait "$pid"; rc=137; }
     kill -- "-$wd"
     exit "$rc" )
 }
