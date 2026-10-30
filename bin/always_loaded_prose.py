@@ -76,7 +76,8 @@ def main() -> int:
     if total > args.cap:
         print(
             f"FAIL: always-loaded prose is {total} bytes ({lines} lines), over the {args.cap}-byte cap. "
-            f"Files: {listing}. Cut something, or raise the cap in bin/check in the same PR and say why.",
+            f"Files: {listing}. If you cut text to fit, name each cut (file and what it said) in the commit message "
+            f"and the PR body; or raise the cap in bin/check in the same PR and say why.",
             file=sys.stderr,
         )
         return 1
