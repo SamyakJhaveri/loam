@@ -236,14 +236,17 @@ class StatusCriteriaTests(unittest.TestCase):
     def test_lint_of_an_edited_body_reaches_the_launchs_run_dir_once(self) -> None:
         # A Claude Code session's lint (the stage-2 session's), which records nothing; then lint, an edit, lint again,
         # then a launch that FACTORY_STOP halts once its owner events are written. gh is a stub serving the body in
-        # $BODY_FILE; its timeline read fails, so the launch records no issue events.
+        # $BODY_FILE to lint's issue view and to run's GraphQL read (#389), written by the owner; its timeline read
+        # fails, so the launch records no issue events.
         body = pathlib.Path(self.tmp.name) / "body"
         runs = pathlib.Path(self.tmp.name) / "lint-runs"
         runs.mkdir()
         (runs / "FACTORY_STOP").touch()
         script = (
             '. bin/factory; assert_target_ready() { :; }; claude_version_ok() { :; }; notify() { :; }; '
-            'gh() { [ "$1 $2" = "issue view" ] && cat "$BODY_FILE"; }; '
+            'gh() { case "$1 $2" in "issue view") cat "$BODY_FILE" ;; "api graphql") jq -n --rawfile b "$BODY_FILE" '
+            '\'{data: {repository: {issue: {body: $b, author: {login: "SamyakJhaveri"}, editor: null, lastEditedAt: null}}}}\' ;; '
+            '*) return 1 ;; esac; }; '
             'echo "# one" > "$BODY_FILE"; CLAUDECODE=1 lint 9 > /dev/null 2>&1; lint 9 > /dev/null 2>&1; echo "# two" > "$BODY_FILE"; lint 9 > /dev/null 2>&1; '
             '(cmd_run 9) > /dev/null 2>&1; (cmd_run 9) > /dev/null 2>&1; true'
         )
