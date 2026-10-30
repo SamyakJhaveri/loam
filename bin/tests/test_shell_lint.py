@@ -13,7 +13,7 @@ SCRIPT = ROOT / "bin/shell_lint.py"
 
 BAD = "#!/usr/bin/env bash\nset -o pipefail\necho hi | grep -q hi && echo yes\necho hi | grep -vq x || echo no\n"
 NO_PIPEFAIL = "#!/usr/bin/env bash\necho hi | grep -q hi && echo yes\n"
-# Lines that must not count, then lines that must (from line 18 on).
+# Lines that must not count, then lines that must (lines 18 to 34), then substitutions from line 35.
 CASES = """#!/usr/bin/env bash
 set -euo pipefail
 fail a "lacks | grep -q"  # a quoted pipe is one word
@@ -48,6 +48,21 @@ yes '# heading' | grep -e '# heading' -q
 yes '# heading' | grep -q '# heading'
 echo "# x" | grep -q x
 printf '## Merge checklist\\n' | grep -q x
+out="$(printf '%s\\n' "cmd | grep -q needle")"
+out="$(cat <<'EOF'
+cmd | grep -q needle
+EOF
+)"
+out="$(printf '%s\\n' 'Example:
+cmd | grep -q needle
+')"
+out="$(yes needle |
+  grep -q needle)"
+out="$(yes needle | \\
+  grep -q needle)"
+out="$(case check in
+  check) yes needle | grep -q needle ;;
+esac)"
 """
 
 
@@ -80,7 +95,7 @@ class ShellLintTest(unittest.TestCase):
         res = lint({"cases.sh": CASES})
         self.assertEqual(res.returncode, 1, res.stdout + res.stderr)
         self.assertEqual([line.split(": ")[1] for line in res.stdout.splitlines()],
-                         [f"cases.sh:{n}" for n in (18, 19, 20, 21, 23, 25, *range(26, 35))])
+                         [f"cases.sh:{n}" for n in (18, 19, 20, 21, 23, 25, *range(26, 35), 43, 45, 48)])
 
     def test_clean_tree_passes(self) -> None:
         res = lint({"ok.sh": "#!/bin/sh\nset -o pipefail\nout=$(echo hi); grep -q hi <<<\"$out\"\n"})
