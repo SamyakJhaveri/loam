@@ -26,12 +26,21 @@ PASS_OVER = "SKIPPED:"  # bin/check's marker for a step that did not run; lib.sh
 STALLS = ("stuck", "no-change", "stopped-cap")
 LOWER = "lower bound"  # a measure's fourth element: the value may undercount, so it prints INCONCLUSIVE, not PASS
 # A completion claim: done (not done-checks), complete or finished (not after the or a), all [n] checks pass or print,
-# no FAIL, or check: PASSED. NEGATED, before a claim or a FAILS match in its clause, denies it; the last signal of a
-# sentence decides it, so a failure after a claim cancels it and a claim after a past failure stands.
+# no FAIL, or check: PASSED. A failure: fail, failure, could not, cannot, incomplete or unfinished. A pass (passes,
+# passed) alone is no signal. A negation flips only the next claim, failure or pass in its clause: a denied claim or
+# pass is a failure, and a denied failure is no signal. A requirement (requires, must, should) makes the next signal in
+# its clause no signal, and if, unless or once every later signal of its sentence, since they state what should or
+# would hold, not what does. The last signal of a sentence decides it; a question claims nothing.
 CLAIM = re.compile(r"\b(?:(?<!\bthe )(?<!\ba )(?:done(?![- ]checks?\b)|completed?|finished)\b"
                    r"|all (?:\w+ ){0,2}(?:done[- ])?checks? (?:now )?(?:pass|print)|no fail\b|check: passed)", re.I)
-NEGATED = re.compile(r"\b(?:not|never|no|nowhere|nothing|none|cannot)\b|n't", re.I)
-FAILS = re.compile(r"\bfail(?:s|ed|ing)?\b|\bcould not\b|\bcannot\b|\bcan't\b", re.I)
+FAILS = re.compile(r"\bfail(?:s|ed|ing|ures?)?\b|\bcould(?: not|n't)|\bcannot\b|\bcan't\b|\b(?:in|un)(?:complete|finished)\b",
+                   re.I)
+PASSES = re.compile(r"\bpass(?:es|ed|ing)?\b", re.I)
+NEGATED = re.compile(r"\b(?:not|never|no|nowhere|nothing|none)\b|n't", re.I)
+REQUIRED = re.compile(r"\b(?:requires?|required|must|needs?|should|would)\b", re.I)
+HYPOTHETICAL = re.compile(r"\b(?:if|unless|once)\b", re.I)
+CLAUSE = re.compile(r"[;,]|\b(?:but|because|and|so|while|although|since|which)\b", re.I)
+SIGNAL = {("claim", False): True, ("claim", True): False, ("fail", False): False, ("pass", True): False}
 
 
 def read(path, missing=""):
@@ -203,17 +212,30 @@ def last_message(run, n):
     return "claude", text if isinstance(text, str) else None
 
 
+def signals(clause):
+    """The clause's signals in order, True for a claim and False for a failure. A match inside an earlier kind's match
+    (the no of no FAIL, the not of could not) is not a match of its own."""
+    spans = []
+    for kind, rx in (("claim", CLAIM), ("fail", FAILS), ("pass", PASSES), ("not", NEGATED), ("required", REQUIRED)):
+        spans += [(m.start(), m.end(), kind) for m in rx.finditer(clause)
+                  if all(m.end() <= a or m.start() >= b for a, b, _ in spans)]
+    negated = required = False
+    for _, _, kind in sorted(spans):
+        if kind == "not":
+            negated = True
+        elif kind == "required":
+            required = True
+        else:
+            if not required and (kind, negated) in SIGNAL:
+                yield SIGNAL[kind, negated]
+            negated = required = False
+
+
 def claims_done(text):
-    """True when some sentence's last signal is a claim of the work done or its checks passing that its clause does not
-    deny, rather than a failure it does not deny."""
+    """True when some sentence's last signal is a claim of the work done or its checks passing."""
     for sentence in re.split(r"(?<=[.!?])\s+|\n", text):
-        last = False
-        for clause in re.split(r"[;,]|\bbut\b", sentence):
-            signals = [(m.start(), not NEGATED.search(clause[:m.start()])) for m in CLAIM.finditer(clause)]
-            signals += [(m.start(), False) for m in FAILS.finditer(clause) if not NEGATED.search(clause[:m.start()])]
-            if signals:
-                last = max(signals)[1]
-        if last:
+        found = [v for clause in CLAUSE.split(HYPOTHETICAL.split(sentence, 1)[0]) for v in signals(clause)]
+        if found and found[-1] and not sentence.rstrip().endswith("?"):
             return True
     return False
 

@@ -157,7 +157,10 @@ class StatusCriteriaTests(unittest.TestCase):
                      "`PASS check-green`, with no FAIL line.",
                      "all 7 done-checks pass", "All done-checks pass; the work is complete.", "Done.",
                      "All ten done-checks pass on HEAD 641bedeb and none fails.",
-                     "The checks were failing before the fix, but all seven done-checks pass now."):
+                     "The checks were failing before the fix, but all seven done-checks pass now.",
+                     "No failures remain and the implementation is complete.",
+                     "There are no failures left, so the ticket is complete.",
+                     "Implementation finished; none of the tests fail anymore."):
             self.assertTrue(criteria.claims_done(text), text)
         for text in ("I don't think we're done.", "We are nowhere near done.",
                      "The work is not even close to being complete.",
@@ -168,7 +171,18 @@ class StatusCriteriaTests(unittest.TestCase):
                      "The done-checks still fail; this is not done yet.",
                      "The implementation is complete, but tests fail.",
                      "I completed the first two checks; the third failed.",
-                     "I ran our complete test suite; two checks failed."):
+                     "I ran our complete test suite; two checks failed.",
+                     "The implementation is complete, but bin/check does not pass because the integration test fails.",
+                     "The implementation is complete, but one test failure remains.",
+                     "The implementation is complete, but bin/check does not pass.",
+                     "The code changes are done, but I couldn't get the integration test to run.",
+                     "The feature is complete, but the docs are still incomplete.",
+                     "The refactor is finished, though two done-checks still report failures.",
+                     "Should I mark this ticket done?",
+                     # A real ABANDON round's message (323/c45475fe), then the requirement before the report.
+                     "I did not commit because the project requires `check: PASSED` before every commit.",
+                     "The project requires `check: PASSED` before every commit, so I did not commit.",
+                     "If the integration test passes on CI, the work is complete."):
             self.assertFalse(criteria.claims_done(text), text)
 
     def test_a_stall_before_its_rounds_checks_reads_the_last_checked_round(self) -> None:
