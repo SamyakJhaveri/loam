@@ -13,7 +13,21 @@ fail() { printf '\nFAIL %s: %s\n' "$1" "${2:-}"; n_fail=$((n_fail + 1)); }
 # guard: a regression guard; runs CMD and returns its status; allowed to pass on main.
 # Under LOAM_HOOK (the worker's Stop hook) a guarded bin/check passes without running:
 # it takes minutes per stop, and the supervisor's own check run is the one run per round (LOOP.md).
-guard() { [ -n "${LOAM_HOOK:-}" ] && [ "${1:-}" = bin/check ] && return 0; "$@"; }
+# Each pass-over marker line CMD prints (bin/check's `SKIPPED: <step>`) is also copied to fd 9, the block's own
+# stdout (the checks file), so `guard bin/check >/dev/null` cannot hide a step that did not run from status
+# --criteria. CMD's output goes through a temp file, so the copy lands before the next line the block prints.
+exec 9>&1
+guard() {
+  local out rc
+  [ -n "${LOAM_HOOK:-}" ] && [ "${1:-}" = bin/check ] && return 0
+  { [ /dev/fd/1 -ef /dev/fd/9 ] || ! out=$(mktemp 2> /dev/null); } && { "$@"; return; }
+  "$@" > "$out"
+  rc=$?
+  cat "$out"
+  grep -a '^SKIPPED:' "$out" >&9
+  rm -f "$out"
+  return "$rc"
+}
 # predict NAME CMD...: CMD exits 0 exactly when base shows the failure check NAME predicts (CONTRACT.md, Done checks).
 # Only round 0 sets FACTORY_ROUND0, to a file outside the worktree, and only then does CMD run. A miss (CMD exits
 # non-zero, or the line has no CMD) is appended to that file, not printed, so a redirect on the predict line cannot

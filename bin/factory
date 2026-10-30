@@ -11,6 +11,8 @@
 #   bin/factory graders-check       fails when judge.md or reviewer.md drifts from GRADER_MODEL and GRADER_EFFORT.
 #   -C <repo>, before the subcommand or right after it, points lint, run, status, stop, and next at another repository (F8).
 # Lint never executes a check; it reads the body and shells out only to `bash -n`, `gh`, and python3 for the hidden-text rule.
+# Run and stop, when the operator runs them, add a line to the run dir's owner-events.jsonl (status --criteria); lint of
+# an issue adds one to <runs>/<issue>/owner-events.jsonl, which the issue's next launch moves into its run dir.
 set -uo pipefail
 # Only round_zero sets FACTORY_ROUND0 (lib.sh, predict); a run nested in another's round 0 must not inherit it.
 unset FACTORY_ROUND0
@@ -669,6 +671,10 @@ lint() {
   elif [[ "$SRC" =~ ^[0-9]+$ ]]; then
     BODY=$(net gh issue view "$SRC" -R "$(target_repo)" --json body -q .body) \
       || { echo "LINT $SRC: could not read the issue body with gh (failed, or no reply in ${NET_TIMEOUT_SEC}s)" >&2; return 1; }
+    # Into the issue's own owner-events.jsonl, beside its run dirs, since lint usually precedes a body edit that
+    # names another run dir; the next launch moves the lines into its run dir. A file is a fixture or a
+    # rehearsal, so only an issue counts.
+    owner_ran && owner_event "$RUNS_ROOT/$SRC" lint
   else
     echo "no such file: $SRC" >&2
     return 1
@@ -2163,6 +2169,15 @@ cmd_run() {
     || { rmdir "$RUN/owner.lock"; finish stopped-environment "could not write $RUN/owner"; }
   set_status running
   rmdir "$RUN/owner.lock"
+  # This launch's operator actions, once per launch as the launch line is; a file ticket makes no GitHub call.
+  if [ "${FACTORY_FROZEN:-}" != "$RUN/frozen/factory" ]; then
+    # The issue's lint lines since the last launch: appended, then removed, so a relaunch does not count them twice.
+    local pending="$RUNS_ROOT/$KEY/owner-events.jsonl"
+    [ -f "$pending" ] && cat "$pending" >> "$RUN/owner-events.jsonl" && rm -f "$pending"
+    owner_ran && owner_event "$RUN" run
+    [ "$IS_FILE" = 1 ] || owner_events "$RUN" launch "$REPO" "$ISSUE" \
+      || log "could not read the events of #$ISSUE for owner-events.jsonl; continuing"
+  fi
   nav_arm_resolve   # NAV-01: fix this launch's arm before freeze and round 0, so the whole run carries one arm
   stop_requested && finish stopped "FACTORY_STOP is present at launch"
   assert_parallel
@@ -2227,11 +2242,64 @@ cmd_run() {
   main_loop
 }
 
+# ---- owner-events.jsonl: the operator actions a run can see (ARCHITECTURE.md, Metrics) ----------------------
+# One JSON line per action, {"phase":"launch"|"pr","kind":...,"at":...}, and an "id" on a GitHub event, so a
+# relaunch does not add one twice. A subcommand counts only when the operator ran it: not from inside a model
+# call (FACTORY_CALL_TAG), the worker's Stop hook (LOAM_HOOK) or a Claude Code session (CLAUDECODE: the stage-2
+# session lints its own tickets, and an agent's command is not the operator's action), and a `run` not from next's
+# timer (FACTORY_BY_NEXT). The count stays a lower bound: an operator's own command in Claude Code is left out too.
+owner_ran() {
+  [ -z "${FACTORY_CALL_TAG:-}" ] && [ -z "${LOAM_HOOK:-}" ] && [ -z "${CLAUDECODE:-}" ] && [ -z "${FACTORY_BY_NEXT:-}" ]
+}
+owner_event() { # run-dir kind
+  mkdir -p "$1" && printf '{"phase":"launch","kind":"%s","at":"%s"}\n' "$2" "$(now)" >> "$1/owner-events.jsonl"
+}
+# The runner's gh account is the operator's (step 2 assigns the issue to @me), so the operator's events are that
+# login's, less what the factory does with it: it assigns the issue and its notify fallback comments `**title**`.
+# So only OWNER_KINDS count, a label set as the issue is created is part of its `opened`, and a merge's own
+# `closed` is not a second action.
+OWNER_KINDS='^(labeled|unlabeled|renamed|commented|closed|reopened|reviewed|merged|ready_for_review|convert_to_draft|review_requested|head_ref_force_pushed)$'
+owner_events() { # run-dir phase repo number -> appends the operator's events on that issue or PR; non-zero on a gh failure
+  local f="$1/owner-events.jsonl" me head events
+  me=$(net gh api user --jq .login 2> /dev/null) && [ -n "$me" ] || return 1
+  head=$(net gh api "repos/$3/issues/$4" --jq '"\(.user.login) \(.created_at)"' 2> /dev/null) || return 1
+  events=$(net gh api "repos/$3/issues/$4/timeline" --paginate --jq '.[] | {actor: (.actor.login // .user.login // ""),
+    kind: (.event // ""), id: ((.id // .node_id // "") | tostring), at: (.created_at // .submitted_at // ""),
+    notify: ((.body // "") | startswith("**"))} | @json' 2> /dev/null) || return 1
+  touch "$f" || return 1
+  printf '%s\n' "$events" | jq -c -s --arg me "$me" --arg phase "$2" --arg author "${head%% *}" --arg created "${head#* }" \
+    --arg kinds "$OWNER_KINDS" --slurpfile have "$f" '
+    [$have[] | select(.phase == $phase) | .id // empty] as $ids | any(.[]; .kind == "merged") as $merged
+    | (if $phase == "launch" and $author == $me then [{actor: $me, kind: "opened", id: "opened", at: $created}] else [] end) + .
+    | .[] | select(.actor == $me and (.kind == "opened" or (.kind | test($kinds))))
+    | select((.kind == "closed" and $merged) or ((.kind | endswith("labeled")) and .at == $created)
+             or (.kind == "commented" and .notify == true) | not)
+    | select(.id as $i | ($ids | index($i)) == null)
+    | {phase: $phase, kind, id, at}' >> "$f"
+}
+
+# The PR phase: a pr-opened run whose PR has closed gets the operator's events on it, once (pr-closed marks it).
+# A gh failure leaves the run for the next tick and never stops one.
+pr_closed_events() {
+  local d url repo num
+  for d in "$RUNS_ROOT"/*/*/; do
+    [ "$(cat "$d/status" 2> /dev/null)" = pr-opened ] && [ ! -e "$d/pr-closed" ] || continue
+    url=$(sed -n 's#^[^ ]* EXIT pr-opened ([0-9]*): \(https://github\.com/[^/ ]*/[^/ ]*/pull/[0-9]*\).*#\1#p' \
+      "$d/factory.log" 2> /dev/null | tail -1)
+    [ -n "$url" ] || continue   # a file-ticket rehearsal opens no PR
+    repo=${url#https://github.com/}; repo=${repo%/pull/*}; num=${url##*/}
+    [ "$(net gh api "repos/$repo/issues/$num" --jq .state 2> /dev/null)" = closed ] || continue
+    owner_events "$d" pr "$repo" "$num" && now > "$d/pr-closed"
+  done
+  return 0
+}
+
 cmd_stop() { # <issue|stem>
   local d n=0
   for d in "$RUNS_ROOT/$1"/*/; do
     [ -d "$d" ] || continue
     : > "$d/FACTORY_STOP"; n=$((n + 1))
+    owner_ran && owner_event "$d" stop
     echo "FACTORY_STOP written to $d"
   done
   [ "$n" -gt 0 ] || { echo "factory stop: no run directory under $RUNS_ROOT/$1" >&2; return 1; }
@@ -2308,6 +2376,10 @@ cmd_next() { # [--dry-run|--install]
     echo "claude too old or unreadable: claude --version reports '$cv'; the factory needs Claude Code $CLAUDE_MIN_VERSION+" >&2
     return 1
   fi
+
+  # 1c. Each closed PR's operator events, for status --criteria, on every tick the gates pass, before a full slot
+  #     can return; not under --dry-run, which writes nothing.
+  [ "$dry" = 1 ] || pr_closed_events
 
   # 2. A run holds a slot when holds_slot says so (assert_parallel's rule: running or waiting-limit with a
   #    live owner, or launched with no status yet), and so does a pr-opened run whose ticket worktree still exists: the merge ritual removes the worktree,
@@ -2472,7 +2544,7 @@ cmd_next() { # [--dry-run|--install]
   # Launch bin/factory run <N> detached in one tmux session per issue, output appended to the runs root.
   # Another target's session is named by its slug, with . and : (which tmux refuses in a name) as _, so
   # #12 of two repositories never shares a session.
-  local sess="loam-$pick" envs=()
+  local sess="loam-$pick" envs=(-e FACTORY_BY_NEXT=1)   # a timer launch is not an operator's run (owner-events.jsonl)
   target_is_loam || sess="$(target_slug | tr '.:' '__')-$pick"
   if tmux has-session -t "$sess" 2> /dev/null; then
     echo "nothing to launch"
@@ -2483,8 +2555,8 @@ cmd_next() { # [--dry-run|--install]
   # tmux gives the session the tmux server's environment, not this shell's, so the toolchain exports
   # checked above travel with -e; a server started without them would make the run exit 4 unrecorded.
   mkdir -p "$RUNS_ROOT"
-  target_is_loam && envs=(-e "LOAM_FACTORY_TOOLCHAIN=$LOAM_FACTORY_TOOLCHAIN" -e "LOAM_FACTORY_COPIER=$LOAM_FACTORY_COPIER")
-  if tmux new-session -d -s "$sess" ${envs[@]+"${envs[@]}"} "cd '$ROOT' && bin/factory -C '$TARGET' run $pick >> '$RUNS_ROOT/$pick.tmux.log' 2>&1"; then
+  target_is_loam && envs+=(-e "LOAM_FACTORY_TOOLCHAIN=$LOAM_FACTORY_TOOLCHAIN" -e "LOAM_FACTORY_COPIER=$LOAM_FACTORY_COPIER")
+  if tmux new-session -d -s "$sess" "${envs[@]}" "cd '$ROOT' && bin/factory -C '$TARGET' run $pick >> '$RUNS_ROOT/$pick.tmux.log' 2>&1"; then
     echo "launched #$pick"
   else
     echo "launch failed: tmux new-session -s $sess" >&2

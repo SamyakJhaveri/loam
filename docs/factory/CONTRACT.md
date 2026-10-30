@@ -50,7 +50,7 @@ The body starts at `Brief:` or `Part of`; in a file the first `#` line is the ti
 
 Every path under Where, Do not touch, and Approach is verified with `git ls-files` when the ticket is written, or is a path the Goal creates; a guessed path is the commonest small defect and lint rejects it.
 
-`lib.sh` (`bin/factory.d/lib.sh`): F2 ships `pass`, `fail`, and `guard CMD...` (runs CMD and returns its status); F1 adds `MEASURE`, `render_into`, `check_clean`; #388 adds `predict NAME CMD...` (runs CMD at round 0 only).
+`lib.sh` (`bin/factory.d/lib.sh`): F2 ships `pass`, `fail`, and `guard CMD...` (runs CMD and returns its status, and copies each `SKIPPED:` line CMD prints to the checks file even when the guard line sends its output to `/dev/null`); F1 adds `MEASURE`, `render_into`, `check_clean`; #388 adds `predict NAME CMD...` (runs CMD at round 0 only).
 
 ### Done checks for a rendered-project change
 
