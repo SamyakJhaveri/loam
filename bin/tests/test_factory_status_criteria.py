@@ -156,7 +156,8 @@ class StatusCriteriaTests(unittest.TestCase):
                      "The full done-checks block prints `PASS hung-push-stops`, `PASS hung-gh-cut-off` and "
                      "`PASS check-green`, with no FAIL line.",
                      "all 7 done-checks pass", "All done-checks pass; the work is complete.", "Done.",
-                     "All ten done-checks pass on HEAD 641bedeb and none fails."):
+                     "All ten done-checks pass on HEAD 641bedeb and none fails.",
+                     "The checks were failing before the fix, but all seven done-checks pass now."):
             self.assertTrue(criteria.claims_done(text), text)
         for text in ("I don't think we're done.", "We are nowhere near done.",
                      "The work is not even close to being complete.",
@@ -164,7 +165,10 @@ class StatusCriteriaTests(unittest.TestCase):
                      "I completed the first two checks; the third, bin/check, still fails on a lint error I could not fix.",
                      "Nothing is finished: bin/check still fails.",
                      "Round 2: seed/x is still outside scope; I could not fix it yet.",
-                     "The done-checks still fail; this is not done yet."):
+                     "The done-checks still fail; this is not done yet.",
+                     "The implementation is complete, but tests fail.",
+                     "I completed the first two checks; the third failed.",
+                     "I ran our complete test suite; two checks failed."):
             self.assertFalse(criteria.claims_done(text), text)
 
     def test_a_stall_before_its_rounds_checks_reads_the_last_checked_round(self) -> None:

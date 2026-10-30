@@ -26,11 +26,12 @@ PASS_OVER = "SKIPPED:"  # bin/check's marker for a step that did not run; lib.sh
 STALLS = ("stuck", "no-change", "stopped-cap")
 LOWER = "lower bound"  # a measure's fourth element: the value may undercount, so it prints INCONCLUSIVE, not PASS
 # A completion claim: done (not done-checks), complete or finished (not after the or a), all [n] checks pass or print,
-# no FAIL, or check: PASSED. NEGATED, before it in its clause, denies it; FAILS, anywhere in its sentence, does.
+# no FAIL, or check: PASSED. NEGATED, before a claim or a FAILS match in its clause, denies it; the last signal of a
+# sentence decides it, so a failure after a claim cancels it and a claim after a past failure stands.
 CLAIM = re.compile(r"\b(?:(?<!\bthe )(?<!\ba )(?:done(?![- ]checks?\b)|completed?|finished)\b"
                    r"|all (?:\w+ ){0,2}(?:done[- ])?checks? (?:now )?(?:pass|print)|no fail\b|check: passed)", re.I)
 NEGATED = re.compile(r"\b(?:not|never|no|nowhere|nothing|none|cannot)\b|n't", re.I)
-FAILS = re.compile(r"\bstill fail|(?<!\bnone )\b(?:fails|failing)\b|\bcould not\b|\bcannot\b|\bcan't\b", re.I)
+FAILS = re.compile(r"\bfail(?:s|ed|ing)?\b|\bcould not\b|\bcannot\b|\bcan't\b", re.I)
 
 
 def read(path, missing=""):
@@ -203,13 +204,17 @@ def last_message(run, n):
 
 
 def claims_done(text):
-    """True when some sentence claims the work done or its checks passing, and neither denies it nor names a failure."""
+    """True when some sentence's last signal is a claim of the work done or its checks passing that its clause does not
+    deny, rather than a failure it does not deny."""
     for sentence in re.split(r"(?<=[.!?])\s+|\n", text):
-        if FAILS.search(sentence):
-            continue
+        last = False
         for clause in re.split(r"[;,]|\bbut\b", sentence):
-            if any(not NEGATED.search(clause[:m.start()]) for m in CLAIM.finditer(clause)):
-                return True
+            signals = [(m.start(), not NEGATED.search(clause[:m.start()])) for m in CLAIM.finditer(clause)]
+            signals += [(m.start(), False) for m in FAILS.finditer(clause) if not NEGATED.search(clause[:m.start()])]
+            if signals:
+                last = max(signals)[1]
+        if last:
+            return True
     return False
 
 
