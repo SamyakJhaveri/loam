@@ -19,6 +19,8 @@ import time
 import unittest
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
+# A writer in a session of its own is found only by the FACTORY_CALL_TAG sweep, which reads /proc (none on a Mac).
+NEEDS_PROC = unittest.skipUnless(os.path.exists("/proc/self/environ"), "the FACTORY_CALL_TAG sweep reads /proc")
 INHERITED = ("FACTORY_ROOT", "FACTORY_GH", "LOAM_FACTORY_TOOLCHAIN", "LOAM_FACTORY_COPIER", "REPO", "RUN", "LOG")
 
 # FAKE_IGNORE_TERM makes the writer ignore TERM, so only KILL stops it. FAKE_OWN_SESSION starts it in a session of its
@@ -78,7 +80,8 @@ class CallGroupTests(unittest.TestCase):
             f"RUN='{self.run_dir}'; WORKTREE='{self.wt}'; LOG=\"$RUN/factory.log\"; KEY=7; IS_FILE=1\n"
             'LEDGER="$RUN/ledger.jsonl"; DAILY="$RUN/daily.jsonl"; DECISIONS="$RUN/decisions.md"\n'
             'touch "$LEDGER" "$DAILY" "$DECISIONS"; date -u +%s > "$RUN/launched"\n'
-            "BODY='## Worker'; apply_caps; TIMEOUT_G=(timeout -k 5 \"$CALL_TIMEOUT_SEC\")\n"
+            "BODY='## Worker'; apply_caps; TIMEOUT_G=()\n"
+            'command -v timeout > /dev/null 2>&1 && TIMEOUT_G=(timeout -k 5 "$CALL_TIMEOUT_SEC")\n'
             f"WORKER_KIND=claude; CODEX_PATH='{self.bin}'; CODEX_REVIEW_BLOCKED=0\n"
             f"{call}; echo returned:$?\n"
         )
@@ -120,11 +123,13 @@ class CallGroupTests(unittest.TestCase):
         self.assert_no_survivor(proc)
         self.assertIn("outlived TERM by 5 s; sending KILL", (self.run_dir / "factory.log").read_text())
 
+    @NEEDS_PROC
     def test_writer_in_its_own_session_is_killed(self) -> None:
         proc = self.run_call("worker_round 1", FAKE_OWN_SESSION="1")
         self.assert_no_survivor(proc)
         self.assertIn("left processes behind", (self.run_dir / "factory.log").read_text())
 
+    @NEEDS_PROC
     def test_signalled_supervisor_ends_the_call(self) -> None:
         # Ctrl-C, TERM or HUP reaches the supervisor's group (a terminal signals its foreground group), not a call in
         # its own session; the supervisor ends the call's group and tagged processes before it exits, so none
@@ -149,6 +154,7 @@ class CallGroupTests(unittest.TestCase):
                 self.assertEqual(left, "", "a process the call started outlived the supervisor")
                 self.assertIn(f"got {sig.name[3:]} during a model call", (self.run_dir / "factory.log").read_text())
 
+    @NEEDS_PROC
     def test_second_ctrl_c_waits_for_the_kill(self) -> None:
         # A writer that ignores TERM dies only by the KILL 5 s in; a second Ctrl-C before then must not end the
         # supervisor first.
