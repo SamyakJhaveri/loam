@@ -31,6 +31,17 @@ target_repo() {
   git -C "$TARGET" remote get-url origin 2> /dev/null \
     | sed -nE 's#^.*github\.com[:/]([^/]+)/([^/]+)$#\1/\2#p' | sed 's/\.git$//'
 }
+# Every gh call, and every git call that reaches a remote (fetch, push, ls-remote), runs under NET_TIMEOUT_SEC
+# (LOOP.md, Caps): a call cut off at the limit fails like any other failure of that call, so a hung network call
+# never holds a run, its slot and its heartbeat for good. No --foreground: neither needs a terminal, and timeout
+# then kills the call's whole process group. Without GNU timeout (a Mac) perl's alarm stands in. A shell function
+# (a test's gh or git stub) runs as it is, since timeout and exec can only start a program.
+net() {
+  if [ "$(type -t "$1")" = function ]; then "$@"
+  elif command -v timeout > /dev/null 2>&1; then timeout "$NET_TIMEOUT_SEC" "$@"
+  else perl -e 'alarm shift; exec @ARGV' "$NET_TIMEOUT_SEC" "$@"
+  fi
+}
 target_slug() { target_repo | sed 's#/#__#'; }   # a GitHub owner name has no _, so the first __ splits it
 use_target() { # dir -> 1 when dir is not in a git checkout, or is another repository with no GitHub origin
   local common slug
@@ -54,7 +65,7 @@ CANON=("Goal and why" "Do not touch" "Out of scope" "Approach" "Done checks" \
        "Merge checklist" "Rows measured" "Worker" "Decisions" "Comments")
 REQUIRED=("Goal and why" "Do not touch" "Out of scope" "Done checks" "Worker" "Decisions")
 CAPS=" MAX_ROUNDS ROUND_BUDGET_USD GRADER_BUDGET_USD TICKET_BUDGET_USD DAILY_BUDGET_USD \
-MAX_HOURS MAX_TURNS CALL_TIMEOUT_SEC MAX_PARALLEL "
+MAX_HOURS MAX_TURNS CALL_TIMEOUT_SEC NET_TIMEOUT_SEC MAX_PARALLEL "
 
 # `claude --output-format json` prints one object, or an array whose last result element is it.
 RESULT_OBJ='if type == "array" then ((last(.[] | select(.type == "result")) // .[-1]) // {}) else . end'
@@ -506,8 +517,8 @@ lint() {
       head -n 1 "$SRC" | grep -q '^# ' || err "first line is not a '# ' title"
     fi
   elif [[ "$SRC" =~ ^[0-9]+$ ]]; then
-    BODY=$(gh issue view "$SRC" -R "$(target_repo)" --json body -q .body) \
-      || { echo "LINT $SRC: could not read the issue body with gh" >&2; return 1; }
+    BODY=$(net gh issue view "$SRC" -R "$(target_repo)" --json body -q .body) \
+      || { echo "LINT $SRC: could not read the issue body with gh (failed, or no reply in ${NET_TIMEOUT_SEC}s)" >&2; return 1; }
   else
     echo "no such file: $SRC" >&2
     return 1
@@ -538,11 +549,13 @@ lint_body() {
 # Run state lives under RUNS_ROOT, outside every checkout; use_target sets it from FACTORY_RUNS_ROOT.
 
 CAP_NAMES="MAX_ROUNDS ROUND_BUDGET_USD GRADER_BUDGET_USD TICKET_BUDGET_USD DAILY_BUDGET_USD \
-MAX_HOURS MAX_TURNS CALL_TIMEOUT_SEC MAX_PARALLEL"
+MAX_HOURS MAX_TURNS CALL_TIMEOUT_SEC NET_TIMEOUT_SEC MAX_PARALLEL"
 # Defaults, then the ticket's Worker section, then FACTORY_<NAME> in the environment. The bare names
 # are never read: a Claude Code session already exports WORKER_MODEL and CALL_TIMEOUT_SEC of its own.
 MAX_ROUNDS=6; ROUND_BUDGET_USD=15; GRADER_BUDGET_USD=5; TICKET_BUDGET_USD=60
 DAILY_BUDGET_USD=150; MAX_HOURS=8; MAX_TURNS=200; CALL_TIMEOUT_SEC=5400; MAX_PARALLEL=1
+# Seeded from the environment here too, since lint, next and status call gh without apply_caps.
+NET_TIMEOUT_SEC="${FACTORY_NET_TIMEOUT_SEC:-120}"
 WORKER_MODEL="${FACTORY_WORKER_MODEL:-claude-opus-5-5}"   # ARCHITECTURE.md, Models and roles (2026-09-22)
 GRADER_MODEL="${FACTORY_GRADER_MODEL:-claude-opus-5-5}"   # ARCHITECTURE.md, Models and roles (2026-09-24)
 CODEX_MODEL="${FACTORY_CODEX_MODEL:-codex}"   # ledger label for a `worker: codex` round; Codex holds the real model in its own config, and its dollar cost is null (F4)
@@ -636,7 +649,7 @@ notify() { # level title message
     alert --level "$1" --source factory --project "$(printf '%s' "${REPO#*/}" | tr 'A-Z' 'a-z')" \
       --run "issue $ISSUE" "$(cat)"; } 2>> "$LOG" && return 0
   if [ -n "$ISSUE" ] && printf '**%s**\n\n%s\n' "$2" "$3" | scrub \
-    | gh issue comment "$ISSUE" -R "$REPO" --body-file - > /dev/null 2>&1; then return 0
+    | net gh issue comment "$ISSUE" -R "$REPO" --body-file - > /dev/null 2>&1; then return 0
   fi
   printf '%s %s: %s\n' "$(now)" "$2" "$3" >> "$RUN/notify.failed"
 }
@@ -716,8 +729,16 @@ load_ticket() { # <issue|file>
     ISSUE="$SRC"; KEY="$SRC"
     REPO=$(target_repo)
     [ -n "$REPO" ] || { echo "factory run: $TARGET has no GitHub origin to read the issue from" >&2; exit 4; }
-    BODY=$(gh issue view "$ISSUE" -R "$REPO" --json body -q .body) \
-      || { echo "factory run: could not read issue #$ISSUE" >&2; exit 4; }
+    BODY=$(net gh issue view "$ISSUE" -R "$REPO" --json body -q .body) && return 0
+    # The frozen pass runs after cmd_run wrote owner and running, so a run this process owns ends through
+    # finish; a bare exit would leave it `running` with a dead owner until holds_slot reaps it.
+    local why="gh issue view #$ISSUE failed, or got no reply in ${NET_TIMEOUT_SEC}s" pid=""
+    [ -n "${FACTORY_FROZEN:-}" ] && read -r pid _ < "${FACTORY_FROZEN%/frozen/factory}/owner" 2> /dev/null
+    if [ "$pid" = "$$" ]; then
+      RUN="${FACTORY_FROZEN%/frozen/factory}"; LOG="$RUN/factory.log"
+      finish stopped-environment "$why"
+    fi
+    echo "factory run: could not read issue #$ISSUE: $why" >&2; exit 4
   else
     echo "factory run: no such ticket file, and not an issue number: $SRC" >&2; exit 2
   fi
@@ -766,7 +787,7 @@ under() { # path list -> 0 when path equals or sits under a list entry
 prepare_worktree() {
   local base
   if [ ! -s "$RUN/base.sha" ]; then
-    git -C "$MAIN_CHECKOUT" fetch -q origin 2> /dev/null
+    net git -C "$MAIN_CHECKOUT" fetch -q origin 2> /dev/null
     git -C "$MAIN_CHECKOUT" rev-parse origin/main > "$RUN/base.sha" 2> /dev/null \
       || git -C "$MAIN_CHECKOUT" rev-parse HEAD > "$RUN/base.sha"
   fi
@@ -780,7 +801,7 @@ prepare_worktree() {
     [ -d "$WORKTREE" ] || finish stopped-environment "could not create the worktree $WORKTREE from $base"
   fi
   [ "$IS_FILE" = 1 ] && return 0
-  gh issue edit "$ISSUE" -R "$REPO" --add-assignee @me > /dev/null 2>&1 || log "could not assign #$ISSUE; continuing"
+  net gh issue edit "$ISSUE" -R "$REPO" --add-assignee @me > /dev/null 2>&1 || log "could not assign #$ISSUE; continuing"
 }
 
 FROZEN_SET="factory lib.sh _common.md role-settings.json worker-settings.json checks.sh \
@@ -1641,7 +1662,7 @@ file_issues() { # source issue pr-url, one issue per stdin line, scrubbed before
     [ -n "$line" ] || continue
     grep -Fxq "$line" "$RUN/filed.txt" 2> /dev/null && continue
     if printf 'From the %s of #%s, %s.\n\n%s\n' "$src" "$issue" "$prurl" "$line" \
-      | "$GH" issue create -R "$REPO" --title "${line:0:80}" --label needs-triage --body-file - > /dev/null 2>&1; then
+      | net "$GH" issue create -R "$REPO" --title "${line:0:80}" --label needs-triage --body-file - > /dev/null 2>&1; then
       printf '%s\n' "$line" >> "$RUN/filed.txt"
     else
       log "file_issues: gh issue create failed for a $src line: $line"
@@ -1722,16 +1743,17 @@ open_pr() { # [draft]: opened at the grader-round cap
       "$(jq -s '[.[].denials // 0] | add // 0' "$LEDGER")" "$RUN"
   } | scrub > "$body" || finish stopped-environment "could not scrub the PR body"
   [ "$IS_FILE" = 1 ] && finish pr-opened "file ticket: no GitHub call; the PR body is at $body"
-  git -C "$WORKTREE" push -u origin "$BRANCH" >> "$LOG" 2>&1 || finish stopped-environment "git push of $BRANCH failed"
-  if num=$(gh pr view "$BRANCH" -R "$REPO" --json number --jq .number 2> /dev/null) && [ -n "$num" ]; then
+  net git -C "$WORKTREE" push -u origin "$BRANCH" >> "$LOG" 2>&1 \
+    || finish stopped-environment "git push of $BRANCH failed, or got no reply in ${NET_TIMEOUT_SEC}s"
+  if num=$(net gh pr view "$BRANCH" -R "$REPO" --json number --jq .number 2> /dev/null) && [ -n "$num" ]; then
     # gh pr edit has failed on a GraphQL deprecation; PR bodies are updated through the REST API.
-    gh api -X PATCH "repos/$REPO/pulls/$num" -f "body=$(cat "$body")" > /dev/null \
-      || finish stopped-environment "could not update the body of PR #$num"
+    net gh api -X PATCH "repos/$REPO/pulls/$num" -f "body=$(cat "$body")" > /dev/null \
+      || finish stopped-environment "could not update the body of PR #$num (failed, or no reply in ${NET_TIMEOUT_SEC}s)"
     url="https://github.com/$REPO/pull/$num"
   else
     title=$(grep -m1 '^# ' "$RUN/frozen/issue.md" | sed 's/^# //' | scrub)
-    url=$(gh pr create -R "$REPO" --head "$BRANCH" --base main --title "${title:-$KEY}" --body-file "$body" ${draft:+--draft} 2>&1) \
-      || finish stopped-environment "gh pr create for $BRANCH failed: $url"
+    url=$(net gh pr create -R "$REPO" --head "$BRANCH" --base main --title "${title:-$KEY}" --body-file "$body" ${draft:+--draft} 2>&1) \
+      || finish stopped-environment "gh pr create for $BRANCH failed, or got no reply in ${NET_TIMEOUT_SEC}s: $url"
     url=$(printf '%s\n' "$url" | tail -1)
   fi
   [ "$IS_FILE" = 0 ] && file_backlog "$RUN/round-$ROUND.judge.json" "$ISSUE" "$url"
@@ -1974,8 +1996,8 @@ cmd_next() { # [--dry-run|--install]
         log "refused pull of $co: not on main"
       elif [ -n "$(git -C "$co" status --porcelain 2> /dev/null)" ]; then
         log "refused pull of $co: dirty checkout"
-      elif ! git -C "$co" fetch -q origin 2> /dev/null; then
-        log "refused pull of $co: git fetch origin failed"
+      elif ! net git -C "$co" fetch -q origin 2> /dev/null; then
+        log "refused pull of $co: git fetch origin failed, or got no reply in ${NET_TIMEOUT_SEC}s"
       elif ! git -C "$co" merge --ff-only origin/main > /dev/null 2>&1; then
         log "refused pull of $co: not fast-forward"
       fi
@@ -1998,9 +2020,9 @@ cmd_next() { # [--dry-run|--install]
     echo "frontier query failed: $TARGET has no GitHub origin" >&2
     return 1
   fi
-  if ! ready=$(gh api "repos/$repo/issues?labels=ready-for-agent&state=open&assignee=none&per_page=100" \
+  if ! ready=$(net gh api "repos/$repo/issues?labels=ready-for-agent&state=open&assignee=none&per_page=100" \
     --jq 'sort_by(.number)[] | select(.pull_request == null) | select(.issue_dependencies_summary.blocked_by == 0) | "\(.number) \(.body // "" | @base64)"' 2> /dev/null); then
-    echo "frontier query failed: gh api issues" >&2
+    echo "frontier query failed: gh api issues (failed, or no reply in ${NET_TIMEOUT_SEC}s)" >&2
     return 1
   fi
 
@@ -2090,7 +2112,7 @@ cmd_status() {
   done
   printf '\n== worktrees and PRs\n'
   git -C "$MAIN_CHECKOUT" worktree list 2> /dev/null | sed 's/^/  /'
-  gh pr list -R "$(target_repo)" --json number,headRefName,title \
+  net gh pr list -R "$(target_repo)" --json number,headRefName,title \
     --jq '.[] | select(.headRefName | startswith("factory/")) | "  #\(.number) \(.headRefName) \(.title)"' 2> /dev/null \
     || echo "  (no PR list: gh is unavailable from here; run status on the runner)"
   printf '\n== preconditions\n'
@@ -2197,7 +2219,7 @@ precondition_lines() { # LOOP.md, Preconditions
   else
     echo "  FAIL claude login: claude auth status reports logged out; run claude login on the runner"
   fi
-  gh api rate_limit > /dev/null 2>&1 && echo "  PASS gh api rate_limit" || echo "  FAIL gh api rate_limit"
+  net gh api rate_limit > /dev/null 2>&1 && echo "  PASS gh api rate_limit" || echo "  FAIL gh api rate_limit"
   claude -p --help 2>&1 | grep -q -- '--json-schema' && echo "  PASS claude -p accepts --json-schema" \
     || echo "  FAIL claude -p lacks --json-schema; every grader call needs it"
   for t in judge reviewer; do
