@@ -2624,7 +2624,7 @@ run_clean() { # run dir -> yes|no|-
   local d="$1" f exits
   [ "$(cat "$d/status" 2> /dev/null)" = pr-opened ] || { printf -- '-'; return; }
   # A herestring of nothing is one empty line, which grep -v would match, so test for EXIT lines first.
-  exits=$(grep -h ' EXIT ' "$d/factory.log" 2> /dev/null)
+  exits=$(grep -h ' EXIT ' "$d/factory.log" 2> /dev/null || true)
   [ -n "$exits" ] && grep -vq ' EXIT pr-opened ' <<<"$exits" && { printf 'no'; return; }
   for f in "$d"/round-*.fixes; do
     [ -e "$f" ] || continue
