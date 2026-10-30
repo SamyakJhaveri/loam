@@ -60,8 +60,8 @@ class NetTimeoutTests(unittest.TestCase):
         self.assertEqual((self.run_dir / "status").read_text().strip(), "stopped-environment")
         alerts = self.alerts.read_text()
         self.assertIn("stopped on a machine or tool problem", alerts)
-        self.assertIn("gh issue view #7", alerts)
-        self.assertIn("EXIT stopped-environment (4): gh issue view #7", (self.run_dir / "factory.log").read_text())
+        self.assertIn("gh api graphql #7", alerts)
+        self.assertIn("EXIT stopped-environment (4): gh api graphql #7", (self.run_dir / "factory.log").read_text())
 
     def test_run_owned_by_another_process_is_left_alone(self) -> None:
         proc, took = self.load("1")
