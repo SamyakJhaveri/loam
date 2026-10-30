@@ -96,16 +96,36 @@ class FactorySkillsTests(unittest.TestCase):
     def test_unresolved_worker_pstack_name_is_refused(self) -> None:
         self.assert_refused("pstack:how", "skill 'pstack:how' resolves to no SKILL.md")
 
-    def test_unknown_pstack_name_is_refused(self) -> None:
-        self.assert_refused("pstack:no-such-x", "skill 'pstack:no-such-x' is not a worker pstack skill")
+    def test_unresolved_pstack_name_is_refused(self) -> None:
+        self.assert_refused("pstack:no-such-x", "skill 'pstack:no-such-x' resolves to no SKILL.md")
 
     def test_pstack_glob_is_refused(self) -> None:
         self.assert_refused("pstack:*", "skill 'pstack:*': a pstack name must be")
 
-    def test_resolving_non_worker_pstack_name_is_refused(self) -> None:
+    def test_malformed_pstack_name_is_refused(self) -> None:
+        for skill in ("pstack:", "pstack:../x", "pstack:a/b"):
+            with self.subTest(skill=skill):
+                self.assert_refused(skill, f"skill '{skill}': a pstack name must be")
+
+    def test_pstack_skill_that_writes_under_home_lints_with_a_warning(self) -> None:
+        proc = self.lint("pstack:setup-pstack")
+        self.assertEqual(proc.returncode, 0, proc.stdout + proc.stderr)
+        self.assertIn("lint: OK", proc.stdout)
+        self.assertIn("warning: pstack:setup-pstack writes under ~/", proc.stderr)
+
+    def test_pstack_skill_that_stays_in_the_worktree_lints_without_a_warning(self) -> None:
+        self.skill(self.pstack, "how")
+        proc = self.lint("pstack:how")
+        self.assertEqual(proc.returncode, 0, proc.stdout + proc.stderr)
+        self.assertIn("lint: OK", proc.stdout)
+        self.assertNotIn("warning", proc.stderr)
+
+    def test_resolving_human_only_pstack_name_lints(self) -> None:
+        # Any installed pstack skill may be named (owner ruling, 30 Oct 2026), not only the worker ones.
         for name in ("setup-pstack", "sharpen"):
             with self.subTest(name=name):
-                self.assert_refused(f"pstack:{name}", f"skill 'pstack:{name}' is not a worker pstack skill")
+                proc = self.lint(f"pstack:{name}")
+                self.assertEqual(proc.returncode, 0, proc.stdout + proc.stderr)
 
     def test_resolving_name_outside_skills_txt_is_refused(self) -> None:
         self.assert_refused("other:tdd", "unknown skill 'other:tdd': not a line of bin/factory.d/skills.txt")

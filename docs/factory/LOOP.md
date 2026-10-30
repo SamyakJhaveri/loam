@@ -188,11 +188,11 @@ Skills are given at the moment they apply, never all at once; the listing is pai
 | Brief (stage 0) | `/brief` (F5) | Samyak invokes it |
 | Design (stage 1) | `surprise-me` (panel), a research pass against primary sources, plan mode, `/plan-review` | in that order for `Mode: figure-out`, from plan mode on for `build`; Samyak types `/surprise-me` and `/plan-review`, which are manual-only |
 | Tickets (stage 2) | `plan-reviewer`, lean-critic | the stage-2 session writes and publishes the breakdown itself (`CONTRACT.md`, Publishing a breakdown) and invokes lean-critic after `bin/factory lint` exits 0; `plan-reviewer` is manual-only, run by hand over the breakdown when Samyak asks |
-| Worker | the skills the ticket's `skills:` field names, each a line of `bin/factory.d/skills.txt` or a `pstack:<name>` of a worker pstack skill `docs/PSTACK.md` lists | one sentence per name in the worker prompt, naming the SKILL.md path to read |
+| Worker | the skills the ticket's `skills:` field names, each a line of `bin/factory.d/skills.txt` or a `pstack:<name>` of any installed pstack skill | one sentence per name in the worker prompt, naming the SKILL.md path to read |
 | Graders | none; their prompt is the whole instruction | frozen files |
 | Manager (stage 5, 6) | none; a handoff file in the `seed/docs/WORKERS.md.jinja` Handoff form when stopping mid-stream | the manager session |
 
-A worker may name a line of `bin/factory.d/skills.txt`, and lint reads that file (#37), or with no line any of the worker pstack skills `docs/PSTACK.md` lists, as `pstack:<name>` (#385).
+A worker may name a line of `bin/factory.d/skills.txt`, and lint reads that file (#37), or with no line any installed pstack skill, as `pstack:<name>` (#385; owner ruling 2026-10-30).
 Either way lint refuses a name `skill_file` resolves to no SKILL.md.
 The worker runs with `--setting-sources user`, which loads `~/.claude/skills/` and user-scope plugins but no project skill and not the root `CLAUDE.md` or `AGENTS.md`, so the seed skills (`catchup`, `fable-prompting`, `hypothesis-tree`) are not in the file.
 
@@ -232,7 +232,7 @@ healthchecks: one check per host.
 Set the check once in the healthchecks UI: period 5 minutes, grace 10 minutes, the Slack integration on (or a red check reaches no one), and manual resume off (or a beat cannot resume a paused check).
 A run beats the check at launch, right after the frozen re-exec and before round 0, and every 5 minutes while its process lives.
 At its end it stops beating (waiting for a beat in flight), and the host's last live run pauses the check through the API, so a run that ends on purpose raises no alarm and the next run's beat resumes it.
-After the pause it looks for live runs once more and beats again if one launched meanwhile, since a run writes `launched` before its first beat; a relaunched run counts as live while its `launched` is newer than its `status`.
+After the pause it looks for live runs once more and beats again if one launched meanwhile, since a run writes `launched` before its first beat; a run counts as live while it holds its slot, which it does from before its first beat.
 A killed run, or a dead host, stops the beats without a pause, so the check goes red and healthchecks posts to Slack.
 A hard-killed run keeps its slot (above), so no later run pauses the check while its directory stands.
 

@@ -109,7 +109,6 @@ jobs:
   factory-macos:
     runs-on: macos-15
     timeout-minutes: 15
-    continue-on-error: true  # reports macOS failures without blocking until they are fixed
     steps:
       - uses: actions/checkout@v4
         with:

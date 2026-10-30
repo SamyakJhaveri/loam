@@ -50,7 +50,7 @@ After merges that changed code a formal-verification skill models without rechec
 Any worker uses `how`, `why`, `tdd` and the principle skills the script lists where the work fits.
 An agent stays within its sub-agent cap, so it skips a step that runs `arena`, `swarm` or `architect`.
 An agent without the Agent tool runs `how` or `why` as their single explainer or investigator itself, and skips `interrogate` and the review spawn of `show-me-your-work`.
-The other pstack skills stay human-only, typed as `/pstack:<name>`: `poteto-mode`, `arena`, `swarm`, `architect` and the other fan-out and one-off setup skills, `maintain-verification-skill` (a sub-agent per feature, then a PR), `figure-it-out`, `reflect`, `no-comments`, and `unslop` and `technical-writing`, since writing skills stay hidden from the model.
+The other pstack skills stay human-only, typed as `/pstack:<name>`: `poteto-mode`, `arena`, `swarm`, `architect` and the other fan-out and one-off setup skills, `maintain-verification-skill` (a sub-agent per feature, then a PR), `figure-it-out`, `reflect`, `no-comments`, and `unslop` and `technical-writing`, since writing skills stay hidden from the model; a ticket that Loam's factory (`bin/factory` in Loam) runs may name any installed pstack skill.
 
 ## Handoff
 
