@@ -139,6 +139,7 @@ claude -p --model claude-opus-5-5 --effort high --advisor claude-opus-5-5 --perm
   --max-budget-usd "$ROUND_BUDGET_USD" --output-format stream-json --verbose --include-hook-events < round-<k>.prompt.md
 ```
 
+The call's environment sets `CLAUDE_CODE_SUBAGENT_MODEL`, `ANTHROPIC_DEFAULT_SONNET_MODEL` and `ANTHROPIC_DEFAULT_HAIKU_MODEL` to the worker model and `CLAUDE_CODE_SUBAGENT_MODEL_FORCE=1` (Claude Code 2.1.257+), over whatever the runner's shell exports, so no subagent, workflow agent or `sonnet`/`haiku` alias runs on another model (#379); the force stays off the manager, overnight and interactive sessions because it would also move a Fable role such as `escalate` onto the worker model.
 `--strict-mcp-config` drops the MCP schemas, 2k tokens of prefix on every worker turn; the worker keeps its skills listing because the `skills:` sentence names a Skill-tool call (#37).
 `--max-turns` is accepted by Claude Code 2.1.263, the runner's login-shell binary (#40; a plain shell resolves an older nvm copy), though absent from its `--help`.
 `worker-settings.json` is deny-only, the lean-v3 list plus `Bash(gh:*)` so a worker cannot touch GitHub at all, plus the `Stop` hook (see The worker prompt); `role-settings.json`, loaded only by grader calls and `bin/factory eval`, carries the same deny rules with no hook.

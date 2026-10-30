@@ -2,7 +2,8 @@
 // one plan on the worker model (the only check on the split is firstOverlap), two to
 // four Opus builders on disjoint files, one Opus integrator that reruns every check and
 // commits. Run by the worker via the Workflow tool; every agent is pinned to the worker
-// model by CLAUDE_CODE_SUBAGENT_MODEL.
+// model by CLAUDE_CODE_SUBAGENT_MODEL with CLAUDE_CODE_SUBAGENT_MODEL_FORCE=1, which
+// drops any model an agent() call or an agent definition names.
 //
 // globsOverlap and normalizeOwnsGlob below are ported from Leonxlnx/unlazy
 // (scripts/lib/gates.mjs), MIT License, Copyright (c) 2026 Leonxlnx. One edit: node's
