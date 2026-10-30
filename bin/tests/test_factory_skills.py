@@ -107,6 +107,19 @@ class FactorySkillsTests(unittest.TestCase):
             with self.subTest(skill=skill):
                 self.assert_refused(skill, f"skill '{skill}': a pstack name must be")
 
+    def test_pstack_skill_that_writes_under_home_lints_with_a_warning(self) -> None:
+        proc = self.lint("pstack:setup-pstack")
+        self.assertEqual(proc.returncode, 0, proc.stdout + proc.stderr)
+        self.assertIn("lint: OK", proc.stdout)
+        self.assertIn("warning: pstack:setup-pstack writes under ~/", proc.stderr)
+
+    def test_pstack_skill_that_stays_in_the_worktree_lints_without_a_warning(self) -> None:
+        self.skill(self.pstack, "how")
+        proc = self.lint("pstack:how")
+        self.assertEqual(proc.returncode, 0, proc.stdout + proc.stderr)
+        self.assertIn("lint: OK", proc.stdout)
+        self.assertNotIn("warning", proc.stderr)
+
     def test_resolving_human_only_pstack_name_lints(self) -> None:
         # Any installed pstack skill may be named (owner ruling, 30 Oct 2026), not only the worker ones.
         for name in ("setup-pstack", "sharpen"):

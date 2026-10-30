@@ -12,7 +12,7 @@
       "Bash(git checkout -- .:*)", "Bash(git checkout .:*)", "Bash(git restore .:*)",
       "Bash(git stash clear:*)", "Bash(git stash drop:*)",
       "Read(.env*)", "Edit(.env*)",
-      "Edit(~/.claude/**)"
+      "Edit(~/.claude/**)", "Edit(~/.cursor/**)"
     ]
   },
   "hooks": {
