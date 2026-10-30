@@ -132,6 +132,15 @@ class PrBodyChecksTests(unittest.TestCase):
                 self.assertIn("```\nFAIL render\nPASS guard\n```\n", body)
                 self.assertIn(f"Reasons and full output: {self.run_dir / 'round-0.checks'}\n", body)
 
+    def test_body_opens_with_the_workers_mechanism_paragraph_or_says_there_is_none(self) -> None:
+        # The owner judges the merge from the worker's own account, read before anything else (#330).
+        (self.run_dir / "round-0.checks").write_text("FAIL widget\n")
+        self.assertTrue(self.open_pr().startswith(
+            "## How it works\n\n(the worker wrote no mechanism paragraph)\n\nCloses #7\n\n"))
+        para = "The parser reads the flag before any write, so a bad flag fails with nothing on disk."
+        (self.run_dir / "mechanism.md").write_text(f"\n{para}")
+        self.assertTrue(self.open_pr().startswith(f"## How it works\n\n{para}\n\nCloses #7\n\n## Goal\n"))
+
 
 if __name__ == "__main__":
     unittest.main()

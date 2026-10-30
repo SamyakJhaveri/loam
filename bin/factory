@@ -1005,7 +1005,7 @@ freeze() {
   jq --arg m "$WORKER_MODEL" '.env = (.env // {}) + {CLAUDE_CODE_SUBAGENT_MODEL: $m, CLAUDE_CODE_SUBAGENT_MODEL_FORCE: "1",
     ANTHROPIC_DEFAULT_SONNET_MODEL: $m, ANTHROPIC_DEFAULT_HAIKU_MODEL: $m}' \
     "$ROOT/bin/factory.d/worker-settings.json" > "$RUN/frozen/worker-settings.json"
-  sed -e "s|<issue>|${ISSUE:-$KEY}|g" -e "s|<decisions>|$DECISIONS|g" \
+  sed -e "s|<issue>|${ISSUE:-$KEY}|g" -e "s|<decisions>|$DECISIONS|g" -e "s|<mechanism>|${DECISIONS%/*}/mechanism.md|g" \
     "$ROOT/bin/factory.d/_common.md" > "$RUN/frozen/_common.md"
   for g in judge reviewer; do
     src=$(grader_file "$g" 2>&1) || finish stopped-environment "$src"
@@ -1451,6 +1451,7 @@ build_worker_prompt() { # round -> prompt path (pending until the call returns a
       printf 'Run the Workflow tool with scriptPath `%s/frozen/factory-round.js` and args `{"ticket": "%s/frozen/issue.md", "run": "%s"}`. ' "$RUN" "$RUN" "$RUN"
       printf 'When it returns, read %s/tasks/result.json. If that file is absent, implement the ticket yourself as in any round. ' "$RUN"
       printf 'Otherwise the integrator has committed; copy its `unmet` and `abandoned` lists into %s.\n' "$DECISIONS"
+      printf 'Then read the integrated diff and write its one-paragraph account of how the change works and why it is correct to %s/mechanism.md, as the closing instructions ask.\n' "${DECISIONS%/*}"
     } >> "$pf"
   fi
   if [ "$round" -gt 1 ]; then
@@ -1994,6 +1995,14 @@ open_pr() { # [draft]: opened at the grader-round cap
   blocking=$(blocking_findings)
   [ -n "$draft" ] || [ -z "$blocking" ] || draft=blocking
   {
+    # The worker's own account of how the change works and why it is correct opens the body (#330), so
+    # the owner can judge the merge without trusting the graders; it sits beside decisions.md.
+    printf '## How it works\n\n'
+    if grep -q '[^[:space:]]' "${DECISIONS%/*}/mechanism.md" 2> /dev/null; then
+      printf '%s\n\n' "$(sed '/./,$!d' "${DECISIONS%/*}/mechanism.md")"
+    else
+      printf '(the worker wrote no mechanism paragraph)\n\n'
+    fi
     [ "$IS_FILE" = 1 ] || printf 'Closes #%s\n\n' "$ISSUE"
     if [ "$draft" = blocking ]; then
       printf 'Draft: the judge passed, but %s blocking reviewer or Codex finding(s) remain past the one block each grader may make or come from a reviewer or Codex review with no parseable reply, and each is filed as an issue. Read them before marking it ready. The first is %s\n\n' \
