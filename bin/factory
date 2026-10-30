@@ -2014,8 +2014,11 @@ grader_first_fail() { # run dir -> the first grader item that failed in the last
   local j r
   j=$(find "$1" -maxdepth 1 -name 'round-*.judge.json' 2> /dev/null | sort -V | tail -1)
   [ -n "$j" ] || return 0
-  r=$(jq -r 'first((.rows // {}) | to_entries[] | select(.value != "pass") | "judge:" + .key) // empty' "$j" 2> /dev/null)
-  [ -n "$r" ] || r=$(jq -r "first($REVIEW_BLOCKING"'[] | "review:" + (.file // "?")) // empty' \
+  r=$(jq -r 'if .unparseable == true then "judge:unparseable"
+    else first((.rows // {}) | to_entries[] | select(.value != "pass") | "judge:" + .key) // empty end' \
+    "$j" 2> /dev/null)
+  [ -n "$r" ] || r=$(jq -r 'if .unparseable == true then "review:unparseable"
+    else first('"$REVIEW_BLOCKING"'[] | "review:" + (.file // "?")) // empty end' \
     "${j%judge.json}review.json" 2> /dev/null)
   printf '%s' "$r"
 }
