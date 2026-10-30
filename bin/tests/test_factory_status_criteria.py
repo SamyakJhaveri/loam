@@ -145,6 +145,15 @@ class StatusCriteriaTests(unittest.TestCase):
         self.assertEqual(verdict["rounds whose last worker message claims done while the checks printed FAIL"],
                          "    FAIL: measured 2 (claude 1, codex 1)")
 
+    def test_a_run_that_froze_the_copying_guard_measures_zero_pass_over_lines(self) -> None:
+        frozen = self.runs / "1/aaaa0001/frozen"
+        frozen.mkdir()
+        (frozen / "lib.sh").write_text((ROOT / "bin/factory.d/lib.sh").read_text())
+        proc = factory("status", "--criteria", runs=self.runs)
+        self.assertEqual(proc.returncode, 0, proc.stderr)
+        self.assertEqual(verdicts(proc.stdout)["lines per round marking a passed-over step"],
+                         "    PASS: measured 0 (over 1 round)")
+
     def test_owner_events_reads_the_operators_issue_and_pr_events(self) -> None:
         # gh is a stub that applies the real --jq program with jq to GitHub-shaped replies, keyed by the API path.
         gh_dir = pathlib.Path(self.tmp.name) / "gh"
