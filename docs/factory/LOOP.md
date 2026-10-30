@@ -166,7 +166,7 @@ Its workspace-write sandbox does not block `.env` reads (#41); no deny is config
 
 Every worker round receives, in this order: the issue body verbatim, which carries its `goal:` line as text, `_common.md`, and from round 2 a `## Previous round` block holding the failing check lines and every blocking finding verbatim; a Claude worker also gets `frozen/unattended.md` as an appended system prompt.
 A slash command expands only on the first line of a `-p` prompt and swallows the rest as its argument (#40), so no worker prompt carries `/goal` or a `/<skill>` line; a `Stop` hook in `worker-settings.json`, the worker-only settings file, runs the frozen check script from the worktree root and exits 2 with the FAIL lines while any check fails, and `--max-turns` bounds the round (#36, route B).
-The hook sets `LOAM_HOOK=1`, under which the check lines that call `bin/check` (minutes per stop) or the live model pass without running; the supervisor's own check run has it unset and is the one run of those per round. `build_worker_prompt` in `bin/factory` appends after `_common.md` one sentence per `skills:` name: `Before the first edit, read <path> and follow its steps.`, where `<path>` is the SKILL.md `skill_file` resolves (#37, #385).
+The hook sets `LOAM_HOOK=1`, under which the check lines that call `bin/check` (minutes per stop) or the live model pass without running; the supervisor's own check run has it unset and is the one run of those per round. `build_worker_prompt` in `bin/factory` appends after `_common.md` one sentence per `skills:` name: `Before the first edit, read <path> and follow its steps.`, where `<path>` is the SKILL.md `skill_file` resolves (#37, #385); before the first `pstack:` name it adds one sentence naming pstack's Claude Code adapter, `docs/harness/claude-code.md` beside that skills tree, when the file exists.
 The Skill tool would not do: every pstack skill sets `disable-model-invocation`, so the tool refuses it (`docs/PSTACK.md`).
 A name that resolves to no SKILL.md stops the round, for either worker.
 A Codex worker gets the skill bodies pasted instead.
@@ -188,7 +188,7 @@ Skills are given at the moment they apply, never all at once; the listing is pai
 | Graders | none; their prompt is the whole instruction | frozen files |
 | Manager (stage 5, 6) | none; a handoff file in the `seed/docs/WORKERS.md.jinja` Handoff form when stopping mid-stream | the manager session |
 
-A worker may name a line of `bin/factory.d/skills.txt`, and lint reads that file (#37), or any `pstack:<name>` with no line (#385).
+A worker may name a line of `bin/factory.d/skills.txt`, and lint reads that file (#37), or with no line any `pstack:<name>` except the human-only and unused ones (`seed/docs/WORKERS.md.jinja`, `docs/PSTACK.md`) (#385).
 Either way lint refuses a name `skill_file` resolves to no SKILL.md.
 The worker runs with `--setting-sources user`, which loads `~/.claude/skills/` and user-scope plugins but no project skill and not the root `CLAUDE.md` or `AGENTS.md`, so the seed skills (`catchup`, `fable-prompting`, `hypothesis-tree`) are not in the file.
 

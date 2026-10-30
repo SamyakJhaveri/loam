@@ -259,7 +259,14 @@ check_worker() {
       case "$skill" in
         pstack:*)
           [[ "$skill" =~ ^pstack:[A-Za-z0-9_-]+$ ]] \
-            || { err "skill '$skill': a pstack name must be pstack:<letters, digits, - or _>"; continue; } ;;
+            || { err "skill '$skill': a pstack name must be pstack:<letters, digits, - or _>"; continue; }
+          # Human-only or unused pstack skills (seed/docs/WORKERS.md.jinja, docs/PSTACK.md Not used).
+          case "${skill#pstack:}" in
+            poteto-mode|arena|swarm|architect|figure-it-out|reflect|no-comments|unslop|technical-writing|\
+            maintain-verification-skill|setup-pstack|create-verification-skill|create-formal-verification-skill|\
+            recall|automate-me|make-bot-ui)
+              err "skill '$skill' is human-only (seed/docs/WORKERS.md.jinja)"; continue ;;
+          esac ;;
         *)
           grep -qxF "$skill" "$ROOT/bin/factory.d/skills.txt" \
             || { err "unknown skill '$skill': not a line of bin/factory.d/skills.txt"; continue; } ;;
@@ -1254,8 +1261,8 @@ nav_c_append() { [ "${FACTORY_NAV_ARM:-}" = C ] && cat "$ROOT/bin/factory.d/_nav
 # launch: exec_frozen re-execs with the exported value, which stops a second pop.
 nav_arm_resolve() { [ -n "${FACTORY_NAV_ARM+x}" ] && return 0; local f="$RUNS_ROOT/nav-order" a; [ -s "$f" ] || return 0; a=$(head -n 1 "$f"); [ -n "$a" ] || return 0; export FACTORY_NAV_ARM="$a"; tail -n +2 "$f" > "$f.tmp" && mv "$f.tmp" "$f"; return 0; }
 
-build_worker_prompt() { # round -> prompt path (pending until the call returns a result); non-zero when a Codex skill will not resolve
-  local round="$1" pf="$RUN/pending.prompt.md" prev=$((round - 1)) s sf
+build_worker_prompt() { # round -> prompt path (pending until the call returns a result); non-zero when a skills: name resolves to no SKILL.md
+  local round="$1" pf="$RUN/pending.prompt.md" prev=$((round - 1)) s sf ad=
   { printf '%s\n\n' "$BODY"; cat "$RUN/frozen/_common.md"; } > "$pf"
   nav_c_append "$pf"   # arm C appends the Semble instruction; base and arm B append nothing (NAV-01)
   # Skills per role (LOOP.md), each `skills:` name resolved by skill_file: a Claude worker gets one
@@ -1274,6 +1281,11 @@ build_worker_prompt() { # round -> prompt path (pending until the call returns a
     if [ "$WORKER_KIND" = codex ]; then
       printf '\n## Skill: %s\n\n%s\n' "$s" "$(cat "$sf")" >> "$pf"
     else
+      # pstack skills use Cursor tool names, which pstack's Claude Code adapter maps; read it once first.
+      if [ -z "$ad" ] && [[ "$s" == pstack:* ]] && [ -f "${sf%/skills/*}/docs/harness/claude-code.md" ]; then
+        ad="${sf%/skills/*}/docs/harness/claude-code.md"
+        printf 'Before the first pstack skill, read %s, which maps its tool names to Claude Code.\n' "$ad" >> "$pf"
+      fi
       printf 'Before the first edit, read %s and follow its steps.\n' "$sf" >> "$pf"
     fi
   done < <(section Worker | sed -n 's/^skills: *//p' | head -1 | tr ',' '\n' | sed 's/^ *//;s/ *$//' | grep .)
