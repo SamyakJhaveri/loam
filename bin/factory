@@ -802,7 +802,11 @@ freeze() {
   cp "$ROOT/bin/factory.d/lib.sh" "$RUN/frozen/lib.sh"
   cp "$ROOT/bin/alert" "$RUN/frozen/alert"   # a mid-run edit of bin/alert cannot change this run's alerts
   cp "$ROOT/bin/factory.d/role-settings.json" "$RUN/frozen/role-settings.json"
-  cp "$ROOT/bin/factory.d/worker-settings.json" "$RUN/frozen/worker-settings.json"
+  # Claude Code copies each settings tier's env over the launch env (user, then --settings), so the worker call's
+  # model pins also go in this frozen copy's env, or a ~/.claude/settings.json env entry would undo them (#379).
+  jq --arg m "$WORKER_MODEL" '.env = (.env // {}) + {CLAUDE_CODE_SUBAGENT_MODEL: $m, CLAUDE_CODE_SUBAGENT_MODEL_FORCE: "1",
+    ANTHROPIC_DEFAULT_SONNET_MODEL: $m, ANTHROPIC_DEFAULT_HAIKU_MODEL: $m}' \
+    "$ROOT/bin/factory.d/worker-settings.json" > "$RUN/frozen/worker-settings.json"
   sed -e "s|<issue>|${ISSUE:-$KEY}|g" -e "s|<decisions>|$DECISIONS|g" \
     "$ROOT/bin/factory.d/_common.md" > "$RUN/frozen/_common.md"
   for g in judge reviewer; do
@@ -1247,7 +1251,9 @@ worker_round() { # round; leaves round-N.* only once the call produced a result
   while :; do
     log "worker call: round $round model=$WORKER_MODEL effort=$WORKER_EFFORT advisor=${WORKER_ADVISOR:-off} budget=$ROUND_BUDGET_USD usd, prompt=$(wc -c < "$pf") bytes"
     rm -f "$out"
-    ( cd "$WORKTREE" && LOAM_CHECKS="$RUN/frozen/checks.sh" CLAUDE_CODE_SUBAGENT_MODEL="$WORKER_MODEL" ${t[@]+"${t[@]}"} claude -p \
+    ( cd "$WORKTREE" && LOAM_CHECKS="$RUN/frozen/checks.sh" \
+        CLAUDE_CODE_SUBAGENT_MODEL="$WORKER_MODEL" CLAUDE_CODE_SUBAGENT_MODEL_FORCE=1 \
+        ANTHROPIC_DEFAULT_SONNET_MODEL="$WORKER_MODEL" ANTHROPIC_DEFAULT_HAIKU_MODEL="$WORKER_MODEL" ${t[@]+"${t[@]}"} claude -p \
         --model "$WORKER_MODEL" --effort "$WORKER_EFFORT" ${WORKER_ADVISOR:+--advisor "$WORKER_ADVISOR"} --permission-mode bypassPermissions --strict-mcp-config \
         --setting-sources user --settings "$RUN/frozen/worker-settings.json" --max-turns "$MAX_TURNS" \
         --append-system-prompt "$(cat "$RUN/frozen/unattended.md")" \
@@ -1724,6 +1730,8 @@ cmd_run() {
   # Before load_ticket, so a missing toolchain export or bin/check stops ahead of every GitHub call; exit 4
   # is stopped-environment's code, direct because finish needs RUN and its notify may comment on the issue.
   assert_target_ready || exit 4
+  local cv
+  cv=$(claude_version_ok) || { echo "factory run: claude --version reports '$cv'; the factory needs Claude Code $CLAUDE_MIN_VERSION+ (#379)" >&2; exit 4; }
   load_ticket "$1"
   apply_caps
   local effort
@@ -1846,6 +1854,11 @@ cmd_next() { # [--dry-run|--install]
   assert_target_ready || return 1
   if ! claude_logged_in; then
     echo "login expired: claude auth status reports logged out; run claude login on the runner" >&2
+    return 1
+  fi
+  local cv
+  if ! cv=$(claude_version_ok); then
+    echo "claude too old or unreadable: claude --version reports '$cv'; the factory needs Claude Code $CLAUDE_MIN_VERSION+" >&2
     return 1
   fi
 
@@ -2052,6 +2065,21 @@ claude_logged_in() {
   claude auth status 2> /dev/null | jq -e '.loggedIn' > /dev/null 2>&1
 }
 
+# The worker call's CLAUDE_CODE_SUBAGENT_MODEL_FORCE exists from Claude Code 2.1.257; an older claude ignores
+# it and lets a subagent run on the model its call names (#379). Prints what `claude --version` reported
+# ("2.1.312 (Claude Code)"); 0 only when that parses and is at least 2.1.257. Shared like claude_logged_in.
+CLAUDE_MIN_VERSION=2.1.257
+claude_version_ok() {
+  local raw a b c
+  raw=$(claude --version 2> /dev/null | head -1)
+  printf '%s' "${raw:-no output}"
+  [[ $raw =~ ^([0-9]+)\.([0-9]+)\.([0-9]+) ]] || return 1
+  a=${BASH_REMATCH[1]}; b=${BASH_REMATCH[2]}; c=${BASH_REMATCH[3]}
+  [ "$a" -ne 2 ] && { [ "$a" -gt 2 ]; return; }
+  [ "$b" -ne 1 ] && { [ "$b" -gt 1 ]; return; }
+  [ "$c" -ge 257 ]
+}
+
 precondition_lines() { # LOOP.md, Preconditions
   local t f
   for t in claude gh git jq python3 uv tmux timeout socat node; do
@@ -2079,6 +2107,11 @@ precondition_lines() { # LOOP.md, Preconditions
     echo "  INFO no standing do-not-touch list in $(standing_file); only each ticket's Do not touch section fences paths"
   else
     echo "  FAIL $(standing_file) is missing or has no tracked path under '## Standing do-not-touch list'; run and next refuse this target"
+  fi
+  if t=$(claude_version_ok); then
+    echo "  PASS claude version $t"
+  else
+    echo "  FAIL claude --version reports '$t'; the worker call needs Claude Code $CLAUDE_MIN_VERSION+ for CLAUDE_CODE_SUBAGENT_MODEL_FORCE"
   fi
   if claude_logged_in; then
     echo "  PASS claude login"

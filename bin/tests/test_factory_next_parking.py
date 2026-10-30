@@ -2,7 +2,7 @@
 and it lints every candidate before picking one, so a labelled issue that is not a ticket is skipped (#314).
 
 `bin/factory` is sourced (FACTORY_SOURCED=1) with a temp runs root. park_status is called directly,
-and cmd_next --dry-run runs with gh, the origin, the login probe, and the toolchain gate stubbed as shell functions,
+and cmd_next --dry-run runs with gh, the origin, the login and version probes, and the toolchain gate stubbed as shell functions,
 so the frontier lines carry the bodies the way the real query does. No network, no tmux, no `claude`.
 """
 
@@ -59,7 +59,7 @@ class ParkingTests(unittest.TestCase):
     def next_dry_run(self, *frontier: tuple[int, str]) -> subprocess.CompletedProcess[str]:
         """cmd_next --dry-run over the given (issue, body) frontier, lowest number first as gh sorts it."""
         lines = " ".join(f"'{issue} {base64.b64encode(body.encode()).decode()}'" for issue, body in frontier)
-        stubs = ("assert_toolchain_env() { :; }; claude_logged_in() { :; }; target_repo() { echo o/r; }; "
+        stubs = ("assert_toolchain_env() { :; }; claude_logged_in() { :; }; claude_version_ok() { :; }; target_repo() { echo o/r; }; "
                  f"gh() {{ case $1 in api) printf '%s\\n' {lines} ;; esac; }}; cmd_next --dry-run")
         return sourced(stubs, {"FACTORY_RUNS_ROOT": str(self.runs)})
 

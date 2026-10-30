@@ -132,7 +132,7 @@ class GraderVersionTests(unittest.TestCase):
         pull = f'for f in "{stale_on_pull}"/*.md; do echo edit >> "$f"; done' if stale_on_pull else ":"
         proc = self.sourced(
             "LOAM_FACTORY_TOOLCHAIN=t LOAM_FACTORY_COPIER=c; "
-            "assert_toolchain_env() { :; }; claude_logged_in() { :; }; target_repo() { echo o/r; }; "
+            "assert_toolchain_env() { :; }; claude_logged_in() { :; }; claude_version_ok() { :; }; target_repo() { echo o/r; }; "
             f"gh() {{ case $1 in api) echo '{line}' ;; esac; }}; "
             f'git() {{ case "$*" in *"rev-parse --abbrev-ref HEAD") echo main ;; *"merge --ff-only"*) {pull} ;; esac; }}; '
             f'tmux() {{ echo "$1" >> "{calls}"; [ "$1" != has-session ]; }}; '
