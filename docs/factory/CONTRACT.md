@@ -24,6 +24,9 @@ The body starts at `Brief:` or `Part of`; in a file the first `#` line is the ti
 6. `## Done checks`: one fenced block tagged `done-checks`, a bash body sourced after `lib.sh`, run from the worktree root.
    A check is one line of the block and ends in `pass NAME` or `fail NAME reason`, in the form `A && pass N || fail N "why"`.
    A check that calls `guard` (for example `guard bin/check` or `out=$(guard cmd)`) is a regression guard allowed to pass on `main`; every other check must print FAIL on `main`.
+   A check that fails on `main` proves the ticket only when it fails for the reason its author predicted, so a ticket whose Worker section says `contract: 2` gives each non-guard check one line `predict NAME CMD...`, NAME being the word after that check's `pass`, and CMD exiting 0 exactly when base shows the predicted failure (for example `predict greet test -f greeting.txt` for a check that wants `hello` in an existing `greeting.txt`).
+   Round 0 runs CMD at base and refuses the ticket as `ticket-defect`, naming the check, when CMD exits non-zero; in every later round, and under the worker's Stop hook, a predict line prints nothing and returns 0.
+   A guard takes no predict line; a body with no contract line may carry predict lines, which round 0 runs, but needs none.
    The block is green when it prints no FAIL line; an abort or an `exit` anywhere in the block, at base or in a later round, adds `FAIL checks-aborted`, because `checks.sh` then stops before the end line freeze writes after the block (#180, #277).
    No `skip`.
    The block runs under `pipefail`, so a check never pipes a command that is meant to exit non-zero into `grep`; it captures the output first (`out=$(cmd 2>&1); grep -q pattern <<<"$out"`).
@@ -35,7 +38,7 @@ The body starts at `Brief:` or `Part of`; in a file the first `#` line is the ti
    A row that measures time, tokens, or cost starts with `runs=N`: the supervisor runs it N times and prints the median and range of its last output lines, which must be numbers.
    A row whose label or command names such a word (`NOISY_ROW_RE` in `bin/factory`) and has no `runs=N` runs once, and its MEASURE line says single sample; `runs=1` marks a row deterministic.
    This is the only per-project extension point.
-9. `## Worker`: `worker: claude|codex`, `codex-review: yes|no`, `effort: low|medium|high|xhigh`, `size: small|large` (optional, default small; large routes round 1 through the fan-out workflow, F12), `goal:` the condition the round's `/goal` holds until, always the done-checks block printing no FAIL line, ending "or stop after 60 turns", `skills:` (optional) a comma list of skill names the worker must read and follow, each a line of `bin/factory.d/skills.txt` written as the Skill tool lists it (a bare `rigor`, or `plugin:name` for a plugin skill) or a `pstack:<name>` of a worker pstack skill `docs/PSTACK.md` lists, which needs no line, and any cap override from `LOOP.md`.
+9. `## Worker`: `worker: claude|codex`, `codex-review: yes|no`, `effort: low|medium|high|xhigh`, `size: small|large` (optional, default small; large routes round 1 through the fan-out workflow, F12), `contract: 2` (optional; every new ticket carries it, and the done-checks block then has one predict line per non-guard check), `goal:` the condition the round's `/goal` holds until, always the done-checks block printing no FAIL line, ending "or stop after 60 turns", `skills:` (optional) a comma list of skill names the worker must read and follow, each a line of `bin/factory.d/skills.txt` written as the Skill tool lists it (a bare `rigor`, or `plugin:name` for a plugin skill) or a `pstack:<name>` of a worker pstack skill `docs/PSTACK.md` lists, which needs no line, and any cap override from `LOOP.md`.
     A Claude worker's prompt names each skill's SKILL.md path, resolved by `skill_file` in `bin/factory`, for it to read; a Codex worker's prompt holds the body (#385).
     A `pstack:` skill sets `disable-model-invocation`, so the Skill tool never lists it, and it needs no line.
     Samyak adds any other line by hand, direct to `main`, after `bin/runner 'claude -p --setting-sources user --max-turns 1 "print skill names"'` prints the name on the runner; a worker runs with `--setting-sources user`, so a project skill such as `catchup` never loads there and never enters the file (#37).
@@ -45,7 +48,7 @@ The body starts at `Brief:` or `Part of`; in a file the first `#` line is the ti
 
 Every path under Where, Do not touch, and Approach is verified with `git ls-files` when the ticket is written, or is a path the Goal creates; a guessed path is the commonest small defect and lint rejects it.
 
-`lib.sh` (`bin/factory.d/lib.sh`): F2 ships `pass`, `fail`, and `guard CMD...` (runs CMD and returns its status); F1 adds `MEASURE`, `render_into`, `check_clean`.
+`lib.sh` (`bin/factory.d/lib.sh`): F2 ships `pass`, `fail`, and `guard CMD...` (runs CMD and returns its status); F1 adds `MEASURE`, `render_into`, `check_clean`; #388 adds `predict NAME CMD...` (runs CMD at round 0 only).
 
 ### Done checks for a rendered-project change
 
@@ -86,6 +89,10 @@ This contract owns the issue body: each issue carries the sections above, and th
 - Every section present, in order.
 - The done-checks block plus `lib.sh` pass `bash -n`.
 - Every check line ends in `pass` or `fail`; no `skip` anywhere.
+  A line that starts with `predict` is not a check line and is accepted in every body.
+- In a body whose Worker section says `contract: 2`, each non-guard check name has exactly one predict line; a predict line that names a guard, a name no non-guard check reports, or a name another predict line already names is an error that names it.
+  Any other `contract:` value is an error; a body with no contract line lints as before #388.
+  The rule is skipped under `bin/factory.d/fixtures/`, as the path rule is.
 - A check line containing a token matching `*test*.py`, `*_test.sh`, or `pytest` that names a path not listed under Do not touch is flagged as a self-graded oracle.
 - `worker`, `codex-review`, `effort`, `goal`, and caps take valid values; every `skills:` name is a line of `bin/factory.d/skills.txt`, matched byte for byte (#37), or a `pstack:<name>` of letters, digits, `-` or `_` that is one of the worker pstack skills `docs/PSTACK.md` lists (#385), and resolves through `skill_file` to a SKILL.md under `$HOME`, so a skill missing on the host fails lint there.
 - Every path named under Where, Do not touch, and Approach exists in the tree or is named by the Goal as created.
@@ -121,6 +128,10 @@ Executing any check; bin/factory run; publishing issues.
 
 ## Done checks
 ```done-checks
+predict syntax test ! -e bin/factory
+predict rejects-skip test ! -e bin/factory
+predict accepts-contract test ! -e bin/factory
+predict wired-into-check test -f bin/check
 bash -n bin/factory bin/factory.d/lib.sh && pass syntax || fail syntax "bash -n"
 [ -x bin/factory ] && ! bin/factory lint bin/factory.d/fixtures/S5.before.md && pass rejects-skip || fail rejects-skip "S5.before.md not rejected, or lint missing"
 ok=1; for f in bin/factory.d/fixtures/S[1-5].md; do bin/factory lint "$f" || { fail accepts-contract "$f"; ok=0; }; done; [ "$ok" = 1 ] && pass accepts-contract
@@ -132,10 +143,13 @@ guard bin/check >/dev/null && pass check-green || fail check-green "bin/check"
 worker: claude
 codex-review: no
 effort: medium
+contract: 2
 goal: the done-checks block prints no FAIL line, or stop after 60 turns
 
 ## Decisions
 docs/factory/CONTRACT.md, docs/factory/ROADMAP.md
 ~~~
 
-On `main` the second line fails because `bin/factory` is missing, the third because lint is missing, the fourth because `bin/check` has no lint step; the first fails on the missing files; the guard passes.
+On `main` the check `syntax` fails on the missing files, `rejects-skip` because `bin/factory` is missing, and `accepts-contract` because lint is missing, so each one's predict line tests that `bin/factory` does not exist.
+`wired-into-check` fails because `bin/check` has no lint step, not because `bin/check` is missing, so its predict line tests that `bin/check` exists.
+The guard `check-green` passes and takes no predict line.
