@@ -56,7 +56,9 @@ class FactorySkillsTests(unittest.TestCase):
         self.home = self.tmp / "home"
         self.pstack = self.home / ".claude/plugins/cache/m/pstack/9.9.9"
         self.tdd = self.skill(self.pstack, "tdd")
-        self.skill(self.pstack, "setup-pstack")
+        self.skill(self.pstack, "principle-fix-root-causes")
+        for name in ("setup-pstack", "sharpen"):
+            self.skill(self.pstack, name)
         self.skill(self.home / ".claude/plugins/cache/m/other/1.0.0", "tdd")
 
     @staticmethod
@@ -87,14 +89,23 @@ class FactorySkillsTests(unittest.TestCase):
         proc = self.lint("pstack:tdd")
         self.assertEqual(proc.returncode, 0, proc.stdout + proc.stderr)
 
-    def test_unresolved_pstack_name_is_refused(self) -> None:
-        self.assert_refused("pstack:no-such-x", "skill 'pstack:no-such-x' resolves to no SKILL.md")
+    def test_resolving_principle_name_lints(self) -> None:
+        proc = self.lint("pstack:principle-fix-root-causes")
+        self.assertEqual(proc.returncode, 0, proc.stdout + proc.stderr)
+
+    def test_unresolved_worker_pstack_name_is_refused(self) -> None:
+        self.assert_refused("pstack:how", "skill 'pstack:how' resolves to no SKILL.md")
+
+    def test_unknown_pstack_name_is_refused(self) -> None:
+        self.assert_refused("pstack:no-such-x", "skill 'pstack:no-such-x' is not a worker pstack skill")
 
     def test_pstack_glob_is_refused(self) -> None:
         self.assert_refused("pstack:*", "skill 'pstack:*': a pstack name must be")
 
-    def test_human_only_pstack_name_is_refused(self) -> None:
-        self.assert_refused("pstack:setup-pstack", "skill 'pstack:setup-pstack' is human-only")
+    def test_resolving_non_worker_pstack_name_is_refused(self) -> None:
+        for name in ("setup-pstack", "sharpen"):
+            with self.subTest(name=name):
+                self.assert_refused(f"pstack:{name}", f"skill 'pstack:{name}' is not a worker pstack skill")
 
     def test_resolving_name_outside_skills_txt_is_refused(self) -> None:
         self.assert_refused("other:tdd", "unknown skill 'other:tdd': not a line of bin/factory.d/skills.txt")

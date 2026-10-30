@@ -260,12 +260,16 @@ check_worker() {
         pstack:*)
           [[ "$skill" =~ ^pstack:[A-Za-z0-9_-]+$ ]] \
             || { err "skill '$skill': a pstack name must be pstack:<letters, digits, - or _>"; continue; }
-          # Human-only or unused pstack skills (seed/docs/WORKERS.md.jinja, docs/PSTACK.md Not used).
+          # Only the worker pstack skills (docs/PSTACK.md Who runs what, seed/docs/WORKERS.md.jinja); the rest are human-only.
           case "${skill#pstack:}" in
-            poteto-mode|arena|swarm|architect|figure-it-out|reflect|no-comments|unslop|technical-writing|\
-            maintain-verification-skill|setup-pstack|create-verification-skill|create-formal-verification-skill|\
-            recall|automate-me|make-bot-ui)
-              err "skill '$skill' is human-only (seed/docs/WORKERS.md.jinja)"; continue ;;
+            how|why|tdd|blast-radius|interrogate|benchmark-checklist|show-me-your-work|maintain-formal-verification-skill|\
+            principle-laziness-protocol|principle-boundary-discipline|principle-migrate-callers-then-delete-legacy-apis|\
+            principle-separate-before-serializing-shared-state|principle-make-operations-idempotent|\
+            principle-sequence-verifiable-units|principle-build-the-lever|principle-test-behavior-not-implementation|\
+            principle-guard-the-context-window|principle-fix-root-causes|principle-attack-the-premise|\
+            principle-explain-the-number|principle-minimize-reader-load|principle-encode-lessons-in-structure|\
+            principle-prove-it-works) ;;
+            *) err "skill '$skill' is not a worker pstack skill (docs/PSTACK.md, Who runs what)"; continue ;;
           esac ;;
         *)
           grep -qxF "$skill" "$ROOT/bin/factory.d/skills.txt" \

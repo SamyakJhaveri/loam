@@ -188,7 +188,7 @@ Skills are given at the moment they apply, never all at once; the listing is pai
 | Graders | none; their prompt is the whole instruction | frozen files |
 | Manager (stage 5, 6) | none; a handoff file in the `seed/docs/WORKERS.md.jinja` Handoff form when stopping mid-stream | the manager session |
 
-A worker may name a line of `bin/factory.d/skills.txt`, and lint reads that file (#37), or with no line any `pstack:<name>` except the human-only and unused ones (`seed/docs/WORKERS.md.jinja`, `docs/PSTACK.md`) (#385).
+A worker may name a line of `bin/factory.d/skills.txt`, and lint reads that file (#37), or with no line any of the worker pstack skills `docs/PSTACK.md` lists, as `pstack:<name>` (#385).
 Either way lint refuses a name `skill_file` resolves to no SKILL.md.
 The worker runs with `--setting-sources user`, which loads `~/.claude/skills/` and user-scope plugins but no project skill and not the root `CLAUDE.md` or `AGENTS.md`, so the seed skills (`catchup`, `fable-prompting`, `hypothesis-tree`) are not in the file.
 
