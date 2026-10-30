@@ -249,15 +249,20 @@ check_worker() {
     grep -qE '^size: (small|large)$' <<<"$w" || err "Worker 'size:' must be 'small' or 'large'"
   fi
   # Every `skills:` name is a line of bin/factory.d/skills.txt, matched byte for byte (#37), or a
-  # pstack:<name>, which needs no line (#385); either must resolve through skill_file, since the worker
+  # pstack:<name>, which needs no line (#385) but must be plain letters, digits, - or _, since skill_file
+  # passes it to find -path as a glob; either must resolve through skill_file, since the worker
   # reads that SKILL.md by path. Skipped under fixtures/, whose historical bodies predate the allowlist,
   # as check_paths is (lint).
   case "$SRC" in *bin/factory.d/fixtures/*) ;; *)
     while IFS= read -r skill; do
       [ -n "$skill" ] || continue
-      case "$skill" in pstack:*) ;; *)
-        grep -qxF "$skill" "$ROOT/bin/factory.d/skills.txt" \
-          || { err "unknown skill '$skill': not a line of bin/factory.d/skills.txt"; continue; } ;;
+      case "$skill" in
+        pstack:*)
+          [[ "$skill" =~ ^pstack:[A-Za-z0-9_-]+$ ]] \
+            || { err "skill '$skill': a pstack name must be pstack:<letters, digits, - or _>"; continue; } ;;
+        *)
+          grep -qxF "$skill" "$ROOT/bin/factory.d/skills.txt" \
+            || { err "unknown skill '$skill': not a line of bin/factory.d/skills.txt"; continue; } ;;
       esac
       skill_file "$skill" > /dev/null || err "skill '$skill' resolves to no SKILL.md"
     done < <(sed -n 's/^skills: *//p' <<<"$w" | head -1 | tr ',' '\n' | sed 's/^ *//;s/ *$//')

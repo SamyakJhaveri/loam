@@ -87,7 +87,7 @@ This contract owns the issue body: each issue carries the sections above, and th
 - The done-checks block plus `lib.sh` pass `bash -n`.
 - Every check line ends in `pass` or `fail`; no `skip` anywhere.
 - A check line containing a token matching `*test*.py`, `*_test.sh`, or `pytest` that names a path not listed under Do not touch is flagged as a self-graded oracle.
-- `worker`, `codex-review`, `effort`, `goal`, and caps take valid values; every `skills:` name is a line of `bin/factory.d/skills.txt`, matched byte for byte (#37), or a `pstack:<name>` (#385), and resolves through `skill_file` to a SKILL.md under `$HOME`, so a skill missing on the host fails lint there.
+- `worker`, `codex-review`, `effort`, `goal`, and caps take valid values; every `skills:` name is a line of `bin/factory.d/skills.txt`, matched byte for byte (#37), or a `pstack:<name>` of letters, digits, `-` or `_` (#385), and resolves through `skill_file` to a SKILL.md under `$HOME`, so a skill missing on the host fails lint there.
 - Every path named under Where, Do not touch, and Approach exists in the tree or is named by the Goal as created.
   The path rule is skipped under `bin/factory.d/fixtures/`, whose bodies are historical tickets and name paths that later tickets removed.
 - At most three merge-checklist lines on a Track B ticket.
