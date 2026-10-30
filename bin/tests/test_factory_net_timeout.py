@@ -111,7 +111,7 @@ class WatchdogTests(unittest.TestCase):
         self.assertLess(took, 8)
         self.assertNotEqual(proc.stdout.split()[0], "0", proc.stdout)
         self.assertNotIn("late", proc.stdout)
-        proc, took = self.bash(". bin/factory; out=$(net_watch bash -c 'kill -TTIN $$; echo x'); echo \"rc=$? $out\"",
+        proc, took = self.bash(". bin/factory; out=$(net_watch bash -c 'kill -STOP $$; echo x'); echo \"rc=$? $out\"",
                                FACTORY_SOURCED="1")
         self.assertLess(took, 4)
         self.assertNotIn("rc=0", proc.stdout)
