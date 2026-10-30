@@ -47,6 +47,7 @@ Keep rows a check enforces, so each enforcer stays findable; drop a row only whe
 | Matt Pocock's skills (the `mattpocock-skills` plugin from `mattpocock/skills`: grilling, grill-me, grill-with-docs, to-tickets, wayfinder, setup-matt-pocock-skills, tdd, diagnosing-bugs, research, domain-modeling, codebase-design, code-review, writing-for-agents, wizard, prototype, resolving-merge-conflicts, triage, to-spec, to-questionnaire, implement, handoff, teach, ask-matt, wait-what, improve-codebase-architecture) are removed from Loam, its factory and its template, and no agent is ever told to use them; DistBench's research-tools branch drafts (the research-gap skill) drop them too. Loam's `docs/agents/` files, which existed only to feed them, are deleted; the plugin and the standalone `mattpocock/skills` installs are removed from both hosts' user config too (28 Oct 2026) | owner ruling 2026-10-28 | check: `bin/factory lint` rejects a ticket `skills:` name outside `bin/factory.d/skills.txt` and the worker pstack skills `docs/PSTACK.md` lists, which no longer lists them; prose elsewhere |
 | The native-factory campaign (#102 and its children) is parked: no agent builds or reopens its tickets, and renders stop shipping `.loam/runtime` or `docs/runtime` | owner ruling R6 2026-10-25; `docs/archive/architecture-working/tickets/README.md` | `bin/tests/test_render_smoke.py` `test_factory_runtime_does_not_render` |
 | The template sandbox runs `gh` outside (inside the macOS sandbox it fails TLS); `git push`, `git fetch` and `git pull` stay sandboxed (2d6070e's git exclusions are not ported) | owner ruling P8 2026-10-26; `seed/.claude/settings.json` `sandbox.excludedCommands`, `seed/docs/HARNESS.md.jinja` Accepted risks | `bin/tests/test_render_smoke.py` `test_sandbox_excludes_gh_but_not_git` |
+| No pipe into `grep -q` in a shell file that sets `pipefail`: the writer dies of SIGPIPE and the pipe fails; capture the output first, then grep it (687fc04, b086ef1) | #279; `bin/shell_lint.py` | check: `bin/check` step "shell lint" |
 
 ## Checkable, not yet enforced
 
@@ -55,7 +56,7 @@ Move a row into the table above when its check lands.
 
 | Mistake | Evidence | Issue |
 |---------|----------|-------|
-| `cmd \| grep -q` or `\| head` under `pipefail`, where the early exit fails the pipe | 687fc04, b086ef1, a2ec7df; live in `bin/factory` `precondition_lines` | #279 |
+| `cmd \| head` under `pipefail`, where the early exit fails the pipe | a2ec7df; 22 `\| head` sites remain (the `grep -q` half of #279 is enforced above) | #279 |
 | bash 4 or GNU-only forms that break on macOS bash 3.2 and BSD tools | c29ef01, dfd7f3b, 0171ae5, 4c008a2; live in `bin/factory` `build_evidence` (`mapfile`) | #280 |
 | Docs name paths that no longer exist | 40297f1, 3fc894f, c9ccc45 | #281 |
 | Trailing whitespace in a new file not yet added passes locally, then fails in CI | `git diff --check` in `bin/check` reads only tracked files | #282 |

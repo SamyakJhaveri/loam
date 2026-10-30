@@ -155,10 +155,11 @@ GUARD_RE='(^|[;&|({!])([[:space:]]*((if|then|else|elif|do|while|until|time)[[:sp
 # A double-quoted string is kept up to its first inner quote when it opens a $(...) capture, so
 # `<<<"$(guard cmd "$x")"` stays a guard; a later quoted reason is still removed.
 guard_checks() { # [-v]
-  local line
+  local line code
   while IFS= read -r line; do
-    if sed -E -e "s/(\"[^\"]*\\\$\\([^\"]*\")|'[^']*'|\"([^\"\\\\\$]|\\\\.|\\\$[^(\"])*\"/\\1/g" \
-      -e 's/(^|[[:space:]])#.*//' <<<"$line" | grep -qE "$GUARD_RE"; then
+    code=$(sed -E -e "s/(\"[^\"]*\\\$\\([^\"]*\")|'[^']*'|\"([^\"\\\\\$]|\\\\.|\\\$[^(\"])*\"/\\1/g" \
+      -e 's/(^|[[:space:]])#.*//' <<<"$line")
+    if grep -qE "$GUARD_RE" <<<"$code"; then
       [ "${1:-}" = -v ] || printf '%s\n' "$line"
     elif [ "${1:-}" = -v ]; then
       printf '%s\n' "$line"
@@ -659,14 +660,16 @@ lint() {
     BODY=$(cat "$SRC")
     # A file may open with the front matter publish.sh reads: title:, then optional
     # labels: and blocked_by:, then ---. The body is what follows the --- line.
-    if head -n 1 "$SRC" | grep -q '^title: '; then
+    local first
+    first=$(head -n 1 "$SRC")
+    if grep -q '^title: ' <<<"$first"; then
       if grep -qxF -- '---' "$SRC"; then
         BODY=$(sed '1,/^---$/d' "$SRC")
       else
         err "front matter has no --- line"
       fi
     else
-      head -n 1 "$SRC" | grep -q '^# ' || err "first line is not a '# ' title"
+      grep -q '^# ' <<<"$first" || err "first line is not a '# ' title"
     fi
   elif [[ "$SRC" =~ ^[0-9]+$ ]]; then
     BODY=$(net gh issue view "$SRC" -R "$(target_repo)" --json body -q .body) \
@@ -881,7 +884,7 @@ load_ticket() { # <issue|file>
   if [ -f "$SRC" ]; then
     IS_FILE=1
     BODY=$(cat "$SRC")
-    head -n 1 "$SRC" | grep -q '^title: ' && BODY=$(sed '1,/^---$/d' "$SRC")
+    grep -q '^title: ' <<<"$(head -n 1 "$SRC")" && BODY=$(sed '1,/^---$/d' "$SRC")
     KEY=$(basename "$SRC"); KEY=${KEY%.md}
   elif [[ "$SRC" =~ ^[0-9]+$ ]]; then
     ISSUE="$SRC"; KEY="$SRC"
@@ -1372,7 +1375,7 @@ round_zero() {
   done < "$misses"
   guards=$(guard_checks | pass_names)
   while read -r _ name _; do
-    printf '%s\n' "$guards" | grep -qxF "$name" && continue
+    grep -qxF "$name" <<<"$guards" && continue
     finish ticket-defect "check $name passes on $(cut -c1-8 "$RUN/base.sha"), so it cannot prove the ticket; see $out"
   done < <(grep '^PASS ' "$out")
   mv "$out" "$RUN/round-0.checks"
@@ -2618,9 +2621,11 @@ grader_first_fail() { # run dir -> the first grader item that failed in the last
 # there), and no grader reply was unparseable in any round (that queues no fix, but the grader never ran).
 # `-` marks a run not yet at pr-opened.
 run_clean() { # run dir -> yes|no|-
-  local d="$1" f
+  local d="$1" f exits
   [ "$(cat "$d/status" 2> /dev/null)" = pr-opened ] || { printf -- '-'; return; }
-  grep -h ' EXIT ' "$d/factory.log" 2> /dev/null | grep -vq ' EXIT pr-opened ' && { printf 'no'; return; }
+  # A herestring of nothing is one empty line, which grep -v would match, so test for EXIT lines first.
+  exits=$(grep -h ' EXIT ' "$d/factory.log" 2> /dev/null)
+  [ -n "$exits" ] && grep -vq ' EXIT pr-opened ' <<<"$exits" && { printf 'no'; return; }
   for f in "$d"/round-*.fixes; do
     [ -e "$f" ] || continue
     case "$f" in */round-0.fixes) continue ;; esac
@@ -2694,7 +2699,10 @@ precondition_lines() { # LOOP.md, Preconditions
     echo "  FAIL claude login: claude auth status reports logged out; run claude login on the runner"
   fi
   net gh api rate_limit > /dev/null 2>&1 && echo "  PASS gh api rate_limit" || echo "  FAIL gh api rate_limit"
-  claude -p --help 2>&1 | grep -q -- '--json-schema' && echo "  PASS claude -p accepts --json-schema" \
+  # Capture the help first: piped into grep -q, a long help text dies of SIGPIPE and pipefail reads a miss (#279).
+  local help
+  help=$(claude -p --help 2>&1)
+  grep -q -- '--json-schema' <<<"$help" && echo "  PASS claude -p accepts --json-schema" \
     || echo "  FAIL claude -p lacks --json-schema; every grader call needs it"
   for t in judge reviewer; do
     if f=$(grader_file "$t" 2>&1); then echo "  PASS $t.md at $f"; else echo "  FAIL $f"; fi
