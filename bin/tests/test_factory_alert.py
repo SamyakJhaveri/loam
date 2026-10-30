@@ -26,7 +26,11 @@ import json, os, pathlib, sys
 with open(os.environ["FAKE_ALERT_LOG"], "a") as f:
     f.write(json.dumps(sys.argv[1:]) + "\\n")
 if sys.argv[1:] == ["--ping", "pause"] and os.environ.get("LAUNCH_ON_PAUSE"):  # a run launches mid-pause
-    pathlib.Path(os.environ["LAUNCH_ON_PAUSE"], "launched").write_text("1\\n")
+    run = pathlib.Path(os.environ["LAUNCH_ON_PAUSE"])
+    (run / "launched").write_text("1\\n")
+    if os.environ.get("LAUNCH_OWNER"):  # a relaunch writes its owner and `running` over its last exit before its first beat
+        (run / "owner").write_text(os.environ["LAUNCH_OWNER"] + "\\n")
+        (run / "status").write_text("running\\n")
 sys.exit(int(os.environ.get("FAKE_ALERT_EXIT", "0")))
 """
 
@@ -201,7 +205,9 @@ class FactoryAlertTests(unittest.TestCase):
         self.assertNotIn(["--ping", "pause"], self.factory("finish stopped x"))
 
     def test_a_run_launched_during_the_pause_gets_a_beat_after_it(self) -> None:
-        # A fresh run directory, and a relaunch whose status still holds its last exit.
+        # A fresh run directory, and a relaunch of a stopped run whose owner is this test's live process.
+        lstart = subprocess.run(["ps", "-o", "lstart=", "-p", str(os.getpid())], capture_output=True, text=True,
+                                env={**os.environ, "TZ": "UTC", "LC_ALL": "C"}, check=True).stdout.strip()
         for status in (None, "stopped-cap"):
             with self.subTest(status=status):
                 other = self.runs / "acme__other" / "3" / f"run-{status}"
@@ -209,11 +215,11 @@ class FactoryAlertTests(unittest.TestCase):
                 if status:
                     (other / "status").write_text(status + "\n")
                 self.alert_log.unlink(missing_ok=True)
-                calls = self.factory("finish stopped x", LAUNCH_ON_PAUSE=str(other))
+                calls = self.factory("finish stopped x", LAUNCH_ON_PAUSE=str(other),
+                                     LAUNCH_OWNER=f"{os.getpid()} {lstart}" if status else "")
                 self.assertEqual(calls[-3:-1], [["--ping", "pause"], ["--ping", "beat"]], calls)
-                (other / "launched").unlink()
-                if status:
-                    other.joinpath("status").unlink()
+                for f in other.iterdir():
+                    f.unlink()
                 other.rmdir()
 
     def test_finish_stops_the_heartbeat(self) -> None:

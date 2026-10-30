@@ -833,19 +833,18 @@ heartbeat_start() {
 }
 
 # Another live run on this host, Loam's or another target's; a hard-killed run holds its slot until holds_slot
-# finds its owner gone and alerts. A relaunch keeps its last exit's status until it writes `owner` just after
-# `launched`, so `launched` newer than `status` counts as live here too.
+# finds its owner gone and alerts. holds_slot is the whole test: a run beats only after cmd_run writes its owner and
+# `running` (exec_frozen keeps the pid), so a run that has beaten holds its slot, and one that has not beats later.
 other_live_run() {
   local d
   for d in "$RUNS_BASE"/*/*/ "$RUNS_BASE"/*/*/*/; do
     [ "${d%/}" = "${RUN%/}" ] && continue
     holds_slot "$d" && return 0
-    [ "$d/launched" -nt "$d/status" ] && [ -f "$d/status" ] && return 0
   done
   return 1
 }
 
-# The host's last live run pauses the check. A run launched meanwhile wrote `launched` before its first beat,
+# The host's last live run pauses the check. A run launched meanwhile holds its slot before its first beat,
 # so the second look sees it and beats again, and the pause never outlives a live run.
 heartbeat_stop() {
   [ -n "${HEARTBEAT:-}" ] && kill "$HEARTBEAT" 2> /dev/null && wait "$HEARTBEAT" 2> /dev/null
