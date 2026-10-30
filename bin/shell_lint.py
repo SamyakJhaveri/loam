@@ -7,8 +7,10 @@ The fix is to capture the output first, then grep it: out=$(cmd); grep -q pat <<
 
 Shell files are the ones `scripts()` in bin/check picks: tracked `.sh` files and tracked
 files with a bash or sh shebang, less templates, cultivation/parked/ and docs/archive/.
-Each line is split into words and operators with shlex, so a `| grep -q` inside a quoted
-string is one word and is not a pipe. Heredoc bodies are skipped.
+A quote-aware scan of each line finds its comment, carries open quotes across lines and
+pulls out each "$(...)" or `...` inside double quotes as code of its own. Each piece of code
+is then split into words and operators with shlex, so a `| grep -q` inside a quoted string is
+one word and is not a pipe. Heredoc bodies are skipped.
 
 Exit status: 0 when no file has a hit, 1 otherwise.
 """
@@ -28,53 +30,85 @@ PIPES = {"|", "|&"}
 # Tokens that end grep's argument list: the next pipeline stage, list operator or group end.
 ENDS = {"|", "|&", "||", "&&", ";", ";;", "&", ")", "(", "{", "}"}
 GREPS = {"grep", "egrep", "fgrep"}
-QUIET = re.compile(r"-[A-Za-z0-9]*q")
 ASSIGN = re.compile(r"[A-Za-z_][A-Za-z0-9_]*=")
 FIX = "capture the output first, then grep it: out=$(cmd); grep -q pat <<<\"$out\""
 
 
-def blank_ansi_c(line: str) -> str:
-    """Replace each $'...' string with '' : shlex has no backslash escapes inside it."""
-    out, i, quote = [], 0, ""
+def split(line: str, stack: list[str]) -> tuple[str, list[str], list[str]]:
+    """Walk one line's quotes; return its top-level code, the bodies of each "$(...)" and `...`
+    inside double quotes, and the quotes and substitutions still open at its end.
+
+    `stack` holds those left open by the lines before: text still inside a quote is skipped, so
+    a multi-line string is not read as code. A $'...' string becomes '' (shlex has no backslash
+    escapes inside it), and an unquoted # at a word start ends the code, so '# x' is not a comment.
+    """
+    stack = list(stack)
+    starts: list[int | None] = [0 if k in ("$(", "`") else None for k in stack]  # body starts
+    carried, top, bodies = bool(stack), [], []
+    i = 0
     while i < len(line):
-        c = line[i]
-        if quote == "'":
-            quote = "" if c == "'" else quote
+        c, kind, n = line[i], stack[-1] if stack else "", 1
+        text, was_carried, depth = None, carried, len(stack)
+        if kind == "'":
+            if c == "'":
+                stack.pop()
         elif c == "\\":
-            out.append(line[i : i + 2])
-            i += 2
-            continue
-        elif quote == '"':
-            quote = "" if c == '"' else quote
+            n = 2
+        elif kind == '"':
+            if c == '"':
+                stack.pop()
+            elif line.startswith("$(", i) or c == "`":
+                n = 2 if c == "$" else 1
+                stack.append(line[i : i + n])
+                starts.append(i + n)
+        elif kind == "`" and c == "`" or kind in ("$(", "(") and c == ")":
+            stack.pop()
+        elif c == "#" and (i == 0 or line[i - 1] in " \t;|&("):
+            break  # a comment: the rest of the line is not code
+        elif kind and c == "(":
+            stack.append("(")
+            starts.append(None)
         elif line.startswith("$'", i):
             j = i + 2
             while j < len(line) and line[j] != "'":
                 j += 2 if line[j] == "\\" else 1
-            out.append("''")
-            i = j + 1
-            continue
+            n, text = j + 1 - i, "''" if not stack else None
         elif c in "'\"":
-            quote = c
-        out.append(c)
-        i += 1
-    return "".join(out)
+            stack.append(c)
+            starts.append(None)
+        if len(stack) < depth and (begin := starts.pop()) is not None:
+            bodies.append(line[begin:i])
+        if was_carried and not stack:
+            carried = False
+            top.append("''")  # the end of a string begun on a line before
+        elif not was_carried:
+            top.append(line[i : i + n] if text is None else text)
+        i += n
+    bodies += [line[begin:i] for begin in starts if begin is not None]
+    return "".join(top), bodies, stack
 
 
-def words(line: str) -> list[str]:
-    """Split one line into shell words and operators; drop a trailing comment."""
-    lex = shlex.shlex(blank_ansi_c(line), posix=True, punctuation_chars=True)
+def words(src: str) -> list[str]:
+    """Split code into shell words and operators."""
+    lex = shlex.shlex(src, posix=True, punctuation_chars=True)
     lex.whitespace_split = True
-    lex.commenters = ""  # shlex would end a word at `${#x}`; cut comments by word below
+    lex.commenters = ""  # split already cut the comment; shlex would end a word at `${#x}`
     toks: list[str] = []
     try:
         for tok in lex:
             toks.append(tok)
-    except ValueError:  # an open quote: a multi-line string or `$'...'`; keep the words before it
+    except ValueError:  # a quote left open to the next line; keep the words before it
         pass
-    for i, tok in enumerate(toks):
-        if tok.startswith("#"):
-            return toks[:i]
     return toks
+
+
+def code(line: str, stack: list[str]) -> tuple[list[list[str]], list[str]]:
+    """The words of a line's top-level code, then of each quoted substitution in it; the open stack."""
+    top, bodies, stack = split(line, stack)
+    segs = [words(top)]
+    for body in bodies:
+        segs += code(body, [])[0]
+    return segs, stack
 
 
 def quiet_grep(args: list[str]) -> bool:
@@ -85,10 +119,17 @@ def quiet_grep(args: list[str]) -> bool:
             break
         if skip:
             skip = False
-        elif arg in ("--quiet", "--silent") or QUIET.match(arg) and not arg.startswith("--"):
+        elif arg in ("--quiet", "--silent"):
             return True
-        elif arg in ("-e", "-f", "--regexp", "--file"):
+        elif arg in ("--regexp", "--file"):
             skip = True  # the next word is a pattern or a file, not a flag
+        elif arg.startswith("-") and not arg.startswith("--"):
+            for k, c in enumerate(arg[1:], 2):  # a short-option cluster, in order
+                if c == "q":
+                    return True
+                if c in "ef":  # -e and -f take the rest of the word, or else the next word
+                    skip = k == len(arg)
+                    break
     return False
 
 
@@ -116,22 +157,24 @@ def scan(text: str) -> tuple[bool, list[int]]:
     pipefail, found = False, []
     heredocs: list[tuple[str, bool]] = []  # pending (delimiter, strip leading tabs)
     carry: tuple[str, int] | None = None  # a pipe that ended the line before, and its line
+    stack: list[str] = []  # quotes and substitutions left open by the line before
     for n, line in enumerate(text.splitlines(), 1):
         if heredocs:
             delim, tabs = heredocs[0]
             if (line.lstrip("\t") if tabs else line) == delim:
                 heredocs.pop(0)
             continue
-        toks = words(line.rstrip().removesuffix("\\"))
+        (toks, *subs), stack = code(line.rstrip().removesuffix("\\"), stack)
         pipefail = pipefail or sets_pipefail(toks)
-        if hits(toks):
+        if hits(toks) or any(map(hits, subs)):
             found.append(n)
         elif carry and toks and hits([carry[0], *toks]):
             found.append(carry[1])
         if toks:
             carry = (toks[-1], n) if toks[-1] in PIPES else None
         for i, tok in enumerate(toks[:-1]):
-            if tok == "<<" and toks[:i].count("((") <= toks[:i].count("))"):  # not a shift in $(( ))
+            before = "".join(toks[:i])
+            if tok == "<<" and before.count("((") <= before.count("))"):  # not a shift in $(( ))
                 delim = toks[i + 1]
                 if delim == "-" and i + 2 < len(toks):
                     delim = "-" + toks[i + 2]
