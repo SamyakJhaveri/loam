@@ -47,7 +47,8 @@ def write_wheel(path: pathlib.Path) -> None:
 
 
 class MovedVenvTest(unittest.TestCase):
-    def test_moved_checkout_rebuilds_venv(self) -> None:
+    def move_and_run(self, drop_command: bool) -> None:
+        """Build the venv at a/, check a rerun keeps it, move a/ to b/, rerun, and require b's copier to run."""
         tmp = pathlib.Path(self.enterContext(tempfile.TemporaryDirectory()))
         shim, old, new = tmp / "shim", tmp / "a", tmp / "b"
         shim.mkdir()
@@ -69,10 +70,21 @@ class MovedVenvTest(unittest.TestCase):
 
         self.assertIn("NOTE:", run(old))
         self.assertNotIn("NOTE:", run(old))  # an unmoved venv is kept
+        if drop_command:  # a venv from Python 3.10 or older: no command line, only the console-script shebangs
+            cfg = old / ".venv/check/pyvenv.cfg"
+            cfg.write_text("".join(ln for ln in cfg.read_text(encoding="utf-8").splitlines(keepends=True)
+                                   if not ln.startswith("command = ")), encoding="utf-8")
+            self.assertNotIn("NOTE:", run(old))
         shutil.move(old, new)
         run(new)
         copier = subprocess.run([new / ".venv/check/bin/copier"], capture_output=True, text=True)
         self.assertEqual((0, "stub copier\n"), (copier.returncode, copier.stdout), copier.stderr)
+
+    def test_moved_checkout_rebuilds_venv(self) -> None:
+        self.move_and_run(drop_command=False)
+
+    def test_moved_checkout_without_command_line_rebuilds_venv(self) -> None:
+        self.move_and_run(drop_command=True)
 
 
 if __name__ == "__main__":
