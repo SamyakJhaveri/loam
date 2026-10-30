@@ -1073,8 +1073,10 @@ owner_gone() { # <pid> <ps lstart>
   [ $((a > b ? a - b : b - a)) -gt 300 ]
 }
 
-lstart_epoch() { # <ps lstart> -> seconds since the epoch, through GNU date or else BSD date (macOS)
-  date -u -d "$1" +%s 2> /dev/null || LC_ALL=C date -j -u -f '%a %b %d %T %Y' "$1" +%s 2> /dev/null
+lstart_epoch() { # <ps lstart> -> seconds since the epoch, through GNU date or else BSD date (macOS); fails unless digits
+  local e
+  e=$(date -u -d "$1" +%s 2> /dev/null || LC_ALL=C date -j -u -f '%a %b %d %T %Y' "$1" +%s 2> /dev/null) \
+    && [[ "$e" =~ ^[0-9]+$ ]] && echo "$e"
 }
 
 group_live() { # <pgid> -> 0 when a process other than a zombie has it as its group id, or ps fails

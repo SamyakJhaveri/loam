@@ -135,6 +135,18 @@ class OwnerSlotTests(unittest.TestCase):
             with self.subTest(stub=stub):
                 self.assert_held(stub)
 
+    def test_one_date_printing_nothing_holds_the_slot(self) -> None:
+        # An empty epoch must not read as 0, or a live owner two seconds off would look 56 years gone.
+        pid = self.live()
+        live = lstart(pid)
+        t = datetime.datetime.strptime(live, "%a %b %d %H:%M:%S %Y") - datetime.timedelta(seconds=2)
+        rec = f"{t:%a %b} {t.day:2d} {t:%H:%M:%S %Y}"
+        self.owner(f"{pid} {rec}")
+        for target in (live, rec):
+            stub = f'date() {{ case "$*" in *"{target}"*) return 0 ;; esac; command date "$@"; }}'
+            with self.subTest(target=target):
+                self.assert_held(stub)
+
     def test_ps_failing_on_a_live_pid_holds_the_slot(self) -> None:
         pid = self.live()
         self.owner(f"{pid} {OLD}")
