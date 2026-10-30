@@ -28,11 +28,13 @@ TICKET = "## Goal and why\n\nMake the widget work.\n\n## Merge checklist\n\n- re
 PR_URL = "https://github.com/acme/widget/pull/9"
 
 # FAKE_SPANS names a file each fake call appends "<who> <start> <end>" to after sleeping FAKE_SLEEP (claude) or
-# FAKE_CODEX_SLEEP (codex) seconds, 3 by default. A reply of STOP writes FACTORY_STOP into the run dir 1 s in, then
-# answers with text that is not JSON, so the grader calls again.
+# FAKE_CODEX_SLEEP (codex) seconds, 3 by default; it first creates FAKE_SPANS.<who>.ready, once its session exists.
+# A reply of STOP writes FACTORY_STOP into the run dir 1 s in, then answers with text that is not JSON, so the grader
+# calls again.
 SPAN = """
 start = time.time()
 if os.environ.get("FAKE_SPANS"):
+    open(os.environ["FAKE_SPANS"] + "." + WHO + ".ready", "w").close()
     time.sleep(float(os.environ.get(SLEEP, "3")))
     with open(os.environ["FAKE_SPANS"], "a") as f:
         f.write("%s %f %f\\n" % (WHO, start, time.time()))
@@ -356,11 +358,12 @@ class CappedReviewTests(unittest.TestCase):
                 self.assertNotIn("Draft:", pr["body"])
                 self.assertEqual(self.issues(calls), [])
 
-    def assert_codex_gone(self, calls: list[str] | None = None) -> None:
-        """Within 15 s no fake call or job is left, and no call file but `calls` is left to hold the run's slot."""
+    def assert_codex_gone(self, calls: list[str] | None = None, zombie: int = 0) -> None:
+        """Within 15 s no fake call or job (but an unreaped `zombie`) is left, and no call file but `calls`."""
         deadline = time.time() + 15
         while True:
             left = subprocess.run(["pgrep", "-f", str(self.top)], capture_output=True, text=True, check=False).stdout
+            left = "".join(x + "\n" for x in left.split() if x != str(zombie))
             if not left or time.time() > deadline:
                 break
             time.sleep(0.2)
@@ -399,15 +402,21 @@ class CappedReviewTests(unittest.TestCase):
         self.assertRegex(log.splitlines()[-1], "EXIT stopped \\(2\\): FACTORY_STOP before the reviewer call$")
         self.assert_codex_gone()
 
-    def test_term_to_the_supervisor_ends_the_codex_review(self) -> None:
-        # TERM to the supervisor alone, while the judge's call and the Codex review's call both run, ends both.
+    def start_graders(self) -> subprocess.Popen:
+        """The loop in a session of its own, once the judge's call and the Codex review's call both run."""
         self.new_run()
         proc = subprocess.Popen(**self.loop_cmd([CLEAN_REVIEW], codex=[json.dumps(CLEAN_CODEX)], env_extra={
             "FAKE_SPANS": str(self.top / "spans"), "FAKE_SLEEP": "60", "FAKE_CODEX_SLEEP": "60"}),
             stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, start_new_session=True)
+        self.addCleanup(lambda: proc.poll() is None and proc.kill() or proc.wait())
         deadline = time.time() + 20
-        while not all((self.run_dir / f).exists() for f in ("call", "call-codex-review")) and time.time() < deadline:
+        while not all((self.top / f"spans.{w}.ready").exists() for w in ("judge", "codex")) and time.time() < deadline:
             time.sleep(0.1)
+        return proc
+
+    def test_term_to_the_supervisor_ends_the_codex_review(self) -> None:
+        # TERM to the supervisor alone, while the judge's call and the Codex review's call both run, ends both.
+        proc = self.start_graders()
         proc.send_signal(signal.SIGTERM)
         self.assertEqual(proc.wait(timeout=30), 143)
         self.assert_codex_gone()
@@ -437,22 +446,28 @@ class CappedReviewTests(unittest.TestCase):
         self.assertNotIn("the supervisor got TERM during a model call", log)
         self.assert_codex_gone()
 
-    def test_a_sigkilled_supervisor_leaves_no_codex_review_running(self) -> None:
-        # Nothing traps SIGKILL, so the Codex review watches the supervisor and, once it is gone, ends its own call.
-        # The judge's call has a session of its own and outlives the supervisor by design (holds_slot); the test ends
-        # it, and its call file stays for holds_slot to judge.
-        self.new_run()
-        proc = subprocess.Popen(**self.loop_cmd([CLEAN_REVIEW], codex=[json.dumps(CLEAN_CODEX)], env_extra={
-            "FAKE_SPANS": str(self.top / "spans"), "FAKE_SLEEP": "60", "FAKE_CODEX_SLEEP": "60"}),
-            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, start_new_session=True)
-        deadline = time.time() + 20
-        while not all((self.run_dir / f).exists() for f in ("call", "call-codex-review")) and time.time() < deadline:
-            time.sleep(0.1)
-        proc.kill()
-        proc.wait(timeout=10)
+    def assert_sigkill_leaves_no_codex_review(self, group: bool, reap: bool) -> None:
+        # Nothing traps SIGKILL, so a watcher in a session of its own ends the Codex review's call once the supervisor
+        # is gone. The judge's call has a session of its own and outlives the supervisor by design (holds_slot); the
+        # test ends it, and its call file stays for holds_slot to judge.
+        proc = self.start_graders()
+        os.killpg(proc.pid, signal.SIGKILL) if group else proc.kill()
+        if reap:
+            proc.wait(timeout=10)
         os.killpg(int((self.run_dir / "call").read_text().split()[0]), signal.SIGKILL)
-        self.assert_codex_gone(["call"])
+        self.assert_codex_gone(["call"], zombie=0 if reap else proc.pid)
         self.assertIn("the supervisor is gone; ending the Codex review", (self.run_dir / "factory.log").read_text())
+
+    def test_a_sigkilled_supervisor_leaves_no_codex_review_running(self) -> None:
+        self.assert_sigkill_leaves_no_codex_review(group=False, reap=True)
+
+    def test_a_sigkilled_supervisor_not_yet_reaped_leaves_no_codex_review_running(self) -> None:
+        # Its parent has not waited for it, so it is a zombie, which kill -0 still finds.
+        self.assert_sigkill_leaves_no_codex_review(group=False, reap=False)
+
+    def test_a_sigkilled_supervisor_process_group_leaves_no_codex_review_running(self) -> None:
+        # The job shell dies with the supervisor's group, but the Codex call has a session of its own.
+        self.assert_sigkill_leaves_no_codex_review(group=True, reap=True)
 
 
 if __name__ == "__main__":

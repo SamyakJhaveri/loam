@@ -1501,12 +1501,12 @@ call_start() { # dir cmd... -> CALL_PID, CALL_TAG, CALL_FILE
   CALL_TAG="$$.$SECONDS.$RANDOM${GRADER_JOB:+.$GRADER_JOB}"; CALL_PID=; CALL_STUCK=
   CALL_FILE="$RUN/call${GRADER_JOB:+-$GRADER_JOB}"
   trap 'call_abort INT 130' INT; trap 'call_abort TERM 143' TERM; trap 'call_abort HUP 129' HUP
-  ( cd "$dir" && export FACTORY_CALL_TAG="$CALL_TAG" \
-      && exec perl -MPOSIX -e 'POSIX::setsid() == $$ or die "setsid: $!\n"; exec { $ARGV[0] } @ARGV or die "exec $ARGV[0]: $!\n"' "$@" ) <&0 &
+  ( cd "$dir" && export FACTORY_CALL_TAG="$CALL_TAG" && exec_in_session "$@" ) <&0 &
   CALL_PID=$!
   printf '%s %s\n' "$CALL_PID" "$CALL_TAG" > "$CALL_FILE.tmp" && mv -f "$CALL_FILE.tmp" "$CALL_FILE" \
     || log "could not write $CALL_FILE; a SIGKILL now would free the slot while the call runs"
 }
+exec_in_session() { exec perl -MPOSIX -e 'POSIX::setsid() == $$ or die "setsid: $!\n"; exec { $ARGV[0] } @ARGV or die "exec $ARGV[0]: $!\n"' "$@"; }
 # However the call ends, by exit or by its limit, whatever it left behind, in its group or carrying its tag, gets
 # TERM, then KILL after a 5 s grace, and must be gone 5 s later, or the run stops: a child left writing the tree would
 # race the checks and the graders (LOOP.md, Exits). The leader is reaped first, since a zombie leader keeps its group
@@ -1918,18 +1918,32 @@ tree_signature() { # dir -> 64 hex
 # Its fixes (round-N.fixes.codex-review), its status and one-block flag (round-N.done.codex-review), and a finish it
 # asks for (round-N.finish.codex-review) come back through files read after it ends, since a finish in a subshell
 # would end only the subshell. Any exit of the supervisor while it runs (finish, a signal) ends and reaps it first.
-# A supervisor gone without ending the job (SIGKILL, or a signal no handler saw) is the backstop's case: a watcher
-# checks the supervisor every second, as the heartbeat loop does, and once it is gone sends the job TERM, whose
-# call_abort ends the Codex call and removes its call file. The job's EXIT trap ends the watcher.
+# A supervisor gone without ending the job (SIGKILL, of it alone or of its process group) is the backstop's case.
+# A watcher in a session of its own, so no signal to the supervisor's group reaches it, checks every second, as the
+# heartbeat loop does, that the supervisor lives and is not a zombie (owner_gone). Once it is gone the watcher sends
+# the job TERM, whose call_abort ends its call, and, since the job may have died with the group, itself ends the call
+# call-codex-review names and removes that file once the call is gone. The job's EXIT trap ends the watcher, which
+# also exits if the job ends while the supervisor lives.
+codex_watch() { # supervisor job call-file: the watcher's body, in a bash of its own
+  local c
+  trap 'exit 0' TERM
+  while sleep 1 & wait $!; kill -0 "$1" 2> /dev/null && [[ ! "$(ps -o stat= -p "$1" 2> /dev/null)" =~ ^[[:space:]]*Z ]]; do
+    kill -0 "$2" 2> /dev/null || exit 0
+  done
+  trap '' TERM
+  log "the supervisor is gone; ending the Codex review"
+  kill -TERM "$2" 2> /dev/null
+  c=$(cat "$3" 2> /dev/null) || exit 0
+  CALL_PID=${c%% *}; CALL_TAG=${c#* }
+  call_signal TERM; call_signal CONT
+  call_gone 50 || { call_signal KILL; call_gone 50; } && rm -f "$3"
+}
 codex_job() { # round: the body of the Codex review's background subshell
   local rc=0 me
   GRADER_JOB=codex-review; CODEX_FINISH="$RUN/round-$1.finish.codex-review"
   me=$(exec sh -c 'echo "$PPID"')   # the job's own pid: bash 3.2 has no BASHPID
-  ( trap 'exit 0' TERM
-    while sleep 1 & wait $!; kill -0 "$$" && kill -0 "$me"; do :; done
-    kill -0 "$me" || exit 0
-    log "the supervisor is gone; ending the Codex review"
-    kill -TERM "$me" ) < /dev/null > /dev/null 2>&1 &
+  ( export LOG; exec_in_session "$BASH" -c "$(declare -f now log call_tagged call_signal call_gone codex_watch)
+codex_watch \"\$@\"" codex-watch "$$" "$me" "$RUN/call-codex-review" ) < /dev/null > /dev/null 2>&1 &
   trap "kill $! 2> /dev/null" EXIT
   finish() { # status message: recorded for the supervisor to take once the Codex review has ended
     printf '%s\n%s\n' "$1" "$2" > "$CODEX_FINISH"
