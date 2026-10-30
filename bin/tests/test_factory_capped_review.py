@@ -1,4 +1,5 @@
 """A reviewer or Codex review past its one block that still blocks, or replies with nothing parseable, opens a draft PR.
+The graders run at once, one after another near a cap, and a stop one of them asks for still ends the run.
 
 A Codex review with no parseable reply is called once more; two bad replies draft the PR but never reach a worker.
 A judge or reviewer with no parseable reply after its three calls never reaches a worker either (#312): the
@@ -24,15 +25,29 @@ INHERITED = ("FACTORY_ROOT", "FACTORY_GH", "LOAM_FACTORY_TOOLCHAIN", "LOAM_FACTO
 TICKET = "## Goal and why\n\nMake the widget work.\n\n## Merge checklist\n\n- read the diff\n"
 PR_URL = "https://github.com/acme/widget/pull/9"
 
+# FAKE_SPANS names a file each fake call appends "<start> <end>" to after a 1 s sleep. A reply of STOP writes
+# FACTORY_STOP into the run dir 1 s in, then answers with text that is not JSON, so the grader calls again.
+SPAN = """
+start = time.time()
+if os.environ.get("FAKE_SPANS"):
+    time.sleep(1)
+    with open(os.environ["FAKE_SPANS"], "a") as f:
+        f.write("%f %f\\n" % (start, time.time()))
+"""
+
 FAKE_CLAUDE = """#!/usr/bin/env python3
-import json, sys
+import json, os, sys, time
 reply = sys.stdin.read().rsplit("REPLY ", 1)[1].splitlines()[0]
-print(json.dumps({"type": "result", "subtype": "success", "is_error": False, "total_cost_usd": 0, "result": reply}))
+if reply == "STOP":
+    time.sleep(1)
+    open(os.path.join(os.environ["FAKE_RUN"], "FACTORY_STOP"), "w").close()
+    reply = "not json"
+""" + SPAN + """print(json.dumps({"type": "result", "subtype": "success", "is_error": False, "total_cost_usd": 0, "result": reply}))
 """
 
 FAKE_CODEX = """#!/usr/bin/env python3
-import pathlib, sys
-out = pathlib.Path(sys.argv[sys.argv.index("-o") + 1])
+import os, pathlib, sys, time
+""" + SPAN + """out = pathlib.Path(sys.argv[sys.argv.index("-o") + 1])
 calls = out.parent / "codex-calls"
 with calls.open("a") as f:
     f.write(out.name + "\\n")
@@ -108,7 +123,8 @@ class CappedReviewTests(unittest.TestCase):
             (self.bin / name).chmod(0o755)
 
     def run_loop(self, reviews: list[object], codex: list[str | None] | None = None,
-                 judges: list[object] | None = None) -> tuple[str, list[dict]]:
+                 judges: list[object] | None = None, env_extra: dict[str, str] | None = None,
+                 status: int = 0) -> tuple[str, list[dict]]:
         """Run one round per reply of `graders "$ROUND" && open_pr`; return the loop's stderr and the gh calls.
 
         reviews[k] is the reviewer's reply in round k+1 (a string goes verbatim, anything else as JSON).
@@ -127,7 +143,7 @@ class CappedReviewTests(unittest.TestCase):
             'LEDGER="$RUN/ledger.jsonl"; DAILY="$RUN/daily.jsonl"; DECISIONS="$RUN/decisions.md"; LOG="$RUN/factory.log"\n'
             'touch "$LEDGER" "$DAILY"; date -u +%s > "$RUN/launched"; date -u +%s > "$RUN/started"\n'
             f"BODY=\"$TICKET\"; CODEX_REVIEW={'yes' if codex is not None else 'no'}; CODEX_PATH='{self.bin}'\n"
-            "notify() { :; }\n"
+            "notify() { :; }; alert() { :; }\n"
             'build_evidence() { printf \'REPLY %s\\n\' "$(cat "$RUN/reply.$(basename "$1" .md).$ROUND")"; }\n'
             f'for ROUND in $(seq 1 {len(reviews)}); do graders "$ROUND" && open_pr; done\n'
             "echo 'no PR opened' >&2; exit 9\n"
@@ -136,9 +152,10 @@ class CappedReviewTests(unittest.TestCase):
         proc = subprocess.run(["bash", "-c", f". bin/factory\n{script}"], cwd=ROOT,
                               env={**env, "FACTORY_SOURCED": "1", "FACTORY_ROOT": str(ROOT),
                                    "FACTORY_RUNS_ROOT": str(self.top / "runs"), "REPO": "acme/widget",
-                                   "TICKET": TICKET, "PATH": f"{self.bin}:{env['PATH']}"},
+                                   "TICKET": TICKET, "PATH": f"{self.bin}:{env['PATH']}",
+                                   "FAKE_RUN": str(self.run_dir), **(env_extra or {})},
                               capture_output=True, text=True, check=False)
-        self.assertEqual(proc.returncode, 0, proc.stderr)
+        self.assertEqual(proc.returncode, status, proc.stderr)
         calls = [json.loads(x) for x in self.gh_log.read_text().splitlines()] if self.gh_log.exists() else []
         return proc.stderr, calls
 
@@ -326,6 +343,42 @@ class CappedReviewTests(unittest.TestCase):
                 self.assertNotIn("--draft", pr["args"])
                 self.assertNotIn("Draft:", pr["body"])
                 self.assertEqual(self.issues(calls), [])
+
+    def spans(self, spent: float) -> list[list[float]]:
+        """The (start, end) of each grader call in one clean round with the ticket ledger at `spent` usd."""
+        self.new_run()
+        (self.run_dir / "ledger.jsonl").write_text(json.dumps({"round": 1, "role": "worker", "cost_usd": spent}) + "\n")
+        spans = self.top / "spans"
+        stderr, calls = self.run_loop([CLEAN_REVIEW], codex=[json.dumps(CLEAN_CODEX)],
+                                      env_extra={"FAKE_SPANS": str(spans)})
+        self.assertIn(f"EXIT pr-opened (0): {PR_URL} after 1 rounds", stderr)
+        return sorted([float(x) for x in line.split()] for line in spans.read_text().splitlines())
+
+    def test_the_graders_run_at_once_unless_a_cap_is_near(self) -> None:
+        # The judge, the reviewer and the Codex review only read the tree, so their calls overlap.
+        spans = self.spans(0)
+        self.assertEqual(len(spans), 3)
+        self.assertLess(max(s for s, _ in spans), min(e for _, e in spans), spans)
+        # 56 of the 60 usd ticket budget leaves no room for two 5 usd grader calls at once, so they run one after
+        # another, and each still passes the cap check it would have passed alone.
+        spans = self.spans(56)
+        self.assertEqual(len(spans), 3)
+        for (_, end), (start, _) in zip(spans, spans[1:]):
+            self.assertLessEqual(end, start, spans)
+        self.assertIn("so they run one after another", (self.run_dir / "factory.log").read_text())
+
+    def test_a_stop_one_grader_asks_for_ends_the_run_once_the_others_end(self) -> None:
+        # The reviewer's first reply writes FACTORY_STOP, so its second call stops the run from its subshell; the
+        # supervisor replays that stop after the judge and the Codex review ended, and grades nothing.
+        self.new_run()
+        stderr, calls = self.run_loop(["STOP"], codex=[json.dumps(CLEAN_CODEX)], status=2)
+        self.assertEqual(calls, [])
+        self.assertEqual((self.run_dir / "status").read_text(), "stopped\n")
+        self.assertFalse((self.run_dir / "round-1.graded.sha").exists())
+        log = (self.run_dir / "factory.log").read_text()
+        self.assertIn("judge verdict: pass", log)
+        self.assertIn("codex review verdict: approve", log)
+        self.assertRegex(log.splitlines()[-1], "EXIT stopped \\(2\\): FACTORY_STOP before the reviewer call$")
 
 
 if __name__ == "__main__":

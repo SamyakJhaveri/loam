@@ -65,6 +65,7 @@ When no cached copy matches, the run stops `stopped-environment` and names the c
    Every round is a fresh process for either worker; there is no fixer role.
 6. Before grading, in order: scan `decisions.md` for an `ABANDON` line; re-hash the frozen set (a mismatch exits `stopped-environment`); `git status --porcelain` must be empty, else the round fails with the path list; `git diff --name-only "$(cat base.sha)"...HEAD` against Do not touch emits `FAIL do-not-touch <paths>`; then run the done-checks block from the worktree root.
 7. On green: the supervisor runs Rows measured (a `runs=N` row N times, `CONTRACT.md`) and prints `MEASURE` lines, then calls the judge, the reviewer, and the Codex review stage if the ticket sets it, each fresh, on the frozen prompt and the same evidence bundle.
+   The graders only read the tree, so they run at the same time (Grader calls).
 8. On pass, or at the grader-round cap: assemble the PR body (first line `Closes #<issue>`, then the ticket's Goal and why, `git log --oneline base..HEAD`, the MEASURE table, the merge checklist as checkboxes, `decisions.md`, the done-check output from round 0 at base and from the graded round (each block shows only the result word and check name of its `PASS`, `FAIL` and `MEASURE` lines, never a FAIL reason, and a MEASURE value only when it is a number, at most 50 lines, each cut to 300 characters; the full file stays in the run directory, and the block names it), grader sections (the Judge section opens with `graded at <sha>`, the HEAD the graders read), backlog, metrics), push, `gh pr create` or update the existing PR through the REST API, notify, exit `pr-opened`.
    The graders write the HEAD they read to `round-N.graded.sha` once all of them ran on an unchanged tree.
    A relaunch whose last round's judge passed, whose `blocking_findings` is empty, and whose `round-N.graded.sha` equals the worktree HEAD re-hashes the frozen set, then opens the PR at once with no worker round, so a failed push or `gh pr create` costs no new paid round; a failed judge, a blocking finding, or a moved HEAD resumes into the loop as before.
@@ -95,6 +96,7 @@ These read loop-control files to decide exit, never safety; safety stays with de
 A usage-limit reply (`hit your session limit`, `reached your Fable limit`) is neither an exit nor a round.
 Usage limits are per account, so the supervisor first switches to the next stored account through `bin/claude-account` (round robin in name order, so a third account is reached too) and retries the same call at once.
 It sleeps only when no other account exists or a switch already happened in the last five minutes; then it writes `waiting-limit` to `status`, sleeps until the reset time the reply names or twenty minutes when it names none, and repeats the same call.
+Graders running at once can get limit replies together: the switch is taken under `limit-switch.lock` in the run directory, and a call that began before another call's switch retries on the new account at once instead of switching again or sleeping.
 A reset past `MAX_HOURS` exits `stopped-environment`.
 A call with no result event (killed by `CALL_TIMEOUT_SEC`, or crashed) exits `stopped-environment` and counts no round.
 Every model call (the worker, a grader, the Codex review) runs in a session of its own, so its process group holds every process it starts; `CALL_TIMEOUT_SEC` signals that whole group, KILL 5 s after TERM.
@@ -125,7 +127,11 @@ A grader whose output is absent or unparseable is a fail with one high finding "
 ## Grader calls
 
 Graders run from the worktree root.
-The supervisor takes a tree signature (the sha256 of the worktree HEAD and its porcelain status) before the judge and again after the last grader; a mismatch exits `stopped-environment`, since a read-only grader must not change the tree it graded.
+The judge, the reviewer and the Codex review run at the same time, each in a background subshell of the supervisor, since none writes the tree; a round's grading takes as long as its slowest grader.
+What a grader hands back comes through files the supervisor reads once every grader has ended: its fixes (`round-N.fixes.<grader>`, joined into `round-N.fixes` in the order judge, reviewer, Codex review), its status and one-block flag, and any exit it asked for (a cap, `FACTORY_STOP`, a stuck call), which the supervisor then takes, the judge's first, so a stop found by one grader ends the run once the others' calls end.
+Each grader still checks the caps before each of its calls, counting each paid grader call that may run beside it at its `GRADER_BUDGET_USD` ceiling; when the caps leave no room for the judge and reviewer calls together at their ceilings, the graders run one after another instead, so no cap is passed later than it would be with one call at a time.
+A signal to the supervisor while the graders run reaches each grader, which ends its call's processes as below before the supervisor exits.
+The supervisor takes a tree signature (the sha256 of the worktree HEAD and its porcelain status) before the graders start and again after the last one ends; a mismatch exits `stopped-environment`, since a read-only grader must not change the tree it graded.
 `--tools Read,Grep,Glob` on the call is what makes a grader read-only (#40 measured that it sets the tool list exactly); an agent file's `tools:` line governs its interactive use only, so `lean-critic.md` keeps Bash.
 `--strict-mcp-config` and `--disable-slash-commands` drop the MCP schemas and the skills listing a grader never uses: its prefix is then 9.9k tokens instead of 27k (probed on the runner 2026-09-09), and the prefix is most of a grader call's input.
 
@@ -211,7 +217,7 @@ It does so under `owner.lock` (a lock older than 60 s is removed first), and onl
 A missing or malformed `owner` holds the slot, as does a run that started before `owner` existed.
 A `ps` or `date` that fails or prints nothing cannot tell, so it holds the slot; a failed `kill -0` still means the pid is gone.
 A gone or zombie pid still holds the slot while a live process has that pid as its process group id; the heartbeat loop is one such member and exits within 300 s of its supervisor, so a reap waits at most one beat.
-A model call runs in a session of its own, so it outlives a SIGKILLed supervisor and keeps writing the worktree until `CALL_TIMEOUT_SEC`; each call writes `call` in the run directory (its process group id and its `FACTORY_CALL_TAG`, through a temp file and `mv`), removed once the call's processes are confirmed gone, and a gone owner still holds the slot while that group has a member that is not a zombie or, on Linux, a process carries that tag.
+A model call runs in a session of its own, so it outlives a SIGKILLed supervisor and keeps writing the worktree until `CALL_TIMEOUT_SEC`; each call writes `call` in the run directory (its process group id and its `FACTORY_CALL_TAG`, through a temp file and `mv`; graders running at once write `call-judge`, `call-review` and `call-codex-review`), removed once the call's processes are confirmed gone, and a gone owner still holds the slot while any such group has a member that is not a zombie or, on Linux, a process carries that tag.
 A run directory with `launched` and no `status` file holds a slot until its run writes one or the operator removes it.
 
 ## Notify

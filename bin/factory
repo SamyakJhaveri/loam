@@ -1079,27 +1079,38 @@ nav_arm:\$nav, ts:\$ts}" "$4" 2> /dev/null) \
 }
 
 # The daily cap says nothing about the ticket, so it has its own status, which next relaunches on a later UTC day.
-assert_caps() { # before every model call; the daily cap is "the next call could exceed it"
-  local spent daily hours
+# in_flight counts the paid grader calls that may run beside the next one (graders), each charged here at its
+# GRADER_BUDGET_USD ceiling, so calls started together stop no later than the same calls one after another would.
+caps_stop() { # [in_flight] -> "<status> <message>" and 0 when a cap stops the next call, else 1
+  local spent daily hours r note=""
+  r=$(jq -n --argjson n "${1:-0}" --argjson g "$GRADER_BUDGET_USD" '$n * $g')
+  [ "${1:-0}" = 0 ] || note=", counting $r usd of grader calls that may be running beside it"
   spent=$(ticket_spent); daily=$(daily_spent)
-  jq -en --argjson a "$spent" --argjson b "$TICKET_BUDGET_USD" '$a >= $b' > /dev/null \
-    && finish stopped-cap "ticket budget: spent $spent of $TICKET_BUDGET_USD usd"
+  jq -en --argjson a "$spent" --argjson r "$r" --argjson b "$TICKET_BUDGET_USD" '$a + $r >= $b' > /dev/null \
+    && { echo "stopped-cap ticket budget: spent $spent of $TICKET_BUDGET_USD usd$note"; return 0; }
   hours=$(( ( $(date -u +%s) - $(cat "$RUN/launched") ) / 3600 ))
-  [ "$hours" -lt "$MAX_HOURS" ] || finish stopped-cap "wall clock: ${hours}h of ${MAX_HOURS}h since this launch"
-  jq -en --argjson a "$daily" --argjson b "$ROUND_BUDGET_USD" --argjson c "$DAILY_BUDGET_USD" '($a + $b) > $c' > /dev/null \
-    && finish stopped-daily "daily budget: $daily spent today, the next call could exceed $DAILY_BUDGET_USD usd"
+  [ "$hours" -lt "$MAX_HOURS" ] || { echo "stopped-cap wall clock: ${hours}h of ${MAX_HOURS}h since this launch"; return 0; }
+  jq -en --argjson a "$daily" --argjson r "$r" --argjson b "$ROUND_BUDGET_USD" --argjson c "$DAILY_BUDGET_USD" \
+    '($a + $r + $b) > $c' > /dev/null \
+    && { echo "stopped-daily daily budget: $daily spent today, the next call could exceed $DAILY_BUDGET_USD usd$note"; return 0; }
+  return 1
+}
+assert_caps() { # before every model call; CAPS_IN_FLIGHT is set only inside a grader running beside others
+  local s
+  s=$(caps_stop "${CAPS_IN_FLIGHT:-0}") && finish "${s%% *}" "${s#* }"
   return 0
 }
 
 stop_requested() { [ -f "$RUN/FACTORY_STOP" ] || [ -f "$RUNS_ROOT/FACTORY_STOP" ]; }
 
-# owner.lock orders a launch's owner write against a reaper's recheck (a relaunch reuses the run dir);
+# owner.lock orders a launch's owner write against a reaper's recheck (a relaunch reuses the run dir), and
+# limit-switch.lock orders the account switches of graders running at once (limit_switch);
 # a lock older than 60 s was left by a killed holder and is removed first.
-owner_lock() { # <run dir> <tries>
-  local i
+owner_lock() { # <run dir> <tries> [lock name, owner.lock by default]
+  local i l="$1/${3:-owner.lock}"
   for ((i = 1; ; i++)); do
-    [ -n "$(find "$1/owner.lock" -maxdepth 0 -mmin +1 2> /dev/null)" ] && rm -rf "$1/owner.lock"
-    mkdir "$1/owner.lock" 2> /dev/null && return 0
+    [ -n "$(find "$l" -maxdepth 0 -mmin +1 2> /dev/null)" ] && rm -rf "$l"
+    mkdir "$l" 2> /dev/null && return 0
     [ "$i" -lt "$2" ] || return 1
     sleep 1
   done
@@ -1163,7 +1174,8 @@ run_project() { # <run dir>
 # had; with no status at all it holds the slot until the operator removes its directory.
 # A gone owner also holds while the model call it named in `call` (call_start) lives: in its own session the call
 # outlives a SIGKILLed supervisor, reparented to init, and keeps writing the worktree until CALL_TIMEOUT_SEC. It lives
-# while its group has a member that is not a zombie or, on Linux, a process carries its FACTORY_CALL_TAG.
+# while its group has a member that is not a zombie or, on Linux, a process carries its FACTORY_CALL_TAG; graders
+# running at once name their calls in call-<job> files, and any one of them alive holds the slot.
 holds_slot() { # <run dir>
   local st o t c pid re='^[0-9]+ [A-Z][a-z]{2} [A-Z][a-z]{2} [ 0-9][0-9] [0-9]{2}:[0-9]{2}:[0-9]{2} [0-9]{4}$'
   if [ -f "$1/status" ]; then
@@ -1174,7 +1186,10 @@ holds_slot() { # <run dir>
     [[ "$t" =~ $re ]] || return 0
     pid=${t%% *}
     owner_gone "$pid" "${t#* }" || return 0
-    c=$(cat "$1/call" 2> /dev/null) && { group_live "${c%% *}" || call_tagged 0 "${c#* }"; } && return 0
+    for c in "$1/call" "$1"/call-*; do
+      [ "${c%.tmp}" = "$c" ] || continue
+      c=$(cat "$c" 2> /dev/null) && { group_live "${c%% *}" || call_tagged 0 "${c#* }"; } && return 0
+    done
     owner_lock "$1" 1 || return 0
     if [ "$(cat "$1/owner" 2> /dev/null)" != "$o" ]; then rmdir "$1/owner.lock"; return 0; fi
     st=$(cat "$1/status" 2> /dev/null)
@@ -1278,19 +1293,28 @@ assert_call_ok() { # role result.json [round-start-sha]
 # and the settings env channel; one switch per limit event, then a five-minute cooldown sends any further
 # limit down the sleep path (both accounts are limited when a second reply lands within seconds). No token
 # value ever reaches the log or the ledger: the switcher prints names only and the ledger line names only.
+# Graders run at once (graders), so two limit replies can land together: the switch is taken under a lock, and a
+# call that began before another call's switch (CALL_SWITCH, read by call_start, differs) retries on the new account
+# at once rather than switching back or sleeping.
 limit_switch() { # -> 0 after switching accounts, 1 when there is no other account or a switch is on cooldown
-  local to from last
-  to=$("$ROOT/bin/claude-account" other 2> /dev/null) || return 1
-  if [ -f "$RUN/limit-switch" ]; then
-    last=$(cat "$RUN/limit-switch" 2> /dev/null) || last=""
-    [ -n "$last" ] && [ "$(( $(date +%s) - last ))" -lt 300 ] && return 1
+  local to from last rc=1
+  owner_lock "$RUN" 30 limit-switch.lock || return 1
+  last=$(cat "$RUN/limit-switch" 2> /dev/null) || last=""
+  if [ -n "${CALL_SWITCH+x}" ] && [ "$last" != "$CALL_SWITCH" ]; then
+    log "usage limit: another call switched accounts while this one ran; retrying the call"
+    rc=0
+  elif to=$("$ROOT/bin/claude-account" other 2> /dev/null) \
+    && { [ -z "$last" ] || [ "$(( $(date +%s) - last ))" -ge 300 ]; }; then
+    from=$("$ROOT/bin/claude-account" status 2> /dev/null | sed -n 's/^active: \([^;]*\);.*/\1/p')
+    if "$ROOT/bin/claude-account" use "$to" > /dev/null 2>&1; then
+      date +%s > "$RUN/limit-switch"
+      log "usage limit: switched account ${from:-none} -> $to; retrying the call"
+      printf '{"ts":"%s","event":"limit-switch","from":"%s","to":"%s"}\n' "$(now)" "${from:-none}" "$to" >> "$LEDGER"
+      rc=0
+    fi
   fi
-  from=$("$ROOT/bin/claude-account" status 2> /dev/null | sed -n 's/^active: \([^;]*\);.*/\1/p')
-  "$ROOT/bin/claude-account" use "$to" > /dev/null 2>&1 || return 1
-  date +%s > "$RUN/limit-switch"
-  log "usage limit: switched account ${from:-none} -> $to; retrying the call"
-  printf '{"ts":"%s","event":"limit-switch","from":"%s","to":"%s"}\n' "$(now)" "${from:-none}" "$to" >> "$LEDGER"
-  return 0
+  rmdir "$RUN/limit-switch.lock"
+  return "$rc"
 }
 
 # A usage-limit reply names its reset ("You've hit your session limit - resets 1:30pm (America/Los_Angeles)").
@@ -1489,16 +1513,18 @@ codex_result() { # jsonl exit_code [duration_ms] -> result JSON on stdout; durat
 # environment, so the call also carries FACTORY_CALL_TAG, unique to it, which call_tagged finds. The call keeps the
 # caller's stdin (<&0, since a background command would get /dev/null), stdout and stderr. In its own session the call
 # no longer gets the supervisor's Ctrl-C, TERM or HUP, so until call_end the supervisor traps them and ends the call's
-# processes before it exits and its EXIT trap removes the worktree.
-call_start() { # dir cmd... -> CALL_PID, CALL_TAG
+# processes before it exits and its EXIT trap removes the worktree. A grader running beside others (GRADER_JOB) names
+# its call in call-<job>, so each of the calls holds the slot, and in its tag, since $$ is the supervisor's in every one.
+call_start() { # dir cmd... -> CALL_PID, CALL_TAG, CALL_FILE, CALL_SWITCH
   local dir="$1"; shift
-  CALL_TAG="$$.$SECONDS.$RANDOM"; CALL_PID=; CALL_STUCK=
+  CALL_TAG="$$.$SECONDS.$RANDOM${GRADER_JOB:+.$GRADER_JOB}"; CALL_PID=; CALL_STUCK=
+  CALL_FILE="$RUN/call${GRADER_JOB:+-$GRADER_JOB}"; CALL_SWITCH=$(cat "$RUN/limit-switch" 2> /dev/null)
   trap 'call_abort INT 130' INT; trap 'call_abort TERM 143' TERM; trap 'call_abort HUP 129' HUP
   ( cd "$dir" && export FACTORY_CALL_TAG="$CALL_TAG" \
       && exec perl -MPOSIX -e 'POSIX::setsid() == $$ or die "setsid: $!\n"; exec { $ARGV[0] } @ARGV or die "exec $ARGV[0]: $!\n"' "$@" ) <&0 &
   CALL_PID=$!
-  printf '%s %s\n' "$CALL_PID" "$CALL_TAG" > "$RUN/call.tmp" && mv -f "$RUN/call.tmp" "$RUN/call" \
-    || log "could not write $RUN/call; a SIGKILL now would free the slot while the call runs"
+  printf '%s %s\n' "$CALL_PID" "$CALL_TAG" > "$CALL_FILE.tmp" && mv -f "$CALL_FILE.tmp" "$CALL_FILE" \
+    || log "could not write $CALL_FILE; a SIGKILL now would free the slot while the call runs"
 }
 # However the call ends, by exit or by its limit, whatever it left behind, in its group or carrying its tag, gets
 # TERM, then KILL after a 5 s grace, and must be gone 5 s later, or the run stops: a child left writing the tree would
@@ -1507,7 +1533,7 @@ call_start() { # dir cmd... -> CALL_PID, CALL_TAG
 call_end() { # role -> the call's own exit status
   local rc=0
   wait "$CALL_PID" || rc=$?
-  call_reap "$1" && rm -f "$RUN/call"
+  call_reap "$1" && rm -f "$CALL_FILE"
   trap - INT TERM HUP
   return "$rc"
 }
@@ -1534,7 +1560,7 @@ call_abort() { # signal status
   ( sleep 5; call_signal KILL ) & killer=$!
   wait "$CALL_PID" 2> /dev/null
   kill -KILL "$killer" 2> /dev/null   # it inherits the ignored TERM
-  call_gone 50 || { call_signal KILL; call_gone 50; } && rm -f "$RUN/call"
+  call_gone 50 || { call_signal KILL; call_gone 50; } && rm -f "$CALL_FILE"
   exit "$2"
 }
 call_signal() { kill -"$1" -- "-$CALL_PID" 2> /dev/null; call_tagged "$1"; }
@@ -1732,7 +1758,7 @@ measure_rows() { # round; Rows measured is `[runs=N] [<row>:] <command> | <basel
 schema_for() { cat "$(dirname "$0")/factory.d/$1.schema.json"; }  # judge|reviewer|lean-critic -> JSON Schema on stdout
 
 build_evidence() { # rubric_file diff_cap -> stdout
-  local rubric="$1" cap="$2" base names stat_only content paths diff="$RUN/round-$ROUND.diff"
+  local rubric="$1" cap="$2" base names stat_only content paths diff="$RUN/round-$ROUND.diff" tmp
   base=$(cat "$RUN/base.sha")
   cat "$rubric"
   printf '\n\n## Ticket\n\n%s\n' "$FENCE"; cat "$RUN/frozen/issue.md"; printf '\n%s\n' "$FENCE"
@@ -1751,9 +1777,12 @@ build_evidence() { # rubric_file diff_cap -> stdout
   [ -z "$stat_only" ] || printf '[stat only, content omitted as data: %s]\n\n' "$(printf '%s' "$stat_only" | tr '\n' ' ')"
   if [ -n "$content" ]; then
     mapfile -t paths <<< "$content"
-    ( cd "$WORKTREE" && git diff -M --diff-filter=AMR "$base...HEAD" -- "${paths[@]}" ) > "$diff"
-    head -"$cap" "$diff"
-    [ "$(wc -l < "$diff")" -le "$cap" ] || printf '\n[content diff capped at %s lines; the stat above is complete]\n' "$cap"
+    # The judge and the reviewer build their evidence at once (graders): each writes its own copy, then renames it.
+    tmp="$diff.$(basename "$rubric" .md)"
+    ( cd "$WORKTREE" && git diff -M --diff-filter=AMR "$base...HEAD" -- "${paths[@]}" ) > "$tmp"
+    head -"$cap" "$tmp"
+    [ "$(wc -l < "$tmp")" -le "$cap" ] || printf '\n[content diff capped at %s lines; the stat above is complete]\n' "$cap"
+    mv -f "$tmp" "$diff"
   fi
   printf '%s\n' "$FENCE"
 }
@@ -1820,7 +1849,7 @@ run_judge() { # round -> 0 on a pass verdict
   local round="$1" pf="$RUN/round-$1.judge.prompt.md" f="$RUN/round-$1.judge.json"
   build_evidence "$RUN/frozen/judge.md" 4000 > "$pf"
   call_json "$round" judge judge "$pf" "$RUN/frozen/judge.schema.json"
-  jq -r '.fixes[]? | "- " + .' "$f" > "$RUN/round-$round.fixes"
+  jq -r '.fixes[]? | "- " + .' "$f" > "$RUN/round-$round.fixes.judge"
   log "judge verdict: $(jq -r .verdict "$f") rows=$(jq -c '.rows // {}' "$f")"
   [ "$(jq -r .verdict "$f")" = pass ]
 }
@@ -1845,7 +1874,7 @@ run_review() { # round -> 0 when nothing blocks
   REVIEW_BLOCKED=1
   # highs before mediums: sort_by(.severity != "high") keys false (high) before true (medium), and jq's sort is stable.
   jq -r "$REVIEW_BLOCKING"' | sort_by(.severity != "high") | .[]
-    | "- " + (.file // "?") + ":" + ((.line // 0) | tostring) + " " + .defect + " Fix: " + .fix' "$f" >> "$RUN/round-$round.fixes"
+    | "- " + (.file // "?") + ":" + ((.line // 0) | tostring) + " " + .defect + " Fix: " + .fix' "$f" > "$RUN/round-$round.fixes.review"
   return 1
 }
 
@@ -1891,7 +1920,7 @@ run_codex_review() { # round -> 0 when nothing blocks; needs-attention with a cr
   fi
   CODEX_REVIEW_BLOCKED=1
   jq -r "$CODEX_BLOCKING"' | .[]
-    | "- " + (.file // "?") + ":" + ((.line_start // 0) | tostring) + " [" + .severity + "] " + .title + ": " + .body + " Fix: " + (.recommendation // "-")' "$f" >> "$RUN/round-$round.fixes"
+    | "- " + (.file // "?") + ":" + ((.line_start // 0) | tostring) + " [" + .severity + "] " + .title + ": " + .body + " Fix: " + (.recommendation // "-")' "$f" > "$RUN/round-$round.fixes.codex-review"
   return 1
 }
 
@@ -1902,13 +1931,74 @@ tree_signature() { # dir -> 64 hex
   { git -C "$1" rev-parse HEAD; git -C "$1" status --porcelain; } | sha256_of | cut -d' ' -f1
 }
 
+# The judge, the reviewer and the Codex review (when the ticket sets it) only read the frozen tree, so they run at
+# once, each in a background subshell. What a grader leaves the supervisor comes back through files it reads once
+# every grader has ended: its fixes (round-N.fixes.<job>, joined into round-N.fixes in grader order), its status and
+# one-block flags (round-N.done.<job>), and a finish it asked for (round-N.finish.<job>), replayed in grader order,
+# since a finish in a subshell would end only that subshell. When a cap leaves no room for the paid calls at once at
+# their ceilings, they run one after another as before, so a cap never stops later than it would have (caps_stop).
+grader_run() { # job round -> the grader's own status
+  case "$1" in
+    judge) run_judge "$2" ;; review) run_review "$2" ;; codex-review) run_codex_review "$2" ;;
+  esac
+}
+grader_job() { # job round in_flight: the body of one grader's background subshell
+  local rc=0
+  GRADER_JOB=$1; CAPS_IN_FLIGHT=$3; GRADER_FINISH="$RUN/round-$2.finish.$1"
+  finish() { # status message: recorded for the supervisor to replay
+    printf '%s\n%s\n' "$1" "$2" > "$GRADER_FINISH"
+    log "the $GRADER_JOB grader asks to stop the run ($1: $2); it stops once every grader has ended"
+    exit 0
+  }
+  grader_run "$1" "$2" || rc=1
+  printf '%s %s %s\n' "$rc" "$REVIEW_BLOCKED" "$CODEX_REVIEW_BLOCKED" > "$RUN/round-$2.done.$1"
+}
+# The calls run in sessions of their own and the graders in subshells, so a signal to the supervisor alone would leave
+# them running: each grader gets TERM, which its call_abort trap passes on to its call, and the supervisor waits.
+graders_abort() { # signal status
+  local pid
+  trap '' INT TERM HUP
+  log "the supervisor got $1 while the graders ran; ending them"
+  kill -TERM ${GRADER_PIDS[@]+"${GRADER_PIDS[@]}"} 2> /dev/null
+  for pid in ${GRADER_PIDS[@]+"${GRADER_PIDS[@]}"}; do wait "$pid" 2> /dev/null; done
+  exit "$2"
+}
+
 graders() { # round -> 0 when the judge passes and nothing blocks
-  local ok=0 sig
+  local ok=0 sig names=(judge review) n=1 par=1 j f pid rc rb cb
+  [ "$CODEX_REVIEW" = yes ] && { names+=(codex-review); n=2; }
   sig=$(tree_signature "$WORKTREE")
   GRADED_SHA=$(git -C "$WORKTREE" rev-parse HEAD)   # open_pr prints it, so a later push shows the verdict is stale
-  run_judge "$1" || ok=1
-  run_review "$1" || ok=1
-  [ "$CODEX_REVIEW" = yes ] && { run_codex_review "$1" || ok=1; }
+  for j in "${names[@]}"; do rm -f "$RUN/round-$1".{fixes,done,finish}."$j"; done
+  if caps_stop "$n" > /dev/null; then
+    par=0
+    log "graders: a cap leaves no room for $n more grader call(s) at their ceiling, so they run one after another"
+    for j in "${names[@]}"; do grader_run "$j" "$1" || ok=1; done
+  else
+    GRADER_PIDS=()
+    trap 'graders_abort INT 130' INT; trap 'graders_abort TERM 143' TERM; trap 'graders_abort HUP 129' HUP
+    for j in "${names[@]}"; do
+      ( grader_job "$j" "$1" "$([ "$j" = codex-review ] && echo "$n" || echo 1)" ) &
+      GRADER_PIDS+=($!)
+    done
+    for pid in "${GRADER_PIDS[@]}"; do wait "$pid"; done
+    trap - INT TERM HUP
+  fi
+  for j in "${names[@]}"; do cat "$RUN/round-$1.fixes.$j" 2> /dev/null; done > "$RUN/round-$1.fixes"
+  if [ "$par" = 1 ]; then
+    for j in "${names[@]}"; do
+      f="$RUN/round-$1.finish.$j"
+      [ -f "$f" ] && finish "$(head -n 1 "$f")" "$(tail -n +2 "$f")"
+    done
+    for j in "${names[@]}"; do
+      f="$RUN/round-$1.done.$j"
+      [ -f "$f" ] && read -r rc rb cb < "$f" || finish stopped-environment "the $j grader ended without a verdict; see the log"
+      [ "$rc" = 0 ] || ok=1
+      [ "$rb" = 1 ] && REVIEW_BLOCKED=1
+      [ "$cb" = 1 ] && CODEX_REVIEW_BLOCKED=1
+    done
+  fi
+  for j in "${names[@]}"; do rm -f "$RUN/round-$1".{fixes,done}."$j"; done
   [ "$(tree_signature "$WORKTREE")" = "$sig" ] || finish stopped-environment "grader changed the tree"
   # After every grader ran on an unchanged tree, so a relaunch can tell this round graded HEAD (cmd_run).
   printf '%s\n' "$GRADED_SHA" > "$RUN/round-$1.graded.sha"
