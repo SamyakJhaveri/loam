@@ -39,7 +39,7 @@ target_repo() {
 net() {
   if [ "$(type -t "$1")" = function ]; then "$@"
   elif command -v timeout > /dev/null 2>&1; then timeout "$NET_TIMEOUT_SEC" "$@"
-  else perl -e 'alarm shift; exec @ARGV' "$NET_TIMEOUT_SEC" "$@"
+  else perl -e 'alarm shift; exec @ARGV; exit 127' "$NET_TIMEOUT_SEC" "$@"
   fi
 }
 target_slug() { target_repo | sed 's#/#__#'; }   # a GitHub owner name has no _, so the first __ splits it
