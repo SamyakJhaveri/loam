@@ -2045,9 +2045,15 @@ cmd_run() {
     ROUND=$(find "$RUN" -maxdepth 1 -name 'round-*.checks' | sed -n 's/.*round-\([0-9][0-9]*\)\.checks$/\1/p' \
       | sort -n | tail -1)
     log "resuming after round $ROUND"
-    # Each graded.sha marks a round all graders ran on, and a pass there exited pr-opened (the fast path below takes
-    # the lost-push exception), so the count is the grader-fail rounds so far and the cap spans relaunches.
-    GRADER_FAILS=$(find "$RUN" -maxdepth 1 -name 'round-*.graded.sha' | wc -l | tr -d ' ')
+    # The cap spans relaunches: count the graded rounds (a graded.sha) whose graders failed, which is a judge
+    # verdict other than pass or a non-empty fixes file, since a reviewer or Codex block always queues a fix there
+    # and a judge pass queues none. A pass whose push or PR create failed has a graded.sha but is not a fail.
+    local g
+    for g in "$RUN"/round-*.graded.sha; do
+      [ -e "$g" ] || continue
+      g=${g%.graded.sha}
+      { [ -s "$g.fixes" ] || [ "$(jq -r .verdict "$g.judge.json" 2> /dev/null)" != pass ]; } && GRADER_FAILS=$((GRADER_FAILS + 1))
+    done
     # A round whose graders passed at HEAD with nothing blocking lost only its push or PR create: publish it,
     # with no new worker round. A judge fail, a blocking finding, or a moved HEAD resumes into the loop.
     if [ "$(jq -r .verdict "$RUN/round-$ROUND.judge.json" 2> /dev/null)" = pass ] && [ -z "$(blocking_findings)" ] \

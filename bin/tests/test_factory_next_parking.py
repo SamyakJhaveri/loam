@@ -169,10 +169,12 @@ class ResumeTests(unittest.TestCase):
     """A relaunch of a run stopped between its graders grades the same round instead of starting a new one (#386)."""
 
     def resume(self, graded: bool, checks_now: str = "PASS a", moved: bool = False, last: int = 6,
-               earlier_graded: tuple[int, ...] = (), graders_pass: bool = True) -> tuple[str, str]:
+               earlier_graded: tuple[int, ...] = (), earlier_passed: tuple[int, ...] = (),
+               graders_pass: bool = True) -> tuple[str, str]:
         """(status, stdout) of cmd_run on a run whose last round of `last` passed its checks, its graders stubbed to
         pass or fail. checks_now is what the frozen checks print when run again; moved adds a clean commit after
-        the last round; earlier_graded are rounds whose graders all ran (and so failed)."""
+        the last round; earlier_graded are rounds whose graders all ran and failed (no judge pass on disk);
+        earlier_passed are rounds whose graders all ran and passed, then lost their push or PR create."""
         tmp = tempfile.TemporaryDirectory()
         self.addCleanup(tmp.cleanup)
         runs, wt = pathlib.Path(tmp.name) / "runs", pathlib.Path(tmp.name) / "wt"
@@ -193,8 +195,11 @@ class ResumeTests(unittest.TestCase):
             subprocess.run([*commit, "a hand fix while the run was stopped"], check=True)
         for n in range(last + 1):
             (run / f"round-{n}.checks").write_text("PASS a\nCHECKS-END\n")
-        for n in (*earlier_graded, *((last,) if graded else ())):
+        for n in (*earlier_graded, *earlier_passed, *((last,) if graded else ())):
             (run / f"round-{n}.graded.sha").write_text("0" * 40 + "\n")
+        for n in earlier_passed:
+            (run / f"round-{n}.judge.json").write_text('{"verdict": "pass", "rows": {}, "fixes": []}\n')
+            (run / f"round-{n}.fixes").write_text("")
         stubs = (f"MAX_ROUNDS={last}; GRADER_FAIL_ROUNDS=2; "
                  "assert_target_ready() { :; }; claude_version_ok() { :; }; "
                  'load_ticket() { ISSUE=7; KEY=7; REPO=o/r; BODY="$BODY_ARG"; }; '
@@ -228,6 +233,14 @@ class ResumeTests(unittest.TestCase):
         self.assertIn("GRADED 2 running", out)
         self.assertIn("OPEN_PR draft", out)
         self.assertNotIn("WORKER", out)
+
+    def test_earlier_round_whose_graders_passed_is_not_a_grader_fail(self) -> None:
+        # Round 1 passed every grader and lost its PR create; round 2's graders were cut off and fail on the relaunch.
+        # That is the first grader-fail round, so no draft opens and the run resumes into the loop.
+        status, out = self.resume(graded=False, last=2, earlier_passed=(1,), graders_pass=False)
+        self.assertIn("GRADED 2 running", out)
+        self.assertNotIn("OPEN_PR", out)
+        self.assertEqual(status, "stopped-cap", out)
 
     def test_round_whose_graders_finished_resumes_into_the_loop(self) -> None:
         status, out = self.resume(graded=True)
