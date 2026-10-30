@@ -14,6 +14,18 @@ fail() { printf '\nFAIL %s: %s\n' "$1" "${2:-}"; n_fail=$((n_fail + 1)); }
 # Under LOAM_HOOK (the worker's Stop hook) a guarded bin/check passes without running:
 # it takes minutes per stop, and the supervisor's own check run is the one run per round (LOOP.md).
 guard() { [ -n "${LOAM_HOOK:-}" ] && [ "${1:-}" = bin/check ] && return 0; "$@"; }
+# predict NAME CMD...: CMD exits 0 exactly when base shows the failure check NAME predicts (CONTRACT.md, Done checks).
+# Only round 0 sets FACTORY_ROUND0 and runs CMD; a non-zero exit prints the PREDICT-MISS line round_zero turns into
+# ticket-defect. CMD's own output is dropped, so it cannot print a PASS line. Every other run prints nothing.
+predict() {
+  local name=$1 rc
+  shift
+  [ "${FACTORY_ROUND0:-}" = 1 ] || return 0
+  "$@" > /dev/null 2>&1
+  rc=$?
+  [ "$rc" -eq 0 ] || printf '\nPREDICT-MISS %s exit %s\n' "$name" "$rc"
+  return 0
+}
 
 # MEASURE prints one measured row for the supervisor to collect (CONTRACT.md, Rows measured).
 MEASURE() { echo "MEASURE $1 ${2:-}"; }

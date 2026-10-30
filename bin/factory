@@ -118,8 +118,17 @@ section() { awk -v want="## $1" '$0 == want {inb=1; next} /^## /{inb=0} inb {pri
 # The done-checks fenced block, without its fences.
 dc_block() { awk '/^```done-checks$/{inb=1; next} /^```/{if (inb) exit} inb {print}' <<<"$BODY"; }
 
-# The block's checks one per line: continuations joined; indentation, blank lines, and comments dropped.
-dc_checks() { dc_block | sed -e :a -e '/\\$/N; s/\\\n//; ta' -e 's/^[[:space:]]*//' -e '/^#/d' -e '/^$/d'; }
+# The block's checks one per line: continuations joined; indentation, blank lines, comments, and predict lines dropped.
+dc_checks() { dc_lines | sed -e '/^#/d' -e '/^$/d' -e '/^predict[[:space:]]/d'; }
+
+# The block's lines with continuations joined and indentation dropped.
+dc_lines() { dc_block | sed -e :a -e '/\\$/N; s/\\\n//; ta' -e 's/^[[:space:]]*//'; }
+
+# The block's predict lines, `predict NAME CMD...` (CONTRACT.md, Done checks).
+dc_predicts() { dc_lines | grep -E '^predict[[:space:]]'; }
+
+# The NAME after each `pass` in the check lines on stdin, quotes stripped, one per line.
+pass_names() { grep -oE '(^|[[:space:]])pass[[:space:]]+"?[A-Za-z0-9_.-]+' | awk '{print $NF}' | tr -d '"' | sort -u; }
 
 # A check that calls `guard` is a regression guard allowed to pass on base (CONTRACT.md, Done checks): `guard` as the
 # command word, at the start or after ; & | ( { or !, as in `out=$(guard cmd)`, with any of the keywords if then else
@@ -210,13 +219,14 @@ check_block_syntax() {
 
 # Every check line reports through pass NAME and fail NAME, and a line that leans on a test
 # file or on pytest may only name test paths the ticket already fenced off under Do not touch.
+# A predict line is not a check: it runs at round 0 only, on base, and check_predicts reads it.
 check_check_lines() {
   local line owned c covered e
   owned=$(section "Do not touch" | paths)
   while IFS= read -r line; do
     line=${line#"${line%%[![:space:]]*}"}
     [ -n "$line" ] || continue
-    case "$line" in \#*) continue ;; esac
+    case "$line" in \#*|predict[[:space:]]*) continue ;; esac
     grep -qE '(^|[[:space:]])pass[[:space:]]' <<<"$line" \
       || err "check line does not report a pass: $line"
     grep -qE '(^|[[:space:]])fail[[:space:]]' <<<"$line" \
@@ -247,6 +257,10 @@ check_worker() {
   # `size:` is optional (default small); large routes round 1 through the fan-out workflow (F12).
   if grep -qE '^size:' <<<"$w"; then
     grep -qE '^size: (small|large)$' <<<"$w" || err "Worker 'size:' must be 'small' or 'large'"
+  fi
+  # `contract:` is optional; `contract: 2` makes check_predicts want one predict line per non-guard check.
+  if grep -qE '^contract:' <<<"$w"; then
+    grep -qxE 'contract: 2' <<<"$w" || err "Worker 'contract:' must be 'contract: 2'"
   fi
   # Every `skills:` name is a line of bin/factory.d/skills.txt, matched byte for byte (#37), or a
   # pstack:<name>, which needs no line (#385) but must be plain letters, digits, - or _, since skill_file
@@ -280,12 +294,44 @@ check_worker() {
   ;; esac
   while IFS= read -r line; do
     [ -n "${line//[[:space:]]/}" ] || continue
-    case "$line" in worker:*|codex-review:*|effort:*|goal:*|skills:*|size:*) continue ;; esac
+    case "$line" in worker:*|codex-review:*|effort:*|goal:*|skills:*|size:*|contract:*) continue ;; esac
     name=${line%%=*}
     if [ "$name" = "$line" ] || [ "${CAPS/ $name /}" = "$CAPS" ]; then
       err "unrecognized Worker line: $line"
     fi
   done <<<"$w"
+}
+
+# In a `contract: 2` body each non-guard check name has exactly one `predict NAME CMD...` line, and every predict
+# line names a non-guard check, so round 0 proves each check fails on base for the reason its author predicted.
+# A body with no contract line may carry predict lines, which round 0 runs, but needs none.
+check_predicts() {
+  local names guards line name seen="" n
+  grep -qxE 'contract: 2' <<<"$(section Worker)" || return 0
+  names=$(guard_checks -v | pass_names)
+  guards=$(guard_checks | pass_names)
+  while IFS= read -r line; do
+    [ -n "$line" ] || continue
+    read -r _ name n _ <<<"$line"
+    name=${name//[\"\']/}
+    if [ -z "$n" ]; then
+      err "predict line has no command: $line"
+    elif ! grep -qxF -- "$name" <<<"$names"; then
+      if grep -qxF -- "$name" <<<"$guards"; then
+        err "predict line names $name, a guard check; a guard may pass on base and takes no predict line"
+      else
+        err "predict line names $name, which no non-guard check reports with pass"
+      fi
+    elif grep -qxF -- "$name" <<<"$seen"; then
+      err "a second predict line names $name; each non-guard check has exactly one"
+    fi
+    seen=$(printf '%s\n%s' "$seen" "$name")
+  done < <(dc_predicts)
+  while IFS= read -r name; do
+    [ -n "$name" ] || continue
+    grep -qxF -- "$name" <<<"$seen" \
+      || err "check $name has no predict line; a contract: 2 body has one 'predict $name CMD...' line per non-guard check"
+  done <<<"$names"
 }
 
 # A check that greps source text proves the text, not the behavior. A rejection, not a warning: every S1-S5
@@ -583,8 +629,8 @@ lint_body() {
   check_worker
   check_merge_checklist
   check_not_grep_only
-  # Fixture bodies are historical tickets that name paths later tickets removed.
-  case "$SRC" in *bin/factory.d/fixtures/*) ;; *) check_paths ;; esac
+  # Fixture bodies are historical tickets that name paths later tickets removed, and predate predict lines.
+  case "$SRC" in *bin/factory.d/fixtures/*) ;; *) check_paths; check_predicts ;; esac
 
   [ "$ERRS" -eq 0 ] || return 1
   echo "lint: OK $SRC"
@@ -1214,12 +1260,16 @@ round_zero() {
     [ -e "$wt" ] && msg="$msg; the path exists but is not a registered worktree, delete it by hand"
     finish stopped-environment "$msg"
   fi
-  run_checks "$wt" "$out"
+  # FACTORY_ROUND0 reaches this checks.sh alone, so a later round's predict lines stay quiet (lib.sh).
+  ( export FACTORY_ROUND0=1; run_checks "$wt" "$out" )
   git -C "$MAIN_CHECKOUT" worktree remove --force "$wt" > /dev/null 2>&1
   grep -q '^FAIL checks-aborted' "$out" \
     && finish ticket-defect "checks.sh aborted on $(cut -c1-8 "$RUN/base.sha") before the block ended; see $out"
-  guards=$(guard_checks | grep -oE '(^|[[:space:]])pass[[:space:]]+"?[A-Za-z0-9_.-]+' \
-    | awk '{print $NF}' | tr -d '"' | sort -u)
+  # A predict line whose command exits non-zero: the check fails on base, but not for the reason its author predicted.
+  while read -r _ name _ rc; do
+    finish ticket-defect "check $name fails on $(cut -c1-8 "$RUN/base.sha"), but its predict command exits $rc, so base does not fail for the predicted reason; see $out"
+  done < <(grep '^PREDICT-MISS ' "$out")
+  guards=$(guard_checks | pass_names)
   while read -r _ name _; do
     printf '%s\n' "$guards" | grep -qxF "$name" && continue
     finish ticket-defect "check $name passes on $(cut -c1-8 "$RUN/base.sha"), so it cannot prove the ticket; see $out"
