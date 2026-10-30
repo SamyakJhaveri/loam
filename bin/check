@@ -14,10 +14,10 @@ skip() { echo "SKIPPED: $1${2:+ ($2)}"; SKIPS="${SKIPS:+$SKIPS, }$1"; }  # $1 = 
 # Tracked scripts by extension or shebang: bin/check, bin/factory and other extensionless scripts
 # carry only the shebang. Templates (*.jinja) are skipped; the render smoke checks them rendered.
 scripts() {  # $1 = extension, $2 = interpreter regex
-  local re="^#!.*[/ ]($2)([[:space:]]|\$)"
+  local first re="^#!.*[/ ]($2)([[:space:]]|\$)"
   { git ls-files -- "*.$1"
     git grep -I -l -E "$re" -- . ':(exclude)*.jinja' | while IFS= read -r f; do
-      head -n 1 "$f" | grep -qE "$re" && echo "$f"
+      first=$(head -n 1 "$f"); grep -qE "$re" <<<"$first" && echo "$f"
     done
   } | sort -u
 }
@@ -38,6 +38,10 @@ done < <(scripts sh 'bash|sh')
 WS_EXCLUDE=(":(exclude)*.patch" ":(exclude)*.diff")
 git diff --check "$(git hash-object -t tree /dev/null)" HEAD -- . "${WS_EXCLUDE[@]}" || bad "git diff --check (trailing whitespace or conflict markers)"
 git diff --check HEAD -- . "${WS_EXCLUDE[@]}" || bad "git diff --check HEAD (whitespace or conflict markers in staged or unstaged edits)"
+
+step "shell lint"
+# A pipe into grep -q under pipefail fails when the writer gets SIGPIPE; capture first, then grep (#279).
+python3 bin/shell_lint.py --root "$ROOT" || bad "shell lint (see the lines above)"
 
 step "commit identities (ip-sweep identity only)"
 # Needs no private term file, so it gates every PR; release.sh still runs the full strict sweep.
