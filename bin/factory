@@ -2701,8 +2701,8 @@ precondition_lines() { # LOOP.md, Preconditions
   net gh api rate_limit > /dev/null 2>&1 && echo "  PASS gh api rate_limit" || echo "  FAIL gh api rate_limit"
   # Capture the help first: piped into grep -q, a long help text dies of SIGPIPE and pipefail reads a miss (#279).
   local help
-  help=$(claude -p --help 2>&1)
-  grep -q -- '--json-schema' <<<"$help" && echo "  PASS claude -p accepts --json-schema" \
+  help=$(claude -p --help 2>&1) && grep -q -- '--json-schema' <<<"$help" \
+    && echo "  PASS claude -p accepts --json-schema" \
     || echo "  FAIL claude -p lacks --json-schema; every grader call needs it"
   for t in judge reviewer; do
     if f=$(grader_file "$t" 2>&1); then echo "  PASS $t.md at $f"; else echo "  FAIL $f"; fi

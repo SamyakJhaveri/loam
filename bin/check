@@ -14,7 +14,7 @@ skip() { echo "SKIPPED: $1${2:+ ($2)}"; SKIPS="${SKIPS:+$SKIPS, }$1"; }  # $1 = 
 # Tracked scripts by extension or shebang: bin/check, bin/factory and other extensionless scripts
 # carry only the shebang. Templates (*.jinja) are skipped; the render smoke checks them rendered.
 scripts() {  # $1 = extension, $2 = interpreter regex
-  local re="^#!.*[/ ]($2)([[:space:]]|\$)"
+  local first re="^#!.*[/ ]($2)([[:space:]]|\$)"
   { git ls-files -- "*.$1"
     git grep -I -l -E "$re" -- . ':(exclude)*.jinja' | while IFS= read -r f; do
       first=$(head -n 1 "$f"); grep -qE "$re" <<<"$first" && echo "$f"
