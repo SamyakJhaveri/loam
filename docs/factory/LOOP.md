@@ -232,7 +232,7 @@ healthchecks: one check per host.
 Set the check once in the healthchecks UI: period 5 minutes, grace 10 minutes, the Slack integration on (or a red check reaches no one), and manual resume off (or a beat cannot resume a paused check).
 A run beats the check at launch, right after the frozen re-exec and before round 0, and every 5 minutes while its process lives.
 At its end it stops beating (waiting for a beat in flight), and the host's last live run pauses the check through the API, so a run that ends on purpose raises no alarm and the next run's beat resumes it.
-After the pause it looks for live runs once more and beats again if one launched meanwhile, since a run writes `launched` before its first beat; a relaunched run counts as live from `launched` until its next status write, through a `launching` marker rather than file times, which macOS's bash 3.2 compares in whole seconds.
+After the pause it looks for live runs once more and beats again if one launched meanwhile, since a run writes `launched` before its first beat; a run counts as live while it holds its slot, which it does from before its first beat.
 A killed run, or a dead host, stops the beats without a pause, so the check goes red and healthchecks posts to Slack.
 A hard-killed run keeps its slot (above), so no later run pauses the check while its directory stands.
 

@@ -736,7 +736,7 @@ now()   { date -u +%Y-%m-%dT%H:%M:%SZ; }
 today() { date -u +%Y-%m-%d; }
 log()   { printf '%s %s\n' "$(now)" "$*" | tee -a "$LOG" >&2; }
 sha256_of() { if command -v sha256sum > /dev/null 2>&1; then sha256sum "$@"; else shasum -a 256 "$@"; fi; }
-set_status() { printf '%s\n' "$1" > "$RUN/status"; rm -f "$RUN/launching"; log "status: $1"; }
+set_status() { printf '%s\n' "$1" > "$RUN/status"; log "status: $1"; }
 
 # Every factory write to GitHub passes through scrub: notify's issue comment, each filed issue's title and body,
 # and the PR title and body. Check output and model text can hold a secret, and the repo may be public.
@@ -838,20 +838,18 @@ heartbeat_start() {
 }
 
 # Another live run on this host, Loam's or another target's; a hard-killed run holds its slot until holds_slot
-# finds its owner gone and alerts. A relaunch keeps its last exit's status until it writes `running` just after
-# `launched`, so a run whose `launching` marker (written after `launched`, removed by every status write) still
-# stands counts as live here too. A marker, not `launched` -nt `status`: macOS's bash 3.2 compares whole seconds.
+# finds its owner gone and alerts. holds_slot is the whole test: a run beats only after cmd_run writes its owner and
+# `running` (exec_frozen keeps the pid), so a run that has beaten holds its slot, and one that has not beats later.
 other_live_run() {
   local d
   for d in "$RUNS_BASE"/*/*/ "$RUNS_BASE"/*/*/*/; do
     [ "${d%/}" = "${RUN%/}" ] && continue
     holds_slot "$d" && return 0
-    [ -f "$d/launching" ] && return 0
   done
   return 1
 }
 
-# The host's last live run pauses the check. A run launched meanwhile wrote `launched` before its first beat,
+# The host's last live run pauses the check. A run launched meanwhile holds its slot before its first beat,
 # so the second look sees it and beats again, and the pause never outlives a live run.
 heartbeat_stop() {
   [ -n "${HEARTBEAT:-}" ] && kill "$HEARTBEAT" 2> /dev/null && wait "$HEARTBEAT" 2> /dev/null
@@ -1187,7 +1185,6 @@ holds_slot() { # <run dir>
     st=$(cat "$1/status" 2> /dev/null)
     if [ "$st" != running ] && [ "$st" != waiting-limit ]; then rmdir "$1/owner.lock"; return 1; fi
     printf 'stopped-environment\n' > "$1/status"
-    rm -f "$1/launching"
     rmdir "$1/owner.lock"
     log "stopped-environment: ${1%/} was $st, but its supervisor pid $pid is gone"
     alert --level fail --source factory --project "$(run_project "$1")" \
@@ -2156,7 +2153,6 @@ cmd_run() {
   WORKTREE="${FACTORY_WORKTREE:-$MAIN_CHECKOUT-$(printf '%s' "$KEY" | tr '[:upper:]' '[:lower:]')}"
   [ -f "$RUN/started" ] || date -u +%s > "$RUN/started"
   date -u +%s > "$RUN/launched"
-  : > "$RUN/launching"   # other_live_run's sign of a relaunch whose status still holds its last exit
   # One line per launch, before any exit and not again from the frozen re-exec: status --criteria resets the
   # round on it, so a relaunch's early exit is not charged to the round a killed launch left open.
   [ "${FACTORY_FROZEN:-}" = "$RUN/frozen/factory" ] || log "===== launch ====="
