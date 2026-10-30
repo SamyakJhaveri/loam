@@ -148,18 +148,27 @@ class ParkingTests(unittest.TestCase):
 class ResumeTests(unittest.TestCase):
     """A relaunch of a run stopped between its graders grades the same round instead of starting a new one (#386)."""
 
-    def resume(self, graded: bool) -> tuple[str, str]:
-        """(status, stdout) of cmd_run on a run whose round 6 of 6 passed its checks, its graders stubbed to pass."""
+    def resume(self, graded: bool, checks_now: str = "PASS a", moved: bool = False) -> tuple[str, str]:
+        """(status, stdout) of cmd_run on a run whose round 6 of 6 passed its checks, its graders stubbed to pass.
+        checks_now is what the frozen checks print when run again; moved adds a clean commit after round 6."""
         tmp = tempfile.TemporaryDirectory()
         self.addCleanup(tmp.cleanup)
         runs, wt = pathlib.Path(tmp.name) / "runs", pathlib.Path(tmp.name) / "wt"
         wt.mkdir()
+        commit = ["git", "-C", str(wt), "-c", "user.email=a@b", "-c", "user.name=a", "commit", "-q", "--allow-empty", "-m"]
         subprocess.run(["git", "-C", str(wt), "init", "-q"], check=True)
-        subprocess.run(["git", "-C", str(wt), "-c", "user.email=a@b", "-c", "user.name=a", "commit", "-q",
-                        "--allow-empty", "-m", "base"], check=True)
+        subprocess.run([*commit, "base"], check=True)
         run = runs / "7" / key(CLEAN)
         (run / "frozen").mkdir(parents=True)
         (run / "frozen" / "issue.md").write_text(CLEAN)
+        (run / "frozen" / "checks.sh").write_text(f"#!/bin/sh\nprintf '{checks_now}\\nCHECKS-END\\n'\n")
+        (run / "frozen" / "checks.sh").chmod(0o755)
+        for name in ("protected.txt", "exempt.txt"):
+            (run / "frozen" / name).write_text("")
+        (run / "base.sha").write_text(subprocess.run(["git", "-C", str(wt), "rev-parse", "HEAD"], check=True,
+                                                     capture_output=True, text=True).stdout)
+        if moved:
+            subprocess.run([*commit, "a hand fix while the run was stopped"], check=True)
         for n in range(7):
             (run / f"round-{n}.checks").write_text("PASS a\nCHECKS-END\n")
         if graded:
@@ -180,6 +189,12 @@ class ResumeTests(unittest.TestCase):
         self.assertEqual(status, "pr-opened", out)
         self.assertIn("GRADED 6 running", out)
         self.assertNotIn("WORKER", out)
+
+    def test_moved_head_whose_checks_now_fail_is_not_graded(self) -> None:
+        # round-6.checks proved the old HEAD only; a clean commit made while the run was stopped is checked again.
+        status, out = self.resume(graded=False, checks_now="FAIL a: broken", moved=True)
+        self.assertEqual(status, "stopped-cap", out)
+        self.assertNotIn("GRADED", out)
 
     def test_round_whose_graders_finished_resumes_into_the_loop(self) -> None:
         status, out = self.resume(graded=True)

@@ -1918,8 +1918,21 @@ grade_round() {
     || { log "grader-round cap: $GRADER_FAIL_ROUNDS grader-fail rounds; the rest goes to the PR backlog"; open_pr draft; }
 }
 
+round_checks() { # out: a dirty tree or a do-not-touch hit fails the round without running the checks
+  local dirty touched
+  dirty=$(git -C "$WORKTREE" status --porcelain)
+  touched=$(do_not_touch_hits)
+  if [ -n "$dirty" ]; then
+    printf 'FAIL worktree-dirty: %s\n' "$(printf '%s' "$dirty" | tr '\n' ' ')" > "$1"
+  elif [ -n "$touched" ]; then
+    printf 'FAIL do-not-touch %s\n' "$touched" > "$1"
+  else
+    run_checks "$WORKTREE" "$1"
+  fi
+}
+
 main_loop() {
-  local prev_fails="" prev_sig="" fails dirty touched checks sig_now
+  local prev_fails="" prev_sig="" fails checks sig_now
   notify info "$(ticket_name) started" \
     "Branch $BRANCH in $WORKTREE; it stops at $MAX_ROUNDS rounds, $TICKET_BUDGET_USD USD or $MAX_HOURS hours"
   while :; do
@@ -1943,15 +1956,7 @@ main_loop() {
     [ "$sig_now" = "$prev_sig" ] && finish no-change "HEAD and decisions.md are unchanged since round $((ROUND - 1))"
     prev_sig="$sig_now"
     checks="$RUN/round-$ROUND.checks"
-    dirty=$(git -C "$WORKTREE" status --porcelain)
-    touched=$(do_not_touch_hits)
-    if [ -n "$dirty" ]; then
-      printf 'FAIL worktree-dirty: %s\n' "$(printf '%s' "$dirty" | tr '\n' ' ')" > "$checks"
-    elif [ -n "$touched" ]; then
-      printf 'FAIL do-not-touch %s\n' "$touched" > "$checks"
-    else
-      run_checks "$WORKTREE" "$checks"
-    fi
+    round_checks "$checks"
     if grep -q '^FAIL' "$checks"; then
       fails=$(grep '^FAIL' "$checks" | awk '{print $2}' | tr -d ':' | sort -u | tr '\n' ',')
       log "checks failing: $fails"
@@ -2049,13 +2054,19 @@ cmd_run() {
       check_frozen   # freeze returns early on a resume, so re-hash here as main_loop does before each round
       open_pr
     # A round whose checks passed on a clean tree but whose graders never finished (a cap or FACTORY_STOP before
-    # a grader call) is graded now at HEAD, so the relaunch does not pay for, or cap out on, a new worker round.
+    # a grader call) is graded now, so the relaunch does not pay for, or cap out on, a new worker round. HEAD may
+    # have moved while the run was stopped, so its checks run again at HEAD first, and only a pass is graded.
     elif [ "$ROUND" -ge 1 ] && ! grep -q '^FAIL' "$RUN/round-$ROUND.checks" \
       && [ "$(tail -n 1 "$RUN/round-$ROUND.checks")" = CHECKS-END ] && [ ! -e "$RUN/round-$ROUND.graded.sha" ] \
       && [ -z "$(git -C "$WORKTREE" status --porcelain)" ]; then
-      log "round $ROUND passed its checks but its graders did not finish; grading it at HEAD with no worker round"
       check_frozen
-      grade_round
+      round_checks "$RUN/round-$ROUND.checks"
+      if grep -q '^FAIL' "$RUN/round-$ROUND.checks"; then
+        log "round $ROUND's graders did not finish, and its checks now fail at HEAD; resuming into the loop"
+      else
+        log "round $ROUND's graders did not finish, and its checks pass again at HEAD; grading it with no worker round"
+        grade_round
+      fi
     fi
   fi
   main_loop
