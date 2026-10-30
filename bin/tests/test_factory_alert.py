@@ -26,7 +26,12 @@ import json, os, pathlib, sys
 with open(os.environ["FAKE_ALERT_LOG"], "a") as f:
     f.write(json.dumps(sys.argv[1:]) + "\\n")
 if sys.argv[1:] == ["--ping", "pause"] and os.environ.get("LAUNCH_ON_PAUSE"):  # a run launches mid-pause
-    pathlib.Path(os.environ["LAUNCH_ON_PAUSE"], "launched").write_text("1\\n")
+    run = pathlib.Path(os.environ["LAUNCH_ON_PAUSE"])
+    (run / "launched").write_text("1\\n")
+    (run / "launching").touch()
+    if (run / "status").exists():  # in the same instant as its last exit's status, so mtimes cannot order them
+        st = (run / "status").stat()
+        os.utime(run / "launched", ns=(st.st_atime_ns, st.st_mtime_ns))
 sys.exit(int(os.environ.get("FAKE_ALERT_EXIT", "0")))
 """
 
@@ -212,6 +217,7 @@ class FactoryAlertTests(unittest.TestCase):
                 calls = self.factory("finish stopped x", LAUNCH_ON_PAUSE=str(other))
                 self.assertEqual(calls[-3:-1], [["--ping", "pause"], ["--ping", "beat"]], calls)
                 (other / "launched").unlink()
+                (other / "launching").unlink()
                 if status:
                     other.joinpath("status").unlink()
                 other.rmdir()
