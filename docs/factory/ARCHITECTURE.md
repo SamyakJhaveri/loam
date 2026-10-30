@@ -107,8 +107,8 @@ The PR body is the metrics home: rounds, spend, wall time, first failing grader,
 Expected saving over lean-v3 is the stall rounds; the per-round grader cost is unchanged.
 Criteria written in advance, measured over every run of the target; a file-ticket rehearsal opens no PR, so it is not a PR run:
 
-- operator actions from voice note to a running loop on Track B: at most 3 (measured as a lower bound: the run sees only the issue's events and the lint, run and stop subcommands)
-- operator actions after the PR opens: at most 1 once F9 lands (measured as a lower bound: the run sees only the PR's events)
+- operator actions from voice note to a running loop on Track B: at most 3 (measured as a lower bound, so it reads INCONCLUSIVE within the threshold: the run sees only the issue's events and the lint, run and stop subcommands)
+- operator actions after the PR opens: at most 1 once F9 lands (measured as a lower bound, so it reads INCONCLUSIVE within the threshold: the run sees only the PR's events)
 - stalls whose first failing grader row is scope: 0 (baseline 3 of 4)
 - rounds lost to environment failures: 0 (baseline 2)
 - lines per round marking a passed-over step: 0

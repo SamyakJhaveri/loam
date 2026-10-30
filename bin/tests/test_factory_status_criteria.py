@@ -133,9 +133,10 @@ class StatusCriteriaTests(unittest.TestCase):
         self.assertEqual(proc.returncode, 0, proc.stderr)
         self.assertNotIn("UNMEASURED", proc.stdout)
         verdict = verdicts(proc.stdout)
+        # A lower bound within an at-most threshold cannot show the threshold is met.
         self.assertTrue(verdict["operator actions from voice note to a running loop on Track B"]
-                        .startswith("    PASS: measured at least 3 (most in one run, 7/abcd1234, of 1 run; omits "))
-        self.assertTrue(verdict["operator actions after the PR opens"].startswith("    PASS: measured at least 1 ("))
+                        .startswith("    INCONCLUSIVE: measured at least 3 (most in one run, 7/abcd1234, of 1 run; omits "))
+        self.assertTrue(verdict["operator actions after the PR opens"].startswith("    INCONCLUSIVE: measured at least 1 ("))
         self.assertEqual(verdict["stalls whose first failing grader row is scope"],
                          "    FAIL: measured 1 (of 1 stall: 7/abcd1234 round 3)")
         self.assertEqual(verdict["lines per round marking a passed-over step"],
@@ -288,6 +289,10 @@ class StatusCriteriaTests(unittest.TestCase):
             "- a new criterion: 0", "    UNMEASURED: criteria.py has no measure for this line",
         ])
         self.assertEqual(criteria(self.runs / "none")[1], f"    UNMEASURED: no run directory under {self.runs / 'none'}")
+        # A lower bound over its threshold fails, since the true count is at least as high.
+        arch.write_text("Criteria written in advance:\n\n- operator actions after the PR opens: 0\n")
+        (self.runs / "1/aaaa0001/owner-events.jsonl").write_text('{"phase":"pr","kind":"merged"}\n')
+        self.assertTrue(criteria(self.runs)[1].startswith("    FAIL: measured at least 1 ("), criteria(self.runs))
 
 
 if __name__ == "__main__":

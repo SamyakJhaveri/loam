@@ -7,7 +7,8 @@ Usage:
 Reads one target's run directories, <runs-root>/<issue>/<sha8>/ with a `status` file (LOOP.md), and
 calls nothing: no model, no gh, no git. Another target's runs sit one level deeper, under
 <runs-root>/<owner>__<repo>/, so they never count here. The criteria and their thresholds are read
-from ARCHITECTURE.md, their one home; a line this file cannot measure prints `UNMEASURED: <why>`.
+from ARCHITECTURE.md, their one home; a line this file cannot measure prints `UNMEASURED: <why>`, and a
+lower bound within its threshold prints `INCONCLUSIVE`, since what it omits could pass the threshold.
 python3 stdlib only.
 """
 from __future__ import annotations
@@ -23,6 +24,7 @@ MARKER = "Criteria written in advance"
 REHEARSAL = "file ticket: no GitHub call"  # open_pr's pr-opened message for a file ticket, which opens no PR
 PASS_OVER = "SKIPPED:"  # bin/check's marker for a step that did not run; lib.sh's guard copies it into the checks file
 STALLS = ("stuck", "no-change", "stopped-cap")
+LOWER = "lower bound"  # a measure's fourth element: the value may undercount, so it prints INCONCLUSIVE, not PASS
 # A completion claim: done (not done-checks), complete, finished, or all checks pass; NEGATED is the text before it.
 CLAIM = re.compile(r"\b(?:all (?:the )?(?:done-)?checks (?:now )?pass(?:ed)?|done(?!-)|completed?|finished)\b", re.I)
 NEGATED = re.compile(r"(?:\bnot|n't|\bnever)\W+(?:\w+\W+){0,2}$", re.I)
@@ -128,7 +130,7 @@ def operator_actions(phase, since, omits):
         if not seen:
             return None, f"no run directory records {since} in owner-events.jsonl"
         n, label = max((sum(e.get("phase") == phase for e in r.events), r.label) for r in seen)
-        return n, f"most in one run, {label}, of {count(len(seen), 'run')}; omits {omits}", f"at least {n}"
+        return n, f"most in one run, {label}, of {count(len(seen), 'run')}; omits {omits}", f"at least {n}", LOWER
     return measure
 
 
@@ -218,7 +220,8 @@ def premature_done(runs):
     return sum(kinds.values()), detail
 
 
-# A measure returns (value, detail) or (value, detail, shown), where shown replaces the value in the verdict line.
+# A measure returns (value, detail), (value, detail, shown), where shown replaces the value in the verdict line, or
+# (value, detail, shown, LOWER) for a lower bound: it can show a threshold is exceeded, never that it is met.
 MEASURES = {
     "operator actions from voice note to a running loop on Track B": operator_actions(
         "launch", "a launch", "owner work outside the issue's events and the lint, run and stop subcommands"),
@@ -269,12 +272,13 @@ def main(argv):
             out.append("    UNMEASURED: criteria.py has no measure for this line")
             continue
         value, detail, *shown = MEASURES[name](runs) if runs else (None, f"no run directory under {root}")
+        lower = shown[1:] == [LOWER]
         if value is None:
             out.append(f"    UNMEASURED: {detail}")
         elif not m:
             out.append(f"    UNMEASURED: the threshold '{rule}' does not start with a number")
         else:
-            verdict = "PASS" if value <= int(m.group(1)) else "FAIL"
+            verdict = "FAIL" if value > int(m.group(1)) else "INCONCLUSIVE" if lower else "PASS"
             out.append(f"    {verdict}: measured {shown[0] if shown else num(value)}" + (f" ({detail})" if detail else ""))
     print("\n".join(out))
     return 0
