@@ -2045,6 +2045,9 @@ cmd_run() {
     ROUND=$(find "$RUN" -maxdepth 1 -name 'round-*.checks' | sed -n 's/.*round-\([0-9][0-9]*\)\.checks$/\1/p' \
       | sort -n | tail -1)
     log "resuming after round $ROUND"
+    # Each graded.sha marks a round all graders ran on, and a pass there exited pr-opened (the fast path below takes
+    # the lost-push exception), so the count is the grader-fail rounds so far and the cap spans relaunches.
+    GRADER_FAILS=$(find "$RUN" -maxdepth 1 -name 'round-*.graded.sha' | wc -l | tr -d ' ')
     # A round whose graders passed at HEAD with nothing blocking lost only its push or PR create: publish it,
     # with no new worker round. A judge fail, a blocking finding, or a moved HEAD resumes into the loop.
     if [ "$(jq -r .verdict "$RUN/round-$ROUND.judge.json" 2> /dev/null)" = pass ] && [ -z "$(blocking_findings)" ] \
