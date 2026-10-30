@@ -49,7 +49,7 @@ def write_wheel(path: pathlib.Path) -> None:
 
 class MovedVenvTest(unittest.TestCase):
     def test_moved_checkout_rebuilds_venv(self) -> None:
-        """Build at a/; keep it on a rerun and through a symlinked root; rebuild a copy and a move; b's copier runs."""
+        """Build through a symlink to a/; keep it by either path; rebuild a copy and a move; copier runs."""
         if importlib.util.find_spec("ensurepip") is None:  # Debian without python3-venv cannot build any venv
             self.skipTest("this python3 has no ensurepip, so python3 -m venv cannot build .venv/check")
         # resolved: on macOS /var is /private/var; the link case below covers a logical root that differs
@@ -74,13 +74,15 @@ class MovedVenvTest(unittest.TestCase):
             self.assertIn(f"PY={root}/.venv/check/bin/python3", r.stdout)
             return r.stdout
 
-        self.assertIn("NOTE:", run(old))
-        self.assertNotIn("NOTE:", run(old))  # an unmoved venv is kept
         link.symlink_to(old)
-        self.assertNotIn("NOTE:", run(link))  # the same venv through a symlinked root is kept
+        self.assertIn("NOTE:", run(link))  # built through a symlinked root
+        self.assertNotIn("NOTE:", run(old))  # an unmoved venv is kept, by either path
+        self.assertNotIn("NOTE:", run(link))
+        link.unlink()  # the scripts must not name the symlink
+        copier = subprocess.run([old / ".venv/check/bin/copier"], capture_output=True, text=True)
+        self.assertEqual((0, "stub copier\n"), (copier.returncode, copier.stdout), copier.stderr)
         shutil.copytree(old, copy, symlinks=True)
         self.assertIn("NOTE:", run(copy))  # a copy whose original still exists is rebuilt
-        link.unlink()
         shutil.move(old, new)
         self.assertIn("NOTE:", run(new))
         copier = subprocess.run([new / ".venv/check/bin/copier"], capture_output=True, text=True)
