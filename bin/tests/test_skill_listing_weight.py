@@ -70,14 +70,35 @@ class RealRepoTest(unittest.TestCase):
 
 
 class BudgetGateTest(unittest.TestCase):
-    def test_budget_fails_only_when_exceeded(self) -> None:
-        script = [sys.executable, str(ROOT / "bin/skill_listing_weight.py"), "--root", str(ROOT), "--quiet"]
-        over = subprocess.run(script + ["--budget", "seed=0"], capture_output=True, text=True)
+    script = [sys.executable, str(ROOT / "bin/skill_listing_weight.py"), "--root", str(ROOT), "--quiet"]
+
+    def _measured(self, label: str) -> int:
+        return slw.summarize_source(str(ROOT), slw.SOURCES[label])["listing_tokens"]
+
+    def test_budget_fails_when_exceeded(self) -> None:
+        over = subprocess.run(self.script + ["--budget", "seed=0"], capture_output=True, text=True)
         self.assertEqual(1, over.returncode)
         self.assertIn("FAIL: seed listing", over.stderr)
-        under = subprocess.run(script + ["--budget", "seed=100000"], capture_output=True, text=True)
-        self.assertEqual(0, under.returncode, under.stderr)
+        self.assertIn("over the 0-token budget", over.stderr)
 
+    def test_budget_above_listing_fails_with_measured_number(self) -> None:
+        n = self._measured("seed")
+        under = subprocess.run(self.script + ["--budget", "seed=500"], capture_output=True, text=True)
+        self.assertEqual(1, under.returncode)
+        self.assertIn(f"FAIL: seed listing is {n} tokens, under the 500-token budget.", under.stderr)
+        self.assertIn(f"In this PR, lower its budget in bin/check to {n}.", under.stderr)
+
+    def test_budget_equal_to_listing_passes(self) -> None:
+        budgets = ["--budget", f"seed={self._measured('seed')}",
+                   "--budget", f"sam-cc-setup={self._measured('sam-cc-setup')}"]
+        equal = subprocess.run(self.script + budgets, capture_output=True, text=True)
+        self.assertEqual(0, equal.returncode, equal.stderr)
+        self.assertEqual("", equal.stderr)
+
+    def test_bin_check_budgets_equal_measured_listing(self) -> None:
+        check = (ROOT / "bin/check").read_text(encoding="utf-8")
+        self.assertIn(f"--budget seed={self._measured('seed')} ", check)
+        self.assertIn(f'"sam-cc-setup=${{LISTING_BUDGET:-{self._measured("sam-cc-setup")}}}"', check)
 
 if __name__ == "__main__":
     unittest.main()
