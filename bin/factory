@@ -1451,7 +1451,7 @@ build_worker_prompt() { # round -> prompt path (pending until the call returns a
       printf 'Run the Workflow tool with scriptPath `%s/frozen/factory-round.js` and args `{"ticket": "%s/frozen/issue.md", "run": "%s"}`. ' "$RUN" "$RUN" "$RUN"
       printf 'When it returns, read %s/tasks/result.json. If that file is absent, implement the ticket yourself as in any round. ' "$RUN"
       printf 'Otherwise the integrator has committed; copy its `unmet` and `abandoned` lists into %s.\n' "$DECISIONS"
-      printf 'Then read the integrated diff and write its one-paragraph account of how the change works and why it is correct to %s/mechanism.md, as the closing instructions ask.\n' "${DECISIONS%/*}"
+      printf 'Then read the integrated diff and write its one-paragraph account of how the change works and why it is correct to %s/mechanism.md, as the instructions above ask.\n' "${DECISIONS%/*}"
     } >> "$pf"
   fi
   if [ "$round" -gt 1 ]; then
