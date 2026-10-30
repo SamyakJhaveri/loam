@@ -84,6 +84,7 @@ When no cached copy matches, the run stops `stopped-environment` and names the c
 | `stopped` | `FACTORY_STOP` present before a call | no |
 
 Exit code, `status`, and the final log line are decided together and cannot disagree.
+The one `status` written outside its run is `stopped-environment`, by `holds_slot` for a run whose supervisor is gone (Parallel runs); that run has no exit code or final log line.
 These read loop-control files to decide exit, never safety; safety stays with deny rules, the sandbox, git, and CI.
 A usage-limit reply (`hit your session limit`, `reached your Fable limit`) is neither an exit nor a round.
 Usage limits are per account, so the supervisor first switches to the next stored account through `bin/claude-account` (round robin in name order, so a third account is reached too) and retries the same call at once.

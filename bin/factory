@@ -1914,7 +1914,9 @@ cmd_next() { # [--dry-run|--install]
   #    live owner, or launched with no status yet), and so does a pr-opened run whose ticket worktree still exists: the merge ritual removes the worktree,
   #    so until then the PR awaits merge and the next ticket waits (LOOP.md: after each merge).
   #    FACTORY_MAX_PARALLEL bounds the count, as it does in cmd_run through apply_caps; default 1.
+  #    REPO names the project holds_slot's alert posts to when it frees a dead run's slot.
   local d st n=0 max="${FACTORY_MAX_PARALLEL:-$MAX_PARALLEL}"
+  REPO=${REPO:-$(target_repo)}
   for d in "$RUNS_ROOT"/*/*/; do
     st=$(cat "$d/status" 2> /dev/null || true)
     if [ "$st" = pr-opened ]; then
