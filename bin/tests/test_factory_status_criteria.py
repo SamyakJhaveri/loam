@@ -94,13 +94,13 @@ class StatusCriteriaTests(unittest.TestCase):
         self.assertEqual(verdict["rounds lost to environment failures"], "    FAIL: measured 1 (2/aaaa0002 round 1)")
         self.assertEqual(verdict["median rounds to PR"], "    PASS: measured 2 (over 3 PR runs)")
         self.assertEqual(verdict["stalls whose first failing grader row is scope"], "    PASS: measured 0 (of 0 stalls)")
-        self.assertEqual(verdict["lines per round marking a passed-over step"], "    PASS: measured 0 (over 17 rounds)")
         self.assertEqual(verdict["rounds whose last worker message claims done while the checks printed FAIL"],
                          "    PASS: measured 0 (claude 0, codex 0)")
-        # A run from before owner-events.jsonl and evidence_kind shows no operator action and no cited notes,
-        # which is not zero of them.
+        # A run from before owner-events.jsonl, evidence_kind and guard's marker copy shows no operator action, no cited
+        # notes and no marker, which is not zero of them.
         for name in ("operator actions from voice note to a running loop on Track B",
-                     "operator actions after the PR opens", "judge fails citing a worker-written measurement"):
+                     "operator actions after the PR opens", "judge fails citing a worker-written measurement",
+                     "lines per round marking a passed-over step"):
             self.assertTrue(verdict[name].startswith("    UNMEASURED: "), (name, verdict[name]))
         self.assertEqual(len(verdict), 8, verdict)
         # One header line and the eight criteria: no run table, stop counts, or grader versions.

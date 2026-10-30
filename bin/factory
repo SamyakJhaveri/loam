@@ -2141,7 +2141,7 @@ pr_closed_events() {
 cmd_stop() { # <issue|stem>
   local d n=0
   for d in "$RUNS_ROOT/$1"/*/; do
-    [ -d "$d" ] || continue
+    [ -f "$d/status" ] || continue   # a directory lint made for owner-events.jsonl is not a run
     : > "$d/FACTORY_STOP"; n=$((n + 1))
     owner_ran && owner_event "$d" stop
     echo "FACTORY_STOP written to $d"

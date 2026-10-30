@@ -149,10 +149,14 @@ def scope_stalls(runs):
 
 
 def pass_over_lines(runs):
+    """Rounds of runs whose frozen lib.sh copies the marker past /dev/null, or whose checks show one: an older guard
+    dropped them, so its rounds would read 0 for markers it never wrote."""
+    runs = [r for r in runs if ">&9" in read(os.path.join(r.dir, "frozen", "lib.sh"))
+            or any(line.startswith(PASS_OVER) for lines in r.checks.values() for line in lines)]
     rounds = [(sum(line.startswith(PASS_OVER) for line in lines), r.label, n)
               for r in runs for n, lines in r.checks.items() if n > 0]
     if not rounds:
-        return None, "no run has a worker round"
+        return None, "no run with a worker round froze a lib.sh that copies pass-over markers"
     most, label, n = max(rounds)
     return most, f"{label} round {n}" if most else f"over {count(len(rounds), 'round')}"
 
