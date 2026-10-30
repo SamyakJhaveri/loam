@@ -61,6 +61,17 @@ def factory(*args: str, runs: pathlib.Path) -> subprocess.CompletedProcess[str]:
                           capture_output=True, text=True, check=False)
 
 
+def grader_first_fail(run: pathlib.Path) -> subprocess.CompletedProcess[str]:
+    return subprocess.run(
+        ["bash", "-c", '. bin/factory; grader_first_fail "$1"', "_", str(run)],
+        cwd=ROOT,
+        env={**os.environ, "FACTORY_SOURCED": "1"},
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+
 class StatusCriteriaTests(unittest.TestCase):
     def setUp(self) -> None:
         self.tmp = tempfile.TemporaryDirectory()
@@ -113,6 +124,42 @@ class StatusCriteriaTests(unittest.TestCase):
         for line in ("- rounds lost to environment failures: 0 (baseline 2)",
                      "- median rounds to PR: at most 5 (lean-v3 median)"):
             self.assertEqual(verdict[line], "    UNMEASURED: no factory.log in 2/aaaa0002", line)
+
+    def test_grader_first_fail_names_unparseable_grader_replies(self) -> None:
+        judge_run = pathlib.Path(self.tmp.name) / "judge-unparseable"
+        judge_run.mkdir()
+        (judge_run / "round-2.judge.json").write_text(
+            '{"verdict":"fail","unparseable":true,"rows":{},"findings":[]}\n'
+        )
+        (judge_run / "round-2.review.json").write_text('{"verdict":"merge","findings":[]}\n')
+
+        proc = grader_first_fail(judge_run)
+        self.assertEqual(proc.returncode, 0, proc.stderr)
+        self.assertEqual(proc.stdout, "judge:unparseable")
+
+        review_run = pathlib.Path(self.tmp.name) / "review-unparseable"
+        review_run.mkdir()
+        (review_run / "round-1.judge.json").write_text(
+            '{"verdict":"pass","rows":{"correct":"pass","verified":"pass","honest":"pass"}}\n'
+        )
+        (review_run / "round-1.review.json").write_text(
+            '{"verdict":"fix","unparseable":true,"findings":[]}\n'
+        )
+
+        proc = grader_first_fail(review_run)
+        self.assertEqual(proc.returncode, 0, proc.stderr)
+        self.assertEqual(proc.stdout, "review:unparseable")
+
+        parsed_run = pathlib.Path(self.tmp.name) / "parsed-judge"
+        parsed_run.mkdir()
+        (parsed_run / "round-3.judge.json").write_text(
+            '{"verdict":"fail","rows":{"correct":"pass","verified":"fail","honest":"pass"}}\n'
+        )
+        (parsed_run / "round-3.review.json").write_text('{"verdict":"merge","findings":[]}\n')
+
+        proc = grader_first_fail(parsed_run)
+        self.assertEqual(proc.returncode, 0, proc.stderr)
+        self.assertEqual(proc.stdout, "judge:verified")
 
     def test_thresholds_come_from_the_doc(self) -> None:
         arch = pathlib.Path(self.tmp.name) / "ARCHITECTURE.md"
