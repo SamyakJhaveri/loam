@@ -923,7 +923,7 @@ run_project() { # <run dir>
   local t
   t=$(dirname "$(dirname "${1%/}")")
   if [ "$t" = "${RUNS_BASE%/}" ]; then echo loam
-  elif [ "$(dirname "$t")" = "${RUNS_BASE%/}" ]; then printf '%s' "${t##*__}" | tr 'A-Z' 'a-z'
+  elif [ "$(dirname "$t")" = "${RUNS_BASE%/}" ]; then printf '%s' "${t#*__}" | tr 'A-Z' 'a-z'
   fi
 }
 
