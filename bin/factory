@@ -1646,6 +1646,8 @@ graders() { # round -> 0 when the judge passes and nothing blocks
   run_review "$1" || ok=1
   [ "$CODEX_REVIEW" = yes ] && { run_codex_review "$1" || ok=1; }
   [ "$(tree_signature "$WORKTREE")" = "$sig" ] || finish stopped-environment "grader changed the tree"
+  # After every grader ran on an unchanged tree, so a relaunch can tell this round graded HEAD (cmd_run).
+  printf '%s\n' "$GRADED_SHA" > "$RUN/round-$1.graded.sha"
   if [ ! -s "$RUN/round-$1.fixes" ] && jq -e '.unparseable == true' "$RUN/round-$1.judge.json" > /dev/null 2>&1; then
     # Not a pass, and not a worker round either: the judge's fallback queues no fix, so the next round would
     # have nothing to do and end no-change with no PR (#312). The draft PR carries the finding in the judge
@@ -1914,6 +1916,15 @@ cmd_run() {
     ROUND=$(find "$RUN" -maxdepth 1 -name 'round-*.checks' | sed -n 's/.*round-\([0-9][0-9]*\)\.checks$/\1/p' \
       | sort -n | tail -1)
     log "resuming after round $ROUND"
+    # A round whose graders passed at HEAD with nothing blocking lost only its push or PR create: publish it,
+    # with no new worker round. A judge fail, a blocking finding, or a moved HEAD resumes into the loop.
+    if [ "$(jq -r .verdict "$RUN/round-$ROUND.judge.json" 2> /dev/null)" = pass ] && [ -z "$(blocking_findings)" ] \
+      && [ -s "$RUN/round-$ROUND.graded.sha" ] && [ "$(cat "$RUN/round-$ROUND.graded.sha")" = "$(git -C "$WORKTREE" rev-parse HEAD)" ]; then
+      GRADED_SHA=$(cat "$RUN/round-$ROUND.graded.sha")
+      log "round $ROUND passed the graders at HEAD $GRADED_SHA; opening the PR with no worker round"
+      check_frozen   # freeze returns early on a resume, so re-hash here as main_loop does before each round
+      open_pr
+    fi
   fi
   main_loop
 }
