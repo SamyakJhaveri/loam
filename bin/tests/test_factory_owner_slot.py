@@ -17,6 +17,8 @@ import tempfile
 import time
 import unittest
 
+import bsd_shapes
+
 ROOT = pathlib.Path(__file__).resolve().parents[2]
 INHERITED = ("FACTORY_ROOT", "FACTORY_GH", "LOAM_FACTORY_TOOLCHAIN", "LOAM_FACTORY_COPIER", "REPO", "RUN", "LOG")
 OLD = "Thu Jan  1 00:00:00 1970"
@@ -56,6 +58,7 @@ class OwnerSlotTests(unittest.TestCase):
         self.run_dir.mkdir(parents=True)
         (self.run_dir / "status").write_text("running\n")
         self.alerts = self.top / "alerts.txt"
+        self.path = os.environ["PATH"]
 
     def live(self) -> int:
         p = subprocess.Popen(["sleep", "60"])
@@ -71,7 +74,7 @@ class OwnerSlotTests(unittest.TestCase):
                   f"alert() {{ printf '%s\\n' \"$*\" >> '{self.alerts}'; }}\n{extra}\n"
                   f"holds_slot '{self.run_dir}' && echo held || echo free")
         base = {k: v for k, v in os.environ.items() if k not in INHERITED}
-        proc = subprocess.run(["bash", "-c", script], cwd=ROOT, env={**base, "FACTORY_SOURCED": "1"},
+        proc = subprocess.run(["bash", "-c", script], cwd=ROOT, env={**base, "FACTORY_SOURCED": "1", "PATH": self.path},
                               stdin=subprocess.DEVNULL, capture_output=True, text=True, check=False)
         self.assertIn(proc.stdout.strip(), ("held", "free"), proc.stderr)
         return proc.stdout.strip() == "held"
@@ -90,6 +93,11 @@ class OwnerSlotTests(unittest.TestCase):
         self.owner(f"{dead_pid()} {OLD}")
         self.assert_freed()
 
+    def test_padded_owner_line_with_a_dead_pid_frees_the_slot(self) -> None:
+        # cmd_run on macOS before #448 wrote lstart with its trailing spaces.
+        self.owner(f"{dead_pid()} {OLD}    ")
+        self.assert_freed()
+
     def test_live_pid_with_another_start_time_frees_the_slot(self) -> None:
         self.owner(f"{self.live()} {OLD}")
         self.assert_freed()
@@ -102,9 +110,12 @@ class OwnerSlotTests(unittest.TestCase):
         self.assert_freed()
 
     def test_live_owner_holds_the_slot(self) -> None:
-        pid = self.live()
+        # A malformed line also holds, so the spy proves holds_slot parsed the line and asked owner_gone.
+        pid, consulted = self.live(), self.top / "consulted"
         self.owner(f"{pid} {lstart(pid)}")
-        self.assert_held()
+        self.assert_held(f'eval "real_$(declare -f owner_gone)"\n'
+                         f'owner_gone() {{ printf \'%s\\n\' "$*" > \'{consulted}\'; real_owner_gone "$@"; }}')
+        self.assertEqual(consulted.read_text(), f"{pid} {lstart(pid)}\n")
 
     def test_live_pid_with_a_malformed_start_holds_the_slot(self) -> None:
         self.owner(f"{self.live()} garbage")
@@ -116,6 +127,13 @@ class OwnerSlotTests(unittest.TestCase):
         t = datetime.datetime.strptime(lstart(pid), "%a %b %d %H:%M:%S %Y") - datetime.timedelta(seconds=2)
         self.owner(f"{pid} {t:%a %b} {t.day:2d} {t:%H:%M:%S %Y}")
         self.assert_held()
+
+    def test_date_failing_or_printing_nothing_holds_the_slot(self) -> None:
+        pid = self.live()
+        self.owner(f"{pid} {OLD}")
+        for stub in ("date() { return 1; }", "date() { :; }"):
+            with self.subTest(stub=stub):
+                self.assert_held(stub)
 
     def test_ps_failing_on_a_live_pid_holds_the_slot(self) -> None:
         pid = self.live()
@@ -143,7 +161,8 @@ class OwnerSlotTests(unittest.TestCase):
         base = {k: v for k, v in os.environ.items()
                 if k not in INHERITED and k not in ("FACTORY_FROZEN", "FACTORY_NAV_ARM")}
         proc = subprocess.Popen(["bash", "-c", script], cwd=ROOT,
-                                env={**base, "FACTORY_SOURCED": "1", "FACTORY_RUNS_ROOT": str(self.top / "runs")},
+                                env={**base, "FACTORY_SOURCED": "1", "FACTORY_RUNS_ROOT": str(self.top / "runs"),
+                                     "PATH": self.path},
                                 stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
         _, err = proc.communicate()
         self.assertTrue(seen.exists(), err)
@@ -172,8 +191,8 @@ class OwnerSlotTests(unittest.TestCase):
         script = (f". bin/factory\nRUN='{self.run_dir}'; LOG='{self.top}/factory.log'\n"
                   f"call_start '{self.top}' sh -c 'echo $$ > \"{ready}\"; exec sleep 60'\nwait")
         base = {k: v for k, v in os.environ.items() if k not in INHERITED}
-        sup = subprocess.Popen(["bash", "-c", script], cwd=ROOT, env={**base, "FACTORY_SOURCED": "1"},
-                               stdin=subprocess.DEVNULL, start_new_session=True)
+        sup = subprocess.Popen(["bash", "-c", script], cwd=ROOT,
+                               env={**base, "FACTORY_SOURCED": "1", "PATH": self.path}, stdin=subprocess.DEVNULL, start_new_session=True)
         wait_until(lambda: ready.exists() and ready.read_text().strip() != "")
         call = int(ready.read_text())
         self.addCleanup(lambda: subprocess.run(["pkill", "-KILL", "-g", str(call)], check=False))
@@ -185,6 +204,14 @@ class OwnerSlotTests(unittest.TestCase):
         wait_until(lambda: not self.holds())
         self.assertEqual((self.run_dir / "status").read_text(), "stopped-environment\n")
         self.assertEqual(len(self.alerts.read_text().splitlines()), 1)
+
+
+class MacShapeOwnerSlotTests(OwnerSlotTests):
+    """Every test again with macOS ps and date (bsd_shapes), so Linux CI guards the Mac paths too."""
+
+    def setUp(self) -> None:
+        super().setUp()
+        self.path = bsd_shapes.path(self.top / "bin")
 
 
 if __name__ == "__main__":
