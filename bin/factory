@@ -1925,10 +1925,12 @@ tree_signature() { # dir -> 64 hex
 # heartbeat loop does, that the supervisor lives and is not a zombie (owner_gone). Once it is gone the watcher sends
 # the job TERM, whose call_abort ends its call, and, since the job may have died with the group, itself ends the call
 # call-codex-review names and removes that file once the call is gone. The job's EXIT trap ends the watcher, which
-# also exits if the job ends while the supervisor lives.
-codex_watch() { # supervisor job call-file: the watcher's body, in a bash of its own
+# also exits if the job ends while the supervisor lives. The watcher acknowledges its session in round-N.watch.codex-review,
+# and the job makes no Codex call until then: one launched before would die with the group, leaving the call unwatched.
+codex_watch() { # supervisor job call-file ack-file: the watcher's body, in a bash of its own
   local c
   trap 'exit 0' TERM
+  : > "$4"
   while sleep 1 & wait $!; kill -0 "$1" 2> /dev/null && [[ ! "$(ps -o stat= -p "$1" 2> /dev/null)" =~ ^[[:space:]]*Z ]]; do
     kill -0 "$2" 2> /dev/null || exit 0
   done
@@ -1941,17 +1943,21 @@ codex_watch() { # supervisor job call-file: the watcher's body, in a bash of its
   call_gone 50 || { call_signal KILL; call_gone 50; } && rm -f "$3"
 }
 codex_job() { # round: the body of the Codex review's background subshell
-  local rc=0 me
+  local rc=0 me i=0 ack="$RUN/round-$1.watch.codex-review"
   GRADER_JOB=codex-review; CODEX_FINISH="$RUN/round-$1.finish.codex-review"
-  me=$(exec sh -c 'echo "$PPID"')   # the job's own pid: bash 3.2 has no BASHPID
-  ( export LOG; exec_in_session "$BASH" -c "$(declare -f now log call_tagged call_signal call_gone codex_watch)
-codex_watch \"\$@\"" codex-watch "$$" "$me" "$RUN/call-codex-review" ) < /dev/null > /dev/null 2>&1 &
-  trap "kill $! 2> /dev/null" EXIT
   finish() { # status message: recorded for the supervisor to take once the Codex review has ended
     printf '%s\n%s\n' "$1" "$2" > "$CODEX_FINISH"
     log "the Codex review asks to stop the run ($1: $2); it stops once the judge and the reviewer have ended"
     exit 0
   }
+  me=$(exec sh -c 'echo "$PPID"')   # the job's own pid: bash 3.2 has no BASHPID
+  ( export LOG; exec_in_session "$BASH" -c "$(declare -f now log call_tagged call_signal call_gone codex_watch)
+codex_watch \"\$@\"" codex-watch "$$" "$me" "$RUN/call-codex-review" "$ack" ) < /dev/null > /dev/null 2>&1 &
+  trap "kill $! 2> /dev/null" EXIT
+  until [ -f "$ack" ]; do
+    [ "$i" -lt 100 ] || finish stopped-environment "the Codex review's watcher did not start in a session of its own within 10 s"
+    sleep 0.1; i=$((i + 1))
+  done
   run_codex_review "$1" || rc=1
   printf '%s %s\n' "$rc" "$CODEX_REVIEW_BLOCKED" > "$RUN/round-$1.done.codex-review"
 }
@@ -1978,7 +1984,7 @@ graders() { # round -> 0 when the judge passes and nothing blocks
   sig=$(tree_signature "$WORKTREE")
   GRADED_SHA=$(git -C "$WORKTREE" rev-parse HEAD)   # open_pr prints it, so a later push shows the verdict is stale
   if [ "$CODEX_REVIEW" = yes ]; then
-    rm -f "$RUN/round-$1".{fixes,done,finish}.codex-review
+    rm -f "$RUN/round-$1".{fixes,done,finish,watch}.codex-review
     # A signal before the job's pid is recorded is held until it is, so the abort can end the job.
     trap 'pending="INT 130"' INT; trap 'pending="TERM 143"' TERM; trap 'pending="HUP 129"' HUP
     ( codex_job "$1" ) &
@@ -2002,7 +2008,7 @@ graders() { # round -> 0 when the judge passes and nothing blocks
     { [ -f "$f" ] && read -r rc cb < "$f"; } || finish stopped-environment "the Codex review ended without a verdict; see the log"
     [ "$rc" = 0 ] || ok=1
     [ "$cb" = 1 ] && CODEX_REVIEW_BLOCKED=1
-    rm -f "$RUN/round-$1".{fixes,done}.codex-review
+    rm -f "$RUN/round-$1".{fixes,done,watch}.codex-review
   fi
   [ "$(tree_signature "$WORKTREE")" = "$sig" ] || finish stopped-environment "grader changed the tree"
   # After every grader ran on an unchanged tree, so a relaunch can tell this round graded HEAD (cmd_run).

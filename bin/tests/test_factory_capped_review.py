@@ -30,7 +30,7 @@ PR_URL = "https://github.com/acme/widget/pull/9"
 # FAKE_SPANS names a file each fake call appends "<who> <start> <end>" to after sleeping FAKE_SLEEP (claude) or
 # FAKE_CODEX_SLEEP (codex) seconds, 3 by default; it first creates FAKE_SPANS.<who>.ready, once its session exists.
 # A reply of STOP writes FACTORY_STOP into the run dir 1 s in, then answers with text that is not JSON, so the grader
-# calls again.
+# calls again. A Claude call waits first for the file FAKE_WAIT_FOR names, when set.
 SPAN = """
 start = time.time()
 if os.environ.get("FAKE_SPANS"):
@@ -49,6 +49,8 @@ if reply == "STOP":
     time.sleep(1)
     open(os.path.join(os.environ["FAKE_RUN"], "FACTORY_STOP"), "w").close()
     reply = "not json"
+while os.environ.get("FAKE_WAIT_FOR") and not os.path.exists(os.environ["FAKE_WAIT_FOR"]):
+    time.sleep(0.05)
 """ + SPAN + """print(json.dumps({"type": "result", "subtype": "success", "is_error": False, "total_cost_usd": 0, "result": reply}))
 """
 
@@ -409,8 +411,11 @@ class CappedReviewTests(unittest.TestCase):
             "FAKE_SPANS": str(self.top / "spans"), "FAKE_SLEEP": "60", "FAKE_CODEX_SLEEP": "60"}),
             stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, start_new_session=True)
         self.addCleanup(lambda: proc.poll() is None and proc.kill() or proc.wait())
+        ready = [self.run_dir / "call", self.run_dir / "call-codex-review", self.run_dir / "round-1.watch.codex-review",
+                 self.top / "spans.judge.ready", self.top / "spans.codex.ready"]
         deadline = time.time() + 20
-        while not all((self.top / f"spans.{w}.ready").exists() for w in ("judge", "codex")) and time.time() < deadline:
+        while not all(f.exists() for f in ready):
+            self.assertLess(time.time(), deadline, [f.name for f in ready if not f.exists()])
             time.sleep(0.1)
         return proc
 
@@ -428,7 +433,8 @@ class CappedReviewTests(unittest.TestCase):
         inject = ('trap() { builtin trap "$@"; if [ -n "$CODEX_JOB" ] && [ -z "${INJECTED:-}" ] '
                   '&& [[ " ${FUNCNAME[*]} " == *" call_end "* ]]; then INJECTED=1; builtin kill -TERM $$; fi; }\n')
         self.run_loop([CLEAN_REVIEW], codex=[json.dumps(CLEAN_CODEX)], status=143, inject=inject,
-                      env_extra={"FAKE_SPANS": str(self.top / "spans"), "FAKE_SLEEP": "0", "FAKE_CODEX_SLEEP": "60"})
+                      env_extra={"FAKE_SPANS": str(self.top / "spans"), "FAKE_SLEEP": "0", "FAKE_CODEX_SLEEP": "60",
+                                 "FAKE_WAIT_FOR": str(self.top / "spans.codex.ready")})
         self.assertIn("ending the Codex review", (self.run_dir / "factory.log").read_text())
         self.assert_codex_gone()
 
@@ -439,7 +445,8 @@ class CappedReviewTests(unittest.TestCase):
         inject = ('kill() { if [ "${FUNCNAME[1]:-}" = codex_job_end ] && [ -z "${INJECTED:-}" ]; then INJECTED=1; '
                   'builtin kill -TERM $$; fi; builtin kill "$@"; }\n')
         self.run_loop(["STOP"], codex=[json.dumps(CLEAN_CODEX)], status=2, inject=inject,
-                      env_extra={"FAKE_SPANS": str(self.top / "spans"), "FAKE_SLEEP": "0", "FAKE_CODEX_SLEEP": "60"})
+                      env_extra={"FAKE_SPANS": str(self.top / "spans"), "FAKE_SLEEP": "0", "FAKE_CODEX_SLEEP": "60",
+                                 "FAKE_WAIT_FOR": str(self.top / "spans.codex.ready")})
         self.assertEqual((self.run_dir / "status").read_text(), "stopped\n")
         log = (self.run_dir / "factory.log").read_text()
         self.assertIn("the supervisor ended the codex-review job", log)
@@ -468,6 +475,41 @@ class CappedReviewTests(unittest.TestCase):
     def test_a_sigkilled_supervisor_process_group_leaves_no_codex_review_running(self) -> None:
         # The job shell dies with the supervisor's group, but the Codex call has a session of its own.
         self.assert_sigkill_leaves_no_codex_review(group=True, reap=True)
+
+    def test_no_codex_call_runs_before_its_watcher_has_a_session_of_its_own(self) -> None:
+        # The watcher's session start is delayed 5 s; a kill of the supervisor's process group 3 s into that gap
+        # takes the job and the watcher with it, so a Codex call made meanwhile would run on unwatched.
+        self.new_run()
+        inject = ('eval "orig_$(declare -f exec_in_session)"\n'
+                  'exec_in_session() { if [ "$1" = "$BASH" ]; then : > "$RUN/watch-delayed"; sleep 5; fi; '
+                  'orig_exec_in_session "$@"; }\n')
+        proc = subprocess.Popen(**self.loop_cmd([CLEAN_REVIEW], codex=[json.dumps(CLEAN_CODEX)], inject=inject,
+                                                env_extra={"FAKE_SPANS": str(self.top / "spans"), "FAKE_SLEEP": "60",
+                                                           "FAKE_CODEX_SLEEP": "60"}),
+                                stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, start_new_session=True)
+        self.addCleanup(lambda: proc.poll() is None and proc.kill() or proc.wait())
+        deadline = time.time() + 20
+        while not all(f.exists() for f in (self.run_dir / "watch-delayed", self.top / "spans.judge.ready")):
+            self.assertLess(time.time(), deadline)
+            time.sleep(0.1)
+        codex_ready = self.top / "spans.codex.ready"
+        deadline = time.time() + 3
+        while not codex_ready.exists() and time.time() < deadline:
+            time.sleep(0.1)
+        os.killpg(proc.pid, signal.SIGKILL)
+        proc.wait(timeout=10)
+        os.killpg(int((self.run_dir / "call").read_text().split()[0]), signal.SIGKILL)
+        self.assertFalse(codex_ready.exists(), "the Codex call started before its watcher had a session of its own")
+        self.assert_codex_gone(["call"])
+
+    def test_a_watcher_that_never_starts_stops_the_run_without_a_codex_call(self) -> None:
+        self.new_run()
+        inject = ('eval "orig_$(declare -f exec_in_session)"\n'
+                  'exec_in_session() { [ "$1" != "$BASH" ] || sleep 60; orig_exec_in_session "$@"; }\n')
+        stderr, calls = self.run_loop([CLEAN_REVIEW], codex=[json.dumps(CLEAN_CODEX)], status=4, inject=inject)
+        self.assertIn("did not start in a session of its own within 10 s", stderr)
+        self.assertEqual(calls, [])
+        self.assertFalse((self.run_dir / "codex-calls").exists())
 
 
 if __name__ == "__main__":
