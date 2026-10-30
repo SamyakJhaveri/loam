@@ -54,6 +54,15 @@ class WorkerPinTests(unittest.TestCase):
         self.assertEqual(env, {**source_env, **dict.fromkeys(PINS, "claude-opus-5-5"),
                                "CLAUDE_CODE_SUBAGENT_MODEL_FORCE": "1"})
 
+    def test_frozen_worker_settings_deny_edits_under_home_claude_and_cursor(self) -> None:
+        # A ticket may name any pstack skill (ruling 2026-10-30); one such as setup-pstack rewrites
+        # ~/.claude/rules/ (or ~/.cursor/rules/), which every later session on the host loads, so the worker may not edit there.
+        # An Edit(path) rule also covers Write and NotebookEdit; a Write(path) rule never matches.
+        self.frozen_env()
+        deny = json.loads((self.tmp / "run/frozen/worker-settings.json").read_text())["permissions"]["deny"]
+        self.assertIn("Edit(~/.claude/**)", deny)
+        self.assertIn("Edit(~/.cursor/**)", deny)
+
     def test_freeze_follows_factory_worker_model(self) -> None:
         env, source_env = self.frozen_env(FACTORY_WORKER_MODEL="claude-other-1")
         self.assertEqual(env, {**source_env, **dict.fromkeys(PINS, "claude-other-1"),
