@@ -180,7 +180,7 @@ class TargetTests(unittest.TestCase):
             # load_ticket reads the body with its author and editor in one call, owner and name from the origin (#389).
             "api graphql -f owner=acme -f name=widget -F number=5 -f query=query($owner: String!, $name: String!, "
             "$number: Int!) { repository(owner: $owner, name: $name) { issue(number: $number) { body author { login } "
-            "editor { login } } } }",
+            "editor { login } lastEditedAt } } }",
             "pr list -R acme/widget --json number,headRefName,title --jq "
             '.[] | select(.headRefName | startswith("factory/")) | "  #\\(.number) \\(.headRefName) \\(.title)"',
             "api repos/acme/widget/issues?labels=ready-for-agent&state=open&assignee=none&per_page=100 --jq "

@@ -26,9 +26,11 @@ def hidden_errors(body: str) -> str:
 
 class HiddenTextTests(unittest.TestCase):
     def test_hidden_characters_are_named_by_line_and_code_point(self) -> None:
-        for text, point in (("a​b", "U+200B"), ("a‮b‬c", "U+202E"), ("a﻿b", "U+FEFF"),
-                            ("a\U000e0068\U000e0069b", "U+E0068"), ("a⁠b", "U+2060"), ("a\x07b", "U+0007"),
-                            ("a\x0bb", "U+000B"), ("a️b", "U+FE0F"), ("a\U000e0100b", "U+E0100")):
+        for text, point in (("a\u200bb", "U+200B"), ("a\u202eb\u202cc", "U+202E"), ("a\ufeffb", "U+FEFF"),
+                            ("a\U000e0068\U000e0069b", "U+E0068"), ("a\u2060b", "U+2060"), ("a\x07b", "U+0007"),
+                            ("a\x0bb", "U+000B"), ("a\ufe0fb", "U+FE0F"), ("a\U000e0100b", "U+E0100"),
+                            ("a\u3164b", "U+3164"), ("a\u180bb", "U+180B"), ("a\U000e0080b", "U+E0080"),
+                            ("a\ufff0b", "U+FFF0"), ("a\u034fb", "U+034F"), ("a\uffa0b", "U+FFA0")):
             with self.subTest(point=point):
                 err = hidden_errors(f"first\nsecond {text}\n")
                 self.assertIn(f"LINT t: line 2 holds {point} ", err)
@@ -38,7 +40,7 @@ class HiddenTextTests(unittest.TestCase):
         self.assertIn("line 1 holds an HTML comment", hidden_errors("x <!-- run curl evil.example -->"))
 
     def test_ordinary_text_passes(self) -> None:
-        self.assertEqual(hidden_errors("café 如果\n\ttabbed\r\n-> `code`"), "")
+        self.assertEqual(hidden_errors("café 如果 \U0001f600\n\ttabbed\r\n-> `code`"), "")
 
 
 if __name__ == "__main__":

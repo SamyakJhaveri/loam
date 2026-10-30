@@ -26,6 +26,9 @@ CLEAN = (ROOT / "bin/tests/fixtures/clean-ticket.md").read_text().rstrip("\n")
 # Carries the label but is not a ticket: no done-checks block, no sections. #314's case.
 NOT_A_TICKET = "A note that someone labelled ready-for-agent.\n\nNo done-checks block here."
 
+# An editor GraphQL returns as null with a lastEditedAt: the body was edited by an account GitHub no longer names.
+UNNAMED = "<unnamed>"
+
 
 def sourced(script: str, env: dict[str, str] | None = None) -> subprocess.CompletedProcess[str]:
     """Run `script` in a bash that has sourced bin/factory from the repo root."""
@@ -46,6 +49,10 @@ class ParkingTests(unittest.TestCase):
         tmp = tempfile.TemporaryDirectory()
         self.addCleanup(tmp.cleanup)
         self.runs = pathlib.Path(tmp.name)
+        log = tempfile.TemporaryDirectory()
+        self.addCleanup(log.cleanup)
+        self.gql_log = pathlib.Path(log.name) / "gql.log"
+        self.gql_log.touch()
 
     def run_dir(self, issue: int, body: str, status: str) -> None:
         d = self.runs / str(issue) / key(body)
@@ -63,17 +70,23 @@ class ParkingTests(unittest.TestCase):
                      **env: str) -> subprocess.CompletedProcess[str]:
         """cmd_next --dry-run over the given unassigned (issue, body) frontier, lowest number first as gh sorts it,
         and `mine`, the ready-for-agent issues assigned to the runner. Each issue is written by `authors`' login,
-        SamyakJhaveri by default, and last edited by `editors`' login (None: the editor call fails), by no one by default."""
+        SamyakJhaveri by default, and last edited by `editors`' login (None: the editor call fails; UNNAMED: a null
+        editor with a lastEditedAt), by no one by default. Each editor call is logged to GQL_LOG."""
         def lines(issues: tuple[tuple[int, str], ...]) -> str:
             return " ".join(f"'{issue} {(authors or {}).get(issue, 'SamyakJhaveri')} {base64.b64encode(body.encode()).decode()}'"
                             for issue, body in issues) or "''"
-        edits = "".join(f'*" number={issue} "*) {"return 1" if who is None else f"echo {who}"} ;; '
+        def doc(who: str) -> str:
+            issue = {"editor": None, "lastEditedAt": "2026-10-30T00:00:00Z"} if who == UNNAMED else {"editor": {"login": who}}
+            return json.dumps({"data": {"repository": {"issue": issue}}})
+        edits = "".join(f'*" number={issue} "*) {"return 1" if who is None else f"doc={doc(who)!r}"} ;; '
                         for issue, who in (editors or {}).items())
         stubs = ("assert_toolchain_env() { :; }; claude_logged_in() { :; }; claude_version_ok() { :; }; target_repo() { echo o/r; }; "
-                 f"gh() {{ case $2 in graphql) case \"$* \" in {edits}esac ;; repos/*) printf '%s\\n' {lines(frontier)} ;; "
+                 "gh() { case $2 in graphql) local a p= q= doc='{\"data\":{\"repository\":{\"issue\":{\"editor\":null}}}}'; "
+                 'for a; do [ "$p" = --jq ] && q=$a; p=$a; done; echo "$*" >> "$GQL_LOG"; '
+                 f"case \"$* \" in {edits}esac; jq -r \"$q\" <<<\"$doc\" ;; repos/*) printf '%s\\n' {lines(frontier)} ;; "
                  f"/issues\\?*) printf '%s\\n' {lines(mine)} ;; esac; }}; "
                  "cmd_next --dry-run")
-        return sourced(stubs, {"FACTORY_RUNS_ROOT": str(self.runs), **env})
+        return sourced(stubs, {"FACTORY_RUNS_ROOT": str(self.runs), "GQL_LOG": str(self.gql_log), **env})
 
     def test_old_body_abandon_does_not_park_a_new_body(self) -> None:
         self.run_dir(7, CLEAN + "\nthe old body", "abandon")
@@ -307,6 +320,22 @@ class LintTests(ParkingTests):
         self.assertEqual(proc.stdout.strip(), "nothing to launch", proc.stderr)
         self.assertIn("not owner #7: could not read the last editor with gh", proc.stderr)
 
+    def test_issue_an_unnamed_account_last_edited_is_passed_over(self) -> None:
+        proc = self.next_dry_run((7, CLEAN), (8, CLEAN), editors={7: UNNAMED})
+        self.assertEqual(proc.stdout.strip(), "would launch #8", proc.stderr)
+        self.assertIn("not owner #7: last edited by an account GitHub no longer names; edit the body as SamyakJhaveri", proc.stderr)
+        self.assertNotIn("#8", proc.stderr)
+
+    def test_no_editor_call_after_the_pick(self) -> None:
+        # A stalled GraphQL costs a tick one timeout, not one per candidate; later candidates still get the author check.
+        proc = self.next_dry_run((7, CLEAN), (8, CLEAN), (9, CLEAN), authors={9: "someone-else"}, editors={8: None})
+        self.assertEqual(proc.stdout.strip(), "would launch #7", proc.stderr)
+        self.assertEqual(proc.stderr.strip(), "not owner #9: written or last edited by someone-else; "
+                         "edit the body as SamyakJhaveri or remove ready-for-agent")
+        calls = self.gql_log.read_text().splitlines()
+        self.assertEqual(len(calls), 1, calls)
+        self.assertIn(" number=7 ", calls[0] + " ")
+
     def test_runner_assigned_issue_another_account_edited_does_not_relaunch(self) -> None:
         self.run_dir(7, CLEAN, "stopped-daily")
         os.utime(self.runs / "7" / key(CLEAN) / "status", (86400, 86400))
@@ -325,8 +354,10 @@ class LoadTicketOwnerTests(unittest.TestCase):
         self.runs = pathlib.Path(tmp.name)
 
     def load(self, author: str, editor: str | None) -> subprocess.CompletedProcess[str]:
-        doc = json.dumps({"data": {"repository": {"issue": {
-            "body": CLEAN, "author": {"login": author}, "editor": editor and {"login": editor}}}}})
+        issue = {"body": CLEAN, "author": {"login": author}, "editor": editor and {"login": editor}}
+        if editor == UNNAMED:
+            issue.update(editor=None, lastEditedAt="2026-10-30T00:00:00Z")
+        doc = json.dumps({"data": {"repository": {"issue": issue}}})
         return sourced(f"target_repo() {{ echo o/r; }}; gh() {{ printf '%s\\n' '{doc}'; }}; "
                        'load_ticket 7; printf "BODY=%s" "$BODY"',
                        {"FACTORY_RUNS_ROOT": str(self.runs), "FACTORY_FROZEN": ""})
@@ -341,6 +372,12 @@ class LoadTicketOwnerTests(unittest.TestCase):
         proc = self.load("someone-else", "SamyakJhaveri")
         self.assertEqual(proc.returncode, 4, proc.stderr)
         self.assertIn("not owner #7: written or last edited by someone-else", proc.stderr)
+
+    def test_body_an_unnamed_account_last_edited_is_refused(self) -> None:
+        proc = self.load("SamyakJhaveri", UNNAMED)
+        self.assertEqual(proc.returncode, 4, proc.stderr)
+        self.assertIn("not owner #7: last edited by an account GitHub no longer names; edit the body as SamyakJhaveri", proc.stderr)
+        self.assertNotIn("BODY=", proc.stdout)
 
     def test_owner_body_loads_as_fetched(self) -> None:
         for editor in (None, "SamyakJhaveri"):

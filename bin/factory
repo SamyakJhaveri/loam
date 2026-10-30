@@ -217,18 +217,22 @@ check_no_skip() {
 
 # Text a reader of the issue on GitHub cannot see still reaches the worker, so lint rejects it by Unicode category,
 # never by a fixed list (loop-engineering, MIT, scripts/github-triage.mjs: /[\p{Cc}\p{Cf}]/gu): a Cf (zero-width,
-# bidi controls, tags, BOM, word joiner), a Cc other than tab, newline and CR, a variation selector (Mn, so a Cf
-# rule misses it, yet a run of them carries bytes), and an HTML comment. The body is read as UTF-8 by Python, since
+# bidi controls, tags, BOM, word joiner), a Cc other than tab, newline and CR, the variation selectors and the other
+# default-ignorable code points a Cf rule misses (Mn, Lo or unassigned, yet drawn as nothing; the whole plane-14
+# block U+E0000 to U+E0FFF carries bytes the way tags do), and an HTML comment. Unassigned code points in general
+# (Cn) pass, since Python's Unicode data reads newer emoji as Cn. The body is read as UTF-8 by Python, since
 # BSD and GNU grep differ on Unicode ranges; split('\n'), not splitlines(), so VT, FF and U+2028 are still read.
 # Each error names the line and the code point, never the hidden text.
 IFS= read -r -d '' HIDDEN_PY << 'PY' || :
 import sys, unicodedata
+IGNORABLE = {0x034F, 0x115F, 0x1160, 0x17B4, 0x17B5, 0x180B, 0x180C, 0x180D, 0x180F, 0x3164, 0xFFA0}
 for n, line in enumerate(sys.stdin.buffer.read().decode("utf-8", "surrogateescape").split("\n"), 1):
     if "<!--" in line:
         print(f"line {n} holds an HTML comment (<!--), which GitHub does not show")
     for c in line:
         o, cat = ord(c), unicodedata.category(c)
-        if cat == "Cf" or (cat == "Cc" and c not in "\t\r") or 0xFE00 <= o <= 0xFE0F or 0xE0100 <= o <= 0xE01EF:
+        if (cat == "Cf" or (cat == "Cc" and c not in "\t\r") or 0xFE00 <= o <= 0xFE0F or 0xE0000 <= o <= 0xE0FFF
+                or 0xFFF0 <= o <= 0xFFF8 or o in IGNORABLE):
             print(f"line {n} holds U+{o:04X} ({cat}), a character GitHub does not show")
 PY
 check_hidden_text() {
@@ -879,19 +883,23 @@ load_ticket() { # <issue|file>
     [ -n "$REPO" ] || { echo "factory run: $TARGET has no GitHub origin to read the issue from" >&2; exit 4; }
     # The body, its author and its last editor come from one GraphQL read, so the owner check next made is made
     # again on the very body this run freezes (#389): an edit by another account after next's check, or between
-    # this pass and the frozen one (which fetches again), is refused here. jq -r strips trailing newlines in $(...)
+    # this pass and the frozen one (which fetches again), is refused here, and so is a null editor with a lastEditedAt:
+    # an edit by an account GitHub no longer names. jq -r strips trailing newlines in $(...)
     # the way gh issue view -q .body did, so the run key is unchanged.
-    local json who editor why pid=""
+    local json who editor edited why pid=""
     if ! json=$(net gh api graphql -f owner="${REPO%%/*}" -f name="${REPO#*/}" -F number="$ISSUE" \
-      -f query='query($owner: String!, $name: String!, $number: Int!) { repository(owner: $owner, name: $name) { issue(number: $number) { body author { login } editor { login } } } }' 2> /dev/null) \
+      -f query='query($owner: String!, $name: String!, $number: Int!) { repository(owner: $owner, name: $name) { issue(number: $number) { body author { login } editor { login } lastEditedAt } } }' 2> /dev/null) \
       || ! jq -e '.data.repository.issue' > /dev/null 2>&1 <<<"$json"; then
       why="gh api graphql #$ISSUE failed, or got no reply in ${NET_TIMEOUT_SEC}s"
     else
       who=$(jq -r '.data.repository.issue.author.login // ""' <<<"$json")
       editor=$(jq -r '.data.repository.issue.editor.login // ""' <<<"$json")
+      edited=$(jq -r '.data.repository.issue.lastEditedAt // ""' <<<"$json")
       if [ "$who" != "$TICKET_OWNER" ] || { [ -n "$editor" ] && [ "$editor" != "$TICKET_OWNER" ]; }; then
         [ "$who" = "$TICKET_OWNER" ] && who=$editor
         why="not owner #$ISSUE: written or last edited by ${who:-a deleted account}; edit the body as $TICKET_OWNER or remove ready-for-agent"
+      elif [ -z "$editor" ] && [ -n "$edited" ]; then
+        why="not owner #$ISSUE: last edited by an account GitHub no longer names; edit the body as $TICKET_OWNER or remove ready-for-agent"
       else
         BODY=$(jq -r '.data.repository.issue.body // ""' <<<"$json") && return 0
         why="jq could not read the body of #$ISSUE"
@@ -2380,7 +2388,10 @@ cmd_next() { # [--dry-run|--install]
   # and the frontier goes on to the next candidate, so one bad issue does not stall the timer.
   # Before lint, the owner check: the worker runs the body unattended and Loam is public, so a body another account
   # wrote, or last edited (GraphQL's editor, null for a body never edited), is passed over, and so is one whose
-  # editor gh could not read. </dev/null keeps gh off the candidate list this loop reads on stdin. This check only
+  # editor gh could not read, or a null editor with a lastEditedAt (an account GitHub no longer names; jq names it
+  # "(unnamed)", which no login can be). Once a candidate is picked, later ones skip the editor call, so a stalled
+  # GraphQL costs a tick one timeout, not one per candidate; they still get the author and lint lines.
+  # </dev/null keeps gh off the candidate list this loop reads on stdin. This check only
   # picks; load_ticket checks the owner again on the body the run freezes.
   local pick="" st_last lint_err lint_line author editor
   while read -r who num author b64; do
@@ -2398,15 +2409,21 @@ cmd_next() { # [--dry-run|--install]
           echo "not owner #$num: written or last edited by $author; edit the body as $TICKET_OWNER or remove ready-for-agent" >&2
           continue
         fi
-        if ! editor=$(net gh api graphql -f owner="${repo%%/*}" -f name="${repo#*/}" -F number="$num" \
-          -f query='query($owner: String!, $name: String!, $number: Int!) { repository(owner: $owner, name: $name) { issue(number: $number) { editor { login } } } }' \
-          --jq '.data.repository.issue.editor.login // ""' < /dev/null 2> /dev/null); then
-          echo "not owner #$num: could not read the last editor with gh (failed, or no reply in ${NET_TIMEOUT_SEC}s); passed over" >&2
-          continue
-        fi
-        if [ -n "$editor" ] && [ "$editor" != "$TICKET_OWNER" ]; then
-          echo "not owner #$num: written or last edited by $editor; edit the body as $TICKET_OWNER or remove ready-for-agent" >&2
-          continue
+        if [ -z "$pick" ]; then
+          if ! editor=$(net gh api graphql -f owner="${repo%%/*}" -f name="${repo#*/}" -F number="$num" \
+            -f query='query($owner: String!, $name: String!, $number: Int!) { repository(owner: $owner, name: $name) { issue(number: $number) { editor { login } lastEditedAt } } }' \
+            --jq '.data.repository.issue | .editor.login // (if .lastEditedAt then "(unnamed)" else "" end)' < /dev/null 2> /dev/null); then
+            echo "not owner #$num: could not read the last editor with gh (failed, or no reply in ${NET_TIMEOUT_SEC}s); passed over" >&2
+            continue
+          fi
+          if [ "$editor" = "(unnamed)" ]; then
+            echo "not owner #$num: last edited by an account GitHub no longer names; edit the body as $TICKET_OWNER or remove ready-for-agent" >&2
+            continue
+          fi
+          if [ -n "$editor" ] && [ "$editor" != "$TICKET_OWNER" ]; then
+            echo "not owner #$num: written or last edited by $editor; edit the body as $TICKET_OWNER or remove ready-for-agent" >&2
+            continue
+          fi
         fi
         if ! lint_err=$( { SRC="#$num"; BODY="$body"; ERRS=0; lint_body > /dev/null; } 2>&1 ); then
           lint_line=$(grep -m1 "^LINT #$num: " <<<"$lint_err") || lint_line=${lint_err%%$'\n'*}
