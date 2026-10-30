@@ -10,10 +10,12 @@ from __future__ import annotations
 
 import base64
 import hashlib
+import json
 import os
 import pathlib
 import subprocess
 import tempfile
+import time
 import unittest
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
@@ -115,21 +117,39 @@ class ParkingTests(unittest.TestCase):
         self.assertEqual(proc.stdout.strip(), "nothing to launch", proc.stderr)
         self.assertEqual(proc.stderr, "")
 
+    def spend_today(self, usd: float) -> None:
+        (self.runs / "ledger-daily.jsonl").write_text(
+            json.dumps({"date": time.strftime("%Y-%m-%d", time.gmtime()), "ticket": "7", "role": "worker", "cost_usd": usd}) + "\n")
+
     def test_a_daily_stop_today_launches_no_other_ticket(self) -> None:
-        # The daily ledger is the runner's, across targets: after a daily stop, a fresh ticket would only
-        # assign, build and stop at its first cap check, so nothing launches until the UTC date moves on (#386).
+        # The daily ledger is the runner's, across targets: after a daily stop with that ledger spent, a fresh ticket
+        # would only assign, build and stop at its first cap check, so nothing launches until the UTC date moves on (#386).
         self.run_dir(7, CLEAN, "stopped-daily")
-        proc = self.next_dry_run((8, CLEAN), mine=((7, CLEAN),))
+        self.spend_today(140)
+        caps = {"FACTORY_DAILY_BUDGET_USD": "150", "FACTORY_ROUND_BUDGET_USD": "15"}   # not the shell's
+        proc = self.next_dry_run((8, CLEAN), mine=((7, CLEAN),), **caps)
         self.assertEqual(proc.stdout.strip(), "nothing to launch", proc.stderr)
         self.assertIn("waiting: a run stopped at today's daily budget; nothing launches before 00:00 UTC", proc.stderr)
         os.utime(self.runs / "7" / key(CLEAN) / "status", (86400, 86400))
-        proc = self.next_dry_run((8, CLEAN), mine=((7, CLEAN),))
+        proc = self.next_dry_run((8, CLEAN), mine=((7, CLEAN),), **caps)
         self.assertEqual(proc.stdout.strip(), "would launch #7", proc.stderr)
         other = self.runs / "acme_widget" / "9" / key(CLEAN)
         other.mkdir(parents=True)
         (other / "status").write_text("stopped-daily\n")
-        proc = self.next_dry_run((8, CLEAN))
+        proc = self.next_dry_run((8, CLEAN), **caps)
         self.assertEqual(proc.stdout.strip(), "nothing to launch", proc.stderr)
+
+    def test_a_daily_stop_under_a_lower_ticket_cap_does_not_block_the_runner(self) -> None:
+        # #7's Worker section set a lower DAILY_BUDGET_USD; the shared ledger still has room at the runner's caps
+        # (here FACTORY_DAILY_BUDGET_USD=100 with the default 15 usd round), so the fresh #8 launches.
+        self.run_dir(7, CLEAN, "stopped-daily")
+        self.spend_today(80)
+        proc = self.next_dry_run((8, CLEAN), FACTORY_DAILY_BUDGET_USD="100", FACTORY_ROUND_BUDGET_USD="15")
+        self.assertEqual(proc.stdout.strip(), "would launch #8", proc.stderr)
+        self.spend_today(90)
+        proc = self.next_dry_run((8, CLEAN), FACTORY_DAILY_BUDGET_USD="100", FACTORY_ROUND_BUDGET_USD="15")
+        self.assertEqual(proc.stdout.strip(), "nothing to launch", proc.stderr)
+        self.assertIn("waiting: a run stopped at today's daily budget", proc.stderr)
 
     def test_issue_assigned_to_someone_else_is_not_listed(self) -> None:
         # Neither query returns it, so its past daily stop launches nothing.

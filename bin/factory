@@ -2097,6 +2097,12 @@ stopped_daily_today() { # <run dir> -> 0 when its run stopped at the daily budge
   [ "$(cat "$1/status" 2> /dev/null)" = stopped-daily ] && [ "$(date -u -r "$1/status" +%Y-%m-%d)" = "$(today)" ]
 }
 
+# A ticket's Worker section can lower its own caps, so its daily stop alone does not show the shared ledger is spent.
+daily_spent_at_runner_caps() { # -> 0 when the shared daily ledger has no room for one round at the runner's own caps
+  ( BODY=""; apply_caps; DAILY="$RUNS_BASE/ledger-daily.jsonl"; [ -f "$DAILY" ] || exit 1
+    jq -en --argjson a "$(daily_spent)" --argjson b "$ROUND_BUDGET_USD" --argjson c "$DAILY_BUDGET_USD" '($a + $b) > $c' > /dev/null )
+}
+
 # The F9 frontier timer's one step: launch the next unblocked ready-for-agent ticket, or say why not.
 # --dry-run reports without launching or pulling, so a check can run it from inside a worktree.
 # --install writes the ten-minute runner timer from bin/factory.d/next.crontab.
@@ -2264,9 +2270,10 @@ cmd_next() { # [--dry-run|--install]
     esac
   done <<< "$( { sed 's/^/none /' <<< "$ready"; sed 's/^/mine /' <<< "$mine"; } | sort -s -n -k2,2 )"
 
-  # Any run stopped at today's daily budget means the shared ledger (RUNS_BASE, every target's) is spent, so
-  # a new launch would only assign, build, run round 0 and stop at its first cap check; nothing launches today.
-  if [ -n "$pick" ]; then
+  # A run stopped at today's daily budget, with the shared ledger (RUNS_BASE, every target's) also spent at the
+  # runner's own caps, means a new launch would only assign, build, run round 0 and stop at its first cap check;
+  # nothing launches today. The stop alone is not enough: that run's ticket may have set a lower DAILY_BUDGET_USD.
+  if [ -n "$pick" ] && daily_spent_at_runner_caps; then
     for d in "$RUNS_BASE"/*/*/ "$RUNS_BASE"/*/*/*/; do
       stopped_daily_today "$d" || continue
       echo "waiting: a run stopped at today's daily budget; nothing launches before 00:00 UTC" >&2
