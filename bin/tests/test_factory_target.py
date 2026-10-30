@@ -74,7 +74,9 @@ class TargetTests(unittest.TestCase):
         self.gh_log = top / "gh.log"
         # A fork: gh's default repository would be the parent, so any call that reaches it without -R is caught.
         self.gh_stub = (f'gh() {{ printf "%s\\n" "$*" >> "{self.gh_log}"; '
-                        'case "$1 $2" in "repo view") echo parent/widget ;; "issue view") echo "# t" ;; esac; }\n')
+                        'case "$1 $2" in "repo view") echo parent/widget ;; "issue view") echo "# t" ;; '
+                        '"api graphql") echo \'{"data": {"repository": {"issue": {"body": "# t", '
+                        '"author": {"login": "SamyakJhaveri"}, "editor": null}}}}\' ;; esac; }\n')
 
     def target(self, repo_dir: pathlib.Path | None, script: str = "", **env: str) -> subprocess.CompletedProcess[str]:
         pick = f'use_target "{repo_dir}" || echo use_target-failed\n' if repo_dir else ""
@@ -173,24 +175,29 @@ class TargetTests(unittest.TestCase):
         for proc in (stat, nxt):
             self.assertEqual(proc.returncode, 0, proc.stderr)
         calls = self.gh_log.read_text().splitlines()
-        self.assertEqual(calls, ["issue view 5 -R acme/widget --json body -q .body"] * 2 + [
+        self.assertEqual(calls, [
+            "issue view 5 -R acme/widget --json body -q .body",
+            # load_ticket reads the body with its author and editor in one call, owner and name from the origin (#389).
+            "api graphql -f owner=acme -f name=widget -F number=5 -f query=query($owner: String!, $name: String!, "
+            "$number: Int!) { repository(owner: $owner, name: $name) { issue(number: $number) { body author { login } "
+            "editor { login } lastEditedAt } } }",
             "pr list -R acme/widget --json number,headRefName,title --jq "
             '.[] | select(.headRefName | startswith("factory/")) | "  #\\(.number) \\(.headRefName) \\(.title)"',
             "api repos/acme/widget/issues?labels=ready-for-agent&state=open&assignee=none&per_page=100 --jq "
             'sort_by(.number)[] | select(.pull_request == null) | select(.issue_dependencies_summary.blocked_by == 0)'
-            ' | "\\(.number) \\(.body // "" | @base64)"',
+            ' | "\\(.number) \\(.user.login) \\(.body // "" | @base64)"',
             # /issues has no repository in its path; the runner's own issues are kept to this one by the filter.
-            "api issues?filter=assigned&labels=ready-for-agent&state=open&per_page=100 --paginate --jq "
-            '.[] | select(.pull_request == null) | select((.repository.full_name | ascii_downcase) == "acme/widget")'
-            ' | select(.issue_dependencies_summary.blocked_by == 0) | "\\(.number) \\(.body // "" | @base64)"'])
+            "api /issues?filter=assigned&labels=ready-for-agent&state=open&per_page=100 --paginate --jq "
+            '.[] | select(.pull_request == null) | select((.repository.full_name // "" | ascii_downcase) == "acme/widget")'
+            ' | select(.issue_dependencies_summary.blocked_by == 0) | "\\(.number) \\(.user.login) \\(.body // "" | @base64)"'])
 
     def test_next_parks_by_the_targets_own_runs_without_the_toolchain(self) -> None:
         # next launches only a body that passes lint (#314); gh returns the body with no trailing newline.
         body = (ROOT / "bin/tests/fixtures/clean-ticket.md").read_text().rstrip("\n")
         key = hashlib.sha256(body.encode()).hexdigest()[:8]
-        line = f"7 {base64.b64encode(body.encode()).decode()}"
+        line = f"7 SamyakJhaveri {base64.b64encode(body.encode()).decode()}"
         stubs = ("claude_logged_in() { :; }; claude_version_ok() { :; }; "
-                 f"gh() {{ case $1 in api) echo '{line}' ;; esac; }}; cmd_next --dry-run")
+                 f"gh() {{ case $1$2 in apigraphql) ;; api*) echo '{line}' ;; esac; }}; cmd_next --dry-run")
 
         def status(where: pathlib.Path, text: str) -> None:
             (where / key).mkdir(parents=True)
