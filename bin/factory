@@ -666,9 +666,9 @@ heartbeat_start() {
   HEARTBEAT=$!
 }
 
-# Another live run on this host, Loam's or another target's; a hard-killed run holds its slot too, so its
-# silence stays red. A relaunch keeps its last exit's status through round 0, so `launched` newer than
-# `status` counts as live here too.
+# Another live run on this host, Loam's or another target's; a hard-killed run holds its slot until holds_slot
+# finds its owner gone and alerts. A relaunch keeps its last exit's status until it writes `owner`, so
+# `launched` newer than `status` counts as live here too.
 other_live_run() {
   local d
   for d in "$RUNS_BASE"/*/*/ "$RUNS_BASE"/*/*/*/; do
@@ -897,16 +897,55 @@ assert_caps() { # before every model call; the daily cap is "the next call could
 
 stop_requested() { [ -f "$RUN/FACTORY_STOP" ] || [ -f "$RUNS_ROOT/FACTORY_STOP" ]; }
 
+# owner.lock orders a launch's owner write against a reaper's recheck (a relaunch reuses the run dir);
+# a lock older than 60 s was left by a killed holder and is removed first.
+owner_lock() { # <run dir> <tries>
+  local i
+  for ((i = 1; ; i++)); do
+    [ -n "$(find "$1/owner.lock" -maxdepth 0 -mmin +1 2> /dev/null)" ] && rm -rf "$1/owner.lock"
+    mkdir "$1/owner.lock" 2> /dev/null && return 0
+    [ "$i" -lt "$2" ] || return 1
+    sleep 1
+  done
+}
+
+# The owner's pid is gone, a zombie (kill -0 succeeds on one), or reused by a process with another start time.
+owner_gone() { # <pid> <ps lstart>
+  kill -0 "$1" 2> /dev/null || return 0
+  [[ "$(ps -o stat= -p "$1" 2> /dev/null)" =~ ^[[:space:]]*Z ]] && return 0
+  [ "$(TZ=UTC LC_ALL=C ps -o lstart= -p "$1" 2> /dev/null)" != "$2" ]
+}
+
 # MAX_PARALLEL counts the other tickets already holding a slot: a run is live while its
-# status reads running or waiting-limit, or while it has written `launched` and no status yet
-# (round 0, #156 #167). A run that ends through finish always writes a status, so only a
-# hard-killed round-0 run leaves `launched` alone; it holds the slot until the operator removes
-# its directory, as a hard-killed running run does.
+# status reads running or waiting-limit and its `owner` line (pid and ps start time, written by
+# cmd_run) names a live process, or while it has written `launched` and no status yet (round 0,
+# #156 #167). A missing or malformed `owner` holds the slot. The first caller to find the owner
+# gone writes stopped-environment, under owner.lock and only if `owner` still reads the line it
+# judged, so a relaunch that rewrote it keeps its slot; that caller sends the one alert. A
+# hard-killed round-0 run leaves `launched` alone and holds the slot until the operator removes
+# its directory.
 holds_slot() { # <run dir>
-  local st
+  local st o pid
   if [ -f "$1/status" ]; then
     st=$(cat "$1/status")
-    [ "$st" = running ] || [ "$st" = waiting-limit ]
+    [ "$st" = running ] || [ "$st" = waiting-limit ] || return 1
+    o=$(cat "$1/owner" 2> /dev/null) || return 0
+    [[ "$o" =~ ^[0-9]+\ .+$ ]] || return 0
+    pid=${o%% *}
+    owner_gone "$pid" "${o#* }" || return 0
+    owner_lock "$1" 1 || return 0
+    if [ "$(cat "$1/owner" 2> /dev/null)" != "$o" ]; then rmdir "$1/owner.lock"; return 0; fi
+    st=$(cat "$1/status" 2> /dev/null)
+    if [ "$st" != running ] && [ "$st" != waiting-limit ]; then rmdir "$1/owner.lock"; return 1; fi
+    printf 'stopped-environment\n' > "$1/status"
+    rmdir "$1/owner.lock"
+    log "stopped-environment: ${1%/} was $st, but its supervisor pid $pid is gone"
+    alert --level fail --source factory --project "$(printf '%s' "${REPO#*/}" | tr 'A-Z' 'a-z')" \
+      --run "issue $(basename "$(dirname "$1")")" \
+      "issue $(basename "$(dirname "$1")") stopped on a machine or tool problem: its supervisor pid $pid exited, \
+became a zombie, or its pid was reused while the run read $st; ${1%/} is now stopped-environment and its slot is free" \
+      >> "$LOG" 2>&1 || log "the alert for ${1%/} failed; see bin/alert's line above"
+    return 1
   else
     [ -f "$1/launched" ]
   fi
@@ -1766,6 +1805,15 @@ cmd_run() {
   prepare_worktree
   freeze
   exec_frozen
+  # The owner line holds_slot reads, after the re-exec so it names the loop that runs finish, written with the
+  # status under owner.lock, through a temp file so a kill mid-write never leaves an empty owner (held for good).
+  local start
+  start=$(TZ=UTC LC_ALL=C ps -o lstart= -p "$$")
+  [ -n "$start" ] && owner_lock "$RUN" 65 || finish stopped-environment "could not read this run's start time or take $RUN/owner.lock"
+  printf '%s %s\n' "$$" "$start" > "$RUN/owner.tmp" && mv -f "$RUN/owner.tmp" "$RUN/owner" \
+    || { rmdir "$RUN/owner.lock"; finish stopped-environment "could not write $RUN/owner"; }
+  set_status running
+  rmdir "$RUN/owner.lock"
   heartbeat_start   # after the re-exec, so the loop's pid lives in the process that runs finish
   BODY=$(cat "$RUN/frozen/issue.md")   # from here on the frozen body is the ticket
   [ "$IS_FILE" = 1 ] && trap 'git -C "$MAIN_CHECKOUT" worktree remove --force "$WORKTREE" > /dev/null 2>&1' EXIT
@@ -1862,8 +1910,8 @@ cmd_next() { # [--dry-run|--install]
     return 1
   fi
 
-  # 2. A run holds a slot when holds_slot says so (assert_parallel's rule: running, waiting-limit,
-  #    or launched with no status yet), and so does a pr-opened run whose ticket worktree still exists: the merge ritual removes the worktree,
+  # 2. A run holds a slot when holds_slot says so (assert_parallel's rule: running or waiting-limit with a
+  #    live owner, or launched with no status yet), and so does a pr-opened run whose ticket worktree still exists: the merge ritual removes the worktree,
   #    so until then the PR awaits merge and the next ticket waits (LOOP.md: after each merge).
   #    FACTORY_MAX_PARALLEL bounds the count, as it does in cmd_run through apply_caps; default 1.
   local d st n=0 max="${FACTORY_MAX_PARALLEL:-$MAX_PARALLEL}"
