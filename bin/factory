@@ -614,7 +614,7 @@ FENCE='~~~~~~~~~~~~ evidence'   # fixed marker; never a per-run string (#38)
 # REPO, RUN, and LOG keep a pre-set value: the sourced-test contract (file_backlog's backlog-filed-once
 # check) passes these three in the environment, and load_ticket and cmd_run set all three before a run
 # uses them, so `bin/factory run` is unchanged.
-REPO="${REPO:-}"; ISSUE=""; KEY=""; IS_FILE=0; RUN="${RUN:-}"; ROUND=0; REVIEW_BLOCKED=0; GRADED_SHA=""
+REPO="${REPO:-}"; ISSUE=""; KEY=""; IS_FILE=0; RUN="${RUN:-}"; ROUND=0; REVIEW_BLOCKED=0; GRADED_SHA=""; GRADER_FAILS=0
 LOG="${LOG:-/dev/null}"; LEDGER=""; DAILY=""; DECISIONS=""; WORKTREE=""; BRANCH=""
 # Worker kind and the Codex review stage, read from the ticket in cmd_run (F4). CODEX_REVIEW_BLOCKED is
 # separate from REVIEW_BLOCKED so a Claude-reviewer block never consumes the Codex review's one block.
@@ -1913,8 +1913,17 @@ open_pr() { # [draft]: opened at the grader-round cap
 
 # ---- the loop ---------------------------------------------------------------
 
+# Step 7 on a round whose checks passed: a pass opens the PR, and the GRADER_FAIL_ROUNDS-th fail drafts it.
+grade_round() {
+  measure_rows "$ROUND"
+  graders "$ROUND" && open_pr
+  GRADER_FAILS=$((GRADER_FAILS + 1))
+  [ "$GRADER_FAILS" -lt "$GRADER_FAIL_ROUNDS" ] \
+    || { log "grader-round cap: $GRADER_FAIL_ROUNDS grader-fail rounds; the rest goes to the PR backlog"; open_pr draft; }
+}
+
 main_loop() {
-  local prev_fails="" prev_sig="" grader_fails=0 fails dirty touched checks sig_now
+  local prev_fails="" prev_sig="" fails dirty touched checks sig_now
   notify info "$(ticket_name) started" \
     "Branch $BRANCH in $WORKTREE; it stops at $MAX_ROUNDS rounds, $TICKET_BUDGET_USD USD or $MAX_HOURS hours"
   while :; do
@@ -1958,11 +1967,7 @@ main_loop() {
     fi
     prev_fails=""
     log "checks: all pass"
-    measure_rows "$ROUND"
-    graders "$ROUND" && open_pr
-    grader_fails=$((grader_fails + 1))
-    [ "$grader_fails" -lt "$GRADER_FAIL_ROUNDS" ] \
-      || { log "grader-round cap: $GRADER_FAIL_ROUNDS grader-fail rounds; the rest goes to the PR backlog"; open_pr draft; }
+    grade_round
   done
 }
 
@@ -2047,6 +2052,14 @@ cmd_run() {
       log "round $ROUND passed the graders at HEAD $GRADED_SHA; opening the PR with no worker round"
       check_frozen   # freeze returns early on a resume, so re-hash here as main_loop does before each round
       open_pr
+    # A round whose checks passed on a clean tree but whose graders never finished (a cap or FACTORY_STOP before
+    # a grader call) is graded now at HEAD, so the relaunch does not pay for, or cap out on, a new worker round.
+    elif [ "$ROUND" -ge 1 ] && ! grep -q '^FAIL' "$RUN/round-$ROUND.checks" \
+      && [ "$(tail -n 1 "$RUN/round-$ROUND.checks")" = CHECKS-END ] && [ ! -e "$RUN/round-$ROUND.graded.sha" ] \
+      && [ -z "$(git -C "$WORKTREE" status --porcelain)" ]; then
+      log "round $ROUND passed its checks but its graders did not finish; grading it at HEAD with no worker round"
+      check_frozen
+      grade_round
     fi
   fi
   main_loop

@@ -114,6 +114,48 @@ class ParkingTests(unittest.TestCase):
         self.assertIn("parked #7: last run exited abandon", proc.stderr)
 
 
+class ResumeTests(unittest.TestCase):
+    """A relaunch of a run stopped between its graders grades the same round instead of starting a new one (#386)."""
+
+    def resume(self, graded: bool) -> tuple[str, str]:
+        """(status, stdout) of cmd_run on a run whose round 6 of 6 passed its checks, its graders stubbed to pass."""
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        runs, wt = pathlib.Path(tmp.name) / "runs", pathlib.Path(tmp.name) / "wt"
+        wt.mkdir()
+        subprocess.run(["git", "-C", str(wt), "init", "-q"], check=True)
+        subprocess.run(["git", "-C", str(wt), "-c", "user.email=a@b", "-c", "user.name=a", "commit", "-q",
+                        "--allow-empty", "-m", "base"], check=True)
+        run = runs / "7" / key(CLEAN)
+        (run / "frozen").mkdir(parents=True)
+        (run / "frozen" / "issue.md").write_text(CLEAN)
+        for n in range(7):
+            (run / f"round-{n}.checks").write_text("PASS a\nCHECKS-END\n")
+        if graded:
+            (run / "round-6.graded.sha").write_text("0" * 40 + "\n")
+        stubs = ("MAX_ROUNDS=6; assert_target_ready() { :; }; claude_version_ok() { :; }; "
+                 'load_ticket() { ISSUE=7; KEY=7; REPO=o/r; BODY="$BODY_ARG"; }; '
+                 "nav_arm_resolve() { :; }; assert_parallel() { :; }; prepare_worktree() { :; }; freeze() { :; }; "
+                 "exec_frozen() { :; }; heartbeat_start() { :; }; heartbeat_stop() { :; }; check_frozen() { :; }; "
+                 "measure_rows() { :; }; notify() { :; }; worker_round() { echo WORKER $1; }; "
+                 'graders() { echo "GRADED $1 $(cat "$RUN/status")"; }; open_pr() { finish pr-opened "PR at round $ROUND"; }; '
+                 "cmd_run 7")
+        env = {"FACTORY_RUNS_ROOT": str(runs), "FACTORY_WORKTREE": str(wt), "BODY_ARG": CLEAN}
+        proc = sourced(stubs, env)
+        return (run / "status").read_text().strip(), proc.stdout
+
+    def test_green_round_with_unfinished_graders_is_graded_not_capped(self) -> None:
+        status, out = self.resume(graded=False)
+        self.assertEqual(status, "pr-opened", out)
+        self.assertIn("GRADED 6 running", out)
+        self.assertNotIn("WORKER", out)
+
+    def test_round_whose_graders_finished_resumes_into_the_loop(self) -> None:
+        status, out = self.resume(graded=True)
+        self.assertEqual(status, "stopped-cap", out)
+        self.assertNotIn("GRADED", out)
+
+
 class LintTests(ParkingTests):
     """A candidate whose body fails lint is skipped with one stderr line and never launched (#314)."""
 
