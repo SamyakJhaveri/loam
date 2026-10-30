@@ -49,6 +49,7 @@ Keep rows a check enforces, so each enforcer stays findable; drop a row only whe
 | The native-factory campaign (#102 and its children) is parked: no agent builds or reopens its tickets, and renders stop shipping `.loam/runtime` or `docs/runtime` | owner ruling R6 2026-10-25; `docs/archive/architecture-working/tickets/README.md` | `bin/tests/test_render_smoke.py` `test_factory_runtime_does_not_render` |
 | The template sandbox runs `gh` outside (inside the macOS sandbox it fails TLS); `git push`, `git fetch` and `git pull` stay sandboxed (2d6070e's git exclusions are not ported) | owner ruling P8 2026-10-26; `seed/.claude/settings.json` `sandbox.excludedCommands`, `seed/docs/HARNESS.md.jinja` Accepted risks | `bin/tests/test_render_smoke.py` `test_sandbox_excludes_gh_but_not_git` |
 | No pipe into `grep -q` in a shell file that sets `pipefail`: the writer dies of SIGPIPE and the pipe fails; capture the output first, then grep it (687fc04, b086ef1) | #279; `bin/shell_lint.py` | check: `bin/check` step "shell lint" |
+| No bash 4 or GNU-only form in a shell file, since macOS ships bash 3.2 and BSD tools: `mapfile` or `readarray` (read lines in a `while IFS= read -r` loop), `xargs -r` (drop it), `grep -P` (use `grep -E`), `stat -c` without a same-line `stat -f` fallback, and `timeout` in a file that never checks `command -v timeout` (c29ef01, dfd7f3b; the rsync divergence of 0171ae5 and the awk of 4c008a2 are not checked) | #280; `bin/shell_lint.py` | check: `bin/check` step "shell lint" |
 
 ## Checkable, not yet enforced
 
@@ -58,6 +59,5 @@ Move a row into the table above when its check lands.
 | Mistake | Evidence | Issue |
 |---------|----------|-------|
 | `cmd \| head` under `pipefail`, where the early exit fails the pipe | a2ec7df; 22 `\| head` sites remain (the `grep -q` half of #279 is enforced above) | #279 |
-| bash 4 or GNU-only forms that break on macOS bash 3.2 and BSD tools | c29ef01, dfd7f3b, 0171ae5, 4c008a2; live in `bin/factory` `build_evidence` (`mapfile`) | #280 |
 | Docs name paths that no longer exist | 40297f1, 3fc894f, c9ccc45 | #281 |
 | Trailing whitespace in a new file not yet added passes locally, then fails in CI | `git diff --check` in `bin/check` reads only tracked files | #282 |
