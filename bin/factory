@@ -1922,6 +1922,7 @@ cmd_run() {
       && [ -s "$RUN/round-$ROUND.graded.sha" ] && [ "$(cat "$RUN/round-$ROUND.graded.sha")" = "$(git -C "$WORKTREE" rev-parse HEAD)" ]; then
       GRADED_SHA=$(cat "$RUN/round-$ROUND.graded.sha")
       log "round $ROUND passed the graders at HEAD $GRADED_SHA; opening the PR with no worker round"
+      check_frozen   # freeze returns early on a resume, so re-hash here as main_loop does before each round
       open_pr
     fi
   fi

@@ -66,7 +66,7 @@ class RelaunchPublishTests(unittest.TestCase):
                   + f"\nMAIN_CHECKOUT='{self.main}'; GRADERS_DIR='{GRADERS}'\ncmd_run '{self.ticket}'")
         return subprocess.run(["bash", "-c", script], cwd=ROOT, env=env, capture_output=True, text=True, check=False)
 
-    def relaunch(self, judge: str, review: str, move_head: bool = False) -> tuple[str, int]:
+    def relaunch(self, judge: str, review: str, move_head: bool = False, edit_frozen: bool = False) -> tuple[str, int]:
         """The status and worker-call count after a first launch with these graders and one relaunch."""
         first = self.launch(judge, review, FIRST)
         self.assertNotEqual(first.returncode, 0, first.stderr)
@@ -74,6 +74,10 @@ class RelaunchPublishTests(unittest.TestCase):
             (branch,) = git("for-each-ref", "--format=%(refname)", "refs/heads/factory/", cwd=self.main).splitlines()
             git("update-ref", branch, git("commit-tree", "-p", branch, "-m", "moved", f"{branch}^{{tree}}",
                                           cwd=self.main), cwd=self.main)
+        if edit_frozen:  # the frozen ticket body edited between launches
+            (issue,) = (self.runs / "rl").glob("*/frozen/issue.md")
+            issue.chmod(0o644)
+            issue.write_text(issue.read_text() + "EDITED-FROZEN\n")
         self.launch(judge, review, SECOND)
         (run,) = (self.runs / "rl").glob("*/status")
         calls = self.runs / "rl" / "relaunch-worker-calls"
@@ -85,6 +89,13 @@ class RelaunchPublishTests(unittest.TestCase):
         (run,) = (self.runs / "rl").iterdir()
         sha = (run / "round-1.graded.sha").read_text().strip()
         self.assertIn(f"graded at {sha}", (run / "pr-body.md").read_text())
+
+    def test_edited_frozen_set_stops_before_publishing(self) -> None:
+        status, calls = self.relaunch(JUDGE_PASS, REVIEW_CLEAN, edit_frozen=True)
+        self.assertEqual((status, calls), ("stopped-environment", 0))
+        (run,) = (self.runs / "rl").iterdir()
+        body = run / "pr-body.md"
+        self.assertFalse(body.exists() and "EDITED-FROZEN" in body.read_text())
 
     def test_judge_fail_resumes_into_a_worker_round(self) -> None:
         self.assertGreater(self.relaunch(JUDGE_FAIL, REVIEW_CLEAN)[1], 0)
