@@ -201,7 +201,7 @@ Two tickets may run together only when neither names a path the other's Goal cre
 The daily ledger is written under a lock.
 `bin/factory next` launches up to `MAX_PARALLEL` runs (default 1; raise it after two clean single runs, as `status` reports them).
 A run holds a slot while its status reads `running` or `waiting-limit` and its supervisor lives.
-Each launch writes `owner` in its run directory right after its launch log line, before it prepares the worktree and freezes: one line, the supervisor's pid, a space, then `TZ=UTC LC_ALL=C ps -o lstart= -p <pid>`, through a temp file and `mv`, with the status `running`, under `owner.lock`.
+Each launch writes `owner` in its run directory right after its launch log line, before it prepares the worktree and freezes: one line, the supervisor's pid, a space, then `TZ=UTC LC_ALL=C ps -o lstart= -p <pid>` with trailing spaces trimmed (macOS pads it), through a temp file and `mv`, with the status `running`, under `owner.lock`.
 So a relaunch holds its slot from the start, and one killed during preparation is reaped like any dead owner.
 The frozen re-exec is an `exec`, which keeps the pid and its start time, so the line still names the loop that runs `finish`.
 `holds_slot` frees the slot when that pid is gone, a zombie, or alive with a start time more than 300 s from the stored one (a reused pid; `lstart` moves when the wall clock is stepped, so a small gap is the same process): the first caller writes `stopped-environment` to the run's `status` and sends one `fail` alert to the run's own project, read from where its directory sits under the runs root (Loam's directly, another target's under `<owner>__<repo>/`), since a finishing run looks at every target's runs before it pauses the host check.

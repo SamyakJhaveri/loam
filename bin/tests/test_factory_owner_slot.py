@@ -25,7 +25,7 @@ OLD = "Thu Jan  1 00:00:00 1970"
 def lstart(pid: int) -> str:
     out = subprocess.run(["ps", "-o", "lstart=", "-p", str(pid)], env={**os.environ, "TZ": "UTC", "LC_ALL": "C"},
                          capture_output=True, text=True, check=True).stdout
-    return out.rstrip("\n")
+    return out.rstrip()  # macOS pads lstart with trailing spaces; cmd_run trims them
 
 
 def dead_pid() -> int:
@@ -35,10 +35,8 @@ def dead_pid() -> int:
 
 
 def state(pid: int) -> str:
-    try:
-        return pathlib.Path(f"/proc/{pid}/stat").read_text().rsplit(")", 1)[1].split()[0]
-    except FileNotFoundError:
-        return ""
+    out = subprocess.run(["ps", "-o", "stat=", "-p", str(pid)], capture_output=True, text=True, check=False).stdout
+    return out.strip()[:1]
 
 
 def wait_until(cond) -> None:
@@ -151,7 +149,7 @@ class OwnerSlotTests(unittest.TestCase):
         self.assertTrue(seen.exists(), err)
         owner, status, pid, start = seen.read_text().splitlines()
         self.assertEqual(int(pid), proc.pid)
-        self.assertEqual(owner, f"{pid} {start}")
+        self.assertEqual(owner, f"{pid} {start.rstrip()}")
         self.assertEqual(status, "running")
 
     def test_dead_group_leader_holds_while_a_member_lives(self) -> None:

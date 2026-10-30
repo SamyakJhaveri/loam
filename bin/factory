@@ -1054,6 +1054,7 @@ owner_lock() { # <run dir> <tries>
 # The owner's pid is gone, a zombie (kill -0 succeeds on one), or reused by a process that started over 300 s
 # from the stored start: lstart is boot time plus ticks, so a wall-clock step moves it, and a reuse that close
 # would need the pid space to wrap. A ps or date that fails or prints nothing cannot tell, so the slot holds.
+# macOS pads lstart with trailing spaces and has BSD date, so the start is trimmed and parsed either way.
 # A gone or zombie pid also holds while a live process has it as its process group id; Linux does not reuse that
 # number meanwhile. The heartbeat loop is such a member and exits within 300 s of the supervisor, so a reap waits at
 # most one beat. A model call has a session of its own, so holds_slot finds it through the run's `call` file.
@@ -1065,10 +1066,15 @@ owner_gone() { # <pid> <ps lstart>
   if [ -z "$stat" ] || [[ "$stat" =~ ^[[:space:]]*Z ]]; then
     ! group_live "$1"; return
   fi
-  start=$(TZ=UTC LC_ALL=C ps -o lstart= -p "$1" 2> /dev/null) && [ -n "$start" ] || return 1
+  start=$(TZ=UTC LC_ALL=C ps -o lstart= -p "$1" 2> /dev/null) && start=${start%"${start##*[![:space:]]}"} \
+    && [ -n "$start" ] || return 1
   [ "$start" = "$2" ] && return 1
-  a=$(date -u -d "$start" +%s 2> /dev/null) && b=$(date -u -d "$2" +%s 2> /dev/null) || return 1
+  a=$(lstart_epoch "$start") && b=$(lstart_epoch "$2") || return 1
   [ $((a > b ? a - b : b - a)) -gt 300 ]
+}
+
+lstart_epoch() { # <ps lstart> -> seconds since the epoch, through GNU date or else BSD date (macOS)
+  date -u -d "$1" +%s 2> /dev/null || LC_ALL=C date -j -u -f '%a %b %d %T %Y' "$1" +%s 2> /dev/null
 }
 
 group_live() { # <pgid> -> 0 when a process other than a zombie has it as its group id, or ps fails
@@ -2092,6 +2098,7 @@ cmd_run() {
   # Through a temp file, so a kill mid-write never leaves an empty owner (held for good).
   local start
   start=$(TZ=UTC LC_ALL=C ps -o lstart= -p "$$")
+  start=${start%"${start##*[![:space:]]}"}   # macOS pads lstart with trailing spaces; holds_slot matches up to the year
   [ -n "$start" ] && owner_lock "$RUN" 65 || finish stopped-environment "could not read this run's start time or take $RUN/owner.lock"
   printf '%s %s\n' "$$" "$start" > "$RUN/owner.tmp" && mv -f "$RUN/owner.tmp" "$RUN/owner" \
     || { rmdir "$RUN/owner.lock"; finish stopped-environment "could not write $RUN/owner"; }
