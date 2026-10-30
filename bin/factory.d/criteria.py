@@ -250,7 +250,7 @@ def premature_done(runs):
     (#443) replaces it."""
     kinds, silent, failing, rows = {"claude": 0, "codex": 0}, 0, 0, []
     for r in runs:
-        for n, lines in r.checks.items():
+        for n, lines in sorted(r.checks.items()):
             if n == 0 or not any(line.startswith("FAIL") for line in lines):
                 continue
             failing += 1
