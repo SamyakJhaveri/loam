@@ -2079,6 +2079,10 @@ park_status() { # <issue> <body> -> the status of the run for this body, or none
   cat "$(run_dir_of "$1" "$2")/status" 2> /dev/null || echo none
 }
 
+stopped_daily_today() { # <run dir> -> 0 when its run stopped at the daily budget on today's UTC date
+  [ "$(cat "$1/status" 2> /dev/null)" = stopped-daily ] && [ "$(date -u -r "$1/status" +%Y-%m-%d)" = "$(today)" ]
+}
+
 # The F9 frontier timer's one step: launch the next unblocked ready-for-agent ticket, or say why not.
 # --dry-run reports without launching or pulling, so a check can run it from inside a worktree.
 # --install writes the ten-minute runner timer from bin/factory.d/next.crontab.
@@ -2227,8 +2231,7 @@ cmd_next() { # [--dry-run|--install]
     body=$(printf '%s' "$b64" | base64 -d)
     st_last=$(park_status "$num" "$body")
     [ "$who" = mine ] && [ "$st_last" != stopped-daily ] && continue
-    if [ "$st_last" = stopped-daily ] \
-      && [ "$(date -u -r "$(run_dir_of "$num" "$body")/status" +%Y-%m-%d)" = "$(today)" ]; then
+    if stopped_daily_today "$(run_dir_of "$num" "$body")"; then
       echo "waiting #$num: daily budget spent; relaunches after 00:00 UTC" >&2
       continue
     fi
@@ -2245,6 +2248,16 @@ cmd_next() { # [--dry-run|--install]
       *) echo "parked #$num: last run exited $st_last; edit the body or remove ready-for-agent" >&2 ;;
     esac
   done <<< "$( { sed 's/^/none /' <<< "$ready"; sed 's/^/mine /' <<< "$mine"; } | sort -s -n -k2,2 )"
+
+  # Any run stopped at today's daily budget means the shared ledger (RUNS_BASE, every target's) is spent, so
+  # a new launch would only assign, build, run round 0 and stop at its first cap check; nothing launches today.
+  if [ -n "$pick" ]; then
+    for d in "$RUNS_BASE"/*/*/ "$RUNS_BASE"/*/*/*/; do
+      stopped_daily_today "$d" || continue
+      echo "waiting: a run stopped at today's daily budget; nothing launches before 00:00 UTC" >&2
+      pick=""; break
+    done
+  fi
 
   if [ -z "$pick" ]; then
     echo "nothing to launch"

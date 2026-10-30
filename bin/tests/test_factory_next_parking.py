@@ -115,6 +115,22 @@ class ParkingTests(unittest.TestCase):
         self.assertEqual(proc.stdout.strip(), "nothing to launch", proc.stderr)
         self.assertEqual(proc.stderr, "")
 
+    def test_a_daily_stop_today_launches_no_other_ticket(self) -> None:
+        # The daily ledger is the runner's, across targets: after a daily stop, a fresh ticket would only
+        # assign, build and stop at its first cap check, so nothing launches until the UTC date moves on (#386).
+        self.run_dir(7, CLEAN, "stopped-daily")
+        proc = self.next_dry_run((8, CLEAN), mine=((7, CLEAN),))
+        self.assertEqual(proc.stdout.strip(), "nothing to launch", proc.stderr)
+        self.assertIn("waiting: a run stopped at today's daily budget; nothing launches before 00:00 UTC", proc.stderr)
+        os.utime(self.runs / "7" / key(CLEAN) / "status", (86400, 86400))
+        proc = self.next_dry_run((8, CLEAN), mine=((7, CLEAN),))
+        self.assertEqual(proc.stdout.strip(), "would launch #7", proc.stderr)
+        other = self.runs / "acme_widget" / "9" / key(CLEAN)
+        other.mkdir(parents=True)
+        (other / "status").write_text("stopped-daily\n")
+        proc = self.next_dry_run((8, CLEAN))
+        self.assertEqual(proc.stdout.strip(), "nothing to launch", proc.stderr)
+
     def test_issue_assigned_to_someone_else_is_not_listed(self) -> None:
         # Neither query returns it, so its past daily stop launches nothing.
         self.run_dir(7, CLEAN, "stopped-daily")
