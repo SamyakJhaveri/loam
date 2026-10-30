@@ -8,7 +8,7 @@ Rubric text lives only in the grader files.
 
 | Command | Does | Built in |
 |---|---|---|
-| `bin/factory lint <issue|file>` | static ticket lint, rules in `CONTRACT.md`; lint of an issue adds a `lint` line to `owner-events.jsonl` in the run dir its body's launch will use | F2 |
+| `bin/factory lint <issue|file>` | static ticket lint, rules in `CONTRACT.md`; lint of an issue adds a `lint` line to the issue's own `<issue>/owner-events.jsonl`, beside its run dirs, which the issue's next launch moves into its run dir's `owner-events.jsonl` | F2 |
 | `bin/factory eval <grader> [--model M]` | replays frozen cases through the production grader call and compares verdicts; `EVAL_EFFORT` sets the effort (default `GRADER_EFFORT`), `EVAL_OUT=<dir>` keeps each raw reply | F6 |
 | `bin/factory eval-freeze [--evals-dir D] <run-dir>...` | copies each run's last round, when the judge passed it and no reviewer finding was high or medium, into `<evals-dir>/clean/<grader>/<key>-<sha8>/` (default `evals/clean/`), the prompt cut at `## Ticket`; prints `not frozen <run-dir>: <reason>` for the rest | F36 |
 | `bin/factory run <issue>` | round 0, then worker rounds, graders, PR; each launch first appends the operator's events on the issue to `owner-events.jsonl` as `phase` `launch`, and a `run` line unless `next` launched it (`FACTORY_BY_NEXT`) | F1 |
@@ -37,6 +37,7 @@ evals/<grader>/<case>/{prompt.md,expected.json}
 ~/.local/state/loam-factory/runs/<issue>/<sha8>/   on the runner, outside every checkout:
     status  ledger.jsonl  base.sha  frozen/  round-<k>.*  worker/decisions.md  pr-body.md  notify.failed
     owner-events.jsonl  pr-closed   the operator actions status --criteria counts (ARCHITECTURE.md, Metrics)
+~/.local/state/loam-factory/runs/<issue>/owner-events.jsonl   lint's lines until the issue's next launch moves them into its run dir
 ~/.local/state/loam-factory/runs/<owner>__<repo>/<issue>/<sha8>/   the same, for a target named by -C (F8)
 ```
 

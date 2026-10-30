@@ -189,6 +189,31 @@ class StatusCriteriaTests(unittest.TestCase):
         self.assertEqual(verdicts(proc.stdout)["lines per round marking a passed-over step"],
                          "    PASS: measured 0 (over 1 round)")
 
+    def test_lint_of_an_edited_body_reaches_the_launchs_run_dir_once(self) -> None:
+        # lint, an edit, lint again, then a launch that FACTORY_STOP halts once its owner events are written. gh is a
+        # stub serving the body in $BODY_FILE; its timeline read fails, so the launch records no issue events.
+        body = pathlib.Path(self.tmp.name) / "body"
+        runs = pathlib.Path(self.tmp.name) / "lint-runs"
+        runs.mkdir()
+        (runs / "FACTORY_STOP").touch()
+        script = (
+            '. bin/factory; assert_target_ready() { :; }; claude_version_ok() { :; }; notify() { :; }; '
+            'gh() { [ "$1 $2" = "issue view" ] && cat "$BODY_FILE"; }; '
+            'echo "# one" > "$BODY_FILE"; lint 9 > /dev/null 2>&1; echo "# two" > "$BODY_FILE"; lint 9 > /dev/null 2>&1; '
+            '(cmd_run 9) > /dev/null 2>&1; (cmd_run 9) > /dev/null 2>&1; true'
+        )
+        env = {k: v for k, v in os.environ.items() if k not in ("FACTORY_CALL_TAG", "LOAM_HOOK", "FACTORY_BY_NEXT")}
+        proc = subprocess.run(["bash", "-c", script], cwd=ROOT, capture_output=True, text=True, check=False,
+                              env={**env, "FACTORY_SOURCED": "1", "FACTORY_ROOT": str(ROOT), "FACTORY_RUNS_ROOT": str(runs),
+                                   "BODY_FILE": str(body)})
+        self.assertEqual(proc.returncode, 0, proc.stderr)
+        (run,) = [d for d in (runs / "9").iterdir() if d.is_dir()]
+        self.assertEqual((run / "status").read_text().strip(), "stopped")
+        # Both lint lines, then each launch's run line; the relaunch does not add the lint lines again.
+        kinds = [json.loads(line)["kind"] for line in (run / "owner-events.jsonl").read_text().splitlines()]
+        self.assertEqual(kinds, ["lint", "lint", "run", "run"])
+        self.assertFalse((runs / "9/owner-events.jsonl").exists())
+
     def test_owner_events_reads_the_operators_issue_and_pr_events(self) -> None:
         # gh is a stub that applies the real --jq program with jq to GitHub-shaped replies, keyed by the API path.
         gh_dir = pathlib.Path(self.tmp.name) / "gh"

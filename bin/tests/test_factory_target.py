@@ -117,9 +117,6 @@ class TargetTests(unittest.TestCase):
         loam_run, widget_run = self.runs / "12" / "aaaaaaaa", self.runs / "acme__widget" / "12" / "bbbbbbbb"
         for d in (loam_run, widget_run):
             d.mkdir(parents=True)
-            (d / "status").write_text("running\n")
-        linted = self.runs / "12" / "cccccccc"  # lint's owner-events.jsonl directory: no status, not a run to stop
-        linted.mkdir()
         for args in (["-C", str(self.proj), "stop", "12"], ["stop", "-C", str(self.proj), "12"]):
             proc = subprocess.run([str(ROOT / "bin/factory"), *args], cwd=ROOT,
                                   env=clean_env(FACTORY_RUNS_ROOT=str(self.runs)), capture_output=True, text=True)
@@ -132,7 +129,6 @@ class TargetTests(unittest.TestCase):
         self.assertEqual(proc.returncode, 0, proc.stderr)
         self.assertTrue((loam_run / "FACTORY_STOP").exists())
         self.assertFalse((widget_run / "FACTORY_STOP").exists())
-        self.assertFalse((linted / "FACTORY_STOP").exists())
 
     def test_the_frozen_copy_gets_another_target_on_its_command_line_and_loam_none(self) -> None:
         frozen = self.runs / "run" / "frozen"
