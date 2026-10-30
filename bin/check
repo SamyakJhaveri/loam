@@ -143,12 +143,11 @@ raise SystemExit(1 if errors else 0)
 PY
 
 step "skill-listing token weight"
-# No-growth ceilings on the uncalibrated chars/4 estimate, each set to the measured weight:
-# seed after the catchup trim and hypothesis-tree went manual-only, sam-cc-setup after
-# plan-review and surprise-me went manual-only and the plan-reviewer description was trimmed.
-# Lower one when its listing shrinks; never raise it without saying why.
-python3 bin/skill_listing_weight.py --root "$ROOT" --budget seed=85 --budget "sam-cc-setup=${LISTING_BUDGET:-365}" \
-  || bad "skill-listing weight over budget"
+# No-growth budgets on the uncalibrated chars/4 estimate, each equal to the measured weight:
+# the step fails over a budget and under it, so a PR that shrinks a listing lowers its budget.
+# Raise one only in the PR that grows the listing, with the reason in that PR.
+python3 bin/skill_listing_weight.py --root "$ROOT" --budget seed=84 --budget sam-cc-setup=365 \
+  || bad "skill-listing weight not at its budget"
 
 step "always-loaded prose cap"
 # Root CLAUDE.md, AGENTS.md and what they load reach every Loam session. No-growth cap in bytes,

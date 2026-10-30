@@ -5,18 +5,19 @@ Every model-invocable skill spends its `name` + `description` in the skill
 listing on *every* request, whether or not it is invoked (Claude Code docs:
 "Low (descriptions every request)"). Every agent spends its `name` +
 `description` in the Agent tool listing the same way, on every request. This
-script sums that weight per source so a budget can gate listing growth;
+script sums that weight per source so a budget can pin the listing weight;
 `bin/check` runs it and sets the budgets.
 
 A skill with `disable-model-invocation: true` is not in the listing and costs
 nothing here (docs: "Description not in context").
 
 Token estimate: characters / 4. It is uncalibrated: no `/context` reading has
-been recorded against it, so treat a budget as a no-growth ceiling on this
+been recorded against it, so treat a budget as the measured weight on this
 estimate, not as a real token count.
 
-Exit status: 0 if every budgeted source is within its budget,
-1 if any budgeted source exceeds it.
+Exit status: 0 if every budgeted source equals its budget,
+1 if any budgeted source is over or under it (so a shrink lowers the budget)
+or is missing from `--root`.
 """
 
 from __future__ import annotations
@@ -101,7 +102,7 @@ def main() -> int:
         action="append",
         default=[],
         metavar="SOURCE=TOKENS",
-        help="Fail if SOURCE's listing exceeds TOKENS. Repeat once per source.",
+        help="Fail if SOURCE's listing is over or under TOKENS. Repeat once per source.",
     )
     parser.add_argument("--json", action="store_true")
     parser.add_argument("--quiet", action="store_true")
@@ -110,6 +111,7 @@ def main() -> int:
 
     report = {}
     over_budget = []
+    under_budget = []
     for label, source in SOURCES.items():
         if not os.path.isdir(os.path.join(args.root, source["skills"])):
             continue
@@ -118,6 +120,8 @@ def main() -> int:
         report[label] = data
         if data["budget"] is not None and data["listing_tokens"] > data["budget"]:
             over_budget.append(label)
+        if data["budget"] is not None and data["listing_tokens"] < data["budget"]:
+            under_budget.append(label)
 
     if args.json:
         print(json.dumps(report, indent=2))
@@ -136,7 +140,17 @@ def main() -> int:
             f"{report[label]['budget']}-token budget.",
             file=sys.stderr,
         )
-    return 1 if over_budget else 0
+    for label in under_budget:
+        tokens = report[label]["listing_tokens"]
+        print(
+            f"FAIL: {label} listing is {tokens} tokens, under the {report[label]['budget']}-token "
+            f"budget. In this PR, lower its budget in bin/check to {tokens}.",
+            file=sys.stderr,
+        )
+    missing = [label for label in budgets if label not in report]
+    for label in missing:
+        print(f"FAIL: {label} has a budget but {SOURCES[label]['skills']} is missing.", file=sys.stderr)
+    return 1 if over_budget or under_budget or missing else 0
 
 
 if __name__ == "__main__":

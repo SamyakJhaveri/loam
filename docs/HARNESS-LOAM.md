@@ -5,8 +5,8 @@ Token figures are byte counts divided by four, not a tokenizer result.
 
 ## Skill-listing budget
 
-Loam's `bin/check` asserts the `sam-cc-setup` plugin listing weight against the `LISTING_BUDGET` default in its skill-listing step; that default is the one home for the number.
-Lower it when the listing shrinks; never raise it without saying why.
+Loam's `bin/check` pins the `seed` and `sam-cc-setup` listing weights in its skill-listing step; that line is the one home for each number.
+The step fails over and under each budget (#313), so a PR that shrinks a listing lowers its budget, and one that grows it raises the budget and says why.
 It rose from 448 to 565 on 2026-09-09 (a4f61fa) when `plan-review` became model-invocable, and to 634 the same day (5af0946) when the judge and reviewer became plugin agents.
 A rendered project's `bin/check` asserts no listing budget.
 
