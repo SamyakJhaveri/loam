@@ -74,7 +74,9 @@ class TargetTests(unittest.TestCase):
         self.gh_log = top / "gh.log"
         # A fork: gh's default repository would be the parent, so any call that reaches it without -R is caught.
         self.gh_stub = (f'gh() {{ printf "%s\\n" "$*" >> "{self.gh_log}"; '
-                        'case "$1 $2" in "repo view") echo parent/widget ;; "issue view") echo "# t" ;; esac; }\n')
+                        'case "$1 $2" in "repo view") echo parent/widget ;; "issue view") echo "# t" ;; '
+                        '"api graphql") echo \'{"data": {"repository": {"issue": {"body": "# t", '
+                        '"author": {"login": "SamyakJhaveri"}, "editor": null}}}}\' ;; esac; }\n')
 
     def target(self, repo_dir: pathlib.Path | None, script: str = "", **env: str) -> subprocess.CompletedProcess[str]:
         pick = f'use_target "{repo_dir}" || echo use_target-failed\n' if repo_dir else ""
@@ -173,7 +175,12 @@ class TargetTests(unittest.TestCase):
         for proc in (stat, nxt):
             self.assertEqual(proc.returncode, 0, proc.stderr)
         calls = self.gh_log.read_text().splitlines()
-        self.assertEqual(calls, ["issue view 5 -R acme/widget --json body -q .body"] * 2 + [
+        self.assertEqual(calls, [
+            "issue view 5 -R acme/widget --json body -q .body",
+            # load_ticket reads the body with its author and editor in one call, owner and name from the origin (#389).
+            "api graphql -f owner=acme -f name=widget -F number=5 -f query=query($owner: String!, $name: String!, "
+            "$number: Int!) { repository(owner: $owner, name: $name) { issue(number: $number) { body author { login } "
+            "editor { login } } } }",
             "pr list -R acme/widget --json number,headRefName,title --jq "
             '.[] | select(.headRefName | startswith("factory/")) | "  #\\(.number) \\(.headRefName) \\(.title)"',
             "api repos/acme/widget/issues?labels=ready-for-agent&state=open&assignee=none&per_page=100 --jq "

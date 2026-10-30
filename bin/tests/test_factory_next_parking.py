@@ -315,5 +315,38 @@ class LintTests(ParkingTests):
         self.assertIn("not owner #7", proc.stderr)
 
 
+class LoadTicketOwnerTests(unittest.TestCase):
+    """run reads the body with its author and editor in one call, so an edit by another account after next's
+    owner check never reaches the run (#389)."""
+
+    def setUp(self) -> None:
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        self.runs = pathlib.Path(tmp.name)
+
+    def load(self, author: str, editor: str | None) -> subprocess.CompletedProcess[str]:
+        doc = json.dumps({"data": {"repository": {"issue": {
+            "body": CLEAN, "author": {"login": author}, "editor": editor and {"login": editor}}}}})
+        return sourced(f"target_repo() {{ echo o/r; }}; gh() {{ printf '%s\\n' '{doc}'; }}; "
+                       'load_ticket 7; printf "BODY=%s" "$BODY"',
+                       {"FACTORY_RUNS_ROOT": str(self.runs), "FACTORY_FROZEN": ""})
+
+    def test_body_another_account_last_edited_is_refused(self) -> None:
+        proc = self.load("SamyakJhaveri", "someone-else")
+        self.assertEqual(proc.returncode, 4, proc.stderr)
+        self.assertIn("not owner #7: written or last edited by someone-else", proc.stderr)
+        self.assertNotIn("BODY=", proc.stdout)
+
+    def test_body_another_account_wrote_is_refused(self) -> None:
+        proc = self.load("someone-else", "SamyakJhaveri")
+        self.assertEqual(proc.returncode, 4, proc.stderr)
+        self.assertIn("not owner #7: written or last edited by someone-else", proc.stderr)
+
+    def test_owner_body_loads_as_fetched(self) -> None:
+        for editor in (None, "SamyakJhaveri"):
+            proc = self.load("SamyakJhaveri", editor)
+            self.assertEqual(proc.stdout, f"BODY={CLEAN}", proc.stderr)
+
+
 if __name__ == "__main__":
     unittest.main()

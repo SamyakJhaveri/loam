@@ -877,10 +877,28 @@ load_ticket() { # <issue|file>
     ISSUE="$SRC"; KEY="$SRC"
     REPO=$(target_repo)
     [ -n "$REPO" ] || { echo "factory run: $TARGET has no GitHub origin to read the issue from" >&2; exit 4; }
-    BODY=$(net gh issue view "$ISSUE" -R "$REPO" --json body -q .body) && return 0
+    # The body, its author and its last editor come from one GraphQL read, so the owner check next made is made
+    # again on the very body this run freezes (#389): an edit by another account after next's check, or between
+    # this pass and the frozen one (which fetches again), is refused here. jq -r strips trailing newlines in $(...)
+    # the way gh issue view -q .body did, so the run key is unchanged.
+    local json who editor why pid=""
+    if ! json=$(net gh api graphql -f owner="${REPO%%/*}" -f name="${REPO#*/}" -F number="$ISSUE" \
+      -f query='query($owner: String!, $name: String!, $number: Int!) { repository(owner: $owner, name: $name) { issue(number: $number) { body author { login } editor { login } } } }' 2> /dev/null) \
+      || ! jq -e '.data.repository.issue' > /dev/null 2>&1 <<<"$json"; then
+      why="gh api graphql #$ISSUE failed, or got no reply in ${NET_TIMEOUT_SEC}s"
+    else
+      who=$(jq -r '.data.repository.issue.author.login // ""' <<<"$json")
+      editor=$(jq -r '.data.repository.issue.editor.login // ""' <<<"$json")
+      if [ "$who" != "$TICKET_OWNER" ] || { [ -n "$editor" ] && [ "$editor" != "$TICKET_OWNER" ]; }; then
+        [ "$who" = "$TICKET_OWNER" ] && who=$editor
+        why="not owner #$ISSUE: written or last edited by ${who:-a deleted account}; edit the body as $TICKET_OWNER or remove ready-for-agent"
+      else
+        BODY=$(jq -r '.data.repository.issue.body // ""' <<<"$json") && return 0
+        why="jq could not read the body of #$ISSUE"
+      fi
+    fi
     # The frozen pass runs after cmd_run wrote owner and running, so a run this process owns ends through
     # finish; a bare exit would leave it `running` with a dead owner until holds_slot reaps it.
-    local why="gh issue view #$ISSUE failed, or got no reply in ${NET_TIMEOUT_SEC}s" pid=""
     [ -n "${FACTORY_FROZEN:-}" ] && read -r pid _ < "${FACTORY_FROZEN%/frozen/factory}/owner" 2> /dev/null
     if [ "$pid" = "$$" ]; then
       RUN="${FACTORY_FROZEN%/frozen/factory}"; LOG="$RUN/factory.log"
@@ -2362,7 +2380,8 @@ cmd_next() { # [--dry-run|--install]
   # and the frontier goes on to the next candidate, so one bad issue does not stall the timer.
   # Before lint, the owner check: the worker runs the body unattended and Loam is public, so a body another account
   # wrote, or last edited (GraphQL's editor, null for a body never edited), is passed over, and so is one whose
-  # editor gh could not read. </dev/null keeps gh off the candidate list this loop reads on stdin.
+  # editor gh could not read. </dev/null keeps gh off the candidate list this loop reads on stdin. This check only
+  # picks; load_ticket checks the owner again on the body the run freezes.
   local pick="" st_last lint_err lint_line author editor
   while read -r who num author b64; do
     [ -n "$num" ] || continue
