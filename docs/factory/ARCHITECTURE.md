@@ -107,12 +107,14 @@ The PR body is the metrics home: rounds, spend, wall time, first failing grader,
 Expected saving over lean-v3 is the stall rounds; the per-round grader cost is unchanged.
 Criteria written in advance, measured over every run of the target; a file-ticket rehearsal opens no PR, so it is not a PR run:
 
-- operator actions from voice note to a running loop on Track B: at most 3
-- operator actions after the PR opens: at most 1 once F9 lands
+- operator actions from voice note to a running loop on Track B: at most 3 (measured as a lower bound: the run sees only the issue's events and the lint, run and stop subcommands)
+- operator actions after the PR opens: at most 1 once F9 lands (measured as a lower bound: the run sees only the PR's events)
 - stalls whose first failing grader row is scope: 0 (baseline 3 of 4)
 - rounds lost to environment failures: 0 (baseline 2)
-- SKIP lines per round: 0
+- lines per round marking a passed-over step: 0
 - median rounds to PR: at most 5 (lean-v3 median)
 - judge fails citing a worker-written measurement: 0 (S2 had at least four)
+- rounds whose last worker message claims done while the checks printed FAIL: 0
 
 Measure with `bin/factory status --criteria` on the runner, where the run directories live.
+Each run directory feeds it: `factory.log` EXIT lines for stalls (`stuck`, `no-change`, `stopped-cap`; a scope stall when that round's first `FAIL` line is `do-not-touch`), `owner-events.jsonl` for the operator actions (`phase` `launch` from the issue's events and each owner-run `lint`, `run` and `stop`, `phase` `pr` once `next` sees the PR closed), the `SKIPPED:` lines `guard` copies into `round-<k>.checks`, `evidence_kind` in `round-<k>.judge.json`, and each failing round's last worker message (`round-<k>.last.txt` for Codex, `.result` of `round-<k>.result.json` for Claude).

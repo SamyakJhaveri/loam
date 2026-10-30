@@ -13,6 +13,7 @@ python3 stdlib only.
 from __future__ import annotations
 
 import glob
+import json
 import os
 import re
 import statistics
@@ -20,6 +21,11 @@ import sys
 
 MARKER = "Criteria written in advance"
 REHEARSAL = "file ticket: no GitHub call"  # open_pr's pr-opened message for a file ticket, which opens no PR
+PASS_OVER = "SKIPPED:"  # bin/check's marker for a step that did not run; lib.sh's guard copies it into the checks file
+STALLS = ("stuck", "no-change", "stopped-cap")
+# A completion claim: done (not done-checks), complete, finished, or all checks pass; NEGATED is the text before it.
+CLAIM = re.compile(r"\b(?:all (?:the )?(?:done-)?checks (?:now )?pass(?:ed)?|done(?!-)|completed?|finished)\b", re.I)
+NEGATED = re.compile(r"(?:\bnot|n't|\bnever)\W+(?:\w+\W+){0,2}$", re.I)
 
 
 def read(path, missing=""):
@@ -38,6 +44,13 @@ def round_files(run, suffix):
         if m:
             out[int(m.group(1))] = path
     return out
+
+
+def loads(text):
+    try:
+        return json.loads(text)
+    except ValueError:
+        return None
 
 
 def exits(log):
@@ -62,11 +75,16 @@ def exits(log):
 
 class Run:
     def __init__(self, root, run):
+        self.dir = run
         self.label = os.path.relpath(run, root)
         self.status = read(os.path.join(run, "status")).strip()
-        self.rounds = len([n for n in round_files(run, "checks") if n > 0])
+        self.checks = {n: read(p).splitlines() for n, p in round_files(run, "checks").items()}
+        self.rounds = len([n for n in self.checks if n > 0])
         log = read(os.path.join(run, "factory.log"), None)
         self.exits = None if log is None else exits(log)  # None: the exits are unknown, not absent
+        events = read(os.path.join(run, "owner-events.jsonl"), None)  # None: the run predates owner-events.jsonl
+        self.events = None if events is None else [e for e in map(loads, events.splitlines()) if isinstance(e, dict)]
+        self.pr_closed = os.path.exists(os.path.join(run, "pr-closed"))
 
 
 def count(n, word):
@@ -78,10 +96,6 @@ def num(x):
 
 
 # ---- the criteria: name -> runs -> (value, detail), or (None, why) when the run record cannot measure it
-
-def unmeasured(why):
-    return lambda runs: (None, why)
-
 
 def no_log(runs):
     missing = [r.label for r in runs if r.exits is None]
@@ -106,20 +120,108 @@ def environment_rounds(runs):
     return len(lost), ", ".join(lost)
 
 
+def operator_actions(phase, since, omits):
+    """The most owner-events.jsonl lines of one phase in one run: a lower bound, since only some owner work is seen."""
+    def measure(runs):
+        seen = [r for r in runs if r.events is not None and (phase == "launch" or r.pr_closed
+                                                             or any(e.get("phase") == phase for e in r.events))]
+        if not seen:
+            return None, f"no run directory records {since} in owner-events.jsonl"
+        n, label = max((sum(e.get("phase") == phase for e in r.events), r.label) for r in seen)
+        return n, f"most in one run, {label}, of {count(len(seen), 'run')}; omits {omits}", f"at least {n}"
+    return measure
+
+
+def first_fail(lines):
+    """The check name of the first FAIL line: lib.sh's `FAIL name: why`, or round_checks' `FAIL do-not-touch paths`."""
+    for line in lines:
+        if line.startswith("FAIL "):
+            return line[5:].split(" ", 1)[0].rstrip(":")
+    return None
+
+
+def scope_stalls(runs):
+    if why := no_log(runs):
+        return None, why
+    stalls = [(r, n) for r in runs for kind, n, _ in r.exits if kind in STALLS]
+    scope = [f"{r.label} round {n}" for r, n in stalls if first_fail(r.checks.get(n, [])) == "do-not-touch"]
+    return len(scope), f"of {count(len(stalls), 'stall')}" + (f": {', '.join(scope)}" if scope else "")
+
+
+def pass_over_lines(runs):
+    rounds = [(sum(line.startswith(PASS_OVER) for line in lines), r.label, n)
+              for r in runs for n, lines in r.checks.items() if n > 0]
+    if not rounds:
+        return None, "no run has a worker round"
+    most, label, n = max(rounds)
+    return most, f"{label} round {n}" if most else f"over {count(len(rounds), 'round')}"
+
+
+def judge_notes(runs):
+    """Failing judge rows citing worker-written notes, over the failing rows that carry evidence_kind (ticket 13)."""
+    rows, notes, kinds = 0, [], False
+    for r in runs:
+        for n, path in sorted(round_files(r.dir, "judge.json").items()):
+            j = loads(read(path))
+            if not isinstance(j, dict) or not isinstance(j.get("evidence_kind"), dict):
+                continue
+            kinds = True
+            ev = j["evidence_kind"]
+            for row, v in (j.get("rows") or {}).items():
+                if v == "fail" and row in ev:
+                    rows += 1
+                    if ev[row] == "notes":
+                        notes.append(f"{r.label} round {n} {row}")
+    if not kinds:
+        return None, "no round-N.judge.json carries evidence_kind (ticket 13)"
+    return len(notes), ", ".join(notes), f"{len(notes)} of {rows}"
+
+
+def last_message(run, n):
+    """(kind, text) of round n's last worker message: round-n.last.txt for Codex, .result of round-n.result.json for
+    Claude (one object, or an array whose last result element is it); text is None when the round left none."""
+    last = os.path.join(run, f"round-{n}.last.txt")
+    if os.path.exists(last):
+        return "codex", read(last)
+    j = loads(read(os.path.join(run, f"round-{n}.result.json")))
+    if isinstance(j, list):
+        j = next((x for x in reversed(j) if isinstance(x, dict) and x.get("type") == "result"), j[-1] if j else None)
+    text = j.get("result") if isinstance(j, dict) else None
+    return "claude", text if isinstance(text, str) else None
+
+
+def claims_done(text):
+    return any(not NEGATED.search(text[:m.start()]) for m in CLAIM.finditer(text))
+
+
+def premature_done(runs):
+    kinds, silent = {"claude": 0, "codex": 0}, 0
+    for r in runs:
+        for n, lines in r.checks.items():
+            if n == 0 or not any(line.startswith("FAIL") for line in lines):
+                continue
+            kind, text = last_message(r.dir, n)
+            if text is None:
+                silent += 1
+            elif claims_done(text):
+                kinds[kind] += 1
+    detail = f"claude {kinds['claude']}, codex {kinds['codex']}"
+    if silent:
+        detail += f"; {count(silent, 'failing round')} with no worker message"
+    return sum(kinds.values()), detail
+
+
+# A measure returns (value, detail) or (value, detail, shown), where shown replaces the value in the verdict line.
 MEASURES = {
-    "operator actions from voice note to a running loop on Track B": unmeasured(
-        "a run directory starts at launch, after the brief and the ticket, and records no operator action"),
-    "operator actions after the PR opens": unmeasured(
-        "a run directory ends at pr-opened; what the operator does on the PR happens on GitHub"),
-    "stalls whose first failing grader row is scope": unmeasured(
-        "the judge has no scope row; a scope defect fails the do-not-touch check or draws a reviewer finding"),
+    "operator actions from voice note to a running loop on Track B": operator_actions(
+        "launch", "a launch", "owner work outside the issue's events and the lint, run and stop subcommands"),
+    "operator actions after the PR opens": operator_actions("pr", "a closed PR", "owner work outside the PR's events"),
+    "stalls whose first failing grader row is scope": scope_stalls,
     "rounds lost to environment failures": environment_rounds,
-    "SKIP lines per round": unmeasured(
-        "no check can print one: lib.sh has no skip helper, ticket lint refuses the word, and the guard line sends "
-        "bin/check's SKIPPED: lines to /dev/null"),
+    "lines per round marking a passed-over step": pass_over_lines,
     "median rounds to PR": median_rounds,
-    "judge fails citing a worker-written measurement": unmeasured(
-        "a judge.json fix is free text; no field says whether a fail cites a worker-written measurement"),
+    "judge fails citing a worker-written measurement": judge_notes,
+    "rounds whose last worker message claims done while the checks printed FAIL": premature_done,
 }
 
 
@@ -159,14 +261,14 @@ def main(argv):
         if name not in MEASURES:
             out.append("    UNMEASURED: criteria.py has no measure for this line")
             continue
-        value, detail = MEASURES[name](runs) if runs else (None, f"no run directory under {root}")
+        value, detail, *shown = MEASURES[name](runs) if runs else (None, f"no run directory under {root}")
         if value is None:
             out.append(f"    UNMEASURED: {detail}")
         elif not m:
             out.append(f"    UNMEASURED: the threshold '{rule}' does not start with a number")
         else:
             verdict = "PASS" if value <= int(m.group(1)) else "FAIL"
-            out.append(f"    {verdict}: measured {num(value)}" + (f" ({detail})" if detail else ""))
+            out.append(f"    {verdict}: measured {shown[0] if shown else num(value)}" + (f" ({detail})" if detail else ""))
     print("\n".join(out))
     return 0
 
