@@ -33,14 +33,28 @@ target_repo() {
 }
 # Every gh call, and every git call that reaches a remote (fetch, push, ls-remote), runs under NET_TIMEOUT_SEC
 # (LOOP.md, Caps): a call cut off at the limit fails like any other failure of that call, so a hung network call
-# never holds a run, its slot and its heartbeat for good. No --foreground: neither needs a terminal, and timeout
-# then kills the call's whole process group. Without GNU timeout (a Mac) perl's alarm stands in. A shell function
-# (a test's gh or git stub) runs as it is, since timeout and exec can only start a program.
+# never holds a run, its slot and its heartbeat for good. A program runs under GNU timeout without --foreground
+# (neither needs a terminal, and timeout then signals the call's whole process group), with KILL 5 s after TERM
+# for a call that ignores TERM. A shell function (a test's stub, or one exported into the environment), or any
+# call on a machine without timeout (a Mac), goes through net_watch instead, since timeout can only start a program.
 net() {
-  if [ "$(type -t "$1")" = function ]; then "$@"
-  elif command -v timeout > /dev/null 2>&1; then timeout "$NET_TIMEOUT_SEC" "$@"
-  else perl -e 'alarm shift; exec @ARGV; exit 127' "$NET_TIMEOUT_SEC" "$@"
+  if [ "$(type -t "$1")" != function ] && command -v timeout > /dev/null 2>&1; then
+    timeout -k 5 "$NET_TIMEOUT_SEC" "$@"
+  else net_watch "$@"
   fi
+}
+# net's watchdog: job control gives the call its own process group, which gets TERM at NET_TIMEOUT_SEC and KILL
+# 5 s later. The subshell's stderr goes to /dev/null so job notices stay out of the output; the call keeps the
+# caller's stdin and stderr.
+net_watch() {
+  ( exec 3>&2 2> /dev/null; set -m
+    "$@" <&0 2>&3 3>&- &
+    local pid=$! wd rc=0
+    { sleep "$NET_TIMEOUT_SEC"; kill -TERM -- "-$pid"; sleep 5; kill -KILL -- "-$pid"; } > /dev/null 2>&1 < /dev/null &
+    wd=$!
+    wait "$pid" || rc=$?
+    kill -- "-$wd"
+    exit "$rc" )
 }
 target_slug() { target_repo | sed 's#/#__#'; }   # a GitHub owner name has no _, so the first __ splits it
 use_target() { # dir -> 1 when dir is not in a git checkout, or is another repository with no GitHub origin

@@ -4,6 +4,9 @@ Since #422 cmd_run writes `owner` and `running` before it execs the frozen copy,
 again with FACTORY_ROOT set. Each test writes a run dir with status `running`, puts a `gh` that hangs first on PATH,
 and calls load_ticket from a sourced bin/factory with FACTORY_FROZEN naming the run. When the owner line names this
 process, the cut-off call ends through finish (status, alert, exit 4); when it names another, load_ticket only exits 4.
+WatchdogTests check that nothing escapes the limit: a gh function exported into the environment, a program that
+ignores TERM (timeout -k), and net_watch, the path without GNU timeout, on both a TERM-ignoring program and a
+function that returns 0 after the deadline.
 """
 
 from __future__ import annotations
@@ -66,6 +69,51 @@ class NetTimeoutTests(unittest.TestCase):
         self.assertIn("could not read issue #7", proc.stderr)
         self.assertEqual((self.run_dir / "status").read_text().strip(), "running")
         self.assertFalse(self.alerts.exists())
+
+
+class WatchdogTests(unittest.TestCase):
+    def setUp(self) -> None:
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        self.top = pathlib.Path(tmp.name)
+
+    def bash(self, script: str, **extra: str) -> tuple[subprocess.CompletedProcess, float]:
+        base = {k: v for k, v in os.environ.items() if k not in INHERITED}
+        env = {**base, "FACTORY_RUNS_ROOT": str(self.top / "runs"), "FACTORY_NET_TIMEOUT_SEC": "1", **extra}
+        start = time.monotonic()
+        proc = subprocess.run(["bash", "-c", script], cwd=ROOT, env=env, stdin=subprocess.DEVNULL,
+                              capture_output=True, text=True, check=False, timeout=60)
+        return proc, time.monotonic() - start
+
+    def test_exported_gh_function_is_cut_off(self) -> None:
+        proc, took = self.bash("gh() { sleep 30; return 0; }; export -f gh; bin/factory lint 7")
+        self.assertNotEqual(proc.returncode, 0, proc.stderr)
+        self.assertLess(took, 8)
+        self.assertIn("could not read the issue body with gh", proc.stderr)
+
+    def test_program_ignoring_term_is_killed(self) -> None:
+        (self.top / "bin").mkdir()
+        gh = self.top / "bin" / "gh"
+        gh.write_text("#!/usr/bin/env bash\ntrap '' TERM\nexec sleep 600\n")
+        gh.chmod(0o755)
+        proc, took = self.bash(". bin/factory; net gh issue view 7", FACTORY_SOURCED="1",
+                               PATH=f"{self.top / 'bin'}:{os.environ['PATH']}")
+        self.assertNotEqual(proc.returncode, 0, proc.stderr)
+        self.assertLess(took, 15)
+
+    def test_watchdog_without_timeout(self) -> None:
+        ignore = "python3 -c 'import signal, time; signal.signal(signal.SIGTERM, signal.SIG_IGN); time.sleep(600)'"
+        proc, took = self.bash(f". bin/factory; net_watch {ignore}", FACTORY_SOURCED="1")
+        self.assertNotEqual(proc.returncode, 0, proc.stderr)
+        self.assertLess(took, 15)
+        proc, took = self.bash(". bin/factory; late() { sleep 30; echo late; return 0; }; out=$(net_watch late); "
+                               "rc=$?; printf '%s %s' \"$rc\" \"$out\"", FACTORY_SOURCED="1")
+        self.assertLess(took, 8)
+        self.assertNotEqual(proc.stdout.split()[0], "0", proc.stdout)
+        self.assertNotIn("late", proc.stdout)
+        proc, _ = self.bash(". bin/factory; f() { cat; echo err >&2; return 3; }; printf 'in\\n' | net_watch f; "
+                            "echo \"rc=$?\"", FACTORY_SOURCED="1")
+        self.assertEqual((proc.stdout, proc.stderr), ("in\nrc=3\n", "err\n"))
 
 
 if __name__ == "__main__":

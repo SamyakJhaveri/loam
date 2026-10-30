@@ -97,7 +97,7 @@ The stop message lists the commits made since the round began, or says `no commi
 ## Caps
 
 Defaults from lean-v3, overridable per ticket in its Worker section and then by `FACTORY_<NAME>` in the environment, never by the bare name, which a Claude Code session already exports for `WORKER_MODEL` and `CALL_TIMEOUT_SEC`: `MAX_ROUNDS=6`, `ROUND_BUDGET_USD=15`, `GRADER_BUDGET_USD=5`, `TICKET_BUDGET_USD=60`, `DAILY_BUDGET_USD=150`, `MAX_HOURS=8`, `MAX_TURNS=200`, `CALL_TIMEOUT_SEC=5400`, `NET_TIMEOUT_SEC=120`, `MAX_PARALLEL=1`.
-`NET_TIMEOUT_SEC` bounds every `gh` call and every `git` call that reaches a remote (`fetch`, `push`, `ls-remote`), in `run`, `lint`, `next` and `status` alike, through GNU `timeout` without `--foreground`, or `perl`'s `alarm` where `timeout` is missing.
+`NET_TIMEOUT_SEC` bounds every `gh` call and every `git` call that reaches a remote (`fetch`, `push`, `ls-remote`), in `run`, `lint`, `next` and `status` alike, through GNU `timeout -k 5` without `--foreground`, so a call that ignores TERM gets KILL 5 s later; a shell function, or any call where `timeout` is missing, goes through a shell watchdog that sends the same TERM and KILL to the call's process group.
 A call cut off at the limit counts as that call failing, so a hung network call never holds a run, its slot, or its heartbeat.
 No research source gives a numeric anchor (`../research/anthropic-loop-engineering.md`); re-measure after two real runs.
 The daily ledger `runs/ledger-daily.jsonl` is keyed by UTC date across all runs of every target.
