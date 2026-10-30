@@ -8,6 +8,7 @@ keeps `running` and sends nothing.
 from __future__ import annotations
 
 import datetime
+import hashlib
 import os
 import pathlib
 import signal
@@ -125,11 +126,33 @@ class OwnerSlotTests(unittest.TestCase):
             with self.subTest(stub=stub):
                 self.assert_held(stub)
 
-    def test_relaunch_newer_than_a_dead_owner_holds_the_slot(self) -> None:
-        self.owner(f"{dead_pid()} {OLD}")
-        (self.run_dir / "launched").write_text("1\n")
-        os.utime(self.run_dir / "owner", (time.time() - 60, time.time() - 60))
-        self.assert_held()
+    def test_relaunch_writes_its_owner_and_running_before_preparing(self) -> None:
+        # A relaunch over a reaped run (stopped-environment, dead owner) must hold its slot through the long
+        # preparation, so cmd_run's first step after the launch line already sees this process as the owner.
+        body = "# Owner fixture\n\n## Worker\nworker: claude\n"
+        ticket = self.top / "relaunch.md"
+        ticket.write_text(body)
+        run_dir = self.top / "runs" / "relaunch" / hashlib.sha256(body.rstrip("\n").encode()).hexdigest()[:8]
+        run_dir.mkdir(parents=True)
+        (run_dir / "status").write_text("stopped-environment\n")
+        (run_dir / "owner").write_text(f"{dead_pid()} {OLD}\n")
+        seen = self.top / "seen"
+        script = (f". bin/factory\nMAIN_CHECKOUT='{self.top}'\n"
+                  "assert_target_ready() { :; }; claude_version_ok() { echo ok; }\n"
+                  "nav_arm_resolve() { { cat \"$RUN/owner\" \"$RUN/status\"; echo \"$$\"; "
+                  f"TZ=UTC LC_ALL=C ps -o lstart= -p $$; }} > '{seen}'; exit 0; }}\n"
+                  f"cmd_run '{ticket}'")
+        base = {k: v for k, v in os.environ.items()
+                if k not in INHERITED and k not in ("FACTORY_FROZEN", "FACTORY_NAV_ARM")}
+        proc = subprocess.Popen(["bash", "-c", script], cwd=ROOT,
+                                env={**base, "FACTORY_SOURCED": "1", "FACTORY_RUNS_ROOT": str(self.top / "runs")},
+                                stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+        _, err = proc.communicate()
+        self.assertTrue(seen.exists(), err)
+        owner, status, pid, start = seen.read_text().splitlines()
+        self.assertEqual(int(pid), proc.pid)
+        self.assertEqual(owner, f"{pid} {start}")
+        self.assertEqual(status, "running")
 
     def test_dead_group_leader_holds_while_a_member_lives(self) -> None:
         # The leader exits and is reaped; the sleep it left keeps the leader's pid as its process group id.
