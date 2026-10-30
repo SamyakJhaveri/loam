@@ -1,4 +1,6 @@
 {
+  "autoMemoryEnabled": false,
+  "env": {"CLAUDE_CODE_DISABLE_AUTO_MEMORY": "1"},
   "permissions": {
     "deny": [
       "Bash(rm -rf:*)", "Bash(rm -fr:*)", "Bash(rm -Rf:*)", "Bash(rm -r -f:*)", "Bash(rm -f -r:*)",

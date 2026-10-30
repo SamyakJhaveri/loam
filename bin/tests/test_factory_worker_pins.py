@@ -1,7 +1,8 @@
 """The worker call's model pins hold over user settings, and an old Claude Code is refused (#379).
 
 Claude Code copies each settings tier's env over the launch env, user settings first and `--settings` after, so
-freeze writes the four pins into the frozen worker-settings.json that the worker call loads with `--settings`.
+freeze adds the four pins to the source env in the frozen worker-settings.json that the worker call loads with
+`--settings`.
 CLAUDE_CODE_SUBAGENT_MODEL_FORCE exists from 2.1.257, so claude_version_ok refuses an older or unreadable
 `claude --version`. `bin/factory` is sourced (FACTORY_SOURCED=1); freeze reads the checkout's graders through
 GRADERS_DIR and `claude` is a stub on PATH. No network.
@@ -35,7 +36,7 @@ class WorkerPinTests(unittest.TestCase):
         return subprocess.run(["bash", "-c", f". bin/factory\n{script}"], cwd=ROOT, env=env,
                               capture_output=True, text=True, check=False)
 
-    def frozen_env(self, **extra: str) -> dict[str, str]:
+    def frozen_env(self, **extra: str) -> tuple[dict[str, str], dict[str, str]]:
         run = self.tmp / "run"
         (run / "frozen").mkdir(parents=True)
         proc = self.sourced(f"RUN='{run}'; LOG=\"$RUN/factory.log\"; LEDGER=\"$RUN/ledger.jsonl\"; "
@@ -44,16 +45,19 @@ class WorkerPinTests(unittest.TestCase):
         self.assertEqual(proc.stdout.strip(), "frozen", proc.stderr)
         settings = json.loads((run / "frozen/worker-settings.json").read_text())
         source = json.loads((ROOT / "bin/factory.d/worker-settings.json").read_text())
+        source_env = source.pop("env", {})
         self.assertEqual({k: v for k, v in settings.items() if k != "env"}, source)  # deny list and hook kept
-        return settings["env"]
+        return settings["env"], source_env
 
     def test_freeze_pins_the_default_worker_model_in_the_frozen_settings_env(self) -> None:
-        env = self.frozen_env()
-        self.assertEqual(env, {**dict.fromkeys(PINS, "claude-opus-5-5"), "CLAUDE_CODE_SUBAGENT_MODEL_FORCE": "1"})
+        env, source_env = self.frozen_env()
+        self.assertEqual(env, {**source_env, **dict.fromkeys(PINS, "claude-opus-5-5"),
+                               "CLAUDE_CODE_SUBAGENT_MODEL_FORCE": "1"})
 
     def test_freeze_follows_factory_worker_model(self) -> None:
-        env = self.frozen_env(FACTORY_WORKER_MODEL="claude-other-1")
-        self.assertEqual(env, {**dict.fromkeys(PINS, "claude-other-1"), "CLAUDE_CODE_SUBAGENT_MODEL_FORCE": "1"})
+        env, source_env = self.frozen_env(FACTORY_WORKER_MODEL="claude-other-1")
+        self.assertEqual(env, {**source_env, **dict.fromkeys(PINS, "claude-other-1"),
+                               "CLAUDE_CODE_SUBAGENT_MODEL_FORCE": "1"})
 
     def version(self, reported: str) -> subprocess.CompletedProcess[str]:
         stub = self.tmp / "bin/claude"
