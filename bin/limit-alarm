@@ -130,7 +130,7 @@ while true; do
     fi
   elif [ "$BACK" = 1 ] && to=$(pick "$cur") && [ -n "$to" ] && [ "$(rank "$to")" -lt "$(rank "$cur")" ] && [ "$gap" -ge 900 ]; then
     f=$(ls -t "$PROJ"/*.jsonl 2>/dev/null | head -1)
-    if [ -n "$f" ] && [ $(( now - $(stat -c %Y "$f") )) -ge 180 ]; then
+    if [ -n "$f" ] && [ $(( now - $(stat -c %Y "$f" 2>/dev/null || stat -f %m "$f") )) -ge 180 ]; then
       sid=$(basename "$f" .jsonl)
       switch "$cur" "$to" "$sid" "$to has usage again and ranks above $cur in Samyak's order ($ORDER)"
     fi

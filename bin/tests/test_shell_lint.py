@@ -1,4 +1,5 @@
-"""bin/shell_lint.py on temp repos: the done-checks' planted files, b086ef1's pre-fix file, tokenizer cases."""
+"""bin/shell_lint.py on temp repos: the done-checks' planted files, b086ef1's and c29ef01's pre-fix files,
+tokenizer cases, and the bash 4 and GNU-only forms."""
 
 from __future__ import annotations
 
@@ -90,6 +91,39 @@ yes needle | grep -q needle
 )"
 """
 
+# The done-checks' planted files for #280, verbatim.
+GNU_BAD = ('#!/usr/bin/env bash\nmapfile -t a < f\nreadarray -t b < f\nls | xargs -r echo\nstat -c %Y f\n'
+           'grep -P "x" f\ntimeout 5 sleep 1\n')
+GNU_GOOD = ('#!/usr/bin/env bash\n# mapfile is bash 4, so read in a loop\nm=$(stat -c %Y f 2>/dev/null || stat -f %m f)\n'
+            'command -v timeout >/dev/null && timeout 5 true\n')
+# Forms that must count (lines 2 to 11; a continued stat counts on its first line), then words that must not (from line 12).
+GNU_CASES = """#!/usr/bin/env bash
+x="$(stat -c %Y f)"
+find . -print0 | xargs -0 -r rm
+env LC_ALL=C grep -Pq x f
+if true; then readarray -t a < f; fi
+stat \\
+  --format=%Y f
+y="$(cat f |
+  grep --perl-regexp x)"
+while read -r l; do :; done < <(grep -P x f)
+grep -f <(cat a) -P f
+cat <<'EOF'
+mapfile -t a < f
+EOF
+echo "mapfile -t a < f" 'grep -P x'
+x="$(stat -c %Y f 2>/dev/null || stat -f %m f)"
+for c in $(pgrep -P 1); do :; done
+for t in timeout mapfile; do :; done
+grep -eP x f
+ls | xargs -I {} echo -r {}
+grep -f <(pgrep -P 1) f
+"""
+GUARDED = """#!/usr/bin/env bash
+t="$(command -v timeout)"
+timeout 5 true
+"""
+
 
 def lint(files: dict[str, str]) -> subprocess.CompletedProcess[str]:
     with tempfile.TemporaryDirectory() as tmp:
@@ -122,6 +156,41 @@ class ShellLintTest(unittest.TestCase):
         self.assertEqual([line.split(": ")[1] for line in res.stdout.splitlines()],
                          [f"cases.sh:{n}" for n in (18, 19, 20, 21, 23, 25, *range(26, 35), 43, 45, 48,
                                                     54, 60, 63, 65, 67, 72)])
+
+    def test_flags_planted_gnu_forms(self) -> None:
+        res = lint({"bad.sh": GNU_BAD, "good.sh": GNU_GOOD})
+        self.assertEqual(res.returncode, 1, res.stdout + res.stderr)
+        self.assertEqual([line.split(": ")[1] for line in res.stdout.splitlines()], [f"bad.sh:{n}" for n in range(2, 8)])
+        for form in ("while IFS= read -r", "drop it", "stat -f %m", "grep -E", "command -v timeout"):
+            self.assertIn(form, res.stdout)
+
+    def test_gnu_cases(self) -> None:
+        res = lint({"cases.sh": GNU_CASES, "guarded.sh": GUARDED})
+        self.assertEqual(res.returncode, 1, res.stdout + res.stderr)
+        self.assertEqual([line.split(": ")[1] for line in res.stdout.splitlines()],
+                         [f"cases.sh:{n}" for n in (2, 3, 4, 5, 6, 9, 10, 11)])
+
+    def test_flags_c29ef01_pre_fix(self) -> None:
+        old = subprocess.run(["git", "-C", str(ROOT), "show", "c29ef01^:seed/bin/memsearch"],
+                             capture_output=True, text=True, check=True).stdout
+        res = lint({"memsearch": old})
+        self.assertEqual(res.returncode, 1, res.stdout + res.stderr)
+        self.assertEqual([line.split(": ")[1] for line in res.stdout.splitlines()], ["memsearch:55"])
+
+    def test_guarded_factory_passes(self) -> None:
+        # bin/factory runs timeout behind command -v timeout (#426), so the file passes; without the guard its
+        # timeout calls fail, but not the word timeout in a `for` list.
+        text = (ROOT / "bin/factory").read_text(encoding="utf-8")
+        res = lint({"factory": text})
+        self.assertEqual(res.returncode, 0, res.stdout + res.stderr)
+        res = lint({"factory": text.replace("command -v timeout", "command -v gtimeout")})
+        self.assertEqual(res.returncode, 1, res.stdout + res.stderr)
+        lines = text.splitlines()
+        net = next(n for n, line in enumerate(lines, 1) if 'timeout -k 5 "$NET_TIMEOUT_SEC"' in line)
+        tools = next(n for n, line in enumerate(lines, 1) if line.lstrip().startswith("for t in claude"))
+        self.assertTrue(all("command -v timeout;" in line for line in res.stdout.splitlines()), res.stdout)
+        self.assertIn(f"factory:{net}:", res.stdout)
+        self.assertNotIn(f"factory:{tools}:", res.stdout)
 
     def test_open_quote_fails_closed(self) -> None:
         res = lint({"open.sh": "#!/usr/bin/env bash\necho 'oops\nset -o pipefail\nyes | grep -q x\n"})
