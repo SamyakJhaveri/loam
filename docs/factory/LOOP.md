@@ -16,7 +16,7 @@ Rubric text lives only in the grader files.
 | `bin/factory status --criteria` | measures the trust criteria in `ARCHITECTURE.md` (Metrics) from the target's run directories; a criterion the run record cannot show prints `UNMEASURED` with the reason; reads files only, no model or `gh` call | 2026-10-19 |
 | `bin/factory stop <issue>` | writes `FACTORY_STOP` into the run dir | F1 |
 | `bin/runner [-C <dir>] <cmd>` | runs `<cmd>` on the runner: `ssh jhaveris bash -lc 'cd ~/Desktop/loam && <cmd>'`, or from `<dir>` there (quote a tilde, F8); `bin/runner sync` mirrors `.superpowers/factory/` to the same path on the runner with `rsync -az --delete`, excluding `runs/` and `__pycache__`; it never pulls (#36) | F0 |
-| `bin/factory next [--install]` | launches up to `MAX_PARALLEL` `ready-for-agent` issues with no assignee and no open native blocker (read through `gh api`); `--install` writes the ten-minute runner timer | F9 |
+| `bin/factory next [--install]` | launches up to `MAX_PARALLEL` `ready-for-agent` issues with no assignee and no open native blocker, or assigned to the runner with a `stopped-daily` run (read through `gh api`); `--install` writes the ten-minute runner timer | F9 |
 
 `-C <repo>`, before the subcommand or right after it, points `lint`, `run`, `status`, `stop`, and `next` at another repository (F8 step 1; Run the factory on another repository, below).
 `REPO` is `<owner>/<repo>` read from the target's `origin` URL, and every `gh` call about the target passes it as `-R`, so a fork's issues and PRs never go to the parent `gh` would pick by default.
@@ -84,7 +84,7 @@ When no cached copy matches, the run stops `stopped-environment` and names the c
 | `abandon` | an `ABANDON NAME reason` line in `decisions.md`; the owner is paged | yes |
 | `stopped-environment` | a `claude` result with `is_error` outside the capped set (`error_max_budget_usd`, `error_max_turns`) or with no result event, a Codex exit other than 0 or no `turn.completed` event, a `gh` or `git` failure, including a call cut off at `NET_TIMEOUT_SEC` (a cut-off `gh issue view` in the frozen pass too, since the run already reads `running`), a process a model call left behind still alive 5 s after KILL, or a frozen-set hash mismatch | no, and it pages at once |
 | `stopped-cap` | `MAX_ROUNDS`, `TICKET_BUDGET_USD`, or `MAX_HOURS` reached; `ROUND_BUDGET_USD` and `MAX_TURNS` bound one worker call and are not an exit: a call that hits either (`error_max_budget_usd`, `error_max_turns`) is a finished round and step 6 decides | yes |
-| `stopped-daily` | the next model call could take the runner's spend for the UTC day past `DAILY_BUDGET_USD`; it says nothing about the ticket, so the run unassigns the issue and `next` relaunches it on a later UTC day | yes |
+| `stopped-daily` | the next model call could take the runner's spend for the UTC day past `DAILY_BUDGET_USD`; it says nothing about the ticket, so the issue stays assigned to the runner and `next` relaunches it on a later UTC day | yes |
 | `stopped` | `FACTORY_STOP` present before a call | no |
 
 Exit code, `status`, and the final log line are decided together and cannot disagree.
@@ -259,6 +259,7 @@ The manager is a Fable session that runs `status`, merges, and writes one learn 
 After F9, `bin/factory next` on a ten-minute runner timer launches the next frontier ticket after each merge; removing the `ready-for-agent` label parks a ticket, and `FACTORY_STOP` at the runs root pauses the timer; a logged-out runner makes `next` print `login expired` on stderr and exit 1 without launching.
 A ticket is parked only by a run of its current body, so editing the body relaunches it on the next tick.
 A run at `stopped-environment` or `stopped` relaunches on the next tick, and one at `stopped-daily` on the first tick after the UTC date of its `status` file; until then `next` prints `waiting #N: daily budget spent; relaunches after 00:00 UTC` on stderr and launches nothing for it.
+A launch assigns the issue to the runner and no exit unassigns it, so `next` also reads the runner's own `ready-for-agent` issues in the repository (`gh api issues?filter=assigned`) and takes one only when its run is `stopped-daily`; it skips every other one without a line.
 Every other exit except `pr-opened` parks the ticket.
 Before it picks a ticket, `next` runs the `lint` rules on each candidate's body; a candidate that fails is skipped with one stderr line (`lint failed #N: <first error>; edit the body or remove ready-for-agent`) and the next candidate is tried, so a labelled issue with no done-checks block never launches (#314).
 

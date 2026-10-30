@@ -757,10 +757,6 @@ finish() { # status message
   esac
   set_status "$1"
   heartbeat_stop
-  # next's frontier asks for assignee=none, so a daily stop gives the issue back for tomorrow's relaunch.
-  if [ "$1" = stopped-daily ] && [ -n "$ISSUE" ]; then
-    net gh issue edit "$ISSUE" -R "$REPO" --remove-assignee @me > /dev/null 2>&1 || log "could not unassign #$ISSUE; next skips it until it is unassigned"
-  fi
   words=$(exit_words "$1")
   notify "${words%% *}" "$(ticket_name) ${words#* }" "$2"
   log "EXIT $1 ($code): $2"
@@ -2185,7 +2181,7 @@ cmd_next() { # [--dry-run|--install]
   fi
 
   # 4. The frontier: open, ready-for-agent, unassigned issues with no open native blocker, lowest
-  #    number first. A gh failure (offline, unauthenticated, off cron's PATH, empty repo) prints
+  #    number first, plus the runner's own such issues whose run stopped at the daily budget. A gh failure (offline, unauthenticated, off cron's PATH, empty repo) prints
   #    `frontier query failed` and returns 1, so cron mails it rather than the timer stalling silent;
   #    only a successful, empty query falls through to `nothing to launch`.
   local repo ready num b64 body
@@ -2199,6 +2195,16 @@ cmd_next() { # [--dry-run|--install]
     echo "frontier query failed: gh api issues (failed, or no reply in ${NET_TIMEOUT_SEC}s)" >&2
     return 1
   fi
+  # A launch assigns the issue to the runner and nothing unassigns it, so a stopped-daily run's issue comes from
+  # the runner's own ready-for-agent issues in this repository (/issues is the authenticated user's, so no login
+  # lookup); the loop takes one of those only at stopped-daily, since any other is in flight, awaits merge, or parks.
+  local mine lrepo
+  lrepo=$(printf '%s' "$repo" | tr '[:upper:]' '[:lower:]')
+  if ! mine=$(net gh api "issues?filter=assigned&labels=ready-for-agent&state=open&per_page=100" \
+    --jq '.[] | select(.pull_request == null) | select((.repository.full_name | ascii_downcase) == "'"$lrepo"'") | select(.issue_dependencies_summary.blocked_by == 0) | "\(.number) \(.body // "" | @base64)"' 2> /dev/null); then
+    echo "frontier query failed: gh api issues assigned to the runner (failed, or no reply in ${NET_TIMEOUT_SEC}s)" >&2
+    return 1
+  fi
 
   # The run of the issue's current body decides (park_status): no such run launches; stopped-environment
   # and stopped relaunch (the environment, not the ticket, ended them); every other exit parks the issue
@@ -2208,18 +2214,19 @@ cmd_next() { # [--dry-run|--install]
   # A run of an earlier body no longer parks the issue, so an edited body launches on the next tick.
   # The body travels as base64 so its newlines stay on one line; $(...) strips its trailing newlines
   # the way load_ticket's $(gh issue view ...) does, so the key matches the one cmd_run computes.
-  # A ticket at pr-opened is assigned at launch, so it is not in the frontier; if a human unassigns
-  # it, its slot is already counted above while its worktree exists.
+  # A ticket at pr-opened is assigned at launch, so it is skipped among the runner's own; if a human
+  # unassigns it, its slot is already counted above while its worktree exists.
   # A launchable body is linted first (#314): the label alone does not make an issue a ticket, and a run of
   # a body with no done-checks block would burn a round. lint_body runs in a subshell on the body in hand
   # (no second gh call), its stdout dropped; its first LINT line is reported the way a parked issue is
   # (bash -n prints its own line about the deleted temp file first; the first line is the fallback),
   # and the frontier goes on to the next candidate, so one bad issue does not stall the timer.
   local pick="" st_last lint_err lint_line
-  while read -r num b64; do
+  while read -r who num b64; do
     [ -n "$num" ] || continue
     body=$(printf '%s' "$b64" | base64 -d)
     st_last=$(park_status "$num" "$body")
+    [ "$who" = mine ] && [ "$st_last" != stopped-daily ] && continue
     if [ "$st_last" = stopped-daily ] \
       && [ "$(date -u -r "$(run_dir_of "$num" "$body")/status" +%Y-%m-%d)" = "$(today)" ]; then
       echo "waiting #$num: daily budget spent; relaunches after 00:00 UTC" >&2
@@ -2237,7 +2244,7 @@ cmd_next() { # [--dry-run|--install]
       pr-opened) ;;
       *) echo "parked #$num: last run exited $st_last; edit the body or remove ready-for-agent" >&2 ;;
     esac
-  done <<< "$ready"
+  done <<< "$( { sed 's/^/none /' <<< "$ready"; sed 's/^/mine /' <<< "$mine"; } | sort -s -n -k2,2 )"
 
   if [ -z "$pick" ]; then
     echo "nothing to launch"

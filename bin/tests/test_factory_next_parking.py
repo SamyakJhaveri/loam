@@ -56,12 +56,16 @@ class ParkingTests(unittest.TestCase):
         self.assertEqual(proc.returncode, 0, proc.stderr)
         return proc.stdout.strip()
 
-    def next_dry_run(self, *frontier: tuple[int, str]) -> subprocess.CompletedProcess[str]:
-        """cmd_next --dry-run over the given (issue, body) frontier, lowest number first as gh sorts it."""
-        lines = " ".join(f"'{issue} {base64.b64encode(body.encode()).decode()}'" for issue, body in frontier)
+    def next_dry_run(self, *frontier: tuple[int, str],
+                     mine: tuple[tuple[int, str], ...] = (), **env: str) -> subprocess.CompletedProcess[str]:
+        """cmd_next --dry-run over the given unassigned (issue, body) frontier, lowest number first as gh sorts it,
+        and `mine`, the ready-for-agent issues assigned to the runner."""
+        def lines(issues: tuple[tuple[int, str], ...]) -> str:
+            return " ".join(f"'{issue} {base64.b64encode(body.encode()).decode()}'" for issue, body in issues) or "''"
         stubs = ("assert_toolchain_env() { :; }; claude_logged_in() { :; }; claude_version_ok() { :; }; target_repo() { echo o/r; }; "
-                 f"gh() {{ case $1 in api) printf '%s\\n' {lines} ;; esac; }}; cmd_next --dry-run")
-        return sourced(stubs, {"FACTORY_RUNS_ROOT": str(self.runs)})
+                 f"gh() {{ case $2 in repos/*) printf '%s\\n' {lines(frontier)} ;; issues\\?*) printf '%s\\n' {lines(mine)} ;; esac; }}; "
+                 "cmd_next --dry-run")
+        return sourced(stubs, {"FACTORY_RUNS_ROOT": str(self.runs), **env})
 
     def test_old_body_abandon_does_not_park_a_new_body(self) -> None:
         self.run_dir(7, CLEAN + "\nthe old body", "abandon")
@@ -96,16 +100,27 @@ class ParkingTests(unittest.TestCase):
         proc = self.next_dry_run((7, CLEAN))
         self.assertEqual(proc.stdout.strip(), "would launch #7", proc.stderr)
 
-    def test_stopped_daily_exit_unassigns_the_issue(self) -> None:
-        # next's frontier asks for assignee=none, and the launch assigned the issue to the operator (#386).
-        def gh_calls(status: str) -> str:
-            proc = sourced(
-                'RUN=$(mktemp -d); LOG=/dev/null; ISSUE=7; REPO=o/r; heartbeat_stop() { :; }; notify() { :; }; '
-                f'gh() {{ echo "gh $*" >> "$RUN/gh.log"; }}; (finish {status} why); cat "$RUN/gh.log" 2> /dev/null; rm -rf "$RUN"',
-                {"FACTORY_RUNS_ROOT": str(self.runs)})
-            return proc.stdout
-        self.assertIn("gh issue edit 7 -R o/r --remove-assignee @me", gh_calls("stopped-daily"))
-        self.assertNotIn("--remove-assignee", gh_calls("stopped-cap"))
+    def test_runner_assigned_issue_relaunches_only_after_a_past_daily_stop(self) -> None:
+        # The launch assigned the issue to the runner and nothing unassigns it (#386): of the runner's own,
+        # only a stopped-daily run of an earlier UTC day launches, and the rest are skipped without a line.
+        # Four slots, so #6's running run, which holds one, leaves room to launch.
+        for issue, status in ((5, "stopped-cap"), (6, "running"), (7, "stopped-daily"), (8, "pr-opened")):
+            self.run_dir(issue, CLEAN, status)
+        os.utime(self.runs / "7" / key(CLEAN) / "status", (86400, 86400))
+        mine = tuple((n, CLEAN) for n in (5, 6, 7, 8))
+        proc = self.next_dry_run(mine=mine, FACTORY_MAX_PARALLEL="4")
+        self.assertEqual(proc.stdout.strip(), "would launch #7", proc.stderr)
+        self.assertEqual(proc.stderr, "")
+        proc = self.next_dry_run(mine=tuple(m for m in mine if m[0] != 7), FACTORY_MAX_PARALLEL="4")
+        self.assertEqual(proc.stdout.strip(), "nothing to launch", proc.stderr)
+        self.assertEqual(proc.stderr, "")
+
+    def test_issue_assigned_to_someone_else_is_not_listed(self) -> None:
+        # Neither query returns it, so its past daily stop launches nothing.
+        self.run_dir(7, CLEAN, "stopped-daily")
+        os.utime(self.runs / "7" / key(CLEAN) / "status", (86400, 86400))
+        proc = self.next_dry_run()
+        self.assertEqual(proc.stdout.strip(), "nothing to launch", proc.stderr)
 
     def test_trailing_newlines_strip_as_load_ticket_does(self) -> None:
         # gh returns the body raw; load_ticket's $(...) strips its trailing newlines before cmd_run keys it.
