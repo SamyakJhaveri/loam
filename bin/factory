@@ -320,10 +320,12 @@ check_worker() {
     [ "$(grep -E '^contract:' <<<"$w")" = 'contract: 2' ] || err "Worker 'contract:' must be one line 'contract: 2'"
   fi
   # Every `skills:` name is a line of bin/factory.d/skills.txt, matched byte for byte (#37), or a
-  # pstack:<name>, which needs no line (#385) but must be plain letters, digits, - or _, since skill_file
-  # passes it to find -path as a glob; either must resolve through skill_file, since the worker
-  # reads that SKILL.md by path. Skipped under fixtures/, whose historical bodies predate the allowlist,
-  # as check_paths is (lint).
+  # pstack:<name>, any installed pstack skill (#385; owner ruling 30 Oct 2026), which needs no line but
+  # must be plain letters, digits, - or _, since skill_file passes it to find -path as a glob; either
+  # must resolve through skill_file, since the worker reads that SKILL.md by path. Skipped under
+  # fixtures/, whose historical bodies predate the allowlist, as check_paths is (lint).
+  # A pstack skill whose steps write under ~/ gets an advisory warning, never a refusal: the worker's file
+  # tools are denied there (worker-settings.json) but its shell is not sandboxed (#409).
   case "$SRC" in *bin/factory.d/fixtures/*) ;; *)
     while IFS= read -r skill; do
       [ -n "$skill" ] || continue
@@ -331,16 +333,9 @@ check_worker() {
         pstack:*)
           [[ "$skill" =~ ^pstack:[A-Za-z0-9_-]+$ ]] \
             || { err "skill '$skill': a pstack name must be pstack:<letters, digits, - or _>"; continue; }
-          # Only the worker pstack skills (docs/PSTACK.md Who runs what, seed/docs/WORKERS.md.jinja); the rest are human-only.
           case "${skill#pstack:}" in
-            how|why|tdd|blast-radius|interrogate|benchmark-checklist|show-me-your-work|maintain-formal-verification-skill|\
-            principle-laziness-protocol|principle-boundary-discipline|principle-migrate-callers-then-delete-legacy-apis|\
-            principle-separate-before-serializing-shared-state|principle-make-operations-idempotent|\
-            principle-sequence-verifiable-units|principle-build-the-lever|principle-test-behavior-not-implementation|\
-            principle-guard-the-context-window|principle-fix-root-causes|principle-attack-the-premise|\
-            principle-explain-the-number|principle-minimize-reader-load|principle-encode-lessons-in-structure|\
-            principle-prove-it-works) ;;
-            *) err "skill '$skill' is not a worker pstack skill (docs/PSTACK.md, Who runs what)"; continue ;;
+            setup-pstack|reflect|automate-me)  # SKILL.md writes ~/.cursor/rules or ~/.cursor/skills (~/.claude/ in Claude Code)
+              echo "warning: $skill writes under ~/ (operator settings); a Claude worker's file tools are denied there but its shell is not sandboxed (#409)" >&2 ;;
           esac ;;
         *)
           grep -qxF "$skill" "$ROOT/bin/factory.d/skills.txt" \

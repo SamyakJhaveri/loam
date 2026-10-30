@@ -22,6 +22,7 @@ There are no copies in `~/.claude/skills/`, so a pstack update reaches every age
 |-----|-----|--------------|
 | `worker` agent | reads by path, from the index in `~/.claude/agents/worker.md`, grouped by stage (understand, shape, build, debug, measure, review, finish), when the brief names a skill or the work reaches its row | `how`, `why`, `tdd`, `blast-radius`, `interrogate`, `benchmark-checklist`, `show-me-your-work`, `maintain-formal-verification-skill`, 15 principles |
 | `scout` agent | reads by path, index in `~/.claude/agents/scout.md`; never edits | `how`, `why`, `blast-radius`, `principle-explain-the-number` |
+| Factory worker | reads by path each skill the ticket's `skills:` line names (`docs/factory/LOOP.md`) | any installed pstack skill, human-only ones included (owner ruling 2026-10-30) |
 | Lead session | never runs pstack inline; names the skill in a worker's brief | none |
 | Samyak | types `/pstack:<name>` | everything else, below |
 
