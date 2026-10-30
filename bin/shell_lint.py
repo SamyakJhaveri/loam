@@ -115,18 +115,23 @@ def scan(text: str) -> tuple[bool, list[int]]:
     """Return whether the file sets pipefail, and the lines that pipe into grep -q."""
     pipefail, found = False, []
     heredocs: list[tuple[str, bool]] = []  # pending (delimiter, strip leading tabs)
+    carry: tuple[str, int] | None = None  # a pipe that ended the line before, and its line
     for n, line in enumerate(text.splitlines(), 1):
         if heredocs:
             delim, tabs = heredocs[0]
             if (line.lstrip("\t") if tabs else line) == delim:
                 heredocs.pop(0)
             continue
-        toks = words(line)
+        toks = words(line.rstrip().removesuffix("\\"))
         pipefail = pipefail or sets_pipefail(toks)
         if hits(toks):
             found.append(n)
+        elif carry and toks and hits([carry[0], *toks]):
+            found.append(carry[1])
+        if toks:
+            carry = (toks[-1], n) if toks[-1] in PIPES else None
         for i, tok in enumerate(toks[:-1]):
-            if tok == "<<":
+            if tok == "<<" and toks[:i].count("((") <= toks[:i].count("))"):  # not a shift in $(( ))
                 delim = toks[i + 1]
                 if delim == "-" and i + 2 < len(toks):
                     delim = "-" + toks[i + 2]

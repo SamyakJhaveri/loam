@@ -25,6 +25,11 @@ EOF
 echo "${#x}" | grep -Eq y
 x=$'a\\'' ; echo hi | grep -q z
 echo hi |& LC_ALL=C grep --quiet y
+echo hi |
+  grep -q y
+echo hi | \\
+  grep -xq y
+echo $((1 << 2)) | grep -q 4
 """
 
 
@@ -57,7 +62,7 @@ class ShellLintTest(unittest.TestCase):
         res = lint({"cases.sh": CASES})
         self.assertEqual(res.returncode, 1, res.stdout + res.stderr)
         self.assertEqual([line.split(": ")[1] for line in res.stdout.splitlines()],
-                         ["cases.sh:9", "cases.sh:10", "cases.sh:11"])
+                         ["cases.sh:9", "cases.sh:10", "cases.sh:11", "cases.sh:12", "cases.sh:14", "cases.sh:16"])
 
     def test_clean_tree_passes(self) -> None:
         res = lint({"ok.sh": "#!/bin/sh\nset -o pipefail\nout=$(echo hi); grep -q hi <<<\"$out\"\n"})
