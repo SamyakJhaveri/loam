@@ -10,9 +10,9 @@
 #   bin/factory next [--install]    the F9 frontier timer's step: launch the next unblocked ready-for-agent ticket.
 #   bin/factory graders-check       fails when judge.md or reviewer.md drifts from GRADER_MODEL and GRADER_EFFORT.
 #   -C <repo>, before the subcommand or right after it, points lint, run, status, stop, and next at another repository (F8).
-# Lint never executes a check; it reads the body and shells out only to `bash -n` and `gh`. Run and stop, when the
-# operator runs them, add a line to the run dir's owner-events.jsonl (status --criteria); lint of an issue adds one
-# to <runs>/<issue>/owner-events.jsonl, which the issue's next launch moves into its run dir.
+# Lint never executes a check; it reads the body and shells out only to `bash -n`, `gh`, and python3 for the hidden-text rule.
+# Run and stop, when the operator runs them, add a line to the run dir's owner-events.jsonl (status --criteria); lint of
+# an issue adds one to <runs>/<issue>/owner-events.jsonl, which the issue's next launch moves into its run dir.
 set -uo pipefail
 # Only round_zero sets FACTORY_ROUND0 (lib.sh, predict); a run nested in another's round 0 must not inherit it.
 unset FACTORY_ROUND0
@@ -110,6 +110,8 @@ CODEX_BLOCKING='[.findings[]? | select(.severity == "critical" or .severity == "
 SRC=""
 BODY=""
 ERRS=0
+# The one account whose issues next launches: it must have written the body and, when edited, last edited it.
+TICKET_OWNER=SamyakJhaveri
 
 err() { echo "LINT $SRC: $*" >&2; ERRS=$((ERRS + 1)); }
 
@@ -213,6 +215,35 @@ check_header() {
 check_no_skip() {
   grep -qiE '(^|[^A-Za-z_-])skip(s|ped|ping)?([^A-Za-z_-]|$)' <<<"$BODY" && err "the body says 'skip'; a check leaves a ticket only through the abandon exit"
   return 0
+}
+
+# Text a reader of the issue on GitHub cannot see still reaches the worker, so lint rejects it by Unicode category,
+# never by a fixed list (loop-engineering, MIT, scripts/github-triage.mjs: /[\p{Cc}\p{Cf}]/gu): a Cf (zero-width,
+# bidi controls, tags, BOM, word joiner), a Cc other than tab, newline and CR, the variation selectors and the other
+# default-ignorable code points a Cf rule misses (Mn, Lo or unassigned, yet drawn as nothing; the whole plane-14
+# block U+E0000 to U+E0FFF carries bytes the way tags do), and an HTML comment. Unassigned code points in general
+# (Cn) pass, since Python's Unicode data reads newer emoji as Cn. The body is read as UTF-8 by Python, since
+# BSD and GNU grep differ on Unicode ranges; split('\n'), not splitlines(), so VT, FF and U+2028 are still read.
+# Each error names the line and the code point, never the hidden text.
+IFS= read -r -d '' HIDDEN_PY << 'PY' || :
+import sys, unicodedata
+IGNORABLE = {0x034F, 0x115F, 0x1160, 0x17B4, 0x17B5, 0x180B, 0x180C, 0x180D, 0x180F, 0x3164, 0xFFA0}
+for n, line in enumerate(sys.stdin.buffer.read().decode("utf-8", "surrogateescape").split("\n"), 1):
+    if "<!--" in line:
+        print(f"line {n} holds an HTML comment (<!--), which GitHub does not show")
+    for c in line:
+        o, cat = ord(c), unicodedata.category(c)
+        if (cat == "Cf" or (cat == "Cc" and c not in "\t\r") or 0xFE00 <= o <= 0xFE0F or 0xE0000 <= o <= 0xE0FFF
+                or 0xFFF0 <= o <= 0xFFF8 or o in IGNORABLE):
+            print(f"line {n} holds U+{o:04X} ({cat}), a character GitHub does not show")
+PY
+check_hidden_text() {
+  local out e
+  out=$(printf '%s' "$BODY" | python3 -I -X utf8 -c "$HIDDEN_PY") \
+    || { err "python3 could not read the body for hidden text"; return; }
+  while IFS= read -r e; do
+    [ -z "$e" ] || err "$e; delete it"
+  done <<<"$out"
 }
 
 check_block_syntax() {
@@ -657,6 +688,7 @@ lint_body() {
   check_sections
   check_header
   check_no_skip
+  check_hidden_text
   check_block_syntax
   check_check_lines
   check_worker
@@ -855,10 +887,32 @@ load_ticket() { # <issue|file>
     ISSUE="$SRC"; KEY="$SRC"
     REPO=$(target_repo)
     [ -n "$REPO" ] || { echo "factory run: $TARGET has no GitHub origin to read the issue from" >&2; exit 4; }
-    BODY=$(net gh issue view "$ISSUE" -R "$REPO" --json body -q .body) && return 0
+    # The body, its author and its last editor come from one GraphQL read, so the owner check next made is made
+    # again on the very body this run freezes (#389): an edit by another account after next's check, or between
+    # this pass and the frozen one (which fetches again), is refused here, and so is a null editor with a lastEditedAt:
+    # an edit by an account GitHub no longer names. jq -r strips trailing newlines in $(...)
+    # the way gh issue view -q .body did, so the run key is unchanged.
+    local json who editor edited why pid=""
+    if ! json=$(net gh api graphql -f owner="${REPO%%/*}" -f name="${REPO#*/}" -F number="$ISSUE" \
+      -f query='query($owner: String!, $name: String!, $number: Int!) { repository(owner: $owner, name: $name) { issue(number: $number) { body author { login } editor { login } lastEditedAt } } }' 2> /dev/null) \
+      || ! jq -e '.data.repository.issue' > /dev/null 2>&1 <<<"$json"; then
+      why="gh api graphql #$ISSUE failed, or got no reply in ${NET_TIMEOUT_SEC}s"
+    else
+      who=$(jq -r '.data.repository.issue.author.login // ""' <<<"$json")
+      editor=$(jq -r '.data.repository.issue.editor.login // ""' <<<"$json")
+      edited=$(jq -r '.data.repository.issue.lastEditedAt // ""' <<<"$json")
+      if [ "$who" != "$TICKET_OWNER" ] || { [ -n "$editor" ] && [ "$editor" != "$TICKET_OWNER" ]; }; then
+        [ "$who" = "$TICKET_OWNER" ] && who=$editor
+        why="not owner #$ISSUE: written or last edited by ${who:-a deleted account}; edit the body as $TICKET_OWNER or remove ready-for-agent"
+      elif [ -z "$editor" ] && [ -n "$edited" ]; then
+        why="not owner #$ISSUE: last edited by an account GitHub no longer names; edit the body as $TICKET_OWNER or remove ready-for-agent"
+      else
+        BODY=$(jq -r '.data.repository.issue.body // ""' <<<"$json") && return 0
+        why="jq could not read the body of #$ISSUE"
+      fi
+    fi
     # The frozen pass runs after cmd_run wrote owner and running, so a run this process owns ends through
     # finish; a bare exit would leave it `running` with a dead owner until holds_slot reaps it.
-    local why="gh issue view #$ISSUE failed, or got no reply in ${NET_TIMEOUT_SEC}s" pid=""
     [ -n "${FACTORY_FROZEN:-}" ] && read -r pid _ < "${FACTORY_FROZEN%/frozen/factory}/owner" 2> /dev/null
     if [ "$pid" = "$$" ]; then
       RUN="${FACTORY_FROZEN%/frozen/factory}"; LOG="$RUN/factory.log"
@@ -1060,6 +1114,7 @@ owner_lock() { # <run dir> <tries>
 # The owner's pid is gone, a zombie (kill -0 succeeds on one), or reused by a process that started over 300 s
 # from the stored start: lstart is boot time plus ticks, so a wall-clock step moves it, and a reuse that close
 # would need the pid space to wrap. A ps or date that fails or prints nothing cannot tell, so the slot holds.
+# macOS pads lstart with trailing spaces and has BSD date, so the start is trimmed and parsed either way.
 # A gone or zombie pid also holds while a live process has it as its process group id; Linux does not reuse that
 # number meanwhile. The heartbeat loop is such a member and exits within 300 s of the supervisor, so a reap waits at
 # most one beat. A model call has a session of its own, so holds_slot finds it through the run's `call` file.
@@ -1071,10 +1126,17 @@ owner_gone() { # <pid> <ps lstart>
   if [ -z "$stat" ] || [[ "$stat" =~ ^[[:space:]]*Z ]]; then
     ! group_live "$1"; return
   fi
-  start=$(TZ=UTC LC_ALL=C ps -o lstart= -p "$1" 2> /dev/null) && [ -n "$start" ] || return 1
+  start=$(TZ=UTC LC_ALL=C ps -o lstart= -p "$1" 2> /dev/null) && start=${start%"${start##*[![:space:]]}"} \
+    && [ -n "$start" ] || return 1
   [ "$start" = "$2" ] && return 1
-  a=$(date -u -d "$start" +%s 2> /dev/null) && b=$(date -u -d "$2" +%s 2> /dev/null) || return 1
+  a=$(lstart_epoch "$start") && b=$(lstart_epoch "$2") || return 1
   [ $((a > b ? a - b : b - a)) -gt 300 ]
+}
+
+lstart_epoch() { # <ps lstart> -> seconds since the epoch, through GNU date or else BSD date (macOS); fails unless digits
+  local e
+  e=$(date -u -d "$1" +%s 2> /dev/null || LC_ALL=C date -j -u -f '%a %b %d %T %Y' "$1" +%s 2> /dev/null) \
+    && [[ "$e" =~ ^[0-9]+$ ]] && echo "$e"
 }
 
 group_live() { # <pgid> -> 0 when a process other than a zombie has it as its group id, or ps fails
@@ -1109,14 +1171,15 @@ run_project() { # <run dir>
 # outlives a SIGKILLed supervisor, reparented to init, and keeps writing the worktree until CALL_TIMEOUT_SEC. It lives
 # while its group has a member that is not a zombie or, on Linux, a process carries its FACTORY_CALL_TAG.
 holds_slot() { # <run dir>
-  local st o c pid re='^[0-9]+ [A-Z][a-z]{2} [A-Z][a-z]{2} [ 0-9][0-9] [0-9]{2}:[0-9]{2}:[0-9]{2} [0-9]{4}$'
+  local st o t c pid re='^[0-9]+ [A-Z][a-z]{2} [A-Z][a-z]{2} [ 0-9][0-9] [0-9]{2}:[0-9]{2}:[0-9]{2} [0-9]{4}$'
   if [ -f "$1/status" ]; then
     st=$(cat "$1/status")
     [ "$st" = running ] || [ "$st" = waiting-limit ] || return 1
     o=$(cat "$1/owner" 2> /dev/null) || return 0
-    [[ "$o" =~ $re ]] || return 0
-    pid=${o%% *}
-    owner_gone "$pid" "${o#* }" || return 0
+    t=${o%"${o##*[![:space:]]}"}   # a line written on macOS before #448 ends in lstart's padding
+    [[ "$t" =~ $re ]] || return 0
+    pid=${t%% *}
+    owner_gone "$pid" "${t#* }" || return 0
     c=$(cat "$1/call" 2> /dev/null) && { group_live "${c%% *}" || call_tagged 0 "${c#* }"; } && return 0
     owner_lock "$1" 1 || return 0
     if [ "$(cat "$1/owner" 2> /dev/null)" != "$o" ]; then rmdir "$1/owner.lock"; return 0; fi
@@ -1240,13 +1303,15 @@ limit_switch() { # -> 0 after switching accounts, 1 when there is no other accou
 # Waiting for it is loop behavior, not a round: switch accounts and retry at once, or sleep to the reset, or
 # 20 minutes, then repeat the same call.
 limit_wait() { # result.json -> 0 after waiting, 1 when the reply is not a usage limit
-  local e t tz at left secs=1200
+  local e t b tz at left secs=1200
   e=$(jq -r "$RESULT_OBJ | if .is_error == true then (.result // \"\") else empty end" "$1" 2> /dev/null) || e=""
   grep -qiE '(hit|reached) your .*limit' <<< "$e" || return 1
   limit_switch && return 0
   t=$(grep -oiE 'resets? [0-9]{1,2}(:[0-9]{2})? ?[ap]m' <<< "$e" | head -1 | sed -E 's/^[Rr]esets? //')
   tz=$(grep -oE '\([A-Za-z_]+/[A-Za-z_]+\)' <<< "$e" | head -1 | tr -d '()')
-  if [ -n "$t" ] && at=$(TZ="${tz:-UTC}" date -d "$t" +%s 2> /dev/null); then
+  b=${t// /}; b=${b%??}; [[ "$b" == *:* ]] || b=$b:00   # BSD date (macOS) has no -d; it reads "1:30:00pm"
+  if [ -n "$t" ] && at=$(TZ="${tz:-UTC}" date -d "$t" +%s 2> /dev/null \
+      || TZ="${tz:-UTC}" LC_ALL=C date -j -f '%I:%M:%S%p' "$b:00${t: -2}" +%s 2> /dev/null); then
     [ "$at" -gt "$(date +%s)" ] || at=$((at + 86400))
     secs=$((at - $(date +%s) + 60))
   fi
@@ -2098,6 +2163,7 @@ cmd_run() {
   # Through a temp file, so a kill mid-write never leaves an empty owner (held for good).
   local start
   start=$(TZ=UTC LC_ALL=C ps -o lstart= -p "$$")
+  start=${start%"${start##*[![:space:]]}"}   # macOS pads lstart with trailing spaces; holds_slot matches up to the year
   [ -n "$start" ] && owner_lock "$RUN" 65 || finish stopped-environment "could not read this run's start time or take $RUN/owner.lock"
   printf '%s %s\n' "$$" "$start" > "$RUN/owner.tmp" && mv -f "$RUN/owner.tmp" "$RUN/owner" \
     || { rmdir "$RUN/owner.lock"; finish stopped-environment "could not write $RUN/owner"; }
@@ -2373,7 +2439,7 @@ cmd_next() { # [--dry-run|--install]
     return 1
   fi
   if ! ready=$(net gh api "repos/$repo/issues?labels=ready-for-agent&state=open&assignee=none&per_page=100" \
-    --jq 'sort_by(.number)[] | select(.pull_request == null) | select(.issue_dependencies_summary.blocked_by == 0) | "\(.number) \(.body // "" | @base64)"' 2> /dev/null); then
+    --jq 'sort_by(.number)[] | select(.pull_request == null) | select(.issue_dependencies_summary.blocked_by == 0) | "\(.number) \(.user.login) \(.body // "" | @base64)"' 2> /dev/null); then
     echo "frontier query failed: gh api issues (failed, or no reply in ${NET_TIMEOUT_SEC}s)" >&2
     return 1
   fi
@@ -2383,8 +2449,8 @@ cmd_next() { # [--dry-run|--install]
   # one of those only at stopped-daily, since any other is in flight, awaits merge, or parks.
   local mine lrepo
   lrepo=$(printf '%s' "$repo" | tr '[:upper:]' '[:lower:]')
-  if ! mine=$(net gh api "issues?filter=assigned&labels=ready-for-agent&state=open&per_page=100" --paginate \
-    --jq '.[] | select(.pull_request == null) | select((.repository.full_name | ascii_downcase) == "'"$lrepo"'") | select(.issue_dependencies_summary.blocked_by == 0) | "\(.number) \(.body // "" | @base64)"' 2> /dev/null); then
+  if ! mine=$(net gh api "/issues?filter=assigned&labels=ready-for-agent&state=open&per_page=100" --paginate \
+    --jq '.[] | select(.pull_request == null) | select((.repository.full_name // "" | ascii_downcase) == "'"$lrepo"'") | select(.issue_dependencies_summary.blocked_by == 0) | "\(.number) \(.user.login) \(.body // "" | @base64)"' 2> /dev/null); then
     echo "frontier query failed: gh api issues assigned to the runner (failed, or no reply in ${NET_TIMEOUT_SEC}s)" >&2
     return 1
   fi
@@ -2396,7 +2462,7 @@ cmd_next() { # [--dry-run|--install]
   # launching, so the timer does not spin the issue against the spent budget every tick.
   # A run of an earlier body no longer parks the issue, so an edited body launches on the next tick.
   # The body travels as base64 so its newlines stay on one line; $(...) strips its trailing newlines
-  # the way load_ticket's $(gh issue view ...) does, so the key matches the one cmd_run computes.
+  # the way load_ticket's $(jq -r .body) of its gh api graphql read does, so the key matches the one cmd_run computes.
   # A ticket at pr-opened is assigned at launch, so it is skipped among the runner's own; if a human
   # unassigns it, its slot is already counted above while its worktree exists.
   # A launchable body is linted first (#314): the label alone does not make an issue a ticket, and a run of
@@ -2404,8 +2470,15 @@ cmd_next() { # [--dry-run|--install]
   # (no second gh call), its stdout dropped; its first LINT line is reported the way a parked issue is
   # (bash -n prints its own line about the deleted temp file first; the first line is the fallback),
   # and the frontier goes on to the next candidate, so one bad issue does not stall the timer.
-  local pick="" st_last lint_err lint_line
-  while read -r who num b64; do
+  # Before lint, the owner check: the worker runs the body unattended and Loam is public, so a body another account
+  # wrote, or last edited (GraphQL's editor, null for a body never edited), is passed over, and so is one whose
+  # editor gh could not read, or a null editor with a lastEditedAt (an account GitHub no longer names; jq names it
+  # "(unnamed)", which no login can be). Once a candidate is picked, later ones skip the editor call, so a stalled
+  # GraphQL costs a tick one timeout, not one per candidate; they still get the author and lint lines.
+  # </dev/null keeps gh off the candidate list this loop reads on stdin. This check only
+  # picks; load_ticket checks the owner again on the body the run freezes.
+  local pick="" st_last lint_err lint_line author editor
+  while read -r who num author b64; do
     [ -n "$num" ] || continue
     body=$(printf '%s' "$b64" | base64 -d)
     st_last=$(park_status "$num" "$body")
@@ -2416,6 +2489,26 @@ cmd_next() { # [--dry-run|--install]
     fi
     case "$st_last" in
       none|stopped-environment|stopped|stopped-daily)
+        if [ "$author" != "$TICKET_OWNER" ]; then
+          echo "not owner #$num: written or last edited by $author; edit the body as $TICKET_OWNER or remove ready-for-agent" >&2
+          continue
+        fi
+        if [ -z "$pick" ]; then
+          if ! editor=$(net gh api graphql -f owner="${repo%%/*}" -f name="${repo#*/}" -F number="$num" \
+            -f query='query($owner: String!, $name: String!, $number: Int!) { repository(owner: $owner, name: $name) { issue(number: $number) { editor { login } lastEditedAt } } }' \
+            --jq '.data.repository.issue | .editor.login // (if .lastEditedAt then "(unnamed)" else "" end)' < /dev/null 2> /dev/null); then
+            echo "not owner #$num: could not read the last editor with gh (failed, or no reply in ${NET_TIMEOUT_SEC}s); passed over" >&2
+            continue
+          fi
+          if [ "$editor" = "(unnamed)" ]; then
+            echo "not owner #$num: last edited by an account GitHub no longer names; edit the body as $TICKET_OWNER or remove ready-for-agent" >&2
+            continue
+          fi
+          if [ -n "$editor" ] && [ "$editor" != "$TICKET_OWNER" ]; then
+            echo "not owner #$num: written or last edited by $editor; edit the body as $TICKET_OWNER or remove ready-for-agent" >&2
+            continue
+          fi
+        fi
         if ! lint_err=$( { SRC="#$num"; BODY="$body"; ERRS=0; lint_body > /dev/null; } 2>&1 ); then
           lint_line=$(grep -m1 "^LINT #$num: " <<<"$lint_err") || lint_line=${lint_err%%$'\n'*}
           lint_err=${lint_line#"LINT #$num: "}

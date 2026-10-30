@@ -27,7 +27,7 @@ class CIConfig(unittest.TestCase):
     def test_verify_job_has_no_inert_gate(self):
         """An `if:` or `continue-on-error:` in the verify job would make check advisory."""
         w = TEST.read_text()
-        job = w[w.index("  verify:"):]
+        job = w[w.index("  verify:"):w.index("  stub-sweep:")]
         self.assertNotIn("continue-on-error:", job)
         self.assertNotIn("if:", job)
 
@@ -40,7 +40,7 @@ class CIConfig(unittest.TestCase):
     def test_stub_sweep_job_runs_the_sweep(self):
         """verify-loam's stub sweep runs on every push and PR; a dropped step or a gate would let a break pass."""
         w = TEST.read_text()
-        job = w[w.index("  stub-sweep:"):]
+        job = w[w.index("  stub-sweep:"):w.index("  factory-macos:")]
         self.assertIn("- name: Run verify-loam stub sweep\n        run: .claude/skills/verify-loam/control-loam sweep", job)
         self.assertNotIn("continue-on-error:", job)
         self.assertNotIn("if:", job)

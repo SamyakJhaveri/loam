@@ -104,3 +104,32 @@ jobs:
 
       - name: Run verify-loam stub sweep
         run: .claude/skills/verify-loam/control-loam sweep
+
+  # The factory tests on macOS, where ps and date differ (#448). Not a required check.
+  factory-macos:
+    runs-on: macos-15
+    timeout-minutes: 15
+    continue-on-error: true  # reports macOS failures without blocking until they are fixed
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+          cache-dependency-path: .github/ci/python-requirements.txt
+
+      - name: Install Python dependencies
+        run: python3 -m pip install -r .github/ci/python-requirements.txt
+
+      - name: Configure Git identity
+        run: |
+          git config --global user.name "CI"
+          git config --global user.email "ci@loam"
+
+      - name: Run factory tests
+        run: python3 -m pytest -rs -n auto bin/tests/test_factory*.py

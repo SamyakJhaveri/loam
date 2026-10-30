@@ -60,8 +60,8 @@ class NetTimeoutTests(unittest.TestCase):
         self.assertEqual((self.run_dir / "status").read_text().strip(), "stopped-environment")
         alerts = self.alerts.read_text()
         self.assertIn("stopped on a machine or tool problem", alerts)
-        self.assertIn("gh issue view #7", alerts)
-        self.assertIn("EXIT stopped-environment (4): gh issue view #7", (self.run_dir / "factory.log").read_text())
+        self.assertIn("gh api graphql #7", alerts)
+        self.assertIn("EXIT stopped-environment (4): gh api graphql #7", (self.run_dir / "factory.log").read_text())
 
     def test_run_owned_by_another_process_is_left_alone(self) -> None:
         proc, took = self.load("1")
@@ -114,7 +114,7 @@ class WatchdogTests(unittest.TestCase):
         self.assertNotIn("late", proc.stdout)
         proc, took = self.bash(". bin/factory; out=$(net_watch bash -c 'kill -STOP $$; echo x'); echo \"rc=$? $out\"",
                                FACTORY_SOURCED="1")
-        self.assertLess(took, 4)
+        self.assertLess(took, 10)  # TERM and CONT end it at ~1 s, the KILL fallback at ~6 s; with no watchdog it hangs
         self.assertNotIn("rc=0", proc.stdout)
         self.assertNotIn("x", proc.stdout)
         proc, _ = self.bash(". bin/factory; f() { cat; echo err >&2; return 3; }; printf 'in\\n' | net_watch f; "
