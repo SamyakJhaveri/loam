@@ -2215,10 +2215,11 @@ cmd_next() { # [--dry-run|--install]
   fi
   # A launch assigns the issue to the runner and nothing unassigns it, so a stopped-daily run's issue comes from
   # the runner's own ready-for-agent issues in this repository (/issues is the authenticated user's, so no login
-  # lookup); the loop takes one of those only at stopped-daily, since any other is in flight, awaits merge, or parks.
+  # lookup, and every page, since it spans all the runner's repositories and gh applies --jq per page); the loop takes
+  # one of those only at stopped-daily, since any other is in flight, awaits merge, or parks.
   local mine lrepo
   lrepo=$(printf '%s' "$repo" | tr '[:upper:]' '[:lower:]')
-  if ! mine=$(net gh api "issues?filter=assigned&labels=ready-for-agent&state=open&per_page=100" \
+  if ! mine=$(net gh api "issues?filter=assigned&labels=ready-for-agent&state=open&per_page=100" --paginate \
     --jq '.[] | select(.pull_request == null) | select((.repository.full_name | ascii_downcase) == "'"$lrepo"'") | select(.issue_dependencies_summary.blocked_by == 0) | "\(.number) \(.body // "" | @base64)"' 2> /dev/null); then
     echo "frontier query failed: gh api issues assigned to the runner (failed, or no reply in ${NET_TIMEOUT_SEC}s)" >&2
     return 1

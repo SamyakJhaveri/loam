@@ -260,7 +260,7 @@ After F9, `bin/factory next` on a ten-minute runner timer launches the next fron
 A ticket is parked only by a run of its current body, so editing the body relaunches it on the next tick.
 A run at `stopped-environment` or `stopped` relaunches on the next tick, and one at `stopped-daily` on the first tick after the UTC date of its `status` file; until then `next` prints `waiting #N: daily budget spent; relaunches after 00:00 UTC` on stderr and launches nothing for it.
 Every other exit except `pr-opened` parks the ticket.
-A launch assigns the issue to the runner and no exit unassigns it, so `next` also reads the runner's own `ready-for-agent` issues in the repository (`gh api issues?filter=assigned`) and takes one only when its run is `stopped-daily`; it skips every other one without a line.
+A launch assigns the issue to the runner and no exit unassigns it, so `next` also reads the runner's own `ready-for-agent` issues in the repository (`gh api issues?filter=assigned --paginate`, every page, since the query spans all the runner's repositories) and takes one only when its run is `stopped-daily`; it skips every other one without a line.
 The daily ledger is the runner's across targets, so while any run under the runs base reads `stopped-daily` with a `status` file dated today (UTC), `next` launches nothing and prints `waiting: a run stopped at today's daily budget; nothing launches before 00:00 UTC` on stderr.
 Before it picks a ticket, `next` runs the `lint` rules on each candidate's body; a candidate that fails is skipped with one stderr line (`lint failed #N: <first error>; edit the body or remove ready-for-agent`) and the next candidate is tried, so a labelled issue with no done-checks block never launches (#314).
 

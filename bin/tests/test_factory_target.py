@@ -180,7 +180,7 @@ class TargetTests(unittest.TestCase):
             'sort_by(.number)[] | select(.pull_request == null) | select(.issue_dependencies_summary.blocked_by == 0)'
             ' | "\\(.number) \\(.body // "" | @base64)"',
             # /issues has no repository in its path; the runner's own issues are kept to this one by the filter.
-            "api issues?filter=assigned&labels=ready-for-agent&state=open&per_page=100 --jq "
+            "api issues?filter=assigned&labels=ready-for-agent&state=open&per_page=100 --paginate --jq "
             '.[] | select(.pull_request == null) | select((.repository.full_name | ascii_downcase) == "acme/widget")'
             ' | select(.issue_dependencies_summary.blocked_by == 0) | "\\(.number) \\(.body // "" | @base64)"'])
 
