@@ -14,7 +14,7 @@ Keep rows a check enforces, so each enforcer stays findable; drop a row only whe
 | A plugin file change bumps its version | `bin/plugin_versions.py` | check: `bin/check` step "plugin versions" |
 | Skills and agents name only paths, skills and agents that exist | `bin/check` | check: `bin/check` step "skill and agent frontmatter + references" |
 | Always-loaded prose does not grow, and its cap equals the measured size (a shrink lowers the cap in the same PR) | `bin/always_loaded_prose.py` | check: `bin/check` step "always-loaded prose cap" fails over and under the cap (#303) |
-| Skill listings stay within their token budget | `bin/skill_listing_weight.py` | check: `bin/check` step "skill-listing token weight" |
+| Skill listings do not grow, and each budget equals the measured weight (a shrink lowers the budget in the same PR) | `bin/skill_listing_weight.py` | check: `bin/check` step "skill-listing token weight" fails over and under each budget (#313, guarded by `bin/tests/test_skill_listing_weight.py`) |
 | No trailing whitespace or conflict markers in committed, staged, unstaged or untracked non-ignored files (`*.patch` and `*.diff` exempt) | `bin/check` | check: `bin/check` step "shell syntax + whitespace" (`git diff --check`; untracked files since #282, guarded by `bin/tests/test_check_whitespace.py`) |
 | Graders run on their pinned model and effort | `bin/factory` | check: `bin/check` step "factory grader model and effort" |
 | Release only from a verified HEAD | `bin/release.sh` | script: `bin/release.sh` refuses without a clean verify-loam run |
