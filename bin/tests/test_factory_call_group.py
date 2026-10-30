@@ -12,6 +12,7 @@ from __future__ import annotations
 import os
 import pathlib
 import shutil
+import signal
 import subprocess
 import tempfile
 import time
@@ -22,11 +23,13 @@ INHERITED = ("FACTORY_ROOT", "FACTORY_GH", "LOAM_FACTORY_TOOLCHAIN", "LOAM_FACTO
 
 # FAKE_IGNORE_TERM makes the writer ignore TERM, so only KILL stops it. FAKE_OWN_SESSION starts it in a session of its
 # own, out of the call's group, as Claude Code starts each Bash tool shell, so only the FACTORY_CALL_TAG sweep finds it.
+# FAKE_HANG keeps the call running after the writer starts.
 WRITER = """w="[ -z '${FAKE_IGNORE_TERM:-}' ] || trap '' TERM; while :; do echo x >> '$FAKE_DIR/mark'; sleep 0.2; done"
 if [ -n "${FAKE_OWN_SESSION:-}" ]; then perl -MPOSIX -e 'setsid; exec @ARGV' bash -c "$w" > /dev/null 2>&1 &
 else ( eval "$w" ) > /dev/null 2>&1 &
 fi
 sleep 0.5
+[ -z "${FAKE_HANG:-}" ] || while :; do sleep 0.2; done
 """
 FAKE_CLAUDE = """#!/usr/bin/env bash
 cat > "$FAKE_DIR/stdin"
@@ -70,7 +73,7 @@ class CallGroupTests(unittest.TestCase):
             (self.bin / name).chmod(0o755)
         self.addCleanup(subprocess.run, ["pkill", "-f", str(self.top)], check=False)
 
-    def run_call(self, call: str, **extra: str) -> subprocess.CompletedProcess[str]:
+    def call_cmd(self, call: str, **extra: str) -> dict:
         script = (
             f"RUN='{self.run_dir}'; WORKTREE='{self.wt}'; LOG=\"$RUN/factory.log\"; KEY=7; IS_FILE=1\n"
             'LEDGER="$RUN/ledger.jsonl"; DAILY="$RUN/daily.jsonl"; DECISIONS="$RUN/decisions.md"\n'
@@ -80,12 +83,15 @@ class CallGroupTests(unittest.TestCase):
             f"{call}; echo returned:$?\n"
         )
         env = {k: v for k, v in os.environ.items() if k not in INHERITED and not k.startswith("FACTORY_")}
-        return subprocess.run(["bash", "-c", '. "$0"\n' + script, "bin/factory"], cwd=ROOT,
-                              env={**env, "FACTORY_SOURCED": "1", "FACTORY_ROOT": str(ROOT),
-                                   "FACTORY_RUNS_ROOT": str(self.top / "runs"), "FAKE_DIR": str(self.top),
-                                   "FACTORY_WORKER_ADVISOR": "", "CLAUDE_CONFIG_DIR": str(self.top / "cc"),
-                                   "PATH": f"{self.bin}:{env['PATH']}", **extra},
-                              capture_output=True, text=True, check=False, timeout=60)
+        return {"args": ["bash", "-c", '. "$0"\n' + script, "bin/factory"], "cwd": ROOT,
+                "env": {**env, "FACTORY_SOURCED": "1", "FACTORY_ROOT": str(ROOT),
+                        "FACTORY_RUNS_ROOT": str(self.top / "runs"), "FAKE_DIR": str(self.top),
+                        "FACTORY_WORKER_ADVISOR": "", "CLAUDE_CONFIG_DIR": str(self.top / "cc"),
+                        "PATH": f"{self.bin}:{env['PATH']}", **extra},
+                "text": True}
+
+    def run_call(self, call: str, **extra: str) -> subprocess.CompletedProcess[str]:
+        return subprocess.run(**self.call_cmd(call, **extra), capture_output=True, check=False, timeout=60)
 
     def assert_no_survivor(self, proc: subprocess.CompletedProcess[str]) -> None:
         self.assertIn("returned:0", proc.stdout, proc.stderr)
@@ -117,6 +123,29 @@ class CallGroupTests(unittest.TestCase):
         proc = self.run_call("worker_round 1", FAKE_OWN_SESSION="1")
         self.assert_no_survivor(proc)
         self.assertIn("left processes behind", (self.run_dir / "factory.log").read_text())
+
+    def test_signalled_supervisor_ends_the_call(self) -> None:
+        # Ctrl-C, TERM or HUP reaches the supervisor, not a call in its own session; the supervisor ends the call's
+        # group and tagged processes before it exits, so none outlives it to race the EXIT trap's worktree removal.
+        for sig, status in ((signal.SIGINT, 130), (signal.SIGTERM, 143), (signal.SIGHUP, 129)):
+            with self.subTest(sig=sig.name):
+                mark = self.top / "mark"
+                mark.unlink(missing_ok=True)
+                proc = subprocess.Popen(**self.call_cmd("worker_round 1", FAKE_OWN_SESSION="1", FAKE_HANG="1"),
+                                        stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                deadline = time.time() + 20
+                while not mark.exists() and time.time() < deadline:
+                    time.sleep(0.1)
+                time.sleep(0.5)
+                proc.send_signal(sig)
+                self.assertEqual(proc.wait(timeout=30), status)
+                before = mark.stat().st_size
+                time.sleep(1)
+                self.assertEqual(mark.stat().st_size, before, "the writer kept writing after the supervisor exited")
+                left = subprocess.run(["pgrep", "-f", str(self.top)], capture_output=True, text=True,
+                                      check=False).stdout
+                self.assertEqual(left, "", "a process the call started outlived the supervisor")
+                self.assertIn(f"got {sig.name[3:]} during a model call", (self.run_dir / "factory.log").read_text())
 
     def test_worker_call_keeps_its_prompt_and_env(self) -> None:
         proc = self.run_call("worker_round 1", FACTORY_WORKER_MODEL="claude-pin-1")
