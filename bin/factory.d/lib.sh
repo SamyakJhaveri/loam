@@ -15,15 +15,20 @@ fail() { printf '\nFAIL %s: %s\n' "$1" "${2:-}"; n_fail=$((n_fail + 1)); }
 # it takes minutes per stop, and the supervisor's own check run is the one run per round (LOOP.md).
 guard() { [ -n "${LOAM_HOOK:-}" ] && [ "${1:-}" = bin/check ] && return 0; "$@"; }
 # predict NAME CMD...: CMD exits 0 exactly when base shows the failure check NAME predicts (CONTRACT.md, Done checks).
-# Only round 0 sets FACTORY_ROUND0 and runs CMD; a non-zero exit prints the PREDICT-MISS line round_zero turns into
-# ticket-defect. CMD's own output is dropped, so it cannot print a PASS line. Every other run prints nothing.
+# Only round 0 sets FACTORY_ROUND0, to a file outside the worktree, and only then does CMD run. A miss (CMD exits
+# non-zero, or the line has no CMD) is appended to that file, not printed, so a redirect on the predict line cannot
+# hide it from round_zero; CMD's own output is dropped, so it cannot print a PASS line. Every other run prints nothing.
 predict() {
-  local name=$1 rc
+  local name=${1:-} rc
+  [ -n "${FACTORY_ROUND0:-}" ] || return 0
   shift
-  [ "${FACTORY_ROUND0:-}" = 1 ] || return 0
+  if [ $# -eq 0 ]; then
+    printf '%s has no command\n' "$name" >> "$FACTORY_ROUND0"
+    return 0
+  fi
   "$@" > /dev/null 2>&1
   rc=$?
-  [ "$rc" -eq 0 ] || printf '\nPREDICT-MISS %s exit %s\n' "$name" "$rc"
+  [ "$rc" -eq 0 ] || printf '%s exits %s\n' "$name" "$rc" >> "$FACTORY_ROUND0"
   return 0
 }
 

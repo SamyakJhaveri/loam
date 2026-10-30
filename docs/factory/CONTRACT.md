@@ -25,7 +25,8 @@ The body starts at `Brief:` or `Part of`; in a file the first `#` line is the ti
    A check is one line of the block and ends in `pass NAME` or `fail NAME reason`, in the form `A && pass N || fail N "why"`.
    A check that calls `guard` (for example `guard bin/check` or `out=$(guard cmd)`) is a regression guard allowed to pass on `main`; every other check must print FAIL on `main`.
    A check that fails on `main` proves the ticket only when it fails for the reason its author predicted, so a ticket whose Worker section says `contract: 2` gives each non-guard check one line `predict NAME CMD...`, NAME being the word after that check's `pass`, and CMD exiting 0 exactly when base shows the predicted failure (for example `predict greet test -f greeting.txt` for a check that wants `hello` in an existing `greeting.txt`).
-   Round 0 runs CMD at base and refuses the ticket as `ticket-defect`, naming the check, when CMD exits non-zero; in every later round, and under the worker's Stop hook, a predict line prints nothing and returns 0.
+   Round 0 runs CMD at base and refuses the ticket as `ticket-defect`, naming the check, when CMD exits non-zero or the line has no CMD; it records a miss in a file of its own, so a redirect on the line cannot hide it, and lint rejects a predict line whose CMD starts with a comment, a control operator or a redirect.
+   In every later round, and under the worker's Stop hook, a predict line prints nothing and returns 0.
    A guard takes no predict line; a body with no contract line may carry predict lines, which round 0 runs, but needs none.
    The block is green when it prints no FAIL line; an abort or an `exit` anywhere in the block, at base or in a later round, adds `FAIL checks-aborted`, because `checks.sh` then stops before the end line freeze writes after the block (#180, #277).
    No `skip`.

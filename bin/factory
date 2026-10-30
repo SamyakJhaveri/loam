@@ -322,7 +322,8 @@ check_predicts() {
     [ -n "$line" ] || continue
     read -r _ name n _ <<<"$line"
     name=${name//[\"\']/}
-    if [ -z "$n" ]; then
+    # A word that starts a comment, a control operator, or a redirect is no command: the shell hands predict none.
+    if [ -z "$n" ] || [[ "$n" =~ ^[\#\;\&\|\<\>\)] ]]; then
       err "predict line has no command: $line"
     elif ! grep -qxF -- "$name" <<<"$names"; then
       if grep -qxF -- "$name" <<<"$guards"; then
@@ -1254,7 +1255,7 @@ run_checks() { # dir out
 round_zero() {
   # The block writes round-0.out; only a clean verdict renames it to round-0.checks, the file cmd_run
   # resumes on, so a relaunch after a defect, or after a kill mid-block, runs round 0 again.
-  local out="$RUN/round-0.out" guards name base wt msg
+  local out="$RUN/round-0.out" misses="$RUN/round-0.predict" guards name why base wt msg
   base=$(cat "$RUN/base.sha"); wt="${WORKTREE}-base"
   # Round 0 belongs to base only: run the frozen checks at base.sha in a detached temporary
   # worktree, never in the ticket worktree, which a relaunch may leave ahead of base with the
@@ -1268,15 +1269,18 @@ round_zero() {
     [ -e "$wt" ] && msg="$msg; the path exists but is not a registered worktree, delete it by hand"
     finish stopped-environment "$msg"
   fi
-  # FACTORY_ROUND0 reaches this checks.sh alone, so a later round's predict lines stay quiet (lib.sh).
-  ( export FACTORY_ROUND0=1; run_checks "$wt" "$out" )
+  # FACTORY_ROUND0 reaches this checks.sh alone, so a later round's predict lines stay quiet (lib.sh). It names the
+  # file predict appends misses to, which a redirect on a predict line cannot reach.
+  : > "$misses"
+  ( export FACTORY_ROUND0="$misses"; run_checks "$wt" "$out" )
   git -C "$MAIN_CHECKOUT" worktree remove --force "$wt" > /dev/null 2>&1
   grep -q '^FAIL checks-aborted' "$out" \
     && finish ticket-defect "checks.sh aborted on $(cut -c1-8 "$RUN/base.sha") before the block ended; see $out"
-  # A predict line whose command exits non-zero: the check fails on base, but not for the reason its author predicted.
-  while read -r _ name _ rc; do
-    finish ticket-defect "check $name fails on $(cut -c1-8 "$RUN/base.sha"), but its predict command exits $rc, so base does not fail for the predicted reason; see $out"
-  done < <(grep '^PREDICT-MISS ' "$out")
+  # A predict line whose command exits non-zero, or that has none: the check fails on base, but not for the reason
+  # its author predicted.
+  while read -r name why; do
+    finish ticket-defect "check $name fails on $(cut -c1-8 "$RUN/base.sha"), but its predict line $why, so base does not fail for the predicted reason; see $misses"
+  done < "$misses"
   guards=$(guard_checks | pass_names)
   while read -r _ name _; do
     printf '%s\n' "$guards" | grep -qxF "$name" && continue
