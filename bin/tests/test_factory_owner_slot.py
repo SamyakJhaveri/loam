@@ -167,6 +167,27 @@ class OwnerSlotTests(unittest.TestCase):
         self.assertEqual((self.run_dir / "status").read_text(), "stopped-environment\n")
         self.assertEqual(len(self.alerts.read_text().splitlines()), 1)
 
+    def test_dead_owner_holds_while_its_model_call_lives(self) -> None:
+        # call_start puts the call in a session of its own, so a SIGKILL to the supervisor's group leaves it running
+        # (reparented to init) and writing the worktree; the slot holds until the call is gone.
+        ready = self.top / "ready"
+        script = (f". bin/factory\nRUN='{self.run_dir}'; LOG='{self.top}/factory.log'\n"
+                  f"call_start '{self.top}' sh -c 'echo $$ > \"{ready}\"; exec sleep 60'\nwait")
+        base = {k: v for k, v in os.environ.items() if k not in INHERITED}
+        sup = subprocess.Popen(["bash", "-c", script], cwd=ROOT, env={**base, "FACTORY_SOURCED": "1"},
+                               stdin=subprocess.DEVNULL, start_new_session=True)
+        wait_until(lambda: ready.exists() and ready.read_text().strip() != "")
+        call = int(ready.read_text())
+        self.addCleanup(lambda: subprocess.run(["pkill", "-KILL", "-g", str(call)], check=False))
+        os.killpg(sup.pid, signal.SIGKILL)
+        sup.wait()
+        self.owner(f"{sup.pid} {OLD}")
+        self.assert_held()
+        os.killpg(call, signal.SIGKILL)
+        wait_until(lambda: not self.holds())
+        self.assertEqual((self.run_dir / "status").read_text(), "stopped-environment\n")
+        self.assertEqual(len(self.alerts.read_text().splitlines()), 1)
+
 
 if __name__ == "__main__":
     unittest.main()

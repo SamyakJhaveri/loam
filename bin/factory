@@ -958,23 +958,27 @@ owner_lock() { # <run dir> <tries>
 # The owner's pid is gone, a zombie (kill -0 succeeds on one), or reused by a process that started over 300 s
 # from the stored start: lstart is boot time plus ticks, so a wall-clock step moves it, and a reuse that close
 # would need the pid space to wrap. A ps or date that fails or prints nothing cannot tell, so the slot holds.
-# A gone or zombie pid also holds while a live process has it as its process group id (a worker call orphaned
-# by a SIGKILL outside tmux); Linux does not reuse that number meanwhile. The heartbeat loop is such a member
-# and exits within 300 s of the supervisor, so a reap waits at most one beat.
+# A gone or zombie pid also holds while a live process has it as its process group id; Linux does not reuse that
+# number meanwhile. The heartbeat loop is such a member and exits within 300 s of the supervisor, so a reap waits at
+# most one beat. A model call has a session of its own, so holds_slot finds it through the run's `call` file.
 owner_gone() { # <pid> <ps lstart>
-  local stat= g start a b
+  local stat= start a b
   if kill -0 "$1" 2> /dev/null; then
     stat=$(ps -o stat= -p "$1" 2> /dev/null) && [ -n "$stat" ] || return 1
   fi
   if [ -z "$stat" ] || [[ "$stat" =~ ^[[:space:]]*Z ]]; then
-    g=$(ps -e -o pgid=,stat= 2> /dev/null) && [ -n "$g" ] || return 1
-    awk -v p="$1" '$1 == p && $2 !~ /^Z/ { f = 1 } END { exit !f }' <<< "$g" && return 1
-    return 0
+    ! group_live "$1"; return
   fi
   start=$(TZ=UTC LC_ALL=C ps -o lstart= -p "$1" 2> /dev/null) && [ -n "$start" ] || return 1
   [ "$start" = "$2" ] && return 1
   a=$(date -u -d "$start" +%s 2> /dev/null) && b=$(date -u -d "$2" +%s 2> /dev/null) || return 1
   [ $((a > b ? a - b : b - a)) -gt 300 ]
+}
+
+group_live() { # <pgid> -> 0 when a process other than a zombie has it as its group id, or ps fails
+  local g
+  g=$(ps -e -o pgid=,stat= 2> /dev/null) && [ -n "$g" ] || return 0
+  awk -v p="$1" '$1 == p && $2 !~ /^Z/ { f = 1 } END { exit !f }' <<< "$g"
 }
 
 # The project a run dir belongs to, from where it sits, not the caller's REPO: other_live_run walks every
@@ -999,8 +1003,11 @@ run_project() { # <run dir>
 # `owner` still reads the line it judged, so a relaunch that rewrote it keeps its slot; that caller
 # sends the one alert. A run killed between `launched` and its owner write keeps whatever status it
 # had; with no status at all it holds the slot until the operator removes its directory.
+# A gone owner also holds while the model call it named in `call` (call_start) lives: in its own session the call
+# outlives a SIGKILLed supervisor, reparented to init, and keeps writing the worktree until CALL_TIMEOUT_SEC. It lives
+# while its group has a member that is not a zombie or, on Linux, a process carries its FACTORY_CALL_TAG.
 holds_slot() { # <run dir>
-  local st o pid re='^[0-9]+ [A-Z][a-z]{2} [A-Z][a-z]{2} [ 0-9][0-9] [0-9]{2}:[0-9]{2}:[0-9]{2} [0-9]{4}$'
+  local st o c pid re='^[0-9]+ [A-Z][a-z]{2} [A-Z][a-z]{2} [ 0-9][0-9] [0-9]{2}:[0-9]{2}:[0-9]{2} [0-9]{4}$'
   if [ -f "$1/status" ]; then
     st=$(cat "$1/status")
     [ "$st" = running ] || [ "$st" = waiting-limit ] || return 1
@@ -1008,6 +1015,7 @@ holds_slot() { # <run dir>
     [[ "$o" =~ $re ]] || return 0
     pid=${o%% *}
     owner_gone "$pid" "${o#* }" || return 0
+    c=$(cat "$1/call" 2> /dev/null) && { group_live "${c%% *}" || call_tagged 0 "${c#* }"; } && return 0
     owner_lock "$1" 1 || return 0
     if [ "$(cat "$1/owner" 2> /dev/null)" != "$o" ]; then rmdir "$1/owner.lock"; return 0; fi
     st=$(cat "$1/status" 2> /dev/null)
@@ -1301,9 +1309,84 @@ codex_result() { # jsonl exit_code [duration_ms] -> result JSON on stdout; durat
     || printf '{"subtype":"no-result","is_error":true,"num_turns":0,"duration_ms":0,"total_cost_usd":null,"usage":null,"result":"codex result parse failed"}\n'
 }
 
+# A model call (the worker, a grader, the Codex review) runs in a session of its own (perl's setsid, since a Mac has
+# no setsid(1)), so every process it starts shares its process group, whose id is the call's pid. In that session GNU
+# timeout needs no --foreground, and at CALL_TIMEOUT_SEC signals the whole group, KILL 5 s after TERM: --foreground
+# signalled the call alone, so a child it started kept editing the worktree while the supervisor checked and graded
+# it. Claude Code starts each Bash tool shell in a new session, out of that group, but the shell keeps the call's
+# environment, so the call also carries FACTORY_CALL_TAG, unique to it, which call_tagged finds. The call keeps the
+# caller's stdin (<&0, since a background command would get /dev/null), stdout and stderr. In its own session the call
+# no longer gets the supervisor's Ctrl-C, TERM or HUP, so until call_end the supervisor traps them and ends the call's
+# processes before it exits and its EXIT trap removes the worktree.
+call_start() { # dir cmd... -> CALL_PID, CALL_TAG
+  local dir="$1"; shift
+  CALL_TAG="$$.$SECONDS.$RANDOM"; CALL_PID=; CALL_STUCK=
+  trap 'call_abort INT 130' INT; trap 'call_abort TERM 143' TERM; trap 'call_abort HUP 129' HUP
+  ( cd "$dir" && export FACTORY_CALL_TAG="$CALL_TAG" \
+      && exec perl -MPOSIX -e 'POSIX::setsid() == $$ or die "setsid: $!\n"; exec { $ARGV[0] } @ARGV or die "exec $ARGV[0]: $!\n"' "$@" ) <&0 &
+  CALL_PID=$!
+  printf '%s %s\n' "$CALL_PID" "$CALL_TAG" > "$RUN/call.tmp" && mv -f "$RUN/call.tmp" "$RUN/call" \
+    || log "could not write $RUN/call; a SIGKILL now would free the slot while the call runs"
+}
+# However the call ends, by exit or by its limit, whatever it left behind, in its group or carrying its tag, gets
+# TERM, then KILL after a 5 s grace, and must be gone 5 s later, or the run stops: a child left writing the tree would
+# race the checks and the graders (LOOP.md, Exits). The leader is reaped first, since a zombie leader keeps its group
+# alive. A survivor sets CALL_STUCK, and the caller stops the run once its ledger row for the call is written.
+call_end() { # role -> the call's own exit status
+  local rc=0
+  wait "$CALL_PID" || rc=$?
+  call_reap "$1" && rm -f "$RUN/call"
+  trap - INT TERM HUP
+  return "$rc"
+}
+call_reap() { # role
+  call_gone 0 && return
+  log "the $1 call left processes behind (group $CALL_PID or tag $CALL_TAG); sending TERM"
+  call_signal TERM; call_signal CONT
+  call_gone 50 && return
+  log "the $1 call's processes outlived TERM by 5 s; sending KILL"
+  call_signal KILL
+  call_gone 50 && return
+  CALL_STUCK="the $1 call's processes (group $CALL_PID or tag $CALL_TAG) are still alive 5 s after KILL"
+  log "$CALL_STUCK"
+  return 1
+}
+# The supervisor got a signal mid-call: it sends the call TERM, and KILL 5 s later if the leader is still up, reaps the
+# leader, ends what is left as call_end would, then exits as the signal would have. A second Ctrl-C is ignored until
+# then, since it would kill the supervisor and let the EXIT trap remove the worktree under a child not yet killed.
+call_abort() { # signal status
+  local killer
+  trap '' INT TERM HUP
+  log "the supervisor got $1 during a model call; ending the call's processes"
+  call_signal TERM; call_signal CONT
+  ( sleep 5; call_signal KILL ) & killer=$!
+  wait "$CALL_PID" 2> /dev/null
+  kill -KILL "$killer" 2> /dev/null   # it inherits the ignored TERM
+  call_gone 50 || { call_signal KILL; call_gone 50; } && rm -f "$RUN/call"
+  exit "$2"
+}
+call_signal() { kill -"$1" -- "-$CALL_PID" 2> /dev/null; call_tagged "$1"; }
+# Linux only: a host with no /proc (a Mac) finds no tagged process, and the group kill alone stands. A zombie's
+# environ reads empty, so a zombie never counts.
+call_tagged() { # signal, or 0 to look; [tag] -> 0 when a process carries FACTORY_CALL_TAG=tag (CALL_TAG by default)
+  perl -e '($t, $s) = @ARGV; $n = 0;
+    for $f (glob "/proc/[0-9]*/environ") {
+      open($h, "<", $f) or next; local $/; $e = <$h>; close $h;
+      next unless defined $e && grep { $_ eq $t } split /\0/, $e;
+      ($p) = $f =~ m{^/proc/(\d+)/}; kill($s, $p); $n++ }
+    exit($n ? 0 : 1)' "FACTORY_CALL_TAG=${2-$CALL_TAG}" "$1"
+}
+call_gone() { # tenths of a second to wait -> 0 once nothing is left in CALL_PID's group or carries CALL_TAG
+  local i=0
+  while kill -0 -- "-$CALL_PID" 2> /dev/null || call_tagged 0; do
+    [ "$i" -lt "$1" ] || return 1
+    sleep 0.1; i=$((i + 1))
+  done
+}
+
 worker_round() { # round; leaves round-N.* only once the call produced a result
   local round="$1" pf out="$RUN/pending.jsonl" res="$RUN/pending.result.json" t=() login_retried=0 le head0
-  command -v timeout > /dev/null 2>&1 && t=(timeout --foreground "$CALL_TIMEOUT_SEC")
+  command -v timeout > /dev/null 2>&1 && t=(timeout -k 5 "$CALL_TIMEOUT_SEC")
   # The round's start, so a stop after a killed call can name the commits the call made (#319).
   head0=$(git -C "$WORKTREE" rev-parse HEAD 2> /dev/null) || head0=""
   # The first round this process runs; a login expired at launch retries only its call. A global,
@@ -1337,7 +1420,8 @@ worker_round() { # round; leaves round-N.* only once the call produced a result
     ccd=$(git -C "$WORKTREE" rev-parse --path-format=absolute --git-common-dir)
     add_dirs=(--add-dir "$cgd" --add-dir "$ccd/objects" --add-dir "$ccd/refs" --add-dir "$ccd/logs")
     start=$SECONDS
-    ( cd "$WORKTREE" && PATH="$CODEX_PATH:$PATH" ${t[@]+"${t[@]}"} codex exec --json -s workspace-write "${add_dirs[@]}" "$(cat "$pf")" > "$out" -o "$RUN/round-$round.last.txt" < /dev/null ); rc=$?
+    call_start "$WORKTREE" ${t[@]+"${t[@]}"} env PATH="$CODEX_PATH:$PATH" codex exec --json -s workspace-write "${add_dirs[@]}" "$(cat "$pf")" -o "$RUN/round-$round.last.txt" > "$out" < /dev/null
+    call_end worker; rc=$?
     [ "$rc" -eq 0 ] || log "codex worker call exited $rc (the result decides)"
     # Restore the tracked .codex before codex_result so the clean-tree check and the graders see the
     # symlink, whatever the call's exit code (D12, #77). If the round committed the ` D .codex` deletion,
@@ -1356,6 +1440,7 @@ worker_round() { # round; leaves round-N.* only once the call produced a result
     codex_result "$out" "$rc" "$(( (SECONDS - start) * 1000 ))" > "$res"
     wl=$(workflow_ledger "$round" "$out" "$res"); wagents=${wl% *}; wusd=${wl#* }
     record "$round" worker "$CODEX_MODEL" "$res" 0 0 "$wagents" "$wusd" 1
+    [ -z "$CALL_STUCK" ] || finish stopped-environment "$CALL_STUCK"
     assert_call_ok worker "$res" "$head0"
     mv "$pf" "$RUN/round-$round.prompt.md"
     mv "$out" "$RUN/round-$round.jsonl"
@@ -1365,20 +1450,22 @@ worker_round() { # round; leaves round-N.* only once the call produced a result
   while :; do
     log "worker call: round $round model=$WORKER_MODEL effort=$WORKER_EFFORT advisor=${WORKER_ADVISOR:-off} budget=$ROUND_BUDGET_USD usd, prompt=$(wc -c < "$pf") bytes"
     rm -f "$out"
-    ( cd "$WORKTREE" && LOAM_CHECKS="$RUN/frozen/checks.sh" \
+    call_start "$WORKTREE" ${t[@]+"${t[@]}"} env LOAM_CHECKS="$RUN/frozen/checks.sh" \
         CLAUDE_CODE_SUBAGENT_MODEL="$WORKER_MODEL" CLAUDE_CODE_SUBAGENT_MODEL_FORCE=1 \
-        ANTHROPIC_DEFAULT_SONNET_MODEL="$WORKER_MODEL" ANTHROPIC_DEFAULT_HAIKU_MODEL="$WORKER_MODEL" ${t[@]+"${t[@]}"} claude -p \
+        ANTHROPIC_DEFAULT_SONNET_MODEL="$WORKER_MODEL" ANTHROPIC_DEFAULT_HAIKU_MODEL="$WORKER_MODEL" claude -p \
         --model "$WORKER_MODEL" --effort "$WORKER_EFFORT" ${WORKER_ADVISOR:+--advisor "$WORKER_ADVISOR"} --permission-mode bypassPermissions --strict-mcp-config \
         --setting-sources user --settings "$RUN/frozen/worker-settings.json" --max-turns "$MAX_TURNS" \
         --append-system-prompt "$(cat "$RUN/frozen/unattended.md")" \
         --max-budget-usd "$ROUND_BUDGET_USD" --output-format stream-json --verbose --include-hook-events \
-        < "$pf" > "$out" 2>> "$LOG" ) || log "worker exited non-zero (the result event decides)"
+        < "$pf" > "$out" 2>> "$LOG"
+    call_end worker || log "worker exited non-zero (the result event decides)"
     jq -c 'select(.type == "result")' "$out" 2> /dev/null | tail -1 > "$res"
     # No result event (killed by CALL_TIMEOUT_SEC, or crashed) leaves no cost to read, yet the call may have
     # spent up to its --max-budget-usd ceiling. Charge that ceiling here, so record, ticket_spent, daily_spent
     # and cmd_status book one number and the ticket and daily caps stay bounds (#319). The ledger row keeps
     # subtype no-result, which tells a charge from a measured cost.
     [ -s "$res" ] || jq -nc --argjson usd "$ROUND_BUDGET_USD" '{subtype:"no-result", total_cost_usd:$usd}' > "$res"
+    [ -z "$CALL_STUCK" ] || break   # recorded below, then the run stops
     # An `OAuth session expired` on the first call of a launch is a stale login, not a round: wait
     # once and relaunch the call. A second failure, or the same on a later round, stops as today.
     if ! limit_wait "$res"; then
@@ -1400,6 +1487,7 @@ worker_round() { # round; leaves round-N.* only once the call produced a result
   local wl wagents wusd
   wl=$(workflow_ledger "$round" "$out" "$res"); wagents=${wl% *}; wusd=${wl#* }
   record "$round" worker "$WORKER_MODEL" "$res" "$acalls" "$ausd" "$wagents" "$wusd"
+  [ -z "$CALL_STUCK" ] || finish stopped-environment "$CALL_STUCK"
   assert_call_ok worker "$res" "$head0"
   mv "$pf" "$RUN/round-$round.prompt.md"
   mv "$out" "$RUN/round-$round.jsonl"
@@ -1524,13 +1612,15 @@ call_json() { # round stem role prompt_file schema_file
     # --tools Read,Grep,Glob is what makes a grader read-only (#40); with no MCP schemas and no
     # skills listing its prefix is 9.9k tokens instead of 27k (probed 2026-09-09). --setting-sources
     # user is what keeps the worktree's own hooks out, so a grader can still read the tree it grades.
-    ( cd "$WORKTREE" && ${TIMEOUT_G[@]+"${TIMEOUT_G[@]}"} claude -p --model "$GRADER_MODEL" --effort "$GRADER_EFFORT" \
+    call_start "$WORKTREE" ${TIMEOUT_G[@]+"${TIMEOUT_G[@]}"} claude -p --model "$GRADER_MODEL" --effort "$GRADER_EFFORT" \
         --tools Read,Grep,Glob --strict-mcp-config --disable-slash-commands --no-session-persistence \
         --json-schema "$(cat "$schema")" \
         --max-budget-usd "$GRADER_BUDGET_USD" --setting-sources user --settings "$RUN/frozen/role-settings.json" \
-        --output-format json < "$pf" > "$out" 2>> "$LOG" ) || log "$role exited non-zero"
-    if limit_wait "$out"; then attempt=$((attempt - 1)); continue; fi
+        --output-format json < "$pf" > "$out" 2>> "$LOG"
+    call_end "$role" || log "$role exited non-zero"
+    if [ -z "$CALL_STUCK" ] && limit_wait "$out"; then attempt=$((attempt - 1)); continue; fi
     record "$round" "$role" "$GRADER_MODEL" "$out"
+    [ -z "$CALL_STUCK" ] || finish stopped-environment "$CALL_STUCK"
     res=$(jq -r "$RESULT_OBJ | .result // \"\"" "$out" 2> /dev/null | sed -e 's/^```json//' -e 's/^```//' -e 's/```$//') || res=""
     if printf '%s' "$res" | jq -e '.verdict' > /dev/null 2>&1; then
       printf '%s' "$res" | jq '.' > "$final"
@@ -1600,10 +1690,12 @@ run_codex_review() { # round -> 0 when nothing blocks; needs-attention with a cr
     # `codex exec` with the schema (#41): the -o file holds the schema-validated JSON, the JSONL stream
     # (stdout) carries usage for the ledger. The one-line prompt is the frozen file with <base> filled in.
     start=$SECONDS
-    ( cd "$WORKTREE" && PATH="$CODEX_PATH:$PATH" ${TIMEOUT_G[@]+"${TIMEOUT_G[@]}"} codex exec --json --output-schema "$RUN/frozen/review-output.schema.json" -o "$f" -s read-only "$(sed "s/<base>/$base/" "$RUN/frozen/codex-review.prompt.md")" > "$jsonl" < /dev/null ); rc=$?
+    call_start "$WORKTREE" ${TIMEOUT_G[@]+"${TIMEOUT_G[@]}"} env PATH="$CODEX_PATH:$PATH" codex exec --json --output-schema "$RUN/frozen/review-output.schema.json" -o "$f" -s read-only "$(sed "s/<base>/$base/" "$RUN/frozen/codex-review.prompt.md")" > "$jsonl" < /dev/null
+    call_end "Codex review"; rc=$?
     [ "$rc" -eq 0 ] || log "codex review call exited $rc"
     codex_result "$jsonl" "$rc" "$(( (SECONDS - start) * 1000 ))" > "$res"
     record "$round" codex-review "$CODEX_MODEL" "$res" 0 0 0 0 1
+    [ -z "$CALL_STUCK" ] || finish stopped-environment "$CALL_STUCK"
     # An absent, empty, or unparseable -o file gets one more call; -s also refuses a file holding more than one JSON value.
     if jq -se 'length == 1 and (.[0].verdict | type) == "string"' "$f" > /dev/null 2>&1; then parsed=1; break; fi
     log "codex review output absent or unparseable on call $call of 2; see $jsonl"
@@ -1898,7 +1990,7 @@ cmd_run() {
   BODY=$(cat "$RUN/frozen/issue.md")   # from here on the frozen body is the ticket
   [ "$IS_FILE" = 1 ] && trap 'git -C "$MAIN_CHECKOUT" worktree remove --force "$WORKTREE" > /dev/null 2>&1' EXIT
   TIMEOUT_G=()
-  command -v timeout > /dev/null 2>&1 && TIMEOUT_G=(timeout --foreground "$CALL_TIMEOUT_SEC")
+  command -v timeout > /dev/null 2>&1 && TIMEOUT_G=(timeout -k 5 "$CALL_TIMEOUT_SEC")
   # The advisor attaches through a feature flag claude fetches; two env vars turn it silently off.
   # Refuse to launch rather than run a worker that thinks it has an advisor and does not (F11).
   if [ -n "$WORKER_ADVISOR" ]; then

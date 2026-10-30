@@ -81,7 +81,7 @@ When no cached copy matches, the run stops `stopped-environment` and names the c
 | `stuck` | the same failing check set twice in a row | yes |
 | `ticket-defect` | round 0 found a check that passes on base, or the block aborted on base (`FAIL checks-aborted`) | no |
 | `abandon` | an `ABANDON NAME reason` line in `decisions.md`; the owner is paged | yes |
-| `stopped-environment` | a `claude` result with `is_error` outside the capped set (`error_max_budget_usd`, `error_max_turns`) or with no result event, a Codex exit other than 0 or no `turn.completed` event, a `gh` or `git` failure, including a call cut off at `NET_TIMEOUT_SEC` (a cut-off `gh issue view` in the frozen pass too, since the run already reads `running`), or a frozen-set hash mismatch | no, and it pages at once |
+| `stopped-environment` | a `claude` result with `is_error` outside the capped set (`error_max_budget_usd`, `error_max_turns`) or with no result event, a Codex exit other than 0 or no `turn.completed` event, a `gh` or `git` failure, including a call cut off at `NET_TIMEOUT_SEC` (a cut-off `gh issue view` in the frozen pass too, since the run already reads `running`), a process a model call left behind still alive 5 s after KILL, or a frozen-set hash mismatch | no, and it pages at once |
 | `stopped-cap` | `MAX_ROUNDS`, `TICKET_BUDGET_USD`, `DAILY_BUDGET_USD`, or `MAX_HOURS` reached; `ROUND_BUDGET_USD` and `MAX_TURNS` bound one worker call and are not an exit: a call that hits either (`error_max_budget_usd`, `error_max_turns`) is a finished round and step 6 decides | yes |
 | `stopped` | `FACTORY_STOP` present before a call | no |
 
@@ -93,6 +93,11 @@ Usage limits are per account, so the supervisor first switches to the next store
 It sleeps only when no other account exists or a switch already happened in the last five minutes; then it writes `waiting-limit` to `status`, sleeps until the reset time the reply names or twenty minutes when it names none, and repeats the same call.
 A reset past `MAX_HOURS` exits `stopped-environment`.
 A call with no result event (killed by `CALL_TIMEOUT_SEC`, or crashed) exits `stopped-environment` and counts no round.
+Every model call (the worker, a grader, the Codex review) runs in a session of its own, so its process group holds every process it starts; `CALL_TIMEOUT_SEC` signals that whole group, KILL 5 s after TERM.
+However the call ends, by exit or by the limit, the supervisor sends what is left of its group TERM, then KILL after 5 s, before any check or grader reads the tree, since a child left writing the worktree would race them.
+Claude Code starts each Bash tool shell in a new session, out of that group, so the call also carries a `FACTORY_CALL_TAG` unique to it, and on Linux the same TERM and KILL reach every process whose environment holds it; a host with no `/proc` (a Mac) has the group kill alone.
+Any of them still alive 5 s after KILL exits `stopped-environment` and counts no round, once the call's ledger row is written (a Claude worker call with no result event charges `ROUND_BUDGET_USD` as below).
+A call in its own session no longer gets the supervisor's Ctrl-C, TERM or HUP, so while a call runs the supervisor traps those signals, sends the call's group and tagged processes the same TERM and KILL, and only then exits (status 130, 143 or 129) and its EXIT trap removes the worktree.
 A killed or crashed Claude worker call left no cost to read but may have spent up to its `--max-budget-usd` ceiling, so its ledger row charges `ROUND_BUDGET_USD` (subtype `no-result` marks it as a charge) and the ticket and daily caps stay bounds (#319); a Codex worker call keeps `cost_usd` null.
 The stop message lists the commits made since the round began, or says `no commits`.
 
@@ -198,7 +203,8 @@ The frozen re-exec is an `exec`, which keeps the pid and its start time, so the 
 It does so under `owner.lock` (a lock older than 60 s is removed first), and only while `owner` still reads the line it judged and the status still reads `running` or `waiting-limit`, so a relaunch that rewrote `owner` keeps its slot.
 A missing or malformed `owner` holds the slot, as does a run that started before `owner` existed.
 A `ps` or `date` that fails or prints nothing cannot tell, so it holds the slot; a failed `kill -0` still means the pid is gone.
-A gone or zombie pid still holds the slot while a live process has that pid as its process group id, such as a worker call left running after a SIGKILL outside tmux; the heartbeat loop is one such member and exits within 300 s of its supervisor, so a reap waits at most one beat.
+A gone or zombie pid still holds the slot while a live process has that pid as its process group id; the heartbeat loop is one such member and exits within 300 s of its supervisor, so a reap waits at most one beat.
+A model call runs in a session of its own, so it outlives a SIGKILLed supervisor and keeps writing the worktree until `CALL_TIMEOUT_SEC`; each call writes `call` in the run directory (its process group id and its `FACTORY_CALL_TAG`, through a temp file and `mv`), removed once the call's processes are confirmed gone, and a gone owner still holds the slot while that group has a member that is not a zombie or, on Linux, a process carries that tag.
 A run directory with `launched` and no `status` file holds a slot until its run writes one or the operator removes it.
 
 ## Notify
