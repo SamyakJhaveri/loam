@@ -1735,7 +1735,7 @@ measure_rows() { # round; Rows measured is `[runs=N] [<row>:] <command> | <basel
 schema_for() { cat "$(dirname "$0")/factory.d/$1.schema.json"; }  # judge|reviewer|lean-critic -> JSON Schema on stdout
 
 build_evidence() { # rubric_file diff_cap -> stdout
-  local rubric="$1" cap="$2" base names stat_only content paths diff="$RUN/round-$ROUND.diff"
+  local rubric="$1" cap="$2" base names stat_only content paths=() path diff="$RUN/round-$ROUND.diff"
   base=$(cat "$RUN/base.sha")
   cat "$rubric"
   printf '\n\n## Ticket\n\n%s\n' "$FENCE"; cat "$RUN/frozen/issue.md"; printf '\n%s\n' "$FENCE"
@@ -1753,7 +1753,7 @@ build_evidence() { # rubric_file diff_cap -> stdout
   ( cd "$WORKTREE" && git diff -M --stat=200 "$base...HEAD" ); printf '\n'
   [ -z "$stat_only" ] || printf '[stat only, content omitted as data: %s]\n\n' "$(printf '%s' "$stat_only" | tr '\n' ' ')"
   if [ -n "$content" ]; then
-    mapfile -t paths <<< "$content"
+    while IFS= read -r path; do paths+=("$path"); done <<< "$content"  # bash 3.2 (macOS) has no mapfile
     ( cd "$WORKTREE" && git diff -M --diff-filter=AMR "$base...HEAD" -- "${paths[@]}" ) > "$diff"
     head -"$cap" "$diff"
     [ "$(wc -l < "$diff")" -le "$cap" ] || printf '\n[content diff capped at %s lines; the stat above is complete]\n' "$cap"

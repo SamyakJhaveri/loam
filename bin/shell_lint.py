@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Fail on a pipe into `grep -q` in a tracked shell file that sets pipefail (#279).
+"""Fail on a pipe into `grep -q` under pipefail (#279), or a bash 4 or GNU-only form (#280), in a tracked shell file.
 
 `grep -q` exits at its first match. A writer still printing then dies of SIGPIPE, and
 under `set -o pipefail` that failure is the pipeline's status, so a match reads as a miss.
@@ -14,6 +14,10 @@ is then split into words and operators with shlex, so a `| grep -q` inside a quo
 one word and is not a pipe. Heredoc bodies are skipped, also inside a substitution, so a quote
 in one is text. A file that ends with a quote, substitution or heredoc still open fails, naming
 the line that opened it, since the lint could not read past it.
+
+macOS ships bash 3.2 and BSD tools, so the words of each command (top level and every substitution
+body) must not run `mapfile` or `readarray`, `xargs -r`, `grep -P`, or `stat -c` without a
+`stat -f` fallback in the same code, and a file that runs `timeout` must check `command -v timeout`.
 
 Exit status: 0 when no file has a hit or an open end, 1 otherwise.
 """
@@ -38,6 +42,22 @@ ENDS = {"|", "|&", "||", "&&", ";", ";;", "&", ")", "(", "{", "}"}
 GREPS = {"grep", "egrep", "fgrep"}
 ASSIGN = re.compile(r"[A-Za-z_][A-Za-z0-9_]*=")
 FIX = "capture the output first, then grep it: out=$(cmd); grep -q pat <<<\"$out\""
+# Words before a command name that leave the next word in command position.
+RUNS = {"!", "command", "exec", "builtin", "env", "nohup", "time", "if", "then", "else", "elif", "while",
+        "until", "do"}
+GREP_VALUES = ("e", "f", "--regexp", "--file")  # options whose value is the next word, or the rest of the word
+XARGS_VALUES = tuple("adEIJLnPRsS")
+LOOP = "read lines in a loop: while IFS= read -r x; do a+=(\"$x\"); done < file"
+FORMS = {
+    "mapfile": f"mapfile is bash 4 and macOS has bash 3.2; {LOOP}",
+    "readarray": f"readarray is bash 4 and macOS has bash 3.2; {LOOP}",
+    "xargs -r": "xargs -r (--no-run-if-empty) is GNU-only and macOS xargs rejects it; drop it and make an empty "
+                "input harmless or test the input first (c29ef01)",
+    "grep -P": "grep -P is GNU-only and BSD grep has no PCRE; use grep -E",
+    "stat -c": "stat -c is GNU-only; carry the BSD form in the same code: stat -c %Y f 2>/dev/null || stat -f %m f",
+    "timeout": "timeout is GNU coreutils and stock macOS lacks it, and no line of this file checks "
+               "command -v timeout; guard it: command -v timeout >/dev/null && timeout ...",
+}
 
 
 def split(line: str, stack: list[str]) -> tuple[str, list[str], str | None, str | None, list[str]]:
@@ -123,26 +143,39 @@ def words(src: str) -> list[str]:
     return toks
 
 
-def quiet_grep(args: list[str]) -> bool:
-    """True when this grep's own arguments include -q, --quiet or --silent."""
+def opt_set(args: list[str], short: str, longs: tuple[str, ...] = (), values: tuple[str, ...] = (),
+            operands: bool = True) -> bool:
+    """True when a command's own arguments set the option -<short> or a long name in longs.
+
+    A short option in values takes the rest of its word, or else the next word, as its value; a long
+    one takes the next word unless it has =. operands=False stops at the first word that is not an option.
+    """
     skip = False
     for arg in args:
         if arg in ENDS or arg == "--":
             break
         if skip:
             skip = False
-        elif arg in ("--quiet", "--silent"):
-            return True
-        elif arg in ("--regexp", "--file"):
-            skip = True  # the next word is a pattern or a file, not a flag
-        elif arg.startswith("-") and not arg.startswith("--"):
+        elif arg.startswith("--"):
+            name = arg.split("=", 1)[0]
+            if name in longs:
+                return True
+            skip = name in values and "=" not in arg
+        elif arg.startswith("-"):
             for k, c in enumerate(arg[1:], 2):  # a short-option cluster, in order
-                if c == "q":
+                if c == short:
                     return True
-                if c in "ef":  # -e and -f take the rest of the word, or else the next word
+                if c in values:
                     skip = k == len(arg)
                     break
+        elif not operands:
+            break
     return False
+
+
+def quiet_grep(args: list[str]) -> bool:
+    """True when this grep's own arguments include -q, --quiet or --silent."""
+    return opt_set(args, "q", ("--quiet", "--silent"), GREP_VALUES)
 
 
 def hits(toks: list[str]) -> bool:
@@ -155,6 +188,40 @@ def hits(toks: list[str]) -> bool:
         if j < len(toks) and toks[j].rsplit("/", 1)[-1] in GREPS and quiet_grep(toks[j + 1 :]):
             return True
     return False
+
+
+def commands(toks: list[str]) -> list[tuple[str, int]]:
+    """Each command name (its last path part) with the index of its first argument: the first word of each
+    command, past assignments and words such as `!`, `then` or `env` that run the word after them."""
+    found, at = [], True
+    for i, tok in enumerate(toks):
+        if at and (ASSIGN.match(tok) or tok in RUNS):
+            continue
+        if at and tok not in ENDS:
+            found.append((tok.rsplit("/", 1)[-1], i + 1))
+        at = tok in ENDS
+    return found
+
+
+def forms(toks: list[str]) -> set[str]:
+    """The bash 4 and GNU-only forms these words run, as keys of FORMS."""
+    cmds, out = commands(toks), set()
+    bsd_stat = any(name == "stat" and opt_set(toks[i:], "f", values=("c", "t")) for name, i in cmds)
+    for name, i in cmds:
+        args = toks[i:]
+        if name in ("mapfile", "readarray", "timeout"):
+            out.add(name)
+        elif name == "xargs" and opt_set(args, "r", ("--no-run-if-empty",), XARGS_VALUES, operands=False):
+            out.add("xargs -r")
+        elif name in GREPS and opt_set(args, "P", ("--perl-regexp",), GREP_VALUES):
+            out.add("grep -P")
+        elif name == "stat" and opt_set(args, "c", ("--format", "--printf")) and not bsd_stat:
+            out.add("stat -c")
+    return out
+
+
+def guards_timeout(toks: list[str]) -> bool:
+    return any(toks[i : i + 3] == ["command", "-v", "timeout"] for i in range(len(toks)))
 
 
 def sets_pipefail(toks: list[str]) -> bool:
@@ -177,10 +244,11 @@ def heredocs_in(toks: list[str]) -> list[tuple[str, bool]]:
     return docs
 
 
-def scan(text: str) -> tuple[bool, list[int], int | None]:
-    """Return whether the file sets pipefail, the lines that pipe into grep -q, and the line
-    that opened a quote, substitution or heredoc still open at the end (None when all closed)."""
-    pipefail, found = False, set()
+def scan(text: str) -> tuple[bool, list[int], list[tuple[int, str]], bool, int | None]:
+    """Return whether the file sets pipefail, the lines that pipe into grep -q, each (line, form) of a bash 4
+    or GNU-only form, whether it checks command -v timeout, and the line that opened a quote, substitution or
+    heredoc still open at the end (None when all closed)."""
+    pipefail, found, gnu, guarded = False, set(), set(), False
     heredocs: list[tuple[str, bool]] = []  # pending (delimiter, strip leading tabs)
     carry: tuple[list[str], int] | None = None  # an unfinished command's words, and its first line
     stack: list[str] = []  # quotes and substitutions left open by the line before
@@ -210,12 +278,18 @@ def scan(text: str) -> tuple[bool, list[int], int | None]:
             opened = opened if pending else n
             pending.append(tail)
         for first, body in subs:  # a substitution's body is code of its own, carry and all
-            _, lines, gap = scan(body)
+            _, lines, sub_gnu, sub_guarded, gap = scan(body)
             found.update(first + k - 1 for k in lines)
+            gnu.update((first + k - 1, key) for k, key in sub_gnu)
+            guarded = guarded or sub_guarded
             if gap is not None and inner is None:
                 inner = first + gap - 1
         toks = words(top)
         pipefail = pipefail or sets_pipefail(toks)
+        guarded = guarded or guards_timeout(toks)
+        gnu.update((n, key) for key in forms(toks))
+        if carry and toks:  # a form the continued command makes, not either part alone
+            gnu.update((carry[1], key) for key in forms([*carry[0], *toks]) - forms(carry[0]) - forms(toks))
         if hits(toks):
             found.add(n)
         elif carry and toks and hits([*carry[0], *toks]):
@@ -231,8 +305,8 @@ def scan(text: str) -> tuple[bool, list[int], int | None]:
             doc_at = n
         heredocs += docs
     if heredocs:
-        return pipefail, sorted(found), doc_at
-    return pipefail, sorted(found), open_at if stack else inner
+        return pipefail, sorted(found), sorted(gnu), guarded, doc_at
+    return pipefail, sorted(found), sorted(gnu), guarded, open_at if stack else inner
 
 
 def shell_files(root: pathlib.Path) -> list[str]:
@@ -258,16 +332,16 @@ def main() -> int:
     root = pathlib.Path(ap.parse_args().root)
     bad = 0
     for rel in shell_files(root):
-        pipefail, found, gap = scan((root / rel).read_text(encoding="utf-8", errors="replace"))
+        pipefail, found, gnu, guarded, gap = scan((root / rel).read_text(encoding="utf-8", errors="replace"))
         if gap is not None:  # fail closed: a parsing gap must be loud, never a silent skip
             print(f"FAIL: {rel}:{gap}: the lint could not find the end of the quote, substitution "
                   f"or heredoc opened here, so it could not read the lines after it")
             bad += 1
-        if not pipefail:
-            continue
-        for n in found:
-            print(f"FAIL: {rel}:{n}: pipe into grep -q under pipefail; a writer killed by SIGPIPE "
-                  f"fails the pipeline, so {FIX}")
+        fails = [(n, f"pipe into grep -q under pipefail; a writer killed by SIGPIPE fails the pipeline, "
+                     f"so {FIX}") for n in found if pipefail]
+        fails += [(n, FORMS[key]) for n, key in gnu if not (key == "timeout" and guarded)]
+        for n, msg in sorted(fails):
+            print(f"FAIL: {rel}:{n}: {msg}")
             bad += 1
     return 1 if bad else 0
 
