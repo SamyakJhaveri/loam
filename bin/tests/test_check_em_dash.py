@@ -19,6 +19,11 @@ STEP = 'step "no em dash in Loam-owned text"'
 EM = chr(0x2014)
 ESCAPED = "\\" + "u2014"
 UNREAD = "the em-dash search did not read every file"
+# c0f630f replaced the em dash in CLAUDE.md's title.
+PLAIN_DASH = "c0f630f1118131719cfb51ce8267c7ba552d976a"
+# No inherited GIT_* (a caller's GIT_DIR would aim the fixture at its own repo) and no user or system config.
+ENV = {**{k: v for k, v in os.environ.items() if not k.startswith("GIT_")},
+       "GIT_CONFIG_GLOBAL": os.devnull, "GIT_CONFIG_NOSYSTEM": "1"}
 
 
 def em_step(check: str) -> str:
@@ -31,27 +36,30 @@ def em_step(check: str) -> str:
 
 
 class EmDashStep(unittest.TestCase):
-    def run_step(self, untracked: dict[str, str], mode: int | None = None,
-                 env: dict[str, str] | None = None) -> list[subprocess.CompletedProcess[str]]:
-        """Commit a clean base, write the untracked files, run the step with and without LC_ALL=C."""
+    def run_step(self, untracked: dict[str, str | bytes], mode: int | None = None,
+                 env: dict[str, str] | None = None,
+                 tracked: dict[str, str] | None = None) -> list[subprocess.CompletedProcess[str]]:
+        """Commit a base with the tracked files, write the untracked ones, run the step with and without LC_ALL=C."""
         repo = pathlib.Path(self.enterContext(tempfile.TemporaryDirectory()))
-        subprocess.run(["git", "init", "-q"], cwd=repo, check=True)
+        subprocess.run(["git", "init", "-q"], cwd=repo, check=True, env=ENV)
         (repo / "bin").mkdir()
         (repo / "bin/em-step").write_text(em_step(CHECK.read_text(encoding="utf-8")), encoding="utf-8")
-        (repo / "kept.txt").write_text("plain - dash\n", encoding="utf-8")
-        subprocess.run(["git", "add", "-A"], cwd=repo, check=True)
-        subprocess.run(["git", "-c", "user.name=t", "-c", "user.email=t@example.invalid", "commit", "-qm", "base"],
-                       cwd=repo, check=True)
-        for name, text in untracked.items():
+        for name, text in {"kept.txt": "plain - dash\n", **(tracked or {})}.items():
             (repo / name).parent.mkdir(parents=True, exist_ok=True)
             (repo / name).write_text(text, encoding="utf-8")
+        subprocess.run(["git", "add", "-A"], cwd=repo, check=True, env=ENV)
+        subprocess.run(["git", "-c", "user.name=t", "-c", "user.email=t@example.invalid", "commit", "-qm", "base"],
+                       cwd=repo, check=True, env=ENV)
+        for name, text in untracked.items():
+            (repo / name).parent.mkdir(parents=True, exist_ok=True)
+            (repo / name).write_bytes(text.encode("utf-8") if isinstance(text, str) else text)
             if mode is not None:
                 (repo / name).chmod(mode)
                 self.addCleanup((repo / name).chmod, 0o644)
         runs = []
         for extra in ({}, {"LC_ALL": "C"}):
             r = subprocess.run(["/bin/bash", "bin/em-step"], cwd=repo, capture_output=True, text=True,
-                               env={**os.environ, **(env or {}), **extra})
+                               encoding="utf-8", env={**ENV, **(env or {}), **extra})
             runs.append(r)
         return runs
 
@@ -67,6 +75,12 @@ class EmDashStep(unittest.TestCase):
     def test_json_escaped_dash_fails(self) -> None:
         self.assert_fails(self.run_step({"hook.json": f'{{"msg": "a {ESCAPED} b"}}\n'}), "hook.json:1:", "FAIL: em dash")
 
+    def test_tracked_and_nested_dash_fails(self) -> None:
+        # Each path sits just outside an exemption or below the root, so a widened exemption or a shallower search drops one.
+        names = ["docs/new.md", "docs/research/x.md", "cultivation/x.md", ".claude/x.md", "seed/deep/x.md"]
+        runs = self.run_step({n: f"a {EM} b\n" for n in names}, tracked={"seed/t.md": f"a {EM} b\n"})
+        self.assert_fails(runs, *(f"{n}:1:" for n in [*names, "seed/t.md"]))
+
     def test_unreadable_file_fails(self) -> None:
         # git grep prints an error for a file it cannot open and still exits 1, "nothing matched".
         if os.geteuid() == 0:
@@ -78,12 +92,15 @@ class EmDashStep(unittest.TestCase):
 
     def test_exempt_path_and_clean_text_pass(self) -> None:
         for r in self.run_step({"docs/archive/old.md": f"a {EM} b\n", "evals/p.json": f'"{ESCAPED}"\n',
-                                "new.txt": "plain - dash\n"}):
+                                "new.txt": "plain - dash\n", "blob.bin": b"\0" + EM.encode("utf-8") + b"\0"}):
             self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
 
     def test_claude_md_before_plain_dash_fails(self) -> None:
-        # c0f630f replaced the em dash in CLAUDE.md's title; the file before it must fail the step.
-        old = subprocess.run(["git", "show", "c0f630f^:CLAUDE.md"], cwd=ROOT, capture_output=True, text=True, encoding="utf-8", check=True)
+        # The CLAUDE.md before PLAIN_DASH must fail the step.
+        if subprocess.run(["git", "cat-file", "-e", f"{PLAIN_DASH}^:CLAUDE.md"], cwd=ROOT, env=ENV).returncode:
+            self.skipTest("a shallow clone lacks the commit before PLAIN_DASH")
+        old = subprocess.run(["git", "show", f"{PLAIN_DASH}^:CLAUDE.md"], cwd=ROOT, capture_output=True, text=True,
+                             encoding="utf-8", check=True, env=ENV)
         self.assert_fails(self.run_step({"CLAUDE.md": old.stdout}), "CLAUDE.md:1:", "FAIL: em dash")
 
 
