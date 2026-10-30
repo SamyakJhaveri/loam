@@ -44,18 +44,25 @@ net() {
   fi
 }
 # net's watchdog: job control gives the call its own process group, which gets TERM (and CONT, so a stopped call
-# takes it) at NET_TIMEOUT_SEC and KILL 5 s later. Under job control wait may return when the call stops, not only
-# when it exits (bash manual, wait -f), so a call still alive then is killed rather than left holding the pipes.
-# The subshell's stderr goes to /dev/null so job notices stay out of the output; the call keeps the caller's stdin
-# and stderr.
+# takes it) at NET_TIMEOUT_SEC and KILL 5 s later. At the deadline the watchdog first sends USR1 to this subshell,
+# whose trap marks the call late (GNU timeout's flag): a late call returns 124 whatever it exited with, since one
+# that traps TERM may exit 0, and its group is killed at once, since a member that ignores TERM may outlive the
+# leader and hold the pipes. The USR1 cuts the first wait short, so a late call is waited on again. A bash whose
+# wait returns when the call stops (bash manual, wait -f) has the call killed rather than left holding the pipes.
+# bash 3.2 has no BASHPID, so a child sh reports this subshell's pid. The subshell's stderr goes to /dev/null so
+# job notices stay out of the output; the call keeps the caller's stdin and stderr.
 net_watch() {
   ( exec 3>&2 2> /dev/null; set -m
+    local self pid wd rc=0 late=""
+    self=$(exec sh -c 'echo "$PPID"')
+    trap 'late=1' USR1
     "$@" <&0 2>&3 3>&- &
-    local pid=$! wd rc=0
-    { sleep "$NET_TIMEOUT_SEC"; kill -TERM -- "-$pid"; kill -CONT -- "-$pid"; sleep 5; kill -KILL -- "-$pid"; } \
-      > /dev/null 2>&1 < /dev/null &
+    pid=$!
+    { sleep "$NET_TIMEOUT_SEC"; kill -USR1 "$self"; kill -TERM -- "-$pid"; kill -CONT -- "-$pid"; sleep 5
+      kill -KILL -- "-$pid"; } > /dev/null 2>&1 < /dev/null &
     wd=$!
     wait "$pid" || rc=$?
+    [ -n "$late" ] && { wait "$pid"; kill -KILL -- "-$pid"; rc=124; }
     kill -0 "$pid" && { kill -KILL -- "-$pid"; wait "$pid"; rc=137; }
     kill -- "-$wd"
     exit "$rc" )

@@ -6,7 +6,8 @@ and calls load_ticket from a sourced bin/factory with FACTORY_FROZEN naming the 
 process, the cut-off call ends through finish (status, alert, exit 4); when it names another, load_ticket only exits 4.
 WatchdogTests check that nothing escapes the limit: a gh function exported into the environment, a program that
 ignores TERM (timeout -k), and net_watch, the path without GNU timeout, on both a TERM-ignoring program and a
-function that returns 0 after the deadline, and a call that stops itself.
+function that returns 0 after the deadline, a call that stops itself, a function that exits 0 on TERM (124), and a
+TERM-ignoring group member that outlives the leader.
 """
 
 from __future__ import annotations
@@ -119,6 +120,18 @@ class WatchdogTests(unittest.TestCase):
         proc, _ = self.bash(". bin/factory; f() { cat; echo err >&2; return 3; }; printf 'in\\n' | net_watch f; "
                             "echo \"rc=$?\"", FACTORY_SOURCED="1")
         self.assertEqual((proc.stdout, proc.stderr), ("in\nrc=3\n", "err\n"))
+
+    def test_watchdog_call_exiting_zero_on_term_is_late(self) -> None:
+        proc, took = self.bash(". bin/factory; f() { trap 'exit 0' TERM; sleep 30; }; net_watch f; echo \"rc=$?\"",
+                               FACTORY_SOURCED="1")
+        self.assertLess(took, 15)
+        self.assertIn("rc=124", proc.stdout)
+
+    def test_watchdog_kills_group_member_outliving_leader(self) -> None:
+        proc, took = self.bash(". bin/factory; g() { bash -c 'trap \"\" TERM; sleep 20' & sleep 30; }; "
+                               "out=$(net_watch g); echo \"rc=$?\"", FACTORY_SOURCED="1")
+        self.assertLess(took, 15)
+        self.assertIn("rc=124", proc.stdout)
 
 
 if __name__ == "__main__":
