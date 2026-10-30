@@ -150,11 +150,15 @@ def opt_set(args: list[str], short: str, longs: tuple[str, ...] = (), values: tu
     A short option in values takes the rest of its word, or else the next word, as its value; a long
     one takes the next word unless it has =. operands=False stops at the first word that is not an option.
     """
-    skip = False
+    skip, depth = False, 0
     for arg in args:
-        if arg in ENDS or arg == "--":
+        if arg in ("<(", ">("):  # a process substitution is one argument (a value, if one is due); its words
+            depth, skip = depth + 1, False  # are its own command's
+        elif depth:
+            depth += 1 if arg == "(" else -len(arg) if arg and not arg.strip(")") else 0  # `))` is one word
+        elif arg in ENDS or arg == "--":
             break
-        if skip:
+        elif skip:
             skip = False
         elif arg.startswith("--"):
             name = arg.split("=", 1)[0]

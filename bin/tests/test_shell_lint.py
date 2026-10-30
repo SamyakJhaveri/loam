@@ -96,7 +96,7 @@ GNU_BAD = ('#!/usr/bin/env bash\nmapfile -t a < f\nreadarray -t b < f\nls | xarg
            'grep -P "x" f\ntimeout 5 sleep 1\n')
 GNU_GOOD = ('#!/usr/bin/env bash\n# mapfile is bash 4, so read in a loop\nm=$(stat -c %Y f 2>/dev/null || stat -f %m f)\n'
             'command -v timeout >/dev/null && timeout 5 true\n')
-# Forms that must count (lines 2 to 10; a continued stat counts on its first line), then words that must not (from line 11).
+# Forms that must count (lines 2 to 11; a continued stat counts on its first line), then words that must not (from line 12).
 GNU_CASES = """#!/usr/bin/env bash
 x="$(stat -c %Y f)"
 find . -print0 | xargs -0 -r rm
@@ -107,6 +107,7 @@ stat \\
 y="$(cat f |
   grep --perl-regexp x)"
 while read -r l; do :; done < <(grep -P x f)
+grep -f <(cat a) -P f
 cat <<'EOF'
 mapfile -t a < f
 EOF
@@ -116,6 +117,7 @@ for c in $(pgrep -P 1); do :; done
 for t in timeout mapfile; do :; done
 grep -eP x f
 ls | xargs -I {} echo -r {}
+grep -f <(pgrep -P 1) f
 """
 GUARDED = """#!/usr/bin/env bash
 t="$(command -v timeout)"
@@ -166,7 +168,7 @@ class ShellLintTest(unittest.TestCase):
         res = lint({"cases.sh": GNU_CASES, "guarded.sh": GUARDED})
         self.assertEqual(res.returncode, 1, res.stdout + res.stderr)
         self.assertEqual([line.split(": ")[1] for line in res.stdout.splitlines()],
-                         [f"cases.sh:{n}" for n in (2, 3, 4, 5, 6, 9, 10)])
+                         [f"cases.sh:{n}" for n in (2, 3, 4, 5, 6, 9, 10, 11)])
 
     def test_flags_c29ef01_pre_fix(self) -> None:
         old = subprocess.run(["git", "-C", str(ROOT), "show", "c29ef01^:seed/bin/memsearch"],
