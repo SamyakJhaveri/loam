@@ -95,8 +95,9 @@ class StatusCriteriaTests(unittest.TestCase):
         self.assertEqual(verdict["rounds lost to environment failures"], "    FAIL: measured 1 (2/aaaa0002 round 1)")
         self.assertEqual(verdict["median rounds to PR"], "    PASS: measured 2 (over 3 PR runs)")
         self.assertEqual(verdict["stalls whose first failing grader row is scope"], "    PASS: measured 0 (of 0 stalls)")
+        # The text matcher's count is an estimate (#443), so it never prints PASS or FAIL.
         self.assertEqual(verdict["rounds whose last worker message claims done while the checks printed FAIL"],
-                         "    PASS: measured 0 (claude 0, codex 0)")
+                         "    INCONCLUSIVE: estimate: 0 of 0 failing rounds (claude 0, codex 0; text matcher, see #443)")
         # A run from before owner-events.jsonl, evidence_kind and guard's marker copy shows no operator action, no cited
         # notes and no marker, which is not zero of them.
         for name in ("operator actions from voice note to a running loop on Track B",
@@ -145,7 +146,7 @@ class StatusCriteriaTests(unittest.TestCase):
         self.assertEqual(verdict["judge fails citing a worker-written measurement"],
                          "    FAIL: measured 1 of 2 (7/abcd1234 round 3 correct)")
         self.assertEqual(verdict["rounds whose last worker message claims done while the checks printed FAIL"],
-                         "    FAIL: measured 2 (claude 1, codex 1)")
+                         "    INCONCLUSIVE: estimate: 2 of 3 failing rounds (claude 1, codex 1; text matcher, see #443)")
 
     def test_a_completion_claim_is_a_claim_and_a_failure_report_is_not(self) -> None:
         spec = importlib.util.spec_from_file_location("criteria", CRITERIA)
@@ -193,10 +194,14 @@ class StatusCriteriaTests(unittest.TestCase):
             run_dir(runs, label, "stopped", ["===== launch =====", "===== round 1 =====", "===== round 2 =====",
                                               exit_line], 1)
             (runs / label / "round-1.checks").write_text("FAIL do-not-touch seed/x\nFAIL a: b\n")
+        # A run that stalls, is relaunched and stalls again is one stall, read at its last stall exit.
+        run_dir(runs, "8/aaaa0008", "stuck", ["===== launch =====", "===== round 1 =====", "EXIT stuck (1): same failing set",
+                                               "===== launch =====", "===== round 2 =====", "EXIT stuck (1): same failing set"], 2)
+        (runs / "8/aaaa0008/round-2.checks").write_text("FAIL a: b\nFAIL do-not-touch seed/x\n")
         proc = factory("status", "--criteria", runs=runs)
         self.assertEqual(proc.returncode, 0, proc.stderr)
         self.assertEqual(verdicts(proc.stdout)["stalls whose first failing grader row is scope"],
-                         "    FAIL: measured 2 (of 2 stalls: 5/aaaa0005 round 1, 6/aaaa0006 round 1)")
+                         "    FAIL: measured 2 (of 3 stalls: 5/aaaa0005 round 1, 6/aaaa0006 round 1)")
 
     def test_a_run_that_froze_the_copying_guard_measures_zero_pass_over_lines(self) -> None:
         frozen = self.runs / "1/aaaa0001/frozen"
@@ -208,8 +213,9 @@ class StatusCriteriaTests(unittest.TestCase):
                          "    PASS: measured 0 (over 1 round)")
 
     def test_lint_of_an_edited_body_reaches_the_launchs_run_dir_once(self) -> None:
-        # lint, an edit, lint again, then a launch that FACTORY_STOP halts once its owner events are written. gh is a
-        # stub serving the body in $BODY_FILE; its timeline read fails, so the launch records no issue events.
+        # A Claude Code session's lint (the stage-2 session's), which records nothing; then lint, an edit, lint again,
+        # then a launch that FACTORY_STOP halts once its owner events are written. gh is a stub serving the body in
+        # $BODY_FILE; its timeline read fails, so the launch records no issue events.
         body = pathlib.Path(self.tmp.name) / "body"
         runs = pathlib.Path(self.tmp.name) / "lint-runs"
         runs.mkdir()
@@ -217,10 +223,10 @@ class StatusCriteriaTests(unittest.TestCase):
         script = (
             '. bin/factory; assert_target_ready() { :; }; claude_version_ok() { :; }; notify() { :; }; '
             'gh() { [ "$1 $2" = "issue view" ] && cat "$BODY_FILE"; }; '
-            'echo "# one" > "$BODY_FILE"; lint 9 > /dev/null 2>&1; echo "# two" > "$BODY_FILE"; lint 9 > /dev/null 2>&1; '
+            'echo "# one" > "$BODY_FILE"; CLAUDECODE=1 lint 9 > /dev/null 2>&1; lint 9 > /dev/null 2>&1; echo "# two" > "$BODY_FILE"; lint 9 > /dev/null 2>&1; '
             '(cmd_run 9) > /dev/null 2>&1; (cmd_run 9) > /dev/null 2>&1; true'
         )
-        env = {k: v for k, v in os.environ.items() if k not in ("FACTORY_CALL_TAG", "LOAM_HOOK", "FACTORY_BY_NEXT")}
+        env = {k: v for k, v in os.environ.items() if k not in ("FACTORY_CALL_TAG", "LOAM_HOOK", "CLAUDECODE", "FACTORY_BY_NEXT")}
         proc = subprocess.run(["bash", "-c", script], cwd=ROOT, capture_output=True, text=True, check=False,
                               env={**env, "FACTORY_SOURCED": "1", "FACTORY_ROOT": str(ROOT), "FACTORY_RUNS_ROOT": str(runs),
                                    "BODY_FILE": str(body)})
@@ -257,7 +263,7 @@ class StatusCriteriaTests(unittest.TestCase):
             'while [ $# -gt 0 ]; do [ "$1" = --jq ] && { p="$2"; shift; }; shift; done; jq -r "$p" "$GH_DIR/$f"; }; '
             'owner_events "$1" launch o/loam 9 && owner_events "$1" launch o/loam 9 && pr_closed_events && pr_closed_events'
         )
-        env = {k: v for k, v in os.environ.items() if k not in ("FACTORY_CALL_TAG", "LOAM_HOOK", "FACTORY_BY_NEXT")}
+        env = {k: v for k, v in os.environ.items() if k not in ("FACTORY_CALL_TAG", "LOAM_HOOK", "CLAUDECODE", "FACTORY_BY_NEXT")}
         proc = subprocess.run(["bash", "-c", script, "_", str(run)], cwd=ROOT, capture_output=True, text=True, check=False,
                               env={**env, "FACTORY_SOURCED": "1", "FACTORY_RUNS_ROOT": str(self.runs), "GH_DIR": str(gh_dir)})
         self.assertEqual(proc.returncode, 0, proc.stderr)
@@ -267,6 +273,23 @@ class StatusCriteriaTests(unittest.TestCase):
         self.assertEqual(events, [("launch", "opened", "opened"), ("launch", "commented", "4"), ("launch", "reviewed", "6"),
                                   ("launch", "merged", "7"), ("pr", "commented", "4"), ("pr", "reviewed", "6"),
                                   ("pr", "merged", "7")])
+        self.assertTrue((run / "pr-closed").exists())
+
+    def test_next_reads_a_closed_prs_events_while_every_slot_is_held(self) -> None:
+        # The run's PR is closed but its ticket worktree remains, so it holds the one slot and next launches nothing.
+        run = self.runs / "9/aaaa0009"
+        run_dir(self.runs, "9/aaaa0009", "pr-opened", ["EXIT pr-opened (0): https://github.com/o/loam/pull/10"], 1)
+        (pathlib.Path(self.tmp.name) / "co-9").mkdir()
+        script = (
+            '. bin/factory; MAIN_CHECKOUT="$1/co"; assert_target_ready() { :; }; net() { "$@"; }; '
+            'gh() { [ "$2" = repos/o/loam/issues/10 ] && echo closed; }; '
+            'owner_events() { echo "{\\"phase\\":\\"$2\\"}" >> "$1/owner-events.jsonl"; }; cmd_next'
+        )
+        proc = subprocess.run(["bash", "-c", script, "_", self.tmp.name], cwd=ROOT, capture_output=True, text=True,
+                              check=False, env={**os.environ, "FACTORY_SOURCED": "1", "FACTORY_ROOT": str(ROOT),
+                                                "FACTORY_RUNS_ROOT": str(self.runs), "FACTORY_MAX_PARALLEL": "1"})
+        self.assertEqual((proc.returncode, proc.stdout), (0, "nothing to launch\n"), proc.stderr)
+        self.assertEqual((run / "owner-events.jsonl").read_text(), '{"phase":"pr"}\n')
         self.assertTrue((run / "pr-closed").exists())
 
     def test_guard_copies_a_pass_over_marker_past_dev_null(self) -> None:

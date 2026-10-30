@@ -8,7 +8,8 @@ Reads one target's run directories, <runs-root>/<issue>/<sha8>/ with a `status` 
 calls nothing: no model, no gh, no git. Another target's runs sit one level deeper, under
 <runs-root>/<owner>__<repo>/, so they never count here. The criteria and their thresholds are read
 from ARCHITECTURE.md, their one home; a line this file cannot measure prints `UNMEASURED: <why>`, and a
-lower bound within its threshold prints `INCONCLUSIVE`, since what it omits could pass the threshold.
+lower bound within its threshold prints `INCONCLUSIVE`, since what it omits could pass the threshold. An estimate
+always prints `INCONCLUSIVE`, never PASS or FAIL.
 python3 stdlib only.
 """
 from __future__ import annotations
@@ -25,6 +26,7 @@ REHEARSAL = "file ticket: no GitHub call"  # open_pr's pr-opened message for a f
 PASS_OVER = "SKIPPED:"  # bin/check's marker for a step that did not run; lib.sh's guard copies it into the checks file
 STALLS = ("stuck", "no-change", "stopped-cap")
 LOWER = "lower bound"  # a measure's fourth element: the value may undercount, so it prints INCONCLUSIVE, not PASS
+ESTIMATE = "estimate"  # a measure's fourth element: a text matcher's guess, so it prints INCONCLUSIVE, never PASS or FAIL
 # A completion claim: done (not done-checks), complete or finished (not after the or a), all [n] checks pass or print,
 # no FAIL, or check: PASSED. A failure: fail, failure, could not, cannot, incomplete or unfinished. A pass (passes,
 # passed) alone is no signal. A negation flips only the next claim, failure or pass in its clause: a denied claim or
@@ -158,7 +160,8 @@ def first_fail(lines):
 def scope_stalls(runs):
     if why := no_log(runs):
         return None, why
-    stalls = [(r, n) for r in runs for kind, n, _ in r.exits if kind in STALLS]
+    # A stall is a run, read at its last stall exit: a relaunch that stalls again is the same run.
+    stalls = [(r, ns[-1]) for r in runs if (ns := [n for kind, n, _ in r.exits if kind in STALLS])]
     # The stall's last checked round: no-change and a ticket-budget or wall-clock cap exit after the round's
     # `===== round N =====` line and before round-N.checks, so they read the round before.
     last = [(r, max((k for k in r.checks if n is not None and k <= n), default=None)) for r, n in stalls]
@@ -241,11 +244,14 @@ def claims_done(text):
 
 
 def premature_done(runs):
-    kinds, silent = {"claude": 0, "codex": 0}, 0
+    """An estimate: claims_done reads free text, so it can miss a claim or see one; a structured worker claim line
+    (#443) replaces it."""
+    kinds, silent, failing = {"claude": 0, "codex": 0}, 0, 0
     for r in runs:
         for n, lines in r.checks.items():
             if n == 0 or not any(line.startswith("FAIL") for line in lines):
                 continue
+            failing += 1
             kind, text = last_message(r.dir, n)
             if text is None:
                 silent += 1
@@ -254,14 +260,16 @@ def premature_done(runs):
     detail = f"claude {kinds['claude']}, codex {kinds['codex']}"
     if silent:
         detail += f"; {count(silent, 'failing round')} with no worker message"
-    return sum(kinds.values()), detail
+    n = sum(kinds.values())
+    return n, f"{detail}; text matcher, see #443", f"estimate: {n} of {count(failing, 'failing round')}", ESTIMATE
 
 
 # A measure returns (value, detail), (value, detail, shown), where shown replaces the value in the verdict line, or
-# (value, detail, shown, LOWER) for a lower bound: it can show a threshold is exceeded, never that it is met.
+# (value, detail, shown, LOWER) for a lower bound: it can show a threshold is exceeded, never that it is met, or
+# (value, detail, shown, ESTIMATE) for an estimate, which shows neither.
 MEASURES = {
     "operator actions from voice note to a running loop on Track B": operator_actions(
-        "launch", "a launch", "owner work outside the issue's events and the lint, run and stop subcommands"),
+        "launch", "a launch", "owner work outside the issue's events and the lint, run and stop subcommands run outside Claude Code"),
     "operator actions after the PR opens": operator_actions("pr", "a closed PR", "owner work outside the PR's events"),
     "stalls whose first failing grader row is scope": scope_stalls,
     "rounds lost to environment failures": environment_rounds,
@@ -312,6 +320,8 @@ def main(argv):
         lower = shown[1:] == [LOWER]
         if value is None:
             out.append(f"    UNMEASURED: {detail}")
+        elif shown[1:] == [ESTIMATE]:
+            out.append(f"    INCONCLUSIVE: {shown[0]} ({detail})")
         elif not m:
             out.append(f"    UNMEASURED: the threshold '{rule}' does not start with a number")
         else:

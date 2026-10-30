@@ -2179,8 +2179,12 @@ cmd_run() {
 # ---- owner-events.jsonl: the operator actions a run can see (ARCHITECTURE.md, Metrics) ----------------------
 # One JSON line per action, {"phase":"launch"|"pr","kind":...,"at":...}, and an "id" on a GitHub event, so a
 # relaunch does not add one twice. A subcommand counts only when the operator ran it: not from inside a model
-# call (FACTORY_CALL_TAG) or the worker's Stop hook (LOAM_HOOK), and a `run` not from next's timer (FACTORY_BY_NEXT).
-owner_ran() { [ -z "${FACTORY_CALL_TAG:-}" ] && [ -z "${LOAM_HOOK:-}" ] && [ -z "${FACTORY_BY_NEXT:-}" ]; }
+# call (FACTORY_CALL_TAG), the worker's Stop hook (LOAM_HOOK) or a Claude Code session (CLAUDECODE: the stage-2
+# session lints its own tickets, and an agent's command is not the operator's action), and a `run` not from next's
+# timer (FACTORY_BY_NEXT). The count stays a lower bound: an operator's own command in Claude Code is left out too.
+owner_ran() {
+  [ -z "${FACTORY_CALL_TAG:-}" ] && [ -z "${LOAM_HOOK:-}" ] && [ -z "${CLAUDECODE:-}" ] && [ -z "${FACTORY_BY_NEXT:-}" ]
+}
 owner_event() { # run-dir kind
   mkdir -p "$1" && printf '{"phase":"launch","kind":"%s","at":"%s"}\n' "$2" "$(now)" >> "$1/owner-events.jsonl"
 }
@@ -2289,6 +2293,10 @@ cmd_next() { # [--dry-run|--install]
     return 0
   fi
 
+  # 1a. Each closed PR's operator events, for status --criteria, on every tick, before a full slot or a gate can
+  #     return; not under --dry-run, which writes nothing.
+  [ "$dry" = 1 ] || pr_closed_events
+
   # 1b. A logged-out Claude fails every worker call (#78), so the timer refuses to launch rather than
   #     assign the ticket, run round 0, and page the owner when the first call fails. The probe is
   #     read-only and shared with precondition_lines; it runs under --dry-run too, since a check from
@@ -2352,8 +2360,6 @@ cmd_next() { # [--dry-run|--install]
     #     Not under --dry-run: a check in a worktree whose grader edit is not installed runs it.
     local g
     for g in judge reviewer; do grader_file "$g" > /dev/null || return 1; done
-    # 3c. Each closed PR's operator events, for status --criteria; not under --dry-run, which writes nothing.
-    pr_closed_events
   fi
 
   # 4. The frontier: open, ready-for-agent, unassigned issues with no open native blocker, lowest
