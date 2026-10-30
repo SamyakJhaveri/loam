@@ -5,14 +5,14 @@ Every model-invocable skill spends its `name` + `description` in the skill
 listing on *every* request, whether or not it is invoked (Claude Code docs:
 "Low (descriptions every request)"). Every agent spends its `name` +
 `description` in the Agent tool listing the same way, on every request. This
-script sums that weight per source so a budget can gate listing growth;
+script sums that weight per source so a budget can pin the listing weight;
 `bin/check` runs it and sets the budgets.
 
 A skill with `disable-model-invocation: true` is not in the listing and costs
 nothing here (docs: "Description not in context").
 
 Token estimate: characters / 4. It is uncalibrated: no `/context` reading has
-been recorded against it, so treat a budget as a no-growth ceiling on this
+been recorded against it, so treat a budget as the measured weight on this
 estimate, not as a real token count.
 
 Exit status: 0 if every budgeted source equals its budget,
