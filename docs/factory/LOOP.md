@@ -36,6 +36,7 @@ bin/factory.d/fixtures/        lint fixtures (CONTRACT.md)
 evals/<grader>/<case>/{prompt.md,expected.json}
 ~/.local/state/loam-factory/runs/<issue>/<sha8>/   on the runner, outside every checkout:
     status  ledger.jsonl  base.sha  frozen/  round-<k>.*  worker/decisions.md  pr-body.md  notify.failed
+    owner-events.jsonl  pr-closed   the operator actions status --criteria counts (ARCHITECTURE.md, Metrics)
 ~/.local/state/loam-factory/runs/<owner>__<repo>/<issue>/<sha8>/   the same, for a target named by -C (F8)
 ```
 

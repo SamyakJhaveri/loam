@@ -3,7 +3,8 @@
 A synthetic runs root holds a PR in one round, a PR after a parallel-cap exit and an environment-lost round, a PR
 whose first launch died mid-round and whose relaunch hit the parallel cap, a file-ticket rehearsal that opens no PR,
 and an abandoned run with more rounds than any PR. Another target's run sits under <owner>__<repo>/ and counts only
-with -C. No network, no model.
+with -C. A second root holds one run with the records the other criteria read: owner-events.jsonl, a stall, a
+pass-over marker, judge evidence_kind, and Claude and Codex worker messages. No network, no model.
 """
 
 from __future__ import annotations
@@ -55,6 +56,12 @@ def loam_runs(runs: pathlib.Path) -> None:
             [f"===== round {n} =====" for n in range(1, 5)] + ["EXIT pr-opened (0): https://github.com/o/r/pull/8"], 4)
 
 
+def verdicts(stdout: str) -> dict[str, str]:
+    """Criterion name -> its verdict line."""
+    lines = stdout.splitlines()
+    return {line[2:].partition(": ")[0]: lines[i + 1] for i, line in enumerate(lines) if line.startswith("- ")}
+
+
 def factory(*args: str, runs: pathlib.Path) -> subprocess.CompletedProcess[str]:
     env = {k: v for k, v in os.environ.items() if k not in INHERITED}
     return subprocess.run([str(ROOT / "bin/factory"), *args], cwd=ROOT, env={**env, "FACTORY_RUNS_ROOT": str(runs)},
@@ -79,27 +86,71 @@ class StatusCriteriaTests(unittest.TestCase):
         self.runs = pathlib.Path(self.tmp.name) / "runs"
         loam_runs(self.runs)
 
-    def test_two_criteria_are_measured_and_the_rest_print_unmeasured(self) -> None:
+    def test_runs_without_the_new_records_leave_only_those_criteria_unmeasured(self) -> None:
         proc = factory("status", "--criteria", runs=self.runs)
         self.assertEqual(proc.returncode, 0, proc.stderr)
+        verdict = verdicts(proc.stdout)
+        self.assertEqual(verdict["rounds lost to environment failures"], "    FAIL: measured 1 (2/aaaa0002 round 1)")
+        self.assertEqual(verdict["median rounds to PR"], "    PASS: measured 2 (over 3 PR runs)")
+        self.assertEqual(verdict["stalls whose first failing grader row is scope"], "    PASS: measured 0 (of 0 stalls)")
+        self.assertEqual(verdict["lines per round marking a passed-over step"], "    PASS: measured 0 (over 17 rounds)")
+        self.assertEqual(verdict["rounds whose last worker message claims done while the checks printed FAIL"],
+                         "    PASS: measured 0 (claude 0, codex 0)")
+        # A run from before owner-events.jsonl and evidence_kind shows no operator action and no cited notes,
+        # which is not zero of them.
+        for name in ("operator actions from voice note to a running loop on Track B",
+                     "operator actions after the PR opens", "judge fails citing a worker-written measurement"):
+            self.assertTrue(verdict[name].startswith("    UNMEASURED: "), (name, verdict[name]))
+        self.assertEqual(len(verdict), 8, verdict)
+        # One header line and the eight criteria: no run table, stop counts, or grader versions.
         lines = proc.stdout.splitlines()
-        verdict = {line: lines[i + 1] for i, line in enumerate(lines) if line.startswith("- ")}
-        # No check can get a SKIP line into round-N.checks, so seeing none is not a pass.
-        self.assertTrue(verdict["- SKIP lines per round: 0"].startswith("    UNMEASURED: "),
-                        verdict["- SKIP lines per round: 0"])
-        self.assertEqual(verdict["- rounds lost to environment failures: 0 (baseline 2)"],
-                         "    FAIL: measured 1 (2/aaaa0002 round 1)")
-        self.assertEqual(verdict["- median rounds to PR: at most 5 (lean-v3 median)"],
-                         "    PASS: measured 2 (over 3 PR runs)")
-        for line in ("- operator actions from voice note to a running loop on Track B: at most 3",
-                     "- operator actions after the PR opens: at most 1 once F9 lands",
-                     "- stalls whose first failing grader row is scope: 0 (baseline 3 of 4)",
-                     "- judge fails citing a worker-written measurement: 0 (S2 had at least four)"):
-            self.assertTrue(verdict[line].startswith("    UNMEASURED: "), (line, verdict[line]))
-        self.assertEqual(len(verdict), 7, verdict)
-        # One header line and the seven criteria: no run table, stop counts, or grader versions.
         self.assertIn(f": 5 runs under {self.runs} ", lines[0])
-        self.assertEqual(len(lines), 1 + 2 * 7, proc.stdout)
+        self.assertEqual(len(lines), 1 + 2 * 8, proc.stdout)
+
+    def test_the_run_records_measure_the_other_criteria(self) -> None:
+        runs = pathlib.Path(self.tmp.name) / "records"
+        # A relaunch after the stall opened the PR, so the median has its run too.
+        run_dir(runs, "7/abcd1234", "pr-opened",
+                ["===== launch =====", "===== round 1 =====", "===== round 2 =====", "===== round 3 =====",
+                 "EXIT stuck (1): same failing set"], 3)
+        d = runs / "7/abcd1234"
+        (d / "round-1.checks").write_text("SKIPPED: gpu\nSKIPPED: node\nFAIL a: b\n")
+        (d / "round-2.checks").write_text("FAIL a: b\n")
+        (d / "round-3.checks").write_text("FAIL do-not-touch seed/x\nFAIL a: b\n")
+        (d / "owner-events.jsonl").write_text("".join(
+            f'{{"phase":"{p}","kind":"{k}"}}\n' for p, k in
+            [("launch", "opened"), ("launch", "labeled"), ("launch", "run"), ("pr", "merged")]) + "not json\n")
+        (d / "round-3.judge.json").write_text(
+            '{"verdict":"fix","rows":{"correct":"fail","verified":"fail","honest":"pass"},'
+            '"evidence_kind":{"correct":"notes","verified":"diff","honest":"notes"}}\n')
+        # Round 1 (Claude, an array reply) claims done; round 2 (Codex) says it is not done; round 3 (Codex) finished.
+        (d / "round-1.result.json").write_text('[{"type":"system"},{"type":"result","result":"Done: all checks pass."}]')
+        (d / "round-2.result.json").write_text('{"result":"ignored for a Codex round"}')
+        (d / "round-2.last.txt").write_text("The done-checks still fail; this is not done yet.\n")
+        (d / "round-3.last.txt").write_text("Finished the change.\n")
+        proc = factory("status", "--criteria", runs=runs)
+        self.assertEqual(proc.returncode, 0, proc.stderr)
+        self.assertNotIn("UNMEASURED", proc.stdout)
+        verdict = verdicts(proc.stdout)
+        self.assertTrue(verdict["operator actions from voice note to a running loop on Track B"]
+                        .startswith("    PASS: measured at least 3 (most in one run, 7/abcd1234, of 1 run; omits "))
+        self.assertTrue(verdict["operator actions after the PR opens"].startswith("    PASS: measured at least 1 ("))
+        self.assertEqual(verdict["stalls whose first failing grader row is scope"],
+                         "    FAIL: measured 1 (of 1 stall: 7/abcd1234 round 3)")
+        self.assertEqual(verdict["lines per round marking a passed-over step"],
+                         "    FAIL: measured 2 (7/abcd1234 round 1)")
+        self.assertEqual(verdict["judge fails citing a worker-written measurement"],
+                         "    FAIL: measured 1 of 2 (7/abcd1234 round 3 correct)")
+        self.assertEqual(verdict["rounds whose last worker message claims done while the checks printed FAIL"],
+                         "    FAIL: measured 2 (claude 1, codex 1)")
+
+    def test_guard_copies_a_pass_over_marker_past_dev_null(self) -> None:
+        # The guard line sends bin/check's output to /dev/null; its SKIPPED: lines still reach the checks file.
+        proc = subprocess.run(
+            ["bash", "-c", '. bin/factory.d/lib.sh; guard sh -c "echo SKIPPED: gpu; echo noise; exit 3" >/dev/null; '
+             'echo "rc=$?"; guard echo SKIPPED: once'],
+            cwd=ROOT, capture_output=True, text=True, check=False)
+        self.assertEqual(proc.stdout, "SKIPPED: gpu\nrc=3\nSKIPPED: once\n", proc.stderr)
 
     def test_dash_C_reports_only_the_other_targets_runs(self) -> None:
         repo = pathlib.Path(self.tmp.name) / "r"
