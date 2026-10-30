@@ -2293,10 +2293,6 @@ cmd_next() { # [--dry-run|--install]
     return 0
   fi
 
-  # 1a. Each closed PR's operator events, for status --criteria, on every tick, before a full slot or a gate can
-  #     return; not under --dry-run, which writes nothing.
-  [ "$dry" = 1 ] || pr_closed_events
-
   # 1b. A logged-out Claude fails every worker call (#78), so the timer refuses to launch rather than
   #     assign the ticket, run round 0, and page the owner when the first call fails. The probe is
   #     read-only and shared with precondition_lines; it runs under --dry-run too, since a check from
@@ -2314,6 +2310,10 @@ cmd_next() { # [--dry-run|--install]
     echo "claude too old or unreadable: claude --version reports '$cv'; the factory needs Claude Code $CLAUDE_MIN_VERSION+" >&2
     return 1
   fi
+
+  # 1c. Each closed PR's operator events, for status --criteria, on every tick the gates pass, before a full slot
+  #     can return; not under --dry-run, which writes nothing.
+  [ "$dry" = 1 ] || pr_closed_events
 
   # 2. A run holds a slot when holds_slot says so (assert_parallel's rule: running or waiting-limit with a
   #    live owner, or launched with no status yet), and so does a pr-opened run whose ticket worktree still exists: the merge ritual removes the worktree,

@@ -99,6 +99,7 @@ class Run:
         self.rounds = len([n for n in self.checks if n > 0])
         log = read(os.path.join(run, "factory.log"), None)
         self.exits = None if log is None else exits(log)  # None: the exits are unknown, not absent
+        self.date = next((ln[:10] for ln in reversed((log or "").splitlines()) if re.match(r"\d{4}-\d\d-\d\dT", ln)), None)
         events = read(os.path.join(run, "owner-events.jsonl"), None)  # None: the run predates owner-events.jsonl
         self.events = None if events is None else [e for e in map(loads, events.splitlines()) if isinstance(e, dict)]
         self.pr_closed = os.path.exists(os.path.join(run, "pr-closed"))
@@ -160,12 +161,13 @@ def first_fail(lines):
 def scope_stalls(runs):
     if why := no_log(runs):
         return None, why
-    # A stall is a run, read at its last stall exit: a relaunch that stalls again is the same run.
-    stalls = [(r, ns[-1]) for r in runs if (ns := [n for kind, n, _ in r.exits if kind in STALLS])]
-    # The stall's last checked round: no-change and a ticket-budget or wall-clock cap exit after the round's
-    # `===== round N =====` line and before round-N.checks, so they read the round before.
-    last = [(r, max((k for k in r.checks if n is not None and k <= n), default=None)) for r, n in stalls]
-    scope = [f"{r.label} round {n}" for r, n in last if first_fail(r.checks.get(n, [])) == "do-not-touch"]
+    # A stall is a run, and a scope stall when any of its stall exits is: a relaunch that stalls again, for scope or
+    # another reason, is the same run. An exit reads its last checked round, since no-change and a ticket-budget or
+    # wall-clock cap exit after the round's `===== round N =====` line and before round-N.checks.
+    stalls = [(r, [max((k for k in r.checks if k <= n), default=None) for kind, n, _ in r.exits
+                   if kind in STALLS and n is not None]) for r in runs if any(kind in STALLS for kind, _, _ in r.exits)]
+    scope = [f"{r.label} round {n}" for r, ns in stalls
+             if (n := next((k for k in ns if first_fail(r.checks.get(k, [])) == "do-not-touch"), None)) is not None]
     return len(scope), f"of {count(len(stalls), 'stall')}" + (f": {', '.join(scope)}" if scope else "")
 
 
@@ -235,18 +237,18 @@ def signals(clause):
 
 
 def claims_done(text):
-    """True when some sentence's last signal is a claim of the work done or its checks passing."""
+    """The first sentence whose last signal is a claim of the work done or its checks passing, or None."""
     for sentence in re.split(r"(?<=[.!?])\s+|\n", text):
         found = [v for clause in CLAUSE.split(HYPOTHETICAL.split(sentence, 1)[0]) for v in signals(clause)]
         if found and found[-1] and not sentence.rstrip().endswith("?"):
-            return True
-    return False
+            return sentence.strip()
+    return None
 
 
 def premature_done(runs):
     """An estimate: claims_done reads free text, so it can miss a claim or see one; a structured worker claim line
     (#443) replaces it."""
-    kinds, silent, failing = {"claude": 0, "codex": 0}, 0, 0
+    kinds, silent, failing, rows = {"claude": 0, "codex": 0}, 0, 0, []
     for r in runs:
         for n, lines in r.checks.items():
             if n == 0 or not any(line.startswith("FAIL") for line in lines):
@@ -255,18 +257,21 @@ def premature_done(runs):
             kind, text = last_message(r.dir, n)
             if text is None:
                 silent += 1
-            elif claims_done(text):
+            elif said := claims_done(text):
                 kinds[kind] += 1
+                # The round, its first FAIL line and the claim, so a reader can settle the estimate.
+                fail = next(line for line in lines if line.startswith("FAIL"))
+                rows.append(f"{r.label} round {n} ({kind}): {fail[:60]} | {said[:100]}")
     detail = f"claude {kinds['claude']}, codex {kinds['codex']}"
     if silent:
         detail += f"; {count(silent, 'failing round')} with no worker message"
     n = sum(kinds.values())
-    return n, f"{detail}; text matcher, see #443", f"estimate: {n} of {count(failing, 'failing round')}", ESTIMATE
+    return n, f"{detail}; text matcher, see #443", f"estimate: {n} of {count(failing, 'failing round')}", ESTIMATE, rows
 
 
 # A measure returns (value, detail), (value, detail, shown), where shown replaces the value in the verdict line, or
 # (value, detail, shown, LOWER) for a lower bound: it can show a threshold is exceeded, never that it is met, or
-# (value, detail, shown, ESTIMATE) for an estimate, which shows neither.
+# (value, detail, shown, ESTIMATE, rows) for an estimate, which shows neither, with a line per counted case.
 MEASURES = {
     "operator actions from voice note to a running loop on Track B": operator_actions(
         "launch", "a launch", "owner work outside the issue's events and the lint, run and stop subcommands run outside Claude Code"),
@@ -318,15 +323,19 @@ def main(argv):
             continue
         value, detail, *shown = MEASURES[name](runs) if runs else (None, f"no run directory under {root}")
         lower = shown[1:] == [LOWER]
+        # A FAIL names the date of its latest run in the detail, from that run's factory.log.
+        dates = [r.date for r in runs if r.date and re.search(rf"(?<![\w/]){re.escape(r.label)}\b", str(detail))]
         if value is None:
             out.append(f"    UNMEASURED: {detail}")
-        elif shown[1:] == [ESTIMATE]:
+        elif shown[1:2] == [ESTIMATE]:
             out.append(f"    INCONCLUSIVE: {shown[0]} ({detail})")
+            out += [f"      {row}" for row in shown[2]]
         elif not m:
             out.append(f"    UNMEASURED: the threshold '{rule}' does not start with a number")
         else:
             verdict = "FAIL" if value > int(m.group(1)) else "INCONCLUSIVE" if lower else "PASS"
-            out.append(f"    {verdict}: measured {shown[0] if shown else num(value)}" + (f" ({detail})" if detail else ""))
+            out.append(f"    {verdict}: measured {shown[0] if shown else num(value)}" + (f" ({detail})" if detail else "")
+                       + (f"; latest {max(dates)}" if verdict == "FAIL" and dates else ""))
     print("\n".join(out))
     return 0
 

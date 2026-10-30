@@ -92,7 +92,7 @@ class StatusCriteriaTests(unittest.TestCase):
         proc = factory("status", "--criteria", runs=self.runs)
         self.assertEqual(proc.returncode, 0, proc.stderr)
         verdict = verdicts(proc.stdout)
-        self.assertEqual(verdict["rounds lost to environment failures"], "    FAIL: measured 1 (2/aaaa0002 round 1)")
+        self.assertEqual(verdict["rounds lost to environment failures"], "    FAIL: measured 1 (2/aaaa0002 round 1); latest 2026-10-19")
         self.assertEqual(verdict["median rounds to PR"], "    PASS: measured 2 (over 3 PR runs)")
         self.assertEqual(verdict["stalls whose first failing grader row is scope"], "    PASS: measured 0 (of 0 stalls)")
         # The text matcher's count is an estimate (#443), so it never prints PASS or FAIL.
@@ -140,13 +140,18 @@ class StatusCriteriaTests(unittest.TestCase):
                         .startswith("    INCONCLUSIVE: measured at least 3 (most in one run, 7/abcd1234, of 1 run; omits "))
         self.assertTrue(verdict["operator actions after the PR opens"].startswith("    INCONCLUSIVE: measured at least 1 ("))
         self.assertEqual(verdict["stalls whose first failing grader row is scope"],
-                         "    FAIL: measured 1 (of 1 stall: 7/abcd1234 round 3)")
+                         "    FAIL: measured 1 (of 1 stall: 7/abcd1234 round 3); latest 2026-10-19")
         self.assertEqual(verdict["lines per round marking a passed-over step"],
-                         "    FAIL: measured 2 (7/abcd1234 round 1)")
+                         "    FAIL: measured 2 (7/abcd1234 round 1); latest 2026-10-19")
         self.assertEqual(verdict["judge fails citing a worker-written measurement"],
-                         "    FAIL: measured 1 of 2 (7/abcd1234 round 3 correct)")
+                         "    FAIL: measured 1 of 2 (7/abcd1234 round 3 correct); latest 2026-10-19")
         self.assertEqual(verdict["rounds whose last worker message claims done while the checks printed FAIL"],
                          "    INCONCLUSIVE: estimate: 2 of 3 failing rounds (claude 1, codex 1; text matcher, see #443)")
+        # Each counted round, its first FAIL line and the sentence read as a claim, so a reader can settle the estimate.
+        lines = proc.stdout.splitlines()
+        self.assertEqual(lines[lines.index(verdict["rounds whose last worker message claims done while the checks printed FAIL"])
+                               + 1:], ["      7/abcd1234 round 1 (claude): FAIL a: b | Done: all checks pass.",
+                                       "      7/abcd1234 round 3 (codex): FAIL do-not-touch seed/x | Finished the change."])
 
     def test_a_completion_claim_is_a_claim_and_a_failure_report_is_not(self) -> None:
         spec = importlib.util.spec_from_file_location("criteria", CRITERIA)
@@ -194,14 +199,27 @@ class StatusCriteriaTests(unittest.TestCase):
             run_dir(runs, label, "stopped", ["===== launch =====", "===== round 1 =====", "===== round 2 =====",
                                               exit_line], 1)
             (runs / label / "round-1.checks").write_text("FAIL do-not-touch seed/x\nFAIL a: b\n")
-        # A run that stalls, is relaunched and stalls again is one stall, read at its last stall exit.
-        run_dir(runs, "8/aaaa0008", "stuck", ["===== launch =====", "===== round 1 =====", "EXIT stuck (1): same failing set",
-                                               "===== launch =====", "===== round 2 =====", "EXIT stuck (1): same failing set"], 2)
+        log6 = runs / "6/aaaa0006/factory.log"
+        log6.write_text(log6.read_text().replace("2026-10-19", "2026-10-21"))
+        # A run that stalls, is relaunched and stalls again is one stall, and a scope stall when any of its stalls is:
+        # 8 never fails scope first; 9 stalls on scope, then on another failure; 10 stalls on scope, then its
+        # relaunch hits the round cap before a round begins.
+        stuck = "EXIT stuck (1): same failing set"
+        for label, log in (("8/aaaa0008", ["===== round 1 =====", stuck, "===== launch =====", "===== round 2 =====", stuck]),
+                           ("9/aaaa0009", ["===== round 1 =====", stuck, "===== launch =====", "===== round 2 =====", stuck]),
+                           ("10/aaaa0010", ["===== round 1 =====", "===== round 2 =====", stuck, "===== launch =====",
+                                            "EXIT stopped-cap (3): ROUND_CAP 2 reached"])):
+            run_dir(runs, label, "stuck", ["===== launch ====="] + log, 2)
         (runs / "8/aaaa0008/round-2.checks").write_text("FAIL a: b\nFAIL do-not-touch seed/x\n")
+        (runs / "9/aaaa0009/round-1.checks").write_text("FAIL do-not-touch seed/x\n")
+        (runs / "9/aaaa0009/round-2.checks").write_text("FAIL a: b\n")
+        (runs / "10/aaaa0010/round-2.checks").write_text("FAIL do-not-touch seed/x\n")
         proc = factory("status", "--criteria", runs=runs)
         self.assertEqual(proc.returncode, 0, proc.stderr)
+        # The FAIL names the date of its latest offending run, 6's.
         self.assertEqual(verdicts(proc.stdout)["stalls whose first failing grader row is scope"],
-                         "    FAIL: measured 2 (of 3 stalls: 5/aaaa0005 round 1, 6/aaaa0006 round 1)")
+                         "    FAIL: measured 4 (of 5 stalls: 5/aaaa0005 round 1, 6/aaaa0006 round 1, 9/aaaa0009 round 1, "
+                         "10/aaaa0010 round 2); latest 2026-10-21")
 
     def test_a_run_that_froze_the_copying_guard_measures_zero_pass_over_lines(self) -> None:
         frozen = self.runs / "1/aaaa0001/frozen"
