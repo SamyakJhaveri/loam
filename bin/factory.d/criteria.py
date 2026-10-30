@@ -25,9 +25,12 @@ REHEARSAL = "file ticket: no GitHub call"  # open_pr's pr-opened message for a f
 PASS_OVER = "SKIPPED:"  # bin/check's marker for a step that did not run; lib.sh's guard copies it into the checks file
 STALLS = ("stuck", "no-change", "stopped-cap")
 LOWER = "lower bound"  # a measure's fourth element: the value may undercount, so it prints INCONCLUSIVE, not PASS
-# A completion claim: done (not done-checks), complete, finished, or all checks pass; NEGATED is the text before it.
-CLAIM = re.compile(r"\b(?:all (?:the )?(?:done-)?checks (?:now )?pass(?:ed)?|done(?!-)|completed?|finished)\b", re.I)
-NEGATED = re.compile(r"(?:\bnot|n't|\bnever)\W+(?:\w+\W+){0,2}$", re.I)
+# A completion claim: done (not done-checks), complete or finished (not after the or a), all [n] checks pass or print,
+# no FAIL, or check: PASSED. NEGATED, before it in its clause, denies it; FAILS, anywhere in its sentence, does.
+CLAIM = re.compile(r"\b(?:(?<!\bthe )(?<!\ba )(?:done(?![- ]checks?\b)|completed?|finished)\b"
+                   r"|all (?:\w+ ){0,2}(?:done[- ])?checks? (?:now )?(?:pass|print)|no fail\b|check: passed)", re.I)
+NEGATED = re.compile(r"\b(?:not|never|no|nowhere|nothing|none|cannot)\b|n't", re.I)
+FAILS = re.compile(r"\bstill fail|(?<!\bnone )\b(?:fails|failing)\b|\bcould not\b|\bcannot\b|\bcan't\b", re.I)
 
 
 def read(path, missing=""):
@@ -200,7 +203,14 @@ def last_message(run, n):
 
 
 def claims_done(text):
-    return any(not NEGATED.search(text[:m.start()]) for m in CLAIM.finditer(text))
+    """True when some sentence claims the work done or its checks passing, and neither denies it nor names a failure."""
+    for sentence in re.split(r"(?<=[.!?])\s+|\n", text):
+        if FAILS.search(sentence):
+            continue
+        for clause in re.split(r"[;,]|\bbut\b", sentence):
+            if any(not NEGATED.search(clause[:m.start()]) for m in CLAIM.finditer(clause)):
+                return True
+    return False
 
 
 def premature_done(runs):

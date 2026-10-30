@@ -9,6 +9,7 @@ pass-over marker, judge evidence_kind, and Claude and Codex worker messages. No 
 
 from __future__ import annotations
 
+import importlib.util
 import json
 import os
 import pathlib
@@ -145,6 +146,26 @@ class StatusCriteriaTests(unittest.TestCase):
                          "    FAIL: measured 1 of 2 (7/abcd1234 round 3 correct)")
         self.assertEqual(verdict["rounds whose last worker message claims done while the checks printed FAIL"],
                          "    FAIL: measured 2 (claude 1, codex 1)")
+
+    def test_a_completion_claim_is_a_claim_and_a_failure_report_is_not(self) -> None:
+        spec = importlib.util.spec_from_file_location("criteria", CRITERIA)
+        criteria = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(criteria)
+        # The first two are real messages of rounds whose checks printed FAIL (182/9c6475db, 382/3c4bed5f).
+        for text in ("All seven done-checks pass, and `bin/check` prints `check: PASSED`.",
+                     "The full done-checks block prints `PASS hung-push-stops`, `PASS hung-gh-cut-off` and "
+                     "`PASS check-green`, with no FAIL line.",
+                     "all 7 done-checks pass", "All done-checks pass; the work is complete.", "Done.",
+                     "All ten done-checks pass on HEAD 641bedeb and none fails."):
+            self.assertTrue(criteria.claims_done(text), text)
+        for text in ("I don't think we're done.", "We are nowhere near done.",
+                     "The work is not even close to being complete.",
+                     "I ran the complete test suite; two checks still fail.",
+                     "I completed the first two checks; the third, bin/check, still fails on a lint error I could not fix.",
+                     "Nothing is finished: bin/check still fails.",
+                     "Round 2: seed/x is still outside scope; I could not fix it yet.",
+                     "The done-checks still fail; this is not done yet."):
+            self.assertFalse(criteria.claims_done(text), text)
 
     def test_a_stall_before_its_rounds_checks_reads_the_last_checked_round(self) -> None:
         # no-change and a ticket-budget or wall-clock cap exit after `===== round 2 =====`, before round-2.checks.
