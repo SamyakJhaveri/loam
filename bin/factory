@@ -10,7 +10,8 @@
 #   bin/factory next [--install]    the F9 frontier timer's step: launch the next unblocked ready-for-agent ticket.
 #   bin/factory graders-check       fails when judge.md or reviewer.md drifts from GRADER_MODEL and GRADER_EFFORT.
 #   -C <repo>, before the subcommand or right after it, points lint, run, status, stop, and next at another repository (F8).
-# Lint never executes a check; it reads the body and shells out only to `bash -n` and `gh`.
+# Lint never executes a check; it reads the body and shells out only to `bash -n` and `gh`. Lint of an issue,
+# run and stop, when the operator runs them, add a line to the run dir's owner-events.jsonl (status --criteria).
 set -uo pipefail
 
 # FACTORY_ROOT is set when a run execs its frozen copy of this file out of the run directory.

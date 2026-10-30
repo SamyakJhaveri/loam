@@ -8,13 +8,13 @@ Rubric text lives only in the grader files.
 
 | Command | Does | Built in |
 |---|---|---|
-| `bin/factory lint <issue|file>` | static ticket lint, rules in `CONTRACT.md` | F2 |
+| `bin/factory lint <issue|file>` | static ticket lint, rules in `CONTRACT.md`; lint of an issue adds a `lint` line to `owner-events.jsonl` in the run dir its body's launch will use | F2 |
 | `bin/factory eval <grader> [--model M]` | replays frozen cases through the production grader call and compares verdicts; `EVAL_EFFORT` sets the effort (default `GRADER_EFFORT`), `EVAL_OUT=<dir>` keeps each raw reply | F6 |
 | `bin/factory eval-freeze [--evals-dir D] <run-dir>...` | copies each run's last round, when the judge passed it and no reviewer finding was high or medium, into `<evals-dir>/clean/<grader>/<key>-<sha8>/` (default `evals/clean/`), the prompt cut at `## Ticket`; prints `not frozen <run-dir>: <reason>` for the rest | F36 |
-| `bin/factory run <issue>` | round 0, then worker rounds, graders, PR | F1 |
+| `bin/factory run <issue>` | round 0, then worker rounds, graders, PR; each launch first appends the operator's events on the issue to `owner-events.jsonl` as `phase` `launch`, and a `run` line unless `next` launched it (`FACTORY_BY_NEXT`) | F1 |
 | `bin/factory status` | run states, spend, denials per round, worktree and PR readiness, preconditions | F1 |
 | `bin/factory status --criteria` | measures the trust criteria in `ARCHITECTURE.md` (Metrics) from the target's run directories; a criterion the run record cannot show prints `UNMEASURED` with the reason; reads files only, no model or `gh` call | 2026-10-19 |
-| `bin/factory stop <issue>` | writes `FACTORY_STOP` into the run dir | F1 |
+| `bin/factory stop <issue>` | writes `FACTORY_STOP` into the run dir, and a `stop` line into its `owner-events.jsonl` | F1 |
 | `bin/runner [-C <dir>] <cmd>` | runs `<cmd>` on the runner: `ssh jhaveris bash -lc 'cd ~/Desktop/loam && <cmd>'`, or from `<dir>` there (quote a tilde, F8); `bin/runner sync` mirrors `.superpowers/factory/` to the same path on the runner with `rsync -az --delete`, excluding `runs/` and `__pycache__`; it never pulls (#36) | F0 |
 | `bin/factory next [--install]` | launches up to `MAX_PARALLEL` `ready-for-agent` issues with no assignee and no open native blocker, or assigned to the runner with a `stopped-daily` run (read through `gh api`); `--install` writes the ten-minute runner timer | F9 |
 
@@ -263,6 +263,7 @@ A run at `stopped-environment` or `stopped` relaunches on the next tick, and one
 Every other exit except `pr-opened` parks the ticket.
 A launch assigns the issue to the runner and no exit unassigns it, so `next` also reads the runner's own `ready-for-agent` issues in the repository (`gh api issues?filter=assigned --paginate`, every page, since the query spans all the runner's repositories) and takes one only when its run is `stopped-daily`; it skips every other one without a line.
 The daily ledger is the runner's across targets, so while any run under the runs base reads `stopped-daily` with a `status` file dated today (UTC), and that ledger has no room for one more `ROUND_BUDGET_USD` under `DAILY_BUDGET_USD` at the runner's own caps (the defaults and any `FACTORY_<NAME>` override, not a ticket's Worker section, which may have stopped that run lower), `next` launches nothing and prints `waiting: a run stopped at today's daily budget; nothing launches before 00:00 UTC` on stderr.
+Each tick but a `--dry-run` reads, for each `pr-opened` run with no `pr-closed` file, its PR's state through `gh api`; once the PR is closed it appends the operator's events on the PR to the run's `owner-events.jsonl` as `phase` `pr` and writes `pr-closed`, and a `gh` failure leaves the run for the next tick.
 Before it picks a ticket, `next` runs the `lint` rules on each candidate's body; a candidate that fails is skipped with one stderr line (`lint failed #N: <first error>; edit the body or remove ready-for-agent`) and the next candidate is tried, so a labelled issue with no done-checks block never launches (#314).
 
 ## Stop

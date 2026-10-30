@@ -9,6 +9,7 @@ pass-over marker, judge evidence_kind, and Claude and Codex worker messages. No 
 
 from __future__ import annotations
 
+import json
 import os
 import pathlib
 import subprocess
@@ -143,6 +144,43 @@ class StatusCriteriaTests(unittest.TestCase):
                          "    FAIL: measured 1 of 2 (7/abcd1234 round 3 correct)")
         self.assertEqual(verdict["rounds whose last worker message claims done while the checks printed FAIL"],
                          "    FAIL: measured 2 (claude 1, codex 1)")
+
+    def test_owner_events_reads_the_operators_issue_and_pr_events(self) -> None:
+        # gh is a stub that applies the real --jq program with jq to GitHub-shaped replies, keyed by the API path.
+        gh_dir = pathlib.Path(self.tmp.name) / "gh"
+        gh_dir.mkdir()
+        (gh_dir / "user").write_text('{"login":"me"}')
+        (gh_dir / "issue").write_text('{"user":{"login":"me"},"created_at":"T0","state":"closed"}')
+        (gh_dir / "timeline").write_text("""[
+          {"id":1,"event":"labeled","actor":{"login":"me"},"created_at":"T0"},
+          {"id":2,"event":"assigned","actor":{"login":"me"},"created_at":"T1"},
+          {"id":3,"event":"commented","actor":{"login":"me"},"created_at":"T1","body":"**Stopped.** worker text"},
+          {"id":4,"event":"commented","actor":{"login":"me"},"created_at":"T1","body":"please also"},
+          {"id":5,"event":"commented","actor":{"login":"other"},"created_at":"T1","body":"hi"},
+          {"id":6,"event":"reviewed","user":{"login":"me"},"submitted_at":"T2"},
+          {"id":7,"event":"merged","actor":{"login":"me"},"created_at":"T3"},
+          {"id":8,"event":"closed","actor":{"login":"me"},"created_at":"T3"},
+          {"sha":"abc","event":"committed","author":{"name":"me"}}]""")
+        run = self.runs / "9/aaaa0009"
+        run_dir(self.runs, "9/aaaa0009", "pr-opened",
+                ["EXIT pr-opened (0): https://github.com/o/loam/pull/10 after 1 rounds, 2 usd"], 1)
+        script = (
+            '. bin/factory; net() { "$@"; }; '
+            'gh() { local p="" f; case "$2" in user) f=user ;; */timeline) f=timeline ;; *) f=issue ;; esac; '
+            'while [ $# -gt 0 ]; do [ "$1" = --jq ] && { p="$2"; shift; }; shift; done; jq -r "$p" "$GH_DIR/$f"; }; '
+            'owner_events "$1" launch o/loam 9 && owner_events "$1" launch o/loam 9 && pr_closed_events && pr_closed_events'
+        )
+        env = {k: v for k, v in os.environ.items() if k not in ("FACTORY_CALL_TAG", "LOAM_HOOK", "FACTORY_BY_NEXT")}
+        proc = subprocess.run(["bash", "-c", script, "_", str(run)], cwd=ROOT, capture_output=True, text=True, check=False,
+                              env={**env, "FACTORY_SOURCED": "1", "FACTORY_RUNS_ROOT": str(self.runs), "GH_DIR": str(gh_dir)})
+        self.assertEqual(proc.returncode, 0, proc.stderr)
+        events = [(e["phase"], e["kind"], e["id"]) for e in map(json.loads, (run / "owner-events.jsonl").read_text().splitlines())]
+        # The creation label, the assignment, notify's comment, another login's and a merge's closed are not actions;
+        # a relaunch and a second tick add nothing.
+        self.assertEqual(events, [("launch", "opened", "opened"), ("launch", "commented", "4"), ("launch", "reviewed", "6"),
+                                  ("launch", "merged", "7"), ("pr", "commented", "4"), ("pr", "reviewed", "6"),
+                                  ("pr", "merged", "7")])
+        self.assertTrue((run / "pr-closed").exists())
 
     def test_guard_copies_a_pass_over_marker_past_dev_null(self) -> None:
         # The guard line sends bin/check's output to /dev/null; its SKIPPED: lines still reach the checks file.
