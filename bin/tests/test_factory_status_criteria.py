@@ -145,6 +145,19 @@ class StatusCriteriaTests(unittest.TestCase):
         self.assertEqual(verdict["rounds whose last worker message claims done while the checks printed FAIL"],
                          "    FAIL: measured 2 (claude 1, codex 1)")
 
+    def test_a_stall_before_its_rounds_checks_reads_the_last_checked_round(self) -> None:
+        # no-change and a ticket-budget or wall-clock cap exit after `===== round 2 =====`, before round-2.checks.
+        runs = pathlib.Path(self.tmp.name) / "stalls"
+        for label, exit_line in (("5/aaaa0005", "EXIT no-change (1): HEAD and decisions.md are unchanged since round 1"),
+                                 ("6/aaaa0006", "EXIT stopped-cap (3): ticket budget: 10 usd")):
+            run_dir(runs, label, "stopped", ["===== launch =====", "===== round 1 =====", "===== round 2 =====",
+                                              exit_line], 1)
+            (runs / label / "round-1.checks").write_text("FAIL do-not-touch seed/x\nFAIL a: b\n")
+        proc = factory("status", "--criteria", runs=runs)
+        self.assertEqual(proc.returncode, 0, proc.stderr)
+        self.assertEqual(verdicts(proc.stdout)["stalls whose first failing grader row is scope"],
+                         "    FAIL: measured 2 (of 2 stalls: 5/aaaa0005 round 1, 6/aaaa0006 round 1)")
+
     def test_a_run_that_froze_the_copying_guard_measures_zero_pass_over_lines(self) -> None:
         frozen = self.runs / "1/aaaa0001/frozen"
         frozen.mkdir()

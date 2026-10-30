@@ -144,7 +144,10 @@ def scope_stalls(runs):
     if why := no_log(runs):
         return None, why
     stalls = [(r, n) for r in runs for kind, n, _ in r.exits if kind in STALLS]
-    scope = [f"{r.label} round {n}" for r, n in stalls if first_fail(r.checks.get(n, [])) == "do-not-touch"]
+    # The stall's last checked round: no-change and a ticket-budget or wall-clock cap exit after the round's
+    # `===== round N =====` line and before round-N.checks, so they read the round before.
+    last = [(r, max((k for k in r.checks if n is not None and k <= n), default=None)) for r, n in stalls]
+    scope = [f"{r.label} round {n}" for r, n in last if first_fail(r.checks.get(n, [])) == "do-not-touch"]
     return len(scope), f"of {count(len(stalls), 'stall')}" + (f": {', '.join(scope)}" if scope else "")
 
 
