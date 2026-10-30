@@ -18,6 +18,9 @@ guard() { [ -n "${LOAM_HOOK:-}" ] && [ "${1:-}" = bin/check ] && return 0; "$@";
 # Only round 0 sets FACTORY_ROUND0, to a file outside the worktree, and only then does CMD run. A miss (CMD exits
 # non-zero, or the line has no CMD) is appended to that file, not printed, so a redirect on the predict line cannot
 # hide it from round_zero; CMD's own output is dropped, so it cannot print a PASS line. Every other run prints nothing.
+# CMD runs in a subshell, so return, unset or cd cannot escape the recorder; FACTORY_ROUND0 is not exported on, so a
+# check's own `bash -c '. lib.sh; predict ...'` records nothing.
+export -n FACTORY_ROUND0 2>/dev/null
 predict() {
   local name=${1:-} rc
   [ -n "${FACTORY_ROUND0:-}" ] || return 0
@@ -26,7 +29,7 @@ predict() {
     printf '%s has no command\n' "$name" >> "$FACTORY_ROUND0"
     return 0
   fi
-  "$@" > /dev/null 2>&1
+  ( "$@" ) > /dev/null 2>&1
   rc=$?
   [ "$rc" -eq 0 ] || printf '%s exits %s\n' "$name" "$rc" >> "$FACTORY_ROUND0"
   return 0

@@ -132,11 +132,11 @@ dc_predicts() { dc_lines | grep -E '^predict[[:space:]]'; }
 # The NAME after each `pass` in the check lines on stdin, quotes stripped, one per line.
 pass_names() { grep -oE '(^|[[:space:]])pass[[:space:]]+"?[A-Za-z0-9_.-]+' | awk '{print $NF}' | tr -d '"' | sort -u; }
 
-# Like pass_names, but only where pass is the command word (after && || ; { ( then do else, or at the start), so a
-# fail reason such as "lint does not pass greeting" names no check. check_predicts reads it: a name too many there
-# would demand a predict line, while round 0's guard names only exempt, so they keep the lenient pass_names.
+# Like pass_names, but only where pass is the command word (after && || ; { ( ) then do else, or at the start), so a
+# fail reason such as "lint does not pass greeting" names no check; ) ends a case pattern. check_predicts reads it: a
+# name too many there would demand a predict line, while round 0's guard names only exempt, so they keep pass_names.
 pass_cmd_names() {
-  grep -oE '(^|&&|\|\||[;{(]|(then|do|else)[[:space:]])[[:space:]]*pass[[:space:]]+"?[A-Za-z0-9_.-]+' \
+  grep -oE '(^|&&|\|\||[;{()]|(then|do|else)[[:space:]])[[:space:]]*pass[[:space:]]+"?[A-Za-z0-9_.-]+' \
     | awk '{print $NF}' | tr -d '"' | sort -u
 }
 
@@ -237,14 +237,17 @@ check_check_lines() {
     line=${line#"${line%%[![:space:]]*}"}
     [ -n "$line" ] || continue
     case "$line" in \#*) continue ;; esac
-    # A word after NAME that starts a comment, a control operator, or a redirect is no command: the shell hands
-    # predict none. A backgrounded predict line may record its miss after round_zero has read the miss file.
+    # The shell hands predict only the words before an unquoted ; & | < or >: the rest of a compound line runs
+    # outside it, and a failed redirect skips it. A keyword such as ! or [[ is no command "$@" can run.
     if [[ "$line" == predict[[:space:]]* ]]; then
-      read -r _ _ c _ <<<"$line"
-      if [ -z "$c" ] || [[ "$c" =~ ^[\#\;\&\|\<\>\)] ]]; then
+      e=$(sed -E -e "s/'[^']*'|\"([^\"\\\\]|\\\\.)*\"/Q/g" <<<"$line")
+      read -r _ _ c _ <<<"$e"
+      if [[ "$e" == *[\;\&\|\<\>]* ]]; then
+        err "predict line is not one simple command: $line; CMD is one simple command, so a compound prediction goes in bash -c '...'"
+      elif [ -z "$c" ] || [[ "$c" =~ ^[\#\)] ]]; then
         err "predict line has no command: $line"
-      elif grep -qE '(^|[^&>])&([^&>]|$)' <<<"$line"; then
-        err "predict line runs in the background: $line"
+      elif [ "$(type -t -- "$c")" = keyword ]; then
+        err "predict line's command $c is a shell keyword: $line; use test ! ... or bash -c '...'"
       fi
       continue
     fi
@@ -281,7 +284,7 @@ check_worker() {
   fi
   # `contract:` is optional; `contract: 2` makes check_predicts want one predict line per non-guard check.
   if grep -qE '^contract:' <<<"$w"; then
-    grep -qxE 'contract: 2' <<<"$w" || err "Worker 'contract:' must be 'contract: 2'"
+    [ "$(grep -E '^contract:' <<<"$w")" = 'contract: 2' ] || err "Worker 'contract:' must be one line 'contract: 2'"
   fi
   # Every `skills:` name is a line of bin/factory.d/skills.txt, matched byte for byte (#37), or a
   # pstack:<name>, which needs no line (#385) but must be plain letters, digits, - or _, since skill_file
@@ -331,6 +334,11 @@ check_predicts() {
   grep -qxE 'contract: 2' <<<"$(section Worker)" || return 0
   names=$(guard_checks -v | pass_cmd_names)
   guards=$(guard_checks | pass_cmd_names)
+  # A check whose pass takes no literal name, as `pass "$n"` in a loop, gives no name a predict line could cover.
+  while IFS= read -r line; do
+    [ -n "$(pass_cmd_names <<<"$line")" ] \
+      || err "check line reports pass with no literal name, so no predict line can name it: $line"
+  done < <(guard_checks -v)
   while IFS= read -r line; do
     [ -n "$line" ] || continue
     read -r _ name _ <<<"$line"
@@ -1289,7 +1297,7 @@ round_zero() {
   # A predict line whose command exits non-zero, or that has none: the check fails on base, but not for the reason
   # its author predicted.
   while read -r name why; do
-    finish ticket-defect "check $name fails on $(cut -c1-8 "$RUN/base.sha"), but its predict line $why, so base does not fail for the predicted reason; see $misses"
+    finish ticket-defect "the predict line for check $name $why on $(cut -c1-8 "$RUN/base.sha"), so base does not show the predicted failure; see $misses"
   done < "$misses"
   guards=$(guard_checks | pass_names)
   while read -r _ name _; do
