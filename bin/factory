@@ -12,6 +12,8 @@
 #   -C <repo>, before the subcommand or right after it, points lint, run, status, stop, and next at another repository (F8).
 # Lint never executes a check; it reads the body and shells out only to `bash -n` and `gh`.
 set -uo pipefail
+# Only round_zero sets FACTORY_ROUND0 (lib.sh, predict); a run nested in another's round 0 must not inherit it.
+unset FACTORY_ROUND0
 
 # FACTORY_ROOT is set when a run execs its frozen copy of this file out of the run directory.
 ROOT="${FACTORY_ROOT:-$(cd "$(dirname "$0")/.." && pwd)}"
@@ -234,7 +236,18 @@ check_check_lines() {
   while IFS= read -r line; do
     line=${line#"${line%%[![:space:]]*}"}
     [ -n "$line" ] || continue
-    case "$line" in \#*|predict[[:space:]]*) continue ;; esac
+    case "$line" in \#*) continue ;; esac
+    # A word after NAME that starts a comment, a control operator, or a redirect is no command: the shell hands
+    # predict none. A backgrounded predict line may record its miss after round_zero has read the miss file.
+    if [[ "$line" == predict[[:space:]]* ]]; then
+      read -r _ _ c _ <<<"$line"
+      if [ -z "$c" ] || [[ "$c" =~ ^[\#\;\&\|\<\>\)] ]]; then
+        err "predict line has no command: $line"
+      elif grep -qE '(^|[^&>])&([^&>]|$)' <<<"$line"; then
+        err "predict line runs in the background: $line"
+      fi
+      continue
+    fi
     grep -qE '(^|[[:space:]])pass[[:space:]]' <<<"$line" \
       || err "check line does not report a pass: $line"
     grep -qE '(^|[[:space:]])fail[[:space:]]' <<<"$line" \
@@ -314,18 +327,15 @@ check_worker() {
 # line names a non-guard check, so round 0 proves each check fails on base for the reason its author predicted.
 # A body with no contract line may carry predict lines, which round 0 runs, but needs none.
 check_predicts() {
-  local names guards line name seen="" n
+  local names guards line name seen=""
   grep -qxE 'contract: 2' <<<"$(section Worker)" || return 0
   names=$(guard_checks -v | pass_cmd_names)
   guards=$(guard_checks | pass_cmd_names)
   while IFS= read -r line; do
     [ -n "$line" ] || continue
-    read -r _ name n _ <<<"$line"
+    read -r _ name _ <<<"$line"
     name=${name//[\"\']/}
-    # A word that starts a comment, a control operator, or a redirect is no command: the shell hands predict none.
-    if [ -z "$n" ] || [[ "$n" =~ ^[\#\;\&\|\<\>\)] ]]; then
-      err "predict line has no command: $line"
-    elif ! grep -qxF -- "$name" <<<"$names"; then
+    if ! grep -qxF -- "$name" <<<"$names"; then
       if grep -qxF -- "$name" <<<"$guards"; then
         err "predict line names $name, a guard check; a guard may pass on base and takes no predict line"
       else
