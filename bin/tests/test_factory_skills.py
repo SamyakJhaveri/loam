@@ -102,6 +102,11 @@ class FactorySkillsTests(unittest.TestCase):
     def test_pstack_glob_is_refused(self) -> None:
         self.assert_refused("pstack:*", "skill 'pstack:*': a pstack name must be")
 
+    def test_malformed_pstack_name_is_refused(self) -> None:
+        for skill in ("pstack:", "pstack:../x", "pstack:a/b"):
+            with self.subTest(skill=skill):
+                self.assert_refused(skill, f"skill '{skill}': a pstack name must be")
+
     def test_resolving_human_only_pstack_name_lints(self) -> None:
         # Any installed pstack skill may be named (owner ruling, 30 Oct 2026), not only the worker ones.
         for name in ("setup-pstack", "sharpen"):
