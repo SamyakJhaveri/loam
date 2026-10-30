@@ -125,19 +125,20 @@ class CallGroupTests(unittest.TestCase):
         self.assertIn("left processes behind", (self.run_dir / "factory.log").read_text())
 
     def test_signalled_supervisor_ends_the_call(self) -> None:
-        # Ctrl-C, TERM or HUP reaches the supervisor, not a call in its own session; the supervisor ends the call's
-        # group and tagged processes before it exits, so none outlives it to race the EXIT trap's worktree removal.
+        # Ctrl-C, TERM or HUP reaches the supervisor's group (a terminal signals its foreground group), not a call in
+        # its own session; the supervisor ends the call's group and tagged processes before it exits, so none
+        # outlives it to race the EXIT trap's worktree removal.
         for sig, status in ((signal.SIGINT, 130), (signal.SIGTERM, 143), (signal.SIGHUP, 129)):
             with self.subTest(sig=sig.name):
                 mark = self.top / "mark"
                 mark.unlink(missing_ok=True)
                 proc = subprocess.Popen(**self.call_cmd("worker_round 1", FAKE_OWN_SESSION="1", FAKE_HANG="1"),
-                                        stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                                        stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, start_new_session=True)
                 deadline = time.time() + 20
                 while not mark.exists() and time.time() < deadline:
                     time.sleep(0.1)
                 time.sleep(0.5)
-                proc.send_signal(sig)
+                os.killpg(proc.pid, sig)
                 self.assertEqual(proc.wait(timeout=30), status)
                 before = mark.stat().st_size
                 time.sleep(1)
@@ -146,6 +147,27 @@ class CallGroupTests(unittest.TestCase):
                                       check=False).stdout
                 self.assertEqual(left, "", "a process the call started outlived the supervisor")
                 self.assertIn(f"got {sig.name[3:]} during a model call", (self.run_dir / "factory.log").read_text())
+
+    def test_second_ctrl_c_waits_for_the_kill(self) -> None:
+        # A writer that ignores TERM dies only by the KILL 5 s in; a second Ctrl-C before then must not end the
+        # supervisor first.
+        mark = self.top / "mark"
+        proc = subprocess.Popen(**self.call_cmd("worker_round 1", FAKE_OWN_SESSION="1", FAKE_HANG="1",
+                                                FAKE_IGNORE_TERM="1"),
+                                stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, start_new_session=True)
+        deadline = time.time() + 20
+        while not mark.exists() and time.time() < deadline:
+            time.sleep(0.1)
+        time.sleep(0.5)
+        os.killpg(proc.pid, signal.SIGINT)
+        time.sleep(1)
+        os.killpg(proc.pid, signal.SIGINT)
+        self.assertEqual(proc.wait(timeout=30), 130)
+        before = mark.stat().st_size
+        time.sleep(1)
+        self.assertEqual(mark.stat().st_size, before, "the writer kept writing after the supervisor exited")
+        left = subprocess.run(["pgrep", "-f", str(self.top)], capture_output=True, text=True, check=False).stdout
+        self.assertEqual(left, "", "a process the call started outlived the supervisor")
 
     def test_worker_call_keeps_its_prompt_and_env(self) -> None:
         proc = self.run_call("worker_round 1", FACTORY_WORKER_MODEL="claude-pin-1")
