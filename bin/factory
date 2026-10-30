@@ -130,6 +130,14 @@ dc_predicts() { dc_lines | grep -E '^predict[[:space:]]'; }
 # The NAME after each `pass` in the check lines on stdin, quotes stripped, one per line.
 pass_names() { grep -oE '(^|[[:space:]])pass[[:space:]]+"?[A-Za-z0-9_.-]+' | awk '{print $NF}' | tr -d '"' | sort -u; }
 
+# Like pass_names, but only where pass is the command word (after && || ; { ( then do else, or at the start), so a
+# fail reason such as "lint does not pass greeting" names no check. check_predicts reads it: a name too many there
+# would demand a predict line, while round 0's guard names only exempt, so they keep the lenient pass_names.
+pass_cmd_names() {
+  grep -oE '(^|&&|\|\||[;{(]|(then|do|else)[[:space:]])[[:space:]]*pass[[:space:]]+"?[A-Za-z0-9_.-]+' \
+    | awk '{print $NF}' | tr -d '"' | sort -u
+}
+
 # A check that calls `guard` is a regression guard allowed to pass on base (CONTRACT.md, Done checks): `guard` as the
 # command word, at the start or after ; & | ( { or !, as in `out=$(guard cmd)`, with any of the keywords if then else
 # elif do while until time, or NAME=value assignments, between, as in `if guard cmd; then` or `LOAM_HOOK= guard cmd`.
@@ -308,8 +316,8 @@ check_worker() {
 check_predicts() {
   local names guards line name seen="" n
   grep -qxE 'contract: 2' <<<"$(section Worker)" || return 0
-  names=$(guard_checks -v | pass_names)
-  guards=$(guard_checks | pass_names)
+  names=$(guard_checks -v | pass_cmd_names)
+  guards=$(guard_checks | pass_cmd_names)
   while IFS= read -r line; do
     [ -n "$line" ] || continue
     read -r _ name n _ <<<"$line"
@@ -1275,7 +1283,7 @@ round_zero() {
     finish ticket-defect "check $name passes on $(cut -c1-8 "$RUN/base.sha"), so it cannot prove the ticket; see $out"
   done < <(grep '^PASS ' "$out")
   mv "$out" "$RUN/round-0.checks"
-  log "round 0 at $(cut -c1-8 "$RUN/base.sha"): every non-guard check fails on base"
+  log "round 0 at $(cut -c1-8 "$RUN/base.sha"): every non-guard check fails on base, and every predict line holds"
 }
 
 # ---- steps 5 and 6: the worker round ----------------------------------------
