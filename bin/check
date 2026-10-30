@@ -14,10 +14,10 @@ skip() { echo "SKIPPED: $1${2:+ ($2)}"; SKIPS="${SKIPS:+$SKIPS, }$1"; }  # $1 = 
 # Tracked scripts by extension or shebang: bin/check, bin/factory and other extensionless scripts
 # carry only the shebang. Templates (*.jinja) are skipped; the render smoke checks them rendered.
 scripts() {  # $1 = extension, $2 = interpreter regex
-  local re="^#!.*[/ ]($2)([[:space:]]|\$)"
+  local first re="^#!.*[/ ]($2)([[:space:]]|\$)"
   { git ls-files -- "*.$1"
     git grep -I -l -E "$re" -- . ':(exclude)*.jinja' | while IFS= read -r f; do
-      head -n 1 "$f" | grep -qE "$re" && echo "$f"
+      first=$(head -n 1 "$f"); grep -qE "$re" <<<"$first" && echo "$f"
     done
   } | sort -u
 }
@@ -38,6 +38,19 @@ done < <(scripts sh 'bash|sh')
 WS_EXCLUDE=(":(exclude)*.patch" ":(exclude)*.diff")
 git diff --check "$(git hash-object -t tree /dev/null)" HEAD -- . "${WS_EXCLUDE[@]}" || bad "git diff --check (trailing whitespace or conflict markers)"
 git diff --check HEAD -- . "${WS_EXCLUDE[@]}" || bad "git diff --check HEAD (whitespace or conflict markers in staged or unstaged edits)"
+git diff --cached --check HEAD -- . "${WS_EXCLUDE[@]}" || bad "git diff --cached --check HEAD (whitespace or conflict markers staged but gone from the working tree)"
+# Untracked, non-ignored files: neither diff reads them, and CI will once they are added (#282).
+# --no-index implies --exit-code, so 1 is a clean file, 3 a whitespace error, 128 or 129 a git error.
+# A directory here is an untracked nested repo, which git would add as a gitlink, not as lines.
+while IFS= read -r -d '' f; do
+  [ -d "$f" ] && continue
+  git diff --check --no-index -- /dev/null "$f"
+  [ $? -le 1 ] || bad "git diff --check $f (whitespace or conflict markers in an untracked file, or git could not read it)"
+done < <(git ls-files -z --others --exclude-standard -- . "${WS_EXCLUDE[@]}")
+
+step "shell lint"
+# A pipe into grep -q under pipefail fails when the writer gets SIGPIPE; capture first, then grep (#279).
+python3 bin/shell_lint.py --root "$ROOT" || bad "shell lint (see the lines above)"
 
 step "commit identities (ip-sweep identity only)"
 # Needs no private term file, so it gates every PR; release.sh still runs the full strict sweep.
@@ -130,12 +143,11 @@ raise SystemExit(1 if errors else 0)
 PY
 
 step "skill-listing token weight"
-# No-growth ceilings on the uncalibrated chars/4 estimate, each set to the measured weight:
-# seed after the catchup trim and hypothesis-tree went manual-only, sam-cc-setup after
-# plan-review and surprise-me went manual-only and the plan-reviewer description was trimmed.
-# Lower one when its listing shrinks; never raise it without saying why.
-python3 bin/skill_listing_weight.py --root "$ROOT" --budget seed=85 --budget "sam-cc-setup=${LISTING_BUDGET:-365}" \
-  || bad "skill-listing weight over budget"
+# No-growth budgets on the uncalibrated chars/4 estimate, each equal to the measured weight:
+# the step fails over a budget and under it, so a PR that shrinks a listing lowers its budget.
+# Raise one only in the PR that grows the listing, with the reason in that PR.
+python3 bin/skill_listing_weight.py --root "$ROOT" --budget seed=84 --budget sam-cc-setup=365 \
+  || bad "skill-listing weight not at its budget"
 
 step "always-loaded prose cap"
 # Root CLAUDE.md, AGENTS.md and what they load reach every Loam session. No-growth cap in bytes,

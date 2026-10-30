@@ -64,6 +64,8 @@ class AlwaysLoadedProseCapTest(unittest.TestCase):
         self.assertIn(f"{self.total}-byte cap", result.stderr)
         self.assertIn("docs/extra.md", result.stderr)
         self.assertIn("raise the cap", result.stderr)
+        self.assertIn("name each cut (file and what it said) in the commit message and the PR body", result.stderr)
+        self.assertNotIn("Cut something", result.stderr)
 
     def test_one_byte_under_fails(self) -> None:
         # A cap left above a shrunk total would let a later PR regrow the prose with no cap edit in its diff.

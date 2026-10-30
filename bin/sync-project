@@ -68,7 +68,7 @@ if [ -n "$RULINGS" ]; then
 fi
 
 SRC="$PROJECT"
-if [ ! -e "$PROJECT" ] && printf '%s' "$PROJECT" | grep -qE '^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$'; then
+if [ ! -e "$PROJECT" ] && grep -qE '^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$' <<<"$PROJECT"; then
   SRC="https://github.com/$PROJECT.git"
 fi
 if [ "$DRY" -eq 0 ] && [ -d "$PROJECT" ] && [ "$(git -C "$PROJECT" rev-parse --is-bare-repository 2>/dev/null)" = false ]; then

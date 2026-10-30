@@ -5,6 +5,7 @@
 # Run on jhaveris: ~/Desktop/loam/bin/limit-alarm-install (after a pull). The Claude classifier blocks agents from
 # running it, so the owner runs it himself.
 set -u
+command -v timeout > /dev/null || { echo "limit-alarm-install needs timeout(1) (GNU coreutils) to bound each run"; exit 1; }
 mkdir -p "$HOME/.distbench"; cp "$(dirname "$0")/limit-alarm" "$HOME/.distbench/la-new.sh"
 export TZ=America/Los_Angeles
 D=$HOME/.distbench/la-test; rm -rf "$D"; mkdir -p "$D"
