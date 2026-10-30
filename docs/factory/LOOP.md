@@ -188,7 +188,7 @@ The daily ledger is written under a lock.
 `bin/factory next` launches up to `MAX_PARALLEL` runs (default 1; raise it after two clean single runs, as `status` reports them).
 A run holds a slot while its status reads `running` or `waiting-limit` and its supervisor lives.
 Each launch writes `owner` in its run directory after the frozen re-exec: one line, the supervisor's pid, a space, then `TZ=UTC LC_ALL=C ps -o lstart= -p <pid>`, through a temp file and `mv`, with the status `running`, under `owner.lock`.
-`holds_slot` frees the slot when that pid is gone, a zombie, or alive with another start time (a reused pid): the first caller writes `stopped-environment` to the run's `status` and sends one `fail` alert.
+`holds_slot` frees the slot when that pid is gone, a zombie, or alive with another start time (a reused pid): the first caller writes `stopped-environment` to the run's `status` and sends one `fail` alert to the run's own project, read from where its directory sits under the runs root (Loam's directly, another target's under `<owner>__<repo>/`), since a finishing run looks at every target's runs before it pauses the host check.
 It does so under `owner.lock` (a lock older than 60 s is removed first), and only while `owner` still reads the line it judged and the status still reads `running` or `waiting-limit`, so a relaunch that rewrote `owner` keeps its slot.
 A missing or malformed `owner` holds the slot, as does a run that started before `owner` existed.
 A run directory with `launched` and no `status` file holds a slot until its run writes one or the operator removes it.

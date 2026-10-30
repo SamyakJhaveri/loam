@@ -916,6 +916,17 @@ owner_gone() { # <pid> <ps lstart>
   [ "$(TZ=UTC LC_ALL=C ps -o lstart= -p "$1" 2> /dev/null)" != "$2" ]
 }
 
+# The project a run dir belongs to, from where it sits, not the caller's REPO: other_live_run walks every
+# target's runs. Loam's sit at RUNS_BASE/<issue>/<sha8>, another target's one level down under <owner>__<repo>;
+# a dir elsewhere (a sourced test's) names none.
+run_project() { # <run dir>
+  local t
+  t=$(dirname "$(dirname "${1%/}")")
+  if [ "$t" = "${RUNS_BASE%/}" ]; then echo loam
+  elif [ "$(dirname "$t")" = "${RUNS_BASE%/}" ]; then printf '%s' "${t##*__}" | tr 'A-Z' 'a-z'
+  fi
+}
+
 # MAX_PARALLEL counts the other tickets already holding a slot: a run is live while its
 # status reads running or waiting-limit and its `owner` line (pid and ps start time, written by
 # cmd_run) names a live process, or while it has written `launched` and no status yet (round 0,
@@ -940,7 +951,7 @@ holds_slot() { # <run dir>
     printf 'stopped-environment\n' > "$1/status"
     rmdir "$1/owner.lock"
     log "stopped-environment: ${1%/} was $st, but its supervisor pid $pid is gone"
-    alert --level fail --source factory --project "$(printf '%s' "${REPO#*/}" | tr 'A-Z' 'a-z')" \
+    alert --level fail --source factory --project "$(run_project "$1")" \
       --run "issue $(basename "$(dirname "$1")")" \
       "issue $(basename "$(dirname "$1")") stopped on a machine or tool problem: its supervisor pid $pid exited, \
 became a zombie, or its pid was reused while the run read $st; ${1%/} is now stopped-environment and its slot is free" \
@@ -1914,9 +1925,7 @@ cmd_next() { # [--dry-run|--install]
   #    live owner, or launched with no status yet), and so does a pr-opened run whose ticket worktree still exists: the merge ritual removes the worktree,
   #    so until then the PR awaits merge and the next ticket waits (LOOP.md: after each merge).
   #    FACTORY_MAX_PARALLEL bounds the count, as it does in cmd_run through apply_caps; default 1.
-  #    REPO names the project holds_slot's alert posts to when it frees a dead run's slot.
   local d st n=0 max="${FACTORY_MAX_PARALLEL:-$MAX_PARALLEL}"
-  REPO=${REPO:-$(target_repo)}
   for d in "$RUNS_ROOT"/*/*/; do
     st=$(cat "$d/status" 2> /dev/null || true)
     if [ "$st" = pr-opened ]; then
