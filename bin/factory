@@ -1108,6 +1108,7 @@ owner_lock() { # <run dir> <tries>
 # The owner's pid is gone, a zombie (kill -0 succeeds on one), or reused by a process that started over 300 s
 # from the stored start: lstart is boot time plus ticks, so a wall-clock step moves it, and a reuse that close
 # would need the pid space to wrap. A ps or date that fails or prints nothing cannot tell, so the slot holds.
+# macOS pads lstart with trailing spaces and has BSD date, so the start is trimmed and parsed either way.
 # A gone or zombie pid also holds while a live process has it as its process group id; Linux does not reuse that
 # number meanwhile. The heartbeat loop is such a member and exits within 300 s of the supervisor, so a reap waits at
 # most one beat. A model call has a session of its own, so holds_slot finds it through the run's `call` file.
@@ -1119,10 +1120,17 @@ owner_gone() { # <pid> <ps lstart>
   if [ -z "$stat" ] || [[ "$stat" =~ ^[[:space:]]*Z ]]; then
     ! group_live "$1"; return
   fi
-  start=$(TZ=UTC LC_ALL=C ps -o lstart= -p "$1" 2> /dev/null) && [ -n "$start" ] || return 1
+  start=$(TZ=UTC LC_ALL=C ps -o lstart= -p "$1" 2> /dev/null) && start=${start%"${start##*[![:space:]]}"} \
+    && [ -n "$start" ] || return 1
   [ "$start" = "$2" ] && return 1
-  a=$(date -u -d "$start" +%s 2> /dev/null) && b=$(date -u -d "$2" +%s 2> /dev/null) || return 1
+  a=$(lstart_epoch "$start") && b=$(lstart_epoch "$2") || return 1
   [ $((a > b ? a - b : b - a)) -gt 300 ]
+}
+
+lstart_epoch() { # <ps lstart> -> seconds since the epoch, through GNU date or else BSD date (macOS); fails unless digits
+  local e
+  e=$(date -u -d "$1" +%s 2> /dev/null || LC_ALL=C date -j -u -f '%a %b %d %T %Y' "$1" +%s 2> /dev/null) \
+    && [[ "$e" =~ ^[0-9]+$ ]] && echo "$e"
 }
 
 group_live() { # <pgid> -> 0 when a process other than a zombie has it as its group id, or ps fails
@@ -1157,14 +1165,15 @@ run_project() { # <run dir>
 # outlives a SIGKILLed supervisor, reparented to init, and keeps writing the worktree until CALL_TIMEOUT_SEC. It lives
 # while its group has a member that is not a zombie or, on Linux, a process carries its FACTORY_CALL_TAG.
 holds_slot() { # <run dir>
-  local st o c pid re='^[0-9]+ [A-Z][a-z]{2} [A-Z][a-z]{2} [ 0-9][0-9] [0-9]{2}:[0-9]{2}:[0-9]{2} [0-9]{4}$'
+  local st o t c pid re='^[0-9]+ [A-Z][a-z]{2} [A-Z][a-z]{2} [ 0-9][0-9] [0-9]{2}:[0-9]{2}:[0-9]{2} [0-9]{4}$'
   if [ -f "$1/status" ]; then
     st=$(cat "$1/status")
     [ "$st" = running ] || [ "$st" = waiting-limit ] || return 1
     o=$(cat "$1/owner" 2> /dev/null) || return 0
-    [[ "$o" =~ $re ]] || return 0
-    pid=${o%% *}
-    owner_gone "$pid" "${o#* }" || return 0
+    t=${o%"${o##*[![:space:]]}"}   # a line written on macOS before #448 ends in lstart's padding
+    [[ "$t" =~ $re ]] || return 0
+    pid=${t%% *}
+    owner_gone "$pid" "${t#* }" || return 0
     c=$(cat "$1/call" 2> /dev/null) && { group_live "${c%% *}" || call_tagged 0 "${c#* }"; } && return 0
     owner_lock "$1" 1 || return 0
     if [ "$(cat "$1/owner" 2> /dev/null)" != "$o" ]; then rmdir "$1/owner.lock"; return 0; fi
@@ -1288,13 +1297,15 @@ limit_switch() { # -> 0 after switching accounts, 1 when there is no other accou
 # Waiting for it is loop behavior, not a round: switch accounts and retry at once, or sleep to the reset, or
 # 20 minutes, then repeat the same call.
 limit_wait() { # result.json -> 0 after waiting, 1 when the reply is not a usage limit
-  local e t tz at left secs=1200
+  local e t b tz at left secs=1200
   e=$(jq -r "$RESULT_OBJ | if .is_error == true then (.result // \"\") else empty end" "$1" 2> /dev/null) || e=""
   grep -qiE '(hit|reached) your .*limit' <<< "$e" || return 1
   limit_switch && return 0
   t=$(grep -oiE 'resets? [0-9]{1,2}(:[0-9]{2})? ?[ap]m' <<< "$e" | head -1 | sed -E 's/^[Rr]esets? //')
   tz=$(grep -oE '\([A-Za-z_]+/[A-Za-z_]+\)' <<< "$e" | head -1 | tr -d '()')
-  if [ -n "$t" ] && at=$(TZ="${tz:-UTC}" date -d "$t" +%s 2> /dev/null); then
+  b=${t// /}; b=${b%??}; [[ "$b" == *:* ]] || b=$b:00   # BSD date (macOS) has no -d; it reads "1:30:00pm"
+  if [ -n "$t" ] && at=$(TZ="${tz:-UTC}" date -d "$t" +%s 2> /dev/null \
+      || TZ="${tz:-UTC}" LC_ALL=C date -j -f '%I:%M:%S%p' "$b:00${t: -2}" +%s 2> /dev/null); then
     [ "$at" -gt "$(date +%s)" ] || at=$((at + 86400))
     secs=$((at - $(date +%s) + 60))
   fi
@@ -2146,6 +2157,7 @@ cmd_run() {
   # Through a temp file, so a kill mid-write never leaves an empty owner (held for good).
   local start
   start=$(TZ=UTC LC_ALL=C ps -o lstart= -p "$$")
+  start=${start%"${start##*[![:space:]]}"}   # macOS pads lstart with trailing spaces; holds_slot matches up to the year
   [ -n "$start" ] && owner_lock "$RUN" 65 || finish stopped-environment "could not read this run's start time or take $RUN/owner.lock"
   printf '%s %s\n' "$$" "$start" > "$RUN/owner.tmp" && mv -f "$RUN/owner.tmp" "$RUN/owner" \
     || { rmdir "$RUN/owner.lock"; finish stopped-environment "could not write $RUN/owner"; }
