@@ -55,8 +55,14 @@ class HookLintTest(unittest.TestCase):
         self.assertNotIn("block-on-nonblocking", r.stdout)
 
     def test_eval_without_stdin_passes(self) -> None:
-        r = lint('#!/bin/bash\neval "$(ssh-agent -s)"\n', ["SessionStart"])
-        self.assertEqual((r.returncode, r.stdout), (0, ""))
+        for script in ('eval "$(ssh-agent -s)"', 'x=$(echo "{}" | jq -r .a); eval "$x"', 'jq . f.json; eval "$y"',
+                       'cat <f; eval "$y"', 'jq -n 1; eval "$y"'):
+            r = lint(f"#!/bin/bash\n{script}\n", ["SessionStart"])
+            self.assertEqual((r.returncode, r.stdout), (0, ""), script)
+
+    def test_eval_of_jq_stdin_flagged(self) -> None:
+        r = lint('#!/bin/bash\ncmd=$(jq -r .tool_input.command)\neval "$cmd"\n', ["PreToolUse"])
+        self.assertEqual(found(r.stdout), ["h.sh:3 eval-input"])
 
     def test_rm_quoting_cases(self) -> None:
         r = lint(RM_CASES, ["Stop"])

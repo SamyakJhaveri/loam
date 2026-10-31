@@ -11,8 +11,8 @@ file in hooks-dir registers that file on the event. Each registered script is th
   guards nothing while it reads as a guard.
 - unquoted-rm: an `rm` argument holds a $VAR or ${VAR} outside quotes; an empty or spaced value then
   deletes the wrong path.
-- eval-input: the script reads stdin (a bare `cat`, `read`, or /dev/stdin) and runs `eval`, so the hook
-  input can run as code.
+- eval-input: the script reads stdin (`read`, /dev/stdin, or a `cat` or `jq` given no file and not fed by
+  a pipe or <) and runs `eval`, so the hook input can run as code.
 
 The shell rules reuse bin/shell_lint.py's quote walk, so text inside a multi-line string or a heredoc
 is not read as code.
@@ -89,6 +89,19 @@ def args(toks: list[str], i: int) -> list[str]:
     return toks[i:end]
 
 
+def reads_stdin(name: str, own: list[str], piped: bool) -> bool:
+    """True when this command reads the script's own stdin: no pipe into it and no < redirect, and a `read`,
+    a `cat` with no file operand, or a `jq` with no file operand after its filter and no -n."""
+    if piped or any(a.startswith("<") for a in own):
+        return False
+    operands = [a for a in own if a == "-" or not a.startswith("-")]
+    if name == "cat":
+        return all(a == "-" for a in operands)
+    if name == "jq":
+        return len(operands) <= 1 and not {"-n", "--null-input"} & set(own)
+    return name == "read"
+
+
 def code_pieces(text: str) -> list[tuple[int, str]]:
     """Each (line, code) of a shell file: top-level code and substitution bodies, less comments, strings
     and heredoc bodies."""
@@ -122,8 +135,7 @@ def lint(path: pathlib.Path, events: set[str]) -> list[tuple[int, str]]:
                 found.append((n, "unquoted-rm"))
             elif name == "eval":
                 evals.append(n)
-            elif name == "cat" and all(a.startswith("-") for a in own) or name == "read" and not any(
-                    a.startswith("<") for a in own):
+            elif reads_stdin(name, own, i > 1 and toks[i - 2] == "|"):
                 reads = True
     found += [(n, "eval-input") for n in evals if reads]
     return sorted(set(found))
