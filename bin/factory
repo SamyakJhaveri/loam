@@ -2391,16 +2391,24 @@ cmd_stop() { # <issue|stem>
 # reported at that head passed, read in one gh call; gh pr merge then gets --match-head-commit <sha>, so GitHub
 # itself refuses a head that moved after the read. A CheckRun passes COMPLETED with SUCCESS or NEUTRAL, a
 # StatusContext with SUCCESS; any other value refuses. A PR with no reported check is refused, not waited on.
+# <pr> is a number, since gh lets a PR URL override -R; <sha> is a full lowercase sha, since gh drops an empty
+# --match-head-commit and so would merge with no head guard.
 cmd_merge() { # <pr> <sha>
   local pr="$1" sha="$2" repo view head bad
+  [[ $pr =~ ^[1-9][0-9]*$ ]] || { echo "merge: refused: $pr is not a PR number" >&2; return 1; }
+  [[ $sha =~ ^[0-9a-f]{40}$ ]] || { echo "merge: refused: $sha is not a full lowercase commit sha" >&2; return 1; }
   repo=$(target_repo)
   view=$(net gh pr view "$pr" -R "$repo" --json headRefOid,statusCheckRollup) \
     || { echo "merge: refused: gh pr view $pr failed" >&2; return 1; }
   head=$(jq -r '.headRefOid // ""' <<<"$view" 2> /dev/null) \
     || { echo "merge: refused: gh pr view $pr printed no JSON" >&2; return 1; }
   [ "$head" = "$sha" ] || { echo "merge: refused: head of #$pr is ${head:-unknown}, not $sha" >&2; return 1; }
-  [ "$(jq '.statusCheckRollup // [] | length' <<<"$view" 2> /dev/null)" -gt 0 ] 2> /dev/null \
-    || { echo "merge: refused: no check reported at $sha" >&2; return 1; }
+  case "$(jq -r '.statusCheckRollup // [] | if type != "array" then "bad" elif length == 0 then "none" else "ok" end' \
+           <<<"$view" 2> /dev/null)" in
+    ok) ;;
+    none) echo "merge: refused: no check reported at $sha" >&2; return 1 ;;
+    *) echo "merge: refused: unreadable statusCheckRollup at $sha" >&2; return 1 ;;
+  esac
   bad=$(jq -r '[.statusCheckRollup[]
     | if .__typename == "CheckRun" then
         select(.status != "COMPLETED" or (.conclusion != "SUCCESS" and .conclusion != "NEUTRAL"))
