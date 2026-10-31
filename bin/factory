@@ -1397,6 +1397,15 @@ owner_lock() { # <run dir> <tries>
   done
 }
 
+# A run's `owner` line, printed as read when it is well formed and names a gone supervisor (owner_gone); a missing or
+# malformed line is not gone. holds_slot's lease and owner paths both judge it here.
+dead_owner() { # <run dir>
+  local o t re='^[0-9]+ [A-Z][a-z]{2} [A-Z][a-z]{2} [ 0-9][0-9] [0-9]{2}:[0-9]{2}:[0-9]{2} [0-9]{4}$'
+  o=$(cat "$1/owner" 2> /dev/null) || return 1
+  t=${o%"${o##*[![:space:]]}"}   # a line written on macOS before #448 ends in lstart's padding
+  [[ "$t" =~ $re ]] && owner_gone "${t%% *}" "${t#* }" && printf '%s' "$o"
+}
+
 # The owner's pid is gone, a zombie (kill -0 succeeds on one), or reused by a process that started over 300 s
 # from the stored start: lstart is boot time plus ticks, so a wall-clock step moves it, and a reuse that close
 # would need the pid space to wrap. A ps or date that fails or prints nothing cannot tell, so the slot holds.
@@ -1437,8 +1446,15 @@ group_live() { # <pgid> -> 0 when a process other than a zombie has it as its gr
 call_live() { # <run dir>
   local c g
   c=$(cat "$1/call" 2> /dev/null) || return 1
-  g=$(cat "$1/call.group" 2> /dev/null)
+  g=$(call_group "$1")
   group_live "${c%% *}" || { [ -n "$g" ] && group_live "$g"; } || call_tagged 0 "${c#* }"
+}
+
+# The call's own process group id, the first field of the run's `call.group` (call_start), or nothing.
+call_group() { # <run dir>
+  local g= _
+  { read -r g _ < "$1/call.group"; } 2> /dev/null
+  echo "$g"
 }
 
 # The project a run dir belongs to, from where it sits, not the caller's REPO: other_live_run walks every
@@ -1470,18 +1486,25 @@ run_project() { # <run dir>
 # sends the one alert. A run killed between `launched` and its owner write keeps whatever status it
 # had; with no status at all it holds the slot until the operator removes its directory, or, where it has a `lease`,
 # until no process holds that lease.
-# A gone owner also holds while the model call it named in `call` (call_start) lives: in its own session the call
-# outlives a SIGKILLed supervisor, reparented to init, and keeps writing the worktree until CALL_TIMEOUT_SEC. It lives
-# while its wrapper's or its own group has a member that is not a zombie or, on Linux, a process carries its
-# FACTORY_CALL_TAG.
+# In its own session a model call (call_start) outlives a SIGKILLed supervisor, reparented to init, and keeps writing
+# the worktree until CALL_TIMEOUT_SEC, so a gone owner's call is killed first (orphan_call_kill), and the slot holds
+# while the call still lives: its wrapper's or its own group has a member that is not a zombie or, on Linux, a process
+# carries its FACTORY_CALL_TAG. On the lease path above the call holds the lease it inherited, so a gone owner's call is
+# killed there too, under owner.lock, and the lease then decides.
+# holds_slot may return held in the very call that killed, while the call's wrapper still reaps reparented children;
+# the next caller frees the slot.
 holds_slot() { # <run dir>
-  local st o t pid fd re='^[0-9]+ [A-Z][a-z]{2} [A-Z][a-z]{2} [ 0-9][0-9] [0-9]{2}:[0-9]{2}:[0-9]{2} [0-9]{4}$'
+  local st o pid fd
   if [ -f "$1/status" ]; then
     st=$(cat "$1/status")
     [ "$st" = running ] || [ "$st" = waiting-limit ] || return 1
     # Read-only, so a run dir with no lease never gets one here.
     if [ -n "$HAVE_FLOCK" ] && [ -f "$1/lease" ] && exec {fd}< "$1/lease"; then
-      flock -n "$fd" || { exec {fd}>&-; return 0; }
+      if ! flock -n "$fd"; then
+        exec {fd}>&-
+        if o=$(dead_owner "$1") && owner_lock "$1" 1; then orphan_call_kill "$1" "$o"; rmdir "$1/owner.lock"; fi
+        return 0
+      fi
       # A process may close the descriptors it does not pass on (Node's child processes do), so a model call's tool
       # shell can outlive every holder; the call's group or tag still holds the slot, as on the owner path below.
       call_live "$1" && { exec {fd}>&-; return 0; }
@@ -1497,17 +1520,15 @@ holds_slot() { # <run dir>
         >> "$LOG" 2>&1 || log "the alert for ${1%/} failed; see bin/alert's line above"
       return 1
     fi
-    o=$(cat "$1/owner" 2> /dev/null) || return 0
-    t=${o%"${o##*[![:space:]]}"}   # a line written on macOS before #448 ends in lstart's padding
-    [[ "$t" =~ $re ]] || return 0
-    pid=${t%% *}
-    owner_gone "$pid" "${t#* }" || return 0
-    call_live "$1" && return 0
+    o=$(dead_owner "$1") || return 0
+    pid=${o%% *}
     owner_lock "$1" 1 || return 0
     if [ "$(cat "$1/owner" 2> /dev/null)" != "$o" ]; then rmdir "$1/owner.lock"; return 0; fi
     st=$(cat "$1/status" 2> /dev/null)
     if [ "$st" != running ] && [ "$st" != waiting-limit ]; then rmdir "$1/owner.lock"; return 1; fi
+    if ! orphan_call_kill "$1" "$o" || call_live "$1"; then rmdir "$1/owner.lock"; return 0; fi
     printf 'stopped-environment\n' > "$1/status"
+    rm -f "$1/call" "$1/call.tmp" "$1/call.group" "$1/call.group.tmp"
     rmdir "$1/owner.lock"
     log "stopped-environment: ${1%/} was $st, but its supervisor pid $pid is gone"
     alert --level fail --source factory --project "$(run_project "$1")" \
@@ -1525,6 +1546,45 @@ became a zombie, or its pid was reused while the run read $st; ${1%/} is now sto
     exec {fd}>&-
     [ "$st" != 0 ]
   fi
+}
+
+# A gone supervisor's model call, in a session of its own, keeps writing the worktree until CALL_TIMEOUT_SEC; holds_slot,
+# under owner.lock with `owner` unchanged, so no relaunch has started a call of its own, kills each process group named
+# in `call` or `call.group` whose leader still has the start time recorded after its id (call_start writes it to
+# call.group), so a pgid reused since is spared: TERM, a 2 s grace, KILL, then up to 5 s for the group to be gone.
+# In production `call` holds `<wrapper pid> <tag>` and never matches; its read serves a `<pgid> <lstart>` line there,
+# the layout the ticket's dead-owner-group-reaped check writes. Before KILL each group is kept only while its leader is
+# gone (members remain) or still has its recorded start, so a pgid reused during the grace is spared.
+# `owner` is re-read just before TERM, since an aged owner.lock can be taken over; a changed line kills nothing, return 1.
+orphan_call_kill() { # <run dir> <owner line judged>
+  local f g s now gs=() ss=() ks=() i
+  for f in "$1/call" "$1/call.group"; do
+    g= s=
+    { read -r g s < "$f"; } 2> /dev/null
+    [[ "$g" =~ ^[1-9][0-9]*$ ]] && [ "$g" != 1 ] && [ -n "$s" ] || continue
+    s=${s%"${s##*[![:space:]]}"}
+    now=$(TZ=UTC LC_ALL=C ps -o lstart= -p "$g" 2> /dev/null) || continue
+    [ "${now%"${now##*[![:space:]]}"}" = "$s" ] && gs+=("$g") && ss+=("$s")
+  done
+  [ "$(cat "$1/owner" 2> /dev/null)" = "$2" ] || return 1
+  [ "${#gs[@]}" -gt 0 ] || return 0
+  log "the supervisor of ${1%/} is gone and its model call still runs; sending TERM to process group(s) ${gs[*]}"
+  orphan_signal TERM "${gs[@]}"; orphan_signal CONT "${gs[@]}"
+  for ((i = 0; i < 20; i++)); do orphan_signal 0 "${gs[@]}" || return 0; sleep 0.1; done
+  for ((i = 0; i < ${#gs[@]}; i++)); do
+    now=$(TZ=UTC LC_ALL=C ps -o lstart= -p "${gs[i]}" 2> /dev/null)
+    [ -z "$now" ] || [ "${now%"${now##*[![:space:]]}"}" = "${ss[i]}" ] && ks+=("${gs[i]}")
+  done
+  [ "${#ks[@]}" -gt 0 ] || return 0
+  gs=("${ks[@]}")
+  orphan_signal KILL "${gs[@]}"
+  for ((i = 0; i < 50; i++)); do orphan_signal 0 "${gs[@]}" || return 0; sleep 0.1; done
+  log "process group(s) ${gs[*]} of ${1%/} are still alive 5 s after KILL"
+}
+orphan_signal() { # signal, or 0 to look; pgid... -> 0 when a process in one of the groups took it
+  local s="$1" g r=1; shift
+  for g; do kill -"$s" -- "-$g" 2> /dev/null && r=0; done
+  return "$r"
 }
 
 assert_parallel() {
@@ -1824,8 +1884,9 @@ codex_result() { # jsonl exit_code [duration_ms] -> result JSON on stdout; durat
 # starts each Bash tool shell in a new session, and a tool child can clear its environment and call setsid too
 # (#434). When the call exits, or the wrapper gets TERM, INT or HUP, it sends the call's group and every child it has
 # TERM, then KILL after a 5 s grace, collects each, and exits with the call's own status once none is left, or 5 s
-# after KILL with one still alive; it writes what it signalled to call.reap for call_end, and the call's group id to
-# call.group as soon as it forks. The wrapper's group, the call's group from call.group, and the call's
+# after KILL with one still alive; it writes what it signalled to call.reap for call_end. The call's first process writes
+# its group id and ps start time to call.group before it execs the command, so holds_slot can kill the group of a call
+# whose supervisor is gone and spare a reused pgid. The wrapper's group, the call's group from call.group, and the call's
 # FACTORY_CALL_TAG, unique to the call and kept by every process it starts but one that clears its environment, stay
 # what call_signal ends and call_live reads (#384), so a wrapper killed or stuck leaves no group member behind: on
 # Linux they are a second line behind the wrapper; on a host with no subreaper or /proc (a Mac) the group kills are all. The call keeps the caller's
@@ -1835,7 +1896,7 @@ codex_result() { # jsonl exit_code [duration_ms] -> result JSON on stdout; durat
 call_start() { # dir cmd... -> CALL_PID, CALL_TAG
   local dir="$1"; shift
   CALL_TAG="$$.$SECONDS.$RANDOM"; CALL_PID=; CALL_STUCK=
-  rm -f "$RUN/call.reap" "$RUN/call.group"
+  rm -f "$RUN/call.reap" "$RUN/call.group" "$RUN/call.group.tmp"
   trap 'call_abort INT 130' INT; trap 'call_abort TERM 143' TERM; trap 'call_abort HUP 129' HUP
   ( cd "$dir" && export FACTORY_CALL_TAG="$CALL_TAG" && exec perl -MPOSIX -MTime::HiRes=time,sleep -e '
       POSIX::setsid() == $$ or die "setsid: $!\n";
@@ -1843,9 +1904,11 @@ call_start() { # dir cmd... -> CALL_PID, CALL_TAG
         $nr = {x86_64 => 157, aarch64 => 167}->{(POSIX::uname())[4]} or die "no prctl number for this CPU\n";
         syscall($nr, 36, 1, 0, 0, 0) == 0 or die "prctl PR_SET_CHILD_SUBREAPER: $!\n" }
       ($rep, $grp) = splice @ARGV, 0, 2; defined($kid = fork) or die "fork: $!\n";
-      unless ($kid) { setpgid(0, 0); exec { $ARGV[0] } @ARGV; print STDERR "exec $ARGV[0]: $!\n"; POSIX::_exit(127) }
+      unless ($kid) { setpgid(0, 0);
+        ($s = `TZ=UTC LC_ALL=C ps -o lstart= -p $$ 2> /dev/null`) =~ s/\s+\z//;
+        if (open my $h, ">", "$grp.tmp") { print $h join(" ", $$, $s || ()), "\n"; close $h; rename "$grp.tmp", $grp }
+        exec { $ARGV[0] } @ARGV; print STDERR "exec $ARGV[0]: $!\n"; POSIX::_exit(127) }
       setpgid($kid, $kid);
-      if (open my $h, ">", "$grp.tmp") { print $h "$kid\n"; close $h; rename "$grp.tmp", $grp }
       $SIG{$_} = sub { $sig = 1 } for qw(TERM INT HUP);
       sub kids { $^O eq "linux" or return; my @k;
         for (glob "/proc/[0-9]*/stat") { open(my $h, "<", $_) or next; local $/; my $s = <$h>; my ($pid) = m{(\d+)/stat$};
@@ -1886,19 +1949,19 @@ call_end() { # role -> the call's own exit status
     esac
   done < "$RUN/call.reap"
   rm -f "$RUN/call.reap"
-  call_reap "$1" && [ -z "$CALL_STUCK" ] && rm -f "$RUN/call" "$RUN/call.group"
+  call_reap "$1" && [ -z "$CALL_STUCK" ] && rm -f "$RUN/call" "$RUN/call.tmp" "$RUN/call.group" "$RUN/call.group.tmp"
   trap - INT TERM HUP
   return "$rc"
 }
 call_reap() { # role
   call_gone 0 && return
-  log "the $1 call left processes behind (groups $CALL_PID $(cat "$RUN/call.group" 2> /dev/null) or tag $CALL_TAG); sending TERM"
+  log "the $1 call left processes behind (groups $CALL_PID $(call_group "$RUN") or tag $CALL_TAG); sending TERM"
   call_signal TERM; call_signal CONT
   call_gone 50 && return
   log "the $1 call's processes outlived TERM by 5 s; sending KILL"
   call_signal KILL
   call_gone 50 && return
-  CALL_STUCK="the $1 call's processes (groups $CALL_PID $(cat "$RUN/call.group" 2> /dev/null) or tag $CALL_TAG) are still alive 5 s after KILL"
+  CALL_STUCK="the $1 call's processes (groups $CALL_PID $(call_group "$RUN") or tag $CALL_TAG) are still alive 5 s after KILL"
   log "$CALL_STUCK"
   return 1
 }
@@ -1915,14 +1978,14 @@ call_abort() { # signal status
   ( sleep 10; call_signal KILL ) & killer=$!
   wait "$CALL_PID" 2> /dev/null
   kill -KILL "$killer" 2> /dev/null   # it inherits the ignored TERM
-  call_gone 50 || { call_signal KILL; call_gone 50; } && rm -f "$RUN/call" "$RUN/call.group"
+  call_gone 50 || { call_signal KILL; call_gone 50; } && rm -f "$RUN/call" "$RUN/call.tmp" "$RUN/call.group" "$RUN/call.group.tmp"
   exit "$2"
 }
 call_signal() { call_grouped "$1"; call_tagged "$1"; }
 # The wrapper's group and, once the wrapper has written call.group, the call's own (call_start).
 call_grouped() { # signal, or 0 to look -> 0 when a process in either group took it
   local g r=1
-  for g in "$CALL_PID" $(cat "$RUN/call.group" 2> /dev/null); do kill -"$1" -- "-$g" 2> /dev/null && r=0; done
+  for g in "$CALL_PID" $(call_group "$RUN"); do kill -"$1" -- "-$g" 2> /dev/null && r=0; done
   return "$r"
 }
 # Linux only: a host with no /proc (a Mac) finds no tagged process, and the group kill alone stands. A zombie's
