@@ -52,6 +52,10 @@ step "shell lint"
 # A pipe into grep -q under pipefail fails when the writer gets SIGPIPE; capture first, then grep (#279).
 python3 bin/shell_lint.py --root "$ROOT" || bad "shell lint (see the lines above)"
 
+step "hook lint"
+# A block on an event that cannot block, an unquoted variable in rm, and eval of hook input, in the seed hooks.
+python3 bin/hook_lint.py seed/.claude/settings.json seed/.claude/hooks || bad "hook lint (see the lines above)"
+
 step "commit identities (ip-sweep identity only)"
 # Needs no private term file, so it gates every PR; release.sh still runs the full strict sweep.
 IP_SWEEP_IDENTITY_ONLY=1 bash bin/ip-sweep.sh || bad "ip-sweep identity check"
