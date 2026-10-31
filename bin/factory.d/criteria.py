@@ -5,7 +5,7 @@ Usage:
   criteria.py <runs-root> <ARCHITECTURE.md> <target>
 
 Reads one target's run directories, <runs-root>/<issue>/<sha8>/ with a `status` file (LOOP.md), and
-calls no model and no gh; its one git call is a `git log` of the target's default branch, for the escaped defects
+calls no model and no gh; its git call is a `git log` of the target's default branch, for the escaped defects
 line: merged factory PRs that a later commit reverts or names in a `Caused-by: #<pr>` line. Another target's runs sit one level deeper, under
 <runs-root>/<owner>__<repo>/, so they never count here. The criteria and their thresholds are read
 from ARCHITECTURE.md, their one home; a line this file cannot measure prints `UNMEASURED: <why>`, and a
@@ -284,7 +284,7 @@ def history(target):
         if proc.returncode == 0:
             break
     else:
-        return None, f"git log of {target} failed: {proc.stderr.strip().splitlines()[-1:] or proc.returncode}"
+        return None, f"git log of {target} failed: {(proc.stderr.strip().splitlines() or [proc.returncode])[-1]}"
     commits = {}
     for record in proc.stdout.split("\x1e"):
         head, _, message = record.strip("\n").partition("\x1f")
