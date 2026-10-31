@@ -88,6 +88,7 @@ class VerifierFixtureTests(unittest.TestCase):
         for name in ("protected.txt", "exempt.txt"):
             (frozen / name).write_text("")
         (self.run_dir / "base.sha").write_text(base + "\n")
+        (self.run_dir / "round-0.checks").write_text("FAIL widget: not yet\nCHECKS-END\n")
         self.gh_log = self.top / "gh-calls.jsonl"
         self.bin = self.top / "bin"
         self.bin.mkdir()
