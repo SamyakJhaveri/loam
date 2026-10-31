@@ -91,8 +91,8 @@ class LoadTimeTests(unittest.TestCase):
         return subprocess.run([str(ROOT / "bin" / "factory"), *args], cwd=ROOT, env=env, stdin=subprocess.DEVNULL,
                               capture_output=True, text=True, check=False, timeout=60)
 
-    def test_lint_and_status_fail_naming_the_cap(self) -> None:
-        for args in (("lint", "7"), ("status",)):
+    def test_lint_next_and_status_fail_naming_the_cap(self) -> None:
+        for args in (("lint", "7"), ("next", "--dry-run"), ("status",)):
             for v in BAD:
                 with self.subTest(args=args, v=v):
                     proc = self.run_factory(*args, FACTORY_NET_TIMEOUT_SEC=v)
