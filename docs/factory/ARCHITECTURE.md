@@ -104,7 +104,7 @@ Preconditions live in `LOOP.md`; `bin/factory status` checks them.
 ## Metrics
 
 The PR body is the metrics home: rounds, spend, wall time, first failing grader, permission denials per round, and the merge checklist.
-Expected saving over lean-v3 is the stall rounds; the per-round grader cost is unchanged.
+Expected saving over lean-v3 is the stall rounds.
 Criteria written in advance, measured over every run of the target; a file-ticket rehearsal opens no PR, so it is not a PR run:
 
 - operator actions from voice note to a running loop on Track B: at most 3 (measured as a lower bound, so it reads INCONCLUSIVE within the threshold: the run sees only the issue's events and the lint, run and stop subcommands)

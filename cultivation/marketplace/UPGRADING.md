@@ -3,6 +3,12 @@
 This file records why a promoted plugin change traveled. It is also the upgrade
 entry point for projects that consume the Loam marketplace.
 
+## sam-cc-setup v0.9.23 reviewer grader at xhigh
+
+`reviewer.md` front matter says `effort: xhigh`: the factory's reviewer grader now runs at xhigh and the judge stays at high (Samyak 2026-10-30, Loam #474).
+The rubric text is unchanged; the replay owed under the grader change protocol compares the same body at high and at xhigh, from the checkout so the older cached copy does not stop it: `EVAL_EFFORT=high bin/factory eval reviewer --graders-dir cultivation/marketplace/sam-cc-setup/agents`, then the same without `EVAL_EFFORT`.
+Upgrade step: `claude plugin update sam-cc-setup@seed-skills`; until then `bin/factory next` and `eval` refuse the cached reviewer.md, whose bytes differ.
+
 ## sam-cc-setup v0.9.22 factory-watch
 
 `/sam-cc-setup:factory-watch` reads `bin/factory status` once per call and reports a run that stopped, a PR that opened, or a failing precondition; a `/loop` fire cannot run a manual-only skill, so watch on a loop with the plain prompt `/loop 30m run bin/factory status (bin/runner 'bin/factory status' off the runner) and report only a run that stopped, a new pr-opened, or a new precondition FAIL since the last check`.
