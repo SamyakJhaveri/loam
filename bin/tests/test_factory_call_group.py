@@ -21,17 +21,20 @@ import time
 import unittest
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
-# A writer in a session of its own is found only by the FACTORY_CALL_TAG sweep, which reads /proc (none on a Mac).
-NEEDS_PROC = unittest.skipUnless(os.path.exists("/proc/self/environ"), "the FACTORY_CALL_TAG sweep reads /proc")
+# A writer in a session of its own is found only by the FACTORY_CALL_TAG sweep, which reads /proc (none on a Mac), and
+# one that also clears its environment only by the call's subreaper wrapper, which finds its children in /proc.
+NEEDS_PROC = unittest.skipUnless(os.path.exists("/proc/self/environ"), "the tag sweep and the wrapper read /proc")
 TOKEN = "CLAUDE_CODE_OAUTH_TOKEN"  # by name, so no token assignment appears for the merge secret grep
 INHERITED = ("FACTORY_ROOT", "FACTORY_GH", "LOAM_FACTORY_TOOLCHAIN", "LOAM_FACTORY_COPIER", "REPO", "RUN", "LOG",
              "CLAUDE_SETTINGS_FILE", TOKEN)
 
 # FAKE_IGNORE_TERM makes the writer ignore TERM, so only KILL stops it. FAKE_OWN_SESSION starts it in a session of its
 # own, out of the call's group, as Claude Code starts each Bash tool shell, so only the FACTORY_CALL_TAG sweep finds it.
-# FAKE_HANG keeps the call running after the writer starts.
+# FAKE_ENV_CLEARED starts it in a session of its own with a cleared environment, so neither finds it and only the
+# call's subreaper wrapper does (#434). FAKE_HANG keeps the call running after the writer starts.
 WRITER = """w="[ -z '${FAKE_IGNORE_TERM:-}' ] || trap '' TERM; while :; do echo x >> '$FAKE_DIR/mark'; sleep 0.2; done"
-if [ -n "${FAKE_OWN_SESSION:-}" ]; then perl -MPOSIX -e 'setsid; exec @ARGV' bash -c "$w" > /dev/null 2>&1 &
+if [ -n "${FAKE_ENV_CLEARED:-}" ]; then perl -MPOSIX -e 'setsid; exec @ARGV' env -i bash -c "$w" > /dev/null 2>&1 &
+elif [ -n "${FAKE_OWN_SESSION:-}" ]; then perl -MPOSIX -e 'setsid; exec @ARGV' bash -c "$w" > /dev/null 2>&1 &
 else ( eval "$w" ) > /dev/null 2>&1 &
 fi
 sleep 0.5
@@ -134,6 +137,59 @@ class CallGroupTests(unittest.TestCase):
         self.assertIn("left processes behind", (self.run_dir / "factory.log").read_text())
 
     @NEEDS_PROC
+    def test_env_cleared_writer_is_killed(self) -> None:
+        # A tool child that calls setsid and clears its environment is in neither the call's group nor the tag sweep;
+        # the wrapper, a subreaper, becomes its parent once the call exits and ends it (#434).
+        for call in ("worker_round 1", 'call_json 1 judge judge "$RUN/prompt.md" "$RUN/frozen/judge.schema.json"'):
+            with self.subTest(call=call):
+                (self.top / "mark").unlink(missing_ok=True)
+                proc = self.run_call(call, FAKE_ENV_CLEARED="1")
+                self.assert_no_survivor(proc)
+                self.assertIn("left processes behind", (self.run_dir / "factory.log").read_text())
+
+    @NEEDS_PROC
+    def test_group_kill_reaches_the_call_group_after_the_wrapper_dies(self) -> None:
+        # The call runs in a group of its own under the wrapper. With the wrapper killed (call_abort's KILL, OOM), that
+        # group must still hold the slot and call_end's group kill (#384) must still reach it, where a call without
+        # the tag is found by nothing else.
+        call = self.top / "call.sh"
+        call.write_text(f"""#!/usr/bin/env bash
+exec env -u FACTORY_CALL_TAG bash -c 'while :; do echo x >> {self.top}/mark; sleep 0.2; done' > /dev/null 2>&1
+""")
+        call.chmod(0o755)
+        proc = self.run_call(f'call_start "$WORKTREE" {call}; until [ -s "$FAKE_DIR/mark" ]; do sleep 0.1; done; '
+                             'kill -KILL "$CALL_PID"; call_live "$RUN" && echo live:1; call_end judge')
+        self.assertIn("live:1", proc.stdout, "the call's group no longer holds the slot")
+        self.assertIn("returned:137", proc.stdout, proc.stderr)
+        mark = self.top / "mark"
+        before = mark.stat().st_size
+        time.sleep(1)
+        self.assertEqual(mark.stat().st_size, before, "the writer kept writing after the call returned")
+        left = subprocess.run(["pgrep", "-f", str(self.top)], capture_output=True, text=True, check=False).stdout
+        self.assertEqual(left, "", "a process in the call's group outlived the call")
+        self.assertFalse((self.run_dir / "call").exists(), "call_end left the run's call file")
+
+    @NEEDS_PROC
+    def test_signalled_supervisor_ends_an_env_cleared_writer(self) -> None:
+        # The supervisor's TERM starts the wrapper's own TERM and KILL; the supervisor's KILL comes later, so it never
+        # kills the wrapper during its grace and leaves a writer that ignores TERM to init.
+        mark = self.top / "mark"
+        proc = subprocess.Popen(**self.call_cmd("worker_round 1", FAKE_ENV_CLEARED="1", FAKE_HANG="1",
+                                                FAKE_IGNORE_TERM="1"),
+                                stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, start_new_session=True)
+        deadline = time.time() + 20
+        while not mark.exists() and time.time() < deadline:
+            time.sleep(0.1)
+        time.sleep(0.5)
+        os.killpg(proc.pid, signal.SIGTERM)
+        self.assertEqual(proc.wait(timeout=30), 143)
+        before = mark.stat().st_size
+        time.sleep(1)
+        self.assertEqual(mark.stat().st_size, before, "the writer kept writing after the supervisor exited")
+        left = subprocess.run(["pgrep", "-f", str(self.top)], capture_output=True, text=True, check=False).stdout
+        self.assertEqual(left, "", "a process the call started outlived the supervisor")
+
+    @NEEDS_PROC
     def test_signalled_supervisor_ends_the_call(self) -> None:
         # Ctrl-C, TERM or HUP reaches the supervisor's group (a terminal signals its foreground group), not a call in
         # its own session; the supervisor ends the call's group and tagged processes before it exits, so none
@@ -157,6 +213,8 @@ class CallGroupTests(unittest.TestCase):
                                       check=False).stdout
                 self.assertEqual(left, "", "a process the call started outlived the supervisor")
                 self.assertIn(f"got {sig.name[3:]} during a model call", (self.run_dir / "factory.log").read_text())
+                for name in ("call", "call.tmp", "call.group", "call.group.tmp"):
+                    self.assertFalse((self.run_dir / name).exists(), f"the signalled supervisor left {name}")
 
     @NEEDS_PROC
     def test_second_ctrl_c_waits_for_the_kill(self) -> None:
