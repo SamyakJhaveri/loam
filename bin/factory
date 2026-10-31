@@ -1,14 +1,14 @@
 #!/usr/bin/env bash
 # bin/factory - factory tooling. Subcommands: lint, eval, eval-freeze, run, status, stop, next, graders-check.
 #   bin/factory lint <file|issue>   statically checks a ticket body against docs/factory/CONTRACT.md.
-#   bin/factory eval <grader>       replays the frozen evals/ cases through the production grader call.
+#   bin/factory eval <grader>       replays the frozen evals/ cases through the production grader call, recording scores.jsonl.
 #   bin/factory eval-freeze <run-dir>...  freezes each run's last round, when both graders passed it, into evals/clean/.
 #   bin/factory run <issue|file>    the supervisor: one ticket to a pull request (docs/factory/LOOP.md).
 #   bin/factory status              run states, spend, denials, worktrees, PRs, preconditions.
 #   bin/factory status --criteria   the ARCHITECTURE.md trust criteria, measured from the run dirs; reads files only.
 #   bin/factory stop <issue>        writes FACTORY_STOP into the run dir; the run halts before its next call.
 #   bin/factory next [--install]    the F9 frontier timer's step: launch the next unblocked ready-for-agent ticket.
-#   bin/factory graders-check       fails when judge.md or reviewer.md drifts from GRADER_MODEL and GRADER_EFFORT.
+#   bin/factory graders-check       fails when judge.md or reviewer.md drifts from GRADER_MODEL and GRADER_EFFORT; warns STALE.
 #   -C <repo>, before the subcommand or right after it, points lint, run, status, stop, and next at another repository (F8).
 # Lint never executes a check; it reads the body and shells out only to `bash -n`, `gh`, and python3 for the hidden-text rule.
 # Run and stop, when the operator runs them, add a line to the run dir's owner-events.jsonl (status --criteria); lint of
