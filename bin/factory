@@ -1659,9 +1659,10 @@ codex_result() { # jsonl exit_code [duration_ms] -> result JSON on stdout; durat
 # starts each Bash tool shell in a new session, and a tool child can clear its environment and call setsid too
 # (#434). When the call exits, or the wrapper gets TERM, INT or HUP, it sends the call's group and every child it has
 # TERM, then KILL after a 5 s grace, collects each, and exits with the call's own status once none is left, or 5 s
-# after KILL with one still alive; it writes what it signalled to call.reap for call_end. The wrapper's group and the
-# call's FACTORY_CALL_TAG, unique to the call and kept by every process it starts but one that clears its environment,
-# stay what call_signal ends and call_live reads, a second line for a host with no subreaper (a Mac) or a dead wrapper. The call keeps the caller's
+# after KILL with one still alive; it writes what it signalled to call.reap for call_end. The wrapper's group, which
+# holds only the wrapper, and the call's FACTORY_CALL_TAG, unique to the call and kept by every process it starts but
+# one that clears its environment, stay what call_signal ends and call_live reads: on Linux the tag sweep is a second
+# line behind the wrapper; on a host with no subreaper or /proc (a Mac) the wrapper's kill of the call's group is all. The call keeps the caller's
 # stdin (<&0, since a background command would get /dev/null), stdout and stderr. In its own session the call no
 # longer gets the supervisor's Ctrl-C, TERM or HUP, so until call_end the supervisor traps them and ends the call's
 # processes before it exits and its EXIT trap removes the worktree.
