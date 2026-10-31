@@ -1,6 +1,8 @@
 """bin/usage-audit on planted transcript trees: a message counts by its latest record, history copied into a
 resumed session stays with the session that made the request whichever file sorts first, a message with
-no final record is reported on stderr as a floor, and a path that is not a directory fails."""
+no final record is reported on stderr as a floor, and a path that is not a directory fails. With --codex a
+session's row is its last cumulative token_count in the window less the one before start, or less a fork's
+copied parent events."""
 
 from __future__ import annotations
 
@@ -64,6 +66,47 @@ class UsageAuditTest(unittest.TestCase):
         self.assertNotEqual(rc, 0)
         self.assertEqual(out, "")
         self.assertIn("not a directory", err)
+
+
+def tc(ts: str, inp: int, cached: int, out: int) -> dict:
+    return {"timestamp": ts, "type": "event_msg", "payload": {"type": "token_count", "info": {
+        "total_token_usage": {"input_tokens": inp, "cached_input_tokens": cached, "output_tokens": out}}}}
+
+
+def meta(ts: str, sid: str, **extra) -> dict:
+    return {"timestamp": ts, "type": "session_meta", "payload": {"id": sid, **extra}}
+
+
+def codex(files: dict[str, list[dict]]) -> dict[str, list[str]]:
+    """session -> its row from --codex over the planted rollouts, window from 10:00."""
+    with tempfile.TemporaryDirectory() as tmp:
+        for rel, recs in files.items():
+            pathlib.Path(tmp, rel).write_text("".join(json.dumps(r) + "\n" for r in recs), encoding="utf-8")
+        p = subprocess.run([sys.executable, str(SCRIPT), "--codex", tmp, "2026-10-29T10:00:00Z", "h"],
+                           capture_output=True, text=True, check=True)
+        return {f[2]: f for f in (line.split("\t") for line in p.stdout.splitlines())}
+
+
+class CodexTest(unittest.TestCase):
+    def test_cumulative_events_are_not_summed_and_prior_usage_is_subtracted(self) -> None:
+        rows = codex({"rollout-a.jsonl": [meta("2026-10-29T09:00:00Z", "s1", cwd="/w/proj", source="exec"),
+                                          tc("2026-10-29T09:30:00Z", 100, 20, 100),
+                                          tc("2026-10-29T10:00:01Z", 250, 40, 300),
+                                          tc("2026-10-29T10:00:01Z", 250, 40, 300),
+                                          tc("2026-10-29T10:00:02Z", 400, 60, 500)]})
+        self.assertEqual(rows["s1"], ["h", "proj", "s1", "codex", "exec", "-", "-", "2", "260", "0", "40", "400"])
+
+    def test_fork_copies_of_parent_events_are_baseline(self) -> None:
+        rows = codex({"rollout-f.jsonl": [meta("2026-10-29T11:00:00.100Z", "f1", forked_from_id="p1",
+                                               source={"subagent": "review"}),
+                                          tc("2026-10-29T11:00:00.101Z", 900, 0, 900),
+                                          tc("2026-10-29T11:00:05Z", 1000, 50, 950)]})
+        self.assertEqual(rows["f1"][4:], ["review", "-", "-", "1", "50", "0", "50", "50"])
+
+    def test_sessions_sharing_a_prefix_stay_apart(self) -> None:
+        rows = codex({f"rollout-{n}.jsonl": [meta("2026-10-29T10:00:00Z", f"01a13bd1-000{n}"),
+                                             tc("2026-10-29T10:00:01Z", 10, 0, n)] for n in (1, 2)})
+        self.assertEqual({k: v[11] for k, v in rows.items()}, {"01a13bd1-0001": "1", "01a13bd1-0002": "2"})
 
 
 if __name__ == "__main__":
