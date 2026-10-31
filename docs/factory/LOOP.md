@@ -93,6 +93,7 @@ When no cached copy matches, the run stops `stopped-environment` and names the c
 
 Exit code, `status`, and the final log line are decided together and cannot disagree.
 The one `status` written outside its run is `stopped-environment`, by `holds_slot` for a run with no process left (Parallel runs); that run has no exit code or final log line.
+A launch refused its run's lease (Parallel runs) exits 4 with one stderr line and writes no status or log line, as a launch that stops before it records the run does, since the run directory belongs to the launch that holds the lease.
 These read loop-control files to decide exit, never safety; safety stays with deny rules, the sandbox, git, and CI.
 A usage-limit reply (`hit your session limit`, `reached your Fable limit`) is neither an exit nor a round.
 Usage limits are per account, so the supervisor first switches to the next stored account through `bin/claude-account` (round robin in name order, so a third account is reached too) and retries the same call at once.
