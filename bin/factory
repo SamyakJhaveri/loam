@@ -896,10 +896,12 @@ exit_words() { # status -> "<level> <words>"
 # The host's healthchecks check: a beat at launch, then every 5 minutes while this run's process lives, so a
 # killed run or host goes red. The loop's TERM trap runs only after an in-flight beat returns (the sleep is
 # waited on, so it does not delay the trap), and heartbeat_stop waits for it, so no beat lands after the pause.
-# The trap ends the sleep too, which would otherwise hold the run's lease for up to 300 s after finish.
+# The loop closes the run's lease (FACTORY_SLOT_FD), so a beat left after the supervisor died, by finish, a signal
+# or SIGKILL, never holds the slot.
 heartbeat_start() {
   alert --ping beat >> "$LOG" 2>&1 || log "healthchecks beat failed; see bin/alert's line above"
-  ( trap 'kill $! 2> /dev/null; exit 0' TERM
+  ( [ -n "${FACTORY_SLOT_FD:-}" ] && exec {FACTORY_SLOT_FD}>&- 2> /dev/null
+    trap 'exit 0' TERM
     while sleep 300 & wait $!; kill -0 "$$"; do alert --ping beat; done ) < /dev/null > /dev/null 2>&1 &
   HEARTBEAT=$!
 }
@@ -2294,11 +2296,13 @@ cmd_run() {
   # The slot is the flock lease on $RUN/lease (#425), taken after the launch line, so a failure here is charged to this
   # launch, and before the long preparation, so a relaunch holds its slot at once. The fd is no close-on-exec, so the
   # frozen re-exec and every child inherit it: the run holds the lease until its last process exits. The frozen pass
-  # already holds it and must not lock a second open of the file, which would wait on its own lease. Where flock(1)
+  # already holds it and must not lock a second open of the file, which would wait on its own lease. The heartbeat
+  # loop alone closes it (heartbeat_start). Where flock(1)
   # is missing (a Mac) no lease is written and holds_slot judges the owner line below.
   if [ -n "$HAVE_FLOCK" ] && [ "${FACTORY_FROZEN:-}" != "$RUN/frozen/factory" ]; then
     exec {SLOT_FD}>> "$RUN/lease" && flock -w 65 "$SLOT_FD" \
       || finish stopped-environment "could not take $RUN/lease in 65 s"
+    export FACTORY_SLOT_FD=$SLOT_FD   # so the frozen pass's heartbeat can close it
   fi
   # The owner line, for status and the alert text, and for holds_slot on a host with no flock or a run dir with no
   # lease, written with the status under owner.lock, which a reaper judging the owner line takes too.

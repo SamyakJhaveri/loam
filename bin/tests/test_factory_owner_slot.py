@@ -92,6 +92,8 @@ class SlotCase(unittest.TestCase):
 
 
 class OwnerSlotTests(SlotCase):
+    flock = True
+
     def test_dead_owner_frees_the_slot_and_reads_stopped_environment(self) -> None:
         self.owner(f"{dead_pid()} {OLD}")
         self.assert_freed()
@@ -168,11 +170,12 @@ class OwnerSlotTests(SlotCase):
         (run_dir / "status").write_text("stopped-environment\n")
         (run_dir / "owner").write_text(f"{dead_pid()} {OLD}\n")
         seen = self.top / "seen"
-        script = (f". bin/factory\nMAIN_CHECKOUT='{self.top}'\n"
+        script = (f". bin/factory\n{'' if self.flock else 'HAVE_FLOCK='}\nMAIN_CHECKOUT='{self.top}'\n"
                   "assert_target_ready() { :; }; claude_version_ok() { echo ok; }\n"
                   "nav_arm_resolve() { { cat \"$RUN/owner\" \"$RUN/status\"; echo \"$$\"; "
                   "TZ=UTC LC_ALL=C ps -o lstart= -p $$; "
-                  f"flock -n \"$RUN/lease\" true && echo free || echo held; }} > '{seen}'; exit 0; }}\n"
+                  "if [ ! -f \"$RUN/lease\" ]; then echo none; elif flock -n \"$RUN/lease\" true; then echo free; "
+                  f"else echo held; fi; }} > '{seen}'; exit 0; }}\n"
                   f"cmd_run '{ticket}'")
         base = {k: v for k, v in os.environ.items()
                 if k not in INHERITED and k not in ("FACTORY_FROZEN", "FACTORY_NAV_ARM")}
@@ -186,7 +189,7 @@ class OwnerSlotTests(SlotCase):
         self.assertEqual(int(pid), proc.pid)
         self.assertEqual(owner, f"{pid} {start.rstrip()}")
         self.assertEqual(status, "running")
-        self.assertEqual(lease, "held")
+        self.assertEqual(lease, "held" if self.flock else "none")   # macOS has no flock(1): the owner line decides
 
     def test_dead_group_leader_holds_while_a_member_lives(self) -> None:
         # The leader exits and is reaped; the sleep it left keeps the leader's pid as its process group id.
@@ -263,7 +266,9 @@ class LeaseSlotTests(SlotCase):
 
 
 class MacShapeOwnerSlotTests(OwnerSlotTests):
-    """Every test again with macOS ps and date (bsd_shapes), so Linux CI guards the Mac paths too."""
+    """Every test again with macOS ps and date (bsd_shapes) and no flock(1), so Linux CI guards the Mac paths too."""
+
+    flock = False
 
     def setUp(self) -> None:
         super().setUp()
