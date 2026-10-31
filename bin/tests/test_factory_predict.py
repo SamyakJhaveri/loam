@@ -1,4 +1,4 @@
-"""A `predict NAME CMD...` line runs at round 0 only, and lint keeps it one simple command (CONTRACT.md, Done checks).
+"""A `predict NAME CMD...` line's CMD runs whole at round 0 only, and checks.sh carries no predict line (CONTRACT.md).
 
 bin/factory is sourced (FACTORY_SOURCED=1) and the real round_zero runs the block at the base commit of a scratch
 repository, with `finish` replaced so a ticket defect prints instead of exiting; lint runs as `bin/factory lint` over
@@ -39,7 +39,8 @@ class PredictTests(unittest.TestCase):
         script = (f"RUN='{run}'; WORKTREE='{run}/wt'; MAIN_CHECKOUT='{self.tmp}/repo'; LOG=\"$RUN/log\"\n"
                   'finish() { echo "FINISH $1: $2"; exit 0; }\n'
                   'BODY=$(cat "$RUN/issue.md"); git -C "$MAIN_CHECKOUT" rev-parse HEAD > "$RUN/base.sha"\n'
-                  "{ cat bin/factory.d/lib.sh; echo; dc_block; echo; echo \"$CHECKS_END\"; echo 'exit $((n_fail > 0))'; }"
+                  'cp bin/factory.d/lib.sh "$RUN/frozen/lib.sh"\n'
+                  "{ cat bin/factory.d/lib.sh; echo; dc_script; echo; echo \"$CHECKS_END\"; echo 'exit $((n_fail > 0))'; }"
                   ' > "$RUN/frozen/checks.sh"; chmod +x "$RUN/frozen/checks.sh"\n'
                   "round_zero; echo ROUND0-OK")
         proc = subprocess.run(["bash", "-c", f". bin/factory\n{script}"], cwd=ROOT,
@@ -66,46 +67,61 @@ class PredictTests(unittest.TestCase):
         self.assertTrue((self.tmp / "run/round-0.checks").is_file())
 
     def test_wrong_prediction_is_a_ticket_defect(self) -> None:
-        for predict in ("predict greet test ! -f g.txt", "predict greet return 7"):
+        for predict in ("predict greet test ! -f g.txt", "predict greet return 7",
+                        "predict greet test -f g.txt && grep -q hey g.txt", "predict greet grep -q bye g.txt | false"):
             with self.subTest(predict=predict):
                 out = self.round_zero(f"{predict}\n{GREET}")
                 self.assertIn("FINISH ticket-defect: the predict line for check greet exits", out)
 
+    def test_predict_line_with_no_command_is_a_ticket_defect(self) -> None:
+        out = self.round_zero(f"predict greet\n{GREET}")
+        self.assertIn("FINISH ticket-defect: the predict line for check greet has no command", out)
+
+    def test_whole_line_prediction_holds(self) -> None:
+        for predict in ("predict greet ! grep -q hello g.txt", "predict greet [[ -f g.txt ]]",
+                        "predict greet test -f g.txt && ! grep -q hello g.txt",
+                        'predict greet test "$(cat g.txt)" = bye', "predict greet false || true"):
+            with self.subTest(predict=predict):
+                self.assertEqual(self.round_zero(f"{predict}\n{GREET}").strip(), "ROUND0-OK")
+
     def test_body_without_predict_lines_runs_as_before(self) -> None:
         self.assertEqual(self.round_zero(GREET).strip(), "ROUND0-OK")
 
-    def test_predict_in_a_child_shell_records_nothing(self) -> None:
-        out = self.round_zero(f"predict greet test -f g.txt\nbash -c '. {LIB}; predict zzz false'; {GREET}")
+    def test_checks_sh_carries_no_predict_line(self) -> None:
+        marker = self.tmp / "ran"
+        out = self.round_zero(f"predict greet test -f g.txt && touch {marker}\n  predict  zzz true\n{GREET}")
         self.assertEqual(out.strip(), "ROUND0-OK")
+        self.assertTrue(marker.is_file())
+        marker.unlink()
+        checks = (self.tmp / "run/frozen/checks.sh").read_text()
+        self.assertNotRegex(checks, r"(?m)^\s*predict\s")
+        proc = subprocess.run([str(self.tmp / "run/frozen/checks.sh")], cwd=self.tmp / "repo", capture_output=True,
+                              text=True, check=False)
+        self.assertIn("FAIL greet", proc.stdout)
+        self.assertFalse(marker.exists())
 
-    def test_predict_is_quiet_outside_round_zero(self) -> None:
-        env = {k: v for k, v in os.environ.items() if k != "FACTORY_ROUND0"}
-        proc = subprocess.run(["bash", "-c", f'. {LIB}; predict greet false; echo "rc=$?"'], env=env,
+    def test_predict_is_quiet_when_a_block_sources_lib(self) -> None:
+        proc = subprocess.run(["bash", "-c", f'. {LIB}; predict greet false; echo "rc=$?"'],
                               capture_output=True, text=True, check=False)
         self.assertEqual(proc.stdout + proc.stderr, "rc=0\n")
 
-    def test_lint_accepts_one_simple_command_per_check(self) -> None:
+    def test_lint_accepts_a_whole_line_prediction(self) -> None:
         for predict in ("predict greet test -f g.txt", "predict greet true", 'predict greet test ! -f "A&B|C>D"',
-                        "predict greet bash -c 'test -f g.txt && ! grep -q hello g.txt'"):
+                        "predict greet test -f A\\&B", "predict greet test -f g.txt && grep -q hello g.txt",
+                        "predict greet ! grep -q hello g.txt", "predict greet [[ -f g.txt ]]",
+                        "predict greet test -f g.txt 2>/dev/null"):
             with self.subTest(predict=predict):
                 rc, out = self.lint(f"{predict}\n{GREET}\n{GUARD}")
                 self.assertEqual(rc, 0, out)
 
-    def test_lint_rejects_a_compound_or_redirected_predict_line(self) -> None:
-        for predict in ("predict greet test -f g.txt && grep -q hello g.txt", "predict greet test -f g.txt | cat",
-                        "predict greet true; false", "predict greet false >/no/such/dir/out",
-                        "predict greet test -f g.txt 2>/dev/null", "predict greet sleep 1 &"):
+    def test_lint_rejects_a_predict_line_that_cannot_run_alone(self) -> None:
+        for predict, why in (("predict greet", "has no command"), ("predict greet # test -f g.txt", "has no command"),
+                             ("predict greet test -f g.txt \\\n  && true", "ends in a backslash"),
+                             ("predict greet if true; then\nfi", "bash -n")):
             with self.subTest(predict=predict):
                 rc, out = self.lint(f"{predict}\n{GREET}\n{GUARD}", worker="")
                 self.assertNotEqual(rc, 0, out)
-                self.assertIn("one simple command", out)
-
-    def test_lint_rejects_a_keyword_as_the_command(self) -> None:
-        for predict in ("predict greet ! grep -q hello g.txt", "predict greet [[ -f g.txt ]]"):
-            with self.subTest(predict=predict):
-                rc, out = self.lint(f"{predict}\n{GREET}\n{GUARD}", worker="")
-                self.assertNotEqual(rc, 0, out)
-                self.assertIn("shell keyword", out)
+                self.assertIn(why, out)
 
     def test_lint_reads_pass_after_a_case_pattern(self) -> None:
         check = 'out=$(cat g.txt); case "$out" in *hello*) pass greet ;; *) fail greet "no hello" ;; esac'
