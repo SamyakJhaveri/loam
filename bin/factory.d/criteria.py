@@ -11,8 +11,7 @@ origin/main, else main; as of the last fetch) for the escaped defects line: merg
 commit reverts or names in a `Caused-by: #<pr>` line. Only merge-commit PRs count; a squash or rebase merge
 leaves no `Merge pull request` commit, so it is in neither number. The criteria and their thresholds are read
 from ARCHITECTURE.md, their one home; a line this file cannot measure prints `UNMEASURED: <why>`, and a
-lower bound within its threshold prints `INCONCLUSIVE`, since what it omits could pass the threshold. An estimate
-always prints `INCONCLUSIVE`, never PASS or FAIL.
+lower bound within its threshold prints `INCONCLUSIVE`, since what it omits could pass the threshold.
 python3 stdlib only.
 """
 from __future__ import annotations
@@ -21,6 +20,7 @@ import glob
 import json
 import os
 import re
+import shlex
 import statistics
 import subprocess
 import sys
@@ -30,9 +30,20 @@ REHEARSAL = "file ticket: no GitHub call"  # open_pr's pr-opened message for a f
 PASS_OVER = "SKIPPED:"  # bin/check's marker for a step that did not run; lib.sh's guard copies it into the checks file
 STALLS = ("stuck", "no-change", "stopped-cap")
 LOWER = "lower bound"  # a measure's fourth element: the value may undercount, so it prints INCONCLUSIVE, not PASS
-ESTIMATE = "estimate"  # a measure's fourth element: a text matcher's guess, so it prints INCONCLUSIVE, never PASS or FAIL
-# A completion claim: done (not done-checks), complete or finished (not after the or a), all [n] checks pass or print,
-# no FAIL, or check: PASSED. A failure: fail, failure, could not, cannot, incomplete or unfinished. A pass (passes,
+# The worker's claim, the last line of its last message that starts `CLAIM:` after blanks and markdown marks
+# (_common.md); only a whole value of done, in any case and markdown, with an optional final period, claims done.
+CLAIM_LINE = re.compile(r"^[ \t*`>_-]*CLAIM:(.*)$", re.M)
+DONE = re.compile(r"[\s*_`]*done[\s*_`]*\.?[\s*_`]*", re.I)
+# FAIL names round_checks writes in place of running the block (a checks file with no CHECKS-END line), which the
+# worker's Stop hook does not do; a guard that returns early under LOAM_HOOK (lib.sh) or a line that passes first under
+# it passes a `guard bin/check` line unrun, so that line's names join them per run.
+HOOK_BLIND = {"do-not-touch", "worktree-dirty"}
+HOOK_GUARD = re.compile(r'LOAM_HOOK.*"\$\{1:-\}" = bin/check \] && return 0')
+HOOK_PASS = ["[", "-n", "${LOAM_HOOK:-}", "]", "&&", "pass"]
+KEYWORDS = {"{", "!", "if", "then", "else", "elif", "do", "while", "until"}  # the next word starts a command too
+# A round with no CLAIM line, from before _common.md asked for one, falls back to this text matcher. A completion
+# claim: done (not done-checks), complete or finished (not after the or a), all [n] checks pass or print, no FAIL, or
+# check: PASSED. A failure: fail, failure, could not, cannot, incomplete or unfinished. A pass (passes,
 # passed) alone is no signal. A negation flips only the next claim, failure or pass in its clause: a denied claim or
 # pass is a failure, and a denied failure is no signal. A requirement (requires, must, should) makes the next signal in
 # its clause no signal, and if, unless or once every later signal of its sentence, since they state what should or
@@ -158,12 +169,13 @@ def operator_actions(phase, since, omits):
     return measure
 
 
+def fail_names(lines):
+    """The check name of each FAIL line, in order: lib.sh's `FAIL name: why`, or round_checks' `FAIL do-not-touch paths`."""
+    return [line[5:].split(" ", 1)[0].rstrip(":") for line in lines if line.startswith("FAIL ")]
+
+
 def first_fail(lines):
-    """The check name of the first FAIL line: lib.sh's `FAIL name: why`, or round_checks' `FAIL do-not-touch paths`."""
-    for line in lines:
-        if line.startswith("FAIL "):
-            return line[5:].split(" ", 1)[0].rstrip(":")
-    return None
+    return next(iter(fail_names(lines)), None)
 
 
 def scope_stalls(runs):
@@ -253,28 +265,71 @@ def claims_done(text):
     return None
 
 
+def claim(text):
+    """(counts, said) of a last worker message: its last CLAIM line, which counts when its state is done, or with none,
+    counts None and claims_done's sentence, None when the text matcher reads no claim."""
+    lines = CLAIM_LINE.findall(text)
+    if lines:
+        return bool(DONE.fullmatch(lines[-1])), "CLAIM: " + lines[-1].strip(" \t\r*_`.")
+    return None, claims_done(text)
+
+
+def guarded(run):
+    """The pass and fail names of the lines of the run's frozen checks that run `guard bin/check`, when the Stop hook
+    passes such a line unrun; a line shlex cannot split names nothing."""
+    text, names = read(os.path.join(run, "frozen", "checks.sh")), set()
+    for line in text.splitlines():
+        lex = shlex.shlex(line, posix=True, punctuation_chars=True)
+        lex.whitespace_split = True
+        try:
+            words = list(lex)
+        except ValueError:
+            continue
+        starts, start = [], True  # the index of each word that starts a command: a separator or keyword precedes it
+        for i, w in enumerate(words):
+            if start:
+                starts.append(i)
+            start = set(w) <= set(";&|()") or start and w in KEYWORDS
+        if (any(words[i:i + 2] == ["guard", "bin/check"] for i in starts)
+                and (HOOK_GUARD.search(text) or any(words[i:i + 6] == HOOK_PASS for i in starts))):
+            names |= {words[i + 1] for i in starts if words[i] in ("pass", "fail") and i + 1 < len(words)}
+    return names
+
+
 def premature_done(runs):
-    """An estimate: claims_done reads free text, so it can miss a claim or see one; a structured worker claim line
-    (#443) replaces it."""
-    kinds, silent, failing, rows = {"claude": 0, "codex": 0}, 0, 0, []
+    """Failing rounds whose worker claims done in its last message's CLAIM line, or for a round with none, the text
+    matcher's claims_done. A counted round is hook-blind when every FAIL it printed is a check its Stop hook passes.
+    While a failing round is read by the matcher, which can miss a claim, or left no message, a count within the
+    threshold is no PASS."""
+    kinds, silent, matched, failing, rows, blind = {"claude": 0, "codex": 0}, 0, 0, 0, [], []
     for r in runs:
         for n, lines in sorted(r.checks.items()):
-            if n == 0 or not any(line.startswith("FAIL") for line in lines):
+            names = fail_names(lines)
+            if n == 0 or not names:
                 continue
             failing += 1
             kind, text = last_message(r.dir, n)
             if text is None:
                 silent += 1
-            elif said := claims_done(text):
+                continue
+            counts, said = claim(text)
+            if counts is None:
+                matched += 1
+            if counts or counts is None and said:
                 kinds[kind] += 1
-                # The round, its first FAIL line and the claim, so a reader can settle the estimate.
-                fail = next(line for line in lines if line.startswith("FAIL"))
-                rows.append(f"{r.label} round {n} ({kind}): {fail} | {said}")
+                # The round, its first FAIL line and the claim, so a reader can settle a text matcher's read.
+                rows.append(f"{r.label} round {n} ({kind}): {next(ln for ln in lines if ln.startswith('FAIL '))} | {said}")
+                if set(names) <= HOOK_BLIND - ({"worktree-dirty"} if "CHECKS-END" in lines else set()) | guarded(r.dir):
+                    blind.append(f"{r.label} round {n}")
     detail = f"claude {kinds['claude']}, codex {kinds['codex']}"
     if silent:
         detail += f"; {count(silent, 'failing round')} with no worker message"
+    if matched:
+        detail += f"; {matched} with no CLAIM line, read by the text matcher"
+    if blind:
+        detail += f"; {len(blind)} failed only checks the worker's Stop hook cannot fail: {', '.join(blind)}"
     n = sum(kinds.values())
-    return n, f"{detail}; text matcher, see #443", f"estimate: {n} of {count(failing, 'failing round')}", ESTIMATE, rows
+    return n, detail, f"{n} of {count(failing, 'failing round')}", LOWER if matched or silent else None, rows
 
 
 def history(target):
@@ -336,8 +391,8 @@ def escaped_defects(target):
 
 
 # A measure returns (value, detail), (value, detail, shown), where shown replaces the value in the verdict line, or
-# (value, detail, shown, LOWER) for a lower bound: it can show a threshold is exceeded, never that it is met, or
-# (value, detail, shown, ESTIMATE, rows) for an estimate, which shows neither, with a line per counted case.
+# (value, detail, shown, LOWER) for a lower bound: it can show a threshold is exceeded, never that it is met, and a
+# fifth element, rows, prints a line per counted case under the verdict.
 MEASURES = {
     "operator actions from voice note to a running loop on Track B": operator_actions(
         "launch", "a launch", "owner work outside the issue's events and the lint, run and stop subcommands run outside Claude Code"),
@@ -388,20 +443,19 @@ def main(argv):
             out.append("    UNMEASURED: criteria.py has no measure for this line")
             continue
         value, detail, *shown = MEASURES[name](runs) if runs else (None, f"no run directory under {root}")
-        lower = shown[1:] == [LOWER]
-        # A FAIL names the date of its latest run in the detail, from that run's factory.log.
-        dates = [r.date for r in runs if r.date and re.search(rf"(?<![\w/]){re.escape(r.label)}\b", str(detail))]
+        lower, rows = shown[1:2] == [LOWER], shown[2] if len(shown) > 2 else []
+        # A FAIL names the date of its latest run in the detail or its rows, from that run's factory.log.
+        named = " ".join([str(detail), *rows])
+        dates = [r.date for r in runs if r.date and re.search(rf"(?<![\w/]){re.escape(r.label)}\b", named)]
         if value is None:
             out.append(f"    UNMEASURED: {detail}")
-        elif shown[1:2] == [ESTIMATE]:
-            out.append(f"    INCONCLUSIVE: {shown[0]} ({detail})")
-            out += [f"      {row}" for row in shown[2]]
         elif not m:
             out.append(f"    UNMEASURED: the threshold '{rule}' does not start with a number")
         else:
             verdict = "FAIL" if value > int(m.group(1)) else "INCONCLUSIVE" if lower else "PASS"
             out.append(f"    {verdict}: measured {shown[0] if shown else num(value)}" + (f" ({detail})" if detail else "")
                        + (f"; latest {max(dates)}" if verdict == "FAIL" and dates else ""))
+            out += [f"      {row}" for row in rows]
     out.append(escaped_defects(target))
     print("\n".join(out))
     return 0
