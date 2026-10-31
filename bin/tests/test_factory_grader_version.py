@@ -121,8 +121,9 @@ class GraderVersionTests(unittest.TestCase):
         proc = self.resolve(f"GRADERS_DIR='{mine}'; ")
         self.assertEqual(proc.stdout.splitlines(), [str(mine / "judge.md"), "rc=0"], proc.stderr)
 
-    def tick(self, *args: str, stale_on_pull: pathlib.Path | None = None) -> tuple[subprocess.CompletedProcess[str], str]:
-        """One `bin/factory next` tick over a frontier of #7; returns the run and the tmux subcommands it called.
+    def tick(self, *args: str, stale_on_pull: pathlib.Path | None = None, env: str = "") -> tuple[subprocess.CompletedProcess[str], str]:
+        """One `bin/factory next` tick over a frontier of #7; returns the run and the tmux calls it made, one per line.
+        env is shell code run first, such as an export the tick reads.
         stale_on_pull is a cached agents dir whose prompts stop matching the checkout's when the tick fast-forwards
         it. A real pull changes the checkout's copy; the stub edits the cached one, the same mismatch, so the
         test never writes to the real checkout."""
@@ -131,11 +132,11 @@ class GraderVersionTests(unittest.TestCase):
         line = f"7 SamyakJhaveri {base64.b64encode(body.encode()).decode()}"
         pull = f'for f in "{stale_on_pull}"/*.md; do echo edit >> "$f"; done' if stale_on_pull else ":"
         proc = self.sourced(
-            "LOAM_FACTORY_TOOLCHAIN=t LOAM_FACTORY_COPIER=c; "
+            env + "LOAM_FACTORY_TOOLCHAIN=t LOAM_FACTORY_COPIER=c; "
             "assert_toolchain_env() { :; }; claude_logged_in() { :; }; claude_version_ok() { :; }; target_repo() { echo o/r; }; "
             f"gh() {{ case $1$2 in apigraphql) ;; api*) echo '{line}' ;; esac; }}; "
             f'git() {{ case "$*" in *"rev-parse --abbrev-ref HEAD") echo main ;; *"merge --ff-only"*) {pull} ;; esac; }}; '
-            f'tmux() {{ echo "$1" >> "{calls}"; [ "$1" != has-session ]; }}; '
+            f'tmux() {{ echo "$*" >> "{calls}"; [ "$1" != has-session ]; }}; '
             f'cmd_next {" ".join(args)}; echo "rc=$?"')
         return proc, calls.read_text() if calls.exists() else ""
 
@@ -159,6 +160,17 @@ class GraderVersionTests(unittest.TestCase):
         proc, tmux = self.tick()
         self.assertEqual(proc.stdout.splitlines(), ["launched #7", "rc=0"], proc.stderr)
         self.assertIn("new-session", tmux)
+
+    def test_next_passes_its_caps_to_the_run_it_launches(self) -> None:
+        # tmux gives a session the server's environment, so without -e the run fell back to MAX_PARALLEL=1 and
+        # stopped at once beside a live run (48 false machine-problem pages on jhaveris, 30-31 Oct).
+        self.cache(SHIPS)
+        proc, tmux = self.tick(env="export FACTORY_MAX_PARALLEL=2 FACTORY_MAX_HOURS=; ")
+        self.assertEqual(proc.stdout.splitlines(), ["launched #7", "rc=0"], proc.stderr)
+        launch = [x for x in tmux.splitlines() if x.startswith("new-session")]
+        self.assertEqual(len(launch), 1, tmux)
+        self.assertIn("-e FACTORY_MAX_PARALLEL=2 ", launch[0])
+        self.assertNotIn("FACTORY_MAX_HOURS", launch[0])
 
     def test_control_next_dry_run_skips_the_grader_gate(self) -> None:
         # A ticket's check may run next --dry-run in a worktree whose grader edit is not installed yet.
