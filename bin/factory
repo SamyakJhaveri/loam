@@ -1575,16 +1575,15 @@ worker_round() { # round; leaves round-N.* only once the call produced a result
   if runs_workflow "$round"; then
     find "$RUN/tasks" -mindepth 1 -delete 2> /dev/null || finish stopped-environment "could not empty $RUN/tasks before the fan-out round"
   fi
-  # Each round writes its own mechanism.md, so an earlier round's account of a diff that has since moved never
-  # opens the PR; a round that writes none gets open_pr's fallback line (#330).
-  rm -f "${DECISIONS%/*}/mechanism.md"
   pf=$(build_worker_prompt "$round") || finish ticket-defect "a skill this ticket names resolves to no SKILL.md under ~/.claude/skills or the plugin cache; see the log"
   if [ "$WORKER_KIND" = codex ]; then
     # The Codex worker: JSONL stream is stdout, -o is the last message, < /dev/null keeps Codex off the
     # caller's stdin (#41). No dollar budget bounds it (cost_usd null); CALL_TIMEOUT_SEC and MAX_HOURS do.
     local rc start wl wagents wusd swapped=0 codex_target cgd ccd add_dirs
     log "codex worker call: round $round model=$CODEX_MODEL (dollar caps do not bound it), prompt=$(wc -c < "$pf") bytes"
-    rm -f "$out"
+    # Each worker call writes its own mechanism.md, so an earlier call's account of a diff that has since moved
+    # never opens the PR; a call that writes none gets open_pr's fallback line (#330).
+    rm -f "$out" "${DECISIONS%/*}/mechanism.md"
     # Codex's workspace-write sandbox mounts the workspace .codex read-only, and bubblewrap refuses the
     # root .codex because it is a symlink into seed/ (D12, #77). Swap it for a real copy of its target for
     # the call; it is restored before grading below. The worktree's commit also needs four git roots
@@ -1629,7 +1628,7 @@ worker_round() { # round; leaves round-N.* only once the call produced a result
   fi
   while :; do
     log "worker call: round $round model=$WORKER_MODEL effort=$WORKER_EFFORT advisor=${WORKER_ADVISOR:-off} budget=$ROUND_BUDGET_USD usd, prompt=$(wc -c < "$pf") bytes"
-    rm -f "$out"
+    rm -f "$out" "${DECISIONS%/*}/mechanism.md"   # also on a retried call, as for the Codex call above (#330)
     call_start "$WORKTREE" ${t[@]+"${t[@]}"} env LOAM_CHECKS="$RUN/frozen/checks.sh" \
         CLAUDE_CODE_SUBAGENT_MODEL="$WORKER_MODEL" CLAUDE_CODE_SUBAGENT_MODEL_FORCE=1 \
         ANTHROPIC_DEFAULT_SONNET_MODEL="$WORKER_MODEL" ANTHROPIC_DEFAULT_HAIKU_MODEL="$WORKER_MODEL" claude -p \
