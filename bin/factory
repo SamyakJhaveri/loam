@@ -498,20 +498,54 @@ grader_rubric() {
   printf '\n## Output for this call\n\nRespond with exactly one JSON object and nothing else: no prose before or after, no code fences, no closing sentence; put anything you could not verify in the "unverified" array. Scope: the diff below and the worker-authored files. Severity as defined above.\n'
 }
 
+# The grader under test must not find the answer keys it is scored against in the tree it reads, so every
+# eval call runs in a fresh export of the checkout's committed tree with evals/ removed, and with the evals
+# directory removed too when it lies inside the checkout; the rest of the tree stays, as in a ticket
+# worktree. This fences the working directory only: no permission rule stops a Read of an absolute path.
+eval_tree() { # work: exports into work/tree
+  local top ev wd
+  top=$(cd "$ROOT" && pwd -P)
+  ev=$(cd "$EVALS_DIR" 2> /dev/null && pwd -P)
+  wd=$(cd "$1" && pwd -P)
+  case "$wd/" in "$top"/*|"${ev:-/nonexistent}"/*)
+    echo "eval: TMPDIR ($wd) lies inside the checkout or the evals directory" >&2; return 1 ;; esac
+  mkdir "$1/tree" && git -C "$ROOT" archive HEAD | tar -x -C "$1/tree" ||
+    { echo "eval: could not export the HEAD of $ROOT" >&2; return 1; }
+  rm -rf "$1/tree/evals"
+  case "$ev/" in "$top"/?*) rm -rf "$1/tree/${ev#"$top"/}" ;; esac
+}
+
+# One work directory per eval, outside the checkout, holding the export and the rubric. It is made, and its
+# traps set, before the export starts, so a signal at any point removes it. The traps sit in this shell, not
+# a subshell, so a TERM to bin/factory's pid alone still ends the case loop, once the in-flight call returns.
 run_eval() {
-  local grader="$1" budget="${EVAL_BUDGET_USD:-10}" gf schema rubric dir name out res exp got erows grows
+  local rc
+  EVAL_WORK=$(mktemp -d "${TMPDIR:-/tmp}/factory-eval.XXXXXX") || return 2
+  trap 'rm -rf "$EVAL_WORK"' EXIT; trap 'exit 130' INT; trap 'exit 143' TERM; trap 'exit 129' HUP
+  if eval_tree "$EVAL_WORK"; then
+    run_eval_cases "$1" "$EVAL_WORK"
+    rc=$?
+  else
+    rc=2
+  fi
+  rm -rf "$EVAL_WORK"
+  trap - EXIT INT TERM HUP
+  return "$rc"
+}
+
+run_eval_cases() { # grader work
+  local grader="$1" tree="$2/tree" rubric="$2/rubric" budget="${EVAL_BUDGET_USD:-10}" gf schema settings dir name out res exp got erows grows
   local spent=0 cases=0 mism=0 ok attempt eline
   gf=$(grader_file "$grader") || return 2
   schema=$(schema_for "$grader" 2> /dev/null)
   [ -n "$schema" ] || { echo "eval: no bin/factory.d/$grader.schema.json" >&2; return 2; }
+  settings="$(cd "$(dirname "$0")" && pwd)/factory.d/role-settings.json"
   [ -d "$EVALS_DIR/$grader" ] || { echo "eval: no cases under $EVALS_DIR/$grader" >&2; return 2; }
-  rubric=$(mktemp "${TMPDIR:-/tmp}/factory-eval.XXXXXX")
   grader_rubric "$gf" > "$rubric"
   for dir in "$EVALS_DIR/$grader"/*/; do
     [ -f "$dir/prompt.md" ] && [ -f "$dir/expected.json" ] || continue
     if awk -v s="$spent" -v b="$budget" 'BEGIN {exit !(s >= b)}'; then
       echo "eval $grader: EVAL_BUDGET_USD $budget reached after \$$spent and $cases cases" >&2
-      rm -f "$rubric"
       return 2
     fi
     name=$(basename "$dir")
@@ -521,14 +555,14 @@ run_eval() {
       # The same flags as the production grader call (LOOP.md, Grader calls), so the replay grades the
       # way the loop does: --json-schema routes the reply through the schema, --strict-mcp-config and
       # --disable-slash-commands drop the prefix the grader never uses. Two things differ: the call runs
-      # in the caller's directory, not a ticket worktree, and each call gets the remaining headroom, so
+      # in the eval_tree export, not a ticket worktree, and each call gets the remaining headroom, so
       # EVAL_BUDGET_USD caps the sum over cases. role-settings.json is read beside the schema, for the
       # reason schema_for gives.
-      out=$(cat "$rubric" "$dir/prompt.md" | claude -p --model "$EVAL_MODEL" --effort "${EVAL_EFFORT:-$GRADER_EFFORT}" \
+      out=$(cat "$rubric" "$dir/prompt.md" | ( cd "$tree" && claude -p --model "$EVAL_MODEL" --effort "${EVAL_EFFORT:-$GRADER_EFFORT}" \
         --tools Read,Grep,Glob --strict-mcp-config --disable-slash-commands --no-session-persistence \
         --json-schema "$schema" \
         --max-budget-usd "$(awk -v b="$budget" -v s="$spent" 'BEGIN {printf "%.4f", b - s}')" \
-        --setting-sources user --settings "$(dirname "$0")/factory.d/role-settings.json" --output-format json 2>/dev/null)
+        --setting-sources user --settings "$settings" --output-format json 2>/dev/null ))
       spent=$(awk -v a="$spent" -v b="$(jq -r "$RESULT_OBJ | .total_cost_usd // 0" <<<"$out" 2>/dev/null)" \
         'BEGIN {printf "%.4f", a + (b + 0)}')
       # When a run's measure step drives this eval (FACTORY_LEDGER is set), book each reply's cost to
@@ -557,7 +591,6 @@ served_models:(.modelUsage | if type == \"object\" then keys else [] end), ts:\$
       # not a verdict: say so and stop, rather than reporting it as a grader disagreement.
       if [ "$(jq -r "$RESULT_OBJ | .is_error // false" <<<"$out" 2>/dev/null)" = true ]; then
         echo "eval $grader/$name: the call failed: $res" >&2
-        rm -f "$rubric"
         return 2
       fi
       jq -e .verdict <<<"$res" > /dev/null 2>&1 && break
@@ -585,7 +618,6 @@ served_models:(.modelUsage | if type == \"object\" then keys else [] end), ts:\$
       mism=$((mism + 1))
     fi
   done
-  rm -f "$rubric"
   echo "eval $grader: $cases cases, $mism mismatch, \$$spent"
   [ "$cases" -gt 0 ] || return 2
   [ "$mism" -eq 0 ]
