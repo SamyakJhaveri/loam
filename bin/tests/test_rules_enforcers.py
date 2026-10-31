@@ -21,8 +21,9 @@ def rules(*enforcers: str, home: str = "`bin/check`") -> str:
 
 
 def run(doc: str, check: str = CHECK, files: dict[str, str] | None = None,
-        deleted: tuple[str, ...] = ()) -> tuple[int, str]:
-    """Plant docs/RULES.md, bin/check and `files`, git add them, delete `deleted` from disk, and run the script."""
+        deleted: tuple[str, ...] = (), untracked: dict[str, str] | None = None) -> tuple[int, str]:
+    """Plant docs/RULES.md, bin/check and `files`, git add them, delete `deleted` from disk, write
+    `untracked` without adding it, and run the script."""
     with tempfile.TemporaryDirectory() as tmp:
         root = pathlib.Path(tmp)
         subprocess.run(["git", "init", "-q", str(root)], check=True)
@@ -33,6 +34,9 @@ def run(doc: str, check: str = CHECK, files: dict[str, str] | None = None,
         subprocess.run(["git", "-C", str(root), "add", "-A"], check=True)
         for rel in deleted:
             (root / rel).unlink()
+        for rel, text in (untracked or {}).items():
+            (root / rel).parent.mkdir(parents=True, exist_ok=True)
+            (root / rel).write_text(text, encoding="utf-8")
         p = subprocess.run([sys.executable, str(SCRIPT), "--root", str(root)], capture_output=True, text=True)
         return p.returncode, p.stdout
 
@@ -68,9 +72,54 @@ class RulesEnforcersTest(unittest.TestCase):
         ])
 
     def test_flags_untracked_path(self) -> None:
-        rc, out = run(rules("`bin/missing.py`"))
+        rc, out = run(rules("`bin/missing.py`", "`bin/loose.py`"), untracked={"bin/loose.py": ""})
         self.assertEqual(rc, 1)
-        self.assertIn("bin/missing.py is missing on disk", out)
+        self.assertEqual(out.splitlines(), [
+            "FAIL: docs/RULES.md:5: bin/missing.py is missing on disk or not tracked by git",
+            "FAIL: docs/RULES.md:6: bin/loose.py is missing on disk or not tracked by git",
+        ])
+
+    def test_flags_every_path_in_a_cell(self) -> None:
+        rc, out = run(rules("`bin/tests/test_a.py` then `bin/gone.py`"))
+        self.assertEqual((rc, out), (1, "FAIL: docs/RULES.md:5: bin/gone.py is missing on disk or not tracked by git\n"))
+
+    def test_mid_line_step_text_is_not_a_step(self) -> None:
+        rc, out = run(rules('check: `bin/check` step "plugin versions"'),
+                      check='echo \'step "plugin versions"\'\nstep "pytest"\n')
+        self.assertEqual((rc, out), (1, 'FAIL: docs/RULES.md:5: bin/check has no step "plugin versions"\n'))
+
+    def test_fails_when_no_enforcer_cell_is_found(self) -> None:
+        for header in ("Enforced by", "enforcer", "**Enforcer**"):
+            with self.subTest(header=header):
+                rc, out = run(rules("`bin/gone.py`").replace("| Enforcer |", f"| {header} |"))
+                self.assertEqual((rc, out), (1, "FAIL: docs/RULES.md: no table row has an Enforcer cell\n"))
+
+    def test_reads_an_indented_table(self) -> None:
+        doc = rules('check: `bin/check` step "plugin version rule"').replace("\n|", "\n  |")
+        rc, out = run(doc)
+        self.assertEqual((rc, out), (1, 'FAIL: docs/RULES.md:5: bin/check has no step "plugin version rule"\n'))
+
+    def test_line_suffix_on_a_test_file_keeps_the_def_check(self) -> None:
+        rc, out = run(rules("`bin/tests/test_a.py:3` `test_gone`"))
+        self.assertEqual((rc, out), (1, "FAIL: docs/RULES.md:5: bin/tests/test_a.py has no def test_gone\n"))
+
+    def test_def_must_be_real_code(self) -> None:
+        text = 'X = """\ndef test_quoted():\n"""\n\nasync def test_async() -> None:\n    """\n    def test_doc\n    """\n'
+        rc, out = run(rules("`bin/tests/test_b.py` `test_quoted`", "`bin/tests/test_b.py` `test_doc`",
+                            "`bin/tests/test_b.py` `test_async`"), files={"bin/tests/test_b.py": text})
+        self.assertEqual(rc, 1)
+        self.assertEqual(out.splitlines(), [
+            "FAIL: docs/RULES.md:5: bin/tests/test_b.py has no def test_quoted",
+            "FAIL: docs/RULES.md:6: bin/tests/test_b.py has no def test_doc",
+        ])
+
+    def test_unparsable_test_file_fails_without_a_traceback(self) -> None:
+        rc, out = run(rules("`bin/tests/test_b.py` `test_x`"), files={"bin/tests/test_b.py": "def test_x(:\n"})
+        self.assertEqual((rc, out), (1, "FAIL: docs/RULES.md:5: bin/tests/test_b.py does not parse as Python\n"))
+
+    def test_test_file_tracked_only_as_a_template(self) -> None:
+        rc, out = run(rules("`bin/tests/test_j.py` `test_x`"), files={"bin/tests/test_j.py.jinja": "def test_x(): pass\n"})
+        self.assertEqual((rc, out), (1, "FAIL: docs/RULES.md:5: bin/tests/test_j.py is not on disk to read def test_x\n"))
 
     def test_reads_only_the_enforcer_column_of_an_enforcer_table(self) -> None:
         doc = rules("prose (judgment)", home='`bin/gone.py`; `bin/check` step "gone"') + (
