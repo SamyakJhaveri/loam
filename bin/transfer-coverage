@@ -2,7 +2,8 @@
 # bin/transfer-coverage - is every Loam capability in a project, and does a project ticket carry each one?
 #   bin/transfer-coverage [--manifest <tsv>] --target <dir>
 #     Runs each row's presence test with TARGET set to <dir>. A carry, carry-if or delete row whose test
-#     fails prints `MISSING <id> <capability>`; one whose ticket is not F<n> prints `UNCOVERED <id> <capability>`.
+#     fails prints `MISSING <id> <capability>`. One whose ticket is not F<n>, or whose test fails while
+#     <dir>/docs/tickets/<ticket>-*.md does not exist, prints `UNCOVERED <id> <capability>`.
 #     nothing and decline rows are reported, never missing. Exit 1 when either count is above 0.
 #   bin/transfer-coverage [--manifest <tsv>] --commits <pin> <head>
 #     Prints `UNMAPPED <sha> <subject>` for each Loam commit in <pin>..<head> that touches seed/ or
@@ -75,7 +76,10 @@ while IFS=$'\t' read -r id kind disp cap src ticket present; do
     nothing|decline) echo "$disp $id $cap ($got)"; continue ;;
   esac
   if [ "$got" = present ]; then echo "ok $id $cap"; else echo "MISSING $id $cap"; missing=$((missing + 1)); fi
-  [[ "$ticket" =~ ^F[0-9]+$ ]] || { echo "UNCOVERED $id $cap"; uncovered=$((uncovered + 1)); }
+  # A missing capability is carried only by a ticket the target holds; a present one needs no ticket file.
+  if ! [[ "$ticket" =~ ^F[0-9]+$ ]] || { [ "$got" = absent ] && ! compgen -G "$TARGET/docs/tickets/$ticket-*.md" >/dev/null; }; then
+    echo "UNCOVERED $id $cap"; uncovered=$((uncovered + 1))
+  fi
 done <<<"$ROWS"
 echo "missing: $missing"
 echo "uncovered: $uncovered"
