@@ -20,9 +20,11 @@ the layout eval_score.py reads. Every cell is listed, shuffled with random.Rando
 <out>/order.txt, and run in that order, so a config that drifts during the run spreads over every model.
 Beside each reply, <grader>-<case>.key holds the sha256 of everything the reply depends on: the grader
 file, its schema, the case's prompt.md and expected.json, the model, the effort and the mode. A later
-run calls the grader only for the cases whose reply or key is missing or whose key differs. Each cell
-dir gets fingerprint.txt naming the config it ran on. Before scoring, every reply of a Claude cell must
-name only the cell's model in modelUsage, else the offenders are printed and the exit is 3 with no table.
+run calls the grader only for the cases whose reply or key is missing or whose key differs; an error or
+off-model reply gets no key, so it is retried. Each cell dir gets fingerprint.txt naming the config it ran
+on. Before scoring, every reply of a Claude cell that is not an error must name only the cell's model in
+modelUsage, else the offenders are printed and the exit is 3 with no table. The table scores this run's
+cells only, never another run's replies left under <out>/replies.
 python3 stdlib only.
 """
 from __future__ import annotations
@@ -128,6 +130,13 @@ def codex_model():
     return m if isinstance(m, str) and m else "none"
 
 
+def served_off(rep, model):
+    """The modelUsage keys of a Claude reply that do not start with the cell's model; ["no modelUsage"] when none."""
+    usage = rep.get("modelUsage")
+    served = sorted(usage) if isinstance(usage, dict) else []
+    return [s for s in served if not s.startswith(model)] if served else ["no modelUsage"]
+
+
 def wilson(p, n):
     if n == 0:
         return None
@@ -231,10 +240,11 @@ def main(argv):
                     r = subprocess.run(cmd, env={**env, "EVAL_OUT": str(d), "EVAL_EFFORT": e}, stdout=sys.stderr)
                     if r.returncode not in (0, 1):
                         print(f"model-eval: {name(c)}: bin/factory eval exited {r.returncode}", file=sys.stderr)
-                # A key only for a reply that came back: an error reply is retried, never reused.
+                # A key only for a reply that came back from the cell's model: an error or off-model reply is
+                # retried on the next run, never reused.
                 for case in need:
                     rep = raw_reply(d / f"{g}-{case.name}.json")
-                    if rep is not None and rep.get("is_error") is not True:
+                    if rep is not None and rep.get("is_error") is not True and (codex or not served_off(rep, m)):
                         (d / f"{g}-{case.name}.key").write_text(keys[case] + "\n", encoding="utf-8")
             # The fingerprint names the config of the cell's newest calls; a cell that made none keeps its own.
             if need or not (d / "fingerprint.txt").is_file():
@@ -256,18 +266,26 @@ def main(argv):
             if not p.is_file():
                 continue
             rep = raw_reply(p)
-            if rep is None:  # unparseable: an infra error the table counts, not a served model
+            # Unparseable or is_error (an API or budget stop): an infra error the table counts, not a served model.
+            if rep is None or rep.get("is_error") is True:
                 continue
-            usage = rep.get("modelUsage")
-            served = sorted(usage) if isinstance(usage, dict) else []
-            bad = [s for s in served if not s.startswith(m)] if served else ["no modelUsage"]
-            off += [f"model-eval: {name(c)} {case.name} served by {s}" for s in bad]
+            off += [f"model-eval: {name(c)} {case.name} served by {s}" for s in served_off(rep, m)]
     if off:
         print("\n".join(off), file=sys.stderr)
         die("replies served by a model other than the cell's; no table", 3)
 
-    r = subprocess.run([sys.executable, str(HERE / "eval_score.py"), str(set_dir), str(out / "replies")],
-                       capture_output=True, text=True)
+    # The table scores this run's cells only, the ones checked above: a copy of their replies and fingerprints,
+    # so an earlier run's models, repeats, graders or cases under <out>/replies stay out of it.
+    with tempfile.TemporaryDirectory(prefix="model-eval.") as scored:
+        for c in cells:
+            g = c[0]
+            dst = Path(scored) / cell_dir(c).relative_to(out / "replies")
+            dst.mkdir(parents=True, exist_ok=True)
+            for f in [f"{g}-{case.name}.json" for case in cases[g]] + ["fingerprint.txt"]:
+                if (cell_dir(c) / f).is_file():
+                    shutil.copyfile(cell_dir(c) / f, dst / f)
+        r = subprocess.run([sys.executable, str(HERE / "eval_score.py"), str(set_dir), scored],
+                           capture_output=True, text=True)
     if r.returncode != 0:
         die(f"eval_score.py exited {r.returncode}: {r.stderr.strip()}")
     # Wilson 95% over cases, not trials: repeats of one case are not independent (#207 protocol step 4).
