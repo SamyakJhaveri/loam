@@ -1,7 +1,9 @@
-"""The ledger records the models that served each call, and status warns on an unexpected one (#390).
+"""The ledger records the models that served each call, and status warns on an unexpected one (#390); record
+alerts at once on a call one answered (#419).
 
 `bin/factory` is sourced (FACTORY_SOURCED=1): the real record writes ledger lines from fake result files, and the
-real cmd_status reads hand-written ledgers, with gh and precondition_lines stubbed. No network, no `claude`.
+real cmd_status reads hand-written ledgers, with gh and precondition_lines stubbed. The run's frozen/alert is a fake
+that records its arguments, so notify runs its real code. No network, no `claude`.
 """
 
 from __future__ import annotations
@@ -54,6 +56,48 @@ class ServedModelsTests(unittest.TestCase):
         # A modelUsage that is not an object must not drop the line to the zeroed fallback.
         line = self.record({"type": "result", "total_cost_usd": 2, "modelUsage": "x"})
         self.assertEqual((line["served_models"], line["cost_usd"]), ([], 2))
+
+    def record_alerts(self, usage: dict, role: str = "worker") -> tuple[list[list[str]], str]:
+        """The bin/alert calls and the factory.log text after record books one call with this `modelUsage`."""
+        frozen = self.top / "frozen"
+        frozen.mkdir(exist_ok=True)
+        (frozen / "title").write_text("Fix the grader\n")
+        calls = self.top / "alerts.jsonl"
+        calls.unlink(missing_ok=True)
+        fake = frozen / "alert"
+        fake.write_text(f"#!/usr/bin/env python3\nimport json, sys\n"
+                        f"open({str(calls)!r}, 'a').write(json.dumps(sys.argv[1:]) + '\\n')\n")
+        fake.chmod(0o755)
+        res, log = self.top / "result.json", self.top / "factory.log"
+        res.write_text(json.dumps({"type": "result", "total_cost_usd": 9.6, "modelUsage": usage}))
+        log.unlink(missing_ok=True)
+        proc = sourced(f"RUN='{self.top}'; LOG='{log}'; LEDGER='{self.top}/ledger.jsonl'; DAILY='{self.top}/daily.jsonl'\n"
+                       f"REPO=SamyakJhaveri/distbench; ISSUE=7; KEY=7\nrecord 3 {role} {OPUS} '{res}'")
+        self.assertEqual(proc.returncode, 0, proc.stderr)
+        sent = [json.loads(x) for x in calls.read_text().splitlines()] if calls.exists() else []
+        return sent, log.read_text()
+
+    def test_record_alerts_once_on_a_model_nobody_configured(self) -> None:
+        # Run 288: a refusal fallback finished the round on claude-opus-4-8.
+        usage = {OPUS: {"costUSD": 0.4}, "claude-opus-4-8": {"costUSD": 9.2}}
+        sent, log = self.record_alerts(usage)
+        self.assertEqual(len(sent), 1, sent)
+        self.assertEqual(sent[0][:2], ["--level", "needs-you"])
+        text = sent[0][-1]
+        self.assertIn("issue 7 (Fix the grader)", text)
+        self.assertIn("worker call in round 3", text)
+        self.assertIn("claude-opus-4-8 (9.2 usd)", text)
+        self.assertNotIn(OPUS + " (", text)
+        self.assertIn("off-model worker round 3: claude-opus-4-8 (9.2 usd)", log)
+        # A grader call alerts the same way, naming its role.
+        sent, _ = self.record_alerts(usage, role="judge")
+        self.assertEqual(len(sent), 1, sent)
+        self.assertIn("judge call in round 3", sent[0][-1])
+
+    def test_record_sends_no_alert_for_configured_models(self) -> None:
+        sent, log = self.record_alerts({OPUS: {"costUSD": 1}, f"{OPUS}[1m]": {"costUSD": 1}})
+        self.assertEqual(sent, [])
+        self.assertNotIn("off-model", log)
 
     def status_warns(self, runs: dict[str, list[str]], **env: str) -> list[str]:
         """The WARN lines cmd_status prints for runs named `ticket` with ledger `lines`."""
