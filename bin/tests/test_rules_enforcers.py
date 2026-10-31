@@ -12,7 +12,7 @@ import unittest
 
 SCRIPT = pathlib.Path(__file__).resolve().parents[2] / "bin/rules_enforcers.py"
 CHECK = 'step "plugin versions"\nstep "pytest"\n'
-TESTS = "def test_kept() -> None:\n    pass\n"
+TESTS = "class T:\n    def test_kept(self) -> None:\n        pass\n"
 
 
 def rules(*enforcers: str, home: str = "`bin/check`") -> str:
@@ -74,7 +74,8 @@ class RulesEnforcersTest(unittest.TestCase):
 
     def test_reads_only_the_enforcer_column_of_an_enforcer_table(self) -> None:
         doc = rules("prose (judgment)", home='`bin/gone.py`; `bin/check` step "gone"') + (
-            "\n| Mistake | Evidence | Issue |\n|---|---|---|\n| `cmd \\| head` | `bin/gone.sh` | #1 |\n")
+            "| `x \\| y` | `bin/gone.py` | prose |\n"
+            "\n| Mistake | Evidence | Issue |\n|---|---|---|\n| `cmd \\| head` | a2ec7df | `bin/gone.sh` |\n")
         self.assertEqual(run(doc), (0, ""))
 
 

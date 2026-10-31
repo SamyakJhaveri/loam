@@ -36,7 +36,7 @@ def enforcer_cells(text: str) -> list[tuple[int, str]]:
         cells = [c.strip() for c in CELL.split(line.strip().strip("|"))]
         if col is None:
             col = cells.index("Enforcer") if "Enforcer" in cells else -1
-        elif col >= 0 and not set(line) <= set("|-: ") and col < len(cells):
+        elif col >= 0 and col < len(cells):
             out.append((n, cells[col]))
     return out
 
@@ -58,7 +58,7 @@ def main() -> int:
             if not tree.has(path):
                 fails.append(f"{where}: {path} is missing on disk or not tracked by git")
         for path, name in TEST.findall(cell):
-            if tree.has(path) and not re.search(rf"^\s*(async\s+)?def {name}\b", (root / path).read_text(encoding="utf-8"), re.M):
+            if tree.has(path) and not re.search(rf"^\s*def {name}\b", (root / path).read_text(encoding="utf-8"), re.M):
                 fails.append(f"{where}: {path} has no def {name}")
     for f in fails:
         print("FAIL:", f)
