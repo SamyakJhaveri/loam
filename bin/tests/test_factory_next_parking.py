@@ -147,6 +147,18 @@ class ParkingTests(unittest.TestCase):
         self.assertEqual(proc.stdout.strip(), "nothing to launch", proc.stderr)
         self.assertEqual(proc.stderr, "")
 
+    def test_runner_assigned_stop_waits_while_its_stop_file_remains(self) -> None:
+        # cmd_run exits stopped at once while FACTORY_STOP is in the run dir, so #7 must not take the pick from #8
+        # every tick (#440); removing the file makes it eligible again.
+        self.run_dir(7, CLEAN, "stopped")
+        (self.runs / "7" / key(CLEAN) / "FACTORY_STOP").touch()
+        proc = self.next_dry_run((8, CLEAN), mine=((7, CLEAN),))
+        self.assertEqual(proc.stdout.strip(), "would launch #8", proc.stderr)
+        self.assertEqual(proc.stderr, "")
+        (self.runs / "7" / key(CLEAN) / "FACTORY_STOP").unlink()
+        proc = self.next_dry_run((8, CLEAN), mine=((7, CLEAN),))
+        self.assertEqual(proc.stdout.strip(), "would launch #7", proc.stderr)
+
     def spend_today(self, usd: float) -> None:
         (self.runs / "ledger-daily.jsonl").write_text(
             json.dumps({"date": time.strftime("%Y-%m-%d", time.gmtime()), "ticket": "7", "role": "worker", "cost_usd": usd}) + "\n")

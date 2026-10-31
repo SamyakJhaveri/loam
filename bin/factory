@@ -2795,7 +2795,7 @@ cmd_next() { # [--dry-run|--install]
   # GraphQL costs a tick one timeout, not one per candidate; they still get the author and lint lines.
   # </dev/null keeps gh off the candidate list this loop reads on stdin. This check only
   # picks; load_ticket checks the owner again on the body the run freezes.
-  local pick="" st_last lint_err lint_line author editor
+  local pick="" st_last lint_err lint_line author editor run
   while read -r who num author b64; do
     [ -n "$num" ] || continue
     body=$(printf '%s' "$b64" | base64 -d)
@@ -2803,11 +2803,15 @@ cmd_next() { # [--dry-run|--install]
     if [ "$who" = mine ]; then
       case "$st_last" in stopped-daily|stopped-environment|stopped) ;; *) continue ;; esac
     fi
-    if stopped_daily_today "$(run_dir_of "$num" "$body")"; then
+    run=$(run_dir_of "$num" "$body")
+    # cmd_run exits stopped at once while the run dir holds FACTORY_STOP (bin/factory stop), so the issue is skipped,
+    # without a line, until the operator removes the file; otherwise it would take the pick from every later candidate each tick.
+    [ -f "$run/FACTORY_STOP" ] && continue
+    if stopped_daily_today "$run"; then
       echo "waiting #$num: daily budget spent; relaunches after 00:00 UTC" >&2
       continue
     fi
-    if stopped_environment_recent "$(run_dir_of "$num" "$body")"; then
+    if stopped_environment_recent "$run"; then
       echo "waiting #$num: last run stopped on the environment; relaunches ${ENV_BACKOFF_SEC}s after its stop" >&2
       continue
     fi
