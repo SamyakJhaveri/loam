@@ -227,5 +227,9 @@ out=$(FACTORY_SOURCED=1 bash -c '. bin/factory; verdict_consistent bin/factory.d
 step "factory grader model and effort"
 bin/factory graders-check || bad "bin/factory graders-check"
 
+step "doc paths and links"
+# Live docs name only tracked paths and link only to tracked files; bin/doc_paths_baseline.txt only shrinks (#281).
+python3 bin/doc_paths.py --root "$ROOT" || bad "doc paths and links (see the lines above)"
+
 if [ "$FAIL" -ne 0 ]; then echo; echo "check: FAILED"; exit 1; fi
 echo; echo "check: PASSED${SKIPS:+ (skipped: $SKIPS)}"
