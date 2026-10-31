@@ -47,6 +47,10 @@ FIRST = WORK + """open_pr() { finish stopped-environment "git push of $BRANCH fa
 # An issue ticket's stop notifies through bin/alert, which is not behind net, so notify is stubbed too.
 FIRST_PUSH_FAILS = WORK + ("""notify() { :; }; eval "$(declare -f open_pr | sed 1s/open_pr/real_open_pr/)"; """
                            """open_pr() { IS_FILE=0; ISSUE=0; net() { return 1; }; real_open_pr "$@"; }""")
+# The real open_pr, as for an issue ticket whose push and body update succeed on an open PR #9.
+FIRST_PUBLISH_SUCCEEDS = WORK + ("""notify() { :; }; eval "$(declare -f open_pr | sed 1s/open_pr/real_open_pr/)"; """
+                                 """open_pr() { IS_FILE=0; ISSUE=0; net() { [ "$2" = pr ] && echo 9; return 0; }; """
+                                 """real_open_pr "$@"; }""")
 SECOND = """worker_round() { echo worker >> "$RUN/../relaunch-worker-calls"; }"""
 
 
@@ -138,6 +142,14 @@ class RelaunchPublishTests(unittest.TestCase):
     def test_opened_draft_relaunch_resumes_into_a_worker_round(self) -> None:
         # The first launch's real open_pr opens the file-ticket draft: publish.intent goes with the pr-opened exit.
         first = self.launch(JUDGE_PASS, REVIEW_BLOCKING, WORK)
+        self.assertEqual(first.returncode, 0, first.stderr)
+        self.assertEqual(list((self.runs / "rl").glob("*/publish.intent")), [])
+        self.launch(JUDGE_PASS, REVIEW_BLOCKING, SECOND)
+        self.assertGreater(len((self.runs / "rl" / "relaunch-worker-calls").read_text().splitlines()), 0)
+
+    def test_opened_issue_draft_relaunch_resumes_into_a_worker_round(self) -> None:
+        # The issue-ticket exit, after the push, the PR body update and the issue filing, removes publish.intent too.
+        first = self.launch(JUDGE_PASS, REVIEW_BLOCKING, FIRST_PUBLISH_SUCCEEDS)
         self.assertEqual(first.returncode, 0, first.stderr)
         self.assertEqual(list((self.runs / "rl").glob("*/publish.intent")), [])
         self.launch(JUDGE_PASS, REVIEW_BLOCKING, SECOND)
