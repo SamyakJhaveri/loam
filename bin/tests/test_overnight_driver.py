@@ -103,7 +103,7 @@ class OvernightDriverTests(unittest.TestCase):
         self.assertNotIn("lessons.md", (OVERNIGHT / "driver.sh").read_text())
         learn = re.search(r"^7\. \*\*Learn.*$", protocol, re.M)
         self.assertIsNotNone(learn)
-        self.assertIn("`docs/factory/LESSONS.md`", learn[0])
+        self.assertIn("`~/.local/state/loam/worktrees/overnight-<n>/docs/factory/LESSONS.md`", learn[0])
         self.assertIn("git push origin HEAD:<branch>", learn[0])
         self.assertRegex(protocol, r"(?m)^8\. \*\*Merge gate")
         self.assertTrue((ROOT / "docs/factory/LESSONS.md").read_text().count("\n## From PR #") >= 19)
