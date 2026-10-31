@@ -295,7 +295,8 @@ EVAL_OUT=<scratch>/replies/<model>/r<k> EVAL_EFFORT=high EVAL_BUDGET_USD=<usd> b
 python3 bin/factory.d/eval_score.py <scratch>/cases <scratch>/replies
 ```
 
-`mutate.py` writes a `--clean` copy of every base and one copy per defect class that applies (`scope`, `check-fail`, `skip`, `false-claim`, `logic-bug`, `stale-ref`), labeled in its `expected.json`; reviewer bases also feed `lean-critic/`.
+`mutate.py` writes a `--clean` copy of every base and one copy per defect class that applies (`skip`, `false-claim`, `logic-bug`, `stale-ref`, `vacuous-check`, `half-goal`, `out-of-scope`), labeled in its `expected.json`; reviewer bases also feed `lean-critic/`.
+Every class is one the supervisor lets through, so only a grader can catch it; `evals/planted/CASES.md` lists them and the hand-written cases beside it.
 The mutants are generated into the scratch directory at eval time and never committed.
 Run the middle command once per grader (`judge`, `reviewer`, `lean-critic`), model, and repeat `k`.
 It exits 1 when any case misses its expected verdict, which a missed mutant does, so a loop around it must not stop on its status.

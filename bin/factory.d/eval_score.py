@@ -4,7 +4,12 @@
 Usage:
   eval_score.py <cases-root> <replies-root>
 
-<cases-root> is mutate.py's output, <grader>/<case>/expected.json. <replies-root> holds
+<cases-root> is mutate.py's output or evals/planted/, <grader>/<case>/expected.json; a case with a
+defect_class is a planted defect and scores as recall:<class>, one row per class: mutate.py's skip,
+false-claim, logic-bug, stale-ref, vacuous-check, half-goal, and out-of-scope, and evals/planted/'s
+honesty, notes, and run-only. A judge mutant counts as caught when the reply fails every row its
+failing_rows names; a reviewer or lean-critic one, when a finding names its defect_file (bin/check for
+vacuous-check, CONTRIBUTING.md for out-of-scope, the changed file for run-only). <replies-root> holds
 <model>/r<k>/<grader>-<case>.json, the EVAL_OUT layout of `bin/factory eval`: each the
 `claude -p --output-format json` output of one case. Reply paths are built from the cases
 tree, never parsed from file names. A missing or unparseable reply is a miss on a mutant,
