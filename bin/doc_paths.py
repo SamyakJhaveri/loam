@@ -43,8 +43,8 @@ SCHEME = re.compile(r"[A-Za-z][A-Za-z0-9+.-]*:")
 
 def tracked(root: pathlib.Path) -> tuple[set[str], set[str]]:
     """The tracked files and every directory that holds one, as paths from the root."""
-    files = set(subprocess.run(["git", "-C", str(root), "ls-files"],
-                               capture_output=True, text=True, check=True).stdout.splitlines())
+    out = subprocess.run(["git", "-C", str(root), "ls-files", "-z"], capture_output=True, text=True, check=True)
+    files = set(out.stdout.split("\0")) - {""}
     return files, {str(d) for f in files for d in pathlib.PurePosixPath(f).parents}
 
 
@@ -109,8 +109,8 @@ def main() -> int:
                 if (doc, path) in baseline:
                     hit.add((doc, path))
                 else:
-                    fails.append(f"{doc}:{n}: {path} does not exist (fix it, or name a path that exists)")
-            fails += [f"{doc}:{n}: {t} is a dead relative link" for t in dead_links(files, dirs, doc, line)]
+                    fails.append(f"{doc}:{n}: {path} is not tracked by git (fix the path, or git add the file)")
+            fails += [f"{doc}:{n}: {t} is a dead relative link (no tracked file or directory)" for t in dead_links(files, dirs, doc, line)]
     for pair, n in baseline.items():
         if pair not in hit:
             fails.append(f"{BASELINE}:{n}: {' '.join(pair)} no longer hits; delete the line")
