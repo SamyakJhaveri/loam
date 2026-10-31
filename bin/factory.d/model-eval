@@ -1,0 +1,354 @@
+#!/usr/bin/env python3
+"""Run the grader model grid on one eval set and print its score table (U12 step 12.2, #207).
+
+Usage:
+  bin/factory.d/model-eval <model>...
+
+A <model> is a Claude model id, graded by `bin/factory eval`, or codex:<model>, graded per case by
+`codex exec`. The environment sets the rest:
+  MODEL_EVAL_OUT          the output root (required)
+  MODEL_EVAL_SET          the cases root, <grader>/<case>/{prompt.md,expected.json} (default evals/planted)
+  MODEL_EVAL_GRADERS      default "judge reviewer lean-critic"
+  MODEL_EVAL_REPEATS      default 2
+  MODEL_EVAL_EFFORTS      default high; each of low medium high xhigh, anything else (max included) exits 2
+  MODEL_EVAL_SEED         default 0
+  MODEL_EVAL_GRADERS_DIR  passed to bin/factory as --graders-dir when set
+EVAL_BUDGET_USD passes through to each `bin/factory eval` call, one per cell.
+
+A cell is one grader, model, effort and repeat; its replies go to <out>/replies/<model>@<effort>/r<k>/,
+the layout eval_score.py reads. Every cell is listed, shuffled with random.Random(seed), written to
+<out>/order.txt, and run in that order, so a config that drifts during the run spreads over every model.
+Beside each scored reply, <grader>-<case>.key holds the sha256 of everything the reply depends on: the
+grader file, its schema and rubric, role-settings.json, the case's prompt.md and expected.json, the model,
+the effort, the mode, and the cell's harness (Claude Code version, config-drift.sh md5, Codex model,
+and the raw ~/.claude/settings.json and ~/.codex/config.toml, since config-drift.sh names settings only). A
+later run calls the grader only for the cases whose reply or key is missing or whose key differs; an error,
+unparseable or off-model reply gets no key, so it is retried. Each cell dir gets fingerprint-<grader>.txt
+naming the config that grader's replies ran on, and fingerprint.txt for the whole grader list. A Codex cell
+gets each grader schema in the strict form `codex exec --output-schema` requires. Right after a Claude
+cell's calls, every new reply that is not an error must name only the cell's model in modelUsage, else the
+offenders are printed and the exit is 3 with no further call and no table. The table scores this run's
+cells only, never another run's replies left under <out>/replies.
+python3 stdlib only.
+"""
+from __future__ import annotations
+
+import hashlib
+import json
+import math
+import os
+import random
+import shutil
+import subprocess
+import sys
+import tempfile
+from pathlib import Path
+
+HERE = Path(__file__).resolve().parent
+FACTORY = HERE.parent / "factory"
+sys.path.insert(0, str(HERE))
+import eval_score  # noqa: E402
+
+EFFORTS = ("low", "medium", "high", "xhigh")
+RATES = ("recall:", "false_alarm", "cut_rate", "agreement")
+Z = 1.96
+
+
+def die(msg, code=2):
+    print(f"model-eval: {msg}", file=sys.stderr)
+    sys.exit(code)
+
+
+def sha256(data):
+    return hashlib.sha256(data).hexdigest()
+
+
+def factory_fn(graders_dir, *cmd):
+    """stdout bytes of a bin/factory function, sourced with $0 = bin/factory so its own paths resolve."""
+    r = subprocess.run(["bash", "-c", '. "$0"; GRADERS_DIR=$1; shift; "$@"', str(FACTORY), graders_dir, *cmd],
+                       env={**os.environ, "FACTORY_SOURCED": "1"}, capture_output=True)
+    if r.returncode != 0:
+        die(f"{' '.join(cmd)}: {r.stderr.decode(errors='replace').strip()}")
+    return r.stdout
+
+
+def cases_of(set_dir, grader):
+    gdir = set_dir / grader
+    if not gdir.is_dir():
+        return []
+    return [d for d in sorted(gdir.iterdir()) if (d / "prompt.md").is_file() and (d / "expected.json").is_file()]
+
+
+def raw_reply(path):
+    """The result object of a saved reply (RESULT_OBJ in bin/factory), or None."""
+    try:
+        out = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return None
+    if isinstance(out, list):
+        results = [e for e in out if isinstance(e, dict) and e.get("type") == "result"]
+        out = results[-1] if results else (out[-1] if out else {})
+    return out if isinstance(out, dict) else None
+
+
+def tree_sha(root):
+    """sha256 over every file under root, by relative path and content."""
+    h = hashlib.sha256()
+    for f in sorted(p for p in root.rglob("*") if p.is_file()):
+        h.update(f"{f.relative_to(root)}\0{sha256(f.read_bytes())}\n".encode())
+    return h.hexdigest()
+
+
+def claude_version():
+    try:
+        r = subprocess.run(["claude", "--version"], stdin=subprocess.DEVNULL, capture_output=True, text=True, timeout=60)
+    except (OSError, subprocess.TimeoutExpired):
+        return "none"
+    return r.stdout.strip() or "none"
+
+
+def config_drift_md5():
+    # The host's own config, as config-drift.sh reports it from a clean login shell: the caller's PATH and
+    # environment overrides are not the host config, and the script's `claude plugin list` and `codex --version`
+    # are not grader calls. The host line is dropped, so two hosts with the same config hash the same.
+    script = Path.home() / ".claude" / "config-drift.sh"
+    if not os.access(script, os.X_OK):
+        return "none"
+    env = {k: os.environ[k] for k in ("HOME", "USER", "LOGNAME") if k in os.environ}
+    try:
+        r = subprocess.run(["env", "-i", *(f"{k}={v}" for k, v in env.items()), "bash", "-lc", '"$0"', str(script)],
+                           stdin=subprocess.DEVNULL, capture_output=True, timeout=300)
+    except (OSError, subprocess.TimeoutExpired):
+        return "none"
+    lines = [ln for ln in r.stdout.splitlines(keepends=True) if not ln.startswith(b"0host ")]
+    return hashlib.md5(b"".join(lines)).hexdigest() if lines else "none"
+
+
+def user_config_sha():
+    # config-drift.sh records setting names, never values, so a changed deny rule or env value would leave its md5
+    # alone; the key also hashes the raw files a call reads (--setting-sources user, and Codex's config).
+    h = hashlib.sha256()
+    for f in (Path.home() / ".claude" / "settings.json", Path.home() / ".codex" / "config.toml"):
+        try:
+            h.update(f"{f.name}\0{sha256(f.read_bytes())}\n".encode())
+        except OSError:
+            h.update(f"{f.name}\0none\n".encode())
+    return h.hexdigest()
+
+
+def codex_model():
+    try:
+        import tomllib  # Python 3.11+; an older python3 reports none rather than failing the run
+        with open(Path.home() / ".codex" / "config.toml", "rb") as fh:
+            m = tomllib.load(fh).get("model")
+    except (ImportError, OSError, ValueError):
+        return "none"
+    return m if isinstance(m, str) and m else "none"
+
+
+def strict_schema(node):
+    """A grader schema in the strict form `codex exec --output-schema` requires: every object closed
+    (additionalProperties false) with every property required, an optional property nullable instead, and a
+    `required` name with no property spec a string. A free-form optional object (the judge's evidence) has no
+    strict form and is dropped; no reader scores it."""
+    node = dict(node)
+    if node.get("type") == "object" or "properties" in node or "required" in node:
+        req = node.get("required", [])
+        props = dict(node.get("properties", {}))
+        for n in req:
+            props.setdefault(n, {"type": "string"})
+        out = {}
+        for n, p in props.items():
+            if n in req:
+                out[n] = strict_schema(p)
+            elif not (p.get("type") == "object" and not p.get("properties")):
+                p = strict_schema(p)
+                t = p.get("type")
+                out[n] = {**p, "type": [t, "null"]} if isinstance(t, str) and "enum" not in p else {"anyOf": [p, {"type": "null"}]}
+        node.update(type="object", properties=out, required=list(out), additionalProperties=False)
+    if isinstance(node.get("items"), dict):
+        node["items"] = strict_schema(node["items"])
+    return node
+
+
+def served_off(rep, model):
+    """The modelUsage keys of a Claude reply that do not start with the cell's model; ["no modelUsage"] when none."""
+    usage = rep.get("modelUsage")
+    served = sorted(usage) if isinstance(usage, dict) else []
+    return [s for s in served if not s.startswith(model)] if served else ["no modelUsage"]
+
+
+def wilson(p, n):
+    if n == 0:
+        return None
+    d = 1 + Z * Z / n
+    c = (p + Z * Z / (2 * n)) / d
+    h = Z * math.sqrt(p * (1 - p) / n + Z * Z / (4 * n * n)) / d
+    return max(0.0, c - h), min(1.0, c + h)
+
+
+def main(argv):
+    models = argv[1:]
+    if not models:
+        die("usage: bin/factory.d/model-eval <model>...")
+    env = os.environ
+    efforts = (env.get("MODEL_EVAL_EFFORTS") or "high").split()
+    bad = [e for e in efforts if e not in EFFORTS]
+    if bad:
+        die(f"MODEL_EVAL_EFFORTS {' '.join(bad)}: each effort must be one of {' '.join(EFFORTS)}")
+    try:
+        repeats = int(env.get("MODEL_EVAL_REPEATS") or "2")
+        seed = int(env.get("MODEL_EVAL_SEED") or "0")
+    except ValueError:
+        die("MODEL_EVAL_REPEATS and MODEL_EVAL_SEED must be integers")
+    if repeats < 1:
+        die("MODEL_EVAL_REPEATS must be at least 1")
+    if not env.get("MODEL_EVAL_OUT"):
+        die("MODEL_EVAL_OUT is not set")
+    out = Path(env["MODEL_EVAL_OUT"])
+    set_dir = Path(env.get("MODEL_EVAL_SET") or "evals/planted")
+    if not set_dir.is_dir():
+        die(f"no eval set at {set_dir}")
+    graders = (env.get("MODEL_EVAL_GRADERS") or "judge reviewer lean-critic").split()
+    gdir = env.get("MODEL_EVAL_GRADERS_DIR") or ""
+
+    # Each grader's file, schema and rubric, as bin/factory resolves them for its own eval.
+    gfile, schema, rubric, cases = {}, {}, {}, {}
+    for g in graders:
+        gfile[g] = Path(factory_fn(gdir, "grader_file", g).decode().strip())
+        schema[g] = factory_fn(gdir, "schema_for", g)
+        rubric[g] = factory_fn(gdir, "grader_rubric", str(gfile[g]))
+        cases[g] = cases_of(set_dir, g)
+        if not cases[g]:
+            print(f"model-eval: no {g} cases under {set_dir}", file=sys.stderr)
+    graders_sha = sha256("".join(f"{g} {sha256(gfile[g].read_bytes())}\n" for g in sorted(graders)).encode())
+    settings_sha = sha256((HERE / "role-settings.json").read_bytes())
+    evals_sha = tree_sha(set_dir)
+
+    cells = [(g, m, e, k) for g in graders for m in models for e in efforts for k in range(1, repeats + 1)]
+    random.Random(seed).shuffle(cells)
+    name = lambda c: f"{c[0]} {c[1]}@{c[2]}/r{c[3]}"  # noqa: E731
+    cell_dir = lambda c: out / "replies" / f"{c[1]}@{c[2]}" / f"r{c[3]}"  # noqa: E731
+    out.mkdir(parents=True, exist_ok=True)
+    (out / "order.txt").write_text("".join(name(c) + "\n" for c in cells), encoding="utf-8")
+
+    tmp = Path(tempfile.mkdtemp(prefix="model-eval."))
+    try:
+        for g in graders:
+            (tmp / f"{g}.schema.json").write_text(json.dumps(strict_schema(json.loads(schema[g]))), encoding="utf-8")
+        for c in cells:
+            g, m, e, k = c
+            d = cell_dir(c)
+            d.mkdir(parents=True, exist_ok=True)
+            codex = m.startswith("codex:")
+            # The harness a call runs on, read once per cell: a Claude Code update or a config change between
+            # runs changes every key, so no reply graded on the old harness is reused.
+            cfg = {"config-drift-md5": config_drift_md5(), "claude-version": claude_version(), "codex-model": codex_model()}
+            user_sha = user_config_sha()
+            keys = {}
+            for case in cases[g]:
+                parts = [sha256(gfile[g].read_bytes()), sha256(schema[g]), sha256(rubric[g]), settings_sha,
+                         sha256((case / "prompt.md").read_bytes()), sha256((case / "expected.json").read_bytes()),
+                         m, e, "codex" if codex else "claude", *cfg.values(), user_sha]
+                keys[case] = sha256("\n".join(parts).encode())
+            need = [case for case in cases[g]
+                    if not (d / f"{g}-{case.name}.key").is_file() or not (d / f"{g}-{case.name}.json").is_file()
+                    or (d / f"{g}-{case.name}.key").read_text(encoding="utf-8").strip() != keys[case]]
+            # A stale reply goes before the call, so a call that writes nothing leaves a gap, not an old reply.
+            for case in need:
+                for ext in ("json", "key"):
+                    (d / f"{g}-{case.name}.{ext}").unlink(missing_ok=True)
+            if need:
+                print(f"model-eval: {name(c)}: {len(need)} of {len(cases[g])} cases", file=sys.stderr)
+                if codex:
+                    for case in need:
+                        o = tmp / "codex-reply.txt"
+                        o.unlink(missing_ok=True)
+                        r = subprocess.run(["codex", "exec", "--json", "--output-schema", str(tmp / f"{g}.schema.json"),
+                                            "-o", str(o), "-s", "read-only", "-m", m.removeprefix("codex:"),
+                                            "-c", f"model_reasoning_effort={e}", "-"],
+                                           input=rubric[g] + (case / "prompt.md").read_bytes(),
+                                           stdout=subprocess.DEVNULL)
+                        text = o.read_text(encoding="utf-8", errors="replace") if o.is_file() else ""
+                        reply = {"type": "result", "is_error": r.returncode != 0 or not text.strip(),
+                                 "total_cost_usd": None, "result": text}
+                        (d / f"{g}-{case.name}.json").write_text(json.dumps(reply) + "\n", encoding="utf-8")
+                else:
+                    sub = tmp / "cases"
+                    shutil.rmtree(sub, ignore_errors=True)
+                    for case in need:
+                        (sub / g / case.name).mkdir(parents=True)
+                        for f in ("prompt.md", "expected.json"):
+                            shutil.copyfile(case / f, sub / g / case.name / f)
+                    cmd = [str(FACTORY), "eval", g, "--evals-dir", str(sub), "--model", m]
+                    cmd += ["--graders-dir", gdir] if gdir else []
+                    # Exit 1 is a mismatch, a scored result; 2 is a stop (budget, an API error), whose unwritten
+                    # cases count as infra and are retried on the next run. Neither stops the grid.
+                    r = subprocess.run(cmd, env={**env, "EVAL_OUT": str(d), "EVAL_EFFORT": e}, stdout=sys.stderr)
+                    if r.returncode not in (0, 1):
+                        print(f"model-eval: {name(c)}: bin/factory eval exited {r.returncode}", file=sys.stderr)
+                # A key only for a scored reply from the cell's model: an error, unparseable or off-model reply
+                # is retried on the next run, never reused.
+                for case in need:
+                    reply, _, err = eval_score.load_reply(d / f"{g}-{case.name}.json")
+                    rep = raw_reply(d / f"{g}-{case.name}.json")
+                    if reply is not None and not err and (codex or not served_off(rep, m)):
+                        (d / f"{g}-{case.name}.key").write_text(keys[case] + "\n", encoding="utf-8")
+            # The fingerprint names the config of the cell's newest calls; a cell that made none keeps its own.
+            # fingerprint-<grader>.txt describes that grader's replies alone; fingerprint.txt, shared by every
+            # grader of the cell, names the whole grader list and the newest calls of any of them.
+            fp = f"model {m}\neffort {e}\nevals-sha256 {evals_sha}\n" + "".join(f"{field} {v}\n" for field, v in cfg.items())
+            for f, gsha in ((f"fingerprint-{g}.txt", sha256(gfile[g].read_bytes())), ("fingerprint.txt", graders_sha)):
+                if need or not (d / f).is_file():
+                    (d / f).write_text(f"grader-sha256 {gsha}\n" + fp, encoding="utf-8")
+            # Served model: a Claude reply answered by another model (a fallback, a refusal) is not this
+            # cell's result, so the grid stops here rather than pay for the cells left. An unparseable or
+            # is_error reply (an API or budget stop) is an infra error the table counts, not a served model.
+            off = []
+            for case in need:
+                rep = raw_reply(d / f"{g}-{case.name}.json")
+                if not codex and rep is not None and rep.get("is_error") is not True:
+                    off += [f"model-eval: {name(c)} {case.name} served by {s}" for s in served_off(rep, m)]
+            if off:
+                print("\n".join(off), file=sys.stderr)
+                die("replies served by a model other than the cell's; no table", 3)
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+
+    # The table scores this run's cells only, each checked after its calls: a copy of their replies and fingerprints,
+    # so an earlier run's models, repeats, graders or cases under <out>/replies stay out of it.
+    with tempfile.TemporaryDirectory(prefix="model-eval.") as scored:
+        for c in cells:
+            g = c[0]
+            dst = Path(scored) / cell_dir(c).relative_to(out / "replies")
+            dst.mkdir(parents=True, exist_ok=True)
+            for f in [f"{g}-{case.name}.json" for case in cases[g]] + ["fingerprint.txt", f"fingerprint-{g}.txt"]:
+                if (cell_dir(c) / f).is_file():
+                    shutil.copyfile(cell_dir(c) / f, dst / f)
+        r = subprocess.run([sys.executable, str(HERE / "eval_score.py"), str(set_dir), scored],
+                           capture_output=True, text=True)
+    if r.returncode != 0:
+        die(f"eval_score.py exited {r.returncode}: {r.stderr.strip()}")
+    # Wilson 95% over cases, not trials: repeats of one case are not independent (#207 protocol step 4).
+    ncases = {}
+    for g in os.listdir(set_dir):
+        for case in cases_of(set_dir, g):
+            exp = json.loads((case / "expected.json").read_text(encoding="utf-8"))
+            for mt in (eval_score.metric(g, exp), "agreement"):
+                ncases[g, mt] = ncases.get((g, mt), 0) + 1
+    print("grader\tmodel\tmetric\tvalue\twilson95 (n = cases)")
+    for line in r.stdout.splitlines():
+        row = line.split("\t")
+        ci = wilson(float(row[3]), ncases.get((row[0], row[2]), 0)) if row[2].startswith(RATES) else None
+        print(line + (f"\t{ci[0]:.2f}-{ci[1]:.2f}" if ci else ""))
+    for c in sorted(cells, key=name):
+        g = c[0]
+        loaded = [eval_score.load_reply(cell_dir(c) / f"{g}-{case.name}.json") for case in cases[g]]
+        bad = sum(reply is None or err for reply, _, err in loaded)
+        if bad > 0.2 * len(cases[g]):
+            print(f"not comparable: {name(c)} infra {bad} of {len(cases[g])}")
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv))
