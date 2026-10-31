@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# bin/factory - factory tooling. Subcommands: lint, eval, eval-freeze, run, status, stop, merge, next, graders-check.
+# bin/factory - factory tooling. Subcommands: lint, eval, eval-freeze, run, status, stop, merge, next, graders-check, skills.
 #   bin/factory lint <file|issue>   statically checks a ticket body against docs/factory/CONTRACT.md.
 #   bin/factory eval <grader>       replays the frozen evals/ cases through the production grader call.
 #   bin/factory eval-freeze <run-dir>...  freezes each run's last round, when both graders passed it, into evals/clean/.
@@ -10,6 +10,7 @@
 #   bin/factory merge <pr> <sha>    merges the PR only when sha is its head and every check reported there passed.
 #   bin/factory next [--install]    the F9 frontier timer's step: launch the next unblocked ready-for-agent ticket.
 #   bin/factory graders-check       fails when judge.md or reviewer.md drifts from GRADER_MODEL and GRADER_EFFORT.
+#   bin/factory skills              lists each installed pstack skill's lines that name a ~/ path or ask the user.
 #   -C <repo>, before the subcommand or right after it, points lint, run, status, stop, merge, and next at another repository (F8).
 # Lint never executes a check; it reads the body and shells out only to `bash -n`, `gh`, and python3 for the hidden-text rule.
 # Run and stop, when the operator runs them, add a line to the run dir's owner-events.jsonl (status --criteria); lint of
@@ -3386,6 +3387,30 @@ precondition_lines() { # LOOP.md, Preconditions
     || echo "  INFO no healthchecks check ($a/hc-ping-url); a killed run raises no alarm"
 }
 
+# ---- skills ----
+# An advisory listing, for the operator choosing a pstack skill to name in a ticket (#472): each installed pstack
+# skill's SKILL.md, the copy skill_file resolves (the one a worker reads, not every cached version), and each of its
+# lines that names a ~/ or $HOME/ path (`home`: the skill may write operator settings from a worker's unsandboxed
+# shell, #409) or AskQuestion or AskUserQuestion (`asks`: it may wait on a person an unattended worker cannot reach).
+# Every matching line, not only the first, since a skill's first home path may be a read and its write come later;
+# whether a line reads or writes is left to the person reading. Reads files only, and exits 0 whatever it finds.
+cmd_skills() {
+  local cache="$HOME/.claude/plugins/cache" names n f found=""
+  # Names from every cached version, at any depth under skills/ as skill_file matches; each resolves once below.
+  names=$(find "$cache"/*/pstack/*/skills -name SKILL.md 2> /dev/null | awk -F/ '{print $(NF-1)}' | sort -u)
+  for n in $names; do
+    f=$(skill_file "pstack:$n") || continue
+    found=1
+    awk -v n="$n" -v f="$f" '
+      { t = substr($0, 1, 160) }
+      index($0, "~/") || index($0, "$HOME/")                    { printf "%s\thome\t%s:%d: %s\n", n, f, FNR, t }
+      index($0, "AskQuestion") || index($0, "AskUserQuestion")  { printf "%s\tasks\t%s:%d: %s\n", n, f, FNR, t }
+    ' "$f"
+  done
+  [ -n "$found" ] || echo "skills: no installed pstack skill resolves (no pstack under $cache, or none in installed_plugins.json)"
+  return 0
+}
+
 # ---- graders-check ----
 # The loop strips the grader files' front matter and passes GRADER_MODEL and GRADER_EFFORT itself; a
 # by-hand Agent call reads the front matter instead. This fails when judge.md or reviewer.md names another
@@ -3407,9 +3432,9 @@ cmd_graders_check() { # [agents-dir]
   return "$rc"
 }
 
-usage() { # [cmd...] - one line per named command, all nine when none is named
+usage() { # [cmd...] - one line per named command, all ten when none is named
   local c
-  for c in ${@:-lint eval eval-freeze run status stop merge next graders-check}; do
+  for c in ${@:-lint eval eval-freeze run status stop merge next graders-check skills}; do
     case "$c" in
       lint)   echo "usage: bin/factory [-C <repo>] lint <file|issue>" ;;
       eval)   echo "usage: bin/factory eval <grader> [--evals-dir D] [--graders-dir D] [--model M]" ;;
@@ -3420,7 +3445,8 @@ usage() { # [cmd...] - one line per named command, all nine when none is named
       merge)  echo "usage: bin/factory [-C <repo>] merge <pr> <sha>" ;;
       next)   echo "usage: bin/factory [-C <repo>] next [--dry-run|--install]" ;;
       graders-check) echo "usage: bin/factory graders-check [--agents-dir D]" ;;
-      *)      echo "usage: bin/factory [-C <repo>] <lint|eval|eval-freeze|run|status|stop|merge|next|graders-check>" ;;
+      skills) echo "usage: bin/factory skills" ;;
+      *)      echo "usage: bin/factory [-C <repo>] <lint|eval|eval-freeze|run|status|stop|merge|next|graders-check|skills>" ;;
     esac
   done >&2
   exit 2
@@ -3480,5 +3506,7 @@ case "$CMD" in
           2/--agents-dir) cmd_graders_check "$2" ;;
           *)              usage graders-check ;;
         esac ;;
+  skills) [ $# -eq 0 ] || usage skills
+          cmd_skills ;;
   *)      usage ;;
 esac

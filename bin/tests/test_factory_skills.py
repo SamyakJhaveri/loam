@@ -224,6 +224,58 @@ class FactorySkillsTests(unittest.TestCase):
         self.assertEqual([x.get("skills_called") for x in lines], [["pstack:tdd", "rigor"], [], ["rigor"], None])
         self.assertNotIn("skills_called", lines[3])
 
+    def skills(self, home: pathlib.Path) -> subprocess.CompletedProcess[str]:
+        return subprocess.run([str(ROOT / "bin/factory"), "skills"], cwd=ROOT, env={**os.environ, "HOME": str(home)},
+                              capture_output=True, text=True, check=False)
+
+    def test_skills_lists_home_and_asks_lines_of_the_resolved_copy_only(self) -> None:
+        # The #472 done check: a writer of ~/.cursor/rules/, an asker, and a plain skill whose older cached copy
+        # names ~/, which a listing of every cached version, not the copy skill_file resolves, would print.
+        home = self.tmp / "skills-home"
+        cache = home / ".claude/plugins/cache/cursor-plugins/pstack"
+        (cache / "1.0.0/skills").mkdir(parents=True)
+        bodies = {"writer": "Step 1.\nWrite `~/.cursor/rules/x.mdc` with the budget.\n",
+                  "asker": "Use the AskQuestion tool to pick a budget.\n",
+                  "plain": "Read the diff and name each defect.\n"}
+        for name, body in bodies.items():
+            f = cache / "1.0.0/skills" / name / "SKILL.md"
+            f.parent.mkdir()
+            f.write_text(f"---\nname: {name}\n---\n{body}")
+        old = cache / "0.9.0/skills/plain/SKILL.md"
+        old.parent.mkdir(parents=True)
+        old.write_text("---\nname: plain\n---\nWrite `~/.old/x` first.\n")
+        (home / ".claude/plugins/installed_plugins.json").write_text(
+            json.dumps({"version": 2, "plugins": {"pstack@cursor-plugins": [{"installPath": str(cache / "1.0.0")}]}}))
+        proc = self.skills(home)
+        self.assertEqual(proc.returncode, 0, proc.stdout + proc.stderr)
+        skill = cache / "1.0.0/skills"
+        self.assertEqual(proc.stdout.splitlines(), [
+            f"asker\tasks\t{skill}/asker/SKILL.md:4: Use the AskQuestion tool to pick a budget.",
+            f"writer\thome\t{skill}/writer/SKILL.md:5: Write `~/.cursor/rules/x.mdc` with the budget.",
+        ])
+
+    def test_skills_lists_every_matching_line_cut_to_160_characters(self) -> None:
+        f = self.pstack / "skills/sharpen/SKILL.md"
+        long = "Write $HOME/.cursor/x then ask with AskUserQuestion. " + "x" * 200
+        f.write_text(f"---\nname: sharpen\n---\nRead `~/.a` first.\n{long}\n")
+        lines = [x for x in self.skills(self.home).stdout.splitlines() if x.startswith("sharpen\t")]
+        self.assertEqual(lines, [f"sharpen\thome\t{f}:4: Read `~/.a` first.", f"sharpen\thome\t{f}:5: {long[:160]}",
+                                 f"sharpen\tasks\t{f}:5: {long[:160]}"])
+
+    def test_skills_with_no_pstack_installed_says_so_and_exits_0(self) -> None:
+        home = self.tmp / "empty-home"
+        home.mkdir()
+        proc = self.skills(home)
+        self.assertEqual(proc.returncode, 0, proc.stdout + proc.stderr)
+        self.assertEqual(len(proc.stdout.splitlines()), 1, proc.stdout)
+        self.assertIn("no installed pstack skill", proc.stdout)
+
+    def test_skills_refuses_an_argument(self) -> None:
+        proc = subprocess.run([str(ROOT / "bin/factory"), "skills", "x"], cwd=ROOT, env={**os.environ, "HOME": str(self.home)},
+                              capture_output=True, text=True, check=False)
+        self.assertEqual(proc.returncode, 2)
+        self.assertIn("usage: bin/factory skills", proc.stderr)
+
 
 if __name__ == "__main__":
     unittest.main()
