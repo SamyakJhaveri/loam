@@ -95,9 +95,9 @@ class StatusCriteriaTests(unittest.TestCase):
         self.assertEqual(verdict["rounds lost to environment failures"], "    FAIL: measured 1 (2/aaaa0002 round 1); latest 2026-10-19")
         self.assertEqual(verdict["median rounds to PR"], "    PASS: measured 2 (over 3 PR runs)")
         self.assertEqual(verdict["stalls whose first failing grader row is scope"], "    PASS: measured 0 (of 0 stalls)")
-        # The text matcher's count is an estimate (#443), so it never prints PASS or FAIL.
+        # No failing round, so none fell back to the text matcher.
         self.assertEqual(verdict["rounds whose last worker message claims done while the checks printed FAIL"],
-                         "    INCONCLUSIVE: estimate: 0 of 0 failing rounds (claude 0, codex 0; text matcher, see #443)")
+                         "    PASS: measured 0 of 0 failing rounds (claude 0, codex 0)")
         # A run from before owner-events.jsonl, evidence_kind and guard's marker copy shows no operator action, no cited
         # notes and no marker, which is not zero of them.
         for name in ("operator actions from voice note to a running loop on Track B",
@@ -150,9 +150,11 @@ class StatusCriteriaTests(unittest.TestCase):
                          "    FAIL: measured 2 (7/abcd1234 round 1); latest 2026-10-19")
         self.assertEqual(verdict["judge fails citing a worker-written measurement"],
                          "    FAIL: measured 1 of 2 (7/abcd1234 round 3 correct); latest 2026-10-19")
+        # No round has a CLAIM line, so the text matcher reads all three; round 3 also failed `a`, which the Stop hook runs.
         self.assertEqual(verdict["rounds whose last worker message claims done while the checks printed FAIL"],
-                         "    INCONCLUSIVE: estimate: 2 of 3 failing rounds (claude 1, codex 1; text matcher, see #443)")
-        # Each counted round, its first FAIL line and the sentence read as a claim, so a reader can settle the estimate.
+                         "    FAIL: measured 2 of 3 failing rounds (claude 1, codex 1; 3 with no CLAIM line, read by the "
+                         "text matcher); latest 2026-10-19")
+        # Each counted round, its first FAIL line and the sentence read as a claim, so a reader can settle the matcher.
         lines = proc.stdout.splitlines()
         self.assertEqual(lines[lines.index(verdict["rounds whose last worker message claims done while the checks printed FAIL"])
                                + 1:-1], [f"      7/abcd1234 round 1 (claude): {long_fail} | Done: all checks pass.",
@@ -195,6 +197,50 @@ class StatusCriteriaTests(unittest.TestCase):
                      "The project requires `check: PASSED` before every commit, so I did not commit.",
                      "If the integration test passes on CI, the work is complete."):
             self.assertFalse(criteria.claims_done(text), text)
+
+    def test_the_last_claim_line_decides_and_names_hook_blind_rounds(self) -> None:
+        runs = pathlib.Path(self.tmp.name) / "claims"
+        run_dir(runs, "7/abcd1234", "pr-opened", ["===== launch ====="] + [f"===== round {n} =====" for n in range(1, 8)]
+                + ["EXIT pr-opened (0): https://github.com/o/r/pull/1"], 7)
+        d = runs / "7/abcd1234"
+        (d / "frozen").mkdir()
+        # A guard bin/check line names check-green; a printf that only quotes one names nothing.
+        (d / "frozen/checks.sh").write_text(
+            "printf 'guard bin/check && pass quoted' > f && pass fixture || fail fixture\n"
+            '[ -n "${LOAM_HOOK:-}" ] && pass check-green || { guard bin/check >/dev/null && pass check-green; }\n')
+        rounds = {  # round: (checks, last message)
+            1: ("FAIL do-not-touch seed/x\nFAIL worktree-dirty: a\n", "I could not finish.\nCLAIM: done"),
+            2: ("FAIL check-green: bin/check\n", "All done-checks pass.\nCLAIM: partial\n"),
+            3: ("FAIL check-green: bin/check\n", "CLAIM: blocked\nAll checks pass.\n**CLAIM: Done**\n"),
+            4: ("FAIL fixture: x\n", "CLAIM: done"),
+            5: ("FAIL check-green: bin/check\nFAIL a: b\n", "CLAIM: blocked\nCLAIM: done"),
+            6: ("PASS a\n", "CLAIM: done"),
+            7: ("FAIL a: b\n", "Not done.\nCLAIM: blocked"),
+        }
+        for n, (checks, text) in rounds.items():
+            (d / f"round-{n}.checks").write_text(checks)
+            (d / f"round-{n}.result.json").write_text(json.dumps({"result": text}))
+        proc = factory("status", "--criteria", runs=runs)
+        self.assertEqual(proc.returncode, 0, proc.stderr)
+        verdict = verdicts(proc.stdout)["rounds whose last worker message claims done while the checks printed FAIL"]
+        # Round 1 claims done over its prose and round 2 does not, over its own; in rounds 3 and 5 the last CLAIM line wins. Rounds
+        # 1 and 3 failed only checks the hook passes; round 4's fixture is no guard line and round 5 also failed a.
+        self.assertEqual(verdict, "    FAIL: measured 4 of 6 failing rounds (claude 4, codex 0; 2 failed only checks the "
+                                  "worker's Stop hook cannot fail: 7/abcd1234 round 1, 7/abcd1234 round 3); latest 2026-10-19")
+        lines = proc.stdout.splitlines()
+        self.assertEqual(lines[lines.index(verdict) + 1:-1], [
+            "      7/abcd1234 round 1 (claude): FAIL do-not-touch seed/x | CLAIM: done",
+            "      7/abcd1234 round 3 (claude): FAIL check-green: bin/check | CLAIM: Done",
+            "      7/abcd1234 round 4 (claude): FAIL fixture: x | CLAIM: done",
+            "      7/abcd1234 round 5 (claude): FAIL check-green: bin/check | CLAIM: done"])
+        # Within the threshold, a round the text matcher read leaves the count short of a PASS.
+        (d / "round-1.result.json").write_text('{"result":"Not finished."}')
+        for n in (3, 4, 5):
+            (d / f"round-{n}.checks").write_text("PASS a\n")
+        proc = factory("status", "--criteria", runs=runs)
+        self.assertEqual(verdicts(proc.stdout)["rounds whose last worker message claims done while the checks printed FAIL"],
+                         "    INCONCLUSIVE: measured 0 of 3 failing rounds (claude 0, codex 0; 1 with no CLAIM line, read by "
+                         "the text matcher)")
 
     def test_a_stall_before_its_rounds_checks_reads_the_last_checked_round(self) -> None:
         # no-change and a ticket-budget or wall-clock cap exit after `===== round 2 =====`, before round-2.checks.
