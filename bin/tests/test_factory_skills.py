@@ -7,6 +7,7 @@ bin/factory (FACTORY_SOURCED=1) and calls the real build_worker_prompt with a Cl
 
 from __future__ import annotations
 
+import json
 import os
 import pathlib
 import shutil
@@ -156,6 +157,44 @@ class FactorySkillsTests(unittest.TestCase):
         text = self.prompt()
         self.assertEqual(text.count(str(adapter)), 1)
         self.assertLess(text.index(str(adapter)), text.index(str(self.tdd)))
+
+    def sourced(self, script: str, *args: str) -> str:
+        proc = subprocess.run(["bash", "-c", f". bin/factory\n{script}", "_", *args], cwd=ROOT,
+                              env={**self.env(), "FACTORY_SOURCED": "1"}, capture_output=True, text=True, check=False)
+        self.assertEqual(proc.returncode, 0, proc.stderr)
+        return proc.stdout
+
+    def test_skills_called_leaves_out_a_skill_call_refused_with_an_error(self) -> None:
+        def use(i: str, name: str, inp: dict) -> dict:
+            return {"type": "tool_use", "id": i, "name": name, "input": inp}
+        events = [
+            {"type": "assistant", "message": {"content": [
+                use("t1", "Skill", {"skill": "pstack:sharpen"}),
+                use("t2", "Read", {"file_path": str(self.tdd)}),
+                use("t3", "Skill", {"skill": "rigor"}),
+                use("t4", "Skill", {"skill": "pstack:setup-pstack"})]}},
+            {"type": "user", "message": {"content": [
+                {"type": "tool_result", "tool_use_id": "t1", "is_error": True,
+                 "content": "cannot be used with Skill tool due to disable-model-invocation"},
+                {"type": "tool_result", "tool_use_id": "t3", "content": "ok"}]}},
+        ]
+        stream = self.tmp / "s.jsonl"
+        stream.write_text("not json\n" + "".join(json.dumps(e) + "\n" for e in events))
+        out = self.sourced('skills_called "$@"', str(stream), "pstack:tdd", "pstack:sharpen", "rigor",
+                           "pstack:setup-pstack", "pstack:principle-fix-root-causes")
+        self.assertEqual(out.strip(), "pstack:setup-pstack,pstack:tdd,rigor")
+
+    def test_record_writes_skills_called_on_a_line_given_it_and_no_other(self) -> None:
+        res = self.tmp / "result.json"
+        res.write_text(json.dumps({"type": "result", "total_cost_usd": 1}))
+        led = self.tmp / "ledger.jsonl"
+        self.sourced('RUN=$1; LOG=/dev/null; LEDGER=$2; DAILY=$1/daily.jsonl; KEY=7\n'
+                     'record 1 worker m "$3" 0 0 0 0 0 pstack:tdd,rigor; record 1 worker m "$3" 0 0 0 0 0 ""\n'
+                     'record 1 worker m "$1/none.json" 0 0 0 0 0 rigor; record 1 judge m "$3"',
+                     str(self.tmp), str(led), str(res))
+        lines = [json.loads(x) for x in led.read_text().splitlines()]
+        self.assertEqual([x.get("skills_called") for x in lines], [["pstack:tdd", "rigor"], [], ["rigor"], None])
+        self.assertNotIn("skills_called", lines[3])
 
 
 if __name__ == "__main__":
