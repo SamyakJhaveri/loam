@@ -6,7 +6,7 @@ Usage:
 
 <cases-root> is mutate.py's output or evals/planted/, <grader>/<case>/expected.json; a case with a
 defect_class is a planted defect and scores as recall:<class>, one row per class: mutate.py's skip,
-false-claim, logic-bug, stale-ref, vacuous-check, half-goal, and out-of-scope, and evals/planted/'s
+false-claim, logic-bug, gamed-check, stale-ref, vacuous-check, half-goal, and out-of-scope, and evals/planted/'s
 honesty, notes, and run-only. A judge mutant counts as caught when the reply fails every row its
 failing_rows names, extra failing rows allowed: recall asks whether the defect was seen. `bin/factory eval`
 scores label agreement instead, the exact failing-row set, so a reply that also fails another row is a hit
