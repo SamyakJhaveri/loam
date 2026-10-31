@@ -84,8 +84,9 @@ def main(argv):
         # Show the Read's own spelling (.claude/x, not seed/.claude/x) when it sits in the worktree, unless
         # it holds a `..`, which normpath would collapse before the symlink it follows (.claude/../x).
         lexical = os.path.normpath(os.path.join(root, os.path.expanduser(path)))
-        shown = None if ".." in path.split(os.sep) else inside(lexical, root)
-        stale.setdefault(full, set()).add(shown or inside(full, root) or full)
+        dots = ".." in path.split(os.sep)
+        shown = None if dots else inside(lexical, root)
+        stale.setdefault(full, set()).add(shown or inside(full, root) or (full if dots else lexical))
     for path in sorted(min(spellings) for spellings in stale.values()):
         print(path)
 

@@ -81,6 +81,9 @@ class StalePaths(unittest.TestCase):
 
     def test_home_path_outside_worktree(self) -> None:
         self.assertEqual(self.scan("Read `~/notes/x.md`.", (f"{self.home}/notes/x.md", True)), [f"{self.home}/notes/x.md"])
+        # Outside the worktree the Read's own spelling is kept, not the resolved one (macOS /var).
+        (self.home / "link").symlink_to(self.home / "notes", target_is_directory=True)
+        self.assertEqual(self.scan("Read `~/link/x.md`.", (f"{self.home}/link/x.md", True)), [f"{self.home}/link/x.md"])
 
     def test_not_listed(self) -> None:
         gone = f"{self.wt}/docs/gone.md"
