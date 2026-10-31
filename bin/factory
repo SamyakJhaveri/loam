@@ -17,6 +17,8 @@
 set -uo pipefail
 # Only round_zero sets FACTORY_ROUND0 (lib.sh, predict); a run nested in another's round 0 must not inherit it.
 unset FACTORY_ROUND0
+# Only the held-out user's service reads the held-out root (ruling H8); the supervisor, and so the worker, never holds it.
+unset FACTORY_HELDOUT_ROOT
 
 # FACTORY_ROOT is set when a run execs its frozen copy of this file out of the run directory.
 ROOT="${FACTORY_ROOT:-$(cd "$(dirname "$0")/.." && pwd)}"
@@ -321,6 +323,10 @@ check_worker() {
   if grep -qE '^contract:' <<<"$w"; then
     [ "$(grep -E '^contract:' <<<"$w")" = 'contract: 2' ] || err "Worker 'contract:' must be one line 'contract: 2'"
   fi
+  # `held-out:` is optional (default no); yes has the run ask the held-out service after the visible checks pass (H8).
+  if grep -qE '^held-out:' <<<"$w"; then
+    grep -qE '^held-out: (yes|no)$' <<<"$w" || err "Worker 'held-out:' must be 'yes' or 'no'"
+  fi
   # Every `skills:` name is a line of bin/factory.d/skills.txt, matched byte for byte (#37), or a
   # pstack:<name>, any installed pstack skill (#385; owner ruling 30 Oct 2026), which needs no line but
   # must be plain letters, digits, - or _, since skill_file passes it to find -path as a glob; either
@@ -348,7 +354,7 @@ check_worker() {
   ;; esac
   while IFS= read -r line; do
     [ -n "${line//[[:space:]]/}" ] || continue
-    case "$line" in worker:*|codex-review:*|effort:*|goal:*|skills:*|size:*|contract:*) continue ;; esac
+    case "$line" in worker:*|codex-review:*|effort:*|goal:*|skills:*|size:*|contract:*|held-out:*) continue ;; esac
     name=${line%%=*}
     if [ "$name" = "$line" ] || [ "${CAPS/ $name /}" = "$CAPS" ]; then
       err "unrecognized Worker line: $line"
@@ -752,6 +758,7 @@ WORKER_ADVISOR="${FACTORY_WORKER_ADVISOR-claude-opus-5-5}"   # mid-round advisor
 WORKER_EFFORT=high         # the ticket's `effort:` line overrides (ARCHITECTURE.md, Models and roles)
 GRADER_EFFORT=high
 GRADER_FAIL_ROUNDS=2      # grader-fail rounds allowed once the checks pass (LOOP.md, Grader-round cap)
+HELDOUT_WAIT_SEC=3600     # the wait for one held-out reply; heldout-serve stops a block at 3000 s (LOOP.md, A run)
 FENCE='~~~~~~~~~~~~ evidence'   # fixed marker; never a per-run string (#38)
 
 # REPO, RUN, and LOG keep a pre-set value: the sourced-test contract (file_backlog's backlog-filed-once
@@ -762,6 +769,8 @@ LOG="${LOG:-/dev/null}"; LEDGER=""; DAILY=""; DECISIONS=""; WORKTREE=""; BRANCH=
 # Worker kind and the Codex review stage, read from the ticket in cmd_run (F4). CODEX_REVIEW_BLOCKED is
 # separate from REVIEW_BLOCKED so a Claude-reviewer block never consumes the Codex review's one block.
 WORKER_KIND=claude; CODEX_REVIEW=no; CODEX_REVIEW_BLOCKED=0
+# The ticket's `held-out:` line, this launch's count of its own held-out check requests, and the last reply (H8).
+HELDOUT=no; HELDOUT_N=0; HELDOUT_REPLY=""
 CODEX_PATH="$HOME/.local/bin"   # Codex is not on the non-interactive PATH (#41); every Codex call prepends this
 
 now()   { date -u +%Y-%m-%dT%H:%M:%SZ; }
@@ -1483,7 +1492,7 @@ nav_c_append() { [ "${FACTORY_NAV_ARM:-}" = C ] && cat "$ROOT/bin/factory.d/_nav
 nav_arm_resolve() { [ -n "${FACTORY_NAV_ARM+x}" ] && return 0; local f="$RUNS_ROOT/nav-order" a; [ -s "$f" ] || return 0; a=$(head -n 1 "$f"); [ -n "$a" ] || return 0; export FACTORY_NAV_ARM="$a"; tail -n +2 "$f" > "$f.tmp" && mv "$f.tmp" "$f"; return 0; }
 
 build_worker_prompt() { # round -> prompt path (pending until the call returns a result); non-zero when a skills: name resolves to no SKILL.md
-  local round="$1" pf="$RUN/pending.prompt.md" prev=$((round - 1)) s sf ad=
+  local round="$1" pf="$RUN/pending.prompt.md" prev=$(($1 - 1)) s sf ad=
   { printf '%s\n\n' "$BODY"; cat "$RUN/frozen/_common.md"; } > "$pf"
   nav_c_append "$pf"   # arm C appends the Semble instruction; base and arm B append nothing (NAV-01)
   # Skills per role (LOOP.md), each `skills:` name resolved by skill_file: a Claude worker gets one
@@ -2161,7 +2170,70 @@ round_checks() { # out: a dirty tree or a do-not-touch hit fails the round witho
     printf 'FAIL do-not-touch %s\n' "$touched" > "$1"
   else
     run_checks "$WORKTREE" "$1"
+    if [ "$HELDOUT" = yes ] && ! grep -q '^FAIL' "$1"; then heldout_check "$1"; fi
   fi
+}
+
+# ---- held-out checks (ruling H8, LOOP.md) ----------------------------------
+# The supervisor knows only FACTORY_HELDOUT_SPOOL: it never reads the held-out root and holds no superuser right, since
+# the worker shares its OS user and could use either. It drops a request into requests/ and reads one line back from
+# replies/, which only the held-out user's service (bin/factory.d/heldout-serve) writes: a word and a count, never a
+# check name or reason. The worker can write requests too; the count and the service's one run per round catch that.
+heldout_ask() { # kind round -> HELDOUT_REPLY; in the main shell, since a stop here must end the run
+  local spool="${FACTORY_HELDOUT_SPOOL:-}" slug id head waited=0
+  { [ -n "$spool" ] && [ -d "$spool/requests" ]; } \
+    || finish stopped-environment "the ticket says held-out: yes, but FACTORY_HELDOUT_SPOOL names no spool with a requests/ folder"
+  slug=$(target_slug)
+  [ -n "$slug" ] || finish ticket-defect "held-out: yes needs a target with a GitHub origin, whose <owner>__<repo> keys the held-out folder"
+  # A random id, so a worker cannot answer the request before the service does.
+  id=$(od -An -N16 -tx1 /dev/urandom | tr -d ' \n')
+  { [ ${#id} -eq 32 ] && [ ! -e "$spool/replies/$id" ]; } || finish stopped-environment "could not draw a fresh held-out request id"
+  head=$(git -C "$WORKTREE" rev-parse HEAD)
+  { printf 'slug=%s\nkey=%s\nworktree=%s\nsha=%s\nround=%s\nkind=%s\n' "$slug" "$KEY" "$WORKTREE" "$head" "$2" "$1" \
+      > "$spool/requests/.$id.tmp" && mv "$spool/requests/.$id.tmp" "$spool/requests/$id"; } \
+    || finish stopped-environment "could not write a held-out request into $spool/requests"
+  while [ ! -s "$spool/replies/$id" ]; do
+    [ "$waited" -lt $((HELDOUT_WAIT_SEC * 2)) ] || { rm -f "$spool/requests/$id"
+      finish stopped-environment "no held-out reply to the $1 request in ${HELDOUT_WAIT_SEC}s; is the held-out service running here?"; }
+    sleep 0.5; waited=$((waited + 1))
+  done
+  HELDOUT_REPLY=$(head -n 1 "$spool/replies/$id")
+  rm -f "$spool/requests/$id"
+  [[ "$HELDOUT_REPLY" =~ ^(ready|missing|pass|fail|refused)\ [0-9]+$ ]] \
+    || finish stopped-environment "the held-out reply to the $1 request is not one word and a count"
+}
+
+# At launch, before round 0 and any worker round: the service records the held-out file's sha256 and restarts its count.
+heldout_probe() {
+  [ "$HELDOUT" = yes ] || return 0
+  [[ "$KEY" =~ ^[A-Za-z0-9_.-]+$ ]] || finish ticket-defect "held-out: yes needs a run key of letters, digits, _, . or -, not $KEY"
+  heldout_ask probe 0
+  HELDOUT_N=0
+  case "$HELDOUT_REPLY" in
+    "ready 0") log "held-out: the runner holds checks for $(target_slug)/$KEY" ;;
+    "missing "*) finish ticket-defect "the ticket says held-out: yes, but the runner holds no held-out checks for $(target_slug)/$KEY" ;;
+    *) finish stopped-environment "the held-out probe got '$HELDOUT_REPLY'" ;;
+  esac
+}
+
+# After the visible checks pass: a fail adds one FAIL line naming no check, so stuck detection and the next prompt see
+# only that a held-out check failed. A reply to a request this run did not make shows as refused (the round already
+# ran) or as a count other than this launch's own, and stops the run.
+heldout_check() { # checks-file
+  local word n
+  HELDOUT_N=$((HELDOUT_N + 1))
+  heldout_ask check "$ROUND"
+  word=${HELDOUT_REPLY% *}; n=${HELDOUT_REPLY#* }
+  case "$word" in
+    refused) finish stopped-environment "the held-out service refused round $ROUND's check: a request this run did not make already ran that round" ;;
+    missing) finish ticket-defect "the held-out checks for $(target_slug)/$KEY are gone, or changed since the launch probe" ;;
+    pass|fail) ;;
+    *) finish stopped-environment "the held-out check got '$HELDOUT_REPLY'" ;;
+  esac
+  [ "$n" = "$HELDOUT_N" ] \
+    || finish stopped-environment "the held-out service counts $n check requests for this ticket since the probe, and this run made $HELDOUT_N: a request this run did not make reached it"
+  log "held-out check, round $ROUND: $word"
+  [ "$word" = pass ] || printf '\nFAIL held-out: a held-out check failed\n' >> "$1"
 }
 
 main_loop() {
@@ -2222,6 +2294,8 @@ cmd_run() {
   [ -n "$WORKER_KIND" ] || WORKER_KIND=claude
   CODEX_REVIEW=$(section Worker | sed -n 's/^codex-review: *//p' | head -1)   # yes adds a Codex review stage after the graders (F4)
   [ -n "$CODEX_REVIEW" ] || CODEX_REVIEW=no
+  HELDOUT=$(section Worker | sed -n 's/^held-out: *//p' | head -1)   # yes asks the held-out service after the visible checks (H8)
+  [ "$HELDOUT" = yes ] || HELDOUT=no
   local sha8
   sha8=$(printf '%s' "$BODY" | sha256_of | cut -c1-8)
   RUN="$RUNS_ROOT/$KEY/$sha8"
@@ -2278,6 +2352,7 @@ cmd_run() {
       && finish stopped-environment "the advisor would be silently off: DISABLE_TELEMETRY or CLAUDE_CODE_DISABLE_ADVISOR_TOOL is set"
     log "advisor: $WORKER_ADVISOR (the first worker call proves it attaches)"
   fi
+  heldout_probe   # every launch, a resume too: the service restarts its count, and so does this process
   # A relaunch with an edited body is a new run over a ticket worktree the last run left ahead of
   # base, where the checks may already pass; round 0 runs at base in its own detached worktree, so
   # base is what it proves. A resume (round-0.checks present, written only by a clean round 0) leaves
@@ -2308,7 +2383,8 @@ cmd_run() {
     # A round whose checks passed on a clean tree but whose graders never finished (a cap or FACTORY_STOP before
     # a grader call) is graded now, so the relaunch does not pay for, or cap out on, a new worker round. HEAD may
     # have moved while the run was stopped, so its checks run again at HEAD first, and only a pass is graded.
-    elif [ "$ROUND" -ge 1 ] && ! grep -q '^FAIL' "$RUN/round-$ROUND.checks" \
+    # A held-out ticket resumes into the loop instead: the service runs a round's block once, so it refuses a rerun.
+    elif [ "$HELDOUT" != yes ] && [ "$ROUND" -ge 1 ] && ! grep -q '^FAIL' "$RUN/round-$ROUND.checks" \
       && [ "$(tail -n 1 "$RUN/round-$ROUND.checks")" = CHECKS-END ] && [ ! -e "$RUN/round-$ROUND.graded.sha" ] \
       && [ -z "$(git -C "$WORKTREE" status --porcelain)" ]; then
       check_frozen
