@@ -1,0 +1,120 @@
+#!/usr/bin/env bash
+# bin/factory.d/heldout-serve <spool> [<root>] - the held-out user's half of ruling H8 (docs/factory/LOOP.md, A run).
+# It answers every pending request under <spool>/requests/ with one line in <spool>/replies/<id>, then exits; a
+# request is pending while it has no reply. On the runner a path unit owned by the held-out user runs it on each new
+# request, so the supervisor, and the worker that shares its OS user, never read <root>.
+# A request is the lines slug=, key=, worktree=, sha=, round= and kind=probe|check; the reply is `<word> <n>`:
+#   probe  ready, or missing when <root>/<slug>/<key>/checks.sh is absent; it records the file's sha256 and sets n to 0.
+#   check  pass or fail; missing when the file is absent or its sha256 differs from the probe's; refused when that
+#          round's block already ran. n counts the check requests for the slug and key since its probe, this one too.
+# A request missing a field or holding a malformed one stays pending: the supervisor writes its own through a rename,
+# so only a request still being written, or one the run did not make, is ever incomplete.
+# <root> defaults to FACTORY_HELDOUT_ROOT, which only this script reads. The block's output, with every check name and
+# reason, stays in <root>/<slug>/<key>/out/round-<n>; that file is also the round's record, written before the block
+# runs, so the block runs at most once per key and round, whatever probe comes later.
+# The block runs the candidate's code, so it runs inside a bwrap boundary: no network, its own PID namespace, the
+# host read-only but for the temp folder, no /proc, and <root> and the spool hidden under empty read-only mounts. The block
+# reaches the launcher on a pipe, which the launcher drains and closes before the block runs, so no file, command
+# line or open descriptor the candidate can reach holds it; the output leaves on a pipe for the same reason. A host
+# where the boundary does not start answers nothing, and the supervisor's wait ends the run.
+set -uo pipefail
+
+spool=${1:-}
+root=${2:-${FACTORY_HELDOUT_ROOT:-}}
+{ [ -d "$spool/requests" ] && [ -d "$spool/replies" ] && [ -n "$root" ] && [ -d "$root" ]; } \
+  || { echo "usage: heldout-serve <spool with requests/ and replies/> <held-out root>" >&2; exit 2; }
+spool=$(cd "$spool" && pwd -P); root=$(cd "$root" && pwd -P)
+# The service's own lib.sh, beside this file: the candidate's tree could redefine pass and fail.
+lib="$(cd "$(dirname "$0")" && pwd -P)/lib.sh"
+[ -r "$lib" ] || { echo "heldout-serve: no lib.sh beside $0" >&2; exit 2; }
+tmp=$(cd "${TMPDIR:-/tmp}" && pwd -P) || exit 2
+T=(); command -v timeout > /dev/null 2>&1 && T=(timeout -k 5 3000)   # under the supervisor's 3600 s wait
+
+sha256() { if command -v sha256sum > /dev/null 2>&1; then sha256sum < "$1"; else shasum -a 256 < "$1"; fi | cut -d' ' -f1; }
+name_ok() { [[ "$1" =~ ^[A-Za-z0-9_.-]+$ ]] && [ "$1" != . ] && [ "$1" != .. ]; }
+
+# boundary CMD...: CMD in the boundary, its cwd and HOME a folder under the temp folder ($tree). The temp folder is the
+# one writable part of the host, since a block may keep a scratch file there; the service unit runs with PrivateTmp, so
+# it is the service's own and nothing the candidate writes there reaches the factory user. /proc is an empty mount: a
+# candidate lists no process and reads no other process's command line or descriptors (so no `<(...)` in a block).
+boundary() {
+  ${T[@]+"${T[@]}"} bwrap --unshare-all --die-with-parent --new-session --clearenv \
+    --setenv PATH /usr/local/bin:/usr/bin:/bin --setenv HOME "$tree" --setenv TMPDIR "$tmp" \
+    --ro-bind / / --bind "$tmp" "$tmp" --tmpfs "$root" --remount-ro "$root" --tmpfs "$spool" --remount-ro "$spool" \
+    --tmpfs /proc --remount-ro /proc --dev /dev --chdir "$tree" -- "$@"
+}
+
+reply() { # id word n
+  printf '%s %s\n' "$2" "$3" > "$spool/replies/.$1.tmp" && mv -f "$spool/replies/.$1.tmp" "$spool/replies/$1"
+}
+
+# The launcher reads the block from fd 3 into a variable it never exports, closes fd 3, and unsets the variable as
+# the block starts.
+# shellcheck disable=SC2016
+LAUNCHER='s=$(cat <&3); exec 3<&-; eval "unset s; $s"'
+
+serve() { # id -> 0 once it wrote the reply
+  local id="$1" line slug="" key="" wt="" sha="" round="" kind="" dir psum n mark out rc
+  while IFS= read -r line || [ -n "$line" ]; do
+    case "$line" in
+      slug=*) slug=${line#slug=} ;; key=*) key=${line#key=} ;; worktree=*) wt=${line#worktree=} ;;
+      sha=*) sha=${line#sha=} ;; round=*) round=${line#round=} ;; kind=*) kind=${line#kind=} ;;
+    esac
+  done < "$spool/requests/$id"
+  { name_ok "$slug" && name_ok "$key" && [[ "$round" =~ ^[0-9]{1,9}$ ]] && [[ "$sha" =~ ^[0-9a-f]{7,64}$ ]] \
+    && [[ "$wt" == /* ]] && { [ "$kind" = probe ] || [ "$kind" = check ]; }; } || return 1
+  round=$((10#$round))
+  dir="$root/$slug/$key"
+  if [ "$kind" = probe ]; then
+    if [ -f "$dir/checks.sh" ]; then
+      printf '%s 0\n' "$(sha256 "$dir/checks.sh")" > "$dir/probe" || return 1
+      reply "$id" ready 0
+    else
+      reply "$id" missing 0
+    fi
+    return
+  fi
+  read -r psum n < "$dir/probe" 2> /dev/null && [[ "$n" =~ ^[0-9]+$ ]] || { reply "$id" missing 0; return; }
+  if [ ! -f "$dir/checks.sh" ] || [ "$(sha256 "$dir/checks.sh")" != "$psum" ]; then
+    n=$((n + 1)); printf '%s %s\n' "$psum" "$n" > "$dir/probe"; reply "$id" missing "$n"; return
+  fi
+  out="$dir/out/round-$round"
+  if [ -e "$out" ]; then
+    n=$((n + 1)); printf '%s %s\n' "$psum" "$n" > "$dir/probe"; reply "$id" refused "$n"; return
+  fi
+  # The commit, exported inside the boundary too: git archive runs the filters the worktree's config names.
+  tree=$(mktemp -d "$tmp/heldout-serve.XXXXXX") || return 1
+  if ! boundary bash -c 'set -o pipefail; git -c safe.directory="*" -C "$1" archive --format=tar "$2" | tar -x -f - -C "$3"' \
+    _ "$wt" "$sha" "$tree" < /dev/null > /dev/null 2>&1; then
+    echo "heldout-serve: could not export $sha from $wt for request $id; left pending" >&2
+    chmod -R u+w "$tree" 2> /dev/null; rm -rf "$tree"
+    return 1
+  fi
+  mkdir -p "$dir/out" && : > "$out" || return 1
+  n=$((n + 1)); printf '%s %s\n' "$psum" "$n" > "$dir/probe"
+  # The end line carries a random mark the candidate never sees, so it cannot print a passing end of its own.
+  mark=$(od -An -N16 -tx1 /dev/urandom | tr -d ' \n')
+  boundary bash -c "$LAUNCHER" 3< <(cat "$lib"; printf '\n'; cat "$dir/checks.sh"
+    printf '\nprintf "\\nEND %s\\n"\nexit $((n_fail > 0))\n' "$mark") < /dev/null 2>&1 | cat > "$out"
+  rc=${PIPESTATUS[0]}
+  chmod -R u+w "$tree" 2> /dev/null; rm -rf "$tree"
+  if [ "$rc" -eq 0 ] && [ "$(tail -n 1 "$out")" = "END $mark" ] && ! grep -q '^FAIL' "$out"; then
+    reply "$id" pass "$n"
+  else
+    reply "$id" fail "$n"
+  fi
+}
+
+tree=$tmp
+boundary true < /dev/null > /dev/null 2>&1 || { echo "heldout-serve: the bwrap boundary does not start here; nothing answered" >&2; exit 3; }
+# Until a pass answers nothing: a request that lands mid-pass is served before the script exits.
+served=1
+while [ "$served" = 1 ]; do
+  served=0
+  for req in "$spool"/requests/*; do
+    id=${req##*/}
+    [ -f "$req" ] && [[ "$id" =~ ^[A-Za-z0-9_][A-Za-z0-9_.-]*$ ]] && [ ! -e "$spool/replies/$id" ] || continue
+    serve "$id" && served=1
+  done
+done
+exit 0
