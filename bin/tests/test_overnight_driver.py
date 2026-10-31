@@ -4,7 +4,8 @@ any write to bin/overnight, and the protocol writes lessons into docs/factory/LE
 the driver, or closing its terminal, ends its running call, and a driver ends a call an earlier one left running.
 
 The scripts run for real with HOME a temp dir whose loam/bin/overnight links to this checkout, and fake claude, gh,
-tmux, pgrep, setsid, sleep and alert, so nothing reaches GitHub, Slack, tmux or a model.
+tmux, pgrep, sleep and alert (and setsid, except where a test needs the call in a session of its own), so nothing
+reaches GitHub, Slack, tmux or a model.
 """
 
 from __future__ import annotations
@@ -140,11 +141,14 @@ class OvernightDriverTests(unittest.TestCase):
     @unittest.skipUnless(shutil.which("setsid"), "the driver starts each call with setsid")
     def test_closing_the_drivers_terminal_ends_its_call(self) -> None:
         calls = self.start_call_fakes()
-        bash = shutil.which("bash")
+        bash, env = shutil.which("bash"), self.env()
         pid, master = pty.fork()
         if pid == 0:
-            os.chdir(ROOT)
-            os.execve(bash, [bash, str(OVERNIGHT / "driver.sh")], self.env())
+            try:
+                os.chdir(ROOT)
+                os.execve(bash, [bash, str(OVERNIGHT / "driver.sh")], env)
+            finally:
+                os._exit(127)
         call = 0
         try:
             self.assertTrue(self.wait_for(lambda: self.calls(calls)), "the driver started no call")
