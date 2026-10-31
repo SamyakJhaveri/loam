@@ -233,21 +233,177 @@ check_no_skip() {
 # never by a fixed list (loop-engineering, MIT, scripts/github-triage.mjs: /[\p{Cc}\p{Cf}]/gu): a Cf (zero-width,
 # bidi controls, tags, BOM, word joiner), a Cc other than tab, newline and CR, the variation selectors and the other
 # default-ignorable code points a Cf rule misses (Mn, Lo or unassigned, yet drawn as nothing; the whole plane-14
-# block U+E0000 to U+E0FFF carries bytes the way tags do), and an HTML comment. Unassigned code points in general
-# (Cn) pass, since Python's Unicode data reads newer emoji as Cn. The body is read as UTF-8 by Python, since
-# BSD and GNU grep differ on Unicode ranges; split('\n'), not splitlines(), so VT, FF and U+2028 are still read.
-# Each error names the line and the code point, never the hidden text.
+# block U+E0000 to U+E0FFF carries bytes the way tags do), and the same through a character reference. Unassigned
+# code points in general (Cn) pass, since Python's Unicode data reads newer emoji as Cn. The body is read as UTF-8 by
+# Python, since BSD and GNU grep differ on Unicode ranges; split('\n'), not splitlines(), so VT, FF and U+2028 are
+# still read, and a CR with no LF after it is rejected, since GitHub breaks the line there.
+# Markdown GitHub hides or draws over its text is found by one code-aware scan, failing closed (#452): text is code
+# only inside a column-0 fence or a code span paired on its own line, and everything else is prose, where any <
+# (comment, tag, autolink, declaration, CDATA), ![ (image), ]: (link or footnote definition), ]( (an inline link,
+# whose destination and title are not shown), a second $ in one block (math, a reference to $ included), and an
+# indented or contained fence are rejected. A misread rejects a visible example and never passes a hidden one:
+# whatever the scan calls code, GitHub shows as code. A backtick run left unpaired or longer than 80 (cmark-gfm's
+# MAXBACKTICKS), a backtick in a bare URL (to ASCII whitespace or <, as cmark-gfm ends it), and a | inside a span in
+# a table block turn spans off to the block's end. A ] in a span after a [ left open in the block is rejected, since
+# GitHub reads a link reference definition before spans, and so is a table row with more cells than the narrowest
+# delimiter row above it (a \| never splits a cell). Numeric references are decoded as cmark-gfm does (up to 8
+# digits; 0, surrogates and past U+10FFFF read as U+FFFD). A mermaid, geojson, topojson, stl or math fence is drawn,
+# a fence opener longer than 255 closes at a shorter run, and an info string outside INFO is not shown.
+# Each error names the line and the construct or code point, never the hidden text.
 IFS= read -r -d '' HIDDEN_PY << 'PY' || :
-import sys, unicodedata
+import html, re, sys, unicodedata
 IGNORABLE = {0x034F, 0x115F, 0x1160, 0x17B4, 0x17B5, 0x180B, 0x180C, 0x180D, 0x180F, 0x3164, 0xFFA0}
-for n, line in enumerate(sys.stdin.buffer.read().decode("utf-8", "surrogateescape").split("\n"), 1):
-    if "<!--" in line:
-        print(f"line {n} holds an HTML comment (<!--), which GitHub does not show")
+DRAWN = {"mermaid", "geojson", "topojson", "stl", "math"}
+CONTAINER = re.compile(r"(?:[ \t]*(?:>|[-+*](?=[ \t])|\d{1,9}[.)](?=[ \t])))*[ \t]*")
+ENTITY = re.compile(r"&(?:#([0-9]{1,8})|#[xX]([0-9A-Fa-f]{1,8})|[A-Za-z][A-Za-z0-9]{0,31});")
+INFO = {"", "done-checks", "sh", "bash", "python", "json", "yaml", "text", "diff", "md"}
+text = sys.stdin.buffer.read().decode("utf-8", "surrogateescape")
+lines = text.split("\n")
+said = set()
+
+def say(n, what):
+    if (n, what) not in said:
+        said.add((n, what))
+        print(f"line {n} {what}")
+
+def hidden(c):
+    o, cat = ord(c), unicodedata.category(c)
+    return (cat == "Cf" or (cat == "Cc" and c not in "\t\r") or 0xFE00 <= o <= 0xFE0F or 0xE0000 <= o <= 0xE0FFF
+            or 0xFFF0 <= o <= 0xFFF8 or o in IGNORABLE)
+
+def unref(m):  # the text a character reference stands for: numeric ones as cmark-gfm decodes them
+    if not (m.group(1) or m.group(2)):
+        return html.unescape(m.group())
+    o = int(m.group(1), 10) if m.group(1) else int(m.group(2), 16)
+    return chr(o) if 0 < o < 0x110000 and not 0xD800 <= o < 0xE000 else "\ufffd"
+
+def dollar(n):  # a second $ in one block outside code can open math
+    global dollars
+    dollars += 1
+    if dollars > 1:
+        say(n, "holds a $ after another in its block outside code, so GitHub may draw the text between them as math")
+
+def fence_open(s):  # the fence run when s opens a fence, else None
+    m = re.match(r"`{3,}|~{3,}", s)
+    return m.group() if m and not (s[0] == "`" and "`" in s[m.end():]) else None
+
+def blank(s):
+    return s.strip(" \t") == ""
+
+def cells(s):  # the cells GitHub splits a table row into, after any quote or list prefix
+    s = s[CONTAINER.match(s).end():].strip(" \t")
+    return len(re.findall(r"(?<!\\)\|", s[s.startswith("|"):len(s) - s.endswith("|")])) + 1
+
+def delimiter(s):  # whether s may be a GFM table delimiter row
+    return "-" in s and ("|" in s or ":" in s) and re.fullmatch(r"[ \t>|:-]*", s)
+
+def table_from(i):  # whether the block that starts at lines[i] holds a table delimiter row
+    for s in lines[i:]:
+        s = s.rstrip("\r")
+        if blank(s) or fence_open(s):
+            return False
+        if delimiter(s):
+            return True
+    return False
+
+def escaped(s, i):  # whether an odd backslash run comes before s[i]
+    b = i
+    while b > 0 and s[b - 1] == "\\":
+        b -= 1
+    return (i - b) % 2 == 1
+
+def prose(n, s):
+    global spans, brackets
+    i = 0
+    while i < len(s):
+        c = s[i]
+        if c == "`":
+            j = i
+            while j < len(s) and s[j] == "`":
+                j += 1
+            width = j - i - escaped(s, i)
+            if spans and 0 < width <= 80:
+                k = j
+                while k < len(s):
+                    if s[k] != "`":
+                        k += 1
+                        continue
+                    e = k
+                    while e < len(s) and s[e] == "`":
+                        e += 1
+                    if e - k == width:
+                        break
+                    k = e
+                if k < len(s) and not (table and "|" in s[j:k]):
+                    if brackets and "]" in s[j:k]:
+                        say(n, "holds a ] in a code span after an open [, which GitHub may read as a link reference definition it does not show")
+                    i = k + width
+                    continue
+                spans = False
+            i = j
+            continue
+        if s.startswith("<!--", i):
+            say(n, "holds an HTML comment (<!--) outside code, which GitHub does not show")
+        elif c == "<":
+            say(n, "holds a < outside code, which GitHub may read as a tag, an autolink or other markup it does not show")
+        elif c == "$":
+            dollar(n)
+        elif s.startswith("![", i):
+            say(n, "holds an image (![) outside code, which GitHub draws instead of its text")
+        elif s.startswith("]:", i):
+            say(n, "holds ]: outside code, which opens a link reference or footnote definition GitHub does not show")
+        elif s.startswith("](", i):
+            say(n, "holds a link (]() outside code, whose destination and title GitHub does not show")
+            brackets -= brackets > 0 and not escaped(s, i)
+        elif s.startswith(("://", "www."), i):
+            if "`" in re.match(r"[^ \t\r\n\v\f<]*", s[i:]).group():
+                spans = False
+        elif c == "&" and (m := ENTITY.match(s, i)):
+            for d in unref(m):
+                if d == "$":
+                    dollar(n)
+                elif hidden(d):
+                    say(n, f"holds a character reference to U+{ord(d):04X} ({unicodedata.category(d)}), a character GitHub does not show")
+        elif c == "[":
+            brackets += 1
+        elif c == "]" and brackets and not escaped(s, i):
+            brackets -= 1
+        i += 1
+
+if re.search(r"\r(?!\n|\Z)", text):
+    say(text[:re.search(r"\r(?!\n|\Z)", text).start()].count("\n") + 1,
+        "holds a carriage return with no newline after it, which GitHub reads as a line break")
+fence, spans, table, cols, brackets, dollars = None, True, table_from(0), 0, 0, 0
+for n, line in enumerate(lines, 1):
     for c in line:
-        o, cat = ord(c), unicodedata.category(c)
-        if (cat == "Cf" or (cat == "Cc" and c not in "\t\r") or 0xFE00 <= o <= 0xFE0F or 0xE0000 <= o <= 0xE0FFF
-                or 0xFFF0 <= o <= 0xFFF8 or o in IGNORABLE):
-            print(f"line {n} holds U+{o:04X} ({cat}), a character GitHub does not show")
+        if hidden(c):
+            say(n, f"holds U+{ord(c):04X} ({unicodedata.category(c)}), a character GitHub does not show")
+    s = line[:-1] if line.endswith("\r") else line
+    if fence:
+        m = re.match(r" {0,3}(`+|~+)[ \t]*$", s)
+        if m and m.group(1)[0] == fence[0] and len(m.group(1)) >= len(fence):
+            fence, spans, table, cols, brackets, dollars = None, True, table_from(n), 0, 0, 0
+        continue
+    if run := fence_open(s):
+        fence, info = run, s[len(run):].strip(" \t")
+        if len(run) > 255:
+            say(n, "opens a fence longer than 255 characters, which GitHub closes at a shorter run")
+        if (info.split() or [""])[0].lower() in DRAWN:
+            say(n, "opens a fence GitHub draws as a diagram, map, model or math instead of its text")
+        elif info not in INFO:
+            say(n, "gives its fence an info string GitHub does not show; use none, done-checks or a plain language name")
+        continue
+    if blank(s):
+        spans, table, cols, brackets, dollars = True, table_from(n), 0, 0, 0
+        continue
+    m = CONTAINER.match(s)
+    if m.end() and fence_open(s[m.end():]):
+        say(n, "indents a code fence or puts it in a list or quote, where GitHub may end it early")
+    if delimiter(s):
+        cols = min(cols or cells(s), cells(s))
+    elif cols and cells(s) > cols:
+        say(n, "holds more table cells than its delimiter row, and GitHub drops the extra")
+    prose(n, s)
 PY
 check_hidden_text() {
   local out e
