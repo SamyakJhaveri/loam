@@ -13,7 +13,7 @@ Everything here describes the target; a thing that exists at the time of writing
 - What Samyak does not want is written down as firmly as what he wants: Out of scope in every brief and ticket, Do not touch per ticket, ADRs from the design session, and the lean-critic on every diff.
 - One ticket, one worktree, one branch, one run directory; parallel runs gated by `MAX_PARALLEL` (`LOOP.md`).
 - One directive has one home; a duplicate is a bug.
-- Every harness component is a dated bet on a model weakness and must justify its keep after each upgrade: remove one at a time and replay the graders.
+- Every harness component is a dated bet on a model weakness and must justify its keep after each upgrade: remove one at a time and replay the graders; the register of bets, each with its date, weakness and retiring replay, is [BETS.md](BETS.md).
 - When Samyak does not know the solution, the factory proposes before it asks: options with evidence first, then Samyak picks.
 
 ## Stages
