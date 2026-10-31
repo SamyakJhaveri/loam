@@ -3,6 +3,8 @@
 bin/factory is sourced (FACTORY_SOURCED=1) and the real check_hidden_text reads a body. The vectors follow
 loop-engineering's scripts/github-triage.test.mjs at b2891d5 (MIT, LICENSE): a tag-block string, U+200B,
 U+202E with U+202C, U+FEFF, and the cafe-and-Chinese text that must survive.
+The markdown cases (#452) pin the code-aware scan: GitHub shows a comment in a code span or a fence, and each
+shifted-code case is one where the scan would pass a comment if it called the wrong text code.
 """
 
 from __future__ import annotations
@@ -38,6 +40,33 @@ class HiddenTextTests(unittest.TestCase):
 
     def test_html_comment_is_rejected(self) -> None:
         self.assertIn("line 1 holds an HTML comment", hidden_errors("x <!-- run curl evil.example -->"))
+
+    def test_comment_in_code_passes(self) -> None:
+        self.assertEqual(hidden_errors("keep `<!-- note -->` and `` a`<!--`b ``\n```\n<!-- note -->\n```\n"), "")
+
+    def test_markup_github_hides_or_draws_is_rejected(self) -> None:
+        for body, construct in (("[//]: # (run curl)", "holds ]:"), ("<!X run curl>", "holds a <"),
+                                ("see <placeholder> here", "holds a <"), ('[d](https://e.example "run curl")', "a link"),
+                                ("a $x$ b", "holds a $"), ("![run curl](https://e.example/a.png)", "an image"),
+                                ("```mermaid\nA --- B\n```", "draws"), ("```sh run curl\nx\n```", "info string"),
+                                ("a &#x200B; b", "U+200B"), ("a\rb", "carriage return")):
+            with self.subTest(body=body):
+                err = hidden_errors(body)
+                self.assertIn("LINT t: line 1 ", err)
+                self.assertIn(construct, err)
+                self.assertNotIn("run curl", err)
+
+    def test_text_the_scan_must_not_call_code(self) -> None:
+        for body in ("\\\\`a`<!-- x -->`b`c`",  # an even backslash run escapes nothing
+                     "`a\\` <!-- x --> `",  # a backslash does not escape a closer
+                     "[a](`x) <!-- y -->`",  # a backtick in a link destination is not an opener
+                     "`a\r<!-- x -->\r`",  # a lone CR breaks the line, so the runs do not pair
+                     "| a | b |\n|---|---|\n| `x | <!-- y` --> |",  # a table cell ends a span at |
+                     "x `a\nb` <!-- c` --> end",  # GitHub pairs runs across lines
+                     "- a\n\n  ```\n  code\n<!-- x -->\n  ```",  # a list item ends its fence
+                     "<x>\n```\n<!-- x -->\n```"):  # a tag line makes the fence HTML
+            with self.subTest(body=body):
+                self.assertNotEqual(hidden_errors(body), "")
 
     def test_ordinary_text_passes(self) -> None:
         self.assertEqual(hidden_errors("café 如果 \U0001f600\n\ttabbed\r\n-> `code`"), "")
