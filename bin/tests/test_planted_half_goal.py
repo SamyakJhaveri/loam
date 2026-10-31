@@ -7,6 +7,7 @@ Runs the real mutate.py over the frozen evals/clean bases.
 
 from __future__ import annotations
 
+import importlib.util
 import pathlib
 import re
 import subprocess
@@ -69,6 +70,22 @@ class HalfGoalTests(unittest.TestCase):
                         elif in_hunk:
                             ins, dels = ins + line.startswith("+"), dels + line.startswith("-")
                     self.assertEqual([int(n) for n in re.findall(r"\d+", summary)], [n for n in (files, ins, dels) if n])
+
+    def test_listed_bases_yield_no_mutant_of_their_class(self) -> None:
+        """A base on a skip list would plant a state the supervisor stops, or a label a careful judge contradicts."""
+        spec = importlib.util.spec_from_file_location("mutate", MUTATE)
+        mutate = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mutate)
+        with tempfile.TemporaryDirectory() as tmp:
+            out = pathlib.Path(tmp) / "out"
+            subprocess.run([sys.executable, str(MUTATE), str(ROOT / "evals/clean"), str(out)],
+                           check=True, capture_output=True)
+            for cls, bases in (("logic-bug", mutate.LOGIC_BUG_TRIPS), ("vacuous-check", mutate.CLOSED_SCOPE),
+                               ("out-of-scope", mutate.CLOSED_SCOPE)):
+                for base in bases:
+                    with self.subTest(cls=cls, base=base):
+                        self.assertTrue((ROOT / "evals/clean/judge" / base).is_dir(), "the list names no clean base")
+                        self.assertEqual(sorted(out.glob(f"*/{base}--{cls}")), [])
 
 
 if __name__ == "__main__":
