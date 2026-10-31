@@ -17,8 +17,8 @@
   },
   "sandbox": {
     "enabled": true, "failIfUnavailable": true, "allowUnsandboxedCommands": false, "autoAllowBashIfSandboxed": true,
-    "filesystem": {"allowWrite": ["~/.cache/uv"]},
-    "network": {"allowedDomains": ["pypi.org", "files.pythonhosted.org"]}
+    "filesystem": {"allowWrite": ["~/.cache/uv", "~/.local/share/uv/tools"]},
+    "network": {"allowedDomains": ["pypi.org", "files.pythonhosted.org"], "strictAllowlist": true}
   },
   "hooks": {
     "Stop": [{"hooks": [{"type": "command", "timeout": 900,

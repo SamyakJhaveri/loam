@@ -70,6 +70,7 @@ class WorkerPinTests(unittest.TestCase):
         self.assertIs(sandbox["enabled"], True)
         self.assertIs(sandbox["failIfUnavailable"], True)
         self.assertIs(sandbox["allowUnsandboxedCommands"], False)
+        self.assertIs(sandbox["network"]["strictAllowlist"], True)  # else bypassPermissions approves any host
         common = pathlib.Path(subprocess.run(
             ["git", "-C", str(self.tmp / "main"), "rev-parse", "--path-format=absolute", "--git-common-dir"],
             capture_output=True, text=True, check=True).stdout.strip())
