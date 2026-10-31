@@ -1575,6 +1575,9 @@ worker_round() { # round; leaves round-N.* only once the call produced a result
   if runs_workflow "$round"; then
     find "$RUN/tasks" -mindepth 1 -delete 2> /dev/null || finish stopped-environment "could not empty $RUN/tasks before the fan-out round"
   fi
+  # Each round writes its own mechanism.md, so an earlier round's account of a diff that has since moved never
+  # opens the PR; a round that writes none gets open_pr's fallback line (#330).
+  rm -f "${DECISIONS%/*}/mechanism.md"
   pf=$(build_worker_prompt "$round") || finish ticket-defect "a skill this ticket names resolves to no SKILL.md under ~/.claude/skills or the plugin cache; see the log"
   if [ "$WORKER_KIND" = codex ]; then
     # The Codex worker: JSONL stream is stdout, -o is the last message, < /dev/null keeps Codex off the
@@ -1585,7 +1588,8 @@ worker_round() { # round; leaves round-N.* only once the call produced a result
     # Codex's workspace-write sandbox mounts the workspace .codex read-only, and bubblewrap refuses the
     # root .codex because it is a symlink into seed/ (D12, #77). Swap it for a real copy of its target for
     # the call; it is restored before grading below. The worktree's commit also needs four git roots
-    # writable: the worktree gitdir, plus objects/refs/logs under the common dir (probe C2).
+    # writable: the worktree gitdir, plus objects/refs/logs under the common dir (probe C2). The worker's
+    # own directory outside the worktree holds decisions.md and mechanism.md, which it must write (#330).
     if [ -L "$WORKTREE/.codex" ]; then
       { codex_target=$(readlink -f "$WORKTREE/.codex") && rm "$WORKTREE/.codex" && cp -R "$codex_target" "$WORKTREE/.codex"; } \
         || finish stopped-environment "could not swap the .codex symlink for a real directory before the Codex round"
@@ -1594,7 +1598,7 @@ worker_round() { # round; leaves round-N.* only once the call produced a result
     fi
     cgd=$(git -C "$WORKTREE" rev-parse --absolute-git-dir)
     ccd=$(git -C "$WORKTREE" rev-parse --path-format=absolute --git-common-dir)
-    add_dirs=(--add-dir "$cgd" --add-dir "$ccd/objects" --add-dir "$ccd/refs" --add-dir "$ccd/logs")
+    add_dirs=(--add-dir "$cgd" --add-dir "$ccd/objects" --add-dir "$ccd/refs" --add-dir "$ccd/logs" --add-dir "${DECISIONS%/*}")
     start=$SECONDS
     call_start "$WORKTREE" ${t[@]+"${t[@]}"} env PATH="$CODEX_PATH:$PATH" codex exec --json -s workspace-write "${add_dirs[@]}" "$(cat "$pf")" -o "$RUN/round-$round.last.txt" > "$out" < /dev/null
     call_end worker; rc=$?

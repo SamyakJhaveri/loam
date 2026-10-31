@@ -28,6 +28,7 @@ echo '{"type":"system","subtype":"init"}'
 exit 124
 """
 FAKE_CODEX = """#!/usr/bin/env bash
+printf '%s\\n' "$@" > "$FAKE_ARGS"
 echo '{"type":"thread.started"}'
 [ -z "${FAKE_SUBJECT:-}" ] || git -c user.name=t -c user.email=t@t commit -q --allow-empty -m "$FAKE_SUBJECT"
 exit 124
@@ -74,6 +75,7 @@ class KilledRoundTests(unittest.TestCase):
         return subprocess.run(["bash", "-c", f". bin/factory\n{script}"], cwd=ROOT,
                               env={**env, "FACTORY_SOURCED": "1", "FACTORY_ROOT": str(ROOT),
                                    "FACTORY_RUNS_ROOT": str(self.top / "runs"), "FAKE_SUBJECT": subject,
+                                   "FAKE_ARGS": str(self.top / "codex-args"),
                                    "CLAUDE_CONFIG_DIR": str(self.top / "claude-config"),
                                    "PATH": f"{self.bin}:{env['PATH']}"},
                               capture_output=True, text=True, check=False)
@@ -117,6 +119,15 @@ class KilledRoundTests(unittest.TestCase):
         rows = self.ledger()
         self.assertEqual([(r["round"], r["role"], r["cost_usd"]) for r in rows], [(1, "worker", None)])
         self.assertIn(SUBJECT, proc.stderr)
+
+    def test_codex_round_may_write_the_worker_files_and_drops_an_earlier_paragraph(self) -> None:
+        # decisions.md and mechanism.md sit outside the worktree, so the sandbox must name their directory (#330),
+        # and an earlier round's paragraph must not describe this round's diff.
+        (self.run_dir / "mechanism.md").write_text("An earlier round's account.\n")
+        self.worker_round("codex", SUBJECT)
+        args = (self.top / "codex-args").read_text().splitlines()
+        self.assertIn(["--add-dir", str(self.run_dir)], [args[i:i + 2] for i in range(len(args) - 1)])
+        self.assertFalse((self.run_dir / "mechanism.md").exists())
 
 
 if __name__ == "__main__":
