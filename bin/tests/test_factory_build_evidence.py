@@ -15,6 +15,7 @@ import unittest
 ROOT = pathlib.Path(__file__).resolve().parents[2]
 GIT_ENV = {"GIT_AUTHOR_NAME": "t", "GIT_AUTHOR_EMAIL": "t@t", "GIT_COMMITTER_NAME": "t",
            "GIT_COMMITTER_EMAIL": "t@t", "GIT_CONFIG_NOSYSTEM": "1"}
+FENCE = "~~~~~~~~~~~~ evidence"  # bin/factory's FENCE: the graders read worker text only between these lines (#38)
 
 
 class BuildEvidenceTests(unittest.TestCase):
@@ -44,7 +45,7 @@ class BuildEvidenceTests(unittest.TestCase):
         (run / "round-1.measure").write_text("MEASURE-TEXT\n")
         (run / "decisions.md").write_text("DECISIONS-TEXT\n")
         (self.tmp / "rubric.md").write_text("RUBRIC-TEXT\n")
-        self.wt, self.run = wt, run
+        self.wt, self.run, self.base = wt, run, base
 
     def git(self, cwd: pathlib.Path, *args: str) -> str:
         return subprocess.run(["git", "-c", "commit.gpgsign=false", *args], cwd=cwd, env=self.env,
@@ -70,6 +71,10 @@ class BuildEvidenceTests(unittest.TestCase):
         self.assertIn("diff --git a/x.txt b/x.txt", out)
         self.assertIn("-plain old\n+plain new\n", out)
         self.assertNotIn("[content diff capped at", out)
+        # Five fenced sections (ticket, checks, measure, decisions, diff), each opened and closed.
+        self.assertEqual(out.splitlines().count(FENCE), 10)
+        self.assertIn(f"\n## Diff ({self.base[:8]}...HEAD)\n\n{FENCE}\n", out)
+        self.assertTrue(out.endswith(f"\n{FENCE}\n"))
         self.assertEqual((self.run / "round-1.diff").read_text().count("diff --git"), 2)
 
     def test_capped_evidence(self) -> None:
@@ -78,6 +83,7 @@ class BuildEvidenceTests(unittest.TestCase):
         self.assertIn("diff --git a/a b.md b/a b.md", out)
         self.assertNotIn("+plain new", out)
         self.assertIn("[content diff capped at 3 lines; the stat above is complete]", out)
+        self.assertTrue(out.endswith(f"[content diff capped at 3 lines; the stat above is complete]\n{FENCE}\n"))
 
 
 if __name__ == "__main__":
