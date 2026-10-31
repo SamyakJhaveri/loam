@@ -1,14 +1,17 @@
 #!/usr/bin/env bash
 # Overnight driver (jhaveris): one fresh headless Opus call per Loam factory PR, as protocol.md says.
-# Start: tmux new -d -s loam-night "bash -lc ~/.local/state/loam/overnight/driver.sh" ; stop: tmux kill-session -t loam-night
+# Start: tmux new -d -s loam-night "bash -lc ~/loam/bin/overnight/driver.sh" ; stop: tmux kill-session -t loam-night
+# The driver, its protocol and settings live in this directory and change only through a PR (#476); a call's
+# settings deny it any write here. Run state stays in O, outside the checkout bin/factory next pulls.
 # Speed-up (30 Oct 2026, Samyak's go): a free gh poll every 60 s starts a paid call only when a factory PR has no
 # outcome line; a call is ended 120 s after it writes its outcome line, since a finished `claude -p` can hang on a
 # pending wakeup; a merge launches the next ticket at once, under the lock the cron line takes.
 set -u
+D=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd) || exit 1
 O=~/.local/state/loam/overnight
 LOCK=~/.local/state/loam-factory/next.lock
 cd ~/loam || exit 1
-touch "$O/log.md" "$O/lessons.md" "$O/followups.md"
+mkdir -p "$O" && touch "$O/log.md" "$O/followups.md"
 stamp() { date -u +%FT%TZ; }
 # Free Loam's slot after a PR's outcome line: next counts a pr-opened run as holding it while ~/loam-<issue> exists
 # (bin/factory:1858-1861), and the call's sandbox cannot remove that worktree. Only a run still at pr-opened is touched.
@@ -39,7 +42,7 @@ launch_next() {
 run() { local pid done_at="" out cost to
   mkdir -p "$O/calls"; out="$O/calls/$(date -u +%Y%m%dT%H%M%SZ).json"; limited=0
   setsid env CLAUDE_CODE_SUBAGENT_MODEL=claude-opus-5-5 ANTHROPIC_DEFAULT_HAIKU_MODEL=claude-opus-5-5 ANTHROPIC_DEFAULT_SONNET_MODEL=claude-opus-5-5 \
-    claude -p --model claude-opus-5-5 --effort high --permission-mode bypassPermissions --settings "$O/settings.json" --max-turns 400 --output-format json "$1" \
+    claude -p --model claude-opus-5-5 --effort high --permission-mode bypassPermissions --settings "$D/settings.json" --max-turns 400 --output-format json "$1" \
     < /dev/null > "$out" 2>> "$O/driver.log" &
   pid=$!
   while kill -0 "$pid" 2> /dev/null; do
@@ -69,14 +72,14 @@ while :; do
   today=$(TZ=America/Los_Angeles date +%F)
   if [ "$(TZ=America/Los_Angeles date +%H)" = 07 ] && [ "$reported" != "$today" ]; then
     before=$(wc -l < "$O/log.md")
-    run "Read $O/protocol.md and write the Morning report it describes, then stop."; reported=$today
+    run "Read $D/protocol.md and write the Morning report it describes, then stop."; reported=$today
   fi
   pending || { sleep 60; continue; }
   # Build the next ticket while this PR is reviewed (Samyak, 31 Oct): MAX_PARALLEL=2 lets next launch one beside the
   # PR under review; with a second PR already open it launches nothing.
   launch_next
   before=$(wc -l < "$O/log.md")
-  run "Read $O/protocol.md and process one pull request as it says."
+  run "Read $D/protocol.md and process one pull request as it says."
   freed=0; reap
   [ "$freed" = 1 ] && launch_next
   # A call that wrote nothing, or found nothing to do, waits 10 minutes, so a PR the protocol will not pick

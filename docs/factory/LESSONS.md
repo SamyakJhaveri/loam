@@ -1,3 +1,9 @@
+# Lessons from the overnight driver
+
+One section per pull request the overnight driver reviewed, added on that PR's branch by `bin/overnight/protocol.md` step 7, so it merges with the PR that taught it.
+Paths and line numbers are as they were at that PR's commits.
+The earlier sections were carried over from jhaveris's state directory when the driver moved into the repository (#476).
+
 ## From PR #416 (issue #323), 2026-10-30
 
 - A committed test with a weaker fixture than the done-checks guards nothing. Done checks 2 and 3 of #323 used the real fallback (one high finding, file `-`) and a competing blocking review; the committed test used `findings: []` and a clean review (`bin/tests/test_factory_status_criteria.py:146,159` at `c116e00b`), so reversing the `if` order would still pass. The in-run reviewer, Codex and Fable each flagged it independently. Applied to #279 and #280 as Decisions lines.

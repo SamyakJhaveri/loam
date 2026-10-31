@@ -15,7 +15,9 @@
       "Bash(crontab *)",
       "Bash(rm -rf *)",
       "ScheduleWakeup",
-      "CronCreate"
+      "CronCreate",
+      "Edit(~/loam/bin/overnight/**)",
+      "Write(~/loam/bin/overnight/**)"
     ]
   },
   "autoMemoryEnabled": false,
@@ -23,6 +25,9 @@
     "filesystem": {
       "allowWrite": [
         "~/.local/state/loam"
+      ],
+      "denyWrite": [
+        "~/loam/bin/overnight"
       ]
     },
     "network": {
