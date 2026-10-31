@@ -23,7 +23,8 @@ import unittest
 ROOT = pathlib.Path(__file__).resolve().parents[2]
 GRADERS = ROOT / "cultivation/marketplace/sam-cc-setup/agents"
 PINS = ("CLAUDE_CODE_SUBAGENT_MODEL", "ANTHROPIC_DEFAULT_SONNET_MODEL", "ANTHROPIC_DEFAULT_HAIKU_MODEL")
-USER = {"attribution": {"commit": ""}, "env": {"USER_ONLY": "u", "CLAUDE_CODE_SUBAGENT_MODEL": "claude-user-1"},
+TOKEN = {"CLAUDE_CODE_OAUTH_TOKEN": "fixture-token"}  # bin/claude-account rewrites it live, so it is never frozen
+USER = {"attribution": {"commit": ""}, "env": {"USER_ONLY": "u", "CLAUDE_CODE_SUBAGENT_MODEL": "claude-user-1", **TOKEN},
         "permissions": {"deny": ["Bash(user-rule:*)"]},
         "hooks": {"Stop": [{"hooks": [{"type": "command", "command": "true"}]}]},
         "sandbox": {"excludedCommands": ["python3 *"], "filesystem": {"allowWrite": ["~/.codex"]},
@@ -67,7 +68,7 @@ class WorkerPinTests(unittest.TestCase):
     def frozen_env(self, **extra: str) -> tuple[dict[str, str], dict[str, str]]:
         settings = self.frozen_settings(**extra)
         source = json.loads((ROOT / "bin/factory.d/worker-settings.json").read_text())
-        source_env = {**USER["env"], **source.pop("env", {}), "UV_CACHE_DIR": str(self.tmp / "run/uv/cache"),
+        source_env = {**{k: v for k, v in USER["env"].items() if k not in TOKEN}, **source.pop("env", {}), "UV_CACHE_DIR": str(self.tmp / "run/uv/cache"),
                       "UV_TOOL_DIR": str(self.tmp / "run/uv/tools")}
         settings["sandbox"]["filesystem"].pop("allowWrite")
         # The user tier merges in as Claude Code merges tiers: lists concatenated, the worker's keys winning.

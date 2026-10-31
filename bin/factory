@@ -1057,21 +1057,23 @@ freeze() {
   # worker's keys winning, as Claude Code merges them.
   cgd=$(git -C "$WORKTREE" rev-parse --absolute-git-dir 2> /dev/null) && ccd=$(git_common "$WORKTREE") \
     && [ -n "$cgd" ] && [ -n "$ccd" ] || finish stopped-environment "could not read the git directories of $WORKTREE for the worker sandbox"
+  # bin/claude-account switches accounts by rewriting the user tier's CLAUDE_CODE_OAUTH_TOKEN, so the copy leaves it
+  # out and worker_round passes the live one. The rest of the user env may hold secrets too, so the copy is private
+  # to the operator, as ~/.claude/settings.json is.
   user="${CLAUDE_CONFIG_DIR:-$HOME/.claude}/settings.json"
-  user=$( { [ -f "$user" ] && cat "$user" || echo '{}'; } | jq -c 'del(.sandbox)' 2> /dev/null) \
-    || finish stopped-environment "could not read $user for the frozen worker settings"
+  [ -f "$user" ] || user=/dev/null
   mkdir -p "$RUN/uv/cache" "$RUN/uv/tools"
-  # The user tier's env may hold a token, so the copy is private to the operator, as ~/.claude/settings.json is.
-  ( umask 077; jq --argjson u "$user" --arg m "$WORKER_MODEL" --arg gd "$cgd" --arg cd "$ccd" --arg w "${DECISIONS%/*}" \
+  ( umask 077; jq --slurpfile u "$user" --arg m "$WORKER_MODEL" --arg gd "$cgd" --arg cd "$ccd" --arg w "${DECISIONS%/*}" \
     --arg t "$RUN/tasks" --arg uv "$RUN/uv" '
     def merge($a; $b): if ($a|type) == "object" and ($b|type) == "object"
       then reduce ($b|keys_unsorted[]) as $k ($a; .[$k] = merge($a[$k]; $b[$k]))
       elif ($a|type) == "array" and ($b|type) == "array" then $a + $b else $b end;
-    merge($u; .) | .env = (.env // {}) + {CLAUDE_CODE_SUBAGENT_MODEL: $m, CLAUDE_CODE_SUBAGENT_MODEL_FORCE: "1",
+    merge($u[0] // {} | del(.sandbox, .env.CLAUDE_CODE_OAUTH_TOKEN); .) | .env = (.env // {}) + {CLAUDE_CODE_SUBAGENT_MODEL: $m, CLAUDE_CODE_SUBAGENT_MODEL_FORCE: "1",
     ANTHROPIC_DEFAULT_SONNET_MODEL: $m, ANTHROPIC_DEFAULT_HAIKU_MODEL: $m,
     UV_CACHE_DIR: "\($uv)/cache", UV_TOOL_DIR: "\($uv)/tools"}
     | .sandbox.filesystem.allowWrite += [$gd, "\($cd)/objects", "\($cd)/refs", "\($cd)/logs", $w, $t, "\($uv)/cache", "\($uv)/tools"]' \
-    "$ROOT/bin/factory.d/worker-settings.json" > "$RUN/frozen/worker-settings.json" )
+    "$ROOT/bin/factory.d/worker-settings.json" > "$RUN/frozen/worker-settings.json" ) 2>> "$LOG" \
+    || finish stopped-environment "could not merge $user into the frozen worker settings"
   sed -e "s|<issue>|${ISSUE:-$KEY}|g" -e "s|<decisions>|$DECISIONS|g" -e "s|<mechanism>|${DECISIONS%/*}/mechanism.md|g" \
     "$ROOT/bin/factory.d/_common.md" > "$RUN/frozen/_common.md"
   for g in judge reviewer; do
@@ -1650,7 +1652,7 @@ call_gone() { # tenths of a second to wait -> 0 once nothing is left in CALL_PID
 }
 
 worker_round() { # round; leaves round-N.* only once the call produced a result
-  local round="$1" pf out="$RUN/pending.jsonl" res="$RUN/pending.result.json" t=() login_retried=0 le head0
+  local round="$1" pf out="$RUN/pending.jsonl" res="$RUN/pending.result.json" t=() login_retried=0 le head0 tok
   command -v timeout > /dev/null 2>&1 && t=(timeout -k 5 "$CALL_TIMEOUT_SEC")
   # The round's start, so a stop after a killed call can name the commits the call made (#319).
   head0=$(git -C "$WORKTREE" rev-parse HEAD 2> /dev/null) || head0=""
@@ -1718,6 +1720,10 @@ worker_round() { # round; leaves round-N.* only once the call produced a result
   while :; do
     log "worker call: round $round model=$WORKER_MODEL effort=$WORKER_EFFORT advisor=${WORKER_ADVISOR:-off} budget=$ROUND_BUDGET_USD usd, prompt=$(wc -c < "$pf") bytes"
     rm -f "$out" "${DECISIONS%/*}/mechanism.md"   # also on a retried call, as for the Codex call above (#330)
+    # The call loads no settings tier, so the account token bin/claude-account last wrote is read here, after any
+    # switch, and passed in the environment, never on a command line (freeze).
+    tok=$(jq -r '.env.CLAUDE_CODE_OAUTH_TOKEN // empty' "${CLAUDE_CONFIG_DIR:-$HOME/.claude}/settings.json" 2> /dev/null)
+    [ -z "$tok" ] || { printf -v CLAUDE_CODE_OAUTH_TOKEN '%s' "$tok" && export CLAUDE_CODE_OAUTH_TOKEN; }
     call_start "$WORKTREE" ${t[@]+"${t[@]}"} env LOAM_CHECKS="$RUN/frozen/checks.sh" \
         CLAUDE_CODE_SUBAGENT_MODEL="$WORKER_MODEL" CLAUDE_CODE_SUBAGENT_MODEL_FORCE=1 \
         ANTHROPIC_DEFAULT_SONNET_MODEL="$WORKER_MODEL" ANTHROPIC_DEFAULT_HAIKU_MODEL="$WORKER_MODEL" claude -p \
