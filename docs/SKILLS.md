@@ -20,7 +20,7 @@ A skill stays in the lead's list only if Claude should pick it unprompted and no
 | 1. Intake | `catchup` | | `/sam-cc-setup:brief`, `/pstack:sharpen`, `/pstack:in-your-own-words`; too big for one session: `/pstack:figure-it-out` |
 | 2. Understand | none; send a scout or worker | `how`, `why` | `/pstack:teach`, `/pstack:how`, `/pstack:why` |
 | 3. Plan and design | none | | `/sam-cc-setup:plan-review`; contested design, concurrency or cross-cutting: `/pstack:poteto-mode` |
-| 4. Build | a few lines inline, else one `worker`; `run`, `loop` | `tdd` (cheap test path only), the principles, `show-me-your-work` on long unattended runs | `/sam-cc-setup:run-spec` (spec with tickets), `bin/factory` (queued tickets), `/pstack:poteto-mode` (pushes a branch, never merges) |
+| 4. Build | a few lines inline, else one `worker`; `run`, `loop` | `tdd` (cheap test path only), the principles, `show-me-your-work` on long unattended runs | `/sam-cc-setup:run-spec` (spec with tickets), `bin/factory` (queued tickets), `/sam-cc-setup:factory-watch` (watch the factory runs), `/pstack:poteto-mode` (pushes a branch, never merges) |
 | 5. Review | `code-review` (bugs), `simplify` (quality) | `interrogate`, `blast-radius` | `/sam-cc-setup:codex-review` (Codex second opinion on a diff), `/pstack:no-comments`; after a loop: the `lean-critic` agent |
 | 6. Debug and measure | none | `principle-fix-root-causes`, `principle-attack-the-premise`, `benchmark-checklist`, `principle-explain-the-number` | `/hypothesis-tree`, `/experiment-loop` |
 | 7. Research | none | | `/sam-cc-setup:research-gap` (research questions, a gap or novelty claim, prior work for one claim, logging a paper read in full), the `deep-research` workflow, `/new-model-workflow` |

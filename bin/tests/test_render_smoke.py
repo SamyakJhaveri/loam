@@ -53,6 +53,35 @@ FORBIDDEN_FAMILIES = (
 )
 
 
+# The empty read-only files the Claude Code sandbox creates on Linux to mask protected paths
+# (anthropics/claude-code#46165). The .claude/ ones Claude Code also reads as real directories
+# are in CLAUDE_DIR_PLACEHOLDERS. A render keeps SHARED_CONFIG visible: Claude Code writes those
+# files for the project to commit.
+CLAUDE_DIR_PLACEHOLDERS = ("agents", "commands", "output-styles", "routines", "workflows")
+SANDBOX_PLACEHOLDERS = (
+    ".bash_profile", ".bashrc", ".gitconfig", ".gitmodules", ".idea", ".mcp.json", ".profile",
+    ".ripgreprc", ".vscode", ".zprofile", ".zshrc",
+    ".claude/.cc-writes", ".claude/launch.json", ".claude/loop.md", ".claude/scheduled_tasks.json",
+) + tuple(".claude/" + d for d in CLAUDE_DIR_PLACEHOLDERS)
+SHARED_CONFIG = (".claude/launch.json", ".claude/loop.md", ".mcp.json")
+
+
+def _status(repo: pathlib.Path, *args: str) -> str:
+    # core.excludesFile=/dev/null keeps the host's global ignore file out of the read.
+    return subprocess.run(
+        ["git", "-c", "core.excludesFile=/dev/null", "-C", str(repo), "status", "--porcelain", *args],
+        check=True, capture_output=True, text=True, env=GIT_ENV,
+    ).stdout
+
+
+def _plant_placeholders(root: pathlib.Path, claude_dir: str = ".claude") -> None:
+    for rel in SANDBOX_PLACEHOLDERS:
+        path = root / (claude_dir + rel.removeprefix(".claude") if rel.startswith(".claude/") else rel)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.touch()
+        path.chmod(0o444)
+
+
 def _copier():
     for cmd in (["copier"], ["uvx", "copier"]):
         try:
@@ -159,6 +188,21 @@ class RenderSmoke(unittest.TestCase):
     def test_gitignore_ignores_the_memory_symlink(self):
         lines = (self.out / ".gitignore").read_text().splitlines()
         self.assertIn(".loam/memory", lines)
+
+    def test_gitignore_ignores_the_sandbox_placeholders(self):
+        # #473: the placeholders left a render dirty, so `copier update` refused it.
+        with tempfile.TemporaryDirectory() as tmp:
+            proj = pathlib.Path(tmp) / "render"
+            shutil.copytree(self.out, proj, symlinks=True)
+            _plant_placeholders(proj)
+            self.assertEqual(_status(proj), "".join(f"?? {p}\n" for p in SHARED_CONFIG))
+            for d in CLAUDE_DIR_PLACEHOLDERS:
+                (proj / ".claude" / d).unlink()
+                (proj / ".claude" / d).mkdir()
+                (proj / ".claude" / d / "x.md").write_text("x\n")
+            untracked = _status(proj, "--untracked-files=all").splitlines()
+            for d in CLAUDE_DIR_PLACEHOLDERS:
+                self.assertIn(f"?? .claude/{d}/x.md", untracked)
 
     def test_mem_inspect_renders_executable(self):
         script = self.out / "bin/mem-inspect"
@@ -379,6 +423,24 @@ class RenderSmoke(unittest.TestCase):
             if json.loads(r.stdout).get("decision") != "forbidden":
                 allowed.append(" ".join(cmd))
         self.assertEqual(allowed, [], "codex execpolicy does not forbid these Claude deny spellings")
+
+
+class LoamGitignore(unittest.TestCase):
+    def test_loam_gitignore_ignores_the_sandbox_placeholders(self):
+        # In Loam the .claude/ placeholders land under seed/.claude/ through the root .claude symlink.
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = pathlib.Path(tmp)
+            subprocess.run(["git", "init", "-q", str(repo)], check=True, env=GIT_ENV)
+            shutil.copy(ROOT / ".gitignore", repo / ".gitignore")
+            _plant_placeholders(repo, "seed/.claude")
+            self.assertEqual(_status(repo), "?? .gitignore\n")
+            for d in CLAUDE_DIR_PLACEHOLDERS:
+                (repo / "seed/.claude" / d).unlink()
+                (repo / "seed/.claude" / d).mkdir()
+                (repo / "seed/.claude" / d / "x.md").write_text("x\n")
+            untracked = _status(repo, "--untracked-files=all").splitlines()
+            for d in CLAUDE_DIR_PLACEHOLDERS:
+                self.assertIn(f"?? seed/.claude/{d}/x.md", untracked)
 
 
 class UpdateSmoke(unittest.TestCase):
