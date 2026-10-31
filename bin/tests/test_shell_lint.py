@@ -212,7 +212,7 @@ class ShellLintTest(unittest.TestCase):
 
     def test_guarded_factory_passes(self) -> None:
         # bin/factory runs timeout behind command -v timeout (#426), so the file passes; without the guard its
-        # timeout calls fail, but not the word timeout in a `for` list.
+        # timeout calls fail, but not the word timeout in a `for` list. An -nt appended to it fails on its own line (#471).
         text = (ROOT / "bin/factory").read_text(encoding="utf-8")
         res = lint({"factory": text})
         self.assertEqual(res.returncode, 0, res.stdout + res.stderr)
