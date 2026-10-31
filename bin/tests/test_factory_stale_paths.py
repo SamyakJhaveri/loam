@@ -67,6 +67,18 @@ class StalePaths(unittest.TestCase):
         self.assertEqual(self.scan("Read `.claude/rules/x.md`.", (f"{link}/.claude/rules/x.md", True)),
                          [".claude/rules/x.md"])
 
+    def test_names_with_spaces_and_punctuation(self) -> None:
+        for name in ("docs/old guide.md", "docs/[slug].md", "docs/@scope/gone.md", "docs/$name.md"):
+            with self.subTest(name=name):
+                self.assertEqual(self.scan(f"Read `{name}`.", (f"{self.wt}/{name}", True)), [name])
+
+    def test_parent_component_and_two_spellings(self) -> None:
+        # .claude/.. is seed/, not the worktree root, and one missing file read two ways is listed once.
+        self.assertEqual(self.scan("Read `seed/docs/here.md`.", (f"{self.wt}/.claude/../docs/here.md", True)),
+                         ["seed/docs/here.md"])
+        self.assertEqual(self.scan("Read `seed/.claude/rules/x.md`.", (f"{self.wt}/.claude/rules/x.md", True),
+                                   (f"{self.wt}/seed/.claude/rules/x.md", True)), [".claude/rules/x.md"])
+
     def test_home_path_outside_worktree(self) -> None:
         self.assertEqual(self.scan("Read `~/notes/x.md`.", (f"{self.home}/notes/x.md", True)), [f"{self.home}/notes/x.md"])
 

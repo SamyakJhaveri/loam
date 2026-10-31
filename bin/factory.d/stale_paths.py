@@ -8,11 +8,12 @@ Usage:
 paired with its tool_result by id; a result with is_error true is a failed Read. Its path, relative to
 the current directory (the worktree), is printed when the ticket or a doc names it and it still does
 not exist, so a file the round created after a failed first Read is not stale. A path is named when a
-word of the text resolves to the same file as the Read: `~` expanded, a relative word joined to the
-worktree, symlinks followed, so `.claude/x.md`, `./seed/.claude/x.md` and the absolute path all name
-one file, while `x.md.bak` or `x.md~` do not name `x.md`. One path per line, once, sorted. A missing
-doc is skipped, and so is a stream line that is not JSON (a killed call can leave a truncated last
-line). Exit 0 whatever it finds: the list informs, it does not grade.
+word of the text, or a backticked span with its spaces, resolves to the same file as the Read: `~`
+expanded, a relative word joined to the worktree, symlinks followed, so `.claude/x.md`,
+`./seed/.claude/x.md` and the absolute path all name one file, while `x.md.bak` or `x.md~` do not name
+`x.md`. One path per line, once per file, sorted. A missing doc is skipped, and so is a stream line
+that is not JSON (a killed call can leave a truncated last line). Exit 0 whatever it finds: the list
+informs, it does not grade.
 """
 
 import json
@@ -20,7 +21,8 @@ import os
 import re
 import sys
 
-WORD = re.compile(r"[\w.~/+-]+")  # backticks, quotes, brackets, colons and spaces end a path
+WORD = re.compile(r"[\w.~/+@$-]+")  # quotes, brackets, colons and spaces end a bare path
+CODE = re.compile(r"`([^`\n]+)`")  # a backticked span is one path, spaces and brackets included
 
 
 def blocks(stream):
@@ -72,16 +74,19 @@ def main(argv):
             with open(doc, encoding="utf-8", errors="replace") as f:
                 text += f.read() + "\n"
     root = os.path.realpath(os.getcwd())
-    named = {resolve(word.rstrip("."), root) for word in WORD.findall(text) if word.rstrip(".")}
-    stale = set()
+    words = [w.rstrip(".") for w in WORD.findall(text)] + [w.strip() for w in CODE.findall(text)]
+    named = {resolve(w, root) for w in words if w}
+    stale = {}  # resolved file -> the spellings it was read by
     for path in failed_reads(argv[1]):
         full = resolve(path, root)
         if os.path.exists(full) or full not in named:
             continue
-        # Show the Read's own spelling (.claude/x, not seed/.claude/x) when it sits in the worktree.
+        # Show the Read's own spelling (.claude/x, not seed/.claude/x) when it sits in the worktree, unless
+        # it holds a `..`, which normpath would collapse before the symlink it follows (.claude/../x).
         lexical = os.path.normpath(os.path.join(root, os.path.expanduser(path)))
-        stale.add(inside(lexical, root) or inside(full, root) or lexical)
-    for path in sorted(stale):
+        shown = None if ".." in path.split(os.sep) else inside(lexical, root)
+        stale.setdefault(full, set()).add(shown or inside(full, root) or full)
+    for path in sorted(min(spellings) for spellings in stale.values()):
         print(path)
 
 
