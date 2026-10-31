@@ -36,7 +36,6 @@ import shutil
 import subprocess
 import sys
 import tempfile
-import tomllib
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
@@ -121,9 +120,10 @@ def config_drift_md5():
 
 def codex_model():
     try:
+        import tomllib  # Python 3.11+; an older python3 reports none rather than failing the run
         with open(Path.home() / ".codex" / "config.toml", "rb") as fh:
             m = tomllib.load(fh).get("model")
-    except (OSError, tomllib.TOMLDecodeError):
+    except (ImportError, OSError, ValueError):
         return "none"
     return m if isinstance(m, str) and m else "none"
 
@@ -256,7 +256,9 @@ def main(argv):
             if not p.is_file():
                 continue
             rep = raw_reply(p)
-            usage = rep.get("modelUsage") if rep else None
+            if rep is None:  # unparseable: an infra error the table counts, not a served model
+                continue
+            usage = rep.get("modelUsage")
             served = sorted(usage) if isinstance(usage, dict) else []
             bad = [s for s in served if not s.startswith(m)] if served else ["no modelUsage"]
             off += [f"model-eval: {name(c)} {case.name} served by {s}" for s in bad]
