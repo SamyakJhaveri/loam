@@ -15,11 +15,12 @@
 # <root> defaults to FACTORY_HELDOUT_ROOT, which only this script reads. The block's output, with every check name and
 # reason, stays in <root>/<slug>/<key>/out/<span>/round-<n>; that file is also the round's record, written before the
 # block runs, so the block runs at most once per key and round within a span.
-# The block runs the candidate's code, so it runs inside a bwrap boundary: no network, its own PID namespace, the
-# host read-only but for the temp folder, no /proc, and <root> and the spool hidden under empty read-only mounts. The block
-# reaches the launcher on a pipe, which the launcher drains and closes before the block runs, so no file, command
-# line or open descriptor the candidate can reach holds it; the output leaves on a pipe for the same reason. A host
-# where the boundary does not start answers nothing, and the supervisor's wait ends the run.
+# The block runs the candidate's code, so it runs inside a bwrap boundary: no network, its own PID namespace, no /proc,
+# of the host only /usr and /etc read-only (no /run, /var or /home, so no host socket), and <root> and the spool hidden
+# under empty read-only mounts. The block reaches the launcher on a pipe, which the launcher drains and closes before
+# the block runs, so no file, command line or open descriptor the candidate can reach holds it; the output leaves on a
+# pipe for the same reason. A host where the boundary does not start answers nothing, and the supervisor's wait ends
+# the run.
 set -uo pipefail
 
 spool=${1:-}
@@ -36,15 +37,50 @@ T=(); command -v timeout > /dev/null 2>&1 && T=(timeout -k 5 3000)   # under the
 sha256() { if command -v sha256sum > /dev/null 2>&1; then sha256sum < "$1"; else shasum -a 256 < "$1"; fi | cut -d' ' -f1; }
 name_ok() { [[ "$1" =~ ^[A-Za-z0-9_.-]+$ ]] && [ "$1" != . ] && [ "$1" != .. ]; }
 
-# boundary CMD...: CMD in the boundary, its cwd and HOME a folder under the temp folder ($tree). The temp folder is the
-# one writable part of the host, since a block may keep a scratch file there; the service unit runs with PrivateTmp, so
-# it is the service's own and nothing the candidate writes there reaches the factory user. /proc is an empty mount: a
-# candidate lists no process and reads no other process's command line or descriptors (so no `<(...)` in a block).
+# The host part of the boundary: /usr and /etc read-only, and the top-level links into /usr. No /run, /var or /home, so
+# no host socket is reachable (a read-only mount still lets a process connect to a socket in it): not the held-out
+# user's systemd manager, which could start a process outside the boundary, nor any other.
+SYS=(--ro-bind /usr /usr --ro-bind /etc /etc)
+for d in bin sbin lib lib32 lib64 libx32; do
+  if [ -L "/$d" ]; then SYS+=(--symlink "$(readlink "/$d")" "/$d"); elif [ -d "/$d" ]; then SYS+=(--ro-bind "/$d" "/$d"); fi
+done
+
+# boundary CMD...: CMD in the boundary, its cwd and HOME the export folder ($tree), the one writable host folder, plus
+# BIND (this call's read-only mounts) and WIDE. /tmp is a fresh tmpfs, but for a request the service's own user wrote
+# WIDE also binds the temp folder writable, so a block may keep a scratch file there: that user holds <root> already,
+# so nothing the candidate writes there tells it more. For a request another user wrote (the factory user on the
+# runner), nothing the candidate writes outlives the boundary but the export folder, which sits in a 0700 folder the
+# boundary does not show. /proc is an empty mount: a candidate lists no process and reads no other process's command
+# line or descriptors (so no `<(...)` in a block).
 boundary() {
   ${T[@]+"${T[@]}"} bwrap --unshare-all --die-with-parent --new-session --clearenv \
-    --setenv PATH /usr/local/bin:/usr/bin:/bin --setenv HOME "$tree" --setenv TMPDIR "$tmp" \
-    --ro-bind / / --bind "$tmp" "$tmp" --tmpfs "$root" --remount-ro "$root" --tmpfs "$spool" --remount-ro "$spool" \
+    --setenv PATH /usr/local/bin:/usr/bin:/bin --setenv HOME "$tree" --setenv TMPDIR "${WIDE[1]:-/tmp}" \
+    "${SYS[@]}" --tmpfs /tmp ${WIDE[@]+"${WIDE[@]}"} --bind "$tree" "$tree" ${BIND[@]+"${BIND[@]}"} \
+    --tmpfs "$root" --remount-ro "$root" --tmpfs "$spool" --remount-ro "$spool" \
     --tmpfs /proc --remount-ro /proc --dev /dev --chdir "$tree" -- "$@"
+}
+
+# gitdirs WORKTREE -> the worktree's git dir and common dir, real paths, read from files and never from git, whose
+# config the candidate holds. Neither may be /, nor hold or sit inside <root> or the spool.
+gitdirs() {
+  local g c p
+  if [ -d "$1/.git" ]; then g=$1/.git
+  else
+    IFS= read -r g < "$1/.git" && [[ "$g" == "gitdir: "* ]] || return 1
+    g=${g#gitdir: }; [[ "$g" == /* ]] || g=$1/$g
+  fi
+  g=$(cd "$g" && pwd -P) || return 1; c=$g
+  if [ -f "$g/commondir" ]; then
+    IFS= read -r c < "$g/commondir" || return 1
+    [[ "$c" == /* ]] || c=$g/$c
+    c=$(cd "$c" && pwd -P) || return 1
+  fi
+  for p in "$1" "$g" "$c"; do
+    case "$p/" in /|"$root"/*|"$spool"/*) return 1 ;; esac
+    case "$root/" in "$p"/*) return 1 ;; esac
+    case "$spool/" in "$p"/*) return 1 ;; esac
+  done
+  printf '%s\n%s\n' "$g" "$c"
 }
 
 reply() { # id word n
@@ -57,7 +93,7 @@ reply() { # id word n
 LAUNCHER='s=$(cat <&3); exec 3<&-; eval "unset s; $s"'
 
 serve() { # id -> 0 once it wrote the reply
-  local id="$1" line slug="" key="" wt="" sha="" round="" kind="" dir psum n span mark out rc
+  local id="$1" line slug="" key="" wt="" sha="" round="" kind="" dir psum n span mark out rc gd box
   while IFS= read -r line || [ -n "$line" ]; do
     case "$line" in
       slug=*) slug=${line#slug=} ;; key=*) key=${line#key=} ;; worktree=*) wt=${line#worktree=} ;;
@@ -86,14 +122,19 @@ serve() { # id -> 0 once it wrote the reply
   if [ -e "$out" ]; then
     n=$((n + 1)); printf '%s %s %s\n' "$psum" "$n" "$span" > "$dir/probe"; reply "$id" refused "$n"; return
   fi
-  # The commit, exported inside the boundary too: git archive runs the filters the worktree's config names.
-  tree=$(mktemp -d "$tmp/heldout-serve.XXXXXX") || return 1
+  # The commit, exported inside the boundary too: git archive runs the filters the worktree's config names. Only this
+  # step sees the worktree and its git folders, read-only.
+  gd=$(gitdirs "$wt") || { echo "heldout-serve: $wt has no git folders it may show, for request $id; left pending" >&2; return 1; }
+  BIND=(--ro-bind "$wt" "$wt"); while IFS= read -r line; do BIND+=(--ro-bind "$line" "$line"); done <<< "$gd"
+  WIDE=(); [ "$(stat -c %u "$spool/requests/$id")" = "$(id -u)" ] && WIDE=(--bind "$tmp" "$tmp")
+  box=$(mktemp -d "$tmp/heldout-serve.XXXXXX") && tree=$box/t && mkdir "$tree" || return 1
   if ! boundary bash -c 'set -o pipefail; git -c safe.directory="*" -C "$1" archive --format=tar "$2" | tar -x -f - -C "$3"' \
     _ "$wt" "$sha" "$tree" < /dev/null > /dev/null 2>&1; then
     echo "heldout-serve: could not export $sha from $wt for request $id; left pending" >&2
-    chmod -R u+w "$tree" 2> /dev/null; rm -rf "$tree"
+    chmod -R u+w "$box" 2> /dev/null; rm -rf "$box"
     return 1
   fi
+  BIND=()
   mkdir -p "$dir/out/$span" && : > "$out" || return 1
   n=$((n + 1)); printf '%s %s %s\n' "$psum" "$n" "$span" > "$dir/probe"
   # The end line carries a random mark the candidate never sees, so it cannot print a passing end of its own.
@@ -101,7 +142,7 @@ serve() { # id -> 0 once it wrote the reply
   boundary bash -c "$LAUNCHER" 3< <(cat "$lib"; printf '\n'; cat "$dir/checks.sh"
     printf '\nprintf "\\nEND %s\\n"\nexit $((n_fail > 0))\n' "$mark") < /dev/null 2>&1 | cat > "$out"
   rc=${PIPESTATUS[0]}
-  chmod -R u+w "$tree" 2> /dev/null; rm -rf "$tree"
+  chmod -R u+w "$box" 2> /dev/null; rm -rf "$box"
   if [ "$rc" -eq 0 ] && [ "$(tail -n 1 "$out")" = "END $mark" ] && ! grep -q '^FAIL' "$out"; then
     reply "$id" pass "$n"
   else
@@ -109,8 +150,9 @@ serve() { # id -> 0 once it wrote the reply
   fi
 }
 
-tree=$tmp
-boundary true < /dev/null > /dev/null 2>&1 || { echo "heldout-serve: the bwrap boundary does not start here; nothing answered" >&2; exit 3; }
+BIND=(); WIDE=(); tree=$(mktemp -d "$tmp/heldout-serve.XXXXXX") || exit 2
+boundary true < /dev/null > /dev/null 2>&1; rc=$?; rmdir "$tree"
+[ "$rc" = 0 ] || { echo "heldout-serve: the bwrap boundary does not start here; nothing answered" >&2; exit 3; }
 # Until a pass answers nothing: a request that lands mid-pass is served before the script exits.
 served=1
 while [ "$served" = 1 ]; do
