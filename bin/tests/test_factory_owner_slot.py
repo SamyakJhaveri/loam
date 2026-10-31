@@ -3,7 +3,7 @@
 Each test writes a run dir with status `running` and an `owner` line, sources bin/factory (FACTORY_SOURCED=1) with
 `alert` stubbed to a file, and asks holds_slot. A freed run reads stopped-environment and alerts once; a held one
 keeps `running` and sends nothing. A run dir with a `lease` file is judged by the flock lease alone (LeaseSlotTests);
-one without it by the owner line (OwnerSlotTests).
+one without it by the owner line (OwnerSlotTests). NextTickTests ask through cmd_next, whose --dry-run only looks.
 """
 
 from __future__ import annotations
@@ -85,6 +85,31 @@ class SlotCase(unittest.TestCase):
                               stdin=subprocess.DEVNULL, capture_output=True, text=True, check=False)
         self.assertIn(proc.stdout.strip(), ("held", "free"), proc.stderr)
         return proc.stdout.strip() == "held"
+
+    def hold(self, script: str) -> int:
+        # A shell in a session of its own takes the lease on fd 9, then runs script, which touches $2 once it is ready.
+        ready = self.top / "ready"
+        p = subprocess.Popen(["bash", "-c", f'exec 9>> "$1" && flock -n 9 && {{ {script}; }}', "_",
+                              str(self.run_dir / "lease"), str(ready)], start_new_session=True)
+        self.addCleanup(p.wait)   # cleanups run last in, first out: the kill first
+        self.addCleanup(lambda: subprocess.run(["pkill", "-KILL", "-g", str(p.pid)], check=False))
+        wait_until(ready.exists)
+        return p.pid
+
+    def tick(self, dry: bool) -> subprocess.CompletedProcess[str]:
+        # One cmd_next with the gates stubbed and no frontier, so a slot counted free ends at `frontier query failed`
+        # and a held one at `nothing to launch`; ROOT is the temp dir, so a real tick's pull step never touches the repo.
+        stubs = ("assert_target_ready() { :; }; claude_logged_in() { :; }; claude_version_ok() { :; }; "
+                 "target_repo() { :; }; pr_closed_events() { :; }; grader_file() { :; }")
+        script = (f". bin/factory\nROOT='{self.top}'; LOG='{self.top}/factory.log'\n"
+                  f"alert() {{ printf '%s\\n' \"$*\" >> '{self.alerts}'; }}\n{stubs}\n"
+                  f"cmd_next{' --dry-run' if dry else ''}; :")
+        base = {k: v for k, v in os.environ.items() if k not in INHERITED}
+        return subprocess.run(["bash", "-c", script], cwd=ROOT,
+                              env={**base, "FACTORY_SOURCED": "1", "FACTORY_ROOT": str(ROOT),
+                                   "FACTORY_RUNS_ROOT": str(self.top / "runs"), "FACTORY_MAX_PARALLEL": "1",
+                                   "PATH": self.path},
+                              stdin=subprocess.DEVNULL, capture_output=True, text=True, check=False)
 
     def supervise(self, call: str, prelude: str = "") -> tuple[subprocess.Popen, list[int]]:
         # A supervisor in a session of its own runs `sh -c call` through call_start, so the call has a session of its
@@ -265,16 +290,6 @@ class LeaseSlotTests(SlotCase):
         super().setUp()
         (self.run_dir / "lease").touch()
 
-    def hold(self, script: str) -> int:
-        # A shell in a session of its own takes the lease on fd 9, then runs script, which touches $2 once it is ready.
-        ready = self.top / "ready"
-        p = subprocess.Popen(["bash", "-c", f'exec 9>> "$1" && flock -n 9 && {{ {script}; }}', "_",
-                              str(self.run_dir / "lease"), str(ready)], start_new_session=True)
-        self.addCleanup(p.wait)   # cleanups run last in, first out: the kill first
-        self.addCleanup(lambda: subprocess.run(["pkill", "-KILL", "-g", str(p.pid)], check=False))
-        wait_until(ready.exists)
-        return p.pid
-
     def test_no_holder_frees_the_slot_once_though_the_owner_pid_lives(self) -> None:
         self.owner(f"{os.getpid()} {lstart(os.getpid())}")
         self.assert_freed()
@@ -434,6 +449,49 @@ class LeaseSlotTests(SlotCase):
         self.assertTrue(self.holds())
         self.assertFalse((self.run_dir / "status").exists())
         self.assertFalse(self.alerts.exists())
+
+
+class NextTickTests(SlotCase):
+    """cmd_next counts a run whose supervisor is gone as free; --dry-run only looks (#469), a real tick reaps it."""
+
+    def setUp(self) -> None:
+        super().setUp()
+        (self.run_dir / "launched").touch()
+        self.owner(f"{dead_pid()} {OLD}")
+
+    def test_dry_run_counts_a_dead_owner_free_and_writes_nothing(self) -> None:
+        proc = self.tick(dry=True)
+        self.assertIn("frontier query failed", proc.stderr)
+        self.assertEqual((self.run_dir / "status").read_text(), "running\n")
+        self.assertFalse(self.alerts.exists())
+        self.assertFalse((self.run_dir / "owner.lock").exists())
+
+    def test_real_tick_reaps_a_dead_owner_with_one_alert(self) -> None:
+        proc = self.tick(dry=False)
+        self.assertIn("frontier query failed", proc.stderr)
+        self.assertEqual((self.run_dir / "status").read_text(), "stopped-environment\n")
+        self.assertEqual(len(self.alerts.read_text().splitlines()), 1)
+
+
+@unittest.skipUnless(HAVE_FLOCK, "the lease needs flock(1) and bash 4.1+")
+class LeaseNextTickTests(NextTickTests):
+    """The same over a run dir with a `lease`: one no process holds counts free, and --dry-run still writes nothing."""
+
+    def setUp(self) -> None:
+        super().setUp()
+        (self.run_dir / "lease").touch()
+
+    def test_dry_run_leaves_a_held_lease_and_a_gone_owner_alone(self) -> None:
+        holder = self.hold('touch "$2"; exec sleep 60')
+        # call.group names the holder's group as call_start writes it, so a dry run that killed an orphan call
+        # under owner.lock, as a real tick does, would TERM the holder.
+        (self.run_dir / "call.group").write_text(f"{holder} {lstart(holder)}\n")
+        proc = self.tick(dry=True)
+        self.assertIn("nothing to launch", proc.stdout)
+        self.assertNotIn(state(holder), ("", "Z"), "a dry run killed the lease holder's group")
+        self.assertEqual((self.run_dir / "status").read_text(), "running\n")
+        self.assertFalse(self.alerts.exists())
+        self.assertFalse((self.run_dir / "owner.lock").exists())
 
 
 class MacShapeOwnerSlotTests(OwnerSlotTests):
