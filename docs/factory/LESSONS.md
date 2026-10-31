@@ -1,9 +1,3 @@
-# Lessons from the overnight driver
-
-One section per pull request the overnight driver reviewed, added on that PR's branch by `bin/overnight/protocol.md` step 7, so it merges with the PR that taught it.
-Paths and line numbers are as they were at that PR's commits.
-The earlier sections were carried over from jhaveris's state directory when the driver moved into the repository (#476).
-
 ## From PR #416 (issue #323), 2026-10-30
 
 - A committed test with a weaker fixture than the done-checks guards nothing. Done checks 2 and 3 of #323 used the real fallback (one high finding, file `-`) and a competing blocking review; the committed test used `findings: []` and a clean review (`bin/tests/test_factory_status_criteria.py:146,159` at `c116e00b`), so reversing the `if` order would still pass. The in-run reviewer, Codex and Fable each flagged it independently. Applied to #279 and #280 as Decisions lines.
@@ -517,3 +511,9 @@ The earlier sections were carried over from jhaveris's state directory when the 
 - A ticket whose Where names only the template's files missed a second distribution path with its own copy of the list (bin/loam-attach.sh:128-140, which also copies the sandbox-enabled settings). Ticket writers adding to a shipped list should grep for every writer of that list (Fable alone found it; filed #559).
 - Claude Code's sandboxing docs say masks are removed after each sandboxed command and are left only when a session is killed or exits mid-command; `claude doctor` names them. Leftovers are an interrupted-session artifact, which a killed factory call produces.
 - Panel value: Codex 0 C / 1 H / 1 M / 0 L (the .mcp.json High, which Fable also raised as Medium and the in-run reviewer as Low; its symlink Medium verified Low); Fable 0 C / 0 H / 2 M / 3 L (the attach Medium alone). codex-panel-unique: 0.
+
+## PR #558, issue #474 (reviewer grader at xhigh, judge at high), 2026-10-31
+- A ticket that changes a grader file's bytes cannot run its own merge-checklist replay as written: `grader_file` (bin/factory:629-657) compares the installed plugin cache's reviewer.md with the checkout's by sha256 and exits 2 ("differs") before any call, so `bin/factory eval reviewer` on the PR branch fails until the post-merge plugin update. Both verifier scouts reproduced it on a copy (cache 0.9.21, rc=1 at grader_file). `--graders-dir cultivation/marketplace/sam-cc-setup/agents` skips the cache search (bin/factory:631, 3489) and is the form UPGRADING.md:103,163-169 already uses. Ticket writers: every pre-merge replay of a changed grader names `--graders-dir`.
+- A sam-cc-setup bump needs an UPGRADING.md entry even when the ticket's Where omits it: the grader_file error itself points the operator there (bin/factory:644). No check enforces it (bin/plugin_versions.py never reads UPGRADING.md); entries are contiguous 0.9.9-0.9.22. Fixed inline here (b25f52e6).
+- Effort changes and budget caps: Fable feared xhigh would push the reviewer past GRADER_BUDGET_USD=5 (a budget stop retries three times, then drafts the PR with "reviewer output unparseable"). The verifier measured instead of guessing: 137 Opus reviewer calls at high, p99 2.74, max 2.84 USD, output tokens a median 32% of cost; the only xhigh data (12 worker rounds) shows about 2x thinking, so a crossing needs about 8x output. Rated Low. The first xhigh runs' ledger should be read against the cap; the ledger has no effort field (log line only).
+- Panel value: Codex 0 C / 0 H / 1 M / 1 L (M verified Low); Fable 0 C / 0 H / 2 M / 4 L (both M verified Low). codex-panel-unique: 0.
