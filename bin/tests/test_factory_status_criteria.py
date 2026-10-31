@@ -426,7 +426,7 @@ class StatusCriteriaTests(unittest.TestCase):
         first = pr(2, "two", "three")
         git("revert", "--no-edit", first)  # one commit of the PR, after it merged
         pr(3, "four")
-        git("commit", "-q", "--allow-empty", "-m", "fix the four\n\nCaused-by: #3")
+        git("commit", "-q", "--allow-empty", "-m", "fix the four\n\ncaused-by: #3")
         # A revert inside the PR's own branch, and a Caused-by naming no factory PR, are no escape.
         git("checkout", "-q", "-b", "factory/4", "main")
         (repo / "five").write_text("five")
