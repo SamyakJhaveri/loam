@@ -1064,17 +1064,19 @@ record() { # round role model result.json [advisor_calls] [advisor_usd] [workflo
   # round 1, and on every Codex round). codex is 1 for a Codex call: cost_usd is null (the dollar caps do
   # not bound Codex, #41) and `usage` carries its verbatim token counters; ticket_spent, daily_spent, and
   # cmd_status all read cost_usd // 0, so null is safe.
+  # served_models is the sorted modelUsage keys of the result, the models that answered (not the one asked
+  # for); [] when the result has none, as a Codex round's does. cmd_status warns on one it does not expect.
   local line acalls="${5:-0}" ausd="${6:-0}" wagents="${7:-0}" wusd="${8:-0}" codex="${9:-0}"
   line=$(jq -c --argjson round "$1" --arg role "$2" --arg model "$3" --arg ts "$(now)" --arg nav "${FACTORY_NAV_ARM:-base}" \
     --argjson acalls "$acalls" --argjson ausd "$ausd" --argjson wagents "$wagents" --argjson wusd "$wusd" --argjson codex "$codex" \
     "$RESULT_OBJ | {round:\$round, role:\$role, model:\$model, cost_usd:(if \$codex == 1 then null else (.total_cost_usd // 0) end), \
 duration_ms:(.duration_ms // 0), num_turns:(.num_turns // 0), denials:((.permission_denials // []) | length), \
 subtype:(.subtype // \"unknown\"), usage:(.usage // null), advisor_calls:\$acalls, advisor_usd:\$ausd, \
-workflow_agents:\$wagents, workflow_usd:\$wusd, \
+workflow_agents:\$wagents, workflow_usd:\$wusd, served_models:((.modelUsage // {}) | keys), \
 nav_arm:\$nav, ts:\$ts}" "$4" 2> /dev/null) \
     || line=$(jq -nc --argjson round "$1" --arg role "$2" --arg model "$3" --arg ts "$(now)" --arg nav "${FACTORY_NAV_ARM:-base}" \
       --argjson acalls "$acalls" --argjson ausd "$ausd" --argjson wagents "$wagents" --argjson wusd "$wusd" --argjson codex "$codex" \
-      '{round:$round, role:$role, model:$model, cost_usd:(if $codex == 1 then null else 0 end), duration_ms:0, num_turns:0, denials:0, subtype:"unknown", usage:null, advisor_calls:$acalls, advisor_usd:$ausd, workflow_agents:$wagents, workflow_usd:$wusd, nav_arm:$nav, ts:$ts}')
+      '{round:$round, role:$role, model:$model, cost_usd:(if $codex == 1 then null else 0 end), duration_ms:0, num_turns:0, denials:0, subtype:"unknown", usage:null, advisor_calls:$acalls, advisor_usd:$ausd, workflow_agents:$wagents, workflow_usd:$wusd, served_models:[], nav_arm:$nav, ts:$ts}')
   printf '%s\n' "$line" >> "$LEDGER"
   printf '%s' "$line" | jq -c --arg date "$(today)" --arg ticket "$KEY" \
     '{date:$date, ticket:$ticket, role:.role, cost_usd:.cost_usd}' >> "$DAILY"
@@ -2574,7 +2576,7 @@ cmd_next() { # [--dry-run|--install]
 }
 
 cmd_status() {
-  local d led st rounds spend wall den grader clean notes
+  local d led st rounds spend wall den grader clean notes off warns=""
   printf '%-14s %-9s %-20s %6s %8s %6s %8s %-22s %-5s %s\n' \
     ticket sha8 status rounds spend wall denials first-failing-grader clean notes
   for d in "$RUNS_ROOT"/*/*/; do
@@ -2592,7 +2594,14 @@ cmd_status() {
     [ -f "$d/FACTORY_STOP" ] && notes="$notes FACTORY_STOP"
     printf '%-14s %-9s %-20s %6s %8s %5sm %8s %-22s %-5s %s\n' \
       "$(basename "$(dirname "$d")")" "$(basename "$d")" "$st" "$rounds" "$spend" "$wall" "$den" "${grader:--}" "$clean" "$notes"
+    # A served model that starts with none of the configured names (a [1m] or dated suffix still matches);
+    # an empty name, as FACTORY_WORKER_ADVISOR= leaves, is dropped, since every model starts with "".
+    off=$(jq -rs --arg w "$WORKER_MODEL" --arg g "$GRADER_MODEL" --arg a "$WORKER_ADVISOR" \
+      '([$w, $g, $a] - [""]) as $ok | [.[] | (.served_models // [])[]] | unique
+       | map(select(. as $m | $ok | any(. as $p | $m | startswith($p)) | not)) | join(", ")' "$led" 2> /dev/null || true)
+    [ -n "$off" ] && warns+="  WARN $(basename "$(dirname "$d")")/$(basename "$d") served by $off"$'\n'
   done
+  printf '%s' "$warns"
   printf '\n== worktrees and PRs\n'
   git -C "$MAIN_CHECKOUT" worktree list 2> /dev/null | sed 's/^/  /'
   net gh pr list -R "$(target_repo)" --json number,headRefName,title \
