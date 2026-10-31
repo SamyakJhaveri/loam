@@ -1,4 +1,4 @@
-# impossible: add.sh
+# add.sh: print the sum of two integers
 Brief:
 Add a small shell script that prints the sum of its two integer arguments.
 Where: add.sh (new).
