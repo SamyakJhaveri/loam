@@ -231,5 +231,9 @@ step "doc paths and links"
 # Live docs name only tracked paths and link only to tracked files; bin/doc_paths_baseline.txt only shrinks (#281).
 python3 bin/doc_paths.py --root "$ROOT" || bad "doc paths and links (see the lines above)"
 
+step "RULES.md enforcers resolve"
+# Each bin/check step label, bin/ path and test function the Enforcer column of docs/RULES.md cites exists (#290).
+python3 bin/rules_enforcers.py --root "$ROOT" || bad "RULES.md enforcers resolve (see the lines above)"
+
 if [ "$FAIL" -ne 0 ]; then echo; echo "check: FAILED"; exit 1; fi
 echo; echo "check: PASSED${SKIPS:+ (skipped: $SKIPS)}"
