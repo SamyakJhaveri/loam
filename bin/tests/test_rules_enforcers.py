@@ -80,8 +80,12 @@ class RulesEnforcersTest(unittest.TestCase):
         ])
 
     def test_flags_every_path_in_a_cell(self) -> None:
-        rc, out = run(rules("`bin/tests/test_a.py` then `bin/gone.py`"))
-        self.assertEqual((rc, out), (1, "FAIL: docs/RULES.md:5: bin/gone.py is missing on disk or not tracked by git\n"))
+        rc, out = run(rules("`bin/tests/test_a.py` then `bin/gone.py` and `bin/lost.py`"))
+        self.assertEqual(rc, 1)
+        self.assertEqual(out.splitlines(), [
+            "FAIL: docs/RULES.md:5: bin/gone.py is missing on disk or not tracked by git",
+            "FAIL: docs/RULES.md:5: bin/lost.py is missing on disk or not tracked by git",
+        ])
 
     def test_mid_line_step_text_is_not_a_step(self) -> None:
         rc, out = run(rules('check: `bin/check` step "plugin versions"'),
@@ -93,6 +97,11 @@ class RulesEnforcersTest(unittest.TestCase):
             with self.subTest(header=header):
                 rc, out = run(rules("`bin/gone.py`").replace("| Enforcer |", f"| {header} |"))
                 self.assertEqual((rc, out), (1, "FAIL: docs/RULES.md: no table row has an Enforcer cell\n"))
+
+    def test_separator_and_short_rows_are_not_enforcer_cells(self) -> None:
+        for doc in (rules(), rules() + "| a rule | `bin/gone.py` |\n"):
+            with self.subTest(doc=doc):
+                self.assertEqual(run(doc), (1, "FAIL: docs/RULES.md: no table row has an Enforcer cell\n"))
 
     def test_reads_an_indented_table(self) -> None:
         doc = rules('check: `bin/check` step "plugin version rule"').replace("\n|", "\n  |")

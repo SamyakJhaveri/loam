@@ -23,6 +23,7 @@ from doc_paths import Tree
 
 RULES = "docs/RULES.md"
 CELL = re.compile(r"(?<!\\)\|")
+SEPARATOR = re.compile(r":?-+:?")
 STEP = re.compile(r'`bin/check` step "([^"]+)"')
 SPAN = re.compile(r"`(bin/[^`]+)`")
 TEST = re.compile(r"`(bin/[^`\s]+\.py)(?::[0-9,-]+)?`\s+`(test_\w+)`")
@@ -38,7 +39,7 @@ def enforcer_cells(text: str) -> list[tuple[int, str]]:
         cells = [c.strip() for c in CELL.split(line.strip().strip("|"))]
         if col is None:
             col = cells.index("Enforcer") if "Enforcer" in cells else -1
-        elif col >= 0 and col < len(cells):
+        elif col >= 0 and col < len(cells) and not all(SEPARATOR.fullmatch(c) for c in cells):
             out.append((n, cells[col]))
     return out
 
