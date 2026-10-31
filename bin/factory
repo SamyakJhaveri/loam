@@ -2234,15 +2234,7 @@ open_pr() { # [draft]: opened at the grader-round cap
   blocking=$(blocking_findings)
   [ -n "$draft" ] || [ -z "$blocking" ] || draft=blocking
   {
-    # The worker's own account of how the change works and why it is correct opens the body (#330), so
-    # the owner can judge the merge without trusting the graders; it sits beside decisions.md.
-    printf '## How it works\n\n'
-    if grep -q '[^[:space:]]' "${DECISIONS%/*}/mechanism.md" 2> /dev/null; then
-      printf '%s\n\n' "$(sed '/./,$!d' "${DECISIONS%/*}/mechanism.md")"
-    else
-      printf '(the worker wrote no mechanism paragraph)\n\n'
-    fi
-    [ "$IS_FILE" = 1 ] || printf 'Closes #%s\n\n' "$ISSUE"
+    # A draft's reason opens the body, so a reader sees why it is a draft before anything else.
     if [ "$draft" = blocking ]; then
       printf 'Draft: the judge passed, but %s blocking reviewer or Codex finding(s) remain past the one block each grader may make or come from a reviewer or Codex review with no parseable reply, and each is filed as an issue. Read them before marking it ready. The first is %s\n\n' \
         "$(printf '%s\n' "$blocking" | grep -c .)" "$(printf '%s\n' "$blocking" | head -1)"
@@ -2253,6 +2245,15 @@ open_pr() { # [draft]: opened at the grader-round cap
       rows=$(jq -r '[(.rows // {}) | to_entries[] | select(.value == "fail") | .key] | join(", ") | if . == "" then "no row; a reviewer or Codex finding blocked" else . end' "$RUN/round-$ROUND.judge.json" 2> /dev/null)
       printf 'Draft: opened at the grader-round cap; the judge failed %s. Read the Judge section before marking it ready.\n\n' "${rows:-no row; the judge output was absent or not parseable}"
     fi
+    # The worker's own account of how the change works and why it is correct opens a ready PR's body (#330), so
+    # the owner can judge the merge without trusting the graders; it sits beside decisions.md.
+    printf '## How it works\n\n'
+    if grep -q '[^[:space:]]' "${DECISIONS%/*}/mechanism.md" 2> /dev/null; then
+      printf '%s\n\n' "$(sed '/./,$!d' "${DECISIONS%/*}/mechanism.md")"
+    else
+      printf '(the worker wrote no mechanism paragraph)\n\n'
+    fi
+    [ "$IS_FILE" = 1 ] || printf 'Closes #%s\n\n' "$ISSUE"
     printf '## Goal\n\n%s\n\n' "$(section "Goal and why" | sed '/./,$!d')"
     printf '## Commits\n\n```\n%s\n```\n\n' "$(git -C "$WORKTREE" log --oneline "$base..HEAD")"
     [ -s "$RUN/round-$ROUND.measure" ] && { printf '## Rows measured\n\n```\n'; cat "$RUN/round-$ROUND.measure"; printf '```\n\n'; }
@@ -2284,7 +2285,12 @@ open_pr() { # [draft]: opened at the grader-round cap
       "$ROUND" "$(ticket_spent)" "$(( ( $(date -u +%s) - $(cat "$RUN/started") ) / 60 ))" \
       "$(jq -s '[.[].denials // 0] | add // 0' "$LEDGER")" "$RUN"
   } | scrub > "$body" || finish stopped-environment "could not scrub the PR body"
-  [ "$IS_FILE" = 1 ] && finish pr-opened "file ticket: no GitHub call; the PR body is at $body"
+  # The decision to publish, recorded before any network call: a relaunch whose HEAD is still this sha replays
+  # open_pr with the same draft argument and no worker round (cmd_run), so a failed push or create loses nothing.
+  # Each pr-opened exit removes it, so only a failed publish leaves it for a relaunch to replay.
+  printf '%s %s\n' "$GRADED_SHA" "$draft" > "$RUN/publish.intent" \
+    || finish stopped-environment "could not write $RUN/publish.intent"
+  [ "$IS_FILE" = 1 ] && { rm -f "$RUN/publish.intent"; finish pr-opened "file ticket: no GitHub call; the PR body is at $body"; }
   net git -C "$WORKTREE" push -u origin "$BRANCH" >> "$LOG" 2>&1 \
     || finish stopped-environment "git push of $BRANCH failed, or got no reply in ${NET_TIMEOUT_SEC}s"
   if num=$(net gh pr view "$BRANCH" -R "$REPO" --json number --jq .number 2> /dev/null) && [ -n "$num" ]; then
@@ -2300,6 +2306,7 @@ open_pr() { # [draft]: opened at the grader-round cap
   fi
   [ "$IS_FILE" = 0 ] && file_backlog "$RUN/round-$ROUND.judge.json" "$ISSUE" "$url"
   [ "$IS_FILE" = 0 ] && printf '%s\n' "$blocking" | file_issues "blocking review findings" "$ISSUE" "$url"
+  rm -f "$RUN/publish.intent"
   finish pr-opened "$url after $ROUND rounds, $(ticket_spent) usd"
 }
 
@@ -2476,9 +2483,18 @@ cmd_run() {
       g=${g%.graded.sha}
       { [ -s "$g.fixes" ] || [ "$(jq -r .verdict "$g.judge.json" 2> /dev/null)" != pass ]; } && GRADER_FAILS=$((GRADER_FAILS + 1))
     done
-    # A round whose graders passed at HEAD with nothing blocking lost only its push or PR create: publish it,
-    # with no new worker round. A judge fail, a blocking finding, or a moved HEAD resumes into the loop.
-    if [ "$(jq -r .verdict "$RUN/round-$ROUND.judge.json" 2> /dev/null)" = pass ] && [ -z "$(blocking_findings)" ] \
+    # A publish whose push or PR create failed left its decision in publish.intent (open_pr): while HEAD is still the
+    # sha it graded, replay it, ready or draft, with no new worker round. A moved HEAD resumes as below.
+    local intent_sha="" intent_draft=""
+    [ -f "$RUN/publish.intent" ] && read -r intent_sha intent_draft < "$RUN/publish.intent"
+    if [ -n "$intent_sha" ] && [ "$intent_sha" = "$(git -C "$WORKTREE" rev-parse HEAD)" ]; then
+      check_frozen   # freeze returns early on a resume, so re-hash here as main_loop does before each round
+      GRADED_SHA=$intent_sha
+      log "a publish${intent_draft:+ as a draft ($intent_draft)} at HEAD $GRADED_SHA did not finish; publishing it again with no worker round"
+      open_pr ${intent_draft:+"$intent_draft"}
+    # A round whose graders passed at HEAD with nothing blocking but crashed before open_pr wrote publish.intent: publish
+    # it, with no new worker round. A judge fail, a blocking finding, or a moved HEAD resumes into the loop.
+    elif [ "$(jq -r .verdict "$RUN/round-$ROUND.judge.json" 2> /dev/null)" = pass ] && [ -z "$(blocking_findings)" ] \
       && [ -s "$RUN/round-$ROUND.graded.sha" ] && [ "$(cat "$RUN/round-$ROUND.graded.sha")" = "$(git -C "$WORKTREE" rev-parse HEAD)" ]; then
       GRADED_SHA=$(cat "$RUN/round-$ROUND.graded.sha")
       log "round $ROUND passed the graders at HEAD $GRADED_SHA; opening the PR with no worker round"
