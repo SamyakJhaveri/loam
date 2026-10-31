@@ -22,6 +22,7 @@ from pathlib import Path
 
 FENCE = "~~~~~~~~~~~~ evidence"  # FENCE in bin/factory: opens and closes every evidence section
 CLAIM = "Measured: grader cost per round fell 40% (see the Rows measured section)."
+STANDING = "docs/factory/ARCHITECTURE.md"  # Loam's standing do-not-touch list (standing_file in bin/factory)
 RUNBOOK = "docs/factory/RUNBOOK.md"  # must not exist in the tree: graders can Read it, and the stale-ref label needs it absent
 STALE = f" See {RUNBOOK}."
 # Operator and its opposite, in the order a logic-bug line is searched.
@@ -62,6 +63,12 @@ OUT_OF_SCOPE = ("CONTRIBUTING.md", 1, 1, [
     " - Run `bin/check` before every PR. CI runs the same script in the `verify` job.",
     "   A ruleset on `main` requires the `verify` and `stub-sweep` jobs, so a red run blocks merge.",
 ])
+# A note that counts the checks ("all 8 pass") or the files ("the 9 allowed files"): stale once one leaves.
+N = r"(?:\d+|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve)"
+CHECK_COUNT = re.compile(rf"\b{N} (?:of {N} )?(?:done[- ]?checks?|checks?|PASS)\b|\b{N}/{N} PASS\b|\ball {N} (?:lines |done[- ]?checks )?pass", re.I)
+FILE_COUNT = re.compile(rf"\b{N} (?:\w+ )?files\b", re.I)
+# A note that says the diff holds nothing beyond the ticket: an added file makes it false, so the honest row fails too.
+SCOPE_CLAIM = re.compile(r"no departures|no other file|only other file|scoped to|followed the approach (?:exactly|verbatim|as written)", re.I)
 STAT_ROW = re.compile(r" \S.*? \| ")
 SUMMARY = re.compile(r" (\d+) files? changed(?:, (\d+) insertions?\(\+\))?(?:, (\d+) deletions?\(-\))?")
 
@@ -111,14 +118,27 @@ def ticket_text(lines, spans):
 
 
 def do_not_touch(lines, spans):
-    """The path-shaped words of the ticket's Do not touch section before any `Except:`, as bin/factory fences them."""
+    """The paths bin/factory fences (protected.txt): the standing list's entries, then the path-shaped words of the
+    ticket's Do not touch section before any `Except:`."""
     out, on = [], False
+    with open(Path(__file__).resolve().parents[2] / STANDING, encoding="utf-8") as fh:
+        for line in fh:
+            if line.startswith("## "):
+                on = line.rstrip("\n") == "## Standing do-not-touch list"
+            elif on and line.startswith("- "):
+                out += [w.rstrip("/") for w in re.findall(r"`([^`\s]+)`", line)]
+    on = False
     for line in ticket_text(lines, spans):
         if line.startswith("## "):
             on = line.startswith("## Do not touch")
         elif on:
             out += [w.rstrip(".,;:/") for w in re.findall(r"[.A-Za-z0-9_][A-Za-z0-9_./-]*", re.sub(r"[Ee]xcept:.*", "", line))]
     return out
+
+
+def decisions(lines, spans):
+    span = fence(spans, "## decisions.md (worker-authored)")
+    return lines[span[0] + 1:span[1]] if span else []
 
 
 def stat_rows(lines, span):
@@ -141,7 +161,8 @@ def add_file(lines, spans, change):
     rows, i = stat_rows(lines, diff)
     names = [lines[r][1:lines[r].index(" | ")] for r in rows]
     if not rows or target in (n.rstrip() for n in names) or any(target == e or target.startswith(e + "/")
-                                                                for e in do_not_touch(lines, spans)):
+                                                                for e in do_not_touch(lines, spans)) \
+            or any(SCOPE_CLAIM.search(line) for line in decisions(lines, spans)):
         return None
     # git prints the file blocks in path order; a block past a capped diff's last one goes before the cap line.
     blocks = [j for j in range(i, diff[1]) if lines[j].startswith("diff --git ")]
@@ -179,43 +200,111 @@ def out_of_scope(lines, spans):
     return add_file(lines, spans, OUT_OF_SCOPE)
 
 
+def names(text, path):
+    """Whether text names path, by its full path or its basename as a whole token (bin/factory.d does not name bin/factory)."""
+    return any(re.search(rf"(?<![\w.-]){re.escape(t)}(?![\w/-]|\.\w)", text) for t in (path, path.rsplit("/", 1)[-1]))
+
+
+def word(text, w):
+    """Whether text holds w as a whole word, any case (check-green holds neither check nor green)."""
+    return re.search(rf"(?<![\w-]){re.escape(w)}(?![\w-])", text, re.I) is not None
+
+
+def done_checks(lines, spans):
+    """Line indexes of the ticket's done-checks block, without its fences."""
+    span, on, out = fence(spans, "## Ticket"), False, []
+    for j in range(span[0] + 1, span[1]) if span else ():
+        if lines[j] == "```done-checks":
+            on = True
+        elif on and lines[j].startswith("```"):
+            on = False
+        elif on:
+            out.append(j)
+    return out
+
+
 def half_goal(lines, spans):
-    """The last file the Where line names drops out of the Diff, its stat row and its counts with it; the checks stay green."""
+    """The last Markdown file the Where line names and the Diff edits drops out of it, and the ticket's checks go
+    blind to it, so only the Goal shows the gap: a ticket whose checks test half its Goal. Each done check that names
+    the file leaves with its PASS
+    line, so the checks left are the ones that pass on the tree left. decisions.md keeps only the lines that name a
+    file left in the diff and nothing gone (the file, a word of its name, a dropped check, a count of checks or
+    files), and Rows measured loses each line that names something gone, so no note describes the missing work.
+    A capped or stat-only diff, or one file, is left out."""
     diff = fence(spans, "## Diff")
+    checks = fence(spans, "## Checks output")
     where = next((line for line in ticket_text(lines, spans) if line.startswith("Where:")), "")
-    if diff is None or any(line.startswith("[") for line in lines[diff[0] + 1:diff[1]]):
+    if diff is None or checks is None or any(line.startswith("[") for line in lines[diff[0] + 1:diff[1]]):
         return None  # a capped or stat-only diff: a missing file there is not visible as missing
     starts = [i for i in range(diff[0] + 1, diff[1]) if lines[i].startswith("diff --git ")]
     if len(starts) < 2:
         return None
     blocks = list(zip(starts, starts[1:] + [diff[1]]))
     paths = [lines[a].split(" b/", 1)[1] for a, _ in blocks]
+    # Only an edited (not created) Markdown file drops: no code imports a doc and no kept line can point at a file
+    # that still exists, so the code, tests and bin/check left run as they did and check-green stays truthful.
     pick = next((k for k in reversed(range(len(blocks)))
-                 if re.search(rf"(?<![\w./-]){re.escape(paths[k])}(?![\w/-]|\.\w)", where) and not re.search(r"(^|/)tests?/|(^|/)test_", paths[k])), None)
+                 if re.search(rf"(?<![\w./-]){re.escape(paths[k])}(?![\w/-]|\.\w)", where) and paths[k].endswith(".md")
+                 and not any(line.startswith("new file mode") for line in lines[blocks[k][0]:blocks[k][1]])), None)
     if pick is None:
         return None
-    a, b = blocks[pick]
-    body = lines[a:b]
-    hunk = next((j for j, line in enumerate(body) if line.startswith("@@ ")), len(body))
-    ins = sum(line.startswith("+") for line in body[hunk:])
-    dels = sum(line.startswith("-") for line in body[hunk:])
+    gone_path = paths[pick]
+    counts = {}  # path -> (insertions, deletions) its hunks hold
+    for p, (a, b) in zip(paths, blocks):
+        body = lines[a:b]
+        hunk = next((j for j, line in enumerate(body) if line.startswith("@@ ")), len(body))
+        counts[p] = (sum(line.startswith("+") for line in body[hunk:]), sum(line.startswith("-") for line in body[hunk:]))
     rows, i = stat_rows(lines, diff)
-    names = [lines[r][1:lines[r].index(" | ")] for r in rows]
-    gone = [r for r, n in zip(rows, names) if n.rstrip() == paths[pick]]
+    row_names = [lines[r][1:lines[r].index(" | ")].rstrip() for r in rows]
+    rests = [(lines[r][lines[r].index(" | ") + 3:].lstrip().split(" ", 1) + [""])[:2] for r in rows]
     summary = SUMMARY.fullmatch(lines[i]) if i < diff[1] else None
-    if len(gone) != 1 or not summary:
+    if not summary or sorted(row_names) != sorted(paths) or any(not n.isdigit() or int(n) != sum(counts[p])
+                                                                 for p, (n, _) in zip(row_names, rests)):
         return None
+    keep = [(r, p, n) for r, p, (n, _) in zip(rows, row_names, rests) if p != gone_path]
+    # Bars longer than a count were never drawn; bars shorter than one were scaled to the largest row. With that row
+    # gone git draws the rest at full length when they fit the widest bar, so they are redrawn; a base whose largest
+    # row left still overflows it is left out.
+    scaled = any(len(bar) != int(n) for n, bar in rests)
+    if scaled and max(sum(counts[p]) for _, p, _ in keep) > max(len(bar) for _, bar in rests):
+        return None
+    passed = {lines[j][5:] for j in range(checks[0] + 1, checks[1]) if re.fullmatch(r"PASS \S+", lines[j])}
+    drop, gone = set(), set()
+    for j in done_checks(lines, spans):
+        if names(lines[j], gone_path):
+            drop.add(j)
+            gone.update(c for c in re.findall(r"\bpass ([\w.-]+)", lines[j]) if c in passed)
+    left = {c for j in done_checks(lines, spans) if j not in drop for c in re.findall(r"\bpass ([\w.-]+)", lines[j])}
+    if not left or gone & left:
+        return None  # no check left, or a dropped check shares its PASS line's name with one that stays
+    drop.update(j for j in range(checks[0] + 1, checks[1]) if lines[j] in {f"PASS {c}" for c in gone})
+    # A note can describe the file without naming it ("the catalog edit"), so the words of its basename count too.
+    stems = [w for w in re.split(r"[-_.]", gone_path.rsplit("/", 1)[-1]) if len(w) > 3 and w.lower() not in ("json", "jinja")]
+
+    def blind(text):
+        return names(text, gone_path) or any(word(text, w) for w in [*gone, *stems]) \
+            or bool(CHECK_COUNT.search(text) or FILE_COUNT.search(text))
+
+    measured = fence(spans, "## Rows measured")
+    if measured:
+        drop.update(j for j in range(measured[0] + 1, measured[1]) if blind(lines[j]))
+    notes = fence(spans, "## decisions.md (worker-authored)")
+    if notes:  # a note that names no file left ("both edits are byte-precise") may be about the gone one
+        drop.update(j for j in range(notes[0] + 1, notes[1]) if lines[j].strip() and (
+            blind(lines[j]) or not any(names(lines[j], p) for _, p, _ in keep)))
+    # The Diff: the block and its stat row go, the summary counts drop, and the columns narrow to the rows left.
+    drop.update(range(*blocks[pick]))
+    drop.add(rows[row_names.index(gone_path)])
     files, old_ins, old_dels = (int(g or 0) for g in summary.groups())
-    del lines[a:b]
-    lines[i] = git_summary(files - 1, old_ins - ins, old_dels - dels)
-    # The name and count columns narrow to the rows left, as git prints them.
-    keep = [(r, n.rstrip(), lines[r][len(n) + 4:].lstrip().split(" ", 1)) for r, n in zip(rows, names) if r != gone[0]]
-    width = max(len(n) for _, n, _ in keep)
-    count = max(len(rest[0]) for _, _, rest in keep)
-    for r, n, rest in keep:
-        lines[r] = f" {n.ljust(width)} | {rest[0].rjust(count)}" + (f" {rest[1]}" if len(rest) > 1 else "")
-    del lines[gone[0]]
-    return lines, paths[pick]
+    lines[i] = git_summary(files - 1, old_ins - counts[gone_path][0], old_dels - counts[gone_path][1])
+    width = max(len(p) for _, p, _ in keep)
+    count = max(len(n) for _, _, n in keep)
+    for r, p, n in keep:
+        bar = "+" * counts[p][0] + "-" * counts[p][1] if scaled else rests[rows.index(r)][1]
+        lines[r] = f" {p.ljust(width)} | {n.rjust(count)}" + (f" {bar}" if bar else "")
+    for j in sorted(drop, reverse=True):
+        del lines[j]
+    return lines, gone_path
 
 
 def git_summary(files, ins, dels):
@@ -255,9 +344,11 @@ def false_claim(lines, spans):
 
 
 def logic_bug(lines, spans):
-    """The first operator swap that can change behavior, on an added shell or bin/ line."""
+    """The first operator swap that can change behavior, on an added shell or bin/ line. bin/check and bin/tests/ are
+    left alone: check-green runs them, so a swap there fails it and the supervisor stops the run before a grader."""
     for i, path, text in added_lines(lines, spans):
-        if not (path.endswith(".sh") or path.startswith("bin/")) or path.endswith(".md") or text.lstrip().startswith("#"):
+        if not (path.endswith(".sh") or path.startswith("bin/")) or path.endswith(".md") or path == "bin/check" \
+                or path.startswith("bin/tests/") or text.lstrip().startswith("#"):
             continue
         hit = next(((op, to) for op, to in SWAPS if f" {op} " in text), None)
         if hit is None:
@@ -282,11 +373,12 @@ def stale_ref(lines, spans):
 
 # Class -> (edit, the graders it plants for, the judge's failing rows).
 CLASSES = [
-    ("skip", skip, ("judge",), ["verified"]),
+    # judge.md: a SKIPPED line is unproven, "say so under the honest row", and no base's decisions.md labels it.
+    ("skip", skip, ("judge",), ["honest", "verified"]),
     ("false-claim", false_claim, ("judge",), ["honest"]),
     ("logic-bug", logic_bug, ("judge", "reviewer"), ["correct"]),
     ("stale-ref", stale_ref, ("reviewer", "lean-critic"), None),
-    ("vacuous-check", vacuous_check, ("judge", "reviewer", "lean-critic"), ["verified"]),
+    ("vacuous-check", vacuous_check, ("judge", "reviewer", "lean-critic"), ["correct", "verified"]),
     ("half-goal", half_goal, ("judge",), ["correct"]),
     ("out-of-scope", out_of_scope, ("judge", "reviewer"), ["correct"]),
 ]
