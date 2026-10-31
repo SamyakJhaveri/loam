@@ -13,6 +13,7 @@ import hashlib
 import json
 import os
 import pathlib
+import shutil
 import subprocess
 import tempfile
 import time
@@ -103,10 +104,16 @@ class ParkingTests(unittest.TestCase):
         self.assertEqual(proc.stdout.strip(), "nothing to launch", proc.stderr)
         self.assertIn("parked #7: last run exited abandon", proc.stderr)
 
-    def test_same_body_stopped_environment_relaunches(self) -> None:
+    def test_same_body_stopped_environment_waits_an_hour_then_relaunches(self) -> None:
+        # stopped-environment pages at once, so a lasting machine fault must not page every tick (#440).
         body = CLEAN
         self.run_dir(7, body, "stopped-environment")
         self.assertEqual(self.park_status(7, body), "stopped-environment")
+        proc = self.next_dry_run((7, body))
+        self.assertEqual(proc.stdout.strip(), "nothing to launch", proc.stderr)
+        self.assertIn("waiting #7: last run stopped on the environment", proc.stderr)
+        past = time.time() - 3601
+        os.utime(self.runs / "7" / key(body) / "status", (past, past))
         proc = self.next_dry_run((7, body))
         self.assertEqual(proc.stdout.strip(), "would launch #7", proc.stderr)
 
@@ -121,18 +128,22 @@ class ParkingTests(unittest.TestCase):
         proc = self.next_dry_run((7, CLEAN))
         self.assertEqual(proc.stdout.strip(), "would launch #7", proc.stderr)
 
-    def test_runner_assigned_issue_relaunches_only_after_a_past_daily_stop(self) -> None:
-        # The launch assigned the issue to the runner and nothing unassigns it (#386): of the runner's own,
-        # only a stopped-daily run of an earlier UTC day launches, and the rest are skipped without a line.
-        # Four slots, so #6's running run, which holds one, leaves room to launch.
-        for issue, status in ((5, "stopped-cap"), (6, "running"), (7, "stopped-daily"), (8, "pr-opened")):
+    def test_runner_assigned_issue_relaunches_only_after_a_relaunchable_stop(self) -> None:
+        # The launch assigned the issue to the runner and nothing unassigns it (#386, #440): of the runner's own,
+        # a stopped-daily run of an earlier UTC day, a stopped-environment run past its backoff, and a stopped run
+        # launch, and the rest are skipped without a line. Four slots, so #6's running run, which holds one, leaves room.
+        for issue, status in ((5, "stopped-cap"), (6, "running"), (8, "pr-opened")):
             self.run_dir(issue, CLEAN, status)
-        os.utime(self.runs / "7" / key(CLEAN) / "status", (86400, 86400))
-        mine = tuple((n, CLEAN) for n in (5, 6, 7, 8))
-        proc = self.next_dry_run(mine=mine, FACTORY_MAX_PARALLEL="4")
-        self.assertEqual(proc.stdout.strip(), "would launch #7", proc.stderr)
-        self.assertEqual(proc.stderr, "")
-        proc = self.next_dry_run(mine=tuple(m for m in mine if m[0] != 7), FACTORY_MAX_PARALLEL="4")
+        for status in ("stopped-daily", "stopped-environment", "stopped"):
+            with self.subTest(status=status):
+                self.run_dir(7, CLEAN, status)
+                os.utime(self.runs / "7" / key(CLEAN) / "status", (86400, 86400))
+                mine = tuple((n, CLEAN) for n in (5, 6, 7, 8))
+                proc = self.next_dry_run(mine=mine, FACTORY_MAX_PARALLEL="4")
+                self.assertEqual(proc.stdout.strip(), "would launch #7", proc.stderr)
+                self.assertEqual(proc.stderr, "")
+                shutil.rmtree(self.runs / "7")
+        proc = self.next_dry_run(mine=tuple((n, CLEAN) for n in (5, 6, 8)), FACTORY_MAX_PARALLEL="4")
         self.assertEqual(proc.stdout.strip(), "nothing to launch", proc.stderr)
         self.assertEqual(proc.stderr, "")
 
