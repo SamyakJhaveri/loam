@@ -68,11 +68,12 @@ class ParkingTests(unittest.TestCase):
 
     def next_dry_run(self, *frontier: tuple[int, str], mine: tuple[tuple[int, str], ...] = (),
                      authors: dict[int, str] | None = None, editors: dict[int, str | None] | None = None,
-                     **env: str) -> subprocess.CompletedProcess[str]:
+                     now: int | None = None, **env: str) -> subprocess.CompletedProcess[str]:
         """cmd_next --dry-run over the given unassigned (issue, body) frontier, lowest number first as gh sorts it,
         and `mine`, the ready-for-agent issues assigned to the runner. Each issue is written by `authors`' login,
         SamyakJhaveri by default, and last edited by `editors`' login (None: the editor call fails; UNNAMED: a null
-        editor with a lastEditedAt), by no one by default. Each editor call is logged to GQL_LOG."""
+        editor with a lastEditedAt), by no one by default. Each editor call is logged to GQL_LOG. `now` pins the
+        epoch `date -u +%s` prints, so a backoff boundary does not move while the test runs."""
         def lines(issues: tuple[tuple[int, str], ...]) -> str:
             return " ".join(f"'{issue} {(authors or {}).get(issue, 'SamyakJhaveri')} {base64.b64encode(body.encode()).decode()}'"
                             for issue, body in issues) or "''"
@@ -81,7 +82,8 @@ class ParkingTests(unittest.TestCase):
             return json.dumps({"data": {"repository": {"issue": issue}}})
         edits = "".join(f'*" number={issue} "*) {"return 1" if who is None else f"doc={doc(who)!r}"} ;; '
                         for issue, who in (editors or {}).items())
-        stubs = ("assert_toolchain_env() { :; }; claude_logged_in() { :; }; claude_version_ok() { :; }; target_repo() { echo o/r; }; "
+        clock = "" if now is None else f'date() {{ if [ "$*" = "-u +%s" ]; then echo {now}; else command date "$@"; fi; }}; '
+        stubs = (clock + "assert_toolchain_env() { :; }; claude_logged_in() { :; }; claude_version_ok() { :; }; target_repo() { echo o/r; }; "
                  "gh() { case $2 in graphql) local a p= q= doc='{\"data\":{\"repository\":{\"issue\":{\"editor\":null}}}}'; "
                  'for a; do [ "$p" = --jq ] && q=$a; p=$a; done; echo "$*" >> "$GQL_LOG"; '
                  f"case \"$* \" in {edits}esac; jq -r \"$q\" <<<\"$doc\" ;; repos/*) printf '%s\\n' {lines(frontier)} ;; "
@@ -116,6 +118,13 @@ class ParkingTests(unittest.TestCase):
         os.utime(self.runs / "7" / key(body) / "status", (past, past))
         proc = self.next_dry_run((7, body))
         self.assertEqual(proc.stdout.strip(), "would launch #7", proc.stderr)
+        # On a pinned clock: half the hour still waits, and the stop exactly an hour old relaunches.
+        now = int(time.time())
+        for age, out in ((1800, "nothing to launch"), (3599, "nothing to launch"), (3600, "would launch #7")):
+            with self.subTest(age=age):
+                os.utime(self.runs / "7" / key(body) / "status", (now - age, now - age))
+                proc = self.next_dry_run((7, body), now=now)
+                self.assertEqual(proc.stdout.strip(), out, proc.stderr)
 
     def test_same_body_stopped_daily_waits_today_and_relaunches_on_a_later_day(self) -> None:
         # A daily-budget stop says nothing about the ticket (#386): the UTC date of its status file decides.
@@ -137,8 +146,13 @@ class ParkingTests(unittest.TestCase):
         for status in ("stopped-daily", "stopped-environment", "stopped"):
             with self.subTest(status=status):
                 self.run_dir(7, CLEAN, status)
-                os.utime(self.runs / "7" / key(CLEAN) / "status", (86400, 86400))
                 mine = tuple((n, CLEAN) for n in (5, 6, 7, 8))
+                if status == "stopped-environment":
+                    # Every launch assigns the issue, so the hour's wait must hold on this path: a later clean #9 launches.
+                    proc = self.next_dry_run((9, CLEAN), mine=mine, FACTORY_MAX_PARALLEL="4")
+                    self.assertEqual(proc.stdout.strip(), "would launch #9", proc.stderr)
+                    self.assertIn("waiting #7: last run stopped on the environment", proc.stderr)
+                os.utime(self.runs / "7" / key(CLEAN) / "status", (86400, 86400))
                 proc = self.next_dry_run(mine=mine, FACTORY_MAX_PARALLEL="4")
                 self.assertEqual(proc.stdout.strip(), "would launch #7", proc.stderr)
                 self.assertEqual(proc.stderr, "")
@@ -158,6 +172,46 @@ class ParkingTests(unittest.TestCase):
         (self.runs / "7" / key(CLEAN) / "FACTORY_STOP").unlink()
         proc = self.next_dry_run((8, CLEAN), mine=((7, CLEAN),))
         self.assertEqual(proc.stdout.strip(), "would launch #7", proc.stderr)
+
+    def test_unassigned_stop_waits_while_its_stop_file_remains(self) -> None:
+        # A run stopped before prepare_worktree never assigned its issue, so the skip must hold for the unassigned too.
+        self.run_dir(7, CLEAN, "stopped")
+        (self.runs / "7" / key(CLEAN) / "FACTORY_STOP").touch()
+        proc = self.next_dry_run((7, CLEAN), (8, CLEAN))
+        self.assertEqual(proc.stdout.strip(), "would launch #8", proc.stderr)
+        self.assertEqual(proc.stderr, "")
+
+    def test_relaunchable_run_waits_while_a_process_of_it_still_runs(self) -> None:
+        # A stuck model call outlives finish stopped-environment; cmd_run refuses a relaunch while it, or any process
+        # holding the run's lease, still runs, and writes no status, so #7 must not take the pick from #8 every tick.
+        cases = ["call"] + (["lease"] if sourced('echo "$HAVE_FLOCK"').stdout.strip() else [])
+        for holder in cases:
+            with self.subTest(holder=holder):
+                self.run_dir(7, CLEAN, "stopped-environment")
+                d = self.runs / "7" / key(CLEAN)
+                os.utime(d / "status", (86400, 86400))
+                if holder == "call":
+                    p = subprocess.Popen(["sleep", "60"], start_new_session=True)
+                    self.addCleanup(p.wait)
+                    self.addCleanup(subprocess.run, ["kill", "-KILL", "--", f"-{p.pid}"], check=False)
+                    (d / "call").write_text(f"{p.pid} test.{key(str(p.pid))}\n")
+                else:
+                    (d / "lease").touch()
+                    p = subprocess.Popen(["flock", str(d / "lease"), "sleep", "60"], start_new_session=True)
+                    self.addCleanup(p.wait)
+                    self.addCleanup(subprocess.run, ["kill", "-KILL", "--", f"-{p.pid}"], check=False)
+                    for _ in range(100):
+                        if subprocess.run(["flock", "-n", str(d / "lease"), "true"]).returncode != 0:
+                            break
+                        time.sleep(0.05)
+                proc = self.next_dry_run((8, CLEAN), mine=((7, CLEAN),))
+                self.assertEqual(proc.stdout.strip(), "would launch #8", proc.stderr)
+                self.assertIn("waiting #7: a process of its last run still runs", proc.stderr)
+                subprocess.run(["kill", "-KILL", "--", f"-{p.pid}"], check=False)
+                p.wait()
+                proc = self.next_dry_run((8, CLEAN), mine=((7, CLEAN),))
+                self.assertEqual(proc.stdout.strip(), "would launch #7", proc.stderr)
+                shutil.rmtree(self.runs / "7")
 
     def spend_today(self, usd: float) -> None:
         (self.runs / "ledger-daily.jsonl").write_text(

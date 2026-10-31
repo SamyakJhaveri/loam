@@ -2854,8 +2854,24 @@ stopped_daily_today() { # <run dir> -> 0 when its run stopped at the daily budge
 # stopped-environment pages at once, so a lasting machine fault relaunched every ten-minute tick would page every tick.
 ENV_BACKOFF_SEC=3600
 stopped_environment_recent() { # <run dir> -> 0 when its run stopped on the environment under ENV_BACKOFF_SEC ago
-  [ "$(cat "$1/status" 2> /dev/null)" = stopped-environment ] \
-    && [ $(( $(date -u +%s) - $(date -u -r "$1/status" +%s) )) -lt "$ENV_BACKOFF_SEC" ]
+  local t
+  [ "$(cat "$1/status" 2> /dev/null)" = stopped-environment ] || return 1
+  # A status file removed since the cat leaves no mtime: not recent, rather than an arithmetic error ending the tick.
+  t=$(date -u -r "$1/status" +%s 2> /dev/null)
+  [[ "$t" =~ ^[0-9]+$ ]] || return 1
+  [ $(( $(date -u +%s) - t )) -lt "$ENV_BACKOFF_SEC" ]
+}
+
+# cmd_run refuses a relaunch, exiting 4 with no status written, while a process of the run's last launch holds its
+# lease or the model call its `call` names still lives (a stuck call outlives finish); holds_slot frees a stopped run's
+# slot all the same, so without this the issue would take the pick from every later candidate each tick.
+run_busy() { # <run dir> -> 0 while a process cmd_run would refuse a relaunch on still runs
+  local fd st
+  call_live "$1" && return 0
+  [ -n "$HAVE_FLOCK" ] && [ -f "$1/lease" ] && exec {fd}< "$1/lease" || return 1
+  flock -n "$fd"; st=$?
+  exec {fd}>&-
+  [ "$st" != 0 ]
 }
 
 # A ticket's Worker section can lower its own caps, so its daily stop alone does not show the shared ledger is spent.
@@ -3041,6 +3057,10 @@ cmd_next() { # [--dry-run|--install]
     fi
     case "$st_last" in
       none|stopped-environment|stopped|stopped-daily)
+        if run_busy "$run"; then
+          echo "waiting #$num: a process of its last run still runs; kill it or wait for it to exit" >&2
+          continue
+        fi
         if [ "$author" != "$TICKET_OWNER" ]; then
           echo "not owner #$num: written or last edited by $author; edit the body as $TICKET_OWNER or remove ready-for-agent" >&2
           continue
