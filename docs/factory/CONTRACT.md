@@ -28,7 +28,8 @@ The body starts at `Brief:` or `Part of`; in a file the first `#` line is the ti
    CMD is all the text after NAME, and round 0 runs it whole as one bash command, with `lib.sh` sourced first, from a base worktree, output dropped, so bash parses it as written: `predict greet test -f greeting.txt && ! grep -q hello greeting.txt` means both halves, and `!`, `[[`, pipes and redirects belong to the prediction.
    Round 0 refuses the ticket as `ticket-defect`, naming the check, when CMD exits non-zero or the line has no CMD.
    Freeze leaves predict lines out of `checks.sh`, so no later round, Stop hook or worker run sees them, and a `$(...)` in CMD runs at round 0 only.
-   A predict line is one line of the block: it does not end in a backslash, and no continuation leads into it.
+   A predict line may run on over several raw lines that end in a backslash, joined as bash joins them, and freeze drops every one of them; a `#` comment line that ends in a backslash does not run on, as in bash.
+   CMD runs in its own bash with only `lib.sh`, so it sees no variable or function the block defines, and it must not change the worktree, since the checks run in that same base worktree after it.
    A guard takes no predict line; a body with no contract line may carry predict lines, which round 0 runs, but needs none.
    The block is green when it prints no FAIL line; an abort or an `exit` anywhere in the block, at base or in a later round, adds `FAIL checks-aborted`, because `checks.sh` then stops before the end line freeze writes after the block (#180, #277).
    No `skip`.
@@ -92,7 +93,7 @@ This contract owns the issue body: each issue carries the sections above, and th
 - Every section present, in order.
 - The done-checks block, without its predict lines, plus `lib.sh` pass `bash -n`.
 - Every check line ends in `pass` or `fail`; no `skip` anywhere.
-  A line that starts with `predict` is not a check line and is accepted in every body, unless it has no command after the name, its command does not pass `bash -n` on its own, or it ends in a backslash.
+  A line that starts with `predict` is not a check line and is accepted in every body, unless it has no command after the name, or its command does not pass `bash -n` on its own.
 - No text a reader on GitHub cannot see (#389): a character of Unicode category `Cf` (zero-width, bidi controls, tags, BOM, word joiner), a `Cc` other than tab, newline and carriage return, the variation selectors and the other default-ignorable code points a `Cf` rule misses (U+FE00 to U+FE0F, the whole block U+E0000 to U+E0FFF, U+FFF0 to U+FFF8, and U+034F, U+115F, U+1160, U+17B4, U+17B5, U+180B to U+180D, U+180F, U+3164, U+FFA0), the same through a character reference such as `&#x200B;` (numeric ones of up to 8 digits, decoded as cmark-gfm does), or a carriage return with no newline after it, except at the very end of the body.
   Other unassigned code points pass, since Python's Unicode data reads newer emoji as unassigned.
   Lint matches by category, as loop-engineering's triage does (`/[\p{Cc}\p{Cf}]/gu`, MIT), reads the body as UTF-8 through `python3`, names the line and the code point but never the hidden text, and never edits the body; ordinary non-ASCII text such as `café 如果` passes.

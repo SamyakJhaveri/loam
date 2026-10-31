@@ -136,16 +136,34 @@ dc_block() { awk '/^```done-checks$/{inb=1; next} /^```/{if (inb) exit} inb {pri
 # The block's checks one per line: continuations joined; indentation, blank lines, comments, and predict lines dropped.
 dc_checks() { dc_lines | sed -e '/^#/d' -e '/^$/d' -e '/^predict[[:space:]]/d'; }
 
-# The block's lines with continuations joined and indentation dropped.
-dc_lines() { dc_block | sed -e :a -e '/\\$/N; s/\\\n//; ta' -e 's/^[[:space:]]*//'; }
+# The block's lines with continuations joined as bash joins them, and indentation dropped: a raw line ending in a
+# backslash runs on into the next, unless it is a comment, which ends at its newline. With 1, the raw lines instead,
+# less every joined line that is a predict line, so dc_predicts and dc_script cannot disagree about what one holds.
+dc_lines() {
+  dc_block | awk -v script="${1:-0}" '
+    function emit() {
+      sub(/^[[:space:]]+/, "", line)
+      if (!script) print line; else if (line !~ /^predict[[:space:]]/) printf "%s", raw
+      line = raw = ""
+    }
+    { raw = raw $0 "\n" }
+    /\\$/ && !/^[[:space:]]*#/ { line = line substr($0, 1, length($0) - 1); next }
+    { line = line $0; emit() }
+    END { if (raw != "") { line = line "\\"; emit() } }'
+}
 
 # The block's predict lines, `predict NAME CMD...` (CONTRACT.md, Done checks).
 dc_predicts() { dc_lines | grep -E '^predict[[:space:]]'; }
 
-# The block as checks.sh runs it: the raw lines dc_predicts reads as predict lines dropped, so no round after round 0
-# runs their text. A predict line starts a line no continuation leads into, and lint rejects one that ends in a
-# backslash, so a raw line is a whole predict line.
-dc_script() { dc_block | awk '!(prev !~ /\\$/ && /^[[:space:]]*predict[[:space:]]/) {print} {prev = $0}'; }
+# The block as checks.sh runs it: every raw line of a predict line dropped, so no round after round 0 runs its text.
+dc_script() { dc_lines 1; }
+
+# Sets the caller's name and cmd from one dc_predicts line; read would trim cmd's trailing whitespace, which may be
+# escaped (`a\ `), so the prefix comes off by parameter expansion.
+predict_split() {
+  cmd=${1#predict}; cmd=${cmd#"${cmd%%[![:space:]]*}"}
+  name=${cmd%%[[:space:]]*}; cmd=${cmd#"$name"}; cmd=${cmd#"${cmd%%[![:space:]]*}"}
+}
 
 # The NAME after each `pass` in the check lines on stdin, quotes stripped, one per line.
 pass_names() { grep -oE '(^|[[:space:]])pass[[:space:]]+"?[A-Za-z0-9_.-]+' | awk '{print $NF}' | tr -d '"' | sort -u; }
@@ -435,7 +453,7 @@ check_block_syntax() {
 # file or on pytest may only name test paths the ticket already fenced off under Do not touch.
 # A predict line is not a check: round 0 alone runs its text, as a bash command of its own, and check_predicts reads it.
 check_check_lines() {
-  local line owned c covered e
+  local line owned c covered e name cmd
   owned=$(section "Do not touch" | paths)
   while IFS= read -r line; do
     line=${line#"${line%%[![:space:]]*}"}
@@ -444,10 +462,10 @@ check_check_lines() {
     # Round 0 runs the text after NAME whole, so bash parses it as written; lint checks only that there is one and
     # that it parses alone, as round 0 will run it.
     if [[ "$line" == predict[[:space:]]* ]]; then
-      read -r _ _ c <<<"$line"
-      if [ -z "$c" ] || [[ "$c" == \#* ]]; then
+      predict_split "$line"
+      if [ -z "$cmd" ] || [[ "$cmd" == \#* ]]; then
         err "predict line has no command: $line"
-      elif ! bash -n -c "$c" 2> /dev/null; then
+      elif ! bash -n -c "$cmd" 2> /dev/null; then
         err "predict line's command does not pass bash -n on its own line: $line"
       fi
       continue
@@ -468,11 +486,7 @@ check_check_lines() {
       done <<<"$owned"
       [ "$covered" = 1 ] || err "self-graded oracle: the check names $c, which Do not touch does not fence off"
     done < <(printf '%s\n' "$line" | paths)
-  done < <(dc_block | sed -e :a -e '/\\$/N; s/\\\n//; ta')
-  # dc_script drops predict lines raw line by raw line, so a predict line cannot run on into the next.
-  while IFS= read -r line; do
-    err "predict line ends in a backslash, so it would continue into the next line: $line"
-  done < <(dc_block | awk 'prev !~ /\\$/ && /^[[:space:]]*predict[[:space:]]/ && /\\$/ {print} {prev = $0}')
+  done < <(dc_lines)
 }
 
 check_worker() {
@@ -1754,7 +1768,7 @@ round_zero() {
   # checks run, so bash parses it as written; checks.sh leaves it out (dc_script), so no later round runs it. Its
   # output is dropped, so it cannot print a PASS line. The first miss, a non-zero exit or no text, ends the loop.
   while IFS= read -r line; do
-    read -r _ name cmd <<<"$line"
+    predict_split "$line"
     if [ -z "$cmd" ] || [[ "$cmd" == \#* ]]; then
       why="has no command"
     else
