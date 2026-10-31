@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
-"""bin/usage-audit - Claude token usage per session, kind, agent, model and effort, as TSV.
+"""bin/usage-audit - Claude and Codex token usage per session, kind, agent, model and effort, as TSV.
 
   bin/usage-audit <projects-dir> <start-iso> [host-label]
+  bin/usage-audit --codex <sessions-dir> <start-iso> [host-label]
 
 Walks every *.jsonl under <projects-dir> (a ~/.claude/projects tree). The first path part is the project.
 A file under a `subagents` folder is kind `subagent`: session is the second path part's first 8 characters,
@@ -17,12 +18,23 @@ has `stop_reason: null` and only the first few output tokens; stderr then says h
 floors.
 Prints one row per key, no header: host, project, session, kind, agent, model, effort, then turns,
 input, cache_create, cache_read, output. Host defaults to `?`.
+
+With --codex, walks every rollout-*.jsonl under <sessions-dir> (a ~/.codex/sessions tree), one row per
+session: session is the full `session_meta` id (ids share their leading timestamp digits), project the
+basename of its `cwd`, kind `codex`, agent its `source`, model and effort `-`. A `token_count` event's
+`total_token_usage` is cumulative for the session, so the row is the last one at or after <start-iso>
+minus the baseline: the last one before start, or zero. A fork (`forked_from_id`) of some versions starts
+with copies of its parent's events stamped within a second of its `session_meta`, and its count goes
+on from the parent's; those copies are baseline too. Turns are the events in the window that raised the
+total. Input is `input_tokens` less `cached_input_tokens`, which Codex counts inside it; cache_create is
+0; cache_read is `cached_input_tokens`. token_count leaves out a compaction request, so a session that
+compacted is a floor.
 """
 import json
 import pathlib
 import sys
 from collections import defaultdict
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 USAGE = ("input_tokens", "cache_creation_input_tokens", "cache_read_input_tokens", "output_tokens")
 
@@ -44,7 +56,63 @@ def origin(root, path):
     return parts[0], path.name[:8], "main", "-"
 
 
+def codex(root, start, host):
+    """One row per Codex session: its usage in the window from the cumulative token_count events."""
+    rows = []
+    for path in sorted(root.rglob("rollout-*.jsonl")):
+        meta, born = None, None
+        base = last = None  # cumulative usage before the window and the latest in it
+        turns = 0
+        with path.open(encoding="utf-8", errors="replace") as f:
+            for line in f:
+                try:
+                    rec = json.loads(line)
+                except ValueError:
+                    continue
+                if not isinstance(rec, dict) or not rec.get("timestamp"):
+                    continue
+                payload = rec.get("payload") or {}
+                if rec.get("type") == "session_meta" and meta is None:
+                    meta = payload
+                    if payload.get("forked_from_id"):
+                        born = when(rec["timestamp"])
+                    continue
+                if rec.get("type") != "event_msg" or payload.get("type") != "token_count":
+                    continue
+                total = (payload.get("info") or {}).get("total_token_usage")
+                if not total:
+                    continue
+                ts = when(rec["timestamp"])
+                if ts < start or (born and ts - born < timedelta(seconds=1)):
+                    base = total
+                    continue
+                if total != (last or base):
+                    turns += 1
+                last = total
+        if meta is None or last is None:
+            continue
+        base = base or {}
+        diff = {k: (last.get(k) or 0) - (base.get(k) or 0)
+                for k in ("input_tokens", "cached_input_tokens", "output_tokens")}
+        source = meta.get("source") or "?"
+        if isinstance(source, dict):  # {"subagent": "review"} or {"subagent": {"thread_spawn": {...}}}
+            source = source.get("subagent") or "?"
+            source = source if isinstance(source, str) else next(iter(source), "?")
+        rows.append((host, pathlib.PurePath(meta.get("cwd") or "?").name, meta.get("id") or path.stem, "codex",
+                     source, "-", "-", turns, diff["input_tokens"] - diff["cached_input_tokens"], 0,
+                     diff["cached_input_tokens"], diff["output_tokens"]))
+    for row in sorted(rows):
+        print("\t".join(map(str, row)))
+
+
 def main(argv):
+    if argv[1:2] == ["--codex"]:
+        if len(argv) not in (4, 5):
+            sys.exit("usage: bin/usage-audit --codex <sessions-dir> <start-iso> [host-label]")
+        root = pathlib.Path(argv[2])
+        if not root.is_dir():
+            sys.exit(f"usage-audit: not a directory: {root}")
+        return codex(root, when(argv[3]), argv[4] if len(argv) == 5 else "?")
     if len(argv) not in (3, 4):
         sys.exit("usage: bin/usage-audit <projects-dir> <start-iso> [host-label]")
     root, start = pathlib.Path(argv[1]), when(argv[2])
