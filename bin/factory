@@ -1045,8 +1045,8 @@ freeze() {
   cp "$ROOT/bin/factory.d/lib.sh" "$RUN/frozen/lib.sh"
   cp "$ROOT/bin/alert" "$RUN/frozen/alert"   # a mid-run edit of bin/alert cannot change this run's alerts
   cp "$ROOT/bin/factory.d/role-settings.json" "$RUN/frozen/role-settings.json"
-  # Claude Code copies each settings tier's env over the launch env (user, then --settings), so the worker call's
-  # model pins also go in this frozen copy's env, or a ~/.claude/settings.json env entry would undo them (#379).
+  # Claude Code copies settings env over the launch env, so the worker call's model pins also go in this frozen
+  # copy's env, after the user tier's env it carries, or a ~/.claude/settings.json env entry would undo them (#379).
   # The worker's Bash runs in the sandbox, which writes only the worktree and $TMPDIR by default; a commit also
   # needs the worktree gitdir and objects/refs/logs under the common dir (the Codex worker's roots), and the shell
   # writes decisions.md and mechanism.md in the worker directory and result.json in tasks/ (#409).
@@ -1722,7 +1722,7 @@ worker_round() { # round; leaves round-N.* only once the call produced a result
     rm -f "$out" "${DECISIONS%/*}/mechanism.md"   # also on a retried call, as for the Codex call above (#330)
     # The call loads no settings tier, so the account token bin/claude-account last wrote is read here, after any
     # switch, and passed in the environment, never on a command line (freeze).
-    tok=$(jq -r '.env.CLAUDE_CODE_OAUTH_TOKEN // empty' "${CLAUDE_CONFIG_DIR:-$HOME/.claude}/settings.json" 2> /dev/null)
+    tok=$(jq -r '.env.CLAUDE_CODE_OAUTH_TOKEN // empty' "${CLAUDE_SETTINGS_FILE:-${CLAUDE_CONFIG_DIR:-$HOME/.claude}/settings.json}" 2> /dev/null)
     [ -z "$tok" ] || { printf -v CLAUDE_CODE_OAUTH_TOKEN '%s' "$tok" && export CLAUDE_CODE_OAUTH_TOKEN; }
     call_start "$WORKTREE" ${t[@]+"${t[@]}"} env LOAM_CHECKS="$RUN/frozen/checks.sh" \
         CLAUDE_CODE_SUBAGENT_MODEL="$WORKER_MODEL" CLAUDE_CODE_SUBAGENT_MODEL_FORCE=1 \
