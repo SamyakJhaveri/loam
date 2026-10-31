@@ -14,11 +14,13 @@ import unittest
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
 CHECK = ROOT / "bin/check"
+ATTRS = ROOT / ".gitattributes"
 STEP = 'step "no em dash in Loam-owned text"'
 # Built at run time, so this file passes the step it tests.
 EM = chr(0x2014)
 ESCAPED = "\\" + "u2014"
 UNREAD = "the em-dash search did not read every file"
+ROUTE = "marking its path loam-verbatim in .gitattributes"
 # c0f630f replaced the em dash in CLAUDE.md's title.
 PLAIN_DASH = "c0f630f1118131719cfb51ce8267c7ba552d976a"
 # No inherited GIT_* (a caller's GIT_DIR would aim the fixture at its own repo) and no user or system config.
@@ -38,13 +40,16 @@ def em_step(check: str) -> str:
 class EmDashStep(unittest.TestCase):
     def run_step(self, untracked: dict[str, str | bytes], mode: int | None = None,
                  env: dict[str, str] | None = None,
-                 tracked: dict[str, str] | None = None) -> list[subprocess.CompletedProcess[str]]:
-        """Commit a base with the tracked files, write the untracked ones, run the step with and without LC_ALL=C."""
+                 tracked: dict[str, str] | None = None,
+                 attrs: str = "") -> list[subprocess.CompletedProcess[str]]:
+        """Commit a base with Loam's .gitattributes plus attrs and the tracked files, write the untracked ones,
+        run the step with and without LC_ALL=C."""
         repo = pathlib.Path(self.enterContext(tempfile.TemporaryDirectory()))
         subprocess.run(["git", "init", "-q"], cwd=repo, check=True, env=ENV)
         (repo / "bin").mkdir()
         (repo / "bin/em-step").write_text(em_step(CHECK.read_text(encoding="utf-8")), encoding="utf-8")
-        for name, text in {"kept.txt": "plain - dash\n", **(tracked or {})}.items():
+        base = {"kept.txt": "plain - dash\n", ".gitattributes": ATTRS.read_text(encoding="utf-8") + attrs}
+        for name, text in {**base, **(tracked or {})}.items():
             (repo / name).parent.mkdir(parents=True, exist_ok=True)
             (repo / name).write_text(text, encoding="utf-8")
         subprocess.run(["git", "add", "-A"], cwd=repo, check=True, env=ENV)
@@ -70,7 +75,7 @@ class EmDashStep(unittest.TestCase):
                 self.assertIn(needle, r.stdout + r.stderr)
 
     def test_untracked_raw_dash_fails(self) -> None:
-        self.assert_fails(self.run_step({"new.txt": f"a {EM} b\n"}), "new.txt:1:", "FAIL: em dash")
+        self.assert_fails(self.run_step({"new.txt": f"a {EM} b\n"}), "new.txt:1:", "FAIL: em dash", ROUTE)
 
     def test_json_escaped_dash_fails(self) -> None:
         self.assert_fails(self.run_step({"hook.json": f'{{"msg": "a {ESCAPED} b"}}\n'}), "hook.json:1:", "FAIL: em dash")
@@ -94,6 +99,14 @@ class EmDashStep(unittest.TestCase):
         for r in self.run_step({"docs/archive/old.md": f"a {EM} b\n", "evals/p.json": f'"{ESCAPED}"\n',
                                 "new.txt": "plain - dash\n", "blob.bin": b"\0" + EM.encode("utf-8") + b"\0"}):
             self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+
+    def test_marked_path_passes(self) -> None:
+        # A path is exempt by its loam-verbatim mark alone; its sibling without one still fails.
+        runs = self.run_step({"quotes/q.md": f"a {EM} b\n", "quotes.md": f"a {EM} b\n"},
+                             attrs="quotes/** loam-verbatim\n")
+        self.assert_fails(runs, "quotes.md:1:")
+        for r in runs:
+            self.assertNotIn("quotes/q.md", r.stdout + r.stderr)
 
     def test_claude_md_before_plain_dash_fails(self) -> None:
         # The CLAUDE.md before PLAIN_DASH must fail the step.

@@ -1,0 +1,9 @@
+# loam-verbatim: text Loam does not own or must not rewrite; bin/check's "no em dash" step skips it.
+# Parked assets kept as they were removed; not live text.
+cultivation/parked/** loam-verbatim
+# Frozen historical records.
+docs/archive/** loam-verbatim
+# Quoted upstream pages.
+docs/research/primary-2026-09-08/** loam-verbatim
+# Recorded grader prompts; a replay must see them unchanged.
+evals/** loam-verbatim
