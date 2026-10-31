@@ -36,8 +36,8 @@ def read_list() -> dict[str, str]:
 
 
 def signed_ref() -> str | None:
-    refs = [os.environ["FROZEN_REF"]] if os.environ.get("FROZEN_REF") else ["origin/main", "main"]
-    for ref in refs:
+    env = os.environ.get("FROZEN_REF")
+    for ref in [env] if env else ["origin/main", "main"]:
         r = subprocess.run(
             ["git", "-C", str(ROOT), "rev-parse", "-q", "--verify", ref + "^{commit}"],
             capture_output=True,
@@ -56,16 +56,15 @@ def sign(files: list[str]) -> int:
             sys.exit(f"frozen-checks: {LIST} lists the checks; it is not one")
         entries[name] = digest(path)
     (ROOT / LIST).parent.mkdir(exist_ok=True)
-    (ROOT / LIST).write_text(
-        "".join(f"{sha}  {name}\n" for name, sha in sorted(entries.items())), encoding="utf-8"
-    )
+    lines = [f"{sha}  {name}\n" for name, sha in sorted(entries.items())]
+    (ROOT / LIST).write_text("".join(lines), encoding="utf-8")
     print(f"signed {len(files)} file(s) into {LIST}; commit it on the signed ref")
     return 0
 
 
 def verify() -> int:
     if not (ROOT / LIST).is_file():
-        print(f"FAIL: {LIST} is missing; the owner restores it or runs bin/frozen-checks sign")
+        print(f"FAIL: {LIST} is missing; the owner restores it or signs again")
         return 1
     failed = False
     for name, sha in read_list().items():
@@ -78,14 +77,15 @@ def verify() -> int:
             failed = True
     ref = signed_ref()
     if ref is None:
-        print(f"FAIL: no signed ref to compare {LIST} with; set FROZEN_REF or create main")
+        print(f"FAIL: no signed ref to compare {LIST} with; set FROZEN_REF")
         return 1
-    signed = subprocess.run(["git", "-C", str(ROOT), "show", f"{ref}:{LIST}"], capture_output=True)
+    show = ["git", "-C", str(ROOT), "show", f"{ref}:{LIST}"]
+    signed = subprocess.run(show, capture_output=True)
     if signed.returncode != 0:
         print(f"FAIL: {ref} has no {LIST}; the owner signs in a commit on {ref}")
         failed = True
     elif signed.stdout != (ROOT / LIST).read_bytes():
-        print(f"FAIL: {LIST} differs from its copy on {ref}; the owner signs only on {ref}")
+        print(f"FAIL: {LIST} differs from its copy on {ref}, where the owner signs")
         failed = True
     return 1 if failed else 0
 
