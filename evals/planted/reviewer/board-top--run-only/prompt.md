@@ -20,7 +20,7 @@ The order stays as it is: most votes first, ties by name.
 Any change outside `board.py`.
 
 ## Approach
-In `board.py`, add `top=None` to `board` and cut the ranked list to it.
+In `board.py`, add `top=None` to `board`, order the entries with `rank.by_votes`, the ordering the rest of the site uses, and cut the list to `top`.
 
 ## Done checks
 ```done-checks
@@ -56,6 +56,7 @@ PASS top-arg
 
 ~~~~~~~~~~~~ evidence
 - `top=None` keeps every name, since a slice to None is the whole list.
+- The inline sort key gave way to `rank.by_votes`, as the Approach says, so the board and the site share one ordering.
 
 ~~~~~~~~~~~~ evidence
 
@@ -66,18 +67,18 @@ PASS top-arg
  1 file changed, 4 insertions(+), 3 deletions(-)
 
 diff --git a/board.py b/board.py
-index 047c915..2ffc6c1 100644
+index a44e6ee..199fc69 100644
 --- a/board.py
 +++ b/board.py
-@@ -2,6 +2,7 @@
- from rank import sort_key
+@@ -1,6 +1,7 @@
+ """The leaderboard."""
++from rank import by_votes
 
 
 -def board(entries):
--    """Names, most votes first."""
--    return [e["name"] for e in sorted(entries, key=sort_key)]
+-    """Names, most votes first, ties by name."""
+-    return [e["name"] for e in sorted(entries, key=lambda e: (-e["votes"], e["name"]))]
 +def board(entries, top=None):
-+    """Names, most votes first; with top, only the first top of them."""
-+    ranked = sorted(entries, key=sort_key, reverse=True)
-+    return [e["name"] for e in ranked][:top]
++    """Names, most votes first, ties by name; with top, only the first top of them."""
++    return [e["name"] for e in by_votes(entries)][:top]
 ~~~~~~~~~~~~ evidence

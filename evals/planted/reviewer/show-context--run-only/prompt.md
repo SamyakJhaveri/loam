@@ -20,7 +20,7 @@ Every printed line keeps the `<n>: <line>` form, with the file's own line number
 Any change outside `show.py`.
 
 ## Approach
-In `show.py`, add `context=0` to `show`; for each match print the lines from N before it to N after it, clipped to the file.
+In `show.py`, add `context=0` to `show`; take the matches from `lines.find`, the search the other commands use, and for each print the lines from N before it to N after it, clipped to the file.
 
 ## Done checks
 ```done-checks
@@ -56,31 +56,33 @@ PASS context-arg
 
 ~~~~~~~~~~~~ evidence
 - The range is clipped at both ends of the file, so a match on the first or last line prints no index error.
+- Matches come from `lines.find`, as the Approach says, in place of the inline `enumerate`.
 
 ~~~~~~~~~~~~ evidence
 
 ## Diff (edb5eeff...HEAD)
 
 ~~~~~~~~~~~~ evidence
- show.py | 10 +++++++---
- 1 file changed, 7 insertions(+), 3 deletions(-)
+ show.py | 11 ++++++++---
+ 1 file changed, 8 insertions(+), 3 deletions(-)
 
 diff --git a/show.py b/show.py
-index 84aed34..f7a8181 100644
+index 57ff1e6..93b87e9 100644
 --- a/show.py
 +++ b/show.py
-@@ -2,6 +2,10 @@
- from lines import find
+@@ -1,6 +1,11 @@
+ """Print the lines that hold a word."""
++from lines import find
 
 
 -def show(lines, needle):
--    """Each matching line as "<n>: <line>"."""
--    return [f"{n}: {lines[n - 1]}" for n in find(lines, needle)]
+-    """Each matching line as "<n>: <line>", n counted from 1."""
+-    return [f"{n}: {line}" for n, line in enumerate(lines, 1) if needle in line]
 +def show(lines, needle, context=0):
-+    """Each matching line as "<n>: <line>", with context lines either side."""
++    """Each matching line as "<n>: <line>", n counted from 1, with context lines either side."""
 +    out = []
-+    for n in find(lines, needle):
-+        for i in range(max(n - context, 0), min(n + context + 1, len(lines))):
-+            out.append(f"{i + 1}: {lines[i]}")
++    for i in find(lines, needle):
++        for j in range(max(i - context, 0), min(i + context + 1, len(lines))):
++            out.append(f"{j + 1}: {lines[j]}")
 +    return out
 ~~~~~~~~~~~~ evidence

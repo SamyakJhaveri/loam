@@ -1,7 +1,6 @@
 """The leaderboard."""
-from rank import sort_key
 
 
 def board(entries):
-    """Names, most votes first."""
-    return [e["name"] for e in sorted(entries, key=sort_key)]
+    """Names, most votes first, ties by name."""
+    return [e["name"] for e in sorted(entries, key=lambda e: (-e["votes"], e["name"]))]

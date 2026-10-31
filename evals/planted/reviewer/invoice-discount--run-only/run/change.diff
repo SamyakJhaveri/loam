@@ -1,14 +1,16 @@
 diff --git a/invoice.py b/invoice.py
-index a21fc33..9cc0f85 100644
+index 84c265b..9cc0f85 100644
 --- a/invoice.py
 +++ b/invoice.py
-@@ -2,6 +2,6 @@
- from money import parse_price
+@@ -1,7 +1,7 @@
+ """Invoice lines."""
+-from decimal import Decimal
++from money import parse_price
  
  
 -def line_total(qty, price):
 -    """qty times a price like "12.50", in cents."""
--    return qty * parse_price(price)
+-    return qty * int(Decimal(price) * 100)
 +def line_total(qty, price, discount=0):
 +    """qty times a price like "12.50", less a discount in percent, in cents."""
 +    return round(qty * parse_price(price) * 100 * (1 - discount / 100))

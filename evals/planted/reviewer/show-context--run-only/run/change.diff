@@ -1,18 +1,19 @@
 diff --git a/show.py b/show.py
-index 84aed34..f7a8181 100644
+index 57ff1e6..93b87e9 100644
 --- a/show.py
 +++ b/show.py
-@@ -2,6 +2,10 @@
- from lines import find
+@@ -1,6 +1,11 @@
+ """Print the lines that hold a word."""
++from lines import find
  
  
 -def show(lines, needle):
--    """Each matching line as "<n>: <line>"."""
--    return [f"{n}: {lines[n - 1]}" for n in find(lines, needle)]
+-    """Each matching line as "<n>: <line>", n counted from 1."""
+-    return [f"{n}: {line}" for n, line in enumerate(lines, 1) if needle in line]
 +def show(lines, needle, context=0):
-+    """Each matching line as "<n>: <line>", with context lines either side."""
++    """Each matching line as "<n>: <line>", n counted from 1, with context lines either side."""
 +    out = []
-+    for n in find(lines, needle):
-+        for i in range(max(n - context, 0), min(n + context + 1, len(lines))):
-+            out.append(f"{i + 1}: {lines[i]}")
++    for i in find(lines, needle):
++        for j in range(max(i - context, 0), min(i + context + 1, len(lines))):
++            out.append(f"{j + 1}: {lines[j]}")
 +    return out

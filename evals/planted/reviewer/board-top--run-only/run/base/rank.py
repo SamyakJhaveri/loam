@@ -1,6 +1,6 @@
 """How the leaderboard orders entries."""
 
 
-def sort_key(entry):
-    """Ascending order on this key puts the most votes first, then names A to Z."""
-    return (-entry["votes"], entry["name"])
+def by_votes(entries):
+    """The entries from fewest votes to most, ties by name A to Z."""
+    return sorted(entries, key=lambda e: (e["votes"], e["name"]))

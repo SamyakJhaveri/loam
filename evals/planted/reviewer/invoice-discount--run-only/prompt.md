@@ -20,7 +20,7 @@ Totals stay whole cents, rounded half to even as Python's round does.
 Any change outside `invoice.py`.
 
 ## Approach
-In `invoice.py`, add `discount=0` (a percent) to `line_total` and apply it to the line's total.
+In `invoice.py`, add `discount=0` (a percent) to `line_total`, read the price with `money.parse_price` as the rest of the billing code does, and apply the discount to the line's total.
 
 ## Done checks
 ```done-checks
@@ -56,26 +56,29 @@ PASS discount-arg
 
 ~~~~~~~~~~~~ evidence
 - The discount applies once to the line total, not per unit, so rounding happens once.
+- The price comes from `money.parse_price`, as the Approach says, in place of the inline `Decimal`.
 
 ~~~~~~~~~~~~ evidence
 
 ## Diff (63110169...HEAD)
 
 ~~~~~~~~~~~~ evidence
- invoice.py | 6 +++---
- 1 file changed, 3 insertions(+), 3 deletions(-)
+ invoice.py | 8 ++++----
+ 1 file changed, 4 insertions(+), 4 deletions(-)
 
 diff --git a/invoice.py b/invoice.py
-index a21fc33..9cc0f85 100644
+index 84c265b..9cc0f85 100644
 --- a/invoice.py
 +++ b/invoice.py
-@@ -2,6 +2,6 @@
- from money import parse_price
+@@ -1,7 +1,7 @@
+ """Invoice lines."""
+-from decimal import Decimal
++from money import parse_price
 
 
 -def line_total(qty, price):
 -    """qty times a price like "12.50", in cents."""
--    return qty * parse_price(price)
+-    return qty * int(Decimal(price) * 100)
 +def line_total(qty, price, discount=0):
 +    """qty times a price like "12.50", less a discount in percent, in cents."""
 +    return round(qty * parse_price(price) * 100 * (1 - discount / 100))
