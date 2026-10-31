@@ -22,7 +22,9 @@ class BuildEvidenceTests(unittest.TestCase):
         tmp = tempfile.TemporaryDirectory()
         self.addCleanup(tmp.cleanup)
         self.tmp = pathlib.Path(tmp.name)
-        self.env = {**os.environ, **GIT_ENV, "GIT_CONFIG_GLOBAL": str(self.tmp / "gitconfig")}
+        # No inherited GIT_* (a caller's GIT_DIR would aim git at its own repo) and no user or system config.
+        self.env = {**{k: v for k, v in os.environ.items() if not k.startswith("GIT_")}, **GIT_ENV,
+                    "GIT_CONFIG_GLOBAL": str(self.tmp / "gitconfig")}
         wt = self.tmp / "wt"
         wt.mkdir()
         self.git(wt, "init", "-q")
