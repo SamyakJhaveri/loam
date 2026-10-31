@@ -1242,6 +1242,13 @@ group_live() { # <pgid> -> 0 when a process other than a zombie has it as its gr
   awk -v p="$1" '$1 == p && $2 !~ /^Z/ { f = 1 } END { exit !f }' <<< "$g"
 }
 
+# The model call a run's `call` file names (call_start) still lives: its group has a member that is not a zombie or,
+# on Linux, a process carries its FACTORY_CALL_TAG. One predicate for holds_slot and cmd_run's relaunch refusal.
+call_live() { # <run dir>
+  local c
+  c=$(cat "$1/call" 2> /dev/null) && { group_live "${c%% *}" || call_tagged 0 "${c#* }"; }
+}
+
 # The project a run dir belongs to, from where it sits, not the caller's REPO: other_live_run walks every
 # target's runs. Loam's sit at RUNS_BASE/<issue>/<sha8>, another target's one level down under <owner>__<repo>;
 # a dir elsewhere (a sourced test's) names none.
@@ -1269,12 +1276,13 @@ run_project() { # <run dir>
 # The first caller to find the owner gone writes stopped-environment, under owner.lock and only if
 # `owner` still reads the line it judged, so a relaunch that rewrote it keeps its slot; that caller
 # sends the one alert. A run killed between `launched` and its owner write keeps whatever status it
-# had; with no status at all it holds the slot until the operator removes its directory.
+# had; with no status at all it holds the slot until the operator removes its directory, or, where it has a `lease`,
+# until no process holds that lease.
 # A gone owner also holds while the model call it named in `call` (call_start) lives: in its own session the call
 # outlives a SIGKILLed supervisor, reparented to init, and keeps writing the worktree until CALL_TIMEOUT_SEC. It lives
 # while its group has a member that is not a zombie or, on Linux, a process carries its FACTORY_CALL_TAG.
 holds_slot() { # <run dir>
-  local st o t c pid fd re='^[0-9]+ [A-Z][a-z]{2} [A-Z][a-z]{2} [ 0-9][0-9] [0-9]{2}:[0-9]{2}:[0-9]{2} [0-9]{4}$'
+  local st o t pid fd re='^[0-9]+ [A-Z][a-z]{2} [A-Z][a-z]{2} [ 0-9][0-9] [0-9]{2}:[0-9]{2}:[0-9]{2} [0-9]{4}$'
   if [ -f "$1/status" ]; then
     st=$(cat "$1/status")
     [ "$st" = running ] || [ "$st" = waiting-limit ] || return 1
@@ -1283,9 +1291,7 @@ holds_slot() { # <run dir>
       flock -n "$fd" || { exec {fd}>&-; return 0; }
       # A process may close the descriptors it does not pass on (Node's child processes do), so a model call's tool
       # shell can outlive every holder; the call's group or tag still holds the slot, as on the owner path below.
-      if c=$(cat "$1/call" 2> /dev/null) && { group_live "${c%% *}" || call_tagged 0 "${c#* }"; }; then
-        exec {fd}>&-; return 0
-      fi
+      call_live "$1" && { exec {fd}>&-; return 0; }
       st=$(cat "$1/status" 2> /dev/null)
       [ "$st" = running ] || [ "$st" = waiting-limit ] && printf 'stopped-environment\n' > "$1/status"
       exec {fd}>&-   # before the alert, whose children would otherwise inherit this run's lease
@@ -1303,7 +1309,7 @@ holds_slot() { # <run dir>
     [[ "$t" =~ $re ]] || return 0
     pid=${t%% *}
     owner_gone "$pid" "${t#* }" || return 0
-    c=$(cat "$1/call" 2> /dev/null) && { group_live "${c%% *}" || call_tagged 0 "${c#* }"; } && return 0
+    call_live "$1" && return 0
     owner_lock "$1" 1 || return 0
     if [ "$(cat "$1/owner" 2> /dev/null)" != "$o" ]; then rmdir "$1/owner.lock"; return 0; fi
     st=$(cat "$1/status" 2> /dev/null)
@@ -1318,7 +1324,13 @@ became a zombie, or its pid was reused while the run read $st; ${1%/} is now sto
       >> "$LOG" 2>&1 || log "the alert for ${1%/} failed; see bin/alert's line above"
     return 1
   else
-    [ -f "$1/launched" ]
+    [ -f "$1/launched" ] || return 1
+    # A launch killed between `launched` and its first status: its lease, where it has one, decides; a dir with no
+    # lease holds until the operator removes it.
+    [ -n "$HAVE_FLOCK" ] && [ -f "$1/lease" ] && exec {fd}< "$1/lease" || return 0
+    flock -n "$fd"; st=$?
+    exec {fd}>&-
+    [ "$st" != 0 ]
   fi
 }
 
@@ -2302,7 +2314,11 @@ cmd_run() {
   # (heartbeat_start). Where flock(1) is missing (a Mac) no lease is written and holds_slot judges the owner line below.
   if [ -n "$HAVE_FLOCK" ] && [ "${FACTORY_FROZEN:-}" != "$RUN/frozen/factory" ]; then
     exec {SLOT_FD}>> "$RUN/lease" && flock -w 65 "$SLOT_FD" \
-      || { echo "factory run: could not take $RUN/lease in 65 s; another launch of this ticket holds it" >&2; exit 4; }
+      || { echo "factory run: could not take $RUN/lease in 65 s; another launch of this ticket, or a process one left running, holds it" >&2; exit 4; }
+    # A model call's tool process may have closed the lease (holds_slot) and still write the worktree this launch
+    # would prepare; refuse as above, writing nothing.
+    call_live "$RUN" \
+      && { echo "factory run: the model call named in $RUN/call still runs; wait for it to exit or kill it" >&2; exit 4; }
     export FACTORY_SLOT_FD=$SLOT_FD   # so the frozen pass's heartbeat can close it
   fi
   # A file ticket's branch carries the run key too, so a relaunch with an edited body gets its own branch;

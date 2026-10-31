@@ -93,7 +93,7 @@ When no cached copy matches, the run stops `stopped-environment` and names the c
 
 Exit code, `status`, and the final log line are decided together and cannot disagree.
 The one `status` written outside its run is `stopped-environment`, by `holds_slot` for a run with no process left (Parallel runs); that run has no exit code or final log line.
-A launch refused its run's lease (Parallel runs) exits 4 with one stderr line and writes no status or log line, as a launch that stops before it records the run does, since the run directory belongs to the launch that holds the lease.
+A launch refused its run's lease, or refused while its last model call lives (Parallel runs), exits 4 with one stderr line and writes no status or log line, as a launch that stops before it records the run does, since the run directory belongs to the launch that holds the lease.
 These read loop-control files to decide exit, never safety; safety stays with deny rules, the sandbox, git, and CI.
 A usage-limit reply (`hit your session limit`, `reached your Fable limit`) is neither an exit nor a round.
 Usage limits are per account, so the supervisor first switches to the next stored account through `bin/claude-account` (round robin in name order, so a third account is reached too) and retries the same call at once.
@@ -208,10 +208,12 @@ The daily ledger is written under a lock.
 `bin/factory next` launches up to `MAX_PARALLEL` runs (default 1; raise it after two clean single runs, as `status` reports them).
 A run holds a slot while its status reads `running` or `waiting-limit` and some process of the run holds an flock lease on `lease` in its run directory (#425).
 Each launch opens `lease` and takes the lock (`flock -w 65`) before it writes `launched`, its launch log line or its status, and before it prepares the worktree and freezes; so a relaunch holds its slot from the start.
-A launch that cannot take the lock (another launch of the same ticket body holds it) prints one line to stderr and exits 4, writing nothing in the run directory, so the incumbent keeps its status, its `MAX_HOURS` clock and its round.
+A launch that cannot take the lock (another launch of the same ticket body, or a process one left running, holds it) prints one line to stderr and exits 4, writing no status, `launched` or log line, so the incumbent keeps its status, its `MAX_HOURS` clock and its round.
+A launch that takes the lock while the model call named in `call` still lives (below) refuses the same way, since that call may still write the worktree the launch would prepare.
 The lease needs `flock(1)` and bash 4.1 or later, for the `{var}` descriptors it opens.
 The descriptor is not close-on-exec, so the frozen re-exec keeps it (that pass takes no second lock, which would wait on its own lease) and every child inherits it: the supervisor and a model call that outlives a SIGKILLed supervisor both hold the lease, and the kernel drops it when the last of them exits.
 The heartbeat loop alone closes it (its number is exported as `FACTORY_SLOT_FD`), since a beat outlives a killed supervisor by up to 300 s and does no work on the tree.
+A transitional gap: a relaunch of a run frozen before #425 execs that older frozen copy, whose heartbeat does not close the descriptor, so after a kill its beat holds the lease for up to 300 s, and a relaunch in that window waits 65 s and exits 4; it closes once such runs finish.
 A zombie holds no files, and a reused pid or a stepped clock does not touch the lock, so none of them needs a rule.
 `holds_slot` opens `lease` read-only and tries `flock -n`: when another process holds it, the slot is held; when it gets the lock and no process of the model call named in `call` lives (below; a call's tool process may close the descriptors it was not given, as Node's child processes do), no process of the run is left, so, still holding it, it re-reads the status and, if it still reads `running` or `waiting-limit`, writes `stopped-environment`, then closes the descriptor and sends one `fail` alert to the run's own project, read from where its directory sits under the runs root (Loam's directly, another target's under `<owner>__<repo>/`), since a finishing run looks at every target's runs before it pauses the host check.
 A relaunch waits on the same lease, so a reap and a relaunch never interleave, and only the caller that wrote `stopped-environment` alerts.
@@ -224,7 +226,7 @@ A missing or malformed `owner` holds the slot, as does a run that started before
 A `ps` or `date` that fails or prints nothing cannot tell, so it holds the slot; a failed `kill -0` still means the pid is gone.
 A gone or zombie pid still holds the slot while a live process has that pid as its process group id; the heartbeat loop is one such member and exits within 300 s of its supervisor, so a reap waits at most one beat.
 A model call runs in a session of its own, so it outlives a SIGKILLed supervisor and keeps writing the worktree until `CALL_TIMEOUT_SEC`; each call writes `call` in the run directory (its process group id and its `FACTORY_CALL_TAG`, through a temp file and `mv`), removed once the call's processes are confirmed gone, and a gone owner still holds the slot while that group has a member that is not a zombie or, on Linux, a process carries that tag.
-A run directory with `launched` and no `status` file holds a slot until its run writes one or the operator removes it.
+A run directory with `launched` and no `status` file holds a slot while some process holds its `lease`; one with no `lease` holds it until its run writes a status or the operator removes it.
 
 ## Notify
 

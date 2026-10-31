@@ -243,7 +243,7 @@ class LeaseSlotTests(SlotCase):
     def hold(self, script: str) -> int:
         # A shell in a session of its own takes the lease on fd 9, then runs script, which touches $2 once it is ready.
         ready = self.top / "ready"
-        p = subprocess.Popen(["bash", "-c", f'exec 9>> "$1" && flock -n 9 && {script}', "_",
+        p = subprocess.Popen(["bash", "-c", f'exec 9>> "$1" && flock -n 9 && {{ {script}; }}', "_",
                               str(self.run_dir / "lease"), str(ready)], start_new_session=True)
         self.addCleanup(p.wait)   # cleanups run last in, first out: the kill first
         self.addCleanup(lambda: subprocess.run(["pkill", "-KILL", "-g", str(p.pid)], check=False))
@@ -312,12 +312,86 @@ class LeaseSlotTests(SlotCase):
                                    "PATH": self.path},
                               stdin=subprocess.DEVNULL, capture_output=True, text=True, check=False)
         self.assertEqual(proc.returncode, 4, proc.stderr)
-        self.assertIn("another launch of this ticket holds it", proc.stderr)
+        self.assertIn("another launch of this ticket, or a process one left running, holds it", proc.stderr)
         self.assertEqual((run_dir / "status").read_text(), "running\n")
         self.assertEqual((run_dir / "launched").read_text(), "12345\n")
         self.assertEqual((run_dir / "factory.log").read_text(), "incumbent\n")
         self.run_dir = run_dir
         self.assert_held()
+
+    def launch(self, ticket: pathlib.Path, extra: str = "", env: dict[str, str] | None = None
+               ) -> subprocess.CompletedProcess[str]:
+        # cmd_run on a file ticket, with the target and claude checks stubbed and flock's 65 s wait made a single try.
+        script = (f". bin/factory\nMAIN_CHECKOUT='{self.top}'\n"
+                  "assert_target_ready() { :; }; claude_version_ok() { echo ok; }\n"
+                  'flock() { if [ "$1" = -w ]; then shift 2; set -- -n "$@"; fi; command flock "$@"; }\n'
+                  f"{extra}\ncmd_run '{ticket}'")
+        base = {k: v for k, v in os.environ.items()
+                if k not in INHERITED and k not in ("FACTORY_FROZEN", "FACTORY_NAV_ARM", "FACTORY_SLOT_FD")}
+        return subprocess.run(["bash", "-c", script], cwd=ROOT,
+                              env={**base, "FACTORY_SOURCED": "1", "FACTORY_RUNS_ROOT": str(self.top / "runs"),
+                                   "PATH": self.path, **(env or {})},
+                              stdin=subprocess.DEVNULL, capture_output=True, text=True, check=False, timeout=30)
+
+    def ticket(self, name: str) -> tuple[pathlib.Path, pathlib.Path]:
+        body = "# Lease fixture\n\n## Worker\nworker: claude\n"
+        ticket = self.top / f"{name}.md"
+        ticket.write_text(body)
+        run_dir = self.top / "runs" / name / hashlib.sha256(body.rstrip("\n").encode()).hexdigest()[:8]
+        run_dir.mkdir(parents=True)
+        return ticket, run_dir
+
+    @unittest.skipUnless(os.path.exists("/proc/self/environ"), "call_tagged reads /proc")
+    def test_launch_refused_while_a_tagged_call_of_the_last_run_lives(self) -> None:
+        # The killed run's model call closed the lease and still writes the worktree; a relaunch must not prepare it.
+        ticket, run_dir = self.ticket("orphan")
+        tag = f"test.{uuid.uuid4().hex}"
+        files = {"status": "running\n", "launched": "12345\n", "owner": f"{dead_pid()} {OLD}\n",
+                 "factory.log": "incumbent\n", "call": f"{dead_pid()} {tag}\n"}
+        for name, text in files.items():
+            (run_dir / name).write_text(text)
+        p = subprocess.Popen(["sleep", "60"], env={**os.environ, "FACTORY_CALL_TAG": tag})
+        self.addCleanup(p.wait)
+        self.addCleanup(p.kill)
+        proc = self.launch(ticket)
+        self.assertEqual(proc.returncode, 4, proc.stderr)
+        self.assertIn("still runs", proc.stderr)
+        for name, text in files.items():
+            self.assertEqual((run_dir / name).read_text(), text, name)
+
+    def test_frozen_pass_keeps_the_lease_it_inherited(self) -> None:
+        # The frozen re-exec inherits the locked descriptor; a second open of `lease` in it would wait on its own lock.
+        ticket, run_dir = self.ticket("frozen")
+        seen = self.top / "seen"
+        proc = self.launch(ticket, (f'exec {{FACTORY_SLOT_FD}}>> "{run_dir}/lease"; flock -n "$FACTORY_SLOT_FD"\n'
+                                    f"export FACTORY_SLOT_FD; nav_arm_resolve() {{ touch '{seen}'; exit 0; }}"),
+                           {"FACTORY_FROZEN": str(run_dir / "frozen" / "factory")})
+        self.assertEqual(proc.returncode, 0, proc.stderr)
+        self.assertTrue(seen.exists(), proc.stderr)
+
+    def test_heartbeat_does_not_hold_the_lease(self) -> None:
+        # A beat outlives a killed supervisor by up to 300 s; it must not keep the run's slot meanwhile.
+        hb = self.top / "hb"
+        script = (f". bin/factory\nalert() {{ :; }}; LOG=/dev/null\n"
+                  f'exec {{FACTORY_SLOT_FD}}>> "{self.run_dir}/lease"; flock -n "$FACTORY_SLOT_FD" || exit 7\n'
+                  f"export FACTORY_SLOT_FD; heartbeat_start; echo \"$HEARTBEAT\" > '{hb}'")
+        base = {k: v for k, v in os.environ.items() if k not in INHERITED}
+        sup = subprocess.Popen(["bash", "-c", script], cwd=ROOT, env={**base, "FACTORY_SOURCED": "1", "PATH": self.path},
+                               stdin=subprocess.DEVNULL, start_new_session=True)
+        self.addCleanup(lambda: subprocess.run(["pkill", "-KILL", "-g", str(sup.pid)], check=False))
+        self.assertEqual(sup.wait(timeout=30), 0)
+        self.assertNotIn(state(int(hb.read_text())), ("", "Z"))   # the beat outlives its supervisor
+        self.assert_freed()
+
+    def test_launched_with_no_status_holds_only_while_its_lease_is_held(self) -> None:
+        # A launch killed between `launched` and its first status leaves no status; its free lease frees the slot.
+        (self.run_dir / "status").unlink()
+        (self.run_dir / "launched").write_text("12345\n")
+        self.assertFalse(self.holds())
+        self.hold('touch "$2"; exec sleep 60')
+        self.assertTrue(self.holds())
+        self.assertFalse((self.run_dir / "status").exists())
+        self.assertFalse(self.alerts.exists())
 
 
 class MacShapeOwnerSlotTests(OwnerSlotTests):
