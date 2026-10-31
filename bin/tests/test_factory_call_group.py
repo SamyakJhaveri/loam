@@ -209,6 +209,8 @@ exec env -u FACTORY_CALL_TAG bash -c 'while :; do echo x >> {self.top}/mark; sle
                                       check=False).stdout
                 self.assertEqual(left, "", "a process the call started outlived the supervisor")
                 self.assertIn(f"got {sig.name[3:]} during a model call", (self.run_dir / "factory.log").read_text())
+                for name in ("call", "call.tmp", "call.group", "call.group.tmp"):
+                    self.assertFalse((self.run_dir / name).exists(), f"the signalled supervisor left {name}")
 
     @NEEDS_PROC
     def test_second_ctrl_c_waits_for_the_kill(self) -> None:

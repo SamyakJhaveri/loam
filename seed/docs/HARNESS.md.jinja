@@ -156,7 +156,8 @@ stranded.
 `bin/check` runs ruff, shell syntax, whitespace (committed, staged, and unstaged),
 and pytest. It also fails when `CLAUDE.md` plus `AGENTS.md` exceed the always-on
 budget below, when a skill's frontmatter has an unknown key, and when a hook event
-name in `.claude/settings.json` is not a real Claude Code event. A step that cannot
+name in `.claude/settings.json` is not a real Claude Code event, and runs
+`bin/frozen-checks verify` (Frozen checks in `docs/WORKERS.md`). A step that cannot
 run prints `SKIPPED`, and the last line names every skip. The agent runs it by
 choice; `.github/workflows/check.yml` runs the same script on every push and pull
 request. Nothing else lints or tests.
