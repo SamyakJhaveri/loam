@@ -103,11 +103,14 @@ Usage limits are per account, so the supervisor first switches to the next store
 It sleeps only when no other account exists or a switch already happened in the last five minutes; then it writes `waiting-limit` to `status`, sleeps until the reset time the reply names or twenty minutes when it names none, and repeats the same call.
 A reset past `MAX_HOURS` exits `stopped-environment`.
 A call with no result event (killed by `CALL_TIMEOUT_SEC`, or crashed) exits `stopped-environment` and counts no round.
-Every model call (the worker, a grader, the Codex review) runs in a session of its own, so its process group holds every process it starts; `CALL_TIMEOUT_SEC` signals that whole group, KILL 5 s after TERM.
-However the call ends, by exit or by the limit, the supervisor sends what is left of its group TERM, then KILL after 5 s, before any check or grader reads the tree, since a child left writing the worktree would race them.
-Claude Code starts each Bash tool shell in a new session, out of that group, so the call also carries a `FACTORY_CALL_TAG` unique to it, and on Linux the same TERM and KILL reach every process whose environment holds it; a host with no `/proc` (a Mac) has the group kill alone.
+Every model call (the worker, a grader, the Codex review) runs under a wrapper process in a session of its own, which runs the call in a process group of its own; `CALL_TIMEOUT_SEC` signals that whole group, KILL 5 s after TERM.
+On Linux the wrapper is a child subreaper (`PR_SET_CHILD_SUBREAPER`), so the kernel makes it the parent of every process the call leaves orphaned, whatever its session or environment (#434).
+However the call ends, by exit or by the limit, the wrapper sends the call's group and every child it has TERM, then KILL after 5 s, and exits with the call's own status only once none is left, before any check or grader reads the tree, since a child left writing the worktree would race them.
+The supervisor then sends what is left of the wrapper's group and of the call's group, whose id the wrapper writes to `call.group` in the run directory, the same TERM and KILL, so a wrapper that was killed or gave up leaves no member of either group behind.
+Claude Code starts each Bash tool shell in a new session, so the call also carries a `FACTORY_CALL_TAG` unique to it, and on Linux the same TERM and KILL reach every process whose environment holds it; a host with no `/proc` (a Mac) has no subreaper and no tag sweep, only the group kills.
 Any of them still alive 5 s after KILL exits `stopped-environment` and counts no round, once the call's ledger row is written (a Claude worker call with no result event charges `ROUND_BUDGET_USD` as below).
-A call in its own session no longer gets the supervisor's Ctrl-C, TERM or HUP, so while a call runs the supervisor traps those signals, sends the call's group and tagged processes the same TERM and KILL, and only then exits (status 130, 143 or 129) and its EXIT trap removes the worktree.
+A call in its own session no longer gets the supervisor's Ctrl-C, TERM or HUP, so while a call runs the supervisor traps those signals and sends the wrapper and tagged processes TERM, which starts the wrapper's own TERM and KILL 5 s later.
+The supervisor sends its own KILL 10 s later if the wrapper is still up, so it never kills the wrapper during its grace, and only then exits (status 130, 143 or 129) and its EXIT trap removes the worktree.
 A killed or crashed Claude worker call left no cost to read but may have spent up to its `--max-budget-usd` ceiling, so its ledger row charges `ROUND_BUDGET_USD` (subtype `no-result` marks it as a charge) and the ticket and daily caps stay bounds (#319); a Codex worker call keeps `cost_usd` null.
 The stop message lists the commits made since the round began, or says `no commits`.
 
@@ -231,7 +234,7 @@ It does so under `owner.lock` (a lock older than 60 s is removed first), and onl
 A missing or malformed `owner` holds the slot, as does a run that started before `owner` existed.
 A `ps` or `date` that fails or prints nothing cannot tell, so it holds the slot; a failed `kill -0` still means the pid is gone.
 A gone or zombie pid still holds the slot while a live process has that pid as its process group id; the heartbeat loop is one such member and exits within 300 s of its supervisor, so a reap waits at most one beat.
-A model call runs in a session of its own, so it outlives a SIGKILLed supervisor and keeps writing the worktree until `CALL_TIMEOUT_SEC`; each call writes `call` in the run directory (its process group id and its `FACTORY_CALL_TAG`, through a temp file and `mv`), removed once the call's processes are confirmed gone, and a gone owner still holds the slot while that group has a member that is not a zombie or, on Linux, a process carries that tag.
+A model call runs in a session of its own, so it outlives a SIGKILLed supervisor and keeps writing the worktree until `CALL_TIMEOUT_SEC`; each call writes `call` in the run directory (its wrapper's process group id and its `FACTORY_CALL_TAG`, through a temp file and `mv`) and `call.group` (the call's own process group id), both removed once the call's processes are confirmed gone, and a gone owner still holds the slot while either group has a member that is not a zombie or, on Linux, a process carries that tag.
 A run directory with `launched` and no `status` file holds a slot while some process holds its `lease`; one with no `lease` holds it until its run writes a status or the operator removes it.
 
 ## Notify
