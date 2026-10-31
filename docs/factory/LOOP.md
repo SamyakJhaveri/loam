@@ -243,6 +243,7 @@ On a host with no subreaper and no `/proc` (a Mac), a tool shell the call starte
 A run with a `lease` is judged by the lease, and a SIGKILLed supervisor's call inherited it, so while the lease is held `holds_slot` also judges `owner`: when that supervisor is gone it kills the recorded call groups as above, under `owner.lock`, and the lease then decides, so the slot frees on a later call once no process holds the lease.
 A relaunch of the same body cannot take that lease, so it never prepares the worktree under the orphan.
 A run directory with `launched` and no `status` file holds a slot while some process holds its `lease`; one with no `lease` holds it until its run writes a status or the operator removes it.
+`bin/factory next --dry-run` asks `holds_slot` only to look: it judges a run with no process left, or whose owner and call are gone, free and writes nothing, taking no `owner.lock`, killing no call group, leaving its status as it reads and sending no alert; the next real tick or launch reaps it.
 
 ## Notify
 
