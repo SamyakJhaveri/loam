@@ -98,7 +98,7 @@ PASS check-green
 - All 8 done-checks pass from the worktree root; check-green ran the real bin/check (CI green).
 - Advisor gap 1 (ledger readers): confirmed no ledger reader does string-ops on `.role`; the new `limit-switch` event is appended to $LEDGER only (never $DAILY), and ticket_spent/daily_spent/the denials sum all use `// 0`, so the role-less, cost-less event breaks nothing. No code change.
 - Advisor gap 2 (limit_wait end-to-end): ran limit_wait on a fake usage-limit result under the f28b harness. It switched a->b, returned 0 (retry), took <2s (no sleep), set no `waiting-limit` status, and leaked no token. Proves the ticket's core behavior; not a required done-check but verified. No code change.
-- Before committing, ran the f28b harness once against the runner's real `~/.config/claude-accounts` and `~/.claude/settings.json`, to see the switch work on live tokens: it moved the runner's active account from uci to gmail, and I left gmail active.
+- Before committing, ran the f28b harness once against the runner's real `~/.config/claude-accounts` and `~/.claude/settings.json`, to see the switch work on live tokens, and left the switched account active.
 
 ~~~~~~~~~~~~ evidence
 

@@ -72,7 +72,7 @@ PASS check-green
 - cmd_next reads status with `cat ... || true` so a launched-only directory reaches holds_slot; the pr-opened clause is unchanged.
 - LOOP.md parallel-cap paragraph gains the ticket's sentence plus one line naming running and waiting-limit, so the new sentence has its context.
 - Verified the assert-parallel-sees-launching check fails against HEAD's bin/factory (rc 0) and passes after the change (rc 4).
-- Ran `bin/factory next --dry-run` against the runner's runs directory with one launched-only run in it: it printed `slot held by 998` and launched nothing.
+- Ran `bin/factory next --dry-run` with RUNS_ROOT on a scratch directory holding one launched-only run: it printed `slot held by 998` and launched nothing.
 
 ~~~~~~~~~~~~ evidence
 
