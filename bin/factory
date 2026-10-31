@@ -498,12 +498,45 @@ grader_rubric() {
   printf '\n## Output for this call\n\nRespond with exactly one JSON object and nothing else: no prose before or after, no code fences, no closing sentence; put anything you could not verify in the "unverified" array. Scope: the diff below and the worker-authored files. Severity as defined above.\n'
 }
 
+# The grader under test must not open the answer keys it is scored against, so every eval call runs in a
+# fresh export of the checkout's committed tree with evals/ removed, and with the evals directory removed
+# too when it lies inside the checkout; the rest of the tree stays, as in a ticket worktree. One export
+# per eval, outside the checkout, removed when the eval returns, and by a trap when a signal ends it.
+eval_tree() { # -> the export's path on stdout
+  local copy top ev
+  copy=$(mktemp -d "${TMPDIR:-/tmp}/factory-eval-tree.XXXXXX") || return 1
+  top=$(cd "$ROOT" && pwd -P)
+  ev=$(cd "$EVALS_DIR" 2> /dev/null && pwd -P)
+  if git -C "$ROOT" archive HEAD | tar -x -C "$copy"; then
+    rm -rf "${copy:?}/evals"
+    case "$ev/" in "$top"/?*) rm -rf "${copy:?}/${ev#"$top"/}" ;; esac
+    printf '%s\n' "$copy"
+    return 0
+  fi
+  echo "eval: could not export the HEAD of $ROOT" >&2
+  rm -rf "$copy"
+  return 1
+}
+
+# The traps sit in this shell, not a subshell, so a TERM to bin/factory's pid alone still ends the case loop.
 run_eval() {
-  local grader="$1" budget="${EVAL_BUDGET_USD:-10}" gf schema rubric dir name out res exp got erows grows
+  local rc
+  EVAL_TREE=$(eval_tree) || return 2
+  trap 'rm -rf "$EVAL_TREE"' EXIT; trap 'exit 130' INT; trap 'exit 143' TERM; trap 'exit 129' HUP
+  run_eval_cases "$1" "$EVAL_TREE"
+  rc=$?
+  rm -rf "$EVAL_TREE"
+  trap - EXIT INT TERM HUP
+  return "$rc"
+}
+
+run_eval_cases() { # grader tree
+  local grader="$1" tree="$2" budget="${EVAL_BUDGET_USD:-10}" gf schema settings rubric dir name out res exp got erows grows
   local spent=0 cases=0 mism=0 ok attempt eline
   gf=$(grader_file "$grader") || return 2
   schema=$(schema_for "$grader" 2> /dev/null)
   [ -n "$schema" ] || { echo "eval: no bin/factory.d/$grader.schema.json" >&2; return 2; }
+  settings="$(cd "$(dirname "$0")" && pwd)/factory.d/role-settings.json"
   [ -d "$EVALS_DIR/$grader" ] || { echo "eval: no cases under $EVALS_DIR/$grader" >&2; return 2; }
   rubric=$(mktemp "${TMPDIR:-/tmp}/factory-eval.XXXXXX")
   grader_rubric "$gf" > "$rubric"
@@ -521,14 +554,14 @@ run_eval() {
       # The same flags as the production grader call (LOOP.md, Grader calls), so the replay grades the
       # way the loop does: --json-schema routes the reply through the schema, --strict-mcp-config and
       # --disable-slash-commands drop the prefix the grader never uses. Two things differ: the call runs
-      # in the caller's directory, not a ticket worktree, and each call gets the remaining headroom, so
+      # in the eval_tree export, not a ticket worktree, and each call gets the remaining headroom, so
       # EVAL_BUDGET_USD caps the sum over cases. role-settings.json is read beside the schema, for the
       # reason schema_for gives.
-      out=$(cat "$rubric" "$dir/prompt.md" | claude -p --model "$EVAL_MODEL" --effort "${EVAL_EFFORT:-$GRADER_EFFORT}" \
+      out=$(cat "$rubric" "$dir/prompt.md" | ( cd "$tree" && claude -p --model "$EVAL_MODEL" --effort "${EVAL_EFFORT:-$GRADER_EFFORT}" \
         --tools Read,Grep,Glob --strict-mcp-config --disable-slash-commands --no-session-persistence \
         --json-schema "$schema" \
         --max-budget-usd "$(awk -v b="$budget" -v s="$spent" 'BEGIN {printf "%.4f", b - s}')" \
-        --setting-sources user --settings "$(dirname "$0")/factory.d/role-settings.json" --output-format json 2>/dev/null)
+        --setting-sources user --settings "$settings" --output-format json 2>/dev/null ))
       spent=$(awk -v a="$spent" -v b="$(jq -r "$RESULT_OBJ | .total_cost_usd // 0" <<<"$out" 2>/dev/null)" \
         'BEGIN {printf "%.4f", a + (b + 0)}')
       # When a run's measure step drives this eval (FACTORY_LEDGER is set), book each reply's cost to
