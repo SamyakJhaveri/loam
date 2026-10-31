@@ -241,9 +241,11 @@ class FactorySkillsTests(unittest.TestCase):
             f = cache / "1.0.0/skills" / name / "SKILL.md"
             f.parent.mkdir()
             f.write_text(f"---\nname: {name}\n---\n{body}")
-        old = cache / "0.9.0/skills/plain/SKILL.md"
-        old.parent.mkdir(parents=True)
-        old.write_text("---\nname: plain\n---\nWrite `~/.old/x` first.\n")
+        # The older writer copy also matches, so a listing that resolved a name once per cached version prints it twice.
+        for name in ("plain", "writer"):
+            old = cache / "0.9.0/skills" / name / "SKILL.md"
+            old.parent.mkdir(parents=True)
+            old.write_text(f"---\nname: {name}\n---\nWrite `~/.old/x` first.\n")
         (home / ".claude/plugins/installed_plugins.json").write_text(
             json.dumps({"version": 2, "plugins": {"pstack@cursor-plugins": [{"installPath": str(cache / "1.0.0")}]}}))
         proc = self.skills(home)

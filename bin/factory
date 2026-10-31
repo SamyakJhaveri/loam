@@ -3401,7 +3401,9 @@ cmd_skills() {
   for n in $names; do
     f=$(skill_file "pstack:$n") || continue
     found=1
-    awk -v n="$n" -v f="$f" '
+    # Through the environment, not -v, which would expand a backslash in the path.
+    N="$n" F="$f" awk '
+      BEGIN { n = ENVIRON["N"]; f = ENVIRON["F"] }
       { t = substr($0, 1, 160) }
       index($0, "~/") || index($0, "$HOME/")                    { printf "%s\thome\t%s:%d: %s\n", n, f, FNR, t }
       index($0, "AskQuestion") || index($0, "AskUserQuestion")  { printf "%s\tasks\t%s:%d: %s\n", n, f, FNR, t }
