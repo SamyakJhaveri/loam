@@ -6,6 +6,8 @@ freeze adds the four pins to the source env in the frozen worker-settings.json t
 CLAUDE_CODE_SUBAGENT_MODEL_FORCE exists from 2.1.257, so claude_version_ok refuses an older or unreadable
 `claude --version`. `bin/factory` is sourced (FACTORY_SOURCED=1); freeze reads the checkout's graders through
 GRADERS_DIR and `claude` is a stub on PATH. No network.
+The frozen copy also keeps the source's Bash sandbox and adds the run's git and run-directory roots to its
+allowWrite (#409), so freeze runs on a fixture worktree.
 """
 
 from __future__ import annotations
@@ -36,18 +38,45 @@ class WorkerPinTests(unittest.TestCase):
         return subprocess.run(["bash", "-c", f". bin/factory\n{script}"], cwd=ROOT, env=env,
                               capture_output=True, text=True, check=False)
 
-    def frozen_env(self, **extra: str) -> tuple[dict[str, str], dict[str, str]]:
-        run = self.tmp / "run"
+    def frozen_settings(self, **extra: str) -> dict:
+        run, main = self.tmp / "run", self.tmp / "main"
         (run / "frozen").mkdir(parents=True)
-        proc = self.sourced(f"RUN='{run}'; LOG=\"$RUN/factory.log\"; LEDGER=\"$RUN/ledger.jsonl\"; "
-                            f"DECISIONS=\"$RUN/decisions.md\"; GRADERS_DIR='{GRADERS}'; IS_FILE=1; KEY=t; BODY=x; "
+        (run / "tasks").mkdir()
+        git = ["git", "-c", "user.name=t", "-c", "user.email=t@t"]
+        subprocess.run(["git", "init", "-q", "-b", "main", str(main)], check=True)
+        subprocess.run([*git, "-C", str(main), "commit", "-q", "--allow-empty", "-m", "base"], check=True)
+        subprocess.run(["git", "-C", str(main), "worktree", "add", "-q", "-b", "factory/t", str(self.tmp / "wt")],
+                       check=True)
+        proc = self.sourced(f"RUN='{run}'; WORKTREE='{self.tmp / 'wt'}'; LOG=\"$RUN/factory.log\"; "
+                            f"LEDGER=\"$RUN/ledger.jsonl\"; DECISIONS=\"$RUN/worker/decisions.md\"; "
+                            f"GRADERS_DIR='{GRADERS}'; IS_FILE=1; KEY=t; BODY=x; "
                             "freeze && check_frozen && echo frozen", **extra)
         self.assertEqual(proc.stdout.strip(), "frozen", proc.stderr)
-        settings = json.loads((run / "frozen/worker-settings.json").read_text())
+        return json.loads((run / "frozen/worker-settings.json").read_text())
+
+    def frozen_env(self, **extra: str) -> tuple[dict[str, str], dict[str, str]]:
+        settings = self.frozen_settings(**extra)
         source = json.loads((ROOT / "bin/factory.d/worker-settings.json").read_text())
         source_env = source.pop("env", {})
+        settings["sandbox"]["filesystem"].pop("allowWrite")
+        source["sandbox"]["filesystem"].pop("allowWrite")
         self.assertEqual({k: v for k, v in settings.items() if k != "env"}, source)  # deny list and hook kept
         return settings["env"], source_env
+
+    def test_frozen_worker_settings_sandbox_bash_fail_closed_with_the_run_roots_writable(self) -> None:
+        # The deny list matches a command by prefix only, not by path or inside `sh -c`, so the sandbox is the
+        # worker shell's write boundary: it must refuse to start rather than run unsandboxed, and a commit must land.
+        sandbox = self.frozen_settings()["sandbox"]
+        self.assertIs(sandbox["enabled"], True)
+        self.assertIs(sandbox["failIfUnavailable"], True)
+        self.assertIs(sandbox["allowUnsandboxedCommands"], False)
+        common = pathlib.Path(subprocess.run(
+            ["git", "-C", str(self.tmp / "main"), "rev-parse", "--path-format=absolute", "--git-common-dir"],
+            capture_output=True, text=True, check=True).stdout.strip())
+        source = json.loads((ROOT / "bin/factory.d/worker-settings.json").read_text())
+        self.assertEqual(sandbox["filesystem"]["allowWrite"], [
+            *source["sandbox"]["filesystem"]["allowWrite"], str(common / "worktrees/wt"), str(common / "objects"),
+            str(common / "refs"), str(common / "logs"), str(self.tmp / "run/worker"), str(self.tmp / "run/tasks")])
 
     def test_freeze_pins_the_default_worker_model_in_the_frozen_settings_env(self) -> None:
         env, source_env = self.frozen_env()

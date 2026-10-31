@@ -327,7 +327,7 @@ check_worker() {
   # must resolve through skill_file, since the worker reads that SKILL.md by path. Skipped under
   # fixtures/, whose historical bodies predate the allowlist, as check_paths is (lint).
   # A pstack skill whose steps write under ~/ gets an advisory warning, never a refusal: the worker's file
-  # tools are denied there (worker-settings.json) but its shell is not sandboxed (#409).
+  # tools are denied there and its sandboxed shell cannot write there (worker-settings.json, #409).
   case "$SRC" in *bin/factory.d/fixtures/*) ;; *)
     while IFS= read -r skill; do
       [ -n "$skill" ] || continue
@@ -337,7 +337,7 @@ check_worker() {
             || { err "skill '$skill': a pstack name must be pstack:<letters, digits, - or _>"; continue; }
           case "${skill#pstack:}" in
             setup-pstack|reflect|automate-me)  # SKILL.md writes ~/.cursor/rules or ~/.cursor/skills (~/.claude/ in Claude Code)
-              echo "warning: $skill writes under ~/ (operator settings); a Claude worker's file tools are denied there but its shell is not sandboxed (#409)" >&2 ;;
+              echo "warning: $skill writes under ~/ (operator settings); a Claude worker's file tools are denied there and its sandboxed shell cannot write there (#409)" >&2 ;;
           esac ;;
         *)
           grep -qxF "$skill" "$ROOT/bin/factory.d/skills.txt" \
@@ -1033,7 +1033,7 @@ factory-round.js review-output.schema.json codex-review.prompt.md unattended.md 
 CHECKS_END="printf '\nCHECKS-END\n'"
 
 freeze() {
-  local g src
+  local g src cgd ccd
   [ -f "$RUN/frozen/sha256" ] && return 0
   printf '%s\n' "$BODY" > "$RUN/frozen/issue.md"
   [ -n "$ISSUE" ] && { net gh issue view "$ISSUE" -R "$REPO" --json title -q .title > "$RUN/frozen/title" 2> /dev/null || rm -f "$RUN/frozen/title"; }
@@ -1047,8 +1047,15 @@ freeze() {
   cp "$ROOT/bin/factory.d/role-settings.json" "$RUN/frozen/role-settings.json"
   # Claude Code copies each settings tier's env over the launch env (user, then --settings), so the worker call's
   # model pins also go in this frozen copy's env, or a ~/.claude/settings.json env entry would undo them (#379).
-  jq --arg m "$WORKER_MODEL" '.env = (.env // {}) + {CLAUDE_CODE_SUBAGENT_MODEL: $m, CLAUDE_CODE_SUBAGENT_MODEL_FORCE: "1",
-    ANTHROPIC_DEFAULT_SONNET_MODEL: $m, ANTHROPIC_DEFAULT_HAIKU_MODEL: $m}' \
+  # The worker's Bash runs in the sandbox, which writes only the worktree and $TMPDIR by default; a commit also
+  # needs the worktree gitdir and objects/refs/logs under the common dir (the Codex worker's roots), and the shell
+  # writes decisions.md and mechanism.md in the worker directory and result.json in tasks/ (#409).
+  cgd=$(git -C "$WORKTREE" rev-parse --absolute-git-dir 2> /dev/null) && ccd=$(git_common "$WORKTREE") \
+    && [ -n "$cgd" ] && [ -n "$ccd" ] || finish stopped-environment "could not read the git directories of $WORKTREE for the worker sandbox"
+  jq --arg m "$WORKER_MODEL" --arg gd "$cgd" --arg cd "$ccd" --arg w "${DECISIONS%/*}" --arg t "$RUN/tasks" \
+    '.env = (.env // {}) + {CLAUDE_CODE_SUBAGENT_MODEL: $m, CLAUDE_CODE_SUBAGENT_MODEL_FORCE: "1",
+    ANTHROPIC_DEFAULT_SONNET_MODEL: $m, ANTHROPIC_DEFAULT_HAIKU_MODEL: $m}
+    | .sandbox.filesystem.allowWrite += [$gd, "\($cd)/objects", "\($cd)/refs", "\($cd)/logs", $w, $t]' \
     "$ROOT/bin/factory.d/worker-settings.json" > "$RUN/frozen/worker-settings.json"
   sed -e "s|<issue>|${ISSUE:-$KEY}|g" -e "s|<decisions>|$DECISIONS|g" -e "s|<mechanism>|${DECISIONS%/*}/mechanism.md|g" \
     "$ROOT/bin/factory.d/_common.md" > "$RUN/frozen/_common.md"
