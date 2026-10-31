@@ -119,6 +119,27 @@ grep -eP x f
 ls | xargs -I {} echo -r {}
 grep -f <(pgrep -P 1) f
 """
+# The done-checks' planted files for #471, verbatim: bash 3.2 compares -nt and -ot in whole seconds.
+NT_BAD = ('#!/usr/bin/env bash\n[ a -nt b ] && echo 1\n[[ a -ot b ]] && echo 2\ntest a -nt b && echo 3\n'
+          'if [ "$f" -ot "$g" ]; then :; fi\n')
+NT_GOOD = ('#!/usr/bin/env bash\n[ /dev/fd/1 -ef /dev/fd/9 ] && echo same\necho "-nt and -ot"\n# never compare with -nt\n'
+           '[ -n "$x" ] && printf "%s\\n" -nt\n')
+# File-time compares that must count (lines 2 to 6; a continued one counts on its first line), then words that must not.
+NT_CASES = """#!/usr/bin/env bash
+[[ -f x && a -nt b ]]
+x="$(/usr/bin/test a -ot b && echo y)"
+[ a \\
+  -nt b ]
+! [ ! a -ot b -a -f c ]
+[ "$x" = -nt ]
+[[ "$x" != "-ot" ]]
+[ -nt ]
+[ a ] && echo -nt b
+test -n x; echo a -ot b
+cat <<EOF
+[ a -nt b ]
+EOF
+"""
 GUARDED = """#!/usr/bin/env bash
 t="$(command -v timeout)"
 timeout 5 true
@@ -170,6 +191,18 @@ class ShellLintTest(unittest.TestCase):
         self.assertEqual([line.split(": ")[1] for line in res.stdout.splitlines()],
                          [f"cases.sh:{n}" for n in (2, 3, 4, 5, 6, 9, 10, 11)])
 
+    def test_flags_planted_file_time_compares(self) -> None:
+        res = lint({"bad.sh": NT_BAD, "good.sh": NT_GOOD})
+        self.assertEqual(res.returncode, 1, res.stdout + res.stderr)
+        self.assertEqual([line.split(": ")[1] for line in res.stdout.splitlines()], [f"bad.sh:{n}" for n in range(2, 6)])
+        self.assertIn("whole seconds", res.stdout)
+
+    def test_file_time_cases(self) -> None:
+        res = lint({"cases.sh": NT_CASES})
+        self.assertEqual(res.returncode, 1, res.stdout + res.stderr)
+        self.assertEqual([line.split(": ")[1] for line in res.stdout.splitlines()],
+                         [f"cases.sh:{n}" for n in (2, 3, 4, 6)])
+
     def test_flags_c29ef01_pre_fix(self) -> None:
         old = subprocess.run(["git", "-C", str(ROOT), "show", "c29ef01^:seed/bin/memsearch"],
                              capture_output=True, text=True, check=True).stdout
@@ -191,6 +224,9 @@ class ShellLintTest(unittest.TestCase):
         self.assertTrue(all("command -v timeout;" in line for line in res.stdout.splitlines()), res.stdout)
         self.assertIn(f"factory:{net}:", res.stdout)
         self.assertNotIn(f"factory:{tools}:", res.stdout)
+        res = lint({"factory": text + '[ "$a" -nt "$b" ] && :\n'})
+        self.assertEqual(res.returncode, 1, res.stdout + res.stderr)
+        self.assertEqual([line.split(": ")[1] for line in res.stdout.splitlines()], [f"factory:{len(lines) + 1}"])
 
     def test_open_quote_fails_closed(self) -> None:
         res = lint({"open.sh": "#!/usr/bin/env bash\necho 'oops\nset -o pipefail\nyes | grep -q x\n"})

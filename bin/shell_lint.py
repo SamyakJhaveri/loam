@@ -17,7 +17,9 @@ the line that opened it, since the lint could not read past it.
 
 macOS ships bash 3.2 and BSD tools, so the words of each command (top level and every substitution
 body) must not run `mapfile` or `readarray`, `xargs -r`, `grep -P`, or `stat -c` without a
-`stat -f` fallback in the same code, and a file that runs `timeout` must check `command -v timeout`.
+`stat -f` fallback in the same code, or compare file times with `-nt` or `-ot` as the operator of a `[`,
+`[[` or `test` (bash 3.2 compares them in whole seconds), and a file that runs `timeout` must check
+`command -v timeout`.
 
 Exit status: 0 when no file has a hit or an open end, 1 otherwise.
 """
@@ -47,6 +49,10 @@ RUNS = {"!", "command", "exec", "builtin", "env", "nohup", "time", "if", "then",
         "until", "do"}
 GREP_VALUES = ("e", "f", "--regexp", "--file")  # options whose value is the next word, or the rest of the word
 XARGS_VALUES = tuple("adEIJLnPRsS")
+TESTS = {"[": "]", "[[": "]]", "test": None}  # test commands and the word that closes each
+STRING_OPS = {"=", "==", "!=", "=~", "<", ">"}  # a word after one of these is a string operand
+MTIME = ("macOS bash 3.2 compares -nt and -ot in whole seconds, so two files written in the same second "
+         "compare equal; order events by a counter or a status line, not by file times")
 LOOP = "read lines in a loop: while IFS= read -r x; do a+=(\"$x\"); done < file"
 FORMS = {
     "mapfile": f"mapfile is bash 4 and macOS has bash 3.2; {LOOP}",
@@ -57,6 +63,8 @@ FORMS = {
     "stat -c": "stat -c is GNU-only; carry the BSD form in the same code: stat -c %Y f 2>/dev/null || stat -f %m f",
     "timeout": "timeout is GNU coreutils and stock macOS lacks it, and no line of this file checks "
                "command -v timeout; guard it: command -v timeout >/dev/null && timeout ...",
+    "-nt": MTIME,
+    "-ot": MTIME,
 }
 
 
@@ -207,6 +215,18 @@ def commands(toks: list[str]) -> list[tuple[str, int]]:
     return found
 
 
+def file_times(name: str, args: list[str]) -> set[str]:
+    """The -nt and -ot operators of this [, [[ or test: its own words up to the closing ] or ]] (for [ and test
+    also the next list operator), where the operator stands between two operands and does not follow a string
+    operator, so [ "$x" = -nt ] is a string compare."""
+    expr = []
+    for arg in args:
+        if arg == TESTS[name] or name != "[[" and arg in ENDS:
+            break
+        expr.append(arg)
+    return {w for k, w in enumerate(expr[1:-1], 1) if w in ("-nt", "-ot") and expr[k - 1] not in STRING_OPS}
+
+
 def forms(toks: list[str]) -> set[str]:
     """The bash 4 and GNU-only forms these words run, as keys of FORMS."""
     cmds, out = commands(toks), set()
@@ -221,6 +241,8 @@ def forms(toks: list[str]) -> set[str]:
             out.add("grep -P")
         elif name == "stat" and opt_set(args, "c", ("--format", "--printf")) and not bsd_stat:
             out.add("stat -c")
+        elif name in TESTS:
+            out |= file_times(name, args)
     return out
 
 
