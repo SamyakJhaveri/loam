@@ -102,7 +102,8 @@ class MergeTests(unittest.TestCase):
                              ("12", HEAD[:7], "not a full lowercase commit sha"),
                              ("12", "A" * 40, "not a full lowercase commit sha"),
                              ("https://github.com/other/repo/pull/12", HEAD, "not a PR number"),
-                             ("factory/405", HEAD, "not a PR number")):
+                             ("factory/405", HEAD, "not a PR number"),
+                             ("9" * 39, HEAD, "not a PR number")):  # gh reads an overflowing number as a branch
             with self.subTest(pr=pr, sha=sha):
                 self.assert_refused(self.merge(no_head, pr, sha), why)
                 self.assertEqual(self.calls(), [])

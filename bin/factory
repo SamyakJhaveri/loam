@@ -2391,11 +2391,11 @@ cmd_stop() { # <issue|stem>
 # reported at that head passed, read in one gh call; gh pr merge then gets --match-head-commit <sha>, so GitHub
 # itself refuses a head that moved after the read. A CheckRun passes COMPLETED with SUCCESS or NEUTRAL, a
 # StatusContext with SUCCESS; any other value refuses. A PR with no reported check is refused, not waited on.
-# <pr> is a number, since gh lets a PR URL override -R; <sha> is a full lowercase sha, since gh drops an empty
+# <pr> is a number of at most nine digits, since gh lets a PR URL override -R and reads a number it cannot parse as a branch; <sha> is a full lowercase sha, since gh drops an empty
 # --match-head-commit and so would merge with no head guard.
 cmd_merge() { # <pr> <sha>
   local pr="$1" sha="$2" repo view head bad
-  [[ $pr =~ ^[1-9][0-9]*$ ]] || { echo "merge: refused: $pr is not a PR number" >&2; return 1; }
+  [[ $pr =~ ^[1-9][0-9]{0,8}$ ]] || { echo "merge: refused: $pr is not a PR number" >&2; return 1; }
   [[ $sha =~ ^[0-9a-f]{40}$ ]] || { echo "merge: refused: $sha is not a full lowercase commit sha" >&2; return 1; }
   repo=$(target_repo)
   view=$(net gh pr view "$pr" -R "$repo" --json headRefOid,statusCheckRollup) \
