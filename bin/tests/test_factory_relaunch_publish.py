@@ -44,7 +44,8 @@ WORK = ("""worker_round() { [ -e "$WORKTREE/marker" ] && return 0; touch "$WORKT
         """git -C "$WORKTREE" -c user.name=t -c user.email=t@t commit -q -m work; }; """)
 FIRST = WORK + """open_pr() { finish stopped-environment "git push of $BRANCH failed (stub)"; }"""
 # The real open_pr, as for an issue ticket whose push fails: it records publish.intent, then the push stops the run.
-FIRST_PUSH_FAILS = WORK + ("""eval "$(declare -f open_pr | sed 1s/open_pr/real_open_pr/)"; """
+# An issue ticket's stop notifies through bin/alert, which is not behind net, so notify is stubbed too.
+FIRST_PUSH_FAILS = WORK + ("""notify() { :; }; eval "$(declare -f open_pr | sed 1s/open_pr/real_open_pr/)"; """
                            """open_pr() { IS_FILE=0; ISSUE=0; net() { return 1; }; real_open_pr "$@"; }""")
 SECOND = """worker_round() { echo worker >> "$RUN/../relaunch-worker-calls"; }"""
 
