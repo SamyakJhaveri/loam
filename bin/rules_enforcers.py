@@ -56,7 +56,7 @@ def main() -> int:
         for span in SPAN.findall(cell):
             path = re.sub(r":[0-9,-]+$", "", span.split()[0])
             if not tree.has(path):
-                fails.append(f"{where}: {path} is not tracked by git")
+                fails.append(f"{where}: {path} is missing on disk or not tracked by git")
         for path, name in TEST.findall(cell):
             if tree.has(path) and not re.search(rf"^\s*(async\s+)?def {name}\b", (root / path).read_text(encoding="utf-8"), re.M):
                 fails.append(f"{where}: {path} has no def {name}")

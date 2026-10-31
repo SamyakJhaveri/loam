@@ -64,13 +64,13 @@ class RulesEnforcersTest(unittest.TestCase):
         self.assertEqual(rc, 1)
         self.assertEqual(out.splitlines(), [
             "FAIL: docs/RULES.md:5: bin/tests/test_a.py has no def test_gone",
-            "FAIL: docs/RULES.md:6: bin/tests/test_b.py is not tracked by git",
+            "FAIL: docs/RULES.md:6: bin/tests/test_b.py is missing on disk or not tracked by git",
         ])
 
     def test_flags_untracked_path(self) -> None:
         rc, out = run(rules("`bin/missing.py`"))
         self.assertEqual(rc, 1)
-        self.assertIn("bin/missing.py is not tracked", out)
+        self.assertIn("bin/missing.py is missing on disk", out)
 
     def test_reads_only_the_enforcer_column_of_an_enforcer_table(self) -> None:
         doc = rules("prose (judgment)", home='`bin/gone.py`; `bin/check` step "gone"') + (
