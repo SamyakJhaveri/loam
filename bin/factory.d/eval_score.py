@@ -25,7 +25,8 @@ rate's trial count and for infra. Each pair of models A and B scored on the same
 model A+B (recall and false alarm only): caught when either catches on the same r<k>, a false
 alarm when either fails the clean copy. And model A~B: per metric the trial counts
 paired:<A>-only, paired:<B>-only, paired:both and paired:neither over those repeats, and one
-moved row listing the fingerprint.txt fields (model-eval writes one per r<k>) that differ between
+moved row listing the fingerprint fields (model-eval writes fingerprint-<grader>.txt and
+fingerprint.txt per r<k>; the first is read when present) that differ between
 the pair's first shared repeat, prefixed "descriptive: " when more than one differs, since such a
 pair cannot attribute its difference to any one field. python3 stdlib only.
 """
@@ -113,13 +114,16 @@ def hit(grader, exp, reply):
     return blocks(grader, reply) and any(isinstance(p, str) and (p == f or p.endswith("/" + f)) for p in files)
 
 
-def fingerprint(rdir):
-    """field -> value of <model>/r<k>/fingerprint.txt, one `field value` per line; {} when missing."""
-    try:
-        lines = (rdir / "fingerprint.txt").read_text(encoding="utf-8").splitlines()
-    except OSError:
-        return {}
-    return {k: v for k, _, v in (ln.partition(" ") for ln in lines) if k}
+def fingerprint(rdir, grader):
+    """field -> value of <model>/r<k>/fingerprint-<grader>.txt, the config that grader's replies ran on, else
+    of the cell's shared fingerprint.txt; one `field value` per line; {} when both are missing."""
+    for name in (f"fingerprint-{grader}.txt", "fingerprint.txt"):
+        try:
+            lines = (rdir / name).read_text(encoding="utf-8").splitlines()
+        except OSError:
+            continue
+        return {k: v for k, _, v in (ln.partition(" ") for ln in lines) if k}
+    return {}
 
 
 def rate(hits, trials):
@@ -193,7 +197,7 @@ def main(argv):
             # The config fields that differ between the pair's first shared repeat; with more than one, a
             # difference cannot be put on any one of them.
             first = min(common, key=lambda r: int(r[1:]))
-            fa, fb = fingerprint(replies_root / a / first), fingerprint(replies_root / b / first)
+            fa, fb = fingerprint(replies_root / a / first, grader), fingerprint(replies_root / b / first, grader)
             if fa or fb:
                 moved = sorted(k for k in fa.keys() | fb.keys() if fa.get(k) != fb.get(k))
                 rows.append((grader, f"{a}~{b}", "moved",
