@@ -21,7 +21,7 @@ Rubric text lives only in the grader files.
 
 `-C <repo>`, before the subcommand or right after it, points `lint`, `run`, `status`, `stop`, `merge`, and `next` at another repository (F8 step 1; Run the factory on another repository, below).
 `REPO` is `<owner>/<repo>` read from the target's `origin` URL, and every `gh` call about the target passes it as `-R`, so a fork's issues and PRs never go to the parent `gh` would pick by default.
-`status` runs on the runner; from the Mac it is `bin/runner bin/factory status`.
+`status` runs on the runner; from the Mac it is `bin/runner 'bin/factory status'`.
 
 ## Layout
 
