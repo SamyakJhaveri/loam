@@ -135,6 +135,14 @@ class RelaunchPublishTests(unittest.TestCase):
         self.assertEqual((status, calls), ("pr-opened", 0))
         self.assertTrue(self.body().startswith("## How it works\n"), self.body())
 
+    def test_opened_draft_relaunch_resumes_into_a_worker_round(self) -> None:
+        # The first launch's real open_pr opens the file-ticket draft: publish.intent goes with the pr-opened exit.
+        first = self.launch(JUDGE_PASS, REVIEW_BLOCKING, WORK)
+        self.assertEqual(first.returncode, 0, first.stderr)
+        self.assertEqual(list((self.runs / "rl").glob("*/publish.intent")), [])
+        self.launch(JUDGE_PASS, REVIEW_BLOCKING, SECOND)
+        self.assertGreater(len((self.runs / "rl" / "relaunch-worker-calls").read_text().splitlines()), 0)
+
     def test_lost_publish_with_a_moved_head_resumes_into_a_worker_round(self) -> None:
         self.assertGreater(self.relaunch(JUDGE_FAIL, f"{REVIEW_CLEAN}; {CAP_ONE}", move_head=True,
                                          first_stub=FIRST_PUSH_FAILS)[1], 0)
