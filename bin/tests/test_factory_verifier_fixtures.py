@@ -1,9 +1,9 @@
 """The loop keeps running worker rounds after a judge fail and opens the PR at the first judge pass.
 
 `bin/factory` is sourced (FACTORY_SOURCED=1) and the real main_loop runs: checks, grade_round, graders, run_judge,
-run_review, call_json, and open_pr. Only worker_round and notify are stubbed; the worker stub makes one commit per
-round. A fake `claude` on PATH answers the judge by its call number and the reviewer always clean, and logs each
-call; a fake `gh` records its arguments. The worktree's origin is a local bare repository. No network.
+run_review, call_json, and open_pr. Only worker_round, notify and alert are stubbed (alert, so finish's heartbeat pause
+never reaches the host's real bin/alert); the worker stub makes one commit per round. A fake `claude` on PATH answers
+the judge by its call number and the reviewer always clean, and logs each call; a fake `gh` records its arguments. The worktree's origin is a local bare repository. No network.
 """
 
 from __future__ import annotations
@@ -49,6 +49,7 @@ JUDGE_PASS = {"verdict": "pass", "rows": {"widget": "pass"}, "evidence": {"widge
 JUDGE_FAIL = {"verdict": "fail", "rows": {"widget": "fail"}, "evidence": {}, "fixes": ["make the widget work"], "backlog": []}
 
 LOOP = """notify() { :; }
+alert() { :; }
 worker_round() { echo "$1" >> "$RUN/worker-rounds"; git -C "$WORKTREE" -c user.name=t -c user.email=t@t commit -q --allow-empty -m "round $1"; }
 ( cd "$RUN/frozen" && sha256_of * > sha256 )
 echo "GRADER_FAIL_ROUNDS=$GRADER_FAIL_ROUNDS" >&2
