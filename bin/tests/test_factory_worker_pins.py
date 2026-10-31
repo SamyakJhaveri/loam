@@ -8,7 +8,8 @@ CLAUDE_CODE_SUBAGENT_MODEL_FORCE exists from 2.1.257, so claude_version_ok refus
 GRADERS_DIR and `claude` is a stub on PATH. No network.
 The frozen copy also keeps the source's Bash sandbox and adds the run's git and run-directory roots to its
 allowWrite (#409), so freeze runs on a fixture worktree. The worker call loads no settings tier, so the copy carries
-a fixture user tier (CLAUDE_CONFIG_DIR) without its sandbox block, whose excludedCommands would run unsandboxed.
+a fixture user tier (CLAUDE_CONFIG_DIR) without its sandbox block, whose excludedCommands would run unsandboxed, or
+its allow rules and additionalDirectories, which Claude Code adds to the sandbox's writable paths and allowed hosts.
 """
 
 from __future__ import annotations
@@ -25,7 +26,8 @@ GRADERS = ROOT / "cultivation/marketplace/sam-cc-setup/agents"
 PINS = ("CLAUDE_CODE_SUBAGENT_MODEL", "ANTHROPIC_DEFAULT_SONNET_MODEL", "ANTHROPIC_DEFAULT_HAIKU_MODEL")
 TOKEN = {"CLAUDE_CODE_OAUTH_TOKEN": "fixture-token"}  # bin/claude-account rewrites it live, so it is never frozen
 USER = {"attribution": {"commit": ""}, "env": {"USER_ONLY": "u", "CLAUDE_CODE_SUBAGENT_MODEL": "claude-user-1", **TOKEN},
-        "permissions": {"deny": ["Bash(user-rule:*)"]},
+        "permissions": {"deny": ["Bash(user-rule:*)"], "allow": ["Edit(~/x/**)", "WebFetch(domain:evil.example)"],
+                        "additionalDirectories": ["~/y"]},
         "hooks": {"Stop": [{"hooks": [{"type": "command", "command": "true"}]}]},
         "sandbox": {"excludedCommands": ["python3 *"], "filesystem": {"allowWrite": ["~/.codex"]},
                     "network": {"allowedDomains": ["hooks.slack.com"]}}}
@@ -39,7 +41,8 @@ class WorkerPinTests(unittest.TestCase):
         (self.tmp / "bin").mkdir()
 
     def sourced(self, script: str, **extra: str) -> subprocess.CompletedProcess[str]:
-        env = {k: v for k, v in os.environ.items() if not k.startswith("FACTORY_") and k not in ("RUN", "LOG")}
+        env = {k: v for k, v in os.environ.items()
+               if not k.startswith("FACTORY_") and k not in ("RUN", "LOG", "CLAUDE_SETTINGS_FILE")}
         env.update(FACTORY_SOURCED="1", FACTORY_ROOT=str(ROOT), FACTORY_RUNS_ROOT=str(self.tmp / "runs"),
                    PATH=f"{self.tmp / 'bin'}:{env['PATH']}", **extra)
         return subprocess.run(["bash", "-c", f". bin/factory\n{script}"], cwd=ROOT, env=env,
@@ -63,7 +66,12 @@ class WorkerPinTests(unittest.TestCase):
         self.assertEqual(proc.stdout.strip(), "frozen", proc.stderr)
         frozen = run / "frozen/worker-settings.json"
         self.assertEqual(frozen.stat().st_mode & 0o077, 0)  # it holds the user tier's env, which may hold a token
-        return json.loads(frozen.read_text())
+        settings = json.loads(frozen.read_text())
+        # Edit allow paths and additionalDirectories become sandbox-writable and WebFetch domains reachable, even
+        # under strictAllowlist, and allow rules do nothing under bypassPermissions.
+        self.assertNotIn("allow", settings["permissions"])
+        self.assertNotIn("additionalDirectories", settings["permissions"])
+        return settings
 
     def frozen_env(self, **extra: str) -> tuple[dict[str, str], dict[str, str]]:
         settings = self.frozen_settings(**extra)

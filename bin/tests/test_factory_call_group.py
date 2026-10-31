@@ -4,11 +4,13 @@
 fake `claude` or `codex` first on PATH. Each fake backgrounds a writer that appends to a marker file every 0.2 s and
 then exits 0 with a usable reply, so the call ends normally and only call_end can stop the writer. The done-checks
 cover the worker call; these cover the grader and Codex review calls, a writer that ignores TERM, one in a session of
-its own, and that the worker call still gets its prompt on stdin and its env pins. No network.
+its own, that the worker call still gets its prompt on stdin and its env pins, and that the live account token
+reaches the worker call but not the supervisor after it. No network.
 """
 
 from __future__ import annotations
 
+import json
 import os
 import pathlib
 import shutil
@@ -21,7 +23,9 @@ import unittest
 ROOT = pathlib.Path(__file__).resolve().parents[2]
 # A writer in a session of its own is found only by the FACTORY_CALL_TAG sweep, which reads /proc (none on a Mac).
 NEEDS_PROC = unittest.skipUnless(os.path.exists("/proc/self/environ"), "the FACTORY_CALL_TAG sweep reads /proc")
-INHERITED = ("FACTORY_ROOT", "FACTORY_GH", "LOAM_FACTORY_TOOLCHAIN", "LOAM_FACTORY_COPIER", "REPO", "RUN", "LOG")
+TOKEN = "CLAUDE_CODE_OAUTH_TOKEN"  # by name, so no token assignment appears for the merge secret grep
+INHERITED = ("FACTORY_ROOT", "FACTORY_GH", "LOAM_FACTORY_TOOLCHAIN", "LOAM_FACTORY_COPIER", "REPO", "RUN", "LOG",
+             "CLAUDE_SETTINGS_FILE", TOKEN)
 
 # FAKE_IGNORE_TERM makes the writer ignore TERM, so only KILL stops it. FAKE_OWN_SESSION starts it in a session of its
 # own, out of the call's group, as Claude Code starts each Bash tool shell, so only the FACTORY_CALL_TAG sweep finds it.
@@ -202,6 +206,22 @@ class CallGroupTests(unittest.TestCase):
                      "CLAUDE_CODE_SUBAGENT_MODEL_FORCE=1", "ANTHROPIC_DEFAULT_SONNET_MODEL=claude-pin-1",
                      "ANTHROPIC_DEFAULT_HAIKU_MODEL=claude-pin-1"):
             self.assertIn(line, env)
+
+    def test_worker_call_gets_the_live_token_and_the_supervisor_keeps_its_launch_value(self) -> None:
+        # bin/claude-account rewrites the user tier's token on a switch, so each worker call reads it; the supervisor
+        # keeps its launch value, so a later call whose read finds no token never reuses an earlier call's.
+        settings = self.top / "cc/settings.json"
+        settings.parent.mkdir()
+        for launch, live, child, after in ((None, "live-1", "live-1", "unset"),
+                                           ("launch-0", "live-1", "live-1", "launch-0"),
+                                           ("launch-0", None, "launch-0", "launch-0"), (None, None, None, "unset")):
+            with self.subTest(launch=launch, live=live):
+                settings.write_text(json.dumps({"env": {TOKEN: live}} if live else {}))
+                proc = self.run_call(f'worker_round 1; echo "after:${{{TOKEN}-unset}}"',
+                                     **({TOKEN: launch} if launch else {}))
+                self.assertIn(f"after:{after}\n", proc.stdout, proc.stderr)
+                env = dict(line.split("=", 1) for line in (self.top / "env").read_text().splitlines() if "=" in line)
+                self.assertEqual(env.get(TOKEN), child)
 
 
 if __name__ == "__main__":
