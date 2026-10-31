@@ -67,6 +67,8 @@ class HiddenTextTests(unittest.TestCase):
         for body in ("\\\\`a`<!-- x -->`b`c`",  # an even backslash run escapes nothing
                      "`a\\` <!-- x --> `",  # a backslash does not escape a closer
                      "[a](`x) <!-- y -->`",  # a backtick in a link destination is not an opener
+                     "see https://e.example/`a <!-- x --> b` c",  # nor is one in a bare URL GitHub links
+                     "see www.e.example/`a <!-- x --> b` c",
                      "| a | b |\n|---|---|\n| `x | <!-- y` --> |"):  # a table cell ends a span at |
             with self.subTest(body=body):
                 self.assertIn("holds an HTML comment", hidden_errors(body))

@@ -242,9 +242,9 @@ check_no_skip() {
 # (comment, tag, autolink, declaration, CDATA), any $ (math), ![ (image), ]: (link or footnote definition), a link
 # whose ( holds a space (a title), and an indented or contained fence are rejected. A misread rejects a visible
 # example and never passes a hidden one: whatever the scan calls code, GitHub shows as code. A backtick run left
-# unpaired, a backtick in a link destination, and a | inside a span in a table block turn spans off to the block's end,
-# a ] in a span after a [ left open in the block is rejected, since GitHub reads a link reference definition before
-# spans, and a table row with more cells than the narrowest delimiter row above it is rejected, since GitHub drops them.
+# unpaired, a backtick in a link destination or a bare URL, and a | inside a span in a table block turn spans off to
+# the block's end. A ] in a span after a [ left open in the block is rejected, since GitHub reads a link reference
+# definition before spans, and so is a table row with more cells than the narrowest delimiter row above it.
 # A mermaid, geojson, topojson, stl or math fence is drawn, and an info string past one word is not shown.
 # Each error names the line and the construct or code point, never the hidden text.
 IFS= read -r -d '' HIDDEN_PY << 'PY' || :
@@ -348,6 +348,9 @@ def prose(n, s):
                 say(n, "holds a link whose ( does not close before a space or the line end, so it may carry a title GitHub does not show")
             i += 2
             continue
+        elif s.startswith(("://", "www."), i):
+            if "`" in re.match(r"[^\s<]*", s[i:]).group():
+                spans = False
         elif c == "&" and (m := ENTITY.match(s, i)):
             for d in html.unescape(m.group()):
                 if hidden(d):
@@ -387,7 +390,7 @@ for n, line in enumerate(lines, 1):
         say(n, "indents a code fence or puts it in a list or quote, where GitHub may end it early")
     if delimiter(s):
         cols = min(cols or cells(s), cells(s))
-    if cols and cells(s) > cols:
+    elif cols and cells(s) > cols:
         say(n, "holds more table cells than its delimiter row, and GitHub drops the extra")
     prose(n, s)
 PY
