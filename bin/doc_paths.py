@@ -43,7 +43,7 @@ PATH = re.compile(r"[A-Za-z0-9_.][A-Za-z0-9_.-]*(/[A-Za-z0-9_.-]+)+/?")
 CODE = re.compile(r"(`+)(?:(?!\1).)+?\1")
 # A destination is <anything but > or newline>, or a bare run with one level of balanced parentheses.
 LINK = re.compile(r"!?\[[^\]\n]*\]\(\s*(?:<([^>\n]*)>|((?:[^()\s]|\([^()\s]*\))+))(?:\s+[\"'(][^)]*)?\)")
-FENCE = re.compile(r" {0,3}(`{3,}|~{3,})")
+FENCE = re.compile(r"\s*(`{3,}|~{3,})")
 SCHEME = re.compile(r"[A-Za-z][A-Za-z0-9+.-]*:")
 
 
@@ -67,7 +67,8 @@ class Tree:
                    for p in (path, path + ".jinja"))
 
     def is_dir(self, path: str) -> bool:
-        return self.real(path) in self.dirs
+        """A tracked directory or symlink entry, on disk or not, or a path resolving to a tracked directory."""
+        return path in self.dirs or path in self.files or self.real(path) in self.dirs
 
 
 def dead_paths(tree: Tree, doc: str, line: str) -> list[str]:

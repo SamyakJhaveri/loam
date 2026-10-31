@@ -6,17 +6,21 @@ from __future__ import annotations
 
 import os
 import pathlib
+import shutil
 import subprocess
 import sys
 import tempfile
 import unittest
 
 SCRIPT = pathlib.Path(__file__).resolve().parents[2] / "bin/doc_paths.py"
+OUT = "<outside>"
 
 
-def run(files: dict[str, str], links: dict[str, str] | None = None, deleted: tuple[str, ...] = ()) -> tuple[int, str]:
-    """Plant files and symlinks, git add them, remove the `deleted` ones from disk, and run the script."""
-    with tempfile.TemporaryDirectory() as tmp:
+def run(files: dict[str, str], links: dict[str, str] | None = None, deleted: tuple[str, ...] = (),
+        untracked: tuple[str, ...] = ()) -> tuple[int, str]:
+    """Plant files and symlinks (a target of OUT is a directory outside the repo), git add them, remove
+    the `deleted` files or directories from disk, plant the `untracked` files, and run the script."""
+    with tempfile.TemporaryDirectory() as tmp, tempfile.TemporaryDirectory() as out:
         root = pathlib.Path(tmp)
         subprocess.run(["git", "init", "-q", str(root)], check=True)
         for rel, text in files.items():
@@ -24,10 +28,13 @@ def run(files: dict[str, str], links: dict[str, str] | None = None, deleted: tup
             (root / rel).write_text(text, encoding="utf-8")
         for rel, target in (links or {}).items():
             (root / rel).parent.mkdir(parents=True, exist_ok=True)
-            os.symlink(target, root / rel)
+            os.symlink(out if target == OUT else target, root / rel)
         subprocess.run(["git", "-C", str(root), "add", "-A"], check=True)
         for rel in deleted:
-            (root / rel).unlink()
+            shutil.rmtree(root / rel) if (root / rel).is_dir() else (root / rel).unlink()
+        for rel in untracked:
+            (root / rel).parent.mkdir(parents=True, exist_ok=True)
+            (root / rel).write_text("", encoding="utf-8")
         p = subprocess.run([sys.executable, str(SCRIPT), "--root", str(root)], capture_output=True, text=True)
         return p.returncode, p.stdout
 
@@ -51,23 +58,33 @@ class DocPathsTest(unittest.TestCase):
                 "```\n`bin/fenced.sh`\n```\n"
                 "  ```sh\n`bin/indented-fence.sh`\n  ```\n"
                 "~~~\n`bin/tilde.sh`\n~~~\n"
+                "Example:\n\n    ```sh\n    `bin/example.sh`\n    ```\n"
+                "Outside `ext/` and [e](../ext).\n"
                 "Optional `.claude/rules/` and linked `.claude/skills/x/SKILL.md`.\n"
                 "Links [s](b.md#part), [d](../bin), [t](t.md), [n](guide%20name.md), [p](guide(v2).md).\n"
                 "Code `[c](gone.md)` is not a link.\n"),
             "docs/b.md": "", "docs/t.md.jinja": "", "docs/guide name.md": "", "docs/guide(v2).md": "",
             "bin/tool.sh": "", "seed/.agents/skills/x/SKILL.md": "",
-        }, links={"seed/.claude/skills/x": "../../.agents/skills/x", ".claude": "seed/.claude"})
+        }, links={"seed/.claude/skills/x": "../../.agents/skills/x", ".claude": "seed/.claude", "ext": OUT})
         self.assertEqual((rc, out), (0, ""))
 
     def test_flags_dead_targets_past_fences_and_on_disk(self) -> None:
         rc, out = run({
             "docs/a.md": "````md\n```\n`bin/in-long-fence.sh`\n````\nAfter `bin/after-fence.sh` and [sp](<a b.md>).\n",
-            "docs/b.md": "See `bin/deleted.sh`.\n", "bin/deleted.sh": "",
-        }, deleted=("bin/deleted.sh",))
+            "docs/b.md": "See `bin/deleted.sh`, `tool/check`, `ext/missing` and `bin/untracked.sh`.\n"
+                         "Read [u](../bin/untracked.sh), [g](gone%20file.md) and [g](gone(v2).md).\n",
+            "docs/c.md": "```\n~~~\n```\n`bin/after-mixed.sh`\n```\n``` not a closer\n```\n`bin/after-text.sh`\n"
+                         "   ```\n`bin/in.sh`\n    ```\n`bin/after-indent.sh`\n",
+            "bin/deleted.sh": "", "tool/check": "",
+        }, links={"ext": OUT}, deleted=("bin/deleted.sh", "tool"), untracked=("bin/untracked.sh",))
         self.assertEqual(rc, 1)
         fails = [line.split(" is ", 1)[0] for line in out.splitlines()]
         self.assertEqual(fails, ["FAIL: docs/a.md:5: bin/after-fence.sh", "FAIL: docs/a.md:5: a b.md",
-                                 "FAIL: docs/b.md:1: bin/deleted.sh"], out)
+                                 "FAIL: docs/b.md:1: bin/deleted.sh", "FAIL: docs/b.md:1: tool/check",
+                                 "FAIL: docs/b.md:1: ext/missing", "FAIL: docs/b.md:1: bin/untracked.sh",
+                                 "FAIL: docs/b.md:2: ../bin/untracked.sh", "FAIL: docs/b.md:2: gone%20file.md",
+                                 "FAIL: docs/b.md:2: gone(v2).md", "FAIL: docs/c.md:4: bin/after-mixed.sh",
+                                 "FAIL: docs/c.md:8: bin/after-text.sh", "FAIL: docs/c.md:12: bin/after-indent.sh"], out)
 
     def test_baseline_keys_on_doc_and_path_and_only_shrinks(self) -> None:
         rc, out = run({
