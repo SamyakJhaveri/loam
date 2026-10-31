@@ -1,7 +1,8 @@
 """A ticket's `skills:` names lint against skills.txt and skill_file, and a Claude worker reads each by path (#385).
 
 `bin/factory lint` runs with FACTORY_ROOT at a temp copy of bin/factory.d (its skills.txt rewritten) and HOME at a
-temp tree holding fake plugin caches, so the real allowlist and plugins are never read. The prompt test sources
+temp tree holding fake plugin caches and an installed_plugins.json naming each plugin's installPath, so the real
+allowlist and plugins are never read. The prompt test sources
 bin/factory (FACTORY_SOURCED=1) and calls the real build_worker_prompt with a Claude worker.
 """
 
@@ -61,6 +62,11 @@ class FactorySkillsTests(unittest.TestCase):
         for name in ("setup-pstack", "sharpen"):
             self.skill(self.pstack, name)
         self.skill(self.home / ".claude/plugins/cache/m/other/1.0.0", "tdd")
+        self.install({"pstack@m": self.pstack, "other@m": self.home / ".claude/plugins/cache/m/other/1.0.0"})
+
+    def install(self, paths: dict[str, pathlib.Path]) -> None:
+        plugins = {k: [{"scope": "user", "installPath": str(v)}] for k, v in paths.items()}
+        (self.home / ".claude/plugins/installed_plugins.json").write_text(json.dumps({"version": 2, "plugins": plugins}))
 
     @staticmethod
     def skill(plugin: pathlib.Path, name: str) -> pathlib.Path:
@@ -163,6 +169,28 @@ class FactorySkillsTests(unittest.TestCase):
                               env={**self.env(), "FACTORY_SOURCED": "1"}, capture_output=True, text=True, check=False)
         self.assertEqual(proc.returncode, 0, proc.stderr)
         return proc.stdout
+
+    def skill_file(self, name: str) -> subprocess.CompletedProcess[str]:
+        return subprocess.run(["bash", "-c", '. bin/factory; skill_file "$1"', "_", name], cwd=ROOT,
+                              env={**self.env(), "FACTORY_SOURCED": "1"}, capture_output=True, text=True, check=False)
+
+    def test_plugin_skill_resolves_at_its_install_path_not_the_newest_cache_folder(self) -> None:
+        for folder in ("m/pstack/10.0.0", "zz/pstack/99.0.0"):
+            self.skill(self.home / ".claude/plugins/cache" / folder, "tdd")
+        self.assertEqual(self.skill_file("pstack:tdd").stdout, f"{self.tdd}\n")
+
+    def test_plugin_with_no_installed_entry_resolves_to_nothing(self) -> None:
+        self.skill(self.home / ".claude/plugins/cache/m/gone/1.0.0", "tdd")
+        proc = self.skill_file("gone:tdd")
+        self.assertNotEqual(proc.returncode, 0, proc.stdout)
+        self.assertEqual(proc.stdout, "")
+
+    def test_plugin_skill_resolves_to_nothing_without_installed_plugins_json(self) -> None:
+        # Fails closed, no cache-search fallback (owner ruling, 30 Oct 2026, #437).
+        (self.home / ".claude/plugins/installed_plugins.json").unlink()
+        proc = self.skill_file("pstack:tdd")
+        self.assertNotEqual(proc.returncode, 0, proc.stdout)
+        self.assertEqual(proc.stdout, "")
 
     def test_skills_called_leaves_out_a_skill_call_refused_with_an_error(self) -> None:
         def use(i: str, name: str, inp: dict) -> dict:
