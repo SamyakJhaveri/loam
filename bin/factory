@@ -1511,8 +1511,11 @@ run_project() { # <run dir>
 # killed there too, under owner.lock, and the lease then decides.
 # holds_slot may return held in the very call that killed, while the call's wrapper still reaps reparented children;
 # the next caller frees the slot.
-holds_slot() { # <run dir>
-  local st o pid fd
+# With `peek` (cmd_next --dry-run) it only looks: a run the reap above would free reads free, and it takes no
+# owner.lock, kills nothing, writes no status and sends no alert. So a gone owner's run reads held while its call lives
+# (a real call kills it and may free the slot), and free while another caller holds owner.lock.
+holds_slot() { # <run dir> [peek]
+  local st o pid fd peek=${2-}
   if [ -f "$1/status" ]; then
     st=$(cat "$1/status")
     [ "$st" = running ] || [ "$st" = waiting-limit ] || return 1
@@ -1520,12 +1523,14 @@ holds_slot() { # <run dir>
     if [ -n "$HAVE_FLOCK" ] && [ -f "$1/lease" ] && exec {fd}< "$1/lease"; then
       if ! flock -n "$fd"; then
         exec {fd}>&-
+        [ -n "$peek" ] && return 0
         if o=$(dead_owner "$1") && owner_lock "$1" 1; then orphan_call_kill "$1" "$o"; rmdir "$1/owner.lock"; fi
         return 0
       fi
       # A process may close the descriptors it does not pass on (Node's child processes do), so a model call's tool
       # shell can outlive every holder; the call's group or tag still holds the slot, as on the owner path below.
       call_live "$1" && { exec {fd}>&-; return 0; }
+      [ -n "$peek" ] && { exec {fd}>&-; return 1; }
       st=$(cat "$1/status" 2> /dev/null)
       [ "$st" = running ] || [ "$st" = waiting-limit ] && printf 'stopped-environment\n' > "$1/status"
       exec {fd}>&-   # before the alert, whose children would otherwise inherit this run's lease
@@ -1539,6 +1544,7 @@ holds_slot() { # <run dir>
       return 1
     fi
     o=$(dead_owner "$1") || return 0
+    if [ -n "$peek" ]; then call_live "$1" && return 0; return 1; fi
     pid=${o%% *}
     owner_lock "$1" 1 || return 0
     if [ "$(cat "$1/owner" 2> /dev/null)" != "$o" ]; then rmdir "$1/owner.lock"; return 0; fi
@@ -2969,14 +2975,16 @@ cmd_next() { # [--dry-run|--install]
   #    live owner, or launched with no status yet), and so does a pr-opened run whose ticket worktree still exists: the merge ritual removes the worktree,
   #    so until then the PR awaits merge and the next ticket waits (LOOP.md: after each merge).
   #    FACTORY_MAX_PARALLEL bounds the count, as it does in cmd_run through apply_caps; default 1.
-  local d st n=0 max="${FACTORY_MAX_PARALLEL:-$MAX_PARALLEL}"
+  #    --dry-run asks with peek, so a run holds_slot would reap counts free and is not reaped or alerted on.
+  local d st n=0 max="${FACTORY_MAX_PARALLEL:-$MAX_PARALLEL}" peek=
+  [ "$dry" = 1 ] && peek=peek
   for d in "$RUNS_ROOT"/*/*/; do
     st=$(cat "$d/status" 2> /dev/null || true)
     if [ "$st" = pr-opened ]; then
       [ -d "$MAIN_CHECKOUT-$(basename "$(dirname "$d")")" ] && n=$((n + 1))
       continue
     fi
-    holds_slot "$d" || continue
+    holds_slot "$d" "$peek" || continue
     n=$((n + 1))
   done
   if [ "$n" -ge "$max" ]; then
