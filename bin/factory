@@ -1705,6 +1705,11 @@ worker_round() { # round; leaves round-N.* only once the call produced a result
   mv "$pf" "$RUN/round-$round.prompt.md"
   mv "$out" "$RUN/round-$round.jsonl"
   mv "$res" "$RUN/round-$round.result.json"
+  # The paths the ticket or the worktree's CLAUDE.md or AGENTS.md names that a Read found gone (#403). It
+  # informs and never grades, so a failed scan only logs. The Codex path has no Read tool_use to scan.
+  ( cd "$WORKTREE" && python3 -I "$ROOT/bin/factory.d/stale_paths.py" "$RUN/round-$round.jsonl" \
+      "$RUN/frozen/issue.md" CLAUDE.md AGENTS.md ) > "$RUN/round-$round.stale-paths" 2>> "$LOG" \
+    || log "could not scan round $round for stale paths; continuing"
 }
 
 do_not_touch_hits() { # -> the changed paths the ticket fenced off
