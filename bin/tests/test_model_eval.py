@@ -180,6 +180,13 @@ class ModelEvalTests(unittest.TestCase):
         (self.home / "drift").write_text("d2\n")
         self.assertEqual(self.run_me("m1", **env, STUB_VERSION="2").returncode, 0)
         self.assertEqual(len(self.calls()), 2, "a config change re-grades every case")
+        # config-drift.sh prints setting names only, so a changed value must reach the key some other way.
+        (self.home / ".claude/settings.json").write_text('{"permissions": {"deny": ["Read(secret.txt)"]}}\n')
+        self.assertEqual(self.run_me("m1", **env, STUB_VERSION="2").returncode, 0)
+        self.assertEqual(len(self.calls()), 2)
+        (self.home / ".claude/settings.json").write_text('{"permissions": {"deny": ["Read(*)"]}}\n')
+        self.assertEqual(self.run_me("m1", **env, STUB_VERSION="2").returncode, 0)
+        self.assertEqual(len(self.calls()), 2, "a changed setting value re-grades every case")
 
     def test_each_graders_fingerprint_describes_its_own_replies(self) -> None:
         self.judge_cases()

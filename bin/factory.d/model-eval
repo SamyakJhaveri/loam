@@ -20,7 +20,8 @@ the layout eval_score.py reads. Every cell is listed, shuffled with random.Rando
 <out>/order.txt, and run in that order, so a config that drifts during the run spreads over every model.
 Beside each scored reply, <grader>-<case>.key holds the sha256 of everything the reply depends on: the
 grader file, its schema and rubric, role-settings.json, the case's prompt.md and expected.json, the model,
-the effort, the mode, and the cell's harness (Claude Code version, config-drift.sh md5, Codex model). A
+the effort, the mode, and the cell's harness (Claude Code version, config-drift.sh md5, Codex model,
+and the raw ~/.claude/settings.json and ~/.codex/config.toml, since config-drift.sh names settings only). A
 later run calls the grader only for the cases whose reply or key is missing or whose key differs; an error,
 unparseable or off-model reply gets no key, so it is retried. Each cell dir gets fingerprint-<grader>.txt
 naming the config that grader's replies ran on, and fingerprint.txt for the whole grader list. A Codex cell
@@ -121,6 +122,18 @@ def config_drift_md5():
         return "none"
     lines = [ln for ln in r.stdout.splitlines(keepends=True) if not ln.startswith(b"0host ")]
     return hashlib.md5(b"".join(lines)).hexdigest() if lines else "none"
+
+
+def user_config_sha():
+    # config-drift.sh records setting names, never values, so a changed deny rule or env value would leave its md5
+    # alone; the key also hashes the raw files a call reads (--setting-sources user, and Codex's config).
+    h = hashlib.sha256()
+    for f in (Path.home() / ".claude" / "settings.json", Path.home() / ".codex" / "config.toml"):
+        try:
+            h.update(f"{f.name}\0{sha256(f.read_bytes())}\n".encode())
+        except OSError:
+            h.update(f"{f.name}\0none\n".encode())
+    return h.hexdigest()
 
 
 def codex_model():
@@ -231,11 +244,12 @@ def main(argv):
             # The harness a call runs on, read once per cell: a Claude Code update or a config change between
             # runs changes every key, so no reply graded on the old harness is reused.
             cfg = {"config-drift-md5": config_drift_md5(), "claude-version": claude_version(), "codex-model": codex_model()}
+            user_sha = user_config_sha()
             keys = {}
             for case in cases[g]:
                 parts = [sha256(gfile[g].read_bytes()), sha256(schema[g]), sha256(rubric[g]), settings_sha,
                          sha256((case / "prompt.md").read_bytes()), sha256((case / "expected.json").read_bytes()),
-                         m, e, "codex" if codex else "claude", *cfg.values()]
+                         m, e, "codex" if codex else "claude", *cfg.values(), user_sha]
                 keys[case] = sha256("\n".join(parts).encode())
             need = [case for case in cases[g]
                     if not (d / f"{g}-{case.name}.key").is_file() or not (d / f"{g}-{case.name}.json").is_file()
