@@ -487,6 +487,29 @@ skill_file() { # skill-name -> SKILL.md path on stdout, non-zero when it resolve
   return 1
 }
 
+# The ticket's `skills:` names, one per line, as build_worker_prompt and worker_round read them.
+worker_skills() { section Worker | sed -n 's/^skills: *//p' | head -1 | tr ',' '\n' | sed 's/^ *//;s/ *$//' | grep .; }
+
+# Which named skills a round called: a Read tool_use of the name's skill_file path (how a Claude worker opens
+# a pstack skill, which refuses the Skill tool) or a Skill tool_use naming it. A call whose tool_result is an
+# error read nothing (Claude Code refuses the Skill tool for a disable-model-invocation skill, #508), so it
+# does not count; a call with no tool_result yet does. Each line parses alone, so one bad line drops only itself.
+skills_called() { # stream.jsonl name... -> the called names, sorted, unique and comma-joined, on stdout
+  local stream="$1" s sf want='[]'
+  shift
+  for s; do
+    sf=$(skill_file "$s") || sf=""
+    want=$(jq -c --arg n "$s" --arg f "$sf" '. + [{n:$n, f:$f}]' <<< "$want")
+  done
+  jq -nrR --argjson want "$want" '[inputs | fromjson? | objects] as $ev
+    | [$ev[] | select(.type == "user") | .message.content[]? | objects
+      | select(.type == "tool_result" and .is_error == true) | .tool_use_id] as $bad
+    | [$ev[] | select(.type == "assistant") | .message.content[]? | objects
+      | select(.type == "tool_use" and (.id as $i | $bad | index([$i]) | not))] as $uses
+    | [$want[] | . as $w | select($uses | any((.name == "Read" and $w.f != "" and .input.file_path == $w.f)
+        or (.name == "Skill" and .input.skill == $w.n))) | .n] | unique | join(",")' "$stream" 2> /dev/null
+}
+
 # A plugin agent file opens with frontmatter; strip it. One that asks for prose is also asked for the
 # JSON form; judge.md and reviewer.md carry their own `## Output` section and keep it byte-identical.
 grader_rubric() {
@@ -1114,24 +1137,27 @@ off_models() {
       | select(. as $m | $ok | any(. as $p | $m | startswith($p)) | not)] | unique'
 }
 
-record() { # round role model result.json [advisor_calls] [advisor_usd] [workflow_agents] [workflow_usd] [codex]
+record() { # round role model result.json [advisor_calls] [advisor_usd] [workflow_agents] [workflow_usd] [codex] [skills_called]
   # workflow_agents and workflow_usd come from workflow_ledger (0 0 on every round but a claude worker's
   # round 1, and on every Codex round). codex is 1 for a Codex call: cost_usd is null (the dollar caps do
   # not bound Codex, #41) and `usage` carries its verbatim token counters; ticket_spent, daily_spent, and
   # cmd_status all read cost_usd // 0, so null is safe.
   # served_models is the sorted modelUsage keys of the result, the models that answered (not the one asked
   # for); [] when the result has none, as a Codex round's does. cmd_status warns on one it does not expect.
-  local line acalls="${5:-0}" ausd="${6:-0}" wagents="${7:-0}" wusd="${8:-0}" codex="${9:-0}"
+  # skills_called is skills_called's comma list, passed only for a Claude worker round; its line then carries
+  # skills_called as an array ([] for none) and every other line has no such field.
+  local line acalls="${5:-0}" ausd="${6:-0}" wagents="${7:-0}" wusd="${8:-0}" codex="${9:-0}" skills=null
+  [ $# -ge 10 ] && skills=$(jq -cn --arg s "${10}" '$s | split(",")')
   line=$(jq -c --argjson round "$1" --arg role "$2" --arg model "$3" --arg ts "$(now)" --arg nav "${FACTORY_NAV_ARM:-base}" \
     --argjson acalls "$acalls" --argjson ausd "$ausd" --argjson wagents "$wagents" --argjson wusd "$wusd" --argjson codex "$codex" \
-    "$RESULT_OBJ | {round:\$round, role:\$role, model:\$model, cost_usd:(if \$codex == 1 then null else (.total_cost_usd // 0) end), \
+    --argjson skills "$skills" "$RESULT_OBJ | {round:\$round, role:\$role, model:\$model, cost_usd:(if \$codex == 1 then null else (.total_cost_usd // 0) end), \
 duration_ms:(.duration_ms // 0), num_turns:(.num_turns // 0), denials:((.permission_denials // []) | length), \
 subtype:(.subtype // \"unknown\"), usage:(.usage // null), advisor_calls:\$acalls, advisor_usd:\$ausd, \
 workflow_agents:\$wagents, workflow_usd:\$wusd, served_models:(.modelUsage | if type == \"object\" then keys else [] end), \
-nav_arm:\$nav, ts:\$ts}" "$4" 2> /dev/null) \
+nav_arm:\$nav, ts:\$ts} + (if \$skills == null then {} else {skills_called:\$skills} end)" "$4" 2> /dev/null) \
     || line=$(jq -nc --argjson round "$1" --arg role "$2" --arg model "$3" --arg ts "$(now)" --arg nav "${FACTORY_NAV_ARM:-base}" \
       --argjson acalls "$acalls" --argjson ausd "$ausd" --argjson wagents "$wagents" --argjson wusd "$wusd" --argjson codex "$codex" \
-      '{round:$round, role:$role, model:$model, cost_usd:(if $codex == 1 then null else 0 end), duration_ms:0, num_turns:0, denials:0, subtype:"unknown", usage:null, advisor_calls:$acalls, advisor_usd:$ausd, workflow_agents:$wagents, workflow_usd:$wusd, served_models:[], nav_arm:$nav, ts:$ts}')
+      --argjson skills "$skills" '{round:$round, role:$role, model:$model, cost_usd:(if $codex == 1 then null else 0 end), duration_ms:0, num_turns:0, denials:0, subtype:"unknown", usage:null, advisor_calls:$acalls, advisor_usd:$ausd, workflow_agents:$wagents, workflow_usd:$wusd, served_models:[], nav_arm:$nav, ts:$ts} + (if $skills == null then {} else {skills_called:$skills} end)')
   printf '%s\n' "$line" >> "$LEDGER"
   printf '%s' "$line" | jq -c --arg date "$(today)" --arg ticket "$KEY" \
     '{date:$date, ticket:$ticket, role:.role, cost_usd:.cost_usd}' >> "$DAILY"
@@ -1509,7 +1535,7 @@ build_worker_prompt() { # round -> prompt path (pending until the call returns a
       fi
       printf 'Before the first edit, read %s and follow its steps.\n' "$sf" >> "$pf"
     fi
-  done < <(section Worker | sed -n 's/^skills: *//p' | head -1 | tr ',' '\n' | sed 's/^ *//;s/ *$//' | grep .)
+  done < <(worker_skills)
   # A large claude ticket runs round 1 as the fan-out workflow; a Codex worker gets the ordinary round-1
   # prompt (runs_workflow is false for it). The F11 advisor is the second check on the split (F12).
   if runs_workflow "$round"; then
@@ -1732,7 +1758,11 @@ worker_round() { # round; leaves round-N.* only once the call produced a result
   # workflow_agents and workflow_usd for this round: 0 0 unless this is a large claude ticket's round 1 (F12).
   local wl wagents wusd
   wl=$(workflow_ledger "$round" "$out" "$res"); wagents=${wl% *}; wusd=${wl#* }
-  record "$round" worker "$WORKER_MODEL" "$res" "$acalls" "$ausd" "$wagents" "$wusd"
+  # The ticket's `skills:` names this round read by path or called through the Skill tool; it informs, never grades.
+  local names=() s
+  while IFS= read -r s; do names+=("$s"); done < <(worker_skills)
+  record "$round" worker "$WORKER_MODEL" "$res" "$acalls" "$ausd" "$wagents" "$wusd" 0 \
+    "$(skills_called "$out" ${names[@]+"${names[@]}"})"
   [ -z "$CALL_STUCK" ] || finish stopped-environment "$CALL_STUCK"
   assert_call_ok worker "$res" "$head0"
   mv "$pf" "$RUN/round-$round.prompt.md"
