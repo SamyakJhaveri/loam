@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Overnight driver (jhaveris): one fresh headless Opus call per Loam factory PR, as protocol.md says.
-# Start: tmux new -d -s loam-night "bash -lc ~/loam/bin/overnight/driver.sh" ; stop: tmux kill-session -t loam-night
+# Start: tmux new -d -s loam-night "bash -lc ~/loam/bin/overnight/driver.sh" ; stop: tmux kill-session -t loam-night,
+# which ends the running call too: the driver's hangup, interrupt, terminate and exit traps end the call's session.
 # The driver, its protocol and settings live in this directory and change only through a PR (#476); a call's
 # settings deny it any write here. Run state stays in O, outside the checkout bin/factory next pulls.
 # Speed-up (30 Oct 2026, Samyak's go): a free gh poll every 60 s starts a paid call only when a factory PR has no
@@ -13,6 +14,25 @@ LOCK=~/.local/state/loam-factory/next.lock
 cd ~/loam || exit 1
 mkdir -p "$O" && touch "$O/log.md" "$O/followups.md"
 stamp() { date -u +%FT%TZ; }
+# The call runs in a session of its own (run below), so a closed terminal does not reach it: end_call TERMs its group,
+# then KILLs it 10 s later. The pid is kept in O/call.pid while the call runs, so a driver that died without its traps
+# leaves a record the next driver uses to end that call before it starts its own, and two calls never review one PR.
+call=""
+end_call() { local c=$1 i
+  case $c in '' | *[!0-9]* | 0 | 1) return 0 ;; esac
+  kill -TERM -- -"$c" 2> /dev/null || kill -TERM "$c" 2> /dev/null || return 0
+  for i in 1 2 3 4 5 6 7 8 9 10; do kill -0 -- -"$c" 2> /dev/null || kill -0 "$c" 2> /dev/null || return 0; sleep 1; done
+  kill -KILL -- -"$c" 2> /dev/null || kill -KILL "$c" 2> /dev/null
+}
+trap 'end_call "$call"; rm -f "$O/call.pid"' EXIT
+trap 'exit 129' HUP; trap 'exit 130' INT; trap 'exit 143' TERM
+# A call left by a driver that died: ended only while that pid still leads its own group and runs a driver call
+# (the watchdog's pattern), so a reused pid is never touched.
+if c=$(cat "$O/call.pid" 2> /dev/null) && [ "$(ps -o pgid= -p "$c" 2> /dev/null | tr -d ' ')" = "$c" ] \
+  && ps -ww -o args= -p "$c" 2> /dev/null | grep -q 'claude -p .*overnight/protocol.md'; then
+  echo "$(stamp) ended call $c left by an earlier driver" >> "$O/driver.log"; end_call "$c"
+fi
+rm -f "$O/call.pid"
 # Free Loam's slot after a PR's outcome line: next counts a pr-opened run as holding it while ~/loam-<issue> exists
 # (bin/factory:1858-1861), and the call's sandbox cannot remove that worktree. Only a run still at pr-opened is touched.
 reap() { local wt n d; for wt in "$HOME"/loam-[0-9]*; do
@@ -44,17 +64,17 @@ run() { local pid done_at="" out cost to
   setsid env CLAUDE_CODE_SUBAGENT_MODEL=claude-opus-5-5 ANTHROPIC_DEFAULT_HAIKU_MODEL=claude-opus-5-5 ANTHROPIC_DEFAULT_SONNET_MODEL=claude-opus-5-5 \
     claude -p --model claude-opus-5-5 --effort high --permission-mode bypassPermissions --settings "$D/settings.json" --max-turns 400 --output-format json "$1" \
     < /dev/null > "$out" 2>> "$O/driver.log" &
-  pid=$!
+  pid=$!; call=$pid; echo "$pid" > "$O/call.pid"
   while kill -0 "$pid" 2> /dev/null; do
-    sleep 15
+    sleep 15 & wait $!   # in the background, so a signal's trap runs at once
     [ -z "$done_at" ] && tail -n +"$((before + 1))" "$O/log.md" | grep -q '^outcome issue ' && done_at=$SECONDS
     if [ -n "$done_at" ] && [ $((SECONDS - done_at)) -ge 120 ]; then
       echo "$(stamp) ended call $pid 120 s after its outcome line" >> "$O/driver.log"
-      kill -TERM -- -"$pid" 2> /dev/null; sleep 10; kill -KILL -- -"$pid" 2> /dev/null
+      end_call "$pid"
       break
     fi
   done
-  wait "$pid" 2> /dev/null
+  wait "$pid" 2> /dev/null; call=""; rm -f "$O/call.pid"
   jq -r '.result // empty' "$out" >> "$O/driver.log" 2> /dev/null
   cost=$(jq -r '.total_cost_usd // empty' "$out" 2> /dev/null)
   echo "$(stamp) call $(basename "$out" .json) cost_usd=${cost:-unknown} turns=$(jq -r '.num_turns // "?"' "$out" 2> /dev/null)" >> "$O/driver.log"

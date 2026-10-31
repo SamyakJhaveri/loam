@@ -1,6 +1,7 @@
 """The overnight driver runs from the repo (#476): bin/overnight/driver.sh starts each call with the settings.json and
 protocol.md beside it, bin/overnight/watchdog.sh restarts ~/loam/bin/overnight/driver.sh, a call's settings deny it
-any write to bin/overnight, and the protocol writes lessons into docs/factory/LESSONS.md on the PR branch.
+any write to bin/overnight, and the protocol writes lessons into docs/factory/LESSONS.md on the PR branch. Stopping
+the driver, or closing its terminal, ends its running call, and a driver ends a call an earlier one left running.
 
 The scripts run for real with HOME a temp dir whose loam/bin/overnight links to this checkout, and fake claude, gh,
 tmux, pgrep, setsid, sleep and alert, so nothing reaches GitHub, Slack, tmux or a model.
@@ -11,7 +12,9 @@ from __future__ import annotations
 import json
 import os
 import pathlib
+import pty
 import re
+import shutil
 import signal
 import subprocess
 import tempfile
@@ -107,6 +110,101 @@ class OvernightDriverTests(unittest.TestCase):
         self.assertIn("git push origin HEAD:<branch>", learn[0])
         self.assertRegex(protocol, r"(?m)^8\. \*\*Merge gate")
         self.assertTrue((ROOT / "docs/factory/LESSONS.md").read_text().count("\n## From PR #") >= 19)
+
+
+    def start_call_fakes(self) -> pathlib.Path:
+        """Fake gh with one pending PR and a claude that appends its pid to calls.txt and runs until killed."""
+        real_sleep = shutil.which("sleep")
+        write_exec(self.fake / "sleep", f"#!/bin/sh\nexec {real_sleep} 0.1\n")
+        write_exec(self.fake / "gh", '#!/bin/sh\ncase "$*" in *"pr list"*) echo 7 ;; esac\nexit 0\n')
+        write_exec(self.fake / "claude", f'#!/bin/sh\necho $$ >> "$HOME/calls.txt"\nwhile :; do {real_sleep} 1; done\n')
+        return self.home / "calls.txt"
+
+    def wait_for(self, cond, timeout: float = 30) -> bool:
+        deadline = time.monotonic() + timeout
+        while time.monotonic() < deadline:
+            if cond():
+                return True
+            time.sleep(0.1)
+        return cond()
+
+    def kill_group(self, pid: int) -> None:
+        try:
+            os.killpg(pid, signal.SIGKILL)
+        except (ProcessLookupError, PermissionError):
+            pass
+
+    def calls(self, path: pathlib.Path) -> list[int]:
+        return [int(x) for x in path.read_text().split()] if path.exists() else []
+
+    @unittest.skipUnless(shutil.which("setsid"), "the driver starts each call with setsid")
+    def test_closing_the_drivers_terminal_ends_its_call(self) -> None:
+        calls = self.start_call_fakes()
+        bash = shutil.which("bash")
+        pid, master = pty.fork()
+        if pid == 0:
+            os.chdir(ROOT)
+            os.execve(bash, [bash, str(OVERNIGHT / "driver.sh")], self.env())
+        call = 0
+        try:
+            self.assertTrue(self.wait_for(lambda: self.calls(calls)), "the driver started no call")
+            call = self.calls(calls)[0]
+            os.close(master)
+            master = -1
+            self.assertTrue(self.wait_for(lambda: os.waitpid(pid, os.WNOHANG)[0] == pid), "the driver kept running")
+            pid = 0
+
+            def gone() -> bool:
+                try:
+                    os.kill(call, 0)
+                except ProcessLookupError:
+                    return True
+                return False
+            self.assertTrue(self.wait_for(gone, 15), "the call outlived its driver's terminal")
+            self.assertFalse((self.state / "call.pid").exists())
+        finally:
+            if master >= 0:
+                os.close(master)
+            if call:
+                self.kill_group(call)
+            if pid:
+                os.kill(pid, signal.SIGKILL)
+                os.waitpid(pid, 0)
+
+    def run_driver_until_its_call(self, calls: pathlib.Path, n: int) -> None:
+        # A narrow COLUMNS, as in a tmux pane, must not cut the call's args the driver matches.
+        p = subprocess.Popen(["bash", str(OVERNIGHT / "driver.sh")], env={**self.env(), "COLUMNS": "80"}, cwd=ROOT,
+                             stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, start_new_session=True)
+        try:
+            self.assertTrue(self.wait_for(lambda: len(self.calls(calls)) >= n), "the driver started no call")
+        finally:
+            self.kill_group(p.pid)
+            p.wait()
+            for c in self.calls(calls)[n - 1:]:
+                self.kill_group(c)
+
+    @unittest.skipUnless(shutil.which("setsid"), "the driver starts each call with setsid")
+    def test_driver_ends_a_call_an_earlier_driver_left_before_its_own(self) -> None:
+        calls = self.start_call_fakes()
+        prompt = f"Read {self.home}/loam/bin/overnight/protocol.md and process one pull request as it says."
+        left = subprocess.Popen(["sh", str(self.fake / "claude"), "-p", prompt], env=self.env(),
+                                start_new_session=True)
+        self.addCleanup(lambda: (self.kill_group(left.pid), left.wait()))
+        self.assertTrue(self.wait_for(lambda: self.calls(calls)))
+        (self.state / "call.pid").write_text(f"{left.pid}\n")
+        self.run_driver_until_its_call(calls, 2)
+        # Ended before the driver's own call started, so the two never ran at once.
+        self.assertIsNotNone(left.poll(), "the earlier driver's call was left running")
+        self.assertIn(f"ended call {left.pid} left by an earlier driver", (self.state / "driver.log").read_text())
+
+    @unittest.skipUnless(shutil.which("setsid"), "the driver starts each call with setsid")
+    def test_driver_leaves_a_reused_pid_alone(self) -> None:
+        calls = self.start_call_fakes()
+        other = subprocess.Popen([shutil.which("sleep"), "300"], start_new_session=True)
+        self.addCleanup(lambda: (self.kill_group(other.pid), other.wait()))
+        (self.state / "call.pid").write_text(f"{other.pid}\n")
+        self.run_driver_until_its_call(calls, 1)
+        self.assertIsNone(other.poll(), "the driver killed a process that is not a driver call")
 
 
 if __name__ == "__main__":

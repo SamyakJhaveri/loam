@@ -290,6 +290,7 @@ Everything else is Samyak's: merging or pushing, launching, relaunching or rerun
 The overnight driver, which reviews, fixes and merges Loam's factory PRs on jhaveris, lives in `bin/overnight/`: `driver.sh` starts one headless call per PR with `settings.json` and `protocol.md` from that directory, and `watchdog.sh`, run by cron, restarts a dead driver.
 Its run state (`log.md`, `followups.md`, `driver.log`, the `pr-*` files, `STOP`) stays in `~/.local/state/loam/overnight/`, outside the checkout `next` must find clean before it pulls; each call's lessons go into `docs/factory/LESSONS.md` on the PR's branch.
 A call's settings deny it any write to `~/loam/bin/overnight/` (Edit, Write and the sandbox), so the driver changes only through a reviewed PR: a `driver.sh` change takes effect when the driver restarts, a `protocol.md` change at the next call after `next` pulls it.
+Each call runs in a session of its own with its pid in the state directory's `call.pid`: stopping the driver or closing its terminal ends the call, and a restarted driver first ends any call an earlier one left running.
 
 ## Status and the manager
 
