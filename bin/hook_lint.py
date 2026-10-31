@@ -38,7 +38,7 @@ NONBLOCKING = {"SessionStart", "SessionEnd", "PostModelSwitch", "PostCompact", "
                "PermissionDenied", "MessageDisplay"}
 # PermissionRequest denies only through hookSpecificOutput, so it ignores exit 2 as well.
 EXIT2_IGNORED = NONBLOCKING | {"PermissionRequest"}
-DECISION = re.compile(r"""\\?["']?decision\\?["']?\s*:\s*\\?["']block\\?["']""")
+DECISION = re.compile(r"""(?<![\w-])\\?["']?decision\\?["']?\s*:\s*\\?["']block\\?["']""")
 EXIT2 = re.compile(r"\bexit\s*\(?\s*2\b")
 SHELL = re.compile(r"#!.*\b(ba|da|k|z)?sh\b")
 VAR = re.compile(r"\$[A-Za-z_0-9@*{]")
@@ -104,7 +104,7 @@ def rm_unquoted(toks: list[str]) -> bool:
                 body = shlex.split(own[0])
             except ValueError:
                 continue
-            if body and rm_unquoted(tokens(body[0])):
+            if body and any(rm_unquoted(tokens(code)) for _, code in code_pieces(body[0])):
                 return True
     return False
 
@@ -171,7 +171,7 @@ def lint(path: pathlib.Path, events: set[str]) -> list[tuple[int, str]]:
         if SHELL.match(text) if text.startswith("#!") else path.suffix == ".sh":
             pieces = [(n, tokens(code)) for n, code in code_pieces(text)]
             blocks += [n for n, toks in pieces for name, i in commands(toks)
-                       if name == "exit" and toks[i : i + 1] == ["2"]]
+                       if name == "exit" and [a.strip("'\"") for a in toks[i : i + 2] if a != "--"][:1] == ["2"]]
         else:
             blocks += [n for n, line in lines if EXIT2.search(line)]
     found += [(min(blocks), "block-on-nonblocking")] if blocks else []
