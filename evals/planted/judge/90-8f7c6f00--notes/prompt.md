@@ -80,7 +80,7 @@ Followed the Approach exactly; no departures.
 reviewer.md: added the no-fire line verbatim from Approach step 1, right after the Severity line, keeping the blank line before ## Output (line-placed check confirms n+1 line, n+2 blank, n+3 ## Output).
 plugin.json and marketplace.json: bumped the sam-cc-setup version 0.9.0 -> 0.9.1 (grader change protocol for a prompt edit).
 Did not touch the judge, severity definitions, verdict rule (F23), evals/reviewer/, seed/, bin/factory, or bin/factory.d/.
-Ran the after-replay inside this round with `bin/factory eval reviewer` ($3.40 on the ticket's budget) rather than leave it to the manager.
+Ran the after-replay inside this round with `bin/factory eval reviewer` rather than leave it to the manager.
 Done checks: sourced lib.sh then the block from the worktree root; 4 PASS, 0 FAIL (no-fire-line, line-placed, plugin-bump, check-green).
 
 ~~~~~~~~~~~~ evidence

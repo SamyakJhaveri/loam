@@ -2,7 +2,16 @@
 
 The fixed set the grader-model baseline (#207), the Round transcript change (#234) and the run lane (#232) are each measured on (#233).
 Every case below has a `prompt.md`, read from its `## Ticket` line as `bin/factory eval` reads `evals/clean/`, and an `expected.json` with its label.
-Run `bin/factory eval <grader> --evals-dir evals/planted`, then `python3 bin/factory.d/eval_score.py evals/planted <replies>`; each class scores as `recall:<class>`.
+A grader in `bin/factory eval` reads with Read, Grep and Glob in the caller's directory, and this tree holds the answer key (every `expected.json`, this file, `run/base/`), so never run it from the checkout.
+Copy the set to a scratch directory and run from a detached scratch worktree with `evals/` removed; this is a precondition for #207, #234 and #232:
+
+```sh
+s=$(mktemp -d) && cp -r evals/planted "$s/planted" && git worktree add --detach "$s/wt" && rm -rf "$s/wt/evals" && cd "$s/wt"
+EVAL_OUT="$s/replies/<model>/r<k>" bin/factory eval <grader> --evals-dir "$s/planted" --model <model>
+python3 bin/factory.d/eval_score.py "$s/planted" "$s/replies"
+```
+
+Each class scores as `recall:<class>`.
 
 ## Hand-written cases
 
