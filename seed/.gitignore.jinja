@@ -55,6 +55,37 @@ logs/
 # Session handoff note (local-only; stale the moment HEAD moves past it)
 /HANDOFF.md
 
+# Empty read-only files the Claude Code sandbox creates on Linux to mask
+# protected paths (anthropics/claude-code#46165). Only untracked files are
+# ignored, so a tracked .gitmodules or .mcp.json is unaffected.
+/.bash_profile
+/.bashrc
+/.gitconfig
+/.gitmodules
+/.idea
+/.mcp.json
+/.profile
+/.ripgreprc
+/.vscode
+/.zprofile
+/.zshrc
+/.claude/.cc-writes
+/.claude/launch.json
+/.claude/loop.md
+/.claude/scheduled_tasks.json
+# Claude Code also reads these as real directories: ignore the placeholder
+# file, re-include the directory so a project's own agent still reaches git.
+/.claude/agents
+!/.claude/agents/
+/.claude/commands
+!/.claude/commands/
+/.claude/output-styles
+!/.claude/output-styles/
+/.claude/routines
+!/.claude/routines/
+/.claude/workflows
+!/.claude/workflows/
+
 {% if memory %}# Loam memory (a symlink to the per-user store)
 .loam/memory
 

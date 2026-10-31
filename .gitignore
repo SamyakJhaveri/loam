@@ -104,5 +104,35 @@ cultivation/wip/
 .sync-state
 bin/harness-smoke.log
 
+# Empty read-only files the Claude Code sandbox creates on Linux to mask
+# protected paths (anthropics/claude-code#46165); seed/.gitignore.jinja carries
+# the same block for rendered projects. .mcp.json is ignored above. The
+# .claude/ ones land under seed/.claude/ through the root .claude symlink.
+/.bash_profile
+/.bashrc
+/.gitconfig
+/.gitmodules
+/.idea
+/.profile
+/.ripgreprc
+/.vscode
+/.zprofile
+/.zshrc
+/seed/.claude/.cc-writes
+/seed/.claude/launch.json
+/seed/.claude/loop.md
+/seed/.claude/scheduled_tasks.json
+# Ignore the placeholder file, re-include a real directory of the same name.
+/seed/.claude/agents
+!/seed/.claude/agents/
+/seed/.claude/commands
+!/seed/.claude/commands/
+/seed/.claude/output-styles
+!/seed/.claude/output-styles/
+/seed/.claude/routines
+!/seed/.claude/routines/
+/seed/.claude/workflows
+!/seed/.claude/workflows/
+
 # Loam memory: the per-user store symlink mem-capture.sh creates in any checkout (seed/.gitignore.jinja carries the same line for rendered projects)
 /.loam/memory
