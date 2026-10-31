@@ -106,8 +106,9 @@ class SlotCase(unittest.TestCase):
                   f"cmd_next{' --dry-run' if dry else ''}; :")
         base = {k: v for k, v in os.environ.items() if k not in INHERITED}
         return subprocess.run(["bash", "-c", script], cwd=ROOT,
-                              env={**base, "FACTORY_SOURCED": "1", "FACTORY_RUNS_ROOT": str(self.top / "runs"),
-                                   "FACTORY_MAX_PARALLEL": "1", "PATH": self.path},
+                              env={**base, "FACTORY_SOURCED": "1", "FACTORY_ROOT": str(ROOT),
+                                   "FACTORY_RUNS_ROOT": str(self.top / "runs"), "FACTORY_MAX_PARALLEL": "1",
+                                   "PATH": self.path},
                               stdin=subprocess.DEVNULL, capture_output=True, text=True, check=False)
 
     def supervise(self, call: str, prelude: str = "") -> tuple[subprocess.Popen, list[int]]:
@@ -481,9 +482,13 @@ class LeaseNextTickTests(NextTickTests):
         (self.run_dir / "lease").touch()
 
     def test_dry_run_leaves_a_held_lease_and_a_gone_owner_alone(self) -> None:
-        self.hold('touch "$2"; exec sleep 60')
+        holder = self.hold('touch "$2"; exec sleep 60')
+        # call.group names the holder's group as call_start writes it, so a dry run that killed an orphan call
+        # under owner.lock, as a real tick does, would TERM the holder.
+        (self.run_dir / "call.group").write_text(f"{holder} {lstart(holder)}\n")
         proc = self.tick(dry=True)
         self.assertIn("nothing to launch", proc.stdout)
+        self.assertNotIn(state(holder), ("", "Z"), "a dry run killed the lease holder's group")
         self.assertEqual((self.run_dir / "status").read_text(), "running\n")
         self.assertFalse(self.alerts.exists())
         self.assertFalse((self.run_dir / "owner.lock").exists())

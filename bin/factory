@@ -1511,8 +1511,9 @@ run_project() { # <run dir>
 # killed there too, under owner.lock, and the lease then decides.
 # holds_slot may return held in the very call that killed, while the call's wrapper still reaps reparented children;
 # the next caller frees the slot.
-# With `peek` (cmd_next --dry-run) it only looks: a run with no process left, or whose owner and call are gone, is
-# free, and it takes no owner.lock, kills nothing, writes no status and sends no alert.
+# With `peek` (cmd_next --dry-run) it only looks: a run the reap above would free reads free, and it takes no
+# owner.lock, kills nothing, writes no status and sends no alert. So a gone owner's run reads held while its call lives
+# (a real call kills it and may free the slot), and free while another caller holds owner.lock.
 holds_slot() { # <run dir> [peek]
   local st o pid fd peek=${2-}
   if [ -f "$1/status" ]; then
@@ -2974,7 +2975,7 @@ cmd_next() { # [--dry-run|--install]
   #    live owner, or launched with no status yet), and so does a pr-opened run whose ticket worktree still exists: the merge ritual removes the worktree,
   #    so until then the PR awaits merge and the next ticket waits (LOOP.md: after each merge).
   #    FACTORY_MAX_PARALLEL bounds the count, as it does in cmd_run through apply_caps; default 1.
-  #    --dry-run asks with peek, so a run with no process left counts free and is not reaped or alerted on.
+  #    --dry-run asks with peek, so a run holds_slot would reap counts free and is not reaped or alerted on.
   local d st n=0 max="${FACTORY_MAX_PARALLEL:-$MAX_PARALLEL}" peek=
   [ "$dry" = 1 ] && peek=peek
   for d in "$RUNS_ROOT"/*/*/; do
