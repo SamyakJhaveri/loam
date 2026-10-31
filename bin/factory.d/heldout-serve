@@ -126,7 +126,7 @@ serve() { # id -> 0 once it wrote the reply
   # step sees the worktree and its git folders, read-only.
   gd=$(gitdirs "$wt") || { echo "heldout-serve: $wt has no git folders it may show, for request $id; left pending" >&2; return 1; }
   BIND=(--ro-bind "$wt" "$wt"); while IFS= read -r line; do BIND+=(--ro-bind "$line" "$line"); done <<< "$gd"
-  WIDE=(); [ "$(stat -c %u "$spool/requests/$id")" = "$(id -u)" ] && WIDE=(--bind "$tmp" "$tmp")
+  WIDE=(); [ -O "$spool/requests/$id" ] && WIDE=(--bind "$tmp" "$tmp")
   box=$(mktemp -d "$tmp/heldout-serve.XXXXXX") && tree=$box/t && mkdir "$tree" || return 1
   if ! boundary bash -c 'set -o pipefail; git -c safe.directory="*" -C "$1" archive --format=tar "$2" | tar -x -f - -C "$3"' \
     _ "$wt" "$sha" "$tree" < /dev/null > /dev/null 2>&1; then
