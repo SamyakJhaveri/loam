@@ -380,7 +380,8 @@ class StatusCriteriaTests(unittest.TestCase):
                                    "review:unparseable"),
             "review-inconsistent": ({"judge.json": {"verdict": "pass", "rows": rows_pass, "fixes": []},
                                      "review.json": fallback("review"),
-                                     "review.raw.3.json": envelope("```json\n" + json.dumps(blocking_review) + "\n```")},
+                                     "review.raw.3.json": envelope("```json\n" + json.dumps(
+                                         {"verdict": "fail", "findings": []}) + "\n```")},
                                     "review:inconsistent"),
             "judge-row": ({"judge.json": {"verdict": "fail", "rows": {**rows_pass, "verified": "fail"}, "fixes": ["x"]},
                            "review.json": blocking_review}, "judge:verified"),
