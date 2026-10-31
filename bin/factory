@@ -3016,6 +3016,10 @@ cmd_next() { # [--dry-run|--install]
   # checked above travel with -e; a server started without them would make the run exit 4 unrecorded.
   mkdir -p "$RUNS_ROOT"
   target_is_loam && envs+=(-e "LOAM_FACTORY_TOOLCHAIN=$LOAM_FACTORY_TOOLCHAIN" -e "LOAM_FACTORY_COPIER=$LOAM_FACTORY_COPIER")
+  # The FACTORY_<NAME> caps travel too: without them the run fell back to MAX_PARALLEL=1, so every launch that
+  # next's FACTORY_MAX_PARALLEL=2 allowed beside a live run stopped at once as a machine problem.
+  local cap v
+  for cap in $CAP_NAMES; do v="FACTORY_$cap"; [ -z "${!v:-}" ] || envs+=(-e "$v=${!v}"); done
   if tmux new-session -d -s "$sess" "${envs[@]}" "cd '$ROOT' && bin/factory -C '$TARGET' run $pick >> '$RUNS_ROOT/$pick.tmux.log' 2>&1"; then
     echo "launched #$pick"
   else
