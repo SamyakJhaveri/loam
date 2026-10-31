@@ -343,21 +343,24 @@ class LeaseSlotTests(SlotCase):
 
     @unittest.skipUnless(os.path.exists("/proc/self/environ"), "call_tagged reads /proc")
     def test_launch_refused_while_a_tagged_call_of_the_last_run_lives(self) -> None:
-        # The killed run's model call closed the lease and still writes the worktree; a relaunch must not prepare it.
-        ticket, run_dir = self.ticket("orphan")
-        tag = f"test.{uuid.uuid4().hex}"
-        files = {"status": "running\n", "launched": "12345\n", "owner": f"{dead_pid()} {OLD}\n",
-                 "factory.log": "incumbent\n", "call": f"{dead_pid()} {tag}\n"}
-        for name, text in files.items():
-            (run_dir / name).write_text(text)
-        p = subprocess.Popen(["sleep", "60"], env={**os.environ, "FACTORY_CALL_TAG": tag})
-        self.addCleanup(p.wait)
-        self.addCleanup(p.kill)
-        proc = self.launch(ticket)
-        self.assertEqual(proc.returncode, 4, proc.stderr)
-        self.assertIn("still runs", proc.stderr)
-        for name, text in files.items():
-            self.assertEqual((run_dir / name).read_text(), text, name)
+        # The killed run's model call closed the lease and still writes the worktree; a relaunch must not prepare it,
+        # on a host with no flock (a Mac, HAVE_FLOCK=) too.
+        for name, extra in (("orphan", ""), ("orphan-noflock", "HAVE_FLOCK=")):
+            with self.subTest(name):
+                ticket, run_dir = self.ticket(name)
+                tag = f"test.{uuid.uuid4().hex}"
+                files = {"status": "running\n", "launched": "12345\n", "owner": f"{dead_pid()} {OLD}\n",
+                         "factory.log": "incumbent\n", "call": f"{dead_pid()} {tag}\n"}
+                for file, text in files.items():
+                    (run_dir / file).write_text(text)
+                p = subprocess.Popen(["sleep", "60"], env={**os.environ, "FACTORY_CALL_TAG": tag})
+                self.addCleanup(p.wait)
+                self.addCleanup(p.kill)
+                proc = self.launch(ticket, extra)
+                self.assertEqual(proc.returncode, 4, proc.stderr)
+                self.assertIn("still runs", proc.stderr)
+                for file, text in files.items():
+                    self.assertEqual((run_dir / file).read_text(), text, file)
 
     def test_frozen_pass_keeps_the_lease_it_inherited(self) -> None:
         # The frozen re-exec inherits the locked descriptor; a second open of `lease` in it would wait on its own lock.

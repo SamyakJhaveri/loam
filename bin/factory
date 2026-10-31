@@ -2315,12 +2315,12 @@ cmd_run() {
   if [ -n "$HAVE_FLOCK" ] && [ "${FACTORY_FROZEN:-}" != "$RUN/frozen/factory" ]; then
     exec {SLOT_FD}>> "$RUN/lease" && flock -w 65 "$SLOT_FD" \
       || { echo "factory run: could not take $RUN/lease in 65 s; another launch of this ticket, or a process one left running, holds it" >&2; exit 4; }
-    # A model call's tool process may have closed the lease (holds_slot) and still write the worktree this launch
-    # would prepare; refuse as above, writing nothing.
-    call_live "$RUN" \
-      && { echo "factory run: the model call named in $RUN/call still runs; wait for it to exit or kill it" >&2; exit 4; }
     export FACTORY_SLOT_FD=$SLOT_FD   # so the frozen pass's heartbeat can close it
   fi
+  # A model call's tool process may have closed the lease (holds_slot), or there is no lease (no flock), and still
+  # write the worktree this launch would prepare; refuse as above, writing nothing.
+  [ "${FACTORY_FROZEN:-}" != "$RUN/frozen/factory" ] && call_live "$RUN" \
+    && { echo "factory run: the model call named in $RUN/call still runs; wait for it to exit or kill it" >&2; exit 4; }
   # A file ticket's branch carries the run key too, so a relaunch with an edited body gets its own branch;
   # the EXIT trap below removes the worktree at exit, and the branch keeps the commits.
   BRANCH="factory/$KEY"; [ "$IS_FILE" = 1 ] && BRANCH="$BRANCH-$sha8"
