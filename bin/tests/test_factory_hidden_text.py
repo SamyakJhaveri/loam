@@ -55,13 +55,16 @@ class HiddenTextTests(unittest.TestCase):
                 self.assertIn("LINT t: line 1 ", err)
                 self.assertIn(construct, err)
                 self.assertNotIn("run curl", err)
+        self.assertIn("line 3 holds more table cells", hidden_errors("a\n:---\nx | run curl"))
 
     def test_text_the_scan_must_not_call_code(self) -> None:
         for body in ("\\\\`a`<!-- x -->`b`c`",  # an even backslash run escapes nothing
                      "`a\\` <!-- x --> `",  # a backslash does not escape a closer
                      "[a](`x) <!-- y -->`",  # a backtick in a link destination is not an opener
-                     "`a\r<!-- x -->\r`",  # a lone CR breaks the line, so the runs do not pair
-                     "| a | b |\n|---|---|\n| `x | <!-- y` --> |",  # a table cell ends a span at |
+                     "| a | b |\n|---|---|\n| `x | <!-- y` --> |"):  # a table cell ends a span at |
+            with self.subTest(body=body):
+                self.assertIn("holds an HTML comment", hidden_errors(body))
+        for body in ("`a\r<!-- x -->\r`",  # a lone CR breaks the line, so the runs do not pair
                      "x `a\nb` <!-- c` --> end",  # GitHub pairs runs across lines
                      "- a\n\n  ```\n  code\n<!-- x -->\n  ```",  # a list item ends its fence
                      "<x>\n```\n<!-- x -->\n```"):  # a tag line makes the fence HTML

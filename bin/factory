@@ -242,7 +242,8 @@ check_no_skip() {
 # (comment, tag, autolink, declaration, CDATA), any $ (math), ![ (image), ]: (link or footnote definition), a link
 # whose ( holds a space (a title), and an indented or contained fence are rejected. A misread rejects a visible
 # example and never passes a hidden one: whatever the scan calls code, GitHub shows as code. A backtick run left
-# unpaired, a backtick in a link destination, and a | inside a span in a table block turn spans off to the block's end.
+# unpaired, a backtick in a link destination, and a | inside a span in a table block turn spans off to the block's end,
+# and a table row with more cells than its delimiter row is rejected, since GitHub drops the excess.
 # A mermaid, geojson, topojson, stl or math fence is drawn, and an info string past one word is not shown.
 # Each error names the line and the construct or code point, never the hidden text.
 IFS= read -r -d '' HIDDEN_PY << 'PY' || :
@@ -272,14 +273,18 @@ def fence_open(s):  # the fence run when s opens a fence, else None
 def blank(s):
     return s.strip(" \t") == ""
 
-def table_from(i):  # whether the block that starts at lines[i] holds a GFM table delimiter row
+def cells(s):
+    s = s.strip(" \t")
+    return s[s.startswith("|"):len(s) - s.endswith("|")].count("|") + 1
+
+def table_from(i):  # the cell count of the GFM table delimiter row in the block that starts at lines[i], else 0
     for s in lines[i:]:
         s = s.rstrip("\r")
         if blank(s) or fence_open(s):
-            return False
-        if "|" in s and "-" in s and re.fullmatch(r"[ \t>|:-]*", s):
-            return True
-    return False
+            return 0
+        if "-" in s and ("|" in s or ":" in s) and re.fullmatch(r"[ \t>|:-]*", s):
+            return cells(s)
+    return 0
 
 def prose(n, s):
     global spans
@@ -366,6 +371,8 @@ for n, line in enumerate(lines, 1):
     m = CONTAINER.match(s)
     if m.end() and fence_open(s[m.end():]):
         say(n, "indents a code fence or puts it in a list or quote, where GitHub may end it early")
+    if table and cells(s) > table:
+        say(n, "holds more table cells than its delimiter row, and GitHub drops the extra")
     prose(n, s)
 PY
 check_hidden_text() {
