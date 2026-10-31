@@ -5,7 +5,7 @@ entry point for projects that consume the Loam marketplace.
 
 ## sam-cc-setup v0.9.22 factory-watch
 
-`/sam-cc-setup:factory-watch` reads `bin/factory status` once per call and reports a run that stopped, a PR that opened, or a failing precondition; run it as `/loop 30m /sam-cc-setup:factory-watch`.
+`/sam-cc-setup:factory-watch` reads `bin/factory status` once per call and reports a run that stopped, a PR that opened, or a failing precondition; a `/loop` fire cannot run a manual-only skill, so watch on a loop with the plain prompt `/loop 30m run bin/factory status (bin/runner bin/factory status off the runner) and report only a run that stopped, a new pr-opened, or a new precondition FAIL since the last check`.
 It is manual-only and never starts, stops or merges a run.
 Carried from DistBench's factory-watch skill without its board upload or alerts.
 No grader prompt changed, so no grader replay is owed.
