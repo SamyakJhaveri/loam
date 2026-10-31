@@ -1033,7 +1033,7 @@ factory-round.js review-output.schema.json codex-review.prompt.md unattended.md 
 CHECKS_END="printf '\nCHECKS-END\n'"
 
 freeze() {
-  local g src cgd ccd
+  local g src cgd ccd user
   [ -f "$RUN/frozen/sha256" ] && return 0
   printf '%s\n' "$BODY" > "$RUN/frozen/issue.md"
   [ -n "$ISSUE" ] && { net gh issue view "$ISSUE" -R "$REPO" --json title -q .title > "$RUN/frozen/title" 2> /dev/null || rm -f "$RUN/frozen/title"; }
@@ -1050,13 +1050,28 @@ freeze() {
   # The worker's Bash runs in the sandbox, which writes only the worktree and $TMPDIR by default; a commit also
   # needs the worktree gitdir and objects/refs/logs under the common dir (the Codex worker's roots), and the shell
   # writes decisions.md and mechanism.md in the worker directory and result.json in tasks/ (#409).
+  # uv gets a cache and tool directory of the run's own, so a worker cannot alter wheels or tools that a process
+  # outside the sandbox later runs. Claude Code merges sandbox lists across tiers, and the user tier's
+  # excludedCommands or allowWrite would widen the boundary, so the worker call loads no settings tier
+  # (--setting-sources ''): this copy carries the user tier without its sandbox block, arrays concatenated and the
+  # worker's keys winning, as Claude Code merges them.
   cgd=$(git -C "$WORKTREE" rev-parse --absolute-git-dir 2> /dev/null) && ccd=$(git_common "$WORKTREE") \
     && [ -n "$cgd" ] && [ -n "$ccd" ] || finish stopped-environment "could not read the git directories of $WORKTREE for the worker sandbox"
-  jq --arg m "$WORKER_MODEL" --arg gd "$cgd" --arg cd "$ccd" --arg w "${DECISIONS%/*}" --arg t "$RUN/tasks" \
-    '.env = (.env // {}) + {CLAUDE_CODE_SUBAGENT_MODEL: $m, CLAUDE_CODE_SUBAGENT_MODEL_FORCE: "1",
-    ANTHROPIC_DEFAULT_SONNET_MODEL: $m, ANTHROPIC_DEFAULT_HAIKU_MODEL: $m}
-    | .sandbox.filesystem.allowWrite += [$gd, "\($cd)/objects", "\($cd)/refs", "\($cd)/logs", $w, $t]' \
-    "$ROOT/bin/factory.d/worker-settings.json" > "$RUN/frozen/worker-settings.json"
+  user="${CLAUDE_CONFIG_DIR:-$HOME/.claude}/settings.json"
+  user=$( { [ -f "$user" ] && cat "$user" || echo '{}'; } | jq -c 'del(.sandbox)' 2> /dev/null) \
+    || finish stopped-environment "could not read $user for the frozen worker settings"
+  mkdir -p "$RUN/uv/cache" "$RUN/uv/tools"
+  # The user tier's env may hold a token, so the copy is private to the operator, as ~/.claude/settings.json is.
+  ( umask 077; jq --argjson u "$user" --arg m "$WORKER_MODEL" --arg gd "$cgd" --arg cd "$ccd" --arg w "${DECISIONS%/*}" \
+    --arg t "$RUN/tasks" --arg uv "$RUN/uv" '
+    def merge($a; $b): if ($a|type) == "object" and ($b|type) == "object"
+      then reduce ($b|keys_unsorted[]) as $k ($a; .[$k] = merge($a[$k]; $b[$k]))
+      elif ($a|type) == "array" and ($b|type) == "array" then $a + $b else $b end;
+    merge($u; .) | .env = (.env // {}) + {CLAUDE_CODE_SUBAGENT_MODEL: $m, CLAUDE_CODE_SUBAGENT_MODEL_FORCE: "1",
+    ANTHROPIC_DEFAULT_SONNET_MODEL: $m, ANTHROPIC_DEFAULT_HAIKU_MODEL: $m,
+    UV_CACHE_DIR: "\($uv)/cache", UV_TOOL_DIR: "\($uv)/tools"}
+    | .sandbox.filesystem.allowWrite += [$gd, "\($cd)/objects", "\($cd)/refs", "\($cd)/logs", $w, $t, "\($uv)/cache", "\($uv)/tools"]' \
+    "$ROOT/bin/factory.d/worker-settings.json" > "$RUN/frozen/worker-settings.json" )
   sed -e "s|<issue>|${ISSUE:-$KEY}|g" -e "s|<decisions>|$DECISIONS|g" -e "s|<mechanism>|${DECISIONS%/*}/mechanism.md|g" \
     "$ROOT/bin/factory.d/_common.md" > "$RUN/frozen/_common.md"
   for g in judge reviewer; do
@@ -1707,7 +1722,7 @@ worker_round() { # round; leaves round-N.* only once the call produced a result
         CLAUDE_CODE_SUBAGENT_MODEL="$WORKER_MODEL" CLAUDE_CODE_SUBAGENT_MODEL_FORCE=1 \
         ANTHROPIC_DEFAULT_SONNET_MODEL="$WORKER_MODEL" ANTHROPIC_DEFAULT_HAIKU_MODEL="$WORKER_MODEL" claude -p \
         --model "$WORKER_MODEL" --effort "$WORKER_EFFORT" ${WORKER_ADVISOR:+--advisor "$WORKER_ADVISOR"} --permission-mode bypassPermissions --strict-mcp-config \
-        --setting-sources user --settings "$RUN/frozen/worker-settings.json" --max-turns "$MAX_TURNS" \
+        --setting-sources '' --settings "$RUN/frozen/worker-settings.json" --max-turns "$MAX_TURNS" \
         --append-system-prompt "$(cat "$RUN/frozen/unattended.md")" \
         --max-budget-usd "$ROUND_BUDGET_USD" --output-format stream-json --verbose --include-hook-events \
         < "$pf" > "$out" 2>> "$LOG"
