@@ -102,6 +102,7 @@ class FrozenChecks(unittest.TestCase):
         self.assert_fails_naming("FROZEN_REF=refs/heads/nope does not resolve", env={"FROZEN_REF": "refs/heads/nope"})
 
     def test_no_checks_and_no_list_passes(self) -> None:
+        self.assert_passes()  # a fresh render: main is unborn and no origin exists
         self.commit("init")
         self.assert_passes()
 
@@ -110,6 +111,9 @@ class FrozenChecks(unittest.TestCase):
         self.project(self.top / "sub/proj")
         self.sign_on_main()
         self.assert_passes()
+        shutil.rmtree(self.proj / "checks")
+        self.commit("delete checks")
+        self.assert_fails_naming("FROZEN.sha256")
 
     def test_replacing_a_signed_symlink_with_another_file_fails(self) -> None:
         (self.proj / "checks").mkdir()
