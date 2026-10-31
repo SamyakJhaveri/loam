@@ -2367,14 +2367,15 @@ cmd_merge() { # <pr> <sha>
   head=$(jq -r '.headRefOid // ""' <<<"$view" 2> /dev/null) \
     || { echo "merge: refused: gh pr view $pr printed no JSON" >&2; return 1; }
   [ "$head" = "$sha" ] || { echo "merge: refused: head of #$pr is ${head:-unknown}, not $sha" >&2; return 1; }
-  [ "$(jq '.statusCheckRollup // [] | length' <<<"$view")" -gt 0 ] \
+  [ "$(jq '.statusCheckRollup // [] | length' <<<"$view" 2> /dev/null)" -gt 0 ] 2> /dev/null \
     || { echo "merge: refused: no check reported at $sha" >&2; return 1; }
   bad=$(jq -r '[.statusCheckRollup[]
     | if .__typename == "CheckRun" then
         select(.status != "COMPLETED" or (.conclusion != "SUCCESS" and .conclusion != "NEUTRAL"))
         | "\(.name) \(.status)/\(.conclusion)"
       elif .__typename == "StatusContext" then select(.state != "SUCCESS") | "\(.context) \(.state)"
-      else "\(.__typename) entry" end] | join(", ")' <<<"$view")
+      else "\(.__typename) entry" end] | join(", ")' <<<"$view") \
+    || { echo "merge: refused: unreadable statusCheckRollup at $sha" >&2; return 1; }
   [ -z "$bad" ] || { echo "merge: refused: not passed at $sha: $bad" >&2; return 1; }
   net gh pr merge "$pr" -R "$repo" --merge --match-head-commit "$sha"
 }
