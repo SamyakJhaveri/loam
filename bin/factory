@@ -15,8 +15,6 @@
 # Run and stop, when the operator runs them, add a line to the run dir's owner-events.jsonl (status --criteria); lint of
 # an issue adds one to <runs>/<issue>/owner-events.jsonl, which the issue's next launch moves into its run dir.
 set -uo pipefail
-# Only round_zero sets FACTORY_ROUND0 (lib.sh, predict); a run nested in another's round 0 must not inherit it.
-unset FACTORY_ROUND0
 
 # FACTORY_ROOT is set when a run execs its frozen copy of this file out of the run directory.
 ROOT="${FACTORY_ROOT:-$(cd "$(dirname "$0")/.." && pwd)}"
@@ -138,11 +136,34 @@ dc_block() { awk '/^```done-checks$/{inb=1; next} /^```/{if (inb) exit} inb {pri
 # The block's checks one per line: continuations joined; indentation, blank lines, comments, and predict lines dropped.
 dc_checks() { dc_lines | sed -e '/^#/d' -e '/^$/d' -e '/^predict[[:space:]]/d'; }
 
-# The block's lines with continuations joined and indentation dropped.
-dc_lines() { dc_block | sed -e :a -e '/\\$/N; s/\\\n//; ta' -e 's/^[[:space:]]*//'; }
+# The block's lines with continuations joined as bash joins them, and indentation dropped: a raw line ending in a
+# backslash runs on into the next, unless it is a comment, which ends at its newline. With 1, the raw lines instead,
+# less every joined line that is a predict line, so dc_predicts and dc_script cannot disagree about what one holds.
+dc_lines() {
+  dc_block | awk -v script="${1:-0}" '
+    function emit() {
+      sub(/^[[:space:]]+/, "", line)
+      if (!script) print line; else if (line !~ /^predict[[:space:]]/) printf "%s", raw
+      line = raw = ""
+    }
+    { raw = raw $0 "\n" }
+    /\\$/ && !/^[[:space:]]*#/ { line = line substr($0, 1, length($0) - 1); next }
+    { line = line $0; emit() }
+    END { if (raw != "") { line = line "\\"; emit() } }'
+}
 
 # The block's predict lines, `predict NAME CMD...` (CONTRACT.md, Done checks).
 dc_predicts() { dc_lines | grep -E '^predict[[:space:]]'; }
+
+# The block as checks.sh runs it: every raw line of a predict line dropped, so no round after round 0 runs its text.
+dc_script() { dc_lines 1; }
+
+# Sets the caller's name and cmd from one dc_predicts line; read would trim cmd's trailing whitespace, which may be
+# escaped (`a\ `), so the prefix comes off by parameter expansion.
+predict_split() {
+  cmd=${1#predict}; cmd=${cmd#"${cmd%%[![:space:]]*}"}
+  name=${cmd%%[[:space:]]*}; cmd=${cmd#"$name"}; cmd=${cmd#"${cmd%%[![:space:]]*}"}
+}
 
 # The NAME after each `pass` in the check lines on stdin, quotes stripped, one per line.
 pass_names() { grep -oE '(^|[[:space:]])pass[[:space:]]+"?[A-Za-z0-9_.-]+' | awk '{print $NF}' | tr -d '"' | sort -u; }
@@ -423,32 +444,29 @@ check_block_syntax() {
   fi
   # bare mktemp ignores TMPDIR on macOS and fails inside the Claude Code sandbox
   tmp=$(mktemp "${TMPDIR:-/tmp}/factory-lint.XXXXXX")
-  { cat "$ROOT/bin/factory.d/lib.sh"; echo; dc_block; } > "$tmp"
+  { cat "$ROOT/bin/factory.d/lib.sh"; echo; dc_script; } > "$tmp"
   bash -n "$tmp" || err "the done-checks block plus lib.sh does not pass bash -n"
   rm -f "$tmp"
 }
 
 # Every check line reports through pass NAME and fail NAME, and a line that leans on a test
 # file or on pytest may only name test paths the ticket already fenced off under Do not touch.
-# A predict line is not a check: it runs at round 0 only, on base, and check_predicts reads it.
+# A predict line is not a check: round 0 alone runs its text, as a bash command of its own, and check_predicts reads it.
 check_check_lines() {
-  local line owned c covered e
+  local line owned c covered e name cmd
   owned=$(section "Do not touch" | paths)
   while IFS= read -r line; do
     line=${line#"${line%%[![:space:]]*}"}
     [ -n "$line" ] || continue
     case "$line" in \#*) continue ;; esac
-    # The shell hands predict only the words before an unquoted ; & | < or >: the rest of a compound line runs
-    # outside it, and a failed redirect skips it. A keyword such as ! or [[ is no command "$@" can run.
+    # Round 0 runs the text after NAME whole, so bash parses it as written; lint checks only that there is one and
+    # that it parses alone, as round 0 will run it.
     if [[ "$line" == predict[[:space:]]* ]]; then
-      e=$(sed -E -e "s/'[^']*'|\"([^\"\\\\]|\\\\.)*\"/Q/g" <<<"$line")
-      read -r _ _ c _ <<<"$e"
-      if [[ "$e" == *[\;\&\|\<\>]* ]]; then
-        err "predict line is not one simple command: $line; CMD is one simple command, so a compound prediction goes in bash -c '...'"
-      elif [ -z "$c" ] || [[ "$c" =~ ^[\#\)] ]]; then
+      predict_split "$line"
+      if [ -z "$cmd" ] || [[ "$cmd" == \#* ]]; then
         err "predict line has no command: $line"
-      elif [ "$(type -t -- "$c")" = keyword ]; then
-        err "predict line's command $c is a shell keyword: $line; use test ! ... or bash -c '...'"
+      elif ! bash -n -c "$cmd" 2> /dev/null; then
+        err "predict line's command does not pass bash -n on its own line: $line"
       fi
       continue
     fi
@@ -468,7 +486,7 @@ check_check_lines() {
       done <<<"$owned"
       [ "$covered" = 1 ] || err "self-graded oracle: the check names $c, which Do not touch does not fence off"
     done < <(printf '%s\n' "$line" | paths)
-  done < <(dc_block | sed -e :a -e '/\\$/N; s/\\\n//; ta')
+  done < <(dc_lines)
 }
 
 check_worker() {
@@ -1278,7 +1296,7 @@ freeze() {
     printf '{"ts":"%s","event":"grader","role":"%s","file":"%s","sha256":"%s"}\n' \
       "$(now)" "$g" "$src" "$(sha256_of < "$src" | cut -d' ' -f1)" >> "$LEDGER"
   done
-  { cat "$RUN/frozen/lib.sh"; echo; dc_block; echo; echo "$CHECKS_END"; echo 'exit $((n_fail > 0))'; } > "$RUN/frozen/checks.sh"
+  { cat "$RUN/frozen/lib.sh"; echo; dc_script; echo; echo "$CHECKS_END"; echo 'exit $((n_fail > 0))'; } > "$RUN/frozen/checks.sh"
   { standing_list; section "Do not touch" | sed 's/[Ee]xcept:.*//' | ticket_paths; } | sort -u > "$RUN/frozen/protected.txt"
   section "Do not touch" | grep -o '[Ee]xcept:.*' | ticket_paths > "$RUN/frozen/exempt.txt"
   chmod +x "$RUN/frozen/checks.sh" "$RUN/frozen/factory" "$RUN/frozen/alert"
@@ -1732,7 +1750,7 @@ run_checks() { # dir out
 round_zero() {
   # The block writes round-0.out; only a clean verdict renames it to round-0.checks, the file cmd_run
   # resumes on, so a relaunch after a defect, or after a kill mid-block, runs round 0 again.
-  local out="$RUN/round-0.out" misses="$RUN/round-0.predict" guards name why base wt msg
+  local out="$RUN/round-0.out" why="" guards line name cmd rc base wt msg
   base=$(cat "$RUN/base.sha"); wt="${WORKTREE}-base"
   # Round 0 belongs to base only: run the frozen checks at base.sha in a detached temporary
   # worktree, never in the ticket worktree, which a relaunch may leave ahead of base with the
@@ -1746,18 +1764,27 @@ round_zero() {
     [ -e "$wt" ] && msg="$msg; the path exists but is not a registered worktree, delete it by hand"
     finish stopped-environment "$msg"
   fi
-  # FACTORY_ROUND0 reaches this checks.sh alone, so a later round's predict lines stay quiet (lib.sh). It names the
-  # file predict appends misses to, which a redirect on a predict line cannot reach.
-  : > "$misses"
-  ( export FACTORY_ROUND0="$misses"; run_checks "$wt" "$out" )
+  # Each predict line's text after NAME runs whole, as one bash command after lib.sh, on the clean base before the
+  # checks run, so bash parses it as written; checks.sh leaves it out (dc_script), so no later round runs it. Its
+  # output is dropped, so it cannot print a PASS line. The first miss, a non-zero exit or no text, ends the loop.
+  while IFS= read -r line; do
+    predict_split "$line"
+    if [ -z "$cmd" ] || [[ "$cmd" == \#* ]]; then
+      why="has no command"
+    else
+      ( cd "$wt" && bash -c "$(printf '. %q\n%s\n' "$RUN/frozen/lib.sh" "$cmd")" ) < /dev/null > /dev/null 2>&1
+      rc=$?
+      [ "$rc" -eq 0 ] || why="exits $rc"
+    fi
+    [ -n "$why" ] && break
+  done < <(dc_predicts)
+  run_checks "$wt" "$out"
   git -C "$MAIN_CHECKOUT" worktree remove --force "$wt" > /dev/null 2>&1
   grep -q '^FAIL checks-aborted' "$out" \
     && finish ticket-defect "checks.sh aborted on $(cut -c1-8 "$RUN/base.sha") before the block ended; see $out"
   # A predict line whose command exits non-zero, or that has none: the check fails on base, but not for the reason
   # its author predicted.
-  while read -r name why; do
-    finish ticket-defect "the predict line for check $name $why on $(cut -c1-8 "$RUN/base.sha"), so base does not show the predicted failure; see $misses"
-  done < "$misses"
+  [ -z "$why" ] || finish ticket-defect "the predict line for check $name $why on $(cut -c1-8 "$RUN/base.sha"), so base does not show the predicted failure"
   guards=$(guard_checks | pass_names)
   while read -r _ name _; do
     grep -qxF "$name" <<<"$guards" && continue
