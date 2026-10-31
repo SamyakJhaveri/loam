@@ -17,12 +17,18 @@ import subprocess
 import tempfile
 import time
 import unittest
+import uuid
 
 import bsd_shapes
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
 INHERITED = ("FACTORY_ROOT", "FACTORY_GH", "LOAM_FACTORY_TOOLCHAIN", "LOAM_FACTORY_COPIER", "REPO", "RUN", "LOG")
 OLD = "Thu Jan  1 00:00:00 1970"
+# The lease path runs where the script says it does (flock(1) and bash 4.1+), so a Mac with Homebrew's flock and bash
+# 3.2 still runs the owner-line tests and skips the lease ones.
+HAVE_FLOCK = subprocess.run(["bash", "-c", '. bin/factory; echo "$HAVE_FLOCK"'], cwd=ROOT,
+                            env={**os.environ, "FACTORY_SOURCED": "1"}, stdin=subprocess.DEVNULL,
+                            capture_output=True, text=True, check=True).stdout.strip() != ""
 
 
 def lstart(pid: int) -> str:
@@ -92,7 +98,7 @@ class SlotCase(unittest.TestCase):
 
 
 class OwnerSlotTests(SlotCase):
-    flock = True
+    flock = HAVE_FLOCK
 
     def test_dead_owner_frees_the_slot_and_reads_stopped_environment(self) -> None:
         self.owner(f"{dead_pid()} {OLD}")
@@ -226,6 +232,7 @@ class OwnerSlotTests(SlotCase):
         self.assertEqual(len(self.alerts.read_text().splitlines()), 1)
 
 
+@unittest.skipUnless(HAVE_FLOCK, "the lease needs flock(1) and bash 4.1+")
 class LeaseSlotTests(SlotCase):
     """A run dir with a `lease` holds its slot exactly while some process holds an flock on it, whatever `owner` says."""
 
@@ -238,8 +245,8 @@ class LeaseSlotTests(SlotCase):
         ready = self.top / "ready"
         p = subprocess.Popen(["bash", "-c", f'exec 9>> "$1" && flock -n 9 && {script}', "_",
                               str(self.run_dir / "lease"), str(ready)], start_new_session=True)
+        self.addCleanup(p.wait)   # cleanups run last in, first out: the kill first
         self.addCleanup(lambda: subprocess.run(["pkill", "-KILL", "-g", str(p.pid)], check=False))
-        self.addCleanup(p.wait)
         wait_until(ready.exists)
         return p.pid
 
@@ -263,6 +270,54 @@ class LeaseSlotTests(SlotCase):
         wait_until(lambda: not self.holds())
         self.assertEqual((self.run_dir / "status").read_text(), "stopped-environment\n")
         self.assertEqual(len(self.alerts.read_text().splitlines()), 1)
+
+    @unittest.skipUnless(os.path.exists("/proc/self/environ"), "call_tagged reads /proc")
+    def test_tagged_call_process_that_closed_the_lease_holds_the_slot(self) -> None:
+        # Node's child processes close the descriptors they are not given, so a model call's tool shell can outlive
+        # every lease holder; it still carries the call's FACTORY_CALL_TAG, and the slot holds until it exits.
+        tag = f"test.{uuid.uuid4().hex}"   # bin/check may itself run inside a call, with a tag of its own
+        (self.run_dir / "call").write_text(f"{dead_pid()} {tag}\n")
+        self.owner(f"{dead_pid()} {OLD}")
+        p = subprocess.Popen(["sleep", "60"], env={**os.environ, "FACTORY_CALL_TAG": tag})
+        self.addCleanup(p.wait)
+        self.addCleanup(p.kill)
+        self.assert_held()
+        p.kill()
+        p.wait()
+        self.assert_freed()
+
+    def test_launch_refused_by_a_held_lease_leaves_the_incumbent_as_it_was(self) -> None:
+        # Both launches of one ticket body share the run dir; the refused one must not write its status, `launched`
+        # or launch line, or the incumbent would lose its slot, its MAX_HOURS clock or its round.
+        body = "# Lease fixture\n\n## Worker\nworker: claude\n"
+        ticket = self.top / "contend.md"
+        ticket.write_text(body)
+        run_dir = self.top / "runs" / "contend" / hashlib.sha256(body.rstrip("\n").encode()).hexdigest()[:8]
+        run_dir.mkdir(parents=True)
+        for name, text in (("status", "running\n"), ("launched", "12345\n"), ("factory.log", "incumbent\n")):
+            (run_dir / name).write_text(text)
+        p = subprocess.Popen(["flock", str(run_dir / "lease"), "sleep", "60"], start_new_session=True)
+        self.addCleanup(p.wait)
+        self.addCleanup(lambda: subprocess.run(["pkill", "-KILL", "-g", str(p.pid)], check=False))
+        wait_until(lambda: subprocess.run(["flock", "-n", str(run_dir / "lease"), "true"]).returncode != 0)
+        script = (f". bin/factory\nMAIN_CHECKOUT='{self.top}'\n"
+                  "assert_target_ready() { :; }; claude_version_ok() { echo ok; }\n"
+                  # The 65 s wait, made a single try.
+                  'flock() { if [ "$1" = -w ]; then shift 2; set -- -n "$@"; fi; command flock "$@"; }\n'
+                  f"cmd_run '{ticket}'")
+        base = {k: v for k, v in os.environ.items()
+                if k not in INHERITED and k not in ("FACTORY_FROZEN", "FACTORY_NAV_ARM")}
+        proc = subprocess.run(["bash", "-c", script], cwd=ROOT,
+                              env={**base, "FACTORY_SOURCED": "1", "FACTORY_RUNS_ROOT": str(self.top / "runs"),
+                                   "PATH": self.path},
+                              stdin=subprocess.DEVNULL, capture_output=True, text=True, check=False)
+        self.assertEqual(proc.returncode, 4, proc.stderr)
+        self.assertIn("another launch of this ticket holds it", proc.stderr)
+        self.assertEqual((run_dir / "status").read_text(), "running\n")
+        self.assertEqual((run_dir / "launched").read_text(), "12345\n")
+        self.assertEqual((run_dir / "factory.log").read_text(), "incumbent\n")
+        self.run_dir = run_dir
+        self.assert_held()
 
 
 class MacShapeOwnerSlotTests(OwnerSlotTests):

@@ -786,7 +786,10 @@ LOG="${LOG:-/dev/null}"; LEDGER=""; DAILY=""; DECISIONS=""; WORKTREE=""; BRANCH=
 # separate from REVIEW_BLOCKED so a Claude-reviewer block never consumes the Codex review's one block.
 WORKER_KIND=claude; CODEX_REVIEW=no; CODEX_REVIEW_BLOCKED=0
 CODEX_PATH="$HOME/.local/bin"   # Codex is not on the non-interactive PATH (#41); every Codex call prepends this
-HAVE_FLOCK=$(command -v flock 2> /dev/null)   # util-linux flock(1); a Mac has none, and runs keep the owner line's rules (#425)
+# util-linux flock(1), and bash 4.1+ for the {var} descriptors the lease opens: a Mac has neither (bash 3.2 reads
+# `exec {fd}< file` as running a command named {fd}, which exits the shell), and runs keep the owner line's rules (#425).
+HAVE_FLOCK=$( { [ "${BASH_VERSINFO[0]}" -gt 4 ] || { [ "${BASH_VERSINFO[0]}" -eq 4 ] && [ "${BASH_VERSINFO[1]}" -ge 1 ]; }; } \
+  && command -v flock 2> /dev/null)
 
 now()   { date -u +%Y-%m-%dT%H:%M:%SZ; }
 today() { date -u +%Y-%m-%d; }
@@ -900,7 +903,7 @@ exit_words() { # status -> "<level> <words>"
 # or SIGKILL, never holds the slot.
 heartbeat_start() {
   alert --ping beat >> "$LOG" 2>&1 || log "healthchecks beat failed; see bin/alert's line above"
-  ( [ -n "${FACTORY_SLOT_FD:-}" ] && exec {FACTORY_SLOT_FD}>&- 2> /dev/null
+  ( [ -n "$HAVE_FLOCK" ] && [ -n "${FACTORY_SLOT_FD:-}" ] && exec {FACTORY_SLOT_FD}>&- 2> /dev/null
     trap 'exit 0' TERM
     while sleep 300 & wait $!; kill -0 "$$"; do alert --ping beat; done ) < /dev/null > /dev/null 2>&1 &
   HEARTBEAT=$!
@@ -1251,8 +1254,9 @@ run_project() { # <run dir>
 }
 
 # MAX_PARALLEL counts the other tickets already holding a slot: a run is live while its status reads running or
-# waiting-limit and some process holds the flock lease on its `lease` (cmd_run; every child inherits the fd). Getting
-# the lock means no process of the run is left: still holding it, the caller re-reads the status, writes
+# waiting-limit and some process holds the flock lease on its `lease` (cmd_run; every child inherits the fd), or the
+# model call named in its `call` lives (below; a child that closed the fd). Getting the lock with no such call means no
+# process of the run is left: still holding it, the caller re-reads the status, writes
 # stopped-environment if it still reads running or waiting-limit, and only that caller alerts; a relaunch waits on
 # the same lease, so it never interleaves with the reap. A run dir with no `lease`, or a host with no flock(1) (a Mac),
 # keeps the rules below (#381): a run is live while its
@@ -1277,6 +1281,11 @@ holds_slot() { # <run dir>
     # Read-only, so a run dir with no lease never gets one here.
     if [ -n "$HAVE_FLOCK" ] && [ -f "$1/lease" ] && exec {fd}< "$1/lease"; then
       flock -n "$fd" || { exec {fd}>&-; return 0; }
+      # A process may close the descriptors it does not pass on (Node's child processes do), so a model call's tool
+      # shell can outlive every holder; the call's group or tag still holds the slot, as on the owner path below.
+      if c=$(cat "$1/call" 2> /dev/null) && { group_live "${c%% *}" || call_tagged 0 "${c#* }"; }; then
+        exec {fd}>&-; return 0
+      fi
       st=$(cat "$1/status" 2> /dev/null)
       [ "$st" = running ] || [ "$st" = waiting-limit ] && printf 'stopped-environment\n' > "$1/status"
       exec {fd}>&-   # before the alert, whose children would otherwise inherit this run's lease
@@ -2284,6 +2293,18 @@ cmd_run() {
   LOG="$RUN/factory.log"; LEDGER="$RUN/ledger.jsonl"; DAILY="$RUNS_BASE/ledger-daily.jsonl"
   DECISIONS="$RUN/worker/decisions.md"
   touch "$LOG" "$LEDGER" "$DAILY" "$DECISIONS"
+  # The slot is the flock lease on $RUN/lease (#425), taken before the long preparation, so a relaunch holds its slot
+  # at once, and before this launch writes any state the run dir shares: a launch that cannot take it while another
+  # launch of the same ticket holds it says so and exits, leaving that run's status, `launched` (its MAX_HOURS clock)
+  # and log (status --criteria's round) as they were. The fd is no close-on-exec, so the frozen re-exec and every
+  # child inherit it: the run holds the lease until its last process exits. The frozen pass already holds it and must
+  # not lock a second open of the file, which would wait on its own lease. The heartbeat loop alone closes it
+  # (heartbeat_start). Where flock(1) is missing (a Mac) no lease is written and holds_slot judges the owner line below.
+  if [ -n "$HAVE_FLOCK" ] && [ "${FACTORY_FROZEN:-}" != "$RUN/frozen/factory" ]; then
+    exec {SLOT_FD}>> "$RUN/lease" && flock -w 65 "$SLOT_FD" \
+      || { echo "factory run: could not take $RUN/lease in 65 s; another launch of this ticket holds it" >&2; exit 4; }
+    export FACTORY_SLOT_FD=$SLOT_FD   # so the frozen pass's heartbeat can close it
+  fi
   # A file ticket's branch carries the run key too, so a relaunch with an edited body gets its own branch;
   # the EXIT trap below removes the worktree at exit, and the branch keeps the commits.
   BRANCH="factory/$KEY"; [ "$IS_FILE" = 1 ] && BRANCH="$BRANCH-$sha8"
@@ -2293,17 +2314,6 @@ cmd_run() {
   # One line per launch, before any exit and not again from the frozen re-exec: status --criteria resets the
   # round on it, so a relaunch's early exit is not charged to the round a killed launch left open.
   [ "${FACTORY_FROZEN:-}" = "$RUN/frozen/factory" ] || log "===== launch ====="
-  # The slot is the flock lease on $RUN/lease (#425), taken after the launch line, so a failure here is charged to this
-  # launch, and before the long preparation, so a relaunch holds its slot at once. The fd is no close-on-exec, so the
-  # frozen re-exec and every child inherit it: the run holds the lease until its last process exits. The frozen pass
-  # already holds it and must not lock a second open of the file, which would wait on its own lease. The heartbeat
-  # loop alone closes it (heartbeat_start). Where flock(1)
-  # is missing (a Mac) no lease is written and holds_slot judges the owner line below.
-  if [ -n "$HAVE_FLOCK" ] && [ "${FACTORY_FROZEN:-}" != "$RUN/frozen/factory" ]; then
-    exec {SLOT_FD}>> "$RUN/lease" && flock -w 65 "$SLOT_FD" \
-      || finish stopped-environment "could not take $RUN/lease in 65 s"
-    export FACTORY_SLOT_FD=$SLOT_FD   # so the frozen pass's heartbeat can close it
-  fi
   # The owner line, for status and the alert text, and for holds_slot on a host with no flock or a run dir with no
   # lease, written with the status under owner.lock, which a reaper judging the owner line takes too.
   # exec keeps the pid, so it still names the loop that runs finish; the frozen pass rewrites the same line.
