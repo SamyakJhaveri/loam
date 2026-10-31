@@ -103,7 +103,7 @@ only restates prose is a duplicate; remove it.
 
 ## Frozen checks
 
-Acceptance checks live in `checks/`, and `checks/FROZEN.sha256` holds the sha256 of each one the owner froze.
+Acceptance checks live in `checks/`, and the list `FROZEN.sha256` there holds the sha256 of each one the owner froze.
 `bin/check` runs `bin/frozen-checks verify` whenever `checks/` exists.
 It fails, naming the file, when a listed check changed or is gone, when the list is missing, or when the list differs from its copy on the signed ref (`FROZEN_REF`, default `origin/main`, else `main`).
 This detects an edit after the fact; it does not stop one.
