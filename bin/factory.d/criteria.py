@@ -30,9 +30,9 @@ PASS_OVER = "SKIPPED:"  # bin/check's marker for a step that did not run; lib.sh
 STALLS = ("stuck", "no-change", "stopped-cap")
 LOWER = "lower bound"  # a measure's fourth element: the value may undercount, so it prints INCONCLUSIVE, not PASS
 # The worker's claim, the last line of its last message that reads `CLAIM: <state>` (_common.md); only done claims done.
-CLAIM_LINE = re.compile(r"^[\s*`>_]*CLAIM:\s*([A-Za-z]+)", re.M)
-# FAIL names only the supervisor writes (round_checks), so the worker's Stop hook never prints them; under LOAM_HOOK,
-# guard passes a `guard bin/check` line without running it (lib.sh), so its name joins them per run.
+CLAIM_LINE = re.compile(r"^[ \t*`>_]*CLAIM:[ \t]*([A-Za-z]+)", re.M)
+# FAIL names round_checks writes in place of running the block, which the worker's Stop hook does not do; under
+# LOAM_HOOK, guard passes a `guard bin/check` line without running it (lib.sh), so its name joins them per run.
 HOOK_BLIND = {"do-not-touch", "worktree-dirty"}
 GUARDED_CHECK = re.compile(r"(?:^|[;&|{(])\s*guard bin/check(?=[\s;&|)}]|$)")  # a command, not a quoted word
 # A round with no CLAIM line, from before _common.md asked for one, falls back to this text matcher. A completion

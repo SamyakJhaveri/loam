@@ -209,7 +209,7 @@ class StatusCriteriaTests(unittest.TestCase):
             "printf 'guard bin/check && pass quoted' > f && pass fixture || fail fixture\n"
             '[ -n "${LOAM_HOOK:-}" ] && pass check-green || { guard bin/check >/dev/null && pass check-green; }\n')
         rounds = {  # round: (checks, last message)
-            1: ("FAIL do-not-touch seed/x\nFAIL worktree-dirty: a\n", "I could not finish.\nCLAIM: done"),
+            1: ("FAIL do-not-touch seed/x\nFAIL worktree-dirty: a\n", "I could not finish.\n\nCLAIM: done\n"),
             2: ("FAIL check-green: bin/check\n", "All done-checks pass.\nCLAIM: partial\n"),
             3: ("FAIL check-green: bin/check\n", "CLAIM: blocked\nAll checks pass.\n**CLAIM: Done**\n"),
             4: ("FAIL fixture: x\n", "CLAIM: done"),
