@@ -51,7 +51,10 @@ def signed_ref() -> str | None:
 def sign(files: list[str]) -> int:
     entries = read_list() if (ROOT / LIST).is_file() else {}
     for f in files:
-        path = pathlib.Path(f).resolve()
+        path = pathlib.Path(f).absolute()
+        path = path.parent.resolve() / path.name
+        if not path.is_file() or not path.is_relative_to(ROOT):
+            sys.exit(f"frozen-checks: {f} is not a file in this project")
         name = path.relative_to(ROOT).as_posix()
         if name == LIST:
             sys.exit(f"frozen-checks: {LIST} lists the checks; it is not one")
@@ -67,15 +70,19 @@ def on_ref(ref: str | None) -> bool:
     if ref is None:
         return False
     r = subprocess.run(
-        ["git", "-C", str(ROOT), "cat-file", "-e", f"{ref}:{LIST}"],
+        ["git", "-C", str(ROOT), "cat-file", "-e", f"{ref}:./{LIST}"],
         capture_output=True,
     )
     return r.returncode == 0
 
 
 def verify() -> int:
+    env, ref = os.environ.get("FROZEN_REF"), signed_ref()
+    if env and ref is None:
+        print(f"FAIL: FROZEN_REF={env} does not resolve")
+        return 1
     if not (ROOT / LIST).is_file():
-        if not (ROOT / "checks").exists() and not on_ref(signed_ref()):
+        if not (ROOT / "checks").exists() and not on_ref(ref):
             return 0
         print(f"FAIL: {LIST} is missing; the owner restores it or signs again")
         return 1
@@ -88,11 +95,10 @@ def verify() -> int:
         elif digest(path) != sha:
             print(f"FAIL: frozen check changed since sign-off: {name}")
             failed = True
-    ref = signed_ref()
     if ref is None:
         print(f"FAIL: no signed ref to compare {LIST} with; set FROZEN_REF")
         return 1
-    show = ["git", "-C", str(ROOT), "show", f"{ref}:{LIST}"]
+    show = ["git", "-C", str(ROOT), "show", f"{ref}:./{LIST}"]
     signed = subprocess.run(show, capture_output=True)
     if signed.returncode != 0:
         print(f"FAIL: {ref} has no {LIST}; the owner signs in a commit on {ref}")

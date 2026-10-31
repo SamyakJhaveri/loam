@@ -102,10 +102,11 @@ for e in errors:
 raise SystemExit(1 if errors else 0)
 PY
 
-# Project checks: one line per deterministic check this project adds, each 'cmd || bad "name"'.
-# Add one at the second recurrence of a pattern the docs already ban; the rule is under Project checks in WORKERS.md.
 # Frozen checks: always runs; verify passes only when neither checks/ nor a signed list exists (WORKERS.md).
 bin/frozen-checks verify || bad "frozen checks (docs/WORKERS.md)"
+
+# Project checks: one line per deterministic check this project adds, each 'cmd || bad "name"'.
+# Add one at the second recurrence of a pattern the docs already ban; the rule is under Project checks in WORKERS.md.
 
 if [ "$FAIL" -ne 0 ]; then echo "check: FAILED"; exit 1; fi
 echo "check: PASSED${SKIPS:+ (skipped: $SKIPS)}"{% endraw %}

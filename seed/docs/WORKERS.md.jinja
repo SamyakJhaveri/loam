@@ -109,4 +109,8 @@ It fails, naming the file, when a listed check changed or is gone, when the list
 This detects an edit after the fact; it does not stop one.
 A worker never edits a listed file and never runs `bin/frozen-checks sign`.
 The owner reads the change, then runs `bin/frozen-checks sign <file>...` and commits the list on the signed ref; a local `origin/main` stays stale until that commit is pushed and fetched.
+To unfreeze a file, the owner deletes its line from `FROZEN.sha256` in the sign-off commit.
+After a sign-off lands, an existing worker branch merges main to go green again; it never re-signs.
+The fence is only as strong as `bin/check`, `bin/frozen-checks` and `.github/workflows/check.yml` in the same PR: a PR that edits any of them can switch it off, and signing those files does not help, so the owner reads those diffs before merging.
+A local green is not evidence, since an exported `FROZEN_REF`, a commit on local main or a moved `origin/main` passes locally; the CI run on the PR is the one that counts.
 Under the default-branch ruleset (a PR and a green `check`), the sign-off PR fails `check` until it lands, by design, so the owner adds themself as a bypass actor under Settings > Rules for that merge, then removes the entry.
