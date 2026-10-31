@@ -1,7 +1,7 @@
 ---
 name: factory-watch
 disable-model-invocation: true
-description: "Read the factory's status once and report a run that stopped, a PR that opened, or a failing precondition. Use when you type /factory-watch for one read. Manual only, so a /loop fire cannot run it: to watch on a loop, type the plain prompt `/loop 30m run bin/factory status (bin/runner bin/factory status off the runner) and report only a run that stopped, a new pr-opened, or a new precondition FAIL since the last check`. Not for starting, stopping or merging a run: use bin/factory itself."
+description: "Read the factory's status once and report a run that stopped, a PR that opened, or a failing precondition. Use when you type /factory-watch for one read. Manual only, so a /loop fire cannot run it: to watch on a loop, type the plain prompt `/loop 30m run bin/factory status (bin/runner 'bin/factory status' off the runner) and report only a run that stopped, a new pr-opened, or a new precondition FAIL since the last check`. Not for starting, stopping or merging a run: use bin/factory itself."
 argument-hint: "[-C <repo> when the factory targets another repo]"
 ---
 
@@ -11,8 +11,8 @@ argument-hint: "[-C <repo> when the factory targets another repo]"
 It reads; it never starts, stops or merges a run, and never runs `bin/factory run`, `stop`, `merge` or `next`.
 
 1. Run `bin/factory status` once, as one bare command from the factory's checkout on the runner, where the runs and the exports live.
-   From any other host run `bin/runner bin/factory status`; otherwise the table is empty and the preconditions fail falsely.
-   When `$ARGUMENTS` holds `-C <repo>`, run `bin/factory -C <repo> status` instead, with the runner's path for `<repo>` (a tilde quoted) through `bin/runner`.
+   From any other host run `bin/runner 'bin/factory status'`; otherwise the table is empty and the preconditions fail falsely.
+   When `$ARGUMENTS` holds `-C <repo>`, run `bin/factory -C <repo> status` instead; off the runner, `bin/runner 'bin/factory -C <repo> status'` with the runner's path for `<repo>`.
 2. Compare its output with the previous call in this session.
    A run has stopped when its status is anything but `running`, `waiting-limit` or `pr-opened`: `stopped*`, `stuck`, `no-change`, `ticket-defect`, `abandon` or another exit.
    On the first call there is none: print one line counting the runs by status (as in step 3), each stopped run, and each `FAIL` line under preconditions, and keep this output as the baseline.
