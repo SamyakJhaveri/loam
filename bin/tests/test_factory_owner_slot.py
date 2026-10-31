@@ -86,6 +86,22 @@ class SlotCase(unittest.TestCase):
         self.assertIn(proc.stdout.strip(), ("held", "free"), proc.stderr)
         return proc.stdout.strip() == "held"
 
+    def supervise(self, call: str, prelude: str = "") -> tuple[subprocess.Popen, list[int]]:
+        # A supervisor in a session of its own runs `sh -c call` through call_start, so the call has a session of its
+        # own too; call writes its pids to "$1", returned once there.
+        ready = self.top / "ready"
+        script = (f". bin/factory\n{prelude}RUN='{self.run_dir}'; LOG='{self.top}/factory.log'\n"
+                  f"call_start '{self.top}' sh -c '{call}' _ '{ready}'\nwait")
+        base = {k: v for k, v in os.environ.items() if k not in INHERITED}
+        sup = subprocess.Popen(["bash", "-c", script], cwd=ROOT, env={**base, "FACTORY_SOURCED": "1", "PATH": self.path},
+                               stdin=subprocess.DEVNULL, start_new_session=True)
+        self.addCleanup(sup.wait)
+        self.addCleanup(lambda: subprocess.run(["pkill", "-KILL", "-g", str(sup.pid)], check=False))
+        wait_until(lambda: ready.exists() and ready.read_text().endswith("\n"))
+        pids = [int(x) for x in ready.read_text().split()]
+        self.addCleanup(lambda: subprocess.run(["pkill", "-KILL", "-g", str(pids[0])], check=False))
+        return sup, pids
+
     def assert_freed(self, extra: str = "") -> None:
         self.assertFalse(self.holds(extra))
         self.assertEqual((self.run_dir / "status").read_text(), "stopped-environment\n")
@@ -213,22 +229,16 @@ class OwnerSlotTests(SlotCase):
     def test_dead_owner_s_model_call_is_killed_and_the_slot_freed(self) -> None:
         # call_start puts the call in a session of its own, so a SIGKILL to the supervisor's group leaves it running
         # (reparented to init) and writing the worktree; holds_slot kills the call's group, recorded in call.group with
-        # its start time, and frees the slot.
-        ready = self.top / "ready"
-        script = (f". bin/factory\nRUN='{self.run_dir}'; LOG='{self.top}/factory.log'\n"
-                  f"call_start '{self.top}' sh -c 'echo $$ > \"{ready}\"; exec sleep 60'\nwait")
-        base = {k: v for k, v in os.environ.items() if k not in INHERITED}
-        sup = subprocess.Popen(["bash", "-c", script], cwd=ROOT,
-                               env={**base, "FACTORY_SOURCED": "1", "PATH": self.path}, stdin=subprocess.DEVNULL, start_new_session=True)
-        wait_until(lambda: ready.exists() and ready.read_text().strip() != "")
-        call = int(ready.read_text())
-        self.addCleanup(lambda: subprocess.run(["pkill", "-KILL", "-g", str(call)], check=False))
+        # its start time, and frees the slot. The call and its child ignore TERM, so only the KILL ends them.
+        sup, (call, child) = self.supervise('trap "" TERM; sleep 60 & echo "$$ $!" > "$1"; wait')
         self.assertEqual((self.run_dir / "call.group").read_text(), f"{call} {lstart(call)}\n")
         os.killpg(sup.pid, signal.SIGKILL)
         sup.wait()
         self.owner(f"{sup.pid} {OLD}")
+        self.holds()
+        self.assertIn(state(call), ("", "Z"), "the call outlived holds_slot")
+        self.assertIn(state(child), ("", "Z"), "the call's child outlived holds_slot")
         wait_until(lambda: not self.holds())
-        self.assertNotEqual(state(call), "S", "the call outlived holds_slot")
         self.assertEqual((self.run_dir / "status").read_text(), "stopped-environment\n")
         self.assertEqual(len(self.alerts.read_text().splitlines()), 1)
         self.assertFalse((self.run_dir / "call").exists())
@@ -400,6 +410,20 @@ class LeaseSlotTests(SlotCase):
         self.assertEqual(sup.wait(timeout=30), 0)
         self.assertNotIn(state(int(hb.read_text())), ("", "Z"))   # the beat outlives its supervisor
         self.assert_freed()
+
+    def test_dead_owner_s_model_call_holding_the_lease_is_killed_and_the_slot_freed(self) -> None:
+        # The SIGKILLed supervisor's call inherited the lease, so the lease alone would hold the slot until
+        # CALL_TIMEOUT_SEC; holds_slot kills the call's group as on the owner path, and the next caller frees the slot.
+        sup, (call,) = self.supervise('echo $$ > "$1"; exec sleep 60',
+                                      f"exec 9>> '{self.run_dir / 'lease'}' && flock -n 9 || exit 1\n")
+        os.killpg(sup.pid, signal.SIGKILL)
+        sup.wait()
+        self.owner(f"{sup.pid} {OLD}")
+        self.holds()
+        self.assertIn(state(call), ("", "Z"), "the call outlived holds_slot")
+        wait_until(lambda: not self.holds())
+        self.assertEqual((self.run_dir / "status").read_text(), "stopped-environment\n")
+        self.assertEqual(len(self.alerts.read_text().splitlines()), 1)
 
     def test_launched_with_no_status_holds_only_while_its_lease_is_held(self) -> None:
         # A launch killed between `launched` and its first status leaves no status; its free lease frees the slot.

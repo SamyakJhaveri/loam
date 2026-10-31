@@ -1397,6 +1397,15 @@ owner_lock() { # <run dir> <tries>
   done
 }
 
+# A run's `owner` line, printed as read when it is well formed and names a gone supervisor (owner_gone); a missing or
+# malformed line is not gone. holds_slot's lease and owner paths both judge it here.
+dead_owner() { # <run dir>
+  local o t re='^[0-9]+ [A-Z][a-z]{2} [A-Z][a-z]{2} [ 0-9][0-9] [0-9]{2}:[0-9]{2}:[0-9]{2} [0-9]{4}$'
+  o=$(cat "$1/owner" 2> /dev/null) || return 1
+  t=${o%"${o##*[![:space:]]}"}   # a line written on macOS before #448 ends in lstart's padding
+  [[ "$t" =~ $re ]] && owner_gone "${t%% *}" "${t#* }" && printf '%s' "$o"
+}
+
 # The owner's pid is gone, a zombie (kill -0 succeeds on one), or reused by a process that started over 300 s
 # from the stored start: lstart is boot time plus ticks, so a wall-clock step moves it, and a reuse that close
 # would need the pid space to wrap. A ps or date that fails or prints nothing cannot tell, so the slot holds.
@@ -1480,15 +1489,22 @@ run_project() { # <run dir>
 # In its own session a model call (call_start) outlives a SIGKILLed supervisor, reparented to init, and keeps writing
 # the worktree until CALL_TIMEOUT_SEC, so a gone owner's call is killed first (orphan_call_kill), and the slot holds
 # while the call still lives: its wrapper's or its own group has a member that is not a zombie or, on Linux, a process
-# carries its FACTORY_CALL_TAG. On the lease path above the call holds the lease it inherited, so it holds the slot.
+# carries its FACTORY_CALL_TAG. On the lease path above the call holds the lease it inherited, so a gone owner's call is
+# killed there too, under owner.lock, and the lease then decides.
+# holds_slot may return held in the very call that killed, while the call's wrapper still reaps reparented children;
+# the next caller frees the slot.
 holds_slot() { # <run dir>
-  local st o t pid fd re='^[0-9]+ [A-Z][a-z]{2} [A-Z][a-z]{2} [ 0-9][0-9] [0-9]{2}:[0-9]{2}:[0-9]{2} [0-9]{4}$'
+  local st o pid fd
   if [ -f "$1/status" ]; then
     st=$(cat "$1/status")
     [ "$st" = running ] || [ "$st" = waiting-limit ] || return 1
     # Read-only, so a run dir with no lease never gets one here.
     if [ -n "$HAVE_FLOCK" ] && [ -f "$1/lease" ] && exec {fd}< "$1/lease"; then
-      flock -n "$fd" || { exec {fd}>&-; return 0; }
+      if ! flock -n "$fd"; then
+        exec {fd}>&-
+        if o=$(dead_owner "$1") && owner_lock "$1" 1; then orphan_call_kill "$1" "$o"; rmdir "$1/owner.lock"; fi
+        return 0
+      fi
       # A process may close the descriptors it does not pass on (Node's child processes do), so a model call's tool
       # shell can outlive every holder; the call's group or tag still holds the slot, as on the owner path below.
       call_live "$1" && { exec {fd}>&-; return 0; }
@@ -1504,19 +1520,15 @@ holds_slot() { # <run dir>
         >> "$LOG" 2>&1 || log "the alert for ${1%/} failed; see bin/alert's line above"
       return 1
     fi
-    o=$(cat "$1/owner" 2> /dev/null) || return 0
-    t=${o%"${o##*[![:space:]]}"}   # a line written on macOS before #448 ends in lstart's padding
-    [[ "$t" =~ $re ]] || return 0
-    pid=${t%% *}
-    owner_gone "$pid" "${t#* }" || return 0
+    o=$(dead_owner "$1") || return 0
+    pid=${o%% *}
     owner_lock "$1" 1 || return 0
     if [ "$(cat "$1/owner" 2> /dev/null)" != "$o" ]; then rmdir "$1/owner.lock"; return 0; fi
     st=$(cat "$1/status" 2> /dev/null)
     if [ "$st" != running ] && [ "$st" != waiting-limit ]; then rmdir "$1/owner.lock"; return 1; fi
-    orphan_call_kill "$1"
-    if call_live "$1"; then rmdir "$1/owner.lock"; return 0; fi
+    if ! orphan_call_kill "$1" "$o" || call_live "$1"; then rmdir "$1/owner.lock"; return 0; fi
     printf 'stopped-environment\n' > "$1/status"
-    rm -f "$1/call" "$1/call.group"
+    rm -f "$1/call" "$1/call.tmp" "$1/call.group" "$1/call.group.tmp"
     rmdir "$1/owner.lock"
     log "stopped-environment: ${1%/} was $st, but its supervisor pid $pid is gone"
     alert --level fail --source factory --project "$(run_project "$1")" \
@@ -1540,19 +1552,31 @@ became a zombie, or its pid was reused while the run read $st; ${1%/} is now sto
 # under owner.lock with `owner` unchanged, so no relaunch has started a call of its own, kills each process group named
 # in `call` or `call.group` whose leader still has the start time recorded after its id (call_start writes it to
 # call.group), so a pgid reused since is spared: TERM, a 2 s grace, KILL, then up to 5 s for the group to be gone.
-orphan_call_kill() { # <run dir>
-  local f g s now gs=() i
+# In production `call` holds `<wrapper pid> <tag>` and never matches; its read serves a `<pgid> <lstart>` line there,
+# the layout the ticket's dead-owner-group-reaped check writes. Before KILL each group is kept only while its leader is
+# gone (members remain) or still has its recorded start, so a pgid reused during the grace is spared.
+# `owner` is re-read just before TERM, since an aged owner.lock can be taken over; a changed line kills nothing, return 1.
+orphan_call_kill() { # <run dir> <owner line judged>
+  local f g s now gs=() ss=() ks=() i
   for f in "$1/call" "$1/call.group"; do
     g= s=
     { read -r g s < "$f"; } 2> /dev/null
     [[ "$g" =~ ^[1-9][0-9]*$ ]] && [ "$g" != 1 ] && [ -n "$s" ] || continue
+    s=${s%"${s##*[![:space:]]}"}
     now=$(TZ=UTC LC_ALL=C ps -o lstart= -p "$g" 2> /dev/null) || continue
-    [ "${now%"${now##*[![:space:]]}"}" = "${s%"${s##*[![:space:]]}"}" ] && gs+=("$g")
+    [ "${now%"${now##*[![:space:]]}"}" = "$s" ] && gs+=("$g") && ss+=("$s")
   done
+  [ "$(cat "$1/owner" 2> /dev/null)" = "$2" ] || return 1
   [ "${#gs[@]}" -gt 0 ] || return 0
   log "the supervisor of ${1%/} is gone and its model call still runs; sending TERM to process group(s) ${gs[*]}"
   orphan_signal TERM "${gs[@]}"; orphan_signal CONT "${gs[@]}"
   for ((i = 0; i < 20; i++)); do orphan_signal 0 "${gs[@]}" || return 0; sleep 0.1; done
+  for ((i = 0; i < ${#gs[@]}; i++)); do
+    now=$(TZ=UTC LC_ALL=C ps -o lstart= -p "${gs[i]}" 2> /dev/null)
+    [ -z "$now" ] || [ "${now%"${now##*[![:space:]]}"}" = "${ss[i]}" ] && ks+=("${gs[i]}")
+  done
+  [ "${#ks[@]}" -gt 0 ] || return 0
+  gs=("${ks[@]}")
   orphan_signal KILL "${gs[@]}"
   for ((i = 0; i < 50; i++)); do orphan_signal 0 "${gs[@]}" || return 0; sleep 0.1; done
   log "process group(s) ${gs[*]} of ${1%/} are still alive 5 s after KILL"
