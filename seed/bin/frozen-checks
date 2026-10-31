@@ -1,0 +1,117 @@
+#!/usr/bin/env python3
+"""bin/frozen-checks - hash list for the acceptance checks no worker edits.
+
+  bin/frozen-checks sign <file>...   the owner's sign-off: record each file's sha256 in checks/FROZEN.sha256
+  bin/frozen-checks verify           exit 1 naming each listed file that changed or is gone, and when the
+                                     list is missing or differs from its copy on the signed ref; exit 0
+                                     when neither checks/ nor a list on the signed ref exists
+
+The signed ref is $FROZEN_REF, else origin/main, else main. The owner signs in a commit of their own
+on that ref after reading the change; a list re-signed anywhere else differs from the ref's copy.
+The list is `sha256sum` format, so `sha256sum -c checks/FROZEN.sha256` also reads it.
+"""
+
+from __future__ import annotations
+
+import hashlib
+import os
+import pathlib
+import subprocess
+import sys
+
+ROOT = pathlib.Path(__file__).resolve().parent.parent
+LIST = "checks/FROZEN.sha256"
+
+
+def digest(path: pathlib.Path) -> str:
+    return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+def read_list() -> dict[str, str]:
+    entries = {}
+    for line in (ROOT / LIST).read_text(encoding="utf-8").splitlines():
+        if line.strip():
+            sha, _, name = line.partition("  ")
+            entries[name] = sha
+    return entries
+
+
+def signed_ref() -> str | None:
+    env = os.environ.get("FROZEN_REF")
+    for ref in [env] if env else ["origin/main", "main"]:
+        r = subprocess.run(
+            ["git", "-C", str(ROOT), "rev-parse", "-q", "--verify", ref + "^{commit}"],
+            capture_output=True,
+        )
+        if r.returncode == 0:
+            return ref
+    return None
+
+
+def sign(files: list[str]) -> int:
+    entries = read_list() if (ROOT / LIST).is_file() else {}
+    for f in files:
+        path = pathlib.Path(f).absolute()
+        path = path.parent.resolve() / path.name
+        if not path.is_file() or not path.is_relative_to(ROOT):
+            sys.exit(f"frozen-checks: {f} is not a file in this project")
+        name = path.relative_to(ROOT).as_posix()
+        if name == LIST:
+            sys.exit(f"frozen-checks: {LIST} lists the checks; it is not one")
+        entries[name] = digest(path)
+    (ROOT / LIST).parent.mkdir(exist_ok=True)
+    lines = [f"{sha}  {name}\n" for name, sha in sorted(entries.items())]
+    (ROOT / LIST).write_text("".join(lines), encoding="utf-8")
+    print(f"signed {len(files)} file(s) into {LIST}; commit it on the signed ref")
+    return 0
+
+
+def on_ref(ref: str | None) -> bool:
+    if ref is None:
+        return False
+    r = subprocess.run(
+        ["git", "-C", str(ROOT), "cat-file", "-e", f"{ref}:./{LIST}"],
+        capture_output=True,
+    )
+    return r.returncode == 0
+
+
+def verify() -> int:
+    env, ref = os.environ.get("FROZEN_REF"), signed_ref()
+    if env and ref is None:
+        print(f"FAIL: FROZEN_REF={env} does not resolve")
+        return 1
+    if not (ROOT / LIST).is_file():
+        if not (ROOT / "checks").exists() and not on_ref(ref):
+            return 0
+        print(f"FAIL: {LIST} is missing; the owner restores it or signs again")
+        return 1
+    failed = False
+    for name, sha in read_list().items():
+        path = ROOT / name
+        if not path.is_file():
+            print(f"FAIL: frozen check missing: {name}")
+            failed = True
+        elif digest(path) != sha:
+            print(f"FAIL: frozen check changed since sign-off: {name}")
+            failed = True
+    if ref is None:
+        print(f"FAIL: no signed ref to compare {LIST} with; set FROZEN_REF")
+        return 1
+    show = ["git", "-C", str(ROOT), "show", f"{ref}:./{LIST}"]
+    signed = subprocess.run(show, capture_output=True)
+    if signed.returncode != 0:
+        print(f"FAIL: {ref} has no {LIST}; the owner signs in a commit on {ref}")
+        failed = True
+    elif signed.stdout != (ROOT / LIST).read_bytes():
+        print(f"FAIL: {LIST} differs from its copy on {ref}, where the owner signs")
+        failed = True
+    return 1 if failed else 0
+
+
+if __name__ == "__main__":
+    if len(sys.argv) >= 3 and sys.argv[1] == "sign":
+        sys.exit(sign(sys.argv[2:]))
+    if sys.argv[1:] == ["verify"]:
+        sys.exit(verify())
+    sys.exit(__doc__)
