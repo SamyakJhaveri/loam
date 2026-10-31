@@ -1,0 +1,11 @@
+diff --git a/wc.py b/wc.py
+index 8079cc8..7b750b2 100644
+--- a/wc.py
++++ b/wc.py
+@@ -3,4 +3,5 @@ from fileio import read
+ 
+ 
+ def count_lines(path):
+-    return len(read(path).splitlines())
++    """Lines with content: blank lines and # comment lines do not count."""
++    return sum(1 for line in read(path).splitlines() if line.strip() and not line.lstrip().startswith("#"))

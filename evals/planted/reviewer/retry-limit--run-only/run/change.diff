@@ -1,0 +1,14 @@
+diff --git a/retry.py b/retry.py
+index 1a439db..9f4f922 100644
+--- a/retry.py
++++ b/retry.py
+@@ -1,6 +1,7 @@
+ """When a retry loop gives up."""
++from timeutil import parse_duration
+ 
+ 
+ def should_stop(elapsed_s, limit):
+-    """True once elapsed_s seconds pass the limit, given like "30s"."""
+-    return elapsed_s > int(limit.rstrip("s"))
++    """True once elapsed_s seconds pass the limit, given like "250ms", "30s", or "1m"."""
++    return elapsed_s > parse_duration(limit)

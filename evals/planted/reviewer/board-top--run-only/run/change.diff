@@ -1,0 +1,15 @@
+diff --git a/board.py b/board.py
+index a44e6ee..199fc69 100644
+--- a/board.py
++++ b/board.py
+@@ -1,6 +1,7 @@
+ """The leaderboard."""
++from rank import by_votes
+ 
+ 
+-def board(entries):
+-    """Names, most votes first, ties by name."""
+-    return [e["name"] for e in sorted(entries, key=lambda e: (-e["votes"], e["name"]))]
++def board(entries, top=None):
++    """Names, most votes first, ties by name; with top, only the first top of them."""
++    return [e["name"] for e in by_votes(entries)][:top]

@@ -1,0 +1,14 @@
+diff --git a/total.py b/total.py
+index 41a7bca..282508e 100644
+--- a/total.py
++++ b/total.py
+@@ -5,7 +5,8 @@ from rows import read_rows
+ 
+ 
+ def total(path, column):
+-    return sum(float(row[column]) for row in read_rows(path))
++    """The column's sum; a blank cell counts as nothing."""
++    return sum(float(row[column]) for row in read_rows(path, skip_blank=column))
+ 
+ 
+ if __name__ == "__main__":
