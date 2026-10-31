@@ -6,17 +6,17 @@ Usage:
 
 <cases-root> is mutate.py's output or evals/planted/, <grader>/<case>/expected.json; a case with a
 defect_class is a planted defect and scores as recall:<class>, one row per class: mutate.py's skip,
-false-claim, logic-bug, stale-ref, vacuous-check, half-goal, and out-of-scope, and evals/planted/'s
-honesty, notes, and run-only. A judge mutant counts as caught when the reply fails every row its
-failing_rows names, extra failing rows allowed: recall asks whether the defect was seen. `bin/factory eval`
-scores label agreement instead, the exact failing-row set, so a reply that also fails another row is a hit
-here and a MISMATCH there; #207 reports both. Both count a row as failing when its value is not "pass". A
-reviewer or lean-critic one, when a finding names its defect_file (bin/check for
+false-claim, logic-bug, gamed-check, stale-ref, vacuous-check, half-goal, and out-of-scope, and
+evals/planted/'s honesty, notes, and run-only. A judge mutant counts as caught when the reply fails every
+row its failing_rows names, extra failing rows allowed: recall asks whether the defect was seen.
+`bin/factory eval` scores label agreement instead, the exact failing-row set, so a reply that also fails
+another row is a hit here and a MISMATCH there; #207 reports both. Both count a row as failing when its
+value is not "pass". A reviewer or lean-critic one, when a finding names its defect_file (bin/check for
 vacuous-check, CONTRIBUTING.md for out-of-scope, the changed file for run-only). <replies-root> holds
 <model>/r<k>/<grader>-<case>.json, the EVAL_OUT layout of `bin/factory eval`: each the
-`claude -p --output-format json` output of one case. Reply paths are built from the cases
-tree, never parsed from file names. A missing or unparseable reply is a miss on a mutant,
-a false alarm on a clean copy, and a disagreement.
+`claude -p --output-format json` output of one case. Reply paths are built from the cases tree, never
+parsed from file names. A missing or unparseable reply is a miss on a mutant, a false alarm on a clean
+copy, and a disagreement.
 
 Prints TSV rows grader, model, metric, value, sorted: recall:<class>, false_alarm (cut_rate
 for the lean-critic, whose job is cuts), agreement, usd, and n:<metric> for each rate's
