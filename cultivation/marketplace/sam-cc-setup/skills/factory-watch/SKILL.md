@@ -13,8 +13,9 @@ It reads; it never starts, stops or merges a run, and never runs `bin/factory ru
 1. Run `bin/factory status` once, as one bare command from the factory's checkout.
    When `$ARGUMENTS` holds `-C <repo>`, run `bin/factory -C <repo> status` instead.
 2. Compare its output with the previous call in this session.
-   On the first call there is none: print the counts line and each run whose status starts with `stopped`, and keep this output as the baseline.
-   Something is new when a run's status starts with `stopped`, a run reaches `pr-opened`, or a `FAIL` line appears under preconditions.
+   A run has stopped when its status is anything but `running`, `waiting-limit` or `pr-opened`: `stopped*`, `stuck`, `no-change`, `ticket-defect`, `abandon` or another exit.
+   On the first call there is none: print the counts line and each stopped run, and keep this output as the baseline.
+   Something is new when a run stops, a run reaches `pr-opened`, or a `FAIL` line appears under preconditions.
 3. Print one line per new thing, leading with the ticket and what the owner should do, and one line counting the runs by status.
    Print nothing else.
 
