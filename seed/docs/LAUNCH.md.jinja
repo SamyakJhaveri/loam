@@ -1,0 +1,22 @@
+# Launch checklist for an unattended run
+
+Read on demand, before an unattended or overnight session starts.
+The lead walks this list while the owner is still awake and prints each item with its evidence: the command and its output, or "n/a" and why.
+The session starts only when every item is printed.
+
+1. Waits named: the prompt lists every point where the session needs the owner (a go, a push, a merge, a ruling, a login, a sandbox or classifier stop) and what it does meanwhile (the next task, and the exact `!` command for the morning report).
+   Write "none" only after reading the stop rules of every tool the session drives: run caps, budget caps, and checks that need a human gate.
+2. Gos and money: each paid call the prompt plans has the owner's go pasted with its cap, and the provider balance is read live.
+   Without a go, the session prepares the command and leaves it as a named wait.
+3. Powers proved: each power the session needs is shown by one bare call in the session, such as `gh auth status`, one call to each other model CLI with the model the prompt names, and a read of each page or file the prompt updates.
+   A task that needs a power the session lacks moves to a host that has it, or becomes a named wait.
+4. Gate outside the sandbox: any `bin/check` run that the sandbox blocks runs from an unsandboxed shell, and the prompt says which.
+5. Heartbeat: the prompt names one log file, with one UTC line per step and a WAIT line for anything that waits on the owner.
+6. Outside watch: a watcher outside the session (a cron ping, a monitor, or a second session) reports when the session stops; print its first ping, or "n/a" and why.
+7. No exit and no background move: the session runs attached in a terminal multiplexer, and the owner leaves by detaching, never with `/exit`, Ctrl-C, Ctrl-D or a move to background.
+   The launch message says this in one line.
+8. Started for real: folder trust answered, the model confirmed with `/model`, and the first reply and the first heartbeat line seen before the owner leaves.
+9. One writer, one job: `git worktree list` and the multiplexer's session list show no other session on this prompt, branch or path, and every path the session will create is absent.
+10. Factory tickets, if a factory loop runs: each ticket it may launch passes its lint, and the frontier of launchable tickets is printed with the free slots; when it is empty, the prompt says the loop idles.
+11. Heavy jobs: one at a time, each under `flock` on a named lock file, and a job that may use most of the memory runs under a memory cap proved on the host.
+12. Morning report: the prompt names its path and its format.

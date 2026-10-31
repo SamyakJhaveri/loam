@@ -1,0 +1,165 @@
+#!/usr/bin/env python3
+"""bin/usage-audit - Claude and Codex token usage per session, kind, agent, model and effort, as TSV.
+
+  bin/usage-audit <projects-dir> <start-iso> [host-label]
+  bin/usage-audit --codex <sessions-dir> <start-iso> [host-label]
+
+Walks every *.jsonl under <projects-dir> (a ~/.claude/projects tree). The first path part is the project.
+A file under a `subagents` folder is kind `subagent`: session is the second path part's first 8 characters,
+agent is `agentType` in the sibling <name>.meta.json (else `?`). Any other file is kind `main`: session is
+its name's first 8 characters, agent `-`.
+Counts `type: assistant` records with a `message.usage` and a `timestamp` at or after <start-iso>.
+Claude Code writes a message more than once as it streams and the later record carries the final output
+tokens, so each message id (`message.id`, else the record's `uuid`) counts by the last record seen.
+A resumed session's file starts with copies of earlier messages; a copy (its `requestRef` names no
+`api-request` earlier in its own file) never replaces a record from the session that made the request.
+Some versions (2.1.300 to 2.1.306, subagents) never wrote a message's final record, so its last record
+has `stop_reason: null` and only the first few output tokens; stderr then says how many messages are
+floors.
+Prints one row per key, no header: host, project, session, kind, agent, model, effort, then turns,
+input, cache_create, cache_read, output. Host defaults to `?`.
+
+With --codex, walks every rollout-*.jsonl under <sessions-dir> (a ~/.codex/sessions tree), one row per
+session: session is the full `session_meta` id (ids share their leading timestamp digits), project the
+basename of its `cwd`, kind `codex`, agent its `source`, model and effort `-`. A `token_count` event's
+`total_token_usage` is cumulative for the session, so the row is the last one at or after <start-iso>
+minus the baseline: the last one before start, or zero. A fork (`forked_from_id`) of some versions starts
+with copies of its parent's events stamped within a second of its `session_meta`, and its count goes
+on from the parent's; those copies are baseline too. Turns are the events in the window that raised the
+total. Input is `input_tokens` less `cached_input_tokens`, which Codex counts inside it; cache_create is
+0; cache_read is `cached_input_tokens`. token_count leaves out a compaction request, so a session that
+compacted is a floor.
+"""
+import json
+import pathlib
+import sys
+from collections import defaultdict
+from datetime import datetime, timedelta, timezone
+
+USAGE = ("input_tokens", "cache_creation_input_tokens", "cache_read_input_tokens", "output_tokens")
+
+
+def when(s):
+    t = datetime.fromisoformat(s.replace("Z", "+00:00"))
+    return t if t.tzinfo else t.replace(tzinfo=timezone.utc)
+
+
+def origin(root, path):
+    """(project, session, kind, agent) for one transcript file."""
+    parts = path.relative_to(root).parts
+    if "subagents" in parts[:-1]:
+        try:
+            agent = json.loads(path.with_suffix(".meta.json").read_text()).get("agentType") or "?"
+        except (OSError, ValueError):
+            agent = "?"
+        return parts[0], parts[1][:8], "subagent", agent
+    return parts[0], path.name[:8], "main", "-"
+
+
+def codex(root, start, host):
+    """One row per Codex session: its usage in the window from the cumulative token_count events."""
+    rows = []
+    for path in sorted(root.rglob("rollout-*.jsonl")):
+        meta, born = None, None
+        base = last = None  # cumulative usage before the window and the latest in it
+        turns = 0
+        with path.open(encoding="utf-8", errors="replace") as f:
+            for line in f:
+                try:
+                    rec = json.loads(line)
+                except ValueError:
+                    continue
+                if not isinstance(rec, dict) or not rec.get("timestamp"):
+                    continue
+                payload = rec.get("payload") or {}
+                if rec.get("type") == "session_meta" and meta is None:
+                    meta = payload
+                    if payload.get("forked_from_id"):
+                        born = when(rec["timestamp"])
+                    continue
+                if rec.get("type") != "event_msg" or payload.get("type") != "token_count":
+                    continue
+                total = (payload.get("info") or {}).get("total_token_usage")
+                if not total:
+                    continue
+                ts = when(rec["timestamp"])
+                if ts < start or (born and ts - born < timedelta(seconds=1)):
+                    base = total
+                    continue
+                if total != (last or base):
+                    turns += 1
+                last = total
+        if meta is None or last is None:
+            continue
+        base = base or {}
+        diff = {k: (last.get(k) or 0) - (base.get(k) or 0)
+                for k in ("input_tokens", "cached_input_tokens", "output_tokens")}
+        source = meta.get("source") or "?"
+        if isinstance(source, dict):  # {"subagent": "review"} or {"subagent": {"thread_spawn": {...}}}
+            source = source.get("subagent") or "?"
+            source = source if isinstance(source, str) else next(iter(source), "?")
+        rows.append((host, pathlib.PurePath(meta.get("cwd") or "?").name, meta.get("id") or path.stem, "codex",
+                     source, "-", "-", turns, diff["input_tokens"] - diff["cached_input_tokens"], 0,
+                     diff["cached_input_tokens"], diff["output_tokens"]))
+    for row in sorted(rows):
+        print("\t".join(map(str, row)))
+
+
+def main(argv):
+    if argv[1:2] == ["--codex"]:
+        if len(argv) not in (4, 5):
+            sys.exit("usage: bin/usage-audit --codex <sessions-dir> <start-iso> [host-label]")
+        root = pathlib.Path(argv[2])
+        if not root.is_dir():
+            sys.exit(f"usage-audit: not a directory: {root}")
+        return codex(root, when(argv[3]), argv[4] if len(argv) == 5 else "?")
+    if len(argv) not in (3, 4):
+        sys.exit("usage: bin/usage-audit <projects-dir> <start-iso> [host-label]")
+    root, start = pathlib.Path(argv[1]), when(argv[2])
+    if not root.is_dir():
+        sys.exit(f"usage-audit: not a directory: {root}")
+    host = argv[3] if len(argv) == 4 else "?"
+    latest = {}  # message id -> (key, usage, floor) of the last record seen
+    owned = set()  # message ids seen in the file of the session that made the request
+    for path in sorted(root.rglob("*.jsonl")):
+        where = origin(root, path)
+        requests = set()  # api-request ids this file's own session wrote
+        with path.open(encoding="utf-8", errors="replace") as f:
+            for line in f:
+                try:
+                    rec = json.loads(line)
+                except ValueError:
+                    continue
+                if isinstance(rec, dict) and rec.get("type") == "api-request":
+                    requests.add(rec.get("id"))
+                if not isinstance(rec, dict) or rec.get("type") != "assistant":
+                    continue
+                msg = rec.get("message") or {}
+                usage = msg.get("usage")
+                ts = rec.get("timestamp")
+                if not usage or not ts or when(ts) < start:
+                    continue
+                mid = msg.get("id") or rec.get("uuid")
+                copied = rec.get("requestRef") and rec["requestRef"] not in requests
+                if copied and mid in owned:
+                    continue
+                if not copied:
+                    owned.add(mid)
+                key = (host, *where, msg.get("model") or "?", rec.get("effort") or "?")
+                latest[mid] = (key, usage, "stop_reason" in msg and msg["stop_reason"] is None)
+    totals = defaultdict(lambda: [0] * (1 + len(USAGE)))
+    for key, usage, _ in latest.values():
+        row = totals[key]
+        row[0] += 1
+        for i, field in enumerate(USAGE, 1):
+            row[i] += usage.get(field) or 0
+    for key in sorted(totals):
+        print("\t".join(map(str, (*key, *totals[key]))))
+    floors = sum(floor for *_, floor in latest.values())
+    if floors:
+        print(f"usage-audit: {floors} of {len(latest)} messages have no final usage record; their output is a floor",
+              file=sys.stderr)
+
+
+if __name__ == "__main__":
+    main(sys.argv)

@@ -351,41 +351,54 @@ class StatusCriteriaTests(unittest.TestCase):
                      "- median rounds to PR: at most 5 (lean-v3 median)"):
             self.assertEqual(verdict[line], "    UNMEASURED: no factory.log in 2/aaaa0002", line)
 
-    def test_grader_first_fail_names_unparseable_grader_replies(self) -> None:
-        judge_run = pathlib.Path(self.tmp.name) / "judge-unparseable"
-        judge_run.mkdir()
-        (judge_run / "round-2.judge.json").write_text(
-            '{"verdict":"fail","unparseable":true,"rows":{},"findings":[]}\n'
-        )
-        (judge_run / "round-2.review.json").write_text('{"verdict":"merge","findings":[]}\n')
+    def test_grader_first_fail_names_the_first_grader_failure(self) -> None:
+        def fallback(role: str) -> dict:
+            # The object call_json writes after three rejected replies.
+            judge = role == "judge"
+            return {"verdict": "fail" if judge else "fix", "unparseable": True, "rows": {}, "evidence": {}, "fixes": [],
+                    "backlog": ["judge output unparseable or inconsistent after 3 calls; rerun the judge on this round"]
+                    if judge else [],
+                    "findings": [{"severity": "high", "file": "-", "line": 0, "defect": f"{role} output unparseable",
+                                  "fix": f"rerun the {role} on this round"}]}
 
-        proc = grader_first_fail(judge_run)
-        self.assertEqual(proc.returncode, 0, proc.stderr)
-        self.assertEqual(proc.stdout, "judge:unparseable")
+        def envelope(reply: str) -> dict:
+            # The claude -p --output-format json reply call_json saves as round-N.<stem>.raw.<attempt>.json.
+            return {"type": "result", "subtype": "success", "result": reply}
 
-        review_run = pathlib.Path(self.tmp.name) / "review-unparseable"
-        review_run.mkdir()
-        (review_run / "round-1.judge.json").write_text(
-            '{"verdict":"pass","rows":{"correct":"pass","verified":"pass","honest":"pass"}}\n'
-        )
-        (review_run / "round-1.review.json").write_text(
-            '{"verdict":"fix","unparseable":true,"findings":[]}\n'
-        )
-
-        proc = grader_first_fail(review_run)
-        self.assertEqual(proc.returncode, 0, proc.stderr)
-        self.assertEqual(proc.stdout, "review:unparseable")
-
-        parsed_run = pathlib.Path(self.tmp.name) / "parsed-judge"
-        parsed_run.mkdir()
-        (parsed_run / "round-3.judge.json").write_text(
-            '{"verdict":"fail","rows":{"correct":"pass","verified":"fail","honest":"pass"}}\n'
-        )
-        (parsed_run / "round-3.review.json").write_text('{"verdict":"merge","findings":[]}\n')
-
-        proc = grader_first_fail(parsed_run)
-        self.assertEqual(proc.returncode, 0, proc.stderr)
-        self.assertEqual(proc.stdout, "judge:verified")
+        rows_pass = {"correct": "pass", "verified": "pass", "honest": "pass"}
+        blocking_review = {"verdict": "fix", "findings": [{"severity": "high", "file": "bin/y", "line": 1,
+                                                           "defect": "d", "fix": "f"}]}
+        not_json = envelope("I ran out of turns before grading.")
+        # Each case: the round's files, then the expected item. Each review blocks, so reading the review before the
+        # judge, or a fallback's rows or findings before its unparseable flag, prints another item.
+        cases = {
+            "judge-unparseable": ({"judge.json": fallback("judge"), "judge.raw.3.json": not_json,
+                                   "review.json": blocking_review}, "judge:unparseable"),
+            "judge-inconsistent": ({"judge.json": fallback("judge"), "review.json": blocking_review,
+                                    "judge.raw.3.json": envelope(json.dumps(
+                                        {"verdict": "fail", "rows": rows_pass, "fixes": []}))}, "judge:inconsistent"),
+            "review-unparseable": ({"judge.json": {"verdict": "pass", "rows": rows_pass, "fixes": []},
+                                    "review.json": fallback("review"), "review.raw.3.json": not_json},
+                                   "review:unparseable"),
+            "review-inconsistent": ({"judge.json": {"verdict": "pass", "rows": rows_pass, "fixes": []},
+                                     "review.json": fallback("review"),
+                                     "review.raw.3.json": envelope("```json\n" + json.dumps(
+                                         {"verdict": "fail", "findings": []}) + "\n```")},
+                                    "review:inconsistent"),
+            "judge-row": ({"judge.json": {"verdict": "fail", "rows": {**rows_pass, "verified": "fail"}, "fixes": ["x"]},
+                           "review.json": blocking_review}, "judge:verified"),
+            "judge-fail": ({"judge.json": {"verdict": "fail", "rows": rows_pass, "fixes": ["x"]},
+                            "review.json": blocking_review}, "judge:fail"),
+            "review-finding": ({"judge.json": {"verdict": "pass", "rows": rows_pass, "fixes": []},
+                                "review.json": blocking_review}, "review:bin/y"),
+        }
+        for label, (files, expected) in cases.items():
+            run = pathlib.Path(self.tmp.name) / label
+            run.mkdir()
+            for name, body in files.items():
+                (run / f"round-2.{name}").write_text(json.dumps(body) + "\n")
+            proc = grader_first_fail(run)
+            self.assertEqual((proc.returncode, proc.stdout), (0, expected), (label, proc.stderr))
 
     def test_escaped_defects_are_later_reverts_and_caused_by_lines(self) -> None:
         repo = pathlib.Path(self.tmp.name) / "repo"

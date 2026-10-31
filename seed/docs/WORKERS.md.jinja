@@ -27,6 +27,8 @@ A PR body opens with a short plain paragraph on how the change works and why tha
 
 A custom subagent's system prompt is its own file, not Claude Code's main prompt, so that file states when the subagent stops.
 
+Before an unattended or overnight session starts, the lead walks `docs/LAUNCH.md` and prints each item with its evidence.
+
 ## pstack
 
 These hold where the pstack plugin is installed.
@@ -100,3 +102,17 @@ a check at the second recurrence of a pattern the docs already ban, so the
 correction becomes a failure the agent cannot argue with. Keep each check one
 line, deterministic, and named. Never add a check that cannot fail. A check that
 only restates prose is a duplicate; remove it.
+
+## Frozen checks
+
+Acceptance checks live in `checks/`, and the list `FROZEN.sha256` there holds the sha256 of each one the owner froze.
+`bin/check` always runs `bin/frozen-checks verify`, which passes untouched only while neither `checks/` nor a list on the signed ref exists.
+It fails, naming the file, when a listed check changed or is gone, when the list is missing, or when the list differs from its copy on the signed ref (`FROZEN_REF`, default `origin/main`, else `main`).
+This detects an edit after the fact; it does not stop one.
+A worker never edits a listed file and never runs `bin/frozen-checks sign`.
+The owner reads the change, then runs `bin/frozen-checks sign <file>...` and commits the list on the signed ref; a local `origin/main` stays stale until that commit is pushed and fetched.
+To unfreeze a file, the owner deletes its line from `FROZEN.sha256` in the sign-off commit.
+After a sign-off lands, an existing worker branch merges main to go green again; it never re-signs.
+The fence is only as strong as `bin/check`, `bin/frozen-checks` and `.github/workflows/check.yml` in the same PR: a PR that edits any of them can switch it off, and signing those files does not help, so the owner reads those diffs before merging.
+A local green is not evidence, since an exported `FROZEN_REF`, a commit on local main or a moved `origin/main` passes locally; the CI run on the PR is the one that counts.
+Under the default-branch ruleset (a PR and a green `check`), the sign-off PR fails `check` until it lands, by design, so the owner adds themself as a bypass actor under Settings > Rules for that merge, then removes the entry.

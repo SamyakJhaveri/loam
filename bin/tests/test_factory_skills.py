@@ -1,12 +1,14 @@
 """A ticket's `skills:` names lint against skills.txt and skill_file, and a Claude worker reads each by path (#385).
 
 `bin/factory lint` runs with FACTORY_ROOT at a temp copy of bin/factory.d (its skills.txt rewritten) and HOME at a
-temp tree holding fake plugin caches, so the real allowlist and plugins are never read. The prompt test sources
+temp tree holding fake plugin caches and an installed_plugins.json naming each plugin's installPath, so the real
+allowlist and plugins are never read. The prompt test sources
 bin/factory (FACTORY_SOURCED=1) and calls the real build_worker_prompt with a Claude worker.
 """
 
 from __future__ import annotations
 
+import json
 import os
 import pathlib
 import shutil
@@ -60,6 +62,11 @@ class FactorySkillsTests(unittest.TestCase):
         for name in ("setup-pstack", "sharpen"):
             self.skill(self.pstack, name)
         self.skill(self.home / ".claude/plugins/cache/m/other/1.0.0", "tdd")
+        self.install({"pstack@m": self.pstack, "other@m": self.home / ".claude/plugins/cache/m/other/1.0.0"})
+
+    def install(self, paths: dict[str, pathlib.Path]) -> None:
+        plugins = {k: [{"scope": "user", "installPath": str(v)}] for k, v in paths.items()}
+        (self.home / ".claude/plugins/installed_plugins.json").write_text(json.dumps({"version": 2, "plugins": plugins}))
 
     @staticmethod
     def skill(plugin: pathlib.Path, name: str) -> pathlib.Path:
@@ -156,6 +163,66 @@ class FactorySkillsTests(unittest.TestCase):
         text = self.prompt()
         self.assertEqual(text.count(str(adapter)), 1)
         self.assertLess(text.index(str(adapter)), text.index(str(self.tdd)))
+
+    def sourced(self, script: str, *args: str) -> str:
+        proc = subprocess.run(["bash", "-c", f". bin/factory\n{script}", "_", *args], cwd=ROOT,
+                              env={**self.env(), "FACTORY_SOURCED": "1"}, capture_output=True, text=True, check=False)
+        self.assertEqual(proc.returncode, 0, proc.stderr)
+        return proc.stdout
+
+    def skill_file(self, name: str) -> subprocess.CompletedProcess[str]:
+        return subprocess.run(["bash", "-c", '. bin/factory; skill_file "$1"', "_", name], cwd=ROOT,
+                              env={**self.env(), "FACTORY_SOURCED": "1"}, capture_output=True, text=True, check=False)
+
+    def test_plugin_skill_resolves_at_its_install_path_not_the_newest_cache_folder(self) -> None:
+        for folder in ("m/pstack/10.0.0", "zz/pstack/99.0.0"):
+            self.skill(self.home / ".claude/plugins/cache" / folder, "tdd")
+        self.assertEqual(self.skill_file("pstack:tdd").stdout, f"{self.tdd}\n")
+
+    def test_plugin_with_no_installed_entry_resolves_to_nothing(self) -> None:
+        self.skill(self.home / ".claude/plugins/cache/m/gone/1.0.0", "tdd")
+        proc = self.skill_file("gone:tdd")
+        self.assertNotEqual(proc.returncode, 0, proc.stdout)
+        self.assertEqual(proc.stdout, "")
+
+    def test_plugin_skill_resolves_to_nothing_without_installed_plugins_json(self) -> None:
+        # Fails closed, no cache-search fallback (owner ruling, 30 Oct 2026, #437).
+        (self.home / ".claude/plugins/installed_plugins.json").unlink()
+        proc = self.skill_file("pstack:tdd")
+        self.assertNotEqual(proc.returncode, 0, proc.stdout)
+        self.assertEqual(proc.stdout, "")
+
+    def test_skills_called_leaves_out_a_skill_call_refused_with_an_error(self) -> None:
+        def use(i: str, name: str, inp: dict) -> dict:
+            return {"type": "tool_use", "id": i, "name": name, "input": inp}
+        events = [
+            {"type": "assistant", "message": {"content": [
+                use("t1", "Skill", {"skill": "pstack:sharpen"}),
+                use("t2", "Read", {"file_path": str(self.tdd)}),
+                use("t3", "Skill", {"skill": "rigor"}),
+                use("t4", "Skill", {"skill": "pstack:setup-pstack"})]}},
+            {"type": "user", "message": {"content": [
+                {"type": "tool_result", "tool_use_id": "t1", "is_error": True,
+                 "content": "cannot be used with Skill tool due to disable-model-invocation"},
+                {"type": "tool_result", "tool_use_id": "t3", "content": "ok"}]}},
+        ]
+        stream = self.tmp / "s.jsonl"
+        stream.write_text("not json\n" + "".join(json.dumps(e) + "\n" for e in events))
+        out = self.sourced('skills_called "$@"', str(stream), "pstack:tdd", "pstack:sharpen", "rigor",
+                           "pstack:setup-pstack", "pstack:principle-fix-root-causes")
+        self.assertEqual(out.strip(), "pstack:setup-pstack,pstack:tdd,rigor")
+
+    def test_record_writes_skills_called_on_a_line_given_it_and_no_other(self) -> None:
+        res = self.tmp / "result.json"
+        res.write_text(json.dumps({"type": "result", "total_cost_usd": 1}))
+        led = self.tmp / "ledger.jsonl"
+        self.sourced('RUN=$1; LOG=/dev/null; LEDGER=$2; DAILY=$1/daily.jsonl; KEY=7\n'
+                     'record 1 worker m "$3" 0 0 0 0 0 pstack:tdd,rigor; record 1 worker m "$3" 0 0 0 0 0 ""\n'
+                     'record 1 worker m "$1/none.json" 0 0 0 0 0 rigor; record 1 judge m "$3"',
+                     str(self.tmp), str(led), str(res))
+        lines = [json.loads(x) for x in led.read_text().splitlines()]
+        self.assertEqual([x.get("skills_called") for x in lines], [["pstack:tdd", "rigor"], [], ["rigor"], None])
+        self.assertNotIn("skills_called", lines[3])
 
 
 if __name__ == "__main__":
