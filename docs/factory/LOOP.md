@@ -288,22 +288,26 @@ Grader prompts are production prompts.
 `bin/factory eval <grader>` replays each case through the grader call above, compares the verdict exactly and the failing-row set only when the case lists one, and exits 1 on any mismatch.
 A reviewer reply's verdict is what the loop does with it, `fix` when a finding is high or medium and `merge` otherwise, never its own verdict word; `eval_score.py` scores the reviewer the same way.
 `evals/clean/` holds the last round of each runner run that both graders passed, frozen by `bin/factory eval-freeze` from `~/.local/state/loam-factory/runs/*/*/`, and `bin/factory eval <grader> --evals-dir evals/clean` replays the corpus.
-A grader model comparison plants known defects in that corpus and scores the saved replies offline, in three commands:
+A grader model comparison scores saved replies on a set with known defects, `evals/planted/` or a corpus `mutate.py` plants them into, with one script:
 
 ```sh
-python3 bin/factory.d/mutate.py evals/clean <scratch>/cases
-EVAL_OUT=<scratch>/replies/<model>/r<k> EVAL_EFFORT=high EVAL_BUDGET_USD=<usd> bin/factory eval <grader> --evals-dir <scratch>/cases --model <model>
-python3 bin/factory.d/eval_score.py <scratch>/cases <scratch>/replies
+python3 bin/factory.d/mutate.py evals/clean <scratch>/cases   # only for the mutated corpus
+MODEL_EVAL_SET=<scratch>/cases MODEL_EVAL_OUT=<scratch> EVAL_BUDGET_USD=<usd> bin/factory.d/model-eval <model>...
 ```
 
 `mutate.py` writes a `--clean` copy of every base and one copy per defect class that applies (`skip`, `false-claim`, `logic-bug`, `stale-ref`, `vacuous-check`, `half-goal`, `out-of-scope`), labeled in its `expected.json`; reviewer bases also feed `lean-critic/`.
 Every class is one the supervisor lets through, so only a grader can catch it; `evals/planted/CASES.md` lists them and the hand-written cases beside it.
 The mutants are generated into the scratch directory at eval time and never committed.
-Run the middle command once per grader (`judge`, `reviewer`, `lean-critic`), model, and repeat `k`.
-It exits 1 when any case misses its expected verdict, which a missed mutant does, so a loop around it must not stop on its status.
-`EVAL_BUDGET_USD` (default 10) must cover the whole set: the eval stops at the cap, and a case it never reaches has no reply, which scores as a miss on a mutant and a false alarm on a clean copy.
-`eval_score.py` prints one TSV row per grader, model, and metric: recall per defect class, false alarms on clean copies (`cut_rate` for the lean-critic, whose job is cuts), run-to-run agreement, cost, and `n:` trial counts.
-Each pair of models also gets an `A+B` row, the recall and false alarms of a two-model jury, scored from the same replies with no extra call.
+`model-eval` runs one cell per grader (`MODEL_EVAL_GRADERS`, default `judge reviewer lean-critic`), model, effort (`MODEL_EVAL_EFFORTS`, default `high`; `max` is refused) and repeat (`MODEL_EVAL_REPEATS`, default 2), into `<scratch>/replies/<model>@<effort>/r<k>/`.
+A `codex:<model>` model grades each case through `codex exec -s read-only` instead of `bin/factory eval`, a second model family against same-family grading bias.
+The cells run in a shuffled order, `random.Random(MODEL_EVAL_SEED)`, written to `<scratch>/order.txt`, so a config that drifts mid-run lands on every model alike.
+Each reply has a `.key` beside it, the sha256 of the grader file, its schema, the case, the model, the effort and the mode; a rerun calls the grader only for a case whose reply or key is missing or whose key differs, so it fills gaps and never mixes an old reply into a changed experiment.
+Each cell's `fingerprint.txt` names its config: model, effort, grader and eval set hashes, the `config-drift.sh` md5, the Claude Code version and the Codex model.
+Before scoring, every Claude reply's `modelUsage` must name only the cell's model; a reply served by another model stops the script with exit 3 and no table.
+`EVAL_BUDGET_USD` (default 10) bounds each cell's `bin/factory eval` call and must cover its cases: a case the eval never reaches has no reply, and the next run retries it.
+`eval_score.py` prints one TSV row per grader, model, and metric: recall per defect class, false alarms on clean copies (`cut_rate` for the lean-critic, whose job is cuts), run-to-run agreement, cost, `infra` (missing, unparseable or `is_error` replies), and `n:` trial counts.
+Each pair of models also gets an `A+B` row, the recall and false alarms of a two-model jury, scored from the same replies with no extra call, and an `A~B` row set: per metric the paired counts of cases only A caught, only B caught, both and neither, and `moved`, the fingerprint fields that differ between the pair; a pair whose cells differ in more than one field is marked `descriptive:`, since its difference cannot be put on any one of them.
+`model-eval` prints that table with a Wilson 95% interval per rate, over cases, never trials, and a `not comparable:` line for each cell whose infra count is over 20% of its cases.
 A case may not depend on the live tree: its expected verdict must follow from `prompt.md` alone, since the grader reads the checkout it runs in and a case whose verdict rests on that checkout drifts as the repo changes (the lean-critic s4-round-4 case did, and was dropped 2026-09-11). If a second case drifts, the fix is a `base_sha` per case and a replay in a checkout of that commit.
 No grader edit lands without the replay run before and after, recorded in the PR body; it never runs in `bin/check`.
 The replay is local: `bin/factory eval` runs `claude -p` on the machine that calls it, so it needs no runner.
