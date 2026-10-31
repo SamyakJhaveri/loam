@@ -3,8 +3,8 @@
 The register for the dated-bet design rule in `ARCHITECTURE.md`: one row per harness component, the weakness it bets on, and the replay that would retire it.
 Since is the date of the commit that added the component; Added by is the pull request that merged that commit, and a commit that reached `main` with no pull request says so in its cell and names the nearest numbered record.
 Three components already switch off without a code change: the worker advisor (`FACTORY_WORKER_ADVISOR=`), the Codex review (`codex-review: no` in a ticket's Worker section), and the lean-critic, which runs by hand on the PR, outside the loop.
-Every other row is removed on a scratch copy of `bin/factory`, never on `main`, and the replay runs from it.
-"The next ten tickets" means the next ten real tickets the new model works, launched with `bin/factory run` from that copy; the S fixtures are not replays, since their work merged long ago and round zero refuses them at today's base.
+A row that removes a component does so on a scratch copy of `bin/factory` and `bin/factory.d/`, never on `main`, and its replay runs from that copy.
+"The next ten tickets" means the next ten real tickets the new model works, launched with `bin/factory run`.
 A grader replay follows `LOOP.md`, Grader change protocol, from a scratch worktree as `evals/planted/CASES.md` shows, since the checkout holds the answer key.
 
 | Component | Since | Weakness it covers | Replay that would retire it | Added by |
