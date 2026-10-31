@@ -2209,6 +2209,8 @@ heldout_ask() { # kind round -> HELDOUT_REPLY; in the main shell, since a stop h
 heldout_probe() {
   [ "$HELDOUT" = yes ] || return 0
   [[ "$KEY" =~ ^[A-Za-z0-9_.-]+$ ]] || finish ticket-defect "held-out: yes needs a run key of letters, digits, _, . or -, not $KEY"
+  [ -e "$RUNS_ROOT/$KEY/heldout-forged" ] \
+    && finish stopped-environment "a run of this key saw a held-out request it did not make ($RUNS_ROOT/$KEY/heldout-forged), so the branch may hold code tuned to forged answers; reset or delete $BRANCH, then delete that file"
   heldout_ask probe 0
   HELDOUT_N=0
   case "$HELDOUT_REPLY" in
@@ -2221,19 +2223,27 @@ heldout_probe() {
 # After the visible checks pass: a fail adds one FAIL line naming no check, so stuck detection and the next prompt see
 # only that a held-out check failed. A request this run did not make shows as refused (the round already ran) or as a
 # count other than the probe's plus this launch's own requests, and stops the run.
+# A request this run did not make bought answers the worker may have tuned its code to, and the next probe's baseline
+# would absorb its count; so the key's runs folder keeps a mark, and every later launch of the key, a resume or an
+# edited body on the same branch, stops at its probe until the operator resets the branch and deletes the mark.
+heldout_forged() { # reason
+  printf '%s %s\n' "$(now)" "$1" >> "$RUNS_ROOT/$KEY/heldout-forged"
+  finish stopped-environment "$1"
+}
+
 heldout_check() { # checks-file
   local word n
   HELDOUT_N=$((HELDOUT_N + 1))
   heldout_ask check "$ROUND"
   word=${HELDOUT_REPLY% *}; n=${HELDOUT_REPLY#* }
   case "$word" in
-    refused) finish stopped-environment "the held-out service refused round $ROUND's check: a request this run did not make already ran that round" ;;
+    refused) heldout_forged "the held-out service refused round $ROUND's check: a request this run did not make already ran that round" ;;
     missing) finish ticket-defect "the held-out checks for $(target_slug)/$KEY are gone, or changed since the launch probe" ;;
     pass|fail) ;;
     *) finish stopped-environment "the held-out check got '$HELDOUT_REPLY'" ;;
   esac
   [ "$n" = $((HELDOUT_BASE + HELDOUT_N)) ] \
-    || finish stopped-environment "the held-out service counts $n check requests for this ticket, $HELDOUT_BASE at the launch probe, and this run made $HELDOUT_N since: a request this run did not make reached it"
+    || heldout_forged "the held-out service counts $n check requests for this ticket, $HELDOUT_BASE at the launch probe, and this run made $HELDOUT_N since: a request this run did not make reached it"
   log "held-out check, round $ROUND: $word"
   [ "$word" = pass ] || printf '\nFAIL held-out: a held-out check failed\n' >> "$1"
 }
