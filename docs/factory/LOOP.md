@@ -206,6 +206,7 @@ Skills are given at the moment they apply, never all at once; the listing is pai
 
 A worker may name a line of `bin/factory.d/skills.txt`, and lint reads that file (#37), or with no line any installed pstack skill, as `pstack:<name>` (#385; owner ruling 2026-10-30).
 Either way lint refuses a name `skill_file` resolves to no SKILL.md.
+`skill_file` finds a `plugin:name` only under the plugin's `installPath` in `~/.claude/plugins/installed_plugins.json`, the folder Claude Code loads, never by searching the plugin cache; a missing file or a plugin with no entry resolves to nothing (#437; owner ruling 2026-10-30).
 The worker runs with `--setting-sources user`, which loads `~/.claude/skills/` and user-scope plugins but no project skill and not the root `CLAUDE.md` or `AGENTS.md`, so the seed skills (`catchup`, `fable-prompting`, `hypothesis-tree`) are not in the file.
 
 ## Parallel runs

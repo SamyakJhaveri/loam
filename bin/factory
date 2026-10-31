@@ -481,17 +481,22 @@ grader_file() {
 }
 
 # A worker's skill name (a line of bin/factory.d/skills.txt or a pstack:<name>, lint-checked) -> its SKILL.md path.
-# A bare name lives under ~/.claude/skills/<name>/; a plugin:name lives in the installed plugin cache,
-# newest version first. A plugin may nest its skills under a category dir
+# A bare name lives under ~/.claude/skills/<name>/; a plugin:name lives under the installPath that
+# ~/.claude/plugins/installed_plugins.json gives the plugin's first `<plugin>@<marketplace>` entry, the
+# folder Claude Code loads (docs/PSTACK.md), so a stale or other-marketplace cache folder never resolves.
+# No installed_plugins.json, or no entry for the plugin, resolves to nothing: no cache-search fallback
+# (owner ruling 30 Oct 2026, #437). A plugin may nest its skills under a category dir
 # (skills/<category>/<name>/SKILL.md), so match SKILL.md at any depth
 # under the plugin's skills tree, not only skills/<name>/.
 skill_file() { # skill-name -> SKILL.md path on stdout, non-zero when it resolves to no file
-  local name="$1" plugin sub f
+  local name="$1" plugin sub dir f
   case "$name" in
     *:*)
       plugin=${name%%:*}; sub=${name#*:}
-      f=$(find "$HOME"/.claude/plugins/cache/*/"$plugin"/*/skills -path "*/$sub/SKILL.md" 2> /dev/null | sort -rV | head -1)
-      [ -n "$f" ] && { printf '%s\n' "$f"; return 0; } ;;
+      dir=$(jq -r --arg p "$plugin" 'first(.plugins | to_entries[] | select(.key | startswith($p + "@"))
+        | .value[0].installPath // empty)' "$HOME/.claude/plugins/installed_plugins.json" 2> /dev/null) || dir=""
+      [ -n "$dir" ] && f=$(find "$dir/skills" -path "*/$sub/SKILL.md" 2> /dev/null | sort | head -1)
+      [ -n "${f:-}" ] && { printf '%s\n' "$f"; return 0; } ;;
     *)
       f="$HOME/.claude/skills/$name/SKILL.md"
       [ -f "$f" ] && { printf '%s\n' "$f"; return 0; } ;;
@@ -3028,7 +3033,7 @@ precondition_lines() { # LOOP.md, Preconditions
     if f=$(grader_file "$t" 2>&1); then echo "  PASS $t.md at $f"; else echo "  FAIL $f"; fi
   done
   # Every worker skills.txt line must resolve to a SKILL.md, or lint refuses a ticket naming it and
-  # build_worker_prompt stops (skill_file); a bare name and a plugin:name both, newest version first.
+  # build_worker_prompt stops (skill_file); a bare name and a plugin:name both, the latter at its installPath.
   while IFS= read -r t; do
     [ -n "$t" ] || continue
     skill_file "$t" > /dev/null 2>&1 && echo "  PASS skill $t resolves" || echo "  INFO skill $t resolves to no SKILL.md (lint refuses a ticket naming it)"
