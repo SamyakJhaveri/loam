@@ -8,7 +8,7 @@ Keep rows a check enforces, so each enforcer stays findable; drop a row only whe
 
 | Rule | Home | Enforcer |
 |------|------|----------|
-| No em dash (U+2014), raw or JSON-escaped, in Loam-owned text | owner rule, #237 | check: `bin/check` step "no em dash in Loam-owned text" (exempt paths listed there) |
+| No em dash (U+2014), raw or JSON-escaped, in Loam-owned text | owner rule, #237 | check: `bin/check` step "no em dash in Loam-owned text" (exempt paths marked `loam-verbatim` in `.gitattributes`) |
 | Run `bin/check` before every commit | `AGENTS.md` rule 3 | prose, kept by ruling; CI runs `bin/check` after every push and on PRs, and the GitHub ruleset "main requires CI" requires it for PR merges, but an admin push to `main` bypasses it |
 | Commit identities are public or noreply | `bin/ip-sweep.sh` | check: `bin/check` step "commit identities (ip-sweep identity only)" |
 | A plugin file change bumps its version | `bin/plugin_versions.py` | check: `bin/check` step "plugin versions" |
