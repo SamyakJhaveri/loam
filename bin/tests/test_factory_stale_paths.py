@@ -60,6 +60,13 @@ class StalePaths(unittest.TestCase):
         self.assertEqual(self.scan("Read `.claude/rules/x.md`.", (f"{self.wt}/seed/.claude/rules/x.md", True)),
                          ["seed/.claude/rules/x.md"])
 
+    def test_worktree_reached_through_a_symlink(self) -> None:
+        # As macOS /var -> /private/var: the Read spells the worktree through a link, cwd is the real path.
+        link = self.home / "wt-link"
+        link.symlink_to(self.wt)
+        self.assertEqual(self.scan("Read `.claude/rules/x.md`.", (f"{link}/.claude/rules/x.md", True)),
+                         [".claude/rules/x.md"])
+
     def test_home_path_outside_worktree(self) -> None:
         self.assertEqual(self.scan("Read `~/notes/x.md`.", (f"{self.home}/notes/x.md", True)), [f"{self.home}/notes/x.md"])
 

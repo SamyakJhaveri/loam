@@ -53,8 +53,14 @@ def resolve(path, root):
 
 
 def inside(path, root):
-    rel = os.path.relpath(path, root)
-    return None if rel == ".." or rel.startswith("../") else rel
+    # Relative to the ancestor that is the worktree, even when the Read spells that ancestor through a
+    # symlink (macOS /var is /private/var); None when no ancestor is.
+    up = path
+    while os.path.realpath(up) != root:
+        if os.path.dirname(up) == up:
+            return None
+        up = os.path.dirname(up)
+    return os.path.relpath(path, up)
 
 
 def main(argv):
