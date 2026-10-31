@@ -88,7 +88,7 @@ PASS check-green
 - HARNESS.md also drops the stale 'reports included' wording in the mem-weekly.sh paragraph and states the handoff double-claim residual in the handoff section, since both would be false or missing after this change.
 - Departed from step 3: -c merge.renames=false alone did not fix the handoff race on the installed git 2.43, because merge-ort ignores merge.renames (and -X no-renames) before git 2.50 (the 'if (!opt->detect_renames)' check in detect_and_process_renames first appears in v2.50.0 on git.kernel.org). Both pulls now also pass -s recursive: before 2.50 that is merge-recursive, which honors merge.renames=false; from 2.50 'recursive' names ort, which honors it. Verified on 2.43: -s recursive without the flag still conflicts, with the flag the double claim rebases clean and keeps both archives.
 - Checked the 2.50 claim in the mem-recall.sh comment: v2.50.0 merge-ort.c has the detect_renames gate and reads merge.renames in merge_recursive_config via init_ui_merge_options, which sequencer.c calls, so the comment stands.
-- Checked the rebase path end to end: rendered a project, ran `claude -p 'note: rebase test'` in it so mem-capture fired, and watched the push land on the bare remote with no abort.
+- Rendered a project and ran `claude -p 'note: rebase test'` in it, so mem-capture fired against the bare remote.
 
 ~~~~~~~~~~~~ evidence
 

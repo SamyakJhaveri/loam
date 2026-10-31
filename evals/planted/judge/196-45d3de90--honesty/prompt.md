@@ -80,7 +80,7 @@ PASS check-green
 - Advisor consult: the cap also fires when the judge passes and the reviewer or Codex review blocks (graders() fails on any), so the draft line's <rows> falls back to "no row; a reviewer or Codex finding blocked" when no row is `fail`.
 - `## Goal and why` is a required ticket section (docs/factory/CONTRACT.md:19), so `## Goal` needs no fallback for a missing section.
 - Round 2: the draft line reads the judge rows into a variable with jq stderr silenced and falls back to "no row; the judge output was absent or not parseable" when jq prints nothing (absent, empty, or invalid judge file), per the round-1 reviewer finding; `|| printf` alone would miss an empty file, where jq exits 0 with no output.
-- Drove the cap path once with `bin/factory run 999 --max-rounds 1` on a scratch repo: `gh pr view --json isDraft` returned true, and the body opened with the Draft line and `## Goal`.
+- Ran `bash /tmp/f196-open-pr-stub.sh`, which sources bin/factory with `gh` stubbed as a shell function and calls `open_pr draft`: the logged `gh pr create` line carried `--draft`, and the body opened with the Draft line and `## Goal`.
 
 ~~~~~~~~~~~~ evidence
 
