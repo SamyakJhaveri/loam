@@ -3,6 +3,14 @@
 This file records why a promoted plugin change traveled. It is also the upgrade
 entry point for projects that consume the Loam marketplace.
 
+## sam-cc-setup v0.9.22 factory-watch
+
+`/sam-cc-setup:factory-watch` reads `bin/factory status` once per call and reports a run that stopped, a PR that opened, or a failing precondition; run it as `/loop 30m /sam-cc-setup:factory-watch`.
+It is manual-only and never starts, stops or merges a run.
+Carried from DistBench's factory-watch skill without its board upload or alerts.
+No grader prompt changed, so no grader replay is owed.
+Upgrade step: `claude plugin update sam-cc-setup`.
+
 ## sam-cc-setup v0.9.21 research-gap runs that can fail and stay within a run bound
 
 From the audit of the first packaged run (surprise-me, 28 Oct 2026): step 6 names what earlier steps already report and aims its check at the idea's strongest threat, so it can fail; `gap.md` names read-list papers only a seed or citation crawl found; each mode bounds its runs (Claude runs at most seats + 2 + G + ceil(P/3)), predicted in `cost.md` before readers launch, and Claude seats run with `--max-budget-usd 10`; after step 4 a read-only Codex review hunts for a paper that closes each open or narrowed gap and checks each closed verdict against its PDF (`review.md`); and gap workers log and pool searches with the new `scripts/searchlog.py` instead of their own helpers.
