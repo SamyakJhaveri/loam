@@ -242,6 +242,27 @@ class StatusCriteriaTests(unittest.TestCase):
                          "    INCONCLUSIVE: measured 0 of 3 failing rounds (claude 0, codex 0; 1 with no CLAIM line, read by "
                          "the text matcher)")
 
+    def test_a_claim_line_in_markdown_decides_by_its_whole_value(self) -> None:
+        spec = importlib.util.spec_from_file_location("criteria", CRITERIA)
+        criteria = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(criteria)
+        for text, want in (("All done-checks pass.\n- CLAIM: partial", (False, "CLAIM: partial")),
+                           ("Not finished.\n**CLAIM:** done", (True, "CLAIM: done")),
+                           ("Not finished.\nCLAIM: `done`.", (True, "CLAIM: done")),
+                           ("All work remains incomplete.\nCLAIM: done-later", (False, "CLAIM: done-later")),
+                           ("CLAIM: done\nCLAIM: 0", (False, "CLAIM: 0"))):
+            self.assertEqual(criteria.claim(text), want, text)
+
+    def test_a_failing_round_with_no_worker_message_is_no_pass(self) -> None:
+        runs = pathlib.Path(self.tmp.name) / "silent"
+        run_dir(runs, "7/abcd1234", "pr-opened", ["===== launch =====", "===== round 1 =====",
+                                                   "EXIT pr-opened (0): https://github.com/o/r/pull/1"], 1)
+        (runs / "7/abcd1234/round-1.checks").write_text("FAIL a: b\n")
+        proc = factory("status", "--criteria", runs=runs)
+        self.assertEqual(verdicts(proc.stdout)["rounds whose last worker message claims done while the checks printed FAIL"],
+                         "    INCONCLUSIVE: measured 0 of 1 failing round (claude 0, codex 0; 1 failing round with no "
+                         "worker message)")
+
     def test_a_stall_before_its_rounds_checks_reads_the_last_checked_round(self) -> None:
         # no-change and a ticket-budget or wall-clock cap exit after `===== round 2 =====`, before round-2.checks.
         runs = pathlib.Path(self.tmp.name) / "stalls"

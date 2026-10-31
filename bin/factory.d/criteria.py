@@ -29,8 +29,10 @@ REHEARSAL = "file ticket: no GitHub call"  # open_pr's pr-opened message for a f
 PASS_OVER = "SKIPPED:"  # bin/check's marker for a step that did not run; lib.sh's guard copies it into the checks file
 STALLS = ("stuck", "no-change", "stopped-cap")
 LOWER = "lower bound"  # a measure's fourth element: the value may undercount, so it prints INCONCLUSIVE, not PASS
-# The worker's claim, the last line of its last message that reads `CLAIM: <state>` (_common.md); only done claims done.
-CLAIM_LINE = re.compile(r"^[ \t*`>_]*CLAIM:[ \t]*([A-Za-z]+)", re.M)
+# The worker's claim, the last line of its last message that starts `CLAIM:` after blanks and markdown marks
+# (_common.md); only a whole value of done, in any case and markdown, with an optional final period, claims done.
+CLAIM_LINE = re.compile(r"^[ \t*`>_-]*CLAIM:(.*)$", re.M)
+DONE = re.compile(r"[\s*_`]*done[\s*_`]*\.?[\s*_`]*", re.I)
 # FAIL names round_checks writes in place of running the block, which the worker's Stop hook does not do; under
 # LOAM_HOOK, guard passes a `guard bin/check` line without running it (lib.sh), so its name joins them per run.
 HOOK_BLIND = {"do-not-touch", "worktree-dirty"}
@@ -262,9 +264,9 @@ def claims_done(text):
 def claim(text):
     """(counts, said) of a last worker message: its last CLAIM line, which counts when its state is done, or with none,
     counts None and claims_done's sentence, None when the text matcher reads no claim."""
-    lines = list(CLAIM_LINE.finditer(text))
+    lines = CLAIM_LINE.findall(text)
     if lines:
-        return lines[-1].group(1).lower() == "done", lines[-1].group(0).strip(" *`>_")
+        return bool(DONE.fullmatch(lines[-1])), "CLAIM: " + lines[-1].strip(" \t\r*_`.")
     return None, claims_done(text)
 
 
@@ -277,7 +279,8 @@ def guarded(run):
 def premature_done(runs):
     """Failing rounds whose worker claims done in its last message's CLAIM line, or for a round with none, the text
     matcher's claims_done. A counted round is hook-blind when every FAIL it printed is a check its Stop hook passes.
-    While a failing round is read by the matcher, which can miss a claim, a count within the threshold is no PASS."""
+    While a failing round is read by the matcher, which can miss a claim, or left no message, a count within the
+    threshold is no PASS."""
     kinds, silent, matched, failing, rows, blind = {"claude": 0, "codex": 0}, 0, 0, 0, [], []
     for r in runs:
         for n, lines in sorted(r.checks.items()):
@@ -306,7 +309,7 @@ def premature_done(runs):
     if blind:
         detail += f"; {len(blind)} failed only checks the worker's Stop hook cannot fail: {', '.join(blind)}"
     n = sum(kinds.values())
-    return n, detail, f"{n} of {count(failing, 'failing round')}", LOWER if matched else None, rows
+    return n, detail, f"{n} of {count(failing, 'failing round')}", LOWER if matched or silent else None, rows
 
 
 def history(target):
