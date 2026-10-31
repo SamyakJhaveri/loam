@@ -4,7 +4,9 @@ Claude Code copies each settings tier's env over the launch env, user settings f
 freeze adds the four pins to the source env in the frozen worker-settings.json that the worker call loads with
 `--settings`.
 CLAUDE_CODE_SUBAGENT_MODEL_FORCE exists from 2.1.257, so claude_version_ok refuses an older or unreadable
-`claude --version`. `bin/factory` is sourced (FACTORY_SOURCED=1); freeze reads the checkout's graders through
+`claude --version`. The frozen copy also keeps the ScheduleWakeup, CronCreate and Monitor denies and the
+CLAUDE_CODE_DISABLE_BACKGROUND_TASKS=1 pin, so a worker -p call does not wait at exit on background work (#470).
+`bin/factory` is sourced (FACTORY_SOURCED=1); freeze reads the checkout's graders through
 GRADERS_DIR and `claude` is a stub on PATH. No network.
 """
 
