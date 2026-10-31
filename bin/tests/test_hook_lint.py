@@ -60,12 +60,14 @@ class HookLintTest(unittest.TestCase):
                        'while read -r l; do echo "$l"; done < "$f"\neval "$(ssh-agent -s)"',
                        'while IFS= read -r l; do\n  echo "$l"\ndone <<<"$s"\neval "$y"',
                        'ls | while read -r l; do echo "$l"; done\neval "$y"',
+                       'ls | while :; do read -r l; done\neval "$y"',
                        'for f in *; do while read -r l; do :; done < "$f"; done\neval "$y"'):
             r = lint(f"#!/bin/bash\n{script}\n", ["SessionStart"])
             self.assertEqual((r.returncode, r.stdout), (0, ""), script)
 
     def test_eval_of_stdin_flagged(self) -> None:
         for read in ('cmd=$(jq -r .tool_input.command)', 'cmd=$(jq -r .tool_input.command 2>/dev/null)',
+                     'cmd=$(jq -r --arg k "$v" .tool_input.command)',
                      'cat 2>/dev/null > "$tmp"', 'cat > "$tmp"', 'while read -r l; do :; done',
                      'for i in 1; do read -r cmd; done < /dev/null; while read -r l; do :; done'):
             r = lint(f'#!/bin/bash\n{read}\neval "$cmd"\n', ["PreToolUse"])

@@ -39,6 +39,7 @@ BLOCKS = re.compile(r"""\\?["']decision\\?["']\s*:\s*\\?["']block\\?["']|\bexit\
 VAR = re.compile(r"\$[A-Za-z_0-9@*{]")
 REDIRECT = re.compile(r"\d*>>?")
 LOOPS = {"while", "until", "for", "select"}
+JQ_VALUES = {"--arg": 2, "--argjson": 2, "--slurpfile": 2, "--rawfile": 2, "--indent": 1, "-L": 1}
 HINTS = {
     "block-on-nonblocking": "registered only on events that cannot block, so the block is ignored",
     "unquoted-rm": 'quote the variable: rm -rf "$DIR"/cache',
@@ -97,10 +98,14 @@ def reads_stdin(name: str, own: list[str], piped: bool) -> bool:
     a `cat` with no file operand, or a `jq` with no file operand after its filter and no -n."""
     if piped or any(a.startswith("<") for a in own):
         return False
-    operands, skip = [], False
+    operands, skip = [], 0
     for a in own:
-        if skip or REDIRECT.match(a):  # an output redirect and its target are not file operands
-            skip = not skip and REDIRECT.fullmatch(a) is not None
+        if skip:  # a value of the option or redirect before it
+            skip -= 1
+        elif REDIRECT.match(a):  # an output redirect and its target are not file operands
+            skip = REDIRECT.fullmatch(a) is not None
+        elif name == "jq" and a in JQ_VALUES:
+            skip = JQ_VALUES[a]
         elif a == "-" or not a.startswith("-"):
             operands.append(a)
     if name == "cat":
@@ -141,8 +146,8 @@ def lint(path: pathlib.Path, events: set[str]) -> list[tuple[int, str]]:
     if events <= NONBLOCKING:
         found += [(n, "block-on-nonblocking") for n, line in enumerate(text.splitlines(), 1)
                   if not line.lstrip().startswith("#") and BLOCKS.search(line)][:1]
-    # A `read` inside a loop reads the script's stdin only if the loop's `done` has no < redirect, so each
-    # open loop holds its reads until its `done` is seen.
+    # A `read` inside a loop reads the script's stdin only if no pipe feeds the loop and its `done` has no
+    # < redirect, so each open loop holds [fed, read] until its `done` is seen.
     evals, reads, loops = [], False, []
     for n, code in code_pieces(text):
         toks = tokens(code)
@@ -151,11 +156,12 @@ def lint(path: pathlib.Path, events: set[str]) -> list[tuple[int, str]]:
         for j, tok in enumerate(toks):
             head = j == 0 or toks[j - 1] in ENDS or toks[j - 1] in RUNS
             if tok in LOOPS and head:
-                loops.append(False)
+                loops.append([piped(toks, j), False])
             elif tok == "done" and (j == 0 or toks[j - 1] in ENDS) and loops:
-                held = loops.pop() and not any(a.startswith("<") for a in args(toks, j + 1))
+                fed, read = loops.pop()
+                held = read and not (fed or any(a.startswith("<") for a in args(toks, j + 1)))
                 if loops:
-                    loops[-1] = loops[-1] or held
+                    loops[-1][1] = loops[-1][1] or held
                 else:
                     reads = reads or held
             name = names.get(j)
@@ -168,7 +174,7 @@ def lint(path: pathlib.Path, events: set[str]) -> list[tuple[int, str]]:
                 evals.append(n)
             elif reads_stdin(name, own, piped(toks, j)):
                 if loops:
-                    loops[-1] = True
+                    loops[-1][1] = True
                 else:
                     reads = True
     found += [(n, "eval-input") for n in evals if reads]
