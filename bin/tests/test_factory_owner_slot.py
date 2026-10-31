@@ -210,9 +210,10 @@ class OwnerSlotTests(SlotCase):
         self.assertEqual((self.run_dir / "status").read_text(), "stopped-environment\n")
         self.assertEqual(len(self.alerts.read_text().splitlines()), 1)
 
-    def test_dead_owner_holds_while_its_model_call_lives(self) -> None:
+    def test_dead_owner_s_model_call_is_killed_and_the_slot_freed(self) -> None:
         # call_start puts the call in a session of its own, so a SIGKILL to the supervisor's group leaves it running
-        # (reparented to init) and writing the worktree; the slot holds until the call is gone.
+        # (reparented to init) and writing the worktree; holds_slot kills the call's group, recorded in call.group with
+        # its start time, and frees the slot.
         ready = self.top / "ready"
         script = (f". bin/factory\nRUN='{self.run_dir}'; LOG='{self.top}/factory.log'\n"
                   f"call_start '{self.top}' sh -c 'echo $$ > \"{ready}\"; exec sleep 60'\nwait")
@@ -222,14 +223,28 @@ class OwnerSlotTests(SlotCase):
         wait_until(lambda: ready.exists() and ready.read_text().strip() != "")
         call = int(ready.read_text())
         self.addCleanup(lambda: subprocess.run(["pkill", "-KILL", "-g", str(call)], check=False))
+        self.assertEqual((self.run_dir / "call.group").read_text(), f"{call} {lstart(call)}\n")
         os.killpg(sup.pid, signal.SIGKILL)
         sup.wait()
         self.owner(f"{sup.pid} {OLD}")
-        self.assert_held()
-        os.killpg(call, signal.SIGKILL)
         wait_until(lambda: not self.holds())
+        self.assertNotEqual(state(call), "S", "the call outlived holds_slot")
         self.assertEqual((self.run_dir / "status").read_text(), "stopped-environment\n")
         self.assertEqual(len(self.alerts.read_text().splitlines()), 1)
+        self.assertFalse((self.run_dir / "call").exists())
+        self.assertFalse((self.run_dir / "call.group").exists())
+
+    def test_dead_owner_spares_a_group_whose_start_time_differs(self) -> None:
+        # A pgid reused since the call started has another start time: holds_slot kills nothing and the live group
+        # still holds the slot.
+        p = subprocess.Popen(["sleep", "60"], start_new_session=True)
+        self.addCleanup(p.wait)
+        self.addCleanup(p.kill)
+        (self.run_dir / "call.group").write_text(f"{p.pid} {OLD}\n")
+        (self.run_dir / "call").write_text(f"{dead_pid()} test.{uuid.uuid4().hex}\n")
+        self.owner(f"{dead_pid()} {OLD}")
+        self.assert_held()
+        self.assertIsNone(p.poll(), "holds_slot killed a group whose start time differs")
 
 
 @unittest.skipUnless(HAVE_FLOCK, "the lease needs flock(1) and bash 4.1+")
