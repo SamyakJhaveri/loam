@@ -1,0 +1,34 @@
+{
+  "permissions": {
+    "deny": [
+      "Bash(git push --force *)",
+      "Bash(git push -f *)",
+      "Bash(git push --force-with-lease *)",
+      "Bash(git push origin main *)",
+      "Bash(git push origin HEAD:main *)",
+      "Bash(git tag *)",
+      "Bash(gh release *)",
+      "Bash(gh * --repo SamyakJhaveri/distbench *)",
+      "Bash(gh * -R SamyakJhaveri/distbench *)",
+      "Bash(gh issue edit * --add-label ready-for-agent *)",
+      "Bash(sudo *)",
+      "Bash(crontab *)",
+      "Bash(rm -rf *)",
+      "ScheduleWakeup",
+      "CronCreate"
+    ]
+  },
+  "autoMemoryEnabled": false,
+  "sandbox": {
+    "filesystem": {
+      "allowWrite": [
+        "~/.local/state/loam"
+      ]
+    },
+    "network": {
+      "allowedDomains": [
+        "github.com"
+      ]
+    }
+  }
+}
