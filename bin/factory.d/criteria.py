@@ -20,6 +20,7 @@ import glob
 import json
 import os
 import re
+import shlex
 import statistics
 import subprocess
 import sys
@@ -33,10 +34,13 @@ LOWER = "lower bound"  # a measure's fourth element: the value may undercount, s
 # (_common.md); only a whole value of done, in any case and markdown, with an optional final period, claims done.
 CLAIM_LINE = re.compile(r"^[ \t*`>_-]*CLAIM:(.*)$", re.M)
 DONE = re.compile(r"[\s*_`]*done[\s*_`]*\.?[\s*_`]*", re.I)
-# FAIL names round_checks writes in place of running the block, which the worker's Stop hook does not do; under
-# LOAM_HOOK, guard passes a `guard bin/check` line without running it (lib.sh), so its name joins them per run.
+# FAIL names round_checks writes in place of running the block (a checks file with no CHECKS-END line), which the
+# worker's Stop hook does not do; a guard that returns early under LOAM_HOOK (lib.sh) or a line that passes first under
+# it passes a `guard bin/check` line unrun, so that line's names join them per run.
 HOOK_BLIND = {"do-not-touch", "worktree-dirty"}
-GUARDED_CHECK = re.compile(r"(?:^|[;&|{(])\s*guard bin/check(?=[\s;&|)}]|$)")  # a command, not a quoted word
+HOOK_GUARD = re.compile(r'LOAM_HOOK.*"\$\{1:-\}" = bin/check \] && return 0')
+HOOK_PASS = ["[", "-n", "${LOAM_HOOK:-}", "]", "&&", "pass"]
+KEYWORDS = {"{", "!", "if", "then", "else", "elif", "do", "while", "until"}  # the next word starts a command too
 # A round with no CLAIM line, from before _common.md asked for one, falls back to this text matcher. A completion
 # claim: done (not done-checks), complete or finished (not after the or a), all [n] checks pass or print, no FAIL, or
 # check: PASSED. A failure: fail, failure, could not, cannot, incomplete or unfinished. A pass (passes,
@@ -271,9 +275,25 @@ def claim(text):
 
 
 def guarded(run):
-    """The names on the `guard bin/check` lines of the run's frozen checks, which the Stop hook passes unrun."""
-    return {name for line in read(os.path.join(run, "frozen", "checks.sh")).splitlines() if GUARDED_CHECK.search(line)
-            for name in re.findall(r"\b(?:pass|fail) ([\w.-]+)", line)}
+    """The pass and fail names of the lines of the run's frozen checks that run `guard bin/check`, when the Stop hook
+    passes such a line unrun; a line shlex cannot split names nothing."""
+    text, names = read(os.path.join(run, "frozen", "checks.sh")), set()
+    for line in text.splitlines():
+        lex = shlex.shlex(line, posix=True, punctuation_chars=True)
+        lex.whitespace_split = True
+        try:
+            words = list(lex)
+        except ValueError:
+            continue
+        starts, start = [], True  # the index of each word that starts a command: a separator or keyword precedes it
+        for i, w in enumerate(words):
+            if start:
+                starts.append(i)
+            start = set(w) <= set(";&|()") or start and w in KEYWORDS
+        if (any(words[i:i + 2] == ["guard", "bin/check"] for i in starts)
+                and (HOOK_GUARD.search(text) or any(words[i:i + 6] == HOOK_PASS for i in starts))):
+            names |= {words[i + 1] for i in starts if words[i] in ("pass", "fail") and i + 1 < len(words)}
+    return names
 
 
 def premature_done(runs):
@@ -299,7 +319,7 @@ def premature_done(runs):
                 kinds[kind] += 1
                 # The round, its first FAIL line and the claim, so a reader can settle a text matcher's read.
                 rows.append(f"{r.label} round {n} ({kind}): {next(ln for ln in lines if ln.startswith('FAIL '))} | {said}")
-                if set(names) <= HOOK_BLIND | guarded(r.dir):
+                if set(names) <= HOOK_BLIND - ({"worktree-dirty"} if "CHECKS-END" in lines else set()) | guarded(r.dir):
                     blind.append(f"{r.label} round {n}")
     detail = f"claude {kinds['claude']}, codex {kinds['codex']}"
     if silent:

@@ -253,6 +253,27 @@ class StatusCriteriaTests(unittest.TestCase):
                            ("CLAIM: done\nCLAIM: 0", (False, "CLAIM: 0"))):
             self.assertEqual(criteria.claim(text), want, text)
 
+    def test_hook_blind_names_need_a_check_the_hook_passes_unrun(self) -> None:
+        spec = importlib.util.spec_from_file_location("criteria", CRITERIA)
+        criteria = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(criteria)
+        run = pathlib.Path(self.tmp.name) / "guarded"
+        (run / "frozen").mkdir(parents=True)
+        hook_guard = 'guard() { [ -n "${LOAM_HOOK:-}" ] && [ "${1:-}" = bin/check ] && return 0; "$@"; }\n'
+        bare = 'guard bin/check >/dev/null 2>&1 && pass check-green || fail check-green "pass x"  # fail y\n'
+        for frozen, want in (('guard() { "$@"; }\n' + bare, set()),  # an older guard runs bin/check under the hook
+                             (hook_guard + bare, {"check-green"}),
+                             (hook_guard + "printf '%s\\n' 'x; guard bin/check && pass a' >/dev/null; false && pass a || fail a x\n", set()),
+                             (hook_guard + 'if guard bin/check; then pass c; else fail c "x"; fi\n', {"c"}),
+                             (hook_guard + "guard bin/check && pass d 'x\n", set())):
+            (run / "frozen/checks.sh").write_text(frozen)
+            self.assertEqual(criteria.guarded(str(run)), want, frozen)
+        # A worktree-dirty FAIL of lib.sh's check_clean, inside the block (CHECKS-END follows), is one the hook runs.
+        (run / "status").write_text("pr-opened\n")
+        (run / "round-1.checks").write_text("FAIL worktree-dirty: 1 uncommitted paths: a\nCHECKS-END\n")
+        (run / "round-1.result.json").write_text('{"result": "CLAIM: done"}')
+        self.assertEqual(criteria.premature_done([criteria.Run(self.tmp.name, str(run))])[1], "claude 1, codex 0")
+
     def test_a_failing_round_with_no_worker_message_is_no_pass(self) -> None:
         runs = pathlib.Path(self.tmp.name) / "silent"
         run_dir(runs, "7/abcd1234", "pr-opened", ["===== launch =====", "===== round 1 =====",
