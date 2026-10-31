@@ -55,13 +55,15 @@ FORBIDDEN_FAMILIES = (
 
 # The empty read-only files the Claude Code sandbox creates on Linux to mask protected paths
 # (anthropics/claude-code#46165). The .claude/ ones Claude Code also reads as real directories
-# are in CLAUDE_DIR_PLACEHOLDERS.
+# are in CLAUDE_DIR_PLACEHOLDERS. A render keeps SHARED_CONFIG visible: Claude Code writes those
+# files for the project to commit.
 CLAUDE_DIR_PLACEHOLDERS = ("agents", "commands", "output-styles", "routines", "workflows")
 SANDBOX_PLACEHOLDERS = (
     ".bash_profile", ".bashrc", ".gitconfig", ".gitmodules", ".idea", ".mcp.json", ".profile",
     ".ripgreprc", ".vscode", ".zprofile", ".zshrc",
     ".claude/.cc-writes", ".claude/launch.json", ".claude/loop.md", ".claude/scheduled_tasks.json",
 ) + tuple(".claude/" + d for d in CLAUDE_DIR_PLACEHOLDERS)
+SHARED_CONFIG = (".claude/launch.json", ".claude/loop.md", ".mcp.json")
 
 
 def _status(repo: pathlib.Path, *args: str) -> str:
@@ -193,7 +195,7 @@ class RenderSmoke(unittest.TestCase):
             proj = pathlib.Path(tmp) / "render"
             shutil.copytree(self.out, proj, symlinks=True)
             _plant_placeholders(proj)
-            self.assertEqual(_status(proj), "")
+            self.assertEqual(_status(proj), "".join(f"?? {p}\n" for p in SHARED_CONFIG))
             for d in CLAUDE_DIR_PLACEHOLDERS:
                 (proj / ".claude" / d).unlink()
                 (proj / ".claude" / d).mkdir()
@@ -432,10 +434,13 @@ class LoamGitignore(unittest.TestCase):
             shutil.copy(ROOT / ".gitignore", repo / ".gitignore")
             _plant_placeholders(repo, "seed/.claude")
             self.assertEqual(_status(repo), "?? .gitignore\n")
-            (repo / "seed/.claude/agents").unlink()
-            (repo / "seed/.claude/agents").mkdir()
-            (repo / "seed/.claude/agents/x.md").write_text("x\n")
-            self.assertIn("?? seed/.claude/agents/x.md", _status(repo, "--untracked-files=all").splitlines())
+            for d in CLAUDE_DIR_PLACEHOLDERS:
+                (repo / "seed/.claude" / d).unlink()
+                (repo / "seed/.claude" / d).mkdir()
+                (repo / "seed/.claude" / d / "x.md").write_text("x\n")
+            untracked = _status(repo, "--untracked-files=all").splitlines()
+            for d in CLAUDE_DIR_PLACEHOLDERS:
+                self.assertIn(f"?? seed/.claude/{d}/x.md", untracked)
 
 
 class UpdateSmoke(unittest.TestCase):

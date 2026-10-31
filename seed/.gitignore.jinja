@@ -57,21 +57,21 @@ logs/
 
 # Empty read-only files the Claude Code sandbox creates on Linux to mask
 # protected paths (anthropics/claude-code#46165). Only untracked files are
-# ignored, so a tracked .gitmodules or .mcp.json is unaffected.
+# ignored, so a tracked .gitmodules is unaffected. .mcp.json,
+# .claude/launch.json and .claude/loop.md stay visible: Claude Code writes them
+# for the project to commit. A leftover empty one is a mask file (`claude
+# doctor` names it); delete it when no session is running.
 /.bash_profile
 /.bashrc
 /.gitconfig
 /.gitmodules
 /.idea
-/.mcp.json
 /.profile
 /.ripgreprc
 /.vscode
 /.zprofile
 /.zshrc
 /.claude/.cc-writes
-/.claude/launch.json
-/.claude/loop.md
 /.claude/scheduled_tasks.json
 # Claude Code also reads these as real directories: ignore the placeholder
 # file, re-include the directory so a project's own agent still reaches git.

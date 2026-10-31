@@ -106,8 +106,10 @@ bin/harness-smoke.log
 
 # Empty read-only files the Claude Code sandbox creates on Linux to mask
 # protected paths (anthropics/claude-code#46165); seed/.gitignore.jinja carries
-# the same block for rendered projects. .mcp.json is ignored above. The
-# .claude/ ones land under seed/.claude/ through the root .claude symlink.
+# the same block for rendered projects, less .mcp.json, launch.json and loop.md,
+# which a project commits. .mcp.json is ignored above. The .claude/ ones land
+# under seed/.claude/ through the root .claude symlink; a real launch.json or
+# loop.md there would ship to every render, so add it with `git add -f`.
 /.bash_profile
 /.bashrc
 /.gitconfig
