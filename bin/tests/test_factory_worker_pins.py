@@ -63,6 +63,16 @@ class WorkerPinTests(unittest.TestCase):
         self.assertIn("Edit(~/.claude/**)", deny)
         self.assertIn("Edit(~/.cursor/**)", deny)
 
+    def test_frozen_worker_settings_deny_tools_a_print_call_waits_on(self) -> None:
+        # Since Claude Code 2.1.292 a -p call waits at exit for a pending ScheduleWakeup, Monitor or background task,
+        # so a worker that started one would hold its round until CALL_TIMEOUT_SEC (#470).
+        # A bare tool name denies the whole tool and drops it from the call's tool list.
+        env, _ = self.frozen_env()
+        deny = json.loads((self.tmp / "run/frozen/worker-settings.json").read_text())["permissions"]["deny"]
+        for tool in ("ScheduleWakeup", "CronCreate", "Monitor"):
+            self.assertIn(tool, deny)
+        self.assertEqual(env.get("CLAUDE_CODE_DISABLE_BACKGROUND_TASKS"), "1")
+
     def test_freeze_follows_factory_worker_model(self) -> None:
         env, source_env = self.frozen_env(FACTORY_WORKER_MODEL="claude-other-1")
         self.assertEqual(env, {**source_env, **dict.fromkeys(PINS, "claude-other-1"),
