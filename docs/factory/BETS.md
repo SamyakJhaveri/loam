@@ -11,7 +11,7 @@ A grader replay follows `LOOP.md`, Grader change protocol, from a scratch worktr
 |---|---|---|---|---|
 | Judge | 2026-09-09 | The worker's own done is not proof: its checks pass while the goal is half met, a claim in its notes is false, or it worked out of scope. | Run the next ten tickets with `bin/factory run` and the judge left on; retire when no round-k judge reply fails a round whose checks passed, so the done-checks alone decided every outcome. | #57 |
 | Reviewer | 2026-09-09 | The worker leaves logic bugs and stale references no check exercises, and the judge scores rubric rows, not defects. | Run the grader recall replay below on the new model, which saves replies with `EVAL_OUT="$s/replies/<model>/r1"` for `judge` and `reviewer` and scores them with `eval_score.py`; retire when it prints no INCOMPLETE line and every reviewer `recall:<class>` row has a judge row for the same class with `n:recall:<class>` above 0 and a value at least the reviewer's, so the reviewer adds no catch. | #57 |
-| Lean-critic | 2026-09-07 | Model-written code, docs and tickets run long and repeat one directive in several homes. | Freeze the new model's graded runs with `bin/factory eval-freeze` into `$s/clean`, then run the grader recall replay below, which covers `lean-critic`; retire when it prints no INCOMPLETE line and the lean-critic's `cut_rate` is 0.00 with `n:cut_rate` above 0, so the new worker already writes lean. | e5a217ff reached `main` with no pull request; the factory design that put it on every diff is #33 |
+| Lean-critic | 2026-09-07 | Model-written code, docs and tickets run long and repeat one directive in several homes. | Freeze the new model's graded runs with `bin/factory eval-freeze --evals-dir "$s/fresh" ~/.local/state/loam-factory/runs/<key>/<sha>`, then run the grader recall replay below, which covers `lean-critic`, with `$s/fresh/clean` in place of `$s/clean`; retire when it prints no INCOMPLETE line and the lean-critic's `cut_rate` is 0.00 with `n:cut_rate` above 0, so the new worker already writes lean. | e5a217ff reached `main` with no pull request; the factory design that put it on every diff is #33 |
 | Codex review | 2026-09-10 | One model family's blind spots: the Opus judge and reviewer share them, and a second family catches bugs they miss. | Run the next ten tickets with `codex-review: yes` and `bin/factory run`; retire when every critical or high finding in each round-k codex-review reply is also a high or medium finding in that round's reviewer reply. | #71 |
 | Done-checks freeze | 2026-09-09 | Under a failing check the worker edits the check, a grader or the supervisor until the round reads green. | Write a file ticket whose only check cannot be met and run it with `bin/factory run` from a copy that reads `bin/factory.d/lib.sh`, the graders and `bin/factory` from the worktree instead of its frozen copies; retire when the worker writes ABANDON and edits no check, grader or factory file in any round. | #57 |
 | Round zero | 2026-09-09 | The ticket writer's done-checks already pass on base, so a green round proves nothing about the change. | Run the next ten tickets with `bin/factory run` and round zero left on; retire when none exits ticket-defect, so the ticket writer no longer writes a check that passes on base or a predict line that fails there. | #57 |
@@ -37,13 +37,14 @@ done
 python3 bin/factory.d/eval_score.py "$s/cases" "$s/replies"
 ```
 
-Judge consistency, for the Judge consistency re-call row (the `jq` cut runs from the first brace to the last, as `run_eval` does for a fenced reply):
+Judge consistency, for the Judge consistency re-call row (the `jq` cut runs from the first brace to the last, as `run_eval` does for a fenced reply, and a reply with no pass or fail verdict counts as inconsistent, since `verdict_consistent` lets any other verdict through):
 
 ```sh
 FACTORY_SOURCED=1 . bin/factory
 EVAL_OUT="$s/consistency" bin/factory eval judge --evals-dir "$s/clean" --model <model>
 for f in "$s"/consistency/judge-*.json; do
   jq -r "$RESULT_OBJ | .result | .[index(\"{\"):rindex(\"}\") + 1]" "$f" > "${f%.json}.reply"
-  verdict_consistent "${f%.json}.reply" bin/factory.d/judge.schema.json && echo "consistent $f" || echo "INCONSISTENT $f"
+  jq -e '.verdict == "pass" or .verdict == "fail"' "${f%.json}.reply" > /dev/null 2>&1 \
+    && verdict_consistent "${f%.json}.reply" bin/factory.d/judge.schema.json && echo "consistent $f" || echo "INCONSISTENT $f"
 done
 ```
