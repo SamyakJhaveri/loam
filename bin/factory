@@ -1853,6 +1853,10 @@ verdict_consistent() { # json file, schema file
       else true end' "$1" > /dev/null 2>&1
 }
 
+grader_reply() { # raw claude -p envelope -> the grader's reply text, fences stripped
+  jq -r "$RESULT_OBJ | .result // \"\"" "$1" 2> /dev/null | sed -e 's/^```json//' -e 's/^```//' -e 's/```$//'
+}
+
 call_json() { # round stem role prompt_file schema_file
   local round="$1" stem="$2" role="$3" pf="$4" schema="$5" final="$RUN/round-$1.$2.json" out res attempt=0
   while [ "$attempt" -lt 3 ]; do
@@ -1873,7 +1877,7 @@ call_json() { # round stem role prompt_file schema_file
     if [ -z "$CALL_STUCK" ] && limit_wait "$out"; then attempt=$((attempt - 1)); continue; fi
     record "$round" "$role" "$GRADER_MODEL" "$out"
     [ -z "$CALL_STUCK" ] || finish stopped-environment "$CALL_STUCK"
-    res=$(jq -r "$RESULT_OBJ | .result // \"\"" "$out" 2> /dev/null | sed -e 's/^```json//' -e 's/^```//' -e 's/```$//') || res=""
+    res=$(grader_reply "$out") || res=""
     if printf '%s' "$res" | jq -e '.verdict' > /dev/null 2>&1; then
       printf '%s' "$res" | jq '.' > "$final"
       verdict_consistent "$final" "$schema" && return 0
@@ -2720,13 +2724,23 @@ grader_first_fail() { # run dir -> the first grader item that failed in the last
   local j r
   j=$(find "$1" -maxdepth 1 -name 'round-*.judge.json' 2> /dev/null | sort -V | tail -1)
   [ -n "$j" ] || return 0
-  r=$(jq -r 'if .unparseable == true then "judge:unparseable"
-    else first((.rows // {}) | to_entries[] | select(.value != "pass") | "judge:" + .key) // empty end' \
-    "$j" 2> /dev/null)
-  [ -n "$r" ] || r=$(jq -r 'if .unparseable == true then "review:unparseable"
-    else first('"$REVIEW_BLOCKING"'[] | "review:" + (.file // "?")) // empty end' \
-    "${j%judge.json}review.json" 2> /dev/null)
+  # A judge fail with every row pass still fails the round, on its fixes or backlog (verdict_consistent).
+  r=$(grader_fallback "$j" judge || jq -r 'first(((.rows // {}) | to_entries[] | select(.value != "pass") | "judge:" + .key),
+    (select(.verdict == "fail") | "judge:fail"))' "$j" 2> /dev/null)
+  [ -n "$r" ] || r=$(grader_fallback "${j%judge.json}review.json" review \
+    || jq -r 'first('"$REVIEW_BLOCKING"'[] | "review:" + (.file // "?")) // empty' "${j%judge.json}review.json" 2> /dev/null)
   printf '%s' "$r"
+}
+
+# call_json writes one fallback whether no reply parsed or the last parsed but contradicted its own lists, so the
+# last raw reply, read as call_json reads it, tells an inconsistent grader from an unreadable one.
+grader_fallback() { # grader json, grader name -> <grader>:inconsistent|unparseable; 1 when the json is the grader's own
+  jq -e '.unparseable == true' "$1" > /dev/null 2>&1 || return 1
+  if grader_reply "${1%json}raw.3.json" | jq -e '.verdict' > /dev/null 2>&1; then
+    printf '%s:inconsistent' "$2"
+  else
+    printf '%s:unparseable' "$2"
+  fi
 }
 
 # run_clean: yes|no|- for the status clean column (D09 Option A). A run is clean when it reached
