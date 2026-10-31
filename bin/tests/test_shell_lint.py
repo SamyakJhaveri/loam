@@ -133,6 +133,9 @@ x="$(/usr/bin/test a -ot b && echo y)"
 ! [ ! a -ot b -a -f c ]
 [ "$x" = -nt ]
 [[ "$x" != "-ot" ]]
+[ "$x" = -nt -a -f y ]
+[[ $x == -nt && -f y ]]
+[[ -n $x ]] && echo a -nt b
 [ -nt ]
 [ a ] && echo -nt b
 test -n x; echo a -ot b

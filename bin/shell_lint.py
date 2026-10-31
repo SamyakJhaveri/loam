@@ -217,7 +217,7 @@ def commands(toks: list[str]) -> list[tuple[str, int]]:
 
 def file_times(name: str, args: list[str]) -> set[str]:
     """The -nt and -ot operators of this [, [[ or test: its own words up to the closing ] or ]] (for [ and test
-    also the next list operator), where the operator stands between two operands and does not follow a string
+    also the next word in ENDS, a pipeline stage, list operator or group end), where the operator stands between two operands and does not follow a string
     operator, so [ "$x" = -nt ] is a string compare."""
     expr = []
     for arg in args:
