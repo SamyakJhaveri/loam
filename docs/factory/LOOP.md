@@ -221,7 +221,7 @@ A run directory with `launched` and no `status` file holds a slot until its run 
 A failure of both writes `notify.failed` in the run dir; `status` shows it.
 Events: run started, `pr-opened` with the URL, every other exit, checks failing after round k every two rounds.
 Each message names the ticket as `issue <n> (<title>)` and says the exit in words (`exit_words`), never a bare status.
-`pr-opened`, `ticket-defect` and `abandon` are `needs-you` and `stopped-cap`, `stuck`, `no-change` and `stopped-environment` are `fail`; both post with `@channel`, and the rest post quietly as `info`.
+`pr-opened` on another target, `ticket-defect` and `abandon` are `needs-you` (a Loam `pr-opened` is `info`: the overnight driver reviews, fixes and merges it, and alerts on one it leaves open) and `stopped-cap`, `stuck`, `no-change` and `stopped-environment` are `fail`; both post with `@channel`, and the rest post quietly as `info`.
 The text passes `scrub` before Slack, the log and the comment; `scrub` also removes Slack webhook and healthchecks ping URLs and every value of 8 or more characters in the alert config files.
 The checks-failing and `stuck` messages name the failing checks, never a FAIL line or its reason, as the PR body's checks blocks do; a name outside `[A-Za-z0-9_.-]` shows as `?`, and the checks-failing message names at most ten plus the `round-<k>.checks` file.
 
