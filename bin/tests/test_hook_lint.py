@@ -56,13 +56,20 @@ class HookLintTest(unittest.TestCase):
 
     def test_eval_without_stdin_passes(self) -> None:
         for script in ('eval "$(ssh-agent -s)"', 'x=$(echo "{}" | jq -r .a); eval "$x"', 'jq . f.json; eval "$y"',
-                       'cat <f; eval "$y"', 'jq -n 1; eval "$y"'):
+                       'cat <f; eval "$y"', 'jq -n 1; eval "$y"',
+                       'while read -r l; do echo "$l"; done < "$f"\neval "$(ssh-agent -s)"',
+                       'while IFS= read -r l; do\n  echo "$l"\ndone <<<"$s"\neval "$y"',
+                       'ls | while read -r l; do echo "$l"; done\neval "$y"',
+                       'for f in *; do while read -r l; do :; done < "$f"; done\neval "$y"'):
             r = lint(f"#!/bin/bash\n{script}\n", ["SessionStart"])
             self.assertEqual((r.returncode, r.stdout), (0, ""), script)
 
-    def test_eval_of_jq_stdin_flagged(self) -> None:
-        r = lint('#!/bin/bash\ncmd=$(jq -r .tool_input.command)\neval "$cmd"\n', ["PreToolUse"])
-        self.assertEqual(found(r.stdout), ["h.sh:3 eval-input"])
+    def test_eval_of_stdin_flagged(self) -> None:
+        for read in ('cmd=$(jq -r .tool_input.command)', 'cmd=$(jq -r .tool_input.command 2>/dev/null)',
+                     'cat 2>/dev/null > "$tmp"', 'cat > "$tmp"', 'while read -r l; do :; done',
+                     'for i in 1; do read -r cmd; done < /dev/null; while read -r l; do :; done'):
+            r = lint(f'#!/bin/bash\n{read}\neval "$cmd"\n', ["PreToolUse"])
+            self.assertEqual(found(r.stdout), ["h.sh:3 eval-input"], read)
 
     def test_rm_quoting_cases(self) -> None:
         r = lint(RM_CASES, ["Stop"])
