@@ -149,7 +149,7 @@ class FactoryAlertTests(unittest.TestCase):
 
     def test_each_exit_reads_as_plain_words_at_its_level(self) -> None:
         # Every status finish can write: no raw status token reaches Samyak, and the level sets the @channel.
-        want = {"pr-opened": "needs-you", "ticket-defect": "needs-you", "abandon": "needs-you", "stopped": "info",
+        want = {"pr-opened": "info", "ticket-defect": "needs-you", "abandon": "needs-you", "stopped": "info",
                 "stopped-cap": "fail", "stopped-daily": "info", "stuck": "fail", "no-change": "fail", "stopped-environment": "fail"}
         for status, level in want.items():
             with self.subTest(status=status):
@@ -166,9 +166,25 @@ class FactoryAlertTests(unittest.TestCase):
                     self.assertNotIn(status, text)
 
     def test_pr_opened_message_is_exact(self) -> None:
+        # Loam's own PR goes to the overnight driver, so the alert is info and says so.
         calls = self.factory("finish pr-opened 'https://github.com/acme/widget/pull/9 after 2 rounds, 3.1 usd'")
+        self.assertEqual(calls[-1][:2], ["--level", "info"])
+        self.assertEqual(calls[-1][-1], "issue 7 (Widget works) opened a pull request; the overnight driver reviews, "
+                                        "fixes and merges it, and alerts you if it leaves it open. "
+                                        "https://github.com/acme/widget/pull/9 after 2 rounds, 3.1 usd")
+
+    def test_pr_opened_on_another_target_waits_for_its_owner(self) -> None:
+        calls = self.factory("TARGET_IS_LOAM=0; finish pr-opened 'https://github.com/acme/widget/pull/9'")
+        self.assertEqual(calls[-1][:2], ["--level", "needs-you"])
         self.assertEqual(calls[-1][-1], "issue 7 (Widget works) opened a pull request; it waits for your review "
-                                        "and merge. https://github.com/acme/widget/pull/9 after 2 rounds, 3.1 usd")
+                                        "and merge. https://github.com/acme/widget/pull/9")
+
+    def test_an_issue_is_named_by_its_frozen_github_title(self) -> None:
+        # An issue's frozen body has no '# ' line; freeze writes frozen/title from GitHub.
+        (self.run_dir / "frozen" / "issue.md").write_text("Brief:\nbody\n")
+        (self.run_dir / "frozen" / "title").write_text("factory: widgets work\n")
+        calls = self.factory("finish stopped 'x'")
+        self.assertTrue(calls[-1][-1].startswith("issue 7 (factory: widgets work) "), calls[-1][-1])
 
     def test_slack_failure_falls_back_to_the_ticket_comment(self) -> None:
         self.factory("notify fail 'issue 7 stopped' 'detail'", FAKE_ALERT_EXIT="1")
