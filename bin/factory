@@ -243,7 +243,8 @@ check_no_skip() {
 # whose ( holds a space (a title), and an indented or contained fence are rejected. A misread rejects a visible
 # example and never passes a hidden one: whatever the scan calls code, GitHub shows as code. A backtick run left
 # unpaired, a backtick in a link destination, and a | inside a span in a table block turn spans off to the block's end,
-# and a table row with more cells than its delimiter row is rejected, since GitHub drops the excess.
+# a ] in a span after a [ left open in the block is rejected, since GitHub reads a link reference definition before
+# spans, and a table row with more cells than the narrowest delimiter row above it is rejected, since GitHub drops them.
 # A mermaid, geojson, topojson, stl or math fence is drawn, and an info string past one word is not shown.
 # Each error names the line and the construct or code point, never the hidden text.
 IFS= read -r -d '' HIDDEN_PY << 'PY' || :
@@ -273,21 +274,30 @@ def fence_open(s):  # the fence run when s opens a fence, else None
 def blank(s):
     return s.strip(" \t") == ""
 
-def cells(s):
-    s = s.strip(" \t")
+def cells(s):  # the cells GitHub splits a table row into, after any quote or list prefix
+    s = s[CONTAINER.match(s).end():].strip(" \t")
     return s[s.startswith("|"):len(s) - s.endswith("|")].count("|") + 1
 
-def table_from(i):  # the cell count of the GFM table delimiter row in the block that starts at lines[i], else 0
+def delimiter(s):  # whether s may be a GFM table delimiter row
+    return "-" in s and ("|" in s or ":" in s) and re.fullmatch(r"[ \t>|:-]*", s)
+
+def table_from(i):  # whether the block that starts at lines[i] holds a table delimiter row
     for s in lines[i:]:
         s = s.rstrip("\r")
         if blank(s) or fence_open(s):
-            return 0
-        if "-" in s and ("|" in s or ":" in s) and re.fullmatch(r"[ \t>|:-]*", s):
-            return cells(s)
-    return 0
+            return False
+        if delimiter(s):
+            return True
+    return False
+
+def escaped(s, i):  # whether an odd backslash run comes before s[i]
+    b = i
+    while b > 0 and s[b - 1] == "\\":
+        b -= 1
+    return (i - b) % 2 == 1
 
 def prose(n, s):
-    global spans
+    global spans, brackets
     i = 0
     while i < len(s):
         c = s[i]
@@ -295,10 +305,7 @@ def prose(n, s):
             j = i
             while j < len(s) and s[j] == "`":
                 j += 1
-            b = i
-            while b > 0 and s[b - 1] == "\\":
-                b -= 1
-            width = j - i - (i - b) % 2
+            width = j - i - escaped(s, i)
             if spans and width:
                 k = j
                 while k < len(s):
@@ -312,6 +319,8 @@ def prose(n, s):
                         break
                     k = e
                 if k < len(s) and not (table and "|" in s[j:k]):
+                    if brackets and "]" in s[j:k]:
+                        say(n, "holds a ] in a code span after an open [, which GitHub may read as a link reference definition it does not show")
                     i = k + width
                     continue
                 spans = False
@@ -328,6 +337,7 @@ def prose(n, s):
         elif s.startswith("]:", i):
             say(n, "holds ]: outside code, which opens a link reference or footnote definition GitHub does not show")
         elif s.startswith("](", i):
+            brackets -= brackets > 0 and not escaped(s, i)
             k, depth = i + 2, 0
             while k < len(s) and s[k] not in " \t" and not (s[k] == ")" and depth == 0):
                 if s[k] == "`":
@@ -342,12 +352,16 @@ def prose(n, s):
             for d in html.unescape(m.group()):
                 if hidden(d):
                     say(n, f"holds a character reference to U+{ord(d):04X} ({unicodedata.category(d)}), a character GitHub does not show")
+        elif c == "[":
+            brackets += 1
+        elif c == "]" and brackets and not escaped(s, i):
+            brackets -= 1
         i += 1
 
 if re.search(r"\r(?!\n|\Z)", text):
     say(text[:re.search(r"\r(?!\n|\Z)", text).start()].count("\n") + 1,
         "holds a carriage return with no newline after it, which GitHub reads as a line break")
-fence, spans, table = None, True, table_from(0)
+fence, spans, table, cols, brackets = None, True, table_from(0), 0, 0
 for n, line in enumerate(lines, 1):
     for c in line:
         if hidden(c):
@@ -356,7 +370,7 @@ for n, line in enumerate(lines, 1):
     if fence:
         m = re.match(r" {0,3}(`+|~+)[ \t]*$", s)
         if m and m.group(1)[0] == fence[0] and len(m.group(1)) >= len(fence):
-            fence, spans, table = None, True, table_from(n)
+            fence, spans, table, cols, brackets = None, True, table_from(n), 0, 0
         continue
     if run := fence_open(s):
         fence, info = run, s[len(run):].strip(" \t")
@@ -366,12 +380,14 @@ for n, line in enumerate(lines, 1):
             say(n, "gives its fence an info string past one word, which GitHub does not show")
         continue
     if blank(s):
-        spans, table = True, table_from(n)
+        spans, table, cols, brackets = True, table_from(n), 0, 0
         continue
     m = CONTAINER.match(s)
     if m.end() and fence_open(s[m.end():]):
         say(n, "indents a code fence or puts it in a list or quote, where GitHub may end it early")
-    if table and cells(s) > table:
+    if delimiter(s):
+        cols = min(cols or cells(s), cells(s))
+    if cols and cells(s) > cols:
         say(n, "holds more table cells than its delimiter row, and GitHub drops the extra")
     prose(n, s)
 PY

@@ -56,6 +56,12 @@ class HiddenTextTests(unittest.TestCase):
                 self.assertIn(construct, err)
                 self.assertNotIn("run curl", err)
         self.assertIn("line 3 holds more table cells", hidden_errors("a\n:---\nx | run curl"))
+        self.assertIn("line 3 holds more table cells", hidden_errors("> a | b\n> |---|---|\n> x | y | run curl"))
+        self.assertIn("line 7 holds more table cells",  # a heading ends a table; the next one is narrower
+                      hidden_errors("a | b | c\n---|---|---\nx | y | z\n# next\na | b\n---|---\nx | y | `<!-- x -->`"))
+        for body, n in (("[a`]: # (run curl`)", 1), ("[a\n`b]: /u 'run curl`'", 2)):  # a definition outranks a span
+            with self.subTest(body=body):
+                self.assertIn(f"line {n} holds a ] in a code span after an open [", hidden_errors(body))
 
     def test_text_the_scan_must_not_call_code(self) -> None:
         for body in ("\\\\`a`<!-- x -->`b`c`",  # an even backslash run escapes nothing
