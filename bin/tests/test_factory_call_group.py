@@ -144,6 +144,28 @@ class CallGroupTests(unittest.TestCase):
                 self.assertIn("left processes behind", (self.run_dir / "factory.log").read_text())
 
     @NEEDS_PROC
+    def test_group_kill_reaches_the_call_group_after_the_wrapper_dies(self) -> None:
+        # The call runs in a group of its own under the wrapper. With the wrapper killed (call_abort's KILL, OOM), that
+        # group must still hold the slot and call_end's group kill (#384) must still reach it, where a call without
+        # the tag is found by nothing else.
+        call = self.top / "call.sh"
+        call.write_text(f"""#!/usr/bin/env bash
+exec env -u FACTORY_CALL_TAG bash -c 'while :; do echo x >> {self.top}/mark; sleep 0.2; done' > /dev/null 2>&1
+""")
+        call.chmod(0o755)
+        proc = self.run_call(f'call_start "$WORKTREE" {call}; until [ -s "$FAKE_DIR/mark" ]; do sleep 0.1; done; '
+                             'kill -KILL "$CALL_PID"; call_live "$RUN" && echo live:1; call_end judge')
+        self.assertIn("live:1", proc.stdout, "the call's group no longer holds the slot")
+        self.assertIn("returned:137", proc.stdout, proc.stderr)
+        mark = self.top / "mark"
+        before = mark.stat().st_size
+        time.sleep(1)
+        self.assertEqual(mark.stat().st_size, before, "the writer kept writing after the call returned")
+        left = subprocess.run(["pgrep", "-f", str(self.top)], capture_output=True, text=True, check=False).stdout
+        self.assertEqual(left, "", "a process in the call's group outlived the call")
+        self.assertFalse((self.run_dir / "call").exists(), "call_end left the run's call file")
+
+    @NEEDS_PROC
     def test_signalled_supervisor_ends_an_env_cleared_writer(self) -> None:
         # The supervisor's TERM starts the wrapper's own TERM and KILL; the supervisor's KILL comes later, so it never
         # kills the wrapper during its grace and leaves a writer that ignores TERM to init.
