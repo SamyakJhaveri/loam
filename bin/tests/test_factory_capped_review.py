@@ -154,9 +154,9 @@ class CappedReviewTests(unittest.TestCase):
         self.assertIn(f"EXIT pr-opened (0): {PR_URL} after {rounds} rounds", stderr)
         pr = self.pr_create(calls)
         self.assertIn("--draft", pr["args"])
-        # The reason is the first line under `Closes #<issue>` (LOOP.md, step 8), and it names the finding.
+        # The reason opens the body, above `## How it works` (LOOP.md, step 8), and it names the finding.
         self.assertIn("\nCloses #7\n\n", pr["body"])
-        reason = pr["body"].split("\nCloses #7\n\n", 1)[1]
+        reason = pr["body"].split("\n## How it works\n", 1)[0]
         self.assertTrue(reason.startswith("Draft: "), reason)
         self.assertIn(finding, reason)
         issues = self.issues(calls)
@@ -262,7 +262,7 @@ class CappedReviewTests(unittest.TestCase):
                 self.assertIn(f"EXIT pr-opened (0): {PR_URL} after 1 rounds", stderr)
                 pr = self.pr_create(calls)
                 self.assertIn("--draft", pr["args"])
-                reason = pr["body"].split("\nCloses #7\n\n", 1)[1]
+                reason = pr["body"].split("\n## How it works\n", 1)[0]
                 self.assertTrue(reason.startswith("Draft: "), reason)
                 self.assertIn("judge output unparseable", reason)
                 self.assertIn("- judge output unparseable", pr["body"].split("## Backlog", 1)[1])

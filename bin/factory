@@ -5,7 +5,7 @@
 #   bin/factory eval-freeze <run-dir>...  freezes each run's last round, when both graders passed it, into evals/clean/.
 #   bin/factory run <issue|file>    the supervisor: one ticket to a pull request (docs/factory/LOOP.md).
 #   bin/factory status              run states, spend, denials, worktrees, PRs, preconditions.
-#   bin/factory status --criteria   the ARCHITECTURE.md trust criteria, measured from the run dirs; reads files only.
+#   bin/factory status --criteria   the ARCHITECTURE.md trust criteria, measured from the run dirs and the target's git log.
 #   bin/factory stop <issue>        writes FACTORY_STOP into the run dir; the run halts before its next call.
 #   bin/factory merge <pr> <sha>    merges the PR only when sha is its head and every check reported there passed.
 #   bin/factory next [--install]    the F9 frontier timer's step: launch the next unblocked ready-for-agent ticket.
@@ -96,6 +96,16 @@ CANON=("Goal and why" "Do not touch" "Out of scope" "Approach" "Done checks" \
 REQUIRED=("Goal and why" "Do not touch" "Out of scope" "Done checks" "Worker" "Decisions")
 CAPS=" MAX_ROUNDS ROUND_BUDGET_USD GRADER_BUDGET_USD TICKET_BUDGET_USD DAILY_BUDGET_USD \
 MAX_HOURS MAX_TURNS CALL_TIMEOUT_SEC NET_TIMEOUT_SEC MAX_PARALLEL "
+# A cap is a positive whole number, or for a *_USD cap a positive decimal in JSON's form, since jq --argjson reads
+# the budgets. Nothing else: GNU timeout reads 0 as no limit while net_watch kills at once, and text fails each
+# path its own way (#427). cap_value_ok <name> <value> only answers; its callers report, with cap_form's words.
+cap_value_ok() {
+  case "$1" in
+    *_USD) [[ "$2" =~ ^(0|[1-9][0-9]*)(\.[0-9]+)?$ && "$2" =~ [1-9] ]] ;;
+    *)     [[ "$2" =~ ^[1-9][0-9]*$ ]] ;;
+  esac
+}
+cap_form() { case "$1" in *_USD) echo "a positive decimal such as 2.5" ;; *) echo "a positive whole number" ;; esac; }
 
 # `claude --output-format json` prints one object, or an array whose last result element is it.
 RESULT_OBJ='if type == "array" then ((last(.[] | select(.type == "result")) // .[-1]) // {}) else . end'
@@ -223,21 +233,177 @@ check_no_skip() {
 # never by a fixed list (loop-engineering, MIT, scripts/github-triage.mjs: /[\p{Cc}\p{Cf}]/gu): a Cf (zero-width,
 # bidi controls, tags, BOM, word joiner), a Cc other than tab, newline and CR, the variation selectors and the other
 # default-ignorable code points a Cf rule misses (Mn, Lo or unassigned, yet drawn as nothing; the whole plane-14
-# block U+E0000 to U+E0FFF carries bytes the way tags do), and an HTML comment. Unassigned code points in general
-# (Cn) pass, since Python's Unicode data reads newer emoji as Cn. The body is read as UTF-8 by Python, since
-# BSD and GNU grep differ on Unicode ranges; split('\n'), not splitlines(), so VT, FF and U+2028 are still read.
-# Each error names the line and the code point, never the hidden text.
+# block U+E0000 to U+E0FFF carries bytes the way tags do), and the same through a character reference. Unassigned
+# code points in general (Cn) pass, since Python's Unicode data reads newer emoji as Cn. The body is read as UTF-8 by
+# Python, since BSD and GNU grep differ on Unicode ranges; split('\n'), not splitlines(), so VT, FF and U+2028 are
+# still read, and a CR with no LF after it is rejected, since GitHub breaks the line there.
+# Markdown GitHub hides or draws over its text is found by one code-aware scan, failing closed (#452): text is code
+# only inside a column-0 fence or a code span paired on its own line, and everything else is prose, where any <
+# (comment, tag, autolink, declaration, CDATA), ![ (image), ]: (link or footnote definition), ]( (an inline link,
+# whose destination and title are not shown), a second $ in one block (math, a reference to $ included), and an
+# indented or contained fence are rejected. A misread rejects a visible example and never passes a hidden one:
+# whatever the scan calls code, GitHub shows as code. A backtick run left unpaired or longer than 80 (cmark-gfm's
+# MAXBACKTICKS), a backtick in a bare URL (to ASCII whitespace or <, as cmark-gfm ends it), and a | inside a span in
+# a table block turn spans off to the block's end. A ] in a span after a [ left open in the block is rejected, since
+# GitHub reads a link reference definition before spans, and so is a table row with more cells than the narrowest
+# delimiter row above it (a \| never splits a cell). Numeric references are decoded as cmark-gfm does (up to 8
+# digits; 0, surrogates and past U+10FFFF read as U+FFFD). A mermaid, geojson, topojson, stl or math fence is drawn,
+# a fence opener longer than 255 closes at a shorter run, and an info string outside INFO is not shown.
+# Each error names the line and the construct or code point, never the hidden text.
 IFS= read -r -d '' HIDDEN_PY << 'PY' || :
-import sys, unicodedata
+import html, re, sys, unicodedata
 IGNORABLE = {0x034F, 0x115F, 0x1160, 0x17B4, 0x17B5, 0x180B, 0x180C, 0x180D, 0x180F, 0x3164, 0xFFA0}
-for n, line in enumerate(sys.stdin.buffer.read().decode("utf-8", "surrogateescape").split("\n"), 1):
-    if "<!--" in line:
-        print(f"line {n} holds an HTML comment (<!--), which GitHub does not show")
+DRAWN = {"mermaid", "geojson", "topojson", "stl", "math"}
+CONTAINER = re.compile(r"(?:[ \t]*(?:>|[-+*](?=[ \t])|\d{1,9}[.)](?=[ \t])))*[ \t]*")
+ENTITY = re.compile(r"&(?:#([0-9]{1,8})|#[xX]([0-9A-Fa-f]{1,8})|[A-Za-z][A-Za-z0-9]{0,31});")
+INFO = {"", "done-checks", "sh", "bash", "python", "json", "yaml", "text", "diff", "md"}
+text = sys.stdin.buffer.read().decode("utf-8", "surrogateescape")
+lines = text.split("\n")
+said = set()
+
+def say(n, what):
+    if (n, what) not in said:
+        said.add((n, what))
+        print(f"line {n} {what}")
+
+def hidden(c):
+    o, cat = ord(c), unicodedata.category(c)
+    return (cat == "Cf" or (cat == "Cc" and c not in "\t\r") or 0xFE00 <= o <= 0xFE0F or 0xE0000 <= o <= 0xE0FFF
+            or 0xFFF0 <= o <= 0xFFF8 or o in IGNORABLE)
+
+def unref(m):  # the text a character reference stands for: numeric ones as cmark-gfm decodes them
+    if not (m.group(1) or m.group(2)):
+        return html.unescape(m.group())
+    o = int(m.group(1), 10) if m.group(1) else int(m.group(2), 16)
+    return chr(o) if 0 < o < 0x110000 and not 0xD800 <= o < 0xE000 else "\ufffd"
+
+def dollar(n):  # a second $ in one block outside code can open math
+    global dollars
+    dollars += 1
+    if dollars > 1:
+        say(n, "holds a $ after another in its block outside code, so GitHub may draw the text between them as math")
+
+def fence_open(s):  # the fence run when s opens a fence, else None
+    m = re.match(r"`{3,}|~{3,}", s)
+    return m.group() if m and not (s[0] == "`" and "`" in s[m.end():]) else None
+
+def blank(s):
+    return s.strip(" \t") == ""
+
+def cells(s):  # the cells GitHub splits a table row into, after any quote or list prefix
+    s = s[CONTAINER.match(s).end():].strip(" \t")
+    return len(re.findall(r"(?<!\\)\|", s[s.startswith("|"):len(s) - s.endswith("|")])) + 1
+
+def delimiter(s):  # whether s may be a GFM table delimiter row
+    return "-" in s and ("|" in s or ":" in s) and re.fullmatch(r"[ \t>|:-]*", s)
+
+def table_from(i):  # whether the block that starts at lines[i] holds a table delimiter row
+    for s in lines[i:]:
+        s = s.rstrip("\r")
+        if blank(s) or fence_open(s):
+            return False
+        if delimiter(s):
+            return True
+    return False
+
+def escaped(s, i):  # whether an odd backslash run comes before s[i]
+    b = i
+    while b > 0 and s[b - 1] == "\\":
+        b -= 1
+    return (i - b) % 2 == 1
+
+def prose(n, s):
+    global spans, brackets
+    i = 0
+    while i < len(s):
+        c = s[i]
+        if c == "`":
+            j = i
+            while j < len(s) and s[j] == "`":
+                j += 1
+            width = j - i - escaped(s, i)
+            if spans and 0 < width <= 80:
+                k = j
+                while k < len(s):
+                    if s[k] != "`":
+                        k += 1
+                        continue
+                    e = k
+                    while e < len(s) and s[e] == "`":
+                        e += 1
+                    if e - k == width:
+                        break
+                    k = e
+                if k < len(s) and not (table and "|" in s[j:k]):
+                    if brackets and "]" in s[j:k]:
+                        say(n, "holds a ] in a code span after an open [, which GitHub may read as a link reference definition it does not show")
+                    i = k + width
+                    continue
+                spans = False
+            i = j
+            continue
+        if s.startswith("<!--", i):
+            say(n, "holds an HTML comment (<!--) outside code, which GitHub does not show")
+        elif c == "<":
+            say(n, "holds a < outside code, which GitHub may read as a tag, an autolink or other markup it does not show")
+        elif c == "$":
+            dollar(n)
+        elif s.startswith("![", i):
+            say(n, "holds an image (![) outside code, which GitHub draws instead of its text")
+        elif s.startswith("]:", i):
+            say(n, "holds ]: outside code, which opens a link reference or footnote definition GitHub does not show")
+        elif s.startswith("](", i):
+            say(n, "holds a link (]() outside code, whose destination and title GitHub does not show")
+            brackets -= brackets > 0 and not escaped(s, i)
+        elif s.startswith(("://", "www."), i):
+            if "`" in re.match(r"[^ \t\r\n\v\f<]*", s[i:]).group():
+                spans = False
+        elif c == "&" and (m := ENTITY.match(s, i)):
+            for d in unref(m):
+                if d == "$":
+                    dollar(n)
+                elif hidden(d):
+                    say(n, f"holds a character reference to U+{ord(d):04X} ({unicodedata.category(d)}), a character GitHub does not show")
+        elif c == "[":
+            brackets += 1
+        elif c == "]" and brackets and not escaped(s, i):
+            brackets -= 1
+        i += 1
+
+if re.search(r"\r(?!\n|\Z)", text):
+    say(text[:re.search(r"\r(?!\n|\Z)", text).start()].count("\n") + 1,
+        "holds a carriage return with no newline after it, which GitHub reads as a line break")
+fence, spans, table, cols, brackets, dollars = None, True, table_from(0), 0, 0, 0
+for n, line in enumerate(lines, 1):
     for c in line:
-        o, cat = ord(c), unicodedata.category(c)
-        if (cat == "Cf" or (cat == "Cc" and c not in "\t\r") or 0xFE00 <= o <= 0xFE0F or 0xE0000 <= o <= 0xE0FFF
-                or 0xFFF0 <= o <= 0xFFF8 or o in IGNORABLE):
-            print(f"line {n} holds U+{o:04X} ({cat}), a character GitHub does not show")
+        if hidden(c):
+            say(n, f"holds U+{ord(c):04X} ({unicodedata.category(c)}), a character GitHub does not show")
+    s = line[:-1] if line.endswith("\r") else line
+    if fence:
+        m = re.match(r" {0,3}(`+|~+)[ \t]*$", s)
+        if m and m.group(1)[0] == fence[0] and len(m.group(1)) >= len(fence):
+            fence, spans, table, cols, brackets, dollars = None, True, table_from(n), 0, 0, 0
+        continue
+    if run := fence_open(s):
+        fence, info = run, s[len(run):].strip(" \t")
+        if len(run) > 255:
+            say(n, "opens a fence longer than 255 characters, which GitHub closes at a shorter run")
+        if (info.split() or [""])[0].lower() in DRAWN:
+            say(n, "opens a fence GitHub draws as a diagram, map, model or math instead of its text")
+        elif info not in INFO:
+            say(n, "gives its fence an info string GitHub does not show; use none, done-checks or a plain language name")
+        continue
+    if blank(s):
+        spans, table, cols, brackets, dollars = True, table_from(n), 0, 0, 0
+        continue
+    m = CONTAINER.match(s)
+    if m.end() and fence_open(s[m.end():]):
+        say(n, "indents a code fence or puts it in a list or quote, where GitHub may end it early")
+    if delimiter(s):
+        cols = min(cols or cells(s), cells(s))
+    elif cols and cells(s) > cols:
+        say(n, "holds more table cells than its delimiter row, and GitHub drops the extra")
+    prose(n, s)
 PY
 check_hidden_text() {
   local out e
@@ -352,6 +518,8 @@ check_worker() {
     name=${line%%=*}
     if [ "$name" = "$line" ] || [ "${CAPS/ $name /}" = "$CAPS" ]; then
       err "unrecognized Worker line: $line"
+    elif ! cap_value_ok "$name" "${line#*=}"; then
+      err "Worker cap $line: $name must be $(cap_form "$name")"
     fi
   done <<<"$w"
 }
@@ -469,17 +637,22 @@ grader_file() {
 }
 
 # A worker's skill name (a line of bin/factory.d/skills.txt or a pstack:<name>, lint-checked) -> its SKILL.md path.
-# A bare name lives under ~/.claude/skills/<name>/; a plugin:name lives in the installed plugin cache,
-# newest version first. A plugin may nest its skills under a category dir
+# A bare name lives under ~/.claude/skills/<name>/; a plugin:name lives under the installPath that
+# ~/.claude/plugins/installed_plugins.json gives the plugin's first `<plugin>@<marketplace>` entry, the
+# folder Claude Code loads (docs/PSTACK.md), so a stale or other-marketplace cache folder never resolves.
+# No installed_plugins.json, or no entry for the plugin, resolves to nothing: no cache-search fallback
+# (owner ruling 30 Oct 2026, #437). A plugin may nest its skills under a category dir
 # (skills/<category>/<name>/SKILL.md), so match SKILL.md at any depth
 # under the plugin's skills tree, not only skills/<name>/.
 skill_file() { # skill-name -> SKILL.md path on stdout, non-zero when it resolves to no file
-  local name="$1" plugin sub f
+  local name="$1" plugin sub dir f
   case "$name" in
     *:*)
       plugin=${name%%:*}; sub=${name#*:}
-      f=$(find "$HOME"/.claude/plugins/cache/*/"$plugin"/*/skills -path "*/$sub/SKILL.md" 2> /dev/null | sort -rV | head -1)
-      [ -n "$f" ] && { printf '%s\n' "$f"; return 0; } ;;
+      dir=$(jq -r --arg p "$plugin" 'first(.plugins | to_entries[] | select(.key | startswith($p + "@"))
+        | .value[0].installPath // empty)' "$HOME/.claude/plugins/installed_plugins.json" 2> /dev/null) || dir=""
+      [ -n "$dir" ] && f=$(find "$dir/skills" -path "*/$sub/SKILL.md" 2> /dev/null | sort | head -1)
+      [ -n "${f:-}" ] && { printf '%s\n' "$f"; return 0; } ;;
     *)
       f="$HOME/.claude/skills/$name/SKILL.md"
       [ -f "$f" ] && { printf '%s\n' "$f"; return 0; } ;;
@@ -766,7 +939,8 @@ MAX_HOURS MAX_TURNS CALL_TIMEOUT_SEC NET_TIMEOUT_SEC MAX_PARALLEL"
 # are never read: a Claude Code session already exports WORKER_MODEL and CALL_TIMEOUT_SEC of its own.
 MAX_ROUNDS=100; ROUND_BUDGET_USD=15; GRADER_BUDGET_USD=5; TICKET_BUDGET_USD=1000000
 DAILY_BUDGET_USD=1000000; MAX_HOURS=1000; MAX_TURNS=200; CALL_TIMEOUT_SEC=5400; MAX_PARALLEL=1
-# Seeded from the environment here too, since lint, next and status call gh without apply_caps.
+# Seeded from the environment here too, since lint, next and status call gh without apply_caps; env_caps_ok
+# checks the value before any subcommand runs.
 NET_TIMEOUT_SEC="${FACTORY_NET_TIMEOUT_SEC:-120}"
 WORKER_MODEL="${FACTORY_WORKER_MODEL:-claude-opus-5-5}"   # ARCHITECTURE.md, Models and roles (2026-09-22)
 GRADER_MODEL="${FACTORY_GRADER_MODEL:-claude-opus-5-5}"   # ARCHITECTURE.md, Models and roles (2026-09-24)
@@ -786,6 +960,10 @@ LOG="${LOG:-/dev/null}"; LEDGER=""; DAILY=""; DECISIONS=""; WORKTREE=""; BRANCH=
 # separate from REVIEW_BLOCKED so a Claude-reviewer block never consumes the Codex review's one block.
 WORKER_KIND=claude; CODEX_REVIEW=no; CODEX_REVIEW_BLOCKED=0
 CODEX_PATH="$HOME/.local/bin"   # Codex is not on the non-interactive PATH (#41); every Codex call prepends this
+# util-linux flock(1), and bash 4.1+ for the {var} descriptors the lease opens: a Mac has neither (bash 3.2 reads
+# `exec {fd}< file` as running a command named {fd}, which exits the shell), and runs keep the owner line's rules (#425).
+HAVE_FLOCK=$( { [ "${BASH_VERSINFO[0]}" -gt 4 ] || { [ "${BASH_VERSINFO[0]}" -eq 4 ] && [ "${BASH_VERSINFO[1]}" -ge 1 ]; }; } \
+  && command -v flock 2> /dev/null)
 
 now()   { date -u +%Y-%m-%dT%H:%M:%SZ; }
 today() { date -u +%Y-%m-%d; }
@@ -895,16 +1073,19 @@ exit_words() { # status -> "<level> <words>"
 # The host's healthchecks check: a beat at launch, then every 5 minutes while this run's process lives, so a
 # killed run or host goes red. The loop's TERM trap runs only after an in-flight beat returns (the sleep is
 # waited on, so it does not delay the trap), and heartbeat_stop waits for it, so no beat lands after the pause.
+# The loop closes the run's lease (FACTORY_SLOT_FD), so a beat left after the supervisor died, by finish, a signal
+# or SIGKILL, never holds the slot.
 heartbeat_start() {
   alert --ping beat >> "$LOG" 2>&1 || log "healthchecks beat failed; see bin/alert's line above"
-  ( trap 'exit 0' TERM
+  ( [ -n "$HAVE_FLOCK" ] && [ -n "${FACTORY_SLOT_FD:-}" ] && exec {FACTORY_SLOT_FD}>&- 2> /dev/null
+    trap 'exit 0' TERM
     while sleep 300 & wait $!; kill -0 "$$"; do alert --ping beat; done ) < /dev/null > /dev/null 2>&1 &
   HEARTBEAT=$!
 }
 
 # Another live run on this host, Loam's or another target's; a hard-killed run holds its slot until holds_slot
-# finds its owner gone and alerts. holds_slot is the whole test: a run beats only after cmd_run writes its owner and
-# `running` (exec_frozen keeps the pid), so a run that has beaten holds its slot, and one that has not beats later.
+# finds no process of it left and alerts. holds_slot is the whole test: a run beats only after cmd_run takes its lease
+# and writes `running` (exec_frozen keeps the fd), so a run that has beaten holds its slot, and one that has not beats later.
 other_live_run() {
   local d
   for d in "$RUNS_BASE"/*/*/ "$RUNS_BASE"/*/*/*/; do
@@ -992,11 +1173,26 @@ apply_caps() { # the ticket's Worker section, then any FACTORY_<NAME> override
   local line name v
   while IFS= read -r line; do
     case "$line" in *=*) name=${line%%=*} ;; *) continue ;; esac
-    case " $CAP_NAMES " in *" $name "*) eval "$name=\${line#*=}" ;; esac
+    case " $CAP_NAMES " in *" $name "*) ;; *) continue ;; esac
+    cap_value_ok "$name" "${line#*=}" \
+      || { echo "factory: Worker cap $line: $name must be $(cap_form "$name")" >&2; exit 2; }
+    eval "$name=\${line#*=}"
   done <<< "$(section Worker)"
+  env_caps_ok || exit 2
   for name in $CAP_NAMES; do
     v="FACTORY_$name"
     [ -z "${!v:-}" ] || eval "$name=\${!v}"
+  done
+}
+
+# Every FACTORY_<NAME> cap set in the environment passes cap_value_ok, or it names the first that does not.
+# An empty value counts as unset, as apply_caps reads it.
+env_caps_ok() {
+  local name v
+  for name in $CAP_NAMES; do
+    v="FACTORY_$name"
+    [ -z "${!v:-}" ] || cap_value_ok "$name" "${!v}" \
+      || { echo "factory: $v=${!v}: $name must be $(cap_form "$name")" >&2; return 1; }
   done
 }
 
@@ -1201,6 +1397,15 @@ owner_lock() { # <run dir> <tries>
   done
 }
 
+# A run's `owner` line, printed as read when it is well formed and names a gone supervisor (owner_gone); a missing or
+# malformed line is not gone. holds_slot's lease and owner paths both judge it here.
+dead_owner() { # <run dir>
+  local o t re='^[0-9]+ [A-Z][a-z]{2} [A-Z][a-z]{2} [ 0-9][0-9] [0-9]{2}:[0-9]{2}:[0-9]{2} [0-9]{4}$'
+  o=$(cat "$1/owner" 2> /dev/null) || return 1
+  t=${o%"${o##*[![:space:]]}"}   # a line written on macOS before #448 ends in lstart's padding
+  [[ "$t" =~ $re ]] && owner_gone "${t%% *}" "${t#* }" && printf '%s' "$o"
+}
+
 # The owner's pid is gone, a zombie (kill -0 succeeds on one), or reused by a process that started over 300 s
 # from the stored start: lstart is boot time plus ticks, so a wall-clock step moves it, and a reuse that close
 # would need the pid space to wrap. A ps or date that fails or prints nothing cannot tell, so the slot holds.
@@ -1235,6 +1440,23 @@ group_live() { # <pgid> -> 0 when a process other than a zombie has it as its gr
   awk -v p="$1" '$1 == p && $2 !~ /^Z/ { f = 1 } END { exit !f }' <<< "$g"
 }
 
+# The model call a run's `call` file names (call_start) still lives: its wrapper's group, or the call's own group named
+# in `call.group`, has a member that is not a zombie or, on Linux, a process carries its FACTORY_CALL_TAG. One
+# predicate for holds_slot and cmd_run's relaunch refusal.
+call_live() { # <run dir>
+  local c g
+  c=$(cat "$1/call" 2> /dev/null) || return 1
+  g=$(call_group "$1")
+  group_live "${c%% *}" || { [ -n "$g" ] && group_live "$g"; } || call_tagged 0 "${c#* }"
+}
+
+# The call's own process group id, the first field of the run's `call.group` (call_start), or nothing.
+call_group() { # <run dir>
+  local g= _
+  { read -r g _ < "$1/call.group"; } 2> /dev/null
+  echo "$g"
+}
+
 # The project a run dir belongs to, from where it sits, not the caller's REPO: other_live_run walks every
 # target's runs. Loam's sit at RUNS_BASE/<issue>/<sha8>, another target's one level down under <owner>__<repo>;
 # a dir elsewhere (a sourced test's) names none.
@@ -1246,7 +1468,13 @@ run_project() { # <run dir>
   fi
 }
 
-# MAX_PARALLEL counts the other tickets already holding a slot: a run is live while its
+# MAX_PARALLEL counts the other tickets already holding a slot: a run is live while its status reads running or
+# waiting-limit and some process holds the flock lease on its `lease` (cmd_run; every child inherits the fd), or the
+# model call named in its `call` lives (below; a child that closed the fd). Getting the lock with no such call means no
+# process of the run is left: still holding it, the caller re-reads the status, writes
+# stopped-environment if it still reads running or waiting-limit, and only that caller alerts; a relaunch waits on
+# the same lease, so it never interleaves with the reap. A run dir with no `lease`, or a host with no flock(1) (a Mac),
+# keeps the rules below (#381): a run is live while its
 # status reads running or waiting-limit and its `owner` line (pid and ps start time, written by
 # cmd_run) names a live process (owner_gone: 300 s start-time tolerance, a failed ps holds, a live
 # member of the pid's process group holds), or while it has written `launched` and no status yet
@@ -1256,26 +1484,51 @@ run_project() { # <run dir>
 # The first caller to find the owner gone writes stopped-environment, under owner.lock and only if
 # `owner` still reads the line it judged, so a relaunch that rewrote it keeps its slot; that caller
 # sends the one alert. A run killed between `launched` and its owner write keeps whatever status it
-# had; with no status at all it holds the slot until the operator removes its directory.
-# A gone owner also holds while the model call it named in `call` (call_start) lives: in its own session the call
-# outlives a SIGKILLed supervisor, reparented to init, and keeps writing the worktree until CALL_TIMEOUT_SEC. It lives
-# while its group has a member that is not a zombie or, on Linux, a process carries its FACTORY_CALL_TAG.
+# had; with no status at all it holds the slot until the operator removes its directory, or, where it has a `lease`,
+# until no process holds that lease.
+# In its own session a model call (call_start) outlives a SIGKILLed supervisor, reparented to init, and keeps writing
+# the worktree until CALL_TIMEOUT_SEC, so a gone owner's call is killed first (orphan_call_kill), and the slot holds
+# while the call still lives: its wrapper's or its own group has a member that is not a zombie or, on Linux, a process
+# carries its FACTORY_CALL_TAG. On the lease path above the call holds the lease it inherited, so a gone owner's call is
+# killed there too, under owner.lock, and the lease then decides.
+# holds_slot may return held in the very call that killed, while the call's wrapper still reaps reparented children;
+# the next caller frees the slot.
 holds_slot() { # <run dir>
-  local st o t c pid re='^[0-9]+ [A-Z][a-z]{2} [A-Z][a-z]{2} [ 0-9][0-9] [0-9]{2}:[0-9]{2}:[0-9]{2} [0-9]{4}$'
+  local st o pid fd
   if [ -f "$1/status" ]; then
     st=$(cat "$1/status")
     [ "$st" = running ] || [ "$st" = waiting-limit ] || return 1
-    o=$(cat "$1/owner" 2> /dev/null) || return 0
-    t=${o%"${o##*[![:space:]]}"}   # a line written on macOS before #448 ends in lstart's padding
-    [[ "$t" =~ $re ]] || return 0
-    pid=${t%% *}
-    owner_gone "$pid" "${t#* }" || return 0
-    c=$(cat "$1/call" 2> /dev/null) && { group_live "${c%% *}" || call_tagged 0 "${c#* }"; } && return 0
+    # Read-only, so a run dir with no lease never gets one here.
+    if [ -n "$HAVE_FLOCK" ] && [ -f "$1/lease" ] && exec {fd}< "$1/lease"; then
+      if ! flock -n "$fd"; then
+        exec {fd}>&-
+        if o=$(dead_owner "$1") && owner_lock "$1" 1; then orphan_call_kill "$1" "$o"; rmdir "$1/owner.lock"; fi
+        return 0
+      fi
+      # A process may close the descriptors it does not pass on (Node's child processes do), so a model call's tool
+      # shell can outlive every holder; the call's group or tag still holds the slot, as on the owner path below.
+      call_live "$1" && { exec {fd}>&-; return 0; }
+      st=$(cat "$1/status" 2> /dev/null)
+      [ "$st" = running ] || [ "$st" = waiting-limit ] && printf 'stopped-environment\n' > "$1/status"
+      exec {fd}>&-   # before the alert, whose children would otherwise inherit this run's lease
+      [ "$st" = running ] || [ "$st" = waiting-limit ] || return 1
+      log "stopped-environment: ${1%/} was $st, but no process of the run holds its lease"
+      alert --level fail --source factory --project "$(run_project "$1")" \
+        --run "issue $(basename "$(dirname "$1")")" \
+        "issue $(basename "$(dirname "$1")") stopped on a machine or tool problem: no process of the run is left \
+(its supervisor and every child exited) while it read $st; ${1%/} is now stopped-environment and its slot is free" \
+        >> "$LOG" 2>&1 || log "the alert for ${1%/} failed; see bin/alert's line above"
+      return 1
+    fi
+    o=$(dead_owner "$1") || return 0
+    pid=${o%% *}
     owner_lock "$1" 1 || return 0
     if [ "$(cat "$1/owner" 2> /dev/null)" != "$o" ]; then rmdir "$1/owner.lock"; return 0; fi
     st=$(cat "$1/status" 2> /dev/null)
     if [ "$st" != running ] && [ "$st" != waiting-limit ]; then rmdir "$1/owner.lock"; return 1; fi
+    if ! orphan_call_kill "$1" "$o" || call_live "$1"; then rmdir "$1/owner.lock"; return 0; fi
     printf 'stopped-environment\n' > "$1/status"
+    rm -f "$1/call" "$1/call.tmp" "$1/call.group" "$1/call.group.tmp"
     rmdir "$1/owner.lock"
     log "stopped-environment: ${1%/} was $st, but its supervisor pid $pid is gone"
     alert --level fail --source factory --project "$(run_project "$1")" \
@@ -1285,8 +1538,53 @@ became a zombie, or its pid was reused while the run read $st; ${1%/} is now sto
       >> "$LOG" 2>&1 || log "the alert for ${1%/} failed; see bin/alert's line above"
     return 1
   else
-    [ -f "$1/launched" ]
+    [ -f "$1/launched" ] || return 1
+    # A launch killed between `launched` and its first status: its lease, where it has one, decides; a dir with no
+    # lease holds until the operator removes it.
+    [ -n "$HAVE_FLOCK" ] && [ -f "$1/lease" ] && exec {fd}< "$1/lease" || return 0
+    flock -n "$fd"; st=$?
+    exec {fd}>&-
+    [ "$st" != 0 ]
   fi
+}
+
+# A gone supervisor's model call, in a session of its own, keeps writing the worktree until CALL_TIMEOUT_SEC; holds_slot,
+# under owner.lock with `owner` unchanged, so no relaunch has started a call of its own, kills each process group named
+# in `call` or `call.group` whose leader still has the start time recorded after its id (call_start writes it to
+# call.group), so a pgid reused since is spared: TERM, a 2 s grace, KILL, then up to 5 s for the group to be gone.
+# In production `call` holds `<wrapper pid> <tag>` and never matches; its read serves a `<pgid> <lstart>` line there,
+# the layout the ticket's dead-owner-group-reaped check writes. Before KILL each group is kept only while its leader is
+# gone (members remain) or still has its recorded start, so a pgid reused during the grace is spared.
+# `owner` is re-read just before TERM, since an aged owner.lock can be taken over; a changed line kills nothing, return 1.
+orphan_call_kill() { # <run dir> <owner line judged>
+  local f g s now gs=() ss=() ks=() i
+  for f in "$1/call" "$1/call.group"; do
+    g= s=
+    { read -r g s < "$f"; } 2> /dev/null
+    [[ "$g" =~ ^[1-9][0-9]*$ ]] && [ "$g" != 1 ] && [ -n "$s" ] || continue
+    s=${s%"${s##*[![:space:]]}"}
+    now=$(TZ=UTC LC_ALL=C ps -o lstart= -p "$g" 2> /dev/null) || continue
+    [ "${now%"${now##*[![:space:]]}"}" = "$s" ] && gs+=("$g") && ss+=("$s")
+  done
+  [ "$(cat "$1/owner" 2> /dev/null)" = "$2" ] || return 1
+  [ "${#gs[@]}" -gt 0 ] || return 0
+  log "the supervisor of ${1%/} is gone and its model call still runs; sending TERM to process group(s) ${gs[*]}"
+  orphan_signal TERM "${gs[@]}"; orphan_signal CONT "${gs[@]}"
+  for ((i = 0; i < 20; i++)); do orphan_signal 0 "${gs[@]}" || return 0; sleep 0.1; done
+  for ((i = 0; i < ${#gs[@]}; i++)); do
+    now=$(TZ=UTC LC_ALL=C ps -o lstart= -p "${gs[i]}" 2> /dev/null)
+    [ -z "$now" ] || [ "${now%"${now##*[![:space:]]}"}" = "${ss[i]}" ] && ks+=("${gs[i]}")
+  done
+  [ "${#ks[@]}" -gt 0 ] || return 0
+  gs=("${ks[@]}")
+  orphan_signal KILL "${gs[@]}"
+  for ((i = 0; i < 50; i++)); do orphan_signal 0 "${gs[@]}" || return 0; sleep 0.1; done
+  log "process group(s) ${gs[*]} of ${1%/} are still alive 5 s after KILL"
+}
+orphan_signal() { # signal, or 0 to look; pgid... -> 0 when a process in one of the groups took it
+  local s="$1" g r=1; shift
+  for g; do kill -"$s" -- "-$g" 2> /dev/null && r=0; done
+  return "$r"
 }
 
 assert_parallel() {
@@ -1578,63 +1876,118 @@ codex_result() { # jsonl exit_code [duration_ms] -> result JSON on stdout; durat
     || printf '{"subtype":"no-result","is_error":true,"num_turns":0,"duration_ms":0,"total_cost_usd":null,"usage":null,"result":"codex result parse failed"}\n'
 }
 
-# A model call (the worker, a grader, the Codex review) runs in a session of its own (perl's setsid, since a Mac has
-# no setsid(1)), so every process it starts shares its process group, whose id is the call's pid. In that session GNU
-# timeout needs no --foreground, and at CALL_TIMEOUT_SEC signals the whole group, KILL 5 s after TERM: --foreground
-# signalled the call alone, so a child it started kept editing the worktree while the supervisor checked and graded
-# it. Claude Code starts each Bash tool shell in a new session, out of that group, but the shell keeps the call's
-# environment, so the call also carries FACTORY_CALL_TAG, unique to it, which call_tagged finds. The call keeps the
-# caller's stdin (<&0, since a background command would get /dev/null), stdout and stderr. In its own session the call
-# no longer gets the supervisor's Ctrl-C, TERM or HUP, so until call_end the supervisor traps them and ends the call's
+# A model call (the worker, a grader, the Codex review) runs under a wrapper, a perl process (a Mac has no setsid(1))
+# that starts a session of its own, so its process group, whose id is the wrapper's pid, CALL_PID, reaches none of the
+# supervisor's processes. The wrapper forks the call into a child group (GNU timeout makes its own group anyway, and
+# at CALL_TIMEOUT_SEC signals it, KILL 5 s after TERM). On Linux the wrapper is a child subreaper (prctl PR_SET_CHILD_SUBREAPER, 36, by syscall number: 157 on x86_64, 167 on aarch64), so the
+# kernel makes it the parent of every process the call orphans, whatever its session or environment: Claude Code
+# starts each Bash tool shell in a new session, and a tool child can clear its environment and call setsid too
+# (#434). When the call exits, or the wrapper gets TERM, INT or HUP, it sends the call's group and every child it has
+# TERM, then KILL after a 5 s grace, collects each, and exits with the call's own status once none is left, or 5 s
+# after KILL with one still alive; it writes what it signalled to call.reap for call_end. The call's first process writes
+# its group id and ps start time to call.group before it execs the command, so holds_slot can kill the group of a call
+# whose supervisor is gone and spare a reused pgid. The wrapper's group, the call's group from call.group, and the call's
+# FACTORY_CALL_TAG, unique to the call and kept by every process it starts but one that clears its environment, stay
+# what call_signal ends and call_live reads (#384), so a wrapper killed or stuck leaves no group member behind: on
+# Linux they are a second line behind the wrapper; on a host with no subreaper or /proc (a Mac) the group kills are all. The call keeps the caller's
+# stdin (<&0, since a background command would get /dev/null), stdout and stderr. In its own session the call no
+# longer gets the supervisor's Ctrl-C, TERM or HUP, so until call_end the supervisor traps them and ends the call's
 # processes before it exits and its EXIT trap removes the worktree.
 call_start() { # dir cmd... -> CALL_PID, CALL_TAG
   local dir="$1"; shift
   CALL_TAG="$$.$SECONDS.$RANDOM"; CALL_PID=; CALL_STUCK=
+  rm -f "$RUN/call.reap" "$RUN/call.group" "$RUN/call.group.tmp"
   trap 'call_abort INT 130' INT; trap 'call_abort TERM 143' TERM; trap 'call_abort HUP 129' HUP
-  ( cd "$dir" && export FACTORY_CALL_TAG="$CALL_TAG" \
-      && exec perl -MPOSIX -e 'POSIX::setsid() == $$ or die "setsid: $!\n"; exec { $ARGV[0] } @ARGV or die "exec $ARGV[0]: $!\n"' "$@" ) <&0 &
+  ( cd "$dir" && export FACTORY_CALL_TAG="$CALL_TAG" && exec perl -MPOSIX -MTime::HiRes=time,sleep -e '
+      POSIX::setsid() == $$ or die "setsid: $!\n";
+      if ($^O eq "linux") {
+        $nr = {x86_64 => 157, aarch64 => 167}->{(POSIX::uname())[4]} or die "no prctl number for this CPU\n";
+        syscall($nr, 36, 1, 0, 0, 0) == 0 or die "prctl PR_SET_CHILD_SUBREAPER: $!\n" }
+      ($rep, $grp) = splice @ARGV, 0, 2; defined($kid = fork) or die "fork: $!\n";
+      unless ($kid) { setpgid(0, 0);
+        ($s = `TZ=UTC LC_ALL=C ps -o lstart= -p $$ 2> /dev/null`) =~ s/\s+\z//;
+        if (open my $h, ">", "$grp.tmp") { print $h join(" ", $$, $s || ()), "\n"; close $h; rename "$grp.tmp", $grp }
+        exec { $ARGV[0] } @ARGV; print STDERR "exec $ARGV[0]: $!\n"; POSIX::_exit(127) }
+      setpgid($kid, $kid);
+      $SIG{$_} = sub { $sig = 1 } for qw(TERM INT HUP);
+      sub kids { $^O eq "linux" or return; my @k;
+        for (glob "/proc/[0-9]*/stat") { open(my $h, "<", $_) or next; local $/; my $s = <$h>; my ($pid) = m{(\d+)/stat$};
+          push @k, $pid if defined $s && substr($s, rindex($s, ")") + 2) =~ /^\S+ (\d+)/ && $1 == $$ }
+        @k }
+      for (;;) {
+        while (($p = waitpid(-1, WNOHANG)) > 0) { $st = $? if $p == $kid }
+        if (defined $st || $sig) {
+          $end //= time + 5;
+          @p = grep { kill 0, $_ } -$kid, kids();
+          last unless @p;
+          if (time < $end) {
+            @n = grep { !$seen{$_}++ } @p;
+            if (@n) { kill "TERM", @n; kill "CONT", @n; push @{$r{TERM}}, @n } }
+          elsif (time < $end + 5) { kill "KILL", @p; $r{KILL} ||= [@p] }
+          else { $r{STUCK} = [@p]; last } }
+        sleep 0.1 }
+      if (%r && open my $h, ">", $rep) { print $h "$_ @{$r{$_}}\n" for grep { $r{$_} } qw(TERM KILL STUCK) }
+      exit(!defined $st ? 137 : $st & 127 ? 128 + ($st & 127) : $st >> 8)' "$RUN/call.reap" "$RUN/call.group" "$@" ) <&0 &
   CALL_PID=$!
   printf '%s %s\n' "$CALL_PID" "$CALL_TAG" > "$RUN/call.tmp" && mv -f "$RUN/call.tmp" "$RUN/call" \
     || log "could not write $RUN/call; a SIGKILL now would free the slot while the call runs"
 }
-# However the call ends, by exit or by its limit, whatever it left behind, in its group or carrying its tag, gets
-# TERM, then KILL after a 5 s grace, and must be gone 5 s later, or the run stops: a child left writing the tree would
-# race the checks and the graders (LOOP.md, Exits). The leader is reaped first, since a zombie leader keeps its group
-# alive. A survivor sets CALL_STUCK, and the caller stops the run once its ledger row for the call is written.
+# However the call ends, by exit or by its limit, whatever it left behind, reparented to the wrapper, in its group or
+# carrying its tag, gets TERM, then KILL after a 5 s grace, and must be gone 5 s later, or the run stops: a child left
+# writing the tree would race the checks and the graders (LOOP.md, Exits). The wrapper ends its children first and
+# call_end logs what it signalled; then call_reap ends whatever is left in the wrapper's or the call's group or carries
+# its tag. The leader is reaped first, since a zombie leader keeps its group alive. A survivor sets CALL_STUCK, and the
+# caller stops the run once its ledger row for the call is written.
 call_end() { # role -> the call's own exit status
-  local rc=0
+  local rc=0 s p
   wait "$CALL_PID" || rc=$?
-  call_reap "$1" && rm -f "$RUN/call"
+  [ -f "$RUN/call.reap" ] && while read -r s p; do
+    case $s in
+      TERM) log "the $1 call left processes behind ($p, reparented to its wrapper or in its group); sending TERM" ;;
+      KILL) log "the $1 call's processes outlived TERM by 5 s; sending KILL to $p" ;;
+      STUCK) CALL_STUCK="the $1 call's processes ($p) are still alive 5 s after KILL"; log "$CALL_STUCK" ;;
+    esac
+  done < "$RUN/call.reap"
+  rm -f "$RUN/call.reap"
+  call_reap "$1" && [ -z "$CALL_STUCK" ] && rm -f "$RUN/call" "$RUN/call.tmp" "$RUN/call.group" "$RUN/call.group.tmp"
   trap - INT TERM HUP
   return "$rc"
 }
 call_reap() { # role
   call_gone 0 && return
-  log "the $1 call left processes behind (group $CALL_PID or tag $CALL_TAG); sending TERM"
+  log "the $1 call left processes behind (groups $CALL_PID $(call_group "$RUN") or tag $CALL_TAG); sending TERM"
   call_signal TERM; call_signal CONT
   call_gone 50 && return
   log "the $1 call's processes outlived TERM by 5 s; sending KILL"
   call_signal KILL
   call_gone 50 && return
-  CALL_STUCK="the $1 call's processes (group $CALL_PID or tag $CALL_TAG) are still alive 5 s after KILL"
+  CALL_STUCK="the $1 call's processes (groups $CALL_PID $(call_group "$RUN") or tag $CALL_TAG) are still alive 5 s after KILL"
   log "$CALL_STUCK"
   return 1
 }
-# The supervisor got a signal mid-call: it sends the call TERM, and KILL 5 s later if the leader is still up, reaps the
-# leader, ends what is left as call_end would, then exits as the signal would have. A second Ctrl-C is ignored until
-# then, since it would kill the supervisor and let the EXIT trap remove the worktree under a child not yet killed.
+# The supervisor got a signal mid-call: it sends the call TERM, which starts the wrapper's own TERM and KILL 5 s later,
+# sends KILL itself 10 s later if the wrapper is still up (sooner could kill the wrapper during its grace and leave its
+# children to init), reaps the wrapper, ends what is left as call_end would, then exits as the signal would have. A
+# second Ctrl-C is ignored until then, since it would kill the supervisor and let the EXIT trap remove the worktree
+# under a child not yet killed.
 call_abort() { # signal status
   local killer
   trap '' INT TERM HUP
   log "the supervisor got $1 during a model call; ending the call's processes"
   call_signal TERM; call_signal CONT
-  ( sleep 5; call_signal KILL ) & killer=$!
+  ( sleep 10; call_signal KILL ) & killer=$!
   wait "$CALL_PID" 2> /dev/null
   kill -KILL "$killer" 2> /dev/null   # it inherits the ignored TERM
-  call_gone 50 || { call_signal KILL; call_gone 50; } && rm -f "$RUN/call"
+  call_gone 50 || { call_signal KILL; call_gone 50; } && rm -f "$RUN/call" "$RUN/call.tmp" "$RUN/call.group" "$RUN/call.group.tmp"
   exit "$2"
 }
-call_signal() { kill -"$1" -- "-$CALL_PID" 2> /dev/null; call_tagged "$1"; }
+call_signal() { call_grouped "$1"; call_tagged "$1"; }
+# The wrapper's group and, once the wrapper has written call.group, the call's own (call_start).
+call_grouped() { # signal, or 0 to look -> 0 when a process in either group took it
+  local g r=1
+  for g in "$CALL_PID" $(call_group "$RUN"); do kill -"$1" -- "-$g" 2> /dev/null && r=0; done
+  return "$r"
+}
 # Linux only: a host with no /proc (a Mac) finds no tagged process, and the group kill alone stands. A zombie's
 # environ reads empty, so a zombie never counts.
 call_tagged() { # signal, or 0 to look; [tag] -> 0 when a process carries FACTORY_CALL_TAG=tag (CALL_TAG by default)
@@ -1645,9 +1998,9 @@ call_tagged() { # signal, or 0 to look; [tag] -> 0 when a process carries FACTOR
       ($p) = $f =~ m{^/proc/(\d+)/}; kill($s, $p); $n++ }
     exit($n ? 0 : 1)' "FACTORY_CALL_TAG=${2-$CALL_TAG}" "$1"
 }
-call_gone() { # tenths of a second to wait -> 0 once nothing is left in CALL_PID's group or carries CALL_TAG
+call_gone() { # tenths of a second to wait -> 0 once nothing is left in the call's groups or carries CALL_TAG
   local i=0
-  while kill -0 -- "-$CALL_PID" 2> /dev/null || call_tagged 0; do
+  while call_grouped 0 || call_tagged 0; do
     [ "$i" -lt "$1" ] || return 1
     sleep 0.1; i=$((i + 1))
   done
@@ -1883,6 +2236,10 @@ verdict_consistent() { # json file, schema file
       else true end' "$1" > /dev/null 2>&1
 }
 
+grader_reply() { # raw claude -p envelope -> the grader's reply text, fences stripped
+  jq -r "$RESULT_OBJ | .result // \"\"" "$1" 2> /dev/null | sed -e 's/^```json//' -e 's/^```//' -e 's/```$//'
+}
+
 call_json() { # round stem role prompt_file schema_file
   local round="$1" stem="$2" role="$3" pf="$4" schema="$5" final="$RUN/round-$1.$2.json" out res attempt=0
   while [ "$attempt" -lt 3 ]; do
@@ -1903,7 +2260,7 @@ call_json() { # round stem role prompt_file schema_file
     if [ -z "$CALL_STUCK" ] && limit_wait "$out"; then attempt=$((attempt - 1)); continue; fi
     record "$round" "$role" "$GRADER_MODEL" "$out"
     [ -z "$CALL_STUCK" ] || finish stopped-environment "$CALL_STUCK"
-    res=$(jq -r "$RESULT_OBJ | .result // \"\"" "$out" 2> /dev/null | sed -e 's/^```json//' -e 's/^```//' -e 's/```$//') || res=""
+    res=$(grader_reply "$out") || res=""
     if printf '%s' "$res" | jq -e '.verdict' > /dev/null 2>&1; then
       printf '%s' "$res" | jq '.' > "$final"
       verdict_consistent "$final" "$schema" && return 0
@@ -2101,15 +2458,7 @@ open_pr() { # [draft]: opened at the grader-round cap
   blocking=$(blocking_findings)
   [ -n "$draft" ] || [ -z "$blocking" ] || draft=blocking
   {
-    # The worker's own account of how the change works and why it is correct opens the body (#330), so
-    # the owner can judge the merge without trusting the graders; it sits beside decisions.md.
-    printf '## How it works\n\n'
-    if grep -q '[^[:space:]]' "${DECISIONS%/*}/mechanism.md" 2> /dev/null; then
-      printf '%s\n\n' "$(sed '/./,$!d' "${DECISIONS%/*}/mechanism.md")"
-    else
-      printf '(the worker wrote no mechanism paragraph)\n\n'
-    fi
-    [ "$IS_FILE" = 1 ] || printf 'Closes #%s\n\n' "$ISSUE"
+    # A draft's reason opens the body, so a reader sees why it is a draft before anything else.
     if [ "$draft" = blocking ]; then
       printf 'Draft: the judge passed, but %s blocking reviewer or Codex finding(s) remain past the one block each grader may make or come from a reviewer or Codex review with no parseable reply, and each is filed as an issue. Read them before marking it ready. The first is %s\n\n' \
         "$(printf '%s\n' "$blocking" | grep -c .)" "$(printf '%s\n' "$blocking" | head -1)"
@@ -2120,6 +2469,15 @@ open_pr() { # [draft]: opened at the grader-round cap
       rows=$(jq -r '[(.rows // {}) | to_entries[] | select(.value == "fail") | .key] | join(", ") | if . == "" then "no row; a reviewer or Codex finding blocked" else . end' "$RUN/round-$ROUND.judge.json" 2> /dev/null)
       printf 'Draft: opened at the grader-round cap; the judge failed %s. Read the Judge section before marking it ready.\n\n' "${rows:-no row; the judge output was absent or not parseable}"
     fi
+    # The worker's own account of how the change works and why it is correct opens a ready PR's body (#330), so
+    # the owner can judge the merge without trusting the graders; it sits beside decisions.md.
+    printf '## How it works\n\n'
+    if grep -q '[^[:space:]]' "${DECISIONS%/*}/mechanism.md" 2> /dev/null; then
+      printf '%s\n\n' "$(sed '/./,$!d' "${DECISIONS%/*}/mechanism.md")"
+    else
+      printf '(the worker wrote no mechanism paragraph)\n\n'
+    fi
+    [ "$IS_FILE" = 1 ] || printf 'Closes #%s\n\n' "$ISSUE"
     printf '## Goal\n\n%s\n\n' "$(section "Goal and why" | sed '/./,$!d')"
     printf '## Commits\n\n```\n%s\n```\n\n' "$(git -C "$WORKTREE" log --oneline "$base..HEAD")"
     [ -s "$RUN/round-$ROUND.measure" ] && { printf '## Rows measured\n\n```\n'; cat "$RUN/round-$ROUND.measure"; printf '```\n\n'; }
@@ -2151,7 +2509,12 @@ open_pr() { # [draft]: opened at the grader-round cap
       "$ROUND" "$(ticket_spent)" "$(( ( $(date -u +%s) - $(cat "$RUN/started") ) / 60 ))" \
       "$(jq -s '[.[].denials // 0] | add // 0' "$LEDGER")" "$RUN"
   } | scrub > "$body" || finish stopped-environment "could not scrub the PR body"
-  [ "$IS_FILE" = 1 ] && finish pr-opened "file ticket: no GitHub call; the PR body is at $body"
+  # The decision to publish, recorded before any network call: a relaunch whose HEAD is still this sha replays
+  # open_pr with the same draft argument and no worker round (cmd_run), so a failed push or create loses nothing.
+  # Each pr-opened exit removes it, so only a failed publish leaves it for a relaunch to replay.
+  printf '%s %s\n' "$GRADED_SHA" "$draft" > "$RUN/publish.intent" \
+    || finish stopped-environment "could not write $RUN/publish.intent"
+  [ "$IS_FILE" = 1 ] && { rm -f "$RUN/publish.intent"; finish pr-opened "file ticket: no GitHub call; the PR body is at $body"; }
   net git -C "$WORKTREE" push -u origin "$BRANCH" >> "$LOG" 2>&1 \
     || finish stopped-environment "git push of $BRANCH failed, or got no reply in ${NET_TIMEOUT_SEC}s"
   if num=$(net gh pr view "$BRANCH" -R "$REPO" --json number --jq .number 2> /dev/null) && [ -n "$num" ]; then
@@ -2167,6 +2530,7 @@ open_pr() { # [draft]: opened at the grader-round cap
   fi
   [ "$IS_FILE" = 0 ] && file_backlog "$RUN/round-$ROUND.judge.json" "$ISSUE" "$url"
   [ "$IS_FILE" = 0 ] && printf '%s\n' "$blocking" | file_issues "blocking review findings" "$ISSUE" "$url"
+  rm -f "$RUN/publish.intent"
   finish pr-opened "$url after $ROUND rounds, $(ticket_spent) usd"
 }
 
@@ -2260,6 +2624,22 @@ cmd_run() {
   LOG="$RUN/factory.log"; LEDGER="$RUN/ledger.jsonl"; DAILY="$RUNS_BASE/ledger-daily.jsonl"
   DECISIONS="$RUN/worker/decisions.md"
   touch "$LOG" "$LEDGER" "$DAILY" "$DECISIONS"
+  # The slot is the flock lease on $RUN/lease (#425), taken before the long preparation, so a relaunch holds its slot
+  # at once, and before this launch writes any state the run dir shares: a launch that cannot take it while another
+  # launch of the same ticket holds it says so and exits, leaving that run's status, `launched` (its MAX_HOURS clock)
+  # and log (status --criteria's round) as they were. The fd is no close-on-exec, so the frozen re-exec and every
+  # child inherit it: the run holds the lease until its last process exits. The frozen pass already holds it and must
+  # not lock a second open of the file, which would wait on its own lease. The heartbeat loop alone closes it
+  # (heartbeat_start). Where flock(1) is missing (a Mac) no lease is written and holds_slot judges the owner line below.
+  if [ -n "$HAVE_FLOCK" ] && [ "${FACTORY_FROZEN:-}" != "$RUN/frozen/factory" ]; then
+    exec {SLOT_FD}>> "$RUN/lease" && flock -w 65 "$SLOT_FD" \
+      || { echo "factory run: could not take $RUN/lease in 65 s; another launch of this ticket, or a process one left running, holds it" >&2; exit 4; }
+    export FACTORY_SLOT_FD=$SLOT_FD   # so the frozen pass's heartbeat can close it
+  fi
+  # A model call's tool process may have closed the lease (holds_slot), or there is no lease (no flock), and still
+  # write the worktree this launch would prepare; refuse as above, writing nothing.
+  [ "${FACTORY_FROZEN:-}" != "$RUN/frozen/factory" ] && call_live "$RUN" \
+    && { echo "factory run: the model call named in $RUN/call still runs; wait for it to exit or kill it" >&2; exit 4; }
   # A file ticket's branch carries the run key too, so a relaunch with an edited body gets its own branch;
   # the EXIT trap below removes the worktree at exit, and the branch keeps the commits.
   BRANCH="factory/$KEY"; [ "$IS_FILE" = 1 ] && BRANCH="$BRANCH-$sha8"
@@ -2269,8 +2649,8 @@ cmd_run() {
   # One line per launch, before any exit and not again from the frozen re-exec: status --criteria resets the
   # round on it, so a relaunch's early exit is not charged to the round a killed launch left open.
   [ "${FACTORY_FROZEN:-}" = "$RUN/frozen/factory" ] || log "===== launch ====="
-  # The owner line holds_slot reads, written with the status under owner.lock before the long preparation, so a
-  # relaunch holds its slot at once, and after the launch line, so a failure here is charged to this launch.
+  # The owner line, for status and the alert text, and for holds_slot on a host with no flock or a run dir with no
+  # lease, written with the status under owner.lock, which a reaper judging the owner line takes too.
   # exec keeps the pid, so it still names the loop that runs finish; the frozen pass rewrites the same line.
   # Through a temp file, so a kill mid-write never leaves an empty owner (held for good).
   local start
@@ -2327,9 +2707,18 @@ cmd_run() {
       g=${g%.graded.sha}
       { [ -s "$g.fixes" ] || [ "$(jq -r .verdict "$g.judge.json" 2> /dev/null)" != pass ]; } && GRADER_FAILS=$((GRADER_FAILS + 1))
     done
-    # A round whose graders passed at HEAD with nothing blocking lost only its push or PR create: publish it,
-    # with no new worker round. A judge fail, a blocking finding, or a moved HEAD resumes into the loop.
-    if [ "$(jq -r .verdict "$RUN/round-$ROUND.judge.json" 2> /dev/null)" = pass ] && [ -z "$(blocking_findings)" ] \
+    # A publish whose push or PR create failed left its decision in publish.intent (open_pr): while HEAD is still the
+    # sha it graded, replay it, ready or draft, with no new worker round. A moved HEAD resumes as below.
+    local intent_sha="" intent_draft=""
+    [ -f "$RUN/publish.intent" ] && read -r intent_sha intent_draft < "$RUN/publish.intent"
+    if [ -n "$intent_sha" ] && [ "$intent_sha" = "$(git -C "$WORKTREE" rev-parse HEAD)" ]; then
+      check_frozen   # freeze returns early on a resume, so re-hash here as main_loop does before each round
+      GRADED_SHA=$intent_sha
+      log "a publish${intent_draft:+ as a draft ($intent_draft)} at HEAD $GRADED_SHA did not finish; publishing it again with no worker round"
+      open_pr ${intent_draft:+"$intent_draft"}
+    # A round whose graders passed at HEAD with nothing blocking but crashed before open_pr wrote publish.intent: publish
+    # it, with no new worker round. A judge fail, a blocking finding, or a moved HEAD resumes into the loop.
+    elif [ "$(jq -r .verdict "$RUN/round-$ROUND.judge.json" 2> /dev/null)" = pass ] && [ -z "$(blocking_findings)" ] \
       && [ -s "$RUN/round-$ROUND.graded.sha" ] && [ "$(cat "$RUN/round-$ROUND.graded.sha")" = "$(git -C "$WORKTREE" rev-parse HEAD)" ]; then
       GRADED_SHA=$(cat "$RUN/round-$ROUND.graded.sha")
       log "round $ROUND passed the graders at HEAD $GRADED_SHA; opening the PR with no worker round"
@@ -2701,6 +3090,10 @@ cmd_next() { # [--dry-run|--install]
   # checked above travel with -e; a server started without them would make the run exit 4 unrecorded.
   mkdir -p "$RUNS_ROOT"
   target_is_loam && envs+=(-e "LOAM_FACTORY_TOOLCHAIN=$LOAM_FACTORY_TOOLCHAIN" -e "LOAM_FACTORY_COPIER=$LOAM_FACTORY_COPIER")
+  # The FACTORY_<NAME> caps travel too: without them the run fell back to MAX_PARALLEL=1, so every launch that
+  # next's FACTORY_MAX_PARALLEL=2 allowed beside a live run stopped at once as a machine problem.
+  local cap v
+  for cap in $CAP_NAMES; do v="FACTORY_$cap"; [ -z "${!v:-}" ] || envs+=(-e "$v=${!v}"); done
   if tmux new-session -d -s "$sess" "${envs[@]}" "cd '$ROOT' && bin/factory -C '$TARGET' run $pick >> '$RUNS_ROOT/$pick.tmux.log' 2>&1"; then
     echo "launched #$pick"
   else
@@ -2741,7 +3134,7 @@ cmd_status() {
   precondition_lines
 }
 
-# The criteria and thresholds stay in ARCHITECTURE.md; criteria.py reads them there and calls nothing.
+# The criteria and thresholds stay in ARCHITECTURE.md; criteria.py reads them there and calls only git log.
 cmd_criteria() {
   python3 -I "$ROOT/bin/factory.d/criteria.py" "$RUNS_ROOT" "$ROOT/docs/factory/ARCHITECTURE.md" "$TARGET"
 }
@@ -2750,13 +3143,23 @@ grader_first_fail() { # run dir -> the first grader item that failed in the last
   local j r
   j=$(find "$1" -maxdepth 1 -name 'round-*.judge.json' 2> /dev/null | sort -V | tail -1)
   [ -n "$j" ] || return 0
-  r=$(jq -r 'if .unparseable == true then "judge:unparseable"
-    else first((.rows // {}) | to_entries[] | select(.value != "pass") | "judge:" + .key) // empty end' \
-    "$j" 2> /dev/null)
-  [ -n "$r" ] || r=$(jq -r 'if .unparseable == true then "review:unparseable"
-    else first('"$REVIEW_BLOCKING"'[] | "review:" + (.file // "?")) // empty end' \
-    "${j%judge.json}review.json" 2> /dev/null)
+  # A judge fail with every row pass still fails the round, on its fixes or backlog (verdict_consistent).
+  r=$(grader_fallback "$j" judge || jq -r 'first(((.rows // {}) | to_entries[] | select(.value != "pass") | "judge:" + .key),
+    (select(.verdict == "fail") | "judge:fail"))' "$j" 2> /dev/null)
+  [ -n "$r" ] || r=$(grader_fallback "${j%judge.json}review.json" review \
+    || jq -r 'first('"$REVIEW_BLOCKING"'[] | "review:" + (.file // "?")) // empty' "${j%judge.json}review.json" 2> /dev/null)
   printf '%s' "$r"
+}
+
+# call_json writes one fallback whether no reply parsed or the last parsed but contradicted its own lists, so the
+# last raw reply, read as call_json reads it, tells an inconsistent grader from an unreadable one.
+grader_fallback() { # grader json, grader name -> <grader>:inconsistent|unparseable; 1 when the json is the grader's own
+  jq -e '.unparseable == true' "$1" > /dev/null 2>&1 || return 1
+  if grader_reply "${1%json}raw.3.json" | jq -e '.verdict' > /dev/null 2>&1; then
+    printf '%s:inconsistent' "$2"
+  else
+    printf '%s:unparseable' "$2"
+  fi
 }
 
 # run_clean: yes|no|- for the status clean column (D09 Option A). A run is clean when it reached
@@ -2853,7 +3256,7 @@ precondition_lines() { # LOOP.md, Preconditions
     if f=$(grader_file "$t" 2>&1); then echo "  PASS $t.md at $f"; else echo "  FAIL $f"; fi
   done
   # Every worker skills.txt line must resolve to a SKILL.md, or lint refuses a ticket naming it and
-  # build_worker_prompt stops (skill_file); a bare name and a plugin:name both, newest version first.
+  # build_worker_prompt stops (skill_file); a bare name and a plugin:name both, the latter at its installPath.
   while IFS= read -r t; do
     [ -n "$t" ] || continue
     skill_file "$t" > /dev/null 2>&1 && echo "  PASS skill $t resolves" || echo "  INFO skill $t resolves to no SKILL.md (lint refuses a ticket naming it)"
@@ -2956,6 +3359,9 @@ usage() { # [cmd...] - one line per named command, all nine when none is named
 # only in a sourced script; 2> /dev/null hides the error if the guard is ever hit while the file runs as
 # a program.
 [ "${FACTORY_SOURCED:-}" = 1 ] && return 0 2> /dev/null
+# lint, next and status read FACTORY_NET_TIMEOUT_SEC, and next FACTORY_MAX_PARALLEL, without apply_caps, so every
+# FACTORY_<NAME> cap is checked here once, before any subcommand runs (#427).
+env_caps_ok || exit 2
 C_DIR=""
 [ "${1:-}" = -C ] && { [ $# -ge 2 ] || usage; C_DIR="$2"; shift 2; }
 CMD="${1:-}"

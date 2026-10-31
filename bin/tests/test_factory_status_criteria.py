@@ -105,10 +105,12 @@ class StatusCriteriaTests(unittest.TestCase):
                      "lines per round marking a passed-over step"):
             self.assertTrue(verdict[name].startswith("    UNMEASURED: "), (name, verdict[name]))
         self.assertEqual(len(verdict), 8, verdict)
-        # One header line and the eight criteria: no run table, stop counts, or grader versions.
+        # One header line, the eight criteria and the escaped defects line: no run table, stop counts, or grader
+        # versions.
         lines = proc.stdout.splitlines()
         self.assertIn(f": 5 runs under {self.runs} ", lines[0])
-        self.assertEqual(len(lines), 1 + 2 * 8, proc.stdout)
+        self.assertTrue(lines[-1].startswith("escaped defects: "), lines[-1])
+        self.assertEqual(len(lines), 1 + 2 * 8 + 1, proc.stdout)
 
     def test_the_run_records_measure_the_other_criteria(self) -> None:
         runs = pathlib.Path(self.tmp.name) / "records"
@@ -153,7 +155,7 @@ class StatusCriteriaTests(unittest.TestCase):
         # Each counted round, its first FAIL line and the sentence read as a claim, so a reader can settle the estimate.
         lines = proc.stdout.splitlines()
         self.assertEqual(lines[lines.index(verdict["rounds whose last worker message claims done while the checks printed FAIL"])
-                               + 1:], [f"      7/abcd1234 round 1 (claude): {long_fail} | Done: all checks pass.",
+                               + 1:-1], [f"      7/abcd1234 round 1 (claude): {long_fail} | Done: all checks pass.",
                                        f"      7/abcd1234 round 3 (codex): FAIL do-not-touch seed/x | {long_claim}"])
 
     def test_a_completion_claim_is_a_claim_and_a_failure_report_is_not(self) -> None:
@@ -349,41 +351,107 @@ class StatusCriteriaTests(unittest.TestCase):
                      "- median rounds to PR: at most 5 (lean-v3 median)"):
             self.assertEqual(verdict[line], "    UNMEASURED: no factory.log in 2/aaaa0002", line)
 
-    def test_grader_first_fail_names_unparseable_grader_replies(self) -> None:
-        judge_run = pathlib.Path(self.tmp.name) / "judge-unparseable"
-        judge_run.mkdir()
-        (judge_run / "round-2.judge.json").write_text(
-            '{"verdict":"fail","unparseable":true,"rows":{},"findings":[]}\n'
-        )
-        (judge_run / "round-2.review.json").write_text('{"verdict":"merge","findings":[]}\n')
+    def test_grader_first_fail_names_the_first_grader_failure(self) -> None:
+        def fallback(role: str) -> dict:
+            # The object call_json writes after three rejected replies.
+            judge = role == "judge"
+            return {"verdict": "fail" if judge else "fix", "unparseable": True, "rows": {}, "evidence": {}, "fixes": [],
+                    "backlog": ["judge output unparseable or inconsistent after 3 calls; rerun the judge on this round"]
+                    if judge else [],
+                    "findings": [{"severity": "high", "file": "-", "line": 0, "defect": f"{role} output unparseable",
+                                  "fix": f"rerun the {role} on this round"}]}
 
-        proc = grader_first_fail(judge_run)
+        def envelope(reply: str) -> dict:
+            # The claude -p --output-format json reply call_json saves as round-N.<stem>.raw.<attempt>.json.
+            return {"type": "result", "subtype": "success", "result": reply}
+
+        rows_pass = {"correct": "pass", "verified": "pass", "honest": "pass"}
+        blocking_review = {"verdict": "fix", "findings": [{"severity": "high", "file": "bin/y", "line": 1,
+                                                           "defect": "d", "fix": "f"}]}
+        not_json = envelope("I ran out of turns before grading.")
+        # Each case: the round's files, then the expected item. Each review blocks, so reading the review before the
+        # judge, or a fallback's rows or findings before its unparseable flag, prints another item.
+        cases = {
+            "judge-unparseable": ({"judge.json": fallback("judge"), "judge.raw.3.json": not_json,
+                                   "review.json": blocking_review}, "judge:unparseable"),
+            "judge-inconsistent": ({"judge.json": fallback("judge"), "review.json": blocking_review,
+                                    "judge.raw.3.json": envelope(json.dumps(
+                                        {"verdict": "fail", "rows": rows_pass, "fixes": []}))}, "judge:inconsistent"),
+            "review-unparseable": ({"judge.json": {"verdict": "pass", "rows": rows_pass, "fixes": []},
+                                    "review.json": fallback("review"), "review.raw.3.json": not_json},
+                                   "review:unparseable"),
+            "review-inconsistent": ({"judge.json": {"verdict": "pass", "rows": rows_pass, "fixes": []},
+                                     "review.json": fallback("review"),
+                                     "review.raw.3.json": envelope("```json\n" + json.dumps(
+                                         {"verdict": "fail", "findings": []}) + "\n```")},
+                                    "review:inconsistent"),
+            "judge-row": ({"judge.json": {"verdict": "fail", "rows": {**rows_pass, "verified": "fail"}, "fixes": ["x"]},
+                           "review.json": blocking_review}, "judge:verified"),
+            "judge-fail": ({"judge.json": {"verdict": "fail", "rows": rows_pass, "fixes": ["x"]},
+                            "review.json": blocking_review}, "judge:fail"),
+            "review-finding": ({"judge.json": {"verdict": "pass", "rows": rows_pass, "fixes": []},
+                                "review.json": blocking_review}, "review:bin/y"),
+        }
+        for label, (files, expected) in cases.items():
+            run = pathlib.Path(self.tmp.name) / label
+            run.mkdir()
+            for name, body in files.items():
+                (run / f"round-2.{name}").write_text(json.dumps(body) + "\n")
+            proc = grader_first_fail(run)
+            self.assertEqual((proc.returncode, proc.stdout), (0, expected), (label, proc.stderr))
+
+    def test_escaped_defects_are_later_reverts_and_caused_by_lines(self) -> None:
+        repo = pathlib.Path(self.tmp.name) / "repo"
+
+        def git(*args: str) -> str:
+            return subprocess.run(["git", "-C", str(repo), "-c", "user.name=t", "-c", "user.email=t@t", *args], capture_output=True, text=True,
+                                  check=True, env={**os.environ, "GIT_CONFIG_GLOBAL": os.devnull, "GIT_CONFIG_NOSYSTEM": "1"}).stdout.strip()
+
+        def pr(n: int, *messages: str) -> str:
+            """Merge factory/<n>, one commit per message, as PR #<n>; the sha of its first commit."""
+            git("checkout", "-q", "-b", f"factory/{n}", "main")
+            for i, message in enumerate(messages):
+                (repo / f"{n}-{i}").write_text(message)
+                git("add", ".")
+                git("commit", "-q", "-m", message)
+            git("checkout", "-q", "main")
+            git("merge", "-q", "--no-ff", "-m", f"Merge pull request #{n} from o/factory/{n}", f"factory/{n}")
+            return git("rev-list", "--reverse", f"main^1..factory/{n}").split()[0]
+
+        repo.mkdir()
+        git("init", "-q", "-b", "main")
+        git("commit", "-q", "--allow-empty", "-m", "base")
+        pr(1, "one")
+        git("revert", "-m", "1", "--no-edit", "HEAD")  # the whole merge
+        first = pr(2, "two", "three")
+        git("revert", "--no-edit", first)  # one commit of the PR, after it merged
+        pr(3, "four")
+        git("commit", "-q", "--allow-empty", "-m", "fix the four\n\ncaused-by: #3")
+        # A revert inside the PR's own branch, and a Caused-by naming no factory PR, are no escape.
+        git("checkout", "-q", "-b", "factory/4", "main")
+        (repo / "five").write_text("five")
+        git("add", ".")
+        git("commit", "-q", "-m", "five")
+        git("revert", "--no-edit", "HEAD")
+        git("checkout", "-q", "main")
+        git("merge", "-q", "--no-ff", "-m", "Merge pull request #4 from o/factory/4", "factory/4")
+        git("commit", "-q", "--allow-empty", "-m", "fix\n\nCaused-by: #9")
+        # A merge from a branch under feature/factory/ is no factory PR, though its work is reverted.
+        git("checkout", "-q", "-b", "feature/factory/5", "main")
+        (repo / "six").write_text("six")
+        git("add", ".")
+        git("commit", "-q", "-m", "six")
+        git("checkout", "-q", "main")
+        git("merge", "-q", "--no-ff", "-m", "Merge pull request #5 from o/feature/factory/5", "feature/factory/5")
+        git("revert", "--no-edit", "-m", "1", "HEAD")
+        # A checkout on a feature branch still measures main: this Caused-by never merged.
+        git("checkout", "-q", "-b", "topic", "main")
+        git("commit", "-q", "--allow-empty", "-m", "fix\n\nCaused-by: #4")
+        proc = subprocess.run(["python3", "-I", str(CRITERIA), str(self.runs), str(ROOT / "docs/factory/ARCHITECTURE.md"),
+                               str(repo)], capture_output=True, text=True, check=False)
         self.assertEqual(proc.returncode, 0, proc.stderr)
-        self.assertEqual(proc.stdout, "judge:unparseable")
-
-        review_run = pathlib.Path(self.tmp.name) / "review-unparseable"
-        review_run.mkdir()
-        (review_run / "round-1.judge.json").write_text(
-            '{"verdict":"pass","rows":{"correct":"pass","verified":"pass","honest":"pass"}}\n'
-        )
-        (review_run / "round-1.review.json").write_text(
-            '{"verdict":"fix","unparseable":true,"findings":[]}\n'
-        )
-
-        proc = grader_first_fail(review_run)
-        self.assertEqual(proc.returncode, 0, proc.stderr)
-        self.assertEqual(proc.stdout, "review:unparseable")
-
-        parsed_run = pathlib.Path(self.tmp.name) / "parsed-judge"
-        parsed_run.mkdir()
-        (parsed_run / "round-3.judge.json").write_text(
-            '{"verdict":"fail","rows":{"correct":"pass","verified":"fail","honest":"pass"}}\n'
-        )
-        (parsed_run / "round-3.review.json").write_text('{"verdict":"merge","findings":[]}\n')
-
-        proc = grader_first_fail(parsed_run)
-        self.assertEqual(proc.returncode, 0, proc.stderr)
-        self.assertEqual(proc.stdout, "judge:verified")
+        self.assertRegex(proc.stdout.splitlines()[-1],
+                         r"^escaped defects: 3 of 4 merged factory PRs: #1 \(\w{8}\), #2 \(\w{8}\), #3 \(\w{8}\)$")
 
     def test_thresholds_come_from_the_doc(self) -> None:
         arch = pathlib.Path(self.tmp.name) / "ARCHITECTURE.md"
@@ -394,7 +462,10 @@ class StatusCriteriaTests(unittest.TestCase):
             proc = subprocess.run(["python3", "-I", str(CRITERIA), str(runs), str(arch), "t"],
                                   capture_output=True, text=True, check=False)
             self.assertEqual(proc.returncode, 0, proc.stderr)
-            return proc.stdout.splitlines()[1:]
+            lines = proc.stdout.splitlines()
+            # The target t is no git checkout, so the escaped defects line cannot be measured.
+            self.assertTrue(lines[-1].startswith("escaped defects: UNMEASURED: git log of t failed"), lines[-1])
+            return lines[1:-1]
 
         self.assertEqual(criteria(self.runs), [
             "- median rounds to PR: at most 1", "    FAIL: measured 2 (over 3 PR runs)",
