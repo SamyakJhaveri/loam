@@ -1071,6 +1071,16 @@ advisor_usd() {
     | add // 0 | . * 10000 | round / 10000' "$1" 2> /dev/null || echo null
 }
 
+# The served models of the ledger lines on stdin, as one JSON array, that start with none of the configured names
+# nor their own line's requested .model (a [1m] or dated suffix still matches; per line, so an override at
+# launch does not warn later). An empty name, as FACTORY_WORKER_ADVISOR= leaves, is dropped, since every model
+# starts with "". A malformed line is skipped, not the whole ledger. cmd_status and record share this rule.
+off_models() {
+  jq -cnR --arg w "$WORKER_MODEL" --arg g "$GRADER_MODEL" --arg a "$WORKER_ADVISOR" \
+    '[inputs | fromjson? | objects | ([$w, $g, $a, (.model | strings)] - [""]) as $ok | (.served_models | arrays)[] | strings
+      | select(. as $m | $ok | any(. as $p | $m | startswith($p)) | not)] | unique'
+}
+
 record() { # round role model result.json [advisor_calls] [advisor_usd] [workflow_agents] [workflow_usd] [codex]
   # workflow_agents and workflow_usd come from workflow_ledger (0 0 on every round but a claude worker's
   # round 1, and on every Codex round). codex is 1 for a Codex call: cost_usd is null (the dollar caps do
@@ -1093,6 +1103,16 @@ nav_arm:\$nav, ts:\$ts}" "$4" 2> /dev/null) \
   printf '%s' "$line" | jq -c --arg date "$(today)" --arg ticket "$KEY" \
     '{date:$date, ticket:$ticket, role:.role, cost_usd:.cost_usd}' >> "$DAILY"
   log "$2 round $1: $(printf '%s' "$line" | jq -r '"cost=\(.cost_usd) usd, turns=\(.num_turns), denials=\(.denials), \(.duration_ms)ms, \(.subtype)" + (if .role == "worker" then ", advisor_calls=\(.advisor_calls), advisor_usd=\(.advisor_usd)" else "" end)')"
+  # A call answered by a model nobody configured (a refusal fallback, #419) alerts once, now, rather than only
+  # in a later status WARN; the run goes on. A Codex row's served_models is [], so it never alerts.
+  local off
+  off=$(printf '%s' "$line" | off_models 2> /dev/null)
+  [ -n "$off" ] && [ "$off" != "[]" ] || return 0
+  off=$(jq -r --argjson off "$off" "$RESULT_OBJ"' | (.modelUsage // {}) as $mu
+    | $off | map("\(.) (\(($mu[.].costUSD // 0) * 100 | round / 100) usd)") | join(", ")' "$4" 2> /dev/null)
+  log "off-model $2 round $1: $off"
+  notify needs-you "$(ticket_name): the $2 call in round $1 was answered by a model nobody configured" \
+    "$off. The run goes on unless you stop it"
 }
 
 # The daily cap says nothing about the ticket, so it has its own status, which next relaunches on a later UTC day.
@@ -2606,13 +2626,7 @@ cmd_status() {
     [ -f "$d/FACTORY_STOP" ] && notes="$notes FACTORY_STOP"
     printf '%-14s %-9s %-20s %6s %8s %5sm %8s %-22s %-5s %s\n' \
       "$(basename "$(dirname "$d")")" "$(basename "$d")" "$st" "$rounds" "$spend" "$wall" "$den" "${grader:--}" "$clean" "$notes"
-    # A served model that starts with none of the configured names nor its own line's requested .model (a
-    # [1m] or dated suffix still matches; per line, so an override at launch does not warn here later). An
-    # empty name, as FACTORY_WORKER_ADVISOR= leaves, is dropped, since every model starts with "". A
-    # malformed line is skipped, not the whole run.
-    off=$(jq -rnR --arg w "$WORKER_MODEL" --arg g "$GRADER_MODEL" --arg a "$WORKER_ADVISOR" \
-      '[inputs | fromjson? | objects | ([$w, $g, $a, (.model | strings)] - [""]) as $ok | (.served_models | arrays)[] | strings
-        | select(. as $m | $ok | any(. as $p | $m | startswith($p)) | not)] | unique | join(", ")' "$led" 2> /dev/null || true)
+    off=$(off_models < "$led" 2> /dev/null | jq -r 'join(", ")' 2> /dev/null || true)
     [ -n "$off" ] && warns+="  WARN $(basename "$(dirname "$d")")/$(basename "$d") served by $off"$'\n'
   done
   printf '%s' "$warns"
