@@ -7,10 +7,11 @@ The settings' `hooks` block gives each script its events: any word of a command 
 file in hooks-dir registers that file on the event. Each registered script is then linted:
 
 - block-on-nonblocking: every event the script is registered on is in NONBLOCKING, and a line that is
-  not a comment prints a "decision": "block" key or exits 2. Claude Code ignores both there, so the hook
-  guards nothing while it reads as a guard.
-- unquoted-rm: an `rm` argument holds a $VAR or ${VAR} outside quotes; an empty or spaced value then
-  deletes the wrong path.
+  not a comment prints a "decision": "block" key, or the script exits 2 (an `exit 2` command in a shell
+  script, any `exit 2` or `exit(2)` outside a comment in another one; PermissionRequest also ignores
+  exit 2). Claude Code ignores both there, so the hook guards nothing while it reads as a guard.
+- unquoted-rm: an `rm` argument, also one in a `trap` string, holds a $VAR or ${VAR} outside quotes; an
+  empty or spaced value then deletes the wrong path.
 - eval-input: the script reads stdin (`read`, /dev/stdin, or a `cat` or `jq` given no file and not fed by
   a pipe or <, where an output redirect such as 2>/dev/null is not a file and a loop fed by `done <` or a
   pipe does not read stdin) and runs `eval`, so the hook input can run as code.
@@ -35,7 +36,11 @@ from shell_lint import ASSIGN, ENDS, RUNS, commands, heredocs_in, split, words
 NONBLOCKING = {"SessionStart", "SessionEnd", "PostModelSwitch", "PostCompact", "Notification", "SubagentStart",
                "Setup", "CwdChanged", "DirectoryAdded", "FileChanged", "InstructionsLoaded", "StopFailure",
                "PermissionDenied", "MessageDisplay"}
-BLOCKS = re.compile(r"""\\?["']decision\\?["']\s*:\s*\\?["']block\\?["']|\bexit\s*\(?\s*2\b""")
+# PermissionRequest denies only through hookSpecificOutput, so it ignores exit 2 as well.
+EXIT2_IGNORED = NONBLOCKING | {"PermissionRequest"}
+DECISION = re.compile(r"""\\?["']?decision\\?["']?\s*:\s*\\?["']block\\?["']""")
+EXIT2 = re.compile(r"\bexit\s*\(?\s*2\b")
+SHELL = re.compile(r"#!.*\b(ba|da|k|z)?sh\b")
 VAR = re.compile(r"\$[A-Za-z_0-9@*{]")
 REDIRECT = re.compile(r"\d*>>?")
 LOOPS = {"while", "until", "for", "select"}
@@ -85,6 +90,22 @@ def unquoted_var(word: str) -> bool:
         elif not quote and VAR.match(word, i):
             return True
         i += 1
+    return False
+
+
+def rm_unquoted(toks: list[str]) -> bool:
+    """True when an `rm` in these tokens, or in the string a `trap` runs, has an unquoted variable argument."""
+    for name, i in commands(toks):
+        own = [a for a in args(toks, i) if a != "--"]
+        if name == "rm" and any(unquoted_var(a) for a in own):
+            return True
+        if name == "trap" and own:
+            try:
+                body = shlex.split(own[0])
+            except ValueError:
+                continue
+            if body and rm_unquoted(tokens(body[0])):
+                return True
     return False
 
 
@@ -143,9 +164,17 @@ def code_pieces(text: str) -> list[tuple[int, str]]:
 def lint(path: pathlib.Path, events: set[str]) -> list[tuple[int, str]]:
     text = path.read_text(encoding="utf-8", errors="replace")
     found = []
-    if events <= NONBLOCKING:
-        found += [(n, "block-on-nonblocking") for n, line in enumerate(text.splitlines(), 1)
-                  if not line.lstrip().startswith("#") and BLOCKS.search(line)][:1]
+    lines = [(n, line) for n, line in enumerate(text.splitlines(), 1) if not line.lstrip().startswith("#")]
+    blocks = [n for n, line in lines if DECISION.search(line)] if events <= NONBLOCKING else []
+    if events <= EXIT2_IGNORED:
+        # In a shell script an exit in a string, comment or heredoc is not run; a shebang outranks the suffix.
+        if SHELL.match(text) if text.startswith("#!") else path.suffix == ".sh":
+            pieces = [(n, tokens(code)) for n, code in code_pieces(text)]
+            blocks += [n for n, toks in pieces for name, i in commands(toks)
+                       if name == "exit" and toks[i : i + 1] == ["2"]]
+        else:
+            blocks += [n for n, line in lines if EXIT2.search(line)]
+    found += [(min(blocks), "block-on-nonblocking")] if blocks else []
     # A `read` inside a loop reads the script's stdin only if no pipe feeds the loop and its `done` has no
     # < redirect, so each open loop holds [fed, read] until its `done` is seen.
     evals, reads, loops = [], False, []
@@ -168,7 +197,7 @@ def lint(path: pathlib.Path, events: set[str]) -> list[tuple[int, str]]:
             if name is None:
                 continue
             own = args(toks, j + 1)
-            if name == "rm" and any(unquoted_var(a) for a in own):
+            if name in ("rm", "trap") and rm_unquoted([tok, *own]):
                 found.append((n, "unquoted-rm"))
             elif name == "eval":
                 evals.append(n)

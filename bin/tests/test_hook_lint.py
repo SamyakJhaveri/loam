@@ -54,6 +54,16 @@ class HookLintTest(unittest.TestCase):
         r = lint(PLANTED, ["SessionEnd", "Stop"])
         self.assertNotIn("block-on-nonblocking", r.stdout)
 
+    def test_block_is_code_not_text(self) -> None:
+        for script in ('echo ready # exit 2 would be ignored', 'echo "Do not exit 2 from this hook"',
+                       "python3 - <<'PY'\nimport sys; sys.exit(2)\nPY"):
+            r = lint(f"#!/bin/bash\n{script}\n", ["SessionStart"])
+            self.assertEqual((r.returncode, r.stdout), (0, ""), script)
+        for script, event in (("[ -f x ] && exit 2", "SessionStart"), ("jq -n '{decision: \"block\"}'", "SessionEnd"),
+                              ("echo denied >&2; exit 2", "PermissionRequest")):
+            r = lint(f"#!/bin/bash\n{script}\n", [event])
+            self.assertEqual(found(r.stdout), ["h.sh:2 block-on-nonblocking"], script)
+
     def test_eval_without_stdin_passes(self) -> None:
         for script in ('eval "$(ssh-agent -s)"', 'x=$(echo "{}" | jq -r .a); eval "$x"', 'jq . f.json; eval "$y"',
                        'cat <f; eval "$y"', 'jq -n 1; eval "$y"',
@@ -76,6 +86,8 @@ class HookLintTest(unittest.TestCase):
     def test_rm_quoting_cases(self) -> None:
         r = lint(RM_CASES, ["Stop"])
         self.assertEqual(found(r.stdout), [f"h.sh:{n} unquoted-rm" for n in (7, 8, 9, 13)])
+        r = lint("#!/bin/bash\ntrap 'rm -f $tmp' EXIT\ntrap \"rm -f $tmp\" EXIT\ntrap 'rm -rf \"$W\"' EXIT\n", ["Stop"])
+        self.assertEqual(found(r.stdout), ["h.sh:2 unquoted-rm", "h.sh:3 unquoted-rm"])
 
     def test_seed_hooks_pass(self) -> None:
         r = subprocess.run([sys.executable, str(SCRIPT), str(ROOT / "seed/.claude/settings.json"),
