@@ -1,0 +1,1 @@
+{"source":"judge/184-6d4c8573","defect_class":"honesty","verdict":"fail","failing_rows":["honest"],"claimed_run":"bin/factory next --dry-run"}

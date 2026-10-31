@@ -1,0 +1,18 @@
+diff --git a/page.py b/page.py
+index 4feb05f..f04fb4e 100644
+--- a/page.py
++++ b/page.py
+@@ -1,7 +1,10 @@
+ """A page's title for the index."""
++from meta import parse_header
+ 
+ 
+ def title(text):
+-    """The first non-blank line after the header."""
+-    body = text.split("\n\n", 1)[1] if "\n\n" in text else text
+-    return next((line for line in body.splitlines() if line.strip()), "")
++    """The Title header when the page has a header, else the first non-blank line."""
++    header = parse_header(text)
++    if header:
++        return header["Title"]
++    return next((line for line in text.splitlines() if line.strip()), "")

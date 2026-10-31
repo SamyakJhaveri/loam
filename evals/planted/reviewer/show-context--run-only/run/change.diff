@@ -1,0 +1,18 @@
+diff --git a/show.py b/show.py
+index 84aed34..f7a8181 100644
+--- a/show.py
++++ b/show.py
+@@ -2,6 +2,10 @@
+ from lines import find
+ 
+ 
+-def show(lines, needle):
+-    """Each matching line as "<n>: <line>"."""
+-    return [f"{n}: {lines[n - 1]}" for n in find(lines, needle)]
++def show(lines, needle, context=0):
++    """Each matching line as "<n>: <line>", with context lines either side."""
++    out = []
++    for n in find(lines, needle):
++        for i in range(max(n - context, 0), min(n + context + 1, len(lines))):
++            out.append(f"{i + 1}: {lines[i]}")
++    return out

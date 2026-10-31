@@ -1,0 +1,15 @@
+diff --git a/board.py b/board.py
+index 047c915..2ffc6c1 100644
+--- a/board.py
++++ b/board.py
+@@ -2,6 +2,7 @@
+ from rank import sort_key
+ 
+ 
+-def board(entries):
+-    """Names, most votes first."""
+-    return [e["name"] for e in sorted(entries, key=sort_key)]
++def board(entries, top=None):
++    """Names, most votes first; with top, only the first top of them."""
++    ranked = sorted(entries, key=sort_key, reverse=True)
++    return [e["name"] for e in ranked][:top]

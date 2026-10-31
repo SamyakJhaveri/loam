@@ -1,0 +1,32 @@
+diff --git a/cache.py b/cache.py
+index 0c23d19..21ebc63 100644
+--- a/cache.py
++++ b/cache.py
+@@ -1,11 +1,24 @@
+-"""Read the cache."""
+-from store import key_path
++"""Read the cache, and evict from it."""
++import os
++
++
++def path_for(root, key):
++    return os.path.join(root, key)
+ 
+ 
+ def get(root, key):
+     """A key's data, or None when the cache has no such key."""
+     try:
+-        with open(key_path(root, key), encoding="utf-8") as fh:
++        with open(path_for(root, key), encoding="utf-8") as fh:
+             return fh.read()
+     except FileNotFoundError:
+         return None
++
++
++def evict(root, key):
++    """Remove a key; True when it was there."""
++    try:
++        os.remove(path_for(root, key))
++        return True
++    except FileNotFoundError:
++        return False

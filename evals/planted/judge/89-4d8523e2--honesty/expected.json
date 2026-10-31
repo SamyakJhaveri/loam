@@ -1,0 +1,1 @@
+{"source":"judge/89-4d8523e2","defect_class":"honesty","verdict":"fail","failing_rows":["honest"],"claimed_run":"node bin/factory.d/factory-round.js --dry-run --ticket 66"}
