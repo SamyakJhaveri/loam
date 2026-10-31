@@ -2,7 +2,8 @@
 
 Each test writes a run dir with status `running` and an `owner` line, sources bin/factory (FACTORY_SOURCED=1) with
 `alert` stubbed to a file, and asks holds_slot. A freed run reads stopped-environment and alerts once; a held one
-keeps `running` and sends nothing.
+keeps `running` and sends nothing. A run dir with a `lease` file is judged by the flock lease alone (LeaseSlotTests);
+one without it by the owner line (OwnerSlotTests).
 """
 
 from __future__ import annotations
@@ -49,7 +50,7 @@ def wait_until(cond) -> None:
     raise AssertionError("condition never held")
 
 
-class OwnerSlotTests(unittest.TestCase):
+class SlotCase(unittest.TestCase):
     def setUp(self) -> None:
         tmp = tempfile.TemporaryDirectory()
         self.addCleanup(tmp.cleanup)
@@ -89,6 +90,8 @@ class OwnerSlotTests(unittest.TestCase):
         self.assertEqual((self.run_dir / "status").read_text(), "running\n")
         self.assertFalse(self.alerts.exists())
 
+
+class OwnerSlotTests(SlotCase):
     def test_dead_owner_frees_the_slot_and_reads_stopped_environment(self) -> None:
         self.owner(f"{dead_pid()} {OLD}")
         self.assert_freed()
@@ -168,7 +171,8 @@ class OwnerSlotTests(unittest.TestCase):
         script = (f". bin/factory\nMAIN_CHECKOUT='{self.top}'\n"
                   "assert_target_ready() { :; }; claude_version_ok() { echo ok; }\n"
                   "nav_arm_resolve() { { cat \"$RUN/owner\" \"$RUN/status\"; echo \"$$\"; "
-                  f"TZ=UTC LC_ALL=C ps -o lstart= -p $$; }} > '{seen}'; exit 0; }}\n"
+                  "TZ=UTC LC_ALL=C ps -o lstart= -p $$; "
+                  f"flock -n \"$RUN/lease\" true && echo free || echo held; }} > '{seen}'; exit 0; }}\n"
                   f"cmd_run '{ticket}'")
         base = {k: v for k, v in os.environ.items()
                 if k not in INHERITED and k not in ("FACTORY_FROZEN", "FACTORY_NAV_ARM")}
@@ -178,10 +182,11 @@ class OwnerSlotTests(unittest.TestCase):
                                 stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
         _, err = proc.communicate()
         self.assertTrue(seen.exists(), err)
-        owner, status, pid, start = seen.read_text().splitlines()
+        owner, status, pid, start, lease = seen.read_text().splitlines()
         self.assertEqual(int(pid), proc.pid)
         self.assertEqual(owner, f"{pid} {start.rstrip()}")
         self.assertEqual(status, "running")
+        self.assertEqual(lease, "held")
 
     def test_dead_group_leader_holds_while_a_member_lives(self) -> None:
         # The leader exits and is reaped; the sleep it left keeps the leader's pid as its process group id.
@@ -213,6 +218,45 @@ class OwnerSlotTests(unittest.TestCase):
         self.owner(f"{sup.pid} {OLD}")
         self.assert_held()
         os.killpg(call, signal.SIGKILL)
+        wait_until(lambda: not self.holds())
+        self.assertEqual((self.run_dir / "status").read_text(), "stopped-environment\n")
+        self.assertEqual(len(self.alerts.read_text().splitlines()), 1)
+
+
+class LeaseSlotTests(SlotCase):
+    """A run dir with a `lease` holds its slot exactly while some process holds an flock on it, whatever `owner` says."""
+
+    def setUp(self) -> None:
+        super().setUp()
+        (self.run_dir / "lease").touch()
+
+    def hold(self, script: str) -> int:
+        # A shell in a session of its own takes the lease on fd 9, then runs script, which touches $2 once it is ready.
+        ready = self.top / "ready"
+        p = subprocess.Popen(["bash", "-c", f'exec 9>> "$1" && flock -n 9 && {script}', "_",
+                              str(self.run_dir / "lease"), str(ready)], start_new_session=True)
+        self.addCleanup(lambda: subprocess.run(["pkill", "-KILL", "-g", str(p.pid)], check=False))
+        self.addCleanup(p.wait)
+        wait_until(ready.exists)
+        return p.pid
+
+    def test_no_holder_frees_the_slot_once_though_the_owner_pid_lives(self) -> None:
+        self.owner(f"{os.getpid()} {lstart(os.getpid())}")
+        self.assert_freed()
+        self.assertFalse(self.holds())
+        self.assertEqual(len(self.alerts.read_text().splitlines()), 1)
+
+    def test_live_holder_holds_the_slot_whatever_owner_says(self) -> None:
+        self.owner(f"{dead_pid()} {OLD}")
+        self.hold('touch "$2"; exec sleep 60')
+        self.assert_held()
+
+    def test_child_that_outlives_its_supervisor_holds_the_slot_until_it_exits(self) -> None:
+        # The supervisor exits and is reaped; the sleep it started inherited fd 9 and keeps the lease.
+        self.owner(f"{dead_pid()} {OLD}")
+        group = self.hold('sleep 60 & touch "$2"; exit 0')
+        self.assert_held()
+        os.killpg(group, signal.SIGKILL)
         wait_until(lambda: not self.holds())
         self.assertEqual((self.run_dir / "status").read_text(), "stopped-environment\n")
         self.assertEqual(len(self.alerts.read_text().splitlines()), 1)

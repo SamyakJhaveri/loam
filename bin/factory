@@ -786,6 +786,7 @@ LOG="${LOG:-/dev/null}"; LEDGER=""; DAILY=""; DECISIONS=""; WORKTREE=""; BRANCH=
 # separate from REVIEW_BLOCKED so a Claude-reviewer block never consumes the Codex review's one block.
 WORKER_KIND=claude; CODEX_REVIEW=no; CODEX_REVIEW_BLOCKED=0
 CODEX_PATH="$HOME/.local/bin"   # Codex is not on the non-interactive PATH (#41); every Codex call prepends this
+HAVE_FLOCK=$(command -v flock 2> /dev/null)   # util-linux flock(1); a Mac has none, and runs keep the owner line's rules (#425)
 
 now()   { date -u +%Y-%m-%dT%H:%M:%SZ; }
 today() { date -u +%Y-%m-%d; }
@@ -895,16 +896,17 @@ exit_words() { # status -> "<level> <words>"
 # The host's healthchecks check: a beat at launch, then every 5 minutes while this run's process lives, so a
 # killed run or host goes red. The loop's TERM trap runs only after an in-flight beat returns (the sleep is
 # waited on, so it does not delay the trap), and heartbeat_stop waits for it, so no beat lands after the pause.
+# The trap ends the sleep too, which would otherwise hold the run's lease for up to 300 s after finish.
 heartbeat_start() {
   alert --ping beat >> "$LOG" 2>&1 || log "healthchecks beat failed; see bin/alert's line above"
-  ( trap 'exit 0' TERM
+  ( trap 'kill $! 2> /dev/null; exit 0' TERM
     while sleep 300 & wait $!; kill -0 "$$"; do alert --ping beat; done ) < /dev/null > /dev/null 2>&1 &
   HEARTBEAT=$!
 }
 
 # Another live run on this host, Loam's or another target's; a hard-killed run holds its slot until holds_slot
-# finds its owner gone and alerts. holds_slot is the whole test: a run beats only after cmd_run writes its owner and
-# `running` (exec_frozen keeps the pid), so a run that has beaten holds its slot, and one that has not beats later.
+# finds no process of it left and alerts. holds_slot is the whole test: a run beats only after cmd_run takes its lease
+# and writes `running` (exec_frozen keeps the fd), so a run that has beaten holds its slot, and one that has not beats later.
 other_live_run() {
   local d
   for d in "$RUNS_BASE"/*/*/ "$RUNS_BASE"/*/*/*/; do
@@ -1246,7 +1248,12 @@ run_project() { # <run dir>
   fi
 }
 
-# MAX_PARALLEL counts the other tickets already holding a slot: a run is live while its
+# MAX_PARALLEL counts the other tickets already holding a slot: a run is live while its status reads running or
+# waiting-limit and some process holds the flock lease on its `lease` (cmd_run; every child inherits the fd). Getting
+# the lock means no process of the run is left: still holding it, the caller re-reads the status, writes
+# stopped-environment if it still reads running or waiting-limit, and only that caller alerts; a relaunch waits on
+# the same lease, so it never interleaves with the reap. A run dir with no `lease`, or a host with no flock(1) (a Mac),
+# keeps the rules below (#381): a run is live while its
 # status reads running or waiting-limit and its `owner` line (pid and ps start time, written by
 # cmd_run) names a live process (owner_gone: 300 s start-time tolerance, a failed ps holds, a live
 # member of the pid's process group holds), or while it has written `launched` and no status yet
@@ -1261,10 +1268,25 @@ run_project() { # <run dir>
 # outlives a SIGKILLed supervisor, reparented to init, and keeps writing the worktree until CALL_TIMEOUT_SEC. It lives
 # while its group has a member that is not a zombie or, on Linux, a process carries its FACTORY_CALL_TAG.
 holds_slot() { # <run dir>
-  local st o t c pid re='^[0-9]+ [A-Z][a-z]{2} [A-Z][a-z]{2} [ 0-9][0-9] [0-9]{2}:[0-9]{2}:[0-9]{2} [0-9]{4}$'
+  local st o t c pid fd re='^[0-9]+ [A-Z][a-z]{2} [A-Z][a-z]{2} [ 0-9][0-9] [0-9]{2}:[0-9]{2}:[0-9]{2} [0-9]{4}$'
   if [ -f "$1/status" ]; then
     st=$(cat "$1/status")
     [ "$st" = running ] || [ "$st" = waiting-limit ] || return 1
+    # Read-only, so a run dir with no lease never gets one here.
+    if [ -n "$HAVE_FLOCK" ] && [ -f "$1/lease" ] && exec {fd}< "$1/lease"; then
+      flock -n "$fd" || { exec {fd}>&-; return 0; }
+      st=$(cat "$1/status" 2> /dev/null)
+      [ "$st" = running ] || [ "$st" = waiting-limit ] && printf 'stopped-environment\n' > "$1/status"
+      exec {fd}>&-   # before the alert, whose children would otherwise inherit this run's lease
+      [ "$st" = running ] || [ "$st" = waiting-limit ] || return 1
+      log "stopped-environment: ${1%/} was $st, but no process of the run holds its lease"
+      alert --level fail --source factory --project "$(run_project "$1")" \
+        --run "issue $(basename "$(dirname "$1")")" \
+        "issue $(basename "$(dirname "$1")") stopped on a machine or tool problem: no process of the run is left \
+(its supervisor and every child exited) while it read $st; ${1%/} is now stopped-environment and its slot is free" \
+        >> "$LOG" 2>&1 || log "the alert for ${1%/} failed; see bin/alert's line above"
+      return 1
+    fi
     o=$(cat "$1/owner" 2> /dev/null) || return 0
     t=${o%"${o##*[![:space:]]}"}   # a line written on macOS before #448 ends in lstart's padding
     [[ "$t" =~ $re ]] || return 0
@@ -2269,8 +2291,17 @@ cmd_run() {
   # One line per launch, before any exit and not again from the frozen re-exec: status --criteria resets the
   # round on it, so a relaunch's early exit is not charged to the round a killed launch left open.
   [ "${FACTORY_FROZEN:-}" = "$RUN/frozen/factory" ] || log "===== launch ====="
-  # The owner line holds_slot reads, written with the status under owner.lock before the long preparation, so a
-  # relaunch holds its slot at once, and after the launch line, so a failure here is charged to this launch.
+  # The slot is the flock lease on $RUN/lease (#425), taken after the launch line, so a failure here is charged to this
+  # launch, and before the long preparation, so a relaunch holds its slot at once. The fd is no close-on-exec, so the
+  # frozen re-exec and every child inherit it: the run holds the lease until its last process exits. The frozen pass
+  # already holds it and must not lock a second open of the file, which would wait on its own lease. Where flock(1)
+  # is missing (a Mac) no lease is written and holds_slot judges the owner line below.
+  if [ -n "$HAVE_FLOCK" ] && [ "${FACTORY_FROZEN:-}" != "$RUN/frozen/factory" ]; then
+    exec {SLOT_FD}>> "$RUN/lease" && flock -w 65 "$SLOT_FD" \
+      || finish stopped-environment "could not take $RUN/lease in 65 s"
+  fi
+  # The owner line, for status and the alert text, and for holds_slot on a host with no flock or a run dir with no
+  # lease, written with the status under owner.lock, which a reaper judging the owner line takes too.
   # exec keeps the pid, so it still names the loop that runs finish; the frozen pass rewrites the same line.
   # Through a temp file, so a kill mid-write never leaves an empty owner (held for good).
   local start

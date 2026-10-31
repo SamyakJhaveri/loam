@@ -92,7 +92,7 @@ When no cached copy matches, the run stops `stopped-environment` and names the c
 | `stopped` | `FACTORY_STOP` present before a call | no |
 
 Exit code, `status`, and the final log line are decided together and cannot disagree.
-The one `status` written outside its run is `stopped-environment`, by `holds_slot` for a run whose supervisor is gone (Parallel runs); that run has no exit code or final log line.
+The one `status` written outside its run is `stopped-environment`, by `holds_slot` for a run with no process left (Parallel runs); that run has no exit code or final log line.
 These read loop-control files to decide exit, never safety; safety stays with deny rules, the sandbox, git, and CI.
 A usage-limit reply (`hit your session limit`, `reached your Fable limit`) is neither an exit nor a round.
 Usage limits are per account, so the supervisor first switches to the next stored account through `bin/claude-account` (round robin in name order, so a third account is reached too) and retries the same call at once.
@@ -205,11 +205,17 @@ Each run has its own worktree, branch, and run directory, so unblocked tickets m
 Two tickets may run together only when neither names a path the other's Goal creates or rewrites; the stage-2 grader pass checks this over a breakdown, and native blocking edges hold the rest apart.
 The daily ledger is written under a lock.
 `bin/factory next` launches up to `MAX_PARALLEL` runs (default 1; raise it after two clean single runs, as `status` reports them).
-A run holds a slot while its status reads `running` or `waiting-limit` and its supervisor lives.
-Each launch writes `owner` in its run directory right after its launch log line, before it prepares the worktree and freezes: one line, the supervisor's pid, a space, then `TZ=UTC LC_ALL=C ps -o lstart= -p <pid>` with trailing spaces trimmed (macOS pads it), through a temp file and `mv`, with the status `running`, under `owner.lock`.
-So a relaunch holds its slot from the start, and one killed during preparation is reaped like any dead owner.
+A run holds a slot while its status reads `running` or `waiting-limit` and some process of the run holds an flock lease on `lease` in its run directory (#425).
+Each launch opens `lease` and takes the lock (`flock -w 65`) right after its launch log line, before it prepares the worktree and freezes, or exits `stopped-environment`; so a relaunch holds its slot from the start.
+The descriptor is not close-on-exec, so the frozen re-exec keeps it (that pass takes no second lock, which would wait on its own lease) and every child inherits it: the supervisor, the heartbeat loop, and a model call that outlives a SIGKILLed supervisor all hold the lease, and the kernel drops it when the last of them exits.
+A zombie holds no files, and a reused pid or a stepped clock does not touch the lock, so none of them needs a rule.
+The heartbeat loop ends its `sleep` when it is stopped, so a finished run frees its lease at once; after a SIGKILL the loop holds it until its next beat finds the supervisor gone, at most 300 s.
+`holds_slot` opens `lease` read-only and tries `flock -n`: when another process holds it, the slot is held; when it gets the lock, no process of the run is left, so, still holding it, it re-reads the status and, if it still reads `running` or `waiting-limit`, writes `stopped-environment`, then closes the descriptor and sends one `fail` alert to the run's own project, read from where its directory sits under the runs root (Loam's directly, another target's under `<owner>__<repo>/`), since a finishing run looks at every target's runs before it pauses the host check.
+A relaunch waits on the same lease, so a reap and a relaunch never interleave, and only the caller that wrote `stopped-environment` alerts.
+Each launch still writes `owner`, one line: the supervisor's pid, a space, then `TZ=UTC LC_ALL=C ps -o lstart= -p <pid>` with trailing spaces trimmed (macOS pads it), through a temp file and `mv`, with the status `running`, under `owner.lock`; `status` and the alert text read it.
+A run directory with no `lease` (started before #425), and every run on a host with no `flock(1)` (macOS; Samyak's ruling of 30 Oct 2026 keeps this path rather than require util-linux), is judged by `owner` instead, as follows.
 The frozen re-exec is an `exec`, which keeps the pid and its start time, so the line still names the loop that runs `finish`.
-`holds_slot` frees the slot when that pid is gone, a zombie, or alive with a start time more than 300 s from the stored one (a reused pid; `lstart` moves when the wall clock is stepped, so a small gap is the same process): the first caller writes `stopped-environment` to the run's `status` and sends one `fail` alert to the run's own project, read from where its directory sits under the runs root (Loam's directly, another target's under `<owner>__<repo>/`), since a finishing run looks at every target's runs before it pauses the host check.
+`holds_slot` frees the slot when that pid is gone, a zombie, or alive with a start time more than 300 s from the stored one (a reused pid; `lstart` moves when the wall clock is stepped, so a small gap is the same process), writing `stopped-environment` and alerting as above.
 It does so under `owner.lock` (a lock older than 60 s is removed first), and only while `owner` still reads the line it judged and the status still reads `running` or `waiting-limit`, so a relaunch that rewrote `owner` keeps its slot.
 A missing or malformed `owner` holds the slot, as does a run that started before `owner` existed.
 A `ps` or `date` that fails or prints nothing cannot tell, so it holds the slot; a failed `kill -0` still means the pid is gone.
