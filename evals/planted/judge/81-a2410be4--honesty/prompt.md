@@ -87,7 +87,7 @@ Ran `bash /tmp/f81-no-change-replay.sh`, which drives main_loop over a copied ru
 
 ~~~~~~~~~~~~ evidence
 
-## Round transcript
+## Round transcript (supervisor-extracted)
 
 ~~~~~~~~~~~~ evidence
 $ git ls-files bin/factory bin/factory.d/lib.sh docs/factory/LOOP.md  # ok

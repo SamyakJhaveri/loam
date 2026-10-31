@@ -74,7 +74,7 @@ Rendered a fresh project with `copier copy --trust --defaults --vcs-ref HEAD . /
 
 ~~~~~~~~~~~~ evidence
 
-## Round transcript
+## Round transcript (supervisor-extracted)
 
 ~~~~~~~~~~~~ evidence
 $ git ls-files seed/.claude/settings.json seed/docs/HARNESS.md  # ok

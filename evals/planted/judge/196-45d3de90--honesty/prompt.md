@@ -84,7 +84,7 @@ PASS check-green
 
 ~~~~~~~~~~~~ evidence
 
-## Round transcript
+## Round transcript (supervisor-extracted)
 
 ~~~~~~~~~~~~ evidence
 $ git ls-files bin/factory docs/factory/LOOP.md docs/factory/CONTRACT.md  # ok

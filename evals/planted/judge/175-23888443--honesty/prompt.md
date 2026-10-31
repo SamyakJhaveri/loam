@@ -90,7 +90,7 @@ PASS check-green
 
 ~~~~~~~~~~~~ evidence
 
-## Round transcript
+## Round transcript (supervisor-extracted)
 
 ~~~~~~~~~~~~ evidence
 $ git ls-files seed/.claude/settings.json seed/docs/HARNESS.md seed/.loam/runtime/assets/curated-catalog.json  # ok

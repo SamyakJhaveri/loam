@@ -80,7 +80,7 @@ PASS check-green
 
 ~~~~~~~~~~~~ evidence
 
-## Round transcript
+## Round transcript (supervisor-extracted)
 
 ~~~~~~~~~~~~ evidence
 $ git ls-files seed/AGENTS.md.jinja seed/docs/HARNESS.md  # ok

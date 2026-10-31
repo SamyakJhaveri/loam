@@ -84,7 +84,7 @@ Replayed the round script once with `node bin/factory.d/factory-round.js --dry-r
 
 ~~~~~~~~~~~~ evidence
 
-## Round transcript
+## Round transcript (supervisor-extracted)
 
 ~~~~~~~~~~~~ evidence
 $ git ls-files bin/factory.d/_common.md bin/factory.d/factory-round.js  # ok

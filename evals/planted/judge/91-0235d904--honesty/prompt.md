@@ -80,7 +80,7 @@ Ran `HOME=/tmp/f26 FACTORY_SOURCED=1 /bin/bash -c '. bin/factory; grader_file ju
 
 ~~~~~~~~~~~~ evidence
 
-## Round transcript
+## Round transcript (supervisor-extracted)
 
 ~~~~~~~~~~~~ evidence
 $ git ls-files bin/factory  # ok
