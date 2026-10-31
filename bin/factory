@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# bin/factory - factory tooling. Subcommands: lint, eval, eval-freeze, run, status, stop, next, graders-check.
+# bin/factory - factory tooling. Subcommands: lint, eval, eval-freeze, run, status, stop, merge, next, graders-check.
 #   bin/factory lint <file|issue>   statically checks a ticket body against docs/factory/CONTRACT.md.
 #   bin/factory eval <grader>       replays the frozen evals/ cases through the production grader call.
 #   bin/factory eval-freeze <run-dir>...  freezes each run's last round, when both graders passed it, into evals/clean/.
@@ -7,9 +7,10 @@
 #   bin/factory status              run states, spend, denials, worktrees, PRs, preconditions.
 #   bin/factory status --criteria   the ARCHITECTURE.md trust criteria, measured from the run dirs; reads files only.
 #   bin/factory stop <issue>        writes FACTORY_STOP into the run dir; the run halts before its next call.
+#   bin/factory merge <pr> <sha>    merges the PR only when sha is its head and every check reported there passed.
 #   bin/factory next [--install]    the F9 frontier timer's step: launch the next unblocked ready-for-agent ticket.
 #   bin/factory graders-check       fails when judge.md or reviewer.md drifts from GRADER_MODEL and GRADER_EFFORT.
-#   -C <repo>, before the subcommand or right after it, points lint, run, status, stop, and next at another repository (F8).
+#   -C <repo>, before the subcommand or right after it, points lint, run, status, stop, merge, and next at another repository (F8).
 # Lint never executes a check; it reads the body and shells out only to `bash -n`, `gh`, and python3 for the hidden-text rule.
 # Run and stop, when the operator runs them, add a line to the run dir's owner-events.jsonl (status --criteria); lint of
 # an issue adds one to <runs>/<issue>/owner-events.jsonl, which the issue's next launch moves into its run dir.
@@ -2386,6 +2387,39 @@ cmd_stop() { # <issue|stem>
   [ "$n" -gt 0 ] || { echo "factory stop: no run directory under $RUNS_ROOT/$1" >&2; return 1; }
 }
 
+# The manager's merge (LOOP.md, Status and the manager): <pr> merges only when <sha> is its head and every check
+# reported at that head passed, read in one gh call; gh pr merge then gets --match-head-commit <sha>, so GitHub
+# itself refuses a head that moved after the read. A CheckRun passes COMPLETED with SUCCESS or NEUTRAL, a
+# StatusContext with SUCCESS; any other value refuses. A PR with no reported check is refused, not waited on.
+# <pr> is a number of at most nine digits, since gh lets a PR URL override -R and reads a number it cannot parse as a branch; <sha> is a full lowercase sha, since gh drops an empty
+# --match-head-commit and so would merge with no head guard.
+cmd_merge() { # <pr> <sha>
+  local pr="$1" sha="$2" repo view head bad
+  [[ $pr =~ ^[1-9][0-9]{0,8}$ ]] || { echo "merge: refused: $pr is not a PR number" >&2; return 1; }
+  [[ $sha =~ ^[0-9a-f]{40}$ ]] || { echo "merge: refused: $sha is not a full lowercase commit sha" >&2; return 1; }
+  repo=$(target_repo)
+  view=$(net gh pr view "$pr" -R "$repo" --json headRefOid,statusCheckRollup) \
+    || { echo "merge: refused: gh pr view $pr failed" >&2; return 1; }
+  head=$(jq -r '.headRefOid // ""' <<<"$view" 2> /dev/null) \
+    || { echo "merge: refused: gh pr view $pr printed no JSON" >&2; return 1; }
+  [ "$head" = "$sha" ] || { echo "merge: refused: head of #$pr is ${head:-unknown}, not $sha" >&2; return 1; }
+  case "$(jq -r '.statusCheckRollup // [] | if type != "array" then "bad" elif length == 0 then "none" else "ok" end' \
+           <<<"$view" 2> /dev/null)" in
+    ok) ;;
+    none) echo "merge: refused: no check reported at $sha" >&2; return 1 ;;
+    *) echo "merge: refused: unreadable statusCheckRollup at $sha" >&2; return 1 ;;
+  esac
+  bad=$(jq -r '[.statusCheckRollup[]
+    | if .__typename == "CheckRun" then
+        select(.status != "COMPLETED" or (.conclusion != "SUCCESS" and .conclusion != "NEUTRAL"))
+        | "\(.name) \(.status)/\(.conclusion)"
+      elif .__typename == "StatusContext" then select(.state != "SUCCESS") | "\(.context) \(.state)"
+      else "\(.__typename) entry" end] | join(", ")' <<<"$view") \
+    || { echo "merge: refused: unreadable statusCheckRollup at $sha" >&2; return 1; }
+  [ -z "$bad" ] || { echo "merge: refused: not passed at $sha: $bad" >&2; return 1; }
+  net gh pr merge "$pr" -R "$repo" --merge --match-head-commit "$sha"
+}
+
 run_dir_of() { # <issue> <body> -> the run dir cmd_run names for this body
   printf '%s/%s/%s' "$RUNS_ROOT" "$1" "$(printf '%s' "$2" | sha256_of | cut -c1-8)"
 }
@@ -2867,9 +2901,9 @@ cmd_graders_check() { # [agents-dir]
   return "$rc"
 }
 
-usage() { # [cmd...] - one line per named command, all eight when none is named
+usage() { # [cmd...] - one line per named command, all nine when none is named
   local c
-  for c in ${@:-lint eval eval-freeze run status stop next graders-check}; do
+  for c in ${@:-lint eval eval-freeze run status stop merge next graders-check}; do
     case "$c" in
       lint)   echo "usage: bin/factory [-C <repo>] lint <file|issue>" ;;
       eval)   echo "usage: bin/factory eval <grader> [--evals-dir D] [--graders-dir D] [--model M]" ;;
@@ -2877,9 +2911,10 @@ usage() { # [cmd...] - one line per named command, all eight when none is named
       run)    echo "usage: bin/factory [-C <repo>] run <issue|ticket-file>" ;;
       status) echo "usage: bin/factory [-C <repo>] status [--criteria]" ;;
       stop)   echo "usage: bin/factory [-C <repo>] stop <issue|ticket-stem>" ;;
+      merge)  echo "usage: bin/factory [-C <repo>] merge <pr> <sha>" ;;
       next)   echo "usage: bin/factory [-C <repo>] next [--dry-run|--install]" ;;
       graders-check) echo "usage: bin/factory graders-check [--agents-dir D]" ;;
-      *)      echo "usage: bin/factory [-C <repo>] <lint|eval|eval-freeze|run|status|stop|next|graders-check>" ;;
+      *)      echo "usage: bin/factory [-C <repo>] <lint|eval|eval-freeze|run|status|stop|merge|next|graders-check>" ;;
     esac
   done >&2
   exit 2
@@ -2927,6 +2962,8 @@ case "$CMD" in
           esac ;;
   stop)   [ $# -eq 1 ] || usage stop
           cmd_stop "$1" ;;
+  merge)  [ $# -eq 2 ] || usage merge
+          cmd_merge "$1" "$2" ;;
   next)   cmd_next "$@" ;;
   graders-check)
         case "$#/${1:-}" in
