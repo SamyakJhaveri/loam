@@ -1651,33 +1651,74 @@ codex_result() { # jsonl exit_code [duration_ms] -> result JSON on stdout; durat
     || printf '{"subtype":"no-result","is_error":true,"num_turns":0,"duration_ms":0,"total_cost_usd":null,"usage":null,"result":"codex result parse failed"}\n'
 }
 
-# A model call (the worker, a grader, the Codex review) runs in a session of its own (perl's setsid, since a Mac has
-# no setsid(1)), so every process it starts shares its process group, whose id is the call's pid. In that session GNU
-# timeout needs no --foreground, and at CALL_TIMEOUT_SEC signals the whole group, KILL 5 s after TERM: --foreground
-# signalled the call alone, so a child it started kept editing the worktree while the supervisor checked and graded
-# it. Claude Code starts each Bash tool shell in a new session, out of that group, but the shell keeps the call's
-# environment, so the call also carries FACTORY_CALL_TAG, unique to it, which call_tagged finds. The call keeps the
-# caller's stdin (<&0, since a background command would get /dev/null), stdout and stderr. In its own session the call
-# no longer gets the supervisor's Ctrl-C, TERM or HUP, so until call_end the supervisor traps them and ends the call's
+# A model call (the worker, a grader, the Codex review) runs under a wrapper, a perl process (a Mac has no setsid(1))
+# that starts a session of its own, so its process group, whose id is the wrapper's pid, CALL_PID, reaches none of the
+# supervisor's processes. The wrapper forks the call into a child group (GNU timeout makes its own group anyway, and
+# at CALL_TIMEOUT_SEC signals it, KILL 5 s after TERM). On Linux the wrapper is a child subreaper (prctl PR_SET_CHILD_SUBREAPER, 36, by syscall number: 157 on x86_64, 167 on aarch64), so the
+# kernel makes it the parent of every process the call orphans, whatever its session or environment: Claude Code
+# starts each Bash tool shell in a new session, and a tool child can clear its environment and call setsid too
+# (#434). When the call exits, or the wrapper gets TERM, INT or HUP, it sends the call's group and every child it has
+# TERM, then KILL after a 5 s grace, collects each, and exits with the call's own status once none is left, or 5 s
+# after KILL with one still alive; it writes what it signalled to call.reap for call_end. The wrapper's group and the
+# call's FACTORY_CALL_TAG, unique to the call and kept by every process it starts but one that clears its environment,
+# stay what call_signal ends and call_live reads, a second line for a host with no subreaper (a Mac) or a dead wrapper. The call keeps the caller's
+# stdin (<&0, since a background command would get /dev/null), stdout and stderr. In its own session the call no
+# longer gets the supervisor's Ctrl-C, TERM or HUP, so until call_end the supervisor traps them and ends the call's
 # processes before it exits and its EXIT trap removes the worktree.
 call_start() { # dir cmd... -> CALL_PID, CALL_TAG
   local dir="$1"; shift
   CALL_TAG="$$.$SECONDS.$RANDOM"; CALL_PID=; CALL_STUCK=
+  rm -f "$RUN/call.reap"
   trap 'call_abort INT 130' INT; trap 'call_abort TERM 143' TERM; trap 'call_abort HUP 129' HUP
-  ( cd "$dir" && export FACTORY_CALL_TAG="$CALL_TAG" \
-      && exec perl -MPOSIX -e 'POSIX::setsid() == $$ or die "setsid: $!\n"; exec { $ARGV[0] } @ARGV or die "exec $ARGV[0]: $!\n"' "$@" ) <&0 &
+  ( cd "$dir" && export FACTORY_CALL_TAG="$CALL_TAG" && exec perl -MPOSIX -MTime::HiRes=time,sleep -e '
+      POSIX::setsid() == $$ or die "setsid: $!\n";
+      if ($^O eq "linux") {
+        $nr = {x86_64 => 157, aarch64 => 167}->{(POSIX::uname())[4]} or die "no prctl number for this CPU\n";
+        syscall($nr, 36, 1, 0, 0, 0) == 0 or die "prctl PR_SET_CHILD_SUBREAPER: $!\n" }
+      $rep = shift; defined($kid = fork) or die "fork: $!\n";
+      unless ($kid) { setpgid(0, 0); exec { $ARGV[0] } @ARGV; print STDERR "exec $ARGV[0]: $!\n"; POSIX::_exit(127) }
+      setpgid($kid, $kid);
+      $SIG{$_} = sub { $sig = 1 } for qw(TERM INT HUP);
+      sub kids { $^O eq "linux" or return; my @k;
+        for (glob "/proc/[0-9]*/stat") { open(my $h, "<", $_) or next; local $/; my $s = <$h>; my ($pid) = m{(\d+)/stat$};
+          push @k, $pid if defined $s && substr($s, rindex($s, ")") + 2) =~ /^\S+ (\d+)/ && $1 == $$ }
+        @k }
+      for (;;) {
+        while (($p = waitpid(-1, WNOHANG)) > 0) { $st = $? if $p == $kid }
+        if (defined $st || $sig) {
+          $end //= time + 5;
+          @p = grep { kill 0, $_ } -$kid, kids();
+          last unless @p;
+          if (time < $end) {
+            @n = grep { !$seen{$_}++ } @p;
+            if (@n) { kill "TERM", @n; kill "CONT", @n; push @{$r{TERM}}, @n } }
+          elsif (time < $end + 5) { kill "KILL", @p; $r{KILL} ||= [@p] }
+          else { $r{STUCK} = [@p]; last } }
+        sleep 0.1 }
+      if (%r && open my $h, ">", $rep) { print $h "$_ @{$r{$_}}\n" for grep { $r{$_} } qw(TERM KILL STUCK) }
+      exit(!defined $st ? 137 : $st & 127 ? 128 + ($st & 127) : $st >> 8)' "$RUN/call.reap" "$@" ) <&0 &
   CALL_PID=$!
   printf '%s %s\n' "$CALL_PID" "$CALL_TAG" > "$RUN/call.tmp" && mv -f "$RUN/call.tmp" "$RUN/call" \
     || log "could not write $RUN/call; a SIGKILL now would free the slot while the call runs"
 }
-# However the call ends, by exit or by its limit, whatever it left behind, in its group or carrying its tag, gets
-# TERM, then KILL after a 5 s grace, and must be gone 5 s later, or the run stops: a child left writing the tree would
-# race the checks and the graders (LOOP.md, Exits). The leader is reaped first, since a zombie leader keeps its group
-# alive. A survivor sets CALL_STUCK, and the caller stops the run once its ledger row for the call is written.
+# However the call ends, by exit or by its limit, whatever it left behind, reparented to the wrapper, in its group or
+# carrying its tag, gets TERM, then KILL after a 5 s grace, and must be gone 5 s later, or the run stops: a child left
+# writing the tree would race the checks and the graders (LOOP.md, Exits). The wrapper ends its children first and
+# call_end logs what it signalled; then call_reap ends whatever is left in its group or carries its tag. The leader is
+# reaped first, since a zombie leader keeps its group alive. A survivor sets CALL_STUCK, and the caller stops the run
+# once its ledger row for the call is written.
 call_end() { # role -> the call's own exit status
-  local rc=0
+  local rc=0 s p
   wait "$CALL_PID" || rc=$?
-  call_reap "$1" && rm -f "$RUN/call"
+  [ -f "$RUN/call.reap" ] && while read -r s p; do
+    case $s in
+      TERM) log "the $1 call left processes behind ($p, reparented to its wrapper or in its group); sending TERM" ;;
+      KILL) log "the $1 call's processes outlived TERM by 5 s; sending KILL to $p" ;;
+      STUCK) CALL_STUCK="the $1 call's processes ($p) are still alive 5 s after KILL"; log "$CALL_STUCK" ;;
+    esac
+  done < "$RUN/call.reap"
+  rm -f "$RUN/call.reap"
+  call_reap "$1" && [ -z "$CALL_STUCK" ] && rm -f "$RUN/call"
   trap - INT TERM HUP
   return "$rc"
 }
@@ -1693,15 +1734,17 @@ call_reap() { # role
   log "$CALL_STUCK"
   return 1
 }
-# The supervisor got a signal mid-call: it sends the call TERM, and KILL 5 s later if the leader is still up, reaps the
-# leader, ends what is left as call_end would, then exits as the signal would have. A second Ctrl-C is ignored until
-# then, since it would kill the supervisor and let the EXIT trap remove the worktree under a child not yet killed.
+# The supervisor got a signal mid-call: it sends the call TERM, which starts the wrapper's own TERM and KILL 5 s later,
+# sends KILL itself 10 s later if the wrapper is still up (sooner could kill the wrapper during its grace and leave its
+# children to init), reaps the wrapper, ends what is left as call_end would, then exits as the signal would have. A
+# second Ctrl-C is ignored until then, since it would kill the supervisor and let the EXIT trap remove the worktree
+# under a child not yet killed.
 call_abort() { # signal status
   local killer
   trap '' INT TERM HUP
   log "the supervisor got $1 during a model call; ending the call's processes"
   call_signal TERM; call_signal CONT
-  ( sleep 5; call_signal KILL ) & killer=$!
+  ( sleep 10; call_signal KILL ) & killer=$!
   wait "$CALL_PID" 2> /dev/null
   kill -KILL "$killer" 2> /dev/null   # it inherits the ignored TERM
   call_gone 50 || { call_signal KILL; call_gone 50; } && rm -f "$RUN/call"

@@ -19,15 +19,18 @@ import time
 import unittest
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
-# A writer in a session of its own is found only by the FACTORY_CALL_TAG sweep, which reads /proc (none on a Mac).
-NEEDS_PROC = unittest.skipUnless(os.path.exists("/proc/self/environ"), "the FACTORY_CALL_TAG sweep reads /proc")
+# A writer in a session of its own is found only by the FACTORY_CALL_TAG sweep, which reads /proc (none on a Mac), and
+# one that also clears its environment only by the call's subreaper wrapper, which finds its children in /proc.
+NEEDS_PROC = unittest.skipUnless(os.path.exists("/proc/self/environ"), "the tag sweep and the wrapper read /proc")
 INHERITED = ("FACTORY_ROOT", "FACTORY_GH", "LOAM_FACTORY_TOOLCHAIN", "LOAM_FACTORY_COPIER", "REPO", "RUN", "LOG")
 
 # FAKE_IGNORE_TERM makes the writer ignore TERM, so only KILL stops it. FAKE_OWN_SESSION starts it in a session of its
 # own, out of the call's group, as Claude Code starts each Bash tool shell, so only the FACTORY_CALL_TAG sweep finds it.
-# FAKE_HANG keeps the call running after the writer starts.
+# FAKE_ENV_CLEARED starts it in a session of its own with a cleared environment, so neither finds it and only the
+# call's subreaper wrapper does (#434). FAKE_HANG keeps the call running after the writer starts.
 WRITER = """w="[ -z '${FAKE_IGNORE_TERM:-}' ] || trap '' TERM; while :; do echo x >> '$FAKE_DIR/mark'; sleep 0.2; done"
-if [ -n "${FAKE_OWN_SESSION:-}" ]; then perl -MPOSIX -e 'setsid; exec @ARGV' bash -c "$w" > /dev/null 2>&1 &
+if [ -n "${FAKE_ENV_CLEARED:-}" ]; then perl -MPOSIX -e 'setsid; exec @ARGV' env -i bash -c "$w" > /dev/null 2>&1 &
+elif [ -n "${FAKE_OWN_SESSION:-}" ]; then perl -MPOSIX -e 'setsid; exec @ARGV' bash -c "$w" > /dev/null 2>&1 &
 else ( eval "$w" ) > /dev/null 2>&1 &
 fi
 sleep 0.5
@@ -128,6 +131,37 @@ class CallGroupTests(unittest.TestCase):
         proc = self.run_call("worker_round 1", FAKE_OWN_SESSION="1")
         self.assert_no_survivor(proc)
         self.assertIn("left processes behind", (self.run_dir / "factory.log").read_text())
+
+    @NEEDS_PROC
+    def test_env_cleared_writer_is_killed(self) -> None:
+        # A tool child that calls setsid and clears its environment is in neither the call's group nor the tag sweep;
+        # the wrapper, a subreaper, becomes its parent once the call exits and ends it (#434).
+        for call in ("worker_round 1", 'call_json 1 judge judge "$RUN/prompt.md" "$RUN/frozen/judge.schema.json"'):
+            with self.subTest(call=call):
+                (self.top / "mark").unlink(missing_ok=True)
+                proc = self.run_call(call, FAKE_ENV_CLEARED="1")
+                self.assert_no_survivor(proc)
+                self.assertIn("left processes behind", (self.run_dir / "factory.log").read_text())
+
+    @NEEDS_PROC
+    def test_signalled_supervisor_ends_an_env_cleared_writer(self) -> None:
+        # The supervisor's TERM starts the wrapper's own TERM and KILL; the supervisor's KILL comes later, so it never
+        # kills the wrapper during its grace and leaves a writer that ignores TERM to init.
+        mark = self.top / "mark"
+        proc = subprocess.Popen(**self.call_cmd("worker_round 1", FAKE_ENV_CLEARED="1", FAKE_HANG="1",
+                                                FAKE_IGNORE_TERM="1"),
+                                stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, start_new_session=True)
+        deadline = time.time() + 20
+        while not mark.exists() and time.time() < deadline:
+            time.sleep(0.1)
+        time.sleep(0.5)
+        os.killpg(proc.pid, signal.SIGTERM)
+        self.assertEqual(proc.wait(timeout=30), 143)
+        before = mark.stat().st_size
+        time.sleep(1)
+        self.assertEqual(mark.stat().st_size, before, "the writer kept writing after the supervisor exited")
+        left = subprocess.run(["pgrep", "-f", str(self.top)], capture_output=True, text=True, check=False).stdout
+        self.assertEqual(left, "", "a process the call started outlived the supervisor")
 
     @NEEDS_PROC
     def test_signalled_supervisor_ends_the_call(self) -> None:
