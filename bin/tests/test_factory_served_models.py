@@ -33,7 +33,9 @@ class ServedModelsTests(unittest.TestCase):
     def record(self, result: object | None) -> dict:
         """The ledger line record writes for `result` (None: no result file, so the jq -n fallback)."""
         res = self.top / "result.json"
-        if result is not None:
+        if result is None:
+            res.unlink(missing_ok=True)
+        else:
             res.write_text(json.dumps(result))
         led = self.top / "ledger.jsonl"
         led.unlink(missing_ok=True)
@@ -47,7 +49,8 @@ class ServedModelsTests(unittest.TestCase):
         line = self.record({"type": "result", "total_cost_usd": 1, "modelUsage": usage})
         self.assertEqual(line["served_models"], ["claude-haiku-4-5", OPUS])
         self.assertEqual(self.record({"type": "result", "total_cost_usd": 1})["served_models"], [])
-        self.assertEqual(self.record(None)["served_models"], [])
+        line = self.record(None)
+        self.assertEqual((line["served_models"], line["cost_usd"], line["subtype"]), ([], 0, "unknown"))
         # A modelUsage that is not an object must not drop the line to the zeroed fallback.
         line = self.record({"type": "result", "total_cost_usd": 2, "modelUsage": "x"})
         self.assertEqual((line["served_models"], line["cost_usd"]), ([], 2))
