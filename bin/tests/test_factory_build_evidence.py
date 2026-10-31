@@ -71,8 +71,10 @@ class BuildEvidenceTests(unittest.TestCase):
         self.assertIn("diff --git a/x.txt b/x.txt", out)
         self.assertIn("-plain old\n+plain new\n", out)
         self.assertNotIn("[content diff capped at", out)
-        # Five fenced sections (ticket, checks, measure, decisions, diff), each opened and closed.
+        # Five fenced sections (ticket, checks, measure, decisions, diff), each opened and closed around its text.
         self.assertEqual(out.splitlines().count(FENCE), 10)
+        for text in ("TICKET-TEXT", "CHECKS-TEXT", "MEASURE-TEXT", "DECISIONS-TEXT"):
+            self.assertIn(f"\n{FENCE}\n{text}\n\n{FENCE}\n", out)
         self.assertIn(f"\n## Diff ({self.base[:8]}...HEAD)\n\n{FENCE}\n", out)
         self.assertTrue(out.endswith(f"\n{FENCE}\n"))
         self.assertEqual((self.run / "round-1.diff").read_text().count("diff --git"), 2)
