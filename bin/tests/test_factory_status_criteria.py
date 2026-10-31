@@ -404,8 +404,8 @@ class StatusCriteriaTests(unittest.TestCase):
         repo = pathlib.Path(self.tmp.name) / "repo"
 
         def git(*args: str) -> str:
-            return subprocess.run(["git", "-C", str(repo), "-c", "user.name=t", "-c", "user.email=t@t", *args],
-                                  capture_output=True, text=True, check=True).stdout.strip()
+            return subprocess.run(["git", "-C", str(repo), "-c", "user.name=t", "-c", "user.email=t@t", *args], capture_output=True, text=True,
+                                  check=True, env={**os.environ, "GIT_CONFIG_GLOBAL": os.devnull, "GIT_CONFIG_NOSYSTEM": "1"}).stdout.strip()
 
         def pr(n: int, *messages: str) -> str:
             """Merge factory/<n>, one commit per message, as PR #<n>; the sha of its first commit."""
@@ -436,6 +436,17 @@ class StatusCriteriaTests(unittest.TestCase):
         git("checkout", "-q", "main")
         git("merge", "-q", "--no-ff", "-m", "Merge pull request #4 from o/factory/4", "factory/4")
         git("commit", "-q", "--allow-empty", "-m", "fix\n\nCaused-by: #9")
+        # A merge from a branch under feature/factory/ is no factory PR, though its work is reverted.
+        git("checkout", "-q", "-b", "feature/factory/5", "main")
+        (repo / "six").write_text("six")
+        git("add", ".")
+        git("commit", "-q", "-m", "six")
+        git("checkout", "-q", "main")
+        git("merge", "-q", "--no-ff", "-m", "Merge pull request #5 from o/feature/factory/5", "feature/factory/5")
+        git("revert", "--no-edit", "-m", "1", "HEAD")
+        # A checkout on a feature branch still measures main: this Caused-by never merged.
+        git("checkout", "-q", "-b", "topic", "main")
+        git("commit", "-q", "--allow-empty", "-m", "fix\n\nCaused-by: #4")
         proc = subprocess.run(["python3", "-I", str(CRITERIA), str(self.runs), str(ROOT / "docs/factory/ARCHITECTURE.md"),
                                str(repo)], capture_output=True, text=True, check=False)
         self.assertEqual(proc.returncode, 0, proc.stderr)

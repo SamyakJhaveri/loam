@@ -5,9 +5,11 @@ Usage:
   criteria.py <runs-root> <ARCHITECTURE.md> <target>
 
 Reads one target's run directories, <runs-root>/<issue>/<sha8>/ with a `status` file (LOOP.md), and
-calls no model and no gh; its git call is a `git log` of the target's default branch, for the escaped defects
-line: merged factory PRs that a later commit reverts or names in a `Caused-by: #<pr>` line. Another target's runs sit one level deeper, under
-<runs-root>/<owner>__<repo>/, so they never count here. The criteria and their thresholds are read
+calls no model and no gh. Another target's runs sit one level deeper, under <runs-root>/<owner>__<repo>/, so
+they never count here. Its git calls are a `git log` of the target's default branch (origin/HEAD, else
+origin/main, else main; as of the last fetch) for the escaped defects line: merged factory PRs that a later
+commit reverts or names in a `Caused-by: #<pr>` line. Only merge-commit PRs count; a squash or rebase merge
+leaves no `Merge pull request` commit, so it is in neither number. The criteria and their thresholds are read
 from ARCHITECTURE.md, their one home; a line this file cannot measure prints `UNMEASURED: <why>`, and a
 lower bound within its threshold prints `INCONCLUSIVE`, since what it omits could pass the threshold. An estimate
 always prints `INCONCLUSIVE`, never PASS or FAIL.
@@ -45,9 +47,9 @@ REQUIRED = re.compile(r"\b(?:requires?|required|must|needs?|should|would)\b", re
 HYPOTHETICAL = re.compile(r"\b(?:if|unless|once)\b", re.I)
 CLAUSE = re.compile(r"[;,]|\b(?:but|because|and|so|while|although|since|which)\b", re.I)
 # A factory PR's merge commit, its PR number, and what a later commit says to name it as the cause of a defect.
-FACTORY_PR = re.compile(r"Merge pull request #(\d+) from \S+/factory/\S")
+FACTORY_PR = re.compile(r"Merge pull request #(\d+) from [^/\s]+/factory/\S")
 REVERTS = re.compile(r"\bThis reverts commit ([0-9a-f]{7,40})\b")
-CAUSED_BY = re.compile(r"^Caused-by: #(\d+)\b", re.M)
+CAUSED_BY = re.compile(r"^Caused-by: #(\d+)\b", re.M | re.I)
 SIGNAL = {("claim", False): True, ("claim", True): False, ("fail", False): False, ("pass", True): False}
 
 
@@ -276,9 +278,9 @@ def premature_done(runs):
 
 
 def history(target):
-    """{sha: (parents, message)} of every commit on the target's default branch, origin/HEAD or else HEAD, or the
-    reason git could not read it."""
-    for rev in ("origin/HEAD", "HEAD"):
+    """{sha: (parents, message)} of every commit on the target's default branch, origin/HEAD, origin/main or main,
+    or the reason git could not read it."""
+    for rev in ("origin/HEAD", "origin/main", "main"):
         proc = subprocess.run(["git", "-C", target, "log", "--format=%H %P%x1f%B%x1e", rev, "--"],
                               capture_output=True, text=True, errors="replace", check=False)
         if proc.returncode == 0:

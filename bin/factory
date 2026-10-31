@@ -5,7 +5,7 @@
 #   bin/factory eval-freeze <run-dir>...  freezes each run's last round, when both graders passed it, into evals/clean/.
 #   bin/factory run <issue|file>    the supervisor: one ticket to a pull request (docs/factory/LOOP.md).
 #   bin/factory status              run states, spend, denials, worktrees, PRs, preconditions.
-#   bin/factory status --criteria   the ARCHITECTURE.md trust criteria, measured from the run dirs; reads files only.
+#   bin/factory status --criteria   the ARCHITECTURE.md trust criteria, measured from the run dirs and the target's git log.
 #   bin/factory stop <issue>        writes FACTORY_STOP into the run dir; the run halts before its next call.
 #   bin/factory merge <pr> <sha>    merges the PR only when sha is its head and every check reported there passed.
 #   bin/factory next [--install]    the F9 frontier timer's step: launch the next unblocked ready-for-agent ticket.
@@ -3071,7 +3071,7 @@ cmd_status() {
   precondition_lines
 }
 
-# The criteria and thresholds stay in ARCHITECTURE.md; criteria.py reads them there and calls nothing.
+# The criteria and thresholds stay in ARCHITECTURE.md; criteria.py reads them there and calls only git log.
 cmd_criteria() {
   python3 -I "$ROOT/bin/factory.d/criteria.py" "$RUNS_ROOT" "$ROOT/docs/factory/ARCHITECTURE.md" "$TARGET"
 }
