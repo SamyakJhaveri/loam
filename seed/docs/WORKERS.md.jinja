@@ -109,4 +109,4 @@ It fails, naming the file, when a listed check changed or is gone, when the list
 This detects an edit after the fact; it does not stop one.
 A worker never edits a listed file and never runs `bin/frozen-checks sign`.
 The owner reads the change, then runs `bin/frozen-checks sign <file>...` and commits the list on the signed ref; a local `origin/main` stays stale until that commit is pushed and fetched.
-Under the default-branch ruleset (a PR and a green `check`), the sign-off PR fails `check` until it lands, by design, so the owner merges it as a bypass actor added under Settings > Rules.
+Under the default-branch ruleset (a PR and a green `check`), the sign-off PR fails `check` until it lands, by design, so the owner adds themself as a bypass actor under Settings > Rules for that merge, then removes the entry.
