@@ -4,9 +4,10 @@
 # Copies the seed Claude settings and hook scripts into <dir>/.claude/ (foreign
 # hooks already in <dir>/.claude/hooks/ are kept), appends the harness .gitignore
 # lines and the sandbox placeholder lines of seed/.gitignore.jinja (each line
-# only when missing, so a re-run adds new ones), and writes <dir>/.claude/settings.local.json that registers this
-# checkout's cultivation/marketplace and enables the sam-cc-setup plugin. Works
-# whether or not <dir> is a git repo.
+# only when missing, so a re-run adds new ones), and writes
+# <dir>/.claude/settings.local.json that registers this checkout's
+# cultivation/marketplace and enables the sam-cc-setup plugin. Works whether or
+# not <dir> is a git repo.
 #
 # This is the third Loam distribution mechanism, alongside Copier (forward) and
 # the plugin marketplace (reverse); see docs/SYNC.md.
@@ -73,9 +74,10 @@ MKT="$ROOT/cultivation/marketplace"
 
 # The ignore lines appended to <dir>/.gitignore: the harness lines, then the
 # seed's sandbox placeholder block, read from seed/.gitignore.jinja so an attach
-# and a Copier render ignore the same placeholders. The block runs from its "Empty read-only files the Claude
-# Code sandbox creates" comment to the next blank line; its comments are
-# skipped and its order is kept (each ! re-include follows its exclusion).
+# and a Copier render ignore the same placeholders. The block runs from its
+# "Empty read-only files the Claude Code sandbox creates" comment to the next
+# blank line; its comments are skipped and its order is kept (each ! re-include
+# follows its exclusion).
 HARNESS_IGNORES=(
   ".codex_review_done"
   ".claude/audit.log"
