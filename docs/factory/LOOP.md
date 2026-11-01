@@ -122,6 +122,7 @@ Each value is a positive whole number, or for a `*_USD` cap a positive decimal s
 Lint rejects such a Worker line, and `apply_caps` exits 2 on one; a `FACTORY_<NAME>` cap with such a value stops every subcommand with exit 2 before it runs, naming the cap, rather than warning and using the default (Samyak, 30 Oct 2026).
 `NET_TIMEOUT_SEC` bounds every `gh` call and every `git` call that reaches a remote (`fetch`, `push`, `ls-remote`), in `run`, `lint`, `next` and `status` alike, through GNU `timeout -k 5` without `--foreground`, so a call that ignores TERM gets KILL 5 s later; a shell function, or any call where `timeout` is missing, goes through a shell watchdog that sends the same TERM and KILL to the call's process group.
 A call cut off at the limit counts as that call failing, so a hung network call never holds a run, its slot, or its heartbeat.
+`next` passes every `FACTORY_<NAME>` cap to the tmux session it launches, empty when unset, so a value in the tmux server's environment never reaches the run.
 No research source gives a numeric anchor (`../research/anthropic-loop-engineering.md`); re-measure after two real runs.
 The daily ledger `runs/ledger-daily.jsonl` is keyed by UTC date across all runs of every target.
 Codex token counts come from its `--json` events and land in the ledger with `cost_usd` null, so the dollar caps do not bound a Codex worker; the PR body says so.
