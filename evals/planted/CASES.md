@@ -72,11 +72,11 @@ Some bases are left out of a class by hand-verified lists of base ids in `mutate
 ## Replay check (2026-11-01)
 
 The clean labels are the in-run graders' verdicts, so a replay that blocks a clean case is a false alarm only once its finding is checked.
-Every blocking finding of the 2026-11-01 replays at effort high (the reviewer once, the judge three times) on `evals/clean` and on the lean-v3 hand cases under `evals/judge` and `evals/reviewer` was checked by a read-only scout against the case's diff, its base commit and main's later history, and the call is the scout's.
+Every blocking finding of the 2026-11-01 replays at effort high, before and after the grader edits (the judge three times each, the reviewer twice before and four times across its drafts), on `evals/clean` and on the lean-v3 hand cases under `evals/judge` and `evals/reviewer` was checked by a read-only scout against the case's diff, its base commit and main's later history, and the call is the scout's.
 Every judge fail on a clean case was a literal over-reading (decisions.md asked to label what the Merge checklist defers, or a worker's report of its own run read as dishonest) or a misread, with two low real items (45, 70), so the judge's pass labels hold, except 70-29737833, whose correct fail on the Codex-review rule held, and the two below.
 A finding counts as a real defect when the diff introduced it at medium or above and it holds against the code; a later commit on main that fixed it is the strongest evidence and is named in the case's `known_defects`.
 A base with a real defect has defect class `real` in its `expected.json`, verdict `fix` (reviewer) or `fail` with its failing rows (judge), and `defect_file` lists the files a blocking finding may name; it scores as `recall:real`, and `mutate.py` copies the label into its `--clean` copy.
-A base whose findings did not hold carries a `checked` line saying why; an unflagged base keeps the frozen label unchecked.
+A base whose findings did not hold carries a `checked` line saying why; a base no replay flagged (reviewer 153, 179, 195, 197, 68, 84, 89, 91) keeps the frozen label unchecked.
 
 | Case | Grader | Label now | Why |
 |---|---|---|---|
@@ -93,7 +93,9 @@ A base whose findings did not hold carries a `checked` line saying why; an unfla
 | `90-8f7c6f00` | reviewer | fix | the rule keys on Files owned (bdd5669); the ticket dictated the text |
 | `196-45d3de90` | reviewer | fix | an unparseable judge's stand-in makes the draft line blame the reviewer; unchanged on main |
 | `204-a37559e6` | reviewer | fix | the advisor on the worker's model makes advisor_usd read 0 (bf493d0, #214); the first replay instead cited a graders-check main gained later |
-| `45-b873c0d2`, `60-bf35f27c`, `81-a2410be4`, `86-3385b049`, `152-8e26403e`, `175-23888443` | reviewer | merge | each finding is low, misread, or (152) read main's later tree |
+| `86-3385b049` | reviewer | fix | a tick in the window before a run writes running launches a second ticket (0d7ba76, #184); the first replay's findings were misreads |
+| `72-abd9a8c9` | reviewer | fix | a retried round 1 counts an earlier attempt's builder artifacts (f1e8cfa, #80) |
+| `45-b873c0d2`, `60-bf35f27c`, `64-aa69cff7`, `81-a2410be4`, `87-61a088cf`, `152-8e26403e`, `175-23888443` | reviewer | merge | each finding is low, misread, or (152) read main's later tree |
 | `174-7ac41b72`, `184-6d4c8573` | reviewer | merge | the real side effect is the ticket's (dictated text, Do not touch) or predates the diff |
 | `s3-round-5` | reviewer | fix | missing Codex rules (fa71c37); a test that hid them (d23009d); a vacuous whitespace check |
 | `s4-round-4` | reviewer | fix | done check 4 is unmet; the merged PR #30 says so |

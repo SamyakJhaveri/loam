@@ -1,1 +1,1 @@
-{"source":"64/aa69cff7 round-1","verdict":"merge"}
+{"source":"64/aa69cff7 round-1","verdict":"merge","checked":"replay check 2026-11-01: merge holds; the guard below CMD/shift strips a sourcing caller's $1, but the Approach pinned it there and no caller passed arguments (low)"}

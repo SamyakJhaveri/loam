@@ -1,1 +1,1 @@
-{"source":"87/61a088cf round-2","verdict":"merge"}
+{"source":"87/61a088cf round-2","verdict":"merge","checked":"replay check 2026-11-01: merge holds; a ticket named <key>-base.md would collide with round 0's base worktree, which needs a naming coincidence (low)"}
