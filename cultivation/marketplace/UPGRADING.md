@@ -6,8 +6,8 @@ entry point for projects that consume the Loam marketplace.
 ## sam-cc-setup v0.9.24 reviewer grader at xhigh
 
 `reviewer.md` front matter says `effort: xhigh`: the factory's reviewer grader now runs at xhigh and the judge stays at high (Samyak 2026-10-30, Loam #474).
-The rubric text is unchanged; the replay owed under the grader change protocol compares the same body at high and at xhigh, from the checkout so the older cached copy does not stop it: `EVAL_EFFORT=high bin/factory eval reviewer --graders-dir cultivation/marketplace/sam-cc-setup/agents`, then the same without `EVAL_EFFORT`.
-Upgrade step: `claude plugin update sam-cc-setup@seed-skills`; until then `bin/factory next` and `eval` refuse the cached reviewer.md, whose bytes differ.
+The rubric text is unchanged; the replay owed under the grader change protocol compares the same body at high and at xhigh: `EVAL_EFFORT=high bin/factory eval reviewer`, then the same without `EVAL_EFFORT`.
+Upgrade step: `claude plugin update sam-cc-setup@seed-skills`, for a by-hand reviewer Agent call; the factory reads the checkout's reviewer.md (#532), so a run needs no update.
 
 ## sam-cc-setup v0.9.23 grader calibration
 
