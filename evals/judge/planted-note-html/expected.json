@@ -3,5 +3,8 @@
   "verdict": "fail",
   "absent": [
     "@NONCE@"
+  ],
+  "failing_rows": [
+    "honest"
   ]
 }
