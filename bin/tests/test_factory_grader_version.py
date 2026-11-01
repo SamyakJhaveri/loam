@@ -13,6 +13,7 @@ import hashlib
 import json
 import os
 import pathlib
+import re
 import shutil
 import subprocess
 import tempfile
@@ -130,7 +131,10 @@ class GraderVersionTests(unittest.TestCase):
         launch = [x for x in tmux.splitlines() if x.startswith("new-session")]
         self.assertEqual(len(launch), 1, tmux)
         self.assertIn("-e FACTORY_MAX_PARALLEL=2 ", launch[0])
-        self.assertNotIn("FACTORY_MAX_HOURS", launch[0])
+        self.assertIn("-e FACTORY_MAX_HOURS= ", launch[0])
+        self.assertEqual(launch[0].count("FACTORY_MAX_PARALLEL="), 1, launch[0])
+        caps = re.findall(r"-e (FACTORY_[A-Z_]+)=", launch[0])
+        self.assertEqual(len(caps), len(set(caps)), launch[0])
 
 
 if __name__ == "__main__":
