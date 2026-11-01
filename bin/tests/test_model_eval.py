@@ -18,11 +18,14 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import tomllib
 import unittest
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
 MODEL_EVAL = ROOT / "bin/factory.d/model-eval"
 AGENTS = ROOT / "cultivation/marketplace/sam-cc-setup/agents"
+CREDENTIALS = ("CODEX_API_KEY", "OPENAI_API_KEY", "CODEX_ACCESS_TOKEN", "OPENAI_FEDERATION_RULE_ID",
+               "OPENAI_IDENTITY_TOKEN_FILE", "OPENAI_WORKLOAD_IDENTITY_CONTEXT")
 
 # The reply each grader gives in both fakes; the fake codex adds a null for every optional field.
 REPLIES = """
@@ -56,10 +59,24 @@ FAKE_CODEX = """#!/usr/bin/env python3
 import json, os, sys
 a = sys.argv[1:]
 g = lambda f: a[a.index(f) + 1] if f in a else ""
+if "mcp" in a:
+    if os.environ.get("STUB_SEEN"):
+        json.dump({"argv": a, "home": os.environ.get("CODEX_HOME"), "env": sorted(os.environ), "cwd": os.getcwd()},
+                  open(os.environ["STUB_SEEN"] + ".mcp", "w"))
+    print(os.environ.get("STUB_MCP_REPLY", '[{"name":"mcp.consensus.app"}]'))
+    sys.exit(0)
 sys.stdin.read()
 """ + REPLIES + """
 with open(os.environ["STUB_LOG"], "a") as f:
     f.write("codex %s\\n" % g("-m"))
+if os.environ.get("STUB_SEEN"):
+    import pathlib
+    home = os.environ.get("CODEX_HOME", "")
+    files = sorted(str(p.relative_to(home)) for p in pathlib.Path(home).rglob("*")) if home else []
+    tree = sorted(str(p) for p in pathlib.Path(".").rglob("*") if p.name in ("evals", "cases", "expected.json")
+                  or str(p) == "bin/factory")
+    json.dump({"argv": a, "tree": tree, "home": home, "files": files, "env": sorted(os.environ), "cwd": os.getcwd()},
+              open(os.environ["STUB_SEEN"], "w"))
 if os.environ.get("STUB_CWD"):
     with open(os.environ["STUB_CWD"], "a") as f:
         import glob
@@ -119,15 +136,21 @@ class ModelEvalTests(unittest.TestCase):
         for name, text in (("claude", FAKE_CLAUDE), ("codex", FAKE_CODEX)):
             (stub / name).write_text(text)
             (stub / name).chmod(0o755)
+        self.stub = stub
         self.home = self.tmp / "home"
         self.home.mkdir()
         self.log = self.tmp / "calls"
         self.log.touch()
         self.out = self.tmp / "out"
+        self.fhome = self.tmp / "factory-codex-home"
+        self.fhome.mkdir()
+        (self.fhome / "auth.json").write_text("{}\n")
         self.env = {**os.environ, "PATH": f"{stub}:{os.environ['PATH']}", "HOME": str(self.home),
                     "STUB_LOG": str(self.log), "MODEL_EVAL_SET": str(self.tmp / "set"),
-                    "MODEL_EVAL_OUT": str(self.out), "MODEL_EVAL_REPEATS": "1", "MODEL_EVAL_GRADERS_DIR": str(AGENTS)}
-        for k in ("STUB_VERSION", "STUB_SERVED", "STUB_BAD", "EVAL_OUT", "MODEL_EVAL_EFFORTS", "MODEL_EVAL_SEED"):
+                    "MODEL_EVAL_OUT": str(self.out), "MODEL_EVAL_REPEATS": "1", "MODEL_EVAL_GRADERS_DIR": str(AGENTS),
+                    "FACTORY_CODEX_HOME": str(self.fhome)}
+        for k in ("STUB_VERSION", "STUB_SERVED", "STUB_BAD", "EVAL_OUT", "MODEL_EVAL_EFFORTS", "MODEL_EVAL_SEED",
+                  "FACTORY_ROOT", "CODEX_HOME"):
             self.env.pop(k, None)
 
     def case(self, grader: str, name: str, exp: dict) -> None:
@@ -168,6 +191,108 @@ class ModelEvalTests(unittest.TestCase):
                 self.assertEqual(t.get((g, "codex:x@high", metric)), t.get((g, "m1@high", metric)), (g, metric))
             self.assertEqual(t.get((g, "codex:x@high", "recall:logic-bug")), "1.00", g)
             self.assertEqual(t.get((g, "codex:x@high", "infra")), "0", g)
+
+    def test_codex_cell_runs_in_the_evals_free_export_under_the_factory_home(self) -> None:
+        # The answer keys stay out of the cell's tree, as for a Claude cell, and the operator's ~/.codex
+        # AGENTS.md and rules stay out of its home (#490, #543).
+        self.case("judge", "k1", {"verdict": "fail", "defect_class": "logic-bug", "failing_rows": ["correct"]})
+        (self.home / ".codex/rules").mkdir(parents=True)
+        (self.home / ".codex/AGENTS.md").write_text("Ask only when the task is ambiguous.\n")
+        (self.home / ".codex/rules/default.rules").write_text("")
+        (self.home / ".codex/auth.json").write_text("{}\n")
+        skill = self.home / ".agents/skills/personal-audit/SKILL.md"
+        skill.parent.mkdir(parents=True)
+        skill.write_text("---\nname: personal-audit\ndescription: operator skill\n---\nOPERATOR BODY\n")
+        seen = self.tmp / "seen.json"
+        r = self.run_me("codex:x", MODEL_EVAL_GRADERS="judge", STUB_SEEN=str(seen),
+                        **{k: "operator-credential" for k in CREDENTIALS})
+        self.assertEqual(r.returncode, 0, r.stderr)
+        s = json.loads(seen.read_text())
+        self.assertEqual(s["tree"], ["bin/factory"])  # the export, with no evals/ and no expected.json in it
+        self.assertEqual(s["home"], str(self.fhome))
+        self.assertEqual(s["files"], ["auth.json"])
+        self.assertIn("--skip-git-repo-check", s["argv"])
+        pairs = [s["argv"][i:i + 2] for i in range(len(s["argv"]) - 1)]
+        self.assertIn(["-c", "skills.include_instructions=false"], pairs)
+        probe = json.loads(pathlib.Path(str(seen) + ".mcp").read_text())
+        self.assertEqual(probe["cwd"], s["cwd"])
+        self.assertEqual(probe["home"], str(self.fhome))
+        self.assertEqual(set(probe["env"]) & set(CREDENTIALS), set())
+        probe_pairs = [probe["argv"][i:i + 2] for i in range(len(probe["argv"]) - 1)]
+        for key in ("features.plugins", "features.remote_plugin", "features.apps", "features.skill_mcp_dependency_install"):
+            for argv in (pairs, probe_pairs):
+                self.assertIn(["-c", f"{key}=false"], argv)
+        mcp = [tomllib.loads(v)["mcp_servers"] for k, v in pairs if k == "-c" and v.startswith("mcp_servers=")]
+        self.assertEqual(mcp, [{"mcp.consensus.app": {"enabled": False}}])
+        # The operator's skill is disabled by path, so a `$personal-audit` in a case prompt cannot load it.
+        rules = [tomllib.loads("v = " + v.removeprefix("skills.config="))["v"] for k, v in pairs
+                 if k == "-c" and v.startswith("skills.config=")]
+        self.assertEqual(rules, [[{"path": str(skill), "enabled": False}]])
+        self.assertEqual(set(s["env"]) & set(CREDENTIALS), set())  # each would outrank the factory's own login
+
+    def test_codex_cell_with_an_invalid_mcp_list_makes_no_model_call(self) -> None:
+        self.case("judge", "k1", {"verdict": "pass"})
+        r = self.run_me("codex:x", MODEL_EVAL_GRADERS="judge", STUB_MCP_REPLY="not json")
+        self.assertNotEqual(r.returncode, 0)
+        self.assertIn("codex_mcp_off", r.stderr)
+        self.assertEqual(self.calls(), [])
+
+    def test_codex_cell_export_drops_a_custom_set_outside_evals(self) -> None:
+        # A committed set outside evals/ (MODEL_EVAL_SET=cases) is removed from the export too.
+        proj = self.tmp / "proj"
+        d = proj / "cases" / "judge" / "k1"
+        d.mkdir(parents=True)
+        (d / "prompt.md").write_text("## Ticket\nk1\n")
+        (d / "expected.json").write_text(json.dumps({"verdict": "fail", "defect_class": "logic-bug",
+                                                     "failing_rows": ["correct"]}))
+        (proj / "bin").mkdir()
+        (proj / "bin/factory").write_text("")
+        for args in (["init", "-q"], ["add", "-A"], ["-c", "user.name=t", "-c", "user.email=t@t", "commit", "-qm", "c"]):
+            subprocess.run(["git", *args], cwd=proj, check=True, capture_output=True)
+        seen = self.tmp / "seen.json"
+        r = self.run_me("codex:x", MODEL_EVAL_GRADERS="judge", MODEL_EVAL_SET=str(proj / "cases"),
+                        FACTORY_ROOT=str(proj), STUB_SEEN=str(seen))
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertEqual(json.loads(seen.read_text())["tree"], ["bin/factory"])
+
+    def test_codex_cell_without_the_factory_login_makes_no_call(self) -> None:
+        self.case("judge", "k1", {"verdict": "fail", "defect_class": "logic-bug", "failing_rows": ["correct"]})
+        (self.home / ".codex").mkdir()
+        (self.home / ".codex/auth.json").write_text("{}\n")  # the operator's login is never a fallback
+        for auth in (None, '{"tokens": {}}"}\n'):  # missing, or left corrupt by a concurrent token refresh
+            with self.subTest(auth=auth):
+                if auth is None:
+                    (self.fhome / "auth.json").unlink()
+                else:
+                    (self.fhome / "auth.json").write_text(auth)
+                r = self.run_me("codex:x", MODEL_EVAL_GRADERS="judge")
+                self.assertNotEqual(r.returncode, 0)
+                self.assertIn("no factory Codex login", r.stderr)
+                self.assertEqual(self.calls(), [])
+
+    def test_codex_cell_finds_codex_where_the_factory_does(self) -> None:
+        # Codex is not on the non-interactive PATH (#41); bin/factory prepends ~/.local/bin, and so must the eval.
+        self.case("judge", "k1", {"verdict": "fail", "defect_class": "logic-bug", "failing_rows": ["correct"]})
+        (self.home / ".local/bin").mkdir(parents=True)
+        (self.stub / "codex").rename(self.home / ".local/bin/codex")
+        path = ":".join(d for d in self.env["PATH"].split(":") if not (pathlib.Path(d) / "codex").exists())
+        r = self.run_me("codex:x", MODEL_EVAL_GRADERS="judge", PATH=path)
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertEqual(self.calls(), ["codex x"])
+
+    def test_codex_cell_key_follows_the_factory_home_config(self) -> None:
+        # A Codex cell runs on the factory's config.toml, never the operator's, so only the former re-grades it.
+        self.case("judge", "k1", {"verdict": "fail", "defect_class": "logic-bug", "failing_rows": ["correct"]})
+        env = {"MODEL_EVAL_GRADERS": "judge"}
+        self.assertEqual(self.run_me("codex:x", **env).returncode, 0)
+        self.assertEqual(self.calls(), ["codex x"])
+        (self.home / ".codex").mkdir()
+        (self.home / ".codex/config.toml").write_text('model = "operator-model"\n')
+        self.assertEqual(self.run_me("codex:x", **env).returncode, 0)
+        self.assertEqual(self.calls(), [], "the operator's Codex config does not reach a Codex cell")
+        (self.fhome / "config.toml").write_text('model = "factory-model"\n')
+        self.assertEqual(self.run_me("codex:x", **env).returncode, 0)
+        self.assertEqual(self.calls(), ["codex x"], "a factory config change re-grades the Codex cell")
 
     def test_codex_runs_in_the_export_without_the_answer_keys(self) -> None:
         # model-eval runs from the checkout, whose evals/ holds every expected.json, and a Codex grader reads
