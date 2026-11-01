@@ -252,7 +252,7 @@ exec env -u FACTORY_CALL_TAG bash -c 'while :; do echo x >> {self.top}/mark; sle
     def test_call_reads_int_and_quit_as_default(self) -> None:
         # Bash starts a background command with INT and QUIT ignored, and exec keeps an ignored signal ignored; GNU
         # timeout catches both, so only a host without it (a Mac) ran the call with them ignored (#468). The supervisor
-        # may also start with them ignored, as cron, nohup or `&` gives it.
+        # may also start with them ignored, when its own parent ignores them.
         probe = 'perl -e "print join(q( ), map { \\$SIG{\\$_} || q(DEFAULT) } qw(INT QUIT))"'
         wraps = [""] + (["timeout 60 "] if shutil.which("timeout") else [])
         for ignored in (False, True):
@@ -268,8 +268,9 @@ exec env -u FACTORY_CALL_TAG bash -c 'while :; do echo x >> {self.top}/mark; sle
 
     def test_call_runs_in_a_session_of_its_own(self) -> None:
         out = self.top / "sid"
-        proc = self.run_call(f'call_start "$WORKTREE" sh -c "echo \\$\\$ \\$(ps -o pgid=,sid= -p \\$\\$)" > {out}; '
-                             "call_end probe")
+        # The call's first process calls setpgid itself, so only the session id shows a dropped setsid.
+        probe = "python3 -c 'import os; print(os.getpid(), os.getpgid(0), os.getsid(0))'"
+        proc = self.run_call(f'call_start "$WORKTREE" {probe} > {out}; call_end probe')
         self.assertIn("returned:0", proc.stdout, proc.stderr)
         pid, pgid, sid = out.read_text().split()
         self.assertEqual(pid, pgid, "the call does not lead its own process group")
