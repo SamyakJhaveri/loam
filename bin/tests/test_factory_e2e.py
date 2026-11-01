@@ -34,6 +34,8 @@ ROOT = pathlib.Path(__file__).resolve().parents[2]
 STANDINS = ROOT / "bin/tests/fixtures/factory-e2e"
 OWNER = "SamyakJhaveri"  # bin/factory's TICKET_OWNER: next launches only issues this login wrote
 RUN_DEADLINE_SEC = 150  # a run here takes seconds; the deadline only turns a hang into a failure
+# The target's bin/check records where it ran, outside the worktrees, so a guard that never runs it fails test_pass.
+CHECK = '#!/bin/sh\npwd >> "$E2E_STATE/check.log"\n'
 STANDING = "# Standing\n\n## Standing do-not-touch list\n\n- `bin/check`\n"
 
 
@@ -120,7 +122,7 @@ class EndToEndTests(unittest.TestCase):
         self.git(self.home, "commit", "-q", "-m", "factory home")
         # The target: a bare origin under github.com/o/r.git and the clone next works on.
         seed = self.top / "seed"
-        for name, text in {"bin/check": "#!/bin/sh\nexit 0\n", "docs/factory/STANDING.md": STANDING,
+        for name, text in {"bin/check": CHECK, "docs/factory/STANDING.md": STANDING,
                            "README.md": "e2e target\n"}.items():
             (seed / name).parent.mkdir(parents=True, exist_ok=True)
             (seed / name).write_text(text, encoding="utf-8")
@@ -266,9 +268,12 @@ class EndToEndTests(unittest.TestCase):
         self.assertIn("verdict", review)
         self.assertNotIn("unparseable", review)
         self.assertEqual(self.read(run / f"round-{n}.graded.sha").strip(), head)
-        # The next tick does not relaunch #1.
+        # The done-checks' guard ran the target's bin/check in round 0 (its base worktree) and in the worker round.
+        wt = self.top / "proj-1"
+        self.assertEqual(self.read(self.state / "check.log").splitlines(), [f"{wt}-base", str(wt)])
+        # The next tick does not relaunch #1; a cap of 2 leaves a free slot, so the frontier is what passes it over.
         before = (self.workers(), self.launches())
-        t = self.tick()
+        t = self.tick(FACTORY_MAX_PARALLEL="2")
         self.assertEqual(t.stdout, "nothing to launch\n", t.stderr)
         self.assertEqual((self.workers(), self.launches()), before)
         self.assertEqual(self.calls("unknown"), [])

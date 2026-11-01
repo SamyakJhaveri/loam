@@ -11,9 +11,10 @@ ticket body, in its cwd, the ticket worktree:
   parallel   writes $E2E_STATE/started-<issue>, waits for $E2E_STATE/release, then does what pass does
 and a worker that ends its turn prints a stream ending in a result event with total_cost_usd. A grader call
 (--json-schema) prints an envelope whose result is a verdict that satisfies the schema it was given: a judge schema
-gets every row it requires passed and no fixes, a reviewer schema no findings. Each call appends its argv, cwd and kind
-to $E2E_STATE/claude.log. A subcommand or flag this file does not know exits 2 and is appended to
-$E2E_STATE/unknown.log, which the test reads.
+gets every row it requires passed and no fixes, a reviewer schema no findings; its prompt must carry the ticket's
+e2e-scenario line and the diff of done.txt, the evidence it grades. A worker or grader call must pass the REQUIRED
+values. Each call appends its argv, cwd and kind to $E2E_STATE/claude.log. A subcommand or flag this file does not know,
+or a call that breaks one of these rules, exits 2 and is appended to $E2E_STATE/unknown.log, which the test reads.
 """
 
 import json
@@ -32,6 +33,10 @@ FLAGS = {"-p": False, "--model": True, "--effort": True, "--advisor": True, "--p
          "--append-system-prompt": True, "--max-budget-usd": True, "--output-format": True, "--verbose": False,
          "--include-hook-events": False, "--tools": True, "--disable-slash-commands": False,
          "--no-session-persistence": False, "--json-schema": True}
+# kind -> flag -> the value bin/factory's call passes (True: a flag with no value): the grader's read-only tools (#40) and
+# user-only settings, the worker's bypass mode with no settings tier, and no MCP server for either.
+REQUIRED = {"worker": {"--permission-mode": "bypassPermissions", "--setting-sources": "", "--strict-mcp-config": True},
+            "grader": {"--tools": "Read,Grep,Glob", "--setting-sources": "user", "--strict-mcp-config": True}}
 RELEASE_WAIT_SEC = 120
 
 
@@ -146,9 +151,12 @@ def satisfies(doc, schema: dict) -> bool:
     return True
 
 
-def grader(opts: dict, sid: str) -> int:
+def grader(opts: dict, prompt: str, sid: str) -> int:
     if opts["--output-format"] != "json":
         raise Unknown("a grader call without --output-format json")
+    # build_evidence's Ticket and Diff sections: the frozen issue and the worker's commit.
+    if not re.search(r"^e2e-scenario: \S+$", prompt, re.M) or "diff --git a/done.txt b/done.txt" not in prompt:
+        raise Unknown("a grader prompt without the ticket's e2e-scenario line and the diff of done.txt")
     schema = json.loads(opts["--json-schema"])
     props = schema.get("properties", {})
     if "rows" in props:
@@ -191,13 +199,14 @@ def main(argv: list[str]) -> int:
                 json.load(h)
         except (OSError, ValueError):
             raise Unknown(f"--settings {opts['--settings']!r}, not a file holding JSON") from None
-        if set(opts.get("--setting-sources", "").split(",")) - {"", "user", "project", "local"}:
-            raise Unknown(f"--setting-sources {opts['--setting-sources']!r}")
         kind = "grader" if "--json-schema" in opts else "worker"
+        wrong = {f: opts.get(f) for f, v in REQUIRED[kind].items() if opts.get(f) != v}
+        if wrong:
+            raise Unknown(f"a {kind} call with {wrong}, not {REQUIRED[kind]}")
         append("claude.log", {"argv": argv, "kind": kind, "cwd": os.getcwd()})
         prompt = sys.stdin.read()
         sid = f"e2e-{uuid.uuid4()}"
-        return grader(opts, sid) if kind == "grader" else worker(opts, prompt, sid)
+        return grader(opts, prompt, sid) if kind == "grader" else worker(opts, prompt, sid)
     except Unknown as why:
         append("unknown.log", {"tool": "claude", "argv": argv, "why": str(why)})
         print(f"claude stand-in: unknown {why}", file=sys.stderr)
