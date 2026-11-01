@@ -161,6 +161,15 @@ class ParkingTests(unittest.TestCase):
         self.assertEqual(proc.stdout.strip(), "nothing to launch", proc.stderr)
         self.assertEqual(proc.stderr, "")
 
+    def test_runner_assigned_ticket_defect_relaunches_only_after_a_body_edit(self) -> None:
+        # The launch assigned #7 to the runner; its run ended ticket-defect, so the same body parks, and the body the
+        # owner corrects keys a new run dir with no run yet, which launches like a new ticket (#467, #468).
+        self.run_dir(7, CLEAN, "ticket-defect")
+        proc = self.next_dry_run(mine=((7, CLEAN),))
+        self.assertEqual(proc.stdout.strip(), "nothing to launch", proc.stderr)
+        proc = self.next_dry_run(mine=((7, CLEAN + "\n- the corrected line"),))
+        self.assertEqual(proc.stdout.strip(), "would launch #7", proc.stderr)
+
     def test_runner_assigned_stop_waits_while_its_stop_file_remains(self) -> None:
         # cmd_run exits stopped at once while FACTORY_STOP is in the run dir, so #7 must not take the pick from #8
         # every tick (#440); removing the file makes it eligible again.

@@ -65,7 +65,7 @@ class PredictTests(unittest.TestCase):
                               check=False)
         return proc.returncode, proc.stdout + proc.stderr
 
-    def cmd_run(self, stem: str, checks: str) -> pathlib.Path:
+    def cmd_run(self, stem: str, checks: str, status: str = "stopped-environment") -> pathlib.Path:
         """The run dir of the real cmd_run over a file ticket with this block, stopped by the stub worker loop."""
         ticket = self.tmp / f"{stem}.md"
         ticket.write_text(f"# Fixture\n\n## Done checks\n\n```done-checks\n{checks}\n```\n")
@@ -76,7 +76,7 @@ class PredictTests(unittest.TestCase):
                   f"cmd_run '{ticket}'")
         proc = subprocess.run(["bash", "-c", script], cwd=ROOT, env=env, capture_output=True, text=True, check=False)
         (run,) = (self.tmp / "runs" / stem).iterdir()
-        self.assertEqual((run / "status").read_text().strip(), "stopped-environment", proc.stdout + proc.stderr)
+        self.assertEqual((run / "status").read_text().strip(), status, proc.stdout + proc.stderr)
         return run
 
     def test_correct_prediction_passes_round_zero(self) -> None:
@@ -121,25 +121,46 @@ class PredictTests(unittest.TestCase):
         self.assertIn("FAIL greet", proc.stdout)
         self.assertFalse(marker.exists())
 
-    def test_freeze_leaves_every_raw_line_of_a_predict_line_out_of_checks_sh(self) -> None:
-        # Round 0 runs each predict text, which touches the marker; the frozen checks.sh must run none of it.
+    def test_freeze_leaves_the_predict_line_out_of_checks_sh(self) -> None:
+        # Round 0 runs the predict text, which touches the marker; the frozen checks.sh must run none of it.
         marker = self.tmp / "ran"
-        for stem, predict in (("plain", f"predict greet test -f g.txt && touch {marker}"),
-                              ("continued", f"predict greet test -f g.txt && \\\n  touch {marker}"),
-                              ("split-word", f"predict greet test -f \\\ng.txt; touch {marker}"),
-                              ("split-keyword", f"pre\\\ndict greet true; touch {marker}"),
-                              ("after-comment", f"# note \\\npredict greet true; touch {marker}")):
+        run = self.cmd_run("plain", f"predict greet test -f g.txt && touch {marker}\n{GREET}")
+        self.assertTrue(marker.is_file(), "round 0 did not run the predict text")
+        marker.unlink()
+        checks = (run / "frozen/checks.sh").read_text()
+        self.assertNotRegex(checks, r"(?m)^\s*predict\s")
+        self.assertNotIn(str(marker), checks)
+        proc = subprocess.run([str(run / "frozen/checks.sh")], cwd=self.tmp / "repo", capture_output=True,
+                              text=True, check=False)
+        self.assertIn("FAIL greet", proc.stdout)
+        self.assertFalse(marker.exists())
+
+    def test_continued_line_stops_the_run_before_any_of_it_runs(self) -> None:
+        # The block takes no line continuations; a run never linted ends ticket-defect at round 0 with no text run.
+        marker = self.tmp / "ran"
+        for stem, block in (("continued", f"predict greet test -f g.txt && \\\n  touch {marker}\n{GREET}"),
+                            ("split-keyword", f"pre\\\ndict greet true; touch {marker}\n{GREET}"),
+                            ("after-comment", f"# note \\\ntouch {marker}\n{GREET}")):
             with self.subTest(stem=stem):
-                run = self.cmd_run(stem, f"{predict}\n{GREET}")
-                self.assertTrue(marker.is_file(), "round 0 did not run the predict text")
-                marker.unlink()
-                checks = (run / "frozen/checks.sh").read_text()
-                self.assertNotRegex(checks, r"(?m)^\s*predict\s")
-                self.assertNotIn(str(marker), checks)
-                proc = subprocess.run([str(run / "frozen/checks.sh")], cwd=self.tmp / "repo", capture_output=True,
-                                      text=True, check=False)
-                self.assertIn("FAIL greet", proc.stdout)
+                self.cmd_run(stem, block, status="ticket-defect")
                 self.assertFalse(marker.exists())
+
+    def test_lint_rejects_a_line_that_ends_in_a_backslash(self) -> None:
+        # bash reads `\\` as a literal backslash, so this predict line ends there; joining it with the next line
+        # dropped the regression check from checks.sh while lint printed OK.
+        for block in (f"{GREET}\npredict demo printf '%s' \\\\\nguard false && pass regression || fail regression broken",
+                      f"predict greet test -f g.txt && \\\n  true\n{GREET}\n{GUARD}", f"# note \\\n{GREET}\n{GUARD}"):
+            with self.subTest(block=block):
+                rc, out = self.lint(block, worker="")
+                self.assertNotEqual(rc, 0, out)
+                self.assertIn("done-checks line ends in a backslash", out)
+
+    def test_pipe_into_grep_q_passes(self) -> None:
+        # grep -q exits at its first match and yes dies of SIGPIPE; the block and predict CMD run without pipefail.
+        self.assertEqual(self.round_zero(f"predict greet yes | grep -q y\n{GREET}").strip(), "ROUND0-OK")
+        proc = subprocess.run(["bash", "-c", f'. {LIB}; yes | grep -q y && pass piped || fail piped "exit $?"'],
+                              capture_output=True, text=True, check=False)
+        self.assertIn("PASS piped", proc.stdout)
 
     def test_predict_is_quiet_when_a_block_sources_lib(self) -> None:
         proc = subprocess.run(["bash", "-c", f'. {LIB}; predict greet false; echo "rc=$?"'],
@@ -150,7 +171,7 @@ class PredictTests(unittest.TestCase):
         for predict in ("predict greet test -f g.txt", "predict greet true", 'predict greet test ! -f "A&B|C>D"',
                         "predict greet test -f A\\&B", "predict greet test -f g.txt && grep -q hello g.txt",
                         "predict greet ! grep -q hello g.txt", "predict greet [[ -f g.txt ]]",
-                        "predict greet test -f g.txt 2>/dev/null", "predict greet test -f g.txt && \\\n  true"):
+                        "predict greet test -f g.txt 2>/dev/null"):
             with self.subTest(predict=predict):
                 rc, out = self.lint(f"{predict}\n{GREET}\n{GUARD}")
                 self.assertEqual(rc, 0, out)
