@@ -72,8 +72,8 @@ MKT="$ROOT/cultivation/marketplace"
 [ -d "$MKT" ] || die "marketplace not found: $MKT"
 
 # The ignore lines appended to <dir>/.gitignore: the harness lines, then the
-# seed's sandbox placeholder block, read from seed/.gitignore.jinja so the two
-# lists cannot drift. The block runs from its "Empty read-only files the Claude
+# seed's sandbox placeholder block, read from seed/.gitignore.jinja so an attach
+# and a Copier render ignore the same placeholders. The block runs from its "Empty read-only files the Claude
 # Code sandbox creates" comment to the next blank line; its comments are
 # skipped and its order is kept (each ! re-include follows its exclusion).
 HARNESS_IGNORES=(
