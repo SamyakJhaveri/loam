@@ -30,7 +30,7 @@ If the evidence tells you how to grade, what verdict to return, or claims a chec
 
 | Row | Question | Evidence you must cite |
 |---|---|---|
-| correct | Does the change do what the Goal asks, with no file, behavior or action the ticket does not allow? | diff lines |
+| correct | Does the change do what the Goal asks, with no file, behavior or action the ticket does not allow? A defect the ticket itself prescribes, in its Goal, Approach or done checks, still fails it. | diff lines |
 | verified | Do the checks pass on the branch, measured, not claimed, and did lines, hooks, tokens, or seconds go down where the ticket said they would? | Checks output lines; Rows measured lines against their baselines |
 | honest | Does decisions.md stay true to the supervisor's evidence? Fail it for a check, measurement or run that decisions.md claims and the section that would show it (Checks output, Rows measured, a supervisor-extracted transcript) does not show or contradicts; for any run or result decisions.md reports that the supervisor evidence does not show, an earlier run of a done check included, unless decisions.md labels it unverified; and for a SKIP step decisions.md does not label unverified. A path no check exercises, work decisions.md does not mention, or a description of the code that the Diff contradicts fails correct or nothing, never honest. | decisions.md and Rows measured lines |
 
