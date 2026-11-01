@@ -236,6 +236,13 @@ def main(argv):
     try:
         for g in graders:
             (tmp / f"{g}.schema.json").write_text(json.dumps(strict_schema(json.loads(schema[g]))), encoding="utf-8")
+        # A Codex grader reads the directory it runs in, so it runs in the export a Claude cell's bin/factory eval
+        # makes (eval_tree: the committed tree without evals/ or the set), never in the checkout with the keys.
+        if any(m.startswith("codex:") for m in models):
+            r = subprocess.run(["bash", "-c", '. "$0"; EVALS_DIR=$1; eval_tree "$2"', str(FACTORY), str(set_dir), str(tmp)],
+                               env={**os.environ, "FACTORY_SOURCED": "1"}, capture_output=True)
+            if r.returncode != 0:
+                die(f"eval_tree: {r.stderr.decode(errors='replace').strip()}")
         for c in cells:
             g, m, e, k = c
             d = cell_dir(c)
@@ -266,9 +273,10 @@ def main(argv):
                         o.unlink(missing_ok=True)
                         r = subprocess.run(["codex", "exec", "--json", "--output-schema", str(tmp / f"{g}.schema.json"),
                                             "-o", str(o), "-s", "read-only", "-m", m.removeprefix("codex:"),
-                                            "-c", f"model_reasoning_effort={e}", "-"],
+                                            "-c", f"model_reasoning_effort={e}", "-C", str(tmp / "tree"),
+                                            "--skip-git-repo-check", "-"],
                                            input=rubric[g] + (case / "prompt.md").read_bytes(),
-                                           stdout=subprocess.DEVNULL)
+                                           stdout=subprocess.DEVNULL, cwd=tmp / "tree")
                         text = o.read_text(encoding="utf-8", errors="replace") if o.is_file() else ""
                         reply = {"type": "result", "is_error": r.returncode != 0 or not text.strip(),
                                  "total_cost_usd": None, "result": text}

@@ -58,6 +58,10 @@ sys.stdin.read()
 """ + REPLIES + """
 with open(os.environ["STUB_LOG"], "a") as f:
     f.write("codex %s\\n" % g("-m"))
+if os.environ.get("STUB_CWD"):
+    with open(os.environ["STUB_CWD"], "a") as f:
+        f.write("evals=%s factory=%s cd=%s\\n" % (os.path.isdir("evals"), os.path.isfile("bin/factory"),
+                                                os.path.realpath(g("-C") or ".") == os.path.realpath(".")))
 def strict(node):
     if not isinstance(node, dict):
         return True
@@ -160,6 +164,15 @@ class ModelEvalTests(unittest.TestCase):
                 self.assertEqual(t.get((g, "codex:x@high", metric)), t.get((g, "m1@high", metric)), (g, metric))
             self.assertEqual(t.get((g, "codex:x@high", "recall:logic-bug")), "1.00", g)
             self.assertEqual(t.get((g, "codex:x@high", "infra")), "0", g)
+
+    def test_codex_runs_in_the_export_without_the_answer_keys(self) -> None:
+        # model-eval runs from the checkout, whose evals/ holds every expected.json, and a Codex grader reads
+        # the directory it runs in, so it gets the export a Claude cell's bin/factory eval reads.
+        self.judge_cases()
+        seen = self.tmp / "cwd"
+        r = self.run_me("codex:x", MODEL_EVAL_GRADERS="judge", STUB_CWD=str(seen))
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertEqual(seen.read_text().splitlines(), ["evals=False factory=True cd=True"] * 2)
 
     def test_harness_change_regrades_every_reply(self) -> None:
         self.judge_cases()
