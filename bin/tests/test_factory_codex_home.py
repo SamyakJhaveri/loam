@@ -2,9 +2,10 @@
 
 `bin/factory` is sourced (FACTORY_SOURCED=1) and the real worker_round and run_codex_review run with a fake `codex` on
 PATH that records its argv, its CODEX_HOME, and every file under that home. HOME is a fake whose ~/.codex holds an
-AGENTS.md, a rules file, hooks, a config.toml naming another model and an auth.json, as the runner's does; none of
-them may reach the call. FACTORY_CODEX_HOME holds the factory's own auth.json, and without it no call is made. No
-network.
+AGENTS.md, a rules file, hooks, a config.toml naming another model and an auth.json, as the runner's does, and the
+environment exports the operator's CODEX_API_KEY and OPENAI_API_KEY; none of them may reach the call.
+FACTORY_CODEX_HOME holds the factory's own auth.json, and without it, or with one that is not a single JSON object,
+no call is made. No network.
 """
 
 from __future__ import annotations
@@ -26,7 +27,10 @@ import json, os, pathlib, sys
 a = sys.argv[1:]
 home = os.environ.get("CODEX_HOME", "")
 files = sorted(str(p.relative_to(home)) for p in pathlib.Path(home).rglob("*")) if home else []
-json.dump({"argv": a, "home": home, "files": files}, open(os.environ["FAKE_SEEN"], "w"))
+keys = sorted(k for k in ("CODEX_API_KEY", "OPENAI_API_KEY") if k in os.environ)
+json.dump({"argv": a, "home": home, "files": files, "keys": keys}, open(os.environ["FAKE_SEEN"], "w"))
+if os.environ.get("FAKE_FAIL"):
+    sys.exit(1)
 if "-o" in a:
     open(a[a.index("-o") + 1], "w").write('{"verdict":"approve","summary":"ok","findings":[],"next_steps":[]}')
 print('{"type":"turn.completed","usage":{}}')
@@ -87,6 +91,7 @@ class CodexHomeTests(unittest.TestCase):
                               env={**env, "FACTORY_SOURCED": "1", "FACTORY_ROOT": str(ROOT), "HOME": str(self.home),
                                    "FACTORY_RUNS_ROOT": str(self.top / "runs"), "FAKE_SEEN": str(self.seen),
                                    "FACTORY_CODEX_HOME": str(self.fhome),
+                                   "CODEX_API_KEY": "operator-key", "OPENAI_API_KEY": "operator-key",
                                    "CLAUDE_CONFIG_DIR": str(self.top / "cc"), "PATH": f"{self.bin}:{env['PATH']}"},
                               capture_output=True, text=True, check=False, timeout=60)
         return proc
@@ -102,6 +107,10 @@ class CodexHomeTests(unittest.TestCase):
         pairs = [a[i:i + 2] for i in range(len(a) - 1)]
         self.assertIn(["-m", "gpt-6.1-sol"], pairs)
         self.assertIn(["-c", f"model_reasoning_effort={effort}"], pairs)
+        # HOME is the operator's, so Codex still scans ~/.agents/skills; no skill catalog reaches the call.
+        self.assertIn(["-c", "skills.include_instructions=false"], pairs)
+        # An exported API key would outrank the factory's own login.
+        self.assertEqual(seen["keys"], [])
         # Only the worktree is trusted, so its .codex rules (Loam's forbidden rm -rf) bind the call.
         self.assertIn(["-c", 'projects={"%s"={trust_level="trusted"}}' % self.wt.resolve()], pairs)
 
@@ -112,16 +121,43 @@ class CodexHomeTests(unittest.TestCase):
         self.assert_sealed(self.call("WORKER_KIND=claude; WORKER_EFFORT=low; GRADER_EFFORT=medium",
                                      "run_codex_review 1"), "medium")
 
+    def test_codex_review_never_takes_an_earlier_reply(self) -> None:
+        # A resumed round whose earlier call approved: a call that now fails must not leave that approval standing.
+        f = self.run_dir / "round-1.codex-review.json"
+        f.write_text('{"verdict":"approve","summary":"old head","findings":[],"next_steps":[]}')
+        proc = self.call("WORKER_KIND=claude; export FAKE_FAIL=1", "run_codex_review 1")
+        self.assertIn("returned:0", proc.stdout, proc.stderr)
+        review = json.loads(f.read_text())
+        self.assertEqual(review["verdict"], "needs-attention")
+        self.assertTrue(review.get("unparseable"))
+
     def test_no_factory_login_stops_before_any_codex_call(self) -> None:
-        # The operator's ~/.codex/auth.json is there, but the factory never falls back to it.
-        (self.fhome / "auth.json").unlink()
-        for setup, call in (("WORKER_KIND=codex", "worker_round 1"), ("WORKER_KIND=claude", "run_codex_review 1")):
-            with self.subTest(call=call):
-                proc = self.call(setup, call)
-                self.assertFalse(self.seen.exists(), "codex ran without the factory login")
-                self.assertEqual(proc.returncode, 4, proc.stderr)  # stopped-environment
-                self.assertIn(f"CODEX_HOME={self.fhome} codex login --device-auth", proc.stderr)
-                (self.run_dir / "status").unlink(missing_ok=True)
+        # The operator's ~/.codex/auth.json is there, but the factory never falls back to it. A concurrent token
+        # refresh can leave the factory's file empty, or a shorter JSON object over the tail of a longer one.
+        for auth in (None, "", '{"tokens": {"a": "b"}}"}\n'):
+            if auth is None:
+                (self.fhome / "auth.json").unlink()
+            else:
+                (self.fhome / "auth.json").write_text(auth)
+            for setup, call in (("WORKER_KIND=codex", "worker_round 1"), ("WORKER_KIND=claude", "run_codex_review 1")):
+                with self.subTest(auth=auth, call=call):
+                    proc = self.call(setup, call)
+                    self.assertFalse(self.seen.exists(), "codex ran without a usable factory login")
+                    self.assertEqual(proc.returncode, 4, proc.stderr)  # stopped-environment
+                    self.assertIn(f"CODEX_HOME={self.fhome} codex login --device-auth", proc.stderr)
+                    (self.run_dir / "status").unlink(missing_ok=True)
+
+    def test_login_hint_runs_for_a_home_path_with_a_space(self) -> None:
+        self.fhome = self.top / "factory home"
+        proc = self.call("WORKER_KIND=codex", "worker_round 1")
+        self.assertEqual(proc.returncode, 4, proc.stderr)
+        hint = next(ln for ln in proc.stderr.splitlines() if "codex login --device-auth" in ln)
+        login = subprocess.run(["bash", "-c", hint.split("on this host: ", 1)[1]], cwd=self.top, capture_output=True,
+                               text=True, env={**os.environ, "PATH": f"{self.bin}:{os.environ['PATH']}",
+                                               "FAKE_SEEN": str(self.seen)}, check=False, timeout=60)
+        self.assertEqual(login.returncode, 0, login.stderr)
+        seen = json.loads(self.seen.read_text())
+        self.assertEqual((seen["home"], seen["argv"]), (str(self.fhome), ["login", "--device-auth"]))
 
 
 if __name__ == "__main__":

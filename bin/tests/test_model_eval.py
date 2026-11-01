@@ -64,7 +64,8 @@ if os.environ.get("STUB_SEEN"):
     files = sorted(str(p.relative_to(home)) for p in pathlib.Path(home).rglob("*")) if home else []
     tree = sorted(str(p) for p in pathlib.Path(".").rglob("*") if p.name in ("evals", "cases", "expected.json")
                   or str(p) == "bin/factory")
-    json.dump({"argv": a, "tree": tree, "home": home, "files": files}, open(os.environ["STUB_SEEN"], "w"))
+    keys = sorted(k for k in ("CODEX_API_KEY", "OPENAI_API_KEY") if k in os.environ)
+    json.dump({"argv": a, "tree": tree, "home": home, "files": files, "keys": keys}, open(os.environ["STUB_SEEN"], "w"))
 def strict(node):
     if not isinstance(node, dict):
         return True
@@ -118,6 +119,7 @@ class ModelEvalTests(unittest.TestCase):
         for name, text in (("claude", FAKE_CLAUDE), ("codex", FAKE_CODEX)):
             (stub / name).write_text(text)
             (stub / name).chmod(0o755)
+        self.stub = stub
         self.home = self.tmp / "home"
         self.home.mkdir()
         self.log = self.tmp / "calls"
@@ -182,13 +184,16 @@ class ModelEvalTests(unittest.TestCase):
         (self.home / ".codex/rules/default.rules").write_text("")
         (self.home / ".codex/auth.json").write_text("{}\n")
         seen = self.tmp / "seen.json"
-        r = self.run_me("codex:x", MODEL_EVAL_GRADERS="judge", STUB_SEEN=str(seen))
+        r = self.run_me("codex:x", MODEL_EVAL_GRADERS="judge", STUB_SEEN=str(seen),
+                        CODEX_API_KEY="operator-key", OPENAI_API_KEY="operator-key")
         self.assertEqual(r.returncode, 0, r.stderr)
         s = json.loads(seen.read_text())
         self.assertEqual(s["tree"], ["bin/factory"])  # the export, with no evals/ and no expected.json in it
         self.assertEqual(s["home"], str(self.fhome))
         self.assertEqual(s["files"], ["auth.json"])
         self.assertIn("--skip-git-repo-check", s["argv"])
+        self.assertIn(["-c", "skills.include_instructions=false"], [s["argv"][i:i + 2] for i in range(len(s["argv"]))])
+        self.assertEqual(s["keys"], [])  # an exported API key would outrank the factory's own login
 
     def test_codex_cell_export_drops_a_custom_set_outside_evals(self) -> None:
         # A committed set outside evals/ (MODEL_EVAL_SET=cases) is removed from the export too.
@@ -212,11 +217,40 @@ class ModelEvalTests(unittest.TestCase):
         self.case("judge", "k1", {"verdict": "fail", "defect_class": "logic-bug", "failing_rows": ["correct"]})
         (self.home / ".codex").mkdir()
         (self.home / ".codex/auth.json").write_text("{}\n")  # the operator's login is never a fallback
-        (self.fhome / "auth.json").unlink()
-        r = self.run_me("codex:x", MODEL_EVAL_GRADERS="judge")
-        self.assertNotEqual(r.returncode, 0)
-        self.assertIn("no factory Codex login", r.stderr)
-        self.assertEqual(self.calls(), [])
+        for auth in (None, '{"tokens": {}}"}\n'):  # missing, or left corrupt by a concurrent token refresh
+            with self.subTest(auth=auth):
+                if auth is None:
+                    (self.fhome / "auth.json").unlink()
+                else:
+                    (self.fhome / "auth.json").write_text(auth)
+                r = self.run_me("codex:x", MODEL_EVAL_GRADERS="judge")
+                self.assertNotEqual(r.returncode, 0)
+                self.assertIn("no factory Codex login", r.stderr)
+                self.assertEqual(self.calls(), [])
+
+    def test_codex_cell_finds_codex_where_the_factory_does(self) -> None:
+        # Codex is not on the non-interactive PATH (#41); bin/factory prepends ~/.local/bin, and so must the eval.
+        self.case("judge", "k1", {"verdict": "fail", "defect_class": "logic-bug", "failing_rows": ["correct"]})
+        (self.home / ".local/bin").mkdir(parents=True)
+        (self.stub / "codex").rename(self.home / ".local/bin/codex")
+        path = ":".join(d for d in self.env["PATH"].split(":") if not (pathlib.Path(d) / "codex").exists())
+        r = self.run_me("codex:x", MODEL_EVAL_GRADERS="judge", PATH=path)
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertEqual(self.calls(), ["codex x"])
+
+    def test_codex_cell_key_follows_the_factory_home_config(self) -> None:
+        # A Codex cell runs on the factory's config.toml, never the operator's, so only the former re-grades it.
+        self.case("judge", "k1", {"verdict": "fail", "defect_class": "logic-bug", "failing_rows": ["correct"]})
+        env = {"MODEL_EVAL_GRADERS": "judge"}
+        self.assertEqual(self.run_me("codex:x", **env).returncode, 0)
+        self.assertEqual(self.calls(), ["codex x"])
+        (self.home / ".codex").mkdir()
+        (self.home / ".codex/config.toml").write_text('model = "operator-model"\n')
+        self.assertEqual(self.run_me("codex:x", **env).returncode, 0)
+        self.assertEqual(self.calls(), [], "the operator's Codex config does not reach a Codex cell")
+        (self.fhome / "config.toml").write_text('model = "factory-model"\n')
+        self.assertEqual(self.run_me("codex:x", **env).returncode, 0)
+        self.assertEqual(self.calls(), ["codex x"], "a factory config change re-grades the Codex cell")
 
     def test_harness_change_regrades_every_reply(self) -> None:
         self.judge_cases()

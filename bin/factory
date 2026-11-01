@@ -983,14 +983,25 @@ WORKER_KIND=claude; CODEX_REVIEW=no; CODEX_REVIEW_BLOCKED=0
 CODEX_PATH="$HOME/.local/bin"   # Codex is not on the non-interactive PATH (#41); every Codex call prepends this
 
 # The CODEX_HOME of every factory Codex call: the factory's own, logged in once with its own `codex login`, so the
-# operator's AGENTS.md, rules, hooks, skills, memories and config.toml never reach a worker or a grader (#543 fenced
-# only the Claude calls), and a factory token refresh never rewrites the operator's auth.json. The factory writes
-# nothing in it: the model, the effort and the trusted worktree go on each call's argv, so concurrent runs share no
-# file they write. A home with no auth.json stops the run; there is no fallback to the operator's login.
+# operator's AGENTS.md, rules, hooks, memories and config.toml never reach a worker or a grader (#543 fenced only the
+# Claude calls), and a factory token refresh never rewrites the operator's auth.json. Each call also drops
+# CODEX_API_KEY and OPENAI_API_KEY, which outrank the stored login, and passes skills.include_instructions=false:
+# HOME stays the operator's, so Codex still scans ~/.agents/skills, but no skill catalog reaches the call (a Codex
+# worker gets its ticket's skills pasted). The factory writes nothing in the home; the model, the effort and the
+# trusted worktree go on each call's argv. Concurrent calls do share its auth.json, which Codex 0.163.0 rewrites on a
+# token refresh by truncating it in place, locked only within one process (codex-rs/login/src/auth/storage.rs:214,
+# manager.rs:2845 at rust-v0.163.0), so two calls refreshing at once can leave it invalid. A refresh comes on a 401
+# or within 5 minutes of the access token's expiry (manager.rs:3001; the factory's token lasted 10 days on
+# 2026-10-31), and a call that finds the file already changed skips its own (manager.rs:2867), so the window is one
+# refresh request; no lock the factory can take spans a refresh inside a running call. A home whose auth.json is
+# missing or not a single JSON object stops the run with the login command, which rewrites it; there is no fallback
+# to the operator's login.
 CODEX_FACTORY_HOME="${FACTORY_CODEX_HOME:-$HOME/.local/state/loam-factory/codex-home}"
-CODEX_LOGIN_HINT="no factory Codex login: $CODEX_FACTORY_HOME/auth.json is missing; run once on this host: mkdir -p -m 700 $CODEX_FACTORY_HOME && CODEX_HOME=$CODEX_FACTORY_HOME codex login --device-auth"
+printf -v CODEX_HOME_Q '%q' "$CODEX_FACTORY_HOME"   # shell-quoted, so the hint runs as printed
+CODEX_LOGIN_HINT="no factory Codex login: $CODEX_HOME_Q/auth.json is missing or not a single JSON object (a concurrent token refresh can corrupt it); log it in on this host: mkdir -p -m 700 $CODEX_HOME_Q && CODEX_HOME=$CODEX_HOME_Q codex login --device-auth"
 codex_home() { # -> prints the factory CODEX_HOME, or the login hint on stderr and 1
-  [ -s "$CODEX_FACTORY_HOME/auth.json" ] || { echo "$CODEX_LOGIN_HINT" >&2; return 1; }
+  jq -se 'length == 1 and (.[0] | type) == "object"' "$CODEX_FACTORY_HOME/auth.json" > /dev/null 2>&1 \
+    || { echo "$CODEX_LOGIN_HINT" >&2; return 1; }
   printf '%s\n' "$CODEX_FACTORY_HOME"
 }
 # The -c value that trusts one directory and nothing else. Codex loads a project's .codex config, rules and hooks
@@ -2134,7 +2145,7 @@ worker_round() { # round; leaves round-N.* only once the call produced a result
     ccd=$(git -C "$WORKTREE" rev-parse --path-format=absolute --git-common-dir)
     add_dirs=(--add-dir "$cgd" --add-dir "$ccd/objects" --add-dir "$ccd/refs" --add-dir "$ccd/logs" --add-dir "${DECISIONS%/*}")
     start=$SECONDS
-    call_start "$WORKTREE" ${t[@]+"${t[@]}"} env PATH="$CODEX_PATH:$PATH" CODEX_HOME="$ch" codex exec --json -m "$CODEX_MODEL" -c model_reasoning_effort="$WORKER_EFFORT" -c "$trust" -s workspace-write "${add_dirs[@]}" "$(cat "$pf")" -o "$RUN/round-$round.last.txt" > "$out" < /dev/null
+    call_start "$WORKTREE" ${t[@]+"${t[@]}"} env -u CODEX_API_KEY -u OPENAI_API_KEY PATH="$CODEX_PATH:$PATH" CODEX_HOME="$ch" codex exec --json -m "$CODEX_MODEL" -c model_reasoning_effort="$WORKER_EFFORT" -c "$trust" -c skills.include_instructions=false -s workspace-write "${add_dirs[@]}" "$(cat "$pf")" -o "$RUN/round-$round.last.txt" > "$out" < /dev/null
     call_end worker; rc=$?
     [ "$rc" -eq 0 ] || log "codex worker call exited $rc (the result decides)"
     # Restore the tracked .codex before codex_result so the clean-tree check and the graders see the
@@ -2426,9 +2437,12 @@ run_codex_review() { # round -> 0 when nothing blocks; needs-attention with a cr
     # A review needs no write access, so it runs read-only: under workspace-write it could edit the tree the
     # judge and reviewer already graded. `codex exec review` ignores --output-schema, so the review is plain
     # `codex exec` with the schema (#41): the -o file holds the schema-validated JSON, the JSONL stream
-    # (stdout) carries usage for the ledger. The one-line prompt is the frozen file with <base> filled in.
+    # (stdout) carries usage for the ledger. The one-line prompt is the frozen file with <base> filled in. The -o
+    # file goes first, so a call that writes none cannot pass off an earlier call's verdict (a resumed round's, on an
+    # older HEAD) as its own.
+    rm -f "$f"
     start=$SECONDS
-    call_start "$WORKTREE" ${TIMEOUT_G[@]+"${TIMEOUT_G[@]}"} env PATH="$CODEX_PATH:$PATH" CODEX_HOME="$ch" codex exec --json -m "$CODEX_MODEL" -c model_reasoning_effort="$GRADER_EFFORT" -c "$trust" --output-schema "$RUN/frozen/review-output.schema.json" -o "$f" -s read-only "$(sed "s/<base>/$base/" "$RUN/frozen/codex-review.prompt.md")" > "$jsonl" < /dev/null
+    call_start "$WORKTREE" ${TIMEOUT_G[@]+"${TIMEOUT_G[@]}"} env -u CODEX_API_KEY -u OPENAI_API_KEY PATH="$CODEX_PATH:$PATH" CODEX_HOME="$ch" codex exec --json -m "$CODEX_MODEL" -c model_reasoning_effort="$GRADER_EFFORT" -c "$trust" -c skills.include_instructions=false --output-schema "$RUN/frozen/review-output.schema.json" -o "$f" -s read-only "$(sed "s/<base>/$base/" "$RUN/frozen/codex-review.prompt.md")" > "$jsonl" < /dev/null
     call_end "Codex review"; rc=$?
     [ "$rc" -eq 0 ] || log "codex review call exited $rc"
     codex_result "$jsonl" "$rc" "$(( (SECONDS - start) * 1000 ))" > "$res"
