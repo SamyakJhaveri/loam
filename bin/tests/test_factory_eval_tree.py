@@ -100,5 +100,44 @@ class EvalTreeTests(unittest.TestCase):
         self.assertEqual((line["cases"], line["clean"], line["mutants"]), (7, 7, 0))
 
 
+    def test_a_patch_that_fits_but_fails_to_write_is_not_the_cases_failure(self) -> None:
+        # A full disk while git writes the patched file: model-eval keeps a key only for "the Diff ...", so this
+        # failure must not be named that way, or the case would never be retried.
+        tmp_dir = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp_dir.cleanup)
+        tmp = pathlib.Path(tmp_dir.name)
+        repo = tmp / "repo"
+        repo.mkdir()
+        git(repo, "init", "-q")
+        git(repo, "config", "user.email", "t@example.com")
+        git(repo, "config", "user.name", "t")
+        (repo / "a.txt").write_text("one\n")
+        git(repo, "add", "-A")
+        git(repo, "commit", "-qm", "base")
+        base = git(repo, "rev-parse", "HEAD")
+        diff = "\n".join([" a.txt | 2 +-", " 1 file changed, 1 insertion(+), 1 deletion(-)", "",
+                          "diff --git a/a.txt b/a.txt", "index 5626abf..f719efd 100644", "--- a/a.txt", "+++ b/a.txt",
+                          "@@ -1 +1 @@", "-one", "+two"])
+        case = tmp / "evals/judge/c1"
+        case.mkdir(parents=True)
+        (case / "prompt.md").write_text(f"## Ticket\n\n## Diff ({base[:8]}...HEAD)\n\n{FENCE}\n{diff}\n{FENCE}\n")
+        (case / "expected.json").write_text('{"verdict": "pass"}\n')
+        real = subprocess.run(["sh", "-c", "command -v git"], capture_output=True, text=True, check=True).stdout.strip()
+        shim = tmp / "bin/git"
+        shim.parent.mkdir()
+        shim.write_text(f'#!/bin/sh\n[ "$1" = apply ] && [ "$2" != --check ] && exit 1\nexec {real} "$@"\n')
+        shim.chmod(0o755)
+        work = tmp / "work"
+        work.mkdir()
+        env = {**os.environ, "PATH": f"{shim.parent}:{os.environ['PATH']}", "FACTORY_SOURCED": "1",
+               "FACTORY_ROOT": str(repo)}
+        script = f"EVALS_DIR='{tmp / 'evals'}'; case_tree '{case}' '{work}'"
+        proc = subprocess.run(["bash", "-c", '. "$0"\n' + script, "bin/factory"], cwd=ROOT, env=env,
+                              capture_output=True, text=True, check=False)
+        self.assertEqual(proc.returncode, 1, proc.stdout + proc.stderr)
+        self.assertIn("could not write", proc.stderr)
+        self.assertNotIn("the Diff", proc.stderr)
+
+
 if __name__ == "__main__":
     unittest.main()

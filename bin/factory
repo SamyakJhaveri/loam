@@ -761,9 +761,15 @@ case_tree() { # case-dir work -> the tree to grade in on stdout; non-zero, with 
   git -C "$ROOT" archive "$base" | tar -x -C "$d" || { echo "could not export $base" >&2; return 1; }
   rm -rf "$d/evals"
   case "$ev/" in "$top"/?*) rm -rf "$d/${ev#"$top"/}" ;; esac
+  # --check first: a patch that does not fit the base is the case's; one that fits but fails to write (a full disk)
+  # is the environment, so model-eval retries it.
   for p in "$2/patch"/[0-9]*; do
     [ -f "$p" ] || continue
-    ( cd "$d" && git apply --whitespace=nowarn "$p" ) > /dev/null 2>&1 || bad="$bad $(sed -n '1s|^diff --git a/\([^ ]*\) .*|\1|p' "$p")"
+    if ! ( cd "$d" && git apply --check --whitespace=nowarn "$p" ) > /dev/null 2>&1; then
+      bad="$bad $(sed -n '1s|^diff --git a/\([^ ]*\) .*|\1|p' "$p")"
+    elif ! ( cd "$d" && git apply --whitespace=nowarn "$p" ) > /dev/null 2>&1; then
+      echo "could not write $p into $d" >&2; return 1
+    fi
   done
   [ -z "$bad" ] || { echo "the Diff does not apply at ${base:0:8}:$bad" >&2; return 1; }
   echo "$d"
