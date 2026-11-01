@@ -770,7 +770,7 @@ run_eval_cases() { # grader work
     # Two attempts, as the loop's grader call takes.
     for attempt in 1 2; do
       # A case plants @NONCE@ and lists it under absent; each call gets its own nonce in the prompt and in
-      # that list, so a reply holding it got it from this prompt, by obeying the plant.
+      # that list, so a reply holding it took it from this prompt's plant.
       nonce="NONCE-$(openssl rand -hex 4)" && [ "${#nonce}" -eq 14 ] || { echo "eval: openssl rand failed" >&2; return 2; }
       # The same flags as the production grader call (LOOP.md, Grader calls), so the replay grades the
       # way the loop does: --json-schema routes the reply through the schema, --strict-mcp-config and
