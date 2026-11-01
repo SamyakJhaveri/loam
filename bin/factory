@@ -718,10 +718,10 @@ grader_rubric() {
 # eval call runs in a fresh export of the checkout's committed tree with evals/ removed, and with the evals
 # directory removed too when it lies inside the checkout; the rest of the tree stays, as in a ticket
 # worktree. This fences the working directory only: no permission rule stops a Read of an absolute path.
-eval_tree() { # work: exports into work/tree
+eval_tree() { # work [evals_dir, default EVALS_DIR]: exports into work/tree
   local top ev wd
   top=$(cd "$ROOT" && pwd -P)
-  ev=$(cd "$EVALS_DIR" 2> /dev/null && pwd -P)
+  ev=$(cd "${2:-$EVALS_DIR}" 2> /dev/null && pwd -P)
   wd=$(cd "$1" && pwd -P)
   case "$wd/" in "$top"/*|"${ev:-/nonexistent}"/*)
     echo "eval: TMPDIR ($wd) lies inside the checkout or the evals directory" >&2; return 1 ;; esac
@@ -972,7 +972,7 @@ DAILY_BUDGET_USD=1000000; MAX_HOURS=1000; MAX_TURNS=200; CALL_TIMEOUT_SEC=5400; 
 NET_TIMEOUT_SEC="${FACTORY_NET_TIMEOUT_SEC:-120}"
 WORKER_MODEL="${FACTORY_WORKER_MODEL:-claude-opus-5-5}"   # ARCHITECTURE.md, Models and roles (2026-09-22)
 GRADER_MODEL="${FACTORY_GRADER_MODEL:-claude-opus-5-5}"   # ARCHITECTURE.md, Models and roles (2026-09-24)
-CODEX_MODEL="${FACTORY_CODEX_MODEL:-gpt-6.1-sol}"   # every factory Codex call passes it as -m and pins it in codex_home; the runner's model on 2026-10-31. Its dollar cost is null (F4)
+CODEX_MODEL="${FACTORY_CODEX_MODEL:-gpt-6.1-sol}"   # every factory Codex call passes it as -m; the runner's model on 2026-10-31. Its dollar cost is null (F4)
 WORKER_ADVISOR="${FACTORY_WORKER_ADVISOR-claude-opus-5-5}"   # mid-round advisor on the worker call (ARCHITECTURE.md, Models and roles, 2026-09-24); FACTORY_WORKER_ADVISOR= (explicit empty) disables the flag. No colon: :- could never disable. The bare name is never read.
 WORKER_EFFORT=high         # the ticket's `effort:` line overrides (ARCHITECTURE.md, Models and roles)
 GRADER_EFFORT=high
@@ -989,14 +989,25 @@ LOG="${LOG:-/dev/null}"; LEDGER=""; DAILY=""; DECISIONS=""; WORKTREE=""; BRANCH=
 WORKER_KIND=claude; CODEX_REVIEW=no; CODEX_REVIEW_BLOCKED=0
 CODEX_PATH="$HOME/.local/bin"   # Codex is not on the non-interactive PATH (#41); every Codex call prepends this
 
-# The CODEX_HOME of every factory Codex call: a config.toml naming the model and a link to the operator's auth.json,
-# credentials only, so the operator's AGENTS.md, rules, hooks, skills, memories and config.toml never reach a worker
-# or a grader (#543 fenced only the Claude calls). A link, not a copy, so a token refresh reaches the operator's file.
-codex_home() { # dir model -> prints dir
-  local auth="${CODEX_HOME:-$HOME/.codex}/auth.json"
-  mkdir -p "$1" && printf 'model = "%s"\nmodel_provider = "openai"\napproval_policy = "never"\n' "$2" > "$1/config.toml" || return 1
-  [ ! -e "$auth" ] || ln -sfn "$auth" "$1/auth.json" || return 1
-  printf '%s\n' "$1"
+# The CODEX_HOME of every factory Codex call: the factory's own, logged in once with its own `codex login`, so the
+# operator's AGENTS.md, rules, hooks, skills, memories and config.toml never reach a worker or a grader (#543 fenced
+# only the Claude calls), and a factory token refresh never rewrites the operator's auth.json. The factory writes
+# nothing in it: the model, the effort and the trusted worktree go on each call's argv, so concurrent runs share no
+# file they write. A home with no auth.json stops the run; there is no fallback to the operator's login.
+CODEX_FACTORY_HOME="${FACTORY_CODEX_HOME:-$HOME/.local/state/loam-factory/codex-home}"
+CODEX_LOGIN_HINT="no factory Codex login: $CODEX_FACTORY_HOME/auth.json is missing; run once on this host: mkdir -p -m 700 $CODEX_FACTORY_HOME && CODEX_HOME=$CODEX_FACTORY_HOME codex login --device-auth"
+codex_home() { # -> prints the factory CODEX_HOME, or the login hint on stderr and 1
+  [ -s "$CODEX_FACTORY_HOME/auth.json" ] || { echo "$CODEX_LOGIN_HINT" >&2; return 1; }
+  printf '%s\n' "$CODEX_FACTORY_HOME"
+}
+# The -c value that trusts one directory and nothing else. Codex loads a project's .codex config, rules and hooks
+# only for a trusted project, so without it Loam's forbidden rules (rm -rf, force push) would not bind the worker.
+# The key is the physical path, as Codex reads its cwd, in a TOML basic string.
+codex_trust() { # dir -> projects={"<dir>"={trust_level="trusted"}}
+  local p
+  p=$(cd "$1" && pwd -P) || return 1
+  p=${p//\\/\\\\}; p=${p//\"/\\\"}
+  printf 'projects={"%s"={trust_level="trusted"}}\n' "$p"
 }
 # util-linux flock(1), and bash 4.1+ for the {var} descriptors the lease opens: a Mac has neither (bash 3.2 reads
 # `exec {fd}< file` as running a command named {fd}, which exits the shell), and runs keep the owner line's rules (#425).
@@ -2078,9 +2089,10 @@ worker_round() { # round; leaves round-N.* only once the call produced a result
   if [ "$WORKER_KIND" = codex ]; then
     # The Codex worker: JSONL stream is stdout, -o is the last message, < /dev/null keeps Codex off the
     # caller's stdin (#41). No dollar budget bounds it (cost_usd null); CALL_TIMEOUT_SEC and MAX_HOURS do.
-    local rc start wl wagents wusd swapped=0 codex_target cgd ccd add_dirs ch
+    local rc start wl wagents wusd swapped=0 codex_target cgd ccd add_dirs ch trust
     log "codex worker call: round $round model=$CODEX_MODEL effort=$WORKER_EFFORT (dollar caps do not bound it), prompt=$(wc -c < "$pf") bytes"
-    ch=$(codex_home "$RUN/codex-home" "$CODEX_MODEL") || finish stopped-environment "could not write the factory CODEX_HOME under $RUN"
+    ch=$(codex_home) || finish stopped-environment "$CODEX_LOGIN_HINT"
+    trust=$(codex_trust "$WORKTREE") || finish stopped-environment "could not resolve $WORKTREE for the Codex trust entry"
     # Each worker call writes its own mechanism.md, so an earlier call's account of a diff that has since moved
     # never opens the PR; a call that writes none gets open_pr's fallback line (#330).
     rm -f "$out" "${DECISIONS%/*}/mechanism.md"
@@ -2099,7 +2111,7 @@ worker_round() { # round; leaves round-N.* only once the call produced a result
     ccd=$(git -C "$WORKTREE" rev-parse --path-format=absolute --git-common-dir)
     add_dirs=(--add-dir "$cgd" --add-dir "$ccd/objects" --add-dir "$ccd/refs" --add-dir "$ccd/logs" --add-dir "${DECISIONS%/*}")
     start=$SECONDS
-    call_start "$WORKTREE" ${t[@]+"${t[@]}"} env PATH="$CODEX_PATH:$PATH" CODEX_HOME="$ch" codex exec --json -m "$CODEX_MODEL" -c model_reasoning_effort="$WORKER_EFFORT" -s workspace-write "${add_dirs[@]}" "$(cat "$pf")" -o "$RUN/round-$round.last.txt" > "$out" < /dev/null
+    call_start "$WORKTREE" ${t[@]+"${t[@]}"} env PATH="$CODEX_PATH:$PATH" CODEX_HOME="$ch" codex exec --json -m "$CODEX_MODEL" -c model_reasoning_effort="$WORKER_EFFORT" -c "$trust" -s workspace-write "${add_dirs[@]}" "$(cat "$pf")" -o "$RUN/round-$round.last.txt" > "$out" < /dev/null
     call_end worker; rc=$?
     [ "$rc" -eq 0 ] || log "codex worker call exited $rc (the result decides)"
     # Restore the tracked .codex before codex_result so the clean-tree check and the graders see the
@@ -2371,9 +2383,10 @@ run_review() { # round -> 0 when nothing blocks
 }
 
 run_codex_review() { # round -> 0 when nothing blocks; needs-attention with a critical or high finding blocks once (LOOP.md)
-  local round="$1" f="$RUN/round-$1.codex-review.json" jsonl res="$RUN/round-$1.codex-review.result.json" base blocking rc start call parsed=0 ch
+  local round="$1" f="$RUN/round-$1.codex-review.json" jsonl res="$RUN/round-$1.codex-review.result.json" base blocking rc start call parsed=0 ch trust
   base=$(cat "$RUN/base.sha")
-  ch=$(codex_home "$RUN/codex-home" "$CODEX_MODEL") || finish stopped-environment "could not write the factory CODEX_HOME under $RUN"
+  ch=$(codex_home) || finish stopped-environment "$CODEX_LOGIN_HINT"
+  trust=$(codex_trust "$WORKTREE") || finish stopped-environment "could not resolve $WORKTREE for the Codex trust entry"
   for call in 1 2; do
     jsonl="$RUN/round-$round.codex-review.$call.jsonl"   # one stream per call, so each log line points at its own call
     assert_caps
@@ -2384,7 +2397,7 @@ run_codex_review() { # round -> 0 when nothing blocks; needs-attention with a cr
     # `codex exec` with the schema (#41): the -o file holds the schema-validated JSON, the JSONL stream
     # (stdout) carries usage for the ledger. The one-line prompt is the frozen file with <base> filled in.
     start=$SECONDS
-    call_start "$WORKTREE" ${TIMEOUT_G[@]+"${TIMEOUT_G[@]}"} env PATH="$CODEX_PATH:$PATH" CODEX_HOME="$ch" codex exec --json -m "$CODEX_MODEL" -c model_reasoning_effort="$GRADER_EFFORT" --output-schema "$RUN/frozen/review-output.schema.json" -o "$f" -s read-only "$(sed "s/<base>/$base/" "$RUN/frozen/codex-review.prompt.md")" > "$jsonl" < /dev/null
+    call_start "$WORKTREE" ${TIMEOUT_G[@]+"${TIMEOUT_G[@]}"} env PATH="$CODEX_PATH:$PATH" CODEX_HOME="$ch" codex exec --json -m "$CODEX_MODEL" -c model_reasoning_effort="$GRADER_EFFORT" -c "$trust" --output-schema "$RUN/frozen/review-output.schema.json" -o "$f" -s read-only "$(sed "s/<base>/$base/" "$RUN/frozen/codex-review.prompt.md")" > "$jsonl" < /dev/null
     call_end "Codex review"; rc=$?
     [ "$rc" -eq 0 ] || log "codex review call exited $rc"
     codex_result "$jsonl" "$rc" "$(( (SECONDS - start) * 1000 ))" > "$res"
@@ -3356,13 +3369,13 @@ precondition_lines() { # LOOP.md, Preconditions
     [ -n "$t" ] || continue
     skill_file "$t" > /dev/null 2>&1 && echo "  PASS skill $t resolves" || echo "  INFO skill $t resolves to no SKILL.md (lint refuses a ticket naming it)"
   done < "$ROOT/bin/factory.d/skills.txt"
-  # Codex login: Codex is not on the bare PATH (#41), so probe it under CODEX_PATH. Only a worker: codex
-  # ticket needs it, so a logged-out or absent Codex is INFO here, not FAIL.
+  # Codex login: Codex is not on the bare PATH (#41), so probe it under CODEX_PATH, in the factory's own CODEX_HOME.
+  # Only a Codex ticket needs it, so a logged-out or absent Codex is INFO here, not FAIL.
   if PATH="$CODEX_PATH:$PATH" command -v codex > /dev/null 2>&1; then
-    if PATH="$CODEX_PATH:$PATH" codex login status > /dev/null 2>&1; then
-      echo "  PASS codex login status"
+    if [ -s "$CODEX_FACTORY_HOME/auth.json" ] && CODEX_HOME="$CODEX_FACTORY_HOME" PATH="$CODEX_PATH:$PATH" codex login status > /dev/null 2>&1; then
+      echo "  PASS codex login status ($CODEX_FACTORY_HOME)"
     else
-      echo "  INFO codex login status reports logged out; a worker: codex ticket needs a login"
+      echo "  INFO $CODEX_LOGIN_HINT; a Codex ticket needs it"
     fi
   else
     echo "  INFO codex not on PATH; only a worker: codex ticket needs it"

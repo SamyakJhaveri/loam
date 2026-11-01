@@ -5,7 +5,7 @@ Usage:
   bin/factory.d/model-eval <model>...
 
 A <model> is a Claude model id, graded by `bin/factory eval`, or codex:<model>, graded per case by
-`codex exec` in the same evals-free export and under bin/factory's codex_home. The environment sets the rest:
+`codex exec` in the same evals-free export and under the factory's own CODEX_HOME. The environment sets the rest:
   MODEL_EVAL_OUT          the output root (required)
   MODEL_EVAL_SET          the cases root, <grader>/<case>/{prompt.md,expected.json} (default evals/planted)
   MODEL_EVAL_GRADERS      default "judge reviewer lean-critic"
@@ -236,10 +236,12 @@ def main(argv):
     try:
         for g in graders:
             (tmp / f"{g}.schema.json").write_text(json.dumps(strict_schema(json.loads(schema[g]))), encoding="utf-8")
-        # A Codex cell runs where a Claude cell does, in bin/factory's export of the checkout with evals/ removed,
-        # so no answer key sits in its tree; the export is no git repo, hence --skip-git-repo-check.
+        # A Codex cell runs where a Claude cell does, in bin/factory's export of the checkout with evals/ and the
+        # eval set removed, so no answer key sits in its tree; the export is no git repo, hence --skip-git-repo-check.
+        # Its CODEX_HOME is the factory's own login; no trust entry, since a read-only grader needs no project rules.
         if any(m.startswith("codex:") for m in models):
-            factory_fn(gdir, "eval_tree", str(tmp))
+            factory_fn(gdir, "eval_tree", str(tmp), str(set_dir.resolve()))
+            home = factory_fn(gdir, "codex_home").decode().strip()
         for c in cells:
             g, m, e, k = c
             d = cell_dir(c)
@@ -265,7 +267,6 @@ def main(argv):
             if need:
                 print(f"model-eval: {name(c)}: {len(need)} of {len(cases[g])} cases", file=sys.stderr)
                 if codex:
-                    home = factory_fn(gdir, "codex_home", str(tmp / "codex-home"), m.removeprefix("codex:")).decode().strip()
                     for case in need:
                         o = tmp / "codex-reply.txt"
                         o.unlink(missing_ok=True)

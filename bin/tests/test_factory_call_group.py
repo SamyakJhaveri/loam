@@ -73,6 +73,8 @@ class CallGroupTests(unittest.TestCase):
         (self.run_dir / "prompt.md").write_text("## Ticket\n")
         self.bin = self.top / "bin"
         self.bin.mkdir()
+        (self.top / "codex-home").mkdir()  # the factory's own Codex login, which every Codex call needs
+        (self.top / "codex-home" / "auth.json").write_text("{}\n")
         for name, text in (("claude", FAKE_CLAUDE), ("codex", FAKE_CODEX)):
             (self.bin / name).write_text(text)
             (self.bin / name).chmod(0o755)
@@ -91,6 +93,7 @@ class CallGroupTests(unittest.TestCase):
         env = {k: v for k, v in os.environ.items() if k not in INHERITED and not k.startswith("FACTORY_")}
         return {"args": ["bash", "-c", '. "$0"\n' + script, "bin/factory"], "cwd": ROOT,
                 "env": {**env, "FACTORY_SOURCED": "1", "FACTORY_ROOT": str(ROOT),
+                        "FACTORY_CODEX_HOME": str(self.top / "codex-home"),
                         "FACTORY_RUNS_ROOT": str(self.top / "runs"), "FAKE_DIR": str(self.top),
                         "FACTORY_WORKER_ADVISOR": "", "CLAUDE_CONFIG_DIR": str(self.top / "cc"),
                         "PATH": f"{self.bin}:{env['PATH']}", **extra},

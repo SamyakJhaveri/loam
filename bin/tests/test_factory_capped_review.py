@@ -103,6 +103,8 @@ class CappedReviewTests(unittest.TestCase):
         self.gh_log = self.top / "gh-calls.jsonl"
         self.bin = self.top / "bin"
         self.bin.mkdir()
+        (self.top / "codex-home").mkdir()  # the factory's own Codex login, which every Codex call needs
+        (self.top / "codex-home" / "auth.json").write_text("{}\n")
         for name, text in (("claude", FAKE_CLAUDE), ("codex", FAKE_CODEX), ("gh", FAKE_GH % (str(self.gh_log), PR_URL))):
             (self.bin / name).write_text(text)
             (self.bin / name).chmod(0o755)
@@ -135,6 +137,7 @@ class CappedReviewTests(unittest.TestCase):
         env = {k: v for k, v in os.environ.items() if k not in INHERITED}
         proc = subprocess.run(["bash", "-c", f". bin/factory\n{script}"], cwd=ROOT,
                               env={**env, "FACTORY_SOURCED": "1", "FACTORY_ROOT": str(ROOT),
+                                   "FACTORY_CODEX_HOME": str(self.top / "codex-home"),
                                    "FACTORY_RUNS_ROOT": str(self.top / "runs"), "REPO": "acme/widget",
                                    "TICKET": TICKET, "PATH": f"{self.bin}:{env['PATH']}"},
                               capture_output=True, text=True, check=False)

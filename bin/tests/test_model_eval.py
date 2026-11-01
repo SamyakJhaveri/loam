@@ -62,7 +62,7 @@ if os.environ.get("STUB_SEEN"):
     import pathlib
     home = os.environ.get("CODEX_HOME", "")
     files = sorted(str(p.relative_to(home)) for p in pathlib.Path(home).rglob("*")) if home else []
-    tree = sorted(str(p) for p in pathlib.Path(".").rglob("*") if p.name in ("evals", "expected.json")
+    tree = sorted(str(p) for p in pathlib.Path(".").rglob("*") if p.name in ("evals", "cases", "expected.json")
                   or str(p) == "bin/factory")
     json.dump({"argv": a, "tree": tree, "home": home, "files": files}, open(os.environ["STUB_SEEN"], "w"))
 def strict(node):
@@ -123,10 +123,15 @@ class ModelEvalTests(unittest.TestCase):
         self.log = self.tmp / "calls"
         self.log.touch()
         self.out = self.tmp / "out"
+        self.fhome = self.tmp / "factory-codex-home"
+        self.fhome.mkdir()
+        (self.fhome / "auth.json").write_text("{}\n")
         self.env = {**os.environ, "PATH": f"{stub}:{os.environ['PATH']}", "HOME": str(self.home),
                     "STUB_LOG": str(self.log), "MODEL_EVAL_SET": str(self.tmp / "set"),
-                    "MODEL_EVAL_OUT": str(self.out), "MODEL_EVAL_REPEATS": "1", "MODEL_EVAL_GRADERS_DIR": str(AGENTS)}
-        for k in ("STUB_VERSION", "STUB_SERVED", "STUB_BAD", "EVAL_OUT", "MODEL_EVAL_EFFORTS", "MODEL_EVAL_SEED"):
+                    "MODEL_EVAL_OUT": str(self.out), "MODEL_EVAL_REPEATS": "1", "MODEL_EVAL_GRADERS_DIR": str(AGENTS),
+                    "FACTORY_CODEX_HOME": str(self.fhome)}
+        for k in ("STUB_VERSION", "STUB_SERVED", "STUB_BAD", "EVAL_OUT", "MODEL_EVAL_EFFORTS", "MODEL_EVAL_SEED",
+                  "FACTORY_ROOT", "CODEX_HOME"):
             self.env.pop(k, None)
 
     def case(self, grader: str, name: str, exp: dict) -> None:
@@ -181,8 +186,37 @@ class ModelEvalTests(unittest.TestCase):
         self.assertEqual(r.returncode, 0, r.stderr)
         s = json.loads(seen.read_text())
         self.assertEqual(s["tree"], ["bin/factory"])  # the export, with no evals/ and no expected.json in it
-        self.assertEqual(s["files"], ["auth.json", "config.toml"])
+        self.assertEqual(s["home"], str(self.fhome))
+        self.assertEqual(s["files"], ["auth.json"])
         self.assertIn("--skip-git-repo-check", s["argv"])
+
+    def test_codex_cell_export_drops_a_custom_set_outside_evals(self) -> None:
+        # A committed set outside evals/ (MODEL_EVAL_SET=cases) is removed from the export too.
+        proj = self.tmp / "proj"
+        d = proj / "cases" / "judge" / "k1"
+        d.mkdir(parents=True)
+        (d / "prompt.md").write_text("## Ticket\nk1\n")
+        (d / "expected.json").write_text(json.dumps({"verdict": "fail", "defect_class": "logic-bug",
+                                                     "failing_rows": ["correct"]}))
+        (proj / "bin").mkdir()
+        (proj / "bin/factory").write_text("")
+        for args in (["init", "-q"], ["add", "-A"], ["-c", "user.name=t", "-c", "user.email=t@t", "commit", "-qm", "c"]):
+            subprocess.run(["git", *args], cwd=proj, check=True, capture_output=True)
+        seen = self.tmp / "seen.json"
+        r = self.run_me("codex:x", MODEL_EVAL_GRADERS="judge", MODEL_EVAL_SET=str(proj / "cases"),
+                        FACTORY_ROOT=str(proj), STUB_SEEN=str(seen))
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertEqual(json.loads(seen.read_text())["tree"], ["bin/factory"])
+
+    def test_codex_cell_without_the_factory_login_makes_no_call(self) -> None:
+        self.case("judge", "k1", {"verdict": "fail", "defect_class": "logic-bug", "failing_rows": ["correct"]})
+        (self.home / ".codex").mkdir()
+        (self.home / ".codex/auth.json").write_text("{}\n")  # the operator's login is never a fallback
+        (self.fhome / "auth.json").unlink()
+        r = self.run_me("codex:x", MODEL_EVAL_GRADERS="judge")
+        self.assertNotEqual(r.returncode, 0)
+        self.assertIn("no factory Codex login", r.stderr)
+        self.assertEqual(self.calls(), [])
 
     def test_harness_change_regrades_every_reply(self) -> None:
         self.judge_cases()

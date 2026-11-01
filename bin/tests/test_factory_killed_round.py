@@ -59,6 +59,8 @@ class KilledRoundTests(unittest.TestCase):
         (self.run_dir / "frozen" / "worker-settings.json").write_text("{}")
         self.bin = self.top / "bin"
         self.bin.mkdir()
+        (self.top / "codex-home").mkdir()  # the factory's own Codex login, which every Codex call needs
+        (self.top / "codex-home" / "auth.json").write_text("{}\n")
         for name, text in (("claude", FAKE_CLAUDE), ("codex", FAKE_CODEX)):
             (self.bin / name).write_text(text)
             (self.bin / name).chmod(0o755)
@@ -76,6 +78,7 @@ class KilledRoundTests(unittest.TestCase):
         env = {k: v for k, v in os.environ.items() if k not in INHERITED and not k.startswith("FACTORY_")}
         return subprocess.run(["bash", "-c", f". bin/factory\n{script}"], cwd=ROOT,
                               env={**env, "FACTORY_SOURCED": "1", "FACTORY_ROOT": str(ROOT),
+                                   "FACTORY_CODEX_HOME": str(self.top / "codex-home"),
                                    "FACTORY_RUNS_ROOT": str(self.top / "runs"), "FAKE_SUBJECT": subject,
                                    "FAKE_ARGS": str(self.top / "codex-args"), "FAKE_MECH": str(self.run_dir / "mechanism.md"),
                                    "CLAUDE_CONFIG_DIR": str(self.top / "claude-config"),
