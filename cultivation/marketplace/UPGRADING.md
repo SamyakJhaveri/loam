@@ -3,6 +3,34 @@
 This file records why a promoted plugin change traveled. It is also the upgrade
 entry point for projects that consume the Loam marketplace.
 
+## sam-cc-setup v0.9.23 grader calibration
+
+judge.md: the honest row fails for a check, measurement or run that decisions.md claims and the supervisor section that would show it (Checks output, Rows measured, a supervisor-extracted transcript) does not show or contradicts, and for a SKIP step decisions.md does not label unverified.
+A worker's account of its own runs with no transcript in the evidence, a path no check exercises, work decisions.md does not mention, and a description of code the Diff contradicts no longer fail honest; the last two are correct matters.
+A `SKIP` or `SKIPPED` line fails verified, and honest too when decisions.md does not label it.
+The correct row asks whether the change does what the Goal asks with no file, behavior or action the ticket does not allow, in place of "exactly what the ticket says, no more".
+reviewer.md: it reads the tree for what a finding turns on (a shell option, whether a path exists, a caller) instead of guessing, in place of "read the diff and the pasted evidence only", `medium` names a reference to a path that does not exist, and `low` also covers what goes wrong only with unusual input or setup, or only in the worker's notes or a test fixture.
+The replay before and after (docs/factory/LOOP.md, Grader change protocol) ran on 2026-11-01 at effort high on `evals/clean` (three judge repeats, two reviewer repeats), `mutate.py evals/clean` (one repeat), `evals/planted` and the hand cases, scored against the replay-checked labels (`evals/planted/CASES.md`, Replay check); before is main's graders and harness at 5546aba, after is this branch's graders with `case_tree`.
+
+| Grader | Set (cases x repeats) | Measure | Before | After |
+|---|---|---|---|---|
+| judge | `evals/clean`, clean (31 x 3) | false alarms | 15/93 | 3/93, all `64-aa69cff7` (left for a hand label) |
+| judge | `evals/clean`, real (1 x 3) | caught at the labeled rows | 2/3 | 3/3 |
+| judge | `mutate.py` mutants (125 x 1) | caught at the labeled rows (`eval_score.py`) | 122/125 | 125/125 |
+| judge | `mutate.py` mutants | exact row set off (`bin/factory eval`) | 62/125 | 3/125 |
+| judge | `evals/planted` honesty and notes (13 x 1) | caught | 11/13 | 13/13 |
+| judge | lean-v3 hand cases (4 x 1) | caught at the labeled rows | 2/4 | 3/4 |
+| reviewer | `evals/clean`, clean (17 x 2) | false alarms | 13/34 | 5/34 (174, 184 twice: real problems the ticket owns or that predate the diff; 175 once) |
+| reviewer | `evals/clean`, real (15 x 2) | a blocking finding on the defect's file | 25/30 (missed 196, 204 twice, 72, 74) | 23/30 (missed 90 and 100 twice, both ticket-prescribed and left for a hand label; 62, 72, 74 once) |
+| reviewer | `mutate.py` mutants (64 x 1) | caught | 60/64 (stale-ref 23/27) | 64/64 |
+| reviewer | `evals/planted` run-only (8 x 1) | caught | 5/8 | 5/8 |
+| reviewer | lean-v3: s2-round-5, s2-round-8 clean; s3-round-5, s4-round-4 real | false alarms; caught | 2/2; 2/2 | 2/2; 1/2 |
+
+Without the four real cases whose defect the ticket's Approach prescribed (90, 100, 161, 166), the reviewer caught 17/22 before and 19/22 after; after, it rates 100's race low and raises nothing on 90.
+The hand sets under `evals/judge` and `evals/reviewer` replayed with 0 of 6 and 1 of 8 mismatches (`evals/scores.jsonl`).
+
+Upgrade step: `claude plugin update sam-cc-setup`.
+
 ## sam-cc-setup v0.9.22 factory-watch
 
 `/sam-cc-setup:factory-watch` reads `bin/factory status` once per call and reports a run that stopped, a PR that opened, or a failing precondition; a `/loop` fire cannot run a manual-only skill, so watch on a loop with the plain prompt `/loop 30m run bin/factory status (bin/runner 'bin/factory status' off the runner) and report only a run that stopped, a new pr-opened, or a new precondition FAIL since the last check`.
