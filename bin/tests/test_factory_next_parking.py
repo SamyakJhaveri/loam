@@ -641,32 +641,43 @@ class LintTests(ParkingTests):
     def test_frontier_writes_nothing(self) -> None:
         # The three states a real tick writes on: a running run whose owner is gone (holds_slot reaps it and alerts),
         # an env-parked run (env_park_alert writes env-parked and alerts), and a pr-opened run whose PR may have closed
-        # (pr_closed_events asks gh for its state).
+        # (pr_closed_events asks gh for its state). The gone-owner run is an older body of candidate #13, so both the
+        # slot loop and issue_busy must ask with peek.
         body = CLEAN + "\nissue 12"
         d12 = self.runs / "12" / key(body)
         self.run_dir(12, body, "stopped-environment")
         (d12 / "env-stops").write_text("-1 2 1\n")
-        r40, r41 = self.runs / "40" / "abcdef12", self.runs / "41" / "abcdef12"
+        body13 = CLEAN + "\nissue 13"
+        r40, r13 = self.runs / "40" / "abcdef12", self.runs / "13" / "abcdef12"
         r40.mkdir(parents=True)
         (r40 / "status").write_text("pr-opened\n")
         (r40 / "factory.log").write_text("2026-11-01T00:00:00Z EXIT pr-opened (0): https://github.com/o/r/pull/40\n")
-        r41.mkdir(parents=True)
-        (r41 / "status").write_text("running\n")
-        (r41 / "launched").write_text("1\n")
+        r13.mkdir(parents=True)
+        (r13 / "status").write_text("running\n")
+        (r13 / "launched").write_text("1\n")
         dead = subprocess.Popen(["true"])
         dead.wait()
-        (r41 / "owner").write_text(f"{dead.pid} Thu Jan  1 00:00:00 1970\n")
+        (r13 / "owner").write_text(f"{dead.pid} Thu Jan  1 00:00:00 1970\n")
         def snap() -> list[tuple[str, bytes]]:
             return sorted((str(f.relative_to(self.runs)), f.read_bytes() if f.is_file() else b"") for f in self.runs.rglob("*"))
         before = snap()
         alerts = self.runs.parent / f"{self.runs.name}.alerts"
         self.addCleanup(lambda: alerts.unlink(missing_ok=True))
-        proc = self.next_dry_run((12, body), pre=f"alert() {{ echo \"$*\" >> '{alerts}'; }}; ", flag="--frontier")
-        self.assertEqual((proc.returncode, proc.stdout), (0, ""), proc.stderr)
+        proc = self.next_dry_run((12, body), (13, body13), pre=f"alert() {{ echo \"$*\" >> '{alerts}'; }}; ", flag="--frontier")
+        self.assertEqual((proc.returncode, proc.stdout), (0, "#13\n"), proc.stderr)
         self.assertIn("parked #12", proc.stderr)
         self.assertEqual(snap(), before)
         self.assertFalse(alerts.exists())
         self.assertNotIn("issues/40", self.gh_log.read_text())
+
+    def test_install_refuses_a_read_only_flag(self) -> None:
+        cron = self.runs.parent / f"{self.runs.name}.crontab"
+        self.addCleanup(lambda: cron.unlink(missing_ok=True))
+        for flags in ("--frontier --install", "--install --dry-run"):
+            proc = self.next_dry_run(pre=f"crontab() {{ echo \"$*\" >> '{cron}'; }}; ", flag=flags)
+            self.assertEqual(proc.returncode, 2, flags)
+            self.assertIn("usage: bin/factory [-C <repo>] next", proc.stderr + proc.stdout)
+            self.assertFalse(cron.exists(), flags)
 
     def test_issue_an_unnamed_account_last_edited_is_passed_over(self) -> None:
         proc = self.next_dry_run((7, CLEAN), (8, CLEAN), editors={7: UNNAMED})

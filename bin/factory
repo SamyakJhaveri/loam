@@ -9,7 +9,7 @@
 #   bin/factory stop <issue>        writes FACTORY_STOP into the run dir; the run halts before its next call.
 #   bin/factory merge <pr> <sha>    merges the PR only when sha is its head and every check reported there passed.
 #   bin/factory next [--install]    the F9 frontier timer's step: launch the next unblocked ready-for-agent ticket.
-#   bin/factory next --frontier     prints every issue next would launch, one #N per line in launch order; writes nothing.
+#   bin/factory next --frontier     prints every issue next would launch, one #N per line in launch order; changes no run.
 #   bin/factory graders-check       fails when judge.md or reviewer.md drifts from GRADER_MODEL and GRADER_EFFORT; warns STALE.
 #   bin/factory skills              lists each installed pstack skill's lines that name a ~/ path or ask the user.
 #   -C <repo>, before the subcommand or right after it, points lint, run, status, stop, merge, and next at another repository (F8).
@@ -3088,7 +3088,8 @@ daily_spent_at_runner_caps() { # -> 0 when the shared daily ledger has no room f
 # The F9 frontier timer's one step: launch the next unblocked ready-for-agent ticket, or say why not.
 # --dry-run reports without launching or pulling, so a check can run it from inside a worktree.
 # --frontier is --dry-run that ignores FACTORY_STOP and the slot count and prints, one #N per line in launch order,
-# every candidate it would pick rather than the first; it exits 0 after the loop, with no line when none would launch.
+# every candidate it would pick rather than the first; it exits 0 after the loop, before the daily-budget wait,
+# with no line when none would launch.
 # --install writes the ten-minute runner timer from bin/factory.d/next.crontab.
 cmd_next() { # [--dry-run|--install|--frontier]
   local dry=0 frontier=0 do_install=0 a
@@ -3100,6 +3101,7 @@ cmd_next() { # [--dry-run|--install|--frontier]
       *)         usage next ;;
     esac
   done
+  [ "$do_install" = 1 ] && [ "$dry" = 1 ] && usage next   # --install writes the crontab, so a read-only flag cannot ride along
 
   if [ "$do_install" = 1 ]; then
     local tmpl="$ROOT/bin/factory.d/next.crontab"
