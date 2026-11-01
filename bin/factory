@@ -731,6 +731,25 @@ eval_tree() { # work: exports into work/tree
   case "$ev/" in "$top"/?*) rm -rf "$1/tree/${ev#"$top"/}" ;; esac
 }
 
+# A grader reads the tree it runs in, and the loop runs it in the round's worktree, so a frozen case is graded in
+# that tree rebuilt: the commit its `## Diff (<base>...HEAD)` heading names, keys removed as above, with the Diff
+# applied one file at a time (a capped or stat-only file stays at base). Graded in HEAD, a case drifts as main
+# moves: 152-8e26403e's reviewer flagged a gh call for not using a wrapper that main gained six weeks later.
+# A case whose heading names no commit this checkout has (planted, lean-v3) reads the HEAD export.
+case_tree() { # prompt.md work -> the tree to grade in, on stdout
+  local base top ev d="$2/case" p
+  base=$(sed -n 's/^## Diff (\([0-9a-f]\{7,40\}\)\.\.\.HEAD)$/\1/p' "$1" | head -1)
+  if [ -z "$base" ] || ! git -C "$ROOT" cat-file -e "$base^{commit}" 2> /dev/null; then echo "$2/tree"; return 0; fi
+  top=$(cd "$ROOT" && pwd -P); ev=$(cd "$EVALS_DIR" 2> /dev/null && pwd -P)
+  rm -rf "$d" "$2/patch" && mkdir "$d" "$2/patch" && git -C "$ROOT" archive "$base" | tar -x -C "$d" || { echo "$2/tree"; return 0; }
+  rm -rf "$d/evals"
+  case "$ev/" in "$top"/?*) rm -rf "$d/${ev#"$top"/}" ;; esac
+  awk -v fence="$FENCE" -v out="$2/patch/" '/^## Diff \(/ {s = 1; next} s == 1 && $0 == fence {s = 2; next}
+    s == 2 && $0 == fence {exit} s == 2 && /^diff --git / {n++} s == 2 && n && !/^\[content diff capped/ {print > (out n)}' "$1"
+  for p in "$2/patch"/*; do [ -f "$p" ] && ( cd "$d" && git apply --whitespace=nowarn "$p" ) > /dev/null 2>&1; done
+  echo "$d"
+}
+
 # One work directory per eval, outside the checkout, holding the export and the rubric. It is made, and its
 # traps set, before the export starts, so a signal at any point removes it. The traps sit in this shell, not
 # a subshell, so a TERM to bin/factory's pid alone still ends the case loop, once the in-flight call returns.
@@ -760,6 +779,7 @@ run_eval_cases() { # grader work
   grader_rubric "$gf" > "$rubric"
   for dir in "$EVALS_DIR/$grader"/*/; do
     [ -f "$dir/prompt.md" ] && [ -f "$dir/expected.json" ] || continue
+    tree=$(case_tree "$dir/prompt.md" "$2")
     if awk -v s="$spent" -v b="$budget" 'BEGIN {exit !(s >= b)}'; then
       echo "eval $grader: EVAL_BUDGET_USD $budget reached after \$$spent and $cases cases" >&2
       return 2
