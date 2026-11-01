@@ -1,15 +1,14 @@
-"""The factory grades with the grader prompts this checkout ships, or refuses.
+"""The factory grades with the grader prompts this checkout ships, whatever the plugin cache holds.
 
-grader_file takes judge.md and reviewer.md from the plugin cache only when the cached file's sha256 equals the
-checkout's cultivation/marketplace/sam-cc-setup/agents/ copy; the version string does not count. HOME is a scratch
-dir holding a fake plugin cache; `bin/factory` is sourced (FACTORY_SOURCED=1) and grader_file, precondition_lines, freeze, and
-cmd_next (gh, git, tmux, and its other gates stubbed as shell functions) are called directly. No `claude`, no network.
+grader_file returns the checkout's cultivation/marketplace/sam-cc-setup/agents/<name>.md, or --graders-dir's copy; an
+older sam-cc-setup in the plugin cache neither wins nor blocks a launch (#532). HOME is a scratch dir holding a fake
+plugin cache; `bin/factory` is sourced (FACTORY_SOURCED=1) and grader_file and cmd_next (gh, git, tmux, and its other
+gates stubbed as shell functions) are called directly. No `claude`, no network.
 """
 
 from __future__ import annotations
 
 import base64
-import json
 import os
 import pathlib
 import shutil
@@ -18,32 +17,26 @@ import tempfile
 import unittest
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
-SHIPS = json.loads((ROOT / "cultivation/marketplace/sam-cc-setup/.claude-plugin/plugin.json").read_text())["version"]
 SHIPPED = ROOT / "cultivation/marketplace/sam-cc-setup/agents"
-OLD, NEWER = "0.9.4", "99.0.0"
-STUBS = "claude() { :; }; gh() { :; }; codex() { :; }; "
+OLD = "0.9.4"
 
 
 class GraderVersionTests(unittest.TestCase):
     def setUp(self) -> None:
-        self.assertNotIn(SHIPS, (OLD, NEWER))
         tmp = tempfile.TemporaryDirectory()
         self.addCleanup(tmp.cleanup)
         self.tmp = pathlib.Path(tmp.name)
         self.home = self.tmp / "home"
         self.home.mkdir()
 
-    def cache(self, version: str, edited: bool = False) -> pathlib.Path:
-        """A fake installed sam-cc-setup at `version` holding the checkout's judge.md and reviewer.md, or copies
-        that differ from them when `edited`; returns its agents dir."""
-        agents = self.home / f".claude/plugins/cache/seed-skills/sam-cc-setup/{version}/agents"
+    def stale_cache(self) -> None:
+        """A fake installed sam-cc-setup holding a judge.md and a reviewer.md older than the checkout's."""
+        agents = self.home / f".claude/plugins/cache/seed-skills/sam-cc-setup/{OLD}/agents"
         agents.mkdir(parents=True)
         for g in ("judge", "reviewer"):
             shutil.copyfile(SHIPPED / f"{g}.md", agents / f"{g}.md")
-            if edited:
-                with (agents / f"{g}.md").open("a") as f:
-                    f.write("\nA grader edit this checkout does not ship.\n")
-        return agents
+            with (agents / f"{g}.md").open("a") as f:
+                f.write("\nA grader prompt this checkout no longer ships.\n")
 
     def sourced(self, script: str) -> subprocess.CompletedProcess[str]:
         env = {k: v for k, v in os.environ.items() if k != "FACTORY_ROOT"}
@@ -52,111 +45,39 @@ class GraderVersionTests(unittest.TestCase):
         return subprocess.run(["bash", "-c", f". bin/factory\n{script}"], cwd=ROOT, env=env,
                               capture_output=True, text=True, check=False)
 
-    def resolve(self, prefix: str = "") -> subprocess.CompletedProcess[str]:
-        return self.sourced(prefix + 'grader_file judge; echo "rc=$?"')
+    def test_the_checkout_copy_grades_beside_a_stale_cache(self) -> None:
+        # freeze writes this path and its sha256 to the ledger's grader event.
+        self.stale_cache()
+        proc = self.sourced('grader_file judge; grader_file reviewer; echo "rc=$?"')
+        self.assertEqual(proc.stdout.splitlines(), [str(SHIPPED / "judge.md"), str(SHIPPED / "reviewer.md"), "rc=0"],
+                         proc.stderr)
 
-    def assert_refused(self, cached: str) -> None:
-        proc = self.resolve()
-        self.assertEqual(proc.stdout.splitlines(), ["rc=1"], proc.stderr)
-        for text in (f"sam-cc-setup {cached}", str(SHIPPED / "judge.md"),
-                     "claude plugin update sam-cc-setup@seed-skills"):
-            self.assertIn(text, proc.stderr)
-
-    def test_an_older_cached_prompt_is_refused(self) -> None:
-        self.cache(OLD, edited=True)
-        self.assert_refused(OLD)
-
-    def test_a_prompt_edit_not_yet_cached_is_refused_at_the_same_version(self) -> None:
-        # The version string matches, but the checkout's judge.md changed and the cache has not caught up.
-        self.cache(SHIPS, edited=True)
-        self.assert_refused(SHIPS)
-
-    def test_a_version_bump_that_leaves_the_prompts_alone_still_resolves(self) -> None:
-        # The checkout ships a newer plugin.json, but the cached judge.md and reviewer.md are byte-identical.
-        old = self.cache(OLD)
-        proc = self.resolve()
-        self.assertEqual(proc.stdout.splitlines(), [str(old / "judge.md"), "rc=0"], proc.stderr)
-        lines = self.sourced(STUBS + "precondition_lines").stdout.splitlines()
-        self.assertFalse([x for x in lines if x.startswith("  FAIL") and f"sam-cc-setup {OLD}" in x], "\n".join(lines))
-
-    def test_status_reports_the_mismatch(self) -> None:
-        self.cache(OLD, edited=True)
-        lines = self.sourced(STUBS + "precondition_lines").stdout.splitlines()
-        fails = [x for x in lines if x.startswith("  FAIL") and f"sam-cc-setup {OLD}" in x and "differs" in x]
-        self.assertEqual(len(fails), 2, "\n".join(lines))  # judge and reviewer
-
-    def test_a_run_stops_at_freeze_naming_the_cached_version_and_the_checkout_file(self) -> None:
-        self.cache(OLD, edited=True)
-        run = self.tmp / "run"
-        (run / "frozen").mkdir(parents=True)
-        proc = self.sourced(f"RUN='{run}'; LOG=\"$RUN/factory.log\"; LEDGER=\"$RUN/ledger.jsonl\"; "
-                            "IS_FILE=1; KEY=t; BODY=x; freeze")
-        self.assertEqual(proc.returncode, 4, proc.stderr)  # stopped-environment
-        self.assertEqual((run / "status").read_text().strip(), "stopped-environment")
-        log = (run / "factory.log").read_text()
-        self.assertIn(f"EXIT stopped-environment (4): judge.md in the plugin cache (sam-cc-setup {OLD}) differs", log)
-        self.assertIn(str(SHIPPED / "judge.md"), log)
-        self.assertFalse((run / "frozen/judge.md").exists())
-
-    def test_a_newer_cached_version_with_other_prompts_is_neither_preferred_nor_accepted(self) -> None:
-        self.cache(NEWER, edited=True)
-        self.assert_refused(NEWER)
-        ships = self.cache(SHIPS)
-        proc = self.resolve()
-        self.assertEqual(proc.stdout.splitlines(), [str(ships / "judge.md"), "rc=0"], proc.stderr)
-
-    def test_control_the_shipped_version_resolves_beside_an_older_one(self) -> None:
-        self.cache(OLD, edited=True)
-        ships = self.cache(SHIPS)
-        proc = self.resolve()
-        self.assertEqual(proc.stdout.splitlines(), [str(ships / "judge.md"), "rc=0"], proc.stderr)
-        lines = self.sourced(STUBS + "precondition_lines").stdout.splitlines()
-        self.assertFalse([x for x in lines if x.startswith("  FAIL") and "judge.md" in x], "\n".join(lines))
-
-    def test_control_graders_dir_overrides_the_cache(self) -> None:
-        self.cache(OLD, edited=True)
+    def test_graders_dir_replaces_the_checkout_dir(self) -> None:
         mine = self.tmp / "agents"
         mine.mkdir()
         (mine / "judge.md").write_text("# judge, by hand\n")
-        proc = self.resolve(f"GRADERS_DIR='{mine}'; ")
+        proc = self.sourced(f'GRADERS_DIR=\'{mine}\'; grader_file judge; echo "rc=$?"')
         self.assertEqual(proc.stdout.splitlines(), [str(mine / "judge.md"), "rc=0"], proc.stderr)
 
-    def tick(self, *args: str, stale_on_pull: pathlib.Path | None = None, env: str = "") -> tuple[subprocess.CompletedProcess[str], str]:
+    def tick(self, env: str = "") -> tuple[subprocess.CompletedProcess[str], str]:
         """One `bin/factory next` tick over a frontier of #7; returns the run and the tmux calls it made, one per line.
-        env is shell code run first, such as an export the tick reads.
-        stale_on_pull is a cached agents dir whose prompts stop matching the checkout's when the tick fast-forwards
-        it. A real pull changes the checkout's copy; the stub edits the cached one, the same mismatch, so the
-        test never writes to the real checkout."""
+        env is shell code run first, such as an export the tick reads."""
         calls = self.tmp / "tmux.calls"
         body = (ROOT / "bin/tests/fixtures/clean-ticket.md").read_text().rstrip("\n")
         line = f"7 SamyakJhaveri {base64.b64encode(body.encode()).decode()}"
-        pull = f'for f in "{stale_on_pull}"/*.md; do echo edit >> "$f"; done' if stale_on_pull else ":"
         proc = self.sourced(
             env + "LOAM_FACTORY_TOOLCHAIN=t LOAM_FACTORY_COPIER=c; "
             "assert_toolchain_env() { :; }; claude_logged_in() { :; }; claude_version_ok() { :; }; target_repo() { echo o/r; }; "
             f"gh() {{ case $1$2 in apigraphql) ;; api*) echo '{line}' ;; esac; }}; "
-            f'git() {{ case "$*" in *"rev-parse --abbrev-ref HEAD") echo main ;; *"merge --ff-only"*) {pull} ;; esac; }}; '
+            f'git() {{ case "$*" in *"rev-parse --abbrev-ref HEAD") echo main ;; esac; }}; '
             f'tmux() {{ echo "$*" >> "{calls}"; [ "$1" != has-session ]; }}; '
-            f'cmd_next {" ".join(args)}; echo "rc=$?"')
+            'cmd_next; echo "rc=$?"')
         return proc, calls.read_text() if calls.exists() else ""
 
-    def test_next_refuses_to_launch_when_its_pull_leaves_the_cache_stale(self) -> None:
-        # A launched run assigns the issue before freeze stops it, and the frontier takes only unassigned
-        # issues, so every tick would burn one more ticket. The cache matched until the pull.
-        proc, tmux = self.tick(stale_on_pull=self.cache(SHIPS))
-        self.assertEqual(proc.stdout.splitlines(), ["rc=1"], proc.stderr)
-        self.assertIn(f"judge.md in the plugin cache (sam-cc-setup {SHIPS}) differs", proc.stderr)
-        self.assertNotIn("new-session", tmux)
-
-    def test_next_launches_after_a_version_bump_that_leaves_the_prompts_alone(self) -> None:
-        self.cache(OLD)
-        proc, tmux = self.tick()
-        self.assertEqual(proc.stdout.splitlines(), ["launched #7", "rc=0"], proc.stderr)
-        self.assertIn("new-session", tmux)
-
-    def test_control_next_launches_with_the_shipped_version_cached(self) -> None:
-        self.cache(OLD, edited=True)
-        self.cache(SHIPS)
+    def test_next_launches_with_a_stale_cache(self) -> None:
+        # On 1 Nov 2026 a grader edit left the cache one version behind, and next refused every tick for about
+        # 11 hours while next --dry-run said "would launch".
+        self.stale_cache()
         proc, tmux = self.tick()
         self.assertEqual(proc.stdout.splitlines(), ["launched #7", "rc=0"], proc.stderr)
         self.assertIn("new-session", tmux)
@@ -164,24 +85,12 @@ class GraderVersionTests(unittest.TestCase):
     def test_next_passes_its_caps_to_the_run_it_launches(self) -> None:
         # tmux gives a session the server's environment, so without -e the run fell back to MAX_PARALLEL=1 and
         # stopped at once beside a live run (48 false machine-problem pages on jhaveris, 30-31 Oct).
-        self.cache(SHIPS)
         proc, tmux = self.tick(env="export FACTORY_MAX_PARALLEL=2 FACTORY_MAX_HOURS=; ")
         self.assertEqual(proc.stdout.splitlines(), ["launched #7", "rc=0"], proc.stderr)
         launch = [x for x in tmux.splitlines() if x.startswith("new-session")]
         self.assertEqual(len(launch), 1, tmux)
         self.assertIn("-e FACTORY_MAX_PARALLEL=2 ", launch[0])
         self.assertNotIn("FACTORY_MAX_HOURS", launch[0])
-
-    def test_control_next_dry_run_skips_the_grader_gate(self) -> None:
-        # A ticket's check may run next --dry-run in a worktree whose grader edit is not installed yet.
-        self.cache(OLD, edited=True)
-        proc, _ = self.tick("--dry-run")
-        self.assertEqual(proc.stdout.splitlines(), ["would launch #7", "rc=0"], proc.stderr)
-
-    def test_control_no_install_falls_back_to_the_checkout_copy(self) -> None:
-        proc = self.resolve()
-        checkout = ROOT / "cultivation/marketplace/sam-cc-setup/agents/judge.md"
-        self.assertEqual(proc.stdout.splitlines(), [str(checkout), "rc=0"], proc.stderr)
 
 
 if __name__ == "__main__":
