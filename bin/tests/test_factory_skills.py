@@ -4,7 +4,9 @@
 temp tree holding fake plugin caches and an installed_plugins.json naming each plugin's installPath, so the real
 allowlist and plugins are never read. The prompt test sources
 bin/factory (FACTORY_SOURCED=1) and calls the real build_worker_prompt with a Claude worker; the fan-out test
-then runs the real factory-round.js under node with stub workflow globals.
+then runs the real factory-round.js under node with stub workflow globals. The record and worker_round tests hold
+that no ledger line carries the deleted skills_called field (#575); worker_round runs with a fake claude, the temp
+HOME and a no-op frozen alert, so it reads no real token and pings nothing.
 """
 
 from __future__ import annotations
@@ -273,12 +275,12 @@ console.log(JSON.stringify(seen));"""
         res.write_text(json.dumps({"type": "result", "total_cost_usd": 1, "num_turns": 3}))
         led = self.tmp / "ledger.jsonl"
         self.sourced('RUN=$1; LOG=/dev/null; LEDGER=$2; DAILY=$1/daily.jsonl; KEY=7\n'
-                     'record 1 worker m "$3" 0 0 0 0 0 pstack:tdd,rigor',
+                     'record 1 worker m "$3" 0 0 0 0 0 pstack:tdd,rigor\n'
+                     'record 1 worker m "$1/none.json" 0 0 0 0 0 rigor',
                      str(self.tmp), str(led), str(res))
         lines = [json.loads(x) for x in led.read_text().splitlines()]
-        self.assertEqual(len(lines), 1)
-        self.assertEqual(lines[0]["num_turns"], 3)
-        self.assertNotIn("skills_called", lines[0])
+        self.assertEqual([x["num_turns"] for x in lines], [3, 0])
+        self.assertEqual([x for x in lines if "skills_called" in x], [])
 
     def test_sourcing_defines_no_skills_called(self) -> None:
         self.assertEqual(self.sourced('declare -F skills_called || true'), "")
@@ -290,6 +292,9 @@ console.log(JSON.stringify(seen));"""
         (run / "frozen/_common.md").write_text("")
         (run / "frozen/unattended.md").write_text("")
         (run / "frozen/worker-settings.json").write_text("{}")
+        (run / "frozen/issue.md").write_text("A ticket.\n")
+        (run / "frozen/alert").write_text("#!/usr/bin/env bash\n")
+        (run / "frozen/alert").chmod(0o755)
         claude = fake / "claude"
         claude.write_text('#!/usr/bin/env bash\ncat > /dev/null\necho \'{"type":"result","subtype":"success",'
                           '"is_error":false,"total_cost_usd":0,"num_turns":1,"result":"done"}\'\n')
@@ -298,9 +303,11 @@ console.log(JSON.stringify(seen));"""
                   'LEDGER=$RUN/ledger.jsonl; DAILY=$RUN/daily.jsonl; DECISIONS=$RUN/decisions.md; '
                   'touch "$LEDGER" "$DAILY" "$DECISIONS"; date -u +%s > "$RUN/launched"; '
                   'BODY=$(printf "## Worker\\nworker: claude\\n"); apply_caps; WORKER_KIND=claude; worker_round 1')
-        env = {**os.environ, "FACTORY_ROOT": str(ROOT), "FACTORY_SOURCED": "1", "FACTORY_RUNS_ROOT": str(t / "runs"),
+        env = {**self.env(), "FACTORY_ROOT": str(ROOT), "FACTORY_SOURCED": "1", "FACTORY_RUNS_ROOT": str(t / "runs"),
                "PATH": f"{fake}:{os.environ['PATH']}", "T": str(t)}
         proc = subprocess.run(["bash", "-c", script], cwd=ROOT, env=env, capture_output=True, text=True, check=False)
+        self.assertEqual(proc.returncode, 0, proc.stdout + proc.stderr)
+        self.assertNotIn("command not found", proc.stderr)
         led = run / "ledger.jsonl"
         lines = [json.loads(x) for x in led.read_text().splitlines() if x.strip()]
         workers = [x for x in lines if x.get("role") == "worker"]

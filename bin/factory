@@ -650,7 +650,7 @@ skill_file() { # skill-name -> SKILL.md path on stdout, non-zero when it resolve
   return 1
 }
 
-# The ticket's `skills:` names, one per line, as build_worker_prompt and worker_round read them.
+# The ticket's `skills:` names, one per line, as build_worker_prompt reads them.
 worker_skills() { section Worker | sed -n 's/^skills: *//p' | head -1 | tr ',' '\n' | sed 's/^ *//;s/ *$//' | grep .; }
 
 # A plugin agent file opens with frontmatter; strip it. One that asks for prose is also asked for the
