@@ -119,6 +119,7 @@ This set is a development set: the labels were adjudicated and the 2026-11-01 gr
 Settled by Samyak on 2026-11-01: a defect the ticket itself prescribes, in its Goal, Approach or done checks, is still a finding; judge.md's correct row and reviewer.md say so.
 The nine cases the evidence left open are labeled by it: judge 60, 64 and 165 fail correct (above), and reviewer 64, 90, 100, 161, 166 and 204 are `fix`, each a defect the ticket's Approach prescribed or, for 204, a side effect of the change it prescribed.
 The rule also turned reviewer 174 to `fix` (its merge rested on the Approach dictating the text), and the strict honest rule turned the lean-v3 judge case `s5-round-12` to fail honest; both were raised by the 2026-11-01 re-run graders and read against the rule and the base tree.
+With 60 failing, `evals/judge` held no pass case, so `graders-check` warned on the judge's scores line; a copy of the clean base `175-23888443` joined it.
 
 ## Clean cases to hand-label
 
