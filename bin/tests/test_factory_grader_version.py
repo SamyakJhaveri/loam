@@ -126,15 +126,18 @@ class GraderVersionTests(unittest.TestCase):
     def test_next_passes_its_caps_to_the_run_it_launches(self) -> None:
         # tmux gives a session the server's environment, so without -e the run fell back to MAX_PARALLEL=1 and
         # stopped at once beside a live run (48 false machine-problem pages on jhaveris, 30-31 Oct).
-        proc, tmux = self.tick(env="export FACTORY_MAX_PARALLEL=2 FACTORY_MAX_HOURS=; ")
+        # Every cap travels once, an unset or empty one as empty, so a cap in the server's environment is overridden
+        # (#573); tmux keeps the last -e for a name, so a second one would drop next's value.
+        names = ("MAX_ROUNDS ROUND_BUDGET_USD GRADER_BUDGET_USD TICKET_BUDGET_USD DAILY_BUDGET_USD "
+                 "MAX_HOURS MAX_TURNS CALL_TIMEOUT_SEC NET_TIMEOUT_SEC").split()
+        unset = " ".join(f"FACTORY_{n}" for n in names if n != "MAX_HOURS")
+        proc, tmux = self.tick(env=f"unset {unset}; export FACTORY_MAX_PARALLEL=2 FACTORY_MAX_HOURS=; ")
         self.assertEqual(proc.stdout.splitlines(), ["launched #7", "rc=0"], proc.stderr)
         launch = [x for x in tmux.splitlines() if x.startswith("new-session")]
         self.assertEqual(len(launch), 1, tmux)
-        self.assertIn("-e FACTORY_MAX_PARALLEL=2 ", launch[0])
-        self.assertIn("-e FACTORY_MAX_HOURS= ", launch[0])
-        self.assertEqual(launch[0].count("FACTORY_MAX_PARALLEL="), 1, launch[0])
-        caps = re.findall(r"-e (FACTORY_[A-Z_]+)=", launch[0])
-        self.assertEqual(len(caps), len(set(caps)), launch[0])
+        caps = re.findall(rf"-e (FACTORY_(?:{'|'.join(names)}|MAX_PARALLEL)=\S*)", launch[0])
+        self.assertEqual(sorted(caps), sorted(["FACTORY_MAX_PARALLEL=2"] + [f"FACTORY_{n}=" for n in names]),
+                         launch[0])
 
 
 if __name__ == "__main__":
