@@ -32,7 +32,12 @@ import json, os, pathlib, sys
 a = sys.argv[1:]
 home = os.environ.get("CODEX_HOME", "")
 files = sorted(str(p.relative_to(home)) for p in pathlib.Path(home).rglob("*")) if home else []
-json.dump({"argv": a, "home": home, "files": files, "env": sorted(os.environ)}, open(os.environ["FAKE_SEEN"], "w"))
+seen = {"argv": a, "home": home, "files": files, "env": sorted(os.environ), "cwd": os.getcwd()}
+if "mcp" in a:
+    json.dump(seen, open(os.environ["FAKE_SEEN"] + ".mcp", "w"))
+    print(os.environ.get("FAKE_MCP_REPLY", '[{"name":"mcp.consensus.app"},{"name":"another-server"}]'))
+    sys.exit(0)
+json.dump(seen, open(os.environ["FAKE_SEEN"], "w"))
 if os.environ.get("FAKE_FAIL"):
     sys.exit(1)
 if "-o" in a:
@@ -63,6 +68,7 @@ class CodexHomeTests(unittest.TestCase):
             (frozen / name).write_text("")
         (frozen / "worker-settings.json").write_text("{}")
         (frozen / "codex-review.prompt.md").write_text("Review the diff against <base>.\n")
+        (frozen / "issue.md").write_text("# Ticket 7\n")
         shutil.copy(ROOT / "bin/factory.d/review-output.schema.json", frozen / "review-output.schema.json")
         (self.run_dir / "base.sha").write_text("HEAD\n")
         self.home = self.top / "home"
@@ -128,10 +134,21 @@ class CodexHomeTests(unittest.TestCase):
         self.assertEqual({(pathlib.Path(r["path"]).resolve(), r["enabled"]) for r in rules[0]},
                          {(f.resolve(), False) for f in self.operator_skills})
         self.assertIn(["-c", "skills.include_instructions=false"], pairs)
+        probe = json.loads(pathlib.Path(str(self.seen) + ".mcp").read_text())
+        self.assertEqual(pathlib.Path(probe["cwd"]).resolve(), self.wt.resolve())
+        self.assertEqual(probe["home"], str(self.fhome))
+        self.assertEqual(set(probe["env"]) & set(CREDENTIALS), set())
+        probe_pairs = [probe["argv"][i:i + 2] for i in range(len(probe["argv"]) - 1)]
+        for key in ("features.plugins", "features.remote_plugin", "features.apps", "features.skill_mcp_dependency_install"):
+            for argv in (pairs, probe_pairs):
+                self.assertIn(["-c", f"{key}=false"], argv)
+        mcp = [tomllib.loads(v)["mcp_servers"] for k, v in pairs if k == "-c" and v.startswith("mcp_servers=")]
+        self.assertEqual(mcp, [{"mcp.consensus.app": {"enabled": False}, "another-server": {"enabled": False}}])
         # An exported credential would outrank the factory's own login.
         self.assertEqual(set(seen["env"]) & set(CREDENTIALS), set())
         # Only the worktree is trusted, so its .codex rules (Loam's forbidden rm -rf) bind the call.
-        self.assertIn(["-c", 'projects={"%s"={trust_level="trusted"}}' % self.wt.resolve()], pairs)
+        for argv in (pairs, probe_pairs):
+            self.assertIn(["-c", 'projects={"%s"={trust_level="trusted"}}' % self.wt.resolve()], argv)
 
     def test_codex_worker_gets_the_factory_home_and_the_ticket_effort(self) -> None:
         self.assert_sealed(self.call("WORKER_KIND=codex; WORKER_EFFORT=xhigh", "worker_round 1"), "xhigh")
@@ -149,6 +166,16 @@ class CodexHomeTests(unittest.TestCase):
         review = json.loads(f.read_text())
         self.assertEqual(review["verdict"], "needs-attention")
         self.assertTrue(review.get("unparseable"))
+
+    def test_invalid_mcp_list_stops_before_a_model_call(self) -> None:
+        for reply in ("not json", "{}", '[{"name":null}]'):
+            for setup, call in (("WORKER_KIND=codex", "worker_round 1"), ("WORKER_KIND=claude", "run_codex_review 1")):
+                with self.subTest(reply=reply, call=call):
+                    proc = self.call(f"{setup}; export FAKE_MCP_REPLY='{reply}'", call)
+                    self.assertEqual(proc.returncode, 4, proc.stderr)
+                    self.assertFalse(self.seen.exists(), "Codex ran without disabling the configured MCP servers")
+                    self.assertIn("could not list Codex MCP servers", proc.stderr)
+                    (self.run_dir / "status").unlink(missing_ok=True)
 
     def test_no_factory_login_stops_before_any_codex_call(self) -> None:
         # The operator's ~/.codex/auth.json is there, but the factory never falls back to it. A concurrent token

@@ -30,6 +30,7 @@ echo '{"type":"system","subtype":"init"}'
 exit 124
 """
 FAKE_CODEX = """#!/usr/bin/env bash
+for arg in "$@"; do [ "$arg" != mcp ] || { echo '[]'; exit 0; }; done
 printf '%s\\n' "$@" > "$FAKE_ARGS"
 echo '{"type":"thread.started"}'
 [ -z "${FAKE_SUBJECT:-}" ] || git -c user.name=t -c user.email=t@t commit -q --allow-empty -m "$FAKE_SUBJECT"

@@ -57,6 +57,12 @@ FAKE_CODEX = """#!/usr/bin/env python3
 import json, os, sys
 a = sys.argv[1:]
 g = lambda f: a[a.index(f) + 1] if f in a else ""
+if "mcp" in a:
+    if os.environ.get("STUB_SEEN"):
+        json.dump({"argv": a, "home": os.environ.get("CODEX_HOME"), "env": sorted(os.environ), "cwd": os.getcwd()},
+                  open(os.environ["STUB_SEEN"] + ".mcp", "w"))
+    print(os.environ.get("STUB_MCP_REPLY", '[{"name":"mcp.consensus.app"}]'))
+    sys.exit(0)
 sys.stdin.read()
 """ + REPLIES + """
 with open(os.environ["STUB_LOG"], "a") as f:
@@ -67,8 +73,14 @@ if os.environ.get("STUB_SEEN"):
     files = sorted(str(p.relative_to(home)) for p in pathlib.Path(home).rglob("*")) if home else []
     tree = sorted(str(p) for p in pathlib.Path(".").rglob("*") if p.name in ("evals", "cases", "expected.json")
                   or str(p) == "bin/factory")
-    json.dump({"argv": a, "tree": tree, "home": home, "files": files, "env": sorted(os.environ)},
+    json.dump({"argv": a, "tree": tree, "home": home, "files": files, "env": sorted(os.environ), "cwd": os.getcwd()},
               open(os.environ["STUB_SEEN"], "w"))
+if os.environ.get("STUB_CWD"):
+    with open(os.environ["STUB_CWD"], "a") as f:
+        import glob
+        keys = glob.glob("../**/expected.json", recursive=True) + glob.glob("**/expected.json", recursive=True)
+        f.write("evals=%s factory=%s cd=%s keys=%d\\n" % (os.path.isdir("evals"), os.path.isfile("bin/factory"),
+                                                os.path.realpath(g("-C") or ".") == os.path.realpath("."), len(keys)))
 def strict(node):
     if not isinstance(node, dict):
         return True
@@ -200,11 +212,28 @@ class ModelEvalTests(unittest.TestCase):
         self.assertIn("--skip-git-repo-check", s["argv"])
         pairs = [s["argv"][i:i + 2] for i in range(len(s["argv"]) - 1)]
         self.assertIn(["-c", "skills.include_instructions=false"], pairs)
+        probe = json.loads(pathlib.Path(str(seen) + ".mcp").read_text())
+        self.assertEqual(probe["cwd"], s["cwd"])
+        self.assertEqual(probe["home"], str(self.fhome))
+        self.assertEqual(set(probe["env"]) & set(CREDENTIALS), set())
+        probe_pairs = [probe["argv"][i:i + 2] for i in range(len(probe["argv"]) - 1)]
+        for key in ("features.plugins", "features.remote_plugin", "features.apps", "features.skill_mcp_dependency_install"):
+            for argv in (pairs, probe_pairs):
+                self.assertIn(["-c", f"{key}=false"], argv)
+        mcp = [tomllib.loads(v)["mcp_servers"] for k, v in pairs if k == "-c" and v.startswith("mcp_servers=")]
+        self.assertEqual(mcp, [{"mcp.consensus.app": {"enabled": False}}])
         # The operator's skill is disabled by path, so a `$personal-audit` in a case prompt cannot load it.
         rules = [tomllib.loads("v = " + v.removeprefix("skills.config="))["v"] for k, v in pairs
                  if k == "-c" and v.startswith("skills.config=")]
         self.assertEqual(rules, [[{"path": str(skill), "enabled": False}]])
         self.assertEqual(set(s["env"]) & set(CREDENTIALS), set())  # each would outrank the factory's own login
+
+    def test_codex_cell_with_an_invalid_mcp_list_makes_no_model_call(self) -> None:
+        self.case("judge", "k1", {"verdict": "pass"})
+        r = self.run_me("codex:x", MODEL_EVAL_GRADERS="judge", STUB_MCP_REPLY="not json")
+        self.assertNotEqual(r.returncode, 0)
+        self.assertIn("codex_mcp_off", r.stderr)
+        self.assertEqual(self.calls(), [])
 
     def test_codex_cell_export_drops_a_custom_set_outside_evals(self) -> None:
         # A committed set outside evals/ (MODEL_EVAL_SET=cases) is removed from the export too.
@@ -262,6 +291,53 @@ class ModelEvalTests(unittest.TestCase):
         (self.fhome / "config.toml").write_text('model = "factory-model"\n')
         self.assertEqual(self.run_me("codex:x", **env).returncode, 0)
         self.assertEqual(self.calls(), ["codex x"], "a factory config change re-grades the Codex cell")
+
+    def test_codex_runs_in_the_export_without_the_answer_keys(self) -> None:
+        # model-eval runs from the checkout, whose evals/ holds every expected.json, and a Codex grader reads
+        # the directory it runs in, so it gets the export a Claude cell's bin/factory eval reads.
+        self.judge_cases()
+        seen = self.tmp / "cwd"
+        # A Claude cell first, so its copied cases (each with an expected.json) exist while the Codex cell runs.
+        r = self.run_me("m1", "codex:x", MODEL_EVAL_GRADERS="judge", STUB_CWD=str(seen))
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertEqual(seen.read_text().splitlines(), ["evals=False factory=True cd=True keys=0"] * 2)
+
+    def test_a_case_whose_diff_does_not_apply_is_recorded_once(self) -> None:
+        # Its tree cannot be built, so no grader reads a half-built tree; the case still shows in the table, as a
+        # failed reply, and a rerun with nothing changed does not try it again.
+        head = subprocess.run(["git", "-C", str(ROOT), "rev-parse", "HEAD"], capture_output=True, text=True).stdout.strip()
+        d = self.tmp / "set" / "judge" / "k1"
+        d.mkdir(parents=True)
+        fence = "~~~~~~~~~~~~ evidence"
+        diff = "diff --git a/no-such-file b/no-such-file\n--- a/no-such-file\n+++ b/no-such-file\n@@ -1 +1 @@\n-old\n+new"
+        (d / "prompt.md").write_text(f"## Ticket\n\n## Diff ({head[:8]}...HEAD)\n\n{fence}\n{diff}\n{fence}\n")
+        (d / "expected.json").write_text(json.dumps({"verdict": "fail", "defect_class": "logic-bug", "failing_rows": ["correct"]}))
+        for m in ("m1", "codex:x"):
+            r = self.run_me(m, MODEL_EVAL_GRADERS="judge")
+            self.assertEqual(r.returncode, 0, r.stderr)
+            reply = json.loads((self.out / f"replies/{m}@high/r1/judge-k1.json").read_text())
+            self.assertTrue(reply["is_error"] and reply["result"].startswith("TREE "), reply)
+            self.assertEqual(self.table(r.stdout).get(("judge", f"{m}@high", "infra")), "1", r.stdout)
+            again = self.run_me(m, MODEL_EVAL_GRADERS="judge")
+            self.assertNotIn("1 of 1 cases", again.stderr, "an unchanged TREE failure was graded again")
+        self.assertEqual(self.calls(), [], "no grader call read a half-built tree")
+
+    def test_a_case_whose_recorded_base_is_missing_is_retried(self) -> None:
+        # An unfetched tree_base is the checkout's state, not the case's: the case fails as TREE, never grades in
+        # HEAD, and gets no reuse key, so the next run tries it again.
+        d = self.tmp / "set" / "judge" / "k1"
+        d.mkdir(parents=True)
+        (d / "prompt.md").write_text("## Ticket\n\n## Diff (main...HEAD)\n")
+        (d / "expected.json").write_text(json.dumps({"verdict": "pass", "tree_base": "f" * 40}))
+        for m in ("m1", "codex:x"):
+            r = self.run_me(m, MODEL_EVAL_GRADERS="judge")
+            self.assertEqual(r.returncode, 0, r.stderr)
+            reply = json.loads((self.out / f"replies/{m}@high/r1/judge-k1.json").read_text())
+            self.assertTrue(reply["is_error"] and reply["result"].startswith("TREE tree_base "), reply)
+            self.assertFalse((self.out / f"replies/{m}@high/r1/judge-k1.key").exists())
+            again = self.run_me(m, MODEL_EVAL_GRADERS="judge")
+            self.assertIn("1 of 1 cases", again.stderr, "a TREE failure of the environment was not retried")
+        self.assertEqual(self.calls(), [], "no grader call graded the case in HEAD")
 
     def test_harness_change_regrades_every_reply(self) -> None:
         self.judge_cases()
