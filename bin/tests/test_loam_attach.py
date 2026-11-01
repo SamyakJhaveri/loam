@@ -129,11 +129,13 @@ class LoamAttachTests(unittest.TestCase):
         self.git("init", "-q")
         r = self.attach()
         self.assertEqual(0, r.returncode, r.stderr)
-        # Ten harness lines, each placeholder, and the five directory
-        # re-includes: a read that runs past the block's blank line would add
-        # the seed's Jinja and secrets lines.
-        self.assertIn(f"{10 + len(PLACEHOLDERS) + 5} ignore lines appended", r.stdout)
-        self.assertNotIn("{%", (self.dst / ".gitignore").read_text())
+        # After the marker and the ten harness lines, every line is a rooted
+        # placeholder or its re-include: a read that runs past the block's
+        # blank line would add the seed's Jinja, memory and secrets lines.
+        lines = (self.dst / ".gitignore").read_text().splitlines()
+        self.assertEqual(MARKER, lines[0])
+        for line in lines[11:]:
+            self.assertTrue(line.startswith(("/", "!/")), f"not a placeholder line: {line!r}")
         self.assertEqual("", self.commit_and_plant_placeholders())
 
     def test_force_rerun_appends_only_missing_lines(self) -> None:
