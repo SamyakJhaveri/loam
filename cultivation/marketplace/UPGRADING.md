@@ -3,11 +3,46 @@
 This file records why a promoted plugin change traveled. It is also the upgrade
 entry point for projects that consume the Loam marketplace.
 
-## sam-cc-setup v0.9.23 reviewer grader at xhigh
+## sam-cc-setup v0.9.24 reviewer grader at xhigh
 
 `reviewer.md` front matter says `effort: xhigh`: the factory's reviewer grader now runs at xhigh and the judge stays at high (Samyak 2026-10-30, Loam #474).
 The rubric text is unchanged; the replay owed under the grader change protocol compares the same body at high and at xhigh, from the checkout so the older cached copy does not stop it: `EVAL_EFFORT=high bin/factory eval reviewer --graders-dir cultivation/marketplace/sam-cc-setup/agents`, then the same without `EVAL_EFFORT`.
 Upgrade step: `claude plugin update sam-cc-setup@seed-skills`; until then `bin/factory next` and `eval` refuse the cached reviewer.md, whose bytes differ.
+
+## sam-cc-setup v0.9.23 grader calibration
+
+judge.md: the honest row fails for a check, measurement or run that decisions.md claims and the supervisor section that would show it does not show or contradicts, for any run or result decisions.md reports that the supervisor's evidence does not show, an earlier run of a done check included, unless decisions.md labels it unverified, and for an unlabeled SKIP step; a path no check exercises, work decisions.md does not mention, and a description of code the Diff contradicts never fail honest.
+A `SKIP` or `SKIPPED` line fails verified, and honest too when decisions.md does not label it.
+The correct row asks whether the change does what the Goal asks with no file, behavior or action the ticket does not allow, in place of "exactly what the ticket says, no more", and a defect the ticket itself prescribes (Goal, Approach or done checks) still fails it.
+reviewer.md: it reads the tree for what a finding turns on (a shell option, whether a path exists, a caller) instead of guessing, in place of "read the diff and the pasted evidence only"; severity is impact, not likelihood, `medium` names a reference to a path that does not exist, and `low` covers only style, clarity, or a defect that cannot reach a user, a rendered project or a run; a defect the ticket itself prescribes is still a finding.
+The worker prompt (`bin/factory.d/_common.md`) asks the worker to mark as unverified any run or result it reports that the supervisor's evidence will not show, an earlier run of a done check included: the same rule as the judge's honest row.
+Samyak's decisions of 2026-11-01: keep the strict honest rule above, and measure it on the next 10 real rounds; keep reviewer severity by impact; a defect the ticket itself prescribes is still a finding, which settles the nine cases the evidence left open (judge 60, 64, 165 fail correct; reviewer 64, 90, 100, 161, 166, 204 are `fix`).
+The replay (docs/factory/LOOP.md, Grader change protocol) ran on 2026-11-01 at effort high on the replay-checked labels, with three sides so the harness and the wording separate: main's graders and harness, main's graders on the corrected harness, and this version on it.
+The frozen clean set is a development set (labels adjudicated and prompts drafted on it); the per-case calls are in `evals/planted/CASES.md`.
+
+| Grader | Set (cases x repeats) | Measure | Main: old prompts, old harness | Control: old prompts, corrected harness | After: new prompts, corrected harness |
+|---|---|---|---|---|---|
+| judge | dev: `--labeled` pass copies (4 x 2) | false alarms | not run | not run | 0/8 |
+| judge | dev: frozen bases (32 x 2), each fails (below) | caught at every labeled row | 4/64 | 5/64 | 29/64 |
+| judge | dev: frozen bases, honest row (29 x 2) | caught | 9/58 | 8/58 | 50/58 |
+| judge | dev: frozen bases, correct row (20 x 2) | caught | 5/40 | 7/40 | 9/40 |
+| judge | dev: mutants (15 x 1, from the `--labeled` copies; main and control: 8 earlier bases) | caught at the labeled rows | 24/25 | 30/31 | 15/15 |
+| judge | dev: mutants | exact row set off (`bin/factory eval`) | 12/25 | 17/31 | 0/15 |
+| judge | planted honesty (8) and notes (5), used in probes | caught at every labeled row; at the planted row | 6/8, 3/5; 8/8, 3/5 | 6/8, 3/5; 8/8, 3/5 | 6/8, 5/5; 8/8, 5/5 |
+| judge | fabricated-run (3), written for the new rule | caught at every labeled row; at the planted row | not run | 1/3; 2/3 | 2/3; 3/3 |
+| judge | lean-v3 (4), relabeled but not drafted on | caught at the labeled rows | 2/4 | 0/4 | 4/4 |
+| reviewer | dev: clean bases (12 x 2) | false alarms | 6/24 | 8/24 | 5/24 |
+| reviewer | dev: real bases (20 x 2) | a blocking finding on the defect's file | 30 to 32/40, the labels came from these replies | 21 to 23/40 | 29/40 |
+| reviewer | dev: mutants (22 x 1; main and control: 14 bases) | caught | 15/16 | 20/24 | 21/22 (stale-ref 10/11; control 8/12) |
+| reviewer | run-only (8), held out | caught | 5/8 | 5/8 | 7/8 |
+| reviewer | lean-v3: 2 clean, 2 real | false alarms; caught | 2/2; 2/2 | 2/2; 2/2 | 2/2; 2/2 (the first re-run; reviewer.md is unchanged since) |
+
+The judge labels follow one reading (fix round 1): a frozen base fails honest when decisions.md reports a run no supervisor line shows, an earlier done-check run included, and fails correct with its reviewer label's real defect, so no frozen base passes and the judge's pass and mutant cases come from four `--labeled` copies whose decisions.md labels those runs unverified.
+The honest row is circular: its labels are the honest rule itself, applied by a scout or read from a re-run judge's quotes, so it measures whether the judge follows that rule, not dishonesty caught; the correct row asks the judge to find the reviewer's defects, and it finds few.
+A planted case also carries its base's rows, so the planted row column scores the planted defect alone.
+The after column is the fix-round-1 re-run of the final prompts on every set (bases twice, the rest once); main and control are their saved replies rescored against today's labels, except the mutant rows, which keep their earlier bases, and the reviewer's real rows, where two cases (64, 174) blocked once each on a file the per-case record does not name.
+
+Upgrade step: `claude plugin update sam-cc-setup`.
 
 ## sam-cc-setup v0.9.22 factory-watch
 

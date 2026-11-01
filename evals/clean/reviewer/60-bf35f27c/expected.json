@@ -1,1 +1,1 @@
-{"source":"60/bf35f27c round-1","verdict":"merge"}
+{"source":"60/bf35f27c round-1","verdict":"fix","checked":"replay check 2026-11-01: was merge; real but rare, medium once severity is impact, not likelihood","defect_class":"real","defect_file":["bin/factory"],"known_defects":[{"file":"bin/factory","severity":"medium","defect":"grep -qxF \"$skill\" takes a skill name that starts with a dash as an option, so the allowlist fails open and later names go unchecked","evidence":"unchanged on main; rare input, medium by impact"}]}

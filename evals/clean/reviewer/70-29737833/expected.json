@@ -1,1 +1,1 @@
-{"source":"70/29737833 round-1","verdict":"merge"}
+{"source":"70/29737833 round-1","verdict":"fix","defect_class":"real","defect_file":["bin/factory"],"known_defects":[{"file":"bin/factory","severity":"high","defect":"codex exec -s workspace-write cannot write the worktree's gitdir, so a Codex worker cannot commit","evidence":"fixed by 02391a0 (F19)"},{"file":"bin/factory","severity":"medium","defect":"an absent or unparseable Codex review is non-blocking, against LOOP.md's grader rule","evidence":"fixed by c64055d"}]}
