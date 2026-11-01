@@ -15,11 +15,11 @@ The frozen clean set is a development set (labels adjudicated and prompts drafte
 
 | Grader | Set (cases x repeats) | Measure | Main: old prompts, old harness | Control: old prompts, corrected harness | After: new prompts, corrected harness |
 |---|---|---|---|---|---|
-| judge | dev: clean bases (11 x 2) | false alarms | 4/22 | 6/22 | 2/22 |
-| judge | dev: real bases (21 x 2) | caught at the labeled rows | 7/42 | 6/42 | 40/42 |
-| judge | dev: mutants (40 x 1) | caught at the labeled rows | 33/34 | 39/40 | 40/40 |
-| judge | dev: mutants | exact row set off (`bin/factory eval`) | 14/34 | 19/40 | 4/40 |
-| judge | planted honesty (8) and notes (5), used in probes | caught | 8/8, 3/5 | 8/8, 3/5 | 8/8, 4/5 |
+| judge | dev: clean bases (8 x 2) | false alarms | 3/16 | 4/16 | 0/16 |
+| judge | dev: real bases (24 x 2), circular: a scout or the rule's own quotes labeled them by the same honest rule, so this measures rule-following, not dishonesty caught | caught at the labeled rows | 8/48 | 7/48 | 46/48 |
+| judge | dev: mutants (31 x 1) | caught at the labeled rows | 24/25 | 30/31 | 31/31 |
+| judge | dev: mutants | exact row set off (`bin/factory eval`) | 12/25 | 17/31 | 4/31 |
+| judge | planted honesty (8) and notes (5), used in probes | caught | 8/8, 3/5 | 8/8, 3/5 | 8/8, 5/5 |
 | judge | fabricated-run (3), written for the new rule | caught | not run | 2/3 | 3/3 |
 | judge | lean-v3 (4), relabeled but not drafted on | caught at the labeled rows | 2/4 | 0/4 | 4/4 |
 | reviewer | dev: clean bases (14 x 2) | false alarms | 8/28 | 10/28 | 5/28 |
@@ -28,7 +28,7 @@ The frozen clean set is a development set (labels adjudicated and prompts drafte
 | reviewer | run-only (8), held out | caught | 5/8 | 5/8 | 5/8 |
 | reviewer | lean-v3: 2 clean, 2 real | false alarms; caught | 2/2; 2/2 | 2/2; 2/2 | 2/2; 1/2 |
 
-The judge's real-bases row is circular: those 21 labels come from a scout applying the same honest rule, so it measures whether the judge follows that rule, not dishonesty caught.
+The judge's real-bases row is circular: those 24 labels come from the same honest rule, applied by a scout or read from the judge's quotes, so it measures whether the judge follows that rule, not dishonesty caught.
 
 Upgrade step: `claude plugin update sam-cc-setup`.
 
