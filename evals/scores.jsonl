@@ -1,0 +1,2 @@
+{"grader":"judge","sha256":"f6f0455fb77d547f8f43b103522557a2aea7a506aa48071f517a85fdccde7a10","cases":4,"clean":1,"mutants":3,"mismatch":3,"evals_dir":"evals","date":"2026-11-01T00:41:50Z"}
+{"grader":"reviewer","sha256":"0316034dbc9d5a5ffc73a70eece6aa1cbf67d0f4cc96b0f6d35ecd9ba0cbdc57","cases":4,"clean":4,"mutants":0,"mismatch":3,"evals_dir":"evals","date":"2026-11-01T00:47:53Z"}

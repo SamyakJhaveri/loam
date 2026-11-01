@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # bin/factory - factory tooling. Subcommands: lint, eval, eval-freeze, run, status, stop, merge, next, graders-check, skills.
 #   bin/factory lint <file|issue>   statically checks a ticket body against docs/factory/CONTRACT.md.
-#   bin/factory eval <grader>       replays the frozen evals/ cases through the production grader call.
+#   bin/factory eval <grader>       replays the frozen evals/ cases through the production grader call, recording scores.jsonl.
 #   bin/factory eval-freeze <run-dir>...  freezes each run's last round, when both graders passed it, into evals/clean/.
 #   bin/factory run <issue|file>    the supervisor: one ticket to a pull request (docs/factory/LOOP.md).
 #   bin/factory status              run states, spend, denials, worktrees, PRs, preconditions.
@@ -9,7 +9,7 @@
 #   bin/factory stop <issue>        writes FACTORY_STOP into the run dir; the run halts before its next call.
 #   bin/factory merge <pr> <sha>    merges the PR only when sha is its head and every check reported there passed.
 #   bin/factory next [--install]    the F9 frontier timer's step: launch the next unblocked ready-for-agent ticket.
-#   bin/factory graders-check       fails when judge.md or reviewer.md drifts from GRADER_MODEL and GRADER_EFFORT.
+#   bin/factory graders-check       fails when judge.md or reviewer.md drifts from GRADER_MODEL and GRADER_EFFORT; warns STALE.
 #   bin/factory skills              lists each installed pstack skill's lines that name a ~/ path or ask the user.
 #   -C <repo>, before the subcommand or right after it, points lint, run, status, stop, merge, and next at another repository (F8).
 # Lint never executes a check; it reads the body and shells out only to `bash -n`, `gh`, and python3 for the hidden-text rule.
@@ -751,7 +751,7 @@ run_eval() {
 
 run_eval_cases() { # grader work
   local grader="$1" tree="$2/tree" rubric="$2/rubric" budget="${EVAL_BUDGET_USD:-10}" gf schema settings dir name out res exp got erows grows
-  local spent=0 cases=0 mism=0 ok attempt eline
+  local spent=0 cases=0 mism=0 clean=0 ok attempt eline
   gf=$(grader_file "$grader") || return 2
   schema=$(schema_for "$grader" 2> /dev/null)
   [ -n "$schema" ] || { echo "eval: no bin/factory.d/$grader.schema.json" >&2; return 2; }
@@ -815,6 +815,8 @@ served_models:(.modelUsage | if type == \"object\" then keys else [] end), ts:\$
     # EVAL_OUT keeps each case's raw reply, so a comparison can read findings, not only verdicts.
     [ -z "${EVAL_OUT:-}" ] || { mkdir -p "$EVAL_OUT"; printf '%s\n' "$out" > "$EVAL_OUT/$grader-$name.json"; }
     exp=$(jq -r .verdict "$dir/expected.json")
+    # A clean case expects the passing verdict; any other is a mutant (scores.jsonl, below).
+    case "$grader/$exp" in judge/pass | reviewer/merge | lean-critic/merge) clean=$((clean + 1)) ;; esac
     got=$(jq -r '.verdict // "unparseable"' <<<"$res" 2>/dev/null) || got=unparseable
     [ -n "$got" ] || got=unparseable
     # A reviewer reply is scored on what the loop does with it, REVIEW_OUTCOME, never on its verdict word.
@@ -836,6 +838,13 @@ served_models:(.modelUsage | if type == \"object\" then keys else [] end), ts:\$
   done
   echo "eval $grader: $cases cases, $mism mismatch, \$$spent"
   [ "$cases" -gt 0 ] || return 2
+  # Only a replay that reached every case records a line; graders-check reads it to tell a replayed grader
+  # file from an edited one. sha256 covers the grader file alone, not the schema or role-settings.json.
+  jq -nc --arg grader "$grader" --arg sha256 "$(sha256_of < "$gf" | cut -d' ' -f1)" --argjson cases "$cases" \
+    --argjson clean "$clean" --argjson mutants "$((cases - clean))" --argjson mismatch "$mism" \
+    --arg evals_dir "$EVALS_DIR" --arg date "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+    '{grader:$grader, sha256:$sha256, cases:$cases, clean:$clean, mutants:$mutants, mismatch:$mismatch,
+      evals_dir:$evals_dir, date:$date}' >> "$EVALS_DIR/scores.jsonl"
   [ "$mism" -eq 0 ]
 }
 
@@ -3418,8 +3427,21 @@ cmd_skills() {
 # by-hand Agent call reads the front matter instead. This fails when judge.md or reviewer.md names another
 # model or effort. The directory defaults to the checkout's plugin copy, relative to the working directory
 # like EVALS_DIR, so bin/check compares one tree's agent files with the same tree's bin/factory.
-cmd_graders_check() { # [agents-dir]
-  local dir="${1:-cultivation/marketplace/sam-cc-setup/agents}" want g f got rc=0
+# It also warns STALE, without failing, when <evals-dir>/scores.jsonl has no fresh two-way line for the
+# grader file's sha256: an edit since the last replay, a replay over 30 days old (the served model drifts
+# under a fixed hash) or dated ahead, or one with no clean or no mutant case (a grader that rejects
+# everything scores perfectly on mutants alone). A warning, since every paid eval is a merge-checklist step.
+cmd_graders_check() { # [--agents-dir D] [--evals-dir D]
+  local dir=cultivation/marketplace/sam-cc-setup/agents evals=evals want g f got h why rc=0
+  while [ $# -gt 0 ]; do
+    [ $# -ge 2 ] || usage graders-check
+    case "$1" in
+      --agents-dir) dir="$2" ;;
+      --evals-dir)  evals="$2" ;;
+      *)            usage graders-check ;;
+    esac
+    shift 2
+  done
   # The defaults, not a FACTORY_GRADER_MODEL override in the caller's environment: re-source this file without it.
   want=$(env -u FACTORY_GRADER_MODEL FACTORY_SOURCED=1 "$BASH" -c '. "$0"; printf "%s/%s\n" "$GRADER_MODEL" "$GRADER_EFFORT"' "${BASH_SOURCE[0]}")
   for g in judge reviewer; do
@@ -3429,6 +3451,19 @@ cmd_graders_check() { # [agents-dir]
     got=$(awk '/^---$/ {if (++n == 2) exit; next} n == 1 && sub(/^model: */, "") {m = $0}
                n == 1 && sub(/^effort: */, "") {e = $0} END {print m "/" e}' "$f")
     [ "$got" = "$want" ] || { echo "DRIFT $g: $f says $got, bin/factory says $want"; rc=1; }
+    h=$(sha256_of < "$f" | cut -d' ' -f1)
+    # The newest line for this grader and hash decides; a malformed line is skipped, a missing file is none.
+    why=$(cat "$evals/scores.jsonl" 2> /dev/null | jq -nrR --arg g "$g" --arg h "$h" '
+      [inputs | fromjson? | objects | select(.grader == $g and .sha256 == $h)] | last
+      | if . == null then "no scores line"
+        else ((.date | strings | fromdate?) // null) as $t
+        | if $t == null then "no readable date"
+          elif now - $t > 30 * 86400 then "last replay over 30 days old"
+          elif $t - now > 60 then "last replay dated in the future"
+          elif ((.clean | numbers) // 0) == 0 then "last replay had no clean case"
+          elif ((.mutants | numbers) // 0) == 0 then "last replay had no mutant case"
+          else "" end end' 2>&1)
+    [ -z "$why" ] || echo "WARN STALE $g: $why for sha256 $h in $evals/scores.jsonl"
   done
   [ "$rc" -eq 0 ] && echo "graders-check: OK"
   return "$rc"
@@ -3446,7 +3481,7 @@ usage() { # [cmd...] - one line per named command, all ten when none is named
       stop)   echo "usage: bin/factory [-C <repo>] stop <issue|ticket-stem>" ;;
       merge)  echo "usage: bin/factory [-C <repo>] merge <pr> <sha>" ;;
       next)   echo "usage: bin/factory [-C <repo>] next [--dry-run|--install]" ;;
-      graders-check) echo "usage: bin/factory graders-check [--agents-dir D]" ;;
+      graders-check) echo "usage: bin/factory graders-check [--agents-dir D] [--evals-dir D]" ;;
       skills) echo "usage: bin/factory skills" ;;
       *)      echo "usage: bin/factory [-C <repo>] <lint|eval|eval-freeze|run|status|stop|merge|next|graders-check|skills>" ;;
     esac
@@ -3503,11 +3538,7 @@ case "$CMD" in
           cmd_merge "$1" "$2" ;;
   next)   cmd_next "$@" ;;
   graders-check)
-        case "$#/${1:-}" in
-          0/)             cmd_graders_check ;;
-          2/--agents-dir) cmd_graders_check "$2" ;;
-          *)              usage graders-check ;;
-        esac ;;
+        cmd_graders_check "$@" ;;
   skills) [ $# -eq 0 ] || usage skills
           cmd_skills ;;
   *)      usage ;;
