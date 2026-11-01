@@ -1,13 +1,13 @@
 """A relaunch after a lost push or PR create opens the PR with no worker round (#383, #429).
 
-`bin/factory` is sourced (FACTORY_SOURCED=1) and cmd_run runs a file ticket over a throwaway repository, twice.
-The first launch's worker commits the marker, the real checks pass, and the stub graders write their files. Its
+`bin/factory` is sourced (FACTORY_SOURCED=1) and cmd_run runs a file ticket over a throwaway repository, two to four
+times. The first launch's worker commits the marker, the real checks pass, and the stub graders write their files. Its
 open_pr then fails as a lost push does: either a stub that replaces it whole, as a crash after grading and before
 open_pr records its decision does, so only the graded round's files remain (#383); or the real open_pr with a
-failing `net`, which writes publish.intent first (#429); the replay also needs the newest round to have graded the
-intent's sha, so a branch moved away and back does not publish an old decision over a later round (#529). The second
-launch's worker only counts its calls; its open_pr is the real one, which for a file ticket writes the body and exits
-pr-opened with no GitHub call.
+failing `net`, which writes publish.intent first (#429); the replay also needs the newest round to be the one that
+wrote it, so a branch moved away and back does not publish an old decision over a later round (#529). The middle
+launches, where a test has them, move the branch and grade other rounds. The last launch's worker only counts its
+calls; its open_pr is the real one, which for a file ticket writes the body and exits pr-opened with no GitHub call.
 No network, no `claude`.
 """
 
@@ -157,6 +157,27 @@ class RelaunchPublishTests(unittest.TestCase):
         self.launch(JUDGE_FAIL, REVIEW_CLEAN, SECOND)
         calls = self.runs / "rl" / "relaunch-worker-calls"
         self.assertGreater(len(calls.read_text().splitlines()) if calls.exists() else 0, 0)
+        self.assertTrue(self.body().startswith("Draft:"), self.body())
+
+    def test_stale_intent_after_a_later_round_at_the_same_sha_resumes_into_a_worker_round(self) -> None:
+        # At the default cap: a ready publish whose push failed, a hand commit that drops the marker (its round fails
+        # the checks and is never graded), a reset back to the intent's sha and a relaunch whose round grades that
+        # same sha and fails. The newest round graded the intent's sha, but is later than the one that wrote it (#529).
+        first = self.launch(JUDGE_PASS, REVIEW_CLEAN, FIRST_PUSH_FAILS)
+        self.assertNotEqual(first.returncode, 0, first.stderr)
+        (branch,) = git("for-each-ref", "--format=%(refname)", "refs/heads/factory/", cwd=self.main).splitlines()
+        intent_sha = git("rev-parse", branch, cwd=self.main)
+        empty_tree = git("hash-object", "-t", "tree", "/dev/null", cwd=self.main)
+        git("update-ref", branch, git("commit-tree", "-p", branch, "-m", "hand", empty_tree, cwd=self.main),
+            cwd=self.main)
+        self.launch(JUDGE_FAIL, REVIEW_CLEAN, "worker_round() { :; }")
+        git("update-ref", branch, intent_sha, cwd=self.main)
+        self.launch(JUDGE_FAIL, REVIEW_CLEAN, "worker_round() { :; }")
+        self.launch(JUDGE_FAIL, REVIEW_CLEAN, SECOND)
+        calls = self.runs / "rl" / "relaunch-worker-calls"
+        self.assertGreater(len(calls.read_text().splitlines()) if calls.exists() else 0, 0)
+        (log,) = (self.runs / "rl").glob("*/factory.log")
+        self.assertNotIn("did not finish; publishing it again", log.read_text())
         self.assertTrue(self.body().startswith("Draft:"), self.body())
 
     def test_opened_draft_relaunch_resumes_into_a_worker_round(self) -> None:
