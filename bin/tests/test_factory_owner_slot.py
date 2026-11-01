@@ -499,6 +499,16 @@ class LeaseSlotTests(SlotCase):
         self.assertFalse((self.run_dir / "call").exists())
         self.assertFalse((self.run_dir / "call.group").exists())
 
+    def test_live_owner_s_call_holding_the_lease_survives_any_clock_step(self) -> None:
+        # A wall-clock step moves the live supervisor's ps lstart away from the stored one, however far; on the lease
+        # path only a gone or zombie pid is a gone supervisor, so the call started since, its call.group start still
+        # matching ps, is not killed.
+        self.owner(f"{self.live()} {OLD}")
+        call = self.hold('touch "$2"; exec sleep 60')
+        (self.run_dir / "call.group").write_text(f"{call} {lstart(call)}\n")
+        self.assert_held()
+        self.assertNotIn(state(call), ("", "Z"), "holds_slot killed a live supervisor's call")
+
     def test_launched_with_no_status_holds_only_while_its_lease_is_held(self) -> None:
         # A launch killed between `launched` and its first status leaves no status; its free lease frees the slot.
         (self.run_dir / "status").unlink()
