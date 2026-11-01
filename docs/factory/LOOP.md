@@ -287,6 +287,11 @@ The watch may make only these moves on its own, and reports each one with the li
 - pause the host's healthchecks check with `bin/alert --ping pause`, after it has checked that no factory process runs there and `bin/factory status` shows no live run.
 Everything else is Samyak's: merging or pushing, launching, relaunching or rerunning a ticket, editing a ticket, deleting a run directory or worktree, starting paid compute, and any change to results.
 
+The overnight driver, which reviews, fixes and merges Loam's factory PRs on jhaveris, lives in `bin/overnight/`: `driver.sh` starts one headless call per PR with `settings.json` and `protocol.md` from that directory, and `watchdog.sh`, run by cron, restarts a dead driver.
+Its run state (`log.md`, `followups.md`, `driver.log`, the `pr-*` files, `STOP`) stays in `~/.local/state/loam/overnight/`, outside the checkout `next` must find clean before it pulls; each call's lessons go into `docs/factory/LESSONS.md` on the PR's branch.
+A call's settings deny it any write to `~/loam/bin/overnight/` (Edit, Write and the sandbox), so the driver changes only through a reviewed PR: a `driver.sh` change takes effect when the driver restarts, a `protocol.md` change at the next call after `next` pulls it.
+Each call runs in a session of its own under a child-subreaper wrapper, which ends the call's tool children too, with `pid before out` in the state directory's `call.pid`: a stopped driver, or one whose terminal closed, leaves its call to finish, and the next driver adopts it, ending it 120 s after its outcome line as its own, before it starts a call of its own; to end a call on purpose, touch `STOP`, then `pkill -TERM -s <pid>`.
+
 ## Status and the manager
 
 `bin/factory status` renders, per run: status, rounds, spend, wall time, first failing grader, permission denials per round (from the worker stream-json), `notify.failed`, and a worktree and PR readiness table.
