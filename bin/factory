@@ -1511,11 +1511,15 @@ run_project() { # <run dir>
 # killed there too, under owner.lock, and the lease then decides.
 # holds_slot may return held in the very call that killed, while the call's wrapper still reaps reparented children;
 # the next caller frees the slot.
+# A run of any other status holds while the call named in its `call` lives, with no write and no alert: call_end keeps
+# `call` when a call outlives KILL and the run ends stopped-environment (#467); it frees once that call is gone.
 holds_slot() { # <run dir>
   local st o pid fd
   if [ -f "$1/status" ]; then
     st=$(cat "$1/status")
-    [ "$st" = running ] || [ "$st" = waiting-limit ] || return 1
+    # A call that survived call_reap's KILL keeps `call` and its run ends stopped-environment, so any other status
+    # holds while that call lives; running and waiting-limit consult it below, after a gone owner's call is killed.
+    [ "$st" = running ] || [ "$st" = waiting-limit ] || { call_live "$1"; return; }
     # Read-only, so a run dir with no lease never gets one here.
     if [ -n "$HAVE_FLOCK" ] && [ -f "$1/lease" ] && exec {fd}< "$1/lease"; then
       if ! flock -n "$fd"; then
@@ -1543,7 +1547,7 @@ holds_slot() { # <run dir>
     owner_lock "$1" 1 || return 0
     if [ "$(cat "$1/owner" 2> /dev/null)" != "$o" ]; then rmdir "$1/owner.lock"; return 0; fi
     st=$(cat "$1/status" 2> /dev/null)
-    if [ "$st" != running ] && [ "$st" != waiting-limit ]; then rmdir "$1/owner.lock"; return 1; fi
+    if [ "$st" != running ] && [ "$st" != waiting-limit ]; then rmdir "$1/owner.lock"; call_live "$1"; return; fi
     if ! orphan_call_kill "$1" "$o" || call_live "$1"; then rmdir "$1/owner.lock"; return 0; fi
     printf 'stopped-environment\n' > "$1/status"
     rm -f "$1/call" "$1/call.tmp" "$1/call.group" "$1/call.group.tmp"
@@ -2891,7 +2895,8 @@ stopped_environment_recent() { # <run dir> -> 0 when its run stopped on the envi
 
 # cmd_run refuses a relaunch, exiting 4 with no status written, while a process of the run's last launch holds its
 # lease or the model call its `call` names still lives (a stuck call outlives finish); holds_slot frees a stopped run's
-# slot all the same, so without this the issue would take the pick from every later candidate each tick.
+# slot once that call is gone though a lease holder may remain, and a held slot does not keep `next` from picking the
+# issue, so without this the issue would take the pick from every later candidate each tick.
 run_busy() { # <run dir> -> 0 while a process cmd_run would refuse a relaunch on still runs
   local fd st
   call_live "$1" && return 0
@@ -2966,7 +2971,7 @@ cmd_next() { # [--dry-run|--install]
   [ "$dry" = 1 ] || pr_closed_events
 
   # 2. A run holds a slot when holds_slot says so (assert_parallel's rule: running or waiting-limit with a
-  #    live owner, or launched with no status yet), and so does a pr-opened run whose ticket worktree still exists: the merge ritual removes the worktree,
+  #    live owner, any status while the model call its `call` names lives, or launched with no status yet), and so does a pr-opened run whose ticket worktree still exists: the merge ritual removes the worktree,
   #    so until then the PR awaits merge and the next ticket waits (LOOP.md: after each merge).
   #    FACTORY_MAX_PARALLEL bounds the count, as it does in cmd_run through apply_caps; default 1.
   local d st n=0 max="${FACTORY_MAX_PARALLEL:-$MAX_PARALLEL}"

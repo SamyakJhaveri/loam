@@ -218,6 +218,7 @@ Two tickets may run together only when neither names a path the other's Goal cre
 The daily ledger is written under a lock.
 `bin/factory next` launches up to `MAX_PARALLEL` runs (default 1; raise it after two clean single runs, as `status` reports them).
 A run holds a slot while its status reads `running` or `waiting-limit` and some process of the run holds an flock lease on `lease` in its run directory (#425).
+A live model call holds the slot whatever the run's status: a call whose processes outlive KILL keeps `call` and its run exits `stopped-environment` (Exits), and `holds_slot` holds that run's slot, writing nothing and sending no alert, while the call named in `call` lives (below), and frees it once the call is gone (#467).
 Each launch opens `lease` and takes the lock (`flock -w 65`) before it writes `launched`, its launch log line or its status, and before it prepares the worktree and freezes; so a relaunch holds its slot from the start.
 A launch that cannot take the lock (another launch of the same ticket body, or a process one left running, holds it) prints one line to stderr and exits 4, writing no status, `launched` or log line, so the incumbent keeps its status, its `MAX_HOURS` clock and its round.
 A launch that takes the lock, or any launch on a host with no `flock`, while the model call named in `call` still lives (below) refuses the same way, since that call may still write the worktree the launch would prepare.

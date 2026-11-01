@@ -256,6 +256,24 @@ class OwnerSlotTests(SlotCase):
         self.assert_held()
         self.assertIsNone(p.poll(), "holds_slot killed a group whose start time differs")
 
+    def test_stuck_call_holds_a_stopped_run_s_slot_until_its_group_is_gone(self) -> None:
+        # A call alive 5 s after KILL keeps `call` and its run ends stopped-environment (#467): the slot holds, with no
+        # write and no alert, while the group `call` names lives, and frees once that group is gone.
+        (self.run_dir / "status").write_text("stopped-environment\n")
+        self.owner(f"{dead_pid()} {OLD}")
+        p = subprocess.Popen(["sleep", "60"], start_new_session=True)
+        self.addCleanup(p.wait)
+        self.addCleanup(p.kill)
+        (self.run_dir / "call").write_text(f"{p.pid} t{p.pid}\n")
+        for held in (True, False):
+            with self.subTest(held=held):
+                self.assertEqual(self.holds(), held)
+                self.assertEqual((self.run_dir / "status").read_text(), "stopped-environment\n")
+                self.assertFalse(self.alerts.exists())
+                self.assertEqual((self.run_dir / "call").read_text(), f"{p.pid} t{p.pid}\n")
+            p.kill()
+            p.wait()
+
 
 @unittest.skipUnless(HAVE_FLOCK, "the lease needs flock(1) and bash 4.1+")
 class LeaseSlotTests(SlotCase):
