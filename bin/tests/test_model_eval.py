@@ -395,10 +395,13 @@ class ModelEvalTests(unittest.TestCase):
         r = self.run_me("m1", MODEL_EVAL_GRADERS="judge reviewer", MODEL_EVAL_REPEATS="2", STUB_FAIL_AFTER="1")
         self.assertEqual(r.returncode, 0, r.stderr)
         self.assertEqual(len(self.calls()), 2)
-        self.assertFalse((self.out / "replies/m1@high/r2/judge-k1.json").exists())
+        saved = [k for k in ("r1", "r2") if (self.out / f"replies/m1@high/{k}/judge-k1.json").exists()]
+        self.assertEqual(len(saved), 1, saved)
         t = self.table(r.stdout)
         self.assertEqual((t[("judge", "m1@high", "infra")], t[("judge", "m1@high", "n:infra")]), ("1", "2"))
         self.assertEqual(t[("judge", "m1@high", "n:recall:logic-bug")], "2")
+        self.assertEqual(t[("judge", "m1@high", "recall:logic-bug")], "0.50")
+        self.assertEqual(t[("judge", "m1@high", "agreement")], "0.00")
 
     def test_a_grader_with_no_case_gets_no_row(self) -> None:
         self.case("judge", "k1", {"verdict": "fail", "defect_class": "logic-bug", "failing_rows": ["correct"]})
@@ -426,6 +429,8 @@ class ModelEvalTests(unittest.TestCase):
         (self.out / "m1/r1").mkdir(parents=True)
         (self.out / "m1/r2").mkdir(parents=True)
         (self.out / "m1/r1/judge-k1.json").write_text(json.dumps(reply))
+        for k in ("r1", "r2"):  # the shared fingerprint names no grader, so it counts no repeat
+            (self.out / "m1" / k / "fingerprint.txt").write_text("model m1\n")
         r = subprocess.run([sys.executable, str(ROOT / "bin/factory.d/eval_score.py"), str(self.tmp / "set"),
                             str(self.out)], capture_output=True, text=True)
         self.assertEqual(r.returncode, 0, r.stderr)

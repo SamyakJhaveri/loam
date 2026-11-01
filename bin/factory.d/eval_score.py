@@ -158,8 +158,8 @@ def main(argv):
         if not cases:
             continue
         # model -> r<k> -> case -> (reply, cost), for the repeats that hold a reply or the fingerprint of this
-        # grader: model-eval writes fingerprint-<grader>.txt for every cell it ran, so a cell whose calls all
-        # failed before a reply was saved still counts, each case a missing reply.
+        # grader: model-eval writes fingerprint-<grader>.txt for every cell it ran, so a cell that saved no reply
+        # (every call failed, or none was made) still counts, each case a missing reply.
         got = {}
         for m in models:
             reps = sorted((d for d in (replies_root / m).iterdir() if d.is_dir() and re.fullmatch(r"r\d+", d.name)),
