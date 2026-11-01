@@ -172,7 +172,7 @@ class EndToEndTests(unittest.TestCase):
 
     def session_alive(self, issue: int) -> bool:
         s = self.session(issue)
-        return s is not None and start_time(s["pid"]) == s["start"]
+        return s is not None and s["start"] is not None and start_time(s["pid"]) == s["start"]
 
     def run_dir(self, issue: int) -> pathlib.Path:
         dirs = sorted((self.runs / str(issue)).glob("*/"))
