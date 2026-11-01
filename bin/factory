@@ -984,18 +984,22 @@ CODEX_PATH="$HOME/.local/bin"   # Codex is not on the non-interactive PATH (#41)
 
 # The CODEX_HOME of every factory Codex call: the factory's own, logged in once with its own `codex login`, so the
 # operator's AGENTS.md, rules, hooks, memories and config.toml never reach a worker or a grader (#543 fenced only the
-# Claude calls), and a factory token refresh never rewrites the operator's auth.json. Each call also drops
-# CODEX_API_KEY and OPENAI_API_KEY, which outrank the stored login, and passes skills.include_instructions=false:
-# HOME stays the operator's, so Codex still scans ~/.agents/skills, but no skill catalog reaches the call (a Codex
-# worker gets its ticket's skills pasted). The factory writes nothing in the home; the model, the effort and the
-# trusted worktree go on each call's argv. Concurrent calls do share its auth.json, which Codex 0.163.0 rewrites on a
-# token refresh by truncating it in place, locked only within one process (codex-rs/login/src/auth/storage.rs:214,
-# manager.rs:2845 at rust-v0.163.0), so two calls refreshing at once can leave it invalid. A refresh comes on a 401
-# or within 5 minutes of the access token's expiry (manager.rs:3001; the factory's token lasted 10 days on
-# 2026-10-31), and a call that finds the file already changed skips its own (manager.rs:2867), so the window is one
-# refresh request; no lock the factory can take spans a refresh inside a running call. A home whose auth.json is
-# missing or not a single JSON object stops the run with the login command, which rewrites it; there is no fallback
-# to the operator's login.
+# Claude calls), and a factory token refresh never rewrites the operator's auth.json. Each call also unsets
+# CODEX_UNSET, the variables Codex 0.163.0 reads for credentials ahead of the stored login (codex-rs/login/src/auth/
+# manager.rs:1500, :1537 and :2798, and ext/guardian-v2/src/async_scorer/startup.rs:70 for OPENAI_API_KEY), and
+# passes codex_skills_off (below) and skills.include_instructions=false, so no operator skill and no skill catalog
+# reaches it (a Codex worker gets its ticket's skills pasted). The factory writes nothing in the home; the model, the effort
+# and the trusted worktree go on each call's argv. Concurrent calls do share its auth.json, which Codex rewrites on a
+# token refresh by truncating it in place, locked only within one process (storage.rs:214, manager.rs:2845 at
+# rust-v0.163.0), so two calls refreshing at once can leave it invalid. A proactive refresh comes within 5 minutes
+# of the access token's expiry (manager.rs:3001; the factory's token lasted 10 days on 2026-10-31) and is skipped by
+# a call that finds the file already changed (manager.rs:2867), so its window is one refresh request; after a 401 a
+# call reloads the file, retries, and on a second 401 refreshes without that check (manager.rs:1985, :2884). Only a
+# lock held for each whole call would cover a refresh inside it, and that would run every factory Codex call one at
+# a time, so the race is left upstream. A home whose auth.json is missing or not a single JSON object stops the run
+# with the login command, which rewrites it; there is no fallback to the operator's login.
+CODEX_UNSET=(-u CODEX_API_KEY -u OPENAI_API_KEY -u CODEX_ACCESS_TOKEN
+  -u OPENAI_FEDERATION_RULE_ID -u OPENAI_IDENTITY_TOKEN_FILE -u OPENAI_WORKLOAD_IDENTITY_CONTEXT)
 CODEX_FACTORY_HOME="${FACTORY_CODEX_HOME:-$HOME/.local/state/loam-factory/codex-home}"
 printf -v CODEX_HOME_Q '%q' "$CODEX_FACTORY_HOME"   # shell-quoted, so the hint runs as printed
 CODEX_LOGIN_HINT="no factory Codex login: $CODEX_HOME_Q/auth.json is missing or not a single JSON object (a concurrent token refresh can corrupt it); log it in on this host: mkdir -p -m 700 $CODEX_HOME_Q && CODEX_HOME=$CODEX_HOME_Q codex login --device-auth"
@@ -1012,6 +1016,19 @@ codex_trust() { # dir -> projects={"<dir>"={trust_level="trusted"}}
   p=$(cd "$1" && pwd -P) || return 1
   p=${p//\\/\\\\}; p=${p//\"/\\\"}
   printf 'projects={"%s"={trust_level="trusted"}}\n' "$p"
+}
+# The -c value that disables, by path, every skill under the operator's ~/.agents/skills. HOME stays the operator's
+# for git, gh and the worker's tools, so Codex scans that root whatever CODEX_HOME is (ext/skills/src/host_roots.rs:105
+# at rust-v0.163.0), and skills.include_instructions=false hides only the catalog: a `$name` in a prompt still loads
+# that skill's body (core/src/session/turn.rs:1150). A skills.config rule with enabled=false drops the skill from both
+# (skills/src/selection.rs:28). find -L follows directory symlinks as Codex does, past its depth of 6, Codex
+# canonicalizes both paths before matching, and jq writes each path as a JSON string, which TOML reads alike.
+codex_skills_off() { # -> skills.config=[{path="<SKILL.md>",enabled=false},...]
+  local p paths=()
+  while IFS= read -r -d '' p; do paths+=("$p"); done \
+    < <(find -L "$HOME/.agents/skills" -maxdepth 8 -name SKILL.md -type f -print0 2> /dev/null)
+  jq -nr '"skills.config=[" + ([$ARGS.positional[] | "{path=" + tojson + ",enabled=false}"] | join(",")) + "]"' \
+    --args ${paths[@]+"${paths[@]}"}
 }
 # util-linux flock(1), and bash 4.1+ for the {var} descriptors the lease opens: a Mac has neither (bash 3.2 reads
 # `exec {fd}< file` as running a command named {fd}, which exits the shell), and runs keep the owner line's rules (#425).
@@ -2123,10 +2140,11 @@ worker_round() { # round; leaves round-N.* only once the call produced a result
   if [ "$WORKER_KIND" = codex ]; then
     # The Codex worker: JSONL stream is stdout, -o is the last message, < /dev/null keeps Codex off the
     # caller's stdin (#41). No dollar budget bounds it (cost_usd null); CALL_TIMEOUT_SEC and MAX_HOURS do.
-    local rc start wl wagents wusd swapped=0 codex_target cgd ccd add_dirs ch trust
+    local rc start wl wagents wusd swapped=0 codex_target cgd ccd add_dirs ch trust skills_off
     log "codex worker call: round $round model=$CODEX_MODEL effort=$WORKER_EFFORT (dollar caps do not bound it), prompt=$(wc -c < "$pf") bytes"
     ch=$(codex_home) || finish stopped-environment "$CODEX_LOGIN_HINT"
     trust=$(codex_trust "$WORKTREE") || finish stopped-environment "could not resolve $WORKTREE for the Codex trust entry"
+    skills_off=$(codex_skills_off) || finish stopped-environment "could not list ~/.agents/skills for the Codex skill rules"
     # Each worker call writes its own mechanism.md, so an earlier call's account of a diff that has since moved
     # never opens the PR; a call that writes none gets open_pr's fallback line (#330).
     rm -f "$out" "${DECISIONS%/*}/mechanism.md"
@@ -2145,7 +2163,7 @@ worker_round() { # round; leaves round-N.* only once the call produced a result
     ccd=$(git -C "$WORKTREE" rev-parse --path-format=absolute --git-common-dir)
     add_dirs=(--add-dir "$cgd" --add-dir "$ccd/objects" --add-dir "$ccd/refs" --add-dir "$ccd/logs" --add-dir "${DECISIONS%/*}")
     start=$SECONDS
-    call_start "$WORKTREE" ${t[@]+"${t[@]}"} env -u CODEX_API_KEY -u OPENAI_API_KEY PATH="$CODEX_PATH:$PATH" CODEX_HOME="$ch" codex exec --json -m "$CODEX_MODEL" -c model_reasoning_effort="$WORKER_EFFORT" -c "$trust" -c skills.include_instructions=false -s workspace-write "${add_dirs[@]}" "$(cat "$pf")" -o "$RUN/round-$round.last.txt" > "$out" < /dev/null
+    call_start "$WORKTREE" ${t[@]+"${t[@]}"} env "${CODEX_UNSET[@]}" PATH="$CODEX_PATH:$PATH" CODEX_HOME="$ch" codex exec --json -m "$CODEX_MODEL" -c model_reasoning_effort="$WORKER_EFFORT" -c "$trust" -c "$skills_off" -c skills.include_instructions=false -s workspace-write "${add_dirs[@]}" "$(cat "$pf")" -o "$RUN/round-$round.last.txt" > "$out" < /dev/null
     call_end worker; rc=$?
     [ "$rc" -eq 0 ] || log "codex worker call exited $rc (the result decides)"
     # Restore the tracked .codex before codex_result so the clean-tree check and the graders see the
@@ -2425,10 +2443,11 @@ run_review() { # round -> 0 when nothing blocks
 }
 
 run_codex_review() { # round -> 0 when nothing blocks; needs-attention with a critical or high finding blocks once (LOOP.md)
-  local round="$1" f="$RUN/round-$1.codex-review.json" jsonl res="$RUN/round-$1.codex-review.result.json" base blocking rc start call parsed=0 ch trust
+  local round="$1" f="$RUN/round-$1.codex-review.json" jsonl res="$RUN/round-$1.codex-review.result.json" base blocking rc start call parsed=0 ch trust skills_off
   base=$(cat "$RUN/base.sha")
   ch=$(codex_home) || finish stopped-environment "$CODEX_LOGIN_HINT"
   trust=$(codex_trust "$WORKTREE") || finish stopped-environment "could not resolve $WORKTREE for the Codex trust entry"
+  skills_off=$(codex_skills_off) || finish stopped-environment "could not list ~/.agents/skills for the Codex skill rules"
   for call in 1 2; do
     jsonl="$RUN/round-$round.codex-review.$call.jsonl"   # one stream per call, so each log line points at its own call
     assert_caps
@@ -2442,7 +2461,7 @@ run_codex_review() { # round -> 0 when nothing blocks; needs-attention with a cr
     # older HEAD) as its own.
     rm -f "$f"
     start=$SECONDS
-    call_start "$WORKTREE" ${TIMEOUT_G[@]+"${TIMEOUT_G[@]}"} env -u CODEX_API_KEY -u OPENAI_API_KEY PATH="$CODEX_PATH:$PATH" CODEX_HOME="$ch" codex exec --json -m "$CODEX_MODEL" -c model_reasoning_effort="$GRADER_EFFORT" -c "$trust" -c skills.include_instructions=false --output-schema "$RUN/frozen/review-output.schema.json" -o "$f" -s read-only "$(sed "s/<base>/$base/" "$RUN/frozen/codex-review.prompt.md")" > "$jsonl" < /dev/null
+    call_start "$WORKTREE" ${TIMEOUT_G[@]+"${TIMEOUT_G[@]}"} env "${CODEX_UNSET[@]}" PATH="$CODEX_PATH:$PATH" CODEX_HOME="$ch" codex exec --json -m "$CODEX_MODEL" -c model_reasoning_effort="$GRADER_EFFORT" -c "$trust" -c "$skills_off" -c skills.include_instructions=false --output-schema "$RUN/frozen/review-output.schema.json" -o "$f" -s read-only "$(sed "s/<base>/$base/" "$RUN/frozen/codex-review.prompt.md")" > "$jsonl" < /dev/null
     call_end "Codex review"; rc=$?
     [ "$rc" -eq 0 ] || log "codex review call exited $rc"
     codex_result "$jsonl" "$rc" "$(( (SECONDS - start) * 1000 ))" > "$res"

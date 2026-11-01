@@ -16,11 +16,14 @@ import pathlib
 import subprocess
 import sys
 import tempfile
+import tomllib
 import unittest
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
 MODEL_EVAL = ROOT / "bin/factory.d/model-eval"
 AGENTS = ROOT / "cultivation/marketplace/sam-cc-setup/agents"
+CREDENTIALS = ("CODEX_API_KEY", "OPENAI_API_KEY", "CODEX_ACCESS_TOKEN", "OPENAI_FEDERATION_RULE_ID",
+               "OPENAI_IDENTITY_TOKEN_FILE", "OPENAI_WORKLOAD_IDENTITY_CONTEXT")
 
 # The reply each grader gives in both fakes; the fake codex adds a null for every optional field.
 REPLIES = """
@@ -64,8 +67,8 @@ if os.environ.get("STUB_SEEN"):
     files = sorted(str(p.relative_to(home)) for p in pathlib.Path(home).rglob("*")) if home else []
     tree = sorted(str(p) for p in pathlib.Path(".").rglob("*") if p.name in ("evals", "cases", "expected.json")
                   or str(p) == "bin/factory")
-    keys = sorted(k for k in ("CODEX_API_KEY", "OPENAI_API_KEY") if k in os.environ)
-    json.dump({"argv": a, "tree": tree, "home": home, "files": files, "keys": keys}, open(os.environ["STUB_SEEN"], "w"))
+    json.dump({"argv": a, "tree": tree, "home": home, "files": files, "env": sorted(os.environ)},
+              open(os.environ["STUB_SEEN"], "w"))
 def strict(node):
     if not isinstance(node, dict):
         return True
@@ -183,17 +186,25 @@ class ModelEvalTests(unittest.TestCase):
         (self.home / ".codex/AGENTS.md").write_text("Ask only when the task is ambiguous.\n")
         (self.home / ".codex/rules/default.rules").write_text("")
         (self.home / ".codex/auth.json").write_text("{}\n")
+        skill = self.home / ".agents/skills/personal-audit/SKILL.md"
+        skill.parent.mkdir(parents=True)
+        skill.write_text("---\nname: personal-audit\ndescription: operator skill\n---\nOPERATOR BODY\n")
         seen = self.tmp / "seen.json"
         r = self.run_me("codex:x", MODEL_EVAL_GRADERS="judge", STUB_SEEN=str(seen),
-                        CODEX_API_KEY="operator-key", OPENAI_API_KEY="operator-key")
+                        **{k: "operator-credential" for k in CREDENTIALS})
         self.assertEqual(r.returncode, 0, r.stderr)
         s = json.loads(seen.read_text())
         self.assertEqual(s["tree"], ["bin/factory"])  # the export, with no evals/ and no expected.json in it
         self.assertEqual(s["home"], str(self.fhome))
         self.assertEqual(s["files"], ["auth.json"])
         self.assertIn("--skip-git-repo-check", s["argv"])
-        self.assertIn(["-c", "skills.include_instructions=false"], [s["argv"][i:i + 2] for i in range(len(s["argv"]))])
-        self.assertEqual(s["keys"], [])  # an exported API key would outrank the factory's own login
+        pairs = [s["argv"][i:i + 2] for i in range(len(s["argv"]) - 1)]
+        self.assertIn(["-c", "skills.include_instructions=false"], pairs)
+        # The operator's skill is disabled by path, so a `$personal-audit` in a case prompt cannot load it.
+        rules = [tomllib.loads("v = " + v.removeprefix("skills.config="))["v"] for k, v in pairs
+                 if k == "-c" and v.startswith("skills.config=")]
+        self.assertEqual(rules, [[{"path": str(skill), "enabled": False}]])
+        self.assertEqual(set(s["env"]) & set(CREDENTIALS), set())  # each would outrank the factory's own login
 
     def test_codex_cell_export_drops_a_custom_set_outside_evals(self) -> None:
         # A committed set outside evals/ (MODEL_EVAL_SET=cases) is removed from the export too.

@@ -54,7 +54,9 @@ EFFORTS = ("low", "medium", "high", "xhigh")
 RATES = ("recall:", "false_alarm", "cut_rate", "agreement")
 # A Codex cell's mode in its key: it names how the cell runs, so a reply made another way (before #566, in the
 # checkout with the answer keys in reach and under the operator's ~/.codex) never matches. Change it with the call.
-CODEX_MODE = "codex exec in the evals-free export, factory CODEX_HOME, no env API key, no skill catalog"
+CODEX_MODE = "codex exec in the evals-free export, factory CODEX_HOME, no env credentials, no operator skills"
+CODEX_UNSET = ("CODEX_API_KEY", "OPENAI_API_KEY", "CODEX_ACCESS_TOKEN",  # bin/factory's CODEX_UNSET
+               "OPENAI_FEDERATION_RULE_ID", "OPENAI_IDENTITY_TOKEN_FILE", "OPENAI_WORKLOAD_IDENTITY_CONTEXT")
 Z = 1.96
 
 
@@ -243,12 +245,13 @@ def main(argv):
         # A Codex cell runs where a Claude cell does, in bin/factory's export of the checkout with evals/ and the
         # eval set removed, so no answer key sits in its tree; the export is no git repo, hence --skip-git-repo-check.
         # Its CODEX_HOME is the factory's own login; no trust entry, since a read-only grader needs no project rules.
-        # As in bin/factory, CODEX_API_KEY and OPENAI_API_KEY are dropped, Codex is found under its CODEX_PATH
-        # (~/.local/bin), and no skill catalog reaches the call.
+        # As in bin/factory, the credential variables in CODEX_UNSET are dropped, Codex is found under its CODEX_PATH
+        # (~/.local/bin), and no operator skill or skill catalog reaches the call.
         if any(m.startswith("codex:") for m in models):
             factory_fn(gdir, "eval_tree", str(tmp), str(set_dir.resolve()))
             home = factory_fn(gdir, "codex_home").decode().strip()
-            codex_env = {k: v for k, v in env.items() if k not in ("CODEX_API_KEY", "OPENAI_API_KEY")}
+            skills_off = factory_fn(gdir, "codex_skills_off").decode().strip()
+            codex_env = {k: v for k, v in env.items() if k not in CODEX_UNSET}
             codex_env.update(CODEX_HOME=home, PATH=f"{Path.home() / '.local' / 'bin'}:{env.get('PATH', '')}")
         for c in cells:
             g, m, e, k = c
@@ -283,7 +286,8 @@ def main(argv):
                         r = subprocess.run(["codex", "exec", "--json", "--output-schema", str(tmp / f"{g}.schema.json"),
                                             "-o", str(o), "-s", "read-only", "-m", m.removeprefix("codex:"),
                                             "-c", f"model_reasoning_effort={e}",
-                                            "-c", "skills.include_instructions=false", "--skip-git-repo-check", "-"],
+                                            "-c", skills_off, "-c", "skills.include_instructions=false",
+                                            "--skip-git-repo-check", "-"],
                                            input=rubric[g] + (case / "prompt.md").read_bytes(),
                                            stdout=subprocess.DEVNULL, cwd=tmp / "tree", env=codex_env)
                         text = o.read_text(encoding="utf-8", errors="replace") if o.is_file() else ""

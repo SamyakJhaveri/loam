@@ -2,8 +2,9 @@
 
 `bin/factory` is sourced (FACTORY_SOURCED=1) and the real worker_round and run_codex_review run with a fake `codex` on
 PATH that records its argv, its CODEX_HOME, and every file under that home. HOME is a fake whose ~/.codex holds an
-AGENTS.md, a rules file, hooks, a config.toml naming another model and an auth.json, as the runner's does, and the
-environment exports the operator's CODEX_API_KEY and OPENAI_API_KEY; none of them may reach the call.
+AGENTS.md, a rules file, hooks, a config.toml naming another model and an auth.json, as the runner's does, whose
+~/.agents/skills holds skills (one through a symlinked directory), and the environment exports the operator's
+credential variables; none of them may reach the call, and each of those skills is disabled by path on its argv.
 FACTORY_CODEX_HOME holds the factory's own auth.json, and without it, or with one that is not a single JSON object,
 no call is made. No network.
 """
@@ -16,9 +17,13 @@ import pathlib
 import shutil
 import subprocess
 import tempfile
+import tomllib
 import unittest
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
+# Each outranks the factory's stored login in Codex 0.163.0 (login/src/auth/manager.rs:1500, :1537, :2798).
+CREDENTIALS = ("CODEX_API_KEY", "OPENAI_API_KEY", "CODEX_ACCESS_TOKEN", "OPENAI_FEDERATION_RULE_ID",
+               "OPENAI_IDENTITY_TOKEN_FILE", "OPENAI_WORKLOAD_IDENTITY_CONTEXT")
 INHERITED = ("FACTORY_ROOT", "FACTORY_GH", "LOAM_FACTORY_TOOLCHAIN", "LOAM_FACTORY_COPIER", "REPO", "RUN", "LOG",
              "CODEX_HOME")
 
@@ -27,8 +32,7 @@ import json, os, pathlib, sys
 a = sys.argv[1:]
 home = os.environ.get("CODEX_HOME", "")
 files = sorted(str(p.relative_to(home)) for p in pathlib.Path(home).rglob("*")) if home else []
-keys = sorted(k for k in ("CODEX_API_KEY", "OPENAI_API_KEY") if k in os.environ)
-json.dump({"argv": a, "home": home, "files": files, "keys": keys}, open(os.environ["FAKE_SEEN"], "w"))
+json.dump({"argv": a, "home": home, "files": files, "env": sorted(os.environ)}, open(os.environ["FAKE_SEEN"], "w"))
 if os.environ.get("FAKE_FAIL"):
     sys.exit(1)
 if "-o" in a:
@@ -69,6 +73,15 @@ class CodexHomeTests(unittest.TestCase):
         (codex / "hooks.json").write_text("{}\n")
         (codex / "config.toml").write_text('model = "operator-model"\ndefault_permissions = "loam-auto"\n')
         (codex / "auth.json").write_text("{}\n")
+        skills = self.home / ".agents" / "skills"
+        (self.top / "shared" / "linked").mkdir(parents=True)
+        (skills / "personal-audit").mkdir(parents=True)
+        (skills / 'odd "q" \\ dir').mkdir()
+        (skills / "viadir").symlink_to(self.top / "shared")
+        self.operator_skills = [skills / "personal-audit" / "SKILL.md", skills / 'odd "q" \\ dir' / "SKILL.md",
+                                self.top / "shared" / "linked" / "SKILL.md"]
+        for f in self.operator_skills:
+            f.write_text(f"---\nname: {f.parent.name}\ndescription: operator skill\n---\nOPERATOR BODY\n")
         self.fhome = self.top / "factory-codex-home"
         self.fhome.mkdir()
         (self.fhome / "auth.json").write_text('{"factory": true}\n')
@@ -91,7 +104,7 @@ class CodexHomeTests(unittest.TestCase):
                               env={**env, "FACTORY_SOURCED": "1", "FACTORY_ROOT": str(ROOT), "HOME": str(self.home),
                                    "FACTORY_RUNS_ROOT": str(self.top / "runs"), "FAKE_SEEN": str(self.seen),
                                    "FACTORY_CODEX_HOME": str(self.fhome),
-                                   "CODEX_API_KEY": "operator-key", "OPENAI_API_KEY": "operator-key",
+                                   **{k: "operator-credential" for k in CREDENTIALS},
                                    "CLAUDE_CONFIG_DIR": str(self.top / "cc"), "PATH": f"{self.bin}:{env['PATH']}"},
                               capture_output=True, text=True, check=False, timeout=60)
         return proc
@@ -107,10 +120,16 @@ class CodexHomeTests(unittest.TestCase):
         pairs = [a[i:i + 2] for i in range(len(a) - 1)]
         self.assertIn(["-m", "gpt-6.1-sol"], pairs)
         self.assertIn(["-c", f"model_reasoning_effort={effort}"], pairs)
-        # HOME is the operator's, so Codex still scans ~/.agents/skills; no skill catalog reaches the call.
+        # HOME is the operator's, so Codex still scans ~/.agents/skills: every skill there is disabled by path, which
+        # Codex canonicalizes, so a `$name` in a prompt loads none of them, and no skill catalog reaches the call.
+        rules = [tomllib.loads("v = " + v.removeprefix("skills.config="))["v"] for k, v in pairs
+                 if k == "-c" and v.startswith("skills.config=")]
+        self.assertEqual(len(rules), 1, a)
+        self.assertEqual({(pathlib.Path(r["path"]).resolve(), r["enabled"]) for r in rules[0]},
+                         {(f.resolve(), False) for f in self.operator_skills})
         self.assertIn(["-c", "skills.include_instructions=false"], pairs)
-        # An exported API key would outrank the factory's own login.
-        self.assertEqual(seen["keys"], [])
+        # An exported credential would outrank the factory's own login.
+        self.assertEqual(set(seen["env"]) & set(CREDENTIALS), set())
         # Only the worktree is trusted, so its .codex rules (Loam's forbidden rm -rf) bind the call.
         self.assertIn(["-c", 'projects={"%s"={trust_level="trusted"}}' % self.wt.resolve()], pairs)
 
