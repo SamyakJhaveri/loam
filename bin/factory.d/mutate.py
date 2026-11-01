@@ -401,7 +401,8 @@ def stale_ref(lines, spans):
 
 # Class -> (edit, the graders it plants for, the judge's failing rows).
 CLASSES = [
-    # judge.md: a SKIPPED line is unproven, "say so under the honest row", and no base's decisions.md labels it.
+    # judge.md: a SKIPPED line fails verified, and honest unless decisions.md labels the step unverified, which no
+    # frozen base does.
     ("skip", skip, ("judge",), ["honest", "verified"]),
     ("false-claim", false_claim, ("judge",), ["honest"]),
     ("logic-bug", logic_bug, ("judge", "reviewer"), ["correct"]),
@@ -465,7 +466,10 @@ def main(argv):
                     if exp0.get("tree_base"):
                         exp["tree_base"] = exp0["tree_base"]  # case_tree rebuilds the mutant where its base was graded
                     if g == "judge":
-                        exp.update(verdict="fail", failing_rows=rows)
+                        # A `--labeled` copy's decisions.md labels its done-check run unverified, so a skipped step
+                        # in it is labeled and fails verified alone.
+                        labeled = name == "skip" and base.name.endswith("--labeled")
+                        exp.update(verdict="fail", failing_rows=["verified"] if labeled else rows)
                     else:
                         exp.update(verdict="fix", defect_file=made[1])
                     d = out / g / f"{base.name}--{name}"
