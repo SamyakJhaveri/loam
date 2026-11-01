@@ -439,7 +439,8 @@ def main(argv):
                 lines = fh.read().split("\n")
             spans = sections(lines)
             # Mutants come from clean bases only: a base with a confirmed defect would credit a grader that
-            # reports the old defect with catching the planted one.
+            # reports the old defect with catching the planted one. No frozen judge base is clean under judge.md's
+            # rules, so the judge's come from the `--labeled` copies.
             exp0 = json.loads((base / "expected.json").read_text(encoding="utf-8"))
             clean_base = exp0.get("verdict") == ("pass" if src == "judge" else "merge")
             global BASE
@@ -454,7 +455,9 @@ def main(argv):
                 counts[g]["clean"] += 1
             for name, edit, planted, rows in CLASSES:
                 targets = [g for g in graders if g in planted]
-                made = edit(list(lines), spans) if clean_base and targets and base.name not in SKIP.get(name, ()) else None
+                # A `<base>--labeled` copy (CASES.md) keeps its base's skip lists: only decisions.md labels changed.
+                made = (edit(list(lines), spans) if clean_base and targets and base.name.split("--")[0] not in SKIP.get(name, ())
+                        else None)
                 if made is None:
                     continue
                 for g in targets:

@@ -81,11 +81,11 @@ PASS check-green
 ## decisions.md (worker-authored)
 
 ~~~~~~~~~~~~ evidence
-- Departure from Approach steps 1-4 (catalog re-pin, inventory row, npm build, manifest): #183 (b4e03233) deleted the support:seed/.claude/settings.json catalog entry and its inventory row, and 3e2f2936 made ASSET-LAYERS say a live working file is never pinned; git grep finds no entry, row, or release-manifest reference, so there is nothing to re-pin and no new digests to record; proof is qualify catalog and factory-catalog-provenance passing after the edit.
+- Departure from Approach steps 1-4 (catalog re-pin, inventory row, npm build, manifest): #183 (b4e03233) deleted the support:seed/.claude/settings.json catalog entry and its inventory row, and 3e2f2936 made ASSET-LAYERS say a live working file is never pinned; git grep finds no entry, row, or release-manifest reference, so there is nothing to re-pin and no new digests to record; proof is qualify catalog and factory-catalog-provenance passing after the edit (a worker run, unverified here).
 - Tradeoff accepted: settings.json cannot expand $LOAM_MEMSTORE and the docs require an absolute or ~/-prefixed path, so autoMemoryDirectory is pinned to ~/memstore/claude (the design's section 4.1 value, inside the default store); a user who sets LOAM_MEMSTORE elsewhere keeps auto memory at ~/memstore/claude.
 - settings.json: the two keys go right after enabledPlugins via a two-line insert (git diff -U0 shows 2 added, 0 removed lines), so every hook, deny, and sandbox line stays byte for byte; no json round-trip.
 - HARNESS.md: the sentence sits in Accepted risks because mem-capture.sh and mem-weekly.sh gitignore only .throttle/ and reports/ then git add -A, so ~/memstore/claude is committed and pushed unscrubbed; it also states the LOAM_MEMSTORE tradeoff in one parenthetical; the Always-on budget gains the 200-line / 25 KB MEMORY.md bullet.
-- Result: frozen checks.sh run from the worktree root at 4413be1b printed PASS for settings-keys, in-render, harness-doc, catalog-repin, check-green and no FAIL line.
+- Unverified (a worker run the supervisor's evidence does not show): frozen checks.sh run from the worktree root at 4413be1b printed PASS for settings-keys, in-render, harness-doc, catalog-repin, check-green and no FAIL line.
 
 ~~~~~~~~~~~~ evidence
 
