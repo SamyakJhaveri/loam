@@ -3,7 +3,8 @@
 `bin/factory lint` runs with FACTORY_ROOT at a temp copy of bin/factory.d (its skills.txt rewritten) and HOME at a
 temp tree holding fake plugin caches and an installed_plugins.json naming each plugin's installPath, so the real
 allowlist and plugins are never read. The prompt test sources
-bin/factory (FACTORY_SOURCED=1) and calls the real build_worker_prompt with a Claude worker.
+bin/factory (FACTORY_SOURCED=1) and calls the real build_worker_prompt with a Claude worker; the fan-out test
+then runs the real factory-round.js under node with stub workflow globals.
 """
 
 from __future__ import annotations
@@ -11,6 +12,8 @@ from __future__ import annotations
 import json
 import os
 import pathlib
+import re
+import secrets
 import shutil
 import subprocess
 import tempfile
@@ -140,13 +143,15 @@ class FactorySkillsTests(unittest.TestCase):
     def test_allowlisted_name_that_resolves_to_nothing_is_refused(self) -> None:
         self.assert_refused("other:missing", "skill 'other:missing' resolves to no SKILL.md")
 
-    def prompt(self) -> str:
+    def prompt(self, skill: str = "pstack:tdd", size: str = "small") -> str:
         run = self.tmp / "run"
         (run / "frozen").mkdir(parents=True, exist_ok=True)
         (run / "frozen/_common.md").write_text("")
-        script = '. bin/factory; RUN=$1; WORKER_KIND=claude; BODY=$(cat "$2"); round=1; build_worker_prompt 1'
-        proc = subprocess.run(["bash", "-c", script, "_", str(run), str(self.ticket("pstack:tdd"))], cwd=ROOT,
-                              env={**self.env(), "FACTORY_SOURCED": "1"}, capture_output=True, text=True, check=False)
+        script = ('. bin/factory; RUN=$1; WORKER_KIND=claude; DECISIONS=$1/worker/decisions.md; BODY=$(cat "$2"); '
+                  'round=1; build_worker_prompt 1')
+        proc = subprocess.run(["bash", "-c", script, "_", str(run), str(self.ticket(skill))], cwd=ROOT,
+                              env={**self.env(), "FACTORY_SOURCED": "1", "WORKER_SIZE": size},
+                              capture_output=True, text=True, check=False)
         self.assertEqual(proc.returncode, 0, proc.stderr)
         return pathlib.Path(proc.stdout.strip()).read_text()
 
@@ -163,6 +168,59 @@ class FactorySkillsTests(unittest.TestCase):
         text = self.prompt()
         self.assertEqual(text.count(str(adapter)), 1)
         self.assertLess(text.index(str(adapter)), text.index(str(self.tdd)))
+
+    def builder_prompts(self, args: str) -> list[str]:
+        # factory-round.js under node, its workflow globals stubbed: the planner splits two tasks, every other agent
+        # returns at once, and each Build agent's prompt is collected.
+        script = """
+const [f, a] = process.argv.slice(1); const seen = [];
+Object.assign(globalThis, {args: JSON.parse(a), phase() {}, log() {}, parallel: (fs) => Promise.all(fs.map((g) => g())),
+  agent: async (p, o) => {
+    if (o.phase === "Plan") return {solo: false, goal: "g", tasks: [
+      {objective: "a", owns: ["a/**"], check: "true"}, {objective: "b", owns: ["b/**"], check: "true"}]};
+    if (o.phase === "Build") seen.push(p);
+    return {solo: false, checks: ""};
+  }});
+await import("file://" + f);
+console.log(JSON.stringify(seen));"""
+        proc = subprocess.run(["node", "--no-warnings", "--input-type=module", "-e", script,
+                               str(ROOT / "bin/factory.d/factory-round.js"), args],
+                              capture_output=True, text=True, check=False)
+        self.assertEqual(proc.returncode, 0, proc.stderr)
+        return json.loads(proc.stdout)
+
+    def test_each_fan_out_builder_gets_the_lead_skill_lines_in_order(self) -> None:
+        # The #523 done check: a large round's Workflow args carry the lead's skill lines and factory-round.js appends
+        # them, unchanged and in order, to every builder prompt. Names are fresh per run, so no side can rebuild them.
+        a1, a2, a3 = (f"{c}{secrets.token_hex(4)}" for c in "kmq")
+        bare = []
+        for name in (a1, a2):
+            f = self.home / ".claude/skills" / name / "SKILL.md"
+            f.parent.mkdir(parents=True)
+            f.write_text("A fixture skill.\n")
+            bare.append(f)
+        s3 = self.skill(self.pstack, a3)
+        adapter = self.pstack / "docs/harness/claude-code.md"
+        adapter.parent.mkdir(parents=True)
+        adapter.write_text("An adapter.\n")
+        want = "\n".join([f"Before the first edit, read {bare[0]} and follow its steps.",
+                          f"Before the first pstack skill, read {adapter}, which maps its tool names to Claude Code.",
+                          f"Before the first edit, read {s3} and follow its steps.",
+                          f"Before the first edit, read {bare[1]} and follow its steps."])
+        text = self.prompt(f"{a1}, pstack:{a3}, {a2}", size="large")
+        self.assertIn(want, text)
+        (args,) = re.findall(r"and args `(\{.*\})`\.", text)
+        builders = self.builder_prompts(args)
+        self.assertEqual(len(builders), 2)
+        for p in builders:
+            self.assertIn(want, p)
+
+    def test_builder_prompt_with_no_skill_lines_adds_nothing(self) -> None:
+        args = json.dumps({"ticket": "t", "run": "r"})
+        for p in self.builder_prompts(args):
+            self.assertIn("}\n\nDo:\n", p)
+        self.assertEqual(self.builder_prompts(json.dumps({"ticket": "t", "run": "r", "skills": []})),
+                         self.builder_prompts(args))
 
     def sourced(self, script: str, *args: str) -> str:
         proc = subprocess.run(["bash", "-c", f". bin/factory\n{script}", "_", *args], cwd=ROOT,
