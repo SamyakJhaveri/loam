@@ -47,6 +47,7 @@ Graders are plugin agents (home in `ARCHITECTURE.md`): `judge.md` and `reviewer.
 `lean-critic.md` is a grader file under the same change protocol, but the manager runs it by hand on the PR, outside the round loop: on the 2026-09-09 ledger 3 of its 6 round calls were unparseable.
 The run reads each from the checkout's `cultivation/marketplace/sam-cc-setup/agents/`, or from `--graders-dir` for an eval, and records the file and its sha256 in the ledger.
 It never reads the plugin cache, so a merged grader edit grades the next run with no `claude plugin update` (#532).
+A run, an eval and a `model-eval` grid each copy the file once and take the rubric and the sha256 from that copy, since `next` can fast-forward the checkout while they run.
 
 ## A run
 

@@ -775,6 +775,10 @@ run_eval_cases() { # grader work
   local grader="$1" tree="$2/tree" rubric="$2/rubric" budget="${EVAL_BUDGET_USD:-10}" gf schema settings dir name out res exp got erows grows
   local spent=0 cases=0 mism=0 clean=0 ok attempt eline
   gf=$(grader_file "$grader") || return 2
+  # The checkout can move under a replay (`next` fast-forwards it), so the rubric and the sha256 below come from
+  # one copy of the grader file.
+  cp "$gf" "$2/grader.md" || return 2
+  gf="$2/grader.md"
   schema=$(schema_for "$grader" 2> /dev/null)
   [ -n "$schema" ] || { echo "eval: no bin/factory.d/$grader.schema.json" >&2; return 2; }
   settings="$(cd "$(dirname "$0")" && pwd)/factory.d/role-settings.json"
@@ -1361,10 +1365,13 @@ freeze() {
     "$ROOT/bin/factory.d/_common.md" > "$RUN/frozen/_common.md"
   for g in judge reviewer; do
     src=$(grader_file "$g" 2>&1) || finish stopped-environment "$src"
-    grader_rubric "$src" > "$RUN/frozen/$g.md"
+    # One copy of the checkout file gives both the frozen rubric and the ledger's sha256, so a checkout that moves
+    # mid-freeze cannot pair one prompt with another's hash; `file` still names the checkout path.
+    cp "$src" "$RUN/frozen/$g.src.md" || finish stopped-environment "could not copy $src"
+    grader_rubric "$RUN/frozen/$g.src.md" > "$RUN/frozen/$g.md"
     schema_for "$g" > "$RUN/frozen/$g.schema.json"
     printf '{"ts":"%s","event":"grader","role":"%s","file":"%s","sha256":"%s"}\n' \
-      "$(now)" "$g" "$src" "$(sha256_of < "$src" | cut -d' ' -f1)" >> "$LEDGER"
+      "$(now)" "$g" "$src" "$(sha256_of < "$RUN/frozen/$g.src.md" | cut -d' ' -f1)" >> "$LEDGER"
   done
   { cat "$RUN/frozen/lib.sh"; echo; dc_script; echo; echo "$CHECKS_END"; echo 'exit $((n_fail > 0))'; } > "$RUN/frozen/checks.sh"
   { standing_list; section "Do not touch" | sed 's/[Ee]xcept:.*//' | ticket_paths; } | sort -u > "$RUN/frozen/protected.txt"

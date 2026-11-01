@@ -9,6 +9,8 @@ gates stubbed as shell functions) are called directly. No `claude`, no network.
 from __future__ import annotations
 
 import base64
+import hashlib
+import json
 import os
 import pathlib
 import shutil
@@ -29,14 +31,18 @@ class GraderVersionTests(unittest.TestCase):
         self.home = self.tmp / "home"
         self.home.mkdir()
 
-    def stale_cache(self) -> None:
-        """A fake installed sam-cc-setup holding a judge.md and a reviewer.md older than the checkout's."""
-        agents = self.home / f".claude/plugins/cache/seed-skills/sam-cc-setup/{OLD}/agents"
-        agents.mkdir(parents=True)
-        for g in ("judge", "reviewer"):
-            shutil.copyfile(SHIPPED / f"{g}.md", agents / f"{g}.md")
-            with (agents / f"{g}.md").open("a") as f:
-                f.write("\nA grader prompt this checkout no longer ships.\n")
+    def stale_cache(self, matching: bool = True) -> None:
+        """A fake plugin cache: an older sam-cc-setup whose prompts differ from the checkout's, and a newer one whose
+        prompts are byte-identical to it (unless matching=False), so neither is preferred to the checkout."""
+        cache = self.home / ".claude/plugins/cache/seed-skills/sam-cc-setup"
+        versions = [(OLD, "\nA grader prompt this checkout no longer ships.\n")] + ([("9.9.9", "")] if matching else [])
+        for version, extra in versions:
+            agents = cache / version / "agents"
+            agents.mkdir(parents=True)
+            for g in ("judge", "reviewer"):
+                shutil.copyfile(SHIPPED / f"{g}.md", agents / f"{g}.md")
+                with (agents / f"{g}.md").open("a") as f:
+                    f.write(extra)
 
     def sourced(self, script: str) -> subprocess.CompletedProcess[str]:
         env = {k: v for k, v in os.environ.items() if k != "FACTORY_ROOT"}
@@ -59,6 +65,40 @@ class GraderVersionTests(unittest.TestCase):
         proc = self.sourced(f'GRADERS_DIR=\'{mine}\'; grader_file judge; echo "rc=$?"')
         self.assertEqual(proc.stdout.splitlines(), [str(mine / "judge.md"), "rc=0"], proc.stderr)
 
+    def test_a_replay_records_the_sha_of_the_bytes_it_graded(self) -> None:
+        # `next` can fast-forward the checkout while an eval replays: the fake claude edits the grader file during
+        # the call, and the scores.jsonl line must still name the bytes whose rubric the grader read.
+        mine = self.tmp / "agents"
+        mine.mkdir()
+        shutil.copyfile(SHIPPED / "judge.md", mine / "judge.md")
+        before = (mine / "judge.md").read_bytes()
+        case = self.tmp / "evals/judge/c1"
+        case.mkdir(parents=True)
+        (case / "prompt.md").write_text("## Ticket\n")
+        (case / "expected.json").write_text('{"verdict": "pass"}')
+        fake = self.tmp / "bin/claude"
+        fake.parent.mkdir()
+        fake.write_text("#!/usr/bin/env python3\nimport json, os, sys\n"
+                        "open(os.environ['STDIN_LOG'], 'w').write(sys.stdin.read())\n"
+                        "open(os.environ['GRADER_SRC'], 'a').write('\\nAn edit that landed mid-replay.\\n')\n"
+                        "print(json.dumps({'type': 'result', 'is_error': False, 'total_cost_usd': 0,"
+                        " 'result': json.dumps({'verdict': 'pass'})}))\n")
+        fake.chmod(0o755)
+        stdin_log = self.tmp / "stdin.txt"
+        env = {k: v for k, v in os.environ.items() if k not in ("FACTORY_ROOT", "FACTORY_LEDGER", "EVAL_OUT")}
+        env.update(FACTORY_SOURCED="1", HOME=str(self.home), PATH=f"{fake.parent}:{os.environ['PATH']}",
+                   STDIN_LOG=str(stdin_log), GRADER_SRC=str(mine / "judge.md"))
+        # $0 is bin/factory, as for `bin/factory eval`, so schema_for and the settings path resolve from bin/.
+        proc = subprocess.run(["bash", "-c", f". \"$0\"; EVALS_DIR='{self.tmp / 'evals'}'; GRADERS_DIR='{mine}'; "
+                               'run_eval judge; echo "rc=$?"', "bin/factory"],
+                              cwd=ROOT, env=env, capture_output=True, text=True, check=False)
+        self.assertIn("rc=0", proc.stdout, proc.stderr)
+        self.assertNotEqual((mine / "judge.md").read_bytes(), before, "the fake claude did not edit the source")
+        rubric = self.sourced(f"grader_rubric '{SHIPPED / 'judge.md'}'").stdout
+        self.assertTrue(stdin_log.read_text().startswith(rubric), "the replay graded another rubric")
+        score = json.loads((self.tmp / "evals/scores.jsonl").read_text().splitlines()[-1])
+        self.assertEqual(score["sha256"], hashlib.sha256(before).hexdigest())
+
     def tick(self, env: str = "") -> tuple[subprocess.CompletedProcess[str], str]:
         """One `bin/factory next` tick over a frontier of #7; returns the run and the tmux calls it made, one per line.
         env is shell code run first, such as an export the tick reads."""
@@ -77,7 +117,7 @@ class GraderVersionTests(unittest.TestCase):
     def test_next_launches_with_a_stale_cache(self) -> None:
         # On 1 Nov 2026 a grader edit left the cache one version behind, and next refused every tick for about
         # 11 hours while next --dry-run said "would launch".
-        self.stale_cache()
+        self.stale_cache(matching=False)
         proc, tmux = self.tick()
         self.assertEqual(proc.stdout.splitlines(), ["launched #7", "rc=0"], proc.stderr)
         self.assertIn("new-session", tmux)
