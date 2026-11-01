@@ -163,10 +163,12 @@ class LoamAttachTests(unittest.TestCase):
         self.assertEqual(0, self.attach().returncode)
         (self.dst / ".mcp.json").write_text('{"mcpServers": {}}\n')
         (self.dst / ".claude/loop.md").write_text("x\n")
-        (self.dst / ".claude/agents").mkdir()
-        (self.dst / ".claude/agents/a.md").write_text("x\n")
+        dirs = ("agents", "commands", "output-styles", "routines", "workflows")
+        for d in dirs:
+            (self.dst / ".claude" / d).mkdir()
+            (self.dst / ".claude" / d / "a.md").write_text("x\n")
         out = self.git("status", "--porcelain", "--untracked-files=all").splitlines()
-        for name in (".mcp.json", ".claude/loop.md", ".claude/agents/a.md"):
+        for name in (".mcp.json", ".claude/loop.md", *(f".claude/{d}/a.md" for d in dirs)):
             self.assertIn(f"?? {name}", out)
 
     def test_reworded_seed_block_fails_loudly(self) -> None:
