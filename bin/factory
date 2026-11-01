@@ -1563,6 +1563,20 @@ group_live() { # <pgid> -> 0 when a process other than a zombie has it as its gr
   awk -v p="$1" '$1 == p && $2 !~ /^Z/ { f = 1 } END { exit !f }' <<< "$g"
 }
 
+# A run suspended whole (SIGSTOP, ^Z, or a job stopped by its shell) keeps its lease and its owner, so it holds its slot
+# with no progress: every process that is not a zombie in its owner's process group is stopped (ps state T or t). The
+# supervisor runs in that group (tmux's shell, bin/factory, its children); a model call has a session of its own and
+# ends at CALL_TIMEOUT_SEC (timeout's KILL reaches a stopped call), so a stopped call alone needs no rule. A ps that
+# fails, or an owner it cannot read, is not stopped.
+run_stopped() { # <run dir>
+  local o g
+  o=$(cat "$1/owner" 2> /dev/null) && g=$(ps -o pgid= -p "${o%% *}" 2> /dev/null) && g=${g//[[:space:]]/} \
+    && [ -n "$g" ] || return 1
+  g=$(ps -e -o pgid=,stat= 2> /dev/null | awk -v p="$g" '$1 == p && $2 !~ /^Z/ { n++; if ($2 !~ /^[Tt]/) up = 1 }
+    END { print (n && !up) ? "stopped" : "" }')
+  [ "$g" = stopped ]
+}
+
 # A recorded process group still lives and is still the one recorded: a member that is not a zombie, and a leader, while
 # its pid is alive, with the start time recorded after its id. A leader gone with members left counts, since Linux
 # never hands out a pid still in use as a pgid, so a reused pgid always has a new live leader; a record with no start
@@ -3264,7 +3278,9 @@ next_tick() { # [--dry-run|--install|--frontier]
   #    FACTORY_MAX_PARALLEL bounds the count, as it does in cmd_run through apply_caps; default 1.
   #    --dry-run asks with peek, so a run holds_slot would reap counts free and is not reaped or alerted on.
   #    --frontier counts the same way but never stops here, since it lists the frontier whatever the slots hold.
-  local d st n=0 max="${FACTORY_MAX_PARALLEL:-$MAX_PARALLEL}" peek=
+  #    Full slots with a run suspended whole (run_stopped) are a refusal, not an idle tick: exit 1, so cmd_next sends no
+  #    beat and the check goes red. A pr-opened run waiting on its review has no owner process to judge, so it is idle.
+  local d st n=0 max="${FACTORY_MAX_PARALLEL:-$MAX_PARALLEL}" peek= stopped=
   [ "$dry" = 1 ] && peek=peek
   for d in "$RUNS_ROOT"/*/*/; do
     st=$(cat "$d/status" 2> /dev/null || true)
@@ -3274,10 +3290,13 @@ next_tick() { # [--dry-run|--install|--frontier]
     fi
     holds_slot "$d" "$peek" || continue
     n=$((n + 1))
+    run_stopped "$d" && stopped="${d%/}"
   done
   if [ "$frontier" = 0 ] && [ "$n" -ge "$max" ]; then
     echo "nothing to launch"
-    return 0
+    [ -z "$stopped" ] && return 0
+    echo "refused: every process of the run in $stopped is stopped (SIGSTOP or a stopped job), so it holds its slot with no progress; kill -CONT or kill its process group" >&2
+    return 1
   fi
 
   # 3. Fast-forward the checkout next runs from, so a merged loop change reaches the supervisor
