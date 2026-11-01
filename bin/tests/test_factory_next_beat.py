@@ -35,11 +35,11 @@ class NextBeatTests(unittest.TestCase):
         self.alerts = pathlib.Path(tmp.name) / "alerts"
         self.alerts.touch()
 
-    def tick(self, pre: str = "", *flags: str) -> tuple[subprocess.CompletedProcess[str], list[str]]:
+    def tick(self, pre: str = "", *flags: str, slots: int = 1) -> tuple[subprocess.CompletedProcess[str], list[str]]:
         proc = subprocess.run(
             ["bash", "-c", f". bin/factory\n{STUBS}{pre}cmd_next {' '.join(flags)}"],
             cwd=ROOT, capture_output=True, text=True, check=False,
-            env={**os.environ, "FACTORY_SOURCED": "1", "FACTORY_ROOT": str(ROOT), "FACTORY_MAX_PARALLEL": "1",
+            env={**os.environ, "FACTORY_SOURCED": "1", "FACTORY_ROOT": str(ROOT), "FACTORY_MAX_PARALLEL": str(slots),
                  "FACTORY_RUNS_ROOT": str(self.runs), "ALERTS": str(self.alerts)},
         )
         return proc, self.alerts.read_text().splitlines()
@@ -94,10 +94,14 @@ class NextBeatTests(unittest.TestCase):
             if stat.strip().startswith("T"):
                 break
             time.sleep(0.1)
-        proc, sent = self.tick()
-        self.assertEqual((proc.returncode, proc.stdout.strip()), (1, "nothing to launch"), proc.stderr)
-        self.assertIn("is stopped (SIGSTOP or a stopped job)", proc.stderr)
-        self.assertEqual(sent, [])
+        for slots in (1, 2):   # a free slot left beside the stopped run must not mask it
+            with self.subTest(slots=slots):
+                self.alerts.write_text("")
+                proc, sent = self.tick(slots=slots)
+                self.assertEqual((proc.returncode, proc.stdout.strip()), (1, "nothing to launch"), proc.stderr)
+                self.assertIn("is stopped (SIGSTOP or a stopped job)", proc.stderr)
+                self.assertEqual(sent, [])
+        self.alerts.write_text("")
         os.kill(sup.pid, signal.SIGCONT)
         proc, sent = self.tick()
         self.assertEqual((proc.returncode, proc.stdout.strip()), (0, "nothing to launch"), proc.stderr)

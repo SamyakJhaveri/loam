@@ -690,6 +690,16 @@ class LintTests(ParkingTests):
         self.assertIn("not owner #7: last edited by an account GitHub no longer names; edit the body as SamyakJhaveri", proc.stderr)
         self.assertNotIn("#8", proc.stderr)
 
+    def test_a_tick_past_its_time_budget_reads_no_more_editors(self) -> None:
+        # Past 600 s an ok tick stops before the next editor read and ends idle (exit 0), so it beats within the
+        # check's grace; --frontier still reads every editor.
+        proc = self.next_dry_run((7, CLEAN), (8, CLEAN), pre="SECONDS=700; ")
+        self.assertEqual((proc.returncode, proc.stdout.strip()), (0, "nothing to launch"), proc.stderr)
+        self.assertIn("out of time: the tick ran 700s, past its 600 s budget, before #7's editor read", proc.stderr)
+        self.assertEqual(self.gql_log.read_text(), "")
+        proc = self.next_dry_run((7, CLEAN), (8, CLEAN), pre="SECONDS=700; ", flag="--frontier")
+        self.assertEqual(proc.stdout.split(), ["#7", "#8"], proc.stderr)
+
     def test_no_editor_call_after_the_pick(self) -> None:
         # A stalled GraphQL costs a tick one timeout, not one per candidate; later candidates still get the author check.
         proc = self.next_dry_run((7, CLEAN), (8, CLEAN), (9, CLEAN), authors={9: "someone-else"}, editors={8: None})

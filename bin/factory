@@ -3278,8 +3278,9 @@ next_tick() { # [--dry-run|--install|--frontier]
   #    FACTORY_MAX_PARALLEL bounds the count, as it does in cmd_run through apply_caps; default 1.
   #    --dry-run asks with peek, so a run holds_slot would reap counts free and is not reaped or alerted on.
   #    --frontier counts the same way but never stops here, since it lists the frontier whatever the slots hold.
-  #    Full slots with a run suspended whole (run_stopped) are a refusal, not an idle tick: exit 1, so cmd_next sends no
-  #    beat and the check goes red. A pr-opened run waiting on its review has no owner process to judge, so it is idle.
+  #    A counted run suspended whole (run_stopped), whatever the slots, is a refusal, not an idle tick: nothing launches,
+  #    exit 1, so cmd_next sends no beat and the check goes red. A pr-opened run waiting on its review has no owner process
+  #    to judge, so it is idle.
   local d st n=0 max="${FACTORY_MAX_PARALLEL:-$MAX_PARALLEL}" peek= stopped=
   [ "$dry" = 1 ] && peek=peek
   for d in "$RUNS_ROOT"/*/*/; do
@@ -3292,11 +3293,14 @@ next_tick() { # [--dry-run|--install|--frontier]
     n=$((n + 1))
     run_stopped "$d" && stopped="${d%/}"
   done
-  if [ "$frontier" = 0 ] && [ "$n" -ge "$max" ]; then
+  if [ "$frontier" = 0 ] && [ -n "$stopped" ]; then
     echo "nothing to launch"
-    [ -z "$stopped" ] && return 0
     echo "refused: every process of the run in $stopped is stopped (SIGSTOP or a stopped job), so it holds its slot with no progress; kill -CONT or kill its process group" >&2
     return 1
+  fi
+  if [ "$frontier" = 0 ] && [ "$n" -ge "$max" ]; then
+    echo "nothing to launch"
+    return 0
   fi
 
   # 3. Fast-forward the checkout next runs from, so a merged loop change reaches the supervisor
@@ -3375,7 +3379,7 @@ next_tick() { # [--dry-run|--install|--frontier]
   # --frontier never sets pick but prints each candidate that passes, so every candidate gets the editor call.
   # </dev/null keeps gh off the candidate list this loop reads on stdin. This check only
   # picks; load_ticket checks the owner again on the body the run freezes.
-  local pick="" read_failed="" st_last lint_err lint_line author editor run
+  local pick="" read_failed="" out_of_time="" st_last lint_err lint_line author editor run
   while read -r who num author b64; do
     [ -n "$num" ] || continue
     body=$(printf '%s' "$b64" | base64 -d)
@@ -3419,6 +3423,12 @@ next_tick() { # [--dry-run|--install|--frontier]
           continue
         fi
         if [ -z "$pick" ]; then
+          # A tick past 600 s (bash's SECONDS, from bin/factory's start) reads no more editors, so an ok tick ends
+          # within the check's grace (LOOP.md, healthchecks); --frontier lists every candidate, so it reads on.
+          if [ "$frontier" = 0 ] && [ "$SECONDS" -ge 600 ]; then
+            out_of_time=1
+            break
+          fi
           if ! editor=$(net gh api graphql -f owner="${repo%%/*}" -f name="${repo#*/}" -F number="$num" \
             -f query='query($owner: String!, $name: String!, $number: Int!) { repository(owner: $owner, name: $name) { issue(number: $number) { editor { login } lastEditedAt } } }' \
             --jq '.data.repository.issue | .editor.login // (if .lastEditedAt then "(unnamed)" else "" end)' < /dev/null 2> /dev/null); then
@@ -3455,6 +3465,11 @@ next_tick() { # [--dry-run|--install|--frontier]
     echo "nothing to launch"
     echo "refused: a candidate was passed over on a failed GitHub read (above)" >&2
     return 1
+  fi
+  if [ -z "$pick" ] && [ -n "$out_of_time" ]; then
+    echo "nothing to launch"
+    echo "out of time: the tick ran ${SECONDS}s, past its 600 s budget, before #$num's editor read; the next tick tries again" >&2
+    return 0
   fi
 
   # A run stopped at today's daily budget, with the shared ledger (RUNS_BASE, every target's) also spent at the
