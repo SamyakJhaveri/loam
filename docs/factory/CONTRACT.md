@@ -28,12 +28,12 @@ The body starts at `Brief:` or `Part of`; in a file the first `#` line is the ti
    CMD is all the text after NAME, and round 0 runs it whole as one bash command, with `lib.sh` sourced first, from a base worktree, output dropped, so bash parses it as written: `predict greet test -f greeting.txt && ! grep -q hello greeting.txt` means both halves, and `!`, `[[`, pipes and redirects belong to the prediction.
    Round 0 refuses the ticket as `ticket-defect`, naming the check, when CMD exits non-zero or the line has no CMD.
    Freeze leaves predict lines out of `checks.sh`, so no later round, Stop hook or worker run sees them, and a `$(...)` in CMD runs at round 0 only.
-   A predict line may run on over several raw lines that end in a backslash, joined as bash joins them, and freeze drops every one of them; a `#` comment line that ends in a backslash does not run on, as in bash.
+   The block takes no line continuations: every check, predict and comment line is one raw line, and a line that ends in a backslash is an error (lint), or a `ticket-defect` at round 0 for a run never linted, since one line split across raw lines let freeze keep part of a predict line or drop a check.
    CMD runs in its own bash with only `lib.sh`, so it sees no variable or function the block defines, and it must not change the worktree, since the checks run in that same base worktree after it.
    A guard takes no predict line; a body with no contract line may carry predict lines, which round 0 runs, but needs none.
    The block is green when it prints no FAIL line; an abort or an `exit` anywhere in the block, at base or in a later round, adds `FAIL checks-aborted`, because `checks.sh` then stops before the end line freeze writes after the block (#180, #277).
    No `skip`.
-   The block runs under `pipefail`, so a check never pipes a command that is meant to exit non-zero into `grep`; it captures the output first (`out=$(cmd 2>&1); grep -q pattern <<<"$out"`).
+   The block and each predict CMD run under `set -u` without `pipefail`, so `cmd | grep -q x` passes when grep matches even if `cmd` then dies of SIGPIPE; a check that needs `cmd`'s own exit status captures the output first (`out=$(cmd 2>&1) && grep -q pattern <<<"$out"`).
    Written before implementation.
    A check leaves the ticket only through the `abandon` exit in `LOOP.md`.
 7. `## Merge checklist` (optional): steps a human or a post-merge action performs, one line each with its command.
@@ -45,7 +45,7 @@ The body starts at `Brief:` or `Part of`; in a file the first `#` line is the ti
 9. `## Worker`: `worker: claude|codex`, `codex-review: yes|no`, `effort: low|medium|high|xhigh`, `size: small|large` (optional, default small; large routes round 1 through the fan-out workflow, F12), `contract: 2` (optional; every new ticket carries it, and the done-checks block then has one predict line per non-guard check), `goal:` the condition the round's `/goal` holds until, always the done-checks block printing no FAIL line, ending "or stop after 60 turns", `skills:` (optional) a comma list of skill names the worker must read and follow, each a line of `bin/factory.d/skills.txt` written as the Skill tool lists it (a bare `rigor`, or `plugin:name` for a plugin skill) or a `pstack:<name>` of any installed pstack skill (owner ruling 2026-10-30), which needs no line, and any cap override from `LOOP.md`.
     A Claude worker's prompt names each skill's SKILL.md path, resolved by `skill_file` in `bin/factory`, for it to read; a Codex worker's prompt holds the body (#385).
     A `pstack:` skill sets `disable-model-invocation`, so the Skill tool never lists it, and it needs no line.
-    Samyak adds any other line by hand, direct to `main`, after `bin/runner 'claude -p --setting-sources user --max-turns 1 "print skill names"'` prints the name on the runner; a worker runs with `--setting-sources user`, so a project skill such as `catchup` never loads there and never enters the file (#37).
+    Samyak adds any other line by hand, direct to `main`, after `bin/runner 'claude -p --setting-sources user --max-turns 1 "print skill names"'` prints the name on the runner; a worker lists the same skills (LOOP.md, Worker calls), so a project skill such as `catchup` never loads there and never enters the file (#37).
 10. `## Decisions`: links to ADRs, closed decision tickets, or the design doc.
 11. `## Comments` (optional, always last): answers and notes appended to a ticket file after it is written, where the target keeps tickets as files and its own tracker rules say comments go there, as DistBench's `docs/tickets/` does (owner ruling 2026-10-19).
     Lint rejects any section after it.
@@ -71,11 +71,7 @@ This block proves memory recall: every hook in both stub sessions exits 0, and t
 It passes on today's `main` and fails when `seed/.claude/hooks/mem-recall.sh` prints nothing, prints only its heading, or exits nonzero; a ticket that adds a behavior writes its check in this shape, and the check prints FAIL on `main`.
 
 ```bash
-C=.claude/skills/verify-loam/control-loam; export LOAM_VERIFY_ROOT=$(mktemp -d "${TMPDIR:-/tmp}/verify.XXXXXX"); \
-  $C render --run t >/dev/null && s1=$($C session t "Reply OK." --stub --name s1) && s2=$($C session t "Reply OK." --stub --name s2) && \
-  jq -e 'all(.hooks[]; .exit_code == 0)' <<<"$s1" >/dev/null && \
-  jq -e --arg sid "$(jq -r '.session_id' <<<"$s1")" 'all(.hooks[]; .exit_code == 0) and any(.hooks[]; .event == "SessionStart" and (.stdout | startswith("## Memory (render)")) and (.stdout | contains(" | " + $sid + " | ")))' <<<"$s2" >/dev/null \
-  && pass memory-recalled || fail memory-recalled "a hook exited nonzero, or the second stub session's ## Memory block does not hold the first session's INDEX line; evidence in $LOAM_VERIFY_ROOT/t/evidence"
+C=.claude/skills/verify-loam/control-loam; export LOAM_VERIFY_ROOT=$(mktemp -d "${TMPDIR:-/tmp}/verify.XXXXXX"); $C render --run t >/dev/null && s1=$($C session t "Reply OK." --stub --name s1) && s2=$($C session t "Reply OK." --stub --name s2) && jq -e 'all(.hooks[]; .exit_code == 0)' <<<"$s1" >/dev/null && jq -e --arg sid "$(jq -r '.session_id' <<<"$s1")" 'all(.hooks[]; .exit_code == 0) and any(.hooks[]; .event == "SessionStart" and (.stdout | startswith("## Memory (render)")) and (.stdout | contains(" | " + $sid + " | ")))' <<<"$s2" >/dev/null && pass memory-recalled || fail memory-recalled "a hook exited nonzero, or the second stub session's ## Memory block does not hold the first session's INDEX line; evidence in $LOAM_VERIFY_ROOT/t/evidence"
 guard $C cleanup t >/dev/null && pass verify-cleanup || fail verify-cleanup "control-loam cleanup t"
 ```
 
@@ -91,7 +87,7 @@ This contract owns the issue body: each issue carries the sections above, and th
 ### Lint rules (`bin/factory lint <issue|file>`, F2)
 
 - Every section present, in order.
-- The done-checks block, without its predict lines, plus `lib.sh` pass `bash -n`.
+- The done-checks block, without its predict lines, plus `lib.sh` pass `bash -n`, and no line of the block ends in a backslash.
 - Every check line ends in `pass` or `fail`; no `skip` anywhere.
   A line that starts with `predict` is not a check line and is accepted in every body, unless it has no command after the name, or its command does not pass `bash -n` on its own.
 - No text a reader on GitHub cannot see (#389): a character of Unicode category `Cf` (zero-width, bidi controls, tags, BOM, word joiner), a `Cc` other than tab, newline and carriage return, the variation selectors and the other default-ignorable code points a `Cf` rule misses (U+FE00 to U+FE0F, the whole block U+E0000 to U+E0FFF, U+FFF0 to U+FFF8, and U+034F, U+115F, U+1160, U+17B4, U+17B5, U+180B to U+180D, U+180F, U+3164, U+FFA0), the same through a character reference such as `&#x200B;` (numeric ones of up to 8 digits, decoded as cmark-gfm does), or a carriage return with no newline after it, except at the very end of the body.
@@ -108,7 +104,7 @@ This contract owns the issue body: each issue carries the sections above, and th
   The contract line is exactly one line `contract: 2`; anything else is an error, and a body with no contract line lints as before #388.
   The rule is skipped under `bin/factory.d/fixtures/`, as the path rule is.
 - A check line containing a token matching `*test*.py`, `*_test.sh`, or `pytest` that names a path not listed under Do not touch is flagged as a self-graded oracle.
-- `worker`, `codex-review`, `effort`, `goal`, and caps take valid values; every `skills:` name is a line of `bin/factory.d/skills.txt`, matched byte for byte (#37), or a `pstack:<name>` of letters, digits, `-` or `_` naming any installed pstack skill (#385; owner ruling 2026-10-30), and resolves through `skill_file` to a SKILL.md under `$HOME`, so a skill missing on the host fails lint there. Lint prints an advisory `warning:` line, never a refusal, for each named pstack skill on its short list of skills that write under `~/` (`setup-pstack`, `reflect`, `automate-me`), since the worker's shell is not sandboxed (#409).
+- `worker`, `codex-review`, `effort`, `goal`, and caps take valid values; every `skills:` name is a line of `bin/factory.d/skills.txt`, matched byte for byte (#37), or a `pstack:<name>` of letters, digits, `-` or `_` naming any installed pstack skill (#385; owner ruling 2026-10-30), and resolves through `skill_file` to a SKILL.md under `$HOME`, so a skill missing on the host fails lint there. Lint prints an advisory `warning:` line, never a refusal, for each named pstack skill on its short list of skills that write under `~/` (`setup-pstack`, `reflect`, `automate-me`), since the step fails: the worker's file tools are denied there and its sandboxed shell cannot write there (#409).
 - Every path named under Where, Do not touch, and Approach exists in the tree or is named by the Goal as created.
   The path rule is skipped under `bin/factory.d/fixtures/`, whose bodies are historical tickets and name paths that later tickets removed.
 - At most three merge-checklist lines on a Track B ticket.

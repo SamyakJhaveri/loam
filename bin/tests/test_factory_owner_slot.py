@@ -3,7 +3,7 @@
 Each test writes a run dir with status `running` and an `owner` line, sources bin/factory (FACTORY_SOURCED=1) with
 `alert` stubbed to a file, and asks holds_slot. A freed run reads stopped-environment and alerts once; a held one
 keeps `running` and sends nothing. A run dir with a `lease` file is judged by the flock lease alone (LeaseSlotTests);
-one without it by the owner line (OwnerSlotTests).
+one without it by the owner line (OwnerSlotTests). NextTickTests ask through cmd_next, whose --dry-run only looks.
 """
 
 from __future__ import annotations
@@ -76,15 +76,40 @@ class SlotCase(unittest.TestCase):
     def owner(self, line: str) -> None:
         (self.run_dir / "owner").write_text(line + "\n")
 
-    def holds(self, extra: str = "") -> bool:
+    def holds(self, extra: str = "", peek: str = "") -> bool:
         script = (f". bin/factory\nRUNS_BASE='{self.top}/runs'; LOG='{self.top}/factory.log'\n"
                   f"alert() {{ printf '%s\\n' \"$*\" >> '{self.alerts}'; }}\n{extra}\n"
-                  f"holds_slot '{self.run_dir}' && echo held || echo free")
+                  f"holds_slot '{self.run_dir}' {peek} && echo held || echo free")
         base = {k: v for k, v in os.environ.items() if k not in INHERITED}
         proc = subprocess.run(["bash", "-c", script], cwd=ROOT, env={**base, "FACTORY_SOURCED": "1", "PATH": self.path},
                               stdin=subprocess.DEVNULL, capture_output=True, text=True, check=False)
         self.assertIn(proc.stdout.strip(), ("held", "free"), proc.stderr)
         return proc.stdout.strip() == "held"
+
+    def hold(self, script: str) -> int:
+        # A shell in a session of its own takes the lease on fd 9, then runs script, which touches $2 once it is ready.
+        ready = self.top / "ready"
+        p = subprocess.Popen(["bash", "-c", f'exec 9>> "$1" && flock -n 9 && {{ {script}; }}', "_",
+                              str(self.run_dir / "lease"), str(ready)], start_new_session=True)
+        self.addCleanup(p.wait)   # cleanups run last in, first out: the kill first
+        self.addCleanup(lambda: subprocess.run(["pkill", "-KILL", "-g", str(p.pid)], check=False))
+        wait_until(ready.exists)
+        return p.pid
+
+    def tick(self, dry: bool) -> subprocess.CompletedProcess[str]:
+        # One cmd_next with the gates stubbed and no frontier, so a slot counted free ends at `frontier query failed`
+        # and a held one at `nothing to launch`; ROOT is the temp dir, so a real tick's pull step never touches the repo.
+        stubs = ("assert_target_ready() { :; }; claude_logged_in() { :; }; claude_version_ok() { :; }; "
+                 "target_repo() { :; }; pr_closed_events() { :; }; grader_file() { :; }")
+        script = (f". bin/factory\nROOT='{self.top}'; LOG='{self.top}/factory.log'\n"
+                  f"alert() {{ printf '%s\\n' \"$*\" >> '{self.alerts}'; }}\n{stubs}\n"
+                  f"cmd_next{' --dry-run' if dry else ''}; :")
+        base = {k: v for k, v in os.environ.items() if k not in INHERITED}
+        return subprocess.run(["bash", "-c", script], cwd=ROOT,
+                              env={**base, "FACTORY_SOURCED": "1", "FACTORY_ROOT": str(ROOT),
+                                   "FACTORY_RUNS_ROOT": str(self.top / "runs"), "FACTORY_MAX_PARALLEL": "1",
+                                   "PATH": self.path},
+                              stdin=subprocess.DEVNULL, capture_output=True, text=True, check=False)
 
     def supervise(self, call: str, prelude: str = "") -> tuple[subprocess.Popen, list[int]]:
         # A supervisor in a session of its own runs `sh -c call` through call_start, so the call has a session of its
@@ -232,6 +257,10 @@ class OwnerSlotTests(SlotCase):
         # its start time, and frees the slot. The call and its child ignore TERM, so only the KILL ends them.
         sup, (call, child) = self.supervise('trap "" TERM; sleep 60 & echo "$$ $!" > "$1"; wait')
         self.assertEqual((self.run_dir / "call.group").read_text(), f"{call} {lstart(call)}\n")
+        # `call` gets the wrapper's start time as a third field just after its first write (call_live).
+        wait_until(lambda: len((self.run_dir / "call").read_text().split(" ", 2)) == 3)
+        wrapper, _, start = (self.run_dir / "call").read_text().rstrip("\n").split(" ", 2)
+        self.assertEqual(start, lstart(int(wrapper)))
         os.killpg(sup.pid, signal.SIGKILL)
         sup.wait()
         self.owner(f"{sup.pid} {OLD}")
@@ -245,16 +274,68 @@ class OwnerSlotTests(SlotCase):
         self.assertFalse((self.run_dir / "call.group").exists())
 
     def test_dead_owner_spares_a_group_whose_start_time_differs(self) -> None:
-        # A pgid reused since the call started has another start time: holds_slot kills nothing and the live group
-        # still holds the slot.
+        # A pgid reused since the call started has another start time: holds_slot kills nothing, and since that group
+        # is not the call's (call_live), the slot is freed.
         p = subprocess.Popen(["sleep", "60"], start_new_session=True)
         self.addCleanup(p.wait)
         self.addCleanup(p.kill)
         (self.run_dir / "call.group").write_text(f"{p.pid} {OLD}\n")
         (self.run_dir / "call").write_text(f"{dead_pid()} test.{uuid.uuid4().hex}\n")
         self.owner(f"{dead_pid()} {OLD}")
-        self.assert_held()
+        self.assert_freed()
         self.assertIsNone(p.poll(), "holds_slot killed a group whose start time differs")
+
+    def test_stuck_call_holds_a_stopped_run_s_slot_until_its_group_is_gone(self) -> None:
+        # A call alive 5 s after KILL keeps `call` and its run ends stopped-environment (#467): the slot holds, with no
+        # write and no alert, while the group `call` names lives, and frees once that group is gone.
+        (self.run_dir / "status").write_text("stopped-environment\n")
+        self.owner(f"{dead_pid()} {OLD}")
+        p = subprocess.Popen(["sleep", "60"], start_new_session=True)
+        self.addCleanup(p.wait)
+        self.addCleanup(p.kill)
+        (self.run_dir / "call").write_text(f"{p.pid} t{p.pid}\n")
+        for held in (True, False):
+            with self.subTest(held=held):
+                self.assertEqual(self.holds(), held)
+                self.assertEqual((self.run_dir / "status").read_text(), "stopped-environment\n")
+                self.assertFalse(self.alerts.exists())
+                self.assertEqual((self.run_dir / "call").read_text(), f"{p.pid} t{p.pid}\n")
+            p.kill()
+            p.wait()
+
+    def test_stuck_call_s_reused_pgid_does_not_hold_a_stopped_run_s_slot(self) -> None:
+        # A stuck call's `call` and `call.group` stay on its stopped run; once an unrelated group leader takes either
+        # pid, its start time differs from the one recorded, so the slot is free, with no write and no alert. A leader
+        # with the recorded start time is still the call's and holds.
+        (self.run_dir / "status").write_text("stopped-environment\n")
+        self.owner(f"{dead_pid()} {OLD}")
+        wrapper, group = (subprocess.Popen(["sleep", "60"], start_new_session=True) for _ in range(2))
+        for q in (wrapper, group):
+            self.addCleanup(q.wait)
+            self.addCleanup(q.kill)
+        tag = f"test.{uuid.uuid4().hex}"
+        for held in (False, True):
+            call = f"{wrapper.pid} {tag} {lstart(wrapper.pid) if held else OLD}\n"
+            (self.run_dir / "call").write_text(call)
+            (self.run_dir / "call.group").write_text(f"{group.pid} {lstart(group.pid) if held else OLD}\n")
+            for peek in ("", "peek"):
+                with self.subTest(held=held, peek=peek):
+                    self.assertEqual(self.holds(peek=peek), held)
+                    self.assertEqual((self.run_dir / "status").read_text(), "stopped-environment\n")
+                    self.assertFalse(self.alerts.exists())
+                    self.assertEqual((self.run_dir / "call").read_text(), call)
+
+    def test_stuck_call_s_group_two_seconds_off_still_holds_a_stopped_run_s_slot(self) -> None:
+        # A wall-clock step moves ps lstart, so a call group whose start is 2 s from the recorded one is still the call's.
+        (self.run_dir / "status").write_text("stopped-environment\n")
+        self.owner(f"{dead_pid()} {OLD}")
+        group = subprocess.Popen(["sleep", "60"], start_new_session=True)
+        self.addCleanup(group.wait)
+        self.addCleanup(group.kill)
+        t = datetime.datetime.strptime(lstart(group.pid), "%a %b %d %H:%M:%S %Y") - datetime.timedelta(seconds=2)
+        (self.run_dir / "call").write_text(f"{dead_pid()} test.{uuid.uuid4().hex}\n")
+        (self.run_dir / "call.group").write_text(f"{group.pid} {t:%a %b} {t.day:2d} {t:%H:%M:%S %Y}\n")
+        self.assertTrue(self.holds())
 
 
 @unittest.skipUnless(HAVE_FLOCK, "the lease needs flock(1) and bash 4.1+")
@@ -264,16 +345,6 @@ class LeaseSlotTests(SlotCase):
     def setUp(self) -> None:
         super().setUp()
         (self.run_dir / "lease").touch()
-
-    def hold(self, script: str) -> int:
-        # A shell in a session of its own takes the lease on fd 9, then runs script, which touches $2 once it is ready.
-        ready = self.top / "ready"
-        p = subprocess.Popen(["bash", "-c", f'exec 9>> "$1" && flock -n 9 && {{ {script}; }}', "_",
-                              str(self.run_dir / "lease"), str(ready)], start_new_session=True)
-        self.addCleanup(p.wait)   # cleanups run last in, first out: the kill first
-        self.addCleanup(lambda: subprocess.run(["pkill", "-KILL", "-g", str(p.pid)], check=False))
-        wait_until(ready.exists)
-        return p.pid
 
     def test_no_holder_frees_the_slot_once_though_the_owner_pid_lives(self) -> None:
         self.owner(f"{os.getpid()} {lstart(os.getpid())}")
@@ -424,6 +495,9 @@ class LeaseSlotTests(SlotCase):
         wait_until(lambda: not self.holds())
         self.assertEqual((self.run_dir / "status").read_text(), "stopped-environment\n")
         self.assertEqual(len(self.alerts.read_text().splitlines()), 1)
+        # The gone call's files go with the reap, so a reused wrapper pid cannot hold the stopped run's slot (#467).
+        self.assertFalse((self.run_dir / "call").exists())
+        self.assertFalse((self.run_dir / "call.group").exists())
 
     def test_launched_with_no_status_holds_only_while_its_lease_is_held(self) -> None:
         # A launch killed between `launched` and its first status leaves no status; its free lease frees the slot.
@@ -434,6 +508,49 @@ class LeaseSlotTests(SlotCase):
         self.assertTrue(self.holds())
         self.assertFalse((self.run_dir / "status").exists())
         self.assertFalse(self.alerts.exists())
+
+
+class NextTickTests(SlotCase):
+    """cmd_next counts a run whose supervisor is gone as free; --dry-run only looks (#469), a real tick reaps it."""
+
+    def setUp(self) -> None:
+        super().setUp()
+        (self.run_dir / "launched").touch()
+        self.owner(f"{dead_pid()} {OLD}")
+
+    def test_dry_run_counts_a_dead_owner_free_and_writes_nothing(self) -> None:
+        proc = self.tick(dry=True)
+        self.assertIn("frontier query failed", proc.stderr)
+        self.assertEqual((self.run_dir / "status").read_text(), "running\n")
+        self.assertFalse(self.alerts.exists())
+        self.assertFalse((self.run_dir / "owner.lock").exists())
+
+    def test_real_tick_reaps_a_dead_owner_with_one_alert(self) -> None:
+        proc = self.tick(dry=False)
+        self.assertIn("frontier query failed", proc.stderr)
+        self.assertEqual((self.run_dir / "status").read_text(), "stopped-environment\n")
+        self.assertEqual(len(self.alerts.read_text().splitlines()), 1)
+
+
+@unittest.skipUnless(HAVE_FLOCK, "the lease needs flock(1) and bash 4.1+")
+class LeaseNextTickTests(NextTickTests):
+    """The same over a run dir with a `lease`: one no process holds counts free, and --dry-run still writes nothing."""
+
+    def setUp(self) -> None:
+        super().setUp()
+        (self.run_dir / "lease").touch()
+
+    def test_dry_run_leaves_a_held_lease_and_a_gone_owner_alone(self) -> None:
+        holder = self.hold('touch "$2"; exec sleep 60')
+        # call.group names the holder's group as call_start writes it, so a dry run that killed an orphan call
+        # under owner.lock, as a real tick does, would TERM the holder.
+        (self.run_dir / "call.group").write_text(f"{holder} {lstart(holder)}\n")
+        proc = self.tick(dry=True)
+        self.assertIn("nothing to launch", proc.stdout)
+        self.assertNotIn(state(holder), ("", "Z"), "a dry run killed the lease holder's group")
+        self.assertEqual((self.run_dir / "status").read_text(), "running\n")
+        self.assertFalse(self.alerts.exists())
+        self.assertFalse((self.run_dir / "owner.lock").exists())
 
 
 class MacShapeOwnerSlotTests(OwnerSlotTests):
