@@ -46,7 +46,8 @@ def alive(name: str) -> bool:
             rec = json.load(f)
     except (OSError, ValueError):
         return False
-    return start_time(rec["pid"]) == rec["start"]
+    # A command that exited before new-session read its start time recorded None: a dead session, not a live one.
+    return rec["start"] is not None and start_time(rec["pid"]) == rec["start"]
 
 
 def any_alive() -> bool:

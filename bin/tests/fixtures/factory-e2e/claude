@@ -181,13 +181,16 @@ def main(argv: list[str]) -> int:
         if argv[:1] != ["-p"]:
             raise Unknown(f"subcommand {argv[:2]}")
         opts = parse(argv)
+        missing = [f for f in ("--model", "--output-format", "--settings") if f not in opts]
+        if missing:
+            raise Unknown(f"a -p call without {' '.join(missing)}")
         if ("--json-schema" in opts) == (opts.get("--output-format") == "stream-json"):
             raise Unknown("a -p call that is neither a worker call (stream-json) nor a grader call (--json-schema)")
         try:  # both calls pass a frozen settings file
             with open(opts["--settings"], encoding="utf-8") as h:
                 json.load(h)
-        except (KeyError, OSError, ValueError):
-            raise Unknown(f"--settings {opts.get('--settings')!r}, not a file holding JSON") from None
+        except (OSError, ValueError):
+            raise Unknown(f"--settings {opts['--settings']!r}, not a file holding JSON") from None
         if set(opts.get("--setting-sources", "").split(",")) - {"", "user", "project", "local"}:
             raise Unknown(f"--setting-sources {opts['--setting-sources']!r}")
         kind = "grader" if "--json-schema" in opts else "worker"
