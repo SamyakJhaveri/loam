@@ -12,7 +12,8 @@ A <model> is a Claude model id, graded by `bin/factory eval`, or codex:<model>, 
   MODEL_EVAL_REPEATS      default 2
   MODEL_EVAL_EFFORTS      default high; each of low medium high xhigh, anything else (max included) exits 2
   MODEL_EVAL_SEED         default 0
-  MODEL_EVAL_GRADERS_DIR  passed to bin/factory as --graders-dir when set
+  MODEL_EVAL_GRADERS_DIR  the grader files, as bin/factory's --graders-dir (default the checkout's); each is
+                          copied once per grid, and every cell grades and hashes that copy
 EVAL_BUDGET_USD passes through to each `bin/factory eval` call, one per cell.
 
 A cell is one grader, model, effort and repeat; its replies go to <out>/replies/<model>@<effort>/r<k>/,
@@ -240,29 +241,36 @@ def main(argv):
     graders = (env.get("MODEL_EVAL_GRADERS") or "judge reviewer lean-critic").split()
     gdir = env.get("MODEL_EVAL_GRADERS_DIR") or ""
 
-    # Each grader's file, schema and rubric, as bin/factory resolves them for its own eval.
-    gfile, schema, rubric, cases = {}, {}, {}, {}
-    for g in graders:
-        gfile[g] = Path(factory_fn(gdir, "grader_file", g).decode().strip())
-        schema[g] = factory_fn(gdir, "schema_for", g)
-        rubric[g] = factory_fn(gdir, "grader_rubric", str(gfile[g]))
-        cases[g] = cases_of(set_dir, g)
-        if not cases[g]:
-            print(f"model-eval: no {g} cases under {set_dir}", file=sys.stderr)
-    graders_sha = sha256("".join(f"{g} {sha256(gfile[g].read_bytes())}\n" for g in sorted(graders)).encode())
-    settings_sha = sha256((HERE / "role-settings.json").read_bytes())
-    evals_sha = tree_sha(set_dir)
-
-    cells = [(g, m, e, k) for g in graders for m in models for e in efforts for k in range(1, repeats + 1)]
-    random.Random(seed).shuffle(cells)
-    name = lambda c: f"{c[0]} {c[1]}@{c[2]}/r{c[3]}"  # noqa: E731
-    cell_dir = lambda c: out / "replies" / f"{c[1]}@{c[2]}" / f"r{c[3]}"  # noqa: E731
-    out.mkdir(parents=True, exist_ok=True)
-    (out / "order.txt").write_text("".join(name(c) + "\n" for c in cells), encoding="utf-8")
-
     tmp = Path(tempfile.mkdtemp(prefix="model-eval."))
     ctmp = None
     try:
+        # Each grader's file, schema and rubric, as bin/factory resolves them for its own eval. The checkout can move
+        # during a grid (`next` fast-forwards it), so each file is copied once into tmp/graders, the --graders-dir of
+        # every Claude cell, and the rubric, keys and fingerprints all read that copy.
+        gsnap = tmp / "graders"
+        gsnap.mkdir()
+        gfile, schema, rubric, cases = {}, {}, {}, {}
+        for g in graders:
+            gfile[g] = gsnap / f"{g}.md"
+            shutil.copyfile(factory_fn(gdir, "grader_file", g).decode().strip(), gfile[g])
+        gdir = str(gsnap)
+        for g in graders:
+            schema[g] = factory_fn(gdir, "schema_for", g)
+            rubric[g] = factory_fn(gdir, "grader_rubric", str(gfile[g]))
+            cases[g] = cases_of(set_dir, g)
+            if not cases[g]:
+                print(f"model-eval: no {g} cases under {set_dir}", file=sys.stderr)
+        graders_sha = sha256("".join(f"{g} {sha256(gfile[g].read_bytes())}\n" for g in sorted(graders)).encode())
+        settings_sha = sha256((HERE / "role-settings.json").read_bytes())
+        evals_sha = tree_sha(set_dir)
+
+        cells = [(g, m, e, k) for g in graders for m in models for e in efforts for k in range(1, repeats + 1)]
+        random.Random(seed).shuffle(cells)
+        name = lambda c: f"{c[0]} {c[1]}@{c[2]}/r{c[3]}"  # noqa: E731
+        cell_dir = lambda c: out / "replies" / f"{c[1]}@{c[2]}" / f"r{c[3]}"  # noqa: E731
+        out.mkdir(parents=True, exist_ok=True)
+        (out / "order.txt").write_text("".join(name(c) + "\n" for c in cells), encoding="utf-8")
+
         for g in graders:
             (tmp / f"{g}.schema.json").write_text(json.dumps(strict_schema(json.loads(schema[g]))), encoding="utf-8")
         # A Codex grader reads the directory it runs in, so each case runs in the tree a Claude cell's bin/factory eval
@@ -338,7 +346,7 @@ def main(argv):
                         for f in ("prompt.md", "expected.json"):
                             shutil.copyfile(case / f, sub / g / case.name / f)
                     cmd = [str(FACTORY), "eval", g, "--evals-dir", str(sub), "--model", m]
-                    cmd += ["--graders-dir", gdir] if gdir else []
+                    cmd += ["--graders-dir", gdir]
                     # Exit 1 is a mismatch, a scored result; 2 is a stop (budget, an API error), whose unwritten
                     # cases count as infra and are retried on the next run. Neither stops the grid.
                     r = subprocess.run(cmd, env={**env, "EVAL_OUT": str(d), "EVAL_EFFORT": e}, stdout=sys.stderr)
