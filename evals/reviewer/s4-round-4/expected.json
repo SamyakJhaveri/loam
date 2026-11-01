@@ -1,4 +1,1 @@
-{
-  "source": "lean-v3 run S4 round 4 reviewer, the unmeetable-check run once green",
-  "verdict": "merge"
-}
+{"source":"lean-v3 run S4 round 4 reviewer, the unmeetable-check run once green","verdict":"fix","defect_class":"real","defect_file":["pr-body.md","measurements.md"],"known_defects":[{"file":"pr-body.md","severity":"medium","defect":"done check 4 wants scenarios 1, 2, 4 and 8 run live with transcript lines in the PR body; only scenario 2 ran","evidence":"the merged PR #30 body says done check 4 is not met"}]}

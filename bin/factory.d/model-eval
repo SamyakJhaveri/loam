@@ -5,30 +5,32 @@ Usage:
   bin/factory.d/model-eval <model>...
 
 A <model> is a Claude model id, graded by `bin/factory eval`, or codex:<model>, graded per case by
-`codex exec`. The environment sets the rest:
+`codex exec` in the same evals-free export and under the factory's own CODEX_HOME. The environment sets the rest:
   MODEL_EVAL_OUT          the output root (required)
   MODEL_EVAL_SET          the cases root, <grader>/<case>/{prompt.md,expected.json} (default evals/planted)
   MODEL_EVAL_GRADERS      default "judge reviewer lean-critic"
   MODEL_EVAL_REPEATS      default 2
   MODEL_EVAL_EFFORTS      default high; each of low medium high xhigh, anything else (max included) exits 2
   MODEL_EVAL_SEED         default 0
-  MODEL_EVAL_GRADERS_DIR  passed to bin/factory as --graders-dir when set
+  MODEL_EVAL_GRADERS_DIR  the grader files, as bin/factory's --graders-dir (default the checkout's); each is
+                          copied once per grid, and every cell grades and hashes that copy
 EVAL_BUDGET_USD passes through to each `bin/factory eval` call, one per cell.
 
 A cell is one grader, model, effort and repeat; its replies go to <out>/replies/<model>@<effort>/r<k>/,
 the layout eval_score.py reads. Every cell is listed, shuffled with random.Random(seed), written to
 <out>/order.txt, and run in that order, so a config that drifts during the run spreads over every model.
 Beside each scored reply, <grader>-<case>.key holds the sha256 of everything the reply depends on: the
-grader file, its schema and rubric, role-settings.json, the case's prompt.md and expected.json, the model,
-the effort, the mode, and the cell's harness (Claude Code version, config-drift.sh md5, Codex model,
-and the raw ~/.claude/settings.json and ~/.codex/config.toml, since config-drift.sh names settings only). A
-later run calls the grader only for the cases whose reply or key is missing or whose key differs; an error,
-unparseable or off-model reply gets no key, so it is retried. Each cell dir gets fingerprint-<grader>.txt
-naming the config that grader's replies ran on, and fingerprint.txt for the whole grader list. A Codex cell
-gets each grader schema in the strict form `codex exec --output-schema` requires. Right after a Claude
-cell's calls, every new reply that is not an error must name only the cell's model in modelUsage, else the
-offenders are printed and the exit is 3 with no further call and no table. The table scores this run's
-cells only, never another run's replies left under <out>/replies.
+grader file, its schema and rubric, role-settings.json, bin/factory and this script as they are on disk, the
+case's prompt.md and expected.json, the model, the effort, the mode, and the cell's harness (Claude Code
+version, config-drift.sh md5, Codex model, and the raw ~/.claude/settings.json and Codex config.toml, since
+config-drift.sh names settings only; a Codex cell reads the factory CODEX_HOME's config.toml, not ~/.codex's,
+and its mode names how it runs). A later run calls the grader only for the cases whose reply or key is missing
+or whose key differs; an error, unparseable or off-model reply gets no key, so it is retried. Each cell dir
+gets fingerprint-<grader>.txt naming the config that grader's replies ran on, and fingerprint.txt for the
+whole grader list. A Codex cell gets each grader schema in the strict form `codex exec --output-schema`
+requires. Right after a Claude cell's calls, every new reply that is not an error must name only the cell's
+model in modelUsage, else the offenders are printed and the exit is 3 with no further call and no table. The
+table scores this run's cells only, never another run's replies left under <out>/replies.
 python3 stdlib only.
 """
 from __future__ import annotations
@@ -38,6 +40,7 @@ import json
 import math
 import os
 import random
+import re
 import shutil
 import subprocess
 import sys
@@ -51,6 +54,13 @@ import eval_score  # noqa: E402
 
 EFFORTS = ("low", "medium", "high", "xhigh")
 RATES = ("recall:", "false_alarm", "cut_rate", "agreement")
+# A Codex cell's mode in its key: it names how the cell runs, so a reply made another way (before #566, in the
+# checkout with the answer keys in reach and under the operator's ~/.codex) never matches. Change it with the call.
+CODEX_MODE = "codex exec in the case tree, factory CODEX_HOME, no env credentials, no operator skills, no plugins/apps/MCP"
+CODEX_UNSET = ("CODEX_API_KEY", "OPENAI_API_KEY", "CODEX_ACCESS_TOKEN",  # bin/factory's CODEX_UNSET
+               "OPENAI_FEDERATION_RULE_ID", "OPENAI_IDENTITY_TOKEN_FILE", "OPENAI_WORKLOAD_IDENTITY_CONTEXT")
+CODEX_OFF = ("-c", "features.plugins=false", "-c", "features.remote_plugin=false",  # bin/factory's CODEX_OFF
+             "-c", "features.apps=false", "-c", "features.skill_mcp_dependency_install=false")
 Z = 1.96
 
 
@@ -124,11 +134,11 @@ def config_drift_md5():
     return hashlib.md5(b"".join(lines)).hexdigest() if lines else "none"
 
 
-def user_config_sha():
+def user_config_sha(codex_config):
     # config-drift.sh records setting names, never values, so a changed deny rule or env value would leave its md5
     # alone; the key also hashes the raw files a call reads (--setting-sources user, and Codex's config).
     h = hashlib.sha256()
-    for f in (Path.home() / ".claude" / "settings.json", Path.home() / ".codex" / "config.toml"):
+    for f in (Path.home() / ".claude" / "settings.json", codex_config):
         try:
             h.update(f"{f.name}\0{sha256(f.read_bytes())}\n".encode())
         except OSError:
@@ -136,10 +146,10 @@ def user_config_sha():
     return h.hexdigest()
 
 
-def codex_model():
+def codex_model(codex_config):
     try:
         import tomllib  # Python 3.11+; an older python3 reports none rather than failing the run
-        with open(Path.home() / ".codex" / "config.toml", "rb") as fh:
+        with open(codex_config, "rb") as fh:
             m = tomllib.load(fh).get("model")
     except (ImportError, OSError, ValueError):
         return "none"
@@ -178,6 +188,25 @@ def served_off(rep, model):
     return [s for s in served if not s.startswith(model)] if served else ["no modelUsage"]
 
 
+def tree_of(case):
+    """The tree a case is graded in, for its reuse key, as case_tree in bin/factory picks it: its tree_base, which must
+    resolve, else the commit its Diff heading names when the checkout has it, else HEAD's commit."""
+    try:
+        recorded = json.loads((case / "expected.json").read_text(encoding="utf-8")).get("tree_base")
+    except (OSError, ValueError):
+        recorded = None
+    base = recorded
+    if not base:
+        m = re.search(r"^## Diff \(([0-9a-f]{7,40})\.\.\.HEAD\)$", (case / "prompt.md").read_text(encoding="utf-8"), re.M)
+        base = m.group(1) if m else None
+    git = lambda *a: subprocess.run(["git", "-C", str(FACTORY.parent.parent), *a], capture_output=True, text=True)  # noqa: E731
+    if base and git("cat-file", "-e", f"{base}^{{commit}}").returncode == 0:
+        return "base " + git("rev-parse", base).stdout.strip()
+    if recorded:
+        return "missing " + recorded
+    return "head " + git("rev-parse", "HEAD").stdout.strip()
+
+
 def wilson(p, n):
     if n == 0:
         return None
@@ -212,44 +241,67 @@ def main(argv):
     graders = (env.get("MODEL_EVAL_GRADERS") or "judge reviewer lean-critic").split()
     gdir = env.get("MODEL_EVAL_GRADERS_DIR") or ""
 
-    # Each grader's file, schema and rubric, as bin/factory resolves them for its own eval.
-    gfile, schema, rubric, cases = {}, {}, {}, {}
-    for g in graders:
-        gfile[g] = Path(factory_fn(gdir, "grader_file", g).decode().strip())
-        schema[g] = factory_fn(gdir, "schema_for", g)
-        rubric[g] = factory_fn(gdir, "grader_rubric", str(gfile[g]))
-        cases[g] = cases_of(set_dir, g)
-        if not cases[g]:
-            print(f"model-eval: no {g} cases under {set_dir}", file=sys.stderr)
-    graders_sha = sha256("".join(f"{g} {sha256(gfile[g].read_bytes())}\n" for g in sorted(graders)).encode())
-    settings_sha = sha256((HERE / "role-settings.json").read_bytes())
-    evals_sha = tree_sha(set_dir)
-
-    cells = [(g, m, e, k) for g in graders for m in models for e in efforts for k in range(1, repeats + 1)]
-    random.Random(seed).shuffle(cells)
-    name = lambda c: f"{c[0]} {c[1]}@{c[2]}/r{c[3]}"  # noqa: E731
-    cell_dir = lambda c: out / "replies" / f"{c[1]}@{c[2]}" / f"r{c[3]}"  # noqa: E731
-    out.mkdir(parents=True, exist_ok=True)
-    (out / "order.txt").write_text("".join(name(c) + "\n" for c in cells), encoding="utf-8")
-
     tmp = Path(tempfile.mkdtemp(prefix="model-eval."))
+    ctmp = None
     try:
+        # Each grader's file, schema and rubric, as bin/factory resolves them for its own eval. The checkout can move
+        # during a grid (`next` fast-forwards it), so each file is copied once into tmp/graders, the --graders-dir of
+        # every Claude cell, and the rubric, keys and fingerprints all read that copy.
+        gsnap = tmp / "graders"
+        gsnap.mkdir()
+        gfile, schema, rubric, cases = {}, {}, {}, {}
+        for g in graders:
+            gfile[g] = gsnap / f"{g}.md"
+            shutil.copyfile(factory_fn(gdir, "grader_file", g).decode().strip(), gfile[g])
+        gdir = str(gsnap)
+        for g in graders:
+            schema[g] = factory_fn(gdir, "schema_for", g)
+            rubric[g] = factory_fn(gdir, "grader_rubric", str(gfile[g]))
+            cases[g] = cases_of(set_dir, g)
+            if not cases[g]:
+                print(f"model-eval: no {g} cases under {set_dir}", file=sys.stderr)
+        graders_sha = sha256("".join(f"{g} {sha256(gfile[g].read_bytes())}\n" for g in sorted(graders)).encode())
+        settings_sha = sha256((HERE / "role-settings.json").read_bytes())
+        # The code that builds and sends the call, as it is on disk, so an edit to either, committed or not, regrades.
+        code_sha = sha256(b"".join(sha256(f.read_bytes()).encode() for f in (FACTORY, Path(__file__).resolve())))
+        evals_sha = tree_sha(set_dir)
+
+        cells = [(g, m, e, k) for g in graders for m in models for e in efforts for k in range(1, repeats + 1)]
+        random.Random(seed).shuffle(cells)
+        name = lambda c: f"{c[0]} {c[1]}@{c[2]}/r{c[3]}"  # noqa: E731
+        cell_dir = lambda c: out / "replies" / f"{c[1]}@{c[2]}" / f"r{c[3]}"  # noqa: E731
+        out.mkdir(parents=True, exist_ok=True)
+        (out / "order.txt").write_text("".join(name(c) + "\n" for c in cells), encoding="utf-8")
+
         for g in graders:
             (tmp / f"{g}.schema.json").write_text(json.dumps(strict_schema(json.loads(schema[g]))), encoding="utf-8")
+        # A Codex grader reads the directory it runs in, so each case runs in the tree a Claude cell's bin/factory eval
+        # builds for it (case_tree: the case's base with its Diff applied, else the eval_tree export of HEAD), in a
+        # directory of its own that holds no case file, never in the checkout or beside a copied expected.json.
+        ctmp = Path(tempfile.mkdtemp(prefix="model-eval-tree.")) if any(m.startswith("codex:") for m in models) else None
+        if ctmp:
+            factory_fn(gdir, "eval_tree", str(ctmp), str(set_dir.resolve()))
+            # Use the factory login and drop inherited credentials and operator skills, as bin/factory does.
+            home = factory_fn(gdir, "codex_home").decode().strip()
+            skills_off = factory_fn(gdir, "codex_skills_off").decode().strip()
+            codex_env = {k: v for k, v in env.items() if k not in CODEX_UNSET}
+            codex_env.update(CODEX_HOME=home, PATH=f"{Path.home() / '.local' / 'bin'}:{env.get('PATH', '')}")
         for c in cells:
             g, m, e, k = c
             d = cell_dir(c)
             d.mkdir(parents=True, exist_ok=True)
             codex = m.startswith("codex:")
+            codex_config = Path(home) / "config.toml" if codex else Path.home() / ".codex" / "config.toml"
             # The harness a call runs on, read once per cell: a Claude Code update or a config change between
             # runs changes every key, so no reply graded on the old harness is reused.
-            cfg = {"config-drift-md5": config_drift_md5(), "claude-version": claude_version(), "codex-model": codex_model()}
-            user_sha = user_config_sha()
+            cfg = {"config-drift-md5": config_drift_md5(), "claude-version": claude_version(),
+                   "codex-model": codex_model(codex_config)}
+            user_sha = user_config_sha(codex_config)
             keys = {}
             for case in cases[g]:
                 parts = [sha256(gfile[g].read_bytes()), sha256(schema[g]), sha256(rubric[g]), settings_sha,
                          sha256((case / "prompt.md").read_bytes()), sha256((case / "expected.json").read_bytes()),
-                         m, e, "codex" if codex else "claude", *cfg.values(), user_sha]
+                         m, e, CODEX_MODE if codex else "claude", *cfg.values(), user_sha, tree_of(case), code_sha]
                 keys[case] = sha256("\n".join(parts).encode())
             need = [case for case in cases[g]
                     if not (d / f"{g}-{case.name}.key").is_file() or not (d / f"{g}-{case.name}.json").is_file()
@@ -264,11 +316,26 @@ def main(argv):
                     for case in need:
                         o = tmp / "codex-reply.txt"
                         o.unlink(missing_ok=True)
-                        r = subprocess.run(["codex", "exec", "--json", "--output-schema", str(tmp / f"{g}.schema.json"),
+                        t = subprocess.run(["bash", "-c", '. "$0"; EVALS_DIR=$1; case_tree "$2" "$3"', str(FACTORY),
+                                            str(set_dir), str(case), str(ctmp)],
+                                           env={**os.environ, "FACTORY_SOURCED": "1"}, capture_output=True, text=True)
+                        if t.returncode != 0:
+                            # Recorded as a failed reply (infra in the table), never dropped; the key below decides
+                            # whether a rerun tries it again.
+                            print(f"model-eval: {name(c)} {case.name}: TREE {t.stderr.strip()}; not graded", file=sys.stderr)
+                            reply = {"type": "result", "is_error": True, "total_cost_usd": None, "result": f"TREE {t.stderr.strip()}"}
+                            (d / f"{g}-{case.name}.json").write_text(json.dumps(reply) + "\n", encoding="utf-8")
+                            continue
+                        tree = t.stdout.strip()
+                        mcp_off = factory_fn(gdir, "codex_mcp_off", tree, home).decode().strip()
+                        r = subprocess.run(["codex", "exec", *CODEX_OFF, "--json", "--output-schema", str(tmp / f"{g}.schema.json"),
                                             "-o", str(o), "-s", "read-only", "-m", m.removeprefix("codex:"),
-                                            "-c", f"model_reasoning_effort={e}", "-"],
+                                            "-c", f"model_reasoning_effort={e}",
+                                            "-c", skills_off, "-c", "skills.include_instructions=false",
+                                            "-c", mcp_off,
+                                            "-C", tree, "--skip-git-repo-check", "-"],
                                            input=rubric[g] + (case / "prompt.md").read_bytes(),
-                                           stdout=subprocess.DEVNULL)
+                                           stdout=subprocess.DEVNULL, cwd=tree, env=codex_env)
                         text = o.read_text(encoding="utf-8", errors="replace") if o.is_file() else ""
                         reply = {"type": "result", "is_error": r.returncode != 0 or not text.strip(),
                                  "total_cost_usd": None, "result": text}
@@ -281,19 +348,25 @@ def main(argv):
                         for f in ("prompt.md", "expected.json"):
                             shutil.copyfile(case / f, sub / g / case.name / f)
                     cmd = [str(FACTORY), "eval", g, "--evals-dir", str(sub), "--model", m]
-                    cmd += ["--graders-dir", gdir] if gdir else []
+                    cmd += ["--graders-dir", gdir]
                     # Exit 1 is a mismatch, a scored result; 2 is a stop (budget, an API error), whose unwritten
                     # cases count as infra and are retried on the next run. Neither stops the grid.
                     r = subprocess.run(cmd, env={**env, "EVAL_OUT": str(d), "EVAL_EFFORT": e}, stdout=sys.stderr)
                     if r.returncode not in (0, 1):
                         print(f"model-eval: {name(c)}: bin/factory eval exited {r.returncode}", file=sys.stderr)
                 # A key only for a scored reply from the cell's model: an error, unparseable or off-model reply
-                # is retried on the next run, never reused.
+                # is retried on the next run, never reused. A TREE failure that names the Diff (capped, incomplete,
+                # or not applying) is the case's own and keeps a key until the case changes; any other (an export
+                # that failed, a tree_base not fetched) is the environment, so it gets none and is retried.
                 for case in need:
                     reply, _, err = eval_score.load_reply(d / f"{g}-{case.name}.json")
                     rep = raw_reply(d / f"{g}-{case.name}.json")
-                    if reply is not None and not err and (codex or not served_off(rep, m)):
-                        (d / f"{g}-{case.name}.key").write_text(keys[case] + "\n", encoding="utf-8")
+                    keyf = d / f"{g}-{case.name}.key"
+                    keyf.unlink(missing_ok=True)
+                    if rep is not None and str(rep.get("result", "")).startswith("TREE the Diff "):
+                        keyf.write_text(keys[case] + "\n", encoding="utf-8")
+                    elif reply is not None and not err and (codex or not served_off(rep, m)):
+                        keyf.write_text(keys[case] + "\n", encoding="utf-8")
             # The fingerprint names the config of the cell's newest calls; a cell that made none keeps its own.
             # fingerprint-<grader>.txt describes that grader's replies alone; fingerprint.txt, shared by every
             # grader of the cell, names the whole grader list and the newest calls of any of them.
@@ -314,6 +387,8 @@ def main(argv):
                 die("replies served by a model other than the cell's; no table", 3)
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
+        if ctmp:
+            shutil.rmtree(ctmp, ignore_errors=True)
 
     # The table scores this run's cells only, each checked after its calls: a copy of their replies and fingerprints,
     # so an earlier run's models, repeats, graders or cases under <out>/replies stay out of it.

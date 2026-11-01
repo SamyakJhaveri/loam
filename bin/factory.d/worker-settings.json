@@ -17,6 +17,10 @@
       "ScheduleWakeup", "CronCreate", "Monitor"
     ]
   },
+  "sandbox": {
+    "enabled": true, "failIfUnavailable": true, "allowUnsandboxedCommands": false, "autoAllowBashIfSandboxed": true,
+    "network": {"allowedDomains": ["pypi.org", "files.pythonhosted.org"], "strictAllowlist": true}
+  },
   "hooks": {
     "Stop": [{"hooks": [{"type": "command", "timeout": 900,
       "command": "bash -c 'out=$(LOAM_HOOK=1 bash \"$LOAM_CHECKS\" 2>&1); s=$?; [ \"$s\" -eq 0 ] && exit 0; printf \"%s\\n\" \"$out\" | grep -E \"^(FAIL|SUMMARY)\" >&2; exit 2'"}]}]

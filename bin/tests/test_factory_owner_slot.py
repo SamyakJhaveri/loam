@@ -2,8 +2,9 @@
 
 Each test writes a run dir with status `running` and an `owner` line, sources bin/factory (FACTORY_SOURCED=1) with
 `alert` stubbed to a file, and asks holds_slot. A freed run reads stopped-environment and alerts once; a held one
-keeps `running` and sends nothing. A run dir with a `lease` file is judged by the flock lease alone (LeaseSlotTests);
-one without it by the owner line (OwnerSlotTests). NextTickTests ask through cmd_next, whose --dry-run only looks.
+keeps `running` and sends nothing. A run dir with a `lease` file is judged by the flock lease, by its `call` while
+the lease is free, and by the owner pid for the orphan kill while it is held (LeaseSlotTests); one without it by the
+owner line (OwnerSlotTests). NextTickTests ask through cmd_next, whose --dry-run only looks.
 """
 
 from __future__ import annotations
@@ -76,10 +77,10 @@ class SlotCase(unittest.TestCase):
     def owner(self, line: str) -> None:
         (self.run_dir / "owner").write_text(line + "\n")
 
-    def holds(self, extra: str = "") -> bool:
+    def holds(self, extra: str = "", peek: str = "") -> bool:
         script = (f". bin/factory\nRUNS_BASE='{self.top}/runs'; LOG='{self.top}/factory.log'\n"
                   f"alert() {{ printf '%s\\n' \"$*\" >> '{self.alerts}'; }}\n{extra}\n"
-                  f"holds_slot '{self.run_dir}' && echo held || echo free")
+                  f"holds_slot '{self.run_dir}' {peek} && echo held || echo free")
         base = {k: v for k, v in os.environ.items() if k not in INHERITED}
         proc = subprocess.run(["bash", "-c", script], cwd=ROOT, env={**base, "FACTORY_SOURCED": "1", "PATH": self.path},
                               stdin=subprocess.DEVNULL, capture_output=True, text=True, check=False)
@@ -257,6 +258,10 @@ class OwnerSlotTests(SlotCase):
         # its start time, and frees the slot. The call and its child ignore TERM, so only the KILL ends them.
         sup, (call, child) = self.supervise('trap "" TERM; sleep 60 & echo "$$ $!" > "$1"; wait')
         self.assertEqual((self.run_dir / "call.group").read_text(), f"{call} {lstart(call)}\n")
+        # `call` gets the wrapper's start time as a third field just after its first write (call_live).
+        wait_until(lambda: len((self.run_dir / "call").read_text().split(" ", 2)) == 3)
+        wrapper, _, start = (self.run_dir / "call").read_text().rstrip("\n").split(" ", 2)
+        self.assertEqual(start, lstart(int(wrapper)))
         os.killpg(sup.pid, signal.SIGKILL)
         sup.wait()
         self.owner(f"{sup.pid} {OLD}")
@@ -270,16 +275,68 @@ class OwnerSlotTests(SlotCase):
         self.assertFalse((self.run_dir / "call.group").exists())
 
     def test_dead_owner_spares_a_group_whose_start_time_differs(self) -> None:
-        # A pgid reused since the call started has another start time: holds_slot kills nothing and the live group
-        # still holds the slot.
+        # A pgid reused since the call started has another start time: holds_slot kills nothing, and since that group
+        # is not the call's (call_live), the slot is freed.
         p = subprocess.Popen(["sleep", "60"], start_new_session=True)
         self.addCleanup(p.wait)
         self.addCleanup(p.kill)
         (self.run_dir / "call.group").write_text(f"{p.pid} {OLD}\n")
         (self.run_dir / "call").write_text(f"{dead_pid()} test.{uuid.uuid4().hex}\n")
         self.owner(f"{dead_pid()} {OLD}")
-        self.assert_held()
+        self.assert_freed()
         self.assertIsNone(p.poll(), "holds_slot killed a group whose start time differs")
+
+    def test_stuck_call_holds_a_stopped_run_s_slot_until_its_group_is_gone(self) -> None:
+        # A call alive 5 s after KILL keeps `call` and its run ends stopped-environment (#467): the slot holds, with no
+        # write and no alert, while the group `call` names lives, and frees once that group is gone.
+        (self.run_dir / "status").write_text("stopped-environment\n")
+        self.owner(f"{dead_pid()} {OLD}")
+        p = subprocess.Popen(["sleep", "60"], start_new_session=True)
+        self.addCleanup(p.wait)
+        self.addCleanup(p.kill)
+        (self.run_dir / "call").write_text(f"{p.pid} t{p.pid}\n")
+        for held in (True, False):
+            with self.subTest(held=held):
+                self.assertEqual(self.holds(), held)
+                self.assertEqual((self.run_dir / "status").read_text(), "stopped-environment\n")
+                self.assertFalse(self.alerts.exists())
+                self.assertEqual((self.run_dir / "call").read_text(), f"{p.pid} t{p.pid}\n")
+            p.kill()
+            p.wait()
+
+    def test_stuck_call_s_reused_pgid_does_not_hold_a_stopped_run_s_slot(self) -> None:
+        # A stuck call's `call` and `call.group` stay on its stopped run; once an unrelated group leader takes either
+        # pid, its start time differs from the one recorded, so the slot is free, with no write and no alert. A leader
+        # with the recorded start time is still the call's and holds.
+        (self.run_dir / "status").write_text("stopped-environment\n")
+        self.owner(f"{dead_pid()} {OLD}")
+        wrapper, group = (subprocess.Popen(["sleep", "60"], start_new_session=True) for _ in range(2))
+        for q in (wrapper, group):
+            self.addCleanup(q.wait)
+            self.addCleanup(q.kill)
+        tag = f"test.{uuid.uuid4().hex}"
+        for held in (False, True):
+            call = f"{wrapper.pid} {tag} {lstart(wrapper.pid) if held else OLD}\n"
+            (self.run_dir / "call").write_text(call)
+            (self.run_dir / "call.group").write_text(f"{group.pid} {lstart(group.pid) if held else OLD}\n")
+            for peek in ("", "peek"):
+                with self.subTest(held=held, peek=peek):
+                    self.assertEqual(self.holds(peek=peek), held)
+                    self.assertEqual((self.run_dir / "status").read_text(), "stopped-environment\n")
+                    self.assertFalse(self.alerts.exists())
+                    self.assertEqual((self.run_dir / "call").read_text(), call)
+
+    def test_stuck_call_s_group_two_seconds_off_still_holds_a_stopped_run_s_slot(self) -> None:
+        # A wall-clock step moves ps lstart, so a call group whose start is 2 s from the recorded one is still the call's.
+        (self.run_dir / "status").write_text("stopped-environment\n")
+        self.owner(f"{dead_pid()} {OLD}")
+        group = subprocess.Popen(["sleep", "60"], start_new_session=True)
+        self.addCleanup(group.wait)
+        self.addCleanup(group.kill)
+        t = datetime.datetime.strptime(lstart(group.pid), "%a %b %d %H:%M:%S %Y") - datetime.timedelta(seconds=2)
+        (self.run_dir / "call").write_text(f"{dead_pid()} test.{uuid.uuid4().hex}\n")
+        (self.run_dir / "call.group").write_text(f"{group.pid} {t:%a %b} {t.day:2d} {t:%H:%M:%S %Y}\n")
+        self.assertTrue(self.holds())
 
 
 @unittest.skipUnless(HAVE_FLOCK, "the lease needs flock(1) and bash 4.1+")
@@ -439,6 +496,19 @@ class LeaseSlotTests(SlotCase):
         wait_until(lambda: not self.holds())
         self.assertEqual((self.run_dir / "status").read_text(), "stopped-environment\n")
         self.assertEqual(len(self.alerts.read_text().splitlines()), 1)
+        # The gone call's files go with the reap, so a reused wrapper pid cannot hold the stopped run's slot (#467).
+        self.assertFalse((self.run_dir / "call").exists())
+        self.assertFalse((self.run_dir / "call.group").exists())
+
+    def test_live_owner_s_call_holding_the_lease_survives_any_clock_step(self) -> None:
+        # A wall-clock step moves the live supervisor's ps lstart away from the stored one, however far; on the lease
+        # path only a gone or zombie pid is a gone supervisor, so the call started since, its call.group start still
+        # matching ps, is not killed.
+        self.owner(f"{self.live()} {OLD}")
+        call = self.hold('touch "$2"; exec sleep 60')
+        (self.run_dir / "call.group").write_text(f"{call} {lstart(call)}\n")
+        self.assert_held()
+        self.assertNotIn(state(call), ("", "Z"), "holds_slot killed a live supervisor's call")
 
     def test_launched_with_no_status_holds_only_while_its_lease_is_held(self) -> None:
         # A launch killed between `launched` and its first status leaves no status; its free lease frees the slot.
