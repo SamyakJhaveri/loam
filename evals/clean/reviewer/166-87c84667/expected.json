@@ -1,1 +1,1 @@
-{"source":"166/87c84667 round-1","verdict":"merge"}
+{"source":"166/87c84667 round-1","verdict":"fix","defect_class":"real","defect_file":["bin/factory"],"known_defects":[{"file":"bin/factory","severity":"medium","defect":"nav_arm_resolve pops the next arm on every relaunch or stop of the same run dir, before the stop check","evidence":"unchanged on main; the ticket's Approach gave the snippet"}]}

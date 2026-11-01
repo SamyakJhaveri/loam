@@ -1,1 +1,1 @@
-{"source":"86/3385b049 round-2","verdict":"merge"}
+{"source":"86/3385b049 round-2","verdict":"fix","checked":"replay check 2026-11-01: was merge; a replay reading the base tree raised the slot window; the first replay's findings were misreads","defect_class":"real","defect_file":["bin/factory"],"known_defects":[{"file":"bin/factory","severity":"medium","defect":"next counts only running or waiting-limit runs, but a run writes running only after round 0's full checks, so a tick in that window launches a second ticket","evidence":"fixed by 0d7ba76 (#184)"}]}

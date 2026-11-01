@@ -724,6 +724,57 @@ eval_tree() { # work: exports into work/tree
   case "$ev/" in "$top"/?*) rm -rf "$1/tree/${ev#"$top"/}" ;; esac
 }
 
+# A grader reads the tree it runs in, and the loop runs it in the round's worktree, so a frozen case is graded in
+# that tree rebuilt: the diff's real base, keys removed as above, with every file of the Diff applied. The base is
+# expected.json's tree_base (eval-freeze records the merge base of the run's base and graded commits, which a
+# three-dot diff starts from), else the commit the `## Diff (<base>...HEAD)` heading names. The case fails instead of
+# grading a tree the round never had when the Diff is not the whole change (build_evidence caps it, passes a large
+# added file as stat only, and leaves deleted files out) or a file does not apply; a failure that names the Diff is
+# a property of the case (model-eval caches it), any other is the environment. A recorded tree_base this checkout
+# lacks fails too; only a case without one whose heading's commit is missing (run-only, lean-v3) reads the HEAD
+# export. Graded in HEAD, a case drifts as main moves: a reviewer flagged a gh call for skipping a wrapper main
+# gained six weeks later.
+case_tree() { # case-dir work -> the tree to grade in on stdout; non-zero, with the reason on stderr, when it cannot be rebuilt
+  local base tb top ev d="$2/case" p bad="" cap omit total held
+  tb=$(jq -r '.tree_base // empty' "$1/expected.json" 2> /dev/null)
+  base=${tb:-$(sed -n 's/^## Diff (\([0-9a-f]\{7,40\}\)\.\.\.HEAD)$/\1/p' "$1/prompt.md" | head -1)}
+  if [ -n "$tb" ] && ! git -C "$ROOT" cat-file -e "$tb^{commit}" 2> /dev/null; then
+    echo "tree_base $tb is not a commit in $ROOT; fetch it" >&2; return 1
+  fi
+  if [ -z "$base" ] || ! git -C "$ROOT" cat-file -e "$base^{commit}" 2> /dev/null; then echo "$2/tree"; return 0; fi
+  rm -rf "$d" "$2/patch" && mkdir "$d" "$2/patch" || { echo "could not create $d" >&2; return 1; }
+  awk -v fence="$FENCE" '/^## Diff \(/ {s = 1; next} s == 1 && $0 == fence {s = 2; next} s == 2 && $0 == fence {exit}
+    s == 2' "$1/prompt.md" > "$2/patch/diff"
+  cap=$(grep -m 1 '^\[content diff capped' "$2/patch/diff")
+  [ -z "$cap" ] || { echo "the Diff is capped, so it is not the whole change: $cap" >&2; return 1; }
+  # evals/ is removed from every tree, so a stat-only frozen prompt under it leaves nothing out.
+  omit=$(sed -n 's/^\[stat only, content omitted as data: \(.*\)\]$/\1/p' "$2/patch/diff" | tr ' ' '\n' | grep -v '^evals/' | grep .)
+  [ -z "$omit" ] || { echo "the Diff omits the content of:" $omit >&2; return 1; }
+  awk -v out="$2/patch/" '/^diff --git / {n++} n {print > (out n)}' "$2/patch/diff"
+  # Every changed file is a patch or a stat-only name; build_evidence gives a deleted file neither.
+  total=$(sed -n 's/^ \([0-9][0-9]*\) files\{0,1\} changed.*/\1/p' "$2/patch/diff" | head -1)
+  held=$(( $(find "$2/patch" -name '[0-9]*' | wc -l) + \
+    $(sed -n 's/^\[stat only, content omitted as data: \(.*\)\]$/\1/p' "$2/patch/diff" | wc -w) ))
+  [ -z "$total" ] || [ "$held" -ge "$total" ] ||
+    { echo "the Diff holds $held of the $total changed files (a deleted file has no content)" >&2; return 1; }
+  top=$(cd "$ROOT" && pwd -P); ev=$(cd "$EVALS_DIR" 2> /dev/null && pwd -P)
+  git -C "$ROOT" archive "$base" | tar -x -C "$d" || { echo "could not export $base" >&2; return 1; }
+  rm -rf "$d/evals"
+  case "$ev/" in "$top"/?*) rm -rf "$d/${ev#"$top"/}" ;; esac
+  # --check first: a patch that does not fit the base is the case's; one that fits but fails to write (a full disk)
+  # is the environment, so model-eval retries it.
+  for p in "$2/patch"/[0-9]*; do
+    [ -f "$p" ] || continue
+    if ! ( cd "$d" && git apply --check --whitespace=nowarn "$p" ) > /dev/null 2>&1; then
+      bad="$bad $(sed -n '1s|^diff --git a/\([^ ]*\) .*|\1|p' "$p")"
+    elif ! ( cd "$d" && git apply --whitespace=nowarn "$p" ) > /dev/null 2>&1; then
+      echo "could not write $p into $d" >&2; return 1
+    fi
+  done
+  [ -z "$bad" ] || { echo "the Diff does not apply at ${base:0:8}:$bad" >&2; return 1; }
+  echo "$d"
+}
+
 # One work directory per eval, outside the checkout, holding the export and the rubric. It is made, and its
 # traps set, before the export starts, so a signal at any point removes it. The traps sit in this shell, not
 # a subshell, so a TERM to bin/factory's pid alone still ends the case loop, once the in-flight call returns.
@@ -753,6 +804,14 @@ run_eval_cases() { # grader work
   grader_rubric "$gf" > "$rubric"
   for dir in "$EVALS_DIR/$grader"/*/; do
     [ -f "$dir/prompt.md" ] && [ -f "$dir/expected.json" ] || continue
+    exp=$(jq -r .verdict "$dir/expected.json")
+    # A clean case expects the passing verdict; any other is a mutant (scores.jsonl, below), a TREE failure included.
+    case "$grader/$exp" in judge/pass | reviewer/merge | lean-critic/merge) clean=$((clean + 1)) ;; esac
+    tree=$(case_tree "$dir" "$2" 2> "$2/tree.err") || {
+      echo "eval $grader/$(basename "$dir"): TREE $(cat "$2/tree.err"); not graded"; cases=$((cases + 1)); mism=$((mism + 1))
+      [ -z "${EVAL_OUT:-}" ] || { mkdir -p "$EVAL_OUT"; jq -nc --arg r "TREE $(cat "$2/tree.err")" \
+        '{type: "result", is_error: true, total_cost_usd: 0, result: $r}' > "$EVAL_OUT/$grader-$(basename "$dir").json"; }
+      continue; }
     if awk -v s="$spent" -v b="$budget" 'BEGIN {exit !(s >= b)}'; then
       echo "eval $grader: EVAL_BUDGET_USD $budget reached after \$$spent and $cases cases" >&2
       return 2
@@ -807,9 +866,6 @@ served_models:(.modelUsage | if type == \"object\" then keys else [] end), ts:\$
     done
     # EVAL_OUT keeps each case's raw reply, so a comparison can read findings, not only verdicts.
     [ -z "${EVAL_OUT:-}" ] || { mkdir -p "$EVAL_OUT"; printf '%s\n' "$out" > "$EVAL_OUT/$grader-$name.json"; }
-    exp=$(jq -r .verdict "$dir/expected.json")
-    # A clean case expects the passing verdict; any other is a mutant (scores.jsonl, below).
-    case "$grader/$exp" in judge/pass | reviewer/merge | lean-critic/merge) clean=$((clean + 1)) ;; esac
     got=$(jq -r '.verdict // "unparseable"' <<<"$res" 2>/dev/null) || got=unparseable
     [ -n "$got" ] || got=unparseable
     # A reviewer reply is scored on what the loop does with it, REVIEW_OUTCOME, never on its verdict word.
@@ -851,7 +907,7 @@ FREEZE_KEY_RE='(^|[^A-Za-z0-9])sk-[A-Za-z0-9_-]{20,}|ghp_[A-Za-z0-9]{30,}'
 freeze_prompt() { awk 'f || $0 == "## Ticket" {f = 1; print}' "$1" | sed 's/[[:space:]]*$//'; }
 
 cmd_eval_freeze() { # run-dir...
-  local run d k key sha name why g p jv rv tmp rc=0
+  local run d k key sha name why g p jv rv tmp tb rc=0
   tmp=$(mktemp -d "${TMPDIR:-/tmp}/factory-freeze.XXXXXX") || return 1
   for run in "$@"; do
     [ -d "$run" ] || { echo "eval-freeze: $run is not a directory" >&2; rc=1; continue; }
@@ -879,11 +935,17 @@ cmd_eval_freeze() { # run-dir...
       elif grep -qE "$FREEZE_KEY_RE" "$tmp/$g"; then why="key-shaped string"
       fi
     done
+    # The Diff is three-dot, from the merge base of the run's base and the graded commit; case_tree rebuilds the tree
+    # there. A case without it would fall back to the heading's commit, which need not be that base, so none is frozen.
+    if [ -z "$why" ]; then
+      tb=$(git -C "$ROOT" merge-base "$(cat "$d/base.sha" 2> /dev/null)" "$(cat "$d/round-$k.graded.sha" 2> /dev/null)" 2> /dev/null) ||
+        why="no tree base: the merge base of base.sha and round-$k.graded.sha does not resolve in $ROOT"
+    fi
     [ -z "$why" ] || { echo "not frozen $run: $why"; continue; }
     rm -rf "$tmp/case"
     if ! { mkdir -p "$tmp/case/judge" "$tmp/case/reviewer" \
-      && jq -nc --arg source "$key/$sha round-$k" '{source: $source, verdict: "pass"}' > "$tmp/case/judge/expected.json" \
-      && jq -nc --arg source "$key/$sha round-$k" '{source: $source, verdict: "merge"}' > "$tmp/case/reviewer/expected.json" \
+      && jq -nc --arg source "$key/$sha round-$k" --arg tb "$tb" '{source: $source, verdict: "pass", tree_base: $tb}' > "$tmp/case/judge/expected.json" \
+      && jq -nc --arg source "$key/$sha round-$k" --arg tb "$tb" '{source: $source, verdict: "merge", tree_base: $tb}' > "$tmp/case/reviewer/expected.json" \
       && mv "$tmp/judge" "$tmp/case/judge/prompt.md" \
       && mv "$tmp/review" "$tmp/case/reviewer/prompt.md" \
       && mkdir -p "$EVALS_DIR/clean/judge" "$EVALS_DIR/clean/reviewer" \
