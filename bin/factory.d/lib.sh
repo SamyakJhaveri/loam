@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
 # bin/factory.d/lib.sh - the prelude a ticket's done-checks block is sourced after.
 # Source it; do not run it. The block is run from the worktree root.
-# No pipefail: in `cat big | grep -q x` grep exits at its match, cat dies of SIGPIPE, and pipefail would read a miss.
-set -u
+# No pipefail, even one the caller set: in `cat big | grep -q x` grep exits at its match, cat dies of SIGPIPE, and
+# pipefail would read a miss.
+set -u +o pipefail
 
 n_pass=0
 n_fail=0

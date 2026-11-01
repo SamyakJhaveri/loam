@@ -68,7 +68,7 @@ class ParkingTests(unittest.TestCase):
 
     def next_dry_run(self, *frontier: tuple[int, str], mine: tuple[tuple[int, str], ...] = (),
                      authors: dict[int, str] | None = None, editors: dict[int, str | None] | None = None,
-                     now: int | None = None, **env: str) -> subprocess.CompletedProcess[str]:
+                     now: int | None = None, pre: str = "", **env: str) -> subprocess.CompletedProcess[str]:
         """cmd_next --dry-run over the given unassigned (issue, body) frontier, lowest number first as gh sorts it,
         and `mine`, the ready-for-agent issues assigned to the runner. Each issue is written by `authors`' login,
         SamyakJhaveri by default, and last edited by `editors`' login (None: the editor call fails; UNNAMED: a null
@@ -83,7 +83,7 @@ class ParkingTests(unittest.TestCase):
         edits = "".join(f'*" number={issue} "*) {"return 1" if who is None else f"doc={doc(who)!r}"} ;; '
                         for issue, who in (editors or {}).items())
         clock = "" if now is None else f'date() {{ if [ "$*" = "-u +%s" ]; then echo {now}; else command date "$@"; fi; }}; '
-        stubs = (clock + "assert_toolchain_env() { :; }; claude_logged_in() { :; }; claude_version_ok() { :; }; target_repo() { echo o/r; }; "
+        stubs = (pre + clock + "assert_toolchain_env() { :; }; claude_logged_in() { :; }; claude_version_ok() { :; }; target_repo() { echo o/r; }; "
                  "gh() { case $2 in graphql) local a p= q= doc='{\"data\":{\"repository\":{\"issue\":{\"editor\":null}}}}'; "
                  'for a; do [ "$p" = --jq ] && q=$a; p=$a; done; echo "$*" >> "$GQL_LOG"; '
                  f"case \"$* \" in {edits}esac; jq -r \"$q\" <<<\"$doc\" ;; repos/*) printf '%s\\n' {lines(frontier)} ;; "
@@ -169,6 +169,50 @@ class ParkingTests(unittest.TestCase):
         self.assertEqual(proc.stdout.strip(), "nothing to launch", proc.stderr)
         proc = self.next_dry_run(mine=((7, CLEAN + "\n- the corrected line"),))
         self.assertEqual(proc.stdout.strip(), "would launch #7", proc.stderr)
+
+    def test_runner_assigned_issue_that_never_ran_is_held(self) -> None:
+        # Assigned to the runner by hand with no run of any body: the owner holds it, so next leaves it; the same
+        # issue unassigned launches. A lint line under the issue dir is not a run.
+        (self.runs / "7").mkdir()
+        (self.runs / "7" / "owner-events.jsonl").write_text("{}\n")
+        proc = self.next_dry_run(mine=((7, CLEAN),))
+        self.assertEqual(proc.stdout.strip(), "nothing to launch", proc.stderr)
+        self.assertEqual(proc.stderr, "")
+        proc = self.next_dry_run((7, CLEAN))
+        self.assertEqual(proc.stdout.strip(), "would launch #7", proc.stderr)
+
+    def test_edited_body_waits_while_a_run_of_the_old_body_runs_or_awaits_merge(self) -> None:
+        # Both bodies share the issue's branch and worktree, so a spare slot must not launch the edited body beside
+        # the old body's live run, its live model call, or its open PR; assigned or not.
+        edited = CLEAN + "\n- the corrected line"
+        co = self.runs.parent / f"{self.runs.name}-co"
+        self.addCleanup(shutil.rmtree, co.parent / f"{co.name}-7", True)
+        pre = f"MAIN_CHECKOUT='{co}'; "
+        for case in ("running", "call", "pr-opened"):
+            with self.subTest(case=case):
+                self.run_dir(7, CLEAN, {"call": "stopped-environment"}.get(case, case))
+                d = self.runs / "7" / key(CLEAN)
+                if case == "call":
+                    os.utime(d / "status", (86400, 86400))
+                    p = subprocess.Popen(["sleep", "60"], start_new_session=True)
+                    self.addCleanup(p.wait)
+                    self.addCleanup(subprocess.run, ["kill", "-KILL", "--", f"-{p.pid}"], check=False)
+                    (d / "call").write_text(f"{p.pid} test.{key(str(p.pid))}\n")
+                if case == "pr-opened":
+                    (co.parent / f"{co.name}-7").mkdir()
+                for frontier, mine in ((((7, edited),), ()), ((), ((7, edited),))):
+                    proc = self.next_dry_run(*frontier, mine=mine, pre=pre, FACTORY_MAX_PARALLEL="2")
+                    self.assertEqual(proc.stdout.strip(), "nothing to launch", proc.stderr)
+                    self.assertIn("waiting #7: a run of another body still runs or awaits merge", proc.stderr)
+                if case == "call":
+                    subprocess.run(["kill", "-KILL", "--", f"-{p.pid}"], check=False)
+                    p.wait()
+                if case == "pr-opened":
+                    (co.parent / f"{co.name}-7").rmdir()
+                proc = self.next_dry_run(mine=((7, edited),), pre=pre, FACTORY_MAX_PARALLEL="2")
+                expect = "nothing to launch" if case == "running" else "would launch #7"
+                self.assertEqual(proc.stdout.strip(), expect, proc.stderr)
+                shutil.rmtree(self.runs / "7")
 
     def test_runner_assigned_stop_waits_while_its_stop_file_remains(self) -> None:
         # cmd_run exits stopped at once while FACTORY_STOP is in the run dir, so #7 must not take the pick from #8

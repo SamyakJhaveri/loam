@@ -135,7 +135,7 @@ section() { awk -v want="## $1" '$0 == want {inb=1; next} /^## /{inb=0} inb {pri
 dc_block() { awk '/^```done-checks$/{inb=1; next} /^```/{if (inb) exit} inb {print}' <<<"$BODY"; }
 
 # The block has no line continuations: lint rejects, and round 0 refuses, a raw line that ends in a backslash
-# (dc_continued), so every reader below takes one raw line as one line, and freeze cannot keep half of a predict line.
+# (dc_continued), so every reader below takes one raw line as one line, and no round runs half of a predict line.
 dc_continued() { dc_block | grep -m1 '\\$'; }
 
 # The block's lines with indentation dropped.
@@ -2683,6 +2683,8 @@ cmd_run() {
   # the EXIT trap below removes the worktree at exit, and the branch keeps the commits.
   BRANCH="factory/$KEY"; [ "$IS_FILE" = 1 ] && BRANCH="$BRANCH-$sha8"
   WORKTREE="${FACTORY_WORKTREE:-$MAIN_CHECKOUT-$(printf '%s' "$KEY" | tr '[:upper:]' '[:lower:]')}"
+  [ "${FACTORY_FROZEN:-}" != "$RUN/frozen/factory" ] && issue_busy "$KEY" "$RUN" \
+    && { echo "factory run: a run of another body of $KEY still runs or awaits merge in $WORKTREE; wait, or stop or merge it" >&2; exit 4; }
   [ -f "$RUN/started" ] || date -u +%s > "$RUN/started"
   date -u +%s > "$RUN/launched"
   # One line per launch, before any exit and not again from the frozen re-exec: status --criteria resets the
@@ -2913,6 +2915,25 @@ run_busy() { # <run dir> -> 0 while a process cmd_run would refuse a relaunch on
   [ "$st" != 0 ]
 }
 
+# Every body of an issue shares its branch and its worktree ($MAIN_CHECKOUT-<key>), so while a run of any body holds a
+# slot, still runs a process, or awaits merge (pr-opened with that worktree still there), no other body launches.
+issue_busy() { # <key> <run dir to leave out, or ""> [peek] -> 0 while such a run exists
+  local d
+  for d in "$RUNS_ROOT/$1"/*/; do
+    [ -d "$d" ] && [ "${d%/}" != "${2%/}" ] || continue
+    holds_slot "$d" "${3-}" || run_busy "$d" && return 0
+    [ "$(cat "$d/status" 2> /dev/null)" = pr-opened ] && [ -d "$MAIN_CHECKOUT-$(printf '%s' "$1" | tr '[:upper:]' '[:lower:]')" ] && return 0
+  done
+  return 1
+}
+
+# The issue has a run dir of some body: a runner-assigned issue at none then has an edited body, not a hand hold.
+ran_before() { # <key>
+  local d
+  for d in "$RUNS_ROOT/$1"/*/; do [ -d "$d" ] && return 0; done
+  return 1
+}
+
 # A ticket's Worker section can lower its own caps, so its daily stop alone does not show the shared ledger is spent.
 daily_spent_at_runner_caps() { # -> 0 when the shared daily ledger has no room for one round at the runner's own caps
   ( BODY=""; apply_caps; DAILY="$RUNS_BASE/ledger-daily.jsonl"; [ -f "$DAILY" ] || exit 1
@@ -3045,7 +3066,8 @@ cmd_next() { # [--dry-run|--install]
   # A launch assigns the issue to the runner and nothing unassigns it, so a relaunchable run's issue comes from
   # the runner's own ready-for-agent issues in this repository (/issues is the authenticated user's, so no login
   # lookup, and every page, since it spans all the runner's repositories and gh applies --jq per page); the loop takes
-  # one of those only at none (its body was edited since its last run, so it is a new ticket), stopped-daily,
+  # one of those only at none with a run of an earlier body (an edited body is a new ticket; with no run at all the
+  # owner assigned it by hand to hold it), stopped-daily,
   # stopped-environment or stopped, since any other is in flight, awaits merge, or parks.
   local mine lrepo
   lrepo=$(printf '%s' "$repo" | tr '[:upper:]' '[:lower:]')
@@ -3084,7 +3106,11 @@ cmd_next() { # [--dry-run|--install]
     body=$(printf '%s' "$b64" | base64 -d)
     st_last=$(park_status "$num" "$body")
     if [ "$who" = mine ]; then
-      case "$st_last" in none|stopped-daily|stopped-environment|stopped) ;; *) continue ;; esac
+      case "$st_last" in
+        none) ran_before "$num" || continue ;;
+        stopped-daily|stopped-environment|stopped) ;;
+        *) continue ;;
+      esac
     fi
     run=$(run_dir_of "$num" "$body")
     # cmd_run exits stopped at once while the run dir holds FACTORY_STOP (bin/factory stop), so the issue is skipped,
@@ -3102,6 +3128,10 @@ cmd_next() { # [--dry-run|--install]
       none|stopped-environment|stopped|stopped-daily)
         if run_busy "$run"; then
           echo "waiting #$num: a process of its last run still runs; kill it or wait for it to exit" >&2
+          continue
+        fi
+        if issue_busy "$num" "" "$peek"; then
+          echo "waiting #$num: a run of another body still runs or awaits merge; it shares the issue's worktree" >&2
           continue
         fi
         if [ "$author" != "$TICKET_OWNER" ]; then

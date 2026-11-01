@@ -158,9 +158,11 @@ class PredictTests(unittest.TestCase):
     def test_pipe_into_grep_q_passes(self) -> None:
         # grep -q exits at its first match and yes dies of SIGPIPE; the block and predict CMD run without pipefail.
         self.assertEqual(self.round_zero(f"predict greet yes | grep -q y\n{GREET}").strip(), "ROUND0-OK")
-        proc = subprocess.run(["bash", "-c", f'. {LIB}; yes | grep -q y && pass piped || fail piped "exit $?"'],
-                              capture_output=True, text=True, check=False)
-        self.assertIn("PASS piped", proc.stdout)
+        for shell in (["bash"], ["bash", "-o", "pipefail"]):
+            with self.subTest(shell=shell):
+                proc = subprocess.run([*shell, "-c", f'. {LIB}; yes | grep -q y && pass piped || fail piped "exit $?"'],
+                                      capture_output=True, text=True, check=False)
+                self.assertIn("PASS piped", proc.stdout)
 
     def test_predict_is_quiet_when_a_block_sources_lib(self) -> None:
         proc = subprocess.run(["bash", "-c", f'. {LIB}; predict greet false; echo "rc=$?"'],
