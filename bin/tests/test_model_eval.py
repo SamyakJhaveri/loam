@@ -197,6 +197,23 @@ class ModelEvalTests(unittest.TestCase):
             self.assertNotIn("1 of 1 cases", again.stderr, "an unchanged TREE failure was graded again")
         self.assertEqual(self.calls(), [], "no grader call read a half-built tree")
 
+    def test_a_case_whose_recorded_base_is_missing_is_retried(self) -> None:
+        # An unfetched tree_base is the checkout's state, not the case's: the case fails as TREE, never grades in
+        # HEAD, and gets no reuse key, so the next run tries it again.
+        d = self.tmp / "set" / "judge" / "k1"
+        d.mkdir(parents=True)
+        (d / "prompt.md").write_text("## Ticket\n\n## Diff (main...HEAD)\n")
+        (d / "expected.json").write_text(json.dumps({"verdict": "pass", "tree_base": "f" * 40}))
+        for m in ("m1", "codex:x"):
+            r = self.run_me(m, MODEL_EVAL_GRADERS="judge")
+            self.assertEqual(r.returncode, 0, r.stderr)
+            reply = json.loads((self.out / f"replies/{m}@high/r1/judge-k1.json").read_text())
+            self.assertTrue(reply["is_error"] and reply["result"].startswith("TREE tree_base "), reply)
+            self.assertFalse((self.out / f"replies/{m}@high/r1/judge-k1.key").exists())
+            again = self.run_me(m, MODEL_EVAL_GRADERS="judge")
+            self.assertIn("1 of 1 cases", again.stderr, "a TREE failure of the environment was not retried")
+        self.assertEqual(self.calls(), [], "no grader call graded the case in HEAD")
+
     def test_harness_change_regrades_every_reply(self) -> None:
         self.judge_cases()
         drift = self.home / ".claude/config-drift.sh"

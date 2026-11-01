@@ -727,23 +727,41 @@ eval_tree() { # work: exports into work/tree
 # A grader reads the tree it runs in, and the loop runs it in the round's worktree, so a frozen case is graded in
 # that tree rebuilt: the diff's real base, keys removed as above, with every file of the Diff applied. The base is
 # expected.json's tree_base (eval-freeze records the merge base of the run's base and graded commits, which a
-# three-dot diff starts from), else the commit the `## Diff (<base>...HEAD)` heading names. A Diff file that does
-# not apply (a capped hunk, a wrong base) fails the case instead of grading a half-built tree; a stat-only file
-# stays at base. A case whose base this checkout lacks (run-only, lean-v3) reads the HEAD export. Graded in HEAD, a
-# case drifts as main moves: a reviewer flagged a gh call for skipping a wrapper main gained six weeks later.
-case_tree() { # case-dir work -> the tree to grade in on stdout; non-zero, naming the files, when the Diff does not apply
-  local base top ev d="$2/case" p bad=""
-  base=$(jq -r '.tree_base // empty' "$1/expected.json" 2> /dev/null)
-  [ -n "$base" ] || base=$(sed -n 's/^## Diff (\([0-9a-f]\{7,40\}\)\.\.\.HEAD)$/\1/p' "$1/prompt.md" | head -1)
+# three-dot diff starts from), else the commit the `## Diff (<base>...HEAD)` heading names. The case fails instead of
+# grading a tree the round never had when the Diff is not the whole change (build_evidence caps it, passes a large
+# added file as stat only, and leaves deleted files out) or a file does not apply; a failure that names the Diff is
+# a property of the case (model-eval caches it), any other is the environment. A recorded tree_base this checkout
+# lacks fails too; only a case without one whose heading's commit is missing (run-only, lean-v3) reads the HEAD
+# export. Graded in HEAD, a case drifts as main moves: a reviewer flagged a gh call for skipping a wrapper main
+# gained six weeks later.
+case_tree() { # case-dir work -> the tree to grade in on stdout; non-zero, with the reason on stderr, when it cannot be rebuilt
+  local base tb top ev d="$2/case" p bad="" cap omit total held
+  tb=$(jq -r '.tree_base // empty' "$1/expected.json" 2> /dev/null)
+  base=${tb:-$(sed -n 's/^## Diff (\([0-9a-f]\{7,40\}\)\.\.\.HEAD)$/\1/p' "$1/prompt.md" | head -1)}
+  if [ -n "$tb" ] && ! git -C "$ROOT" cat-file -e "$tb^{commit}" 2> /dev/null; then
+    echo "tree_base $tb is not a commit in $ROOT; fetch it" >&2; return 1
+  fi
   if [ -z "$base" ] || ! git -C "$ROOT" cat-file -e "$base^{commit}" 2> /dev/null; then echo "$2/tree"; return 0; fi
+  rm -rf "$d" "$2/patch" && mkdir "$d" "$2/patch" || { echo "could not create $d" >&2; return 1; }
+  awk -v fence="$FENCE" '/^## Diff \(/ {s = 1; next} s == 1 && $0 == fence {s = 2; next} s == 2 && $0 == fence {exit}
+    s == 2' "$1/prompt.md" > "$2/patch/diff"
+  cap=$(grep -m 1 '^\[content diff capped' "$2/patch/diff")
+  [ -z "$cap" ] || { echo "the Diff is capped, so it is not the whole change: $cap" >&2; return 1; }
+  # evals/ is removed from every tree, so a stat-only frozen prompt under it leaves nothing out.
+  omit=$(sed -n 's/^\[stat only, content omitted as data: \(.*\)\]$/\1/p' "$2/patch/diff" | tr ' ' '\n' | grep -v '^evals/' | grep .)
+  [ -z "$omit" ] || { echo "the Diff omits the content of:" $omit >&2; return 1; }
+  awk -v out="$2/patch/" '/^diff --git / {n++} n {print > (out n)}' "$2/patch/diff"
+  # Every changed file is a patch or a stat-only name; build_evidence gives a deleted file neither.
+  total=$(sed -n 's/^ \([0-9][0-9]*\) files\{0,1\} changed.*/\1/p' "$2/patch/diff" | head -1)
+  held=$(( $(find "$2/patch" -name '[0-9]*' | wc -l) + \
+    $(sed -n 's/^\[stat only, content omitted as data: \(.*\)\]$/\1/p' "$2/patch/diff" | wc -w) ))
+  [ -z "$total" ] || [ "$held" -ge "$total" ] ||
+    { echo "the Diff holds $held of the $total changed files (a deleted file has no content)" >&2; return 1; }
   top=$(cd "$ROOT" && pwd -P); ev=$(cd "$EVALS_DIR" 2> /dev/null && pwd -P)
-  rm -rf "$d" "$2/patch" && mkdir "$d" "$2/patch" && git -C "$ROOT" archive "$base" | tar -x -C "$d" ||
-    { echo "could not export $base" >&2; return 1; }
+  git -C "$ROOT" archive "$base" | tar -x -C "$d" || { echo "could not export $base" >&2; return 1; }
   rm -rf "$d/evals"
   case "$ev/" in "$top"/?*) rm -rf "$d/${ev#"$top"/}" ;; esac
-  awk -v fence="$FENCE" -v out="$2/patch/" '/^## Diff \(/ {s = 1; next} s == 1 && $0 == fence {s = 2; next}
-    s == 2 && $0 == fence {exit} s == 2 && /^diff --git / {n++} s == 2 && n && !/^\[content diff capped/ {print > (out n)}' "$1/prompt.md"
-  for p in "$2/patch"/*; do
+  for p in "$2/patch"/[0-9]*; do
     [ -f "$p" ] || continue
     ( cd "$d" && git apply --whitespace=nowarn "$p" ) > /dev/null 2>&1 || bad="$bad $(sed -n '1s|^diff --git a/\([^ ]*\) .*|\1|p' "$p")"
   done
@@ -780,6 +798,9 @@ run_eval_cases() { # grader work
   grader_rubric "$gf" > "$rubric"
   for dir in "$EVALS_DIR/$grader"/*/; do
     [ -f "$dir/prompt.md" ] && [ -f "$dir/expected.json" ] || continue
+    exp=$(jq -r .verdict "$dir/expected.json")
+    # A clean case expects the passing verdict; any other is a mutant (scores.jsonl, below), a TREE failure included.
+    case "$grader/$exp" in judge/pass | reviewer/merge | lean-critic/merge) clean=$((clean + 1)) ;; esac
     tree=$(case_tree "$dir" "$2" 2> "$2/tree.err") || {
       echo "eval $grader/$(basename "$dir"): TREE $(cat "$2/tree.err"); not graded"; cases=$((cases + 1)); mism=$((mism + 1))
       [ -z "${EVAL_OUT:-}" ] || { mkdir -p "$EVAL_OUT"; jq -nc --arg r "TREE $(cat "$2/tree.err")" \
@@ -839,9 +860,6 @@ served_models:(.modelUsage | if type == \"object\" then keys else [] end), ts:\$
     done
     # EVAL_OUT keeps each case's raw reply, so a comparison can read findings, not only verdicts.
     [ -z "${EVAL_OUT:-}" ] || { mkdir -p "$EVAL_OUT"; printf '%s\n' "$out" > "$EVAL_OUT/$grader-$name.json"; }
-    exp=$(jq -r .verdict "$dir/expected.json")
-    # A clean case expects the passing verdict; any other is a mutant (scores.jsonl, below).
-    case "$grader/$exp" in judge/pass | reviewer/merge | lean-critic/merge) clean=$((clean + 1)) ;; esac
     got=$(jq -r '.verdict // "unparseable"' <<<"$res" 2>/dev/null) || got=unparseable
     [ -n "$got" ] || got=unparseable
     # A reviewer reply is scored on what the loop does with it, REVIEW_OUTCOME, never on its verdict word.

@@ -56,15 +56,23 @@ class EvalTreeTests(unittest.TestCase):
                           "@@ -1 +1 @@", "-one", "+two"])
         moved = git(repo, "rev-parse", "HEAD")
         evals = tmp / "evals"
+        # build_evidence caps a long Diff and gives a deleted file a stat row and no content.
+        capped = diff + "\n\n[content diff capped at 9 lines; the stat above is complete]"
+        deleted = diff.replace(" 1 file changed, 1 insertion(+), 1 deletion(-)",
+                               " b.txt | 1 -\n 2 files changed, 1 insertion(+), 2 deletions(-)")
         # c3 names the moved-on commit in its heading, where the Diff cannot apply, but records the real base;
-        # c4 has only the moved-on commit, so it must not be graded at all.
-        for name, heading, exp in (("c1-based", f"## Diff ({base[:8]}...HEAD)", {}),
-                                   ("c2-headless", "## Diff (main...HEAD)", {}),
-                                   ("c3-tree-base", f"## Diff ({moved[:8]}...HEAD)", {"tree_base": base}),
-                                   ("c4-no-apply", f"## Diff ({moved[:8]}...HEAD)", {})):
+        # c4 has only the moved-on commit, so it must not be graded at all; c5 records a base this checkout lacks,
+        # which must not fall back to HEAD; c6 and c7 hold only part of the change, though what they hold applies.
+        for name, heading, exp, body in (("c1-based", f"## Diff ({base[:8]}...HEAD)", {}, diff),
+                                         ("c2-headless", "## Diff (main...HEAD)", {}, diff),
+                                         ("c3-tree-base", f"## Diff ({moved[:8]}...HEAD)", {"tree_base": base}, diff),
+                                         ("c4-no-apply", f"## Diff ({moved[:8]}...HEAD)", {}, diff),
+                                         ("c5-unfetched", "## Diff (main...HEAD)", {"tree_base": "f" * 40}, diff),
+                                         ("c6-capped", f"## Diff ({base[:8]}...HEAD)", {}, capped),
+                                         ("c7-deleted", f"## Diff ({base[:8]}...HEAD)", {}, deleted)):
             case = evals / "judge" / name
             case.mkdir(parents=True)
-            (case / "prompt.md").write_text(f"## Ticket\n\n{heading}\n\n{FENCE}\n{diff}\n{FENCE}\n")
+            (case / "prompt.md").write_text(f"## Ticket\n\n{heading}\n\n{FENCE}\n{body}\n{FENCE}\n")
             (case / "expected.json").write_text(json.dumps({"verdict": "pass", **exp}) + "\n")
         fake = tmp / "bin/claude"
         fake.parent.mkdir()
@@ -83,7 +91,13 @@ class EvalTreeTests(unittest.TestCase):
         # c3 is rebuilt at its recorded tree_base; c4's Diff does not apply, so no grader call reads a half-built tree.
         self.assertEqual(got, [{"a": "two", "evals": False}, {"a": "three", "evals": False}, {"a": "two", "evals": False}])
         self.assertIn("eval judge/c4-no-apply: TREE the Diff does not apply at", proc.stdout)
-        self.assertIn("4 cases, 1 mismatch", proc.stdout)
+        self.assertIn(f"eval judge/c5-unfetched: TREE tree_base {'f' * 40} is not a commit in", proc.stdout)
+        self.assertIn("eval judge/c6-capped: TREE the Diff is capped", proc.stdout)
+        self.assertIn("eval judge/c7-deleted: TREE the Diff holds 1 of the 2 changed files", proc.stdout)
+        self.assertIn("7 cases, 4 mismatch", proc.stdout)
+        # A case that could not be built still counts by its label: all seven are clean, none a mutant.
+        line = json.loads((evals / "scores.jsonl").read_text().splitlines()[-1])
+        self.assertEqual((line["cases"], line["clean"], line["mutants"]), (7, 7, 0))
 
 
 if __name__ == "__main__":
