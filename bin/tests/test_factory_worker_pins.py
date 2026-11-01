@@ -4,7 +4,9 @@ Claude Code copies each settings tier's env over the launch env, user settings f
 freeze adds the four pins to the source env in the frozen worker-settings.json that the worker call loads with
 `--settings`.
 CLAUDE_CODE_SUBAGENT_MODEL_FORCE exists from 2.1.257, so claude_version_ok refuses an older or unreadable
-`claude --version`. `bin/factory` is sourced (FACTORY_SOURCED=1); freeze reads the checkout's graders through
+`claude --version`. The frozen copy also keeps the ScheduleWakeup, CronCreate and Monitor denies and the
+CLAUDE_CODE_DISABLE_BACKGROUND_TASKS=1 pin, so a worker -p call does not wait at exit on background work (#470).
+`bin/factory` is sourced (FACTORY_SOURCED=1); freeze reads the checkout's graders through
 GRADERS_DIR and `claude` is a stub on PATH. No network.
 The frozen copy also keeps the source's Bash sandbox and adds the run's git and run-directory roots to its
 allowWrite (#409), so freeze runs on a fixture worktree. The worker call loads no settings tier, so the copy carries
@@ -125,6 +127,16 @@ class WorkerPinTests(unittest.TestCase):
         deny = json.loads((self.tmp / "run/frozen/worker-settings.json").read_text())["permissions"]["deny"]
         self.assertIn("Edit(~/.claude/**)", deny)
         self.assertIn("Edit(~/.cursor/**)", deny)
+
+    def test_frozen_worker_settings_deny_tools_a_print_call_waits_on(self) -> None:
+        # Since Claude Code 2.1.292 a -p call waits at exit for a pending ScheduleWakeup, Monitor or background task,
+        # so a worker that started one would hold its round until CALL_TIMEOUT_SEC (#470).
+        # A bare tool name denies the whole tool and drops it from the call's tool list.
+        env, _ = self.frozen_env()
+        deny = json.loads((self.tmp / "run/frozen/worker-settings.json").read_text())["permissions"]["deny"]
+        for tool in ("ScheduleWakeup", "CronCreate", "Monitor"):
+            self.assertIn(tool, deny)
+        self.assertEqual(env.get("CLAUDE_CODE_DISABLE_BACKGROUND_TASKS"), "1")
 
     def test_freeze_follows_factory_worker_model(self) -> None:
         env, source_env = self.frozen_env(FACTORY_WORKER_MODEL="claude-other-1")

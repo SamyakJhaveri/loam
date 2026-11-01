@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
-# bin/factory - factory tooling. Subcommands: lint, eval, eval-freeze, run, status, stop, merge, next, graders-check.
+# bin/factory - factory tooling. Subcommands: lint, eval, eval-freeze, run, status, stop, merge, next, graders-check, skills.
 #   bin/factory lint <file|issue>   statically checks a ticket body against docs/factory/CONTRACT.md.
-#   bin/factory eval <grader>       replays the frozen evals/ cases through the production grader call.
+#   bin/factory eval <grader>       replays the frozen evals/ cases through the production grader call, recording scores.jsonl.
 #   bin/factory eval-freeze <run-dir>...  freezes each run's last round, when both graders passed it, into evals/clean/.
 #   bin/factory run <issue|file>    the supervisor: one ticket to a pull request (docs/factory/LOOP.md).
 #   bin/factory status              run states, spend, denials, worktrees, PRs, preconditions.
@@ -9,7 +9,8 @@
 #   bin/factory stop <issue>        writes FACTORY_STOP into the run dir; the run halts before its next call.
 #   bin/factory merge <pr> <sha>    merges the PR only when sha is its head and every check reported there passed.
 #   bin/factory next [--install]    the F9 frontier timer's step: launch the next unblocked ready-for-agent ticket.
-#   bin/factory graders-check       fails when judge.md or reviewer.md drifts from GRADER_MODEL and GRADER_EFFORT.
+#   bin/factory graders-check       fails when judge.md or reviewer.md drifts from GRADER_MODEL and GRADER_EFFORT; warns STALE.
+#   bin/factory skills              lists each installed pstack skill's lines that name a ~/ path or ask the user.
 #   -C <repo>, before the subcommand or right after it, points lint, run, status, stop, merge, and next at another repository (F8).
 # Lint never executes a check; it reads the body and shells out only to `bash -n`, `gh`, and python3 for the hidden-text rule.
 # Run and stop, when the operator runs them, add a line to the run dir's owner-events.jsonl (status --criteria); lint of
@@ -750,7 +751,7 @@ run_eval() {
 
 run_eval_cases() { # grader work
   local grader="$1" tree="$2/tree" rubric="$2/rubric" budget="${EVAL_BUDGET_USD:-10}" gf schema settings dir name out res exp got erows grows
-  local spent=0 cases=0 mism=0 ok attempt eline
+  local spent=0 cases=0 mism=0 clean=0 ok attempt eline
   gf=$(grader_file "$grader") || return 2
   schema=$(schema_for "$grader" 2> /dev/null)
   [ -n "$schema" ] || { echo "eval: no bin/factory.d/$grader.schema.json" >&2; return 2; }
@@ -814,6 +815,8 @@ served_models:(.modelUsage | if type == \"object\" then keys else [] end), ts:\$
     # EVAL_OUT keeps each case's raw reply, so a comparison can read findings, not only verdicts.
     [ -z "${EVAL_OUT:-}" ] || { mkdir -p "$EVAL_OUT"; printf '%s\n' "$out" > "$EVAL_OUT/$grader-$name.json"; }
     exp=$(jq -r .verdict "$dir/expected.json")
+    # A clean case expects the passing verdict; any other is a mutant (scores.jsonl, below).
+    case "$grader/$exp" in judge/pass | reviewer/merge | lean-critic/merge) clean=$((clean + 1)) ;; esac
     got=$(jq -r '.verdict // "unparseable"' <<<"$res" 2>/dev/null) || got=unparseable
     [ -n "$got" ] || got=unparseable
     # A reviewer reply is scored on what the loop does with it, REVIEW_OUTCOME, never on its verdict word.
@@ -835,6 +838,13 @@ served_models:(.modelUsage | if type == \"object\" then keys else [] end), ts:\$
   done
   echo "eval $grader: $cases cases, $mism mismatch, \$$spent"
   [ "$cases" -gt 0 ] || return 2
+  # Only a replay that reached every case records a line; graders-check reads it to tell a replayed grader
+  # file from an edited one. sha256 covers the grader file alone, not the schema or role-settings.json.
+  jq -nc --arg grader "$grader" --arg sha256 "$(sha256_of < "$gf" | cut -d' ' -f1)" --argjson cases "$cases" \
+    --argjson clean "$clean" --argjson mutants "$((cases - clean))" --argjson mismatch "$mism" \
+    --arg evals_dir "$EVALS_DIR" --arg date "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+    '{grader:$grader, sha256:$sha256, cases:$cases, clean:$clean, mutants:$mutants, mismatch:$mismatch,
+      evals_dir:$evals_dir, date:$date}' >> "$EVALS_DIR/scores.jsonl"
   [ "$mism" -eq 0 ]
 }
 
@@ -1538,8 +1548,11 @@ run_project() { # <run dir>
 # killed there too, under owner.lock, and the lease then decides.
 # holds_slot may return held in the very call that killed, while the call's wrapper still reaps reparented children;
 # the next caller frees the slot.
-holds_slot() { # <run dir>
-  local st o pid fd
+# With `peek` (cmd_next --dry-run) it only looks: a run the reap above would free reads free, and it takes no
+# owner.lock, kills nothing, writes no status and sends no alert. So a gone owner's run reads held while its call lives
+# (a real call kills it and may free the slot), and free while another caller holds owner.lock.
+holds_slot() { # <run dir> [peek]
+  local st o pid fd peek=${2-}
   if [ -f "$1/status" ]; then
     st=$(cat "$1/status")
     [ "$st" = running ] || [ "$st" = waiting-limit ] || return 1
@@ -1547,12 +1560,14 @@ holds_slot() { # <run dir>
     if [ -n "$HAVE_FLOCK" ] && [ -f "$1/lease" ] && exec {fd}< "$1/lease"; then
       if ! flock -n "$fd"; then
         exec {fd}>&-
+        [ -n "$peek" ] && return 0
         if o=$(dead_owner "$1") && owner_lock "$1" 1; then orphan_call_kill "$1" "$o"; rmdir "$1/owner.lock"; fi
         return 0
       fi
       # A process may close the descriptors it does not pass on (Node's child processes do), so a model call's tool
       # shell can outlive every holder; the call's group or tag still holds the slot, as on the owner path below.
       call_live "$1" && { exec {fd}>&-; return 0; }
+      [ -n "$peek" ] && { exec {fd}>&-; return 1; }
       st=$(cat "$1/status" 2> /dev/null)
       [ "$st" = running ] || [ "$st" = waiting-limit ] && printf 'stopped-environment\n' > "$1/status"
       exec {fd}>&-   # before the alert, whose children would otherwise inherit this run's lease
@@ -1566,6 +1581,7 @@ holds_slot() { # <run dir>
       return 1
     fi
     o=$(dead_owner "$1") || return 0
+    if [ -n "$peek" ]; then call_live "$1" && return 0; return 1; fi
     pid=${o%% *}
     owner_lock "$1" 1 || return 0
     if [ "$(cat "$1/owner" 2> /dev/null)" != "$o" ]; then rmdir "$1/owner.lock"; return 0; fi
@@ -3004,14 +3020,16 @@ cmd_next() { # [--dry-run|--install]
   #    live owner, or launched with no status yet), and so does a pr-opened run whose ticket worktree still exists: the merge ritual removes the worktree,
   #    so until then the PR awaits merge and the next ticket waits (LOOP.md: after each merge).
   #    FACTORY_MAX_PARALLEL bounds the count, as it does in cmd_run through apply_caps; default 1.
-  local d st n=0 max="${FACTORY_MAX_PARALLEL:-$MAX_PARALLEL}"
+  #    --dry-run asks with peek, so a run holds_slot would reap counts free and is not reaped or alerted on.
+  local d st n=0 max="${FACTORY_MAX_PARALLEL:-$MAX_PARALLEL}" peek=
+  [ "$dry" = 1 ] && peek=peek
   for d in "$RUNS_ROOT"/*/*/; do
     st=$(cat "$d/status" 2> /dev/null || true)
     if [ "$st" = pr-opened ]; then
       [ -d "$MAIN_CHECKOUT-$(basename "$(dirname "$d")")" ] && n=$((n + 1))
       continue
     fi
-    holds_slot "$d" || continue
+    holds_slot "$d" "$peek" || continue
     n=$((n + 1))
   done
   if [ "$n" -ge "$max" ]; then
@@ -3415,13 +3433,52 @@ precondition_lines() { # LOOP.md, Preconditions
     || echo "  INFO no healthchecks check ($a/hc-ping-url); a killed run raises no alarm"
 }
 
+# ---- skills ----
+# An advisory listing, for the operator choosing a pstack skill to name in a ticket (#472): each installed pstack
+# skill's SKILL.md, the copy skill_file resolves (the one a worker reads, not every cached version), and each of its
+# lines that names a ~/ or $HOME/ path (`home`: the skill may write operator settings from a worker's unsandboxed
+# shell, #409) or AskQuestion or AskUserQuestion (`asks`: it may wait on a person an unattended worker cannot reach).
+# Every matching line, not only the first, since a skill's first home path may be a read and its write come later;
+# whether a line reads or writes is left to the person reading. Reads files only, and exits 0 whatever it finds.
+cmd_skills() {
+  local cache="$HOME/.claude/plugins/cache" names n f found=""
+  # Names from every cached version, at any depth under skills/ as skill_file matches; each resolves once below.
+  names=$(find "$cache"/*/pstack/*/skills -name SKILL.md 2> /dev/null | awk -F/ '{print $(NF-1)}' | sort -u)
+  for n in $names; do
+    f=$(skill_file "pstack:$n") || continue
+    found=1
+    # Through the environment, not -v, which would expand a backslash in the path.
+    N="$n" F="$f" awk '
+      BEGIN { n = ENVIRON["N"]; f = ENVIRON["F"] }
+      { t = substr($0, 1, 160) }
+      index($0, "~/") || index($0, "$HOME/")                    { printf "%s\thome\t%s:%d: %s\n", n, f, FNR, t }
+      index($0, "AskQuestion") || index($0, "AskUserQuestion")  { printf "%s\tasks\t%s:%d: %s\n", n, f, FNR, t }
+    ' "$f"
+  done
+  [ -n "$found" ] || echo "skills: no installed pstack skill resolves (no pstack under $cache, or none in installed_plugins.json)"
+  return 0
+}
+
 # ---- graders-check ----
 # The loop strips the grader files' front matter and passes GRADER_MODEL and GRADER_EFFORT itself; a
 # by-hand Agent call reads the front matter instead. This fails when judge.md or reviewer.md names another
 # model or effort. The directory defaults to the checkout's plugin copy, relative to the working directory
 # like EVALS_DIR, so bin/check compares one tree's agent files with the same tree's bin/factory.
-cmd_graders_check() { # [agents-dir]
-  local dir="${1:-cultivation/marketplace/sam-cc-setup/agents}" want g f got rc=0
+# It also warns STALE, without failing, when <evals-dir>/scores.jsonl has no fresh two-way line for the
+# grader file's sha256: an edit since the last replay, a replay over 30 days old (the served model drifts
+# under a fixed hash) or dated ahead, or one with no clean or no mutant case (a grader that rejects
+# everything scores perfectly on mutants alone). A warning, since every paid eval is a merge-checklist step.
+cmd_graders_check() { # [--agents-dir D] [--evals-dir D]
+  local dir=cultivation/marketplace/sam-cc-setup/agents evals=evals want g f got h why rc=0
+  while [ $# -gt 0 ]; do
+    [ $# -ge 2 ] || usage graders-check
+    case "$1" in
+      --agents-dir) dir="$2" ;;
+      --evals-dir)  evals="$2" ;;
+      *)            usage graders-check ;;
+    esac
+    shift 2
+  done
   # The defaults, not a FACTORY_GRADER_MODEL override in the caller's environment: re-source this file without it.
   want=$(env -u FACTORY_GRADER_MODEL FACTORY_SOURCED=1 "$BASH" -c '. "$0"; printf "%s/%s\n" "$GRADER_MODEL" "$GRADER_EFFORT"' "${BASH_SOURCE[0]}")
   for g in judge reviewer; do
@@ -3431,14 +3488,27 @@ cmd_graders_check() { # [agents-dir]
     got=$(awk '/^---$/ {if (++n == 2) exit; next} n == 1 && sub(/^model: */, "") {m = $0}
                n == 1 && sub(/^effort: */, "") {e = $0} END {print m "/" e}' "$f")
     [ "$got" = "$want" ] || { echo "DRIFT $g: $f says $got, bin/factory says $want"; rc=1; }
+    h=$(sha256_of < "$f" | cut -d' ' -f1)
+    # The newest line for this grader and hash decides; a malformed line is skipped, a missing file is none.
+    why=$(cat "$evals/scores.jsonl" 2> /dev/null | jq -nrR --arg g "$g" --arg h "$h" '
+      [inputs | fromjson? | objects | select(.grader == $g and .sha256 == $h)] | last
+      | if . == null then "no scores line"
+        else ((.date | strings | fromdate?) // null) as $t
+        | if $t == null then "no readable date"
+          elif now - $t > 30 * 86400 then "last replay over 30 days old"
+          elif $t - now > 60 then "last replay dated in the future"
+          elif ((.clean | numbers) // 0) == 0 then "last replay had no clean case"
+          elif ((.mutants | numbers) // 0) == 0 then "last replay had no mutant case"
+          else "" end end' 2>&1)
+    [ -z "$why" ] || echo "WARN STALE $g: $why for sha256 $h in $evals/scores.jsonl"
   done
   [ "$rc" -eq 0 ] && echo "graders-check: OK"
   return "$rc"
 }
 
-usage() { # [cmd...] - one line per named command, all nine when none is named
+usage() { # [cmd...] - one line per named command, all ten when none is named
   local c
-  for c in ${@:-lint eval eval-freeze run status stop merge next graders-check}; do
+  for c in ${@:-lint eval eval-freeze run status stop merge next graders-check skills}; do
     case "$c" in
       lint)   echo "usage: bin/factory [-C <repo>] lint <file|issue>" ;;
       eval)   echo "usage: bin/factory eval <grader> [--evals-dir D] [--graders-dir D] [--model M]" ;;
@@ -3448,8 +3518,9 @@ usage() { # [cmd...] - one line per named command, all nine when none is named
       stop)   echo "usage: bin/factory [-C <repo>] stop <issue|ticket-stem>" ;;
       merge)  echo "usage: bin/factory [-C <repo>] merge <pr> <sha>" ;;
       next)   echo "usage: bin/factory [-C <repo>] next [--dry-run|--install]" ;;
-      graders-check) echo "usage: bin/factory graders-check [--agents-dir D]" ;;
-      *)      echo "usage: bin/factory [-C <repo>] <lint|eval|eval-freeze|run|status|stop|merge|next|graders-check>" ;;
+      graders-check) echo "usage: bin/factory graders-check [--agents-dir D] [--evals-dir D]" ;;
+      skills) echo "usage: bin/factory skills" ;;
+      *)      echo "usage: bin/factory [-C <repo>] <lint|eval|eval-freeze|run|status|stop|merge|next|graders-check|skills>" ;;
     esac
   done >&2
   exit 2
@@ -3504,10 +3575,8 @@ case "$CMD" in
           cmd_merge "$1" "$2" ;;
   next)   cmd_next "$@" ;;
   graders-check)
-        case "$#/${1:-}" in
-          0/)             cmd_graders_check ;;
-          2/--agents-dir) cmd_graders_check "$2" ;;
-          *)              usage graders-check ;;
-        esac ;;
+        cmd_graders_check "$@" ;;
+  skills) [ $# -eq 0 ] || usage skills
+          cmd_skills ;;
   *)      usage ;;
 esac
