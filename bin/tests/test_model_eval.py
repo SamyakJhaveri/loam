@@ -177,6 +177,26 @@ class ModelEvalTests(unittest.TestCase):
         self.assertEqual(r.returncode, 0, r.stderr)
         self.assertEqual(seen.read_text().splitlines(), ["evals=False factory=True cd=True keys=0"] * 2)
 
+    def test_a_case_whose_diff_does_not_apply_is_recorded_once(self) -> None:
+        # Its tree cannot be built, so no grader reads a half-built tree; the case still shows in the table, as a
+        # failed reply, and a rerun with nothing changed does not try it again.
+        head = subprocess.run(["git", "-C", str(ROOT), "rev-parse", "HEAD"], capture_output=True, text=True).stdout.strip()
+        d = self.tmp / "set" / "judge" / "k1"
+        d.mkdir(parents=True)
+        fence = "~~~~~~~~~~~~ evidence"
+        diff = "diff --git a/no-such-file b/no-such-file\n--- a/no-such-file\n+++ b/no-such-file\n@@ -1 +1 @@\n-old\n+new"
+        (d / "prompt.md").write_text(f"## Ticket\n\n## Diff ({head[:8]}...HEAD)\n\n{fence}\n{diff}\n{fence}\n")
+        (d / "expected.json").write_text(json.dumps({"verdict": "fail", "defect_class": "logic-bug", "failing_rows": ["correct"]}))
+        for m in ("m1", "codex:x"):
+            r = self.run_me(m, MODEL_EVAL_GRADERS="judge")
+            self.assertEqual(r.returncode, 0, r.stderr)
+            reply = json.loads((self.out / f"replies/{m}@high/r1/judge-k1.json").read_text())
+            self.assertTrue(reply["is_error"] and reply["result"].startswith("TREE "), reply)
+            self.assertEqual(self.table(r.stdout).get(("judge", f"{m}@high", "infra")), "1", r.stdout)
+            again = self.run_me(m, MODEL_EVAL_GRADERS="judge")
+            self.assertNotIn("1 of 1 cases", again.stderr, "an unchanged TREE failure was graded again")
+        self.assertEqual(self.calls(), [], "no grader call read a half-built tree")
+
     def test_harness_change_regrades_every_reply(self) -> None:
         self.judge_cases()
         drift = self.home / ".claude/config-drift.sh"

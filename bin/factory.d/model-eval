@@ -295,7 +295,11 @@ def main(argv):
                                             str(set_dir), str(case), str(ctmp)],
                                            env={**os.environ, "FACTORY_SOURCED": "1"}, capture_output=True, text=True)
                         if t.returncode != 0:
+                            # Recorded as a failed reply (infra in the table), never dropped; tree_of in its key means
+                            # it is retried only once the case or its tree changes.
                             print(f"model-eval: {name(c)} {case.name}: TREE {t.stderr.strip()}; not graded", file=sys.stderr)
+                            reply = {"type": "result", "is_error": True, "total_cost_usd": None, "result": f"TREE {t.stderr.strip()}"}
+                            (d / f"{g}-{case.name}.json").write_text(json.dumps(reply) + "\n", encoding="utf-8")
                             continue
                         tree = t.stdout.strip()
                         r = subprocess.run(["codex", "exec", "--json", "--output-schema", str(tmp / f"{g}.schema.json"),
@@ -327,7 +331,9 @@ def main(argv):
                 for case in need:
                     reply, _, err = eval_score.load_reply(d / f"{g}-{case.name}.json")
                     rep = raw_reply(d / f"{g}-{case.name}.json")
-                    if reply is not None and not err and (codex or not served_off(rep, m)):
+                    if rep is not None and str(rep.get("result", "")).startswith("TREE "):
+                        (d / f"{g}-{case.name}.key").write_text(keys[case] + "\n", encoding="utf-8")
+                    elif reply is not None and not err and (codex or not served_off(rep, m)):
                         (d / f"{g}-{case.name}.key").write_text(keys[case] + "\n", encoding="utf-8")
             # The fingerprint names the config of the cell's newest calls; a cell that made none keeps its own.
             # fingerprint-<grader>.txt describes that grader's replies alone; fingerprint.txt, shared by every

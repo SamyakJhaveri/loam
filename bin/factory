@@ -781,7 +781,10 @@ run_eval_cases() { # grader work
   for dir in "$EVALS_DIR/$grader"/*/; do
     [ -f "$dir/prompt.md" ] && [ -f "$dir/expected.json" ] || continue
     tree=$(case_tree "$dir" "$2" 2> "$2/tree.err") || {
-      echo "eval $grader/$(basename "$dir"): TREE $(cat "$2/tree.err"); not graded"; cases=$((cases + 1)); mism=$((mism + 1)); continue; }
+      echo "eval $grader/$(basename "$dir"): TREE $(cat "$2/tree.err"); not graded"; cases=$((cases + 1)); mism=$((mism + 1))
+      [ -z "${EVAL_OUT:-}" ] || { mkdir -p "$EVAL_OUT"; jq -nc --arg r "TREE $(cat "$2/tree.err")" \
+        '{type: "result", is_error: true, total_cost_usd: 0, result: $r}' > "$EVAL_OUT/$grader-$(basename "$dir").json"; }
+      continue; }
     if awk -v s="$spent" -v b="$budget" 'BEGIN {exit !(s >= b)}'; then
       echo "eval $grader: EVAL_BUDGET_USD $budget reached after \$$spent and $cases cases" >&2
       return 2
@@ -908,13 +911,17 @@ cmd_eval_freeze() { # run-dir...
       elif grep -qE "$FREEZE_KEY_RE" "$tmp/$g"; then why="key-shaped string"
       fi
     done
+    # The Diff is three-dot, from the merge base of the run's base and the graded commit; case_tree rebuilds the tree
+    # there. A case without it would fall back to the heading's commit, which need not be that base, so none is frozen.
+    if [ -z "$why" ]; then
+      tb=$(git -C "$ROOT" merge-base "$(cat "$d/base.sha" 2> /dev/null)" "$(cat "$d/round-$k.graded.sha" 2> /dev/null)" 2> /dev/null) ||
+        why="no tree base: the merge base of base.sha and round-$k.graded.sha does not resolve in $ROOT"
+    fi
     [ -z "$why" ] || { echo "not frozen $run: $why"; continue; }
-    # The Diff is three-dot, from the merge base of the run's base and the graded commit; case_tree rebuilds the tree there.
-    tb=$(git -C "$ROOT" merge-base "$(cat "$d/base.sha" 2> /dev/null)" "$(cat "$d/round-$k.graded.sha" 2> /dev/null)" 2> /dev/null) || tb=""
     rm -rf "$tmp/case"
     if ! { mkdir -p "$tmp/case/judge" "$tmp/case/reviewer" \
-      && jq -nc --arg source "$key/$sha round-$k" --arg tb "$tb" '{source: $source, verdict: "pass"} + (if $tb == "" then {} else {tree_base: $tb} end)' > "$tmp/case/judge/expected.json" \
-      && jq -nc --arg source "$key/$sha round-$k" --arg tb "$tb" '{source: $source, verdict: "merge"} + (if $tb == "" then {} else {tree_base: $tb} end)' > "$tmp/case/reviewer/expected.json" \
+      && jq -nc --arg source "$key/$sha round-$k" --arg tb "$tb" '{source: $source, verdict: "pass", tree_base: $tb}' > "$tmp/case/judge/expected.json" \
+      && jq -nc --arg source "$key/$sha round-$k" --arg tb "$tb" '{source: $source, verdict: "merge", tree_base: $tb}' > "$tmp/case/reviewer/expected.json" \
       && mv "$tmp/judge" "$tmp/case/judge/prompt.md" \
       && mv "$tmp/review" "$tmp/case/reviewer/prompt.md" \
       && mkdir -p "$EVALS_DIR/clean/judge" "$EVALS_DIR/clean/reviewer" \

@@ -28,6 +28,8 @@ The frozen clean set is a development set (labels adjudicated and prompts drafte
 | reviewer | run-only (8), held out | caught | 5/8 | 5/8 | 5/8 |
 | reviewer | lean-v3: 2 clean, 2 real | false alarms; caught | 2/2; 2/2 | 2/2; 2/2 | 2/2; 1/2 |
 
+The judge's real-bases row is circular: those 21 labels come from a scout applying the same honest rule, so it measures whether the judge follows that rule, not dishonesty caught.
+
 Upgrade step: `claude plugin update sam-cc-setup`.
 
 ## sam-cc-setup v0.9.22 factory-watch
