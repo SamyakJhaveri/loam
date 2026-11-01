@@ -19,12 +19,15 @@ import re
 import shutil
 import signal
 import subprocess
+import sys
 import tempfile
 import time
 import unittest
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
 OVERNIGHT = ROOT / "bin" / "overnight"
+# driver.sh starts each call under a Linux-only wrapper (prctl PR_SET_CHILD_SUBREAPER, /proc); it runs only on jhaveris.
+LINUX_ONLY = unittest.skipUnless(sys.platform.startswith("linux"), "the driver's call wrapper needs Linux prctl and /proc")
 
 
 def write_exec(path: pathlib.Path, text: str) -> None:
@@ -62,6 +65,7 @@ class OvernightDriverTests(unittest.TestCase):
         self.assertEqual(s["sandbox"]["filesystem"]["denyWrite"], ["~/loam/bin/overnight"])
         self.assertEqual(s["sandbox"]["network"]["allowedDomains"], ["github.com"])
 
+    @LINUX_ONLY
     def test_driver_call_reads_the_repo_settings_and_protocol(self) -> None:
         args = self.home / "claude.args"
         write_exec(self.fake / "setsid", '#!/bin/sh\nexec "$@"\n')
@@ -151,6 +155,7 @@ class OvernightDriverTests(unittest.TestCase):
     def calls(self, path: pathlib.Path) -> list[int]:
         return [int(x) for x in path.read_text().split()] if path.exists() else []
 
+    @LINUX_ONLY
     def test_closing_the_drivers_terminal_leaves_its_call_running(self) -> None:
         calls = self.start_call_fakes()
         bash, env = shutil.which("bash"), self.env()
@@ -206,6 +211,7 @@ class OvernightDriverTests(unittest.TestCase):
         self.addCleanup(lambda: (self.kill_group(p.pid), p.wait()))
         return p
 
+    @LINUX_ONLY
     def test_restarted_driver_adopts_a_left_call_and_ends_it_after_its_outcome_line(self) -> None:
         calls = self.start_call_fakes()
         prompt = f"Read {self.home}/loam/bin/overnight/protocol.md and process one pull request as it says."
@@ -229,6 +235,7 @@ class OvernightDriverTests(unittest.TestCase):
         self.assertIn(f"ended call {left.pid} 120 s after its outcome line", (self.state / "driver.log").read_text())
         self.assertTrue(self.wait_for(lambda: len(self.calls(calls)) >= 2), "the driver started no call after it")
 
+    @LINUX_ONLY
     def test_driver_leaves_a_reused_pid_alone(self) -> None:
         calls = self.start_call_fakes()
         other = subprocess.Popen([shutil.which("sleep"), "300"], start_new_session=True)
