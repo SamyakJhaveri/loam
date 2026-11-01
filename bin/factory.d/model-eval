@@ -20,17 +20,17 @@ A cell is one grader, model, effort and repeat; its replies go to <out>/replies/
 the layout eval_score.py reads. Every cell is listed, shuffled with random.Random(seed), written to
 <out>/order.txt, and run in that order, so a config that drifts during the run spreads over every model.
 Beside each scored reply, <grader>-<case>.key holds the sha256 of everything the reply depends on: the
-grader file, its schema and rubric, role-settings.json, the case's prompt.md and expected.json, the model,
-the effort, the mode, and the cell's harness (Claude Code version, config-drift.sh md5, Codex model,
-and the raw ~/.claude/settings.json and Codex config.toml, since config-drift.sh names settings only; a Codex cell
-reads the factory CODEX_HOME's config.toml, not ~/.codex's, and its mode names how it runs). A
-later run calls the grader only for the cases whose reply or key is missing or whose key differs; an error,
-unparseable or off-model reply gets no key, so it is retried. Each cell dir gets fingerprint-<grader>.txt
-naming the config that grader's replies ran on, and fingerprint.txt for the whole grader list. A Codex cell
-gets each grader schema in the strict form `codex exec --output-schema` requires. Right after a Claude
-cell's calls, every new reply that is not an error must name only the cell's model in modelUsage, else the
-offenders are printed and the exit is 3 with no further call and no table. The table scores this run's
-cells only, never another run's replies left under <out>/replies.
+grader file, its schema and rubric, role-settings.json, bin/factory and this script as they are on disk, the
+case's prompt.md and expected.json, the model, the effort, the mode, and the cell's harness (Claude Code
+version, config-drift.sh md5, Codex model, and the raw ~/.claude/settings.json and Codex config.toml, since
+config-drift.sh names settings only; a Codex cell reads the factory CODEX_HOME's config.toml, not ~/.codex's,
+and its mode names how it runs). A later run calls the grader only for the cases whose reply or key is missing
+or whose key differs; an error, unparseable or off-model reply gets no key, so it is retried. Each cell dir
+gets fingerprint-<grader>.txt naming the config that grader's replies ran on, and fingerprint.txt for the
+whole grader list. A Codex cell gets each grader schema in the strict form `codex exec --output-schema`
+requires. Right after a Claude cell's calls, every new reply that is not an error must name only the cell's
+model in modelUsage, else the offenders are printed and the exit is 3 with no further call and no table. The
+table scores this run's cells only, never another run's replies left under <out>/replies.
 python3 stdlib only.
 """
 from __future__ import annotations
@@ -262,6 +262,8 @@ def main(argv):
                 print(f"model-eval: no {g} cases under {set_dir}", file=sys.stderr)
         graders_sha = sha256("".join(f"{g} {sha256(gfile[g].read_bytes())}\n" for g in sorted(graders)).encode())
         settings_sha = sha256((HERE / "role-settings.json").read_bytes())
+        # The code that builds and sends the call, as it is on disk, so an edit to either, committed or not, regrades.
+        code_sha = sha256(b"".join(sha256(f.read_bytes()).encode() for f in (FACTORY, Path(__file__).resolve())))
         evals_sha = tree_sha(set_dir)
 
         cells = [(g, m, e, k) for g in graders for m in models for e in efforts for k in range(1, repeats + 1)]
@@ -299,7 +301,7 @@ def main(argv):
             for case in cases[g]:
                 parts = [sha256(gfile[g].read_bytes()), sha256(schema[g]), sha256(rubric[g]), settings_sha,
                          sha256((case / "prompt.md").read_bytes()), sha256((case / "expected.json").read_bytes()),
-                         m, e, CODEX_MODE if codex else "claude", *cfg.values(), user_sha, tree_of(case)]
+                         m, e, CODEX_MODE if codex else "claude", *cfg.values(), user_sha, tree_of(case), code_sha]
                 keys[case] = sha256("\n".join(parts).encode())
             need = [case for case in cases[g]
                     if not (d / f"{g}-{case.name}.key").is_file() or not (d / f"{g}-{case.name}.json").is_file()

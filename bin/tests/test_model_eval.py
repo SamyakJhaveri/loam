@@ -1,5 +1,6 @@
-"""bin/factory.d/model-eval: a Codex cell gets a strict schema, reuse keys cover the harness, each grader's
-fingerprint describes its own replies, an unparseable reply is retried, and an off-model serve stops the grid.
+"""bin/factory.d/model-eval: a Codex cell gets a strict schema, reuse keys cover the harness and the code that makes
+the call, each grader's fingerprint describes its own replies, an unparseable reply is retried, and an off-model
+serve stops the grid.
 
 Runs the real model-eval and bin/factory eval with a fake `claude` and `codex` on PATH and a fake HOME, so no
 model is called. The fake codex refuses a non-strict --output-schema, as the API does (400, "additionalProperties
@@ -13,6 +14,7 @@ import importlib.util
 import json
 import os
 import pathlib
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -369,6 +371,31 @@ class ModelEvalTests(unittest.TestCase):
         (self.home / ".claude/settings.json").write_text('{"permissions": {"deny": ["Read(*)"]}}\n')
         self.assertEqual(self.run_me("m1", **env, STUB_VERSION="2").returncode, 0)
         self.assertEqual(len(self.calls()), 2, "a changed setting value re-grades every case")
+
+    def test_code_change_regrades_every_reply(self) -> None:
+        # A copy of bin/factory and bin/factory.d, so FACTORY is the copy and an edit never touches the checkout.
+        self.judge_cases()
+        copy = self.tmp / "copy/bin"
+        copy.mkdir(parents=True)
+        shutil.copy2(ROOT / "bin/factory", copy / "factory")
+        shutil.copytree(ROOT / "bin/factory.d", copy / "factory.d")
+
+        def run() -> list[str]:
+            self.log.write_text("")
+            r = subprocess.run([str(copy / "factory.d/model-eval"), "m1", "codex:x"], cwd=ROOT, timeout=300,
+                               env={**self.env, "MODEL_EVAL_GRADERS": "judge", "FACTORY_ROOT": str(ROOT)},
+                               capture_output=True, text=True)
+            self.assertEqual(r.returncode, 0, r.stderr)
+            return sorted(c.split()[0] for c in self.calls())
+
+        both = ["call", "call", "codex", "codex"]
+        self.assertEqual(run(), both)
+        self.assertEqual(run(), [], "unchanged code reuses every reply")
+        for f in ("factory", "factory.d/model-eval"):
+            with open(copy / f, "a") as fh:
+                fh.write("# probe\n")
+            self.assertEqual(run(), both, f"an edit to {f} re-grades every case in both modes")
+            self.assertEqual(run(), [])
 
     def test_each_graders_fingerprint_describes_its_own_replies(self) -> None:
         self.judge_cases()
