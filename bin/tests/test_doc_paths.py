@@ -46,6 +46,7 @@ class DocPathsTest(unittest.TestCase):
             "docs/b.md": "Read [gone](gone.md), [here](a.md) and [web](https://example.com/x.md).\n",
             "seed/docs/c.md.jinja": "Run `bin/also-missing.py`.\n",
             "docs/archive/old.md": "Old `bin/missing-tool.sh` and [gone](gone.md).\n",
+            "docs/factory/LESSONS.md": "A lesson cites `bin/missing-tool.sh` and [gone](gone.md).\n",
         })
         self.assertEqual(rc, 1)
         fails = sorted(line.split(": ", 2)[1] for line in out.splitlines())

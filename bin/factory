@@ -512,7 +512,7 @@ check_worker() {
   # must resolve through skill_file, since the worker reads that SKILL.md by path. Skipped under
   # fixtures/, whose historical bodies predate the allowlist, as check_paths is (lint).
   # A pstack skill whose steps write under ~/ gets an advisory warning, never a refusal: the worker's file
-  # tools are denied there (worker-settings.json) but its shell is not sandboxed (#409).
+  # tools are denied there and its sandboxed shell cannot write there (worker-settings.json, #409).
   case "$SRC" in *bin/factory.d/fixtures/*) ;; *)
     while IFS= read -r skill; do
       [ -n "$skill" ] || continue
@@ -522,7 +522,7 @@ check_worker() {
             || { err "skill '$skill': a pstack name must be pstack:<letters, digits, - or _>"; continue; }
           case "${skill#pstack:}" in
             setup-pstack|reflect|automate-me)  # SKILL.md writes ~/.cursor/rules or ~/.cursor/skills (~/.claude/ in Claude Code)
-              echo "warning: $skill writes under ~/ (operator settings); a Claude worker's file tools are denied there but its shell is not sandboxed (#409)" >&2 ;;
+              echo "warning: $skill writes under ~/ (operator settings); a Claude worker's file tools are denied there and its sandboxed shell cannot write there (#409)" >&2 ;;
           esac ;;
         *)
           grep -qxF "$skill" "$ROOT/bin/factory.d/skills.txt" \
@@ -1280,7 +1280,7 @@ factory-round.js review-output.schema.json codex-review.prompt.md unattended.md 
 CHECKS_END="printf '\nCHECKS-END\n'"
 
 freeze() {
-  local g src
+  local g src cgd ccd user
   [ -f "$RUN/frozen/sha256" ] && return 0
   printf '%s\n' "$BODY" > "$RUN/frozen/issue.md"
   [ -n "$ISSUE" ] && { net gh issue view "$ISSUE" -R "$REPO" --json title -q .title > "$RUN/frozen/title" 2> /dev/null || rm -f "$RUN/frozen/title"; }
@@ -1292,11 +1292,38 @@ freeze() {
   cp "$ROOT/bin/factory.d/lib.sh" "$RUN/frozen/lib.sh"
   cp "$ROOT/bin/alert" "$RUN/frozen/alert"   # a mid-run edit of bin/alert cannot change this run's alerts
   cp "$ROOT/bin/factory.d/role-settings.json" "$RUN/frozen/role-settings.json"
-  # Claude Code copies each settings tier's env over the launch env (user, then --settings), so the worker call's
-  # model pins also go in this frozen copy's env, or a ~/.claude/settings.json env entry would undo them (#379).
-  jq --arg m "$WORKER_MODEL" '.env = (.env // {}) + {CLAUDE_CODE_SUBAGENT_MODEL: $m, CLAUDE_CODE_SUBAGENT_MODEL_FORCE: "1",
-    ANTHROPIC_DEFAULT_SONNET_MODEL: $m, ANTHROPIC_DEFAULT_HAIKU_MODEL: $m}' \
-    "$ROOT/bin/factory.d/worker-settings.json" > "$RUN/frozen/worker-settings.json"
+  # Claude Code copies settings env over the launch env, so the worker call's model pins also go in this frozen
+  # copy's env, after the user tier's env it carries, or a ~/.claude/settings.json env entry would undo them (#379).
+  # The worker's Bash runs in the sandbox, which writes only the worktree and $TMPDIR by default; a commit also
+  # needs the worktree gitdir and objects/refs/logs under the common dir (the Codex worker's roots), and the shell
+  # writes decisions.md and mechanism.md in the worker directory and result.json in tasks/ (#409).
+  # uv gets a cache and tool directory of the run's own, so the operator's shared uv cache and tools are kept out of
+  # the worker's reach. Claude Code merges sandbox lists across tiers, and the user tier's excludedCommands or
+  # allowWrite would widen the boundary, so the worker call loads no settings tier (--setting-sources ''): this copy
+  # carries the user tier without its sandbox block, arrays concatenated and the worker's keys winning, as Claude
+  # Code merges them. It also drops the user tier's permissions.allow and permissions.additionalDirectories: Claude
+  # Code adds Edit(...) allow paths and additionalDirectories to the sandbox's writable paths and WebFetch(domain:...)
+  # allow domains to its network allowlist even under strictAllowlist, and allow rules do nothing under
+  # bypassPermissions.
+  cgd=$(git -C "$WORKTREE" rev-parse --absolute-git-dir 2> /dev/null) && ccd=$(git_common "$WORKTREE") \
+    && [ -n "$cgd" ] && [ -n "$ccd" ] || finish stopped-environment "could not read the git directories of $WORKTREE for the worker sandbox"
+  # bin/claude-account switches accounts by rewriting the user tier's CLAUDE_CODE_OAUTH_TOKEN, so the copy leaves it
+  # out and worker_round passes the live one. The rest of the user env may hold secrets too, so the copy is private
+  # to the operator, as ~/.claude/settings.json is.
+  user="${CLAUDE_SETTINGS_FILE:-${CLAUDE_CONFIG_DIR:-$HOME/.claude}/settings.json}"
+  [ -f "$user" ] || user=/dev/null
+  mkdir -p "$RUN/uv/cache" "$RUN/uv/tools"
+  ( umask 077; jq --slurpfile u "$user" --arg m "$WORKER_MODEL" --arg gd "$cgd" --arg cd "$ccd" --arg w "${DECISIONS%/*}" \
+    --arg t "$RUN/tasks" --arg uv "$RUN/uv" '
+    def merge($a; $b): if ($a|type) == "object" and ($b|type) == "object"
+      then reduce ($b|keys_unsorted[]) as $k ($a; .[$k] = merge($a[$k]; $b[$k]))
+      elif ($a|type) == "array" and ($b|type) == "array" then $a + $b else $b end;
+    merge($u[0] // {} | del(.sandbox, .env.CLAUDE_CODE_OAUTH_TOKEN, .permissions.allow, .permissions.additionalDirectories); .) | .env = (.env // {}) + {CLAUDE_CODE_SUBAGENT_MODEL: $m, CLAUDE_CODE_SUBAGENT_MODEL_FORCE: "1",
+    ANTHROPIC_DEFAULT_SONNET_MODEL: $m, ANTHROPIC_DEFAULT_HAIKU_MODEL: $m,
+    UV_CACHE_DIR: "\($uv)/cache", UV_TOOL_DIR: "\($uv)/tools"}
+    | .sandbox.filesystem.allowWrite += [$gd, "\($cd)/objects", "\($cd)/refs", "\($cd)/logs", $w, $t, "\($uv)/cache", "\($uv)/tools"]' \
+    "$ROOT/bin/factory.d/worker-settings.json" > "$RUN/frozen/worker-settings.json" ) 2>> "$LOG" \
+    || finish stopped-environment "could not merge $user into the frozen worker settings"
   sed -e "s|<issue>|${ISSUE:-$KEY}|g" -e "s|<decisions>|$DECISIONS|g" -e "s|<mechanism>|${DECISIONS%/*}/mechanism.md|g" \
     "$ROOT/bin/factory.d/_common.md" > "$RUN/frozen/_common.md"
   for g in judge reviewer; do
@@ -2050,7 +2077,7 @@ call_gone() { # tenths of a second to wait -> 0 once nothing is left in the call
 }
 
 worker_round() { # round; leaves round-N.* only once the call produced a result
-  local round="$1" pf out="$RUN/pending.jsonl" res="$RUN/pending.result.json" t=() login_retried=0 le head0
+  local round="$1" pf out="$RUN/pending.jsonl" res="$RUN/pending.result.json" t=() login_retried=0 le head0 tok tok0 tok_set
   command -v timeout > /dev/null 2>&1 && t=(timeout -k 5 "$CALL_TIMEOUT_SEC")
   # The round's start, so a stop after a killed call can name the commits the call made (#319).
   head0=$(git -C "$WORKTREE" rev-parse HEAD 2> /dev/null) || head0=""
@@ -2118,14 +2145,22 @@ worker_round() { # round; leaves round-N.* only once the call produced a result
   while :; do
     log "worker call: round $round model=$WORKER_MODEL effort=$WORKER_EFFORT advisor=${WORKER_ADVISOR:-off} budget=$ROUND_BUDGET_USD usd, prompt=$(wc -c < "$pf") bytes"
     rm -f "$out" "${DECISIONS%/*}/mechanism.md"   # also on a retried call, as for the Codex call above (#330)
+    # The call loads no settings tier, so the account token bin/claude-account last wrote is read here, after any
+    # switch, and passed in this call's environment only, never on a command line (freeze). The supervisor keeps its
+    # launch value, which a call gets when the read is empty or fails, so a token the file has lost is never reused.
+    tok=$(jq -r '.env.CLAUDE_CODE_OAUTH_TOKEN // empty' "${CLAUDE_SETTINGS_FILE:-${CLAUDE_CONFIG_DIR:-$HOME/.claude}/settings.json}" 2> /dev/null)
+    tok_set=${CLAUDE_CODE_OAUTH_TOKEN+1}; tok0=${CLAUDE_CODE_OAUTH_TOKEN-}
+    [ -z "$tok" ] || { printf -v CLAUDE_CODE_OAUTH_TOKEN '%s' "$tok" && export CLAUDE_CODE_OAUTH_TOKEN; }
     call_start "$WORKTREE" ${t[@]+"${t[@]}"} env LOAM_CHECKS="$RUN/frozen/checks.sh" \
         CLAUDE_CODE_SUBAGENT_MODEL="$WORKER_MODEL" CLAUDE_CODE_SUBAGENT_MODEL_FORCE=1 \
         ANTHROPIC_DEFAULT_SONNET_MODEL="$WORKER_MODEL" ANTHROPIC_DEFAULT_HAIKU_MODEL="$WORKER_MODEL" claude -p \
         --model "$WORKER_MODEL" --effort "$WORKER_EFFORT" ${WORKER_ADVISOR:+--advisor "$WORKER_ADVISOR"} --permission-mode bypassPermissions --strict-mcp-config \
-        --setting-sources user --settings "$RUN/frozen/worker-settings.json" --max-turns "$MAX_TURNS" \
+        --setting-sources '' --settings "$RUN/frozen/worker-settings.json" --max-turns "$MAX_TURNS" \
         --append-system-prompt "$(cat "$RUN/frozen/unattended.md")" \
         --max-budget-usd "$ROUND_BUDGET_USD" --output-format stream-json --verbose --include-hook-events \
         < "$pf" > "$out" 2>> "$LOG"
+    # The call has forked with the token; the supervisor gets its launch value back, or none.
+    if [ -n "$tok_set" ]; then printf -v CLAUDE_CODE_OAUTH_TOKEN '%s' "$tok0"; else unset CLAUDE_CODE_OAUTH_TOKEN; fi
     call_end worker || log "worker exited non-zero (the result event decides)"
     jq -c 'select(.type == "result")' "$out" 2> /dev/null | tail -1 > "$res"
     # No result event (killed by CALL_TIMEOUT_SEC, or crashed) leaves no cost to read, yet the call may have
@@ -3346,8 +3381,10 @@ claude_version_ok() {
 }
 
 precondition_lines() { # LOOP.md, Preconditions
-  local t f
-  for t in claude gh git jq python3 uv tmux timeout socat node; do
+  local t f sbx=
+  # The worker's Bash sandbox needs bubblewrap on Linux; on macOS Claude Code uses seatbelt, which ships with it (#409).
+  [ "$(uname -s)" != Linux ] || sbx=bwrap
+  for t in claude gh git jq python3 uv tmux timeout socat $sbx node; do
     command -v "$t" > /dev/null 2>&1 && echo "  PASS $t on PATH" || echo "  FAIL $t not on PATH"
   done
   echo "  INFO target $TARGET; runs root $RUNS_ROOT"
