@@ -217,11 +217,11 @@ class ParkingTests(unittest.TestCase):
     # state is written, ends it the way the case needs, and the stop is aged past the hour's backoff.
     ENV_STOP = 'finish stopped-environment "the worker call returned no result event"'
 
-    def launch(self, issue: int, body: str, outcome: str = ENV_STOP, age: int = 86400) -> None:
+    def launch(self, issue: int, body: str, outcome: str = ENV_STOP, age: int = 86400, stubs: str = "") -> None:
         d = self.runs / str(issue) / key(body)
         script = (f"load_ticket() {{ ISSUE={issue}; KEY={issue}; REPO=o/r; IS_FILE=0; BODY=\"$BODY_ARG\"; }}; "
                   "assert_target_ready() { :; }; claude_version_ok() { :; }; owner_events() { :; }; alert() { :; }; "
-                  f"assert_parallel() {{ {outcome}; }}; cmd_run {issue}")
+                  f"assert_parallel() {{ {outcome}; }}; {stubs}cmd_run {issue}")
         sourced(script, {"FACTORY_RUNS_ROOT": str(self.runs), "BODY_ARG": body, "FACTORY_BY_NEXT": "1"})
         self.assertIn("===== launch =====", (d / "factory.log").read_text())
         if (d / "status").exists():
@@ -287,28 +287,53 @@ class ParkingTests(unittest.TestCase):
         proc = self.next_dry_run(mine=mine)
         self.assertIn("parked #7", proc.stderr)
 
+    def test_a_run_frozen_before_the_count_still_counts(self) -> None:
+        # A relaunch execs the run's frozen bin/factory, which may predate env-stops; the live pass counts before that exec.
+        d = self.runs / "7" / key(CLEAN)
+        (d / "frozen").mkdir(parents=True)
+        old = d / "frozen" / "factory"   # an older supervisor: it knows nothing of env-stops and stops on the environment
+        old.write_text('#!/bin/bash\necho stopped-environment > "$(dirname "$(dirname "$0")")/status"\nexit 4\n')
+        old.chmod(0o755)
+        for _ in range(3):
+            self.launch(7, CLEAN, ":", stubs="prepare_worktree() { :; }; freeze() { :; }; ")
+        proc = self.next_dry_run(mine=((7, CLEAN),))
+        self.assertIn("parked #7", proc.stderr)
+
     def test_a_parked_stop_alerts_once(self) -> None:
-        # next runs every ten minutes, and a manual next may overlap the timer's: the park pages once per stop.
+        # next runs every ten minutes; the park pages once per stop, and a later stop pages once more.
         d = self.runs / "7" / key(CLEAN)
         for _ in range(3):
             self.launch(7, CLEAN)
         sent = self.runs / "alerts"
         sent.touch()
-        tick = f"alert() {{ echo \"$*\" >> '{sent}'; }}; env_park_alert '{d}' 7"
-        def alerts() -> int:
+        def alerts(during: str = "") -> int:
+            tick = f"alert() {{ echo \"$*\" >> '{sent}'; {during} }}; env_park_alert '{d}' 7"
             self.assertEqual(sourced(tick, {"FACTORY_RUNS_ROOT": str(self.runs)}).returncode, 0)
             return len(sent.read_text().splitlines())
-        (d / "owner.lock").mkdir()   # another next, or a launch, holds it
-        self.assertEqual(alerts(), 0)
-        (d / "owner.lock").rmdir()
         self.assertEqual(alerts(), 1)
         self.assertEqual(alerts(), 1)
         self.assertIn("--level needs-you", sent.read_text())
-        self.assertFalse((d / "owner.lock").exists())
         self.launch(7, CLEAN)   # a relaunch by hand that stops the same way alerts once more
         self.assertEqual(alerts(), 2)
         self.launch(7, CLEAN, 'finish stopped "FACTORY_STOP"')   # relaunched and stopped otherwise: no longer parked
         self.assertEqual(alerts(), 2)
+
+    def test_the_alert_records_the_stop_it_was_sent_for(self) -> None:
+        # A launch by hand rewrites env-stops while the alert is in flight; env-parked must keep the line the alert was
+        # sent for, or that launch's own park alert is lost.
+        d = self.runs / "7" / key(CLEAN)
+        for _ in range(3):
+            self.launch(7, CLEAN)
+        sent = self.runs / "alerts"
+        sent.touch()
+        sent_for = (d / "env-stops").read_text()
+        relaunch = f"echo '-1 3 4' > '{d}/env-stops';"
+        tick = f"alert() {{ echo \"$*\" >> '{sent}'; {relaunch} }}; env_park_alert '{d}' 7"
+        self.assertEqual(sourced(tick, {"FACTORY_RUNS_ROOT": str(self.runs)}).returncode, 0)
+        self.assertEqual((d / "env-parked").read_text(), sent_for)
+        tick = f"alert() {{ echo \"$*\" >> '{sent}'; }}; env_park_alert '{d}' 7"
+        sourced(tick, {"FACTORY_RUNS_ROOT": str(self.runs)})
+        self.assertEqual(len(sent.read_text().splitlines()), 2)
 
     def spend_today(self, usd: float) -> None:
         (self.runs / "ledger-daily.jsonl").write_text(

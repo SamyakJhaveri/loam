@@ -2972,21 +2972,22 @@ record_env_stops() { # <run dir>, at launch while its status is still the last r
 env_parked() { # <run dir> -> 0 when its run stopped on the environment for the ENV_PARK_STOPS-th time with no new round since
   [ "$(cat "$1/status" 2> /dev/null)" = stopped-environment ] && [ "$(env_stops "$1")" -ge "$ENV_PARK_STOPS" ]
 }
-# One needs-you alert per parked stop, not one per tick: env-parked keeps the env-stops line the alert went out for. Under
-# owner.lock, which a launch takes to write `owner`, and re-judged there, so two overlapping next processes alert once,
-# and a lock held elsewhere leaves the alert to a later tick.
+# One needs-you alert per parked stop, not one per tick: env-parked keeps the env-stops line the alert went out for. The
+# line is read once, and that same line is written after the alert, so a launch that rewrites env-stops meanwhile keeps
+# its own alert. Alerts are serialized by next.lock, which the runner's cron line and bin/overnight/driver.sh take
+# (flock -n) around next; a next run by hand outside it can at worst send one duplicate alert (accepted).
 env_park_alert() { # <run dir> <issue>
-  owner_lock "$1" 1 || return 0
-  if env_parked "$1" && ! cmp -s "$1/env-stops" "$1/env-parked"; then
-    if alert --level needs-you --source factory --project "$(run_project "$1")" --run "issue $2" \
-      "issue $2 stopped on a machine or tool problem $ENV_PARK_STOPS times in a row with no new round since, so the timer \
+  local token
+  token=$(cat "$1/env-stops" 2> /dev/null) || return 0
+  env_parked "$1" || return 0   # after the read: a launch rewrites env-stops before its status, so this sees it relaunched
+  [ "$token" = "$(cat "$1/env-parked" 2> /dev/null)" ] && return 0
+  if alert --level needs-you --source factory --project "$(run_project "$1")" --run "issue $2" \
+    "issue $2 stopped on a machine or tool problem $ENV_PARK_STOPS times in a row with no new round since, so the timer \
 no longer relaunches it; fix the cause, then relaunch it by hand or edit the body (run dir ${1%/})" >> "$LOG" 2>&1; then
-      cp "$1/env-stops" "$1/env-parked"
-    else
-      log "the alert for ${1%/} failed; see bin/alert's line above"
-    fi
+    printf '%s\n' "$token" > "$1/env-parked"
+  else
+    log "the alert for ${1%/} failed; see bin/alert's line above"
   fi
-  rmdir "$1/owner.lock"
 }
 
 # cmd_run refuses a relaunch, exiting 4 with no status written, while a process of the run's last launch holds its
