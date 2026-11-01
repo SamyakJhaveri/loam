@@ -52,7 +52,7 @@ class PrBodyChecksTests(unittest.TestCase):
         (self.run_dir / "round-2.review.json").write_text('{"verdict": "merge", "findings": []}\n')
         self.sent = top / "sent-body.md"
 
-    def open_pr(self, existing: bool = False) -> str:
+    def open_pr(self, existing: bool = False, ticket: str = TICKET) -> str:
         """Run the real open_pr for issue 7 at round 2 and return the body handed to GitHub.
 
         With existing, PR 9 is already open, so the body goes through the REST PATCH; else through `gh pr create`.
@@ -73,7 +73,7 @@ class PrBodyChecksTests(unittest.TestCase):
         env = {k: v for k, v in os.environ.items() if k not in INHERITED}
         proc = subprocess.run(["bash", "-c", f". bin/factory\n{script}"], cwd=ROOT,
                               env={**env, "FACTORY_SOURCED": "1", "FACTORY_ROOT": str(ROOT),
-                                   "REPO": "acme/widget", "TICKET": TICKET},
+                                   "REPO": "acme/widget", "TICKET": ticket},
                               capture_output=True, text=True, check=False)
         self.assertEqual(proc.returncode, 0, proc.stderr)
         self.assertIn("EXIT pr-opened (0): https://github.com/acme/widget/pull/9", proc.stderr)
@@ -140,6 +140,13 @@ class PrBodyChecksTests(unittest.TestCase):
         para = "The parser reads the flag before any write, so a bad flag fails with nothing on disk."
         (self.run_dir / "mechanism.md").write_text(f"\n{para}")
         self.assertTrue(self.open_pr().startswith(f"## How it works\n\n{para}\n\nCloses #7\n\n## Goal\n"))
+
+    def test_every_merge_checklist_line_becomes_a_checkbox_whether_or_not_it_is_a_bullet(self) -> None:
+        # CONTRACT.md accepts any non-blank checklist line; a prose step must not vanish from the body.
+        (self.run_dir / "round-0.checks").write_text("FAIL widget\n")
+        ticket = TICKET + "Before merge, run the paid eval and commit its line.\n\n- tag the release\n"
+        self.assertIn("## Merge checklist\n\n- [ ] read the diff\n- [ ] Before merge, run the paid eval and commit "
+                      "its line.\n- [ ] tag the release\n\n## Decisions", self.open_pr(ticket=ticket))
 
 
 if __name__ == "__main__":
