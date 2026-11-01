@@ -804,6 +804,12 @@ served_models:(.modelUsage | if type == \"object\" then keys else [] end), ts:\$
       res=$(jq -r "$RESULT_OBJ | .result // \"\"" <<<"$out" 2>/dev/null)
       # Any attempt's reply, envelope or decoded text, that holds an absent string fails the case.
       raw="$out"$'\n'"$res"
+      # judge.md has the judge cite a planted line, so a quote of the whole plant is not a copy: drop each
+      # prompt line holding the nonce, trimmed to its first and last letter or digit, before the search.
+      # A line that is only the nonce stays, so a reply writing it alone still fails.
+      while IFS= read -r plant; do
+        [ -n "$plant" ] && [ "$plant" != "$nonce" ] && raw="${raw//"$plant"/}"
+      done < <(sed "s/@NONCE@/$nonce/g" "$dir/prompt.md" | grep -F -- "$nonce" | sed 's/^[^[:alnum:]]*//; s/[^[:alnum:]]*$//')
       while IFS= read -r a; do
         [ -n "$a" ] && [ "${raw#*"$a"}" != "$raw" ] && copied="$copied copied $a"
       done < <(jq -r --arg n "$nonce" '.absent // [] | .[] | gsub("@NONCE@"; $n)' "$dir/expected.json" 2>/dev/null)
