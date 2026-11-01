@@ -4,8 +4,9 @@
 fake `claude` or `codex` first on PATH. Each fake backgrounds a writer that appends to a marker file every 0.2 s and
 then exits 0 with a usable reply, so the call ends normally and only call_end can stop the writer. The done-checks
 cover the worker call; these cover the grader and Codex review calls, a writer that ignores TERM, one in a session of
-its own, that the worker call still gets its prompt on stdin and its env pins, and that the live account token
-reaches the worker call but not the supervisor after it. No network.
+its own, that the worker call still gets its prompt on stdin and its env pins, that the live account token
+reaches the worker call but not the supervisor after it, and that the call starts with INT and QUIT at their defaults
+in a session of its own while the wrapper keeps an ignored QUIT (#468). No network.
 """
 
 from __future__ import annotations
@@ -252,6 +253,43 @@ exec env -u FACTORY_CALL_TAG bash -c 'while :; do echo x >> {self.top}/mark; sle
                 log = (self.run_dir / "factory.log").read_text().splitlines()
                 self.assertRegex(log[-1], "EXIT stopped-environment .*still alive 5 s after KILL")
                 subprocess.run(["pkill", "-KILL", "-f", str(self.top)], check=False)
+
+    def test_call_reads_int_and_quit_as_default(self) -> None:
+        # Bash 3.2 (a Mac) keeps the INT and QUIT it ignores in a background command ignored across exec, and GNU
+        # timeout catches both, so on a Mac without it ignored=False fails on base (#468). A supervisor whose parent
+        # ignores them starts with them ignored on any bash, so ignored=True with no timeout fails on base here too.
+        probe = 'perl -e "print join(q( ), map { \\$SIG{\\$_} || q(DEFAULT) } qw(INT QUIT))"'
+        wraps = [""] + (["timeout 60 "] if shutil.which("timeout") else [])
+        for ignored in (False, True):
+            for wrap in wraps:
+                with self.subTest(ignored=ignored, wrap=wrap):
+                    out = self.top / "sig"
+                    cmd = self.call_cmd(f'call_start "$WORKTREE" {wrap}{probe} > {out}; call_end probe')
+                    if ignored:
+                        cmd["args"] = ["perl", "-e", '$SIG{INT} = $SIG{QUIT} = "IGNORE"; exec @ARGV', *cmd["args"]]
+                    proc = subprocess.run(**cmd, capture_output=True, check=False, timeout=60)
+                    self.assertIn("returned:0", proc.stdout, proc.stderr)
+                    self.assertEqual(out.read_text(), "DEFAULT DEFAULT")
+
+    def test_wrapper_keeps_an_ignored_quit(self) -> None:
+        # The reset is the call's own, before its exec: a wrapper that QUIT could end would leave the call's escaped
+        # children to no one. Bash 5 hands the wrapper the supervisor's QUIT, so the supervisor starts with it ignored,
+        # and the QUIT waits for call.group, which the call writes after the wrapper's first statements have run.
+        cmd = self.call_cmd('call_start "$WORKTREE" sleep 30; until [ -s "$RUN/call.group" ]; do sleep 0.05; done; '
+                            'kill -QUIT "$CALL_PID"; sleep 0.3; kill -TERM "$CALL_PID"; call_end probe')
+        cmd["args"] = ["perl", "-e", '$SIG{INT} = $SIG{QUIT} = "IGNORE"; exec @ARGV', *cmd["args"]]
+        proc = subprocess.run(**cmd, capture_output=True, check=False, timeout=60)
+        self.assertIn("returned:143", proc.stdout, proc.stderr)
+
+    def test_call_runs_in_a_session_of_its_own(self) -> None:
+        out = self.top / "sid"
+        # The call's first process calls setpgid itself, so only the session id shows a dropped setsid.
+        probe = "python3 -c 'import os; print(os.getpid(), os.getpgid(0), os.getsid(0))'"
+        proc = self.run_call(f'call_start "$WORKTREE" {probe} > {out}; call_end probe')
+        self.assertIn("returned:0", proc.stdout, proc.stderr)
+        pid, pgid, sid = out.read_text().split()
+        self.assertEqual(pid, pgid, "the call does not lead its own process group")
+        self.assertNotEqual(sid, str(os.getsid(0)), "the call shares the test's session")
 
     def test_worker_call_keeps_its_prompt_and_env(self) -> None:
         proc = self.run_call("worker_round 1", FACTORY_WORKER_MODEL="claude-pin-1")
