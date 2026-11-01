@@ -617,36 +617,13 @@ EVAL_MODEL=claude-opus-5-5   # ARCHITECTURE.md, Models and roles (2026-09-24)
 EVALS_DIR=evals
 GRADERS_DIR=""
 
-# Graders are plugin agents; a run and an eval both resolve them from the installed plugin cache, taking only a
-# cached file whose sha256 equals this checkout's copy, so both grade with the prompts the repo ships, and the
-# ledger records which file. --graders-dir replaces the search.
+# Graders are plugin agents, but a run and an eval read this checkout's copy, the prompts the repo ships, and the
+# ledger records the file and its sha256. No plugin-cache search: it accepted only a copy byte-identical to this
+# one, so it added nothing but a `claude plugin update` after every grader edit (#532). --graders-dir replaces the dir.
 grader_file() {
-  local dirs=("$GRADERS_DIR") ship="$ROOT/cultivation/marketplace/sam-cc-setup/agents" want other="" d f
-  if [ -z "$GRADERS_DIR" ]; then
-    # `claude plugin update` leaves old versions in the cache, and the newest cached one can still trail the
-    # checkout (every distbench run of 2026-10-13 to 10-17 graded with 0.9.4). Only the prompt's bytes count:
-    # a version bump that leaves this file alone still matches, and a prompt edit not yet installed does not.
-    want=$(sha256_of < "$ship/$1.md" | cut -d' ' -f1)
-    # Newest version first, so the ledger names the newest matching copy; bash 3.2 (macOS) has no mapfile.
-    dirs=()
-    while IFS= read -r d; do
-      [ -d "$d" ] || continue
-      if [ -f "$d/$1.md" ] && [ "$(sha256_of < "$d/$1.md" | cut -d' ' -f1)" = "$want" ]; then dirs+=("$d")
-      else other="$other $(basename "$(dirname "$d")")"; fi
-    done < <(printf '%s\n' "$HOME"/.claude/plugins/cache/*/sam-cc-setup/*/agents | sort -rV)
-    if [ ${#dirs[@]} -eq 0 ] && [ -n "$other" ]; then
-      echo "$1.md in the plugin cache (sam-cc-setup$other) differs from $ship/$1.md; run claude plugin update sam-cc-setup@seed-skills (cultivation/marketplace/UPGRADING.md)" >&2
-      return 1
-    fi
-    # With no sam-cc-setup installed at all, the checkout's own copy is the shipped prompt by construction.
-    [ ${#dirs[@]} -gt 0 ] || dirs=("$ship")
-  fi
-  for d in "${dirs[@]}"; do
-    f="$d/$1.md"
-    [ -f "$f" ] && { printf '%s\n' "$f"; return 0; }
-  done
-  echo "found no $1.md in ${dirs[*]}" >&2
-  return 1
+  local f="${GRADERS_DIR:-$ROOT/cultivation/marketplace/sam-cc-setup/agents}/$1.md"
+  [ -f "$f" ] || { echo "found no $f" >&2; return 1; }
+  printf '%s\n' "$f"
 }
 
 # A worker's skill name (a line of bin/factory.d/skills.txt or a pstack:<name>, lint-checked) -> its SKILL.md path.
@@ -798,6 +775,10 @@ run_eval_cases() { # grader work
   local grader="$1" tree="$2/tree" rubric="$2/rubric" budget="${EVAL_BUDGET_USD:-10}" gf schema settings dir name out res exp got erows grows
   local spent=0 cases=0 mism=0 clean=0 ok attempt eline
   gf=$(grader_file "$grader") || return 2
+  # The checkout can move under a replay (`next` fast-forwards it), so the rubric and the sha256 below come from
+  # one copy of the grader file.
+  cp "$gf" "$2/grader.md" || return 2
+  gf="$2/grader.md"
   schema=$(schema_for "$grader" 2> /dev/null)
   [ -n "$schema" ] || { echo "eval: no bin/factory.d/$grader.schema.json" >&2; return 2; }
   settings="$(cd "$(dirname "$0")" && pwd)/factory.d/role-settings.json"
@@ -1384,10 +1365,13 @@ freeze() {
     "$ROOT/bin/factory.d/_common.md" > "$RUN/frozen/_common.md"
   for g in judge reviewer; do
     src=$(grader_file "$g" 2>&1) || finish stopped-environment "$src"
-    grader_rubric "$src" > "$RUN/frozen/$g.md"
+    # One copy of the checkout file gives both the frozen rubric and the ledger's sha256, so a checkout that moves
+    # mid-freeze cannot pair one prompt with another's hash; `file` still names the checkout path.
+    cp "$src" "$RUN/frozen/$g.src.md" || finish stopped-environment "could not copy $src"
+    grader_rubric "$RUN/frozen/$g.src.md" > "$RUN/frozen/$g.md"
     schema_for "$g" > "$RUN/frozen/$g.schema.json"
     printf '{"ts":"%s","event":"grader","role":"%s","file":"%s","sha256":"%s"}\n' \
-      "$(now)" "$g" "$src" "$(sha256_of < "$src" | cut -d' ' -f1)" >> "$LEDGER"
+      "$(now)" "$g" "$src" "$(sha256_of < "$RUN/frozen/$g.src.md" | cut -d' ' -f1)" >> "$LEDGER"
   done
   { cat "$RUN/frozen/lib.sh"; echo; dc_script; echo; echo "$CHECKS_END"; echo 'exit $((n_fail > 0))'; } > "$RUN/frozen/checks.sh"
   { standing_list; section "Do not touch" | sed 's/[Ee]xcept:.*//' | ticket_paths; } | sort -u > "$RUN/frozen/protected.txt"
@@ -2698,10 +2682,11 @@ open_pr() { # [draft]: opened at the grader-round cap
       "$ROUND" "$(ticket_spent)" "$(( ( $(date -u +%s) - $(cat "$RUN/started") ) / 60 ))" \
       "$(jq -s '[.[].denials // 0] | add // 0' "$LEDGER")" "$RUN"
   } | scrub > "$body" || finish stopped-environment "could not scrub the PR body"
-  # The decision to publish, recorded before any network call: a relaunch whose HEAD is still this sha replays
-  # open_pr with the same draft argument and no worker round (cmd_run), so a failed push or create loses nothing.
-  # Each pr-opened exit removes it, so only a failed publish leaves it for a relaunch to replay.
-  printf '%s %s\n' "$GRADED_SHA" "$draft" > "$RUN/publish.intent" \
+  # The decision to publish, recorded before any network call as the graded sha, its round and the draft argument
+  # (round in the middle: the draft can be empty). A relaunch whose newest round is this round, with HEAD and that
+  # round's graded.sha still this sha, replays open_pr with the same draft argument and no worker round (cmd_run),
+  # so a failed push or create loses nothing. Each pr-opened exit removes it, so only a failed publish leaves it.
+  printf '%s %s %s\n' "$GRADED_SHA" "$ROUND" "$draft" > "$RUN/publish.intent" \
     || finish stopped-environment "could not write $RUN/publish.intent"
   [ "$IS_FILE" = 1 ] && { rm -f "$RUN/publish.intent"; finish pr-opened "file ticket: no GitHub call; the PR body is at $body"; }
   net git -C "$WORKTREE" push -u origin "$BRANCH" >> "$LOG" 2>&1 \
@@ -2904,11 +2889,15 @@ cmd_run() {
       g=${g%.graded.sha}
       { [ -s "$g.fixes" ] || [ "$(jq -r .verdict "$g.judge.json" 2> /dev/null)" != pass ]; } && GRADER_FAILS=$((GRADER_FAILS + 1))
     done
-    # A publish whose push or PR create failed left its decision in publish.intent (open_pr): while HEAD is still the
-    # sha it graded, replay it, ready or draft, with no new worker round. A moved HEAD resumes as below.
-    local intent_sha="" intent_draft=""
-    [ -f "$RUN/publish.intent" ] && read -r intent_sha intent_draft < "$RUN/publish.intent"
-    if [ -n "$intent_sha" ] && [ "$intent_sha" = "$(git -C "$WORKTREE" rev-parse HEAD)" ]; then
+    # A publish whose push or PR create failed left its decision in publish.intent (open_pr): while the newest round
+    # is the one that wrote it, and HEAD and that round's graded.sha are still the sha it graded, replay it, ready or
+    # draft, with no new worker round. A moved HEAD, or any later round (a branch moved away and back), resumes as
+    # below; so does an intent with no round field, written before #529.
+    local intent_sha="" intent_round="" intent_draft=""
+    [ -f "$RUN/publish.intent" ] && read -r intent_sha intent_round intent_draft < "$RUN/publish.intent"
+    if [ -n "$intent_sha" ] && [ "$intent_round" = "$ROUND" ] \
+      && [ "$intent_sha" = "$(git -C "$WORKTREE" rev-parse HEAD)" ] \
+      && [ "$(cat "$RUN/round-$ROUND.graded.sha" 2> /dev/null)" = "$intent_sha" ]; then
       check_frozen   # freeze returns early on a resume, so re-hash here as main_loop does before each round
       GRADED_SHA=$intent_sha
       log "a publish${intent_draft:+ as a draft ($intent_draft)} at HEAD $GRADED_SHA did not finish; publishing it again with no worker round"
@@ -3264,12 +3253,6 @@ cmd_next() { # [--dry-run|--install|--frontier]
         log "refused pull of $co: not fast-forward"
       fi
     done
-    # 3b. The pull may bring a judge.md or reviewer.md the plugin cache does not hold yet. A launched run would
-    #     assign the ticket and then stop at freeze, and the frontier skips assigned issues, so every tick
-    #     would burn one more ticket; refuse on stderr with grader_file's line, as the login gate does.
-    #     Not under --dry-run: a check in a worktree whose grader edit is not installed runs it.
-    local g
-    for g in judge reviewer; do grader_file "$g" > /dev/null || return 1; done
   fi
 
   # 4. The frontier: open, ready-for-agent, unassigned issues with no open native blocker, lowest
@@ -3599,9 +3582,6 @@ precondition_lines() { # LOOP.md, Preconditions
   help=$(claude -p --help 2>&1) && grep -q -- '--json-schema' <<<"$help" \
     && echo "  PASS claude -p accepts --json-schema" \
     || echo "  FAIL claude -p lacks --json-schema; every grader call needs it"
-  for t in judge reviewer; do
-    if f=$(grader_file "$t" 2>&1); then echo "  PASS $t.md at $f"; else echo "  FAIL $f"; fi
-  done
   # Every worker skills.txt line must resolve to a SKILL.md, or lint refuses a ticket naming it and
   # build_worker_prompt stops (skill_file); a bare name and a plugin:name both, the latter at its installPath.
   while IFS= read -r t; do
