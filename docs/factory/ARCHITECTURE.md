@@ -40,7 +40,7 @@ flowchart LR
 | 1 Design (Track C) | design issue | when the brief is `Mode: figure-out`, `surprise-me` in panel mode and a research pass against primary sources first; then Fable plan mode with Opus Explore subagents; `/plan-review` blind on Fable, whose elegance gate writes two competing designs before a verdict; the design session writes ADRs for the decisions Samyak makes; lean-critic on the design issue | reacts to the options, answers the design session's questions, approves | design issue body (brief, destination, deliverables, constraints, proof, no implementation detail), ADRs in `docs/adr/` | review verdict recorded, ADRs committed |
 | 2 Tickets | design issue, or the one Track B ticket | Fable breaks the design into tickets and publishes them (`CONTRACT.md`, Publishing a breakdown); issue bodies use the ticket contract; `bin/factory lint` (F2); `plan-reviewer` by hand and lean-critic once over the breakdown | approves the breakdown | GitHub issues, native blocking edges, label `ready-for-agent` | lint exit 0, `plan-reviewer` pass |
 | 3 Loop | one ticket | `bin/factory run <issue>` on the runner (F1): round 0, then worker rounds on `claude-opus-5-5` at the ticket's effort (default high) or `codex exec` | nothing; may run `bin/factory stop`, or edit the issue body and relaunch | branch, commits, a run directory | checks exit 0, clean tree, do-not-touch clean |
-| 4 Grade | diff and evidence | Opus 5.5 high judge and reviewer, read-only, fresh, frozen per run; Codex review stage when the ticket sets it | nothing | JSON verdicts, PR with metrics and merge checklist | judge pass and no blocking finding, or the grader-round cap with a backlog, or a judge pass with a review finding past its one block or from a reviewer or Codex review with no parseable reply (a draft PR), or a judge with no parseable reply after three calls (a draft PR) |
+| 4 Grade | diff and evidence | Opus 5.5 judge at high and reviewer at xhigh, read-only, fresh, frozen per run; Codex review stage when the ticket sets it | nothing | JSON verdicts, PR with metrics and merge checklist | judge pass and no blocking finding, or the grader-round cap with a backlog, or a judge pass with a review finding past its one block or from a reviewer or Codex review with no parseable reply (a draft PR), or a judge with no parseable reply after three calls (a draft PR) |
 | 5 Merge | PR | Samyak with `bin/runner 'bin/factory status'`; `claude ultrareview --json` optional on high risk | ticks the merge checklist, merges | merged main; the PR's `Closes #N` closes the ticket | human merge, never the loop |
 | 6 Learn | `bin/factory status` | the manager session (rule in `LOOP.md`) | nothing | a `CLAUDE.md` line, a lint rule, or nothing | none |
 
@@ -77,9 +77,9 @@ Scope beyond the ticket goal outside this list is a judge finding, not a stall.
 
 ## Models and roles
 
-- The loop's model and effort defaults live in `bin/factory`; `bin/factory graders-check`, a `bin/check` step, fails when `judge.md` or `reviewer.md` front matter disagrees with `GRADER_MODEL` or `GRADER_EFFORT`.
+- The loop's model and effort defaults live in `bin/factory`; `bin/factory graders-check`, a `bin/check` step, fails when `judge.md` or `reviewer.md` front matter disagrees with `GRADER_MODEL` or its own role's effort (`GRADER_EFFORT` for the judge, `REVIEWER_EFFORT` for the reviewer).
 - Every loop role is `claude-opus-5-5` (Samyak, 2026-09-24): worker, its subagents, advisor, judge, reviewer, and eval replay.
-- Judge and reviewer are fresh Opus 5.5 at high in the loop (Samyak 2026-09-24, overriding the #186 eval; F38 measures what they miss); the lean-critic, picked by #186, is Opus 5.5 at high, by hand on the PR.
+- Judge and reviewer are fresh Opus 5.5 in the loop (Samyak 2026-09-24, overriding the #186 eval; F38 measures what they miss): the judge at high, the reviewer at xhigh (Samyak 2026-10-30: review roles run at xhigh, and in the factory that is the reviewer only, which found 12 confirmed Medium-or-worse findings in the 30 Oct audit to the judge's none); the lean-critic, picked by #186, is Opus 5.5 at high, by hand on the PR.
 - The plan-reviewer is Fable 5.1 at high, by hand outside the loop (F0 sets its frontmatter).
 - The loop worker, with Explore subagents on the same model, runs at the effort its ticket sets: high by default, xhigh when the ticket needs deeper reasoning (Samyak 2026-09-24); a `size: large` ticket's builders and integrator run at xhigh (`factory-round.js`). Replaced claude-opus-4-8[1m] on 2026-09-22.
 - The loop worker carries an advisor (`--advisor claude-opus-5-5`, F11 2026-09-10): the worker decides when to consult it; `FACTORY_WORKER_ADVISOR=` (explicit empty) turns it off; each worker ledger line records `advisor_calls` and `advisor_usd` (from the session transcript: a token-weighted estimate while the advisor shares the worker's model, null when the transcript is missing). Kept while the ledger shows lower usd per ticket or fewer and less severe grader findings.
@@ -105,7 +105,7 @@ Preconditions live in `LOOP.md`; `bin/factory status` checks them.
 ## Metrics
 
 The PR body is the metrics home: rounds, spend, wall time, first failing grader, permission denials per round, and the merge checklist.
-Expected saving over lean-v3 is the stall rounds; the per-round grader cost is unchanged.
+Expected saving over lean-v3 is the stall rounds.
 Criteria written in advance, measured over every run of the target; a file-ticket rehearsal opens no PR, so it is not a PR run:
 
 - operator actions from voice note to a running loop on Track B: at most 3 (measured as a lower bound, so it reads INCONCLUSIVE within the threshold: the run sees only the issue's events and the lint, run and stop subcommands)

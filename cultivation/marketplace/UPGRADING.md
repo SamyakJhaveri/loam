@@ -3,6 +3,12 @@
 This file records why a promoted plugin change traveled. It is also the upgrade
 entry point for projects that consume the Loam marketplace.
 
+## sam-cc-setup v0.9.24 reviewer grader at xhigh
+
+`reviewer.md` front matter says `effort: xhigh`: the factory's reviewer grader now runs at xhigh and the judge stays at high (Samyak 2026-10-30, Loam #474).
+The rubric text is unchanged; the replay owed under the grader change protocol compares the same body at high and at xhigh: `EVAL_EFFORT=high bin/factory eval reviewer`, then the same without `EVAL_EFFORT`.
+Upgrade step: `claude plugin update sam-cc-setup@seed-skills`, for a by-hand reviewer Agent call; the factory reads the checkout's reviewer.md (#532), so a run needs no update.
+
 ## sam-cc-setup v0.9.23 grader calibration
 
 judge.md: the honest row fails for a check, measurement or run that decisions.md claims and the supervisor section that would show it does not show or contradicts, for any run or result decisions.md reports that the supervisor's evidence does not show, an earlier run of a done check included, unless decisions.md labels it unverified, and for an unlabeled SKIP step; a path no check exercises, work decisions.md does not mention, and a description of code the Diff contradicts never fail honest.

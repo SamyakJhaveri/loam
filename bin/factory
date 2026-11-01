@@ -10,7 +10,7 @@
 #   bin/factory merge <pr> <sha>    merges the PR only when sha is its head and every check reported there passed.
 #   bin/factory next [--install]    the F9 frontier timer's step: launch the next unblocked ready-for-agent ticket.
 #   bin/factory next --frontier     prints every issue next would launch, one #N per line in launch order; changes no run.
-#   bin/factory graders-check       fails when judge.md or reviewer.md drifts from GRADER_MODEL and GRADER_EFFORT; warns STALE.
+#   bin/factory graders-check       fails when judge.md or reviewer.md drifts from GRADER_MODEL and its role's effort; warns STALE.
 #   bin/factory skills              lists each installed pstack skill's lines that name a ~/ path or ask the user.
 #   -C <repo>, before the subcommand or right after it, points lint, run, status, stop, merge, and next at another repository (F8).
 # Lint never executes a check; it reads the body and shells out only to `bash -n`, `gh`, and python3 for the hidden-text rule.
@@ -788,7 +788,7 @@ run_eval_cases() { # grader work
       # in the eval_tree export, not a ticket worktree, and each call gets the remaining headroom, so
       # EVAL_BUDGET_USD caps the sum over cases. role-settings.json is read beside the schema, for the
       # reason schema_for gives.
-      out=$(cat "$rubric" "$dir/prompt.md" | ( cd "$tree" && claude -p --model "$EVAL_MODEL" --effort "${EVAL_EFFORT:-$GRADER_EFFORT}" \
+      out=$(cat "$rubric" "$dir/prompt.md" | ( cd "$tree" && claude -p --model "$EVAL_MODEL" --effort "${EVAL_EFFORT:-$(grader_effort "$grader")}" \
         --tools Read,Grep,Glob --strict-mcp-config --disable-slash-commands --no-session-persistence \
         --json-schema "$schema" \
         --max-budget-usd "$(awk -v b="$budget" -v s="$spent" 'BEGIN {printf "%.4f", b - s}')" \
@@ -993,6 +993,12 @@ CODEX_MODEL="${FACTORY_CODEX_MODEL:-gpt-6.1-sol}"   # every factory Codex call p
 WORKER_ADVISOR="${FACTORY_WORKER_ADVISOR-claude-opus-5-5}"   # mid-round advisor on the worker call (ARCHITECTURE.md, Models and roles, 2026-09-24); FACTORY_WORKER_ADVISOR= (explicit empty) disables the flag. No colon: :- could never disable. The bare name is never read.
 WORKER_EFFORT=high         # the ticket's `effort:` line overrides (ARCHITECTURE.md, Models and roles)
 GRADER_EFFORT=high
+# The judge runs at GRADER_EFFORT; the reviewer, which finds the most of the three graders, runs at
+# REVIEWER_EFFORT (ARCHITECTURE.md, Models and roles, 2026-10-30).
+REVIEWER_EFFORT=xhigh
+grader_effort() { # role
+  case "$1" in reviewer) echo "$REVIEWER_EFFORT" ;; *) echo "$GRADER_EFFORT" ;; esac
+}
 GRADER_FAIL_ROUNDS=2      # grader-fail rounds allowed once the checks pass (LOOP.md, Grader-round cap)
 FENCE='~~~~~~~~~~~~ evidence'   # fixed marker; never a per-run string (#38)
 
@@ -2457,17 +2463,18 @@ grader_reply() { # raw claude -p envelope -> the grader's reply text, fences str
 }
 
 call_json() { # round stem role prompt_file schema_file
-  local round="$1" stem="$2" role="$3" pf="$4" schema="$5" final="$RUN/round-$1.$2.json" out res attempt=0
+  local round="$1" stem="$2" role="$3" pf="$4" schema="$5" final="$RUN/round-$1.$2.json" out res attempt=0 effort
+  effort=$(grader_effort "$role")
   while [ "$attempt" -lt 3 ]; do
     attempt=$((attempt + 1))
     out="$RUN/round-$round.$stem.raw.$attempt.json"
     assert_caps
     stop_requested && finish stopped "FACTORY_STOP before the $role call"
-    log "$role call (attempt $attempt): model=$GRADER_MODEL effort=$GRADER_EFFORT"
+    log "$role call (attempt $attempt): model=$GRADER_MODEL effort=$effort"
     # --tools Read,Grep,Glob is what makes a grader read-only (#40); with no MCP schemas and no
     # skills listing its prefix is 9.9k tokens instead of 27k (probed 2026-09-09). --setting-sources
     # user is what keeps the worktree's own hooks out, so a grader can still read the tree it grades.
-    call_start "$WORKTREE" ${TIMEOUT_G[@]+"${TIMEOUT_G[@]}"} claude -p --model "$GRADER_MODEL" --effort "$GRADER_EFFORT" \
+    call_start "$WORKTREE" ${TIMEOUT_G[@]+"${TIMEOUT_G[@]}"} claude -p --model "$GRADER_MODEL" --effort "$effort" \
         --tools Read,Grep,Glob --strict-mcp-config --disable-slash-commands --no-session-persistence \
         --json-schema "$(cat "$schema")" \
         --max-budget-usd "$GRADER_BUDGET_USD" --setting-sources user --settings "$RUN/frozen/role-settings.json" \
@@ -3722,9 +3729,9 @@ cmd_skills() {
 }
 
 # ---- graders-check ----
-# The loop strips the grader files' front matter and passes GRADER_MODEL and GRADER_EFFORT itself; a
-# by-hand Agent call reads the front matter instead. This fails when judge.md or reviewer.md names another
-# model or effort. The directory defaults to the checkout's plugin copy, relative to the working directory
+# The loop strips the grader files' front matter and passes GRADER_MODEL and the role's effort (grader_effort)
+# itself; a by-hand Agent call reads the front matter instead. This fails when judge.md or reviewer.md names
+# another model or another effort than its own role's. The directory defaults to the checkout's plugin copy, relative to the working directory
 # like EVALS_DIR, so bin/check compares one tree's agent files with the same tree's bin/factory.
 # It also warns STALE, without failing, when <evals-dir>/scores.jsonl has no fresh two-way line for the
 # grader file's sha256: an edit since the last replay, a replay over 30 days old (the served model drifts
@@ -3742,8 +3749,8 @@ cmd_graders_check() { # [--agents-dir D] [--evals-dir D]
     shift 2
   done
   # The defaults, not a FACTORY_GRADER_MODEL override in the caller's environment: re-source this file without it.
-  want=$(env -u FACTORY_GRADER_MODEL FACTORY_SOURCED=1 "$BASH" -c '. "$0"; printf "%s/%s\n" "$GRADER_MODEL" "$GRADER_EFFORT"' "${BASH_SOURCE[0]}")
   for g in judge reviewer; do
+    want=$(env -u FACTORY_GRADER_MODEL FACTORY_SOURCED=1 "$BASH" -c '. "$0"; printf "%s/%s\n" "$GRADER_MODEL" "$(grader_effort "$1")"' "${BASH_SOURCE[0]}" "$g")
     f="$dir/$g.md"
     [ -f "$f" ] || { echo "DRIFT $g: no $f"; rc=1; continue; }
     # model: and effort: from the first front-matter block only.
