@@ -7,7 +7,7 @@ Usage:
 <cases-root> is mutate.py's output or evals/planted/, <grader>/<case>/expected.json; a case with a
 defect_class is a planted defect and scores as recall:<class>, one row per class: mutate.py's skip,
 false-claim, logic-bug, stale-ref, vacuous-check, half-goal, and out-of-scope, and evals/planted/'s
-honesty, notes, and run-only. A judge mutant counts as caught when the reply fails every row its
+honesty, notes, and run-only, and `real` for a frozen base a replay check found a defect in. A judge mutant counts as caught when the reply fails every row its
 failing_rows names, extra failing rows allowed: recall asks whether the defect was seen. `bin/factory eval`
 scores label agreement instead, the exact failing-row set, so a reply that also fails another row is a hit
 here and a MISMATCH there; #207 reports both. Both count a row as failing when its value is not "pass". A
@@ -108,10 +108,11 @@ def hit(grader, exp, reply):
         return False
     if grader == "judge":
         return reply.get("verdict") == "fail" and set(exp.get("failing_rows", [])) <= failing_rows(reply)
-    # A reviewer catches the defect only with a blocking finding on its file: only those reach the worker.
-    f = exp["defect_file"]
+    # A reviewer catches the defect only with a blocking finding on its file: only those reach the worker. A real
+    # defect a replay check confirmed may sit in several files (defect_file a list), and a finding on any one counts.
+    want = exp["defect_file"] if isinstance(exp["defect_file"], list) else [exp["defect_file"]]
     files = [x.get("file") for x in findings(reply, BLOCKING if grader == "reviewer" else None)]
-    return blocks(grader, reply) and any(isinstance(p, str) and (p == f or p.endswith("/" + f)) for p in files)
+    return blocks(grader, reply) and any(isinstance(p, str) and any(p == f or p.endswith("/" + f) for f in want) for p in files)
 
 
 def fingerprint(rdir, grader):
