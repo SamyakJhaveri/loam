@@ -294,7 +294,7 @@ Config lives in `~/.config/loam/alerts/`, one secret per file, mode 600: `slack-
 On jhaveris, `slack-distbench` may be a link to `~/.distbench/slack-webhook`, the file DistBench's own scripts read.
 
 healthchecks: one check per host.
-Set the check once in the healthchecks UI: period 10 minutes (the timer's interval), grace 20 minutes, so it goes red 30 minutes after the last beat; the grace covers the slowest ok tick: a tick stops reading editors once it has run 600 s and ends `nothing to launch` with an `out of time` line, so it lasts about 600 s plus one call (`NET_TIMEOUT_SEC`, 120 s), unless the reads before the frontier loop (the login probe, a PR-state read per `pr-opened` run, the fetch and the two frontier queries) run longer on their own; the Slack integration on (or a red check reaches no one), and manual resume off (or a beat cannot resume a paused check).
+Set the check once in the healthchecks UI: period 10 minutes (the timer's interval), grace 20 minutes, so it goes red 30 minutes after the last beat; an ok tick usually takes seconds, but one with many slow GitHub reads (a PR-state read per `pr-opened` run, an editor read per candidate passed over, each up to `NET_TIMEOUT_SEC`) can outrun the 30-minute window and raise a false alarm, a noisy failure tracked as a follow-up; the Slack integration on (or a red check reaches no one), and manual resume off (or a beat cannot resume a paused check).
 The `next` timer is what beats it: every real tick (no flag) that exits 0, `launched`, `nothing to launch` or `paused`, sends one beat, which also resumes a paused check.
 A tick that refuses (exit 1: login, version, toolchain, frontier or editor read, launch, or a counted run suspended whole, `run_stopped`, whatever the free slots) sends nothing, so refusals that outlast the period and grace turn the check red, and so do a stopped timer and a dead host; healthchecks then posts to Slack.
 A run neither beats nor pauses the check: a killed run is reported by `holds_slot`'s alert (above), and a pause at a run's end would outlive a timer that then refused every tick, so the check could never go red.
@@ -315,6 +315,7 @@ Each line goes to Samyak in plain words in that tick, and a line whose `slack` i
 The watch may make only these moves on its own, and reports each one with the line that caused it (owner ruling 2026-10-27):
 - re-arm a dead Monitor or rerun its own check;
 - stop a factory run that the log shows looping or spending with no progress: `bin/factory [-C <repo>] stop <issue>`, which halts the run before its next call;
+- (removed by owner ruling 2026-11-01: the 27 Oct move that let a watch pause the host's healthchecks check, because `next` ticks now beat it and a pause followed by refusing ticks hid a stall.)
 Everything else is Samyak's: merging or pushing, launching, relaunching or rerunning a ticket, editing a ticket, deleting a run directory or worktree, starting paid compute, and any change to results.
 
 The overnight driver, which reviews, fixes and merges Loam's factory PRs on jhaveris, lives in `bin/overnight/`: `driver.sh` starts one headless call per PR with `settings.json` and `protocol.md` from that directory, and `watchdog.sh`, run by cron, restarts a dead driver.
