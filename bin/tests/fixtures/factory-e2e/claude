@@ -1,0 +1,192 @@
+#!/usr/bin/env python3
+"""claude for bin/tests/test_factory_e2e.py: the login and version probes, the worker call and the grader calls.
+
+`auth status` prints a logged-in reply and `--version` a version bin/factory accepts. A `-p` call reads its prompt on
+stdin. A worker call (--output-format stream-json) acts on the `e2e-scenario: <word>` line the test writes into each
+ticket body, in its cwd, the ticket worktree:
+  pass       commits done.txt, which the ticket's check wants, and writes decisions.md and mechanism.md
+  fail       commits a different attempt-<n>.txt each round, so the check keeps failing
+  no-result  prints only an init event and exits 1, as a call that crashed or was killed does
+  parallel   writes $E2E_STATE/started-<issue>, waits for $E2E_STATE/release, then does what pass does
+and a worker that ends its turn prints a stream ending in a result event with total_cost_usd. A grader call
+(--json-schema) prints an envelope whose result is a verdict that satisfies the schema it was given: a judge schema
+gets every row it requires passed and no fixes, a reviewer schema no findings. Each call appends its argv, cwd and kind
+to $E2E_STATE/claude.log. A subcommand or flag this file does not know exits 2 and is appended to
+$E2E_STATE/unknown.log, which the test reads.
+"""
+
+import json
+import os
+import re
+import subprocess
+import sys
+import time
+import uuid
+
+STATE = os.environ["E2E_STATE"]
+VERSION = "2.1.300 (Claude Code)"
+# flag -> takes a value; every flag bin/factory's worker and grader calls pass.
+FLAGS = {"-p": False, "--model": True, "--effort": True, "--advisor": True, "--permission-mode": True,
+         "--strict-mcp-config": False, "--setting-sources": True, "--settings": True, "--max-turns": True,
+         "--append-system-prompt": True, "--max-budget-usd": True, "--output-format": True, "--verbose": False,
+         "--include-hook-events": False, "--tools": True, "--disable-slash-commands": False,
+         "--no-session-persistence": False, "--json-schema": True}
+RELEASE_WAIT_SEC = 120
+
+
+class Unknown(Exception):
+    """A call this stand-in does not know."""
+
+
+def append(name: str, record: dict) -> None:
+    with open(os.path.join(STATE, name), "a", encoding="utf-8") as f:
+        f.write(json.dumps(record) + "\n")
+
+
+def parse(args: list[str]) -> dict:
+    opts: dict = {}
+    i = 0
+    while i < len(args):
+        a = args[i]
+        if a not in FLAGS:
+            raise Unknown(f"flag or argument {a!r}")
+        if a in opts:
+            raise Unknown(f"flag {a} given twice")
+        if FLAGS[a]:
+            i += 1
+            if i == len(args):
+                raise Unknown(f"flag {a} with no value")
+            opts[a] = args[i]
+        else:
+            opts[a] = True
+        i += 1
+    return opts
+
+
+def git(*args: str) -> str:
+    return subprocess.run(["git", *args], capture_output=True, text=True, check=True).stdout.strip()
+
+
+def commit(path: str, text: str, subject: str) -> None:
+    with open(path, "w", encoding="utf-8") as f:
+        f.write(text)
+    git("add", path)
+    git("commit", "-q", "-m", subject)
+
+
+def finish_turn(prompt: str) -> None:
+    # The worker's own account opens the PR body, beside its decisions.md (_common.md names both).
+    m = re.search(r"(/\S+)/decisions\.md", prompt)
+    if not m:
+        raise Unknown("a worker prompt that names no decisions.md")
+    with open(f"{m.group(1)}/decisions.md", "a", encoding="utf-8") as f:
+        f.write("Wrote done.txt, which the done-file check reads.\n")
+    with open(f"{m.group(1)}/mechanism.md", "w", encoding="utf-8") as f:
+        f.write("The e2e stand-in worker writes done.txt, so the done-file check passes.\n")
+    commit("done.txt", "done\n", "e2e: write done.txt")
+
+
+def worker(opts: dict, prompt: str, sid: str) -> int:
+    if opts["--output-format"] != "stream-json" or not opts.get("--verbose"):
+        raise Unknown("a worker call without --output-format stream-json --verbose, which -p requires")
+    m = re.search(r"^e2e-scenario: (\S+)$", prompt, re.M)
+    if not m:
+        raise Unknown("a worker prompt with no e2e-scenario line")
+    scenario, model = m.group(1), opts["--model"]
+    print(json.dumps({"type": "system", "subtype": "init", "session_id": sid, "model": model, "cwd": os.getcwd()}),
+          flush=True)
+    if scenario == "no-result":
+        return 1
+    cost = 0.25
+    if scenario == "fail":
+        n = len([f for f in os.listdir(".") if re.fullmatch(r"attempt-[0-9]+\.txt", f)]) + 1
+        commit(f"attempt-{n}.txt", f"attempt {n}\n", f"e2e: attempt {n}")
+    elif scenario in ("pass", "parallel"):
+        if scenario == "parallel":
+            issue = git("rev-parse", "--abbrev-ref", "HEAD").rpartition("/")[2]
+            open(os.path.join(STATE, f"started-{issue}"), "w").close()
+            deadline = time.monotonic() + RELEASE_WAIT_SEC
+            while not os.path.exists(os.path.join(STATE, "release")):
+                if time.monotonic() > deadline:
+                    return 1
+                time.sleep(0.1)
+        finish_turn(prompt)
+    else:
+        raise Unknown(f"scenario {scenario!r}")
+    print(json.dumps({"type": "assistant", "session_id": sid,
+                      "message": {"id": f"msg_{sid}", "model": model, "role": "assistant",
+                                  "content": [{"type": "text", "text": "Done.\n\nCLAIM: done"}]}}), flush=True)
+    print(json.dumps({"type": "result", "subtype": "success", "is_error": False, "duration_ms": 1200, "num_turns": 3,
+                      "result": "Done.\n\nCLAIM: done", "session_id": sid, "total_cost_usd": cost,
+                      "usage": {"input_tokens": 10, "output_tokens": 20}, "permission_denials": [],
+                      "modelUsage": {model: {"costUSD": cost, "inputTokens": 10, "outputTokens": 20}}}), flush=True)
+    return 0
+
+
+def satisfies(doc, schema: dict) -> bool:
+    """The schema keywords judge.schema.json and reviewer.schema.json use: type, enum, properties, required, items."""
+    kinds = {"object": dict, "array": list, "string": str, "integer": int}
+    if "type" in schema and not isinstance(doc, kinds[schema["type"]]):
+        return False
+    if "enum" in schema and doc not in schema["enum"]:
+        return False
+    if isinstance(doc, dict):
+        if any(k not in doc for k in schema.get("required", [])):
+            return False
+        if any(not satisfies(doc[k], s) for k, s in schema.get("properties", {}).items() if k in doc):
+            return False
+    if isinstance(doc, list) and any(not satisfies(x, schema.get("items", {})) for x in doc):
+        return False
+    return True
+
+
+def grader(opts: dict, sid: str) -> int:
+    if opts["--output-format"] != "json":
+        raise Unknown("a grader call without --output-format json")
+    schema = json.loads(opts["--json-schema"])
+    props = schema.get("properties", {})
+    if "rows" in props:
+        verdict = {"rows": {r: "pass" for r in props["rows"].get("required", [])}, "evidence": {}, "fixes": [],
+                   "backlog": [], "verdict": "pass"}
+    elif "findings" in props:
+        verdict = {"findings": [], "unverified": [], "verdict": "merge"}
+    else:
+        raise Unknown(f"a grader schema with properties {sorted(props)}")
+    if not satisfies(verdict, schema):
+        raise Unknown(f"a grader schema this stand-in's verdict does not satisfy: {opts['--json-schema']}")
+    model, cost = opts["--model"], 0.05
+    print(json.dumps({"type": "result", "subtype": "success", "is_error": False, "duration_ms": 800, "num_turns": 2,
+                      "result": json.dumps(verdict), "structured_output": verdict, "session_id": sid,
+                      "total_cost_usd": cost, "usage": {"input_tokens": 10, "output_tokens": 20},
+                      "permission_denials": [], "modelUsage": {model: {"costUSD": cost}}}))
+    return 0
+
+
+def main(argv: list[str]) -> int:
+    try:
+        if argv == ["--version"]:
+            append("claude.log", {"argv": argv, "kind": "version"})
+            print(VERSION)
+            return 0
+        if argv == ["auth", "status"]:
+            append("claude.log", {"argv": argv, "kind": "auth"})
+            print(json.dumps({"loggedIn": True, "authMethod": "claude.ai"}))
+            return 0
+        if argv[:1] != ["-p"]:
+            raise Unknown(f"subcommand {argv[:2]}")
+        opts = parse(argv)
+        if ("--json-schema" in opts) == (opts.get("--output-format") == "stream-json"):
+            raise Unknown("a -p call that is neither a worker call (stream-json) nor a grader call (--json-schema)")
+        kind = "grader" if "--json-schema" in opts else "worker"
+        append("claude.log", {"argv": argv, "kind": kind, "cwd": os.getcwd()})
+        prompt = sys.stdin.read()
+        sid = f"e2e-{uuid.uuid4()}"
+        return grader(opts, sid) if kind == "grader" else worker(opts, prompt, sid)
+    except Unknown as why:
+        append("unknown.log", {"tool": "claude", "argv": argv, "why": str(why)})
+        print(f"claude stand-in: unknown {why}", file=sys.stderr)
+        return 2
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv[1:]))
