@@ -2897,10 +2897,12 @@ cmd_run() {
       { [ -s "$g.fixes" ] || [ "$(jq -r .verdict "$g.judge.json" 2> /dev/null)" != pass ]; } && GRADER_FAILS=$((GRADER_FAILS + 1))
     done
     # A publish whose push or PR create failed left its decision in publish.intent (open_pr): while HEAD is still the
-    # sha it graded, replay it, ready or draft, with no new worker round. A moved HEAD resumes as below.
+    # sha it graded and the newest round graded that sha, replay it, ready or draft, with no new worker round. A moved
+    # HEAD, or a later round that graded another sha (a branch moved away and back), resumes as below.
     local intent_sha="" intent_draft=""
     [ -f "$RUN/publish.intent" ] && read -r intent_sha intent_draft < "$RUN/publish.intent"
-    if [ -n "$intent_sha" ] && [ "$intent_sha" = "$(git -C "$WORKTREE" rev-parse HEAD)" ]; then
+    if [ -n "$intent_sha" ] && [ "$intent_sha" = "$(git -C "$WORKTREE" rev-parse HEAD)" ] \
+      && [ "$(cat "$RUN/round-$ROUND.graded.sha" 2> /dev/null)" = "$intent_sha" ]; then
       check_frozen   # freeze returns early on a resume, so re-hash here as main_loop does before each round
       GRADED_SHA=$intent_sha
       log "a publish${intent_draft:+ as a draft ($intent_draft)} at HEAD $GRADED_SHA did not finish; publishing it again with no worker round"
