@@ -6,8 +6,8 @@ reviewer's finding drafts the PR without spending its one block, and the judge's
 
 `bin/factory` is sourced (FACTORY_SOURCED=1) and two rounds run the loop's `graders "$ROUND" && open_pr` line with the
 real graders, call_json, run_codex_review, open_pr, and file_backlog. Fake `claude`, `codex`, and `gh` scripts sit
-on PATH: claude answers with the reply named in its prompt, codex logs its -o file and writes the reply for its call
-number (or nothing), and gh records its arguments and body. The worktree's origin is a local bare repository. No network.
+on PATH: claude answers with the reply named in its prompt, codex logs its -o file, saves its prompt, and writes the
+reply for its call number (or nothing), and gh records its arguments and body. The worktree's origin is a local bare repository. No network.
 """
 
 from __future__ import annotations
@@ -15,6 +15,8 @@ from __future__ import annotations
 import json
 import os
 import pathlib
+import re
+import shutil
 import subprocess
 import tempfile
 import unittest
@@ -22,6 +24,9 @@ import unittest
 ROOT = pathlib.Path(__file__).resolve().parents[2]
 INHERITED = ("FACTORY_ROOT", "FACTORY_GH", "LOAM_FACTORY_TOOLCHAIN", "LOAM_FACTORY_COPIER", "REPO", "RUN", "LOG")
 TICKET = "## Goal and why\n\nMake the widget work.\n\n## Merge checklist\n\n- read the diff\n"
+# The frozen ticket differs from TICKET and BODY, and keeps a literal <base> that the Codex prompt must not fill.
+FROZEN_TICKET = "# Widget works\n\nKeep the literal <base> in this line.\n"
+FENCE = re.search(r"^FENCE='([^']*)'", (ROOT / "bin/factory").read_text(), re.M).group(1)
 PR_URL = "https://github.com/acme/widget/pull/9"
 
 FAKE_CLAUDE = """#!/usr/bin/env python3
@@ -33,6 +38,7 @@ print(json.dumps({"type": "result", "subtype": "success", "is_error": False, "to
 FAKE_CODEX = """#!/usr/bin/env python3
 import pathlib, sys
 out = pathlib.Path(sys.argv[sys.argv.index("-o") + 1])
+(out.parent / "codex-prompt.txt").write_text(sys.argv[-1])
 calls = out.parent / "codex-calls"
 with calls.open("a") as f:
     f.write(out.name + "\\n")
@@ -88,14 +94,14 @@ class CappedReviewTests(unittest.TestCase):
         git("init", "-q", "-b", "main", cwd=self.wt)
         git("remote", "add", "origin", str(origin), cwd=self.wt)
         git("commit", "-q", "--allow-empty", "-m", "base", cwd=self.wt)
-        base = git("rev-parse", "HEAD", cwd=self.wt)
+        self.base = base = git("rev-parse", "HEAD", cwd=self.wt)
         git("checkout", "-q", "-b", "factory/7", cwd=self.wt)
         git("commit", "-q", "--allow-empty", "-m", "ticket 7: the fix", cwd=self.wt)
         self.run_dir = self.top / "run"
         frozen = self.run_dir / "frozen"
         frozen.mkdir(parents=True)
-        (frozen / "issue.md").write_text("# Widget works\n")
-        (frozen / "codex-review.prompt.md").write_text("Review the diff against <base>.\n")
+        (frozen / "issue.md").write_text(FROZEN_TICKET)
+        shutil.copy(ROOT / "bin/factory.d/codex-review.prompt.md", frozen / "codex-review.prompt.md")
         for name in ("judge.schema.json", "reviewer.schema.json", "review-output.schema.json", "role-settings.json"):
             (frozen / name).write_text("{}")
         (self.run_dir / "base.sha").write_text(base + "\n")
@@ -315,6 +321,20 @@ class CappedReviewTests(unittest.TestCase):
                 self.assertIn("but 1 blocking", self.pr_create(calls)["body"])
                 args = self.issues(calls)[0]["args"]
                 self.assertEqual(args[args.index("--title") + 1], finding[:80])
+
+    def test_the_codex_prompt_is_the_brief_with_base_filled_then_the_frozen_ticket(self) -> None:
+        self.new_run()
+        self.run_loop([CLEAN_REVIEW], codex=[json.dumps(CLEAN_CODEX)])
+        brief = (ROOT / "bin/factory.d/codex-review.prompt.md").read_text()
+        # The brief names the base sha twice: the commit range and the pre-existing calibration rule.
+        self.assertEqual(brief.count("<base>"), 2)
+        for sentence in ("a concrete failing scenario",
+                         "Out of scope never lowers the severity of a regression this change introduces",
+                         f"the same failure on the base commit {self.base};"):
+            self.assertIn(sentence, brief.replace("<base>", self.base))
+        # Only the brief is filled; the ticket, not BODY, follows between fence lines with its <base> as written.
+        expected = brief.replace("<base>", self.base) + f"\n## Ticket\n\n{FENCE}\n{FROZEN_TICKET}\n{FENCE}"
+        self.assertEqual((self.run_dir / "codex-prompt.txt").read_text(), expected)
 
     def test_clean_reviewer_and_clean_codex_open_a_ready_pr_and_file_nothing(self) -> None:
         for name, codex in (("reviewer only", None), ("with codex", [json.dumps(CLEAN_CODEX)] * 2)):
