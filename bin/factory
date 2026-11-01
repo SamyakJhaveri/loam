@@ -9,6 +9,7 @@
 #   bin/factory stop <issue>        writes FACTORY_STOP into the run dir; the run halts before its next call.
 #   bin/factory merge <pr> <sha>    merges the PR only when sha is its head and every check reported there passed.
 #   bin/factory next [--install]    the F9 frontier timer's step: launch the next unblocked ready-for-agent ticket.
+#   bin/factory next --frontier     prints every issue next would launch, one #N per line in launch order; changes no run.
 #   bin/factory graders-check       fails when judge.md or reviewer.md drifts from GRADER_MODEL and GRADER_EFFORT; warns STALE.
 #   bin/factory skills              lists each installed pstack skill's lines that name a ~/ path or ask the user.
 #   -C <repo>, before the subcommand or right after it, points lint, run, status, stop, merge, and next at another repository (F8).
@@ -3152,16 +3153,21 @@ daily_spent_at_runner_caps() { # -> 0 when the shared daily ledger has no room f
 
 # The F9 frontier timer's one step: launch the next unblocked ready-for-agent ticket, or say why not.
 # --dry-run reports without launching or pulling, so a check can run it from inside a worktree.
+# --frontier is --dry-run that ignores FACTORY_STOP and the slot count and prints, one #N per line in launch order,
+# every candidate it would pick rather than the first; it exits 0 after the loop, before the daily-budget wait,
+# with no line when none would launch.
 # --install writes the ten-minute runner timer from bin/factory.d/next.crontab.
-cmd_next() { # [--dry-run|--install]
-  local dry=0 do_install=0 a
+cmd_next() { # [--dry-run|--install|--frontier]
+  local dry=0 frontier=0 do_install=0 a
   for a in "$@"; do
     case "$a" in
       --dry-run) dry=1 ;;
+      --frontier) dry=1; frontier=1 ;;
       --install) do_install=1 ;;
       *)         usage next ;;
     esac
   done
+  [ "$do_install" = 1 ] && [ "$dry" = 1 ] && usage next   # --install writes the crontab, so a read-only flag cannot ride along
 
   if [ "$do_install" = 1 ]; then
     local tmpl="$ROOT/bin/factory.d/next.crontab"
@@ -3180,8 +3186,8 @@ cmd_next() { # [--dry-run|--install]
     return 0
   fi
 
-  # 1. FACTORY_STOP at the runs root pauses the timer.
-  if [ -f "$RUNS_ROOT/FACTORY_STOP" ]; then
+  # 1. FACTORY_STOP at the runs root pauses the timer; --frontier lists what would launch regardless.
+  if [ "$frontier" = 0 ] && [ -f "$RUNS_ROOT/FACTORY_STOP" ]; then
     echo paused
     return 0
   fi
@@ -3213,6 +3219,7 @@ cmd_next() { # [--dry-run|--install]
   #    so until then the PR awaits merge and the next ticket waits (LOOP.md: after each merge).
   #    FACTORY_MAX_PARALLEL bounds the count, as it does in cmd_run through apply_caps; default 1.
   #    --dry-run asks with peek, so a run holds_slot would reap counts free and is not reaped or alerted on.
+  #    --frontier counts the same way but never stops here, since it lists the frontier whatever the slots hold.
   local d st n=0 max="${FACTORY_MAX_PARALLEL:-$MAX_PARALLEL}" peek=
   [ "$dry" = 1 ] && peek=peek
   for d in "$RUNS_ROOT"/*/*/; do
@@ -3224,7 +3231,7 @@ cmd_next() { # [--dry-run|--install]
     holds_slot "$d" "$peek" || continue
     n=$((n + 1))
   done
-  if [ "$n" -ge "$max" ]; then
+  if [ "$frontier" = 0 ] && [ "$n" -ge "$max" ]; then
     echo "nothing to launch"
     return 0
   fi
@@ -3308,6 +3315,7 @@ cmd_next() { # [--dry-run|--install]
   # editor gh could not read, or a null editor with a lastEditedAt (an account GitHub no longer names; jq names it
   # "(unnamed)", which no login can be). Once a candidate is picked, later ones skip the editor call, so a stalled
   # GraphQL costs a tick one timeout, not one per candidate; they still get the author and lint lines.
+  # --frontier never sets pick but prints each candidate that passes, so every candidate gets the editor call.
   # </dev/null keeps gh off the candidate list this loop reads on stdin. This check only
   # picks; load_ticket checks the owner again on the body the run freezes.
   local pick="" st_last lint_err lint_line author editor run
@@ -3373,6 +3381,8 @@ cmd_next() { # [--dry-run|--install]
           lint_line=$(grep -m1 "^LINT #$num: " <<<"$lint_err") || lint_line=${lint_err%%$'\n'*}
           lint_err=${lint_line#"LINT #$num: "}
           echo "lint failed #$num: $lint_err; edit the body or remove ready-for-agent" >&2
+        elif [ "$frontier" = 1 ]; then
+          echo "#$num"
         elif [ -z "$pick" ]; then
           pick="$num"
         fi ;;
@@ -3380,6 +3390,7 @@ cmd_next() { # [--dry-run|--install]
       *) echo "parked #$num: last run exited $st_last; edit the body or remove ready-for-agent" >&2 ;;
     esac
   done <<< "$( { sed 's/^/none /' <<< "$ready"; sed 's/^/mine /' <<< "$mine"; } | sort -s -n -k2,2 )"
+  [ "$frontier" = 1 ] && return 0
 
   # A run stopped at today's daily budget, with the shared ledger (RUNS_BASE, every target's) also spent at the
   # runner's own caps, means a new launch would only assign, build, run round 0 and stop at its first cap check;
@@ -3725,7 +3736,7 @@ usage() { # [cmd...] - one line per named command, all ten when none is named
       status) echo "usage: bin/factory [-C <repo>] status [--criteria]" ;;
       stop)   echo "usage: bin/factory [-C <repo>] stop <issue|ticket-stem>" ;;
       merge)  echo "usage: bin/factory [-C <repo>] merge <pr> <sha>" ;;
-      next)   echo "usage: bin/factory [-C <repo>] next [--dry-run|--install]" ;;
+      next)   echo "usage: bin/factory [-C <repo>] next [--dry-run|--install|--frontier]" ;;
       graders-check) echo "usage: bin/factory graders-check [--agents-dir D] [--evals-dir D]" ;;
       skills) echo "usage: bin/factory skills" ;;
       *)      echo "usage: bin/factory [-C <repo>] <lint|eval|eval-freeze|run|status|stop|merge|next|graders-check|skills>" ;;
