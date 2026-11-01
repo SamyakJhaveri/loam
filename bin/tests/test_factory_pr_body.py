@@ -144,9 +144,11 @@ class PrBodyChecksTests(unittest.TestCase):
     def test_every_merge_checklist_line_becomes_a_checkbox_whether_or_not_it_is_a_bullet(self) -> None:
         # CONTRACT.md accepts any non-blank checklist line; a prose step must not vanish from the body.
         (self.run_dir / "round-0.checks").write_text("FAIL widget\n")
-        ticket = TICKET + "Before merge, run the paid eval and commit its line.\n\n- tag the release\n"
+        ticket = TICKET + ("Before merge, run the paid eval and commit its line.\n\n- tag the release\n"
+                           "  - after the eval\n- [ ] push the tag\n")
         self.assertIn("## Merge checklist\n\n- [ ] read the diff\n- [ ] Before merge, run the paid eval and commit "
-                      "its line.\n- [ ] tag the release\n\n## Decisions", self.open_pr(ticket=ticket))
+                      "its line.\n- [ ] tag the release\n  - after the eval\n- [ ] push the tag\n\n## Decisions",
+                      self.open_pr(ticket=ticket))
 
 
 if __name__ == "__main__":

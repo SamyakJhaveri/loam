@@ -2545,7 +2545,7 @@ open_pr() { # [draft]: opened at the grader-round cap
     printf '## Goal\n\n%s\n\n' "$(section "Goal and why" | sed '/./,$!d')"
     printf '## Commits\n\n```\n%s\n```\n\n' "$(git -C "$WORKTREE" log --oneline "$base..HEAD")"
     [ -s "$RUN/round-$ROUND.measure" ] && { printf '## Rows measured\n\n```\n'; cat "$RUN/round-$ROUND.measure"; printf '```\n\n'; }
-    printf '## Merge checklist\n\n'; section "Merge checklist" | grep '[^[:space:]]' | sed 's/^- //; s/^/- [ ] /'; printf '\n'
+    printf '## Merge checklist\n\n'; section "Merge checklist" | grep '[^[:space:]]' | sed -E '/^[[:space:]]/!{s/^- (\[[ xX]\] )?//; s/^/- [ ] /;}'; printf '\n'
     printf '## Decisions\n\n```\n'; cat "$DECISIONS"; printf '```\n\n'
     checks_section "Checks at base ${base:0:8} (round 0)" "$RUN/round-0.checks"
     checks_section "Checks at the graded sha (round $ROUND)" "$RUN/round-$ROUND.checks"
