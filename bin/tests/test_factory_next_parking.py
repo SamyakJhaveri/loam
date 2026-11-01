@@ -213,58 +213,102 @@ class ParkingTests(unittest.TestCase):
                 self.assertEqual(proc.stdout.strip(), "would launch #7", proc.stderr)
                 shutil.rmtree(self.runs / "7")
 
-    def launch_then_stop(self, issue: int, body: str, new_round: int | None = None) -> None:
-        """One launch of the run for this body: cmd_run's launch step (record_env_stops), then, with `new_round`, a round
-        whose checks were written, then a stopped-environment exit an hour and more ago, so the backoff does not decide."""
+    # cmd_run's launch with GitHub, the gates and bin/alert stubbed; assert_parallel, the first step after the launch's
+    # state is written, ends it the way the case needs, and the stop is aged past the hour's backoff.
+    ENV_STOP = 'finish stopped-environment "the worker call returned no result event"'
+
+    def launch(self, issue: int, body: str, outcome: str = ENV_STOP, age: int = 86400) -> None:
         d = self.runs / str(issue) / key(body)
-        d.mkdir(parents=True, exist_ok=True)
-        proc = sourced(f"record_env_stops '{d}'")
-        self.assertEqual(proc.returncode, 0, proc.stderr)
-        if new_round is not None:
-            (d / f"round-{new_round}.checks").write_text("PASS a\nCHECKS-END\n")
-        (d / "status").write_text("stopped-environment\n")
-        os.utime(d / "status", (86400, 86400))
+        script = (f"load_ticket() {{ ISSUE={issue}; KEY={issue}; REPO=o/r; IS_FILE=0; BODY=\"$BODY_ARG\"; }}; "
+                  "assert_target_ready() { :; }; claude_version_ok() { :; }; owner_events() { :; }; alert() { :; }; "
+                  f"assert_parallel() {{ {outcome}; }}; cmd_run {issue}")
+        sourced(script, {"FACTORY_RUNS_ROOT": str(self.runs), "BODY_ARG": body, "FACTORY_BY_NEXT": "1"})
+        self.assertIn("===== launch =====", (d / "factory.log").read_text())
+        if (d / "status").exists():
+            os.utime(d / "status", (age, age))
 
     def test_three_environment_stops_with_no_round_progress_park(self) -> None:
         # A worker call with no result event stops before its round's checks, so a relaunch reruns the same round and
         # MAX_ROUNDS never trips; every relaunch costs ROUND_BUDGET_USD and a page (#547). The third such stop in a row parks.
         mine = ((7, CLEAN),)
-        self.launch_then_stop(7, CLEAN, new_round=0)
+        self.launch(7, CLEAN, 'echo CHECKS-END > "$RUN/round-0.checks"; ' + self.ENV_STOP)
         for _ in range(2):
             proc = self.next_dry_run(mine=mine)
             self.assertEqual(proc.stdout.strip(), "would launch #7", proc.stderr)
-            self.launch_then_stop(7, CLEAN)
+            self.launch(7, CLEAN)
         proc = self.next_dry_run((8, CLEAN), mine=mine)
         self.assertEqual(proc.stdout.strip(), "would launch #8", proc.stderr)
-        self.assertIn("parked #7: its last 3 runs stopped on the environment with no round progress", proc.stderr)
+        self.assertIn("parked #7: stopped on the environment 3 times in a row with no new round since", proc.stderr)
 
     def test_a_round_between_environment_stops_resets_the_count(self) -> None:
         mine = ((7, CLEAN),)
-        self.launch_then_stop(7, CLEAN, new_round=0)
-        self.launch_then_stop(7, CLEAN, new_round=1)   # round 1's checks were written before this stop
-        self.launch_then_stop(7, CLEAN)
+        self.launch(7, CLEAN)
+        self.launch(7, CLEAN, 'echo CHECKS-END > "$RUN/round-0.checks"; ' + self.ENV_STOP)   # round 0 before this stop
+        self.launch(7, CLEAN)
         proc = self.next_dry_run(mine=mine)
         self.assertEqual(proc.stdout.strip(), "would launch #7", proc.stderr)
         self.assertNotIn("parked", proc.stderr)
-        self.launch_then_stop(7, CLEAN)
+        self.launch(7, CLEAN)
         proc = self.next_dry_run(mine=mine)
         self.assertEqual(proc.stdout.strip(), "nothing to launch", proc.stderr)
         self.assertIn("parked #7", proc.stderr)
 
-    def test_a_parked_stop_alerts_once(self) -> None:
-        # next runs every ten minutes; the park pages once per stop, not once per tick.
-        self.run_dir(7, CLEAN, "stopped-environment")
+    def test_a_daily_stop_between_environment_stops_keeps_the_count(self) -> None:
+        # A stopped-daily makes no worker call and writes no round, so it must not clear the count, or env, env, daily
+        # would loop for good; while it waits for its UTC day it is not parked.
+        mine = ((7, CLEAN),)
+        self.launch(7, CLEAN)
+        self.launch(7, CLEAN)
+        self.launch(7, CLEAN, 'finish stopped-daily "the daily budget is spent"', age=int(time.time()))
+        proc = self.next_dry_run(mine=mine)
+        self.assertIn("waiting #7: daily budget spent", proc.stderr)
+        self.assertNotIn("parked", proc.stderr)
+        os.utime(self.runs / "7" / key(CLEAN) / "status", (86400, 86400))
+        proc = self.next_dry_run(mine=mine)
+        self.assertEqual(proc.stdout.strip(), "would launch #7", proc.stderr)
+        self.launch(7, CLEAN)
+        proc = self.next_dry_run(mine=mine)
+        self.assertIn("parked #7", proc.stderr)
+
+    def test_a_reaped_run_counts_as_an_environment_stop(self) -> None:
+        # A supervisor killed mid-run writes no EXIT line; holds_slot, at next's slot count, writes stopped-environment.
+        mine = ((7, CLEAN),)
         d = self.runs / "7" / key(CLEAN)
-        (d / "env-stops").write_text("-1 2\n")
+        self.launch(7, CLEAN)
+        self.launch(7, CLEAN, "exit 9")
+        self.assertEqual((d / "status").read_text().strip(), "running")
+        reap = sourced(f"alert() {{ :; }}; holds_slot '{d}/'", {"FACTORY_RUNS_ROOT": str(self.runs)})
+        self.assertEqual(reap.returncode, 1, reap.stderr)
+        self.assertEqual((d / "status").read_text().strip(), "stopped-environment")
+        os.utime(d / "status", (86400, 86400))
+        proc = self.next_dry_run(mine=mine)
+        self.assertEqual(proc.stdout.strip(), "would launch #7", proc.stderr)
+        self.launch(7, CLEAN)
+        proc = self.next_dry_run(mine=mine)
+        self.assertIn("parked #7", proc.stderr)
+
+    def test_a_parked_stop_alerts_once(self) -> None:
+        # next runs every ten minutes, and a manual next may overlap the timer's: the park pages once per stop.
+        d = self.runs / "7" / key(CLEAN)
+        for _ in range(3):
+            self.launch(7, CLEAN)
         sent = self.runs / "alerts"
+        sent.touch()
         tick = f"alert() {{ echo \"$*\" >> '{sent}'; }}; env_park_alert '{d}' 7"
-        for _ in range(2):
+        def alerts() -> int:
             self.assertEqual(sourced(tick, {"FACTORY_RUNS_ROOT": str(self.runs)}).returncode, 0)
-        self.assertEqual(len(sent.read_text().splitlines()), 1)
+            return len(sent.read_text().splitlines())
+        (d / "owner.lock").mkdir()   # another next, or a launch, holds it
+        self.assertEqual(alerts(), 0)
+        (d / "owner.lock").rmdir()
+        self.assertEqual(alerts(), 1)
+        self.assertEqual(alerts(), 1)
         self.assertIn("--level needs-you", sent.read_text())
-        (d / "env-stops").write_text("-1 3\n")   # a relaunch by hand that stops again rewrites env-stops
-        sourced(tick, {"FACTORY_RUNS_ROOT": str(self.runs)})
-        self.assertEqual(len(sent.read_text().splitlines()), 2)
+        self.assertFalse((d / "owner.lock").exists())
+        self.launch(7, CLEAN)   # a relaunch by hand that stops the same way alerts once more
+        self.assertEqual(alerts(), 2)
+        self.launch(7, CLEAN, 'finish stopped "FACTORY_STOP"')   # relaunched and stopped otherwise: no longer parked
+        self.assertEqual(alerts(), 2)
 
     def spend_today(self, usd: float) -> None:
         (self.runs / "ledger-daily.jsonl").write_text(
