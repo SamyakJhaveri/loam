@@ -25,9 +25,11 @@ The body starts at `Brief:` or `Part of`; in a file the first `#` line is the ti
    A check is one line of the block and ends in `pass NAME` or `fail NAME reason`, in the form `A && pass N || fail N "why"`.
    A check that calls `guard` (for example `guard bin/check` or `out=$(guard cmd)`) is a regression guard allowed to pass on `main`; every other check must print FAIL on `main`.
    A check that fails on `main` proves the ticket only when it fails for the reason its author predicted, so a ticket whose Worker section says `contract: 2` gives each non-guard check one line `predict NAME CMD...`, NAME being the word after that check's `pass`, and CMD exiting 0 exactly when base shows the predicted failure (for example `predict greet test -f greeting.txt` for a check that wants `hello` in an existing `greeting.txt`).
-   Round 0 runs CMD at base and refuses the ticket as `ticket-defect`, naming the check, when CMD exits non-zero or the line has no CMD; it records a miss in a file of its own, and runs CMD in a subshell, so neither a redirect nor CMD itself can hide one.
-   CMD is one simple command: lint rejects a predict line with no CMD, with an unquoted `;`, `&`, `|`, `<` or `>`, or whose CMD is a shell keyword such as `!` or `[[`; write `test ! ...`, and put a compound prediction in `bash -c '...'`.
-   In every later round, and under the worker's Stop hook, a predict line prints nothing and returns 0.
+   CMD is all the text after NAME, and round 0 runs it whole as one bash command, with `lib.sh` sourced first, from a base worktree, output dropped, so bash parses it as written: `predict greet test -f greeting.txt && ! grep -q hello greeting.txt` means both halves, and `!`, `[[`, pipes and redirects belong to the prediction.
+   Round 0 refuses the ticket as `ticket-defect`, naming the check, when CMD exits non-zero or the line has no CMD.
+   Freeze leaves predict lines out of `checks.sh`, so no later round, Stop hook or worker run sees them, and a `$(...)` in CMD runs at round 0 only.
+   A predict line may run on over several raw lines that end in a backslash, joined as bash joins them, and freeze drops every one of them; a `#` comment line that ends in a backslash does not run on, as in bash.
+   CMD runs in its own bash with only `lib.sh`, so it sees no variable or function the block defines, and it must not change the worktree, since the checks run in that same base worktree after it.
    A guard takes no predict line; a body with no contract line may carry predict lines, which round 0 runs, but needs none.
    The block is green when it prints no FAIL line; an abort or an `exit` anywhere in the block, at base or in a later round, adds `FAIL checks-aborted`, because `checks.sh` then stops before the end line freeze writes after the block (#180, #277).
    No `skip`.
@@ -50,7 +52,7 @@ The body starts at `Brief:` or `Part of`; in a file the first `#` line is the ti
 
 Every path under Where, Do not touch, and Approach is verified with `git ls-files` when the ticket is written, or is a path the Goal creates; a guessed path is the commonest small defect and lint rejects it.
 
-`lib.sh` (`bin/factory.d/lib.sh`): F2 ships `pass`, `fail`, and `guard CMD...` (runs CMD and returns its status, and copies each `SKIPPED:` line CMD prints to the checks file even when the guard line sends its output to `/dev/null`); F1 adds `MEASURE`, `render_into`, `check_clean`; #388 adds `predict NAME CMD...` (runs CMD at round 0 only).
+`lib.sh` (`bin/factory.d/lib.sh`): F2 ships `pass`, `fail`, and `guard CMD...` (runs CMD and returns its status, and copies each `SKIPPED:` line CMD prints to the checks file even when the guard line sends its output to `/dev/null`); F1 adds `MEASURE`, `render_into`, `check_clean`; #388 adds `predict NAME CMD...`, a no-op for a block that sources `lib.sh`; round 0 runs CMD itself (#447).
 
 ### Done checks for a rendered-project change
 
@@ -89,12 +91,18 @@ This contract owns the issue body: each issue carries the sections above, and th
 ### Lint rules (`bin/factory lint <issue|file>`, F2)
 
 - Every section present, in order.
-- The done-checks block plus `lib.sh` pass `bash -n`.
+- The done-checks block, without its predict lines, plus `lib.sh` pass `bash -n`.
 - Every check line ends in `pass` or `fail`; no `skip` anywhere.
-  A line that starts with `predict` is not a check line and is accepted in every body, unless it has no command after the name, holds an unquoted `;`, `&`, `|`, `<` or `>`, or its command is a shell keyword.
-- No text a reader on GitHub cannot see (#389): a character of Unicode category `Cf` (zero-width, bidi controls, tags, BOM, word joiner), a `Cc` other than tab, newline and carriage return, the variation selectors and the other default-ignorable code points a `Cf` rule misses (U+FE00 to U+FE0F, the whole block U+E0000 to U+E0FFF, U+FFF0 to U+FFF8, and U+034F, U+115F, U+1160, U+17B4, U+17B5, U+180B to U+180D, U+180F, U+3164, U+FFA0), or an HTML comment `<!--`.
+  A line that starts with `predict` is not a check line and is accepted in every body, unless it has no command after the name, or its command does not pass `bash -n` on its own.
+- No text a reader on GitHub cannot see (#389): a character of Unicode category `Cf` (zero-width, bidi controls, tags, BOM, word joiner), a `Cc` other than tab, newline and carriage return, the variation selectors and the other default-ignorable code points a `Cf` rule misses (U+FE00 to U+FE0F, the whole block U+E0000 to U+E0FFF, U+FFF0 to U+FFF8, and U+034F, U+115F, U+1160, U+17B4, U+17B5, U+180B to U+180D, U+180F, U+3164, U+FFA0), the same through a character reference such as `&#x200B;` (numeric ones of up to 8 digits, decoded as cmark-gfm does), or a carriage return with no newline after it, except at the very end of the body.
   Other unassigned code points pass, since Python's Unicode data reads newer emoji as unassigned.
   Lint matches by category, as loop-engineering's triage does (`/[\p{Cc}\p{Cf}]/gu`, MIT), reads the body as UTF-8 through `python3`, names the line and the code point but never the hidden text, and never edits the body; ordinary non-ASCII text such as `café 如果` passes.
+- No markdown GitHub hides or draws over its text (#452), found by one offline scan that fails closed: text is code only in the two exact forms below, and all other text is prose.
+  A fence opens at column 0 with three or more backticks or tildes (a backtick fence's info string holds no backtick) and closes at the CommonMark closer or the end of the body; GitHub never shows its info string, so it must be empty, `done-checks`, or one of `sh`, `bash`, `python`, `json`, `yaml`, `text`, `diff`, `md`; a `mermaid`, `geojson`, `topojson`, `stl` or `math` fence is rejected, since GitHub draws it, and so is an opener longer than 255, since GitHub closes it at a 255 run.
+  A fence indented or inside a list item or quote is rejected, since GitHub ends it with its container.
+  Outside fences, a backtick run pairs with the next run of the same length on the same line, an odd backslash run before it makes its first backtick literal, and a run left unpaired or longer than 80 (GitHub never opens a span with one), a backtick in a bare URL (`://` or `www.` to the next ASCII space, tab, CR, LF, VT, FF or `<`), or a `|` inside a span in a block with a table delimiter row turns code spans off to the end of the block (a blank line or a fence).
+  In prose, lint rejects every `<` (comments, tags, autolinks, declarations, processing instructions, CDATA), `![` (an image), `]:` (a link reference or footnote definition), every `](` (an inline link, whose destination and title GitHub does not show; a bare URL, shown in full, passes), and a second `$` in one block outside code spans (math), counting `\$` and references such as `&#36;`, since GitHub opens math between two `$` and never with one; a `]` inside a code span after a `[` left open in its block is rejected, since GitHub reads a link reference definition before it pairs code spans; a row with more cells than the narrowest table delimiter row above it in its block (pipes optional when that row holds a `:`, any quote or list prefix dropped, a `\|` not a split) is rejected, since GitHub drops the excess.
+  A misread rejects a visible example and never passes a hidden one; an HTML comment in a code span or a fence passes, since GitHub shows it.
   The rule runs on every body, fixtures included.
 - In a body whose Worker section says `contract: 2`, each non-guard check name has exactly one predict line; a predict line that names a guard, a name no non-guard check reports, or a name another predict line already names is an error that names it, as is a non-guard check line with no literal name after a command-word `pass`.
   The contract line is exactly one line `contract: 2`; anything else is an error, and a body with no contract line lints as before #388.
