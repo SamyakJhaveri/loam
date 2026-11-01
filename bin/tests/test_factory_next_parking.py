@@ -89,7 +89,8 @@ class ParkingTests(unittest.TestCase):
                  f"case \"$* \" in {edits}esac; jq -r \"$q\" <<<\"$doc\" ;; repos/*) printf '%s\\n' {lines(frontier)} ;; "
                  f"/issues\\?*) printf '%s\\n' {lines(mine)} ;; esac; }}; "
                  "cmd_next --dry-run")
-        return sourced(stubs, {"FACTORY_RUNS_ROOT": str(self.runs), "GQL_LOG": str(self.gql_log), **env})
+        return sourced(stubs, {"FACTORY_MAX_PARALLEL": "1", "FACTORY_RUNS_ROOT": str(self.runs), "GQL_LOG": str(self.gql_log),
+                               **env})
 
     def test_old_body_abandon_does_not_park_a_new_body(self) -> None:
         self.run_dir(7, CLEAN + "\nthe old body", "abandon")
@@ -260,7 +261,12 @@ class ParkingTests(unittest.TestCase):
                         if subprocess.run(["flock", "-n", str(d / "lease"), "true"]).returncode != 0:
                             break
                         time.sleep(0.05)
-                proc = self.next_dry_run((8, CLEAN), mine=((7, CLEAN),))
+                # A live call also holds #7's slot whatever its status (#467), so #8 needs a second slot.
+                slots = "2" if holder == "call" else "1"
+                if holder == "call":
+                    proc = self.next_dry_run((8, CLEAN), mine=((7, CLEAN),))
+                    self.assertEqual(proc.stdout.strip(), "nothing to launch", proc.stderr)
+                proc = self.next_dry_run((8, CLEAN), mine=((7, CLEAN),), FACTORY_MAX_PARALLEL=slots)
                 self.assertEqual(proc.stdout.strip(), "would launch #8", proc.stderr)
                 self.assertIn("waiting #7: a process of its last run still runs", proc.stderr)
                 subprocess.run(["kill", "-KILL", "--", f"-{p.pid}"], check=False)
