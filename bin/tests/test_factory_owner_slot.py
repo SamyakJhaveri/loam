@@ -468,20 +468,6 @@ class LeaseSlotTests(SlotCase):
         self.assertEqual(proc.returncode, 0, proc.stderr)
         self.assertTrue(seen.exists(), proc.stderr)
 
-    def test_heartbeat_does_not_hold_the_lease(self) -> None:
-        # A beat outlives a killed supervisor by up to 300 s; it must not keep the run's slot meanwhile.
-        hb = self.top / "hb"
-        script = (f". bin/factory\nalert() {{ :; }}; LOG=/dev/null\n"
-                  f'exec {{FACTORY_SLOT_FD}}>> "{self.run_dir}/lease"; flock -n "$FACTORY_SLOT_FD" || exit 7\n'
-                  f"export FACTORY_SLOT_FD; heartbeat_start; echo \"$HEARTBEAT\" > '{hb}'")
-        base = {k: v for k, v in os.environ.items() if k not in INHERITED}
-        sup = subprocess.Popen(["bash", "-c", script], cwd=ROOT, env={**base, "FACTORY_SOURCED": "1", "PATH": self.path},
-                               stdin=subprocess.DEVNULL, start_new_session=True)
-        self.addCleanup(lambda: subprocess.run(["pkill", "-KILL", "-g", str(sup.pid)], check=False))
-        self.assertEqual(sup.wait(timeout=30), 0)
-        self.assertNotIn(state(int(hb.read_text())), ("", "Z"))   # the beat outlives its supervisor
-        self.assert_freed()
-
     def test_dead_owner_s_model_call_holding_the_lease_is_killed_and_the_slot_freed(self) -> None:
         # The SIGKILLed supervisor's call inherited the lease, so the lease alone would hold the slot until
         # CALL_TIMEOUT_SEC; holds_slot kills the call's group as on the owner path, and the next caller frees the slot.

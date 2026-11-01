@@ -38,7 +38,7 @@ target_repo() {
 }
 # Every gh call, and every git call that reaches a remote (fetch, push, ls-remote), runs under NET_TIMEOUT_SEC
 # (LOOP.md, Caps): a call cut off at the limit fails like any other failure of that call, so a hung network call
-# never holds a run, its slot and its heartbeat for good. A program runs under GNU timeout without --foreground
+# never holds a run or its slot for good. A program runs under GNU timeout without --foreground
 # (neither needs a terminal, and timeout then signals the call's whole process group), with KILL 5 s after TERM
 # for a call that ignores TERM. A shell function (a test's stub, or one exported into the environment), or any
 # call on a machine without timeout (a Mac), goes through net_watch instead, since timeout can only start a program.
@@ -1200,41 +1200,6 @@ exit_words() { # status -> "<level> <words>"
   esac
 }
 
-# The host's healthchecks check: a beat at launch, then every 5 minutes while this run's process lives, so a
-# killed run or host goes red. The loop's TERM trap runs only after an in-flight beat returns (the sleep is
-# waited on, so it does not delay the trap), and heartbeat_stop waits for it, so no beat lands after the pause.
-# The loop closes the run's lease (FACTORY_SLOT_FD), so a beat left after the supervisor died, by finish, a signal
-# or SIGKILL, never holds the slot.
-heartbeat_start() {
-  alert --ping beat >> "$LOG" 2>&1 || log "healthchecks beat failed; see bin/alert's line above"
-  ( [ -n "$HAVE_FLOCK" ] && [ -n "${FACTORY_SLOT_FD:-}" ] && exec {FACTORY_SLOT_FD}>&- 2> /dev/null
-    trap 'exit 0' TERM
-    while sleep 300 & wait $!; kill -0 "$$"; do alert --ping beat; done ) < /dev/null > /dev/null 2>&1 &
-  HEARTBEAT=$!
-}
-
-# Another live run on this host, Loam's or another target's; a hard-killed run holds its slot until holds_slot
-# finds no process of it left and alerts. holds_slot is the whole test: a run beats only after cmd_run takes its lease
-# and writes `running` (exec_frozen keeps the fd), so a run that has beaten holds its slot, and one that has not beats later.
-other_live_run() {
-  local d
-  for d in "$RUNS_BASE"/*/*/ "$RUNS_BASE"/*/*/*/; do
-    [ "${d%/}" = "${RUN%/}" ] && continue
-    holds_slot "$d" && return 0
-  done
-  return 1
-}
-
-# The host's last live run pauses the check. A run launched meanwhile holds its slot before its first beat,
-# so the second look sees it and beats again, and the pause never outlives a live run.
-heartbeat_stop() {
-  [ -n "${HEARTBEAT:-}" ] && kill "$HEARTBEAT" 2> /dev/null && wait "$HEARTBEAT" 2> /dev/null
-  other_live_run && return 0
-  alert --ping pause >> "$LOG" 2>&1 || log "healthchecks pause failed; see bin/alert's line above"
-  other_live_run && { alert --ping beat >> "$LOG" 2>&1 || log "healthchecks beat failed"; }
-  return 0
-}
-
 # Exit code, status, and the final log line are decided together (LOOP.md, Exits).
 finish() { # status message
   local code words
@@ -1242,7 +1207,6 @@ finish() { # status message
     pr-opened) code=0 ;; ticket-defect) code=3 ;; stopped-environment) code=4 ;; abandon) code=5 ;; *) code=2 ;;
   esac
   set_status "$1"
-  heartbeat_stop
   words=$(exit_words "$1")
   notify "${words%% *}" "$(ticket_name) ${words#* }" "$2"
   log "EXIT $1 ($code): $2"
@@ -1571,8 +1535,7 @@ dead_owner() { # <run dir>
 # would need the pid space to wrap. A ps or date that fails or prints nothing cannot tell, so the slot holds.
 # macOS pads lstart with trailing spaces and has BSD date, so the start is trimmed and parsed either way.
 # A gone or zombie pid also holds while a live process has it as its process group id; Linux does not reuse that
-# number meanwhile. The heartbeat loop is such a member and exits within 300 s of the supervisor, so a reap waits at
-# most one beat. A model call has a session of its own, so holds_slot finds it through the run's `call` file.
+# number meanwhile. A model call has a session of its own, so holds_slot finds it through the run's `call` file.
 owner_gone() { # <pid> <ps lstart>
   local stat= start a b
   if kill -0 "$1" 2> /dev/null; then
@@ -1636,8 +1599,8 @@ call_group() { # <run dir>
   echo "$g"
 }
 
-# The project a run dir belongs to, from where it sits, not the caller's REPO: other_live_run walks every
-# target's runs. Loam's sit at RUNS_BASE/<issue>/<sha8>, another target's one level down under <owner>__<repo>;
+# The project a run dir belongs to, from where it sits, not the caller's REPO, so an alert about a run names
+# its own target. Loam's sit at RUNS_BASE/<issue>/<sha8>, another target's one level down under <owner>__<repo>;
 # a dir elsewhere (a sourced test's) names none.
 run_project() { # <run dir>
   local t
@@ -2879,12 +2842,10 @@ cmd_run() {
   # launch of the same ticket holds it says so and exits, leaving that run's status, `launched` (its MAX_HOURS clock)
   # and log (status --criteria's round) as they were. The fd is no close-on-exec, so the frozen re-exec and every
   # child inherit it: the run holds the lease until its last process exits. The frozen pass already holds it and must
-  # not lock a second open of the file, which would wait on its own lease. The heartbeat loop alone closes it
-  # (heartbeat_start). Where flock(1) is missing (a Mac) no lease is written and holds_slot judges the owner line below.
+  # not lock a second open of the file, which would wait on its own lease. Where flock(1) is missing (a Mac) no lease is written and holds_slot judges the owner line below.
   if [ -n "$HAVE_FLOCK" ] && [ "${FACTORY_FROZEN:-}" != "$RUN/frozen/factory" ]; then
     exec {SLOT_FD}>> "$RUN/lease" && flock -w 65 "$SLOT_FD" \
       || { echo "factory run: could not take $RUN/lease in 65 s; another launch of this ticket, or a process one left running, holds it" >&2; exit 4; }
-    export FACTORY_SLOT_FD=$SLOT_FD   # so the frozen pass's heartbeat can close it
   fi
   # A model call's tool process may have closed the lease (holds_slot), or there is no lease (no flock), and still
   # write the worktree this launch would prepare; refuse as above, writing nothing.
@@ -2935,7 +2896,6 @@ cmd_run() {
   prepare_worktree
   freeze
   exec_frozen
-  heartbeat_start   # after the re-exec, so the loop's pid lives in the process that runs finish
   BODY=$(cat "$RUN/frozen/issue.md")   # from here on the frozen body is the ticket
   [ "$IS_FILE" = 1 ] && trap 'git -C "$MAIN_CHECKOUT" worktree remove --force "$WORKTREE" > /dev/null 2>&1' EXIT
   TIMEOUT_G=()
@@ -3230,9 +3190,9 @@ daily_spent_at_runner_caps() { # -> 0 when the shared daily ledger has no room f
 # every candidate it would pick rather than the first; it exits 0 after the loop, before the daily-budget wait,
 # with no line when none would launch.
 # --install writes the ten-minute runner timer from bin/factory.d/next.crontab.
-# A real tick (no flag) that returns 0 beats the host's healthchecks check, which also resumes a check the last run
-# paused (heartbeat_stop); a tick that refuses sends nothing, so refusals that outlast the check's period and grace
-# turn it red. A refusal's stderr reaches no one on its own (jhaveris's cron line appends it to next.log and the host
+# A real tick (no flag) that returns 0 beats the host's healthchecks check, its only beat, which also resumes a paused
+# check; a tick that refuses sends nothing, so refusals that outlast the check's period and grace turn it red, and so
+# does a dead host or a stopped timer. A refusal's stderr reaches no one on its own (jhaveris's cron line appends it to next.log and the host
 # has no mail), so the check is the alarm.
 cmd_next() {
   next_tick "$@" || return
@@ -3396,7 +3356,7 @@ next_tick() { # [--dry-run|--install|--frontier]
   # --frontier never sets pick but prints each candidate that passes, so every candidate gets the editor call.
   # </dev/null keeps gh off the candidate list this loop reads on stdin. This check only
   # picks; load_ticket checks the owner again on the body the run freezes.
-  local pick="" st_last lint_err lint_line author editor run
+  local pick="" read_failed="" st_last lint_err lint_line author editor run
   while read -r who num author b64; do
     [ -n "$num" ] || continue
     body=$(printf '%s' "$b64" | base64 -d)
@@ -3444,6 +3404,7 @@ next_tick() { # [--dry-run|--install|--frontier]
             -f query='query($owner: String!, $name: String!, $number: Int!) { repository(owner: $owner, name: $name) { issue(number: $number) { editor { login } lastEditedAt } } }' \
             --jq '.data.repository.issue | .editor.login // (if .lastEditedAt then "(unnamed)" else "" end)' < /dev/null 2> /dev/null); then
             echo "not owner #$num: could not read the last editor with gh (failed, or no reply in ${NET_TIMEOUT_SEC}s); passed over" >&2
+            read_failed=1
             continue
           fi
           if [ "$editor" = "(unnamed)" ]; then
@@ -3469,6 +3430,13 @@ next_tick() { # [--dry-run|--install|--frontier]
     esac
   done <<< "$( { sed 's/^/none /' <<< "$ready"; sed 's/^/mine /' <<< "$mine"; } | sort -s -n -k2,2 )"
   [ "$frontier" = 1 ] && return 0
+  # A candidate passed over on a failed read, with none picked, is a refusal, not an idle tick: it returns 1, so
+  # cmd_next sends no beat and a read that keeps failing turns the check red.
+  if [ -z "$pick" ] && [ -n "$read_failed" ]; then
+    echo "nothing to launch"
+    echo "refused: a candidate was passed over on a failed GitHub read (above)" >&2
+    return 1
+  fi
 
   # A run stopped at today's daily budget, with the shared ledger (RUNS_BASE, every target's) also spent at the
   # runner's own caps, means a new launch would only assign, build, run round 0 and stop at its first cap check;

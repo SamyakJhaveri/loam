@@ -1,8 +1,8 @@
 """A `bin/factory next` tick that completes beats the host's healthchecks check; one that refuses does not.
 
-The last run of the day pauses the check (heartbeat_stop), so before this the check heard nothing while the
-cron tick refused for hours on a precondition (1 Nov 2026). Now every real tick that returns 0 beats, which
-also resumes a paused check, and a refusing tick stays silent, so the check goes red after its grace.
+The last run of the day used to pause the check, so the check heard nothing while the cron tick refused for
+hours on a precondition (1 Nov 2026). Now every real tick that returns 0 beats, which also resumes a paused
+check, a refusing tick stays silent, and no run pauses it, so the check goes red after its grace.
 
 `bin/factory` is sourced (FACTORY_SOURCED=1); `alert` records its arguments, and gh, git, the gates and the
 probes are shell functions. No network, no tmux, no `claude`.

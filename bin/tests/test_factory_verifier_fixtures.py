@@ -1,8 +1,8 @@
 """The loop keeps running worker rounds after a judge fail and opens the PR at the first judge pass.
 
 `bin/factory` is sourced (FACTORY_SOURCED=1) and the real main_loop runs: checks, grade_round, graders, run_judge,
-run_review, call_json, and open_pr. Only worker_round, notify and alert are stubbed (alert, so finish's heartbeat pause
-never reaches the host's real bin/alert); the worker stub makes one commit per round. A fake `claude` on PATH answers
+run_review, call_json, and open_pr. Only worker_round, notify and alert are stubbed (alert, so no call
+reaches the host's real bin/alert); the worker stub makes one commit per round. A fake `claude` on PATH answers
 the judge by its call number and the reviewer always clean, and logs each call; a fake `gh` records its arguments.
 The worktree's origin is a local bare repository. No network.
 """
