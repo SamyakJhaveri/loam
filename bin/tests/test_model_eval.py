@@ -1,5 +1,6 @@
-"""bin/factory.d/model-eval: a Codex cell gets a strict schema, reuse keys cover the harness and the code that makes the call, each grader's
-fingerprint describes its own replies, an unparseable reply is retried, and an off-model serve stops the grid.
+"""bin/factory.d/model-eval: a Codex cell gets a strict schema, reuse keys cover the harness and the code that makes
+the call, each grader's fingerprint describes its own replies, an unparseable reply is retried, and an off-model
+serve stops the grid.
 
 Runs the real model-eval and bin/factory eval with a fake `claude` and `codex` on PATH and a fake HOME, so no
 model is called. The fake codex refuses a non-strict --output-schema, as the API does (400, "additionalProperties
