@@ -215,6 +215,24 @@ console.log(JSON.stringify(seen));"""
         for p in builders:
             self.assertIn(want, p)
 
+    def test_fan_out_args_jq_cannot_build_stops_the_prompt(self) -> None:
+        # A jq older than 1.6 rejects --args; the lead must not get an empty args sentence.
+        stub = self.tmp / "stub"
+        stub.mkdir()
+        (stub / "jq").write_text(f'#!/bin/sh\nfor a; do [ "$a" = --args ] && exit 2; done\nexec {shutil.which("jq")} "$@"\n')
+        (stub / "jq").chmod(0o755)
+        run = self.tmp / "run"
+        (run / "frozen").mkdir(parents=True)
+        (run / "frozen/_common.md").write_text("")
+        script = ('. bin/factory; RUN=$1; WORKER_KIND=claude; DECISIONS=$1/worker/decisions.md; BODY=$(cat "$2"); '
+                  'round=1; build_worker_prompt 1')
+        proc = subprocess.run(["bash", "-c", script, "_", str(run), str(self.ticket("pstack:tdd"))], cwd=ROOT,
+                              env={**self.env(), "FACTORY_SOURCED": "1", "WORKER_SIZE": "large",
+                                   "PATH": f"{stub}{os.pathsep}{os.environ['PATH']}"},
+                              capture_output=True, text=True, check=False)
+        self.assertEqual(proc.returncode, 4, proc.stdout + proc.stderr)
+        self.assertNotIn("and args ``", (run / "pending.prompt.md").read_text())
+
     def test_builder_prompt_with_no_skill_lines_adds_nothing(self) -> None:
         args = json.dumps({"ticket": "t", "run": "r"})
         for p in self.builder_prompts(args):
