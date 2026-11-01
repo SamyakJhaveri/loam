@@ -1544,14 +1544,33 @@ group_live() { # <pgid> -> 0 when a process other than a zombie has it as its gr
   awk -v p="$1" '$1 == p && $2 !~ /^Z/ { f = 1 } END { exit !f }' <<< "$g"
 }
 
+# A recorded process group still lives and is still the one recorded: a member that is not a zombie, and a leader, while
+# its pid is alive, with the start time recorded after its id. A leader gone with members left counts, since Linux
+# never hands out a pid still in use as a pgid, so a reused pgid always has a new live leader; a record with no start
+# time, or a ps that prints nothing, has only the member test. macOS pads lstart with trailing spaces, so it is trimmed.
+# A wall-clock step moves lstart, so as in owner_gone only a start over 300 s from the recorded one, both parsed, differs.
+group_same() { # <pgid> [ps lstart]
+  local now a b
+  group_live "$1" || return 1
+  [ -n "${2-}" ] || return 0
+  now=$(TZ=UTC LC_ALL=C ps -o lstart= -p "$1" 2> /dev/null) && now=${now%"${now##*[![:space:]]}"} \
+    && [ -n "$now" ] && [ "$now" != "$2" ] || return 0
+  a=$(lstart_epoch "$now") && b=$(lstart_epoch "$2") || return 0
+  [ $((a > b ? a - b : b - a)) -le 300 ]
+}
+
 # The model call a run's `call` file names (call_start) still lives: its wrapper's group, or the call's own group named
-# in `call.group`, has a member that is not a zombie or, on Linux, a process carries its FACTORY_CALL_TAG. One
-# predicate for holds_slot and cmd_run's relaunch refusal.
+# in `call.group`, is still the group recorded and has a member that is not a zombie (group_same), or, on Linux, a
+# process carries its FACTORY_CALL_TAG. `call` reads `<wrapper pid> <tag> [<wrapper lstart>]`; an old two-field line
+# has no start time. A stuck call's `call` and `call.group` stay on its stopped run for good (call_end), so without the
+# start time a pid reused later as a group leader would hold that run's slot again. One predicate for holds_slot,
+# run_busy and cmd_run's relaunch refusal.
 call_live() { # <run dir>
-  local c g
+  local c p t s g= gs=
   c=$(cat "$1/call" 2> /dev/null) || return 1
-  g=$(call_group "$1")
-  group_live "${c%% *}" || { [ -n "$g" ] && group_live "$g"; } || call_tagged 0 "${c#* }"
+  read -r p t s <<< "$c"
+  { read -r g gs < "$1/call.group"; } 2> /dev/null
+  group_same "$p" "$s" || { [ -n "$g" ] && group_same "$g" "$gs"; } || call_tagged 0 "$t"
 }
 
 # The call's own process group id, the first field of the run's `call.group` (call_start), or nothing.
@@ -1597,6 +1616,8 @@ run_project() { # <run dir>
 # killed there too, under owner.lock, and the lease then decides.
 # holds_slot may return held in the very call that killed, while the call's wrapper still reaps reparented children;
 # the next caller frees the slot.
+# A run of any other status holds while the call named in its `call` lives, with no write and no alert: call_end keeps
+# `call` when a call outlives KILL and the run ends stopped-environment (#467); it frees once that call is gone.
 # With `peek` (cmd_next --dry-run) it only looks: a run the reap above would free reads free, and it takes no
 # owner.lock, kills nothing, writes no status and sends no alert. So a gone owner's run reads held while its call lives
 # (a real call kills it and may free the slot), and free while another caller holds owner.lock.
@@ -1604,7 +1625,9 @@ holds_slot() { # <run dir> [peek]
   local st o pid fd peek=${2-}
   if [ -f "$1/status" ]; then
     st=$(cat "$1/status")
-    [ "$st" = running ] || [ "$st" = waiting-limit ] || return 1
+    # A call that survived call_reap's KILL keeps `call` and its run ends stopped-environment, so any other status
+    # holds while that call lives; running and waiting-limit consult it below, after a gone owner's call is killed.
+    [ "$st" = running ] || [ "$st" = waiting-limit ] || { call_live "$1"; return; }
     # Read-only, so a run dir with no lease never gets one here.
     if [ -n "$HAVE_FLOCK" ] && [ -f "$1/lease" ] && exec {fd}< "$1/lease"; then
       if ! flock -n "$fd"; then
@@ -1618,7 +1641,12 @@ holds_slot() { # <run dir> [peek]
       call_live "$1" && { exec {fd}>&-; return 0; }
       [ -n "$peek" ] && { exec {fd}>&-; return 1; }
       st=$(cat "$1/status" 2> /dev/null)
-      [ "$st" = running ] || [ "$st" = waiting-limit ] && printf 'stopped-environment\n' > "$1/status"
+      # A gone call's `call` goes too, as on the owner path, so it never holds the stopped run's slot (above) once its
+      # wrapper's pid is reused; a relaunch waits on this lease, so no `call` of its own is written meanwhile.
+      if [ "$st" = running ] || [ "$st" = waiting-limit ]; then
+        printf 'stopped-environment\n' > "$1/status"
+        rm -f "$1/call" "$1/call.tmp" "$1/call.group" "$1/call.group.tmp"
+      fi
       exec {fd}>&-   # before the alert, whose children would otherwise inherit this run's lease
       [ "$st" = running ] || [ "$st" = waiting-limit ] || return 1
       log "stopped-environment: ${1%/} was $st, but no process of the run holds its lease"
@@ -1635,7 +1663,7 @@ holds_slot() { # <run dir> [peek]
     owner_lock "$1" 1 || return 0
     if [ "$(cat "$1/owner" 2> /dev/null)" != "$o" ]; then rmdir "$1/owner.lock"; return 0; fi
     st=$(cat "$1/status" 2> /dev/null)
-    if [ "$st" != running ] && [ "$st" != waiting-limit ]; then rmdir "$1/owner.lock"; return 1; fi
+    if [ "$st" != running ] && [ "$st" != waiting-limit ]; then rmdir "$1/owner.lock"; call_live "$1"; return; fi
     if ! orphan_call_kill "$1" "$o" || call_live "$1"; then rmdir "$1/owner.lock"; return 0; fi
     printf 'stopped-environment\n' > "$1/status"
     rm -f "$1/call" "$1/call.tmp" "$1/call.group" "$1/call.group.tmp"
@@ -1662,8 +1690,9 @@ became a zombie, or its pid was reused while the run read $st; ${1%/} is now sto
 # under owner.lock with `owner` unchanged, so no relaunch has started a call of its own, kills each process group named
 # in `call` or `call.group` whose leader still has the start time recorded after its id (call_start writes it to
 # call.group), so a pgid reused since is spared: TERM, a 2 s grace, KILL, then up to 5 s for the group to be gone.
-# In production `call` holds `<wrapper pid> <tag>` and never matches; its read serves a `<pgid> <lstart>` line there,
-# the layout the ticket's dead-owner-group-reaped check writes. Before KILL each group is kept only while its leader is
+# In production `call` holds `<wrapper pid> <tag> [<lstart>]` and never matches, since the tag is read as part of the
+# start time; its read serves a `<pgid> <lstart>` line there, the layout the ticket's dead-owner-group-reaped check
+# writes. Before KILL each group is kept only while its leader is
 # gone (members remain) or still has its recorded start, so a pgid reused during the grace is spared.
 # `owner` is re-read just before TERM, since an aged owner.lock can be taken over; a changed line kills nothing, return 1.
 orphan_call_kill() { # <run dir> <owner line judged>
@@ -2008,15 +2037,21 @@ codex_result() { # jsonl exit_code [duration_ms] -> result JSON on stdout; durat
 # TERM, then KILL after a 5 s grace, collects each, and exits with the call's own status once none is left, or 5 s
 # after KILL with one still alive; it writes what it signalled to call.reap for call_end. The call's first process writes
 # its group id and ps start time to call.group before it execs the command, so holds_slot can kill the group of a call
-# whose supervisor is gone and spare a reused pgid. The wrapper's group, the call's group from call.group, and the call's
-# FACTORY_CALL_TAG, unique to the call and kept by every process it starts but one that clears its environment, stay
+# whose supervisor is gone and spare a reused pgid. `call` holds the wrapper's pid, the tag, and the wrapper's start
+# time, so call_live ignores the wrapper's pid once it is reused as a group leader. The wrapper's group, the call's
+# group from call.group, and the call's FACTORY_CALL_TAG, unique to the call and kept by every process it starts but one that clears its environment, stay
 # what call_signal ends and call_live reads (#384), so a wrapper killed or stuck leaves no group member behind: on
 # Linux they are a second line behind the wrapper; on a host with no subreaper or /proc (a Mac) the group kills are all. The call keeps the caller's
 # stdin (<&0, since a background command would get /dev/null), stdout and stderr. In its own session the call no
 # longer gets the supervisor's Ctrl-C, TERM or HUP, so until call_end the supervisor traps them and ends the call's
-# processes before it exits and its EXIT trap removes the worktree.
+# processes before it exits and its EXIT trap removes the worktree. Bash 3.2 (a Mac) passes the INT and QUIT it ignores
+# in a background command on to what that command execs, and a supervisor whose parent ignores them starts with them
+# ignored on any bash; the call's own process sets both back to default just before its exec, which keeps a default
+# where it would drop a handler, so the call and all it starts read them as a person's run does, with GNU timeout
+# around it or not. The wrapper keeps the dispositions it started with, so a QUIT ignored there cannot end it before
+# it has cleaned up the call (#468).
 call_start() { # dir cmd... -> CALL_PID, CALL_TAG
-  local dir="$1"; shift
+  local dir="$1" start; shift
   CALL_TAG="$$.$SECONDS.$RANDOM"; CALL_PID=; CALL_STUCK=
   rm -f "$RUN/call.reap" "$RUN/call.group" "$RUN/call.group.tmp"
   trap 'call_abort INT 130' INT; trap 'call_abort TERM 143' TERM; trap 'call_abort HUP 129' HUP
@@ -2029,7 +2064,7 @@ call_start() { # dir cmd... -> CALL_PID, CALL_TAG
       unless ($kid) { setpgid(0, 0);
         ($s = `TZ=UTC LC_ALL=C ps -o lstart= -p $$ 2> /dev/null`) =~ s/\s+\z//;
         if (open my $h, ">", "$grp.tmp") { print $h join(" ", $$, $s || ()), "\n"; close $h; rename "$grp.tmp", $grp }
-        exec { $ARGV[0] } @ARGV; print STDERR "exec $ARGV[0]: $!\n"; POSIX::_exit(127) }
+        $SIG{INT} = $SIG{QUIT} = "DEFAULT"; exec { $ARGV[0] } @ARGV; print STDERR "exec $ARGV[0]: $!\n"; POSIX::_exit(127) }
       setpgid($kid, $kid);
       $SIG{$_} = sub { $sig = 1 } for qw(TERM INT HUP);
       sub kids { $^O eq "linux" or return; my @k;
@@ -2053,6 +2088,11 @@ call_start() { # dir cmd... -> CALL_PID, CALL_TAG
   CALL_PID=$!
   printf '%s %s\n' "$CALL_PID" "$CALL_TAG" > "$RUN/call.tmp" && mv -f "$RUN/call.tmp" "$RUN/call" \
     || log "could not write $RUN/call; a SIGKILL now would free the slot while the call runs"
+  # The wrapper's start time follows the first write, so a ps does not delay it; the wrapper is this shell's unreaped
+  # child, so its pid cannot have been reused yet.
+  start=$(TZ=UTC LC_ALL=C ps -o lstart= -p "$CALL_PID" 2> /dev/null) && start=${start%"${start##*[![:space:]]}"} \
+    && [ -n "$start" ] && printf '%s %s %s\n' "$CALL_PID" "$CALL_TAG" "$start" > "$RUN/call.tmp" \
+    && mv -f "$RUN/call.tmp" "$RUN/call" || :
 }
 # However the call ends, by exit or by its limit, whatever it left behind, reparented to the wrapper, in its group or
 # carrying its tag, gets TERM, then KILL after a 5 s grace, and must be gone 5 s later, or the run stops: a child left
@@ -3061,7 +3101,8 @@ no longer relaunches it; fix the cause, then relaunch it by hand or edit the bod
 
 # cmd_run refuses a relaunch, exiting 4 with no status written, while a process of the run's last launch holds its
 # lease or the model call its `call` names still lives (a stuck call outlives finish); holds_slot frees a stopped run's
-# slot all the same, so without this the issue would take the pick from every later candidate each tick.
+# slot once that call is gone though a lease holder may remain, and a held slot does not keep `next` from picking the
+# issue, so without this the issue would take the pick from every later candidate each tick.
 run_busy() { # <run dir> -> 0 while a process cmd_run would refuse a relaunch on still runs
   local fd st
   call_live "$1" && return 0
@@ -3158,7 +3199,7 @@ cmd_next() { # [--dry-run|--install]
   [ "$dry" = 1 ] || pr_closed_events
 
   # 2. A run holds a slot when holds_slot says so (assert_parallel's rule: running or waiting-limit with a
-  #    live owner, or launched with no status yet), and so does a pr-opened run whose ticket worktree still exists: the merge ritual removes the worktree,
+  #    live owner, any status while the model call its `call` names lives, or launched with no status yet), and so does a pr-opened run whose ticket worktree still exists: the merge ritual removes the worktree,
   #    so until then the PR awaits merge and the next ticket waits (LOOP.md: after each merge).
   #    FACTORY_MAX_PARALLEL bounds the count, as it does in cmd_run through apply_caps; default 1.
   #    --dry-run asks with peek, so a run holds_slot would reap counts free and is not reaped or alerted on.
