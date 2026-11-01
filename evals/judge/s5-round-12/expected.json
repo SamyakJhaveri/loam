@@ -1,4 +1,1 @@
-{
-  "source": "lean-v3 run S5 round 12: the judge passed every rubric row and returned verdict pass (runs/S5/round-12.judge.raw.json)",
-  "verdict": "pass"
-}
+{"source":"lean-v3 run S5 round 12: the judge passed every rubric row and returned verdict pass (runs/S5/round-12.judge.raw.json)","verdict":"fail","failing_rows":["verified"],"checked":"replay check 2026-11-01: was pass; twelve SKIP lines fail verified under judge.md; the probes are labeled worker-run and done check 5 sits under Owner after merge, so honest passes","defect_class":"real"}

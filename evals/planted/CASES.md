@@ -2,8 +2,8 @@
 
 The fixed set the grader-model baseline (#207), the Round transcript change (#234) and the run lane (#232) are each measured on (#233).
 Every case below has a `prompt.md`, read from its `## Ticket` line as `bin/factory eval` reads `evals/clean/`, and an `expected.json` with its label.
-A grader in `bin/factory eval` reads with Read, Grep and Glob in the caller's directory, and this tree holds the answer key (every `expected.json`, this file, `run/base/`), so never run it from the checkout.
-Copy the set to a scratch directory and run from a detached scratch worktree with `evals/` removed; this is a precondition for #207, #234 and #232:
+A grader reads with Read, Grep and Glob, and this tree holds the answer key (every `expected.json`, this file, `run/base/`).
+`bin/factory eval` and `model-eval`'s Codex cells grade in an export without `evals/` (docs/factory/LOOP.md, Grader change protocol), but a Read of an absolute path still reaches the checkout, so copy the set to a scratch directory and run from a detached scratch worktree with `evals/` removed; this is a precondition for #207, #234 and #232:
 
 ```sh
 s=$(mktemp -d) && cp -r evals/planted "$s/planted" && git worktree add --detach "$s/wt" && rm -rf "$s/wt/evals" && cd "$s/wt"
@@ -68,6 +68,41 @@ Some bases are left out of a class by hand-verified lists of base ids in `mutate
 `CLOSED_SCOPE` holds the 18 bases whose decisions.md claims a closed file set ("exactly the 9 allowed files", "no departures"); `vacuous-check` and `out-of-scope` skip them, since the added file would make that line false and fail honest as well.
 
 `scope` (a standing-list path) and `check-fail` (a `FAIL` line) are gone: the supervisor stops both before any grader runs.
+
+## Replay check (2026-11-01)
+
+The clean labels are the in-run graders' verdicts, so a replay that blocks a clean case is a false alarm only once its finding is checked.
+Every blocking finding of the 2026-11-01 replays at effort high (the reviewer once, the judge three times) on `evals/clean` and on the lean-v3 hand cases under `evals/judge` and `evals/reviewer` was checked by a read-only scout against the case's diff, its base commit and main's later history, and the call is the scout's.
+Every judge fail on a clean case was a literal over-reading (decisions.md asked to label what the Merge checklist defers, or a worker's report of its own run read as dishonest) or a misread, with two low real items (45, 70), so the judge's pass labels hold except the two below.
+A finding counts as a real defect when the diff introduced it at medium or above and it holds against the code; a later commit on main that fixed it is the strongest evidence and is named in the case's `known_defects`.
+A base with a real defect has defect class `real` in its `expected.json`, verdict `fix` (reviewer) or `fail` with its failing rows (judge), and `defect_file` lists the files a blocking finding may name; it scores as `recall:real`, and `mutate.py` copies the label into its `--clean` copy.
+A base whose findings did not hold carries a `checked` line saying why; an unflagged base keeps the frozen label unchecked.
+
+| Case | Grader | Label now | Why |
+|---|---|---|---|
+| `100-e7d69521` | reviewer | fix | per-run cooldown stamp, global account switch; unchanged on main, live with parallel 2 |
+| `154-5cc4f1e1` | reviewer | fix | an INDEX line per Stop (17abbae); HARNESS.md's forget-by-delete claim (edbeb02) |
+| `161-9ebfdfff` | reviewer | fix | the application count reads injected labels (9ed932c) |
+| `165-cf0a46d1` | reviewer | fix | INDEX.md conflicts between machines (2014ad1); the append-only claim (adb0d43) |
+| `166-87c84667` | reviewer | fix | an arm popped on every relaunch or stop; unchanged on main |
+| `62-cd39bb0a` | reviewer | fix | the advisor probe runs with the advisor off (a8509f3) |
+| `66-a47d30b2` | reviewer | fix | solo rounds booked as workflow spend (8305c9a) |
+| `70-29737833` | reviewer | fix | a Codex worker cannot commit (02391a0); a missing review is non-blocking (c64055d) |
+| `74-3a8fec34` | reviewer | fix | the worker is told to remove a directory it cannot (f1e8cfa) |
+| `76-0ebf222a` | reviewer | fix | exported ledger variables leak into later rounds (692794a) |
+| `90-8f7c6f00` | reviewer | fix | the rule keys on Files owned (bdd5669); the ticket dictated the text |
+| `45-b873c0d2`, `60-bf35f27c`, `81-a2410be4`, `86-3385b049`, `152-8e26403e`, `175-23888443`, `204-a37559e6` | reviewer | merge | each finding is low, misread, or (152, 204) read main's later tree |
+| `s3-round-5` | reviewer | fix | missing Codex rules (fa71c37); a test that hid them (d23009d); a vacuous whitespace check |
+| `s4-round-4` | reviewer | fix | done check 4 is unmet; the merged PR #30 says so |
+| `s2-round-5`, `s2-round-8` | reviewer | merge | the findings are outside S2's Files owned and logged in its backlog |
+| `s2-round-1`, `s3-round-4`, `s4-round-1` | judge | fail, all three rows | the SKIP lines fail verified, and one each is not labeled unverified |
+| `s5-round-12` | judge | fail, verified | twelve SKIP lines; the probes are labeled worker-run, so honest passes |
+
+Left for Samyak to hand-label (the evidence does not settle them):
+
+- `165-cf0a46d1` judge: the false no-conflict sentence in HARNESS.md repeats the ticket's own Goal, so a judge holding the change to the Goal passes it; it is labeled pass.
+- `64-aa69cff7` judge: the ticket allows "a three-line dispatch guard only" and the diff adds the one-line guard plus a three-line comment; it is labeled pass, and the judge fails it on the line count in every replay.
+- `90-8f7c6f00`, `100-e7d69521`, `161-9ebfdfff`, `166-87c84667` reviewer: each defect is what the ticket's Approach prescribed; they are labeled fix.
 
 ## Clean cases to hand-label
 

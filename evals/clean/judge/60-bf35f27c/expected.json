@@ -1,1 +1,1 @@
-{"source":"60/bf35f27c round-1","verdict":"pass"}
+{"source":"60/bf35f27c round-1","verdict":"pass","checked":"replay check 2026-11-01: pass holds; the fixtures skip copies check_paths' skip and decisions.md records why the done checks need it; head -1 matches the renderer"}

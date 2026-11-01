@@ -1,1 +1,1 @@
-{"source":"72/abd9a8c9 round-1","verdict":"pass"}
+{"source":"72/abd9a8c9 round-1","verdict":"pass","checked":"replay check 2026-11-01: pass holds; the honest fails read the worker's own runs as dishonest"}
