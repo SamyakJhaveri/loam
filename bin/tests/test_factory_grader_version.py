@@ -127,9 +127,11 @@ class GraderVersionTests(unittest.TestCase):
         # tmux gives a session the server's environment, so without -e the run fell back to MAX_PARALLEL=1 and
         # stopped at once beside a live run (48 false machine-problem pages on jhaveris, 30-31 Oct).
         # Every cap travels once, an unset or empty one as empty, so a cap in the server's environment is overridden
-        # (#573); tmux keeps the last -e for a name, so a second one would drop next's value.
-        names = ("MAX_ROUNDS ROUND_BUDGET_USD GRADER_BUDGET_USD TICKET_BUDGET_USD DAILY_BUDGET_USD "
-                 "MAX_HOURS MAX_TURNS CALL_TIMEOUT_SEC NET_TIMEOUT_SEC").split()
+        # (#573); tmux keeps the last -e for a name, so a second one would drop next's value. The ten are listed here
+        # and joined with CAP_NAMES, so neither emptying that list nor adding a cap to it escapes the check.
+        names = set(("MAX_ROUNDS ROUND_BUDGET_USD GRADER_BUDGET_USD TICKET_BUDGET_USD DAILY_BUDGET_USD "
+                     "MAX_HOURS MAX_TURNS CALL_TIMEOUT_SEC NET_TIMEOUT_SEC").split())
+        names |= set(self.sourced("echo $CAP_NAMES").stdout.split()) - {"MAX_PARALLEL"}
         unset = " ".join(f"FACTORY_{n}" for n in names if n != "MAX_HOURS")
         proc, tmux = self.tick(env=f"unset {unset}; export FACTORY_MAX_PARALLEL=2 FACTORY_MAX_HOURS=; ")
         self.assertEqual(proc.stdout.splitlines(), ["launched #7", "rc=0"], proc.stderr)
