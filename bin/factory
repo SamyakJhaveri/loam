@@ -735,7 +735,7 @@ eval_tree() { # work: exports into work/tree
 # that tree rebuilt: the commit its `## Diff (<base>...HEAD)` heading names, keys removed as above, with the Diff
 # applied one file at a time (a capped or stat-only file stays at base). Graded in HEAD, a case drifts as main
 # moves: 152-8e26403e's reviewer flagged a gh call for not using a wrapper that main gained six weeks later.
-# A case whose heading names no commit this checkout has (planted, lean-v3) reads the HEAD export.
+# A case whose heading names no commit this checkout has (run-only, lean-v3) reads the HEAD export.
 case_tree() { # prompt.md work -> the tree to grade in, on stdout
   local base top ev d="$2/case" p
   base=$(sed -n 's/^## Diff (\([0-9a-f]\{7,40\}\)\.\.\.HEAD)$/\1/p' "$1" | head -1)
