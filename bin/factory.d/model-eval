@@ -22,14 +22,13 @@ Beside each scored reply, <grader>-<case>.key holds the sha256 of everything the
 grader file, its schema and rubric, role-settings.json, bin/factory and this script as they are on disk, the
 case's prompt.md and expected.json, the model, the effort, the mode, and the cell's harness (Claude Code
 version, config-drift.sh md5, Codex model, and the raw ~/.claude/settings.json and ~/.codex/config.toml,
-since config-drift.sh names settings only). A
-later run calls the grader only for the cases whose reply or key is missing or whose key differs; an error,
-unparseable or off-model reply gets no key, so it is retried. Each cell dir gets fingerprint-<grader>.txt
-naming the config that grader's replies ran on, and fingerprint.txt for the whole grader list. A Codex cell
-gets each grader schema in the strict form `codex exec --output-schema` requires. Right after a Claude
-cell's calls, every new reply that is not an error must name only the cell's model in modelUsage, else the
-offenders are printed and the exit is 3 with no further call and no table. The table scores this run's
-cells only, never another run's replies left under <out>/replies.
+since config-drift.sh names settings only). A later run calls the grader only for the cases whose reply or key
+is missing or whose key differs; an error, unparseable or off-model reply gets no key, so it is retried. Each
+cell dir gets fingerprint-<grader>.txt naming the config that grader's replies ran on, and fingerprint.txt for
+the whole grader list. A Codex cell gets each grader schema in the strict form `codex exec --output-schema`
+requires. Right after a Claude cell's calls, every new reply that is not an error must name only the cell's
+model in modelUsage, else the offenders are printed and the exit is 3 with no further call and no table. The
+table scores this run's cells only, never another run's replies left under <out>/replies.
 python3 stdlib only.
 """
 from __future__ import annotations
