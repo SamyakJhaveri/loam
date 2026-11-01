@@ -273,9 +273,10 @@ exec env -u FACTORY_CALL_TAG bash -c 'while :; do echo x >> {self.top}/mark; sle
 
     def test_wrapper_keeps_an_ignored_quit(self) -> None:
         # The reset is the call's own, before its exec: a wrapper that QUIT could end would leave the call's escaped
-        # children to no one. Only a supervisor that starts with QUIT ignored hands the wrapper an ignored QUIT.
-        cmd = self.call_cmd('call_start "$WORKTREE" sleep 30; sleep 1; kill -QUIT "$CALL_PID"; sleep 0.3; '
-                            'kill -TERM "$CALL_PID"; call_end probe')
+        # children to no one. Bash 5 hands the wrapper the supervisor's QUIT, so the supervisor starts with it ignored,
+        # and the QUIT waits for call.group, which the call writes after the wrapper's first statements have run.
+        cmd = self.call_cmd('call_start "$WORKTREE" sleep 30; until [ -s "$RUN/call.group" ]; do sleep 0.05; done; '
+                            'kill -QUIT "$CALL_PID"; sleep 0.3; kill -TERM "$CALL_PID"; call_end probe')
         cmd["args"] = ["perl", "-e", '$SIG{INT} = $SIG{QUIT} = "IGNORE"; exec @ARGV', *cmd["args"]]
         proc = subprocess.run(**cmd, capture_output=True, check=False, timeout=60)
         self.assertIn("returned:143", proc.stdout, proc.stderr)
