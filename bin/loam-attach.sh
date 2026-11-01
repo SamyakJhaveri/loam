@@ -3,7 +3,8 @@
 #
 # Copies the seed Claude settings and hook scripts into <dir>/.claude/ (foreign
 # hooks already in <dir>/.claude/hooks/ are kept), appends the harness .gitignore
-# lines, and writes <dir>/.claude/settings.local.json that registers this
+# lines and the sandbox placeholder lines of seed/.gitignore.jinja (each line
+# only when missing, so a re-run adds new ones), and writes <dir>/.claude/settings.local.json that registers this
 # checkout's cultivation/marketplace and enables the sam-cc-setup plugin. Works
 # whether or not <dir> is a git repo.
 #
@@ -27,7 +28,8 @@
 # Exit codes:
 #   0  attached
 #   1  usage error, missing target, existing harness (settings.json or hooks/)
-#      without --force, or missing seed settings
+#      without --force, missing seed settings, or no sandbox placeholder block
+#      in seed/.gitignore.jinja
 
 set -euo pipefail
 
@@ -68,6 +70,34 @@ MKT="$ROOT/cultivation/marketplace"
 [ -f "$SEED/settings.json" ] || die "seed Claude settings not found: $SEED/settings.json"
 [ -d "$SEED/hooks" ] || die "seed Claude hooks not found: $SEED/hooks"
 [ -d "$MKT" ] || die "marketplace not found: $MKT"
+
+# The ignore lines appended to <dir>/.gitignore: the harness lines, then the
+# seed's sandbox placeholder block, read from seed/.gitignore.jinja so the two
+# lists cannot drift. The block runs from its "Empty read-only files the Claude
+# Code sandbox creates" comment to the next blank line; its comments are
+# skipped and its order is kept (each ! re-include follows its exclusion).
+HARNESS_IGNORES=(
+  ".codex_review_done"
+  ".claude/audit.log"
+  ".claude/worktrees/"
+  ".claude/codex-reviews/"
+  ".claude/settings.local.json"
+  ".validation_passed"
+  ".superpowers/"
+  "/HANDOFF.md"
+  "*.log"
+  "logs/"
+)
+SEED_GI="$ROOT/seed/.gitignore.jinja"
+[ -f "$SEED_GI" ] || die "seed .gitignore not found: $SEED_GI"
+PLACEHOLDER_IGNORES=()
+while IFS= read -r line; do
+  PLACEHOLDER_IGNORES+=("$line")
+done < <(awk '/Empty read-only files the Claude Code sandbox creates/ { on = 1; next }
+  on && /^[[:space:]]*$/ { exit }
+  on && !/^#/ { print }' "$SEED_GI")
+[ "${#PLACEHOLDER_IGNORES[@]}" -gt 0 ] \
+  || die "no sandbox placeholder block found in $SEED_GI (its \"Empty read-only files the Claude Code sandbox creates\" comment)"
 
 # Refuse to clobber an existing harness unless --force. Key on the hooks
 # directory too, not just settings.json: the hook copy below would overwrite the
@@ -114,32 +144,32 @@ PY
   SLJ_STATUS="written"
 fi
 
-# .gitignore: append the harness ignore lines once, keyed by a marker line.
+# .gitignore: append each harness and placeholder line the file lacks, so a
+# re-run on an earlier attach adds only the new lines. The marker heads the
+# first append and is not written again.
 GI="$DST/.gitignore"
 MARKER="# Loam harness (added by loam-attach.sh)"
-if [ -f "$GI" ] && grep -qxF "$MARKER" "$GI"; then
+missing=()
+for line in "${HARNESS_IGNORES[@]}" "${PLACEHOLDER_IGNORES[@]}"; do
+  if ! { [ -f "$GI" ] && grep -qxF -- "$line" "$GI"; }; then
+    missing+=("$line")
+  fi
+done
+if [ "${#missing[@]}" -eq 0 ]; then
   GI_STATUS="ignore lines already present"
 else
   # If the file has content and no trailing newline, start on a fresh line so
-  # the marker does not glue onto the last pattern.
+  # the first appended line does not glue onto the last pattern.
   if [ -s "$GI" ] && [ -n "$(tail -c 1 "$GI")" ]; then
     printf '\n' >> "$GI"
   fi
   {
-    printf '%s\n' "$MARKER"
-    printf '%s\n' \
-      ".codex_review_done" \
-      ".claude/audit.log" \
-      ".claude/worktrees/" \
-      ".claude/codex-reviews/" \
-      ".claude/settings.local.json" \
-      ".validation_passed" \
-      ".superpowers/" \
-      "/HANDOFF.md" \
-      "*.log" \
-      "logs/"
+    if ! { [ -f "$GI" ] && grep -qxF "$MARKER" "$GI"; }; then
+      printf '%s\n' "$MARKER"
+    fi
+    printf '%s\n' "${missing[@]}"
   } >> "$GI"
-  GI_STATUS="ignore lines appended"
+  GI_STATUS="${#missing[@]} ignore lines appended"
 fi
 
 HOOK_COUNT="$(find "$SEED/hooks" -maxdepth 1 -name '*.sh' -type f | wc -l | tr -d ' ')"
