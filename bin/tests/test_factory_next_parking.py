@@ -183,7 +183,8 @@ class ParkingTests(unittest.TestCase):
 
     def test_edited_body_waits_while_a_run_of_the_old_body_runs_or_awaits_merge(self) -> None:
         # Both bodies share the issue's branch and worktree, so a spare slot must not launch the edited body beside
-        # the old body's live run, its live model call, or its open PR; assigned or not.
+        # the old body's live run, its live model call, or its open PR (pr-opened with no pr-closed marker, even with
+        # the worktree gone, as the overnight driver leaves it); assigned or not. A closed PR frees it, worktree or not.
         edited = CLEAN + "\n- the corrected line"
         co = self.runs.parent / f"{self.runs.name}-co"
         self.addCleanup(shutil.rmtree, co.parent / f"{co.name}-7", True)
@@ -199,7 +200,8 @@ class ParkingTests(unittest.TestCase):
                     self.addCleanup(subprocess.run, ["kill", "-KILL", "--", f"-{p.pid}"], check=False)
                     (d / "call").write_text(f"{p.pid} test.{key(str(p.pid))}\n")
                 if case == "pr-opened":
-                    (co.parent / f"{co.name}-7").mkdir()
+                    (d / "factory.log").write_text(
+                        "2026-10-31T00:00:00Z EXIT pr-opened (0): https://github.com/o/r/pull/9 after 1 rounds\n")
                 for frontier, mine in ((((7, edited),), ()), ((), ((7, edited),))):
                     proc = self.next_dry_run(*frontier, mine=mine, pre=pre, FACTORY_MAX_PARALLEL="2")
                     self.assertEqual(proc.stdout.strip(), "nothing to launch", proc.stderr)
@@ -208,7 +210,8 @@ class ParkingTests(unittest.TestCase):
                     subprocess.run(["kill", "-KILL", "--", f"-{p.pid}"], check=False)
                     p.wait()
                 if case == "pr-opened":
-                    (co.parent / f"{co.name}-7").rmdir()
+                    (co.parent / f"{co.name}-7").mkdir()
+                    (d / "pr-closed").write_text("2026-10-31T01:00:00Z\n")
                 proc = self.next_dry_run(mine=((7, edited),), pre=pre, FACTORY_MAX_PARALLEL="2")
                 expect = "nothing to launch" if case == "running" else "would launch #7"
                 self.assertEqual(proc.stdout.strip(), expect, proc.stderr)

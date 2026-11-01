@@ -2820,15 +2820,20 @@ owner_events() { # run-dir phase repo number -> appends the operator's events on
     | {phase: $phase, kind, id, at}' >> "$f"
 }
 
-# The PR phase: a pr-opened run whose PR has closed gets the operator's events on it, once (pr-closed marks it).
-# A gh failure leaves the run for the next tick and never stops one.
+# The PR a pr-opened run opened, from its EXIT line; empty for a file-ticket rehearsal, which opens none.
+pr_url_of() { # <run dir>
+  sed -n 's#^[^ ]* EXIT pr-opened ([0-9]*): \(https://github\.com/[^/ ]*/[^/ ]*/pull/[0-9]*\).*#\1#p' \
+    "$1/factory.log" 2> /dev/null | tail -1
+}
+
+# The PR phase: a pr-opened run whose PR has closed (merged or not: the issues API reads both as closed) gets the
+# operator's events on it, once (pr-closed marks it). A gh failure leaves the run for the next tick and never stops one.
 pr_closed_events() {
   local d url repo num
   for d in "$RUNS_ROOT"/*/*/; do
     [ "$(cat "$d/status" 2> /dev/null)" = pr-opened ] && [ ! -e "$d/pr-closed" ] || continue
-    url=$(sed -n 's#^[^ ]* EXIT pr-opened ([0-9]*): \(https://github\.com/[^/ ]*/[^/ ]*/pull/[0-9]*\).*#\1#p' \
-      "$d/factory.log" 2> /dev/null | tail -1)
-    [ -n "$url" ] || continue   # a file-ticket rehearsal opens no PR
+    url=$(pr_url_of "$d")
+    [ -n "$url" ] || continue
     repo=${url#https://github.com/}; repo=${repo%/pull/*}; num=${url##*/}
     [ "$(net gh api "repos/$repo/issues/$num" --jq .state 2> /dev/null)" = closed ] || continue
     owner_events "$d" pr "$repo" "$num" && now > "$d/pr-closed"
@@ -2916,13 +2921,16 @@ run_busy() { # <run dir> -> 0 while a process cmd_run would refuse a relaunch on
 }
 
 # Every body of an issue shares its branch and its worktree ($MAIN_CHECKOUT-<key>), so while a run of any body holds a
-# slot, still runs a process, or awaits merge (pr-opened with that worktree still there), no other body launches.
+# slot, still runs a process, or awaits merge, no other body launches. A run awaits merge while it is pr-opened with a PR
+# and no pr-closed marker, whatever its worktree: the overnight driver removes the worktree of a PR it leaves open, and
+# a closed PR's worktree may stay. next writes the marker (pr_closed_events) before it reads candidates, so a gh
+# failure holds the issue one more tick, never frees it early.
 issue_busy() { # <key> <run dir to leave out, or ""> [peek] -> 0 while such a run exists
   local d
   for d in "$RUNS_ROOT/$1"/*/; do
     [ -d "$d" ] && [ "${d%/}" != "${2%/}" ] || continue
     holds_slot "$d" "${3-}" || run_busy "$d" && return 0
-    [ "$(cat "$d/status" 2> /dev/null)" = pr-opened ] && [ -d "$MAIN_CHECKOUT-$(printf '%s' "$1" | tr '[:upper:]' '[:lower:]')" ] && return 0
+    [ "$(cat "$d/status" 2> /dev/null)" = pr-opened ] && [ ! -e "$d/pr-closed" ] && [ -n "$(pr_url_of "$d")" ] && return 0
   done
   return 1
 }
