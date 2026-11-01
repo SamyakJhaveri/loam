@@ -157,7 +157,7 @@ class RelaunchPublishTests(unittest.TestCase):
         self.launch(JUDGE_FAIL, REVIEW_CLEAN, SECOND)
         calls = self.runs / "rl" / "relaunch-worker-calls"
         self.assertGreater(len(calls.read_text().splitlines()) if calls.exists() else 0, 0)
-        self.assertFalse(self.body().startswith("## How it works\n"), self.body())
+        self.assertTrue(self.body().startswith("Draft:"), self.body())
 
     def test_opened_draft_relaunch_resumes_into_a_worker_round(self) -> None:
         # The first launch's real open_pr opens the file-ticket draft: publish.intent goes with the pr-opened exit.
