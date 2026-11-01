@@ -1948,8 +1948,9 @@ nav_c_append() { [ "${FACTORY_NAV_ARM:-}" = C ] && cat "$ROOT/bin/factory.d/_nav
 # launch: exec_frozen re-execs with the exported value, which stops a second pop.
 nav_arm_resolve() { [ -n "${FACTORY_NAV_ARM+x}" ] && return 0; local f="$RUNS_ROOT/nav-order" a; [ -s "$f" ] || return 0; a=$(head -n 1 "$f"); [ -n "$a" ] || return 0; export FACTORY_NAV_ARM="$a"; tail -n +2 "$f" > "$f.tmp" && mv "$f.tmp" "$f"; return 0; }
 
-build_worker_prompt() { # round -> prompt path (pending until the call returns a result); non-zero when a skills: name resolves to no SKILL.md
+build_worker_prompt() { # round -> prompt path (pending until the call returns a result); 3 when a skills: name resolves to no SKILL.md, 4 when jq cannot build the fan-out args
   local round="$1" pf="$RUN/pending.prompt.md" prev=$((round - 1)) s sf ad=
+  local -a sl=()   # a Claude worker's skill lines, also handed to each fan-out builder in the Workflow args
   { printf '%s\n\n' "$BODY"; cat "$RUN/frozen/_common.md"; } > "$pf"
   nav_c_append "$pf"   # arm C appends the Semble instruction; base and arm B append nothing (NAV-01)
   # Skills per role (LOOP.md), each `skills:` name resolved by skill_file: a Claude worker gets one
@@ -1971,17 +1972,23 @@ build_worker_prompt() { # round -> prompt path (pending until the call returns a
       # pstack skills use Cursor tool names, which pstack's Claude Code adapter maps; read it once first.
       if [ -z "$ad" ] && [[ "$s" == pstack:* ]] && [ -f "${sf%/skills/*}/docs/harness/claude-code.md" ]; then
         ad="${sf%/skills/*}/docs/harness/claude-code.md"
-        printf 'Before the first pstack skill, read %s, which maps its tool names to Claude Code.\n' "$ad" >> "$pf"
+        sl+=("Before the first pstack skill, read $ad, which maps its tool names to Claude Code.")
       fi
-      printf 'Before the first edit, read %s and follow its steps.\n' "$sf" >> "$pf"
+      sl+=("Before the first edit, read $sf and follow its steps.")
     fi
   done < <(worker_skills)
+  [ "${#sl[@]}" -eq 0 ] || printf '%s\n' "${sl[@]}" >> "$pf"
   # A large claude ticket runs round 1 as the fan-out workflow; a Codex worker gets the ordinary round-1
   # prompt (runs_workflow is false for it). The F11 advisor is the second check on the split (F12).
   if runs_workflow "$round"; then
+    # skills: the lines above, verbatim, so each builder reads what the lead was told to (#523); jq escapes the
+    # paths. A jq older than 1.6 has no --args: return 4 rather than hand the lead empty args.
+    local wa
+    wa=$(jq -cn --arg ticket "$RUN/frozen/issue.md" --arg run "$RUN" '{ticket: $ticket, run: $run, skills: $ARGS.positional}' --args ${sl[@]+"${sl[@]}"}) \
+      || { log "jq could not build the fan-out Workflow args (needs jq 1.6 or newer)"; return 4; }
     {
       printf '\n\n## Large ticket, round 1: run the fan-out workflow\n\n'
-      printf 'Run the Workflow tool with scriptPath `%s/frozen/factory-round.js` and args `{"ticket": "%s/frozen/issue.md", "run": "%s"}`. ' "$RUN" "$RUN" "$RUN"
+      printf 'Run the Workflow tool with scriptPath `%s/frozen/factory-round.js` and args `%s`. ' "$RUN" "$wa"
       printf 'When it returns, read %s/tasks/result.json. If that file is absent, implement the ticket yourself as in any round. ' "$RUN"
       printf 'Otherwise the integrator has committed; copy its `unmet` and `abandoned` lists into %s.\n' "$DECISIONS"
       printf 'Then read the integrated diff and write its one-paragraph account of how the change works and why it is correct to %s/mechanism.md, as the instructions above ask.\n' "${DECISIONS%/*}"
@@ -2174,7 +2181,8 @@ worker_round() { # round; leaves round-N.* only once the call produced a result
   if runs_workflow "$round"; then
     find "$RUN/tasks" -mindepth 1 -delete 2> /dev/null || finish stopped-environment "could not empty $RUN/tasks before the fan-out round"
   fi
-  pf=$(build_worker_prompt "$round") || finish ticket-defect "a skill this ticket names resolves to no SKILL.md under ~/.claude/skills or the plugin cache; see the log"
+  pf=$(build_worker_prompt "$round") || { [ $? -ne 4 ] || finish stopped-environment "jq could not build the fan-out Workflow args; see the log"
+    finish ticket-defect "a skill this ticket names resolves to no SKILL.md under ~/.claude/skills or the plugin cache; see the log"; }
   if [ "$WORKER_KIND" = codex ]; then
     # The Codex worker: JSONL stream is stdout, -o is the last message, < /dev/null keeps Codex off the
     # caller's stdin (#41). No dollar budget bounds it (cost_usd null); CALL_TIMEOUT_SEC and MAX_HOURS do.

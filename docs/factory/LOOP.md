@@ -195,6 +195,7 @@ Its workspace-write sandbox does not block `.env` reads (#41); no deny is config
 Every worker round receives, in this order: the issue body verbatim, which carries its `goal:` line as text, `_common.md`, and from round 2 a `## Previous round` block holding the failing check lines and every blocking finding verbatim; a Claude worker also gets `frozen/unattended.md` as an appended system prompt.
 A slash command expands only on the first line of a `-p` prompt and swallows the rest as its argument (#40), so no worker prompt carries `/goal` or a `/<skill>` line; a `Stop` hook in `worker-settings.json`, the worker-only settings file, runs the frozen check script from the worktree root and exits 2 with the FAIL lines while any check fails, and `--max-turns` bounds the round (#36, route B).
 The hook sets `LOAM_HOOK=1`, under which the check lines that call `bin/check` (minutes per stop) or the live model pass without running; the supervisor's own check run has it unset and is the one run of those per round. `build_worker_prompt` in `bin/factory` appends after `_common.md` one sentence per `skills:` name: `Before the first edit, read <path> and follow its steps.`, where `<path>` is the SKILL.md `skill_file` resolves (#37, #385); before the first `pstack:` name it adds one sentence naming pstack's Claude Code adapter, `docs/harness/claude-code.md` beside that skills tree, when the file exists.
+A `size: large` round 1 hands the same lines, unchanged and in order, to each fan-out builder: they ride in the Workflow args as `skills`, and `factory-round.js` appends them to every builder prompt before its `Do:` list.
 The Skill tool would not do: every pstack skill sets `disable-model-invocation`, so the tool refuses it (`docs/PSTACK.md`).
 A name that resolves to no SKILL.md stops the round, for either worker.
 A Codex worker gets the skill bodies pasted instead.
@@ -212,7 +213,7 @@ Skills are given at the moment they apply, never all at once; the listing is pai
 | Brief (stage 0) | `/brief` (F5) | Samyak invokes it |
 | Design (stage 1) | `surprise-me` (panel), a research pass against primary sources, plan mode, `/plan-review` | in that order for `Mode: figure-out`, from plan mode on for `build`; Samyak types `/surprise-me` and `/plan-review`, which are manual-only |
 | Tickets (stage 2) | `plan-reviewer`, lean-critic | the stage-2 session writes and publishes the breakdown itself (`CONTRACT.md`, Publishing a breakdown) and invokes lean-critic after `bin/factory lint` exits 0; `plan-reviewer` is manual-only, run by hand over the breakdown when Samyak asks |
-| Worker | the skills the ticket's `skills:` field names, each a line of `bin/factory.d/skills.txt` or a `pstack:<name>` of any installed pstack skill | one sentence per name in the worker prompt, naming the SKILL.md path to read |
+| Worker | the skills the ticket's `skills:` field names, each a line of `bin/factory.d/skills.txt` or a `pstack:<name>` of any installed pstack skill | one sentence per name in the worker prompt and in each fan-out builder prompt, naming the SKILL.md path to read |
 | Graders | none; their prompt is the whole instruction | frozen files |
 | Manager (stage 5, 6) | none; a handoff file in the `seed/docs/WORKERS.md.jinja` Handoff form when stopping mid-stream | the manager session |
 
