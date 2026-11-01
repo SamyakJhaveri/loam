@@ -1531,7 +1531,12 @@ holds_slot() { # <run dir>
       # shell can outlive every holder; the call's group or tag still holds the slot, as on the owner path below.
       call_live "$1" && { exec {fd}>&-; return 0; }
       st=$(cat "$1/status" 2> /dev/null)
-      [ "$st" = running ] || [ "$st" = waiting-limit ] && printf 'stopped-environment\n' > "$1/status"
+      # A gone call's `call` goes too, as on the owner path, so it never holds the stopped run's slot (above) once its
+      # wrapper's pid is reused; a relaunch waits on this lease, so no `call` of its own is written meanwhile.
+      if [ "$st" = running ] || [ "$st" = waiting-limit ]; then
+        printf 'stopped-environment\n' > "$1/status"
+        rm -f "$1/call" "$1/call.tmp" "$1/call.group" "$1/call.group.tmp"
+      fi
       exec {fd}>&-   # before the alert, whose children would otherwise inherit this run's lease
       [ "$st" = running ] || [ "$st" = waiting-limit ] || return 1
       log "stopped-environment: ${1%/} was $st, but no process of the run holds its lease"

@@ -442,6 +442,9 @@ class LeaseSlotTests(SlotCase):
         wait_until(lambda: not self.holds())
         self.assertEqual((self.run_dir / "status").read_text(), "stopped-environment\n")
         self.assertEqual(len(self.alerts.read_text().splitlines()), 1)
+        # The gone call's files go with the reap, so a reused wrapper pid cannot hold the stopped run's slot (#467).
+        self.assertFalse((self.run_dir / "call").exists())
+        self.assertFalse((self.run_dir / "call.group").exists())
 
     def test_launched_with_no_status_holds_only_while_its_lease_is_held(self) -> None:
         # A launch killed between `launched` and its first status leaves no status; its free lease frees the slot.
