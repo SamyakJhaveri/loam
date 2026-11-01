@@ -1966,6 +1966,7 @@ nav_arm_resolve() { [ -n "${FACTORY_NAV_ARM+x}" ] && return 0; local f="$RUNS_RO
 
 build_worker_prompt() { # round -> prompt path (pending until the call returns a result); non-zero when a skills: name resolves to no SKILL.md
   local round="$1" pf="$RUN/pending.prompt.md" prev=$((round - 1)) s sf ad=
+  local -a sl=()   # a Claude worker's skill lines, also handed to each fan-out builder in the Workflow args
   { printf '%s\n\n' "$BODY"; cat "$RUN/frozen/_common.md"; } > "$pf"
   nav_c_append "$pf"   # arm C appends the Semble instruction; base and arm B append nothing (NAV-01)
   # Skills per role (LOOP.md), each `skills:` name resolved by skill_file: a Claude worker gets one
@@ -1987,17 +1988,20 @@ build_worker_prompt() { # round -> prompt path (pending until the call returns a
       # pstack skills use Cursor tool names, which pstack's Claude Code adapter maps; read it once first.
       if [ -z "$ad" ] && [[ "$s" == pstack:* ]] && [ -f "${sf%/skills/*}/docs/harness/claude-code.md" ]; then
         ad="${sf%/skills/*}/docs/harness/claude-code.md"
-        printf 'Before the first pstack skill, read %s, which maps its tool names to Claude Code.\n' "$ad" >> "$pf"
+        sl+=("Before the first pstack skill, read $ad, which maps its tool names to Claude Code.")
       fi
-      printf 'Before the first edit, read %s and follow its steps.\n' "$sf" >> "$pf"
+      sl+=("Before the first edit, read $sf and follow its steps.")
     fi
   done < <(worker_skills)
+  [ "${#sl[@]}" -eq 0 ] || printf '%s\n' "${sl[@]}" >> "$pf"
   # A large claude ticket runs round 1 as the fan-out workflow; a Codex worker gets the ordinary round-1
   # prompt (runs_workflow is false for it). The F11 advisor is the second check on the split (F12).
   if runs_workflow "$round"; then
     {
       printf '\n\n## Large ticket, round 1: run the fan-out workflow\n\n'
-      printf 'Run the Workflow tool with scriptPath `%s/frozen/factory-round.js` and args `{"ticket": "%s/frozen/issue.md", "run": "%s"}`. ' "$RUN" "$RUN" "$RUN"
+      # skills: the lines above, verbatim, so each builder reads what the lead was told to (#523); jq escapes the paths.
+      printf 'Run the Workflow tool with scriptPath `%s/frozen/factory-round.js` and args `%s`. ' "$RUN" \
+        "$(jq -cn --arg ticket "$RUN/frozen/issue.md" --arg run "$RUN" '{ticket: $ticket, run: $run, skills: $ARGS.positional}' --args ${sl[@]+"${sl[@]}"})"
       printf 'When it returns, read %s/tasks/result.json. If that file is absent, implement the ticket yourself as in any round. ' "$RUN"
       printf 'Otherwise the integrator has committed; copy its `unmet` and `abandoned` lists into %s.\n' "$DECISIONS"
       printf 'Then read the integrated diff and write its one-paragraph account of how the change works and why it is correct to %s/mechanism.md, as the instructions above ask.\n' "${DECISIONS%/*}"
