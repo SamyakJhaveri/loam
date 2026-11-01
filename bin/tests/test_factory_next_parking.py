@@ -68,7 +68,7 @@ class ParkingTests(unittest.TestCase):
 
     def next_dry_run(self, *frontier: tuple[int, str], mine: tuple[tuple[int, str], ...] = (),
                      authors: dict[int, str] | None = None, editors: dict[int, str | None] | None = None,
-                     now: int | None = None, **env: str) -> subprocess.CompletedProcess[str]:
+                     now: int | None = None, pre: str = "", **env: str) -> subprocess.CompletedProcess[str]:
         """cmd_next --dry-run over the given unassigned (issue, body) frontier, lowest number first as gh sorts it,
         and `mine`, the ready-for-agent issues assigned to the runner. Each issue is written by `authors`' login,
         SamyakJhaveri by default, and last edited by `editors`' login (None: the editor call fails; UNNAMED: a null
@@ -83,7 +83,7 @@ class ParkingTests(unittest.TestCase):
         edits = "".join(f'*" number={issue} "*) {"return 1" if who is None else f"doc={doc(who)!r}"} ;; '
                         for issue, who in (editors or {}).items())
         clock = "" if now is None else f'date() {{ if [ "$*" = "-u +%s" ]; then echo {now}; else command date "$@"; fi; }}; '
-        stubs = (clock + "assert_toolchain_env() { :; }; claude_logged_in() { :; }; claude_version_ok() { :; }; target_repo() { echo o/r; }; "
+        stubs = (pre + clock + "assert_toolchain_env() { :; }; claude_logged_in() { :; }; claude_version_ok() { :; }; target_repo() { echo o/r; }; "
                  "gh() { case $2 in graphql) local a p= q= doc='{\"data\":{\"repository\":{\"issue\":{\"editor\":null}}}}'; "
                  'for a; do [ "$p" = --jq ] && q=$a; p=$a; done; echo "$*" >> "$GQL_LOG"; '
                  f"case \"$* \" in {edits}esac; jq -r \"$q\" <<<\"$doc\" ;; repos/*) printf '%s\\n' {lines(frontier)} ;; "
@@ -161,6 +161,62 @@ class ParkingTests(unittest.TestCase):
         self.assertEqual(proc.stdout.strip(), "nothing to launch", proc.stderr)
         self.assertEqual(proc.stderr, "")
 
+    def test_runner_assigned_ticket_defect_relaunches_only_after_a_body_edit(self) -> None:
+        # The launch assigned #7 to the runner; its run ended ticket-defect, so the same body parks, and the body the
+        # owner corrects keys a new run dir with no run yet, which launches like a new ticket (#467, #468).
+        self.run_dir(7, CLEAN, "ticket-defect")
+        proc = self.next_dry_run(mine=((7, CLEAN),))
+        self.assertEqual(proc.stdout.strip(), "nothing to launch", proc.stderr)
+        proc = self.next_dry_run(mine=((7, CLEAN + "\n- the corrected line"),))
+        self.assertEqual(proc.stdout.strip(), "would launch #7", proc.stderr)
+
+    def test_runner_assigned_issue_that_never_ran_is_held(self) -> None:
+        # Assigned to the runner by hand with no run of any body: the owner holds it, so next leaves it; the same
+        # issue unassigned launches. A lint line under the issue dir is not a run.
+        (self.runs / "7").mkdir()
+        (self.runs / "7" / "owner-events.jsonl").write_text("{}\n")
+        proc = self.next_dry_run(mine=((7, CLEAN),))
+        self.assertEqual(proc.stdout.strip(), "nothing to launch", proc.stderr)
+        self.assertEqual(proc.stderr, "")
+        proc = self.next_dry_run((7, CLEAN))
+        self.assertEqual(proc.stdout.strip(), "would launch #7", proc.stderr)
+
+    def test_edited_body_waits_while_a_run_of_the_old_body_runs_or_awaits_merge(self) -> None:
+        # Both bodies share the issue's branch and worktree, so a spare slot must not launch the edited body beside
+        # the old body's live run, its live model call, or its open PR (pr-opened with no pr-closed marker, even with
+        # the worktree gone, as the overnight driver leaves it); assigned or not. A closed PR frees it, worktree or not.
+        edited = CLEAN + "\n- the corrected line"
+        co = self.runs.parent / f"{self.runs.name}-co"
+        self.addCleanup(shutil.rmtree, co.parent / f"{co.name}-7", True)
+        pre = f"MAIN_CHECKOUT='{co}'; "
+        for case in ("running", "call", "pr-opened"):
+            with self.subTest(case=case):
+                self.run_dir(7, CLEAN, {"call": "stopped-environment"}.get(case, case))
+                d = self.runs / "7" / key(CLEAN)
+                if case == "call":
+                    os.utime(d / "status", (86400, 86400))
+                    p = subprocess.Popen(["sleep", "60"], start_new_session=True)
+                    self.addCleanup(p.wait)
+                    self.addCleanup(subprocess.run, ["kill", "-KILL", "--", f"-{p.pid}"], check=False)
+                    (d / "call").write_text(f"{p.pid} test.{key(str(p.pid))}\n")
+                if case == "pr-opened":
+                    (d / "factory.log").write_text(
+                        "2026-10-31T00:00:00Z EXIT pr-opened (0): https://github.com/o/r/pull/9 after 1 rounds\n")
+                for frontier, mine in ((((7, edited),), ()), ((), ((7, edited),))):
+                    proc = self.next_dry_run(*frontier, mine=mine, pre=pre, FACTORY_MAX_PARALLEL="2")
+                    self.assertEqual(proc.stdout.strip(), "nothing to launch", proc.stderr)
+                    self.assertIn("waiting #7: a run of another body still runs or awaits merge", proc.stderr)
+                if case == "call":
+                    subprocess.run(["kill", "-KILL", "--", f"-{p.pid}"], check=False)
+                    p.wait()
+                if case == "pr-opened":
+                    (co.parent / f"{co.name}-7").mkdir()
+                    (d / "pr-closed").write_text("2026-10-31T01:00:00Z\n")
+                proc = self.next_dry_run(mine=((7, edited),), pre=pre, FACTORY_MAX_PARALLEL="2")
+                expect = "nothing to launch" if case == "running" else "would launch #7"
+                self.assertEqual(proc.stdout.strip(), expect, proc.stderr)
+                shutil.rmtree(self.runs / "7")
+
     def test_runner_assigned_stop_waits_while_its_stop_file_remains(self) -> None:
         # cmd_run exits stopped at once while FACTORY_STOP is in the run dir, so #7 must not take the pick from #8
         # every tick (#440); removing the file makes it eligible again.
@@ -212,6 +268,154 @@ class ParkingTests(unittest.TestCase):
                 proc = self.next_dry_run((8, CLEAN), mine=((7, CLEAN),))
                 self.assertEqual(proc.stdout.strip(), "would launch #7", proc.stderr)
                 shutil.rmtree(self.runs / "7")
+
+    # cmd_run's launch with GitHub, the gates and bin/alert stubbed; assert_parallel, the first step after the launch's
+    # state is written, ends it the way the case needs, and the stop is aged past the hour's backoff.
+    ENV_STOP = 'finish stopped-environment "the worker call returned no result event"'
+
+    def launch(self, issue: int, body: str, outcome: str = ENV_STOP, age: int = 86400, stubs: str = "") -> None:
+        d = self.runs / str(issue) / key(body)
+        script = (f"load_ticket() {{ ISSUE={issue}; KEY={issue}; REPO=o/r; IS_FILE=0; BODY=\"$BODY_ARG\"; }}; "
+                  "assert_target_ready() { :; }; claude_version_ok() { :; }; owner_events() { :; }; alert() { :; }; "
+                  f"assert_parallel() {{ {outcome}; }}; {stubs}cmd_run {issue}")
+        sourced(script, {"FACTORY_RUNS_ROOT": str(self.runs), "BODY_ARG": body, "FACTORY_BY_NEXT": "1"})
+        self.assertIn("===== launch =====", (d / "factory.log").read_text())
+        if (d / "status").exists():
+            os.utime(d / "status", (age, age))
+
+    def test_three_environment_stops_with_no_round_progress_park(self) -> None:
+        # A worker call with no result event stops before its round's checks, so a relaunch reruns the same round and
+        # MAX_ROUNDS never trips; every relaunch costs ROUND_BUDGET_USD and a page (#547). The third such stop in a row parks.
+        mine = ((7, CLEAN),)
+        self.launch(7, CLEAN, 'echo CHECKS-END > "$RUN/round-0.checks"; ' + self.ENV_STOP)
+        for _ in range(2):
+            proc = self.next_dry_run(mine=mine)
+            self.assertEqual(proc.stdout.strip(), "would launch #7", proc.stderr)
+            self.launch(7, CLEAN)
+        proc = self.next_dry_run((8, CLEAN), mine=mine)
+        self.assertEqual(proc.stdout.strip(), "would launch #8", proc.stderr)
+        self.assertIn("parked #7: stopped on the environment 3 times in a row with no new round since", proc.stderr)
+
+    def test_a_round_between_environment_stops_resets_the_count(self) -> None:
+        mine = ((7, CLEAN),)
+        self.launch(7, CLEAN)
+        self.launch(7, CLEAN, 'echo CHECKS-END > "$RUN/round-0.checks"; ' + self.ENV_STOP)   # round 0 before this stop
+        self.launch(7, CLEAN)
+        proc = self.next_dry_run(mine=mine)
+        self.assertEqual(proc.stdout.strip(), "would launch #7", proc.stderr)
+        self.assertNotIn("parked", proc.stderr)
+        self.launch(7, CLEAN)
+        proc = self.next_dry_run(mine=mine)
+        self.assertEqual(proc.stdout.strip(), "nothing to launch", proc.stderr)
+        self.assertIn("parked #7", proc.stderr)
+
+    def test_a_daily_stop_between_environment_stops_keeps_the_count(self) -> None:
+        # A stopped-daily makes no worker call and writes no round, so it must not clear the count, or env, env, daily
+        # would loop for good; while it waits for its UTC day it is not parked.
+        mine = ((7, CLEAN),)
+        self.launch(7, CLEAN)
+        self.launch(7, CLEAN)
+        self.launch(7, CLEAN, 'finish stopped-daily "the daily budget is spent"', age=int(time.time()))
+        proc = self.next_dry_run(mine=mine)
+        self.assertIn("waiting #7: daily budget spent", proc.stderr)
+        self.assertNotIn("parked", proc.stderr)
+        os.utime(self.runs / "7" / key(CLEAN) / "status", (86400, 86400))
+        proc = self.next_dry_run(mine=mine)
+        self.assertEqual(proc.stdout.strip(), "would launch #7", proc.stderr)
+        self.launch(7, CLEAN)
+        proc = self.next_dry_run(mine=mine)
+        self.assertIn("parked #7", proc.stderr)
+
+    def test_a_reaped_run_counts_as_an_environment_stop(self) -> None:
+        # A supervisor killed mid-run writes no EXIT line; holds_slot, at next's slot count, writes stopped-environment.
+        mine = ((7, CLEAN),)
+        d = self.runs / "7" / key(CLEAN)
+        self.launch(7, CLEAN)
+        self.launch(7, CLEAN, "exit 9")
+        self.assertEqual((d / "status").read_text().strip(), "running")
+        reap = sourced(f"alert() {{ :; }}; holds_slot '{d}/'", {"FACTORY_RUNS_ROOT": str(self.runs)})
+        self.assertEqual(reap.returncode, 1, reap.stderr)
+        self.assertEqual((d / "status").read_text().strip(), "stopped-environment")
+        os.utime(d / "status", (86400, 86400))
+        proc = self.next_dry_run(mine=mine)
+        self.assertEqual(proc.stdout.strip(), "would launch #7", proc.stderr)
+        self.launch(7, CLEAN)
+        proc = self.next_dry_run(mine=mine)
+        self.assertIn("parked #7", proc.stderr)
+
+    def test_a_launch_that_cannot_take_its_owner_lock_still_counts(self) -> None:
+        # The early exits before the status write (no start time, owner.lock held, owner unwritable) stop on the
+        # environment too; each must count, or a launch that never gets the lock retries hourly for good.
+        for _ in range(3):
+            self.launch(7, CLEAN, ":", stubs="owner_lock() { return 1; }; ")
+            self.assertEqual((self.runs / "7" / key(CLEAN) / "status").read_text().strip(), "stopped-environment")
+        proc = self.next_dry_run(mine=((7, CLEAN),))
+        self.assertIn("parked #7", proc.stderr)
+
+    def test_a_run_frozen_before_the_count_still_counts(self) -> None:
+        # A relaunch execs the run's frozen bin/factory, which may predate env-stops; the live pass counts before that exec.
+        d = self.runs / "7" / key(CLEAN)
+        (d / "frozen").mkdir(parents=True)
+        old = d / "frozen" / "factory"   # an older supervisor: it knows nothing of env-stops and stops on the environment
+        old.write_text('#!/bin/bash\necho stopped-environment > "$(dirname "$(dirname "$0")")/status"\nexit 4\n')
+        old.chmod(0o755)
+        for _ in range(3):
+            self.launch(7, CLEAN, ":", stubs="prepare_worktree() { :; }; freeze() { :; }; ")
+        proc = self.next_dry_run(mine=((7, CLEAN),))
+        self.assertIn("parked #7", proc.stderr)
+
+    def test_a_parked_stop_alerts_once(self) -> None:
+        # next runs every ten minutes; the park pages once per stop, and a later stop pages once more.
+        d = self.runs / "7" / key(CLEAN)
+        for _ in range(3):
+            self.launch(7, CLEAN)
+        sent = self.runs / "alerts"
+        sent.touch()
+        def alerts(during: str = "") -> int:
+            tick = f"alert() {{ echo \"$*\" >> '{sent}'; {during} }}; env_park_alert '{d}' 7"
+            self.assertEqual(sourced(tick, {"FACTORY_RUNS_ROOT": str(self.runs)}).returncode, 0)
+            return len(sent.read_text().splitlines())
+        self.assertEqual(alerts(), 1)
+        self.assertEqual(alerts(), 1)
+        self.assertIn("--level needs-you", sent.read_text())
+        self.launch(7, CLEAN)   # a relaunch by hand that stops the same way alerts once more
+        self.assertEqual(alerts(), 2)
+        self.launch(7, CLEAN, 'finish stopped "FACTORY_STOP"')   # relaunched and stopped otherwise: no longer parked
+        self.assertEqual(alerts(), 2)
+
+    def test_the_alert_records_the_stop_it_was_sent_for(self) -> None:
+        # A launch by hand rewrites env-stops while the alert is in flight; env-parked must keep the line the alert was
+        # sent for, or that launch's own park alert is lost.
+        d = self.runs / "7" / key(CLEAN)
+        for _ in range(3):
+            self.launch(7, CLEAN)
+        sent = self.runs / "alerts"
+        sent.touch()
+        sent_for = (d / "env-stops").read_text()
+        relaunch = f"echo '-1 3 4' > '{d}/env-stops';"
+        tick = f"alert() {{ echo \"$*\" >> '{sent}'; {relaunch} }}; env_park_alert '{d}' 7"
+        self.assertEqual(sourced(tick, {"FACTORY_RUNS_ROOT": str(self.runs)}).returncode, 0)
+        self.assertEqual((d / "env-parked").read_text(), sent_for)
+        tick = f"alert() {{ echo \"$*\" >> '{sent}'; }}; env_park_alert '{d}' 7"
+        sourced(tick, {"FACTORY_RUNS_ROOT": str(self.runs)})
+        self.assertEqual(len(sent.read_text().splitlines()), 2)
+
+    def test_a_tick_inside_a_launch_does_not_take_its_alert(self) -> None:
+        # A cron next that runs while a launch has written its env-stops line but not yet its status must not mark that
+        # launch alerted, or the alert for the stop it then makes is lost.
+        d = self.runs / "7" / key(CLEAN)
+        for _ in range(3):
+            self.launch(7, CLEAN)
+        sent = self.runs / "alerts"
+        sent.touch()
+        page = f"alert() {{ case \"$*\" in *needs-you*) echo \"$*\" >> '{sent}' ;; esac; }}; "
+        self.assertEqual(sourced(page + f"env_park_alert '{d}' 7", {"FACTORY_RUNS_ROOT": str(self.runs)}).returncode, 0)
+        tick_inside = ('set_status() { [ "$1" = running ] && env_park_alert "$RUN" 7; '
+                       'printf "%s\\n" "$1" > "$RUN/status"; log "status: $1"; }; ')
+        self.launch(7, CLEAN, stubs=page + tick_inside)
+        self.assertEqual(len(sent.read_text().splitlines()), 1)   # nothing went out inside the launch
+        self.assertEqual(sourced(page + f"env_park_alert '{d}' 7", {"FACTORY_RUNS_ROOT": str(self.runs)}).returncode, 0)
+        self.assertEqual(len(sent.read_text().splitlines()), 2)   # the stop it made pages once
 
     def spend_today(self, usd: float) -> None:
         (self.runs / "ledger-daily.jsonl").write_text(
