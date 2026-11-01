@@ -2734,12 +2734,16 @@ cmd_run() {
   local start
   start=$(TZ=UTC LC_ALL=C ps -o lstart= -p "$$")
   start=${start%"${start##*[![:space:]]}"}   # macOS pads lstart with trailing spaces; holds_slot matches up to the year
-  [ -n "$start" ] && owner_lock "$RUN" 65 || finish stopped-environment "could not read this run's start time or take $RUN/owner.lock"
-  printf '%s %s\n' "$$" "$start" > "$RUN/owner.tmp" && mv -f "$RUN/owner.tmp" "$RUN/owner" \
-    || { rmdir "$RUN/owner.lock"; finish stopped-environment "could not write $RUN/owner"; }
   # env-stops changes with the status, under owner.lock, so env_park_alert never reads this launch's line beside the
-  # last run's status; only in the live pass, so a run frozen before it counts too.
-  [ "${FACTORY_FROZEN:-}" = "$RUN/frozen/factory" ] || record_env_stops "$RUN"
+  # last run's status; only in the live pass, so a run frozen before it counts too. The two early exits below count
+  # their launch as well, or a launch that cannot take the lock would retry forever with no park.
+  local live=1; [ "${FACTORY_FROZEN:-}" = "$RUN/frozen/factory" ] && live=0
+  [ -n "$start" ] && owner_lock "$RUN" 65 \
+    || { [ "$live" = 0 ] || record_env_stops "$RUN"
+         finish stopped-environment "could not read this run's start time or take $RUN/owner.lock"; }
+  printf '%s %s\n' "$$" "$start" > "$RUN/owner.tmp" && mv -f "$RUN/owner.tmp" "$RUN/owner" \
+    || { [ "$live" = 0 ] || record_env_stops "$RUN"; rmdir "$RUN/owner.lock"; finish stopped-environment "could not write $RUN/owner"; }
+  [ "$live" = 0 ] || record_env_stops "$RUN"
   set_status running
   rmdir "$RUN/owner.lock"
   # This launch's operator actions, once per launch as the launch line is; a file ticket makes no GitHub call.

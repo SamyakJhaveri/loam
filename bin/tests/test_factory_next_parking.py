@@ -287,6 +287,15 @@ class ParkingTests(unittest.TestCase):
         proc = self.next_dry_run(mine=mine)
         self.assertIn("parked #7", proc.stderr)
 
+    def test_a_launch_that_cannot_take_its_owner_lock_still_counts(self) -> None:
+        # The early exits before the status write (no start time, owner.lock held, owner unwritable) stop on the
+        # environment too; each must count, or a launch that never gets the lock retries hourly for good.
+        for _ in range(3):
+            self.launch(7, CLEAN, ":", stubs="owner_lock() { return 1; }; ")
+            self.assertEqual((self.runs / "7" / key(CLEAN) / "status").read_text().strip(), "stopped-environment")
+        proc = self.next_dry_run(mine=((7, CLEAN),))
+        self.assertIn("parked #7", proc.stderr)
+
     def test_a_run_frozen_before_the_count_still_counts(self) -> None:
         # A relaunch execs the run's frozen bin/factory, which may predate env-stops; the live pass counts before that exec.
         d = self.runs / "7" / key(CLEAN)
