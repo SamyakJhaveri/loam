@@ -16,11 +16,13 @@ vacuous-check, CONTRIBUTING.md for out-of-scope, the changed file for run-only).
 <model>/r<k>/<grader>-<case>.json, the EVAL_OUT layout of `bin/factory eval`: each the
 `claude -p --output-format json` output of one case. Reply paths are built from the cases
 tree, never parsed from file names. A missing or unparseable reply is a miss on a mutant,
-a false alarm on a clean copy, and a disagreement.
+a false alarm on a clean copy, and a disagreement. A grader's repeats are the r<k> that hold one of its
+replies or its fingerprint-<grader>.txt, which model-eval writes for every cell it runs.
 
 Prints TSV rows grader, model, metric, value, sorted: recall:<class>, false_alarm (cut_rate
 for the lean-critic, whose job is cuts), agreement, usd, infra (missing, unparseable, or is_error
-replies; the rates still score an is_error reply by what it parses to), and n:<metric> for each
+replies, and every case of a repeat model-eval ran that saved no reply; the rates still score an is_error
+reply by what it parses to), and n:<metric> for each
 rate's trial count and for infra. Each pair of models A and B scored on the same repeats also gets
 model A+B (recall and false alarm only): caught when either catches on the same r<k>, a false
 alarm when either fails the clean copy. And model A~B: per metric the trial counts
@@ -153,14 +155,18 @@ def main(argv):
         grader = gdir.name
         cases = [(d.name, json.loads((d / "expected.json").read_text(encoding="utf-8")))
                  for d in sorted(gdir.iterdir()) if (d / "expected.json").is_file()]
-        # model -> r<k> -> case -> (reply, cost), for the repeats that hold a reply for this grader.
+        if not cases:
+            continue
+        # model -> r<k> -> case -> (reply, cost), for the repeats that hold a reply or the fingerprint of this
+        # grader: model-eval writes fingerprint-<grader>.txt for every cell it ran, so a cell that saved no reply
+        # (every call failed, or none was made) still counts, each case a missing reply.
         got = {}
         for m in models:
             reps = sorted((d for d in (replies_root / m).iterdir() if d.is_dir() and re.fullmatch(r"r\d+", d.name)),
                           key=lambda d: int(d.name[1:]))
             for rdir in reps:
                 paths = {case: rdir / f"{grader}-{case}.json" for case, _ in cases}
-                if any(p.is_file() for p in paths.values()):
+                if (rdir / f"fingerprint-{grader}.txt").is_file() or any(p.is_file() for p in paths.values()):
                     got.setdefault(m, {})[rdir.name] = {case: load_reply(p) for case, p in paths.items()}
         for m, by_rep in got.items():
             for name, (hits, trials) in tally(grader, cases, by_rep,

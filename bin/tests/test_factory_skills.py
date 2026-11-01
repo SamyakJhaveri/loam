@@ -4,7 +4,9 @@
 temp tree holding fake plugin caches and an installed_plugins.json naming each plugin's installPath, so the real
 allowlist and plugins are never read. The prompt test sources
 bin/factory (FACTORY_SOURCED=1) and calls the real build_worker_prompt with a Claude worker; the fan-out test
-then runs the real factory-round.js under node with stub workflow globals.
+then runs the real factory-round.js under node with stub workflow globals. The record and worker_round tests hold
+that no ledger line carries the deleted skills_called field (#575); worker_round runs with a fake claude, the temp
+HOME and a no-op frozen alert, so it reads no real token and pings nothing.
 """
 
 from __future__ import annotations
@@ -268,37 +270,50 @@ console.log(JSON.stringify(seen));"""
         self.assertNotEqual(proc.returncode, 0, proc.stdout)
         self.assertEqual(proc.stdout, "")
 
-    def test_skills_called_leaves_out_a_skill_call_refused_with_an_error(self) -> None:
-        def use(i: str, name: str, inp: dict) -> dict:
-            return {"type": "tool_use", "id": i, "name": name, "input": inp}
-        events = [
-            {"type": "assistant", "message": {"content": [
-                use("t1", "Skill", {"skill": "pstack:sharpen"}),
-                use("t2", "Read", {"file_path": str(self.tdd)}),
-                use("t3", "Skill", {"skill": "rigor"}),
-                use("t4", "Skill", {"skill": "pstack:setup-pstack"})]}},
-            {"type": "user", "message": {"content": [
-                {"type": "tool_result", "tool_use_id": "t1", "is_error": True,
-                 "content": "cannot be used with Skill tool due to disable-model-invocation"},
-                {"type": "tool_result", "tool_use_id": "t3", "content": "ok"}]}},
-        ]
-        stream = self.tmp / "s.jsonl"
-        stream.write_text("not json\n" + "".join(json.dumps(e) + "\n" for e in events))
-        out = self.sourced('skills_called "$@"', str(stream), "pstack:tdd", "pstack:sharpen", "rigor",
-                           "pstack:setup-pstack", "pstack:principle-fix-root-causes")
-        self.assertEqual(out.strip(), "pstack:setup-pstack,pstack:tdd,rigor")
-
-    def test_record_writes_skills_called_on_a_line_given_it_and_no_other(self) -> None:
+    def test_record_given_a_tenth_argument_writes_no_skills_called(self) -> None:
         res = self.tmp / "result.json"
-        res.write_text(json.dumps({"type": "result", "total_cost_usd": 1}))
+        res.write_text(json.dumps({"type": "result", "total_cost_usd": 1, "num_turns": 3}))
         led = self.tmp / "ledger.jsonl"
         self.sourced('RUN=$1; LOG=/dev/null; LEDGER=$2; DAILY=$1/daily.jsonl; KEY=7\n'
-                     'record 1 worker m "$3" 0 0 0 0 0 pstack:tdd,rigor; record 1 worker m "$3" 0 0 0 0 0 ""\n'
-                     'record 1 worker m "$1/none.json" 0 0 0 0 0 rigor; record 1 judge m "$3"',
+                     'record 1 worker m "$3" 0 0 0 0 0 pstack:tdd,rigor\n'
+                     'record 1 worker m "$1/none.json" 0 0 0 0 0 rigor',
                      str(self.tmp), str(led), str(res))
         lines = [json.loads(x) for x in led.read_text().splitlines()]
-        self.assertEqual([x.get("skills_called") for x in lines], [["pstack:tdd", "rigor"], [], ["rigor"], None])
-        self.assertNotIn("skills_called", lines[3])
+        self.assertEqual([x["num_turns"] for x in lines], [3, 0])
+        self.assertEqual([x for x in lines if "skills_called" in x], [])
+
+    def test_sourcing_defines_no_skills_called(self) -> None:
+        self.assertEqual(self.sourced('declare -F skills_called || true'), "")
+
+    def test_claude_worker_round_writes_a_ledger_line_with_no_skills_called(self) -> None:
+        t, run, fake = self.tmp, self.tmp / "run", self.tmp / "fakebin"
+        for d in (t / "wt", run / "frozen", run / "tasks", fake):
+            d.mkdir(parents=True, exist_ok=True)
+        (run / "frozen/_common.md").write_text("")
+        (run / "frozen/unattended.md").write_text("")
+        (run / "frozen/worker-settings.json").write_text("{}")
+        (run / "frozen/issue.md").write_text("A ticket.\n")
+        (run / "frozen/alert").write_text("#!/usr/bin/env bash\n")
+        (run / "frozen/alert").chmod(0o755)
+        claude = fake / "claude"
+        claude.write_text('#!/usr/bin/env bash\ncat > /dev/null\necho \'{"type":"result","subtype":"success",'
+                          '"is_error":false,"total_cost_usd":0,"num_turns":1,"result":"done"}\'\n')
+        claude.chmod(0o755)
+        script = ('. bin/factory; RUN=$T/run; WORKTREE=$T/wt; LOG=$RUN/factory.log; KEY=7; IS_FILE=1; '
+                  'LEDGER=$RUN/ledger.jsonl; DAILY=$RUN/daily.jsonl; DECISIONS=$RUN/decisions.md; '
+                  'touch "$LEDGER" "$DAILY" "$DECISIONS"; date -u +%s > "$RUN/launched"; '
+                  'BODY=$(printf "## Worker\\nworker: claude\\n"); apply_caps; WORKER_KIND=claude; worker_round 1')
+        env = {**self.env(), "FACTORY_ROOT": str(ROOT), "FACTORY_SOURCED": "1", "FACTORY_RUNS_ROOT": str(t / "runs"),
+               "PATH": f"{fake}:{os.environ['PATH']}", "T": str(t)}
+        proc = subprocess.run(["bash", "-c", script], cwd=ROOT, env=env, capture_output=True, text=True, check=False)
+        self.assertEqual(proc.returncode, 0, proc.stdout + proc.stderr)
+        self.assertNotIn("command not found", proc.stderr)
+        led = run / "ledger.jsonl"
+        lines = [json.loads(x) for x in led.read_text().splitlines() if x.strip()]
+        workers = [x for x in lines if x.get("role") == "worker"]
+        self.assertEqual(len(workers), 1, proc.stdout + proc.stderr)
+        self.assertEqual(workers[0]["num_turns"], 1)
+        self.assertNotIn("skills_called", workers[0])
 
     def skills(self, home: pathlib.Path) -> subprocess.CompletedProcess[str]:
         return subprocess.run([str(ROOT / "bin/factory"), "skills"], cwd=ROOT, env={**os.environ, "HOME": str(home)},

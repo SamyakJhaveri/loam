@@ -1,5 +1,6 @@
-"""bin/factory.d/model-eval: a Codex cell gets a strict schema, reuse keys cover the harness, each grader's
-fingerprint describes its own replies, an unparseable reply is retried, and an off-model serve stops the grid.
+"""bin/factory.d/model-eval: a Codex cell gets a strict schema, reuse keys cover the harness and the code that makes
+the call, each grader's fingerprint describes its own replies, an unparseable reply is retried, and an off-model
+serve stops the grid.
 
 Runs the real model-eval and bin/factory eval with a fake `claude` and `codex` on PATH and a fake HOME, so no
 model is called. The fake codex refuses a non-strict --output-schema, as the API does (400, "additionalProperties
@@ -13,6 +14,7 @@ import importlib.util
 import json
 import os
 import pathlib
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -50,7 +52,11 @@ with open(os.environ["STUB_LOG"], "a") as f:
     f.write("call %s\\n" % g("--model"))
 reply = "no verdict here" if os.environ.get("STUB_BAD") else json.dumps(REPLIES[grader_of(json.loads(g("--json-schema")))])
 served = os.environ.get("STUB_SERVED") or g("--model")
-print(json.dumps({"type": "result", "is_error": False, "total_cost_usd": 0, "result": reply, "modelUsage": {served: {}}}))
+# STUB_FAIL_AFTER=n: every call after the n-th is an API error, as bin/factory eval saves no reply for.
+err = len(open(os.environ["STUB_LOG"]).readlines()) > int(os.environ.get("STUB_FAIL_AFTER") or 1 << 30)
+if err:
+    reply = "API Error: 500"
+print(json.dumps({"type": "result", "is_error": err, "total_cost_usd": 0, "result": reply, "modelUsage": {served: {}}}))
 """
 
 FAKE_CODEX = """#!/usr/bin/env python3
@@ -147,7 +153,7 @@ class ModelEvalTests(unittest.TestCase):
                     "STUB_LOG": str(self.log), "MODEL_EVAL_SET": str(self.tmp / "set"),
                     "MODEL_EVAL_OUT": str(self.out), "MODEL_EVAL_REPEATS": "1", "MODEL_EVAL_GRADERS_DIR": str(AGENTS),
                     "FACTORY_CODEX_HOME": str(self.fhome)}
-        for k in ("STUB_VERSION", "STUB_SERVED", "STUB_BAD", "EVAL_OUT", "MODEL_EVAL_EFFORTS", "MODEL_EVAL_SEED",
+        for k in ("STUB_VERSION", "STUB_SERVED", "STUB_BAD", "STUB_FAIL_AFTER", "EVAL_OUT", "MODEL_EVAL_EFFORTS", "MODEL_EVAL_SEED",
                   "FACTORY_ROOT", "CODEX_HOME"):
             self.env.pop(k, None)
 
@@ -366,6 +372,31 @@ class ModelEvalTests(unittest.TestCase):
         self.assertEqual(self.run_me("m1", **env, STUB_VERSION="2").returncode, 0)
         self.assertEqual(len(self.calls()), 2, "a changed setting value re-grades every case")
 
+    def test_code_change_regrades_every_reply(self) -> None:
+        # A copy of bin/factory and bin/factory.d, so FACTORY is the copy and an edit never touches the checkout.
+        self.judge_cases()
+        copy = self.tmp / "copy/bin"
+        copy.mkdir(parents=True)
+        shutil.copy2(ROOT / "bin/factory", copy / "factory")
+        shutil.copytree(ROOT / "bin/factory.d", copy / "factory.d")
+
+        def run() -> list[str]:
+            self.log.write_text("")
+            r = subprocess.run([str(copy / "factory.d/model-eval"), "m1", "codex:x"], cwd=ROOT, timeout=300,
+                               env={**self.env, "MODEL_EVAL_GRADERS": "judge", "FACTORY_ROOT": str(ROOT)},
+                               capture_output=True, text=True)
+            self.assertEqual(r.returncode, 0, r.stderr)
+            return sorted(c.split()[0] for c in self.calls())
+
+        both = ["call", "call", "codex", "codex"]
+        self.assertEqual(run(), both)
+        self.assertEqual(run(), [], "unchanged code reuses every reply")
+        for f in ("factory", "factory.d/model-eval"):
+            with open(copy / f, "a") as fh:
+                fh.write("# probe\n")
+            self.assertEqual(run(), both, f"an edit to {f} re-grades every case in both modes")
+            self.assertEqual(run(), [])
+
     def test_each_graders_fingerprint_describes_its_own_replies(self) -> None:
         self.judge_cases()
         self.case("reviewer", "k1", {"verdict": "merge"})
@@ -384,6 +415,54 @@ class ModelEvalTests(unittest.TestCase):
         self.assertEqual(self.run_me("m2", MODEL_EVAL_GRADERS="judge", STUB_VERSION="2").returncode, 0)
         self.assertEqual(len(self.calls()), 2)
         self.assertEqual(moved(), "descriptive: claude-version,model")
+
+    def test_a_repeat_whose_calls_all_failed_counts_as_infra(self) -> None:
+        self.case("judge", "k1", {"verdict": "fail", "defect_class": "logic-bug", "failing_rows": ["correct"]})
+        (self.tmp / "set/reviewer").mkdir()
+        r = self.run_me("m1", MODEL_EVAL_GRADERS="judge reviewer", MODEL_EVAL_REPEATS="2", STUB_FAIL_AFTER="1")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertEqual(len(self.calls()), 2)
+        saved = [k for k in ("r1", "r2") if (self.out / f"replies/m1@high/{k}/judge-k1.json").exists()]
+        self.assertEqual(len(saved), 1, saved)
+        t = self.table(r.stdout)
+        self.assertEqual((t[("judge", "m1@high", "infra")], t[("judge", "m1@high", "n:infra")]), ("1", "2"))
+        self.assertEqual(t[("judge", "m1@high", "n:recall:logic-bug")], "2")
+        self.assertEqual(t[("judge", "m1@high", "recall:logic-bug")], "0.50")
+        self.assertEqual(t[("judge", "m1@high", "agreement")], "0.00")
+
+    def test_a_grader_with_no_case_gets_no_row(self) -> None:
+        self.case("judge", "k1", {"verdict": "fail", "defect_class": "logic-bug", "failing_rows": ["correct"]})
+        (self.tmp / "set/reviewer").mkdir()
+        reply = {"type": "result", "is_error": False, "total_cost_usd": 0,
+                 "result": json.dumps({"verdict": "fail", "rows": {"correct": "fail"}})}
+        for k in ("r1", "r2"):
+            d = self.out / "m1" / k
+            d.mkdir(parents=True)
+            for g in ("judge", "reviewer"):
+                (d / f"fingerprint-{g}.txt").write_text("model m1\n")
+        (self.out / "m1/r1/judge-k1.json").write_text(json.dumps(reply))
+        r = subprocess.run([sys.executable, str(ROOT / "bin/factory.d/eval_score.py"), str(self.tmp / "set"),
+                            str(self.out)], capture_output=True, text=True)
+        self.assertEqual(r.returncode, 0, r.stderr)
+        graders = {k[0] for k in self.table(r.stdout)}
+        self.assertEqual(graders, {"judge"})
+        self.assertEqual(self.table(r.stdout)[("judge", "m1", "infra")], "1")
+
+    def test_a_bare_eval_out_root_scores_only_repeats_with_replies(self) -> None:
+        self.case("judge", "k1", {"verdict": "fail", "defect_class": "logic-bug", "failing_rows": ["correct"]})
+        self.case("reviewer", "k1", {"verdict": "merge"})
+        reply = {"type": "result", "is_error": False, "total_cost_usd": 0,
+                 "result": json.dumps({"verdict": "fail", "rows": {"correct": "fail"}})}
+        (self.out / "m1/r1").mkdir(parents=True)
+        (self.out / "m1/r2").mkdir(parents=True)
+        (self.out / "m1/r1/judge-k1.json").write_text(json.dumps(reply))
+        for k in ("r1", "r2"):  # the shared fingerprint names no grader, so it counts no repeat
+            (self.out / "m1" / k / "fingerprint.txt").write_text("model m1\n")
+        r = subprocess.run([sys.executable, str(ROOT / "bin/factory.d/eval_score.py"), str(self.tmp / "set"),
+                            str(self.out)], capture_output=True, text=True)
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertEqual(self.table(r.stdout)[("judge", "m1", "n:infra")], "1")
+        self.assertNotIn("reviewer", {k[0] for k in self.table(r.stdout)})
 
     def test_unparseable_reply_gets_no_key_and_is_retried(self) -> None:
         self.judge_cases()
