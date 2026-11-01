@@ -249,6 +249,32 @@ exec env -u FACTORY_CALL_TAG bash -c 'while :; do echo x >> {self.top}/mark; sle
                 self.assertRegex(log[-1], "EXIT stopped-environment .*still alive 5 s after KILL")
                 subprocess.run(["pkill", "-KILL", "-f", str(self.top)], check=False)
 
+    def test_call_reads_int_and_quit_as_default(self) -> None:
+        # Bash starts a background command with INT and QUIT ignored, and exec keeps an ignored signal ignored; GNU
+        # timeout catches both, so only a host without it (a Mac) ran the call with them ignored (#468). The supervisor
+        # may also start with them ignored, as cron, nohup or `&` gives it.
+        probe = 'perl -e "print join(q( ), map { \\$SIG{\\$_} || q(DEFAULT) } qw(INT QUIT))"'
+        wraps = [""] + (["timeout 60 "] if shutil.which("timeout") else [])
+        for ignored in (False, True):
+            for wrap in wraps:
+                with self.subTest(ignored=ignored, wrap=wrap):
+                    out = self.top / "sig"
+                    cmd = self.call_cmd(f'call_start "$WORKTREE" {wrap}{probe} > {out}; call_end probe')
+                    if ignored:
+                        cmd["args"] = ["perl", "-e", '$SIG{INT} = $SIG{QUIT} = "IGNORE"; exec @ARGV', *cmd["args"]]
+                    proc = subprocess.run(**cmd, capture_output=True, check=False, timeout=60)
+                    self.assertIn("returned:0", proc.stdout, proc.stderr)
+                    self.assertEqual(out.read_text(), "DEFAULT DEFAULT")
+
+    def test_call_runs_in_a_session_of_its_own(self) -> None:
+        out = self.top / "sid"
+        proc = self.run_call(f'call_start "$WORKTREE" sh -c "echo \\$\\$ \\$(ps -o pgid=,sid= -p \\$\\$)" > {out}; '
+                             "call_end probe")
+        self.assertIn("returned:0", proc.stdout, proc.stderr)
+        pid, pgid, sid = out.read_text().split()
+        self.assertEqual(pid, pgid, "the call does not lead its own process group")
+        self.assertNotEqual(sid, str(os.getsid(0)), "the call shares the test's session")
+
     def test_worker_call_keeps_its_prompt_and_env(self) -> None:
         proc = self.run_call("worker_round 1", FACTORY_WORKER_MODEL="claude-pin-1")
         self.assert_no_survivor(proc)
