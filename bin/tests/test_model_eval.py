@@ -420,6 +420,7 @@ class ModelEvalTests(unittest.TestCase):
 
     def test_a_bare_eval_out_root_scores_only_repeats_with_replies(self) -> None:
         self.case("judge", "k1", {"verdict": "fail", "defect_class": "logic-bug", "failing_rows": ["correct"]})
+        self.case("reviewer", "k1", {"verdict": "merge"})
         reply = {"type": "result", "is_error": False, "total_cost_usd": 0,
                  "result": json.dumps({"verdict": "fail", "rows": {"correct": "fail"}})}
         (self.out / "m1/r1").mkdir(parents=True)
@@ -429,6 +430,7 @@ class ModelEvalTests(unittest.TestCase):
                             str(self.out)], capture_output=True, text=True)
         self.assertEqual(r.returncode, 0, r.stderr)
         self.assertEqual(self.table(r.stdout)[("judge", "m1", "n:infra")], "1")
+        self.assertNotIn("reviewer", {k[0] for k in self.table(r.stdout)})
 
     def test_unparseable_reply_gets_no_key_and_is_retried(self) -> None:
         self.judge_cases()

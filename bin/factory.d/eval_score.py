@@ -17,12 +17,12 @@ vacuous-check, CONTRIBUTING.md for out-of-scope, the changed file for run-only).
 `claude -p --output-format json` output of one case. Reply paths are built from the cases
 tree, never parsed from file names. A missing or unparseable reply is a miss on a mutant,
 a false alarm on a clean copy, and a disagreement. A grader's repeats are the r<k> that hold one of its
-replies or its fingerprint-<grader>.txt, so a cell model-eval ran that saved no reply counts every case
-as missing.
+replies or its fingerprint-<grader>.txt, which model-eval writes for every cell it runs.
 
 Prints TSV rows grader, model, metric, value, sorted: recall:<class>, false_alarm (cut_rate
 for the lean-critic, whose job is cuts), agreement, usd, infra (missing, unparseable, or is_error
-replies; the rates still score an is_error reply by what it parses to), and n:<metric> for each
+replies, and every case of a repeat model-eval ran that saved no reply; the rates still score an is_error
+reply by what it parses to), and n:<metric> for each
 rate's trial count and for infra. Each pair of models A and B scored on the same repeats also gets
 model A+B (recall and false alarm only): caught when either catches on the same r<k>, a false
 alarm when either fails the clean copy. And model A~B: per metric the trial counts
