@@ -2,7 +2,7 @@
 and it lints every candidate before picking one, so a labelled issue that is not a ticket is skipped (#314).
 
 `bin/factory` is sourced (FACTORY_SOURCED=1) with a temp runs root. park_status is called directly,
-and cmd_next --dry-run runs with gh, the origin, the login and version probes, and the toolchain gate stubbed as shell functions,
+and cmd_next --dry-run (or --frontier) runs with gh, the origin, the login and version probes, and the toolchain gate stubbed as shell functions,
 so the frontier lines carry the bodies the way the real query does. No network, no tmux, no `claude`.
 """
 
@@ -54,6 +54,8 @@ class ParkingTests(unittest.TestCase):
         self.addCleanup(log.cleanup)
         self.gql_log = pathlib.Path(log.name) / "gql.log"
         self.gql_log.touch()
+        self.gh_log = pathlib.Path(log.name) / "gh.log"
+        self.gh_log.touch()
 
     def run_dir(self, issue: int, body: str, status: str) -> None:
         d = self.runs / str(issue) / key(body)
@@ -68,11 +70,12 @@ class ParkingTests(unittest.TestCase):
 
     def next_dry_run(self, *frontier: tuple[int, str], mine: tuple[tuple[int, str], ...] = (),
                      authors: dict[int, str] | None = None, editors: dict[int, str | None] | None = None,
-                     now: int | None = None, pre: str = "", **env: str) -> subprocess.CompletedProcess[str]:
-        """cmd_next --dry-run over the given unassigned (issue, body) frontier, lowest number first as gh sorts it,
+                     now: int | None = None, pre: str = "", flag: str = "--dry-run",
+                     **env: str) -> subprocess.CompletedProcess[str]:
+        """cmd_next `flag` (--dry-run by default) over the given unassigned (issue, body) frontier, lowest number first as gh sorts it,
         and `mine`, the ready-for-agent issues assigned to the runner. Each issue is written by `authors`' login,
         SamyakJhaveri by default, and last edited by `editors`' login (None: the editor call fails; UNNAMED: a null
-        editor with a lastEditedAt), by no one by default. Each editor call is logged to GQL_LOG. `now` pins the
+        editor with a lastEditedAt), by no one by default. Each editor call is logged to GQL_LOG, every gh call to GH_LOG. `now` pins the
         epoch `date -u +%s` prints, so a backoff boundary does not move while the test runs."""
         def lines(issues: tuple[tuple[int, str], ...]) -> str:
             return " ".join(f"'{issue} {(authors or {}).get(issue, 'SamyakJhaveri')} {base64.b64encode(body.encode()).decode()}'"
@@ -84,13 +87,14 @@ class ParkingTests(unittest.TestCase):
                         for issue, who in (editors or {}).items())
         clock = "" if now is None else f'date() {{ if [ "$*" = "-u +%s" ]; then echo {now}; else command date "$@"; fi; }}; '
         stubs = (pre + clock + "assert_toolchain_env() { :; }; claude_logged_in() { :; }; claude_version_ok() { :; }; target_repo() { echo o/r; }; "
-                 "gh() { case $2 in graphql) local a p= q= doc='{\"data\":{\"repository\":{\"issue\":{\"editor\":null}}}}'; "
+                 'gh() { echo "$*" >> "$GH_LOG"; '
+                 "case $2 in graphql) local a p= q= doc='{\"data\":{\"repository\":{\"issue\":{\"editor\":null}}}}'; "
                  'for a; do [ "$p" = --jq ] && q=$a; p=$a; done; echo "$*" >> "$GQL_LOG"; '
                  f"case \"$* \" in {edits}esac; jq -r \"$q\" <<<\"$doc\" ;; repos/*) printf '%s\\n' {lines(frontier)} ;; "
                  f"/issues\\?*) printf '%s\\n' {lines(mine)} ;; esac; }}; "
-                 "cmd_next --dry-run")
+                 f"cmd_next {flag}")
         return sourced(stubs, {"FACTORY_MAX_PARALLEL": "1", "FACTORY_RUNS_ROOT": str(self.runs), "GQL_LOG": str(self.gql_log),
-                               **env})
+                               "GH_LOG": str(self.gh_log), **env})
 
     def test_old_body_abandon_does_not_park_a_new_body(self) -> None:
         self.run_dir(7, CLEAN + "\nthe old body", "abandon")
@@ -606,6 +610,74 @@ class LintTests(ParkingTests):
         proc = self.next_dry_run((7, CLEAN), editors={7: None})
         self.assertEqual(proc.stdout.strip(), "nothing to launch", proc.stderr)
         self.assertIn("not owner #7: could not read the last editor with gh", proc.stderr)
+
+    # next --frontier lists every issue next would launch, by next's own rules, whatever FACTORY_STOP and the slots say,
+    # and writes nothing (#477).
+
+    def test_frontier_lists_every_launchable_issue_in_launch_order(self) -> None:
+        bodies = {n: CLEAN + f"\nissue {n}" for n in (5, 6, 8, 9, 10, 11, 12)}
+        self.run_dir(6, bodies[6], "stopped")       # the runner's own, relaunchable: listed in number order
+        self.run_dir(8, bodies[8], "abandon")       # parked on its current body
+        held = self.runs / "99" / "abcdef12"        # launched with no status yet: holds the one slot
+        held.mkdir(parents=True)
+        (held / "launched").write_text("1\n")
+        (self.runs / "FACTORY_STOP").touch()
+        frontier = ((5, bodies[5]), (7, NOT_A_TICKET), (8, bodies[8]), (9, bodies[9]), (10, bodies[10]),
+                    (11, bodies[11]), (12, bodies[12]))
+        proc = self.next_dry_run(*frontier, mine=((6, bodies[6]),), authors={9: "someone-else"},
+                                 editors={11: "someone-else"}, flag="--frontier")
+        self.assertEqual(proc.returncode, 0, proc.stderr)
+        self.assertEqual(proc.stdout, "#5\n#6\n#10\n#12\n", proc.stderr)
+        self.assertIn("lint failed #7", proc.stderr)
+        self.assertIn("parked #8", proc.stderr)
+        self.assertIn("not owner #9: written or last edited by someone-else", proc.stderr)
+        self.assertIn("not owner #11: written or last edited by someone-else", proc.stderr)
+        self.assertIn(" number=12 ", self.gql_log.read_text() + " ")   # the editor call runs past the first pick
+
+    def test_frontier_over_an_empty_frontier_prints_nothing(self) -> None:
+        proc = self.next_dry_run(flag="--frontier")
+        self.assertEqual((proc.returncode, proc.stdout), (0, ""), proc.stderr)
+
+    def test_frontier_writes_nothing(self) -> None:
+        # The three states a real tick writes on: a running run whose owner is gone (holds_slot reaps it and alerts),
+        # an env-parked run (env_park_alert writes env-parked and alerts), and a pr-opened run whose PR may have closed
+        # (pr_closed_events asks gh for its state). The gone-owner run is an older body of candidate #13, so both the
+        # slot loop and issue_busy must ask with peek.
+        body = CLEAN + "\nissue 12"
+        d12 = self.runs / "12" / key(body)
+        self.run_dir(12, body, "stopped-environment")
+        (d12 / "env-stops").write_text("-1 2 1\n")
+        body13 = CLEAN + "\nissue 13"
+        r40, r13 = self.runs / "40" / "abcdef12", self.runs / "13" / "abcdef12"
+        r40.mkdir(parents=True)
+        (r40 / "status").write_text("pr-opened\n")
+        (r40 / "factory.log").write_text("2026-11-01T00:00:00Z EXIT pr-opened (0): https://github.com/o/r/pull/40\n")
+        r13.mkdir(parents=True)
+        (r13 / "status").write_text("running\n")
+        (r13 / "launched").write_text("1\n")
+        dead = subprocess.Popen(["true"])
+        dead.wait()
+        (r13 / "owner").write_text(f"{dead.pid} Thu Jan  1 00:00:00 1970\n")
+        def snap() -> list[tuple[str, bytes]]:
+            return sorted((str(f.relative_to(self.runs)), f.read_bytes() if f.is_file() else b"") for f in self.runs.rglob("*"))
+        before = snap()
+        alerts = self.runs.parent / f"{self.runs.name}.alerts"
+        self.addCleanup(lambda: alerts.unlink(missing_ok=True))
+        proc = self.next_dry_run((12, body), (13, body13), pre=f"alert() {{ echo \"$*\" >> '{alerts}'; }}; ", flag="--frontier")
+        self.assertEqual((proc.returncode, proc.stdout), (0, "#13\n"), proc.stderr)
+        self.assertIn("parked #12", proc.stderr)
+        self.assertEqual(snap(), before)
+        self.assertFalse(alerts.exists())
+        self.assertNotIn("issues/40", self.gh_log.read_text())
+
+    def test_install_refuses_a_read_only_flag(self) -> None:
+        cron = self.runs.parent / f"{self.runs.name}.crontab"
+        self.addCleanup(lambda: cron.unlink(missing_ok=True))
+        for flags in ("--frontier --install", "--install --dry-run"):
+            proc = self.next_dry_run(pre=f"crontab() {{ echo \"$*\" >> '{cron}'; }}; ", flag=flags)
+            self.assertEqual(proc.returncode, 2, flags)
+            self.assertIn("usage: bin/factory [-C <repo>] next", proc.stderr + proc.stdout)
+            self.assertFalse(cron.exists(), flags)
 
     def test_issue_an_unnamed_account_last_edited_is_passed_over(self) -> None:
         proc = self.next_dry_run((7, CLEAN), (8, CLEAN), editors={7: UNNAMED})

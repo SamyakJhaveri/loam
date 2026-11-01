@@ -1,1 +1,1 @@
-{"source":"judge/90-8f7c6f00","defect_class":"notes","verdict":"fail","failing_rows":["correct"],"evidence":"notes"}
+{"source":"judge/90-8f7c6f00","defect_class":"notes","verdict":"fail","failing_rows":["correct","honest"],"evidence":"notes","base_rows":"the base's own honest failure (CASES.md, Replay check)"}
