@@ -38,6 +38,7 @@ import json
 import math
 import os
 import random
+import re
 import shutil
 import subprocess
 import sys
@@ -178,6 +179,22 @@ def served_off(rep, model):
     return [s for s in served if not s.startswith(model)] if served else ["no modelUsage"]
 
 
+def tree_of(case):
+    """The tree a case is graded in, for its reuse key: its tree_base, else the commit its Diff heading names, when the
+    checkout has it (case_tree in bin/factory), else HEAD's commit."""
+    try:
+        base = json.loads((case / "expected.json").read_text(encoding="utf-8")).get("tree_base")
+    except (OSError, ValueError):
+        base = None
+    if not base:
+        m = re.search(r"^## Diff \(([0-9a-f]{7,40})\.\.\.HEAD\)$", (case / "prompt.md").read_text(encoding="utf-8"), re.M)
+        base = m.group(1) if m else None
+    git = lambda *a: subprocess.run(["git", "-C", str(FACTORY.parent.parent), *a], capture_output=True, text=True)  # noqa: E731
+    if base and git("cat-file", "-e", f"{base}^{{commit}}").returncode == 0:
+        return "base " + git("rev-parse", base).stdout.strip()
+    return "head " + git("rev-parse", "HEAD").stdout.strip()
+
+
 def wilson(p, n):
     if n == 0:
         return None
@@ -233,13 +250,16 @@ def main(argv):
     (out / "order.txt").write_text("".join(name(c) + "\n" for c in cells), encoding="utf-8")
 
     tmp = Path(tempfile.mkdtemp(prefix="model-eval."))
+    ctmp = None
     try:
         for g in graders:
             (tmp / f"{g}.schema.json").write_text(json.dumps(strict_schema(json.loads(schema[g]))), encoding="utf-8")
-        # A Codex grader reads the directory it runs in, so it runs in the export a Claude cell's bin/factory eval
-        # makes (eval_tree: the committed tree without evals/ or the set), never in the checkout with the keys.
-        if any(m.startswith("codex:") for m in models):
-            r = subprocess.run(["bash", "-c", '. "$0"; EVALS_DIR=$1; eval_tree "$2"', str(FACTORY), str(set_dir), str(tmp)],
+        # A Codex grader reads the directory it runs in, so each case runs in the tree a Claude cell's bin/factory eval
+        # builds for it (case_tree: the case's base with its Diff applied, else the eval_tree export of HEAD), in a
+        # directory of its own that holds no case file, never in the checkout or beside a copied expected.json.
+        ctmp = Path(tempfile.mkdtemp(prefix="model-eval-tree.")) if any(m.startswith("codex:") for m in models) else None
+        if ctmp:
+            r = subprocess.run(["bash", "-c", '. "$0"; EVALS_DIR=$1; eval_tree "$2"', str(FACTORY), str(set_dir), str(ctmp)],
                                env={**os.environ, "FACTORY_SOURCED": "1"}, capture_output=True)
             if r.returncode != 0:
                 die(f"eval_tree: {r.stderr.decode(errors='replace').strip()}")
@@ -256,7 +276,7 @@ def main(argv):
             for case in cases[g]:
                 parts = [sha256(gfile[g].read_bytes()), sha256(schema[g]), sha256(rubric[g]), settings_sha,
                          sha256((case / "prompt.md").read_bytes()), sha256((case / "expected.json").read_bytes()),
-                         m, e, "codex" if codex else "claude", *cfg.values(), user_sha]
+                         m, e, "codex" if codex else "claude", *cfg.values(), user_sha, tree_of(case)]
                 keys[case] = sha256("\n".join(parts).encode())
             need = [case for case in cases[g]
                     if not (d / f"{g}-{case.name}.key").is_file() or not (d / f"{g}-{case.name}.json").is_file()
@@ -271,12 +291,19 @@ def main(argv):
                     for case in need:
                         o = tmp / "codex-reply.txt"
                         o.unlink(missing_ok=True)
+                        t = subprocess.run(["bash", "-c", '. "$0"; EVALS_DIR=$1; case_tree "$2" "$3"', str(FACTORY),
+                                            str(set_dir), str(case), str(ctmp)],
+                                           env={**os.environ, "FACTORY_SOURCED": "1"}, capture_output=True, text=True)
+                        if t.returncode != 0:
+                            print(f"model-eval: {name(c)} {case.name}: TREE {t.stderr.strip()}; not graded", file=sys.stderr)
+                            continue
+                        tree = t.stdout.strip()
                         r = subprocess.run(["codex", "exec", "--json", "--output-schema", str(tmp / f"{g}.schema.json"),
                                             "-o", str(o), "-s", "read-only", "-m", m.removeprefix("codex:"),
-                                            "-c", f"model_reasoning_effort={e}", "-C", str(tmp / "tree"),
+                                            "-c", f"model_reasoning_effort={e}", "-C", tree,
                                             "--skip-git-repo-check", "-"],
                                            input=rubric[g] + (case / "prompt.md").read_bytes(),
-                                           stdout=subprocess.DEVNULL, cwd=tmp / "tree")
+                                           stdout=subprocess.DEVNULL, cwd=tree)
                         text = o.read_text(encoding="utf-8", errors="replace") if o.is_file() else ""
                         reply = {"type": "result", "is_error": r.returncode != 0 or not text.strip(),
                                  "total_cost_usd": None, "result": text}
@@ -322,6 +349,8 @@ def main(argv):
                 die("replies served by a model other than the cell's; no table", 3)
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
+        if ctmp:
+            shutil.rmtree(ctmp, ignore_errors=True)
 
     # The table scores this run's cells only, each checked after its calls: a copy of their replies and fingerprints,
     # so an earlier run's models, repeats, graders or cases under <out>/replies stay out of it.

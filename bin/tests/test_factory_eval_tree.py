@@ -54,12 +54,18 @@ class EvalTreeTests(unittest.TestCase):
         diff = "\n".join([" a.txt | 2 +-", " 1 file changed, 1 insertion(+), 1 deletion(-)", "",
                           "diff --git a/a.txt b/a.txt", "index 5626abf..f719efd 100644", "--- a/a.txt", "+++ b/a.txt",
                           "@@ -1 +1 @@", "-one", "+two"])
+        moved = git(repo, "rev-parse", "HEAD")
         evals = tmp / "evals"
-        for name, heading in (("c1-based", f"## Diff ({base[:8]}...HEAD)"), ("c2-headless", "## Diff (main...HEAD)")):
+        # c3 names the moved-on commit in its heading, where the Diff cannot apply, but records the real base;
+        # c4 has only the moved-on commit, so it must not be graded at all.
+        for name, heading, exp in (("c1-based", f"## Diff ({base[:8]}...HEAD)", {}),
+                                   ("c2-headless", "## Diff (main...HEAD)", {}),
+                                   ("c3-tree-base", f"## Diff ({moved[:8]}...HEAD)", {"tree_base": base}),
+                                   ("c4-no-apply", f"## Diff ({moved[:8]}...HEAD)", {})):
             case = evals / "judge" / name
             case.mkdir(parents=True)
             (case / "prompt.md").write_text(f"## Ticket\n\n{heading}\n\n{FENCE}\n{diff}\n{FENCE}\n")
-            (case / "expected.json").write_text('{"verdict": "pass"}\n')
+            (case / "expected.json").write_text(json.dumps({"verdict": "pass", **exp}) + "\n")
         fake = tmp / "bin/claude"
         fake.parent.mkdir()
         fake.write_text(FAKE_CLAUDE)
@@ -71,10 +77,13 @@ class EvalTreeTests(unittest.TestCase):
         script = f"EVALS_DIR='{evals}'; GRADERS_DIR='{AGENTS}'; run_eval judge"
         proc = subprocess.run(["bash", "-c", '. "$0"\n' + script, "bin/factory"], cwd=ROOT, env=env,
                               capture_output=True, text=True, check=False)
-        self.assertEqual(proc.returncode, 0, proc.stdout + proc.stderr)
+        self.assertEqual(proc.returncode, 1, proc.stdout + proc.stderr)
         got = [json.loads(line) for line in seen.read_text().splitlines()]
-        # c1 names its base: the grader reads base plus the case's diff, not HEAD's "three"; c2 names none: HEAD.
-        self.assertEqual(got, [{"a": "two", "evals": False}, {"a": "three", "evals": False}])
+        # c1 names its base: the grader reads base plus the case's diff, not HEAD's "three"; c2 names none: HEAD;
+        # c3 is rebuilt at its recorded tree_base; c4's Diff does not apply, so no grader call reads a half-built tree.
+        self.assertEqual(got, [{"a": "two", "evals": False}, {"a": "three", "evals": False}, {"a": "two", "evals": False}])
+        self.assertIn("eval judge/c4-no-apply: TREE the Diff does not apply at", proc.stdout)
+        self.assertIn("4 cases, 1 mismatch", proc.stdout)
 
 
 if __name__ == "__main__":

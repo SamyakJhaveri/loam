@@ -60,8 +60,10 @@ with open(os.environ["STUB_LOG"], "a") as f:
     f.write("codex %s\\n" % g("-m"))
 if os.environ.get("STUB_CWD"):
     with open(os.environ["STUB_CWD"], "a") as f:
-        f.write("evals=%s factory=%s cd=%s\\n" % (os.path.isdir("evals"), os.path.isfile("bin/factory"),
-                                                os.path.realpath(g("-C") or ".") == os.path.realpath(".")))
+        import glob
+        keys = glob.glob("../**/expected.json", recursive=True) + glob.glob("**/expected.json", recursive=True)
+        f.write("evals=%s factory=%s cd=%s keys=%d\\n" % (os.path.isdir("evals"), os.path.isfile("bin/factory"),
+                                                os.path.realpath(g("-C") or ".") == os.path.realpath("."), len(keys)))
 def strict(node):
     if not isinstance(node, dict):
         return True
@@ -170,9 +172,10 @@ class ModelEvalTests(unittest.TestCase):
         # the directory it runs in, so it gets the export a Claude cell's bin/factory eval reads.
         self.judge_cases()
         seen = self.tmp / "cwd"
-        r = self.run_me("codex:x", MODEL_EVAL_GRADERS="judge", STUB_CWD=str(seen))
+        # A Claude cell first, so its copied cases (each with an expected.json) exist while the Codex cell runs.
+        r = self.run_me("m1", "codex:x", MODEL_EVAL_GRADERS="judge", STUB_CWD=str(seen))
         self.assertEqual(r.returncode, 0, r.stderr)
-        self.assertEqual(seen.read_text().splitlines(), ["evals=False factory=True cd=True"] * 2)
+        self.assertEqual(seen.read_text().splitlines(), ["evals=False factory=True cd=True keys=0"] * 2)
 
     def test_harness_change_regrades_every_reply(self) -> None:
         self.judge_cases()

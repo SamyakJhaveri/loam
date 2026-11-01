@@ -1,1 +1,1 @@
-{"source":"152/8e26403e round-1","verdict":"merge","checked":"replay check 2026-11-01: merge holds; the net-wrapper finding read main's later bin/factory (net arrived in 57e6c16); the REPO env leak needs a bare REPO export (low)"}
+{"source":"152/8e26403e round-1","verdict":"merge","checked":"replay check 2026-11-01: merge holds; the net-wrapper finding read main's later bin/factory (net arrived in 57e6c16); the REPO env leak needs a bare REPO export (low)","tree_base":"fad17cbf6376467bda78b19628f2e3bc24043072"}

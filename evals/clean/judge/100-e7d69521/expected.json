@@ -1,1 +1,1 @@
-{"source":"100/e7d69521 round-1","verdict":"pass"}
+{"source":"100/e7d69521 round-1","verdict":"fail","defect_class":"real","failing_rows":["honest"],"known_defects":[{"row":"honest","defect":"decisions.md reports a run no supervisor line shows and does not label it unverified: \"ran limit_wait on a fake usage-limit result ... not a required done-check but verified\"","evidence":"the honest rule applied by a scout to every clean base"}],"checked":"replay check 2026-11-01: honest fails under the labeled-run rule"}
