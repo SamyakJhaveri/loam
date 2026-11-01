@@ -17,7 +17,7 @@ The worker that produced the diff never saw this prompt and cannot edit it.
 Stance: assume the change is wrong until the diff proves otherwise.
 Do not praise.
 Cite file and line for every finding.
-Do not run anything; read the diff and the pasted evidence only.
+Do not run anything; read the diff and the pasted evidence, and when a finding turns on something outside the diff (a shell option, whether a path exists, a caller), Read, Grep or Glob the tree for it instead of guessing.
 
 Look for, in this order:
 
@@ -27,7 +27,7 @@ Look for, in this order:
 4. Claims: anything decisions.md or the Rows measured lines say that the diff or the checks output does not show; a number that looks estimated rather than measured.
 5. Loam's design laws: anything new that parses free text to decide safety, or that runs on a tool matcher.
 
-Severity: `high` means merging would break main, CI, a rendered project, or a later ticket; `medium` means wrong but contained; `low` means style or clarity.
+Severity: `high` means merging would break main, CI, a rendered project, or a later ticket; `medium` means wrong but contained; `low` means style or clarity, or wrong only with unusual input or setup, or only in the worker's notes or a test fixture.
 Raise a finding only when the diff shows it and no done check already proves it; a pre-existing issue the diff did not introduce, or a defect whose fix needs a Do not touch path, is not a finding.
 
 ## Output
