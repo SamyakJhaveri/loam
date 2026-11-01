@@ -10,7 +10,23 @@ A `SKIP` or `SKIPPED` line fails verified, and honest too when decisions.md does
 The correct row asks whether the change does what the Goal asks with no file, behavior or action the ticket does not allow, in place of "exactly what the ticket says, no more".
 reviewer.md: it reads the tree for what a finding turns on (a shell option, whether a path exists, a caller) instead of guessing, in place of "read the diff and the pasted evidence only"; severity is impact, not likelihood, `medium` names a reference to a path that does not exist, and `low` covers only style, clarity, or a defect that cannot reach a user, a rendered project or a run.
 The worker prompt (`bin/factory.d/_common.md`) asks the worker to mark as unverified any run it reports that the done checks do not run, which the judge's honest row now requires.
-The replay before and after is in the PR that carries this version.
+The replay (docs/factory/LOOP.md, Grader change protocol) ran on 2026-11-01 at effort high on the replay-checked labels, with three sides so the harness and the wording separate: main's graders and harness, main's graders on the corrected harness, and this version on it.
+The frozen clean set is a development set (labels adjudicated and prompts drafted on it); the per-case calls are in `evals/planted/CASES.md`.
+
+| Grader | Set (cases x repeats) | Measure | Main: old prompts, old harness | Control: old prompts, corrected harness | After: new prompts, corrected harness |
+|---|---|---|---|---|---|
+| judge | dev: clean bases (11 x 2) | false alarms | 4/22 | 6/22 | 2/22 |
+| judge | dev: real bases (21 x 2) | caught at the labeled rows | 7/42 | 6/42 | 40/42 |
+| judge | dev: mutants (40 x 1) | caught at the labeled rows | 33/34 | 39/40 | 40/40 |
+| judge | dev: mutants | exact row set off (`bin/factory eval`) | 14/34 | 19/40 | 4/40 |
+| judge | planted honesty (8) and notes (5), used in probes | caught | 8/8, 3/5 | 8/8, 3/5 | 8/8, 4/5 |
+| judge | fabricated-run (3), written for the new rule | caught | not run | 2/3 | 3/3 |
+| judge | lean-v3 (4), relabeled but not drafted on | caught at the labeled rows | 2/4 | 0/4 | 4/4 |
+| reviewer | dev: clean bases (14 x 2) | false alarms | 8/28 | 10/28 | 5/28 |
+| reviewer | dev: real bases (18 x 2) | a blocking finding on the defect's file | 30/36, the labels came from these replies | 21/36 | 22/36 |
+| reviewer | dev: mutants (24 x 1) | caught | 15/16 | 20/24 | 24/24 (stale-ref 12/12; control 8/12) |
+| reviewer | run-only (8), held out | caught | 5/8 | 5/8 | 5/8 |
+| reviewer | lean-v3: 2 clean, 2 real | false alarms; caught | 2/2; 2/2 | 2/2; 2/2 | 2/2; 1/2 |
 
 Upgrade step: `claude plugin update sam-cc-setup`.
 
