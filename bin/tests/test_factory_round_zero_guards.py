@@ -66,12 +66,14 @@ class RoundZeroGuardTests(unittest.TestCase):
             'test -e NEW.md && pass new-file || fail new-file "NEW.md is missing"')
         self.assertEqual(out.strip(), "ROUND0-OK")
 
-    def test_guard_continued_over_two_lines_is_a_guard(self) -> None:
+    def test_line_continued_over_two_lines_is_a_ticket_defect(self) -> None:
+        # The block takes no line continuations, so a run never linted stops before any of the block runs.
         out = self.round_zero(
             'guard true \\\n'
             '  && pass check || fail check "base is broken"\n'
             'test -e NEW.md && pass new-file || fail new-file "NEW.md is missing"')
-        self.assertEqual(out.strip(), "ROUND0-OK")
+        self.assertEqual(out.strip(), "FINISH ticket-defect: a done-checks line ends in a backslash; "
+                                      "the block takes no line continuations")
 
     def test_guard_called_in_a_capture_is_a_guard(self) -> None:
         out = self.round_zero(

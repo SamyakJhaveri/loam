@@ -134,30 +134,21 @@ section() { awk -v want="## $1" '$0 == want {inb=1; next} /^## /{inb=0} inb {pri
 # The done-checks fenced block, without its fences.
 dc_block() { awk '/^```done-checks$/{inb=1; next} /^```/{if (inb) exit} inb {print}' <<<"$BODY"; }
 
-# The block's checks one per line: continuations joined; indentation, blank lines, comments, and predict lines dropped.
-dc_checks() { dc_lines | sed -e '/^#/d' -e '/^$/d' -e '/^predict[[:space:]]/d'; }
+# The block has no line continuations: lint rejects, and round 0 refuses, a raw line that ends in a backslash
+# (dc_continued), so every reader below takes one raw line as one line, and no round runs half of a predict line.
+dc_continued() { dc_block | grep -m1 '\\$'; }
 
-# The block's lines with continuations joined as bash joins them, and indentation dropped: a raw line ending in a
-# backslash runs on into the next, unless it is a comment, which ends at its newline. With 1, the raw lines instead,
-# less every joined line that is a predict line, so dc_predicts and dc_script cannot disagree about what one holds.
-dc_lines() {
-  dc_block | awk -v script="${1:-0}" '
-    function emit() {
-      sub(/^[[:space:]]+/, "", line)
-      if (!script) print line; else if (line !~ /^predict[[:space:]]/) printf "%s", raw
-      line = raw = ""
-    }
-    { raw = raw $0 "\n" }
-    /\\$/ && !/^[[:space:]]*#/ { line = line substr($0, 1, length($0) - 1); next }
-    { line = line $0; emit() }
-    END { if (raw != "") { line = line "\\"; emit() } }'
-}
+# The block's lines with indentation dropped.
+dc_lines() { dc_block | sed 's/^[[:space:]]*//'; }
+
+# The block's checks one per line: blank lines, comments, and predict lines dropped.
+dc_checks() { dc_lines | sed -e '/^#/d' -e '/^$/d' -e '/^predict[[:space:]]/d'; }
 
 # The block's predict lines, `predict NAME CMD...` (CONTRACT.md, Done checks).
 dc_predicts() { dc_lines | grep -E '^predict[[:space:]]'; }
 
-# The block as checks.sh runs it: every raw line of a predict line dropped, so no round after round 0 runs its text.
-dc_script() { dc_lines 1; }
+# The block as checks.sh runs it: every predict line dropped, so no round after round 0 runs its text.
+dc_script() { dc_block | grep -vE '^[[:space:]]*predict[[:space:]]'; }
 
 # Sets the caller's name and cmd from one dc_predicts line; read would trim cmd's trailing whitespace, which may be
 # escaped (`a\ `), so the prefix comes off by parameter expansion.
@@ -437,12 +428,14 @@ check_hidden_text() {
 }
 
 check_block_syntax() {
-  local n tmp
+  local n tmp line
   n=$(grep -cxF '```done-checks' <<<"$BODY")
   if [ "$n" -ne 1 ]; then
     err "expected exactly one fenced done-checks block, found $n"
     return
   fi
+  line=$(dc_continued)
+  [ -z "$line" ] || err "done-checks line ends in a backslash; write each check and predict line on one line: $line"
   # bare mktemp ignores TMPDIR on macOS and fails inside the Claude Code sandbox
   tmp=$(mktemp "${TMPDIR:-/tmp}/factory-lint.XXXXXX")
   { cat "$ROOT/bin/factory.d/lib.sh"; echo; dc_script; } > "$tmp"
@@ -512,7 +505,7 @@ check_worker() {
   # must resolve through skill_file, since the worker reads that SKILL.md by path. Skipped under
   # fixtures/, whose historical bodies predate the allowlist, as check_paths is (lint).
   # A pstack skill whose steps write under ~/ gets an advisory warning, never a refusal: the worker's file
-  # tools are denied there (worker-settings.json) but its shell is not sandboxed (#409).
+  # tools are denied there and its sandboxed shell cannot write there (worker-settings.json, #409).
   case "$SRC" in *bin/factory.d/fixtures/*) ;; *)
     while IFS= read -r skill; do
       [ -n "$skill" ] || continue
@@ -522,7 +515,7 @@ check_worker() {
             || { err "skill '$skill': a pstack name must be pstack:<letters, digits, - or _>"; continue; }
           case "${skill#pstack:}" in
             setup-pstack|reflect|automate-me)  # SKILL.md writes ~/.cursor/rules or ~/.cursor/skills (~/.claude/ in Claude Code)
-              echo "warning: $skill writes under ~/ (operator settings); a Claude worker's file tools are denied there but its shell is not sandboxed (#409)" >&2 ;;
+              echo "warning: $skill writes under ~/ (operator settings); a Claude worker's file tools are denied there and its sandboxed shell cannot write there (#409)" >&2 ;;
           esac ;;
         *)
           grep -qxF "$skill" "$ROOT/bin/factory.d/skills.txt" \
@@ -1301,7 +1294,7 @@ factory-round.js review-output.schema.json codex-review.prompt.md unattended.md 
 CHECKS_END="printf '\nCHECKS-END\n'"
 
 freeze() {
-  local g src
+  local g src cgd ccd user
   [ -f "$RUN/frozen/sha256" ] && return 0
   printf '%s\n' "$BODY" > "$RUN/frozen/issue.md"
   [ -n "$ISSUE" ] && { net gh issue view "$ISSUE" -R "$REPO" --json title -q .title > "$RUN/frozen/title" 2> /dev/null || rm -f "$RUN/frozen/title"; }
@@ -1313,11 +1306,38 @@ freeze() {
   cp "$ROOT/bin/factory.d/lib.sh" "$RUN/frozen/lib.sh"
   cp "$ROOT/bin/alert" "$RUN/frozen/alert"   # a mid-run edit of bin/alert cannot change this run's alerts
   cp "$ROOT/bin/factory.d/role-settings.json" "$RUN/frozen/role-settings.json"
-  # Claude Code copies each settings tier's env over the launch env (user, then --settings), so the worker call's
-  # model pins also go in this frozen copy's env, or a ~/.claude/settings.json env entry would undo them (#379).
-  jq --arg m "$WORKER_MODEL" '.env = (.env // {}) + {CLAUDE_CODE_SUBAGENT_MODEL: $m, CLAUDE_CODE_SUBAGENT_MODEL_FORCE: "1",
-    ANTHROPIC_DEFAULT_SONNET_MODEL: $m, ANTHROPIC_DEFAULT_HAIKU_MODEL: $m}' \
-    "$ROOT/bin/factory.d/worker-settings.json" > "$RUN/frozen/worker-settings.json"
+  # Claude Code copies settings env over the launch env, so the worker call's model pins also go in this frozen
+  # copy's env, after the user tier's env it carries, or a ~/.claude/settings.json env entry would undo them (#379).
+  # The worker's Bash runs in the sandbox, which writes only the worktree and $TMPDIR by default; a commit also
+  # needs the worktree gitdir and objects/refs/logs under the common dir (the Codex worker's roots), and the shell
+  # writes decisions.md and mechanism.md in the worker directory and result.json in tasks/ (#409).
+  # uv gets a cache and tool directory of the run's own, so the operator's shared uv cache and tools are kept out of
+  # the worker's reach. Claude Code merges sandbox lists across tiers, and the user tier's excludedCommands or
+  # allowWrite would widen the boundary, so the worker call loads no settings tier (--setting-sources ''): this copy
+  # carries the user tier without its sandbox block, arrays concatenated and the worker's keys winning, as Claude
+  # Code merges them. It also drops the user tier's permissions.allow and permissions.additionalDirectories: Claude
+  # Code adds Edit(...) allow paths and additionalDirectories to the sandbox's writable paths and WebFetch(domain:...)
+  # allow domains to its network allowlist even under strictAllowlist, and allow rules do nothing under
+  # bypassPermissions.
+  cgd=$(git -C "$WORKTREE" rev-parse --absolute-git-dir 2> /dev/null) && ccd=$(git_common "$WORKTREE") \
+    && [ -n "$cgd" ] && [ -n "$ccd" ] || finish stopped-environment "could not read the git directories of $WORKTREE for the worker sandbox"
+  # bin/claude-account switches accounts by rewriting the user tier's CLAUDE_CODE_OAUTH_TOKEN, so the copy leaves it
+  # out and worker_round passes the live one. The rest of the user env may hold secrets too, so the copy is private
+  # to the operator, as ~/.claude/settings.json is.
+  user="${CLAUDE_SETTINGS_FILE:-${CLAUDE_CONFIG_DIR:-$HOME/.claude}/settings.json}"
+  [ -f "$user" ] || user=/dev/null
+  mkdir -p "$RUN/uv/cache" "$RUN/uv/tools"
+  ( umask 077; jq --slurpfile u "$user" --arg m "$WORKER_MODEL" --arg gd "$cgd" --arg cd "$ccd" --arg w "${DECISIONS%/*}" \
+    --arg t "$RUN/tasks" --arg uv "$RUN/uv" '
+    def merge($a; $b): if ($a|type) == "object" and ($b|type) == "object"
+      then reduce ($b|keys_unsorted[]) as $k ($a; .[$k] = merge($a[$k]; $b[$k]))
+      elif ($a|type) == "array" and ($b|type) == "array" then $a + $b else $b end;
+    merge($u[0] // {} | del(.sandbox, .env.CLAUDE_CODE_OAUTH_TOKEN, .permissions.allow, .permissions.additionalDirectories); .) | .env = (.env // {}) + {CLAUDE_CODE_SUBAGENT_MODEL: $m, CLAUDE_CODE_SUBAGENT_MODEL_FORCE: "1",
+    ANTHROPIC_DEFAULT_SONNET_MODEL: $m, ANTHROPIC_DEFAULT_HAIKU_MODEL: $m,
+    UV_CACHE_DIR: "\($uv)/cache", UV_TOOL_DIR: "\($uv)/tools"}
+    | .sandbox.filesystem.allowWrite += [$gd, "\($cd)/objects", "\($cd)/refs", "\($cd)/logs", $w, $t, "\($uv)/cache", "\($uv)/tools"]' \
+    "$ROOT/bin/factory.d/worker-settings.json" > "$RUN/frozen/worker-settings.json" ) 2>> "$LOG" \
+    || finish stopped-environment "could not merge $user into the frozen worker settings"
   sed -e "s|<issue>|${ISSUE:-$KEY}|g" -e "s|<decisions>|$DECISIONS|g" -e "s|<mechanism>|${DECISIONS%/*}/mechanism.md|g" \
     "$ROOT/bin/factory.d/_common.md" > "$RUN/frozen/_common.md"
   for g in judge reviewer; do
@@ -1789,6 +1809,9 @@ round_zero() {
   # resumes on, so a relaunch after a defect, or after a kill mid-block, runs round 0 again.
   local out="$RUN/round-0.out" why="" guards line name cmd rc base wt msg
   base=$(cat "$RUN/base.sha"); wt="${WORKTREE}-base"
+  # A line continuation would split one line across the readers (dc_continued); lint rejects it, and a run never linted
+  # (bin/factory run) stops here, before any of the block runs.
+  [ -z "$(dc_continued)" ] || finish ticket-defect "a done-checks line ends in a backslash; the block takes no line continuations"
   # Round 0 belongs to base only: run the frozen checks at base.sha in a detached temporary
   # worktree, never in the ticket worktree, which a relaunch may leave ahead of base with the
   # checks already passing. Remove and prune clear a leftover from a killed round 0 before the
@@ -2071,7 +2094,7 @@ call_gone() { # tenths of a second to wait -> 0 once nothing is left in the call
 }
 
 worker_round() { # round; leaves round-N.* only once the call produced a result
-  local round="$1" pf out="$RUN/pending.jsonl" res="$RUN/pending.result.json" t=() login_retried=0 le head0
+  local round="$1" pf out="$RUN/pending.jsonl" res="$RUN/pending.result.json" t=() login_retried=0 le head0 tok tok0 tok_set
   command -v timeout > /dev/null 2>&1 && t=(timeout -k 5 "$CALL_TIMEOUT_SEC")
   # The round's start, so a stop after a killed call can name the commits the call made (#319).
   head0=$(git -C "$WORKTREE" rev-parse HEAD 2> /dev/null) || head0=""
@@ -2141,14 +2164,22 @@ worker_round() { # round; leaves round-N.* only once the call produced a result
   while :; do
     log "worker call: round $round model=$WORKER_MODEL effort=$WORKER_EFFORT advisor=${WORKER_ADVISOR:-off} budget=$ROUND_BUDGET_USD usd, prompt=$(wc -c < "$pf") bytes"
     rm -f "$out" "${DECISIONS%/*}/mechanism.md"   # also on a retried call, as for the Codex call above (#330)
+    # The call loads no settings tier, so the account token bin/claude-account last wrote is read here, after any
+    # switch, and passed in this call's environment only, never on a command line (freeze). The supervisor keeps its
+    # launch value, which a call gets when the read is empty or fails, so a token the file has lost is never reused.
+    tok=$(jq -r '.env.CLAUDE_CODE_OAUTH_TOKEN // empty' "${CLAUDE_SETTINGS_FILE:-${CLAUDE_CONFIG_DIR:-$HOME/.claude}/settings.json}" 2> /dev/null)
+    tok_set=${CLAUDE_CODE_OAUTH_TOKEN+1}; tok0=${CLAUDE_CODE_OAUTH_TOKEN-}
+    [ -z "$tok" ] || { printf -v CLAUDE_CODE_OAUTH_TOKEN '%s' "$tok" && export CLAUDE_CODE_OAUTH_TOKEN; }
     call_start "$WORKTREE" ${t[@]+"${t[@]}"} env LOAM_CHECKS="$RUN/frozen/checks.sh" \
         CLAUDE_CODE_SUBAGENT_MODEL="$WORKER_MODEL" CLAUDE_CODE_SUBAGENT_MODEL_FORCE=1 \
         ANTHROPIC_DEFAULT_SONNET_MODEL="$WORKER_MODEL" ANTHROPIC_DEFAULT_HAIKU_MODEL="$WORKER_MODEL" claude -p \
         --model "$WORKER_MODEL" --effort "$WORKER_EFFORT" ${WORKER_ADVISOR:+--advisor "$WORKER_ADVISOR"} --permission-mode bypassPermissions --strict-mcp-config \
-        --setting-sources user --settings "$RUN/frozen/worker-settings.json" --max-turns "$MAX_TURNS" \
+        --setting-sources '' --settings "$RUN/frozen/worker-settings.json" --max-turns "$MAX_TURNS" \
         --append-system-prompt "$(cat "$RUN/frozen/unattended.md")" \
         --max-budget-usd "$ROUND_BUDGET_USD" --output-format stream-json --verbose --include-hook-events \
         < "$pf" > "$out" 2>> "$LOG"
+    # The call has forked with the token; the supervisor gets its launch value back, or none.
+    if [ -n "$tok_set" ]; then printf -v CLAUDE_CODE_OAUTH_TOKEN '%s' "$tok0"; else unset CLAUDE_CODE_OAUTH_TOKEN; fi
     call_end worker || log "worker exited non-zero (the result event decides)"
     jq -c 'select(.type == "result")' "$out" 2> /dev/null | tail -1 > "$res"
     # No result event (killed by CALL_TIMEOUT_SEC, or crashed) leaves no cost to read, yet the call may have
@@ -2712,6 +2743,8 @@ cmd_run() {
   # the EXIT trap below removes the worktree at exit, and the branch keeps the commits.
   BRANCH="factory/$KEY"; [ "$IS_FILE" = 1 ] && BRANCH="$BRANCH-$sha8"
   WORKTREE="${FACTORY_WORKTREE:-$MAIN_CHECKOUT-$(printf '%s' "$KEY" | tr '[:upper:]' '[:lower:]')}"
+  [ "${FACTORY_FROZEN:-}" != "$RUN/frozen/factory" ] && issue_busy "$KEY" "$RUN" \
+    && { echo "factory run: a run of another body of $KEY still runs or awaits merge in $WORKTREE; wait, or stop or merge it" >&2; exit 4; }
   [ -f "$RUN/started" ] || date -u +%s > "$RUN/started"
   date -u +%s > "$RUN/launched"
   # One line per launch, before any exit and not again from the frozen re-exec: status --criteria resets the
@@ -2724,9 +2757,16 @@ cmd_run() {
   local start
   start=$(TZ=UTC LC_ALL=C ps -o lstart= -p "$$")
   start=${start%"${start##*[![:space:]]}"}   # macOS pads lstart with trailing spaces; holds_slot matches up to the year
-  [ -n "$start" ] && owner_lock "$RUN" 65 || finish stopped-environment "could not read this run's start time or take $RUN/owner.lock"
+  # env-stops changes with the status, under owner.lock, so env_park_alert never reads this launch's line beside the
+  # last run's status; only in the live pass, so a run frozen before it counts too. The two early exits below count
+  # their launch as well, or a launch that cannot take the lock would retry forever with no park.
+  local live=1; [ "${FACTORY_FROZEN:-}" = "$RUN/frozen/factory" ] && live=0
+  [ -n "$start" ] && owner_lock "$RUN" 65 \
+    || { [ "$live" = 0 ] || record_env_stops "$RUN"
+         finish stopped-environment "could not read this run's start time or take $RUN/owner.lock"; }
   printf '%s %s\n' "$$" "$start" > "$RUN/owner.tmp" && mv -f "$RUN/owner.tmp" "$RUN/owner" \
-    || { rmdir "$RUN/owner.lock"; finish stopped-environment "could not write $RUN/owner"; }
+    || { [ "$live" = 0 ] || record_env_stops "$RUN"; rmdir "$RUN/owner.lock"; finish stopped-environment "could not write $RUN/owner"; }
+  [ "$live" = 0 ] || record_env_stops "$RUN"
   set_status running
   rmdir "$RUN/owner.lock"
   # This launch's operator actions, once per launch as the launch line is; a file ticket makes no GitHub call.
@@ -2763,8 +2803,7 @@ cmd_run() {
   if [ ! -f "$RUN/round-0.checks" ]; then
     round_zero
   else
-    ROUND=$(find "$RUN" -maxdepth 1 -name 'round-*.checks' | sed -n 's/.*round-\([0-9][0-9]*\)\.checks$/\1/p' \
-      | sort -n | tail -1)
+    ROUND=$(last_round "$RUN")
     log "resuming after round $ROUND"
     # The cap spans relaunches: count the graded rounds (a graded.sha) whose graders failed, which is a judge
     # verdict other than pass or a non-empty fixes file, since a reviewer or Codex block always queues a fix there
@@ -2847,15 +2886,20 @@ owner_events() { # run-dir phase repo number -> appends the operator's events on
     | {phase: $phase, kind, id, at}' >> "$f"
 }
 
-# The PR phase: a pr-opened run whose PR has closed gets the operator's events on it, once (pr-closed marks it).
-# A gh failure leaves the run for the next tick and never stops one.
+# The PR a pr-opened run opened, from its EXIT line; empty for a file-ticket rehearsal, which opens none.
+pr_url_of() { # <run dir>
+  sed -n 's#^[^ ]* EXIT pr-opened ([0-9]*): \(https://github\.com/[^/ ]*/[^/ ]*/pull/[0-9]*\).*#\1#p' \
+    "$1/factory.log" 2> /dev/null | tail -1
+}
+
+# The PR phase: a pr-opened run whose PR has closed (merged or not: the issues API reads both as closed) gets the
+# operator's events on it, once (pr-closed marks it). A gh failure leaves the run for the next tick and never stops one.
 pr_closed_events() {
   local d url repo num
   for d in "$RUNS_ROOT"/*/*/; do
     [ "$(cat "$d/status" 2> /dev/null)" = pr-opened ] && [ ! -e "$d/pr-closed" ] || continue
-    url=$(sed -n 's#^[^ ]* EXIT pr-opened ([0-9]*): \(https://github\.com/[^/ ]*/[^/ ]*/pull/[0-9]*\).*#\1#p' \
-      "$d/factory.log" 2> /dev/null | tail -1)
-    [ -n "$url" ] || continue   # a file-ticket rehearsal opens no PR
+    url=$(pr_url_of "$d")
+    [ -n "$url" ] || continue
     repo=${url#https://github.com/}; repo=${repo%/pull/*}; num=${url##*/}
     [ "$(net gh api "repos/$repo/issues/$num" --jq .state 2> /dev/null)" = closed ] || continue
     owner_events "$d" pr "$repo" "$num" && now > "$d/pr-closed"
@@ -2930,6 +2974,60 @@ stopped_environment_recent() { # <run dir> -> 0 when its run stopped on the envi
   [ $(( $(date -u +%s) - t )) -lt "$ENV_BACKOFF_SEC" ]
 }
 
+# A worker call with no result event is charged ROUND_BUDGET_USD and stops stopped-environment before its round-N.checks
+# is written, and a relaunch rebuilds ROUND from round-*.checks, so the same round reruns and MAX_ROUNDS never trips (#547).
+# So each launch, with its first status write and in the live checkout (a run frozen before this counts too), writes
+# env-stops, `<last round> <stops> <launches>` (record_env_stops): the stopped-environment stops since the highest
+# round-N.checks last moved. A new round or a pr-opened clears them; any other status, such as a stopped-daily or stopped
+# that made no worker call, keeps them, so it does not reset the count. next parks the issue at ENV_PARK_STOPS.
+# The launch number makes each line unique, so env_park_alert can name the stop it alerted for.
+ENV_PARK_STOPS=3
+last_round() { # <run dir> -> the highest N of its round-N.checks, or -1
+  local n
+  n=$(find "$1" -maxdepth 1 -name 'round-*.checks' | sed -n 's/.*round-\([0-9][0-9]*\)\.checks$/\1/p' | sort -n | tail -1)
+  echo "${n:--1}"
+}
+env_stops() { # <run dir> -> its stopped-environment stops with no new round-N.checks since, the last run's own status counted
+  local r0="" c0=""
+  read -r r0 c0 _ 2> /dev/null < "$1/env-stops" || true
+  { [[ "$c0" =~ ^[0-9]+$ ]] && [ "$r0" = "$(last_round "$1")" ]; } || c0=0
+  case "$(cat "$1/status" 2> /dev/null)" in
+    stopped-environment) echo $((c0 + 1)) ;;
+    pr-opened) echo 0 ;;
+    *) echo "$c0" ;;
+  esac
+}
+record_env_stops() { # <run dir>, at launch while its status is still the last run's
+  local n=""
+  read -r _ _ n 2> /dev/null < "$1/env-stops" || true
+  [[ "$n" =~ ^[0-9]+$ ]] || n=0
+  printf '%s %s %s\n' "$(last_round "$1")" "$(env_stops "$1")" $((n + 1)) > "$1/env-stops.tmp" \
+    && mv -f "$1/env-stops.tmp" "$1/env-stops"
+}
+env_parked() { # <run dir> -> 0 when its run stopped on the environment for the ENV_PARK_STOPS-th time with no new round since
+  [ "$(cat "$1/status" 2> /dev/null)" = stopped-environment ] && [ "$(env_stops "$1")" -ge "$ENV_PARK_STOPS" ]
+}
+# One needs-you alert per parked stop, not one per tick: env-parked keeps the env-stops line the alert went out for. The
+# line is read once, and that same line is written after the alert, so a launch that rewrites env-stops meanwhile keeps
+# its own alert. Alerts are serialized by next.lock, which the runner's cron line and bin/overnight/driver.sh take
+# (flock -n) around next; a next run by hand outside it can at worst send one duplicate alert (accepted).
+env_park_alert() { # <run dir> <issue>
+  local token
+  # A launch writes env-stops and its status under owner.lock, so the line and the park are read together; the lock is
+  # released before bin/alert, and one held elsewhere leaves the alert to a later tick.
+  owner_lock "$1" 1 || return 0
+  token=$(cat "$1/env-stops" 2> /dev/null) && env_parked "$1" || token=""
+  rmdir "$1/owner.lock"
+  [ -n "$token" ] && [ "$token" != "$(cat "$1/env-parked" 2> /dev/null)" ] || return 0
+  if alert --level needs-you --source factory --project "$(run_project "$1")" --run "issue $2" \
+    "issue $2 stopped on a machine or tool problem $ENV_PARK_STOPS times in a row with no new round since, so the timer \
+no longer relaunches it; fix the cause, then relaunch it by hand or edit the body (run dir ${1%/})" >> "$LOG" 2>&1; then
+    printf '%s\n' "$token" > "$1/env-parked"
+  else
+    log "the alert for ${1%/} failed; see bin/alert's line above"
+  fi
+}
+
 # cmd_run refuses a relaunch, exiting 4 with no status written, while a process of the run's last launch holds its
 # lease or the model call its `call` names still lives (a stuck call outlives finish); holds_slot frees a stopped run's
 # slot all the same, so without this the issue would take the pick from every later candidate each tick.
@@ -2940,6 +3038,28 @@ run_busy() { # <run dir> -> 0 while a process cmd_run would refuse a relaunch on
   flock -n "$fd"; st=$?
   exec {fd}>&-
   [ "$st" != 0 ]
+}
+
+# Every body of an issue shares its branch and its worktree ($MAIN_CHECKOUT-<key>), so while a run of any body holds a
+# slot, still runs a process, or awaits merge, no other body launches. A run awaits merge while it is pr-opened with a PR
+# and no pr-closed marker, whatever its worktree: the overnight driver removes the worktree of a PR it leaves open, and
+# a closed PR's worktree may stay. next writes the marker (pr_closed_events) before it reads candidates, so a gh
+# failure holds the issue one more tick, never frees it early.
+issue_busy() { # <key> <run dir to leave out, or ""> [peek] -> 0 while such a run exists
+  local d
+  for d in "$RUNS_ROOT/$1"/*/; do
+    [ -d "$d" ] && [ "${d%/}" != "${2%/}" ] || continue
+    holds_slot "$d" "${3-}" || run_busy "$d" && return 0
+    [ "$(cat "$d/status" 2> /dev/null)" = pr-opened ] && [ ! -e "$d/pr-closed" ] && [ -n "$(pr_url_of "$d")" ] && return 0
+  done
+  return 1
+}
+
+# The issue has a run dir of some body: a runner-assigned issue at none then has an edited body, not a hand hold.
+ran_before() { # <key>
+  local d
+  for d in "$RUNS_ROOT/$1"/*/; do [ -d "$d" ] && return 0; done
+  return 1
 }
 
 # A ticket's Worker section can lower its own caps, so its daily stop alone does not show the shared ledger is spent.
@@ -3056,7 +3176,8 @@ cmd_next() { # [--dry-run|--install]
   fi
 
   # 4. The frontier: open, ready-for-agent, unassigned issues with no open native blocker, lowest
-  #    number first, plus the runner's own such issues whose run ended stopped-daily, stopped-environment or stopped. A gh failure (offline, unauthenticated, off cron's PATH, empty repo) prints
+  #    number first, plus the runner's own such issues whose current body has no run yet or whose run ended stopped-daily,
+  #    stopped-environment or stopped. A gh failure (offline, unauthenticated, off cron's PATH, empty repo) prints
   #    `frontier query failed` and returns 1, so cron mails it rather than the timer stalling silent;
   #    only a successful, empty query falls through to `nothing to launch`.
   local repo ready num b64 body
@@ -3073,7 +3194,9 @@ cmd_next() { # [--dry-run|--install]
   # A launch assigns the issue to the runner and nothing unassigns it, so a relaunchable run's issue comes from
   # the runner's own ready-for-agent issues in this repository (/issues is the authenticated user's, so no login
   # lookup, and every page, since it spans all the runner's repositories and gh applies --jq per page); the loop takes
-  # one of those only at stopped-daily, stopped-environment or stopped, since any other is in flight, awaits merge, or parks.
+  # one of those only at none with a run of an earlier body (an edited body is a new ticket; with no run at all the
+  # owner assigned it by hand to hold it), stopped-daily,
+  # stopped-environment or stopped, since any other is in flight, awaits merge, or parks.
   local mine lrepo
   lrepo=$(printf '%s' "$repo" | tr '[:upper:]' '[:lower:]')
   if ! mine=$(net gh api "/issues?filter=assigned&labels=ready-for-agent&state=open&per_page=100" --paginate \
@@ -3111,12 +3234,21 @@ cmd_next() { # [--dry-run|--install]
     body=$(printf '%s' "$b64" | base64 -d)
     st_last=$(park_status "$num" "$body")
     if [ "$who" = mine ]; then
-      case "$st_last" in stopped-daily|stopped-environment|stopped) ;; *) continue ;; esac
+      case "$st_last" in
+        none) ran_before "$num" || continue ;;
+        stopped-daily|stopped-environment|stopped) ;;
+        *) continue ;;
+      esac
     fi
     run=$(run_dir_of "$num" "$body")
     # cmd_run exits stopped at once while the run dir holds FACTORY_STOP (bin/factory stop), so the issue is skipped,
     # without a line, until the operator removes the file; otherwise it would take the pick from every later candidate each tick.
     [ -f "$run/FACTORY_STOP" ] && continue
+    if env_parked "$run"; then
+      echo "parked #$num: stopped on the environment $ENV_PARK_STOPS times in a row with no new round since; fix the cause, then relaunch it by hand or edit the body" >&2
+      [ "$dry" = 1 ] || env_park_alert "$run" "$num"
+      continue
+    fi
     if stopped_daily_today "$run"; then
       echo "waiting #$num: daily budget spent; relaunches after 00:00 UTC" >&2
       continue
@@ -3129,6 +3261,10 @@ cmd_next() { # [--dry-run|--install]
       none|stopped-environment|stopped|stopped-daily)
         if run_busy "$run"; then
           echo "waiting #$num: a process of its last run still runs; kill it or wait for it to exit" >&2
+          continue
+        fi
+        if issue_busy "$num" "" "$peek"; then
+          echo "waiting #$num: a run of another body still runs or awaits merge; it shares the issue's worktree" >&2
           continue
         fi
         if [ "$author" != "$TICKET_OWNER" ]; then
@@ -3317,8 +3453,10 @@ claude_version_ok() {
 }
 
 precondition_lines() { # LOOP.md, Preconditions
-  local t f
-  for t in claude gh git jq python3 uv tmux timeout socat node; do
+  local t f sbx=
+  # The worker's Bash sandbox needs bubblewrap on Linux; on macOS Claude Code uses seatbelt, which ships with it (#409).
+  [ "$(uname -s)" != Linux ] || sbx=bwrap
+  for t in claude gh git jq python3 uv tmux timeout socat $sbx node; do
     command -v "$t" > /dev/null 2>&1 && echo "  PASS $t on PATH" || echo "  FAIL $t not on PATH"
   done
   echo "  INFO target $TARGET; runs root $RUNS_ROOT"
