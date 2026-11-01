@@ -146,6 +146,8 @@ def listing(d: dict, params: dict, user: bool) -> list:
         raise Unknown(f"query parameter {sorted(unknown)}")
     if user and params.get("filter") != "assigned":
         raise Unknown(f"filter={params.get('filter')}")
+    if params.get("assignee", "none") != "none" or params.get("state", "open") not in ("open", "closed", "all"):
+        raise Unknown(f"query {params}")
     want = [w for w in params.get("labels", "").split(",") if w]
     out = []
     for it, is_pr in [(v, False) for v in d["issues"].values()] + [(v, True) for v in d["prs"].values()]:

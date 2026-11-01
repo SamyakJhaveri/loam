@@ -176,13 +176,20 @@ def main(argv: list[str]) -> int:
             return 0
         if argv == ["auth", "status"]:
             append("claude.log", {"argv": argv, "kind": "auth"})
-            print(json.dumps({"loggedIn": True, "authMethod": "claude.ai"}))
+            print(json.dumps({"loggedIn": True}))
             return 0
         if argv[:1] != ["-p"]:
             raise Unknown(f"subcommand {argv[:2]}")
         opts = parse(argv)
         if ("--json-schema" in opts) == (opts.get("--output-format") == "stream-json"):
             raise Unknown("a -p call that is neither a worker call (stream-json) nor a grader call (--json-schema)")
+        try:  # both calls pass a frozen settings file
+            with open(opts["--settings"], encoding="utf-8") as h:
+                json.load(h)
+        except (KeyError, OSError, ValueError):
+            raise Unknown(f"--settings {opts.get('--settings')!r}, not a file holding JSON") from None
+        if set(opts.get("--setting-sources", "").split(",")) - {"", "user", "project", "local"}:
+            raise Unknown(f"--setting-sources {opts['--setting-sources']!r}")
         kind = "grader" if "--json-schema" in opts else "worker"
         append("claude.log", {"argv": argv, "kind": kind, "cwd": os.getcwd()})
         prompt = sys.stdin.read()
