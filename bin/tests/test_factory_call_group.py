@@ -71,6 +71,7 @@ class CallGroupTests(unittest.TestCase):
             (frozen / name).write_text("")
         (frozen / "worker-settings.json").write_text("{}")
         (frozen / "codex-review.prompt.md").write_text("Review the diff against <base>.\n")
+        (frozen / "issue.md").write_text("# Ticket 7\n")  # run_codex_review sends the frozen ticket with its prompt
         shutil.copy(ROOT / "bin/factory.d/role-settings.json", frozen / "role-settings.json")
         shutil.copy(ROOT / "bin/factory.d/judge.schema.json", frozen / "judge.schema.json")
         shutil.copy(ROOT / "bin/factory.d/review-output.schema.json", frozen / "review-output.schema.json")

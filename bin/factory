@@ -2493,8 +2493,12 @@ run_review() { # round -> 0 when nothing blocks
 }
 
 run_codex_review() { # round -> 0 when nothing blocks; needs-attention with a critical or high finding blocks once (LOOP.md)
-  local round="$1" f="$RUN/round-$1.codex-review.json" jsonl res="$RUN/round-$1.codex-review.result.json" base blocking rc start call parsed=0
+  local round="$1" f="$RUN/round-$1.codex-review.json" jsonl res="$RUN/round-$1.codex-review.result.json" base prompt blocking rc start call parsed=0
   base=$(cat "$RUN/base.sha")
+  # The prompt is the frozen brief with every <base> filled in, then the frozen ticket between fence lines as
+  # build_evidence prints it; only the brief is filled, so a <base> in the ticket text reaches Codex as written.
+  prompt=$(sed "s/<base>/$base/g" "$RUN/frozen/codex-review.prompt.md"
+           printf '\n## Ticket\n\n%s\n' "$FENCE"; cat "$RUN/frozen/issue.md"; printf '\n%s\n' "$FENCE")
   for call in 1 2; do
     jsonl="$RUN/round-$round.codex-review.$call.jsonl"   # one stream per call, so each log line points at its own call
     assert_caps
@@ -2503,9 +2507,9 @@ run_codex_review() { # round -> 0 when nothing blocks; needs-attention with a cr
     # A review needs no write access, so it runs read-only: under workspace-write it could edit the tree the
     # judge and reviewer already graded. `codex exec review` ignores --output-schema, so the review is plain
     # `codex exec` with the schema (#41): the -o file holds the schema-validated JSON, the JSONL stream
-    # (stdout) carries usage for the ledger. The one-line prompt is the frozen file with <base> filled in.
+    # (stdout) carries usage for the ledger. The prompt, built above, is one argument; Codex reads the diff itself.
     start=$SECONDS
-    call_start "$WORKTREE" ${TIMEOUT_G[@]+"${TIMEOUT_G[@]}"} env PATH="$CODEX_PATH:$PATH" codex exec --json --output-schema "$RUN/frozen/review-output.schema.json" -o "$f" -s read-only "$(sed "s/<base>/$base/" "$RUN/frozen/codex-review.prompt.md")" > "$jsonl" < /dev/null
+    call_start "$WORKTREE" ${TIMEOUT_G[@]+"${TIMEOUT_G[@]}"} env PATH="$CODEX_PATH:$PATH" codex exec --json --output-schema "$RUN/frozen/review-output.schema.json" -o "$f" -s read-only "$prompt" > "$jsonl" < /dev/null
     call_end "Codex review"; rc=$?
     [ "$rc" -eq 0 ] || log "codex review call exited $rc"
     codex_result "$jsonl" "$rc" "$(( (SECONDS - start) * 1000 ))" > "$res"
