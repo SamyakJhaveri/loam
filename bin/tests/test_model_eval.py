@@ -58,6 +58,13 @@ sys.stdin.read()
 """ + REPLIES + """
 with open(os.environ["STUB_LOG"], "a") as f:
     f.write("codex %s\\n" % g("-m"))
+if os.environ.get("STUB_SEEN"):
+    import pathlib
+    home = os.environ.get("CODEX_HOME", "")
+    files = sorted(str(p.relative_to(home)) for p in pathlib.Path(home).rglob("*")) if home else []
+    tree = sorted(str(p) for p in pathlib.Path(".").rglob("*") if p.name in ("evals", "expected.json")
+                  or str(p) == "bin/factory")
+    json.dump({"argv": a, "tree": tree, "home": home, "files": files}, open(os.environ["STUB_SEEN"], "w"))
 def strict(node):
     if not isinstance(node, dict):
         return True
@@ -160,6 +167,22 @@ class ModelEvalTests(unittest.TestCase):
                 self.assertEqual(t.get((g, "codex:x@high", metric)), t.get((g, "m1@high", metric)), (g, metric))
             self.assertEqual(t.get((g, "codex:x@high", "recall:logic-bug")), "1.00", g)
             self.assertEqual(t.get((g, "codex:x@high", "infra")), "0", g)
+
+    def test_codex_cell_runs_in_the_evals_free_export_under_the_factory_home(self) -> None:
+        # The answer keys stay out of the cell's tree, as for a Claude cell, and the operator's ~/.codex
+        # AGENTS.md and rules stay out of its home (#490, #543).
+        self.case("judge", "k1", {"verdict": "fail", "defect_class": "logic-bug", "failing_rows": ["correct"]})
+        (self.home / ".codex/rules").mkdir(parents=True)
+        (self.home / ".codex/AGENTS.md").write_text("Ask only when the task is ambiguous.\n")
+        (self.home / ".codex/rules/default.rules").write_text("")
+        (self.home / ".codex/auth.json").write_text("{}\n")
+        seen = self.tmp / "seen.json"
+        r = self.run_me("codex:x", MODEL_EVAL_GRADERS="judge", STUB_SEEN=str(seen))
+        self.assertEqual(r.returncode, 0, r.stderr)
+        s = json.loads(seen.read_text())
+        self.assertEqual(s["tree"], ["bin/factory"])  # the export, with no evals/ and no expected.json in it
+        self.assertEqual(s["files"], ["auth.json", "config.toml"])
+        self.assertIn("--skip-git-repo-check", s["argv"])
 
     def test_harness_change_regrades_every_reply(self) -> None:
         self.judge_cases()
