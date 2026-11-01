@@ -1492,12 +1492,15 @@ group_live() { # <pgid> -> 0 when a process other than a zombie has it as its gr
 # its pid is alive, with the start time recorded after its id. A leader gone with members left counts, since Linux
 # never hands out a pid still in use as a pgid, so a reused pgid always has a new live leader; a record with no start
 # time, or a ps that prints nothing, has only the member test. macOS pads lstart with trailing spaces, so it is trimmed.
+# A wall-clock step moves lstart, so as in owner_gone only a start over 300 s from the recorded one, both parsed, differs.
 group_same() { # <pgid> [ps lstart]
-  local now
+  local now a b
   group_live "$1" || return 1
   [ -n "${2-}" ] || return 0
-  now=$(TZ=UTC LC_ALL=C ps -o lstart= -p "$1" 2> /dev/null)
-  [ -z "$now" ] || [ "${now%"${now##*[![:space:]]}"}" = "$2" ]
+  now=$(TZ=UTC LC_ALL=C ps -o lstart= -p "$1" 2> /dev/null) && now=${now%"${now##*[![:space:]]}"} \
+    && [ -n "$now" ] && [ "$now" != "$2" ] || return 0
+  a=$(lstart_epoch "$now") && b=$(lstart_epoch "$2") || return 0
+  [ $((a > b ? a - b : b - a)) -le 300 ]
 }
 
 # The model call a run's `call` file names (call_start) still lives: its wrapper's group, or the call's own group named

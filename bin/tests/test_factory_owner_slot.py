@@ -325,6 +325,18 @@ class OwnerSlotTests(SlotCase):
                     self.assertFalse(self.alerts.exists())
                     self.assertEqual((self.run_dir / "call").read_text(), call)
 
+    def test_stuck_call_s_group_two_seconds_off_still_holds_a_stopped_run_s_slot(self) -> None:
+        # A wall-clock step moves ps lstart, so a call group whose start is 2 s from the recorded one is still the call's.
+        (self.run_dir / "status").write_text("stopped-environment\n")
+        self.owner(f"{dead_pid()} {OLD}")
+        group = subprocess.Popen(["sleep", "60"], start_new_session=True)
+        self.addCleanup(group.wait)
+        self.addCleanup(group.kill)
+        t = datetime.datetime.strptime(lstart(group.pid), "%a %b %d %H:%M:%S %Y") - datetime.timedelta(seconds=2)
+        (self.run_dir / "call").write_text(f"{dead_pid()} test.{uuid.uuid4().hex}\n")
+        (self.run_dir / "call.group").write_text(f"{group.pid} {t:%a %b} {t.day:2d} {t:%H:%M:%S %Y}\n")
+        self.assertTrue(self.holds())
+
 
 @unittest.skipUnless(HAVE_FLOCK, "the lease needs flock(1) and bash 4.1+")
 class LeaseSlotTests(SlotCase):
