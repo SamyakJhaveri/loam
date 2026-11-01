@@ -12,7 +12,9 @@ class PrTemplate(unittest.TestCase):
     def test_proof_asks_for_verify_loam(self) -> None:
         proof = TEMPLATE.read_text().split("## Proof\n", 1)[1].split("\n## ", 1)[0]
         # Code spans keep the <placeholders> visible; bare, GitHub strips them as HTML tags.
-        for needle in ("`verify-loam: <", "`verify-loam waived: <", "seed/", "copier.yml"):
+        for form in (r"`verify-loam: <[^`<>]+>`", r"`verify-loam waived: <[^`<>]+>`"):
+            self.assertRegex(proof, form)
+        for needle in ("seed/", "copier.yml"):
             self.assertIn(needle, proof)
 
     def test_rest_kept(self) -> None:
