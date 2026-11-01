@@ -50,7 +50,11 @@ with open(os.environ["STUB_LOG"], "a") as f:
     f.write("call %s\\n" % g("--model"))
 reply = "no verdict here" if os.environ.get("STUB_BAD") else json.dumps(REPLIES[grader_of(json.loads(g("--json-schema")))])
 served = os.environ.get("STUB_SERVED") or g("--model")
-print(json.dumps({"type": "result", "is_error": False, "total_cost_usd": 0, "result": reply, "modelUsage": {served: {}}}))
+# STUB_FAIL_AFTER=n: every call after the n-th is an API error, as bin/factory eval saves no reply for.
+err = len(open(os.environ["STUB_LOG"]).readlines()) > int(os.environ.get("STUB_FAIL_AFTER") or 1 << 30)
+if err:
+    reply = "API Error: 500"
+print(json.dumps({"type": "result", "is_error": err, "total_cost_usd": 0, "result": reply, "modelUsage": {served: {}}}))
 """
 
 FAKE_CODEX = """#!/usr/bin/env python3
@@ -147,7 +151,7 @@ class ModelEvalTests(unittest.TestCase):
                     "STUB_LOG": str(self.log), "MODEL_EVAL_SET": str(self.tmp / "set"),
                     "MODEL_EVAL_OUT": str(self.out), "MODEL_EVAL_REPEATS": "1", "MODEL_EVAL_GRADERS_DIR": str(AGENTS),
                     "FACTORY_CODEX_HOME": str(self.fhome)}
-        for k in ("STUB_VERSION", "STUB_SERVED", "STUB_BAD", "EVAL_OUT", "MODEL_EVAL_EFFORTS", "MODEL_EVAL_SEED",
+        for k in ("STUB_VERSION", "STUB_SERVED", "STUB_BAD", "STUB_FAIL_AFTER", "EVAL_OUT", "MODEL_EVAL_EFFORTS", "MODEL_EVAL_SEED",
                   "FACTORY_ROOT", "CODEX_HOME"):
             self.env.pop(k, None)
 
@@ -384,6 +388,47 @@ class ModelEvalTests(unittest.TestCase):
         self.assertEqual(self.run_me("m2", MODEL_EVAL_GRADERS="judge", STUB_VERSION="2").returncode, 0)
         self.assertEqual(len(self.calls()), 2)
         self.assertEqual(moved(), "descriptive: claude-version,model")
+
+    def test_a_repeat_whose_calls_all_failed_counts_as_infra(self) -> None:
+        self.case("judge", "k1", {"verdict": "fail", "defect_class": "logic-bug", "failing_rows": ["correct"]})
+        (self.tmp / "set/reviewer").mkdir()
+        r = self.run_me("m1", MODEL_EVAL_GRADERS="judge reviewer", MODEL_EVAL_REPEATS="2", STUB_FAIL_AFTER="1")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertEqual(len(self.calls()), 2)
+        self.assertFalse((self.out / "replies/m1@high/r2/judge-k1.json").exists())
+        t = self.table(r.stdout)
+        self.assertEqual((t[("judge", "m1@high", "infra")], t[("judge", "m1@high", "n:infra")]), ("1", "2"))
+        self.assertEqual(t[("judge", "m1@high", "n:recall:logic-bug")], "2")
+
+    def test_a_grader_with_no_case_gets_no_row(self) -> None:
+        self.case("judge", "k1", {"verdict": "fail", "defect_class": "logic-bug", "failing_rows": ["correct"]})
+        (self.tmp / "set/reviewer").mkdir()
+        reply = {"type": "result", "is_error": False, "total_cost_usd": 0,
+                 "result": json.dumps({"verdict": "fail", "rows": {"correct": "fail"}})}
+        for k in ("r1", "r2"):
+            d = self.out / "m1" / k
+            d.mkdir(parents=True)
+            for g in ("judge", "reviewer"):
+                (d / f"fingerprint-{g}.txt").write_text("model m1\n")
+        (self.out / "m1/r1/judge-k1.json").write_text(json.dumps(reply))
+        r = subprocess.run([sys.executable, str(ROOT / "bin/factory.d/eval_score.py"), str(self.tmp / "set"),
+                            str(self.out)], capture_output=True, text=True)
+        self.assertEqual(r.returncode, 0, r.stderr)
+        graders = {k[0] for k in self.table(r.stdout)}
+        self.assertEqual(graders, {"judge"})
+        self.assertEqual(self.table(r.stdout)[("judge", "m1", "infra")], "1")
+
+    def test_a_bare_eval_out_root_scores_only_repeats_with_replies(self) -> None:
+        self.case("judge", "k1", {"verdict": "fail", "defect_class": "logic-bug", "failing_rows": ["correct"]})
+        reply = {"type": "result", "is_error": False, "total_cost_usd": 0,
+                 "result": json.dumps({"verdict": "fail", "rows": {"correct": "fail"}})}
+        (self.out / "m1/r1").mkdir(parents=True)
+        (self.out / "m1/r2").mkdir(parents=True)
+        (self.out / "m1/r1/judge-k1.json").write_text(json.dumps(reply))
+        r = subprocess.run([sys.executable, str(ROOT / "bin/factory.d/eval_score.py"), str(self.tmp / "set"),
+                            str(self.out)], capture_output=True, text=True)
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertEqual(self.table(r.stdout)[("judge", "m1", "n:infra")], "1")
 
     def test_unparseable_reply_gets_no_key_and_is_retried(self) -> None:
         self.judge_cases()
