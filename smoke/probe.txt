@@ -1,0 +1,3 @@
+command: touch ~/sbx-probe-409
+exit: 1
+error: touch: cannot touch '/home/samyak/sbx-probe-409': Read-only file system
