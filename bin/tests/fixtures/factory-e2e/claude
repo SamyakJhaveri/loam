@@ -4,7 +4,8 @@
 `auth status` prints a logged-in reply and `--version` a version bin/factory accepts. A `-p` call reads its prompt on
 stdin. A worker call (--output-format stream-json) acts on the `e2e-scenario: <word>` line the test writes into each
 ticket body, in its cwd, the ticket worktree:
-  pass       commits done.txt, which the ticket's check wants, and writes decisions.md and mechanism.md
+  pass       commits done.txt, which the ticket's check wants (a later round changes it again), and writes
+             decisions.md and mechanism.md
   fail       commits a different attempt-<n>.txt each round, so the check keeps failing
   no-result  prints only an init event and exits 1, as a call that crashed or was killed does
   parallel   writes $E2E_STATE/started-<issue>, waits for $E2E_STATE/release, then does what pass does
@@ -83,7 +84,12 @@ def finish_turn(prompt: str) -> None:
         f.write("Wrote done.txt, which the done-file check reads.\n")
     with open(f"{m.group(1)}/mechanism.md", "w", encoding="utf-8") as f:
         f.write("The e2e stand-in worker writes done.txt, so the done-file check passes.\n")
-    commit("done.txt", "done\n", "e2e: write done.txt")
+    # A later round (its checks failed for another reason) still changes the tree, as a worker that tries again does.
+    text = "done\n"
+    if os.path.exists("done.txt"):
+        with open("done.txt", encoding="utf-8") as f:
+            text = f.read() + "again\n"
+    commit("done.txt", text, "e2e: write done.txt")
 
 
 def worker(opts: dict, prompt: str, sid: str) -> int:
