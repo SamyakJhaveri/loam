@@ -18,7 +18,7 @@ class PrTemplate(unittest.TestCase):
         lines = TEMPLATE.read_text().splitlines()
         for line in ("## What and why", "## Proof", "Port: seed | runner | Loam-only (see docs/SYNC.md)"):
             self.assertIn(line, lines)
-        self.assertLessEqual(len([l for l in lines if l]), 4)
+        self.assertLessEqual(len([line for line in lines if line]), 4)
 
 
 if __name__ == "__main__":
