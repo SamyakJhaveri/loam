@@ -689,10 +689,10 @@ grader_rubric() {
 # eval call runs in a fresh export of the checkout's committed tree with evals/ removed, and with the evals
 # directory removed too when it lies inside the checkout; the rest of the tree stays, as in a ticket
 # worktree. This fences the working directory only: no permission rule stops a Read of an absolute path.
-eval_tree() { # work: exports into work/tree
+eval_tree() { # work [evals_dir, default EVALS_DIR]: exports into work/tree
   local top ev wd
   top=$(cd "$ROOT" && pwd -P)
-  ev=$(cd "$EVALS_DIR" 2> /dev/null && pwd -P)
+  ev=$(cd "${2:-$EVALS_DIR}" 2> /dev/null && pwd -P)
   wd=$(cd "$1" && pwd -P)
   case "$wd/" in "$top"/*|"${ev:-/nonexistent}"/*)
     echo "eval: TMPDIR ($wd) lies inside the checkout or the evals directory" >&2; return 1 ;; esac
@@ -1009,7 +1009,7 @@ DAILY_BUDGET_USD=1000000; MAX_HOURS=1000; MAX_TURNS=200; CALL_TIMEOUT_SEC=5400; 
 NET_TIMEOUT_SEC="${FACTORY_NET_TIMEOUT_SEC:-120}"
 WORKER_MODEL="${FACTORY_WORKER_MODEL:-claude-opus-5-5}"   # ARCHITECTURE.md, Models and roles (2026-09-22)
 GRADER_MODEL="${FACTORY_GRADER_MODEL:-claude-opus-5-5}"   # ARCHITECTURE.md, Models and roles (2026-09-24)
-CODEX_MODEL="${FACTORY_CODEX_MODEL:-codex}"   # ledger label for a `worker: codex` round; Codex holds the real model in its own config, and its dollar cost is null (F4)
+CODEX_MODEL="${FACTORY_CODEX_MODEL:-gpt-6.1-sol}"   # every factory Codex call passes it as -m; the runner's model on 2026-10-31. Its dollar cost is null (F4)
 WORKER_ADVISOR="${FACTORY_WORKER_ADVISOR-claude-opus-5-5}"   # mid-round advisor on the worker call (ARCHITECTURE.md, Models and roles, 2026-09-24); FACTORY_WORKER_ADVISOR= (explicit empty) disables the flag. No colon: :- could never disable. The bare name is never read.
 WORKER_EFFORT=high         # the ticket's `effort:` line overrides (ARCHITECTURE.md, Models and roles)
 GRADER_EFFORT=high
@@ -1025,6 +1025,71 @@ LOG="${LOG:-/dev/null}"; LEDGER=""; DAILY=""; DECISIONS=""; WORKTREE=""; BRANCH=
 # separate from REVIEW_BLOCKED so a Claude-reviewer block never consumes the Codex review's one block.
 WORKER_KIND=claude; CODEX_REVIEW=no; CODEX_REVIEW_BLOCKED=0
 CODEX_PATH="$HOME/.local/bin"   # Codex is not on the non-interactive PATH (#41); every Codex call prepends this
+
+# The CODEX_HOME of every factory Codex call: the factory's own, logged in once with its own `codex login`, so the
+# operator's AGENTS.md, rules, hooks, memories and config.toml never reach a worker or a grader (#543 fenced only the
+# Claude calls), and a factory token refresh never rewrites the operator's auth.json. Each call also unsets
+# CODEX_UNSET, the variables Codex 0.163.0 reads for credentials ahead of the stored login (codex-rs/login/src/auth/
+# manager.rs:1500, :1537 and :2798, and ext/guardian-v2/src/async_scorer/startup.rs:70 for OPENAI_API_KEY), and
+# passes codex_skills_off (below) and skills.include_instructions=false, so no operator skill and no skill catalog
+# reaches it (a Codex worker gets its ticket's skills pasted). The factory writes nothing in the home; the model, the effort
+# and the trusted worktree go on each call's argv. Concurrent calls do share its auth.json, which Codex rewrites on a
+# token refresh by truncating it in place, locked only within one process (storage.rs:214, manager.rs:2845 at
+# rust-v0.163.0), so two calls refreshing at once can leave it invalid. A proactive refresh comes within 5 minutes
+# of the access token's expiry (manager.rs:3001; the factory's token lasted 10 days on 2026-10-31) and is skipped by
+# a call that finds the file already changed (manager.rs:2867), so its window is one refresh request; after a 401 a
+# call reloads the file, retries, and on a second 401 refreshes without that check (manager.rs:1985, :2884). Only a
+# lock held for each whole call would cover a refresh inside it, and that would run every factory Codex call one at
+# a time, so the race is left upstream. A home whose auth.json is missing or not a single JSON object stops the run
+# with the login command, which rewrites it; there is no fallback to the operator's login.
+CODEX_UNSET=(-u CODEX_API_KEY -u OPENAI_API_KEY -u CODEX_ACCESS_TOKEN
+  -u OPENAI_FEDERATION_RULE_ID -u OPENAI_IDENTITY_TOKEN_FILE -u OPENAI_WORKLOAD_IDENTITY_CONTEXT)
+# A separate login still sees plugins installed on the same ChatGPT account. These are supported feature keys
+# (`codex features list`, 0.163.0); stop plugin sync, app tools, and skill-triggered MCP installation on every call.
+CODEX_OFF=(-c features.plugins=false -c features.remote_plugin=false -c features.apps=false
+  -c features.skill_mcp_dependency_install=false)
+CODEX_FACTORY_HOME="${FACTORY_CODEX_HOME:-$HOME/.local/state/loam-factory/codex-home}"
+printf -v CODEX_HOME_Q '%q' "$CODEX_FACTORY_HOME"   # shell-quoted, so the hint runs as printed
+CODEX_LOGIN_HINT="no factory Codex login: $CODEX_HOME_Q/auth.json is missing or not a single JSON object (a concurrent token refresh can corrupt it); log it in on this host: mkdir -p -m 700 $CODEX_HOME_Q && CODEX_HOME=$CODEX_HOME_Q codex login --device-auth"
+codex_home() { # -> prints the factory CODEX_HOME, or the login hint on stderr and 1
+  jq -se 'length == 1 and (.[0] | type) == "object"' "$CODEX_FACTORY_HOME/auth.json" > /dev/null 2>&1 \
+    || { echo "$CODEX_LOGIN_HINT" >&2; return 1; }
+  printf '%s\n' "$CODEX_FACTORY_HOME"
+}
+# The -c value that trusts one directory and nothing else. Codex loads a project's .codex config, rules and hooks
+# only for a trusted project, so without it Loam's forbidden rules (rm -rf, force push) would not bind the worker.
+# The key is the physical path, as Codex reads its cwd, in a TOML basic string.
+codex_trust() { # dir -> projects={"<dir>"={trust_level="trusted"}}
+  local p
+  p=$(cd "$1" && pwd -P) || return 1
+  p=${p//\\/\\\\}; p=${p//\"/\\\"}
+  printf 'projects={"%s"={trust_level="trusted"}}\n' "$p"
+}
+# The -c value that disables, by path, every skill under the operator's ~/.agents/skills. HOME stays the operator's
+# for git, gh and the worker's tools, so Codex scans that root whatever CODEX_HOME is (ext/skills/src/host_roots.rs:105
+# at rust-v0.163.0), and skills.include_instructions=false hides only the catalog: a `$name` in a prompt still loads
+# that skill's body (core/src/session/turn.rs:1150). A skills.config rule with enabled=false drops the skill from both
+# (skills/src/selection.rs:28). find -L follows directory symlinks as Codex does, past its depth of 6, Codex
+# canonicalizes both paths before matching, and jq writes each path as a JSON string, which TOML reads alike.
+codex_skills_off() { # -> skills.config=[{path="<SKILL.md>",enabled=false},...]
+  local p paths=()
+  while IFS= read -r -d '' p; do paths+=("$p"); done \
+    < <(find -L "$HOME/.agents/skills" -maxdepth 8 -name SKILL.md -type f -print0 2> /dev/null)
+  jq -nr '"skills.config=[" + ([$ARGS.positional[] | "{path=" + tojson + ",enabled=false}"] | join(",")) + "]"' \
+    --args ${paths[@]+"${paths[@]}"}
+}
+# Empty tables merge with lower config layers: -c mcp_servers={} does NOT remove configured servers (0.163.0).
+# Ask Codex for the effective server names in this cwd, with the same trust override as the exec, then disable
+# each by its supported mcp_servers.<id>.enabled key. `mcp list` inspects config; it starts no MCP servers.
+codex_mcp_off() { # cwd home [Codex options] -> mcp_servers={"<id>"={enabled=false},...}
+  local dir="$1" ch="$2" servers
+  shift 2
+  servers=$(cd "$dir" && env "${CODEX_UNSET[@]}" PATH="$CODEX_PATH:$PATH" CODEX_HOME="$ch" \
+    codex "${CODEX_OFF[@]}" "$@" mcp list --json < /dev/null) || return 1
+  jq -er 'if type == "array" and all(.[]; (.name | type) == "string") then
+    "mcp_servers={" + ([.[] | (.name | tojson) + "={enabled=false}"] | join(",")) + "}"
+    else error("invalid codex mcp list reply") end' <<<"$servers"
+}
 # util-linux flock(1), and bash 4.1+ for the {var} descriptors the lease opens: a Mac has neither (bash 3.2 reads
 # `exec {fd}< file` as running a command named {fd}, which exits the shell), and runs keep the owner line's rules (#425).
 HAVE_FLOCK=$( { [ "${BASH_VERSINFO[0]}" -gt 4 ] || { [ "${BASH_VERSINFO[0]}" -eq 4 ] && [ "${BASH_VERSINFO[1]}" -ge 1 ]; }; } \
@@ -2186,8 +2251,12 @@ worker_round() { # round; leaves round-N.* only once the call produced a result
   if [ "$WORKER_KIND" = codex ]; then
     # The Codex worker: JSONL stream is stdout, -o is the last message, < /dev/null keeps Codex off the
     # caller's stdin (#41). No dollar budget bounds it (cost_usd null); CALL_TIMEOUT_SEC and MAX_HOURS do.
-    local rc start wl wagents wusd swapped=0 codex_target cgd ccd add_dirs
-    log "codex worker call: round $round model=$CODEX_MODEL (dollar caps do not bound it), prompt=$(wc -c < "$pf") bytes"
+    local rc start wl wagents wusd swapped=0 codex_target cgd ccd add_dirs ch trust skills_off mcp_off
+    log "codex worker call: round $round model=$CODEX_MODEL effort=$WORKER_EFFORT (dollar caps do not bound it), prompt=$(wc -c < "$pf") bytes"
+    ch=$(codex_home) || finish stopped-environment "$CODEX_LOGIN_HINT"
+    trust=$(codex_trust "$WORKTREE") || finish stopped-environment "could not resolve $WORKTREE for the Codex trust entry"
+    skills_off=$(codex_skills_off) || finish stopped-environment "could not list ~/.agents/skills for the Codex skill rules"
+    mcp_off=$(codex_mcp_off "$WORKTREE" "$ch" -c "$trust") || finish stopped-environment "could not list Codex MCP servers to disable them"
     # Each worker call writes its own mechanism.md, so an earlier call's account of a diff that has since moved
     # never opens the PR; a call that writes none gets open_pr's fallback line (#330).
     rm -f "$out" "${DECISIONS%/*}/mechanism.md"
@@ -2206,7 +2275,7 @@ worker_round() { # round; leaves round-N.* only once the call produced a result
     ccd=$(git -C "$WORKTREE" rev-parse --path-format=absolute --git-common-dir)
     add_dirs=(--add-dir "$cgd" --add-dir "$ccd/objects" --add-dir "$ccd/refs" --add-dir "$ccd/logs" --add-dir "${DECISIONS%/*}")
     start=$SECONDS
-    call_start "$WORKTREE" ${t[@]+"${t[@]}"} env PATH="$CODEX_PATH:$PATH" codex exec --json -s workspace-write "${add_dirs[@]}" "$(cat "$pf")" -o "$RUN/round-$round.last.txt" > "$out" < /dev/null
+    call_start "$WORKTREE" ${t[@]+"${t[@]}"} env "${CODEX_UNSET[@]}" PATH="$CODEX_PATH:$PATH" CODEX_HOME="$ch" codex exec "${CODEX_OFF[@]}" --json -m "$CODEX_MODEL" -c model_reasoning_effort="$WORKER_EFFORT" -c "$trust" -c "$skills_off" -c skills.include_instructions=false -c "$mcp_off" -s workspace-write "${add_dirs[@]}" "$(cat "$pf")" -o "$RUN/round-$round.last.txt" > "$out" < /dev/null
     call_end worker; rc=$?
     [ "$rc" -eq 0 ] || log "codex worker call exited $rc (the result decides)"
     # Restore the tracked .codex before codex_result so the clean-tree check and the graders see the
@@ -2486,8 +2555,12 @@ run_review() { # round -> 0 when nothing blocks
 }
 
 run_codex_review() { # round -> 0 when nothing blocks; needs-attention with a critical or high finding blocks once (LOOP.md)
-  local round="$1" f="$RUN/round-$1.codex-review.json" jsonl res="$RUN/round-$1.codex-review.result.json" base prompt blocking rc start call parsed=0
+  local round="$1" f="$RUN/round-$1.codex-review.json" jsonl res="$RUN/round-$1.codex-review.result.json" base prompt blocking rc start call parsed=0 ch trust skills_off mcp_off
   base=$(cat "$RUN/base.sha")
+  ch=$(codex_home) || finish stopped-environment "$CODEX_LOGIN_HINT"
+  trust=$(codex_trust "$WORKTREE") || finish stopped-environment "could not resolve $WORKTREE for the Codex trust entry"
+  skills_off=$(codex_skills_off) || finish stopped-environment "could not list ~/.agents/skills for the Codex skill rules"
+  mcp_off=$(codex_mcp_off "$WORKTREE" "$ch" -c "$trust") || finish stopped-environment "could not list Codex MCP servers to disable them"
   # The prompt is the frozen brief with every <base> filled in, then the frozen ticket between fence lines as
   # build_evidence prints it; only the brief is filled, so a <base> in the ticket text reaches Codex as written.
   prompt=$(sed "s/<base>/$base/g" "$RUN/frozen/codex-review.prompt.md"
@@ -2500,9 +2573,12 @@ run_codex_review() { # round -> 0 when nothing blocks; needs-attention with a cr
     # A review needs no write access, so it runs read-only: under workspace-write it could edit the tree the
     # judge and reviewer already graded. `codex exec review` ignores --output-schema, so the review is plain
     # `codex exec` with the schema (#41): the -o file holds the schema-validated JSON, the JSONL stream
-    # (stdout) carries usage for the ledger. The prompt, built above, is one argument; Codex reads the diff itself.
+    # (stdout) carries usage for the ledger. The prompt above is one argument. The -o
+    # file goes first, so a call that writes none cannot pass off an earlier call's verdict (a resumed round's, on an
+    # older HEAD) as its own.
+    rm -f "$f"
     start=$SECONDS
-    call_start "$WORKTREE" ${TIMEOUT_G[@]+"${TIMEOUT_G[@]}"} env PATH="$CODEX_PATH:$PATH" codex exec --json --output-schema "$RUN/frozen/review-output.schema.json" -o "$f" -s read-only "$prompt" > "$jsonl" < /dev/null
+    call_start "$WORKTREE" ${TIMEOUT_G[@]+"${TIMEOUT_G[@]}"} env "${CODEX_UNSET[@]}" PATH="$CODEX_PATH:$PATH" CODEX_HOME="$ch" codex exec "${CODEX_OFF[@]}" --json -m "$CODEX_MODEL" -c model_reasoning_effort="$GRADER_EFFORT" -c "$trust" -c "$skills_off" -c skills.include_instructions=false -c "$mcp_off" --output-schema "$RUN/frozen/review-output.schema.json" -o "$f" -s read-only "$prompt" > "$jsonl" < /dev/null
     call_end "Codex review"; rc=$?
     [ "$rc" -eq 0 ] || log "codex review call exited $rc"
     codex_result "$jsonl" "$rc" "$(( (SECONDS - start) * 1000 ))" > "$res"
@@ -3588,13 +3664,13 @@ precondition_lines() { # LOOP.md, Preconditions
     [ -n "$t" ] || continue
     skill_file "$t" > /dev/null 2>&1 && echo "  PASS skill $t resolves" || echo "  INFO skill $t resolves to no SKILL.md (lint refuses a ticket naming it)"
   done < "$ROOT/bin/factory.d/skills.txt"
-  # Codex login: Codex is not on the bare PATH (#41), so probe it under CODEX_PATH. Only a worker: codex
-  # ticket needs it, so a logged-out or absent Codex is INFO here, not FAIL.
+  # Codex login: Codex is not on the bare PATH (#41), so probe it under CODEX_PATH, in the factory's own CODEX_HOME.
+  # Only a Codex ticket needs it, so a logged-out or absent Codex is INFO here, not FAIL.
   if PATH="$CODEX_PATH:$PATH" command -v codex > /dev/null 2>&1; then
-    if PATH="$CODEX_PATH:$PATH" codex login status > /dev/null 2>&1; then
-      echo "  PASS codex login status"
+    if [ -s "$CODEX_FACTORY_HOME/auth.json" ] && env "${CODEX_UNSET[@]}" CODEX_HOME="$CODEX_FACTORY_HOME" PATH="$CODEX_PATH:$PATH" codex "${CODEX_OFF[@]}" login status > /dev/null 2>&1; then
+      echo "  PASS codex login status ($CODEX_FACTORY_HOME)"
     else
-      echo "  INFO codex login status reports logged out; a worker: codex ticket needs a login"
+      echo "  INFO $CODEX_LOGIN_HINT; a Codex ticket needs it"
     fi
   else
     echo "  INFO codex not on PATH; only a worker: codex ticket needs it"

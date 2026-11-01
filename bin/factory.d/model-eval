@@ -5,7 +5,7 @@ Usage:
   bin/factory.d/model-eval <model>...
 
 A <model> is a Claude model id, graded by `bin/factory eval`, or codex:<model>, graded per case by
-`codex exec`. The environment sets the rest:
+`codex exec` in the same evals-free export and under the factory's own CODEX_HOME. The environment sets the rest:
   MODEL_EVAL_OUT          the output root (required)
   MODEL_EVAL_SET          the cases root, <grader>/<case>/{prompt.md,expected.json} (default evals/planted)
   MODEL_EVAL_GRADERS      default "judge reviewer lean-critic"
@@ -22,7 +22,8 @@ the layout eval_score.py reads. Every cell is listed, shuffled with random.Rando
 Beside each scored reply, <grader>-<case>.key holds the sha256 of everything the reply depends on: the
 grader file, its schema and rubric, role-settings.json, the case's prompt.md and expected.json, the model,
 the effort, the mode, and the cell's harness (Claude Code version, config-drift.sh md5, Codex model,
-and the raw ~/.claude/settings.json and ~/.codex/config.toml, since config-drift.sh names settings only). A
+and the raw ~/.claude/settings.json and Codex config.toml, since config-drift.sh names settings only; a Codex cell
+reads the factory CODEX_HOME's config.toml, not ~/.codex's, and its mode names how it runs). A
 later run calls the grader only for the cases whose reply or key is missing or whose key differs; an error,
 unparseable or off-model reply gets no key, so it is retried. Each cell dir gets fingerprint-<grader>.txt
 naming the config that grader's replies ran on, and fingerprint.txt for the whole grader list. A Codex cell
@@ -53,6 +54,13 @@ import eval_score  # noqa: E402
 
 EFFORTS = ("low", "medium", "high", "xhigh")
 RATES = ("recall:", "false_alarm", "cut_rate", "agreement")
+# A Codex cell's mode in its key: it names how the cell runs, so a reply made another way (before #566, in the
+# checkout with the answer keys in reach and under the operator's ~/.codex) never matches. Change it with the call.
+CODEX_MODE = "codex exec in the case tree, factory CODEX_HOME, no env credentials, no operator skills, no plugins/apps/MCP"
+CODEX_UNSET = ("CODEX_API_KEY", "OPENAI_API_KEY", "CODEX_ACCESS_TOKEN",  # bin/factory's CODEX_UNSET
+               "OPENAI_FEDERATION_RULE_ID", "OPENAI_IDENTITY_TOKEN_FILE", "OPENAI_WORKLOAD_IDENTITY_CONTEXT")
+CODEX_OFF = ("-c", "features.plugins=false", "-c", "features.remote_plugin=false",  # bin/factory's CODEX_OFF
+             "-c", "features.apps=false", "-c", "features.skill_mcp_dependency_install=false")
 Z = 1.96
 
 
@@ -126,11 +134,11 @@ def config_drift_md5():
     return hashlib.md5(b"".join(lines)).hexdigest() if lines else "none"
 
 
-def user_config_sha():
+def user_config_sha(codex_config):
     # config-drift.sh records setting names, never values, so a changed deny rule or env value would leave its md5
     # alone; the key also hashes the raw files a call reads (--setting-sources user, and Codex's config).
     h = hashlib.sha256()
-    for f in (Path.home() / ".claude" / "settings.json", Path.home() / ".codex" / "config.toml"):
+    for f in (Path.home() / ".claude" / "settings.json", codex_config):
         try:
             h.update(f"{f.name}\0{sha256(f.read_bytes())}\n".encode())
         except OSError:
@@ -138,10 +146,10 @@ def user_config_sha():
     return h.hexdigest()
 
 
-def codex_model():
+def codex_model(codex_config):
     try:
         import tomllib  # Python 3.11+; an older python3 reports none rather than failing the run
-        with open(Path.home() / ".codex" / "config.toml", "rb") as fh:
+        with open(codex_config, "rb") as fh:
             m = tomllib.load(fh).get("model")
     except (ImportError, OSError, ValueError):
         return "none"
@@ -270,24 +278,28 @@ def main(argv):
         # directory of its own that holds no case file, never in the checkout or beside a copied expected.json.
         ctmp = Path(tempfile.mkdtemp(prefix="model-eval-tree.")) if any(m.startswith("codex:") for m in models) else None
         if ctmp:
-            r = subprocess.run(["bash", "-c", '. "$0"; EVALS_DIR=$1; eval_tree "$2"', str(FACTORY), str(set_dir), str(ctmp)],
-                               env={**os.environ, "FACTORY_SOURCED": "1"}, capture_output=True)
-            if r.returncode != 0:
-                die(f"eval_tree: {r.stderr.decode(errors='replace').strip()}")
+            factory_fn(gdir, "eval_tree", str(ctmp), str(set_dir.resolve()))
+            # Use the factory login and drop inherited credentials and operator skills, as bin/factory does.
+            home = factory_fn(gdir, "codex_home").decode().strip()
+            skills_off = factory_fn(gdir, "codex_skills_off").decode().strip()
+            codex_env = {k: v for k, v in env.items() if k not in CODEX_UNSET}
+            codex_env.update(CODEX_HOME=home, PATH=f"{Path.home() / '.local' / 'bin'}:{env.get('PATH', '')}")
         for c in cells:
             g, m, e, k = c
             d = cell_dir(c)
             d.mkdir(parents=True, exist_ok=True)
             codex = m.startswith("codex:")
+            codex_config = Path(home) / "config.toml" if codex else Path.home() / ".codex" / "config.toml"
             # The harness a call runs on, read once per cell: a Claude Code update or a config change between
             # runs changes every key, so no reply graded on the old harness is reused.
-            cfg = {"config-drift-md5": config_drift_md5(), "claude-version": claude_version(), "codex-model": codex_model()}
-            user_sha = user_config_sha()
+            cfg = {"config-drift-md5": config_drift_md5(), "claude-version": claude_version(),
+                   "codex-model": codex_model(codex_config)}
+            user_sha = user_config_sha(codex_config)
             keys = {}
             for case in cases[g]:
                 parts = [sha256(gfile[g].read_bytes()), sha256(schema[g]), sha256(rubric[g]), settings_sha,
                          sha256((case / "prompt.md").read_bytes()), sha256((case / "expected.json").read_bytes()),
-                         m, e, "codex" if codex else "claude", *cfg.values(), user_sha, tree_of(case)]
+                         m, e, CODEX_MODE if codex else "claude", *cfg.values(), user_sha, tree_of(case)]
                 keys[case] = sha256("\n".join(parts).encode())
             need = [case for case in cases[g]
                     if not (d / f"{g}-{case.name}.key").is_file() or not (d / f"{g}-{case.name}.json").is_file()
@@ -313,12 +325,15 @@ def main(argv):
                             (d / f"{g}-{case.name}.json").write_text(json.dumps(reply) + "\n", encoding="utf-8")
                             continue
                         tree = t.stdout.strip()
-                        r = subprocess.run(["codex", "exec", "--json", "--output-schema", str(tmp / f"{g}.schema.json"),
+                        mcp_off = factory_fn(gdir, "codex_mcp_off", tree, home).decode().strip()
+                        r = subprocess.run(["codex", "exec", *CODEX_OFF, "--json", "--output-schema", str(tmp / f"{g}.schema.json"),
                                             "-o", str(o), "-s", "read-only", "-m", m.removeprefix("codex:"),
-                                            "-c", f"model_reasoning_effort={e}", "-C", tree,
-                                            "--skip-git-repo-check", "-"],
+                                            "-c", f"model_reasoning_effort={e}",
+                                            "-c", skills_off, "-c", "skills.include_instructions=false",
+                                            "-c", mcp_off,
+                                            "-C", tree, "--skip-git-repo-check", "-"],
                                            input=rubric[g] + (case / "prompt.md").read_bytes(),
-                                           stdout=subprocess.DEVNULL, cwd=tree)
+                                           stdout=subprocess.DEVNULL, cwd=tree, env=codex_env)
                         text = o.read_text(encoding="utf-8", errors="replace") if o.is_file() else ""
                         reply = {"type": "result", "is_error": r.returncode != 0 or not text.strip(),
                                  "total_cost_usd": None, "result": text}
