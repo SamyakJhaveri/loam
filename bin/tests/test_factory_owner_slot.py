@@ -2,8 +2,9 @@
 
 Each test writes a run dir with status `running` and an `owner` line, sources bin/factory (FACTORY_SOURCED=1) with
 `alert` stubbed to a file, and asks holds_slot. A freed run reads stopped-environment and alerts once; a held one
-keeps `running` and sends nothing. A run dir with a `lease` file is judged by the flock lease alone (LeaseSlotTests);
-one without it by the owner line (OwnerSlotTests). NextTickTests ask through cmd_next, whose --dry-run only looks.
+keeps `running` and sends nothing. A run dir with a `lease` file is judged by the flock lease, by its `call` while
+the lease is free, and by the owner pid for the orphan kill while it is held (LeaseSlotTests); one without it by the
+owner line (OwnerSlotTests). NextTickTests ask through cmd_next, whose --dry-run only looks.
 """
 
 from __future__ import annotations
