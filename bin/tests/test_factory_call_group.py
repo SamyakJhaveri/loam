@@ -4,8 +4,9 @@
 fake `claude` or `codex` first on PATH. Each fake backgrounds a writer that appends to a marker file every 0.2 s and
 then exits 0 with a usable reply, so the call ends normally and only call_end can stop the writer. The done-checks
 cover the worker call; these cover the grader and Codex review calls, a writer that ignores TERM, one in a session of
-its own, that the worker call still gets its prompt on stdin and its env pins, and that the live account token
-reaches the worker call but not the supervisor after it. No network.
+its own, that the worker call still gets its prompt on stdin and its env pins, that the live account token
+reaches the worker call but not the supervisor after it, and that the call starts with INT and QUIT at their defaults
+in a session of its own while the wrapper keeps an ignored QUIT (#468). No network.
 """
 
 from __future__ import annotations
@@ -254,9 +255,9 @@ exec env -u FACTORY_CALL_TAG bash -c 'while :; do echo x >> {self.top}/mark; sle
                 subprocess.run(["pkill", "-KILL", "-f", str(self.top)], check=False)
 
     def test_call_reads_int_and_quit_as_default(self) -> None:
-        # Bash starts a background command with INT and QUIT ignored, and exec keeps an ignored signal ignored; GNU
-        # timeout catches both, so only a host without it (a Mac) ran the call with them ignored (#468). The supervisor
-        # may also start with them ignored, when its own parent ignores them.
+        # Bash 3.2 (a Mac) keeps the INT and QUIT it ignores in a background command ignored across exec, and GNU
+        # timeout catches both, so on a Mac without it ignored=False fails on base (#468). A supervisor whose parent
+        # ignores them starts with them ignored on any bash, so ignored=True with no timeout fails on base here too.
         probe = 'perl -e "print join(q( ), map { \\$SIG{\\$_} || q(DEFAULT) } qw(INT QUIT))"'
         wraps = [""] + (["timeout 60 "] if shutil.which("timeout") else [])
         for ignored in (False, True):
@@ -269,6 +270,15 @@ exec env -u FACTORY_CALL_TAG bash -c 'while :; do echo x >> {self.top}/mark; sle
                     proc = subprocess.run(**cmd, capture_output=True, check=False, timeout=60)
                     self.assertIn("returned:0", proc.stdout, proc.stderr)
                     self.assertEqual(out.read_text(), "DEFAULT DEFAULT")
+
+    def test_wrapper_keeps_an_ignored_quit(self) -> None:
+        # The reset is the call's own, before its exec: a wrapper that QUIT could end would leave the call's escaped
+        # children to no one. Only a supervisor that starts with QUIT ignored hands the wrapper an ignored QUIT.
+        cmd = self.call_cmd('call_start "$WORKTREE" sleep 30; sleep 1; kill -QUIT "$CALL_PID"; sleep 0.3; '
+                            'kill -TERM "$CALL_PID"; call_end probe')
+        cmd["args"] = ["perl", "-e", '$SIG{INT} = $SIG{QUIT} = "IGNORE"; exec @ARGV', *cmd["args"]]
+        proc = subprocess.run(**cmd, capture_output=True, check=False, timeout=60)
+        self.assertIn("returned:143", proc.stdout, proc.stderr)
 
     def test_call_runs_in_a_session_of_its_own(self) -> None:
         out = self.top / "sid"
