@@ -114,11 +114,12 @@ run() { local pid out
 }
 reported=""; limited=0
 # A call left by an earlier driver is adopted only while its pid still leads its own group and runs a driver call
-# (the watchdog's pattern), so a reused pid is never touched; the loop starts no call of its own until it ends.
-if read -r c b f < "$O/call.pid" 2> /dev/null && [ "$(ps -o pgid= -p "$c" 2> /dev/null | tr -d ' ')" = "$c" ] \
+# (the watchdog's pattern), so a reused pid is never touched; the loop starts no call of its own until it ends. Only a
+# full "pid before out" record is adopted: without its log line count an outcome written before the restart is unseen.
+if read -r c b f < "$O/call.pid" 2> /dev/null && [ -n "$f" ] && [ "$(ps -o pgid= -p "$c" 2> /dev/null | tr -d ' ')" = "$c" ] \
   && ps -ww -o args= -p "$c" 2> /dev/null | grep -q 'claude -p .*overnight/protocol.md'; then
   echo "$(stamp) adopted call $c left by an earlier driver" >> "$O/driver.log"
-  limited=0; watch "$c" "${b:-$(wc -l < "$O/log.md")}"; [ -n "$f" ] && [ -f "$f" ] && account "$f"
+  limited=0; watch "$c" "$b"; [ -f "$f" ] && account "$f"
 fi
 rm -f "$O/call.pid"
 while :; do
