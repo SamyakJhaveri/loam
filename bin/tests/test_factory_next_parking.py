@@ -335,6 +335,23 @@ class ParkingTests(unittest.TestCase):
         sourced(tick, {"FACTORY_RUNS_ROOT": str(self.runs)})
         self.assertEqual(len(sent.read_text().splitlines()), 2)
 
+    def test_a_tick_inside_a_launch_does_not_take_its_alert(self) -> None:
+        # A cron next that runs while a launch has written its env-stops line but not yet its status must not mark that
+        # launch alerted, or the alert for the stop it then makes is lost.
+        d = self.runs / "7" / key(CLEAN)
+        for _ in range(3):
+            self.launch(7, CLEAN)
+        sent = self.runs / "alerts"
+        sent.touch()
+        page = f"alert() {{ case \"$*\" in *needs-you*) echo \"$*\" >> '{sent}' ;; esac; }}; "
+        self.assertEqual(sourced(page + f"env_park_alert '{d}' 7", {"FACTORY_RUNS_ROOT": str(self.runs)}).returncode, 0)
+        tick_inside = ('set_status() { [ "$1" = running ] && env_park_alert "$RUN" 7; '
+                       'printf "%s\\n" "$1" > "$RUN/status"; log "status: $1"; }; ')
+        self.launch(7, CLEAN, stubs=page + tick_inside)
+        self.assertEqual(len(sent.read_text().splitlines()), 1)   # nothing went out inside the launch
+        self.assertEqual(sourced(page + f"env_park_alert '{d}' 7", {"FACTORY_RUNS_ROOT": str(self.runs)}).returncode, 0)
+        self.assertEqual(len(sent.read_text().splitlines()), 2)   # the stop it made pages once
+
     def spend_today(self, usd: float) -> None:
         (self.runs / "ledger-daily.jsonl").write_text(
             json.dumps({"date": time.strftime("%Y-%m-%d", time.gmtime()), "ticket": "7", "role": "worker", "cost_usd": usd}) + "\n")
