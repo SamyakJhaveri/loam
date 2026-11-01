@@ -16,20 +16,21 @@ The frozen clean set is a development set (labels adjudicated and prompts drafte
 
 | Grader | Set (cases x repeats) | Measure | Main: old prompts, old harness | Control: old prompts, corrected harness | After: new prompts, corrected harness |
 |---|---|---|---|---|---|
-| judge | dev: clean bases (8 x 2) | false alarms | 3/16 | 4/16 | 0/16 |
-| judge | dev: real bases (24 x 2), circular: a scout or the rule's own quotes labeled them by the same honest rule, so this measures rule-following, not dishonesty caught | caught at the labeled rows | 8/48 | 7/48 | 46/48 |
-| judge | dev: mutants (31 x 1) | caught at the labeled rows | 24/25 | 30/31 | 31/31 |
-| judge | dev: mutants | exact row set off (`bin/factory eval`) | 12/25 | 17/31 | 4/31 |
-| judge | planted honesty (8) and notes (5), used in probes | caught | 8/8, 3/5 | 8/8, 3/5 | 8/8, 5/5 |
+| judge | dev: clean bases (7 x 2) | false alarms | 2/14 | 2/14 | 2/14 |
+| judge | dev: real bases (25 x 2), circular (below) | caught at the labeled rows | 9/50 | 8/50 | 48/50 |
+| judge | dev: mutants (28 x 1; main and control: 8 bases, 60 included) | caught at the labeled rows | 24/25 | 30/31 | 28/28 |
+| judge | dev: mutants | exact row set off (`bin/factory eval`) | 12/25 | 17/31 | 2/28 |
+| judge | planted honesty (8) and notes (5), used in probes | caught | 8/8, 3/5 | 8/8, 3/5 | 8/8, 4/5 |
 | judge | fabricated-run (3), written for the new rule | caught | not run | 2/3 | 3/3 |
 | judge | lean-v3 (4), relabeled but not drafted on | caught at the labeled rows | 2/4 | 0/4 | 4/4 |
-| reviewer | dev: clean bases (14 x 2) | false alarms | 8/28 | 10/28 | 5/28 |
-| reviewer | dev: real bases (18 x 2) | a blocking finding on the defect's file | 30/36, the labels came from these replies | 21/36 | 22/36 |
-| reviewer | dev: mutants (24 x 1) | caught | 15/16 | 20/24 | 24/24 (stale-ref 12/12; control 8/12) |
-| reviewer | run-only (8), held out | caught | 5/8 | 5/8 | 5/8 |
-| reviewer | lean-v3: 2 clean, 2 real | false alarms; caught | 2/2; 2/2 | 2/2; 2/2 | 2/2; 1/2 |
+| reviewer | dev: clean bases (12 x 2) | false alarms | 6/24 | 8/24 | 7/24 |
+| reviewer | dev: real bases (20 x 2) | a blocking finding on the defect's file | 30 to 32/40, the labels came from these replies | 21 to 23/40 | 32/40 |
+| reviewer | dev: mutants (22 x 1; main and control: 14 bases) | caught | 15/16 | 20/24 | 22/22 (stale-ref 11/11; control 8/12) |
+| reviewer | run-only (8), held out | caught | 5/8 | 5/8 | 6/8 |
+| reviewer | lean-v3: 2 clean, 2 real | false alarms; caught | 2/2; 2/2 | 2/2; 2/2 | 2/2; 2/2 |
 
-The judge's real-bases row is circular: those 24 labels come from the same honest rule, applied by a scout or read from the judge's quotes, so it measures whether the judge follows that rule, not dishonesty caught.
+The judge's real-bases row is circular: 24 of those 25 labels are the same honest rule, applied by a scout or read from a re-run judge's quotes, so it measures whether the judge follows that rule, not dishonesty caught.
+The after column is the 2026-11-01 re-run of the final prompts on every set (bases twice, the rest once); main and control are their saved replies rescored against today's labels, except the mutant rows, which keep their earlier bases, and the reviewer's real rows, where two cases (64, 174) blocked once each on a file the per-case record does not name.
 
 Upgrade step: `claude plugin update sam-cc-setup`.
 
