@@ -300,6 +300,8 @@ A run beats the check at launch, right after the frozen re-exec and before round
 At its end it stops beating (waiting for a beat in flight), and the host's last live run pauses the check through the API, so a run that ends on purpose raises no alarm and the next run's beat resumes it.
 After the pause it looks for live runs once more and beats again if one launched meanwhile, since a run writes `launched` before its first beat; a run counts as live while it holds its slot, which it does from before its first beat.
 A killed run, or a dead host, stops the beats without a pause, so the check goes red and healthchecks posts to Slack.
+Every real `next` tick (no flag) that exits 0, `launched`, `nothing to launch` or `paused`, beats the check too, which resumes a paused one; a tick that refuses (exit 1: login, toolchain, frontier query, launch) sends nothing, so refusals that outlast the period and grace turn the check red even while no run is live.
+On jhaveris the cron line appends `next`'s output to `next.log` and the host has no mail, so this beat, not cron mail, is what reports a stuck timer.
 A hard-killed run keeps its slot (above), so no later run pauses the check while its directory stands.
 
 ### The event log and watch sessions

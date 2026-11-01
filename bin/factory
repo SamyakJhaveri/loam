@@ -3230,7 +3230,18 @@ daily_spent_at_runner_caps() { # -> 0 when the shared daily ledger has no room f
 # every candidate it would pick rather than the first; it exits 0 after the loop, before the daily-budget wait,
 # with no line when none would launch.
 # --install writes the ten-minute runner timer from bin/factory.d/next.crontab.
-cmd_next() { # [--dry-run|--install|--frontier]
+# A real tick (no flag) that returns 0 beats the host's healthchecks check, which also resumes a check the last run
+# paused (heartbeat_stop); a tick that refuses sends nothing, so refusals that outlast the check's period and grace
+# turn it red. A refusal's stderr reaches no one on its own (jhaveris's cron line appends it to next.log and the host
+# has no mail), so the check is the alarm.
+cmd_next() {
+  next_tick "$@" || return
+  [ $# -eq 0 ] || return 0
+  alert --ping beat >&2 || echo "healthchecks beat failed; see bin/alert's line above" >&2
+  return 0
+}
+
+next_tick() { # [--dry-run|--install|--frontier]
   local dry=0 frontier=0 do_install=0 a
   for a in "$@"; do
     case "$a" in
@@ -3268,7 +3279,7 @@ cmd_next() { # [--dry-run|--install|--frontier]
   # 1b. A logged-out Claude fails every worker call (#78), so the timer refuses to launch rather than
   #     assign the ticket, run round 0, and page the owner when the first call fails. The probe is
   #     read-only and shared with precondition_lines; it runs under --dry-run too, since a check from
-  #     inside a worktree may run it. The line goes to stderr (cron mails it) and returns 1, the same
+  #     inside a worktree may run it. The line goes to stderr (cron's next.log) and returns 1, the same
   #     shape as `frontier query failed`; the ticket stays unassigned and launches on the first tick
   #     after the login returns. The target gate works the same way: it refuses Loam without the toolchain
   #     exports and another target without a bin/check, which would fail guard bin/check after its work (#158).
@@ -3312,7 +3323,7 @@ cmd_next() { # [--dry-run|--install|--frontier]
   # 3. Fast-forward the checkout next runs from, so a merged loop change reaches the supervisor
   #    (freeze copies bin/factory from here) before the launch. Never under --dry-run, and only
   #    with a clean tree, since a dirty tree would abort the --ff-only merge mid-launch.
-  #    A refused pull is logged (log writes to stderr, which cron mails) and never aborts the launch:
+  #    A refused pull is logged (log writes to stderr, cron's next.log) and never aborts the launch:
   #    the run proceeds on the stale checkout, with the cause on record. Another target's checkout is
   #    pulled the same way, since lint and the standing list read its tree (F8).
   if [ "$dry" = 0 ]; then
@@ -3334,7 +3345,7 @@ cmd_next() { # [--dry-run|--install|--frontier]
   # 4. The frontier: open, ready-for-agent, unassigned issues with no open native blocker, lowest
   #    number first, plus the runner's own such issues whose current body has no run yet or whose run ended stopped-daily,
   #    stopped-environment or stopped. A gh failure (offline, unauthenticated, off cron's PATH, empty repo) prints
-  #    `frontier query failed` and returns 1, so cron mails it rather than the timer stalling silent;
+  #    `frontier query failed` and returns 1, so no beat is sent (cmd_next) rather than the timer stalling silent;
   #    only a successful, empty query falls through to `nothing to launch`.
   local repo ready num b64 body
   repo=$(target_repo)
