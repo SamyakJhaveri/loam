@@ -166,7 +166,7 @@ The judge and reviewer get three calls each; after three bad replies the reviewe
 
 ## Mutation sweep
 
-After the judge passes a round, `graders` calls `run_mutation_sweep`, which runs the frozen `bin/factory.d/mutation_sweep.py` with `python3 -I` in a detached worktree `<worktree>-mutants` at the graded sha, added and removed as round 0 handles its own, so the ticket worktree and its tree signature are untouched (#618).
+After the judge passes a round, `graders` calls `run_mutation_sweep`, which runs the frozen `bin/factory.d/mutation_sweep.py` with `python3 -I` in a detached worktree `<worktree>-mutants` at the graded sha, added and removed as round 0 handles its own but from the ticket worktree, whose repository holds that sha, so the ticket worktree and its tree signature are untouched (#618).
 A judge fail runs no sweep, since the round fails anyway; the reviewer and the Codex review still run on a round the sweep blocked, so the worker gets every finding at once.
 `graders` first removes the round's `round-N.mutation.json`, so a regraded round never reads an older sweep.
 
