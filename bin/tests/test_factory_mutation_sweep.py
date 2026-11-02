@@ -184,6 +184,19 @@ class SweepTests(unittest.TestCase):
         self.assertEqual((result["mutants"], result["reason"]),
                          ([], "no added bash or Python code line outside tests and fixtures gives an edit"))
 
+    def test_edits_that_cannot_change_behavior_are_skipped(self) -> None:
+        # A function's last `return`, `return None` or `return 0`, the main guard's force-true and the file's last
+        # `exit 0` give no edit; an earlier return or exit, a return of a value or of False, and the guard's flip do.
+        py = ('import sys\n\n\ndef main():\n    if sys.argv:\n        return 1\n    print()\n    return 0\n\n\n'
+              'def f():\n    return\n\n\ndef g(x):\n    return None\n\n\nasync def h(x):\n    return x\n\n\n'
+              'def k():\n    return False\n\n\nif __name__ == "__main__":\n    sys.exit(main())\n')
+        sh = '#!/usr/bin/env bash\nf() {\n  exit 0\n}\n[ "$1" = a ] && exit 0\nexit 0\n# end\n'
+        self.assertEqual(self.edits({"m.py": py, "m.sh": sh}),
+                         [(3, "drop", ":"), (5, "flip", '[ "$1" != a ] && exit 0'),
+                          (5, "force-true", '[ "$1" = a ] || true && exit 0'),
+                          (5, "force-true", "if (sys.argv) or True:"), (6, "drop", "pass"),
+                          (20, "drop", "pass"), (24, "drop", "pass"), (27, "flip", 'if __name__ != "__main__":')])
+
     def test_test_files_tests_and_fixtures_give_no_edit(self) -> None:
         code = "def f(a, b):\n    return a == b\n"
         result = self.sweep({"tests/helper.py": code, "x/fixtures/f.py": code, "test_ok.py": PASSING + code,

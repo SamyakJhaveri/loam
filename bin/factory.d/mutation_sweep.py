@@ -8,7 +8,9 @@ Usage:
 <base>...HEAD` names whose base name is test_*.py or *_test.py. The edits are on the lines that diff adds to every
 other added or modified bash or Python file outside a tests or fixtures directory, on code only: never a comment, a
 string or a here-document body. Operators, at most one edit each per line: flip swaps the first comparison, force-true
-makes one condition always true, drop turns an assert, raise, return, exit, continue or break into a no-op. An edit
+makes one condition always true, drop turns an assert, raise, return, exit, continue or break into a no-op; none where
+the edit cannot change behavior (the main guard's force-true, a function's last bare, None or 0 return, a file's last
+exit 0). An edit
 after which its file no longer parses is discarded; the rest are ordered by the sha256 of path NUL operator NUL
 stripped line, so an unchanged line gets the same edits every round, and the first 8 run.
 The tests run unedited first, under <first-run timeout> s, then once per edit under twice that run plus 10 s; exit 0
@@ -20,6 +22,7 @@ edit ran, else null. A git failure exits 2 and writes nothing. python3 stdlib on
 """
 from __future__ import annotations
 
+import ast
 import hashlib
 import io
 import json
@@ -43,6 +46,7 @@ HUNK = re.compile(r"@@ -\d+(?:,\d+)? \+(\d+)(?:,\d+)? @@")
 PY_FLIP = {"==": "!=", "!=": "==", "<": ">=", ">=": "<", ">": "<=", "<=": ">"}
 PY_HEADER = ("if", "elif", "while")
 PY_DROP = ("assert", "raise", "return", "continue", "break")
+MAIN_GUARD = ('__name__ == "__main__"', "__name__ == '__main__'")  # its force-true cannot change a script run
 
 SH_FLIP = {"-eq": "-ne", "-ne": "-eq", "-lt": "-ge", "-ge": "-lt", "-gt": "-le", "-le": "-gt",
            "=": "!=", "==": "!=", "!=": "="}
@@ -97,6 +101,18 @@ def py_edits(text: str, wanted: list[int]) -> list[tuple[int, str, dict[int, str
     except (tokenize.TokenError, SyntaxError):
         return []
     code = [t for t in toks if t.type in (tokenize.OP, tokenize.NAME, tokenize.NEWLINE)]
+    # A function's last statement `return`, `return None` or `return 0`, whose drop cannot change behavior: the
+    # function returns None anyway, and sys.exit(main()) exits 0 on None as on 0.
+    last_returns = set()
+    try:
+        funcs = [f for f in ast.walk(ast.parse(text)) if isinstance(f, (ast.FunctionDef, ast.AsyncFunctionDef))]
+    except (SyntaxError, ValueError):
+        funcs = []
+    for f in funcs:
+        last = f.body[-1]
+        if isinstance(last, ast.Return) and (last.value is None or isinstance(last.value, ast.Constant)
+                                             and type(last.value.value) in (type(None), int) and not last.value.value):
+            last_returns.add(last.lineno)
     flips: dict[int, tuple[int, int, str]] = {}  # line -> its first comparison: start col, end col, swap
     starts: dict[int, int] = {}  # line -> index in code of the first token of a statement that starts it
     depth, fors, new_stmt = 0, set(), True
@@ -152,11 +168,11 @@ def py_edits(text: str, wanted: list[int]) -> list[tuple[int, str, dict[int, str
                     d -= 1
                 elif t.type == tokenize.OP and t.string == ":" and d == 0:
                     cond = line[first.end[1]:t.start[1]].strip()
-                    if t.start[0] == n and cond != "True":
+                    if t.start[0] == n and cond not in ("True", *MAIN_GUARD):
                         new = f"{line[:first.end[1]]} ({cond}) or True{line[t.start[1]:]}"
                         out.append((n, "force-true", {n: new}))
                     break
-        if first.type == tokenize.NAME and first.string in PY_DROP:
+        if first.type == tokenize.NAME and first.string in PY_DROP and n not in last_returns:
             end = next((t.start[0] for t in code[i:] if t.type == tokenize.NEWLINE), n)
             change = {n: line[:first.start[1]] + "pass"}
             change.update({k: "" for k in range(n + 1, end + 1)})
@@ -305,6 +321,9 @@ def sh_edits(text: str, wanted: list[int]) -> list[tuple[int, str, dict[int, str
         if drop:
             stop = re.compile(r"[;&|]").search(m, drop.end())
             words = m[drop.start(1):stop.start() if stop else len(m)].rstrip()
+            # The file's last statement `exit 0`: the script ends with status 0 after `:` too.
+            if words.split() == ["exit", "0"] and not (m[drop.start(1) + len(words):] + "".join(masked[n:])).strip():
+                continue
             out.append((n, "drop", {n: line[:drop.start(1)] + ":" + line[drop.start(1) + len(words):]}))
     return out
 
