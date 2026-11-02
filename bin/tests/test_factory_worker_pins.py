@@ -6,6 +6,7 @@ freeze adds the four pins to the source env in the frozen worker-settings.json t
 CLAUDE_CODE_SUBAGENT_MODEL_FORCE exists from 2.1.257, so claude_version_ok refuses an older or unreadable
 `claude --version`. The frozen copy also keeps the ScheduleWakeup, CronCreate and Monitor denies and the
 CLAUDE_CODE_DISABLE_BACKGROUND_TASKS=1 pin, so a worker -p call does not wait at exit on background work (#470).
+Its env also pins the subagent caps, spawn depth 2 and five at once, over any user-tier value (#413).
 `bin/factory` is sourced (FACTORY_SOURCED=1); freeze reads the checkout's graders through
 GRADERS_DIR and `claude` is a stub on PATH. No network.
 The frozen copy also keeps the source's Bash sandbox and adds the run's git and run-directory roots to its
@@ -138,19 +139,20 @@ class WorkerPinTests(unittest.TestCase):
             self.assertIn(tool, deny)
         self.assertEqual(env.get("CLAUDE_CODE_DISABLE_BACKGROUND_TASKS"), "1")
 
-    def test_frozen_worker_settings_pin_the_subagent_caps_over_the_user_tier(self) -> None:
+    def assert_subagent_caps(self, user_env: dict[str, str]) -> None:
         # Settings env beats the launch env, so the caps sit in worker-settings.json's env, which wins over the
         # user tier the frozen copy carries: depth 2 is one level under a fan-out round's agents, and five at once
         # is four builders plus one reader (#413).
-        for name, user_env in (("other values", {"CLAUDE_CODE_MAX_SUBAGENT_SPAWN_DEPTH": "9",
-                                                 "CLAUDE_CODE_MAX_CONCURRENT_SUBAGENTS": "99"}), ("none", {})):
-            with self.subTest(user_tier=name):
-                with tempfile.TemporaryDirectory() as tmp:
-                    self.tmp = pathlib.Path(tmp)
-                    (self.tmp / "bin").mkdir()
-                    env = self.frozen_settings(user={"env": user_env})["env"]
-                self.assertEqual(env.get("CLAUDE_CODE_MAX_SUBAGENT_SPAWN_DEPTH"), "2")
-                self.assertEqual(env.get("CLAUDE_CODE_MAX_CONCURRENT_SUBAGENTS"), "5")
+        env = self.frozen_settings(user={"env": user_env})["env"]
+        self.assertEqual(env.get("CLAUDE_CODE_MAX_SUBAGENT_SPAWN_DEPTH"), "2")
+        self.assertEqual(env.get("CLAUDE_CODE_MAX_CONCURRENT_SUBAGENTS"), "5")
+
+    def test_frozen_worker_settings_pin_the_subagent_caps_over_the_user_tier(self) -> None:
+        self.assert_subagent_caps({"CLAUDE_CODE_MAX_SUBAGENT_SPAWN_DEPTH": "9",
+                                   "CLAUDE_CODE_MAX_CONCURRENT_SUBAGENTS": "99"})
+
+    def test_frozen_worker_settings_pin_the_subagent_caps_with_none_in_the_user_tier(self) -> None:
+        self.assert_subagent_caps({})
 
     def test_freeze_follows_factory_worker_model(self) -> None:
         env, source_env = self.frozen_env(FACTORY_WORKER_MODEL="claude-other-1")
