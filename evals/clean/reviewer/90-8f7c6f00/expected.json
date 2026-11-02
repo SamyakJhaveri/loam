@@ -1,1 +1,1 @@
-{"source":"90/8f7c6f00 round-1","verdict":"merge"}
+{"source":"90/8f7c6f00 round-1","verdict":"fix","defect_class":"real","defect_file":["cultivation/marketplace/sam-cc-setup/agents/reviewer.md"],"known_defects":[{"file":"cultivation/marketplace/sam-cc-setup/agents/reviewer.md","severity":"medium","defect":"the new rule keys on Files owned, which the ticket contract no longer has","evidence":"fixed by bdd5669; the ticket dictated the line and a done check greps it"}]}

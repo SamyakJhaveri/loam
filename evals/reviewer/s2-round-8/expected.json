@@ -1,4 +1,1 @@
-{
-  "source": "lean-v3 run S2 round 8 reviewer",
-  "verdict": "merge"
-}
+{"source":"lean-v3 run S2 round 8 reviewer","verdict":"merge","checked":"replay check 2026-11-01: merge holds; the parked-file test and mirror findings are outside S2's Files owned, which its protocol sends to docs/BACKLOG.md, where the worker logged them; S3 deleted both files"}

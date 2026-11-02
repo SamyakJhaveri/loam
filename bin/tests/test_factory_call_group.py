@@ -4,11 +4,14 @@
 fake `claude` or `codex` first on PATH. Each fake backgrounds a writer that appends to a marker file every 0.2 s and
 then exits 0 with a usable reply, so the call ends normally and only call_end can stop the writer. The done-checks
 cover the worker call; these cover the grader and Codex review calls, a writer that ignores TERM, one in a session of
-its own, and that the worker call still gets its prompt on stdin and its env pins. No network.
+its own, that the worker call still gets its prompt on stdin and its env pins, that the live account token
+reaches the worker call but not the supervisor after it, and that the call starts with INT and QUIT at their defaults
+in a session of its own while the wrapper keeps an ignored QUIT (#468). No network.
 """
 
 from __future__ import annotations
 
+import json
 import os
 import pathlib
 import shutil
@@ -22,7 +25,9 @@ ROOT = pathlib.Path(__file__).resolve().parents[2]
 # A writer in a session of its own is found only by the FACTORY_CALL_TAG sweep, which reads /proc (none on a Mac), and
 # one that also clears its environment only by the call's subreaper wrapper, which finds its children in /proc.
 NEEDS_PROC = unittest.skipUnless(os.path.exists("/proc/self/environ"), "the tag sweep and the wrapper read /proc")
-INHERITED = ("FACTORY_ROOT", "FACTORY_GH", "LOAM_FACTORY_TOOLCHAIN", "LOAM_FACTORY_COPIER", "REPO", "RUN", "LOG")
+TOKEN = "CLAUDE_CODE_OAUTH_TOKEN"  # by name, so no token assignment appears for the merge secret grep
+INHERITED = ("FACTORY_ROOT", "FACTORY_GH", "LOAM_FACTORY_TOOLCHAIN", "LOAM_FACTORY_COPIER", "REPO", "RUN", "LOG",
+             "CLAUDE_SETTINGS_FILE", TOKEN)
 
 # FAKE_IGNORE_TERM makes the writer ignore TERM, so only KILL stops it. FAKE_OWN_SESSION starts it in a session of its
 # own, out of the call's group, as Claude Code starts each Bash tool shell, so only the FACTORY_CALL_TAG sweep finds it.
@@ -42,6 +47,7 @@ env > "$FAKE_DIR/env"
 """ + WRITER + """echo '{"type":"result","subtype":"success","is_error":false,"num_turns":1,"duration_ms":1,"total_cost_usd":0,"usage":{},"result":"{\\"verdict\\":\\"pass\\",\\"rows\\":{},\\"evidence\\":{},\\"fixes\\":[],\\"backlog\\":[],\\"findings\\":[]}"}'
 """
 FAKE_CODEX = """#!/usr/bin/env bash
+for arg in "$@"; do [ "$arg" != mcp ] || { echo '[]'; exit 0; }; done
 while [ $# -gt 0 ]; do [ "$1" = -o ] && o=$2; shift; done
 """ + WRITER + """echo '{"verdict":"approve","summary":"ok","findings":[],"next_steps":[]}' > "$o"
 echo '{"type":"turn.completed","usage":{}}'
@@ -66,6 +72,7 @@ class CallGroupTests(unittest.TestCase):
             (frozen / name).write_text("")
         (frozen / "worker-settings.json").write_text("{}")
         (frozen / "codex-review.prompt.md").write_text("Review the diff against <base>.\n")
+        (frozen / "issue.md").write_text("# Ticket 7\n")  # run_codex_review sends the frozen ticket with its prompt
         shutil.copy(ROOT / "bin/factory.d/role-settings.json", frozen / "role-settings.json")
         shutil.copy(ROOT / "bin/factory.d/judge.schema.json", frozen / "judge.schema.json")
         shutil.copy(ROOT / "bin/factory.d/review-output.schema.json", frozen / "review-output.schema.json")
@@ -73,6 +80,8 @@ class CallGroupTests(unittest.TestCase):
         (self.run_dir / "prompt.md").write_text("## Ticket\n")
         self.bin = self.top / "bin"
         self.bin.mkdir()
+        (self.top / "codex-home").mkdir()  # the factory's own Codex login, which every Codex call needs
+        (self.top / "codex-home" / "auth.json").write_text("{}\n")
         for name, text in (("claude", FAKE_CLAUDE), ("codex", FAKE_CODEX)):
             (self.bin / name).write_text(text)
             (self.bin / name).chmod(0o755)
@@ -91,6 +100,7 @@ class CallGroupTests(unittest.TestCase):
         env = {k: v for k, v in os.environ.items() if k not in INHERITED and not k.startswith("FACTORY_")}
         return {"args": ["bash", "-c", '. "$0"\n' + script, "bin/factory"], "cwd": ROOT,
                 "env": {**env, "FACTORY_SOURCED": "1", "FACTORY_ROOT": str(ROOT),
+                        "FACTORY_CODEX_HOME": str(self.top / "codex-home"),
                         "FACTORY_RUNS_ROOT": str(self.top / "runs"), "FAKE_DIR": str(self.top),
                         "FACTORY_WORKER_ADVISOR": "", "CLAUDE_CONFIG_DIR": str(self.top / "cc"),
                         "PATH": f"{self.bin}:{env['PATH']}", **extra},
@@ -249,6 +259,43 @@ exec env -u FACTORY_CALL_TAG bash -c 'while :; do echo x >> {self.top}/mark; sle
                 self.assertRegex(log[-1], "EXIT stopped-environment .*still alive 5 s after KILL")
                 subprocess.run(["pkill", "-KILL", "-f", str(self.top)], check=False)
 
+    def test_call_reads_int_and_quit_as_default(self) -> None:
+        # Bash 3.2 (a Mac) keeps the INT and QUIT it ignores in a background command ignored across exec, and GNU
+        # timeout catches both, so on a Mac without it ignored=False fails on base (#468). A supervisor whose parent
+        # ignores them starts with them ignored on any bash, so ignored=True with no timeout fails on base here too.
+        probe = 'perl -e "print join(q( ), map { \\$SIG{\\$_} || q(DEFAULT) } qw(INT QUIT))"'
+        wraps = [""] + (["timeout 60 "] if shutil.which("timeout") else [])
+        for ignored in (False, True):
+            for wrap in wraps:
+                with self.subTest(ignored=ignored, wrap=wrap):
+                    out = self.top / "sig"
+                    cmd = self.call_cmd(f'call_start "$WORKTREE" {wrap}{probe} > {out}; call_end probe')
+                    if ignored:
+                        cmd["args"] = ["perl", "-e", '$SIG{INT} = $SIG{QUIT} = "IGNORE"; exec @ARGV', *cmd["args"]]
+                    proc = subprocess.run(**cmd, capture_output=True, check=False, timeout=60)
+                    self.assertIn("returned:0", proc.stdout, proc.stderr)
+                    self.assertEqual(out.read_text(), "DEFAULT DEFAULT")
+
+    def test_wrapper_keeps_an_ignored_quit(self) -> None:
+        # The reset is the call's own, before its exec: a wrapper that QUIT could end would leave the call's escaped
+        # children to no one. Bash 5 hands the wrapper the supervisor's QUIT, so the supervisor starts with it ignored,
+        # and the QUIT waits for call.group, which the call writes after the wrapper's first statements have run.
+        cmd = self.call_cmd('call_start "$WORKTREE" sleep 30; until [ -s "$RUN/call.group" ]; do sleep 0.05; done; '
+                            'kill -QUIT "$CALL_PID"; sleep 0.3; kill -TERM "$CALL_PID"; call_end probe')
+        cmd["args"] = ["perl", "-e", '$SIG{INT} = $SIG{QUIT} = "IGNORE"; exec @ARGV', *cmd["args"]]
+        proc = subprocess.run(**cmd, capture_output=True, check=False, timeout=60)
+        self.assertIn("returned:143", proc.stdout, proc.stderr)
+
+    def test_call_runs_in_a_session_of_its_own(self) -> None:
+        out = self.top / "sid"
+        # The call's first process calls setpgid itself, so only the session id shows a dropped setsid.
+        probe = "python3 -c 'import os; print(os.getpid(), os.getpgid(0), os.getsid(0))'"
+        proc = self.run_call(f'call_start "$WORKTREE" {probe} > {out}; call_end probe')
+        self.assertIn("returned:0", proc.stdout, proc.stderr)
+        pid, pgid, sid = out.read_text().split()
+        self.assertEqual(pid, pgid, "the call does not lead its own process group")
+        self.assertNotEqual(sid, str(os.getsid(0)), "the call shares the test's session")
+
     def test_worker_call_keeps_its_prompt_and_env(self) -> None:
         proc = self.run_call("worker_round 1", FACTORY_WORKER_MODEL="claude-pin-1")
         self.assert_no_survivor(proc)
@@ -260,6 +307,22 @@ exec env -u FACTORY_CALL_TAG bash -c 'while :; do echo x >> {self.top}/mark; sle
                      "CLAUDE_CODE_SUBAGENT_MODEL_FORCE=1", "ANTHROPIC_DEFAULT_SONNET_MODEL=claude-pin-1",
                      "ANTHROPIC_DEFAULT_HAIKU_MODEL=claude-pin-1"):
             self.assertIn(line, env)
+
+    def test_worker_call_gets_the_live_token_and_the_supervisor_keeps_its_launch_value(self) -> None:
+        # bin/claude-account rewrites the user tier's token on a switch, so each worker call reads it; the supervisor
+        # keeps its launch value, so a later call whose read finds no token never reuses an earlier call's.
+        settings = self.top / "cc/settings.json"
+        settings.parent.mkdir()
+        for launch, live, child, after in ((None, "live-1", "live-1", "unset"),
+                                           ("launch-0", "live-1", "live-1", "launch-0"),
+                                           ("launch-0", None, "launch-0", "launch-0"), (None, None, None, "unset")):
+            with self.subTest(launch=launch, live=live):
+                settings.write_text(json.dumps({"env": {TOKEN: live}} if live else {}))
+                proc = self.run_call(f'worker_round 1; echo "after:${{{TOKEN}-unset}}"',
+                                     **({TOKEN: launch} if launch else {}))
+                self.assertIn(f"after:{after}\n", proc.stdout, proc.stderr)
+                env = dict(line.split("=", 1) for line in (self.top / "env").read_text().splitlines() if "=" in line)
+                self.assertEqual(env.get(TOKEN), child)
 
 
 if __name__ == "__main__":

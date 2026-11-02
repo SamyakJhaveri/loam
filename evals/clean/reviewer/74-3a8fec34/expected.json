@@ -1,1 +1,1 @@
-{"source":"74/3a8fec34 round-2","verdict":"merge"}
+{"source":"74/3a8fec34 round-2","verdict":"fix","defect_class":"real","defect_file":["bin/factory"],"known_defects":[{"file":"bin/factory","severity":"medium","defect":"the round-1 prompt tells the worker to remove the tasks/ directory, which worker-settings.json denies and nothing recreates","evidence":"replaced by f1e8cfa (#80)"}]}

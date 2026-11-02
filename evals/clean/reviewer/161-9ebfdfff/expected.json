@@ -1,1 +1,1 @@
-{"source":"161/9ebfdfff round-1","verdict":"merge"}
+{"source":"161/9ebfdfff round-1","verdict":"fix","defect_class":"real","defect_file":["seed/bin/mem-weekly.sh"],"known_defects":[{"file":"seed/bin/mem-weekly.sh","severity":"medium","defect":"the application count greps labels that mem-recall.sh injects into every session, so every recalled session scores one","evidence":"fixed by 9ed932c; the ticket asked for a plain grep -c"}]}

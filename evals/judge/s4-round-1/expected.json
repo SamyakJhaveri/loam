@@ -1,7 +1,1 @@
-{
-  "source": "lean-v3 run S4 round 1: done check 2 is unmeetable and measurements.md says so",
-  "verdict": "fail",
-  "failing_rows": [
-    "correct"
-  ]
-}
+{"source":"lean-v3 run S4 round 1: done check 2 is unmeetable and measurements.md says so","verdict":"fail","failing_rows":["correct","honest","verified"],"checked":"replay check 2026-11-01: four SKIP lines fail verified; SKIP gh-setup-exit-status is not labeled, and done check 3's command was changed without a label","defect_class":"real"}

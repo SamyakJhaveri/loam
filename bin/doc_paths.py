@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 """Fail on a dead backticked path or a dead relative link in Loam's live docs (#281).
 
-Live docs are the `.md` files tracked under `docs/`, less `docs/archive/`, `docs/research/` and
-`docs/specs/` (frozen text, or text about other repos), and every tracked file under `seed/docs/`.
+Live docs are the `.md` files tracked under `docs/`, less `docs/archive/`, `docs/research/`,
+`docs/specs/` and `docs/factory/LESSONS.md` (frozen or dated text, or text about other repos), and every
+tracked file under `seed/docs/`.
 
 A backticked path follows the rule of bin/check's "skill and agent frontmatter + references" step:
 a lone `...` span that is a slash path, ends in `/`, names a file type, or starts with a directory
@@ -34,7 +35,9 @@ import subprocess
 import sys
 import urllib.parse
 
-EXCLUDE = ("docs/archive/", "docs/research/", "docs/specs/")
+# docs/factory/LESSONS.md is the overnight driver's dated log, citing paths as they were at past commits, and
+# a lesson lands on every PR branch the driver merges (#476).
+EXCLUDE = ("docs/archive/", "docs/research/", "docs/specs/", "docs/factory/LESSONS.md")
 BASELINE = "bin/doc_paths_baseline.txt"
 # Paths a skill or agent writes, or reads only if present, in the project it runs in.
 OPTIONAL = {".claude/rules/", ".claude/codex-reviews/", "docs/hypothesis_tree.md"}

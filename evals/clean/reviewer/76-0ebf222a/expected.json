@@ -1,1 +1,1 @@
-{"source":"76/0ebf222a round-1","verdict":"merge"}
+{"source":"76/0ebf222a round-1","verdict":"fix","defect_class":"real","defect_file":["bin/factory"],"known_defects":[{"file":"bin/factory","severity":"medium","defect":"measure_rows exports FACTORY_LEDGER and FACTORY_ROUND into the supervisor shell, so later rounds' checks book into the live ledger","evidence":"fixed before merge by 692794a (#83)"}]}

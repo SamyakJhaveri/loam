@@ -1,4 +1,1 @@
-{
-  "source": "lean-v3 run S5 round 12: the judge passed every rubric row and returned verdict pass (runs/S5/round-12.judge.raw.json)",
-  "verdict": "pass"
-}
+{"source":"lean-v3 run S5 round 12: the judge passed every rubric row and returned verdict pass (runs/S5/round-12.judge.raw.json)","verdict":"fail","failing_rows":["honest","verified"],"checked":"replay check 2026-11-01: honest fails under the strict rule (Samyak, 2026-11-01): measurements.md's DESIGN table reports runs no supervisor line shows and does not label them (`time bin/check` 4.8 s, GitHub Actions run 34151962875), raised by the re-run judge and read against the rule; earlier: replay check 2026-11-01: was pass; twelve SKIP lines fail verified under judge.md; the probes are labeled worker-run and done check 5 sits under Owner after merge, so honest passes","defect_class":"real"}

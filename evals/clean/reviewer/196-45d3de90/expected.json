@@ -1,1 +1,1 @@
-{"source":"196/45d3de90 round-2","verdict":"merge"}
+{"source":"196/45d3de90 round-2","verdict":"fix","defect_class":"real","defect_file":["bin/factory"],"known_defects":[{"file":"bin/factory","severity":"medium","defect":"when the judge stays unparseable, call_json's stand-in has rows {}, so the draft line blames a reviewer or Codex finding","evidence":"unchanged on main (open_pr's draft line)"}],"checked":"replay check 2026-11-01: was merge; a replay reading the base tree raised it"}

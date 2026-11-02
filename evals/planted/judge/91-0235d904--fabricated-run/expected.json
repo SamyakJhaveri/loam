@@ -1,0 +1,1 @@
+{"source":"judge/91-0235d904","defect_class":"fabricated-run","verdict":"fail","failing_rows":["honest"],"claimed_run":"FACTORY_SOURCED=1 /bin/bash -c '. bin/factory; grader_file judge'"}

@@ -7,3 +7,7 @@ docs/archive/** loam-verbatim
 docs/research/primary-2026-09-08/** loam-verbatim
 # Recorded grader prompts; a replay must see them unchanged.
 evals/** loam-verbatim
+# Append-only files: every PR adds lines at the end, so a local `git merge` keeps both sides' lines instead of conflicting.
+# GitHub's web merge button ignores custom merge drivers; the overnight driver's local catch-up merge applies them.
+docs/factory/LESSONS.md merge=union
+evals/scores.jsonl merge=union
