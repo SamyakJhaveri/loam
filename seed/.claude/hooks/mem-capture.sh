@@ -8,8 +8,9 @@
 # line. Zero model calls. Idempotent on the scrubbed content's sha256 (kept beside
 # the trace as <date>-<session_id>.sha), so a repeat capture adds no file and no line.
 # After a capture it links <repo-toplevel>/.loam/memory -> $STORE when absent.
-# It then commits the store and, when an `origin` remote is set, pushes it in the
-# background so a second machine sees what this session learned. Prints nothing.
+# It then commits the store and, when an `origin` remote is set, rebases onto the
+# remote and pushes in the background so a second machine sees what this session
+# learned. Prints nothing.
 #
 # Usage: mem-capture.sh [--throttle SECONDS]
 #   --throttle SECONDS  exit 0 without capturing when this session_id was captured
@@ -317,11 +318,50 @@ if [ -d "$STORE/.git" ]; then
   printf '.throttle/\nreports/\n' > "$STORE/.gitignore" 2>/dev/null || true
   printf 'traces/*/INDEX.md merge=union\n' > "$STORE/.gitattributes" 2>/dev/null || true
   mkdir -p "$STORE/reports" 2>/dev/null || true
+  # One mkdir lock serializes this machine's local writes to the store: this
+  # commit and the background rebase below. Another session's capture may be
+  # rebasing at the same moment, and a commit or `add -A` landing mid-rebase
+  # could be lost to its abort. The lock is held only for local steps, never
+  # across the network, so a wait of three seconds is ample; on a miss the files
+  # stay on disk and the next capture commits them. A holder killed mid-step
+  # leaves the directory behind, so one older than a minute is treated as stale.
+  LOCK="$STORE/.git/loam-mem.lock"
+  store_lock() {
+    local i=0
+    [ -n "$(find "$LOCK" -maxdepth 0 -mmin +1 2>/dev/null)" ] && rmdir "$LOCK" 2>/dev/null
+    until mkdir "$LOCK" 2>/dev/null; do
+      i=$((i + 1)); [ "$i" -ge 30 ] && return 1
+      sleep 0.1
+    done
+  }
+  store_lock || exit 0
   git -C "$STORE" add -A 2>/dev/null || true
   git -C "$STORE" -c user.name=memstore -c user.email=memstore@localhost \
     commit -qm "capture $(date +%F) $REPO $SID" 2>/dev/null || true
+  rmdir "$LOCK" 2>/dev/null || true
+  # Pull before push: fetch, rebase this machine's commits onto the remote's,
+  # then push, so a capture made while another machine pushed first is not
+  # rejected and left behind. Traces are per-session files and INDEX.md merges by
+  # union, so the rebase does not conflict; rename detection is off and the
+  # strategy is `-s recursive`, as in recall's pull (see mem-recall.sh). A failed
+  # fetch, rebase or push aborts any rebase, logs to reports/sync.log, and keeps
+  # the capture committed locally for the next sync to carry.
   if git -C "$STORE" remote get-url origin >/dev/null 2>&1; then
-    ( git -C "$STORE" push -q origin main </dev/null >>"$STORE/reports/sync.log" 2>&1 & )
+    ( {
+      git -C "$STORE" fetch -q origin || exit 0
+      if git -C "$STORE" rev-parse -q --verify refs/remotes/origin/main >/dev/null; then
+        store_lock || { printf '%s capture sync: store busy\n' "$(date +%F)"; exit 0; }
+        if ! git -C "$STORE" -c user.name=memstore -c user.email=memstore@localhost \
+          -c merge.renames=false rebase -q -s recursive refs/remotes/origin/main; then
+          git -C "$STORE" rebase --abort 2>/dev/null
+          rmdir "$LOCK" 2>/dev/null
+          printf '%s capture sync: rebase failed\n' "$(date +%F)"
+          exit 0
+        fi
+        rmdir "$LOCK" 2>/dev/null
+      fi
+      git -C "$STORE" push -q origin main
+    } </dev/null >>"$STORE/reports/sync.log" 2>&1 & )
   fi
 fi
 exit 0
