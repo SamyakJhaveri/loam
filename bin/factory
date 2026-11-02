@@ -1821,21 +1821,41 @@ assert_call_ok() { # role result.json [round-start-sha]
   finish stopped-environment "the $1 call failed before doing work: $e"
 }
 
+# The active stored account's name; each Claude call site reads it into CALL_ACCOUNT before the call loads its token.
+active_account() { "$ROOT/bin/claude-account" status 2> /dev/null | sed -n 's/^active: \([^;]*\);.*/\1/p'; }
+
 # Usage limits are per account, so on a limit reply switch to the other stored account and retry at once,
 # rather than idling this run while the other account sits unused. bin/claude-account owns the token files
-# and the settings env channel; one switch per limit event, then a five-minute cooldown sends any further
-# limit down the sleep path (both accounts are limited when a second reply lands within seconds). No token
-# value ever reaches the log or the ledger: the switcher prints names only and the ledger line names only.
-limit_switch() { # -> 0 after switching accounts, 1 when there is no other account or a switch is on cooldown
-  local to from last
-  to=$("$ROOT/bin/claude-account" other 2> /dev/null) || return 1
-  if [ -f "$RUN/limit-switch" ]; then
-    last=$(cat "$RUN/limit-switch" 2> /dev/null) || last=""
-    [ -n "$last" ] && [ "$(( $(date +%s) - last ))" -lt 300 ] && return 1
+# and the settings env channel. The account is the host's, shared by every live run (FACTORY_MAX_PARALLEL), so
+# a switch is made only while the active account is still CALL_ACCOUNT, the one the limited call ran under: once
+# another run has switched away from it, this run retries on the new account and never switches back. The check and
+# the switch hold one host-wide flock on RUNS_BASE/limit-switch.lock, so two runs limited at once switch once; a host
+# with no flock(1) (a Mac) skips the lock and keeps the account check. One switch per limit event, then a host-wide
+# five-minute cooldown (RUNS_BASE/limit-switch) sends any further limit down the sleep path, a run limited on the
+# account just switched to included (both accounts are limited when a second reply lands that soon); after the
+# cooldown such a run switches back. No token value ever reaches the log or the ledger: the switcher prints names
+# only and the ledger line names only.
+limit_switch() { # -> 0 after a switch, or one away from CALL_ACCOUNT already made; 1 with no other account or on cooldown
+  local fd= rc
+  if [ -n "$HAVE_FLOCK" ] && mkdir -p "$RUNS_BASE" && exec {fd}>> "$RUNS_BASE/limit-switch.lock"; then
+    flock -w 60 "$fd" || { exec {fd}>&-; return 1; }
   fi
-  from=$("$ROOT/bin/claude-account" status 2> /dev/null | sed -n 's/^active: \([^;]*\);.*/\1/p')
+  limit_switch_held; rc=$?
+  [ -z "$fd" ] || exec {fd}>&-
+  return "$rc"
+}
+limit_switch_held() {
+  local to from last
+  from=$(active_account)
+  if [ -n "${CALL_ACCOUNT-}" ] && [ "$from" != "$CALL_ACCOUNT" ]; then
+    log "usage limit on account $CALL_ACCOUNT; another run already switched to ${from:-none}; retrying the call"
+    return 0
+  fi
+  last=$(cat "$RUNS_BASE/limit-switch" 2> /dev/null) || last=""
+  [[ "$last" =~ ^[0-9]+$ ]] && [ "$(( $(date +%s) - last ))" -lt 300 ] && return 1
+  to=$("$ROOT/bin/claude-account" other 2> /dev/null) || return 1
   "$ROOT/bin/claude-account" use "$to" > /dev/null 2>&1 || return 1
-  date +%s > "$RUN/limit-switch"
+  date +%s > "$RUNS_BASE/limit-switch"
   log "usage limit: switched account ${from:-none} -> $to; retrying the call"
   printf '{"ts":"%s","event":"limit-switch","from":"%s","to":"%s"}\n' "$(now)" "${from:-none}" "$to" >> "$LEDGER"
   return 0
@@ -2267,6 +2287,8 @@ worker_round() { # round; leaves round-N.* only once the call produced a result
     # The call loads no settings tier, so the account token bin/claude-account last wrote is read here, after any
     # switch, and passed in this call's environment only, never on a command line (freeze). The supervisor keeps its
     # launch value, which a call gets when the read is empty or fails, so a token the file has lost is never reused.
+    # The account is named first, so a switch between the two reads makes limit_switch retry, never switch back.
+    CALL_ACCOUNT=$(active_account)
     tok=$(jq -r '.env.CLAUDE_CODE_OAUTH_TOKEN // empty' "${CLAUDE_SETTINGS_FILE:-${CLAUDE_CONFIG_DIR:-$HOME/.claude}/settings.json}" 2> /dev/null)
     tok_set=${CLAUDE_CODE_OAUTH_TOKEN+1}; tok0=${CLAUDE_CODE_OAUTH_TOKEN-}
     [ -z "$tok" ] || { printf -v CLAUDE_CODE_OAUTH_TOKEN '%s' "$tok" && export CLAUDE_CODE_OAUTH_TOKEN; }
@@ -2444,6 +2466,8 @@ call_json() { # round stem role prompt_file schema_file
     # --tools Read,Grep,Glob is what makes a grader read-only (#40); with no MCP schemas and no
     # skills listing its prefix is 9.9k tokens instead of 27k (probed 2026-09-09). --setting-sources
     # user is what keeps the worktree's own hooks out, so a grader can still read the tree it grades.
+    # The user tier's account token is loaded by the call, so its account is named just before (limit_switch).
+    CALL_ACCOUNT=$(active_account)
     call_start "$WORKTREE" ${TIMEOUT_G[@]+"${TIMEOUT_G[@]}"} claude -p --model "$GRADER_MODEL" --effort "$GRADER_EFFORT" \
         --tools Read,Grep,Glob --strict-mcp-config --disable-slash-commands --no-session-persistence \
         --json-schema "$(cat "$schema")" \

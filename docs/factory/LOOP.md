@@ -101,7 +101,10 @@ A launch refused its run's lease, or refused while its last model call lives (Pa
 These read loop-control files to decide exit, never safety; safety stays with the deny rules, the Claude worker's Bash sandbox and the Codex worker's workspace-write sandbox (Worker calls), git, and CI.
 A usage-limit reply (`hit your session limit`, `reached your Fable limit`) is neither an exit nor a round.
 Usage limits are per account, so the supervisor first switches to the next stored account through `bin/claude-account` (round robin in name order, so a third account is reached too) and retries the same call at once.
-It sleeps only when no other account exists or a switch already happened in the last five minutes; then it writes `waiting-limit` to `status`, sleeps until the reset time the reply names or twenty minutes when it names none, and repeats the same call.
+The account belongs to the host, so every live run shares it: a run switches only while the active account is still the one its limited call ran under, and when another run has already switched away from that account it retries on the new one without switching back.
+The check and the switch hold one host-wide lock (flock on `limit-switch.lock` under the runs root; a host with no `flock(1)`, a Mac, skips the lock and keeps the account check), so two runs limited at once switch once.
+It sleeps only when no other account exists or a switch by any run on the host happened in the last five minutes (`limit-switch` under the runs root), including a run limited on the account just switched to; after those five minutes such a run switches back.
+When it sleeps it writes `waiting-limit` to `status`, sleeps until the reset time the reply names or twenty minutes when it names none, and repeats the same call.
 A reset past `MAX_HOURS` exits `stopped-environment`.
 A call with no result event (killed by `CALL_TIMEOUT_SEC`, or crashed) exits `stopped-environment` and counts no round.
 Every model call (the worker, a grader, the Codex review) runs under a wrapper process in a session of its own, which runs the call in a process group of its own; `CALL_TIMEOUT_SEC` signals that whole group, KILL 5 s after TERM.
