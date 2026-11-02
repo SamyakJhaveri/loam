@@ -50,12 +50,12 @@ class WorkerPinTests(unittest.TestCase):
         return subprocess.run(["bash", "-c", f". bin/factory\n{script}"], cwd=ROOT, env=env,
                               capture_output=True, text=True, check=False)
 
-    def frozen_settings(self, **extra: str) -> dict:
+    def frozen_settings(self, user: dict = USER, **extra: str) -> dict:
         run, main = self.tmp / "run", self.tmp / "main"
         (run / "frozen").mkdir(parents=True)
         (run / "tasks").mkdir()
         (self.tmp / "cfg").mkdir()
-        (self.tmp / "cfg/settings.json").write_text(json.dumps(USER))
+        (self.tmp / "cfg/settings.json").write_text(json.dumps(user))
         git = ["git", "-c", "user.name=t", "-c", "user.email=t@t"]
         subprocess.run(["git", "init", "-q", "-b", "main", str(main)], check=True)
         subprocess.run([*git, "-C", str(main), "commit", "-q", "--allow-empty", "-m", "base"], check=True)
@@ -137,6 +137,20 @@ class WorkerPinTests(unittest.TestCase):
         for tool in ("ScheduleWakeup", "CronCreate", "Monitor"):
             self.assertIn(tool, deny)
         self.assertEqual(env.get("CLAUDE_CODE_DISABLE_BACKGROUND_TASKS"), "1")
+
+    def test_frozen_worker_settings_pin_the_subagent_caps_over_the_user_tier(self) -> None:
+        # Settings env beats the launch env, so the caps sit in worker-settings.json's env, which wins over the
+        # user tier the frozen copy carries: depth 2 is one level under a fan-out round's agents, and five at once
+        # is four builders plus one reader (#413).
+        for name, user_env in (("other values", {"CLAUDE_CODE_MAX_SUBAGENT_SPAWN_DEPTH": "9",
+                                                 "CLAUDE_CODE_MAX_CONCURRENT_SUBAGENTS": "99"}), ("none", {})):
+            with self.subTest(user_tier=name):
+                with tempfile.TemporaryDirectory() as tmp:
+                    self.tmp = pathlib.Path(tmp)
+                    (self.tmp / "bin").mkdir()
+                    env = self.frozen_settings(user={"env": user_env})["env"]
+                self.assertEqual(env.get("CLAUDE_CODE_MAX_SUBAGENT_SPAWN_DEPTH"), "2")
+                self.assertEqual(env.get("CLAUDE_CODE_MAX_CONCURRENT_SUBAGENTS"), "5")
 
     def test_freeze_follows_factory_worker_model(self) -> None:
         env, source_env = self.frozen_env(FACTORY_WORKER_MODEL="claude-other-1")
