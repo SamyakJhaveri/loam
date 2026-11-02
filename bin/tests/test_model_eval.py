@@ -44,7 +44,7 @@ import json, os, sys
 a = sys.argv[1:]
 g = lambda f: a[a.index(f) + 1] if f in a else ""
 if "--version" in a:
-    print(os.environ.get("STUB_VERSION", "1.0.0") + " (Claude Code)")
+    print(os.environ.get("STUB_VERSION", "2.1.312") + " (Claude Code)")
     sys.exit(0)
 sys.stdin.read()
 """ + REPLIES + """
@@ -353,23 +353,23 @@ class ModelEvalTests(unittest.TestCase):
         drift.chmod(0o755)
         (self.home / "drift").write_text("d1\n")
         env = {"MODEL_EVAL_GRADERS": "judge"}
-        self.assertEqual(self.run_me("m1", **env, STUB_VERSION="1").returncode, 0)
+        self.assertEqual(self.run_me("m1", **env, STUB_VERSION="2.1.312").returncode, 0)
         self.assertEqual(len(self.calls()), 2)
-        self.assertEqual(self.run_me("m1", **env, STUB_VERSION="1").returncode, 0)
+        self.assertEqual(self.run_me("m1", **env, STUB_VERSION="2.1.312").returncode, 0)
         self.assertEqual(self.calls(), [], "an unchanged harness reuses every reply")
-        self.assertEqual(self.run_me("m1", **env, STUB_VERSION="2").returncode, 0)
+        self.assertEqual(self.run_me("m1", **env, STUB_VERSION="2.1.313").returncode, 0)
         self.assertEqual(len(self.calls()), 2, "a Claude Code update re-grades every case")
         fp = (self.out / "replies/m1@high/r1/fingerprint-judge.txt").read_text()
-        self.assertIn("claude-version 2 (Claude Code)\n", fp)
+        self.assertIn("claude-version 2.1.313 (Claude Code)\n", fp)
         (self.home / "drift").write_text("d2\n")
-        self.assertEqual(self.run_me("m1", **env, STUB_VERSION="2").returncode, 0)
+        self.assertEqual(self.run_me("m1", **env, STUB_VERSION="2.1.313").returncode, 0)
         self.assertEqual(len(self.calls()), 2, "a config change re-grades every case")
         # config-drift.sh prints setting names only, so a changed value must reach the key some other way.
         (self.home / ".claude/settings.json").write_text('{"permissions": {"deny": ["Read(secret.txt)"]}}\n')
-        self.assertEqual(self.run_me("m1", **env, STUB_VERSION="2").returncode, 0)
+        self.assertEqual(self.run_me("m1", **env, STUB_VERSION="2.1.313").returncode, 0)
         self.assertEqual(len(self.calls()), 2)
         (self.home / ".claude/settings.json").write_text('{"permissions": {"deny": ["Read(*)"]}}\n')
-        self.assertEqual(self.run_me("m1", **env, STUB_VERSION="2").returncode, 0)
+        self.assertEqual(self.run_me("m1", **env, STUB_VERSION="2.1.313").returncode, 0)
         self.assertEqual(len(self.calls()), 2, "a changed setting value re-grades every case")
 
     def test_code_change_regrades_every_reply(self) -> None:
@@ -400,9 +400,9 @@ class ModelEvalTests(unittest.TestCase):
     def test_each_graders_fingerprint_describes_its_own_replies(self) -> None:
         self.judge_cases()
         self.case("reviewer", "k1", {"verdict": "merge"})
-        self.assertEqual(self.run_me("m1", "m2", MODEL_EVAL_GRADERS="judge", STUB_VERSION="1").returncode, 0)
+        self.assertEqual(self.run_me("m1", "m2", MODEL_EVAL_GRADERS="judge", STUB_VERSION="2.1.312").returncode, 0)
         # A second grader on one model under a new Claude Code leaves the judge's config where its replies ran.
-        self.assertEqual(self.run_me("m2", MODEL_EVAL_GRADERS="reviewer", STUB_VERSION="2").returncode, 0)
+        self.assertEqual(self.run_me("m2", MODEL_EVAL_GRADERS="reviewer", STUB_VERSION="2.1.313").returncode, 0)
 
         def moved():
             r = subprocess.run([sys.executable, str(ROOT / "bin/factory.d/eval_score.py"), str(self.tmp / "set"),
@@ -412,7 +412,7 @@ class ModelEvalTests(unittest.TestCase):
         self.assertEqual(moved(), "model")
         # A partial retry under the new version re-grades all of m2's judge cases, so its fingerprint fits them.
         (self.out / "replies/m2@high/r1/judge-k1.json").unlink()
-        self.assertEqual(self.run_me("m2", MODEL_EVAL_GRADERS="judge", STUB_VERSION="2").returncode, 0)
+        self.assertEqual(self.run_me("m2", MODEL_EVAL_GRADERS="judge", STUB_VERSION="2.1.313").returncode, 0)
         self.assertEqual(len(self.calls()), 2)
         self.assertEqual(moved(), "descriptive: claude-version,model")
 

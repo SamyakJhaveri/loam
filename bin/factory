@@ -749,7 +749,8 @@ case_tree() { # case-dir work -> the tree to grade in on stdout; non-zero, with 
 # traps set, before the export starts, so a signal at any point removes it. The traps sit in this shell, not
 # a subshell, so a TERM to bin/factory's pid alone still ends the case loop, once the in-flight call returns.
 run_eval() {
-  local rc
+  local rc cv
+  cv=$(claude_version_ok) || { echo "factory eval: claude --version reports '$cv'; the factory needs Claude Code $CLAUDE_MIN_VERSION+ (#379)" >&2; return 4; }
   EVAL_WORK=$(mktemp -d "${TMPDIR:-/tmp}/factory-eval.XXXXXX") || return 2
   trap 'rm -rf "$EVAL_WORK"' EXIT; trap 'exit 130' INT; trap 'exit 143' TERM; trap 'exit 129' HUP
   if eval_tree "$EVAL_WORK"; then
@@ -766,18 +767,18 @@ run_eval() {
 # The user tier's settings file, as freeze, worker_round and the grader calls resolve it.
 user_settings() { printf '%s\n' "${CLAUDE_SETTINGS_FILE:-${CLAUDE_CONFIG_DIR:-$HOME/.claude}/settings.json}"; }
 
-# The account token bin/claude-account last wrote to the user tier, for a call that loads no settings tier.
+# The account token bin/claude-account last wrote to the user tier, for a call with the user tier disabled.
 live_token() { jq -r '.env.CLAUDE_CODE_OAUTH_TOKEN // empty' "$(user_settings)" 2> /dev/null; }
 
 # Writes the settings a grader call reads, in the loop (freeze) and in `bin/factory eval` alike: role-settings.json
-# plus the user tier's env without its account token, which each call gets live; role-settings.json's env wins. A
-# grader call loads no settings tier (--setting-sources ''), so nothing else of the user tier reaches it: its hooks
-# would run, its allow rules (Read(*)) would widen the read fence, and a grader has no Bash, Agent or Skill tool a
-# plugin could serve. The user env may hold secrets, so the copy is private to the operator.
+# plus the user tier's env without its account token or config dir; role-settings.json's env wins. Each call gets
+# its token live and its own config dir at launch. It disables user, project and local settings: user hooks and
+# allow rules (Read(*)) stay out, and a grader has no Bash, Agent or Skill tool a plugin could serve. Managed policy
+# and flag settings still apply. The user env may hold secrets, so the copy is private to the operator.
 grader_settings() { # role_settings out
   local user; user=$(user_settings)
   [ -f "$user" ] || user=/dev/null
-  ( umask 077; jq --slurpfile u "$user" '.env = (($u[0].env // {}) | del(.CLAUDE_CODE_OAUTH_TOKEN)) + (.env // {})' "$1" > "$2" )
+  ( umask 077; jq --slurpfile u "$user" '.env = (($u[0].env // {}) | del(.CLAUDE_CODE_OAUTH_TOKEN, .CLAUDE_CONFIG_DIR)) + (.env // {})' "$1" > "$2" )
 }
 
 run_eval_cases() { # grader work
@@ -790,12 +791,13 @@ run_eval_cases() { # grader work
   gf="$2/grader.md"
   schema=$(schema_for "$grader" 2> /dev/null)
   [ -n "$schema" ] || { echo "eval: no bin/factory.d/$grader.schema.json" >&2; return 2; }
-  # role-settings.json is read beside the schema, for the reason schema_for gives. The copy and the empty config dir
+  # role-settings.json is read beside the schema, for the reason schema_for gives. The copy and the private config dir
   # sit in the work dir, outside the tree the grader reads.
   settings="$2/grader-settings.json"
   grader_settings "$(cd "$(dirname "$0")" && pwd)/factory.d/role-settings.json" "$settings" \
     || { echo "eval: could not write the grader settings from $(user_settings)" >&2; return 2; }
   mkdir -p -m 700 "$2/grader-config" || return 2
+  chmod 700 "$2/grader-config" || return 2
   [ -d "$EVALS_DIR/$grader" ] || { echo "eval: no cases under $EVALS_DIR/$grader" >&2; return 2; }
   grader_rubric "$gf" > "$rubric"
   for dir in "$EVALS_DIR/$grader"/*/; do
@@ -1411,7 +1413,7 @@ freeze() {
   # writes decisions.md and mechanism.md in the worker directory and result.json in tasks/ (#409).
   # uv gets a cache and tool directory of the run's own, so the operator's shared uv cache and tools are kept out of
   # the worker's reach. Claude Code merges sandbox lists across tiers, and the user tier's excludedCommands or
-  # allowWrite would widen the boundary, so the worker call loads no settings tier (--setting-sources ''): this copy
+  # allowWrite would widen the boundary, so the worker disables user, project and local settings: this copy
   # carries the user tier without its sandbox block, arrays concatenated and the worker's keys winning, as Claude
   # Code merges them. It also drops the user tier's permissions.allow and permissions.additionalDirectories: Claude
   # Code adds Edit(...) allow paths and additionalDirectories to the sandbox's writable paths and WebFetch(domain:...)
@@ -2359,7 +2361,7 @@ worker_round() { # round; leaves round-N.* only once the call produced a result
   while :; do
     log "worker call: round $round model=$WORKER_MODEL effort=$WORKER_EFFORT advisor=${WORKER_ADVISOR:-off} budget=$ROUND_BUDGET_USD usd, prompt=$(wc -c < "$pf") bytes"
     rm -f "$out" "${DECISIONS%/*}/mechanism.md"   # also on a retried call, as for the Codex call above (#330)
-    # The call loads no settings tier, so the account token bin/claude-account last wrote is read here, after any
+    # The call disables the user tier, so the account token bin/claude-account last wrote is read here, after any
     # switch, and passed in this call's environment only, never on a command line (freeze). The supervisor keeps its
     # launch value, which a call gets when the read is empty or fails, so a token the file has lost is never reused.
     # The account is named first, so a switch between the two reads makes limit_switch retry, never switch back.
@@ -2532,9 +2534,10 @@ grader_reply() { # raw claude -p envelope -> the grader's reply text, fences str
 
 call_json() { # round stem role prompt_file schema_file
   local round="$1" stem="$2" role="$3" pf="$4" schema="$5" final="$RUN/round-$1.$2.json" out res attempt=0 tok tok_set tok0
-  # The call's config dir, empty and the run's own: the read fence lets a call read its config dir's CLAUDE.md,
-  # rules, skills, plugins, agents and commands, so it must not be the operator's (LOOP.md, Grader calls).
+  # The run's private config dir holds no login, memory, rules, skills, plugins, agents or commands. The read fence
+  # allows those paths in the config dir, so it must not be the operator's (LOOP.md, Grader calls).
   mkdir -p -m 700 "$RUN/grader-config" || finish stopped-environment "could not make $RUN/grader-config"
+  chmod 700 "$RUN/grader-config" || finish stopped-environment "could not protect $RUN/grader-config"
   while [ "$attempt" -lt 3 ]; do
     attempt=$((attempt + 1))
     out="$RUN/round-$round.$stem.raw.$attempt.json"
@@ -3687,7 +3690,7 @@ claude_logged_in() {
   claude auth status 2> /dev/null | jq -e '.loggedIn' > /dev/null 2>&1
 }
 
-# The worker call's CLAUDE_CODE_SUBAGENT_MODEL_FORCE exists from Claude Code 2.1.257; an older claude ignores
+# The grader read fence and the worker's CLAUDE_CODE_SUBAGENT_MODEL_FORCE need Claude Code 2.1.257; an older claude ignores
 # it and lets a subagent run on the model its call names (#379). Prints what `claude --version` reported
 # ("2.1.312 (Claude Code)"); 0 only when that parses and is at least 2.1.257. Shared like claude_logged_in.
 CLAUDE_MIN_VERSION=2.1.257

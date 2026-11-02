@@ -80,6 +80,7 @@ class GraderVersionTests(unittest.TestCase):
         fake = self.tmp / "bin/claude"
         fake.parent.mkdir()
         fake.write_text("#!/usr/bin/env python3\nimport json, os, sys\n"
+                        'if "--version" in sys.argv:\n    print("2.1.312 (Claude Code)"); sys.exit(0)\n'
                         "open(os.environ['STDIN_LOG'], 'w').write(sys.stdin.read())\n"
                         "open(os.environ['GRADER_SRC'], 'a').write('\\nAn edit that landed mid-replay.\\n')\n"
                         "print(json.dumps({'type': 'result', 'is_error': False, 'total_cost_usd': 0,"

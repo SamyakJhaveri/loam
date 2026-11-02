@@ -20,6 +20,8 @@ FENCE = "~~~~~~~~~~~~ evidence"
 
 FAKE_CLAUDE = """#!/usr/bin/env python3
 import json, os, sys
+if "--version" in sys.argv:
+    print("2.1.312 (Claude Code)"); sys.exit(0)
 sys.stdin.read()
 seen = {"a": open("a.txt").read().strip(), "evals": os.path.exists("evals")}
 with open(os.environ["SEEN_LOG"], "a") as f:
