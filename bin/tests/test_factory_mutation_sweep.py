@@ -17,6 +17,7 @@ import os
 import pathlib
 import shutil
 import subprocess
+import sys
 import tempfile
 import time
 import unittest
@@ -203,13 +204,17 @@ class SweepTests(unittest.TestCase):
         self.assertEqual((result["mutants"], result["reason"]), ([], "the committed tests fail unedited (pytest exit 1)"))
         self.assertIsNotNone(result["baseline_sec"])
 
-    def test_an_edit_that_hangs_is_killed_with_its_whole_group(self) -> None:
-        # The force-true edit makes the while loop endless in a bash child of the test, which pytest's own death would
-        # leave spinning; the group KILL at twice the unedited run plus 10 s must take it too.
+    def loops_left(self) -> list[tuple[int, str]]:
+        ps = subprocess.run(["ps", "-eo", "pid=,args="], capture_output=True, text=True, check=True).stdout
+        return [(int(pid), a) for pid, a in (ln.split(None, 1) for ln in ps.splitlines() if " " in ln.strip())
+                if str(self.wt / "loop.sh") in a]
+
+    def hang(self, popen_args: str) -> None:
         loop = '#!/usr/bin/env bash\ni=0\nwhile [ "$i" -lt "$1" ]; do i=$((i + 1)); done\necho "$i"\n'
         test = ("import pathlib, subprocess\n\n\ndef test_count():\n"
                 "    out = subprocess.run(['bash', str(pathlib.Path(__file__).parent / 'loop.sh'), '3'],"
-                " capture_output=True, text=True).stdout\n    assert out == '3\\n'\n")
+                f" capture_output=True, text=True{popen_args}).stdout\n    assert out == '3\\n'\n")
+        self.addCleanup(lambda: [os.kill(pid, 9) for pid, _ in self.loops_left()])
         result = self.sweep({"loop.sh": loop, "loop_test.py": test})
         self.assertEqual(records(result), ["loop.sh:3:flip:killed", "loop.sh:3:force-true:killed"])
         self.assertEqual(result["timeout_sec"], round(2 * result["baseline_sec"] + 10, 2))
@@ -219,12 +224,22 @@ class SweepTests(unittest.TestCase):
         self.assertLessEqual(hung[0]["seconds"], result["timeout_sec"] + 5)
         left = []
         for _ in range(20):  # KILL is asynchronous; allow it 2 s to land
-            ps = subprocess.run(["ps", "-eo", "args="], capture_output=True, text=True, check=True).stdout
-            left = [a for a in ps.splitlines() if str(self.wt / "loop.sh") in a]
+            left = self.loops_left()
             if not left:
                 break
             time.sleep(0.1)
         self.assertEqual(left, [])
+
+    def test_an_edit_that_hangs_is_killed_with_its_whole_group(self) -> None:
+        # The force-true edit makes the while loop endless in a bash child of the test, which pytest's own death would
+        # leave spinning; the group KILL at twice the unedited run plus 10 s must take it too.
+        self.hang("")
+
+    @unittest.skipUnless(sys.platform.startswith("linux"), "the sweep is a child subreaper on Linux only")
+    def test_an_edit_that_hangs_in_a_session_of_its_own_is_killed(self) -> None:
+        # The bash child starts its own session, out of the group the run's KILL reaches; the sweep, as the child
+        # subreaper, gets it as an orphan when pytest dies and must KILL it too.
+        self.hang(", start_new_session=True")
 
     def test_a_same_size_edit_reads_no_cached_bytecode(self) -> None:
         # The flip keeps the file's size. Its write keeps the source's mtime, as a write in the same second would, so

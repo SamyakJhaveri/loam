@@ -13,7 +13,8 @@ after which its file no longer parses is discarded; the rest are ordered by the 
 stripped line, so an unchanged line gets the same edits every round, and the first 8 run.
 The tests run unedited first, under <first-run timeout> s, then once per edit under twice that run plus 10 s; exit 0
 is survived, any other exit or a timeout killed. Each run has a session of its own, whose whole process group gets
-KILL when it ends, so a loop an edit made endless never outlives the sweep.
+KILL when it ends, and on Linux, where the helper is the child subreaper, every child orphaned to it gets KILL too, so a
+loop an edit made endless never outlives the sweep.
 Writes {"tests", "baseline_sec", "timeout_sec", "mutants", "reason"} to <out json> and exits 0; reason names why no
 edit ran, else null. A git failure exits 2 and writes nothing. python3 stdlib only.
 """
@@ -52,6 +53,7 @@ SH_TEST = re.compile(r"\s*(\[\[?)\s")
 SH_DROP = re.compile(r"\s*(return|exit|continue|break)(?=[\s;&|]|$)")
 
 CURRENT: subprocess.Popen | None = None  # the pytest run in progress, for the signal handler
+SUBREAPER = False  # set at start on Linux: kill_orphans then reaches a run's children that left its group
 
 
 def git(wt: Path, *args: str) -> str:
@@ -337,6 +339,39 @@ def kill_group(pid: int) -> None:
         pass
 
 
+def subreaper() -> bool:
+    """On Linux, make this process the child subreaper of its descendants (prctl PR_SET_CHILD_SUBREAPER), so a test's
+    child that starts a session of its own, out of the run's process group, is orphaned to the sweep, not to init."""
+    if not sys.platform.startswith("linux"):
+        return False
+    import ctypes
+    return ctypes.CDLL(None, use_errno=True).prctl(36, 1, 0, 0, 0) == 0
+
+
+def kill_orphans() -> None:
+    """KILL and reap every child of this process left after a run's group KILL, which as subreaper are the run's
+    orphans; each one killed orphans its own children to this process, so repeat until none is left, for 5 s at most."""
+    end = time.monotonic() + 5
+    while time.monotonic() < end:
+        kids = []
+        for stat in Path("/proc").glob("[0-9]*/stat"):
+            try:
+                s = stat.read_text()
+            except OSError:
+                continue
+            if int(s[s.rindex(")") + 2:].split()[1]) == os.getpid():
+                kids.append(int(stat.parent.name))
+        if not kids:
+            return
+        for pid in kids:
+            try:
+                os.kill(pid, signal.SIGKILL)
+                os.waitpid(pid, os.WNOHANG)
+            except (ProcessLookupError, ChildProcessError):
+                pass
+        time.sleep(0.05)
+
+
 def run(cmd: list[str], wt: Path, env: dict[str, str], timeout: float) -> tuple[int | None, float, str]:
     """(exit code, or None on a timeout; seconds; the output's last lines) of one pytest run.
 
@@ -356,6 +391,8 @@ def run(cmd: list[str], wt: Path, env: dict[str, str], timeout: float) -> tuple[
         finally:
             kill_group(p.pid)
             p.wait()
+            if SUBREAPER:
+                kill_orphans()
             CURRENT = None
         secs = time.monotonic() - start
         log.seek(0)
@@ -445,4 +482,5 @@ def stop(signum: int, _frame: object) -> None:
 if __name__ == "__main__":
     for sig in (signal.SIGTERM, signal.SIGINT, signal.SIGHUP):
         signal.signal(sig, stop)
+    SUBREAPER = subreaper()
     sys.exit(main(sys.argv[1:]))
