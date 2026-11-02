@@ -186,17 +186,18 @@ class SweepTests(unittest.TestCase):
 
     def test_python_edits_that_cannot_change_behavior_are_skipped(self) -> None:
         # A function's last `return` or `return None`, a last `return 0` of a function whose every call is the
-        # argument of sys.exit or SystemExit, and the main guard's force-true give no edit; an earlier return, a
-        # last `return 0` whose value is used, a return of False, and the guard's flip do.
+        # argument of sys.exit or a raised SystemExit, and the main guard's force-true give no edit; an earlier return, a
+        # last `return 0` whose value is used or only builds a SystemExit, a return of False, and the guard's flip do.
         self.assertEqual(self.edits({"m.py": 'import sys\n\n\ndef main():\n    if sys.argv:\n        return 1\n'
                                              '    print()\n    return 0\n\n\ndef f():\n    return\n\n\n'
                                              'def g(x):\n    return None\n\n\ndef u():\n    return 0\n\n\n'
                                              'def k():\n    return False\n\n\nif "__main__" == __name__:\n'
                                              "    sys.exit(main())\nif __name__=='__main__':\n"
-                                             '    raise SystemExit(main())\ny = u() + 1\n'}),
+                                             '    raise SystemExit(main())\ny = u() + 1\n\n\ndef v():\n    return 0\n\n\n'
+                                             'e = SystemExit(v())\n'}),
                          [(5, "force-true", "if (sys.argv) or True:"), (6, "drop", "pass"), (20, "drop", "pass"),
                           (24, "drop", "pass"), (27, "flip", 'if "__main__" != __name__:'),
-                          (29, "flip", "if __name__!='__main__':"), (30, "drop", "pass")])
+                          (29, "flip", "if __name__!='__main__':"), (30, "drop", "pass"), (35, "drop", "pass")])
 
     def test_bash_edits_that_cannot_change_behavior_are_skipped(self) -> None:
         # The file's last `exit 0`, even with a `;`, gives no edit; an exit in a function or before other code does.
@@ -227,9 +228,9 @@ class SweepTests(unittest.TestCase):
         # The & or | of a redirection does not end the statement; the && after it does. The redirections stay, so the
         # edit changes only the return or exit, not what the statement writes or truncates.
         self.assertEqual(self.edits({"r.sh": "f() {\n  return 1 >&2\n}\ng() {\n  exit 2 2>&1 && echo\n"
-                                             "  exit 3 &> /dev/null\n  exit 4 >| /dev/null\n}\n"}),
+                                             "  exit 3 &> /dev/null\n  exit 4 >| /dev/null\n}\nexit $(( 1 > 0 ))\n"}),
                          [(2, "drop", ": >&2"), (5, "drop", ": 2>&1 && echo"), (6, "drop", ": &> /dev/null"),
-                          (7, "drop", ": >| /dev/null")])
+                          (7, "drop", ": >| /dev/null"), (9, "drop", ":")])
 
     def test_an_edit_that_does_not_parse_is_discarded(self) -> None:
         # Dropping the return leaves `:; echo 3)`, which bash -n rejects; the exit's drop parses and runs.

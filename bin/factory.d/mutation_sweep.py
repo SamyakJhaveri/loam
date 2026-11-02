@@ -113,8 +113,8 @@ def py_edits(text: str, wanted: list[int]) -> list[tuple[int, str, dict[int, str
         return []
     code = [t for t in toks if t.type in (tokenize.OP, tokenize.NAME, tokenize.NEWLINE)]
     # A function's last statement whose drop cannot change behavior: `return` or `return None`, since the function
-    # returns None anyway, and `return 0` when every call of it in the file is the argument of sys.exit(...) or
-    # SystemExit(...), which exit 0 on None as on 0.
+    # returns None anyway, and `return 0` when every call of it in the file is the argument of sys.exit(...) or a
+    # raised SystemExit(...), which exit 0 on None as on 0.
     try:
         body = ast.parse(text).body
     except (SyntaxError, ValueError):
@@ -125,7 +125,9 @@ def py_edits(text: str, wanted: list[int]) -> list[tuple[int, str, dict[int, str
                    and [type(o) for o in b.test.ops] == [ast.Eq]
                    and {main_side(x) for x in (b.test.left, *b.test.comparators)} == {"name", "main"}}
     calls = [c for c in nodes if isinstance(c, ast.Call)]
+    raised = {id(r.exc) for r in nodes if isinstance(r, ast.Raise)}  # SystemExit(...) exits only when raised
     exits = {id(a) for c in calls for a in c.args if isinstance(c.func, ast.Name) and c.func.id == "SystemExit"
+             and id(c) in raised
              or isinstance(c.func, ast.Attribute) and c.func.attr == "exit"
              and isinstance(c.func.value, ast.Name) and c.func.value.id == "sys"}
     last_returns = set()
@@ -361,7 +363,8 @@ def sh_edits(text: str, wanted: list[int]) -> list[tuple[int, str, dict[int, str
             # The words up to the statement's end, of which the redirections stay, so only the exit or jump changes.
             stop = SH_DROP_END.search(m, drop.end())
             end = len(m[:stop.start() if stop else len(m)].rstrip())
-            redir = SH_REDIR.search(m, drop.end(), end)
+            # A < or > inside a substitution is no redirection: such a statement drops whole, as before.
+            redir = None if re.search(r"\$\(|`", m[drop.end():end]) else SH_REDIR.search(m, drop.end(), end)
             cut = len(m[:redir.start() if redir else end].rstrip())
             # The file's last statement `exit 0`, with only `;` after it: the script ends with status 0 after `:` too.
             if m[drop.start(1):cut].split() == ["exit", "0"] and not re.sub(r"[;\s]", "", m[end:]
