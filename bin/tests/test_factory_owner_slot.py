@@ -2,8 +2,9 @@
 
 Each test writes a run dir with status `running` and an `owner` line, sources bin/factory (FACTORY_SOURCED=1) with
 `alert` stubbed to a file, and asks holds_slot. A freed run reads stopped-environment and alerts once; a held one
-keeps `running` and sends nothing. A run dir with a `lease` file is judged by the flock lease alone (LeaseSlotTests);
-one without it by the owner line (OwnerSlotTests). NextTickTests ask through cmd_next, whose --dry-run only looks.
+keeps `running` and sends nothing. A run dir with a `lease` file is judged by the flock lease, by its `call` while
+the lease is free, and by the owner pid for the orphan kill while it is held (LeaseSlotTests); one without it by the
+owner line (OwnerSlotTests). NextTickTests ask through cmd_next, whose --dry-run only looks.
 """
 
 from __future__ import annotations
@@ -468,20 +469,6 @@ class LeaseSlotTests(SlotCase):
         self.assertEqual(proc.returncode, 0, proc.stderr)
         self.assertTrue(seen.exists(), proc.stderr)
 
-    def test_heartbeat_does_not_hold_the_lease(self) -> None:
-        # A beat outlives a killed supervisor by up to 300 s; it must not keep the run's slot meanwhile.
-        hb = self.top / "hb"
-        script = (f". bin/factory\nalert() {{ :; }}; LOG=/dev/null\n"
-                  f'exec {{FACTORY_SLOT_FD}}>> "{self.run_dir}/lease"; flock -n "$FACTORY_SLOT_FD" || exit 7\n'
-                  f"export FACTORY_SLOT_FD; heartbeat_start; echo \"$HEARTBEAT\" > '{hb}'")
-        base = {k: v for k, v in os.environ.items() if k not in INHERITED}
-        sup = subprocess.Popen(["bash", "-c", script], cwd=ROOT, env={**base, "FACTORY_SOURCED": "1", "PATH": self.path},
-                               stdin=subprocess.DEVNULL, start_new_session=True)
-        self.addCleanup(lambda: subprocess.run(["pkill", "-KILL", "-g", str(sup.pid)], check=False))
-        self.assertEqual(sup.wait(timeout=30), 0)
-        self.assertNotIn(state(int(hb.read_text())), ("", "Z"))   # the beat outlives its supervisor
-        self.assert_freed()
-
     def test_dead_owner_s_model_call_holding_the_lease_is_killed_and_the_slot_freed(self) -> None:
         # The SIGKILLed supervisor's call inherited the lease, so the lease alone would hold the slot until
         # CALL_TIMEOUT_SEC; holds_slot kills the call's group as on the owner path, and the next caller frees the slot.
@@ -498,6 +485,16 @@ class LeaseSlotTests(SlotCase):
         # The gone call's files go with the reap, so a reused wrapper pid cannot hold the stopped run's slot (#467).
         self.assertFalse((self.run_dir / "call").exists())
         self.assertFalse((self.run_dir / "call.group").exists())
+
+    def test_live_owner_s_call_holding_the_lease_survives_any_clock_step(self) -> None:
+        # A wall-clock step moves the live supervisor's ps lstart away from the stored one, however far; on the lease
+        # path only a gone or zombie pid is a gone supervisor, so the call started since, its call.group start still
+        # matching ps, is not killed.
+        self.owner(f"{self.live()} {OLD}")
+        call = self.hold('touch "$2"; exec sleep 60')
+        (self.run_dir / "call.group").write_text(f"{call} {lstart(call)}\n")
+        self.assert_held()
+        self.assertNotIn(state(call), ("", "Z"), "holds_slot killed a live supervisor's call")
 
     def test_launched_with_no_status_holds_only_while_its_lease_is_held(self) -> None:
         # A launch killed between `launched` and its first status leaves no status; its free lease frees the slot.

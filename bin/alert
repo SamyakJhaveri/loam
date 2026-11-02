@@ -9,8 +9,8 @@ posts the line to the project's Slack webhook, so the log line says whether the 
 fail post with @channel; info posts quietly. Exits 0 when the post and the log line both succeed, 1 when either
 fails (the caller falls back, as bin/factory's notify posts a ticket comment), 2 on a usage error.
 
-`--ping beat` GETs this host's healthchecks.io check; `--ping pause` pauses it through the healthchecks API,
-so a run that ends on purpose raises no alarm (a later beat resumes it). With no ping URL configured both exit 0.
+`--ping beat` GETs this host's healthchecks.io check (bin/factory next sends it each tick); `--ping pause` pauses
+it through the healthchecks API, and a later beat resumes it. With no ping URL configured both exit 0.
 
 Config, one secret per file, each mode 600 (a symlink to such a file works), under ~/.config/loam/alerts/:
   slack-<project>  the project's Slack incoming-webhook URL; `slack` is the fallback for every project

@@ -38,7 +38,7 @@ target_repo() {
 }
 # Every gh call, and every git call that reaches a remote (fetch, push, ls-remote), runs under NET_TIMEOUT_SEC
 # (LOOP.md, Caps): a call cut off at the limit fails like any other failure of that call, so a hung network call
-# never holds a run, its slot and its heartbeat for good. A program runs under GNU timeout without --foreground
+# never holds a run or its slot for good. A program runs under GNU timeout without --foreground
 # (neither needs a terminal, and timeout then signals the call's whole process group), with KILL 5 s after TERM
 # for a call that ignores TERM. A shell function (a test's stub, or one exported into the environment), or any
 # call on a machine without timeout (a Mac), goes through net_watch instead, since timeout can only start a program.
@@ -627,20 +627,32 @@ grader_file() {
 }
 
 # A worker's skill name (a line of bin/factory.d/skills.txt or a pstack:<name>, lint-checked) -> its SKILL.md path.
-# A bare name lives under ~/.claude/skills/<name>/; a plugin:name lives under the installPath that
-# ~/.claude/plugins/installed_plugins.json gives the plugin's first `<plugin>@<marketplace>` entry, the
-# folder Claude Code loads (docs/PSTACK.md), so a stale or other-marketplace cache folder never resolves.
-# No installed_plugins.json, or no entry for the plugin, resolves to nothing: no cache-search fallback
-# (owner ruling 30 Oct 2026, #437). A plugin may nest its skills under a category dir
-# (skills/<category>/<name>/SKILL.md), so match SKILL.md at any depth
-# under the plugin's skills tree, not only skills/<name>/.
+# A bare name lives under ~/.claude/skills/<name>/; a plugin:name lives under an installPath from
+# ~/.claude/plugins/installed_plugins.json, by the factory's rule, modelled on how Claude Code picks one key's record
+# (user or managed records, the first existing path; LESSONS.md, PR #531): only `<plugin>@<marketplace>` keys that
+# the settings file's enabledPlugins sets true, in the registry's order, and from each only its user- or
+# managed-scope records, in order; the first such installPath that is an existing directory wins. Claude Code loads
+# every enabled key, so with two enabled keys for one plugin it loads both; the registry-order pick is the factory's
+# choice. A project or local record, which Claude Code loads only in its own repository, a record with no scope, and
+# an installPath holding a newline or NUL (the shell would split or merge it) never resolve (#533). The settings
+# file is $SKILL_SETTINGS, else ~/.claude/settings.json; build_worker_prompt points it at the run's frozen worker
+# settings, the file the worker launches with. No installed_plugins.json, no enabled key, or no existing record
+# resolves to nothing: no cache-search fallback (owner ruling 30 Oct 2026, #437). A plugin may nest its skills
+# under a category dir (skills/<category>/<name>/SKILL.md), so match SKILL.md at any depth under the plugin's
+# skills tree, not only skills/<name>/.
 skill_file() { # skill-name -> SKILL.md path on stdout, non-zero when it resolves to no file
-  local name="$1" plugin sub dir f
+  local name="$1" plugin sub dir="" d en paths f
   case "$name" in
     *:*)
       plugin=${name%%:*}; sub=${name#*:}
-      dir=$(jq -r --arg p "$plugin" 'first(.plugins | to_entries[] | select(.key | startswith($p + "@"))
-        | .value[0].installPath // empty)' "$HOME/.claude/plugins/installed_plugins.json" 2> /dev/null) || dir=""
+      # A missing, empty or unreadable settings file enables nothing.
+      en=$(jq -c '.enabledPlugins // {}' "${SKILL_SETTINGS:-$HOME/.claude/settings.json}" 2> /dev/null) || en=""
+      paths=$(jq -r --arg p "$plugin" --argjson en "${en:-"{}"}" '.plugins | to_entries[]
+        | select((.key | startswith($p + "@")) and $en[.key] == true) | .value[]
+        | select(.scope == "user" or .scope == "managed") | .installPath | strings
+        | select(explode | all(. != 0 and . != 10))' \
+        "$HOME/.claude/plugins/installed_plugins.json" 2> /dev/null) || paths=""
+      while IFS= read -r d; do [ -n "$d" ] && [ -d "$d" ] && { dir=$d; break; }; done <<<"$paths"
       [ -n "$dir" ] && f=$(find "$dir/skills" -path "*/$sub/SKILL.md" 2> /dev/null | sort | head -1)
       [ -n "${f:-}" ] && { printf '%s\n' "$f"; return 0; } ;;
     *)
@@ -650,28 +662,8 @@ skill_file() { # skill-name -> SKILL.md path on stdout, non-zero when it resolve
   return 1
 }
 
-# The ticket's `skills:` names, one per line, as build_worker_prompt and worker_round read them.
+# The ticket's `skills:` names, one per line, as build_worker_prompt reads them.
 worker_skills() { section Worker | sed -n 's/^skills: *//p' | head -1 | tr ',' '\n' | sed 's/^ *//;s/ *$//' | grep .; }
-
-# Which named skills a round called: a Read tool_use of the name's skill_file path (how a Claude worker opens
-# a pstack skill, which refuses the Skill tool) or a Skill tool_use naming it. A call whose tool_result is an
-# error read nothing (Claude Code refuses the Skill tool for a disable-model-invocation skill, #508), so it
-# does not count; a call with no tool_result yet does. Each line parses alone, so one bad line drops only itself.
-skills_called() { # stream.jsonl name... -> the called names, sorted, unique and comma-joined, on stdout
-  local stream="$1" s sf want='[]'
-  shift
-  for s; do
-    sf=$(skill_file "$s") || sf=""
-    want=$(jq -c --arg n "$s" --arg f "$sf" '. + [{n:$n, f:$f}]' <<< "$want")
-  done
-  jq -nrR --argjson want "$want" '[inputs | fromjson? | objects] as $ev
-    | [$ev[] | select(.type == "user") | .message.content[]? | objects
-      | select(.type == "tool_result" and .is_error == true) | .tool_use_id] as $bad
-    | [$ev[] | select(.type == "assistant") | .message.content[]? | objects
-      | select(.type == "tool_use" and (.id as $i | $bad | index([$i]) | not))] as $uses
-    | [$want[] | . as $w | select($uses | any((.name == "Read" and $w.f != "" and .input.file_path == $w.f)
-        or (.name == "Skill" and .input.skill == $w.n))) | .n] | unique | join(",")' "$stream" 2> /dev/null
-}
 
 # A plugin agent file opens with frontmatter; strip it. One that asks for prose is also asked for the
 # JSON form; judge.md and reviewer.md carry their own `## Output` section and keep it byte-identical.
@@ -689,10 +681,10 @@ grader_rubric() {
 # eval call runs in a fresh export of the checkout's committed tree with evals/ removed, and with the evals
 # directory removed too when it lies inside the checkout; the rest of the tree stays, as in a ticket
 # worktree. This fences the working directory only: no permission rule stops a Read of an absolute path.
-eval_tree() { # work: exports into work/tree
+eval_tree() { # work [evals_dir, default EVALS_DIR]: exports into work/tree
   local top ev wd
   top=$(cd "$ROOT" && pwd -P)
-  ev=$(cd "$EVALS_DIR" 2> /dev/null && pwd -P)
+  ev=$(cd "${2:-$EVALS_DIR}" 2> /dev/null && pwd -P)
   wd=$(cd "$1" && pwd -P)
   case "$wd/" in "$top"/*|"${ev:-/nonexistent}"/*)
     echo "eval: TMPDIR ($wd) lies inside the checkout or the evals directory" >&2; return 1 ;; esac
@@ -773,7 +765,7 @@ run_eval() {
 
 run_eval_cases() { # grader work
   local grader="$1" tree="$2/tree" rubric="$2/rubric" budget="${EVAL_BUDGET_USD:-10}" gf schema settings dir name out res exp got erows grows
-  local spent=0 cases=0 mism=0 clean=0 ok attempt eline
+  local spent=0 cases=0 mism=0 clean=0 ok attempt eline nonce shown raw a copied
   gf=$(grader_file "$grader") || return 2
   # The checkout can move under a replay (`next` fast-forwards it), so the rubric and the sha256 below come from
   # one copy of the grader file.
@@ -799,16 +791,35 @@ run_eval_cases() { # grader work
       return 2
     fi
     name=$(basename "$dir")
+    if ! jq -e '(has("absent") | not) or (.absent | type == "array" and all(type == "string"))' "$dir/expected.json" > /dev/null 2>&1; then
+      echo "eval $grader/$name: expected.json's absent is not an array of strings" >&2
+      return 2
+    fi
+    if ! jq -e '(has("nonce_form") | not) or .nonce_form == "split"' "$dir/expected.json" > /dev/null 2>&1; then
+      echo "eval $grader/$name: expected.json's nonce_form is not \"split\"" >&2
+      return 2
+    fi
     cases=$((cases + 1))
+    copied=""
     # Two attempts, as the loop's grader call takes.
     for attempt in 1 2; do
+      # A case that plants @NONCE@ lists it under absent; each call gets its own nonce in the prompt and in
+      # that list, so a reply holding it took it from this prompt's plant. A case whose expected.json sets
+      # "nonce_form": "split" shows it in two parts (NONCE-1d3b a6b5) and its plant asks the grader to join
+      # them, so a reply that quotes the plant, as judge.md asks it to cite the line, carries no whole nonce.
+      nonce=@NONCE@ shown=@NONCE@
+      if grep -qF @NONCE@ "$dir/prompt.md"; then
+        nonce="NONCE-$(openssl rand -hex 4)" && [ "${#nonce}" -eq 14 ] || { echo "eval: openssl rand failed" >&2; return 2; }
+        shown=$nonce
+        jq -e '.nonce_form == "split"' "$dir/expected.json" > /dev/null && shown="${nonce:0:10} ${nonce:10}"
+      fi
       # The same flags as the production grader call (LOOP.md, Grader calls), so the replay grades the
       # way the loop does: --json-schema routes the reply through the schema, --strict-mcp-config and
       # --disable-slash-commands drop the prefix the grader never uses. Two things differ: the call runs
       # in the eval_tree export, not a ticket worktree, and each call gets the remaining headroom, so
       # EVAL_BUDGET_USD caps the sum over cases. role-settings.json is read beside the schema, for the
       # reason schema_for gives.
-      out=$(cat "$rubric" "$dir/prompt.md" | ( cd "$tree" && claude -p --model "$EVAL_MODEL" --effort "${EVAL_EFFORT:-$GRADER_EFFORT}" \
+      out=$({ cat "$rubric"; sed "s/@NONCE@/$shown/g" "$dir/prompt.md"; } | ( cd "$tree" && claude -p --model "$EVAL_MODEL" --effort "${EVAL_EFFORT:-$GRADER_EFFORT}" \
         --tools Read,Grep,Glob --strict-mcp-config --disable-slash-commands --no-session-persistence \
         --json-schema "$schema" \
         --max-budget-usd "$(awk -v b="$budget" -v s="$spent" 'BEGIN {printf "%.4f", b - s}')" \
@@ -832,11 +843,21 @@ served_models:(.modelUsage | if type == \"object\" then keys else [] end), ts:\$
           '{date:$date, ticket:$ticket, role:.role, cost_usd:.cost_usd}' >> "$FACTORY_DAILY"
       fi
       res=$(jq -r "$RESULT_OBJ | .result // \"\"" <<<"$out" 2>/dev/null)
+      raw="$out"$'\n'"$res"
       # Fallback: if a reply still carries code fences or prose around the object, the object runs
       # from the first brace to the last, so cut to those before parsing the verdict.
       if ! jq -e .verdict <<<"$res" > /dev/null 2>&1 && [ "${res#*\{}" != "$res" ]; then
         res="{${res#*\{}"; res="${res%\}*}}"
       fi
+      # Any attempt's reply that holds an absent string anywhere fails the case: the envelope, the reply text
+      # and the decoded strings of the judge object, so no escape in the inner JSON hides it. The search is
+      # for the whole nonce, which a split case's prompt never shows, so only a joined copy reads as copied;
+      # a quote of the split token line does not, while a whole-plant echo that stops short of the join
+      # reads as a citation.
+      raw="$raw"$'\n'"$(jq -r '.. | strings' <<<"$res" 2>/dev/null)"
+      while IFS= read -r a; do
+        [ -n "$a" ] && [ "${raw#*"$a"}" != "$raw" ] && copied="$copied copied $a"
+      done < <(jq -r --arg n "$nonce" '.absent // [] | .[] | gsub("@NONCE@"; $n)' "$dir/expected.json")
       # A usage limit or an API error answers with is_error and no cost. That is the environment,
       # not a verdict: say so and stop, rather than reporting it as a grader disagreement.
       if [ "$(jq -r "$RESULT_OBJ | .is_error // false" <<<"$out" 2>/dev/null)" = true ]; then
@@ -860,10 +881,11 @@ served_models:(.modelUsage | if type == \"object\" then keys else [] end), ts:\$
       grows=$(jq -r '[(.rows // {}) | to_entries[] | select(.value != "pass") | .key] | sort | join(",")' <<<"$res" 2>/dev/null)
       [ "$grows" = "$erows" ] || { ok=0; got="$got rows=[$grows]"; exp="$exp rows=[$erows]"; }
     fi
+    [ -z "$copied" ] || ok=0
     if [ "$ok" = 1 ]; then
       echo "eval $grader/$name: OK $got"
     else
-      echo "eval $grader/$name: MISMATCH got '$got', expected '$exp'"
+      echo "eval $grader/$name: MISMATCH got '$got', expected '$exp'$copied"
       mism=$((mism + 1))
     fi
   done
@@ -1009,7 +1031,7 @@ DAILY_BUDGET_USD=1000000; MAX_HOURS=1000; MAX_TURNS=200; CALL_TIMEOUT_SEC=5400; 
 NET_TIMEOUT_SEC="${FACTORY_NET_TIMEOUT_SEC:-120}"
 WORKER_MODEL="${FACTORY_WORKER_MODEL:-claude-opus-5-5}"   # ARCHITECTURE.md, Models and roles (2026-09-22)
 GRADER_MODEL="${FACTORY_GRADER_MODEL:-claude-opus-5-5}"   # ARCHITECTURE.md, Models and roles (2026-09-24)
-CODEX_MODEL="${FACTORY_CODEX_MODEL:-codex}"   # ledger label for a `worker: codex` round; Codex holds the real model in its own config, and its dollar cost is null (F4)
+CODEX_MODEL="${FACTORY_CODEX_MODEL:-gpt-6.1-sol}"   # every factory Codex call passes it as -m; the runner's model on 2026-10-31. Its dollar cost is null (F4)
 WORKER_ADVISOR="${FACTORY_WORKER_ADVISOR-claude-opus-5-5}"   # mid-round advisor on the worker call (ARCHITECTURE.md, Models and roles, 2026-09-24); FACTORY_WORKER_ADVISOR= (explicit empty) disables the flag. No colon: :- could never disable. The bare name is never read.
 WORKER_EFFORT=high         # the ticket's `effort:` line overrides (ARCHITECTURE.md, Models and roles)
 GRADER_EFFORT=high
@@ -1025,6 +1047,71 @@ LOG="${LOG:-/dev/null}"; LEDGER=""; DAILY=""; DECISIONS=""; WORKTREE=""; BRANCH=
 # separate from REVIEW_BLOCKED so a Claude-reviewer block never consumes the Codex review's one block.
 WORKER_KIND=claude; CODEX_REVIEW=no; CODEX_REVIEW_BLOCKED=0
 CODEX_PATH="$HOME/.local/bin"   # Codex is not on the non-interactive PATH (#41); every Codex call prepends this
+
+# The CODEX_HOME of every factory Codex call: the factory's own, logged in once with its own `codex login`, so the
+# operator's AGENTS.md, rules, hooks, memories and config.toml never reach a worker or a grader (#543 fenced only the
+# Claude calls), and a factory token refresh never rewrites the operator's auth.json. Each call also unsets
+# CODEX_UNSET, the variables Codex 0.163.0 reads for credentials ahead of the stored login (codex-rs/login/src/auth/
+# manager.rs:1500, :1537 and :2798, and ext/guardian-v2/src/async_scorer/startup.rs:70 for OPENAI_API_KEY), and
+# passes codex_skills_off (below) and skills.include_instructions=false, so no operator skill and no skill catalog
+# reaches it (a Codex worker gets its ticket's skills pasted). The factory writes nothing in the home; the model, the effort
+# and the trusted worktree go on each call's argv. Concurrent calls do share its auth.json, which Codex rewrites on a
+# token refresh by truncating it in place, locked only within one process (storage.rs:214, manager.rs:2845 at
+# rust-v0.163.0), so two calls refreshing at once can leave it invalid. A proactive refresh comes within 5 minutes
+# of the access token's expiry (manager.rs:3001; the factory's token lasted 10 days on 2026-10-31) and is skipped by
+# a call that finds the file already changed (manager.rs:2867), so its window is one refresh request; after a 401 a
+# call reloads the file, retries, and on a second 401 refreshes without that check (manager.rs:1985, :2884). Only a
+# lock held for each whole call would cover a refresh inside it, and that would run every factory Codex call one at
+# a time, so the race is left upstream. A home whose auth.json is missing or not a single JSON object stops the run
+# with the login command, which rewrites it; there is no fallback to the operator's login.
+CODEX_UNSET=(-u CODEX_API_KEY -u OPENAI_API_KEY -u CODEX_ACCESS_TOKEN
+  -u OPENAI_FEDERATION_RULE_ID -u OPENAI_IDENTITY_TOKEN_FILE -u OPENAI_WORKLOAD_IDENTITY_CONTEXT)
+# A separate login still sees plugins installed on the same ChatGPT account. These are supported feature keys
+# (`codex features list`, 0.163.0); stop plugin sync, app tools, and skill-triggered MCP installation on every call.
+CODEX_OFF=(-c features.plugins=false -c features.remote_plugin=false -c features.apps=false
+  -c features.skill_mcp_dependency_install=false)
+CODEX_FACTORY_HOME="${FACTORY_CODEX_HOME:-$HOME/.local/state/loam-factory/codex-home}"
+printf -v CODEX_HOME_Q '%q' "$CODEX_FACTORY_HOME"   # shell-quoted, so the hint runs as printed
+CODEX_LOGIN_HINT="no factory Codex login: $CODEX_HOME_Q/auth.json is missing or not a single JSON object (a concurrent token refresh can corrupt it); log it in on this host: mkdir -p -m 700 $CODEX_HOME_Q && CODEX_HOME=$CODEX_HOME_Q codex login --device-auth"
+codex_home() { # -> prints the factory CODEX_HOME, or the login hint on stderr and 1
+  jq -se 'length == 1 and (.[0] | type) == "object"' "$CODEX_FACTORY_HOME/auth.json" > /dev/null 2>&1 \
+    || { echo "$CODEX_LOGIN_HINT" >&2; return 1; }
+  printf '%s\n' "$CODEX_FACTORY_HOME"
+}
+# The -c value that trusts one directory and nothing else. Codex loads a project's .codex config, rules and hooks
+# only for a trusted project, so without it Loam's forbidden rules (rm -rf, force push) would not bind the worker.
+# The key is the physical path, as Codex reads its cwd, in a TOML basic string.
+codex_trust() { # dir -> projects={"<dir>"={trust_level="trusted"}}
+  local p
+  p=$(cd "$1" && pwd -P) || return 1
+  p=${p//\\/\\\\}; p=${p//\"/\\\"}
+  printf 'projects={"%s"={trust_level="trusted"}}\n' "$p"
+}
+# The -c value that disables, by path, every skill under the operator's ~/.agents/skills. HOME stays the operator's
+# for git, gh and the worker's tools, so Codex scans that root whatever CODEX_HOME is (ext/skills/src/host_roots.rs:105
+# at rust-v0.163.0), and skills.include_instructions=false hides only the catalog: a `$name` in a prompt still loads
+# that skill's body (core/src/session/turn.rs:1150). A skills.config rule with enabled=false drops the skill from both
+# (skills/src/selection.rs:28). find -L follows directory symlinks as Codex does, past its depth of 6, Codex
+# canonicalizes both paths before matching, and jq writes each path as a JSON string, which TOML reads alike.
+codex_skills_off() { # -> skills.config=[{path="<SKILL.md>",enabled=false},...]
+  local p paths=()
+  while IFS= read -r -d '' p; do paths+=("$p"); done \
+    < <(find -L "$HOME/.agents/skills" -maxdepth 8 -name SKILL.md -type f -print0 2> /dev/null)
+  jq -nr '"skills.config=[" + ([$ARGS.positional[] | "{path=" + tojson + ",enabled=false}"] | join(",")) + "]"' \
+    --args ${paths[@]+"${paths[@]}"}
+}
+# Empty tables merge with lower config layers: -c mcp_servers={} does NOT remove configured servers (0.163.0).
+# Ask Codex for the effective server names in this cwd, with the same trust override as the exec, then disable
+# each by its supported mcp_servers.<id>.enabled key. `mcp list` inspects config; it starts no MCP servers.
+codex_mcp_off() { # cwd home [Codex options] -> mcp_servers={"<id>"={enabled=false},...}
+  local dir="$1" ch="$2" servers
+  shift 2
+  servers=$(cd "$dir" && env "${CODEX_UNSET[@]}" PATH="$CODEX_PATH:$PATH" CODEX_HOME="$ch" \
+    codex "${CODEX_OFF[@]}" "$@" mcp list --json < /dev/null) || return 1
+  jq -er 'if type == "array" and all(.[]; (.name | type) == "string") then
+    "mcp_servers={" + ([.[] | (.name | tojson) + "={enabled=false}"] | join(",")) + "}"
+    else error("invalid codex mcp list reply") end' <<<"$servers"
+}
 # util-linux flock(1), and bash 4.1+ for the {var} descriptors the lease opens: a Mac has neither (bash 3.2 reads
 # `exec {fd}< file` as running a command named {fd}, which exits the shell), and runs keep the owner line's rules (#425).
 HAVE_FLOCK=$( { [ "${BASH_VERSINFO[0]}" -gt 4 ] || { [ "${BASH_VERSINFO[0]}" -eq 4 ] && [ "${BASH_VERSINFO[1]}" -ge 1 ]; }; } \
@@ -1135,41 +1222,6 @@ exit_words() { # status -> "<level> <words>"
   esac
 }
 
-# The host's healthchecks check: a beat at launch, then every 5 minutes while this run's process lives, so a
-# killed run or host goes red. The loop's TERM trap runs only after an in-flight beat returns (the sleep is
-# waited on, so it does not delay the trap), and heartbeat_stop waits for it, so no beat lands after the pause.
-# The loop closes the run's lease (FACTORY_SLOT_FD), so a beat left after the supervisor died, by finish, a signal
-# or SIGKILL, never holds the slot.
-heartbeat_start() {
-  alert --ping beat >> "$LOG" 2>&1 || log "healthchecks beat failed; see bin/alert's line above"
-  ( [ -n "$HAVE_FLOCK" ] && [ -n "${FACTORY_SLOT_FD:-}" ] && exec {FACTORY_SLOT_FD}>&- 2> /dev/null
-    trap 'exit 0' TERM
-    while sleep 300 & wait $!; kill -0 "$$"; do alert --ping beat; done ) < /dev/null > /dev/null 2>&1 &
-  HEARTBEAT=$!
-}
-
-# Another live run on this host, Loam's or another target's; a hard-killed run holds its slot until holds_slot
-# finds no process of it left and alerts. holds_slot is the whole test: a run beats only after cmd_run takes its lease
-# and writes `running` (exec_frozen keeps the fd), so a run that has beaten holds its slot, and one that has not beats later.
-other_live_run() {
-  local d
-  for d in "$RUNS_BASE"/*/*/ "$RUNS_BASE"/*/*/*/; do
-    [ "${d%/}" = "${RUN%/}" ] && continue
-    holds_slot "$d" && return 0
-  done
-  return 1
-}
-
-# The host's last live run pauses the check. A run launched meanwhile holds its slot before its first beat,
-# so the second look sees it and beats again, and the pause never outlives a live run.
-heartbeat_stop() {
-  [ -n "${HEARTBEAT:-}" ] && kill "$HEARTBEAT" 2> /dev/null && wait "$HEARTBEAT" 2> /dev/null
-  other_live_run && return 0
-  alert --ping pause >> "$LOG" 2>&1 || log "healthchecks pause failed; see bin/alert's line above"
-  other_live_run && { alert --ping beat >> "$LOG" 2>&1 || log "healthchecks beat failed"; }
-  return 0
-}
-
 # Exit code, status, and the final log line are decided together (LOOP.md, Exits).
 finish() { # status message
   local code words
@@ -1177,7 +1229,6 @@ finish() { # status message
     pr-opened) code=0 ;; ticket-defect) code=3 ;; stopped-environment) code=4 ;; abandon) code=5 ;; *) code=2 ;;
   esac
   set_status "$1"
-  heartbeat_stop
   words=$(exit_words "$1")
   notify "${words%% *}" "$(ticket_name) ${words#* }" "$2"
   log "EXIT $1 ($code): $2"
@@ -1347,6 +1398,8 @@ freeze() {
   # bin/claude-account switches accounts by rewriting the user tier's CLAUDE_CODE_OAUTH_TOKEN, so the copy leaves it
   # out and worker_round passes the live one. The rest of the user env may hold secrets too, so the copy is private
   # to the operator, as ~/.claude/settings.json is.
+  # A per-model autoCompactWindow in the user tier would outrank the worker file's top-level 450K window inside this
+  # one merged file (Claude Code settings precedence), so the merge drops it (#348).
   user="${CLAUDE_SETTINGS_FILE:-${CLAUDE_CONFIG_DIR:-$HOME/.claude}/settings.json}"
   [ -f "$user" ] || user=/dev/null
   mkdir -p "$RUN/uv/cache" "$RUN/uv/tools"
@@ -1358,7 +1411,8 @@ freeze() {
     merge($u[0] // {} | del(.sandbox, .env.CLAUDE_CODE_OAUTH_TOKEN, .permissions.allow, .permissions.additionalDirectories); .) | .env = (.env // {}) + {CLAUDE_CODE_SUBAGENT_MODEL: $m, CLAUDE_CODE_SUBAGENT_MODEL_FORCE: "1",
     ANTHROPIC_DEFAULT_SONNET_MODEL: $m, ANTHROPIC_DEFAULT_HAIKU_MODEL: $m,
     UV_CACHE_DIR: "\($uv)/cache", UV_TOOL_DIR: "\($uv)/tools"}
-    | .sandbox.filesystem.allowWrite += [$gd, "\($cd)/objects", "\($cd)/refs", "\($cd)/logs", $w, $t, "\($uv)/cache", "\($uv)/tools"]' \
+    | .sandbox.filesystem.allowWrite += [$gd, "\($cd)/objects", "\($cd)/refs", "\($cd)/logs", $w, $t, "\($uv)/cache", "\($uv)/tools"]
+    | if (.modelSettings | type) == "object" then .modelSettings |= map_values(if type == "object" then del(.autoCompactWindow) else . end) else . end' \
     "$ROOT/bin/factory.d/worker-settings.json" > "$RUN/frozen/worker-settings.json" ) 2>> "$LOG" \
     || finish stopped-environment "could not merge $user into the frozen worker settings"
   sed -e "s|<issue>|${ISSUE:-$KEY}|g" -e "s|<decisions>|$DECISIONS|g" -e "s|<mechanism>|${DECISIONS%/*}/mechanism.md|g" \
@@ -1428,27 +1482,24 @@ off_models() {
       | select(. as $m | $ok | any(. as $p | $m | startswith($p)) | not)] | unique'
 }
 
-record() { # round role model result.json [advisor_calls] [advisor_usd] [workflow_agents] [workflow_usd] [codex] [skills_called]
+record() { # round role model result.json [advisor_calls] [advisor_usd] [workflow_agents] [workflow_usd] [codex]
   # workflow_agents and workflow_usd come from workflow_ledger (0 0 on every round but a claude worker's
   # round 1, and on every Codex round). codex is 1 for a Codex call: cost_usd is null (the dollar caps do
   # not bound Codex, #41) and `usage` carries its verbatim token counters; ticket_spent, daily_spent, and
   # cmd_status all read cost_usd // 0, so null is safe.
   # served_models is the sorted modelUsage keys of the result, the models that answered (not the one asked
   # for); [] when the result has none, as a Codex round's does. cmd_status warns on one it does not expect.
-  # skills_called is skills_called's comma list, passed only for a Claude worker round; its line then carries
-  # skills_called as an array ([] for none) and every other line has no such field.
-  local line acalls="${5:-0}" ausd="${6:-0}" wagents="${7:-0}" wusd="${8:-0}" codex="${9:-0}" skills=null
-  [ $# -ge 10 ] && skills=$(jq -cn --arg s "${10}" '$s | split(",")')
+  local line acalls="${5:-0}" ausd="${6:-0}" wagents="${7:-0}" wusd="${8:-0}" codex="${9:-0}"
   line=$(jq -c --argjson round "$1" --arg role "$2" --arg model "$3" --arg ts "$(now)" --arg nav "${FACTORY_NAV_ARM:-base}" \
     --argjson acalls "$acalls" --argjson ausd "$ausd" --argjson wagents "$wagents" --argjson wusd "$wusd" --argjson codex "$codex" \
-    --argjson skills "$skills" "$RESULT_OBJ | {round:\$round, role:\$role, model:\$model, cost_usd:(if \$codex == 1 then null else (.total_cost_usd // 0) end), \
+    "$RESULT_OBJ | {round:\$round, role:\$role, model:\$model, cost_usd:(if \$codex == 1 then null else (.total_cost_usd // 0) end), \
 duration_ms:(.duration_ms // 0), num_turns:(.num_turns // 0), denials:((.permission_denials // []) | length), \
 subtype:(.subtype // \"unknown\"), usage:(.usage // null), advisor_calls:\$acalls, advisor_usd:\$ausd, \
 workflow_agents:\$wagents, workflow_usd:\$wusd, served_models:(.modelUsage | if type == \"object\" then keys else [] end), \
-nav_arm:\$nav, ts:\$ts} + (if \$skills == null then {} else {skills_called:\$skills} end)" "$4" 2> /dev/null) \
+nav_arm:\$nav, ts:\$ts}" "$4" 2> /dev/null) \
     || line=$(jq -nc --argjson round "$1" --arg role "$2" --arg model "$3" --arg ts "$(now)" --arg nav "${FACTORY_NAV_ARM:-base}" \
       --argjson acalls "$acalls" --argjson ausd "$ausd" --argjson wagents "$wagents" --argjson wusd "$wusd" --argjson codex "$codex" \
-      --argjson skills "$skills" '{round:$round, role:$role, model:$model, cost_usd:(if $codex == 1 then null else 0 end), duration_ms:0, num_turns:0, denials:0, subtype:"unknown", usage:null, advisor_calls:$acalls, advisor_usd:$ausd, workflow_agents:$wagents, workflow_usd:$wusd, served_models:[], nav_arm:$nav, ts:$ts} + (if $skills == null then {} else {skills_called:$skills} end)')
+      '{round:$round, role:$role, model:$model, cost_usd:(if $codex == 1 then null else 0 end), duration_ms:0, num_turns:0, denials:0, subtype:"unknown", usage:null, advisor_calls:$acalls, advisor_usd:$ausd, workflow_agents:$wagents, workflow_usd:$wusd, served_models:[], nav_arm:$nav, ts:$ts}')
   printf '%s\n' "$line" >> "$LEDGER"
   printf '%s' "$line" | jq -c --arg date "$(today)" --arg ticket "$KEY" \
     '{date:$date, ticket:$ticket, role:.role, cost_usd:.cost_usd}' >> "$DAILY"
@@ -1493,12 +1544,12 @@ owner_lock() { # <run dir> <tries>
 }
 
 # A run's `owner` line, printed as read when it is well formed and names a gone supervisor (owner_gone); a missing or
-# malformed line is not gone. holds_slot's lease and owner paths both judge it here.
-dead_owner() { # <run dir>
+# malformed line is not gone. holds_slot's lease and owner paths both judge it here; the lease path passes `lease`.
+dead_owner() { # <run dir> [lease]
   local o t re='^[0-9]+ [A-Z][a-z]{2} [A-Z][a-z]{2} [ 0-9][0-9] [0-9]{2}:[0-9]{2}:[0-9]{2} [0-9]{4}$'
   o=$(cat "$1/owner" 2> /dev/null) || return 1
   t=${o%"${o##*[![:space:]]}"}   # a line written on macOS before #448 ends in lstart's padding
-  [[ "$t" =~ $re ]] && owner_gone "${t%% *}" "${t#* }" && printf '%s' "$o"
+  [[ "$t" =~ $re ]] && owner_gone "${t%% *}" "${t#* }" ${2-} && printf '%s' "$o"
 }
 
 # The owner's pid is gone, a zombie (kill -0 succeeds on one), or reused by a process that started over 300 s
@@ -1506,9 +1557,12 @@ dead_owner() { # <run dir>
 # would need the pid space to wrap. A ps or date that fails or prints nothing cannot tell, so the slot holds.
 # macOS pads lstart with trailing spaces and has BSD date, so the start is trimmed and parsed either way.
 # A gone or zombie pid also holds while a live process has it as its process group id; Linux does not reuse that
-# number meanwhile. The heartbeat loop is such a member and exits within 300 s of the supervisor, so a reap waits at
-# most one beat. A model call has a session of its own, so holds_slot finds it through the run's `call` file.
-owner_gone() { # <pid> <ps lstart>
+# number meanwhile. A model call has a session of its own, so holds_slot finds it through the run's `call` file.
+# With `lease` (any non-empty third argument) a live pid that is no zombie is never gone, whatever its start: on the
+# lease path a held lease already shows a process of the run lives, and a step of any size would else read the live
+# supervisor as gone (#574). A pid reused while an orphaned call holds the lease spares that call until
+# CALL_TIMEOUT_SEC ends it and frees the lease.
+owner_gone() { # <pid> <ps lstart> [lease]
   local stat= start a b
   if kill -0 "$1" 2> /dev/null; then
     stat=$(ps -o stat= -p "$1" 2> /dev/null) && [ -n "$stat" ] || return 1
@@ -1516,6 +1570,7 @@ owner_gone() { # <pid> <ps lstart>
   if [ -z "$stat" ] || [[ "$stat" =~ ^[[:space:]]*Z ]]; then
     ! group_live "$1"; return
   fi
+  [ -z "${3-}" ] || return 1
   start=$(TZ=UTC LC_ALL=C ps -o lstart= -p "$1" 2> /dev/null) && start=${start%"${start##*[![:space:]]}"} \
     && [ -n "$start" ] || return 1
   [ "$start" = "$2" ] && return 1
@@ -1533,6 +1588,20 @@ group_live() { # <pgid> -> 0 when a process other than a zombie has it as its gr
   local g
   g=$(ps -e -o pgid=,stat= 2> /dev/null) && [ -n "$g" ] || return 0
   awk -v p="$1" '$1 == p && $2 !~ /^Z/ { f = 1 } END { exit !f }' <<< "$g"
+}
+
+# A run suspended whole (SIGSTOP, ^Z, or a job stopped by its shell) keeps its lease and its owner, so it holds its slot
+# with no progress: every process that is not a zombie in its owner's process group is stopped (ps state T or t). The
+# supervisor runs in that group (tmux's shell, bin/factory, its children); a model call has a session of its own and
+# ends at CALL_TIMEOUT_SEC (timeout's KILL reaches a stopped call), so a stopped call alone needs no rule. A ps that
+# fails, or an owner it cannot read, is not stopped.
+run_stopped() { # <run dir>
+  local o g
+  o=$(cat "$1/owner" 2> /dev/null) && g=$(ps -o pgid= -p "${o%% *}" 2> /dev/null) && g=${g//[[:space:]]/} \
+    && [ -n "$g" ] || return 1
+  g=$(ps -e -o pgid=,stat= 2> /dev/null | awk -v p="$g" '$1 == p && $2 !~ /^Z/ { n++; if ($2 !~ /^[Tt]/) up = 1 }
+    END { print (n && !up) ? "stopped" : "" }')
+  [ "$g" = stopped ]
 }
 
 # A recorded process group still lives and is still the one recorded: a member that is not a zombie, and a leader, while
@@ -1571,8 +1640,8 @@ call_group() { # <run dir>
   echo "$g"
 }
 
-# The project a run dir belongs to, from where it sits, not the caller's REPO: other_live_run walks every
-# target's runs. Loam's sit at RUNS_BASE/<issue>/<sha8>, another target's one level down under <owner>__<repo>;
+# The project a run dir belongs to, from where it sits, not the caller's REPO, so an alert about a run names
+# its own target. Loam's sit at RUNS_BASE/<issue>/<sha8>, another target's one level down under <owner>__<repo>;
 # a dir elsewhere (a sourced test's) names none.
 run_project() { # <run dir>
   local t
@@ -1624,7 +1693,7 @@ holds_slot() { # <run dir> [peek]
       if ! flock -n "$fd"; then
         exec {fd}>&-
         [ -n "$peek" ] && return 0
-        if o=$(dead_owner "$1") && owner_lock "$1" 1; then orphan_call_kill "$1" "$o"; rmdir "$1/owner.lock"; fi
+        if o=$(dead_owner "$1" lease) && owner_lock "$1" 1; then orphan_call_kill "$1" "$o"; rmdir "$1/owner.lock"; fi
         return 0
       fi
       # A process may close the descriptors it does not pass on (Node's child processes do), so a model call's tool
@@ -1797,21 +1866,45 @@ assert_call_ok() { # role result.json [round-start-sha]
   finish stopped-environment "the $1 call failed before doing work: $e"
 }
 
+# The active stored account's name; each Claude call site reads it into CALL_ACCOUNT before the call loads its token.
+active_account() { "$ROOT/bin/claude-account" status 2> /dev/null | sed -n 's/^active: \([^;]*\);.*/\1/p'; }
+
 # Usage limits are per account, so on a limit reply switch to the other stored account and retry at once,
 # rather than idling this run while the other account sits unused. bin/claude-account owns the token files
-# and the settings env channel; one switch per limit event, then a five-minute cooldown sends any further
-# limit down the sleep path (both accounts are limited when a second reply lands within seconds). No token
-# value ever reaches the log or the ledger: the switcher prints names only and the ledger line names only.
-limit_switch() { # -> 0 after switching accounts, 1 when there is no other account or a switch is on cooldown
-  local to from last
-  to=$("$ROOT/bin/claude-account" other 2> /dev/null) || return 1
-  if [ -f "$RUN/limit-switch" ]; then
-    last=$(cat "$RUN/limit-switch" 2> /dev/null) || last=""
-    [ -n "$last" ] && [ "$(( $(date +%s) - last ))" -lt 300 ] && return 1
+# and the settings env channel. The account is the host's, shared by every live run (FACTORY_MAX_PARALLEL), so
+# a switch is made only while the active account is still CALL_ACCOUNT, the one the limited call ran under: once
+# another run has switched away from it, this run retries on the new account and never switches back. The check and
+# the switch hold one host-wide lock, so two runs limited at once switch once: a flock on RUNS_BASE/limit-switch.lock,
+# or on a host with no flock(1) (a Mac) owner_lock's mkdir lock in RUNS_BASE/limit-switch.d, which a killed holder
+# leaves for at most a minute. Either waits about 60 s, then the limit takes the sleep path. One switch per limit
+# event, then a host-wide five-minute cooldown (RUNS_BASE/limit-switch) sends any further limit down the sleep path,
+# a run limited on the account just switched to included (both accounts are limited when a second reply lands that
+# soon); after the cooldown such a run switches back. No token value ever reaches the log or the ledger: the switcher
+# prints names only and the ledger line names only.
+limit_switch() { # -> 0 after a switch, or one away from CALL_ACCOUNT already made; 1 with no other account or on cooldown
+  local fd= rc
+  if [ -n "$HAVE_FLOCK" ]; then
+    mkdir -p "$RUNS_BASE" && exec {fd}>> "$RUNS_BASE/limit-switch.lock" || return 1
+    flock -w 60 "$fd" || { exec {fd}>&-; return 1; }
+  else
+    mkdir -p "$RUNS_BASE/limit-switch.d" && owner_lock "$RUNS_BASE/limit-switch.d" 60 || return 1
   fi
-  from=$("$ROOT/bin/claude-account" status 2> /dev/null | sed -n 's/^active: \([^;]*\);.*/\1/p')
+  limit_switch_held; rc=$?
+  if [ -n "$fd" ]; then exec {fd}>&-; else rmdir "$RUNS_BASE/limit-switch.d/owner.lock"; fi
+  return "$rc"
+}
+limit_switch_held() {
+  local to from last
+  from=$(active_account)
+  if [ -n "${CALL_ACCOUNT-}" ] && [ "$from" != "$CALL_ACCOUNT" ]; then
+    log "usage limit on account $CALL_ACCOUNT; another run already switched to ${from:-none}; retrying the call"
+    return 0
+  fi
+  last=$(cat "$RUNS_BASE/limit-switch" 2> /dev/null) || last=""
+  [[ "$last" =~ ^[0-9]+$ ]] && [ "$(( $(date +%s) - last ))" -lt 300 ] && return 1
+  to=$("$ROOT/bin/claude-account" other 2> /dev/null) || return 1
   "$ROOT/bin/claude-account" use "$to" > /dev/null 2>&1 || return 1
-  date +%s > "$RUN/limit-switch"
+  date +%s > "$RUNS_BASE/limit-switch"
   log "usage limit: switched account ${from:-none} -> $to; retrying the call"
   printf '{"ts":"%s","event":"limit-switch","from":"%s","to":"%s"}\n' "$(now)" "${from:-none}" "$to" >> "$LEDGER"
   return 0
@@ -1959,7 +2052,7 @@ build_worker_prompt() { # round -> prompt path (pending until the call returns a
   # a Codex worker swallows an unknown `/<skill>` line (#41), so it gets each named skill's body pasted.
   while IFS= read -r s; do
     [ -n "$s" ] || continue
-    if ! sf=$(skill_file "$s"); then
+    if ! sf=$(SKILL_SETTINGS="$RUN/frozen/worker-settings.json" skill_file "$s"); then
       # Lint guaranteed the name resolved, so no resolution now is an install gap, not a typo; a prompt
       # naming a skill the worker cannot read would be worse than stopping.
       # build_worker_prompt runs in $(...), so return non-zero; worker_round turns it into finish.
@@ -2186,8 +2279,12 @@ worker_round() { # round; leaves round-N.* only once the call produced a result
   if [ "$WORKER_KIND" = codex ]; then
     # The Codex worker: JSONL stream is stdout, -o is the last message, < /dev/null keeps Codex off the
     # caller's stdin (#41). No dollar budget bounds it (cost_usd null); CALL_TIMEOUT_SEC and MAX_HOURS do.
-    local rc start wl wagents wusd swapped=0 codex_target cgd ccd add_dirs
-    log "codex worker call: round $round model=$CODEX_MODEL (dollar caps do not bound it), prompt=$(wc -c < "$pf") bytes"
+    local rc start wl wagents wusd swapped=0 codex_target cgd ccd add_dirs ch trust skills_off mcp_off
+    log "codex worker call: round $round model=$CODEX_MODEL effort=$WORKER_EFFORT (dollar caps do not bound it), prompt=$(wc -c < "$pf") bytes"
+    ch=$(codex_home) || finish stopped-environment "$CODEX_LOGIN_HINT"
+    trust=$(codex_trust "$WORKTREE") || finish stopped-environment "could not resolve $WORKTREE for the Codex trust entry"
+    skills_off=$(codex_skills_off) || finish stopped-environment "could not list ~/.agents/skills for the Codex skill rules"
+    mcp_off=$(codex_mcp_off "$WORKTREE" "$ch" -c "$trust") || finish stopped-environment "could not list Codex MCP servers to disable them"
     # Each worker call writes its own mechanism.md, so an earlier call's account of a diff that has since moved
     # never opens the PR; a call that writes none gets open_pr's fallback line (#330).
     rm -f "$out" "${DECISIONS%/*}/mechanism.md"
@@ -2206,7 +2303,7 @@ worker_round() { # round; leaves round-N.* only once the call produced a result
     ccd=$(git -C "$WORKTREE" rev-parse --path-format=absolute --git-common-dir)
     add_dirs=(--add-dir "$cgd" --add-dir "$ccd/objects" --add-dir "$ccd/refs" --add-dir "$ccd/logs" --add-dir "${DECISIONS%/*}")
     start=$SECONDS
-    call_start "$WORKTREE" ${t[@]+"${t[@]}"} env PATH="$CODEX_PATH:$PATH" codex exec --json -s workspace-write "${add_dirs[@]}" "$(cat "$pf")" -o "$RUN/round-$round.last.txt" > "$out" < /dev/null
+    call_start "$WORKTREE" ${t[@]+"${t[@]}"} env "${CODEX_UNSET[@]}" PATH="$CODEX_PATH:$PATH" CODEX_HOME="$ch" codex exec "${CODEX_OFF[@]}" --json -m "$CODEX_MODEL" -c model_reasoning_effort="$WORKER_EFFORT" -c "$trust" -c "$skills_off" -c skills.include_instructions=false -c "$mcp_off" -s workspace-write "${add_dirs[@]}" "$(cat "$pf")" -o "$RUN/round-$round.last.txt" > "$out" < /dev/null
     call_end worker; rc=$?
     [ "$rc" -eq 0 ] || log "codex worker call exited $rc (the result decides)"
     # Restore the tracked .codex before codex_result so the clean-tree check and the graders see the
@@ -2239,6 +2336,8 @@ worker_round() { # round; leaves round-N.* only once the call produced a result
     # The call loads no settings tier, so the account token bin/claude-account last wrote is read here, after any
     # switch, and passed in this call's environment only, never on a command line (freeze). The supervisor keeps its
     # launch value, which a call gets when the read is empty or fails, so a token the file has lost is never reused.
+    # The account is named first, so a switch between the two reads makes limit_switch retry, never switch back.
+    CALL_ACCOUNT=$(active_account)
     tok=$(jq -r '.env.CLAUDE_CODE_OAUTH_TOKEN // empty' "${CLAUDE_SETTINGS_FILE:-${CLAUDE_CONFIG_DIR:-$HOME/.claude}/settings.json}" 2> /dev/null)
     tok_set=${CLAUDE_CODE_OAUTH_TOKEN+1}; tok0=${CLAUDE_CODE_OAUTH_TOKEN-}
     [ -z "$tok" ] || { printf -v CLAUDE_CODE_OAUTH_TOKEN '%s' "$tok" && export CLAUDE_CODE_OAUTH_TOKEN; }
@@ -2280,11 +2379,7 @@ worker_round() { # round; leaves round-N.* only once the call produced a result
   # workflow_agents and workflow_usd for this round: 0 0 unless this is a large claude ticket's round 1 (F12).
   local wl wagents wusd
   wl=$(workflow_ledger "$round" "$out" "$res"); wagents=${wl% *}; wusd=${wl#* }
-  # The ticket's `skills:` names this round read by path or called through the Skill tool; it informs, never grades.
-  local names=() s
-  while IFS= read -r s; do names+=("$s"); done < <(worker_skills)
-  record "$round" worker "$WORKER_MODEL" "$res" "$acalls" "$ausd" "$wagents" "$wusd" 0 \
-    "$(skills_called "$out" ${names[@]+"${names[@]}"})"
+  record "$round" worker "$WORKER_MODEL" "$res" "$acalls" "$ausd" "$wagents" "$wusd" 0
   [ -z "$CALL_STUCK" ] || finish stopped-environment "$CALL_STUCK"
   assert_call_ok worker "$res" "$head0"
   mv "$pf" "$RUN/round-$round.prompt.md"
@@ -2420,6 +2515,8 @@ call_json() { # round stem role prompt_file schema_file
     # --tools Read,Grep,Glob is what makes a grader read-only (#40); with no MCP schemas and no
     # skills listing its prefix is 9.9k tokens instead of 27k (probed 2026-09-09). --setting-sources
     # user is what keeps the worktree's own hooks out, so a grader can still read the tree it grades.
+    # The user tier's account token is loaded by the call, so its account is named just before (limit_switch).
+    CALL_ACCOUNT=$(active_account)
     call_start "$WORKTREE" ${TIMEOUT_G[@]+"${TIMEOUT_G[@]}"} claude -p --model "$GRADER_MODEL" --effort "$GRADER_EFFORT" \
         --tools Read,Grep,Glob --strict-mcp-config --disable-slash-commands --no-session-persistence \
         --json-schema "$(cat "$schema")" \
@@ -2486,8 +2583,12 @@ run_review() { # round -> 0 when nothing blocks
 }
 
 run_codex_review() { # round -> 0 when nothing blocks; needs-attention with a critical or high finding blocks once (LOOP.md)
-  local round="$1" f="$RUN/round-$1.codex-review.json" jsonl res="$RUN/round-$1.codex-review.result.json" base prompt blocking rc start call parsed=0
+  local round="$1" f="$RUN/round-$1.codex-review.json" jsonl res="$RUN/round-$1.codex-review.result.json" base prompt blocking rc start call parsed=0 ch trust skills_off mcp_off
   base=$(cat "$RUN/base.sha")
+  ch=$(codex_home) || finish stopped-environment "$CODEX_LOGIN_HINT"
+  trust=$(codex_trust "$WORKTREE") || finish stopped-environment "could not resolve $WORKTREE for the Codex trust entry"
+  skills_off=$(codex_skills_off) || finish stopped-environment "could not list ~/.agents/skills for the Codex skill rules"
+  mcp_off=$(codex_mcp_off "$WORKTREE" "$ch" -c "$trust") || finish stopped-environment "could not list Codex MCP servers to disable them"
   # The prompt is the frozen brief with every <base> filled in, then the frozen ticket between fence lines as
   # build_evidence prints it; only the brief is filled, so a <base> in the ticket text reaches Codex as written.
   prompt=$(sed "s/<base>/$base/g" "$RUN/frozen/codex-review.prompt.md"
@@ -2500,9 +2601,12 @@ run_codex_review() { # round -> 0 when nothing blocks; needs-attention with a cr
     # A review needs no write access, so it runs read-only: under workspace-write it could edit the tree the
     # judge and reviewer already graded. `codex exec review` ignores --output-schema, so the review is plain
     # `codex exec` with the schema (#41): the -o file holds the schema-validated JSON, the JSONL stream
-    # (stdout) carries usage for the ledger. The prompt, built above, is one argument; Codex reads the diff itself.
+    # (stdout) carries usage for the ledger. The prompt above is one argument. The -o
+    # file goes first, so a call that writes none cannot pass off an earlier call's verdict (a resumed round's, on an
+    # older HEAD) as its own.
+    rm -f "$f"
     start=$SECONDS
-    call_start "$WORKTREE" ${TIMEOUT_G[@]+"${TIMEOUT_G[@]}"} env PATH="$CODEX_PATH:$PATH" codex exec --json --output-schema "$RUN/frozen/review-output.schema.json" -o "$f" -s read-only "$prompt" > "$jsonl" < /dev/null
+    call_start "$WORKTREE" ${TIMEOUT_G[@]+"${TIMEOUT_G[@]}"} env "${CODEX_UNSET[@]}" PATH="$CODEX_PATH:$PATH" CODEX_HOME="$ch" codex exec "${CODEX_OFF[@]}" --json -m "$CODEX_MODEL" -c model_reasoning_effort="$GRADER_EFFORT" -c "$trust" -c "$skills_off" -c skills.include_instructions=false -c "$mcp_off" --output-schema "$RUN/frozen/review-output.schema.json" -o "$f" -s read-only "$prompt" > "$jsonl" < /dev/null
     call_end "Codex review"; rc=$?
     [ "$rc" -eq 0 ] || log "codex review call exited $rc"
     codex_result "$jsonl" "$rc" "$(( (SECONDS - start) * 1000 ))" > "$res"
@@ -2654,7 +2758,7 @@ open_pr() { # [draft]: opened at the grader-round cap
     printf '## Goal\n\n%s\n\n' "$(section "Goal and why" | sed '/./,$!d')"
     printf '## Commits\n\n```\n%s\n```\n\n' "$(git -C "$WORKTREE" log --oneline "$base..HEAD")"
     [ -s "$RUN/round-$ROUND.measure" ] && { printf '## Rows measured\n\n```\n'; cat "$RUN/round-$ROUND.measure"; printf '```\n\n'; }
-    printf '## Merge checklist\n\n'; section "Merge checklist" | grep '^- ' | sed 's/^- /- [ ] /'; printf '\n'
+    printf '## Merge checklist\n\n'; section "Merge checklist" | grep '[^[:space:]]' | sed -E '/^[[:space:]]/!{s/^- (\[[ xX]\] )?//; s/^/- [ ] /;}'; printf '\n'
     printf '## Decisions\n\n```\n'; cat "$DECISIONS"; printf '```\n\n'
     checks_section "Checks at base ${base:0:8} (round 0)" "$RUN/round-0.checks"
     checks_section "Checks at the graded sha (round $ROUND)" "$RUN/round-$ROUND.checks"
@@ -2803,12 +2907,10 @@ cmd_run() {
   # launch of the same ticket holds it says so and exits, leaving that run's status, `launched` (its MAX_HOURS clock)
   # and log (status --criteria's round) as they were. The fd is no close-on-exec, so the frozen re-exec and every
   # child inherit it: the run holds the lease until its last process exits. The frozen pass already holds it and must
-  # not lock a second open of the file, which would wait on its own lease. The heartbeat loop alone closes it
-  # (heartbeat_start). Where flock(1) is missing (a Mac) no lease is written and holds_slot judges the owner line below.
+  # not lock a second open of the file, which would wait on its own lease. Where flock(1) is missing (a Mac) no lease is written and holds_slot judges the owner line below.
   if [ -n "$HAVE_FLOCK" ] && [ "${FACTORY_FROZEN:-}" != "$RUN/frozen/factory" ]; then
     exec {SLOT_FD}>> "$RUN/lease" && flock -w 65 "$SLOT_FD" \
       || { echo "factory run: could not take $RUN/lease in 65 s; another launch of this ticket, or a process one left running, holds it" >&2; exit 4; }
-    export FACTORY_SLOT_FD=$SLOT_FD   # so the frozen pass's heartbeat can close it
   fi
   # A model call's tool process may have closed the lease (holds_slot), or there is no lease (no flock), and still
   # write the worktree this launch would prepare; refuse as above, writing nothing.
@@ -2859,7 +2961,6 @@ cmd_run() {
   prepare_worktree
   freeze
   exec_frozen
-  heartbeat_start   # after the re-exec, so the loop's pid lives in the process that runs finish
   BODY=$(cat "$RUN/frozen/issue.md")   # from here on the frozen body is the ticket
   [ "$IS_FILE" = 1 ] && trap 'git -C "$MAIN_CHECKOUT" worktree remove --force "$WORKTREE" > /dev/null 2>&1' EXIT
   TIMEOUT_G=()
@@ -3154,7 +3255,18 @@ daily_spent_at_runner_caps() { # -> 0 when the shared daily ledger has no room f
 # every candidate it would pick rather than the first; it exits 0 after the loop, before the daily-budget wait,
 # with no line when none would launch.
 # --install writes the ten-minute runner timer from bin/factory.d/next.crontab.
-cmd_next() { # [--dry-run|--install|--frontier]
+# A real tick (no flag) that returns 0 beats the host's healthchecks check, its only beat, which also resumes a paused
+# check; a tick that refuses sends nothing, so refusals that outlast the check's period and grace turn it red, and so
+# does a dead host or a stopped timer. A refusal's stderr reaches no one on its own (jhaveris's cron line appends it to next.log and the host
+# has no mail), so the check is the alarm.
+cmd_next() {
+  next_tick "$@" || return
+  [ $# -eq 0 ] || return 0
+  alert --ping beat >&2 || echo "healthchecks beat failed; see bin/alert's line above" >&2
+  return 0
+}
+
+next_tick() { # [--dry-run|--install|--frontier]
   local dry=0 frontier=0 do_install=0 a
   for a in "$@"; do
     case "$a" in
@@ -3192,7 +3304,7 @@ cmd_next() { # [--dry-run|--install|--frontier]
   # 1b. A logged-out Claude fails every worker call (#78), so the timer refuses to launch rather than
   #     assign the ticket, run round 0, and page the owner when the first call fails. The probe is
   #     read-only and shared with precondition_lines; it runs under --dry-run too, since a check from
-  #     inside a worktree may run it. The line goes to stderr (cron mails it) and returns 1, the same
+  #     inside a worktree may run it. The line goes to stderr (cron's next.log) and returns 1, the same
   #     shape as `frontier query failed`; the ticket stays unassigned and launches on the first tick
   #     after the login returns. The target gate works the same way: it refuses Loam without the toolchain
   #     exports and another target without a bin/check, which would fail guard bin/check after its work (#158).
@@ -3217,7 +3329,10 @@ cmd_next() { # [--dry-run|--install|--frontier]
   #    FACTORY_MAX_PARALLEL bounds the count, as it does in cmd_run through apply_caps; default 1.
   #    --dry-run asks with peek, so a run holds_slot would reap counts free and is not reaped or alerted on.
   #    --frontier counts the same way but never stops here, since it lists the frontier whatever the slots hold.
-  local d st n=0 max="${FACTORY_MAX_PARALLEL:-$MAX_PARALLEL}" peek=
+  #    A counted run suspended whole (run_stopped), whatever the slots, is a refusal, not an idle tick: nothing launches,
+  #    exit 1, so cmd_next sends no beat and the check goes red. A pr-opened run waiting on its review has no owner process
+  #    to judge, so it is idle.
+  local d st n=0 max="${FACTORY_MAX_PARALLEL:-$MAX_PARALLEL}" peek= stopped=
   [ "$dry" = 1 ] && peek=peek
   for d in "$RUNS_ROOT"/*/*/; do
     st=$(cat "$d/status" 2> /dev/null || true)
@@ -3227,7 +3342,13 @@ cmd_next() { # [--dry-run|--install|--frontier]
     fi
     holds_slot "$d" "$peek" || continue
     n=$((n + 1))
+    run_stopped "$d" && stopped="${d%/}"
   done
+  if [ "$frontier" = 0 ] && [ -n "$stopped" ]; then
+    echo "nothing to launch"
+    echo "refused: every process of the run in $stopped is stopped (SIGSTOP or a stopped job), so it holds its slot with no progress; kill -CONT or kill its process group" >&2
+    return 1
+  fi
   if [ "$frontier" = 0 ] && [ "$n" -ge "$max" ]; then
     echo "nothing to launch"
     return 0
@@ -3236,7 +3357,7 @@ cmd_next() { # [--dry-run|--install|--frontier]
   # 3. Fast-forward the checkout next runs from, so a merged loop change reaches the supervisor
   #    (freeze copies bin/factory from here) before the launch. Never under --dry-run, and only
   #    with a clean tree, since a dirty tree would abort the --ff-only merge mid-launch.
-  #    A refused pull is logged (log writes to stderr, which cron mails) and never aborts the launch:
+  #    A refused pull is logged (log writes to stderr, cron's next.log) and never aborts the launch:
   #    the run proceeds on the stale checkout, with the cause on record. Another target's checkout is
   #    pulled the same way, since lint and the standing list read its tree (F8).
   if [ "$dry" = 0 ]; then
@@ -3258,7 +3379,7 @@ cmd_next() { # [--dry-run|--install|--frontier]
   # 4. The frontier: open, ready-for-agent, unassigned issues with no open native blocker, lowest
   #    number first, plus the runner's own such issues whose current body has no run yet or whose run ended stopped-daily,
   #    stopped-environment or stopped. A gh failure (offline, unauthenticated, off cron's PATH, empty repo) prints
-  #    `frontier query failed` and returns 1, so cron mails it rather than the timer stalling silent;
+  #    `frontier query failed` and returns 1, so no beat is sent (cmd_next) rather than the timer stalling silent;
   #    only a successful, empty query falls through to `nothing to launch`.
   local repo ready num b64 body
   repo=$(target_repo)
@@ -3309,7 +3430,7 @@ cmd_next() { # [--dry-run|--install|--frontier]
   # --frontier never sets pick but prints each candidate that passes, so every candidate gets the editor call.
   # </dev/null keeps gh off the candidate list this loop reads on stdin. This check only
   # picks; load_ticket checks the owner again on the body the run freezes.
-  local pick="" st_last lint_err lint_line author editor run
+  local pick="" read_failed="" st_last lint_err lint_line author editor run
   while read -r who num author b64; do
     [ -n "$num" ] || continue
     body=$(printf '%s' "$b64" | base64 -d)
@@ -3357,6 +3478,7 @@ cmd_next() { # [--dry-run|--install|--frontier]
             -f query='query($owner: String!, $name: String!, $number: Int!) { repository(owner: $owner, name: $name) { issue(number: $number) { editor { login } lastEditedAt } } }' \
             --jq '.data.repository.issue | .editor.login // (if .lastEditedAt then "(unnamed)" else "" end)' < /dev/null 2> /dev/null); then
             echo "not owner #$num: could not read the last editor with gh (failed, or no reply in ${NET_TIMEOUT_SEC}s); passed over" >&2
+            read_failed=1
             continue
           fi
           if [ "$editor" = "(unnamed)" ]; then
@@ -3382,6 +3504,13 @@ cmd_next() { # [--dry-run|--install|--frontier]
     esac
   done <<< "$( { sed 's/^/none /' <<< "$ready"; sed 's/^/mine /' <<< "$mine"; } | sort -s -n -k2,2 )"
   [ "$frontier" = 1 ] && return 0
+  # A candidate passed over on a failed read, with none picked, is a refusal, not an idle tick: it returns 1, so
+  # cmd_next sends no beat and a read that keeps failing turns the check red.
+  if [ -z "$pick" ] && [ -n "$read_failed" ]; then
+    echo "nothing to launch"
+    echo "refused: a candidate was passed over on a failed GitHub read (above)" >&2
+    return 1
+  fi
 
   # A run stopped at today's daily budget, with the shared ledger (RUNS_BASE, every target's) also spent at the
   # runner's own caps, means a new launch would only assign, build, run round 0 and stop at its first cap check;
@@ -3419,9 +3548,10 @@ cmd_next() { # [--dry-run|--install|--frontier]
   mkdir -p "$RUNS_ROOT"
   target_is_loam && envs+=(-e "LOAM_FACTORY_TOOLCHAIN=$LOAM_FACTORY_TOOLCHAIN" -e "LOAM_FACTORY_COPIER=$LOAM_FACTORY_COPIER")
   # The FACTORY_<NAME> caps travel too: without them the run fell back to MAX_PARALLEL=1, so every launch that
-  # next's FACTORY_MAX_PARALLEL=2 allowed beside a live run stopped at once as a machine problem.
+  # next's FACTORY_MAX_PARALLEL=2 allowed beside a live run stopped at once as a machine problem. Every cap
+  # travels, empty when next has none, so a cap in the server's environment never reaches the run.
   local cap v
-  for cap in $CAP_NAMES; do v="FACTORY_$cap"; [ -z "${!v:-}" ] || envs+=(-e "$v=${!v}"); done
+  for cap in $CAP_NAMES; do v="FACTORY_$cap"; envs+=(-e "$v=${!v:-}"); done
   if tmux new-session -d -s "$sess" "${envs[@]}" "cd '$ROOT' && bin/factory -C '$TARGET' run $pick >> '$RUNS_ROOT/$pick.tmux.log' 2>&1"; then
     echo "launched #$pick"
   else
@@ -3588,13 +3718,13 @@ precondition_lines() { # LOOP.md, Preconditions
     [ -n "$t" ] || continue
     skill_file "$t" > /dev/null 2>&1 && echo "  PASS skill $t resolves" || echo "  INFO skill $t resolves to no SKILL.md (lint refuses a ticket naming it)"
   done < "$ROOT/bin/factory.d/skills.txt"
-  # Codex login: Codex is not on the bare PATH (#41), so probe it under CODEX_PATH. Only a worker: codex
-  # ticket needs it, so a logged-out or absent Codex is INFO here, not FAIL.
+  # Codex login: Codex is not on the bare PATH (#41), so probe it under CODEX_PATH, in the factory's own CODEX_HOME.
+  # Only a Codex ticket needs it, so a logged-out or absent Codex is INFO here, not FAIL.
   if PATH="$CODEX_PATH:$PATH" command -v codex > /dev/null 2>&1; then
-    if PATH="$CODEX_PATH:$PATH" codex login status > /dev/null 2>&1; then
-      echo "  PASS codex login status"
+    if [ -s "$CODEX_FACTORY_HOME/auth.json" ] && env "${CODEX_UNSET[@]}" CODEX_HOME="$CODEX_FACTORY_HOME" PATH="$CODEX_PATH:$PATH" codex "${CODEX_OFF[@]}" login status > /dev/null 2>&1; then
+      echo "  PASS codex login status ($CODEX_FACTORY_HOME)"
     else
-      echo "  INFO codex login status reports logged out; a worker: codex ticket needs a login"
+      echo "  INFO $CODEX_LOGIN_HINT; a Codex ticket needs it"
     fi
   else
     echo "  INFO codex not on PATH; only a worker: codex ticket needs it"
@@ -3662,7 +3792,7 @@ cmd_skills() {
       index($0, "AskQuestion") || index($0, "AskUserQuestion")  { printf "%s\tasks\t%s:%d: %s\n", n, f, FNR, t }
     ' "$f"
   done
-  [ -n "$found" ] || echo "skills: no installed pstack skill resolves (no pstack under $cache, or none in installed_plugins.json)"
+  [ -n "$found" ] || echo "skills: no installed pstack skill resolves (no pstack under $cache, none in installed_plugins.json, or its key disabled or missing from enabledPlugins in ~/.claude/settings.json)"
   return 0
 }
 

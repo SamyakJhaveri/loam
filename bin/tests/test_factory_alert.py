@@ -1,9 +1,9 @@
 """Alerts reach Samyak in plain words: bin/alert's Slack text and event-log line, and bin/factory's notify, exit
-words and healthchecks pause (docs/factory/LOOP.md, Notify).
+words (docs/factory/LOOP.md, Notify).
 
 bin/alert runs for real with HOME a temp dir and a local HTTP server as the Slack webhook. The factory tests
 source bin/factory (FACTORY_SOURCED=1) and point ROOT at a temp dir whose bin/alert only records its arguments,
-so finish, notify and heartbeat_stop run their real code with no network.
+so finish and notify run their real code with no network.
 """
 
 from __future__ import annotations
@@ -22,15 +22,9 @@ ALERT = ROOT / "bin" / "alert"
 INHERITED = ("FACTORY_ROOT", "FACTORY_GH", "LOAM_FACTORY_TOOLCHAIN", "LOAM_FACTORY_COPIER", "REPO", "RUN", "LOG")
 
 FAKE_ALERT = """#!/usr/bin/env python3
-import json, os, pathlib, sys
+import json, os, sys
 with open(os.environ["FAKE_ALERT_LOG"], "a") as f:
     f.write(json.dumps(sys.argv[1:]) + "\\n")
-if sys.argv[1:] == ["--ping", "pause"] and os.environ.get("LAUNCH_ON_PAUSE"):  # a run launches mid-pause
-    run = pathlib.Path(os.environ["LAUNCH_ON_PAUSE"])
-    (run / "launched").write_text("1\\n")
-    if os.environ.get("LAUNCH_OWNER"):  # a relaunch writes its owner and `running` over its last exit before its first beat
-        (run / "owner").write_text(os.environ["LAUNCH_OWNER"] + "\\n")
-        (run / "status").write_text("running\\n")
 sys.exit(int(os.environ.get("FAKE_ALERT_EXIT", "0")))
 """
 
@@ -212,39 +206,20 @@ class FactoryAlertTests(unittest.TestCase):
         self.assertNotIn(key[14:], calls[-1][-1])
         self.assertIn("[redacted]", calls[-1][-1])
 
-    def test_the_last_live_run_pauses_the_check_and_another_live_run_keeps_it(self) -> None:
-        self.assertIn(["--ping", "pause"], self.factory("finish stopped x"))
-        other = self.runs / "acme__other" / "3" / "20261027T010000Z"
-        other.mkdir(parents=True)
-        (other / "status").write_text("running\n")
-        self.alert_log.unlink()
-        self.assertNotIn(["--ping", "pause"], self.factory("finish stopped x"))
-
-    def test_a_run_launched_during_the_pause_gets_a_beat_after_it(self) -> None:
-        # A fresh run directory, and a relaunch of a stopped run whose owner is this test's live process.
-        lstart = subprocess.run(["ps", "-o", "lstart=", "-p", str(os.getpid())], capture_output=True, text=True,
-                                env={**os.environ, "TZ": "UTC", "LC_ALL": "C"}, check=True).stdout.strip()
-        for status in (None, "stopped-cap"):
+    def test_a_run_end_never_pauses_the_check(self) -> None:
+        # The next timer's ticks are the check's only beats (cmd_next); a pause at a run's end would outlive a timer
+        # that then refuses every tick, so the check could never go red.
+        for status in ("stopped", "pr-opened", "stopped-environment"):
             with self.subTest(status=status):
-                other = self.runs / "acme__other" / "3" / f"run-{status}"
-                other.mkdir(parents=True)
-                if status:
-                    (other / "status").write_text(status + "\n")
                 self.alert_log.unlink(missing_ok=True)
-                calls = self.factory("finish stopped x", LAUNCH_ON_PAUSE=str(other),
-                                     LAUNCH_OWNER=f"{os.getpid()} {lstart}" if status else "")
-                self.assertEqual(calls[-3:-1], [["--ping", "pause"], ["--ping", "beat"]], calls)
-                for f in other.iterdir():
-                    f.unlink()
-                other.rmdir()
-
-    def test_finish_stops_the_heartbeat(self) -> None:
-        self.factory("heartbeat_start; echo $HEARTBEAT > \"$RUN/hb\"; finish stopped x")
-        self.assertEqual(self.proc.returncode, 2, self.proc.stderr)
-        pid = int((self.run_dir / "hb").read_text())
-        with self.assertRaises(ProcessLookupError):
-            os.kill(pid, 0)
-
+                calls = self.factory(f"finish {status} x")
+                self.assertEqual(self.proc.returncode != 0, status != "pr-opened", self.proc.stderr)
+                self.assertFalse([c for c in calls if c[:1] == ["--ping"]], calls)
+        # And a refusing tick after it sends nothing either, so the check is left beating, then goes red.
+        self.alert_log.unlink(missing_ok=True)
+        self.factory("claude_logged_in() { return 1; }; assert_target_ready() { :; }; cmd_next")
+        self.assertEqual(self.proc.returncode, 1, self.proc.stderr)
+        self.assertFalse(self.alert_log.exists())
 
 if __name__ == "__main__":
     unittest.main()

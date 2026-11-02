@@ -1,0 +1,395 @@
+#!/usr/bin/env python3
+"""gh for bin/tests/test_factory_e2e.py: each call `bin/factory next` and `run` make, answered from a local store.
+
+The store is $E2E_STATE/gh.json, which the test seeds: {"repo", "login", "origin" (the bare repository a PR's head must
+be pushed to), "next" (the next issue or PR number), "issues" and "prs" keyed by number}. Each call appends its argv to
+$E2E_STATE/gh.log. A subcommand, flag, endpoint, query parameter or GraphQL field this file does not know exits 2 and
+is appended to $E2E_STATE/unknown.log, which the test reads, so a new gh call in bin/factory fails the test even where
+bin/factory drops gh's stderr. --jq and -q run the real jq, as gh does with its built-in one. No network.
+"""
+
+import fcntl
+import json
+import os
+import re
+import subprocess
+import sys
+import urllib.parse
+from datetime import datetime, timezone
+
+STATE = os.environ["E2E_STATE"]
+STORE = os.path.join(STATE, "gh.json")
+
+# flag -> (key, takes a value, repeatable)
+REPO = {"-R": ("repo", True, False), "--repo": ("repo", True, False)}
+JQ = {"--jq": ("jq", True, False), "-q": ("jq", True, False)}
+API = {"-X": ("method", True, False), "--method": ("method", True, False), "-f": ("raw", True, True),
+       "--raw-field": ("raw", True, True), "-F": ("typed", True, True), "--field": ("typed", True, True),
+       "--paginate": ("paginate", False, False), **JQ}
+ISSUE_EDIT = {**REPO, "--add-assignee": ("assignee", True, True)}
+VIEW = {**REPO, "--json": ("json", True, False), **JQ}
+ISSUE_COMMENT = {**REPO, "--body-file": ("body_file", True, False)}
+ISSUE_CREATE = {**REPO, "--title": ("title", True, False), "--label": ("label", True, True),
+                "--body-file": ("body_file", True, False)}
+PR_CREATE = {**REPO, "--head": ("head", True, False), "--base": ("base", True, False), "--title": ("title", True, False),
+             "--body-file": ("body_file", True, False), "--draft": ("draft", False, False)}
+LIST_PARAMS = {"repo": {"labels", "state", "assignee", "per_page"}, "user": {"filter", "labels", "state", "per_page"}}
+GRAPHQL_FIELDS = {"body", "lastEditedAt", "author", "editor"}
+
+
+class Unknown(Exception):
+    """A call this stand-in does not know."""
+
+
+class Fail(Exception):
+    """A call gh itself would refuse: message on stderr, exit 1."""
+
+
+def now() -> str:
+    return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
+def append(name: str, record: dict) -> None:
+    with open(os.path.join(STATE, name), "a", encoding="utf-8") as f:
+        f.write(json.dumps(record) + "\n")
+
+
+class Store:
+    """The store under an exclusive lock, written back on a clean exit; two runs call gh at once."""
+
+    def __enter__(self) -> dict:
+        self.lock = open(os.path.join(STATE, "gh.lock"), "a")
+        fcntl.flock(self.lock, fcntl.LOCK_EX)
+        with open(STORE, encoding="utf-8") as f:
+            self.data = json.load(f)
+        return self.data
+
+    def __exit__(self, kind, value, tb) -> None:
+        if kind is None:
+            with open(STORE + ".tmp", "w", encoding="utf-8") as f:
+                json.dump(self.data, f, indent=1)
+            os.replace(STORE + ".tmp", STORE)
+        self.lock.close()
+
+
+def parse(args: list[str], spec: dict) -> tuple[dict, list[str]]:
+    opts: dict = {}
+    pos: list[str] = []
+    i = 0
+    while i < len(args):
+        a = args[i]
+        if a.startswith("-") and a != "-":
+            name, eq, val = a.partition("=") if a.startswith("--") else (a, "", "")
+            if name not in spec:
+                raise Unknown(f"flag {name}")
+            key, takes, many = spec[name]
+            if takes and not eq:
+                i += 1
+                if i == len(args):
+                    raise Unknown(f"flag {name} with no value")
+                val = args[i]
+            value = val if takes else True
+            if many:
+                opts.setdefault(key, []).append(value)
+            else:
+                opts[key] = value
+        else:
+            pos.append(a)
+        i += 1
+    return opts, pos
+
+
+def check_repo(d: dict, opts: dict) -> None:
+    # Every bin/factory call about the target passes -R, so a fork never reaches its parent.
+    if opts.get("repo") != d["repo"]:
+        raise Unknown(f"-R {opts.get('repo')!r}, not {d['repo']}")
+
+
+def emit(doc, jq: str | None) -> None:
+    if jq is None:
+        print(json.dumps(doc))
+        return
+    out = subprocess.run(["jq", "-r", jq], input=json.dumps(doc), capture_output=True, text=True)
+    if out.returncode:
+        raise Fail(out.stderr.strip())
+    sys.stdout.write(out.stdout)
+
+
+def item(d: dict, number) -> tuple[dict, bool]:
+    key = str(number)
+    if key in d["issues"]:
+        return d["issues"][key], False
+    if key in d["prs"]:
+        return d["prs"][key], True
+    raise Fail(f"HTTP 404: Not Found (repos/{d['repo']}/issues/{number})")
+
+
+def rest(d: dict, it: dict, is_pr: bool) -> dict:
+    """An issue or PR as GitHub's REST issues API returns it."""
+    doc = {"number": it["number"], "title": it["title"], "body": it["body"], "state": it["state"],
+           "user": {"login": it["author"]}, "labels": [{"name": n} for n in it["labels"]],
+           "assignees": [{"login": n} for n in it["assignees"]], "created_at": it["created_at"],
+           "html_url": url(d, it["number"], is_pr),
+           "issue_dependencies_summary": {"blocked_by": 0, "total_blocked_by": 0, "blocking": 0, "total_blocking": 0}}
+    if is_pr:
+        doc["pull_request"] = {"html_url": doc["html_url"]}
+    return doc
+
+
+def url(d: dict, number: int, is_pr: bool) -> str:
+    return f"https://github.com/{d['repo']}/{'pull' if is_pr else 'issues'}/{number}"
+
+
+def listing(d: dict, params: dict, user: bool) -> list:
+    unknown = set(params) - LIST_PARAMS["user" if user else "repo"]
+    if unknown:
+        raise Unknown(f"query parameter {sorted(unknown)}")
+    if user and params.get("filter") != "assigned":
+        raise Unknown(f"filter={params.get('filter')}")
+    if params.get("assignee", "none") != "none" or params.get("state", "open") not in ("open", "closed", "all"):
+        raise Unknown(f"query {params}")
+    want = [w for w in params.get("labels", "").split(",") if w]
+    out = []
+    for it, is_pr in [(v, False) for v in d["issues"].values()] + [(v, True) for v in d["prs"].values()]:
+        if params.get("state", "open") not in ("all", it["state"]) or any(w not in it["labels"] for w in want):
+            continue
+        if user and d["login"] not in it["assignees"]:
+            continue
+        if params.get("assignee") == "none" and it["assignees"]:
+            continue
+        doc = rest(d, it, is_pr)
+        if user:
+            doc["repository"] = {"full_name": d["repo"]}
+        out.append(doc)
+    return sorted(out, key=lambda x: -x["number"])  # newest first, as GitHub sorts; bin/factory sorts by number
+
+
+GRAPHQL_HEAD = ("query($owner: String!, $name: String!, $number: Int!) "
+                "{ repository(owner: $owner, name: $name) { issue(number: $number) {")
+
+
+def graphql(d: dict, fields: dict) -> dict:
+    """The two issue reads bin/factory makes: next's editor check and load_ticket's body, author and editor."""
+    q = fields.pop("query", "")
+    if not q.startswith(GRAPHQL_HEAD):
+        raise Unknown(f"GraphQL query {q!r}")
+    toks = re.findall(r"[A-Za-z_]+|\S", q[len(GRAPHQL_HEAD):])
+    sel: dict = {}
+    i = 0
+    while i < len(toks) and toks[i] != "}":
+        if toks[i] not in GRAPHQL_FIELDS:
+            raise Unknown(f"GraphQL field {toks[i]!r}")
+        if toks[i + 1:i + 2] == ["{"]:
+            end = toks.index("}", i)
+            sel[toks[i]] = toks[i + 2:end]
+            i = end + 1
+        else:
+            sel[toks[i]] = None
+            i += 1
+    if toks[i:] != ["}", "}", "}"]:
+        raise Unknown(f"GraphQL query {q!r}")
+    if set(fields) != {"owner", "name", "number"} or not isinstance(fields["number"], int):
+        raise Unknown(f"GraphQL variables {fields}")
+    if f"{fields['owner']}/{fields['name']}" != d["repo"]:
+        raise Unknown(f"GraphQL repository {fields['owner']}/{fields['name']}")
+    it = d["issues"].get(str(fields["number"]))
+    if it is None:
+        raise Fail(f"GraphQL: Could not resolve to an Issue with the number of {fields['number']}.")
+    out: dict = {}
+    for name, sub in sel.items():
+        if name in ("author", "editor"):
+            if sub != ["login"]:
+                raise Unknown(f"GraphQL field {name} {sub}")
+            login = it[name]
+            out[name] = None if login is None else {"login": login}
+        elif sub is not None:
+            raise Unknown(f"GraphQL field {name} {sub}")
+        else:
+            out[name] = it[name]
+    return {"data": {"repository": {"issue": out}}}
+
+
+def typed(value: str):
+    if value in ("true", "false", "null") or re.fullmatch(r"-?[0-9]+", value):
+        return json.loads(value)
+    return value
+
+
+def api(args: list[str]) -> None:
+    o, pos = parse(args, API)
+    if len(pos) != 1:
+        raise Unknown(f"api arguments {pos}")
+    fields = {}
+    for pair in o.get("raw", []):
+        k, _, v = pair.partition("=")
+        fields[k] = v
+    for pair in o.get("typed", []):
+        k, _, v = pair.partition("=")
+        fields[k] = typed(v)
+    method = o.get("method", "POST" if fields else "GET")
+    ep = urllib.parse.urlsplit(pos[0])
+    path = ep.path.strip("/")
+    params = dict(urllib.parse.parse_qsl(ep.query))
+    with Store() as d:
+        parts = path.split("/")
+        rest_repo = "/".join(parts[1:3]) if parts[0] == "repos" else None
+        if rest_repo is not None and rest_repo != d["repo"]:
+            raise Unknown(f"endpoint {pos[0]}")
+        if path == "graphql" and method == "POST":
+            doc = graphql(d, fields)
+        elif fields and not (method == "PATCH" and len(parts) == 5 and parts[3] == "pulls"):
+            raise Unknown(f"fields {sorted(fields)} on {method} {pos[0]}")
+        elif method == "GET" and path == "user" and not params:
+            doc = {"login": d["login"], "type": "User"}
+        elif method == "GET" and path == "issues":
+            doc = listing(d, params, user=True)
+        elif method == "GET" and len(parts) == 4 and parts[3] == "issues":
+            doc = listing(d, params, user=False)
+        elif method == "GET" and len(parts) == 5 and parts[3] == "issues" and not params:
+            it, is_pr = item(d, parts[4])
+            doc = rest(d, it, is_pr)
+        elif method == "GET" and len(parts) == 6 and parts[3] == "issues" and parts[5] == "timeline" and not params:
+            doc = item(d, parts[4])[0]["events"]
+        elif method == "PATCH" and len(parts) == 5 and parts[3] == "pulls" and set(fields) <= {"body", "title"}:
+            pr = d["prs"].get(parts[4])
+            if pr is None:
+                raise Fail(f"HTTP 404: Not Found ({pos[0]})")
+            pr.update(fields)
+            doc = rest(d, pr, True)
+        else:
+            raise Unknown(f"endpoint {method} {pos[0]}")
+    emit(doc, o.get("jq"))
+
+
+def body_of(opts: dict) -> str:
+    f = opts.get("body_file")
+    if f is None:
+        raise Unknown("no --body-file")
+    if f == "-":
+        return sys.stdin.read()
+    with open(f, encoding="utf-8") as h:
+        return h.read()
+
+
+def issue_edit(args: list[str]) -> None:
+    o, pos = parse(args, ISSUE_EDIT)
+    if len(pos) != 1 or not o.get("assignee"):
+        raise Unknown(f"issue edit {args}")
+    with Store() as d:
+        check_repo(d, o)
+        it = d["issues"].get(pos[0])
+        if it is None:
+            raise Fail(f"could not resolve to an Issue with the number of {pos[0]}")
+        for who in o["assignee"]:
+            who = d["login"] if who == "@me" else who
+            if who not in it["assignees"]:
+                it["assignees"].append(who)
+                it["events"].append({"event": "assigned", "actor": {"login": d["login"]}, "id": len(it["events"]) + 1,
+                                     "created_at": now()})
+        print(url(d, it["number"], False))
+
+
+def view(args: list[str], is_pr: bool) -> None:
+    o, pos = parse(args, VIEW)
+    if len(pos) != 1 or "json" not in o:
+        raise Unknown(f"{'pr' if is_pr else 'issue'} view {args}")
+    names = o["json"].split(",")
+    with Store() as d:
+        check_repo(d, o)
+        if is_pr:
+            hits = [p for p in d["prs"].values() if p["state"] == "open" and pos[0] in (p["head"], str(p["number"]))]
+            if not hits:
+                raise Fail(f'no pull requests found for branch "{pos[0]}"')
+            it = hits[0]
+            have = {"number": it["number"], "title": it["title"], "body": it["body"], "state": it["state"].upper(),
+                    "headRefName": it["head"], "baseRefName": it["base"], "isDraft": it["draft"],
+                    "url": url(d, it["number"], True)}
+        else:
+            it = d["issues"].get(pos[0])
+            if it is None:
+                raise Fail(f"could not resolve to an Issue with the number of {pos[0]}")
+            have = {"number": it["number"], "title": it["title"], "body": it["body"], "state": it["state"].upper(),
+                    "url": url(d, it["number"], False)}
+        if set(names) - set(have):
+            raise Unknown(f"--json field {sorted(set(names) - set(have))}")
+        doc = {n: have[n] for n in names}
+    emit(doc, o.get("jq"))
+
+
+def issue_comment(args: list[str]) -> None:
+    o, pos = parse(args, ISSUE_COMMENT)
+    if len(pos) != 1:
+        raise Unknown(f"issue comment {args}")
+    text = body_of(o)
+    with Store() as d:
+        check_repo(d, o)
+        it, is_pr = item(d, pos[0])
+        cid = sum(len(x["events"]) for x in list(d["issues"].values()) + list(d["prs"].values())) + 1
+        it["events"].append({"event": "commented", "actor": {"login": d["login"]}, "id": cid, "created_at": now(),
+                             "body": text})
+        print(f"{url(d, it['number'], is_pr)}#issuecomment-{cid}")
+
+
+def issue_create(args: list[str]) -> None:
+    o, pos = parse(args, ISSUE_CREATE)
+    if pos or "title" not in o:
+        raise Unknown(f"issue create {args}")
+    text = body_of(o)
+    with Store() as d:
+        check_repo(d, o)
+        n = d["next"]
+        d["next"] = n + 1
+        d["issues"][str(n)] = {"number": n, "title": o["title"], "body": text, "author": d["login"], "editor": None,
+                               "lastEditedAt": None, "labels": o.get("label", []), "assignees": [], "state": "open",
+                               "created_at": now(), "events": []}
+        print(url(d, n, False))
+
+
+def pr_create(args: list[str]) -> None:
+    o, pos = parse(args, PR_CREATE)
+    if pos or not all(k in o for k in ("head", "base", "title")):
+        raise Unknown(f"pr create {args}")
+    text = body_of(o)
+    with Store() as d:
+        check_repo(d, o)
+        pushed = subprocess.run(["git", "--git-dir", d["origin"], "rev-parse", "--verify", "--quiet",
+                                 f"refs/heads/{o['head']}"], capture_output=True, text=True)
+        if pushed.returncode:
+            raise Fail(f"pull request create failed: Head sha can't be blank, Base sha can't be blank, "
+                       f"No commits between {o['base']} and {o['head']}, Head ref must be a branch")
+        if any(p["head"] == o["head"] and p["state"] == "open" for p in d["prs"].values()):
+            raise Fail(f'a pull request for branch "{o["head"]}" into branch "{o["base"]}" already exists')
+        n = d["next"]
+        d["next"] = n + 1
+        d["prs"][str(n)] = {"number": n, "title": o["title"], "body": text, "author": d["login"], "head": o["head"],
+                            "base": o["base"], "draft": bool(o.get("draft")), "head_sha": pushed.stdout.strip(),
+                            "labels": [], "assignees": [], "state": "open", "created_at": now(), "events": []}
+        print(url(d, n, True))
+
+
+COMMANDS = {("issue", "edit"): issue_edit, ("issue", "view"): lambda a: view(a, False),
+            ("issue", "comment"): issue_comment, ("issue", "create"): issue_create,
+            ("pr", "view"): lambda a: view(a, True), ("pr", "create"): pr_create}
+
+
+def main(argv: list[str]) -> int:
+    append("gh.log", {"argv": argv})
+    try:
+        if argv[:1] == ["api"]:
+            api(argv[1:])
+        elif tuple(argv[:2]) in COMMANDS:
+            COMMANDS[tuple(argv[:2])](argv[2:])
+        else:
+            raise Unknown(f"subcommand {' '.join(argv[:2])!r}")
+    except Unknown as why:
+        append("unknown.log", {"tool": "gh", "argv": argv, "why": str(why)})
+        print(f"gh stand-in: unknown {why}: gh {' '.join(argv)}", file=sys.stderr)
+        return 2
+    except Fail as why:
+        print(str(why), file=sys.stderr)
+        return 1
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv[1:]))

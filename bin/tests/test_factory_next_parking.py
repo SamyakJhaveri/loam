@@ -514,7 +514,7 @@ class ResumeTests(unittest.TestCase):
                  "assert_target_ready() { :; }; claude_version_ok() { :; }; "
                  'load_ticket() { ISSUE=7; KEY=7; REPO=o/r; BODY="$BODY_ARG"; }; '
                  "nav_arm_resolve() { :; }; assert_parallel() { :; }; prepare_worktree() { :; }; freeze() { :; }; "
-                 "exec_frozen() { :; }; heartbeat_start() { :; }; heartbeat_stop() { :; }; check_frozen() { :; }; "
+                 "exec_frozen() { :; }; check_frozen() { :; }; "
                  "measure_rows() { :; }; notify() { :; }; worker_round() { echo WORKER $1; }; "
                  'graders() { echo "GRADED $1 $(cat "$RUN/status")"; ' + ("}; " if graders_pass else "false; }; ") +
                  'open_pr() { echo "OPEN_PR ${1:-}"; finish pr-opened "PR at round $ROUND"; }; '
@@ -607,9 +607,14 @@ class LintTests(ParkingTests):
         self.assertNotIn("#8", proc.stderr)
 
     def test_failed_editor_call_never_launches(self) -> None:
+        # With none picked, a failed read is a refusal (exit 1), so a real tick sends no healthchecks beat.
         proc = self.next_dry_run((7, CLEAN), editors={7: None})
-        self.assertEqual(proc.stdout.strip(), "nothing to launch", proc.stderr)
+        self.assertEqual((proc.returncode, proc.stdout.strip()), (1, "nothing to launch"), proc.stderr)
         self.assertIn("not owner #7: could not read the last editor with gh", proc.stderr)
+        self.assertIn("refused: a candidate was passed over on a failed GitHub read", proc.stderr)
+        # A later candidate still launches, and then the tick is not a refusal.
+        proc = self.next_dry_run((7, CLEAN), (8, CLEAN), editors={7: None})
+        self.assertEqual((proc.returncode, proc.stdout.strip()), (0, "would launch #8"), proc.stderr)
 
     # next --frontier lists every issue next would launch, by next's own rules, whatever FACTORY_STOP and the slots say,
     # and writes nothing (#477).

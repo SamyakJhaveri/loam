@@ -7,7 +7,7 @@ A duplicate across layers is a bug unless it is an explicit distribution mirror 
 | Layer | Lives in | Reaches a project | Context cost |
 |-------|----------|-------------------|--------------|
 | Always-on seed harness | `seed/` (shared guidance and skills, Claude settings and the lifecycle hooks, Codex config and rules) | Rendered by Copier at bootstrap; updated by `copier update` on new tags | Paid in every session; priced highest |
-| Plugin layer | `cultivation/marketplace/sam-cc-setup/` (agents + optional skills + the plan-review workflow) | Installed as a plugin; updates in place | Skill descriptions only, until invoked |
+| Plugin layer | `cultivation/marketplace/sam-cc-setup/` (agents + optional skills, the `plan-review` skill among them) | Installed as a plugin; updates in place | Skill descriptions only, until invoked |
 | Marketplace bundles | `cultivation/marketplace/<name>/` | Install-on-demand | Zero until enabled |
 
 Shipped, discoverable and loaded are three different facts:
