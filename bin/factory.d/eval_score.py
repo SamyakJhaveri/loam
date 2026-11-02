@@ -7,7 +7,7 @@ Usage:
 <cases-root> is mutate.py's output or evals/planted/, <grader>/<case>/expected.json; a case with a
 defect_class is a planted defect and scores as recall:<class>, one row per class: mutate.py's skip,
 false-claim, logic-bug, stale-ref, vacuous-check, half-goal, and out-of-scope, and evals/planted/'s
-honesty, notes, and run-only. A judge mutant counts as caught when the reply fails every row its
+honesty, notes, and run-only, and `real` for a frozen base a replay check found a defect in. A judge mutant counts as caught when the reply fails every row its
 failing_rows names, extra failing rows allowed: recall asks whether the defect was seen. `bin/factory eval`
 scores label agreement instead, the exact failing-row set, so a reply that also fails another row is a hit
 here and a MISMATCH there; #207 reports both. Both count a row as failing when its value is not "pass". A
@@ -16,13 +16,21 @@ vacuous-check, CONTRIBUTING.md for out-of-scope, the changed file for run-only).
 <model>/r<k>/<grader>-<case>.json, the EVAL_OUT layout of `bin/factory eval`: each the
 `claude -p --output-format json` output of one case. Reply paths are built from the cases
 tree, never parsed from file names. A missing or unparseable reply is a miss on a mutant,
-a false alarm on a clean copy, and a disagreement.
+a false alarm on a clean copy, and a disagreement. A grader's repeats are the r<k> that hold one of its
+replies or its fingerprint-<grader>.txt, which model-eval writes for every cell it runs.
 
 Prints TSV rows grader, model, metric, value, sorted: recall:<class>, false_alarm (cut_rate
-for the lean-critic, whose job is cuts), agreement, usd, and n:<metric> for each rate's
-trial count. Each pair of models A and B scored on the same repeats also gets model A+B
-(recall and false alarm only): caught when either catches on the same r<k>, a false alarm
-when either fails the clean copy. python3 stdlib only.
+for the lean-critic, whose job is cuts), agreement, usd, infra (missing, unparseable, or is_error
+replies, and every case of a repeat model-eval ran that saved no reply; the rates still score an is_error
+reply by what it parses to), and n:<metric> for each
+rate's trial count and for infra. Each pair of models A and B scored on the same repeats also gets
+model A+B (recall and false alarm only): caught when either catches on the same r<k>, a false
+alarm when either fails the clean copy. And model A~B: per metric the trial counts
+paired:<A>-only, paired:<B>-only, paired:both and paired:neither over those repeats, and one
+moved row listing the fingerprint fields (model-eval writes fingerprint-<grader>.txt and
+fingerprint.txt per r<k>; the first is read when present) that differ between
+the pair's first shared repeat, prefixed "descriptive: " when more than one differs, since such a
+pair cannot attribute its difference to any one field. python3 stdlib only.
 """
 from __future__ import annotations
 
@@ -35,21 +43,23 @@ from pathlib import Path
 
 
 def load_reply(path):
-    """(reply object or None, cost in USD) of one saved reply; None when missing or unparseable."""
+    """(reply object or None, cost in USD, is_error) of one saved reply; None when missing or unparseable.
+    is_error is the call's own flag; a reply that carries it is still scored by what it parses to."""
     try:
         with open(path, encoding="utf-8") as fh:
             out = json.load(fh)
     except (OSError, ValueError):
-        return None, 0.0
+        return None, 0.0, False
     if isinstance(out, list):  # RESULT_OBJ in bin/factory
         results = [e for e in out if isinstance(e, dict) and e.get("type") == "result"]
         out = results[-1] if results else (out[-1] if out else {})
     if not isinstance(out, dict):
-        return None, 0.0
+        return None, 0.0, False
     cost = out.get("total_cost_usd") or 0
+    err = out.get("is_error") is True
     text = out.get("result")
     if not isinstance(text, str):
-        return None, cost
+        return None, cost, err
     # A reply wrapped in prose or code fences: the object runs from the first brace to the last.
     for cand in (text, text[text.find("{"):text.rfind("}") + 1]):
         try:
@@ -57,8 +67,8 @@ def load_reply(path):
         except ValueError:
             continue
         if isinstance(reply, dict) and isinstance(reply.get("verdict"), str):
-            return reply, cost
-    return None, cost
+            return reply, cost, err
+    return None, cost, err
 
 
 def failing_rows(reply):
@@ -100,10 +110,23 @@ def hit(grader, exp, reply):
         return False
     if grader == "judge":
         return reply.get("verdict") == "fail" and set(exp.get("failing_rows", [])) <= failing_rows(reply)
-    # A reviewer catches the defect only with a blocking finding on its file: only those reach the worker.
-    f = exp["defect_file"]
+    # A reviewer catches the defect only with a blocking finding on its file: only those reach the worker. A real
+    # defect a replay check confirmed may sit in several files (defect_file a list), and a finding on any one counts.
+    want = exp["defect_file"] if isinstance(exp["defect_file"], list) else [exp["defect_file"]]
     files = [x.get("file") for x in findings(reply, BLOCKING if grader == "reviewer" else None)]
-    return blocks(grader, reply) and any(isinstance(p, str) and (p == f or p.endswith("/" + f)) for p in files)
+    return blocks(grader, reply) and any(isinstance(p, str) and any(p == f or p.endswith("/" + f) for f in want) for p in files)
+
+
+def fingerprint(rdir, grader):
+    """field -> value of <model>/r<k>/fingerprint-<grader>.txt, the config that grader's replies ran on, else
+    of the cell's shared fingerprint.txt; one `field value` per line; {} when both are missing."""
+    for name in (f"fingerprint-{grader}.txt", "fingerprint.txt"):
+        try:
+            lines = (rdir / name).read_text(encoding="utf-8").splitlines()
+        except OSError:
+            continue
+        return {k: v for k, _, v in (ln.partition(" ") for ln in lines) if k}
+    return {}
 
 
 def rate(hits, trials):
@@ -132,14 +155,18 @@ def main(argv):
         grader = gdir.name
         cases = [(d.name, json.loads((d / "expected.json").read_text(encoding="utf-8")))
                  for d in sorted(gdir.iterdir()) if (d / "expected.json").is_file()]
-        # model -> r<k> -> case -> (reply, cost), for the repeats that hold a reply for this grader.
+        if not cases:
+            continue
+        # model -> r<k> -> case -> (reply, cost), for the repeats that hold a reply or the fingerprint of this
+        # grader: model-eval writes fingerprint-<grader>.txt for every cell it ran, so a cell that saved no reply
+        # (every call failed, or none was made) still counts, each case a missing reply.
         got = {}
         for m in models:
             reps = sorted((d for d in (replies_root / m).iterdir() if d.is_dir() and re.fullmatch(r"r\d+", d.name)),
                           key=lambda d: int(d.name[1:]))
             for rdir in reps:
                 paths = {case: rdir / f"{grader}-{case}.json" for case, _ in cases}
-                if any(p.is_file() for p in paths.values()):
+                if (rdir / f"fingerprint-{grader}.txt").is_file() or any(p.is_file() for p in paths.values()):
                     got.setdefault(m, {})[rdir.name] = {case: load_reply(p) for case, p in paths.items()}
         for m, by_rep in got.items():
             for name, (hits, trials) in tally(grader, cases, by_rep,
@@ -152,7 +179,10 @@ def main(argv):
                             if rep[case][0] is not None else None for rep in by_rep.values()]
                     agree += None not in sigs and len(set(sigs)) == 1
                 rows += [(grader, m, "agreement", rate(agree, len(cases))), (grader, m, "n:agreement", str(len(cases)))]
-            usd = sum(cost for rep in by_rep.values() for _, cost in rep.values())
+            # An infrastructure error: no reply to score, or the call itself failed.
+            infra = sum(rep[case][0] is None or rep[case][2] for rep in by_rep.values() for case, _ in cases)
+            rows += [(grader, m, "infra", str(infra)), (grader, m, "n:infra", str(len(cases) * len(by_rep)))]
+            usd = sum(cost for rep in by_rep.values() for _, cost, _ in rep.values())
             rows.append((grader, m, "usd", f"{usd:.2f}"))
         for a, b in itertools.combinations(sorted(got), 2):
             common = sorted(set(got[a]) & set(got[b]))
@@ -162,6 +192,23 @@ def main(argv):
                 return hit(grader, e, got[a][r][c][0]) or hit(grader, e, got[b][r][c][0])
             for name, (hits, trials) in tally(grader, cases, common, either).items():
                 rows.append((grader, f"{a}+{b}", name, rate(hits, trials)))
+            # Paired counts: which model caught each case on the same r<k>, so a difference is read case by case.
+            pairs = {}
+            for case, exp in cases:
+                for r in common:
+                    ha, hb = hit(grader, exp, got[a][r][case][0]), hit(grader, exp, got[b][r][case][0])
+                    t = pairs.setdefault(metric(grader, exp), dict.fromkeys((f"{a}-only", f"{b}-only", "both", "neither"), 0))
+                    t[f"{a}-only" if ha and not hb else f"{b}-only" if hb and not ha else "both" if ha else "neither"] += 1
+            for name, t in pairs.items():
+                rows += [(grader, f"{a}~{b}", f"paired:{k}:{name}", str(v)) for k, v in t.items()]
+            # The config fields that differ between the pair's first shared repeat; with more than one, a
+            # difference cannot be put on any one of them.
+            first = min(common, key=lambda r: int(r[1:]))
+            fa, fb = fingerprint(replies_root / a / first, grader), fingerprint(replies_root / b / first, grader)
+            if fa or fb:
+                moved = sorted(k for k in fa.keys() | fb.keys() if fa.get(k) != fb.get(k))
+                rows.append((grader, f"{a}~{b}", "moved",
+                             ("descriptive: " if len(moved) > 1 else "") + (",".join(moved) or "none")))
     for row in sorted(rows):
         print("\t".join(row))
     return 0

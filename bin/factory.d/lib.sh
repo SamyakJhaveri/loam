@@ -1,7 +1,9 @@
 #!/usr/bin/env bash
 # bin/factory.d/lib.sh - the prelude a ticket's done-checks block is sourced after.
 # Source it; do not run it. The block is run from the worktree root.
-set -uo pipefail
+# No pipefail, even one the caller set: in `cat big | grep -q x` grep exits at its match, cat dies of SIGPIPE, and
+# pipefail would read a miss.
+set -u +o pipefail
 
 n_pass=0
 n_fail=0
@@ -29,25 +31,8 @@ guard() {
   return "$rc"
 }
 # predict NAME CMD...: CMD exits 0 exactly when base shows the failure check NAME predicts (CONTRACT.md, Done checks).
-# Only round 0 sets FACTORY_ROUND0, to a file outside the worktree, and only then does CMD run. A miss (CMD exits
-# non-zero, or the line has no CMD) is appended to that file, not printed, so a redirect on the predict line cannot
-# hide it from round_zero; CMD's own output is dropped, so it cannot print a PASS line. Every other run prints nothing.
-# CMD runs in a subshell, so return, unset or cd cannot escape the recorder; FACTORY_ROUND0 is not exported on, so a
-# check's own `bash -c '. lib.sh; predict ...'` records nothing.
-export -n FACTORY_ROUND0 2>/dev/null
-predict() {
-  local name=${1:-} rc
-  [ -n "${FACTORY_ROUND0:-}" ] || return 0
-  shift
-  if [ $# -eq 0 ]; then
-    printf '%s has no command\n' "$name" >> "$FACTORY_ROUND0"
-    return 0
-  fi
-  ( "$@" ) > /dev/null 2>&1
-  rc=$?
-  [ "$rc" -eq 0 ] || printf '%s exits %s\n' "$name" "$rc" >> "$FACTORY_ROUND0"
-  return 0
-}
+# round_zero runs CMD itself, and checks.sh carries no predict line; this no-op serves a block that sources lib.sh.
+predict() { return 0; }
 
 # MEASURE prints one measured row for the supervisor to collect (CONTRACT.md, Rows measured).
 MEASURE() { echo "MEASURE $1 ${2:-}"; }

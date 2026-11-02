@@ -37,7 +37,8 @@ class HalfGoalTests(unittest.TestCase):
             subprocess.run([sys.executable, str(MUTATE), str(ROOT / "evals/clean"), str(out)],
                            check=True, capture_output=True)
             mutants = sorted((out / "judge").glob("*--half-goal"))
-            self.assertGreaterEqual(len(mutants), 8)
+            # mutate.py plants only into bases whose label is still clean (the 4 judge `--labeled` copies since 2026-11-01).
+            self.assertGreaterEqual(len(mutants), 3)
             for d in mutants:
                 with self.subTest(case=d.name):
                     text = (d / "prompt.md").read_text(encoding="utf-8")
@@ -85,7 +86,7 @@ class HalfGoalTests(unittest.TestCase):
                 for base in bases:
                     with self.subTest(cls=cls, base=base):
                         self.assertTrue((ROOT / "evals/clean/judge" / base).is_dir(), "the list names no clean base")
-                        self.assertEqual(sorted(out.glob(f"*/{base}--{cls}")), [])
+                        self.assertEqual(sorted(out.glob(f"*/{base}--{cls}")) + sorted(out.glob(f"*/{base}--*--{cls}")), [])
 
 
 if __name__ == "__main__":

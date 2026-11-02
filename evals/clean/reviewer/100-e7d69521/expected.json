@@ -1,1 +1,1 @@
-{"source":"100/e7d69521 round-1","verdict":"merge"}
+{"source":"100/e7d69521 round-1","verdict":"fix","defect_class":"real","defect_file":["bin/factory"],"known_defects":[{"file":"bin/factory","severity":"medium","defect":"the limit-switch cooldown stamp is per run while the account switch is global, so a second limited run switches back onto the limited account","evidence":"unchanged on main; the overnight driver now runs FACTORY_MAX_PARALLEL=2 (bin/overnight/driver.sh); the ticket's Approach named $RUN/limit-switch"}]}

@@ -1,0 +1,1 @@
+{"source":"66/a47d30b2 round-2","verdict":"fix","defect_class":"real","defect_file":["bin/factory"],"known_defects":[{"file":"bin/factory","severity":"medium","defect":"ranwf=1 on every large round 1 books a solo-planned round's whole cost as workflow_usd","evidence":"fixed by 8305c9a (#73)"}]}
