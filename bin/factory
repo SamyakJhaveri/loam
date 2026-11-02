@@ -627,20 +627,27 @@ grader_file() {
 }
 
 # A worker's skill name (a line of bin/factory.d/skills.txt or a pstack:<name>, lint-checked) -> its SKILL.md path.
-# A bare name lives under ~/.claude/skills/<name>/; a plugin:name lives under the installPath that
-# ~/.claude/plugins/installed_plugins.json gives the plugin's first `<plugin>@<marketplace>` entry, the
-# folder Claude Code loads (docs/PSTACK.md), so a stale or other-marketplace cache folder never resolves.
-# No installed_plugins.json, or no entry for the plugin, resolves to nothing: no cache-search fallback
-# (owner ruling 30 Oct 2026, #437). A plugin may nest its skills under a category dir
-# (skills/<category>/<name>/SKILL.md), so match SKILL.md at any depth
-# under the plugin's skills tree, not only skills/<name>/.
+# A bare name lives under ~/.claude/skills/<name>/; a plugin:name lives under an installPath from
+# ~/.claude/plugins/installed_plugins.json, picked as Claude Code picks the copy it loads (LESSONS.md, PR #531):
+# only `<plugin>@<marketplace>` keys that ~/.claude/settings.json's enabledPlugins sets true, in the registry's
+# order, and from each only its user- or managed-scope records, in order; the first such installPath that is an
+# existing directory wins. A project or local record, which Claude Code loads only in its own repository, and a
+# record with no scope never resolve (#533). No installed_plugins.json, no enabled key, or no existing record
+# resolves to nothing: no cache-search fallback (owner ruling 30 Oct 2026, #437). A plugin may nest its skills
+# under a category dir (skills/<category>/<name>/SKILL.md), so match SKILL.md at any depth under the plugin's
+# skills tree, not only skills/<name>/.
 skill_file() { # skill-name -> SKILL.md path on stdout, non-zero when it resolves to no file
-  local name="$1" plugin sub dir f
+  local name="$1" plugin sub dir="" d en paths f
   case "$name" in
     *:*)
       plugin=${name%%:*}; sub=${name#*:}
-      dir=$(jq -r --arg p "$plugin" 'first(.plugins | to_entries[] | select(.key | startswith($p + "@"))
-        | .value[0].installPath // empty)' "$HOME/.claude/plugins/installed_plugins.json" 2> /dev/null) || dir=""
+      # A missing, empty or unreadable settings file enables nothing.
+      en=$(jq -c '.enabledPlugins // {}' "$HOME/.claude/settings.json" 2> /dev/null) || en=""
+      paths=$(jq -r --arg p "$plugin" --argjson en "${en:-"{}"}" '.plugins | to_entries[]
+        | select((.key | startswith($p + "@")) and $en[.key] == true) | .value[]
+        | select(.scope == "user" or .scope == "managed") | .installPath // empty' \
+        "$HOME/.claude/plugins/installed_plugins.json" 2> /dev/null) || paths=""
+      while IFS= read -r d; do [ -n "$d" ] && [ -d "$d" ] && { dir=$d; break; }; done <<<"$paths"
       [ -n "$dir" ] && f=$(find "$dir/skills" -path "*/$sub/SKILL.md" 2> /dev/null | sort | head -1)
       [ -n "${f:-}" ] && { printf '%s\n' "$f"; return 0; } ;;
     *)

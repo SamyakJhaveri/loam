@@ -1,8 +1,8 @@
 """A ticket's `skills:` names lint against skills.txt and skill_file, and a Claude worker reads each by path (#385).
 
 `bin/factory lint` runs with FACTORY_ROOT at a temp copy of bin/factory.d (its skills.txt rewritten) and HOME at a
-temp tree holding fake plugin caches and an installed_plugins.json naming each plugin's installPath, so the real
-allowlist and plugins are never read. The prompt test sources
+temp tree holding fake plugin caches, an installed_plugins.json naming each plugin's installPath and a settings.json
+enabling each key, so the real allowlist and plugins are never read. The prompt test sources
 bin/factory (FACTORY_SOURCED=1) and calls the real build_worker_prompt with a Claude worker; the fan-out test
 then runs the real factory-round.js under node with stub workflow globals. The record and worker_round tests hold
 that no ledger line carries the deleted skills_called field (#575); worker_round runs with a fake claude, the temp
@@ -72,6 +72,11 @@ class FactorySkillsTests(unittest.TestCase):
     def install(self, paths: dict[str, pathlib.Path]) -> None:
         plugins = {k: [{"scope": "user", "installPath": str(v)}] for k, v in paths.items()}
         (self.home / ".claude/plugins/installed_plugins.json").write_text(json.dumps({"version": 2, "plugins": plugins}))
+        self.enable(self.home, {k: True for k in paths})
+
+    @staticmethod
+    def enable(home: pathlib.Path, keys: dict[str, bool]) -> None:
+        (home / ".claude/settings.json").write_text(json.dumps({"enabledPlugins": keys}))
 
     @staticmethod
     def skill(plugin: pathlib.Path, name: str) -> pathlib.Path:
@@ -270,6 +275,68 @@ console.log(JSON.stringify(seen));"""
         self.assertNotEqual(proc.returncode, 0, proc.stdout)
         self.assertEqual(proc.stdout, "")
 
+    def registry(self, plugins: str) -> pathlib.Path:
+        # plugins is the registry's "plugins" object as JSON text, so key and record order stay as written; C/ names
+        # the cache, where every folder in folders gets a skills/tdd/SKILL.md.
+        cache = self.home / ".claude/plugins/cache"
+        (self.home / ".claude/plugins/installed_plugins.json").write_text(
+            '{"version": 2, "plugins": ' + plugins.replace('"C/', f'"{cache}/') + "}")
+        return cache
+
+    def resolve_tdd(self, plugins: str, folders: list[str], enabled: dict[str, bool]) -> str:
+        cache = self.registry(plugins)
+        for folder in folders:
+            if not (cache / folder / "skills/tdd/SKILL.md").exists():
+                self.skill(cache / folder, "tdd")
+        self.enable(self.home, enabled)
+        proc = self.skill_file("pstack:tdd")
+        return proc.stdout.strip().removeprefix(f"{cache}/").removesuffix("/skills/tdd/SKILL.md") or f"status {proc.returncode}"
+
+    def test_plugin_skill_resolves_at_the_first_enabled_keys_user_record(self) -> None:
+        # The #533 done check: a disabled key first, then two enabled keys in both orders; the first enabled key
+        # wins, and from it its user record, after existing project, local and scopeless records.
+        a = ('"pstack@a": [{"scope": "project", "projectPath": "/elsewhere", "installPath": "C/a/pstack/0.9.0"}, '
+             '{"scope": "local", "projectPath": "/elsewhere", "installPath": "C/a/pstack/0.7.0"}, '
+             '{"installPath": "C/a/pstack/0.6.0"}, {"scope": "user", "installPath": "C/a/pstack/1.0.0"}, '
+             '{"scope": "project", "projectPath": "/other", "installPath": "C/a/pstack/0.8.0"}]')
+        z = '"pstack@0": [{"scope": "user", "installPath": "C/0/pstack/3.0.0"}]'
+        b = '"pstack@b": [{"scope": "user", "installPath": "C/b/pstack/2.0.0"}]'
+        folders = ["a/pstack/1.0.0", "a/pstack/0.9.0", "a/pstack/0.8.0", "a/pstack/0.7.0", "a/pstack/0.6.0",
+                   "b/pstack/2.0.0", "0/pstack/3.0.0"]
+        enabled = {"pstack@b": False, "pstack@a": True, "pstack@0": True}
+        for keys, want in ((f"{a}, {z}", "a/pstack/1.0.0"), (f"{z}, {a}", "0/pstack/3.0.0")):
+            with self.subTest(want=want):
+                self.assertEqual(self.resolve_tdd(f"{{{b}, {keys}}}", folders, enabled), want)
+
+    def test_plugin_skill_resolves_at_the_first_existing_user_or_managed_record(self) -> None:
+        # The #533 done check: a user record whose folder is missing, existing project, local and scopeless
+        # records, then a managed and a user record in both orders.
+        x = '{"scope": "managed", "installPath": "C/m/pstack/1.1.0"}'
+        y = '{"scope": "user", "installPath": "C/m/pstack/1.0.5"}'
+        head = ('{"scope": "user", "installPath": "C/m/pstack/0.5.0"}, '
+                '{"scope": "project", "projectPath": "/elsewhere", "installPath": "C/m/pstack/0.9.0"}, '
+                '{"scope": "local", "projectPath": "/elsewhere", "installPath": "C/m/pstack/0.7.0"}, '
+                '{"installPath": "C/m/pstack/0.6.0"}')
+        folders = ["m/pstack/0.9.0", "m/pstack/0.7.0", "m/pstack/0.6.0", "m/pstack/1.1.0", "m/pstack/1.0.5"]
+        for records, want in ((f"{x}, {y}", "m/pstack/1.1.0"), (f"{y}, {x}", "m/pstack/1.0.5")):
+            with self.subTest(want=want):
+                got = self.resolve_tdd(f'{{"pstack@m": [{head}, {records}]}}', folders, {"pstack@m": True})
+                self.assertEqual(got, want)
+
+    def test_plugin_key_with_no_enabled_plugins_entry_resolves_to_nothing(self) -> None:
+        plugins = '{"pstack@n": [{"scope": "user", "installPath": "C/n/pstack/1.0.0"}]}'
+        self.assertEqual(self.resolve_tdd(plugins, ["n/pstack/1.0.0"], {"other@n": True}), "status 1")
+
+    def test_disabled_plugin_key_resolves_to_nothing(self) -> None:
+        plugins = '{"pstack@n": [{"scope": "user", "installPath": "C/n/pstack/1.0.0"}]}'
+        self.assertEqual(self.resolve_tdd(plugins, ["n/pstack/1.0.0"], {"pstack@n": False}), "status 1")
+
+    def test_plugin_skill_resolves_to_nothing_without_settings_json(self) -> None:
+        (self.home / ".claude/settings.json").unlink()
+        proc = self.skill_file("pstack:tdd")
+        self.assertNotEqual(proc.returncode, 0, proc.stdout)
+        self.assertEqual(proc.stdout, "")
+
     def test_record_given_a_tenth_argument_writes_no_skills_called(self) -> None:
         res = self.tmp / "result.json"
         res.write_text(json.dumps({"type": "result", "total_cost_usd": 1, "num_turns": 3}))
@@ -338,7 +405,9 @@ console.log(JSON.stringify(seen));"""
             old.parent.mkdir(parents=True)
             old.write_text(f"---\nname: {name}\n---\nWrite `~/.old/x` first.\n")
         (home / ".claude/plugins/installed_plugins.json").write_text(
-            json.dumps({"version": 2, "plugins": {"pstack@cursor-plugins": [{"installPath": str(cache / "1.0.0")}]}}))
+            json.dumps({"version": 2, "plugins": {"pstack@cursor-plugins": [{"scope": "user",
+                                                                             "installPath": str(cache / "1.0.0")}]}}))
+        self.enable(home, {"pstack@cursor-plugins": True})
         proc = self.skills(home)
         self.assertEqual(proc.returncode, 0, proc.stdout + proc.stderr)
         skill = cache / "1.0.0/skills"
