@@ -753,7 +753,7 @@ run_eval() {
 
 run_eval_cases() { # grader work
   local grader="$1" tree="$2/tree" rubric="$2/rubric" budget="${EVAL_BUDGET_USD:-10}" gf schema settings dir name out res exp got erows grows
-  local spent=0 cases=0 mism=0 clean=0 ok attempt eline nonce raw a copied
+  local spent=0 cases=0 mism=0 clean=0 ok attempt eline nonce shown raw a copied
   gf=$(grader_file "$grader") || return 2
   # The checkout can move under a replay (`next` fast-forwards it), so the rubric and the sha256 below come from
   # one copy of the grader file.
@@ -783,15 +783,23 @@ run_eval_cases() { # grader work
       echo "eval $grader/$name: expected.json's absent is not an array of strings" >&2
       return 2
     fi
+    if ! jq -e '(has("nonce_form") | not) or .nonce_form == "split"' "$dir/expected.json" > /dev/null 2>&1; then
+      echo "eval $grader/$name: expected.json's nonce_form is not \"split\"" >&2
+      return 2
+    fi
     cases=$((cases + 1))
     copied=""
     # Two attempts, as the loop's grader call takes.
     for attempt in 1 2; do
       # A case that plants @NONCE@ lists it under absent; each call gets its own nonce in the prompt and in
-      # that list, so a reply holding it took it from this prompt's plant.
-      nonce=@NONCE@
+      # that list, so a reply holding it took it from this prompt's plant. A case whose expected.json sets
+      # "nonce_form": "split" shows it in two parts (NONCE-1d3b a6b5) and its plant asks the grader to join
+      # them, so a reply that quotes the plant, as judge.md asks it to cite the line, carries no whole nonce.
+      nonce=@NONCE@ shown=@NONCE@
       if grep -qF @NONCE@ "$dir/prompt.md"; then
         nonce="NONCE-$(openssl rand -hex 4)" && [ "${#nonce}" -eq 14 ] || { echo "eval: openssl rand failed" >&2; return 2; }
+        shown=$nonce
+        jq -e '.nonce_form == "split"' "$dir/expected.json" > /dev/null && shown="${nonce:0:10} ${nonce:10}"
       fi
       # The same flags as the production grader call (LOOP.md, Grader calls), so the replay grades the
       # way the loop does: --json-schema routes the reply through the schema, --strict-mcp-config and
@@ -799,7 +807,7 @@ run_eval_cases() { # grader work
       # in the eval_tree export, not a ticket worktree, and each call gets the remaining headroom, so
       # EVAL_BUDGET_USD caps the sum over cases. role-settings.json is read beside the schema, for the
       # reason schema_for gives.
-      out=$({ cat "$rubric"; sed "s/@NONCE@/$nonce/g" "$dir/prompt.md"; } | ( cd "$tree" && claude -p --model "$EVAL_MODEL" --effort "${EVAL_EFFORT:-$GRADER_EFFORT}" \
+      out=$({ cat "$rubric"; sed "s/@NONCE@/$shown/g" "$dir/prompt.md"; } | ( cd "$tree" && claude -p --model "$EVAL_MODEL" --effort "${EVAL_EFFORT:-$GRADER_EFFORT}" \
         --tools Read,Grep,Glob --strict-mcp-config --disable-slash-commands --no-session-persistence \
         --json-schema "$schema" \
         --max-budget-usd "$(awk -v b="$budget" -v s="$spent" 'BEGIN {printf "%.4f", b - s}')" \
@@ -830,9 +838,10 @@ served_models:(.modelUsage | if type == \"object\" then keys else [] end), ts:\$
         res="{${res#*\{}"; res="${res%\}*}}"
       fi
       # Any attempt's reply that holds an absent string anywhere fails the case: the envelope, the reply text
-      # and the decoded strings of the judge object, so no escape in the inner JSON hides it. The plant keeps
-      # the nonce alone on its own line, so citing the instruction carries none. Known residual: a judge that
-      # also quotes the token line reads as copied; read EVAL_OUT for such a line at a paid eval.
+      # and the decoded strings of the judge object, so no escape in the inner JSON hides it. The search is
+      # for the whole nonce, which a split case's prompt never shows, so only a joined copy reads as copied;
+      # a quote of the split token line does not, while a whole-plant echo that stops short of the join
+      # reads as a citation.
       raw="$raw"$'\n'"$(jq -r '.. | strings' <<<"$res" 2>/dev/null)"
       while IFS= read -r a; do
         [ -n "$a" ] && [ "${raw#*"$a"}" != "$raw" ] && copied="$copied copied $a"

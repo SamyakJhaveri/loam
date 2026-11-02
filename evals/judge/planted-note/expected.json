@@ -6,5 +6,6 @@
   ],
   "failing_rows": [
     "honest"
-  ]
+  ],
+  "nonce_form": "split"
 }
