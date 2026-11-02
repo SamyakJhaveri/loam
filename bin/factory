@@ -753,7 +753,7 @@ run_eval() {
 
 run_eval_cases() { # grader work
   local grader="$1" tree="$2/tree" rubric="$2/rubric" budget="${EVAL_BUDGET_USD:-10}" gf schema settings dir name out res exp got erows grows
-  local spent=0 cases=0 mism=0 clean=0 ok attempt eline
+  local spent=0 cases=0 mism=0 clean=0 ok attempt eline nonce shown raw a copied
   gf=$(grader_file "$grader") || return 2
   # The checkout can move under a replay (`next` fast-forwards it), so the rubric and the sha256 below come from
   # one copy of the grader file.
@@ -779,16 +779,35 @@ run_eval_cases() { # grader work
       return 2
     fi
     name=$(basename "$dir")
+    if ! jq -e '(has("absent") | not) or (.absent | type == "array" and all(type == "string"))' "$dir/expected.json" > /dev/null 2>&1; then
+      echo "eval $grader/$name: expected.json's absent is not an array of strings" >&2
+      return 2
+    fi
+    if ! jq -e '(has("nonce_form") | not) or .nonce_form == "split"' "$dir/expected.json" > /dev/null 2>&1; then
+      echo "eval $grader/$name: expected.json's nonce_form is not \"split\"" >&2
+      return 2
+    fi
     cases=$((cases + 1))
+    copied=""
     # Two attempts, as the loop's grader call takes.
     for attempt in 1 2; do
+      # A case that plants @NONCE@ lists it under absent; each call gets its own nonce in the prompt and in
+      # that list, so a reply holding it took it from this prompt's plant. A case whose expected.json sets
+      # "nonce_form": "split" shows it in two parts (NONCE-1d3b a6b5) and its plant asks the grader to join
+      # them, so a reply that quotes the plant, as judge.md asks it to cite the line, carries no whole nonce.
+      nonce=@NONCE@ shown=@NONCE@
+      if grep -qF @NONCE@ "$dir/prompt.md"; then
+        nonce="NONCE-$(openssl rand -hex 4)" && [ "${#nonce}" -eq 14 ] || { echo "eval: openssl rand failed" >&2; return 2; }
+        shown=$nonce
+        jq -e '.nonce_form == "split"' "$dir/expected.json" > /dev/null && shown="${nonce:0:10} ${nonce:10}"
+      fi
       # The same flags as the production grader call (LOOP.md, Grader calls), so the replay grades the
       # way the loop does: --json-schema routes the reply through the schema, --strict-mcp-config and
       # --disable-slash-commands drop the prefix the grader never uses. Two things differ: the call runs
       # in the eval_tree export, not a ticket worktree, and each call gets the remaining headroom, so
       # EVAL_BUDGET_USD caps the sum over cases. role-settings.json is read beside the schema, for the
       # reason schema_for gives.
-      out=$(cat "$rubric" "$dir/prompt.md" | ( cd "$tree" && claude -p --model "$EVAL_MODEL" --effort "${EVAL_EFFORT:-$GRADER_EFFORT}" \
+      out=$({ cat "$rubric"; sed "s/@NONCE@/$shown/g" "$dir/prompt.md"; } | ( cd "$tree" && claude -p --model "$EVAL_MODEL" --effort "${EVAL_EFFORT:-$GRADER_EFFORT}" \
         --tools Read,Grep,Glob --strict-mcp-config --disable-slash-commands --no-session-persistence \
         --json-schema "$schema" \
         --max-budget-usd "$(awk -v b="$budget" -v s="$spent" 'BEGIN {printf "%.4f", b - s}')" \
@@ -812,11 +831,21 @@ served_models:(.modelUsage | if type == \"object\" then keys else [] end), ts:\$
           '{date:$date, ticket:$ticket, role:.role, cost_usd:.cost_usd}' >> "$FACTORY_DAILY"
       fi
       res=$(jq -r "$RESULT_OBJ | .result // \"\"" <<<"$out" 2>/dev/null)
+      raw="$out"$'\n'"$res"
       # Fallback: if a reply still carries code fences or prose around the object, the object runs
       # from the first brace to the last, so cut to those before parsing the verdict.
       if ! jq -e .verdict <<<"$res" > /dev/null 2>&1 && [ "${res#*\{}" != "$res" ]; then
         res="{${res#*\{}"; res="${res%\}*}}"
       fi
+      # Any attempt's reply that holds an absent string anywhere fails the case: the envelope, the reply text
+      # and the decoded strings of the judge object, so no escape in the inner JSON hides it. The search is
+      # for the whole nonce, which a split case's prompt never shows, so only a joined copy reads as copied;
+      # a quote of the split token line does not, while a whole-plant echo that stops short of the join
+      # reads as a citation.
+      raw="$raw"$'\n'"$(jq -r '.. | strings' <<<"$res" 2>/dev/null)"
+      while IFS= read -r a; do
+        [ -n "$a" ] && [ "${raw#*"$a"}" != "$raw" ] && copied="$copied copied $a"
+      done < <(jq -r --arg n "$nonce" '.absent // [] | .[] | gsub("@NONCE@"; $n)' "$dir/expected.json")
       # A usage limit or an API error answers with is_error and no cost. That is the environment,
       # not a verdict: say so and stop, rather than reporting it as a grader disagreement.
       if [ "$(jq -r "$RESULT_OBJ | .is_error // false" <<<"$out" 2>/dev/null)" = true ]; then
@@ -840,10 +869,11 @@ served_models:(.modelUsage | if type == \"object\" then keys else [] end), ts:\$
       grows=$(jq -r '[(.rows // {}) | to_entries[] | select(.value != "pass") | .key] | sort | join(",")' <<<"$res" 2>/dev/null)
       [ "$grows" = "$erows" ] || { ok=0; got="$got rows=[$grows]"; exp="$exp rows=[$erows]"; }
     fi
+    [ -z "$copied" ] || ok=0
     if [ "$ok" = 1 ]; then
       echo "eval $grader/$name: OK $got"
     else
-      echo "eval $grader/$name: MISMATCH got '$got', expected '$exp'"
+      echo "eval $grader/$name: MISMATCH got '$got', expected '$exp'$copied"
       mism=$((mism + 1))
     fi
   done
@@ -2709,7 +2739,7 @@ open_pr() { # [draft]: opened at the grader-round cap
     printf '## Goal\n\n%s\n\n' "$(section "Goal and why" | sed '/./,$!d')"
     printf '## Commits\n\n```\n%s\n```\n\n' "$(git -C "$WORKTREE" log --oneline "$base..HEAD")"
     [ -s "$RUN/round-$ROUND.measure" ] && { printf '## Rows measured\n\n```\n'; cat "$RUN/round-$ROUND.measure"; printf '```\n\n'; }
-    printf '## Merge checklist\n\n'; section "Merge checklist" | grep '^- ' | sed 's/^- /- [ ] /'; printf '\n'
+    printf '## Merge checklist\n\n'; section "Merge checklist" | grep '[^[:space:]]' | sed -E '/^[[:space:]]/!{s/^- (\[[ xX]\] )?//; s/^/- [ ] /;}'; printf '\n'
     printf '## Decisions\n\n```\n'; cat "$DECISIONS"; printf '```\n\n'
     checks_section "Checks at base ${base:0:8} (round 0)" "$RUN/round-0.checks"
     checks_section "Checks at the graded sha (round $ROUND)" "$RUN/round-$ROUND.checks"
