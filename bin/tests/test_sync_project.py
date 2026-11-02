@@ -196,7 +196,10 @@ class SyncProjectTests(unittest.TestCase):
         # at the local bare repo. github_repo in the answers is example/demo.
         if env and "GIT_CONFIG_GLOBAL" in env:  # keep gc off in a caller's global config too
             wrapped = self.base / "caller-gc-off.gitconfig"
-            wrapped.write_text(f"[include]\n\tpath = {env['GIT_CONFIG_GLOBAL']}\n{GC_OFF}")
+            wrapped.write_text("")  # git config quotes the path, so a `#` or `;` in it stays in it
+            git("config", "--file", str(wrapped), "include.path", env["GIT_CONFIG_GLOBAL"], cwd=self.base)
+            with wrapped.open("a") as f:
+                f.write(GC_OFF)
             env = {**env, "GIT_CONFIG_GLOBAL": str(wrapped)}
         env = {**GIT_ENV, "PATH": f"{self.stubs}:{os.environ['PATH']}", "TMPDIR": str(self.base),
                "GIT_CONFIG_COUNT": "4",
