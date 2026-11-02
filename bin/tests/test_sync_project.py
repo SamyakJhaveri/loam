@@ -19,7 +19,11 @@ import unittest
 ROOT = pathlib.Path(__file__).resolve().parents[2]
 SYNC = ROOT / "bin/sync-project"
 
-# Same reason as test_render_smoke.py: keep git maintenance from racing cleanup.
+# Same reason as test_render_smoke.py: keep git maintenance from racing cleanup. A local push or
+# fetch runs receive-pack or upload-pack without GIT_CONFIG_COUNT and its keys, and receive-pack
+# then runs `gc --auto` at git's defaults (#315), so setUpClass also names a global config file
+# holding the same keys in GIT_CONFIG_GLOBAL, which those processes keep.
+GC_OFF = "[gc]\n\tauto = 0\n[maintenance]\n\tauto = false\n[receive]\n\tautogc = false\n"
 GIT_ENV = {
     **os.environ,
     "GIT_CONFIG_COUNT": "2",
@@ -110,6 +114,8 @@ class SyncProjectTests(unittest.TestCase):
         cls.copier = copier()
         cls.tmp = tempfile.TemporaryDirectory()
         base = pathlib.Path(cls.tmp.name)
+        (base / "gc-off.gitconfig").write_text(GC_OFF)
+        GIT_ENV["GIT_CONFIG_GLOBAL"] = str(base / "gc-off.gitconfig")
         cls.task_log = base / "task.log"
         tpl = cls.tpl = base / "tpl"
         (tpl / "seed").mkdir(parents=True)
@@ -169,6 +175,7 @@ class SyncProjectTests(unittest.TestCase):
 
     @classmethod
     def tearDownClass(cls) -> None:
+        GIT_ENV.pop("GIT_CONFIG_GLOBAL", None)
         cls.tmp.cleanup()
 
     def setUp(self) -> None:
@@ -187,6 +194,10 @@ class SyncProjectTests(unittest.TestCase):
              env: dict[str, str] | None = None) -> subprocess.CompletedProcess:
         # The project is named on GitHub, as a real sync needs; git's insteadOf points both names
         # at the local bare repo. github_repo in the answers is example/demo.
+        if env and "GIT_CONFIG_GLOBAL" in env:  # keep gc off in a caller's global config too
+            wrapped = self.base / "caller-gc-off.gitconfig"
+            wrapped.write_text(f"[include]\n\tpath = {env['GIT_CONFIG_GLOBAL']}\n{GC_OFF}")
+            env = {**env, "GIT_CONFIG_GLOBAL": str(wrapped)}
         env = {**GIT_ENV, "PATH": f"{self.stubs}:{os.environ['PATH']}", "TMPDIR": str(self.base),
                "GIT_CONFIG_COUNT": "4",
                "GIT_CONFIG_KEY_2": f"url.{self.remote}.insteadOf",
