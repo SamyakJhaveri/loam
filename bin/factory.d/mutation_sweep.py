@@ -15,7 +15,7 @@ after which its file no longer parses is discarded; the rest are ordered by the 
 stripped line, so an unchanged line gets the same edits every round, and the first 8 run.
 The tests run unedited first, under <first-run timeout> s, then once per edit under twice that run plus 10 s; exit 0
 is survived, any other exit or a timeout killed. Each run has a session of its own, whose whole process group gets
-KILL when it ends, and on Linux, where the helper is the child subreaper, every child orphaned to it gets KILL too, so a
+KILL when it ends, and on Linux, where the helper is the child subreaper, every process orphaned to it gets KILL too, so a
 loop an edit made endless never outlives the sweep.
 Writes {"tests", "baseline_sec", "timeout_sec", "mutants", "reason"} to <out json> and exits 0; reason names why no
 edit ran, else null. A git failure exits 2 and writes nothing. python3 stdlib only.
@@ -384,25 +384,34 @@ def subreaper() -> bool:
 
 
 def kill_orphans() -> None:
-    """KILL and reap every child of this process left after a run's group KILL, which as subreaper are the run's
-    orphans; each one killed orphans its own children to this process, so repeat until none is left, for 5 s at most."""
+    """KILL every descendant of this process left after a run's group KILL, which as subreaper are the run's orphans
+    and theirs, and reap the children; each one killed orphans its own children to this process, so repeat until
+    none is left, for 5 s at most."""
     end = time.monotonic() + 5
     while time.monotonic() < end:
-        kids = []
+        kids: dict[int, list[int]] = {}  # ppid -> its children's pids, from one read of /proc
         for stat in Path("/proc").glob("[0-9]*/stat"):
             try:
                 s = stat.read_bytes()  # bytes: a process's name may be any bytes, not UTF-8
             except OSError:
                 continue
-            if int(s[s.rindex(b")") + 2:].split()[1]) == os.getpid():
-                kids.append(int(stat.parent.name))
-        if not kids:
+            kids.setdefault(int(s[s.rindex(b")") + 2:].split()[1]), []).append(int(stat.parent.name))
+        mine, todo = [], list(kids.get(os.getpid(), []))
+        while todo:
+            pid = todo.pop()
+            mine.append(pid)
+            todo.extend(kids.get(pid, []))
+        if not mine:
             return
-        for pid in kids:
+        for pid in mine:
             try:
                 os.kill(pid, signal.SIGKILL)
+            except ProcessLookupError:
+                pass
+        for pid in kids.get(os.getpid(), []):
+            try:
                 os.waitpid(pid, os.WNOHANG)
-            except (ProcessLookupError, ChildProcessError):
+            except ChildProcessError:
                 pass
         time.sleep(0.05)
 

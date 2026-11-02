@@ -184,7 +184,7 @@ An edit after which its file no longer parses (`bash -n`, Python's `compile`) is
 The tests run unedited first, under `timeout` of `CALL_TIMEOUT_SEC`: a non-zero exit or a timeout records the reason and runs no edit, since the checks and `guard bin/check` own a red test.
 Then each edit runs, its file restored after it: exit 0 is `survived`; any other exit, or a timeout of twice the unedited run plus 10 s, is `killed`, since an edit that hangs changed what the code does.
 Every run starts in a session of its own, and its whole process group gets KILL when it ends, so a `while` loop a `force-true` edit made endless never outlives the sweep (a timeout that kills pytest alone leaves it spinning).
-A test's child that starts a session of its own leaves that group; on Linux the helper is the child subreaper of its runs (`prctl` `PR_SET_CHILD_SUBREAPER`), so such a child is orphaned to it, and after each run it KILLs and reaps every child of its own until none is left, for 5 s at most; elsewhere that child can outlive the sweep.
+A test's child that starts a session of its own leaves that group; on Linux the helper is the child subreaper of its runs (`prctl` `PR_SET_CHILD_SUBREAPER`), so such a child is orphaned to it, and after each run it KILLs every descendant of its own at once and reaps its children, until none is left, for 5 s at most; elsewhere that child can outlive the sweep.
 A sweep takes at most the unedited run plus 8 times that timeout; it has no cap of its own (Samyak, 1 Nov 2026: no grader is capped for cost or time).
 
 The result is `round-N.mutation.json`: `{"tests": [...], "baseline_sec": N, "timeout_sec": N, "mutants": [{"path", "line", "operator", "before", "after", "result", "timed_out", "seconds"}], "reason": null or text}`.

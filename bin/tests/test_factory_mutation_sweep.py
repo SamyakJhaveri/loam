@@ -230,10 +230,10 @@ class SweepTests(unittest.TestCase):
         self.assertEqual((result["mutants"], result["reason"]), ([], "the committed tests fail unedited (pytest exit 1)"))
         self.assertIsNotNone(result["baseline_sec"])
 
-    def loops_left(self) -> list[tuple[int, str]]:
+    def loops_left(self, name: str = "loop.sh") -> list[tuple[int, str]]:
         ps = subprocess.run(["ps", "-eo", "pid=,args="], capture_output=True, text=True, check=True).stdout
         return [(int(pid), a) for pid, a in (ln.split(None, 1) for ln in ps.splitlines() if " " in ln.strip())
-                if str(self.wt / "loop.sh") in a]
+                if str(self.wt / name) in a]
 
     def hang(self, popen_args: str) -> None:
         loop = '#!/usr/bin/env bash\ni=0\nwhile [ "$i" -lt "$1" ]; do i=$((i + 1)); done\necho "$i"\n'
@@ -268,6 +268,35 @@ class SweepTests(unittest.TestCase):
         self.assertEqual(pathlib.Path(f"/proc/{named.pid}/comm").read_bytes(), b"bad-\xff-name\n")
         result = self.sweep({"a.py": "def f(a, b):\n    return a == b\n", "test_ok.py": PASSING})
         self.assertEqual(records(result), ["a.py:2:drop:survived", "a.py:2:flip:survived"])
+
+    @unittest.skipUnless(sys.platform.startswith("linux"), "the sweep is a child subreaper on Linux only")
+    def test_a_deep_chain_of_orphans_is_killed_whole(self) -> None:
+        # The test leaves a chain of 200 bash processes, each waiting on the next, in a session of its own; killing
+        # one level at a time would outlast the 5 s the sweep allows itself.
+        chain = ('#!/usr/bin/env bash\nif [ "$1" -gt 0 ]; then bash "$0" $(($1 - 1)); echo; else\n'
+                 '  touch "$(dirname "$0")/leaf"; while :; do sleep 1; done; fi\n')
+        test = ("import pathlib, subprocess, time\n\n\ndef test_chain():\n    d = pathlib.Path(__file__).parent\n"
+                "    (d / 'fixtures/leaf').unlink(missing_ok=True)\n"
+                "    subprocess.Popen(['bash', str(d / 'fixtures/chain.sh'), '200'], start_new_session=True)\n"
+                "    while not (d / 'fixtures/leaf').exists():\n        time.sleep(0.05)\n")
+        name = "fixtures/chain.sh"
+
+        def kill_left() -> None:
+            for _ in range(10):
+                for pid, _a in self.loops_left(name):
+                    os.kill(pid, 9)
+                time.sleep(0.1)
+
+        self.addCleanup(kill_left)
+        result = self.sweep({"fixtures/chain.sh": chain, "chain_test.py": test, "a.py": "x = 1 == 2\n"})
+        self.assertEqual(records(result), ["a.py:1:flip:survived"])
+        left = []
+        for _ in range(20):
+            left = self.loops_left(name)
+            if not left:
+                break
+            time.sleep(0.1)
+        self.assertEqual(len(left), 0)
 
     def test_an_edit_that_hangs_is_killed_with_its_whole_group(self) -> None:
         # The force-true edit makes the while loop endless in a bash child of the test, which pytest's own death would
