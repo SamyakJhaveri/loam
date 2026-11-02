@@ -6,12 +6,18 @@ capture lands on the remote beside A's, both INDEX lines kept by the union merge
 
 PausedRebaseTests: a post-checkout hook in A's store holds A's background rebase open mid-rebase (HEAD detached,
 rebase in progress), so another hook can run inside that window: a second capture, a recall whose fetch fails,
-or a SIGKILL of the sync followed by the next capture. Each must leave every capture on main and, once the
-remote is reachable, on the remote.
+mem-weekly.sh, a SIGKILL of only the sync's shell, or a SIGKILL of the whole sync (with or without a stale
+index.lock, or one that cannot be removed) followed by the next capture. Each must leave every capture on main
+and, once the remote is reachable, on the remote; none may write into, or abort, a rebase another process owns.
+
+LockTests: a capture that cannot take the store lock in time keeps its data in the spool under .git and the
+next holder lands it; a directory left at the lock path by the earlier mkdir lock does not block captures.
+RecallBoundTests: a recall whose rebase hangs ends within its five-second hook timeout and leaves main clean.
 """
 
 from __future__ import annotations
 
+import fcntl
 import json
 import os
 import pathlib
@@ -24,6 +30,7 @@ import unittest
 ROOT = pathlib.Path(__file__).resolve().parents[2]
 HOOK = ROOT / "seed/.claude/hooks/mem-capture.sh"
 RECALL = ROOT / "seed/.claude/hooks/mem-recall.sh"
+WEEKLY = ROOT / "seed/bin/mem-weekly.sh"
 
 # Commits are made with a fixed identity, and git's background maintenance is off so TemporaryDirectory
 # cleanup does not race a detached `git maintenance run --auto`.
@@ -79,14 +86,58 @@ class Base(unittest.TestCase):
     def capture(self, store: pathlib.Path, sid: str) -> None:
         self.finish(self.start_capture(store, sid))
 
-    def recall(self, store: pathlib.Path) -> None:
+    def recall(self, store: pathlib.Path, timeout: float = 30) -> None:
         r = subprocess.run(
             ["bash", str(RECALL)],
             input=json.dumps({"hook_event_name": "SessionStart", "session_id": "recall", "cwd": str(self.cwd)}),
-            capture_output=True, text=True, timeout=30, cwd=self.cwd,
+            capture_output=True, text=True, timeout=timeout, cwd=self.cwd,
             env={**GIT_ENV, "LOAM_MEMSTORE": str(store)},
         )
         self.assertEqual(r.returncode, 0, r.stderr)
+
+    def weekly(self, store: pathlib.Path) -> None:
+        none = str(self.top / "none")
+        r = subprocess.run(["bash", str(WEEKLY)], capture_output=True, text=True, timeout=60, cwd=self.cwd,
+                           env={**GIT_ENV, "LOAM_MEMSTORE": str(store), "CLAUDE_CONFIG_DIR": none, "CODEX_HOME": none})
+        self.assertEqual(r.returncode, 0, r.stderr)
+
+    @staticmethod
+    def spool(store: pathlib.Path) -> list[pathlib.Path]:
+        d = store / ".git/loam-spool"
+        return sorted(e for e in d.iterdir() if not e.name.startswith(".")) if d.is_dir() else []
+
+    @staticmethod
+    def in_tree(store: pathlib.Path, sid: str) -> bool:
+        index = store / "traces/project/INDEX.md"
+        return index.exists() and f" | {sid} | " in index.read_text()
+
+    def two_stores(self) -> tuple[pathlib.Path, pathlib.Path]:
+        a, b = self.top / "store-a", self.top / "store-b"
+        git("clone", "-q", str(self.origin), str(a), cwd=self.top)
+        git("clone", "-q", str(self.origin), str(b), cwd=self.top)
+        return a, b
+
+    def pause_checkout(self, store: pathlib.Path) -> None:
+        # While the pause file exists, the next checkout in this store (a rebase onto origin/main) writes the
+        # hook's pid and blocks until the go file appears.
+        self.pause, self.paused, self.go = self.top / "pause", self.top / "paused", self.top / "go"
+        hook = store / ".git/hooks/post-checkout"
+        hook.write_text(f"""#!/bin/sh
+[ -f '{self.pause}' ] || exit 0
+rm -f '{self.pause}'; echo $$ > '{self.paused}'
+while [ ! -f '{self.go}' ]; do sleep 0.05; done
+""")
+        hook.chmod(0o755)
+        self.addCleanup(self.go.touch)
+        self.pause.touch()
+
+    @staticmethod
+    def until(cond, what: str, bound: float = 15) -> None:
+        deadline = time.monotonic() + bound
+        while not cond():
+            if time.monotonic() > deadline:
+                raise AssertionError(f"timed out waiting for {what}")
+            time.sleep(0.05)
 
     def remote_index(self) -> str:
         try:
@@ -131,31 +182,14 @@ class TwoMachineTests(Base):
 class PausedRebaseTests(Base):
     def setUp(self) -> None:
         super().setUp()
-        self.a, b = self.top / "store-a", self.top / "store-b"
-        git("clone", "-q", str(self.origin), str(self.a), cwd=self.top)
-        git("clone", "-q", str(self.origin), str(b), cwd=self.top)
+        self.a, b = self.two_stores()
         self.capture(self.a, "s0")
         self.wait_for_remote("s0")
         self.capture(b, "s1")
         self.assertIn(" | s1 | ", self.wait_for_remote("s0", "s1"))  # A is now behind the remote
-
-        # While the pause file exists, the next checkout in A (its sync's rebase onto origin/main) writes the
-        # hook's pid and blocks until the go file appears.
-        self.pause, self.paused, self.go = self.top / "pause", self.top / "paused", self.top / "go"
-        hook = self.a / ".git/hooks/post-checkout"
-        hook.write_text(f"""#!/bin/sh
-[ -f '{self.pause}' ] || exit 0
-rm -f '{self.pause}'; echo $$ > '{self.paused}'
-while [ ! -f '{self.go}' ]; do sleep 0.05; done
-""")
-        hook.chmod(0o755)
-        self.addCleanup(self.go.touch)
-        self.pause.touch()
+        self.pause_checkout(self.a)
         self.capture(self.a, "s2")
-        deadline = time.monotonic() + 15
-        while not self.paused.exists() and time.monotonic() < deadline:
-            time.sleep(0.05)
-        self.assertTrue(self.paused.exists(), "A's sync never reached its rebase")
+        self.until(self.paused.exists, "A's sync to reach its rebase")
         self.assertTrue((self.a / ".git/rebase-merge").exists())
 
     def on_main(self, sid: str) -> bool:
@@ -165,9 +199,14 @@ while [ ! -f '{self.go}' ]; do sleep 0.05; done
         self.assertEqual(git("symbolic-ref", "HEAD", cwd=self.a), "refs/heads/main")
         self.assertFalse((self.a / ".git/rebase-merge").exists(), "rebase left in progress")
 
+    def assert_rebase_untouched(self) -> None:
+        self.assertTrue((self.a / ".git/rebase-merge").exists(), "the paused rebase was aborted")
+        self.assertEqual(subprocess.run(["git", "symbolic-ref", "-q", "HEAD"], cwd=self.a, env=GIT_ENV).returncode, 1,
+                         "HEAD left the paused rebase's detached state")
+
     def test_a_capture_during_the_rebase_keeps_its_index_line(self) -> None:
         p = self.start_capture(self.a, "s3")
-        time.sleep(0.5)
+        self.until(lambda: self.spool(self.a), "s3's spool entry")  # s3 holds its data before the rebase resumes
         self.go.touch()
         self.finish(p)
         index = self.wait_for_remote("s0", "s1", "s2", "s3")
@@ -187,14 +226,73 @@ while [ ! -f '{self.go}' ]; do sleep 0.05; done
         self.assertIn(" | s2 | ", index, f"the capture's sync never pushed; sync.log: {log}")
         self.assert_clean_main()
 
+    def sync_chain(self) -> list[int]:
+        # From the paused hook up its parents (git rebase, the bound's python3 if any) to the sync's bash shell.
+        chain = [int(self.paused.read_text())]
+        while True:
+            ppid = int(subprocess.run(["ps", "-o", "ppid=", "-p", str(chain[-1])], capture_output=True,
+                                      text=True).stdout)
+            chain.append(ppid)
+            comm = subprocess.run(["ps", "-o", "comm=", "-p", str(ppid)], capture_output=True, text=True).stdout
+            if comm.strip().endswith("bash"):
+                return chain
+
     def kill_the_sync(self) -> None:
-        # The post-checkout hook's parent is git rebase, and its parent is the background sync's shell.
-        hook = int(self.paused.read_text())
-        rebase = int(subprocess.run(["ps", "-o", "ppid=", "-p", str(hook)], capture_output=True, text=True).stdout)
-        sync = int(subprocess.run(["ps", "-o", "ppid=", "-p", str(rebase)], capture_output=True, text=True).stdout)
-        for pid in (sync, rebase, hook):
+        for pid in self.sync_chain():
             os.kill(pid, signal.SIGKILL)
-        time.sleep(0.3)
+        time.sleep(0.3)  # the hook's last `sleep 0.05` child exits
+
+    def test_killing_only_the_sync_shell_keeps_its_live_rebase_locked(self) -> None:
+        os.kill(self.sync_chain()[-1], signal.SIGKILL)
+        self.capture(self.a, "s3")  # the rebase's git still holds the lock: s3 spools and leaves it alone
+        self.assert_rebase_untouched()
+        self.assertFalse(self.in_tree(self.a, "s3"), "s3 wrote into the live rebase")
+        self.go.touch()
+        self.until(lambda: not (self.a / ".git/rebase-merge").exists(), "the live rebase to finish")
+        self.capture(self.a, "s4")
+        index = self.wait_for_remote("s0", "s1", "s2", "s3", "s4")
+        for sid in ("s0", "s1", "s2", "s3", "s4"):
+            self.assertIn(f" | {sid} | ", index, f"{sid} missing from the remote INDEX")
+        self.assert_clean_main()
+
+    def test_a_stale_index_lock_from_the_killed_sync_is_cleared(self) -> None:
+        self.kill_the_sync()
+        (self.a / ".git/index.lock").touch()  # the killed git was writing the index
+        self.capture(self.a, "s5")
+        index = self.wait_for_remote("s2", "s5")
+        self.assertIn(" | s5 | ", index, "s5 never reached the remote")
+        self.assertTrue(self.on_main("s5"), "s5 is not on A's main")
+        self.assert_clean_main()
+
+    def test_an_unrecoverable_rebase_keeps_the_capture_in_the_spool(self) -> None:
+        self.kill_the_sync()
+        (self.a / ".git/index.lock").mkdir()  # an index.lock nothing can remove, so the abort fails
+        self.capture(self.a, "s5")
+        self.assert_rebase_untouched()
+        self.assertFalse(self.in_tree(self.a, "s5"), "s5 wrote into the half-done rebase")
+        self.assertEqual(len(self.spool(self.a)), 1, "s5 is not in the spool")
+        (self.a / ".git/index.lock").rmdir()
+        self.capture(self.a, "s6")
+        index = self.wait_for_remote("s2", "s5", "s6")
+        for sid in ("s2", "s5", "s6"):
+            self.assertIn(f" | {sid} | ", index, f"{sid} missing from the remote INDEX")
+            self.assertTrue(self.on_main(sid), f"{sid} is not on A's main")
+        self.assertEqual(self.spool(self.a), [], "the spool was not drained")
+        self.assert_clean_main()
+
+    def test_weekly_waits_for_the_lock_and_leaves_the_rebase_alone(self) -> None:
+        self.weekly(self.a)  # the paused sync holds the lock past weekly's wait
+        self.assert_rebase_untouched()
+        self.go.touch()
+        index = self.wait_for_remote("s2")
+        self.assertIn(" | s2 | ", index, "the capture's sync never pushed")
+        self.until(lambda: not (self.a / ".git/rebase-merge").exists(), "the rebase to finish")
+        self.weekly(self.a)
+        self.assertTrue(self.on_main("s2"), "s2 is not on A's main")
+        self.assert_clean_main()
+        log = (self.a / "reports/sync.log").read_text()
+        self.assertIn("weekly: store busy", log)
+        self.assertNotIn("weekly sync failed", log)
 
     def test_after_a_kill_mid_rebase_the_next_capture_lands_on_main(self) -> None:
         self.kill_the_sync()
@@ -213,6 +311,48 @@ while [ ! -f '{self.go}' ]; do sleep 0.05; done
         self.assertTrue(self.on_main("s5"), "s5 is not on A's main")
         self.assertTrue(self.on_main("s2"), "s2 is not on A's main")
         self.assert_clean_main()
+
+
+class LockTests(Base):
+    def test_a_capture_while_the_lock_is_held_lands_via_the_spool(self) -> None:
+        a, _ = self.two_stores()
+        with open(a / ".git/loam-mem.lock", "a") as held:
+            fcntl.flock(held, fcntl.LOCK_EX)
+            self.capture(a, "s3")  # waits out its bound, then exits 0
+            self.assertEqual(len(self.spool(a)), 1, "the capture was dropped, not spooled")
+            self.assertFalse(self.in_tree(a, "s3"), "the capture wrote the tree without the lock")
+        self.capture(a, "s4")
+        index = self.wait_for_remote("s3", "s4")
+        self.assertIn(" | s3 | ", index, "the spooled capture never landed")
+        self.assertIn(" | s4 | ", index)
+        self.assertEqual(self.spool(a), [], "the spool was not drained")
+        tree = git("ls-tree", "-r", "--name-only", "main", "traces/project", cwd=self.origin).splitlines()
+        self.assertTrue(any(p.endswith("-s3.jsonl.gz") for p in tree), tree)
+
+    def test_an_old_lock_directory_does_not_block_captures(self) -> None:
+        a, _ = self.two_stores()
+        (a / ".git/loam-mem.lock").mkdir()  # left by the earlier mkdir lock
+        self.capture(a, "s1")
+        self.assertIn(" | s1 | ", self.wait_for_remote("s1"), "the capture never reached the remote")
+
+
+class RecallBoundTests(Base):
+    def test_a_hung_recall_rebase_ends_within_the_timeout_and_is_aborted(self) -> None:
+        a, b = self.two_stores()
+        self.capture(a, "s0")
+        self.wait_for_remote("s0")
+        self.capture(b, "s1")
+        self.wait_for_remote("s0", "s1")  # A is now behind the remote
+        self.pause_checkout(a)  # recall's rebase onto origin/main pauses and is never released
+        start = time.monotonic()
+        self.recall(a, timeout=15)
+        self.assertLess(time.monotonic() - start, 5, "recall overran its five-second hook timeout")
+        self.assertTrue(self.paused.exists(), "recall's rebase never ran")
+        self.assertEqual(git("symbolic-ref", "HEAD", cwd=a), "refs/heads/main")
+        self.assertFalse((a / ".git/rebase-merge").exists(), "recall left its rebase in progress")
+        self.assertFalse((a / ".git/index.lock").exists())
+        self.capture(a, "s2")  # the lock is free again
+        self.assertIn(" | s2 | ", self.wait_for_remote("s0", "s1", "s2"))
 
 
 if __name__ == "__main__":

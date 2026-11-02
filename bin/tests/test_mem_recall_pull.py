@@ -1,6 +1,6 @@
 """The SessionStart recall hook's store pull leaves the store as it was when the pull fails (#177).
 
-mem-recall.sh pulls the memory store from its origin before it builds the manifest, bounded to five seconds.
+mem-recall.sh pulls the memory store from its origin before it builds the manifest; its fetch is bounded to two seconds.
 ConflictTests: origin and the store changed the same line, so the rebase conflicts; abort() must undo it, leaving
 no rebase in progress, HEAD, the working tree and the local commit unchanged, and one line in reports/sync.log.
 HangTests: an ssh remote whose `ssh` writes its pid and sleeps; on the time bound killpg must kill the whole
@@ -132,8 +132,8 @@ class HangTests(Base):
         r = recall(store, self.cwd, {"GIT_SSH_COMMAND": str(shim), "GIT_SSH_VARIANT": "ssh"})
         elapsed = time.monotonic() - start
         self.assertEqual(r.returncode, 0, r.stderr)
-        self.assertLess(elapsed, 12, "the hook did not return near its five-second bound")
-        self.assertGreater(elapsed, 4, "the pull ended before the bound, so the hang was not exercised")
+        self.assertLess(elapsed, 5, "the hook overran its five-second timeout")
+        self.assertGreater(elapsed, 1.9, "the fetch ended before its two-second bound, so the hang was not exercised")
 
         started = [int(p) for p in pids.read_text().split()]
         self.assertTrue(started, "the ssh shim never ran")
