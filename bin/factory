@@ -1859,19 +1859,23 @@ active_account() { "$ROOT/bin/claude-account" status 2> /dev/null | sed -n 's/^a
 # and the settings env channel. The account is the host's, shared by every live run (FACTORY_MAX_PARALLEL), so
 # a switch is made only while the active account is still CALL_ACCOUNT, the one the limited call ran under: once
 # another run has switched away from it, this run retries on the new account and never switches back. The check and
-# the switch hold one host-wide flock on RUNS_BASE/limit-switch.lock, so two runs limited at once switch once; a host
-# with no flock(1) (a Mac) skips the lock and keeps the account check. One switch per limit event, then a host-wide
-# five-minute cooldown (RUNS_BASE/limit-switch) sends any further limit down the sleep path, a run limited on the
-# account just switched to included (both accounts are limited when a second reply lands that soon); after the
-# cooldown such a run switches back. No token value ever reaches the log or the ledger: the switcher prints names
-# only and the ledger line names only.
+# the switch hold one host-wide lock, so two runs limited at once switch once: a flock on RUNS_BASE/limit-switch.lock,
+# or on a host with no flock(1) (a Mac) owner_lock's mkdir lock in RUNS_BASE/limit-switch.d, which a killed holder
+# leaves for at most a minute. Either waits about 60 s, then the limit takes the sleep path. One switch per limit
+# event, then a host-wide five-minute cooldown (RUNS_BASE/limit-switch) sends any further limit down the sleep path,
+# a run limited on the account just switched to included (both accounts are limited when a second reply lands that
+# soon); after the cooldown such a run switches back. No token value ever reaches the log or the ledger: the switcher
+# prints names only and the ledger line names only.
 limit_switch() { # -> 0 after a switch, or one away from CALL_ACCOUNT already made; 1 with no other account or on cooldown
   local fd= rc
-  if [ -n "$HAVE_FLOCK" ] && mkdir -p "$RUNS_BASE" && exec {fd}>> "$RUNS_BASE/limit-switch.lock"; then
+  if [ -n "$HAVE_FLOCK" ]; then
+    mkdir -p "$RUNS_BASE" && exec {fd}>> "$RUNS_BASE/limit-switch.lock" || return 1
     flock -w 60 "$fd" || { exec {fd}>&-; return 1; }
+  else
+    mkdir -p "$RUNS_BASE/limit-switch.d" && owner_lock "$RUNS_BASE/limit-switch.d" 60 || return 1
   fi
   limit_switch_held; rc=$?
-  [ -z "$fd" ] || exec {fd}>&-
+  if [ -n "$fd" ]; then exec {fd}>&-; else rmdir "$RUNS_BASE/limit-switch.d/owner.lock"; fi
   return "$rc"
 }
 limit_switch_held() {
