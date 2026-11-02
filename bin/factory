@@ -3085,6 +3085,7 @@ pr_closed_events() {
     url=$(pr_url_of "$d")
     [ -n "$url" ] || continue
     url=${url#https://github.com/}
+    [[ ${url##*/} =~ ^[0-9]+$ ]] || continue
     [ -n "$repo" ] || repo=${url%/pull/*}
     [ "${url%/pull/*}" = "$repo" ] || continue
     runs+="${url##*/} $d"$'\n'

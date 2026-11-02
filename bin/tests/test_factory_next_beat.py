@@ -234,6 +234,13 @@ class NextBeatTests(unittest.TestCase):
         for n in (12, 14):
             self.assertIn(f"lint failed #{n}: ", proc.stderr)
 
+    def test_a_pr_the_state_read_leaves_out_waits_while_the_rest_are_marked(self) -> None:
+        # GitHub resolves #9901 and #9903 but not #9902: gh exits 1 with the raw body, and only #9902 waits a tick.
+        tab = {"ready": [], "editor": {}, "closed": ["9901", "9902", "9903"], "omit": ["9902"]}
+        proc, sent, _ = self.gh_tick(tab, prs=(9901, 9902, 9903))
+        self.assertEqual((proc.returncode, proc.stdout, sent), (0, "nothing to launch\n", ["--ping beat"]), proc.stderr)
+        self.assertEqual(sorted(d.parent.parent.name for d in self.runs.glob("*/k/pr-closed")), ["9901", "9903"])
+
 
 if __name__ == "__main__":
     unittest.main()

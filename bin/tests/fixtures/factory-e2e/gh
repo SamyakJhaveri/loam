@@ -213,6 +213,9 @@ def batch(d: dict, fields: dict, q: str) -> dict:
         sel, end = selection(re.findall(r"[A-Za-z_]+|\S", body), BATCH_FIELDS[kind])
         if end != len(re.findall(r"[A-Za-z_]+|\S", body)) or not sel:
             raise Unknown(f"GraphQL query {q!r}")
+        for name, sub in sel.items():
+            if sub != (["login"] if name == "editor" else None):
+                raise Unknown(f"GraphQL field {name} {sub}")
         it = (d["issues"] if kind == "issue" else d["prs"]).get(number)
         if it is None:
             out[alias] = None
@@ -220,13 +223,9 @@ def batch(d: dict, fields: dict, q: str) -> dict:
                            f"Could not resolve to {'an Issue' if kind == 'issue' else 'a PullRequest'} with the number of {number}."})
             continue
         out[alias] = {}
-        for name, sub in sel.items():
+        for name in sel:
             if name == "editor":
-                if sub != ["login"]:
-                    raise Unknown(f"GraphQL field {name} {sub}")
                 out[alias][name] = None if it["editor"] is None else {"login": it["editor"]}
-            elif sub is not None:
-                raise Unknown(f"GraphQL field {name} {sub}")
             else:
                 out[alias][name] = it["state"] != "open" if name == "closed" else it[name]
     if not out or rest[pos:].split() != ["}", "}"]:
