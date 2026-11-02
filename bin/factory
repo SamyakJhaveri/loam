@@ -2655,8 +2655,8 @@ MUTATION_FIX="add or tighten a committed test that fails on this edit (if a test
 # the diff adds or changes (bin/factory.d/mutation_sweep.py, from its frozen copy; LOOP.md, Mutation sweep). It works
 # in a detached worktree at GRADED_SHA, handled as round_zero handles its own but added from the ticket worktree,
 # whose repository holds the sha, so the ticket worktree and its tree signature are untouched. Each edit those tests still pass is a blocking finding, sent to the worker at most once per
-# ticket (MUTATION_BLOCKED, which a relaunch restores from the fixes files); past that, blocking_findings drafts the
-# PR with them. A helper that fails, or leaves no result, stops the run, so a sweep that did not run never opens a
+# ticket (MUTATION_BLOCKED, which a relaunch restores from round-N.mutation-blocked); past that, blocking_findings
+# drafts the PR with them. A helper that fails, or leaves no result, stops the run, so a sweep that did not run never opens a
 # ready PR; a sweep that ran no edit (no committed test, or the tests red unedited) is a result, not a failure.
 run_mutation_sweep() { # round -> 0 unless a survivor blocks
   local round="$1" wt="${WORKTREE}-mutants" f="$RUN/round-$1.mutation.json" msg rc=0
@@ -2678,6 +2678,7 @@ run_mutation_sweep() { # round -> 0 unless a survivor blocks
     return 0
   fi
   MUTATION_BLOCKED=1
+  : > "$RUN/round-$round.mutation-blocked"   # cmd_run restores MUTATION_BLOCKED from it on a relaunch
   jq -r --arg fix "$MUTATION_FIX" '(.tests | join(", ")) as $t | .mutants[] | select(.result == "survived")
     | "- " + .path + ":" + (.line | tostring) + " mutation survived (" + .operator + "): `" + .after + "` in place of `"
       + .before + "`, and " + $t + " still pass. Fix: " + $fix' "$f" >> "$RUN/round-$round.fixes"
@@ -2686,7 +2687,7 @@ run_mutation_sweep() { # round -> 0 unless a survivor blocks
 
 graders() { # round -> 0 when the judge passes and nothing blocks
   local ok=0 sig
-  rm -f "$RUN/round-$1.mutation.json"   # so a regraded round never reads an older sweep
+  rm -f "$RUN/round-$1.mutation.json" "$RUN/round-$1.mutation-blocked"   # a regraded round never reads an older sweep
   sig=$(tree_signature "$WORKTREE")
   GRADED_SHA=$(git -C "$WORKTREE" rev-parse HEAD)   # open_pr prints it, so a later push shows the verdict is stale
   # The sweep's minutes go only to a round that could open a PR: a judge fail ends the round anyway.
@@ -3040,9 +3041,9 @@ cmd_run() {
       [ -e "$g" ] || continue
       g=${g%.graded.sha}
       { [ -s "$g.fixes" ] || [ "$(jq -r .verdict "$g.judge.json" 2> /dev/null)" != pass ]; } && GRADER_FAILS=$((GRADER_FAILS + 1))
-      # The sweep's one block spans relaunches too: a graded round whose fixes carry a survivor spent it. A round whose
-      # graders never finished is graded again below, and its sweep may block then.
-      grep -qF ' mutation survived (' "$g.fixes" 2> /dev/null && MUTATION_BLOCKED=1
+      # The sweep's one block spans relaunches too: a graded round whose sweep blocked, which only run_mutation_sweep
+      # marks, spent it. A round whose graders never finished is graded again below, and its sweep may block then.
+      [ -e "$g.mutation-blocked" ] && MUTATION_BLOCKED=1
     done
     # A publish whose push or PR create failed left its decision in publish.intent (open_pr): while the newest round
     # is the one that wrote it, and HEAD and that round's graded.sha are still the sha it graded, replay it, ready or
