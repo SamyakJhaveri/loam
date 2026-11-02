@@ -45,6 +45,14 @@ class Fail(Exception):
     """A call gh itself would refuse: message on stderr, exit 1."""
 
 
+class Partial(Exception):
+    """A GraphQL reply that carries errors: gh prints the raw body whatever --jq asks, the message on stderr, exit 1."""
+
+    def __init__(self, doc: dict) -> None:
+        super().__init__(doc["errors"][0]["message"])
+        self.doc = doc
+
+
 def now() -> str:
     return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
@@ -168,16 +176,19 @@ GRAPHQL_HEAD = ("query($owner: String!, $name: String!, $number: Int!) "
                 "{ repository(owner: $owner, name: $name) { issue(number: $number) {")
 
 
-def graphql(d: dict, fields: dict) -> dict:
-    """The two issue reads bin/factory makes: next's editor check and load_ticket's body, author and editor."""
-    q = fields.pop("query", "")
-    if not q.startswith(GRAPHQL_HEAD):
-        raise Unknown(f"GraphQL query {q!r}")
-    toks = re.findall(r"[A-Za-z_]+|\S", q[len(GRAPHQL_HEAD):])
+# next's two batches: every candidate's editor (`i<N>: issue(number: <N>) { editor { login } lastEditedAt }`) and
+# every waiting PR's state (`p<N>: pullRequest(number: <N>) { closed }`), one alias per number written inline.
+BATCH_HEAD = "query($owner: String!, $name: String!) { repository(owner: $owner, name: $name) {"
+BATCH_ALIAS = re.compile(r"\s*([A-Za-z_][A-Za-z0-9_]*): (issue|pullRequest)\(number: ([0-9]+)\) \{([^{}]*(?:\{[^{}]*\}[^{}]*)*)\}")
+BATCH_FIELDS = {"issue": {"editor", "lastEditedAt"}, "pullRequest": {"closed"}}
+
+
+def selection(toks: list[str], allowed: set) -> tuple[dict, int]:
+    """A selection set's fields, each with its sub-fields or None, up to the first unmatched }; and where it stopped."""
     sel: dict = {}
     i = 0
     while i < len(toks) and toks[i] != "}":
-        if toks[i] not in GRAPHQL_FIELDS:
+        if toks[i] not in allowed:
             raise Unknown(f"GraphQL field {toks[i]!r}")
         if toks[i + 1:i + 2] == ["{"]:
             end = toks.index("}", i)
@@ -186,6 +197,55 @@ def graphql(d: dict, fields: dict) -> dict:
         else:
             sel[toks[i]] = None
             i += 1
+    return sel, i
+
+
+def batch(d: dict, fields: dict, q: str) -> dict:
+    """One alias per issue or PR; a number the store does not hold reads null with an errors entry, as GitHub's does."""
+    if set(fields) != {"owner", "name"}:
+        raise Unknown(f"GraphQL variables {fields}")
+    if f"{fields['owner']}/{fields['name']}" != d["repo"]:
+        raise Unknown(f"GraphQL repository {fields['owner']}/{fields['name']}")
+    rest, pos, out, errors = q[len(BATCH_HEAD):], 0, {}, []
+    while m := BATCH_ALIAS.match(rest, pos):
+        alias, kind, number, body = m.groups()
+        pos = m.end()
+        sel, end = selection(re.findall(r"[A-Za-z_]+|\S", body), BATCH_FIELDS[kind])
+        if end != len(re.findall(r"[A-Za-z_]+|\S", body)) or not sel:
+            raise Unknown(f"GraphQL query {q!r}")
+        it = (d["issues"] if kind == "issue" else d["prs"]).get(number)
+        if it is None:
+            out[alias] = None
+            errors.append({"type": "NOT_FOUND", "path": ["repository", alias], "message":
+                           f"Could not resolve to {'an Issue' if kind == 'issue' else 'a PullRequest'} with the number of {number}."})
+            continue
+        out[alias] = {}
+        for name, sub in sel.items():
+            if name == "editor":
+                if sub != ["login"]:
+                    raise Unknown(f"GraphQL field {name} {sub}")
+                out[alias][name] = None if it["editor"] is None else {"login": it["editor"]}
+            elif sub is not None:
+                raise Unknown(f"GraphQL field {name} {sub}")
+            else:
+                out[alias][name] = it["state"] != "open" if name == "closed" else it[name]
+    if not out or rest[pos:].split() != ["}", "}"]:
+        raise Unknown(f"GraphQL query {q!r}")
+    doc = {"data": {"repository": out}}
+    if errors:
+        raise Partial({**doc, "errors": errors})
+    return doc
+
+
+def graphql(d: dict, fields: dict) -> dict:
+    """The issue reads bin/factory makes: next's two batches and load_ticket's body, author and editor."""
+    q = fields.pop("query", "")
+    if q.startswith(BATCH_HEAD):
+        return batch(d, fields, q)
+    if not q.startswith(GRAPHQL_HEAD):
+        raise Unknown(f"GraphQL query {q!r}")
+    toks = re.findall(r"[A-Za-z_]+|\S", q[len(GRAPHQL_HEAD):])
+    sel, i = selection(toks, GRAPHQL_FIELDS)
     if toks[i:] != ["}", "}", "}"]:
         raise Unknown(f"GraphQL query {q!r}")
     if set(fields) != {"owner", "name", "number"} or not isinstance(fields["number"], int):
@@ -387,6 +447,10 @@ def main(argv: list[str]) -> int:
         return 2
     except Fail as why:
         print(str(why), file=sys.stderr)
+        return 1
+    except Partial as why:
+        print(json.dumps(why.doc))
+        print(f"gh: {why}", file=sys.stderr)
         return 1
     return 0
 
