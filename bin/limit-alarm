@@ -6,16 +6,18 @@
 #   "You've reached your" (Claude Code's limit lines; Fable and fast-mode limits excluded), so a relayed message
 #   or the pane layout cannot trigger or hide it. The "resets 6am" time in it marks when that account is usable.
 # - The lead's account: the account is the host's, shared with factory runs and the overnight driver, so the one the
-#   lead runs on is kept in $S/lead, never guessed from the active one. limit-alarm refuses to arm without it: write it
-#   there on the first install and after restarting the lead by hand (echo gmail > $S/lead). Each lead restart
-#   limit-alarm makes writes the account the lead restarts on.
+#   lead runs on is kept in $S/lead, never guessed from the active one. limit-alarm refuses to arm unless it names a
+#   stored account: write it there on the first install and after restarting the lead by hand (echo gmail > $S/lead).
+#   Each lead restart limit-alarm makes writes the account the lead restarts on, once the launch keys are sent.
 # - On a limit: book it against the lead's account. When another caller already moved the host to an account the
 #   books show usable, restart the lead there with no switch. Else switch to the first usable account in ORDER
 #   (Samyak, 23 Oct: gmail, then uci, npds only when both are out) other than the lead's, or other than the active one
 #   when the host was moved to a limited one, through `claude-account switch <from> <to>`: the factory's host-wide lock
 #   and five-minute cooldown, and no switch once the host has left <from>. Then restart the lead on the same
 #   conversation with --resume on the account the host is on, only when the books show it usable, paste a resume
-#   message, post to Slack. Every restart stamps $S/switched, so the 900 s gap holds the next one.
+#   message, post to Slack. From that check until the relaunched claude has read its settings, limit-alarm holds the
+#   same lock, so no other caller moves the host under the restart. Every restart stamps $S/switched, so the 900 s
+#   gap holds the next one.
 #   When no other account is usable but the lead's own reset has passed, paste a resume message into the
 #   running lead instead (no restart, so its background agents survive).
 # - No usable account: if the soonest reset is more than HOLD_S away and the pair has been idle IDLE_S or more
@@ -24,7 +26,8 @@
 #   idle_s, keeps the pair and is checked again each minute: the core's sessions run on OpenRouter, not on these
 #   accounts, so a live run must outlast them. A reset within HOLD_S: post the wait and retry.
 # - Back up the ORDER (only when BACK=1): when an account ranked above the lead's is usable again, the host is on
-#   the lead's account and the lead is idle for 3 min, switch to it through the same call. Off by default (Samyak, 23 Oct): a restart kills the lead's background agents,
+#   the lead's account and the lead is idle for 3 min, switch to it through the same call, and restart the lead only
+#   when the host is then on that account. Off by default (Samyak, 23 Oct): a restart kills the lead's background agents,
 #   and an idle prompt does not mean no agent is running.
 # Test overrides: T, PROJ, S, ALERT, LAUNCH, STOPF, PAIR, ORDER, HOLD_S, IDLE_S, BOOT_S, BACK, and claude-account's
 # CLAUDE_ACCOUNTS_DIR / CLAUDE_SETTINGS_FILE / FACTORY_RUNS_ROOT.
@@ -43,6 +46,7 @@ IDLE_S=${IDLE_S:-1800}
 BOOT_S=${BOOT_S:-45}
 BACK=${BACK:-0}
 ACC=${CLAUDE_ACCOUNTS_DIR:-$HOME/.config/claude-accounts}
+RUNS=${FACTORY_RUNS_ROOT:-$HOME/.local/state/loam-factory/runs}   # the host-wide switch lock, as bin/claude-account
 mkdir -p "$S"
 log() { echo "$(date -u +%m-%dT%H:%M:%SZ) $*"; }
 num() { cat "$1" 2>/dev/null || echo 0; }
@@ -73,7 +77,9 @@ pair_idle() { jq -r '.idle_s // empty | floor' "$PAIR" 2>/dev/null; }
 pick() { for n in $ORDER; do [ "$n" != "$1" ] && [ -f "$ACC/$n.token" ] && usable "$n" && { echo "$n"; return; }; done; }
 rank() { i=0; for n in $ORDER; do [ "$n" = "$1" ] && { echo $i; return; }; i=$((i + 1)); done; echo 99; }
 
-# Stop the lead's claude process, relaunch it on session $1 in the same pane, then paste the resume message ($2).
+# With the switch lock held on fd $lk: stop the lead's claude process, relaunch it on session $1 in the same pane,
+# record account $2 as the lead's, release the lock once claude has read the settings file (at most ~30 s held, under
+# the 60 s bin/factory's limit_switch waits), then paste the resume message ($3).
 restart() {
   pp=$(tmux display -p -t "$T" '#{pane_pid}')
   for c in $(pgrep -P "$pp"); do kill -TERM "$c"; done
@@ -81,8 +87,9 @@ restart() {
   for c in $(pgrep -P "$pp"); do kill -KILL "$c"; done
   sleep 2
   tmux send-keys -t "$T" "$LAUNCH --resume $1" Enter
+  echo "$2" > "$S/lead"; sleep 5; exec {lk}>&-
   sleep "$BOOT_S"
-  nudge "$2"
+  nudge "$3"
 }
 # Paste message $1 into the lead's pane and submit it.
 nudge() {
@@ -90,26 +97,32 @@ nudge() {
   tmux load-buffer -b limitmsg "$S/msg.txt"; tmux paste-buffer -b limitmsg -t "$T"
   sleep 1; tmux send-keys -t "$T" Enter; sleep 2; tmux send-keys -t "$T" Enter
 }
-switch() { # from to session why; from empty: the host is already on another account, restart the lead there
+switch() { # from to session why [exact]; from empty: the host is already on another account, restart the lead there;
+  # exact (the BACK rule): restart only when the host is on <to>
   if [ -n "$1" ]; then
-    claude-account switch "$1" "$2" >/dev/null 2>&1; rc=$?
+    claude-account switch "$1" "$2" >/dev/null 2>&1; rc=$?   # it takes and releases the lock itself
     [ "$rc" = 3 ] && { log "no switch $1 -> $2: another switch on this host was under 300 s ago; trying again next minute"; return 1; }
     [ "$rc" = 0 ] || { log "claude-account switch $1 $2 failed (exit $rc)"; return 1; }
   fi
+  # Hold the lock from the account check until the relaunched claude has read its settings, so no other caller
+  # moves the host between them (restart releases it).
+  mkdir -p "$RUNS" && exec {lk}>> "$RUNS/limit-switch.lock" || return 1
+  flock -w 20 "$lk" || { exec {lk}>&-; log "no lock on $RUNS/limit-switch.lock within 20 s; trying again next minute"; return 1; }
   on=$(cat "$ACC/active")   # another caller may have moved the host while the switch waited on the lock
-  usable "$on" || { log "the host is on $on, which is limited; lead not restarted, handled on the next pass"; return 1; }
+  usable "$on" || { exec {lk}>&-; log "the host is on $on, which is limited; lead not restarted, handled on the next pass"; return 1; }
+  [ -z "${5:-}" ] || [ "$on" = "$2" ] || { exec {lk}>&-; log "the host is on $on, not $2; lead not restarted"; return 1; }
   how="claude-account switch"; [ -n "$1" ] || how="another caller had already switched the host"
-  echo "$on" > "$S/lead"; date +%s > "$S/switched"; log "switched $lead -> $on ($4); restarting lead on $3"
-  restart "$3" "Watch alarm ($(date -u +%H:%MZ)): $4. limit-alarm.sh on jhaveris moved you from $lead to $on ($how) and restarted you with --resume. Your background shells, monitors and agents from before the restart are gone. Resume from the ledger RESUME POINTER: re-arm the monitors you need, check block 1's driver and op-* panes, then carry on. Record this switch in the ledger."
+  date +%s > "$S/switched"; log "switched $lead -> $on ($4); restarting lead on $3"
+  restart "$3" "$on" "Watch alarm ($(date -u +%H:%MZ)): $4. limit-alarm.sh on jhaveris moved you from $lead to $on ($how) and restarted you with --resume. Your background shells, monitors and agents from before the restart are gone. Resume from the ledger RESUME POINTER: re-arm the monitors you need, check block 1's driver and op-* panes, then carry on. Record this switch in the ledger."
   $ALERT "WATCH: $4. limit-alarm switched the distbench lead from $lead to $on and restarted it with --resume. Nothing to do unless the lead stays idle; check tmux distbench-lead."
 }
 
-[ -s "$S/lead" ] || { echo "limit-alarm: no $S/lead; write the account the lead runs on there (echo <account> > $S/lead), then start limit-alarm again"; exit 1; }
-lead=$(cat "$S/lead")
+lead=$(cat "$S/lead" 2>/dev/null)
+[ -n "$lead" ] && [ -f "$ACC/$lead.token" ] || { echo "limit-alarm: no $S/lead, or it names no stored account (stored: $(stored | xargs)); write the account the lead runs on there (echo <account> > $S/lead), then start limit-alarm again"; exit 1; }
 log "armed: target $T, lead on $lead, active $(cat "$ACC/active"), order $ORDER, stop file $STOPF"
 told=""
 while true; do
-  now=$(date +%s); act=$(cat "$ACC/active"); [ -s "$S/lead" ] && lead=$(cat "$S/lead")
+  now=$(date +%s); act=$(cat "$ACC/active"); n=$(cat "$S/lead" 2>/dev/null); [ -f "$ACC/$n.token" ] && lead=$n
   read -r uuid sid reset <<< "$(limit_line)"
   gap=$(( now - $(num "$S/switched") ))
   if [ -n "${uuid:-}" ]; then
@@ -120,7 +133,7 @@ while true; do
     # The host on another usable account (another caller switched): restart there. On another limited one: switch on
     # from it. Else switch on from the lead's account. claude-account switch re-checks <from> under the lock.
     if [ "$act" != "$lead" ] && usable "$act"; then from="" to=$act
-    elif [ "$act" != "$lead" ]; then from=$act to=$(pick "$act")
+    elif [ "$act" != "$lead" ]; then from=$act to=$(pick "$act"); [ "$to" != "$lead" ] || to=""
     else from=$lead to=$(pick "$lead"); fi
     if [ -n "$to" ] && [ "$gap" -ge 900 ]; then
       switch "$from" "$to" "$sid" "the lead hit its Claude usage limit on $lead" && told=""
@@ -128,7 +141,7 @@ while true; do
       date +%s > "$S/switched"; log "$lead usable again, no other account is; pasted a resume message into the lead"; told=""
       nudge "Watch alarm ($(date -u +%H:%MZ)): the Claude usage limit on $lead has reset. limit-alarm.sh on jhaveris did not restart you, so your background shells, monitors and agents are still running. Carry on from where the limit stopped you, and record this in the ledger."
       $ALERT "WATCH: the Claude usage limit on $lead has reset. limit-alarm pasted a resume message into the distbench lead on $lead (no restart). Nothing to do unless the lead stays idle; check tmux distbench-lead."
-    elif [ -z "$to" ] && [ "$told" != 1 ]; then   # told: empty, held (pair busy, alert sent, check again) or 1
+    elif [ -z "$to" ] && ! usable "$lead" && [ "$told" != 1 ]; then   # told: empty, held (pair busy, alert sent, check again) or 1
       soon="" who=""
       for n in $(stored); do u=$(num "$S/$n.until"); if [ -z "$soon" ] || [ "$u" -lt "$soon" ]; then soon=$u; who=$n; fi; done
       at=$(date -d @"$soon" '+%a %H:%M %Z')
@@ -154,7 +167,7 @@ while true; do
     f=$(ls -t "$PROJ"/*.jsonl 2>/dev/null | head -1)
     if [ -n "$f" ] && [ $(( now - $(stat -c %Y "$f" 2>/dev/null || stat -f %m "$f") )) -ge 180 ]; then
       sid=$(basename "$f" .jsonl)
-      switch "$lead" "$to" "$sid" "$to has usage again and ranks above $lead in Samyak's order ($ORDER)"
+      switch "$lead" "$to" "$sid" "$to has usage again and ranks above $lead in Samyak's order ($ORDER)" exact
     fi
   fi
   sleep 60

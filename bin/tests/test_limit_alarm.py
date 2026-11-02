@@ -29,9 +29,19 @@ INHERITED = ("FACTORY_RUNS_ROOT", "CLAUDE_ACCOUNTS_DIR", "CLAUDE_SETTINGS_FILE",
 TMUX = """#!/bin/bash
 [ "$1" = display ] && echo 999999
 echo "$*" >> "$H/tmux.log"
+case "$*" in *--resume*) cat "$CLAUDE_ACCOUNTS_DIR/active" >> "$H/launched-on" ;; esac
 exit 0
 """
+# HOOK2 runs once, on restart's `sleep 2` before the launch keys, in the background with limit-alarm's fds closed (an
+# inherited lock fd would hold the lock for it); the stand-in waits up to 3 s for it to finish.
 SLEEP = """#!/bin/bash
+if [ "$1" = 2 ] && [ -n "${HOOK2-}" ] && [ ! -e "$H/hook2" ]; then
+  touch "$H/hook2"
+  ( for p in /proc/$BASHPID/fd/*; do n=${p##*/}; [ "$n" -gt 2 ] && eval "exec $n>&-"; done
+    eval "$HOOK2"; touch "$H/moved" ) > /dev/null 2>&1 &
+  for _ in $(seq 30); do [ -e "$H/moved" ] && break; /bin/sleep 0.1; done
+  exit 0
+fi
 [ "$1" = 60 ] || exit 0
 n=$(( $(cat "$H/n" 2> /dev/null || echo 0) + 1 )); echo "$n" > "$H/n"
 [ "$n" = 1 ] && { eval "$HOOK"; exit 0; }
@@ -42,6 +52,7 @@ LIMIT = json.dumps({"type": "assistant", "uuid": "u1", "sessionId": "s1", "isApi
                     "message": {"content": [{"type": "text", "text": "You've hit your session limit - resets 6am"}]}},
                    separators=(",", ":"))  # limit-alarm greps the compact '"type":"assistant"' of a transcript
 WRITE_LIMIT = 'printf "%s\\n" "$L" > "$H/proj/t.jsonl"'
+STAMP = 'cp "$FACTORY_RUNS_ROOT/limit-switch" "$H/stamp"'  # the factory's cooldown stamp, kept to compare later
 FACTORY_SWITCH = ('FACTORY_SOURCED=1 FACTORY_ROOT="$W" CALL_ACCOUNT=a bash -c ". \\"$W/bin/factory\\"; LOG=/dev/null; '
                   'LEDGER=/dev/null; limit_switch" > /dev/null 2>&1')
 
@@ -91,11 +102,11 @@ class LimitAlarmTests(Host):
         write_exec(self.h / ".local/bin/sleep", SLEEP)
         (self.h / "runs").mkdir()
 
-    def alarm(self, hook: str, order: str = "a b") -> int:
+    def alarm(self, hook: str, order: str = "a b", **extra: str) -> int:
         (self.h / "n").unlink(missing_ok=True)
         env = {**self.base, "HOOK": hook, "T": "fake", "S": str(self.h / "s"), "PROJ": str(self.h / "proj"),
                "ALERT": "true", "LAUNCH": "launch", "STOPF": str(self.h / "STOP"), "PAIR": str(self.h / "pair.json"),
-               "ORDER": order, "BOOT_S": "0", "BACK": "0"}
+               "ORDER": order, "BOOT_S": "0", "BACK": "0", **extra}
         with open(self.h / "out", "a") as out:
             return subprocess.run(["timeout", "90", "bash", "bin/limit-alarm"], cwd=ROOT, env=env,
                                   stdin=subprocess.DEVNULL, stdout=out, stderr=subprocess.STDOUT).returncode
@@ -114,8 +125,10 @@ class LimitAlarmTests(Host):
 
     def test_factory_switch_kept_and_next_limit_booked_on_new_account(self) -> None:
         now = int(time.time())
-        self.alarm(f"{FACTORY_SWITCH}; {WRITE_LIMIT}")
+        self.alarm(f'{FACTORY_SWITCH} && [ "$(cat "$CLAUDE_ACCOUNTS_DIR/active")" = b ] && {STAMP} && {WRITE_LIMIT}')
         self.assertEqual(self.active(), "b", self.log())
+        self.assertNotEqual(self.read("stamp"), "")
+        self.assertEqual(self.read("runs/limit-switch"), self.read("stamp"), "limit-alarm adopted b, not switched")
         self.assertGreater(self.until("a"), now)
         self.assertEqual(self.read("s/b.until"), "")
         self.assertEqual((self.restarts(), self.tmux_count("paste-buffer")), (1, 1), self.log())
@@ -141,9 +154,12 @@ class LimitAlarmTests(Host):
         self.alarm('kill -TERM "$PPID"')
         subprocess.run(["bash", "-c", '. bin/factory; LOG=/dev/null; LEDGER=/dev/null; limit_switch'], cwd=ROOT,
                        env={**self.base, "FACTORY_SOURCED": "1", "FACTORY_ROOT": str(ROOT), "CALL_ACCOUNT": "a"},
-                       stdin=subprocess.DEVNULL, capture_output=True)
+                       stdin=subprocess.DEVNULL, capture_output=True, check=True)
+        self.assertEqual(self.active(), "b")
+        stamp = self.read("runs/limit-switch")
         self.alarm(WRITE_LIMIT)
         self.assertEqual(self.active(), "b", self.log())
+        self.assertEqual(self.read("runs/limit-switch"), stamp, "limit-alarm adopted b, not switched")
         self.assertEqual(self.read("s/b.until"), "")
         self.assertEqual(self.read("s/lead"), "b")
 
@@ -164,12 +180,28 @@ class LimitAlarmTests(Host):
         self.alarm(f"{hold}; {WRITE_LIMIT}", order="a b c")
         self.assertEqual(self.active(), "b", self.log())
         self.assertEqual(self.restarts(), 0, self.log())
+        self.assertEqual((self.read("s/switched"), self.read("s/lead")), ("", "a"))
+
+    def test_host_moved_during_restart_lead_launches_on_recorded_account(self) -> None:
+        self.accounts("c")
+        (self.h / "acc" / "active").write_text("b\n")
+        (self.h / "s" / "c.until").write_text(f"{int(time.time()) + 7200}\n")
+        self.alarm(WRITE_LIMIT, order="a b c", HOOK2=FACTORY_SWITCH.replace("CALL_ACCOUNT=a", "CALL_ACCOUNT=b"))
+        self.assertEqual((self.read("launched-on"), self.read("s/lead")), ("b", "b"), self.log())
+        for _ in range(100):  # the factory's switch goes through once limit-alarm releases the lock
+            if (self.h / "moved").exists():
+                break
+            time.sleep(0.1)
+        self.assertEqual(self.active(), "c", self.log())
 
     def test_refuses_to_arm_without_lead_account(self) -> None:
         (self.h / "s" / "lead").unlink()
         self.assertEqual(self.alarm(":"), 1)
         self.assertIn(str(self.h / "s" / "lead"), self.log())
         self.assertFalse((self.h / "s" / "lead").exists())
+        self.assertEqual(self.active(), "a")
+        (self.h / "s" / "lead").write_text("zz\n")  # names no stored account
+        self.assertEqual(self.alarm(":"), 1)
         self.assertEqual(self.active(), "a")
 
 
