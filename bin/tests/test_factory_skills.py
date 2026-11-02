@@ -150,10 +150,18 @@ class FactorySkillsTests(unittest.TestCase):
     def test_allowlisted_name_that_resolves_to_nothing_is_refused(self) -> None:
         self.assert_refused("other:missing", "skill 'other:missing' resolves to no SKILL.md")
 
+    def freeze_settings(self, run: pathlib.Path) -> None:
+        # freeze copies the user tier, enabledPlugins included, into the worker settings the prompt resolves against,
+        # once per run.
+        f = run / "frozen/worker-settings.json"
+        if not f.exists():
+            f.write_text((self.home / ".claude/settings.json").read_text())
+
     def prompt(self, skill: str = "pstack:tdd", size: str = "small") -> str:
         run = self.tmp / "run"
         (run / "frozen").mkdir(parents=True, exist_ok=True)
         (run / "frozen/_common.md").write_text("")
+        self.freeze_settings(run)
         script = ('. bin/factory; RUN=$1; WORKER_KIND=claude; DECISIONS=$1/worker/decisions.md; BODY=$(cat "$2"); '
                   'round=1; build_worker_prompt 1')
         proc = subprocess.run(["bash", "-c", script, "_", str(run), str(self.ticket(skill))], cwd=ROOT,
@@ -167,7 +175,14 @@ class FactorySkillsTests(unittest.TestCase):
         self.assertIn(f"Before the first edit, read {self.tdd} and follow its steps.", text)
         self.assertNotIn("Skill tool", text)
 
-    def test_claude_prompt_names_the_pstack_adapter_once_when_it_exists(self) -> None:
+    def test_claude_prompt_resolves_against_the_frozen_worker_settings_not_the_live_ones(self) -> None:
+        # The operator disables the plugin mid-run; the worker still launches with the frozen file that enables it.
+        run = self.tmp / "run"
+        (run / "frozen").mkdir(parents=True)
+        self.freeze_settings(run)
+        self.enable(self.home, {"pstack@m": False, "other@m": True})
+        self.assertIn(f"Before the first edit, read {self.tdd} and follow its steps.", self.prompt())
+
         self.assertNotIn("claude-code.md", self.prompt())
         adapter = self.pstack / "docs/harness/claude-code.md"
         adapter.parent.mkdir(parents=True)
@@ -231,6 +246,7 @@ console.log(JSON.stringify(seen));"""
         run = self.tmp / "run"
         (run / "frozen").mkdir(parents=True)
         (run / "frozen/_common.md").write_text("")
+        self.freeze_settings(run)
         script = ('. bin/factory; RUN=$1; WORKER_KIND=claude; DECISIONS=$1/worker/decisions.md; BODY=$(cat "$2"); '
                   'round=1; build_worker_prompt 1')
         proc = subprocess.run(["bash", "-c", script, "_", str(run), str(self.ticket("pstack:tdd"))], cwd=ROOT,
@@ -330,6 +346,28 @@ console.log(JSON.stringify(seen));"""
     def test_disabled_plugin_key_resolves_to_nothing(self) -> None:
         plugins = '{"pstack@n": [{"scope": "user", "installPath": "C/n/pstack/1.0.0"}]}'
         self.assertEqual(self.resolve_tdd(plugins, ["n/pstack/1.0.0"], {"pstack@n": False}), "status 1")
+
+    def test_enabled_key_of_a_longer_plugin_name_listed_first_does_not_resolve(self) -> None:
+        plugins = ('{"pstack-extra@x": [{"scope": "user", "installPath": "C/x/pstack-extra/1.0.0"}], '
+                   '"pstack@a": [{"scope": "user", "installPath": "C/a/pstack/1.0.0"}]}')
+        got = self.resolve_tdd(plugins, ["x/pstack-extra/1.0.0", "a/pstack/1.0.0"],
+                               {"pstack-extra@x": True, "pstack@a": True})
+        self.assertEqual(got, "a/pstack/1.0.0")
+
+    def test_first_existing_record_without_the_skill_resolves_to_nothing(self) -> None:
+        # The first existing record is the copy taken; a later record holding the skill is never searched.
+        self.skill(self.home / ".claude/plugins/cache/m/pstack/1.0.0", "other")
+        plugins = ('{"pstack@m": [{"scope": "user", "installPath": "C/m/pstack/1.0.0"}, '
+                   '{"scope": "user", "installPath": "C/m/pstack/0.9.0"}]}')
+        self.assertEqual(self.resolve_tdd(plugins, ["m/pstack/0.9.0"], {"pstack@m": True}), "status 1")
+
+    def test_install_path_with_a_newline_or_nul_resolves_to_nothing(self) -> None:
+        # The shell would split the path at a newline or drop a NUL, either way reaching the real folder.
+        real = self.home / ".claude/plugins/cache/n/pstack/1.0.0"
+        for path in (f"/does-not-exist\\n{real}", f"{real.parent}\\u0000/1.0.0"):
+            with self.subTest(path=path):
+                plugins = f'{{"pstack@n": [{{"scope": "user", "installPath": "{path}"}}]}}'
+                self.assertEqual(self.resolve_tdd(plugins, ["n/pstack/1.0.0"], {"pstack@n": True}), "status 1")
 
     def test_plugin_skill_resolves_to_nothing_without_settings_json(self) -> None:
         (self.home / ".claude/settings.json").unlink()
