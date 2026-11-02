@@ -70,9 +70,13 @@ class NextBeatTests(unittest.TestCase):
         self.assertEqual(proc.returncode, 0, proc.stderr)
         self.assertIn("healthchecks beat failed", proc.stderr)
 
-    def held_slot(self, status: str, owner: int | None = None) -> pathlib.Path:
+    def run_dir(self) -> pathlib.Path:
         d = self.runs / "7" / "abcd1234"
-        d.mkdir(parents=True)
+        d.mkdir(parents=True, exist_ok=True)
+        return d
+
+    def held_slot(self, status: str, owner: int | None = None) -> pathlib.Path:
+        d = self.run_dir()
         (d / "status").write_text(status + "\n")
         (d / "launched").write_text("1\n")
         if owner is not None:
@@ -84,9 +88,16 @@ class NextBeatTests(unittest.TestCase):
     def test_full_slots_held_by_a_suspended_run_do_not_beat(self) -> None:
         # A run stopped whole keeps its lease and owner, so it holds the only slot with no progress; the old run
         # heartbeat stopped with it, and now the tick refuses instead. Continued, the same slot is an idle tick again.
-        sup = subprocess.Popen(["sleep", "60"], start_new_session=True)
+        # The supervisor holds the lease itself, then execs sleep, so the owner pid run_stopped reads is the holder.
+        lease = self.run_dir() / "lease"
+        sup = subprocess.Popen(["bash", "-c", 'exec 9>> "$1" && flock -n 9 && exec sleep 60', "_", str(lease)],
+                               start_new_session=True)
         self.addCleanup(sup.wait)
         self.addCleanup(sup.kill)
+        for _ in range(100):
+            if lease.exists() and subprocess.run(["flock", "-n", str(lease), "true"]).returncode != 0:
+                break
+            time.sleep(0.05)
         self.held_slot("running", sup.pid)
         os.kill(sup.pid, signal.SIGSTOP)
         for _ in range(50):

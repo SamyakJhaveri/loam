@@ -5,8 +5,10 @@ temp home whose bin/claude-account is a fake: it keeps the active name in a file
 appends `<from> <to>` to `switches` on each `use`. CALL_ACCOUNT names the account the limited call ran under, as
 the call sites record it, and limit_wait gets a usage-limit reply; its sleep to the reset is stubbed, so a run either
 retries at once or reports the sleep (the lock's 1 s waits still sleep). The host-wide cooldown is the epoch second
-in <runs root>/limit-switch. The simultaneous case runs on each lock the host has: flock, and the mkdir lock a host
-with no flock(1) uses, forced by clearing HAVE_FLOCK.
+in <runs root>/limit-switch.
+
+OwnerLockTests take owner_lock, the run dir's flock on owner.flock, the way limit_switch takes limit-switch.lock: the
+kernel frees it when its holder exits, so it has no age rule.
 """
 
 from __future__ import annotations
@@ -14,6 +16,7 @@ from __future__ import annotations
 import json
 import os
 import pathlib
+import signal
 import subprocess
 import tempfile
 import time
@@ -47,14 +50,14 @@ class LimitSwitchTests(unittest.TestCase):
         (self.acc / "active").write_text("a\n")
         self.runs = self.top / "runs"
 
-    def limited(self, issue: str, account: str, *, use_sleep: float = 0, flock: bool = True) -> subprocess.Popen[str]:
+    def limited(self, issue: str, account: str, *, use_sleep: float = 0) -> subprocess.Popen[str]:
         run = self.runs / issue / "0000aaaa"
         run.mkdir(parents=True, exist_ok=True)
         (run / "launched").write_text(f"{int(time.time())}\n")
         result = run / "result.json"
         result.write_text(json.dumps({"is_error": True, "result": "You've hit your session limit - resets 3am (UTC)"}))
         script = (f". bin/factory\nROOT='{self.home}'; RUN='{run}'; LOG=/dev/null; LEDGER='{run}/ledger.jsonl'\n"
-                  f"MAX_HOURS=48; CALL_ACCOUNT={account}\n{'' if flock else 'HAVE_FLOCK=\n'}"
+                  f"MAX_HOURS=48; CALL_ACCOUNT={account}\n"
                   "set_status() { :; }; log() { :; }\n"
                   "sleep() { if [ \"$1\" -gt 60 ]; then echo slept; else command sleep \"$1\"; fi; }\n"
                   f"limit_wait '{result}' && echo returned")
@@ -95,17 +98,82 @@ class LimitSwitchTests(unittest.TestCase):
         self.assertEqual(self.switches(), ["a b", "b a"])
 
     def test_two_runs_limited_at_once_switch_once(self) -> None:
-        probe = subprocess.run(["bash", "-c", ". bin/factory; echo \"$HAVE_FLOCK\""], cwd=ROOT, text=True,
-                               env={**os.environ, "FACTORY_SOURCED": "1"}, capture_output=True, check=False)
-        for flock in (True, False) if probe.stdout.strip() else (False,):
-            with self.subTest(lock="flock" if flock else "mkdir"):
-                (self.acc / "active").write_text("a\n")
-                for f in (self.acc / "switches", self.runs / "limit-switch"):
-                    f.unlink(missing_ok=True)
-                procs = [self.limited(issue, "a", use_sleep=1, flock=flock) for issue in ("1", "2")]
-                self.assertEqual([self.outcome(p) for p in procs], ["retried", "retried"])
-                self.assertEqual(self.switches(), ["a b"])
-                self.assertEqual(self.active(), "b")
+        procs = [self.limited(issue, "a", use_sleep=1) for issue in ("1", "2")]
+        self.assertEqual([self.outcome(p) for p in procs], ["retried", "retried"])
+        self.assertEqual(self.switches(), ["a b"])
+        self.assertEqual(self.active(), "b")
+        self.assertFalse((self.runs / "limit-switch.d").exists())
+
+
+class OwnerLockTests(unittest.TestCase):
+    def setUp(self) -> None:
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        self.top = pathlib.Path(tmp.name)
+        self.run_dir = self.top / "run"
+        self.run_dir.mkdir()
+
+    def sourced(self, script: str) -> list[str]:
+        return ["bash", "-c", f". bin/factory\n{script}", "_", str(self.run_dir), str(self.top / "ready")]
+
+    def env(self) -> dict[str, str]:
+        base = {k: v for k, v in os.environ.items() if k not in INHERITED}
+        return {**base, "FACTORY_SOURCED": "1", "FACTORY_RUNS_ROOT": str(self.top / "runs")}
+
+    def holder(self, script: str) -> subprocess.Popen[bytes]:
+        # Takes owner_lock with one try, runs script, touches $2, then sleeps, so the lock stays as script left it.
+        p = subprocess.Popen(self.sourced(f'owner_lock "$1" 1 || exit 1; {script}; touch "$2"; exec sleep 60'),
+                             cwd=ROOT, env=self.env(), stdin=subprocess.DEVNULL, start_new_session=True)
+        self.addCleanup(p.wait)
+        self.addCleanup(lambda: subprocess.run(["pkill", "-KILL", "-g", str(p.pid)], check=False))
+        for _ in range(100):
+            if (self.top / "ready").exists():
+                break
+            self.assertIsNone(p.poll(), "the holder could not take owner_lock")
+            time.sleep(0.05)
+        else:
+            self.fail("the holder never took owner_lock")
+        return p
+
+    def try_lock(self) -> str:
+        proc = subprocess.run(self.sourced('owner_lock "$1" 1 && echo got || echo busy'), cwd=ROOT, env=self.env(),
+                              stdin=subprocess.DEVNULL, capture_output=True, text=True, check=False, timeout=30)
+        return proc.stdout.strip()
+
+    def test_a_live_holder_keeps_the_lock_however_old_it_looks(self) -> None:
+        self.holder(":")
+        old = time.time() - 300
+        for f in (self.run_dir, *self.run_dir.iterdir()):
+            os.utime(f, (old, old))
+        self.assertEqual(self.try_lock(), "busy")
+
+    def test_a_killed_holder_frees_the_lock_at_once(self) -> None:
+        p = self.holder(":")
+        self.assertEqual(self.try_lock(), "busy")
+        os.killpg(p.pid, signal.SIGKILL)
+        p.wait()
+        self.assertEqual(self.try_lock(), "got")
+
+    def test_owner_unlock_frees_the_lock_while_the_holder_lives(self) -> None:
+        p = self.holder('owner_unlock "$1"')
+        self.assertIsNone(p.poll())
+        self.assertEqual(self.try_lock(), "got")
+
+    def test_a_waiting_caller_gets_the_lock_once_the_holder_exits(self) -> None:
+        p = self.holder(":")
+        waiter = subprocess.Popen(self.sourced('owner_lock "$1" 20 && echo got || echo busy'), cwd=ROOT, env=self.env(),
+                                  stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, text=True)
+        time.sleep(1)
+        self.assertIsNone(waiter.poll(), "the waiter took a held lock")
+        os.killpg(p.pid, signal.SIGKILL)
+        out, _ = waiter.communicate(timeout=30)
+        self.assertEqual(out.strip(), "got")
+
+    def test_the_old_mkdir_path_stays_free(self) -> None:
+        # A relaunch of a run frozen before owner.flock runs its copy's owner_lock, a mkdir of owner.lock.
+        self.holder(":")
+        self.assertFalse((self.run_dir / "owner.lock").exists())
+        self.assertTrue((self.run_dir / "owner.flock").is_file())
 
 
 if __name__ == "__main__":
