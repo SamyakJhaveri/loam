@@ -100,8 +100,12 @@ The one `status` written outside its run is `stopped-environment`, by `holds_slo
 A launch refused its run's lease, or refused while its last model call lives (Parallel runs), exits 4 with one stderr line and writes no status or log line, as a launch that stops before it records the run does, since the run directory belongs to the launch that holds the lease.
 These read loop-control files to decide exit, never safety; safety stays with the deny rules, the Claude worker's Bash sandbox and the Codex worker's workspace-write sandbox (Worker calls), git, and CI.
 A usage-limit reply (`hit your session limit`, `reached your Fable limit`) is neither an exit nor a round.
-Usage limits are per account, so the supervisor first switches to the next stored account through `bin/claude-account` (round robin in name order, so a third account is reached too) and retries the same call at once.
-It sleeps only when no other account exists or a switch already happened in the last five minutes; then it writes `waiting-limit` to `status`, sleeps until the reset time the reply names or twenty minutes when it names none, and repeats the same call.
+Usage limits are per account, so the supervisor first switches to the next stored account through `bin/claude-account` (round robin in name order) and retries the same call at once.
+A third account is not reached at once: a limit within five minutes of the last switch sleeps to the reset (below), and only a limit after those five minutes switches on to it.
+The account belongs to the host, so every live run shares it: a run switches only while the active account is still the one its limited call ran under, and when another run has already switched away from that account it retries on the new one without switching back.
+The check and the switch hold one host-wide lock (flock on `limit-switch.lock` under the runs root, or on a host with no `flock(1)`, a Mac, a mkdir lock in `limit-switch.d` there), so two runs limited at once switch once.
+It sleeps only when no other account exists or a switch by any run on the host happened in the last five minutes (`limit-switch` under the runs root), including a run limited on the account just switched to; after those five minutes such a run switches back.
+When it sleeps it writes `waiting-limit` to `status`, sleeps until the reset time the reply names or twenty minutes when it names none, and repeats the same call.
 A reset past `MAX_HOURS` exits `stopped-environment`.
 A call with no result event (killed by `CALL_TIMEOUT_SEC`, or crashed) exits `stopped-environment` and counts no round.
 Every model call (the worker, a grader, the Codex review) runs under a wrapper process in a session of its own, which runs the call in a process group of its own; `CALL_TIMEOUT_SEC` signals that whole group, KILL 5 s after TERM.
