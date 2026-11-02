@@ -777,7 +777,8 @@ class PassedOverTests(unittest.TestCase):
                 (d / "status").write_text(status + "\n")
             for name, text in files:
                 (d / name).write_text(text)
-        pr = lambda n: ("factory.log", f"2026-11-01T00:00:00Z EXIT pr-opened (0): https://github.com/o/r/pull/{n} after 1 rounds\n")
+        def pr(n: int) -> tuple[str, str]:
+            return "factory.log", f"2026-11-01T00:00:00Z EXIT pr-opened (0): https://github.com/o/r/pull/{n} after 1 rounds\n"
         run(23, "pr-opened", pr(123))
         run(25, "stuck")
         run(26, None, ("FACTORY_STOP", ""))
