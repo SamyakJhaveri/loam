@@ -46,7 +46,6 @@ HUNK = re.compile(r"@@ -\d+(?:,\d+)? \+(\d+)(?:,\d+)? @@")
 PY_FLIP = {"==": "!=", "!=": "==", "<": ">=", ">=": "<", ">": "<=", "<=": ">"}
 PY_HEADER = ("if", "elif", "while")
 PY_DROP = ("assert", "raise", "return", "continue", "break")
-MAIN_GUARD = ('__name__ == "__main__"', "__name__ == '__main__'")  # its force-true cannot change a script run
 
 SH_FLIP = {"-eq": "-ne", "-ne": "-eq", "-lt": "-ge", "-ge": "-lt", "-gt": "-le", "-le": "-gt",
            "=": "!=", "==": "!=", "!=": "="}
@@ -97,6 +96,13 @@ def added_lines(wt: Path, base: str, path: str) -> list[int]:
 # An edit is (line, operator, {line number: new text}); only a Python drop of a statement over several lines changes
 # more than its own line, blanking the rest of the statement.
 
+def main_side(x: ast.expr) -> str | None:
+    """Which side of `__name__ == "__main__"` x is, if either."""
+    if isinstance(x, ast.Name) and x.id == "__name__":
+        return "name"
+    return "main" if isinstance(x, ast.Constant) and x.value == "__main__" else None
+
+
 def py_edits(text: str, wanted: list[int]) -> list[tuple[int, str, dict[int, str]]]:
     """Python edits from tokenize's OP and NAME tokens, so a comment or a string's contents give none."""
     lines = text.split("\n")
@@ -109,9 +115,14 @@ def py_edits(text: str, wanted: list[int]) -> list[tuple[int, str, dict[int, str
     # returns None anyway, and `return 0` when every call of it in the file is the argument of sys.exit(...) or
     # SystemExit(...), which exit 0 on None as on 0.
     try:
-        nodes = list(ast.walk(ast.parse(text)))
+        body = ast.parse(text).body
     except (SyntaxError, ValueError):
-        nodes = []
+        body = []
+    nodes = [n for b in body for n in ast.walk(b)]
+    # A module-level `if __name__ == "__main__":`, in either order: its force-true cannot change a script run.
+    main_guards = {b.lineno for b in body if isinstance(b, ast.If) and isinstance(b.test, ast.Compare)
+                   and [type(o) for o in b.test.ops] == [ast.Eq]
+                   and {main_side(x) for x in (b.test.left, *b.test.comparators)} == {"name", "main"}}
     calls = [c for c in nodes if isinstance(c, ast.Call)]
     exits = {id(a) for c in calls for a in c.args if isinstance(c.func, ast.Name) and c.func.id == "SystemExit"
              or isinstance(c.func, ast.Attribute) and c.func.attr == "exit"
@@ -183,7 +194,7 @@ def py_edits(text: str, wanted: list[int]) -> list[tuple[int, str, dict[int, str
                     d -= 1
                 elif t.type == tokenize.OP and t.string == ":" and d == 0:
                     cond = line[first.end[1]:t.start[1]].strip()
-                    if t.start[0] == n and cond not in ("True", *MAIN_GUARD):
+                    if t.start[0] == n and cond != "True" and n not in main_guards:
                         new = f"{line[:first.end[1]]} ({cond}) or True{line[t.start[1]:]}"
                         out.append((n, "force-true", {n: new}))
                     break
