@@ -98,8 +98,9 @@ switch() { # from to session why; from empty: the host is already on another acc
   fi
   on=$(cat "$ACC/active")   # another caller may have moved the host while the switch waited on the lock
   usable "$on" || { log "the host is on $on, which is limited; lead not restarted, handled on the next pass"; return 1; }
+  how="claude-account switch"; [ -n "$1" ] || how="another caller had already switched the host"
   echo "$on" > "$S/lead"; date +%s > "$S/switched"; log "switched $lead -> $on ($4); restarting lead on $3"
-  restart "$3" "Watch alarm ($(date -u +%H:%MZ)): $4. limit-alarm.sh on jhaveris moved you from $lead to $on (claude-account switch) and restarted you with --resume. Your background shells, monitors and agents from before the restart are gone. Resume from the ledger RESUME POINTER: re-arm the monitors you need, check block 1's driver and op-* panes, then carry on. Record this switch in the ledger."
+  restart "$3" "Watch alarm ($(date -u +%H:%MZ)): $4. limit-alarm.sh on jhaveris moved you from $lead to $on ($how) and restarted you with --resume. Your background shells, monitors and agents from before the restart are gone. Resume from the ledger RESUME POINTER: re-arm the monitors you need, check block 1's driver and op-* panes, then carry on. Record this switch in the ledger."
   $ALERT "WATCH: $4. limit-alarm switched the distbench lead from $lead to $on and restarted it with --resume. Nothing to do unless the lead stays idle; check tmux distbench-lead."
 }
 
