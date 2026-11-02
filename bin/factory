@@ -2653,22 +2653,22 @@ MUTATION_FIX="add or tighten a committed test that fails on this edit (if a test
 
 # After a judge pass, up to 8 behavior-changing edits of the code lines the diff adds, each run against the test files
 # the diff adds or changes (bin/factory.d/mutation_sweep.py, from its frozen copy; LOOP.md, Mutation sweep). It works
-# in a detached worktree at GRADED_SHA, handled as round_zero handles its own, so the ticket worktree and its tree
-# signature are untouched. Each edit those tests still pass is a blocking finding, sent to the worker at most once per
+# in a detached worktree at GRADED_SHA, handled as round_zero handles its own but added from the ticket worktree,
+# whose repository holds the sha, so the ticket worktree and its tree signature are untouched. Each edit those tests still pass is a blocking finding, sent to the worker at most once per
 # ticket (MUTATION_BLOCKED, which a relaunch restores from the fixes files); past that, blocking_findings drafts the
 # PR with them. A helper that fails, or leaves no result, stops the run, so a sweep that did not run never opens a
 # ready PR; a sweep that ran no edit (no committed test, or the tests red unedited) is a result, not a failure.
 run_mutation_sweep() { # round -> 0 unless a survivor blocks
   local round="$1" wt="${WORKTREE}-mutants" f="$RUN/round-$1.mutation.json" msg rc=0
-  git -C "$MAIN_CHECKOUT" worktree remove --force "$wt" > /dev/null 2>&1
-  git -C "$MAIN_CHECKOUT" worktree prune > /dev/null 2>&1
-  if ! git -C "$MAIN_CHECKOUT" worktree add --detach "$wt" "$GRADED_SHA" > /dev/null 2>&1; then
+  git -C "$WORKTREE" worktree remove --force "$wt" > /dev/null 2>&1
+  git -C "$WORKTREE" worktree prune > /dev/null 2>&1
+  if ! git -C "$WORKTREE" worktree add --detach "$wt" "$GRADED_SHA" > /dev/null 2>&1; then
     msg="could not add the mutation worktree $wt at ${GRADED_SHA:0:8}"
     [ -e "$wt" ] && msg="$msg; the path exists but is not a registered worktree, delete it by hand"
     finish stopped-environment "$msg"
   fi
   python3 -I "$RUN/frozen/mutation_sweep.py" "$wt" "$(cat "$RUN/base.sha")" "$f" "$CALL_TIMEOUT_SEC" >> "$LOG" 2>&1 || rc=$?
-  git -C "$MAIN_CHECKOUT" worktree remove --force "$wt" > /dev/null 2>&1
+  git -C "$WORKTREE" worktree remove --force "$wt" > /dev/null 2>&1
   [ "$rc" -eq 0 ] && jq -e '.mutants | type == "array"' "$f" > /dev/null 2>&1 \
     || finish stopped-environment "the mutation sweep helper exited $rc, or left no result in $f whose mutants is an array"
   log "mutation sweep: $(jq -r "$MUTATION_SUMMARY" "$f")"
