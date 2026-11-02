@@ -121,7 +121,7 @@ Defaults from lean-v3, overridable per ticket in its Worker section and then by 
 Each value is a positive whole number, or for a `*_USD` cap a positive decimal such as `2.5`; 0, a negative number or text is refused, never read as no limit (GNU `timeout` reads 0 as no limit).
 Lint rejects such a Worker line, and `apply_caps` exits 2 on one; a `FACTORY_<NAME>` cap with such a value stops every subcommand with exit 2 before it runs, naming the cap, rather than warning and using the default (Samyak, 30 Oct 2026).
 `NET_TIMEOUT_SEC` bounds every `gh` call and every `git` call that reaches a remote (`fetch`, `push`, `ls-remote`), in `run`, `lint`, `next` and `status` alike, through GNU `timeout -k 5` without `--foreground`, so a call that ignores TERM gets KILL 5 s later; a shell function, or any call where `timeout` is missing, goes through a shell watchdog that sends the same TERM and KILL to the call's process group.
-A call cut off at the limit counts as that call failing, so a hung network call never holds a run, its slot, or its heartbeat.
+A call cut off at the limit counts as that call failing, so a hung network call never holds a run or its slot.
 `next` passes every `FACTORY_<NAME>` cap to the tmux session it launches, empty when unset, so a value in the tmux server's environment never reaches the run.
 No research source gives a numeric anchor (`../research/anthropic-loop-engineering.md`); re-measure after two real runs.
 The daily ledger `runs/ledger-daily.jsonl` is keyed by UTC date across all runs of every target.
@@ -255,10 +255,9 @@ A launch that cannot take the lock (another launch of the same ticket body, or a
 A launch that takes the lock, or any launch on a host with no `flock`, while the model call named in `call` still lives (below) refuses the same way, since that call may still write the worktree the launch would prepare.
 The lease needs `flock(1)` and bash 4.1 or later, for the `{var}` descriptors it opens.
 The descriptor is not close-on-exec, so the frozen re-exec keeps it (that pass takes no second lock, which would wait on its own lease) and every child inherits it: the supervisor and a model call that outlives a SIGKILLed supervisor both hold the lease, and the kernel drops it when the last of them exits.
-The heartbeat loop alone closes it (its number is exported as `FACTORY_SLOT_FD`), since a beat outlives a killed supervisor by up to 300 s and does no work on the tree.
 A transitional gap: a relaunch of a run frozen before #425 execs that older frozen copy, whose heartbeat does not close the descriptor, so after a kill its beat holds the lease for up to 300 s, and a relaunch in that window waits 65 s and exits 4; it closes once such runs finish.
 A zombie holds no files, and a reused pid or a stepped clock does not touch the lock, so none of them needs a rule.
-`holds_slot` opens `lease` read-only and tries `flock -n`: when another process holds it, the slot is held; when it gets the lock and no process of the model call named in `call` lives (below; a call's tool process may close the descriptors it was not given, as Node's child processes do), no process of the run is left, so, still holding it, it re-reads the status and, if it still reads `running` or `waiting-limit`, writes `stopped-environment` and removes `call` and `call.group` and their temp files, then closes the descriptor and sends one `fail` alert to the run's own project, read from where its directory sits under the runs root (Loam's directly, another target's under `<owner>__<repo>/`), since a finishing run looks at every target's runs before it pauses the host check.
+`holds_slot` opens `lease` read-only and tries `flock -n`: when another process holds it, the slot is held; when it gets the lock and no process of the model call named in `call` lives (below; a call's tool process may close the descriptors it was not given, as Node's child processes do), no process of the run is left, so, still holding it, it re-reads the status and, if it still reads `running` or `waiting-limit`, writes `stopped-environment` and removes `call` and `call.group` and their temp files, then closes the descriptor and sends one `fail` alert to the run's own project, read from where its directory sits under the runs root (Loam's directly, another target's under `<owner>__<repo>/`), not from the caller's target.
 A relaunch waits on the same lease, so a reap and a relaunch never interleave, and only the caller that wrote `stopped-environment` alerts.
 Each launch still writes `owner`, one line: the supervisor's pid, a space, then `TZ=UTC LC_ALL=C ps -o lstart= -p <pid>` with trailing spaces trimmed (macOS pads it), through a temp file and `mv`, with the status `running`, under `owner.lock`; `status` and the alert text read it.
 A run directory with no `lease` (started before #425), and every run on a host with no `flock(1)` or a bash older than 4.1 (macOS; Samyak's ruling of 30 Oct 2026 keeps this path rather than require util-linux), is judged by `owner` instead, as follows.
@@ -267,7 +266,7 @@ The frozen re-exec is an `exec`, which keeps the pid and its start time, so the 
 It does so under `owner.lock` (a lock older than 60 s is removed first), and only while `owner` still reads the line it judged and the status still reads `running` or `waiting-limit`, so a relaunch that rewrote `owner` keeps its slot.
 A missing or malformed `owner` holds the slot, as does a run that started before `owner` existed.
 A `ps` or `date` that fails or prints nothing cannot tell, so it holds the slot; a failed `kill -0` still means the pid is gone.
-A gone or zombie pid still holds the slot while a live process has that pid as its process group id; the heartbeat loop is one such member and exits within 300 s of its supervisor, so a reap waits at most one beat.
+A gone or zombie pid still holds the slot while a live process has that pid as its process group id.
 A model call runs in a session of its own, so it outlives a SIGKILLed supervisor and keeps writing the worktree until `CALL_TIMEOUT_SEC`; each call writes `call` in the run directory (its wrapper's process group id and its `FACTORY_CALL_TAG`, through a temp file and `mv`, then rewritten the same way with the wrapper's `TZ=UTC LC_ALL=C ps -o lstart=` as a third field, trailing spaces trimmed) and `call.group` (the call's own process group id, a space, then its `TZ=UTC LC_ALL=C ps -o lstart=` with trailing spaces trimmed, written by the call's first process before it execs the command), both removed once the call's processes are confirmed gone.
 When `holds_slot` finds the owner gone, it takes `owner.lock`, checks that `owner` still reads the line it judged, and again just before TERM (so no relaunch has started a call of its own), and kills each process group named in `call` or `call.group` whose leader still has the start time recorded after its id: TERM, a 2 s grace, KILL, then up to 5 s for the group to be gone; a pgid reused since (checked again before KILL), or a line with no start time, is spared, and the call's wrapper ends the call's other children once the call's group exits.
 A gone owner still holds the slot while either group has a member that is not a zombie or, on Linux, a process carries that tag; otherwise `holds_slot` writes `stopped-environment` and removes `call` and `call.group` and their temp files.
@@ -296,12 +295,13 @@ Config lives in `~/.config/loam/alerts/`, one secret per file, mode 600: `slack-
 On jhaveris, `slack-distbench` may be a link to `~/.distbench/slack-webhook`, the file DistBench's own scripts read.
 
 healthchecks: one check per host.
-Set the check once in the healthchecks UI: period 5 minutes, grace 10 minutes, the Slack integration on (or a red check reaches no one), and manual resume off (or a beat cannot resume a paused check).
-A run beats the check at launch, right after the frozen re-exec and before round 0, and every 5 minutes while its process lives.
-At its end it stops beating (waiting for a beat in flight), and the host's last live run pauses the check through the API, so a run that ends on purpose raises no alarm and the next run's beat resumes it.
-After the pause it looks for live runs once more and beats again if one launched meanwhile, since a run writes `launched` before its first beat; a run counts as live while it holds its slot, which it does from before its first beat.
-A killed run, or a dead host, stops the beats without a pause, so the check goes red and healthchecks posts to Slack.
-A hard-killed run keeps its slot (above), so no later run pauses the check while its directory stands.
+Set the check once in the healthchecks UI: period 10 minutes (the timer's interval), grace 20 minutes, so it goes red 30 minutes after the last beat; an ok tick usually takes seconds, but one with many slow GitHub reads (a PR-state read per `pr-opened` run, an editor read per candidate passed over, each up to `NET_TIMEOUT_SEC`) can outrun the 30-minute window and raise a false alarm, a noisy failure tracked as a follow-up; the Slack integration on (or a red check reaches no one), and manual resume off (or a beat cannot resume a paused check).
+The `next` timer is what beats it: every real tick (no flag) that exits 0, `launched`, `nothing to launch` or `paused`, sends one beat, which also resumes a paused check.
+A tick that refuses (exit 1: login, version, toolchain, frontier or editor read, launch, or a counted run suspended whole, `run_stopped`, whatever the free slots) sends nothing, so refusals that outlast the period and grace turn the check red, and so do a stopped timer and a dead host; healthchecks then posts to Slack.
+A run neither beats nor pauses the check: a killed run is reported by `holds_slot`'s alert (above), and a pause at a run's end would outlive a timer that then refused every tick, so the check could never go red.
+Pause the check (`bin/alert --ping pause`) only when shutting the timer down on purpose; the next ok tick resumes it.
+A run frozen before this rule still runs its frozen copy's heartbeat, which beats while it lives and may pause the check at its end; the next ok tick resumes it.
+On jhaveris the cron line appends `next`'s output to `next.log` and the host has no mail, so the check, not cron mail, is what reports a stuck timer.
 
 ### The event log and watch sessions
 
@@ -316,7 +316,7 @@ Each line goes to Samyak in plain words in that tick, and a line whose `slack` i
 The watch may make only these moves on its own, and reports each one with the line that caused it (owner ruling 2026-10-27):
 - re-arm a dead Monitor or rerun its own check;
 - stop a factory run that the log shows looping or spending with no progress: `bin/factory [-C <repo>] stop <issue>`, which halts the run before its next call;
-- pause the host's healthchecks check with `bin/alert --ping pause`, after it has checked that no factory process runs there and `bin/factory status` shows no live run.
+- (removed by owner ruling 2026-11-01: the 27 Oct move that let a watch pause the host's healthchecks check, because `next` ticks now beat it and a pause followed by refusing ticks hid a stall.)
 Everything else is Samyak's: merging or pushing, launching, relaunching or rerunning a ticket, editing a ticket, deleting a run directory or worktree, starting paid compute, and any change to results.
 
 The overnight driver, which reviews, fixes and merges Loam's factory PRs on jhaveris, lives in `bin/overnight/`: `driver.sh` starts one headless call per PR with `settings.json` and `protocol.md` from that directory, and `watchdog.sh`, run by cron, restarts a dead driver.
