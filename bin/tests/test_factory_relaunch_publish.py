@@ -32,8 +32,7 @@ fixture
 [ -f marker ] && pass has-marker || fail has-marker "no marker"
 ```
 """
-STUBS = ("assert_target_ready() { :; }; claude_version_ok() { :; }; exec_frozen() { :; }; "
-         "heartbeat_start() { :; }; heartbeat_stop() { :; }")
+STUBS = "assert_target_ready() { :; }; claude_version_ok() { :; }; exec_frozen() { :; }"
 JUDGE_PASS = """run_judge() { echo '{"verdict":"pass","rows":{}}' > "$RUN/round-$1.judge.json"; }"""
 JUDGE_FAIL = """run_judge() { echo '{"verdict":"fail","rows":{"a":"fail"}}' > "$RUN/round-$1.judge.json"; return 1; }"""
 REVIEW_CLEAN = """run_review() { echo '{"findings":[]}' > "$RUN/round-$1.review.json"; }"""
