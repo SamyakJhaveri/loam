@@ -36,15 +36,111 @@ esac
 
 mkdir -p "$STORE" || exit 0
 cd "$STORE" || exit 0
+STORE="$PWD"
 mkdir -p reports
+[ -d .git ] || git init -q -b main 2>/dev/null
+[ -d .git ] || exit 0
 
-# Retention: drop old traces (old_traces above) before the reports read them.
-# Each deletion is logged so a forgotten transcript leaves an audit line.
-if [ -d traces ]; then
-  old_traces | while IFS= read -r old; do
-    printf '%s deleted %s\n' "$(date +%F)" "$old" >> reports/retention.log
-    rm -f -- "$old" 2>/dev/null || true
-  done
+# --- The store lock: the same block sits in mem-capture.sh, mem-recall.sh and
+# mem-weekly.sh. One flock(2) on .git/loam-mem.lock serializes every local write
+# to the store: capture's spool drain and commit, every rebase and its abort,
+# recall's handoff commit, and mem-weekly.sh's retention and commit. A write or
+# commit landing in another session's rebase would be lost to its abort.
+# python3 takes the lock (macOS ships no flock(1)) on this shell's fd 9. It
+# holds while any process keeps fd 9 open, and the kernel frees it when the last
+# one exits: no stale lock. Every store git call keeps fd 9, so killing this
+# shell never frees the lock while its git still runs; the -c flags keep git
+# from starting a gc, maintenance or fsmonitor daemon that would hold it on.
+SGIT=(git -C "$STORE" -c gc.auto=0 -c maintenance.auto=false -c core.fsmonitor=false
+  -c user.name=memstore -c user.email=memstore@localhost)
+# bounded SECS CMD...: run CMD in its own process group and kill the group after
+# SECS seconds, or at $DEADLINE (an epoch time) when that comes first; exit 124.
+bounded() {
+  python3 -c '
+import os, signal, subprocess, sys, time
+cap = float(sys.argv[1])
+if sys.argv[2]:
+    cap = min(cap, float(sys.argv[2]) - time.time())
+if cap <= 0:
+    sys.exit(124)
+p = subprocess.Popen(sys.argv[3:], close_fds=False, start_new_session=True)
+try:
+    sys.exit(p.wait(timeout=cap))
+except subprocess.TimeoutExpired:
+    try:
+        os.killpg(p.pid, signal.SIGKILL)
+    except OSError:
+        pass
+    p.wait()
+    sys.exit(124)
+' "$1" "${DEADLINE:-}" "${@:2}"
+}
+# Under the lock no other store git runs, so an index.lock is a killed git's and
+# a rebase in progress is a killed holder's: remove the one, abort the other
+# (which restores main with every commit). The abort ignores $DEADLINE, since a
+# half-done rebase is worse than a late hook. Succeeds only when neither is
+# left; a caller whose recovery failed writes nothing to the working tree.
+store_recover() {
+  rm -f "$STORE/.git/index.lock" 2>/dev/null
+  if [ -d "$STORE/.git/rebase-merge" ] || [ -d "$STORE/.git/rebase-apply" ]; then
+    DEADLINE='' bounded 1 "${SGIT[@]}" rebase --abort >/dev/null 2>&1
+  fi
+  [ ! -e "$STORE/.git/index.lock" ] && [ ! -d "$STORE/.git/rebase-merge" ] && [ ! -d "$STORE/.git/rebase-apply" ]
+}
+# store_lock SECS: take the lock within SECS seconds (and by $DEADLINE), then
+# recover; on failure hold nothing. A directory at the lock path is the earlier
+# mkdir lock, which holds nothing, so it is removed first.
+store_lock() {
+  [ -d "$STORE/.git/loam-mem.lock" ] && rmdir "$STORE/.git/loam-mem.lock" 2>/dev/null
+  { exec 9>>"$STORE/.git/loam-mem.lock"; } 2>/dev/null || return 1
+  python3 -c '
+import fcntl, signal, sys, time
+cap = float(sys.argv[1])
+if sys.argv[2]:
+    cap = min(cap, float(sys.argv[2]) - time.time())
+signal.signal(signal.SIGALRM, lambda *_: sys.exit(1))
+if cap > 0:
+    signal.setitimer(signal.ITIMER_REAL, cap)
+    fcntl.flock(9, fcntl.LOCK_EX)
+else:
+    fcntl.flock(9, fcntl.LOCK_EX | fcntl.LOCK_NB)
+' "$1" "${DEADLINE:-}" 2>/dev/null && store_recover && return 0
+  exec 9>&-
+  return 1
+}
+# --- end of the store lock block.
+
+# Retention and the baseline commit run under the store lock, so they never
+# land inside a hook's rebase. A store busy for ten seconds skips them and the
+# sync this week (one log line) and still regenerates the reports.
+LOCKED=0
+if store_lock 10; then
+  LOCKED=1
+  # Retention: drop old traces (old_traces above) before the reports read them.
+  # Each deletion is logged so a forgotten transcript leaves an audit line.
+  if [ -d traces ]; then
+    old_traces | while IFS= read -r old; do
+      printf '%s deleted %s\n' "$(date +%F)" "$old" >> reports/retention.log
+      rm -f -- "$old" 2>/dev/null || true
+    done
+  fi
+
+  # Commit the store as a git baseline. Traces and INDEX.md are tracked and
+  # pushed once mem-capture.sh's secret scrub has run over them. The ephemeral
+  # throttle marks and reports/ stay out of git: every report is regenerated
+  # wholesale from this machine's traces and has no meaning on another machine.
+  # The .gitignore and the .gitattributes (INDEX.md merges by union, so two
+  # machines' appended lines both survive a rebase) are byte-identical to the
+  # ones mem-capture.sh writes, so the two never ping-pong a change. git rm -r
+  # --cached un-tracks reports an older run committed (a no-op otherwise).
+  printf '.throttle/\nreports/\n' > .gitignore
+  printf 'traces/*/INDEX.md merge=union\n' > .gitattributes
+  "${SGIT[@]}" rm -r --cached -q reports 2>/dev/null || true
+  "${SGIT[@]}" add -A 2>/dev/null \
+    && bounded 30 "${SGIT[@]}" commit -qm "weekly $(date +%F)" >/dev/null 2>&1 || true
+  exec 9>&-
+else
+  printf '%s weekly: store busy or not recoverable; skipped retention and sync\n' "$(date +%F)" >> reports/sync.log
 fi
 
 # Recurring errors: extract error lines from every trace (gzipped and plain),
@@ -118,32 +214,23 @@ fi
   printf 'application %s\n' "${application:-0}"
 } > reports/counts.md
 
-# Commit the store as a git baseline, then share it. Traces and INDEX.md are
-# tracked and pushed once mem-capture.sh's secret scrub has run over them.
-# The ephemeral throttle marks and reports/ stay out of git: every report is
-# regenerated wholesale from this machine's traces and has no meaning on another
-# machine. The .gitignore and the .gitattributes (INDEX.md merges by union, so two
-# machines' appended lines both survive a rebase) are byte-identical to the ones
-# mem-capture.sh writes, so the two never ping-pong a change. git rm -r --cached
-# un-tracks reports an older run committed (a no-op otherwise).
-[ -d .git ] || git init -q -b main 2>/dev/null
-printf '.throttle/\nreports/\n' > .gitignore
-printf 'traces/*/INDEX.md merge=union\n' > .gitattributes
-git rm -r --cached -q reports 2>/dev/null || true
-git add -A 2>/dev/null \
-  && git -c user.name=memstore -c user.email=memstore@localhost \
-       commit -qm "weekly $(date +%F)" 2>/dev/null || true
-
-# Share the store: pull the remote's commits, then push this baseline. Foreground
-# (this runs from cron, not a hook). Rename detection is off, as in recall's pull,
-# so a handoff two machines archived under two names does not conflict; see
-# mem-recall.sh for why the pull names `-s recursive`. With no origin every step
-# is skipped; a conflict or unreachable remote aborts the rebase, logs one line,
-# and leaves the tree as it is.
+# Share the store: fetch the remote, rebase onto it under the store lock, then
+# push this baseline. Foreground (this runs from cron, not a hook); the fetch and
+# push stay outside the lock. Rename detection is off, as in recall's pull, so a
+# handoff two machines archived under two names does not conflict; see
+# mem-recall.sh for why the rebase names `-s recursive`. With no origin every
+# step is skipped; a conflict or unreachable remote aborts the rebase under the
+# lock, logs one line, and leaves the tree as it is.
 export GIT_TERMINAL_PROMPT=0
-if git remote get-url origin >/dev/null 2>&1; then
-  { git -c user.name=memstore -c user.email=memstore@localhost -c merge.renames=false pull --rebase -s recursive -q origin main \
-    && git push -q origin main ; } >> reports/sync.log 2>&1 \
-    || { git rebase --abort 2>/dev/null; printf '%s weekly sync failed\n' "$(date +%F)" >> reports/sync.log; }
+sync_rebase() {
+  "${SGIT[@]}" rev-parse -q --verify refs/remotes/origin/main >/dev/null || return 0
+  store_lock 10 || return 1
+  bounded 30 "${SGIT[@]}" -c merge.renames=false rebase -q -s recursive refs/remotes/origin/main \
+    || { store_recover; exec 9>&-; return 1; }
+  exec 9>&-
+}
+if [ "$LOCKED" = 1 ] && "${SGIT[@]}" remote get-url origin >/dev/null 2>&1; then
+  { "${SGIT[@]}" fetch -q origin && sync_rebase && "${SGIT[@]}" push -q origin main ; } >> reports/sync.log 2>&1 \
+    || printf '%s weekly sync failed\n' "$(date +%F)" >> reports/sync.log
 fi
 exit 0
