@@ -59,7 +59,8 @@ watch() { local pid=$1 before=$2 polls=-1
 }
 # Free Loam's slot after a PR's outcome line, or once the factory marked its PR closed (pr-closed, written by
 # pr_closed_events, so a call ended between its merge and its outcome line strands nothing): next counts a pr-opened
-# run as holding the slot while ~/loam-<issue> exists (bin/factory:2975-2993), and the call's sandbox cannot remove
+# run as holding the slot while ~/loam-<issue> exists (cmd_next in bin/factory: "a pr-opened run whose ticket
+# worktree still exists"), and the call's sandbox cannot remove
 # that worktree. Only a run still at pr-opened is touched.
 reap() { local wt n d; for wt in "$HOME"/loam-[0-9]*; do
   [ -d "$wt" ] || continue; n=${wt##*-}; d=$(ls -dt ~/.local/state/loam-factory/runs/"$n"/*/ 2>/dev/null | head -1)

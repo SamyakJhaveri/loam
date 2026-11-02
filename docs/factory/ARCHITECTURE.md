@@ -3,14 +3,14 @@
 The factory takes a raw request to a merged pull request through unattended loops and independent Opus 5.5 graders, on Loam and, after F8, on projects Loam seeds.
 This file is the one home of the stage table, the single sources of truth, the standing do-not-touch list, the model rules, and the placement table.
 The brief and ticket formats live in `CONTRACT.md`, the supervisor in `LOOP.md`, the build order in `ROADMAP.md` (superseded; the campaign index that replaced it, `../archive/architecture-working/tickets/README.md`, is parked by ruling R6 of 2026-10-25), the evidence in `../research/INDEX.md`.
-Everything here describes the target; a thing that exists at the time of writing (2026-09-07) says so.
+It describes the factory as it runs; where it disagrees with `bin/factory`, the code wins and this file is repaired.
 
 ## Design rules
 
-- Deterministic steps run in code; judgment steps run in a model; one human checkpoint at PR merge.
+- Deterministic steps run in code; judgment steps run in a model; one checkpoint at PR merge, held by Samyak or, under his merge grant, by the manager (`bin/factory merge`) and the overnight driver (`gh pr merge`, `bin/overnight/protocol.md`); the round loop never merges.
 - A known command is code, not an agent: anything a ticket can name as a command runs in the supervisor.
 - The agent that does the work never grades the work; graders run fresh, read-only, on frozen prompts, in a context separate from the worker's; Models and roles names their model.
-- What Samyak does not want is written down as firmly as what he wants: Out of scope in every brief and ticket, Do not touch per ticket, ADRs from the design session, and the lean-critic on every diff.
+- What Samyak does not want is written down as firmly as what he wants: Out of scope in every brief and ticket, Do not touch per ticket, ADRs from the design session, and the lean-critic, run by hand on the PR (Models and roles).
 - One ticket, one worktree, one branch, one run directory; parallel runs gated by `MAX_PARALLEL` (`LOOP.md`).
 - One directive has one home; a duplicate is a bug.
 - Every harness component is a dated bet on a model weakness and must justify its keep after each upgrade: remove one at a time and replay the graders; the register of bets, each with its date, weakness and retiring replay, is [BETS.md](BETS.md).
@@ -29,7 +29,7 @@ flowchart LR
   L --> G["4 Grade (judge, reviewer; Codex review if set)"]
   G -->|fail| L
   G -->|pass or cap| PR[PR with metrics]
-  PR --> M["5 Merge (Samyak)"]
+  PR --> M["5 Merge (Samyak or his merge grant)"]
   M --> LE["6 Learn (one line or nothing)"]
   M -->|next frontier ticket| L
 ```
@@ -41,7 +41,7 @@ flowchart LR
 | 2 Tickets | design issue, or the one Track B ticket | Fable breaks the design into tickets and publishes them (`CONTRACT.md`, Publishing a breakdown); issue bodies use the ticket contract; `bin/factory lint` (F2); `plan-reviewer` by hand and lean-critic once over the breakdown | approves the breakdown | GitHub issues, native blocking edges, label `ready-for-agent` | lint exit 0, `plan-reviewer` pass |
 | 3 Loop | one ticket | `bin/factory run <issue>` on the runner (F1): round 0, then worker rounds on `claude-opus-5-5` at the ticket's effort (default high) or `codex exec` | nothing; may run `bin/factory stop`, or edit the issue body and relaunch | branch, commits, a run directory | checks exit 0, clean tree, do-not-touch clean |
 | 4 Grade | diff and evidence | Opus 5.5 judge at high and reviewer at xhigh, read-only, fresh, frozen per run; Codex review stage when the ticket sets it | nothing | JSON verdicts, PR with metrics and merge checklist | judge pass and no blocking finding, or the grader-round cap with a backlog, or a judge pass with a review finding past its one block or from a reviewer or Codex review with no parseable reply (a draft PR), or a judge with no parseable reply after three calls (a draft PR) |
-| 5 Merge | PR | Samyak with `bin/runner 'bin/factory status'`; `claude ultrareview --json` optional on high risk | ticks the merge checklist, merges | merged main; the PR's `Closes #N` closes the ticket | human merge, never the loop |
+| 5 Merge | PR | Samyak with `bin/runner 'bin/factory status'`; `claude ultrareview --json` optional on high risk | ticks the merge checklist, merges, or grants the merge | merged main; the PR's `Closes #N` closes the ticket | Samyak, or the manager or overnight driver under his merge grant (`LOOP.md`); never the round loop |
 | 6 Learn | `bin/factory status` | the manager session (rule in `LOOP.md`) | nothing | a `CLAUDE.md` line, a lint rule, or nothing | none |
 
 ## Single sources of truth

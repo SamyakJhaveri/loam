@@ -38,7 +38,7 @@ target_repo() {
 }
 # Every gh call, and every git call that reaches a remote (fetch, push, ls-remote), runs under NET_TIMEOUT_SEC
 # (LOOP.md, Caps): a call cut off at the limit fails like any other failure of that call, so a hung network call
-# never holds a run, its slot and its heartbeat for good. A program runs under GNU timeout without --foreground
+# never holds a run or its slot for good. A program runs under GNU timeout without --foreground
 # (neither needs a terminal, and timeout then signals the call's whole process group), with KILL 5 s after TERM
 # for a call that ignores TERM. A shell function (a test's stub, or one exported into the environment), or any
 # call on a machine without timeout (a Mac), goes through net_watch instead, since timeout can only start a program.
@@ -627,20 +627,32 @@ grader_file() {
 }
 
 # A worker's skill name (a line of bin/factory.d/skills.txt or a pstack:<name>, lint-checked) -> its SKILL.md path.
-# A bare name lives under ~/.claude/skills/<name>/; a plugin:name lives under the installPath that
-# ~/.claude/plugins/installed_plugins.json gives the plugin's first `<plugin>@<marketplace>` entry, the
-# folder Claude Code loads (docs/PSTACK.md), so a stale or other-marketplace cache folder never resolves.
-# No installed_plugins.json, or no entry for the plugin, resolves to nothing: no cache-search fallback
-# (owner ruling 30 Oct 2026, #437). A plugin may nest its skills under a category dir
-# (skills/<category>/<name>/SKILL.md), so match SKILL.md at any depth
-# under the plugin's skills tree, not only skills/<name>/.
+# A bare name lives under ~/.claude/skills/<name>/; a plugin:name lives under an installPath from
+# ~/.claude/plugins/installed_plugins.json, by the factory's rule, modelled on how Claude Code picks one key's record
+# (user or managed records, the first existing path; LESSONS.md, PR #531): only `<plugin>@<marketplace>` keys that
+# the settings file's enabledPlugins sets true, in the registry's order, and from each only its user- or
+# managed-scope records, in order; the first such installPath that is an existing directory wins. Claude Code loads
+# every enabled key, so with two enabled keys for one plugin it loads both; the registry-order pick is the factory's
+# choice. A project or local record, which Claude Code loads only in its own repository, a record with no scope, and
+# an installPath holding a newline or NUL (the shell would split or merge it) never resolve (#533). The settings
+# file is $SKILL_SETTINGS, else ~/.claude/settings.json; build_worker_prompt points it at the run's frozen worker
+# settings, the file the worker launches with. No installed_plugins.json, no enabled key, or no existing record
+# resolves to nothing: no cache-search fallback (owner ruling 30 Oct 2026, #437). A plugin may nest its skills
+# under a category dir (skills/<category>/<name>/SKILL.md), so match SKILL.md at any depth under the plugin's
+# skills tree, not only skills/<name>/.
 skill_file() { # skill-name -> SKILL.md path on stdout, non-zero when it resolves to no file
-  local name="$1" plugin sub dir f
+  local name="$1" plugin sub dir="" d en paths f
   case "$name" in
     *:*)
       plugin=${name%%:*}; sub=${name#*:}
-      dir=$(jq -r --arg p "$plugin" 'first(.plugins | to_entries[] | select(.key | startswith($p + "@"))
-        | .value[0].installPath // empty)' "$HOME/.claude/plugins/installed_plugins.json" 2> /dev/null) || dir=""
+      # A missing, empty or unreadable settings file enables nothing.
+      en=$(jq -c '.enabledPlugins // {}' "${SKILL_SETTINGS:-$HOME/.claude/settings.json}" 2> /dev/null) || en=""
+      paths=$(jq -r --arg p "$plugin" --argjson en "${en:-"{}"}" '.plugins | to_entries[]
+        | select((.key | startswith($p + "@")) and $en[.key] == true) | .value[]
+        | select(.scope == "user" or .scope == "managed") | .installPath | strings
+        | select(explode | all(. != 0 and . != 10))' \
+        "$HOME/.claude/plugins/installed_plugins.json" 2> /dev/null) || paths=""
+      while IFS= read -r d; do [ -n "$d" ] && [ -d "$d" ] && { dir=$d; break; }; done <<<"$paths"
       [ -n "$dir" ] && f=$(find "$dir/skills" -path "*/$sub/SKILL.md" 2> /dev/null | sort | head -1)
       [ -n "${f:-}" ] && { printf '%s\n' "$f"; return 0; } ;;
     *)
@@ -753,7 +765,7 @@ run_eval() {
 
 run_eval_cases() { # grader work
   local grader="$1" tree="$2/tree" rubric="$2/rubric" budget="${EVAL_BUDGET_USD:-10}" gf schema settings dir name out res exp got erows grows
-  local spent=0 cases=0 mism=0 clean=0 ok attempt eline
+  local spent=0 cases=0 mism=0 clean=0 ok attempt eline nonce shown raw a copied
   gf=$(grader_file "$grader") || return 2
   # The checkout can move under a replay (`next` fast-forwards it), so the rubric and the sha256 below come from
   # one copy of the grader file.
@@ -779,16 +791,35 @@ run_eval_cases() { # grader work
       return 2
     fi
     name=$(basename "$dir")
+    if ! jq -e '(has("absent") | not) or (.absent | type == "array" and all(type == "string"))' "$dir/expected.json" > /dev/null 2>&1; then
+      echo "eval $grader/$name: expected.json's absent is not an array of strings" >&2
+      return 2
+    fi
+    if ! jq -e '(has("nonce_form") | not) or .nonce_form == "split"' "$dir/expected.json" > /dev/null 2>&1; then
+      echo "eval $grader/$name: expected.json's nonce_form is not \"split\"" >&2
+      return 2
+    fi
     cases=$((cases + 1))
+    copied=""
     # Two attempts, as the loop's grader call takes.
     for attempt in 1 2; do
+      # A case that plants @NONCE@ lists it under absent; each call gets its own nonce in the prompt and in
+      # that list, so a reply holding it took it from this prompt's plant. A case whose expected.json sets
+      # "nonce_form": "split" shows it in two parts (NONCE-1d3b a6b5) and its plant asks the grader to join
+      # them, so a reply that quotes the plant, as judge.md asks it to cite the line, carries no whole nonce.
+      nonce=@NONCE@ shown=@NONCE@
+      if grep -qF @NONCE@ "$dir/prompt.md"; then
+        nonce="NONCE-$(openssl rand -hex 4)" && [ "${#nonce}" -eq 14 ] || { echo "eval: openssl rand failed" >&2; return 2; }
+        shown=$nonce
+        jq -e '.nonce_form == "split"' "$dir/expected.json" > /dev/null && shown="${nonce:0:10} ${nonce:10}"
+      fi
       # The same flags as the production grader call (LOOP.md, Grader calls), so the replay grades the
       # way the loop does: --json-schema routes the reply through the schema, --strict-mcp-config and
       # --disable-slash-commands drop the prefix the grader never uses. Two things differ: the call runs
       # in the eval_tree export, not a ticket worktree, and each call gets the remaining headroom, so
       # EVAL_BUDGET_USD caps the sum over cases. role-settings.json is read beside the schema, for the
       # reason schema_for gives.
-      out=$(cat "$rubric" "$dir/prompt.md" | ( cd "$tree" && claude -p --model "$EVAL_MODEL" --effort "${EVAL_EFFORT:-$(grader_effort "$grader")}" \
+      out=$({ cat "$rubric"; sed "s/@NONCE@/$shown/g" "$dir/prompt.md"; } | ( cd "$tree" && claude -p --model "$EVAL_MODEL" --effort "${EVAL_EFFORT:-$(grader_effort "$grader")}" \
         --tools Read,Grep,Glob --strict-mcp-config --disable-slash-commands --no-session-persistence \
         --json-schema "$schema" \
         --max-budget-usd "$(awk -v b="$budget" -v s="$spent" 'BEGIN {printf "%.4f", b - s}')" \
@@ -812,11 +843,21 @@ served_models:(.modelUsage | if type == \"object\" then keys else [] end), ts:\$
           '{date:$date, ticket:$ticket, role:.role, cost_usd:.cost_usd}' >> "$FACTORY_DAILY"
       fi
       res=$(jq -r "$RESULT_OBJ | .result // \"\"" <<<"$out" 2>/dev/null)
+      raw="$out"$'\n'"$res"
       # Fallback: if a reply still carries code fences or prose around the object, the object runs
       # from the first brace to the last, so cut to those before parsing the verdict.
       if ! jq -e .verdict <<<"$res" > /dev/null 2>&1 && [ "${res#*\{}" != "$res" ]; then
         res="{${res#*\{}"; res="${res%\}*}}"
       fi
+      # Any attempt's reply that holds an absent string anywhere fails the case: the envelope, the reply text
+      # and the decoded strings of the judge object, so no escape in the inner JSON hides it. The search is
+      # for the whole nonce, which a split case's prompt never shows, so only a joined copy reads as copied;
+      # a quote of the split token line does not, while a whole-plant echo that stops short of the join
+      # reads as a citation.
+      raw="$raw"$'\n'"$(jq -r '.. | strings' <<<"$res" 2>/dev/null)"
+      while IFS= read -r a; do
+        [ -n "$a" ] && [ "${raw#*"$a"}" != "$raw" ] && copied="$copied copied $a"
+      done < <(jq -r --arg n "$nonce" '.absent // [] | .[] | gsub("@NONCE@"; $n)' "$dir/expected.json")
       # A usage limit or an API error answers with is_error and no cost. That is the environment,
       # not a verdict: say so and stop, rather than reporting it as a grader disagreement.
       if [ "$(jq -r "$RESULT_OBJ | .is_error // false" <<<"$out" 2>/dev/null)" = true ]; then
@@ -840,10 +881,11 @@ served_models:(.modelUsage | if type == \"object\" then keys else [] end), ts:\$
       grows=$(jq -r '[(.rows // {}) | to_entries[] | select(.value != "pass") | .key] | sort | join(",")' <<<"$res" 2>/dev/null)
       [ "$grows" = "$erows" ] || { ok=0; got="$got rows=[$grows]"; exp="$exp rows=[$erows]"; }
     fi
+    [ -z "$copied" ] || ok=0
     if [ "$ok" = 1 ]; then
       echo "eval $grader/$name: OK $got"
     else
-      echo "eval $grader/$name: MISMATCH got '$got', expected '$exp'"
+      echo "eval $grader/$name: MISMATCH got '$got', expected '$exp'$copied"
       mism=$((mism + 1))
     fi
   done
@@ -1186,41 +1228,6 @@ exit_words() { # status -> "<level> <words>"
   esac
 }
 
-# The host's healthchecks check: a beat at launch, then every 5 minutes while this run's process lives, so a
-# killed run or host goes red. The loop's TERM trap runs only after an in-flight beat returns (the sleep is
-# waited on, so it does not delay the trap), and heartbeat_stop waits for it, so no beat lands after the pause.
-# The loop closes the run's lease (FACTORY_SLOT_FD), so a beat left after the supervisor died, by finish, a signal
-# or SIGKILL, never holds the slot.
-heartbeat_start() {
-  alert --ping beat >> "$LOG" 2>&1 || log "healthchecks beat failed; see bin/alert's line above"
-  ( [ -n "$HAVE_FLOCK" ] && [ -n "${FACTORY_SLOT_FD:-}" ] && exec {FACTORY_SLOT_FD}>&- 2> /dev/null
-    trap 'exit 0' TERM
-    while sleep 300 & wait $!; kill -0 "$$"; do alert --ping beat; done ) < /dev/null > /dev/null 2>&1 &
-  HEARTBEAT=$!
-}
-
-# Another live run on this host, Loam's or another target's; a hard-killed run holds its slot until holds_slot
-# finds no process of it left and alerts. holds_slot is the whole test: a run beats only after cmd_run takes its lease
-# and writes `running` (exec_frozen keeps the fd), so a run that has beaten holds its slot, and one that has not beats later.
-other_live_run() {
-  local d
-  for d in "$RUNS_BASE"/*/*/ "$RUNS_BASE"/*/*/*/; do
-    [ "${d%/}" = "${RUN%/}" ] && continue
-    holds_slot "$d" && return 0
-  done
-  return 1
-}
-
-# The host's last live run pauses the check. A run launched meanwhile holds its slot before its first beat,
-# so the second look sees it and beats again, and the pause never outlives a live run.
-heartbeat_stop() {
-  [ -n "${HEARTBEAT:-}" ] && kill "$HEARTBEAT" 2> /dev/null && wait "$HEARTBEAT" 2> /dev/null
-  other_live_run && return 0
-  alert --ping pause >> "$LOG" 2>&1 || log "healthchecks pause failed; see bin/alert's line above"
-  other_live_run && { alert --ping beat >> "$LOG" 2>&1 || log "healthchecks beat failed"; }
-  return 0
-}
-
 # Exit code, status, and the final log line are decided together (LOOP.md, Exits).
 finish() { # status message
   local code words
@@ -1228,7 +1235,6 @@ finish() { # status message
     pr-opened) code=0 ;; ticket-defect) code=3 ;; stopped-environment) code=4 ;; abandon) code=5 ;; *) code=2 ;;
   esac
   set_status "$1"
-  heartbeat_stop
   words=$(exit_words "$1")
   notify "${words%% *}" "$(ticket_name) ${words#* }" "$2"
   log "EXIT $1 ($code): $2"
@@ -1398,6 +1404,8 @@ freeze() {
   # bin/claude-account switches accounts by rewriting the user tier's CLAUDE_CODE_OAUTH_TOKEN, so the copy leaves it
   # out and worker_round passes the live one. The rest of the user env may hold secrets too, so the copy is private
   # to the operator, as ~/.claude/settings.json is.
+  # A per-model autoCompactWindow in the user tier would outrank the worker file's top-level 450K window inside this
+  # one merged file (Claude Code settings precedence), so the merge drops it (#348).
   user="${CLAUDE_SETTINGS_FILE:-${CLAUDE_CONFIG_DIR:-$HOME/.claude}/settings.json}"
   [ -f "$user" ] || user=/dev/null
   mkdir -p "$RUN/uv/cache" "$RUN/uv/tools"
@@ -1409,7 +1417,8 @@ freeze() {
     merge($u[0] // {} | del(.sandbox, .env.CLAUDE_CODE_OAUTH_TOKEN, .permissions.allow, .permissions.additionalDirectories); .) | .env = (.env // {}) + {CLAUDE_CODE_SUBAGENT_MODEL: $m, CLAUDE_CODE_SUBAGENT_MODEL_FORCE: "1",
     ANTHROPIC_DEFAULT_SONNET_MODEL: $m, ANTHROPIC_DEFAULT_HAIKU_MODEL: $m,
     UV_CACHE_DIR: "\($uv)/cache", UV_TOOL_DIR: "\($uv)/tools"}
-    | .sandbox.filesystem.allowWrite += [$gd, "\($cd)/objects", "\($cd)/refs", "\($cd)/logs", $w, $t, "\($uv)/cache", "\($uv)/tools"]' \
+    | .sandbox.filesystem.allowWrite += [$gd, "\($cd)/objects", "\($cd)/refs", "\($cd)/logs", $w, $t, "\($uv)/cache", "\($uv)/tools"]
+    | if (.modelSettings | type) == "object" then .modelSettings |= map_values(if type == "object" then del(.autoCompactWindow) else . end) else . end' \
     "$ROOT/bin/factory.d/worker-settings.json" > "$RUN/frozen/worker-settings.json" ) 2>> "$LOG" \
     || finish stopped-environment "could not merge $user into the frozen worker settings"
   sed -e "s|<issue>|${ISSUE:-$KEY}|g" -e "s|<decisions>|$DECISIONS|g" -e "s|<mechanism>|${DECISIONS%/*}/mechanism.md|g" \
@@ -1554,8 +1563,7 @@ dead_owner() { # <run dir> [lease]
 # would need the pid space to wrap. A ps or date that fails or prints nothing cannot tell, so the slot holds.
 # macOS pads lstart with trailing spaces and has BSD date, so the start is trimmed and parsed either way.
 # A gone or zombie pid also holds while a live process has it as its process group id; Linux does not reuse that
-# number meanwhile. The heartbeat loop is such a member and exits within 300 s of the supervisor, so a reap waits at
-# most one beat. A model call has a session of its own, so holds_slot finds it through the run's `call` file.
+# number meanwhile. A model call has a session of its own, so holds_slot finds it through the run's `call` file.
 # With `lease` (any non-empty third argument) a live pid that is no zombie is never gone, whatever its start: on the
 # lease path a held lease already shows a process of the run lives, and a step of any size would else read the live
 # supervisor as gone (#574). A pid reused while an orphaned call holds the lease spares that call until
@@ -1586,6 +1594,20 @@ group_live() { # <pgid> -> 0 when a process other than a zombie has it as its gr
   local g
   g=$(ps -e -o pgid=,stat= 2> /dev/null) && [ -n "$g" ] || return 0
   awk -v p="$1" '$1 == p && $2 !~ /^Z/ { f = 1 } END { exit !f }' <<< "$g"
+}
+
+# A run suspended whole (SIGSTOP, ^Z, or a job stopped by its shell) keeps its lease and its owner, so it holds its slot
+# with no progress: every process that is not a zombie in its owner's process group is stopped (ps state T or t). The
+# supervisor runs in that group (tmux's shell, bin/factory, its children); a model call has a session of its own and
+# ends at CALL_TIMEOUT_SEC (timeout's KILL reaches a stopped call), so a stopped call alone needs no rule. A ps that
+# fails, or an owner it cannot read, is not stopped.
+run_stopped() { # <run dir>
+  local o g
+  o=$(cat "$1/owner" 2> /dev/null) && g=$(ps -o pgid= -p "${o%% *}" 2> /dev/null) && g=${g//[[:space:]]/} \
+    && [ -n "$g" ] || return 1
+  g=$(ps -e -o pgid=,stat= 2> /dev/null | awk -v p="$g" '$1 == p && $2 !~ /^Z/ { n++; if ($2 !~ /^[Tt]/) up = 1 }
+    END { print (n && !up) ? "stopped" : "" }')
+  [ "$g" = stopped ]
 }
 
 # A recorded process group still lives and is still the one recorded: a member that is not a zombie, and a leader, while
@@ -1624,8 +1646,8 @@ call_group() { # <run dir>
   echo "$g"
 }
 
-# The project a run dir belongs to, from where it sits, not the caller's REPO: other_live_run walks every
-# target's runs. Loam's sit at RUNS_BASE/<issue>/<sha8>, another target's one level down under <owner>__<repo>;
+# The project a run dir belongs to, from where it sits, not the caller's REPO, so an alert about a run names
+# its own target. Loam's sit at RUNS_BASE/<issue>/<sha8>, another target's one level down under <owner>__<repo>;
 # a dir elsewhere (a sourced test's) names none.
 run_project() { # <run dir>
   local t
@@ -1850,21 +1872,45 @@ assert_call_ok() { # role result.json [round-start-sha]
   finish stopped-environment "the $1 call failed before doing work: $e"
 }
 
+# The active stored account's name; each Claude call site reads it into CALL_ACCOUNT before the call loads its token.
+active_account() { "$ROOT/bin/claude-account" status 2> /dev/null | sed -n 's/^active: \([^;]*\);.*/\1/p'; }
+
 # Usage limits are per account, so on a limit reply switch to the other stored account and retry at once,
 # rather than idling this run while the other account sits unused. bin/claude-account owns the token files
-# and the settings env channel; one switch per limit event, then a five-minute cooldown sends any further
-# limit down the sleep path (both accounts are limited when a second reply lands within seconds). No token
-# value ever reaches the log or the ledger: the switcher prints names only and the ledger line names only.
-limit_switch() { # -> 0 after switching accounts, 1 when there is no other account or a switch is on cooldown
-  local to from last
-  to=$("$ROOT/bin/claude-account" other 2> /dev/null) || return 1
-  if [ -f "$RUN/limit-switch" ]; then
-    last=$(cat "$RUN/limit-switch" 2> /dev/null) || last=""
-    [ -n "$last" ] && [ "$(( $(date +%s) - last ))" -lt 300 ] && return 1
+# and the settings env channel. The account is the host's, shared by every live run (FACTORY_MAX_PARALLEL), so
+# a switch is made only while the active account is still CALL_ACCOUNT, the one the limited call ran under: once
+# another run has switched away from it, this run retries on the new account and never switches back. The check and
+# the switch hold one host-wide lock, so two runs limited at once switch once: a flock on RUNS_BASE/limit-switch.lock,
+# or on a host with no flock(1) (a Mac) owner_lock's mkdir lock in RUNS_BASE/limit-switch.d, which a killed holder
+# leaves for at most a minute. Either waits about 60 s, then the limit takes the sleep path. One switch per limit
+# event, then a host-wide five-minute cooldown (RUNS_BASE/limit-switch) sends any further limit down the sleep path,
+# a run limited on the account just switched to included (both accounts are limited when a second reply lands that
+# soon); after the cooldown such a run switches back. No token value ever reaches the log or the ledger: the switcher
+# prints names only and the ledger line names only.
+limit_switch() { # -> 0 after a switch, or one away from CALL_ACCOUNT already made; 1 with no other account or on cooldown
+  local fd= rc
+  if [ -n "$HAVE_FLOCK" ]; then
+    mkdir -p "$RUNS_BASE" && exec {fd}>> "$RUNS_BASE/limit-switch.lock" || return 1
+    flock -w 60 "$fd" || { exec {fd}>&-; return 1; }
+  else
+    mkdir -p "$RUNS_BASE/limit-switch.d" && owner_lock "$RUNS_BASE/limit-switch.d" 60 || return 1
   fi
-  from=$("$ROOT/bin/claude-account" status 2> /dev/null | sed -n 's/^active: \([^;]*\);.*/\1/p')
+  limit_switch_held; rc=$?
+  if [ -n "$fd" ]; then exec {fd}>&-; else rmdir "$RUNS_BASE/limit-switch.d/owner.lock"; fi
+  return "$rc"
+}
+limit_switch_held() {
+  local to from last
+  from=$(active_account)
+  if [ -n "${CALL_ACCOUNT-}" ] && [ "$from" != "$CALL_ACCOUNT" ]; then
+    log "usage limit on account $CALL_ACCOUNT; another run already switched to ${from:-none}; retrying the call"
+    return 0
+  fi
+  last=$(cat "$RUNS_BASE/limit-switch" 2> /dev/null) || last=""
+  [[ "$last" =~ ^[0-9]+$ ]] && [ "$(( $(date +%s) - last ))" -lt 300 ] && return 1
+  to=$("$ROOT/bin/claude-account" other 2> /dev/null) || return 1
   "$ROOT/bin/claude-account" use "$to" > /dev/null 2>&1 || return 1
-  date +%s > "$RUN/limit-switch"
+  date +%s > "$RUNS_BASE/limit-switch"
   log "usage limit: switched account ${from:-none} -> $to; retrying the call"
   printf '{"ts":"%s","event":"limit-switch","from":"%s","to":"%s"}\n' "$(now)" "${from:-none}" "$to" >> "$LEDGER"
   return 0
@@ -2012,7 +2058,7 @@ build_worker_prompt() { # round -> prompt path (pending until the call returns a
   # a Codex worker swallows an unknown `/<skill>` line (#41), so it gets each named skill's body pasted.
   while IFS= read -r s; do
     [ -n "$s" ] || continue
-    if ! sf=$(skill_file "$s"); then
+    if ! sf=$(SKILL_SETTINGS="$RUN/frozen/worker-settings.json" skill_file "$s"); then
       # Lint guaranteed the name resolved, so no resolution now is an install gap, not a typo; a prompt
       # naming a skill the worker cannot read would be worse than stopping.
       # build_worker_prompt runs in $(...), so return non-zero; worker_round turns it into finish.
@@ -2296,6 +2342,8 @@ worker_round() { # round; leaves round-N.* only once the call produced a result
     # The call loads no settings tier, so the account token bin/claude-account last wrote is read here, after any
     # switch, and passed in this call's environment only, never on a command line (freeze). The supervisor keeps its
     # launch value, which a call gets when the read is empty or fails, so a token the file has lost is never reused.
+    # The account is named first, so a switch between the two reads makes limit_switch retry, never switch back.
+    CALL_ACCOUNT=$(active_account)
     tok=$(jq -r '.env.CLAUDE_CODE_OAUTH_TOKEN // empty' "${CLAUDE_SETTINGS_FILE:-${CLAUDE_CONFIG_DIR:-$HOME/.claude}/settings.json}" 2> /dev/null)
     tok_set=${CLAUDE_CODE_OAUTH_TOKEN+1}; tok0=${CLAUDE_CODE_OAUTH_TOKEN-}
     [ -z "$tok" ] || { printf -v CLAUDE_CODE_OAUTH_TOKEN '%s' "$tok" && export CLAUDE_CODE_OAUTH_TOKEN; }
@@ -2474,6 +2522,8 @@ call_json() { # round stem role prompt_file schema_file
     # --tools Read,Grep,Glob is what makes a grader read-only (#40); with no MCP schemas and no
     # skills listing its prefix is 9.9k tokens instead of 27k (probed 2026-09-09). --setting-sources
     # user is what keeps the worktree's own hooks out, so a grader can still read the tree it grades.
+    # The user tier's account token is loaded by the call, so its account is named just before (limit_switch).
+    CALL_ACCOUNT=$(active_account)
     call_start "$WORKTREE" ${TIMEOUT_G[@]+"${TIMEOUT_G[@]}"} claude -p --model "$GRADER_MODEL" --effort "$effort" \
         --tools Read,Grep,Glob --strict-mcp-config --disable-slash-commands --no-session-persistence \
         --json-schema "$(cat "$schema")" \
@@ -2715,7 +2765,7 @@ open_pr() { # [draft]: opened at the grader-round cap
     printf '## Goal\n\n%s\n\n' "$(section "Goal and why" | sed '/./,$!d')"
     printf '## Commits\n\n```\n%s\n```\n\n' "$(git -C "$WORKTREE" log --oneline "$base..HEAD")"
     [ -s "$RUN/round-$ROUND.measure" ] && { printf '## Rows measured\n\n```\n'; cat "$RUN/round-$ROUND.measure"; printf '```\n\n'; }
-    printf '## Merge checklist\n\n'; section "Merge checklist" | grep '^- ' | sed 's/^- /- [ ] /'; printf '\n'
+    printf '## Merge checklist\n\n'; section "Merge checklist" | grep '[^[:space:]]' | sed -E '/^[[:space:]]/!{s/^- (\[[ xX]\] )?//; s/^/- [ ] /;}'; printf '\n'
     printf '## Decisions\n\n```\n'; cat "$DECISIONS"; printf '```\n\n'
     checks_section "Checks at base ${base:0:8} (round 0)" "$RUN/round-0.checks"
     checks_section "Checks at the graded sha (round $ROUND)" "$RUN/round-$ROUND.checks"
@@ -2864,12 +2914,10 @@ cmd_run() {
   # launch of the same ticket holds it says so and exits, leaving that run's status, `launched` (its MAX_HOURS clock)
   # and log (status --criteria's round) as they were. The fd is no close-on-exec, so the frozen re-exec and every
   # child inherit it: the run holds the lease until its last process exits. The frozen pass already holds it and must
-  # not lock a second open of the file, which would wait on its own lease. The heartbeat loop alone closes it
-  # (heartbeat_start). Where flock(1) is missing (a Mac) no lease is written and holds_slot judges the owner line below.
+  # not lock a second open of the file, which would wait on its own lease. Where flock(1) is missing (a Mac) no lease is written and holds_slot judges the owner line below.
   if [ -n "$HAVE_FLOCK" ] && [ "${FACTORY_FROZEN:-}" != "$RUN/frozen/factory" ]; then
     exec {SLOT_FD}>> "$RUN/lease" && flock -w 65 "$SLOT_FD" \
       || { echo "factory run: could not take $RUN/lease in 65 s; another launch of this ticket, or a process one left running, holds it" >&2; exit 4; }
-    export FACTORY_SLOT_FD=$SLOT_FD   # so the frozen pass's heartbeat can close it
   fi
   # A model call's tool process may have closed the lease (holds_slot), or there is no lease (no flock), and still
   # write the worktree this launch would prepare; refuse as above, writing nothing.
@@ -2920,7 +2968,6 @@ cmd_run() {
   prepare_worktree
   freeze
   exec_frozen
-  heartbeat_start   # after the re-exec, so the loop's pid lives in the process that runs finish
   BODY=$(cat "$RUN/frozen/issue.md")   # from here on the frozen body is the ticket
   [ "$IS_FILE" = 1 ] && trap 'git -C "$MAIN_CHECKOUT" worktree remove --force "$WORKTREE" > /dev/null 2>&1' EXIT
   TIMEOUT_G=()
@@ -3215,7 +3262,18 @@ daily_spent_at_runner_caps() { # -> 0 when the shared daily ledger has no room f
 # every candidate it would pick rather than the first; it exits 0 after the loop, before the daily-budget wait,
 # with no line when none would launch.
 # --install writes the ten-minute runner timer from bin/factory.d/next.crontab.
-cmd_next() { # [--dry-run|--install|--frontier]
+# A real tick (no flag) that returns 0 beats the host's healthchecks check, its only beat, which also resumes a paused
+# check; a tick that refuses sends nothing, so refusals that outlast the check's period and grace turn it red, and so
+# does a dead host or a stopped timer. A refusal's stderr reaches no one on its own (jhaveris's cron line appends it to next.log and the host
+# has no mail), so the check is the alarm.
+cmd_next() {
+  next_tick "$@" || return
+  [ $# -eq 0 ] || return 0
+  alert --ping beat >&2 || echo "healthchecks beat failed; see bin/alert's line above" >&2
+  return 0
+}
+
+next_tick() { # [--dry-run|--install|--frontier]
   local dry=0 frontier=0 do_install=0 a
   for a in "$@"; do
     case "$a" in
@@ -3253,7 +3311,7 @@ cmd_next() { # [--dry-run|--install|--frontier]
   # 1b. A logged-out Claude fails every worker call (#78), so the timer refuses to launch rather than
   #     assign the ticket, run round 0, and page the owner when the first call fails. The probe is
   #     read-only and shared with precondition_lines; it runs under --dry-run too, since a check from
-  #     inside a worktree may run it. The line goes to stderr (cron mails it) and returns 1, the same
+  #     inside a worktree may run it. The line goes to stderr (cron's next.log) and returns 1, the same
   #     shape as `frontier query failed`; the ticket stays unassigned and launches on the first tick
   #     after the login returns. The target gate works the same way: it refuses Loam without the toolchain
   #     exports and another target without a bin/check, which would fail guard bin/check after its work (#158).
@@ -3278,7 +3336,10 @@ cmd_next() { # [--dry-run|--install|--frontier]
   #    FACTORY_MAX_PARALLEL bounds the count, as it does in cmd_run through apply_caps; default 1.
   #    --dry-run asks with peek, so a run holds_slot would reap counts free and is not reaped or alerted on.
   #    --frontier counts the same way but never stops here, since it lists the frontier whatever the slots hold.
-  local d st n=0 max="${FACTORY_MAX_PARALLEL:-$MAX_PARALLEL}" peek=
+  #    A counted run suspended whole (run_stopped), whatever the slots, is a refusal, not an idle tick: nothing launches,
+  #    exit 1, so cmd_next sends no beat and the check goes red. A pr-opened run waiting on its review has no owner process
+  #    to judge, so it is idle.
+  local d st n=0 max="${FACTORY_MAX_PARALLEL:-$MAX_PARALLEL}" peek= stopped=
   [ "$dry" = 1 ] && peek=peek
   for d in "$RUNS_ROOT"/*/*/; do
     st=$(cat "$d/status" 2> /dev/null || true)
@@ -3288,7 +3349,13 @@ cmd_next() { # [--dry-run|--install|--frontier]
     fi
     holds_slot "$d" "$peek" || continue
     n=$((n + 1))
+    run_stopped "$d" && stopped="${d%/}"
   done
+  if [ "$frontier" = 0 ] && [ -n "$stopped" ]; then
+    echo "nothing to launch"
+    echo "refused: every process of the run in $stopped is stopped (SIGSTOP or a stopped job), so it holds its slot with no progress; kill -CONT or kill its process group" >&2
+    return 1
+  fi
   if [ "$frontier" = 0 ] && [ "$n" -ge "$max" ]; then
     echo "nothing to launch"
     return 0
@@ -3297,7 +3364,7 @@ cmd_next() { # [--dry-run|--install|--frontier]
   # 3. Fast-forward the checkout next runs from, so a merged loop change reaches the supervisor
   #    (freeze copies bin/factory from here) before the launch. Never under --dry-run, and only
   #    with a clean tree, since a dirty tree would abort the --ff-only merge mid-launch.
-  #    A refused pull is logged (log writes to stderr, which cron mails) and never aborts the launch:
+  #    A refused pull is logged (log writes to stderr, cron's next.log) and never aborts the launch:
   #    the run proceeds on the stale checkout, with the cause on record. Another target's checkout is
   #    pulled the same way, since lint and the standing list read its tree (F8).
   if [ "$dry" = 0 ]; then
@@ -3319,7 +3386,7 @@ cmd_next() { # [--dry-run|--install|--frontier]
   # 4. The frontier: open, ready-for-agent, unassigned issues with no open native blocker, lowest
   #    number first, plus the runner's own such issues whose current body has no run yet or whose run ended stopped-daily,
   #    stopped-environment or stopped. A gh failure (offline, unauthenticated, off cron's PATH, empty repo) prints
-  #    `frontier query failed` and returns 1, so cron mails it rather than the timer stalling silent;
+  #    `frontier query failed` and returns 1, so no beat is sent (cmd_next) rather than the timer stalling silent;
   #    only a successful, empty query falls through to `nothing to launch`.
   local repo ready num b64 body
   repo=$(target_repo)
@@ -3370,7 +3437,7 @@ cmd_next() { # [--dry-run|--install|--frontier]
   # --frontier never sets pick but prints each candidate that passes, so every candidate gets the editor call.
   # </dev/null keeps gh off the candidate list this loop reads on stdin. This check only
   # picks; load_ticket checks the owner again on the body the run freezes.
-  local pick="" st_last lint_err lint_line author editor run
+  local pick="" read_failed="" st_last lint_err lint_line author editor run
   while read -r who num author b64; do
     [ -n "$num" ] || continue
     body=$(printf '%s' "$b64" | base64 -d)
@@ -3418,6 +3485,7 @@ cmd_next() { # [--dry-run|--install|--frontier]
             -f query='query($owner: String!, $name: String!, $number: Int!) { repository(owner: $owner, name: $name) { issue(number: $number) { editor { login } lastEditedAt } } }' \
             --jq '.data.repository.issue | .editor.login // (if .lastEditedAt then "(unnamed)" else "" end)' < /dev/null 2> /dev/null); then
             echo "not owner #$num: could not read the last editor with gh (failed, or no reply in ${NET_TIMEOUT_SEC}s); passed over" >&2
+            read_failed=1
             continue
           fi
           if [ "$editor" = "(unnamed)" ]; then
@@ -3443,6 +3511,13 @@ cmd_next() { # [--dry-run|--install|--frontier]
     esac
   done <<< "$( { sed 's/^/none /' <<< "$ready"; sed 's/^/mine /' <<< "$mine"; } | sort -s -n -k2,2 )"
   [ "$frontier" = 1 ] && return 0
+  # A candidate passed over on a failed read, with none picked, is a refusal, not an idle tick: it returns 1, so
+  # cmd_next sends no beat and a read that keeps failing turns the check red.
+  if [ -z "$pick" ] && [ -n "$read_failed" ]; then
+    echo "nothing to launch"
+    echo "refused: a candidate was passed over on a failed GitHub read (above)" >&2
+    return 1
+  fi
 
   # A run stopped at today's daily budget, with the shared ledger (RUNS_BASE, every target's) also spent at the
   # runner's own caps, means a new launch would only assign, build, run round 0 and stop at its first cap check;
@@ -3724,7 +3799,7 @@ cmd_skills() {
       index($0, "AskQuestion") || index($0, "AskUserQuestion")  { printf "%s\tasks\t%s:%d: %s\n", n, f, FNR, t }
     ' "$f"
   done
-  [ -n "$found" ] || echo "skills: no installed pstack skill resolves (no pstack under $cache, or none in installed_plugins.json)"
+  [ -n "$found" ] || echo "skills: no installed pstack skill resolves (no pstack under $cache, none in installed_plugins.json, or its key disabled or missing from enabledPlugins in ~/.claude/settings.json)"
   return 0
 }
 

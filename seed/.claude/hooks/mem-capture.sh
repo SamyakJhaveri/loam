@@ -8,8 +8,10 @@
 # line. Zero model calls. Idempotent on the scrubbed content's sha256 (kept beside
 # the trace as <date>-<session_id>.sha), so a repeat capture adds no file and no line.
 # After a capture it links <repo-toplevel>/.loam/memory -> $STORE when absent.
-# It then commits the store and, when an `origin` remote is set, pushes it in the
-# background so a second machine sees what this session learned. Prints nothing.
+# The capture lands first in a spool inside the store's .git, then, under the
+# store lock, in the working tree and a commit; when an `origin` remote is set it
+# rebases onto the remote and pushes in the background so a second machine sees
+# what this session learned. Prints nothing.
 #
 # Usage: mem-capture.sh [--throttle SECONDS]
 #   --throttle SECONDS  exit 0 without capturing when this session_id was captured
@@ -28,6 +30,9 @@
 set -uo pipefail
 
 STORE="${LOAM_MEMSTORE:-$HOME/memstore}"
+# The registered timeout is ten seconds; the lock wait, the drain and every
+# bounded step under the lock end by this epoch time, leaving room for the scrub.
+DEADLINE="$(python3 -c 'import time; print(time.time() + 8.5)')"
 
 # First capture on a new machine with no local store: clone the shared remote so
 # this machine starts from what other machines already learned, not from empty.
@@ -114,32 +119,189 @@ REPO="$(repo_key "$CWD")"
 DST="$STORE/traces/$REPO"
 mkdir -p "$DST" 2>/dev/null || exit 0
 
+# The store is a git repo (with origin when LOAM_MEMSTORE_REMOTE is set) before
+# anything is written into it, so the lock and the spool below live in its .git.
+export GIT_TERMINAL_PROMPT=0
+if [ ! -d "$STORE/.git" ]; then
+  git -C "$STORE" init -q -b main 2>/dev/null || true
+  if [ -n "${LOAM_MEMSTORE_REMOTE:-}" ] && ! git -C "$STORE" remote get-url origin >/dev/null 2>&1; then
+    git -C "$STORE" remote add origin "$LOAM_MEMSTORE_REMOTE" 2>/dev/null || true
+  fi
+fi
+[ -d "$STORE/.git" ] || exit 0
+
+# --- The store lock: the same block sits in mem-capture.sh, mem-recall.sh and
+# mem-weekly.sh. One flock(2) on .git/loam-mem.lock serializes every local write
+# to the store: capture's spool drain and commit, every rebase and its abort,
+# recall's handoff commit, and mem-weekly.sh's retention and commit. A write or
+# commit landing in another session's rebase would be lost to its abort.
+# python3 takes the lock (macOS ships no flock(1)) on this shell's fd 9. It
+# holds while any process keeps fd 9 open, and the kernel frees it when the last
+# one exits: no stale lock. Every store git call keeps fd 9, so killing this
+# shell never frees the lock while its git still runs; the -c flags keep git
+# from starting a gc, maintenance or fsmonitor daemon that would hold it on.
+SGIT=(git -C "$STORE" -c gc.auto=0 -c maintenance.auto=false -c core.fsmonitor=false
+  -c user.name=memstore -c user.email=memstore@localhost)
+# bounded SECS CMD...: run CMD in its own process group and kill the group after
+# SECS seconds, or at $DEADLINE (an epoch time) when that comes first; exit 124.
+bounded() {
+  python3 -c '
+import os, signal, subprocess, sys, time
+cap = float(sys.argv[1])
+if sys.argv[2]:
+    cap = min(cap, float(sys.argv[2]) - time.time())
+if cap <= 0:
+    sys.exit(124)
+p = subprocess.Popen(sys.argv[3:], close_fds=False, start_new_session=True)
+try:
+    sys.exit(p.wait(timeout=cap))
+except subprocess.TimeoutExpired:
+    try:
+        os.killpg(p.pid, signal.SIGKILL)
+    except OSError:
+        pass
+    p.wait()
+    sys.exit(124)
+' "$1" "${DEADLINE:-}" "${@:2}"
+}
+# Under the lock no other store git runs, so an index.lock is a killed git's and
+# a rebase in progress is a killed holder's: remove the one, abort the other
+# (which restores main with every commit). The abort ignores $DEADLINE, since a
+# half-done rebase is worse than a late hook. Succeeds only when neither is
+# left; a caller whose recovery failed writes nothing to the working tree.
+store_recover() {
+  rm -f "$STORE/.git/index.lock" 2>/dev/null
+  if [ -d "$STORE/.git/rebase-merge" ] || [ -d "$STORE/.git/rebase-apply" ]; then
+    DEADLINE='' bounded 1 "${SGIT[@]}" rebase --abort >/dev/null 2>&1
+  fi
+  [ ! -e "$STORE/.git/index.lock" ] && [ ! -d "$STORE/.git/rebase-merge" ] && [ ! -d "$STORE/.git/rebase-apply" ]
+}
+# store_lock SECS: take the lock within SECS seconds (and by $DEADLINE), then
+# recover; on failure hold nothing. A directory at the lock path is the earlier
+# mkdir lock, which holds nothing, so it is removed first.
+store_lock() {
+  [ -d "$STORE/.git/loam-mem.lock" ] && rmdir "$STORE/.git/loam-mem.lock" 2>/dev/null
+  { exec 9>>"$STORE/.git/loam-mem.lock"; } 2>/dev/null || return 1
+  python3 -c '
+import fcntl, signal, sys, time
+cap = float(sys.argv[1])
+if sys.argv[2]:
+    cap = min(cap, float(sys.argv[2]) - time.time())
+signal.signal(signal.SIGALRM, lambda *_: sys.exit(1))
+if cap > 0:
+    signal.setitimer(signal.ITIMER_REAL, cap)
+    fcntl.flock(9, fcntl.LOCK_EX)
+else:
+    fcntl.flock(9, fcntl.LOCK_EX | fcntl.LOCK_NB)
+' "$1" "${DEADLINE:-}" 2>/dev/null && store_recover && return 0
+  exec 9>&-
+  return 1
+}
+# --- end of the store lock block.
+
+# The spool: a capture never writes the working tree directly. It writes its
+# scrubbed trace, sha and INDEX line as one entry under .git/loam-spool/,
+# outside the working tree, where no rebase, abort or reset reaches it. Whoever
+# then holds the lock with a recovered store drains the entries into the tree
+# and commits. A capture that finds the store busy, or holds a
+# rebase it cannot recover, exits 0 and its entry waits for the next holder.
+SPOOL="$STORE/.git/loam-spool"
+spool_pending() {
+  local e
+  for e in "$SPOOL"/[0-9]*; do [ -d "$e" ] && return 0; done
+  return 1
+}
+# Copy each entry into traces/<repo>/, under the name the session's trace
+# already has there (else <day>-<sid>), append its INDEX line unless the session
+# has one, and commit. Each entry carries its transcript's generation (byte
+# length, then mtime, when it was read), also kept as the second line of the
+# tree's .sha; an entry older than the session's trace in the tree is dropped
+# unapplied, so whatever order overlapping captures publish in, the newest
+# transcript wins. With $DEADLINE set, entries are applied only until three
+# seconds before it, leaving time for the bounded add, commit and status; the
+# rest wait for the next holder. Applied entries are removed only once the
+# tree's traces match the commit, so a failed copy or commit leaves them for the
+# next drain, and draining one twice is harmless. Call only under the lock,
+# after store_recover.
+drain_spool() {
+  local e x repo sid day gen tgen out st sids="" by=""
+  local applied=()
+  [ -n "${DEADLINE:-}" ] && by=$(( ${DEADLINE%.*} - 3 ))
+  for e in "$SPOOL"/[0-9]*; do
+    [ -f "$e/meta" ] || continue
+    [ -z "$by" ] || [ "$(date +%s)" -lt "$by" ] || break
+    gen=""; { read -r repo; read -r sid; read -r day; read -r gen; } < "$e/meta"
+    mkdir -p "$STORE/traces/$repo" || return 1
+    out="$STORE/traces/$repo/$day-$sid.jsonl.gz"
+    for x in "$STORE/traces/$repo"/*-"$sid".jsonl.gz; do
+      [ -f "$x" ] && { out="$x"; break; }
+    done
+    tgen="$(sed -n 2p "${out%.jsonl.gz}.sha" 2>/dev/null)"
+    if [[ "$gen" < "$tgen" ]]; then
+      rm -rf "$e"
+      continue
+    fi
+    cp "$e/trace.jsonl.gz" "$out" && cp "$e/sha" "${out%.jsonl.gz}.sha" || return 1
+    grep -qF " | $sid | " "$STORE/traces/$repo/INDEX.md" 2>/dev/null \
+      || cat "$e/index" >> "$STORE/traces/$repo/INDEX.md" || return 1
+    applied+=("$e"); sids="$sids $sid"
+  done
+  [ "${#applied[@]}" -gt 0 ] || return 0
+  # Keep the ephemeral throttle marks and reports/ out of git: the marks are local
+  # per-session timestamps, the sync log is appended on every failed push and by
+  # recall, and mem-weekly regenerates the other reports wholesale from this
+  # machine's traces, so tracking any of them would dirty the tree or conflict on
+  # the next rebase. The attributes line merges INDEX.md by union, so two
+  # machines that each append a line before pulling both keep both lines instead
+  # of conflicting. Both files are written on every drain, not only on init, so
+  # a store an older mem-weekly left with a stale 'traces/' ignore line is
+  # corrected and its traces resume syncing. Byte-identical to what mem-weekly.sh
+  # writes.
+  printf '.throttle/\nreports/\n' > "$STORE/.gitignore" 2>/dev/null || true
+  printf 'traces/*/INDEX.md merge=union\n' > "$STORE/.gitattributes" 2>/dev/null || true
+  bounded 3 "${SGIT[@]}" add -A >/dev/null 2>&1
+  bounded 3 "${SGIT[@]}" commit -qm "capture $(date +%F)$sids" >/dev/null 2>&1
+  st="$(bounded 2 "${SGIT[@]}" status --porcelain -- traces 2>/dev/null)" && [ -z "$st" ] && rm -rf "${applied[@]}"
+  return 0
+}
+
 # Key by the whole session id, not a prefix: Codex thread ids are time-ordered
 # UUIDv7, so Codex sessions started within about 65 s share their first 8
 # characters. Traces captured under the older 8-character key keep their names;
 # mem-inspect still resolves them by prefix.
 # One session maps to one trace file no matter which calendar day it resumes on:
-# reuse an existing *-<session_id>.jsonl.gz if this session was captured before,
-# else name a fresh file with today's date.
+# drain_spool reuses an existing *-<session_id>.jsonl.gz if this session was
+# captured before, else names a fresh file with the capture's date. OUT and
+# SHAFILE here are only read, to skip a capture whose content is unchanged.
 OUT=""
 for existing in "$DST"/*-"$SID".jsonl.gz; do
   [ -f "$existing" ] && { OUT="$existing"; break; }
 done
 [ -n "$OUT" ] || OUT="$DST/$(date +%F)-$SID.jsonl.gz"
 SHAFILE="${OUT%.jsonl.gz}.sha"
+BRANCH="$(git -C "$CWD" rev-parse --abbrev-ref HEAD 2>/dev/null)"
+SHORT="$(git -C "$CWD" rev-parse --short HEAD 2>/dev/null)"
+HOST="$(hostname -s 2>/dev/null || hostname 2>/dev/null)"
 
-# The one transcript-reading pass: scrub secrets, hash the scrubbed bytes, and
-# gzip them to OUT only when they differ from the recorded sha. Prints
-# "<changed>\t<first-user-line>" where changed is 1 when a file was written.
-RES="$(python3 - "$TP" "$OUT" "$SHAFILE" <<'PY'
-import sys, os, re, gzip, hashlib, json
+# The one transcript-reading pass: scrub secrets, hash the scrubbed bytes, and,
+# only when they differ from the recorded sha, write one spool entry: the gzip,
+# the sha and generation, the session's INDEX line and its meta (repo, sid, day,
+# generation), built in a temporary directory and renamed into place whole.
+# Prints "<changed>\t<first-user-line>" where changed is 1
+# when an entry was written.
+RES="$(python3 - "$TP" "$OUT" "$SHAFILE" "$SPOOL" "$REPO" "$SID" "$(date +%F)" "$BRANCH" "$SHORT" "$HOST" <<'PY'
+import sys, os, re, gzip, hashlib, json, time
 
-tp, out, shafile = sys.argv[1], sys.argv[2], sys.argv[3]
+tp, out, shafile, spool, repo, sid, day, branch, short, host = sys.argv[1:11]
 try:
     with open(tp, "rb") as fh:
+        mtime = os.fstat(fh.fileno()).st_mtime_ns
         raw = fh.read()
 except Exception:
     sys.exit(0)
+# The transcript only grows, so its length, then its mtime, orders two reads of
+# it; zero-padded, the string order is the numeric order.
+gen = "%020d.%020d" % (len(raw), mtime)
 text = raw.decode("utf-8", "replace")
 
 # Compiled scrubbers, most specific first. Each match becomes [REDACTED:<kind>];
@@ -245,18 +407,25 @@ first = " ".join(first.split())[:90]
 prev = ""
 try:
     with open(shafile, encoding="utf-8") as fh:
-        prev = fh.read().strip()
+        prev = fh.readline().strip()
 except Exception:
     prev = ""
 
 if prev == digest and os.path.exists(out):
     sys.stdout.write("0\t" + first)
     sys.exit(0)
+tmp = os.path.join(spool, ".tmp-%d" % os.getpid())
 try:
-    with gzip.open(out, "wb") as gz:
+    os.makedirs(tmp, exist_ok=True)
+    with gzip.open(os.path.join(tmp, "trace.jsonl.gz"), "wb") as gz:
         gz.write(data)
-    with open(shafile, "w", encoding="utf-8") as fh:
-        fh.write(digest)
+    with open(os.path.join(tmp, "sha"), "w", encoding="utf-8") as fh:
+        fh.write("%s\n%s\n" % (digest, gen))
+    with open(os.path.join(tmp, "index"), "w", encoding="utf-8") as fh:
+        fh.write("%s | %s | %s@%s | %s | %s\n" % (day, sid, branch, short, host, first))
+    with open(os.path.join(tmp, "meta"), "w", encoding="utf-8") as fh:
+        fh.write("%s\n%s\n%s\n%s\n" % (repo, sid, day, gen))
+    os.rename(tmp, os.path.join(spool, "%020d-%d" % (time.time_ns(), os.getpid())))
 except Exception:
     sys.exit(0)
 sys.stdout.write("1\t" + first)
@@ -264,64 +433,57 @@ PY
 )"
 
 CHANGED="${RES%%$'\t'*}"
-FIRST="${RES#*$'\t'}"
-[ "$RES" = "$CHANGED" ] && FIRST=""
-
-# Nothing was written and nothing exists -> a failed or empty capture; bail.
-[ -f "$OUT" ] || exit 0
 
 # Give the checkout a gitignored path into the store, so agents navigate memory
 # by path. Only when this cwd is a git checkout and .loam/memory is not already a
 # file or link; never replace an existing one.
-TOP="$(git -C "$CWD" rev-parse --show-toplevel 2>/dev/null)"
-if [ -n "$TOP" ] && [ ! -e "$TOP/.loam/memory" ] && [ ! -L "$TOP/.loam/memory" ]; then
-  mkdir -p "$TOP/.loam" 2>/dev/null && ln -s "$STORE" "$TOP/.loam/memory" 2>/dev/null || true
-fi
-
-# Only an actual write earns an INDEX line, and one session gets one line: a
-# transcript keeps growing after Stop fires, so SessionEnd re-copies under the
-# same name (sha unchanged -> changed=0, exited above) and must not add a second
-# line. A resumed session that changed only its trace skips the line but still
-# syncs the new trace below.
-[ "$CHANGED" = "1" ] || exit 0
-if ! grep -qF " | $SID | " "$DST/INDEX.md" 2>/dev/null; then
-  BRANCH="$(git -C "$CWD" rev-parse --abbrev-ref HEAD 2>/dev/null)"
-  SHORT="$(git -C "$CWD" rev-parse --short HEAD 2>/dev/null)"
-  HOST="$(hostname -s 2>/dev/null || hostname 2>/dev/null)"
-  printf '%s | %s | %s@%s | %s | %s\n' \
-    "$(date +%F)" "$SID" "$BRANCH" "$SHORT" "$HOST" "$FIRST" >> "$DST/INDEX.md"
-fi
-
-# Sync the store through git: commit the new trace and INDEX line, then push to the
-# shared remote in the background so the hook never waits on the network. With no
-# origin every step is a local commit and nothing leaves the machine. The scrub
-# (above) runs before this, so only scrubbed transcripts ever reach the history.
-export GIT_TERMINAL_PROMPT=0
-if [ ! -d "$STORE/.git" ]; then
-  git -C "$STORE" init -q -b main 2>/dev/null || true
-  if [ -n "${LOAM_MEMSTORE_REMOTE:-}" ] && ! git -C "$STORE" remote get-url origin >/dev/null 2>&1; then
-    git -C "$STORE" remote add origin "$LOAM_MEMSTORE_REMOTE" 2>/dev/null || true
+if [ "$CHANGED" = "1" ] || [ -f "$OUT" ]; then
+  TOP="$(git -C "$CWD" rev-parse --show-toplevel 2>/dev/null)"
+  if [ -n "$TOP" ] && [ ! -e "$TOP/.loam/memory" ] && [ ! -L "$TOP/.loam/memory" ]; then
+    mkdir -p "$TOP/.loam" 2>/dev/null && ln -s "$STORE" "$TOP/.loam/memory" 2>/dev/null || true
   fi
 fi
-if [ -d "$STORE/.git" ]; then
-  # Keep the ephemeral throttle marks and reports/ out of git: the marks are local
-  # per-session timestamps, the sync log is appended on every failed push and by
-  # recall, and mem-weekly regenerates the other reports wholesale from this
-  # machine's traces, so tracking any of them would dirty the tree or conflict on
-  # the next pull --rebase. The attributes line merges INDEX.md by union, so two
-  # machines that each append a line before pulling both keep both lines instead
-  # of conflicting. Both files are written on every capture, not only on init, so
-  # a store an older mem-weekly left with a stale 'traces/' ignore line is
-  # corrected and its traces resume syncing. Byte-identical to what mem-weekly.sh
-  # writes.
-  printf '.throttle/\nreports/\n' > "$STORE/.gitignore" 2>/dev/null || true
-  printf 'traces/*/INDEX.md merge=union\n' > "$STORE/.gitattributes" 2>/dev/null || true
-  mkdir -p "$STORE/reports" 2>/dev/null || true
-  git -C "$STORE" add -A 2>/dev/null || true
-  git -C "$STORE" -c user.name=memstore -c user.email=memstore@localhost \
-    commit -qm "capture $(date +%F) $REPO $SID" 2>/dev/null || true
-  if git -C "$STORE" remote get-url origin >/dev/null 2>&1; then
-    ( git -C "$STORE" push -q origin main </dev/null >>"$STORE/reports/sync.log" 2>&1 & )
-  fi
+
+# Only an actual change earns a spool entry, and one session gets one INDEX line:
+# a transcript keeps growing after Stop fires, so SessionEnd re-scrubs it (sha
+# unchanged -> no entry) and drain_spool never adds a second line for a session.
+# A resumed session that changed only its trace still syncs the new trace.
+# With no entry pending there is nothing to commit. A busy store, or a leftover
+# rebase that cannot be recovered, leaves the entry for the next holder.
+spool_pending || exit 0
+store_lock 3 || exit 0
+drain_spool
+exec 9>&-
+mkdir -p "$STORE/reports" 2>/dev/null || true
+
+# Pull before push, in the background so the hook never waits on the network:
+# fetch, rebase this machine's commits onto the remote's, then push, so a
+# capture made while another machine pushed first is not rejected and left
+# behind. Traces are per-session files and INDEX.md merges by union, so the
+# rebase does not conflict; rename detection is off and the strategy is
+# `-s recursive`, as in recall's pull (see mem-recall.sh). Only the drain and the
+# rebase hold the store lock; the fetch and push stay outside it, so a slow
+# remote never stalls another session. The rebase is bounded, and a failed or
+# timed-out one is aborted under the lock before it is released. A failure logs
+# to reports/sync.log and keeps the capture committed locally for the next sync
+# to carry. With no origin every step is a local commit and nothing leaves the
+# machine; the scrub (above) runs first, so only scrubbed transcripts ever reach
+# the history.
+if "${SGIT[@]}" remote get-url origin >/dev/null 2>&1; then
+  ( {
+    DEADLINE=''  # the background is outside the hook's timeout; each step keeps its own bound
+    "${SGIT[@]}" fetch -q origin || exit 0
+    if "${SGIT[@]}" rev-parse -q --verify refs/remotes/origin/main >/dev/null; then
+      store_lock 30 || { printf '%s capture sync: store busy or not recoverable\n' "$(date +%F)"; exit 0; }
+      drain_spool
+      if ! bounded 20 "${SGIT[@]}" -c merge.renames=false rebase -q -s recursive refs/remotes/origin/main; then
+        store_recover
+        printf '%s capture sync: rebase failed\n' "$(date +%F)"
+        exit 0
+      fi
+      exec 9>&-
+    fi
+    "${SGIT[@]}" push -q origin main
+  } </dev/null >>"$STORE/reports/sync.log" 2>&1 & )
 fi
 exit 0
