@@ -6,7 +6,7 @@ freeze adds the four pins to the source env in the frozen worker-settings.json t
 CLAUDE_CODE_SUBAGENT_MODEL_FORCE exists from 2.1.257, so claude_version_ok refuses an older or unreadable
 `claude --version`. The frozen copy also keeps the ScheduleWakeup, CronCreate and Monitor denies and the
 CLAUDE_CODE_DISABLE_BACKGROUND_TASKS=1 pin, so a worker -p call does not wait at exit on background work (#470).
-Its env also pins the subagent caps, spawn depth 2 and five Agent-tool subagents at once, over any user-tier value (#413).
+Its env also pins the subagent caps, spawn depth 2 and five subagents at once (Workflow agents not counted), over any user-tier value (#413).
 `bin/factory` is sourced (FACTORY_SOURCED=1); freeze reads the checkout's graders through
 GRADERS_DIR and `claude` is a stub on PATH. No network.
 The frozen copy also keeps the source's Bash sandbox and adds the run's git and run-directory roots to its
@@ -142,8 +142,8 @@ class WorkerPinTests(unittest.TestCase):
     def assert_subagent_caps(self, user_env: dict[str, str]) -> None:
         # Settings env beats the launch env, so the caps sit in worker-settings.json's env, which wins over the
         # user tier the frozen copy carries: depth 2 is one level under a fan-out round's agents, and five at once
-        # bounds Agent-tool subagents only, since Workflow agents such as the round's builders have their own
-        # limit (#413).
+        # is checked on Agent-tool spawns, while Workflow agents such as the round's builders take no slot and have
+        # their own limit (#413).
         env = self.frozen_settings(user={"env": user_env})["env"]
         self.assertEqual(env.get("CLAUDE_CODE_MAX_SUBAGENT_SPAWN_DEPTH"), "2")
         self.assertEqual(env.get("CLAUDE_CODE_MAX_CONCURRENT_SUBAGENTS"), "5")
