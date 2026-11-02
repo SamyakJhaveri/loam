@@ -280,10 +280,22 @@ def sh_scan(text: str) -> tuple[list[str], set[int]]:
             j += tabs
             while j < n and text[j] in " \t":
                 j += 1
-            k = j
+            k, word = j, ""  # the word as the shell reads it: quotes removed, escapes applied
             while k < n and not text[k].isspace() and text[k] not in ";&|<>()":
-                k += 1
-            word = re.sub(r"[\"'\\]", "", text[j:k])
+                if text[k] == "'":  # all literal to the next '
+                    e = text.find("'", k + 1)
+                    e = n if e < 0 else e
+                    word, k = word + text[k + 1:e], e + 1
+                elif text[k] == '"':  # a backslash escapes only $ ` " \ and a newline
+                    k += 1
+                    while k < n and text[k] != '"':
+                        if text[k] == "\\" and text[k + 1:k + 2] in ("$", "`", '"', "\\", "\n"):
+                            k += 1
+                        word, k = word + text[k:k + 1].replace("\n", ""), k + 1
+                    k += 1
+                else:  # unquoted, a backslash escapes the next character
+                    k += text[k] == "\\"
+                    word, k = word + text[k:k + 1].replace("\n", ""), k + 1
             if word:
                 pending.append((word, tabs))
             i = k

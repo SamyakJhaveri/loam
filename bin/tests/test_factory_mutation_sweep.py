@@ -197,6 +197,13 @@ class SweepTests(unittest.TestCase):
                           (5, "force-true", "if (sys.argv) or True:"), (6, "drop", "pass"),
                           (20, "drop", "pass"), (24, "drop", "pass"), (27, "flip", 'if __name__ != "__main__":')])
 
+    def test_a_quoted_here_document_word_is_read_as_the_shell_reads_it(self) -> None:
+        # In single quotes a backslash is literal, so `AB` does not end the first body; in double quotes a space is
+        # part of the word, so `C D` ends the second. Only the exit after it is code.
+        self.assertEqual(self.edits({"q.sh": "#!/usr/bin/env bash\ncat <<'A\\B'\n[ 1 -eq 1 ] && exit 0\nAB\nexit 1\n"
+                                             'A\\B\ncat <<"C D"\nexit 2\nC D\nexit 3\n'}),
+                         [(10, "drop", ":")])
+
     def test_test_files_tests_and_fixtures_give_no_edit(self) -> None:
         code = "def f(a, b):\n    return a == b\n"
         result = self.sweep({"tests/helper.py": code, "x/fixtures/f.py": code, "test_ok.py": PASSING + code,
