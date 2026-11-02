@@ -359,8 +359,9 @@ def sh_edits(text: str, wanted: list[int]) -> list[tuple[int, str, dict[int, str
         if drop:
             stop = SH_DROP_END.search(m, drop.end())
             words = m[drop.start(1):stop.start() if stop else len(m)].rstrip()
-            # The file's last statement `exit 0`: the script ends with status 0 after `:` too.
-            if words.split() == ["exit", "0"] and not (m[drop.start(1) + len(words):] + "".join(masked[n:])).strip():
+            # The file's last statement `exit 0`, with only `;` after it: the script ends with status 0 after `:` too.
+            if words.split() == ["exit", "0"] and not re.sub(r"[;\s]", "", m[drop.start(1) + len(words):]
+                                                             + "".join(masked[n:])):
                 continue
             out.append((n, "drop", {n: line[:drop.start(1)] + ":" + line[drop.start(1) + len(words):]}))
     return out

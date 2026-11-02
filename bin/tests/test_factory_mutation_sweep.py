@@ -199,9 +199,9 @@ class SweepTests(unittest.TestCase):
                           (29, "flip", "if __name__!='__main__':"), (30, "drop", "pass")])
 
     def test_bash_edits_that_cannot_change_behavior_are_skipped(self) -> None:
-        # The file's last `exit 0` gives no edit; an exit in a function or before other code does.
+        # The file's last `exit 0`, even with a `;`, gives no edit; an exit in a function or before other code does.
         self.assertEqual(self.edits({"m.sh": '#!/usr/bin/env bash\nf() {\n  exit 0\n}\n[ "$1" = a ] && exit 0\n'
-                                             'exit 0\n# end\n'}),
+                                             'exit 0;  \n# end\n'}),
                          [(3, "drop", ":"), (5, "flip", '[ "$1" != a ] && exit 0'),
                           (5, "force-true", '[ "$1" = a ] || true && exit 0')])
 
