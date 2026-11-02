@@ -33,10 +33,10 @@ FLAGS = {"-p": False, "--model": True, "--effort": True, "--advisor": True, "--p
          "--append-system-prompt": True, "--max-budget-usd": True, "--output-format": True, "--verbose": False,
          "--include-hook-events": False, "--tools": True, "--disable-slash-commands": False,
          "--no-session-persistence": False, "--json-schema": True}
-# kind -> flag -> the value bin/factory's call passes (True: a flag with no value): the grader's read-only tools (#40) and
-# user-only settings, the worker's bypass mode with no settings tier, and no MCP server for either.
+# kind -> flag -> the value bin/factory's call passes (True: a flag with no value): the grader's read-only tools (#40),
+# no settings tier for either call (#512, #505), the worker's bypass mode, and no MCP server for either.
 REQUIRED = {"worker": {"--permission-mode": "bypassPermissions", "--setting-sources": "", "--strict-mcp-config": True},
-            "grader": {"--tools": "Read,Grep,Glob", "--setting-sources": "user", "--strict-mcp-config": True}}
+            "grader": {"--tools": "Read,Grep,Glob", "--setting-sources": "", "--strict-mcp-config": True}}
 RELEASE_WAIT_SEC = 120
 
 
