@@ -1,7 +1,7 @@
 """bin/transfer-coverage on temp manifests and targets: the ticket's done-check fixtures, a missing row whose
 ticket file the target lacks, malformed manifests, and the shipped T1, T4 and T14 presence tests on planted
 negatives (each once read a string anywhere, so a comment or an allow entry passed) and on passing fixtures,
-and host rows, which fail the run while their test fails and need no ticket."""
+and host rows, which add to missing while their test fails and take ticket `-`."""
 
 from __future__ import annotations
 
@@ -103,6 +103,7 @@ class TransferCoverage(unittest.TestCase):
         self.assertEqual(self.cover(["T9\tseed\tcarry\tshort"], self.complete())[0], 2)
         self.assertEqual(self.cover(["# only a comment"], self.complete())[0], 2)
         self.assertEqual(self.cover([], self.complete(), header=False)[0], 2)
+        self.assertEqual(self.cover(["T1\tplugin\thost\tcap a\t-\tF55\ttrue"], self.complete())[0], 2)
 
     def test_t1_reads_the_deny_list_and_a_forbidden_codex_rule(self) -> None:
         allow = ('{"permissions": {"allow": ["Read(~/.ssh/**)", "Bash(ssh-keygen:*)"], "deny": []}}\n')
@@ -142,6 +143,13 @@ class TransferCoverage(unittest.TestCase):
         self.assertIn("ok T1 cap a", out)
         self.assertIn("uncovered: 0", out)
 
+    def test_host_rows_add_to_missing_and_never_clear_it(self) -> None:
+        rows = [T2, "T5\tplugin\thost\tcap a\t-\t-\tfalse", "T6\tplugin\thost\tcap b\t-\t-\tfalse",
+                "T7\tplugin\thost\tcap c\t-\t-\ttrue"]
+        rc, out = self.cover(rows, self.target({}))
+        self.assertEqual(rc, 1, out)
+        self.assertIn("missing: 3", out)
+
     def test_shipped_host_rows_read_home(self) -> None:
         rows = [real_row(tid) for tid in HOST_IDS]
         self.assertTrue(all(r.split("\t")[2] == "host" for r in rows), rows)
@@ -149,6 +157,7 @@ class TransferCoverage(unittest.TestCase):
         rc, out = self.cover(rows, self.target({}), home=empty)
         self.assertEqual(rc, 1, out)
         self.assertEqual([line.split()[1] for line in self.tagged(out, "MISSING")], HOST_IDS)
+        self.assertIn("missing: 6", out)
         home = self.target({".claude/settings.json": HOST_SETTINGS, ".claude/rules/pstack-models.md": "",
                             ".claude/rules/pstack-routing.md": "",
                             ".claude/hooks/context-handoff.sh": "THRESHOLD = 450_000\n"})

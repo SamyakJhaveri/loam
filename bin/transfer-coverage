@@ -5,7 +5,7 @@
 #     fails prints `MISSING <id> <capability>`. One whose ticket is not F<n>, or whose test fails while
 #     <dir>/docs/tickets/<ticket>-*.md does not exist, prints `UNCOVERED <id> <capability>`.
 #     A host row's test reads $HOME on the machine running the check: it prints `ok` or `MISSING` like a
-#     carry row and needs no ticket (`-`), since no project ticket carries host user config.
+#     carry row and takes ticket `-`, since no project ticket carries host user config.
 #     nothing and decline rows are reported, never missing. Exit 1 when either count is above 0.
 #   bin/transfer-coverage [--manifest <tsv>] --commits <pin> <head>
 #     Prints `UNMAPPED <sha> <subject>` for each Loam commit in <pin>..<head> that touches seed/ or
@@ -42,6 +42,8 @@ rows() {
       echo "transfer-coverage: $MANIFEST:$n: unknown kind '$kind'" >&2; return 2 ;; esac
     case "$disp" in carry|carry-if|delete|host|nothing|decline) ;; *)
       echo "transfer-coverage: $MANIFEST:$n: unknown disposition '$disp'" >&2; return 2 ;; esac
+    [ "$disp" != host ] || [ "$ticket" = - ] || {
+      echo "transfer-coverage: $MANIFEST:$n: a host row takes ticket '-', not '$ticket'" >&2; return 2; }
     printf '%s\n' "$line"
     kept=$((kept + 1))
   done < "$MANIFEST"
