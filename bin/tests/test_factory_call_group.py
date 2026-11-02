@@ -92,8 +92,8 @@ class CallGroupTests(unittest.TestCase):
             f"RUN='{self.run_dir}'; WORKTREE='{self.wt}'; LOG=\"$RUN/factory.log\"; KEY=7; IS_FILE=1\n"
             'LEDGER="$RUN/ledger.jsonl"; DAILY="$RUN/daily.jsonl"; DECISIONS="$RUN/decisions.md"\n'
             'touch "$LEDGER" "$DAILY" "$DECISIONS"; date -u +%s > "$RUN/launched"\n'
-            "BODY='## Worker'; apply_caps\n"
-            'TIMEOUT_G=(timeout -k 5 "$CALL_TIMEOUT_SEC")\n'
+            "BODY='## Worker'; apply_caps; TIMEOUT_G=()\n"
+            'command -v timeout > /dev/null 2>&1 && TIMEOUT_G=(timeout -k 5 "$CALL_TIMEOUT_SEC")\n'
             f"WORKER_KIND=claude; CODEX_PATH='{self.bin}'; CODEX_REVIEW_BLOCKED=0\n"
             f"{call}; echo returned:$?\n"
         )
