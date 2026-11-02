@@ -2447,6 +2447,11 @@ measure_rows() { # round; Rows measured is `[runs=N] [<row>:] <command> | <basel
     fi
     printf 'MEASURE %s %s (%s)\n' "$row" "$v" "$note" | tee -a "$out" >&2
   done <<< "$(section "Rows measured")"
+  # A row may write, stage, add or delete files in the worktree (a `bin/factory eval` row appends
+  # evals/scores.jsonl); once all rows ran, the index and tree go back to HEAD, HEAD unmoved, so no write
+  # reaches the graders or the next round's worktree-dirty check. clean has no -x: ignored files stay (#608).
+  git -C "$WORKTREE" reset -q --hard
+  git -C "$WORKTREE" clean -qfd
 }
 
 # ---- step 7: the graders ----------------------------------------------------
