@@ -1114,12 +1114,13 @@ codex_mcp_off() { # cwd home [Codex options] -> mcp_servers={"<id>"={enabled=fal
 }
 # run, next, status and status --criteria need Linux: util-linux flock(1), bash 4.1+ for the {var} descriptors the
 # lease and owner.flock open, GNU date and coreutils timeout. jhaveris is the only factory runner, so each refuses
-# elsewhere as its first step; lint, eval, eval-freeze, merge, stop, graders-check and skills stay portable.
+# elsewhere as its first step (the dispatcher's, ahead of its cap and -C checks, and again first in each cmd_*);
+# lint, eval, eval-freeze, merge, stop, graders-check and skills stay portable.
 linux_only() { # <command>
   local os
   os=$(uname -s)
   [ "$os" = Linux ] && return 0
-  echo "factory $1: the factory runs only on Linux (jhaveris), and this host's uname -s is ${os:-empty}; run it there through bin/runner, as in bin/runner 'bin/factory $1'" >&2
+  echo "factory $1: the factory runs only on Linux (jhaveris), and this host's uname -s is ${os:-empty}; run it there through bin/runner" >&2
   exit 2
 }
 
@@ -3836,14 +3837,19 @@ usage() { # [cmd...] - one line per named command, all ten when none is named
 # only in a sourced script; 2> /dev/null hides the error if the guard is ever hit while the file runs as
 # a program.
 [ "${FACTORY_SOURCED:-}" = 1 ] && return 0 2> /dev/null
-# lint, next and status read FACTORY_NET_TIMEOUT_SEC, and next FACTORY_MAX_PARALLEL, without apply_caps, so every
-# FACTORY_<NAME> cap is checked here once, before any subcommand runs (#427).
-env_caps_ok || exit 2
 C_DIR=""
 [ "${1:-}" = -C ] && { [ $# -ge 2 ] || usage; C_DIR="$2"; shift 2; }
 CMD="${1:-}"
 shift 2> /dev/null || true
 [ "${1:-}" = -C ] && { [ $# -ge 2 ] || usage; C_DIR="$2"; shift 2; }
+# The Linux gate comes before the cap and -C checks below, so off Linux a gated command names Linux first.
+case "$CMD" in
+  run|next) linux_only "$CMD" ;;
+  status) if [ "${1:-}" = --criteria ]; then linux_only "status --criteria"; else linux_only status; fi ;;
+esac
+# lint, next and status read FACTORY_NET_TIMEOUT_SEC, and next FACTORY_MAX_PARALLEL, without apply_caps, so every
+# FACTORY_<NAME> cap is checked here once, before any subcommand runs (#427).
+env_caps_ok || exit 2
 [ -z "$C_DIR" ] || use_target "$C_DIR" \
   || { echo "factory: -C $C_DIR is not a git checkout, or is another repository with no GitHub origin" >&2; exit 2; }
 case "$CMD" in

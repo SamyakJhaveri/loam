@@ -36,8 +36,8 @@ class LinuxOnlyTests(unittest.TestCase):
             (self.top / "bin" / name).chmod(0o755)
         self.runs = self.top / "runs"
 
-    def factory(self, *args: str, mac: bool = True) -> subprocess.CompletedProcess[str]:
-        base = {k: v for k, v in os.environ.items() if k not in INHERITED}
+    def factory(self, *args: str, mac: bool = True, **env: str) -> subprocess.CompletedProcess[str]:
+        base = {**{k: v for k, v in os.environ.items() if k not in INHERITED}, **env}
         path = f"{self.top / 'bin'}{os.pathsep}{base['PATH']}" if mac else base["PATH"]
         return subprocess.run(["bash", str(ROOT / "bin/factory"), *args], cwd=ROOT,
                               env={**base, "PATH": path, "FACTORY_RUNS_ROOT": str(self.runs), "HOME": str(self.top)},
@@ -58,6 +58,24 @@ class LinuxOnlyTests(unittest.TestCase):
                 self.assertIn("bin/runner", proc.stderr)
                 self.assertFalse(self.runs.exists(), "a refused command wrote a run dir")
                 self.assertFalse(self.calls.exists(), self.calls.read_text() if self.calls.exists() else "")
+
+    def test_the_gate_comes_before_the_cap_and_target_checks(self) -> None:
+        ticket = self.top / "ticket.md"
+        ticket.write_text((ROOT / "bin/tests/fixtures/clean-ticket.md").read_text())
+        nowhere = str(self.top / "nonexistent")
+        for env, pre, args in (({"FACTORY_MAX_PARALLEL": "0"}, (), ("run", str(ticket))),
+                               ({"FACTORY_MAX_PARALLEL": "0"}, (), ("next", "--dry-run")),
+                               ({"FACTORY_MAX_PARALLEL": "0"}, (), ("status",)),
+                               ({"FACTORY_MAX_PARALLEL": "0"}, (), ("status", "--criteria")),
+                               ({}, ("-C", nowhere), ("run", str(ticket))),
+                               ({}, ("-C", nowhere), ("next", "--dry-run")),
+                               ({}, ("-C", nowhere), ("status",)),
+                               ({}, (), ("status", "-C", nowhere, "--criteria"))):
+            with self.subTest(env=env, args=pre + args):
+                proc = self.factory(*pre, *args, **env)
+                self.assertEqual(proc.returncode, 2, proc.stderr)
+                self.assertEqual(len(proc.stderr.splitlines()), 1, proc.stderr)
+                self.assertIn(LINE, proc.stderr)
 
     def test_portable_commands_are_not_refused_off_linux(self) -> None:
         proc = self.factory("lint", str(ROOT / "bin/tests/fixtures/clean-ticket.md"))
