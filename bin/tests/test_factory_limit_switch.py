@@ -175,6 +175,19 @@ class OwnerLockTests(unittest.TestCase):
         self.assertFalse((self.run_dir / "owner.lock").exists())
         self.assertTrue((self.run_dir / "owner.flock").is_file())
 
+    def test_an_old_owner_lock_held_by_a_frozen_run_is_left_alone(self) -> None:
+        # A frozen copy's owner.lock directory may be held right now; owner_lock, owner_unlock and env_park_alert, which
+        # takes and drops owner.flock, must neither remove it nor touch what is inside.
+        old = self.run_dir / "owner.lock"
+        old.mkdir()
+        (old / "sentinel").write_text("frozen\n")
+        proc = subprocess.run(self.sourced('owner_lock "$1" 1 && owner_unlock "$1" && env_park_alert "$1" 7'), cwd=ROOT,
+                              env=self.env(), stdin=subprocess.DEVNULL, capture_output=True, text=True, check=False,
+                              timeout=30)
+        self.assertEqual(proc.returncode, 0, proc.stderr)
+        self.assertEqual((old / "sentinel").read_text(), "frozen\n")
+        self.assertEqual(sorted(p.name for p in old.iterdir()), ["sentinel"])
+
 
 if __name__ == "__main__":
     unittest.main()
