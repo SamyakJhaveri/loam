@@ -391,10 +391,10 @@ def kill_orphans() -> None:
         kids = []
         for stat in Path("/proc").glob("[0-9]*/stat"):
             try:
-                s = stat.read_text()
+                s = stat.read_bytes()  # bytes: a process's name may be any bytes, not UTF-8
             except OSError:
                 continue
-            if int(s[s.rindex(")") + 2:].split()[1]) == os.getpid():
+            if int(s[s.rindex(b")") + 2:].split()[1]) == os.getpid():
                 kids.append(int(stat.parent.name))
         if not kids:
             return

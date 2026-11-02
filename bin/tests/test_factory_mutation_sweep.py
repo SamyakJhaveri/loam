@@ -256,6 +256,19 @@ class SweepTests(unittest.TestCase):
             time.sleep(0.1)
         self.assertEqual(left, [])
 
+    @unittest.skipUnless(sys.platform.startswith("linux"), "the sweep reads /proc on Linux only")
+    def test_a_process_whose_name_is_not_utf8_does_not_stop_the_sweep(self) -> None:
+        # The orphan search after each run reads every process's /proc/<pid>/stat, whose name may be any bytes.
+        named = subprocess.Popen(["python3", "-c", "import ctypes, sys, time\n"
+                                  "ctypes.CDLL(None).prctl(15, b'bad-\\xff-name', 0, 0, 0)\nprint(flush=True)\n"
+                                  "time.sleep(300)\n"], stdout=subprocess.PIPE)
+        self.addCleanup(named.wait)
+        self.addCleanup(named.kill)
+        named.stdout.readline()
+        self.assertEqual(pathlib.Path(f"/proc/{named.pid}/comm").read_bytes(), b"bad-\xff-name\n")
+        result = self.sweep({"a.py": "def f(a, b):\n    return a == b\n", "test_ok.py": PASSING})
+        self.assertEqual(records(result), ["a.py:2:drop:survived", "a.py:2:flip:survived"])
+
     def test_an_edit_that_hangs_is_killed_with_its_whole_group(self) -> None:
         # The force-true edit makes the while loop endless in a bash child of the test, which pytest's own death would
         # leave spinning; the group KILL at twice the unedited run plus 10 s must take it too.
