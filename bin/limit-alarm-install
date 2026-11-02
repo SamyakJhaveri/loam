@@ -6,6 +6,8 @@
 # running it, so the owner runs it himself.
 set -u
 command -v timeout > /dev/null || { echo "limit-alarm-install needs timeout(1) (GNU coreutils) to bound each run"; exit 1; }
+lead=$HOME/.local/state/distbench/limit-alarm/lead
+[ -s "$lead" ] || { echo "FAILED: nothing installed, no $lead; write the account the lead runs on there (echo <account> > $lead) and run this again"; exit 1; }
 mkdir -p "$HOME/.distbench"; cp "$(dirname "$0")/limit-alarm" "$HOME/.distbench/la-new.sh"
 export TZ=America/Los_Angeles
 D=$HOME/.distbench/la-test; rm -rf "$D"; mkdir -p "$D"
@@ -118,15 +120,12 @@ chk "own reset first, woken 5 min ago -> nothing pasted" '! grep -q "Watch alarm
 
 tmux kill-session -t la-test-pane
 echo "--- run logs:"; printf '%s\n' "$outA" "$outB" "$outH" "$outI" "$outC" "$outE" | sed 's/^/  /'
-lead=$HOME/.local/state/distbench/limit-alarm/lead
-if [ "$fail" = 0 ] && [ ! -s "$lead" ]; then
-  echo "FAILED: nothing installed, no $lead; write the account the lead runs on there (echo <account> > $lead) and run this again"
-elif [ "$fail" = 0 ]; then
+if [ "$fail" = 0 ]; then
   mv "$HOME/.distbench/la-new.sh" "$HOME/.distbench/limit-alarm.sh"
   mkdir -p "$HOME/.local/state/distbench/limit-alarm"
     tmux kill-session -t limit-alarm 2>/dev/null
   tmux new -d -s limit-alarm 'bash ~/.distbench/limit-alarm.sh 2>&1 | tee -a ~/.local/state/distbench/limit-alarm.log'
   sleep 3; echo "PASS: installed; tmux limit-alarm restarted:"; tail -3 "$HOME/.local/state/distbench/limit-alarm.log"
 else
-  echo "FAILED: nothing installed; the old alarm keeps running"
+  echo "FAILED: nothing installed; the old alarm keeps running"; exit 1
 fi
