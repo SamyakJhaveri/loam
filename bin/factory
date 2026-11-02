@@ -3127,18 +3127,36 @@ pr_url_of() { # <run dir>
     "$1/factory.log" 2> /dev/null | tail -1
 }
 
-# The PR phase: a pr-opened run whose PR has closed (merged or not: the issues API reads both as closed) gets the
-# operator's events on it, once (pr-closed marks it). A gh failure leaves the run for the next tick and never stops one.
+# The PR phase: a pr-opened run whose PR has closed (merged or not: GraphQL's closed reads both as true) gets the
+# operator's events on it, once (pr-closed marks it). Every waiting run's PR state comes from one GraphQL read, so a
+# tick makes one such read however many runs wait; the repository is the first run's (a target has its own runs root),
+# and a run of another is left for the next tick. gh exits 1 on a reply that carries errors (a PR it cannot resolve)
+# and prints the raw body, so the reply is read whatever the exit status; a run whose PR the reply leaves out, or every
+# run when no reply comes, is left for the next tick, and so is one whose events read fails. It never stops a tick.
 pr_closed_events() {
-  local d url repo num
+  local d url repo="" num runs="" q json closed
   for d in "$RUNS_ROOT"/*/*/; do
     [ "$(cat "$d/status" 2> /dev/null)" = pr-opened ] && [ ! -e "$d/pr-closed" ] || continue
     url=$(pr_url_of "$d")
     [ -n "$url" ] || continue
-    repo=${url#https://github.com/}; repo=${repo%/pull/*}; num=${url##*/}
-    [ "$(net gh api "repos/$repo/issues/$num" --jq .state 2> /dev/null)" = closed ] || continue
-    owner_events "$d" pr "$repo" "$num" && now > "$d/pr-closed"
+    url=${url#https://github.com/}
+    [[ ${url##*/} =~ ^[0-9]+$ ]] || continue
+    [ -n "$repo" ] || repo=${url%/pull/*}
+    [ "${url%/pull/*}" = "$repo" ] || continue
+    runs+="${url##*/} $d"$'\n'
   done
+  [ -n "$runs" ] || return 0
+  q=""
+  for num in $(cut -d' ' -f1 <<< "$runs" | sort -un); do q+="p$num: pullRequest(number: $num) { closed } "; done
+  json=$(net gh api graphql -f owner="${repo%%/*}" -f name="${repo#*/}" \
+    -f query='query($owner: String!, $name: String!) { repository(owner: $owner, name: $name) { '"$q"'} }' \
+    < /dev/null 2> /dev/null) || :
+  closed=$(jq -r '.data.repository | to_entries[] | select(.value.closed? == true) | .key | ltrimstr("p")' \
+    <<< "$json" 2> /dev/null) || closed=""
+  while read -r num d; do
+    [ -n "$num" ] && grep -qx "$num" <<< "$closed" || continue
+    owner_events "$d" pr "$repo" "$num" < /dev/null && now > "$d/pr-closed"
+  done <<< "$runs"
   return 0
 }
 
@@ -3480,11 +3498,24 @@ next_tick() { # [--dry-run|--install|--frontier]
   # Before lint, the owner check: the worker runs the body unattended and Loam is public, so a body another account
   # wrote, or last edited (GraphQL's editor, null for a body never edited), is passed over, and so is one whose
   # editor gh could not read, or a null editor with a lastEditedAt (an account GitHub no longer names; jq names it
-  # "(unnamed)", which no login can be). Once a candidate is picked, later ones skip the editor call, so a stalled
-  # GraphQL costs a tick one timeout, not one per candidate; they still get the author and lint lines.
-  # --frontier never sets pick but prints each candidate that passes, so every candidate gets the editor call.
-  # </dev/null keeps gh off the candidate list this loop reads on stdin. This check only
-  # picks; load_ticket checks the owner again on the body the run freezes.
+  # "(unnamed)", which no login can be). Every candidate's editor comes from one GraphQL read made before the loop,
+  # one alias per issue, so a tick makes one editor read however many candidates it passes over. gh exits 1 on a reply
+  # that carries errors (an issue transferred or deleted since the frontier read, its alias null) and prints the raw
+  # body whatever --jq asks, so the reply is captured whole, read whatever the exit status, and each alias looked up
+  # with a local jq; a candidate the reply leaves out, or every candidate when no reply comes, is unreadable.
+  # This check only picks; load_ticket checks the owner again on the body the run freezes.
+  local nums q json editors="" line
+  nums=$( { cut -d' ' -f1 <<< "$ready"; cut -d' ' -f1 <<< "$mine"; } | grep -E '^[0-9]+$' | sort -un)
+  if [ -n "$nums" ]; then
+    q=""
+    for num in $nums; do q+="i$num: issue(number: $num) { editor { login } lastEditedAt } "; done
+    json=$(net gh api graphql -f owner="${repo%%/*}" -f name="${repo#*/}" \
+      -f query='query($owner: String!, $name: String!) { repository(owner: $owner, name: $name) { '"$q"'} }' \
+      < /dev/null 2> /dev/null) || :
+    editors=$(jq -r '.data.repository | to_entries[] | select(.value | type == "object")
+      | "\(.key | ltrimstr("i")) \(.value.editor.login // (if .value.lastEditedAt then "(unnamed)" else "" end))"' \
+      <<< "$json" 2> /dev/null) || editors=""
+  fi
   local pick="" read_failed="" st_last lint_err lint_line author editor run
   while read -r who num author b64; do
     [ -n "$num" ] || continue
@@ -3528,22 +3559,19 @@ next_tick() { # [--dry-run|--install|--frontier]
           echo "not owner #$num: written or last edited by $author; edit the body as $TICKET_OWNER or remove ready-for-agent" >&2
           continue
         fi
-        if [ -z "$pick" ]; then
-          if ! editor=$(net gh api graphql -f owner="${repo%%/*}" -f name="${repo#*/}" -F number="$num" \
-            -f query='query($owner: String!, $name: String!, $number: Int!) { repository(owner: $owner, name: $name) { issue(number: $number) { editor { login } lastEditedAt } } }' \
-            --jq '.data.repository.issue | .editor.login // (if .lastEditedAt then "(unnamed)" else "" end)' < /dev/null 2> /dev/null); then
-            echo "not owner #$num: could not read the last editor with gh (failed, or no reply in ${NET_TIMEOUT_SEC}s); passed over" >&2
-            read_failed=1
-            continue
-          fi
-          if [ "$editor" = "(unnamed)" ]; then
-            echo "not owner #$num: last edited by an account GitHub no longer names; edit the body as $TICKET_OWNER or remove ready-for-agent" >&2
-            continue
-          fi
-          if [ -n "$editor" ] && [ "$editor" != "$TICKET_OWNER" ]; then
-            echo "not owner #$num: written or last edited by $editor; edit the body as $TICKET_OWNER or remove ready-for-agent" >&2
-            continue
-          fi
+        if ! line=$(grep -m1 "^$num " <<< "$editors"); then
+          echo "not owner #$num: could not read the last editor with gh (failed, or no reply in ${NET_TIMEOUT_SEC}s); passed over" >&2
+          read_failed=1
+          continue
+        fi
+        editor=${line#* }
+        if [ "$editor" = "(unnamed)" ]; then
+          echo "not owner #$num: last edited by an account GitHub no longer names; edit the body as $TICKET_OWNER or remove ready-for-agent" >&2
+          continue
+        fi
+        if [ -n "$editor" ] && [ "$editor" != "$TICKET_OWNER" ]; then
+          echo "not owner #$num: written or last edited by $editor; edit the body as $TICKET_OWNER or remove ready-for-agent" >&2
+          continue
         fi
         if ! lint_err=$( { SRC="#$num"; BODY="$body"; ERRS=0; lint_body > /dev/null; } 2>&1 ); then
           lint_line=$(grep -m1 "^LINT #$num: " <<<"$lint_err") || lint_line=${lint_err%%$'\n'*}

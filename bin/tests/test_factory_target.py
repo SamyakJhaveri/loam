@@ -20,6 +20,8 @@ ROOT = pathlib.Path(__file__).resolve().parents[2]
 # A run inside the factory exports FACTORY_ROOT, and the runner exports the toolchain; the tests set their own.
 INHERITED = ("FACTORY_ROOT", "LOAM_FACTORY_TOOLCHAIN", "LOAM_FACTORY_COPIER")
 STANDING = "# Standing\n\n## Standing do-not-touch list\n\n- `.claude/settings.json` and every deny list\n- `bin/check`\n\n## Other\n\n- `src/widget.py`\n"
+# next reads every candidate's last editor in one GraphQL call (#598): #7, never edited.
+GQL = '{"data": {"repository": {"i7": {"editor": null, "lastEditedAt": null}}}}'
 
 
 def clean_env(**extra: str) -> dict[str, str]:
@@ -197,7 +199,7 @@ class TargetTests(unittest.TestCase):
         key = hashlib.sha256(body.encode()).hexdigest()[:8]
         line = f"7 SamyakJhaveri {base64.b64encode(body.encode()).decode()}"
         stubs = ("claude_logged_in() { :; }; claude_version_ok() { :; }; "
-                 f"gh() {{ case $1$2 in apigraphql) ;; api*) echo '{line}' ;; esac; }}; cmd_next --dry-run")
+                 f"gh() {{ case $1$2 in apigraphql) echo '{GQL}' ;; api*) echo '{line}' ;; esac; }}; cmd_next --dry-run")
 
         def status(where: pathlib.Path, text: str) -> None:
             (where / key).mkdir(parents=True)

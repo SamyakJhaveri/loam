@@ -462,7 +462,6 @@ class UpdateSmoke(unittest.TestCase):
             _render(proj, ref=tag.stdout.strip())
             subprocess.run(["git", "init", "-q"], cwd=proj, check=True, env=GIT_ENV)
             subprocess.run(["git", "add", "-A"], cwd=proj, check=True, env=GIT_ENV)
-            # From v3.1.0 the render's first-render task commits the tree itself, leaving nothing to commit here.
             subprocess.run(
                 [
                     "git",
@@ -471,7 +470,7 @@ class UpdateSmoke(unittest.TestCase):
                     "-c",
                     "user.name=t",
                     "commit",
-                    "--allow-empty",
+                    "--allow-empty",   # a v3.1.0+ render's own task already commits it
                     "-qm",
                     "base",
                 ],
