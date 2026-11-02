@@ -1662,8 +1662,9 @@ run_project() { # <run dir>
 # model call named in its `call` lives (below; a child that closed the fd). Getting the lock with no such call means no
 # process of the run is left: still holding it, the caller re-reads the status, writes
 # stopped-environment if it still reads running or waiting-limit, and only that caller alerts; a relaunch waits on
-# the same lease, so it never interleaves with the reap. A run dir with no `lease` (started before #425) holds no slot:
-# holds_slot reads no `owner` and no `call` for it, and writes, alerts on and kills nothing, whatever its owner line.
+# the same lease, so it never interleaves with the reap. A run dir with no `lease` (started before #425) holds no slot,
+# whatever its owner line: at running, waiting-limit or launched with no status, holds_slot reads no `owner` and no
+# `call` for it, and writes, alerts on and kills nothing; at any other status only a stuck call (below) holds it.
 # A launch killed between `launched` and its first status holds while a process holds its lease.
 # In its own session a model call (call_start) outlives a SIGKILLed supervisor, reparented to init, keeps the lease it
 # inherited and keeps writing the worktree until CALL_TIMEOUT_SEC, so while the lease is held a gone owner's call is
