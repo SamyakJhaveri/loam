@@ -154,7 +154,7 @@ class ModelEvalTests(unittest.TestCase):
                     "MODEL_EVAL_OUT": str(self.out), "MODEL_EVAL_REPEATS": "1", "MODEL_EVAL_GRADERS_DIR": str(AGENTS),
                     "FACTORY_CODEX_HOME": str(self.fhome)}
         for k in ("STUB_VERSION", "STUB_SERVED", "STUB_BAD", "STUB_FAIL_AFTER", "EVAL_OUT", "MODEL_EVAL_EFFORTS", "MODEL_EVAL_SEED",
-                  "FACTORY_ROOT", "CODEX_HOME"):
+                  "FACTORY_ROOT", "CODEX_HOME", "CLAUDE_CONFIG_DIR", "CLAUDE_SETTINGS_FILE"):  # the user tier is $HOME's
             self.env.pop(k, None)
 
     def case(self, grader: str, name: str, exp: dict) -> None:
