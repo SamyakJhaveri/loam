@@ -55,6 +55,7 @@ SH_HEADER_END = re.compile(r";\s*(then|do)(?=[\s;]|$)")
 SH_TEST = re.compile(r"\s*(\[\[?)\s")
 SH_DROP = re.compile(r"\s*(return|exit|continue|break)(?=[\s;&|]|$)")
 SH_DROP_END = re.compile(r";|(?<![<>])&(?!>)|(?<!>)\|")  # not the & or | of >&, <&, &> or >|
+SH_REDIR = re.compile(r"(?<=\s)(\d*[<>]|&>)")  # a redirection's start: [n]< [n]> &>
 
 CURRENT: subprocess.Popen | None = None  # the pytest run in progress, for the signal handler
 SUBREAPER = False  # set at start on Linux: kill_orphans then reaches a run's children that left its group
@@ -357,13 +358,16 @@ def sh_edits(text: str, wanted: list[int]) -> list[tuple[int, str, dict[int, str
             out.append((n, "force-true", {n: line[:at] + " || true" + line[at:]}))
         drop = SH_DROP.match(m)
         if drop:
+            # The words up to the statement's end, of which the redirections stay, so only the exit or jump changes.
             stop = SH_DROP_END.search(m, drop.end())
-            words = m[drop.start(1):stop.start() if stop else len(m)].rstrip()
+            end = len(m[:stop.start() if stop else len(m)].rstrip())
+            redir = SH_REDIR.search(m, drop.end(), end)
+            cut = len(m[:redir.start() if redir else end].rstrip())
             # The file's last statement `exit 0`, with only `;` after it: the script ends with status 0 after `:` too.
-            if words.split() == ["exit", "0"] and not re.sub(r"[;\s]", "", m[drop.start(1) + len(words):]
-                                                             + "".join(masked[n:])):
+            if m[drop.start(1):cut].split() == ["exit", "0"] and not re.sub(r"[;\s]", "", m[end:]
+                                                                            + "".join(masked[n:])):
                 continue
-            out.append((n, "drop", {n: line[:drop.start(1)] + ":" + line[drop.start(1) + len(words):]}))
+            out.append((n, "drop", {n: line[:drop.start(1)] + ":" + line[cut:]}))
     return out
 
 

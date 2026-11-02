@@ -223,11 +223,13 @@ class SweepTests(unittest.TestCase):
         self.assertEqual((result["tests"], result["mutants"], result["reason"], result["baseline_sec"]),
                          ([], [], "no committed test in the diff", None))
 
-    def test_a_bash_drop_takes_its_redirections(self) -> None:
-        # The & or | of a redirection does not end the dropped words; the && after it does.
+    def test_a_bash_drop_keeps_its_redirections(self) -> None:
+        # The & or | of a redirection does not end the statement; the && after it does. The redirections stay, so the
+        # edit changes only the return or exit, not what the statement writes or truncates.
         self.assertEqual(self.edits({"r.sh": "f() {\n  return 1 >&2\n}\ng() {\n  exit 2 2>&1 && echo\n"
                                              "  exit 3 &> /dev/null\n  exit 4 >| /dev/null\n}\n"}),
-                         [(2, "drop", ":"), (5, "drop", ": && echo"), (6, "drop", ":"), (7, "drop", ":")])
+                         [(2, "drop", ": >&2"), (5, "drop", ": 2>&1 && echo"), (6, "drop", ": &> /dev/null"),
+                          (7, "drop", ": >| /dev/null")])
 
     def test_an_edit_that_does_not_parse_is_discarded(self) -> None:
         # Dropping the return leaves `:; echo 3)`, which bash -n rejects; the exit's drop parses and runs.
