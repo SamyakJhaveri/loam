@@ -3843,7 +3843,7 @@ cmd_graders_check() { # [--agents-dir D] [--evals-dir D]
           elif ((.mutants | numbers) // 0) == 0 then "last replay had no mutant case"
           else ((.cases | numbers) // 0) as $c | ((.mismatch | numbers) // 0) as $m
           | if $c > 0 and $m >= $c then "last replay matched none of its \($c) cases"
-            elif $m > 0 then "INFO last replay mismatched \($m) of \($c) cases"
+            elif $c > 0 and $m > 0 then "INFO last replay mismatched \($m) of \($c) cases"
             else "" end end end' 2>&1)
     case "$why" in
       "")      ;;

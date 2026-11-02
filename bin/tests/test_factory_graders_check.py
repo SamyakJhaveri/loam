@@ -67,6 +67,13 @@ class GradersCheckMismatchTests(unittest.TestCase):
             f"WARN STALE judge: last replay matched none of its 4 cases {self.where('judge')}",
             "graders-check: OK"]))
 
+    def test_a_mismatch_without_a_case_count_prints_only_ok(self) -> None:
+        # eval always writes cases; a hand-made line without it must not print "3 of 0 cases".
+        row = self.line("judge", 8, 3, 3)
+        del row["cases"]
+        rc, out = self.check(row, self.line("reviewer", 8, 3, 0))
+        self.assertEqual((rc, out), (0, ["graders-check: OK"]))
+
     def test_the_newest_line_decides(self) -> None:
         # An older all-miss line under the same hash says nothing once a newer clean replay follows it.
         rc, out = self.check(self.line("judge", 4, 1, 4), self.line("judge", 9, 1, 0), self.line("reviewer", 8, 3, 0))
