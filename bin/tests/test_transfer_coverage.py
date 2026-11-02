@@ -1,9 +1,11 @@
 """bin/transfer-coverage on temp manifests and targets: the ticket's done-check fixtures, a missing row whose
 ticket file the target lacks, malformed manifests, and the shipped T1, T4 and T14 presence tests on planted
-negatives (each once read a string anywhere, so a comment or an allow entry passed) and on passing fixtures."""
+negatives (each once read a string anywhere, so a comment or an allow entry passed) and on passing fixtures,
+and host rows, which fail the run while their test fails and need no ticket."""
 
 from __future__ import annotations
 
+import os
 import pathlib
 import subprocess
 import tempfile
@@ -17,6 +19,8 @@ T1 = "T1\tseed\tcarry\thook a\tabc\tF1\ttest -f \"$TARGET/.claude/hooks/a.sh\""
 T2 = "T2\tplugin\tcarry\tplugin p\tdef\tF2\tgrep -q p \"$TARGET/plug/list\""
 T3 = "T3\tuser-config\tdecline\tuser rule\tghi\t-\ttest -f \"$TARGET/absent\""
 T4 = "T4\trunner\tcarry\trunner r\tjkl\t-\ttrue"
+HOST_IDS = [f"T{n}" for n in range(17, 23)]
+HOST_SETTINGS = '{"enabledPlugins": {"sam-cc-setup@seed-skills": true, "pstack@cursor-plugins": true}}\n'
 FLAGS = "seed/.agents/skills/catchup/red-flags.sh"
 CHECK_LINES = ("python3 bin/shell_lint.py --root \"$ROOT\"\n"
                "step \"no em dash in Loam-owned text\"\npython3 bin/doc_paths.py --root \"$ROOT\"\n")
@@ -42,11 +46,13 @@ class TransferCoverage(unittest.TestCase):
             (t / rel).write_text(text, encoding="utf-8")
         return t
 
-    def cover(self, rows: list[str], target: pathlib.Path, header: bool = True) -> tuple[int, list[str]]:
+    def cover(self, rows: list[str], target: pathlib.Path, header: bool = True,
+              home: pathlib.Path | None = None) -> tuple[int, list[str]]:
         m = pathlib.Path(tempfile.mkdtemp(dir=self.tmp)) / "m.tsv"
         m.write_text("\n".join(([HEADER] if header else []) + rows) + "\n", encoding="utf-8")
+        env = {**os.environ, "HOME": str(home)} if home else None
         p = subprocess.run([str(SCRIPT), "--manifest", str(m), "--target", str(target)],
-                           capture_output=True, text=True)
+                           capture_output=True, text=True, env=env)
         return p.returncode, (p.stdout + p.stderr).splitlines()
 
     def state(self, tid: str, files: dict[str, str]) -> str:
@@ -122,6 +128,34 @@ class TransferCoverage(unittest.TestCase):
         commented = "".join("# " + line + "\n" for line in CHECK_LINES.splitlines())
         self.assertEqual(self.state("T14", {"bin/check": commented, **helpers}), "absent")
         self.assertEqual(self.state("T14", {"bin/check": CHECK_LINES, **helpers}), "present")
+
+    def test_failing_host_row_is_missing_and_never_uncovered(self) -> None:
+        rc, out = self.cover(["T1\tplugin\thost\tcap a\t-\t-\tfalse"], self.target({}))
+        self.assertEqual(rc, 1, out)
+        self.assertEqual(self.tagged(out, "MISSING"), ["MISSING T1 cap a"])
+        self.assertEqual(self.tagged(out, "UNCOVERED"), [])
+        self.assertIn("missing: 1", out)
+
+    def test_passing_host_row_needs_no_ticket(self) -> None:
+        rc, out = self.cover(["T1\tplugin\thost\tcap a\t-\t-\ttrue"], self.target({}))
+        self.assertEqual(rc, 0, out)
+        self.assertIn("ok T1 cap a", out)
+        self.assertIn("uncovered: 0", out)
+
+    def test_shipped_host_rows_read_home(self) -> None:
+        rows = [real_row(tid) for tid in HOST_IDS]
+        self.assertTrue(all(r.split("\t")[2] == "host" for r in rows), rows)
+        empty = self.target({})
+        rc, out = self.cover(rows, self.target({}), home=empty)
+        self.assertEqual(rc, 1, out)
+        self.assertEqual([line.split()[1] for line in self.tagged(out, "MISSING")], HOST_IDS)
+        home = self.target({".claude/settings.json": HOST_SETTINGS, ".claude/rules/pstack-models.md": "",
+                            ".claude/rules/pstack-routing.md": "",
+                            ".claude/hooks/context-handoff.sh": "THRESHOLD = 450_000\n"})
+        rc, out = self.cover(rows, self.target({}), home=home)
+        self.assertEqual(rc, 0, out)
+        self.assertEqual([line.split()[1] for line in self.tagged(out, "ok")], HOST_IDS)
+        self.assertEqual(self.tagged(out, "UNCOVERED"), [])
 
 
 if __name__ == "__main__":
