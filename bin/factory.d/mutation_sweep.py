@@ -326,6 +326,10 @@ def parses(lang: str, path: str, text: str) -> bool:
     return True
 
 
+def write(path: Path, text: str) -> None:
+    path.write_bytes(text.encode("utf-8"))
+
+
 def kill_group(pid: int) -> None:
     try:
         os.killpg(pid, signal.SIGKILL)
@@ -418,12 +422,11 @@ def main(argv: list[str]) -> int:
         else:
             limit = result["timeout_sec"] = round(2 * result["baseline_sec"] + 10, 2)
             for p, n, op, text, new in chosen:
-                path = wt / p
-                path.write_bytes(new.encode("utf-8"))
+                write(wt / p, new)
                 try:
                     rc, secs, _ = run(cmd, wt, env, limit)
                 finally:
-                    path.write_bytes(text.encode("utf-8"))
+                    write(wt / p, text)
                 result["mutants"].append({
                     "path": p, "line": n, "operator": op, "before": text.split("\n")[n - 1].strip(),
                     "after": new.split("\n")[n - 1].strip(), "result": "survived" if rc == 0 else "killed",
