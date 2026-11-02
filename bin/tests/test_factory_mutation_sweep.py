@@ -215,6 +215,12 @@ class SweepTests(unittest.TestCase):
         self.assertEqual((result["tests"], result["mutants"], result["reason"], result["baseline_sec"]),
                          ([], [], "no committed test in the diff", None))
 
+    def test_a_bash_drop_takes_its_redirections(self) -> None:
+        # The & or | of a redirection does not end the dropped words; the && after it does.
+        self.assertEqual(self.edits({"r.sh": "f() {\n  return 1 >&2\n}\ng() {\n  exit 2 2>&1 && echo\n"
+                                             "  exit 3 &> /dev/null\n  exit 4 >| /dev/null\n}\n"}),
+                         [(2, "drop", ":"), (5, "drop", ": && echo"), (6, "drop", ":"), (7, "drop", ":")])
+
     def test_an_edit_that_does_not_parse_is_discarded(self) -> None:
         # Dropping the return leaves `:; echo 3)`, which bash -n rejects; the exit's drop parses and runs.
         self.assertEqual(self.edits({"d.sh": "f() {\n  return $(true; echo 3)\n}\nexit 1\n"}), [(4, "drop", ":")])

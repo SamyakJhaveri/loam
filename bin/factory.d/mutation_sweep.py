@@ -55,6 +55,7 @@ SH_HEADER = re.compile(r"\s*(if|elif|while)\s")
 SH_HEADER_END = re.compile(r";\s*(then|do)(?=[\s;]|$)")
 SH_TEST = re.compile(r"\s*(\[\[?)\s")
 SH_DROP = re.compile(r"\s*(return|exit|continue|break)(?=[\s;&|]|$)")
+SH_DROP_END = re.compile(r";|(?<![<>])&(?!>)|(?<!>)\|")  # not the & or | of >&, <&, &> or >|
 
 CURRENT: subprocess.Popen | None = None  # the pytest run in progress, for the signal handler
 SUBREAPER = False  # set at start on Linux: kill_orphans then reaches a run's children that left its group
@@ -334,7 +335,7 @@ def sh_edits(text: str, wanted: list[int]) -> list[tuple[int, str, dict[int, str
             out.append((n, "force-true", {n: line[:at] + " || true" + line[at:]}))
         drop = SH_DROP.match(m)
         if drop:
-            stop = re.compile(r"[;&|]").search(m, drop.end())
+            stop = SH_DROP_END.search(m, drop.end())
             words = m[drop.start(1):stop.start() if stop else len(m)].rstrip()
             # The file's last statement `exit 0`: the script ends with status 0 after `:` too.
             if words.split() == ["exit", "0"] and not (m[drop.start(1) + len(words):] + "".join(masked[n:])).strip():
