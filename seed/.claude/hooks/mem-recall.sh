@@ -229,7 +229,7 @@ if [ "$LOCKED" = 1 ] && [ -f "$HANDOFF_FILE" ]; then
   export GIT_TERMINAL_PROMPT=0
   if [ -d "$STORE/.git" ]; then
     mkdir -p "$STORE/reports" 2>/dev/null || true
-    "${SGIT[@]}" add -A 2>/dev/null || true
+    bounded 1 "${SGIT[@]}" add -A >/dev/null 2>&1 || true
     bounded 1 "${SGIT[@]}" commit -qm "handoff $(date +%F) $REPO $SID8" >/dev/null 2>&1 || true
     if "${SGIT[@]}" remote get-url origin >/dev/null 2>&1; then
       ( "${SGIT[@]}" push -q origin main </dev/null >>"$STORE/reports/sync.log" 2>&1 9>&- & )

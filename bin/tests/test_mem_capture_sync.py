@@ -13,11 +13,17 @@ and, once the remote is reachable, on the remote; none may write into, or abort,
 LockTests: a capture that cannot take the store lock in time keeps its data in the spool under .git and the
 next holder lands it; a directory left at the lock path by the earlier mkdir lock does not block captures.
 RecallBoundTests: a recall whose rebase hangs ends within its five-second hook timeout and leaves main clean.
+OverlapTests: of two overlapping captures of one session, the one that read the longer transcript wins, whichever
+publishes last.
+DeadlineTests: a clean filter that hangs `git add` and `git status` cannot hold capture or recall past its hook
+timeout; the capture stays spooled and lands once the filter returns.
 """
 
 from __future__ import annotations
 
+import datetime
 import fcntl
+import gzip
 import json
 import os
 import pathlib
@@ -68,9 +74,10 @@ class Base(unittest.TestCase):
         git("commit", "-qm", "base", cwd=seed)
         git("push", "-q", str(self.origin), "main", cwd=seed)
 
-    def start_capture(self, store: pathlib.Path, sid: str) -> subprocess.Popen:
+    def start_capture(self, store: pathlib.Path, sid: str, rewrite: bool = True) -> subprocess.Popen:
         transcript = self.top / f"{sid}.jsonl"
-        transcript.write_text(json.dumps({"type": "user", "message": {"role": "user", "content": f"prompt {sid}"}}) + "\n")
+        if rewrite:
+            transcript.write_text(json.dumps({"type": "user", "message": {"role": "user", "content": f"prompt {sid}"}}) + "\n")
         p = subprocess.Popen(["bash", str(HOOK)], stdin=subprocess.PIPE, stdout=subprocess.DEVNULL,
                              stderr=subprocess.PIPE, text=True, cwd=self.cwd,
                              env={**GIT_ENV, "LOAM_MEMSTORE": str(store)})
@@ -353,6 +360,66 @@ class RecallBoundTests(Base):
         self.assertFalse((a / ".git/index.lock").exists())
         self.capture(a, "s2")  # the lock is free again
         self.assertIn(" | s2 | ", self.wait_for_remote("s0", "s1", "s2"))
+
+
+class OverlapTests(Base):
+    def test_an_older_capture_published_last_never_overwrites_the_newer_trace(self) -> None:
+        store, sid = self.top / "store", "s1"
+        traces = store / "traces/project"
+        traces.mkdir(parents=True)
+        # The barrier: A reads the transcript, then opens the session's .sha, here a FIFO that holds A until the
+        # test closes its write end. Opening that end succeeds only once A is waiting on the FIFO.
+        fifo = traces / f"{datetime.date.today().isoformat()}-{sid}.sha"
+        os.mkfifo(fifo)
+        a = self.start_capture(store, sid)
+        held: list[int] = []
+
+        def a_waits() -> bool:
+            try:
+                held.append(os.open(fifo, os.O_WRONLY | os.O_NONBLOCK))
+                return True
+            except OSError:
+                return False
+
+        self.until(a_waits, "capture A to read the transcript")
+        fifo.unlink()  # B finds no .sha
+        with (self.top / f"{sid}.jsonl").open("a") as fh:
+            fh.write(json.dumps({"type": "user", "message": {"role": "user", "content": "the final turn"}}) + "\n")
+        self.finish(self.start_capture(store, sid, rewrite=False))  # B
+        os.close(held.pop())  # A resumes with the shorter transcript, publishes, and drains
+        self.finish(a)
+        trace = next(traces.glob(f"*-{sid}.jsonl.gz"))
+        self.assertIn(b"the final turn", gzip.decompress(trace.read_bytes()), "A's older transcript overwrote B's")
+        self.assertEqual(git("status", "--porcelain", cwd=store), "", "the newest trace is not committed")
+        self.assertEqual(self.spool(store), [], "the stale entry was left in the spool")
+
+
+class DeadlineTests(Base):
+    def test_a_hanging_clean_filter_cannot_hold_capture_or_recall_past_their_timeouts(self) -> None:
+        store = self.top / "store"
+        git("init", "-q", str(store), cwd=self.top)
+        go = self.top / "go"
+        self.addCleanup(go.touch)
+        git("config", "filter.hang.clean", f"while [ ! -f '{go}' ]; do sleep 0.05; done; cat", cwd=store)
+        (store / ".git/info/attributes").write_text("* filter=hang\n")
+
+        start = time.monotonic()
+        self.capture(store, "s1")
+        self.assertLess(time.monotonic() - start, 10, "capture overran its ten-second hook timeout")
+        self.assertEqual(len(self.spool(store)), 1, "the uncommitted capture left the spool")
+
+        (store / "handoff").mkdir()
+        (store / "handoff/project.md").write_text("a note\n")
+        start = time.monotonic()
+        self.recall(store, timeout=30)
+        self.assertLess(time.monotonic() - start, 5, "recall overran its five-second hook timeout")
+
+        go.touch()  # the filter returns from now on
+        self.capture(store, "s2")
+        index = git("show", "main:traces/project/INDEX.md", cwd=store)
+        for sid in ("s1", "s2"):
+            self.assertIn(f" | {sid} | ", index, f"{sid} is not on main")
+        self.assertEqual(self.spool(store), [], "the spool was not drained")
 
 
 if __name__ == "__main__":

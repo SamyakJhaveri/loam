@@ -30,6 +30,9 @@
 set -uo pipefail
 
 STORE="${LOAM_MEMSTORE:-$HOME/memstore}"
+# The registered timeout is ten seconds; the lock wait, the drain and every
+# bounded step under the lock end by this epoch time, leaving room for the scrub.
+DEADLINE="$(python3 -c 'import time; print(time.time() + 8.5)')"
 
 # First capture on a new machine with no local store: clone the shared remote so
 # this machine starts from what other machines already learned, not from empty.
@@ -199,8 +202,8 @@ else:
 # The spool: a capture never writes the working tree directly. It writes its
 # scrubbed trace, sha and INDEX line as one entry under .git/loam-spool/,
 # outside the working tree, where no rebase, abort or reset reaches it. Whoever
-# then holds the lock with a recovered store drains every entry, oldest first,
-# into the tree and commits. A capture that finds the store busy, or holds a
+# then holds the lock with a recovered store drains the entries into the tree
+# and commits. A capture that finds the store busy, or holds a
 # rebase it cannot recover, exits 0 and its entry waits for the next holder.
 SPOOL="$STORE/.git/loam-spool"
 spool_pending() {
@@ -210,20 +213,34 @@ spool_pending() {
 }
 # Copy each entry into traces/<repo>/, under the name the session's trace
 # already has there (else <day>-<sid>), append its INDEX line unless the session
-# has one, and commit. Entries are removed only once the tree's traces match
-# the commit, so a failed copy or commit leaves them for the next drain, and
-# draining one twice is harmless. Call only under the lock, after store_recover.
+# has one, and commit. Each entry carries its transcript's generation (byte
+# length, then mtime, when it was read), also kept as the second line of the
+# tree's .sha; an entry older than the session's trace in the tree is dropped
+# unapplied, so whatever order overlapping captures publish in, the newest
+# transcript wins. With $DEADLINE set, entries are applied only until three
+# seconds before it, leaving time for the bounded add, commit and status; the
+# rest wait for the next holder. Applied entries are removed only once the
+# tree's traces match the commit, so a failed copy or commit leaves them for the
+# next drain, and draining one twice is harmless. Call only under the lock,
+# after store_recover.
 drain_spool() {
-  local e x repo sid day out st sids=""
+  local e x repo sid day gen tgen out st sids="" by=""
   local applied=()
+  [ -n "${DEADLINE:-}" ] && by=$(( ${DEADLINE%.*} - 3 ))
   for e in "$SPOOL"/[0-9]*; do
     [ -f "$e/meta" ] || continue
-    { read -r repo; read -r sid; read -r day; } < "$e/meta"
+    [ -z "$by" ] || [ "$(date +%s)" -lt "$by" ] || break
+    gen=""; { read -r repo; read -r sid; read -r day; read -r gen; } < "$e/meta"
     mkdir -p "$STORE/traces/$repo" || return 1
     out="$STORE/traces/$repo/$day-$sid.jsonl.gz"
     for x in "$STORE/traces/$repo"/*-"$sid".jsonl.gz; do
       [ -f "$x" ] && { out="$x"; break; }
     done
+    tgen="$(sed -n 2p "${out%.jsonl.gz}.sha" 2>/dev/null)"
+    if [[ "$gen" < "$tgen" ]]; then
+      rm -rf "$e"
+      continue
+    fi
     cp "$e/trace.jsonl.gz" "$out" && cp "$e/sha" "${out%.jsonl.gz}.sha" || return 1
     grep -qF " | $sid | " "$STORE/traces/$repo/INDEX.md" 2>/dev/null \
       || cat "$e/index" >> "$STORE/traces/$repo/INDEX.md" || return 1
@@ -242,9 +259,9 @@ drain_spool() {
   # writes.
   printf '.throttle/\nreports/\n' > "$STORE/.gitignore" 2>/dev/null || true
   printf 'traces/*/INDEX.md merge=union\n' > "$STORE/.gitattributes" 2>/dev/null || true
-  "${SGIT[@]}" add -A >/dev/null 2>&1
+  bounded 3 "${SGIT[@]}" add -A >/dev/null 2>&1
   bounded 3 "${SGIT[@]}" commit -qm "capture $(date +%F)$sids" >/dev/null 2>&1
-  st="$("${SGIT[@]}" status --porcelain -- traces 2>/dev/null)" && [ -z "$st" ] && rm -rf "${applied[@]}"
+  st="$(bounded 2 "${SGIT[@]}" status --porcelain -- traces 2>/dev/null)" && [ -z "$st" ] && rm -rf "${applied[@]}"
   return 0
 }
 
@@ -268,9 +285,9 @@ HOST="$(hostname -s 2>/dev/null || hostname 2>/dev/null)"
 
 # The one transcript-reading pass: scrub secrets, hash the scrubbed bytes, and,
 # only when they differ from the recorded sha, write one spool entry: the gzip,
-# the sha, the session's INDEX line and its meta (repo, sid, day), built in a
-# temporary directory and renamed into place whole, named by time so entries
-# drain oldest first. Prints "<changed>\t<first-user-line>" where changed is 1
+# the sha and generation, the session's INDEX line and its meta (repo, sid, day,
+# generation), built in a temporary directory and renamed into place whole.
+# Prints "<changed>\t<first-user-line>" where changed is 1
 # when an entry was written.
 RES="$(python3 - "$TP" "$OUT" "$SHAFILE" "$SPOOL" "$REPO" "$SID" "$(date +%F)" "$BRANCH" "$SHORT" "$HOST" <<'PY'
 import sys, os, re, gzip, hashlib, json, time
@@ -278,9 +295,13 @@ import sys, os, re, gzip, hashlib, json, time
 tp, out, shafile, spool, repo, sid, day, branch, short, host = sys.argv[1:11]
 try:
     with open(tp, "rb") as fh:
+        mtime = os.fstat(fh.fileno()).st_mtime_ns
         raw = fh.read()
 except Exception:
     sys.exit(0)
+# The transcript only grows, so its length, then its mtime, orders two reads of
+# it; zero-padded, the string order is the numeric order.
+gen = "%020d.%020d" % (len(raw), mtime)
 text = raw.decode("utf-8", "replace")
 
 # Compiled scrubbers, most specific first. Each match becomes [REDACTED:<kind>];
@@ -386,7 +407,7 @@ first = " ".join(first.split())[:90]
 prev = ""
 try:
     with open(shafile, encoding="utf-8") as fh:
-        prev = fh.read().strip()
+        prev = fh.readline().strip()
 except Exception:
     prev = ""
 
@@ -399,11 +420,11 @@ try:
     with gzip.open(os.path.join(tmp, "trace.jsonl.gz"), "wb") as gz:
         gz.write(data)
     with open(os.path.join(tmp, "sha"), "w", encoding="utf-8") as fh:
-        fh.write(digest)
+        fh.write("%s\n%s\n" % (digest, gen))
     with open(os.path.join(tmp, "index"), "w", encoding="utf-8") as fh:
         fh.write("%s | %s | %s@%s | %s | %s\n" % (day, sid, branch, short, host, first))
     with open(os.path.join(tmp, "meta"), "w", encoding="utf-8") as fh:
-        fh.write("%s\n%s\n%s\n" % (repo, sid, day))
+        fh.write("%s\n%s\n%s\n%s\n" % (repo, sid, day, gen))
     os.rename(tmp, os.path.join(spool, "%020d-%d" % (time.time_ns(), os.getpid())))
 except Exception:
     sys.exit(0)
@@ -450,6 +471,7 @@ mkdir -p "$STORE/reports" 2>/dev/null || true
 # the history.
 if "${SGIT[@]}" remote get-url origin >/dev/null 2>&1; then
   ( {
+    DEADLINE=''  # the background is outside the hook's timeout; each step keeps its own bound
     "${SGIT[@]}" fetch -q origin || exit 0
     if "${SGIT[@]}" rev-parse -q --verify refs/remotes/origin/main >/dev/null; then
       store_lock 30 || { printf '%s capture sync: store busy or not recoverable\n' "$(date +%F)"; exit 0; }

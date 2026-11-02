@@ -132,7 +132,9 @@ holder removes a stale `index.lock` and aborts a rebase a dead one left. A
 capture first writes its trace into a spool in the store's git directory, out of
 reach of any rebase; a busy store, or a leftover rebase that cannot be
 recovered, delays the capture but never drops it, and the next capture to hold
-the lock commits it. Every git call runs with `GIT_TERMINAL_PROMPT=0`, and every
+the lock commits it. Each entry records its transcript's length and mtime, and
+an entry older than the session's trace in the tree is dropped, so of two
+overlapping captures the newer transcript wins. Every git call runs with `GIT_TERMINAL_PROMPT=0`, and every
 rebase and commit under the lock is bounded; recall's fetch is bounded to two
 seconds and its rebase ends within the hook's five-second timeout, so an
 unreachable remote never blocks a session; it logs one line to
@@ -192,7 +194,8 @@ removing it would cause a mistake.
   the transcript per capture. Recall waits at most two seconds for a fetch from
   the store's remote and ends within its five-second timeout; a capture waits at
   most three seconds for the store lock, then leaves its trace in the spool for
-  the next capture. The capture's pull and push run in the background and never
+  the next capture, and its drain, `git add` and `git status` end within its
+  ten-second timeout, leaving what does not fit in the spool. The capture's pull and push run in the background and never
   wait.
 {% endif %}- Auto memory: Claude Code adds at most the first 200 lines or 25 KB of
   `MEMORY.md` to the context at session start.
