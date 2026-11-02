@@ -76,11 +76,14 @@ def language(path: Path) -> str | None:
 
 
 def added_lines(wt: Path, base: str, path: str) -> list[int]:
-    """The numbers, in the new file, of the lines `git diff -U0 <base>...HEAD` adds to path."""
+    """The numbers, in the new file, of the lines `git diff -U0 <base>...HEAD` adds to path.
+
+    --inter-hunk-context=0 overrides a diff.interHunkContext, whose merged hunks hold context lines this count skips.
+    """
     out: list[int] = []
     n = None
-    for line in git(wt, "diff", "-U0", "--no-color", "--no-ext-diff", "--no-textconv", "--no-renames",
-                    f"{base}...HEAD", "--", path).split("\n"):
+    for line in git(wt, "diff", "-U0", "--inter-hunk-context=0", "--no-color", "--no-ext-diff", "--no-textconv",
+                    "--no-renames", f"{base}...HEAD", "--", path).split("\n"):
         hunk = HUNK.match(line)
         if hunk:
             n = int(hunk.group(1))

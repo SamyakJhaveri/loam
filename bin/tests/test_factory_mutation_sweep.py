@@ -291,6 +291,19 @@ class SweepTests(unittest.TestCase):
         self.assertEqual([(m["line"] + 2, m["operator"], m["before"]) for m in first["mutants"]],
                          [(m["line"], m["operator"], m["before"]) for m in moved["mutants"]])
 
+    def test_lines_added_apart_keep_their_numbers_under_an_inter_hunk_context(self) -> None:
+        # A diff.interHunkContext would merge the two one-line hunks, and the context lines between them would not
+        # be counted, so the second added line would be numbered 2.
+        self.commit({"test_ok.py": PASSING, "a.sh": "x=1\ny=2\nz=3\nw=4\n"})
+        base = git(self.wt, self.env, "rev-parse", "HEAD")
+        git(self.wt, self.env, "config", "diff.interHunkContext", "5")
+        self.commit({"a.sh": "[ 1 -eq 1 ] && x=1\ny=2\nz=3\n[ 1 -eq 1 ] && w=4\n", "test_ok.py": PASSING + "\n"})
+        out = self.top / "out.json"
+        r = subprocess.run(["python3", "-I", str(HELPER), str(self.wt), base, str(out), "600"], env=self.env,
+                           capture_output=True, text=True, timeout=300, check=False)
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertEqual(sorted({m["line"] for m in json.loads(out.read_text())["mutants"]}), [1, 4])
+
     def test_a_bad_base_exits_non_zero_and_writes_nothing(self) -> None:
         self.commit({"a.py": "x = 1\n"})
         out = self.top / "out.json"
