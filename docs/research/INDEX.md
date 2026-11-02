@@ -17,7 +17,7 @@ The design that rests on this evidence is in `../factory/ARCHITECTURE.md`.
 | `advisor-and-managed-agents.md` | the Claude Code advisor page, the seven cookbook notebooks Samyak named on 2026-09-09, one local advisor probe | `--advisor fable` on the worker call (F11), the specialist shape for the large-ticket workflow (F12), nothing from PTC or tool search |
 | `primary-2026-09-08/` | the same sources read from their live pages, repos, and captions on 2026-09-08, with the fact-check corrections to the notes above | one fresh judge, human-decided checks, no loop inside a loop, remove one component per run and read the ledger (#38) |
 | `curation-2026-09-20.md` | the 2026-09-20 pass from primary sources: the building-fast thread, the setup.md file, the memory design with every cited paper opened, and the four loop repos read file by file, against captures of the factory, the seed, and the accepted design at `b03c0e7` | nothing from the repos beyond a five-line grader tree guard; eight prose-against-code drift rows; the memory ordering call (build levels 1 and 2, measure, then decide NATIVE-09); five ranked picks |
-| `memory-design-2026-09-03.md` | Samyak's memory-layer design for the seed, 35 sources, verbatim; all 15 findings verified against their sources 2026-09-20 | not yet taken; it overlaps the accepted NATIVE-09/10 design and differs on who activates a lesson and when to measure, see `curation-2026-09-20.md` |
+| `memory-design-2026-09-03.md` | Samyak's memory-layer design for the seed, 35 sources, verbatim; all 15 findings verified against their sources 2026-09-20 | levels 1 and 2 taken (the seed's memory hooks and `seed/bin/memsearch`, the `memory` question in `copier.yml`); it overlaps the accepted NATIVE-09/10 design and differs on who activates a lesson and when to measure, see `curation-2026-09-20.md` |
 | `memory-crossref-2026-09-21.md` | the Codex memory memo of 2026-09-20 checked against its 13 research claims, the 2026-09-03 design, MEM-01, the Claude Code docs, and Codex source at `a866315` | MEM-01 runs as written; MEM-02 (Codex capture through the same script, three weekly counts) and MEM-03 (self-written note behind a Stop-hook gate) filed; the memo's LLM consolidation and cheap-model note writer cut |
 | `memory-design-v2-2026-09-21.md` | the five-layer memory design after three rounds: the storage criticisms, a coding-agent literature pull (about 30 papers), the two Codex briefs from `~/Downloads`, 30 repositories at or above 100 stars read from clones, 14 brief claims checked | navigation is the frontier lever (NAV-01 trial: Graphify, language-server plugin, Semble); experience stays cheap and append-only (MEM-04, MEM-05); basic-memory pilot for research records (REC-01); LongMemEval-V2 note format and runbook copied; 20 tools rejected with reasons |
 | `distbench-research-practice-2026-10.md` | DistBench at `fda68533`: its experiment runner, grader, records, and paper and figure pipeline, with which practices are Loam seed text and which are DistBench's own (U18, 2026-10-27) | the basis for the six research-lane rulings of 2026-10-27 in `../RULES.md` |
@@ -138,17 +138,17 @@ Scope: on-disk transcripts start 2026-08-26, so earlier sessions are not recover
 
 ## Where each resource lives in Loam today
 
-Verified against `main` 8305c9a on 2026-09-11 by reading the files named.
+Verified against `main` 8305c9a on 2026-09-11 by reading the files named; the advisor, harness design, mattpocock/skills, memory design and skillspector rows re-verified against `main` 212e5865 on 2026-11-02.
 "Code" means text or logic taken from the source and adapted; "shape" means the design was copied and the code written here; "read" means it changed a decision but no artifact points at it; "unused" means it is on the list and nothing uses it yet.
 
 | Resource | Use | Where in Loam |
 |---|---|---|
-| Claude Code advisor doc | code | `--advisor fable` on the worker call, the env guard, the ledger fields `advisor_calls` and `advisor_usd` (`bin/factory`, F11); of its three consult moments the worker contract names the first, F24 adds the recurring-failure one, and the consult-before-done one is rejected on cost |
+| Claude Code advisor doc | code | `--advisor claude-opus-5-5` on the worker call (`WORKER_ADVISOR`; every loop role is Opus 5.5 by Samyak's 2026-09-24 ruling, `../factory/ARCHITECTURE.md`, Models and roles), the env guard, the ledger fields `advisor_calls` and `advisor_usd` (`bin/factory`, F11); of its three consult moments the worker contract names the first, F24 adds the recurring-failure one, and the consult-before-done one is rejected on cost |
 | Managed Agents consult-an-advisor cookbook | code | the consultation policy paragraph in `bin/factory.d/_common.md` is the cookbook worker prompt with Loam's decisions named |
 | Managed Agents coordinate-specialist-team cookbook | shape | one objective, one owned input set, one JSON hand-back per task in `bin/factory.d/factory-round.js` (F12) |
 | Leonxlnx/unlazy (`scripts/lib/gates.mjs`, MIT) | code | `globsOverlap` and `normalizeOwnsGlob` ported with attribution into `factory-round.js`; the parent re-verifies every check (the integrator reruns each task's check); ABANDON with a reason as the only non-fix exit (`_common.md`, `LOOP.md`) |
 | disler/super-simple-software-factory (README essay, no code) | shape | `verdict_consistent` in `bin/factory` with its fixture gate in `bin/check` (F13); the four-line brief form in `CONTRACT.md`, moving to the `/brief` skill (F5); "a known command is code" as the rule that every done check is a shell line the supervisor runs |
-| Anthropic, harness design and effective harnesses | shape | harness design: fresh-context judge and reviewer on a different model from the worker, frozen prompts, the worker never grades itself (`LOOP.md`, `ARCHITECTURE.md` design rules); effective harnesses: the feature list that starts `passes: false` is the done-checks block that must print FAIL on base (round 0) |
+| Anthropic, harness design and effective harnesses | shape | harness design: fresh-context judge and reviewer, frozen prompts, in a context separate from the worker's (on the same model as the worker: every loop role is Opus 5.5 by Samyak's 2026-09-24 ruling), the worker never grades itself (`LOOP.md`, `ARCHITECTURE.md` design rules); effective harnesses: the feature list that starts `passes: false` is the done-checks block that must print FAIL on base (round 0) |
 | Anthropic, multi-agent research system | read | the fan-out caps at four tasks and ships behind a flag with a ledger line because "most coding tasks involve fewer truly parallelizable tasks" and multi-agent costs about 15x (F12 Goal) |
 | AI-native SDLC playbook | shape | the review ceiling is how many streams one person can review properly (the playbook suggests two or three to start; the fan-out cap of four is Loam's own number, inside multi-agent research's three to five); tracks by blast radius in `CONTRACT.md` |
 | AI LABS, Every Level video | shape | the level-two loop is the factory's shape: queue row, build agent on a branch, adversarial reviewer with fresh context, human merge |
@@ -159,16 +159,16 @@ Verified against `main` 8305c9a on 2026-09-11 by reading the files named.
 | Lance Martin, `/claude-api prompt-audit` | code | run on every new prompt paragraph before a ticket is published (F11 and F12 prompts, 2026-09-10); the claude-api skill is installed from anthropics/skills |
 | Fable 5.1 prompting guide | code | the `fable-prompting` skill in `seed/.agents/skills/` and the session-brief hook (`seed/.claude/hooks/`) |
 | Claude Code hooks doc | code | `seed/.claude/hooks/` payload fields; the Stop hook in `bin/factory.d/worker-settings.json` |
-| mattpocock/skills | code | installed as the `mattpocock-skills` plugin; four of the six names a worker may invoke in `bin/factory.d/skills.txt` |
+| mattpocock/skills | unused | removed from Loam, its factory and its template by Samyak's 2026-10-28 ruling (#367); `bin/factory.d/skills.txt` is empty |
 | Codex plugin (openai-codex) | code | `bin/factory.d/review-output.schema.json` is the plugin's schema, byte-identical; the Codex worker and review calls (F4, F17) |
 | AMAP-ML/LongHorizon-Harness | shape | per-role model and effort resolution is the roles block in `bin/factory` |
 | cobusgreyling/loop-engineering | shape | stuck detection is the `stuck` exit (same failing set twice); the daily spend ledger is `ledger-daily.jsonl` |
-| The memory design of 2026-09-03 | read | not taken; pick 1 of `curation-2026-09-20.md` builds its levels 1 and 2 (capture, recall, memsearch) and measures before NATIVE-09 is built |
+| The memory design of 2026-09-03 | shape | levels 1 and 2 (capture, recall, memsearch) ship in the seed: `seed/.claude/hooks/mem-capture.sh` and `mem-recall.sh`, `seed/bin/memsearch`, `mem-inspect` and `mem-weekly.sh`, behind the `memory` question in `copier.yml` |
 | anthropics/cwc-long-running-agents | shape | the fresh-context evaluator with no write tools is the grader call with `--tools Read,Grep,Glob`; Apache-2.0; about eleven rules taken into `anthropic-engineering.md`, no code copied; its two `matcher: "*"` hooks rejected |
 | huangruiteng/loopx, ray-r-ren/agent-apprenticeship, Forward-Future/loopy, Spielewoy/autoprompt-skill, chenxiachan/thoughtdag | read | evaluated in `loop-repos.md`, re-read at the code level 2026-09-11 (autoprompt's `autoprompt-gate.js` included); nothing taken, each rejection with its reason there |
 | PTC and tool-search cookbooks | read | API betas with no CLI form; the Bash tool and native ToolSearch are the equivalents, so nothing was built |
 | Dynamic workflows and async orchestration cookbooks | read | the Workflow tool and `parallel()` are the CLI forms used by F12 |
-| nvidia/skillspector | unused | named as the vetting gate for every external skill; never installed; the 2026-09-01 skill clusters are still unvetted |
+| nvidia/skillspector | code | the vetting gate for every external skill: `bin/vet-skill.sh` wraps `skillspector scan --no-llm` and maps its severity to PASS, REVIEW or REJECT (`CONTRIBUTING.md`) |
 | stop-slop, humanizer, academic-humanizer | code | installed as user skills under `~/.claude/skills/`; they run on outward prose, not on the factory |
 | The academic research skill clusters (Imbad0202, FAROS, paperjury, gpt-researcher, DeepResearch, and the rest) | unused | on the vet-first list; none installed, none used by the factory |
 | VoltAgent, ZacheryGlass, vercel-labs agent-skills | read | the 2026-08-29 planning-agent sweep behind the merged plan-reviewer; archived under `docs/archive/specs/rebuild-research/` |
@@ -177,7 +177,7 @@ Verified against `main` 8305c9a on 2026-09-11 by reading the files named.
 
 What this table says: the factory's mechanisms come from three places, the Anthropic pages and cookbooks (the advisor, the grader split, the specialist shape), the unlazy repo (the only fan-out code worth porting), and the two AI LABS loop videos (the done-checks answer key and the human merge).
 The rest of the loop-repo list was read and set aside on purpose.
-The unused rows are the vetting gate and the research skill clusters, which wait on the gate.
+The unused rows are mattpocock/skills, removed by ruling, and the research skill clusters, which wait on the vetting gate.
 
 ## Older research, linked not copied
 
