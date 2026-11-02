@@ -433,6 +433,20 @@ class LeaseSlotTests(SlotCase):
         self.assertFalse((self.run_dir / "call").exists())
         self.assertFalse((self.run_dir / "call.group").exists())
 
+    def test_dead_owner_s_call_that_ignores_term_is_killed(self) -> None:
+        # The call and its child ignore TERM and hold the inherited lease, so only orphan_call_kill's KILL ends them.
+        sup, (call, child) = self.supervise('trap "" TERM; sleep 60 & echo "$$ $!" > "$1"; wait',
+                                            f"exec 9>> '{self.run_dir / 'lease'}' && flock -n 9 || exit 1\n")
+        os.killpg(sup.pid, signal.SIGKILL)
+        sup.wait()
+        self.owner(f"{sup.pid} {OLD}")
+        self.holds()
+        self.assertIn(state(call), ("", "Z"), "the call outlived holds_slot")
+        self.assertIn(state(child), ("", "Z"), "the call's child outlived holds_slot")
+        wait_until(lambda: not self.holds())
+        self.assertEqual((self.run_dir / "status").read_text(), "stopped-environment\n")
+        self.assertEqual(len(self.alerts.read_text().splitlines()), 1)
+
     def test_live_owner_s_call_holding_the_lease_survives_any_clock_step(self) -> None:
         # A wall-clock step moves the live supervisor's ps lstart away from the stored one, however far; on the lease
         # path only a gone or zombie pid is a gone supervisor, so the call started since, its call.group start still
