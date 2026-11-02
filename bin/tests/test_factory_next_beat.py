@@ -89,15 +89,19 @@ class NextBeatTests(unittest.TestCase):
         # A run stopped whole keeps its lease and owner, so it holds the only slot with no progress; the old run
         # heartbeat stopped with it, and now the tick refuses instead. Continued, the same slot is an idle tick again.
         # The supervisor holds the lease itself, then execs sleep, so the owner pid run_stopped reads is the holder.
-        lease = self.run_dir() / "lease"
-        sup = subprocess.Popen(["bash", "-c", 'exec 9>> "$1" && flock -n 9 && exec sleep 60', "_", str(lease)],
-                               start_new_session=True)
+        # It touches a marker once it holds the lease, so the wait below never competes with it for the lock.
+        lease, held = self.run_dir() / "lease", self.runs.parent / "held"
+        sup = subprocess.Popen(["bash", "-c", 'exec 9>> "$1" && flock -n 9 && touch "$2" && exec sleep 60', "_",
+                                str(lease), str(held)], start_new_session=True)
         self.addCleanup(sup.wait)
         self.addCleanup(sup.kill)
         for _ in range(100):
-            if lease.exists() and subprocess.run(["flock", "-n", str(lease), "true"]).returncode != 0:
+            if held.exists():
                 break
+            self.assertIsNone(sup.poll(), "the supervisor could not take the lease")
             time.sleep(0.05)
+        else:
+            self.fail("the supervisor never took the lease")
         self.held_slot("running", sup.pid)
         os.kill(sup.pid, signal.SIGSTOP)
         for _ in range(50):
@@ -105,6 +109,8 @@ class NextBeatTests(unittest.TestCase):
             if stat.strip().startswith("T"):
                 break
             time.sleep(0.1)
+        else:
+            self.fail("the supervisor never showed as stopped after SIGSTOP")
         for slots in (1, 2):   # a free slot left beside the stopped run must not mask it
             with self.subTest(slots=slots):
                 self.alerts.write_text("")
