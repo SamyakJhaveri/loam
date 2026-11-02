@@ -13,6 +13,7 @@ import hashlib
 import json
 import os
 import pathlib
+import shlex
 import shutil
 import subprocess
 import tempfile
@@ -74,23 +75,30 @@ class ParkingTests(unittest.TestCase):
                      **env: str) -> subprocess.CompletedProcess[str]:
         """cmd_next `flag` (--dry-run by default) over the given unassigned (issue, body) frontier, lowest number first as gh sorts it,
         and `mine`, the ready-for-agent issues assigned to the runner. Each issue is written by `authors`' login,
-        SamyakJhaveri by default, and last edited by `editors`' login (None: the editor call fails; UNNAMED: a null
-        editor with a lastEditedAt), by no one by default. Each editor call is logged to GQL_LOG, every gh call to GH_LOG. `now` pins the
-        epoch `date -u +%s` prints, so a backoff boundary does not move while the test runs."""
+        SamyakJhaveri by default, and last edited by `editors`' login (None: GitHub cannot resolve the issue; UNNAMED: a
+        null editor with a lastEditedAt), by no one by default. The one editor call is answered as GitHub's GraphQL does,
+        one `i<N>` alias per issue; an issue it cannot resolve has a null alias and an `errors` entry, and then gh prints the
+        raw body whatever --jq asks and exits 1. Each editor call is logged to GQL_LOG, every gh call to GH_LOG. `now` pins
+        the epoch `date -u +%s` prints, so a backoff boundary does not move while the test runs."""
         def lines(issues: tuple[tuple[int, str], ...]) -> str:
             return " ".join(f"'{issue} {(authors or {}).get(issue, 'SamyakJhaveri')} {base64.b64encode(body.encode()).decode()}'"
                             for issue, body in issues) or "''"
-        def doc(who: str) -> str:
-            issue = {"editor": None, "lastEditedAt": "2026-10-30T00:00:00Z"} if who == UNNAMED else {"editor": {"login": who}}
-            return json.dumps({"data": {"repository": {"issue": issue}}})
-        edits = "".join(f'*" number={issue} "*) {"return 1" if who is None else f"doc={doc(who)!r}"} ;; '
-                        for issue, who in (editors or {}).items())
+        def alias(who: str | None) -> dict | None:
+            if who == UNNAMED:
+                return {"editor": None, "lastEditedAt": "2026-10-30T00:00:00Z"}
+            return {"editor": {"login": who}, "lastEditedAt": "2026-10-30T00:00:00Z"} if who else {"editor": None, "lastEditedAt": None}
+        everyone = {issue: (editors or {}).get(issue, "") for issue, _ in frontier + mine}
+        doc: dict = {"data": {"repository": {f"i{issue}": None if who is None else alias(who) for issue, who in everyone.items()}}}
+        gone = [issue for issue, who in everyone.items() if who is None]
+        if gone:
+            doc["errors"] = [{"message": f"Could not resolve to an Issue with the number of {issue}."} for issue in gone]
+        reply = f"echo {shlex.quote(json.dumps(doc))}; return 1" if gone else f'jq -r "$q" <<< {shlex.quote(json.dumps(doc))}'
         clock = "" if now is None else f'date() {{ if [ "$*" = "-u +%s" ]; then echo {now}; else command date "$@"; fi; }}; '
         stubs = (pre + clock + "assert_toolchain_env() { :; }; claude_logged_in() { :; }; claude_version_ok() { :; }; target_repo() { echo o/r; }; "
                  'gh() { echo "$*" >> "$GH_LOG"; '
-                 "case $2 in graphql) local a p= q= doc='{\"data\":{\"repository\":{\"issue\":{\"editor\":null}}}}'; "
+                 "case $2 in graphql) local a p= q=.; "
                  'for a; do [ "$p" = --jq ] && q=$a; p=$a; done; echo "$*" >> "$GQL_LOG"; '
-                 f"case \"$* \" in {edits}esac; jq -r \"$q\" <<<\"$doc\" ;; repos/*) printf '%s\\n' {lines(frontier)} ;; "
+                 f"{reply} ;; repos/*) printf '%s\\n' {lines(frontier)} ;; "
                  f"/issues\\?*) printf '%s\\n' {lines(mine)} ;; esac; }}; "
                  f"cmd_next {flag}")
         return sourced(stubs, {"FACTORY_MAX_PARALLEL": "1", "FACTORY_RUNS_ROOT": str(self.runs), "GQL_LOG": str(self.gql_log),
@@ -637,7 +645,7 @@ class LintTests(ParkingTests):
         self.assertIn("parked #8", proc.stderr)
         self.assertIn("not owner #9: written or last edited by someone-else", proc.stderr)
         self.assertIn("not owner #11: written or last edited by someone-else", proc.stderr)
-        self.assertIn(" number=12 ", self.gql_log.read_text() + " ")   # the editor call runs past the first pick
+        self.assertIn("i12: issue(number: 12) ", self.gql_log.read_text())   # the editor read names every candidate
 
     def test_frontier_over_an_empty_frontier_prints_nothing(self) -> None:
         proc = self.next_dry_run(flag="--frontier")
@@ -673,7 +681,7 @@ class LintTests(ParkingTests):
         self.assertIn("parked #12", proc.stderr)
         self.assertEqual(snap(), before)
         self.assertFalse(alerts.exists())
-        self.assertNotIn("issues/40", self.gh_log.read_text())
+        self.assertNotIn("pullRequest", self.gh_log.read_text())
 
     def test_install_refuses_a_read_only_flag(self) -> None:
         cron = self.runs.parent / f"{self.runs.name}.crontab"
@@ -690,15 +698,21 @@ class LintTests(ParkingTests):
         self.assertIn("not owner #7: last edited by an account GitHub no longer names; edit the body as SamyakJhaveri", proc.stderr)
         self.assertNotIn("#8", proc.stderr)
 
-    def test_no_editor_call_after_the_pick(self) -> None:
-        # A stalled GraphQL costs a tick one timeout, not one per candidate; later candidates still get the author check.
-        proc = self.next_dry_run((7, CLEAN), (8, CLEAN), (9, CLEAN), authors={9: "someone-else"}, editors={8: None})
-        self.assertEqual(proc.stdout.strip(), "would launch #7", proc.stderr)
-        self.assertEqual(proc.stderr.strip(), "not owner #9: written or last edited by someone-else; "
-                         "edit the body as SamyakJhaveri or remove ready-for-agent")
+    def test_one_editor_call_names_every_candidate(self) -> None:
+        # One GraphQL read gives every candidate's last editor, the ready list's and the runner's own, however many are
+        # passed over, so a tick makes one editor read, not one per candidate (#598); each still gets its own verdict.
+        self.run_dir(13, CLEAN + "\nan older body", "stopped")
+        proc = self.next_dry_run((7, NOT_A_TICKET), (8, CLEAN), (9, CLEAN), (10, CLEAN), (12, CLEAN), mine=((13, CLEAN),),
+                                 authors={9: "someone-else"}, editors={8: "someone-else", 10: None})
+        self.assertEqual((proc.returncode, proc.stdout.strip()), (0, "would launch #12"), proc.stderr)
+        self.assertIn("lint failed #7", proc.stderr)
+        self.assertIn("not owner #8: written or last edited by someone-else", proc.stderr)
+        self.assertIn("not owner #9: written or last edited by someone-else", proc.stderr)
+        self.assertIn("not owner #10: could not read the last editor with gh", proc.stderr)
         calls = self.gql_log.read_text().splitlines()
         self.assertEqual(len(calls), 1, calls)
-        self.assertIn(" number=7 ", calls[0] + " ")
+        for issue in (7, 8, 9, 10, 12, 13):
+            self.assertIn(f"i{issue}: issue(number: {issue}) ", calls[0])
 
     def test_runner_assigned_issue_another_account_edited_does_not_relaunch(self) -> None:
         self.run_dir(7, CLEAN, "stopped-daily")
