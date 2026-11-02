@@ -1386,6 +1386,8 @@ freeze() {
   # bin/claude-account switches accounts by rewriting the user tier's CLAUDE_CODE_OAUTH_TOKEN, so the copy leaves it
   # out and worker_round passes the live one. The rest of the user env may hold secrets too, so the copy is private
   # to the operator, as ~/.claude/settings.json is.
+  # A per-model autoCompactWindow in the user tier would outrank the worker file's top-level 450K window inside this
+  # one merged file (Claude Code settings precedence), so the merge drops it (#348).
   user="${CLAUDE_SETTINGS_FILE:-${CLAUDE_CONFIG_DIR:-$HOME/.claude}/settings.json}"
   [ -f "$user" ] || user=/dev/null
   mkdir -p "$RUN/uv/cache" "$RUN/uv/tools"
@@ -1397,7 +1399,8 @@ freeze() {
     merge($u[0] // {} | del(.sandbox, .env.CLAUDE_CODE_OAUTH_TOKEN, .permissions.allow, .permissions.additionalDirectories); .) | .env = (.env // {}) + {CLAUDE_CODE_SUBAGENT_MODEL: $m, CLAUDE_CODE_SUBAGENT_MODEL_FORCE: "1",
     ANTHROPIC_DEFAULT_SONNET_MODEL: $m, ANTHROPIC_DEFAULT_HAIKU_MODEL: $m,
     UV_CACHE_DIR: "\($uv)/cache", UV_TOOL_DIR: "\($uv)/tools"}
-    | .sandbox.filesystem.allowWrite += [$gd, "\($cd)/objects", "\($cd)/refs", "\($cd)/logs", $w, $t, "\($uv)/cache", "\($uv)/tools"]' \
+    | .sandbox.filesystem.allowWrite += [$gd, "\($cd)/objects", "\($cd)/refs", "\($cd)/logs", $w, $t, "\($uv)/cache", "\($uv)/tools"]
+    | if (.modelSettings | type) == "object" then .modelSettings |= map_values(if type == "object" then del(.autoCompactWindow) else . end) else . end' \
     "$ROOT/bin/factory.d/worker-settings.json" > "$RUN/frozen/worker-settings.json" ) 2>> "$LOG" \
     || finish stopped-environment "could not merge $user into the frozen worker settings"
   sed -e "s|<issue>|${ISSUE:-$KEY}|g" -e "s|<decisions>|$DECISIONS|g" -e "s|<mechanism>|${DECISIONS%/*}/mechanism.md|g" \

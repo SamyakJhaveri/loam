@@ -63,7 +63,8 @@ class AutoMemoryOffTests(unittest.TestCase):
 
     def test_frozen_settings_compact_at_450k_over_a_user_off_switch(self) -> None:
         user = self.tmp / "user-settings.json"
-        user.write_text(json.dumps({"autoCompactEnabled": False, "autoCompactWindow": 200000}))
+        user.write_text(json.dumps({"autoCompactEnabled": False, "autoCompactWindow": 200000,
+                                   "modelSettings": {"claude-opus-5-5": {"autoCompactWindow": 900000, "effortLevel": "high"}}}))
         run = self.tmp / "run"
         (run / "frozen").mkdir(parents=True)
         proc = self.sourced(f"RUN='{run}'; LOG=\"$RUN/factory.log\"; LEDGER=\"$RUN/ledger.jsonl\"; "
@@ -76,6 +77,8 @@ class AutoMemoryOffTests(unittest.TestCase):
                 settings = json.loads((run / "frozen" / name).read_text())
                 self.assertIs(settings.get("autoCompactEnabled"), True)
                 self.assertEqual(settings.get("autoCompactWindow"), 450000)
+                for model, ms in (settings.get("modelSettings") or {}).items():
+                    self.assertNotIn("autoCompactWindow", ms, f"{name}: {model} keeps a per-model window over 450K")
 
 
 if __name__ == "__main__":
