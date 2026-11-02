@@ -3,7 +3,7 @@
 The fixed set the grader-model baseline (#207), the Round transcript change (#234) and the run lane (#232) are each measured on (#233).
 Every case below has a `prompt.md`, read from its `## Ticket` line as `bin/factory eval` reads `evals/clean/`, and an `expected.json` with its label.
 A grader reads with Read, Grep and Glob, and this tree holds the answer key (every `expected.json`, this file, `run/base/`).
-`bin/factory eval` and `model-eval`'s Codex cells grade in an export without `evals/` (docs/factory/LOOP.md, Grader change protocol); a Claude grader call's read fence refuses any read outside that export (#505), but in a Codex cell a Read of an absolute path still reaches the checkout, so for the Codex cells copy the set to a scratch directory and run from a detached scratch worktree with `evals/` removed; this is a precondition for #207, #234 and #232:
+`bin/factory eval` and `model-eval`'s Codex cells grade in an export without `evals/` (docs/factory/LOOP.md, Grader change protocol); a Claude grader call's read fence refuses any read outside that export (#505), but in a Codex cell a Read of an absolute path still reaches the checkout, so a grid with Codex cells copies the set to a scratch directory and runs from a detached scratch worktree with `evals/` removed, a precondition for #207, #234 and #232; the recipe below does it for one replay, and a `model-eval` grid keeps its first and last lines with `MODEL_EVAL_SET="$s/planted"`:
 
 ```sh
 s=$(mktemp -d) && cp -r evals/planted "$s/planted" && git worktree add --detach "$s/wt" && rm -rf "$s/wt/evals" && cd "$s/wt"

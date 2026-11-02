@@ -38,6 +38,7 @@ bin/factory.d/fixtures/        lint fixtures (CONTRACT.md)
 evals/<grader>/<case>/{prompt.md,expected.json}
 ~/.local/state/loam-factory/runs/<issue>/<sha8>/   on the runner, outside every checkout:
     status  ledger.jsonl  base.sha  frozen/  round-<k>.*  worker/decisions.md  worker/mechanism.md  pr-body.md  notify.failed
+    grader-config/   the grader calls' empty private config dir (Grader calls)
     owner-events.jsonl  pr-closed   the operator actions status --criteria counts (ARCHITECTURE.md, Metrics)
 ~/.local/state/loam-factory/runs/<issue>/owner-events.jsonl   lint's lines until the issue's next launch moves them into its run dir
 ~/.local/state/loam-factory/runs/<owner>__<repo>/<issue>/<sha8>/   the same, for a target named by -C (F8)
@@ -200,7 +201,7 @@ The sandbox bounds only the worker's own Bash calls: the `Stop` hook and the sup
 Both files set `"autoMemoryEnabled": false` and pin `CLAUDE_CODE_DISABLE_AUTO_MEMORY=1` in their `env`, because Claude Code keeps one auto memory folder per repository, shared by every worktree and filled by interactive sessions, and no settings source turns it off, so a worker or grader prompt would otherwise load that folder's `MEMORY.md` and could write notes a later run reads (#380).
 The env pin is there because that variable set to `0`, in the launch environment or a user-tier `env`, overrides the key, and the `--settings` env is applied last; the frozen worker copy keeps the pin beside the four model pins.
 Neither file excludes memory files by path: both calls load no settings tier, under which the user `CLAUDE.md` and rules do not load from any config dir (probed on Claude Code 2.1.312), where path globs missed a relocated config dir (#421, #505).
-Both files set `"autoCompactEnabled": true` and `"autoCompactWindow": 450000`, so a call that fills its context compacts at 450K tokens instead of ending `Prompt is too long`: the operator's user tier sets `autoCompactEnabled: false`, and `--settings` ranks above it for a grader call while the frozen worker copy's own keys win the merge (owner ruling 2026-10-26, #348).
+Both files set `"autoCompactEnabled": true` and `"autoCompactWindow": 450000`, so a call that fills its context compacts at 450K tokens instead of ending `Prompt is too long`: the operator's user tier sets `autoCompactEnabled: false`, which neither call loads: a grader's frozen copy takes only the user `env`, and the frozen worker copy's own keys win the merge (owner ruling 2026-10-26, #348).
 A `DISABLE_AUTO_COMPACT` or `CLAUDE_CODE_AUTO_COMPACT_WINDOW` in the launch environment or a user-tier `env` still overrides these keys, as the settings reference says, so neither belongs there.
 A grader call gets only the user tier's `env` through its frozen copy (Grader calls), and a worker call the user tier's keys through its own (above).
 When a worker or grader call's `served_models` names a model that the `status` WARN rule (Status and the manager) does not expect, as a refusal fallback does (DistBench run 288 finished two rounds on `claude-opus-4-8`, #419), `record` logs `off-model <role> round <n>: <models>` with each model's cost from `modelUsage` and sends one `needs-you` alert naming the ticket, the role, the round and those models; the run goes on.
