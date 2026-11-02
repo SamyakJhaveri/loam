@@ -1663,27 +1663,29 @@ run_project() { # <run dir>
 # process of the run is left: still holding it, the caller re-reads the status, writes
 # stopped-environment if it still reads running or waiting-limit, and only that caller alerts; a relaunch waits on
 # the same lease, so it never interleaves with the reap. A run dir with no `lease` (started before #425) holds no slot,
-# whatever its owner line: at running, waiting-limit or launched with no status, holds_slot reads no `owner` and no
-# `call` for it, and writes, alerts on and kills nothing; at any other status only a stuck call (below) holds it.
+# whatever its status and owner line: holds_slot reads no `owner` and no `call` for it, and writes, alerts on and kills
+# nothing. cmd_run creates `lease` before any call is written, so every run that can leave a stuck call (below) has one.
 # A launch killed between `launched` and its first status holds while a process holds its lease.
 # In its own session a model call (call_start) outlives a SIGKILLed supervisor, reparented to init, keeps the lease it
 # inherited and keeps writing the worktree until CALL_TIMEOUT_SEC, so while the lease is held a gone owner's call is
 # killed (orphan_call_kill, under owner.flock), and the lease then decides.
 # holds_slot may return held in the very call that killed, while the call's wrapper still reaps reparented children;
 # the next caller frees the slot.
-# A run of any other status holds while the call named in its `call` lives, with no write and no alert: call_end keeps
-# `call` when a call outlives KILL and the run ends stopped-environment (#467); it frees once that call is gone.
+# A run with a lease and any other status holds while the call named in its `call` lives, with no write and no
+# alert: call_end keeps `call` when a call outlives KILL and the run ends stopped-environment (#467); it frees once
+# that call is gone.
 # With `peek` (cmd_next --dry-run) it only looks: a run the reap above would free reads free, and it takes no
 # owner.flock, kills nothing, writes no status and sends no alert.
 holds_slot() { # <run dir> [peek]
   local st o fd peek=${2-}
+  # Read-only, so a run dir with no lease never gets one here.
+  [ -f "$1/lease" ] || return 1
   if [ -f "$1/status" ]; then
     st=$(cat "$1/status")
     # A call that survived call_reap's KILL keeps `call` and its run ends stopped-environment, so any other status
     # holds while that call lives; running and waiting-limit consult it below, after a gone owner's call is killed.
     [ "$st" = running ] || [ "$st" = waiting-limit ] || { call_live "$1"; return; }
-    # Read-only, so a run dir with no lease never gets one here.
-    [ -f "$1/lease" ] && exec {fd}< "$1/lease" || return 1
+    exec {fd}< "$1/lease" || return 1
     if ! flock -n "$fd"; then
       exec {fd}>&-
       [ -n "$peek" ] && return 0
@@ -1712,7 +1714,7 @@ holds_slot() { # <run dir> [peek]
     return 1
   else
     [ -f "$1/launched" ] || return 1
-    [ -f "$1/lease" ] && exec {fd}< "$1/lease" || return 1
+    exec {fd}< "$1/lease" || return 1
     flock -n "$fd"; st=$?
     exec {fd}>&-
     [ "$st" != 0 ]

@@ -263,13 +263,13 @@ class ParkingTests(unittest.TestCase):
                 self.run_dir(7, CLEAN, "stopped-environment")
                 d = self.runs / "7" / key(CLEAN)
                 os.utime(d / "status", (86400, 86400))
+                (d / "lease").touch()   # cmd_run creates it before any call
                 if holder == "call":
                     p = subprocess.Popen(["sleep", "60"], start_new_session=True)
                     self.addCleanup(p.wait)
                     self.addCleanup(subprocess.run, ["kill", "-KILL", "--", f"-{p.pid}"], check=False)
                     (d / "call").write_text(f"{p.pid} test.{key(str(p.pid))}\n")
                 else:
-                    (d / "lease").touch()
                     p = subprocess.Popen(["flock", str(d / "lease"), "sleep", "60"], start_new_session=True)
                     self.addCleanup(p.wait)
                     self.addCleanup(subprocess.run, ["kill", "-KILL", "--", f"-{p.pid}"], check=False)

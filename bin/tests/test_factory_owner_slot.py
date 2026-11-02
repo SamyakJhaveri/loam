@@ -4,8 +4,8 @@ Each test writes a run dir with status `running` and an `owner` line, sources bi
 `alert` stubbed to a file, and asks holds_slot. A freed run reads stopped-environment and alerts once; a held one
 keeps `running` and sends nothing. A run dir with a `lease` file is judged by the flock lease, by its `call` while
 the lease is free, and by the owner pid for the orphan kill while it is held (LeaseSlotTests); one without it holds
-nothing and is never touched, whatever its owner line (LeaselessSlotTests). A stopped run holds while its stuck call
-lives (StuckCallTests). The tick tests ask through cmd_next, whose --dry-run only looks.
+nothing and is never touched, whatever its status and owner line (LeaselessSlotTests). A stopped run with a lease
+holds while its stuck call lives (StuckCallTests). The tick tests ask through cmd_next, whose --dry-run only looks.
 """
 
 from __future__ import annotations
@@ -134,8 +134,8 @@ class SlotCase(unittest.TestCase):
 
 
 class LeaselessSlotTests(SlotCase):
-    """A run dir with no `lease` (started before #425) holds no slot, whatever its owner line: holds_slot reads no
-    `owner` and no `call` for it, writes no status, sends no alert, kills nothing and takes no owner.flock."""
+    """A run dir with no `lease` (started before #425) holds no slot, whatever its status and owner line: holds_slot
+    reads no `owner` and no `call` for it, writes no status, sends no alert, kills nothing and takes no owner.flock."""
 
     SPIES = ("dead_owner", "owner_gone", "call_live", "owner_lock", "orphan_call_kill")
 
@@ -189,13 +189,27 @@ class LeaselessSlotTests(SlotCase):
         (self.run_dir / "launched").write_text("12345\n")
         self.assert_untouched(None)
 
+    def test_stopped_run_with_a_live_call_holds_nothing_and_kills_nothing(self) -> None:
+        # The stuck-call hold (#467) needs a lease: cmd_run creates it before any call, so a lease-less dir's `call`
+        # is not this factory's.
+        (self.run_dir / "status").write_text("stopped-environment\n")
+        call = subprocess.Popen(["sleep", "60"], start_new_session=True)
+        self.addCleanup(call.wait)
+        self.addCleanup(call.kill)
+        (self.run_dir / "call").write_text(f"{call.pid} test.{uuid.uuid4().hex} {lstart(call.pid)}\n")
+        (self.run_dir / "call.group").write_text(f"{call.pid} {lstart(call.pid)}\n")
+        self.owner(f"{dead_pid()} {OLD}")
+        self.assert_untouched("stopped-environment\n")
+        self.assertIsNone(call.poll(), "holds_slot killed a lease-less run's call group")
+
 
 class StuckCallTests(SlotCase):
-    """A stopped run, lease or not, holds while the call its `call` names lives (#467), with no write and no alert."""
+    """A stopped run with a lease holds while the call its `call` names lives (#467), with no write and no alert."""
 
     def setUp(self) -> None:
         super().setUp()
         (self.run_dir / "status").write_text("stopped-environment\n")
+        (self.run_dir / "lease").touch()
 
     def test_stuck_call_holds_a_stopped_run_s_slot_until_its_group_is_gone(self) -> None:
         # A call alive 5 s after KILL keeps `call` and its run ends stopped-environment (#467): the slot holds, with no
