@@ -82,7 +82,7 @@ class EvalCallTests(unittest.TestCase):
         # Observe env's argv too: Claude's argv alone misses a token passed by its launcher.
         self.wrapper_log = tmp / "env-argv.jsonl"
         wrapper = fake.parent / "env"
-        wrapper.write_text(f"#!{sys.executable}\nimport json, os, sys\n"
+        wrapper.write_text("#!/usr/bin/env python3\nimport json, os, sys\n"
                            f"with open({str(self.wrapper_log)!r}, 'a') as f:\n"
                            "    f.write(json.dumps(sys.argv[1:]) + '\\n')\n"
                            f"os.execv({shutil.which('env')!r}, ['env', *sys.argv[1:]])\n")
