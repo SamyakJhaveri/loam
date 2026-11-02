@@ -9,8 +9,8 @@ Usage:
 other added or modified bash or Python file outside a tests or fixtures directory, on code only: never a comment, a
 string or a here-document body. Operators, at most one edit each per line: flip swaps the first comparison, force-true
 makes one condition always true, drop turns an assert, raise, return, exit, continue or break into a no-op; none where
-the edit cannot change behavior (the main guard's force-true, a function's last bare, None or 0 return, a file's last
-exit 0). An edit
+the edit cannot change behavior (the main guard's force-true, a function's last bare or None return, or 0 return when
+its every call is the argument of sys.exit or SystemExit, a file's last exit 0). An edit
 after which its file no longer parses is discarded; the rest are ordered by the sha256 of path NUL operator NUL
 stripped line, so an unchanged line gets the same edits every round, and the first 8 run.
 The tests run unedited first, under <first-run timeout> s, then once per edit under twice that run plus 10 s; exit 0
@@ -105,18 +105,29 @@ def py_edits(text: str, wanted: list[int]) -> list[tuple[int, str, dict[int, str
     except (tokenize.TokenError, SyntaxError):
         return []
     code = [t for t in toks if t.type in (tokenize.OP, tokenize.NAME, tokenize.NEWLINE)]
-    # A function's last statement `return`, `return None` or `return 0`, whose drop cannot change behavior: the
-    # function returns None anyway, and sys.exit(main()) exits 0 on None as on 0.
-    last_returns = set()
+    # A function's last statement whose drop cannot change behavior: `return` or `return None`, since the function
+    # returns None anyway, and `return 0` when every call of it in the file is the argument of sys.exit(...) or
+    # SystemExit(...), which exit 0 on None as on 0.
     try:
-        funcs = [f for f in ast.walk(ast.parse(text)) if isinstance(f, (ast.FunctionDef, ast.AsyncFunctionDef))]
+        nodes = list(ast.walk(ast.parse(text)))
     except (SyntaxError, ValueError):
-        funcs = []
-    for f in funcs:
-        last = f.body[-1]
-        if isinstance(last, ast.Return) and (last.value is None or isinstance(last.value, ast.Constant)
-                                             and type(last.value.value) in (type(None), int) and not last.value.value):
-            last_returns.add(last.lineno)
+        nodes = []
+    calls = [c for c in nodes if isinstance(c, ast.Call)]
+    exits = {id(a) for c in calls for a in c.args if isinstance(c.func, ast.Name) and c.func.id == "SystemExit"
+             or isinstance(c.func, ast.Attribute) and c.func.attr == "exit"
+             and isinstance(c.func.value, ast.Name) and c.func.value.id == "sys"}
+    last_returns = set()
+    for f in nodes:
+        if not isinstance(f, (ast.FunctionDef, ast.AsyncFunctionDef)) or not isinstance(f.body[-1], ast.Return):
+            continue
+        value = f.body[-1].value
+        if isinstance(value, ast.Constant) and type(value.value) is int and value.value == 0:
+            mine = [c for c in calls if isinstance(c.func, ast.Name) and c.func.id == f.name]
+            if not mine or any(id(c) not in exits for c in mine):
+                continue
+        elif not (value is None or isinstance(value, ast.Constant) and value.value is None):
+            continue
+        last_returns.add(f.body[-1].lineno)
     flips: dict[int, tuple[int, int, str]] = {}  # line -> its first comparison: start col, end col, swap
     starts: dict[int, int] = {}  # line -> index in code of the first token of a statement that starts it
     depth, fors, new_stmt = 0, set(), True

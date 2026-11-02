@@ -184,18 +184,26 @@ class SweepTests(unittest.TestCase):
         self.assertEqual((result["mutants"], result["reason"]),
                          ([], "no added bash or Python code line outside tests and fixtures gives an edit"))
 
-    def test_edits_that_cannot_change_behavior_are_skipped(self) -> None:
-        # A function's last `return`, `return None` or `return 0`, the main guard's force-true and the file's last
-        # `exit 0` give no edit; an earlier return or exit, a return of a value or of False, and the guard's flip do.
-        py = ('import sys\n\n\ndef main():\n    if sys.argv:\n        return 1\n    print()\n    return 0\n\n\n'
-              'def f():\n    return\n\n\ndef g(x):\n    return None\n\n\nasync def h(x):\n    return x\n\n\n'
-              'def k():\n    return False\n\n\nif __name__ == "__main__":\n    sys.exit(main())\n')
-        sh = '#!/usr/bin/env bash\nf() {\n  exit 0\n}\n[ "$1" = a ] && exit 0\nexit 0\n# end\n'
-        self.assertEqual(self.edits({"m.py": py, "m.sh": sh}),
+    def test_python_edits_that_cannot_change_behavior_are_skipped(self) -> None:
+        # A function's last `return` or `return None`, a last `return 0` of a function whose every call is the
+        # argument of sys.exit or SystemExit, and the main guard's force-true give no edit; an earlier return, a
+        # last `return 0` whose value is used, a return of False, and the guard's flip do.
+        self.assertEqual(self.edits({"m.py": 'import sys\n\n\ndef main():\n    if sys.argv:\n        return 1\n'
+                                             '    print()\n    return 0\n\n\ndef f():\n    return\n\n\n'
+                                             'def g(x):\n    return None\n\n\ndef u():\n    return 0\n\n\n'
+                                             'def k():\n    return False\n\n\nif __name__ == "__main__":\n'
+                                             '    sys.exit(main())\nif __name__ == "__main__":\n'
+                                             '    raise SystemExit(main())\ny = u() + 1\n'}),
+                         [(5, "force-true", "if (sys.argv) or True:"), (6, "drop", "pass"), (20, "drop", "pass"),
+                          (24, "drop", "pass"), (27, "flip", 'if __name__ != "__main__":'),
+                          (29, "flip", 'if __name__ != "__main__":'), (30, "drop", "pass")])
+
+    def test_bash_edits_that_cannot_change_behavior_are_skipped(self) -> None:
+        # The file's last `exit 0` gives no edit; an exit in a function or before other code does.
+        self.assertEqual(self.edits({"m.sh": '#!/usr/bin/env bash\nf() {\n  exit 0\n}\n[ "$1" = a ] && exit 0\n'
+                                             'exit 0\n# end\n'}),
                          [(3, "drop", ":"), (5, "flip", '[ "$1" != a ] && exit 0'),
-                          (5, "force-true", '[ "$1" = a ] || true && exit 0'),
-                          (5, "force-true", "if (sys.argv) or True:"), (6, "drop", "pass"),
-                          (20, "drop", "pass"), (24, "drop", "pass"), (27, "flip", 'if __name__ != "__main__":')])
+                          (5, "force-true", '[ "$1" = a ] || true && exit 0')])
 
     def test_a_quoted_here_document_word_is_read_as_the_shell_reads_it(self) -> None:
         # In single quotes a backslash is literal, so `AB` does not end the first body; in double quotes a space is
