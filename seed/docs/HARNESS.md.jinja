@@ -61,12 +61,13 @@ per-tool latency.
   no file and no line. After a capture it links `<repo>/.loam/memory` to the
   store when that path is free. The `Stop` entry passes `--throttle 600`, so a
   burst of stops captures at most once per ten minutes. It then commits the store
-  and, when an `origin` remote is set, pushes it in the background, so a second
-  machine sees the trace; the hook never waits on the network.
+  and, when an `origin` remote is set, rebases onto the remote and pushes it in
+  the background, so a second machine sees the trace; the hook never waits on the
+  network.
 - `mem-recall.sh` (SessionStart `startup|resume|clear`): prints a manifest to
   stdout, which Claude Code adds to the context. When an `origin` remote is set it
-  first pulls the store (bounded to five seconds) so a line another machine
-  committed shows up here. A `Loaded:` line names how many recent sessions, hint
+  first pulls the store (within its five-second timeout) so a line another
+  machine committed shows up here. A `Loaded:` line names how many recent sessions, hint
   bullets, and handoffs it injected; a claimed handoff, the last five `INDEX.md`
   lines, and the newest hint bullets follow; a `Not loaded:` line names the notes
   and traces it did not open and points at `memsearch <pattern>` or
@@ -121,9 +122,21 @@ is involved.
 The remote holds scrubbed transcripts, the same content as the local store.
 Keep it on a machine you own and never point it at a public host: a secret with
 no recognizable shape can reach the store's history and the remote (see Accepted
-risks). A capture commits and pushes in the background; recall pulls at
-SessionStart and `mem-weekly.sh` pulls then pushes from cron. Every git call runs
-with `GIT_TERMINAL_PROMPT=0`, and recall's pull is bounded to five seconds, so an
+risks). A capture commits, then in the background fetches, rebases onto the
+remote and pushes, so a machine that pushed first never strands it; recall pulls at
+SessionStart and `mem-weekly.sh` pulls then pushes from cron. One lock file in
+the store's git directory serializes the hooks' and `mem-weekly.sh`'s local
+writes, rebases and commits across sessions, so nothing lands inside another
+session's rebase; the kernel frees it when its last holder exits, and the next
+holder removes a stale `index.lock` and aborts a rebase a dead one left. A
+capture first writes its trace into a spool in the store's git directory, out of
+reach of any rebase; a busy store, or a leftover rebase that cannot be
+recovered, delays the capture but never drops it, and the next capture to hold
+the lock commits it. Each entry records its transcript's length and mtime, and
+an entry older than the session's trace in the tree is dropped, so of two
+overlapping captures the newer transcript wins. Every git call runs with `GIT_TERMINAL_PROMPT=0`, and every
+rebase and commit under the lock is bounded; recall's fetch is bounded to two
+seconds and its rebase ends within the hook's five-second timeout, so an
 unreachable remote never blocks a session; it logs one line to
 `reports/sync.log` and continues with the local store.
 
@@ -178,8 +191,12 @@ removing it would cause a mistake.
   nothing to the skill listing.
 {% if memory %}- Memory hooks: recall adds at most 4000 bytes at SessionStart, and the Stop
   capture runs at most once per ten minutes. The scrub adds one regex pass over
-  the transcript per capture. Recall waits at most five seconds for a pull from
-  the store's remote; the capture's push runs in the background and never waits.
+  the transcript per capture. Recall waits at most two seconds for a fetch from
+  the store's remote and ends within its five-second timeout; a capture waits at
+  most three seconds for the store lock, then leaves its trace in the spool for
+  the next capture, and its drain, `git add` and `git status` end within its
+  ten-second timeout, leaving what does not fit in the spool. The capture's pull and push run in the background and never
+  wait.
 {% endif %}- Auto memory: Claude Code adds at most the first 200 lines or 25 KB of
   `MEMORY.md` to the context at session start.
 
