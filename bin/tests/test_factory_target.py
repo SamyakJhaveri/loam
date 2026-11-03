@@ -231,17 +231,51 @@ class TargetTests(unittest.TestCase):
         self.assertIn("errs=1", self.target(None, body).stdout)
         self.assertIn("errs=0", self.target(self.proj, body).stdout)
 
-    def test_next_install_keeps_one_cron_line_per_target(self) -> None:
+    def cron_stub(self) -> tuple[pathlib.Path, str]:
         cron = self.runs.parent / "crontab"
-        stub = f'crontab() {{ if [ "$1" = -l ]; then cat "{cron}" 2> /dev/null; else cat > "{cron}.new"; mv "{cron}.new" "{cron}"; fi; }}\n'
+        return cron, f'crontab() {{ if [ "$1" = -l ]; then cat "{cron}" 2> /dev/null; else cat > "{cron}.new"; mv "{cron}.new" "{cron}"; fi; }}\n'
+
+    @staticmethod
+    def cron_line(cmd: str, slug: str = "") -> str:
+        """The live line's shape (jhaveris's), for the HOME the tests' bash runs with."""
+        state = f"{clean_env()['HOME']}/.local/state/loam-factory"
+        tag = f"-{slug}" if slug else ""
+        return (f"*/10 * * * * bash -lc 'cd {ROOT} && FACTORY_DAILY_BUDGET_USD=1000000 FACTORY_GRADER_BUDGET_USD=1000000 "
+                f"FACTORY_MAX_PARALLEL=2 flock -n -o {state}/next{tag}.lock {cmd}' >> {state}/next{tag}.log 2>&1")
+
+    def test_next_install_keeps_one_cron_line_per_target(self) -> None:
+        cron, stub = self.cron_stub()
+        cron.write_text("*/10 * * * * bash -lc 'cd /srv/old/loam && bin/factory next'\n")
         self.assertEqual(self.target(None, stub + "cmd_next --install").returncode, 0)
         for _ in range(2):
             proc = self.target(self.proj, stub + "cmd_next --install")
             self.assertEqual(proc.returncode, 0, proc.stderr)
-        lines = cron.read_text().splitlines()
-        self.assertEqual(lines, [f"*/10 * * * * bash -lc 'cd {ROOT} && bin/factory next'",
-                                 f"*/10 * * * * bash -lc 'cd {ROOT} && bin/factory -C {self.proj} next'"])
+        first = cron.read_text()
+        self.assertEqual(first.splitlines(), [self.cron_line("bin/factory next"),
+                                              self.cron_line(f"bin/factory -C {self.proj} next", "acme__widget")])
+        self.assertEqual(self.target(None, stub + "cmd_next --install").returncode, 0)
+        self.assertEqual(cron.read_text().splitlines(), first.splitlines()[1:] + first.splitlines()[:1])
 
+    def test_next_install_keeps_comments_and_other_lines(self) -> None:
+        cron, stub = self.cron_stub()
+        before = ["# disabled 2026-10-25: */10 * * * * bash -lc 'cd /srv/old && bin/factory next'", "0 4 * * * /usr/bin/true",
+                  "*/10 * * * * bash -lc 'cd /srv/widget && bin/factory -C /srv/widget next'"]
+        cron.write_text("\n".join(before) + "\n")
+        self.assertEqual(self.target(None, stub + "cmd_next --install").returncode, 0)
+        self.assertEqual(cron.read_text().splitlines(), [*before, self.cron_line("bin/factory next")])
+
+    def test_next_install_two_targets_keep_each_other_and_loam(self) -> None:
+        cron, stub = self.cron_stub()
+        gadget = repo(self.runs.parent / "gadget", "https://github.com/acme/gadget.git", {"README.md": "x\n"})
+        loam = self.cron_line("bin/factory next")
+        cron.write_text(f"0 4 * * * /usr/bin/true\n{loam}\n")
+        for d in (self.proj, gadget, self.proj, gadget):
+            proc = self.target(d, stub + "cmd_next --install")
+            self.assertEqual(proc.returncode, 0, proc.stderr)
+        self.assertEqual(cron.read_text().splitlines(), [
+            "0 4 * * * /usr/bin/true", loam,
+            self.cron_line(f"bin/factory -C {self.proj} next", "acme__widget"),
+            self.cron_line(f"bin/factory -C {gadget} next", "acme__gadget")])
 
 if __name__ == "__main__":
     unittest.main()
