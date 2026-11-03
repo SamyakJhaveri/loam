@@ -43,6 +43,7 @@ case "$1" in
     jq -r "$filter" "$RULES_JSON" ;;
   pr)
     [ "$2" = list ] || exit 1
+    [ -n "${GH_PR_FAIL:-}" ] && { echo "HTTP 502: Bad Gateway" >&2; exit 1; }
     jq --arg st "$state" --arg head "$head" \\
       'map(select(.headRefName == $head and ($st != "merged" or .state == "MERGED")))' "$PRS_JSON" \\
       | jq -r "$filter" ;;
@@ -73,7 +74,7 @@ class ReleaseRequiredChecksTests(unittest.TestCase):
         self.top = top = pathlib.Path(tmp.name)
         fake = top / "fakebin"
         fake.mkdir()
-        for name, text in (("gh", FAKE_GH), ("git", FAKE_GIT), ("copier", "#!/bin/sh\nexit 0\n"),
+        for name, text in (("gh", FAKE_GH), ("git", FAKE_GIT), ("copier", '#!/bin/sh\nexit "${COPIER_EXIT:-0}"\n'),
                            ("uvx", "#!/bin/sh\nexit 0\n")):
             (fake / name).write_text(text, encoding="utf-8")
             (fake / name).chmod(0o755)
@@ -196,8 +197,67 @@ class ReleaseRequiredChecksTests(unittest.TestCase):
     def test_unmerged_pr_refuses(self) -> None:
         self.set_prs([{"number": 1, "headRefName": "release/9.9.9", "state": "OPEN", "mergeCommit": None}])
         proc = self.release(BOTH, **self.green())
-        self.assertIn("release/9.9.9", proc.stderr)
+        self.assertIn("no merged pull request from release/9.9.9;", proc.stderr)
         self.assert_nothing_released(proc)
+
+    def test_unreadable_pr_refuses(self) -> None:
+        proc = self.release(BOTH, **self.green(), GH_PR_FAIL="1")
+        self.assertIn("cannot read the pull request from release/9.9.9", proc.stderr)
+        self.assert_nothing_released(proc)
+
+    def test_merged_pr_without_a_merge_commit_refuses(self) -> None:
+        self.set_prs([{"number": 1, "headRefName": "release/9.9.9", "state": "MERGED", "mergeCommit": None}])
+        proc = self.release(BOTH, **self.green())
+        self.assertIn("is 'MERGED', not MERGED with a merge commit", proc.stderr)
+        self.assert_nothing_released(proc)
+
+    def test_malformed_version_refuses(self) -> None:
+        proc = subprocess.run(["bash", "bin/release.sh", "9.9"], cwd=self.work, env=self.env,
+                              capture_output=True, text=True, check=False)
+        self.assertNotEqual(proc.returncode, 0)
+        self.assertIn("usage: bin/release.sh X.Y.Z", proc.stderr)
+        self.assertFalse(self.gh_log.exists())
+
+    def test_unreadable_origin_tags_refuses(self) -> None:
+        git("remote", "set-url", "origin", str(self.top / "no-such-origin.git"), cwd=self.work)
+        proc = self.release(BOTH, **self.green())
+        self.assertNotEqual(proc.returncode, 0)
+        self.assertIn("cannot read origin's tags", proc.stderr)
+        self.assertEqual(self.tags(self.work), [])
+        self.assertEqual(self.pushes(), [])
+
+    def test_dirty_tree_refuses(self) -> None:
+        (self.work / "stray.txt").write_text("x\n", encoding="utf-8")
+        proc = self.release(BOTH, **self.green())
+        self.assertIn("working tree is dirty", proc.stderr)
+        self.assert_nothing_released(proc)
+
+    def test_local_tag_elsewhere_refuses(self) -> None:
+        git("tag", "-a", "v9.9.9", "-m", "stale", f"{self.merge}^", cwd=self.work)
+        proc = self.release(BOTH, **self.green())
+        self.assertIn("is not an annotated tag at the merge commit", proc.stderr)
+        self.assertEqual(self.pushes(), [])
+        self.assertEqual(self.tags(self.origin), [])
+
+    def test_lightweight_local_tag_at_the_merge_commit_refuses(self) -> None:
+        git("tag", "v9.9.9", self.merge, cwd=self.work)
+        proc = self.release(BOTH, **self.green())
+        self.assertIn("is not an annotated tag at the merge commit", proc.stderr)
+        self.assertEqual(self.pushes(), [])
+        self.assertEqual(self.tags(self.origin), [])
+
+    def test_no_verify_loam_run_refuses(self) -> None:
+        green = self.green()
+        shutil.rmtree(self.top / "verify")
+        proc = self.release(BOTH, **green)
+        self.assertIn("no clean-tree verify-loam run of HEAD", proc.stderr)
+        self.assert_nothing_released(proc)
+
+    def test_tag_that_does_not_render_fails(self) -> None:
+        proc = self.release(BOTH, **self.green(), COPIER_EXIT="1")
+        self.assertNotEqual(proc.returncode, 0)
+        self.assertIn("v9.9.9 IS PUSHED BUT DOES NOT RENDER", proc.stderr)
+        self.assertEqual(self.pushes(), [f"push origin {TAG}"])
 
     def test_head_past_the_merge_commit_refuses(self) -> None:
         git("switch", "-q", "main", cwd=self.work)
