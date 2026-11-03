@@ -218,14 +218,16 @@ spool_pending() {
 # tree's .sha; an entry older than the session's trace in the tree is dropped
 # unapplied, so whatever order overlapping captures publish in, the newest
 # transcript wins. With $DEADLINE set, entries are applied only until three
-# seconds before it, leaving time for the bounded add, commit and status; the
-# rest wait for the next holder. Applied entries are removed only once the
-# tree's traces match the commit, so a failed copy or commit leaves them for the
-# next drain, and draining one twice is harmless. Call only under the lock,
-# after store_recover.
+# seconds before it, leaving time for the bounded adds, commit and HEAD lookup;
+# the rest wait for the next holder. Each applied entry's own trace, sha and
+# INDEX.md are force-added, so an exclude rule that ignores traces (a global
+# '*.gz', the store's .git/info/exclude) does not keep them out of the commit,
+# and an entry is removed only once HEAD holds its trace's exact bytes, so a
+# failed copy or commit leaves it for the next drain, and draining one twice is
+# harmless. Call only under the lock, after store_recover.
 drain_spool() {
-  local e x repo sid day gen tgen out st sids="" by=""
-  local applied=()
+  local e x i repo sid day gen tgen out rel sids="" by="" head=""
+  local applied=() paths=() rels=()
   [ -n "${DEADLINE:-}" ] && by=$(( ${DEADLINE%.*} - 3 ))
   for e in "$SPOOL"/[0-9]*; do
     [ -f "$e/meta" ] || continue
@@ -244,7 +246,9 @@ drain_spool() {
     cp "$e/trace.jsonl.gz" "$out" && cp "$e/sha" "${out%.jsonl.gz}.sha" || return 1
     grep -qF " | $sid | " "$STORE/traces/$repo/INDEX.md" 2>/dev/null \
       || cat "$e/index" >> "$STORE/traces/$repo/INDEX.md" || return 1
-    applied+=("$e"); sids="$sids $sid"
+    rel="traces/$repo/${out##*/}"
+    applied+=("$e"); rels+=("$rel"); sids="$sids $sid"
+    paths+=("$rel" "${rel%.jsonl.gz}.sha" "traces/$repo/INDEX.md")
   done
   [ "${#applied[@]}" -gt 0 ] || return 0
   # Keep the ephemeral throttle marks and reports/ out of git: the marks are local
@@ -260,8 +264,15 @@ drain_spool() {
   printf '.throttle/\nreports/\n' > "$STORE/.gitignore" 2>/dev/null || true
   printf 'traces/*/INDEX.md merge=union\n' > "$STORE/.gitattributes" 2>/dev/null || true
   bounded 3 "${SGIT[@]}" add -A >/dev/null 2>&1
+  bounded 3 "${SGIT[@]}" add -f -- "${paths[@]}" >/dev/null 2>&1
   bounded 3 "${SGIT[@]}" commit -qm "capture $(date +%F)$sids" >/dev/null 2>&1
-  st="$(bounded 2 "${SGIT[@]}" status --porcelain -- traces 2>/dev/null)" && [ -z "$st" ] && rm -rf "${applied[@]}"
+  # An entry goes once HEAD's blob for its trace is the entry's own bytes,
+  # hashed unfiltered: a clean filter that hung the add would hang the hash too.
+  for i in "${!applied[@]}"; do
+    head="$(bounded 2 "${SGIT[@]}" rev-parse -q --verify "HEAD:${rels[$i]}" 2>/dev/null)" \
+      && x="$(bounded 2 "${SGIT[@]}" hash-object --no-filters -- "${applied[$i]}/trace.jsonl.gz" 2>/dev/null)" \
+      && [ -n "$x" ] && [ "$x" = "$head" ] && rm -rf "${applied[$i]}"
+  done
   return 0
 }
 
