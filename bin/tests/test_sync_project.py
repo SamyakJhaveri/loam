@@ -12,6 +12,7 @@ from __future__ import annotations
 import json
 import os
 import pathlib
+import shutil
 import subprocess
 import tempfile
 import unittest
@@ -436,6 +437,31 @@ class SyncProjectTests(unittest.TestCase):
         self.assertEqual(1, r.returncode, r.stdout + r.stderr)
         self.assertIn("--keep /conf.json", r.stderr)
         self.assertEqual([], self.claude_calls())
+
+    def test_refuses_a_pin_whose_nearest_tag_is_not_a_release_before_the_clone(self) -> None:
+        # Each tag sits one commit below the synced one, as a snapshot tag left behind on main does.
+        copy = self.base / "tpl-copy"
+        shutil.copytree(self.tpl, copy)
+        git("commit", "-q", "--allow-empty", "-m", "c3", cwd=copy)
+        c3 = git("rev-parse", "HEAD", cwd=copy)
+        for i, tag in enumerate(("archive/zz", "v1-snapshot", "v1.2.3-archive")):
+            with self.subTest(tag):
+                git("tag", tag, self.sha, cwd=copy)
+                self.work, self.claude_log = self.base / f"work-{i}", self.base / f"claude-{i}.log"
+                r = self.sync("--dry-run", loam=copy, sha=c3)
+                git("tag", "-d", tag, cwd=copy)
+                self.assertEqual(1, r.returncode, r.stdout + r.stderr)
+                self.assertIn(tag, r.stderr)
+                self.assertFalse((self.work / "project").exists())
+                self.assertFalse((self.work / "copier.log").exists())
+                self.assertEqual([], self.claude_calls())
+        git("tag", "archive/old", "v1.0.0", cwd=copy)  # an older snapshot below the release does not refuse
+        git("tag", "v1.1.0", self.sha, cwd=copy)
+        self.work, self.claude_log = self.base / "work-release", self.base / "claude-release.log"
+        r = self.sync("--dry-run", loam=copy, sha=c3)
+        self.assertEqual(0, r.returncode, r.stdout + r.stderr)
+        answers = (self.work / "project/.copier-answers.yml").read_text()
+        self.assertRegex(answers, r"(?m)^_commit: v1\.1\.0-1-g[0-9a-f]+$")
 
     def test_refuses_copier_flags_that_could_drop_a_ruling(self) -> None:
         section = "## Copier flags\n\n```text\n--skip /notes.md\n```\n"

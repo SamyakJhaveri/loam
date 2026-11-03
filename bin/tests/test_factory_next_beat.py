@@ -120,9 +120,13 @@ class NextBeatTests(unittest.TestCase):
         self.assertEqual(proc.returncode, 0, proc.stderr)
         self.assertIn("healthchecks beat failed", proc.stderr)
 
-    def held_slot(self, status: str, owner: int | None = None) -> pathlib.Path:
+    def run_dir(self) -> pathlib.Path:
         d = self.runs / "7" / "abcd1234"
-        d.mkdir(parents=True)
+        d.mkdir(parents=True, exist_ok=True)
+        return d
+
+    def held_slot(self, status: str, owner: int | None = None) -> pathlib.Path:
+        d = self.run_dir()
         (d / "status").write_text(status + "\n")
         (d / "launched").write_text("1\n")
         if owner is not None:
@@ -134,9 +138,20 @@ class NextBeatTests(unittest.TestCase):
     def test_full_slots_held_by_a_suspended_run_do_not_beat(self) -> None:
         # A run stopped whole keeps its lease and owner, so it holds the only slot with no progress; the old run
         # heartbeat stopped with it, and now the tick refuses instead. Continued, the same slot is an idle tick again.
-        sup = subprocess.Popen(["sleep", "60"], start_new_session=True)
+        # The supervisor holds the lease itself, then execs sleep, so the owner pid run_stopped reads is the holder.
+        # It touches a marker once it holds the lease, so the wait below never competes with it for the lock.
+        lease, held = self.run_dir() / "lease", self.runs.parent / "held"
+        sup = subprocess.Popen(["bash", "-c", 'exec 9>> "$1" && flock -n 9 && touch "$2" && exec sleep 60', "_",
+                                str(lease), str(held)], start_new_session=True)
         self.addCleanup(sup.wait)
         self.addCleanup(sup.kill)
+        for _ in range(100):
+            if held.exists():
+                break
+            self.assertIsNone(sup.poll(), "the supervisor could not take the lease")
+            time.sleep(0.05)
+        else:
+            self.fail("the supervisor never took the lease")
         self.held_slot("running", sup.pid)
         os.kill(sup.pid, signal.SIGSTOP)
         for _ in range(50):
@@ -144,6 +159,8 @@ class NextBeatTests(unittest.TestCase):
             if stat.strip().startswith("T"):
                 break
             time.sleep(0.1)
+        else:
+            self.fail("the supervisor never showed as stopped after SIGSTOP")
         for slots in (1, 2):   # a free slot left beside the stopped run must not mask it
             with self.subTest(slots=slots):
                 self.alerts.write_text("")
@@ -201,8 +218,8 @@ class NextBeatTests(unittest.TestCase):
     def test_a_ticks_reads_do_not_grow_with_candidates_or_waiting_prs(self) -> None:
         proc, sent, few = self.gh_tick({"ready": ["11"], "editor": {}, "closed": []}, prs=(9901,))
         self.assertEqual((proc.returncode, proc.stdout, sent), (0, "nothing to launch\n", ["--ping beat"]), proc.stderr)
-        for d in self.runs.iterdir():
-            shutil.rmtree(d)
+        for d in self.runs.iterdir():   # the idle tick also wrote idle-since (#619)
+            shutil.rmtree(d) if d.is_dir() else d.unlink()
         tab = {"ready": ["11", "12", "13", "14", "15", "16"], "editor": {"11": "mallory", "12": "SamyakJhaveri"},
                "closed": ["9903"]}
         proc, sent, many = self.gh_tick(tab, prs=(9901, 9902, 9903, 9904))
