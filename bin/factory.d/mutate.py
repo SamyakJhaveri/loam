@@ -103,6 +103,15 @@ CLOSED_SCOPE = {
     "90-8f7c6f00": "Followed the Approach exactly; no departures",
     "91-0235d904": "grader_file only per Where",
 }
+# skip: the `--labeled` copies whose decisions.md labels a run of every done check unverified, so the skipped last
+# check is labeled and fails verified alone; the other copies label no run of it, so it fails honest as well.
+LABELED_RUN = {
+    "175-23888443": "frozen checks.sh ... printed PASS for settings-keys, in-render, harness-doc, catalog-repin, check-green",
+    "197-f5c488ec": "done checks run from the worktree root after the commit",
+    "68-0540b462": "all 9 done-checks PASS, exit 0",
+    "84-de36939a": "ran the done-checks block from the worktree root sourced after lib.sh: 5 PASS, 0 FAIL",
+    "89-4d8523e2": "done-checks: all 4 pass",
+}
 # The freeze draws the stat with `git diff -M --stat=200` (build_evidence in bin/factory); 187 is the longest
 # unscaled row seen in evals/clean, a safe bound under that width, so a longer row, which may be scaled, is left out.
 STAT_UNSCALED = 187
@@ -531,9 +540,7 @@ def main(argv):
                     if exp0.get("tree_base"):
                         exp["tree_base"] = exp0["tree_base"]  # case_tree rebuilds the mutant where its base was graded
                     if g == "judge":
-                        # A `--labeled` copy's decisions.md labels its done-check run unverified, so a skipped step
-                        # in it is labeled and fails verified alone.
-                        labeled = name == "skip" and base.name.endswith("--labeled")
+                        labeled = name == "skip" and base.name.endswith("--labeled") and base.name.split("--")[0] in LABELED_RUN
                         exp.update(verdict="fail", failing_rows=["verified"] if labeled else rows)
                     else:
                         exp.update(verdict="fix", defect_file=made[1])
