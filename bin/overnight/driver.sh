@@ -54,17 +54,16 @@ grader_window() { local at out rc
   { echo "read_at $at"; echo "exit $rc"; [ -z "$out" ] || printf '%s\n' "$out"; } > "$O/grader-window.tmp" \
     && mv -f "$O/grader-window.tmp" "$O/grader-window.txt"
 }
-# Watch a call until it exits, polling every 15 s; end it after 8 polls or 120 elapsed seconds from an outcome line
-# first seen past line $2 in log.md, since a finished `claude -p` can hang on a pending wakeup. An adopted call is not
-# this driver's child, so poll kill -0. Each poll refreshes grader-window.txt, so an adopted call gets it too.
-watch() { local pid=$1 before=$2 polls=-1 outcome_at=0
+# Watch a call with kill -0, since an adopted call is not our child. Refresh the grader window until an outcome
+# appears past line $2, after the call's merge gate. Then allow 8 more 15 s polls before ending a hung call.
+watch() { local pid=$1 before=$2 polls=-1
   while kill -0 "$pid" 2> /dev/null; do
     sleep 15
-    grader_window
     [ "$polls" -lt 0 ] && tail -n +"$((before + 1))" "$O/log.md" | grep -q '^outcome issue ' \
-      && { polls=0; outcome_at=$SECONDS; }
+      && polls=0
+    [ "$polls" -lt 0 ] && grader_window
     [ "$polls" -ge 0 ] && polls=$((polls + 1))
-    if [ "$polls" -gt 8 ] || { [ "$polls" -ge 0 ] && [ "$((SECONDS - outcome_at))" -ge 120 ]; }; then
+    if [ "$polls" -gt 8 ]; then
       echo "$(stamp) ended call $pid 120 s after its outcome line" >> "$O/driver.log"
       end_call "$pid"
       break

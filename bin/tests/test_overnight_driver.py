@@ -279,26 +279,34 @@ class OvernightDriverTests(unittest.TestCase):
         self.assertIn(f"ended call {left.pid} 120 s after its outcome line", (self.state / "driver.log").read_text())
         self.assertTrue(self.wait_for(lambda: len(self.calls(calls)) >= 2), "the driver started no call after it")
 
-    def test_watch_counts_elapsed_time_as_well_as_polls_after_an_outcome(self) -> None:
-        # Run the actual watch function with a simulated clock, so slow reads cost no real minutes.
+    def test_watch_reads_only_before_an_outcome_and_ends_after_nine_polls(self) -> None:
+        # Run the shipped watcher without real sleeps or reads.
         driver = (OVERNIGHT / "driver.sh").read_text()
         watch = re.search(r"(?ms)^watch\(\).*?^}", driver)[0]
         (self.state / "log.md").write_text("earlier block\noutcome issue 8: merged\n")
-        for delay, expected_reads in ((0, 9), (60, 3)):
-            with self.subTest(read_seconds=delay):
+        for before, limit in ((1, 9), (2, 4)):
+            with self.subTest(before=before):
                 script = '''set -u
 O=$1
-delay=$2
-SECONDS=0
+before=$2
+limit=$3
+polls_seen=0
 reads=0
-stamp() { echo simulated; }
-sleep() { :; }
-grader_window() { reads=$((reads + 1)); SECONDS=$((SECONDS + delay)); }
-end_call() { echo "$reads $((SECONDS - delay))"; }
-''' + watch + '\nwatch "$$" 1\n'
-                got = subprocess.run(["bash", "-c", script, "watch-test", str(self.state), str(delay)],
+stamp() { echo test; }
+sleep() {
+  [ "$1" = 15 ] || exit 2
+  [ "$polls_seen" -lt "$limit" ] || { echo "bounded $reads"; exit 0; }
+  polls_seen=$((polls_seen + 1))
+  echo "sleep $1"
+}
+grader_window() { reads=$((reads + 1)); echo read; }
+end_call() { echo "ended $polls_seen $reads"; }
+''' + watch + '\nwatch "$$" "$before"\n'
+                got = subprocess.run(["bash", "-c", script, "watch-test", str(self.state), str(before), str(limit)],
                                      text=True, capture_output=True, check=True, timeout=5)
-                self.assertEqual(got.stdout.strip(), f"{expected_reads} {0 if delay == 0 else 120}")
+                expected = (["sleep 15"] * 9 + ["ended 9 0"] if before == 1 else
+                            ["sleep 15", "read"] * limit + [f"bounded {limit}"])
+                self.assertEqual(got.stdout.splitlines(), expected)
 
     def utc(self) -> str:
         return time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
