@@ -101,14 +101,15 @@ class MeasureRowsTests(unittest.TestCase):
             self.assertEqual(git(worktree, "rev-parse", "HEAD"), head)
 
     def test_rows_that_break_the_restore_stop_the_run(self) -> None:
-        # A nested repository goes (clean -ff); a row that moves HEAD, or a lock that makes the reset fail, stops
-        # the run instead of resetting the worker's work or grading a dirty tree.
+        # A row that moves HEAD, a lock that makes the reset fail on an otherwise clean tree, or a nested repository
+        # clean -fd keeps, stops the run instead of resetting the worker's work or grading a dirty tree.
         stub = 'finish() { echo "FINISH $1: $2"; exit 0; }\n'
+        restore = "FINISH stopped-environment: could not restore "
         cases = {
-            "nested": ("n: git init -q sub && touch sub/f; echo 1 | 1", None),
             "moved": ("m: git commit -q --allow-empty -m row; echo 1 | 1", "FINISH stopped-environment: a Rows measured row moved HEAD"),
-            "locked": ("l: echo x >> f && touch .git/index.lock; echo 1 | 1",
-                       "FINISH stopped-environment: the worktree is not at HEAD after Rows measured:  M f"),
+            "locked": ("l: touch .git/index.lock; echo 1 | 1", restore),
+            "nested": ("n: git init -q sub && touch sub/f; echo 1 | 1", restore),
+            "clean": ("c: touch new; echo 1 | 1", None),
         }
         for name, (rows, finish) in cases.items():
             with self.subTest(name), tempfile.TemporaryDirectory() as tmp:
