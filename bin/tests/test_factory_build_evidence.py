@@ -1,7 +1,7 @@
 """The real build_evidence assembles a grader's evidence from a run dir and a git worktree.
 
-Sources bin/factory (FACTORY_SOURCED=1) and runs build_evidence unstubbed, so the factory-macos CI job runs
-its path-reading loop on bash 3.2 (#457). The diff holds two content files, one with a space in its path.
+Sources bin/factory (FACTORY_SOURCED=1) and runs build_evidence unstubbed. The diff holds two content files, one
+with a space in its path.
 """
 
 from __future__ import annotations
