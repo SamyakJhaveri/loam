@@ -30,6 +30,22 @@ uvx copier update --trust --pretend    # dry-run
 
 Copier reads `.copier-answers.yml` (answers, `_src_path`, `_commit`) to compute the diff. Do not delete that file.
 
+### First update from v3.0.0
+
+A plain `copier update` runs the old version's `_tasks` in Copier's temporary render of that version, which has no `.git` and no `origin`.
+v3.0.0's tasks run `git init` and `_gh_setup.sh` there whenever `github_repo` is set.
+With `gh` logged in, that is one `git push -u origin` of the temporary render's initial commit to the project's GitHub repo and one ruleset `POST` to the GitHub API (and `gh repo create` when the repo does not exist).
+This affects the first update off v3.0.0, or off any Loam commit before 47caead3 (19 Oct 2026); from 47caead3 on, those two tasks run on `copy` only.
+Run that first update in one of two safe ways:
+
+```bash
+GH_CONFIG_DIR="$(mktemp -d)" env -u GH_TOKEN -u GITHUB_TOKEN uvx copier update --trust   # gh sees no login, so _gh_setup.sh exits before the push
+uvx copier update --trust --skip-tasks && rm -f _gh_setup.sh                                 # no task runs anywhere
+```
+
+`--skip-tasks` also skips the settings strip (task 1), so with a non-Python `project_kind` or `memory=false` read `.claude/settings.json` in the diff before you commit.
+DistBench takes releases only through `bin/sync-project` ([SYNC.md](SYNC.md)), which skips tasks and deletes `_gh_setup.sh`.
+
 ### Migrating a project rendered before v1.0.0
 
 The public repo restarted history at v1.0.0, so older `_commit` refs no longer resolve. Re-apply once with `uvx copier recopy --trust gh:samyakjhaveri/loam`, review `git diff`, commit. Ordinary `copier update` works afterwards.
@@ -39,7 +55,7 @@ The public repo restarted history at v1.0.0, so older `_commit` refs no longer r
 **Copier always resolves the latest tag, never main's HEAD.** Push without tagging and nothing ships.
 
 ```bash
-bin/release.sh 5.0.0    # main's ruleset requires verify and stub-sweep + green CI + a verify-loam render of HEAD with doctor and rendered check ok (no sessions) + IP sweep; bump VERSION, commit, tag, push, render the tag
+bin/release.sh 5.0.0    # HEAD at the merge commit of the merged release/5.0.0 PR (which bumped VERSION) + main's ruleset requires verify and stub-sweep + green CI + a verify-loam render of HEAD with doctor and rendered check ok (no sessions) + IP sweep; tag that commit, push only the tag, render the tag
 uvx copier copy --trust --vcs-ref v5.0.0 gh:samyakjhaveri/loam ./proj   # pin a version
 ```
 

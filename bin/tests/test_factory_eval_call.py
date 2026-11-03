@@ -7,7 +7,8 @@ the same settings bytes: role-settings.json with the read fence, plus the user t
 or config dir, never its hooks or allow rules. Each runs under a private config dir, since the fence still lets it read
 CLAUDE.md, rules, skills, plugins, agents and commands, and gets the live user-tier token in its own environment, so a
 retry after an account switch gets the new token and the supervisor keeps its own. model-eval regrades a Claude cell
-when that user-tier file changes.
+when that user-tier file changes. The comparison runs once for the judge, at high, and once for the reviewer, at
+xhigh (Samyak 2026-10-30); `bin/factory graders-check` holds each grader file to its own role's effort.
 """
 
 from __future__ import annotations
@@ -15,6 +16,7 @@ from __future__ import annotations
 import json
 import os
 import pathlib
+import re
 import shutil
 import subprocess
 import tempfile
@@ -46,7 +48,10 @@ if f and not os.path.exists(f + ".done"):
     s = json.load(open(f)); s["env"]["CLAUDE_CODE_OAUTH_TOKEN"] = "fixture-token-2"; json.dump(s, open(f, "w"))
     print(json.dumps({"type": "result", "subtype": "success", "is_error": False, "total_cost_usd": 0, "result": "not json"}))
     sys.exit(0)
-r = json.dumps({"verdict": "pass", "rows": {"correct": "pass", "verified": "pass", "honest": "pass"}, "fixes": []})
+if "findings" in a[a.index("--json-schema") + 1]:
+    r = json.dumps({"verdict": "merge", "findings": []})
+else:
+    r = json.dumps({"verdict": "pass", "rows": {"correct": "pass", "verified": "pass", "honest": "pass"}, "fixes": []})
 print(json.dumps({"type": "result", "subtype": "success", "is_error": False, "total_cost_usd": 0, "result": r,
                   "modelUsage": {"m": {}}}))
 """
@@ -67,6 +72,10 @@ def flags(argv: list[str], settings: str) -> dict[str, str | None]:
     out["--settings"] = settings
     out.pop("--max-budget-usd", None)
     return out
+
+
+# call_json's stem for each role, as run_judge and run_review pass it; the expected verdict each eval case keeps.
+ROLES = {"judge": ("judge", "high", "pass"), "reviewer": ("review", "xhigh", "merge")}
 
 
 class EvalCallTests(unittest.TestCase):
@@ -91,10 +100,11 @@ class EvalCallTests(unittest.TestCase):
         (self.cfg / "settings.json").write_text(json.dumps(USER))
         (self.cfg / "CLAUDE.md").write_text("operator memory\n")
         (self.cfg / "rules/r.md").write_text("operator rule\n")
-        case = tmp / "evals/judge/c1"
-        case.mkdir(parents=True)
-        (case / "prompt.md").write_text("## Ticket\n")
-        (case / "expected.json").write_text('{"verdict": "pass"}')
+        for role, (_, _, verdict) in ROLES.items():
+            case = tmp / f"evals/{role}/c1"
+            case.mkdir(parents=True)
+            (case / "prompt.md").write_text("## Ticket\n")
+            (case / "expected.json").write_text(json.dumps({"verdict": verdict}))
         env = {k: v for k, v in os.environ.items()
                if not k.startswith("FACTORY_") and k not in ("EVAL_EFFORT", "EVAL_OUT", "RUN", "LOG",
                                                             "CLAUDE_SETTINGS_FILE", "FAKE_SWITCH", "FAKE_VERSION", TOKEN)}
@@ -119,10 +129,10 @@ class EvalCallTests(unittest.TestCase):
             self.assertNotIn("fixture-token", arg)
             self.assertNotIn("launch-token", arg)
 
-    def production(self, switch: bool, config_mode: int | None = None
+    def production(self, switch: bool, config_mode: int | None = None, role: str = "judge"
                    ) -> tuple[subprocess.CompletedProcess[str], list[tuple[dict, str]], pathlib.Path]:
-        """A real freeze and call_json on a fixture worktree; returns the calls and the run dir."""
-        tmp = self.tmp
+        """A real freeze and call_json for role on a fixture worktree; returns the calls and the run dir."""
+        tmp = self.tmp / role
         run, main, wt, args = tmp / "run", tmp / "main", tmp / "wt", tmp / "pargs"
         for d in (run / "frozen", run / "tasks", run / "worker", args):
             d.mkdir(parents=True)
@@ -139,8 +149,8 @@ class EvalCallTests(unittest.TestCase):
                   "IS_FILE=1; KEY=t; BODY=x\n"
                   'touch "$LEDGER" "$DAILY"; date -u +%s > "$RUN/launched"\n'
                   'freeze || exit 1\n'
-                  'call_json 1 judge judge "$RUN/prompt.md" "$RUN/frozen/judge.schema.json" || exit 1\n'
-                  f'echo "after:${{{TOKEN}-unset}}"; echo "grader_effort:$GRADER_EFFORT"')
+                  f'call_json 1 {ROLES[role][0]} {role} "$RUN/prompt.md" "$RUN/frozen/{role}.schema.json" || exit 1\n'
+                  f'echo "after:${{{TOKEN}-unset}}"; echo "grader_effort:$(grader_effort {role})"')
         env = {**self.env, "ARGS_DIR": str(args), "FACTORY_SOURCED": "1", TOKEN: "launch-token"}
         if switch:
             env["FAKE_SWITCH"] = str(self.cfg / "settings.json")
@@ -150,14 +160,14 @@ class EvalCallTests(unittest.TestCase):
         self.assertIn("grader_effort:", proc.stdout, proc.stderr)
         return proc, self.calls(args), run
 
-    def replay(self, switch: bool = False, version: str = "2.1.312"
+    def replay(self, switch: bool = False, version: str = "2.1.312", role: str = "judge"
                ) -> tuple[subprocess.CompletedProcess[str], list[tuple[dict, str]]]:
-        args = self.tmp / "eargs"
+        args = self.tmp / f"eargs-{role}"
         args.mkdir()
         env = {**self.env, "ARGS_DIR": str(args), "FAKE_VERSION": version}
         if switch:
             env["FAKE_SWITCH"] = str(self.cfg / "settings.json")
-        proc = subprocess.run(["bin/factory", "eval", "judge", "--evals-dir", str(self.tmp / "evals")],
+        proc = subprocess.run(["bin/factory", "eval", role, "--evals-dir", str(self.tmp / "evals")],
                               cwd=ROOT, env=env, capture_output=True, text=True, check=False)
         return proc, self.calls(args)
 
@@ -182,23 +192,25 @@ class EvalCallTests(unittest.TestCase):
         self.assertNotIn("CLAUDE_CONFIG_DIR", s["env"])
 
     def test_eval_makes_the_production_grader_call(self) -> None:
-        proc, production, run = self.production(switch=False)
-        replay_proc, replay = self.replay()
-        self.assertEqual(replay_proc.returncode, 0, replay_proc.stdout + replay_proc.stderr)
-        self.assertEqual(len(production), 1, proc.stderr)
-        self.assertEqual(len(replay), 1)
-        frozen = run / "frozen/role-settings.json"
-        self.assertEqual(frozen.stat().st_mode & 0o077, 0)  # it holds the user tier's env, which may hold a secret
-        self.assertEqual(production[0][1], frozen.read_text())
-        for rec, settings in (production[0], replay[0]):
-            self.assert_fenced(rec, settings)
-            self.assertEqual(rec["token"], "fixture-token")
-        grader_effort = proc.stdout.rsplit("grader_effort:", 1)[1].strip()
-        prod, rep = (flags(rec["argv"], settings) for rec, settings in (production[0], replay[0]))
-        self.assertEqual(prod["--effort"], grader_effort)
-        differ = sorted(k for k in prod.keys() | rep.keys() if rep.get(k) != prod.get(k))
-        self.assertEqual(differ, [], f"run_eval's flags that differ from call_json's; effort "
-                                     f"{rep.get('--effort')} against GRADER_EFFORT {grader_effort}")
+        for role, (_, effort, _) in ROLES.items():
+            with self.subTest(role=role):
+                proc, production, run = self.production(switch=False, role=role)
+                replay_proc, replay = self.replay(role=role)
+                self.assertEqual(replay_proc.returncode, 0, replay_proc.stdout + replay_proc.stderr)
+                self.assertEqual(len(production), 1, proc.stderr)
+                self.assertEqual(len(replay), 1)
+                frozen = run / "frozen/role-settings.json"
+                self.assertEqual(frozen.stat().st_mode & 0o077, 0)  # it holds the user tier's env, which may hold a secret
+                self.assertEqual(production[0][1], frozen.read_text())
+                for rec, settings in (production[0], replay[0]):
+                    self.assert_fenced(rec, settings)
+                    self.assertEqual(rec["token"], "fixture-token")
+                self.assertEqual(proc.stdout.rsplit("grader_effort:", 1)[1].strip(), effort)
+                prod, rep = (flags(rec["argv"], settings) for rec, settings in (production[0], replay[0]))
+                self.assertEqual(prod["--effort"], effort, f"the loop's {role} call")
+                differ = sorted(k for k in prod.keys() | rep.keys() if rep.get(k) != prod.get(k))
+                self.assertEqual(differ, [], f"run_eval's flags that differ from call_json's for the {role}; effort "
+                                             f"{rep.get('--effort')} against {prod.get('--effort')}")
 
     def test_a_retry_gets_the_token_switched_in_after_the_first_attempt(self) -> None:
         proc, production, run = self.production(switch=True)
@@ -247,6 +259,35 @@ class EvalCallTests(unittest.TestCase):
         (self.cfg / "settings.json").write_text(json.dumps(user))
         model_eval()
         self.assertEqual(len(self.calls(args)), 2)
+
+
+class GradersCheckTests(unittest.TestCase):
+    def check(self, efforts: dict[str, str]) -> subprocess.CompletedProcess[str]:
+        """graders-check over copies of the checkout's grader files, with each named role's effort set."""
+        tmp_dir = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp_dir.cleanup)
+        agents = pathlib.Path(tmp_dir.name)
+        for role in ROLES:
+            text = (AGENTS / f"{role}.md").read_text()
+            if role in efforts:
+                text = re.sub(r"(?m)^effort: .*$", f"effort: {efforts[role]}", text, count=1)
+            (agents / f"{role}.md").write_text(text)
+        env = {k: v for k, v in os.environ.items() if k != "FACTORY_GRADER_MODEL"}
+        return subprocess.run(["bin/factory", "graders-check", "--agents-dir", str(agents)], cwd=ROOT, env=env,
+                              capture_output=True, text=True, check=False)
+
+    def test_checkout_files_pass(self) -> None:
+        proc = self.check({})
+        self.assertEqual(proc.returncode, 0, proc.stdout + proc.stderr)
+
+    def test_each_file_is_held_to_its_own_roles_effort(self) -> None:
+        # Each file at the other role's effort: only that file drifts.
+        for role, other in (("reviewer", "judge"), ("judge", "reviewer")):
+            with self.subTest(role=role):
+                proc = self.check({role: ROLES[other][1]})
+                self.assertNotEqual(proc.returncode, 0, proc.stdout)
+                self.assertIn(f"DRIFT {role}", proc.stdout)
+                self.assertNotIn(f"DRIFT {other}", proc.stdout)
 
 
 if __name__ == "__main__":

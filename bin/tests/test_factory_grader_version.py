@@ -22,6 +22,8 @@ import unittest
 ROOT = pathlib.Path(__file__).resolve().parents[2]
 SHIPPED = ROOT / "cultivation/marketplace/sam-cc-setup/agents"
 OLD = "0.9.4"
+# next reads every candidate's last editor in one GraphQL call (#598): #7, never edited.
+GQL = '{"data": {"repository": {"i7": {"editor": null, "lastEditedAt": null}}}}'
 
 
 class GraderVersionTests(unittest.TestCase):
@@ -110,7 +112,7 @@ class GraderVersionTests(unittest.TestCase):
         proc = self.sourced(
             env + "LOAM_FACTORY_TOOLCHAIN=t LOAM_FACTORY_COPIER=c; "
             "assert_toolchain_env() { :; }; claude_logged_in() { :; }; claude_version_ok() { :; }; target_repo() { echo o/r; }; "
-            f"gh() {{ case $1$2 in apigraphql) ;; api*) echo '{line}' ;; esac; }}; "
+            f"gh() {{ case $1$2 in apigraphql) echo '{GQL}' ;; api*) echo '{line}' ;; esac; }}; "
             f'git() {{ case "$*" in *"rev-parse --abbrev-ref HEAD") echo main ;; esac; }}; '
             f'tmux() {{ echo "$*" >> "{calls}"; [ "$1" != has-session ]; }}; '
             'cmd_next; echo "rc=$?"')

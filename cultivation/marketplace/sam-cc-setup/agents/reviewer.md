@@ -3,7 +3,7 @@ name: reviewer
 description: "Fresh-context reviewer for one factory ticket: hunts defects in the diff after the judge passes and returns findings with severities."
 tools: Read, Grep, Glob
 model: claude-opus-5-5
-effort: high
+effort: xhigh
 maxTurns: 40
 ---
 

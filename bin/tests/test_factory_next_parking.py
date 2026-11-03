@@ -13,6 +13,7 @@ import hashlib
 import json
 import os
 import pathlib
+import shlex
 import shutil
 import subprocess
 import tempfile
@@ -74,23 +75,30 @@ class ParkingTests(unittest.TestCase):
                      **env: str) -> subprocess.CompletedProcess[str]:
         """cmd_next `flag` (--dry-run by default) over the given unassigned (issue, body) frontier, lowest number first as gh sorts it,
         and `mine`, the ready-for-agent issues assigned to the runner. Each issue is written by `authors`' login,
-        SamyakJhaveri by default, and last edited by `editors`' login (None: the editor call fails; UNNAMED: a null
-        editor with a lastEditedAt), by no one by default. Each editor call is logged to GQL_LOG, every gh call to GH_LOG. `now` pins the
-        epoch `date -u +%s` prints, so a backoff boundary does not move while the test runs."""
+        SamyakJhaveri by default, and last edited by `editors`' login (None: GitHub cannot resolve the issue; UNNAMED: a
+        null editor with a lastEditedAt), by no one by default. The one editor call is answered as GitHub's GraphQL does,
+        one `i<N>` alias per issue; an issue it cannot resolve has a null alias and an `errors` entry, and then gh prints the
+        raw body whatever --jq asks and exits 1. Each editor call is logged to GQL_LOG, every gh call to GH_LOG. `now` pins
+        the epoch `date -u +%s` prints, so a backoff boundary does not move while the test runs."""
         def lines(issues: tuple[tuple[int, str], ...]) -> str:
             return " ".join(f"'{issue} {(authors or {}).get(issue, 'SamyakJhaveri')} {base64.b64encode(body.encode()).decode()}'"
                             for issue, body in issues) or "''"
-        def doc(who: str) -> str:
-            issue = {"editor": None, "lastEditedAt": "2026-10-30T00:00:00Z"} if who == UNNAMED else {"editor": {"login": who}}
-            return json.dumps({"data": {"repository": {"issue": issue}}})
-        edits = "".join(f'*" number={issue} "*) {"return 1" if who is None else f"doc={doc(who)!r}"} ;; '
-                        for issue, who in (editors or {}).items())
+        def alias(who: str | None) -> dict | None:
+            if who == UNNAMED:
+                return {"editor": None, "lastEditedAt": "2026-10-30T00:00:00Z"}
+            return {"editor": {"login": who}, "lastEditedAt": "2026-10-30T00:00:00Z"} if who else {"editor": None, "lastEditedAt": None}
+        everyone = {issue: (editors or {}).get(issue, "") for issue, _ in frontier + mine}
+        doc: dict = {"data": {"repository": {f"i{issue}": None if who is None else alias(who) for issue, who in everyone.items()}}}
+        gone = [issue for issue, who in everyone.items() if who is None]
+        if gone:
+            doc["errors"] = [{"message": f"Could not resolve to an Issue with the number of {issue}."} for issue in gone]
+        reply = f"echo {shlex.quote(json.dumps(doc))}; return 1" if gone else f'jq -r "$q" <<< {shlex.quote(json.dumps(doc))}'
         clock = "" if now is None else f'date() {{ if [ "$*" = "-u +%s" ]; then echo {now}; else command date "$@"; fi; }}; '
         stubs = (pre + clock + "assert_toolchain_env() { :; }; claude_logged_in() { :; }; claude_version_ok() { :; }; target_repo() { echo o/r; }; "
                  'gh() { echo "$*" >> "$GH_LOG"; '
-                 "case $2 in graphql) local a p= q= doc='{\"data\":{\"repository\":{\"issue\":{\"editor\":null}}}}'; "
+                 "case $2 in graphql) local a p= q=.; "
                  'for a; do [ "$p" = --jq ] && q=$a; p=$a; done; echo "$*" >> "$GQL_LOG"; '
-                 f"case \"$* \" in {edits}esac; jq -r \"$q\" <<<\"$doc\" ;; repos/*) printf '%s\\n' {lines(frontier)} ;; "
+                 f"{reply} ;; repos/*) printf '%s\\n' {lines(frontier)} ;; "
                  f"/issues\\?*) printf '%s\\n' {lines(mine)} ;; esac; }}; "
                  f"cmd_next {flag}")
         return sourced(stubs, {"FACTORY_MAX_PARALLEL": "1", "FACTORY_RUNS_ROOT": str(self.runs), "GQL_LOG": str(self.gql_log),
@@ -145,9 +153,13 @@ class ParkingTests(unittest.TestCase):
     def test_runner_assigned_issue_relaunches_only_after_a_relaunchable_stop(self) -> None:
         # The launch assigned the issue to the runner and nothing unassigns it (#386, #440): of the runner's own,
         # a stopped-daily run of an earlier UTC day, a stopped-environment run past its backoff, and a stopped run
-        # launch, and the rest are skipped without a line. Four slots, so #6's running run, which holds one, leaves room.
+        # launch, and each of the rest is passed over with its line (#617). Four slots, so #6's running run, which holds
+        # one, leaves room.
         for issue, status in ((5, "stopped-cap"), (6, "running"), (8, "pr-opened")):
             self.run_dir(issue, CLEAN, status)
+        others = ("parked #5: last run exited stopped-cap; edit the body or remove ready-for-agent\n"
+                  "waiting #6: its run is running\n"
+                  "waiting #8: its PR awaits merge or close\n")
         for status in ("stopped-daily", "stopped-environment", "stopped"):
             with self.subTest(status=status):
                 self.run_dir(7, CLEAN, status)
@@ -160,11 +172,11 @@ class ParkingTests(unittest.TestCase):
                 os.utime(self.runs / "7" / key(CLEAN) / "status", (86400, 86400))
                 proc = self.next_dry_run(mine=mine, FACTORY_MAX_PARALLEL="4")
                 self.assertEqual(proc.stdout.strip(), "would launch #7", proc.stderr)
-                self.assertEqual(proc.stderr, "")
+                self.assertEqual(proc.stderr, others)
                 shutil.rmtree(self.runs / "7")
         proc = self.next_dry_run(mine=tuple((n, CLEAN) for n in (5, 6, 8)), FACTORY_MAX_PARALLEL="4")
         self.assertEqual(proc.stdout.strip(), "nothing to launch", proc.stderr)
-        self.assertEqual(proc.stderr, "")
+        self.assertEqual(proc.stderr, others)
 
     def test_runner_assigned_ticket_defect_relaunches_only_after_a_body_edit(self) -> None:
         # The launch assigned #7 to the runner; its run ended ticket-defect, so the same body parks, and the body the
@@ -176,13 +188,13 @@ class ParkingTests(unittest.TestCase):
         self.assertEqual(proc.stdout.strip(), "would launch #7", proc.stderr)
 
     def test_runner_assigned_issue_that_never_ran_is_held(self) -> None:
-        # Assigned to the runner by hand with no run of any body: the owner holds it, so next leaves it; the same
-        # issue unassigned launches. A lint line under the issue dir is not a run.
+        # Assigned to the runner by hand with no run of any body: the owner holds it, so next leaves it, with its line
+        # (#617); the same issue unassigned launches. A lint line under the issue dir is not a run.
         (self.runs / "7").mkdir()
         (self.runs / "7" / "owner-events.jsonl").write_text("{}\n")
         proc = self.next_dry_run(mine=((7, CLEAN),))
         self.assertEqual(proc.stdout.strip(), "nothing to launch", proc.stderr)
-        self.assertEqual(proc.stderr, "")
+        self.assertEqual(proc.stderr, "held #7: assigned to the runner with no run of any body; unassign it to let next launch it\n")
         proc = self.next_dry_run((7, CLEAN))
         self.assertEqual(proc.stdout.strip(), "would launch #7", proc.stderr)
 
@@ -198,6 +210,16 @@ class ParkingTests(unittest.TestCase):
             with self.subTest(case=case):
                 self.run_dir(7, CLEAN, {"call": "stopped-environment"}.get(case, case))
                 d = self.runs / "7" / key(CLEAN)
+                if case == "running":
+                    # A live run holds its lease (cmd_run); a run dir with no lease holds no slot.
+                    (d / "lease").touch()
+                    p = subprocess.Popen(["flock", str(d / "lease"), "sleep", "60"], start_new_session=True)
+                    self.addCleanup(p.wait)
+                    self.addCleanup(subprocess.run, ["kill", "-KILL", "--", f"-{p.pid}"], check=False)
+                    for _ in range(100):
+                        if subprocess.run(["flock", "-n", str(d / "lease"), "true"]).returncode != 0:
+                            break
+                        time.sleep(0.05)
                 if case == "call":
                     os.utime(d / "status", (86400, 86400))
                     p = subprocess.Popen(["sleep", "60"], start_new_session=True)
@@ -220,16 +242,19 @@ class ParkingTests(unittest.TestCase):
                 proc = self.next_dry_run(mine=((7, edited),), pre=pre, FACTORY_MAX_PARALLEL="2")
                 expect = "nothing to launch" if case == "running" else "would launch #7"
                 self.assertEqual(proc.stdout.strip(), expect, proc.stderr)
+                if case == "running":
+                    subprocess.run(["kill", "-KILL", "--", f"-{p.pid}"], check=False)
+                    p.wait()
                 shutil.rmtree(self.runs / "7")
 
     def test_runner_assigned_stop_waits_while_its_stop_file_remains(self) -> None:
         # cmd_run exits stopped at once while FACTORY_STOP is in the run dir, so #7 must not take the pick from #8
-        # every tick (#440); removing the file makes it eligible again.
+        # every tick (#440), and says why on its line (#617); removing the file makes it eligible again.
         self.run_dir(7, CLEAN, "stopped")
         (self.runs / "7" / key(CLEAN) / "FACTORY_STOP").touch()
         proc = self.next_dry_run((8, CLEAN), mine=((7, CLEAN),))
         self.assertEqual(proc.stdout.strip(), "would launch #8", proc.stderr)
-        self.assertEqual(proc.stderr, "")
+        self.assertEqual(proc.stderr, "stopped #7: its run directory holds FACTORY_STOP (bin/factory stop); remove the file to let it launch\n")
         (self.runs / "7" / key(CLEAN) / "FACTORY_STOP").unlink()
         proc = self.next_dry_run((8, CLEAN), mine=((7, CLEAN),))
         self.assertEqual(proc.stdout.strip(), "would launch #7", proc.stderr)
@@ -240,24 +265,23 @@ class ParkingTests(unittest.TestCase):
         (self.runs / "7" / key(CLEAN) / "FACTORY_STOP").touch()
         proc = self.next_dry_run((7, CLEAN), (8, CLEAN))
         self.assertEqual(proc.stdout.strip(), "would launch #8", proc.stderr)
-        self.assertEqual(proc.stderr, "")
+        self.assertEqual(proc.stderr, "stopped #7: its run directory holds FACTORY_STOP (bin/factory stop); remove the file to let it launch\n")
 
     def test_relaunchable_run_waits_while_a_process_of_it_still_runs(self) -> None:
         # A stuck model call outlives finish stopped-environment; cmd_run refuses a relaunch while it, or any process
         # holding the run's lease, still runs, and writes no status, so #7 must not take the pick from #8 every tick.
-        cases = ["call"] + (["lease"] if sourced('echo "$HAVE_FLOCK"').stdout.strip() else [])
-        for holder in cases:
+        for holder in ("call", "lease"):
             with self.subTest(holder=holder):
                 self.run_dir(7, CLEAN, "stopped-environment")
                 d = self.runs / "7" / key(CLEAN)
                 os.utime(d / "status", (86400, 86400))
+                (d / "lease").touch()   # cmd_run creates it before any call
                 if holder == "call":
                     p = subprocess.Popen(["sleep", "60"], start_new_session=True)
                     self.addCleanup(p.wait)
                     self.addCleanup(subprocess.run, ["kill", "-KILL", "--", f"-{p.pid}"], check=False)
                     (d / "call").write_text(f"{p.pid} test.{key(str(p.pid))}\n")
                 else:
-                    (d / "lease").touch()
                     p = subprocess.Popen(["flock", str(d / "lease"), "sleep", "60"], start_new_session=True)
                     self.addCleanup(p.wait)
                     self.addCleanup(subprocess.run, ["kill", "-KILL", "--", f"-{p.pid}"], check=False)
@@ -354,7 +378,7 @@ class ParkingTests(unittest.TestCase):
         self.assertIn("parked #7", proc.stderr)
 
     def test_a_launch_that_cannot_take_its_owner_lock_still_counts(self) -> None:
-        # The early exits before the status write (no start time, owner.lock held, owner unwritable) stop on the
+        # The early exits before the status write (no start time, owner.flock held, owner unwritable) stop on the
         # environment too; each must count, or a launch that never gets the lock retries hourly for good.
         for _ in range(3):
             self.launch(7, CLEAN, ":", stubs="owner_lock() { return 1; }; ")
@@ -460,13 +484,6 @@ class ParkingTests(unittest.TestCase):
         proc = self.next_dry_run((8, CLEAN), FACTORY_DAILY_BUDGET_USD="100", FACTORY_ROUND_BUDGET_USD="15")
         self.assertEqual(proc.stdout.strip(), "nothing to launch", proc.stderr)
         self.assertIn("waiting: a run stopped at today's daily budget", proc.stderr)
-
-    def test_issue_assigned_to_someone_else_is_not_listed(self) -> None:
-        # Neither query returns it, so its past daily stop launches nothing.
-        self.run_dir(7, CLEAN, "stopped-daily")
-        os.utime(self.runs / "7" / key(CLEAN) / "status", (86400, 86400))
-        proc = self.next_dry_run()
-        self.assertEqual(proc.stdout.strip(), "nothing to launch", proc.stderr)
 
     def test_trailing_newlines_strip_as_load_ticket_does(self) -> None:
         # gh returns the body raw; load_ticket's $(...) strips its trailing newlines before cmd_run keys it.
@@ -637,7 +654,7 @@ class LintTests(ParkingTests):
         self.assertIn("parked #8", proc.stderr)
         self.assertIn("not owner #9: written or last edited by someone-else", proc.stderr)
         self.assertIn("not owner #11: written or last edited by someone-else", proc.stderr)
-        self.assertIn(" number=12 ", self.gql_log.read_text() + " ")   # the editor call runs past the first pick
+        self.assertIn("i12: issue(number: 12) ", self.gql_log.read_text())   # the editor read names every candidate
 
     def test_frontier_over_an_empty_frontier_prints_nothing(self) -> None:
         proc = self.next_dry_run(flag="--frontier")
@@ -673,7 +690,7 @@ class LintTests(ParkingTests):
         self.assertIn("parked #12", proc.stderr)
         self.assertEqual(snap(), before)
         self.assertFalse(alerts.exists())
-        self.assertNotIn("issues/40", self.gh_log.read_text())
+        self.assertNotIn("pullRequest", self.gh_log.read_text())
 
     def test_install_refuses_a_read_only_flag(self) -> None:
         cron = self.runs.parent / f"{self.runs.name}.crontab"
@@ -690,15 +707,21 @@ class LintTests(ParkingTests):
         self.assertIn("not owner #7: last edited by an account GitHub no longer names; edit the body as SamyakJhaveri", proc.stderr)
         self.assertNotIn("#8", proc.stderr)
 
-    def test_no_editor_call_after_the_pick(self) -> None:
-        # A stalled GraphQL costs a tick one timeout, not one per candidate; later candidates still get the author check.
-        proc = self.next_dry_run((7, CLEAN), (8, CLEAN), (9, CLEAN), authors={9: "someone-else"}, editors={8: None})
-        self.assertEqual(proc.stdout.strip(), "would launch #7", proc.stderr)
-        self.assertEqual(proc.stderr.strip(), "not owner #9: written or last edited by someone-else; "
-                         "edit the body as SamyakJhaveri or remove ready-for-agent")
+    def test_one_editor_call_names_every_candidate(self) -> None:
+        # One GraphQL read gives every candidate's last editor, the ready list's and the runner's own, however many are
+        # passed over, so a tick makes one editor read, not one per candidate (#598); each still gets its own verdict.
+        self.run_dir(13, CLEAN + "\nan older body", "stopped")
+        proc = self.next_dry_run((7, NOT_A_TICKET), (8, CLEAN), (9, CLEAN), (10, CLEAN), (12, CLEAN), mine=((13, CLEAN),),
+                                 authors={9: "someone-else"}, editors={8: "someone-else", 10: None})
+        self.assertEqual((proc.returncode, proc.stdout.strip()), (0, "would launch #12"), proc.stderr)
+        self.assertIn("lint failed #7", proc.stderr)
+        self.assertIn("not owner #8: written or last edited by someone-else", proc.stderr)
+        self.assertIn("not owner #9: written or last edited by someone-else", proc.stderr)
+        self.assertIn("not owner #10: could not read the last editor with gh", proc.stderr)
         calls = self.gql_log.read_text().splitlines()
         self.assertEqual(len(calls), 1, calls)
-        self.assertIn(" number=7 ", calls[0] + " ")
+        for issue in (7, 8, 9, 10, 12, 13):
+            self.assertIn(f"i{issue}: issue(number: {issue}) ", calls[0])
 
     def test_runner_assigned_issue_another_account_edited_does_not_relaunch(self) -> None:
         self.run_dir(7, CLEAN, "stopped-daily")
@@ -706,6 +729,111 @@ class LintTests(ParkingTests):
         proc = self.next_dry_run(mine=((7, CLEAN),), editors={7: "someone-else"})
         self.assertEqual(proc.stdout.strip(), "nothing to launch", proc.stderr)
         self.assertIn("not owner #7", proc.stderr)
+
+
+# A stand-in for gh that answers next's reads as GitHub does: the two listings as REST JSON through the real --jq (the
+# repository listing newest first, one 100-issue page unless --paginate), and the editor read with one alias per issue.
+# Each call is logged one per line to $GH_LOG; the issues come from the JSON at $STORE, number -> {as, bl, body}.
+GH_STAND_IN = """#!/usr/bin/env python3
+import json, os, re, subprocess, sys
+a = sys.argv[1:]
+store = json.load(open(os.environ["STORE"]))
+open(os.environ["GH_LOG"], "a").write(" ".join(a) + "\\n")
+jq = a[a.index("--jq") + 1] if "--jq" in a else "."
+path = a[1] if len(a) > 1 else ""
+def rest(n, i):
+    return {"number": int(n), "user": {"login": "SamyakJhaveri"}, "body": i["body"], "pull_request": None,
+            "assignees": [{"login": x} for x in i["as"]], "issue_dependencies_summary": {"blocked_by": i["bl"]},
+            "repository": {"full_name": "o/r"}}
+if path == "graphql":
+    q = next(x.split("=", 1)[1] for x in a if x.startswith("query="))
+    doc = {"data": {"repository": {k: {"editor": None, "lastEditedAt": None}
+                                   for k in re.findall(r"(i[0-9]+): issue\\(number", q)}}}
+elif path.startswith("repos/o/r/issues?"):
+    doc = sorted((rest(n, i) for n, i in store.items() if not ("assignee=none" in path and i["as"])),
+                 key=lambda x: -x["number"])
+    doc = doc if "--paginate" in a else doc[:100]
+elif path.startswith("/issues?"):
+    doc = [rest(n, i) for n, i in store.items() if "SamyakJhaveri" in i["as"]]
+else:
+    sys.exit(2)
+r = subprocess.run(["jq", "-r", jq], input=json.dumps(doc), capture_output=True, text=True)
+sys.stdout.write(r.stdout)
+sys.exit(r.returncode)
+"""
+
+
+class PassedOverTests(unittest.TestCase):
+    """Every ready issue the frontier loop passes over gets one stderr line with its reason, read from the same listings and
+    the same one editor read (#617)."""
+
+    def test_each_passed_over_issue_gets_one_line_and_an_older_clean_issue_still_launches(self) -> None:
+        t = tempfile.TemporaryDirectory()
+        self.addCleanup(t.cleanup)
+        tmp = pathlib.Path(t.name)
+        runs, bin_dir = tmp / "runs", tmp / "bin"
+        bin_dir.mkdir()
+        (bin_dir / "gh").write_text(GH_STAND_IN)
+        (bin_dir / "gh").chmod(0o755)
+        me, other = ["SamyakJhaveri"], ["mallory"]
+        store = {19: (["SamyakJhaveri"], None, CLEAN), 20: ([], None, CLEAN), 21: ([], 2, "x"), 22: (other, 0, "x"), 23: (me, 0, "x"), 24: (me, 0, "x"), 25: (me, 0, "x"),
+                 26: ([], 0, "x"), 27: (me, 1, "x"), 28: (me, 0, "x"), 29: ([], 0, CLEAN), 30: (me, 0, "x"),
+                 31: ([], 3, ""), 32: (other, 0, ""), 33: (["mallory", "eve"], 0, CLEAN)}
+        # 100 newer issues assigned to another account fill the repository listing's first page.
+        store.update({n: (other, 0, "x") for n in range(101, 201)})
+        (tmp / "store.json").write_text(json.dumps({n: {"as": a, "bl": b, "body": body} for n, (a, b, body) in store.items()}))
+        def run(issue: int, status: str | None, *files: tuple[str, str]) -> None:
+            d = runs / str(issue) / key(store[issue][2])
+            d.mkdir(parents=True)
+            if status:
+                (d / "status").write_text(status + "\n")
+            for name, text in files:
+                (d / name).write_text(text)
+        def pr(n: int) -> tuple[str, str]:
+            return "factory.log", f"2026-11-01T00:00:00Z EXIT pr-opened (0): https://github.com/o/r/pull/{n} after 1 rounds\n"
+        run(19, "stopped")   # relaunchable, were its blocker count readable
+        run(23, "pr-opened", pr(123))
+        run(25, "stuck")
+        run(26, None, ("FACTORY_STOP", ""))
+        run(28, "pr-opened", pr(128), ("pr-closed", "2026-11-01T01:00:00Z\n"))
+        run(30, "running")
+        run(33, "stopped-daily")   # of an earlier day, so it would relaunch were it not another account's
+        os.utime(runs / "33" / key(CLEAN) / "status", (86400, 86400))
+        gh_log = tmp / "gh.log"
+        proc = sourced("assert_target_ready() { :; }; claude_logged_in() { :; }; claude_version_ok() { :; }; "
+                       "target_repo() { echo o/r; }; cmd_next --dry-run",
+                       {"PATH": f"{bin_dir}:{os.environ['PATH']}", "STORE": str(tmp / "store.json"), "GH_LOG": str(gh_log),
+                        "FACTORY_RUNS_ROOT": str(runs), "FACTORY_MAX_PARALLEL": "2"})
+        self.assertEqual((proc.returncode, proc.stdout), (0, "would launch #29\n"), proc.stderr)
+        expect = {
+            19: "blocked #19: the listing gave no native blocker count (?); it waits until it does",
+            20: "blocked #20: the listing gave no native blocker count (?); it waits until it does",
+            21: "blocked #21: 2 open native blocker(s); it launches once they close",
+            22: "assigned #22: assigned to mallory, not the runner; unassign it or remove ready-for-agent",
+            23: "waiting #23: its PR awaits merge or close",
+            24: "held #24: assigned to the runner with no run of any body; unassign it to let next launch it",
+            25: "parked #25: last run exited stuck; edit the body or remove ready-for-agent",
+            26: "stopped #26: its run directory holds FACTORY_STOP (bin/factory stop); remove the file to let it launch",
+            27: "blocked #27: 1 open native blocker(s); it launches once they close",
+            28: "parked #28: its PR closed but the issue is still open; edit the body or remove ready-for-agent",
+            30: "waiting #30: its run is running",
+            31: "blocked #31: 3 open native blocker(s); it launches once they close",
+            32: "assigned #32: assigned to mallory, not the runner; unassign it or remove ready-for-agent",
+            33: "assigned #33: assigned to mallory,eve, not the runner; unassign it or remove ready-for-agent",
+        }
+        lines = proc.stderr.splitlines()
+        for issue, line in expect.items():
+            with self.subTest(issue=issue):
+                self.assertEqual([x for x in lines if f"#{issue}: " in x], [line], proc.stderr)
+        self.assertEqual(len(lines), len(expect) + 100, proc.stderr)
+        # The same reads as before: two listings and one editor read naming every candidate (no PR read under --dry-run).
+        calls = gh_log.read_text().splitlines()
+        self.assertEqual([c.split(" ", 2)[:2] for c in calls], [["api", "repos/o/r/issues?labels=ready-for-agent&state=open&per_page=100"],
+                                                                ["api", "/issues?filter=assigned&labels=ready-for-agent&state=open&per_page=100"],
+                                                                ["api", "graphql"]], calls)
+        self.assertIn("--paginate", calls[0].split())
+        for issue in store:
+            self.assertIn(f"i{issue}: issue(number: {issue}) ", calls[2])
 
 
 class LoadTicketOwnerTests(unittest.TestCase):

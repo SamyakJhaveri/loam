@@ -470,6 +470,7 @@ class UpdateSmoke(unittest.TestCase):
                     "-c",
                     "user.name=t",
                     "commit",
+                    "--allow-empty",   # a v3.1.0+ render's own task already commits it
                     "-qm",
                     "base",
                 ],

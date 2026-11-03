@@ -288,12 +288,13 @@ class EndToEndTests(unittest.TestCase):
         self.assertEqual(self.workers(), 2)
         for n in (1, 2):
             self.assertRegex(self.read(run / f"round-{n}.checks"), r"(?m)^FAIL done-file:")
-        # The launch assigned #1, so the next tick reads it among the runner's own and passes a stuck run over silently.
+        # The launch assigned #1, so the next tick reads it among the runner's own and passes a stuck run over with its
+        # parked line (#617).
         self.assertEqual(self.store()["issues"]["1"]["assignees"], [OWNER])
         before = (self.workers(), self.launches())
         t = self.tick()
         self.assertEqual(t.stdout, "nothing to launch\n", t.stderr)
-        self.assertNotIn("#1", t.stderr)
+        self.assertIn("parked #1: last run exited stuck", t.stderr)
         self.assertEqual(self.read(run / "status").strip(), "stuck")
         self.assertEqual((self.workers(), self.launches()), before)
         self.assertEqual(self.calls("unknown"), [])
