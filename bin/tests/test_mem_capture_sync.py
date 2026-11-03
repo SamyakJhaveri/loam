@@ -355,6 +355,8 @@ class LockTests(Base):
         self.addCleanup(objects.chmod, mode)
         self.capture(store, "s1")  # its commit fails
         self.assertEqual(len(self.spool(store)), 1, "the uncommitted capture left the spool")
+        self.assertNotEqual(subprocess.run(["git", "rev-parse", "-q", "--verify", "HEAD"], cwd=store,
+                                           capture_output=True).returncode, 0, "the failed commit made a HEAD")
         objects.chmod(mode)
         self.capture(store, "s1")
         trace = next((store / "traces/project").glob("*-s1.jsonl.gz")).relative_to(store).as_posix()
