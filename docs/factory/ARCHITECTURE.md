@@ -77,7 +77,7 @@ Scope beyond the ticket goal outside this list is a judge finding, not a stall.
 
 ## Models and roles
 
-- The loop's model and effort defaults live in `bin/factory`; `bin/factory graders-check`, a `bin/check` step, fails when `judge.md` or `reviewer.md` front matter disagrees with `GRADER_MODEL` or `GRADER_EFFORT`.
+- The loop's model and effort defaults live in `bin/factory`; `bin/factory graders-check`, a `bin/check` step, fails when `judge.md` or `reviewer.md` front matter disagrees with `GRADER_MODEL` or `GRADER_EFFORT`; it warns STALE, without failing, when `evals/scores.jsonl` has no fresh two-way line for the grader file or that line matched none of its cases, and prints one INFO line when the replay mismatched some of its cases.
 - Every loop role is `claude-opus-5-5` (Samyak, 2026-09-24): worker, its subagents, advisor, judge, reviewer, and eval replay.
 - Judge and reviewer are fresh Opus 5.5 at high in the loop (Samyak 2026-09-24, overriding the #186 eval; F38 measures what they miss); the lean-critic, picked by #186, is Opus 5.5 at high, by hand on the PR.
 - The plan-reviewer is Fable 5.1 at high, by hand outside the loop (F0 sets its frontmatter).

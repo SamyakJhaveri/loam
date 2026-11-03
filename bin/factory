@@ -10,7 +10,8 @@
 #   bin/factory merge <pr> <sha>    merges the PR only when sha is its head and every check reported there passed.
 #   bin/factory next [--install]    the F9 frontier timer's step: launch the next unblocked ready-for-agent ticket.
 #   bin/factory next --frontier     prints every issue next would launch, one #N per line in launch order; changes no run.
-#   bin/factory graders-check       fails when judge.md or reviewer.md drifts from GRADER_MODEL and GRADER_EFFORT; warns STALE.
+#   bin/factory graders-check       fails when judge.md or reviewer.md drifts from GRADER_MODEL and GRADER_EFFORT; warns STALE when
+#                                   a grader is unreplayed or its replay matched no case; INFO names a partial mismatch.
 #   bin/factory skills              lists each installed pstack skill's lines that name a ~/ path or ask the user.
 #   -C <repo>, before the subcommand or right after it, points lint, run, status, stop, merge, and next at another repository (F8).
 # Lint never executes a check; it reads the body and shells out only to `bash -n`, `gh`, and python3 for the hidden-text rule.
@@ -3919,6 +3920,10 @@ cmd_skills() {
 # grader file's sha256: an edit since the last replay, a replay over 30 days old (the served model drifts
 # under a fixed hash) or dated ahead, or one with no clean or no mutant case (a grader that rejects
 # everything scores perfectly on mutants alone). A warning, since every paid eval is a merge-checklist step.
+# A fresh line whose replay matched none of its cases also warns STALE: eval counts a case it could not build as
+# a mismatch, so that replay says nothing about the grader file. A partial miss prints one INFO line naming the
+# count instead, since eval exits 1 on any miss and a STALE there would never clear for an imperfect grader.
+# Only DRIFT sets the exit code.
 cmd_graders_check() { # [--agents-dir D] [--evals-dir D]
   local dir=cultivation/marketplace/sam-cc-setup/agents evals=evals want g f got h why rc=0
   while [ $# -gt 0 ]; do
@@ -3950,8 +3955,15 @@ cmd_graders_check() { # [--agents-dir D] [--evals-dir D]
           elif $t - now > 60 then "last replay dated in the future"
           elif ((.clean | numbers) // 0) == 0 then "last replay had no clean case"
           elif ((.mutants | numbers) // 0) == 0 then "last replay had no mutant case"
-          else "" end end' 2>&1)
-    [ -z "$why" ] || echo "WARN STALE $g: $why for sha256 $h in $evals/scores.jsonl"
+          else ((.cases | numbers) // 0) as $c | ((.mismatch | numbers) // 0) as $m
+          | if $c > 0 and $m >= $c then "last replay matched none of its \($c) cases"
+            elif $c > 0 and $m > 0 then "INFO last replay mismatched \($m) of \($c) cases"
+            else "" end end end' 2>&1)
+    case "$why" in
+      "")      ;;
+      "INFO "*) echo "INFO $g: ${why#INFO } for sha256 $h in $evals/scores.jsonl" ;;
+      *)       echo "WARN STALE $g: $why for sha256 $h in $evals/scores.jsonl" ;;
+    esac
   done
   [ "$rc" -eq 0 ] && echo "graders-check: OK"
   return "$rc"
