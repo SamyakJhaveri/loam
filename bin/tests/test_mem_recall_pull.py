@@ -130,7 +130,7 @@ class HangTests(Base):
             for pid in started:
                 try:
                     os.kill(pid, 9)
-                except ProcessLookupError:
+                except (ProcessLookupError, PermissionError):
                     pass
             deadline = time.monotonic() + 5
             while any(alive(p) for p in started) and time.monotonic() < deadline:
