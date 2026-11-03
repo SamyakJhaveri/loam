@@ -3363,6 +3363,13 @@ next_tick() { # [--dry-run|--install|--frontier]
     # replaces it and keeps every comment and every other line in order.
     local line cmd="bin/factory next" slug
     target_is_loam || cmd="bin/factory -C $TARGET next"
+    # Each path goes unquoted into sed replacement text and the cron line, where | & % ' ( or a space reads
+    # specially (a failed sed would leave an empty line and still drop the old one), so refuse before the crontab
+    # changes. The line's lock and redirect need the state directory before bin/factory runs.
+    case "$ROOT$HOME$TARGET" in
+      *[!A-Za-z0-9._/:,+@_-]*) echo "factory next --install: a path holds a character the cron line cannot carry: $ROOT $HOME $TARGET" >&2; return 1 ;;
+    esac
+    mkdir -p "$HOME/.local/state/loam-factory" || { echo "factory next --install: cannot create $HOME/.local/state/loam-factory" >&2; return 1; }
     line=$(grep -v '^#' "$tmpl" | grep -m1 . | sed -e "s|cd ~/loam |cd $ROOT |" -e "s|~/|$HOME/|g" -e "s|bin/factory next|$cmd|")
     if ! target_is_loam; then
       slug=$(target_slug)

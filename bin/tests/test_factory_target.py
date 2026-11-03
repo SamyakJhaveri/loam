@@ -12,6 +12,7 @@ import base64
 import hashlib
 import os
 import pathlib
+import re
 import subprocess
 import tempfile
 import unittest
@@ -279,6 +280,32 @@ class TargetTests(unittest.TestCase):
             "0 4 * * * /usr/bin/true", loam,
             self.cron_line(f"bin/factory -C {self.proj} next", "acme__widget"),
             self.cron_line(f"bin/factory -C {gadget} next", "acme__gadget")])
+
+    def test_next_install_refuses_a_path_the_cron_line_cannot_carry(self) -> None:
+        cron, stub = self.cron_stub()
+        before = "*/10 * * * * bash -lc 'cd /srv/old/loam && bin/factory next'\n"
+        for ch in "|&% '(":
+            cron.write_text(before)
+            home = self.runs.parent / f"h{ch}x"
+            proc = self.target(None, stub + "cmd_next --install", HOME=str(home))
+            self.assertNotEqual(proc.returncode, 0, ch)
+            self.assertIn("cannot carry", proc.stderr)
+            self.assertEqual(cron.read_text(), before, ch)
+
+    def test_next_install_creates_the_state_directory(self) -> None:
+        _, stub = self.cron_stub()
+        home = self.runs.parent / "fresh-home"
+        proc = self.target(None, stub + "cmd_next --install", HOME=str(home))
+        self.assertEqual(proc.returncode, 0, proc.stderr)
+        self.assertTrue((home / ".local/state/loam-factory").is_dir())
+
+    def test_next_crontab_caps_and_lock_match_the_driver(self) -> None:
+        driver = (ROOT / "bin/overnight/driver.sh").read_text()
+        caps = re.search(r"(FACTORY_DAILY_BUDGET_USD=\S+ .*?) flock -n -o ", driver)
+        lock = re.search(r"^LOCK=(\S+)$", driver, re.M)
+        self.assertTrue(caps and lock)
+        tmpl = (ROOT / "bin/factory.d/next.crontab").read_text()
+        self.assertIn(f"{caps.group(1)} flock -n -o {lock.group(1)} bin/factory next'", tmpl)
 
 if __name__ == "__main__":
     unittest.main()
