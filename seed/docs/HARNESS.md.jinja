@@ -128,8 +128,9 @@ SessionStart and `mem-weekly.sh` pulls then pushes from cron. One lock file in
 the store's git directory serializes the hooks' and `mem-weekly.sh`'s local
 writes, rebases and commits across sessions, so nothing lands inside another
 session's rebase; the kernel frees it when its last holder exits, and the next
-holder removes a stale `index.lock` and aborts a rebase a dead one left. A
-capture first writes its trace into a spool in the store's git directory, out of
+holder removes a stale `index.lock` and aborts a rebase a dead one left. Git in
+the memory store runs no git hooks, the user's global ones included, so no hook
+can keep that lock after its git exits. A capture first writes its trace into a spool in the store's git directory, out of
 reach of any rebase; a busy store, or a leftover rebase that cannot be
 recovered, delays the capture but never drops it, and the next capture to hold
 the lock commits it. Each entry records its transcript's length and mtime, and
