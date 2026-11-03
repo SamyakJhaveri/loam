@@ -86,10 +86,16 @@ restart() {
   for _ in $(seq 20); do [ -z "$(pgrep -P "$pp")" ] && break; sleep 1; done
   for c in $(pgrep -P "$pp"); do kill -KILL "$c"; done
   sleep 2
-  tmux send-keys -t "$T" "$LAUNCH --resume $1" Enter
+  tmux send-keys -t "$T" "$LAUNCH --resume $1" Enter || { exec {lk}>&-; log "launch keys not sent to $T"; return 1; }
   echo "$2" > "$S/lead"; sleep 5; exec {lk}>&-
   sleep "$BOOT_S"
   nudge "$3"
+}
+# The lead's own account is usable: stamp the gap and paste a resume message, no restart, so its agents survive ($1: why).
+wake() {
+  date +%s > "$S/switched"; log "$lead usable again, $1; pasted a resume message into the lead"
+  nudge "Watch alarm ($(date -u +%H:%MZ)): the Claude usage limit on $lead has reset. limit-alarm.sh on jhaveris did not restart you, so your background shells, monitors and agents are still running. Carry on from where the limit stopped you, and record this in the ledger."
+  $ALERT "WATCH: the Claude usage limit on $lead has reset. limit-alarm pasted a resume message into the distbench lead on $lead (no restart). Nothing to do unless the lead stays idle; check tmux distbench-lead."
 }
 # Paste message $1 into the lead's pane and submit it.
 nudge() {
@@ -111,9 +117,10 @@ switch() { # from to session why [exact]; from empty: the host is already on ano
   on=$(cat "$ACC/active")   # another caller may have moved the host while the switch waited on the lock
   usable "$on" || { exec {lk}>&-; log "the host is on $on, which is limited; lead not restarted, handled on the next pass"; return 1; }
   [ -z "${5:-}" ] || [ "$on" = "$2" ] || { exec {lk}>&-; log "the host is on $on, not $2; lead not restarted"; return 1; }
+  [ "$on" != "$lead" ] || { exec {lk}>&-; wake "and the host is on it"; return 0; }   # never restart onto its own account
   how="claude-account switch"; [ -n "$1" ] || how="another caller had already switched the host"
   date +%s > "$S/switched"; log "switched $lead -> $on ($4); restarting lead on $3"
-  restart "$3" "$on" "Watch alarm ($(date -u +%H:%MZ)): $4. limit-alarm.sh on jhaveris moved you from $lead to $on ($how) and restarted you with --resume. Your background shells, monitors and agents from before the restart are gone. Resume from the ledger RESUME POINTER: re-arm the monitors you need, check block 1's driver and op-* panes, then carry on. Record this switch in the ledger."
+  restart "$3" "$on" "Watch alarm ($(date -u +%H:%MZ)): $4. limit-alarm.sh on jhaveris moved you from $lead to $on ($how) and restarted you with --resume. Your background shells, monitors and agents from before the restart are gone. Resume from the ledger RESUME POINTER: re-arm the monitors you need, check block 1's driver and op-* panes, then carry on. Record this switch in the ledger." || return 1
   $ALERT "WATCH: $4. limit-alarm switched the distbench lead from $lead to $on and restarted it with --resume. Nothing to do unless the lead stays idle; check tmux distbench-lead."
 }
 
@@ -133,14 +140,12 @@ while true; do
     # The host on another usable account (another caller switched): restart there. On another limited one: switch on
     # from it. Else switch on from the lead's account. claude-account switch re-checks <from> under the lock.
     if [ "$act" != "$lead" ] && usable "$act"; then from="" to=$act
-    elif [ "$act" != "$lead" ]; then from=$act to=$(pick "$act"); [ "$to" != "$lead" ] || to=""
+    elif [ "$act" != "$lead" ]; then from=$act to=$(pick "$act")
     else from=$lead to=$(pick "$lead"); fi
     if [ -n "$to" ] && [ "$gap" -ge 900 ]; then
       switch "$from" "$to" "$sid" "the lead hit its Claude usage limit on $lead" && told=""
     elif [ -z "$to" ] && usable "$lead" && [ "$gap" -ge 900 ]; then   # the lead's reset came first: wake the lead, no restart
-      date +%s > "$S/switched"; log "$lead usable again, no other account is; pasted a resume message into the lead"; told=""
-      nudge "Watch alarm ($(date -u +%H:%MZ)): the Claude usage limit on $lead has reset. limit-alarm.sh on jhaveris did not restart you, so your background shells, monitors and agents are still running. Carry on from where the limit stopped you, and record this in the ledger."
-      $ALERT "WATCH: the Claude usage limit on $lead has reset. limit-alarm pasted a resume message into the distbench lead on $lead (no restart). Nothing to do unless the lead stays idle; check tmux distbench-lead."
+      wake "no other account is"; told=""
     elif [ -z "$to" ] && ! usable "$lead" && [ "$told" != 1 ]; then   # told: empty, held (pair busy, alert sent, check again) or 1
       soon="" who=""
       for n in $(stored); do u=$(num "$S/$n.until"); if [ -z "$soon" ] || [ "$u" -lt "$soon" ]; then soon=$u; who=$n; fi; done

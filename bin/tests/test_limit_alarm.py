@@ -194,6 +194,17 @@ class LimitAlarmTests(Host):
             time.sleep(0.1)
         self.assertEqual(self.active(), "c", self.log())
 
+    def test_lead_reset_with_host_on_limited_account_moves_host_back_without_restart(self) -> None:
+        self.accounts("c")
+        (self.h / "acc" / "active").write_text("b\n")
+        (self.h / "s" / "b.until").write_text(f"{int(time.time()) + 7200}\n")
+        (self.h / "s" / "seen").write_text("u1\n")  # the lead's old limit line, already booked and since reset
+        (self.h / "proj" / "t.jsonl").write_text(LIMIT + "\n")
+        self.alarm(":", order="a b c")
+        self.assertEqual(self.active(), "a", self.log())
+        self.assertEqual((self.restarts(), self.tmux_count("paste-buffer")), (0, 1), self.log())
+        self.assertEqual(self.read("s/lead"), "a")
+
     def test_refuses_to_arm_without_lead_account(self) -> None:
         (self.h / "s" / "lead").unlink()
         self.assertEqual(self.alarm(":"), 1)

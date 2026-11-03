@@ -7,7 +7,7 @@
 set -u
 command -v timeout > /dev/null || { echo "limit-alarm-install needs timeout(1) (GNU coreutils) to bound each run"; exit 1; }
 lead=$HOME/.local/state/distbench/limit-alarm/lead
-[ -s "$lead" ] || { echo "FAILED: nothing installed, no $lead; write the account the lead runs on there (echo <account> > $lead) and run this again"; exit 1; }
+[ -f "${CLAUDE_ACCOUNTS_DIR:-$HOME/.config/claude-accounts}/$(cat "$lead" 2>/dev/null).token" ] || { echo "FAILED: nothing installed, $lead is missing or names no stored account; write the account the lead runs on there (echo <account> > $lead) and run this again"; exit 1; }
 mkdir -p "$HOME/.distbench"; cp "$(dirname "$0")/limit-alarm" "$HOME/.distbench/la-new.sh"
 export TZ=America/Los_Angeles
 D=$HOME/.distbench/la-test; rm -rf "$D"; mkdir -p "$D"
