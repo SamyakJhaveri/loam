@@ -41,9 +41,10 @@ r = subprocess.run(["jq", "-r", jq], input=json.dumps(doc), capture_output=True,
 '''
 
 # One tick: every alert but the beat is appended to $T/alerts; $T/alert-fail fails the next one, $T/tmux-fail the launch,
-# and $T/has-session makes the pick's tmux session exist already.
+# and $T/has-session makes the pick's tmux session exist already. git is stubbed, so the pull step is refused (no branch)
+# and never fetches or fast-forwards the checkout under test.
 TICK = r'''. bin/factory; MAIN_CHECKOUT="$T/co"
-assert_target_ready() { :; }; claude_logged_in() { :; }; claude_version_ok() { :; }
+assert_target_ready() { :; }; claude_logged_in() { :; }; claude_version_ok() { :; }; git() { :; }
 if [ -n "$OTHER" ]; then target_is_loam() { return 1; }; target_repo() { echo Acme/WidGet; }; else target_repo() { echo o/r; }; fi
 alert() { [ "$1" = --ping ] && return 0; echo "$*" >> "$T/alerts"; [ -f "$T/alert-fail" ] && { rm -f "$T/alert-fail"; return 1; }; return 0; }
 tmux() { case $1 in new-session) [ -f "$T/tmux-fail" ] && return 1; echo "$*" >> "$T/tmux"; return 0 ;; has-session) [ -f "$T/has-session" ] ;; *) return 1 ;; esac; }
