@@ -12,6 +12,7 @@ import base64
 import hashlib
 import os
 import pathlib
+import re
 import subprocess
 import tempfile
 import unittest
@@ -169,6 +170,10 @@ class TargetTests(unittest.TestCase):
         self.assertIn("PASS standing do-not-touch list: 2 paths", self.target(self.proj, status).stdout)
 
     def test_every_gh_call_names_the_origin_repository(self) -> None:
+        # next's two frontier listings print the same fields: number, author, body (`-` if empty), blockers, assignees.
+        fields = ('"\\(.number) \\(.user.login) \\(.body // "" | @base64 | if . == "" then "-" else . end) '
+                  '\\(.issue_dependencies_summary.blocked_by // "?") '
+                  '\\([(.assignees // [])[].login] | join(",") | if . == "" then "-" else . end)"')
         self.target(self.proj, self.gh_stub + "lint 5")  # the stub body fails lint; only its gh call matters
         load = self.target(self.proj, self.gh_stub + "load_ticket 5; echo REPO=$REPO")
         self.assertIn("REPO=acme/widget", load.stdout, load.stderr)
@@ -185,13 +190,13 @@ class TargetTests(unittest.TestCase):
             "editor { login } lastEditedAt } } }",
             "pr list -R acme/widget --json number,headRefName,title --jq "
             '.[] | select(.headRefName | startswith("factory/")) | "  #\\(.number) \\(.headRefName) \\(.title)"',
-            "api repos/acme/widget/issues?labels=ready-for-agent&state=open&assignee=none&per_page=100 --jq "
-            'sort_by(.number)[] | select(.pull_request == null) | select(.issue_dependencies_summary.blocked_by == 0)'
-            ' | "\\(.number) \\(.user.login) \\(.body // "" | @base64)"',
+            # Every ready issue, assigned or blocked too, so next can name why it passes one over (#617).
+            "api repos/acme/widget/issues?labels=ready-for-agent&state=open&per_page=100 --paginate --jq "
+            'sort_by(.number)[] | select(.pull_request == null) | ' + fields,
             # /issues has no repository in its path; the runner's own issues are kept to this one by the filter.
             "api /issues?filter=assigned&labels=ready-for-agent&state=open&per_page=100 --paginate --jq "
             '.[] | select(.pull_request == null) | select((.repository.full_name // "" | ascii_downcase) == "acme/widget")'
-            ' | select(.issue_dependencies_summary.blocked_by == 0) | "\\(.number) \\(.user.login) \\(.body // "" | @base64)"'])
+            ' | ' + fields])
 
     def test_next_parks_by_the_targets_own_runs_without_the_toolchain(self) -> None:
         # next launches only a body that passes lint (#314); gh returns the body with no trailing newline.
@@ -227,16 +232,81 @@ class TargetTests(unittest.TestCase):
         self.assertIn("errs=1", self.target(None, body).stdout)
         self.assertIn("errs=0", self.target(self.proj, body).stdout)
 
-    def test_next_install_keeps_one_cron_line_per_target(self) -> None:
+    def cron_stub(self) -> tuple[pathlib.Path, str]:
         cron = self.runs.parent / "crontab"
-        stub = f'crontab() {{ if [ "$1" = -l ]; then cat "{cron}" 2> /dev/null; else cat > "{cron}.new"; mv "{cron}.new" "{cron}"; fi; }}\n'
-        self.assertEqual(self.target(None, stub + "cmd_next --install").returncode, 0)
+        return cron, f'crontab() {{ if [ "$1" = -l ]; then cat "{cron}" 2> /dev/null; else cat > "{cron}.new"; mv "{cron}.new" "{cron}"; fi; }}\n'
+
+    def install(self, repo_dir: pathlib.Path | None, home: pathlib.Path | None = None) -> subprocess.CompletedProcess[str]:
+        """`next --install` over the stub crontab, with a scratch HOME, since install creates its state directory."""
+        return self.target(repo_dir, self.cron_stub()[1] + "cmd_next --install", HOME=str(home or self.runs.parent / "home"))
+
+    def cron_line(self, cmd: str, slug: str = "") -> str:
+        """The live line's shape (jhaveris's), for the scratch HOME `install` runs with."""
+        state = f"{self.runs.parent}/home/.local/state/loam-factory"
+        tag = f"-{slug}" if slug else ""
+        return (f"*/10 * * * * bash -lc 'cd {ROOT} && FACTORY_DAILY_BUDGET_USD=1000000 FACTORY_GRADER_BUDGET_USD=1000000 "
+                f"FACTORY_MAX_PARALLEL=2 flock -n -o {state}/next{tag}.lock {cmd}' >> {state}/next{tag}.log 2>&1")
+
+    def test_next_install_keeps_one_cron_line_per_target(self) -> None:
+        cron, _ = self.cron_stub()
+        cron.write_text("*/10 * * * * bash -lc 'cd /srv/old/loam && bin/factory next'\n")
+        self.assertEqual(self.install(None).returncode, 0)
+        once = cron.read_text()
+        self.assertEqual(self.install(None).returncode, 0)
+        self.assertEqual(cron.read_text(), once)
         for _ in range(2):
-            proc = self.target(self.proj, stub + "cmd_next --install")
+            proc = self.install(self.proj)
             self.assertEqual(proc.returncode, 0, proc.stderr)
-        lines = cron.read_text().splitlines()
-        self.assertEqual(lines, [f"*/10 * * * * bash -lc 'cd {ROOT} && bin/factory next'",
-                                 f"*/10 * * * * bash -lc 'cd {ROOT} && bin/factory -C {self.proj} next'"])
+        first = cron.read_text()
+        self.assertEqual(first.splitlines(), [self.cron_line("bin/factory next"),
+                                              self.cron_line(f"bin/factory -C {self.proj} next", "acme__widget")])
+        self.assertEqual(self.install(None).returncode, 0)
+        self.assertEqual(cron.read_text().splitlines(), first.splitlines()[1:] + first.splitlines()[:1])
+
+    def test_next_install_keeps_comments_and_other_lines(self) -> None:
+        cron, _ = self.cron_stub()
+        before = ["# disabled 2026-10-25: */10 * * * * bash -lc 'cd /srv/old && bin/factory next'", "0 4 * * * /usr/bin/true",
+                  "*/10 * * * * bash -lc 'cd /srv/widget && bin/factory -C /srv/widget next'"]
+        cron.write_text("\n".join(before) + "\n")
+        self.assertEqual(self.install(None).returncode, 0)
+        self.assertEqual(cron.read_text().splitlines(), [*before, self.cron_line("bin/factory next")])
+
+    def test_next_install_two_targets_keep_each_other_and_loam(self) -> None:
+        cron, _ = self.cron_stub()
+        gadget = repo(self.runs.parent / "gadget", "https://github.com/acme/gadget.git", {"README.md": "x\n"})
+        loam = self.cron_line("bin/factory next")
+        cron.write_text(f"0 4 * * * /usr/bin/true\n{loam}\n")
+        for d in (self.proj, gadget, self.proj, gadget):
+            proc = self.install(d)
+            self.assertEqual(proc.returncode, 0, proc.stderr)
+        self.assertEqual(cron.read_text().splitlines(), [
+            "0 4 * * * /usr/bin/true", loam,
+            self.cron_line(f"bin/factory -C {self.proj} next", "acme__widget"),
+            self.cron_line(f"bin/factory -C {gadget} next", "acme__gadget")])
+
+    def test_next_install_refuses_a_path_the_cron_line_cannot_carry(self) -> None:
+        cron, _ = self.cron_stub()
+        before = "*/10 * * * * bash -lc 'cd /srv/old/loam && bin/factory next'\n"
+        for ch in "|&% '(":
+            cron.write_text(before)
+            home = self.runs.parent / f"h{ch}x"
+            proc = self.install(None, home)
+            self.assertNotEqual(proc.returncode, 0, ch)
+            self.assertIn("cannot carry", proc.stderr)
+            self.assertEqual(cron.read_text(), before, ch)
+
+    def test_next_install_creates_the_state_directory(self) -> None:
+        proc = self.install(None)
+        self.assertEqual(proc.returncode, 0, proc.stderr)
+        self.assertTrue((self.runs.parent / "home/.local/state/loam-factory").is_dir())
+
+    def test_next_crontab_caps_and_lock_match_the_driver(self) -> None:
+        driver = (ROOT / "bin/overnight/driver.sh").read_text()
+        caps = re.search(r"(FACTORY_DAILY_BUDGET_USD=\S+ .*?) flock -n -o ", driver)
+        lock = re.search(r"^LOCK=(\S+)$", driver, re.M)
+        self.assertTrue(caps and lock)
+        tmpl = (ROOT / "bin/factory.d/next.crontab").read_text()
+        self.assertIn(f"{caps.group(1)} flock -n -o {lock.group(1)} bin/factory next'", tmpl)
 
 
 if __name__ == "__main__":
