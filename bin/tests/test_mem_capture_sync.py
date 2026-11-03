@@ -25,6 +25,8 @@ NoHookTests: store git runs no git hook, even one the store's core.hooksPath nam
 cannot keep the store lock after a capture, a recall (its fetch and rebase included) or mem-weekly.sh returns.
 ConfigHookTests: the same for hooks defined in the store's or the global config (git 2.54 and later).
 SigningTests: a global commit.gpgsign with no usable key does not keep a capture in the spool.
+LockBlockTests: mem-capture.sh, mem-recall.sh and mem-weekly.sh carry the store lock block byte for byte, so the
+weekly drains the spool with the capture's own drain_spool.
 """
 
 from __future__ import annotations
@@ -637,6 +639,17 @@ class SigningTests(Base):
             self.capture(store, "s1")
         self.assertEqual(self.spool(store), [], "the capture stayed in the spool")
         self.assertTrue(git("log", "-1", "--format=%s", cwd=store).startswith("capture "))
+
+
+class LockBlockTests(unittest.TestCase):
+    def test_the_three_scripts_carry_the_same_store_lock_block(self) -> None:
+        def block(path: pathlib.Path) -> str:
+            text = path.read_text()
+            start = text.index("\n# --- The store lock")
+            return text[start:text.index("\n# --- end of the store lock block", start)]
+        self.assertIn("drain_spool()", block(HOOK))
+        self.assertEqual(block(RECALL), block(HOOK), "mem-recall.sh's store lock block differs from mem-capture.sh's")
+        self.assertEqual(block(WEEKLY), block(HOOK), "mem-weekly.sh's store lock block differs from mem-capture.sh's")
 
 
 if __name__ == "__main__":
