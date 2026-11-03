@@ -491,20 +491,13 @@ class NoHookTests(Base):
 class ConfigHookTests(NoHookTests):
     # Git 2.54 and later also run hooks defined in config (hook.<name>.event and hook.<name>.command), which
     # core.hooksPath does not reach. Each event gets one such hook in the store's config, and three in the global
-    # config: a dotted name, a name holding `=` and the nameless `[hook]` one. Older git runs none, so there the
-    # tests skip.
+    # config: a dotted name, a name holding `=` and the nameless `[hook]` one. Older git runs none of them, so
+    # there the tests only show the scripts still commit with the flags these keys add.
     def setUp(self) -> None:
         super().setUp()
         patcher = mock.patch.dict(GIT_ENV, {"GIT_CONFIG_GLOBAL": str(self.top / "global.gitconfig")})
         patcher.start()
         self.addCleanup(patcher.stop)
-        probe, mark = self.top / "probe", self.top / "probe-ran"
-        git("init", "-q", str(probe), cwd=self.top)
-        git("config", "hook.probe.event", "post-commit", cwd=probe)
-        git("config", "hook.probe.command", f"touch '{mark}'", cwd=probe)
-        git("commit", "-q", "--allow-empty", "-m", "probe", cwd=probe)
-        if not mark.exists():
-            self.skipTest("this git runs no hooks defined in config")
 
     def hooks(self, store: pathlib.Path, *names: str) -> None:
         self.ran = self.top / "hook-ran"
