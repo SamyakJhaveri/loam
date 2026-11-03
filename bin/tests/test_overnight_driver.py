@@ -11,6 +11,7 @@ tmux, pgrep, sleep and alert, so nothing reaches GitHub, Slack, tmux or a model.
 
 from __future__ import annotations
 
+import fnmatch
 import json
 import os
 import pathlib
@@ -71,8 +72,21 @@ class OvernightDriverTests(unittest.TestCase):
         self.assertEqual(s["sandbox"]["filesystem"]["denyWrite"], ["~/loam/bin/overnight"])
         self.assertEqual(s["sandbox"]["network"]["allowedDomains"], ["github.com"])
         # The call reads DistBench only through the driver's grader-window.txt; no allow rule opens gh on it.
-        self.assertEqual([r for r in deny if "distbench" in r],
-                         ["Bash(gh * --repo SamyakJhaveri/distbench *)", "Bash(gh * -R SamyakJhaveri/distbench *)"])
+        # Two wildcard rules deny every gh spelling and checkout path that names DistBench (#641); prose in the
+        # repo's own spelling, with no slash before it, still runs.
+        self.assertEqual([r for r in deny if "distbench" in r.lower()], ["Bash(*distbench*)", "Bash(*/DistBench*)"])
+        pats = [r[5:-1] for r in deny if "distbench" in r.lower()]
+
+        def denied(c: str) -> bool:
+            return any(fnmatch.fnmatchcase(c, p) for p in pats)
+
+        for cmd in ("gh issue view 1 -R SamyakJhaveri/distbench", "gh pr comment 5 --body x --repo=SamyakJhaveri/distbench",
+                    "gh pr comment 5 --body x -RSamyakJhaveri/distbench", "gh api /repos/samyakjhaveri/DistBench/issues",
+                    "GH_REPO=SamyakJhaveri/distbench gh pr comment 5 --body x", "cd ~ && cd distbench && gh pr comment 5"):
+            self.assertTrue(denied(cmd), cmd)
+        for cmd in ("gh pr list -R SamyakJhaveri/loam", 'gh pr comment 5 -R SamyakJhaveri/loam --body "left open: '
+                    'grader window: DistBench grader-fix PR 3 open"', "gh pr comment 5 -R SamyakJhaveri/loam --body-file n.md"):
+            self.assertFalse(denied(cmd), cmd)
         self.assertNotIn("allow", s["permissions"])
 
     def test_protocol_reads_the_grader_window_from_the_drivers_file(self) -> None:
