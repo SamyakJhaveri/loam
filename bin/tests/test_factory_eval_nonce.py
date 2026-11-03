@@ -28,6 +28,8 @@ OPENER = chr(0x3C) + "!--"
 
 FAKE_CLAUDE = """#!/usr/bin/env python3
 import json, os, re, sys
+if "--version" in sys.argv:
+    print("2.1.312 (Claude Code)"); sys.exit(0)
 prompt = sys.stdin.read()
 log = os.environ["PROMPT_LOG"]
 json.dump((json.load(open(log)) if os.path.exists(log) else []) + [prompt], open(log, "w"))
