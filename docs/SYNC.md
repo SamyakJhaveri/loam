@@ -19,8 +19,8 @@ Since the 2026-08 rebuild there are three distribution mechanisms: Copier forwar
 ### bin/sync-project
 
 ```bash
-bin/sync-project --dry-run SamyakJhaveri/distbench            # Loam HEAD; stop before the push
-bin/sync-project --draft SamyakJhaveri/distbench e90bfce0     # push loam-sync/e90bfce0, open a draft PR
+bin/sync-project --dry-run --no-port SamyakJhaveri/distbench  # Loam HEAD; no port call, stop before the push (a DistBench diff source)
+bin/sync-project --draft <owner/repo> e90bfce0                # push loam-sync/e90bfce0, open a draft PR (not for DistBench)
 ```
 
 Flags: `--loam DIR` (the Loam checkout to render from, default the script's own), `--branch NAME` (default `loam-sync/<sha8>`), `--work DIR` (the scratch dir, default a new one under `$TMPDIR`), `--rulings FILE` (default the project's `.loam/sync-rulings.md`), `--data KEY=VALUE` (a Copier answer, repeatable), `--dry-run`, `--no-port`, `--draft`.
