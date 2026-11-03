@@ -55,6 +55,9 @@ class OvernightDriverTests(unittest.TestCase):
         (self.home / "loam/bin/claude-account").symlink_to(ROOT / "bin/claude-account")
         self.fake = self.home / "fake"
         self.fake.mkdir()
+        # Hour 12 for `date +%H`, so no run in 07:00-07:59 Pacific starts the morning-report call first.
+        write_exec(self.fake / "date",
+                   f'#!/bin/sh\n[ "$*" = +%H ] && {{ echo 12; exit 0; }}\nexec {shutil.which("date")} "$@"\n')
         self.acc = self.home / "acc"
         self.runs = self.home / "runs"
 

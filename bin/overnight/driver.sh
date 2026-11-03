@@ -56,10 +56,12 @@ grader_window() { local at out rc tmp
   { echo "read_at $at"; echo "exit $rc"; [ -z "$out" ] || printf '%s\n' "$out"; } > "$tmp" \
     && mv -fT "$tmp" "$O/grader-window.txt"
 }
-# Watch a call with kill -0, since an adopted call is not our child. Refresh the grader window until an outcome
-# appears past line $2, after the call's merge gate. Then allow 8 more 15 s polls before ending a hung call.
+# Watch a call with kill -0, since an adopted call is not our child; a zombie has ended (kill -0 still finds it while
+# an ancestor that took the orphan has not reaped it, as the factory's mutation sweep does). Refresh the grader
+# window until an outcome appears past line $2, after the call's merge gate. Then allow 8 more 15 s polls before
+# ending a hung call.
 watch() { local pid=$1 before=$2 polls=-1
-  while kill -0 "$pid" 2> /dev/null; do
+  while kill -0 "$pid" 2> /dev/null && ! ps -o stat= -p "$pid" 2> /dev/null | grep -q '^Z'; do
     sleep 15
     [ "$polls" -lt 0 ] && tail -n +"$((before + 1))" "$O/log.md" | grep -q '^outcome issue ' \
       && polls=0
