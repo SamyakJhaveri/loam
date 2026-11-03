@@ -14,6 +14,10 @@ process owns, and none may run one of the git hooks A's store sets.
 LockTests: a capture that cannot take the store lock in time keeps its data in the spool under .git and the
 next holder lands it; a directory left at the lock path by the earlier mkdir lock does not block captures; a trace
 the store's exclude file ignores is still committed, and stays spooled until a commit holds it.
+IndexLockTests: a capture removes an index.lock only when a holder scan that ran to its end finds no process with it
+open. A git outside the store lock paused holding it, or a process whose main thread has exited holding it in another
+thread, keeps it, and so does a holder scan made to fail or stall at its listing of /proc; each such capture spools
+its entry within the hook timeout, and the next capture whose scan ends clear removes the lock and lands both.
 RecallBoundTests: a recall whose rebase hangs ends within its five-second hook timeout and leaves main clean.
 OverlapTests: of two overlapping captures of one session, the one that read the longer transcript wins, whichever
 publishes last.
@@ -82,13 +86,14 @@ class Base(unittest.TestCase):
         git("commit", "-qm", "base", cwd=seed)
         git("push", "-q", str(self.origin), "main", cwd=seed)
 
-    def start_capture(self, store: pathlib.Path, sid: str, rewrite: bool = True) -> subprocess.Popen:
+    def start_capture(self, store: pathlib.Path, sid: str, rewrite: bool = True,
+                      env: dict[str, str] | None = None) -> subprocess.Popen:
         transcript = self.top / f"{sid}.jsonl"
         if rewrite:
             transcript.write_text(json.dumps({"type": "user", "message": {"role": "user", "content": f"prompt {sid}"}}) + "\n")
         p = subprocess.Popen(["bash", str(HOOK)], stdin=subprocess.PIPE, stdout=subprocess.DEVNULL,
                              stderr=subprocess.PIPE, text=True, cwd=self.cwd,
-                             env={**GIT_ENV, "LOAM_MEMSTORE": str(store)})
+                             env={**GIT_ENV, "LOAM_MEMSTORE": str(store), **(env or {})})
         p.stdin.write(json.dumps({"hook_event_name": "SessionEnd", "transcript_path": str(transcript),
                                   "session_id": sid, "cwd": str(self.cwd)}))
         p.stdin.close()
@@ -98,8 +103,8 @@ class Base(unittest.TestCase):
         self.assertEqual(p.wait(timeout=30), 0, p.stderr.read())
         p.stderr.close()
 
-    def capture(self, store: pathlib.Path, sid: str) -> None:
-        self.finish(self.start_capture(store, sid))
+    def capture(self, store: pathlib.Path, sid: str, env: dict[str, str] | None = None) -> None:
+        self.finish(self.start_capture(store, sid, env=env))
 
     def recall(self, store: pathlib.Path, timeout: float = 30) -> None:
         r = subprocess.run(
@@ -402,6 +407,129 @@ class LockTests(Base):
         for sid in ("s1", "s2"):
             self.capture(store, sid)
             self.assertEqual(self.spool(store), [], f"{sid}'s committed entry stayed in the spool")
+
+
+# A process that holds the file argv[1] open in a second thread after its main thread exits, so its leader is a
+# zombie whose /proc/<pid>/fd cannot be read. It touches argv[2] once the leader is a zombie and exits when argv[3]
+# appears.
+THREAD_HOLDER = """
+import ctypes, os, sys, threading, time
+f = open(sys.argv[1])
+def hold():
+    status = "/proc/%d/status" % os.getpid()
+    for _ in range(500):
+        if "\\tZ" in open(status).read().split("State:")[1][:4]:
+            break
+        time.sleep(0.01)
+    open(sys.argv[2], "w").close()
+    for _ in range(400):
+        if os.path.exists(sys.argv[3]):
+            break
+        time.sleep(0.05)
+threading.Thread(target=hold).start()
+ctypes.CDLL(None).pthread_exit(None)
+"""
+
+# A sitecustomize.py whose audit hook touches {fired} and then runs {fault} when a python3 lists /proc itself.
+SCAN_FAULT = """import os, sys, time
+def h(e, a):
+    if e in ("os.listdir", "os.scandir") and a and isinstance(a[0], (str, bytes)) and os.fsdecode(a[0]).rstrip("/") == "/proc":
+        open({fired!r}, "a").close()
+        {fault}
+sys.addaudithook(h)
+"""
+
+
+@unittest.skipUnless(os.path.isdir("/proc/self/fd"), "the holder scan under test reads /proc")
+class IndexLockTests(Base):
+    def setUp(self) -> None:
+        super().setUp()
+        self.store = self.top / "store"
+        git("init", "-q", str(self.store), cwd=self.top)
+        self.lock = self.store / ".git/index.lock"
+
+    def head_index(self) -> str:
+        return git("show", "HEAD:traces/project/INDEX.md", cwd=self.store)
+
+    def assert_both_landed(self) -> None:
+        self.assertFalse(self.lock.exists(), "the stale index.lock was kept")
+        self.assertEqual(self.spool(self.store), [], "the spool was not drained")
+        index = self.head_index()
+        for sid in ("s1", "s2"):
+            self.assertIn(f" | {sid} | ", index, f"{sid} is not in HEAD")
+
+    def test_a_git_add_outside_the_store_lock_keeps_its_index_lock(self) -> None:
+        inside, go = self.top / "inside", self.top / "go"
+        clean = self.top / "clean.sh"
+        clean.write_text(f"#!/bin/sh\ntouch '{inside}'; while [ ! -f '{go}' ]; do sleep 0.05; done; cat\n")
+        clean.chmod(0o755)
+        git("config", "filter.slow.clean", str(clean), cwd=self.store)
+        (self.store / ".git/info").mkdir(exist_ok=True)
+        (self.store / ".git/info/attributes").write_text("user.txt filter=slow\n")
+        (self.store / "user.txt").write_text("user\n")
+        add = subprocess.Popen(["git", "add", "user.txt"], cwd=self.store, env=GIT_ENV,
+                               stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, text=True)
+        self.addCleanup(add.stderr.close)
+        self.addCleanup(add.wait, 30)
+        self.addCleanup(go.touch)
+        self.until(inside.exists, "the git add to pause in its clean filter")
+        self.capture(self.store, "s1")
+        self.assertTrue(self.lock.is_file(), "the capture removed the live git add's index.lock")
+        self.assertEqual(len(self.spool(self.store)), 1, "s1 is not in the spool")
+        go.touch()
+        self.assertEqual(add.wait(timeout=30), 0, add.stderr.read())
+        status = subprocess.run(["git", "status", "--porcelain"], cwd=self.store, env=GIT_ENV,
+                                capture_output=True, text=True)
+        self.assertEqual(status.returncode, 0, status.stderr)
+        self.assertEqual(git("diff", "--cached", "--name-only", cwd=self.store), "user.txt")
+        self.capture(self.store, "s2")
+        self.assert_both_landed()
+
+    def test_a_thread_outliving_its_main_thread_keeps_the_index_lock(self) -> None:
+        self.lock.touch()
+        inside, go = self.top / "inside", self.top / "go"
+        holder = subprocess.Popen(["python3", "-c", THREAD_HOLDER, str(self.lock), str(inside), str(go)])
+        self.addCleanup(holder.wait, 30)
+        self.addCleanup(go.touch)
+        self.until(inside.exists, "the holder's main thread to exit")
+        status = pathlib.Path(f"/proc/{holder.pid}/status").read_text()
+        self.assertRegex(status, r"(?m)^State:\tZ", "the holder's leader is not a zombie")
+        self.assertRegex(status, r"(?m)^Threads:\t2$", "the holder's second thread is gone")
+        self.capture(self.store, "s1")
+        self.assertTrue(self.lock.exists(), "the capture removed an index.lock a live thread holds")
+        self.assertEqual(len(self.spool(self.store)), 1, "s1 is not in the spool")
+        go.touch()
+        holder.wait(timeout=30)
+        self.capture(self.store, "s2")
+        self.assert_both_landed()
+
+    def assert_a_faulty_scan_keeps_the_lock(self, fault: str) -> None:
+        self.lock.touch()  # no process holds it
+        inj, fired = self.top / "inj", self.top / "fired"
+        inj.mkdir()
+        (inj / "sitecustomize.py").write_text(SCAN_FAULT.format(fired=str(fired), fault=fault))
+        t0 = time.monotonic()
+        self.capture(self.store, "s1", env={"PYTHONPATH": str(inj)})
+        took = time.monotonic() - t0
+        self.assertTrue(fired.exists(), "the holder scan never listed /proc")
+        self.assertTrue(self.lock.exists(), "a scan that did not finish removed the index.lock")
+        self.assertEqual(len(self.spool(self.store)), 1, "s1 is not in the spool")
+        self.assertLess(took, 10, "the capture outran the hook's ten-second timeout")
+        self.capture(self.store, "s2")
+        self.assert_both_landed()
+
+    def test_a_failed_holder_scan_keeps_the_index_lock(self) -> None:
+        self.assert_a_faulty_scan_keeps_the_lock('raise PermissionError(13, "injected", "/proc")')
+
+    def test_a_stalled_holder_scan_keeps_the_index_lock(self) -> None:
+        self.assert_a_faulty_scan_keeps_the_lock("time.sleep(30)")
+
+    def test_an_index_lock_no_process_holds_is_removed(self) -> None:
+        self.lock.touch()
+        self.capture(self.store, "s1")
+        self.assertFalse(self.lock.exists(), "the stale index.lock was kept")
+        self.assertEqual(self.spool(self.store), [], "the spool was not drained")
+        self.assertIn(" | s1 | ", self.head_index())
 
 
 class RecallBoundTests(Base):
