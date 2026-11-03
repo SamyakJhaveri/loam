@@ -27,6 +27,8 @@ ROOT = pathlib.Path(__file__).resolve().parent.parent
 LIST = "checks/FROZEN.sha256"
 SIGNERS = ".github/allowed_signers"
 SSH_SIG = b"-----BEGIN SSH SIGNATURE-----"
+# A listed key's signature is fully trusted; an unknown key's is not, whatever this git's default.
+VERIFY_SSH = ("gpg.format=ssh", "gpg.ssh.program=ssh-keygen", "gpg.minTrustLevel=fully")
 
 
 def digest(path: pathlib.Path) -> str:
@@ -90,8 +92,11 @@ def ssh_signed(commit: str) -> bool:
     """True when every signature header of commit is an SSH signature. verify-commit picks its verifier from
     the signature, not gpg.format: an OpenPGP one goes to gpg and the host's keyring, never allowed_signers."""
     header = git("cat-file", "commit", commit).stdout.partition(b"\n\n")[0]
-    sigs = [value for key, _, value in (line.partition(b" ") for line in header.split(b"\n"))
-            if key in (b"gpgsig", b"gpgsig-sha256")]
+    sigs = []
+    for line in header.split(b"\n"):
+        key, _, value = line.partition(b" ")
+        if key in (b"gpgsig", b"gpgsig-sha256"):
+            sigs.append(value)
     return bool(sigs) and all(sig.startswith(SSH_SIG) for sig in sigs)
 
 
@@ -112,9 +117,9 @@ def signed_off(ref: str, listed: bytes) -> bool:
             held = git("show", f"{c}:./{LIST}")
             if held.returncode != 0 or held.stdout != listed:
                 continue
-            check = git("-c", "gpg.format=ssh", "-c", "gpg.ssh.program=ssh-keygen", "-c", "gpg.minTrustLevel=fully",
-                        "-c", f"gpg.ssh.allowedSignersFile={f.name}", "verify-commit", c)
-            if check.returncode == 0:
+            config = [*VERIFY_SSH, f"gpg.ssh.allowedSignersFile={f.name}"]
+            args = [arg for kv in config for arg in ("-c", kv)]
+            if git(*args, "verify-commit", c).returncode == 0:
                 return True
     return False
 
