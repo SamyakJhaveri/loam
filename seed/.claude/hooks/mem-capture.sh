@@ -238,10 +238,13 @@ spool_pending() {
 # '*.gz', the store's .git/info/exclude) does not keep them out of the commit,
 # and an entry is removed only once HEAD holds its trace's exact bytes, so a
 # failed copy or commit leaves it for the next drain, and draining one twice is
-# harmless. Call only under the lock, after store_recover.
+# harmless. Call only under the lock, after store_recover. The drain first
+# removes .tmp-* directories older than five minutes, the leftovers of a killed
+# or failed capture.
 drain_spool() {
   local e x i repo sid day gen tgen out rel sids="" by="" head=""
   local applied=() paths=() rels=()
+  find "$SPOOL" -maxdepth 1 -name '.tmp-*' -mmin +5 -exec rm -rf {} + 2> /dev/null
   [ -n "${DEADLINE:-}" ] && by=$(( ${DEADLINE%.*} - 3 ))
   for e in "$SPOOL"/[0-9]*; do
     [ -f "$e/meta" ] || continue

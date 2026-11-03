@@ -361,6 +361,26 @@ class LockTests(Base):
         tree = git("ls-tree", "-r", "--name-only", "main", "traces/project", cwd=self.origin).splitlines()
         self.assertTrue(any(p.endswith("-s3.jsonl.gz") for p in tree), tree)
 
+    def test_the_drain_removes_only_old_tmp_directories_under_the_lock(self) -> None:
+        a, _ = self.two_stores()
+        spool = a / ".git/loam-spool"
+        old, mid, new = spool / ".tmp-99999", spool / ".tmp-99997", spool / ".tmp-99998"
+        now = time.time()
+        for d, age in ((old, 600), (mid, 240), (new, 0)):
+            d.mkdir(parents=True)
+            (d / "trace.jsonl.gz").write_text("x")
+            os.utime(d, (now - age, now - age))
+        with open(a / ".git/loam-mem.lock", "a") as held:
+            fcntl.flock(held, fcntl.LOCK_EX)
+            self.capture(a, "s1")
+            self.assertEqual(len(self.spool(a)), 1, "the capture was not spooled")
+            self.assertTrue(old.is_dir(), "the old .tmp- directory was removed without the lock")
+        self.capture(a, "s2")
+        self.assertTrue(self.in_tree(a, "s1") and self.in_tree(a, "s2"), "both sessions must be committed")
+        self.assertFalse(old.exists(), "the ten-minute-old .tmp- directory was kept")
+        self.assertTrue((mid / "trace.jsonl.gz").is_file(), "the four-minute-old .tmp- directory was removed")
+        self.assertTrue((new / "trace.jsonl.gz").is_file(), "the fresh .tmp- directory was removed")
+
     def test_an_old_lock_directory_does_not_block_captures(self) -> None:
         a, _ = self.two_stores()
         (a / ".git/loam-mem.lock").mkdir()  # left by the earlier mkdir lock
