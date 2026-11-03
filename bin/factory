@@ -3207,6 +3207,30 @@ stopped_environment_recent() { # <run dir> -> 0 when its run stopped on the envi
   [ $(( $(date -u +%s) - t )) -lt "$ENV_BACKOFF_SEC" ]
 }
 
+# A tick that ends `nothing to launch` beats healthchecks, so a factory idle over ready issues looks healthy (#619).
+# An idle spell is the run of real ticks that read a ready issue, launch none and find no slot held: its first tick
+# writes idle-since in the runs root, and the first one over IDLE_ALERT_SEC later sends one needs-you alert, then
+# writes idle-alerted, only once the alert went out, as env_park_alert writes env-parked. idle_end ends the spell.
+IDLE_ALERT_SEC=3600
+idle_end() { rm -f "$RUNS_ROOT/idle-since" "$RUNS_ROOT/idle-alerted"; }
+idle_note() { # <ready issues read>
+  local now t project=loam
+  now=$(date -u +%s)
+  t=$(cat "$RUNS_ROOT/idle-since" 2> /dev/null)
+  if ! [[ "$t" =~ ^[0-9]+$ ]]; then
+    mkdir -p "$RUNS_ROOT" && printf '%s\n' "$now" > "$RUNS_ROOT/idle-since"
+    return 0
+  fi
+  [ $((now - t)) -gt "$IDLE_ALERT_SEC" ] && [ ! -e "$RUNS_ROOT/idle-alerted" ] || return 0
+  target_is_loam || project=$(target_repo | sed 's#.*/##' | tr '[:upper:]' '[:lower:]')
+  if alert --level needs-you --source factory --project "$project" \
+    "factory idle: $1 ready-for-agent issue(s) have waited over an hour with none launchable; next.log names each one's reason" >&2; then
+    : > "$RUNS_ROOT/idle-alerted"
+  else
+    echo "the idle alert failed; see bin/alert's line above" >&2
+  fi
+}
+
 # A worker call with no result event is charged ROUND_BUDGET_USD and stops stopped-environment before its round-N.checks
 # is written, and a relaunch rebuilds ROUND from round-*.checks, so the same round reruns and MAX_ROUNDS never trips (#547).
 # So each launch, with its first status write and in the live checkout (a run frozen before this counts too), writes
@@ -3363,7 +3387,10 @@ next_tick() { # [--dry-run|--install|--frontier]
   fi
 
   # 1. FACTORY_STOP at the runs root pauses the timer; --frontier lists what would launch regardless.
+  #    Each real tick that prints paused, stops at the slot count or launches ends an idle spell (idle_end); a refusal,
+  #    --dry-run and --frontier leave it as it is.
   if [ "$frontier" = 0 ] && [ -f "$RUNS_ROOT/FACTORY_STOP" ]; then
+    [ "$dry" = 1 ] || idle_end
     echo paused
     return 0
   fi
@@ -3417,6 +3444,7 @@ next_tick() { # [--dry-run|--install|--frontier]
     return 1
   fi
   if [ "$frontier" = 0 ] && [ "$n" -ge "$max" ]; then
+    [ "$dry" = 1 ] || idle_end
     echo "nothing to launch"
     return 0
   fi
@@ -3522,7 +3550,7 @@ next_tick() { # [--dry-run|--install|--frontier]
   # Each issue the loop passes over gets one stderr line with its reason: an open native blocker (either list), an assignee
   # other than the runner (the repository listing, once the runner's own are dropped above), the runner's issue with
   # no run of any body, FACTORY_STOP, then the waits and parks below, which apply to the runner's issues as to the rest.
-  local pick="" read_failed="" st_last lint_err lint_line author editor run blocked assignees
+  local pick="" read_failed="" daily_wait="" st_last lint_err lint_line author editor run blocked assignees
   while read -r who num author b64 blocked assignees; do
     [ -n "$num" ] || continue
     [ "$b64" = - ] && b64=""
@@ -3558,6 +3586,7 @@ next_tick() { # [--dry-run|--install|--frontier]
     fi
     if stopped_daily_today "$run"; then
       echo "waiting #$num: daily budget spent; relaunches after 00:00 UTC" >&2
+      daily_wait=1
       continue
     fi
     if stopped_environment_recent "$run"; then
@@ -3627,11 +3656,18 @@ next_tick() { # [--dry-run|--install|--frontier]
     for d in "$RUNS_BASE"/*/*/ "$RUNS_BASE"/*/*/*/; do
       stopped_daily_today "$d" || continue
       echo "waiting: a run stopped at today's daily budget; nothing launches before 00:00 UTC" >&2
-      pick=""; break
+      pick=""; daily_wait=1; break
     done
   fi
 
+  # An idle tick: no pick, at least one ready issue read and no slot held. A slot held (the factory works or waits on a
+  # PR), no issue read, or a daily-budget wait (it ends by itself at 00:00 UTC) ends the spell instead.
   if [ -z "$pick" ]; then
+    if [ "$dry" = 0 ]; then
+      if [ -z "$daily_wait" ] && [ "$n" = 0 ] && [ -n "$nums" ]; then idle_note "$(( $(wc -w <<< "$nums") ))"
+      else idle_end
+      fi
+    fi
     echo "nothing to launch"
     return 0
   fi
@@ -3661,6 +3697,7 @@ next_tick() { # [--dry-run|--install|--frontier]
   local cap v
   for cap in $CAP_NAMES; do v="FACTORY_$cap"; envs+=(-e "$v=${!v:-}"); done
   if tmux new-session -d -s "$sess" "${envs[@]}" "cd '$ROOT' && bin/factory -C '$TARGET' run $pick >> '$RUNS_ROOT/$pick.tmux.log' 2>&1"; then
+    idle_end
     echo "launched #$pick"
   else
     echo "launch failed: tmux new-session -s $sess" >&2
