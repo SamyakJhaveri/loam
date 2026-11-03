@@ -100,6 +100,29 @@ class MeasureRowsTests(unittest.TestCase):
             self.assertEqual((worktree / "keep.log").read_text(), "kept\n")
             self.assertEqual(git(worktree, "rev-parse", "HEAD"), head)
 
+    def test_rows_that_break_the_restore_stop_the_run(self) -> None:
+        # A nested repository goes (clean -ff); a row that moves HEAD, or a lock that makes the reset fail, stops
+        # the run instead of resetting the worker's work or grading a dirty tree.
+        stub = 'finish() { echo "FINISH $1: $2"; exit 0; }\n'
+        cases = {
+            "nested": ("n: git init -q sub && touch sub/f; echo 1 | 1", None),
+            "moved": ("m: git commit -q --allow-empty -m row; echo 1 | 1", "FINISH stopped-environment: a Rows measured row moved HEAD"),
+            "locked": ("l: echo x >> f && touch .git/index.lock; echo 1 | 1",
+                       "FINISH stopped-environment: the worktree is not at HEAD after Rows measured:  M f"),
+        }
+        for name, (rows, finish) in cases.items():
+            with self.subTest(name), tempfile.TemporaryDirectory() as tmp:
+                run, worktree = pathlib.Path(tmp) / "run", pathlib.Path(tmp) / "wt"
+                run.mkdir()
+                scratch_repo(worktree, {"f": "f\n"})
+                proc = measure(run, worktree, rows, f"export GIT_AUTHOR_NAME=t GIT_AUTHOR_EMAIL=t@t GIT_COMMITTER_NAME=t GIT_COMMITTER_EMAIL=t@t\n{stub}")
+                self.assertEqual(proc.returncode, 0, proc.stderr)
+                if finish is None:
+                    self.assertNotIn("FINISH", proc.stdout)
+                    self.assertEqual(git(worktree, "status", "--porcelain"), "")
+                else:
+                    self.assertIn(finish, proc.stdout)
+
 
 if __name__ == "__main__":
     unittest.main()
