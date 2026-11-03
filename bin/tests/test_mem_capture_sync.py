@@ -30,6 +30,7 @@ import gzip
 import json
 import os
 import pathlib
+import shutil
 import signal
 import subprocess
 import tempfile
@@ -41,7 +42,7 @@ HOOK = ROOT / "seed/.claude/hooks/mem-capture.sh"
 RECALL = ROOT / "seed/.claude/hooks/mem-recall.sh"
 WEEKLY = ROOT / "seed/bin/mem-weekly.sh"
 
-# Commits are made with a fixed identity, and git's background maintenance is off so TemporaryDirectory
+# Commits are made with a fixed identity, and git's background maintenance is off so the scratch directory's
 # cleanup does not race a detached `git maintenance run --auto`.
 GIT_ENV = {
     **os.environ,
@@ -64,9 +65,8 @@ def git(*args: str, cwd: pathlib.Path) -> str:
 class Base(unittest.TestCase):
     def setUp(self) -> None:
         # A background sync can still be writing under .git after its push lands, so a cleanup race is no failure.
-        tmp = tempfile.TemporaryDirectory(ignore_cleanup_errors=True)
-        self.addCleanup(tmp.cleanup)
-        self.top = pathlib.Path(tmp.name).resolve()
+        self.top = pathlib.Path(tempfile.mkdtemp()).resolve()
+        self.addCleanup(shutil.rmtree, self.top, ignore_errors=True)
         self.cwd = self.top / "project"
         self.cwd.mkdir()
         self.origin = self.top / "origin.git"
