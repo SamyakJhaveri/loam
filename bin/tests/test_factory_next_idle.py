@@ -7,6 +7,7 @@ GraphQL editor read), with `tmux`, `alert` and `date -u +%s` stubbed as shell fu
 
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 import pathlib
@@ -163,6 +164,17 @@ class IdleAlertTests(unittest.TestCase):
         (self.runs / "ledger-daily.jsonl").unlink()
         subprocess.run(["rm", "-rf", str(self.runs / "99044")], check=True)
         self.assertEqual(self.spell_alerts_after(T0 + 3800), [1, 2])
+
+    def test_a_candidate_waiting_on_its_own_daily_stop_ends_the_spell(self) -> None:
+        self.tick(T0)
+        key = hashlib.sha256(CLEAN.read_text().rstrip("\n").encode()).hexdigest()[:8]
+        d = self.runs / "99042" / key
+        d.mkdir(parents=True)
+        (d / "status").write_text("stopped-daily\n")
+        proc = self.tick(T0 + 3660, store=LAUNCHABLE)
+        self.assertIn("waiting #99042: daily budget spent", proc.stderr)
+        self.assertEqual(self.alerts(), [])
+        self.assertFalse((self.runs / "idle-since").exists())
 
     def test_ticks_while_a_run_holds_one_of_two_slots_never_count(self) -> None:
         self.hold_slot()
