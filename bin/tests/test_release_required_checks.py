@@ -4,8 +4,9 @@ release.sh runs as a program in a throwaway clone whose origin is a local bare r
 `release/9.9.9` branch bumps VERSION from 9.9.8 and is merged into main with `--no-ff`; main then moves
 one commit past the merge and is pushed, and release.sh runs with HEAD detached at the merge commit, as
 the owner runs it. A fake `gh` on PATH answers `gh api` with a canned rules response, `gh pr list` from
-a canned PR list, and `gh run list` with a non-success conclusion (or GH_RUN_CONCLUSION), so a run that
-passes the earlier gates stops at the Test run gate. A fake `git` logs every `git push` and fails it while
+a canned PR list (filtered by --head, --state and --base), and `gh run list` with a non-success conclusion
+(or GH_RUN_CONCLUSION for the commit GH_RUN_COMMIT only), so a run that passes the earlier gates stops at
+the Test run gate. A fake `git` logs every `git push` and fails it while
 the PUSH_FAIL file exists, and fake `copier` and `uvx` exit 0, so nothing reaches GitHub or renders.
 GH_PR_FAIL makes `gh pr list` fail and COPIER_EXIT sets the fake `copier`'s exit status.
 """
@@ -33,9 +34,9 @@ BOTH = [{"type": "required_status_checks",
 
 FAKE_GH = """#!/usr/bin/env bash
 printf '%s\\n' "$*" >> "$GH_LOG"
-filter=. state= head= prev=
+filter=. state= head= base= commit= prev=
 for a in "$@"; do
-  case "$prev" in --jq) filter=$a ;; --state) state=$a ;; --head) head=$a ;; esac
+  case "$prev" in --jq) filter=$a ;; --state) state=$a ;; --head) head=$a ;; --base) base=$a ;; --commit) commit=$a ;; esac
   prev=$a
 done
 case "$1" in
@@ -45,10 +46,11 @@ case "$1" in
   pr)
     [ "$2" = list ] || exit 1
     [ -n "${GH_PR_FAIL:-}" ] && { echo "HTTP 502: Bad Gateway" >&2; exit 1; }
-    jq --arg st "$state" --arg head "$head" \\
-      'map(select(.headRefName == $head and ($st != "merged" or .state == "MERGED")))' "$PRS_JSON" \\
+    jq --arg st "$state" --arg head "$head" --arg base "$base" \\
+      'map(select(.headRefName == $head and ($st != "merged" or .state == "MERGED")
+                  and ($base == "" or (.baseRefName // "main") == $base)))' "$PRS_JSON" \\
       | jq -r "$filter" ;;
-  run) echo "${GH_RUN_CONCLUSION:-stubbed}" ;;
+  run) if [ "$commit" = "${GH_RUN_COMMIT:-}" ]; then echo "${GH_RUN_CONCLUSION:-stubbed}"; else echo stubbed; fi ;;
   *) exit 1 ;;
 esac
 """
@@ -130,7 +132,7 @@ class ReleaseRequiredChecksTests(unittest.TestCase):
             "doctor": {"ok": True}, "check": {"ok": True, "pristine": True}}), encoding="utf-8")
         terms = self.top / "ip-terms"
         terms.write_text("zz-no-such-term-q7\n", encoding="utf-8")
-        return {"GH_RUN_CONCLUSION": "success", "LOAM_VERIFY_ROOT": str(self.top / "verify"),
+        return {"GH_RUN_CONCLUSION": "success", "GH_RUN_COMMIT": self.merge, "LOAM_VERIFY_ROOT": str(self.top / "verify"),
                 "IP_TERMS_FILE": str(terms)}
 
     def release(self, rules: list[dict], **env: str) -> subprocess.CompletedProcess[str]:
@@ -187,18 +189,57 @@ class ReleaseRequiredChecksTests(unittest.TestCase):
         self.assertEqual(git("rev-parse", "main", cwd=self.origin), self.later)
         self.assertEqual(git("rev-parse", "main", cwd=self.work), self.later)
         self.assertEqual(git("rev-parse", "HEAD", cwd=self.work), self.merge)
-        self.assertEqual(self.pushes(), [f"push origin {TAG}"])
+        self.assertEqual(self.pushes(), [f"push --no-follow-tags origin {TAG}"])
 
     def test_closed_earlier_attempt_is_passed_over(self) -> None:
         self.set_prs([{"number": 2, "headRefName": "release/9.9.9", "state": "CLOSED", "mergeCommit": None},
                       {"number": 1, "headRefName": "release/9.9.9", "state": "MERGED",
                        "mergeCommit": {"oid": self.merge}}])
         self.assertIn(NEXT_GATE, self.release(BOTH).stderr)
+    def test_pr_merged_into_another_branch_is_passed_over(self) -> None:
+        # A newer release/9.9.9 PR merged into staging: the main one is still released, and alone it is refused.
+        git("switch", "-q", "-c", "staging", f"{self.merge}^", cwd=self.work)
+        git("merge", "-q", "--no-ff", "-m", "Merge pull request #2 from t/release/9.9.9", "release/9.9.9",
+            cwd=self.work)
+        staging = git("rev-parse", "HEAD", cwd=self.work)
+        git("switch", "-q", "--detach", self.merge, cwd=self.work)
+        main_pr = {"number": 1, "headRefName": "release/9.9.9", "state": "MERGED", "mergeCommit": {"oid": self.merge}}
+        self.set_prs([{"number": 2, "headRefName": "release/9.9.9", "baseRefName": "staging", "state": "MERGED",
+                       "mergeCommit": {"oid": staging}}, main_pr])
+        proc = self.release(BOTH, **self.green())
+        self.assertEqual(proc.returncode, 0, proc.stderr)
+        self.assertEqual(git("rev-parse", f"{TAG}^{{commit}}", cwd=self.origin), self.merge)
+
+    def test_pr_merged_only_into_another_branch_refuses(self) -> None:
+        self.set_prs([{"number": 1, "headRefName": "release/9.9.9", "baseRefName": "staging", "state": "MERGED",
+                       "mergeCommit": {"oid": self.merge}}])
+        proc = self.release(BOTH, **self.green())
+        self.assertIn("no merged pull request from release/9.9.9 into main;", proc.stderr)
+        self.assert_nothing_released(proc)
+
+    def test_follow_tags_setting_pushes_only_the_release_tag(self) -> None:
+        git("config", "push.followTags", "true", cwd=self.work)
+        git("tag", "-a", "v9.9.8-draft", "-m", "draft", f"{self.merge}^", cwd=self.work)
+        proc = self.release(BOTH, **self.green())
+        self.assertEqual(proc.returncode, 0, proc.stderr)
+        self.assertEqual(self.tags(self.origin), [TAG])
+
+    def test_green_runs_of_another_commit_refuse(self) -> None:
+        # A green Test run and a clean verify-loam run of main's tip say nothing about the merge commit.
+        green = self.green()
+        proc = self.release(BOTH, **{**green, "GH_RUN_COMMIT": self.later})
+        self.assertIn(NEXT_GATE, proc.stderr)
+        self.assert_nothing_released(proc)
+        run = self.top / "verify" / self.merge[:8] / "run.json"
+        run.write_text(run.read_text().replace(self.merge, self.later), encoding="utf-8")
+        proc = self.release(BOTH, **green)
+        self.assertIn("no clean-tree verify-loam run of HEAD", proc.stderr)
+        self.assert_nothing_released(proc)
 
     def test_unmerged_pr_refuses(self) -> None:
         self.set_prs([{"number": 1, "headRefName": "release/9.9.9", "state": "OPEN", "mergeCommit": None}])
         proc = self.release(BOTH, **self.green())
-        self.assertIn("no merged pull request from release/9.9.9;", proc.stderr)
+        self.assertIn("no merged pull request from release/9.9.9 into main;", proc.stderr)
         self.assert_nothing_released(proc)
 
     def test_unreadable_pr_refuses(self) -> None:
@@ -258,7 +299,7 @@ class ReleaseRequiredChecksTests(unittest.TestCase):
         proc = self.release(BOTH, **self.green(), COPIER_EXIT="1")
         self.assertNotEqual(proc.returncode, 0)
         self.assertIn("v9.9.9 IS PUSHED BUT DOES NOT RENDER", proc.stderr)
-        self.assertEqual(self.pushes(), [f"push origin {TAG}"])
+        self.assertEqual(self.pushes(), [f"push --no-follow-tags origin {TAG}"])
 
     def test_head_past_the_merge_commit_refuses(self) -> None:
         git("switch", "-q", "main", cwd=self.work)
@@ -292,7 +333,7 @@ class ReleaseRequiredChecksTests(unittest.TestCase):
         proc = self.release(BOTH, **green)
         self.assertEqual(proc.returncode, 0, proc.stderr)
         self.assertIn("resuming at the push", proc.stdout)
-        self.assertEqual(self.pushes(), [f"push origin {TAG}"])
+        self.assertEqual(self.pushes(), [f"push --no-follow-tags origin {TAG}"])
         self.assertEqual(git("rev-parse", f"{TAG}^{{commit}}", cwd=self.origin), self.merge)
         self.assertEqual(git("rev-parse", "main", cwd=self.origin), self.later)
 

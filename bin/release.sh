@@ -15,7 +15,8 @@ VERSION="${1:-}"
 
 # Push only the tag (main's ruleset covers the branch, not the tag), then render the tag from GitHub the way users do.
 publish() {
-  git push origin "refs/tags/v$VERSION" \
+  # --no-follow-tags: a push.followTags setting would also push any other annotated tag behind the merge.
+  git push --no-follow-tags origin "refs/tags/v$VERSION" \
     || die "tag push failed; fix the cause and rerun bin/release.sh $VERSION (it resumes at the push)"
   COPIER=(copier); command -v copier >/dev/null 2>&1 || COPIER=(uvx copier)
   OUT="$(mktemp -d)"
@@ -41,12 +42,12 @@ SELF="$(cd "$(dirname "$0")/.." && pwd)"; cd "$SELF"
 # Before any push, on the resume path too: the rules could have changed since the first run.
 require_ci_checks
 
-# The release commit is the merge commit of the merged release/X.Y.Z PR. --state merged passes
-# over a closed earlier attempt with the same head branch.
-PR="$(gh pr list --head "release/$VERSION" --state merged --json state,mergeCommit \
+# The release commit is the merge commit of the release/X.Y.Z PR merged into main. --state merged
+# passes over a closed earlier attempt with the same head branch; --base main over one merged elsewhere.
+PR="$(gh pr list --head "release/$VERSION" --base main --state merged --json state,mergeCommit \
   --jq '.[0] // empty | "\(.state) \(.mergeCommit.oid // "")"')" \
   || die "cannot read the pull request from release/$VERSION (gh pr list --head release/$VERSION failed)"
-[[ -n "$PR" ]] || die "no merged pull request from release/$VERSION; open one that bumps VERSION to $VERSION with the release's proof outputs in its body, and merge it once CI is green"
+[[ -n "$PR" ]] || die "no merged pull request from release/$VERSION into main; open one that bumps VERSION to $VERSION with the release's proof outputs in its body, and merge it once CI is green"
 read -r STATE MERGE <<<"$PR"
 [[ "$STATE" == "MERGED" && -n "${MERGE:-}" ]] || die "the pull request from release/$VERSION is '$STATE', not MERGED with a merge commit"
 # HEAD itself, not a descendant: every gate below reads HEAD or the checked-out tree.
