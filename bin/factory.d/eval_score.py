@@ -8,8 +8,12 @@ Usage:
 defect_class is a planted defect and scores as recall:<class>, one row per class: mutate.py's skip,
 false-claim, logic-bug, gamed-check, stale-ref, vacuous-check, half-goal, and out-of-scope, and
 evals/planted/'s honesty, notes, and run-only, and `real` for a frozen base a replay check found a defect
-in. A judge mutant counts as caught when the reply fails every row its failing_rows names, extra failing
-rows allowed: recall asks whether the defect was seen. `bin/factory eval` scores label agreement instead,
+in. A judge mutant counts as caught when the reply's verdict is fail and it fails every row its failing_rows names,
+extra failing rows allowed: recall asks whether the defect was seen. A judge case whose expected.json has `fault`, a
+list of fragments of its planted line (evals/planted/), also needs the reply to name the fault: some fragment,
+normalized, is a substring of the normalized text of the reply's evidence values, fixes and backlog, so a reply that
+fails the rows over its base's own defect is not credited with the plant. Normalized is lowercased, with backticks
+and both quote marks dropped and each whitespace run one space. `bin/factory eval` scores label agreement instead,
 the exact failing-row set, so a reply that also fails another row is a hit here and a MISMATCH there; #207
 reports both. Both count a row as failing when its value is not "pass". A reviewer or lean-critic one,
 when a finding names its defect_file (bin/check for vacuous-check, CONTRIBUTING.md for out-of-scope, the
@@ -96,6 +100,23 @@ def findings(reply, severities=None):
             if isinstance(x, dict) and (severities is None or x.get("severity") in severities)]
 
 
+def norm(text):
+    """Lowercased, with backticks and both quote marks dropped and each whitespace run one space: a judge may quote a
+    command with other quote marks than decisions.md, or drop its backticks."""
+    return " ".join(text.lower().replace("`", "").replace('"', "").replace("'", "").split())
+
+
+def reply_text(reply):
+    """Every string value of the reply's evidence object, then every string in fixes and backlog, one per line. A
+    Codex reply has no evidence (model-eval's strict schema drops it), so fixes and backlog count too."""
+    ev = reply.get("evidence")
+    parts = [v for v in ev.values() if isinstance(v, str)] if isinstance(ev, dict) else []
+    for key in ("fixes", "backlog"):
+        got = reply.get(key)
+        parts += [x for x in got if isinstance(x, str)] if isinstance(got, list) else []
+    return "\n".join(parts)
+
+
 def metric(grader, exp):
     if "defect_class" in exp:
         return f"recall:{exp['defect_class']}"
@@ -109,7 +130,13 @@ def hit(grader, exp, reply):
     if reply is None:
         return False
     if grader == "judge":
-        return reply.get("verdict") == "fail" and set(exp.get("failing_rows", [])) <= failing_rows(reply)
+        if reply.get("verdict") != "fail" or not set(exp.get("failing_rows", [])) <= failing_rows(reply):
+            return False
+        fault = exp.get("fault")
+        if not isinstance(fault, list):
+            return True
+        said = norm(reply_text(reply))
+        return any(isinstance(f, str) and norm(f) and norm(f) in said for f in fault)
     # A reviewer catches the defect only with a blocking finding on its file: only those reach the worker. A real
     # defect a replay check confirmed may sit in several files (defect_file a list), and a finding on any one counts.
     want = exp["defect_file"] if isinstance(exp["defect_file"], list) else [exp["defect_file"]]
