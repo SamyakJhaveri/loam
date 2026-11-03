@@ -88,7 +88,7 @@ alike) and the repo's `docs/` with ripgrep (or `grep`/`zgrep`) and cuts the
 output at 80 lines. `mem-inspect <session>` reads one captured trace by turn
 instead of grepping the raw file: `--summary` lists the turns, `--span A:B`
 prints a range, `--match RE` prints the turns whose text matches. `mem-weekly.sh`
-deletes traces older than a year, rewrites `reports/recurring-errors.md` (error
+drains the capture spool, deletes traces older than a year, rewrites `reports/recurring-errors.md` (error
 lines normalized to a signature so runs differing only in a number collapse) and
 `reports/counts.md` (capture, retrieval, and application counts), which stay
 local and untracked, commits the store as a git baseline, then pulls and pushes
@@ -134,7 +134,7 @@ global or a template one) and no hook defined in any git config, so no hook can
 keep that lock after its git exits. A capture first writes its trace into a
 spool in the store's git directory, out of reach of any rebase; a busy store, or
 a leftover rebase that cannot be recovered, delays the capture but never drops
-it, and the next capture to hold the lock commits it. Each entry records its
+it, and the next capture or the next weekly run to hold the lock commits it. Each entry records its
 transcript's length and mtime, and an entry older than the session's trace in
 the tree is dropped, so of two overlapping captures the newer transcript wins.
 Every git call runs with `GIT_TERMINAL_PROMPT=0`, and every rebase and commit
@@ -197,7 +197,7 @@ removing it would cause a mistake.
   the transcript per capture. Recall waits at most two seconds for a fetch from
   the store's remote and ends within its five-second timeout; a capture waits at
   most three seconds for the store lock, then leaves its trace in the spool for
-  the next capture, and its drain, `git add`, commit and HEAD check end within
+  the next capture or the next weekly run, and its drain, `git add`, commit and HEAD check end within
   its ten-second timeout, leaving what does not fit in the spool. The capture's pull and push run in the background and never
   wait.
 {% endif %}- Auto memory: Claude Code adds at most the first 200 lines or 25 KB of

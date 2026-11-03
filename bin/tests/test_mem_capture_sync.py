@@ -12,7 +12,7 @@ capture on main and, once the remote is reachable, on the remote; none may write
 process owns, and none may run one of the git hooks A's store sets.
 
 LockTests: a capture that cannot take the store lock in time keeps its data in the spool under .git and the
-next holder lands it; a directory left at the lock path by the earlier mkdir lock does not block captures; a trace
+next holder, a capture or mem-weekly.sh, lands it; a directory left at the lock path by the earlier mkdir lock does not block captures; a trace
 the store's exclude file ignores is still committed, and stays spooled until a commit holds it.
 RecallBoundTests: a recall whose rebase hangs ends within its five-second hook timeout and leaves main clean.
 OverlapTests: of two overlapping captures of one session, the one that read the longer transcript wins, whichever
@@ -360,6 +360,26 @@ class LockTests(Base):
         self.assertEqual(self.spool(a), [], "the spool was not drained")
         tree = git("ls-tree", "-r", "--name-only", "main", "traces/project", cwd=self.origin).splitlines()
         self.assertTrue(any(p.endswith("-s3.jsonl.gz") for p in tree), tree)
+
+    def test_a_spooled_capture_lands_at_the_next_weekly_run(self) -> None:
+        store = self.top / "store"
+        git("init", "-q", "-b", "main", str(store), cwd=self.top)
+        with open(store / ".git/loam-mem.lock", "a") as held:
+            fcntl.flock(held, fcntl.LOCK_EX)
+            self.capture(store, "s1")  # waits out its bound, then spools
+            entries = self.spool(store)
+            self.assertEqual(len(entries), 1, "the capture was not spooled")
+            spooled = (entries[0] / "trace.jsonl.gz").read_bytes()
+        self.weekly(store)
+        self.assertIn(" | s1 | ", git("show", "HEAD:traces/project/INDEX.md", cwd=store),
+                      "the weekly run did not commit the spooled INDEX line")
+        names = git("ls-tree", "-r", "--name-only", "HEAD", "traces/project", cwd=store).splitlines()
+        trace = [n for n in names if n.endswith("-s1.jsonl.gz")]
+        self.assertEqual(len(trace), 1, names)
+        committed = subprocess.run(["git", "show", f"HEAD:{trace[0]}"], cwd=store, env=GIT_ENV,
+                                   capture_output=True, check=True, timeout=30).stdout
+        self.assertEqual(committed, spooled, "the committed trace is not the spooled bytes")
+        self.assertEqual(self.spool(store), [], "the weekly run left the spool undrained")
 
     def test_the_drain_removes_only_old_tmp_directories_under_the_lock(self) -> None:
         a, _ = self.two_stores()
