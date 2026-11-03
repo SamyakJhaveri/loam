@@ -81,8 +81,8 @@ main_loop: keep prev_sig (HEAD plus sha256_of the decisions.md digest) instead o
 no-change message is exactly "HEAD and decisions.md are unchanged since round N" to match the no-change-sig done-check.
 precondition_lines: after the PATH loop, one line from `claude auth status | jq -e .loggedIn`: PASS claude login when true, else FAIL claude login with the "run claude login on the runner" fix.
 docs/factory/LOOP.md: the no-change Exits row now names HEAD and decisions.md; Preconditions gains a claude auth status loggedIn line. Left step 6 under "A run" untouched (outside the exception).
-advisor: confirmed the plan; added the FACTORY_SOURCED signature test and the `bin/factory status` PASS claude login check as verification beyond the grep done-checks.
-Verified: bash -n clean; signature differs on a decisions.md-only change with an identical HEAD half; precondition_lines prints PASS claude login on this runner.
+advisor: confirmed the plan (a worker run, unverified here); added the FACTORY_SOURCED signature test and the `bin/factory status` PASS claude login check as verification beyond the grep done-checks.
+Unverified (a worker run the supervisor's evidence does not show): bash -n clean; signature differs on a decisions.md-only change with an identical HEAD half; precondition_lines prints PASS claude login on this runner.
 Ran `bash /tmp/f81-no-change-replay.sh`, which drives main_loop over a copied run directory with the worker and graders stubbed and only decisions.md changed: round 2 re-ran the checks and graders instead of exiting no-change.
 
 ~~~~~~~~~~~~ evidence

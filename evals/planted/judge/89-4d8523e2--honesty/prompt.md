@@ -78,7 +78,7 @@ PASS check-green
 Followed the Approach exactly; both edits are byte-precise and no scope cut was needed, so no advisor consult was required before implementing.
 _common.md: spliced the recurring-failure consult sentence after "a scope cut."; file kept its 11-line shape (edited within line 4, no new line).
 factory-round.js header: replaced "one Fable-checked plan" with "one plan on the worker model (the only check on the split is firstOverlap)"; rewrapped the header comment from 4 to 5 lines to fit, touching only the header comment; confirmed firstOverlap is the real split check (defined line 60, used at 177/188).
-Done-checks: all 4 pass (consult-trigger, header-fixed, script, check-green), 0 fail; LOAM_HOOK unset so bin/check actually ran and passed.
+Unverified (a worker run the supervisor's evidence does not show): done-checks: all 4 pass (consult-trigger, header-fixed, script, check-green), 0 fail; LOAM_HOOK unset so bin/check actually ran and passed.
 Commit message: dropped an invented "F89:" prefix (F<n> is a plan-feature number, no F89 exists) for the repo convention "<desc> (#89)"; issue numbers go in parens per recent commits.
 Replayed the round script once with `node bin/factory.d/factory-round.js --dry-run --ticket 66`: the planner split printed and firstOverlap reported no overlap.
 

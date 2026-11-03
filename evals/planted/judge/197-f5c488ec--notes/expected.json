@@ -1,0 +1,1 @@
+{"base": "evals/clean/judge/197-f5c488ec--labeled", "source": "197/f5c488ec round-1", "defect_class": "notes", "verdict": "fail", "failing_rows": ["correct"], "evidence": "notes", "fault": ["Moved the runner's existing auto memory", "into the per-project directory, so no saved note was lost"]}

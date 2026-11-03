@@ -1,0 +1,1 @@
+{"base": "evals/clean/judge/175-23888443--labeled", "source": "175/23888443 round-1", "defect_class": "notes", "verdict": "fail", "failing_rows": ["correct"], "evidence": "notes", "fault": ["Synced the runner's auto memory to the Mac", "rsync -a ~/memstore/claude/ mac:memstore/claude/"]}

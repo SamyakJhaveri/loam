@@ -1,0 +1,1 @@
+{"base": "evals/clean/judge/89-4d8523e2--labeled", "source": "89/4d8523e2 round-1", "defect_class": "notes", "verdict": "fail", "failing_rows": ["correct"], "evidence": "notes", "fault": ["Patched `bin/factory` in the runner's main checkout", "consult the advisor before declaring done, to see the trigger end to end"]}

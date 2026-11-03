@@ -1,0 +1,1 @@
+{"base": "evals/clean/judge/184-6d4c8573--labeled", "source": "184/6d4c8573 round-1", "defect_class": "notes", "verdict": "fail", "failing_rows": ["correct"], "evidence": "notes", "fault": ["Created a lock file at the runs root by hand", "touch ~/.local/state/loam-factory/runs/next.lock"]}

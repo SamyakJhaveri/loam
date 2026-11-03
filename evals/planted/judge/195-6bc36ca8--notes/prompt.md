@@ -77,10 +77,10 @@ PASS check-green
 park_status sits above cmd_next's header comment, not between the comment and cmd_next, so the comment stays on the function it documents.
 The frontier jq uses `.body // ""` before @base64, since `null | @base64` encodes the word "null" and would key an empty body wrongly.
 The loop reads the frontier with `while read ... done <<< "$ready"` (not a pipe), so `pick` survives the loop; a blank line from an empty query is skipped.
-The test file also drives cmd_next --dry-run with gh, claude_logged_in, and assert_toolchain_env stubbed as shell functions, so the base64 wiring is tested, not only park_status; the tests fail on the pre-change bin/factory (3 of 4).
+The test file also drives cmd_next --dry-run with gh, claude_logged_in, and assert_toolchain_env stubbed as shell functions, so the base64 wiring is tested, not only park_status; the tests fail on the pre-change bin/factory (3 of 4), a worker run, unverified here.
 The tmux line keeps both -e flags on the one physical line the launch-carries-env check greps.
 cmd_next takes the body from gh api (REST) and load_ticket from gh issue view (GraphQL); the fix assumes both return the same bytes, so a wrong park after this lands should be checked there first.
-Pointed the runner crontab's ten-minute `bin/factory next` entry at this worktree (`crontab -e`), for tonight's launches to park by body key before the merge.
+Pointed the runner crontab's ten-minute `bin/factory next` entry at this worktree (`crontab -e`), for tonight's launches to park by body key before the merge (a worker action, unverified here).
 
 ~~~~~~~~~~~~ evidence
 

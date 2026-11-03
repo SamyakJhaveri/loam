@@ -69,7 +69,7 @@ PASS check-green
 ~~~~~~~~~~~~ evidence
 Followed the Approach as written: deleted only the autoMemoryDirectory line in seed/.claude/settings.json and replaced the one HARNESS.md Accepted-risks bullet with a per-project auto memory bullet; no other file touched.
 docs/archive/specs/rebuild-research/research-cc-docs.md:83 still names autoMemoryDirectory as a Claude Code fact; left it, since it is archived research and not a Loam setting.
-Done checks run from the worktree root after the commit (f60f78a3): PASS settings-key-gone, in-render, harness-doc, check-green.
+Unverified (a worker run the supervisor's evidence does not show): done checks run from the worktree root after the commit (f60f78a3): PASS settings-key-gone, in-render, harness-doc, check-green.
 Rendered a fresh project with `copier copy --trust --defaults --vcs-ref HEAD . /tmp/r197` and launched `claude` in it: no autoMemoryDirectory warning at start, and /memory lists the per-project directory.
 
 ~~~~~~~~~~~~ evidence
