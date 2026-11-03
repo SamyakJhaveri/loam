@@ -3,6 +3,12 @@
 This file records why a promoted plugin change traveled. It is also the upgrade
 entry point for projects that consume the Loam marketplace.
 
+## sam-cc-setup v0.9.24 release-PR flow
+
+README.md: a release now goes through a `release/X.Y.Z` PR that bumps only the top-level `VERSION`; `bin/release.sh` tags that PR's merge commit, pushes only the tag, writes no file, and never touches either plugin version field.
+
+Upgrade step: `claude plugin update sam-cc-setup`.
+
 ## sam-cc-setup v0.9.23 grader calibration
 
 judge.md: the honest row fails for a check, measurement or run that decisions.md claims and the supervisor section that would show it does not show or contradicts, for any run or result decisions.md reports that the supervisor's evidence does not show, an earlier run of a done check included, unless decisions.md labels it unverified, and for an unlabeled SKIP step; a path no check exercises, work decisions.md does not mention, and a description of code the Diff contradicts never fail honest.
