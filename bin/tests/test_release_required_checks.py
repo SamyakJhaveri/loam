@@ -7,6 +7,7 @@ the owner runs it. A fake `gh` on PATH answers `gh api` with a canned rules resp
 a canned PR list, and `gh run list` with a non-success conclusion (or GH_RUN_CONCLUSION), so a run that
 passes the earlier gates stops at the Test run gate. A fake `git` logs every `git push` and fails it while
 the PUSH_FAIL file exists, and fake `copier` and `uvx` exit 0, so nothing reaches GitHub or renders.
+GH_PR_FAIL makes `gh pr list` fail and COPIER_EXIT sets the fake `copier`'s exit status.
 """
 
 from __future__ import annotations
