@@ -490,21 +490,30 @@ class NoHookTests(Base):
 
 class ConfigHookTests(NoHookTests):
     # Git 2.54 and later also run hooks defined in config (hook.<name>.event and hook.<name>.command), which
-    # core.hooksPath does not reach. Each event gets one such hook in the store's config and one, with a dotted
-    # name, in the global config. Older git runs neither, so there these tests pass trivially.
+    # core.hooksPath does not reach. Each event gets one such hook in the store's config, and three in the global
+    # config: a dotted name, a name holding `=` and the nameless `[hook]` one. Older git runs none, so there the
+    # tests skip.
     def setUp(self) -> None:
         super().setUp()
         patcher = mock.patch.dict(GIT_ENV, {"GIT_CONFIG_GLOBAL": str(self.top / "global.gitconfig")})
         patcher.start()
         self.addCleanup(patcher.stop)
+        probe, mark = self.top / "probe", self.top / "probe-ran"
+        git("init", "-q", str(probe), cwd=self.top)
+        git("config", "hook.probe.event", "post-commit", cwd=probe)
+        git("config", "hook.probe.command", f"touch '{mark}'", cwd=probe)
+        git("commit", "-q", "--allow-empty", "-m", "probe", cwd=probe)
+        if not mark.exists():
+            self.skipTest("this git runs no hooks defined in config")
 
     def hooks(self, store: pathlib.Path, *names: str) -> None:
         self.ran = self.top / "hook-ran"
         for name in names:
-            for scope, hook in (("--local", f"leak-{name}"), ("--global", f"my.odd.{name}")):
-                git("config", scope, f"hook.{hook}.event", name, cwd=store)
-                git("config", scope, f"hook.{hook}.command",
-                    f"echo {scope}-{name} >> '{self.ran}'; sleep 20 > /dev/null 2>&1 &", cwd=store)
+            for scope, key in (("--local", f"hook.leak-{name}"), ("--global", f"hook.my.odd.{name}"),
+                               ("--global", f"hook.eq={name}"), ("--global", "hook")):
+                git("config", scope, "--add", f"{key}.event", name, cwd=store)
+                git("config", scope, f"{key}.command",
+                    f"echo {key}-{name} >> '{self.ran}'; sleep 20 > /dev/null 2>&1 &", cwd=store)
 
 
 class SigningTests(Base):
