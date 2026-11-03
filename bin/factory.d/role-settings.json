@@ -1,10 +1,10 @@
 {
-  "claudeMdExcludes": ["**/.claude/CLAUDE.md", "**/.claude/rules/**"],
   "autoMemoryEnabled": false,
   "autoCompactEnabled": true,
   "autoCompactWindow": 450000,
   "env": {"CLAUDE_CODE_DISABLE_AUTO_MEMORY": "1"},
   "permissions": {
+    "blockReadsOutsideWorkingDirectories": true,
     "deny": [
       "Bash(rm -rf:*)", "Bash(rm -fr:*)", "Bash(rm -Rf:*)", "Bash(rm -r -f:*)", "Bash(rm -f -r:*)",
       "Bash(git push:*)",

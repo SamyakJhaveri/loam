@@ -22,7 +22,8 @@ the layout eval_score.py reads. Every cell is listed, shuffled with random.Rando
 Beside each scored reply, <grader>-<case>.key holds the sha256 of everything the reply depends on: the
 grader file, its schema and rubric, role-settings.json, bin/factory and this script as they are on disk, the
 case's prompt.md and expected.json, the model, the effort, the mode, and the cell's harness (Claude Code
-version, config-drift.sh md5, Codex model, and the raw ~/.claude/settings.json and Codex config.toml, since
+version, config-drift.sh md5, Codex model, and the raw user-tier settings.json whose env the grader settings copy
+carries (CLAUDE_SETTINGS_FILE, else CLAUDE_CONFIG_DIR's, else ~/.claude's) and Codex config.toml, since
 config-drift.sh names settings only; a Codex cell reads the factory CODEX_HOME's config.toml, not ~/.codex's,
 and its mode names how it runs). A later run calls the grader only for the cases whose reply or key is missing
 or whose key differs; an error, unparseable or off-model reply gets no key, so it is retried. Each cell dir
@@ -134,11 +135,19 @@ def config_drift_md5():
     return hashlib.md5(b"".join(lines)).hexdigest() if lines else "none"
 
 
+def user_settings():
+    """The user tier's settings file, as bin/factory's user_settings resolves it (an empty variable counts as unset)."""
+    if os.environ.get("CLAUDE_SETTINGS_FILE"):
+        return Path(os.environ["CLAUDE_SETTINGS_FILE"])
+    return Path(os.environ.get("CLAUDE_CONFIG_DIR") or Path.home() / ".claude") / "settings.json"
+
+
 def user_config_sha(codex_config):
-    # config-drift.sh records setting names, never values, so a changed deny rule or env value would leave its md5
-    # alone; the key also hashes the raw files a call reads (--setting-sources user, and Codex's config).
+    # config-drift.sh records setting names, never values, so a changed env value would leave its md5 alone; the key
+    # also hashes the raw files a call reads (the user tier whose env bin/factory's grader settings copy carries, and
+    # Codex's config).
     h = hashlib.sha256()
-    for f in (Path.home() / ".claude" / "settings.json", codex_config):
+    for f in (user_settings(), codex_config):
         try:
             h.update(f"{f.name}\0{sha256(f.read_bytes())}\n".encode())
         except OSError:
