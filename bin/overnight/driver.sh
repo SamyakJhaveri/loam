@@ -100,43 +100,59 @@ launch_next() {
 }
 # JSON output (31 Oct): the call's reply text still goes to driver.log, its cost to costs.tsv; a call ended after
 # its outcome line may never print its JSON, so its cost is logged as unknown. On a usage-limit reply the driver
-# switches to the next stored account (bin/claude-account, as bin/factory limit_switch does) and the loop retries.
-account() { local out=$1 cost to
+# switches only through `bin/claude-account switch <account the call ran on>` (#600), the host-wide switch under the
+# factory's lock and cooldown, so a switch another caller made since the call started is kept, never undone: exit 0
+# (switched, or already switched by another caller) retries at once, exit 3 (another switch under 300 s ago) keeps the
+# normal pacing. A call with no recorded account switches nothing.
+account() { local out=$1 from=${2-} cost
   jq -r '.result // empty' "$out" >> "$O/driver.log" 2> /dev/null
   cost=$(jq -r '.total_cost_usd // empty' "$out" 2> /dev/null)
   echo "$(stamp) call $(basename "$out" .json) cost_usd=${cost:-unknown} turns=$(jq -r '.num_turns // "?"' "$out" 2> /dev/null)" >> "$O/driver.log"
   printf '%s\t%s\t%s\n' "$(stamp)" "${cost:-unknown}" "$(basename "$out" .json)" >> "$O/costs.tsv"
   if jq -e '.is_error == true' "$out" > /dev/null 2>&1 && jq -r '.result // ""' "$out" | grep -qiE '(hit|reached) your .*limit'; then
-    if to=$(~/loam/bin/claude-account other 2> /dev/null) && ~/loam/bin/claude-account use "$to" 2> /dev/null; then
-      echo "$(stamp) usage limit: switched account to $to" >> "$O/driver.log"; limited=1
-    else
-      echo "$(stamp) usage limit and no other account to switch to" >> "$O/driver.log"
+    if [ -z "$from" ]; then
+      echo "$(stamp) usage limit on a call with no recorded account: switched nothing" >> "$O/driver.log"; return
     fi
+    ~/loam/bin/claude-account switch "$from" 2>> "$O/driver.log"
+    case $? in
+      0) echo "$(stamp) usage limit on account $from: active account now $(active_account); retrying" >> "$O/driver.log"; limited=1 ;;
+      3) echo "$(stamp) usage limit on account $from: another caller switched under 300 s ago; switched nothing" >> "$O/driver.log" ;;
+      *) echo "$(stamp) usage limit and no other account to switch to" >> "$O/driver.log" ;;
+    esac
   fi
 }
-# One call under WRAP. O/call.pid holds "pid before out" while it runs: a stopped driver leaves the call to finish,
-# and the next driver adopts it with the same rules (below), so a restart neither kills a review nor starts a second
-# call on the same PR.
-run() { local pid out
+# The active account name `bin/claude-account status` prints; empty when it names none.
+active_account() { local a
+  a=$(~/loam/bin/claude-account status 2> /dev/null) || a=""
+  a=${a#active: }; a=${a%%;*}
+  [ "$a" = none ] || printf '%s\n' "$a"
+}
+# One call under WRAP. O/call.pid holds "pid before out account" while it runs (account: the one active just before
+# the call starts; left out when none is): a stopped driver leaves the call to finish, and the next driver adopts it
+# with the same rules (below), so a restart neither kills a review, nor starts a second call on the same PR, nor
+# judges the call's usage limit by the account active now.
+run() { local pid out acct
   mkdir -p "$O/calls"; out="$O/calls/$(date -u +%Y%m%dT%H%M%SZ).json"; limited=0
   grader_window
+  acct=$(active_account)
   env CLAUDE_CODE_SUBAGENT_MODEL=claude-opus-5-5 ANTHROPIC_DEFAULT_HAIKU_MODEL=claude-opus-5-5 ANTHROPIC_DEFAULT_SONNET_MODEL=claude-opus-5-5 \
     perl -MPOSIX -MTime::HiRes=time,sleep -e "$WRAP" \
     claude -p --model claude-opus-5-5 --effort high --permission-mode bypassPermissions --settings "$D/settings.json" --max-turns 400 --output-format json "$1" \
     < /dev/null > "$out" 2>> "$O/driver.log" &
-  pid=$!; echo "$pid $before $out" > "$O/call.pid"
+  pid=$!; echo "$pid $before $out${acct:+ $acct}" > "$O/call.pid"
   watch "$pid" "$before"
   wait "$pid" 2> /dev/null; rm -f "$O/call.pid"
-  account "$out"
+  account "$out" "$acct"
 }
 reported=""; limited=0
 # A call left by an earlier driver is adopted only while its pid still leads its own group and runs a driver call
 # (the watchdog's pattern), so a reused pid is never touched; the loop starts no call of its own until it ends. Only a
-# full "pid before out" record is adopted: without its log line count an outcome written before the restart is unseen.
-if read -r c b f < "$O/call.pid" 2> /dev/null && [ -n "$f" ] && [ "$(ps -o pgid= -p "$c" 2> /dev/null | tr -d ' ')" = "$c" ] \
+# record with at least "pid before out" is adopted: without its log line count an outcome written before the restart
+# is unseen. A record from a driver before #615 has no account, so that call's usage limit switches nothing.
+if read -r c b f a < "$O/call.pid" 2> /dev/null && [ -n "$f" ] && [ "$(ps -o pgid= -p "$c" 2> /dev/null | tr -d ' ')" = "$c" ] \
   && ps -ww -o args= -p "$c" 2> /dev/null | grep -q 'claude -p .*overnight/protocol.md'; then
   echo "$(stamp) adopted call $c left by an earlier driver" >> "$O/driver.log"
-  limited=0; watch "$c" "$b"; [ -f "$f" ] && account "$f"
+  limited=0; watch "$c" "$b"; [ -f "$f" ] && account "$f" "$a"
 fi
 rm -f "$O/call.pid"
 while :; do
