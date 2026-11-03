@@ -430,5 +430,55 @@ end_call() { echo "ended $polls_seen $reads"; }
         self.assertFalse((self.home / "calls.txt").exists(), "the driver started a call with nothing pending")
 
 
+    def test_only_samyaks_same_repo_prs_start_a_call_or_reach_pick(self) -> None:
+        # Loam is public and gh names a fork PR's branch without its owner (#678): a fork's factory/<n> PR, a fork PR
+        # Samyak authored and another author's same-repo PR must start no call; Samyak's same-repo PR starts one, and
+        # the Pick line's own command lists only it. The fake gh answers as gh does: only the --json fields asked for,
+        # through the --jq filter.
+        if not shutil.which("jq"):
+            self.skipTest("jq is not installed")
+        write_exec(self.fake / "sleep", f"#!/bin/sh\nexec {shutil.which('sleep')} 0.1\n")
+        write_exec(self.fake / "gh", "\n".join([
+            "#!/bin/sh",
+            'case "$*" in *SamyakJhaveri/distbench*) exit 0 ;; *"pr list"*) ;; *) exit 0 ;; esac',
+            "f=; q=; while [ $# -gt 0 ]; do case $1 in --json) f=$2; shift ;; -q | --jq) q=$2; shift ;; esac; shift; done",
+            'echo list >> "$HOME/events"',
+            'jq --arg f "$f" \'[.[] | with_entries(select(.key as $k | $f | split(",") | index($k)))]\' "$HOME/prs.json"'
+            ' | jq -r "${q:-.}"', ""]))
+        write_exec(self.fake / "claude", '#!/bin/sh\nprintf "%s\\n" "$*" >> "$HOME/calls"\nexit 0\n')
+        kinds = [(True, "mallory", "mallory"), (True, "SamyakJhaveri", "org"), (False, "writer", "SamyakJhaveri"),
+                 (False, "SamyakJhaveri", "SamyakJhaveri")]
+        prs = [{"number": 900 + i, "title": f"factory ticket {900 + i}", "isDraft": False,
+                "headRefName": f"factory/{900 + i}", "isCrossRepository": cross,
+                "author": {"id": f"U_{i}", "is_bot": False, "login": login, "name": login},
+                "headRepositoryOwner": {"id": f"O_{i}", "login": owner, "name": owner},
+                "body": f"Closes #{900 + i}", "labels": []} for i, (cross, login, owner) in enumerate(kinds)]
+        events, calls = self.home / "events", self.home / "calls"
+
+        def lists() -> int:
+            return events.read_text().split().count("list") if events.exists() else 0
+
+        def pr_calls() -> int:
+            return calls.read_text().count("process one pull request") if calls.exists() else 0
+
+        for own, expected in ((False, 0), (True, 1)):
+            events.unlink(missing_ok=True)
+            (self.home / "prs.json").write_text(json.dumps(prs if own else prs[:3]))
+            p = subprocess.Popen(["bash", str(OVERNIGHT / "driver.sh")], env=self.env(), cwd=ROOT,
+                                 stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, start_new_session=True)
+            try:
+                self.assertTrue(self.wait_for(lambda: lists() >= 3 or pr_calls() >= 1, 20), "the driver did not poll")
+            finally:
+                self.kill_group(p.pid)
+                p.wait()
+            time.sleep(0.3)
+            self.assertEqual(min(pr_calls(), 1), expected, f"PR calls with Samyak's same-repo PR open: {own}")
+        line = re.search(r"(?m)^1\. \*\*Pick\.\*\* `([^`]*)`", (OVERNIGHT / "protocol.md").read_text())
+        self.assertIsNotNone(line, "protocol.md has no Pick line with a command")
+        out = subprocess.run(["bash", "-c", line.group(1)], env=self.env(), capture_output=True, text=True, check=True)
+        listed = json.loads(out.stdout)
+        self.assertEqual([x["headRefName"] for x in listed], ["factory/903"])
+        self.assertTrue({"number", "title", "isDraft", "body", "labels"} <= set(listed[0]))
+
 if __name__ == "__main__":
     unittest.main()
