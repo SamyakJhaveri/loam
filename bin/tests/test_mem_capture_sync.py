@@ -343,6 +343,7 @@ class LockTests(Base):
         self.capture(a, "s1")
         self.assertIn(" | s1 | ", self.wait_for_remote("s1"), "the capture never reached the remote")
 
+    @unittest.skipIf(os.geteuid() == 0, "root writes a read-only .git/objects")
     def test_an_excluded_trace_stays_spooled_until_committed(self) -> None:
         store = self.top / "store"
         git("init", "-q", str(store), cwd=self.top)
@@ -366,6 +367,17 @@ class LockTests(Base):
         self.assertEqual(self.spool(store), [], "the spool was not drained")
         self.assertEqual(exclude.read_text(), "traces/\n", "the exclude rule was changed")
         subprocess.run(["git", "check-ignore", "-q", "--no-index", trace], cwd=store, check=True)
+
+    def test_a_trace_a_clean_filter_rewrites_leaves_the_spool(self) -> None:
+        store = self.top / "store"
+        git("init", "-q", str(store), cwd=self.top)
+        git("config", "filter.b64.clean", "base64", cwd=store)  # stands in for git-lfs
+        git("config", "filter.b64.smudge", "base64 -d", cwd=store)
+        (store / ".git/info").mkdir(exist_ok=True)
+        (store / ".git/info/attributes").write_text("*.gz filter=b64\n")
+        for sid in ("s1", "s2"):
+            self.capture(store, sid)
+            self.assertEqual(self.spool(store), [], f"{sid}'s committed entry stayed in the spool")
 
 
 class RecallBoundTests(Base):

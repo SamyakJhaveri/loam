@@ -267,10 +267,13 @@ drain_spool() {
   bounded 3 "${SGIT[@]}" add -f -- "${paths[@]}" >/dev/null 2>&1
   bounded 3 "${SGIT[@]}" commit -qm "capture $(date +%F)$sids" >/dev/null 2>&1
   # An entry goes once HEAD's blob for its trace is the entry's own bytes,
-  # hashed unfiltered: a clean filter that hung the add would hang the hash too.
+  # hashed as git hashes that path, so a clean filter (git-lfs) matches; one that
+  # hangs is cut off by the bound and the entry stays. The shell opens the entry,
+  # so a relative store path is not resolved twice. Past $DEADLINE the rest stay.
   for i in "${!applied[@]}"; do
+    [ -z "${DEADLINE:-}" ] || [ "$(date +%s)" -lt "${DEADLINE%.*}" ] || break
     head="$(bounded 2 "${SGIT[@]}" rev-parse -q --verify "HEAD:${rels[$i]}" 2>/dev/null)" \
-      && x="$(bounded 2 "${SGIT[@]}" hash-object --no-filters -- "${applied[$i]}/trace.jsonl.gz" 2>/dev/null)" \
+      && x="$(bounded 2 "${SGIT[@]}" hash-object --path="${rels[$i]}" --stdin < "${applied[$i]}/trace.jsonl.gz" 2>/dev/null)" \
       && [ -n "$x" ] && [ "$x" = "$head" ] && rm -rf "${applied[$i]}"
   done
   return 0
