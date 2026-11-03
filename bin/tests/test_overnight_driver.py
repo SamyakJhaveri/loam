@@ -70,6 +70,28 @@ class OvernightDriverTests(unittest.TestCase):
         self.assertEqual(s["sandbox"]["filesystem"]["allowWrite"], ["~/.local/state/loam"])
         self.assertEqual(s["sandbox"]["filesystem"]["denyWrite"], ["~/loam/bin/overnight"])
         self.assertEqual(s["sandbox"]["network"]["allowedDomains"], ["github.com"])
+        # The call reads DistBench only through the driver's grader-window.txt; no allow rule opens gh on it.
+        self.assertEqual([r for r in deny if "distbench" in r],
+                         ["Bash(gh * --repo SamyakJhaveri/distbench *)", "Bash(gh * -R SamyakJhaveri/distbench *)"])
+        self.assertNotIn("allow", s["permissions"])
+
+    def test_protocol_reads_the_grader_window_from_the_drivers_file(self) -> None:
+        protocol = (OVERNIGHT / "protocol.md").read_text()
+        p = re.search(r"(?ms)^\*\*Grader window\.\*\*.*?(?=^\*\*Codex panel\.\*\*)", protocol)
+        self.assertIsNotNone(p)
+        self.assertIn("O/grader-window.txt", p[0])
+        self.assertNotIn("gh pr list -R SamyakJhaveri/distbench", p[0])
+        lines = p[0].splitlines()
+        self.assertIn("At step 8, before the merge, read that file: the window is clear only when line 2 is `exit 0`, "
+                      "`read_at` is at most five minutes old, and no number follows.", lines)
+        self.assertIn("A number leaves the PR open (step 9) with `left open: grader window: DistBench grader-fix PR "
+                      "#<m> open`; any other `exit`, a `read_at` more than five minutes old, or a missing file leaves "
+                      "it open with `left open: grader window: DistBench read failed or stale`.", lines)
+        self.assertIn("grader-window.txt", re.search(r"(?m)^Run state lives.*$", protocol)[0])
+        loop = (ROOT / "docs/factory/LOOP.md").read_text()
+        self.assertIn("grader-window.txt", re.search(r"(?m)^Its run state \(.*$", loop)[0])
+        # The driver runs the protocol's read, argument for argument.
+        self.assertIn("gh " + " ".join(GRADER_READ[:-1]) + " '" + GRADER_READ[-1] + "'", (OVERNIGHT / "driver.sh").read_text())
 
     @LINUX_ONLY
     def test_driver_call_reads_the_repo_settings_and_protocol(self) -> None:
