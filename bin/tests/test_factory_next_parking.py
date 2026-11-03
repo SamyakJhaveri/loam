@@ -153,9 +153,13 @@ class ParkingTests(unittest.TestCase):
     def test_runner_assigned_issue_relaunches_only_after_a_relaunchable_stop(self) -> None:
         # The launch assigned the issue to the runner and nothing unassigns it (#386, #440): of the runner's own,
         # a stopped-daily run of an earlier UTC day, a stopped-environment run past its backoff, and a stopped run
-        # launch, and the rest are skipped without a line. Four slots, so #6's running run, which holds one, leaves room.
+        # launch, and each of the rest is passed over with its line (#617). Four slots, so #6's running run, which holds
+        # one, leaves room.
         for issue, status in ((5, "stopped-cap"), (6, "running"), (8, "pr-opened")):
             self.run_dir(issue, CLEAN, status)
+        others = ("parked #5: last run exited stopped-cap; edit the body or remove ready-for-agent\n"
+                  "waiting #6: its run is running\n"
+                  "waiting #8: its PR awaits merge or close\n")
         for status in ("stopped-daily", "stopped-environment", "stopped"):
             with self.subTest(status=status):
                 self.run_dir(7, CLEAN, status)
@@ -168,11 +172,11 @@ class ParkingTests(unittest.TestCase):
                 os.utime(self.runs / "7" / key(CLEAN) / "status", (86400, 86400))
                 proc = self.next_dry_run(mine=mine, FACTORY_MAX_PARALLEL="4")
                 self.assertEqual(proc.stdout.strip(), "would launch #7", proc.stderr)
-                self.assertEqual(proc.stderr, "")
+                self.assertEqual(proc.stderr, others)
                 shutil.rmtree(self.runs / "7")
         proc = self.next_dry_run(mine=tuple((n, CLEAN) for n in (5, 6, 8)), FACTORY_MAX_PARALLEL="4")
         self.assertEqual(proc.stdout.strip(), "nothing to launch", proc.stderr)
-        self.assertEqual(proc.stderr, "")
+        self.assertEqual(proc.stderr, others)
 
     def test_runner_assigned_ticket_defect_relaunches_only_after_a_body_edit(self) -> None:
         # The launch assigned #7 to the runner; its run ended ticket-defect, so the same body parks, and the body the
@@ -184,13 +188,13 @@ class ParkingTests(unittest.TestCase):
         self.assertEqual(proc.stdout.strip(), "would launch #7", proc.stderr)
 
     def test_runner_assigned_issue_that_never_ran_is_held(self) -> None:
-        # Assigned to the runner by hand with no run of any body: the owner holds it, so next leaves it; the same
-        # issue unassigned launches. A lint line under the issue dir is not a run.
+        # Assigned to the runner by hand with no run of any body: the owner holds it, so next leaves it, with its line
+        # (#617); the same issue unassigned launches. A lint line under the issue dir is not a run.
         (self.runs / "7").mkdir()
         (self.runs / "7" / "owner-events.jsonl").write_text("{}\n")
         proc = self.next_dry_run(mine=((7, CLEAN),))
         self.assertEqual(proc.stdout.strip(), "nothing to launch", proc.stderr)
-        self.assertEqual(proc.stderr, "")
+        self.assertEqual(proc.stderr, "held #7: assigned to the runner with no run of any body; unassign it to let next launch it\n")
         proc = self.next_dry_run((7, CLEAN))
         self.assertEqual(proc.stdout.strip(), "would launch #7", proc.stderr)
 
@@ -232,12 +236,12 @@ class ParkingTests(unittest.TestCase):
 
     def test_runner_assigned_stop_waits_while_its_stop_file_remains(self) -> None:
         # cmd_run exits stopped at once while FACTORY_STOP is in the run dir, so #7 must not take the pick from #8
-        # every tick (#440); removing the file makes it eligible again.
+        # every tick (#440), and says why on its line (#617); removing the file makes it eligible again.
         self.run_dir(7, CLEAN, "stopped")
         (self.runs / "7" / key(CLEAN) / "FACTORY_STOP").touch()
         proc = self.next_dry_run((8, CLEAN), mine=((7, CLEAN),))
         self.assertEqual(proc.stdout.strip(), "would launch #8", proc.stderr)
-        self.assertEqual(proc.stderr, "")
+        self.assertEqual(proc.stderr, "stopped #7: its run directory holds FACTORY_STOP (bin/factory stop); remove the file to let it launch\n")
         (self.runs / "7" / key(CLEAN) / "FACTORY_STOP").unlink()
         proc = self.next_dry_run((8, CLEAN), mine=((7, CLEAN),))
         self.assertEqual(proc.stdout.strip(), "would launch #7", proc.stderr)
@@ -248,7 +252,7 @@ class ParkingTests(unittest.TestCase):
         (self.runs / "7" / key(CLEAN) / "FACTORY_STOP").touch()
         proc = self.next_dry_run((7, CLEAN), (8, CLEAN))
         self.assertEqual(proc.stdout.strip(), "would launch #8", proc.stderr)
-        self.assertEqual(proc.stderr, "")
+        self.assertEqual(proc.stderr, "stopped #7: its run directory holds FACTORY_STOP (bin/factory stop); remove the file to let it launch\n")
 
     def test_relaunchable_run_waits_while_a_process_of_it_still_runs(self) -> None:
         # A stuck model call outlives finish stopped-environment; cmd_run refuses a relaunch while it, or any process
@@ -468,13 +472,6 @@ class ParkingTests(unittest.TestCase):
         proc = self.next_dry_run((8, CLEAN), FACTORY_DAILY_BUDGET_USD="100", FACTORY_ROUND_BUDGET_USD="15")
         self.assertEqual(proc.stdout.strip(), "nothing to launch", proc.stderr)
         self.assertIn("waiting: a run stopped at today's daily budget", proc.stderr)
-
-    def test_issue_assigned_to_someone_else_is_not_listed(self) -> None:
-        # Neither query returns it, so its past daily stop launches nothing.
-        self.run_dir(7, CLEAN, "stopped-daily")
-        os.utime(self.runs / "7" / key(CLEAN) / "status", (86400, 86400))
-        proc = self.next_dry_run()
-        self.assertEqual(proc.stdout.strip(), "nothing to launch", proc.stderr)
 
     def test_trailing_newlines_strip_as_load_ticket_does(self) -> None:
         # gh returns the body raw; load_ticket's $(...) strips its trailing newlines before cmd_run keys it.
@@ -720,6 +717,111 @@ class LintTests(ParkingTests):
         proc = self.next_dry_run(mine=((7, CLEAN),), editors={7: "someone-else"})
         self.assertEqual(proc.stdout.strip(), "nothing to launch", proc.stderr)
         self.assertIn("not owner #7", proc.stderr)
+
+
+# A stand-in for gh that answers next's reads as GitHub does: the two listings as REST JSON through the real --jq (the
+# repository listing newest first, one 100-issue page unless --paginate), and the editor read with one alias per issue.
+# Each call is logged one per line to $GH_LOG; the issues come from the JSON at $STORE, number -> {as, bl, body}.
+GH_STAND_IN = """#!/usr/bin/env python3
+import json, os, re, subprocess, sys
+a = sys.argv[1:]
+store = json.load(open(os.environ["STORE"]))
+open(os.environ["GH_LOG"], "a").write(" ".join(a) + "\\n")
+jq = a[a.index("--jq") + 1] if "--jq" in a else "."
+path = a[1] if len(a) > 1 else ""
+def rest(n, i):
+    return {"number": int(n), "user": {"login": "SamyakJhaveri"}, "body": i["body"], "pull_request": None,
+            "assignees": [{"login": x} for x in i["as"]], "issue_dependencies_summary": {"blocked_by": i["bl"]},
+            "repository": {"full_name": "o/r"}}
+if path == "graphql":
+    q = next(x.split("=", 1)[1] for x in a if x.startswith("query="))
+    doc = {"data": {"repository": {k: {"editor": None, "lastEditedAt": None}
+                                   for k in re.findall(r"(i[0-9]+): issue\\(number", q)}}}
+elif path.startswith("repos/o/r/issues?"):
+    doc = sorted((rest(n, i) for n, i in store.items() if not ("assignee=none" in path and i["as"])),
+                 key=lambda x: -x["number"])
+    doc = doc if "--paginate" in a else doc[:100]
+elif path.startswith("/issues?"):
+    doc = [rest(n, i) for n, i in store.items() if "SamyakJhaveri" in i["as"]]
+else:
+    sys.exit(2)
+r = subprocess.run(["jq", "-r", jq], input=json.dumps(doc), capture_output=True, text=True)
+sys.stdout.write(r.stdout)
+sys.exit(r.returncode)
+"""
+
+
+class PassedOverTests(unittest.TestCase):
+    """Every ready issue the frontier loop passes over gets one stderr line with its reason, read from the same listings and
+    the same one editor read (#617)."""
+
+    def test_each_passed_over_issue_gets_one_line_and_an_older_clean_issue_still_launches(self) -> None:
+        t = tempfile.TemporaryDirectory()
+        self.addCleanup(t.cleanup)
+        tmp = pathlib.Path(t.name)
+        runs, bin_dir = tmp / "runs", tmp / "bin"
+        bin_dir.mkdir()
+        (bin_dir / "gh").write_text(GH_STAND_IN)
+        (bin_dir / "gh").chmod(0o755)
+        me, other = ["SamyakJhaveri"], ["mallory"]
+        store = {19: (["SamyakJhaveri"], None, CLEAN), 20: ([], None, CLEAN), 21: ([], 2, "x"), 22: (other, 0, "x"), 23: (me, 0, "x"), 24: (me, 0, "x"), 25: (me, 0, "x"),
+                 26: ([], 0, "x"), 27: (me, 1, "x"), 28: (me, 0, "x"), 29: ([], 0, CLEAN), 30: (me, 0, "x"),
+                 31: ([], 3, ""), 32: (other, 0, ""), 33: (["mallory", "eve"], 0, CLEAN)}
+        # 100 newer issues assigned to another account fill the repository listing's first page.
+        store.update({n: (other, 0, "x") for n in range(101, 201)})
+        (tmp / "store.json").write_text(json.dumps({n: {"as": a, "bl": b, "body": body} for n, (a, b, body) in store.items()}))
+        def run(issue: int, status: str | None, *files: tuple[str, str]) -> None:
+            d = runs / str(issue) / key(store[issue][2])
+            d.mkdir(parents=True)
+            if status:
+                (d / "status").write_text(status + "\n")
+            for name, text in files:
+                (d / name).write_text(text)
+        def pr(n: int) -> tuple[str, str]:
+            return "factory.log", f"2026-11-01T00:00:00Z EXIT pr-opened (0): https://github.com/o/r/pull/{n} after 1 rounds\n"
+        run(19, "stopped")   # relaunchable, were its blocker count readable
+        run(23, "pr-opened", pr(123))
+        run(25, "stuck")
+        run(26, None, ("FACTORY_STOP", ""))
+        run(28, "pr-opened", pr(128), ("pr-closed", "2026-11-01T01:00:00Z\n"))
+        run(30, "running")
+        run(33, "stopped-daily")   # of an earlier day, so it would relaunch were it not another account's
+        os.utime(runs / "33" / key(CLEAN) / "status", (86400, 86400))
+        gh_log = tmp / "gh.log"
+        proc = sourced("assert_target_ready() { :; }; claude_logged_in() { :; }; claude_version_ok() { :; }; "
+                       "target_repo() { echo o/r; }; cmd_next --dry-run",
+                       {"PATH": f"{bin_dir}:{os.environ['PATH']}", "STORE": str(tmp / "store.json"), "GH_LOG": str(gh_log),
+                        "FACTORY_RUNS_ROOT": str(runs), "FACTORY_MAX_PARALLEL": "2"})
+        self.assertEqual((proc.returncode, proc.stdout), (0, "would launch #29\n"), proc.stderr)
+        expect = {
+            19: "blocked #19: the listing gave no native blocker count (?); it waits until it does",
+            20: "blocked #20: the listing gave no native blocker count (?); it waits until it does",
+            21: "blocked #21: 2 open native blocker(s); it launches once they close",
+            22: "assigned #22: assigned to mallory, not the runner; unassign it or remove ready-for-agent",
+            23: "waiting #23: its PR awaits merge or close",
+            24: "held #24: assigned to the runner with no run of any body; unassign it to let next launch it",
+            25: "parked #25: last run exited stuck; edit the body or remove ready-for-agent",
+            26: "stopped #26: its run directory holds FACTORY_STOP (bin/factory stop); remove the file to let it launch",
+            27: "blocked #27: 1 open native blocker(s); it launches once they close",
+            28: "parked #28: its PR closed but the issue is still open; edit the body or remove ready-for-agent",
+            30: "waiting #30: its run is running",
+            31: "blocked #31: 3 open native blocker(s); it launches once they close",
+            32: "assigned #32: assigned to mallory, not the runner; unassign it or remove ready-for-agent",
+            33: "assigned #33: assigned to mallory,eve, not the runner; unassign it or remove ready-for-agent",
+        }
+        lines = proc.stderr.splitlines()
+        for issue, line in expect.items():
+            with self.subTest(issue=issue):
+                self.assertEqual([x for x in lines if f"#{issue}: " in x], [line], proc.stderr)
+        self.assertEqual(len(lines), len(expect) + 100, proc.stderr)
+        # The same reads as before: two listings and one editor read naming every candidate (no PR read under --dry-run).
+        calls = gh_log.read_text().splitlines()
+        self.assertEqual([c.split(" ", 2)[:2] for c in calls], [["api", "repos/o/r/issues?labels=ready-for-agent&state=open&per_page=100"],
+                                                                ["api", "/issues?filter=assigned&labels=ready-for-agent&state=open&per_page=100"],
+                                                                ["api", "graphql"]], calls)
+        self.assertIn("--paginate", calls[0].split())
+        for issue in store:
+            self.assertIn(f"i{issue}: issue(number: {issue}) ", calls[2])
 
 
 class LoadTicketOwnerTests(unittest.TestCase):

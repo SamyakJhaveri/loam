@@ -169,6 +169,10 @@ class TargetTests(unittest.TestCase):
         self.assertIn("PASS standing do-not-touch list: 2 paths", self.target(self.proj, status).stdout)
 
     def test_every_gh_call_names_the_origin_repository(self) -> None:
+        # next's two frontier listings print the same fields: number, author, body (`-` if empty), blockers, assignees.
+        fields = ('"\\(.number) \\(.user.login) \\(.body // "" | @base64 | if . == "" then "-" else . end) '
+                  '\\(.issue_dependencies_summary.blocked_by // "?") '
+                  '\\([(.assignees // [])[].login] | join(",") | if . == "" then "-" else . end)"')
         self.target(self.proj, self.gh_stub + "lint 5")  # the stub body fails lint; only its gh call matters
         load = self.target(self.proj, self.gh_stub + "load_ticket 5; echo REPO=$REPO")
         self.assertIn("REPO=acme/widget", load.stdout, load.stderr)
@@ -185,13 +189,13 @@ class TargetTests(unittest.TestCase):
             "editor { login } lastEditedAt } } }",
             "pr list -R acme/widget --json number,headRefName,title --jq "
             '.[] | select(.headRefName | startswith("factory/")) | "  #\\(.number) \\(.headRefName) \\(.title)"',
-            "api repos/acme/widget/issues?labels=ready-for-agent&state=open&assignee=none&per_page=100 --jq "
-            'sort_by(.number)[] | select(.pull_request == null) | select(.issue_dependencies_summary.blocked_by == 0)'
-            ' | "\\(.number) \\(.user.login) \\(.body // "" | @base64)"',
+            # Every ready issue, assigned or blocked too, so next can name why it passes one over (#617).
+            "api repos/acme/widget/issues?labels=ready-for-agent&state=open&per_page=100 --paginate --jq "
+            'sort_by(.number)[] | select(.pull_request == null) | ' + fields,
             # /issues has no repository in its path; the runner's own issues are kept to this one by the filter.
             "api /issues?filter=assigned&labels=ready-for-agent&state=open&per_page=100 --paginate --jq "
             '.[] | select(.pull_request == null) | select((.repository.full_name // "" | ascii_downcase) == "acme/widget")'
-            ' | select(.issue_dependencies_summary.blocked_by == 0) | "\\(.number) \\(.user.login) \\(.body // "" | @base64)"'])
+            ' | ' + fields])
 
     def test_next_parks_by_the_targets_own_runs_without_the_toolchain(self) -> None:
         # next launches only a body that passes lint (#314); gh returns the body with no trailing newline.

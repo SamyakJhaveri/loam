@@ -10,7 +10,8 @@
 #   bin/factory merge <pr> <sha>    merges the PR only when sha is its head and every check reported there passed.
 #   bin/factory next [--install]    the F9 frontier timer's step: launch the next unblocked ready-for-agent ticket.
 #   bin/factory next --frontier     prints every issue next would launch, one #N per line in launch order; changes no run.
-#   bin/factory graders-check       fails when judge.md or reviewer.md drifts from GRADER_MODEL and GRADER_EFFORT; warns STALE.
+#   bin/factory graders-check       fails when judge.md or reviewer.md drifts from GRADER_MODEL and GRADER_EFFORT; warns STALE when
+#                                   a grader is unreplayed or its replay matched no case; INFO names a partial mismatch.
 #   bin/factory skills              lists each installed pstack skill's lines that name a ~/ path or ask the user.
 #   -C <repo>, before the subcommand or right after it, points lint, run, status, stop, merge, and next at another repository (F8).
 # Lint never executes a check; it reads the body and shells out only to `bash -n`, `gh`, and python3 for the hidden-text rule.
@@ -3451,8 +3452,14 @@ next_tick() { # [--dry-run|--install|--frontier]
 
   # 4. The frontier: open, ready-for-agent, unassigned issues with no open native blocker, lowest
   #    number first, plus the runner's own such issues whose current body has no run yet or whose run ended stopped-daily,
-  #    stopped-environment or stopped. A gh failure (offline, unauthenticated, off cron's PATH, empty repo) prints
-  #    `frontier query failed` and returns 1, so no beat is sent (cmd_next) rather than the timer stalling silent;
+  #    stopped-environment or stopped. Every other open ready-for-agent issue is read too, so the loop prints one stderr
+  #    line naming why it does not launch: each line carries the body (`-` for an empty one, so it cannot shift the
+  #    fields), the open native blocker count (`?` when the listing omits it, so the issue waits rather than launching
+  #    blocked) and the assignee logins (`-` for none); a line without the last two reads as unblocked and unassigned.
+  #    The repository listing reads every page, since assigned issues would otherwise fill its first 100 and hide an
+  #    older unassigned one; gh fetches the pages inside the one call. A gh failure (offline, unauthenticated, off
+  #    cron's PATH, empty repo) prints `frontier query failed` and returns 1, so no beat is sent (cmd_next) rather than
+  #    the timer stalling silent;
   #    only a successful, empty query falls through to `nothing to launch`.
   local repo ready num b64 body
   repo=$(target_repo)
@@ -3460,8 +3467,8 @@ next_tick() { # [--dry-run|--install|--frontier]
     echo "frontier query failed: $TARGET has no GitHub origin" >&2
     return 1
   fi
-  if ! ready=$(net gh api "repos/$repo/issues?labels=ready-for-agent&state=open&assignee=none&per_page=100" \
-    --jq 'sort_by(.number)[] | select(.pull_request == null) | select(.issue_dependencies_summary.blocked_by == 0) | "\(.number) \(.user.login) \(.body // "" | @base64)"' 2> /dev/null); then
+  if ! ready=$(net gh api "repos/$repo/issues?labels=ready-for-agent&state=open&per_page=100" --paginate \
+    --jq 'sort_by(.number)[] | select(.pull_request == null) | "\(.number) \(.user.login) \(.body // "" | @base64 | if . == "" then "-" else . end) \(.issue_dependencies_summary.blocked_by // "?") \([(.assignees // [])[].login] | join(",") | if . == "" then "-" else . end)"' 2> /dev/null); then
     echo "frontier query failed: gh api issues (failed, or no reply in ${NET_TIMEOUT_SEC}s)" >&2
     return 1
   fi
@@ -3470,14 +3477,17 @@ next_tick() { # [--dry-run|--install|--frontier]
   # lookup, and every page, since it spans all the runner's repositories and gh applies --jq per page); the loop takes
   # one of those only at none with a run of an earlier body (an edited body is a new ticket; with no run at all the
   # owner assigned it by hand to hold it), stopped-daily,
-  # stopped-environment or stopped, since any other is in flight, awaits merge, or parks.
+  # stopped-environment or stopped, since any other is in flight, awaits merge, or parks, each with its line.
   local mine lrepo
   lrepo=$(printf '%s' "$repo" | tr '[:upper:]' '[:lower:]')
   if ! mine=$(net gh api "/issues?filter=assigned&labels=ready-for-agent&state=open&per_page=100" --paginate \
-    --jq '.[] | select(.pull_request == null) | select((.repository.full_name // "" | ascii_downcase) == "'"$lrepo"'") | select(.issue_dependencies_summary.blocked_by == 0) | "\(.number) \(.user.login) \(.body // "" | @base64)"' 2> /dev/null); then
+    --jq '.[] | select(.pull_request == null) | select((.repository.full_name // "" | ascii_downcase) == "'"$lrepo"'") | "\(.number) \(.user.login) \(.body // "" | @base64 | if . == "" then "-" else . end) \(.issue_dependencies_summary.blocked_by // "?") \([(.assignees // [])[].login] | join(",") | if . == "" then "-" else . end)"' 2> /dev/null); then
     echo "frontier query failed: gh api issues assigned to the runner (failed, or no reply in ${NET_TIMEOUT_SEC}s)" >&2
     return 1
   fi
+  # The repository listing holds the runner's issues too; each is read once, from the runner's list. A line with no
+  # assignee field (or `-`) stays, so an unassigned issue both lists name still reads as unassigned.
+  ready=$(awk 'NR == FNR { m[$1]; next } !($5 != "" && $5 != "-" && ($1 in m))' <(printf '%s\n' "$mine") - <<< "$ready")
 
   # The run of the issue's current body decides (park_status): no such run launches; stopped-environment
   # and stopped relaunch (the environment, not the ticket, ended them), stopped-environment only ENV_BACKOFF_SEC after
@@ -3488,8 +3498,8 @@ next_tick() { # [--dry-run|--install|--frontier]
   # A run of an earlier body no longer parks the issue, so an edited body launches on the next tick.
   # The body travels as base64 so its newlines stay on one line; $(...) strips its trailing newlines
   # the way load_ticket's $(jq -r .body) of its gh api graphql read does, so the key matches the one cmd_run computes.
-  # A ticket at pr-opened is assigned at launch, so it is skipped among the runner's own; if a human
-  # unassigns it, its slot is already counted above while its worktree exists.
+  # A ticket at pr-opened waits on its PR, assigned or not, and parks once the PR closed with the issue still open; its
+  # slot is counted above while its worktree exists.
   # A launchable body is linted first (#314): the label alone does not make an issue a ticket, and a run of
   # a body with no done-checks block would burn a round. lint_body runs in a subshell on the body in hand
   # (no second gh call), its stdout dropped; its first LINT line is reported the way a parked issue is
@@ -3516,22 +3526,38 @@ next_tick() { # [--dry-run|--install|--frontier]
       | "\(.key | ltrimstr("i")) \(.value.editor.login // (if .value.lastEditedAt then "(unnamed)" else "" end))"' \
       <<< "$json" 2> /dev/null) || editors=""
   fi
-  local pick="" read_failed="" st_last lint_err lint_line author editor run
-  while read -r who num author b64; do
+  # Each issue the loop passes over gets one stderr line with its reason: an open native blocker (either list), an assignee
+  # other than the runner (the repository listing, once the runner's own are dropped above), the runner's issue with
+  # no run of any body, FACTORY_STOP, then the waits and parks below, which apply to the runner's issues as to the rest.
+  local pick="" read_failed="" st_last lint_err lint_line author editor run blocked assignees
+  while read -r who num author b64 blocked assignees; do
     [ -n "$num" ] || continue
+    [ "$b64" = - ] && b64=""
+    if [[ ${blocked:-0} =~ ^[1-9][0-9]*$ ]]; then
+      echo "blocked #$num: $blocked open native blocker(s); it launches once they close" >&2
+      continue
+    fi
+    if [ "${blocked:-0}" != 0 ]; then
+      echo "blocked #$num: the listing gave no native blocker count ($blocked); it waits until it does" >&2
+      continue
+    fi
+    if [ "$who" = none ] && [ -n "$assignees" ] && [ "$assignees" != - ]; then
+      echo "assigned #$num: assigned to $assignees, not the runner; unassign it or remove ready-for-agent" >&2
+      continue
+    fi
     body=$(printf '%s' "$b64" | base64 -d)
     st_last=$(park_status "$num" "$body")
-    if [ "$who" = mine ]; then
-      case "$st_last" in
-        none) ran_before "$num" || continue ;;
-        stopped-daily|stopped-environment|stopped) ;;
-        *) continue ;;
-      esac
+    if [ "$who" = mine ] && [ "$st_last" = none ] && ! ran_before "$num"; then
+      echo "held #$num: assigned to the runner with no run of any body; unassign it to let next launch it" >&2
+      continue
     fi
     run=$(run_dir_of "$num" "$body")
-    # cmd_run exits stopped at once while the run dir holds FACTORY_STOP (bin/factory stop), so the issue is skipped,
-    # without a line, until the operator removes the file; otherwise it would take the pick from every later candidate each tick.
-    [ -f "$run/FACTORY_STOP" ] && continue
+    # cmd_run exits stopped at once while the run dir holds FACTORY_STOP (bin/factory stop), so the issue is skipped
+    # until the operator removes the file; otherwise it would take the pick from every later candidate each tick.
+    if [ -f "$run/FACTORY_STOP" ]; then
+      echo "stopped #$num: its run directory holds FACTORY_STOP (bin/factory stop); remove the file to let it launch" >&2
+      continue
+    fi
     if env_parked "$run"; then
       echo "parked #$num: stopped on the environment $ENV_PARK_STOPS times in a row with no new round since; fix the cause, then relaunch it by hand or edit the body" >&2
       [ "$dry" = 1 ] || env_park_alert "$run" "$num"
@@ -3582,7 +3608,13 @@ next_tick() { # [--dry-run|--install|--frontier]
         elif [ -z "$pick" ]; then
           pick="$num"
         fi ;;
-      pr-opened) ;;
+      pr-opened)
+        if [ -e "$run/pr-closed" ]; then
+          echo "parked #$num: its PR closed but the issue is still open; edit the body or remove ready-for-agent" >&2
+        else
+          echo "waiting #$num: its PR awaits merge or close" >&2
+        fi ;;
+      running|waiting-limit) echo "waiting #$num: its run is $st_last" >&2 ;;
       *) echo "parked #$num: last run exited $st_last; edit the body or remove ready-for-agent" >&2 ;;
     esac
   done <<< "$( { sed 's/^/none /' <<< "$ready"; sed 's/^/mine /' <<< "$mine"; } | sort -s -n -k2,2 )"
@@ -3888,6 +3920,10 @@ cmd_skills() {
 # grader file's sha256: an edit since the last replay, a replay over 30 days old (the served model drifts
 # under a fixed hash) or dated ahead, or one with no clean or no mutant case (a grader that rejects
 # everything scores perfectly on mutants alone). A warning, since every paid eval is a merge-checklist step.
+# A fresh line whose replay matched none of its cases also warns STALE: eval counts a case it could not build as
+# a mismatch, so that replay says nothing about the grader file. A partial miss prints one INFO line naming the
+# count instead, since eval exits 1 on any miss and a STALE there would never clear for an imperfect grader.
+# Only DRIFT sets the exit code.
 cmd_graders_check() { # [--agents-dir D] [--evals-dir D]
   local dir=cultivation/marketplace/sam-cc-setup/agents evals=evals want g f got h why rc=0
   while [ $# -gt 0 ]; do
@@ -3919,8 +3955,15 @@ cmd_graders_check() { # [--agents-dir D] [--evals-dir D]
           elif $t - now > 60 then "last replay dated in the future"
           elif ((.clean | numbers) // 0) == 0 then "last replay had no clean case"
           elif ((.mutants | numbers) // 0) == 0 then "last replay had no mutant case"
-          else "" end end' 2>&1)
-    [ -z "$why" ] || echo "WARN STALE $g: $why for sha256 $h in $evals/scores.jsonl"
+          else ((.cases | numbers) // 0) as $c | ((.mismatch | numbers) // 0) as $m
+          | if $c > 0 and $m >= $c then "last replay matched none of its \($c) cases"
+            elif $c > 0 and $m > 0 then "INFO last replay mismatched \($m) of \($c) cases"
+            else "" end end end' 2>&1)
+    case "$why" in
+      "")      ;;
+      "INFO "*) echo "INFO $g: ${why#INFO } for sha256 $h in $evals/scores.jsonl" ;;
+      *)       echo "WARN STALE $g: $why for sha256 $h in $evals/scores.jsonl" ;;
+    esac
   done
   [ "$rc" -eq 0 ] && echo "graders-check: OK"
   return "$rc"
