@@ -8,6 +8,9 @@
 
 The signed ref is $FROZEN_REF, else origin/main, else main. The owner signs in a commit of their own
 on that ref after reading the change; a list re-signed anywhere else differs from the ref's copy.
+Opt-in signed sign-off: when the signed ref holds .github/allowed_signers, a list that differs from the
+ref's copy (or that the ref lacks) also passes when a commit in <ref>..HEAD holds exactly that list and an
+SSH signature from a key in the ref's copy of that file; the branch's own copy is never read.
 The list is `sha256sum` format, so `sha256sum -c checks/FROZEN.sha256` also reads it.
 """
 
@@ -18,9 +21,12 @@ import os
 import pathlib
 import subprocess
 import sys
+import tempfile
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 LIST = "checks/FROZEN.sha256"
+SIGNERS = ".github/allowed_signers"
+SSH_SIG = b"-----BEGIN SSH SIGNATURE-----"
 
 
 def digest(path: pathlib.Path) -> str:
@@ -76,6 +82,43 @@ def on_ref(ref: str | None) -> bool:
     return r.returncode == 0
 
 
+def git(*args: str) -> subprocess.CompletedProcess:
+    return subprocess.run(["git", "-C", str(ROOT), *args], capture_output=True)
+
+
+def ssh_signed(commit: str) -> bool:
+    """True when every signature header of commit is an SSH signature. verify-commit picks its verifier from
+    the signature, not gpg.format: an OpenPGP one goes to gpg and the host's keyring, never allowed_signers."""
+    header = git("cat-file", "commit", commit).stdout.partition(b"\n\n")[0]
+    sigs = [value for key, _, value in (line.partition(b" ") for line in header.split(b"\n"))
+            if key in (b"gpgsig", b"gpgsig-sha256")]
+    return bool(sigs) and all(sig.startswith(SSH_SIG) for sig in sigs)
+
+
+def signed_off(ref: str, listed: bytes) -> bool:
+    """True when a commit in ref..HEAD holds exactly the list `listed` and an SSH signature from a key in
+    the ref's allowed signers file. Matching the content, not HEAD, lets a later unsigned commit or a PR's
+    merge commit through and refuses a list re-signed unsigned after a valid sign-off."""
+    signers = git("show", f"{ref}:./{SIGNERS}")
+    if signers.returncode != 0:
+        return False
+    commits = git("rev-list", f"{ref}..HEAD").stdout.decode().split()
+    with tempfile.NamedTemporaryFile(prefix="allowed_signers.") as f:
+        f.write(signers.stdout)
+        f.flush()
+        for c in commits:
+            if not ssh_signed(c):
+                continue
+            held = git("show", f"{c}:./{LIST}")
+            if held.returncode != 0 or held.stdout != listed:
+                continue
+            check = git("-c", "gpg.format=ssh", "-c", "gpg.ssh.program=ssh-keygen", "-c", "gpg.minTrustLevel=fully",
+                        "-c", f"gpg.ssh.allowedSignersFile={f.name}", "verify-commit", c)
+            if check.returncode == 0:
+                return True
+    return False
+
+
 def verify() -> int:
     env, ref = os.environ.get("FROZEN_REF"), signed_ref()
     if env and ref is None:
@@ -98,13 +141,13 @@ def verify() -> int:
     if ref is None:
         print(f"FAIL: no signed ref to compare {LIST} with; set FROZEN_REF")
         return 1
-    show = ["git", "-C", str(ROOT), "show", f"{ref}:./{LIST}"]
-    signed = subprocess.run(show, capture_output=True)
-    if signed.returncode != 0:
-        print(f"FAIL: {ref} has no {LIST}; the owner signs in a commit on {ref}")
-        failed = True
-    elif signed.stdout != (ROOT / LIST).read_bytes():
-        print(f"FAIL: {LIST} differs from its copy on {ref}, where the owner signs")
+    listed = (ROOT / LIST).read_bytes()
+    signed = git("show", f"{ref}:./{LIST}")
+    if (signed.returncode != 0 or signed.stdout != listed) and not signed_off(ref, listed):
+        if signed.returncode != 0:
+            print(f"FAIL: {ref} has no {LIST}; the owner signs in a commit on {ref}")
+        else:
+            print(f"FAIL: {LIST} differs from its copy on {ref}, where the owner signs")
         failed = True
     return 1 if failed else 0
 
