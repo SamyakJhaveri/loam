@@ -89,7 +89,7 @@ restart() {
   tmux send-keys -t "$T" "$LAUNCH --resume $1" Enter || { exec {lk}>&-; log "launch keys not sent to $T"; return 1; }
   echo "$2" > "$S/lead"; sleep 5; exec {lk}>&-
   sleep "$BOOT_S"
-  nudge "$3"
+  nudge "$3" || true   # the launch went through; a lost Enter must not hide the restart alert
 }
 # The lead's own account is usable: stamp the gap and paste a resume message, no restart, so its agents survive ($1: why).
 wake() {
