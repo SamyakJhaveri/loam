@@ -65,12 +65,13 @@ class OvernightDriverTests(unittest.TestCase):
                 "CLAUDE_ACCOUNTS_DIR": str(self.acc), "CLAUDE_SETTINGS_FILE": str(self.home / "settings.json"),
                 "FACTORY_RUNS_ROOT": str(self.runs)}
 
-    def accounts(self) -> None:
-        """Stored accounts a and b, a active."""
+    def accounts(self, stored: tuple[str, ...] = ("a", "b"), active: str = "a") -> None:
+        """Stored accounts (a and b), one active (a; none for "")."""
         self.acc.mkdir()
-        for n in ("a", "b"):
+        for n in stored:
             (self.acc / f"{n}.token").write_text("sk-ant-oat01-fake\n")
-        (self.acc / "active").write_text("a\n")
+        if active:
+            (self.acc / "active").write_text(f"{active}\n")
         (self.home / "settings.json").write_text("{}\n")
 
     def active(self) -> str:
@@ -441,12 +442,12 @@ end_call() { echo "ended $polls_seen $reads"; }
     LIMIT = ('{"is_error":true,"result":"You\u0027ve hit your session limit - resets 6am","total_cost_usd":0,'
              '"num_turns":1}')
 
-    def limit_fakes(self, hook: str) -> dict[str, str]:
+    def limit_fakes(self, hook: str, stored: tuple[str, ...] = ("a", "b"), active: str = "a") -> dict[str, str]:
         """Accounts a (active) and b, a gh with one pending PR, and a claude whose first call runs `hook` and replies
         with a usage limit, every later call with a plain result. The fake sleep keeps the 15 s polls short, lets the
         5 s retry pause through and ends the driver at any other pause, so a run stops after the call that follows
         the limit. Returns the driver's environment."""
-        self.accounts()
+        self.accounts(stored, active)
         self.runs.mkdir()
         (self.home / ".local/state/loam-factory").mkdir(parents=True)
         write_exec(self.fake / "gh", '#!/bin/sh\ncase "$*" in *"pr list"*) echo 7 ;; esac\nexit 0\n')
@@ -493,6 +494,20 @@ end_call() { echo "ended $polls_seen $reads"; }
         self.assertEqual(self.active(), "b")
         self.assertGreaterEqual(self.n_calls(), 2, "the driver did not retry after the switch")
         self.assertIn("usage limit on account a: active account now b; retrying", self.log())
+
+    @LINUX_ONLY
+    def test_a_usage_limit_with_no_other_account_switches_nothing(self) -> None:
+        self.driver(self.limit_fakes(":", stored=("a",))).wait(70)
+        self.assertEqual(self.active(), "a")
+        self.assertIn("usage limit and no other account to switch to", self.log())
+        self.assertEqual(self.n_calls(), 1, "the driver retried at once with no account to switch to")
+
+    @LINUX_ONLY
+    def test_a_call_with_no_active_account_records_none_and_switches_nothing(self) -> None:
+        self.driver(self.limit_fakes(f'cp "{self.state}/call.pid" "$H/seen"', active="")).wait(70)
+        self.assertEqual(len((self.home / "seen").read_text().split()), 3, "call.pid names an account with none active")
+        self.assertFalse((self.acc / "active").exists(), "the driver switched with no account recorded")
+        self.assertIn("usage limit on a call with no recorded account: switched nothing", self.log())
 
     @LINUX_ONLY
     def test_a_usage_limit_keeps_a_switch_the_factory_made_during_the_call(self) -> None:
