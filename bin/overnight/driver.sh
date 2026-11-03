@@ -42,13 +42,28 @@ end_call() { local c=$1 i
   for i in 1 2 3 4 5 6 7 8 9 10; do kill -0 -- -"$c" 2> /dev/null || kill -0 "$c" 2> /dev/null || return 0; sleep 1; done
   kill -KILL -- -"$c" 2> /dev/null || kill -KILL "$c" 2> /dev/null
 }
-# Watch a call until it exits, polling every 15 s; end it 8 polls (120 s) after an outcome line appears in log.md past
-# line $2, since a finished `claude -p` can hang on a pending wakeup. It polls kill -0, since an adopted call is not
-# this driver's child.
+# The protocol's one read of DistBench (Grader window), run here because the call's settings deny it gh on DistBench:
+# grader-window.txt holds the read's UTC time, gh's exit status (124 on a timeout) and one open DistBench grader-fix
+# PR number per line. Written through a fresh mktemp file (never a fixed name the call could link elsewhere) and
+# moved with mv -T over the name itself, so a call never reads half of it and no planted link redirects the write.
+to=(); command -v timeout > /dev/null && to=(timeout 60)
+grader_window() { local at out rc tmp
+  at=$(stamp)
+  out=$(${to[@]+"${to[@]}"} gh pr list -R SamyakJhaveri/distbench --state open --limit 100 --json number,title,files --jq '.[] | select((.title | test("grader|regrade"; "i")) or any(.files[].path; test("(^|/)grader\\.py$|regrade"; "i"))) | .number' 2>> "$O/driver.log")
+  rc=$?
+  [ "$rc" -eq 0 ] || echo "$(stamp) grader-window read failed: exit $rc" >> "$O/driver.log"
+  tmp=$(mktemp "$O/grader-window.XXXXXX") || { rm -f "$O/grader-window.txt"; return; }   # no stale clear window
+  { echo "read_at $at"; echo "exit $rc"; [ -z "$out" ] || printf '%s\n' "$out"; } > "$tmp" \
+    && mv -fT "$tmp" "$O/grader-window.txt"
+}
+# Watch a call with kill -0, since an adopted call is not our child. Refresh the grader window until an outcome
+# appears past line $2, after the call's merge gate. Then allow 8 more 15 s polls before ending a hung call.
 watch() { local pid=$1 before=$2 polls=-1
   while kill -0 "$pid" 2> /dev/null; do
     sleep 15
-    [ "$polls" -lt 0 ] && tail -n +"$((before + 1))" "$O/log.md" | grep -q '^outcome issue ' && polls=0
+    [ "$polls" -lt 0 ] && tail -n +"$((before + 1))" "$O/log.md" | grep -q '^outcome issue ' \
+      && polls=0
+    [ "$polls" -lt 0 ] && grader_window
     [ "$polls" -ge 0 ] && polls=$((polls + 1))
     if [ "$polls" -gt 8 ]; then
       echo "$(stamp) ended call $pid 120 s after its outcome line" >> "$O/driver.log"
@@ -104,6 +119,7 @@ account() { local out=$1 cost to
 # call on the same PR.
 run() { local pid out
   mkdir -p "$O/calls"; out="$O/calls/$(date -u +%Y%m%dT%H%M%SZ).json"; limited=0
+  grader_window
   env CLAUDE_CODE_SUBAGENT_MODEL=claude-opus-5-5 ANTHROPIC_DEFAULT_HAIKU_MODEL=claude-opus-5-5 ANTHROPIC_DEFAULT_SONNET_MODEL=claude-opus-5-5 \
     perl -MPOSIX -MTime::HiRes=time,sleep -e "$WRAP" \
     claude -p --model claude-opus-5-5 --effort high --permission-mode bypassPermissions --settings "$D/settings.json" --max-turns 400 --output-format json "$1" \
