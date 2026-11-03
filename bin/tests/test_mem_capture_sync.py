@@ -678,7 +678,10 @@ class ScanTests(Base):
         opened = self.top / "opened"
         hold = ["python3", "-c", "import sys, time; f = open(sys.argv[1]); open(sys.argv[2], 'w').close(); time.sleep(60)",
                 str(self.lock), str(opened)]
-        runs = lambda exe: lambda pid: os.readlink(f"/proc/{pid}/exe") == exe
+
+        def runs(exe: str):
+            return lambda pid: os.readlink(f"/proc/{pid}/exe") == exe
+
         for script in self.SCRIPTS:
             opened.unlink(missing_ok=True)
             self.assertEqual(self.scan(script), 0, f"{script.name}: an index.lock no one holds was kept")
