@@ -3356,14 +3356,27 @@ next_tick() { # [--dry-run|--install|--frontier]
     local tmpl="$ROOT/bin/factory.d/next.crontab"
     [ -f "$tmpl" ] || { echo "factory next --install: no template at $tmpl" >&2; return 1; }
     command -v crontab > /dev/null 2>&1 || { echo "factory next --install: crontab not found" >&2; return 1; }
-    # Install the cron line only (the comments would accumulate on reinstall); grep -vF strips the
-    # prior copy so the result is idempotent.
-    # The template names ~/Desktop/loam; the installed line names the checkout that ran --install, and
-    # another target by -C, so each target keeps one line and a reinstall strips only its own (F8).
-    local line cmd="bin/factory next"
+    # Install the cron line only (the comments would accumulate on reinstall). The template names ~/loam and
+    # home-relative state paths; the installed line names the checkout that ran --install and $HOME, and another
+    # target by -C with its own lock and log, since every line fires on the same minute and a shared flock -n
+    # would drop one target's tick (F8). The awk filter drops only this target's live line, so a reinstall
+    # replaces it and keeps every comment and every other line in order.
+    local line cmd="bin/factory next" slug
     target_is_loam || cmd="bin/factory -C $TARGET next"
-    line=$(grep -v '^#' "$tmpl" | grep -m1 . | sed -e "s|cd ~/Desktop/loam|cd $ROOT|" -e "s|bin/factory next|$cmd|")
-    ( crontab -l 2> /dev/null | grep -vF "$cmd"; printf '%s\n' "$line" ) | crontab - \
+    # Each path goes unquoted into sed replacement text and the cron line, where | & % ' ( or a space reads
+    # specially (a failed sed would leave an empty line and still drop the old one), so refuse before the crontab
+    # changes. The line's lock and redirect need the state directory before bin/factory runs.
+    case "$ROOT$HOME$TARGET" in
+      *[!A-Za-z0-9._/:,+@_-]*) echo "factory next --install: a path holds a character the cron line cannot carry: $ROOT $HOME $TARGET" >&2; return 1 ;;
+    esac
+    mkdir -p "$HOME/.local/state/loam-factory" || { echo "factory next --install: cannot create $HOME/.local/state/loam-factory" >&2; return 1; }
+    line=$(grep -v '^#' "$tmpl" | grep -m1 . | sed -e "s|cd ~/loam |cd $ROOT |" -e "s|~/|$HOME/|g" -e "s|bin/factory next|$cmd|")
+    if ! target_is_loam; then
+      slug=$(target_slug)
+      line=$(printf '%s\n' "$line" | sed -e "s|/next\.lock |/next-$slug.lock |" -e "s|/next\.log |/next-$slug.log |")
+    fi
+    ( crontab -l 2> /dev/null | CMD="$cmd" awk 'index($0, ENVIRON["CMD"]) && $0 !~ /^[ \t]*#/ { next } { print }'
+      printf '%s\n' "$line" ) | crontab - \
       || { echo "factory next --install: crontab rejected the update" >&2; return 1; }
     echo "installed: $line"
     return 0
