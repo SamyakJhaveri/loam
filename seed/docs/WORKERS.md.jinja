@@ -113,6 +113,16 @@ A worker never edits a listed file and never runs `bin/frozen-checks sign`.
 The owner reads the change, then runs `bin/frozen-checks sign <file>...` and commits the list on the signed ref; a local `origin/main` stays stale until that commit is pushed and fetched.
 To unfreeze a file, the owner deletes its line from `FROZEN.sha256` in the sign-off commit.
 After a sign-off lands, an existing worker branch merges main to go green again; it never re-signs.
-The fence is only as strong as `bin/check`, `bin/frozen-checks` and `.github/workflows/check.yml` in the same PR: a PR that edits any of them can switch it off, and signing those files does not help, so the owner reads those diffs before merging.
+The fence is only as strong as `bin/check`, `bin/frozen-checks`, `.github/workflows/check.yml` and `allowed_signers` in the `.github` directory in the same PR: a PR that edits any of them can switch it off, one that adds a key to `allowed_signers` widens who may sign once it lands, and signing those files does not help, so the owner reads those diffs before merging.
 A local green is not evidence, since an exported `FROZEN_REF`, a commit on local main or a moved `origin/main` passes locally; the CI run on the PR is the one that counts.
-Under the default-branch ruleset (a PR and a green `check`), the sign-off PR fails `check` until it lands, by design, so the owner adds themself as a bypass actor under Settings > Rules for that merge, then removes the entry.
+Under the default-branch ruleset (a PR and a green `check`), the sign-off PR fails `check` until it lands, by design, so unless the project opts in to signed sign-off below, the owner adds themself as a bypass actor under Settings > Rules for that merge, then removes the entry.
+
+Signed sign-off is opt-in, and lets the sign-off PR pass `check` with no bypass actor.
+To opt in, the owner first lands, through an ordinary PR, a file named `allowed_signers` in the `.github` directory, in the `ssh-keygen` allowed-signers format: one `<email> <public key>` line per owner key.
+While the signed ref holds that file, `verify` also accepts a list that differs from the ref's copy, or that the ref lacks, when a commit between the signed ref and HEAD holds exactly that list and an SSH signature from a key in the ref's `allowed_signers`.
+The owner runs `bin/frozen-checks sign <file>...` on the sign-off branch, then commits the list with `git -c gpg.format=ssh -c user.signingkey=<key> commit -S`; a later unsigned commit that keeps the list, and the PR's merge commit CI checks out, stay green.
+Only the signed ref's `allowed_signers` counts, never the branch's, and only SSH signatures do: an OpenPGP or X.509 signature fails whatever the host's keyring trusts.
+A list re-signed in a later unsigned commit still fails, and so does a changed listed file.
+Without `allowed_signers` on the signed ref, nothing changes and the bypass-actor step stays.
+It does not stop a worker that re-applies an older list the owner once signed, such as one from an unmerged sign-off branch, nor a worker that can use the owner's signing key.
+So keep that key passphrase-protected and, if it sits in ssh-agent, add it with `ssh-add -c` so each use asks for confirmation: `docs/HARNESS.md` (Accepted risks) says `ssh`, `scp` and `rsync` run outside the sandbox with the user's keys, so a key file the user can read is within an agent's reach.
