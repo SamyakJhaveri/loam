@@ -183,16 +183,25 @@ except subprocess.TimeoutExpired:
 # when index_lock_free finds no holder; one that is held, or that no scan
 # could clear, stays and fails the recovery, and the next holder scans again.
 # A rebase in progress is a killed holder's: abort it (which restores
-# main with every commit). The abort ignores $DEADLINE, since a half-done
-# rebase is worse than a late hook. Succeeds only when neither is left; a
-# caller whose recovery failed writes nothing to the working tree.
+# main with every commit). With a rebase in progress the scan and the abort
+# ignore $DEADLINE and share a window that ends one second after it, or after
+# now once it has passed (recall's rebase can run to $DEADLINE): a half-done
+# rebase is worse than a late hook, and they end no later than an abort
+# started at $DEADLINE would.
+# Succeeds only when neither is left; a caller whose recovery failed writes
+# nothing to the working tree.
 store_recover() {
+  local rebase= end=${DEADLINE:-}
+  if [ -d "$STORE/.git/rebase-merge" ] || [ -d "$STORE/.git/rebase-apply" ]; then
+    rebase=1
+    [ -n "$end" ] && end=$(python3 -c 'import sys, time; print(max(float(sys.argv[1]), time.time()) + 1)' "$end")
+  fi
   if [ -e "$STORE/.git/index.lock" ]; then
-    index_lock_free "$STORE/.git/index.lock" "$STORE" || return 1
+    DEADLINE=$end index_lock_free "$STORE/.git/index.lock" "$STORE" || return 1
     rm -f "$STORE/.git/index.lock" 2>/dev/null
   fi
-  if [ -d "$STORE/.git/rebase-merge" ] || [ -d "$STORE/.git/rebase-apply" ]; then
-    DEADLINE='' bounded 1 "${SGIT[@]}" rebase --abort >/dev/null 2>&1
+  if [ -n "$rebase" ]; then
+    DEADLINE=$end bounded 1 "${SGIT[@]}" rebase --abort >/dev/null 2>&1
   fi
   [ ! -e "$STORE/.git/index.lock" ] && [ ! -d "$STORE/.git/rebase-merge" ] && [ ! -d "$STORE/.git/rebase-apply" ]
 }
@@ -206,7 +215,8 @@ store_recover() {
 # leader with an unreadable /proc/<pid>/fd, while another of its threads still
 # holds the shared fds. A pid, thread or fd that vanishes mid-scan, and an entry
 # that cannot be read (another user's process, pid 1, a zombie, a non-dumpable
-# process), are passed over. Files match on (st_dev, st_ino), not link text,
+# process), are passed over; any other error (EMFILE, say) ends the scan
+# without a result. Files match on (st_dev, st_ino), not link text,
 # which differs in another mount namespace; a git matches on its exe's name,
 # since one host can have several git binaries. Without /proc (macOS) lsof
 # scans, for LOCK and for a git's cwd: exit 1 with no pid printed is no holder,
@@ -225,7 +235,7 @@ for pid in os.listdir("/proc"):
         continue
     try:
         tids = os.listdir("/proc/" + pid + "/task")
-    except OSError:
+    except (FileNotFoundError, ProcessLookupError, PermissionError):
         continue
     for tid in tids:
         tdir = "/proc/" + pid + "/task/" + tid + "/"
@@ -234,16 +244,16 @@ for pid in os.listdir("/proc"):
                 st = os.stat(tdir + "cwd")
                 if (st.st_dev, st.st_ino) == top:
                     sys.exit(1)
-        except OSError:
+        except (FileNotFoundError, ProcessLookupError, PermissionError):
             pass
         try:
             fds = os.listdir(tdir + "fd")
-        except OSError:
+        except (FileNotFoundError, ProcessLookupError, PermissionError):
             continue
         for fd in fds:
             try:
                 st = os.stat(tdir + "fd/" + fd)
-            except OSError:
+            except (FileNotFoundError, ProcessLookupError, PermissionError):
                 continue
             if (st.st_dev, st.st_ino) == lock:
                 sys.exit(1)
@@ -254,7 +264,7 @@ for pid in os.listdir("/proc"):
   out=$(bounded 5 lsof -t -n -P -- "$1" 2>/dev/null)
   rc=$?
   [ "$rc" = 1 ] && [ -z "$out" ] || return 1
-  out=$(bounded 5 lsof -t -n -P -a -c git -d cwd -- "$2" 2>/dev/null)
+  out=$(bounded 5 lsof -t -n -P -a -c '/^git$/' -d cwd -- "$2" 2>/dev/null)
   rc=$?
   [ "$rc" = 1 ] && [ -z "$out" ]
 }

@@ -15,8 +15,8 @@ LockTests: a capture that cannot take the store lock in time keeps its data in t
 next holder lands it; a directory left at the lock path by the earlier mkdir lock does not block captures; a trace
 the store's exclude file ignores is still committed, and stays spooled until a commit holds it. A capture removes an
 index.lock only when a holder scan that ran to its end finds no holder, so a git outside the store lock, paused with it
-open or (`git commit -a` in its editor) working in the store, keeps it and the capture spools; an index.lock no process
-holds is removed at once.
+open or (`git commit -a` in its editor) working in the store, keeps it and the capture spools, and the paused git's
+index and commit (with its message) land; an index.lock no process holds is removed at once.
 IndexLockTests (Linux, where the scan reads /proc): a process whose main thread has exited, holding index.lock in
 another thread, keeps it, and so does a holder scan made to fail or stall at its listing of /proc; each such capture
 spools its entry within the hook timeout, and the next capture whose scan ends clear removes the lock and lands both.
@@ -487,7 +487,7 @@ class LockTests(Base):
         (self.store / "user.txt").write_text("edited\n")
         inside, go = self.top / "inside", self.top / "go"
         editor = self.top / "editor.sh"
-        editor.write_text(f"#!/bin/sh\ntouch '{inside}'; while [ ! -f '{go}' ]; do sleep 0.05; done; echo edited > \"$1\"\n")
+        editor.write_text(f"#!/bin/sh\ntouch '{inside}'; while [ ! -f '{go}' ]; do sleep 0.05; done; echo 'user message' > \"$1\"\n")
         editor.chmod(0o755)
         commit = subprocess.Popen(["git", "commit", "-a"], cwd=self.store, env={**GIT_ENV, "GIT_EDITOR": str(editor)},
                                   stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, text=True)
@@ -504,9 +504,11 @@ class LockTests(Base):
         status = subprocess.run(["git", "status", "--porcelain"], cwd=self.store, env=GIT_ENV,
                                 capture_output=True, text=True)
         self.assertEqual(status.returncode, 0, status.stderr)
+        self.assertEqual(git("log", "-1", "--format=%B", cwd=self.store), "user message", "the user's commit did not land")
         self.assertEqual(git("show", "HEAD:user.txt", cwd=self.store), "edited")
         self.capture(self.store, "s2")
         self.assert_both_landed()
+        self.assertEqual(git("log", "-1", "--format=%B", "HEAD~1", cwd=self.store), "user message")
         self.assertEqual(git("show", "HEAD:user.txt", cwd=self.store), "edited")
 
     def test_an_index_lock_no_process_holds_is_removed(self) -> None:
@@ -652,7 +654,7 @@ class ScanTests(Base):
         for script in self.SCRIPTS:
             self.assertEqual(self.scan(script, True, path, LSOF_LOCK="1", LSOF_CWD="1"), 0, script.name)
             self.assertEqual(self.log.read_text().splitlines(), [
-                f"-t -n -P -- {self.lock}", f"-t -n -P -a -c git -d cwd -- {self.store}"], script.name)
+                f"-t -n -P -- {self.lock}", f"-t -n -P -a -c /^git$/ -d cwd -- {self.store}"], script.name)
 
     def test_lsof_reporting_a_holder_or_failing_keeps_the_lock(self) -> None:
         path = self.fake_lsof_path()
