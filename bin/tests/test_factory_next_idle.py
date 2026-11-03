@@ -113,6 +113,15 @@ class IdleAlertTests(unittest.TestCase):
         self.assertTrue(a.startswith("--level needs-you --source factory --project loam factory idle: 1 ready-for-agent"), a)
         self.assertTrue((self.runs / "idle-alerted").exists())
 
+    def test_the_count_carries_no_padding_from_a_bsd_wc(self) -> None:
+        """macOS wc left-pads its count; the alert text names the bare number."""
+        (self.t / "wc").write_text('#!/bin/sh\nprintf \'%8s\\n\' "$(command -p wc "$@" | tr -d \' \')"\n')
+        (self.t / "wc").chmod(0o755)
+        self.tick(T0)
+        self.tick(T0 + 3660)
+        self.assertEqual(len(self.alerts()), 1)
+        self.assertIn(" factory idle: 1 ready-for-agent", self.alerts()[0])
+
     def test_another_target_names_its_repository(self) -> None:
         self.tick(T0, other=True)
         self.tick(T0 + 3660, other=True)
