@@ -3,7 +3,7 @@
 Target resolution, the runs root keyed by <owner>__<repo>, the launch gate per target, the standing
 do-not-touch list, lint's tree, and the timer's cron line, on throwaway repositories whose origin is a
 GitHub URL that is never contacted. `bin/factory` is sourced (FACTORY_SOURCED=1) or run as `stop`;
-gh and crontab are shell stubs. No network, no tmux, no `claude`.
+gh and crontab are shell stubs. CLI launch probes use executables that only log and fail. No network or tmux.
 """
 
 from __future__ import annotations
@@ -18,15 +18,15 @@ import tempfile
 import unittest
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
-# A run inside the factory exports FACTORY_ROOT, and the runner exports the toolchain; the tests set their own.
-INHERITED = ("FACTORY_ROOT", "LOAM_FACTORY_TOOLCHAIN", "LOAM_FACTORY_COPIER")
+# A run inside the factory exports FACTORY_ROOT; the tests set their own.
+INHERITED = ("FACTORY_ROOT",)
 STANDING = "# Standing\n\n## Standing do-not-touch list\n\n- `.claude/settings.json` and every deny list\n- `bin/check`\n\n## Other\n\n- `src/widget.py`\n"
 # next reads every candidate's last editor in one GraphQL call (#598): #7, never edited.
 GQL = '{"data": {"repository": {"i7": {"editor": null, "lastEditedAt": null}}}}'
 
 
 def clean_env(**extra: str) -> dict[str, str]:
-    env = {k: v for k, v in os.environ.items() if k not in INHERITED}
+    env = {k: v for k, v in os.environ.items() if k not in INHERITED and not k.startswith("LOAM_FACTORY_")}
     return {**env, **extra}
 
 
@@ -58,6 +58,46 @@ def repo(path: pathlib.Path, origin: str | None, files: dict[str, str]) -> pathl
     git("add", "-A", cwd=path)
     git("-c", "user.name=t", "-c", "user.email=t@t", "commit", "-q", "-m", "base", cwd=path)
     return path.resolve()
+
+
+class LoamLaunchTests(unittest.TestCase):
+    """With no legacy exports, Loam reaches its Claude probes and status lists current preconditions."""
+
+    def setUp(self) -> None:
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        self.tmp = pathlib.Path(tmp.name)
+        self.calls = self.tmp / "calls.log"
+        bin_dir = self.tmp / "bin"
+        bin_dir.mkdir()
+        for name in ("claude", "gh", "codex"):
+            stub = bin_dir / name
+            stub.write_text(f'#!/bin/sh\nprintf "%s\\n" "{name} $*" >> "$CALLS_LOG"\nexit 1\n')
+            stub.chmod(0o755)
+        self.env = clean_env(FACTORY_ROOT=str(ROOT), FACTORY_RUNS_ROOT=str(self.tmp / "runs"),
+                             PATH=f"{bin_dir}:{os.environ['PATH']}", CALLS_LOG=str(self.calls))
+        self.env.pop("FACTORY_SOURCED", None)
+
+    def cli(self, *args: str) -> subprocess.CompletedProcess[str]:
+        return subprocess.run([str(ROOT / "bin/factory"), *args], cwd=ROOT, env=self.env,
+                              capture_output=True, text=True, timeout=30, check=False)
+
+    def test_run_reaches_the_version_probe(self) -> None:
+        proc = self.cli("run", "1")
+        self.assertIn("claude --version", self.calls.read_text().splitlines(), proc.stderr)
+        self.assertNotIn("LOAM_FACTORY_", proc.stdout + proc.stderr)
+
+    def test_next_frontier_reaches_the_login_probe(self) -> None:
+        proc = self.cli("next", "--frontier")
+        self.assertIn("claude auth status", self.calls.read_text().splitlines(), proc.stderr)
+        self.assertNotIn("LOAM_FACTORY_", proc.stdout + proc.stderr)
+
+    def test_status_lists_preconditions_without_legacy_exports(self) -> None:
+        proc = self.cli("status")
+        self.assertEqual(proc.returncode, 0, proc.stderr)
+        self.assertIn("== preconditions", proc.stdout)
+        self.assertIn("PASS git on PATH", proc.stdout)
+        self.assertNotIn("LOAM_FACTORY_", proc.stdout + proc.stderr)
 
 
 class TargetTests(unittest.TestCase):
@@ -146,10 +186,10 @@ class TargetTests(unittest.TestCase):
         proc = self.target(None, f'RUN="{frozen.parent}"; SRC=12; exec_frozen')
         self.assertEqual(proc.stdout.strip(), "args: run 12", proc.stderr)
 
-    def test_gate_is_the_toolchain_for_loam_and_bin_check_for_another_target(self) -> None:
+    def test_only_another_target_needs_bin_check(self) -> None:
         loam = self.target(None, "assert_target_ready; echo rc=$?")
-        self.assertIn("rc=1", loam.stdout)
-        self.assertIn("LOAM_FACTORY_TOOLCHAIN", loam.stderr)
+        self.assertIn("rc=0", loam.stdout)
+        self.assertEqual(loam.stderr, "")
         self.assertIn("rc=0", self.target(self.proj, "assert_target_ready; echo rc=$?").stdout)
         nocheck = self.target(self.nocheck, "assert_target_ready; echo rc=$?")
         self.assertIn("rc=1", nocheck.stdout)
@@ -198,7 +238,7 @@ class TargetTests(unittest.TestCase):
             '.[] | select(.pull_request == null) | select((.repository.full_name // "" | ascii_downcase) == "acme/widget")'
             ' | ' + fields])
 
-    def test_next_parks_by_the_targets_own_runs_without_the_toolchain(self) -> None:
+    def test_next_parks_by_the_targets_own_runs(self) -> None:
         # next launches only a body that passes lint (#314); gh returns the body with no trailing newline.
         body = (ROOT / "bin/tests/fixtures/clean-ticket.md").read_text().rstrip("\n")
         key = hashlib.sha256(body.encode()).hexdigest()[:8]

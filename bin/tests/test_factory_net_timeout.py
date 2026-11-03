@@ -20,7 +20,7 @@ import time
 import unittest
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
-INHERITED = ("FACTORY_ROOT", "FACTORY_GH", "FACTORY_FROZEN", "LOAM_FACTORY_TOOLCHAIN", "LOAM_FACTORY_COPIER",
+INHERITED = ("FACTORY_ROOT", "FACTORY_GH", "FACTORY_FROZEN",
              "REPO", "RUN", "LOG")
 
 

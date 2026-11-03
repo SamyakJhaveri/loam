@@ -2,8 +2,9 @@
 and it lints every candidate before picking one, so a labelled issue that is not a ticket is skipped (#314).
 
 `bin/factory` is sourced (FACTORY_SOURCED=1) with a temp runs root. park_status is called directly,
-and cmd_next --dry-run (or --frontier) runs with gh, the origin, the login and version probes, and the toolchain gate stubbed as shell functions,
-so the frontier lines carry the bodies the way the real query does. No network, no tmux, no `claude`.
+and cmd_next --dry-run (or --frontier) runs with gh, the origin, the login and version probes stubbed as shell functions,
+so the frontier lines carry the bodies the way the real query does. The retry test models tmux's environment
+and executes its session command against a frozen-supervisor fixture. No network, no tmux, no `claude`.
 """
 
 from __future__ import annotations
@@ -94,7 +95,7 @@ class ParkingTests(unittest.TestCase):
             doc["errors"] = [{"message": f"Could not resolve to an Issue with the number of {issue}."} for issue in gone]
         reply = f"echo {shlex.quote(json.dumps(doc))}; return 1" if gone else f'jq -r "$q" <<< {shlex.quote(json.dumps(doc))}'
         clock = "" if now is None else f'date() {{ if [ "$*" = "-u +%s" ]; then echo {now}; else command date "$@"; fi; }}; '
-        stubs = (pre + clock + "assert_toolchain_env() { :; }; claude_logged_in() { :; }; claude_version_ok() { :; }; target_repo() { echo o/r; }; "
+        stubs = (pre + clock + "claude_logged_in() { :; }; claude_version_ok() { :; }; target_repo() { echo o/r; }; "
                  'gh() { echo "$*" >> "$GH_LOG"; '
                  "case $2 in graphql) local a p= q=.; "
                  'for a; do [ "$p" = --jq ] && q=$a; p=$a; done; echo "$*" >> "$GQL_LOG"; '
@@ -118,6 +119,67 @@ class ParkingTests(unittest.TestCase):
         proc = self.next_dry_run((7, body))
         self.assertEqual(proc.stdout.strip(), "nothing to launch", proc.stderr)
         self.assertIn("parked #7: last run exited abandon", proc.stderr)
+
+    def test_retry_forwards_exports_needed_by_an_existing_frozen_supervisor(self) -> None:
+        self.run_dir(7, CLEAN, "stopped")
+        run = self.runs / "7" / key(CLEAN)
+        frozen = run / "frozen"
+        frozen.mkdir()
+        (frozen / "sha256").write_text("already frozen\n")
+        resumed = self.runs / "resumed"
+        # A supervisor frozen before a launch requirement was retired still reads its old exports.
+        supervisor = (
+            '#!/usr/bin/env bash\n'
+            '[ "$*" = "run 7" ] || exit 8\n'
+            '[ -x "${LOAM_FACTORY_RETRY_NODE:-}/bin/node" ] || exit 4\n'
+            '[ -x "${LOAM_FACTORY_RETRY_CHECK:-}" ] || exit 4\n'
+            '[ "${LOAM_FACTORY_LOCAL_ONLY+x}" != x ] || exit 5\n'
+            f'echo resumed > {shlex.quote(str(resumed))}\n'
+        )
+        (frozen / "factory").write_text(supervisor)
+        (frozen / "factory").chmod(0o755)
+        old_bin = self.runs / "prior tools" / "bin"
+        old_bin.mkdir(parents=True)
+        for name in ("node", "check"):
+            (old_bin / name).write_text("#!/bin/sh\nexit 0\n")
+            (old_bin / name).chmod(0o755)
+
+        # Only replace run's setup: keep the actual launch command, freeze's reuse and exec_frozen.
+        checkout = self.runs / "checkout"
+        (checkout / "bin").mkdir(parents=True)
+        (checkout / "bin/factory.d").symlink_to(ROOT / "bin/factory.d")
+        launcher = checkout / "bin/factory"
+        launcher.write_text(
+            '#!/usr/bin/env bash\n'
+            f'export FACTORY_ROOT={shlex.quote(str(ROOT))} FACTORY_SOURCED=1\n'
+            f'. {shlex.quote(str(ROOT / "bin/factory"))}\n'
+            f'RUN={shlex.quote(str(run))}; SRC=7\n'
+            'freeze\nexec_frozen\n'
+        )
+        launcher.chmod(0o755)
+        pre = f'ROOT={shlex.quote(str(checkout))}; LOAM_FACTORY_LOCAL_ONLY=private; alert() {{ :; }}; ' + '''
+tmux() {
+  [ "$1" = has-session ] && return 1
+  [ "$1" = new-session ] || return 2
+  shift
+  local forwarded=()
+  while [ "$#" -gt 1 ]; do
+    case "$1" in
+      -e) forwarded+=("$2"); shift 2 ;;
+      -s) shift 2 ;;
+      -d) shift ;;
+      *) return 2 ;;
+    esac
+  done
+  env -i PATH="$PATH" HOME="$HOME" "${forwarded[@]}" bash -c "$1"
+}; '''
+        proc = self.next_dry_run(mine=((7, CLEAN),), flag="", pre=pre,
+                                 LOAM_FACTORY_RETRY_NODE=str(old_bin.parent),
+                                 LOAM_FACTORY_RETRY_CHECK=str(old_bin / "check"))
+        self.assertEqual(proc.returncode, 0, proc.stderr)
+        self.assertEqual(proc.stdout.strip(), "launched #7", proc.stderr)
+        self.assertTrue(resumed.exists(), (self.runs / "7.tmux.log").read_text())
+        self.assertEqual((frozen / "factory").read_text(), supervisor)
 
     def test_same_body_stopped_environment_waits_an_hour_then_relaunches(self) -> None:
         # stopped-environment pages at once, so a lasting machine fault must not page every tick (#440).

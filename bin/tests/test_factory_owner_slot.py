@@ -22,7 +22,7 @@ import unittest
 import uuid
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
-INHERITED = ("FACTORY_ROOT", "FACTORY_GH", "LOAM_FACTORY_TOOLCHAIN", "LOAM_FACTORY_COPIER", "REPO", "RUN", "LOG")
+INHERITED = ("FACTORY_ROOT", "FACTORY_GH", "REPO", "RUN", "LOG")
 OLD = "Thu Jan  1 00:00:00 1970"
 
 

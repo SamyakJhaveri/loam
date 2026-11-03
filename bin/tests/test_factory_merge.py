@@ -16,7 +16,7 @@ import tempfile
 import unittest
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
-INHERITED = ("FACTORY_ROOT", "FACTORY_GH", "FACTORY_FROZEN", "LOAM_FACTORY_TOOLCHAIN", "LOAM_FACTORY_COPIER",
+INHERITED = ("FACTORY_ROOT", "FACTORY_GH", "FACTORY_FROZEN",
              "REPO", "RUN", "LOG")
 HEAD = "1" * 40
 OK_RUN = {"__typename": "CheckRun", "name": "verify", "status": "COMPLETED", "conclusion": "SUCCESS"}

@@ -23,7 +23,7 @@ import time
 import unittest
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
-INHERITED = ("FACTORY_ROOT", "FACTORY_GH", "LOAM_FACTORY_TOOLCHAIN", "LOAM_FACTORY_COPIER", "REPO", "RUN", "LOG",
+INHERITED = ("FACTORY_ROOT", "FACTORY_GH", "REPO", "RUN", "LOG",
              "FACTORY_RUNS_ROOT", "CLAUDE_ACCOUNTS_DIR", "CLAUDE_SETTINGS_FILE")
 FAKE = """#!/usr/bin/env bash
 d=$FAKE_ACCOUNTS; a=$(cat "$d/active")
