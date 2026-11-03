@@ -63,7 +63,8 @@ def git(*args: str, cwd: pathlib.Path) -> str:
 
 class Base(unittest.TestCase):
     def setUp(self) -> None:
-        tmp = tempfile.TemporaryDirectory()
+        # A background sync can still be writing under .git after its push lands, so a cleanup race is no failure.
+        tmp = tempfile.TemporaryDirectory(ignore_cleanup_errors=True)
         self.addCleanup(tmp.cleanup)
         self.top = pathlib.Path(tmp.name).resolve()
         self.cwd = self.top / "project"
