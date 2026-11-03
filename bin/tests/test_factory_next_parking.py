@@ -210,6 +210,16 @@ class ParkingTests(unittest.TestCase):
             with self.subTest(case=case):
                 self.run_dir(7, CLEAN, {"call": "stopped-environment"}.get(case, case))
                 d = self.runs / "7" / key(CLEAN)
+                if case == "running":
+                    # A live run holds its lease (cmd_run); a run dir with no lease holds no slot.
+                    (d / "lease").touch()
+                    p = subprocess.Popen(["flock", str(d / "lease"), "sleep", "60"], start_new_session=True)
+                    self.addCleanup(p.wait)
+                    self.addCleanup(subprocess.run, ["kill", "-KILL", "--", f"-{p.pid}"], check=False)
+                    for _ in range(100):
+                        if subprocess.run(["flock", "-n", str(d / "lease"), "true"]).returncode != 0:
+                            break
+                        time.sleep(0.05)
                 if case == "call":
                     os.utime(d / "status", (86400, 86400))
                     p = subprocess.Popen(["sleep", "60"], start_new_session=True)
@@ -232,6 +242,9 @@ class ParkingTests(unittest.TestCase):
                 proc = self.next_dry_run(mine=((7, edited),), pre=pre, FACTORY_MAX_PARALLEL="2")
                 expect = "nothing to launch" if case == "running" else "would launch #7"
                 self.assertEqual(proc.stdout.strip(), expect, proc.stderr)
+                if case == "running":
+                    subprocess.run(["kill", "-KILL", "--", f"-{p.pid}"], check=False)
+                    p.wait()
                 shutil.rmtree(self.runs / "7")
 
     def test_runner_assigned_stop_waits_while_its_stop_file_remains(self) -> None:
@@ -257,19 +270,18 @@ class ParkingTests(unittest.TestCase):
     def test_relaunchable_run_waits_while_a_process_of_it_still_runs(self) -> None:
         # A stuck model call outlives finish stopped-environment; cmd_run refuses a relaunch while it, or any process
         # holding the run's lease, still runs, and writes no status, so #7 must not take the pick from #8 every tick.
-        cases = ["call"] + (["lease"] if sourced('echo "$HAVE_FLOCK"').stdout.strip() else [])
-        for holder in cases:
+        for holder in ("call", "lease"):
             with self.subTest(holder=holder):
                 self.run_dir(7, CLEAN, "stopped-environment")
                 d = self.runs / "7" / key(CLEAN)
                 os.utime(d / "status", (86400, 86400))
+                (d / "lease").touch()   # cmd_run creates it before any call
                 if holder == "call":
                     p = subprocess.Popen(["sleep", "60"], start_new_session=True)
                     self.addCleanup(p.wait)
                     self.addCleanup(subprocess.run, ["kill", "-KILL", "--", f"-{p.pid}"], check=False)
                     (d / "call").write_text(f"{p.pid} test.{key(str(p.pid))}\n")
                 else:
-                    (d / "lease").touch()
                     p = subprocess.Popen(["flock", str(d / "lease"), "sleep", "60"], start_new_session=True)
                     self.addCleanup(p.wait)
                     self.addCleanup(subprocess.run, ["kill", "-KILL", "--", f"-{p.pid}"], check=False)
@@ -366,7 +378,7 @@ class ParkingTests(unittest.TestCase):
         self.assertIn("parked #7", proc.stderr)
 
     def test_a_launch_that_cannot_take_its_owner_lock_still_counts(self) -> None:
-        # The early exits before the status write (no start time, owner.lock held, owner unwritable) stop on the
+        # The early exits before the status write (no start time, owner.flock held, owner unwritable) stop on the
         # environment too; each must count, or a launch that never gets the lock retries hourly for good.
         for _ in range(3):
             self.launch(7, CLEAN, ":", stubs="owner_lock() { return 1; }; ")
