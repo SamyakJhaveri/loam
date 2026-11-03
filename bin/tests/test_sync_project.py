@@ -444,7 +444,7 @@ class SyncProjectTests(unittest.TestCase):
         shutil.copytree(self.tpl, copy)
         git("commit", "-q", "--allow-empty", "-m", "c3", cwd=copy)
         c3 = git("rev-parse", "HEAD", cwd=copy)
-        for i, tag in enumerate(("archive/zz", "v1-snapshot")):
+        for i, tag in enumerate(("archive/zz", "v1-snapshot", "v1.2.3-archive")):
             with self.subTest(tag):
                 git("tag", tag, self.sha, cwd=copy)
                 self.work, self.claude_log = self.base / f"work-{i}", self.base / f"claude-{i}.log"
