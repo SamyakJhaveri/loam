@@ -24,7 +24,7 @@ ROOT = pathlib.Path(__file__).resolve().parents[2]
 # Each outranks the factory's stored login in Codex 0.163.0 (login/src/auth/manager.rs:1500, :1537, :2798).
 CREDENTIALS = ("CODEX_API_KEY", "OPENAI_API_KEY", "CODEX_ACCESS_TOKEN", "OPENAI_FEDERATION_RULE_ID",
                "OPENAI_IDENTITY_TOKEN_FILE", "OPENAI_WORKLOAD_IDENTITY_CONTEXT")
-INHERITED = ("FACTORY_ROOT", "FACTORY_GH", "LOAM_FACTORY_TOOLCHAIN", "LOAM_FACTORY_COPIER", "REPO", "RUN", "LOG",
+INHERITED = ("FACTORY_ROOT", "FACTORY_GH", "REPO", "RUN", "LOG",
              "CODEX_HOME")
 
 FAKE_CODEX = """#!/usr/bin/env python3
