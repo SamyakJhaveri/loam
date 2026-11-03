@@ -44,15 +44,17 @@ end_call() { local c=$1 i
 }
 # The protocol's one read of DistBench (Grader window), run here because the call's settings deny it gh on DistBench:
 # grader-window.txt holds the read's UTC time, gh's exit status (124 on a timeout) and one open DistBench grader-fix
-# PR number per line. Written through a temp file, so a call never reads half of it.
+# PR number per line. Written through a fresh mktemp file (never a fixed name the call could link elsewhere) and
+# moved with mv -T over the name itself, so a call never reads half of it and no planted link redirects the write.
 to=(); command -v timeout > /dev/null && to=(timeout 60)
-grader_window() { local at out rc
+grader_window() { local at out rc tmp
   at=$(stamp)
   out=$(${to[@]+"${to[@]}"} gh pr list -R SamyakJhaveri/distbench --state open --limit 100 --json number,title,files --jq '.[] | select((.title | test("grader|regrade"; "i")) or any(.files[].path; test("(^|/)grader\\.py$|regrade"; "i"))) | .number' 2>> "$O/driver.log")
   rc=$?
   [ "$rc" -eq 0 ] || echo "$(stamp) grader-window read failed: exit $rc" >> "$O/driver.log"
-  { echo "read_at $at"; echo "exit $rc"; [ -z "$out" ] || printf '%s\n' "$out"; } > "$O/grader-window.tmp" \
-    && mv -f "$O/grader-window.tmp" "$O/grader-window.txt"
+  tmp=$(mktemp "$O/grader-window.XXXXXX") || return
+  { echo "read_at $at"; echo "exit $rc"; [ -z "$out" ] || printf '%s\n' "$out"; } > "$tmp" \
+    && mv -fT "$tmp" "$O/grader-window.txt"
 }
 # Watch a call with kill -0, since an adopted call is not our child. Refresh the grader window until an outcome
 # appears past line $2, after the call's merge gate. Then allow 8 more 15 s polls before ending a hung call.

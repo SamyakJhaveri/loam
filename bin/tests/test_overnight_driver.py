@@ -351,6 +351,23 @@ end_call() { echo "ended $polls_seen $reads"; }
         self.assert_a_read_after_every_poll(3)
 
     @LINUX_ONLY
+    def test_a_planted_link_does_not_redirect_the_grader_window_write(self) -> None:
+        # The call can write the state dir; links planted at the old temp name and at the window itself must not
+        # make the unsandboxed driver write through them (Codex review of PR #660).
+        victim = self.home / "victim"
+        victim.write_text("keep\n")
+        (self.state / "grader-window.tmp").symlink_to(victim)
+        (self.state / "grader-window.txt").symlink_to(victim)
+        calls = self.start_call_fakes()
+        self.addCleanup(lambda: [self.kill_group(c) for c in self.calls(calls)])
+        self.start_driver()
+        self.assertTrue(self.wait_for(lambda: self.calls(calls)), "the driver started no call")
+        window = self.state / "grader-window.txt"
+        self.assertTrue(self.wait_for(lambda: not window.is_symlink(), 10), "the window is still the planted link")
+        self.assertEqual(window.read_text().splitlines()[1:], ["exit 0", "9"])
+        self.assertEqual(victim.read_text(), "keep\n", "the driver wrote through a planted link")
+
+    @LINUX_ONLY
     def test_driver_leaves_a_reused_pid_alone(self) -> None:
         calls = self.start_call_fakes()
         other = subprocess.Popen([shutil.which("sleep"), "300"], start_new_session=True)
