@@ -643,11 +643,12 @@ class SigningTests(Base):
 
 class LockBlockTests(unittest.TestCase):
     def test_the_three_scripts_carry_the_same_store_lock_block(self) -> None:
-        def block(path: pathlib.Path) -> str:
-            text = path.read_text()
-            start = text.index("\n# --- The store lock")
-            return text[start:text.index("\n# --- end of the store lock block", start)]
-        self.assertIn("drain_spool()", block(HOOK))
+        def block(path: pathlib.Path) -> bytes:
+            data = path.read_bytes()
+            start = data.index(b"\n# --- The store lock")
+            end = data.index(b"\n# --- end of the store lock block", start) + 1
+            return data[start:data.index(b"\n", end)]
+        self.assertIn(b"drain_spool()", block(HOOK))
         self.assertEqual(block(RECALL), block(HOOK), "mem-recall.sh's store lock block differs from mem-capture.sh's")
         self.assertEqual(block(WEEKLY), block(HOOK), "mem-weekly.sh's store lock block differs from mem-capture.sh's")
 
