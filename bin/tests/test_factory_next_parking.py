@@ -2,7 +2,7 @@
 and it lints every candidate before picking one, so a labelled issue that is not a ticket is skipped (#314).
 
 `bin/factory` is sourced (FACTORY_SOURCED=1) with a temp runs root. park_status is called directly,
-and cmd_next --dry-run (or --frontier) runs with gh, the origin, the login and version probes, and the toolchain gate stubbed as shell functions,
+and cmd_next --dry-run (or --frontier) runs with gh, the origin, the login and version probes stubbed as shell functions,
 so the frontier lines carry the bodies the way the real query does. No network, no tmux, no `claude`.
 """
 
@@ -94,7 +94,7 @@ class ParkingTests(unittest.TestCase):
             doc["errors"] = [{"message": f"Could not resolve to an Issue with the number of {issue}."} for issue in gone]
         reply = f"echo {shlex.quote(json.dumps(doc))}; return 1" if gone else f'jq -r "$q" <<< {shlex.quote(json.dumps(doc))}'
         clock = "" if now is None else f'date() {{ if [ "$*" = "-u +%s" ]; then echo {now}; else command date "$@"; fi; }}; '
-        stubs = (pre + clock + "assert_toolchain_env() { :; }; claude_logged_in() { :; }; claude_version_ok() { :; }; target_repo() { echo o/r; }; "
+        stubs = (pre + clock + "claude_logged_in() { :; }; claude_version_ok() { :; }; target_repo() { echo o/r; }; "
                  'gh() { echo "$*" >> "$GH_LOG"; '
                  "case $2 in graphql) local a p= q=.; "
                  'for a; do [ "$p" = --jq ] && q=$a; p=$a; done; echo "$*" >> "$GQL_LOG"; '

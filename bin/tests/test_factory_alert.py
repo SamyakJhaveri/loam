@@ -19,7 +19,7 @@ import unittest
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
 ALERT = ROOT / "bin" / "alert"
-INHERITED = ("FACTORY_ROOT", "FACTORY_GH", "LOAM_FACTORY_TOOLCHAIN", "LOAM_FACTORY_COPIER", "REPO", "RUN", "LOG")
+INHERITED = ("FACTORY_ROOT", "FACTORY_GH", "REPO", "RUN", "LOG")
 
 FAKE_ALERT = """#!/usr/bin/env python3
 import json, os, sys

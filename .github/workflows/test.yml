@@ -50,16 +50,10 @@ jobs:
           git config --global user.name "CI"
           git config --global user.email "ci@loam"
 
-      - name: Declare factory qualification tools
-        run: |
-          echo "LOAM_FACTORY_TOOLCHAIN=$(node -p 'require("node:path").dirname(require("node:path").dirname(process.execPath))')" >> "$GITHUB_ENV"
-          echo "LOAM_FACTORY_COPIER=$(command -v copier)" >> "$GITHUB_ENV"
-
       - name: Run check
         run: bin/check
-        # The runner's /tmp is a tmpfs with a user quota; the runtime admission qualification copies the
-        # node toolchain into a temp tree per case and hits that quota (EDQUOT, 2026-10-21). The runner's
-        # temp directory is on the root disk.
+        # The runner's /tmp is a tmpfs with a user quota (EDQUOT, 2026-10-21).
+        # Use the runner's temp directory on the root disk to keep checks within that quota.
         env:
           TMPDIR: ${{ runner.temp }}
 

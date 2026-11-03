@@ -71,7 +71,7 @@ class IdleAlertTests(unittest.TestCase):
         (self.t / "store.json").write_text(json.dumps(BLOCKED if store is None else store))
         env = {**os.environ, "PATH": f"{self.t}:{os.environ['PATH']}", "T": str(self.t),
                "STORE": str(self.t / "store.json"), "NOW": str(now), "OTHER": "1" if other else "",
-               "LOAM_FACTORY_TOOLCHAIN": "x", "LOAM_FACTORY_COPIER": "x", "FACTORY_SOURCED": "1",
+               "FACTORY_SOURCED": "1",
                "FACTORY_ROOT": str(ROOT), "FACTORY_RUNS_ROOT": str(self.runs), "FACTORY_MAX_PARALLEL": str(maxp)}
         return subprocess.run(["bash", "-c", TICK, "tick", *flags], cwd=ROOT, env=env,
                               capture_output=True, text=True, check=False)

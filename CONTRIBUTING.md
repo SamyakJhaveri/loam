@@ -15,9 +15,6 @@ bin/check   # expect "check: PASSED"
 Requirements: [Copier](https://copier.readthedocs.io/) 9.16.0, `python3`, `bash`, the
 Claude Code and Codex CLIs, and the pinned Python check dependencies.
 
-`bin/factory` still refuses to target Loam unless `LOAM_FACTORY_TOOLCHAIN` names a
-directory with `bin/node` and `LOAM_FACTORY_COPIER` names an executable Copier;
-`bin/check` needs neither.
 A missing `claude` CLI fails the gate unless `LOAM_ALLOW_MISSING_AGENT_CLIS=1` (CI never sets it); a missing `codex` CLI skips its test.
 A reduced run ends `check: PASSED (skipped: ...)` and names each step or test count that did not run.
 
