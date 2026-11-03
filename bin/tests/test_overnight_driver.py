@@ -80,6 +80,7 @@ class OvernightDriverTests(unittest.TestCase):
         p = re.search(r"(?ms)^\*\*Grader window\.\*\*.*?(?=^\*\*Codex panel\.\*\*)", protocol)
         self.assertIsNotNone(p)
         self.assertIn("O/grader-window.txt", p[0])
+        self.assertIn("at the gate, read the whole file once and judge all three conditions from that one copy", p[0])
         self.assertNotIn("gh pr list -R SamyakJhaveri/distbench", p[0])
         lines = p[0].splitlines()
         self.assertIn("At step 8, before the merge, read that file: the window is clear only when line 2 is `exit 0`, "
@@ -278,6 +279,27 @@ class OvernightDriverTests(unittest.TestCase):
         self.assertIn(f"ended call {left.pid} 120 s after its outcome line", (self.state / "driver.log").read_text())
         self.assertTrue(self.wait_for(lambda: len(self.calls(calls)) >= 2), "the driver started no call after it")
 
+    def test_watch_counts_elapsed_time_as_well_as_polls_after_an_outcome(self) -> None:
+        # Run the actual watch function with a simulated clock, so slow reads cost no real minutes.
+        driver = (OVERNIGHT / "driver.sh").read_text()
+        watch = re.search(r"(?ms)^watch\(\).*?^}", driver)[0]
+        (self.state / "log.md").write_text("earlier block\noutcome issue 8: merged\n")
+        for delay, expected_reads in ((0, 9), (60, 3)):
+            with self.subTest(read_seconds=delay):
+                script = '''set -u
+O=$1
+delay=$2
+SECONDS=0
+reads=0
+stamp() { echo simulated; }
+sleep() { :; }
+grader_window() { reads=$((reads + 1)); SECONDS=$((SECONDS + delay)); }
+end_call() { echo "$reads $((SECONDS - delay))"; }
+''' + watch + '\nwatch "$$" 1\n'
+                got = subprocess.run(["bash", "-c", script, "watch-test", str(self.state), str(delay)],
+                                     text=True, capture_output=True, check=True, timeout=5)
+                self.assertEqual(got.stdout.strip(), f"{expected_reads} {0 if delay == 0 else 120}")
+
     def utc(self) -> str:
         return time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
 
@@ -311,9 +333,13 @@ class OvernightDriverTests(unittest.TestCase):
         (self.home / "dist").write_text("")
         (self.home / "rc").write_text("3\n")
         self.assertTrue(self.wait_for(lambda: lines()[1:] == ["exit 3"], 10), lines())
+        self.assertRegex((self.state / "driver.log").read_text(),
+                         r"(?m)^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\dZ grader-window read failed: exit 3$")
         (self.home / "rc").write_text("0\n")
         self.assertTrue(self.wait_for(lambda: lines()[1:] == ["exit 0"], 10), lines())
         self.assertTrue(t0 <= lines()[0].removeprefix("read_at ") <= self.utc(), lines())
+        self.assertTrue(self.wait_for(lambda: (self.home / "events").read_text().splitlines().count("sleep 15") >= 3, 10),
+                        "the driver did not reach three watch polls")
         self.assert_a_read_after_every_poll(3)
 
     @LINUX_ONLY
