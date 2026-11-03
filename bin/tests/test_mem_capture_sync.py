@@ -11,7 +11,8 @@ index.lock, or one that cannot be removed) followed by the next capture. Each mu
 and, once the remote is reachable, on the remote; none may write into, or abort, a rebase another process owns.
 
 LockTests: a capture that cannot take the store lock in time keeps its data in the spool under .git and the
-next holder lands it; a directory left at the lock path by the earlier mkdir lock does not block captures.
+next holder lands it; a directory left at the lock path by the earlier mkdir lock does not block captures; a trace
+the store's exclude file ignores is still committed, and stays spooled until a commit holds it.
 RecallBoundTests: a recall whose rebase hangs ends within its five-second hook timeout and leaves main clean.
 OverlapTests: of two overlapping captures of one session, the one that read the longer transcript wins, whichever
 publishes last.
@@ -341,6 +342,42 @@ class LockTests(Base):
         (a / ".git/loam-mem.lock").mkdir()  # left by the earlier mkdir lock
         self.capture(a, "s1")
         self.assertIn(" | s1 | ", self.wait_for_remote("s1"), "the capture never reached the remote")
+
+    @unittest.skipIf(os.geteuid() == 0, "root writes a read-only .git/objects")
+    def test_an_excluded_trace_stays_spooled_until_committed(self) -> None:
+        store = self.top / "store"
+        git("init", "-q", str(store), cwd=self.top)
+        exclude = store / ".git/info/exclude"
+        exclude.parent.mkdir(exist_ok=True)
+        exclude.write_text("traces/\n")
+        objects = store / ".git/objects"
+        mode = objects.stat().st_mode
+        objects.chmod(mode & ~0o222)
+        self.addCleanup(objects.chmod, mode)
+        self.capture(store, "s1")  # its commit fails
+        self.assertEqual(len(self.spool(store)), 1, "the uncommitted capture left the spool")
+        self.assertNotEqual(subprocess.run(["git", "rev-parse", "-q", "--verify", "HEAD"], cwd=store,
+                                           capture_output=True).returncode, 0, "the failed commit made a HEAD")
+        objects.chmod(mode)
+        self.capture(store, "s1")
+        trace = next((store / "traces/project").glob("*-s1.jsonl.gz")).relative_to(store).as_posix()
+        self.assertEqual(git("rev-parse", f"HEAD:{trace}", cwd=store),
+                         git("hash-object", trace, cwd=store), "the ignored trace is not in HEAD")
+        self.assertIn(" | s1 | ", git("show", "HEAD:traces/project/INDEX.md", cwd=store))
+        self.assertEqual(self.spool(store), [], "the spool was not drained")
+        self.assertEqual(exclude.read_text(), "traces/\n", "the exclude rule was changed")
+        subprocess.run(["git", "check-ignore", "-q", "--no-index", trace], cwd=store, check=True)
+
+    def test_a_trace_a_clean_filter_rewrites_leaves_the_spool(self) -> None:
+        store = self.top / "store"
+        git("init", "-q", str(store), cwd=self.top)
+        git("config", "filter.b64.clean", "base64", cwd=store)  # stands in for git-lfs
+        git("config", "filter.b64.smudge", "base64 -d", cwd=store)
+        (store / ".git/info").mkdir(exist_ok=True)
+        (store / ".git/info/attributes").write_text("*.gz filter=b64\n")
+        for sid in ("s1", "s2"):
+            self.capture(store, sid)
+            self.assertEqual(self.spool(store), [], f"{sid}'s committed entry stayed in the spool")
 
 
 class RecallBoundTests(Base):
