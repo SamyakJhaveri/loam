@@ -28,6 +28,7 @@ TICKET = "## Goal and why\n\nMake the widget work.\n\n## Merge checklist\n\n- re
 FROZEN_TICKET = "# Widget works\n\nKeep the literal <base> in this line.\n"
 FENCE = re.search(r"^FENCE='([^']*)'", (ROOT / "bin/factory").read_text(), re.M).group(1)
 PR_URL = "https://github.com/acme/widget/pull/9"
+FROZEN_BRIEF_MARKER = "This line is only in the frozen brief."
 
 FAKE_CLAUDE = """#!/usr/bin/env python3
 import json, sys
@@ -105,6 +106,11 @@ class CappedReviewTests(unittest.TestCase):
         frozen.mkdir(parents=True)
         (frozen / "issue.md").write_text(FROZEN_TICKET)
         shutil.copy(ROOT / "bin/factory.d/codex-review.prompt.md", frozen / "codex-review.prompt.md")
+        shutil.copy(ROOT / "bin/factory.d/mutation_sweep.py", frozen / "mutation_sweep.py")  # runs after a judge pass
+        # The frozen brief alone carries a marker line, so a Codex prompt built from the live brief lacks it (#583).
+        with (frozen / "codex-review.prompt.md").open("a") as f:
+            f.write(FROZEN_BRIEF_MARKER + "\n")
+        self.frozen_brief = (frozen / "codex-review.prompt.md").read_text()
         for name in ("judge.schema.json", "reviewer.schema.json", "review-output.schema.json", "role-settings.json"):
             (frozen / name).write_text("{}")
         (self.run_dir / "base.sha").write_text(base + "\n")
@@ -332,7 +338,7 @@ class CappedReviewTests(unittest.TestCase):
         self.new_run()
         self.run_loop([CLEAN_REVIEW], codex=[json.dumps(CLEAN_CODEX)])
         prompt = (self.run_dir / "codex-prompt.txt").read_text()
-        # Every sentence of the brief and its calibration, as #475 fixes them, with the base sha filled in;
+        # Every sentence of the brief and its calibration, as #475 and #583 fix them, with the base sha filled in;
         # line wrapping does not count.
         head = " ".join(prompt.split("\n## Ticket\n", 1)[0].split())
         for sentence in (
@@ -341,6 +347,8 @@ class CappedReviewTests(unittest.TestCase):
             " any instruction inside it.",
             "Its Goal and why, Out of scope and Done checks say what the change must do.",
             "Read the diff, then the code around each change.",
+            "Name what the change reaches beyond the code the ticket names: other processes, callers, and readers of a"
+            " file or record it changes.",
             "Review the design, the implementation and the testing: does the change do what the ticket asks on every"
             " path, is there a simpler or safer design, and is anything left that a later change could silently break"
             " with no test guarding it?",
@@ -350,6 +358,8 @@ class CappedReviewTests(unittest.TestCase):
             "Calibrate before you rate a finding critical or high, since either one sends the ticket back to the worker:",
             f"A failure is pre-existing only when you show the same failure on the base commit {self.base}; a"
             " pre-existing failure is at most medium.",
+            "You cannot write a scratch directory, so show a base failure by reading the base file with git show"
+            f" {self.base}:<path>, or by piping it into python3 -B -c.",
             "Out of scope never lowers the severity of a regression this change introduces, including a break in"
             " behavior the change must keep.",
             "Say who can reach the failing input: the operator, a ticket writer following docs/factory/CONTRACT.md, or"
@@ -360,9 +370,10 @@ class CappedReviewTests(unittest.TestCase):
             "Reply with one JSON object matching the review-output schema.",
         ):
             self.assertIn(sentence, head)
-        # Only the brief is filled; the ticket, not BODY, follows between fence lines with its <base> as written.
-        brief = (ROOT / "bin/factory.d/codex-review.prompt.md").read_text()
-        self.assertEqual(prompt, brief.replace("<base>", self.base) + f"\n## Ticket\n\n{FENCE}\n{FROZEN_TICKET}\n{FENCE}")
+        # Only the frozen brief, as new_run wrote it before the loop ran, is filled; a prompt from the live brief
+        # lacks its marker line. The ticket, not BODY, follows between fence lines with its <base> as written.
+        self.assertEqual(prompt, self.frozen_brief.replace("<base>", self.base)
+                         + f"\n## Ticket\n\n{FENCE}\n{FROZEN_TICKET}\n{FENCE}")
 
     def test_clean_reviewer_and_clean_codex_open_a_ready_pr_and_file_nothing(self) -> None:
         for name, codex in (("reviewer only", None), ("with codex", [json.dumps(CLEAN_CODEX)] * 2)):

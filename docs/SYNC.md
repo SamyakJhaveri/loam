@@ -12,7 +12,7 @@ Since the 2026-08 rebuild there are three distribution mechanisms: Copier forwar
 - A plain `uvx copier update --trust` in the project still works.
   It resolves the latest tag, reads the template from the project's `_src_path`, and runs the template's tasks (see below).
 - Copier `copy` and a plain `update` resolve git TAGS, not HEAD, so nothing reaches them until `bin/release.sh <version>` tags it.
-  `bin/sync-project` takes any commit.
+  `bin/sync-project` takes any commit whose nearest tag is a release tag.
 
 ### bin/sync-project
 
@@ -75,6 +75,7 @@ After a sync to an untagged commit, `_commit` reads like `v3.0.0-361-ge90bfce0`.
 A plain `copier update` from `gh:` then refuses, because the latest tag is older and Copier does not downgrade.
 Keep using `bin/sync-project` until a newer tag exists.
 Sync only from a Loam commit that is on `main`, or is about to be merged into it: a later update renders the old side from `_commit`, so that commit must exist on GitHub.
+`bin/sync-project` refuses, before the clone, a commit whose nearest tag is not a release tag `v<X.Y.Z>`, since Copier would record that tag as `_commit`; snapshots of unpushed work go to the private archive repo, never to tags on origin.
 
 ### Sync rulings
 
@@ -130,5 +131,7 @@ That gives versioned releases and in-place updates without custom machinery.
 
 `bin/loam-attach.sh <dir>` drops the Claude harness into a directory Copier never rendered, without turning it into a Loam project.
 It copies `seed/.claude/settings.json` and the `seed/.claude/hooks/` scripts over `<dir>/.claude/` (any foreign hooks already in `<dir>/.claude/hooks/` survive; only the seed-named files are replaced), appends the harness `.gitignore` lines, and writes `<dir>/.claude/settings.local.json` that registers this checkout's `cultivation/marketplace` and enables the `sam-cc-setup` plugin.
+The `.gitignore` lines are the harness lines plus the sandbox placeholder block read from `seed/.gitignore.jinja` at attach time (the empty read-only files the Claude Code sandbox leaves on Linux), and the attach stops with exit 1 if that block is missing.
+Each line is appended only when the file lacks it, so a `--force` re-run on a project attached earlier adds just the new lines.
 It refuses to overwrite an existing harness (a `<dir>/.claude/settings.json` file or a `<dir>/.claude/hooks/` directory) unless `--force`, and never overwrites an existing `settings.local.json`.
 The marketplace path it writes is this checkout's absolute path, so run it from the canonical checkout rather than a throwaway worktree.
