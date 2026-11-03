@@ -130,5 +130,7 @@ That gives versioned releases and in-place updates without custom machinery.
 
 `bin/loam-attach.sh <dir>` drops the Claude harness into a directory Copier never rendered, without turning it into a Loam project.
 It copies `seed/.claude/settings.json` and the `seed/.claude/hooks/` scripts over `<dir>/.claude/` (any foreign hooks already in `<dir>/.claude/hooks/` survive; only the seed-named files are replaced), appends the harness `.gitignore` lines, and writes `<dir>/.claude/settings.local.json` that registers this checkout's `cultivation/marketplace` and enables the `sam-cc-setup` plugin.
+The `.gitignore` lines are the harness lines plus the sandbox placeholder block read from `seed/.gitignore.jinja` at attach time (the empty read-only files the Claude Code sandbox leaves on Linux), and the attach stops with exit 1 if that block is missing.
+Each line is appended only when the file lacks it, so a `--force` re-run on a project attached earlier adds just the new lines.
 It refuses to overwrite an existing harness (a `<dir>/.claude/settings.json` file or a `<dir>/.claude/hooks/` directory) unless `--force`, and never overwrites an existing `settings.local.json`.
 The marketplace path it writes is this checkout's absolute path, so run it from the canonical checkout rather than a throwaway worktree.
