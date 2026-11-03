@@ -6,7 +6,9 @@ Since the 2026-08 rebuild there are three distribution mechanisms: Copier forwar
 
 - `uvx copier copy --trust gh:samyakjhaveri/loam ./my-project` bootstraps.
 - `bin/sync-project <owner/repo> [<loam-commit>]` carries one Loam commit into a rendered project as a pull request.
-  Use it for every update.
+  DistBench is the exception: a Loam capability reaches it by a tailored transfer, one capability per DistBench PR, merged by hand so DistBench's own instructions, rules, workflows, skills, operating procedures and learnings survive.
+  `bin/transfer-manifest.tsv` lists each capability with its Loam source and the DistBench ticket that carries it, and `bin/transfer-coverage --target <checkout>` reports the capabilities a checkout still lacks.
+  A `bin/sync-project --dry-run --no-port` run is a diff source for that transfer, not the delivery.
 - Every Loam pull request body states its port class on a `Port:` line: `seed` (travels by `bin/sync-project`), `runner` (a host change on the factory runner, applied the same day with no project sync), or `Loam-only` (say whether a project needs its own copy).
   The pull request template asks for it.
 - A plain `uvx copier update --trust` in the project still works.
