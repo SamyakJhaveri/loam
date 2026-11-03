@@ -4,9 +4,16 @@
 #   bin/claude-account use <name>   write that token into the env block of the settings file (new claude processes use it)
 #   bin/claude-account other        print the next stored account after the active one (name order, wrapping), non-zero when there is none
 #   bin/claude-account status       print `active: <name>; stored: <names>` and nothing else
+#   bin/claude-account switch <from> [<to>]
+#                                   the host-wide switch every caller on the host shares (bin/factory's limit_switch
+#                                   keeps its own copy for now): under a flock on <runs root>/limit-switch.lock (waits
+#                                   60 s), switch nothing and exit 0 when the active account is no longer <from> (another
+#                                   caller switched), exit 3 when <runs root>/limit-switch holds an epoch under 300 s ago,
+#                                   else `use` <to> (default: what `other` prints) and write the epoch there; exit 1 on no
+#                                   lock, no other account or a failed `use`. Runs root: FACTORY_RUNS_ROOT, as bin/factory.
 # Tokens live outside the settings file so a switch never needs the browser; each is valid one year.
 # No command prints, echoes, or logs a token value; `set -x` is never used here.
-# The account directory and settings file are overridable so the factory loop can drive this against a temp home.
+# The account directory, settings file and runs root are overridable so the factory loop can drive this against a temp home.
 set -euo pipefail
 
 dir=${CLAUDE_ACCOUNTS_DIR:-$HOME/.config/claude-accounts}
@@ -16,6 +23,34 @@ name=${2:-}
 
 # The active account name, from the file `use` writes; empty when nothing is active yet.
 active_name() { [ -f "$dir/active" ] && cat "$dir/active" || true; }
+
+# Write the token of account $1 into the settings env block, then name it active. Each step returns 1 on failure,
+# so `active` is never written ahead of the settings file, also when a caller tests the result. Keep the spaces
+# around `=` in the jq filter so the merge grep for an assignment of the token env var finds no hit here.
+use_name() {
+  local t tmp
+  [ -f "$dir/$1.token" ] || { echo "no stored token for '$1'; run: bin/claude-account set $1" >&2; return 1; }
+  t=$(cat "$dir/$1.token") && tmp=$(mktemp "$f.XXXXXX") || return 1
+  jq --arg t "$t" '.env.CLAUDE_CODE_OAUTH_TOKEN = $t' "$f" > "$tmp" || { rm -f "$tmp"; return 1; }
+  mv "$tmp" "$f" && chmod 600 "$f" && printf '%s\n' "$1" > "$dir/active" || return 1
+  echo "active: $1" >&2
+}
+# Round robin in name order: the first stored account after the active one, wrapping to the first, so
+# repeated switches visit every stored account instead of bouncing between the first two.
+other_name() {
+  local a p n first="" next=""
+  a=$(active_name)
+  for p in "$dir"/*.token; do
+    [ -f "$p" ] || continue
+    n=$(basename "$p" .token)
+    [ "$n" = "$a" ] && continue
+    [ -n "$first" ] || first=$n
+    if [[ -z "$next" && "$n" > "$a" ]]; then next=$n; fi
+  done
+  [ -n "${next:-$first}" ] && { printf '%s\n' "${next:-$first}"; return 0; }
+  echo "no stored account other than '${a:-none}'" >&2
+  return 1
+}
 
 case "$cmd" in
   set)
@@ -34,33 +69,26 @@ case "$cmd" in
     ;;
   use)
     [ -n "$name" ] || { echo "usage: bin/claude-account use <name>" >&2; exit 2; }
-    [ -f "$dir/$name.token" ] || { echo "no stored token for '$name'; run: bin/claude-account set $name" >&2; exit 1; }
-    t=$(cat "$dir/$name.token")
-    # Separate steps so set -e aborts before `active` is written if the jq write fails, and the switch
-    # a caller logs can never outrun the settings file. Keep the spaces around `=` in the jq filter so the
-    # merge grep for an assignment of the token env var finds no hit here.
-    tmp=$(mktemp "$f.XXXXXX")
-    jq --arg t "$t" '.env.CLAUDE_CODE_OAUTH_TOKEN = $t' "$f" > "$tmp"
-    mv "$tmp" "$f"
-    chmod 600 "$f"
-    printf '%s\n' "$name" > "$dir/active"
-    echo "active: $name" >&2
+    use_name "$name" || exit 1
     ;;
   other)
-    # Round robin in name order: the first stored account after the active one, wrapping to the first, so
-    # repeated switches visit every stored account instead of bouncing between the first two.
+    other_name || exit 1
+    ;;
+  switch)
+    [ -n "$name" ] || { echo "usage: bin/claude-account switch <from> [<to>]" >&2; exit 2; }
+    runs=${FACTORY_RUNS_ROOT:-$HOME/.local/state/loam-factory/runs}
+    mkdir -p "$runs" && exec {fd}>> "$runs/limit-switch.lock" || exit 1
+    flock -w 60 "$fd" || { echo "no lock on $runs/limit-switch.lock within 60 s" >&2; exit 1; }
     a=$(active_name)
-    first="" next=""
-    for p in "$dir"/*.token; do
-      [ -f "$p" ] || continue
-      n=$(basename "$p" .token)
-      [ "$n" = "$a" ] && continue
-      [ -n "$first" ] || first=$n
-      if [[ -z "$next" && "$n" > "$a" ]]; then next=$n; fi
-    done
-    [ -n "${next:-$first}" ] && { printf '%s\n' "${next:-$first}"; exit 0; }
-    echo "no stored account other than '${a:-none}'" >&2
-    exit 1
+    [ "$a" = "$name" ] || { echo "active: ${a:-none}; already switched from $name" >&2; exit 0; }
+    last=$(cat "$runs/limit-switch" 2> /dev/null) || last=""
+    if [[ "$last" =~ ^[0-9]+$ ]] && [ "$(( $(date +%s) - last ))" -lt 300 ]; then
+      echo "active: $a; another switch on this host was under 300 s ago" >&2; exit 3
+    fi
+    to=${3:-}
+    [ -n "$to" ] || to=$(other_name) || exit 1
+    use_name "$to" || exit 1
+    date +%s > "$runs/limit-switch"
     ;;
   status)
     a=$(active_name)
@@ -72,7 +100,7 @@ case "$cmd" in
     echo "active: ${a:-none}; stored:${stored}"
     ;;
   *)
-    echo "usage: bin/claude-account set|use <name> | other | status" >&2
+    echo "usage: bin/claude-account set|use <name> | other | status | switch <from> [<to>]" >&2
     exit 2
     ;;
 esac

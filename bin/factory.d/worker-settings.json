@@ -1,5 +1,4 @@
 {
-  "claudeMdExcludes": ["**/.claude/CLAUDE.md", "**/.claude/rules/**"],
   "autoMemoryEnabled": false,
   "autoCompactEnabled": true,
   "autoCompactWindow": 450000,

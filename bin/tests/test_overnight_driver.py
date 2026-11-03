@@ -11,6 +11,7 @@ tmux, pgrep, sleep and alert, so nothing reaches GitHub, Slack, tmux or a model.
 
 from __future__ import annotations
 
+import fnmatch
 import json
 import os
 import pathlib
@@ -28,6 +29,12 @@ ROOT = pathlib.Path(__file__).resolve().parents[2]
 OVERNIGHT = ROOT / "bin" / "overnight"
 # driver.sh starts each call under a Linux-only wrapper (prctl PR_SET_CHILD_SUBREAPER, /proc); it runs only on jhaveris.
 LINUX_ONLY = unittest.skipUnless(sys.platform.startswith("linux"), "the driver's call wrapper needs Linux prctl and /proc")
+
+
+# The protocol's read of DistBench (Grader window), which the driver runs for the call into grader-window.txt.
+GRADER_READ = ["pr", "list", "-R", "SamyakJhaveri/distbench", "--state", "open", "--limit", "100", "--json",
+               "number,title,files", "--jq", '.[] | select((.title | test("grader|regrade"; "i")) or any(.files[].path; '
+               'test("(^|/)grader\\\\.py$|regrade"; "i"))) | .number']
 
 
 def write_exec(path: pathlib.Path, text: str) -> None:
@@ -64,6 +71,42 @@ class OvernightDriverTests(unittest.TestCase):
         self.assertEqual(s["sandbox"]["filesystem"]["allowWrite"], ["~/.local/state/loam"])
         self.assertEqual(s["sandbox"]["filesystem"]["denyWrite"], ["~/loam/bin/overnight"])
         self.assertEqual(s["sandbox"]["network"]["allowedDomains"], ["github.com"])
+        # The call reads DistBench only through the driver's grader-window.txt; no allow rule opens gh on it.
+        # Two wildcard rules deny every gh spelling and checkout path that names DistBench (#641); prose in the
+        # repo's own spelling, with no slash before it, still runs.
+        self.assertEqual([r for r in deny if "distbench" in r.lower()], ["Bash(*distbench*)", "Bash(*/DistBench*)"])
+        pats = [r[5:-1] for r in deny if "distbench" in r.lower()]
+
+        def denied(c: str) -> bool:
+            return any(fnmatch.fnmatchcase(c, p) for p in pats)
+
+        for cmd in ("gh issue view 1 -R SamyakJhaveri/distbench", "gh pr comment 5 --body x --repo=SamyakJhaveri/distbench",
+                    "gh pr comment 5 --body x -RSamyakJhaveri/distbench", "gh api /repos/samyakjhaveri/DistBench/issues",
+                    "GH_REPO=SamyakJhaveri/distbench gh pr comment 5 --body x", "cd ~ && cd distbench && gh pr comment 5"):
+            self.assertTrue(denied(cmd), cmd)
+        for cmd in ("gh pr list -R SamyakJhaveri/loam", 'gh pr comment 5 -R SamyakJhaveri/loam --body "left open: '
+                    'grader window: DistBench grader-fix PR 3 open"', "gh pr comment 5 -R SamyakJhaveri/loam --body-file n.md"):
+            self.assertFalse(denied(cmd), cmd)
+        self.assertNotIn("allow", s["permissions"])
+
+    def test_protocol_reads_the_grader_window_from_the_drivers_file(self) -> None:
+        protocol = (OVERNIGHT / "protocol.md").read_text()
+        p = re.search(r"(?ms)^\*\*Grader window\.\*\*.*?(?=^\*\*Codex panel\.\*\*)", protocol)
+        self.assertIsNotNone(p)
+        self.assertIn("O/grader-window.txt", p[0])
+        self.assertIn("at the gate, read the whole file once and judge all three conditions from that one copy", p[0])
+        self.assertNotIn("gh pr list -R SamyakJhaveri/distbench", p[0])
+        lines = p[0].splitlines()
+        self.assertIn("At step 8, before the merge, read that file: the window is clear only when line 2 is `exit 0`, "
+                      "`read_at` is at most five minutes old, and no number follows.", lines)
+        self.assertIn("A number leaves the PR open (step 9) with `left open: grader window: DistBench grader-fix PR "
+                      "#<m> open`; any other `exit`, a `read_at` more than five minutes old, or a missing file leaves "
+                      "it open with `left open: grader window: DistBench read failed or stale`.", lines)
+        self.assertIn("grader-window.txt", re.search(r"(?m)^Run state lives.*$", protocol)[0])
+        loop = (ROOT / "docs/factory/LOOP.md").read_text()
+        self.assertIn("grader-window.txt", re.search(r"(?m)^Its run state \(.*$", loop)[0])
+        # The driver runs the protocol's read, argument for argument.
+        self.assertIn("gh " + " ".join(GRADER_READ[:-1]) + " '" + GRADER_READ[-1] + "'", (OVERNIGHT / "driver.sh").read_text())
 
     @LINUX_ONLY
     def test_driver_call_reads_the_repo_settings_and_protocol(self) -> None:
@@ -119,11 +162,18 @@ class OvernightDriverTests(unittest.TestCase):
 
 
     def start_call_fakes(self, tool: str = "") -> pathlib.Path:
-        """Fake gh with one pending PR, a sleep of 0.1 s (so the driver's 15 s polls are fast), and a claude that
-        appends its pid to calls.txt, runs `tool` and runs until killed."""
+        """Fake gh with one pending PR, a sleep of 0.1 s that logs each interval to events (so the driver's 15 s polls
+        are fast), and a claude that appends its pid to calls.txt, runs `tool` and runs until killed. On DistBench the
+        fake gh answers only the protocol's exact read, compared argument by argument: it logs `read`, prints dist and
+        exits with rc; any other DistBench call logs `bad` and exits 9."""
         real_sleep = shutil.which("sleep")
-        write_exec(self.fake / "sleep", f"#!/bin/sh\nexec {real_sleep} 0.1\n")
-        write_exec(self.fake / "gh", '#!/bin/sh\ncase "$*" in *"pr list"*) echo 7 ;; esac\nexit 0\n')
+        write_exec(self.fake / "sleep", f'#!/bin/sh\necho "sleep $*" >> "$HOME/events"\nexec {real_sleep} 0.1\n')
+        (self.home / "want").write_bytes(b"".join(a.encode() + b"\0" for a in GRADER_READ))
+        (self.home / "dist").write_text("9\n")
+        (self.home / "rc").write_text("0\n")
+        write_exec(self.fake / "gh", '#!/bin/sh\ncase "$*" in *SamyakJhaveri/distbench*) printf "%s\\0" "$@" | '
+                   'cmp -s - "$HOME/want" || { echo bad >> "$HOME/events"; exit 9; }; echo read >> "$HOME/events"; '
+                   'cat "$HOME/dist"; exit "$(cat "$HOME/rc")" ;; *"pr list"*) echo 7 ;; esac\nexit 0\n')
         write_exec(self.fake / "claude",
                    f'#!/bin/sh\necho $$ >> "$HOME/calls.txt"\n{tool}\nwhile :; do {real_sleep} 1; done\n')
         return self.home / "calls.txt"
@@ -221,6 +271,9 @@ class OvernightDriverTests(unittest.TestCase):
         self.assertTrue(self.wait_for(lambda: self.calls(calls)))
         (self.state / "log.md").write_text("earlier block\noutcome issue 3: merged\n")
         (self.state / "call.pid").write_text(f"{left.pid} 2 {self.state}/calls/none.json\n")
+        window = self.state / "grader-window.txt"
+        window.write_text("read_at 1970-01-01T00:00:00Z\nexit 0\n")
+        t0 = self.utc()
         driver = self.start_driver()
         self.addCleanup(lambda: [self.kill_group(c) for c in self.calls(calls)[1:]])
         # About 20 of the driver's 15 s polls: the left call still runs and the driver started none of its own.
@@ -229,11 +282,104 @@ class OvernightDriverTests(unittest.TestCase):
         self.assertIsNone(left.poll(), "the driver ended a healthy call an earlier driver left")
         self.assertEqual(len(self.calls(calls)), 1, "the driver started a second call beside the one it adopted")
         self.assertIn(f"adopted call {left.pid} left by an earlier driver", (self.state / "driver.log").read_text())
+        # The adopted call's stale grader-window.txt is refreshed on every poll.
+        got = window.read_text().splitlines()
+        self.assertTrue(t0 <= got[0].removeprefix("read_at ") <= self.utc(), got)
+        self.assertEqual(got[1:], ["exit 0", "9"])
+        self.assert_a_read_after_every_poll(3)
         with (self.state / "log.md").open("a") as f:
             f.write("outcome issue 8: merged\n")
         self.assertTrue(self.wait_for(lambda: left.poll() is not None, 20), "the adopted call outlived its outcome line")
         self.assertIn(f"ended call {left.pid} 120 s after its outcome line", (self.state / "driver.log").read_text())
         self.assertTrue(self.wait_for(lambda: len(self.calls(calls)) >= 2), "the driver started no call after it")
+
+    def test_watch_reads_only_before_an_outcome_and_ends_after_nine_polls(self) -> None:
+        # Run the shipped watcher without real sleeps or reads.
+        driver = (OVERNIGHT / "driver.sh").read_text()
+        watch = re.search(r"(?ms)^watch\(\).*?^}", driver)[0]
+        (self.state / "log.md").write_text("earlier block\noutcome issue 8: merged\n")
+        for before, limit in ((1, 9), (2, 4)):
+            with self.subTest(before=before):
+                script = '''set -u
+O=$1
+before=$2
+limit=$3
+polls_seen=0
+reads=0
+stamp() { echo test; }
+sleep() {
+  [ "$1" = 15 ] || exit 2
+  [ "$polls_seen" -lt "$limit" ] || { echo "bounded $reads"; exit 0; }
+  polls_seen=$((polls_seen + 1))
+  echo "sleep $1"
+}
+grader_window() { reads=$((reads + 1)); echo read; }
+end_call() { echo "ended $polls_seen $reads"; }
+''' + watch + '\nwatch "$$" "$before"\n'
+                got = subprocess.run(["bash", "-c", script, "watch-test", str(self.state), str(before), str(limit)],
+                                     text=True, capture_output=True, check=True, timeout=5)
+                expected = (["sleep 15"] * 9 + ["ended 9 0"] if before == 1 else
+                            ["sleep 15", "read"] * limit + [f"bounded {limit}"])
+                self.assertEqual(got.stdout.splitlines(), expected)
+
+    def utc(self) -> str:
+        return time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+
+    def assert_a_read_after_every_poll(self, n: int) -> None:
+        ev = (self.home / "events").read_text().splitlines()
+        self.assertNotIn("bad", ev, "the driver ran a DistBench gh call other than the protocol's read")
+        polls = [i for i, e in enumerate(ev) if e == "sleep 15"]
+        self.assertGreaterEqual(len(polls), n)
+        missed = [i for i in polls if i + 1 < len(ev) and ev[i + 1] != "read"]
+        self.assertEqual(missed, [], f"a 15 s poll with no DistBench read right after it: {ev}")
+
+    @LINUX_ONLY
+    def test_driver_writes_the_grader_window_before_a_call_and_after_every_poll(self) -> None:
+        window = self.state / "grader-window.txt"
+        calls = self.start_call_fakes(f'cp "{window}" "$HOME/seen.txt"')
+        self.addCleanup(lambda: [self.kill_group(c) for c in self.calls(calls)])
+        t0 = self.utc()
+        self.start_driver()
+        self.assertTrue(self.wait_for(lambda: self.calls(calls)), "the driver started no call")
+        # The fake claude logs its pid before it copies the file, so wait for the copy itself.
+        copy = self.home / "seen.txt"
+        self.assertTrue(self.wait_for(lambda: copy.exists() and copy.read_text().endswith("\n"), 10),
+                        "the call saw no grader-window.txt")
+        seen = copy.read_text().splitlines()
+        self.assertTrue(t0 <= seen[0].removeprefix("read_at ") <= self.utc(), seen)
+        self.assertEqual(seen[1:], ["exit 0", "9"], "the call started without a fresh grader-window.txt")
+
+        def lines() -> list[str]:
+            return window.read_text().splitlines() if window.exists() else []
+        # A failed read carries gh's status, and the next poll's read recovers.
+        (self.home / "dist").write_text("")
+        (self.home / "rc").write_text("3\n")
+        self.assertTrue(self.wait_for(lambda: lines()[1:] == ["exit 3"], 10), lines())
+        self.assertRegex((self.state / "driver.log").read_text(),
+                         r"(?m)^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\dZ grader-window read failed: exit 3$")
+        (self.home / "rc").write_text("0\n")
+        self.assertTrue(self.wait_for(lambda: lines()[1:] == ["exit 0"], 10), lines())
+        self.assertTrue(t0 <= lines()[0].removeprefix("read_at ") <= self.utc(), lines())
+        self.assertTrue(self.wait_for(lambda: (self.home / "events").read_text().splitlines().count("sleep 15") >= 3, 10),
+                        "the driver did not reach three watch polls")
+        self.assert_a_read_after_every_poll(3)
+
+    @LINUX_ONLY
+    def test_a_planted_link_does_not_redirect_the_grader_window_write(self) -> None:
+        # The call can write the state dir; links planted at the old temp name and at the window itself must not
+        # make the unsandboxed driver write through them (Codex review of PR #660).
+        victim = self.home / "victim"
+        victim.write_text("keep\n")
+        (self.state / "grader-window.tmp").symlink_to(victim)
+        (self.state / "grader-window.txt").symlink_to(victim)
+        calls = self.start_call_fakes()
+        self.addCleanup(lambda: [self.kill_group(c) for c in self.calls(calls)])
+        self.start_driver()
+        self.assertTrue(self.wait_for(lambda: self.calls(calls)), "the driver started no call")
+        window = self.state / "grader-window.txt"
+        self.assertTrue(self.wait_for(lambda: not window.is_symlink(), 10), "the window is still the planted link")
+        self.assertEqual(window.read_text().splitlines()[1:], ["exit 0", "9"])
+        self.assertEqual(victim.read_text(), "keep\n", "the driver wrote through a planted link")
 
     @LINUX_ONLY
     def test_driver_leaves_a_reused_pid_alone(self) -> None:

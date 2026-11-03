@@ -289,14 +289,13 @@ else:
   exec 9>&-
   return 1
 }
-# --- end of the store lock block.
-
 # The spool: a capture never writes the working tree directly. It writes its
 # scrubbed trace, sha and INDEX line as one entry under .git/loam-spool/,
 # outside the working tree, where no rebase, abort or reset reaches it. Whoever
-# then holds the lock with a recovered store drains the entries into the tree
-# and commits. A capture that finds the store busy, or holds a
-# rebase it cannot recover, exits 0 and its entry waits for the next holder.
+# then holds the lock with a recovered store (the next capture, or mem-weekly.sh)
+# drains the entries into the tree and commits. A capture that finds the store
+# busy, or holds a rebase it cannot recover, exits 0 and its entry waits for the
+# next holder. mem-recall.sh carries these functions but does not drain.
 SPOOL="$STORE/.git/loam-spool"
 spool_pending() {
   local e
@@ -373,6 +372,7 @@ drain_spool() {
   done
   return 0
 }
+# --- end of the store lock block.
 
 # Key by the whole session id, not a prefix: Codex thread ids are time-ordered
 # UUIDv7, so Codex sessions started within about 65 s share their first 8

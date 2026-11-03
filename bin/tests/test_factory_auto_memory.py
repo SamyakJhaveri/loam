@@ -1,11 +1,11 @@
 """Worker and grader calls load and write no auto memory (#380).
 
-Claude Code keeps one auto memory folder per repository, filled by interactive sessions, and `--setting-sources
-user` does not turn it off. Both factory settings files set `autoMemoryEnabled: false`, and pin
-CLAUDE_CODE_DISABLE_AUTO_MEMORY=1 in their env because that variable, from the launch env or a user-tier env, beats
-the key, while the `--settings` env is applied last. Both also set the same `claudeMdExcludes`, so a call loads
-no `~/.claude/CLAUDE.md` or `~/.claude/rules/` from `--setting-sources user` (#421). Both turn compaction on at 450K
-tokens over the user tier's `autoCompactEnabled: false`, so a long call compacts instead of failing (#348). Checks the source settings and
+Claude Code keeps one auto memory folder per repository, filled by interactive sessions, and no settings source
+turns it off. Both factory settings files set `autoMemoryEnabled: false`, and pin CLAUDE_CODE_DISABLE_AUTO_MEMORY=1
+in their env because that variable, from the launch env or a user-tier env, beats the key, while the `--settings`
+env is applied last. Neither sets `claudeMdExcludes`: both calls load no settings tier (`--setting-sources ''`), so
+no user CLAUDE.md or rules load, whatever the config dir (#505). Both turn compaction on at 450K tokens over the user
+tier's `autoCompactEnabled: false`, so a long call compacts instead of failing (#348). Checks the source settings and
 the real freeze path, sourced with FACTORY_SOURCED=1 as in test_factory_worker_pins.py. No network or Claude call.
 """
 
@@ -42,13 +42,13 @@ class AutoMemoryOffTests(unittest.TestCase):
                 self.assertIs(settings.get("autoMemoryEnabled"), False)
                 self.assertEqual(settings.get("env", {}).get("CLAUDE_CODE_DISABLE_AUTO_MEMORY"), "1")
 
-    def test_worker_and_role_settings_exclude_user_memory_files(self) -> None:
+    def test_worker_and_role_settings_set_no_claude_md_excludes(self) -> None:
         for name in ("worker-settings.json", "role-settings.json"):
             with self.subTest(name=name):
                 settings = json.loads((ROOT / "bin/factory.d" / name).read_text())
-                self.assertEqual(settings.get("claudeMdExcludes"), ["**/.claude/CLAUDE.md", "**/.claude/rules/**"])
+                self.assertNotIn("claudeMdExcludes", settings)
 
-    def test_frozen_worker_and_role_settings_exclude_user_memory_files(self) -> None:
+    def test_frozen_worker_and_role_settings_set_no_claude_md_excludes(self) -> None:
         run = self.tmp / "run"
         (run / "frozen").mkdir(parents=True)
         proc = self.sourced(f"RUN='{run}'; LOG=\"$RUN/factory.log\"; LEDGER=\"$RUN/ledger.jsonl\"; "
@@ -59,7 +59,7 @@ class AutoMemoryOffTests(unittest.TestCase):
         for name in ("worker-settings.json", "role-settings.json"):
             with self.subTest(name=name):
                 settings = json.loads((run / "frozen" / name).read_text())
-                self.assertEqual(settings.get("claudeMdExcludes"), ["**/.claude/CLAUDE.md", "**/.claude/rules/**"])
+                self.assertNotIn("claudeMdExcludes", settings)
 
     def test_frozen_settings_compact_at_450k_over_a_user_off_switch(self) -> None:
         user = self.tmp / "user-settings.json"
