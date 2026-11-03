@@ -46,7 +46,6 @@ import re
 import shutil
 import signal
 import subprocess
-import sys
 import tempfile
 import time
 import unittest
@@ -681,23 +680,21 @@ class ScanTests(Base):
             self.assertNotEqual(self.scan(script, True, str(bin_)), 0, f"{script.name}: no lsof cleared the lock")
 
     def scan_beside(self, script: pathlib.Path, cmd: list[str], ready) -> int:
-        # Scan while cmd runs in the store, once ready(pid) holds.
-        p = subprocess.Popen(cmd, cwd=self.store)
+        # Scan while cmd runs in the store, once ready(pid) holds; its stdin
+        # is a pipe left open, so a command reading stdin waits.
+        p = subprocess.Popen(cmd, cwd=self.store, stdin=subprocess.PIPE)
         try:
             self.until(lambda: ready(p.pid), f"{cmd[0]} to start")
             return self.scan(script)
         finally:
             p.kill()
             p.wait()
+            p.stdin.close()
 
     @unittest.skipUnless(os.path.isdir("/proc/self/fd"), "the /proc scan reads /proc")
     def test_the_proc_scan_finds_an_open_lock_and_a_git_in_the_store(self) -> None:
         sleep = os.path.realpath(shutil.which("sleep"))
-        # python3 under git's name: a copy of sleep fails where coreutils is
-        # one multicall binary that dispatches on argv[0] (uutils, busybox).
-        fake_git = self.top / "git-bin/git"
-        fake_git.parent.mkdir()
-        shutil.copy(os.path.realpath(sys.executable), fake_git)
+        git = os.path.realpath(shutil.which("git"))
         opened = self.top / "opened"
         hold = ["python3", "-c", "import sys, time; f = open(sys.argv[1]); open(sys.argv[2], 'w').close(); time.sleep(60)",
                 str(self.lock), str(opened)]
@@ -710,8 +707,7 @@ class ScanTests(Base):
             self.assertEqual(self.scan(script), 0, f"{script.name}: an index.lock no one holds was kept")
             self.assertNotEqual(self.scan_beside(script, hold, lambda pid: opened.exists()), 0,
                                 f"{script.name}: a process with the index.lock open was missed")
-            self.assertNotEqual(self.scan_beside(script, [str(fake_git), "-c", "import time; time.sleep(60)"],
-                                                 runs(str(fake_git))), 0,
+            self.assertNotEqual(self.scan_beside(script, ["git", "hash-object", "--stdin"], runs(git)), 0,
                                 f"{script.name}: a git working in the store was missed")
             self.assertEqual(self.scan_beside(script, ["sleep", "60"], runs(sleep)), 0,
                              f"{script.name}: a process in the store that is not git counted as a holder")
