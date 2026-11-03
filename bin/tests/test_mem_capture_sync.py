@@ -9,7 +9,7 @@ rebase in progress) while it writes s2's trace, so another hook can run inside t
 recall whose fetch fails, mem-weekly.sh, a SIGKILL of only the sync's shell, or a SIGKILL of the whole sync (with or
 without a stale index.lock, or one that cannot be removed) followed by the next capture. Each must leave every
 capture on main and, once the remote is reachable, on the remote; none may write into, or abort, a rebase another
-process owns.
+process owns, and none may run one of the git hooks A's store sets.
 
 LockTests: a capture that cannot take the store lock in time keeps its data in the spool under .git and the
 next holder lands it; a directory left at the lock path by the earlier mkdir lock does not block captures.
@@ -21,6 +21,7 @@ timeout; the capture stays spooled and lands once the filter returns.
 NoHookTests: store git runs no git hook, even one the store's core.hooksPath names, so a hook's background child
 cannot keep the store lock after a capture, a recall (its fetch and rebase included) or mem-weekly.sh returns.
 ConfigHookTests: the same for hooks defined in the store's or the global config (git 2.54 and later).
+SigningTests: a global commit.gpgsign with no usable key does not keep a capture in the spool.
 """
 
 from __future__ import annotations
@@ -157,6 +158,18 @@ class Base(unittest.TestCase):
         except subprocess.CalledProcessError:
             return ""
 
+    def hooks(self, store: pathlib.Path, *names: str, child: bool = True) -> pathlib.Path:
+        # Each hook logs its name and, with child, starts a background child that would keep any fd it inherited,
+        # fd 9 too.
+        hooks, self.ran = self.top / "hooks", self.top / "hook-ran"
+        hooks.mkdir()
+        tail = "sleep 20 > /dev/null 2>&1 &\n" if child else ""
+        for name in names:
+            (hooks / name).write_text(f"#!/bin/sh\nbasename \"$0\" >> '{self.ran}'\n{tail}")
+            (hooks / name).chmod(0o755)
+        git("config", "core.hooksPath", str(hooks), cwd=store)
+        return hooks
+
     def wait_for_remote(self, *sids: str) -> str:
         # The push runs in the background, so poll the bare repo; the bound only matters when it never lands.
         deadline = time.monotonic() + 15
@@ -195,6 +208,9 @@ class PausedRebaseTests(Base):
     def setUp(self) -> None:
         super().setUp()
         self.a, b = self.two_stores()
+        # No store hook may run in A's capture, its background sync, recall or mem-weekly.sh.
+        self.hooks(self.a, "pre-commit", "prepare-commit-msg", "commit-msg", "post-commit", "reference-transaction",
+                   "post-checkout", "post-rewrite", "pre-rebase", "pre-push", "post-merge", "post-index-change", child=False)
         self.capture(self.a, "s0")
         self.wait_for_remote("s0")
         self.capture(b, "s1")
@@ -210,6 +226,7 @@ class PausedRebaseTests(Base):
     def assert_clean_main(self) -> None:
         self.assertEqual(git("symbolic-ref", "HEAD", cwd=self.a), "refs/heads/main")
         self.assertFalse((self.a / ".git/rebase-merge").exists(), "rebase left in progress")
+        self.assertFalse(self.ran.exists(), f"a store hook ran: {self.ran.read_text() if self.ran.exists() else ''}")
 
     def assert_rebase_untouched(self) -> None:
         self.assertTrue((self.a / ".git/rebase-merge").exists(), "the paused rebase was aborted")
@@ -430,16 +447,6 @@ class DeadlineTests(Base):
 
 
 class NoHookTests(Base):
-    def hooks(self, store: pathlib.Path, *names: str) -> pathlib.Path:
-        # Each hook logs its name and starts a background child that would keep any fd it inherited, fd 9 too.
-        hooks, self.ran = self.top / "hooks", self.top / "hook-ran"
-        hooks.mkdir()
-        for name in names:
-            (hooks / name).write_text(f"#!/bin/sh\nbasename \"$0\" >> '{self.ran}'\nsleep 20 > /dev/null 2>&1 &\n")
-            (hooks / name).chmod(0o755)
-        git("config", "core.hooksPath", str(hooks), cwd=store)
-        return hooks
-
     def assert_no_hook_and_lock_free(self, store: pathlib.Path) -> None:
         self.assertFalse(self.ran.exists(), f"a store hook ran: {self.ran.read_text() if self.ran.exists() else ''}")
         with open(store / ".git/loam-mem.lock", "a") as fh:
@@ -498,6 +505,19 @@ class ConfigHookTests(NoHookTests):
                 git("config", scope, f"hook.{hook}.event", name, cwd=store)
                 git("config", scope, f"hook.{hook}.command",
                     f"echo {scope}-{name} >> '{self.ran}'; sleep 20 > /dev/null 2>&1 &", cwd=store)
+
+
+class SigningTests(Base):
+    def test_a_global_commit_gpgsign_does_not_keep_the_capture_in_the_spool(self) -> None:
+        # Signing fails here (gpg.program is `false`), as it does with commit.gpgsign set and no usable key.
+        config = self.top / "global.gitconfig"
+        config.write_text("[commit]\n\tgpgsign = true\n[gpg]\n\tprogram = false\n")
+        store = self.top / "store"
+        git("init", "-q", str(store), cwd=self.top)
+        with mock.patch.dict(GIT_ENV, {"GIT_CONFIG_GLOBAL": str(config)}):
+            self.capture(store, "s1")
+        self.assertEqual(self.spool(store), [], "the capture stayed in the spool")
+        self.assertTrue(git("log", "-1", "--format=%s", cwd=store).startswith("capture "))
 
 
 if __name__ == "__main__":
