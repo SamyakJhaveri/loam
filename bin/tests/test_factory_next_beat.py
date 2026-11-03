@@ -201,8 +201,8 @@ class NextBeatTests(unittest.TestCase):
     def test_a_ticks_reads_do_not_grow_with_candidates_or_waiting_prs(self) -> None:
         proc, sent, few = self.gh_tick({"ready": ["11"], "editor": {}, "closed": []}, prs=(9901,))
         self.assertEqual((proc.returncode, proc.stdout, sent), (0, "nothing to launch\n", ["--ping beat"]), proc.stderr)
-        for d in self.runs.iterdir():
-            shutil.rmtree(d)
+        for d in self.runs.iterdir():   # the idle tick also wrote idle-since (#619)
+            shutil.rmtree(d) if d.is_dir() else d.unlink()
         tab = {"ready": ["11", "12", "13", "14", "15", "16"], "editor": {"11": "mallory", "12": "SamyakJhaveri"},
                "closed": ["9903"]}
         proc, sent, many = self.gh_tick(tab, prs=(9901, 9902, 9903, 9904))
