@@ -13,11 +13,12 @@ process owns, and none may run one of the git hooks A's store sets.
 
 LockTests: a capture that cannot take the store lock in time keeps its data in the spool under .git and the
 next holder lands it; a directory left at the lock path by the earlier mkdir lock does not block captures; a trace
-the store's exclude file ignores is still committed, and stays spooled until a commit holds it.
-IndexLockTests: a capture removes an index.lock only when a holder scan that ran to its end finds no process with it
-open. A git outside the store lock paused holding it, or a process whose main thread has exited holding it in another
-thread, keeps it, and so does a holder scan made to fail or stall at its listing of /proc; each such capture spools
-its entry within the hook timeout, and the next capture whose scan ends clear removes the lock and lands both.
+the store's exclude file ignores is still committed, and stays spooled until a commit holds it. A capture removes an
+index.lock only when a holder scan that ran to its end finds no process with it open, so a git outside the store lock,
+paused holding it, keeps it and the capture spools; an index.lock no process holds is removed at once.
+IndexLockTests (Linux, where the scan reads /proc): a process whose main thread has exited, holding index.lock in
+another thread, keeps it, and so does a holder scan made to fail or stall at its listing of /proc; each such capture
+spools its entry within the hook timeout, and the next capture whose scan ends clear removes the lock and lands both.
 RecallBoundTests: a recall whose rebase hangs ends within its five-second hook timeout and leaves main clean.
 OverlapTests: of two overlapping captures of one session, the one that read the longer transcript wins, whichever
 publishes last.
@@ -175,6 +176,22 @@ class Base(unittest.TestCase):
             (hooks / name).chmod(0o755)
         git("config", "core.hooksPath", str(hooks), cwd=store)
         return hooks
+
+    def index_lock_store(self) -> None:
+        # A store with no remote, and the index.lock path a holder or a fault test plants.
+        self.store = self.top / "store"
+        git("init", "-q", str(self.store), cwd=self.top)
+        self.lock = self.store / ".git/index.lock"
+
+    def head_index(self) -> str:
+        return git("show", "HEAD:traces/project/INDEX.md", cwd=self.store)
+
+    def assert_both_landed(self) -> None:
+        self.assertFalse(self.lock.exists(), "the stale index.lock was kept")
+        self.assertEqual(self.spool(self.store), [], "the spool was not drained")
+        index = self.head_index()
+        for sid in ("s1", "s2"):
+            self.assertIn(f" | {sid} | ", index, f"{sid} is not in HEAD")
 
     def wait_for_remote(self, *sids: str) -> str:
         # The push runs in the background, so poll the bare repo; the bound only matters when it never lands.
@@ -408,6 +425,42 @@ class LockTests(Base):
             self.capture(store, sid)
             self.assertEqual(self.spool(store), [], f"{sid}'s committed entry stayed in the spool")
 
+    def test_a_git_add_outside_the_store_lock_keeps_its_index_lock(self) -> None:
+        self.index_lock_store()
+        inside, go = self.top / "inside", self.top / "go"
+        clean = self.top / "clean.sh"
+        clean.write_text(f"#!/bin/sh\ntouch '{inside}'; while [ ! -f '{go}' ]; do sleep 0.05; done; cat\n")
+        clean.chmod(0o755)
+        git("config", "filter.slow.clean", str(clean), cwd=self.store)
+        (self.store / ".git/info").mkdir(exist_ok=True)
+        (self.store / ".git/info/attributes").write_text("user.txt filter=slow\n")
+        (self.store / "user.txt").write_text("user\n")
+        add = subprocess.Popen(["git", "add", "user.txt"], cwd=self.store, env=GIT_ENV,
+                               stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, text=True)
+        self.addCleanup(add.stderr.close)
+        self.addCleanup(add.wait, 30)
+        self.addCleanup(go.touch)
+        self.until(inside.exists, "the git add to pause in its clean filter")
+        self.capture(self.store, "s1")
+        self.assertTrue(self.lock.is_file(), "the capture removed the live git add's index.lock")
+        self.assertEqual(len(self.spool(self.store)), 1, "s1 is not in the spool")
+        go.touch()
+        self.assertEqual(add.wait(timeout=30), 0, add.stderr.read())
+        status = subprocess.run(["git", "status", "--porcelain"], cwd=self.store, env=GIT_ENV,
+                                capture_output=True, text=True)
+        self.assertEqual(status.returncode, 0, status.stderr)
+        self.assertEqual(git("diff", "--cached", "--name-only", cwd=self.store), "user.txt")
+        self.capture(self.store, "s2")
+        self.assert_both_landed()
+
+    def test_an_index_lock_no_process_holds_is_removed(self) -> None:
+        self.index_lock_store()
+        self.lock.touch()
+        self.capture(self.store, "s1")
+        self.assertFalse(self.lock.exists(), "the stale index.lock was kept")
+        self.assertEqual(self.spool(self.store), [], "the spool was not drained")
+        self.assertIn(" | s1 | ", self.head_index())
+
 
 # A process that holds the file argv[1] open in a second thread after its main thread exits, so its leader is a
 # zombie whose /proc/<pid>/fd cannot be read. It touches argv[2] once the leader is a zombie and exits when argv[3]
@@ -444,46 +497,7 @@ sys.addaudithook(h)
 class IndexLockTests(Base):
     def setUp(self) -> None:
         super().setUp()
-        self.store = self.top / "store"
-        git("init", "-q", str(self.store), cwd=self.top)
-        self.lock = self.store / ".git/index.lock"
-
-    def head_index(self) -> str:
-        return git("show", "HEAD:traces/project/INDEX.md", cwd=self.store)
-
-    def assert_both_landed(self) -> None:
-        self.assertFalse(self.lock.exists(), "the stale index.lock was kept")
-        self.assertEqual(self.spool(self.store), [], "the spool was not drained")
-        index = self.head_index()
-        for sid in ("s1", "s2"):
-            self.assertIn(f" | {sid} | ", index, f"{sid} is not in HEAD")
-
-    def test_a_git_add_outside_the_store_lock_keeps_its_index_lock(self) -> None:
-        inside, go = self.top / "inside", self.top / "go"
-        clean = self.top / "clean.sh"
-        clean.write_text(f"#!/bin/sh\ntouch '{inside}'; while [ ! -f '{go}' ]; do sleep 0.05; done; cat\n")
-        clean.chmod(0o755)
-        git("config", "filter.slow.clean", str(clean), cwd=self.store)
-        (self.store / ".git/info").mkdir(exist_ok=True)
-        (self.store / ".git/info/attributes").write_text("user.txt filter=slow\n")
-        (self.store / "user.txt").write_text("user\n")
-        add = subprocess.Popen(["git", "add", "user.txt"], cwd=self.store, env=GIT_ENV,
-                               stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, text=True)
-        self.addCleanup(add.stderr.close)
-        self.addCleanup(add.wait, 30)
-        self.addCleanup(go.touch)
-        self.until(inside.exists, "the git add to pause in its clean filter")
-        self.capture(self.store, "s1")
-        self.assertTrue(self.lock.is_file(), "the capture removed the live git add's index.lock")
-        self.assertEqual(len(self.spool(self.store)), 1, "s1 is not in the spool")
-        go.touch()
-        self.assertEqual(add.wait(timeout=30), 0, add.stderr.read())
-        status = subprocess.run(["git", "status", "--porcelain"], cwd=self.store, env=GIT_ENV,
-                                capture_output=True, text=True)
-        self.assertEqual(status.returncode, 0, status.stderr)
-        self.assertEqual(git("diff", "--cached", "--name-only", cwd=self.store), "user.txt")
-        self.capture(self.store, "s2")
-        self.assert_both_landed()
+        self.index_lock_store()
 
     def test_a_thread_outliving_its_main_thread_keeps_the_index_lock(self) -> None:
         self.lock.touch()
@@ -524,12 +538,6 @@ class IndexLockTests(Base):
     def test_a_stalled_holder_scan_keeps_the_index_lock(self) -> None:
         self.assert_a_faulty_scan_keeps_the_lock("time.sleep(30)")
 
-    def test_an_index_lock_no_process_holds_is_removed(self) -> None:
-        self.lock.touch()
-        self.capture(self.store, "s1")
-        self.assertFalse(self.lock.exists(), "the stale index.lock was kept")
-        self.assertEqual(self.spool(self.store), [], "the spool was not drained")
-        self.assertIn(" | s1 | ", self.head_index())
 
 
 class RecallBoundTests(Base):
