@@ -247,6 +247,9 @@ class TargetTests(unittest.TestCase):
         cron, stub = self.cron_stub()
         cron.write_text("*/10 * * * * bash -lc 'cd /srv/old/loam && bin/factory next'\n")
         self.assertEqual(self.target(None, stub + "cmd_next --install").returncode, 0)
+        once = cron.read_text()
+        self.assertEqual(self.target(None, stub + "cmd_next --install").returncode, 0)
+        self.assertEqual(cron.read_text(), once)
         for _ in range(2):
             proc = self.target(self.proj, stub + "cmd_next --install")
             self.assertEqual(proc.returncode, 0, proc.stderr)
