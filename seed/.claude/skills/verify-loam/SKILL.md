@@ -146,4 +146,3 @@ After cleanup, list `<run>/evidence/` to confirm the proof is still there.
 The behavior inventory is in [`features/README.md`](features/README.md), one file per feature with the same four sections.
 `$C sweep` runs only the `--stub` recipes; for a broad regression pass, walk the index top to bottom.
 Upkeep is `/pstack:maintain-verification-skill` (pstack is installed): a source wave plus one live pass, with edits inside this directory.
-A daily launchd job can run it; the owner installs that job, and nothing in the repo does (see `docs/HARNESS-LOAM.md`).
