@@ -211,12 +211,17 @@ drain_spool() {
 # The spool drain, retention and the baseline commit run under the store lock,
 # so they never land inside a hook's rebase. A store busy for ten seconds skips
 # them and the sync this week (one log line) and still regenerates the reports.
+# No $DEADLINE here, not even one inherited from the environment.
+unset DEADLINE
 LOCKED=0
 if store_lock 10; then
   LOCKED=1
   # Drain the capture spool first: a capture that found the store busy left its
-  # entry there, and with no $DEADLINE here every entry is applied.
+  # entry there, and with no $DEADLINE every entry is applied. The drain bounds
+  # its git calls at seconds, so one cut off leaves an index.lock; recover it, or
+  # the baseline add below fails and the drained entries miss this week's commit.
   drain_spool
+  store_recover
   # Retention: drop old traces (old_traces above) before the reports read them.
   # Each deletion is logged so a forgotten transcript leaves an audit line.
   if [ -d traces ]; then
