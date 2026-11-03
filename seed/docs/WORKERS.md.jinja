@@ -119,8 +119,12 @@ Under the default-branch ruleset (a PR and a green `check`), the sign-off PR fai
 
 Signed sign-off is opt-in, and lets the sign-off PR pass `check` with no bypass actor.
 To opt in, the owner first lands, through an ordinary PR, a file named `allowed_signers` in the `.github` directory, in the `ssh-keygen` allowed-signers format: one `<email> <public key>` line per owner key.
-While the signed ref holds that file, `verify` also accepts a list that differs from the ref's copy, or that the ref lacks, when a commit between the signed ref and HEAD holds exactly that list and an SSH signature from a key in the ref's `allowed_signers`.
+It needs git 2.34 or later and OpenSSH 8.2 or later (`ssh-keygen -Y`).
+While the signed ref holds that file, `verify` also accepts a list that differs from the ref's copy, or that the ref lacks, when a non-merge commit between the signed ref and HEAD changes the list to exactly that one and carries an SSH signature from a key in the ref's `allowed_signers`.
 The owner runs `bin/frozen-checks sign <file>...` on the sign-off branch, then commits the list with `git -c gpg.format=ssh -c user.signingkey=<key> commit -S`; a later unsigned commit that keeps the list, and the PR's merge commit CI checks out, stay green.
+Only the commit that itself changes the list counts, so a signed merge or a later signed commit does not sign off a list someone else wrote.
+A rebase, or an amend without `-S`, drops the signature, so sign again; to take in main, merge it instead of rebasing.
+To revoke a key, delete its line: a `valid-before` option is checked against the commit date, which a worker sets.
 Only the signed ref's `allowed_signers` counts, never the branch's, and only SSH signatures do: an OpenPGP or X.509 signature fails whatever the host's keyring trusts.
 A list re-signed in a later unsigned commit still fails, and so does a changed listed file.
 Without `allowed_signers` on the signed ref, nothing changes and the bypass-actor step stays.
