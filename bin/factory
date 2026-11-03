@@ -2415,7 +2415,8 @@ median_range() { # numbers on stdin, one per line -> "median min max"; non-zero 
 }
 
 measure_rows() { # round; Rows measured is `[runs=N] [<row>:] <command> | <baseline>` per line (CONTRACT.md)
-  local out="$RUN/round-$1.measure" line row rest cmd note n i v lo hi vals
+  local out="$RUN/round-$1.measure" line row rest cmd note n i v lo hi vals dirty
+  local at="$(git -C "$WORKTREE" rev-parse HEAD) $(git -C "$WORKTREE" symbolic-ref -q HEAD)"
   # The row's command runs with the run's ledger, daily ledger, ticket key, and round in its environment
   # only, so a `bin/factory eval` row books its cost to this run (#76) and no later child of the
   # supervisor inherits a stale round; run_eval reads these four names, mirroring apply_caps's FACTORY_<NAME>.
@@ -2449,6 +2450,17 @@ measure_rows() { # round; Rows measured is `[runs=N] [<row>:] <command> | <basel
     fi
     printf 'MEASURE %s %s (%s)\n' "$row" "$v" "$note" | tee -a "$out" >&2
   done <<< "$(section "Rows measured")"
+  # A row may write, stage, add or delete files in the worktree (a `bin/factory eval` row appends
+  # evals/scores.jsonl); once all rows ran, the index and tree go back to HEAD, HEAD unmoved, so no write
+  # reaches the graders or the next round's worktree-dirty check. round_checks refused a dirty tree before the
+  # checks, so this removes only what the checks and rows wrote. clean has no -x, and one -f: ignored files and
+  # a nested repository a row made stay (#608). A row that moved HEAD or the branch, a failed git step (a stale
+  # index.lock) or a tree still dirty stops the run here rather than reset the worker's work or grade it dirty.
+  [ "$(git -C "$WORKTREE" rev-parse HEAD) $(git -C "$WORKTREE" symbolic-ref -q HEAD)" = "$at" ] \
+    || finish stopped-environment "a Rows measured row moved HEAD or the branch in $WORKTREE (was $at)"
+  dirty=$(git -C "$WORKTREE" reset -q --hard 2>&1 && git -C "$WORKTREE" clean -qfd 2>&1 \
+    && git -C "$WORKTREE" status --porcelain 2>&1) && [ -z "$dirty" ] \
+    || finish stopped-environment "could not restore $WORKTREE to HEAD after Rows measured: $(printf '%s' "$dirty" | tr '\n' ' ')"
 }
 
 # ---- step 7: the graders ----------------------------------------------------
