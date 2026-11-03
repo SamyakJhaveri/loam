@@ -247,7 +247,8 @@ class PausedRebaseTests(Base):
                 return chain
 
     def kill_the_sync(self) -> None:
-        for pid in self.sync_chain():
+        # Outermost first: a git that outlives its filter falls back to the unfiltered blob and goes on.
+        for pid in reversed(self.sync_chain()):
             os.kill(pid, signal.SIGKILL)
         time.sleep(0.3)  # the filter's last `sleep 0.05` child exits
 
