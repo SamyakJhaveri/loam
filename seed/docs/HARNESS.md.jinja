@@ -119,27 +119,29 @@ is involved.
    to the same URL. The first capture then clones the shared store instead of
    starting empty, so the machine sees the shared history from its first session.
 
-The remote holds scrubbed transcripts, the same content as the local store.
-Keep it on a machine you own and never point it at a public host: a secret with
-no recognizable shape can reach the store's history and the remote (see Accepted
+The remote holds scrubbed transcripts, the same content as the local store. Keep
+it on a machine you own and never point it at a public host: a secret with no
+recognizable shape can reach the store's history and the remote (see Accepted
 risks). A capture commits, then in the background fetches, rebases onto the
-remote and pushes, so a machine that pushed first never strands it; recall pulls at
-SessionStart and `mem-weekly.sh` pulls then pushes from cron. One lock file in
-the store's git directory serializes the hooks' and `mem-weekly.sh`'s local
+remote and pushes, so a machine that pushed first never strands it; recall pulls
+at SessionStart and `mem-weekly.sh` pulls then pushes from cron. One lock file
+in the store's git directory serializes the hooks' and `mem-weekly.sh`'s local
 writes, rebases and commits across sessions, so nothing lands inside another
 session's rebase; the kernel frees it when its last holder exits, and the next
-holder removes a stale `index.lock` and aborts a rebase a dead one left. Git in
-the memory store runs no git hooks, the user's global ones included, so no hook
-can keep that lock after its git exits. A capture first writes its trace into a
-spool in the store's git directory, out of reach of any rebase; a busy store, or a leftover rebase that cannot be
-recovered, delays the capture but never drops it, and the next capture to hold
-the lock commits it. Each entry records its transcript's length and mtime, and
-an entry older than the session's trace in the tree is dropped, so of two
-overlapping captures the newer transcript wins. Every git call runs with `GIT_TERMINAL_PROMPT=0`, and every
-rebase and commit under the lock is bounded; recall's fetch is bounded to two
-seconds and its rebase ends within the hook's five-second timeout, so an
-unreachable remote never blocks a session; it logs one line to
-`reports/sync.log` and continues with the local store.
+holder removes a stale `index.lock` and aborts a rebase a dead one left. Once
+the store exists, git in it runs no git hooks: no hook file (the store's, a
+global or a template one) and no hook defined in any git config, so no hook can
+keep that lock after its git exits. A capture first writes its trace into a
+spool in the store's git directory, out of reach of any rebase; a busy store, or
+a leftover rebase that cannot be recovered, delays the capture but never drops
+it, and the next capture to hold the lock commits it. Each entry records its
+transcript's length and mtime, and an entry older than the session's trace in
+the tree is dropped, so of two overlapping captures the newer transcript wins.
+Every git call runs with `GIT_TERMINAL_PROMPT=0`, and every rebase and commit
+under the lock is bounded; recall's fetch is bounded to two seconds and its
+rebase ends within the hook's five-second timeout, so an unreachable remote
+never blocks a session; it logs one line to `reports/sync.log` and continues
+with the local store.
 
 Two machines that each write before pulling do not strand either one. `INDEX.md`
 lines from two machines merge by union (the store's `.gitattributes` holds

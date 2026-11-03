@@ -139,11 +139,15 @@ fi
 # holds while any process keeps fd 9 open, and the kernel frees it when the last
 # one exits: no stale lock. Every store git call keeps fd 9, so killing this
 # shell never frees the lock while its git still runs; the -c flags keep git
-# from starting a gc, maintenance or fsmonitor daemon that would hold it on, and
-# store git runs no hook (the store's, a global or a template one), so no hook
-# child can inherit fd 9 and keep the lock after git returns.
+# from starting a gc, maintenance or fsmonitor daemon that would hold it on.
+# Store git runs no hook, so no hook child can inherit fd 9 and keep the lock
+# after git returns: core.hooksPath=/dev/null turns off the store's, global and
+# template hook files, and hook.<name>.enabled=false each hook defined in any
+# config (git 2.54 and later), which core.hooksPath does not reach.
 SGIT=(git -C "$STORE" -c gc.auto=0 -c maintenance.auto=false -c core.fsmonitor=false
   -c core.hooksPath=/dev/null -c user.name=memstore -c user.email=memstore@localhost)
+while IFS= read -r k; do k=${k#hook.}; SGIT+=(-c "hook.${k%.*}.enabled=false"); done \
+  < <(git -C "$STORE" config --name-only --get-regexp '^hook\..*\.(command|event)$' 2>/dev/null)
 # bounded SECS CMD...: run CMD in its own process group and kill the group after
 # SECS seconds, or at $DEADLINE (an epoch time) when that comes first; exit 124.
 bounded() {

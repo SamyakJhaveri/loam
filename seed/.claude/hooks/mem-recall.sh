@@ -71,64 +71,6 @@ repo_key() {
 
 REPO="$(repo_key "$CWD")"
 
-# Sync: fetch the shared remote first, so an INDEX line another machine committed
-# is visible below. Bounded to two seconds through python3; a timeout or non-zero
-# exit logs one line to reports/sync.log and leaves the local store as it is.
-FETCHED=0
-if git -C "$STORE" remote get-url origin >/dev/null 2>&1; then
-  GIT_TERMINAL_PROMPT=0 python3 -c '
-import subprocess, sys, os, signal, tempfile, datetime
-store = sys.argv[1]
-
-def logline(msg):
-    os.makedirs(os.path.join(store, "reports"), exist_ok=True)
-    with open(os.path.join(store, "reports", "sync.log"), "a", encoding="utf-8") as fh:
-        fh.write("%s recall pull: %s\n" % (datetime.date.today().isoformat(), " ".join(str(msg).split())[:200]))
-
-# Run the fetch in its own session so a real ssh remote that hangs can be killed
-# whole: killpg reaches the git fetch and ssh grandchildren, which a plain
-# subprocess timeout leaves running (they inherit the pipe and keep it open, so
-# the two-second bound would not hold). stderr goes to a file, not a pipe, so
-# there is nothing to drain after the kill and wait() returns at once. Exits 0
-# only when the fetch succeeded.
-rc = 1
-fd, errpath = tempfile.mkstemp()
-os.close(fd)
-try:
-    ef = open(errpath, "wb")
-    p = subprocess.Popen(sys.argv[2:], stdout=subprocess.DEVNULL,
-                         stderr=ef, start_new_session=True)
-    try:
-        rc = p.wait(timeout=2)
-    except subprocess.TimeoutExpired:
-        try:
-            os.killpg(os.getpgid(p.pid), signal.SIGKILL)
-        except Exception:
-            pass
-        try:
-            p.wait(timeout=1)
-        except Exception:
-            pass
-        ef.close()
-        logline("timeout")
-    else:
-        ef.close()
-        if rc != 0:
-            try:
-                with open(errpath, "rb") as rf:
-                    msg = rf.read().decode("utf-8", "replace").strip()[:200]
-            except Exception:
-                msg = ""
-            logline(msg or "nonzero exit")
-finally:
-    try:
-        os.unlink(errpath)
-    except Exception:
-        pass
-sys.exit(1 if rc else 0)
-' "$STORE" git -C "$STORE" -c core.hooksPath=/dev/null fetch -q origin 2>/dev/null && FETCHED=1
-fi
-
 # --- The store lock: the same block sits in mem-capture.sh, mem-recall.sh and
 # mem-weekly.sh. One flock(2) on .git/loam-mem.lock serializes every local write
 # to the store: capture's spool drain and commit, every rebase and its abort,
@@ -138,11 +80,15 @@ fi
 # holds while any process keeps fd 9 open, and the kernel frees it when the last
 # one exits: no stale lock. Every store git call keeps fd 9, so killing this
 # shell never frees the lock while its git still runs; the -c flags keep git
-# from starting a gc, maintenance or fsmonitor daemon that would hold it on, and
-# store git runs no hook (the store's, a global or a template one), so no hook
-# child can inherit fd 9 and keep the lock after git returns.
+# from starting a gc, maintenance or fsmonitor daemon that would hold it on.
+# Store git runs no hook, so no hook child can inherit fd 9 and keep the lock
+# after git returns: core.hooksPath=/dev/null turns off the store's, global and
+# template hook files, and hook.<name>.enabled=false each hook defined in any
+# config (git 2.54 and later), which core.hooksPath does not reach.
 SGIT=(git -C "$STORE" -c gc.auto=0 -c maintenance.auto=false -c core.fsmonitor=false
   -c core.hooksPath=/dev/null -c user.name=memstore -c user.email=memstore@localhost)
+while IFS= read -r k; do k=${k#hook.}; SGIT+=(-c "hook.${k%.*}.enabled=false"); done \
+  < <(git -C "$STORE" config --name-only --get-regexp '^hook\..*\.(command|event)$' 2>/dev/null)
 # bounded SECS CMD...: run CMD in its own process group and kill the group after
 # SECS seconds, or at $DEADLINE (an epoch time) when that comes first; exit 124.
 bounded() {
@@ -199,6 +145,65 @@ else:
   return 1
 }
 # --- end of the store lock block.
+
+# Sync: fetch the shared remote first, so an INDEX line another machine committed
+# is visible below. Bounded to two seconds through python3; a timeout or non-zero
+# exit logs one line to reports/sync.log and leaves the local store as it is.
+# It holds no lock, but goes through SGIT so it runs no hook either.
+FETCHED=0
+if git -C "$STORE" remote get-url origin >/dev/null 2>&1; then
+  GIT_TERMINAL_PROMPT=0 python3 -c '
+import subprocess, sys, os, signal, tempfile, datetime
+store = sys.argv[1]
+
+def logline(msg):
+    os.makedirs(os.path.join(store, "reports"), exist_ok=True)
+    with open(os.path.join(store, "reports", "sync.log"), "a", encoding="utf-8") as fh:
+        fh.write("%s recall pull: %s\n" % (datetime.date.today().isoformat(), " ".join(str(msg).split())[:200]))
+
+# Run the fetch in its own session so a real ssh remote that hangs can be killed
+# whole: killpg reaches the git fetch and ssh grandchildren, which a plain
+# subprocess timeout leaves running (they inherit the pipe and keep it open, so
+# the two-second bound would not hold). stderr goes to a file, not a pipe, so
+# there is nothing to drain after the kill and wait() returns at once. Exits 0
+# only when the fetch succeeded.
+rc = 1
+fd, errpath = tempfile.mkstemp()
+os.close(fd)
+try:
+    ef = open(errpath, "wb")
+    p = subprocess.Popen(sys.argv[2:], stdout=subprocess.DEVNULL,
+                         stderr=ef, start_new_session=True)
+    try:
+        rc = p.wait(timeout=2)
+    except subprocess.TimeoutExpired:
+        try:
+            os.killpg(os.getpgid(p.pid), signal.SIGKILL)
+        except Exception:
+            pass
+        try:
+            p.wait(timeout=1)
+        except Exception:
+            pass
+        ef.close()
+        logline("timeout")
+    else:
+        ef.close()
+        if rc != 0:
+            try:
+                with open(errpath, "rb") as rf:
+                    msg = rf.read().decode("utf-8", "replace").strip()[:200]
+            except Exception:
+                msg = ""
+            logline(msg or "nonzero exit")
+finally:
+    try:
+        os.unlink(errpath)
+    except Exception:
+        pass
+sys.exit(1 if rc else 0)
+' "$STORE" "${SGIT[@]}" fetch -q origin 2>/dev/null && FETCHED=1
+fi
 
 HANDOFF_FILE="$STORE/handoff/$REPO.md"
 LOCKED=0

@@ -20,6 +20,7 @@ DeadlineTests: a clean filter that hangs `git add` and `git status` cannot hold 
 timeout; the capture stays spooled and lands once the filter returns.
 NoHookTests: store git runs no git hook, even one the store's core.hooksPath names, so a hook's background child
 cannot keep the store lock after a capture, a recall (its fetch and rebase included) or mem-weekly.sh returns.
+ConfigHookTests: the same for hooks defined in the store's or the global config (git 2.54 and later).
 """
 
 from __future__ import annotations
@@ -36,6 +37,7 @@ import subprocess
 import tempfile
 import time
 import unittest
+from unittest import mock
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
 HOOK = ROOT / "seed/.claude/hooks/mem-capture.sh"
@@ -477,6 +479,25 @@ class NoHookTests(Base):
         self.recall(a)
         self.assertEqual(git("rev-parse", "HEAD", cwd=a), git("rev-parse", "main", cwd=self.origin))
         self.assert_no_hook_and_lock_free(a)
+
+
+class ConfigHookTests(NoHookTests):
+    # Git 2.54 and later also run hooks defined in config (hook.<name>.event and hook.<name>.command), which
+    # core.hooksPath does not reach. Each event gets one such hook in the store's config and one, with a dotted
+    # name, in the global config. Older git runs neither, so there these tests pass trivially.
+    def setUp(self) -> None:
+        super().setUp()
+        patcher = mock.patch.dict(GIT_ENV, {"GIT_CONFIG_GLOBAL": str(self.top / "global.gitconfig")})
+        patcher.start()
+        self.addCleanup(patcher.stop)
+
+    def hooks(self, store: pathlib.Path, *names: str) -> None:
+        self.ran = self.top / "hook-ran"
+        for name in names:
+            for scope, hook in (("--local", f"leak-{name}"), ("--global", f"my.odd.{name}")):
+                git("config", scope, f"hook.{hook}.event", name, cwd=store)
+                git("config", scope, f"hook.{hook}.command",
+                    f"echo {scope}-{name} >> '{self.ran}'; sleep 20 > /dev/null 2>&1 &", cwd=store)
 
 
 if __name__ == "__main__":
