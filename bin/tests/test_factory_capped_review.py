@@ -106,6 +106,7 @@ class CappedReviewTests(unittest.TestCase):
         frozen.mkdir(parents=True)
         (frozen / "issue.md").write_text(FROZEN_TICKET)
         shutil.copy(ROOT / "bin/factory.d/codex-review.prompt.md", frozen / "codex-review.prompt.md")
+        shutil.copy(ROOT / "bin/factory.d/mutation_sweep.py", frozen / "mutation_sweep.py")  # runs after a judge pass
         # The frozen brief alone carries a marker line, so a Codex prompt built from the live brief lacks it (#583).
         with (frozen / "codex-review.prompt.md").open("a") as f:
             f.write(FROZEN_BRIEF_MARKER + "\n")

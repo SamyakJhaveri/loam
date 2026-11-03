@@ -358,6 +358,7 @@ class StatusCriteriaTests(unittest.TestCase):
         gh_dir.mkdir()
         (gh_dir / "user").write_text('{"login":"me"}')
         (gh_dir / "issue").write_text('{"user":{"login":"me"},"created_at":"T0","state":"closed"}')
+        (gh_dir / "graphql").write_text('{"data":{"repository":{"p10":{"closed":true}}}}')   # every waiting PR's state, one read
         (gh_dir / "timeline").write_text("""[
           {"id":1,"event":"labeled","actor":{"login":"me"},"created_at":"T0"},
           {"id":2,"event":"assigned","actor":{"login":"me"},"created_at":"T1"},
@@ -373,8 +374,8 @@ class StatusCriteriaTests(unittest.TestCase):
                 ["EXIT pr-opened (0): https://github.com/o/loam/pull/10 after 1 rounds, 2 usd"], 1)
         script = (
             '. bin/factory; net() { "$@"; }; '
-            'gh() { local p="" f; case "$2" in user) f=user ;; */timeline) f=timeline ;; *) f=issue ;; esac; '
-            'while [ $# -gt 0 ]; do [ "$1" = --jq ] && { p="$2"; shift; }; shift; done; jq -r "$p" "$GH_DIR/$f"; }; '
+            'gh() { local p="" f; case "$2" in user) f=user ;; graphql) f=graphql ;; */timeline) f=timeline ;; *) f=issue ;; esac; '
+            'while [ $# -gt 0 ]; do [ "$1" = --jq ] && { p="$2"; shift; }; shift; done; jq -r "${p:-.}" "$GH_DIR/$f"; }; '
             'owner_events "$1" launch o/loam 9 && owner_events "$1" launch o/loam 9 && pr_closed_events && pr_closed_events'
         )
         env = {k: v for k, v in os.environ.items() if k not in ("FACTORY_CALL_TAG", "LOAM_HOOK", "CLAUDECODE", "FACTORY_BY_NEXT")}
@@ -397,7 +398,7 @@ class StatusCriteriaTests(unittest.TestCase):
         script = (
             '. bin/factory; MAIN_CHECKOUT="$1/co"; assert_target_ready() { :; }; claude_logged_in() { :; }; '
             'claude_version_ok() { :; }; net() { "$@"; }; '
-            'gh() { [ "$2" = repos/o/loam/issues/10 ] && echo closed; }; '
+            'gh() { [ "$2" = graphql ] && echo \'{"data":{"repository":{"p10":{"closed":true}}}}\'; }; '
             'owner_events() { echo "{\\"phase\\":\\"$2\\"}" >> "$1/owner-events.jsonl"; }; cmd_next'
         )
         proc = subprocess.run(["bash", "-c", script, "_", self.tmp.name], cwd=ROOT, capture_output=True, text=True,
