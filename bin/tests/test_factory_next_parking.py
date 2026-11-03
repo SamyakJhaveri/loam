@@ -764,7 +764,7 @@ class PassedOverTests(unittest.TestCase):
         (bin_dir / "gh").write_text(GH_STAND_IN)
         (bin_dir / "gh").chmod(0o755)
         me, other = ["SamyakJhaveri"], ["mallory"]
-        store = {20: ([], None, CLEAN), 21: ([], 2, "x"), 22: (other, 0, "x"), 23: (me, 0, "x"), 24: (me, 0, "x"), 25: (me, 0, "x"),
+        store = {19: (["SamyakJhaveri"], None, CLEAN), 20: ([], None, CLEAN), 21: ([], 2, "x"), 22: (other, 0, "x"), 23: (me, 0, "x"), 24: (me, 0, "x"), 25: (me, 0, "x"),
                  26: ([], 0, "x"), 27: (me, 1, "x"), 28: (me, 0, "x"), 29: ([], 0, CLEAN), 30: (me, 0, "x"),
                  31: ([], 3, ""), 32: (other, 0, ""), 33: (["mallory", "eve"], 0, CLEAN)}
         # 100 newer issues assigned to another account fill the repository listing's first page.
@@ -779,6 +779,7 @@ class PassedOverTests(unittest.TestCase):
                 (d / name).write_text(text)
         def pr(n: int) -> tuple[str, str]:
             return "factory.log", f"2026-11-01T00:00:00Z EXIT pr-opened (0): https://github.com/o/r/pull/{n} after 1 rounds\n"
+        run(19, "stopped")   # relaunchable, were its blocker count readable
         run(23, "pr-opened", pr(123))
         run(25, "stuck")
         run(26, None, ("FACTORY_STOP", ""))
@@ -793,6 +794,7 @@ class PassedOverTests(unittest.TestCase):
                         "FACTORY_RUNS_ROOT": str(runs), "FACTORY_MAX_PARALLEL": "2"})
         self.assertEqual((proc.returncode, proc.stdout), (0, "would launch #29\n"), proc.stderr)
         expect = {
+            19: "blocked #19: the listing gave no native blocker count (?); it waits until it does",
             20: "blocked #20: the listing gave no native blocker count (?); it waits until it does",
             21: "blocked #21: 2 open native blocker(s); it launches once they close",
             22: "assigned #22: assigned to mallory, not the runner; unassign it or remove ready-for-agent",
