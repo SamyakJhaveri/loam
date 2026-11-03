@@ -211,14 +211,13 @@ else:
   exec 9>&-
   return 1
 }
-# --- end of the store lock block.
-
 # The spool: a capture never writes the working tree directly. It writes its
 # scrubbed trace, sha and INDEX line as one entry under .git/loam-spool/,
 # outside the working tree, where no rebase, abort or reset reaches it. Whoever
-# then holds the lock with a recovered store drains the entries into the tree
-# and commits. A capture that finds the store busy, or holds a
-# rebase it cannot recover, exits 0 and its entry waits for the next holder.
+# then holds the lock with a recovered store (the next capture, or mem-weekly.sh)
+# drains the entries into the tree and commits. A capture that finds the store
+# busy, or holds a rebase it cannot recover, exits 0 and its entry waits for the
+# next holder. mem-recall.sh carries these functions but does not drain.
 SPOOL="$STORE/.git/loam-spool"
 spool_pending() {
   local e
@@ -238,10 +237,13 @@ spool_pending() {
 # '*.gz', the store's .git/info/exclude) does not keep them out of the commit,
 # and an entry is removed only once HEAD holds its trace's exact bytes, so a
 # failed copy or commit leaves it for the next drain, and draining one twice is
-# harmless. Call only under the lock, after store_recover.
+# harmless. Call only under the lock, after store_recover. The drain first
+# removes .tmp-* directories older than five minutes, the leftovers of a killed
+# or failed capture.
 drain_spool() {
   local e x i repo sid day gen tgen out rel sids="" by="" head=""
   local applied=() paths=() rels=()
+  find "$SPOOL" -maxdepth 1 -name '.tmp-*' -mmin +5 -exec rm -rf {} + 2> /dev/null
   [ -n "${DEADLINE:-}" ] && by=$(( ${DEADLINE%.*} - 3 ))
   for e in "$SPOOL"/[0-9]*; do
     [ -f "$e/meta" ] || continue
@@ -292,6 +294,7 @@ drain_spool() {
   done
   return 0
 }
+# --- end of the store lock block.
 
 # Key by the whole session id, not a prefix: Codex thread ids are time-ordered
 # UUIDv7, so Codex sessions started within about 65 s share their first 8

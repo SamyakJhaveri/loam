@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # mem-weekly.sh - weekly maintenance for the memory store (run from cron).
 #
-# Deletes traces older than a year, regenerates the recurring-errors and counts
+# Commits any captures left in the spool by a capture that found the store busy,
+# deletes traces older than a year, regenerates the recurring-errors and counts
 # reports from the captured traces, commits the store as a git baseline, then
 # pulls and pushes the shared remote when one is set. Reports stay local: they are
 # gitignored, so two machines' regenerated reports never conflict on a pull and
@@ -122,14 +123,105 @@ else:
   exec 9>&-
   return 1
 }
+# The spool: a capture never writes the working tree directly. It writes its
+# scrubbed trace, sha and INDEX line as one entry under .git/loam-spool/,
+# outside the working tree, where no rebase, abort or reset reaches it. Whoever
+# then holds the lock with a recovered store (the next capture, or mem-weekly.sh)
+# drains the entries into the tree and commits. A capture that finds the store
+# busy, or holds a rebase it cannot recover, exits 0 and its entry waits for the
+# next holder. mem-recall.sh carries these functions but does not drain.
+SPOOL="$STORE/.git/loam-spool"
+spool_pending() {
+  local e
+  for e in "$SPOOL"/[0-9]*; do [ -d "$e" ] && return 0; done
+  return 1
+}
+# Copy each entry into traces/<repo>/, under the name the session's trace
+# already has there (else <day>-<sid>), append its INDEX line unless the session
+# has one, and commit. Each entry carries its transcript's generation (byte
+# length, then mtime, when it was read), also kept as the second line of the
+# tree's .sha; an entry older than the session's trace in the tree is dropped
+# unapplied, so whatever order overlapping captures publish in, the newest
+# transcript wins. With $DEADLINE set, entries are applied only until three
+# seconds before it, leaving time for the bounded adds, commit and HEAD lookup;
+# the rest wait for the next holder. Each applied entry's own trace, sha and
+# INDEX.md are force-added, so an exclude rule that ignores traces (a global
+# '*.gz', the store's .git/info/exclude) does not keep them out of the commit,
+# and an entry is removed only once HEAD holds its trace's exact bytes, so a
+# failed copy or commit leaves it for the next drain, and draining one twice is
+# harmless. Call only under the lock, after store_recover. The drain first
+# removes .tmp-* directories older than five minutes, the leftovers of a killed
+# or failed capture.
+drain_spool() {
+  local e x i repo sid day gen tgen out rel sids="" by="" head=""
+  local applied=() paths=() rels=()
+  find "$SPOOL" -maxdepth 1 -name '.tmp-*' -mmin +5 -exec rm -rf {} + 2> /dev/null
+  [ -n "${DEADLINE:-}" ] && by=$(( ${DEADLINE%.*} - 3 ))
+  for e in "$SPOOL"/[0-9]*; do
+    [ -f "$e/meta" ] || continue
+    [ -z "$by" ] || [ "$(date +%s)" -lt "$by" ] || break
+    gen=""; { read -r repo; read -r sid; read -r day; read -r gen; } < "$e/meta"
+    mkdir -p "$STORE/traces/$repo" || return 1
+    out="$STORE/traces/$repo/$day-$sid.jsonl.gz"
+    for x in "$STORE/traces/$repo"/*-"$sid".jsonl.gz; do
+      [ -f "$x" ] && { out="$x"; break; }
+    done
+    tgen="$(sed -n 2p "${out%.jsonl.gz}.sha" 2>/dev/null)"
+    if [[ "$gen" < "$tgen" ]]; then
+      rm -rf "$e"
+      continue
+    fi
+    cp "$e/trace.jsonl.gz" "$out" && cp "$e/sha" "${out%.jsonl.gz}.sha" || return 1
+    grep -qF " | $sid | " "$STORE/traces/$repo/INDEX.md" 2>/dev/null \
+      || cat "$e/index" >> "$STORE/traces/$repo/INDEX.md" || return 1
+    rel="traces/$repo/${out##*/}"
+    applied+=("$e"); rels+=("$rel"); sids="$sids $sid"
+    paths+=("$rel" "${rel%.jsonl.gz}.sha" "traces/$repo/INDEX.md")
+  done
+  [ "${#applied[@]}" -gt 0 ] || return 0
+  # Keep the ephemeral throttle marks and reports/ out of git: the marks are local
+  # per-session timestamps, the sync log is appended on every failed push and by
+  # recall, and mem-weekly regenerates the other reports wholesale from this
+  # machine's traces, so tracking any of them would dirty the tree or conflict on
+  # the next rebase. The attributes line merges INDEX.md by union, so two
+  # machines that each append a line before pulling both keep both lines instead
+  # of conflicting. Both files are written on every drain, not only on init, so
+  # a store an older mem-weekly left with a stale 'traces/' ignore line is
+  # corrected and its traces resume syncing. Byte-identical to what mem-weekly.sh
+  # writes.
+  printf '.throttle/\nreports/\n' > "$STORE/.gitignore" 2>/dev/null || true
+  printf 'traces/*/INDEX.md merge=union\n' > "$STORE/.gitattributes" 2>/dev/null || true
+  bounded 3 "${SGIT[@]}" add -A >/dev/null 2>&1
+  bounded 3 "${SGIT[@]}" add -f -- "${paths[@]}" >/dev/null 2>&1
+  bounded 3 "${SGIT[@]}" commit -qm "capture $(date +%F)$sids" >/dev/null 2>&1
+  # An entry goes once HEAD's blob for its trace is the entry's own bytes,
+  # hashed as git hashes that path, so a clean filter (git-lfs) matches; one that
+  # hangs is cut off by the bound and the entry stays. The shell opens the entry,
+  # so a relative store path is not resolved twice. Past $DEADLINE the rest stay.
+  for i in "${!applied[@]}"; do
+    [ -z "${DEADLINE:-}" ] || [ "$(date +%s)" -lt "${DEADLINE%.*}" ] || break
+    head="$(bounded 2 "${SGIT[@]}" rev-parse -q --verify "HEAD:${rels[$i]}" 2>/dev/null)" \
+      && x="$(bounded 2 "${SGIT[@]}" hash-object --path="${rels[$i]}" --stdin < "${applied[$i]}/trace.jsonl.gz" 2>/dev/null)" \
+      && [ -n "$x" ] && [ "$x" = "$head" ] && rm -rf "${applied[$i]}"
+  done
+  return 0
+}
 # --- end of the store lock block.
 
-# Retention and the baseline commit run under the store lock, so they never
-# land inside a hook's rebase. A store busy for ten seconds skips them and the
-# sync this week (one log line) and still regenerates the reports.
+# The spool drain, retention and the baseline commit run under the store lock,
+# so they never land inside a hook's rebase. A store busy for ten seconds skips
+# them and the sync this week (one log line) and still regenerates the reports.
+# No $DEADLINE here, not even one inherited from the environment.
+unset DEADLINE
 LOCKED=0
 if store_lock 10; then
   LOCKED=1
+  # Drain the capture spool first: a capture that found the store busy left its
+  # entry there, and with no $DEADLINE every entry is applied. The drain bounds
+  # its git calls at seconds, so one cut off leaves an index.lock; recover it, or
+  # the baseline add below fails and the drained entries miss this week's commit.
+  drain_spool
+  store_recover
   # Retention: drop old traces (old_traces above) before the reports read them.
   # Each deletion is logged so a forgotten transcript leaves an audit line.
   if [ -d traces ]; then
