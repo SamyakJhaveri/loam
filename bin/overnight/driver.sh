@@ -52,7 +52,7 @@ grader_window() { local at out rc tmp
   out=$(${to[@]+"${to[@]}"} gh pr list -R SamyakJhaveri/distbench --state open --limit 100 --json number,title,files --jq '.[] | select((.title | test("grader|regrade"; "i")) or any(.files[].path; test("(^|/)grader\\.py$|regrade"; "i"))) | .number' 2>> "$O/driver.log")
   rc=$?
   [ "$rc" -eq 0 ] || echo "$(stamp) grader-window read failed: exit $rc" >> "$O/driver.log"
-  tmp=$(mktemp "$O/grader-window.XXXXXX") || return
+  tmp=$(mktemp "$O/grader-window.XXXXXX") || { rm -f "$O/grader-window.txt"; return; }   # no stale clear window
   { echo "read_at $at"; echo "exit $rc"; [ -z "$out" ] || printf '%s\n' "$out"; } > "$tmp" \
     && mv -fT "$tmp" "$O/grader-window.txt"
 }
