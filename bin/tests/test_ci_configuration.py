@@ -40,10 +40,16 @@ class CIConfig(unittest.TestCase):
     def test_stub_sweep_job_runs_the_sweep(self):
         """verify-loam's stub sweep runs on every push and PR; a dropped step or a gate would let a break pass."""
         w = TEST.read_text()
-        job = w[w.index("  stub-sweep:"):w.index("  factory-macos:")]
+        job = w[w.index("  stub-sweep:"):]
         self.assertIn("- name: Run verify-loam stub sweep\n        run: .claude/skills/verify-loam/control-loam sweep", job)
         self.assertNotIn("continue-on-error:", job)
         self.assertNotIn("if:", job)
+
+    def test_no_macos_factory_job(self):
+        """jhaveris (Linux) is the only factory runner, and run, next and status refuse elsewhere (#577)."""
+        w = TEST.read_text()
+        self.assertNotIn("factory-macos", w)
+        self.assertNotIn("runs-on: macos", w)
 
     def test_release_workflow_publishes_only(self):
         w = RELEASE.read_text()

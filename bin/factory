@@ -1113,10 +1113,17 @@ codex_mcp_off() { # cwd home [Codex options] -> mcp_servers={"<id>"={enabled=fal
     "mcp_servers={" + ([.[] | (.name | tojson) + "={enabled=false}"] | join(",")) + "}"
     else error("invalid codex mcp list reply") end' <<<"$servers"
 }
-# util-linux flock(1), and bash 4.1+ for the {var} descriptors the lease opens: a Mac has neither (bash 3.2 reads
-# `exec {fd}< file` as running a command named {fd}, which exits the shell), and runs keep the owner line's rules (#425).
-HAVE_FLOCK=$( { [ "${BASH_VERSINFO[0]}" -gt 4 ] || { [ "${BASH_VERSINFO[0]}" -eq 4 ] && [ "${BASH_VERSINFO[1]}" -ge 1 ]; }; } \
-  && command -v flock 2> /dev/null)
+# run, next, status and status --criteria need Linux: util-linux flock(1), bash 4.1+ for the {var} descriptors the
+# lease and owner.flock open, GNU date and coreutils timeout. jhaveris is the only factory runner, so each refuses
+# elsewhere as its first step (the dispatcher's, ahead of its cap and -C checks, and again first in each cmd_*);
+# lint, eval, eval-freeze, merge, stop, graders-check and skills stay portable.
+linux_only() { # <command>
+  local os
+  os=$(uname -s)
+  [ "$os" = Linux ] && return 0
+  echo "factory $1: the factory runs only on Linux (jhaveris), and this host's uname -s is ${os:-empty}; run it there through bin/runner" >&2
+  exit 2
+}
 
 now()   { date -u +%Y-%m-%dT%H:%M:%SZ; }
 today() { date -u +%Y-%m-%d; }
@@ -1533,31 +1540,32 @@ assert_caps() { # before every model call; the daily cap is "the next call could
 
 stop_requested() { [ -f "$RUN/FACTORY_STOP" ] || [ -f "$RUNS_ROOT/FACTORY_STOP" ]; }
 
-# owner.lock orders a launch's owner write against a reaper's recheck (a relaunch reuses the run dir);
-# a lock older than 60 s was left by a killed holder and is removed first.
+# owner.flock orders a launch's owner write against a reaper's recheck (a relaunch reuses the run dir): an flock on that
+# file, which the kernel frees when its holder exits, so a killed holder never leaves it taken and no age rule applies.
+# One try is flock -n, more wait about that many seconds. It is not owner.lock, the mkdir lock a run frozen before
+# owner.flock still takes in its own copy of this function. The descriptor is OWNER_FD, so a holder holds one at a time
+# and releases it (owner_unlock) before it starts a child that outlives the critical section.
 owner_lock() { # <run dir> <tries>
-  local i
-  for ((i = 1; ; i++)); do
-    [ -n "$(find "$1/owner.lock" -maxdepth 0 -mmin +1 2> /dev/null)" ] && rm -rf "$1/owner.lock"
-    mkdir "$1/owner.lock" 2> /dev/null && return 0
-    [ "$i" -lt "$2" ] || return 1
-    sleep 1
-  done
+  exec {OWNER_FD}>> "$1/owner.flock" || return 1
+  if [ "$2" -le 1 ]; then flock -n "$OWNER_FD"; else flock -w "$2" "$OWNER_FD"; fi && return 0
+  exec {OWNER_FD}>&-
+  return 1
+}
+owner_unlock() { # <run dir>
+  exec {OWNER_FD}>&-
 }
 
 # A run's `owner` line, printed as read when it is well formed and names a gone supervisor (owner_gone); a missing or
-# malformed line is not gone. holds_slot's lease and owner paths both judge it here; the lease path passes `lease`.
+# malformed line is not gone. holds_slot judges it here while a run's lease is held, and passes `lease`.
 dead_owner() { # <run dir> [lease]
   local o t re='^[0-9]+ [A-Z][a-z]{2} [A-Z][a-z]{2} [ 0-9][0-9] [0-9]{2}:[0-9]{2}:[0-9]{2} [0-9]{4}$'
   o=$(cat "$1/owner" 2> /dev/null) || return 1
-  t=${o%"${o##*[![:space:]]}"}   # a line written on macOS before #448 ends in lstart's padding
-  [[ "$t" =~ $re ]] && owner_gone "${t%% *}" "${t#* }" ${2-} && printf '%s' "$o"
+  [[ "$o" =~ $re ]] && owner_gone "${o%% *}" "${o#* }" ${2-} && printf '%s' "$o"
 }
 
 # The owner's pid is gone, a zombie (kill -0 succeeds on one), or reused by a process that started over 300 s
 # from the stored start: lstart is boot time plus ticks, so a wall-clock step moves it, and a reuse that close
 # would need the pid space to wrap. A ps or date that fails or prints nothing cannot tell, so the slot holds.
-# macOS pads lstart with trailing spaces and has BSD date, so the start is trimmed and parsed either way.
 # A gone or zombie pid also holds while a live process has it as its process group id; Linux does not reuse that
 # number meanwhile. A model call has a session of its own, so holds_slot finds it through the run's `call` file.
 # With `lease` (any non-empty third argument) a live pid that is no zombie is never gone, whatever its start: on the
@@ -1580,10 +1588,9 @@ owner_gone() { # <pid> <ps lstart> [lease]
   [ $((a > b ? a - b : b - a)) -gt 300 ]
 }
 
-lstart_epoch() { # <ps lstart> -> seconds since the epoch, through GNU date or else BSD date (macOS); fails unless digits
+lstart_epoch() { # <ps lstart> -> seconds since the epoch, through GNU date; fails unless digits
   local e
-  e=$(date -u -d "$1" +%s 2> /dev/null || LC_ALL=C date -j -u -f '%a %b %d %T %Y' "$1" +%s 2> /dev/null) \
-    && [[ "$e" =~ ^[0-9]+$ ]] && echo "$e"
+  e=$(date -u -d "$1" +%s 2> /dev/null) && [[ "$e" =~ ^[0-9]+$ ]] && echo "$e"
 }
 
 group_live() { # <pgid> -> 0 when a process other than a zombie has it as its group id, or ps fails
@@ -1658,105 +1665,74 @@ run_project() { # <run dir>
 # model call named in its `call` lives (below; a child that closed the fd). Getting the lock with no such call means no
 # process of the run is left: still holding it, the caller re-reads the status, writes
 # stopped-environment if it still reads running or waiting-limit, and only that caller alerts; a relaunch waits on
-# the same lease, so it never interleaves with the reap. A run dir with no `lease`, or a host with no flock(1) (a Mac),
-# keeps the rules below (#381): a run is live while its
-# status reads running or waiting-limit and its `owner` line (pid and ps start time, written by
-# cmd_run) names a live process (owner_gone: 300 s start-time tolerance, a failed ps holds, a live
-# member of the pid's process group holds), or while it has written `launched` and no status yet
-# (#156 #167). A missing or malformed `owner` holds the slot. A launch writes `owner` and `running`
-# right after `launched`, so a relaunch holds its slot from then on, and a launch killed during
-# preparation is reaped like any other dead owner.
-# The first caller to find the owner gone writes stopped-environment, under owner.lock and only if
-# `owner` still reads the line it judged, so a relaunch that rewrote it keeps its slot; that caller
-# sends the one alert. A run killed between `launched` and its owner write keeps whatever status it
-# had; with no status at all it holds the slot until the operator removes its directory, or, where it has a `lease`,
-# until no process holds that lease.
-# In its own session a model call (call_start) outlives a SIGKILLed supervisor, reparented to init, and keeps writing
-# the worktree until CALL_TIMEOUT_SEC, so a gone owner's call is killed first (orphan_call_kill), and the slot holds
-# while the call still lives: its wrapper's or its own group has a member that is not a zombie or, on Linux, a process
-# carries its FACTORY_CALL_TAG. On the lease path above the call holds the lease it inherited, so a gone owner's call is
-# killed there too, under owner.lock, and the lease then decides.
+# the same lease, so it never interleaves with the reap. A run dir with no `lease` (started before #425) holds no slot,
+# whatever its status and owner line: holds_slot reads no `owner` and no `call` for it, and writes, alerts on and kills
+# nothing. cmd_run creates `lease` before any call is written, so every run that can leave a stuck call (below) has one.
+# A launch killed between `launched` and its first status holds while a process holds its lease.
+# In its own session a model call (call_start) outlives a SIGKILLed supervisor, reparented to init, keeps the lease it
+# inherited and keeps writing the worktree until CALL_TIMEOUT_SEC, so while the lease is held a gone owner's call is
+# killed (orphan_call_kill, under owner.flock), and the lease then decides.
 # holds_slot may return held in the very call that killed, while the call's wrapper still reaps reparented children;
 # the next caller frees the slot.
-# A run of any other status holds while the call named in its `call` lives, with no write and no alert: call_end keeps
-# `call` when a call outlives KILL and the run ends stopped-environment (#467); it frees once that call is gone.
+# A run with a lease and any other status holds while the call named in its `call` lives, with no write and no
+# alert: call_end keeps `call` when a call outlives KILL and the run ends stopped-environment (#467); it frees once
+# that call is gone.
 # With `peek` (cmd_next --dry-run) it only looks: a run the reap above would free reads free, and it takes no
-# owner.lock, kills nothing, writes no status and sends no alert. So a gone owner's run reads held while its call lives
-# (a real call kills it and may free the slot), and free while another caller holds owner.lock.
+# owner.flock, kills nothing, writes no status and sends no alert.
 holds_slot() { # <run dir> [peek]
-  local st o pid fd peek=${2-}
+  local st o fd peek=${2-}
+  # Read-only, so a run dir with no lease never gets one here.
+  [ -f "$1/lease" ] || return 1
   if [ -f "$1/status" ]; then
     st=$(cat "$1/status")
     # A call that survived call_reap's KILL keeps `call` and its run ends stopped-environment, so any other status
     # holds while that call lives; running and waiting-limit consult it below, after a gone owner's call is killed.
     [ "$st" = running ] || [ "$st" = waiting-limit ] || { call_live "$1"; return; }
-    # Read-only, so a run dir with no lease never gets one here.
-    if [ -n "$HAVE_FLOCK" ] && [ -f "$1/lease" ] && exec {fd}< "$1/lease"; then
-      if ! flock -n "$fd"; then
-        exec {fd}>&-
-        [ -n "$peek" ] && return 0
-        if o=$(dead_owner "$1" lease) && owner_lock "$1" 1; then orphan_call_kill "$1" "$o"; rmdir "$1/owner.lock"; fi
-        return 0
-      fi
-      # A process may close the descriptors it does not pass on (Node's child processes do), so a model call's tool
-      # shell can outlive every holder; the call's group or tag still holds the slot, as on the owner path below.
-      call_live "$1" && { exec {fd}>&-; return 0; }
-      [ -n "$peek" ] && { exec {fd}>&-; return 1; }
-      st=$(cat "$1/status" 2> /dev/null)
-      # A gone call's `call` goes too, as on the owner path, so it never holds the stopped run's slot (above) once its
-      # wrapper's pid is reused; a relaunch waits on this lease, so no `call` of its own is written meanwhile.
-      if [ "$st" = running ] || [ "$st" = waiting-limit ]; then
-        printf 'stopped-environment\n' > "$1/status"
-        rm -f "$1/call" "$1/call.tmp" "$1/call.group" "$1/call.group.tmp"
-      fi
-      exec {fd}>&-   # before the alert, whose children would otherwise inherit this run's lease
-      [ "$st" = running ] || [ "$st" = waiting-limit ] || return 1
-      log "stopped-environment: ${1%/} was $st, but no process of the run holds its lease"
-      alert --level fail --source factory --project "$(run_project "$1")" \
-        --run "issue $(basename "$(dirname "$1")")" \
-        "issue $(basename "$(dirname "$1")") stopped on a machine or tool problem: no process of the run is left \
-(its supervisor and every child exited) while it read $st; ${1%/} is now stopped-environment and its slot is free" \
-        >> "$LOG" 2>&1 || log "the alert for ${1%/} failed; see bin/alert's line above"
-      return 1
+    exec {fd}< "$1/lease" || return 1
+    if ! flock -n "$fd"; then
+      exec {fd}>&-
+      [ -n "$peek" ] && return 0
+      if o=$(dead_owner "$1" lease) && owner_lock "$1" 1; then orphan_call_kill "$1" "$o"; owner_unlock "$1"; fi
+      return 0
     fi
-    o=$(dead_owner "$1") || return 0
-    if [ -n "$peek" ]; then call_live "$1" && return 0; return 1; fi
-    pid=${o%% *}
-    owner_lock "$1" 1 || return 0
-    if [ "$(cat "$1/owner" 2> /dev/null)" != "$o" ]; then rmdir "$1/owner.lock"; return 0; fi
+    # A process may close the descriptors it does not pass on (Node's child processes do), so a model call's tool
+    # shell can outlive every holder; the call's group or tag still holds the slot.
+    call_live "$1" && { exec {fd}>&-; return 0; }
+    [ -n "$peek" ] && { exec {fd}>&-; return 1; }
     st=$(cat "$1/status" 2> /dev/null)
-    if [ "$st" != running ] && [ "$st" != waiting-limit ]; then rmdir "$1/owner.lock"; call_live "$1"; return; fi
-    if ! orphan_call_kill "$1" "$o" || call_live "$1"; then rmdir "$1/owner.lock"; return 0; fi
-    printf 'stopped-environment\n' > "$1/status"
-    rm -f "$1/call" "$1/call.tmp" "$1/call.group" "$1/call.group.tmp"
-    rmdir "$1/owner.lock"
-    log "stopped-environment: ${1%/} was $st, but its supervisor pid $pid is gone"
+    # A gone call's `call` goes too, so it never holds the stopped run's slot (above) once its wrapper's pid is reused;
+    # a relaunch waits on this lease, so no `call` of its own is written meanwhile.
+    if [ "$st" = running ] || [ "$st" = waiting-limit ]; then
+      printf 'stopped-environment\n' > "$1/status"
+      rm -f "$1/call" "$1/call.tmp" "$1/call.group" "$1/call.group.tmp"
+    fi
+    exec {fd}>&-   # before the alert, whose children would otherwise inherit this run's lease
+    [ "$st" = running ] || [ "$st" = waiting-limit ] || return 1
+    log "stopped-environment: ${1%/} was $st, but no process of the run holds its lease"
     alert --level fail --source factory --project "$(run_project "$1")" \
       --run "issue $(basename "$(dirname "$1")")" \
-      "issue $(basename "$(dirname "$1")") stopped on a machine or tool problem: its supervisor pid $pid exited, \
-became a zombie, or its pid was reused while the run read $st; ${1%/} is now stopped-environment and its slot is free" \
+      "issue $(basename "$(dirname "$1")") stopped on a machine or tool problem: no process of the run is left \
+(its supervisor and every child exited) while it read $st; ${1%/} is now stopped-environment and its slot is free" \
       >> "$LOG" 2>&1 || log "the alert for ${1%/} failed; see bin/alert's line above"
     return 1
   else
     [ -f "$1/launched" ] || return 1
-    # A launch killed between `launched` and its first status: its lease, where it has one, decides; a dir with no
-    # lease holds until the operator removes it.
-    [ -n "$HAVE_FLOCK" ] && [ -f "$1/lease" ] && exec {fd}< "$1/lease" || return 0
+    exec {fd}< "$1/lease" || return 1
     flock -n "$fd"; st=$?
     exec {fd}>&-
     [ "$st" != 0 ]
   fi
 }
-
 # A gone supervisor's model call, in a session of its own, keeps writing the worktree until CALL_TIMEOUT_SEC; holds_slot,
-# under owner.lock with `owner` unchanged, so no relaunch has started a call of its own, kills each process group named
+# under owner.flock with `owner` unchanged, so no relaunch has started a call of its own, kills each process group named
 # in `call` or `call.group` whose leader still has the start time recorded after its id (call_start writes it to
 # call.group), so a pgid reused since is spared: TERM, a 2 s grace, KILL, then up to 5 s for the group to be gone.
 # In production `call` holds `<wrapper pid> <tag> [<lstart>]` and never matches, since the tag is read as part of the
 # start time; its read serves a `<pgid> <lstart>` line there, the layout the ticket's dead-owner-group-reaped check
 # writes. Before KILL each group is kept only while its leader is
 # gone (members remain) or still has its recorded start, so a pgid reused during the grace is spared.
-# `owner` is re-read just before TERM, since an aged owner.lock can be taken over; a changed line kills nothing, return 1.
+# `owner` is re-read just before TERM, since a relaunch of a run frozen before owner.flock writes `owner` under its own
+# copy's owner.lock, which does not exclude this caller; a changed line kills nothing, return 1.
 orphan_call_kill() { # <run dir> <owner line judged>
   local f g s now gs=() ss=() ks=() i
   for f in "$1/call" "$1/call.group"; do
@@ -1877,22 +1853,17 @@ active_account() { "$ROOT/bin/claude-account" status 2> /dev/null | sed -n 's/^a
 # a switch is made only while the active account is still CALL_ACCOUNT, the one the limited call ran under: once
 # another run has switched away from it, this run retries on the new account and never switches back. The check and
 # the switch hold one host-wide lock, so two runs limited at once switch once: a flock on RUNS_BASE/limit-switch.lock,
-# or on a host with no flock(1) (a Mac) owner_lock's mkdir lock in RUNS_BASE/limit-switch.d, which a killed holder
-# leaves for at most a minute. Either waits about 60 s, then the limit takes the sleep path. One switch per limit
+# which the kernel frees when its holder exits. It waits about 60 s, then the limit takes the sleep path. One switch per limit
 # event, then a host-wide five-minute cooldown (RUNS_BASE/limit-switch) sends any further limit down the sleep path,
 # a run limited on the account just switched to included (both accounts are limited when a second reply lands that
 # soon); after the cooldown such a run switches back. No token value ever reaches the log or the ledger: the switcher
 # prints names only and the ledger line names only.
 limit_switch() { # -> 0 after a switch, or one away from CALL_ACCOUNT already made; 1 with no other account or on cooldown
-  local fd= rc
-  if [ -n "$HAVE_FLOCK" ]; then
-    mkdir -p "$RUNS_BASE" && exec {fd}>> "$RUNS_BASE/limit-switch.lock" || return 1
-    flock -w 60 "$fd" || { exec {fd}>&-; return 1; }
-  else
-    mkdir -p "$RUNS_BASE/limit-switch.d" && owner_lock "$RUNS_BASE/limit-switch.d" 60 || return 1
-  fi
+  local fd rc
+  mkdir -p "$RUNS_BASE" && exec {fd}>> "$RUNS_BASE/limit-switch.lock" || return 1
+  flock -w 60 "$fd" || { exec {fd}>&-; return 1; }
   limit_switch_held; rc=$?
-  if [ -n "$fd" ]; then exec {fd}>&-; else rmdir "$RUNS_BASE/limit-switch.d/owner.lock"; fi
+  exec {fd}>&-
   return "$rc"
 }
 limit_switch_held() {
@@ -1916,15 +1887,13 @@ limit_switch_held() {
 # Waiting for it is loop behavior, not a round: switch accounts and retry at once, or sleep to the reset, or
 # 20 minutes, then repeat the same call.
 limit_wait() { # result.json -> 0 after waiting, 1 when the reply is not a usage limit
-  local e t b tz at left secs=1200
+  local e t tz at left secs=1200
   e=$(jq -r "$RESULT_OBJ | if .is_error == true then (.result // \"\") else empty end" "$1" 2> /dev/null) || e=""
   grep -qiE '(hit|reached) your .*limit' <<< "$e" || return 1
   limit_switch && return 0
   t=$(grep -oiE 'resets? [0-9]{1,2}(:[0-9]{2})? ?[ap]m' <<< "$e" | head -1 | sed -E 's/^[Rr]esets? //')
   tz=$(grep -oE '\([A-Za-z_]+/[A-Za-z_]+\)' <<< "$e" | head -1 | tr -d '()')
-  b=${t// /}; b=${b%??}; [[ "$b" == *:* ]] || b=$b:00   # BSD date (macOS) has no -d; it reads "1:30:00pm"
-  if [ -n "$t" ] && at=$(TZ="${tz:-UTC}" date -d "$t" +%s 2> /dev/null \
-      || TZ="${tz:-UTC}" LC_ALL=C date -j -f '%I:%M:%S%p' "$b:00${t: -2}" +%s 2> /dev/null); then
+  if [ -n "$t" ] && at=$(TZ="${tz:-UTC}" date -d "$t" +%s 2> /dev/null); then
     [ "$at" -gt "$(date +%s)" ] || at=$((at + 86400))
     secs=$((at - $(date +%s) + 60))
   fi
@@ -2262,8 +2231,7 @@ call_gone() { # tenths of a second to wait -> 0 once nothing is left in the call
 }
 
 worker_round() { # round; leaves round-N.* only once the call produced a result
-  local round="$1" pf out="$RUN/pending.jsonl" res="$RUN/pending.result.json" t=() login_retried=0 le head0 tok tok0 tok_set
-  command -v timeout > /dev/null 2>&1 && t=(timeout -k 5 "$CALL_TIMEOUT_SEC")
+  local round="$1" pf out="$RUN/pending.jsonl" res="$RUN/pending.result.json" t=(timeout -k 5 "$CALL_TIMEOUT_SEC") login_retried=0 le head0 tok tok0 tok_set
   # The round's start, so a stop after a killed call can name the commits the call made (#319).
   head0=$(git -C "$WORKTREE" rev-parse HEAD 2> /dev/null) || head0=""
   # The first round this process runs; a login expired at launch retries only its call. A global,
@@ -2943,6 +2911,7 @@ main_loop() {
 }
 
 cmd_run() {
+  linux_only run
   # Before load_ticket, so a missing toolchain export or bin/check stops ahead of every GitHub call; exit 4
   # is stopped-environment's code, direct because finish needs RUN and its notify may comment on the issue.
   assert_target_ready || exit 4
@@ -2972,13 +2941,13 @@ cmd_run() {
   # launch of the same ticket holds it says so and exits, leaving that run's status, `launched` (its MAX_HOURS clock)
   # and log (status --criteria's round) as they were. The fd is no close-on-exec, so the frozen re-exec and every
   # child inherit it: the run holds the lease until its last process exits. The frozen pass already holds it and must
-  # not lock a second open of the file, which would wait on its own lease. Where flock(1) is missing (a Mac) no lease is written and holds_slot judges the owner line below.
-  if [ -n "$HAVE_FLOCK" ] && [ "${FACTORY_FROZEN:-}" != "$RUN/frozen/factory" ]; then
+  # not lock a second open of the file, which would wait on its own lease.
+  if [ "${FACTORY_FROZEN:-}" != "$RUN/frozen/factory" ]; then
     exec {SLOT_FD}>> "$RUN/lease" && flock -w 65 "$SLOT_FD" \
       || { echo "factory run: could not take $RUN/lease in 65 s; another launch of this ticket, or a process one left running, holds it" >&2; exit 4; }
   fi
-  # A model call's tool process may have closed the lease (holds_slot), or there is no lease (no flock), and still
-  # write the worktree this launch would prepare; refuse as above, writing nothing.
+  # A model call's tool process may have closed the lease (holds_slot) and still write the worktree this launch would
+  # prepare; refuse as above, writing nothing.
   [ "${FACTORY_FROZEN:-}" != "$RUN/frozen/factory" ] && call_live "$RUN" \
     && { echo "factory run: the model call named in $RUN/call still runs; wait for it to exit or kill it" >&2; exit 4; }
   # A file ticket's branch carries the run key too, so a relaunch with an edited body gets its own branch;
@@ -2992,25 +2961,24 @@ cmd_run() {
   # One line per launch, before any exit and not again from the frozen re-exec: status --criteria resets the
   # round on it, so a relaunch's early exit is not charged to the round a killed launch left open.
   [ "${FACTORY_FROZEN:-}" = "$RUN/frozen/factory" ] || log "===== launch ====="
-  # The owner line, for status and the alert text, and for holds_slot on a host with no flock or a run dir with no
-  # lease, written with the status under owner.lock, which a reaper judging the owner line takes too.
+  # The owner line, for status and the alert text, and for holds_slot's kill of a gone supervisor's call, written with
+  # the status under owner.flock, which that kill takes too.
   # exec keeps the pid, so it still names the loop that runs finish; the frozen pass rewrites the same line.
   # Through a temp file, so a kill mid-write never leaves an empty owner (held for good).
   local start
   start=$(TZ=UTC LC_ALL=C ps -o lstart= -p "$$")
-  start=${start%"${start##*[![:space:]]}"}   # macOS pads lstart with trailing spaces; holds_slot matches up to the year
-  # env-stops changes with the status, under owner.lock, so env_park_alert never reads this launch's line beside the
+  # env-stops changes with the status, under owner.flock, so env_park_alert never reads this launch's line beside the
   # last run's status; only in the live pass, so a run frozen before it counts too. The two early exits below count
   # their launch as well, or a launch that cannot take the lock would retry forever with no park.
   local live=1; [ "${FACTORY_FROZEN:-}" = "$RUN/frozen/factory" ] && live=0
   [ -n "$start" ] && owner_lock "$RUN" 65 \
     || { [ "$live" = 0 ] || record_env_stops "$RUN"
-         finish stopped-environment "could not read this run's start time or take $RUN/owner.lock"; }
+         finish stopped-environment "could not read this run's start time or take $RUN/owner.flock"; }
   printf '%s %s\n' "$$" "$start" > "$RUN/owner.tmp" && mv -f "$RUN/owner.tmp" "$RUN/owner" \
-    || { [ "$live" = 0 ] || record_env_stops "$RUN"; rmdir "$RUN/owner.lock"; finish stopped-environment "could not write $RUN/owner"; }
+    || { [ "$live" = 0 ] || record_env_stops "$RUN"; owner_unlock "$RUN"; finish stopped-environment "could not write $RUN/owner"; }
   [ "$live" = 0 ] || record_env_stops "$RUN"
   set_status running
-  rmdir "$RUN/owner.lock"
+  owner_unlock "$RUN"
   # This launch's operator actions, once per launch as the launch line is; a file ticket makes no GitHub call.
   if [ "${FACTORY_FROZEN:-}" != "$RUN/frozen/factory" ]; then
     # The issue's lint lines since the last launch: appended, then removed, so a relaunch does not count them twice.
@@ -3028,8 +2996,7 @@ cmd_run() {
   exec_frozen
   BODY=$(cat "$RUN/frozen/issue.md")   # from here on the frozen body is the ticket
   [ "$IS_FILE" = 1 ] && trap 'git -C "$MAIN_CHECKOUT" worktree remove --force "$WORKTREE" > /dev/null 2>&1' EXIT
-  TIMEOUT_G=()
-  command -v timeout > /dev/null 2>&1 && TIMEOUT_G=(timeout -k 5 "$CALL_TIMEOUT_SEC")
+  TIMEOUT_G=(timeout -k 5 "$CALL_TIMEOUT_SEC")
   # The advisor attaches through a feature flag claude fetches; two env vars turn it silently off.
   # Refuse to launch rather than run a worker that thinks it has an advisor and does not (F11).
   if [ -n "$WORKER_ADVISOR" ]; then
@@ -3240,6 +3207,30 @@ stopped_environment_recent() { # <run dir> -> 0 when its run stopped on the envi
   [ $(( $(date -u +%s) - t )) -lt "$ENV_BACKOFF_SEC" ]
 }
 
+# A tick that ends `nothing to launch` beats healthchecks, so a factory idle over ready issues looks healthy (#619).
+# An idle spell is the run of real ticks that read a ready issue, launch none and find no slot held: its first tick
+# writes idle-since in the runs root, and the first one over IDLE_ALERT_SEC later sends one needs-you alert, then
+# writes idle-alerted, only once the alert went out, as env_park_alert writes env-parked. idle_end ends the spell.
+IDLE_ALERT_SEC=3600
+idle_end() { rm -f "$RUNS_ROOT/idle-since" "$RUNS_ROOT/idle-alerted"; }
+idle_note() { # <ready issues read>
+  local now t project=loam
+  now=$(date -u +%s)
+  t=$(cat "$RUNS_ROOT/idle-since" 2> /dev/null)
+  if ! [[ "$t" =~ ^[0-9]+$ ]]; then
+    mkdir -p "$RUNS_ROOT" && printf '%s\n' "$now" > "$RUNS_ROOT/idle-since"
+    return 0
+  fi
+  [ $((now - t)) -gt "$IDLE_ALERT_SEC" ] && [ ! -e "$RUNS_ROOT/idle-alerted" ] || return 0
+  target_is_loam || project=$(target_repo | sed 's#.*/##' | tr '[:upper:]' '[:lower:]')
+  if alert --level needs-you --source factory --project "$project" \
+    "factory idle: $1 ready-for-agent issue(s) have waited over an hour with none launchable; next.log names each one's reason" >&2; then
+    : > "$RUNS_ROOT/idle-alerted"
+  else
+    echo "the idle alert failed; see bin/alert's line above" >&2
+  fi
+}
+
 # A worker call with no result event is charged ROUND_BUDGET_USD and stops stopped-environment before its round-N.checks
 # is written, and a relaunch rebuilds ROUND from round-*.checks, so the same round reruns and MAX_ROUNDS never trips (#547).
 # So each launch, with its first status write and in the live checkout (a run frozen before this counts too), writes
@@ -3279,11 +3270,11 @@ env_parked() { # <run dir> -> 0 when its run stopped on the environment for the 
 # (flock -n) around next; a next run by hand outside it can at worst send one duplicate alert (accepted).
 env_park_alert() { # <run dir> <issue>
   local token
-  # A launch writes env-stops and its status under owner.lock, so the line and the park are read together; the lock is
+  # A launch writes env-stops and its status under owner.flock, so the line and the park are read together; the lock is
   # released before bin/alert, and one held elsewhere leaves the alert to a later tick.
   owner_lock "$1" 1 || return 0
   token=$(cat "$1/env-stops" 2> /dev/null) && env_parked "$1" || token=""
-  rmdir "$1/owner.lock"
+  owner_unlock "$1"
   [ -n "$token" ] && [ "$token" != "$(cat "$1/env-parked" 2> /dev/null)" ] || return 0
   if alert --level needs-you --source factory --project "$(run_project "$1")" --run "issue $2" \
     "issue $2 stopped on a machine or tool problem $ENV_PARK_STOPS times in a row with no new round since, so the timer \
@@ -3301,7 +3292,7 @@ no longer relaunches it; fix the cause, then relaunch it by hand or edit the bod
 run_busy() { # <run dir> -> 0 while a process cmd_run would refuse a relaunch on still runs
   local fd st
   call_live "$1" && return 0
-  [ -n "$HAVE_FLOCK" ] && [ -f "$1/lease" ] && exec {fd}< "$1/lease" || return 1
+  [ -f "$1/lease" ] && exec {fd}< "$1/lease" || return 1
   flock -n "$fd"; st=$?
   exec {fd}>&-
   [ "$st" != 0 ]
@@ -3346,6 +3337,7 @@ daily_spent_at_runner_caps() { # -> 0 when the shared daily ledger has no room f
 # does a dead host or a stopped timer. A refusal's stderr reaches no one on its own (jhaveris's cron line appends it to next.log and the host
 # has no mail), so the check is the alarm.
 cmd_next() {
+  linux_only next
   next_tick "$@" || return
   [ $# -eq 0 ] || return 0
   alert --ping beat >&2 || echo "healthchecks beat failed; see bin/alert's line above" >&2
@@ -3395,7 +3387,10 @@ next_tick() { # [--dry-run|--install|--frontier]
   fi
 
   # 1. FACTORY_STOP at the runs root pauses the timer; --frontier lists what would launch regardless.
+  #    Each real tick that prints paused, stops at the slot count or launches ends an idle spell (idle_end); a refusal,
+  #    --dry-run and --frontier leave it as it is.
   if [ "$frontier" = 0 ] && [ -f "$RUNS_ROOT/FACTORY_STOP" ]; then
+    [ "$dry" = 1 ] || idle_end
     echo paused
     return 0
   fi
@@ -3449,6 +3444,7 @@ next_tick() { # [--dry-run|--install|--frontier]
     return 1
   fi
   if [ "$frontier" = 0 ] && [ "$n" -ge "$max" ]; then
+    [ "$dry" = 1 ] || idle_end
     echo "nothing to launch"
     return 0
   fi
@@ -3554,7 +3550,7 @@ next_tick() { # [--dry-run|--install|--frontier]
   # Each issue the loop passes over gets one stderr line with its reason: an open native blocker (either list), an assignee
   # other than the runner (the repository listing, once the runner's own are dropped above), the runner's issue with
   # no run of any body, FACTORY_STOP, then the waits and parks below, which apply to the runner's issues as to the rest.
-  local pick="" read_failed="" st_last lint_err lint_line author editor run blocked assignees
+  local pick="" read_failed="" daily_wait="" st_last lint_err lint_line author editor run blocked assignees
   while read -r who num author b64 blocked assignees; do
     [ -n "$num" ] || continue
     [ "$b64" = - ] && b64=""
@@ -3590,6 +3586,7 @@ next_tick() { # [--dry-run|--install|--frontier]
     fi
     if stopped_daily_today "$run"; then
       echo "waiting #$num: daily budget spent; relaunches after 00:00 UTC" >&2
+      daily_wait=1
       continue
     fi
     if stopped_environment_recent "$run"; then
@@ -3659,11 +3656,18 @@ next_tick() { # [--dry-run|--install|--frontier]
     for d in "$RUNS_BASE"/*/*/ "$RUNS_BASE"/*/*/*/; do
       stopped_daily_today "$d" || continue
       echo "waiting: a run stopped at today's daily budget; nothing launches before 00:00 UTC" >&2
-      pick=""; break
+      pick=""; daily_wait=1; break
     done
   fi
 
+  # An idle tick: no pick, at least one ready issue read and no slot held. A slot held (the factory works or waits on a
+  # PR), no issue read, or a daily-budget wait (it ends by itself at 00:00 UTC) ends the spell instead.
   if [ -z "$pick" ]; then
+    if [ "$dry" = 0 ]; then
+      if [ -z "$daily_wait" ] && [ "$n" = 0 ] && [ -n "$nums" ]; then idle_note "$(( $(wc -w <<< "$nums") ))"
+      else idle_end
+      fi
+    fi
     echo "nothing to launch"
     return 0
   fi
@@ -3693,6 +3697,7 @@ next_tick() { # [--dry-run|--install|--frontier]
   local cap v
   for cap in $CAP_NAMES; do v="FACTORY_$cap"; envs+=(-e "$v=${!v:-}"); done
   if tmux new-session -d -s "$sess" "${envs[@]}" "cd '$ROOT' && bin/factory -C '$TARGET' run $pick >> '$RUNS_ROOT/$pick.tmux.log' 2>&1"; then
+    idle_end
     echo "launched #$pick"
   else
     echo "launch failed: tmux new-session -s $sess" >&2
@@ -3701,6 +3706,7 @@ next_tick() { # [--dry-run|--install|--frontier]
 }
 
 cmd_status() {
+  linux_only status
   local d led st rounds spend wall den grader clean notes off warns=""
   printf '%-14s %-9s %-20s %6s %8s %6s %8s %-22s %-5s %s\n' \
     ticket sha8 status rounds spend wall denials first-failing-grader clean notes
@@ -3734,6 +3740,7 @@ cmd_status() {
 
 # The criteria and thresholds stay in ARCHITECTURE.md; criteria.py reads them there and calls only git log.
 cmd_criteria() {
+  linux_only "status --criteria"
   python3 -I "$ROOT/bin/factory.d/criteria.py" "$RUNS_ROOT" "$ROOT/docs/factory/ARCHITECTURE.md" "$TARGET"
 }
 
@@ -3807,10 +3814,9 @@ claude_version_ok() {
 }
 
 precondition_lines() { # LOOP.md, Preconditions
-  local t f sbx=
-  # The worker's Bash sandbox needs bubblewrap on Linux; on macOS Claude Code uses seatbelt, which ships with it (#409).
-  [ "$(uname -s)" != Linux ] || sbx=bwrap
-  for t in claude gh git jq python3 uv tmux timeout socat $sbx node; do
+  local t f
+  # The worker's Bash sandbox needs bubblewrap on Linux (#409).
+  for t in claude gh git jq python3 uv tmux timeout socat bwrap node; do
     command -v "$t" > /dev/null 2>&1 && echo "  PASS $t on PATH" || echo "  FAIL $t not on PATH"
   done
   echo "  INFO target $TARGET; runs root $RUNS_ROOT"
@@ -3883,10 +3889,9 @@ precondition_lines() { # LOOP.md, Preconditions
       # One paid Opus call with no --settings: the frozen worker settings carry a Stop hook that blocks
       # a one-turn probe. success means --advisor attached (docs/research/advisor-and-managed-agents.md).
       # Wrapped in timeout like every other model call; a hung probe must not hang status (#68).
-      local pe po rc pt=()
-      command -v timeout > /dev/null 2>&1 && pt=(timeout --foreground 120)
+      local pe po rc
       pe=$(mktemp "${TMPDIR:-/tmp}/factory-probe.XXXXXX")
-      po=$(${pt[@]+"${pt[@]}"} claude -p --model "$WORKER_MODEL" --advisor "$WORKER_ADVISOR" --max-turns 1 --output-format json \
+      po=$(timeout --foreground 120 claude -p --model "$WORKER_MODEL" --advisor "$WORKER_ADVISOR" --max-turns 1 --output-format json \
         --strict-mcp-config --no-session-persistence 'Reply with the single word ok' 2> "$pe"); rc=$?
       if [ "$rc" -eq 124 ]; then
         echo "  FAIL advisor: probe timed out after 120s"
@@ -4020,14 +4025,19 @@ usage() { # [cmd...] - one line per named command, all ten when none is named
 # only in a sourced script; 2> /dev/null hides the error if the guard is ever hit while the file runs as
 # a program.
 [ "${FACTORY_SOURCED:-}" = 1 ] && return 0 2> /dev/null
-# lint, next and status read FACTORY_NET_TIMEOUT_SEC, and next FACTORY_MAX_PARALLEL, without apply_caps, so every
-# FACTORY_<NAME> cap is checked here once, before any subcommand runs (#427).
-env_caps_ok || exit 2
 C_DIR=""
 [ "${1:-}" = -C ] && { [ $# -ge 2 ] || usage; C_DIR="$2"; shift 2; }
 CMD="${1:-}"
 shift 2> /dev/null || true
 [ "${1:-}" = -C ] && { [ $# -ge 2 ] || usage; C_DIR="$2"; shift 2; }
+# The Linux gate comes before the cap and -C checks below, so off Linux a gated command names Linux first.
+case "$CMD" in
+  run|next) linux_only "$CMD" ;;
+  status) if [ "${1:-}" = --criteria ]; then linux_only "status --criteria"; else linux_only status; fi ;;
+esac
+# lint, next and status read FACTORY_NET_TIMEOUT_SEC, and next FACTORY_MAX_PARALLEL, without apply_caps, so every
+# FACTORY_<NAME> cap is checked here once, before any subcommand runs (#427).
+env_caps_ok || exit 2
 [ -z "$C_DIR" ] || use_target "$C_DIR" \
   || { echo "factory: -C $C_DIR is not a git checkout, or is another repository with no GitHub origin" >&2; exit 2; }
 case "$CMD" in
