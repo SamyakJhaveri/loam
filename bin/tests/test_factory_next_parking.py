@@ -752,7 +752,7 @@ sys.exit(r.returncode)
 
 
 class PassedOverTests(unittest.TestCase):
-    """Every ready issue a tick does not launch gets one stderr line with its reason, read from the same listings and
+    """Every ready issue the frontier loop passes over gets one stderr line with its reason, read from the same listings and
     the same one editor read (#617)."""
 
     def test_each_passed_over_issue_gets_one_line_and_an_older_clean_issue_still_launches(self) -> None:
@@ -764,7 +764,7 @@ class PassedOverTests(unittest.TestCase):
         (bin_dir / "gh").write_text(GH_STAND_IN)
         (bin_dir / "gh").chmod(0o755)
         me, other = ["SamyakJhaveri"], ["mallory"]
-        store = {21: ([], 2, "x"), 22: (other, 0, "x"), 23: (me, 0, "x"), 24: (me, 0, "x"), 25: (me, 0, "x"),
+        store = {20: ([], None, CLEAN), 21: ([], 2, "x"), 22: (other, 0, "x"), 23: (me, 0, "x"), 24: (me, 0, "x"), 25: (me, 0, "x"),
                  26: ([], 0, "x"), 27: (me, 1, "x"), 28: (me, 0, "x"), 29: ([], 0, CLEAN), 30: (me, 0, "x"),
                  31: ([], 3, ""), 32: (other, 0, ""), 33: (["mallory", "eve"], 0, CLEAN)}
         # 100 newer issues assigned to another account fill the repository listing's first page.
@@ -793,6 +793,7 @@ class PassedOverTests(unittest.TestCase):
                         "FACTORY_RUNS_ROOT": str(runs), "FACTORY_MAX_PARALLEL": "2"})
         self.assertEqual((proc.returncode, proc.stdout), (0, "would launch #29\n"), proc.stderr)
         expect = {
+            20: "blocked #20: the listing gave no native blocker count (?); it waits until it does",
             21: "blocked #21: 2 open native blocker(s); it launches once they close",
             22: "assigned #22: assigned to mallory, not the runner; unassign it or remove ready-for-agent",
             23: "waiting #23: its PR awaits merge or close",

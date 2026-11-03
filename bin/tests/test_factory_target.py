@@ -171,7 +171,7 @@ class TargetTests(unittest.TestCase):
     def test_every_gh_call_names_the_origin_repository(self) -> None:
         # next's two frontier listings print the same fields: number, author, body (`-` if empty), blockers, assignees.
         fields = ('"\\(.number) \\(.user.login) \\(.body // "" | @base64 | if . == "" then "-" else . end) '
-                  '\\(.issue_dependencies_summary.blocked_by // 0) '
+                  '\\(.issue_dependencies_summary.blocked_by // "?") '
                   '\\([(.assignees // [])[].login] | join(",") | if . == "" then "-" else . end)"')
         self.target(self.proj, self.gh_stub + "lint 5")  # the stub body fails lint; only its gh call matters
         load = self.target(self.proj, self.gh_stub + "load_ticket 5; echo REPO=$REPO")

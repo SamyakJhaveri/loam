@@ -3453,10 +3453,12 @@ next_tick() { # [--dry-run|--install|--frontier]
   #    number first, plus the runner's own such issues whose current body has no run yet or whose run ended stopped-daily,
   #    stopped-environment or stopped. Every other open ready-for-agent issue is read too, so the loop prints one stderr
   #    line naming why it does not launch: each line carries the body (`-` for an empty one, so it cannot shift the
-  #    fields), the open native blocker count and the assignee logins (`-` for none); a line without the last two reads
-  #    as unblocked and unassigned. The repository listing reads every page, since assigned issues would otherwise fill
-  #    its first 100 and hide an older unassigned one; gh fetches the pages inside the one call. A gh failure (offline, unauthenticated, off cron's PATH, empty repo) prints
-  #    `frontier query failed` and returns 1, so no beat is sent (cmd_next) rather than the timer stalling silent;
+  #    fields), the open native blocker count (`?` when the listing omits it, so the issue waits rather than launching
+  #    blocked) and the assignee logins (`-` for none); a line without the last two reads as unblocked and unassigned.
+  #    The repository listing reads every page, since assigned issues would otherwise fill its first 100 and hide an
+  #    older unassigned one; gh fetches the pages inside the one call. A gh failure (offline, unauthenticated, off
+  #    cron's PATH, empty repo) prints `frontier query failed` and returns 1, so no beat is sent (cmd_next) rather than
+  #    the timer stalling silent;
   #    only a successful, empty query falls through to `nothing to launch`.
   local repo ready num b64 body
   repo=$(target_repo)
@@ -3465,7 +3467,7 @@ next_tick() { # [--dry-run|--install|--frontier]
     return 1
   fi
   if ! ready=$(net gh api "repos/$repo/issues?labels=ready-for-agent&state=open&per_page=100" --paginate \
-    --jq 'sort_by(.number)[] | select(.pull_request == null) | "\(.number) \(.user.login) \(.body // "" | @base64 | if . == "" then "-" else . end) \(.issue_dependencies_summary.blocked_by // 0) \([(.assignees // [])[].login] | join(",") | if . == "" then "-" else . end)"' 2> /dev/null); then
+    --jq 'sort_by(.number)[] | select(.pull_request == null) | "\(.number) \(.user.login) \(.body // "" | @base64 | if . == "" then "-" else . end) \(.issue_dependencies_summary.blocked_by // "?") \([(.assignees // [])[].login] | join(",") | if . == "" then "-" else . end)"' 2> /dev/null); then
     echo "frontier query failed: gh api issues (failed, or no reply in ${NET_TIMEOUT_SEC}s)" >&2
     return 1
   fi
@@ -3478,7 +3480,7 @@ next_tick() { # [--dry-run|--install|--frontier]
   local mine lrepo
   lrepo=$(printf '%s' "$repo" | tr '[:upper:]' '[:lower:]')
   if ! mine=$(net gh api "/issues?filter=assigned&labels=ready-for-agent&state=open&per_page=100" --paginate \
-    --jq '.[] | select(.pull_request == null) | select((.repository.full_name // "" | ascii_downcase) == "'"$lrepo"'") | "\(.number) \(.user.login) \(.body // "" | @base64 | if . == "" then "-" else . end) \(.issue_dependencies_summary.blocked_by // 0) \([(.assignees // [])[].login] | join(",") | if . == "" then "-" else . end)"' 2> /dev/null); then
+    --jq '.[] | select(.pull_request == null) | select((.repository.full_name // "" | ascii_downcase) == "'"$lrepo"'") | "\(.number) \(.user.login) \(.body // "" | @base64 | if . == "" then "-" else . end) \(.issue_dependencies_summary.blocked_by // "?") \([(.assignees // [])[].login] | join(",") | if . == "" then "-" else . end)"' 2> /dev/null); then
     echo "frontier query failed: gh api issues assigned to the runner (failed, or no reply in ${NET_TIMEOUT_SEC}s)" >&2
     return 1
   fi
@@ -3523,7 +3525,7 @@ next_tick() { # [--dry-run|--install|--frontier]
       | "\(.key | ltrimstr("i")) \(.value.editor.login // (if .value.lastEditedAt then "(unnamed)" else "" end))"' \
       <<< "$json" 2> /dev/null) || editors=""
   fi
-  # Each issue not launched gets one stderr line with its reason: an open native blocker (either list), an assignee
+  # Each issue the loop passes over gets one stderr line with its reason: an open native blocker (either list), an assignee
   # other than the runner (the repository listing, once the runner's own are dropped above), the runner's issue with
   # no run of any body, FACTORY_STOP, then the waits and parks below, which apply to the runner's issues as to the rest.
   local pick="" read_failed="" st_last lint_err lint_line author editor run blocked assignees
@@ -3532,6 +3534,10 @@ next_tick() { # [--dry-run|--install|--frontier]
     [ "$b64" = - ] && b64=""
     if [[ ${blocked:-0} =~ ^[1-9][0-9]*$ ]]; then
       echo "blocked #$num: $blocked open native blocker(s); it launches once they close" >&2
+      continue
+    fi
+    if [ "${blocked:-0}" != 0 ]; then
+      echo "blocked #$num: the listing gave no native blocker count ($blocked); it waits until it does" >&2
       continue
     fi
     if [ "$who" = none ] && [ -n "$assignees" ] && [ "$assignees" != - ]; then
