@@ -119,17 +119,67 @@ except subprocess.TimeoutExpired:
     sys.exit(124)
 ' "$1" "${DEADLINE:-}" "${@:2}"
 }
-# Under the lock no other store git runs, so an index.lock is a killed git's and
-# a rebase in progress is a killed holder's: remove the one, abort the other
-# (which restores main with every commit). The abort ignores $DEADLINE, since a
-# half-done rebase is worse than a late hook. Succeeds only when neither is
-# left; a caller whose recovery failed writes nothing to the working tree.
+# Under the lock no other hook runs store git, but a git outside it can (a
+# person, an editor or a script in the store), so an index.lock is removed only
+# when index_lock_free finds no process with it open; one that is held, or that
+# no scan could clear, stays and fails the recovery, and the next holder scans
+# again. A rebase in progress is a killed holder's: abort it (which restores
+# main with every commit). The abort ignores $DEADLINE, since a half-done
+# rebase is worse than a late hook. Succeeds only when neither is left; a
+# caller whose recovery failed writes nothing to the working tree.
 store_recover() {
-  rm -f "$STORE/.git/index.lock" 2>/dev/null
+  if [ -e "$STORE/.git/index.lock" ]; then
+    index_lock_free "$STORE/.git/index.lock" || return 1
+    rm -f "$STORE/.git/index.lock" 2>/dev/null
+  fi
   if [ -d "$STORE/.git/rebase-merge" ] || [ -d "$STORE/.git/rebase-apply" ]; then
     DEADLINE='' bounded 1 "${SGIT[@]}" rebase --abort >/dev/null 2>&1
   fi
   [ ! -e "$STORE/.git/index.lock" ] && [ ! -d "$STORE/.git/rebase-merge" ] && [ ! -d "$STORE/.git/rebase-apply" ]
+}
+# index_lock_free LOCK: succeed only when a holder scan, bounded to five seconds
+# (and $DEADLINE), runs to its end and finds no process with LOCK open; a held
+# LOCK, a scanner error and a timeout all fail. With /proc (Linux) python3 reads
+# every thread's fd list, /proc/<pid>/task/<tid>/fd: a process whose main thread
+# has exited is a zombie leader with an unreadable /proc/<pid>/fd, while another
+# of its threads still holds the shared fds. A pid, thread or fd that vanishes
+# mid-scan, and an fd list that cannot be read (another user's process, pid 1,
+# a zombie, a non-dumpable process), are passed over. An fd matches on its
+# (st_dev, st_ino), not its link text, which differs in another mount namespace.
+# Without /proc (macOS) lsof scans: exit 1 with no pid printed is no holder.
+index_lock_free() {
+  local out rc
+  if [ -d /proc/self/fd ]; then
+    bounded 5 python3 -c '
+import os, sys
+st = os.stat(sys.argv[1])
+lock = (st.st_dev, st.st_ino)
+for pid in os.listdir("/proc"):
+    if not pid.isdigit():
+        continue
+    try:
+        tids = os.listdir("/proc/" + pid + "/task")
+    except OSError:
+        continue
+    for tid in tids:
+        fdir = "/proc/" + pid + "/task/" + tid + "/fd/"
+        try:
+            fds = os.listdir(fdir)
+        except OSError:
+            continue
+        for fd in fds:
+            try:
+                st = os.stat(fdir + fd)
+            except OSError:
+                continue
+            if (st.st_dev, st.st_ino) == lock:
+                sys.exit(1)
+' "$1" >/dev/null 2>&1
+    return
+  fi
+  out=$(bounded 5 lsof -t -n -P -- "$1" 2>/dev/null)
+  rc=$?
+  [ "$rc" = 1 ] && [ -z "$out" ]
 }
 # store_lock SECS: take the lock within SECS seconds (and by $DEADLINE), then
 # recover; on failure hold nothing. A directory at the lock path is the earlier
