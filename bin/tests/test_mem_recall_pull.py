@@ -146,10 +146,12 @@ class HangTests(Base):
         self.assertGreater(elapsed, 1.9, "the fetch ended before its two-second bound, so the hang was not exercised")
 
         self.assertTrue(pids.exists() and pids.read_text().split(), "the ssh shim never ran")
+        self.assertTrue(all(alive(int(p)) for p in pids.read_text().split()), "the hook killed the fetch")
         self.assertIn(" recall pull: timeout", (store / "reports/sync.log").read_text())
 
 
-# Relays upload-pack's output 64 KiB per 20 ms, about 3 MB/s, so the 15 MB fetch below outlasts the two-second wait.
+# Relays upload-pack's output at about 3 MB/s whatever the pipe's chunk size, so the 15 MB fetch below outlasts
+# the two-second wait and still ends well inside the 40 s deadline.
 SLOW_RELAY = """import sys, time
 while True:
     b = sys.stdin.buffer.read1(65536)
@@ -157,7 +159,7 @@ while True:
         break
     sys.stdout.buffer.write(b)
     sys.stdout.buffer.flush()
-    time.sleep(0.02)
+    time.sleep(len(b) / 3000000)
 """
 
 
