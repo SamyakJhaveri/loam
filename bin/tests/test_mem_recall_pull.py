@@ -1,10 +1,14 @@
 """The SessionStart recall hook's store pull leaves the store as it was when the pull fails (#177).
 
-mem-recall.sh pulls the memory store from its origin before it builds the manifest; its fetch is bounded to two seconds.
+mem-recall.sh pulls the memory store from its origin before it builds the manifest; it waits at most two seconds
+for its fetch and never kills it (#680).
 ConflictTests: origin and the store changed the same line, so the rebase conflicts; abort() must undo it, leaving
 no rebase in progress, HEAD, the working tree and the local commit unchanged, and one line in reports/sync.log.
-HangTests: an ssh remote whose `ssh` writes its pid and sleeps; on the time bound killpg must kill the whole
-pull group, so the hook returns near the bound and the ssh grandchild is gone. No network.
+HangTests: an ssh remote whose `ssh` writes its pid and sleeps; the hook returns after its two-second wait and
+within its five-second timeout and logs the timeout, though the fetch is still running.
+SlowFetchTests: a local remote whose upload-pack relays its output slowly, ahead by more than 100 objects so the
+fetch runs index-pack; the hook returns within its bound, then the fetch lands the remote's commit in origin/main
+and leaves no tmp_pack_* in the store (a killed index-pack leaves one). No network.
 """
 
 from __future__ import annotations
@@ -13,6 +17,7 @@ import json
 import os
 import pathlib
 import subprocess
+import sys
 import tempfile
 import time
 import unittest
@@ -110,21 +115,26 @@ class ConflictTests(Base):
 
 
 class HangTests(Base):
-    def test_a_hung_ssh_remote_is_killed_whole_within_the_bound(self) -> None:
+    def test_a_hung_ssh_remote_does_not_hold_the_hook_past_its_bound(self) -> None:
         store = self.top / "store"
         git("init", "-q", str(store), cwd=self.top)
         git("remote", "add", "origin", "ssh://git@memstore.invalid/store.git", cwd=store)
         pids = self.top / "ssh.pids"
         shim = self.top / "fake-ssh"
-        shim.write_text(f"#!/bin/sh\necho $$ >> '{pids}'\nexec sleep 60\n")
+        # The shim records its parent too, the fetch's git, which the hook leaves running.
+        shim.write_text(f"#!/bin/sh\necho $$ $PPID >> '{pids}'\nexec sleep 60\n")
         shim.chmod(0o755)
 
         def reap() -> None:
-            for line in pids.read_text().split() if pids.exists() else ():
+            started = [int(p) for p in pids.read_text().split()] if pids.exists() else []
+            for pid in started:
                 try:
-                    os.kill(int(line), 9)
+                    os.kill(pid, 9)
                 except ProcessLookupError:
                     pass
+            deadline = time.monotonic() + 5
+            while any(alive(p) for p in started) and time.monotonic() < deadline:
+                time.sleep(0.1)
         self.addCleanup(reap)
 
         # GIT_SSH_VARIANT=ssh skips git's `ssh -G` probe, so the only ssh call is the fetch's.
@@ -135,13 +145,67 @@ class HangTests(Base):
         self.assertLess(elapsed, 5, "the hook overran its five-second timeout")
         self.assertGreater(elapsed, 1.9, "the fetch ended before its two-second bound, so the hang was not exercised")
 
-        started = [int(p) for p in pids.read_text().split()]
-        self.assertTrue(started, "the ssh shim never ran")
-        deadline = time.monotonic() + 5
-        while any(alive(p) for p in started) and time.monotonic() < deadline:
-            time.sleep(0.1)
-        self.assertEqual([p for p in started if alive(p)], [], "an ssh grandchild outlived the hook")
+        self.assertTrue(pids.exists() and pids.read_text().split(), "the ssh shim never ran")
         self.assertIn(" recall pull: timeout", (store / "reports/sync.log").read_text())
+
+
+# Relays upload-pack's output 64 KiB per 20 ms, about 3 MB/s, so the 15 MB fetch below outlasts the two-second wait.
+SLOW_RELAY = """import sys, time
+while True:
+    b = sys.stdin.buffer.read1(65536)
+    if not b:
+        break
+    sys.stdout.buffer.write(b)
+    sys.stdout.buffer.flush()
+    time.sleep(0.02)
+"""
+
+
+class SlowFetchTests(Base):
+    def test_a_fetch_slower_than_the_wait_lands_after_the_hook_and_leaves_no_temp_pack(self) -> None:
+        remote = self.top / "remote.git"
+        git("init", "-q", "--bare", str(remote), cwd=self.top)
+        prod = self.top / "prod"
+        git("init", "-q", str(prod), cwd=self.top)
+        git("commit", "-q", "--allow-empty", "-m", "base", cwd=prod)
+        git("push", "-q", str(remote), "main", cwd=prod)
+        store = self.top / "store"
+        git("clone", "-q", str(remote), str(store), cwd=self.top)
+
+        # 120 incompressible files: over fetch's 100-object unpack limit, so the fetch keeps a pack via index-pack.
+        (prod / "t").mkdir()
+        for i in range(120):
+            (prod / "t" / str(i)).write_bytes(os.urandom(131072))
+        git("add", "t", cwd=prod)
+        git("commit", "-q", "-m", "big", cwd=prod)
+        git("push", "-q", str(remote), "main", cwd=prod)
+        big = git("rev-parse", "HEAD", cwd=prod)
+
+        relay = self.top / "slow.py"
+        relay.write_text(SLOW_RELAY)
+        uploadpack = self.top / "slow-upload-pack"
+        uploadpack.write_text(f"#!/bin/sh\ngit upload-pack \"$@\" | '{sys.executable}' '{relay}'\n")
+        uploadpack.chmod(0o755)
+        git("config", "remote.origin.uploadpack", str(uploadpack), cwd=store)
+
+        start = time.monotonic()
+        r = recall(store, self.cwd)
+        elapsed = time.monotonic() - start
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertLess(elapsed, 5, "the hook overran its five-second timeout")
+        self.assertIn(" recall pull: timeout", (store / "reports/sync.log").read_text())
+
+        packdir = store / ".git/objects/pack"
+
+        def landed() -> bool:
+            ok = subprocess.run(["git", "merge-base", "--is-ancestor", big, "refs/remotes/origin/main"],
+                                cwd=store, env=GIT_ENV, capture_output=True, timeout=30).returncode == 0
+            return ok and not list(packdir.glob("tmp_pack_*"))
+        deadline = time.monotonic() + 40
+        while not landed() and time.monotonic() < deadline:
+            time.sleep(0.5)
+        self.assertEqual([p.name for p in packdir.glob("tmp_pack_*")], [], "the fetch left a temp pack")
+        self.assertTrue(landed(), "the fetch never landed the remote's commit in origin/main")
 
 
 if __name__ == "__main__":
