@@ -28,4 +28,4 @@ The `bootstrap-cc-setup` skill that wrote it for non-Loam repos is parked.
 
 Semver in `.claude-plugin/plugin.json`, kept equal to the `sam-cc-setup` entry in `cultivation/marketplace/.claude-plugin/marketplace.json`.
 Bump both by hand when plugin content changes, and record the change in `cultivation/marketplace/UPGRADING.md`.
-`bin/release.sh` writes only the top-level `VERSION` (the Copier template version) and never touches either plugin version field.
+The `release/X.Y.Z` PR bumps only the top-level `VERSION` (the Copier template version), and `bin/release.sh` writes no file and never touches either plugin version field.

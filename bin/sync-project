@@ -61,6 +61,12 @@ done
 [ -d "$LOAM" ] || die "no Loam checkout at $LOAM"
 LOAM="$(cd "$LOAM" && pwd)"
 SHA="$(git -C "$LOAM" rev-parse --verify --quiet "${REF:-HEAD}^{commit}")" || die "no commit ${REF:-HEAD} in $LOAM"
+# Copier records `git describe --tags` of its template clone as _commit, so a snapshot tag nearer
+# than the last release would become the project's pin. A commit with no tag below it passes.
+near="$(git -C "$LOAM" describe --tags --abbrev=0 "$SHA" 2>/dev/null || true)"
+if [ -n "$near" ] && ! [[ "$near" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+  die "the nearest tag to ${SHA:0:8} is $near, not a release tag v<X.Y.Z>, so Copier would record it as _commit; sync a commit whose nearest tag is a release"
+fi
 BRANCH="${BRANCH:-loam-sync/${SHA:0:8}}"
 if [ -n "$RULINGS" ]; then
   [ -f "$RULINGS" ] || die "no rulings file at $RULINGS"
