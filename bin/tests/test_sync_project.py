@@ -455,6 +455,7 @@ class SyncProjectTests(unittest.TestCase):
                 self.assertFalse((self.work / "project").exists())
                 self.assertFalse((self.work / "copier.log").exists())
                 self.assertEqual([], self.claude_calls())
+        git("tag", "archive/old", "v1.0.0", cwd=copy)  # an older snapshot below the release does not refuse
         git("tag", "v1.1.0", self.sha, cwd=copy)
         self.work, self.claude_log = self.base / "work-release", self.base / "claude-release.log"
         r = self.sync("--dry-run", loam=copy, sha=c3)
