@@ -6,6 +6,8 @@
 # running it, so the owner runs it himself.
 set -u
 command -v timeout > /dev/null || { echo "limit-alarm-install needs timeout(1) (GNU coreutils) to bound each run"; exit 1; }
+lead=$HOME/.local/state/distbench/limit-alarm/lead
+[ -f "${CLAUDE_ACCOUNTS_DIR:-$HOME/.config/claude-accounts}/$(cat "$lead" 2>/dev/null).token" ] || { echo "FAILED: nothing installed, $lead is missing or names no stored account; write the account the lead runs on there (echo <account> > $lead) and run this again"; exit 1; }
 mkdir -p "$HOME/.distbench"; cp "$(dirname "$0")/limit-alarm" "$HOME/.distbench/la-new.sh"
 export TZ=America/Los_Angeles
 D=$HOME/.distbench/la-test; rm -rf "$D"; mkdir -p "$D"
@@ -13,14 +15,14 @@ now=$(date +%s)
 err='{"type":"assistant","uuid":"%s","sessionId":"%s","isApiErrorMessage":true,"error":"rate_limit","message":{"content":[{"type":"text","text":"You'"'"'ve hit your monthly spend limit · raise it at https://claude.ai/settings/usage?from=cc_cli_limit_message · your weekly limit resets 6am (America/Los_Angeles)"}]}}'
 ok='{"type":"assistant","uuid":"a2","sessionId":"%s","message":{"content":[{"type":"text","text":"working"}]}}'
 usr='{"type":"user","uuid":"u1","message":{"content":"relayed: You'"'"'ve hit your limit"}}'
-setup() { # scenario dir, active account
+setup() { # scenario dir, active account (the lead runs on it too)
   mkdir -p "$1/acc" "$1/proj" "$1/state"
   for n in gmail npds uci; do echo "fake-$n" > "$1/acc/$n.token"; done
-  echo "$2" > "$1/acc/active"; echo '{}' > "$1/settings.json"
+  echo "$2" > "$1/acc/active"; echo "$2" > "$1/state/lead"; echo '{}' > "$1/settings.json"
   tmux kill-session -t la-test-pane 2>/dev/null; tmux new -d -s la-test-pane; tmux send-keys -t la-test-pane 'sleep 1000' Enter; sleep 1
 }
-run() { # scenario dir, seconds
-  T=la-test-pane S=$1/state PROJ=$1/proj ALERT="echo ALERT:" LAUNCH="echo FAKE-CLAUDE" STOPF=$1/STOP PAIR=$1/pair-status.json \
+run() { # scenario dir, seconds; the runs root is the scenario's, so a test never takes the host's switch lock or cooldown
+  FACTORY_RUNS_ROOT=$1/runs T=la-test-pane S=$1/state PROJ=$1/proj ALERT="echo ALERT:" LAUNCH="echo FAKE-CLAUDE" STOPF=$1/STOP PAIR=$1/pair-status.json \
     IDLE_S=1800 ORDER="gmail uci npds" BOOT_S=2 BACK=${BACK:-0} \
     CLAUDE_ACCOUNTS_DIR=$1/acc CLAUDE_SETTINGS_FILE=$1/settings.json timeout "$2" bash "$HOME/.distbench/la-new.sh"
 }
@@ -125,5 +127,5 @@ if [ "$fail" = 0 ]; then
   tmux new -d -s limit-alarm 'bash ~/.distbench/limit-alarm.sh 2>&1 | tee -a ~/.local/state/distbench/limit-alarm.log'
   sleep 3; echo "PASS: installed; tmux limit-alarm restarted:"; tail -3 "$HOME/.local/state/distbench/limit-alarm.log"
 else
-  echo "FAILED: nothing installed; the old alarm keeps running"
+  echo "FAILED: nothing installed; the old alarm keeps running"; exit 1
 fi
