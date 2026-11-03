@@ -139,9 +139,23 @@ fi
 # holds while any process keeps fd 9 open, and the kernel frees it when the last
 # one exits: no stale lock. Every store git call keeps fd 9, so killing this
 # shell never frees the lock while its git still runs; the -c flags keep git
-# from starting a gc, maintenance or fsmonitor daemon that would hold it on.
+# from starting a gc, maintenance or fsmonitor daemon that would hold it on,
+# and commit.gpgsign=false keeps a global signing setting with no usable key
+# from failing every commit, which would leave captures in the spool for good.
+# Store git runs no hook (NOHOOKS), so no hook child can inherit fd 9 and keep
+# the lock after git returns: core.hooksPath=/dev/null turns off the store's,
+# global and template hook files, and hook.<name>.enabled=false each hook
+# defined in any config (git 2.54 and later), which core.hooksPath misses. That
+# goes through --config-env, since -c splits at the first `=` and a hook name
+# may hold one; a nameless `[hook] command` is the hook named "".
+export LOAM_MEM_FALSE=false
+NOHOOKS=(-c core.hooksPath=/dev/null)
+while IFS= read -r -d '' k; do
+  case $k in hook.command | hook.event) k= ;; *) k=${k#hook.}; k=${k%.*} ;; esac
+  NOHOOKS+=("--config-env=hook.$k.enabled=LOAM_MEM_FALSE")
+done < <(git -C "$STORE" config -z --name-only --get-regexp '^hook\.(.*\.)?(command|event)$' 2>/dev/null)
 SGIT=(git -C "$STORE" -c gc.auto=0 -c maintenance.auto=false -c core.fsmonitor=false
-  -c user.name=memstore -c user.email=memstore@localhost)
+  -c commit.gpgsign=false -c user.name=memstore -c user.email=memstore@localhost "${NOHOOKS[@]}")
 # bounded SECS CMD...: run CMD in its own process group and kill the group after
 # SECS seconds, or at $DEADLINE (an epoch time) when that comes first; exit 124.
 bounded() {
