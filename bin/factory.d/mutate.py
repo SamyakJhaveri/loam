@@ -5,7 +5,10 @@ Usage:
   mutate.py <clean-root> <out-root>
 
 Reads <clean-root>/judge/*/ and <clean-root>/reviewer/*/, each a frozen grader prompt.md
-with its expected.json (bin/factory eval-freeze). Every base gets a byte copy at
+with its expected.json (bin/factory eval-freeze). The planted set's real pass cases beside the clean root
+(<clean-root>/../planted/judge/*/ whose expected.json has verdict pass and no defect_class; evals/planted/judge/
+for evals/clean) are judge bases too, for the gamed-check class only; a clean root with no such directory beside
+it adds none. Every base gets a byte copy at
 <out-root>/<grader>/<case>--clean/ and, per defect class that applies, a copy with one
 planted defect at <out-root>/<grader>/<case>--<class>/, whose expected.json labels it.
 Reviewer bases also feed <out-root>/lean-critic/. A class with no line to edit is left
@@ -490,6 +493,19 @@ SKIP = {"logic-bug": LOGIC_BUG_TRIPS, "vacuous-check": CLOSED_SCOPE, "out-of-sco
 
 # ---- main ----------------------------------------------------------------------
 
+def planted_pass(clean):
+    """The real pass cases of the planted set beside the clean root (evals/planted/judge/ for evals/clean): every case
+    directory whose expected.json has verdict pass and no defect_class. None when that directory is absent."""
+    root = clean.parent / "planted" / "judge"
+    out = []
+    for d in sorted(root.glob("*")) if root.is_dir() else ():
+        if (d / "prompt.md").is_file() and (d / "expected.json").is_file():
+            exp = json.loads((d / "expected.json").read_text(encoding="utf-8"))
+            if exp.get("verdict") == "pass" and "defect_class" not in exp:
+                out.append(d)
+    return out
+
+
 def write(path, text):
     with open(path, "w", encoding="utf-8", newline="") as fh:
         fh.write(text)
@@ -509,7 +525,8 @@ def main(argv):
     counts = {}
     for src, graders in (("judge", ("judge",)), ("reviewer", ("reviewer", "lean-critic"))):
         bases = sorted(d for d in (clean / src).glob("*") if (d / "prompt.md").is_file() and (d / "expected.json").is_file())
-        for base in bases:
+        extra = planted_pass(clean) if src == "judge" else []
+        for base in bases + extra:
             with open(base / "prompt.md", encoding="utf-8", newline="") as fh:
                 lines = fh.read().split("\n")
             spans = sections(lines)
@@ -531,12 +548,14 @@ def main(argv):
             for name, edit, planted, rows in CLASSES:
                 targets = [g for g in graders if g in planted]
                 # A `<base>--labeled` copy (CASES.md) keeps its base's skip lists: only decisions.md labels changed.
+                # A planted pass case feeds gamed-check only: the other classes' labels rest on the hand-checked lists
+                # above, which name evals/clean bases.
                 made = (edit(list(lines), spans) if clean_base and targets and base.name.split("--")[0] not in SKIP.get(name, ())
-                        else None)
+                        and (base not in extra or name == "gamed-check") else None)
                 if made is None:
                     continue
                 for g in targets:
-                    exp = {"source": f"{src}/{base.name}", "defect_class": name}
+                    exp = {"source": f"{'planted/' if base in extra else ''}{src}/{base.name}", "defect_class": name}
                     if exp0.get("tree_base"):
                         exp["tree_base"] = exp0["tree_base"]  # case_tree rebuilds the mutant where its base was graded
                     if g == "judge":
