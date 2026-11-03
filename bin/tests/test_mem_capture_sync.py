@@ -14,11 +14,15 @@ process owns, and none may run one of the git hooks A's store sets.
 LockTests: a capture that cannot take the store lock in time keeps its data in the spool under .git and the
 next holder lands it; a directory left at the lock path by the earlier mkdir lock does not block captures; a trace
 the store's exclude file ignores is still committed, and stays spooled until a commit holds it. A capture removes an
-index.lock only when a holder scan that ran to its end finds no process with it open, so a git outside the store lock,
-paused holding it, keeps it and the capture spools; an index.lock no process holds is removed at once.
+index.lock only when a holder scan that ran to its end finds no holder, so a git outside the store lock, paused with it
+open or (`git commit -a` in its editor) working in the store, keeps it and the capture spools; an index.lock no process
+holds is removed at once.
 IndexLockTests (Linux, where the scan reads /proc): a process whose main thread has exited, holding index.lock in
 another thread, keeps it, and so does a holder scan made to fail or stall at its listing of /proc; each such capture
 spools its entry within the hook timeout, and the next capture whose scan ends clear removes the lock and lands both.
+ScanTests: the three copies of the store lock block are identical, and each one's scan, sourced on its own, finds a
+process with index.lock open and a git working in the store (not another process there) on /proc, and on the lsof
+branch, reached with a stand-in lsof, keeps the lock when lsof reports a holder, fails, stalls or is missing.
 RecallBoundTests: a recall whose rebase hangs ends within its five-second hook timeout and leaves main clean.
 OverlapTests: of two overlapping captures of one session, the one that read the longer transcript wins, whichever
 publishes last.
@@ -626,10 +630,9 @@ class ScanTests(Base):
     def test_lsof_finding_no_holder_clears_the_lock(self) -> None:
         path = self.fake_lsof_path()
         for script in self.SCRIPTS:
-            with self.subTest(script.name):
-                self.assertEqual(self.scan(script, True, path, LSOF_LOCK="1", LSOF_CWD="1"), 0)
-                self.assertEqual(self.log.read_text().splitlines(), [
-                    f"-t -n -P -- {self.lock}", f"-t -n -P -a -c git -d cwd -- {self.store}"])
+            self.assertEqual(self.scan(script, True, path, LSOF_LOCK="1", LSOF_CWD="1"), 0, script.name)
+            self.assertEqual(self.log.read_text().splitlines(), [
+                f"-t -n -P -- {self.lock}", f"-t -n -P -a -c git -d cwd -- {self.store}"], script.name)
 
     def test_lsof_reporting_a_holder_or_failing_keeps_the_lock(self) -> None:
         path = self.fake_lsof_path()
@@ -637,17 +640,16 @@ class ScanTests(Base):
                  "a git in the store": ("1", "0:4242"), "an error on the cwd query": ("1", "2")}
         for script in self.SCRIPTS:
             for what, (lock, cwd) in cases.items():
-                with self.subTest(script.name, lsof=what):
-                    self.assertNotEqual(self.scan(script, True, path, LSOF_LOCK=lock, LSOF_CWD=cwd), 0)
+                self.assertNotEqual(self.scan(script, True, path, LSOF_LOCK=lock, LSOF_CWD=cwd), 0,
+                                    f"{script.name}: lsof reporting {what} cleared the lock")
 
     def test_a_stalled_lsof_keeps_the_lock_at_the_deadline(self) -> None:
         path = self.fake_lsof_path()
         for script in self.SCRIPTS:
-            with self.subTest(script.name):
-                t0 = time.monotonic()
-                self.assertNotEqual(self.scan(script, True, path, LSOF_LOCK="sleep", LSOF_CWD="1",
-                                              DEADLINE=str(time.time() + 1)), 0)
-                self.assertLess(time.monotonic() - t0, 5, "the lsof scan outran $DEADLINE")
+            t0 = time.monotonic()
+            self.assertNotEqual(self.scan(script, True, path, LSOF_LOCK="sleep", LSOF_CWD="1",
+                                          DEADLINE=str(time.time() + 1)), 0, script.name)
+            self.assertLess(time.monotonic() - t0, 5, f"{script.name}: the lsof scan outran $DEADLINE")
 
     def test_no_lsof_keeps_the_lock(self) -> None:
         bin_ = self.top / "no-lsof-bin"
@@ -655,46 +657,37 @@ class ScanTests(Base):
         for tool in ("python3", "git"):
             (bin_ / tool).symlink_to(os.path.realpath(shutil.which(tool)))
         for script in self.SCRIPTS:
-            with self.subTest(script.name):
-                self.assertNotEqual(self.scan(script, True, str(bin_)), 0)
+            self.assertNotEqual(self.scan(script, True, str(bin_)), 0, f"{script.name}: no lsof cleared the lock")
+
+    def scan_beside(self, script: pathlib.Path, cmd: list[str], ready) -> int:
+        # Scan while cmd runs in the store, once ready(pid) holds.
+        p = subprocess.Popen(cmd, cwd=self.store)
+        try:
+            self.until(lambda: ready(p.pid), f"{cmd[0]} to start")
+            return self.scan(script)
+        finally:
+            p.kill()
+            p.wait()
 
     @unittest.skipUnless(os.path.isdir("/proc/self/fd"), "the /proc scan reads /proc")
     def test_the_proc_scan_finds_an_open_lock_and_a_git_in_the_store(self) -> None:
-        fake_git = self.top / "git-bin/git"  # sleep under git's name, run in the store
+        sleep = os.path.realpath(shutil.which("sleep"))
+        fake_git = self.top / "git-bin/git"  # sleep under git's name
         fake_git.parent.mkdir()
-        shutil.copy(shutil.which("sleep"), fake_git)
-        holders = {
-            "the lock open": ["python3", "-c", "import sys, time; f = open(sys.argv[1]); print(flush=True); time.sleep(60)",
-                              str(self.lock)],
-            "a git in the store": [str(fake_git), "60"],
-        }
+        shutil.copy(sleep, fake_git)
+        opened = self.top / "opened"
+        hold = ["python3", "-c", "import sys, time; f = open(sys.argv[1]); open(sys.argv[2], 'w').close(); time.sleep(60)",
+                str(self.lock), str(opened)]
+        runs = lambda exe: lambda pid: os.readlink(f"/proc/{pid}/exe") == exe
         for script in self.SCRIPTS:
-            with self.subTest(script.name, holder="none"):
-                self.assertEqual(self.scan(script), 0)
-            for what, cmd in holders.items():
-                with self.subTest(script.name, holder=what):
-                    p = subprocess.Popen(cmd, cwd=self.store, stdout=subprocess.PIPE)
-                    try:
-                        if what == "the lock open":
-                            p.stdout.readline()
-                        else:
-                            self.until(lambda: os.path.exists(f"/proc/{p.pid}/exe")
-                                       and os.readlink(f"/proc/{p.pid}/exe") == str(fake_git), "the fake git to start")
-                        self.assertNotEqual(self.scan(script), 0)
-                    finally:
-                        p.kill()
-                        p.wait()
-                        p.stdout.close()
-            with self.subTest(script.name, holder="a shell in the store"):
-                p = subprocess.Popen(["sleep", "60"], cwd=self.store)
-                try:
-                    sleep = os.path.realpath(shutil.which("sleep"))
-                    self.until(lambda: os.readlink(f"/proc/{p.pid}/exe") == sleep, "sleep to start")
-                    self.assertEqual(self.scan(script), 0, "a process in the store that is not git counted as a holder")
-                finally:
-                    p.kill()
-                    p.wait()
-
+            opened.unlink(missing_ok=True)
+            self.assertEqual(self.scan(script), 0, f"{script.name}: an index.lock no one holds was kept")
+            self.assertNotEqual(self.scan_beside(script, hold, lambda pid: opened.exists()), 0,
+                                f"{script.name}: a process with the index.lock open was missed")
+            self.assertNotEqual(self.scan_beside(script, [str(fake_git), "60"], runs(str(fake_git))), 0,
+                                f"{script.name}: a git working in the store was missed")
+            self.assertEqual(self.scan_beside(script, ["sleep", "60"], runs(sleep)), 0,
+                             f"{script.name}: a process in the store that is not git counted as a holder")
 
 
 class RecallBoundTests(Base):
