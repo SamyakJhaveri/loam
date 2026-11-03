@@ -4,11 +4,12 @@ Two clones of one bare store stand in for two machines. Machine A captures and p
 behind, captures next. Without the pull B's push is rejected and its capture never leaves B; with it B's
 capture lands on the remote beside A's, both INDEX lines kept by the union merge. No network.
 
-PausedRebaseTests: a post-checkout hook in A's store holds A's background rebase open mid-rebase (HEAD detached,
-rebase in progress), so another hook can run inside that window: a second capture, a recall whose fetch fails,
-mem-weekly.sh, a SIGKILL of only the sync's shell, or a SIGKILL of the whole sync (with or without a stale
-index.lock, or one that cannot be removed) followed by the next capture. Each must leave every capture on main
-and, once the remote is reachable, on the remote; none may write into, or abort, a rebase another process owns.
+PausedRebaseTests: a smudge filter in A's store holds A's background rebase open mid-rebase (HEAD detached,
+rebase in progress) while it writes s2's trace, so another hook can run inside that window: a second capture, a
+recall whose fetch fails, mem-weekly.sh, a SIGKILL of only the sync's shell, or a SIGKILL of the whole sync (with or
+without a stale index.lock, or one that cannot be removed) followed by the next capture. Each must leave every
+capture on main and, once the remote is reachable, on the remote; none may write into, or abort, a rebase another
+process owns, and none may run one of the git hooks A's store sets.
 
 LockTests: a capture that cannot take the store lock in time keeps its data in the spool under .git and the
 next holder lands it; a directory left at the lock path by the earlier mkdir lock does not block captures; a trace
@@ -18,6 +19,10 @@ OverlapTests: of two overlapping captures of one session, the one that read the 
 publishes last.
 DeadlineTests: a clean filter that hangs `git add` and `git status` cannot hold capture or recall past its hook
 timeout; the capture stays spooled and lands once the filter returns.
+NoHookTests: store git runs no git hook, even one the store's core.hooksPath names, so a hook's background child
+cannot keep the store lock after a capture, a recall (its fetch and rebase included) or mem-weekly.sh returns.
+ConfigHookTests: the same for hooks defined in the store's or the global config (git 2.54 and later).
+SigningTests: a global commit.gpgsign with no usable key does not keep a capture in the spool.
 """
 
 from __future__ import annotations
@@ -28,18 +33,20 @@ import gzip
 import json
 import os
 import pathlib
+import shutil
 import signal
 import subprocess
 import tempfile
 import time
 import unittest
+from unittest import mock
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
 HOOK = ROOT / "seed/.claude/hooks/mem-capture.sh"
 RECALL = ROOT / "seed/.claude/hooks/mem-recall.sh"
 WEEKLY = ROOT / "seed/bin/mem-weekly.sh"
 
-# Commits are made with a fixed identity, and git's background maintenance is off so TemporaryDirectory
+# Commits are made with a fixed identity, and git's background maintenance is off so the scratch directory's
 # cleanup does not race a detached `git maintenance run --auto`.
 GIT_ENV = {
     **os.environ,
@@ -61,9 +68,9 @@ def git(*args: str, cwd: pathlib.Path) -> str:
 
 class Base(unittest.TestCase):
     def setUp(self) -> None:
-        tmp = tempfile.TemporaryDirectory()
-        self.addCleanup(tmp.cleanup)
-        self.top = pathlib.Path(tmp.name).resolve()
+        # A background sync can still be writing under .git after its push lands, so a cleanup race is no failure.
+        self.top = pathlib.Path(tempfile.mkdtemp()).resolve()
+        self.addCleanup(shutil.rmtree, self.top, ignore_errors=True)
         self.cwd = self.top / "project"
         self.cwd.mkdir()
         self.origin = self.top / "origin.git"
@@ -125,17 +132,16 @@ class Base(unittest.TestCase):
         git("clone", "-q", str(self.origin), str(b), cwd=self.top)
         return a, b
 
-    def pause_checkout(self, store: pathlib.Path) -> None:
-        # While the pause file exists, the next checkout in this store (a rebase onto origin/main) writes the
-        # hook's pid and blocks until the go file appears.
+    def pause_rebase(self, store: pathlib.Path, sid: str) -> None:
+        # While the pause file exists, the next write of sid's trace into this store's working tree (by a rebase
+        # onto origin/main) runs a smudge filter that writes its pid and blocks until the go file appears. Store
+        # git runs no hooks, so the pause is a filter, which runs inside the rebase while git holds index.lock.
         self.pause, self.paused, self.go = self.top / "pause", self.top / "paused", self.top / "go"
-        hook = store / ".git/hooks/post-checkout"
-        hook.write_text(f"""#!/bin/sh
-[ -f '{self.pause}' ] || exit 0
-rm -f '{self.pause}'; echo $$ > '{self.paused}'
-while [ ! -f '{self.go}' ]; do sleep 0.05; done
-""")
-        hook.chmod(0o755)
+        git("config", "filter.pause.smudge",
+            f"if [ -f '{self.pause}' ]; then rm -f '{self.pause}'; echo $$ > '{self.paused}';"
+            f" while [ ! -f '{self.go}' ]; do sleep 0.05; done; fi; cat", cwd=store)
+        (store / ".git/info").mkdir(exist_ok=True)
+        (store / ".git/info/attributes").write_text(f"traces/project/*-{sid}.jsonl.gz filter=pause\n")
         self.addCleanup(self.go.touch)
         self.pause.touch()
 
@@ -152,6 +158,18 @@ while [ ! -f '{self.go}' ]; do sleep 0.05; done
             return git("show", "main:traces/project/INDEX.md", cwd=self.origin)
         except subprocess.CalledProcessError:
             return ""
+
+    def hooks(self, store: pathlib.Path, *names: str, child: bool = True) -> pathlib.Path:
+        # Each hook logs its name and, with child, starts a background child that would keep any fd it inherited,
+        # fd 9 too.
+        hooks, self.ran = self.top / "hooks", self.top / "hook-ran"
+        hooks.mkdir()
+        tail = "sleep 20 > /dev/null 2>&1 &\n" if child else ""
+        for name in names:
+            (hooks / name).write_text(f"#!/bin/sh\nbasename \"$0\" >> '{self.ran}'\n{tail}")
+            (hooks / name).chmod(0o755)
+        git("config", "core.hooksPath", str(hooks), cwd=store)
+        return hooks
 
     def wait_for_remote(self, *sids: str) -> str:
         # The push runs in the background, so poll the bare repo; the bound only matters when it never lands.
@@ -191,11 +209,14 @@ class PausedRebaseTests(Base):
     def setUp(self) -> None:
         super().setUp()
         self.a, b = self.two_stores()
+        # No store hook may run in A's capture, its background sync, recall or mem-weekly.sh.
+        self.hooks(self.a, "pre-commit", "prepare-commit-msg", "commit-msg", "post-commit", "reference-transaction",
+                   "post-checkout", "post-rewrite", "pre-rebase", "pre-push", "post-merge", "post-index-change", child=False)
         self.capture(self.a, "s0")
         self.wait_for_remote("s0")
         self.capture(b, "s1")
         self.assertIn(" | s1 | ", self.wait_for_remote("s0", "s1"))  # A is now behind the remote
-        self.pause_checkout(self.a)
+        self.pause_rebase(self.a, "s2")  # the rebase replays A's own s2 commit with HEAD detached
         self.capture(self.a, "s2")
         self.until(self.paused.exists, "A's sync to reach its rebase")
         self.assertTrue((self.a / ".git/rebase-merge").exists())
@@ -206,6 +227,7 @@ class PausedRebaseTests(Base):
     def assert_clean_main(self) -> None:
         self.assertEqual(git("symbolic-ref", "HEAD", cwd=self.a), "refs/heads/main")
         self.assertFalse((self.a / ".git/rebase-merge").exists(), "rebase left in progress")
+        self.assertFalse(self.ran.exists(), f"a store hook ran: {self.ran.read_text() if self.ran.exists() else ''}")
 
     def assert_rebase_untouched(self) -> None:
         self.assertTrue((self.a / ".git/rebase-merge").exists(), "the paused rebase was aborted")
@@ -235,7 +257,7 @@ class PausedRebaseTests(Base):
         self.assert_clean_main()
 
     def sync_chain(self) -> list[int]:
-        # From the paused hook up its parents (git rebase, the bound's python3 if any) to the sync's bash shell.
+        # From the paused filter up its parents (git rebase, the bound's python3 if any) to the sync's bash shell.
         chain = [int(self.paused.read_text())]
         while True:
             ppid = int(subprocess.run(["ps", "-o", "ppid=", "-p", str(chain[-1])], capture_output=True,
@@ -246,9 +268,10 @@ class PausedRebaseTests(Base):
                 return chain
 
     def kill_the_sync(self) -> None:
-        for pid in self.sync_chain():
+        # Outermost first: a git that outlives its filter falls back to the unfiltered blob and goes on.
+        for pid in reversed(self.sync_chain()):
             os.kill(pid, signal.SIGKILL)
-        time.sleep(0.3)  # the hook's last `sleep 0.05` child exits
+        time.sleep(0.3)  # the filter's last `sleep 0.05` child exits
 
     def test_killing_only_the_sync_shell_keeps_its_live_rebase_locked(self) -> None:
         os.kill(self.sync_chain()[-1], signal.SIGKILL)
@@ -274,6 +297,7 @@ class PausedRebaseTests(Base):
 
     def test_an_unrecoverable_rebase_keeps_the_capture_in_the_spool(self) -> None:
         self.kill_the_sync()
+        (self.a / ".git/index.lock").unlink()  # the killed git's, left while the filter paused it
         (self.a / ".git/index.lock").mkdir()  # an index.lock nothing can remove, so the abort fails
         self.capture(self.a, "s5")
         self.assert_rebase_untouched()
@@ -387,7 +411,7 @@ class RecallBoundTests(Base):
         self.wait_for_remote("s0")
         self.capture(b, "s1")
         self.wait_for_remote("s0", "s1")  # A is now behind the remote
-        self.pause_checkout(a)  # recall's rebase onto origin/main pauses and is never released
+        self.pause_rebase(a, "s1")  # recall's fast-forward onto origin/main pauses and is never released
         start = time.monotonic()
         self.recall(a, timeout=15)
         self.assertLess(time.monotonic() - start, 5, "recall overran its five-second hook timeout")
@@ -457,6 +481,82 @@ class DeadlineTests(Base):
         for sid in ("s1", "s2"):
             self.assertIn(f" | {sid} | ", index, f"{sid} is not on main")
         self.assertEqual(self.spool(store), [], "the spool was not drained")
+
+
+class NoHookTests(Base):
+    def assert_no_hook_and_lock_free(self, store: pathlib.Path) -> None:
+        self.assertFalse(self.ran.exists(), f"a store hook ran: {self.ran.read_text() if self.ran.exists() else ''}")
+        with open(store / ".git/loam-mem.lock", "a") as fh:
+            try:
+                fcntl.flock(fh, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            except BlockingIOError:
+                self.fail("the store lock is still held after the script returned")
+
+    def last_subject(self, store: pathlib.Path) -> str:
+        return git("log", "-1", "--format=%s", cwd=store)
+
+    def test_capture_recall_and_weekly_commit_without_running_a_hook(self) -> None:
+        store = self.top / "store"
+        git("init", "-q", str(store), cwd=self.top)
+        self.hooks(store, "post-commit")
+        self.capture(store, "s1")
+        self.assertTrue(self.last_subject(store).startswith("capture "))
+        self.assert_no_hook_and_lock_free(store)
+        (store / "handoff").mkdir()
+        (store / "handoff/project.md").write_text("a note\n")
+        self.recall(store)
+        self.assertTrue(self.last_subject(store).startswith("handoff "))
+        self.assert_no_hook_and_lock_free(store)
+        (store / "notes/project").mkdir(parents=True)
+        (store / "notes/project/n.md").write_text("a note\n")
+        self.weekly(store)
+        self.assertTrue(self.last_subject(store).startswith("weekly "))
+        self.assert_no_hook_and_lock_free(store)
+
+    def test_recall_fetch_and_rebase_reach_origin_without_running_a_hook(self) -> None:
+        a, b = self.two_stores()
+        (b / "two").write_text("two\n")
+        git("add", "two", cwd=b)
+        git("commit", "-qm", "two", cwd=b)
+        git("push", "-q", "origin", "main", cwd=b)  # A is now one commit behind the remote
+        self.hooks(a, "reference-transaction", "post-checkout")
+        self.recall(a)
+        self.assertEqual(git("rev-parse", "HEAD", cwd=a), git("rev-parse", "main", cwd=self.origin))
+        self.assert_no_hook_and_lock_free(a)
+
+
+class ConfigHookTests(NoHookTests):
+    # Git 2.54 and later also run hooks defined in config (hook.<name>.event and hook.<name>.command), which
+    # core.hooksPath does not reach. Each event gets one such hook in the store's config, and three in the global
+    # config: a dotted name, a name holding `=` and the nameless `[hook]` one. Older git runs none of them, so
+    # there the tests only show the scripts still commit with the flags these keys add.
+    def setUp(self) -> None:
+        super().setUp()
+        patcher = mock.patch.dict(GIT_ENV, {"GIT_CONFIG_GLOBAL": str(self.top / "global.gitconfig")})
+        patcher.start()
+        self.addCleanup(patcher.stop)
+
+    def hooks(self, store: pathlib.Path, *names: str) -> None:
+        self.ran = self.top / "hook-ran"
+        for name in names:
+            for scope, key in (("--local", f"hook.leak-{name}"), ("--global", f"hook.my.odd.{name}"),
+                               ("--global", f"hook.eq={name}"), ("--global", "hook")):
+                git("config", scope, "--add", f"{key}.event", name, cwd=store)
+                git("config", scope, f"{key}.command",
+                    f"echo {key}-{name} >> '{self.ran}'; sleep 20 > /dev/null 2>&1 &", cwd=store)
+
+
+class SigningTests(Base):
+    def test_a_global_commit_gpgsign_does_not_keep_the_capture_in_the_spool(self) -> None:
+        # Signing fails here (gpg.program is `false`), as it does with commit.gpgsign set and no usable key.
+        config = self.top / "global.gitconfig"
+        config.write_text("[commit]\n\tgpgsign = true\n[gpg]\n\tprogram = false\n")
+        store = self.top / "store"
+        git("init", "-q", str(store), cwd=self.top)
+        with mock.patch.dict(GIT_ENV, {"GIT_CONFIG_GLOBAL": str(config)}):
+            self.capture(store, "s1")
+        self.assertEqual(self.spool(store), [], "the capture stayed in the spool")
+        self.assertTrue(git("log", "-1", "--format=%s", cwd=store).startswith("capture "))
 
 
 if __name__ == "__main__":
