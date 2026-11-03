@@ -430,6 +430,7 @@ end_call() { echo "ended $polls_seen $reads"; }
         self.assertFalse((self.home / "calls.txt").exists(), "the driver started a call with nothing pending")
 
 
+    @LINUX_ONLY
     def test_only_samyaks_same_repo_prs_start_a_call_or_reach_pick(self) -> None:
         # Loam is public and gh names a fork PR's branch without its owner (#678): a fork's factory/<n> PR, a fork PR
         # Samyak authored and another author's same-repo PR must start no call; Samyak's same-repo PR starts one, and
