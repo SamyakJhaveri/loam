@@ -12,7 +12,7 @@ Since the 2026-08 rebuild there are three distribution mechanisms: Copier forwar
 - A plain `uvx copier update --trust` in the project still works.
   It resolves the latest tag, reads the template from the project's `_src_path`, and runs the template's tasks (see below).
 - Copier `copy` and a plain `update` resolve git TAGS, not HEAD, so nothing reaches them until `bin/release.sh <version>` tags it.
-  `bin/sync-project` takes any commit.
+  `bin/sync-project` takes any commit whose nearest tag is a release tag.
 
 ### bin/sync-project
 
@@ -75,6 +75,7 @@ After a sync to an untagged commit, `_commit` reads like `v3.0.0-361-ge90bfce0`.
 A plain `copier update` from `gh:` then refuses, because the latest tag is older and Copier does not downgrade.
 Keep using `bin/sync-project` until a newer tag exists.
 Sync only from a Loam commit that is on `main`, or is about to be merged into it: a later update renders the old side from `_commit`, so that commit must exist on GitHub.
+`bin/sync-project` refuses, before the clone, a commit whose nearest tag is not a release tag `v<X.Y.Z>`, since Copier would record that tag as `_commit`; snapshots of unpushed work go to the private archive repo, never to tags on origin.
 
 ### Sync rulings
 
