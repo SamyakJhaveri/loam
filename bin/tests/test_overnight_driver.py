@@ -297,7 +297,11 @@ class OvernightDriverTests(unittest.TestCase):
         t0 = self.utc()
         self.start_driver()
         self.assertTrue(self.wait_for(lambda: self.calls(calls)), "the driver started no call")
-        seen = (self.home / "seen.txt").read_text().splitlines()
+        # The fake claude logs its pid before it copies the file, so wait for the copy itself.
+        copy = self.home / "seen.txt"
+        self.assertTrue(self.wait_for(lambda: copy.exists() and copy.read_text().endswith("\n"), 10),
+                        "the call saw no grader-window.txt")
+        seen = copy.read_text().splitlines()
         self.assertTrue(t0 <= seen[0].removeprefix("read_at ") <= self.utc(), seen)
         self.assertEqual(seen[1:], ["exit 0", "9"], "the call started without a fresh grader-window.txt")
 
