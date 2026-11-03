@@ -20,6 +20,8 @@ AGENTS = ROOT / "cultivation/marketplace/sam-cc-setup/agents"
 
 FAKE_CLAUDE = """#!/usr/bin/env python3
 import json, sys
+if "--version" in sys.argv:
+    print("2.1.312 (Claude Code)"); sys.exit(0)
 reply = sys.stdin.read().rsplit("REPLY ", 1)[1].splitlines()[0]
 print(json.dumps({"type": "result", "subtype": "success", "is_error": False, "total_cost_usd": 0, "result": reply}))
 """
