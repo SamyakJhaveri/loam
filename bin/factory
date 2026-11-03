@@ -10,7 +10,8 @@
 #   bin/factory merge <pr> <sha>    merges the PR only when sha is its head and every check reported there passed.
 #   bin/factory next [--install]    the F9 frontier timer's step: launch the next unblocked ready-for-agent ticket.
 #   bin/factory next --frontier     prints every issue next would launch, one #N per line in launch order; changes no run.
-#   bin/factory graders-check       fails when judge.md or reviewer.md drifts from GRADER_MODEL and GRADER_EFFORT; warns STALE.
+#   bin/factory graders-check       fails when judge.md or reviewer.md drifts from GRADER_MODEL and GRADER_EFFORT; warns STALE when
+#                                   a grader is unreplayed or its replay matched no case; INFO names a partial mismatch.
 #   bin/factory skills              lists each installed pstack skill's lines that name a ~/ path or ask the user.
 #   -C <repo>, before the subcommand or right after it, points lint, run, status, stop, merge, and next at another repository (F8).
 # Lint never executes a check; it reads the body and shells out only to `bash -n`, `gh`, and python3 for the hidden-text rule.
@@ -1041,7 +1042,7 @@ FENCE='~~~~~~~~~~~~ evidence'   # fixed marker; never a per-run string (#38)
 # REPO, RUN, and LOG keep a pre-set value: the sourced-test contract (file_backlog's backlog-filed-once
 # check) passes these three in the environment, and load_ticket and cmd_run set all three before a run
 # uses them, so `bin/factory run` is unchanged.
-REPO="${REPO:-}"; ISSUE=""; KEY=""; IS_FILE=0; RUN="${RUN:-}"; ROUND=0; REVIEW_BLOCKED=0; GRADED_SHA=""; GRADER_FAILS=0
+REPO="${REPO:-}"; ISSUE=""; KEY=""; IS_FILE=0; RUN="${RUN:-}"; ROUND=0; REVIEW_BLOCKED=0; MUTATION_BLOCKED=0; GRADED_SHA=""; GRADER_FAILS=0
 LOG="${LOG:-/dev/null}"; LEDGER=""; DAILY=""; DECISIONS=""; WORKTREE=""; BRANCH=""
 # Worker kind and the Codex review stage, read from the ticket in cmd_run (F4). CODEX_REVIEW_BLOCKED is
 # separate from REVIEW_BLOCKED so a Claude-reviewer block never consumes the Codex review's one block.
@@ -1362,7 +1363,7 @@ prepare_worktree() {
 
 FROZEN_SET="factory lib.sh _common.md role-settings.json worker-settings.json checks.sh \
 judge.md reviewer.md judge.schema.json reviewer.schema.json issue.md protected.txt exempt.txt \
-factory-round.js review-output.schema.json codex-review.prompt.md unattended.md alert"
+factory-round.js review-output.schema.json codex-review.prompt.md unattended.md alert mutation_sweep.py"
 # The line freeze writes after the block, before checks.sh exits; run_checks reads output that does not end
 # on CHECKS-END as an abort (#277).
 CHECKS_END="printf '\nCHECKS-END\n'"
@@ -1378,6 +1379,7 @@ freeze() {
   cp "$ROOT/bin/factory.d/codex-review.prompt.md" "$RUN/frozen/codex-review.prompt.md"  # the Codex review reads the frozen prompt, so a mid-run edit of it cannot change the review (#38, F4)
   cp "$ROOT/bin/factory.d/unattended.md" "$RUN/frozen/unattended.md"  # the Opus 5.5 guide's "Unattended agentic runs" paragraph, appended to every Claude worker call (#210)
   cp "$ROOT/bin/factory.d/lib.sh" "$RUN/frozen/lib.sh"
+  cp "$ROOT/bin/factory.d/mutation_sweep.py" "$RUN/frozen/mutation_sweep.py"   # the sweep runs its frozen copy, so a mid-run edit cannot change it (#38)
   cp "$ROOT/bin/alert" "$RUN/frozen/alert"   # a mid-run edit of bin/alert cannot change this run's alerts
   cp "$ROOT/bin/factory.d/role-settings.json" "$RUN/frozen/role-settings.json"
   # Claude Code copies settings env over the launch env, so the worker call's model pins also go in this frozen
@@ -2658,11 +2660,51 @@ tree_signature() { # dir -> 64 hex
   { git -C "$1" rev-parse HEAD; git -C "$1" status --porcelain; } | sha256_of | cut -d' ' -f1
 }
 
+# The mutation sweep's one line for the log and the PR body: its counts, or why it ran no edit.
+MUTATION_SUMMARY='if .reason then "not run: " + .reason else "\([.mutants[] | select(.result == "killed")] | length) of \(.mutants | length) mutants killed by \(.tests | join(", ")); \([.mutants[] | select(.result == "survived")] | length) survived" end'
+MUTATION_FIX="add or tighten a committed test that fails on this edit (if a test the diff does not touch already does, or the edit cannot change behavior, say so in decisions.md)."
+
+# After a judge pass, up to 8 behavior-changing edits of the code lines the diff adds, each run against the test files
+# the diff adds or changes (bin/factory.d/mutation_sweep.py, from its frozen copy; LOOP.md, Mutation sweep). It works
+# in a detached worktree at GRADED_SHA, handled as round_zero handles its own but added from the ticket worktree,
+# whose repository holds the sha, so the ticket worktree and its tree signature are untouched. Each edit those tests still pass is a blocking finding, sent to the worker at most once per
+# ticket (MUTATION_BLOCKED, which a relaunch restores from round-N.mutation-blocked); past that, blocking_findings
+# drafts the PR with them. A helper that fails, or leaves no result, stops the run, so a sweep that did not run never opens a
+# ready PR; a sweep that ran no edit (no committed test, or the tests red unedited) is a result, not a failure.
+run_mutation_sweep() { # round -> 0 unless a survivor blocks
+  local round="$1" wt="${WORKTREE}-mutants" f="$RUN/round-$1.mutation.json" msg rc=0
+  git -C "$WORKTREE" worktree remove --force "$wt" > /dev/null 2>&1
+  git -C "$WORKTREE" worktree prune > /dev/null 2>&1
+  if ! git -C "$WORKTREE" worktree add --detach "$wt" "$GRADED_SHA" > /dev/null 2>&1; then
+    msg="could not add the mutation worktree $wt at ${GRADED_SHA:0:8}"
+    [ -e "$wt" ] && msg="$msg; the path exists but is not a registered worktree, delete it by hand"
+    finish stopped-environment "$msg"
+  fi
+  python3 -I "$RUN/frozen/mutation_sweep.py" "$wt" "$(cat "$RUN/base.sha")" "$f" "$CALL_TIMEOUT_SEC" >> "$LOG" 2>&1 || rc=$?
+  git -C "$WORKTREE" worktree remove --force "$wt" > /dev/null 2>&1
+  [ "$rc" -eq 0 ] && jq -e '.mutants | type == "array"' "$f" > /dev/null 2>&1 \
+    || finish stopped-environment "the mutation sweep helper exited $rc, or left no result in $f whose mutants is an array"
+  log "mutation sweep: $(jq -r "$MUTATION_SUMMARY" "$f")"
+  [ "$(jq '[.mutants[] | select(.result == "survived")] | length' "$f")" -gt 0 ] || return 0
+  if [ "$MUTATION_BLOCKED" = 1 ]; then
+    log "the mutation sweep already blocked once on this ticket; its survivors make the PR a draft and are filed as issues"
+    return 0
+  fi
+  MUTATION_BLOCKED=1
+  : > "$RUN/round-$round.mutation-blocked"   # cmd_run restores MUTATION_BLOCKED from it on a relaunch
+  jq -r --arg fix "$MUTATION_FIX" '(.tests | join(", ")) as $t | .mutants[] | select(.result == "survived")
+    | "- " + .path + ":" + (.line | tostring) + " mutation survived (" + .operator + "): `" + .after + "` in place of `"
+      + .before + "`, and " + $t + " still pass. Fix: " + $fix' "$f" >> "$RUN/round-$round.fixes"
+  return 1
+}
+
 graders() { # round -> 0 when the judge passes and nothing blocks
   local ok=0 sig
+  rm -f "$RUN/round-$1.mutation.json" "$RUN/round-$1.mutation-blocked"   # a regraded round never reads an older sweep
   sig=$(tree_signature "$WORKTREE")
   GRADED_SHA=$(git -C "$WORKTREE" rev-parse HEAD)   # open_pr prints it, so a later push shows the verdict is stale
-  run_judge "$1" || ok=1
+  # The sweep's minutes go only to a round that could open a PR: a judge fail ends the round anyway.
+  if run_judge "$1"; then run_mutation_sweep "$1" || ok=1; else ok=1; fi
   run_review "$1" || ok=1
   [ "$CODEX_REVIEW" = yes ] && { run_codex_review "$1" || ok=1; }
   [ "$(tree_signature "$WORKTREE")" = "$sig" ] || finish stopped-environment "grader changed the tree"
@@ -2681,14 +2723,18 @@ graders() { # round -> 0 when the judge passes and nothing blocks
 
 # ---- step 8: the pull request -----------------------------------------------
 
-# The reviewer's and the Codex review's blocking findings in the final round's files, highest severity first.
-# After the graders pass, these are what a grader past its one block, or a reviewer or Codex review with no
-# parseable reply, still reports.
+# The reviewer's and the Codex review's blocking findings in the final round's files, highest severity first, and
+# the survivors of its mutation sweep. After the graders pass, these are what a grader or the sweep past its one
+# block, or a reviewer or Codex review with no parseable reply, still reports. The survivors print whatever
+# MUTATION_BLOCKED holds, so a relaunch after the sweep blocked resumes into the loop rather than publishing (cmd_run).
 # Each finding is joined onto one line, since file_issues files one issue per line.
 blocking_findings() {
   jq -r "$REVIEW_BLOCKING"' | sort_by(.severity != "high") | .[]
     | "reviewer [" + .severity + "] " + (.file // "?") + ":" + ((.line // 0) | tostring) + " " + (.defect // "?") + " Fix: " + (.fix // "-")
     | gsub("\\s*\n\\s*"; " ")' "$RUN/round-$ROUND.review.json" 2> /dev/null
+  jq -r --arg fix "$MUTATION_FIX" '(.tests | join(", ")) as $t | .mutants[]? | select(.result == "survived")
+    | "mutation [survived] " + .path + ":" + (.line | tostring) + " " + .operator + ": " + .after + " (was " + .before + "); "
+      + $t + " still pass. Fix: " + $fix' "$RUN/round-$ROUND.mutation.json" 2> /dev/null
   [ "$CODEX_REVIEW" = yes ] || return 0
   jq -r "$CODEX_BLOCKING"' | sort_by(.severity != "critical") | .[]
     | "Codex review [" + .severity + "] " + (.file // "?") + ":" + ((.line_start // 0) | tostring) + " " + (.title // "?") + ": "
@@ -2749,13 +2795,13 @@ open_pr() { # [draft]: opened at the grader-round cap
   {
     # A draft's reason opens the body, so a reader sees why it is a draft before anything else.
     if [ "$draft" = blocking ]; then
-      printf 'Draft: the judge passed, but %s blocking reviewer or Codex finding(s) remain past the one block each grader may make or come from a reviewer or Codex review with no parseable reply, and each is filed as an issue. Read them before marking it ready. The first is %s\n\n' \
+      printf 'Draft: the judge passed, but %s blocking reviewer, Codex review or mutation sweep finding(s) remain past the one block each grader and the sweep may make or come from a reviewer or Codex review with no parseable reply, and each is filed as an issue. Read them before marking it ready. The first is %s\n\n' \
         "$(printf '%s\n' "$blocking" | grep -c .)" "$(printf '%s\n' "$blocking" | head -1)"
     elif [ -n "$draft" ] && jq -e '.unparseable == true' "$RUN/round-$ROUND.judge.json" > /dev/null 2>&1; then
       printf 'Draft: judge output unparseable or inconsistent after 3 calls, so this round is not a pass and no worker round followed; the Backlog section files it as an issue. Read the Judge section before marking it ready.\n\n'
     elif [ -n "$draft" ]; then
       # An absent, empty, or invalid judge file counts as a fail (LOOP.md), so jq may print nothing.
-      rows=$(jq -r '[(.rows // {}) | to_entries[] | select(.value == "fail") | .key] | join(", ") | if . == "" then "no row; a reviewer or Codex finding blocked" else . end' "$RUN/round-$ROUND.judge.json" 2> /dev/null)
+      rows=$(jq -r '[(.rows // {}) | to_entries[] | select(.value == "fail") | .key] | join(", ") | if . == "" then "no row; a reviewer, Codex review or mutation sweep finding blocked" else . end' "$RUN/round-$ROUND.judge.json" 2> /dev/null)
       printf 'Draft: opened at the grader-round cap; the judge failed %s. Read the Judge section before marking it ready.\n\n' "${rows:-no row; the judge output was absent or not parseable}"
     fi
     # The worker's own account of how the change works and why it is correct opens a ready PR's body (#330), so
@@ -2787,6 +2833,13 @@ open_pr() { # [draft]: opened at the grader-round cap
       else
         printf '(no Codex review output for round %s)\n' "$ROUND"
       fi
+    fi
+    printf '\n## Mutation sweep\n\n'
+    if [ -s "$RUN/round-$ROUND.mutation.json" ]; then
+      jq -r "$MUTATION_SUMMARY"', (.mutants[]? | select(.result == "survived")
+        | "- survived: " + .path + ":" + (.line | tostring) + " " + .operator + ": " + .after)' "$RUN/round-$ROUND.mutation.json"
+    else
+      printf '(no mutation sweep for round %s)\n' "$ROUND"
     fi
     if [ "$WORKER_KIND" = codex ]; then
       printf '\n## Codex worker notes\n\n'
@@ -3001,6 +3054,9 @@ cmd_run() {
       [ -e "$g" ] || continue
       g=${g%.graded.sha}
       { [ -s "$g.fixes" ] || [ "$(jq -r .verdict "$g.judge.json" 2> /dev/null)" != pass ]; } && GRADER_FAILS=$((GRADER_FAILS + 1))
+      # The sweep's one block spans relaunches too: a graded round whose sweep blocked, which only run_mutation_sweep
+      # marks, spent it. A round whose graders never finished is graded again below, and its sweep may block then.
+      [ -e "$g.mutation-blocked" ] && MUTATION_BLOCKED=1
     done
     # A publish whose push or PR create failed left its decision in publish.intent (open_pr): while the newest round
     # is the one that wrote it, and HEAD and that round's graded.sha are still the sha it graded, replay it, ready or
@@ -3084,18 +3140,36 @@ pr_url_of() { # <run dir>
     "$1/factory.log" 2> /dev/null | tail -1
 }
 
-# The PR phase: a pr-opened run whose PR has closed (merged or not: the issues API reads both as closed) gets the
-# operator's events on it, once (pr-closed marks it). A gh failure leaves the run for the next tick and never stops one.
+# The PR phase: a pr-opened run whose PR has closed (merged or not: GraphQL's closed reads both as true) gets the
+# operator's events on it, once (pr-closed marks it). Every waiting run's PR state comes from one GraphQL read, so a
+# tick makes one such read however many runs wait; the repository is the first run's (a target has its own runs root),
+# and a run of another is left for the next tick. gh exits 1 on a reply that carries errors (a PR it cannot resolve)
+# and prints the raw body, so the reply is read whatever the exit status; a run whose PR the reply leaves out, or every
+# run when no reply comes, is left for the next tick, and so is one whose events read fails. It never stops a tick.
 pr_closed_events() {
-  local d url repo num
+  local d url repo="" num runs="" q json closed
   for d in "$RUNS_ROOT"/*/*/; do
     [ "$(cat "$d/status" 2> /dev/null)" = pr-opened ] && [ ! -e "$d/pr-closed" ] || continue
     url=$(pr_url_of "$d")
     [ -n "$url" ] || continue
-    repo=${url#https://github.com/}; repo=${repo%/pull/*}; num=${url##*/}
-    [ "$(net gh api "repos/$repo/issues/$num" --jq .state 2> /dev/null)" = closed ] || continue
-    owner_events "$d" pr "$repo" "$num" && now > "$d/pr-closed"
+    url=${url#https://github.com/}
+    [[ ${url##*/} =~ ^[0-9]+$ ]] || continue
+    [ -n "$repo" ] || repo=${url%/pull/*}
+    [ "${url%/pull/*}" = "$repo" ] || continue
+    runs+="${url##*/} $d"$'\n'
   done
+  [ -n "$runs" ] || return 0
+  q=""
+  for num in $(cut -d' ' -f1 <<< "$runs" | sort -un); do q+="p$num: pullRequest(number: $num) { closed } "; done
+  json=$(net gh api graphql -f owner="${repo%%/*}" -f name="${repo#*/}" \
+    -f query='query($owner: String!, $name: String!) { repository(owner: $owner, name: $name) { '"$q"'} }' \
+    < /dev/null 2> /dev/null) || :
+  closed=$(jq -r '.data.repository | to_entries[] | select(.value.closed? == true) | .key | ltrimstr("p")' \
+    <<< "$json" 2> /dev/null) || closed=""
+  while read -r num d; do
+    [ -n "$num" ] && grep -qx "$num" <<< "$closed" || continue
+    owner_events "$d" pr "$repo" "$num" < /dev/null && now > "$d/pr-closed"
+  done <<< "$runs"
   return 0
 }
 
@@ -3294,14 +3368,27 @@ next_tick() { # [--dry-run|--install|--frontier]
     local tmpl="$ROOT/bin/factory.d/next.crontab"
     [ -f "$tmpl" ] || { echo "factory next --install: no template at $tmpl" >&2; return 1; }
     command -v crontab > /dev/null 2>&1 || { echo "factory next --install: crontab not found" >&2; return 1; }
-    # Install the cron line only (the comments would accumulate on reinstall); grep -vF strips the
-    # prior copy so the result is idempotent.
-    # The template names ~/Desktop/loam; the installed line names the checkout that ran --install, and
-    # another target by -C, so each target keeps one line and a reinstall strips only its own (F8).
-    local line cmd="bin/factory next"
+    # Install the cron line only (the comments would accumulate on reinstall). The template names ~/loam and
+    # home-relative state paths; the installed line names the checkout that ran --install and $HOME, and another
+    # target by -C with its own lock and log, since every line fires on the same minute and a shared flock -n
+    # would drop one target's tick (F8). The awk filter drops only this target's live line, so a reinstall
+    # replaces it and keeps every comment and every other line in order.
+    local line cmd="bin/factory next" slug
     target_is_loam || cmd="bin/factory -C $TARGET next"
-    line=$(grep -v '^#' "$tmpl" | grep -m1 . | sed -e "s|cd ~/Desktop/loam|cd $ROOT|" -e "s|bin/factory next|$cmd|")
-    ( crontab -l 2> /dev/null | grep -vF "$cmd"; printf '%s\n' "$line" ) | crontab - \
+    # Each path goes unquoted into sed replacement text and the cron line, where | & % ' ( or a space reads
+    # specially (a failed sed would leave an empty line and still drop the old one), so refuse before the crontab
+    # changes. The line's lock and redirect need the state directory before bin/factory runs.
+    case "$ROOT$HOME$TARGET" in
+      *[!A-Za-z0-9._/:,+@_-]*) echo "factory next --install: a path holds a character the cron line cannot carry: $ROOT $HOME $TARGET" >&2; return 1 ;;
+    esac
+    mkdir -p "$HOME/.local/state/loam-factory" || { echo "factory next --install: cannot create $HOME/.local/state/loam-factory" >&2; return 1; }
+    line=$(grep -v '^#' "$tmpl" | grep -m1 . | sed -e "s|cd ~/loam |cd $ROOT |" -e "s|~/|$HOME/|g" -e "s|bin/factory next|$cmd|")
+    if ! target_is_loam; then
+      slug=$(target_slug)
+      line=$(printf '%s\n' "$line" | sed -e "s|/next\.lock |/next-$slug.lock |" -e "s|/next\.log |/next-$slug.log |")
+    fi
+    ( crontab -l 2> /dev/null | CMD="$cmd" awk 'index($0, ENVIRON["CMD"]) && $0 !~ /^[ \t]*#/ { next } { print }'
+      printf '%s\n' "$line" ) | crontab - \
       || { echo "factory next --install: crontab rejected the update" >&2; return 1; }
     echo "installed: $line"
     return 0
@@ -3390,8 +3477,14 @@ next_tick() { # [--dry-run|--install|--frontier]
 
   # 4. The frontier: open, ready-for-agent, unassigned issues with no open native blocker, lowest
   #    number first, plus the runner's own such issues whose current body has no run yet or whose run ended stopped-daily,
-  #    stopped-environment or stopped. A gh failure (offline, unauthenticated, off cron's PATH, empty repo) prints
-  #    `frontier query failed` and returns 1, so no beat is sent (cmd_next) rather than the timer stalling silent;
+  #    stopped-environment or stopped. Every other open ready-for-agent issue is read too, so the loop prints one stderr
+  #    line naming why it does not launch: each line carries the body (`-` for an empty one, so it cannot shift the
+  #    fields), the open native blocker count (`?` when the listing omits it, so the issue waits rather than launching
+  #    blocked) and the assignee logins (`-` for none); a line without the last two reads as unblocked and unassigned.
+  #    The repository listing reads every page, since assigned issues would otherwise fill its first 100 and hide an
+  #    older unassigned one; gh fetches the pages inside the one call. A gh failure (offline, unauthenticated, off
+  #    cron's PATH, empty repo) prints `frontier query failed` and returns 1, so no beat is sent (cmd_next) rather than
+  #    the timer stalling silent;
   #    only a successful, empty query falls through to `nothing to launch`.
   local repo ready num b64 body
   repo=$(target_repo)
@@ -3399,8 +3492,8 @@ next_tick() { # [--dry-run|--install|--frontier]
     echo "frontier query failed: $TARGET has no GitHub origin" >&2
     return 1
   fi
-  if ! ready=$(net gh api "repos/$repo/issues?labels=ready-for-agent&state=open&assignee=none&per_page=100" \
-    --jq 'sort_by(.number)[] | select(.pull_request == null) | select(.issue_dependencies_summary.blocked_by == 0) | "\(.number) \(.user.login) \(.body // "" | @base64)"' 2> /dev/null); then
+  if ! ready=$(net gh api "repos/$repo/issues?labels=ready-for-agent&state=open&per_page=100" --paginate \
+    --jq 'sort_by(.number)[] | select(.pull_request == null) | "\(.number) \(.user.login) \(.body // "" | @base64 | if . == "" then "-" else . end) \(.issue_dependencies_summary.blocked_by // "?") \([(.assignees // [])[].login] | join(",") | if . == "" then "-" else . end)"' 2> /dev/null); then
     echo "frontier query failed: gh api issues (failed, or no reply in ${NET_TIMEOUT_SEC}s)" >&2
     return 1
   fi
@@ -3409,14 +3502,17 @@ next_tick() { # [--dry-run|--install|--frontier]
   # lookup, and every page, since it spans all the runner's repositories and gh applies --jq per page); the loop takes
   # one of those only at none with a run of an earlier body (an edited body is a new ticket; with no run at all the
   # owner assigned it by hand to hold it), stopped-daily,
-  # stopped-environment or stopped, since any other is in flight, awaits merge, or parks.
+  # stopped-environment or stopped, since any other is in flight, awaits merge, or parks, each with its line.
   local mine lrepo
   lrepo=$(printf '%s' "$repo" | tr '[:upper:]' '[:lower:]')
   if ! mine=$(net gh api "/issues?filter=assigned&labels=ready-for-agent&state=open&per_page=100" --paginate \
-    --jq '.[] | select(.pull_request == null) | select((.repository.full_name // "" | ascii_downcase) == "'"$lrepo"'") | select(.issue_dependencies_summary.blocked_by == 0) | "\(.number) \(.user.login) \(.body // "" | @base64)"' 2> /dev/null); then
+    --jq '.[] | select(.pull_request == null) | select((.repository.full_name // "" | ascii_downcase) == "'"$lrepo"'") | "\(.number) \(.user.login) \(.body // "" | @base64 | if . == "" then "-" else . end) \(.issue_dependencies_summary.blocked_by // "?") \([(.assignees // [])[].login] | join(",") | if . == "" then "-" else . end)"' 2> /dev/null); then
     echo "frontier query failed: gh api issues assigned to the runner (failed, or no reply in ${NET_TIMEOUT_SEC}s)" >&2
     return 1
   fi
+  # The repository listing holds the runner's issues too; each is read once, from the runner's list. A line with no
+  # assignee field (or `-`) stays, so an unassigned issue both lists name still reads as unassigned.
+  ready=$(awk 'NR == FNR { m[$1]; next } !($5 != "" && $5 != "-" && ($1 in m))' <(printf '%s\n' "$mine") - <<< "$ready")
 
   # The run of the issue's current body decides (park_status): no such run launches; stopped-environment
   # and stopped relaunch (the environment, not the ticket, ended them), stopped-environment only ENV_BACKOFF_SEC after
@@ -3427,8 +3523,8 @@ next_tick() { # [--dry-run|--install|--frontier]
   # A run of an earlier body no longer parks the issue, so an edited body launches on the next tick.
   # The body travels as base64 so its newlines stay on one line; $(...) strips its trailing newlines
   # the way load_ticket's $(jq -r .body) of its gh api graphql read does, so the key matches the one cmd_run computes.
-  # A ticket at pr-opened is assigned at launch, so it is skipped among the runner's own; if a human
-  # unassigns it, its slot is already counted above while its worktree exists.
+  # A ticket at pr-opened waits on its PR, assigned or not, and parks once the PR closed with the issue still open; its
+  # slot is counted above while its worktree exists.
   # A launchable body is linted first (#314): the label alone does not make an issue a ticket, and a run of
   # a body with no done-checks block would burn a round. lint_body runs in a subshell on the body in hand
   # (no second gh call), its stdout dropped; its first LINT line is reported the way a parked issue is
@@ -3437,27 +3533,56 @@ next_tick() { # [--dry-run|--install|--frontier]
   # Before lint, the owner check: the worker runs the body unattended and Loam is public, so a body another account
   # wrote, or last edited (GraphQL's editor, null for a body never edited), is passed over, and so is one whose
   # editor gh could not read, or a null editor with a lastEditedAt (an account GitHub no longer names; jq names it
-  # "(unnamed)", which no login can be). Once a candidate is picked, later ones skip the editor call, so a stalled
-  # GraphQL costs a tick one timeout, not one per candidate; they still get the author and lint lines.
-  # --frontier never sets pick but prints each candidate that passes, so every candidate gets the editor call.
-  # </dev/null keeps gh off the candidate list this loop reads on stdin. This check only
-  # picks; load_ticket checks the owner again on the body the run freezes.
-  local pick="" read_failed="" st_last lint_err lint_line author editor run
-  while read -r who num author b64; do
+  # "(unnamed)", which no login can be). Every candidate's editor comes from one GraphQL read made before the loop,
+  # one alias per issue, so a tick makes one editor read however many candidates it passes over. gh exits 1 on a reply
+  # that carries errors (an issue transferred or deleted since the frontier read, its alias null) and prints the raw
+  # body whatever --jq asks, so the reply is captured whole, read whatever the exit status, and each alias looked up
+  # with a local jq; a candidate the reply leaves out, or every candidate when no reply comes, is unreadable.
+  # This check only picks; load_ticket checks the owner again on the body the run freezes.
+  local nums q json editors="" line
+  nums=$( { cut -d' ' -f1 <<< "$ready"; cut -d' ' -f1 <<< "$mine"; } | grep -E '^[0-9]+$' | sort -un)
+  if [ -n "$nums" ]; then
+    q=""
+    for num in $nums; do q+="i$num: issue(number: $num) { editor { login } lastEditedAt } "; done
+    json=$(net gh api graphql -f owner="${repo%%/*}" -f name="${repo#*/}" \
+      -f query='query($owner: String!, $name: String!) { repository(owner: $owner, name: $name) { '"$q"'} }' \
+      < /dev/null 2> /dev/null) || :
+    editors=$(jq -r '.data.repository | to_entries[] | select(.value | type == "object")
+      | "\(.key | ltrimstr("i")) \(.value.editor.login // (if .value.lastEditedAt then "(unnamed)" else "" end))"' \
+      <<< "$json" 2> /dev/null) || editors=""
+  fi
+  # Each issue the loop passes over gets one stderr line with its reason: an open native blocker (either list), an assignee
+  # other than the runner (the repository listing, once the runner's own are dropped above), the runner's issue with
+  # no run of any body, FACTORY_STOP, then the waits and parks below, which apply to the runner's issues as to the rest.
+  local pick="" read_failed="" st_last lint_err lint_line author editor run blocked assignees
+  while read -r who num author b64 blocked assignees; do
     [ -n "$num" ] || continue
+    [ "$b64" = - ] && b64=""
+    if [[ ${blocked:-0} =~ ^[1-9][0-9]*$ ]]; then
+      echo "blocked #$num: $blocked open native blocker(s); it launches once they close" >&2
+      continue
+    fi
+    if [ "${blocked:-0}" != 0 ]; then
+      echo "blocked #$num: the listing gave no native blocker count ($blocked); it waits until it does" >&2
+      continue
+    fi
+    if [ "$who" = none ] && [ -n "$assignees" ] && [ "$assignees" != - ]; then
+      echo "assigned #$num: assigned to $assignees, not the runner; unassign it or remove ready-for-agent" >&2
+      continue
+    fi
     body=$(printf '%s' "$b64" | base64 -d)
     st_last=$(park_status "$num" "$body")
-    if [ "$who" = mine ]; then
-      case "$st_last" in
-        none) ran_before "$num" || continue ;;
-        stopped-daily|stopped-environment|stopped) ;;
-        *) continue ;;
-      esac
+    if [ "$who" = mine ] && [ "$st_last" = none ] && ! ran_before "$num"; then
+      echo "held #$num: assigned to the runner with no run of any body; unassign it to let next launch it" >&2
+      continue
     fi
     run=$(run_dir_of "$num" "$body")
-    # cmd_run exits stopped at once while the run dir holds FACTORY_STOP (bin/factory stop), so the issue is skipped,
-    # without a line, until the operator removes the file; otherwise it would take the pick from every later candidate each tick.
-    [ -f "$run/FACTORY_STOP" ] && continue
+    # cmd_run exits stopped at once while the run dir holds FACTORY_STOP (bin/factory stop), so the issue is skipped
+    # until the operator removes the file; otherwise it would take the pick from every later candidate each tick.
+    if [ -f "$run/FACTORY_STOP" ]; then
+      echo "stopped #$num: its run directory holds FACTORY_STOP (bin/factory stop); remove the file to let it launch" >&2
+      continue
+    fi
     if env_parked "$run"; then
       echo "parked #$num: stopped on the environment $ENV_PARK_STOPS times in a row with no new round since; fix the cause, then relaunch it by hand or edit the body" >&2
       [ "$dry" = 1 ] || env_park_alert "$run" "$num"
@@ -3485,22 +3610,19 @@ next_tick() { # [--dry-run|--install|--frontier]
           echo "not owner #$num: written or last edited by $author; edit the body as $TICKET_OWNER or remove ready-for-agent" >&2
           continue
         fi
-        if [ -z "$pick" ]; then
-          if ! editor=$(net gh api graphql -f owner="${repo%%/*}" -f name="${repo#*/}" -F number="$num" \
-            -f query='query($owner: String!, $name: String!, $number: Int!) { repository(owner: $owner, name: $name) { issue(number: $number) { editor { login } lastEditedAt } } }' \
-            --jq '.data.repository.issue | .editor.login // (if .lastEditedAt then "(unnamed)" else "" end)' < /dev/null 2> /dev/null); then
-            echo "not owner #$num: could not read the last editor with gh (failed, or no reply in ${NET_TIMEOUT_SEC}s); passed over" >&2
-            read_failed=1
-            continue
-          fi
-          if [ "$editor" = "(unnamed)" ]; then
-            echo "not owner #$num: last edited by an account GitHub no longer names; edit the body as $TICKET_OWNER or remove ready-for-agent" >&2
-            continue
-          fi
-          if [ -n "$editor" ] && [ "$editor" != "$TICKET_OWNER" ]; then
-            echo "not owner #$num: written or last edited by $editor; edit the body as $TICKET_OWNER or remove ready-for-agent" >&2
-            continue
-          fi
+        if ! line=$(grep -m1 "^$num " <<< "$editors"); then
+          echo "not owner #$num: could not read the last editor with gh (failed, or no reply in ${NET_TIMEOUT_SEC}s); passed over" >&2
+          read_failed=1
+          continue
+        fi
+        editor=${line#* }
+        if [ "$editor" = "(unnamed)" ]; then
+          echo "not owner #$num: last edited by an account GitHub no longer names; edit the body as $TICKET_OWNER or remove ready-for-agent" >&2
+          continue
+        fi
+        if [ -n "$editor" ] && [ "$editor" != "$TICKET_OWNER" ]; then
+          echo "not owner #$num: written or last edited by $editor; edit the body as $TICKET_OWNER or remove ready-for-agent" >&2
+          continue
         fi
         if ! lint_err=$( { SRC="#$num"; BODY="$body"; ERRS=0; lint_body > /dev/null; } 2>&1 ); then
           lint_line=$(grep -m1 "^LINT #$num: " <<<"$lint_err") || lint_line=${lint_err%%$'\n'*}
@@ -3511,7 +3633,13 @@ next_tick() { # [--dry-run|--install|--frontier]
         elif [ -z "$pick" ]; then
           pick="$num"
         fi ;;
-      pr-opened) ;;
+      pr-opened)
+        if [ -e "$run/pr-closed" ]; then
+          echo "parked #$num: its PR closed but the issue is still open; edit the body or remove ready-for-agent" >&2
+        else
+          echo "waiting #$num: its PR awaits merge or close" >&2
+        fi ;;
+      running|waiting-limit) echo "waiting #$num: its run is $st_last" >&2 ;;
       *) echo "parked #$num: last run exited $st_last; edit the body or remove ready-for-agent" >&2 ;;
     esac
   done <<< "$( { sed 's/^/none /' <<< "$ready"; sed 's/^/mine /' <<< "$mine"; } | sort -s -n -k2,2 )"
@@ -3817,6 +3945,10 @@ cmd_skills() {
 # grader file's sha256: an edit since the last replay, a replay over 30 days old (the served model drifts
 # under a fixed hash) or dated ahead, or one with no clean or no mutant case (a grader that rejects
 # everything scores perfectly on mutants alone). A warning, since every paid eval is a merge-checklist step.
+# A fresh line whose replay matched none of its cases also warns STALE: eval counts a case it could not build as
+# a mismatch, so that replay says nothing about the grader file. A partial miss prints one INFO line naming the
+# count instead, since eval exits 1 on any miss and a STALE there would never clear for an imperfect grader.
+# Only DRIFT sets the exit code.
 cmd_graders_check() { # [--agents-dir D] [--evals-dir D]
   local dir=cultivation/marketplace/sam-cc-setup/agents evals=evals want g f got h why rc=0
   while [ $# -gt 0 ]; do
@@ -3848,8 +3980,15 @@ cmd_graders_check() { # [--agents-dir D] [--evals-dir D]
           elif $t - now > 60 then "last replay dated in the future"
           elif ((.clean | numbers) // 0) == 0 then "last replay had no clean case"
           elif ((.mutants | numbers) // 0) == 0 then "last replay had no mutant case"
-          else "" end end' 2>&1)
-    [ -z "$why" ] || echo "WARN STALE $g: $why for sha256 $h in $evals/scores.jsonl"
+          else ((.cases | numbers) // 0) as $c | ((.mismatch | numbers) // 0) as $m
+          | if $c > 0 and $m >= $c then "last replay matched none of its \($c) cases"
+            elif $c > 0 and $m > 0 then "INFO last replay mismatched \($m) of \($c) cases"
+            else "" end end end' 2>&1)
+    case "$why" in
+      "")      ;;
+      "INFO "*) echo "INFO $g: ${why#INFO } for sha256 $h in $evals/scores.jsonl" ;;
+      *)       echo "WARN STALE $g: $why for sha256 $h in $evals/scores.jsonl" ;;
+    esac
   done
   [ "$rc" -eq 0 ] && echo "graders-check: OK"
   return "$rc"

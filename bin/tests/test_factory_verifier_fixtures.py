@@ -85,6 +85,8 @@ class VerifierFixtureTests(unittest.TestCase):
         (frozen / "reviewer.md").write_text("ROLE reviewer\n")
         (frozen / "checks.sh").write_text("#!/bin/sh\necho 'PASS widget'\necho CHECKS-END\n")
         (frozen / "checks.sh").chmod(0o755)
+        # The mutation sweep runs after a judge pass; this diff commits no test, so it runs no edit.
+        (frozen / "mutation_sweep.py").write_bytes((ROOT / "bin/factory.d/mutation_sweep.py").read_bytes())
         for name in ("judge.schema.json", "reviewer.schema.json", "role-settings.json"):
             (frozen / name).write_text("{}")
         for name in ("protected.txt", "exempt.txt"):

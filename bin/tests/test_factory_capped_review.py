@@ -105,6 +105,7 @@ class CappedReviewTests(unittest.TestCase):
         frozen.mkdir(parents=True)
         (frozen / "issue.md").write_text(FROZEN_TICKET)
         shutil.copy(ROOT / "bin/factory.d/codex-review.prompt.md", frozen / "codex-review.prompt.md")
+        shutil.copy(ROOT / "bin/factory.d/mutation_sweep.py", frozen / "mutation_sweep.py")  # runs after a judge pass
         for name in ("judge.schema.json", "reviewer.schema.json", "review-output.schema.json", "role-settings.json"):
             (frozen / name).write_text("{}")
         (self.run_dir / "base.sha").write_text(base + "\n")
