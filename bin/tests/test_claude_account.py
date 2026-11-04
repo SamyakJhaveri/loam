@@ -15,6 +15,7 @@ import json
 import os
 import pathlib
 import re
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -93,6 +94,14 @@ class UseTests(Scratch):
         self.assertIn("no stored token for 'c'", proc.stderr)
         self.assertEqual(((self.acc / "active").read_text(), self.settings.read_text()), ("a\n", before))
 
+    def test_use_with_a_settings_file_jq_cannot_parse_changes_nothing(self) -> None:
+        self.settings.write_text('{"env": {"' + TOKEN + '": "sk-ant-oat01-fake-a",\n')
+        before = self.settings.read_text()
+        proc = self.helper("use", "b")
+        self.assertNotEqual(proc.returncode, 0)
+        self.assertIn(str(self.settings), proc.stderr)
+        self.assertEqual(((self.acc / "active").read_text(), self.settings.read_text()), ("a\n", before))
+
 
 class ExecTests(Scratch):
     def test_exec_hands_the_command_the_active_token_and_prints_nothing(self) -> None:
@@ -117,6 +126,20 @@ class ExecTests(Scratch):
         (self.acc / "active").write_text("gone\n")
         self.assertEqual(self.helper("exec", *PRINT_TOKEN, **{TOKEN: "launch-x"}).stdout, "launch-x")
 
+    @unittest.skipIf(os.geteuid() == 0, "root reads a mode 000 file")
+    def test_exec_with_an_unreadable_token_file_fails_without_the_launch_value(self) -> None:
+        (self.acc / "a.token").chmod(0)
+        proc = self.helper("exec", *PRINT_TOKEN, **{TOKEN: "launch-x"})
+        self.assertEqual((proc.returncode, proc.stdout), (1, ""))
+        self.assertIn("could not read the token of 'a'", proc.stderr)
+
+    def test_exec_with_a_blank_first_line_in_the_token_file_fails(self) -> None:
+        (self.acc / "c.token").write_text("\nsk-ant-oat01-fake-c\n")
+        (self.acc / "active").write_text("c\n")
+        proc = self.helper("exec", *PRINT_TOKEN, **{TOKEN: "launch-x"})
+        self.assertEqual((proc.returncode, proc.stdout), (1, ""))
+        self.assertIn("could not read the token of 'c'", proc.stderr)
+
     def test_exec_passes_the_exit_status_and_needs_a_command(self) -> None:
         self.assertEqual(self.helper("exec", "sh", "-c", "exit 7").returncode, 7)
         proc = self.helper("exec")
@@ -125,9 +148,16 @@ class ExecTests(Scratch):
 
     @LINUX_ONLY
     def test_exec_puts_no_token_on_a_command_line(self) -> None:
-        proc = self.helper("exec", "sh", "-c", 'cat /proc/$$/cmdline | tr "\\0" " "')
+        # An `env` shim first on PATH logs its argv, which `exec env TOKEN=... cmd` would hold and /proc no longer shows.
+        shims, log = self.d / "shims", self.d / "env-argv"
+        shims.mkdir()
+        (shims / "env").write_text(f'#!/bin/sh\nprintf "%s\\n" "$*" >> "{log}"\nexec {shutil.which("env")} "$@"\n')
+        (shims / "env").chmod(0o755)
+        proc = self.helper("exec", "sh", "-c", 'cat /proc/$$/cmdline | tr "\\0" " "',
+                           PATH=f"{shims}:{os.environ['PATH']}")
         self.assertEqual(proc.returncode, 0)
         self.assertNotIn("sk-ant-oat01", proc.stdout)
+        self.assertNotIn("sk-ant-oat01", log.read_text() if log.exists() else "")
 
 
 @LINUX_ONLY
