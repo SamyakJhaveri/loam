@@ -56,7 +56,7 @@ A number leaves the PR open (step 9) with `left open: grader window: DistBench g
 
 ## Steps for one PR
 
-1. **Pick.** `gh pr list --repo SamyakJhaveri/loam --state open --limit 200 --json number,title,isDraft,headRefName,body,labels` and take the oldest PR the factory opened (its body has the factory's sections and `Closes #<issue>`) that has no line in `O/log.md` ending `merged` or `left open`. None: append "idle <UTC time>" to `O/log.md` and stop.
+1. **Pick.** `gh pr list --repo SamyakJhaveri/loam --state open --limit 200 --json number,title,isDraft,headRefName,isCrossRepository,author,body,labels --jq '[.[] | select(.isCrossRepository == false and .author.login == "SamyakJhaveri")]'` and take the oldest PR the factory opened (its branch is `factory/<issue>` and its body has the factory's sections and `Closes #<issue>`) that has no line in `O/log.md` ending `merged` or `left open`. The filter keeps only PRs Samyak opened from this repo's own branches: Loam is public, gh names a fork's branch without its owner, and anyone can copy the factory's body, so never list, read or act on any other PR. None: append "idle <UTC time>" to `O/log.md` and stop.
 2. **Read.** The issue body (`gh issue view <issue>`), the PR body (graders' verdicts, the in-run Codex review, the check output), and the diff (`gh pr diff`). Note every Critical, High and Medium finding already listed.
 3. **Panel, in parallel, each blind to the others and given the ticket and the diff, not your opinion:**
    - Codex: review design, implementation and testing; findings with severity Critical, High, Medium or Low, each with `file:line` and a failing scenario; write to `O/pr-<n>-codex.md`.
