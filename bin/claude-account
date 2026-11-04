@@ -22,7 +22,7 @@
 set -euo pipefail
 
 dir=${CLAUDE_ACCOUNTS_DIR:-$HOME/.config/claude-accounts}
-f=${CLAUDE_SETTINGS_FILE:-$HOME/.claude/settings.json}
+f=${CLAUDE_SETTINGS_FILE:-${CLAUDE_CONFIG_DIR:-$HOME/.claude}/settings.json}
 cmd=${1:-status}
 name=${2:-}
 
@@ -31,16 +31,23 @@ active_name() { [ -f "$dir/active" ] && cat "$dir/active" || true; }
 
 # Name account $1 active. A token key left in the settings file (written by `use` before #644) is dropped first, since a
 # settings env value beats the launch env `exec` sets; the file is never created. Each step returns 1 on failure, so
-# `active` is never written ahead of the settings file, also when a caller tests the result. The token is not read here.
+# `active` is never written ahead of the settings file, also when a caller tests the result; a settings file jq cannot
+# read or parse is a failure too, not a token-free file. The token is not read here. `active` is replaced by a rename,
+# never truncated in place, so a concurrent `exec` reads the old name or the new one, never an empty file.
 use_name() {
-  local tmp
+  local tmp rc=0
   [ -f "$dir/$1.token" ] || { echo "no stored token for '$1'; run: bin/claude-account set $1" >&2; return 1; }
-  if [ -f "$f" ] && jq -e '.env | type == "object" and has("CLAUDE_CODE_OAUTH_TOKEN")' "$f" > /dev/null 2>&1; then
-    tmp=$(mktemp "$f.XXXXXX") || return 1
-    jq 'del(.env.CLAUDE_CODE_OAUTH_TOKEN)' "$f" > "$tmp" || { rm -f "$tmp"; return 1; }
-    mv "$tmp" "$f" && chmod 600 "$f" || return 1
+  if [ -f "$f" ]; then
+    jq -e '.env | type == "object" and has("CLAUDE_CODE_OAUTH_TOKEN")' "$f" > /dev/null 2>&1 || rc=$?
+    case $rc in
+      0) tmp=$(mktemp "$f.XXXXXX") || return 1
+         jq 'del(.env.CLAUDE_CODE_OAUTH_TOKEN)' "$f" > "$tmp" || { rm -f "$tmp"; return 1; }
+         mv "$tmp" "$f" && chmod 600 "$f" || return 1 ;;
+      1) ;;
+      *) echo "could not read $f with jq (exit $rc); active not changed" >&2; return 1 ;;
+    esac
   fi
-  printf '%s\n' "$1" > "$dir/active" || return 1
+  printf '%s\n' "$1" > "$dir/active.$$" && mv -f "$dir/active.$$" "$dir/active" || { rm -f "$dir/active.$$"; return 1; }
   echo "active: $1" >&2
 }
 # Round robin in name order: the first stored account after the active one, wrapping to the first, so
@@ -88,10 +95,11 @@ case "$cmd" in
     a=$(active_name)
     if [ -n "$a" ] && [ -f "$dir/$a.token" ]; then
       # Into this process's environment only, never onto a command line (/proc shows argv). A token file with no
-      # trailing newline still reads under set -e; an unreadable or empty one exits 1 rather than pass the launch value.
+      # trailing newline still reads under set -e; an unreadable one, or one whose first line is empty, exits 1 rather
+      # than pass the launch value.
       unset CLAUDE_CODE_OAUTH_TOKEN
-      IFS= read -r CLAUDE_CODE_OAUTH_TOKEN < "$dir/$a.token" || [ -n "${CLAUDE_CODE_OAUTH_TOKEN:-}" ] \
-        || { echo "could not read the token of '$a' from $dir/$a.token" >&2; exit 1; }
+      IFS= read -r CLAUDE_CODE_OAUTH_TOKEN < "$dir/$a.token" || true
+      [ -n "${CLAUDE_CODE_OAUTH_TOKEN:-}" ] || { echo "could not read the token of '$a' from $dir/$a.token" >&2; exit 1; }
       export CLAUDE_CODE_OAUTH_TOKEN
     fi
     exec "$@"

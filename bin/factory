@@ -3818,9 +3818,10 @@ run_clean() { # run dir -> yes|no|-
 # claude on PATH is not claude logged in: a logged-out Claude fails every worker call while claude
 # stays on PATH (#78). claude auth status prints JSON with a loggedIn boolean and exits 0 either way.
 # One probe, shared by precondition_lines (its PASS/FAIL line) and cmd_next (its launch gate). It runs on the
-# account the calls use: auth status reports logged in on the env token bin/claude-account exec hands it.
+# account the calls use: auth status reports logged in on the env token bin/claude-account exec hands it. Only claude's
+# stderr is dropped, so exec's own line (a token it could not read) still reaches the operator.
 claude_logged_in() {
-  "$ROOT/bin/claude-account" exec claude auth status 2> /dev/null | jq -e '.loggedIn' > /dev/null 2>&1
+  "$ROOT/bin/claude-account" exec sh -c 'exec claude auth status 2> /dev/null' | jq -e '.loggedIn' > /dev/null 2>&1
 }
 
 # The grader read fence and the worker's CLAUDE_CODE_SUBAGENT_MODEL_FORCE need Claude Code 2.1.257; an older claude ignores
