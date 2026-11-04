@@ -15,7 +15,16 @@ LockTests: a capture that cannot take the store lock in time keeps its data in t
 next holder, a capture or mem-weekly.sh, lands it; a directory left at the lock path by the earlier mkdir lock does not block captures; a trace
 the store's exclude file ignores is still committed, and stays spooled until a commit holds it; a weekly drain
 whose bounded add is cut off does not keep the baseline from committing the drained entry, and a DEADLINE in the environment does not
-stop the weekly drain.
+stop the weekly drain. A capture removes an
+index.lock only when a holder scan that ran to its end finds no holder, so a git outside the store lock, paused with it
+open or (`git commit -a` in its editor) working in the store, keeps it and the capture spools, and the paused git's
+index and commit (with its message) land; an index.lock no process holds is removed at once.
+IndexLockTests (Linux, where the scan reads /proc): a process whose main thread has exited, holding index.lock in
+another thread, keeps it, and so does a holder scan made to fail or stall at its listing of /proc; each such capture
+spools its entry within the hook timeout, and the next capture whose scan ends clear removes the lock and lands both.
+ScanTests: the three copies of the store lock block are identical, and each one's scan, sourced on its own, finds a
+process with index.lock open and a git working in the store (not another process there) on /proc, and on the lsof
+branch, reached with a stand-in lsof, keeps the lock when lsof reports a holder, fails, stalls or is missing.
 RecallBoundTests: a recall whose rebase hangs ends within its five-second hook timeout and leaves main clean.
 OverlapTests: of two overlapping captures of one session, the one that read the longer transcript wins, whichever
 publishes last.
@@ -37,6 +46,7 @@ import gzip
 import json
 import os
 import pathlib
+import re
 import shutil
 import signal
 import subprocess
@@ -86,13 +96,14 @@ class Base(unittest.TestCase):
         git("commit", "-qm", "base", cwd=seed)
         git("push", "-q", str(self.origin), "main", cwd=seed)
 
-    def start_capture(self, store: pathlib.Path, sid: str, rewrite: bool = True) -> subprocess.Popen:
+    def start_capture(self, store: pathlib.Path, sid: str, rewrite: bool = True,
+                      env: dict[str, str] | None = None) -> subprocess.Popen:
         transcript = self.top / f"{sid}.jsonl"
         if rewrite:
             transcript.write_text(json.dumps({"type": "user", "message": {"role": "user", "content": f"prompt {sid}"}}) + "\n")
         p = subprocess.Popen(["bash", str(HOOK)], stdin=subprocess.PIPE, stdout=subprocess.DEVNULL,
                              stderr=subprocess.PIPE, text=True, cwd=self.cwd,
-                             env={**GIT_ENV, "LOAM_MEMSTORE": str(store)})
+                             env={**GIT_ENV, "LOAM_MEMSTORE": str(store), **(env or {})})
         p.stdin.write(json.dumps({"hook_event_name": "SessionEnd", "transcript_path": str(transcript),
                                   "session_id": sid, "cwd": str(self.cwd)}))
         p.stdin.close()
@@ -102,8 +113,8 @@ class Base(unittest.TestCase):
         self.assertEqual(p.wait(timeout=30), 0, p.stderr.read())
         p.stderr.close()
 
-    def capture(self, store: pathlib.Path, sid: str) -> None:
-        self.finish(self.start_capture(store, sid))
+    def capture(self, store: pathlib.Path, sid: str, env: dict[str, str] | None = None) -> None:
+        self.finish(self.start_capture(store, sid, env=env))
 
     def recall(self, store: pathlib.Path, timeout: float = 30) -> None:
         r = subprocess.run(
@@ -175,6 +186,22 @@ class Base(unittest.TestCase):
             (hooks / name).chmod(0o755)
         git("config", "core.hooksPath", str(hooks), cwd=store)
         return hooks
+
+    def index_lock_store(self) -> None:
+        # A store with no remote, and the index.lock path a holder or a fault test plants.
+        self.store = self.top / "store"
+        git("init", "-q", str(self.store), cwd=self.top)
+        self.lock = self.store / ".git/index.lock"
+
+    def head_index(self) -> str:
+        return git("show", "HEAD:traces/project/INDEX.md", cwd=self.store)
+
+    def assert_both_landed(self) -> None:
+        self.assertFalse(self.lock.exists(), "the stale index.lock was kept")
+        self.assertEqual(self.spool(self.store), [], "the spool was not drained")
+        index = self.head_index()
+        for sid in ("s1", "s2"):
+            self.assertIn(f" | {sid} | ", index, f"{sid} is not in HEAD")
 
     def wait_for_remote(self, *sids: str) -> str:
         # The push runs in the background, so poll the bare repo; the bound only matters when it never lands.
@@ -484,6 +511,270 @@ class LockTests(Base):
         for sid in ("s1", "s2"):
             self.capture(store, sid)
             self.assertEqual(self.spool(store), [], f"{sid}'s committed entry stayed in the spool")
+
+    def test_a_git_add_outside_the_store_lock_keeps_its_index_lock(self) -> None:
+        self.index_lock_store()
+        inside, go = self.top / "inside", self.top / "go"
+        clean = self.top / "clean.sh"
+        clean.write_text(f"#!/bin/sh\ntouch '{inside}'; while [ ! -f '{go}' ]; do sleep 0.05; done; cat\n")
+        clean.chmod(0o755)
+        git("config", "filter.slow.clean", str(clean), cwd=self.store)
+        (self.store / ".git/info").mkdir(exist_ok=True)
+        (self.store / ".git/info/attributes").write_text("user.txt filter=slow\n")
+        (self.store / "user.txt").write_text("user\n")
+        add = subprocess.Popen(["git", "add", "user.txt"], cwd=self.store, env=GIT_ENV,
+                               stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, text=True)
+        self.addCleanup(add.stderr.close)
+        self.addCleanup(add.wait, 30)
+        self.addCleanup(go.touch)
+        self.until(inside.exists, "the git add to pause in its clean filter")
+        self.capture(self.store, "s1")
+        self.assertTrue(self.lock.is_file(), "the capture removed the live git add's index.lock")
+        self.assertEqual(len(self.spool(self.store)), 1, "s1 is not in the spool")
+        go.touch()
+        self.assertEqual(add.wait(timeout=30), 0, add.stderr.read())
+        status = subprocess.run(["git", "status", "--porcelain"], cwd=self.store, env=GIT_ENV,
+                                capture_output=True, text=True)
+        self.assertEqual(status.returncode, 0, status.stderr)
+        self.assertEqual(git("diff", "--cached", "--name-only", cwd=self.store), "user.txt")
+        self.capture(self.store, "s2")
+        self.assert_both_landed()
+
+    def test_a_git_commit_paused_in_its_editor_keeps_its_index_lock(self) -> None:
+        # `git commit -a` writes index.lock and closes it before it runs the editor, so no process has it open.
+        self.index_lock_store()
+        (self.store / "user.txt").write_text("user\n")
+        git("add", "user.txt", cwd=self.store)
+        git("commit", "-qm", "user", cwd=self.store)
+        (self.store / "user.txt").write_text("edited\n")
+        inside, go = self.top / "inside", self.top / "go"
+        editor = self.top / "editor.sh"
+        editor.write_text(f"#!/bin/sh\ntouch '{inside}'; while [ ! -f '{go}' ]; do sleep 0.05; done; echo 'user message' > \"$1\"\n")
+        editor.chmod(0o755)
+        commit = subprocess.Popen(["git", "commit", "-a"], cwd=self.store, env={**GIT_ENV, "GIT_EDITOR": str(editor)},
+                                  stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, text=True)
+        self.addCleanup(commit.stderr.close)
+        self.addCleanup(commit.wait, 30)
+        self.addCleanup(go.touch)
+        self.until(inside.exists, "the git commit to pause in its editor")
+        self.assertTrue(self.lock.is_file(), "the paused git commit holds no index.lock")
+        self.capture(self.store, "s1")
+        self.assertTrue(self.lock.is_file(), "the capture removed the paused git commit's index.lock")
+        self.assertEqual(len(self.spool(self.store)), 1, "s1 is not in the spool")
+        go.touch()
+        self.assertEqual(commit.wait(timeout=30), 0, commit.stderr.read())
+        status = subprocess.run(["git", "status", "--porcelain"], cwd=self.store, env=GIT_ENV,
+                                capture_output=True, text=True)
+        self.assertEqual(status.returncode, 0, status.stderr)
+        self.assertEqual(git("log", "-1", "--format=%B", cwd=self.store), "user message", "the user's commit did not land")
+        self.assertEqual(git("show", "HEAD:user.txt", cwd=self.store), "edited")
+        self.capture(self.store, "s2")
+        self.assert_both_landed()
+        self.assertEqual(git("log", "-1", "--format=%B", "HEAD~1", cwd=self.store), "user message")
+        self.assertEqual(git("show", "HEAD:user.txt", cwd=self.store), "edited")
+
+    def test_an_index_lock_no_process_holds_is_removed(self) -> None:
+        self.index_lock_store()
+        self.lock.touch()
+        self.capture(self.store, "s1")
+        self.assertFalse(self.lock.exists(), "the stale index.lock was kept")
+        self.assertEqual(self.spool(self.store), [], "the spool was not drained")
+        self.assertIn(" | s1 | ", self.head_index())
+
+
+# A process that holds the file argv[1] open in a second thread after its main thread exits, so its leader is a
+# zombie whose /proc/<pid>/fd cannot be read. It touches argv[2] once the leader is a zombie and exits when argv[3]
+# appears.
+THREAD_HOLDER = """
+import ctypes, os, sys, threading, time
+f = open(sys.argv[1])
+def hold():
+    status = "/proc/%d/status" % os.getpid()
+    for _ in range(500):
+        if "\\tZ" in open(status).read().split("State:")[1][:4]:
+            break
+        time.sleep(0.01)
+    open(sys.argv[2], "w").close()
+    for _ in range(400):
+        if os.path.exists(sys.argv[3]):
+            break
+        time.sleep(0.05)
+threading.Thread(target=hold).start()
+ctypes.CDLL(None).pthread_exit(None)
+"""
+
+# A sitecustomize.py whose audit hook touches {fired} and then runs {fault} when a python3 lists /proc itself.
+SCAN_FAULT = """import os, sys, time
+def h(e, a):
+    if e in ("os.listdir", "os.scandir") and a and isinstance(a[0], (str, bytes)) and os.fsdecode(a[0]).rstrip("/") == "/proc":
+        open({fired!r}, "a").close()
+        {fault}
+sys.addaudithook(h)
+"""
+
+
+@unittest.skipUnless(os.path.isdir("/proc/self/fd"), "the holder scan under test reads /proc")
+class IndexLockTests(Base):
+    def setUp(self) -> None:
+        super().setUp()
+        self.index_lock_store()
+
+    def test_a_thread_outliving_its_main_thread_keeps_the_index_lock(self) -> None:
+        self.lock.touch()
+        inside, go = self.top / "inside", self.top / "go"
+        holder = subprocess.Popen(["python3", "-c", THREAD_HOLDER, str(self.lock), str(inside), str(go)])
+        self.addCleanup(holder.wait, 30)
+        self.addCleanup(go.touch)
+        self.until(inside.exists, "the holder's main thread to exit")
+        status = pathlib.Path(f"/proc/{holder.pid}/status").read_text()
+        self.assertRegex(status, r"(?m)^State:\tZ", "the holder's leader is not a zombie")
+        self.assertRegex(status, r"(?m)^Threads:\t2$", "the holder's second thread is gone")
+        self.capture(self.store, "s1")
+        self.assertTrue(self.lock.exists(), "the capture removed an index.lock a live thread holds")
+        self.assertEqual(len(self.spool(self.store)), 1, "s1 is not in the spool")
+        go.touch()
+        holder.wait(timeout=30)
+        self.capture(self.store, "s2")
+        self.assert_both_landed()
+
+    def assert_a_faulty_scan_keeps_the_lock(self, fault: str) -> None:
+        self.lock.touch()  # no process holds it
+        inj, fired = self.top / "inj", self.top / "fired"
+        inj.mkdir()
+        (inj / "sitecustomize.py").write_text(SCAN_FAULT.format(fired=str(fired), fault=fault))
+        t0 = time.monotonic()
+        self.capture(self.store, "s1", env={"PYTHONPATH": str(inj)})
+        took = time.monotonic() - t0
+        self.assertTrue(fired.exists(), "the holder scan never listed /proc")
+        self.assertTrue(self.lock.exists(), "a scan that did not finish removed the index.lock")
+        self.assertEqual(len(self.spool(self.store)), 1, "s1 is not in the spool")
+        self.assertLess(took, 10, "the capture outran the hook's ten-second timeout")
+        self.capture(self.store, "s2")
+        self.assert_both_landed()
+
+    def test_a_failed_holder_scan_keeps_the_index_lock(self) -> None:
+        self.assert_a_faulty_scan_keeps_the_lock('raise PermissionError(13, "injected", "/proc")')
+
+    def test_a_stalled_holder_scan_keeps_the_index_lock(self) -> None:
+        self.assert_a_faulty_scan_keeps_the_lock("time.sleep(30)")
+
+
+LOCK_BLOCK = re.compile(r"^# --- The store lock.*?^# --- end of the store lock block\.$", re.S | re.M)
+
+# A stand-in lsof that logs its arguments and answers each query from LSOF_LOCK (a query naming the lock) or
+# LSOF_CWD (the query for a git's cwd): "RC" or "RC:PIDS" exits RC after printing PIDS, "sleep" hangs.
+FAKE_LSOF = """#!/bin/sh
+printf '%s\\n' "$*" >> "$LSOF_LOG"
+case "$*" in *" -d cwd "*) a=$LSOF_CWD ;; *) a=$LSOF_LOCK ;; esac
+[ "$a" = sleep ] && exec sleep 30
+case "$a" in *:*) echo "${a#*:}" ;; esac
+exit "${a%%:*}"
+"""
+
+
+class ScanTests(Base):
+    """index_lock_free from each script's copy of the lock block, sourced on its own, on both of its branches."""
+
+    SCRIPTS = (HOOK, RECALL, WEEKLY)
+
+    def setUp(self) -> None:
+        super().setUp()
+        self.index_lock_store()
+        self.lock.touch()
+        self.log = self.top / "lsof.log"
+
+    def test_the_three_copies_of_the_lock_block_are_identical(self) -> None:
+        blocks = [LOCK_BLOCK.search(s.read_text()) for s in self.SCRIPTS]
+        self.assertTrue(all(blocks), "a script has no store lock block")
+        self.assertEqual(blocks[0].group(0), blocks[1].group(0), "mem-recall.sh's lock block differs")
+        self.assertEqual(blocks[0].group(0), blocks[2].group(0), "mem-weekly.sh's lock block differs")
+
+    def scan(self, script: pathlib.Path, no_proc: bool = False, path: str | None = None, **env: str) -> int:
+        # With no_proc, the block's probe for /proc names a missing path, so a Linux host runs the lsof branch.
+        block = LOCK_BLOCK.search(script.read_text()).group(0)
+        if no_proc:
+            self.assertEqual(block.count("/proc/self/fd"), 1, "the block's /proc probe moved")
+            block = block.replace("/proc/self/fd", str(self.top / "no-proc/self/fd"))
+        src = self.top / "block.sh"
+        src.write_text(block + "\n")
+        self.log.unlink(missing_ok=True)
+        r = subprocess.run([shutil.which("bash"), "-c", '. "$1"; index_lock_free "$STORE/.git/index.lock" "$STORE"', "_", str(src)],
+                           env={**GIT_ENV, "STORE": str(self.store), "LSOF_LOG": str(self.log),
+                                **({"PATH": path} if path else {}), **env},
+                           capture_output=True, text=True, timeout=30)
+        return r.returncode
+
+    def fake_lsof_path(self) -> str:
+        bin_ = self.top / "fake-bin"
+        bin_.mkdir(exist_ok=True)
+        (bin_ / "lsof").write_text(FAKE_LSOF)
+        (bin_ / "lsof").chmod(0o755)
+        return f"{bin_}:{os.environ['PATH']}"
+
+    def test_lsof_finding_no_holder_clears_the_lock(self) -> None:
+        path = self.fake_lsof_path()
+        for script in self.SCRIPTS:
+            self.assertEqual(self.scan(script, True, path, LSOF_LOCK="1", LSOF_CWD="1"), 0, script.name)
+            self.assertEqual(self.log.read_text().splitlines(), [
+                f"-t -n -P -- {self.lock}", f"-t -n -P -a -c /^git$/ -d cwd -- {self.store}"], script.name)
+
+    def test_lsof_reporting_a_holder_or_failing_keeps_the_lock(self) -> None:
+        path = self.fake_lsof_path()
+        cases = {"the lock open": ("0:4242", "1"), "a pid with exit 1": ("1:4242", "1"), "an error": ("2", "1"),
+                 "a git in the store": ("1", "0:4242"), "an error on the cwd query": ("1", "2")}
+        for script in self.SCRIPTS:
+            for what, (lock, cwd) in cases.items():
+                self.assertNotEqual(self.scan(script, True, path, LSOF_LOCK=lock, LSOF_CWD=cwd), 0,
+                                    f"{script.name}: lsof reporting {what} cleared the lock")
+
+    def test_a_stalled_lsof_keeps_the_lock_at_the_deadline(self) -> None:
+        path = self.fake_lsof_path()
+        for script in self.SCRIPTS:
+            t0 = time.monotonic()
+            self.assertNotEqual(self.scan(script, True, path, LSOF_LOCK="sleep", LSOF_CWD="1",
+                                          DEADLINE=str(time.time() + 1)), 0, script.name)
+            self.assertLess(time.monotonic() - t0, 5, f"{script.name}: the lsof scan outran $DEADLINE")
+
+    def test_no_lsof_keeps_the_lock(self) -> None:
+        bin_ = self.top / "no-lsof-bin"
+        bin_.mkdir()
+        for tool in ("python3", "git"):
+            (bin_ / tool).symlink_to(os.path.realpath(shutil.which(tool)))
+        for script in self.SCRIPTS:
+            self.assertNotEqual(self.scan(script, True, str(bin_)), 0, f"{script.name}: no lsof cleared the lock")
+
+    def scan_beside(self, script: pathlib.Path, cmd: list[str], ready) -> int:
+        # Scan while cmd runs in the store, once ready(pid) holds; its stdin
+        # is a pipe left open, so a command reading stdin waits.
+        p = subprocess.Popen(cmd, cwd=self.store, stdin=subprocess.PIPE)
+        try:
+            self.until(lambda: ready(p.pid), f"{cmd[0]} to start")
+            return self.scan(script)
+        finally:
+            p.kill()
+            p.wait()
+            p.stdin.close()
+
+    @unittest.skipUnless(os.path.isdir("/proc/self/fd"), "the /proc scan reads /proc")
+    def test_the_proc_scan_finds_an_open_lock_and_a_git_in_the_store(self) -> None:
+        sleep = os.path.realpath(shutil.which("sleep"))
+        git = os.path.realpath(shutil.which("git"))
+        opened = self.top / "opened"
+        hold = ["python3", "-c", "import sys, time; f = open(sys.argv[1]); open(sys.argv[2], 'w').close(); time.sleep(60)",
+                str(self.lock), str(opened)]
+
+        def runs(exe: str):
+            return lambda pid: os.readlink(f"/proc/{pid}/exe") == exe
+
+        for script in self.SCRIPTS:
+            opened.unlink(missing_ok=True)
+            self.assertEqual(self.scan(script), 0, f"{script.name}: an index.lock no one holds was kept")
+            self.assertNotEqual(self.scan_beside(script, hold, lambda pid: opened.exists()), 0,
+                                f"{script.name}: a process with the index.lock open was missed")
+            self.assertNotEqual(self.scan_beside(script, ["git", "hash-object", "--stdin"], runs(git)), 0,
+                                f"{script.name}: a git working in the store was missed")
+            self.assertEqual(self.scan_beside(script, ["sleep", "60"], runs(sleep)), 0,
+                             f"{script.name}: a process in the store that is not git counted as a holder")
 
 
 class RecallBoundTests(Base):
