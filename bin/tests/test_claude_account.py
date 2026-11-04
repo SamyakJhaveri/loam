@@ -16,6 +16,7 @@ import os
 import pathlib
 import re
 import subprocess
+import sys
 import tempfile
 import unittest
 
@@ -23,6 +24,7 @@ ROOT = pathlib.Path(__file__).resolve().parents[2]
 HELPER = ROOT / "bin/claude-account"
 TOKEN = "CLAUDE_CODE_OAUTH_TOKEN"  # by name, so no token assignment appears for the merge secret grep
 SCRUB = ("CLAUDE_ACCOUNTS_DIR", "CLAUDE_SETTINGS_FILE", "CLAUDE_CONFIG_DIR", "LAUNCH", TOKEN)
+LINUX_ONLY = unittest.skipUnless(sys.platform.startswith("linux"), "the launchers need Linux prctl, /proc and GNU timeout")
 PRINT_TOKEN = ["sh", "-c", 'printf %s "${' + TOKEN + '-unset}"']
 
 # Logs the winning token to STUB_OUT for every call but --version and --help, which spend nothing.
@@ -121,12 +123,14 @@ class ExecTests(Scratch):
         self.assertEqual(proc.returncode, 2)
         self.assertRegex(proc.stderr, r"^usage: bin/claude-account exec <command>")
 
+    @LINUX_ONLY
     def test_exec_puts_no_token_on_a_command_line(self) -> None:
         proc = self.helper("exec", "sh", "-c", 'cat /proc/$$/cmdline | tr "\\0" " "')
         self.assertEqual(proc.returncode, 0)
         self.assertNotIn("sk-ant-oat01", proc.stdout)
 
 
+@LINUX_ONLY
 class LauncherTests(unittest.TestCase):
     """After `use b`, each launcher's claude call gets b's token under settings precedence, not a's or the launch value."""
 
