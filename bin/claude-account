@@ -33,7 +33,8 @@ active_name() { [ -f "$dir/active" ] && cat "$dir/active" || true; }
 # settings env value beats the launch env `exec` sets; the file is never created. Each step returns 1 on failure, so
 # `active` is never written ahead of the settings file, also when a caller tests the result; a settings file jq cannot
 # read or parse is a failure too, not a token-free file. The token is not read here. `active` is replaced by a rename,
-# never truncated in place, so a concurrent `exec` reads the old name or the new one, never an empty file.
+# never truncated in place, so a concurrent `exec` reads the old name or the new one, never an empty file; the new file
+# is 0600 whatever the caller's umask.
 use_name() {
   local tmp rc=0
   [ -f "$dir/$1.token" ] || { echo "no stored token for '$1'; run: bin/claude-account set $1" >&2; return 1; }
@@ -47,7 +48,7 @@ use_name() {
       *) echo "could not read $f with jq (exit $rc); active not changed" >&2; return 1 ;;
     esac
   fi
-  printf '%s\n' "$1" > "$dir/active.$$" && mv -f "$dir/active.$$" "$dir/active" || { rm -f "$dir/active.$$"; return 1; }
+  (umask 077; printf '%s\n' "$1" > "$dir/active.$$") && mv -f "$dir/active.$$" "$dir/active" || { rm -f "$dir/active.$$"; return 1; }
   echo "active: $1" >&2
 }
 # Round robin in name order: the first stored account after the active one, wrapping to the first, so

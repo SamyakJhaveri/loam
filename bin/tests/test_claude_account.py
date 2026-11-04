@@ -71,6 +71,7 @@ class UseTests(Scratch):
         proc = self.helper("use", "b")
         self.assertEqual(proc.returncode, 0, proc.stderr)
         self.assertEqual((self.acc / "active").read_text(), "b\n")
+        self.assertEqual((self.acc / "active").stat().st_mode & 0o777, 0o600, "active took the caller's umask")
         self.assertNotIn("sk-ant-oat01", self.settings.read_text())
         self.assertEqual(json.loads(self.settings.read_text()), {"env": {"KEEP": "1"}, "model": "m"})
         self.assertEqual(self.settings.stat().st_mode & 0o777, 0o600)
