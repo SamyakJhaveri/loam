@@ -83,10 +83,13 @@ reap() { local wt n d; for wt in "$HOME"/loam-[0-9]*; do
     && { grep -Eq "^outcome issue $n: (merged|left open)" "$O/log.md" || [ -e "$d/pr-closed" ]; } \
     && git -C ~/loam worktree remove --force "$wt" && echo "$(stamp) removed $wt" >> "$O/driver.log" && freed=1
 done; }
-# 0 when an open PR from a factory/<issue> branch has no outcome line for its issue yet.
+# 0 when an open PR from a factory/<issue> branch has no outcome line for its issue yet. Only PRs Samyak opened from
+# this repo's own branches count: Loam is public and gh gives a fork's branch without its owner, so a stranger's
+# factory/<n> PR would otherwise start a call (and its outcome line could free the real PR's slot).
 pending() { local list n
-  list=$(gh pr list --repo SamyakJhaveri/loam --state open --limit 200 --json headRefName \
-    --jq '.[].headRefName | select(test("^factory/[0-9]+$")) | ltrimstr("factory/")' 2>> "$O/driver.log") \
+  list=$(gh pr list --repo SamyakJhaveri/loam --state open --limit 200 --json headRefName,isCrossRepository,author \
+    --jq '.[] | select(.isCrossRepository == false and .author.login == "SamyakJhaveri") | .headRefName
+      | select(test("^factory/[0-9]+$")) | ltrimstr("factory/")' 2>> "$O/driver.log") \
     || { echo "$(stamp) gh pr list failed" >> "$O/driver.log"; return 1; }
   for n in $list; do grep -Eq "^outcome issue $n: (merged|left open)" "$O/log.md" || return 0; done
   [ -s "$O/revisit.txt" ] && return 0   # a PR Samyak answered (protocol: Revisits)
