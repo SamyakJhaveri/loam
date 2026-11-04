@@ -121,17 +121,95 @@ except subprocess.TimeoutExpired:
     sys.exit(124)
 ' "$1" "${DEADLINE:-}" "${@:2}"
 }
-# Under the lock no other store git runs, so an index.lock is a killed git's and
-# a rebase in progress is a killed holder's: remove the one, abort the other
-# (which restores main with every commit). The abort ignores $DEADLINE, since a
-# half-done rebase is worse than a late hook. Succeeds only when neither is
-# left; a caller whose recovery failed writes nothing to the working tree.
+# Under the lock no other hook runs store git, but a git outside it can (a
+# person, an editor or a script in the store), so an index.lock is removed only
+# when index_lock_free finds no holder; one that is held, or that no scan
+# could clear, stays and fails the recovery, and the next holder scans again.
+# A rebase in progress is a killed holder's: abort it (which restores
+# main with every commit). With a rebase in progress the scan and the abort
+# ignore $DEADLINE and share a window that ends one second after it, or after
+# now once it has passed (recall's rebase can run to $DEADLINE): a half-done
+# rebase is worse than a late hook, and they end no later than an abort
+# started at $DEADLINE would.
+# Succeeds only when neither is left; a caller whose recovery failed writes
+# nothing to the working tree.
 store_recover() {
-  rm -f "$STORE/.git/index.lock" 2>/dev/null
+  local rebase= end=${DEADLINE:-}
   if [ -d "$STORE/.git/rebase-merge" ] || [ -d "$STORE/.git/rebase-apply" ]; then
-    DEADLINE='' bounded 1 "${SGIT[@]}" rebase --abort >/dev/null 2>&1
+    rebase=1
+    [ -n "$end" ] && end=$(python3 -c 'import sys, time; print(max(float(sys.argv[1]), time.time()) + 1)' "$end")
+  fi
+  if [ -e "$STORE/.git/index.lock" ]; then
+    DEADLINE=$end index_lock_free "$STORE/.git/index.lock" "$STORE" || return 1
+    rm -f "$STORE/.git/index.lock" 2>/dev/null
+  fi
+  if [ -n "$rebase" ]; then
+    DEADLINE=$end bounded 1 "${SGIT[@]}" rebase --abort >/dev/null 2>&1
   fi
   [ ! -e "$STORE/.git/index.lock" ] && [ ! -d "$STORE/.git/rebase-merge" ] && [ ! -d "$STORE/.git/rebase-apply" ]
+}
+# index_lock_free LOCK STORE: succeed only when a holder scan, bounded to five
+# seconds (and $DEADLINE), runs to its end and finds no holder; a held LOCK, a
+# scanner error and a timeout all fail. A holder has LOCK open, or is a git
+# whose working directory is STORE: `git commit -a` closes the index.lock it
+# wrote and keeps it through the hooks and the message editor. With /proc
+# (Linux) python3 reads every thread's exe, cwd and fd list under
+# /proc/<pid>/task/<tid>: a process whose main thread has exited is a zombie
+# leader with an unreadable /proc/<pid>/fd, while another of its threads still
+# holds the shared fds. A pid, thread or fd that vanishes mid-scan, and an entry
+# that cannot be read (another user's process, pid 1, a zombie, a non-dumpable
+# process), are passed over; any other error (EMFILE, say) ends the scan
+# without a result. Files match on (st_dev, st_ino), not link text,
+# which differs in another mount namespace; a git matches on its exe's name,
+# since one host can have several git binaries. Without /proc (macOS) lsof
+# scans, for LOCK and for a git's cwd: exit 1 with no pid printed is no holder,
+# and no lsof is no scan.
+index_lock_free() {
+  local out rc
+  if [ -d /proc/self/fd ]; then
+    bounded 5 python3 -c '
+import os, sys
+st = os.stat(sys.argv[1])
+lock = (st.st_dev, st.st_ino)
+st = os.stat(sys.argv[2])
+top = (st.st_dev, st.st_ino)
+for pid in os.listdir("/proc"):
+    if not pid.isdigit():
+        continue
+    try:
+        tids = os.listdir("/proc/" + pid + "/task")
+    except (FileNotFoundError, ProcessLookupError, PermissionError):
+        continue
+    for tid in tids:
+        tdir = "/proc/" + pid + "/task/" + tid + "/"
+        try:
+            if os.readlink(tdir + "exe").rsplit("/", 1)[-1] in ("git", "git (deleted)"):
+                st = os.stat(tdir + "cwd")
+                if (st.st_dev, st.st_ino) == top:
+                    sys.exit(1)
+        except (FileNotFoundError, ProcessLookupError, PermissionError):
+            pass
+        try:
+            fds = os.listdir(tdir + "fd")
+        except (FileNotFoundError, ProcessLookupError, PermissionError):
+            continue
+        for fd in fds:
+            try:
+                st = os.stat(tdir + "fd/" + fd)
+            except (FileNotFoundError, ProcessLookupError, PermissionError):
+                continue
+            if (st.st_dev, st.st_ino) == lock:
+                sys.exit(1)
+' "$1" "$2" >/dev/null 2>&1
+    return
+  fi
+  command -v lsof >/dev/null 2>&1 || return 1
+  out=$(bounded 5 lsof -t -n -P -- "$1" 2>/dev/null)
+  rc=$?
+  [ "$rc" = 1 ] && [ -z "$out" ] || return 1
+  out=$(bounded 5 lsof -t -n -P -a -c '/^git$/' -d cwd -- "$2" 2>/dev/null)
+  rc=$?
+  [ "$rc" = 1 ] && [ -z "$out" ]
 }
 # store_lock SECS: take the lock within SECS seconds (and by $DEADLINE), then
 # recover; on failure hold nothing. A directory at the lock path is the earlier
