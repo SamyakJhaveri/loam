@@ -132,10 +132,13 @@ active_account() { local a
   a=${a#active: }; a=${a%%;*}
   [ "$a" = none ] || printf '%s\n' "$a"
 }
-# One call under WRAP. O/call.pid holds "pid before out account" while it runs (account: the one active just before
-# the call starts; left out when none is): a stopped driver leaves the call to finish, and the next driver adopts it
-# with the same rules (below), so a restart neither kills a review, nor starts a second call on the same PR, nor
-# judges the call's usage limit by the account active now.
+# One call under WRAP, through claude-account exec, which execs claude with the token of the account recorded below in
+# its env (one read of `active` gives both, so a switch in between cannot record a for a call on b; the settings files
+# hold no token) and keeps the pid; the wrapper's args still hold `claude -p ... overnight/protocol.md`,
+# which the adopt check below and watchdog.sh match. O/call.pid holds "pid before out account" while it runs (account:
+# the one active just before the call starts; left out when none is): a stopped driver leaves the call to finish, and
+# the next driver adopts it with the same rules (below), so a restart neither kills a review, nor starts a second call
+# on the same PR, nor judges the call's usage limit by the account active now.
 # CLAUDE_CODE_PRINT_BG_WAIT_CEILING_MS=0 (#679): headless claude otherwise stops the lead's background agents 10 min
 # after its last turn; 0 waits for them.
 run() { local pid out acct
@@ -143,7 +146,7 @@ run() { local pid out acct
   grader_window
   acct=$(active_account)
   env CLAUDE_CODE_PRINT_BG_WAIT_CEILING_MS=0 CLAUDE_CODE_SUBAGENT_MODEL=claude-opus-5-5 ANTHROPIC_DEFAULT_HAIKU_MODEL=claude-opus-5-5 ANTHROPIC_DEFAULT_SONNET_MODEL=claude-opus-5-5 \
-    perl -MPOSIX -MTime::HiRes=time,sleep -e "$WRAP" \
+    perl -MPOSIX -MTime::HiRes=time,sleep -e "$WRAP" "$HOME/loam/bin/claude-account" exec --as "$acct" \
     claude -p --model claude-opus-5-5 --effort high --permission-mode bypassPermissions --settings "$D/settings.json" --max-turns 400 --output-format json "$1" \
     < /dev/null > "$out" 2>> "$O/driver.log" &
   pid=$!; echo "$pid $before $out${acct:+ $acct}" > "$O/call.pid"

@@ -53,6 +53,7 @@ class OvernightDriverTests(unittest.TestCase):
         (self.home / "loam/bin").mkdir(parents=True)
         (self.home / "loam/bin/overnight").symlink_to(OVERNIGHT)
         write_exec(self.home / "loam/bin/alert", "#!/bin/sh\nexit 0\n")
+        # run() starts each call through ~/loam/bin/claude-account exec, on the temp home's accounts (env below).
         (self.home / "loam/bin/claude-account").symlink_to(ROOT / "bin/claude-account")
         self.fake = self.home / "fake"
         self.fake.mkdir()

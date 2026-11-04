@@ -1,7 +1,13 @@
 #!/usr/bin/env bash
 # bin/claude-account - hold one long-lived Claude Code token per account and switch between them.
 #   bin/claude-account set <name>   read a `claude setup-token` value from stdin into <dir>/<name>.token (0600)
-#   bin/claude-account use <name>   write that token into the env block of the settings file (new claude processes use it)
+#   bin/claude-account use <name>   name that account active in <dir>/active, and drop a token key from the env block of
+#                                   the settings file (a settings env value beats the launch env, so none may stay there)
+#   bin/claude-account exec [--as <name>] <command> [args...]
+#                                   run the command with the active account's token in its environment (with --as, the
+#                                   token of <name>, which a caller read from `active` once and also records; an empty
+#                                   <name> reads `active`); with no active account, or none stored, the environment is
+#                                   left as it is
 #   bin/claude-account other        print the next stored account after the active one (name order, wrapping), non-zero when there is none
 #   bin/claude-account status       print `active: <name>; stored: <names>` and nothing else
 #   bin/claude-account switch <from> [<to>]
@@ -11,28 +17,40 @@
 #                                   caller switched), exit 3 when <runs root>/limit-switch holds an epoch under 300 s ago,
 #                                   else `use` <to> (default: what `other` prints) and write the epoch there; exit 1 on no
 #                                   lock, no other account or a failed `use`. Runs root: FACTORY_RUNS_ROOT, as bin/factory.
-# Tokens live outside the settings file so a switch never needs the browser; each is valid one year.
+# Tokens live only in their 0600 files, never in the settings file, so a switch never needs the browser and no copy of
+# the settings file holds one; each is valid one year. A call reaches the active token only through `exec`.
 # No command prints, echoes, or logs a token value; `set -x` is never used here.
 # The account directory, settings file and runs root are overridable so the factory loop can drive this against a temp home.
 set -euo pipefail
 
 dir=${CLAUDE_ACCOUNTS_DIR:-$HOME/.config/claude-accounts}
-f=${CLAUDE_SETTINGS_FILE:-$HOME/.claude/settings.json}
+f=${CLAUDE_SETTINGS_FILE:-${CLAUDE_CONFIG_DIR:-$HOME/.claude}/settings.json}
 cmd=${1:-status}
 name=${2:-}
 
 # The active account name, from the file `use` writes; empty when nothing is active yet.
 active_name() { [ -f "$dir/active" ] && cat "$dir/active" || true; }
 
-# Write the token of account $1 into the settings env block, then name it active. Each step returns 1 on failure,
-# so `active` is never written ahead of the settings file, also when a caller tests the result. Keep the spaces
-# around `=` in the jq filter so the merge grep for an assignment of the token env var finds no hit here.
+# Name account $1 active. A token key left in the settings file (written by `use` before #644) is dropped first, since a
+# settings env value beats the launch env `exec` sets; the file is never created. Each step returns 1 on failure, so
+# `active` is never written ahead of the settings file, also when a caller tests the result; a settings file jq cannot
+# read or parse is a failure too, not a token-free file. The token is not read here. `active` is replaced by a rename,
+# never truncated in place, so a concurrent `exec` reads the old name or the new one, never an empty file; the new file
+# is 0600 whatever the caller's umask.
 use_name() {
-  local t tmp
+  local tmp rc=0
   [ -f "$dir/$1.token" ] || { echo "no stored token for '$1'; run: bin/claude-account set $1" >&2; return 1; }
-  t=$(cat "$dir/$1.token") && tmp=$(mktemp "$f.XXXXXX") || return 1
-  jq --arg t "$t" '.env.CLAUDE_CODE_OAUTH_TOKEN = $t' "$f" > "$tmp" || { rm -f "$tmp"; return 1; }
-  mv "$tmp" "$f" && chmod 600 "$f" && printf '%s\n' "$1" > "$dir/active" || return 1
+  if [ -f "$f" ]; then
+    jq -e '.env | type == "object" and has("CLAUDE_CODE_OAUTH_TOKEN")' "$f" > /dev/null 2>&1 || rc=$?
+    case $rc in
+      0) tmp=$(mktemp "$f.XXXXXX") || return 1
+         jq 'del(.env.CLAUDE_CODE_OAUTH_TOKEN)' "$f" > "$tmp" || { rm -f "$tmp"; return 1; }
+         mv "$tmp" "$f" && chmod 600 "$f" || return 1 ;;
+      1) ;;
+      *) echo "could not read $f with jq (exit $rc); active not changed" >&2; return 1 ;;
+    esac
+  fi
+  (umask 077; printf '%s\n' "$1" > "$dir/active.$$") && mv -f "$dir/active.$$" "$dir/active" || { rm -f "$dir/active.$$"; return 1; }
   echo "active: $1" >&2
 }
 # Round robin in name order: the first stored account after the active one, wrapping to the first, so
@@ -74,6 +92,25 @@ case "$cmd" in
   other)
     other_name || exit 1
     ;;
+  exec)
+    shift; a=
+    if [ "${1-}" = --as ]; then
+      [ $# -ge 2 ] || { echo "usage: bin/claude-account exec [--as <name>] <command> [args...]" >&2; exit 2; }
+      a=$2; shift 2
+    fi
+    [ $# -gt 0 ] || { echo "usage: bin/claude-account exec [--as <name>] <command> [args...]" >&2; exit 2; }
+    [ -n "$a" ] || a=$(active_name)
+    if [ -n "$a" ] && [ -f "$dir/$a.token" ]; then
+      # Into this process's environment only, never onto a command line (/proc shows argv). A token file with no
+      # trailing newline still reads under set -e; an unreadable one, or one whose first line is empty, exits 1 rather
+      # than pass the launch value.
+      unset CLAUDE_CODE_OAUTH_TOKEN
+      IFS= read -r CLAUDE_CODE_OAUTH_TOKEN < "$dir/$a.token" || true
+      [ -n "${CLAUDE_CODE_OAUTH_TOKEN:-}" ] || { echo "could not read the token of '$a' from $dir/$a.token" >&2; exit 1; }
+      export CLAUDE_CODE_OAUTH_TOKEN
+    fi
+    exec "$@"
+    ;;
   switch)
     [ -n "$name" ] || { echo "usage: bin/claude-account switch <from> [<to>]" >&2; exit 2; }
     runs=${FACTORY_RUNS_ROOT:-$HOME/.local/state/loam-factory/runs}
@@ -100,7 +137,7 @@ case "$cmd" in
     echo "active: ${a:-none}; stored:${stored}"
     ;;
   *)
-    echo "usage: bin/claude-account set|use <name> | other | status | switch <from> [<to>]" >&2
+    echo "usage: bin/claude-account set|use <name> | other | status | switch <from> [<to>] | exec <command> [args...]" >&2
     exit 2
     ;;
 esac

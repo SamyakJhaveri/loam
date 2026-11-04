@@ -10,6 +10,7 @@ from __future__ import annotations
 import json
 import os
 import pathlib
+import shutil
 import subprocess
 import tempfile
 import unittest
@@ -82,8 +83,12 @@ class EvalTreeTests(unittest.TestCase):
         fake.chmod(0o755)
         seen = tmp / "seen.jsonl"
         env = {k: v for k, v in os.environ.items() if k not in ("EVAL_EFFORT", "EVAL_OUT", "FACTORY_LEDGER")}
+        # ROOT is the stand-in repo, and each replay call starts through its bin/claude-account: the real helper,
+        # untracked there, on an accounts directory with no account, so the operator's token never reaches the fake.
+        (repo / "bin").mkdir()
+        shutil.copy(ROOT / "bin/claude-account", repo / "bin/claude-account")
         env.update(PATH=f"{fake.parent}:{os.environ['PATH']}", SEEN_LOG=str(seen), FACTORY_SOURCED="1",
-                   FACTORY_ROOT=str(repo))
+                   FACTORY_ROOT=str(repo), CLAUDE_ACCOUNTS_DIR=str(tmp / "acc"))
         script = f"EVALS_DIR='{evals}'; GRADERS_DIR='{AGENTS}'; run_eval judge"
         proc = subprocess.run(["bash", "-c", '. "$0"\n' + script, "bin/factory"], cwd=ROOT, env=env,
                               capture_output=True, text=True, check=False)
