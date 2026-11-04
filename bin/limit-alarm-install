@@ -2,7 +2,7 @@
 # bin/limit-alarm-install: test bin/limit-alarm (copied to ~/.distbench/la-new.sh) against a fake pane, fake tokens,
 # fake transcripts, a fake pair status and a fake stop file; on PASS install it as ~/.distbench/limit-alarm.sh, seed uci's known reset,
 # and restart tmux limit-alarm. Never touches the lead, the real accounts or the real rental stop file.
-# Run on jhaveris: ~/Desktop/loam/bin/limit-alarm-install (after a pull). The Claude classifier blocks agents from
+# Run on jhaveris: ~/loam/bin/limit-alarm-install (after a pull). The Claude classifier blocks agents from
 # running it, so the owner runs it himself.
 set -u
 command -v timeout > /dev/null || { echo "limit-alarm-install needs timeout(1) (GNU coreutils) to bound each run"; exit 1; }

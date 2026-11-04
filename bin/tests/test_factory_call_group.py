@@ -26,7 +26,7 @@ ROOT = pathlib.Path(__file__).resolve().parents[2]
 # one that also clears its environment only by the call's subreaper wrapper, which finds its children in /proc.
 NEEDS_PROC = unittest.skipUnless(os.path.exists("/proc/self/environ"), "the tag sweep and the wrapper read /proc")
 TOKEN = "CLAUDE_CODE_OAUTH_TOKEN"  # by name, so no token assignment appears for the merge secret grep
-INHERITED = ("FACTORY_ROOT", "FACTORY_GH", "LOAM_FACTORY_TOOLCHAIN", "LOAM_FACTORY_COPIER", "REPO", "RUN", "LOG",
+INHERITED = ("FACTORY_ROOT", "FACTORY_GH", "REPO", "RUN", "LOG",
              "CLAUDE_SETTINGS_FILE", TOKEN)
 
 # FAKE_IGNORE_TERM makes the writer ignore TERM, so only KILL stops it. FAKE_OWN_SESSION starts it in a session of its

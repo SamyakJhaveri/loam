@@ -19,7 +19,7 @@ import unittest
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
 CRITERIA = ROOT / "bin/factory.d/criteria.py"
-INHERITED = ("FACTORY_ROOT", "LOAM_FACTORY_TOOLCHAIN", "LOAM_FACTORY_COPIER")
+INHERITED = ("FACTORY_ROOT",)
 
 
 def run_dir(root: pathlib.Path, label: str, status: str, log: list[str], rounds: int) -> None:

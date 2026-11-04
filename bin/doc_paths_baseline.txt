@@ -5,7 +5,6 @@ docs/factory/ARCHITECTURE.md docs/adr/
 docs/factory/ARCHITECTURE.md docs/factory/STANDING.md
 docs/factory/CONTRACT.md docs/factory/STANDING.md
 docs/factory/CONTRACT.md docs/tickets/
-docs/factory/LOOP.md bin/node
 docs/factory/LOOP.md docs/factory/STANDING.md
 docs/factory/LOOP.md docs/harness/claude-code.md
 docs/factory/LOOP.md frozen/unattended.md

@@ -110,8 +110,7 @@ class GraderVersionTests(unittest.TestCase):
         body = (ROOT / "bin/tests/fixtures/clean-ticket.md").read_text().rstrip("\n")
         line = f"7 SamyakJhaveri {base64.b64encode(body.encode()).decode()}"
         proc = self.sourced(
-            env + "LOAM_FACTORY_TOOLCHAIN=t LOAM_FACTORY_COPIER=c; "
-            "assert_toolchain_env() { :; }; claude_logged_in() { :; }; claude_version_ok() { :; }; target_repo() { echo o/r; }; "
+            env + "claude_logged_in() { :; }; claude_version_ok() { :; }; target_repo() { echo o/r; }; "
             f"gh() {{ case $1$2 in apigraphql) echo '{GQL}' ;; api*) echo '{line}' ;; esac; }}; "
             f'git() {{ case "$*" in *"rev-parse --abbrev-ref HEAD") echo main ;; esac; }}; '
             f'tmux() {{ echo "$*" >> "{calls}"; [ "$1" != has-session ]; }}; '

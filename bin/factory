@@ -1809,26 +1809,12 @@ assert_parallel() {
     || finish stopped-environment "parallel cap: $n other live run(s), MAX_PARALLEL=$MAX_PARALLEL"
 }
 
-# A Loam run still requires both exports, though bin/check stopped reading them when ruling R6 removed its
-# Node gate; the gate stays until the factory tests stop expecting it. One stderr line naming the variable, return 1.
-assert_toolchain_env() {
-  local fix="export it in ~/.profile on the runner; see CONTRIBUTING.md"
-  if [ -z "${LOAM_FACTORY_TOOLCHAIN:-}" ] || [ ! -x "$LOAM_FACTORY_TOOLCHAIN/bin/node" ]; then
-    echo "LOAM_FACTORY_TOOLCHAIN is unset or has no node binary under it: $fix" >&2
-    return 1
-  fi
-  if [ -z "${LOAM_FACTORY_COPIER:-}" ] || [ ! -x "$LOAM_FACTORY_COPIER" ]; then
-    echo "LOAM_FACTORY_COPIER is unset or not executable: $fix" >&2
-    return 1
-  fi
-}
-
-# The launch gate for the target: Loam needs the toolchain exports above; another target needs its
-# own executable bin/check, which every done-checks block guards, and a standing do-not-touch list with at least
-# one entry, so an unattended worker never runs with nothing fenced off (F8). One stderr line, return 1.
+# Loam has no target gate; another target needs its own executable bin/check, which every
+# done-checks block guards, and a standing do-not-touch list with at least one entry, so an
+# unattended worker never runs with nothing fenced off (F8). One stderr line, return 1.
 assert_target_ready() {
   local how="a factory target needs one (LOOP.md, Run the factory on another repository)"
-  if target_is_loam; then assert_toolchain_env; return; fi
+  target_is_loam && return 0
   [ -x "$TARGET/bin/check" ] || { echo "$TARGET has no executable bin/check; $how" >&2; return 1; }
   [ -n "$(standing_list)" ] && return 0
   echo "$(standing_file) is missing or has no tracked path under '## Standing do-not-touch list'; $how" >&2
@@ -2958,7 +2944,7 @@ main_loop() {
 
 cmd_run() {
   linux_only run
-  # Before load_ticket, so a missing toolchain export or bin/check stops ahead of every GitHub call; exit 4
+  # Before load_ticket, so another target missing bin/check or its standing list stops before every GitHub call; exit 4
   # is stopped-environment's code, direct because finish needs RUN and its notify may comment on the issue.
   assert_target_ready || exit 4
   local cv
@@ -3446,8 +3432,8 @@ next_tick() { # [--dry-run|--install|--frontier]
   #     read-only and shared with precondition_lines; it runs under --dry-run too, since a check from
   #     inside a worktree may run it. The line goes to stderr (cron's next.log) and returns 1, the same
   #     shape as `frontier query failed`; the ticket stays unassigned and launches on the first tick
-  #     after the login returns. The target gate works the same way: it refuses Loam without the toolchain
-  #     exports and another target without a bin/check, which would fail guard bin/check after its work (#158).
+  #     after the login returns. Another target also needs bin/check and its standing list before launch;
+  #     a missing bin/check would fail guard bin/check after its work (#158).
   assert_target_ready || return 1
   if ! claude_logged_in; then
     echo "login expired: claude auth status reports logged out; run claude login on the runner" >&2
@@ -3733,15 +3719,18 @@ next_tick() { # [--dry-run|--install|--frontier]
   fi
   # cmd_run creates the run dir, but the detached shell opens the tmux log first; on a fresh install
   # RUNS_ROOT does not exist yet, so the redirection would fail before the run ever starts.
-  # tmux gives the session the tmux server's environment, not this shell's, so the toolchain exports
-  # checked above travel with -e; a server started without them would make the run exit 4 unrecorded.
   mkdir -p "$RUNS_ROOT"
-  target_is_loam && envs+=(-e "LOAM_FACTORY_TOOLCHAIN=$LOAM_FACTORY_TOOLCHAIN" -e "LOAM_FACTORY_COPIER=$LOAM_FACTORY_COPIER")
-  # The FACTORY_<NAME> caps travel too: without them the run fell back to MAX_PARALLEL=1, so every launch that
-  # next's FACTORY_MAX_PARALLEL=2 allowed beside a live run stopped at once as a machine problem. Every cap
-  # travels, empty when next has none, so a cap in the server's environment never reaches the run.
+  # tmux uses the server's environment, so the FACTORY_<NAME> caps travel with -e: without them the run
+  # fell back to MAX_PARALLEL=1, so every launch that next's FACTORY_MAX_PARALLEL=2 allowed beside a live
+  # run stopped at once as a machine problem. Every cap travels, empty when next has none, so a cap in
+  # the server's environment never reaches the run.
   local cap v
   for cap in $CAP_NAMES; do v="FACTORY_$cap"; envs+=(-e "$v=${!v:-}"); done
+  # Existing runs keep their frozen supervisor, which may still read Loam's older launch exports.
+  # Forward the exported namespace without requiring any of it for a new run.
+  if target_is_loam; then
+    while IFS= read -r v; do envs+=(-e "$v=${!v}"); done < <(compgen -e LOAM_FACTORY_)
+  fi
   if tmux new-session -d -s "$sess" "${envs[@]}" "cd '$ROOT' && bin/factory -C '$TARGET' run $pick >> '$RUNS_ROOT/$pick.tmux.log' 2>&1"; then
     idle_end
     echo "launched #$pick"
@@ -3866,20 +3855,9 @@ precondition_lines() { # LOOP.md, Preconditions
     command -v "$t" > /dev/null 2>&1 && echo "  PASS $t on PATH" || echo "  FAIL $t not on PATH"
   done
   echo "  INFO target $TARGET; runs root $RUNS_ROOT"
-  # Only a Loam target needs the toolchain exports; another target needs its own bin/check instead (F8).
+  # Another target needs its own executable bin/check (F8).
   if ! target_is_loam; then
     [ -x "$TARGET/bin/check" ] && echo "  PASS bin/check in the target" || echo "  FAIL no executable bin/check in the target"
-  else
-    if [ -n "${LOAM_FACTORY_TOOLCHAIN:-}" ] && [ -x "$LOAM_FACTORY_TOOLCHAIN/bin/node" ]; then
-      echo "  PASS LOAM_FACTORY_TOOLCHAIN $LOAM_FACTORY_TOOLCHAIN"
-    else
-      echo "  FAIL LOAM_FACTORY_TOOLCHAIN unset or no node binary under it"
-    fi
-    if [ -n "${LOAM_FACTORY_COPIER:-}" ] && [ -x "$LOAM_FACTORY_COPIER" ]; then
-      echo "  PASS LOAM_FACTORY_COPIER $LOAM_FACTORY_COPIER"
-    else
-      echo "  FAIL LOAM_FACTORY_COPIER unset or not executable"
-    fi
   fi
   if [ -n "$(standing_list)" ]; then
     echo "  PASS standing do-not-touch list: $(standing_list | grep -c .) paths from $(standing_file)"
