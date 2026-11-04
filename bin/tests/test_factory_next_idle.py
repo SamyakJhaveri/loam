@@ -10,8 +10,8 @@ from __future__ import annotations
 import hashlib
 import json
 import os
-import re
 import pathlib
+import re
 import subprocess
 import tempfile
 import unittest
@@ -59,7 +59,7 @@ LAUNCHABLE = {**BLOCKED, "99042": {"as": [], "bl": 0, "body": str(CLEAN)}}
 
 # The runner exports FACTORY_<CAP> overrides (FACTORY_DAILY_BUDGET_USD=1000000000 on jhaveris), and
 # apply_caps lets them beat the defaults these tests rely on, so the ticks start without them (#676).
-CAP_NAMES = re.search(r'^CAP_NAMES="([^"]*)"', (ROOT / "bin/factory").read_text(), re.M).group(1).replace("\\", " ").split()
+CAP_NAMES = re.search(r'^CAP_NAMES="([^"]*)"', (ROOT / "bin/factory").read_text(), re.MULTILINE).group(1).replace("\\", " ").split()
 RUNNER_FREE_ENV = {k: v for k, v in os.environ.items() if not (k.startswith("FACTORY_") and k[8:] in CAP_NAMES)}
 
 
