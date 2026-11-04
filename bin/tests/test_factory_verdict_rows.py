@@ -47,11 +47,14 @@ class VerdictRowsTests(unittest.TestCase):
         fake.parent.mkdir()
         fake.write_text(FAKE_CLAUDE)
         fake.chmod(0o755)
-        self.env = {**os.environ, "PATH": f"{fake.parent}:{os.environ['PATH']}", "FACTORY_SOURCED": "1",
-                    "FACTORY_RUNS_ROOT": str(self.tmp / "runs")}
+        # No inherited FACTORY_ROOT and $0 bin/factory, so ROOT is this checkout and call_json runs its
+        # bin/claude-account, on an accounts directory with no account, so the operator's token never reaches the fake.
+        env = {k: v for k, v in os.environ.items() if k != "FACTORY_ROOT"}
+        self.env = {**env, "PATH": f"{fake.parent}:{os.environ['PATH']}", "FACTORY_SOURCED": "1",
+                    "FACTORY_RUNS_ROOT": str(self.tmp / "runs"), "CLAUDE_ACCOUNTS_DIR": str(self.tmp / "acc")}
 
     def sourced(self, script: str, *args: str) -> subprocess.CompletedProcess[str]:
-        return subprocess.run(["bash", "-c", f". bin/factory\n{script}", "_", *args], cwd=ROOT, env=self.env,
+        return subprocess.run(["bash", "-c", f". bin/factory\n{script}", "bin/factory", *args], cwd=ROOT, env=self.env,
                               capture_output=True, text=True, check=False)
 
     def consistent(self, obj: dict[str, object]) -> bool:

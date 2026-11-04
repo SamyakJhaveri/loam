@@ -56,8 +56,11 @@ class ReviewRuleTests(unittest.TestCase):
         fake.parent.mkdir()
         fake.write_text(FAKE_CLAUDE)
         fake.chmod(0o755)
-        self.env = {**os.environ, "PATH": f"{fake.parent}:{os.environ['PATH']}",
-                    "FACTORY_RUNS_ROOT": str(self.tmp / "runs")}
+        # No inherited FACTORY_ROOT and $0 bin/factory, so ROOT is this checkout and call_json runs its
+        # bin/claude-account, on an accounts directory with no account, so the operator's token never reaches the fake.
+        env = {k: v for k, v in os.environ.items() if k != "FACTORY_ROOT"}
+        self.env = {**env, "PATH": f"{fake.parent}:{os.environ['PATH']}",
+                    "FACTORY_RUNS_ROOT": str(self.tmp / "runs"), "CLAUDE_ACCOUNTS_DIR": str(self.tmp / "acc")}
 
     def loop_outcome(self, name: str, reply: dict[str, object]) -> tuple[str, int]:
         """(fix|merge from run_review, reviewer calls in the ledger) for one reply through the real call_json."""
@@ -68,7 +71,7 @@ class ReviewRuleTests(unittest.TestCase):
                   'touch "$LEDGER" "$DAILY"; date -u +%s > "$RUN/launched"\n'
                   f"build_evidence() {{ printf 'REPLY %s\\n' '{json.dumps(reply)}'; }}\n"
                   "run_review 1; echo \"rc:$?\"")
-        proc = subprocess.run(["bash", "-c", f". bin/factory\n{script}"], cwd=ROOT,
+        proc = subprocess.run(["bash", "-c", f". bin/factory\n{script}", "bin/factory"], cwd=ROOT,
                               env={**self.env, "FACTORY_SOURCED": "1"}, capture_output=True, text=True, check=False)
         self.assertIn("rc:", proc.stdout, proc.stderr)
         calls = [json.loads(x) for x in (run / "ledger.jsonl").read_text().splitlines()]

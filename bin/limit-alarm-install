@@ -36,7 +36,7 @@ echo $(( now + 40000 )) > "$A/state/uci.until"
 outA=$(run "$A" 20); paneA=$(tmux capture-pane -p -t la-test-pane -S -50)
 chk "detects the spend-limit/weekly text on gmail" 'grep -q "limit on gmail (e1)" <<< "$outA"'
 chk "records gmail usable again at the next 6am" '[ "$(date -d @$(cat $A/state/gmail.until) +%H:%M)" = 06:00 ]'
-chk "switches to npds (gmail and uci limited)" '[ "$(cat $A/acc/active)" = npds ] && [ "$(jq -r .env.CLAUDE_CODE_OAUTH_TOKEN $A/settings.json)" = fake-npds ]'
+chk "switches to npds (gmail and uci limited)" '[ "$(cat $A/acc/active)" = npds ] && ! grep -q CLAUDE_CODE_OAUTH_TOKEN $A/settings.json'
 chk "old process stopped, relaunched with --resume sessA" '! pgrep -f "^sleep 1000$" >/dev/null && grep -q "FAKE-CLAUDE --resume sessA" <<< "$paneA"'
 chk "resume message pasted and Slack alert sent" 'grep -q "Watch alarm" <<< "$paneA" && grep -q "ALERT: WATCH: .*from gmail to npds" <<< "$outA"'
 chk "no stop file in a normal switch" '[ ! -e $A/STOP ]'

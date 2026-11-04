@@ -11,6 +11,7 @@ tmux, pgrep, sleep and alert, so nothing reaches GitHub, Slack, tmux or a model.
 
 from __future__ import annotations
 
+import fcntl
 import fnmatch
 import json
 import os
@@ -52,11 +53,34 @@ class OvernightDriverTests(unittest.TestCase):
         (self.home / "loam/bin").mkdir(parents=True)
         (self.home / "loam/bin/overnight").symlink_to(OVERNIGHT)
         write_exec(self.home / "loam/bin/alert", "#!/bin/sh\nexit 0\n")
+        # run() starts each call through ~/loam/bin/claude-account exec, on the temp home's accounts (env below).
+        (self.home / "loam/bin/claude-account").symlink_to(ROOT / "bin/claude-account")
         self.fake = self.home / "fake"
         self.fake.mkdir()
+        # Hour 12 for `date +%H`, so no run in 07:00-07:59 Pacific starts the morning-report call first.
+        write_exec(self.fake / "date",
+                   f'#!/bin/sh\n[ "$*" = +%H ] && {{ echo 12; exit 0; }}\nexec {shutil.which("date")} "$@"\n')
+        self.acc = self.home / "acc"
+        self.runs = self.home / "runs"
 
     def env(self) -> dict[str, str]:
-        return {**os.environ, "HOME": str(self.home), "PATH": f"{self.fake}:{os.environ['PATH']}"}
+        # The account dir, settings file and runs root are the temp home's, so no test switches the host's account
+        # or starts its switch cooldown.
+        return {**os.environ, "HOME": str(self.home), "PATH": f"{self.fake}:{os.environ['PATH']}",
+                "CLAUDE_ACCOUNTS_DIR": str(self.acc), "CLAUDE_SETTINGS_FILE": str(self.home / "settings.json"),
+                "FACTORY_RUNS_ROOT": str(self.runs)}
+
+    def accounts(self, stored: tuple[str, ...] = ("a", "b"), active: str = "a") -> None:
+        """Stored accounts (a and b), one active (a; none for "")."""
+        self.acc.mkdir()
+        for n in stored:
+            (self.acc / f"{n}.token").write_text("sk-ant-oat01-fake\n")
+        if active:
+            (self.acc / "active").write_text(f"{active}\n")
+        (self.home / "settings.json").write_text("{}\n")
+
+    def active(self) -> str:
+        return (self.acc / "active").read_text().strip()
 
     def test_scripts_are_executable(self) -> None:
         for name in ("driver.sh", "watchdog.sh"):
@@ -114,9 +138,13 @@ class OvernightDriverTests(unittest.TestCase):
         write_exec(self.fake / "setsid", '#!/bin/sh\nexec "$@"\n')
         write_exec(self.fake / "sleep", "#!/bin/sh\nexit 0\n")
         write_exec(self.fake / "gh", '#!/bin/sh\ncase "$*" in *"pr list"*) echo 7 ;; esac\nexit 0\n')
-        write_exec(self.fake / "claude", '#!/bin/sh\nprintf "%s\\n" "$@" >> "$HOME/claude.args"\nexit 0\n')
+        write_exec(self.fake / "claude", '#!/bin/sh\necho "$CLAUDE_CODE_PRINT_BG_WAIT_CEILING_MS" >> "$HOME/ceiling"\n'
+                   'printf "%s\\n" "$@" >> "$HOME/claude.args"\nexit 0\n')
+        # An inherited ceiling is overridden, so background agents are never stopped (#679). Appended, since a later
+        # call the setsid wrapper keeps alive past killpg could truncate the file just before the read.
+        env = {**self.env(), "CLAUDE_CODE_PRINT_BG_WAIT_CEILING_MS": "600000"}
         # Its own session, so the loop and every child it starts die together.
-        p = subprocess.Popen(["bash", str(ROOT / "bin/overnight/driver.sh")], env=self.env(), cwd=ROOT,
+        p = subprocess.Popen(["bash", str(ROOT / "bin/overnight/driver.sh")], env=env, cwd=ROOT,
                              stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, start_new_session=True)
         try:
             deadline = time.monotonic() + 20
@@ -125,6 +153,7 @@ class OvernightDriverTests(unittest.TestCase):
         finally:
             os.killpg(p.pid, signal.SIGKILL)
             p.wait()
+        self.assertEqual((self.home / "ceiling").read_text().splitlines()[0], "0")
         lines = args.read_text().splitlines()
         call = lines[: lines.index("-p", 1)] if "-p" in lines[1:] else lines
         settings = pathlib.Path(call[call.index("--settings") + 1])
@@ -207,6 +236,7 @@ class OvernightDriverTests(unittest.TestCase):
 
     @LINUX_ONLY
     def test_closing_the_drivers_terminal_leaves_its_call_running(self) -> None:
+        self.accounts()
         calls = self.start_call_fakes()
         bash, env = shutil.which("bash"), self.env()
         pid, master = pty.fork()
@@ -231,7 +261,8 @@ class OvernightDriverTests(unittest.TestCase):
             self.assertTrue(self.alive(wrapper), "closing the driver's terminal ended the call's wrapper")
             fields = (self.state / "call.pid").read_text().split()
             self.assertEqual(int(fields[0]), wrapper)
-            self.assertEqual(len(fields), 3, "call.pid lacks the log.md line count and the output path")
+            self.assertEqual(len(fields), 4, "call.pid lacks the log.md line count, the output path or the account")
+            self.assertEqual(fields[3], "a", "call.pid does not name the account the call started on")
         finally:
             if master >= 0:
                 os.close(master)
@@ -426,8 +457,202 @@ end_call() { echo "ended $polls_seen $reads"; }
         self.start_driver()
         self.assertTrue(self.wait_for(lambda: not (self.home / "loam-9").exists(), 20),
                         "the driver left the closed PR's ticket worktree holding the slot")
-        self.assertIn(f"removed {self.home}/loam-9", (self.state / "driver.log").read_text())
+        # The driver logs the removal only after git returns, so wait for the line too.
+        log = self.state / "driver.log"
+        self.assertTrue(self.wait_for(lambda: log.exists() and f"removed {self.home}/loam-9" in log.read_text(), 10),
+                        "the driver logged no removal of the closed PR's ticket worktree")
         self.assertFalse((self.home / "calls.txt").exists(), "the driver started a call with nothing pending")
+
+
+    # Usage limits (#615): the driver switches only through `bin/claude-account switch <the call's account>`.
+    LIMIT = ('{"is_error":true,"result":"You\u0027ve hit your session limit - resets 6am","total_cost_usd":0,'
+             '"num_turns":1}')
+
+    def limit_fakes(self, hook: str, stored: tuple[str, ...] = ("a", "b"), active: str = "a") -> dict[str, str]:
+        """Accounts a (active) and b, a gh with one pending PR, and a claude whose first call runs `hook` and replies
+        with a usage limit, every later call with a plain result. The fake sleep keeps the 15 s polls short, lets the
+        5 s retry pause through and ends the driver at any other pause, so a run stops after the call that follows
+        the limit. Returns the driver's environment."""
+        self.accounts(stored, active)
+        self.runs.mkdir()
+        (self.home / ".local/state/loam-factory").mkdir(parents=True)
+        write_exec(self.fake / "gh", '#!/bin/sh\ncase "$*" in *"pr list"*) echo 7 ;; esac\nexit 0\n')
+        write_exec(self.fake / "claude", '#!/bin/bash\necho x >> "$H/calls"\n'
+                   'if [ -e "$H/c1" ]; then echo "{\\"result\\":\\"ok\\"}"; exit 0; fi\n'
+                   'touch "$H/c1"; eval "$HOOK"\nprintf "%s\\n" "$LIM"\n')
+        write_exec(self.fake / "sleep", '#!/bin/bash\ncase $1 in 15) exec /bin/sleep 0.2 ;; 1) exec /bin/sleep 1 ;; '
+                   '5) exit 0 ;; esac\nkill -TERM "$PPID"\n')
+        return {**self.env(), "H": str(self.home), "W": str(ROOT), "LIM": self.LIMIT, "HOOK": hook}
+
+    def driver(self, env: dict[str, str]) -> subprocess.Popen:
+        p = subprocess.Popen(["timeout", "60", "bash", str(self.home / "loam/bin/overnight/driver.sh")], env=env,
+                             cwd=ROOT, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, start_new_session=True)
+        self.addCleanup(lambda: (self.kill_group(p.pid), p.wait()))
+        return p
+
+    def n_calls(self) -> int:
+        f = self.home / "calls"
+        return len(f.read_text().splitlines()) if f.exists() else 0
+
+    def log(self) -> str:
+        return (self.state / "driver.log").read_text()
+
+    def leave_a_call(self, env: dict[str, str]) -> None:
+        """Start a driver, stop it while its first call runs (the call's hook waits for $H/go), and leave the call."""
+        d1 = self.driver(env)
+        self.assertTrue(self.wait_for(lambda: (self.home / "c1").exists() and (self.state / "call.pid").exists()
+                                      and (self.state / "call.pid").stat().st_size), "the driver started no call")
+        wrapper = int((self.state / "call.pid").read_text().split()[0])
+        self.addCleanup(lambda: self.kill_group(wrapper))
+        d1.terminate()
+        d1.wait()
+
+    def adopt_it(self, env: dict[str, str]) -> None:
+        d2 = self.driver(env)
+        self.assertTrue(self.wait_for(lambda: "adopted call" in (self.log() if (self.state / "driver.log").exists()
+                                                                  else "")), "the restarted driver adopted no call")
+        (self.home / "go").touch()
+        d2.wait(70)
+
+    @LINUX_ONLY
+    def test_a_usage_limit_on_the_active_account_switches_and_retries(self) -> None:
+        self.driver(self.limit_fakes(":")).wait(70)
+        self.assertEqual(self.active(), "b")
+        self.assertGreaterEqual(self.n_calls(), 2, "the driver did not retry after the switch")
+        self.assertIn("usage limit on account a: active account now b; retrying", self.log())
+
+    @LINUX_ONLY
+    def test_a_usage_limit_with_no_other_account_switches_nothing(self) -> None:
+        self.driver(self.limit_fakes(":", stored=("a",))).wait(70)
+        self.assertEqual(self.active(), "a")
+        self.assertIn("usage limit and no other account to switch to", self.log())
+        self.assertEqual(self.n_calls(), 1, "the driver retried at once with no account to switch to")
+
+    @LINUX_ONLY
+    def test_a_call_with_no_active_account_records_none_and_switches_nothing(self) -> None:
+        self.driver(self.limit_fakes(f'cp "{self.state}/call.pid" "$H/seen"', active="")).wait(70)
+        self.assertEqual(len((self.home / "seen").read_text().split()), 3, "call.pid names an account with none active")
+        self.assertFalse((self.acc / "active").exists(), "the driver switched with no account recorded")
+        self.assertIn("usage limit on a call with no recorded account: switched nothing", self.log())
+
+    @LINUX_ONLY
+    def test_a_usage_limit_keeps_a_switch_the_factory_made_during_the_call(self) -> None:
+        hook = ('FACTORY_SOURCED=1 FACTORY_ROOT="$W" CALL_ACCOUNT=a bash -c ". \\"$W/bin/factory\\"; LOG=/dev/null; '
+                'LEDGER=/dev/null; limit_switch" > /dev/null 2>&1')
+        self.driver(self.limit_fakes(hook)).wait(70)
+        self.assertEqual(self.active(), "b", "the driver switched the host back to the account the call ran on")
+        self.assertIn("already switched from a", self.log())
+
+    @LINUX_ONLY
+    def test_a_usage_limit_within_the_cooldown_switches_nothing(self) -> None:
+        self.driver(self.limit_fakes('date +%s > "$FACTORY_RUNS_ROOT/limit-switch"')).wait(70)
+        self.assertEqual(self.active(), "a", "the driver switched within 300 s of another caller's switch")
+        self.assertIn("usage limit on account a: another caller switched under 300 s ago; switched nothing", self.log())
+        self.assertEqual(self.n_calls(), 1, "the driver retried at once inside the cooldown")
+
+    @LINUX_ONLY
+    @unittest.skipUnless(shutil.which("flock"), "claude-account switch takes its lock with flock")
+    def test_a_usage_limit_waits_for_the_switch_lock_then_switches(self) -> None:
+        held = self.home / "held"
+        p = self.driver(self.limit_fakes(f'for i in $(seq 100); do [ -e "{held}" ] && break; /bin/sleep 0.1; done'))
+        self.assertTrue(self.wait_for(lambda: (self.home / "c1").exists()), "the driver started no call")
+        self.runs.mkdir(exist_ok=True)
+        with (self.runs / "limit-switch.lock").open("a") as lock:
+            fcntl.flock(lock, fcntl.LOCK_EX)
+            held.touch()
+            time.sleep(4)
+            self.assertEqual(self.active(), "a", "the driver switched while another caller held the lock")
+        p.wait(70)
+        self.assertEqual(self.active(), "b", "the driver did not switch once the lock was free")
+
+    @LINUX_ONLY
+    def test_an_adopted_call_keeps_a_switch_made_after_it_started(self) -> None:
+        env = self.limit_fakes('for i in $(seq 300); do [ -e "$H/go" ] && break; /bin/sleep 0.1; done')
+        self.leave_a_call(env)
+        self.assertEqual((self.state / "call.pid").read_text().split()[3], "a")
+        subprocess.run([str(ROOT / "bin/claude-account"), "use", "b"], env=env, check=True, capture_output=True)
+        self.adopt_it(env)
+        self.assertEqual(self.active(), "b", "the adopted call's limit switched the host back to a")
+
+    @LINUX_ONLY
+    def test_an_adopted_call_on_the_active_account_still_switches(self) -> None:
+        env = self.limit_fakes('for i in $(seq 300); do [ -e "$H/go" ] && break; /bin/sleep 0.1; done')
+        self.leave_a_call(env)
+        self.adopt_it(env)
+        self.assertEqual(self.active(), "b", "the adopted call's usage limit switched nothing")
+        self.assertGreaterEqual(self.n_calls(), 2, "the driver read no result of the adopted call, or did not retry")
+
+    @LINUX_ONLY
+    def test_an_adopted_calls_limit_within_the_cooldown_keeps_the_normal_pacing(self) -> None:
+        env = self.limit_fakes('for i in $(seq 300); do [ -e "$H/go" ] && break; /bin/sleep 0.1; done')
+        self.leave_a_call(env)
+        (self.runs / "limit-switch").write_text(f"{int(time.time())}\n")
+        self.adopt_it(env)
+        self.assertEqual(self.active(), "a", "the driver switched within 300 s of another caller's switch")
+        self.assertIn("usage limit on account a: another caller switched under 300 s ago; switched nothing", self.log())
+        self.assertEqual(self.n_calls(), 1, "the driver started a call at once after an adopted call's limit")
+
+    @LINUX_ONLY
+    def test_an_adopted_call_with_no_recorded_account_switches_nothing(self) -> None:
+        # A record a driver before #615 left: pid, log line count and output path only.
+        env = self.limit_fakes('for i in $(seq 300); do [ -e "$H/go" ] && break; /bin/sleep 0.1; done')
+        self.leave_a_call(env)
+        pid = self.state / "call.pid"
+        pid.write_text(" ".join(pid.read_text().split()[:3]) + "\n")
+        self.adopt_it(env)
+        self.assertEqual(self.active(), "a")
+        self.assertIn("usage limit on a call with no recorded account: switched nothing", self.log())
+
+    @LINUX_ONLY
+    def test_only_samyaks_same_repo_prs_start_a_call_or_reach_pick(self) -> None:
+        # Loam is public and gh names a fork PR's branch without its owner (#678): a fork's factory/<n> PR, a fork PR
+        # Samyak authored and another author's same-repo PR must start no call; Samyak's same-repo PR starts one, and
+        # the Pick line's own command lists only it. The fake gh answers as gh does: only the --json fields asked for,
+        # through the --jq filter.
+        if not shutil.which("jq"):
+            self.skipTest("jq is not installed")
+        write_exec(self.fake / "sleep", f"#!/bin/sh\nexec {shutil.which('sleep')} 0.1\n")
+        write_exec(self.fake / "gh", "\n".join([
+            "#!/bin/sh",
+            'case "$*" in *SamyakJhaveri/distbench*) exit 0 ;; *"pr list"*) ;; *) exit 0 ;; esac',
+            "f=; q=; while [ $# -gt 0 ]; do case $1 in --json) f=$2; shift ;; -q | --jq) q=$2; shift ;; esac; shift; done",
+            'echo list >> "$HOME/events"',
+            'jq --arg f "$f" \'[.[] | with_entries(select(.key as $k | $f | split(",") | index($k)))]\' "$HOME/prs.json"'
+            ' | jq -r "${q:-.}"', ""]))
+        write_exec(self.fake / "claude", '#!/bin/sh\nprintf "%s\\n" "$*" >> "$HOME/calls"\nexit 0\n')
+        kinds = [(True, "mallory", "mallory"), (True, "SamyakJhaveri", "org"), (False, "writer", "SamyakJhaveri"),
+                 (False, "SamyakJhaveri", "SamyakJhaveri")]
+        prs = [{"number": 900 + i, "title": f"factory ticket {900 + i}", "isDraft": False,
+                "headRefName": f"factory/{900 + i}", "isCrossRepository": cross,
+                "author": {"id": f"U_{i}", "is_bot": False, "login": login, "name": login},
+                "headRepositoryOwner": {"id": f"O_{i}", "login": owner, "name": owner},
+                "body": f"Closes #{900 + i}", "labels": []} for i, (cross, login, owner) in enumerate(kinds)]
+        events, calls = self.home / "events", self.home / "calls"
+
+        def lists() -> int:
+            return events.read_text().split().count("list") if events.exists() else 0
+
+        def pr_calls() -> int:
+            return calls.read_text().count("process one pull request") if calls.exists() else 0
+
+        for own, expected in ((False, 0), (True, 1)):
+            events.unlink(missing_ok=True)
+            (self.home / "prs.json").write_text(json.dumps(prs if own else prs[:3]))
+            p = subprocess.Popen(["bash", str(OVERNIGHT / "driver.sh")], env=self.env(), cwd=ROOT,
+                                 stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, start_new_session=True)
+            try:
+                self.assertTrue(self.wait_for(lambda: lists() >= 3 or pr_calls() >= 1, 20), "the driver did not poll")
+            finally:
+                self.kill_group(p.pid)
+                p.wait()
+            time.sleep(0.3)
+            self.assertEqual(min(pr_calls(), 1), expected, f"PR calls with Samyak's same-repo PR open: {own}")
+        line = re.search(r"(?m)^1\. \*\*Pick\.\*\* `([^`]*)`", (OVERNIGHT / "protocol.md").read_text())
+        self.assertIsNotNone(line, "protocol.md has no Pick line with a command")
+        out = subprocess.run(["bash", "-c", line.group(1)], env=self.env(), capture_output=True, text=True, check=True)
+        listed = json.loads(out.stdout)
+        self.assertEqual([x["headRefName"] for x in listed], ["factory/903"])
+        self.assertTrue({"number", "title", "isDraft", "body", "labels"} <= set(listed[0]))
 
 
 if __name__ == "__main__":

@@ -15,8 +15,8 @@
 #   when the host was moved to a limited one, through `claude-account switch <from> <to>`: the factory's host-wide lock
 #   and five-minute cooldown, and no switch once the host has left <from>. Then restart the lead on the same
 #   conversation with --resume on the account the host is on, only when the books show it usable, paste a resume
-#   message, post to Slack. From that check until the relaunched claude has read its settings, limit-alarm holds the
-#   same lock, so no other caller moves the host under the restart. Every restart stamps $S/switched, so the 900 s
+#   message, post to Slack. From that check until the relaunch's `claude-account exec` has read the active token file
+#   (before claude starts), limit-alarm holds the same lock, so no other caller moves the host under the restart. Every restart stamps $S/switched, so the 900 s
 #   gap holds the next one.
 #   When no other account is usable but the lead's own reset has passed, paste a resume message into the
 #   running lead instead (no restart, so its background agents survive).
@@ -37,7 +37,7 @@ T=${T:-distbench-lead}
 PROJ=${PROJ:-$HOME/.claude/projects/-home-samyak-distbench-lead}
 S=${S:-$HOME/.local/state/distbench/limit-alarm}   # <acct>.hit / <acct>.until (epoch s), seen, switched, lead
 ALERT=${ALERT:-sh $HOME/.distbench/alert.sh}
-LAUNCH=${LAUNCH:-cd ~/distbench-lead && claude --remote-control distbench-lead-jhaveris --model claude-opus-5-5 --effort xhigh --permission-mode auto --settings ~/.distbench/night-1021-settings.json}
+LAUNCH=${LAUNCH:-cd ~/distbench-lead && ~/.local/bin/claude-account exec claude --remote-control distbench-lead-jhaveris --model claude-opus-5-5 --effort xhigh --permission-mode auto --settings ~/.distbench/night-1021-settings.json}
 STOPF=${STOPF:-$HOME/.distbench/hyperstack.STOP}
 ORDER=${ORDER:-gmail uci npds}
 PAIR=${PAIR:-$HOME/.local/state/distbench/block-1/state/pair-status.json}   # the runner's watchdog rewrites it
@@ -78,8 +78,9 @@ pick() { for n in $ORDER; do [ "$n" != "$1" ] && [ -f "$ACC/$n.token" ] && usabl
 rank() { i=0; for n in $ORDER; do [ "$n" = "$1" ] && { echo $i; return; }; i=$((i + 1)); done; echo 99; }
 
 # With the switch lock held on fd $lk: stop the lead's claude process, relaunch it on session $1 in the same pane,
-# record account $2 as the lead's, release the lock once claude has read the settings file (at most ~30 s held, under
-# the 60 s bin/factory's limit_switch waits), then paste the resume message ($3).
+# record account $2 as the lead's, release the lock once claude-account exec has read the token file (at most ~30 s
+# held, under the 60 s bin/factory's limit_switch waits), then paste the resume message ($3). LAUNCH names the helper by
+# its full path: the pane's shell, not this script, runs it, and limit-alarm's PATH does not reach that shell.
 restart() {
   pp=$(tmux display -p -t "$T" '#{pane_pid}')
   for c in $(pgrep -P "$pp"); do kill -TERM "$c"; done
@@ -110,8 +111,8 @@ switch() { # from to session why [exact]; from empty: the host is already on ano
     [ "$rc" = 3 ] && { log "no switch $1 -> $2: another switch on this host was under 300 s ago; trying again next minute"; return 1; }
     [ "$rc" = 0 ] || { log "claude-account switch $1 $2 failed (exit $rc)"; return 1; }
   fi
-  # Hold the lock from the account check until the relaunched claude has read its settings, so no other caller
-  # moves the host between them (restart releases it).
+  # Hold the lock from the account check until the relaunch's claude-account exec has read the token file, so no
+  # other caller moves the host between them (restart releases it).
   mkdir -p "$RUNS" && exec {lk}>> "$RUNS/limit-switch.lock" || return 1
   flock -w 20 "$lk" || { exec {lk}>&-; log "no lock on $RUNS/limit-switch.lock within 20 s; trying again next minute"; return 1; }
   on=$(cat "$ACC/active")   # another caller may have moved the host while the switch waited on the lock

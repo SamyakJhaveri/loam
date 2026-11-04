@@ -4,8 +4,9 @@
 fake `claude` or `codex` first on PATH. Each fake backgrounds a writer that appends to a marker file every 0.2 s and
 then exits 0 with a usable reply, so the call ends normally and only call_end can stop the writer. The done-checks
 cover the worker call; these cover the grader and Codex review calls, a writer that ignores TERM, one in a session of
-its own, that the worker call still gets its prompt on stdin and its env pins, that the live account token
-reaches the worker call but not the supervisor after it, and that the call starts with INT and QUIT at their defaults
+its own, that the worker call still gets its prompt on stdin and its env pins, that the active account's token
+reaches the worker and grader calls through bin/claude-account exec (after `use` has dropped the settings file's) but
+not the supervisor after them, and that the call starts with INT and QUIT at their defaults
 in a session of its own while the wrapper keeps an ignored QUIT (#468). No network.
 """
 
@@ -27,7 +28,7 @@ ROOT = pathlib.Path(__file__).resolve().parents[2]
 NEEDS_PROC = unittest.skipUnless(os.path.exists("/proc/self/environ"), "the tag sweep and the wrapper read /proc")
 TOKEN = "CLAUDE_CODE_OAUTH_TOKEN"  # by name, so no token assignment appears for the merge secret grep
 INHERITED = ("FACTORY_ROOT", "FACTORY_GH", "REPO", "RUN", "LOG",
-             "CLAUDE_SETTINGS_FILE", TOKEN)
+             "CLAUDE_SETTINGS_FILE", "CLAUDE_ACCOUNTS_DIR", TOKEN)
 
 # FAKE_IGNORE_TERM makes the writer ignore TERM, so only KILL stops it. FAKE_OWN_SESSION starts it in a session of its
 # own, out of the call's group, as Claude Code starts each Bash tool shell, so only the FACTORY_CALL_TAG sweep finds it.
@@ -103,6 +104,7 @@ class CallGroupTests(unittest.TestCase):
                         "FACTORY_CODEX_HOME": str(self.top / "codex-home"),
                         "FACTORY_RUNS_ROOT": str(self.top / "runs"), "FAKE_DIR": str(self.top),
                         "FACTORY_WORKER_ADVISOR": "", "CLAUDE_CONFIG_DIR": str(self.top / "cc"),
+                        "CLAUDE_ACCOUNTS_DIR": str(self.top / "acc"),
                         "PATH": f"{self.bin}:{env['PATH']}", **extra},
                 "text": True}
 
@@ -308,22 +310,37 @@ exec env -u FACTORY_CALL_TAG bash -c 'while :; do echo x >> {self.top}/mark; sle
                      "ANTHROPIC_DEFAULT_HAIKU_MODEL=claude-pin-1"):
             self.assertIn(line, env)
 
-    def test_worker_call_gets_the_live_token_and_the_supervisor_keeps_its_launch_value(self) -> None:
-        # bin/claude-account rewrites the user tier's token on a switch, so each worker call reads it; the supervisor
-        # keeps its launch value, so a later call whose read finds no token never reuses an earlier call's.
-        settings = self.top / "cc/settings.json"
+    def test_calls_get_the_active_token_and_the_supervisor_keeps_its_launch_value(self) -> None:
+        # bin/claude-account use names the account and drops a token key from the settings file (a settings env value
+        # beats the launch env); each worker and grader call gets the active token from claude-account exec, and the
+        # supervisor keeps its launch value, which a call gets only when no account is active (#644).
+        acc, settings = self.top / "acc", self.top / "cc/settings.json"
+        acc.mkdir()
         settings.parent.mkdir()
-        for launch, live, child, after in ((None, "live-1", "live-1", "unset"),
-                                           ("launch-0", "live-1", "live-1", "launch-0"),
-                                           ("launch-0", None, "launch-0", "launch-0"), (None, None, None, "unset")):
-            with self.subTest(launch=launch, live=live):
-                settings.write_text(json.dumps({"env": {TOKEN: live}} if live else {}))
-                proc = self.run_call(f'worker_round 1; echo "after:${{{TOKEN}-unset}}"',
-                                     **({TOKEN: launch} if launch else {}))
-                self.assertIn(f"after:{after}\n", proc.stdout, proc.stderr)
-                env = dict(line.split("=", 1) for line in (self.top / "env").read_text().splitlines() if "=" in line)
-                self.assertEqual(env.get(TOKEN), child)
-
+        for n in ("a", "b"):
+            (acc / f"{n}.token").write_text(f"sk-ant-oat01-fake-{n}\n")
+        (acc / "active").write_text("a\n")
+        settings.write_text(json.dumps({"env": {TOKEN: "sk-ant-oat01-fake-a", "KEEP": "1"}}))
+        use = subprocess.run([str(ROOT / "bin/claude-account"), "use", "b"], capture_output=True, text=True, check=False,
+                             env={**os.environ, "CLAUDE_ACCOUNTS_DIR": str(acc), "CLAUDE_SETTINGS_FILE": str(settings)})
+        self.assertEqual(use.returncode, 0, use.stderr)
+        self.assertEqual(json.loads(settings.read_text()), {"env": {"KEEP": "1"}})
+        calls = ("worker_round 1", 'call_json 1 judge judge "$RUN/prompt.md" "$RUN/frozen/judge.schema.json"')
+        for active, launch, child, after in (("b", None, "sk-ant-oat01-fake-b", "unset"),
+                                             ("b", "launch-0", "sk-ant-oat01-fake-b", "launch-0"),
+                                             (None, "launch-0", "launch-0", "launch-0"), (None, None, None, "unset")):
+            for call in calls:
+                with self.subTest(call=call, active=active, launch=launch):
+                    if active:
+                        (acc / "active").write_text(f"{active}\n")
+                    else:
+                        (acc / "active").unlink(missing_ok=True)
+                    (self.top / "env").unlink(missing_ok=True)
+                    proc = self.run_call(f'{call}; echo "after:${{{TOKEN}-unset}}"',
+                                         **({TOKEN: launch} if launch else {}))
+                    self.assertIn(f"after:{after}\n", proc.stdout, proc.stderr)
+                    env = dict(line.split("=", 1) for line in (self.top / "env").read_text().splitlines() if "=" in line)
+                    self.assertEqual(env.get(TOKEN), child)
 
 if __name__ == "__main__":
     unittest.main()

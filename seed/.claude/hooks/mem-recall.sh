@@ -12,11 +12,13 @@
 # at 4000 bytes.
 #
 # Before building the manifest it pulls the shared store from its `origin` remote
-# (when one is set), so a line another machine committed shows up here: a fetch
-# bounded to two seconds, then a rebase onto origin/main under the store lock
-# mem-capture.sh describes, bounded so the whole hook ends within its five-second
-# timeout. A timeout or failure logs one line to reports/sync.log and falls back
-# to the local store. The rebase runs with rename
+# (when one is set), so a line another machine committed shows up here: it waits
+# at most two seconds for a fetch, then rebases onto origin/main under the store
+# lock mem-capture.sh describes, bounded so the whole hook ends within its
+# five-second timeout. A fetch still running after two seconds is not killed: it
+# finishes in the background and the next session rebases onto what it fetched.
+# A timeout or failure logs one line to reports/sync.log and falls back to the
+# local store. The rebase runs with rename
 # detection off, so a handoff two machines claimed at once rebases as two
 # independent archive adds plus a delete both sides agree on, not a rename/rename
 # conflict. `-s recursive` is what makes the switch hold: before git 2.50 the
@@ -316,14 +318,14 @@ drain_spool() {
 # --- end of the store lock block.
 
 # Sync: fetch the shared remote first, so an INDEX line another machine committed
-# is visible below. Bounded to two seconds through python3; a timeout or non-zero
+# is visible below. python3 waits at most two seconds for it; a timeout or non-zero
 # exit logs one line to reports/sync.log and leaves the local store as it is.
 # It holds no lock but runs no hook either (NOHOOKS); it keeps gc on, since the
 # store's only automatic gc runs after this fetch.
 FETCHED=0
 if git -C "$STORE" remote get-url origin >/dev/null 2>&1; then
   GIT_TERMINAL_PROMPT=0 python3 -c '
-import subprocess, sys, os, signal, tempfile, datetime
+import subprocess, sys, os, tempfile, datetime
 store = sys.argv[1]
 
 def logline(msg):
@@ -331,30 +333,23 @@ def logline(msg):
     with open(os.path.join(store, "reports", "sync.log"), "a", encoding="utf-8") as fh:
         fh.write("%s recall pull: %s\n" % (datetime.date.today().isoformat(), " ".join(str(msg).split())[:200]))
 
-# Run the fetch in its own session so a real ssh remote that hangs can be killed
-# whole: killpg reaches the git fetch and ssh grandchildren, which a plain
-# subprocess timeout leaves running (they inherit the pipe and keep it open, so
-# the two-second bound would not hold). stderr goes to a file, not a pipe, so
-# there is nothing to drain after the kill and wait() returns at once. Exits 0
-# only when the fetch succeeded.
+# Run the fetch in its own session, holding none of the hook pipes (stdin and
+# stdout to /dev/null, stderr to a file), so a fetch still running after the
+# two-second wait outlives the hook without holding it open. It is never killed:
+# a killed index-pack leaves its tmp_pack_* in the store and the next fetch
+# receives the same objects again, while a fetch left to finish lands them for
+# the next session. One against a hung remote runs until ssh or TCP gives up.
+# Exits 0 only when the fetch succeeded within the wait.
 rc = 1
 fd, errpath = tempfile.mkstemp()
 os.close(fd)
 try:
     ef = open(errpath, "wb")
-    p = subprocess.Popen(sys.argv[2:], stdout=subprocess.DEVNULL,
+    p = subprocess.Popen(sys.argv[2:], stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL,
                          stderr=ef, start_new_session=True)
     try:
         rc = p.wait(timeout=2)
     except subprocess.TimeoutExpired:
-        try:
-            os.killpg(os.getpgid(p.pid), signal.SIGKILL)
-        except Exception:
-            pass
-        try:
-            p.wait(timeout=1)
-        except Exception:
-            pass
         ef.close()
         logline("timeout")
     else:
