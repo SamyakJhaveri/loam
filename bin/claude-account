@@ -3,9 +3,11 @@
 #   bin/claude-account set <name>   read a `claude setup-token` value from stdin into <dir>/<name>.token (0600)
 #   bin/claude-account use <name>   name that account active in <dir>/active, and drop a token key from the env block of
 #                                   the settings file (a settings env value beats the launch env, so none may stay there)
-#   bin/claude-account exec <command> [args...]
-#                                   run the command with the active account's token in its environment; with no
-#                                   active account, or none stored, the environment is left as it is
+#   bin/claude-account exec [--as <name>] <command> [args...]
+#                                   run the command with the active account's token in its environment (with --as, the
+#                                   token of <name>, which a caller read from `active` once and also records; an empty
+#                                   <name> reads `active`); with no active account, or none stored, the environment is
+#                                   left as it is
 #   bin/claude-account other        print the next stored account after the active one (name order, wrapping), non-zero when there is none
 #   bin/claude-account status       print `active: <name>; stored: <names>` and nothing else
 #   bin/claude-account switch <from> [<to>]
@@ -91,9 +93,13 @@ case "$cmd" in
     other_name || exit 1
     ;;
   exec)
-    shift
-    [ $# -gt 0 ] || { echo "usage: bin/claude-account exec <command> [args...]" >&2; exit 2; }
-    a=$(active_name)
+    shift; a=
+    if [ "${1-}" = --as ]; then
+      [ $# -ge 2 ] || { echo "usage: bin/claude-account exec [--as <name>] <command> [args...]" >&2; exit 2; }
+      a=$2; shift 2
+    fi
+    [ $# -gt 0 ] || { echo "usage: bin/claude-account exec [--as <name>] <command> [args...]" >&2; exit 2; }
+    [ -n "$a" ] || a=$(active_name)
     if [ -n "$a" ] && [ -f "$dir/$a.token" ]; then
       # Into this process's environment only, never onto a command line (/proc shows argv). A token file with no
       # trailing newline still reads under set -e; an unreadable one, or one whose first line is empty, exits 1 rather

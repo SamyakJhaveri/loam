@@ -145,7 +145,14 @@ class ExecTests(Scratch):
         self.assertEqual(self.helper("exec", "sh", "-c", "exit 7").returncode, 7)
         proc = self.helper("exec")
         self.assertEqual(proc.returncode, 2)
-        self.assertRegex(proc.stderr, r"^usage: bin/claude-account exec <command>")
+        self.assertRegex(proc.stderr, r"^usage: bin/claude-account exec \[--as <name>\] <command>")
+
+    def test_exec_as_hands_the_named_account_token_and_an_empty_name_reads_active(self) -> None:
+        (self.acc / "active").write_text("b\n")
+        show = ("sh", "-c", 'printf %s "${CLAUDE_CODE_OAUTH_TOKEN-unset}"')
+        self.assertEqual(self.helper("exec", "--as", "a", *show).stdout, "sk-ant-oat01-fake-a")
+        self.assertEqual(self.helper("exec", "--as", "", *show).stdout, "sk-ant-oat01-fake-b")
+        self.assertEqual(self.helper("exec", "--as").returncode, 2)
 
     @LINUX_ONLY
     def test_exec_puts_no_token_on_a_command_line(self) -> None:
@@ -226,6 +233,11 @@ class LauncherTests(unittest.TestCase):
         got = self.tokens("driver", '. "$1/driver-run.sh"; grader_window() { :; }; watch() { :; }; account() { :; }; '
                           'O=$1/o; D=$PWD/bin/overnight; before=0; run "Read $D/protocol.md"', "_", str(self.s))
         self.assert_active("the overnight driver's call", got)
+        # The account run() records is the one whose token the call gets: a switch to a after that read moves neither.
+        got = self.tokens("driver-as", '. "$1/driver-run.sh"; grader_window() { :; }; watch() { :; }; account() { :; }; '
+                          'active_account() { echo b; echo a > "$HOME/.config/claude-accounts/active"; }; '
+                          'O=$1/o; D=$PWD/bin/overnight; before=0; run "Read $D/protocol.md"', "_", str(self.s))
+        self.assert_active("the overnight driver's call after a switch past its account read", got)
 
     def test_limit_alarm_default_launch(self) -> None:
         line = next(x for x in (ROOT / "bin/limit-alarm").read_text().splitlines() if x.startswith("LAUNCH="))
