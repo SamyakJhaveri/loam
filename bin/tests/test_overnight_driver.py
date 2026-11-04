@@ -51,12 +51,15 @@ class OvernightDriverTests(unittest.TestCase):
         self.state.mkdir(parents=True)
         (self.home / "loam/bin").mkdir(parents=True)
         (self.home / "loam/bin/overnight").symlink_to(OVERNIGHT)
+        # run() starts each call through ~/loam/bin/claude-account exec; the temp HOME has no stored account.
+        (self.home / "loam/bin/claude-account").symlink_to(OVERNIGHT.parent / "claude-account")
         write_exec(self.home / "loam/bin/alert", "#!/bin/sh\nexit 0\n")
         self.fake = self.home / "fake"
         self.fake.mkdir()
 
     def env(self) -> dict[str, str]:
-        return {**os.environ, "HOME": str(self.home), "PATH": f"{self.fake}:{os.environ['PATH']}"}
+        env = {k: v for k, v in os.environ.items() if k not in ("CLAUDE_ACCOUNTS_DIR", "CLAUDE_SETTINGS_FILE")}
+        return {**env, "HOME": str(self.home), "PATH": f"{self.fake}:{os.environ['PATH']}"}
 
     def test_scripts_are_executable(self) -> None:
         for name in ("driver.sh", "watchdog.sh"):

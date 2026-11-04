@@ -5,8 +5,9 @@ tier (CLAUDE_CONFIG_DIR) with a fake `claude` on PATH that records its arguments
 so no model is called. Both grader calls disable user, project and local settings (`--setting-sources ''`) and read
 the same settings bytes: role-settings.json with the read fence, plus the user tier's env without its account token
 or config dir, never its hooks or allow rules. Each runs under a private config dir, since the fence still lets it read
-CLAUDE.md, rules, skills, plugins, agents and commands, and gets the live user-tier token in its own environment, so a
-retry after an account switch gets the new token and the supervisor keeps its own. model-eval regrades a Claude cell
+CLAUDE.md, rules, skills, plugins, agents and commands, and gets the active account's token from a scratch accounts
+directory (bin/claude-account exec) in its own environment, never the user tier's, so a retry after an account switch
+gets the new token and the supervisor keeps its own. model-eval regrades a Claude cell
 when that user-tier file changes. The comparison runs once for the judge, at high, and once for the reviewer, at
 xhigh (Samyak 2026-10-30); `bin/factory graders-check` holds each grader file to its own role's effort.
 """
@@ -28,8 +29,8 @@ TOKEN = "CLAUDE_CODE_OAUTH_TOKEN"  # by name, so no token assignment appears for
 # What the fence still lets a call read in its config dir (probed on Claude Code 2.1.312).
 FENCE_ALLOWED = {"CLAUDE.md", "rules", "skills", "plugins", "agents", "commands"}
 
-# Records each call; with FAKE_SWITCH (the user tier's settings file), the first -p call switches the user tier's
-# token, as bin/claude-account does, and replies with no JSON, so call_json retries.
+# Records each call; with FAKE_SWITCH (the accounts directory), the first -p call names account b active, as
+# bin/claude-account use does, and replies with no JSON, so call_json retries.
 FAKE_CLAUDE = """#!/usr/bin/env python3
 import json, os, shutil, sys
 a = sys.argv[1:]
@@ -45,7 +46,7 @@ shutil.copy(a[a.index("--settings") + 1], d + ".settings")
 f = os.environ.get("FAKE_SWITCH", "")
 if f and not os.path.exists(f + ".done"):
     open(f + ".done", "w").close()
-    s = json.load(open(f)); s["env"]["CLAUDE_CODE_OAUTH_TOKEN"] = "fixture-token-2"; json.dump(s, open(f, "w"))
+    open(os.path.join(f, "active"), "w").write("b\\n")
     print(json.dumps({"type": "result", "subtype": "success", "is_error": False, "total_cost_usd": 0, "result": "not json"}))
     sys.exit(0)
 if "findings" in a[a.index("--json-schema") + 1]:
@@ -56,7 +57,8 @@ print(json.dumps({"type": "result", "subtype": "success", "is_error": False, "to
                   "modelUsage": {"m": {}}}))
 """
 
-USER = {"env": {"FIXTURE_USER_ENV": "u", TOKEN: "fixture-token", "CLAUDE_CONFIG_DIR": "/operator/config",
+# The user tier still holds a stale token, which no call may get and the settings copy must drop.
+USER = {"env": {"FIXTURE_USER_ENV": "u", TOKEN: "fixture-token-stale", "CLAUDE_CONFIG_DIR": "/operator/config",
                 "CLAUDE_CODE_DISABLE_AUTO_MEMORY": "0"}, "permissions": {"allow": ["Read(*)"]},
         "hooks": {"UserPromptSubmit": [{"hooks": [{"type": "command", "command": "true"}]}]}}
 
@@ -99,6 +101,11 @@ class EvalCallTests(unittest.TestCase):
         (self.cfg / "rules").mkdir(parents=True)
         (self.cfg / "settings.json").write_text(json.dumps(USER))
         (self.cfg / "CLAUDE.md").write_text("operator memory\n")
+        self.acc = tmp / "acc"
+        self.acc.mkdir()
+        (self.acc / "a.token").write_text("fixture-token\n")
+        (self.acc / "b.token").write_text("fixture-token-2\n")
+        (self.acc / "active").write_text("a\n")
         (self.cfg / "rules/r.md").write_text("operator rule\n")
         for role, (_, _, verdict) in ROLES.items():
             case = tmp / f"evals/{role}/c1"
@@ -107,9 +114,10 @@ class EvalCallTests(unittest.TestCase):
             (case / "expected.json").write_text(json.dumps({"verdict": verdict}))
         env = {k: v for k, v in os.environ.items()
                if not k.startswith("FACTORY_") and k not in ("EVAL_EFFORT", "EVAL_OUT", "RUN", "LOG",
-                                                            "CLAUDE_SETTINGS_FILE", "FAKE_SWITCH", "FAKE_VERSION", TOKEN)}
+                                                            "CLAUDE_SETTINGS_FILE", "CLAUDE_ACCOUNTS_DIR", "FAKE_SWITCH",
+                                                            "FAKE_VERSION", TOKEN)}
         env.update(PATH=f"{fake.parent}:{os.environ['PATH']}", FACTORY_ROOT=str(ROOT), CLAUDE_CONFIG_DIR=str(self.cfg),
-                   FACTORY_RUNS_ROOT=str(tmp / "runs"))
+                   FACTORY_RUNS_ROOT=str(tmp / "runs"), CLAUDE_ACCOUNTS_DIR=str(self.acc))
         self.env = env
 
     def calls(self, args_dir: pathlib.Path) -> list[tuple[dict, str]]:
@@ -153,7 +161,7 @@ class EvalCallTests(unittest.TestCase):
                   f'echo "after:${{{TOKEN}-unset}}"; echo "grader_effort:$(grader_effort {role})"')
         env = {**self.env, "ARGS_DIR": str(args), "FACTORY_SOURCED": "1", TOKEN: "launch-token"}
         if switch:
-            env["FAKE_SWITCH"] = str(self.cfg / "settings.json")
+            env["FAKE_SWITCH"] = str(self.acc)
         # $0 is bin/factory, as for `bin/factory eval`, so schema_for and the settings path resolve from bin/.
         proc = subprocess.run(["bash", "-c", '. "$0"\n' + script, "bin/factory"], cwd=ROOT, env=env,
                               capture_output=True, text=True, check=False)
@@ -166,7 +174,7 @@ class EvalCallTests(unittest.TestCase):
         args.mkdir()
         env = {**self.env, "ARGS_DIR": str(args), "FAKE_VERSION": version}
         if switch:
-            env["FAKE_SWITCH"] = str(self.cfg / "settings.json")
+            env["FAKE_SWITCH"] = str(self.acc)
         proc = subprocess.run(["bin/factory", "eval", role, "--evals-dir", str(self.tmp / "evals")],
                               cwd=ROOT, env=env, capture_output=True, text=True, check=False)
         return proc, self.calls(args)

@@ -21,6 +21,7 @@ import time
 import unittest
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
+TOKEN = "CLAUDE_CODE_OAUTH_TOKEN"  # by name, so no token assignment appears for the merge secret grep
 # limit-alarm runs only on jhaveris: it uses tac, date -d and stat -c, and claude-account switch uses flock(1).
 LINUX_ONLY = unittest.skipUnless(sys.platform.startswith("linux"), "limit-alarm needs flock(1), tac and GNU date -d")
 INHERITED = ("FACTORY_RUNS_ROOT", "CLAUDE_ACCOUNTS_DIR", "CLAUDE_SETTINGS_FILE", "FACTORY_SOURCED", "FACTORY_ROOT",
@@ -69,7 +70,8 @@ class Host(unittest.TestCase):
         self.h = pathlib.Path(tmp.name)
         for d in (".local/bin", "acc", "proj", "s"):
             (self.h / d).mkdir(parents=True)
-        (self.h / "settings.json").write_text("{}\n")
+        # A stale token left in the settings file by a pre-#644 `use`, which the first switch must drop (#644).
+        (self.h / "settings.json").write_text(json.dumps({"env": {TOKEN: "sk-ant-oat01-fake-a", "KEEP": "1"}}) + "\n")
         self.accounts("a", "b")
         (self.h / "acc" / "active").write_text("a\n")
         (self.h / "s" / "lead").write_text("a\n")
@@ -90,7 +92,8 @@ class Host(unittest.TestCase):
         return self.read("acc/active")
 
     def token(self) -> str:
-        return json.loads((self.h / "settings.json").read_text()).get("env", {}).get("CLAUDE_CODE_OAUTH_TOKEN", "")
+        """The settings file's token, which `use` drops: calls get theirs from `claude-account exec` (#644)."""
+        return json.loads((self.h / "settings.json").read_text()).get("env", {}).get(TOKEN, "")
 
 
 @LINUX_ONLY
@@ -234,7 +237,8 @@ class SwitchTests(Host):
     def test_protocol(self) -> None:
         self.assertEqual(self.code(), 2)
         self.assertEqual(self.code("a"), 0)
-        self.assertEqual((self.active(), self.token()), ("b", "sk-ant-oat01-fake-b"))
+        self.assertEqual((self.active(), self.token()), ("b", ""))
+        self.assertEqual(json.loads((self.h / "settings.json").read_text())["env"], {"KEEP": "1"})
         self.assertRegex(self.read("runs/limit-switch"), r"^[0-9]+$")
         self.stamp(1)
         self.assertEqual(self.code("a"), 0, "a stale <from> switches nothing")
@@ -244,7 +248,7 @@ class SwitchTests(Host):
         self.assertEqual(self.active(), "b")
         self.stamp(int(time.time()) - 301)
         self.assertEqual(self.code("b"), 0)
-        self.assertEqual((self.active(), self.token()), ("a", "sk-ant-oat01-fake-a"))
+        self.assertEqual((self.active(), self.token()), ("a", ""))
         self.stamp(1)
         self.assertEqual(self.code("a", "c"), 1, "no stored token for c")
         self.assertEqual((self.active(), self.read("runs/limit-switch")), ("a", "1"))
@@ -258,10 +262,10 @@ class SwitchTests(Host):
             time.sleep(0.05)
         p = self.switch("a")
         time.sleep(1.5)
-        self.assertEqual((self.active(), self.token(), self.read("runs/limit-switch")), ("a", "", ""))
+        self.assertEqual((self.active(), self.token(), self.read("runs/limit-switch")), ("a", "sk-ant-oat01-fake-a", ""))
         p.communicate(timeout=90)
         self.assertEqual(p.returncode, 0)
-        self.assertEqual((self.active(), self.token()), ("b", "sk-ant-oat01-fake-b"))
+        self.assertEqual((self.active(), self.token()), ("b", ""))
 
 
 if __name__ == "__main__":

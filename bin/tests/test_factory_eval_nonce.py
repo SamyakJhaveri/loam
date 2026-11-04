@@ -74,9 +74,12 @@ class EvalNonceTests(unittest.TestCase):
 
     def run_eval(self, mode: str) -> subprocess.CompletedProcess[str]:
         self.log.unlink(missing_ok=True)
+        # No inherited FACTORY_ROOT, so the replay runs this checkout's bin/claude-account, on an accounts directory
+        # with no account, so the operator's token never reaches the fake.
         env = {**os.environ, "PATH": f"{self.tmp / 'bin'}:{os.environ['PATH']}", "PROMPT_LOG": str(self.log),
-               "FAKE_MODE": mode}
+               "FAKE_MODE": mode, "CLAUDE_ACCOUNTS_DIR": str(self.tmp / "acc")}
         env.pop("FACTORY_LEDGER", None)
+        env.pop("FACTORY_ROOT", None)
         return subprocess.run(["bin/factory", "eval", "judge", "--evals-dir", str(self.evals), "--graders-dir",
                                str(AGENTS)], cwd=ROOT, env=env, capture_output=True, text=True, check=False)
 
