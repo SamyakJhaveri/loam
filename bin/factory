@@ -768,12 +768,9 @@ run_eval() {
 # The user tier's settings file, as freeze, worker_round and the grader calls resolve it.
 user_settings() { printf '%s\n' "${CLAUDE_SETTINGS_FILE:-${CLAUDE_CONFIG_DIR:-$HOME/.claude}/settings.json}"; }
 
-# The account token bin/claude-account last wrote to the user tier, for a call with the user tier disabled.
-live_token() { jq -r '.env.CLAUDE_CODE_OAUTH_TOKEN // empty' "$(user_settings)" 2> /dev/null; }
-
 # Writes the settings a grader call reads, in the loop (freeze) and in `bin/factory eval` alike: role-settings.json
 # plus the user tier's env without its account token or config dir; role-settings.json's env wins. Each call gets
-# its token live and its own config dir at launch. It disables user, project and local settings: user hooks and
+# the active account's token from bin/claude-account exec and its own config dir at launch. It disables user, project and local settings: user hooks and
 # allow rules (Read(*)) stay out, and a grader has no Bash, Agent or Skill tool a plugin could serve. Managed policy
 # and flag settings still apply. The user env may hold secrets, so the copy is private to the operator.
 grader_settings() { # role_settings out
@@ -784,7 +781,7 @@ grader_settings() { # role_settings out
 
 run_eval_cases() { # grader work
   local grader="$1" tree="$2/tree" rubric="$2/rubric" budget="${EVAL_BUDGET_USD:-10}" gf schema settings dir name out res exp got erows grows
-  local spent=0 cases=0 mism=0 clean=0 ok attempt eline nonce shown raw a copied tok
+  local spent=0 cases=0 mism=0 clean=0 ok attempt eline nonce shown raw a copied
   gf=$(grader_file "$grader") || return 2
   # The checkout can move under a replay (`next` fast-forwards it), so the rubric and the sha256 below come from
   # one copy of the grader file.
@@ -842,12 +839,12 @@ run_eval_cases() { # grader work
       # way the loop does: --json-schema routes the reply through the schema, --strict-mcp-config and
       # --disable-slash-commands drop the prefix the grader never uses. Two things differ: the call runs
       # in the eval_tree export, not a ticket worktree, and each call gets the remaining headroom, so
-      # EVAL_BUDGET_USD caps the sum over cases. The settings copy, the private config dir and the live
-      # token are call_json's, so the subshell exports them for this claude alone.
-      tok=$(live_token)
+      # EVAL_BUDGET_USD caps the sum over cases. The settings copy, the private config dir and the token
+      # route are call_json's: the subshell exports the config dir, and bin/claude-account exec hands this claude
+      # alone the active account's token.
       out=$({ cat "$rubric"; sed "s/@NONCE@/$shown/g" "$dir/prompt.md"; } | ( cd "$tree" \
-        && { [ -z "$tok" ] || export CLAUDE_CODE_OAUTH_TOKEN="$tok"; } && export CLAUDE_CONFIG_DIR="$2/grader-config" \
-        && claude -p --model "$EVAL_MODEL" --effort "${EVAL_EFFORT:-$(grader_effort "$grader")}" \
+        && export CLAUDE_CONFIG_DIR="$2/grader-config" \
+        && "$ROOT/bin/claude-account" exec claude -p --model "$EVAL_MODEL" --effort "${EVAL_EFFORT:-$(grader_effort "$grader")}" \
         --tools Read,Grep,Glob --strict-mcp-config --disable-slash-commands --no-session-persistence \
         --json-schema "$schema" \
         --max-budget-usd "$(awk -v b="$budget" -v s="$spent" 'BEGIN {printf "%.4f", b - s}')" \
@@ -1436,8 +1433,8 @@ freeze() {
   # bypassPermissions.
   cgd=$(git -C "$WORKTREE" rev-parse --absolute-git-dir 2> /dev/null) && ccd=$(git_common "$WORKTREE") \
     && [ -n "$cgd" ] && [ -n "$ccd" ] || finish stopped-environment "could not read the git directories of $WORKTREE for the worker sandbox"
-  # bin/claude-account switches accounts by rewriting the user tier's CLAUDE_CODE_OAUTH_TOKEN, so the copy leaves it
-  # out and worker_round passes the live one. The rest of the user env may hold secrets too, so the copy is private
+  # The account token reaches each call through bin/claude-account exec, never a settings file; a token key a host's
+  # user tier still holds would beat that launch env, so the copy leaves it out. The rest of the user env may hold secrets too, so the copy is private
   # to the operator, as ~/.claude/settings.json is.
   # A per-model autoCompactWindow in the user tier would outrank the worker file's top-level 450K window inside this
   # one merged file (Claude Code settings precedence), so the merge drops it (#348).
@@ -1864,12 +1861,13 @@ assert_call_ok() { # role result.json [round-start-sha]
   finish stopped-environment "the $1 call failed before doing work: $e"
 }
 
-# The active stored account's name; each Claude call site reads it into CALL_ACCOUNT before the call loads its token.
+# The active stored account's name; each Claude call site reads it into CALL_ACCOUNT just before
+# bin/claude-account exec reads that account's token for the call.
 active_account() { "$ROOT/bin/claude-account" status 2> /dev/null | sed -n 's/^active: \([^;]*\);.*/\1/p'; }
 
 # Usage limits are per account, so on a limit reply switch to the other stored account and retry at once,
 # rather than idling this run while the other account sits unused. bin/claude-account owns the token files
-# and the settings env channel. The account is the host's, shared by every live run (FACTORY_MAX_PARALLEL), so
+# and the active name, and its exec hands each call the active token. The account is the host's, shared by every live run (FACTORY_MAX_PARALLEL), so
 # a switch is made only while the active account is still CALL_ACCOUNT, the one the limited call ran under: once
 # another run has switched away from it, this run retries on the new account and never switches back. The check and
 # the switch hold one host-wide lock, so two runs limited at once switch once: a flock on RUNS_BASE/limit-switch.lock,
@@ -2251,7 +2249,7 @@ call_gone() { # tenths of a second to wait -> 0 once nothing is left in the call
 }
 
 worker_round() { # round; leaves round-N.* only once the call produced a result
-  local round="$1" pf out="$RUN/pending.jsonl" res="$RUN/pending.result.json" t=(timeout -k 5 "$CALL_TIMEOUT_SEC") login_retried=0 le head0 tok tok0 tok_set
+  local round="$1" pf out="$RUN/pending.jsonl" res="$RUN/pending.result.json" t=(timeout -k 5 "$CALL_TIMEOUT_SEC") login_retried=0 le head0
   # The round's start, so a stop after a killed call can name the commits the call made (#319).
   head0=$(git -C "$WORKTREE" rev-parse HEAD 2> /dev/null) || head0=""
   # The first round this process runs; a login expired at launch retries only its call. A global,
@@ -2323,15 +2321,12 @@ worker_round() { # round; leaves round-N.* only once the call produced a result
   while :; do
     log "worker call: round $round model=$WORKER_MODEL effort=$WORKER_EFFORT advisor=${WORKER_ADVISOR:-off} budget=$ROUND_BUDGET_USD usd, prompt=$(wc -c < "$pf") bytes"
     rm -f "$out" "${DECISIONS%/*}/mechanism.md"   # also on a retried call, as for the Codex call above (#330)
-    # The call disables the user tier, so the account token bin/claude-account last wrote is read here, after any
-    # switch, and passed in this call's environment only, never on a command line (freeze). The supervisor keeps its
-    # launch value, which a call gets when the read is empty or fails, so a token the file has lost is never reused.
-    # The account is named first, so a switch between the two reads makes limit_switch retry, never switch back.
+    # bin/claude-account exec reads the active account's token file after any switch and puts it in this call's
+    # environment only, never on a command line or in a settings file; the supervisor's own environment is untouched,
+    # and a call gets its launch value only when no account is active. The account is named first, so a switch
+    # between that read and the exec makes limit_switch retry, never switch back.
     CALL_ACCOUNT=$(active_account)
-    tok=$(live_token)
-    tok_set=${CLAUDE_CODE_OAUTH_TOKEN+1}; tok0=${CLAUDE_CODE_OAUTH_TOKEN-}
-    [ -z "$tok" ] || { printf -v CLAUDE_CODE_OAUTH_TOKEN '%s' "$tok" && export CLAUDE_CODE_OAUTH_TOKEN; }
-    call_start "$WORKTREE" ${t[@]+"${t[@]}"} env LOAM_CHECKS="$RUN/frozen/checks.sh" \
+    call_start "$WORKTREE" ${t[@]+"${t[@]}"} "$ROOT/bin/claude-account" exec env LOAM_CHECKS="$RUN/frozen/checks.sh" \
         CLAUDE_CODE_SUBAGENT_MODEL="$WORKER_MODEL" CLAUDE_CODE_SUBAGENT_MODEL_FORCE=1 \
         ANTHROPIC_DEFAULT_SONNET_MODEL="$WORKER_MODEL" ANTHROPIC_DEFAULT_HAIKU_MODEL="$WORKER_MODEL" claude -p \
         --model "$WORKER_MODEL" --effort "$WORKER_EFFORT" ${WORKER_ADVISOR:+--advisor "$WORKER_ADVISOR"} --permission-mode bypassPermissions --strict-mcp-config \
@@ -2339,8 +2334,6 @@ worker_round() { # round; leaves round-N.* only once the call produced a result
         --append-system-prompt "$(cat "$RUN/frozen/unattended.md")" \
         --max-budget-usd "$ROUND_BUDGET_USD" --output-format stream-json --verbose --include-hook-events \
         < "$pf" > "$out" 2>> "$LOG"
-    # The call has forked with the token; the supervisor gets its launch value back, or none.
-    if [ -n "$tok_set" ]; then printf -v CLAUDE_CODE_OAUTH_TOKEN '%s' "$tok0"; else unset CLAUDE_CODE_OAUTH_TOKEN; fi
     call_end worker || log "worker exited non-zero (the result event decides)"
     jq -c 'select(.type == "result")' "$out" 2> /dev/null | tail -1 > "$res"
     # No result event (killed by CALL_TIMEOUT_SEC, or crashed) leaves no cost to read, yet the call may have
@@ -2507,7 +2500,7 @@ grader_reply() { # raw claude -p envelope -> the grader's reply text, fences str
 }
 
 call_json() { # round stem role prompt_file schema_file
-  local round="$1" stem="$2" role="$3" pf="$4" schema="$5" final="$RUN/round-$1.$2.json" out res attempt=0 tok tok_set tok0 effort
+  local round="$1" stem="$2" role="$3" pf="$4" schema="$5" final="$RUN/round-$1.$2.json" out res attempt=0 effort
   effort=$(grader_effort "$role")
   # The run's private config dir holds no login, memory, rules, skills, plugins, agents or commands. The read fence
   # allows those paths in the config dir, so it must not be the operator's (LOOP.md, Grader calls).
@@ -2523,19 +2516,15 @@ call_json() { # round stem role prompt_file schema_file
     # skills listing its prefix is 9.9k tokens instead of 27k (probed 2026-09-09). --setting-sources ''
     # keeps the worktree's hooks and the user tier's out; the frozen copy carries the user env and the
     # read fence, so a grader reads only the tree it grades (LOOP.md, Grader calls).
-    # The token is read here, before each attempt, as worker_round reads it: a switch after an attempt
-    # reaches the retry, and the supervisor gets its launch value back. Its account is named first (limit_switch).
+    # bin/claude-account exec reads the token before each attempt, as for worker_round: a switch after an attempt
+    # reaches the retry, and the supervisor's own environment is untouched. Its account is named first (limit_switch).
     CALL_ACCOUNT=$(active_account)
-    tok=$(live_token)
-    tok_set=${CLAUDE_CODE_OAUTH_TOKEN+1}; tok0=${CLAUDE_CODE_OAUTH_TOKEN-}
-    [ -z "$tok" ] || { printf -v CLAUDE_CODE_OAUTH_TOKEN '%s' "$tok" && export CLAUDE_CODE_OAUTH_TOKEN; }
-    call_start "$WORKTREE" ${TIMEOUT_G[@]+"${TIMEOUT_G[@]}"} env CLAUDE_CONFIG_DIR="$RUN/grader-config" \
+    call_start "$WORKTREE" ${TIMEOUT_G[@]+"${TIMEOUT_G[@]}"} "$ROOT/bin/claude-account" exec env CLAUDE_CONFIG_DIR="$RUN/grader-config" \
         claude -p --model "$GRADER_MODEL" --effort "$effort" \
         --tools Read,Grep,Glob --strict-mcp-config --disable-slash-commands --no-session-persistence \
         --json-schema "$(cat "$schema")" \
         --max-budget-usd "$GRADER_BUDGET_USD" --setting-sources '' --settings "$RUN/frozen/role-settings.json" \
         --output-format json < "$pf" > "$out" 2>> "$LOG"
-    if [ -n "$tok_set" ]; then printf -v CLAUDE_CODE_OAUTH_TOKEN '%s' "$tok0"; else unset CLAUDE_CODE_OAUTH_TOKEN; fi
     call_end "$role" || log "$role exited non-zero"
     if [ -z "$CALL_STUCK" ] && limit_wait "$out"; then attempt=$((attempt - 1)); continue; fi
     record "$round" "$role" "$GRADER_MODEL" "$out"
@@ -3828,9 +3817,10 @@ run_clean() { # run dir -> yes|no|-
 
 # claude on PATH is not claude logged in: a logged-out Claude fails every worker call while claude
 # stays on PATH (#78). claude auth status prints JSON with a loggedIn boolean and exits 0 either way.
-# One probe, shared by precondition_lines (its PASS/FAIL line) and cmd_next (its launch gate).
+# One probe, shared by precondition_lines (its PASS/FAIL line) and cmd_next (its launch gate). It runs on the
+# account the calls use: auth status reports logged in on the env token bin/claude-account exec hands it.
 claude_logged_in() {
-  claude auth status 2> /dev/null | jq -e '.loggedIn' > /dev/null 2>&1
+  "$ROOT/bin/claude-account" exec claude auth status 2> /dev/null | jq -e '.loggedIn' > /dev/null 2>&1
 }
 
 # The grader read fence and the worker's CLAUDE_CODE_SUBAGENT_MODEL_FORCE need Claude Code 2.1.257; an older claude ignores
@@ -3915,7 +3905,7 @@ precondition_lines() { # LOOP.md, Preconditions
       # Wrapped in timeout like every other model call; a hung probe must not hang status (#68).
       local pe po rc
       pe=$(mktemp "${TMPDIR:-/tmp}/factory-probe.XXXXXX")
-      po=$(timeout --foreground 120 claude -p --model "$WORKER_MODEL" --advisor "$WORKER_ADVISOR" --max-turns 1 --output-format json \
+      po=$(timeout --foreground 120 "$ROOT/bin/claude-account" exec claude -p --model "$WORKER_MODEL" --advisor "$WORKER_ADVISOR" --max-turns 1 --output-format json \
         --strict-mcp-config --no-session-persistence 'Reply with the single word ok' 2> "$pe"); rc=$?
       if [ "$rc" -eq 124 ]; then
         echo "  FAIL advisor: probe timed out after 120s"
