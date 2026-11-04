@@ -137,9 +137,13 @@ class OvernightDriverTests(unittest.TestCase):
         write_exec(self.fake / "setsid", '#!/bin/sh\nexec "$@"\n')
         write_exec(self.fake / "sleep", "#!/bin/sh\nexit 0\n")
         write_exec(self.fake / "gh", '#!/bin/sh\ncase "$*" in *"pr list"*) echo 7 ;; esac\nexit 0\n')
-        write_exec(self.fake / "claude", '#!/bin/sh\nprintf "%s\\n" "$@" >> "$HOME/claude.args"\nexit 0\n')
+        write_exec(self.fake / "claude", '#!/bin/sh\necho "$CLAUDE_CODE_PRINT_BG_WAIT_CEILING_MS" >> "$HOME/ceiling"\n'
+                   'printf "%s\\n" "$@" >> "$HOME/claude.args"\nexit 0\n')
+        # An inherited ceiling is overridden, so background agents are never stopped (#679). Appended, since a later
+        # call the setsid wrapper keeps alive past killpg could truncate the file just before the read.
+        env = {**self.env(), "CLAUDE_CODE_PRINT_BG_WAIT_CEILING_MS": "600000"}
         # Its own session, so the loop and every child it starts die together.
-        p = subprocess.Popen(["bash", str(ROOT / "bin/overnight/driver.sh")], env=self.env(), cwd=ROOT,
+        p = subprocess.Popen(["bash", str(ROOT / "bin/overnight/driver.sh")], env=env, cwd=ROOT,
                              stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, start_new_session=True)
         try:
             deadline = time.monotonic() + 20
@@ -148,6 +152,7 @@ class OvernightDriverTests(unittest.TestCase):
         finally:
             os.killpg(p.pid, signal.SIGKILL)
             p.wait()
+        self.assertEqual((self.home / "ceiling").read_text().splitlines()[0], "0")
         lines = args.read_text().splitlines()
         call = lines[: lines.index("-p", 1)] if "-p" in lines[1:] else lines
         settings = pathlib.Path(call[call.index("--settings") + 1])

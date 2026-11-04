@@ -136,11 +136,13 @@ active_account() { local a
 # the call starts; left out when none is): a stopped driver leaves the call to finish, and the next driver adopts it
 # with the same rules (below), so a restart neither kills a review, nor starts a second call on the same PR, nor
 # judges the call's usage limit by the account active now.
+# CLAUDE_CODE_PRINT_BG_WAIT_CEILING_MS=0 (#679): headless claude otherwise stops the lead's background agents 10 min
+# after its last turn; 0 waits for them.
 run() { local pid out acct
   mkdir -p "$O/calls"; out="$O/calls/$(date -u +%Y%m%dT%H%M%SZ).json"; limited=0
   grader_window
   acct=$(active_account)
-  env CLAUDE_CODE_SUBAGENT_MODEL=claude-opus-5-5 ANTHROPIC_DEFAULT_HAIKU_MODEL=claude-opus-5-5 ANTHROPIC_DEFAULT_SONNET_MODEL=claude-opus-5-5 \
+  env CLAUDE_CODE_PRINT_BG_WAIT_CEILING_MS=0 CLAUDE_CODE_SUBAGENT_MODEL=claude-opus-5-5 ANTHROPIC_DEFAULT_HAIKU_MODEL=claude-opus-5-5 ANTHROPIC_DEFAULT_SONNET_MODEL=claude-opus-5-5 \
     perl -MPOSIX -MTime::HiRes=time,sleep -e "$WRAP" \
     claude -p --model claude-opus-5-5 --effort high --permission-mode bypassPermissions --settings "$D/settings.json" --max-turns 400 --output-format json "$1" \
     < /dev/null > "$out" 2>> "$O/driver.log" &
