@@ -28,7 +28,7 @@ Challenge false premises and flawed proposals, and offer a concrete repair.
 - `seed/docs/HARNESS.md.jinja`, then `docs/HARNESS-LOAM.md` (Loam-only notes and Claude Code hook gotchas): changing hooks, rules, settings or the deny lists, or needing the accepted risks.
 - `docs/RULES.md`: which check enforces each rule; update it after a correction.
 - `.claude/skills/verify-loam/SKILL.md`: proving a seed, hook, settings or `copier.yml` change in a real rendered project before shipping it.
-- `docs/SYNC.md`: `bin/sync-project`, updating projects, or promoting a reusable asset.
+- `docs/SYNC.md`: `bin/sync-project`, tailored transfer, or promoting a reusable asset.
 - `docs/BOOTSTRAP.md`, `docs/COPIER.md`: bootstrapping a project, or changing bootstrap or update behavior.
 - `docs/factory/ARCHITECTURE.md`: running or changing the loop factory (brief, tickets, `bin/factory`, graders).
 

@@ -44,7 +44,7 @@ uvx copier update --trust --skip-tasks && rm -f _gh_setup.sh                    
 ```
 
 `--skip-tasks` also skips the settings strip (task 1), so with a non-Python `project_kind` or `memory=false` read `.claude/settings.json` in the diff before you commit.
-DistBench takes releases only through `bin/sync-project` ([SYNC.md](SYNC.md)), which skips tasks and deletes `_gh_setup.sh`.
+DistBench takes Loam capabilities by the tailored transfer in [SYNC.md](SYNC.md), with `bin/sync-project` (which runs no Copier tasks and deletes `_gh_setup.sh`) as its diff source.
 
 ### Migrating a project rendered before v1.0.0
 
