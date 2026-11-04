@@ -83,10 +83,13 @@ reap() { local wt n d; for wt in "$HOME"/loam-[0-9]*; do
     && { grep -Eq "^outcome issue $n: (merged|left open)" "$O/log.md" || [ -e "$d/pr-closed" ]; } \
     && git -C ~/loam worktree remove --force "$wt" && echo "$(stamp) removed $wt" >> "$O/driver.log" && freed=1
 done; }
-# 0 when an open PR from a factory/<issue> branch has no outcome line for its issue yet.
+# 0 when an open PR from a factory/<issue> branch has no outcome line for its issue yet. Only PRs Samyak opened from
+# this repo's own branches count: Loam is public and gh gives a fork's branch without its owner, so a stranger's
+# factory/<n> PR would otherwise start a call (and its outcome line could free the real PR's slot).
 pending() { local list n
-  list=$(gh pr list --repo SamyakJhaveri/loam --state open --limit 200 --json headRefName \
-    --jq '.[].headRefName | select(test("^factory/[0-9]+$")) | ltrimstr("factory/")' 2>> "$O/driver.log") \
+  list=$(gh pr list --repo SamyakJhaveri/loam --state open --limit 200 --json headRefName,isCrossRepository,author \
+    --jq '.[] | select(.isCrossRepository == false and .author.login == "SamyakJhaveri") | .headRefName
+      | select(test("^factory/[0-9]+$")) | ltrimstr("factory/")' 2>> "$O/driver.log") \
     || { echo "$(stamp) gh pr list failed" >> "$O/driver.log"; return 1; }
   for n in $list; do grep -Eq "^outcome issue $n: (merged|left open)" "$O/log.md" || return 0; done
   [ -s "$O/revisit.txt" ] && return 0   # a PR Samyak answered (protocol: Revisits)
@@ -116,13 +119,15 @@ account() { local out=$1 cost to
 }
 # One call under WRAP, through claude-account exec, which execs claude with the active account's token in its env (the
 # settings files hold none) and keeps the pid; the wrapper's args still hold `claude -p ... overnight/protocol.md`,
-# which the adopt check below and watchdog.sh match. O/call.pid holds "pid before out" while it runs: a stopped driver leaves the call to finish,
-# and the next driver adopts it with the same rules (below), so a restart neither kills a review nor starts a second
-# call on the same PR.
+# which the adopt check below and watchdog.sh match. O/call.pid holds "pid before out" while it runs: a stopped driver
+# leaves the call to finish, and the next driver adopts it with the same rules (below), so a restart neither kills a
+# review nor starts a second call on the same PR.
+# CLAUDE_CODE_PRINT_BG_WAIT_CEILING_MS=0 (#679): headless claude otherwise stops the lead's background agents 10 min
+# after its last turn; 0 waits for them.
 run() { local pid out
   mkdir -p "$O/calls"; out="$O/calls/$(date -u +%Y%m%dT%H%M%SZ).json"; limited=0
   grader_window
-  env CLAUDE_CODE_SUBAGENT_MODEL=claude-opus-5-5 ANTHROPIC_DEFAULT_HAIKU_MODEL=claude-opus-5-5 ANTHROPIC_DEFAULT_SONNET_MODEL=claude-opus-5-5 \
+  env CLAUDE_CODE_PRINT_BG_WAIT_CEILING_MS=0 CLAUDE_CODE_SUBAGENT_MODEL=claude-opus-5-5 ANTHROPIC_DEFAULT_HAIKU_MODEL=claude-opus-5-5 ANTHROPIC_DEFAULT_SONNET_MODEL=claude-opus-5-5 \
     perl -MPOSIX -MTime::HiRes=time,sleep -e "$WRAP" "$HOME/loam/bin/claude-account" exec \
     claude -p --model claude-opus-5-5 --effort high --permission-mode bypassPermissions --settings "$D/settings.json" --max-turns 400 --output-format json "$1" \
     < /dev/null > "$out" 2>> "$O/driver.log" &
