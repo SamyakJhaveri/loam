@@ -146,15 +146,25 @@ run() { local pid out acct
   wait "$pid" 2> /dev/null; rm -f "$O/call.pid"
   account "$out" "$acct"
 }
+# After a PR call, its own or adopted: free a merged PR's slot at once, then pace. A call that wrote nothing, or found
+# nothing to do, waits 10 minutes, so a PR the protocol will not pick cannot start a paid call every minute.
+after_call() {
+  freed=0; reap
+  [ "$freed" = 1 ] && launch_next
+  if [ "$limited" = 1 ]; then sleep 5
+  elif [ "$(wc -l < "$O/log.md")" = "$before" ] || tail -n 1 "$O/log.md" | grep -q '^idle'; then sleep 600; else sleep 60; fi
+}
 reported=""; limited=0
 # A call left by an earlier driver is adopted only while its pid still leads its own group and runs a driver call
-# (the watchdog's pattern), so a reused pid is never touched; the loop starts no call of its own until it ends. Only a
-# record with at least "pid before out" is adopted: without its log line count an outcome written before the restart
-# is unseen. A record from a driver before #615 has no account, so that call's usage limit switches nothing.
+# (the watchdog's pattern), so a reused pid is never touched; the loop starts no call of its own until it ends, and
+# paces after it as after its own. Only a record with at least "pid before out" is adopted: without its log line count
+# an outcome written before the restart is unseen. A record from a driver before #615 has no account, so that call's
+# usage limit switches nothing.
 if read -r c b f a < "$O/call.pid" 2> /dev/null && [ -n "$f" ] && [ "$(ps -o pgid= -p "$c" 2> /dev/null | tr -d ' ')" = "$c" ] \
   && ps -ww -o args= -p "$c" 2> /dev/null | grep -q 'claude -p .*overnight/protocol.md'; then
   echo "$(stamp) adopted call $c left by an earlier driver" >> "$O/driver.log"
-  limited=0; watch "$c" "$b"; [ -f "$f" ] && account "$f" "$a"
+  limited=0; before=$b; watch "$c" "$b"; [ -f "$f" ] && account "$f" "$a"
+  after_call
 fi
 rm -f "$O/call.pid"
 while :; do
@@ -171,10 +181,5 @@ while :; do
   launch_next
   before=$(wc -l < "$O/log.md")
   run "Read $D/protocol.md and process one pull request as it says."
-  freed=0; reap
-  [ "$freed" = 1 ] && launch_next
-  # A call that wrote nothing, or found nothing to do, waits 10 minutes, so a PR the protocol will not pick
-  # cannot start a paid call every minute.
-  if [ "$limited" = 1 ]; then sleep 5
-  elif [ "$(wc -l < "$O/log.md")" = "$before" ] || tail -n 1 "$O/log.md" | grep -q '^idle'; then sleep 600; else sleep 60; fi
+  after_call
 done

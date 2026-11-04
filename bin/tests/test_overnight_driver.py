@@ -451,7 +451,10 @@ end_call() { echo "ended $polls_seen $reads"; }
         self.start_driver()
         self.assertTrue(self.wait_for(lambda: not (self.home / "loam-9").exists(), 20),
                         "the driver left the closed PR's ticket worktree holding the slot")
-        self.assertIn(f"removed {self.home}/loam-9", (self.state / "driver.log").read_text())
+        # The driver logs the removal only after git returns, so wait for the line too.
+        log = self.state / "driver.log"
+        self.assertTrue(self.wait_for(lambda: log.exists() and f"removed {self.home}/loam-9" in log.read_text(), 10),
+                        "the driver logged no removal of the closed PR's ticket worktree")
         self.assertFalse((self.home / "calls.txt").exists(), "the driver started a call with nothing pending")
 
 
@@ -572,6 +575,16 @@ end_call() { echo "ended $polls_seen $reads"; }
         self.adopt_it(env)
         self.assertEqual(self.active(), "b", "the adopted call's usage limit switched nothing")
         self.assertGreaterEqual(self.n_calls(), 2, "the driver read no result of the adopted call, or did not retry")
+
+    @LINUX_ONLY
+    def test_an_adopted_calls_limit_within_the_cooldown_keeps_the_normal_pacing(self) -> None:
+        env = self.limit_fakes('for i in $(seq 300); do [ -e "$H/go" ] && break; /bin/sleep 0.1; done')
+        self.leave_a_call(env)
+        (self.runs / "limit-switch").write_text(f"{int(time.time())}\n")
+        self.adopt_it(env)
+        self.assertEqual(self.active(), "a", "the driver switched within 300 s of another caller's switch")
+        self.assertIn("usage limit on account a: another caller switched under 300 s ago; switched nothing", self.log())
+        self.assertEqual(self.n_calls(), 1, "the driver started a call at once after an adopted call's limit")
 
     @LINUX_ONLY
     def test_an_adopted_call_with_no_recorded_account_switches_nothing(self) -> None:
