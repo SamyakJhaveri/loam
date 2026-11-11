@@ -3,6 +3,17 @@
 This file records why a promoted plugin change traveled. It is also the upgrade
 entry point for projects that consume the Loam marketplace.
 
+## sam-cc-setup v0.9.26 audit skill, and surprise-me for research and design work
+
+New manual-only skill `audit`: the owner's checkpoint on a plan or finished work, sized to what is at stake, with blind reviewers, each finding reproduced before any fix, an independent second design, and a six-part report of about 400 words whose claims carry an evidence tag (ran, read in full, inferred, from memory) in place of a score out of 10.
+surprise-me: step 1 names the current plan's main mechanism and step 3 asks for one idea that does not use it; research questions get competing hypotheses, each with the observation that would rule it out; step 6's check must be able to fail, with the expected result written first; Panel mode gains a fresh-start lens that never sees the current plan and no longer fixes the agent count at four.
+The description drops the trigger phrases, which a manual-only skill never uses, and rule 6 (a repeat of step 6) is gone, so the old rule 7 is rule 6.
+Step numbers, the "Scale modes" heading and the four lens names that research-gap reads are unchanged.
+`seed/docs/WORKERS.md.jinja` gains "Order of work and hand-offs", and the ticket contract's Approach names exact edits only where one wrong step breaks something.
+Sources: the Fable 5.2 and Opus 5.5 prompting guides, the prompting and Claude Code best-practices pages, and Anthropic's code-review, feature-dev and security plugins (read 10 Nov 2026).
+No grader prompt changed, so no grader replay is owed.
+Upgrade step: `claude plugin update sam-cc-setup@seed-skills`.
+
 ## sam-cc-setup v0.9.25 reviewer grader at xhigh
 
 `reviewer.md` front matter says `effort: xhigh`: the factory's reviewer grader now runs at xhigh and the judge stays at high (Samyak 2026-10-30, Loam #474).

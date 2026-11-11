@@ -1,23 +1,28 @@
 ---
 name: surprise-me
 disable-model-invocation: true
-description: Generate ranked, evidence-backed creative ideas the user has not asked for, aimed at a named goal, then execute the cheapest one immediately as proof. Use when the user says "surprise me", "what am I missing", "creative or elegant ideas", "how can we do this better", asks how to increase the chances of a goal succeeding, or asks "what are we not seeing/doing/thinking about" or "what capabilities do you have that I am not asking you to use yet". NOT for routine task execution, and never for ideas that only sound good but the user cannot verify.
+description: Find a better route to a named goal than the current plan - ranked ideas the judge can verify, from independent lenses, with the cheapest one run as proof. For research questions, hypotheses, experiment designs, engineering designs and plans. Manual-only; an agent told to run it reads this file by path.
 argument-hint: [the goal to optimize for, e.g. "ship the release on time"]
 ---
 
 # Surprise Me - goal-directed creative leverage
 
-You are an engineer hunting for high-leverage moves the current plan missed.
+The first workable approach tends to get defended instead of questioned.
+This skill finds high-leverage moves the current plan missed, in any kind of work: a research question,
+a hypothesis, an experiment design, an engineering design, a plan.
+Be ambitious: the smallest thing that satisfies the request is the default to beat.
 The output is a short ranked table of ideas plus one already-executed proof, never a brainstorm essay.
 
 ## Process
 
-1. **Fix the goal and the judge.** Restate, in one sentence, the external decision rule that
+1. **Fix the goal, the judge and the default.** Restate, in one sentence, the external decision rule that
    defines success (the reviewer, the metric, the deadline, the acceptance criterion). Every idea
    is scored against that sentence, nothing else.
+   If a plan already exists, state it in two lines and name its main mechanism: that is the default
+   the ideas must differ from.
 2. **Inventory what already exists before inventing anything.** Grep the repo, the data files, and
    the sources for dormant capabilities: disabled self-checks, unused flags, data already collected
-   but never aggregated, tools pointed at the wrong target. The inventory includes the AGENT'S own
+   but never aggregated, tools pointed at the wrong target. The inventory includes the agent's own
    unused capabilities the owner has not asked for yet (scheduled monitors, browser verification of
    rendered pages, multi-agent document QA, published dashboards, cross-model review panels) - list
    the ones that serve the goal, each as a concrete offer with a cost. When the work belongs to
@@ -28,6 +33,10 @@ The output is a short ranked table of ideas plus one already-executed proof, nev
    worth less than one they can re-run. Prefer: quoting reproducible evidence verbatim, running a
    control experiment, machine-deriving a statistic, reframing existing facts. Reject: adjectives,
    promises without dates, anything that tunes an instrument toward the desired outcome.
+   At least one idea must not use the default's main mechanism.
+   For a research question or claim, write several competing hypotheses, including the dull ones
+   (a bug, noise, an effect already known), each with the observation that would rule it out, and
+   search for prior work by name before calling anything a gap.
    Run the analogy move once:
    (a) restate the goal's purpose in one sentence with no domain nouns;
    (b) list who else serves that purpose with a different mechanism - three sources from this repo
@@ -40,19 +49,25 @@ The output is a short ranked table of ideas plus one already-executed proof, nev
    of the line becomes a named commitment, not an action.
 5. **Rank by goal-value per unit cost** and present as a table: `# | idea | when | owner | cost | deliverable`.
    Present the survivors; cut anything that does not beat the ideas above it.
+   Say what the top idea improves over the default (quality, time, risk) and what it costs; if the
+   default is still best, say so in one line.
 6. **Execute the cheapest read-only idea in the same turn** (a grep sweep, a framing sentence, a
    control run in a scratch dir) and report its first result alongside the table. Proof beats proposal.
+   Choose a check that can fail, and write down the result you expect before running it.
 7. **File the survivors.** Propose appending the table to the project's active plan document so the
    ideas outlive the session, each with when/owner/cost/deliverable filled in; the append itself
-   waits for the owner's go (critical rule 3).
+   waits for the owner's go (rule 3).
 
 ## Scale modes
 
 - **Solo (default):** the 7-step process above, one context. Right for a daily "what am I missing".
-- **Panel (wide or high-stakes decisions):** fan out 4 fresh-context agents with deliberately
-  different lenses - a dormant-assets hunter (step 2 only), a reframing hunter (same facts, stronger
-  story), an adversary (attacks the current plan and proposes what its holes imply), and an analogist
-  (the step-3 analogy move only) - then merge, dedupe, and rank their ideas yourself.
+- **Panel (wide or high-stakes decisions):** fan out fresh-context agents with deliberately
+  different lenses, one per lens the decision needs - a dormant-assets hunter (step 2 only), a
+  reframing hunter (same facts, stronger story), an adversary (attacks the current plan and proposes
+  what its holes imply), an analogist (the step-3 analogy move only), and a fresh start (gets the
+  goal, the judge, the constraints and the sources but not the current plan, and designs its own
+  approach) - then merge, dedupe, and rank their ideas yourself.
+  Different ideas come from different briefs, so each agent commits to its ideas instead of listing options.
 
 ## Before spending on a winner
 
@@ -72,8 +87,7 @@ agent on it blind, rather than re-implementing interrogation here.
 4. Every claimed fact in an idea's pitch traces to a command run this session.
 5. Respect the repo's hard invariants (immutable results, protected sources, signed artifacts) -
    creative means recombining, not bending.
-6. One executed proof is mandatory.
-7. If the goal is ambiguous, ask one question to pin the judge before generating anything.
+6. If the goal is ambiguous, ask one question to pin the judge before generating anything.
 
 Use `$ARGUMENTS` as the goal; if empty, default to the project's nearest deadline or active
 objective.

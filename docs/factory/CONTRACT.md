@@ -20,6 +20,7 @@ The body starts at `Brief:` or `Part of`; in a file the first `#` line is the ti
 3. `## Do not touch`: the standing list from `ARCHITECTURE.md` (another target's `docs/factory/STANDING.md`), ticket-specific paths, and any `Except:` line.
 4. `## Out of scope`: one line each.
 5. `## Approach` (optional): the how where it matters to Samyak, in a few lines: patterns to follow, files to model on, approaches tried and rejected.
+   State decisions, interfaces and invariants; name an exact edit only where one wrong step breaks something (a migration, a protocol value, a frozen file).
    The worker follows it; a departure needs a `decisions.md` line, which the judge reads.
 6. `## Done checks`: one fenced block tagged `done-checks`, a bash body sourced after `lib.sh`, run from the worktree root.
    A check is one line of the block and ends in `pass NAME` or `fail NAME reason`, in the form `A && pass N || fail N "why"`.
