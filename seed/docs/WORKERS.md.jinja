@@ -29,6 +29,31 @@ A custom subagent's system prompt is its own file, not Claude Code's main prompt
 
 Before an unattended or overnight session starts, the lead walks `docs/LAUNCH.md` and prints each item with its evidence.
 
+## Order of work and hand-offs
+
+The same order holds for research and for engineering: resolve the unknowns, get independent designs or hypotheses, pick one, write the done check, build, run the check, audit, repeat.
+For the second step, give fresh agents the same goal with different briefs and compare them; one agent asked to be creative returns variations on its first idea.
+The `surprise-me` skill's Panel mode does that, and the `audit` skill does the audit, on a plan as well as on finished work.
+A project protocol that fixes its own audit form (a pre-registered study audit, for example) keeps that form.
+Both skills are in the `sam-cc-setup` plugin and manual-only: the owner types them, and an agent told to run one reads `<plugin>/skills/<name>/SKILL.md`, `<plugin>` being the sam-cc-setup `installPath` in `~/.claude/plugins/installed_plugins.json`.
+
+These rules cover anything one session writes for another agent to carry out: a ticket, an experiment plan, a research brief, a subagent prompt.
+They add to the ticket formats and the brief headings and replace none of them.
+
+1. Resolve the unknowns first. A decision that is the owner's goes to the owner before the hand-off; what stays uncertain is listed as known or assumed.
+2. Write the done check before the approach: a command with its expected output, or a file and what it must contain, such that two readers would reach the same pass or fail.
+3. State the goal, the reason and the limits. Name an exact edit only where one wrong step breaks something (a migration, a protocol value, a frozen file); elsewhere give decisions, interfaces and invariants, each marked fixed or suggested.
+4. Name what to read first, and tell the worker to read the code, tests and design files that could bear on the task, including ones the hand-off does not name, and to stop and report if they contradict it.
+5. List the settled decisions, so neither the worker nor a reviewer reopens them.
+6. Say what to do with a better route: inside the scope, take it, log the deviation with its reason and continue; outside it, stop and report. Where the hand-off is unclear, take the conservative reading, log it and continue.
+7. Ask for evidence back: the command and its output for each done check, the deviations, and what is still unverified.
+8. For an experiment or a research task, add the hypothesis and its rivals, the prediction written before the run, the control, and the result that would change the plan.
+
+A read-only search needs less: the objective, the output format, where to look and where to stop.
+Leave out step lists for work the worker can plan, emphasis words, "think carefully" lines and requests to write out reasoning; more thinking comes from the effort level, not from words in the prompt.
+In a hand-off, leave out a caution whose reason has passed, and write each exception into the rule it qualifies.
+Before a hand-off that starts long or costly work, dry-run it (the `audit` skill's step 3: a fresh worker that builds nothing lists every question it would have to guess) and close each question.
+
 ## pstack
 
 These hold where the pstack plugin is installed.
