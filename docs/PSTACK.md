@@ -11,23 +11,29 @@ The five short principle cards (laziness, context window, encode lessons, design
 ## The one fact that shapes everything
 
 pstack ships every skill with `disable-model-invocation: true` (only `setup-pstack` is model-invocable).
-So Claude never sees a pstack skill in its skill list, and the Skill tool refuses it.
-pstack's own Claude Code adapter (`<pstack>/docs/harness/claude-code.md`) gives the way around it: an agent reads `<pstack>/skills/<name>/SKILL.md` by path and follows it.
-We use exactly that (owner choice C, 2026-10-27).
+So Claude never sees a pstack skill in its skill list, and the Skill tool refuses it; the refusal also forbids carrying the skill out another way.
+pstack's own Claude Code adapter (`<pstack>/docs/harness/claude-code.md`) gives the way around it: an agent reads `<pstack>/skills/<name>/SKILL.md` by path and follows it (owner choice C, 2026-10-27).
+The entry is one model-invocable router skill Samyak owns, `sam-cc-setup:pstack` (`cultivation/marketplace/sam-cc-setup/skills/pstack/SKILL.md`; owner rulings 2026-11-10 and 2026-11-11).
+It resolves `<pstack>` when called, picks a method from a table of situations (broad to narrow) and the list of all principle cards, and has the agent read that skill by path.
+Only `setup-pstack` stays manual: the router forbids it, since a re-run can overwrite `~/.claude/rules/pstack-models.md`.
 There are no copies in `~/.claude/skills/`, so a pstack update reaches every agent with nothing to re-run.
 
 ## Who runs what
 
+The rule line, in `seed/CLAUDE.md.jinja` and `seed/docs/WORKERS.md.jinja`:
+"pstack: in the main session and in `worker` agents, call the `sam-cc-setup:pstack` skill before a non-trivial task (a bug or failing test, code you have not read, a multi-file or batch change, writing or changing tests, an API or shared-state change, a measured number, a review, a hard multi-part job, or calling work done) and follow the method it picks. Scouts, reviewers and agents started by a pstack skill follow their brief. Never call the Skill tool on a `pstack:` skill: they are manual-only, and the refusal forbids reading them another way."
+
 | Who | How | Which skills |
 |-----|-----|--------------|
-| `worker` agent | reads by path, from the index in `~/.claude/agents/worker.md`, grouped by stage (understand, shape, build, debug, measure, review, finish), when the brief names a skill or the work reaches its row | `how`, `why`, `tdd`, `blast-radius`, `interrogate`, `benchmark-checklist`, `show-me-your-work`, `maintain-formal-verification-skill`, 15 principles |
-| `scout` agent | reads by path, index in `~/.claude/agents/scout.md`; never edits | `how`, `why`, `blast-radius`, `principle-explain-the-number` |
-| Factory worker | reads by path each skill the ticket's `skills:` line names (`docs/factory/LOOP.md`) | any installed pstack skill, human-only ones included (owner ruling 2026-10-30) |
-| Lead session | never runs pstack inline; names the skill in a worker's brief | none |
-| Samyak | types `/pstack:<name>` | everything else, below |
+| Main session and `worker` agent | call `sam-cc-setup:pstack` before a non-trivial task and follow the method it picks; the main session hands a skill marked (spawns) to one `worker`, stating the agent count first | every skill in the router's table and principle list |
+| `scout` agent | follows its brief; one that points it at the router reads it by path (below); never edits | what the brief or the router picks |
+| Factory worker | reads the router at the path `bin/factory` puts in its prompt (`bin/factory.d/_common.md`; fan-out builders get it too), and by path each skill the ticket's `skills:` line names (`docs/factory/LOOP.md`) | any installed pstack skill, human-only ones included (owner ruling 2026-10-30) |
+| Agents a pstack skill starts, reviewers | follow their brief | what the brief names |
+| Samyak | types `/pstack:<name>` | everything, below |
 
+The router's path without the Skill tool: `$(jq -r '.["seed-skills"].installLocation' ~/.claude/plugins/known_marketplaces.json)/sam-cc-setup/skills/pstack/SKILL.md`; the seed-skills marketplace is a directory source in the host's Loam checkout, so it is that checkout's branch.
 A worker has the Agent tool (proof run 2026-10-27), so it runs the fan-out skills in full.
-A scout has none, so it runs `how` or `why` as their single explainer or investigator itself.
+An agent without it does the delegated role itself in one context, `interrogate`'s adversary work included, and never skips it.
 
 ## What Samyak types, and when
 
@@ -53,7 +59,7 @@ A scout has none, so it runs `how` or `why` as their single explainer or investi
 - `recall`: parked by the owner (2026-10-27); `catchup` and `ketchup` cover it.
 - `automate-me`: its authoring step is Cursor's built-in `create-skill`, which the adapter does not map.
 - `make-bot-ui`: built on Cursor Automations and Grok bot webhooks, which Claude Code lacks.
-They stay in the plugin, user-only, out of every agent index, so Claude never starts them.
+They stay in the plugin, user-only and out of the router's table, so Claude never starts them; the router also names `poteto-help`, `sharpen`, `in-your-own-words` and `make-bot-ui` as skills it never uses.
 Deleting them from the plugin cache would come back with the next pstack update.
 
 ## Settings
@@ -70,5 +76,5 @@ do not list skills in the prompt; give a finish condition that can pass or fail 
 ## When pstack updates
 
 Nothing to re-run: `installPath` moves to the new version.
-Check after an update that the adapter still says to read skills by path, and that the agent indexes still name skills that exist:
-`P=$(jq -r '.plugins["pstack@cursor-plugins"][0].installPath' ~/.claude/plugins/installed_plugins.json); for s in $(grep -oE '`[a-z-]+` \|$' ~/.claude/agents/worker.md | cut -d'`' -f2); do test -f "$P/skills/$s/SKILL.md" || echo "missing $s"; done`
+Check after an update that the adapter still says to read skills by path, and that the router still names skills that exist and lists every principle card:
+`python3 bin/tests/test_pstack_router.py` from the Loam checkout; it fails on a name the new version lacks or a card it added, and skips when pstack is not installed.

@@ -237,6 +237,23 @@ console.log(JSON.stringify(seen));"""
         for p in builders:
             self.assertIn(want, p)
 
+    def test_each_fan_out_builder_gets_the_pstack_router_path(self) -> None:
+        # build_worker_prompt resolves the router under the seed-skills installLocation and passes it in the Workflow
+        # args; factory-round.js gives every builder one line naming it.
+        market = self.tmp / "market"
+        router = market / "sam-cc-setup/skills/pstack/SKILL.md"
+        router.parent.mkdir(parents=True)
+        router.write_text("A router.\n")
+        (self.home / ".claude/plugins/known_marketplaces.json").write_text(
+            json.dumps({"seed-skills": {"installLocation": str(market)}}))
+        (args,) = re.findall(r"and args `(\{.*\})`\.", self.prompt(size="large"))
+        self.assertEqual(json.loads(args)["router"], str(router))
+        builders = self.builder_prompts(args)
+        self.assertEqual(len(builders), 2)
+        for p in builders:
+            self.assertEqual(p.count(str(router)), 1, p)
+            self.assertIn(f"read the pstack router at {router} and follow the method it picks", p)
+
     def test_fan_out_args_jq_cannot_build_stops_the_prompt(self) -> None:
         # A jq older than 1.6 rejects --args; the lead must not get an empty args sentence.
         stub = self.tmp / "stub"
