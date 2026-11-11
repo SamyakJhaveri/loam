@@ -58,9 +58,9 @@ else
 fi
 
 # Harness checks. Always-on prose: CLAUDE.md plus AGENTS.md load into every session, and
-# docs/HARNESS.md budgets them at 525 tokens, about 2100 bytes.
+# docs/HARNESS.md budgets them at 400 tokens, about 1600 bytes.
 PROSE="$(cat CLAUDE.md AGENTS.md 2>/dev/null | wc -c | tr -d ' ')"
-[ "$PROSE" -le 2100 ] || bad "CLAUDE.md + AGENTS.md are $PROSE bytes, over the 2100-byte always-on budget (docs/HARNESS.md)"
+[ "$PROSE" -le 1600 ] || bad "CLAUDE.md + AGENTS.md are $PROSE bytes, over the 1600-byte always-on budget (docs/HARNESS.md)"
 # Skill frontmatter keys and hook event names: Claude Code ignores a wrong one silently.
 python3 - <<'PY' || bad "skill frontmatter or hook event names"
 import json, re, subprocess

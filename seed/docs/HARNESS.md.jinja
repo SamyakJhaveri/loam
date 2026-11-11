@@ -185,16 +185,16 @@ request. Nothing else lints or tests.
 via `CLAUDE.md`, Codex reads it directly. Add a line to either file only if
 removing it would cause a mistake.
 
-- Prose (`CLAUDE.md` plus `AGENTS.md`): 525 tokens, enforced as a 2100-byte cap in `bin/check`; edit the number there to change it. The skill listing and the
+- Prose (`CLAUDE.md` plus `AGENTS.md`): 400 tokens, enforced as a 1600-byte cap in `bin/check`; edit the number there to change it. The skill listing and the
   session brief are separate always-on costs and are not inside that number.
 - Skill listing: the two listed seed skills weigh about 85 tokens (description
   bytes divided by four; hypothesis-tree is manual-only and unlisted), so a fresh
-  project pays about 525 + 85 tokens before any work starts (the pstack rule
-  line, about 115 tokens, raised the prose cap from 1600 bytes).
+  project pays about 400 + 85 tokens before any work starts.
 - pstack: pstack ships its skills manual-only, so they add nothing to the skill
   listing; agents reach them through the `sam-cc-setup:pstack` router, whose
   one listing line costs about 65 tokens, and read each chosen skill by path
-  (`docs/WORKERS.md`, pstack).
+  (`docs/WORKERS.md`, pstack); the rule line that sends them there lives once,
+  in the user's `~/.claude/CLAUDE.md`, not in each project.
 {% if memory %}- Memory hooks: recall adds at most 4000 bytes at SessionStart, and the Stop
   capture runs at most once per ten minutes. The scrub adds one regex pass over
   the transcript per capture. Recall waits at most two seconds for a fetch from
