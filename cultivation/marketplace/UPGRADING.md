@@ -3,6 +3,17 @@
 This file records why a promoted plugin change traveled. It is also the upgrade
 entry point for projects that consume the Loam marketplace.
 
+## sam-cc-setup v0.9.27 pstack router
+
+New skill `pstack`, the plugin's first model-invocable one (owner rulings of 10 and 11 Nov 2026): before a non-trivial task the main session or a `worker` calls `sam-cc-setup:pstack`, which resolves the pstack folder and picks a method from a broad-to-narrow table and the list of all principle cards; the agent then reads that pstack `SKILL.md` by path.
+Only `setup-pstack` stays manual; `poteto-mode` keeps its standing limit (a contested design, concurrency or a cross-cutting change), and an agent stops before any push or PR a playbook asks for.
+Its listing line raises the sam-cc-setup listing weight from 365 to 431 tokens (`bin/check`, skill-listing step).
+The factory puts the router's path, from the seed-skills `installLocation` in `~/.claude/plugins/known_marketplaces.json`, into the worker prompt (`bin/factory.d/_common.md`) and every fan-out builder prompt; `bin/factory status` prints FAIL when the file is missing.
+`seed/CLAUDE.md.jinja`, `seed/docs/WORKERS.md.jinja` and `seed/docs/HARNESS.md.jinja` replace "the lead never runs pstack" with the router rule line; projects get them through `bin/sync-project`.
+After a pstack update, `python3 bin/tests/test_pstack_router.py` checks that every name the router gives still exists.
+No grader prompt changed, so no grader replay is owed.
+Upgrade step: `claude plugin update sam-cc-setup@seed-skills`; the agent files and global CLAUDE.md under `~/.claude/` are edited by hand to the same rule line.
+
 ## sam-cc-setup v0.9.26 audit skill, and surprise-me for research and design work
 
 New manual-only skill `audit`: the owner's checkpoint on a plan or finished work, sized to what is at stake, with blind reviewers, each finding reproduced before any fix, an independent second design, and a six-part report of about 400 words whose claims carry an evidence tag (ran, read in full, inferred, from memory) in place of a score out of 10.
