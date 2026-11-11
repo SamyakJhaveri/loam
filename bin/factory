@@ -663,6 +663,16 @@ skill_file() { # skill-name -> SKILL.md path on stdout, non-zero when it resolve
   return 1
 }
 
+# The sam-cc-setup pstack router (docs/PSTACK.md), which a Claude worker reads before a non-trivial task: under the
+# seed-skills marketplace's installLocation, a directory source in the host's Loam checkout, so it is that checkout's
+# copy. Prints its path; non-zero when the file is missing, which status and build_worker_prompt print as FAIL.
+router_file() { # -> router SKILL.md path on stdout
+  local loc
+  loc=$(jq -r '.["seed-skills"].installLocation // empty' "$HOME/.claude/plugins/known_marketplaces.json" 2> /dev/null) || loc=""
+  [ -n "$loc" ] && [ -f "$loc/sam-cc-setup/skills/pstack/SKILL.md" ] || return 1
+  printf '%s\n' "$loc/sam-cc-setup/skills/pstack/SKILL.md"
+}
+
 # The ticket's `skills:` names, one per line, as build_worker_prompt reads them.
 worker_skills() { section Worker | sed -n 's/^skills: *//p' | head -1 | tr ',' '\n' | sed 's/^ *//;s/ *$//' | grep .; }
 
@@ -2031,9 +2041,16 @@ nav_c_append() { [ "${FACTORY_NAV_ARM:-}" = C ] && cat "$ROOT/bin/factory.d/_nav
 nav_arm_resolve() { [ -n "${FACTORY_NAV_ARM+x}" ] && return 0; local f="$RUNS_ROOT/nav-order" a; [ -s "$f" ] || return 0; a=$(head -n 1 "$f"); [ -n "$a" ] || return 0; export FACTORY_NAV_ARM="$a"; tail -n +2 "$f" > "$f.tmp" && mv "$f.tmp" "$f"; return 0; }
 
 build_worker_prompt() { # round -> prompt path (pending until the call returns a result); 3 when a skills: name resolves to no SKILL.md, 4 when jq cannot build the fan-out args
-  local round="$1" pf="$RUN/pending.prompt.md" prev=$((round - 1)) s sf ad=
+  local round="$1" pf="$RUN/pending.prompt.md" prev=$((round - 1)) s sf ad= router common
   local -a sl=()   # a Claude worker's skill lines, also handed to each fan-out builder in the Workflow args
-  { printf '%s\n\n' "$BODY"; cat "$RUN/frozen/_common.md"; } > "$pf"
+  # The router's path fills <router> in the frozen _common.md and goes to each fan-out builder; a missing router
+  # is a FAIL line in the log, and the prompt then tells the worker to skip that line.
+  router=$(router_file) || { router=""; log "FAIL router: no sam-cc-setup/skills/pstack/SKILL.md under the seed-skills installLocation in ~/.claude/plugins/known_marketplaces.json"; }
+  common=$(cat "$RUN/frozen/_common.md")
+  # Prefix and suffix cuts, not ${common//...}: bash 5.2 reads & in a replacement as the match.
+  [[ $common != *"<router>"* ]] \
+    || common="${common%%<router>*}${router:-(missing on this host, so skip this line)}${common#*<router>}"
+  { printf '%s\n\n' "$BODY"; printf '%s\n' "$common"; } > "$pf"
   nav_c_append "$pf"   # arm C appends the Semble instruction; base and arm B append nothing (NAV-01)
   # Skills per role (LOOP.md), each `skills:` name resolved by skill_file: a Claude worker gets one
   # sentence naming the SKILL.md path to read, since every pstack skill refuses the Skill tool
@@ -2066,7 +2083,7 @@ build_worker_prompt() { # round -> prompt path (pending until the call returns a
     # skills: the lines above, verbatim, so each builder reads what the lead was told to (#523); jq escapes the
     # paths. A jq older than 1.6 has no --args: return 4 rather than hand the lead empty args.
     local wa
-    wa=$(jq -cn --arg ticket "$RUN/frozen/issue.md" --arg run "$RUN" '{ticket: $ticket, run: $run, skills: $ARGS.positional}' --args ${sl[@]+"${sl[@]}"}) \
+    wa=$(jq -cn --arg ticket "$RUN/frozen/issue.md" --arg run "$RUN" --arg router "$router" '{ticket: $ticket, run: $run, router: $router, skills: $ARGS.positional}' --args ${sl[@]+"${sl[@]}"}) \
       || { log "jq could not build the fan-out Workflow args (needs jq 1.6 or newer)"; return 4; }
     {
       printf '\n\n## Large ticket, round 1: run the fan-out workflow\n\n'
@@ -3879,6 +3896,9 @@ precondition_lines() { # LOOP.md, Preconditions
     [ -n "$t" ] || continue
     skill_file "$t" > /dev/null 2>&1 && echo "  PASS skill $t resolves" || echo "  INFO skill $t resolves to no SKILL.md (lint refuses a ticket naming it)"
   done < "$ROOT/bin/factory.d/skills.txt"
+  # A Claude worker and each fan-out builder read the pstack router before a non-trivial task (_common.md).
+  router_file > /dev/null && echo "  PASS pstack router $(router_file)" \
+    || echo "  FAIL pstack router: no sam-cc-setup/skills/pstack/SKILL.md under the seed-skills installLocation in ~/.claude/plugins/known_marketplaces.json; workers run without it"
   # Codex login: Codex is not on the bare PATH (#41), so probe it under CODEX_PATH, in the factory's own CODEX_HOME.
   # Only a Codex ticket needs it, so a logged-out or absent Codex is INFO here, not FAIL.
   if PATH="$CODEX_PATH:$PATH" command -v codex > /dev/null 2>&1; then

@@ -96,7 +96,7 @@ Also return goal: the ticket's "## Goal and why" section verbatim, so each build
 
 Return JSON matching the schema: { solo, reason, goal, tasks }.`
 
-const BUILD_PROMPT = (task, goal, run, skills) => `You are one builder in a parallel round. You share the working tree with other builders, so you edit ONLY the files your task owns, and you never run git add or git commit; the integrator commits.
+const BUILD_PROMPT = (task, goal, run, skills, router) => `You are one builder in a parallel round. You share the working tree with other builders, so you edit ONLY the files your task owns, and you never run git add or git commit; the integrator commits.
 
 The ticket's goal and why:
 ${goal}
@@ -104,7 +104,7 @@ ${goal}
 Your task:
 ${JSON.stringify(task, null, 2)}
 
-${skills.length ? skills.join('\n') + '\n\n' : ''}Do:
+${router ? `Before a non-trivial task, read the pstack router at ${router} and follow the method it picks; the rules in this prompt win over it.\n\n` : ''}${skills.length ? skills.join('\n') + '\n\n' : ''}Do:
 1. Implement the objective by editing only files matching your owned globs: ${(task.owns || []).join(', ')}.
 2. From the worktree root, source ${run}/frozen/lib.sh, then run your check line: ${task.check}
 3. Write your artifact to ${task.artifact}: what you changed, the files you touched, and the exact output your check line printed.
@@ -169,6 +169,8 @@ async function main() {
   const ticket = args.ticket
   // The lead's skill read lines, verbatim (build_worker_prompt in bin/factory); each builder gets them too.
   const skills = Array.isArray(args.skills) ? args.skills : []
+  // The pstack router's path (router_file in bin/factory), or empty when this host has none.
+  const router = typeof args.router === 'string' ? args.router : ''
   const usable = (p) => p && p.solo !== true && Array.isArray(p.tasks) && p.tasks.length >= 2 && p.tasks.length <= 4
 
   phase('Plan')
@@ -208,7 +210,7 @@ async function main() {
   phase('Build')
   const built = await parallel(
     tasks.map((task) => () =>
-      agent(BUILD_PROMPT(task, plan.goal || '', run, skills), { effort: 'xhigh', label: task.objective, phase: 'Build' }),
+      agent(BUILD_PROMPT(task, plan.goal || '', run, skills, router), { effort: 'xhigh', label: task.objective, phase: 'Build' }),
     ),
   )
   log(`${built.filter(Boolean).length}/${tasks.length} builders returned`)
