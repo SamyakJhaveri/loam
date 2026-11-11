@@ -8,8 +8,8 @@ Evidence and per-skill decisions: `~/.local/state/loam/evidence/2026-10-25-conso
 ## Three layers
 
 - **Claude picks**: the lead sees the skill in its skill list and may load it unprompted.
-- **Workers read**: a worker or scout reads a pstack `SKILL.md` from the enabled plugin folder, using the index in its agent file (pstack's own Claude Code method). The lead names the skill in the brief and never runs it inline.
-- **You type**: a user-only slash command; Claude never starts it.
+- **Workers read**: before a non-trivial task the main session or a `worker` calls the `sam-cc-setup:pstack` router, which picks a pstack method; the agent reads that `SKILL.md` from the enabled plugin folder by path (pstack's own Claude Code method, `docs/PSTACK.md`). Scouts and agents a pstack skill starts follow their brief.
+- **You type**: a user-only slash command. Claude starts a pstack one only through the router, and never `setup-pstack`.
 
 A skill stays in the lead's list only if Claude should pick it unprompted and no other listed skill fires on the same words.
 
@@ -42,7 +42,7 @@ Third-party descriptions (Codex, pstack, built-ins) are not edited; only visibil
 - To make one plugin skill user-only, add `disable-model-invocation: true` to its frontmatter in the plugin cache.
   A plugin update replaces the cache and undoes it; re-add the line in the new version folder.
 - To hide a whole plugin, turn it off in `enabledPlugins`.
-- pstack ships every skill user-only, and its author flag cannot be overridden.
+- pstack ships every skill user-only, and its author flag cannot be overridden; the `sam-cc-setup:pstack` router, a skill Samyak owns with no such flag, is how agents reach them.
 
 ## Codex
 
