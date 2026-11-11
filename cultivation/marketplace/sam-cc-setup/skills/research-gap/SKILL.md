@@ -77,7 +77,7 @@ The project's results and data are read-only for a run.
 ### 1. Diverge with blind seats
 
 Run surprise-me's Panel mode (`${CLAUDE_SKILL_DIR}/../surprise-me/SKILL.md`, section "Scale modes"; it is user-invoked, so read the file) with these changes.
-Each lens is its own seat on a different model, with different seeds:
+Each lens is its own seat on a different model, with different seeds; the four lenses in the table are the seats, and Panel's fresh-start lens is not one:
 
 | Seat | Lens | Model and effort | Seeds |
 |---|---|---|---|
