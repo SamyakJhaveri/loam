@@ -1296,6 +1296,7 @@ exit_words() { # status -> "<level> <words>"
     stuck) echo "fail stopped: the same checks failed twice in a row" ;;
     no-change) echo "fail stopped: a round changed nothing" ;;
     stopped-environment) echo "fail stopped on a machine or tool problem, not on the ticket" ;;
+    stopped-killed) echo "fail stopped: its supervisor got a signal (killed, or its tmux session or terminal closed)" ;;
     *) echo "fail stopped ($1)" ;;
   esac
 }
@@ -1337,6 +1338,21 @@ finish() { # status message
   log "EXIT $1 ($code): $2"
   exit "$code"
 }
+
+# A run's supervisor killed by INT, TERM or HUP (`tmux kill-session` closes the pane's terminal, which sends HUP) ends
+# here, after any call it was in has been ended (call_abort): the status, one fail alert and the EXIT line, as finish
+# writes them, but no learn step, which would start model calls on a run its operator just killed. cmd_run arms it with
+# run_traps once the run directory and the frozen set exist; call_start replaces it for a call and call_end re-arms it.
+killed() { # signal code
+  local words
+  trap '' INT TERM HUP
+  set_status stopped-killed
+  words=$(exit_words stopped-killed)
+  notify "${words%% *}" "$(ticket_name) ${words#* }" "SIG$1 at $(now); the run directory is $RUN" stopped-killed
+  log "EXIT stopped-killed ($2): SIG$1"
+  exit "$2"
+}
+run_traps() { RUN_TRAPS=1; trap 'killed INT 130' INT; trap 'killed TERM 143' TERM; trap 'killed HUP 129' HUP; }
 
 # ---- the ticket -------------------------------------------------------------
 
@@ -1884,9 +1900,11 @@ holds_slot() { # <run dir> [peek]
     exec {fd}>&-   # before the alert, whose children would otherwise inherit this run's lease
     [ "$st" = running ] || [ "$st" = waiting-limit ] || return 1
     log "stopped-environment: ${1%/} was $st, but no process of the run holds its lease"
+    # A file ticket's key is its file stem, an issue's its number.
+    local lbl; lbl=$(basename "$(dirname "$1")"); case $lbl in *[!0-9]*) lbl="ticket $lbl" ;; *) lbl="issue $lbl" ;; esac
     alert --level fail --source factory --project "$(run_project "$1")" \
-      --run "issue $(basename "$(dirname "$1")")" \
-      "issue $(basename "$(dirname "$1")") stopped on a machine or tool problem: no process of the run is left \
+      --run "$lbl" \
+      "$lbl stopped on a machine or tool problem: no process of the run is left \
 (its supervisor and every child exited) while it read $st; ${1%/} is now stopped-environment and its slot is free" \
       >> "$LOG" 2>&1 || log "the alert for ${1%/} failed; see bin/alert's line above"
     return 1
@@ -2370,7 +2388,7 @@ call_end() { # role -> the call's own exit status
   done < "$RUN/call.reap"
   rm -f "$RUN/call.reap"
   call_reap "$1" && [ -z "$CALL_STUCK" ] && rm -f "$RUN/call" "$RUN/call.tmp" "$RUN/call.group" "$RUN/call.group.tmp"
-  trap - INT TERM HUP
+  if [ -n "${RUN_TRAPS:-}" ]; then run_traps; else trap - INT TERM HUP; fi
   return "$rc"
 }
 call_reap() { # role
@@ -2399,6 +2417,7 @@ call_abort() { # signal status
   wait "$CALL_PID" 2> /dev/null
   kill -KILL "$killer" 2> /dev/null   # it inherits the ignored TERM
   call_gone 50 || { call_signal KILL; call_gone 50; } && rm -f "$RUN/call" "$RUN/call.tmp" "$RUN/call.group" "$RUN/call.group.tmp"
+  [ -z "${RUN_TRAPS:-}" ] || killed "$1" "$2"
   exit "$2"
 }
 call_signal() { call_grouped "$1"; call_tagged "$1"; }
@@ -3199,6 +3218,7 @@ cmd_run() {
   exec_frozen
   BODY=$(cat "$RUN/frozen/issue.md")   # from here on the frozen body is the ticket
   [ "$IS_FILE" = 1 ] && trap 'git -C "$MAIN_CHECKOUT" worktree remove --force "$WORKTREE" > /dev/null 2>&1' EXIT
+  run_traps
   TIMEOUT_G=(timeout -k 5 "$CALL_TIMEOUT_SEC")
   # The advisor attaches through a feature flag claude fetches; two env vars turn it silently off.
   # Refuse to launch rather than run a worker that thinks it has an advisor and does not (F11).

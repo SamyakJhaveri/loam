@@ -252,6 +252,31 @@ class FactoryAlertTests(unittest.TestCase):
             (call,) = self.factory("notify info 'issue 7 started' 'Branch b'")
             self.assertEqual((call[:2], call[call.index("--run") + 1]), (["--level", "info"], "issue 7"))
 
+    def test_a_killed_supervisor_alerts_fail_once_and_records_the_stop(self) -> None:
+        # `tmux kill-session` sends the supervisor HUP; once run_traps armed it, the run ends as stopped-killed with
+        # one fail alert as `ticket <name>`, exit 129, and no learn step. A call's own traps hand back to it.
+        file_ticket = "ISSUE=; KEY=F9-widget; IS_FILE=1; REVIEW_LOADED=1; learn_run() { echo learn >> \"$RUN/learned\"; }; "
+        for sig, code in (("HUP", 129), ("TERM", 143)):
+            with self.subTest(signal=sig):
+                self.alert_log.unlink(missing_ok=True)
+                (call,) = self.factory(f"{file_ticket}run_traps; kill -{sig} $$; echo not-reached",
+                                       REPO="SamyakJhaveri/distbench")
+                self.assertEqual(self.proc.returncode, code)
+                self.assertNotIn("not-reached", self.proc.stdout)
+                self.assertEqual(call[:2], ["--level", "fail"])
+                self.assertEqual(call[call.index("--run") + 1], "ticket F9-widget")
+                self.assertIn(f"SIG{sig}", call[-1])
+                self.assertEqual((self.run_dir / "status").read_text().strip(), "stopped-killed")
+                self.assertFalse((self.run_dir / "learned").exists())
+        with self.subTest("call_end re-arms the run's traps"):
+            self.alert_log.unlink(missing_ok=True)
+            (call,) = self.factory(f"{file_ticket}run_traps; trap - HUP; CALL_PID=; CALL_TAG=t.0.0; CALL_STUCK=; "
+                                   "call_end worker > /dev/null 2>&1; kill -HUP $$", REPO="SamyakJhaveri/distbench")
+            self.assertEqual(self.proc.returncode, 129)
+        with self.subTest("before run_traps a signal is the shell's default"):
+            self.alert_log.unlink(missing_ok=True)
+            self.assertEqual(self.factory(f"{file_ticket}kill -HUP $$"), [])
+
     def test_a_run_end_never_pauses_the_check(self) -> None:
         # The next timer's ticks are the check's only beats (cmd_next); a pause at a run's end would outlive a timer
         # that then refuses every tick, so the check could never go red.

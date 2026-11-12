@@ -96,9 +96,10 @@ A run, an eval and a `model-eval` grid each copy the file once and take the rubr
 | `stopped-cap` | `MAX_ROUNDS`, `TICKET_BUDGET_USD`, or `MAX_HOURS` reached; `ROUND_BUDGET_USD` and `MAX_TURNS` bound one worker call and are not an exit: a call that hits either (`error_max_budget_usd`, `error_max_turns`) is a finished round and step 6 decides | yes |
 | `stopped-daily` | the next model call could take the runner's spend for the UTC day past `DAILY_BUDGET_USD`; it says nothing about the ticket, so the issue stays assigned to the runner and `next` relaunches it on a later UTC day, and launches no other ticket the same day while the daily ledger is spent at the runner's own caps | yes |
 | `stopped` | `FACTORY_STOP` present before a call | no |
+| `stopped-killed` | the supervisor got INT, TERM or HUP after its run directory was frozen (`tmux kill-session` on its session sends HUP): it ends any call in flight, then writes the status, one `fail` alert and the EXIT line with code 130, 143 or 129, and runs no learn step | no |
 
 Exit code, `status`, and the final log line are decided together and cannot disagree.
-The one `status` written outside its run is `stopped-environment`, by `holds_slot` for a run with no process left (Parallel runs); that run has no exit code or final log line.
+The one `status` written outside its run is `stopped-environment`, by `holds_slot` for a run with no process left (Parallel runs); that run has no exit code or final log line. Its alert names a file ticket as `ticket <name>` and an issue as `issue <n>`.
 A launch refused its run's lease, or refused while its last model call lives (Parallel runs), exits 4 with one stderr line and writes no status or log line, as a launch that stops before it records the run does, since the run directory belongs to the launch that holds the lease.
 These read loop-control files to decide exit, never safety; safety stays with the deny rules, the Claude worker's Bash sandbox and the Codex worker's workspace-write sandbox (Worker calls), git, and CI.
 A usage-limit reply (`hit your session limit`, `reached your Fable limit`) is neither an exit nor a round.
