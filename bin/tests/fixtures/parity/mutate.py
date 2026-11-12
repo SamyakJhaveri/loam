@@ -50,6 +50,8 @@ MUTATIONS = [  # (rule, old, new): each old must occur exactly once
      'BLOCKING = {"reviewer": {"high", "medium"}, "codex": {"critical", "high", "medium"}}'),
     ("P8 REJECTED evidence", '                elif verdict == "REJECTED" and not all(', '                elif False and all('),
     ("P8 UNVERIFIED fails", 'VERDICTS = {"CONFIRMED", "PARTLY", "REJECTED"}', 'VERDICTS = {"CONFIRMED", "PARTLY", "REJECTED", "UNVERIFIED"}'),
+    ("audit3 C6 P8 verify.json sha", '            if verify.get("sha") != graded_sha:', '            if False:'),
+    ("audit3 F8 P8 unparseable review", '            if data.get("unparseable") is True:', '            if False:'),
     ("attended subagents", '[path.with_suffix("") / "subagents"]', '[]'),
     ("attended P6 touched files", 'and "/.claude/" not in (p := str(inp.get("file_path") or "")) and COVERED_PATH.search(p)})',
      'and "/.claude/" not in (p := str(inp.get("file_path") or "")) and False})'),

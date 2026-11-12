@@ -67,10 +67,11 @@ a `skills/<name>/SKILL.md` path or a hyphenated pstack name.
                       exactly ["claude-fable-5-2"]; round-N.codex-review.json is a JSON object; the ids in
                       round-N.verify.json equal the blocking ids recomputed from round-N.review.json
                       (`reviewer-<i>`, severity high or medium) and round-N.codex-review.json (`codex-<i>`,
-                      critical or high), <i> the 0-based index in that file's .findings; each verdict is
-                      CONFIRMED, PARTLY or REJECTED (UNVERIFIED, the supervisor's mark for a failed verifier call,
-                      fails), and a REJECTED one has a non-empty cmd and output. A round
-                      with no blocking finding may have no verify.json. No graded round: N/A.
+                      critical or high), <i> the 0-based index in that file's .findings (a review file that is the
+                      supervisor's unparseable fallback fails as no review), and its sha is round-N.graded.sha's;
+                      each verdict is CONFIRMED, PARTLY or REJECTED (UNVERIFIED, the supervisor's mark for a failed
+                      verifier call, fails), and a REJECTED one has a non-empty cmd and output. A round with no
+                      blocking finding may have no verify.json. No graded round: N/A.
 
 Adding a behaviour: write `def pN(run: Run) -> tuple[str, str]` that returns (PASS|FAIL|N/A, evidence), using
 combine() for per-round rows, add one row to BEHAVIOURS, add a pass and a fail case to
@@ -889,6 +890,9 @@ def p8(run: Run) -> tuple[str, str]:
             if not isinstance(data, dict):
                 bad.append(f"no readable {name}")
                 continue
+            if data.get("unparseable") is True:  # its fallback finding is no defect, and verify_round drops it
+                bad.append(f"{name} is the supervisor's unparseable fallback: no review")
+                continue
             findings = data.get("findings") if isinstance(data.get("findings"), list) else []
             blocking |= {f"{kind}-{i}" for i, f in enumerate(findings)
                          if isinstance(f, dict) and str(f.get("severity", "")).lower() in BLOCKING[kind]}
@@ -901,6 +905,9 @@ def p8(run: Run) -> tuple[str, str]:
         elif not isinstance(found, list) or not all(isinstance(f, dict) for f in found):
             bad.append(f"{vpath.name} has no findings list")
         else:
+            graded_sha = (run.path / f"round-{n}.graded.sha").read_text(encoding="utf-8").strip()
+            if verify.get("sha") != graded_sha:
+                bad.append(f"{vpath.name} sha {verify.get('sha')} is not round-{n}.graded.sha {graded_sha}")
             ids = [str(f.get("id")) for f in found]
             if sorted(ids) != sorted(blocking):
                 bad.append(f"{vpath.name} ids [{', '.join(sorted(ids))}] are not the blocking ids "

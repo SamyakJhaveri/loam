@@ -191,13 +191,40 @@ def failed_launch(run: Path) -> None:
     edit_events(run / "round-2.jsonl", edit)
 
 
+def stale_verify(run: Path) -> None:
+    """verify.json names a commit other than the graded one."""
+    v = json.loads((run / "round-1.verify.json").read_text())
+    (run / "round-1.verify.json").write_text(json.dumps({**v, "sha": "0" * 40}) + "\n")
+
+
+def unparseable_review(run: Path) -> None:
+    """The supervisor's fallback for a reviewer reply it could not parse (bin/factory call_json), and verify.json as
+    verify_round writes it then: review_findings drops the fallback (review.sh), so no reviewer id."""
+    (run / "round-1.review.json").write_text(json.dumps({"verdict": "fix", "unparseable": True, "findings": [
+        {"severity": "high", "file": "-", "line": 0, "defect": "reviewer output unparseable", "fix": "rerun"}]}) + "\n")
+    v = json.loads((run / "round-1.verify.json").read_text())
+    v["findings"] = [f for f in v["findings"] if not f["id"].startswith("reviewer-")]
+    (run / "round-1.verify.json").write_text(json.dumps(v) + "\n")
+
+
 # Audit 3 repros (the verifier's audit3-verify.md): (name, committed case, edit of its run folder, id, expected).
 VARIANTS = [
     ("c2-failed-reads", "p3-pass", failed_skill_reads, "P2", "FAIL"),  # a read whose result is an error read nothing
     ("c2-failed-reads", "p3-pass", failed_skill_reads, "P3", "FAIL"),
     ("c3-guard", "p4-pass", guarded_gate, "P4", "PASS"),  # `guard bin/check` runs the gate
     ("c4-failed-launch", "p6-pass", failed_launch, "P6", "FAIL"),  # a proof call that failed proves nothing
+    ("c6-stale-verify", "pass", stale_verify, "P8", "FAIL"),  # verify.json is for another commit
 ]
+
+
+def test_an_unparseable_review_is_named_as_no_review(tmp_path: Path) -> None:
+    # audit3 F8: the FAIL is right (no review happened); the message names the fallback, not an id mismatch.
+    shutil.copytree(FIXTURES / "pass", tmp_path / "f8")
+    unparseable_review(tmp_path / "f8" / "run")
+    proc = parity(tmp_path / "f8" / "run", tmp_path / "f8" / "projects")
+    p8 = next(x for x in proc.stdout.splitlines() if " P8 " in x)
+    assert p8.startswith("FAIL P8 ") and "round-1.review.json is the supervisor's unparseable fallback: no review" in p8, p8
+    assert "not the blocking ids" not in p8, p8
 
 
 @pytest.mark.parametrize(("name", "case", "edit", "pid", "expected"), VARIANTS, ids=[f"{v[0]}-{v[3]}" for v in VARIANTS])
