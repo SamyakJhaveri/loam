@@ -1643,16 +1643,25 @@ freeze() {
 }
 
 # A ticket whose header has an `Edit:` line (the four-part form) may change only the paths it lists (edit_words), a
-# directory covering what sits under it (CONTRACT.md, item 1). They are frozen to edit.txt as written, not filtered
-# to tracked tops as Do not touch is, so a new top-level file the ticket creates still counts; round_checks fails a
-# round that changes any other path. A ticket with no `Edit:` line gets no edit.txt and no such fence; one whose line
-# lint would reject ends ticket-defect here, before round 0.
+# directory covering what sits under it (CONTRACT.md, item 1). They are frozen to edit.txt as git spells them: each is
+# resolved in the worktree, so a symlinked directory (Loam's .claude, a link to seed/.claude) reads as its target and a
+# `.` segment collapses, while a path the ticket creates need not exist yet. They are not filtered to tracked tops as
+# Do not touch is, so a new top-level file still counts; round_checks fails a round that changes any other path. A
+# ticket with no `Edit:` line gets no edit.txt and no such fence; one whose line lint would reject, or that names a
+# path outside the worktree, ends ticket-defect here, before round 0.
 freeze_edit_line() {
-  local why
+  local why top e real list=""
   grep -q '^Edit:' <<< "$(header)" || return 0
   why=$(edit_line_defect)
   [ -z "$why" ] || finish ticket-defect "$why; fix the ticket (bin/factory lint rejects it)"
-  edit_words | sort -u > "$RUN/frozen/edit.txt"
+  top=$(realpath "$WORKTREE") || finish stopped-environment "could not resolve the worktree $WORKTREE"
+  for e in $(edit_words); do   # a word is a path (EDIT_PATH_RE), so it holds no blank or glob character
+    real=$(realpath -m --relative-to="$top" -- "$top/$e") && [ "$real" != . ] && [ "$real" != .. ] \
+      && [ "${real#../}" = "$real" ] || finish ticket-defect "the Edit: line names $e, which is not a path inside the repository"
+    [ "${e%/}" = "$e" ] || real+=/   # realpath drops a trailing /, which tells the worker the entry is a directory
+    list+="$real"$'\n'
+  done
+  printf '%s' "$list" | sort -u > "$RUN/frozen/edit.txt"
 }
 
 check_frozen() {
@@ -2632,22 +2641,24 @@ worker_round() { # round; leaves round-N.* only once the call produced a result
     || { rm -f "$RUN/round-$round.stale-paths"; log "could not scan round $round for stale paths; continuing"; }
 }
 
-do_not_touch_hits() { # -> the changed paths the ticket fenced off
+do_not_touch_hits() { # -> the changed paths the ticket fenced off; -z, since git quotes a name with a non-ASCII byte
   local f
-  git -C "$WORKTREE" diff --name-only "$(cat "$RUN/base.sha")...HEAD" | while IFS= read -r f; do
+  git -C "$WORKTREE" diff --name-only -z "$(cat "$RUN/base.sha")...HEAD" | while IFS= read -r -d '' f; do
     under "$f" "$(cat "$RUN/frozen/protected.txt")" || continue
     under "$f" "$(cat "$RUN/frozen/exempt.txt")" && continue
     printf '%s ' "$f"
   done
 }
 
-edit_scope_hits() { # -> the changed paths, deleted and renamed ones included, that the ticket's Edit: line does not list; 1 when git cannot list them
-  local f changed
+# -z: git quotes a name holding a non-ASCII byte, a tab, a quote or a backslash, and a quoted name is under no entry.
+edit_scope_hits() { # -> the changed paths, deleted and renamed ones included, that the ticket's Edit: line does not list; git's status when it cannot list them
+  local f allowed
   [ -f "$RUN/frozen/edit.txt" ] || return 0
-  changed=$(git -C "$WORKTREE" diff --no-renames --name-only "$(cat "$RUN/base.sha")...HEAD") || return 1
-  while IFS= read -r f; do
-    [ -z "$f" ] || under "$f" "$(cat "$RUN/frozen/edit.txt")" || printf '%s ' "$f"
-  done <<< "$changed"
+  allowed=$(cat "$RUN/frozen/edit.txt")
+  git -C "$WORKTREE" diff --no-renames --name-only -z "$(cat "$RUN/base.sha")...HEAD" | while IFS= read -r -d '' f; do
+    under "$f" "$allowed" || printf '%s ' "$f"
+  done
+  return "${PIPESTATUS[0]}"
 }
 
 # A row whose label or command names one of these words measures time, tokens, or cost, so one run is one
@@ -3308,10 +3319,13 @@ cmd_run() {
   target_is_loam || user_token_free \
     || finish stopped-environment "$(user_settings) has CLAUDE_CODE_OAUTH_TOKEN in its env, which the native worker loads and which would replace the account bin/claude-account gives it; remove the key (bin/claude-account use <name> drops it)"
   prepare_worktree
+  # Armed before freeze, whose finish (a malformed Edit: line) would otherwise leave a file ticket's worktree on its
+  # branch, so a corrected body's relaunch would reuse that branch; exec_frozen's exec runs no EXIT trap, and the
+  # frozen pass arms it again.
+  [ "$IS_FILE" = 1 ] && trap 'git -C "$MAIN_CHECKOUT" worktree remove --force "$WORKTREE" > /dev/null 2>&1' EXIT
   freeze
   exec_frozen
   BODY=$(cat "$RUN/frozen/issue.md")   # from here on the frozen body is the ticket
-  [ "$IS_FILE" = 1 ] && trap 'git -C "$MAIN_CHECKOUT" worktree remove --force "$WORKTREE" > /dev/null 2>&1' EXIT
   run_traps
   TIMEOUT_G=(timeout -k 5 "$CALL_TIMEOUT_SEC")
   # The advisor attaches through a feature flag claude fetches; two env vars turn it silently off.

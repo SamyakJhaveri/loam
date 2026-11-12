@@ -36,9 +36,10 @@ class EditScopeTests(unittest.TestCase):
         self.addCleanup(tmp.cleanup)
         self.top = pathlib.Path(tmp.name)
         self.wt = self.top / "wt"
-        for name in ("src/a.py", "src/b.py", "tests/test_a.py", "README.md"):
+        for name in ("src/a.py", "src/b.py", "tests/test_a.py", "README.md", "seed/.claude/skills/x/SKILL.md"):
             (self.wt / name).parent.mkdir(parents=True, exist_ok=True)
             (self.wt / name).write_text("base\n")
+        (self.wt / ".claude").symlink_to("seed/.claude")   # as in Loam, where .claude is a link to seed/.claude
         git("init", "-q", "-b", "factory/7", cwd=self.wt)
         git("add", "-A", cwd=self.wt)
         git("commit", "-q", "-m", "base", cwd=self.wt)
@@ -81,6 +82,23 @@ class EditScopeTests(unittest.TestCase):
                 self.assertEqual(checks, "PASS x\n\nCHECKS-END\n")
                 self.assertEqual((self.run_dir / "frozen" / "edit.txt").read_text(), "src/a.py\ntests/\n")
 
+    def test_an_entry_reads_as_git_spells_its_path(self) -> None:
+        # git prints seed/.claude/... for a change made through the .claude link, and never a `.` segment.
+        checks = self.round_checks("Edit: .claude/skills/x/SKILL.md, src/./a.py",
+                                   "echo x >> .claude/skills/x/SKILL.md && echo x >> src/a.py")
+        self.assertEqual(checks, "PASS x\n\nCHECKS-END\n")
+        self.assertEqual((self.run_dir / "frozen" / "edit.txt").read_text(), "seed/.claude/skills/x/SKILL.md\nsrc/a.py\n")
+
+    def test_a_name_git_would_quote_is_read_as_written(self) -> None:
+        # With core.quotePath (git's default) a plain --name-only prints "tests/na\303\257ve.py", quotes included.
+        checks = self.round_checks("Edit: src/a.py, tests/", "echo x > tests/naïve.py && echo x > 'tests/a\"b.py'")
+        self.assertEqual(checks, "PASS x\n\nCHECKS-END\n")
+        git("reset", "-q", "--hard", (self.run_dir / "base.sha").read_text().strip(), cwd=self.wt)
+        (self.run_dir / "frozen" / "edit.txt").unlink()
+        checks = self.round_checks("", "echo x > tests/naïve.py",
+                                   before="printf 'tests/\\n' > \"$RUN/frozen/protected.txt\"")
+        self.assertEqual(checks, "FAIL do-not-touch tests/naïve.py \n")
+
     def test_a_path_list_git_cannot_give_ends_the_run_before_the_checks(self) -> None:
         # A failed `git diff` (exit 128 on a base it cannot read) never reads as no path off the line.
         out = self.round_checks("Edit: src/a.py", "echo x >> src/a.py",
@@ -91,7 +109,9 @@ class EditScopeTests(unittest.TestCase):
     def test_freeze_refuses_an_edit_line_that_is_not_all_paths(self) -> None:
         for line, why in (("Edit:", "the Edit: line lists no path"),
                           ("Edit: src/a.py (new)", "the Edit: line holds (new, which is not a path"),
-                          ("Edit: src/*.py", "the Edit: line holds src/*.py, which is not a path")):
+                          ("Edit: src/*.py", "the Edit: line holds src/*.py, which is not a path"),
+                          ("Edit: src/a.py, ../x.py", "the Edit: line names ../x.py, which is not a path inside the repository"),
+                          ("Edit: src/../../x.py", "the Edit: line names src/../../x.py, which is not a path inside the repository")):
             with self.subTest(line):
                 out = self.round_checks(line, "echo x >> src/a.py")
                 self.assertTrue(out.startswith(f"FINISH ticket-defect: {why}"), out)
@@ -145,7 +165,8 @@ class EditLineLintAndFreezeTests(unittest.TestCase):
         return proc.returncode, proc.stdout + proc.stderr
 
     def cmd_run(self, stem: str, edit_line: str, status: str) -> pathlib.Path:
-        """The run dir of the real cmd_run over a file ticket whose header holds edit_line."""
+        """The new run dir of the real cmd_run over a file ticket whose header holds edit_line."""
+        before = set((self.tmp / "runs" / stem).glob("*"))
         ticket = self.tmp / f"{stem}.md"
         ticket.write_text(f"# Fixture\n\n{edit_line}\n\n## Done checks\n\n```done-checks\n{GREET}\n```\n")
         env = {k: v for k, v in os.environ.items() if k not in INHERITED and not k.startswith("FACTORY_")}
@@ -154,7 +175,7 @@ class EditLineLintAndFreezeTests(unittest.TestCase):
         script = (f". bin/factory\n{STUBS}\nMAIN_CHECKOUT='{self.tmp}/repo'; GRADERS_DIR='{GRADERS}'\n"
                   f"cmd_run '{ticket}'")
         proc = subprocess.run(["bash", "-c", script], cwd=ROOT, env=env, capture_output=True, text=True, check=False)
-        (run,) = (self.tmp / "runs" / stem).iterdir()
+        (run,) = set((self.tmp / "runs" / stem).iterdir()) - before
         self.assertEqual((run / "status").read_text().strip(), status, proc.stdout + proc.stderr)
         return run
 
@@ -185,6 +206,14 @@ class EditLineLintAndFreezeTests(unittest.TestCase):
         run = self.cmd_run("bad", "Edit: (none)", "ticket-defect")
         self.assertFalse((run / "frozen/edit.txt").exists())
         self.assertFalse((run / "round-0.checks").exists())
+        # The worktree is removed as at any other exit, so the corrected body's run gets its own branch.
+        repo = self.tmp / "repo"
+        self.assertFalse((self.tmp / "repo-bad").exists())
+        fixed = self.cmd_run("bad", "Edit: g.txt", "stopped-environment")
+        self.assertEqual((fixed / "frozen/edit.txt").read_text(), "g.txt\n")
+        branches = git("for-each-ref", "--format=%(refname:short)", "refs/heads/factory/", cwd=repo).splitlines()
+        self.assertEqual(sorted(branches), sorted([f"factory/bad-{run.name}", f"factory/bad-{fixed.name}"]))
+        self.assertNotEqual(run.name, fixed.name)
 
 
 if __name__ == "__main__":
