@@ -64,10 +64,29 @@ check reads its `Written at` hash.
 
 ## Never paste these into a Claude Code prompt
 
-The autonomy block beginning "You are operating autonomously", the
-`# Delivering work` block, the progress-updates line, and the tool-batching
-nudge. Claude Code already injects all four as system or turn-scoped messages.
-A second copy is paid input tokens for no behavior change.
+Claude Code already sends Fable 5.2 these, so a second copy is paid input
+tokens for no behavior change:
+
+- The guide's finishing text, as the system-prompt section `# Finishing work`:
+  "Ending your turn means your work stops there until asked to continue, and
+  you should not stop unless needed. Please avoid stopping while work the user
+  asked for is still owed."
+- The tool-batching line: "Independent tool calls can run in parallel in one
+  response."
+- A turn-scoped reminder after several silent tool steps: "The user hasn't
+  heard from you in a while."
+
+Quote anything else you need. The first request held no autonomy block ("You
+are operating autonomously"), no `# Delivering work` block, no "Signal intent"
+text and no one-line-update sentence.
+
+Source, Claude Code 2.1.322 on 12 Nov 2026: the first request of
+`claude -p hi --model claude-fable-5-2`, captured on a local
+`ANTHROPIC_BASE_URL`, holds the first two. The reminder is in the installed
+bundle, switched on by the model's `fable_5_2_prompt_bundle` capability
+(`silent_turn_reminder`); the capture did not reach a silent stretch. A
+`--model claude-fable-5-1` request went out as `claude-opus-5-5`. Recheck after
+a Claude Code update.
 
 ## Sources
 
