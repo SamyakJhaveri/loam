@@ -19,6 +19,7 @@ The body starts at `Brief:` or `Part of`; in a file the first `#` line is the ti
    An optional `Edit:` line in the header lists every path a round may change, a directory covering what sits under it; the supervisor fails a round that changes any other path (`FAIL edit-scope`, LOOP.md step 6).
    The line after `Edit:` is split on commas, spaces and tabs; backticks and double quotes are dropped, then a trailing `.`, `;`, `:` or `)` and a leading `./`.
    Each word left must be a path (letters, digits, `_`, `.`, `/` and `-`, not starting with `-` or `/`), so lint rejects a line with prose in parentheses, a glob or no path at all, and a run of such a ticket ends `ticket-defect` before round 0.
+   The run resolves each path in the worktree as git spells it: `.claude/skills/x` reads as `seed/.claude/skills/x` through Loam's symlink, and `src/./a.py` as `src/a.py`; a path outside the repository also ends the run `ticket-defect`.
    Without one, only Do not touch fences paths.
 2. `## Goal and why`: two to four lines, linking the decision, ADR, or design doc.
 3. `## Do not touch`: the standing list from `ARCHITECTURE.md` (another target's `docs/factory/STANDING.md`), ticket-specific paths, and any `Except:` line.
