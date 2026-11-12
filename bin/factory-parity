@@ -334,9 +334,10 @@ def skill_reads(name: str, inp: dict) -> set[tuple[str, str]]:
 def full_reads(t: Transcript, j: int) -> set[tuple[str, str]]:
     """(prefix, name) for each SKILL.md call j of t reads in full: a Read with no offset or limit, or a `cat` that is
     the last stage of its pipeline or is piped only into `head -N` while the call's whole result is under N lines (so
-    nothing was cut). sed -n, tail, git cat-file and a head that cut read part of a file and never count."""
+    nothing was cut). sed -n, tail, git cat-file and a head that cut read part of a file and never count. A Bash call
+    whose result is an error (a later command can fail) still reads each such file whose name: line its result shows."""
     _, name, inp = t.calls[j]
-    if not t.ok(j):
+    if not t.ok(j) and not (name == "Bash" and t.ran(j)):
         return set()
     if name == "Read":
         return set() if inp.get("offset") is not None or inp.get("limit") is not None else skill_reads(name, inp)
@@ -356,6 +357,8 @@ def full_reads(t: Transcript, j: int) -> set[tuple[str, str]]:
             words = words[1:]
         if words and words[0].lstrip("(") == "cat":
             found |= skill_paths(" ".join(words), loops)
+    if not t.ok(j):
+        found = {f for f in found if res and re.search(rf"(?m)^name:\s*{re.escape(f[1])}\s*$", res[1])}
     return found
 
 

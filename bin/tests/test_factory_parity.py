@@ -175,6 +175,21 @@ def failed_skill_reads(run: Path) -> None:
     edit_events(run / "round-1.jsonl", mark)
 
 
+def reads_then_a_failing_command(run: Path, drop: str = "") -> None:
+    """audit4 1: each SKILL.md cat is followed by `; false`, so its Bash result is is_error, yet it printed each file
+    in full (its frontmatter name: line shows); `drop` removes one file's name line from the result."""
+    ids: set[str] = set()
+
+    def mark(item: dict) -> None:
+        if item["type"] == "tool_use" and "SKILL.md" in json.dumps(item["input"]):
+            item["input"]["command"] += "; false"
+            ids.add(item["id"])
+        elif item["type"] == "tool_result" and item["tool_use_id"] in ids:
+            text = item["content"] if "name: " in item["content"] else f"---\nname: pstack\n---\n{item['content']}"
+            item.update(is_error=True, content="Exit code 1\n" + (text.replace(f"name: {drop}\n", "") if drop else text))
+    edit_events(run / "round-1.jsonl", mark)
+
+
 def guarded_gate(run: Path) -> None:
     """The gate spelled as a done-checks line spells it, after sourcing lib.sh; its result still shows check: PASSED."""
     def edit(item: dict) -> None:
@@ -226,6 +241,10 @@ def round_two_on_its_round_line(run: Path) -> None:
 VARIANTS = [
     ("c2-failed-reads", "p3-pass", failed_skill_reads, "P2", "FAIL"),  # a read whose result is an error read nothing
     ("c2-failed-reads", "p3-pass", failed_skill_reads, "P3", "FAIL"),
+    ("a4-read-then-false", "p3-pass", reads_then_a_failing_command, "P2", "PASS"),  # the call failed after the cat
+    ("a4-read-then-false", "p3-pass", reads_then_a_failing_command, "P3", "PASS"),
+    ("a4-name-missing", "p3-pass", lambda run: reads_then_a_failing_command(run, "principle-sequence-verifiable-units"),
+     "P3", "FAIL"),  # an is_error result without that file's name: line read none of it
     ("c3-guard", "p4-pass", guarded_gate, "P4", "PASS"),  # `guard bin/check` runs the gate
     ("c4-failed-launch", "p6-pass", failed_launch, "P6", "FAIL"),  # a proof call that failed proves nothing
     ("c6-stale-verify", "pass", stale_verify, "P8", "FAIL"),  # verify.json is for another commit
