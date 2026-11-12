@@ -86,6 +86,9 @@ class WorkerPinTests(unittest.TestCase):
         source["attribution"] = USER["attribution"]
         source["permissions"]["deny"] = USER["permissions"]["deny"] + source["permissions"]["deny"]
         source["hooks"]["Stop"] = USER["hooks"]["Stop"] + source["hooks"]["Stop"]
+        # freeze adds the pstack gate's PreToolUse hook (U5) after the merge.
+        source["hooks"]["PreToolUse"] = json.loads(
+            (ROOT / "bin/factory.d/pstack-gate.hooks.json").read_text())["hooks"]["PreToolUse"]
         source["sandbox"]["filesystem"] = {}
         self.assertEqual({k: v for k, v in settings.items() if k != "env"}, source)  # deny list and hook kept
         return settings["env"], source_env
