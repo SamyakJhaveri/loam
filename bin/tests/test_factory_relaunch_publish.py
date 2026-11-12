@@ -71,12 +71,13 @@ class RelaunchPublishTests(unittest.TestCase):
         self.main.mkdir()
         git("init", "-q", "-b", "main", cwd=self.main)
         git("commit", "-q", "--allow-empty", "-m", "base", cwd=self.main)
+        self.caps = ""   # stub lines every launch runs after the test's own, such as a raised MAX_ROUNDS
 
     def launch(self, *stubs: str) -> subprocess.CompletedProcess[str]:
         env = {k: v for k, v in os.environ.items() if not k.startswith("FACTORY_")}
         env.update(FACTORY_SOURCED="1", FACTORY_ROOT=str(ROOT), FACTORY_RUNS_ROOT=str(self.runs),
                    FACTORY_WORKTREE=str(self.top / "wt"), FACTORY_WORKER_ADVISOR="")
-        script = (f". bin/factory\n{STUBS}\n" + "\n".join(stubs)
+        script = (f". bin/factory\n{STUBS}\n" + "\n".join(stubs) + f"\n{self.caps}"
                   + f"\nMAIN_CHECKOUT='{self.main}'; GRADERS_DIR='{GRADERS}'\ncmd_run '{self.ticket}'")
         return subprocess.run(["bash", "-c", script], cwd=ROOT, env=env, capture_output=True, text=True, check=False)
 
@@ -163,18 +164,18 @@ class RelaunchPublishTests(unittest.TestCase):
         # the checks and is never graded), a reset back to the intent's sha and a relaunch whose round grades that
         # same sha and fails. The newest round graded the intent's sha, but is later than the one that wrote it (#529).
         # The worker round that proves it is round 4, past the default MAX_ROUNDS of 3, so this test raises the cap.
-        rounds = "MAX_ROUNDS=4"
-        first = self.launch(JUDGE_PASS, REVIEW_CLEAN, FIRST_PUSH_FAILS, rounds)
+        self.caps = "MAX_ROUNDS=4"
+        first = self.launch(JUDGE_PASS, REVIEW_CLEAN, FIRST_PUSH_FAILS)
         self.assertNotEqual(first.returncode, 0, first.stderr)
         (branch,) = git("for-each-ref", "--format=%(refname)", "refs/heads/factory/", cwd=self.main).splitlines()
         intent_sha = git("rev-parse", branch, cwd=self.main)
         empty_tree = git("hash-object", "-t", "tree", "/dev/null", cwd=self.main)
         git("update-ref", branch, git("commit-tree", "-p", branch, "-m", "hand", empty_tree, cwd=self.main),
             cwd=self.main)
-        self.launch(JUDGE_FAIL, REVIEW_CLEAN, "worker_round() { :; }", rounds)
+        self.launch(JUDGE_FAIL, REVIEW_CLEAN, "worker_round() { :; }")
         git("update-ref", branch, intent_sha, cwd=self.main)
-        self.launch(JUDGE_FAIL, REVIEW_CLEAN, "worker_round() { :; }", rounds)
-        self.launch(JUDGE_FAIL, REVIEW_CLEAN, SECOND, rounds)
+        self.launch(JUDGE_FAIL, REVIEW_CLEAN, "worker_round() { :; }")
+        self.launch(JUDGE_FAIL, REVIEW_CLEAN, SECOND)
         calls = self.runs / "rl" / "relaunch-worker-calls"
         self.assertGreater(len(calls.read_text().splitlines()) if calls.exists() else 0, 0)
         (log,) = (self.runs / "rl").glob("*/factory.log")
