@@ -416,6 +416,15 @@ class StatusCriteriaTests(unittest.TestCase):
             cwd=ROOT, capture_output=True, text=True, check=False)
         self.assertEqual(proc.stdout, "SKIPPED: gpu\nrc=3\nSKIPPED: once\n", proc.stderr)
 
+    def test_guard_copies_the_gate_result_past_a_capture(self) -> None:
+        # audit3 F1: a done-checks line that captures bin/check (out=$(guard bin/check)) still shows the gate's own
+        # result line in the checks file, which is what parity P4 reads in the worker's transcript.
+        proc = subprocess.run(
+            ["bash", "-c", '. bin/factory.d/lib.sh; out=$(guard sh -c "echo SKIPPED: none; echo noise; '
+             'echo check: PASSED" 2>&1); echo "captured=$(printf %s "$out" | wc -l)"'],
+            cwd=ROOT, capture_output=True, text=True, check=False)
+        self.assertEqual(proc.stdout, "SKIPPED: none\ncheck: PASSED\ncaptured=2\n", proc.stderr)
+
     def test_dash_C_reports_only_the_other_targets_runs(self) -> None:
         repo = pathlib.Path(self.tmp.name) / "r"
         repo.mkdir()
