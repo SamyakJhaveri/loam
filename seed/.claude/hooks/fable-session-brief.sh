@@ -49,8 +49,9 @@ print(
     "In a plan for another session use five headings: Goal and why; "
     "Constraints; Done check per task; Session conduct; Target model and effort. "
     "A handoff note uses the seven headings in docs/WORKERS.md instead. "
-    "Do not paste the autonomy block, the Delivering work block, the "
-    "progress-updates line, or the batching nudge; Claude Code injects all four. "
+    "Do not paste the finishing block, the batching line or the silent-turn "
+    "reminder; Claude Code sends Fable 5.2 all three. Its first request has no "
+    "autonomy block or progress-update lines; quote those from the guide if needed. "
     "The `fable-prompting` skill is the long form."
 )
 ' 2>/dev/null || exit 0
