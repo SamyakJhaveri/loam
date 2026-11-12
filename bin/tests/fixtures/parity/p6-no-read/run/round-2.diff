@@ -1,0 +1,13 @@
+diff --git a/src/distbench/orchestrator.py b/src/distbench/orchestrator.py
+index 3ac3b467..0a711bb8 100644
+--- a/src/distbench/orchestrator.py
++++ b/src/distbench/orchestrator.py
+@@ -130,7 +130,7 @@ REMINDERS = {
+     "extension": "ENVIRONMENT REMINDER: You have used up all turns but have not yet completed the"
+     " task. You are granted an additional {B} turns to continue and complete the task.",
+ }
+-WALL_S = 7200
++WALL_S = 14400
+ PREREG_EVENTS = ("prereg-draft", "prereg-caps")
+ # The suffix of a cell's one rerun (PREREG section 9); no cell's id ends with it, as each ends
+ # `.r<repeat>`.
