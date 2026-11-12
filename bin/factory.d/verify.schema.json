@@ -1,0 +1,21 @@
+{
+  "type": "object",
+  "properties": {
+    "sha": { "type": "string" },
+    "findings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string" },
+          "verdict": { "enum": ["CONFIRMED", "PARTLY", "REJECTED"] },
+          "cmd": { "type": "string" },
+          "output": { "type": "string" },
+          "note": { "type": "string" }
+        },
+        "required": ["id", "verdict", "cmd", "output", "note"]
+      }
+    }
+  },
+  "required": ["findings"]
+}
