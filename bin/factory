@@ -1077,6 +1077,10 @@ grader_effort() { # role
   case "$1" in reviewer) echo "$REVIEWER_EFFORT" ;; *) echo "$GRADER_EFFORT" ;; esac
 }
 GRADER_FAIL_ROUNDS=2      # grader-fail rounds allowed once the checks pass (LOOP.md, Grader-round cap)
+# Judge rows about bookkeeping, not the change: `honest` grades labels (a SKIP or a claimed run decisions.md does
+# not label unverified, a claim the evidence package does not show). A fail on only these rows logs judge-shadow
+# and does not block; `correct` and `verified` (a SKIP is still a check that did not pass) block (owner, 12 Nov 2026).
+JUDGE_SHADOW_ROWS="honest"
 FENCE='~~~~~~~~~~~~ evidence'   # fixed marker; never a per-run string (#38)
 
 # REPO, RUN, and LOG keep a pre-set value: the sourced-test contract (file_backlog's backlog-filed-once
@@ -2569,13 +2573,29 @@ call_json() { # round stem role prompt_file schema_file
                 fix: ("rerun the " + $r + " on this round")}]}' > "$final"
 }
 
-run_judge() { # round -> 0 on a pass verdict
-  local round="$1" pf="$RUN/round-$1.judge.prompt.md" f="$RUN/round-$1.judge.json"
+run_judge() { # round -> 0 on a pass verdict, or a fail on only JUDGE_SHADOW_ROWS (judge-shadow)
+  local round="$1" pf="$RUN/round-$1.judge.prompt.md" f="$RUN/round-$1.judge.json" shadow
+  rm -f "$RUN/round-$round.judge-shadow"   # a regraded round never reads an older shadow pass
   build_evidence "$RUN/frozen/judge.md" 4000 > "$pf"
   call_json "$round" judge judge "$pf" "$RUN/frozen/judge.schema.json"
-  jq -r '.fixes[]? | "- " + .' "$f" > "$RUN/round-$round.fixes"
   log "judge verdict: $(jq -r .verdict "$f") rows=$(jq -c '.rows // {}' "$f")"
+  # The failing rows (a required row that is missing counts), printed only when every one is a shadow row.
+  shadow=$(jq -r --slurpfile s "$RUN/frozen/judge.schema.json" --arg sh "$JUDGE_SHADOW_ROWS" '
+    select(.verdict != "pass" and (.unparseable // false | not)) | (.rows // {}) as $r
+    | [([$s[0].properties.rows.required[]?] + ($r | keys)) | unique[] | select($r[.] != "pass")] as $failed
+    | select(($failed | length) > 0 and ($failed - ($sh | split(" "))) == []) | $failed | join(" ")' "$f" 2> /dev/null)
+  if [ -n "$shadow" ]; then
+    : > "$RUN/round-$round.fixes"
+    printf '%s\n' "$shadow" > "$RUN/round-$round.judge-shadow"
+    log "judge-shadow: the judge failed only bookkeeping row(s) $shadow; logged, not blocking, and its $(jq '.fixes | length' "$f") fix(es) not sent to the worker"
+    return 0
+  fi
+  jq -r '.fixes[]? | "- " + .' "$f" > "$RUN/round-$round.fixes"
   [ "$(jq -r .verdict "$f")" = pass ]
+}
+
+judge_passed() { # $RUN/round-N -> 0 when that round's judge passed, or failed only shadow rows
+  [ "$(jq -r .verdict "$1.judge.json" 2> /dev/null)" = pass ] || [ -e "$1.judge-shadow" ]
 }
 
 run_review() { # round -> 0 when nothing blocks
@@ -2828,6 +2848,8 @@ open_pr() { # [draft]: opened at the grader-round cap
     checks_section "Checks at the graded sha (round $ROUND)" "$RUN/round-$ROUND.checks"
     printf '## Judge\n\ngraded at %s\n\n```json\n%s\n```\n\n' "$GRADED_SHA" \
       "$(jq -c '{verdict, rows: (.rows // {}), evidence: (.evidence // {})}' "$RUN/round-$ROUND.judge.json")"
+    [ ! -s "$RUN/round-$ROUND.judge-shadow" ] \
+      || printf 'judge-shadow: the judge failed only bookkeeping row(s) %s, which log and do not block.\n\n' "$(cat "$RUN/round-$ROUND.judge-shadow")"
     printf '## Reviewer\n\n'
     jq -r '.findings[]? | "- [" + .severity + "] " + (.file // "?") + ":" + ((.line // 0) | tostring) + " " + .defect + " Fix: " + .fix' "$RUN/round-$ROUND.review.json"
     jq -r '.unverified[]? | "- unverified: " + .' "$RUN/round-$ROUND.review.json"
@@ -3052,13 +3074,14 @@ cmd_run() {
     ROUND=$(last_round "$RUN")
     log "resuming after round $ROUND"
     # The cap spans relaunches: count the graded rounds (a graded.sha) whose graders failed, which is a judge
-    # verdict other than pass or a non-empty fixes file, since a reviewer or Codex block always queues a fix there
-    # and a judge pass queues none. A pass whose push or PR create failed has a graded.sha but is not a fail.
+    # verdict other than pass (judge_passed: a shadow pass is a pass) or a non-empty fixes file, since a reviewer or
+    # Codex block always queues a fix there and a judge pass queues none. A pass whose push or PR create failed has a
+    # graded.sha but is not a fail.
     local g
     for g in "$RUN"/round-*.graded.sha; do
       [ -e "$g" ] || continue
       g=${g%.graded.sha}
-      { [ -s "$g.fixes" ] || [ "$(jq -r .verdict "$g.judge.json" 2> /dev/null)" != pass ]; } && GRADER_FAILS=$((GRADER_FAILS + 1))
+      { [ -s "$g.fixes" ] || ! judge_passed "$g"; } && GRADER_FAILS=$((GRADER_FAILS + 1))
       # The sweep's one block spans relaunches too: a graded round whose sweep blocked, which only run_mutation_sweep
       # marks, spent it. A round whose graders never finished is graded again below, and its sweep may block then.
       [ -e "$g.mutation-blocked" ] && MUTATION_BLOCKED=1
@@ -3078,7 +3101,7 @@ cmd_run() {
       open_pr ${intent_draft:+"$intent_draft"}
     # A round whose graders passed at HEAD with nothing blocking but crashed before open_pr wrote publish.intent: publish
     # it, with no new worker round. A judge fail, a blocking finding, or a moved HEAD resumes into the loop.
-    elif [ "$(jq -r .verdict "$RUN/round-$ROUND.judge.json" 2> /dev/null)" = pass ] && [ -z "$(blocking_findings)" ] \
+    elif judge_passed "$RUN/round-$ROUND" && [ -z "$(blocking_findings)" ] \
       && [ -s "$RUN/round-$ROUND.graded.sha" ] && [ "$(cat "$RUN/round-$ROUND.graded.sha")" = "$(git -C "$WORKTREE" rev-parse HEAD)" ]; then
       GRADED_SHA=$(cat "$RUN/round-$ROUND.graded.sha")
       log "round $ROUND passed the graders at HEAD $GRADED_SHA; opening the PR with no worker round"
