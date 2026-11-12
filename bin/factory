@@ -1263,12 +1263,18 @@ alert() { if [ -x "$RUN/frozen/alert" ]; then "$RUN/frozen/alert" "$@"; else "$R
 
 # Slack, the event log and healthchecks through bin/alert (LOOP.md, Notify), else a comment on the ticket;
 # a failure of both leaves notify.failed. The text passes scrub first: it can carry worker text.
-notify() { # level title message
+# A file ticket has no issue to comment on: only needs-you, fail and a stopped* exit (finish passes the status)
+# reach bin/alert, as `ticket <name>` under the target's project (load_ticket sets no REPO for it).
+notify() { # level title message [status]
   log "[notify] $2: $3"
-  [ "$IS_FILE" = 1 ] && return 0   # a file ticket is a rehearsal with no issue to comment on
+  local repo="$REPO" run="issue $ISSUE"
+  if [ "$IS_FILE" = 1 ]; then
+    [ "$1" != info ] || [[ "${4:-}" == stopped* ]] || return 0
+    repo=${REPO:-$(target_repo)}; run="ticket $KEY"
+  fi
   printf '%s. %s' "$2" "$3" | scrub | {
-    alert --level "$1" --source factory --project "$(printf '%s' "${REPO#*/}" | tr 'A-Z' 'a-z')" \
-      --run "issue $ISSUE" "$(cat)"; } 2>> "$LOG" && return 0
+    alert --level "$1" --source factory --project "$(printf '%s' "${repo#*/}" | tr 'A-Z' 'a-z')" \
+      --run "$run" "$(cat)"; } 2>> "$LOG" && return 0
   if [ -n "$ISSUE" ] && printf '**%s**\n\n%s\n' "$2" "$3" | scrub \
     | net gh issue comment "$ISSUE" -R "$REPO" --body-file - > /dev/null 2>&1; then return 0
   fi
@@ -1327,7 +1333,7 @@ finish() { # status message
   [ ! -f "$RUN/shell-digest.start" ] || shell_digest > "$RUN/shell-digest.end"
   set_status "$1"
   words=$(exit_words "$1")
-  notify "${words%% *}" "$(ticket_name) ${words#* }" "$2"
+  notify "${words%% *}" "$(ticket_name) ${words#* }" "$2" "$1"
   log "EXIT $1 ($code): $2"
   exit "$code"
 }
