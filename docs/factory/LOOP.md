@@ -138,6 +138,7 @@ Codex token counts come from its `--json` events and land in the ledger with `co
 ## Grader-round cap and precedence
 
 After the checks first pass, at most two grader-fail rounds per ticket, counted across relaunches: a relaunch counts the rounds with a `round-N.graded.sha` whose judge did not pass or whose `round-N.fixes` is non-empty, so a pass whose push or PR create failed is not counted; then the remaining non-blocking findings go to the PR body backlog and the PR opens as a draft.
+`MAX_ROUNDS` (3 by default) can end the run first: when the checks first pass in round 3 and its graders fail, that is one grader-fail round, so the next round trips the round cap and the run ends `stopped-cap` with no draft PR.
 The judge decides pass or fail.
 The reviewer blocks only on a `high` or `medium` finding (`REVIEW_BLOCKING` in `bin/factory`; its verdict word is not read), the Codex review only on a `critical` or `high` finding, and each may block at most once per ticket.
 The mutation sweep, which runs only after a judge pass, blocks on any surviving edit, at most once per ticket, counted across relaunches (Mutation sweep).
