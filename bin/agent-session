@@ -31,7 +31,7 @@ case "$effort" in max) echo "agent-session: effort max is not used without the o
 tmux has-session -t "=$name" 2> /dev/null && { echo "agent-session: tmux already has a session $name" >&2; exit 1; }
 st=$("$here/claude-account" status 2> /dev/null) || st=""
 account=${as:-$(sed -n 's/^active: \([^;]*\);.*/\1/p' <<<"$st")}
-# claude-account exec leaves the host's /login in place for a name with no stored token, so refuse it here.
+# claude-account exec --as refuses a name with no stored token at launch; refusing here says so before a tmux session starts.
 case " ${st#*stored:} " in *" ${account:-/} "*) ;; *) echo "agent-session: no stored token for account '${account:-none}'; run bin/claude-account use <name> first" >&2; exit 1 ;; esac
 # One line: newlines in the goal or task would end the /goal argument early.
 prompt="/goal $(tr '\n' ' ' <<<"$goal")${task:+ Task: $(tr '\n' ' ' <<<"$task")} Method: before a non-trivial task call the sam-cc-setup:pstack skill (the pstack router) and follow the method it picks."

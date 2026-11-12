@@ -99,15 +99,16 @@ case "$cmd" in
       a=$2; shift 2
     fi
     [ $# -gt 0 ] || { echo "usage: bin/claude-account exec [--as <name>] <command> [args...]" >&2; exit 2; }
-    # A caller that names an account wants that token, never the launch environment's or the host's /login.
-    [ -z "$a" ] || [ -f "$dir/$a.token" ] || { echo "bin/claude-account exec: no stored token for account '$a' in $dir" >&2; exit 1; }
+    # A caller that names an account wants that token, never the launch environment's or the host's /login: its read
+    # is not gated on the file test, so a token file removed after a caller's check still exits 1 below.
+    named=$a
     [ -n "$a" ] || a=$(active_name)
-    if [ -n "$a" ] && [ -f "$dir/$a.token" ]; then
+    if [ -n "$named" ] || { [ -n "$a" ] && [ -f "$dir/$a.token" ]; }; then
       # Into this process's environment only, never onto a command line (/proc shows argv). A token file with no
-      # trailing newline still reads under set -e; an unreadable one, or one whose first line is empty, exits 1 rather
-      # than pass the launch value.
+      # trailing newline still reads under set -e; a missing or unreadable one, or one whose first line is empty, exits
+      # 1 rather than pass the launch value.
       unset CLAUDE_CODE_OAUTH_TOKEN
-      IFS= read -r CLAUDE_CODE_OAUTH_TOKEN < "$dir/$a.token" || true
+      IFS= read -r CLAUDE_CODE_OAUTH_TOKEN 2> /dev/null < "$dir/$a.token" || true
       [ -n "${CLAUDE_CODE_OAUTH_TOKEN:-}" ] || { echo "could not read the token of '$a' from $dir/$a.token" >&2; exit 1; }
       export CLAUDE_CODE_OAUTH_TOKEN
     fi

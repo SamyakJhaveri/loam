@@ -9,7 +9,8 @@ On a host with a Loam checkout and stored Claude accounts, start it with
 `"${LOAM_HOME:-$HOME/loam}/bin/agent-session" --dir <path> <name> "<goal>" ["<task>"]`:
 a named tmux session running `claude` on a stored account's token, never the
 host's `/login` (a plain `claude --worktree <name>` uses the login unless Loam's
-`claude` wrapper is first on PATH). Elsewhere, `claude --worktree <name>`. One
+`claude` wrapper is first on PATH). Elsewhere, use `claude --worktree <name>`
+instead of both steps. One
 checkout is safe only for disjoint files. For a shared GPU or database, wrap the
 command in `flock /tmp/<resource>.lock <cmd>` (util-linux; absent on stock
 macOS). Build no other lock.

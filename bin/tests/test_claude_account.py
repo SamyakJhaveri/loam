@@ -157,7 +157,7 @@ class ExecTests(Scratch):
     def test_exec_as_a_name_with_no_stored_token_runs_nothing(self) -> None:
         proc = self.helper("exec", "--as", "ghost", *PRINT_TOKEN, **{TOKEN: "launch-x"})
         self.assertEqual((proc.returncode, proc.stdout), (1, ""))
-        self.assertIn("no stored token for account 'ghost'", proc.stderr)
+        self.assertIn("could not read the token of 'ghost'", proc.stderr)
 
     @LINUX_ONLY
     def test_exec_puts_no_token_on_a_command_line(self) -> None:
