@@ -43,6 +43,7 @@ REVIEW_BLOCKING = ("""run_review() { echo '{"findings":[{"severity":"high","file
 # One grader-fail round reaches the grader-round cap, so a judge fail opens a draft at once.
 CAP_ONE = "GRADER_FAIL_ROUNDS=1"
 WORK = ("""worker_round() { [ -e "$WORKTREE/marker" ] && return 0; touch "$WORKTREE/marker"; git -C "$WORKTREE" add marker; """
+        """echo 'method: principle-prove-it-works | proof: test -e marker | exit 0' >> "$DECISIONS"; """
         """git -C "$WORKTREE" -c user.name=t -c user.email=t@t commit -q -m work; }; """)
 FIRST = WORK + """open_pr() { finish stopped-environment "git push of $BRANCH failed (stub)"; }"""
 # The real open_pr, as for an issue ticket whose push fails: it records publish.intent, then the push stops the run.
@@ -170,9 +171,11 @@ class RelaunchPublishTests(unittest.TestCase):
         empty_tree = git("hash-object", "-t", "tree", "/dev/null", cwd=self.main)
         git("update-ref", branch, git("commit-tree", "-p", branch, "-m", "hand", empty_tree, cwd=self.main),
             cwd=self.main)
-        self.launch(JUDGE_FAIL, REVIEW_CLEAN, "worker_round() { :; }")
+        # A worker that changes nothing, but records its round's start as the real worker_round does.
+        idle = 'worker_round() { git -C "$WORKTREE" rev-parse HEAD > "$RUN/round-$1.start.sha"; }'
+        self.launch(JUDGE_FAIL, REVIEW_CLEAN, idle)
         git("update-ref", branch, intent_sha, cwd=self.main)
-        self.launch(JUDGE_FAIL, REVIEW_CLEAN, "worker_round() { :; }")
+        self.launch(JUDGE_FAIL, REVIEW_CLEAN, idle)
         self.launch(JUDGE_FAIL, REVIEW_CLEAN, SECOND)
         calls = self.runs / "rl" / "relaunch-worker-calls"
         self.assertGreater(len(calls.read_text().splitlines()) if calls.exists() else 0, 0)

@@ -9,7 +9,6 @@
 #   permissionMode=auto plugin=<this checkout>/cultivation/marketplace/sam-cc-setup verify-distbench=yes BIND_OK
 # exiting 0 only when all of those hold and no call was denied. The clone needs a GitHub origin URL (use_target reads
 # the target from it; nothing is fetched) and is changed by one empty commit. PROBE_BUDGET_USD caps the call (0.3).
-# The pstack gate fails open here, since the probe freezes no pstack-gate.py (the hook says so on stderr).
 set -uo pipefail
 [ $# -eq 1 ] && [ -d "$1" ] || { echo "usage: $0 <scratch clone of the target>" >&2; exit 2; }
 clone=$(cd "$1" && pwd)

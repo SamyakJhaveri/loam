@@ -128,17 +128,21 @@ class KilledRoundTests(unittest.TestCase):
         self.assertEqual([r["cost_usd"] for r in self.daily()], [2, 0, 0])
 
     def test_each_round_starts_with_its_header_in_decisions_md_once(self) -> None:
-        # audit3 F2: parity P3 and the pstack gate give decisions.md lines after `Round N` to round N, so the
-        # supervisor writes that line before the round's call; a relaunched round adds no second one.
+        # audit3 F2: parity P3 and the method-evidence checker give decisions.md lines after `Round N` to round N, so
+        # the supervisor writes that line before the round's call; a relaunched round adds no second one. The round's
+        # start sha, the checker's base, is kept from the first attempt, so a commit that attempt made stays in the round.
         (self.run_dir / "decisions.md").write_text("pstack: tdd | /p/skills/tdd/SKILL.md | x | y | z\n")
-        self.worker_round("claude", "")
+        start = git("rev-parse", "HEAD", cwd=self.wt)
+        self.worker_round("claude", "first attempt")
+        self.assertNotEqual(git("rev-parse", "HEAD", cwd=self.wt), start)  # the fake did commit
         self.worker_round("claude", "")
         self.assertEqual((self.run_dir / "decisions.md").read_text(),
                          "pstack: tdd | /p/skills/tdd/SKILL.md | x | y | z\nRound 1\n")
+        self.assertEqual((self.run_dir / "round-1.start.sha").read_text().strip(), start)
 
     def test_the_round_header_starts_its_own_line_after_a_last_line_with_no_newline(self) -> None:
         # audit4 2: appended bare, the header joined the last decision (`...zRound 1`), which parity then never read
-        # as a header, so the round's pstack: lines went to the round before.
+        # as a header, so the round's method lines went to the round before.
         (self.run_dir / "decisions.md").write_text("pstack: tdd | /p/skills/tdd/SKILL.md | x | y | z")
         self.worker_round("claude", "")
         self.assertEqual((self.run_dir / "decisions.md").read_text(),

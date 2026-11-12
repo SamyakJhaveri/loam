@@ -24,7 +24,6 @@ ROOT = pathlib.Path(__file__).resolve().parents[2]
 BASE = "83b59cf2"  # the commit U3 branched from: today's bin/factory, the Loam-target reference
 HOME_PATHS = ("bin/factory", "bin/factory.d", "bin/claude-account", "bin/alert", "bin/factory-parity",
               "cultivation/marketplace/sam-cc-setup")
-GATE = json.loads((ROOT / "bin/factory.d/pstack-gate.hooks.json").read_text())["hooks"]["PreToolUse"]
 PLUGIN = "cultivation/marketplace/sam-cc-setup"
 TOKEN_VALUE = "sk-ant-fixture-never-printed"
 
@@ -187,11 +186,8 @@ class NativeShellTests(unittest.TestCase):
             self.skipTest(f"{BASE} is not in this clone (shallow)")
         old = self.h.round_one(self.h.factory("loam-old", BASE), loam=True)
         new = self.h.round_one(self.new, loam=True)
-        # Every target's worker settings gain the pstack gate (U5) and nothing else; the rest is the same bytes as jq
-        # writes them.
-        settings = json.loads(new["settings"])
-        self.assertEqual(settings["hooks"].pop("PreToolUse"), GATE)
-        self.assertEqual(json.dumps(settings, indent=2).encode() + b"\n", old["settings"])
+        # The Loam target's worker settings are the same bytes as jq writes them.
+        self.assertEqual(new["settings"], old["settings"])
         self.assertIn(b'"sandbox"', old["settings"])  # the reference really is the sandboxed shell
         # Every target's calls load the factory home's sam-cc-setup; nothing else in either argv or env moved.
         for call in ("worker", "grader"):
@@ -231,11 +227,10 @@ class NativeShellTests(unittest.TestCase):
         self.assertNotIn("Bash(user-rule:*)", deny)
         self.assertNotIn("allow", settings["permissions"])
         self.assertEqual(len(settings["hooks"]["Stop"]), 1)  # worker-settings.json's own gate hook
-        self.assertEqual(settings["hooks"]["PreToolUse"], GATE)  # the pstack gate (U5), which finds its script by
-        self.assertEqual(r["worker"]["env"]["LOAM_CHECKS"], str(self.h.run / "frozen/checks.sh"))  # LOAM_CHECKS
-        for name in ("pstack-gate.py", "factory-parity"):
-            self.assertTrue((self.h.run / "frozen" / name).is_file(), name)
-            self.assertIn(f"  {name}\n", (self.h.run / "frozen/sha256").read_text())
+        self.assertNotIn("PreToolUse", settings["hooks"])  # no pstack gate: the round's method evidence is graded
+        self.assertEqual(r["worker"]["env"]["LOAM_CHECKS"], str(self.h.run / "frozen/checks.sh"))  # the Stop hook's checks
+        self.assertTrue((self.h.run / "frozen/method_evidence.py").is_file())  # round_checks runs the frozen checker
+        self.assertIn("  method_evidence.py\n", (self.h.run / "frozen/sha256").read_text())
         self.assertEqual(settings["autoCompactWindow"], 450000)
         argv = r["worker"]["argv"]
         pairs = dict(zip(argv, argv[1:]))

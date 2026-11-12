@@ -51,7 +51,7 @@ JUDGE_FAIL = {"verdict": "fail", "rows": {"widget": "fail"}, "evidence": {}, "fi
 
 LOOP = """notify() { :; }
 alert() { :; }
-worker_round() { echo "$1" >> "$RUN/worker-rounds"; git -C "$WORKTREE" -c user.name=t -c user.email=t@t commit -q --allow-empty -m "round $1"; }
+worker_round() { echo "$1" >> "$RUN/worker-rounds"; git -C "$WORKTREE" rev-parse HEAD > "$RUN/round-$1.start.sha"; git -C "$WORKTREE" -c user.name=t -c user.email=t@t commit -q --allow-empty -m "round $1"; }
 ( cd "$RUN/frozen" && sha256_of * > sha256 )
 echo "GRADER_FAIL_ROUNDS=$GRADER_FAIL_ROUNDS" >&2
 main_loop
@@ -87,6 +87,8 @@ class VerifierFixtureTests(unittest.TestCase):
         (frozen / "checks.sh").chmod(0o755)
         # The mutation sweep runs after a judge pass; this diff commits no test, so it runs no edit.
         (frozen / "mutation_sweep.py").write_bytes((ROOT / "bin/factory.d/mutation_sweep.py").read_bytes())
+        # round_checks runs the method-evidence checker on each round; these empty commits owe no method.
+        (frozen / "method_evidence.py").write_bytes((ROOT / "bin/factory.d/method_evidence.py").read_bytes())
         for name in ("judge.schema.json", "reviewer.schema.json", "role-settings.json"):
             (frozen / name).write_text("{}")
         for name in ("protected.txt", "exempt.txt"):

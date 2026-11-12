@@ -1,6 +1,0 @@
-{
-  "hooks": {
-    "PreToolUse": [{"matcher": "Edit|Write|NotebookEdit|MultiEdit|Bash", "hooks": [{"type": "command", "timeout": 60,
-      "command": "bash -c 'g=\"${LOAM_CHECKS%/checks.sh}/pstack-gate.py\"; [ -f \"$g\" ] || { echo \"pstack-gate: $g missing, not gating\" >&2; exit 0; }; exec python3 \"$g\"'"}]}]
-  }
-}
