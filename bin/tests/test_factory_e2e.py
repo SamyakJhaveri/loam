@@ -98,7 +98,9 @@ def start_time(pid: int) -> str | None:
 
 @unittest.skipUnless(sys.platform.startswith("linux"), "the factory runner is Linux, and the stand-ins and the "
                      "cleanup read /proc; the factory-macos CI job runs bin/tests/test_factory*.py")
-class EndToEndTests(unittest.TestCase):
+class E2EHarness(unittest.TestCase):
+    """The scratch factory home, target, stand-ins and helpers; test_factory_staged_faults.py reuses it."""
+
     def setUp(self) -> None:
         self.top = pathlib.Path(tempfile.mkdtemp(prefix="factory-e2e-")).resolve()
         self.addCleanup(shutil.rmtree, self.top, True)
@@ -242,6 +244,8 @@ class EndToEndTests(unittest.TestCase):
                     pass
             time.sleep(0.1)
 
+
+class EndToEndTests(E2EHarness):
     def test_pass_opens_a_ready_pr(self) -> None:
         self.seed((1, ticket("pass")))
         t = self.tick()
