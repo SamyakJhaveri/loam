@@ -240,12 +240,13 @@ learn_codex() { # dir prompt out -> 0 when out has text
 learn_run() { # [status message] -> 0; drafts at most one ticket per run directory
   local d="$RUN/learn" f="$RUN/followups.md" dir repo rdir sha model effort prompt n REVIEW_NO_FINISH=1
   [ -e "$d/ran" ] && { log "learn: already ran for this run directory"; return 0; }
-  mkdir -p "$d" && : > "$d/ran" || { log "learn: could not make $d"; return 0; }
+  mkdir -p "$d" || { log "learn: could not make $d"; return 0; }
   followups "$@" > "$f"
   if ! grep -q . "$f"; then log "learn: no follow-ups; no draft"; return 0; fi
   log "learn: $(grep -c . "$f") follow-up(s) in $f"
   dir=${WORKTREE:-}; [ -d "$dir" ] || dir=$TARGET
-  learn_room learn-writer || return 0
+  # Marked only once the writer may run, so a launch stopped at the daily cap leaves the draft to the next launch.
+  learn_room learn-writer && : > "$d/ran" || return 0
   { learn_brief Writer "$dir" "$d"; printf '\n## Follow-ups\n\n%s\n' "$FENCE"; cat "$f"; printf '%s\n' "$FENCE"
     printf '\n## Ticket\n\n%s\n' "$FENCE"; cat "$RUN/frozen/issue.md" 2> /dev/null; printf '\n%s\n' "$FENCE"; } > "$d/writer.prompt.md"
   review_claude "$ROUND" learn-writer "$GRADER_MODEL" high "$dir" "$d/writer.prompt.md" "$(cat "$REVIEW_D/learn.schema.json")" \

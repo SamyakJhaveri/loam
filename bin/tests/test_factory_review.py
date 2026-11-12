@@ -276,6 +276,20 @@ class ReviewTests(unittest.TestCase):
         self.assertEqual([(r["role"], r["cost_usd"], r["subtype"]) for r in rows], [("learn-writer", 1, "no-result")])
         self.assertEqual([json.loads(x)["cost_usd"] for x in self.read("daily.jsonl").splitlines()], [1])
 
+    def test_a_launch_stopped_at_the_daily_cap_leaves_the_draft_to_the_next(self) -> None:
+        # audit3 F3: launch 1 ends at the daily cap, so learn makes no call; launch 2 in the same run directory, with
+        # room in the budget, still drafts the run's one ticket.
+        self.put("round-1.judge.json", {"verdict": "pass", "backlog": ["the gate ran serially"]})
+        self.put("daily.jsonl", json.dumps({"date": "x", "cost_usd": 0}) + "\n")
+        self.learn(preset="ROUND=1", daily="0.5")
+        self.assertEqual(self.claude_calls(), [])
+        self.replies({"repo": "distbench", "title": "t", "source_line": "x", "body": "# F00: t\n"})
+        self.learn(preset="ROUND=1")
+        calls = self.claude_calls()
+        self.assertEqual(len(calls), 2)  # the writer and the review of its draft
+        self.assertIn("the gate ran serially", calls[0]["prompt"])
+        self.assertEqual(json.loads(self.read("learn/draft.json"))["title"], "t")
+
     def test_learn_drafts_reviews_and_verifies_once(self) -> None:
         self.put("round-1.judge.json", {"verdict": "pass", "backlog": []})
         self.put("round-1.review.json", review(("high", "kept bug")))
