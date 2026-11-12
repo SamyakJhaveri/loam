@@ -49,9 +49,10 @@ the effort level or the harness, and add nothing to the prompt.
   Add the ownership sentence only where the worker may restructure; leave it
   out where the owner owns the code and wants minimal change. A scope rule does
   not cancel the ownership sentence.
-- Caution: Fable 5.2 obeys "never" rules, notes and reviewer conditions closely.
+- Caution: Fable 5.2 obeys "never" rules, notes and validation steps closely.
   Name the exact actions a rule covers, and write the exception into the rule
-  itself (for example "retry a safe, repeatable call without asking").
+  itself (the guide: "ask for approval before deleting files" instead of "never
+  delete files").
 - Approvals: give a specific go-ahead ("Yes, run X on Y"), never a bare "go".
 - Do not ask the model to write its reasoning in the reply: that can trigger
   a `reasoning_extraction` refusal.
@@ -59,7 +60,7 @@ the effort level or the harness, and add nothing to the prompt.
 
 ## Session-prompt rubric
 
-A session prompt or brief for a fresh Fable 5.2 session carries five headings, in order; a handoff note uses the seven `docs/WORKERS.md` headings instead, and the `catchup` staleness check reads its `Written at` hash.
+A session prompt for a fresh Fable 5.2 session carries five headings, in order; a worker brief, its report and a handoff note use the seven `docs/WORKERS.md` headings instead, and the `catchup` staleness check reads a handoff note's `Written at` hash.
 
 1. **Goal and why.** What the work is for and what it unblocks.
 2. **Constraints.** Files in scope, what must not be touched, and who owns the
@@ -71,8 +72,9 @@ A session prompt or brief for a fresh Fable 5.2 session carries five headings, i
 4. **Session conduct.** Attended or unattended, and whether the deliverable is
    prose. If a reader will see only the final report, quote the guide's
    "Communicating clearly" text.
-5. **Target model and effort.** Name the model and the effort level (`high` by
-   default for Fable 5.2).
+5. **Target model and effort.** Name the model and set the effort level
+   explicitly (the guide starts Fable 5.2 at `high`; a client's default can be
+   lower).
 
 ## Never paste these into a Claude Code prompt
 

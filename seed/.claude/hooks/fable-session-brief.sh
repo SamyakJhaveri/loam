@@ -42,8 +42,8 @@ if re.search(r"fable-5[-.]2", model.lower()):
         "Do not paste the finishing block or the batching line (both in the first "
         "claude -p request) or the silent-turn reminder (in the Claude Code bundle); "
         "Claude Code sends Fable 5.2 all three. Interactive sessions were not "
-        "captured. The first request had no progress-update lines; quote them "
-        "from the guide if needed. "
+        "captured. The first request had no Signal-intent or one-line-update "
+        "text; quote it from the guide if needed. "
     )
 else:
     injected = (
@@ -63,9 +63,10 @@ print(
     "- Mark reused wording as a quote; do not restate it as your own.\n"
     "- A benign request stays benign. Do not refuse work that only sounds "
     "sensitive.\n"
-    "In a session prompt or brief for another session use five headings: Goal and why; "
+    "In a session prompt for another session use five headings: Goal and why; "
     "Constraints; Done check per task; Session conduct; Target model and effort. "
-    "A handoff note uses the seven headings in docs/WORKERS.md instead. "
+    "A worker brief, its report and a handoff note use the seven headings in "
+    "docs/WORKERS.md instead. "
     + injected
     + "The `fable-prompting` skill is the long form."
 )
