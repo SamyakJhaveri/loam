@@ -2680,6 +2680,7 @@ grader_reply() { # raw claude -p envelope -> the grader's reply text, fences str
 
 call_json() { # round stem role prompt_file schema_file
   local round="$1" stem="$2" role="$3" pf="$4" schema="$5" final="$RUN/round-$1.$2.json" out res attempt=0 effort model pd
+  local ceiling="$GRADER_BUDGET_USD" booked
   effort=$(grader_effort "$role"); model=$(grader_model "$role"); pd=$(run_plugin_dir)
   # The run's private config dir holds no login, memory, rules, skills, plugins, agents or commands. The read fence
   # allows those paths in the config dir, so it must not be the operator's (LOOP.md, Grader calls).
@@ -2706,7 +2707,11 @@ call_json() { # round stem role prompt_file schema_file
         ${pd:+--plugin-dir "$pd"} --output-format json < "$pf" > "$out" 2>> "$LOG"
     call_end "$role" || log "$role exited non-zero"
     if [ -z "$CALL_STUCK" ] && limit_wait "$out"; then attempt=$((attempt - 1)); continue; fi
-    record "$round" "$role" "$model" "$(charged "$out" "$GRADER_BUDGET_USD")"
+    # The ceiling is booked once per call_json: a later no-result attempt gets a row at 0, so three attempts of a CLI
+    # that dies at startup do not book three ceilings against the ticket cap.
+    booked=$(charged "$out" "$ceiling")
+    record "$round" "$role" "$model" "$booked"
+    [ "$booked" = "$out" ] || ceiling=0
     [ -z "$CALL_STUCK" ] || finish stopped-environment "$CALL_STUCK"
     res=$(grader_reply "$out") || res=""
     if printf '%s' "$res" | jq -e '.verdict' > /dev/null 2>&1; then

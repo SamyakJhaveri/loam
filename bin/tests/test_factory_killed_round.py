@@ -113,16 +113,19 @@ class KilledRoundTests(unittest.TestCase):
                                capture_output=True, text=True, check=True).stdout.strip()
         self.assertEqual(spent, "7")
 
-    def test_killed_grader_call_is_charged_its_ceiling(self) -> None:
+    def test_killed_grader_call_is_charged_its_ceiling_once(self) -> None:
         # audit3 C1: a judge or reviewer call with no result (killed, or crashed) may have spent up to its
-        # --max-budget-usd ceiling, so each of call_json's three attempts books GRADER_BUDGET_USD, as the worker does.
+        # --max-budget-usd ceiling, so call_json books GRADER_BUDGET_USD, as the worker does. audit4 (Fable 4): once
+        # per call_json, not per attempt: three dead attempts at 1.5 booked 4.5 of a 6 USD ticket cap. The later
+        # no-result attempts still get a row, at 0.
         (self.run_dir / "judge.schema.json").write_text("{}")
         (self.run_dir / "judge.prompt.md").write_text("grade it\n")
         proc = self.worker_round("claude", "", "BODY=$'## Worker\\n\\nGRADER_BUDGET_USD=2\\n'; apply_caps\n"
                                  'call_json 1 judge judge "$RUN/judge.prompt.md" "$RUN/judge.schema.json"; exit 0')
         self.assertEqual(proc.returncode, 0, proc.stderr)
-        self.assertEqual([(r["role"], r["cost_usd"], r["subtype"]) for r in self.ledger()], [("judge", 2, "no-result")] * 3)
-        self.assertEqual([r["cost_usd"] for r in self.daily()], [2, 2, 2])
+        self.assertEqual([(r["role"], r["cost_usd"], r["subtype"]) for r in self.ledger()],
+                         [("judge", 2, "no-result"), ("judge", 0, "no-result"), ("judge", 0, "no-result")])
+        self.assertEqual([r["cost_usd"] for r in self.daily()], [2, 0, 0])
 
     def test_each_round_starts_with_its_header_in_decisions_md_once(self) -> None:
         # audit3 F2: parity P3 and the pstack gate give decisions.md lines after `Round N` to round N, so the
