@@ -218,6 +218,19 @@ def gate_through_grep(result: str) -> Callable[[Path], None]:
     return edit
 
 
+def retried_reviewer(served: bool) -> Callable[[Path], None]:
+    """audit4 (Fable 2): a killed reviewer attempt books a no-result row (served nothing) before the retry's row;
+    with served False the retry's row is gone too, so no reviewer call of the round served anything."""
+    def edit(run: Path) -> None:
+        rows = [json.loads(x) for x in (run / "ledger.jsonl").read_text().splitlines()]
+        killed = {"round": 1, "role": "reviewer", "model": "claude-fable-5-2", "cost_usd": 5, "subtype": "no-result",
+                  "served_models": []}
+        rows = [r for r in rows if served or r["role"] != "reviewer"]
+        rows.insert(1, killed)
+        (run / "ledger.jsonl").write_text("".join(json.dumps(r) + "\n" for r in rows))
+    return edit
+
+
 def stale_verify(run: Path) -> None:
     """verify.json names a commit other than the graded one."""
     v = json.loads((run / "round-1.verify.json").read_text())
@@ -262,7 +275,9 @@ VARIANTS = [
     ("a4-gate-grep-fail", "p4-pass", gate_through_grep("FAIL check-green: bin/check failed (check: FAILED)"), "P4", "PASS"),
     ("a4-gate-grep-none", "p4-pass", gate_through_grep("PASS class-route\nPASS check-green"), "P4", "FAIL"),
     ("c4-failed-launch", "p6-pass", failed_launch, "P6", "FAIL"),  # a proof call that failed proves nothing
-    ("c6-stale-verify", "pass", stale_verify, "P8", "FAIL"),  # verify.json is for another commit
+    ("c6-stale-verify", "pass", stale_verify, "P8", "FAIL"),
+    ("a4-retried-reviewer", "pass", retried_reviewer(True), "P8", "PASS"),  # the killed attempt's row is no review
+    ("a4-killed-reviewer", "pass", retried_reviewer(False), "P8", "FAIL"),  # ... but some reviewer row must serve  # verify.json is for another commit
     ("f2-round-line", "p3-pass", round_two_on_its_round_line, "P3", "PASS"),  # `Round 2: pstack: ...` is round 2's
 ]
 
