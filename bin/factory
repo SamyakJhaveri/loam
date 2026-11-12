@@ -2583,16 +2583,21 @@ run_judge() { # round -> 0 on a pass verdict, or a fail on only JUDGE_SHADOW_ROW
   build_evidence "$RUN/frozen/judge.md" 4000 > "$pf"
   call_json "$round" judge judge "$pf" "$RUN/frozen/judge.schema.json"
   log "judge verdict: $(jq -r .verdict "$f") rows=$(jq -c '.rows // {}' "$f")"
-  # The failing rows (a required row that is missing counts), printed only when every one is a shadow row and every
-  # fix names decisions.md and no other file (a path with a slash, or a name.ext): a fail may carry a fix for the
-  # change itself with every other row pass, and that blocks. A fix that names no file but decisions.md is still
-  # judged by its text, so "fix the empty-input crash and drop its decisions.md line" shadow-passes: a known limit of
-  # free-text fixes; a structured fix target would need a judge schema change, which is the owner's call.
+  # The failing rows (a required row that is missing counts), printed only on a fail verdict (a malformed one blocks),
+  # when every one is a shadow row and every fix names decisions.md and no other file. A file is a whole token: a path
+  # with a slash, a name with one or more suffixes (decisions.md.jinja is not decisions.md), or a dot-led name such as
+  # .env; a number such as 1.2 or 2.43 is not one, and any other dotted word counts, so an unsure token blocks. A fail
+  # may carry a fix for the change itself with every other row pass, and that blocks. Free-text fixes leave two known
+  # limits. A fix that names no file but decisions.md is judged by its text, so "fix the empty-input crash and drop its
+  # decisions.md line" shadow-passes. A label-only fix whose claim names a file blocks: of the 17 real honest-only
+  # judge fails under the runs root on 12 Nov 2026, 5 shadow-pass, 7 block because a fix also names another file or
+  # dotted word (bin/check, lib.sh, gpg.minTrustLevel), and 5 because a fix does not name decisions.md. Structured fix
+  # targets would close both; they need a judge schema change, which is the owner's call.
   shadow=$(jq -r --slurpfile s "$RUN/frozen/judge.schema.json" --arg sh "$JUDGE_SHADOW_ROWS" '
-    select(.verdict != "pass" and (.unparseable // false | not))
-    | select(all((.fixes // [])[]; type == "string" and test("decisions\\.md")
-        and ([scan("[A-Za-z0-9_.-]*/[A-Za-z0-9_./-]*[A-Za-z0-9_-]|[A-Za-z0-9_-]+\\.[A-Za-z0-9]+")]
-             | all(test("(^|/)decisions\\.md$"))))) | (.rows // {}) as $r
+    select(.verdict == "fail" and (.unparseable // false | not))
+    | select(all((.fixes // [])[]; type == "string"
+        and ([scan("[A-Za-z0-9_.-]*/[A-Za-z0-9_./-]*[A-Za-z0-9_-]|[A-Za-z0-9_-]+(?:\\.[A-Za-z0-9]+)+|(?<![A-Za-z0-9_])\\.[A-Za-z][A-Za-z0-9_-]*")]
+             | map(select(test("^[0-9]+(\\.[0-9]+)+$") | not)) | length > 0 and all(test("(^|/)decisions\\.md$"))))) | (.rows // {}) as $r
     | [([$s[0].properties.rows.required[]?] + ($r | keys)) | unique[] | select($r[.] != "pass")] as $failed
     | select(($failed | length) > 0 and ($failed - ($sh | split(" "))) == []) | $failed | join(" ")' "$f" 2> /dev/null)
   if [ -n "$shadow" ]; then

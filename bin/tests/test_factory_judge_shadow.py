@@ -27,8 +27,11 @@ def judge(rows: dict[str, str], fixes: list[str]) -> dict[str, object]:
 
 
 class JudgeShadowTests(unittest.TestCase):
-    def graders(self, judge_reply: dict[str, object]) -> tuple[int, pathlib.Path, str]:
-        """(graders' exit, the run dir, the log) for one round whose judge returns judge_reply."""
+    def graders(self, judge_reply: dict[str, object], stale_shadow: bool = False) -> tuple[int, pathlib.Path, str]:
+        """(graders' exit, the run dir, the log) for one round whose judge returns judge_reply.
+
+        With stale_shadow, the round already holds a round-1.judge-shadow, as an earlier grading of it leaves.
+        """
         tmp = tempfile.TemporaryDirectory()
         self.addCleanup(tmp.cleanup)
         top = pathlib.Path(tmp.name)
@@ -41,6 +44,8 @@ class JudgeShadowTests(unittest.TestCase):
         shutil.copy(ROOT / "bin/factory.d/judge.schema.json", run / "frozen/judge.schema.json")
         (run / "reply.judge").write_text(json.dumps(judge_reply))
         (run / "reply.review").write_text(json.dumps(CLEAN_REVIEW))
+        if stale_shadow:
+            (run / "round-1.judge-shadow").write_text("honest\n")
         env = {k: v for k, v in os.environ.items() if not k.startswith("FACTORY_")}
         env.update(FACTORY_SOURCED="1", FACTORY_RUNS_ROOT=str(top / "runs"))
         script = (". bin/factory\n"
@@ -85,12 +90,39 @@ class JudgeShadowTests(unittest.TestCase):
                 self.assertFalse((run / "round-1.judge-shadow").exists())
 
     def test_fix_naming_another_file_beside_decisions_md_still_fails(self) -> None:
-        # The fix names decisions.md, but also a file of the change: it is not bookkeeping, so the fail blocks.
-        mixed = "fix the crash in bin/x when input is empty, and drop the decisions.md line that says it is handled"
-        rc, run, log = self.graders(judge({**ROWS_PASS, "honest": "fail"}, [mixed]))
+        # The fix names decisions.md, but also a file of the change (a dot-led name too): it is not bookkeeping.
+        for mixed in ("fix the crash in bin/x when input is empty, and drop the decisions.md line that says it is handled",
+                      "fix the .env leak and drop its decisions.md line",
+                      "remove the .gitignore entry and the decisions.md bullet",
+                      "fix the renderer in decisions.md.jinja"):
+            with self.subTest(mixed):
+                rc, run, log = self.graders(judge({**ROWS_PASS, "honest": "fail"}, [mixed]))
+                self.assertEqual(rc, 1, log)
+                self.assertNotIn("judge-shadow", log)
+                self.assertEqual((run / "round-1.fixes").read_text(), f"- {mixed}\n")
+                self.assertFalse((run / "round-1.judge-shadow").exists())
+
+    def test_number_in_a_decisions_md_fix_is_not_a_file(self) -> None:
+        for fix in ("In decisions.md, mark the claimed 1.2 second runtime as unverified.",
+                    "label the git 2.43 claim in decisions.md unverified"):
+            with self.subTest(fix):
+                rc, run, log = self.graders(judge({**ROWS_PASS, "honest": "fail"}, [fix]))
+                self.assertEqual(rc, 0, log)
+                self.assertEqual((run / "round-1.judge-shadow").read_text().strip(), "honest")
+
+    def test_malformed_verdict_still_fails(self) -> None:
+        # Only a fail verdict can shadow-pass; any other word blocks, as before the shadow pass existed.
+        reply = {**judge({**ROWS_PASS, "honest": "fail"}, ["label the run unverified in decisions.md"]), "verdict": "unknown"}
+        rc, run, log = self.graders(reply)
         self.assertEqual(rc, 1, log)
         self.assertNotIn("judge-shadow", log)
-        self.assertEqual((run / "round-1.fixes").read_text(), f"- {mixed}\n")
+        self.assertFalse((run / "round-1.judge-shadow").exists())
+
+    def test_regraded_round_drops_an_older_shadow_pass(self) -> None:
+        # A round graded again after a shadow pass, whose judge now fails verified, blocks and keeps no judge-shadow.
+        rc, run, log = self.graders(judge({**ROWS_PASS, "verified": "fail"}, ["label the run unverified in decisions.md"]),
+                                    stale_shadow=True)
+        self.assertEqual(rc, 1, log)
         self.assertFalse((run / "round-1.judge-shadow").exists())
 
 if __name__ == "__main__":

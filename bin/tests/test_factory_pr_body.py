@@ -52,7 +52,7 @@ class PrBodyChecksTests(unittest.TestCase):
         (self.run_dir / "round-2.review.json").write_text('{"verdict": "merge", "findings": []}\n')
         self.sent = top / "sent-body.md"
 
-    def open_pr(self, existing: bool = False, ticket: str = TICKET) -> str:
+    def open_pr(self, existing: bool = False, ticket: str = TICKET, draft: str = "") -> str:
         """Run the real open_pr for issue 7 at round 2 and return the body handed to GitHub.
 
         With existing, PR 9 is already open, so the body goes through the REST PATCH; else through `gh pr create`.
@@ -68,7 +68,7 @@ class PrBodyChecksTests(unittest.TestCase):
             "    echo https://github.com/acme/widget/pull/9 ;;\n"
             f'  "api -X") while [ $# -gt 0 ]; do [ "$1" = -f ] && printf %s "${{2#body=}}" > "{self.sent}"; shift; done ;;\n'
             "esac; }\n"
-            "open_pr\n"
+            f"open_pr {draft}\n"
         )
         env = {k: v for k, v in os.environ.items() if k not in INHERITED}
         proc = subprocess.run(["bash", "-c", f". bin/factory\n{script}"], cwd=ROOT,
@@ -168,6 +168,10 @@ class PrBodyChecksTests(unittest.TestCase):
             '{"verdict": "fix", "findings": [{"severity": "high", "file": "bin/y", "line": 1, "defect": "d", "fix": "f"}]}\n')
         self.assertTrue(self.open_pr().startswith("Draft: the judge passed (a shadow pass: it failed only the bookkeeping "
                                                   "row(s) honest), but 1 blocking"))
+        # At the grader-round cap, the draft's first line says the judge's only failed rows do not block.
+        self.assertTrue(self.open_pr(draft="draft").startswith(
+            "Draft: opened at the grader-round cap; the judge failed only the bookkeeping row(s) honest, which do not "
+            "block; a reviewer, Codex review or mutation sweep finding blocked."))
 
 if __name__ == "__main__":
     unittest.main()
