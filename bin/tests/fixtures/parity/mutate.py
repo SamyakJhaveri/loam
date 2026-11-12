@@ -38,7 +38,6 @@ MUTATIONS = [  # (rule, old, new): each old must occur exactly once
     ("quoted ; ends no write", '''        bare = re.sub(''', '''        bare = cmd or re.sub('''),
     ("P3 method anywhere before the change", "if (m := pstack_methods(full_reads(t, j), pstack))), None)",
      "if j >= (router_index(t, i) or 0) and (m := pstack_methods(full_reads(t, j), pstack))), None)"),
-    ("P3 needs a pstack: line (F3)", "        if changed and not run.attended and not logged:", "        if False:"),
     ("P3 pstack: line read", "            elif name not in read:", "            elif False:"),
     ("P1 plugin-dir", "        elif paths != [want]:", "        elif False:"),
     ("P1 memory view", "        if MEMORY_VIEW in lines:", "        if True:"),

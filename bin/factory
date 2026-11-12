@@ -2453,7 +2453,7 @@ round_sig() {
 }
 
 worker_round() { # round; leaves round-N.* only once the call produced a result
-  local round="$1" pf out="$RUN/pending.jsonl" res="$RUN/pending.result.json" t=(timeout -k 5 "$CALL_TIMEOUT_SEC") login_retried=0 le head0
+  local round="$1" pf out="$RUN/pending.jsonl" res="$RUN/pending.result.json" t=(timeout -k 5 "$CALL_TIMEOUT_SEC") login_retried=0 le head0 last
   # The round's start, so a stop after a killed call can name the commits the call made (#319). round-N.start.sha
   # keeps it for the method-evidence checker's base; written once per round, so a relaunched round keeps the start
   # its killed attempt had, with that attempt's commits inside the round.
@@ -2462,7 +2462,8 @@ worker_round() { # round; leaves round-N.* only once the call produced a result
   # round's start, so its change is graded again with this round's lines; else a retry round that only writes a
   # method: line would pass on an empty range.
   if [ ! -s "$RUN/round-$round.start.sha" ] && [ -n "$head0" ]; then
-    [ "$round" -gt 1 ] && ! grep -q '^PASS method-evidence' "$RUN/round-$((round - 1)).checks" 2> /dev/null \
+    last=$(tail -n 1 "$RUN/round-$((round - 1)).method-evidence" 2> /dev/null) || last=""
+    [ "$round" -gt 1 ] && [ "${last%%: *}" != "PASS method-evidence" ] \
       && cp "$RUN/round-$((round - 1)).start.sha" "$RUN/round-$round.start.sha" 2> /dev/null \
       || printf '%s\n' "$head0" > "$RUN/round-$round.start.sha"
   fi
@@ -3095,23 +3096,29 @@ round_checks() { # out: a dirty tree or a do-not-touch hit fails the round witho
     printf 'FAIL do-not-touch %s\n' "$touched" > "$1"
   else
     run_checks "$WORKTREE" "$1"
-    method_evidence "$ROUND" "$1"
+    method_evidence "$ROUND"   # shadow; add "$1" to gate (LOOP.md, Method evidence)
   fi
 }
 
 # The round's method-evidence line after the ticket's checks (LOOP.md, Method evidence): the frozen
 # method_evidence.py grades round-N.start.sha..HEAD, a test that fails before and passes after or a proof command's
-# declared exit, and a FAIL sends the worker back as any check does. It goes before checks.sh's CHECKS-END line, so a
-# relaunch still reads the block as complete; a checker that cannot grade ends the run stopped-environment.
-method_evidence() { # round out
+# declared exit. In shadow (the owner's ruling of 12 Nov 2026, until one batch is reviewed) the line goes only to the log
+# and round-N.method-evidence and never blocks. Gating writes it into round-N.checks before checks.sh's CHECKS-END line,
+# so a FAIL sends the worker back as any check does and a relaunch still reads the block as complete, and a checker
+# that cannot grade then ends the run stopped-environment.
+method_evidence() { # round [checks file]: with no checks file the check is in shadow and only records its line
   local line rc=0
   line=$(python3 -I "$RUN/frozen/method_evidence.py" --run "$RUN" --round "$1" --repo "$WORKTREE" \
     --head "$(git -C "$WORKTREE" rev-parse HEAD)" 2>> "$LOG") || rc=$?
   line=$(printf '%s\n' "$line" | grep -m1 -E '^(PASS|FAIL) method-evidence: ')
-  # Exit 2 is input the checker could not use (a git or worktree fault), not the worker's evidence.
-  [ "$rc" -le 1 ] && [ -n "$line" ] \
-    || finish stopped-environment "the method-evidence checker could not grade round $1 (exit $rc): ${line:-no verdict}"
+  if [ "$rc" -gt 1 ] || [ -z "$line" ]; then
+    # Exit 2 is input the checker could not use (a git or worktree fault), not the worker's evidence.
+    [ -z "${2:-}" ] || finish stopped-environment "the method-evidence checker could not grade round $1 (exit $rc): ${line:-no verdict}"
+    line="ERROR method-evidence: the checker could not grade round $1 (exit $rc): ${line:-no verdict}"
+  fi
   log "round $1 $line"
+  printf '%s\n' "$line" >> "$RUN/round-$1.method-evidence"
+  [ -n "${2:-}" ] || return 0
   if [ "$(tail -n 1 "$2")" = CHECKS-END ]; then
     { sed '$d' "$2"; printf '%s\n\nCHECKS-END\n' "$line"; } > "$2.tmp" && mv "$2.tmp" "$2"
   else

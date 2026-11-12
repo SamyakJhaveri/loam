@@ -141,3 +141,14 @@ def test_a_round_one_declaration_does_not_satisfy_round_two(tmp_path):
     (run / "worker/decisions.md").write_text(f"Round 1\nmethod: tdd | test: {PYTEST}\nRound 2\n- Round 2: added f0..f2.\n")
     rc, out = check(repo, run, n=2)
     assert rc == 1 and "round 2 changed calc.py" in out and r1[:8] in out, out
+
+
+def test_a_round_that_kept_an_earlier_start_reads_that_rounds_lines_too(tmp_path):
+    # Round 1's evidence did not pass, so round 2 kept its start (bin/factory worker_round); round 1's line still counts.
+    repo, run = setup(tmp_path, {"calc.py": FIXED, "test_calc.py": TEST_ADD}, f"Round 1\nmethod: tdd | test: {PYTEST}\nRound 2\n")
+    base = (run / "base.sha").read_text()
+    for k in (1, 2):
+        (run / f"round-{k}.start.sha").write_text(base)
+    (run / "round-2.graded.sha").write_text((run / "round-1.graded.sha").read_text())
+    rc, out = check(repo, run, n=2)
+    assert rc == 0 and "exit 0 at head, exit 1 with" in out, out

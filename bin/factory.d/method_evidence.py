@@ -16,7 +16,7 @@ outside docs) passes with no method. Any other round declares its method in <run
   method: <skill> | proof: <command> | exit <code>
 (a list mark and backticks around the line or the command ignored); an older `pstack: <skill> | ...` line declares <skill> too, its other
 fields unread. A line belongs to round N when it follows the `Round N` header the supervisor writes; with no header
-(a run from before them) every line is round 1's.
+(a run from before them) every line is round 1's. Round N also reads the lines of each earlier round with its start sha.
 
 Each declaration is graded once per distinct command. Test route (a `test:` command, a method in TEST_METHODS, or a
 round that changed a non-test source file, unless a method in PROOF_METHODS names a `proof:`): its own command, else the round's first `test:` command,
@@ -40,7 +40,9 @@ import sys
 import tempfile
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parent))  # python3 -I leaves the script's folder off the path
+# python3 -I leaves the script's folder off the path; appended, so no file beside it can stand in for a stdlib module.
+sys.dont_write_bytecode = True
+sys.path.append(str(Path(__file__).resolve().parent))
 import mutation_sweep as ms  # noqa: E402 - its run, stop and subreaper, frozen beside this file
 
 NAME = "method-evidence"
@@ -137,7 +139,7 @@ def declarations(lines: list[str]) -> list[tuple[str, str | None, str | None, in
         x = re.sub(r"^[-*]\s+", "", x.strip()).strip("`")   # a list mark, and backticks around the whole line
         m = METHOD.search(x)
         if m:
-            skill, rest = m.group(1).strip("*` "), m.group(2).strip()
+            skill, rest = m.group(1).strip("*` ").split(":")[-1], m.group(2).strip()   # pstack:tdd is tdd
             p = PROOF.fullmatch(rest)
             if rest.startswith("test:") and rest[5:].strip(" `"):
                 out.append((skill, "test", rest[5:].strip(" `"), None))
@@ -208,7 +210,9 @@ def grade(run_dir: Path, n: int, repo: str, base: str, head: str) -> tuple[bool,
         text = dec_file.read_text(errors="replace")
     except OSError as e:
         raise Unusable(f"cannot read {dec_file}: {e}") from e
-    decs = declarations(round_lines(n, text))
+    # A round that kept an earlier round's start (its method evidence did not pass) is graded with that round's lines too.
+    shared = [k for k in range(1, n) if read_sha(run_dir / f"round-{k}.start.sha") == base]
+    decs = declarations([x for k in [*shared, n] for x in round_lines(k, text)])
     names = ", ".join(r[1] for r in code[:8]) + (f" and {len(code) - 8} more" if len(code) > 8 else "")
     if not decs:
         return False, (f"round {n} changed {names} ({span}) but declared no method in decisions.md; write "

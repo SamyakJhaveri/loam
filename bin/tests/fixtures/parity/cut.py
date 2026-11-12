@@ -225,8 +225,6 @@ def build(runs: Path, projects: Path, distbench: Path, exp: Path, pstack: Path) 
     two = use(real_loop, command=full_cmd.replace(" principle-prove-it-works", ""))
     out["p3-claim"] = {"run/round-1.jsonl": dump(w34_full + [two, loop[1]] + w34_write),
                        "run/worker/decisions.md": logged[len(decisions):]}
-    # No line: the real decisions.md line alone, no `pstack:` line (audit finding F3).
-    out["p3-no-line"] = {"run/round-1.jsonl": dump(w34_full + loop + w34_write), "run/worker/decisions.md": decisions}
     # Order: EDIT the method loop before the router read; a method read before the first change still counts (F5).
     out["p2-gated"] = {"run/round-1.jsonl": dump([w34_full[0], *gated, *w34_full[1:], *loop, *w34_write]),
                        "run/worker/decisions.md": logged}

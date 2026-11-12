@@ -626,8 +626,8 @@ def p3(run: Run) -> tuple[str, str]:
                              f"skills/{name}/SKILL.md")
             else:
                 passes.append(f"worker/decisions.md:{n} pstack: {name}, fully read")
-        for n, rnd, text in lines:  # older free-text method names
-            if rnd != r.n or PSTACK_LINE.match(text):
+        for n, rnd, text in lines:  # older free-text method names; a `method:` line is method_evidence.py's
+            if rnd != r.n or PSTACK_LINE.match(text) or "method:" in text:
                 continue
             for method in sorted(named_skills(text, pstack)):
                 if method in read:
