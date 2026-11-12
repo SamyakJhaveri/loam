@@ -18,9 +18,10 @@ Config, one secret per file, each mode 600 (a symlink to such a file works), und
   hc-api-key       a healthchecks API key for the check's project, read by --ping pause
 No URL or key is ever printed: an error names only its type (as DistBench's bin/pair-alert).
 
-A test never reaches the live config or log: called from a sourced bin/factory (FACTORY_SOURCED=1, which only tests,
-bin/check and model-eval set, and none of those alert for real) with the account's own HOME, it sends nothing, writes
-nothing and exits 0. bin/tests/conftest.py gives pytest a scratch HOME, but a bare `python3 -m unittest` run skips it.
+A test never reaches the live config or log: a bin/factory call (--source factory or --ping) from a sourced bin/factory
+(FACTORY_SOURCED=1, which only tests, bin/check and model-eval set, and none of those alert for real) with the account's
+own HOME sends nothing, writes nothing and exits 0. Other callers (the overnight driver, bin/limit-alarm) always alert,
+so a stray FACTORY_SOURCED in their environment cannot silence them. bin/tests/conftest.py gives pytest a scratch HOME, but a bare `python3 -m unittest` run skips it.
 """
 
 import argparse
@@ -141,9 +142,9 @@ def ping(what: str) -> int:
     return 0
 
 
-def live_home_under_test() -> bool:
+def live_home_under_test(args: argparse.Namespace) -> bool:
     """A sourced bin/factory (a test) calling with the account's own HOME, whose config and log are the live ones."""
-    return (os.environ.get("FACTORY_SOURCED") == "1"
+    return ((args.source == "factory" or args.ping is not None) and os.environ.get("FACTORY_SOURCED") == "1"
             and Path.home().resolve() == Path(pwd.getpwuid(os.getuid()).pw_dir).resolve())
 
 
@@ -160,7 +161,7 @@ def main() -> int:
         p.error("give either an alert line or --ping, not both")
     if args.project and (args.project.startswith(".") or not re.fullmatch(r"[A-Za-z0-9._-]+", args.project)):
         p.error("--project takes a repository name: letters, digits, '.', '-' and '_', not starting with '.'")
-    if live_home_under_test():
+    if live_home_under_test(args):
         print("bin/alert: not sent: FACTORY_SOURCED=1 (a test) with the account's own HOME would reach the live "
               "Slack, healthchecks and alerts.jsonl", file=sys.stderr)
         return 0

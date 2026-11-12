@@ -1,4 +1,4 @@
-"""bin/alert sends nothing when a sourced bin/factory (a test) calls it with the account's own HOME.
+"""bin/alert sends nothing when a sourced bin/factory (a test) calls it with the account's own HOME; other sources alert.
 
 A bare `python3 -m unittest` run skips conftest.py's scratch HOME, and tests that source bin/factory reached the live
 Slack and alerts.jsonl that way. The account's home can be faked only in-process, so bin/alert is loaded as a module
@@ -23,7 +23,7 @@ ALERT = pathlib.Path(__file__).resolve().parents[2] / "bin" / "alert"
 
 
 class LiveHomeTests(unittest.TestCase):
-    def run_alert(self, sourced: bool) -> tuple[int, str, pathlib.Path]:
+    def run_alert(self, sourced: bool, source: str = "factory") -> tuple[int, str, pathlib.Path]:
         """bin/alert's main for one fail alert, with HOME and the account's home a temp dir; (exit, stderr, log)."""
         tmp = tempfile.TemporaryDirectory()
         self.addCleanup(tmp.cleanup)
@@ -32,7 +32,7 @@ class LiveHomeTests(unittest.TestCase):
         env["HOME"] = str(home)
         if sourced:
             env["FACTORY_SOURCED"] = "1"
-        argv = ["bin/alert", "--level", "fail", "--source", "factory", "--project", "loam", "issue 7 stopped"]
+        argv = ["bin/alert", "--level", "fail", "--source", source, "--project", "loam", "issue 7 stopped"]
         err = io.StringIO()
         with mock.patch.dict(os.environ, env, clear=True), mock.patch.object(sys, "argv", argv), \
                 contextlib.redirect_stderr(err):
@@ -53,6 +53,13 @@ class LiveHomeTests(unittest.TestCase):
     def test_without_factory_sourced_the_same_home_alerts(self) -> None:
         code, err, log = self.run_alert(sourced=False)
         self.assertEqual(code, 1, err)  # no Slack config in the temp home, so the post fails; the line is logged
+        self.assertEqual(len(log.read_text().splitlines()), 1)
+
+    def test_another_source_alerts_even_under_factory_sourced(self) -> None:
+        # The overnight driver calls bin/alert directly; a FACTORY_SOURCED left in a tmux server's env must not drop it.
+        code, err, log = self.run_alert(sourced=True, source="overnight")
+        self.assertEqual(code, 1, err)
+        self.assertNotIn("not sent", err)
         self.assertEqual(len(log.read_text().splitlines()), 1)
 
 
