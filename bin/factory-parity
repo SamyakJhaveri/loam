@@ -56,7 +56,8 @@ a `skills/<name>/SKILL.md` path or a hyphenated pstack name.
                       what verify-distbench covers (its SKILL.md: "a runner, command, task package, oracle,
                       orchestrator or grader change"), some transcript fully read verify-distbench/SKILL.md (or
                       made its Skill call) and ran its proof commands: control-distbench launch <run> and at least
-                      one drive (agent or exec <run>); `--help` is no run. Else N/A.
+                      one drive (agent or exec <run>), each in a call whose result is no error; `--help` is no
+                      run. Else N/A.
   P7 native-shell     each round's init permissionMode is auto; frozen/worker-settings.json has sandbox.enabled
                       false; shell-digest.start equals shell-digest.end (U3's `<hash>  <label>` lines at launch and
                       finish: ~/.claude files, and per checkout git-status, git-head, git-diff and git-untracked;
@@ -781,9 +782,9 @@ def p6(run: Run) -> tuple[str, str]:
             for j, (line, name, inp) in enumerate(t.calls):
                 text = call_text(name, inp)
                 if read is None and (any(s == "verify-distbench" for _, s in full_reads(t, j))
-                                     or (name == "Skill" and inp.get("skill") == "verify-distbench")):
+                                     or (name == "Skill" and inp.get("skill") == "verify-distbench" and t.ok(j))):
                     read = at(t, line)
-                if name == "Bash" and "control-distbench" in text and t.ran(j):
+                if name == "Bash" and "control-distbench" in text and t.ok(j):
                     launch = launch or (at(t, line) if LAUNCH.search(text) else None)
                     drive = drive or (at(t, line) if DRIVE.search(text) else None)
     if read and launch and drive:

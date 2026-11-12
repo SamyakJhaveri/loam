@@ -183,11 +183,20 @@ def guarded_gate(run: Path) -> None:
     edit_events(run / "round-1.jsonl", edit)
 
 
+def failed_launch(run: Path) -> None:
+    """The proof chain failed at its launch, so the drive never ran."""
+    def edit(item: dict) -> None:
+        if item["type"] == "tool_result" and item["tool_use_id"] == "toolu_proof":
+            item.update(is_error=True, content="Exit code 1\nError: runner failed to launch; drive never executed")
+    edit_events(run / "round-2.jsonl", edit)
+
+
 # Audit 3 repros (the verifier's audit3-verify.md): (name, committed case, edit of its run folder, id, expected).
 VARIANTS = [
     ("c2-failed-reads", "p3-pass", failed_skill_reads, "P2", "FAIL"),  # a read whose result is an error read nothing
     ("c2-failed-reads", "p3-pass", failed_skill_reads, "P3", "FAIL"),
     ("c3-guard", "p4-pass", guarded_gate, "P4", "PASS"),  # `guard bin/check` runs the gate
+    ("c4-failed-launch", "p6-pass", failed_launch, "P6", "FAIL"),  # a proof call that failed proves nothing
 ]
 
 
