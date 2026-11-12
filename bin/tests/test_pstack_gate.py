@@ -29,6 +29,24 @@ fp = importlib.util.module_from_spec(importlib.util.spec_from_loader(_loader.nam
 _loader.exec_module(fp)
 
 
+@pytest.fixture(autouse=True)
+def host(tmp_path_factory: pytest.TempPathFactory, monkeypatch: pytest.MonkeyPatch) -> Path:
+    """A Claude config dir with a pstack plugin holding a method and the seed-skills marketplace holding the router,
+    as on jhaveris, so these tests do not depend on the host's own plugins; returns the config dir."""
+    root = tmp_path_factory.mktemp("host")
+    for rel in ("pstack/skills/tdd/SKILL.md", "marketplace/sam-cc-setup/skills/pstack/SKILL.md"):
+        (root / rel).parent.mkdir(parents=True)
+        (root / rel).write_text("# skill\n", encoding="utf-8")
+    plugins = root / "config" / "plugins"
+    plugins.mkdir(parents=True)
+    (plugins / "installed_plugins.json").write_text(json.dumps(
+        {"version": 2, "plugins": {"pstack@cursor-plugins": [{"scope": "user", "installPath": str(root / "pstack")}]}}))
+    (plugins / "known_marketplaces.json").write_text(json.dumps(
+        {"seed-skills": {"installLocation": str(root / "marketplace")}}))
+    monkeypatch.setenv("CLAUDE_CONFIG_DIR", str(root / "config"))
+    return root / "config"
+
+
 def events(case: str) -> list[dict]:
     return [json.loads(x) for x in (FIXTURES / f"{case}.jsonl").read_text(encoding="utf-8").splitlines()]
 
@@ -207,3 +225,12 @@ def test_the_hooks_fragment_runs_the_frozen_gate_and_runs_nothing_without_one(tm
     assert_blocked(run({**base, "LOAM_CHECKS": str(gate.parent / "checks.sh")}))
     r = run(base)
     assert r.returncode == 0 and "pstack-gate:" in r.stderr and "missing" in r.stderr
+
+
+@pytest.mark.parametrize("gone", ["installed_plugins.json", "known_marketplaces.json"])
+def test_a_host_without_pstack_lets_the_change_run_and_says_so(tmp_path, host, gone):
+    """audit3 F4: with no pstack method file or no router on the host, no change could ever pass: fail open."""
+    (host / "plugins" / gone).unlink()
+    r = replay(tmp_path, "w34-r1-router-only", 153)
+    assert r.returncode == 0, r.stderr
+    assert r.stderr.startswith("pstack-gate: not gating this call") and len(r.stderr.strip().splitlines()) == 1, r.stderr

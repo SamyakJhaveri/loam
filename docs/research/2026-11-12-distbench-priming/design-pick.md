@@ -19,9 +19,9 @@ Claude Code 2.1.322, `claude -p`, 1.24 USD.
 
 | Req | Mechanism | When | Observable; parity |
 |---|---|---|---|
-| (a) sandbox | Native shell (U3): flag tier = `worker-settings.json` minus sandbox plus `worker-settings-native.json`, no user-tier merge; call `--permission-mode auto --setting-sources user,project,local --plugin-dir`. Loam targets unchanged. | tonight | init auto, frozen sandbox off, digests equal; P7 |
+| (a) sandbox | Native shell (U3): flag tier = `worker-settings.json` minus sandbox plus `worker-settings-native.json`, no user-tier merge; call `--permission-mode auto --setting-sources user,project,local --plugin-dir`. Loam targets keep their sandbox; the pstack gate hook (U5) runs on every target, Loam included. | tonight | init auto, frozen sandbox off, digests equal; P7 |
 | (b) gate cap | Flag env `BASH_DEFAULT_TIMEOUT_MS` = `BASH_MAX_TIMEOUT_MS` = 5400000 and `DISTBENCH_GATE_CLASS=factory`; F48 (Appendix) runs every spelling of `bin/check` as `--parallel`. | tonight | in-round `check: PASSED` or `FAILED`; P4 |
-| (c) pstack | Router log line (U2) in D plan line 203's five fields; native user CLAUDE.md and `_common.md:14` name the router; P2 and P3 as fixed (U1). Hook: T1. | tonight | decisions.md `pstack:` lines; P2, P3 |
+| (c) pstack | Router log line (U2) in D plan line 203's five fields; native user CLAUDE.md and `_common.md:14` name the router; P2 and P3 as fixed (U1). Hook: U5's PreToolUse gate (`pstack-gate.py`, parity's P2 and P3) on every target; it fails open on a host with no pstack method file or router. | tonight | decisions.md `pstack:` lines; P2, P3 |
 | (d) reviews | `FACTORY_REVIEWER_MODEL=claude-fable-5-2` at high, `availableModels` in frozen role settings; Codex from the ticket's `codex-review: yes`; `verify_round` (U4) reproduces each blocking finding before `fixes`. Default, blind bundle: T7; audit, surprise-me: T9. | tonight | reviewer `served_models`; `verify.json`; P8 |
 | (e) proof | verify-distbench loads natively; plan steps 1-3 run in-round on jhaveris. Steps 4-6: T3, T10. | tonight | P1, P4; P6 N/A for F48 |
 | (f) scheduling | Proof launched by hand under the launch condition. Tick, lane, land, slots, scopes: T3, T4. | ticket | - |
