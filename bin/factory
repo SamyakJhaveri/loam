@@ -1345,7 +1345,8 @@ finish() { # status message
 # run_traps once the run directory and the frozen set exist; call_start replaces it for a call and call_end re-arms it.
 killed() { # signal code
   local words
-  trap '' INT TERM HUP
+  trap '' INT TERM HUP PIPE
+  exec > /dev/null 2>&1   # the terminal or pipe went with the signal; factory.log keeps every line (call_abort)
   set_status stopped-killed
   words=$(exit_words stopped-killed)
   notify "${words%% *}" "$(ticket_name) ${words#* }" "SIG$1 at $(now); the run directory is $RUN" stopped-killed
@@ -2411,6 +2412,9 @@ call_reap() { # role
 call_abort() { # signal status
   local killer
   trap '' INT TERM HUP
+  # The signal that reached the supervisor also took its terminal or the pipe it writes to (a `| tee` launch): from
+  # here it writes only factory.log, or the first log line's write would kill it by SIGPIPE before it alerts.
+  [ -z "${RUN_TRAPS:-}" ] || { trap '' PIPE; exec > /dev/null 2>&1; }
   log "the supervisor got $1 during a model call; ending the call's processes"
   call_signal TERM; call_signal CONT
   ( sleep 10; call_signal KILL ) & killer=$!
