@@ -6,7 +6,6 @@ run directory with base.sha, round-N.graded.sha and worker/decisions.md, and run
 
 from __future__ import annotations
 
-import json
 import os
 import pathlib
 import subprocess
@@ -64,6 +63,9 @@ def test_docs_only_round_passes_with_no_declaration(tmp_path):
     repo, run = setup(tmp_path, {"README.md": "calc, documented\n" * 20, "docs/use.md": "how\n"}, "")
     rc, out = check(repo, run)
     assert (rc, out.split(":")[0]) == (0, "PASS method-evidence") and "docs only" in out
+    head = commit(repo, {"docs/tool.py": "X = 1\n" * 6})   # code under docs/ is code
+    rc, out = check(repo, run, head=head)
+    assert rc == 1 and "declared no method" in out, out
 
 
 def test_code_round_with_no_declaration_fails_naming_the_files(tmp_path):
@@ -83,7 +85,7 @@ def test_trivial_round_passes_and_a_six_line_one_does_not(tmp_path):
 
 def test_tdd_test_that_fails_at_base_and_passes_at_head_passes(tmp_path):
     repo, run = setup(tmp_path, {"calc.py": FIXED, "test_calc.py": TEST_ADD},
-                      f"Round 1\n- method: tdd | test: {PYTEST}\n")
+                      f"Round 1\n- `method: tdd | test: {PYTEST}`\n")   # backticks and list marks are ignored
     rc, out = check(repo, run)
     assert rc == 0 and out.startswith("PASS method-evidence:") and "exit 0 at head, exit 1 with" in out, out
     assert not [w for w in git(repo, "worktree", "list").splitlines() if "method-evidence" in w]
@@ -104,23 +106,31 @@ def test_a_test_that_passes_at_base_too_fails(tmp_path):
     assert rc == 1 and "does not fail before the change" in out, out
 
 
-def test_a_test_command_that_is_not_found_at_base_is_no_failing_test(tmp_path):
-    # Exit 127 at base is a missing command, not a red test: here the test is a script the round adds.
+def test_an_added_script_the_test_command_names_stays_at_base(tmp_path):
+    # check.sh is the round's test: it stays when calc.py goes back to base, so its exit there is a real red, and a
+    # script that also passes at base is caught (deleted, it would exit 127 and look like a red test).
     repo, run = setup(tmp_path, {"calc.py": FIXED, "check.sh": f"{PY} -c 'import calc; assert calc.add(2, 3) == 5'\n"},
                       "Round 1\nmethod: principle-fix-root-causes | test: bash check.sh\n")
     rc, out = check(repo, run)
-    assert rc == 1 and "exit 127" in out, out
+    assert rc == 0 and "exit 1 with" in out, out
+    head = commit(repo, {"check.sh": "true\n"})
+    rc, out = check(repo, run, head=head)
+    assert rc == 1 and "does not fail before the change" in out, out
 
 
-def test_proof_route_matches_the_declared_exit_code(tmp_path):
-    proof = f"{PY} -c 'import calc, sys; sys.exit(calc.add(2, 3))'"
-    repo, run = setup(tmp_path, {"calc.py": FIXED + "\n\ndef h():\n    return 2\n\n\ndef k():\n    return 3\n"},
-                      f"Round 1\nmethod: principle-prove-it-works | proof: {proof} | exit 5\n")
+def test_proof_route_matches_the_declared_exit_code_and_only_a_proof_method_takes_it(tmp_path):
+    proof = f"{PY} -c 'import calc, sys; sys.exit(calc.add(3, 2))'"
+    repo, run = setup(tmp_path, {"calc.py": BUGGY + "\n\ndef h():\n    return 2\n\n\ndef k():\n    return 3\n"},
+                      f"Round 1\nmethod: principle-laziness-protocol | proof: {proof} | exit 1.\n")
     rc, out = check(repo, run)
-    assert rc == 0 and "exit 5 at head, as declared" in out, out
-    (run / "worker/decisions.md").write_text(f"Round 1\nmethod: principle-prove-it-works | proof: {proof} | exit 0\n")
+    assert rc == 0 and "exit 1 at head, as declared" in out, out
+    (run / "worker/decisions.md").write_text(f"Round 1\nmethod: principle-laziness-protocol | proof: {proof} | exit 0\n")
     rc, out = check(repo, run)
-    assert rc == 1 and "declared exit 0 but exit 5" in out, out
+    assert rc == 1 and "declared exit 0 but exit 1" in out, out
+    # A source change under any other method owes a test, whatever proof it names.
+    (run / "worker/decisions.md").write_text("Round 1\nmethod: principle-prove-it-works | proof: true | exit 0\n")
+    rc, out = check(repo, run)
+    assert rc == 1 and "owes a test" in out, out
 
 
 def test_a_round_one_declaration_does_not_satisfy_round_two(tmp_path):
@@ -131,17 +141,3 @@ def test_a_round_one_declaration_does_not_satisfy_round_two(tmp_path):
     (run / "worker/decisions.md").write_text(f"Round 1\nmethod: tdd | test: {PYTEST}\nRound 2\n- Round 2: added f0..f2.\n")
     rc, out = check(repo, run, n=2)
     assert rc == 1 and "round 2 changed calc.py" in out and r1[:8] in out, out
-
-
-def test_with_no_header_a_line_a_later_transcript_wrote_is_that_rounds(tmp_path):
-    # W41's shape: no Round headers. The line is in round 2's Write input, so it is round 2's, not round 1's.
-    line = f"- method: tdd | test: {PYTEST}"
-    repo, run = setup(tmp_path, {"calc.py": FIXED, "test_calc.py": TEST_ADD}, line + "\n")
-    event = {"type": "assistant", "message": {"content": [
-        {"type": "tool_use", "name": "Write", "input": {"file_path": "decisions.md", "content": line + "\n"}}]}}
-    (run / "round-2.jsonl").write_text(json.dumps(event) + "\n")
-    rc, out = check(repo, run)
-    assert rc == 1 and "declared no method" in out, out
-    (run / "round-2.jsonl").write_text("")
-    rc, out = check(repo, run)
-    assert rc == 0, out

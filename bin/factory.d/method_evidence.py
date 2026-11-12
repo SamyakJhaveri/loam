@@ -10,27 +10,26 @@ ticket's checks (round_checks); it also runs by hand on an old run directory.
 
 The round is base..head: base is --base, else <run>/round-N.start.sha, else base.sha for round 1, else
 round-(N-1).graded.sha; head is --head, else round-N.graded.sha. A round with no change, a docs-only change (every
-path .md, .txt or .rst, or under docs/) or a trivial one (at most 5 changed lines outside docs and no added file
+path .md or .rst) or a trivial one (at most 5 changed lines outside docs and no added file
 outside docs) passes with no method. Any other round declares its method in <run>/worker/decisions.md:
   method: <skill> | test: <command>
   method: <skill> | proof: <command> | exit <code>
-(a leading `- ` or `* ` allowed); an older `pstack: <skill> | ...` line declares <skill> too, its other fields unread.
-A line belongs to round N when it follows the `Round N` header the supervisor writes; a decisions.md with no header
-gives a line to the first round K >= 2 whose round-K.jsonl tool_use inputs hold its first 40 characters, else round 1.
+(list marks, backticks and asterisks ignored); an older `pstack: <skill> | ...` line declares <skill> too, its other
+fields unread. A line belongs to round N when it follows the `Round N` header the supervisor writes; with no header
+(a run from before them) every line is round 1's.
 
 Each declaration is graded once per distinct command. Test route (a `test:` command, a method in TEST_METHODS, or a
-round that changed a non-test source file with no `proof:`): its own command, else the round's first `test:` command,
+round that changed a non-test source file, unless a method in PROOF_METHODS names a `proof:`): its own command, else the round's first `test:` command,
 else `python3 -m pytest -q -p no:cacheprovider` on the round's changed test_*.py and *_test.py files, must exit 0 in a
 detached worktree at head, then, with every changed non-test file put back to base (an added one deleted), exit
-non-zero and not 5, 126 or 127. A round whose code changes are all test files has nothing to put back, so its test only
+non-zero and not 5, 126 or 127; an added file the command names stays, as the test. A round whose code changes are all test files has nothing to put back, so its test only
 has to pass at head. Proof route: the `proof:` command at head must exit with the declared code. A declaration with no
-command that owes no test is covered by the round's other declarations; a round with nothing to run fails. Each run gets METHOD_EVIDENCE_TIMEOUT_SEC seconds (900), in a session of its
-own whose process group, and on Linux every orphan it leaves, gets KILL when it ends. python3 stdlib only.
+command that owes no test is covered by the round's other declarations; a round with nothing to run fails. Each run gets
+METHOD_EVIDENCE_TIMEOUT_SEC seconds (900) through mutation_sweep.py's run, frozen beside it. python3 stdlib only.
 """
 from __future__ import annotations
 
 import argparse
-import json
 import os
 import re
 import shutil
@@ -38,23 +37,27 @@ import signal
 import subprocess
 import sys
 import tempfile
-import time
 from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))  # python3 -I leaves the script's folder off the path
+import mutation_sweep as ms  # noqa: E402 - its run, stop and subreaper, frozen beside this file
 
 NAME = "method-evidence"
 TEST_METHODS = {"tdd", "principle-fix-root-causes", "principle-attack-the-premise",
                 "principle-test-behavior-not-implementation"}
+# The methods for work that need not change behavior (a refactor, a measured number): only they may grade a source
+# change by a proof; any other method owes a test that fails before the change.
+PROOF_METHODS = {"principle-laziness-protocol", "principle-subtract-before-you-add", "principle-explain-the-number",
+                 "benchmark-checklist"}
 TRIVIAL_LINES = 5
 NOT_A_FAIL = {5: "no tests ran", 126: "not executable", 127: "command not found"}
-DOC_SUFFIXES = (".md", ".txt", ".rst")
+DOC_SUFFIXES = (".md", ".rst")
 TEST_FILE = re.compile(r"test_.*\.py|.*_test\.py")
 HEADER = re.compile(r"Round (\d+)")
 METHOD = re.compile(r"(?:[-*] )?method:\s*([^|]+?)\s*\|\s*(.*)")
 PSTACK = re.compile(r"(?:[-*] )?pstack:\s*([^|]+?)\s*\|")
-PROOF = re.compile(r"proof:\s*(.+?)\s*\|\s*exit\s+(-?\d+)\s*")
+PROOF = re.compile(r"proof:\s*(.+?)\s*\|\s*exit\s+(-?\d+)\.?\s*")
 TIMEOUT = float(os.environ.get("METHOD_EVIDENCE_TIMEOUT_SEC", "900"))
-CURRENT: subprocess.Popen | None = None
-SUBREAPER = False
 
 
 class Unusable(Exception):
@@ -69,7 +72,7 @@ def git(repo: str | Path, *args: str) -> str:
 
 
 def is_doc(path: str) -> bool:
-    return path.endswith(DOC_SUFFIXES) or path.startswith("docs/")
+    return path.endswith(DOC_SUFFIXES)
 
 
 def is_test(path: str) -> bool:
@@ -114,58 +117,14 @@ def changes(repo: str, base: str, head: str) -> list[tuple[str, str, int | None]
     return rows
 
 
-def tool_inputs(jsonl: Path) -> list[str]:
-    """Every string inside the tool_use inputs of a stream-json transcript."""
-    out: list[str] = []
-
-    def walk(v: object) -> None:
-        if isinstance(v, str):
-            out.append(v)
-        elif isinstance(v, dict):
-            for x in v.values():
-                walk(x)
-        elif isinstance(v, list):
-            for x in v:
-                walk(x)
-
-    try:
-        lines = jsonl.read_text(errors="replace").splitlines()
-    except OSError:
-        return out
-    for line in lines:
-        try:
-            ev = json.loads(line)
-        except ValueError:
-            continue
-        content = (ev.get("message") or {}).get("content") if isinstance(ev, dict) else None
-        for c in content if isinstance(content, list) else []:
-            if isinstance(c, dict) and c.get("type") == "tool_use":
-                walk(c.get("input"))
-    return out
-
-
-def round_lines(run: Path, n: int, text: str) -> list[str]:
-    """The decisions.md lines that belong to round n."""
-    lines = text.splitlines()
-    if any(HEADER.fullmatch(x) for x in lines):
-        cur, mine = 1, []
-        for x in lines:
-            m = HEADER.fullmatch(x)
-            if m:
-                cur = int(m.group(1))
-            elif cur == n:
-                mine.append(x)
-        return mine
-    # No header (a run before the supervisor wrote them): a line is the first later round's whose transcript wrote it.
-    # Every round with a transcript is searched, so a line a later round wrote is never given to round 1.
-    later = sorted((int(m.group(1)), p) for p in run.glob("round-*.jsonl")
-                   if (m := re.fullmatch(r"round-(\d+)\.jsonl", p.name)) and int(m.group(1)) >= 2)
-    inputs = {k: tool_inputs(p) for k, p in later}
-    mine = []
-    for x in lines:
-        key = x[:40]
-        owner = next((k for k, _ in later if key.strip() and any(key in s for s in inputs[k])), 1)
-        if owner == n:
+def round_lines(n: int, text: str) -> list[str]:
+    """The decisions.md lines that belong to round n: those after its `Round n` header, or all of them for round 1."""
+    cur, mine = 1, []
+    for x in text.splitlines():
+        m = HEADER.fullmatch(x)
+        if m:
+            cur = int(m.group(1))
+        elif cur == n:
             mine.append(x)
     return mine
 
@@ -174,8 +133,8 @@ def declarations(lines: list[str]) -> list[tuple[str, str | None, str | None, in
     """(skill, 'test'|'proof'|None, command, declared exit) per method or pstack line."""
     out = []
     for x in lines:
-        x = x.strip()
-        m = METHOD.fullmatch(x)
+        x = re.sub(r"[`*]", "", x).strip()
+        m = METHOD.search(x)
         if m:
             skill, rest = m.group(1), m.group(2).strip()
             p = PROOF.fullmatch(rest)
@@ -192,75 +151,13 @@ def declarations(lines: list[str]) -> list[tuple[str, str | None, str | None, in
     return out
 
 
-def kill_group(pid: int) -> None:
-    try:
-        os.killpg(pid, signal.SIGKILL)
-    except (ProcessLookupError, PermissionError):
-        pass
-
-
-def subreaper() -> bool:
-    """On Linux, make this process the child subreaper of its descendants (prctl PR_SET_CHILD_SUBREAPER), so a test's
-    child that starts a session of its own is orphaned to the checker, not to init, and killed with the run."""
-    if not sys.platform.startswith("linux"):
-        return False
-    import ctypes
-    return ctypes.CDLL(None, use_errno=True).prctl(36, 1, 0, 0, 0) == 0
-
-
-def kill_orphans() -> None:
-    """KILL every descendant left after a run's group KILL (as subreaper they are the run's orphans), for 5 s at most."""
-    end = time.monotonic() + 5
-    while time.monotonic() < end:
-        kids: dict[int, list[int]] = {}
-        for stat in Path("/proc").glob("[0-9]*/stat"):
-            try:
-                s = stat.read_bytes()
-            except OSError:
-                continue
-            kids.setdefault(int(s[s.rindex(b")") + 2:].split()[1]), []).append(int(stat.parent.name))
-        mine, todo = [], list(kids.get(os.getpid(), []))
-        while todo:
-            pid = todo.pop()
-            mine.append(pid)
-            todo.extend(kids.get(pid, []))
-        if not mine:
-            return
-        for pid in mine:
-            try:
-                os.kill(pid, signal.SIGKILL)
-            except ProcessLookupError:
-                pass
-        for pid in kids.get(os.getpid(), []):
-            try:
-                os.waitpid(pid, os.WNOHANG)
-            except ChildProcessError:
-                pass
-        time.sleep(0.05)
-
-
 def run(cmd: str, wt: Path) -> tuple[int | None, str]:
     """(exit code, or None on a timeout; the output's last non-empty line) of `bash -c cmd` in wt."""
-    global CURRENT
     env = {k: v for k, v in os.environ.items() if k != "PYTEST_ADDOPTS"}
     env["PYTHONDONTWRITEBYTECODE"] = "1"
-    with open(os.devnull, "rb") as stdin, tempfile.TemporaryFile() as log:
-        p = subprocess.Popen(["bash", "-c", cmd], cwd=wt, env=env, stdin=stdin, stdout=log, stderr=subprocess.STDOUT,
-                             start_new_session=True)
-        CURRENT = p
-        try:
-            rc: int | None = p.wait(timeout=TIMEOUT)
-        except subprocess.TimeoutExpired:
-            rc = None
-        finally:
-            kill_group(p.pid)
-            p.wait()
-            if SUBREAPER:
-                kill_orphans()
-            CURRENT = None
-        log.seek(0)
-        tail = [x.strip() for x in log.read().decode("utf-8", "replace").splitlines() if x.strip()]
-    return rc, (tail[-1][:200] if tail else "no output")
+    rc, _, tail = ms.run(["bash", "-c", cmd], wt, env, TIMEOUT)
+    lines = [x.strip() for x in tail.splitlines() if x.strip()]
+    return rc, (lines[-1][:200] if lines else "no output")
 
 
 def shown(rc: int | None) -> str:
@@ -273,7 +170,7 @@ def grade_test(cmd: str, wt: Path, base: str, restore: list[tuple[str, str]]) ->
         return False, f"test `{cmd}` must pass at head but {shown(rc)} ({tail})"
     if not restore:
         return True, f"test `{cmd}` exit 0 at head; the round changed only test files, so no base run"
-    added = [p for st, p in restore if st == "A"]
+    added = [p for st, p in restore if st == "A" and p not in cmd.split()]
     for p in added:
         (wt / p).unlink(missing_ok=True)
     back = [p for st, p in restore if st != "A"]
@@ -306,7 +203,7 @@ def grade(run_dir: Path, n: int, repo: str, base: str, head: str) -> tuple[bool,
         text = dec_file.read_text(errors="replace")
     except OSError as e:
         raise Unusable(f"cannot read {dec_file}: {e}") from e
-    decs = declarations(round_lines(run_dir, n, text))
+    decs = declarations(round_lines(n, text))
     names = ", ".join(r[1] for r in code[:8]) + (f" and {len(code) - 8} more" if len(code) > 8 else "")
     if not decs:
         return False, (f"round {n} changed {names} ({span}) but declared no method in decisions.md; write "
@@ -318,7 +215,7 @@ def grade(run_dir: Path, n: int, repo: str, base: str, head: str) -> tuple[bool,
         "python3 -m pytest -q -p no:cacheprovider " + " ".join(tests) if tests else None)
     jobs: dict[tuple, str] = {}  # (route, command, declared exit) -> the skills that declared it
     for skill, kind, cmd, want in decs:
-        if kind == "test" or skill in TEST_METHODS or (source and kind != "proof"):
+        if kind == "test" or skill in TEST_METHODS or (source and not (kind == "proof" and skill in PROOF_METHODS)):
             key = ("test", cmd if kind == "test" else fallback, None)
         elif kind == "proof":
             key = ("proof", cmd, want)
@@ -377,15 +274,8 @@ def main(argv: list[str]) -> int:
     return 0 if ok else 1
 
 
-def stop(signum: int, _frame: object) -> None:
-    """A TERM, INT or HUP kills the run in progress; the temporary worktree goes on the way out."""
-    if CURRENT is not None:
-        kill_group(CURRENT.pid)
-    raise SystemExit(128 + signum)
-
-
 if __name__ == "__main__":
     for sig in (signal.SIGTERM, signal.SIGINT, signal.SIGHUP):
-        signal.signal(sig, stop)
-    SUBREAPER = subreaper()
+        signal.signal(sig, ms.stop)
+    ms.SUBREAPER = ms.subreaper()
     sys.exit(main(sys.argv[1:]))
