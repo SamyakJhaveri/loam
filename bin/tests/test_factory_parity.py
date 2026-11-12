@@ -35,7 +35,7 @@ CASES = [
     ("p2-ticket", "P2", "PASS"),  # the ticket's skills: line names it
     ("p2-ticket", "P3", "PASS"),
     ("p2-unnamed", "P2", "FAIL"),  # neither brief nor ticket names it
-    ("p2-unnamed", "P3", "FAIL"),
+    ("p2-unnamed", "P3", "PASS"),  # its method read comes first; no pstack: line is owed since method: lines replaced it
     ("p2-gated", "P2", "PASS"),  # a Write the pstack-gate hook blocked never ran, so it is not the first change
     ("p2-gated", "P3", "PASS"),
     ("p2-denied", "P2", "FAIL"),  # the router `cat` was denied, so it is no read
@@ -43,7 +43,6 @@ CASES = [
     ("p3-partial", "P3", "FAIL"),  # W34: those reads by sed -n | head
     ("p3-fail", "P3", "FAIL"),  # W34 without those reads
     ("p3-claim", "P3", "FAIL"),  # a pstack: line names a method no transcript read
-    ("p3-no-line", "P3", "FAIL"),  # W34's real decisions.md: a change but no pstack: line
     ("p3-order", "P3", "PASS"),  # the method read before the router read still counts
     ("p4-pass", "P4", "PASS"),  # bin/check result ends check: PASSED
     ("p4-fail", "P4", "FAIL"),  # W34: bin/check timed out, no check: line
