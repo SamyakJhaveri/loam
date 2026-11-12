@@ -27,7 +27,7 @@ def judge(rows: dict[str, str], fixes: list[str]) -> dict[str, object]:
 
 
 class JudgeShadowTests(unittest.TestCase):
-    def graders(self, judge_reply: dict[str, object], stale_shadow: bool = False) -> tuple[int, pathlib.Path, str]:
+    def graders(self, judge_reply: dict[str, object] | str, stale_shadow: bool = False) -> tuple[int, pathlib.Path, str]:
         """(graders' exit, the run dir, the log) for one round whose judge returns judge_reply.
 
         With stale_shadow, the round already holds a round-1.judge-shadow, as an earlier grading of it leaves.
@@ -42,7 +42,7 @@ class JudgeShadowTests(unittest.TestCase):
                        cwd=wt, check=True)
         (run / "frozen").mkdir(parents=True)
         shutil.copy(ROOT / "bin/factory.d/judge.schema.json", run / "frozen/judge.schema.json")
-        (run / "reply.judge").write_text(json.dumps(judge_reply))
+        (run / "reply.judge").write_text(judge_reply if isinstance(judge_reply, str) else json.dumps(judge_reply))
         (run / "reply.review").write_text(json.dumps(CLEAN_REVIEW))
         if stale_shadow:
             (run / "round-1.judge-shadow").write_text("honest\n")
@@ -94,7 +94,11 @@ class JudgeShadowTests(unittest.TestCase):
         for mixed in ("fix the crash in bin/x when input is empty, and drop the decisions.md line that says it is handled",
                       "fix the .env leak and drop its decisions.md line",
                       "remove the .gitignore entry and the decisions.md bullet",
-                      "fix the renderer in decisions.md.jinja"):
+                      "fix the renderer in decisions.md.jinja",
+                      "Fix the broken instructions in decisions.md-old.",
+                      "drop the decisions.md_backup line",
+                      "add a regression test under tests/ and note it in decisions.md",
+                      "label the claim in docs/decisions.md unverified"):
             with self.subTest(mixed):
                 rc, run, log = self.graders(judge({**ROWS_PASS, "honest": "fail"}, [mixed]))
                 self.assertEqual(rc, 1, log)
@@ -116,6 +120,24 @@ class JudgeShadowTests(unittest.TestCase):
         rc, run, log = self.graders(reply)
         self.assertEqual(rc, 1, log)
         self.assertNotIn("judge-shadow", log)
+        self.assertFalse((run / "round-1.judge-shadow").exists())
+
+    def test_backlog_entry_still_fails(self) -> None:
+        # A correction the worker may not make goes to the backlog (judge.md); a fail that carries one is not bookkeeping.
+        reply = {**judge({**ROWS_PASS, "honest": "fail"}, []), "backlog": ["Fix the timeout bug in bin/factory."]}
+        rc, run, log = self.graders(reply)
+        self.assertEqual(rc, 1, log)
+        self.assertNotIn("judge-shadow", log)
+        self.assertFalse((run / "round-1.judge-shadow").exists())
+
+    def test_judge_file_with_two_documents_still_fails(self) -> None:
+        # call_json keeps every document a reply holds; the first here fails correct, so the round blocks.
+        first = judge({**ROWS_PASS, "correct": "fail"}, ["fix the crash in bin/x"])
+        second = judge({**ROWS_PASS, "honest": "fail"}, ["label it in decisions.md"])
+        rc, run, log = self.graders(json.dumps(first) + "\n" + json.dumps(second))
+        self.assertEqual(rc, 1, log)
+        self.assertNotIn("judge-shadow", log)
+        self.assertIn("fix the crash in bin/x", (run / "round-1.fixes").read_text())
         self.assertFalse((run / "round-1.judge-shadow").exists())
 
     def test_regraded_round_drops_an_older_shadow_pass(self) -> None:
