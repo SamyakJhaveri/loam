@@ -155,6 +155,15 @@ def test_a_subagent_payload_is_judged_on_its_own_transcript(tmp_path):
     assert r.returncode == 0 and not r.stderr
 
 
+def test_a_workflow_builder_payload_is_judged_on_its_own_transcript(tmp_path):
+    """audit3 F5: a Workflow agent's transcript sits under subagents/workflows/<run>/; with no router read, blocked."""
+    main = session(tmp_path, "headless")
+    use = next(u for s, u in calls("w34-r2") if s == 39)
+    write(main.with_suffix("") / "subagents" / "workflows" / "wf_x" / "agent-x1.jsonl",
+          [e for e in events("w34-r2") if e["src"] < 39])
+    assert_blocked(hook(payload(main, use, agent_id="x1")))
+
+
 METHOD = "/home/samyak/.claude/plugins/cache/cursor-plugins/pstack/0.15.36/skills/principle-prove-it-works/SKILL.md"
 LOGGED = f"pstack: principle-prove-it-works | {METHOD} | {'0' * 64} | \"Verify every task output\" | proof by git diff\n"
 UNREAD = ("pstack: principle-fix-root-causes | /home/samyak/.claude/plugins/cache/cursor-plugins/pstack/0.15.36/skills/"

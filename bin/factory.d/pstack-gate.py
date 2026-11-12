@@ -7,8 +7,8 @@ Reads the hook payload on stdin. A call that bin/factory-parity's changes() call
 so far with this call as its next one. Any other call, and any change once they pass, exits 0.
 
 The calling transcript is the payload's transcript_path, or for a subagent (agent_id set)
-`<transcript_path without .jsonl>/subagents/agent-<agent_id>.jsonl`, read beside the main one (whose skill listing
-names the pstack methods). A call an earlier run of this hook blocked never ran, so it is left out: its tool result
+`<transcript_path without .jsonl>/subagents/**/agent-<agent_id>.jsonl` (a Workflow agent's is under
+workflows/<run>/), read beside the main one (whose skill listing names the pstack methods). A call an earlier run of this hook blocked never ran, so it is left out: its tool result
 holds BLOCKED. The rules (what a change is, what a router or method read is, decisions.md) are parity's alone:
 factory-parity is loaded from this file's folder (a run's frozen/) or its parent (bin/ in a checkout).
 In a run's frozen/ folder the run is the parent folder: P3 reads its worker/decisions.md, and the calling round is one
@@ -101,6 +101,7 @@ def verdict(payload: dict, fp, run: Path | None) -> str | None:
     agent = payload.get("agent_id")
     if agent:
         sub = main.with_suffix("") / "subagents" / f"agent-{agent}.jsonl"
+        sub = next(main.with_suffix("").glob(f"subagents/**/agent-{agent}.jsonl"), sub)  # a Workflow's: workflows/<run>/
         caller = so_far(fp, sub, sub.name, False, projects, pending)
         top = so_far(fp, main, main.name, True, projects)
         transcripts = [caller, top]
