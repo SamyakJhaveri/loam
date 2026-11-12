@@ -1,5 +1,6 @@
-"""A judge fail on only bookkeeping rows (JUDGE_SHADOW_ROWS, `honest`) logs judge-shadow and does not block (owner,
-12 Nov 2026); a fail on a substantive row (`correct`, `verified`) still fails the graders.
+"""A judge fail on only bookkeeping rows (JUDGE_SHADOW_ROWS, `honest`) whose fixes all edit decisions.md logs judge-shadow
+and does not block (owner, 12 Nov 2026); a fail on a substantive row (`correct`, `verified`), or with a fix for the change
+itself, still fails the graders.
 
 `bin/factory` is sourced (FACTORY_SOURCED=1) and the real graders, run_judge and run_review run over a throwaway git
 worktree. Only the model call (call_json) is stubbed: it writes the reply named for its role and records the role, so
@@ -53,12 +54,21 @@ class JudgeShadowTests(unittest.TestCase):
         return int(proc.stdout.split("graders=")[1].split()[0]), run, (run / "log").read_text()
 
     def test_bookkeeping_row_fail_reaches_the_reviewer_and_logs_judge_shadow(self) -> None:
-        rc, run, log = self.graders(judge({**ROWS_PASS, "honest": "fail"}, ["label the SKIP step unverified"]))
+        rc, run, log = self.graders(judge({**ROWS_PASS, "honest": "fail"}, ["label the SKIP step unverified in decisions.md"]))
         self.assertEqual(rc, 0, log)
         self.assertIn("judge-shadow", log)
         self.assertEqual((run / "calls").read_text().split(), ["judge", "sweep", "reviewer"])
         self.assertEqual((run / "round-1.fixes").read_text(), "")
         self.assertEqual((run / "round-1.judge-shadow").read_text().strip(), "honest")
+
+    def test_substantive_fix_beside_a_bookkeeping_row_fail_still_fails(self) -> None:
+        # Every row but honest passes, yet one fix is for the change itself: the fail blocks on it, as with no honest fail.
+        crash, label = "fix the crash in bin/x when the input is empty", "label the SKIP step unverified in decisions.md"
+        rc, run, log = self.graders(judge({**ROWS_PASS, "honest": "fail"}, [crash, label]))
+        self.assertEqual(rc, 1, log)
+        self.assertNotIn("judge-shadow", log)
+        self.assertEqual((run / "round-1.fixes").read_text(), f"- {crash}\n- {label}\n")
+        self.assertFalse((run / "round-1.judge-shadow").exists())
 
     def test_substantive_row_fail_still_fails(self) -> None:
         for name, rows in (("verified", {**ROWS_PASS, "verified": "fail"}),

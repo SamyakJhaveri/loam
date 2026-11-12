@@ -2583,15 +2583,17 @@ run_judge() { # round -> 0 on a pass verdict, or a fail on only JUDGE_SHADOW_ROW
   build_evidence "$RUN/frozen/judge.md" 4000 > "$pf"
   call_json "$round" judge judge "$pf" "$RUN/frozen/judge.schema.json"
   log "judge verdict: $(jq -r .verdict "$f") rows=$(jq -c '.rows // {}' "$f")"
-  # The failing rows (a required row that is missing counts), printed only when every one is a shadow row.
+  # The failing rows (a required row that is missing counts), printed only when every one is a shadow row and every
+  # fix edits decisions.md: a fail may carry a fix for the change itself with every other row pass, and that blocks.
   shadow=$(jq -r --slurpfile s "$RUN/frozen/judge.schema.json" --arg sh "$JUDGE_SHADOW_ROWS" '
-    select(.verdict != "pass" and (.unparseable // false | not)) | (.rows // {}) as $r
+    select(.verdict != "pass" and (.unparseable // false | not))
+    | select(all((.fixes // [])[]; type == "string" and test("decisions\\.md"))) | (.rows // {}) as $r
     | [([$s[0].properties.rows.required[]?] + ($r | keys)) | unique[] | select($r[.] != "pass")] as $failed
     | select(($failed | length) > 0 and ($failed - ($sh | split(" "))) == []) | $failed | join(" ")' "$f" 2> /dev/null)
   if [ -n "$shadow" ]; then
     : > "$RUN/round-$round.fixes"
     printf '%s\n' "$shadow" > "$RUN/round-$round.judge-shadow"
-    log "judge-shadow: the judge failed only bookkeeping row(s) $shadow; logged, not blocking, and its $(jq '.fixes | length' "$f") fix(es) not sent to the worker"
+    log "judge-shadow: the judge failed only bookkeeping row(s) $shadow; logged, not blocking, and its $(jq '.fixes | length' "$f") decisions.md fix(es) not sent to the worker, listed in the PR body"
     return 0
   fi
   jq -r '.fixes[]? | "- " + .' "$f" > "$RUN/round-$round.fixes"
@@ -2828,6 +2830,8 @@ open_pr() { # [draft]: opened at the grader-round cap
     elif [ -n "$draft" ]; then
       # An absent, empty, or invalid judge file counts as a fail (LOOP.md), so jq may print nothing.
       rows=$(jq -r '[(.rows // {}) | to_entries[] | select(.value == "fail") | .key] | join(", ") | if . == "" then "no row; a reviewer, Codex review or mutation sweep finding blocked" else . end' "$RUN/round-$ROUND.judge.json" 2> /dev/null)
+      [ ! -s "$RUN/round-$ROUND.judge-shadow" ] \
+        || rows="only the bookkeeping row(s) $(cat "$RUN/round-$ROUND.judge-shadow"), which do not block; a reviewer, Codex review or mutation sweep finding blocked"
       printf 'Draft: opened at the grader-round cap; the judge failed %s. Read the Judge section before marking it ready.\n\n' "${rows:-no row; the judge output was absent or not parseable}"
     fi
     # The worker's own account of how the change works and why it is correct opens a ready PR's body (#330), so
@@ -2849,7 +2853,8 @@ open_pr() { # [draft]: opened at the grader-round cap
     printf '## Judge\n\ngraded at %s\n\n```json\n%s\n```\n\n' "$GRADED_SHA" \
       "$(jq -c '{verdict, rows: (.rows // {}), evidence: (.evidence // {})}' "$RUN/round-$ROUND.judge.json")"
     [ ! -s "$RUN/round-$ROUND.judge-shadow" ] \
-      || printf 'judge-shadow: the judge failed only bookkeeping row(s) %s, which log and do not block.\n\n' "$(cat "$RUN/round-$ROUND.judge-shadow")"
+      || { printf 'judge-shadow: the judge failed only bookkeeping row(s) %s, which log and do not block. Its fixes, not sent to the worker:\n\n' "$(cat "$RUN/round-$ROUND.judge-shadow")"
+           jq -r '(.fixes // [])[] | "- " + gsub("\\s*\n\\s*"; " ")' "$RUN/round-$ROUND.judge.json"; printf '\n'; }
     printf '## Reviewer\n\n'
     jq -r '.findings[]? | "- [" + .severity + "] " + (.file // "?") + ":" + ((.line // 0) | tostring) + " " + .defect + " Fix: " + .fix' "$RUN/round-$ROUND.review.json"
     jq -r '.unverified[]? | "- unverified: " + .' "$RUN/round-$ROUND.review.json"
