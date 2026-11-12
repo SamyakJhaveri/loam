@@ -199,8 +199,9 @@ class NativeShellTests(unittest.TestCase):
             self.assertEqual(argv, old[call]["argv"], call)
             self.assertEqual(dirs, [str(self.new / PLUGIN)], call)
             self.assertEqual(new[call]["env"], old[call]["env"], call)
-        # The reviewer reads the same evidence. (The worker's prompt names the router in the run's plugin dir now.)
-        self.assertEqual(new["grader"]["stdin"], old["grader"]["stdin"])
+        # The reviewer reads the same evidence, but for the supervisor's `Round 1` header in decisions.md (audit3 F2).
+        # (The worker's prompt names the router in the run's plugin dir now.)
+        self.assertEqual(new["grader"]["stdin"].replace("\nRound 1\n", "\n", 1), old["grader"]["stdin"])
         # The role settings gain only availableModels, so a Fable reviewer is served Fable.
         role_old, role_new = json.loads(old["role"]), json.loads(new["role"])
         self.assertEqual(role_new.pop("availableModels"), ["claude-opus-5-5", "claude-fable-5-2"])
