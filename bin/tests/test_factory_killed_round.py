@@ -113,6 +113,17 @@ class KilledRoundTests(unittest.TestCase):
                                capture_output=True, text=True, check=True).stdout.strip()
         self.assertEqual(spent, "7")
 
+    def test_killed_grader_call_is_charged_its_ceiling(self) -> None:
+        # audit3 C1: a judge or reviewer call with no result (killed, or crashed) may have spent up to its
+        # --max-budget-usd ceiling, so each of call_json's three attempts books GRADER_BUDGET_USD, as the worker does.
+        (self.run_dir / "judge.schema.json").write_text("{}")
+        (self.run_dir / "judge.prompt.md").write_text("grade it\n")
+        proc = self.worker_round("claude", "", "BODY=$'## Worker\\n\\nGRADER_BUDGET_USD=2\\n'; apply_caps\n"
+                                 'call_json 1 judge judge "$RUN/judge.prompt.md" "$RUN/judge.schema.json"; exit 0')
+        self.assertEqual(proc.returncode, 0, proc.stderr)
+        self.assertEqual([(r["role"], r["cost_usd"], r["subtype"]) for r in self.ledger()], [("judge", 2, "no-result")] * 3)
+        self.assertEqual([r["cost_usd"] for r in self.daily()], [2, 2, 2])
+
     def test_killed_claude_round_with_no_commit_says_so(self) -> None:
         proc = self.worker_round("claude", "")
         self.assert_stopped(proc)

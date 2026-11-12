@@ -1648,6 +1648,15 @@ off_models() {
       | select(. as $m | $ok | any(. as $p | $m | startswith($p)) | not)] | unique'
 }
 
+# The file record books for a claude -p call's raw output: the output itself when its result object gives
+# total_cost_usd, else (killed by CALL_TIMEOUT_SEC, or crashed) a no-result row charged the call's --max-budget-usd
+# ceiling, which it may have spent, as worker_round charges a worker (#319).
+charged() { # raw.json ceiling_usd -> path on stdout
+  if jq -e "$RESULT_OBJ | .total_cost_usd | numbers" "$1" > /dev/null 2>&1; then printf '%s\n' "$1"; return; fi
+  jq -nc --argjson usd "$2" '{subtype:"no-result", total_cost_usd:$usd}' > "${1%.json}.charged.json"
+  printf '%s\n' "${1%.json}.charged.json"
+}
+
 record() { # round role model result.json [advisor_calls] [advisor_usd] [workflow_agents] [workflow_usd] [codex]
   # workflow_agents and workflow_usd come from workflow_ledger (0 0 on every round but a claude worker's
   # round 1, and on every Codex round). codex is 1 for a Codex call: cost_usd is null (the dollar caps do
@@ -2681,7 +2690,7 @@ call_json() { # round stem role prompt_file schema_file
         ${pd:+--plugin-dir "$pd"} --output-format json < "$pf" > "$out" 2>> "$LOG"
     call_end "$role" || log "$role exited non-zero"
     if [ -z "$CALL_STUCK" ] && limit_wait "$out"; then attempt=$((attempt - 1)); continue; fi
-    record "$round" "$role" "$model" "$out"
+    record "$round" "$role" "$model" "$(charged "$out" "$GRADER_BUDGET_USD")"
     [ -z "$CALL_STUCK" ] || finish stopped-environment "$CALL_STUCK"
     res=$(grader_reply "$out") || res=""
     if printf '%s' "$res" | jq -e '.verdict' > /dev/null 2>&1; then

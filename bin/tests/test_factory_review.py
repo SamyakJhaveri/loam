@@ -266,6 +266,16 @@ class ReviewTests(unittest.TestCase):
         self.assertFalse((self.fake / "codex-calls").exists())
         self.assertFalse((self.run_dir / "learn" / "draft.md").exists())
 
+    def test_a_killed_learn_call_is_charged_its_ceiling(self) -> None:
+        # audit3 C1: the writer's claude exits with no envelope, as a CALL_TIMEOUT_SEC kill leaves it; it may have
+        # spent up to its --max-budget-usd, so the ledger and the daily file book GRADER_BUDGET_USD (1 here).
+        self.put("round-1.judge.json", {"verdict": "pass", "backlog": ["x"]})
+        (self.bin / "claude").write_text("#!/bin/sh\ncat > /dev/null; exit 137\n")
+        self.learn(preset="ROUND=1")
+        rows = [json.loads(x) for x in self.read("ledger.jsonl").splitlines()]
+        self.assertEqual([(r["role"], r["cost_usd"], r["subtype"]) for r in rows], [("learn-writer", 1, "no-result")])
+        self.assertEqual([json.loads(x)["cost_usd"] for x in self.read("daily.jsonl").splitlines()], [1])
+
     def test_learn_drafts_reviews_and_verifies_once(self) -> None:
         self.put("round-1.judge.json", {"verdict": "pass", "backlog": []})
         self.put("round-1.review.json", review(("high", "kept bug")))

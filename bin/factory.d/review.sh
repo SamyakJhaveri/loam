@@ -1,7 +1,7 @@
 # shellcheck shell=bash
 # bin/factory.d/review.sh - the verifier and the learn step, sourced by bin/factory from its frozen copy
 # (docs/research/2026-11-12-distbench-priming/design-pick.md, unit U4; requirements (d) and (h)). It uses bin/factory's own
-# helpers (call_start, call_end, record, assert_caps, log, scrub, alert, codex_*), so it runs only sourced into it.
+# helpers (call_start, call_end, charged, record, assert_caps, log, scrub, alert, codex_*), so it runs only sourced into it.
 #
 #   verify_round ROUND  after the reviewer and the Codex review: one Opus call reproduces each blocking finding at
 #                       GRADED_SHA; CONFIRMED and PARTLY go to round-N.fixes (each source blocks once per ticket),
@@ -64,7 +64,7 @@ review_claude() { # round role model effort dir prompt schema-text out [add-dir.
     if [ -z "$CALL_STUCK" ] && limit_wait "$raw"; then continue; fi
     break
   done
-  record "$round" "$role" "$model" "$raw"
+  record "$round" "$role" "$model" "$(charged "$raw" "$GRADER_BUDGET_USD")"
   if [ -n "$CALL_STUCK" ]; then
     [ -n "${REVIEW_NO_FINISH:-}" ] || finish stopped-environment "$CALL_STUCK"
     return 1
