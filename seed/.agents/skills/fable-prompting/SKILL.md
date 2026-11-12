@@ -31,11 +31,12 @@ and you quote the rest from the guide.
 | Goes quiet for many tool calls | Keep users informed during long turns | Mixed |
 | Starts more subagents than the task needs | Set expectations for subagents | P |
 | Asks for approvals it does not need, holds back routine work or retries | Keep caution from piling up | P |
-| Old Fable 5.1 or Opus 5.5 lines raise cost or stop working | Review instructions written for earlier models | P |
+| Old Fable 5.1 or Opus 5.5 lines raise cost or stop working | Review prompts and harnesses designed for earlier models | P |
 | Final report dense or full of terms coined during the work | Make reports easy to follow | P |
 | `stop_reason: "refusal"` | Safeguard refusals | P |
 
-For a P row, quote the guide's instruction into the prompt. For an H row, change
+For a P row, act on the guide's advice in the prompt: add its text, or remove
+the lines it names. For an H row, change
 the effort level or the harness, and add nothing to the prompt.
 
 ## What changed from Fable 5.1
@@ -43,7 +44,7 @@ the effort level or the harness, and add nothing to the prompt.
 - Effort: start at `high`. Lower effort stops early more often; raise the
   effort rather than quote the "Finish the whole task" text, which Claude Code
   already sends in adapted form (see "Never paste these").
-  At `medium` and above, a line such as "answer directly without deliberating" no longer reduces thinking: lower the effort instead.
+  At `medium` and above, a line such as "answer directly without deliberating" does not stop the model from thinking: lower the effort instead.
 - Ownership: Fable 5.2 follows what the prompt says about who owns the code.
   Add the ownership sentence only where the worker may restructure; leave it
   out where the owner owns the code and wants minimal change. A scope rule does
@@ -76,8 +77,8 @@ A session prompt or brief for a fresh Fable 5.2 session carries five headings, i
 ## Never paste these into a Claude Code prompt
 
 Claude Code sends Fable 5.2 these, so a second copy is paid input tokens for
-no behavior change (measured in `claude -p`; interactive sessions were not
-captured):
+no behavior change (the first two measured in `claude -p`, the reminder read
+from the Claude Code bundle; interactive sessions were not captured):
 
 - An adapted form of the guide's finishing text, as the system-prompt section
   `# Finishing work`:
