@@ -8,8 +8,10 @@ Give each parallel worker its own worktree (`claude --worktree <name>`). One
 checkout is safe only for disjoint files. For a shared GPU or database, wrap the
 command in `flock "$HOME/.local/state/<project>/<resource>.lock" <cmd>`, where
 `<project>` is `{{ project_name }}` (util-linux; absent on stock macOS). Create the
-folder once per host with `mkdir -p`; a sandboxed session also needs it in
-`sandbox.filesystem.allowWrite` of its user or project settings. Build no other lock.
+folder once per host with `mkdir -p`; a sandboxed session can take the lock only
+where its launch policy lets it write that folder (`sandbox.filesystem.allowWrite`
+in user or project settings for a normal session; a Loam factory worker drops
+those and writes only where `bin/factory` grants). Build no other lock.
 
 ## Roles
 
