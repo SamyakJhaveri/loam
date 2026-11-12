@@ -1,0 +1,522 @@
+#!/usr/bin/env python3
+"""bin/factory-parity - did a factory run on DistBench work the way an attended DistBench session works?
+
+  bin/factory-parity [--projects-root DIR] <run-folder>
+
+<run-folder> is one factory run, `~/.local/state/loam-factory/runs/<owner>__<repo>/<key>/<sha8>/`.
+Each round's top-level transcript is its `round-N.jsonl` (the worker's stream-json). The round's subagent
+transcripts (Agent and Workflow) are `<projects-root>/<cwd slug>/<session id>/subagents/**/agent-*.jsonl`,
+found from the init line's `cwd` and `session_id`; <projects-root> defaults to ~/.claude/projects.
+A round that spawned subagents whose transcripts are not there is unusable input: pass --projects-root.
+
+Prints one line per behaviour, `PASS|FAIL|N/A <id> <name>: <evidence file:line or reason>`, then
+`parity: PASS` or `parity: FAIL (<ids>)`. Exit 0 on PASS, 1 on FAIL, 2 on unusable input.
+
+  P1 instructions     each round's init lists DistBench's own project skill verify-distbench.
+  P2 router           every transcript that changes a file read the pstack router before its first change:
+                      a Skill call on sam-cc-setup:pstack, or a Read or Bash call naming its SKILL.md. A change
+                      is an Edit, Write, NotebookEdit or MultiEdit call, or a Bash call that writes in place
+                      (sed -i, ruff format, write_text, open(..., 'w'), git commit, cat/echo > file, tee).
+  P3 method           that transcript read a pstack skills/<name>/SKILL.md between the router and its first
+                      change, and every pstack method worker/decisions.md names for a round was read in that
+                      round. A decisions.md line starting "Round N" and the lines after it belong to round N;
+                      earlier lines to round 1.
+  P4 gate-in-round    some transcript of each round ran DistBench's bin/check (directly or through
+                      checks.sh, not under LOAM_HOOK=1) and its result shows `check: PASSED` or
+                      `check: FAILED`; and no tool result, nor a log in worker/, shows the sandbox refusal.
+  P5 models           worker and subagents ran claude-opus-5-5 at effort high: init and message models,
+                      factory.log's worker call line, round-N.result.json modelUsage, subagent api-request
+                      params. Any other model (haiku) or effort (medium, xhigh, max) fails.
+  P6 behaviour-proof  when the last round-N.diff touches what verify-distbench covers (its SKILL.md: "a
+                      runner, command, task package, oracle, orchestrator or grader change"), some
+                      transcript read verify-distbench/SKILL.md and ran control-distbench launch; else N/A.
+
+Standard library only; reads files, runs nothing.
+"""
+from __future__ import annotations
+
+import argparse
+import json
+import re
+import sys
+from pathlib import Path
+
+MODEL = "claude-opus-5-5"
+EFFORT = "high"
+PROJECT_SKILLS = ("verify-distbench",)
+ROUTER_PATH = "sam-cc-setup/skills/pstack/SKILL.md"
+ROUTER_SKILL = "sam-cc-setup:pstack"
+EDIT_TOOLS = {"Edit", "Write", "NotebookEdit", "MultiEdit"}
+SPAWN_TOOLS = {"Agent", "Task", "Workflow"}
+# verify-distbench/SKILL.md: runner, the four agent commands, task packages, oracle and F28 guard
+# (distbench.expected), orchestrator, grader.
+COVERED = ("tasks/", "src/distbench/runner.py", "src/distbench/commands.py", "src/distbench/expected.py",
+           "src/distbench/orchestrator.py", "src/distbench/grader.py")
+
+NOT_SCRATCH = r"(?!&|/dev/|/tmp/|\"?\$\{?TMPDIR)"
+BASH_WRITE = re.compile("|".join([
+    r"\bsed\s+(?:-[a-zA-Z]+\s+)*-[a-zA-Z]*i",
+    r"\bperl\s+-[a-zA-Z]*i",
+    r"\bruff\s+format\b(?![^|;&\n]*--check)",
+    r"\bruff\s+check\b[^|;&\n]*--fix",
+    r"\.write_(?:text|bytes)\(",
+    r"\bopen\([^)\n]*,\s*['\"][wax]",
+    r"\bgit\s+(?:-C\s+\S+\s+)?(?:commit|apply|am|mv|rm)\b",
+    r"\b(?:cat|echo|printf)\b[^|;&\n]*?(?<![0-9&>])>{1,2}\s*" + NOT_SCRATCH + r"\S",
+    r"\btee\s+(?:-a\s+)?" + NOT_SCRATCH + r"\S",
+]))
+SKILL_FILE = re.compile(r"([^\s\"';|&()]*?)skills/([^/\s\"';|&()]+)/SKILL\.md")
+LOOP = re.compile(r"\bfor\s+(\w+)\s+in\s+([^;\n]+?)\s*;?\s*(?:\n\s*)?do\b")
+GATE = re.compile(r"\bbin/check(?![\w.-])|[^\s;&|]*(?<![\w.-])checks\.sh\b|\$\{?LOAM_CHECKS\b\}?")
+WRAPPERS = {"nohup", "bash", "sh", "env", "time", "exec", "command", "source", "."}
+HEREDOC = re.compile(r"<<-?\s*(['\"]?)(\w+)\1([^\n]*)\n.*?(?:\n[ \t]*\2[ \t]*(?=\n|$)|\Z)", re.S)
+HOOK_SET = re.compile(r"\bLOAM_HOOK=(?![\s;&|]|\"\"|''|$)")
+GATE_LINE = re.compile(r"(?m)^check: (?:PASSED|FAILED)\b.*$")
+REFUSAL = re.compile(r"(?m)^[^\"'\n]*?(bin/check: AF_UNIX bind denied[^\n]*|bwrap: No permissions to create new namespace[^\n]*)")
+SAVED = re.compile(r"Full output saved to: (\S+)")
+WORKER_CALL = re.compile(r"worker call: round (\d+) model=(\S+) effort=(\S+)")
+
+
+class Unusable(Exception):
+    pass
+
+
+class Transcript:
+    """One transcript's tool calls, results, skills, models and efforts, each with its 1-based line."""
+
+    def __init__(self, path: Path, label: str, top: bool, projects: Path):
+        self.label = label
+        self.calls: list[tuple[int, str, dict]] = []  # (line, tool name, input)
+        self.results: dict[str, tuple[int, str]] = {}  # tool_use id -> (line, text)
+        self.ids: list[str] = []  # tool_use id per call
+        self.inits: list[tuple[int, dict]] = []
+        self.skills: tuple[int, list[str]] | None = None
+        self.models: list[tuple[int, str]] = []
+        self.efforts: list[tuple[int, str]] = []
+        lines = path.read_text(encoding="utf-8", errors="replace").splitlines()
+        parsed = 0
+        for n, raw in enumerate(lines, 1):
+            try:
+                ev = json.loads(raw)
+            except ValueError:
+                continue
+            if not isinstance(ev, dict):
+                continue
+            parsed += 1
+            if top and ev.get("parent_tool_use_id"):
+                continue  # a subagent's event; its own transcript has it
+            kind = ev.get("type")
+            if kind == "system" and ev.get("subtype") == "init":
+                self.inits.append((n, ev))
+                if isinstance(ev.get("skills"), list):
+                    self.skills = (n, ev["skills"])
+                if ev.get("model"):
+                    self.models.append((n, ev["model"]))
+            elif kind == "attachment":
+                att = ev.get("attachment") or {}
+                if att.get("type") == "skill_listing" and isinstance(att.get("names"), list):
+                    self.skills = (n, att["names"])
+                elif att.get("type") == "model" and (att.get("identity") or {}).get("modelId"):
+                    self.models.append((n, att["identity"]["modelId"]))
+            elif kind == "api-request":
+                params = ev.get("params") or {}
+                if params.get("model"):
+                    self.models.append((n, params["model"]))
+                if (params.get("output_config") or {}).get("effort"):
+                    self.efforts.append((n, params["output_config"]["effort"]))
+            elif kind in ("assistant", "user"):
+                msg = ev.get("message") or {}
+                if kind == "assistant" and msg.get("model") and msg["model"] != "<synthetic>":
+                    self.models.append((n, msg["model"]))
+                content = msg.get("content")
+                for item in content if isinstance(content, list) else []:
+                    if not isinstance(item, dict):
+                        continue
+                    if item.get("type") == "tool_use":
+                        inp = item.get("input") if isinstance(item.get("input"), dict) else {}
+                        self.calls.append((n, item.get("name", ""), inp))
+                        self.ids.append(item.get("id", ""))
+                    elif item.get("type") == "tool_result":
+                        self.results[item.get("tool_use_id", "")] = (n, result_text(item.get("content"), projects))
+        if not parsed:
+            raise Unusable(f"{path}: no JSON lines")
+
+    def result(self, i: int) -> tuple[int, str] | None:
+        return self.results.get(self.ids[i])
+
+
+def result_text(content: object, projects: Path) -> str:
+    if isinstance(content, list):
+        text = "\n".join(c.get("text", "") for c in content if isinstance(c, dict))
+    else:
+        text = content if isinstance(content, str) else ""
+    # A large result is saved beside the session; read the copy under the projects root.
+    for saved in SAVED.findall(text):
+        rel = saved.split("/.claude/projects/", 1)[-1]
+        copy = projects / rel
+        if "/.claude/projects/" in saved and copy.is_file():
+            text += "\n" + copy.read_text(encoding="utf-8", errors="replace")
+    return text
+
+
+def call_text(name: str, inp: dict) -> str:
+    if name == "Bash":
+        return str(inp.get("command", ""))
+    if name == "Read":
+        return str(inp.get("file_path", ""))
+    return ""
+
+
+def changes(name: str, inp: dict) -> str | None:
+    """A short description of the file change this call makes, or None."""
+    if name in EDIT_TOOLS:
+        return f"{name} {inp.get('file_path') or inp.get('notebook_path') or ''}".strip()
+    if name == "Bash":
+        cmd = str(inp.get("command", ""))
+        m = BASH_WRITE.search(cmd)
+        if m:
+            return "Bash " + " ".join(cmd[m.start():m.start() + 60].splitlines()[0].split())
+    return None
+
+
+def reads_router(name: str, inp: dict) -> bool:
+    if name == "Skill":
+        return inp.get("skill") == ROUTER_SKILL
+    return ROUTER_PATH in call_text(name, inp)
+
+
+def skill_reads(name: str, inp: dict) -> set[tuple[str, str]]:
+    """(prefix, name) for each skills/<name>/SKILL.md a Read or Bash call names, loop variables expanded."""
+    text = call_text(name, inp)
+    if "SKILL.md" not in text:
+        return set()
+    loops = {var: vals.split() for var, vals in LOOP.findall(text)}
+    found = set()
+    for prefix, skill in SKILL_FILE.findall(text):
+        var = re.fullmatch(r"\$\{?(\w+)\}?", skill)
+        for value in loops.get(var.group(1), []) if var else [skill]:
+            found.add((prefix, value))
+    return found
+
+
+def pstack_methods(reads: set[tuple[str, str]], pstack: set[str]) -> set[str]:
+    """The pstack method names among skill reads; the router itself (sam-cc-setup's skills/pstack) is not one."""
+    return {s for prefix, s in reads
+            if not (s == "pstack" and prefix.endswith("sam-cc-setup/")) and (s in pstack or "/pstack/" in prefix)}
+
+
+def gate_runs(cmd: str) -> list[bool]:
+    """For each bin/check or checks.sh invocation in a Bash command: True when it runs, False when LOAM_HOOK
+    is set (guard skips bin/check). A file merely read (cat bin/check, grep x bin/check) is no invocation."""
+    # Heredoc bodies and quoted text are data, not commands; a quoted lone variable ("$LOAM_CHECKS") stays.
+    cmd = HEREDOC.sub(lambda m: m.group(3), cmd)
+    cmd = re.sub(r"\"(\$\{?\w+\}?[^\"\s]*)\"", r"\1", cmd)
+    cmd = re.sub(r"'[^']*'|\"(?:[^\"\\]|\\.)*\"", "''", cmd)
+    out = []
+    for m in GATE.finditer(cmd):
+        seg = re.split(r"&&|\|\||[;&|(\n]|\$\(", cmd[:m.start()])[-1].split()
+        words = [w for w in seg if not re.fullmatch(r"\w+=\S*", w)]
+        while words and words[0] in WRAPPERS | {"timeout"}:
+            words = words[2:] if words[0] == "timeout" and len(words) > 1 else words[1:]
+            while words and words[0].startswith("-") and words[0] not in WRAPPERS:
+                words = words[1:]
+        if not words:
+            out.append(not HOOK_SET.search(cmd[:m.start()]))
+    return out
+
+
+class Round:
+    def __init__(self, n: int, run: Path, projects: Path):
+        self.n = n
+        self.top = Transcript(run / f"round-{n}.jsonl", f"round-{n}.jsonl", True, projects)
+        if not self.top.inits:
+            raise Unusable(f"{run}/round-{n}.jsonl: no init line")
+        self.subs: list[Transcript] = []
+        seen: set[Path] = set()
+        for _, init in self.top.inits:
+            cwd, sid = str(init.get("cwd", "")), str(init.get("session_id", ""))
+            for slug in {re.sub(r"[^A-Za-z0-9]", "-", cwd), re.sub(r"[/.]", "-", cwd)}:
+                for f in sorted((projects / slug / sid / "subagents").glob("**/agent-*.jsonl")) if sid else []:
+                    if f not in seen:
+                        seen.add(f)
+                        self.subs.append(Transcript(f, str(f.relative_to(projects)), False, projects))
+        spawned = [(n_, name) for n_, name, _ in self.top.calls if name in SPAWN_TOOLS]
+        if spawned and not self.subs:
+            init = self.top.inits[0][1]
+            raise Unusable(f"round-{n}.jsonl:{spawned[0][0]} spawned subagents ({spawned[0][1]}) but "
+                           f"{projects}/<slug of {init.get('cwd')}>/{init.get('session_id')}/subagents/ has no "
+                           f"agent-*.jsonl; pass --projects-root")
+
+    @property
+    def transcripts(self) -> list[Transcript]:
+        return [self.top, *self.subs]
+
+
+def at(t: Transcript, line: int) -> str:
+    return f"{t.label}:{line}"
+
+
+def combine(rows: list[tuple[str, str]]) -> tuple[str, str]:
+    for status in ("FAIL", "PASS", "N/A"):
+        picked = [msg for s, msg in rows if s == status]
+        if picked:
+            return status, "; ".join(picked)
+    return "N/A", "no rounds"
+
+
+def p1(rounds: list[Round]) -> tuple[str, str]:
+    rows = []
+    for r in rounds:
+        if r.top.skills is None:
+            rows.append(("FAIL", f"round {r.n}: {r.top.label} lists no skills in its init"))
+            continue
+        line, names = r.top.skills
+        missing = [s for s in PROJECT_SKILLS if s not in names]
+        if missing:
+            rows.append(("FAIL", f"round {r.n}: {at(r.top, line)} init lists {len(names)} skills, not {', '.join(missing)}"))
+        else:
+            rows.append(("PASS", f"round {r.n}: {at(r.top, line)} init lists {', '.join(PROJECT_SKILLS)}"))
+    return combine(rows)
+
+
+def first_change(t: Transcript) -> tuple[int, str] | None:
+    for i, (_, name, inp) in enumerate(t.calls):
+        what = changes(name, inp)
+        if what:
+            return i, what
+    return None
+
+
+def router_index(t: Transcript, before: int) -> int | None:
+    return next((i for i, (_, name, inp) in enumerate(t.calls[:before + 1]) if reads_router(name, inp)), None)
+
+
+def p2(rounds: list[Round]) -> tuple[str, str]:
+    rows = []
+    for r in rounds:
+        fails, passes = [], []
+        for t in r.transcripts:
+            change = first_change(t)
+            if change is None:
+                continue
+            i, what = change
+            ri = router_index(t, i)
+            if ri is None:
+                fails.append(f"{at(t, t.calls[i][0])} {what} with no router read before it")
+            else:
+                passes.append(f"{at(t, t.calls[ri][0])} router read before {at(t, t.calls[i][0])}")
+        if fails:
+            rows.append(("FAIL", f"round {r.n}: " + "; ".join(fails)))
+        elif passes:
+            rows.append(("PASS", f"round {r.n}: " + "; ".join(passes)))
+        else:
+            rows.append(("N/A", f"round {r.n}: no file change"))
+    return combine(rows)
+
+
+def decision_methods(run: Path, pstack: set[str]) -> dict[int, list[tuple[int, str]]]:
+    """Round -> [(decisions.md line, pstack method)] for each method a line names."""
+    path = run / "worker" / "decisions.md"
+    named: dict[int, list[tuple[int, str]]] = {}
+    if not path.is_file():
+        return named
+    hyphenated = sorted((s for s in pstack if "-" in s), key=len, reverse=True)
+    rnd = 1
+    for n, line in enumerate(path.read_text(encoding="utf-8", errors="replace").splitlines(), 1):
+        m = re.match(r"\s*Round (\d+)\b", line)
+        if m:
+            rnd = int(m.group(1))
+        names = set(re.findall(r"\bpstack:([a-z0-9-]+)", line))
+        names |= pstack_methods(set(SKILL_FILE.findall(line)), pstack)
+        names |= {s for s in hyphenated if re.search(rf"(?<![\w-]){re.escape(s)}(?![\w-])", line)}
+        named.setdefault(rnd, []).extend((n, s) for s in sorted(names))
+    return named
+
+
+def p3(rounds: list[Round], run: Path, pstack: set[str]) -> tuple[str, str]:
+    named = decision_methods(run, pstack)
+    rows = []
+    for r in rounds:
+        fails, passes = [], []
+        read_in_round: set[str] = set()
+        for t in r.transcripts:
+            for _, name, inp in t.calls:
+                read_in_round |= pstack_methods(skill_reads(name, inp), pstack)
+            change = first_change(t)
+            if change is None:
+                continue
+            i, _ = change
+            ri = router_index(t, i)
+            if ri is None:
+                fails.append(f"{at(t, t.calls[i][0])} first change with no router read, so no method read")
+                continue
+            hit = next(((j, sorted(m)) for j in range(ri, i + 1)
+                        if (m := pstack_methods(skill_reads(*t.calls[j][1:]), pstack))), None)
+            if hit is None:
+                fails.append(f"{at(t, t.calls[i][0])} first change with no pstack skills/<name>/SKILL.md read "
+                             f"after the router at {at(t, t.calls[ri][0])}")
+            else:
+                passes.append(f"{at(t, t.calls[hit[0]][0])} read {', '.join(hit[1])}")
+        for line, method in named.get(r.n, []):
+            if method in read_in_round:
+                passes.append(f"worker/decisions.md:{line} names {method}, read")
+            else:
+                fails.append(f"worker/decisions.md:{line} names {method} but no round-{r.n} transcript read "
+                             f"skills/{method}/SKILL.md")
+        if fails:
+            rows.append(("FAIL", f"round {r.n}: " + "; ".join(fails)))
+        elif passes:
+            rows.append(("PASS", f"round {r.n}: " + "; ".join(passes)))
+        else:
+            rows.append(("N/A", f"round {r.n}: no file change and no method named"))
+    return combine(rows)
+
+
+def last_line(text: str) -> str:
+    lines = [x.strip() for x in text.splitlines() if x.strip()]
+    return (lines[-1] if lines else "(empty)")[:100]
+
+
+def p4(rounds: list[Round], run: Path) -> tuple[str, str]:
+    rows = []
+    for r in rounds:
+        refusals, gate, ran, skipped = [], None, [], 0
+        for t in r.transcripts:
+            for line, text in t.results.values():
+                refusals += [f"{at(t, line)} shows the sandbox refusal '{m[:120]}'" for m in REFUSAL.findall(text)]
+            for i, (line, name, inp) in enumerate(t.calls):
+                runs = gate_runs(str(inp.get("command", ""))) if name == "Bash" else []
+                skipped += runs.count(False)
+                if not any(runs):
+                    continue
+                res = t.result(i)
+                shown = GATE_LINE.findall(res[1]) if res else []
+                if shown and gate is None:
+                    gate = f"{at(t, res[0])} bin/check result '{shown[-1].strip()}'"
+                elif not shown:
+                    first = next((x.strip() for x in (res[1] if res else "").splitlines() if x.strip()), "no result")
+                    ran.append(f"{at(t, line)} ran bin/check, result has no check: line ('{first[:80]}')")
+        if refusals:
+            rows.append(("FAIL", f"round {r.n}: " + "; ".join(sorted(set(refusals)))))
+        elif gate:
+            rows.append(("PASS", f"round {r.n}: {gate}"))
+        elif ran:
+            rows.append(("FAIL", f"round {r.n}: " + "; ".join(ran)))
+        else:
+            hook = f" ({skipped} run(s) under LOAM_HOOK=1 skip it)" if skipped else ""
+            rows.append(("FAIL", f"round {r.n}: no transcript ran bin/check{hook}"))
+    status, evidence = combine(rows)
+    logs = []
+    for log in sorted((run / "worker").glob("*.log")) if (run / "worker").is_dir() else []:
+        for n, line in enumerate(log.read_text(encoding="utf-8", errors="replace").splitlines(), 1):
+            m = REFUSAL.match(line)
+            if m:
+                logs.append(f"{log.relative_to(run)}:{n} '{m.group(1)[:120]}'")
+                break
+    if logs:
+        status, evidence = "FAIL", "; ".join([*([evidence] if status == "FAIL" else []), *logs])
+    return status, evidence
+
+
+def p5(rounds: list[Round], run: Path) -> tuple[str, str]:
+    log = run / "factory.log"
+    calls = {}
+    if log.is_file():
+        for n, line in enumerate(log.read_text(encoding="utf-8", errors="replace").splitlines(), 1):
+            m = WORKER_CALL.search(line)
+            if m:
+                calls[int(m.group(1))] = (n, m.group(2), m.group(3))
+    rows = []
+    for r in rounds:
+        bad, good = [], []
+        call = calls.get(r.n)
+        if call is None:
+            bad.append(f"factory.log has no 'worker call: round {r.n}' line")
+        elif (call[1], call[2]) != (MODEL, EFFORT):
+            bad.append(f"factory.log:{call[0]} worker model={call[1]} effort={call[2]}")
+        else:
+            good.append(f"factory.log:{call[0]} worker {MODEL} effort {EFFORT}")
+        res = run / f"round-{r.n}.result.json"
+        try:
+            usage = json.loads(res.read_text(encoding="utf-8")).get("modelUsage") if res.is_file() else None
+        except ValueError:
+            usage = None
+        if isinstance(usage, dict):
+            bad += [f"{res.name} modelUsage {m}" for m in sorted(usage) if m != MODEL]
+        for t in r.transcripts:
+            other = {}
+            for line, m in t.models:
+                if m != MODEL:
+                    other.setdefault(m, line)
+            bad += [f"{at(t, line)} model {m}" for m, line in other.items()]
+            if t is not r.top:
+                efforts = {}
+                for line, e in t.efforts:
+                    efforts.setdefault(e, line)
+                bad += [f"{at(t, line)} effort {e}" for e, line in efforts.items() if e != EFFORT]
+        if not bad:
+            subs = len(r.subs)
+            good.append(f"init {at(r.top, r.top.inits[0][0])} {MODEL}" + (f"; {subs} subagent(s) {MODEL} {EFFORT}" if subs else ""))
+            rows.append(("PASS", f"round {r.n}: " + "; ".join(good)))
+        else:
+            rows.append(("FAIL", f"round {r.n}: " + "; ".join(bad)))
+    return combine(rows)
+
+
+def p6(rounds: list[Round], run: Path) -> tuple[str, str]:
+    diffs = sorted(run.glob("round-*.diff"), key=lambda p: int(re.sub(r"\D", "", p.name) or 0))
+    if not diffs:
+        return "N/A", "no round-N.diff in the run"
+    final = diffs[-1]
+    touched = sorted({m for m in re.findall(r"(?m)^diff --git a/(\S+) b/", final.read_text(errors="replace"))
+                      if any(m == c or (c.endswith("/") and m.startswith(c)) for c in COVERED)})
+    if not touched:
+        return "N/A", f"{final.name} touches none of {', '.join(COVERED)}"
+    read = launch = None
+    for r in rounds:
+        for t in r.transcripts:
+            for line, name, inp in t.calls:
+                text = call_text(name, inp)
+                if read is None and ("verify-distbench/SKILL.md" in text or (name == "Skill" and inp.get("skill") == "verify-distbench")):
+                    read = at(t, line)
+                if launch is None and name == "Bash" and "control-distbench" in text and re.search(r"\blaunch\b", text):
+                    launch = at(t, line)
+    what = f"{final.name} touches {', '.join(touched[:3])}{' ...' if len(touched) > 3 else ''}"
+    if read and launch:
+        return "PASS", f"{what}; {read} read verify-distbench/SKILL.md; {launch} ran control-distbench launch"
+    missing = [x for x, ok in (("no transcript read verify-distbench/SKILL.md", read),
+                               ("no transcript ran control-distbench launch", launch)) if not ok]
+    return "FAIL", f"{what}; " + "; ".join(missing)
+
+
+def main(argv: list[str]) -> int:
+    ap = argparse.ArgumentParser(prog="factory-parity", description=__doc__.split("\n\n")[0])
+    ap.add_argument("run", type=Path, help="one factory run folder (holds round-N.jsonl)")
+    ap.add_argument("--projects-root", type=Path, default=Path.home() / ".claude" / "projects",
+                    help="the ~/.claude/projects tree holding the run's subagent transcripts")
+    args = ap.parse_args(argv)
+    run, projects = args.run, args.projects_root
+    try:
+        if not run.is_dir():
+            raise Unusable(f"{run}: not a folder")
+        numbers = sorted(int(m.group(1)) for p in run.iterdir() if (m := re.fullmatch(r"round-(\d+)\.jsonl", p.name)))
+        numbers = [n for n in numbers if n >= 1]
+        if not numbers:
+            raise Unusable(f"{run}: no round-N.jsonl worker transcript")
+        rounds = [Round(n, run, projects) for n in numbers]
+    except (Unusable, OSError) as e:
+        print(f"factory-parity: unusable input: {e}", file=sys.stderr)
+        return 2
+    pstack = {s.split(":", 1)[1] for r in rounds if r.top.skills for s in r.top.skills[1] if s.startswith("pstack:")}
+    checks = [("P1", "instructions", p1(rounds)), ("P2", "router", p2(rounds)), ("P3", "method", p3(rounds, run, pstack)),
+              ("P4", "gate-in-round", p4(rounds, run)), ("P5", "models", p5(rounds, run)),
+              ("P6", "behaviour-proof", p6(rounds, run))]
+    for pid, name, (status, evidence) in checks:
+        print(f"{status} {pid} {name}: {evidence}")
+    failed = [pid for pid, _, (status, _) in checks if status == "FAIL"]
+    print(f"parity: FAIL ({', '.join(failed)})" if failed else "parity: PASS")
+    return 1 if failed else 0
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv[1:]))
