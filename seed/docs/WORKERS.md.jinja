@@ -6,9 +6,10 @@ Read on demand. None of this is loaded in a normal session.
 
 Give each parallel worker its own worktree (`claude --worktree <name>`). One
 checkout is safe only for disjoint files. For a shared GPU or database, wrap the
-command in `flock "$HOME/.local/state/{{ project_name }}/<resource>.lock" <cmd>`
-(util-linux; absent on stock macOS; `mkdir -p` the folder once per host). Build no
-other lock.
+command in `flock "$HOME/.local/state/<project>/<resource>.lock" <cmd>`, where
+`<project>` is `{{ project_name }}` (util-linux; absent on stock macOS). Create the
+folder once per host with `mkdir -p`; a sandboxed session also needs it in
+`sandbox.filesystem.allowWrite` of its user or project settings. Build no other lock.
 
 ## Roles
 
