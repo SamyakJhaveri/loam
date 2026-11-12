@@ -1255,7 +1255,7 @@ ticket_title() {
 ticket_name() {
   local title
   title=$(ticket_title)
-  printf 'issue %s%s' "$KEY" "${title:+ ($title)}"
+  printf '%s %s%s' "$([ "${IS_FILE:-0}" = 1 ] && echo ticket || echo issue)" "$KEY" "${title:+ ($title)}"
 }
 
 # The run's frozen bin/alert, or the live one before freeze (an exit at launch).
