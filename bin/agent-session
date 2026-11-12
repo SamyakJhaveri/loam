@@ -11,7 +11,7 @@
 set -euo pipefail
 here=$(cd "$(dirname "$(readlink -f "$0")")" && pwd)
 as="" dir=$PWD model=claude-opus-5-5 effort=high
-usage() { sed -n '4p' "$0" | sed 's/^# *//' >&2; exit 2; }
+usage() { sed -n '5p' "$0" | sed 's/^# *//' >&2; exit 2; }
 while [ $# -gt 0 ]; do
   case "$1" in
     --as) as=${2:?}; shift 2 ;;
@@ -29,8 +29,10 @@ case "$name" in *[!A-Za-z0-9_-]*|"") echo "agent-session: the name must be lette
 case "$effort" in max) echo "agent-session: effort max is not used without the owner's word" >&2; exit 2 ;; esac
 [ -d "$dir" ] || { echo "agent-session: no directory $dir" >&2; exit 2; }
 tmux has-session -t "=$name" 2> /dev/null && { echo "agent-session: tmux already has a session $name" >&2; exit 1; }
-account=${as:-$("$here/claude-account" status 2> /dev/null | sed -n 's/^active: \([^;]*\);.*/\1/p')}
-[ -n "$account" ] || { echo "agent-session: no active account; run bin/claude-account use <name> first" >&2; exit 1; }
+st=$("$here/claude-account" status 2> /dev/null) || st=""
+account=${as:-$(sed -n 's/^active: \([^;]*\);.*/\1/p' <<<"$st")}
+# claude-account exec leaves the host's /login in place for a name with no stored token, so refuse it here.
+case " ${st#*stored:} " in *" $account "*) ;; *) echo "agent-session: no stored token for account '${account:-none}'; run bin/claude-account use <name> first" >&2; exit 1 ;; esac
 # One line: newlines in the goal or task would end the /goal argument early.
 prompt="/goal $(tr '\n' ' ' <<<"$goal")${task:+ Task: $(tr '\n' ' ' <<<"$task")} Method: before a non-trivial task call the sam-cc-setup:pstack skill (the pstack router) and follow the method it picks."
 [ "${#prompt}" -le 4006 ] || { echo "agent-session: the first prompt is ${#prompt} characters; a goal holds at most 4000, so put the task in a brief file and name its path" >&2; exit 2; }

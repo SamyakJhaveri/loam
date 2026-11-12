@@ -59,6 +59,12 @@ class AgentSessionTests(unittest.TestCase):
         self.assertEqual(self.run_it("--effort", "max", "free", "g").returncode, 2)
         self.assertFalse(self.log.exists())
 
+    def test_refuses_an_account_with_no_stored_token(self):
+        self.assertEqual(self.run_it("--as", "ghost", "free", "g").returncode, 1)
+        (self.tmp / "accounts" / "active").unlink()
+        self.assertEqual(self.run_it("free", "g").returncode, 1)   # status prints `active: none`
+        self.assertFalse(self.log.exists())
+
 
 if __name__ == "__main__":
     unittest.main()
