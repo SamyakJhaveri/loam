@@ -38,6 +38,7 @@ DONE = re.compile(r"[\s*_`]*done[\s*_`]*\.?[\s*_`]*", re.I)
 # worker's Stop hook does not do; a guard that returns early under LOAM_HOOK (lib.sh) or a line that passes first under
 # it passes a `guard bin/check` line unrun, so that line's names join them per run.
 HOOK_BLIND = {"do-not-touch", "edit-scope", "worktree-dirty"}
+SCOPE_FAILS = {"do-not-touch", "edit-scope"}  # round_checks' fences: a stall on one is a scope stall
 HOOK_GUARD = re.compile(r'LOAM_HOOK.*"\$\{1:-\}" = bin/check \] && return 0')
 HOOK_PASS = ["[", "-n", "${LOAM_HOOK:-}", "]", "&&", "pass"]
 KEYWORDS = {"{", "!", "if", "then", "else", "elif", "do", "while", "until"}  # the next word starts a command too
@@ -187,7 +188,7 @@ def scope_stalls(runs):
     stalls = [(r, [max((k for k in r.checks if k <= n), default=None) for kind, n, _ in r.exits
                    if kind in STALLS and n is not None]) for r in runs if any(kind in STALLS for kind, _, _ in r.exits)]
     scope = [f"{r.label} round {n}" for r, ns in stalls
-             if (n := next((k for k in ns if first_fail(r.checks.get(k, [])) == "do-not-touch"), None)) is not None]
+             if (n := next((k for k in ns if first_fail(r.checks.get(k, [])) in SCOPE_FAILS), None)) is not None]
     return len(scope), f"of {count(len(stalls), 'stall')}" + (f": {', '.join(scope)}" if scope else "")
 
 

@@ -237,6 +237,32 @@ check_header() {
   head=$(header)
   grep -qE '^(Brief:|Part of )' <<<"$head" || err "header has no 'Brief:' or 'Part of' line"
   grep -qE '^Blocked by:' <<<"$head" || err "header has no 'Blocked by:' line"
+  local why
+  why=$(edit_line_defect)
+  [ -z "$why" ] || err "$why"
+}
+
+# The words of the header's `Edit:` line (CONTRACT.md, item 1): split on commas and blanks, backticks and quotes
+# stripped, then a trailing sentence mark and a leading ./, which git never prints. Each must be a path.
+EDIT_PATH_RE='^[A-Za-z0-9_.][A-Za-z0-9_./-]*$'
+edit_words() {
+  local line
+  line=$(grep -m1 '^Edit:' <<< "$(header)") || return 0
+  printf '%s\n' "${line#Edit:}" | tr ',' ' ' | tr -s ' \t' '\n\n' | tr -d '`"' \
+    | sed -e 's/[.;:)]*$//' -e 's#^\(\./\)*##' | { grep -v '^$' || :; }
+}
+
+# Why the header's `Edit:` line cannot fence a run, or nothing when it has none or lists only paths. Lint rejects such
+# a line and freeze stops on it, so a word the fence would drop never fails every round with nothing the worker can fix.
+edit_line_defect() {
+  local bad
+  grep -q '^Edit:' <<< "$(header)" || return 0
+  bad=$(edit_words | { grep -vE "$EDIT_PATH_RE" || :; } | paste -sd' ' -)
+  if [ -n "$bad" ]; then
+    echo "the Edit: line holds $bad, which is not a path; list only paths, separated by commas or spaces"
+  elif [ -z "$(edit_words)" ]; then
+    echo "the Edit: line lists no path"
+  fi
 }
 
 check_no_skip() {
@@ -1622,14 +1648,17 @@ freeze() {
   chmod a-w "$RUN/frozen"/*
 }
 
-# A ticket whose header has an `Edit:` line (the four-part form) may change only the paths it lists, comma-separated,
-# a directory covering what sits under it (CONTRACT.md, item 1). They are frozen to edit.txt as written, not filtered
+# A ticket whose header has an `Edit:` line (the four-part form) may change only the paths it lists (edit_words), a
+# directory covering what sits under it (CONTRACT.md, item 1). They are frozen to edit.txt as written, not filtered
 # to tracked tops as Do not touch is, so a new top-level file the ticket creates still counts; round_checks fails a
-# round that changes any other path. A ticket with no `Edit:` line gets no edit.txt and no such fence.
+# round that changes any other path. A ticket with no `Edit:` line gets no edit.txt and no such fence; one whose line
+# lint would reject ends ticket-defect here, before round 0.
 freeze_edit_line() {
-  local line
-  line=$(grep -m1 '^Edit:' <<< "$(header)") || return 0
-  printf '%s\n' "${line#Edit:}" | tokens | { grep -E '^[.A-Za-z0-9_][A-Za-z0-9_./-]*$' || :; } | sort -u > "$RUN/frozen/edit.txt"
+  local why
+  grep -q '^Edit:' <<< "$(header)" || return 0
+  why=$(edit_line_defect)
+  [ -z "$why" ] || finish ticket-defect "$why; fix the ticket (bin/factory lint rejects it)"
+  edit_words | sort -u > "$RUN/frozen/edit.txt"
 }
 
 check_frozen() {
@@ -2609,12 +2638,13 @@ do_not_touch_hits() { # -> the changed paths the ticket fenced off
   done
 }
 
-edit_scope_hits() { # -> the changed paths, deleted and renamed ones included, that the ticket's Edit: line does not list
-  local f
+edit_scope_hits() { # -> the changed paths, deleted and renamed ones included, that the ticket's Edit: line does not list; 1 when git cannot list them
+  local f changed
   [ -f "$RUN/frozen/edit.txt" ] || return 0
-  git -C "$WORKTREE" diff --no-renames --name-only "$(cat "$RUN/base.sha")...HEAD" | while IFS= read -r f; do
-    under "$f" "$(cat "$RUN/frozen/edit.txt")" || printf '%s ' "$f"
-  done
+  changed=$(git -C "$WORKTREE" diff --no-renames --name-only "$(cat "$RUN/base.sha")...HEAD") || return 1
+  while IFS= read -r f; do
+    [ -z "$f" ] || under "$f" "$(cat "$RUN/frozen/edit.txt")" || printf '%s ' "$f"
+  done <<< "$changed"
 }
 
 # A row whose label or command names one of these words measures time, tokens, or cost, so one run is one
@@ -3106,7 +3136,8 @@ round_checks() { # out: a dirty tree, a do-not-touch hit or a path off the Edit:
   local dirty touched off allowed
   dirty=$(git -C "$WORKTREE" status --porcelain)
   touched=$(do_not_touch_hits)
-  off=$(edit_scope_hits)
+  off=$(edit_scope_hits) \
+    || finish stopped-environment "could not list the paths round $ROUND changed in $WORKTREE since $(cut -c1-8 "$RUN/base.sha") for the Edit: line"
   if [ -n "$dirty" ]; then
     printf 'FAIL worktree-dirty: %s\n' "$(printf '%s' "$dirty" | tr '\n' ' ')" > "$1"
   elif [ -n "$touched" ]; then
@@ -3133,7 +3164,7 @@ main_loop() {
     assert_caps
     stop_requested && finish stopped "FACTORY_STOP before the round-$ROUND call"
     worker_round "$ROUND"
-    # Step 6, in order: abandon, the frozen set, a clean tree, do-not-touch, then the checks.
+    # Step 6, in order: abandon, the frozen set, a clean tree, do-not-touch, the Edit: line, then the checks.
     # A worker sometimes writes the line as a markdown bullet (#158); accept `- ` or `* ` and strip it.
     abandon=$(grep -m1 -E '^(- |\* )?ABANDON ' "$DECISIONS" | sed -E 's/^(- |\* )//')
     [ -n "$abandon" ] && finish abandon "$abandon"
