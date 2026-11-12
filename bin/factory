@@ -1640,12 +1640,15 @@ advisor_usd() {
 
 # The served models of the ledger lines on stdin, as one JSON array, that start with none of the configured names
 # nor their own line's requested .model (a [1m] or dated suffix still matches; per line, so an override at
-# launch does not warn later). An empty name, as FACTORY_WORKER_ADVISOR= leaves, is dropped, since every model
-# starts with "". A malformed line is skipped, not the whole ledger. cmd_status and record share this rule.
+# launch does not warn later). A line whose requested .model served none of it (Claude Code answers a model missing
+# from availableModels with its default, silently) has every served model off, configured or not (audit3 F7).
+# An empty name, as FACTORY_WORKER_ADVISOR= leaves, is dropped, since every model starts with "". A malformed line
+# is skipped, not the whole ledger. cmd_status and record share this rule.
 off_models() {
   jq -cnR --arg w "$WORKER_MODEL" --arg g "$GRADER_MODEL" --arg r "$REVIEWER_MODEL" --arg a "$WORKER_ADVISOR" \
-    '[inputs | fromjson? | objects | ([$w, $g, $r, $a, (.model | strings)] - [""]) as $ok | (.served_models | arrays)[] | strings
-      | select(. as $m | $ok | any(. as $p | $m | startswith($p)) | not)] | unique'
+    '[inputs | fromjson? | objects | ([.served_models | arrays | .[] | strings]) as $s | ((.model | strings) // "") as $req
+      | (if $req != "" and $s != [] and ($s | any(startswith($req)) | not) then [] else [$w, $g, $r, $a, $req] - [""] end) as $ok
+      | $s[] | select(. as $m | $ok | any(. as $p | $m | startswith($p)) | not)] | unique'
 }
 
 # The file record books for a claude -p call's raw output: the output itself when its result object gives
