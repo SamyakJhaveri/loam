@@ -269,8 +269,9 @@ git commit -q -F "$WORK/copier-commit.txt"
 C1="$(git rev-parse --short HEAD)"
 ok "committed copier's result as $C1 ($N conflicted files)"
 
-# Without LOAM_MEMSTORE_REMOTE the memory hooks cannot push the scratch store's traces anywhere.
-claude_env() { env -u LOAM_MEMSTORE_REMOTE LOAM_MEMSTORE="$WORK/memstore" TMPDIR="$WORK/claude-tmp" "$@"; }
+# Without LOAM_MEMSTORE_REMOTE the memory hooks cannot push the scratch store's traces anywhere. Each claude call runs
+# through bin/claude-account exec, so it gets the active stored account, never the host's /login.
+claude_env() { env -u LOAM_MEMSTORE_REMOTE LOAM_MEMSTORE="$WORK/memstore" TMPDIR="$WORK/claude-tmp" "$ROOT/bin/claude-account" exec "$@"; }
 mkdir -p "$WORK/memstore" "$WORK/claude-tmp"
 
 # In its own dir, so a file named old, new or template.diff cannot overwrite those.
