@@ -110,8 +110,10 @@ class StagedFaultTests(e2e.E2EHarness):
         self.wait_status(run, "waiting-limit")
         self.wait_long_sleep(run)
         log = self.read(run / "factory.log")
+        # limit_wait parses only a same-day reset ("resets 1:30pm"), so this weekly reply's "resets Nov 13, 5am" falls
+        # back to the 20-minute wait and retries; parsing the date is a follow-up, and this pins today's behavior.
         self.assertIn("usage limit, not a round: You've hit your weekly limit · resets Nov 13, 5am "
-                      "(America/Los_Angeles); waiting", log)
+                      "(America/Los_Angeles); waiting 1200s", log)
         self.assertNotIn("failed before doing work", log)
         (self.state / "wake").touch()
         self.assertEqual(self.wait_run(1), "pr-opened", self.diag(1))
