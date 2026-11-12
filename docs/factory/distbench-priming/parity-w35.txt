@@ -1,0 +1,7 @@
+FAIL P1 instructions: round 1: round-1.jsonl:3 init lists 86 skills, not verify-distbench; round 2: round-2.jsonl:3 init lists 86 skills, not verify-distbench
+FAIL P2 router: round 1: round-1.jsonl:31 Bash cat >> /home/samyak/.local/state/loam-factory/runs/SamyakJha with no router read before it; round 2: round-2.jsonl:8 Bash sed -i '10s/^Fail-first evidence of record: /Fail-first evid with no router read before it
+FAIL P3 method: round 1: round-1.jsonl:31 first change with no router read, so no method read; round 2: round-2.jsonl:8 first change with no router read, so no method read
+FAIL P4 gate-in-round: round 1: round-1.jsonl:59 ran bin/check, result has no check: line ('Exit code 143'); round-1.jsonl:84 ran bin/check, result has no check: line ('Exit code 143'); round 2: no transcript ran bin/check; worker/check.log:1 'bin/check: AF_UNIX bind denied - sandbox mode; this run is not the gate (SESSION-PROTOCOL section 6)'
+FAIL P5 models: round 1: factory.log:9 worker model=claude-opus-5-5 effort=medium; round 2: factory.log:20 worker model=claude-opus-5-5 effort=medium
+N/A P6 behaviour-proof: round-2.diff touches none of tasks/, src/distbench/runner.py, src/distbench/commands.py, src/distbench/expected.py, src/distbench/orchestrator.py, src/distbench/grader.py
+parity: FAIL (P1, P2, P3, P4, P5)
