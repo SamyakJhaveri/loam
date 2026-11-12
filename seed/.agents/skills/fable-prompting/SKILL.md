@@ -19,15 +19,16 @@ guide wins and this file is wrong.
 
 Owner H means the harness or the effort setting owns it; prompt text costs input
 tokens and changes nothing. Owner P means the person writing the prompt owns it.
-Owner Mixed means both: set the effort level and quote the guide's instruction.
+Owner Mixed means both: Claude Code sends part of it (see "Never paste these"),
+and you quote the rest from the guide.
 
 | Symptom | Guide section | Owner |
 |---|---|---|
 | Unsure which effort level to run, easy requests slow | Calibrate effort | H |
-| Turn ends with work left, a list of what remains, or an offer to continue | Finish the whole task | Mixed |
+| Turn ends with work left, a list of what remains, or an offer to continue | Finish the whole task | H |
 | Bare "continue" or approval rules applied too widely | Approvals | P |
 | Repeats existing code, or reports nearby problems without fixing them | Say who owns the code | P |
-| Goes quiet for many tool calls | Keep users informed during long turns | H |
+| Goes quiet for many tool calls | Keep users informed during long turns | Mixed |
 | Starts more subagents than the task needs | Set expectations for subagents | P |
 | Asks for approvals it does not need, holds back routine work or retries | Keep caution from piling up | P |
 | Old Fable 5.1 or Opus 5.5 lines raise cost or stop working | Review instructions written for earlier models | P |
@@ -39,9 +40,10 @@ the effort level or the harness, and add nothing to the prompt.
 
 ## What changed from Fable 5.1
 
-- Effort: start at `high`. Lower effort stops early more often; at `low` or
-  `medium` on agentic work, quote the "Finish the whole task" text.
-  A line such as "answer directly without deliberating" no longer reduces thinking: lower the effort instead.
+- Effort: start at `high`. Lower effort stops early more often; raise the
+  effort rather than quote the "Finish the whole task" text, which Claude Code
+  already sends in adapted form (see "Never paste these").
+  At `medium` and above, a line such as "answer directly without deliberating" no longer reduces thinking: lower the effort instead.
 - Ownership: Fable 5.2 follows what the prompt says about who owns the code.
   Add the ownership sentence only where the worker may restructure; leave it
   out where the owner owns the code and wants minimal change. A scope rule does
@@ -56,7 +58,7 @@ the effort level or the harness, and add nothing to the prompt.
 
 ## Session-prompt rubric
 
-A session prompt or brief for a fresh Fable 5.2 session carries five headings, in order; `HANDOFF.md` keeps the seven `docs/WORKERS.md` headings, and the `catchup` staleness check reads its `Written at` hash.
+A session prompt or brief for a fresh Fable 5.2 session carries five headings, in order; a handoff note uses the seven `docs/WORKERS.md` headings instead, and the `catchup` staleness check reads its `Written at` hash.
 
 1. **Goal and why.** What the work is for and what it unblocks.
 2. **Constraints.** Files in scope, what must not be touched, and who owns the
@@ -73,10 +75,12 @@ A session prompt or brief for a fresh Fable 5.2 session carries five headings, i
 
 ## Never paste these into a Claude Code prompt
 
-Claude Code already sends Fable 5.2 these, so a second copy is paid input
-tokens for no behavior change:
+Claude Code sends Fable 5.2 these, so a second copy is paid input tokens for
+no behavior change (measured in `claude -p`; interactive sessions were not
+captured):
 
-- The guide's finishing text, as the system-prompt section `# Finishing work`:
+- An adapted form of the guide's finishing text, as the system-prompt section
+  `# Finishing work`:
   "Ending your turn means your work stops there until asked to continue, and
   you should not stop unless needed. Please avoid stopping while work the user
   asked for is still owed."
@@ -85,7 +89,7 @@ tokens for no behavior change:
 - A turn-scoped reminder after several silent tool steps: "The user hasn't
   heard from you in a while."
 
-Quote anything else you need. The first request held no autonomy block ("You
+Quote anything else you need. The first `claude -p` request held no autonomy block ("You
 are operating autonomously"), no `# Delivering work` block, no "Signal intent"
 text and no one-line-update sentence.
 
