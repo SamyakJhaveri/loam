@@ -206,6 +206,18 @@ def failed_launch(run: Path) -> None:
     edit_events(run / "round-2.jsonl", edit)
 
 
+def gate_through_grep(result: str) -> Callable[[Path], None]:
+    """audit4 (Fable 1): the worker filters the block through grep -E '^(PASS|FAIL)', so only PASS/FAIL lines show."""
+    def edit(run: Path) -> None:
+        def item_edit(item: dict) -> None:
+            if item["type"] == "tool_use" and item["name"] == "Bash":
+                item["input"]["command"] = """bash "$LOAM_CHECKS" 2>&1 | grep -E '^(PASS|FAIL)'"""
+            elif item["type"] == "tool_result":
+                item["content"] = result
+        edit_events(run / "round-1.jsonl", item_edit)
+    return edit
+
+
 def stale_verify(run: Path) -> None:
     """verify.json names a commit other than the graded one."""
     v = json.loads((run / "round-1.verify.json").read_text())
@@ -246,6 +258,9 @@ VARIANTS = [
     ("a4-name-missing", "p3-pass", lambda run: reads_then_a_failing_command(run, "principle-sequence-verifiable-units"),
      "P3", "FAIL"),  # an is_error result without that file's name: line read none of it
     ("c3-guard", "p4-pass", guarded_gate, "P4", "PASS"),  # `guard bin/check` runs the gate
+    ("a4-gate-grep", "p4-pass", gate_through_grep("PASS class-route\nPASS check-green (check: PASSED)"), "P4", "PASS"),
+    ("a4-gate-grep-fail", "p4-pass", gate_through_grep("FAIL check-green: bin/check failed (check: FAILED)"), "P4", "PASS"),
+    ("a4-gate-grep-none", "p4-pass", gate_through_grep("PASS class-route\nPASS check-green"), "P4", "FAIL"),
     ("c4-failed-launch", "p6-pass", failed_launch, "P6", "FAIL"),  # a proof call that failed proves nothing
     ("c6-stale-verify", "pass", stale_verify, "P8", "FAIL"),  # verify.json is for another commit
     ("f2-round-line", "p3-pass", round_two_on_its_round_line, "P3", "PASS"),  # `Round 2: pstack: ...` is round 2's

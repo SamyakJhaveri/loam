@@ -10,8 +10,10 @@ n_fail=0
 
 # A result starts on a fresh line: after a command's output with no trailing newline it would land
 # mid-line, where the supervisor's ^PASS and ^FAIL reads miss it (#180).
-pass() { printf '\nPASS %s\n' "$1"; n_pass=$((n_pass + 1)); }
-fail() { printf '\nFAIL %s: %s\n' "$1" "${2:-}"; n_fail=$((n_fail + 1)); }
+# A result right after a guard ends with the gate result CMD printed, `(check: PASSED)`, so a reader that keeps
+# only ^PASS and ^FAIL lines still sees it (parity P4).
+pass() { printf '\nPASS %s%s\n' "$1" "${guard_check:+ ($guard_check)}"; guard_check=""; n_pass=$((n_pass + 1)); }
+fail() { printf '\nFAIL %s: %s%s\n' "$1" "${2:-}" "${guard_check:+ ($guard_check)}"; guard_check=""; n_fail=$((n_fail + 1)); }
 # guard: a regression guard; runs CMD and returns its status; allowed to pass on main.
 # Under LOAM_HOOK (the worker's Stop hook) a guarded bin/check passes without running:
 # it takes minutes per stop, and the supervisor's own check run is the one run per round (LOOP.md).
@@ -19,16 +21,25 @@ fail() { printf '\nFAIL %s: %s\n' "$1" "${2:-}"; n_fail=$((n_fail + 1)); }
 # `check: FAILED`) is also copied to fd 9, the block's own stdout (the checks file), so `guard bin/check >/dev/null`
 # cannot hide a step that did not run from status --criteria, and a block that captures bin/check still shows the
 # gate's result where parity P4 reads it. CMD's output goes through a temp file, so the copy lands before the next
-# line the block prints.
+# line the block prints; printed to the block's stdout itself, it streams through tee. Its last result line is kept
+# in guard_check for the next pass or fail.
 exec 9>&1
+guard_check=""
 guard() {
   local out rc
+  guard_check=""
   [ -n "${LOAM_HOOK:-}" ] && [ "${1:-}" = bin/check ] && return 0
-  { [ /dev/fd/1 -ef /dev/fd/9 ] || ! out=$(mktemp 2> /dev/null); } && { "$@"; return; }
-  "$@" > "$out"
-  rc=$?
-  cat "$out"
-  grep -a -E '^(SKIPPED:|check: (PASSED|FAILED))' "$out" >&9
+  out=$(mktemp 2> /dev/null) || { "$@"; return; }
+  if [ /dev/fd/1 -ef /dev/fd/9 ]; then
+    "$@" | tee "$out"
+    rc=${PIPESTATUS[0]}
+  else
+    "$@" > "$out"
+    rc=$?
+    cat "$out"
+    grep -a -E '^(SKIPPED:|check: (PASSED|FAILED))' "$out" >&9
+  fi
+  guard_check=$(grep -a -E '^check: (PASSED|FAILED)$' "$out" | tail -n 1)
   rm -f "$out"
   return "$rc"
 }

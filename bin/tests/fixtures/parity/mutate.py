@@ -23,6 +23,7 @@ MUTATIONS = [  # (rule, old, new): each old must occur exactly once
     ("audit3 C2 a failed read reads nothing", "return self.ran(i) and self.ids[i] not in self.errors", "return self.ran(i)"),
     ("audit4 1 an errored Bash call still reads", 'if not t.ok(j) and not (name == "Bash" and t.ran(j)):', 'if not t.ok(j):'),
     ("audit4 1 ... only files whose name: line shows", "    if not t.ok(j):\n        found = {", "    if False:\n        found = {"),
+    ("audit4 F1 the gate result on a PASS/FAIL line", r'|^(?:PASS|FAIL) .*\((check:', r'|^(?!)(?:PASS|FAIL) .*\((check:'),
     ("audit3 C3 guard runs the gate", ', ".", "guard"}', ', "."}'),
     ("audit3 C4 a failed proof call proves nothing", 'in text and t.ok(j):', 'in text and t.ran(j):'),
     ("audit3 F2 a Round N: prefix", r"(?:Round \d+:\s*)?pstack:", "pstack:"),

@@ -43,7 +43,8 @@ a `skills/<name>/SKILL.md` path or a hyphenated pstack name.
                       one before each round) and the lines after it belong to round N; earlier lines to round 1. With --attended there is no decisions.md part.
   P4 gate-in-round    some transcript of each round ran DistBench's bin/check (directly, through lib.sh's
                       guard or through checks.sh, not under LOAM_HOOK=1) and its result shows `check: PASSED` or
-                      `check: FAILED`, or a later call that reads its output (a background task's output file
+                      `check: FAILED` (or a PASS or FAIL line ending `(check: PASSED)`, guard's copy for a
+                      reader that keeps only those lines), or a later call that reads its output (a background task's output file
                       or id, or the file it redirected to) shows it; and no tool result, nor a log in worker/,
                       shows the sandbox refusal.
   P5 models           every model and effort the round used is one Samyak allows (ALLOWED below): Opus 5.5 at
@@ -140,7 +141,8 @@ GATE = re.compile(r"\bbin/check(?![\w.-])|[^\s;&|]*(?<![\w.-])checks\.sh\b|\$\{?
 WRAPPERS = {"nohup", "bash", "sh", "env", "time", "exec", "command", "source", ".", "guard"}  # guard: lib.sh
 HEREDOC = re.compile(r"<<-?\s*(['\"]?)(\w+)\1([^\n]*)\n.*?(?:\n[ \t]*\2[ \t]*(?=\n|$)|\Z)", re.S)
 HOOK_SET = re.compile(r"\bLOAM_HOOK=(?![\s;&|]|\"\"|''|$)")
-GATE_LINE = re.compile(r"(?m)^check: (?:PASSED|FAILED)\b.*$")
+# bin/check's own result line, or lib.sh's copy of it on the guarded check's line: `PASS check-green (check: PASSED)`.
+GATE_LINE = re.compile(r"(?m)^check: (?:PASSED|FAILED)\b.*$|^(?:PASS|FAIL) .*\((check: (?:PASSED|FAILED))\)$")
 REFUSAL = re.compile(r"(?m)^[^\"'\n]*?(bin/check: AF_UNIX bind denied[^\n]*|bwrap: No permissions to create new namespace[^\n]*)")
 BACKGROUND = re.compile(r"running in background with ID: (\w+)\. Output is being written to: (\S+?)\.?(?=\s|$)")
 SAVED = re.compile(r"Full output saved to: (\S+)")
@@ -662,7 +664,7 @@ def gate_result(t: Transcript, i: int) -> tuple[int, str] | None:
         keys |= {m.group(1), m.group(2)}
     for j in range(i, len(t.calls)):
         later = t.result(j)
-        shown = GATE_LINE.findall(later[1]) if later else []
+        shown = [m.group(1) or m.group(0) for m in GATE_LINE.finditer(later[1])] if later else []
         if shown and (j == i or any(k in json.dumps(t.calls[j][2]) for k in keys)):
             return later[0], shown[-1]
         if j == i and not keys:
