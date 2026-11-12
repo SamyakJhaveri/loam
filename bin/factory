@@ -2573,6 +2573,10 @@ call_json() { # round stem role prompt_file schema_file
                 fix: ("rerun the " + $r + " on this round")}]}' > "$final"
 }
 
+judge_passed() { # $RUN/round-N -> 0 when that round's judge passed, or failed only shadow rows
+  [ "$(jq -r .verdict "$1.judge.json" 2> /dev/null)" = pass ] || [ -e "$1.judge-shadow" ]
+}
+
 run_judge() { # round -> 0 on a pass verdict, or a fail on only JUDGE_SHADOW_ROWS (judge-shadow)
   local round="$1" pf="$RUN/round-$1.judge.prompt.md" f="$RUN/round-$1.judge.json" shadow
   rm -f "$RUN/round-$round.judge-shadow"   # a regraded round never reads an older shadow pass
@@ -2592,10 +2596,6 @@ run_judge() { # round -> 0 on a pass verdict, or a fail on only JUDGE_SHADOW_ROW
   fi
   jq -r '.fixes[]? | "- " + .' "$f" > "$RUN/round-$round.fixes"
   [ "$(jq -r .verdict "$f")" = pass ]
-}
-
-judge_passed() { # $RUN/round-N -> 0 when that round's judge passed, or failed only shadow rows
-  [ "$(jq -r .verdict "$1.judge.json" 2> /dev/null)" = pass ] || [ -e "$1.judge-shadow" ]
 }
 
 run_review() { # round -> 0 when nothing blocks
