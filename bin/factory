@@ -4060,6 +4060,8 @@ usage() { # [cmd...] - one line per named command, all ten when none is named
 # only in a sourced script; 2> /dev/null hides the error if the guard is ever hit while the file runs as
 # a program.
 [ "${FACTORY_SOURCED:-}" = 1 ] && return 0 2> /dev/null
+# Past the guard this file runs as a program: a live run never passes the test marker on (bin/alert stays silent under it).
+unset FACTORY_SOURCED
 C_DIR=""
 [ "${1:-}" = -C ] && { [ $# -ge 2 ] || usage; C_DIR="$2"; shift 2; }
 CMD="${1:-}"
