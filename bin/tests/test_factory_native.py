@@ -1,6 +1,6 @@
 """The worker's shell per target, the run's plugin dir, the reviewer model, and the review and learn hooks (U3).
 
-docs/factory/distbench-priming/design-pick.md, requirement (a) and unit U3. A Loam target keeps today's sandboxed
+docs/research/2026-11-12-distbench-priming/design-pick.md, requirement (a) and unit U3. A Loam target keeps today's sandboxed
 worker: its frozen settings and its worker and grader argv are compared with what the pre-U3 bin/factory (BASE, read
 from git) writes and passes, so the only differences are the ones every target gets (--plugin-dir, availableModels).
 Another target gets the native shell: auto mode over its user, project and local tiers, a flag tier with the sandbox

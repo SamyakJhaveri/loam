@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # bin/factory.d/probe-native.sh <clone> - one paid call of the native worker shell on a scratch clone of another target
-# (docs/factory/distbench-priming/design-pick.md, unit U3). It sources this checkout's bin/factory, writes the frozen
+# (docs/research/2026-11-12-distbench-priming/design-pick.md, unit U3). It sources this checkout's bin/factory, writes the frozen
 # worker settings with freeze_shell, builds the worker command with worker_cmd, and runs that command in the clone,
 # so a wrong flag or settings file cannot pass. The model runs five Bash calls (an AF_UNIX bind in a multi-line
 # python3 -c, a systemd-run scope in distbench-build.slice, docker ps, mpirun, a git commit in the clone) and the

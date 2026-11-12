@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """pstack-gate.py - Claude Code PreToolUse hook: no file change before the pstack router and a method are read.
 
-Requirement (c) of docs/factory/distbench-priming/design-pick.md, enforced in the round instead of graded after it.
+Requirement (c) of docs/research/2026-11-12-distbench-priming/design-pick.md, enforced in the round instead of graded after it.
 Reads the hook payload on stdin. A call that bin/factory-parity's changes() calls a file change is blocked
 (exit 2, one stderr line naming the fix) unless parity's P2 (router) and P3 (method) pass for the calling transcript
 so far with this call as its next one. Any other call, and any change once they pass, exits 0.

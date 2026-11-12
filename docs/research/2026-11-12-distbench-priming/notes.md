@@ -2,7 +2,7 @@
 
 Written 2026-11-12 by the Mac coordinator agent, cut short when the Mac session closed.
 A fresh session on jhaveris (tmux factory-prime) continues from this branch.
-The raw evidence is in `docs/factory/distbench-priming/` beside this file (copied from the Mac folder `~/.local/state/distbench/evidence/2026-11-12-factory/`).
+The raw evidence is in `docs/research/2026-11-12-distbench-priming/` beside this file (copied from the Mac folder `~/.local/state/distbench/evidence/2026-11-12-factory/`).
 
 ## Goal
 

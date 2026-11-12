@@ -1,6 +1,6 @@
 # shellcheck shell=bash
 # bin/factory.d/review.sh - the verifier and the learn step, sourced by bin/factory from its frozen copy
-# (docs/factory/distbench-priming/design-pick.md, unit U4; requirements (d) and (h)). It uses bin/factory's own
+# (docs/research/2026-11-12-distbench-priming/design-pick.md, unit U4; requirements (d) and (h)). It uses bin/factory's own
 # helpers (call_start, call_end, record, assert_caps, log, scrub, alert, codex_*), so it runs only sourced into it.
 #
 #   verify_round ROUND  after the reviewer and the Codex review: one Opus call reproduces each blocking finding at
