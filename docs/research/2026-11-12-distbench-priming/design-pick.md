@@ -41,6 +41,7 @@ The memory view (U3, surprise panel) puts the distbench memory, read-only, in ev
 ## (a) What is lost, what still guards
 
 Lost against today's sandbox (`worker-settings.json:22-25`): the PyPI-only network allowlist; the Bash write fence (other checkouts and runs, `~/.claude`, the crontab, the run's `frozen/`); process isolation (signals, Docker, GPU); the egress barrier for credentials, whose reads were never blocked.
+`WebSearch` stays allowed, since workers need it: an egress path that carries search queries only.
 Still guards: the classifier on Bash, network included; `WebFetch` denied (F9); denies unioned across tiers (`rm -rf`, `git push`, `gh`, `pkill`, `killall`, `ssh`, `scp`, `crontab`); `GIT_SSH_COMMAND=false`, `GH_CONFIG_DIR=/nonexistent`; per-run worktree and branch; `do_not_touch_hits`; `check_frozen`; `tree_signature`; the supervisor's check-green; `bin/integrate --land` on the merged tree.
 `Edit` and `Write` were never fenced.
 P7 detects, never prevents, a write to `~/.claude` or the run's checkouts.
