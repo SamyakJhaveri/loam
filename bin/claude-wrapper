@@ -2,27 +2,27 @@
 # bin/claude-wrapper - installed first on a host's PATH under the name `claude` (a symlink to this file), so a plain
 # `claude` never starts on the host's stored /login: with CLAUDE_CODE_OAUTH_TOKEN already set it runs the real claude
 # unchanged; otherwise it runs it through `bin/claude-account exec --as <active account>`, and with no active account
-# whose token is stored it exits 1 and starts nothing. argv, stdin and the exit status pass through (every step execs).
-# The real claude is the first `claude` on PATH that does not resolve to this file, so the wrapper never runs itself.
+# whose token is stored it exits 1 and starts nothing (as `exec --as` does if the token goes in between). argv, stdin and the exit status pass through (every step execs).
+# The real claude is the first `claude` on PATH that does not resolve to a claude-wrapper (this file or another checkout's),
+# so the wrapper never runs itself or a second wrapper that would run it back.
 set -euo pipefail
 self=$(readlink -f "$0")
 here=$(dirname "$self")
 real=""
-IFS=: read -r -a dirs <<<"$PATH"
+IFS=: read -r -a dirs <<<"$PATH:"   # the extra colon keeps a trailing empty entry (the current directory)
 for d in "${dirs[@]}"; do
   c=${d:-.}/claude
   [ -f "$c" ] && [ -x "$c" ] || continue
-  [ "$(readlink -f "$c")" = "$self" ] && continue
+  case $(readlink -f "$c") in "$self" | */claude-wrapper) continue ;; esac
   real=$c
   break
 done
 [ -n "$real" ] || { echo "claude (wrapper $self): no other claude on PATH" >&2; exit 127; }
 [ -n "${CLAUDE_CODE_OAUTH_TOKEN:-}" ] && exec "$real" "$@"
-st=$("$here/claude-account" status < /dev/null 2> /dev/null) || st=""
-account=$(sed -n 's/^active: \([^;]*\);.*/\1/p' <<<"$st")
-case " ${st#*stored:} " in
-  *" ${account:-/} "*) ;;
-  *) echo "claude (wrapper $self): no stored Claude account is active (${st:-claude-account status failed}), so this claude would run on the host's /login; refusing. Store one with: $real setup-token, then $here/claude-account set <name> and $here/claude-account use <name>" >&2
-     exit 1 ;;
-esac
+acc=${CLAUDE_ACCOUNTS_DIR:-$HOME/.config/claude-accounts}   # bin/claude-account's account directory
+account=$(cat "$acc/active" 2> /dev/null) || account=""
+if [ -z "$account" ] || [ ! -f "$acc/$account.token" ]; then
+  echo "claude (wrapper $self): no stored Claude account is active (active: ${account:-none}), so this claude would run on the host's /login; refusing. Store one with: $real setup-token, then $here/claude-account set <name> and $here/claude-account use <name>" >&2
+  exit 1
+fi
 exec "$here/claude-account" exec --as "$account" "$real" "$@"

@@ -154,6 +154,11 @@ class ExecTests(Scratch):
         self.assertEqual(self.helper("exec", "--as", "", *show).stdout, "sk-ant-oat01-fake-b")
         self.assertEqual(self.helper("exec", "--as").returncode, 2)
 
+    def test_exec_as_a_name_with_no_stored_token_runs_nothing(self) -> None:
+        proc = self.helper("exec", "--as", "ghost", *PRINT_TOKEN, **{TOKEN: "launch-x"})
+        self.assertEqual((proc.returncode, proc.stdout), (1, ""))
+        self.assertIn("no stored token for account 'ghost'", proc.stderr)
+
     @LINUX_ONLY
     def test_exec_puts_no_token_on_a_command_line(self) -> None:
         # An `env` shim first on PATH logs its argv, which `exec env TOKEN=... cmd` would hold and /proc no longer shows.

@@ -7,7 +7,7 @@
 #                                   run the command with the active account's token in its environment (with --as, the
 #                                   token of <name>, which a caller read from `active` once and also records; an empty
 #                                   <name> reads `active`); with no active account, or none stored, the environment is
-#                                   left as it is
+#                                   left as it is, but a non-empty --as <name> with no stored token exits 1 and runs nothing
 #   bin/claude-account other        print the next stored account after the active one (name order, wrapping), non-zero when there is none
 #   bin/claude-account status       print `active: <name>; stored: <names>` and nothing else
 #   bin/claude-account switch <from> [<to>]
@@ -99,6 +99,8 @@ case "$cmd" in
       a=$2; shift 2
     fi
     [ $# -gt 0 ] || { echo "usage: bin/claude-account exec [--as <name>] <command> [args...]" >&2; exit 2; }
+    # A caller that names an account wants that token, never the launch environment's or the host's /login.
+    [ -z "$a" ] || [ -f "$dir/$a.token" ] || { echo "bin/claude-account exec: no stored token for account '$a' in $dir" >&2; exit 1; }
     [ -n "$a" ] || a=$(active_name)
     if [ -n "$a" ] && [ -f "$dir/$a.token" ]; then
       # Into this process's environment only, never onto a command line (/proc shows argv). A token file with no
