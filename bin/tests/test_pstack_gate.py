@@ -146,6 +146,8 @@ UNREAD = ("pstack: principle-fix-root-causes | /home/samyak/.claude/plugins/cach
 @pytest.mark.parametrize(("decisions", "blocked"), [
     (f"{UNREAD}Round 2: the README line.\n{LOGGED}", False),  # the unread method belongs to round 1
     (f"Round 2: the README line.\n{LOGGED}{UNREAD}", True),  # round 2 names a method no round-2 transcript read
+    (f"{UNREAD}Round 2: {LOGGED}", False),  # audit3 F2: the pstack: line on the Round line is round 2's
+    (f"{UNREAD}Round 2\n{LOGGED}", False),  # the supervisor's header line (worker_round), then the worker's line
 ])
 def test_decisions_md_is_read_for_the_round_being_run(tmp_path, decisions, blocked):
     """In a run's frozen/ copy, P3 reads worker/decisions.md for round 1 + the highest finished round-N.jsonl."""

@@ -23,6 +23,7 @@ MUTATIONS = [  # (rule, old, new): each old must occur exactly once
     ("audit3 C2 a failed read reads nothing", "return self.ran(i) and self.ids[i] not in self.errors", "return self.ran(i)"),
     ("audit3 C3 guard runs the gate", ', ".", "guard"}', ', "."}'),
     ("audit3 C4 a failed proof call proves nothing", 'in text and t.ok(j):', 'in text and t.ran(j):'),
+    ("audit3 F2 a Round N: prefix", r"(?:Round \d+:\s*)?pstack:", "pstack:"),
     ("C4 brief-named read", "    names = named_skills(f\"{t.brief}\\n{run.ticket}\", run.pstack)\n",
      "    names = set()\n"),
     ("F5 notes are no change", 'NOTES = re.compile(r"/[0-9a-f]{8}/worker/|', 'NOTES = re.compile(r"(?!x)x/[0-9a-f]{8}/worker/|'),

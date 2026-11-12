@@ -207,6 +207,21 @@ def unparseable_review(run: Path) -> None:
     (run / "round-1.verify.json").write_text(json.dumps(v) + "\n")
 
 
+def round_two_on_its_round_line(run: Path) -> None:
+    """A round 2 that reads the router and tdd/SKILL.md, then writes; decisions.md logs tdd on its `Round 2:` line."""
+    r1 = (run / "round-1.jsonl").read_text().splitlines()
+    tdd = "/home/samyak/.claude/plugins/cache/cursor-plugins/pstack/0.15.36/skills/tdd/SKILL.md"
+    write = next(json.loads(x) for x in r1 if '"Write"' in x)["message"]["content"][0]["input"]
+    calls = [("r2a", "Bash", {"command": "cat /home/samyak/loam/cultivation/marketplace/sam-cc-setup/skills/pstack/SKILL.md"}),
+             ("r2b", "Read", {"file_path": tdd}), ("r2c", "Write", write)]
+    events = [json.loads(r1[0])] + [e for i, name, inp in calls for e in (
+        {"type": "assistant", "message": {"content": [{"type": "tool_use", "id": i, "name": name, "input": inp}]}},
+        {"type": "user", "message": {"content": [{"type": "tool_result", "tool_use_id": i, "content": "ok"}]}})]
+    (run / "round-2.jsonl").write_text("".join(json.dumps(e) + "\n" for e in events))
+    with (run / "worker" / "decisions.md").open("a") as f:
+        f.write(f"Round 2: pstack: tdd | {tdd} | {'0' * 64} | \"TDD Bug Fix\" | red first\n")
+
+
 # Audit 3 repros (the verifier's audit3-verify.md): (name, committed case, edit of its run folder, id, expected).
 VARIANTS = [
     ("c2-failed-reads", "p3-pass", failed_skill_reads, "P2", "FAIL"),  # a read whose result is an error read nothing
@@ -214,6 +229,7 @@ VARIANTS = [
     ("c3-guard", "p4-pass", guarded_gate, "P4", "PASS"),  # `guard bin/check` runs the gate
     ("c4-failed-launch", "p6-pass", failed_launch, "P6", "FAIL"),  # a proof call that failed proves nothing
     ("c6-stale-verify", "pass", stale_verify, "P8", "FAIL"),  # verify.json is for another commit
+    ("f2-round-line", "p3-pass", round_two_on_its_round_line, "P3", "PASS"),  # `Round 2: pstack: ...` is round 2's
 ]
 
 

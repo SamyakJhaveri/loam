@@ -2417,10 +2417,20 @@ call_gone() { # tenths of a second to wait -> 0 once nothing is left in the call
   done
 }
 
+# HEAD plus the digest of decisions.md without the `Round N` lines worker_round writes, so the supervisor's own
+# header is no change by the worker.
+round_sig() {
+  printf '%s %s\n' "$(git -C "$WORKTREE" rev-parse HEAD)" "$(grep -Ev '^Round [0-9]+$' "$DECISIONS" | sha256_of | cut -d' ' -f1)"
+}
+
 worker_round() { # round; leaves round-N.* only once the call produced a result
   local round="$1" pf out="$RUN/pending.jsonl" res="$RUN/pending.result.json" t=(timeout -k 5 "$CALL_TIMEOUT_SEC") login_retried=0 le head0
   # The round's start, so a stop after a killed call can name the commits the call made (#319).
   head0=$(git -C "$WORKTREE" rev-parse HEAD 2> /dev/null) || head0=""
+  # The round's header line in decisions.md: parity P3 and the pstack gate (decision_lines) give the lines after
+  # `Round N` to round N, so a worker's pstack: line needs no round label of its own. Once per round, so a retried
+  # or relaunched round adds none.
+  [ "$(grep -E '^Round [0-9]+$' "$DECISIONS" 2> /dev/null | tail -n 1)" = "Round $round" ] || printf 'Round %s\n' "$round" >> "$DECISIONS"
   # The first round this process runs; a login expired at launch retries only its call. A global,
   # not a local, so it survives the loop's later rounds.
   [ -n "${FIRST_WORKER_ROUND+x}" ] || FIRST_WORKER_ROUND="$round"
@@ -3062,7 +3072,7 @@ main_loop() {
     # The round signature is HEAD plus the digest of decisions.md, so a round that only relabels
     # decisions.md after a grader-only fail (#78) proceeds to the checks and graders; no-change fires
     # only when both are unchanged since the previous round.
-    sig_now="$(git -C "$WORKTREE" rev-parse HEAD) $(sha256_of < "$DECISIONS" | cut -d' ' -f1)"
+    sig_now=$(round_sig)
     [ "$sig_now" = "$prev_sig" ] && finish no-change "HEAD and decisions.md are unchanged since round $((ROUND - 1))"
     prev_sig="$sig_now"
     checks="$RUN/round-$ROUND.checks"

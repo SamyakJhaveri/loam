@@ -39,8 +39,8 @@ a `skills/<name>/SKILL.md` path or a hyphenated pstack name.
                       `pstack: <skill> | <SKILL.md path> | ...` or a transcript that fully read a pstack SKILL.md
                       its brief names before its first change; each such line's path ends <skill>/SKILL.md and was
                       fully read in that round; and every other pstack method decisions.md names for a round was
-                      fully read in that round. A decisions.md line starting "Round N" and the lines after it
-                      belong to round N; earlier lines to round 1. With --attended there is no decisions.md part.
+                      fully read in that round. A decisions.md line starting "Round N" (the supervisor writes
+                      one before each round) and the lines after it belong to round N; earlier lines to round 1. With --attended there is no decisions.md part.
   P4 gate-in-round    some transcript of each round ran DistBench's bin/check (directly, through lib.sh's
                       guard or through checks.sh, not under LOAM_HOOK=1) and its result shows `check: PASSED` or
                       `check: FAILED`, or a later call that reads its output (a background task's output file
@@ -111,8 +111,9 @@ FABLE = "claude-fable-5-2"
 BLOCKING = {"reviewer": {"high", "medium"}, "codex": {"critical", "high"}}
 VERDICTS = {"CONFIRMED", "PARTLY", "REJECTED"}
 GIT_DIGESTS = ("git-head", "git-diff", "git-untracked")  # each `git-status:<dir>` digest line needs these too
-# A decisions.md method line from the router: `pstack: <skill> | <SKILL.md path> | <sha256> | <quote> | <decision>`.
-PSTACK_LINE = re.compile(r"^\s*(?:[-*]\s+)?pstack:\s*([^|\s][^|]*?)\s*\|\s*([^|]+?)\s*\|")
+# A decisions.md method line from the router: `pstack: <skill> | <SKILL.md path> | <sha256> | <quote> | <decision>`,
+# also after a `Round N: ` prefix (decision_lines gives it to round N).
+PSTACK_LINE = re.compile(r"^\s*(?:[-*]\s+)?(?:Round \d+:\s*)?pstack:\s*([^|\s][^|]*?)\s*\|\s*([^|]+?)\s*\|")
 # Writes here are notes or scratch, not changes: a run's <key>/<sha8>/worker/, /tmp and $TMPDIR, a session
 # scratchpad, ~/.claude/projects (sessions, memory) and DistBench's evidence folder (attended agents' reports).
 NOTES = re.compile(r"/[0-9a-f]{8}/worker/|(?<![\w.])/tmp/|/scratchpad/|\$\{?TMPDIR\b|/\.claude/projects/"
