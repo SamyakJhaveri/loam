@@ -1,121 +1,209 @@
-# Design pick (12 Nov 2026): the factory builds distbench like an attended session
+# Design pick, buildable (12 Nov 2026): the factory builds distbench like an attended session
 
-L = Loam `fix/factory-distbench` (`bin/factory` as at 5e7fc15f); D = distbench isc-build 31599c19, the factory's base, unless a cite says D main (582df455); S = a script Samyak runs.
-Letters follow `program.md` (a)-(i).
+L = Loam `fix/factory-distbench`; D = distbench `isc-build` 2d2a59f5; S = a script Samyak runs; G = `~/.local/state/distbench/evidence/2026-11-12-factory/` (C, A and F ids: its `audit-verify-*.md`).
 
-Pick: a graft.
-From A, the core: the worker is a distbench session loading Samyak's user tier and distbench's project tier natively, in auto mode, sandbox off in the factory's flag tier; Loam's prompt copies go.
-From B: a target declaration in D `STANDING.md`, a gate cache, a code tick and lane script, a verifier reading the audit skill by path, a learn step, a compare script.
-Fixed from A (`design-A.md:9`): load `user,project`, not `local`.
+Pick: A's core with B's machinery, cut to the proof's critical path.
+For a non-Loam target (today only distbench) the worker is a native session: user, project and local tiers, auto mode, sandbox off in the factory's flag tier, Samyak's plugin from the run's own Loam checkout.
+The rest is factory tickets.
 
 ## Doubts settled by experiment
 
-Claude Code 2.1.322, six `claude -p` calls (0.88 USD) in a clone of `~/distbench-isc` and its git worktree, with marker denies in the clone's `settings.json` (MAINMARK), the worktree's (WTMARK) and the clone's `settings.local.json` (LOCALMAIN).
-
-1. Auto mode works headless: `--permission-mode auto --setting-sources user,project,local --settings '{"sandbox":{"enabled":false}}'` gave init `"permissionMode":"auto"` and refused `git -C <scratch> push --force origin HEAD:main`: "denied by the Claude Code auto mode classifier. Reason: [Git Destructive]", although the user tier allows `Bash(*)`. `modelUsage` listed only claude-opus-5-5.
-2. Tiers in a worktree: init listed verify-distbench, formal-orchestrator and user agents (worker, scout, escalate); the session quoted `~/.claude/CLAUDE.md`, D `CLAUDE.md` and `AGENTS.md`; the user hook fired. Project settings came from the worktree (WTMARK denied, MAINMARK ran); the local tier came from the main checkout (LOCALMAIN denied) unless sources were `user,project`. The flag `sandbox.enabled false` beat the project `true` (D `.claude/settings.json:37`): an AF_UNIX bind printed BIND_OK; the project-only control got `Operation not permitted`. `memory_paths.auto` named the main clone's folder.
-3. Deny syntax: flag deny `Bash(git -C * push:*)` let `git -C <scratch> push origin HEAD:refs/heads/build/f-x` through; `Bash(git -C * push *)` and `Bash(git push *)` denied it and `cd <scratch> && git push`. Flag env `GIT_SSH_COMMAND=false` made `git ls-remote git@github.com:SamyakJhaveri/distbench.git` fail; without it, it succeeded.
-4. Flag env `BASH_MAX_TIMEOUT_MS=5400000`: a Bash call `sleep 660; echo SLEPT_OK` (timeout 900000) returned SLEPT_OK after 663 s; workers were cut at "Command timed out after 10m 0s" (`runs-w24-w34-w35.md:29,69`).
-5. A PreToolUse hook in an Agent subagent got the parent's `transcript_path` and an `agent_id`; the subagent's transcript is `<session>/subagents/agent-<agent_id>.jsonl`.
+Claude Code 2.1.322, `claude -p`, 1.24 USD.
+1. `--permission-mode auto --setting-sources user,project,local`, flag `sandbox.enabled false`: init auto; the classifier refused a force push despite the user tier's `Bash(*)`.
+2. In a worktree user and project tiers load (verify-distbench, user agents, both CLAUDE.md, hooks); flag sandbox off beats D `.claude/settings.json:37` (AF_UNIX bind ok).
+3. Denies `Bash(git push *)` and `Bash(git -C * push *)` match, `Bash(git -C * push:*)` does not; `GIT_SSH_COMMAND=false` stops ssh git.
+4. Flag env `BASH_MAX_TIMEOUT_MS=5400000` let a 660 s command finish.
+5. `--plugin-dir <L>/cultivation/marketplace/sam-cc-setup` replaces the installed plugin (C1); a `paths:` frontmatter key drops a skill from init (F1).
 
 ## Requirements
 
-| Req | Pick | Mechanism | Files to change | Observable; parity id |
-|---|---|---|---|---|
-| (a) sandbox | graft | D declares `sandbox: off` under `## Worker shell`; freeze then writes the flag tier with `sandbox.enabled false` and no user-tier merge (L `bin/factory:1451-1467`), and the call runs `--permission-mode auto --permission-prompts none --setting-sources user,project` (today `bypassPermissions`, `''`: :2349-2350). Other targets unchanged. | L `bin/factory`, `worker-settings.json`; D `docs/factory/STANDING.md` | init `permissionMode: auto`; frozen `.sandbox.enabled == false`; P7 |
-| (b) gate in round | graft | `guard ... bin/check` runs frozen `gate.sh`: D's `gate:` line (`DISTBENCH_GATE_CLASS=factory bin/check --parallel`), cached per clean tree in `$RUN/worker/gate/` inside the worker session only. Stop hook: cheap block (`LOAM_HOOK=1`), then the full block, timeout 900 to 5400 s (`worker-settings.json:27`); `BASH_MAX_TIMEOUT_MS=5400000`. | L `gate.sh` (new), `lib.sh:24`, `worker-settings.json`; D `STANDING.md`, `bin/check` | Bash result or Stop-hook event ending `check: PASSED` or `FAILED`; P4, extended to hook events |
-| (c) pstack proof | graft | User CLAUDE.md's router line loads (exp. 2). PreToolUse hook `factory-parity --hook` exits 2 on a change (`changes()`, `factory-parity:170`) until that agent's transcript shows a router read (`reads_router()`, :182). The router gains a log line in D plan line 203's format (`pstack: <skill> \| <path> \| ...`). The supervisor runs P2/P3 before the judge; a FAIL blocks and enters the judge bundle. | L `factory-parity`, router `SKILL.md`, `plugin.json`, `bin/factory`; delete `_common.md:14`, `factory-round.js:107`, `bin/factory:2071-2075` | Skill `sam-cc-setup:pstack` before the first change; `round-N.conduct`; P2, P3 |
-| (d) reviews | graft | The reviewer runs claude-fable-5-2 high, its bundle without `decisions.md` (today Opus xhigh, `bin/factory:1075`; bundle :2480). Codex read-only every graded round (default `no`, :2968). `verify.sh`: one Opus 5.5 high call in a detached worktree at GRADED_SHA (as :2684) reads audit `SKILL.md:47-49` by path and marks each blocking finding; only CONFIRMED and PARTLY reach `round-N.fixes` (today verbatim, :2601, :2658). `skill-call.sh` runs audit by path on self-filed drafts (dry run, D main `WORKERS.md:46`) and each batch's landed diff; surprise-me Panel on design-class drafts (:25-27). | L `bin/factory`, `verify.sh`, `verify.schema.json`, `role-settings.json`, `skill-call.sh`; S Fable allow | ledger reviewer `claude-fable-5-2`; `round-N.verify.json`, `.codex-review.json`; P8 |
-| (e) behaviour proof | graft | verify-distbench loads (exp. 2); the worker runs `control-distbench launch`. D adds `paths:` to verify-distbench and formal-orchestrator (allowed, D `bin/check:314-318`); P6 reads them, not its copy (`factory-parity:53-54`). Steps (plan line 231): 1 round 0 (`bin/factory:1954`); 2-3 in-round tests, gate, verify-distbench, then check-green; 4 the landing; 5-6 an `UNVERIFIED` line when the Proven line names P or R. | D two `SKILL.md`; L `factory-parity` | init lists verify-distbench (P1); read and launch on covered paths (P6, plus UNVERIFIED lines) |
-| (f) scheduling | B | L `tick.sh` (10 min) launches released file tickets from a queue through D `bin/factory-lane launch` while runs < `FACTORY_MAX_PARALLEL` (3; 4 after W04) and `lane hold <ticket>` exits 0 (heavy ≤ 3; no landing waiting over two gate runs, plan line 184). `launch` runs the factory in `distbench-build.slice` (today outside, J16), pushes `build/f-<id>` and lists it; `land` runs `bin/integrate --land --group N` plus a Codex read-only review. | L `tick.sh`; D `bin/factory-lane` (replaces `~/.local/bin/factory-isc`), `bin/check` | `tick.log` `launch W41 runs=2/3 heavy=1/3 hold=ok`; run `cgroup`; P9 |
-| (g) unattended | graft | Wake-up: the S timer. 450K: rounds are fresh calls compacting at 450K (`worker-settings.json:3-4`), plus a SessionStart `compact` hook naming the ticket and `decisions.md`. Dead watch: lease reap (`LOOP.md:322`), a healthchecks beat per tick (:355-357), STALL when `pending.jsonl` and the gate log idle 30 minutes. Each tick renders `~/.local/state/distbench/NEEDS-SAMYAK.md` from needs-you lines of `alerts.jsonl` (:365), with `!` commands. | L `tick.sh`, `worker-settings.json`; S timer | `tick.log` beats; `NEEDS-SAMYAK.md`; P11 |
-| (h) self-improvement | graft | File tickets write backlog and blocking findings to `$RUN/followups.md` (today skipped: `bin/factory:2866` exits before :2880-2881). `learn.py` reads run folders (parity FAILs, open or rejected findings, env stops, failed landings); a class seen twice, or one confirmed High, starts one ticket-writer call (D main `WORKERS.md:30-46` by path) drafting into the blamed repo's inbox; `skill-call.sh` audits it. Release stays with the lead or Samyak, via NEEDS-SAMYAK. | L `learn.py`, `skill-call.sh`, `bin/factory` | drafts with `reviews-tickets/<id>.md`; P10 |
-| (i) measurement | B | `compare.py`, one row per batch-2 item: arm, confirmed Medium-or-worse findings from reviewers both arms face (landing Codex, batch-end audit), reruns, USD, wall time. Attended: D `docs/tickets/ledger.tsv` (207 rows), L `bin/usage-audit`; factory: `metrics.json`. Prediction first; medians with n, no winner (arms not randomized). | L `compare.py`, `bin/factory` | `compare.tsv`; P12 |
+| Req | Mechanism | When | Observable; parity |
+|---|---|---|---|
+| (a) sandbox | Native shell (U3): flag tier = `worker-settings.json` minus sandbox plus `worker-settings-native.json`, no user-tier merge; call `--permission-mode auto --setting-sources user,project,local --plugin-dir`. Loam targets unchanged. | tonight | init auto, frozen sandbox off, digests equal; P7 |
+| (b) gate cap | Flag env `BASH_DEFAULT_TIMEOUT_MS` = `BASH_MAX_TIMEOUT_MS` = 5400000 and `DISTBENCH_GATE_CLASS=factory`; F48 (Appendix) runs every spelling of `bin/check` as `--parallel`. | tonight | in-round `check: PASSED` or `FAILED`; P4 |
+| (c) pstack | Router log line (U2) in D plan line 203's five fields; native user CLAUDE.md and `_common.md:14` name the router; P2 and P3 as fixed (U1). Hook: T1. | tonight | decisions.md `pstack:` lines; P2, P3 |
+| (d) reviews | `FACTORY_REVIEWER_MODEL=claude-fable-5-2` at high, `availableModels` in frozen role settings; Codex from the ticket's `codex-review: yes`; `verify_round` (U4) reproduces each blocking finding before `fixes`. Default, blind bundle: T7; audit, surprise-me: T9. | tonight | reviewer `served_models`; `verify.json`; P8 |
+| (e) proof | verify-distbench loads natively; plan steps 1-3 run in-round on jhaveris. Steps 4-6: T3, T10. | tonight | P1, P4; P6 N/A for F48 |
+| (f) scheduling | Proof launched by hand under the launch condition. Tick, lane, land, slots, scopes: T3, T4. | ticket | - |
+| (g) unattended | Rounds compact at 450K (`worker-settings.json:3-4`; closed ruling L `docs/RULES.md:41`). Wake-up, watcher, NEEDS-SAMYAK: T8. | ticket | - |
+| (h) self-improvement | A file ticket writes `followups.md`; `learn_run` (U4) drafts one ticket that Fable, Codex and the verifier review (today nothing, `bin/factory:2866,2880`). Dedupe, filing: T5. | tonight | `$RUN/learn/` |
+| (i) measurement | `compare.py` exists (L 64ec111a). Attended map, serious rule, wiring: T6. | ticket | - |
 
-New parity rows (P9-P11 under a `--lane <state dir>` mode):
-- P7 shell: init auto mode, frozen sandbox off, no change under `$RUN/frozen`, `~/.claude` or another checkout.
-- P8 review: each graded round has a claude-fable-5-2 reviewer row and `codex-review.json`; every reviewer or Codex line in `fixes` has a CONFIRMED or PARTLY verdict in `verify.json`.
-- P9 schedule: `launch` lines within caps; runs in the slice; a Codex review per landed group.
-- P10 learn: each draft's review has Fable 5.2, Codex, Verify and Dry-run sections.
-- P11 unattended: no beat gap over two periods; every needs-you alert in `NEEDS-SAMYAK.md`.
-- P12 metrics: each finished run has `metrics.json` (rounds, relaunches, usd, wall_s, confirmed findings).
+The memory view (U3, surprise panel) puts the distbench memory, read-only, in every worker prompt; P1 checks it.
 
 ## Why this pick
 
-- A's core loads the instruction set natively (exp. 2), so P1 passes without code; under `''` the init lists 86 skills without verify-distbench (`parity-w34.txt:1`), and B's view would reimplement Claude Code's loader yet still fail P1.
-- Auto mode reviews every unapproved action (exp. 1); B keeps `bypassPermissions`, leaving only prefix denies (`LOOP.md:234`).
-- B's objection to native tiers is answered: `.claude/` is on D's standing list (D `STANDING.md:9`), so a settings edit fails the round (`bin/factory:2396`); denies union across tiers (exp. 2); auto memory stays off (`worker-settings.json:2`), and must, since its folder is the main checkout's.
-- (c) runs as code ahead of the judge, not a `judge.md` row: deterministic, and no paid grader replay (`LOOP.md:470`).
+- Native tiers load the instruction set itself (exp. 2): nothing copied, P1 holds without code.
+- Auto mode reviews every unapproved action (exp. 1); `bypassPermissions` leaves only prefix denies.
+- From design C (same outcome, simpler): both Bash timeouts (no timeout argument needed); no gate cache or split (a worker-writable cache is untrusted); a separate `REVIEWER_MODEL` with `availableModels`; one verifier call giving verdict, command and output per finding; follow-ups before the file ticket's early exit; `user,project,local`.
+- Scope: the dry run found 15 units unbuildable in parallel (G `agent-reports/audit-dry-run.md`).
 
 ## (a) What is lost, what still guards
 
-Lost against today's sandbox (`worker-settings.json:22-25`):
-- The network allowlist (PyPI only, `LOOP.md:236`): Bash reaches any host.
-- The Bash write boundary (`LOOP.md:235`): Bash can write other checkouts and runs, `~/.claude`, the crontab and the run's `frozen/`.
-- Process isolation: Bash can signal other sessions and use Docker and the GPU.
-- The egress barrier for credentials, whose reads were never blocked (`LOOP.md:240`).
-Never protected: the Write and Edit tools, and worker code that the Stop hook and `run_checks` run (`LOOP.md:240`).
+Lost against today's sandbox (`worker-settings.json:22-25`): the PyPI-only network allowlist; the Bash write fence (other checkouts and runs, `~/.claude`, the crontab, the run's `frozen/`); process isolation (signals, Docker, GPU); the egress barrier for credentials, whose reads were never blocked.
+Still guards: the classifier on Bash, network included; `WebFetch` denied (F9); denies unioned across tiers (`rm -rf`, `git push`, `gh`, `pkill`, `killall`, `ssh`, `scp`, `crontab`); `GIT_SSH_COMMAND=false`, `GH_CONFIG_DIR=/nonexistent`; per-run worktree and branch; `do_not_touch_hits`; `check_frozen`; `tree_signature`; the supervisor's check-green; `bin/integrate --land` on the merged tree.
+`Edit` and `Write` were never fenced.
+P7 detects, never prevents, a write to `~/.claude` or the run's checkouts.
 
-Still guards:
-- The auto-mode classifier (exp. 1).
-- Denies unioned across tiers; the flag tier adds, in exp. 3's space form, `Bash(git -C * push *)`, `Bash(git push *)`, `Bash(pkill *)`, `Bash(killall *)`, `Bash(ssh *)`, `Bash(scp *)`, `Bash(crontab *)`.
-- Worker env `GIT_SSH_COMMAND=false` (exp. 3) and an empty `GH_CONFIG_DIR`.
-- Per-run worktree and branch; the standing list (`bin/factory:2396`); `check_frozen` (:1489-1491) plus a digest of `frozen/sha256` in supervisor memory; `tree_signature` around graders (:2665).
-- The supervisor's own check-green each round, and `bin/integrate --land` on the merged tree as the authority for isc-build (J22).
-Only the classifier guards the network; a same-user worker can still edit any file, which P7 reports but does not prevent.
+## (b) Gate load
 
-## (b) Gate load, and the forged cache
+Round 0 and each supervisor check-green stay serial outside the slice (1679 s); a worker gate is serial until F48's edit, then `--parallel` in the slice (landing g8: 330.6, 116.5, 22.0 s).
+Two gate locks allow two gates per host; slot priority: T4.
 
-The gate becomes `bin/check --parallel`: landing g8's pytest phases took 330.6, 116.5 and 22.0 s (`~/.local/state/distbench/integrate/20261112T044124.116981Z-g8/`), against 1679 s for the serial factory gate (`factory-gate/095012c0...log`).
-- Concurrency: every gate takes `gate-0.lock` or `gate-1.lock` (D `bin/check:13,143-156`), so at most two run.
-- Landings first: a D `bin/check` change lets a `DISTBENCH_GATE_CLASS=factory` gate take only `gate-1` while `integrate.lock` is held, so a landing waits at most one factory gate (J21: group 6 waited 37 minutes).
-- Memory: `--parallel` runs in `distbench-build.slice`, 24G (D `bin/check:48-55`; J19); today's serial gate escapes it.
-- Count: worker and Stop hook share the cache, so a session gates each tree once, plus one supervisor gate per round: about 16 slot-minutes per passing round, against 28 today.
-- Admission: the caps and hold of (f).
+## Build tonight
 
-Forging does not matter, because the supervisor never reads the cache.
-Only the worker call's env names `$RUN/worker/gate/`, and `run_checks` (`bin/factory:1945`) runs the gate unsandboxed, as today.
-A forged entry fools only the forger's Stop hook, and the landing reruns the gate on the merged tree.
+Step 0: merge `fix/factory-distbench-parity` (a3750d5b) and `fix/factory-distbench-compare` (64ec111a) into L; each unit branches from that in its own worktree.
 
-## Build units
+Shared interfaces (writer; reader):
+- `$RUN/frozen/plugin-dir`: the `--plugin-dir` path (U3; U1 P1).
+- `$RUN/frozen/memory-view.md`: line 1 `# Memory view (written for the lead)`; line 2 says lines telling the lead to push, merge, rent or hand Samyak a `!` command do not apply; then `$FACTORY_MEMORY_DIR/MEMORY.md`, links absolute; appended to each `round-N.prompt.md` (U3; U1 P1).
+- `$RUN/shell-digest.start`, `.end`: `sha256sum` of `~/.claude/{settings.json,settings.local.json,CLAUDE.md}` and files under `~/.claude/{rules,agents,skills}`, plus `<sha256 of git status --porcelain>  git-status:<dir>` for `$ROOT` and the main checkout (U3 at launch and finish; U1 P7).
+- `round-N.findings.json`: `[{id, source, severity, file, line, claim}]`, `id` `reviewer-<i>` or `codex-<i>` (index in that file's `.findings`); blocking: reviewer high or medium, Codex critical or high (U4).
+- `round-N.verify.json`: `{sha, findings: [{id, verdict, cmd, output, note}]}`, verdict CONFIRMED, PARTLY or REJECTED; REJECTED needs `cmd` and `output` (`verify.schema.json`; U4; U1 P8 recomputes blocking ids).
+- `round-N.rejected`: the `fixes` line plus ` REJECTED: <note>` (U4).
+- `$RUN/followups.md`: `- <source> [<severity>] <file>:<line> <text>`, source judge-backlog, reviewer, codex, mutation or rejected (U4).
+- `$RUN/learn/`: `draft.md`, `draft.json` (`{repo: loam|distbench, title, source_line}`), `review-fable.json`, `review-codex.md`, `findings.json`, `verify.json` (U4).
+- decisions.md: `pstack: <skill> | <SKILL.md path> | <sha256> | <quoted line> | <decision>` (U2; U1 reads fields 1-2).
+- `bin/factory.d/review.sh`, frozen, sourced from `$RUN/frozen/`: `verify_round ROUND` returns 1 when it queued a fix, `learn_run` returns 0; ledger roles `verifier`, `learn-writer`, `learn-review` (U4; U3 calls).
+- Launch env: `FACTORY_REVIEWER_MODEL` (default `GRADER_MODEL`), `FACTORY_REVIEWER_EFFORT` (default xhigh), `FACTORY_MEMORY_DIR` (unset: no view).
 
-One commit per unit. Batch 1 runs in parallel (disjoint files); L8 and L9 follow L1, L2, L4 and L6; the proof run is last.
+| Unit | Owns | Builds | Done check, and why it fails while broken |
+|---|---|---|---|
+| U1 parity | `bin/factory-parity`, its test, `bin/tests/fixtures/parity/` | Only a full read counts (a Read without offset or limit, a `cat`, the router's Skill call), never `sed -n`, `head` or `git cat-file`. P1: plugin path = `frozen/plugin-dir`, view line 1 in each prompt. P2 also counts a full read of a SKILL.md the brief names (C4); writes under `$RUN/worker/` are not changes (F5). P3: a method read anywhere before the first change; a changing round without a `pstack:` line FAILs (F3). P7: init auto, frozen sandbox off, digests equal; lists classifier `permission_denied` events (A3). P8 per graded round: reviewer `served_models == ["claude-fable-5-2"]`, `codex-review.json`, `verify.json` ids = blocking ids, REJECTED with `cmd` and `output`. `--attended FILE...`: P2, P3, P6 on session transcripts. | `pytest bin/tests/test_factory_parity.py` passes with a real-cut FAIL and a PASS fixture per new rule, and each rule's mutation turns a test red, so a rule that never bites fails; W24 and W35 FAIL P7 and P8. |
+| U2 router | router `SKILL.md` (after :10), `plugin.json` 0.9.28 | `- Log each method you follow in your decision log (decisions.md in a factory run): pstack: <skill> \| <SKILL.md path read> \| <sha256 of that file> \| <one line quoted from it> \| <the decision it changed>` | In an empty scratch folder, `claude -p --model claude-opus-5-5 --plugin-dir <U2 worktree>/cultivation/marketplace/sam-cc-setup`, told to call the router for "add a test" and print only its log line, prints a match for `^pstack: \S+ \| /\S+/SKILL\.md \| [0-9a-f]{64} \| .+ \| .+$` (under 0.2 USD); nothing else it loads states that format. |
+| U3 shell | `bin/factory`, `bin/factory.d/worker-settings-native.json` (new), `role-settings.json`, `bin/tests/test_factory_native.py`, `probe-native.sh` (new) | Non-Loam: freeze per (a), the native file holding (a)'s env and denies and `sandbox.enabled false`; `skill_file` reads `enabledPlugins` from the user tier; a user env with `CLAUDE_CODE_OAUTH_TOKEN` refuses the launch. All targets: `--plugin-dir` on worker and grader calls; `router_file` and `sam-cc-setup:` skills under `$ROOT`; reviewer model per role; `availableModels`; memory view; digests; `run_review` and `run_codex_review` stop writing `fixes`, `graders()` calls `verify_round`; `open_pr`'s file-ticket branch calls `learn_run` before `finish`. | Tests: Loam-target settings and argv byte-identical to today; non-Loam values as above; stubbed `verify_round` and `learn_run` called. Paid probe (under 0.3 USD): `probe-native.sh <scratch distbench clone>` runs the built argv two turns and prints `permissionMode=auto plugin=<L>/... verify-distbench=yes BIND_OK` from the real init and tool result, so wrong flags cannot print it. |
+| U4 review | `bin/factory.d/review.sh`, `verify.md`, `verify.schema.json`, `learn.md`, `learn.schema.json`, `bin/tests/test_factory_review.py` (all new) | `verify_round`: one Opus 5.5 high call in auto mode (Bash, Read, Grep, Glob) in a detached worktree at `GRADED_SHA`, reading audit `SKILL.md:47-49` by path through `--add-dir`; CONFIRMED and PARTLY to `fixes` (block-once kept), REJECTED to `.rejected`, a REJECTED high or critical notifies needs-you (A2); no blocking finding, no call; a failed call counts all CONFIRMED, as today. `learn_run`: writes `followups.md`; if non-empty, an Opus writer drafts one ticket from the target's `docs/WORKERS.md` hand-off rules and ticket format, then `check_factory` (distbench) or `bin/factory lint` (Loam), Fable and Codex read-only reviews, the verifier, a needs-you notice; no call past `DAILY_BUDGET_USD`. | Stub tests: each routing above, no draft from empty follow-ups, the daily cap. Paid (under 0.6 USD): in a scratch repo a real off-by-one gets CONFIRMED and an invented defect REJECTED with `cmd` and `output`, so a yes-to-everything verifier fails. |
 
-| Unit | Repo: files | Done check: expected output |
-|---|---|---|
-| L1 gate | L `bin/factory.d/gate.sh` (new), `lib.sh`, `bin/tests/test_gate.py` (new) | `pytest bin/tests/test_gate.py`: pass (cache set: stub runs once, `gate: cached`; unset: twice) |
-| L2 parity | L `bin/factory-parity`, its test and fixtures | W35: `parity: FAIL (P1, P2, P3, P4, P5, P7, P8, P12)`; pass fixture: `parity: PASS`; `--hook` change before router: exit 2 |
-| L3 router | L `sam-cc-setup/skills/pstack/SKILL.md`, `plugin.json`, `agents/plan-reviewer.md` (Fable 5.2) | `pytest bin/tests/test_pstack_router.py`: pass; `grep -c '^- Log each method' <router>`: 1 |
-| L4 verify | L `verify.sh`, `verify.schema.json` (new), test | stub CONFIRMED and REJECTED verdicts: one line each in `round-1.fixes`, `round-1.rejected` |
-| L5 tick | L `tick.sh` (new), test | `tick.sh --dry-run`, 5 queued, cap 4: 4 `launch`, 1 `hold cap`; a fake alert reaches `NEEDS-SAMYAK.md` |
-| L6 learn | L `learn.py`, `skill-call.sh` (new), test | two run folders sharing a FAIL class: one `draft`; one folder: none |
-| L7 compare | L `compare.py` (new), test | on W13a, W24, W34, W35 and `ledger.tsv`: a factory row n=4 and an attended row |
-| L8 wiring | L `bin/factory`, `worker-settings.json`, `role-settings.json`, `_common.md` (drop :14, and "(Explore)" and the model sentence at :13), `factory-round.js` (drop :107; :213, :219 to high) | synthetic distbench-shaped run: init auto mode; `round-1.conduct`, `verify.json`, `metrics.json` exist; `bin/tests` pass |
-| L9 docs | L `docs/factory/LOOP.md`, `ARCHITECTURE.md`, `CONTRACT.md`, `bin/overnight/protocol.md` | `git grep 'Fable 5.1' docs/factory bin/overnight`: nothing |
-| D1 policy | D `docs/factory/STANDING.md`, `docs/design/APPROVALS.md` (11 Nov ruling), gate-owner lines in `docs/WORKERS.md`, `docs/tickets/SESSION-PROTOCOL.md` | `grep -c '^sandbox: off$' docs/factory/STANDING.md`: 1; `bin/check_tickets.py`: OK |
-| D2 slots | D `bin/check`, a slot test | holding `integrate.lock`, a stub factory-class gate prints `gate: slot 1` |
-| D3 lane | D `bin/factory-lane` (new), test | scratch repos: `launch` adds one row; `hold` exits 1 while a row waits over two gate runs |
-| D4 paths | D two `SKILL.md` frontmatters | `grep -c '^paths:'` each: 1; frontmatter step (`bin/check:309-335`) silent |
-| S1 host | L `bin/factory.d/host-setup-jhaveris.sh` (new, Samyak runs it): `samyak-allow-fable-5-2.sh`, tick timer, healthchecks URL | `jq '.availableModels\|index("claude-fable-5-2")' ~/.claude/settings.json`: not null; `systemctl --user is-active factory-tick.timer`: active |
-| Proof | own Loam checkout, runs root, clone (`distbench-priming-notes.md:17`) | gate-needing ticket: `bin/factory-parity <run>` ends `parity: PASS` |
+Merge order: U2, U4, U1, U3 (its call sites need U4; its tests stub it); then E1, Loam `bin/check` on the merged branch, the proof.
+
+E1, attended control (after U1, no spend): `bin/factory-parity --attended` on the 8 sessions `find ~/.claude/projects/-home-samyak-distbench -maxdepth 1 -name '*.jsonl' -newermt 2026-11-08 ! -newermt 2026-11-12 -size +200k` lists, into G `attended-control.txt`.
+A FAIL the rule caused, not the session, is fixed in U1 before the proof's verdict counts.
+
+## Proof run
+
+Ticket: F48 (Appendix), the distbench half of the gate route: real, needs the full gate, in nobody's queue, changes the gate only under a variable only the factory sets.
+Base: own clone `~/.local/state/distbench/factory-proof/distbench` of `git@github.com:SamyakJhaveri/distbench.git` with refspec `+refs/heads/isc-build:refs/remotes/origin/main`, so `origin/main` is isc-build (`~/.local/bin/factory-isc:32-34`); Loam worktree `~/.local/state/loam/worktrees/factory-distbench-test` at merged L; runs root `~/.local/state/distbench/factory-proof/runs`.
+Launch condition, read-only: no `f-*` tmux session; no `->` waiter in `/proc/locks` on the inode of any `~/.local/state/distbench/{gate-0,gate-1,gpu,mpi-0,mpi-1,integrate}.lock`, and `integrate.lock` free; `systemctl --user show distbench-build.slice -p MemoryCurrent --value` at most 8G (16 OOM kills at 24G, F7); F48 unused in D `docs/tickets/`.
+Command, in tmux `f-f48-proof`:
+`bash -lc 'FACTORY_RUNS_ROOT=$HOME/.local/state/distbench/factory-proof/runs FACTORY_DAILY_BUDGET_USD=9.5 FACTORY_REVIEWER_MODEL=claude-fable-5-2 FACTORY_REVIEWER_EFFORT=high FACTORY_MEMORY_DIR=$HOME/.claude/projects/-home-samyak-distbench/memory ~/.local/state/loam/worktrees/factory-distbench-test/bin/factory -C ~/.local/state/distbench/factory-proof/distbench run ~/.local/state/distbench/factory-proof/F48-factory-gate-class.md'`
+`bash -lc` brings the profile's `FACTORY_CALL_TIMEOUT_SEC=14400` and `FACTORY_MAX_TURNS=2000` (F6).
+Spend: this runs root's daily ledger holds only this run; bin/factory and `learn_run` refuse a call when spend plus its cap passes 9.5 USD; every call has `--max-budget-usd` (worker 2.5, others 1.5); `TICKET_BUDGET_USD=6` leaves learn room. Expected 5-7 USD (W35: 3.65, two rounds).
+Done: `bin/factory-parity <runs root>/SamyakJhaveri__distbench/F48-factory-gate-class > G/parity-F48.txt` prints PASS for P1-P5, P7, P8, `N/A P6` (`bin/check` is outside verify-distbench's paths) and `parity: PASS`; `$RUN/learn/` holds a draft, two reviews and `verify.json`; a needs-you alert names it.
+The run pushes nothing; `build/f-f48` and its listing are the lead's, and `Except: bin/check` needs his or Samyak's yes before landing.
+
+## Factory tickets
+
+Ticket: done check.
+- T1 in-round pstack hook (`factory-parity --hook`, PreToolUse, U1's rules): replayed on W34 and W35 round 1, it exits 2 exactly where P2 FAILs.
+- T2 P2, P3, P7, P8 after each worker round, into the judge bundle: a planted router-less round fails the judge.
+- T3 lane and tick (D `bin/factory-lane` for `factory-isc`, L `tick.sh`, S timer with `EnvironmentFile`; admission by runs, heavy class, slice headroom; a scope per run; each tick lands the oldest finished group, C5): a timer-launched ticket logs `launch`, `land gN ok`, timeout 14400, 2000 turns; lane parity P9 passes.
+- T4 gate slots (factory class takes only gate-1 while `integrate.lock` is held; slot-wait seconds in `metrics.json`; STALL ignores a waiting gate; A4; a gate cache only if over two gates per round): holding `integrate.lock`, a plain `bin/check` under the class prints `gate: slot 1`.
+- T5 learn dedupe and filing (`learn.tsv` by class and blamed path; drafts to a pushed `retro/<date>` branch or a needs-triage issue; dry run and fix pass; A5): a second pass over the same runs drafts nothing.
+- T6 measurement (attended map per item; rate table; one serious-finding rule; `metrics.json`; C3): every attended cell names its source; `compare.tsv` has a row per batch-2 item.
+- T7 Fable reviewer default, `reviewer.md`, bundle without decisions.md, Codex default yes for distbench (paid replay, `LOOP.md:470`): `graders-check` passes, replay recorded.
+- T8 NEEDS-SAMYAK render with acknowledgement, healthchecks beat, STALL watcher, alert on a classifier refusal of `bin/check`, docker or mpirun (A3): a planted refusal reaches NEEDS-SAMYAK.md.
+- T9 audit and surprise-me where D `docs/WORKERS.md:34-36` puts them: a batch end writes `audit.md`.
+- T10 plan steps 5-6: a planted `UNVERIFIED` proof line becomes a NEEDS-SAMYAK line.
+- T11 stale copies (`LOOP.md`, `ARCHITECTURE.md`, `CONTRACT.md`, `bin/overnight/protocol.md`, `_common.md:13`, `factory-round.js:213,219`): lean-critic finds no stale sandbox, reviewer or model sentence.
+- T12 analogist ideas 3 and 4 (a read-back; learning from Samyak's corrections): a planted misread brief is flagged.
+
+## Findings closed
+
+| Id | Closed by |
+|---|---|
+| C1, L3 1 | U3 `--plugin-dir`; U1 P1 |
+| C2 | proof shows (a)-(e), (h); (f), (g): T3, T8, checked timer-launched |
+| C3, L7 1 | T6 |
+| A4, A5 | T4, T5 |
+| C4 | U1 P2 brief-named read |
+| A2 | U1 P8 id sets, REJECTED evidence; U4 alert |
+| A3 | U1 P7 lists denials; alert T8 |
+| A6 | rejected: L `docs/RULES.md:41` |
+| F1, D4 1 | D4 dropped; P6 keeps its covered list |
+| F2 | U3 class env plus F48 |
+| F3 | U2 line reaches workers by `--plugin-dir`; U1 P3 FAILs without a line |
+| F4 | U1 P8 `served_models`, id sets; U3 `availableModels` |
+| F5 | U1 P2, P3; `_common.md:14` and its tie-break kept for Loam targets |
+| C5, F6, F7 | T3 (`land` each tick, `EnvironmentFile`, scopes, headroom); the proof's `bash -lc` and launch condition |
+| F8 | U1 P7 digests; (a) says it detects |
+| F9 | U3 denies `WebFetch` |
+| Dry-run L1 1-5 | `gate.sh` dropped; F48 routes every spelling |
+| L2 1 | schemas above; P4 unchanged |
+| L5 1-3, D3 1-2, S1 2 | T3 |
+| L6 1-2 | drafts in `$RUN/learn/`; classes T5 |
+| L8 1 | `FACTORY_REVIEWER_MODEL`; `reviewer.md` waits for T7 |
+| L8 2 | native shell for non-Loam targets; Fable by launch env; Codex by ticket |
+| D1 1 | no D policy unit; F48 is the only D change |
+| Proof 1-3 | Proof run |
 
 ## Would not do
 
-- A sandbox with exceptions: ruled fully off (Samyak, 22:55 PT 11 Nov).
-- A separate OS user: the real boundary, but its setup is Samyak's; a follow-up.
-- A lead session or A's 20-minute LLM tick for scheduling: a model call per tick for work code does.
-- Supervisor reuse of worker gate records: see (b).
-- Auto-release of self-filed tickets: distbench releases by entry (D32).
-- Edits to `judge.md`, `skills.txt` or `_common.md:8`: not copies, and Loam targets use them.
-- Edits to origin/redesign-1030, which is fenced; its plan line 189 still says worker shells are sandboxed.
+- A sandbox with exceptions (ruled off, 22:55 PT 11 Nov); a separate OS user (Samyak's setup; a follow-up); an LLM lead for scheduling.
+- A per-run `MemoryMax` scope tonight: `bin/check` re-execs only from outside the slice, so the in-round gate would run under the run's cap.
+- A 450K hand-off file (L `docs/RULES.md:41`); edits to origin/redesign-1030.
 
 ## Risks
 
-- The classifier may refuse legitimate steps (docker, mpirun) and stall rounds (it refused the lead, J09); its cost is invisible.
-- Unrun: `--permission-prompts none` (read from `--help`) and the hook payload in a Workflow builder.
-- The reviewer swap is a grader change whose paid replay (`LOOP.md:470`) may pass 10 USD.
-- Two `--parallel` gates share the 24G slice, which W27's timing test OOM'd (J19).
-- The proof run competes with landings and may pass 10 USD (W24: 21.79); it needs Samyak's yes.
-- Workers read the base's instructions: D `WORKERS.md` at 31599c19 lacks main's router text, which isc-build 2d2a59f5 has.
-- User CLAUDE.md says auto-compaction is off; the worker's flag tier compacts at 450K.
-- Tickets spell check-green two ways (`guard bin/check`, `guard flock .../gpu.lock bin/check`); `gate.sh` must replace the whole argv, or a held `gpu.lock` may get `--parallel` refused (D `bin/check:131-150`).
+- The classifier may refuse `systemd-run`, docker or mpirun (it refused the lead, inventory J09); P7 lists refusals; T8 alerts.
+- F48's worker edits the gate that grades it; reviewers, the verifier and the landing's rerun stand between.
+- The slice check holds only at launch; a landing shares the 24G with the worker's `--parallel` gate.
+- Fable through the grader config is unrun; P8 fails a fallback.
+- With no follow-up, (h) stays unshown.
+- Program spend so far: 7.02 USD notional (G `spend.txt`); proof up to 9.5, probes 1.1.
+
+## Appendix: proof ticket
+
+Save as `~/.local/state/distbench/factory-proof/F48-factory-gate-class.md`; on a scratch copy of D, `bin/factory lint` and `check_factory` pass and the block prints the predicted FAIL.
+
+````markdown
+# F48: With DISTBENCH_GATE_CLASS=factory, a plain bin/check runs as bin/check --parallel
+**GitHub issue:** none; a file ticket, never published as an issue
+**Status:** draft
+Brief:
+A Loam factory worker runs the gate in any spelling (`guard bin/check`, a bare `bin/check`); only `--parallel` runs it inside `distbench-build.slice`.
+Where: `bin/check` (before its argument `case`), `tests/test_repository_gate.py`.
+Done means: with the variable set and no argument, `bin/check` prints one line and re-execs as `bin/check --parallel` in the slice; unset, nothing changes; a test carries it; `bin/check` ends `check: PASSED`.
+Out of scope: gate slots, a gate cache, the supervisor's own gate.
+Track: B    Risk: low    Mode: build    Open question: none
+Runs: the Loam factory from its own clone (Loam's design-pick.md).
+Blocked by: none
+
+## Goal and why
+The factory's worker shell puts `DISTBENCH_GATE_CLASS=factory` in every worker Bash call (Loam branch fix/factory-distbench).
+A plain `bin/check` runs serially outside the 24G slice, holding a gate slot 1679 s (W13a); `--parallel` ran landing g8's pytest phases in 330.6, 116.5 and 22.0 s inside it (audit finding F2).
+
+## Do not touch
+The standing list. Except: `bin/check`.
+Also: `bin/gate.py`, `conftest.py`, `bin/integrate`.
+
+## Out of scope
+Slot priority while `integrate.lock` is held; a gate cache; a fallback when `--parallel` is refused (the refusal stays visible); the supervisor's own gate.
+
+## Approach
+Before the argument `case`: with no argument and `DISTBENCH_GATE_CLASS` equal to `factory`, print `bin/check: DISTBENCH_GATE_CLASS=factory runs as bin/check --parallel`, then `unset DISTBENCH_GATE_CLASS` and `set -- --parallel`.
+The unset keeps a gate a test starts on its own path.
+Carry `class-route` into `tests/test_repository_gate.py` as a test named with `gate_class` (its `_repo` helper, fake `systemd-run` and `systemctl` first on `PATH`).
+
+## Done checks
+```done-checks
+predict class-route ! grep -q DISTBENCH_GATE_CLASS bin/check
+T=$(mktemp -d "${TMPDIR:-/tmp}/f48.XXXXXX"); mkdir -p "$T/r/bin" "$T/f"; cp bin/check "$T/r/bin/check"; git -C "$T/r" init -q; printf '#!/usr/bin/env bash\nprintf "%%s\\n" "$*" >> "%s/f/argv"\n' "$T" > "$T/f/systemd-run"; printf '#!/usr/bin/env bash\necho /x/distbench-build.slice\n' > "$T/f/systemctl"; chmod +x "$T/f/systemd-run" "$T/f/systemctl"; on=$(cd "$T/r" && HOME="$T" PATH="$T/f:$PATH" DISTBENCH_GATE_CLASS=factory timeout 120 bin/check 2>&1); a=$(cat "$T/f/argv" 2>/dev/null); : > "$T/f/argv"; off=$(cd "$T/r" && HOME="$T" PATH="$T/f:$PATH" env -u DISTBENCH_GATE_CLASS timeout 120 bin/check 2>&1); grep -q 'DISTBENCH_GATE_CLASS=factory runs as bin/check --parallel' <<<"$on" && { grep -q /distbench-build.slice/ /proc/self/cgroup || grep -qE -- '--slice=distbench-build.slice .*/bin/check --parallel$' <<<"$a"; } && ! grep -q DISTBENCH_GATE_CLASS <<<"$off" && [ ! -s "$T/f/argv" ] && pass class-route || fail class-route "with the class and no argument, bin/check must print its route line and re-exec as systemd-run --slice=distbench-build.slice <root>/bin/check --parallel; unset, it must not call systemd-run; got: $(tail -n 2 <<<"$on" | tr '\n' ' ') systemd-run: $a"
+out=$(guard bin/check 2>&1); rc=$?; last=$(tail -n 1 <<<"$out"); { [ -n "${LOAM_HOOK:-}" ] || { [ "$rc" = 0 ] && [ "$last" = "check: PASSED" ]; }; } && pass check-green || fail check-green "bin/check must exit 0 and end check: PASSED; rc $rc, last line: $last"
+```
+
+## Worker
+worker: claude
+codex-review: yes
+effort: high
+contract: 2
+skills: pstack:tdd
+goal: the done-checks block prints no FAIL line, or stop after 60 turns
+MAX_ROUNDS=3
+TICKET_BUDGET_USD=6
+ROUND_BUDGET_USD=2.5
+GRADER_BUDGET_USD=1.5
+
+## Decisions
+On jhaveris, 12 Nov 2026, at `isc-build` `2d2a59f5` in a scratch copy: the predict line exits 0 and `class-route` FAILs; with the Approach's five lines it passes and the fake records `--slice=distbench-build.slice <tmp>/r/bin/check --parallel`.
+Inside the slice `bin/check` does not re-exec, which `class-route` accepts.
+````
