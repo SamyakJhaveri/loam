@@ -16,6 +16,8 @@ The body starts at `Brief:` or `Part of`; in a file the first `#` line is the ti
 
 1. Title, then `Part of <design issue>` for Track C or `Brief:` followed by the four brief lines for Track B, then `Blocked by:` with issue links or `none` (display only; native blocking edges are what the loop reads).
    The `Brief:` lines are display only; lint and the loop read the sections below.
+   An optional `Edit:` line in the header lists, comma-separated, every path a round may change, a directory covering what sits under it; the supervisor fails a round that changes any other path (`FAIL edit-scope`, LOOP.md step 6).
+   Without one, only Do not touch fences paths.
 2. `## Goal and why`: two to four lines, linking the decision, ADR, or design doc.
 3. `## Do not touch`: the standing list from `ARCHITECTURE.md` (another target's `docs/factory/STANDING.md`), ticket-specific paths, and any `Except:` line.
 4. `## Out of scope`: one line each.

@@ -1609,10 +1609,21 @@ freeze() {
   { cat "$RUN/frozen/lib.sh"; echo; dc_script; echo; echo "$CHECKS_END"; echo 'exit $((n_fail > 0))'; } > "$RUN/frozen/checks.sh"
   { standing_list; section "Do not touch" | sed 's/[Ee]xcept:.*//' | ticket_paths; } | sort -u > "$RUN/frozen/protected.txt"
   section "Do not touch" | grep -o '[Ee]xcept:.*' | ticket_paths > "$RUN/frozen/exempt.txt"
+  freeze_edit_line
   chmod +x "$RUN/frozen/checks.sh" "$RUN/frozen/factory" "$RUN/frozen/alert"
   # shellcheck disable=SC2086
-  ( cd "$RUN/frozen" && sha256_of $FROZEN_SET $([ -f memory-view.md ] && echo memory-view.md) > sha256 )
+  ( cd "$RUN/frozen" && sha256_of $FROZEN_SET $(for f in memory-view.md edit.txt; do [ ! -f "$f" ] || echo "$f"; done) > sha256 )
   chmod a-w "$RUN/frozen"/*
+}
+
+# A ticket whose header has an `Edit:` line (the four-part form) may change only the paths it lists, comma-separated,
+# a directory covering what sits under it (CONTRACT.md, item 1). They are frozen to edit.txt as written, not filtered
+# to tracked tops as Do not touch is, so a new top-level file the ticket creates still counts; round_checks fails a
+# round that changes any other path. A ticket with no `Edit:` line gets no edit.txt and no such fence.
+freeze_edit_line() {
+  local line
+  line=$(grep -m1 '^Edit:' <<< "$(header)") || return 0
+  printf '%s\n' "${line#Edit:}" | tokens | { grep -E '^[.A-Za-z0-9_][A-Za-z0-9_./-]*$' || :; } | sort -u > "$RUN/frozen/edit.txt"
 }
 
 check_frozen() {
@@ -2601,6 +2612,14 @@ do_not_touch_hits() { # -> the changed paths the ticket fenced off
   done
 }
 
+edit_scope_hits() { # -> the changed paths, deleted and renamed ones included, that the ticket's Edit: line does not list
+  local f
+  [ -f "$RUN/frozen/edit.txt" ] || return 0
+  git -C "$WORKTREE" diff --no-renames --name-only "$(cat "$RUN/base.sha")...HEAD" | while IFS= read -r f; do
+    under "$f" "$(cat "$RUN/frozen/edit.txt")" || printf '%s ' "$f"
+  done
+}
+
 # A row whose label or command names one of these words measures time, tokens, or cost, so one run is one
 # sample; without a `runs=N` its MEASURE line says single sample, so the judge reads no trend from it (F9).
 NOISY_ROW_RE='(^|[^A-Za-z])(time|seconds|latency|duration|wall|tokens?|cost|usd|spend)([^A-Za-z]|$)'
@@ -3086,14 +3105,19 @@ grade_round() {
     || { log "grader-round cap: $GRADER_FAIL_ROUNDS grader-fail rounds; the rest goes to the PR backlog"; open_pr draft; }
 }
 
-round_checks() { # out: a dirty tree or a do-not-touch hit fails the round without running the checks
-  local dirty touched
+round_checks() { # out: a dirty tree, a do-not-touch hit or a path off the Edit: line fails the round without running the checks
+  local dirty touched off allowed
   dirty=$(git -C "$WORKTREE" status --porcelain)
   touched=$(do_not_touch_hits)
+  off=$(edit_scope_hits)
   if [ -n "$dirty" ]; then
     printf 'FAIL worktree-dirty: %s\n' "$(printf '%s' "$dirty" | tr '\n' ' ')" > "$1"
   elif [ -n "$touched" ]; then
     printf 'FAIL do-not-touch %s\n' "$touched" > "$1"
+  elif [ -n "$off" ]; then
+    allowed=$(paste -sd, "$RUN/frozen/edit.txt" | sed 's/,/, /g')
+    printf "FAIL edit-scope: the round changed %sbut the ticket's Edit: line lists only %s; revert those paths\n" \
+      "$off" "${allowed:-no path}" > "$1"
   else
     run_checks "$WORKTREE" "$1"
     method_evidence "$ROUND"   # shadow; add "$1" to gate (LOOP.md, Method evidence)
