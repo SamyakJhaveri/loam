@@ -1,0 +1,8 @@
+diff --git a/.agents/skills/factory-watch/board_rows.py b/.agents/skills/factory-watch/board_rows.py
+index 11732357..7fcab12a 100644
+--- a/.agents/skills/factory-watch/board_rows.py
++++ b/.agents/skills/factory-watch/board_rows.py
+@@ -8,7 +8,7 @@ import json
+ import pathlib
+ import re
+ import sys

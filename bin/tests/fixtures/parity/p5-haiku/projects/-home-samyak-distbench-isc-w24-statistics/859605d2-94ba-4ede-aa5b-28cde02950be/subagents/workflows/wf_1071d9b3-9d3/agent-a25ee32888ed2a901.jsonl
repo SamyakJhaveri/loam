@@ -1,0 +1,2 @@
+{"type":"attachment","attachment":{"type":"model","identity":{"modelId":"claude-haiku-4-5"}}}
+{"type":"api-request","params":{"model":"claude-haiku-4-5","output_config":{"effort":"xhigh"}}}

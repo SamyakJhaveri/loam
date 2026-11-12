@@ -1,0 +1,1 @@
+{"type":"system","subtype":"init","cwd":"/home/samyak/distbench-isc-w35-tooling","session_id":"0b660039-dc31-4778-9487-1ba27002ab4a","model":"claude-opus-5-5","skills":["sam-cc-setup:pstack","pstack:principle-prove-it-works","pstack:principle-sequence-verifiable-units","pstack:principle-test-behavior-not-implementation","pstack:tdd","verify-distbench"]}
