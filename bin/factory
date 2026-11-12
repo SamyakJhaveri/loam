@@ -2432,8 +2432,11 @@ worker_round() { # round; leaves round-N.* only once the call produced a result
   head0=$(git -C "$WORKTREE" rev-parse HEAD 2> /dev/null) || head0=""
   # The round's header line in decisions.md: parity P3 and the pstack gate (decision_lines) give the lines after
   # `Round N` to round N, so a worker's pstack: line needs no round label of its own. Once per round, so a retried
-  # or relaunched round adds none.
-  [ "$(grep -E '^Round [0-9]+$' "$DECISIONS" 2> /dev/null | tail -n 1)" = "Round $round" ] || printf 'Round %s\n' "$round" >> "$DECISIONS"
+  # or relaunched round adds none. A last line with no newline gets one first, so the header starts its own line.
+  if [ "$(grep -E '^Round [0-9]+$' "$DECISIONS" 2> /dev/null | tail -n 1)" != "Round $round" ]; then
+    [ ! -s "$DECISIONS" ] || [ -z "$(tail -c 1 "$DECISIONS")" ] || printf '\n' >> "$DECISIONS"
+    printf 'Round %s\n' "$round" >> "$DECISIONS"
+  fi
   # The first round this process runs; a login expired at launch retries only its call. A global,
   # not a local, so it survives the loop's later rounds.
   [ -n "${FIRST_WORKER_ROUND+x}" ] || FIRST_WORKER_ROUND="$round"

@@ -133,6 +133,14 @@ class KilledRoundTests(unittest.TestCase):
         self.assertEqual((self.run_dir / "decisions.md").read_text(),
                          "pstack: tdd | /p/skills/tdd/SKILL.md | x | y | z\nRound 1\n")
 
+    def test_the_round_header_starts_its_own_line_after_a_last_line_with_no_newline(self) -> None:
+        # audit4 2: appended bare, the header joined the last decision (`...zRound 1`), which parity then never read
+        # as a header, so the round's pstack: lines went to the round before.
+        (self.run_dir / "decisions.md").write_text("pstack: tdd | /p/skills/tdd/SKILL.md | x | y | z")
+        self.worker_round("claude", "")
+        self.assertEqual((self.run_dir / "decisions.md").read_text(),
+                         "pstack: tdd | /p/skills/tdd/SKILL.md | x | y | z\nRound 1\n")
+
     def test_the_round_header_is_no_change_for_the_no_change_stop(self) -> None:
         # The supervisor's own `Round N` line must not make a round that changed nothing look changed.
         proc = self.worker_round("claude", "", 'a=$(round_sig); echo "Round 2" >> "$DECISIONS"; b=$(round_sig)\n'
