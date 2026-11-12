@@ -1349,13 +1349,16 @@ killed() { # signal code
   local words
   trap '' INT TERM HUP PIPE
   exec > /dev/null 2>&1   # the terminal or pipe went with the signal; factory.log keeps every line (call_abort)
+  kill $(jobs -p) 2> /dev/null   # limit_wait's sleep, which would hold the run's lease for hours
   set_status stopped-killed
   words=$(exit_words stopped-killed)
   notify "${words%% *}" "$(ticket_name) ${words#* }" "SIG$1 at $(now); the run directory is $RUN" stopped-killed
   log "EXIT stopped-killed ($2): SIG$1"
   exit "$2"
 }
-run_traps() { RUN_TRAPS=1; trap 'killed INT 130' INT; trap 'killed TERM 143' TERM; trap 'killed HUP 129' HUP; }
+# PIPE gets a no-op handler, not an ignore, so children keep the default: under a `| tee` launch the signal also kills
+# tee, and a foreground child's `Hangup` job line would otherwise kill the supervisor by SIGPIPE before its HUP trap.
+run_traps() { RUN_TRAPS=1; trap 'killed INT 130' INT; trap 'killed TERM 143' TERM; trap 'killed HUP 129' HUP; trap : PIPE; }
 
 # ---- the ticket -------------------------------------------------------------
 
@@ -2078,7 +2081,7 @@ limit_wait() { # result.json -> 0 after waiting, 1 when the reply is not a usage
   [ "$secs" -le "$left" ] || finish stopped-environment "usage limit: $e; the reset is ${secs}s away, past MAX_HOURS=$MAX_HOURS"
   log "usage limit, not a round: $e; waiting ${secs}s"
   set_status waiting-limit
-  sleep "$secs"
+  sleep "$secs" & wait "$!"   # in the background, so a signal reaches run_traps now, not when the sleep ends
   return 0
 }
 
@@ -2409,8 +2412,8 @@ call_abort() { # signal status
   local killer
   trap '' INT TERM HUP
   # The signal that reached the supervisor also took its terminal or the pipe it writes to (a `| tee` launch): from
-  # here it writes only factory.log, or the first log line's write would kill it by SIGPIPE before it alerts.
-  [ -z "${RUN_TRAPS:-}" ] || { trap '' PIPE; exec > /dev/null 2>&1; }
+  # here it writes only factory.log, not to the dead terminal or pipe.
+  [ -z "${RUN_TRAPS:-}" ] || exec > /dev/null 2>&1
   log "the supervisor got $1 during a model call; ending the call's processes"
   call_signal TERM; call_signal CONT
   ( sleep 10; call_signal KILL ) & killer=$!

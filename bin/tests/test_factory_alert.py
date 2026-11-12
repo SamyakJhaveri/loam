@@ -273,6 +273,13 @@ class FactoryAlertTests(unittest.TestCase):
             (call,) = self.factory(f"{file_ticket}run_traps; trap - HUP; CALL_PID=; CALL_TAG=t.0.0; CALL_STUCK=; "
                                    "call_end worker > /dev/null 2>&1; kill -HUP $$", REPO="SamyakJhaveri/distbench")
             self.assertEqual(self.proc.returncode, 129)
+        with self.subTest("a `| tee` launch whose pipe died: the child's Hangup job line raises no SIGPIPE first"):
+            self.alert_log.unlink(missing_ok=True)
+            (call,) = self.factory(f"{file_ticket}run_traps; exec 2> >(:) 1>&2; sleep 0.5; "
+                                   "bash -c 'kill -HUP $PPID; kill -HUP $$'; echo not-reached",
+                                   REPO="SamyakJhaveri/distbench")
+            self.assertEqual(self.proc.returncode, 129)
+            self.assertEqual((self.run_dir / "status").read_text().strip(), "stopped-killed")
         with self.subTest("before run_traps a signal is the shell's default"):
             self.alert_log.unlink(missing_ok=True)
             self.assertEqual(self.factory(f"{file_ticket}kill -HUP $$"), [])
