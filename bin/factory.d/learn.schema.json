@@ -1,0 +1,10 @@
+{
+  "type": "object",
+  "properties": {
+    "repo": { "enum": ["loam", "distbench"] },
+    "title": { "type": "string" },
+    "source_line": { "type": "string" },
+    "body": { "type": "string" }
+  },
+  "required": ["repo", "title", "source_line", "body"]
+}

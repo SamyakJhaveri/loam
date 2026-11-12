@@ -3,6 +3,13 @@
 This file records why a promoted plugin change traveled. It is also the upgrade
 entry point for projects that consume the Loam marketplace.
 
+## sam-cc-setup v0.9.28 pstack log line, Fable 5.2
+
+The `pstack` router asks for one decision-log line per method followed (decisions.md in a factory run): `pstack: <skill> | <SKILL.md path read> | <sha256 of that file> | <one line quoted from it> | <the decision it changed>`, the line `bin/factory-parity` reads.
+`plan-reviewer` and the `research-gap` Fable seat move from `claude-fable-5-1` to `claude-fable-5-2`, the owner's Fable 5.2 ruling.
+No grader prompt changed, so no grader replay is owed.
+Upgrade step: `claude plugin update sam-cc-setup@seed-skills`.
+
 ## sam-cc-setup v0.9.27 pstack router
 
 New skill `pstack`, the plugin's first model-invocable one (owner rulings of 10 and 11 Nov 2026): before a non-trivial task the main session or a `worker` calls `sam-cc-setup:pstack`, which resolves the pstack folder and picks a method from a broad-to-narrow table and the list of all principle cards; the agent then reads that pstack `SKILL.md` by path.
