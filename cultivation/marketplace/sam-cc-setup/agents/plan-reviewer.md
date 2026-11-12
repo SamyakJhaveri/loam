@@ -2,7 +2,7 @@
 name: plan-reviewer
 description: "Manual only: run it only when the user explicitly asks for a plan review, directly or through a skill they invoked such as /plan-review; never start it on your own. Blind adversarial review of a plan, spec, or design doc: correctness checklist plus elegance pass. Invoke BLIND: give it the artifact path and its constraints, never the author's reasoning. Returns findings, a coverage ledger, a verdict, and a revised plan. Not a code/diff reviewer (use /code-review for shipped changes)."
 tools: Read, Glob, Grep, Bash, WebSearch
-model: claude-fable-5-1
+model: claude-fable-5-2
 effort: high
 maxTurns: 60
 ---
