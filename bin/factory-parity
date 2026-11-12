@@ -41,8 +41,8 @@ a `skills/<name>/SKILL.md` path or a hyphenated pstack name.
                       fully read in that round; and every other pstack method decisions.md names for a round was
                       fully read in that round. A decisions.md line starting "Round N" and the lines after it
                       belong to round N; earlier lines to round 1. With --attended there is no decisions.md part.
-  P4 gate-in-round    some transcript of each round ran DistBench's bin/check (directly or through
-                      checks.sh, not under LOAM_HOOK=1) and its result shows `check: PASSED` or
+  P4 gate-in-round    some transcript of each round ran DistBench's bin/check (directly, through lib.sh's
+                      guard or through checks.sh, not under LOAM_HOOK=1) and its result shows `check: PASSED` or
                       `check: FAILED`, or a later call that reads its output (a background task's output file
                       or id, or the file it redirected to) shows it; and no tool result, nor a log in worker/,
                       shows the sandbox refusal.
@@ -134,7 +134,7 @@ BASH_WRITE = re.compile("|".join([
 SKILL_FILE = re.compile(r"([^\s\"';|&()]*?)skills/([^/\s\"';|&()]+)/SKILL\.md")
 LOOP = re.compile(r"\bfor\s+(\w+)\s+in\s+([^;\n]+?)\s*;?\s*(?:\n\s*)?do\b")
 GATE = re.compile(r"\bbin/check(?![\w.-])|[^\s;&|]*(?<![\w.-])checks\.sh\b|\$\{?LOAM_CHECKS\b\}?")
-WRAPPERS = {"nohup", "bash", "sh", "env", "time", "exec", "command", "source", "."}
+WRAPPERS = {"nohup", "bash", "sh", "env", "time", "exec", "command", "source", ".", "guard"}  # guard: lib.sh
 HEREDOC = re.compile(r"<<-?\s*(['\"]?)(\w+)\1([^\n]*)\n.*?(?:\n[ \t]*\2[ \t]*(?=\n|$)|\Z)", re.S)
 HOOK_SET = re.compile(r"\bLOAM_HOOK=(?![\s;&|]|\"\"|''|$)")
 GATE_LINE = re.compile(r"(?m)^check: (?:PASSED|FAILED)\b.*$")

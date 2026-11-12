@@ -175,10 +175,19 @@ def failed_skill_reads(run: Path) -> None:
     edit_events(run / "round-1.jsonl", mark)
 
 
+def guarded_gate(run: Path) -> None:
+    """The gate spelled as a done-checks line spells it, after sourcing lib.sh; its result still shows check: PASSED."""
+    def edit(item: dict) -> None:
+        if item["type"] == "tool_use" and item["name"] == "Bash":
+            item["input"]["command"] = "source /r/abcdef12/frozen/lib.sh && guard bin/check"
+    edit_events(run / "round-1.jsonl", edit)
+
+
 # Audit 3 repros (the verifier's audit3-verify.md): (name, committed case, edit of its run folder, id, expected).
 VARIANTS = [
     ("c2-failed-reads", "p3-pass", failed_skill_reads, "P2", "FAIL"),  # a read whose result is an error read nothing
     ("c2-failed-reads", "p3-pass", failed_skill_reads, "P3", "FAIL"),
+    ("c3-guard", "p4-pass", guarded_gate, "P4", "PASS"),  # `guard bin/check` runs the gate
 ]
 
 
