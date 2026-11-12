@@ -15,6 +15,7 @@ import shutil
 import subprocess
 import tempfile
 import unittest
+import unittest.mock
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
 INHERITED = ("FACTORY_ROOT", "FACTORY_GH", "REPO", "RUN", "LOG")
@@ -112,7 +113,7 @@ class ReviewTests(unittest.TestCase):
             (self.fake / f"claude-reply.{k}").write_text(obj if isinstance(obj, str) else json.dumps(obj))
 
     def bash(self, body: str, daily: str = "1000", codex_review: str = "yes",
-             preset: str = "") -> subprocess.CompletedProcess:
+             preset: str = "", **extra: str) -> subprocess.CompletedProcess:
         script = (
             f"RUN='{self.run_dir}'; WORKTREE='{self.wt}'; GRADED_SHA='{self.sha}'; ISSUE=''; KEY=W1; IS_FILE=1\n"
             'LEDGER="$RUN/ledger.jsonl"; DAILY="$RUN/daily.jsonl"; DECISIONS="$RUN/decisions.md"; LOG="$RUN/factory.log"\n'
@@ -129,7 +130,7 @@ class ReviewTests(unittest.TestCase):
                               env={**env, "FACTORY_SOURCED": "1", "FACTORY_ROOT": str(ROOT), "FAKE_DIR": str(self.fake),
                                    "FACTORY_CODEX_HOME": str(self.top / "codex-home"),
                                    "FACTORY_RUNS_ROOT": str(self.top / "runs"), "REPO": "acme/widget",
-                                   "PATH": f"{self.bin}:{env['PATH']}"},
+                                   "PATH": f"{self.bin}:{env['PATH']}", **extra},
                               capture_output=True, text=True, check=False)
 
     def verify(self, **kw: str) -> tuple[int, str]:
@@ -296,6 +297,20 @@ class ReviewTests(unittest.TestCase):
         # A second call in the same run directory drafts nothing more.
         self.bash("learn_run", preset="ROUND=1")
         self.assertEqual(len(self.claude_calls()), 3)
+
+    def test_a_fable_reviewer_runs_at_high(self) -> None:
+        # audit3 C5: Samyak's rule is Fable always at high (~/.claude/rules/pstack-models.md); with no
+        # FACTORY_REVIEWER_EFFORT, a Fable reviewer (graders and learn) must not get the Opus default xhigh.
+        self.put("round-1.judge.json", {"verdict": "pass", "backlog": ["the gate ran serially"]})
+        self.replies({"repo": "distbench", "title": "t", "source_line": "x", "body": "# F00: t\n"}, review())
+        env = {k: v for k, v in os.environ.items() if k != "FACTORY_REVIEWER_EFFORT"}
+        with unittest.mock.patch.dict(os.environ, env, clear=True):
+            proc = self.bash('echo "graders: $(grader_model reviewer) $(grader_effort reviewer)"; learn_run',
+                             preset="ROUND=1", FACTORY_REVIEWER_MODEL="claude-fable-5-2")
+        self.assertIn("graders: claude-fable-5-2 high", proc.stdout, proc.stderr)
+        review_call = self.claude_calls()[1]["argv"]
+        self.assertEqual((review_call[review_call.index("--model") + 1], review_call[review_call.index("--effort") + 1]),
+                         ("claude-fable-5-2", "high"))
 
 
 if __name__ == "__main__":

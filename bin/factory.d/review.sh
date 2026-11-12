@@ -257,7 +257,7 @@ learn_run() { # [status message] -> 0; drafts at most one ticket per run directo
   sha=$(git -C "$rdir" rev-parse HEAD 2> /dev/null)
   learn_lint "$repo" "$rdir" "$d/draft.md" > "$d/lint.txt"
   prompt=$(learn_brief Review "$dir" "$d")
-  model="${FACTORY_REVIEWER_MODEL:-$GRADER_MODEL}"; effort="${FACTORY_REVIEWER_EFFORT:-xhigh}"
+  model=$(grader_model reviewer); effort=$(grader_effort reviewer)
   learn_room learn-review || return 0
   printf '%s\n' "$prompt" > "$d/review.prompt.md"
   review_claude "$ROUND" learn-review "$model" "$effort" "$rdir" "$d/review.prompt.md" "$(cat "$RUN/frozen/reviewer.schema.json")" \

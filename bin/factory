@@ -1089,9 +1089,10 @@ GRADER_EFFORT=high
 # The judge runs at GRADER_EFFORT; the reviewer, which finds the most of the three graders, runs at
 # REVIEWER_EFFORT (ARCHITECTURE.md, Models and roles, 2026-10-30), on REVIEWER_MODEL. A launch may put the reviewer on
 # another model and effort, such as Fable 5.2 at high (design-pick.md (d)); the frozen role settings list both models
-# in availableModels, or Claude Code answers an unlisted one with its default.
-REVIEWER_EFFORT="${FACTORY_REVIEWER_EFFORT:-xhigh}"
+# in availableModels, or Claude Code answers an unlisted one with its default. A Fable reviewer defaults to high, never
+# xhigh (Samyak's rule: Fable always at high, ~/.claude/rules/pstack-models.md).
 REVIEWER_MODEL="${FACTORY_REVIEWER_MODEL:-$GRADER_MODEL}"
+case "$REVIEWER_MODEL" in claude-fable-*) REVIEWER_EFFORT="${FACTORY_REVIEWER_EFFORT:-high}" ;; *) REVIEWER_EFFORT="${FACTORY_REVIEWER_EFFORT:-xhigh}" ;; esac
 grader_effort() { # role
   case "$1" in reviewer) echo "$REVIEWER_EFFORT" ;; *) echo "$GRADER_EFFORT" ;; esac
 }
