@@ -2460,7 +2460,13 @@ worker_round() { # round; leaves round-N.* only once the call produced a result
   # keeps it for the method-evidence checker's base; written once per round, so a relaunched round keeps the start
   # its killed attempt had, with that attempt's commits inside the round.
   head0=$(git -C "$WORKTREE" rev-parse HEAD 2> /dev/null) || head0=""
-  [ -s "$RUN/round-$round.start.sha" ] || [ -z "$head0" ] || printf '%s\n' "$head0" > "$RUN/round-$round.start.sha"
+  # After a method-evidence FAIL the round keeps the failed round's start, so the change it failed on is graded again
+  # with this round's lines; else a retry round that only writes a method: line would pass on an empty range.
+  if [ ! -s "$RUN/round-$round.start.sha" ] && [ -n "$head0" ]; then
+    grep -q '^FAIL method-evidence' "$RUN/round-$((round - 1)).checks" 2> /dev/null \
+      && cp "$RUN/round-$((round - 1)).start.sha" "$RUN/round-$round.start.sha" 2> /dev/null \
+      || printf '%s\n' "$head0" > "$RUN/round-$round.start.sha"
+  fi
   # The round's header line in decisions.md: parity P3 and the method-evidence checker give the lines after
   # `Round N` to round N, so a worker's method: line needs no round label of its own. Once per round, so a retried
   # or relaunched round adds none. A last line with no newline gets one first, so the header starts its own line.
@@ -3097,13 +3103,15 @@ round_checks() { # out: a dirty tree or a do-not-touch hit fails the round witho
 # The round's method-evidence line after the ticket's checks (LOOP.md, Method evidence): the frozen
 # method_evidence.py grades round-N.start.sha..HEAD, a test that fails before and passes after or a proof command's
 # declared exit, and a FAIL sends the worker back as any check does. It goes before checks.sh's CHECKS-END line, so a
-# relaunch still reads the block as complete; a checker that prints no verdict is a FAIL too.
+# relaunch still reads the block as complete; a checker that cannot grade ends the run stopped-environment.
 method_evidence() { # round out
   local line rc=0
   line=$(python3 -I "$RUN/frozen/method_evidence.py" --run "$RUN" --round "$1" --repo "$WORKTREE" \
     --head "$(git -C "$WORKTREE" rev-parse HEAD)" 2>> "$LOG") || rc=$?
   line=$(printf '%s\n' "$line" | grep -m1 -E '^(PASS|FAIL) method-evidence: ')
-  [ -n "$line" ] || line="FAIL method-evidence: the checker exited $rc with no verdict; see factory.log"
+  # Exit 2 is input the checker could not use (a git or worktree fault), not the worker's evidence.
+  [ "$rc" -le 1 ] && [ -n "$line" ] \
+    || finish stopped-environment "the method-evidence checker could not grade round $1 (exit $rc): ${line:-no verdict}"
   log "round $1 $line"
   if [ "$(tail -n 1 "$2")" = CHECKS-END ]; then
     { sed '$d' "$2"; printf '%s\n\nCHECKS-END\n' "$line"; } > "$2.tmp" && mv "$2.tmp" "$2"

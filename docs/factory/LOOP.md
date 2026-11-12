@@ -186,7 +186,8 @@ The judge and reviewer get three calls each; after three bad replies the reviewe
 ## Method evidence
 
 The round's method is graded by what it left behind, not by a log of what the worker read: the pstack gate and the `pstack:` log line it and DistBench's `pstack-read` check graded are gone, since workers read a method only to get an edit past them, and a later round passed on an earlier round's lines (owner brief of 12 Nov 2026, unit U2).
-After the done-checks block, `round_checks` runs the frozen `bin/factory.d/method_evidence.py` with `python3 -I` on `round-N.start.sha..HEAD` (worker_round writes the start sha once per round) and puts its one line, `PASS method-evidence: <why>` or `FAIL method-evidence: <why>`, before the block's `CHECKS-END` line in `round-N.checks`, so a FAIL sends the worker back as any check does; a checker that prints no verdict is a FAIL too.
+After the done-checks block, `round_checks` runs the frozen `bin/factory.d/method_evidence.py` with `python3 -I` on `round-N.start.sha..HEAD` (worker_round writes the start sha once per round) and puts its one line, `PASS method-evidence: <why>` or `FAIL method-evidence: <why>`, before the block's `CHECKS-END` line in `round-N.checks`, so a FAIL sends the worker back as any check does; a checker that cannot grade (exit 2, a git or worktree fault) or prints no verdict ends the run `stopped-environment`.
+The round after a method-evidence FAIL keeps the failed round's start sha, so the change it failed on is graded again with the new round's lines.
 Lint refuses a done check that reports the name `method-evidence`.
 The worker's Stop hook does not run it.
 A round with no change, a docs-only change (every path `.md` or `.rst`) or a trivial one (at most 5 changed lines outside docs, no added file outside docs) owes nothing.

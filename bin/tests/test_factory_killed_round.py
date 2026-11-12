@@ -140,6 +140,17 @@ class KilledRoundTests(unittest.TestCase):
                          "pstack: tdd | /p/skills/tdd/SKILL.md | x | y | z\nRound 1\n")
         self.assertEqual((self.run_dir / "round-1.start.sha").read_text().strip(), start)
 
+    def test_a_round_after_a_method_evidence_fail_keeps_that_rounds_start(self) -> None:
+        # audit F1: else round 2 could only write a method: line, commit nothing, and pass on an empty range.
+        head = git("rev-parse", "HEAD", cwd=self.wt)
+        for checks, want in (("FAIL method-evidence: no method\n", "0" * 40), ("PASS method-evidence: ok\n", head)):
+            with self.subTest(checks=checks):
+                (self.run_dir / "round-2.start.sha").unlink(missing_ok=True)
+                # The fake worker's call ends with no result, so the round stops; its start sha is written first.
+                self.worker_round("claude", "", f"echo {'0' * 40} > \"$RUN/round-1.start.sha\"; "
+                                  f"printf '{checks}' > \"$RUN/round-1.checks\"; worker_round 2")
+                self.assertEqual((self.run_dir / "round-2.start.sha").read_text().strip(), want)
+
     def test_the_round_header_starts_its_own_line_after_a_last_line_with_no_newline(self) -> None:
         # audit4 2: appended bare, the header joined the last decision (`...zRound 1`), which parity then never read
         # as a header, so the round's method lines went to the round before.
