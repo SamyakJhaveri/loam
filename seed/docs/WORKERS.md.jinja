@@ -6,8 +6,9 @@ Read on demand. None of this is loaded in a normal session.
 
 Give each parallel worker its own worktree (`claude --worktree <name>`). One
 checkout is safe only for disjoint files. For a shared GPU or database, wrap the
-command in `flock /tmp/<resource>.lock <cmd>` (util-linux; absent on stock
-macOS). Build no other lock.
+command in `flock ~/.local/state/{{ project_name }}/<resource>.lock <cmd>`
+(util-linux; absent on stock macOS; `mkdir -p` the folder once per host). Build no
+other lock.
 
 ## Roles
 
