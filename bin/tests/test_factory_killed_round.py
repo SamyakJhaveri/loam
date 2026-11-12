@@ -143,7 +143,8 @@ class KilledRoundTests(unittest.TestCase):
     def test_a_round_after_a_method_evidence_fail_keeps_that_rounds_start(self) -> None:
         # audit F1: else round 2 could only write a method: line, commit nothing, and pass on an empty range.
         head = git("rev-parse", "HEAD", cwd=self.wt)
-        for checks, want in (("FAIL method-evidence: no method\n", "0" * 40), ("PASS method-evidence: ok\n", head)):
+        for checks, want in (("FAIL method-evidence: no method\n", "0" * 40), ("FAIL worktree-dirty a.py\n", "0" * 40),
+                             ("PASS method-evidence: ok\n", head)):
             with self.subTest(checks=checks):
                 (self.run_dir / "round-2.start.sha").unlink(missing_ok=True)
                 # The fake worker's call ends with no result, so the round stops; its start sha is written first.

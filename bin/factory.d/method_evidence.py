@@ -14,7 +14,7 @@ path .md or .rst) or a trivial one (at most 5 changed lines outside docs and no 
 outside docs) passes with no method. Any other round declares its method in <run>/worker/decisions.md:
   method: <skill> | test: <command>
   method: <skill> | proof: <command> | exit <code>
-(list marks, backticks and asterisks ignored); an older `pstack: <skill> | ...` line declares <skill> too, its other
+(a list mark and backticks around the line or the command ignored); an older `pstack: <skill> | ...` line declares <skill> too, its other
 fields unread. A line belongs to round N when it follows the `Round N` header the supervisor writes; with no header
 (a run from before them) every line is round 1's.
 
@@ -32,6 +32,7 @@ from __future__ import annotations
 import argparse
 import os
 import re
+import shlex
 import shutil
 import signal
 import subprocess
@@ -54,8 +55,8 @@ NOT_A_FAIL = {5: "no tests ran", 126: "not executable", 127: "command not found"
 DOC_SUFFIXES = (".md", ".rst")
 TEST_FILE = re.compile(r"test_.*\.py|.*_test\.py")
 HEADER = re.compile(r"Round (\d+)")
-METHOD = re.compile(r"(?:[-*] )?method:\s*([^|]+?)\s*\|\s*(.*)")
-PSTACK = re.compile(r"(?:[-*] )?pstack:\s*([^|]+?)\s*\|")
+METHOD = re.compile(r"method:\**\s*([^|]+?)\s*\|\s*(.*)")
+PSTACK = re.compile(r"pstack:\s*([^|]+?)\s*\|")
 PROOF = re.compile(r"proof:\s*(.+?)\s*\|\s*exit\s+(-?\d+)\.?\s*")
 TIMEOUT = float(os.environ.get("METHOD_EVIDENCE_TIMEOUT_SEC", "900"))
 
@@ -133,15 +134,15 @@ def declarations(lines: list[str]) -> list[tuple[str, str | None, str | None, in
     """(skill, 'test'|'proof'|None, command, declared exit) per method or pstack line."""
     out = []
     for x in lines:
-        x = re.sub(r"[`*]", "", x).strip()
+        x = re.sub(r"^[-*]\s+", "", x.strip()).strip("`")   # a list mark, and backticks around the whole line
         m = METHOD.search(x)
         if m:
-            skill, rest = m.group(1), m.group(2).strip()
+            skill, rest = m.group(1).strip("*` "), m.group(2).strip()
             p = PROOF.fullmatch(rest)
-            if rest.startswith("test:") and rest[5:].strip():
-                out.append((skill, "test", rest[5:].strip(), None))
+            if rest.startswith("test:") and rest[5:].strip(" `"):
+                out.append((skill, "test", rest[5:].strip(" `"), None))
             elif p:
-                out.append((skill, "proof", p.group(1), int(p.group(2))))
+                out.append((skill, "proof", p.group(1).strip("`"), int(p.group(2))))
             else:
                 out.append((skill, None, None, None))
             continue
@@ -170,7 +171,11 @@ def grade_test(cmd: str, wt: Path, base: str, restore: list[tuple[str, str]]) ->
         return False, f"test `{cmd}` must pass at head but {shown(rc)} ({tail})"
     if not restore:
         return True, f"test `{cmd}` exit 0 at head; the round changed only test files, so no base run"
-    added = [p for st, p in restore if st == "A" and p not in cmd.split()]
+    try:
+        named = {os.path.normpath(t) for t in shlex.split(cmd)}
+    except ValueError:
+        named = set(cmd.split())
+    added = [p for st, p in restore if st == "A" and p not in named]
     for p in added:
         (wt / p).unlink(missing_ok=True)
     back = [p for st, p in restore if st != "A"]

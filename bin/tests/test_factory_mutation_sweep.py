@@ -394,7 +394,7 @@ if [ -d "$d/round-$n" ]; then cp -R "$d/round-$n/." .; else echo "$n" > note.txt
 git add -A > /dev/null 2>&1; git commit -qm "round $n" > /dev/null 2>&1
 # The round's method, which round_checks grades (method_evidence.py): a proof that passes.
 dec=$(grep -o '/[^ `]*/decisions\.md' "$d/prompt-$n.txt" | head -1)
-printf 'method: principle-prove-it-works | proof: true | exit 0\n' >> "$dec"
+printf 'method: principle-laziness-protocol | proof: true | exit 0\n' >> "$dec"
 cat "$d/worker.json"
 """
 ENVELOPE = {"type": "result", "subtype": "success", "is_error": False, "total_cost_usd": 0, "num_turns": 1}

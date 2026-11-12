@@ -110,7 +110,7 @@ def test_an_added_script_the_test_command_names_stays_at_base(tmp_path):
     # check.sh is the round's test: it stays when calc.py goes back to base, so its exit there is a real red, and a
     # script that also passes at base is caught (deleted, it would exit 127 and look like a red test).
     repo, run = setup(tmp_path, {"calc.py": FIXED, "check.sh": f"{PY} -c 'import calc; assert calc.add(2, 3) == 5'\n"},
-                      "Round 1\nmethod: principle-fix-root-causes | test: bash check.sh\n")
+                      "Round 1\nmethod: principle-fix-root-causes | test: bash ./check.sh\n")
     rc, out = check(repo, run)
     assert rc == 0 and "exit 1 with" in out, out
     head = commit(repo, {"check.sh": "true\n"})
@@ -119,14 +119,14 @@ def test_an_added_script_the_test_command_names_stays_at_base(tmp_path):
 
 
 def test_proof_route_matches_the_declared_exit_code_and_only_a_proof_method_takes_it(tmp_path):
-    proof = f"{PY} -c 'import calc, sys; sys.exit(calc.add(3, 2))'"
+    proof = f"{PY} -c 'import calc, sys; sys.exit(calc.add(3, 2) * 3)'"
     repo, run = setup(tmp_path, {"calc.py": BUGGY + "\n\ndef h():\n    return 2\n\n\ndef k():\n    return 3\n"},
-                      f"Round 1\nmethod: principle-laziness-protocol | proof: {proof} | exit 1.\n")
+                      f"Round 1\nmethod: principle-laziness-protocol | proof: {proof} | exit 3.\n")
     rc, out = check(repo, run)
-    assert rc == 0 and "exit 1 at head, as declared" in out, out
+    assert rc == 0 and "exit 3 at head, as declared" in out, out
     (run / "worker/decisions.md").write_text(f"Round 1\nmethod: principle-laziness-protocol | proof: {proof} | exit 0\n")
     rc, out = check(repo, run)
-    assert rc == 1 and "declared exit 0 but exit 1" in out, out
+    assert rc == 1 and "declared exit 0 but exit 3" in out, out
     # A source change under any other method owes a test, whatever proof it names.
     (run / "worker/decisions.md").write_text("Round 1\nmethod: principle-prove-it-works | proof: true | exit 0\n")
     rc, out = check(repo, run)

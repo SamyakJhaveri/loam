@@ -2458,10 +2458,11 @@ worker_round() { # round; leaves round-N.* only once the call produced a result
   # keeps it for the method-evidence checker's base; written once per round, so a relaunched round keeps the start
   # its killed attempt had, with that attempt's commits inside the round.
   head0=$(git -C "$WORKTREE" rev-parse HEAD 2> /dev/null) || head0=""
-  # After a method-evidence FAIL the round keeps the failed round's start, so the change it failed on is graded again
-  # with this round's lines; else a retry round that only writes a method: line would pass on an empty range.
+  # A round after one whose method evidence did not pass (a FAIL, or checks that stopped before it ran) keeps that
+  # round's start, so its change is graded again with this round's lines; else a retry round that only writes a
+  # method: line would pass on an empty range.
   if [ ! -s "$RUN/round-$round.start.sha" ] && [ -n "$head0" ]; then
-    grep -q '^FAIL method-evidence' "$RUN/round-$((round - 1)).checks" 2> /dev/null \
+    [ "$round" -gt 1 ] && ! grep -q '^PASS method-evidence' "$RUN/round-$((round - 1)).checks" 2> /dev/null \
       && cp "$RUN/round-$((round - 1)).start.sha" "$RUN/round-$round.start.sha" 2> /dev/null \
       || printf '%s\n' "$head0" > "$RUN/round-$round.start.sha"
   fi
