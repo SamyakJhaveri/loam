@@ -162,17 +162,19 @@ class RelaunchPublishTests(unittest.TestCase):
         # At the default cap: a ready publish whose push failed, a hand commit that drops the marker (its round fails
         # the checks and is never graded), a reset back to the intent's sha and a relaunch whose round grades that
         # same sha and fails. The newest round graded the intent's sha, but is later than the one that wrote it (#529).
-        first = self.launch(JUDGE_PASS, REVIEW_CLEAN, FIRST_PUSH_FAILS)
+        # The worker round that proves it is round 4, past the default MAX_ROUNDS of 3, so this test raises the cap.
+        rounds = "MAX_ROUNDS=4"
+        first = self.launch(JUDGE_PASS, REVIEW_CLEAN, FIRST_PUSH_FAILS, rounds)
         self.assertNotEqual(first.returncode, 0, first.stderr)
         (branch,) = git("for-each-ref", "--format=%(refname)", "refs/heads/factory/", cwd=self.main).splitlines()
         intent_sha = git("rev-parse", branch, cwd=self.main)
         empty_tree = git("hash-object", "-t", "tree", "/dev/null", cwd=self.main)
         git("update-ref", branch, git("commit-tree", "-p", branch, "-m", "hand", empty_tree, cwd=self.main),
             cwd=self.main)
-        self.launch(JUDGE_FAIL, REVIEW_CLEAN, "worker_round() { :; }")
+        self.launch(JUDGE_FAIL, REVIEW_CLEAN, "worker_round() { :; }", rounds)
         git("update-ref", branch, intent_sha, cwd=self.main)
-        self.launch(JUDGE_FAIL, REVIEW_CLEAN, "worker_round() { :; }")
-        self.launch(JUDGE_FAIL, REVIEW_CLEAN, SECOND)
+        self.launch(JUDGE_FAIL, REVIEW_CLEAN, "worker_round() { :; }", rounds)
+        self.launch(JUDGE_FAIL, REVIEW_CLEAN, SECOND, rounds)
         calls = self.runs / "rl" / "relaunch-worker-calls"
         self.assertGreater(len(calls.read_text().splitlines()) if calls.exists() else 0, 0)
         (log,) = (self.runs / "rl").glob("*/factory.log")
