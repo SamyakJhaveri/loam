@@ -6,9 +6,11 @@ fixtures/parity/cut.py (lines it edits say so there); `pass` is a hand-written r
 
 from __future__ import annotations
 
+import json
 import shutil
 import subprocess
 import sys
+from collections.abc import Callable
 from pathlib import Path
 
 import pytest
@@ -148,3 +150,42 @@ def test_attended(case: str, pid: str, expected: str) -> None:
     assert lines[0] == f"== {FIXTURES / case / 'session.jsonl'}" and {x.split(" ", 2)[1] for x in lines[1:-1]} == {"P2", "P3", "P6"}
     assert statuses("\n".join(lines[1:]))[pid] == expected, proc.stdout
     assert proc.returncode == (1 if lines[-1].startswith("parity: FAIL") else 0)
+
+
+def edit_events(path: Path, fn: Callable[[dict], None]) -> None:
+    """Rewrite path's JSON lines, each tool_use or tool_result item passed to fn to edit in place."""
+    events = [json.loads(x) for x in path.read_text().splitlines() if x.strip()]
+    for ev in events:
+        content = (ev.get("message") or {}).get("content")
+        for item in content if isinstance(content, list) else []:
+            if isinstance(item, dict) and item.get("type") in ("tool_use", "tool_result"):
+                fn(item)
+    path.write_text("".join(json.dumps(e) + "\n" for e in events))
+
+
+def failed_skill_reads(run: Path) -> None:
+    """Every call that names a SKILL.md failed (the file was missing); the Write after them still succeeded."""
+    ids: set[str] = set()
+
+    def mark(item: dict) -> None:
+        if item["type"] == "tool_use" and "SKILL.md" in json.dumps(item["input"]):
+            ids.add(item["id"])
+        elif item["type"] == "tool_result" and item["tool_use_id"] in ids:
+            item.update(is_error=True, content="Exit code 1\ncat: /x/skills/x/SKILL.md: No such file or directory")
+    edit_events(run / "round-1.jsonl", mark)
+
+
+# Audit 3 repros (the verifier's audit3-verify.md): (name, committed case, edit of its run folder, id, expected).
+VARIANTS = [
+    ("c2-failed-reads", "p3-pass", failed_skill_reads, "P2", "FAIL"),  # a read whose result is an error read nothing
+    ("c2-failed-reads", "p3-pass", failed_skill_reads, "P3", "FAIL"),
+]
+
+
+@pytest.mark.parametrize(("name", "case", "edit", "pid", "expected"), VARIANTS, ids=[f"{v[0]}-{v[3]}" for v in VARIANTS])
+def test_variant(tmp_path: Path, name: str, case: str, edit: Callable[[Path], None], pid: str, expected: str) -> None:
+    shutil.copytree(FIXTURES / case, tmp_path / name)
+    edit(tmp_path / name / "run")
+    proc = parity(tmp_path / name / "run", tmp_path / name / "projects")
+    assert proc.returncode in (0, 1), proc.stderr
+    assert statuses(proc.stdout)[pid] == expected, proc.stdout

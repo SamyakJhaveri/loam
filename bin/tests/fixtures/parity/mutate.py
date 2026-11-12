@@ -20,6 +20,7 @@ MUTATIONS = [  # (rule, old, new): each old must occur exactly once
     ("a head that cut is no full read", "shown >= min(int(c.group(1)) for c in caps)", "False"),
     ("a blocked or denied call never ran",
      "return self.ids[i] not in self.denied and not (res and NOT_RUN.search(res[1]))", "return True"),
+    ("audit3 C2 a failed read reads nothing", "return self.ran(i) and self.ids[i] not in self.errors", "return self.ran(i)"),
     ("C4 brief-named read", "    names = named_skills(f\"{t.brief}\\n{run.ticket}\", run.pstack)\n",
      "    names = set()\n"),
     ("F5 notes are no change", 'NOTES = re.compile(r"/[0-9a-f]{8}/worker/|', 'NOTES = re.compile(r"(?!x)x/[0-9a-f]{8}/worker/|'),

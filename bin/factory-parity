@@ -20,7 +20,8 @@ Exit 0 on PASS, 1 on FAIL, 2 on unusable input.
 A full read of a SKILL.md is a Read with no offset or limit, or a Bash `cat` naming it whose output goes to no
 further pipe stage, or only to `head -N` when the call's whole result is under N lines (nothing cut); loop variables
 and brace lists are expanded. `sed -n`, `tail`, `git cat-file` and a head that cut are partial reads and never count.
-A call a permission denial or the pstack-gate hook answered never ran: it is no change and no read.
+A call a permission denial or the pstack-gate hook answered never ran: it is no change and no read. A call whose
+result is an error (is_error: a missing file, a nonzero exit) is no read and no proof step.
 A change is an Edit, Write, NotebookEdit or MultiEdit call, or a Bash call that writes in place (sed -i, ruff
 format, write_text, open(..., 'w'), git commit, cat/echo > file, tee). A write to notes or scratch is no change: the
 run's worker/ folder (`.../<key>/<sha8>/worker/`), /tmp, $TMPDIR, a scratchpad, ~/.claude/projects and DistBench's
@@ -165,6 +166,7 @@ class Transcript:
         self.brief = ""  # the first user message's text
         self.denials: list[tuple[int, str, str]] = []  # classifier permission_denied (line, tool_use id, reason)
         self.denied: set[str] = set()  # tool_use ids of every permission_denied event
+        self.errors: set[str] = set()  # tool_use ids whose tool_result is is_error (a failed cat, a nonzero exit)
         meta_path = path.with_name(path.stem + ".meta.json")
         try:
             meta = json.loads(meta_path.read_text(encoding="utf-8")) if meta_path.is_file() else {}
@@ -225,6 +227,8 @@ class Transcript:
                         self.ids.append(item.get("id", ""))
                     elif item.get("type") == "tool_result":
                         self.results[item.get("tool_use_id", "")] = (n, result_text(item.get("content"), projects))
+                        if item.get("is_error") is True:
+                            self.errors.add(item.get("tool_use_id", ""))
         if not parsed:
             raise Unusable(f"{path}: no JSON lines")
 
@@ -235,6 +239,10 @@ class Transcript:
         """False when call i never ran: a permission denial or a pstack-gate block answered it."""
         res = self.result(i)
         return self.ids[i] not in self.denied and not (res and NOT_RUN.search(res[1]))
+
+    def ok(self, i: int) -> bool:
+        """True when call i ran and its result is no error: what a read or a proof step needs."""
+        return self.ran(i) and self.ids[i] not in self.errors
 
 
 def result_text(content: object, projects: Path) -> str:
@@ -325,7 +333,7 @@ def full_reads(t: Transcript, j: int) -> set[tuple[str, str]]:
     the last stage of its pipeline or is piped only into `head -N` while the call's whole result is under N lines (so
     nothing was cut). sed -n, tail, git cat-file and a head that cut read part of a file and never count."""
     _, name, inp = t.calls[j]
-    if not t.ran(j):
+    if not t.ok(j):
         return set()
     if name == "Read":
         return set() if inp.get("offset") is not None or inp.get("limit") is not None else skill_reads(name, inp)
@@ -354,7 +362,7 @@ def is_router(prefix: str, skill: str) -> bool:
 
 def reads_router(t: Transcript, j: int) -> bool:
     if t.calls[j][1] == "Skill":
-        return t.calls[j][2].get("skill") == ROUTER_SKILL and t.ran(j)
+        return t.calls[j][2].get("skill") == ROUTER_SKILL and t.ok(j)
     return any(is_router(*f) for f in full_reads(t, j))
 
 
