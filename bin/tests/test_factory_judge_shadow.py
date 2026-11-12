@@ -1,6 +1,6 @@
-"""A judge fail on only bookkeeping rows (JUDGE_SHADOW_ROWS, `honest`) whose fixes all edit decisions.md logs judge-shadow
-and does not block (owner, 12 Nov 2026); a fail on a substantive row (`correct`, `verified`), or with a fix for the change
-itself, still fails the graders.
+"""A judge fail on only bookkeeping rows (JUDGE_SHADOW_ROWS, `honest`) whose fixes name no file but decisions.md logs
+judge-shadow and does not block (owner, 12 Nov 2026); a fail on a substantive row (`correct`, `verified`), or with a fix
+that names a file of the change, still fails the graders.
 
 `bin/factory` is sourced (FACTORY_SOURCED=1) and the real graders, run_judge and run_review run over a throwaway git
 worktree. Only the model call (call_json) is stubbed: it writes the reply named for its role and records the role, so
@@ -71,16 +71,27 @@ class JudgeShadowTests(unittest.TestCase):
         self.assertFalse((run / "round-1.judge-shadow").exists())
 
     def test_substantive_row_fail_still_fails(self) -> None:
-        for name, rows in (("verified", {**ROWS_PASS, "verified": "fail"}),
+        # Each fix is bookkeeping, so only the row guard (or the required-row guard) can block these.
+        label = "label the run unverified in decisions.md"
+        for name, rows in (("correct", {**ROWS_PASS, "correct": "fail"}),
+                           ("verified", {**ROWS_PASS, "verified": "fail"}),
                            ("verified and honest", {**ROWS_PASS, "verified": "fail", "honest": "fail"}),
                            ("correct missing", {"verified": "pass", "honest": "fail"})):
             with self.subTest(name):
-                rc, run, log = self.graders(judge(rows, ["fix the widget in bin/x"]))
+                rc, run, log = self.graders(judge(rows, [label]))
                 self.assertEqual(rc, 1, log)
                 self.assertNotIn("judge-shadow", log)
-                self.assertIn("fix the widget", (run / "round-1.fixes").read_text())
+                self.assertEqual((run / "round-1.fixes").read_text(), f"- {label}\n")
                 self.assertFalse((run / "round-1.judge-shadow").exists())
 
+    def test_fix_naming_another_file_beside_decisions_md_still_fails(self) -> None:
+        # The fix names decisions.md, but also a file of the change: it is not bookkeeping, so the fail blocks.
+        mixed = "fix the crash in bin/x when input is empty, and drop the decisions.md line that says it is handled"
+        rc, run, log = self.graders(judge({**ROWS_PASS, "honest": "fail"}, [mixed]))
+        self.assertEqual(rc, 1, log)
+        self.assertNotIn("judge-shadow", log)
+        self.assertEqual((run / "round-1.fixes").read_text(), f"- {mixed}\n")
+        self.assertFalse((run / "round-1.judge-shadow").exists())
 
 if __name__ == "__main__":
     unittest.main()

@@ -35,6 +35,9 @@ fixture
 STUBS = "assert_target_ready() { :; }; claude_version_ok() { :; }; exec_frozen() { :; }"
 JUDGE_PASS = """run_judge() { echo '{"verdict":"pass","rows":{}}' > "$RUN/round-$1.judge.json"; }"""
 JUDGE_FAIL = """run_judge() { echo '{"verdict":"fail","rows":{"a":"fail"}}' > "$RUN/round-$1.judge.json"; return 1; }"""
+# A judge fail on only the bookkeeping row honest, as run_judge leaves a shadow pass: no fix queued, a judge-shadow file.
+JUDGE_SHADOW = ("""run_judge() { echo '{"verdict":"fail","rows":{"honest":"fail"},"fixes":["label it in decisions.md"]}' """
+                """> "$RUN/round-$1.judge.json"; : > "$RUN/round-$1.fixes"; echo honest > "$RUN/round-$1.judge-shadow"; }""")
 REVIEW_CLEAN = """run_review() { echo '{"findings":[]}' > "$RUN/round-$1.review.json"; }"""
 # A high finding past the reviewer's one block: the graders pass and the PR would open as a draft.
 REVIEW_BLOCKING = ("""run_review() { echo '{"findings":[{"severity":"high","file":"f","line":1,"defect":"d","fix":"x"}]}'"""
@@ -104,6 +107,19 @@ class RelaunchPublishTests(unittest.TestCase):
         (run,) = (self.runs / "rl").iterdir()
         sha = (run / "round-1.graded.sha").read_text().strip()
         self.assertIn(f"graded at {sha}", (run / "pr-body.md").read_text())
+
+    def test_shadow_pass_at_head_publishes_with_no_worker_round_and_counts_no_grader_fail(self) -> None:
+        # judge_passed: a relaunch reads the shadow round as a pass, so it publishes at once and the cap skips it.
+        first = self.launch(JUDGE_SHADOW, REVIEW_CLEAN, FIRST)
+        self.assertNotEqual(first.returncode, 0, first.stderr)
+        count = SECOND + ("""; eval "$(declare -f open_pr | sed 1s/open_pr/real_open_pr/)"; """
+                          """open_pr() { echo "$GRADER_FAILS" > "$RUN/../grader-fails"; real_open_pr "$@"; }""")
+        self.launch(JUDGE_SHADOW, REVIEW_CLEAN, count)
+        (status,) = (self.runs / "rl").glob("*/status")
+        calls = self.runs / "rl" / "relaunch-worker-calls"
+        self.assertEqual((status.read_text().strip(), calls.exists()), ("pr-opened", False))
+        self.assertEqual((self.runs / "rl" / "grader-fails").read_text().strip(), "0")
+        self.assertTrue(self.body().startswith("## How it works\n"), self.body())
 
     def test_edited_frozen_set_stops_before_publishing(self) -> None:
         status, calls = self.relaunch(JUDGE_PASS, REVIEW_CLEAN, edit_frozen=True)

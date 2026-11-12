@@ -2584,16 +2584,21 @@ run_judge() { # round -> 0 on a pass verdict, or a fail on only JUDGE_SHADOW_ROW
   call_json "$round" judge judge "$pf" "$RUN/frozen/judge.schema.json"
   log "judge verdict: $(jq -r .verdict "$f") rows=$(jq -c '.rows // {}' "$f")"
   # The failing rows (a required row that is missing counts), printed only when every one is a shadow row and every
-  # fix edits decisions.md: a fail may carry a fix for the change itself with every other row pass, and that blocks.
+  # fix names decisions.md and no other file (a path with a slash, or a name.ext): a fail may carry a fix for the
+  # change itself with every other row pass, and that blocks. A fix that names no file but decisions.md is still
+  # judged by its text, so "fix the empty-input crash and drop its decisions.md line" shadow-passes: a known limit of
+  # free-text fixes; a structured fix target would need a judge schema change, which is the owner's call.
   shadow=$(jq -r --slurpfile s "$RUN/frozen/judge.schema.json" --arg sh "$JUDGE_SHADOW_ROWS" '
     select(.verdict != "pass" and (.unparseable // false | not))
-    | select(all((.fixes // [])[]; type == "string" and test("decisions\\.md"))) | (.rows // {}) as $r
+    | select(all((.fixes // [])[]; type == "string" and test("decisions\\.md")
+        and ([scan("[A-Za-z0-9_.-]*/[A-Za-z0-9_./-]*[A-Za-z0-9_-]|[A-Za-z0-9_-]+\\.[A-Za-z0-9]+")]
+             | all(test("(^|/)decisions\\.md$"))))) | (.rows // {}) as $r
     | [([$s[0].properties.rows.required[]?] + ($r | keys)) | unique[] | select($r[.] != "pass")] as $failed
     | select(($failed | length) > 0 and ($failed - ($sh | split(" "))) == []) | $failed | join(" ")' "$f" 2> /dev/null)
   if [ -n "$shadow" ]; then
     : > "$RUN/round-$round.fixes"
     printf '%s\n' "$shadow" > "$RUN/round-$round.judge-shadow"
-    log "judge-shadow: the judge failed only bookkeeping row(s) $shadow; logged, not blocking, and its $(jq '.fixes | length' "$f") decisions.md fix(es) not sent to the worker, listed in the PR body"
+    log "judge-shadow: the judge failed only bookkeeping row(s) $shadow; logged, not blocking, and its $(jq '.fixes | length' "$f") fix(es), naming no file but decisions.md, not sent to the worker, listed in the PR body"
     return 0
   fi
   jq -r '.fixes[]? | "- " + .' "$f" > "$RUN/round-$round.fixes"
@@ -2823,7 +2828,8 @@ open_pr() { # [draft]: opened at the grader-round cap
   {
     # A draft's reason opens the body, so a reader sees why it is a draft before anything else.
     if [ "$draft" = blocking ]; then
-      printf 'Draft: the judge passed, but %s blocking reviewer, Codex review or mutation sweep finding(s) remain past the one block each grader and the sweep may make or come from a reviewer or Codex review with no parseable reply, and each is filed as an issue. Read them before marking it ready. The first is %s\n\n' \
+      printf 'Draft: the judge passed%s, but %s blocking reviewer, Codex review or mutation sweep finding(s) remain past the one block each grader and the sweep may make or come from a reviewer or Codex review with no parseable reply, and each is filed as an issue. Read them before marking it ready. The first is %s\n\n' \
+        "$([ ! -s "$RUN/round-$ROUND.judge-shadow" ] || printf ' (a shadow pass: it failed only the bookkeeping row(s) %s)' "$(cat "$RUN/round-$ROUND.judge-shadow")")" \
         "$(printf '%s\n' "$blocking" | grep -c .)" "$(printf '%s\n' "$blocking" | head -1)"
     elif [ -n "$draft" ] && jq -e '.unparseable == true' "$RUN/round-$ROUND.judge.json" > /dev/null 2>&1; then
       printf 'Draft: judge output unparseable or inconsistent after 3 calls, so this round is not a pass and no worker round followed; the Backlog section files it as an issue. Read the Judge section before marking it ready.\n\n'
@@ -3814,11 +3820,12 @@ cmd_criteria() {
 }
 
 grader_first_fail() { # run dir -> the first grader item that failed in the last graded round
-  local j r
+  local j r=""
   j=$(find "$1" -maxdepth 1 -name 'round-*.judge.json' 2> /dev/null | sort -V | tail -1)
   [ -n "$j" ] || return 0
-  # A judge fail with every row pass still fails the round, on its fixes or backlog (verdict_consistent).
-  r=$(grader_fallback "$j" judge || jq -r 'first(((.rows // {}) | to_entries[] | select(.value != "pass") | "judge:" + .key),
+  # A judge fail with every row pass still fails the round, on its fixes or backlog (verdict_consistent). A shadow
+  # pass (round-N.judge-shadow, run_judge) failed only bookkeeping rows, so the round's first fail is the review's.
+  [ -e "${j%judge.json}judge-shadow" ] || r=$(grader_fallback "$j" judge || jq -r 'first(((.rows // {}) | to_entries[] | select(.value != "pass") | "judge:" + .key),
     (select(.verdict == "fail") | "judge:fail"))' "$j" 2> /dev/null)
   [ -n "$r" ] || r=$(grader_fallback "${j%judge.json}review.json" review \
     || jq -r 'first('"$REVIEW_BLOCKING"'[] | "review:" + (.file // "?")) // empty' "${j%judge.json}review.json" 2> /dev/null)

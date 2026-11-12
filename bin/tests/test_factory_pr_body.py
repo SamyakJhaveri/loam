@@ -151,5 +151,23 @@ class PrBodyChecksTests(unittest.TestCase):
                       self.open_pr(ticket=ticket))
 
 
+    def test_judge_section_lists_the_fixes_of_a_shadow_pass(self) -> None:
+        # A judge fail on only honest that shadow-passed: its fixes went to no worker, so the body is where they show.
+        (self.run_dir / "round-0.checks").write_text("FAIL widget\n")
+        (self.run_dir / "round-2.judge.json").write_text(
+            '{"verdict": "fail", "rows": {"correct": "pass", "verified": "pass", "honest": "fail"},'
+            ' "fixes": ["label the SKIP step\\n  unverified in decisions.md", "drop the speed claim from decisions.md"]}\n')
+        (self.run_dir / "round-2.judge-shadow").write_text("honest\n")
+        body = self.open_pr()
+        self.assertIn("judge-shadow: the judge failed only bookkeeping row(s) honest, which log and do not block. Its "
+                      "fixes, not sent to the worker:\n\n- label the SKIP step unverified in decisions.md\n"
+                      "- drop the speed claim from decisions.md\n\n## Reviewer", body)
+        self.assertLess(body.index("## Judge"), body.index("judge-shadow:"))
+        # With a blocking review the PR is a draft, and its first line says the judge pass was a shadow pass.
+        (self.run_dir / "round-2.review.json").write_text(
+            '{"verdict": "fix", "findings": [{"severity": "high", "file": "bin/y", "line": 1, "defect": "d", "fix": "f"}]}\n')
+        self.assertTrue(self.open_pr().startswith("Draft: the judge passed (a shadow pass: it failed only the bookkeeping "
+                                                  "row(s) honest), but 1 blocking"))
+
 if __name__ == "__main__":
     unittest.main()
