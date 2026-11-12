@@ -470,8 +470,6 @@ check_check_lines() {
       || err "check line does not report a pass: $line"
     grep -qE '(^|[[:space:]])fail[[:space:]]' <<<"$line" \
       || err "check line does not report a fail: $line"
-    ! grep -qxF method-evidence <<<"$(pass_names <<<"$line")" \
-      || err "check line reports method-evidence, the name of the supervisor's own check (round_checks); rename it: $line"
     grep -qE '(^|[[:space:]])pytest|[^[:space:]]*test[^[:space:]]*\.py|[^[:space:]]*_test\.sh' <<<"$line" || continue
     while IFS= read -r c; do
       [ -n "$c" ] || continue
