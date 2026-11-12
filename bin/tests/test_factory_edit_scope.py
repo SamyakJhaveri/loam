@@ -40,6 +40,9 @@ class EditScopeTests(unittest.TestCase):
             (self.wt / name).parent.mkdir(parents=True, exist_ok=True)
             (self.wt / name).write_text("base\n")
         (self.wt / ".claude").symlink_to("seed/.claude")   # as in Loam, where .claude is a link to seed/.claude
+        (self.wt / "seed/.claude/skills/y").symlink_to("x")   # a tracked link to a directory, as seed/.claude/skills has
+        (self.top / "outside").mkdir()
+        (self.wt / "ext").symlink_to(self.top / "outside")   # a link out of the repository
         git("init", "-q", "-b", "factory/7", cwd=self.wt)
         git("add", "-A", cwd=self.wt)
         git("commit", "-q", "-m", "base", cwd=self.wt)
@@ -53,6 +56,7 @@ class EditScopeTests(unittest.TestCase):
         """Freeze a header holding edit_line, commit the round `change` (shell, in the worktree) makes, run `before`
         (shell), and return round-1.checks, or what a `finish` printed when the round ended the run."""
         body = HEADER.format(edit=edit_line)
+        (self.run_dir / "round-1.checks").unlink(missing_ok=True)
         script = (f"RUN='{self.run_dir}'; WORKTREE='{self.wt}'; TARGET='{self.wt}'; LOG=\"$RUN/factory.log\"; ROUND=1\n"
                   'finish() { echo "FINISH $1: $2"; exit 0; }\n'
                   f"BODY=$(cat <<'TICKET'\n{body}TICKET\n)\nfreeze_edit_line\n"
@@ -89,6 +93,20 @@ class EditScopeTests(unittest.TestCase):
         self.assertEqual(checks, "PASS x\n\nCHECKS-END\n")
         self.assertEqual((self.run_dir / "frozen" / "edit.txt").read_text(), "seed/.claude/skills/x/SKILL.md\nsrc/a.py\n")
 
+    def test_a_listed_symlink_covers_itself_and_its_target(self) -> None:
+        # Deleting or retargeting the link changes the link's own path; a change through it changes its target's.
+        cases = {"deleted": "git rm -q seed/.claude/skills/y",
+                 "retargeted": "ln -sfn ../../../src seed/.claude/skills/y",
+                 "written through": "echo x >> seed/.claude/skills/y/SKILL.md"}
+        for why, change in cases.items():
+            with self.subTest(why):
+                git("reset", "-q", "--hard", (self.run_dir / "base.sha").read_text().strip(), cwd=self.wt)
+                (self.run_dir / "frozen" / "edit.txt").unlink(missing_ok=True)
+                checks = self.round_checks("Edit: seed/.claude/skills/y", change)
+                self.assertEqual(checks, "PASS x\n\nCHECKS-END\n")
+                self.assertEqual((self.run_dir / "frozen" / "edit.txt").read_text(),
+                                 "seed/.claude/skills/x\nseed/.claude/skills/y\n")
+
     def test_a_name_git_would_quote_is_read_as_written(self) -> None:
         # With core.quotePath (git's default) a plain --name-only prints "tests/na\303\257ve.py", quotes included.
         checks = self.round_checks("Edit: src/a.py, tests/", "echo x > tests/naïve.py && echo x > 'tests/a\"b.py'")
@@ -110,8 +128,9 @@ class EditScopeTests(unittest.TestCase):
         for line, why in (("Edit:", "the Edit: line lists no path"),
                           ("Edit: src/a.py (new)", "the Edit: line holds (new, which is not a path"),
                           ("Edit: src/*.py", "the Edit: line holds src/*.py, which is not a path"),
-                          ("Edit: src/a.py, ../x.py", "the Edit: line names ../x.py, which is not a path inside the repository"),
-                          ("Edit: src/../../x.py", "the Edit: line names src/../../x.py, which is not a path inside the repository")):
+                          ("Edit: src/a.py, ../x.py", "the Edit: line holds ../x.py, whose .. segment climbs a directory"),
+                          ("Edit: src/..", "the Edit: line holds src/.., whose .. segment climbs a directory"),
+                          ("Edit: ext/a.py", "the Edit: line names ext/a.py, which is not a path inside the repository")):
             with self.subTest(line):
                 out = self.round_checks(line, "echo x >> src/a.py")
                 self.assertTrue(out.startswith(f"FINISH ticket-defect: {why}"), out)
@@ -184,7 +203,8 @@ class EditLineLintAndFreezeTests(unittest.TestCase):
                           ("Edit: ``", "the Edit: line lists no path"),
                           ("Edit: Loam `bin/factory` (limit_wait and its reset parser).",
                            "the Edit: line holds (limit_wait, which is not a path"),
-                          ("Edit: bin/*.sh, docs/", "the Edit: line holds bin/*.sh, which is not a path")):
+                          ("Edit: bin/*.sh, docs/", "the Edit: line holds bin/*.sh, which is not a path"),
+                          ("Edit: bin/factory, docs/..", "the Edit: line holds docs/.., whose .. segment climbs a directory")):
             with self.subTest(line):
                 rc, out = self.lint(line)
                 self.assertEqual(rc, 1, out)

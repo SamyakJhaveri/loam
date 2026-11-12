@@ -245,21 +245,24 @@ check_header() {
 # The words of the header's `Edit:` line (CONTRACT.md, item 1): split on commas and blanks, backticks and quotes
 # stripped, then a trailing sentence mark and a leading ./, which git never prints. Each must be a path.
 EDIT_PATH_RE='^[A-Za-z0-9_.][A-Za-z0-9_./-]*$'
-edit_words() {
+edit_words() { edit_raw_words | sed -e 's/[.;:)]*$//' -e 's#^\(\./\)*##' | { grep -v '^$' || :; }; }
+edit_raw_words() { # the words before the trailing-mark and ./ strip, which would hide a `..` at the end of one
   local line
   line=$(grep -m1 '^Edit:' <<< "$(header)") || return 0
-  printf '%s\n' "${line#Edit:}" | tr ',' ' ' | tr -s ' \t' '\n\n' | tr -d '`"' \
-    | sed -e 's/[.;:)]*$//' -e 's#^\(\./\)*##' | { grep -v '^$' || :; }
+  printf '%s\n' "${line#Edit:}" | tr ',' ' ' | tr -s ' \t' '\n\n' | tr -d '`"'
 }
 
 # Why the header's `Edit:` line cannot fence a run, or nothing when it has none or lists only paths. Lint rejects such
 # a line and freeze stops on it, so a word the fence would drop never fails every round with nothing the worker can fix.
 edit_line_defect() {
-  local bad
+  local bad up
   grep -q '^Edit:' <<< "$(header)" || return 0
   bad=$(edit_words | { grep -vE "$EDIT_PATH_RE" || :; } | paste -sd' ' -)
+  up=$(edit_raw_words | { grep -E '(^|/)\.\.(/|$)' || :; } | paste -sd' ' -)
   if [ -n "$bad" ]; then
     echo "the Edit: line holds $bad, which is not a path; list only paths, separated by commas or spaces"
+  elif [ -n "$up" ]; then
+    echo "the Edit: line holds $up, whose .. segment climbs a directory; list the path it means"
   elif [ -z "$(edit_words)" ]; then
     echo "the Edit: line lists no path"
   fi
@@ -1643,23 +1646,29 @@ freeze() {
 }
 
 # A ticket whose header has an `Edit:` line (the four-part form) may change only the paths it lists (edit_words), a
-# directory covering what sits under it (CONTRACT.md, item 1). They are frozen to edit.txt as git spells them: each is
-# resolved in the worktree, so a symlinked directory (Loam's .claude, a link to seed/.claude) reads as its target and a
-# `.` segment collapses, while a path the ticket creates need not exist yet. They are not filtered to tracked tops as
-# Do not touch is, so a new top-level file still counts; round_checks fails a round that changes any other path. A
-# ticket with no `Edit:` line gets no edit.txt and no such fence; one whose line lint would reject, or that names a
-# path outside the worktree, ends ticket-defect here, before round 0.
+# directory covering what sits under it (CONTRACT.md, item 1). They are frozen to edit.txt as git spells them: each
+# entry's parent directories are resolved in the worktree, so a path through a symlinked directory (Loam's .claude, a
+# link to seed/.claude) reads as git's and a `.` segment collapses; an entry that is itself a symlink is listed both as
+# the link, so deleting or retargeting it stays in scope, and as its target inside the repository, so a change made
+# through it does too. A path the ticket creates need not exist yet. They are not filtered to tracked tops as Do not
+# touch is, so a new top-level file still counts; round_checks fails a round that changes any other path. A ticket
+# with no `Edit:` line gets no edit.txt and no such fence; one whose line lint would reject, or whose path resolves
+# outside the worktree, ends ticket-defect here, before round 0.
 freeze_edit_line() {
-  local why top e real list=""
+  local why top e dir own real slash list=""
   grep -q '^Edit:' <<< "$(header)" || return 0
   why=$(edit_line_defect)
   [ -z "$why" ] || finish ticket-defect "$why; fix the ticket (bin/factory lint rejects it)"
   top=$(realpath "$WORKTREE") || finish stopped-environment "could not resolve the worktree $WORKTREE"
-  for e in $(edit_words); do   # a word is a path (EDIT_PATH_RE), so it holds no blank or glob character
-    real=$(realpath -m --relative-to="$top" -- "$top/$e") && [ "$real" != . ] && [ "$real" != .. ] \
-      && [ "${real#../}" = "$real" ] || finish ticket-defect "the Edit: line names $e, which is not a path inside the repository"
-    [ "${e%/}" = "$e" ] || real+=/   # realpath drops a trailing /, which tells the worker the entry is a directory
-    list+="$real"$'\n'
+  for e in $(edit_words); do   # a word is a path (EDIT_PATH_RE) with no .. segment, so no blank, glob, . or .. ends it
+    slash=""; [ "${e%/}" = "$e" ] || slash=/   # kept, since it tells the worker the entry is a directory
+    e=${e%/}
+    dir=$(realpath -m --relative-to="$top" -- "$top/$(dirname -- "$e")") && [ "$dir" != .. ] && [ "${dir#../}" = "$dir" ] \
+      || finish ticket-defect "the Edit: line names $e, which is not a path inside the repository"
+    own=$(basename -- "$e"); [ "$dir" = . ] || own="$dir/$own"
+    list+="$own$slash"$'\n'
+    real=$(realpath -m --relative-to="$top" -- "$top/$own") || continue
+    [ "$real" = "$own" ] || [ "$real" = . ] || [ "$real" = .. ] || [ "${real#../}" != "$real" ] || list+="$real$slash"$'\n'
   done
   printf '%s' "$list" | sort -u > "$RUN/frozen/edit.txt"
 }
