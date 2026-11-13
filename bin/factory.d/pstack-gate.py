@@ -77,7 +77,8 @@ HOOK_ON = r"LOAM_HOOK=(?!''|\"\"|[\s;&|)]|$)"  # a non-empty LOAM_HOOK
 GUARDED_GATE = re.compile(r"(?<![\w.-])guard[ \t]+bin/check(?![\w./-])")  # the one form lib.sh's guard skips under it
 LIB_GUARD = re.compile(r'LOAM_HOOK.*"\$\{1:-\}" = bin/check \] && return 0')  # lib.sh's skip, as criteria.py reads it
 # the NAME=value list a command starts with (`X=1 W=..`, `export W=..`), not `echo W=$W`
-ASSIGNS = re.compile(r"(?:^|[;&|\n])\s*(?:export\s+)?((?:[A-Za-z_]\w*=[^\s;&|]*(?:[ \t]+|(?=[;&|\n])|$))+)", re.M)
+ASSIGNS = re.compile(r"(?:^|[;&|(\n])\s*(?:(?:then|do|else|\{)\s+)?(?:export\s+)?"
+                     r"((?:[A-Za-z_]\w*=[^\s;&|]*(?:[ \t]+|(?=[;&|\n])|$))+)", re.M)
 QUOTED = re.compile(r"'[^']*'|\"(?:[^\"\\]|\\.)*\"")
 COMMENT = re.compile(QUOTED.pattern + r"|(?<![^\s;&|(])#[^\n]*")  # a quote, or a comment outside quotes
 SUBST = r"\$\([^()]*\)|`[^`]*`"  # a command substitution, which runs inside double quotes and expanding heredocs

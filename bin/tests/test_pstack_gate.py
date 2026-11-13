@@ -354,7 +354,8 @@ def test_full_gate_a_script_file_that_runs_bin_check_is_blocked(tmp_path):
                     f"W={tmp_path}/scripts; X=1 W={tmp_path}; bash $W/dc.sh"):
         r = bash(command, "supervisor", cwd=tmp_path)
         assert r.returncode == 2 and r.stderr.strip() == FULL_GATE, (command, r.stderr)
-    for command in (f"bash {tmp_path}/ok.sh", f'W={tmp_path}; echo W=$W; bash "$W/ok.sh"'):
+    for command in (f"bash {tmp_path}/ok.sh", f'W={tmp_path}; echo W=$W; bash "$W/ok.sh"',
+                    f'if true; then W={tmp_path}; bash "$W/ok.sh"; fi'):
         r = bash(command, "supervisor")
         assert r.returncode == 0 and not r.stderr, (command, r.stderr)
 
