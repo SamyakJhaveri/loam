@@ -118,6 +118,37 @@ def test_behaviour(case: str, pid: str, expected: str) -> None:
         assert proc.returncode == 1 and last.startswith("parity: FAIL (") and pid in last[len("parity: FAIL ("):-1].split(", ")
 
 
+SKILLS = "/home/samyak/.claude/plugins/cache/cursor-plugins/pstack/0.15.36/skills"  # where p3-order read it
+
+
+@pytest.mark.parametrize(("frozen", "args", "skills", "expected"),
+                         [(True, False, SKILLS, "FAIL"), (True, True, SKILLS, "FAIL"),
+                          (True, True, SKILLS.replace("samyak", 'sam"yak'), "FAIL"), (False, False, SKILLS, "PASS")])
+def test_a_principle_named_only_by_common_md_is_no_brief_named_read(tmp_path: Path, frozen: bool, args: bool,
+                                                                     skills: str, expected: str) -> None:
+    # p3-order without its router read or decisions.md: the round fully reads principle-test-behavior-not-implementation,
+    # then writes. Its prompt names that principle only in _common.md's lines, which every round gets, also inside a
+    # large round's Workflow args, so the read stands in for no router read (FAIL); the same lines in a prompt with no
+    # frozen _common.md are the brief's own (PASS).
+    run = tmp_path / "run"
+    shutil.copytree(FIXTURES / "p3-order" / "run", run)
+    (run / "worker" / "decisions.md").unlink()
+    events = (run / "round-1.jsonl").read_text().splitlines()
+    (run / "round-1.jsonl").write_text("\n".join(e for e in events if "toolu_01SgvVXQekBErfzUfb8VmLsB" not in e) + "\n")
+    common = (ROOT / "bin" / "factory.d" / "_common.md").read_text()
+    prompt = "# A ticket\n\n" + common.replace("<pstack>", skills)
+    if args:  # as bin/factory writes a large round's args, the principle lines in skills
+        lines = [x for x in prompt.splitlines() if x.startswith(f"- {skills}/")]
+        wa = json.dumps({"skills": lines}, separators=(",", ":"), ensure_ascii=False)
+        prompt += f"\nRun the Workflow tool with args `{wa}`.\n"
+    (run / "round-1.prompt.md").write_text(prompt)
+    if frozen:
+        (run / "frozen").mkdir()
+        (run / "frozen" / "_common.md").write_text(common)
+    proc = parity(run, tmp_path / "projects")
+    assert (statuses(proc.stdout)["P2"], statuses(proc.stdout)["P3"]) == (expected, expected), proc.stdout
+
+
 def test_a_run_where_every_behaviour_passes_exits_zero() -> None:
     proc = parity(FIXTURES / "pass" / "run", FIXTURES / "pass" / "projects")
     assert (proc.returncode, proc.stdout.splitlines()[-1]) == (0, "parity: PASS"), proc.stdout

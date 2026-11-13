@@ -16,7 +16,7 @@
 # verify.json). The prompts and schemas are this file's siblings: verify.md, verify.schema.json, learn.md, learn.schema.json.
 
 REVIEW_D=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
-# Step 4 of the audit skill is the method the verifier follows; it reads the file by path.
+# The audit skill's "## Verify findings" section is the method the verifier follows; it reads the file by path.
 AUDIT_DIR="$ROOT/cultivation/marketplace/sam-cc-setup/skills/audit"
 
 # Blocking: a reviewer high or medium, a Codex critical or high (the rule run_review and run_codex_review apply).
@@ -88,7 +88,7 @@ review_alert() { # message
 # The verifier on the blocking findings of a findings file, in a detached worktree of repo at sha. Writes out as
 # {sha, findings: [{id, verdict, cmd, output, note}]} with exactly the blocking ids. A finding the verifier did not
 # settle is UNVERIFIED, never CONFIRMED: a failed call, an id it left out, or a REJECTED without cmd and output
-# (audit step 4: a finding is not dismissed with a defense nobody located and read).
+# (the audit skill's Verify findings: a finding is never rejected on a defense nobody located and read).
 verify_findings() { # findings.json out.json repo sha round scope-line [add-dir...] -> 0 when no finding is UNVERIFIED
   local fj="$1" out="$2" repo="$3" sha="$4" round="$5" scope="$6" wt="${WORKTREE:-$RUN/wt}-verify" pf reply blocking why=""
   local schema

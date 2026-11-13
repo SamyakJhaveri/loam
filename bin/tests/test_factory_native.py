@@ -189,10 +189,12 @@ class NativeShellTests(unittest.TestCase):
         # Both API-billed: the reference's calls always carried --max-budget-usd, which a subscription run drops (Decision 6).
         old = self.h.round_one(self.h.factory("loam-old", BASE), loam=True, ANTHROPIC_API_KEY="sk-ant-test")
         new = self.h.round_one(self.new, loam=True, ANTHROPIC_API_KEY="sk-ant-test")
-        # Every target's worker settings gain the pstack gate (U5) and the Bash output cap (test_factory_output_cap.py)
-        # and nothing else; the rest is the same bytes as jq writes them.
+        # Every target's worker settings gain the pstack gate (U5), the sandboxed shell the DistBench locks grant (owner
+        # N25) and the Bash output cap (test_factory_output_cap.py), and nothing else; the rest is the same bytes as jq
+        # writes them.
         settings = json.loads(new["settings"])
         self.assertEqual(settings["hooks"].pop("PreToolUse"), GATE)
+        self.assertEqual(settings["sandbox"]["filesystem"]["allowWrite"].pop(0), "~/.local/state/distbench/locks")
         self.assertEqual(settings.pop("bashOutputMaxChars"), 20000)
         self.assertEqual(json.dumps(settings, indent=2).encode() + b"\n", old["settings"])
         self.assertIn(b'"sandbox"', old["settings"])  # the reference really is the sandboxed shell
