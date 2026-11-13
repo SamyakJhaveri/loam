@@ -2975,29 +2975,30 @@ run_mutation_sweep() { # round -> 0 unless a survivor blocks
 }
 
 # A harness ticket changes no path matching FACTORY_RESULTS_RE, an ERE for the target's results code and gate inputs
-# (for distbench, the launcher's RESULTS_RE); with it unset, every ticket counts as results code. Renames count both
-# paths, read NUL-separated so git quotes no name. A regex bash cannot compile, an unreadable base or a failed diff
-# counts as results.
+# (for distbench, the launcher's RESULTS_RE); with it unset, every ticket counts as results code. The round's changed
+# paths, both sides of a rename, go NUL-separated to round-N.paths, so git quotes no name and bin/factory-parity's P8
+# can check the class. A regex bash cannot compile, an unreadable base or a failed diff counts as results.
 REVIEWER_SKIPPED="not run: a harness ticket, the Codex review has no critical or high finding, and the last graded round left no reviewer finding open"
-harness_ticket() {
-  local base hit
+harness_ticket() { # round
+  local base f
   [ -n "${FACTORY_RESULTS_RE:-}" ] || return 1
   base=$(cat "$RUN/base.sha") && [ -n "$base" ] || return 1
-  hit=$(git -C "$WORKTREE" diff --no-renames --name-only -z "$base...HEAD" | while IFS= read -r -d '' f; do
-    [[ $f =~ $FACTORY_RESULTS_RE ]]; [ $? = 1 ] || { echo results; break; }
-  done; exit "${PIPESTATUS[0]}") || return 1
-  [ -z "$hit" ]
+  git -C "$WORKTREE" diff --no-renames --name-only -z "$base...HEAD" > "$RUN/round-$1.paths" || return 1
+  while IFS= read -r -d '' f; do
+    [[ $f =~ $FACTORY_RESULTS_RE ]]; [ $? = 1 ] || return 1
+  done < "$RUN/round-$1.paths"
 }
 
-# 0 when the last earlier graded round's reviewer left a high or medium finding its verifier did not reject: only the
-# reviewer checks its own finding was fixed, since a Codex re-review reads only Codex's previous findings.
+# 0 when the last earlier graded round's reviewer left a high or medium finding its verifier did not reject, or replied
+# with nothing parseable, so no recheck cleared what it found before: only the reviewer checks its own finding was
+# fixed, since a Codex re-review reads only Codex's previous findings.
 reviewer_open() { # round
   local k rej
   for ((k = $1 - 1; k >= 1; k--)); do
     [ -s "$RUN/round-$k.graded.sha" ] || continue
     rej=$(jq -c '[.findings[]? | select(.verdict == "REJECTED") | .id]' "$RUN/round-$k.verify.json" 2> /dev/null) || rej=""
     [ -n "$rej" ] || rej='[]'
-    jq -e --argjson rej "$rej" '.unparseable != true and ([(.findings // []) | to_entries[] | select("reviewer-\(.key)" | IN($rej[]) | not) | .value]
+    jq -e --argjson rej "$rej" '.unparseable == true or ([(.findings // []) | to_entries[] | select("reviewer-\(.key)" | IN($rej[]) | not) | .value]
       | {findings: .} | '"$REVIEW_BLOCKING"' | length > 0)' "$RUN/round-$k.review.json" > /dev/null 2>&1
     return
   done
@@ -3015,13 +3016,13 @@ graders() { # round -> 0 when the judge passes and nothing blocks
   # an unparseable reply's fallback included, or to recheck its own open finding (ASK-KARPATHY item E); results code
   # always gets both. A skip writes round-N.review.skipped, which bin/factory-parity's P8 reads as a reviewed round.
   rm -f "$RUN/round-$1.review.skipped"
-  if [ "$CODEX_REVIEW" = yes ] && harness_ticket; then
+  if [ "$CODEX_REVIEW" = yes ] && harness_ticket "$1"; then
     run_codex_review "$1"
     if [ "$(jq "$CODEX_BLOCKING | length" "$RUN/round-$1.codex-review.json")" -gt 0 ] || reviewer_open "$1"; then
       run_review "$1"
     else
       rm -f "$RUN/round-$1.review.json" "$RUN/round-$1.review.prompt.md"   # a regraded round never reads an older reply
-      printf '%s\n' "$REVIEWER_SKIPPED" > "$RUN/round-$1.review.skipped"
+      printf '%s\nresults-re: %s\n' "$REVIEWER_SKIPPED" "$FACTORY_RESULTS_RE" > "$RUN/round-$1.review.skipped"
       log "reviewer $REVIEWER_SKIPPED"
     fi
   else

@@ -210,10 +210,20 @@ def retried_reviewer(served: bool) -> Callable[[Path], None]:
     return edit
 
 
-def skipped_reviewer(marked: bool, codex_clean: bool = True) -> Callable[[Path], None]:
+RESULTS_RE = r"^(src/|tests?/|bin/check)"
+
+
+def mark_skip(run: Path, n: int, paths: list[str]) -> None:
+    """graders' record of a harness skip: the marker with the results regex, and the round's changed paths."""
+    (run / f"round-{n}.review.skipped").write_text(f"not run: a harness ticket\nresults-re: {RESULTS_RE}\n")
+    (run / f"round-{n}.paths").write_text("".join(p + "\0" for p in paths))
+
+
+def skipped_reviewer(marked: bool, codex_clean: bool = True, paths: tuple[str, ...] = ("docs/a.md",)) -> Callable[[Path], None]:
     """PR 730: a harness round whose Codex review cleared it runs no reviewer: no reviewer row, review.json or verdict.
     With marked True, graders' round-1.review.skipped records the skip; without it the round lost its review. With
-    codex_clean False the Codex high stays, so graders could not have skipped the reviewer."""
+    codex_clean False the Codex high stays, and with a results path among paths the round is no harness round, so
+    graders could not have skipped the reviewer."""
     def edit(run: Path) -> None:
         rows = [json.loads(x) for x in (run / "ledger.jsonl").read_text().splitlines()]
         (run / "ledger.jsonl").write_text("".join(json.dumps(r) + "\n" for r in rows if r["role"] != "reviewer"))
@@ -225,7 +235,7 @@ def skipped_reviewer(marked: bool, codex_clean: bool = True) -> Callable[[Path],
         if codex_clean:
             (run / "round-1.codex-review.json").write_text(json.dumps({"verdict": "approve", "findings": []}))
         if marked:
-            (run / "round-1.review.skipped").write_text("not run: a harness ticket\n")
+            mark_skip(run, 1, list(paths))
     return edit
 
 
@@ -237,7 +247,7 @@ def skip_after_open_reviewer(run: Path) -> None:
     sha = (run / "round-1.graded.sha").read_text().strip()
     (run / "round-2.codex-review.json").write_text(json.dumps({"verdict": "approve", "findings": []}))
     (run / "round-2.verify.json").write_text(json.dumps({"sha": sha, "findings": []}))
-    (run / "round-2.review.skipped").write_text("not run: a harness ticket\n")
+    mark_skip(run, 2, ["docs/a.md"])
 
 
 def stale_verify(run: Path) -> None:
@@ -468,6 +478,7 @@ VARIANTS = [
     ("e-lost-reviewer", "pass", skipped_reviewer(False), "P8", "FAIL"),  # ... and without that record it is no review
     ("e-skip-on-codex-high", "pass", skipped_reviewer(True, codex_clean=False), "P8", "FAIL"),  # PR 730 Codex Medium
     ("e-skip-with-reviewer-open", "pass", skip_after_open_reviewer, "P8", "FAIL"),
+    ("e-skip-on-results-path", "pass", skipped_reviewer(True, paths=("docs/a.md", "bin/check")), "P8", "FAIL"),
     ("a4-killed-reviewer", "pass", retried_reviewer(False), "P8", "FAIL"),  # ... but some reviewer row must serve  # verify.json is for another commit
     ("f2-round-line", "p3-pass", round_two_on_its_round_line, "P3", "PASS"),  # `Round 2: pstack: ...` is round 2's
     # PR 713 Codex at ffef0f02

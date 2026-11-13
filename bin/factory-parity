@@ -1017,10 +1017,24 @@ def blocking_ids(kind: str, data: dict) -> set[str]:
 
 
 def skip_refused(run: Run, n: int, earlier: list[int]) -> str:
-    """Why bin/factory's graders could not have skipped round n's reviewer, or "": the Codex review parsed with no
-    critical or high finding, and the last earlier graded round's reviewer left no finding its verifier did not reject."""
+    """Why bin/factory's graders could not have skipped round n's reviewer, or "": no path in round-N.paths matches the
+    results regex the skip marker records, the Codex review parsed with no critical or high finding, and the last
+    earlier graded round's reviewer parsed and left no finding its verifier did not reject."""
+    marker = (run.path / f"round-{n}.review.skipped").read_text(encoding="utf-8", errors="replace").splitlines()
+    rx = next((x[len("results-re: "):] for x in marker if x.startswith("results-re: ")), "")
+    paths = run.path / f"round-{n}.paths"
+    if not rx or not paths.is_file():
+        return f"no results regex in its marker or no {paths.name}, so nothing shows the round is harness"
+    try:
+        results = re.compile(rx)
+    except re.error:
+        return f"its results regex {rx} does not compile"
+    hits = [p for p in paths.read_bytes().decode("utf-8", "surrogateescape").split("\0") if p and results.search(p)]
+    if hits:
+        return f"{paths.name} has results paths {', '.join(hits[:3])}"
     codex = read_json(run.path / f"round-{n}.codex-review.json")
-    if not isinstance(codex, dict) or codex.get("unparseable") is True:
+    if (not isinstance(codex, dict) or codex.get("unparseable") is True or not isinstance(codex.get("verdict"), str)
+            or not isinstance(codex.get("findings"), list)):
         return f"round-{n}.codex-review.json is no parsed Codex review"
     if blocking_ids("codex", codex):
         return f"round-{n}.codex-review.json has a critical or high finding"
@@ -1029,8 +1043,8 @@ def skip_refused(run: Run, n: int, earlier: list[int]) -> str:
         review, verify = read_json(run.path / f"round-{k}.review.json"), read_json(run.path / f"round-{k}.verify.json")
         found = verify.get("findings") if isinstance(verify, dict) and isinstance(verify.get("findings"), list) else []
         rejected = {f.get("id") for f in found if isinstance(f, dict) and f.get("verdict") == "REJECTED"}
-        if isinstance(review, dict) and review.get("unparseable") is not True and blocking_ids("reviewer", review) - rejected:
-            return f"round-{k}'s reviewer left a finding open, which only the reviewer rechecks"
+        if isinstance(review, dict) and (review.get("unparseable") is True or blocking_ids("reviewer", review) - rejected):
+            return f"round-{k}'s reviewer left a finding open or replied with nothing parseable, which only the reviewer rechecks"
     return ""
 
 
@@ -1060,7 +1074,7 @@ def p8(run: Run) -> tuple[str, str]:
         if refused:
             bad.append(f"{skipped.name}, but {refused}")
         elif skipped.is_file():  # a harness round whose Codex review cleared it (bin/factory, graders)
-            good.append(f"{skipped.name}: {skipped.read_text(encoding='utf-8', errors='replace').strip()}")
+            good.append(f"{skipped.name}: {skipped.read_text(encoding='utf-8', errors='replace').splitlines()[0]}")
         elif not reviewers:
             bad.append(f"ledger.jsonl has no reviewer row for round {n}")
         elif off:

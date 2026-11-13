@@ -465,6 +465,17 @@ class CappedReviewTests(unittest.TestCase):
         self.assertTrue((self.run_dir / "round-2.review.json").exists())
         self.assertFalse((self.run_dir / "round-2.review.skipped").exists())
 
+    def test_an_unparseable_recheck_keeps_the_reviewers_finding_open(self) -> None:
+        # Round 1's reviewer finds B; round 2's recheck is unparseable and the judge fails; round 3's Codex review is
+        # clean, but no parsed recheck cleared B, so the reviewer runs again (PR 730 Codex High at f263f2bd).
+        self.new_run()
+        self.run_loop([{"verdict": "fix", "findings": [review_finding("high", "defect B")]}, "not json", CLEAN_REVIEW],
+                      codex=[self.codex_high("defect A")] + [json.dumps(CLEAN_CODEX)] * 3,
+                      judges=[JUDGE_PASS, JUDGE_FAIL, JUDGE_PASS], commits={1: "bin/x", 2: "bin/x", 3: "bin/x"},
+                      env_extra={"FACTORY_RESULTS_RE": "^(src/distbench/|tasks/)"})
+        self.assertTrue((self.run_dir / "round-3.review.json").exists())
+        self.assertFalse((self.run_dir / "round-3.review.skipped").exists())
+
     def test_the_launchers_results_regex_decides_which_tickets_are_harness(self) -> None:
         # Audit item 6: the prefix list "src/distbench tasks" let gate inputs and frozen checks skip the reviewer.
         # factory-isc still exported that list on 13 Nov; it must not narrow the regex.
@@ -483,7 +494,7 @@ class CappedReviewTests(unittest.TestCase):
                 env_base = {k: v for k, v in os.environ.items() if k not in INHERITED}
                 proc = subprocess.run(
                     ["bash", "-c", f". bin/factory\nRUN='{self.run_dir}'; WORKTREE='{self.wt}'\n"
-                                   "if harness_ticket; then echo harness; else echo results; fi"],
+                                   "if harness_ticket 1; then echo harness; else echo results; fi"],
                     cwd=ROOT, env={**env_base, "FACTORY_SOURCED": "1", "FACTORY_ROOT": str(ROOT), **env},
                     capture_output=True, text=True, check=False)
                 self.assertEqual(proc.stdout.strip(), want, proc.stderr)
