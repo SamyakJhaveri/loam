@@ -1,0 +1,6 @@
+interface:
+  display_name: "Surprise Me"
+  short_description: "A better route to a named goal, with one cheap proof run"
+  default_prompt: "Use $surprise-me with this goal: "
+policy:
+  allow_implicit_invocation: false
