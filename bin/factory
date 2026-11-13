@@ -2170,7 +2170,7 @@ run_checks() { # dir out [NAME=value, set for checks.sh]
 round_zero() {
   # The block writes round-0.out; only a clean verdict renames it to round-0.checks, the file cmd_run
   # resumes on, so a relaunch after a defect, or after a kill mid-block, runs round 0 again.
-  local out="$RUN/round-0.out" why="" guards line name cmd rc base wt msg
+  local out="$RUN/round-0.out" why="" guards fail_guards line name cmd rc base wt msg
   base=$(cat "$RUN/base.sha"); wt="${WORKTREE}-base"
   # A line continuation would split one line across the readers (dc_continued); lint rejects it, and a run never linted
   # (bin/factory run) stops here, before any of the block runs.
@@ -2212,11 +2212,12 @@ round_zero() {
   [ -z "$why" ] || finish ticket-defect "the predict line for check $name $why on $(cut -c1-8 "$RUN/base.sha"), so base does not show the predicted failure"
   guards=$(guard_checks | pass_names)
   # A guard may pass on base, but one that FAILs there fails in every round (Loam issue 726). A deferred bin/check
-  # prints its DEFERRED line and a stand-in pass, never a FAIL. Command-word names only: a fail reason that says
-  # "pass feature" names no guard.
+  # prints its DEFERRED line and a stand-in pass, never a FAIL. Guard names here are command-word pass names read with
+  # each fail reason dropped, so a reason such as "(pass note first)" names no guard.
+  fail_guards=$(guard_checks | sed -E 's/(fail[[:space:]]+"?[A-Za-z0-9_.-]+"?[[:space:]]+)("([^"\\]|\\.)*"|'\''[^'\'']*'\'')/\1/g' | pass_cmd_names)
   while IFS= read -r line; do
     name=${line#FAIL }; name=${name%%:*}
-    guard_checks | pass_cmd_names | grep -qxF "$name" \
+    grep -qxF "$name" <<<"$fail_guards" \
       && finish ticket-defect "guard check $name fails on $(cut -c1-8 "$RUN/base.sha"), so no round can pass it: ${line#FAIL }; see $out"
   done < <(grep '^FAIL ' "$out")
   while read -r _ name _; do
@@ -3351,8 +3352,11 @@ cmd_run() {
   assert_parallel
   target_is_loam || user_token_free \
     || finish stopped-environment "$(user_settings) has CLAUDE_CODE_OAUTH_TOKEN in its env, which the native worker loads and which would replace the account bin/claude-account gives it; remove the key (bin/claude-account use <name> drops it)"
-  # Before the worktree, so a refused file ticket leaves none behind for its corrected body to reuse.
-  local fenced_msg; fenced_msg=$(edit_fenced); [ -z "$fenced_msg" ] || finish ticket-defect "$fenced_msg"
+  # Before the worktree, so a refused file ticket leaves none behind for its corrected body to reuse; a resume keeps
+  # the fence it froze.
+  local fenced_msg
+  [ -f "$RUN/frozen/sha256" ] || fenced_msg=$(edit_fenced)
+  [ -z "${fenced_msg:-}" ] || finish ticket-defect "$fenced_msg"
   prepare_worktree
   freeze
   exec_frozen
