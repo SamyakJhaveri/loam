@@ -6,8 +6,13 @@ Read on demand. None of this is loaded in a normal session.
 
 Give each parallel worker its own worktree (`claude --worktree <name>`). One
 checkout is safe only for disjoint files. For a shared GPU or database, wrap the
-command in `flock /tmp/<resource>.lock <cmd>` (util-linux; absent on stock
-macOS). Build no other lock.
+command in `flock "$HOME/.local/state/<project>/locks/<resource>.lock" <cmd>`, where
+`<project>` is `{{ project_name }}` (util-linux; absent on stock macOS). Create the
+`locks` folder once per host with `mkdir -p`; a sandboxed session can take the lock only
+where its launch policy lets it write that folder (`sandbox.filesystem.allowWrite`
+in user or project settings for a normal session; a Loam factory worker on a Loam
+target drops those and writes only where `bin/factory` grants, while one on another
+target runs with the sandbox off and needs no grant). Build no other lock.
 
 ## Roles
 

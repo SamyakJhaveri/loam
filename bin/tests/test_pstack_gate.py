@@ -300,3 +300,162 @@ def test_a_host_without_pstack_lets_the_change_run_and_says_so(tmp_path, host, g
     r = replay(tmp_path, "w34-r1-router-only", 153)
     assert r.returncode == 0, r.stderr
     assert r.stderr.startswith("pstack-gate: not gating this call") and len(r.stderr.strip().splitlines()) == 1, r.stderr
+
+
+FULL_GATE = "BLOCKED: the supervisor runs bin/check once after the graders pass; prove the change with focused pytest"
+
+
+def bash(command: str, gate_env: str | None, cwd: Path | None = None) -> subprocess.CompletedProcess[str]:
+    """The hook on a Bash call with no transcript, LOAM_WORKER_GATE set to gate_env (unset with None)."""
+    env = {k: v for k, v in os.environ.items() if k != "LOAM_WORKER_GATE"}
+    if gate_env is not None:
+        env["LOAM_WORKER_GATE"] = gate_env
+    body = {"hook_event_name": "PreToolUse", "tool_name": "Bash", "tool_input": {"command": command},
+            **({"cwd": str(cwd)} if cwd else {})}
+    return subprocess.run([sys.executable, str(GATE)], input=json.dumps(body), capture_output=True, text=True,
+                          timeout=60, env=env)
+
+
+@pytest.mark.parametrize("command", [
+    "bin/check",
+    "./bin/check > /tmp/x 2>&1",
+    "timeout 590 bin/check",
+    "cd wt && bin/check",
+    "nohup bin/check &",
+    'bash -lc "bin/check"',
+    'cd /home/samyak/distbench-isc-l01-locks-folder && bin/check > /tmp/l01-dc/check2.log 2>&1; echo "rc=$?"',
+    'out=$(guard bin/check 2>&1); rc=$?',
+    "env DISTBENCH_GATE_CLASS=factory bin/check --parallel",
+    "bash <<'EOS'\nbin/check\nEOS",
+    "bash bin/check --parallel",
+    'echo "rc=$(bin/check > /tmp/c.log 2>&1; echo $?)"',
+    "python3 -m pytest -q tests",  # the full suite takes as long as the gate (W46, 13 Nov)
+    "cd wt && PYTHONPATH=src timeout 3000 .venv/bin/python -m pytest -x -n 8",
+    "pytest tests/ -q 2>&1 | tail -5",
+    "uv run pytest tests -q",  # a runner prefix hid the full suite from the gate (Codex on 740, 13 Nov)
+    "uv run python -m pytest tests -q",
+    "uv run --project . pytest tests -q",  # an option value hid the program (Codex on 740, 13 Nov)
+    "pytest . -q",  # the project root holds the whole suite
+    "python3 -m pytest tests . -q",
+    "pytest tests/test_a.py::test_x tests -q",  # one node target does not focus a run that also names tests/
+    "python3 -m pytest tests --junitxml /tmp/results.xml -o cache_dir=/tmp/pc",
+    "python3 -m pytest ./tests -q",
+    "python3 -m pytest tests --junitxml worker/results.xml -p no:cacheprovider",
+    "python3 -m pytest tests --color yes --show-capture all --lf",  # --lf with no failures cached runs everything
+    "bash -euo pipefail -c 'echo start; bin/check'",
+    "echo start # don't run this twice\nbin/check\necho 'done'",
+    "cat <<EOF\n$(bin/check)\nEOF",
+    "# Example uses <<EOF\nbin/check",
+])
+def test_full_gate_a_worker_call_that_runs_bin_check_is_blocked(command):
+    """L01 run 2 round 1 lost 73 min to two direct bin/check calls; with LOAM_WORKER_GATE=supervisor (the native
+    worker shell) the hook stops any call that runs it."""
+    r = bash(command, "supervisor")
+    assert r.returncode == 2, r.stderr
+    assert r.stderr.strip() == FULL_GATE
+
+
+def test_full_gate_a_script_file_that_runs_bin_check_is_blocked(tmp_path):
+    """L01 run 2 also lost 36 min polling `nohup bash /tmp/l01-dc/run.sh`, whose done-check ran `guard bin/check`."""
+    (tmp_path / "dc.sh").write_text("guard(){ \"$@\"; }\nout=$(guard bin/check 2>&1); rc=$?\n", encoding="utf-8")
+    (tmp_path / "ok.sh").write_text("python3 -m pytest -q tests/test_gate.py\n", encoding="utf-8")
+    (tmp_path / "scripts").mkdir()
+    (tmp_path / "scripts" / "launch.sh").write_text("bash dc.sh\n", encoding="utf-8")  # bash keeps the caller's cwd
+    (tmp_path / "scripts" / "own-dir.sh").write_text('cd "$(dirname "$0")"\nbash inner.sh\n', encoding="utf-8")
+    (tmp_path / "scripts" / "inner.sh").write_text("bin/check\n", encoding="utf-8")
+    (tmp_path / "checks").mkdir()
+    (tmp_path / "checks" / "gate-checks.sh").write_text("bin/check\n", encoding="utf-8")
+    (tmp_path / "scripts" / "enter.sh").write_text("cd checks\nbash gate-checks.sh\n", encoding="utf-8")
+    (tmp_path / "noted.sh").write_text("# the gate's run\nbin/check\n# it's done\n", encoding="utf-8")
+    for command in (f"bash {tmp_path}/dc.sh", f"nohup bash {tmp_path}/dc.sh > /tmp/out.txt 2>&1 &", "sh ./dc.sh",
+                    f'bash "{tmp_path}/dc.sh"', "bash scripts/launch.sh", "bash scripts/own-dir.sh",
+                    "bash -euo pipefail dc.sh", "bash noted.sh",
+                    f"W={tmp_path}; bash $W/dc.sh", f"R={tmp_path}; time bash $R/dc.sh 2>&1 | grep -E x",  # W46's form
+                    "bash $NOT_SET_HERE/run.sh", "bash /gone/run/frozen/checks.sh",
+                    "cd checks && bash gate-checks.sh", "bash scripts/enter.sh",
+                    "cd scripts && cd ../checks && bash gate-checks.sh",
+                    f"W={tmp_path}/scripts; X=1 W={tmp_path}; bash $W/dc.sh"):
+        r = bash(command, "supervisor", cwd=tmp_path)
+        assert r.returncode == 2 and r.stderr.strip() == FULL_GATE, (command, r.stderr)
+    for command in (f"bash {tmp_path}/ok.sh", f'W={tmp_path}; echo W=$W; bash "$W/ok.sh"',
+                    f'if true; then W={tmp_path}; bash "$W/ok.sh"; fi'):
+        r = bash(command, "supervisor")
+        assert r.returncode == 0 and not r.stderr, (command, r.stderr)
+
+
+@pytest.mark.parametrize("command", [
+    "git show HEAD:bin/check",
+    "cat bin/check",
+    "grep -n parallel bin/check",
+    "sed -n 1,30p bin/check; sed -n 125,160p bin/check",
+    "python3 -m pytest -q tests/test_gate.py -k gate_class",
+    "PYTHONPATH=src python3 -m pytest tests/test_overlap.py::test_shares tests/test_failure_segment.py -q",
+    'timeout 550 python3 -m pytest -q -p no:cacheprovider "$f" $files',
+    "timeout 300 python3 -m pytest -q --co -p no:cacheprovider | grep '::'",
+    "command -v pytest",
+    "python3 -m pytest \\\n  -q tests/test_overlap.py",
+    "python3 -m pytest /worktree/tests/unit -q",
+    "python3 -m pytest -q -k test_host_locks_live_in_the_locks_folder_and_none_beside_it",
+    "python3 -m pytest -q -ktest_host_locks_live_in_the_locks_folder_and_none_beside_it",
+    "git ls-files bin/check bin/check_rules.py && bin/check_rules.py --help",
+    "cat > /tmp/dc.sh <<'EOS'\nbin/check\nEOS",
+    "cat > /tmp/dc.sh <<EOS\nbin/check > /tmp/c-$(date +%s).log\nEOS",
+    'git commit -qm "bin/check: run the gate once"',
+    'pgrep -af "pytest|bin/check" | head',
+    "bash -n bin/check && echo syntax ok",
+    "sed 's|^guard bin/check >/dev/null 2>&1|guard bin/check >/tmp/c.log 2>\\&1|' /tmp/done.sh > /tmp/done2.sh",
+    'echo "- Round 2: done-checks 16 PASS (bin/check green)." >> decisions.md',
+])
+def test_full_gate_a_call_that_only_reads_or_names_bin_check_runs(command):
+    """(A commit is a change, so the pstack check behind this one then fails open on the missing transcript.)"""
+    r = bash(command, "supervisor")
+    assert r.returncode == 0 and FULL_GATE not in r.stderr, r.stderr
+
+
+def test_full_gate_bin_check_runs_without_the_variable():
+    """A Loam target's sandboxed worker, and any session outside the factory, has no LOAM_WORKER_GATE."""
+    r = bash("bin/check", None)
+    assert r.returncode == 0 and not r.stderr, r.stderr
+
+
+def test_full_gate_only_the_native_worker_shell_sets_the_variable():
+    settings = ROOT / "bin" / "factory.d"
+    native = json.loads((settings / "worker-settings-native.json").read_text(encoding="utf-8"))
+    loam = json.loads((settings / "worker-settings.json").read_text(encoding="utf-8"))
+    assert native["env"]["LOAM_WORKER_GATE"] == "supervisor"
+    assert "LOAM_WORKER_GATE" not in (loam.get("env") or {})
+
+
+def test_full_gate_the_done_checks_block_runs_under_loam_hook(tmp_path, monkeypatch):
+    """PR 738 tells a native worker to run the block as `LOAM_HOOK=1 bash $RUN/frozen/checks.sh`: under LOAM_HOOK,
+    lib.sh's guard skips `guard bin/check`, so the call runs every other check and never the gate. A gate call guard
+    does not skip, or the block without LOAM_HOOK, is still blocked."""
+    (tmp_path / "bin").mkdir()
+    (tmp_path / "bin" / "check").write_text("#!/bin/sh\necho ran >> gate.log\n", encoding="utf-8")
+    (tmp_path / "bin" / "check").chmod(0o755)
+    (tmp_path / "frozen").mkdir()
+    checks = tmp_path / "frozen" / "checks.sh"  # built as bin/factory's freeze builds it
+    block = ('[ -f note.txt ] && pass note || fail note "no note.txt"\n'
+             'guard bin/check > /dev/null && pass gate || fail gate "red"\n')
+    lib = (ROOT / "bin" / "factory.d" / "lib.sh").read_text(encoding="utf-8")
+    checks.write_text(lib + "\n" + block + "printf '\\nCHECKS-END\\n'\nexit $((n_fail > 0))\n", encoding="utf-8")
+    for command in (f"LOAM_HOOK=1 bash {checks}", f"cd {tmp_path} && LOAM_HOOK=1 bash {checks} 2>&1 | tail -n 20",
+                    f"export LOAM_HOOK=1; bash {checks}", 'LOAM_HOOK=1 bash "$LOAM_CHECKS"',
+                    "LOAM_HOOK=1 bash -c 'bash \"$LOAM_CHECKS\"'"):
+        monkeypatch.setenv("LOAM_CHECKS", str(checks))  # the worker's env names the run's checks.sh
+        r = bash(command, "supervisor", cwd=tmp_path)
+        assert r.returncode == 0 and FULL_GATE not in r.stderr, (command, r.stderr)
+    (tmp_path / "form.sh").write_text(lib + "guard timeout 590 bin/check\n", encoding="utf-8")  # lib.sh runs this form
+    (tmp_path / "own.sh").write_text('guard() { "$@"; }\nguard bin/check\n', encoding="utf-8")  # not lib.sh's guard
+    for command in (f"bash {checks}", f"LOAM_HOOK= bash {checks}", f"LOAM_HOOK=1 bash {tmp_path}/form.sh",
+                    f"LOAM_HOOK=1 bash {tmp_path}/own.sh", 'LOAM_HOOK=1 bash "$LOAM_CHECKS"'):
+        monkeypatch.setenv("LOAM_CHECKS", str(tmp_path / "form.sh"))
+        r = bash(command, "supervisor", cwd=tmp_path)
+        assert r.returncode == 2 and r.stderr.strip() == FULL_GATE, (command, r.stderr)
+    run = subprocess.run(["bash", str(checks)], cwd=tmp_path, capture_output=True, text=True, timeout=60,
+                         env={**os.environ, "LOAM_HOOK": "1"})
+    assert "FAIL note: no note.txt" in run.stdout and "PASS gate" in run.stdout, run.stdout
+    assert not (tmp_path / "gate.log").exists()
+    subprocess.run(["bash", str(checks)], cwd=tmp_path, capture_output=True, timeout=60,
+                   env={k: v for k, v in os.environ.items() if k != "LOAM_HOOK"})
+    assert (tmp_path / "gate.log").read_text() == "ran\n"  # the stub logs a run, so zero lines above means zero runs

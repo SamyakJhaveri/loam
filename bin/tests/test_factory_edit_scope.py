@@ -221,7 +221,8 @@ class EditLineLintAndFreezeTests(unittest.TestCase):
     def lint(self, edit_line: str, gate: str = GATE) -> tuple[int, str]:
         """Exit code and output of `bin/factory lint` over a whole body whose header holds edit_line."""
         body = (f"# Lint fixture\nBrief:\nfixture\nBlocked by: none\n{edit_line}{gate}\n\n## Goal and why\nfixture\n\n"
-                "## Do not touch\nThe standing list.\n\n## Out of scope\nnothing\n\n"
+                # bin/factory is on Loam's standing list, so an Edit: line naming it needs it excepted (check_edit_fenced)
+                "## Do not touch\nThe standing list.\nExcept: `bin/factory`.\n\n## Out of scope\nnothing\n\n"
                 f"## Done checks\n```done-checks\npredict greet test -f g.txt\n{GREET}\nguard true && pass g || fail g \"guard\"\n```\n\n"
                 "## Worker\nworker: claude\ncodex-review: no\neffort: high\ncontract: 2\n"
                 "goal: the done-checks block prints no FAIL line, or stop after 60 turns\n\n## Decisions\nnone\n")
