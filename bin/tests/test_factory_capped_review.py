@@ -22,13 +22,18 @@ import tempfile
 import unittest
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
-INHERITED = ("FACTORY_ROOT", "FACTORY_GH", "FACTORY_RESULTS_PATHS", "REPO", "RUN", "LOG")
+INHERITED = ("FACTORY_ROOT", "FACTORY_GH", "FACTORY_RESULTS_RE", "REPO", "RUN", "LOG")
 TICKET = "## Goal and why\n\nMake the widget work.\n\n## Merge checklist\n\n- read the diff\n"
 # The frozen ticket differs from TICKET and BODY, and keeps a literal <base> that the Codex prompt must not fill.
 FROZEN_TICKET = "# Widget works\n\nKeep the literal <base> in this line.\n"
 FENCE = re.search(r"^FENCE='([^']*)'", (ROOT / "bin/factory").read_text(), re.M).group(1)
 PR_URL = "https://github.com/acme/widget/pull/9"
 FROZEN_BRIEF_MARKER = "This line is only in the frozen brief."
+# distbench's results set, RESULTS_RE in ~/.local/bin/factory-isc (13 Nov 2026), which the launcher exports as
+# FACTORY_RESULTS_RE.
+DISTBENCH_RESULTS_RE = (
+    r'^(src/|tasks/|agent/|tests?/|docs/tickets/checks/|docs/tickets/integration\.tsv$|experiments/run-ledger\.jsonl$|\.github/|\.claude/|\.codex/|\.loam/|requirements|[^/]+\.(py|pyc|so)$|[^/]+/__init__\.|bin/([^/]+\.(py|pyc|so)$|[^/]+/)|bin/(check|integrate|gate\.py|grade-session|calibrate|rehearse|done-checks|audit-agent-readable|cheat_drill|build-slice))|(^|/)(conftest\.py|sitecustomize\.py|usercustomize\.py|pyproject\.toml|pytest\.ini|setup\.cfg|tox\.ini|\.?ruff\.toml)$|(^|/)\.venv(/|$)|\.pth$|PREREG'
+)
 
 FAKE_CLAUDE = """#!/usr/bin/env python3
 import json, sys
@@ -430,7 +435,7 @@ class CappedReviewTests(unittest.TestCase):
         self.assertNotIn("## Previous findings", prompt)
 
     def test_on_a_harness_ticket_the_reviewer_runs_only_on_a_codex_high(self) -> None:
-        results = {"FACTORY_RESULTS_PATHS": "src/distbench tasks"}
+        results = {"FACTORY_RESULTS_RE": "^(src/distbench/|tasks/)"}
         for name, path, env, codex, reviewer_runs in (
             ("harness, Codex clean", "bin/x", results, json.dumps(CLEAN_CODEX), False),
             ("harness, Codex high", "bin/x", results, self.codex_high("a defect"), True),
@@ -456,9 +461,30 @@ class CappedReviewTests(unittest.TestCase):
         self.new_run()
         self.run_loop([{"verdict": "fix", "findings": [review_finding("high", "defect B")]}, CLEAN_REVIEW],
                       codex=[self.codex_high("defect A"), json.dumps(CLEAN_CODEX)], commits={1: "bin/x", 2: "bin/x"},
-                      env_extra={"FACTORY_RESULTS_PATHS": "src/distbench tasks"})
+                      env_extra={"FACTORY_RESULTS_RE": "^(src/distbench/|tasks/)"})
         self.assertTrue((self.run_dir / "round-2.review.json").exists())
         self.assertFalse((self.run_dir / "round-2.review.skipped").exists())
+
+    def test_the_launchers_results_regex_decides_which_tickets_are_harness(self) -> None:
+        # Audit item 6: the prefix list "src/distbench tasks" let gate inputs and frozen checks skip the reviewer.
+        # factory-isc still exported that list on 13 Nov; it must not narrow the regex.
+        env = {"FACTORY_RESULTS_RE": DISTBENCH_RESULTS_RE, "FACTORY_RESULTS_PATHS": "src/distbench tasks"}
+        for path, want in (("tests/x.py", "results"), ("bin/check", "results"), ("docs/tickets/checks/f.md", "results"),
+                           ("agent/a.py", "results"), ("bin/grade-session", "results"), ("bin/calibrate", "results"),
+                           ("conftest.py", "results"), ("src/distbench/x.py", "results"), ("bin/README.md", "harness")):
+            with self.subTest(path):
+                self.new_run()
+                (self.wt / path).parent.mkdir(parents=True, exist_ok=True)
+                (self.wt / path).write_text("x\n")
+                git("add", "-A", cwd=self.wt)
+                git("commit", "-qm", "the change", cwd=self.wt)
+                env_base = {k: v for k, v in os.environ.items() if k not in INHERITED}
+                proc = subprocess.run(
+                    ["bash", "-c", f". bin/factory\nRUN='{self.run_dir}'; WORKTREE='{self.wt}'\n"
+                                   "if harness_ticket; then echo harness; else echo results; fi"],
+                    cwd=ROOT, env={**env_base, "FACTORY_SOURCED": "1", "FACTORY_ROOT": str(ROOT), **env},
+                    capture_output=True, text=True, check=False)
+                self.assertEqual(proc.stdout.strip(), want, proc.stderr)
 
 
 if __name__ == "__main__":
