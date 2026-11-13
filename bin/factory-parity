@@ -1031,7 +1031,10 @@ def p8(run: Run) -> tuple[str, str]:
                      if e.get("role") == "reviewer" and e.get("round") == n and e.get("subtype") != "no-result"]
         off = [f"ledger.jsonl:{k} reviewer served_models {json.dumps(e.get('served_models'))}"
                for k, e in reviewers if e.get("served_models") != [FABLE]]
-        if not reviewers:
+        skipped = run.path / f"round-{n}.review.skipped"
+        if skipped.is_file():  # a harness round whose Codex review cleared it (bin/factory, graders)
+            good.append(f"{skipped.name}: {skipped.read_text(encoding='utf-8', errors='replace').strip()}")
+        elif not reviewers:
             bad.append(f"ledger.jsonl has no reviewer row for round {n}")
         elif off:
             bad += off
@@ -1039,6 +1042,8 @@ def p8(run: Run) -> tuple[str, str]:
             good.append(f"ledger.jsonl:{reviewers[-1][0]} reviewer served {FABLE}")
         blocking: set[str] = set()
         for kind, name in (("reviewer", f"round-{n}.review.json"), ("codex", f"round-{n}.codex-review.json")):
+            if kind == "reviewer" and skipped.is_file():
+                continue
             data = read_json(run.path / name)
             if not isinstance(data, dict):
                 bad.append(f"no readable {name}")

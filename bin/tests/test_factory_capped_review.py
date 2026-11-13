@@ -444,11 +444,22 @@ class CappedReviewTests(unittest.TestCase):
                                               env_extra=env)
                 self.assertEqual((self.run_dir / "round-1.review.json").exists(), reviewer_runs, stderr)
                 self.assertEqual((self.run_dir / "round-1.review.prompt.md").exists(), reviewer_runs)
+                self.assertEqual((self.run_dir / "round-1.review.skipped").exists(), not reviewer_runs)
                 if not reviewer_runs:
                     self.assertIn(f"EXIT pr-opened (0): {PR_URL} after 1 rounds", stderr)
                     body = self.pr_create(calls)["body"]
                     self.assertIn("not run: a harness ticket", body)
                     self.assertNotIn("--draft", self.pr_create(calls)["args"])
+    def test_on_a_harness_ticket_the_reviewer_rechecks_its_own_open_finding(self) -> None:
+        # Codex flags A and the reviewer B in round 1; round 2's Codex re-review, which reads only A, is clean, so
+        # only the reviewer can tell whether B was fixed (PR 730 Codex High 1).
+        self.new_run()
+        self.run_loop([{"verdict": "fix", "findings": [review_finding("high", "defect B")]}, CLEAN_REVIEW],
+                      codex=[self.codex_high("defect A"), json.dumps(CLEAN_CODEX)], commits={1: "bin/x", 2: "bin/x"},
+                      env_extra={"FACTORY_RESULTS_PATHS": "src/distbench tasks"})
+        self.assertTrue((self.run_dir / "round-2.review.json").exists())
+        self.assertFalse((self.run_dir / "round-2.review.skipped").exists())
+
 
 if __name__ == "__main__":
     unittest.main()

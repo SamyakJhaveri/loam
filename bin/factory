@@ -2919,7 +2919,7 @@ run_mutation_sweep() { # round -> 0 unless a survivor blocks
 
 # A harness ticket changes no path under FACTORY_RESULTS_PATHS, the target's results code as a space-separated list
 # (for distbench "src/distbench tasks"); with it unset, every ticket counts as results code. Renames count both paths.
-REVIEWER_SKIPPED="not run: a harness ticket, and the Codex review has no critical or high finding"
+REVIEWER_SKIPPED="not run: a harness ticket, the Codex review has no critical or high finding, and the last graded round left no reviewer finding open"
 harness_ticket() {
   local files f
   [ -n "${FACTORY_RESULTS_PATHS:-}" ] || return 1
@@ -2931,6 +2931,21 @@ harness_ticket() {
   return 0
 }
 
+# 0 when the last earlier graded round's reviewer left a high or medium finding its verifier did not reject: only the
+# reviewer checks its own finding was fixed, since a Codex re-review reads only Codex's previous findings.
+reviewer_open() { # round
+  local k rej
+  for ((k = $1 - 1; k >= 1; k--)); do
+    [ -s "$RUN/round-$k.graded.sha" ] || continue
+    rej=$(jq -c '[.findings[]? | select(.verdict == "REJECTED") | .id]' "$RUN/round-$k.verify.json" 2> /dev/null) || rej=""
+    [ -n "$rej" ] || rej='[]'
+    jq -e --argjson rej "$rej" '.unparseable != true and ([(.findings // []) | to_entries[] | select("reviewer-\(.key)" | IN($rej[]) | not) | .value]
+      | {findings: .} | '"$REVIEW_BLOCKING"' | length > 0)' "$RUN/round-$k.review.json" > /dev/null 2>&1
+    return
+  done
+  return 1
+}
+
 graders() { # round -> 0 when the judge passes and nothing blocks
   local ok=0 sig
   rm -f "$RUN/round-$1.mutation.json" "$RUN/round-$1.mutation-blocked"   # a regraded round never reads an older sweep
@@ -2939,13 +2954,16 @@ graders() { # round -> 0 when the judge passes and nothing blocks
   # The sweep's minutes go only to a round that could open a PR: a judge fail ends the round anyway.
   if run_judge "$1"; then run_mutation_sweep "$1" || ok=1; else ok=1; fi
   # On a harness ticket the Codex review goes first and the Opus reviewer runs only on its critical or high finding,
-  # an unparseable reply's fallback included (ASK-KARPATHY item E); results code always gets both.
+  # an unparseable reply's fallback included, or to recheck its own open finding (ASK-KARPATHY item E); results code
+  # always gets both. A skip writes round-N.review.skipped, which bin/factory-parity's P8 reads as a reviewed round.
+  rm -f "$RUN/round-$1.review.skipped"
   if [ "$CODEX_REVIEW" = yes ] && harness_ticket; then
     run_codex_review "$1"
-    if [ "$(jq "$CODEX_BLOCKING | length" "$RUN/round-$1.codex-review.json")" -gt 0 ]; then
+    if [ "$(jq "$CODEX_BLOCKING | length" "$RUN/round-$1.codex-review.json")" -gt 0 ] || reviewer_open "$1"; then
       run_review "$1"
     else
       rm -f "$RUN/round-$1.review.json" "$RUN/round-$1.review.prompt.md"   # a regraded round never reads an older reply
+      printf '%s\n' "$REVIEWER_SKIPPED" > "$RUN/round-$1.review.skipped"
       log "reviewer $REVIEWER_SKIPPED"
     fi
   else

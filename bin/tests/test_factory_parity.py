@@ -210,6 +210,21 @@ def retried_reviewer(served: bool) -> Callable[[Path], None]:
     return edit
 
 
+def skipped_reviewer(marked: bool) -> Callable[[Path], None]:
+    """PR 730: a harness round whose Codex review cleared it runs no reviewer: no reviewer row, review.json or verdict.
+    With marked True, graders' round-1.review.skipped records the skip; without it the round lost its review."""
+    def edit(run: Path) -> None:
+        rows = [json.loads(x) for x in (run / "ledger.jsonl").read_text().splitlines()]
+        (run / "ledger.jsonl").write_text("".join(json.dumps(r) + "\n" for r in rows if r["role"] != "reviewer"))
+        (run / "round-1.review.json").unlink()
+        verify = json.loads((run / "round-1.verify.json").read_text())
+        verify["findings"] = [f for f in verify["findings"] if not f["id"].startswith("reviewer-")]
+        (run / "round-1.verify.json").write_text(json.dumps(verify))
+        if marked:
+            (run / "round-1.review.skipped").write_text("not run: a harness ticket\n")
+    return edit
+
+
 def stale_verify(run: Path) -> None:
     """verify.json names a commit other than the graded one."""
     v = json.loads((run / "round-1.verify.json").read_text())
@@ -434,6 +449,8 @@ VARIANTS = [
     ("c4-failed-launch", "p6-pass", failed_launch, "P6", "FAIL"),  # a proof call that failed proves nothing
     ("c6-stale-verify", "pass", stale_verify, "P8", "FAIL"),
     ("a4-retried-reviewer", "pass", retried_reviewer(True), "P8", "PASS"),  # the killed attempt's row is no review
+    ("e-skipped-reviewer", "pass", skipped_reviewer(True), "P8", "PASS"),  # graders recorded the harness skip
+    ("e-lost-reviewer", "pass", skipped_reviewer(False), "P8", "FAIL"),  # ... and without that record it is no review
     ("a4-killed-reviewer", "pass", retried_reviewer(False), "P8", "FAIL"),  # ... but some reviewer row must serve  # verify.json is for another commit
     ("f2-round-line", "p3-pass", round_two_on_its_round_line, "P3", "PASS"),  # `Round 2: pstack: ...` is round 2's
     # PR 713 Codex at ffef0f02
