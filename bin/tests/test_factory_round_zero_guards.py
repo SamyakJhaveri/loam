@@ -159,7 +159,9 @@ class RoundZeroGuardTests(unittest.TestCase):
                       '"gate failed: $(printf "%s" "error"); (pass note before retrying)"',
                       "guard true && pass check-green || fail 'check-green' \"gate failed (pass note before retrying)\"",
                       'guard true && pass check-green || fail check-green "must pass note"',
-                      'guard true && pass check-green || fail check-green "got $(printf "%s" "x; (pass note)")"'):
+                      'guard true && pass check-green || fail check-green "got $(printf "%s" "x; (pass note)")"',
+                      "guard true && pass check-green || fail check-green $'it\\'s; (pass note)'",
+                      'guard grep -q "PASS note" <(pass note) && pass check-green || fail check-green "x"'):
             with self.subTest(guard=guard):
                 out = self.round_zero(f'{guard}\ntest -e NEW.md && pass note || fail note "NEW.md is missing"')
                 self.assertEqual(out.strip(), "ROUND0-OK")
@@ -167,7 +169,8 @@ class RoundZeroGuardTests(unittest.TestCase):
     def test_guard_name_survives_nested_quotes_tight_operators_and_hash_in_a_word(self) -> None:
         for guard in ('guard true && pass g || fail g "got $(printf "%s" "it\'s")"',
                       "guard true&&( pass g ) || fail g broken",
-                      "guard true C# && pass g || fail g broken"):
+                      "guard true C# && pass g || fail g broken",
+                      "guard true && pass g>&2 || fail g broken"):
             with self.subTest(guard=guard):
                 out = self.round_zero(f'{guard}\ntest -e NEW.md && pass new-file || fail new-file "NEW.md is missing"')
                 self.assertEqual(out.strip(), "ROUND0-OK")
@@ -183,6 +186,9 @@ class RoundZeroGuardTests(unittest.TestCase):
             with self.subTest(guard=guard):
                 out = self.round_zero(f'{guard}\ntest -e NEW.md && pass new-file || fail new-file "NEW.md is missing"')
                 self.assertIn("FINISH ticket-defect: guard check base-file fails on", out)
+        out = self.round_zero('guard false && pass base-file<&0 || fail base-file "broken"\n'
+                              'test -e NEW.md && pass new-file || fail new-file "NEW.md is missing"')
+        self.assertIn("FINISH ticket-defect: guard check base-file fails on", out)
 
     def test_lint_reads_guards_as_round_zero_does(self) -> None:
         for checks in ('guard bin/check >/dev/null && pass g || fail g "x"\n'
