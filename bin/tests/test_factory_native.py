@@ -283,6 +283,15 @@ class NativeShellTests(unittest.TestCase):
         self.assertTrue(r["worker"]["stdin"].rstrip("\n").endswith("\n".join(view).rstrip("\n")))
         self.assertIn("memory-view.md", (self.h.run / "frozen/sha256").read_text())
 
+    def test_another_target_worker_leaves_the_full_gate_to_the_supervisor(self) -> None:
+        # L01 (distbench, 13 Nov): a worker spent 109 of 117 min running the full bin/check the supervisor runs anyway.
+        prompt = self.h.round_one(self.new, loam=False)["worker"]["stdin"]
+        (line,) = [line for line in prompt.splitlines() if "full gate" in line]
+        self.assertRegex(line, r"never run `bin/check` yourself")
+        self.assertIn(f"`LOAM_HOOK=1 bash {self.h.run}/frozen/checks.sh`", line)
+        self.assertIn("focused tests", line)
+        self.assertNotIn("full gate", self.h.round_one(self.new, loam=True)["worker"]["stdin"])
+
 
 class LaunchTests(unittest.TestCase):
     """`bin/factory -C <target> run <file>` from a scratch factory home, as the operator launches it."""
