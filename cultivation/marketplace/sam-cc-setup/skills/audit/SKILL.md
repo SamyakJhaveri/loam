@@ -100,9 +100,9 @@ The brief asks the reviewer to:
 
 | Role | Claude Code | Codex |
 |---|---|---|
-| Fable reviewer | the host's Fable 5.2 agent at high (`escalate` where it exists); brief it by the project's `fable-prompting` skill where there is one | `claude -p --model claude-fable-5-2 --effort high --permission-mode auto --tools Read,Grep,Glob,Bash,WebFetch --add-dir <evidence folder> "Read <brief file> and follow it."` if `claude -p "ok"` answers within a minute; otherwise a fresh native agent, and the report says Fable did not review |
+| Fable reviewer | the host's Fable 5.2 agent at high (`escalate` where it exists); brief it by the project's `fable-prompting` skill where there is one | `claude -p "Read <brief file> and follow it." --model claude-fable-5-2 --effort high --permission-mode auto --tools Read,Grep,Glob,Bash,WebFetch --add-dir <evidence folder>` if `claude -p "ok"` answers within a minute; otherwise a fresh native agent, and the report says Fable did not review |
 | Codex reviewer | one bare `codex exec -s read-only -c model_reasoning_effort=xhigh -o <review file> "Read <brief file> and follow it."` in the background, adding `--skip-git-repo-check` outside a repo; no pipe, redirect, `;` or `<` anywhere in the command | a fresh native agent that does not inherit this conversation |
-| Fresh design, surprise-me, verifiers | Opus agents at xhigh; they edit nothing | `claude -p --model claude-opus-5-5 --effort xhigh --permission-mode auto --add-dir <evidence folder> "Read <brief file> and follow it."`, else fresh native agents |
+| Fresh design, surprise-me, verifiers | Opus agents at xhigh; they edit nothing | `claude -p "Read <brief file> and follow it." --model claude-opus-5-5 --effort xhigh --permission-mode auto --add-dir <evidence folder>`, else fresh native agents |
 | Fixers | Opus agents at high | the same command with `--effort high`, else fresh native agents |
 
 On Codex, the report names every role that did not run on the model this table gives it.
