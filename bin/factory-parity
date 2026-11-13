@@ -133,6 +133,10 @@ QUOTED = re.compile(r"'[^']*'|\"(?:[^\"\\]|\\.)*\"")
 NOT_RUN = re.compile(r"pstack-gate: blocked|\APermission to use .* has been denied|\APermission for this action was denied")
 READ_LEAD = {"do", "then", "else", "{", "(", "!", "command", "exec", "time", "nohup"}
 
+# Where a word is a command: a call's start, after ; & | ! ( { ` or a newline, or after a keyword or a command or
+# builtin prefix. An eval, source or read anywhere else is an argument or a path part.
+AT_COMMAND = (r"(?:\A|[;&|\n!({`]|(?<![\w-])(?:then|do|else|elif|if|while|until))[ \t]*"
+              r"(?:(?:command|builtin|exec|time|nohup)[ \t]+)*")
 NOT_SCRATCH = r"(?!&|/dev/|/tmp/|\"?\$\{?TMPDIR)"
 BASH_WRITE = re.compile("|".join([
     r"\bsed\s+(?:-[a-zA-Z]+\s+)*-[a-zA-Z]*i",
@@ -316,10 +320,9 @@ def in_notes(before: str) -> bool:
     went there and every later `cd` went down into a relative subfolder (no `..`). A `cd` parity cannot resolve
     (`cd -`, a bare cd, a `..`, an unexpanded $VAR, pushd or popd) ends the exemption, and a ( ), { } or backtick
     group outside $( ) ends it too (a cd in it may not hold); a cd inside $( ) moves nothing. An eval, source, `.` or
-    sh -c can run a cd parity cannot see, so any of them ends the exemption (fail closed)."""
+    sh -c where a command starts can run a cd parity cannot see, so any of them ends the exemption (fail closed)."""
     code = no_comments(QUOTED.sub(lambda q: q.group(0)[0] + "x" * (len(q.group(0)) - 2) + q.group(0)[-1], before))
-    if re.search(r"(?<![\w.-])(?:eval|source)(?![\w.-])|(?:\A|[;&|\n!]|\b(?:then|do|else))[ \t]*\.(?=\s|\Z)"
-                 r"|(?<![\w-])(?:ba|da|k|z)?sh\s+(?:-\w+\s+)*-\w*c\b", code):
+    if re.search(AT_COMMAND + r"(?:eval|source|\.|(?:ba|da|k|z)?sh(?:\s+-[-\w]+)*?\s+-\w*c)(?=\s|\Z)", code):
         return False
     while (flat := re.sub(r"\$\([^()]*\)", lambda m: " " * len(m.group(0)), code)) != code:
         code = flat
@@ -352,8 +355,8 @@ def assigned(text: str, unplaced: bool = False) -> str:
         lead = re.sub(r"(?:(?<=\s)|\A)(?:\w+=[^\s;&|]*\s*)+\Z", "", code[:m.start()]).rstrip()
         if re.search(r"(?:\A|[;&|\n({`!]|\b(?:then|do|else|elif|if|while|until|time|export|local|declare|readonly|typeset))\Z", lead):
             sets[m.group(1)] = sets.get(m.group(1), 0) + 1
-    for m in re.finditer(r"\b(?:for|select)\s+(\w+)|\bread\b([^;&|\n]*)", code):
-        for var in [m.group(1)] if m.group(1) else re.findall(r"(?<![-\w])[A-Za-z_]\w*", m.group(2)):
+    for m in re.finditer(r"\b(?:for|select)\s+(\w+)|" + AT_COMMAND + r"read(?=\s)([^;&|\n]*)", code):
+        for var in [m.group(1)] if m.group(1) else read_vars(m.group(2)):
             sets[var] = sets.get(var, 0) + 2
     values: dict[str, tuple[int, str]] = {}  # var -> (end of its statement, value)
 
@@ -369,6 +372,20 @@ def assigned(text: str, unplaced: bool = False) -> str:
                 and re.match(r"[ \t]*(?:\Z|[;\n]|&&)", code[m.end():])):
             values[var] = (m.end(), "/tmp/" if m.group(2) else expand(m.group(4), m.start(4)))
     return expand(text, 0) if values or (unplaced and sets) else text
+
+
+def read_vars(args: str) -> list[str]:
+    """The variables a `read` with these arguments sets: its names and an -a array, not the operand of -d, -i, -n,
+    -N, -p, -t or -u."""
+    out, words = [], iter(args.split())
+    for w in words:
+        if w.startswith("-") and len(w) > 1:
+            at = next((i for i, c in enumerate(w[1:], 1) if c in "adinNptu"), None)
+            operand = w[at + 1:] or next(words, "") if at is not None else ""
+            out += [operand] if at is not None and w[at] == "a" else []
+        else:
+            out.append(w)
+    return [v for v in out if re.fullmatch(r"[A-Za-z_]\w*", v)]
 
 
 def skill_paths(text: str, loops: dict[str, list[str]]) -> set[tuple[str, str]]:

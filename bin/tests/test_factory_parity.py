@@ -311,6 +311,14 @@ HIDDEN_WRITES = [
 ]
 
 
+SCRATCH_WRITES = [
+    ("echo-source", "cd /tmp/\necho source\nsed -i 's/a/b/' file.py"),
+    ("source-dir", "cd /tmp/source/; sed -i 's/a/b/' file.py"),
+    ("echo-read", "echo read TMPDIR; sed -i 's/a/b/' \"$TMPDIR/file.py\""),
+    ("read-prompt", "read -p TMPDIR reply; sed -i 's/a/b/' \"$TMPDIR/file.py\""),
+]
+
+
 def logged_paths(old: str, new: str) -> Callable[[Path], None]:
     """Each decisions.md path with old replaced by new: the method name stays, the file read is another."""
     def edit(run: Path) -> None:
@@ -441,6 +449,8 @@ VARIANTS = [
     *[(f"r6-{name}", "pass", first_call(cmd), pid, "FAIL") for name, cmd in HIDDEN_WRITES for pid in ("P2", "P3")],
     ("r6-scratch-write", "pass", first_call("F=/tmp/s.py; sed -i 's/a/b/' $F; cd /tmp/x && cd sub && sed -i 's/a/b/' f.py"),
      "P2", "PASS"),  # ... while a write that stays in scratch is still no change
+    # PR 713 Codex delta N1, N2: an eval, source or read word that is no command keeps a scratch write scratch
+    *[(f"r7-{name}", "pass", first_call(cmd), "P2", "PASS") for name, cmd in SCRATCH_WRITES],
     ("r6-logged-path", "pass", logged_paths("/pstack/0.15.36/", "/pstack/0.99.0/"), "P3", "FAIL"),  # 5
 ]
 

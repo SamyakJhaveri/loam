@@ -142,7 +142,13 @@ def test_a_source_write_behind_a_scratch_path_or_dir_is_blocked(tmp_path, comman
     assert_blocked(hook(payload(session(tmp_path, "w34-r1", calls("w34-r1")[0][0]), {**HIDDEN, "input": {"command": command}})))
 
 
-@pytest.mark.parametrize("command", ["F=/tmp/s.py; sed -i 's/a/b/' $F", "cd /tmp/x && cd sub && sed -i 's/a/b/' f.py"])
+@pytest.mark.parametrize("command", [
+    "F=/tmp/s.py; sed -i 's/a/b/' $F", "cd /tmp/x && cd sub && sed -i 's/a/b/' f.py",
+    "cd /tmp/\necho source\nsed -i 's/a/b/' file.py",  # PR 713 Codex delta N1: a word that is no command
+    "cd /tmp/source/; sed -i 's/a/b/' file.py",
+    "echo read TMPDIR; sed -i 's/a/b/' \"$TMPDIR/file.py\"",  # N2: no read sets TMPDIR here
+    "read -p TMPDIR reply; sed -i 's/a/b/' \"$TMPDIR/file.py\"",
+])
 def test_a_write_that_stays_in_scratch_runs(tmp_path, command):
     r = hook(payload(session(tmp_path, "w34-r1", calls("w34-r1")[0][0]), {**HIDDEN, "input": {"command": command}}))
     assert r.returncode == 0 and not r.stderr
