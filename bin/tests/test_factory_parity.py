@@ -285,6 +285,33 @@ def gate_command(command: str) -> Callable[[Path], None]:
     return edit
 
 
+def skill_commands(change: Callable[[str], str], result: str | None = None) -> Callable[[Path], None]:
+    """Each SKILL.md Bash command rewritten by change; with result, each such call's result replaced by it."""
+    def edit(run: Path) -> None:
+        ids: set[str] = set()
+
+        def mark(item: dict) -> None:
+            if item["type"] == "tool_use" and "SKILL.md" in json.dumps(item["input"]):
+                item["input"]["command"] = change(item["input"]["command"])
+                ids.add(item["id"])
+            elif item["type"] == "tool_result" and item["tool_use_id"] in ids and result is not None:
+                item["content"] = result
+        edit_events(run / "round-1.jsonl", mark)
+    return edit
+
+
+def checkout_lines(drop: str = "") -> Callable[[Path], None]:
+    """Both digests get the checkout:<dir> lines shell_digest now writes; drop removes that checkout's git-* lines."""
+    def edit(run: Path) -> None:
+        for name in ("shell-digest.start", "shell-digest.end"):
+            f = run / name
+            lines = f.read_text().splitlines()
+            dirs = [x.split("  git-status:", 1)[1] for x in lines if "  git-status:" in x]
+            keep = [x for x in lines if not (drop and x.endswith(f":{drop}") and "  git-" in x)]
+            f.write_text("".join(x + "\n" for x in keep + [f"{'0' * 64}  checkout:{d}" for d in dirs]))
+    return edit
+
+
 def no_checkout_digest(run: Path) -> None:
     """PR 713 Codex 7: both digests lose every git-* line; only the ~/.claude file digests are left, and equal."""
     for name in ("shell-digest.start", "shell-digest.end"):
@@ -300,6 +327,21 @@ VARIANTS = [
     ("r-gate-hook-earlier", "p4-pass", gate_command("LOAM_HOOK=1 true; bin/check"), "P4", "PASS"),  # not bin/check's env
     ("r-gate-hook-export", "p4-pass", gate_command("export LOAM_HOOK=1; bin/check"), "P4", "FAIL"),  # guard skips it
     ("r-no-checkout-digest", "p7-pass", no_checkout_digest, "P7", "FAIL"),
+    # PR 713 Codex re-check: a group's or a descriptor's redirect hides the read; a comment holding `>` does not
+    ("r2-group-redirect", "p3-pass", skill_commands(lambda c: f"{{ {c}; }} > /dev/null", ""), "P2", "FAIL"),
+    ("r2-group-redirect", "p3-pass", skill_commands(lambda c: f"{{ {c}; }} > /dev/null", ""), "P3", "FAIL"),
+    ("r2-fd-redirect", "p3-pass", skill_commands(lambda c: c.replace("SKILL.md", "SKILL.md 3>/dev/null 1>&3"), ""),
+     "P2", "FAIL"),
+    ("r2-comment", "p3-pass", skill_commands(lambda c: f"{c} # stdout > terminal"), "P2", "PASS"),
+    ("r2-comment", "p3-pass", skill_commands(lambda c: f"{c} # stdout > terminal"), "P3", "PASS"),
+    # ... LOAM_HOOK is what the gate's environment holds when it starts
+    ("r2-hook-emptied", "p4-pass", gate_command("export LOAM_HOOK=1; LOAM_HOOK= bin/check"), "P4", "PASS"),
+    ("r2-hook-export-later", "p4-pass", gate_command("LOAM_HOOK=1; export LOAM_HOOK; bin/check"), "P4", "FAIL"),
+    ("r2-hook-subshell", "p4-pass", gate_command("(export LOAM_HOOK=1); bin/check"), "P4", "PASS"),
+    ("r2-hook-unset", "p4-pass", gate_command("export LOAM_HOOK=1; unset LOAM_HOOK; bin/check"), "P4", "PASS"),
+    # ... and P7 needs every checkout shell_digest names, not only the ones whose lines survived
+    ("r2-checkout-lines", "p7-pass", checkout_lines(), "P7", "PASS"),
+    ("r2-checkout-missing", "p7-pass", checkout_lines("/home/samyak/distbench"), "P7", "FAIL"),
     ("c2-failed-reads", "p3-pass", failed_skill_reads, "P2", "FAIL"),  # a read whose result is an error read nothing
     ("c2-failed-reads", "p3-pass", failed_skill_reads, "P3", "FAIL"),
     ("a4-read-then-false", "p3-pass", reads_then_a_failing_command, "P2", "PASS"),  # the call failed after the cat

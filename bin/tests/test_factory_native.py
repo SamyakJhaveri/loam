@@ -345,6 +345,7 @@ class LaunchTests(unittest.TestCase):
         self.assertEqual(lines[f"git-untracked:{t}"], sha(b""))
         for kind in ("status", "head", "diff", "untracked"):
             self.assertIn(f"git-{kind}:{self.new}", lines)  # the factory home's four lines, here not a checkout
+        self.assertEqual({k for k in lines if k.startswith("checkout:")}, {f"checkout:{t}", f"checkout:{self.new}"})
 
     def test_the_digest_moves_with_each_change_it_covers(self) -> None:
         claude = self.h.home / ".claude"

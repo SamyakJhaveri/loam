@@ -141,7 +141,6 @@ LOOP = re.compile(r"\bfor\s+(\w+)\s+in\s+([^;\n]+?)\s*;?\s*(?:\n\s*)?do\b")
 GATE = re.compile(r"\bbin/check(?![\w.-])|[^\s;&|]*(?<![\w.-])checks\.sh\b|\$\{?LOAM_CHECKS\b\}?")
 WRAPPERS = {"nohup", "bash", "sh", "env", "time", "exec", "command", "source", ".", "guard"}  # guard: lib.sh
 HEREDOC = re.compile(r"<<-?\s*(['\"]?)(\w+)\1([^\n]*)\n.*?(?:\n[ \t]*\2[ \t]*(?=\n|$)|\Z)", re.S)
-HOOK_SET = re.compile(r"\bLOAM_HOOK=(?![\s;&|]|\"\"|''|$)")
 # bin/check's own result line, or lib.sh's copy of it on the guarded check's line: `PASS check-green (check: PASSED)`.
 GATE_LINE = re.compile(r"(?m)^check: (?:PASSED|FAILED)\b.*$|^(?:PASS|FAIL) .*\((check: (?:PASSED|FAILED))\)$")
 REFUSAL = re.compile(r"(?m)^[^\"'\n]*?(bin/check: AF_UNIX bind denied[^\n]*|bwrap: No permissions to create new namespace[^\n]*)")
@@ -282,6 +281,7 @@ def changes(name: str, inp: dict) -> str | None:
         # A heredoc fed to cat or tee is the file's text, not commands: blank its body.
         cmd = HEREDOC.sub(lambda m: m.group(0) if not re.search(r"\b(?:cat|tee)\b[^\n]*$", m.string[:m.start()])
                           else m.group(0)[:m.start(3) - m.start() + len(m.group(3))], assigned(str(inp.get("command", ""))))
+        cmd = no_comments(cmd)  # a `>` in a comment writes nothing
         # Quoted text keeps its length but never ends a command, so a sed script's `;` does not cut off its file.
         bare = re.sub(r"'[^']*'|\"(?:[^\"\\]|\\.)*\"", lambda q: q.group(0)[0] + "x" * (len(q.group(0)) - 2) + q.group(0)[-1], cmd)
         for m in BASH_WRITE.finditer(cmd):
@@ -334,12 +334,46 @@ def skill_reads(name: str, inp: dict) -> set[tuple[str, str]]:
     return skill_paths(text, loops_of(text)) if "SKILL.md" in text else set()
 
 
+def no_comments(cmd: str) -> str:
+    """cmd with each shell comment (a # that starts a word outside quotes, to the end of its line) blanked, offsets
+    kept."""
+    bare = re.sub(r"'[^']*'|\"(?:[^\"\\]|\\.)*\"", lambda q: "x" * len(q.group(0)), cmd)
+    out = list(cmd)
+    for m in re.finditer(r"(?m)(?:^|(?<=\s))#.*$", bare):
+        out[m.start():m.end()] = " " * (m.end() - m.start())
+    return "".join(out)
+
+
+def stdout_away(text: str) -> bool:
+    """Whether a redirection in text sends stdout away from the result: `> f`, `>> f`, `1> f`, `&> f`, `1>&3`, `>&-`.
+    `2> f`, `2>&1` and `>&2` (stderr also reaches the result) do not."""
+    return any(fd in ("", "1", "&") and (not dup or target != "2")
+               for fd, dup, target in re.findall(r"(\d*|&)>>?(&?)(\d+|-)?", text))
+
+
+def redirected_groups(code: str) -> list[tuple[int, int]]:
+    """(start, end) of each `{ }`, `( )`, `$( )`, do-done, if-fi or case-esac in code (comments blanked) whose closer
+    is followed by a redirection that sends stdout away."""
+    spans, stack = [], []
+    for m in re.finditer(r"\$\(|[{}()]|(?:^|(?<=[\s;&|(){]))(?:do|done|if|fi|case|esac)(?=[\s;&|)]|$)", code):
+        tok = m.group(0)
+        if tok in ("{", "(", "$(", "do", "if", "case"):
+            stack.append(m.start())
+        elif stack:
+            start = stack.pop()
+            after = re.match(r"(?:\s*(?:\d*|&)>>?&?\s*[^\s;&|()]*)+", code[m.end():])
+            if after and stdout_away(after.group(0)):
+                spans.append((start, m.end()))
+    return spans
+
+
 def full_reads(t: Transcript, j: int) -> set[tuple[str, str]]:
     """(prefix, name) for each SKILL.md call j of t reads in full: a Read with no offset or limit, or a `cat` that is
     the last stage of its pipeline or is piped only into `head -N` while the call's whole result is under N lines (so
-    nothing was cut). sed -n, tail, git cat-file, a head that cut, and a `cat` whose stdout is redirected (`> /dev/null`)
-    read part or none of a file and never count. A Bash call whose result is an error (a later command can fail) still
-    reads each such file whose name: line its result shows."""
+    nothing was cut). sed -n, tail, git cat-file, a head that cut, and a `cat` whose stdout leaves the result (its own
+    `> f`, `1>&3` or `&> f`, or one on a `{ }`, `( )`, loop, if or case around it; comments are no redirect) read part or
+    none of a file and never count. A Bash call whose result is an error (a later command can fail) still reads each
+    such file whose name: line its result shows."""
     _, name, inp = t.calls[j]
     if not t.ok(j) and not (name == "Bash" and t.ran(j)):
         return set()
@@ -351,13 +385,16 @@ def full_reads(t: Transcript, j: int) -> set[tuple[str, str]]:
     res = t.result(j)
     shown = len(res[1].splitlines()) if res else None
     loops, found = loops_of(cmd), set()
-    for seg in re.split(r"&&|\|\||[;\n]", cmd):
-        first, *rest = seg.split("|")
+    code = no_comments(cmd)
+    away = redirected_groups(code)
+    cuts = [0] + [x for m in re.finditer(r"&&|\|\||[;\n]", code) for x in m.span()] + [len(code)]
+    for at, end in zip(cuts[::2], cuts[1::2]):
+        first, *rest = code[at:end].split("|")
         caps = [re.fullmatch(r"\s*head\s+(?:-n\s*)?-?(\d+)\s*", r) for r in rest]
         if not all(caps) or (caps and (shown is None or shown >= min(int(c.group(1)) for c in caps))):
             continue
-        if any(fd in ("", "1", "&") and not dup for fd, dup in re.findall(r"(\d*|&)>>?(&?)", first)):
-            continue  # stdout went to a file, not to the result
+        if stdout_away(first) or any(a <= at < b for a, b in away):
+            continue  # stdout went to a file or another descriptor, not to the result
         words = first.split()
         while words and words[0].lstrip("(") in READ_LEAD | {""}:
             words = words[1:]
@@ -391,12 +428,12 @@ def named_skills(text: str, pstack: set[str]) -> set[str]:
 
 def gate_runs(cmd: str) -> list[bool]:
     """For each bin/check or checks.sh invocation in a Bash command: True when it runs, False when LOAM_HOOK
-    is set for it (guard skips bin/check): on its own command, or by an earlier export. A file merely read
-    (cat bin/check, grep x bin/check) is no invocation."""
+    reaches it non-empty (guard skips bin/check; hook_reaches). A file merely read (cat bin/check, grep x bin/check)
+    is no invocation."""
     # Heredoc bodies and quoted text are data, not commands; a quoted lone variable ("$LOAM_CHECKS") stays.
-    cmd = HEREDOC.sub(lambda m: m.group(3), cmd)
+    cmd = no_comments(HEREDOC.sub(lambda m: m.group(3), cmd))
     cmd = re.sub(r"\"(\$\{?\w+\}?[^\"\s]*)\"", r"\1", cmd)
-    cmd = re.sub(r"'[^']*'|\"(?:[^\"\\]|\\.)*\"", "''", cmd)
+    cmd = re.sub(r"'[^']*'|\"(?:[^\"\\]|\\.)*\"", lambda q: "''" if len(q.group(0)) == 2 else "'q'", cmd)
     out = []
     for m in GATE.finditer(cmd):
         before = cmd[:m.start()]
@@ -409,8 +446,38 @@ def gate_runs(cmd: str) -> list[bool]:
             if wrapper == "timeout":
                 words = words[1:]  # its duration
         if not words:
-            out.append(not (HOOK_SET.search(text) or re.search(r"\bexport\b[^;&|\n]*" + HOOK_SET.pattern, before)))
+            out.append(not hook_reaches(before))
     return out
+
+
+def hook_reaches(before: str) -> bool:
+    """Whether LOAM_HOOK reaches, non-empty, the command whose text so far is the end of before: its own assignment
+    (`LOAM_HOOK=1 bin/check`, `env LOAM_HOOK=1 bin/check`), else the shell's value if exported, after the earlier
+    commands' assignments, `export` and `unset` in order; a ( ) or $( ) subshell's changes stay in it. Quoted text is
+    '' when empty, else 'q' (gate_runs)."""
+    parts = re.split(r"(&&|\|\||[;&|\n]|\$\(|[()])", before)
+    stack = [(None, False)]  # (value, exported) per open subshell
+    for part in parts[:-1]:
+        if part in ("(", "$("):
+            stack.append(stack[-1])
+        elif part == ")":
+            stack = stack[:-1] or stack
+        else:
+            value, exported = stack[-1]
+            words = part.split()
+            if words[:1] == ["unset"] and "LOAM_HOOK" in words[1:]:
+                value, exported = None, False
+            elif words[:1] == ["export"] or (words and all(re.fullmatch(r"\w+=\S*", w) for w in words)):
+                for w in words[1:] if words[0] == "export" else words:
+                    name, eq, val = w.partition("=")
+                    if name == "LOAM_HOOK":
+                        value = val if eq else value
+                        exported = exported or words[0] == "export"
+            stack[-1] = (value, exported)
+    local = [w.partition("=")[2] for w in parts[-1].split() if w.startswith("LOAM_HOOK=")]
+    value, exported = stack[-1]
+    value = local[-1] if local else value if exported else None
+    return value not in (None, "", "''")
 
 
 class Round:
@@ -848,8 +915,13 @@ def p7(run: Run) -> tuple[str, str]:
     else:
         a, b = digest(start), digest(end)
         a, b = ({k: v for k, v in d.items() if "/.claude/skills/synced/" not in k} for d in (a, b))
-        dirs = [label.split(":", 1)[1] for label in a if label.startswith("git-status:")]
-        lacking = [f"{k}:{d}" for d in dirs for k in GIT_DIGESTS if f"{k}:{d}" not in a]
+        # shell_digest names each checkout it must cover on a checkout:<dir> line, apart from that checkout's own
+        # four lines; a digest from before those lines has only its git-status lines to say which (legacy).
+        dirs = [label.split(":", 1)[1] for label in a if label.startswith("checkout:")]
+        legacy = not dirs
+        dirs = dirs or [label.split(":", 1)[1] for label in a if label.startswith("git-status:")]
+        lacking = sorted({f"{k}:{d}" for d in dirs for k in ("git-status", *GIT_DIGESTS) for m in (a, b)
+                          if f"{k}:{d}" not in m})
         differ = sorted(k for k in a.keys() | b.keys() if a.get(k) != b.get(k))
         if not a:
             rows.append(("FAIL", f"{start.name} has no digest line"))
@@ -861,7 +933,8 @@ def p7(run: Run) -> tuple[str, str]:
             rows.append(("FAIL", f"{start.name} and {end.name} differ at {', '.join(differ[:5])}"
                          + (f" and {len(differ) - 5} more" if len(differ) > 5 else "")))
         else:
-            rows.append(("PASS", f"{start.name} equals {end.name} ({len(a)} digests)"))
+            rows.append(("PASS", f"{start.name} equals {end.name} ({len(a)} digests"
+                         + (", no checkout: lines, so the checkouts its git-status lines name)" if legacy else ")")))
     status, evidence = combine(rows)
     denied = []
     for r in run.rounds:

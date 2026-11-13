@@ -1317,8 +1317,9 @@ exit_words() { # status -> "<level> <words>"
 
 # The host state a native worker could change without a tool call the factory sees (design-pick.md (a), U1 P7):
 # sha256sum lines for the user tier's settings, settings.local.json and CLAUDE.md and the .md files under its rules,
-# agents and skills (not skills/synced/, which every session start rewrites), then four lines per checkout, the Loam
-# checkout and the target's main one: its status, HEAD, diff against HEAD and untracked files. cmd_run writes
+# agents and skills (not skills/synced/, which every session start rewrites), then per checkout, the Loam checkout and
+# the target's main one, a checkout:<dir> line (parity P7 requires the next four for each) and four lines: its status,
+# HEAD, diff against HEAD and untracked files. cmd_run writes
 # shell-digest.start at launch and finish writes shell-digest.end; equal files mean nothing changed. It detects, never
 # prevents.
 shell_digest() {
@@ -1327,6 +1328,7 @@ shell_digest() {
   find "$h/rules" "$h/agents" "$h/skills" -path "$h/skills/synced" -prune -o -type f -name '*.md' -print0 2> /dev/null \
     | sort -z | while IFS= read -r -d '' f; do sha256sum "$f"; done
   printf '%s\n' "$ROOT" "$MAIN_CHECKOUT" | awk '!seen[$0]++' | while IFS= read -r d; do
+    printf '%s  checkout:%s\n' "$(printf '%s' "$d" | sha256sum | cut -d' ' -f1)" "$d"
     printf '%s  git-status:%s\n' "$(git -C "$d" status --porcelain 2> /dev/null | sha256sum | cut -d' ' -f1)" "$d"
     printf '%s  git-head:%s\n' "$(git -C "$d" rev-parse HEAD 2> /dev/null)" "$d"
     printf '%s  git-diff:%s\n' "$(git -C "$d" diff HEAD --binary 2> /dev/null | sha256sum | cut -d' ' -f1)" "$d"
