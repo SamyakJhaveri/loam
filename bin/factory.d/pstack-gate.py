@@ -85,7 +85,8 @@ def unquoted(text: str) -> str:
 
 
 def commands(text: str) -> str:
-    """text without the bodies of heredocs fed to anything but a shell: those are a file's text, not commands."""
+    """text without comment lines (an apostrophe there would pair with a later quote) and the bodies of heredocs fed
+    to anything but a shell: those are a file's text, not commands."""
     lines, out, i = text.split("\n"), [], 0
     while i < len(lines):
         line = lines[i]
@@ -99,7 +100,7 @@ def commands(text: str) -> str:
             i += 1
             if FED_TO_SHELL.search(line[:m.start()]):
                 out.extend(body)
-    return "\n".join(out)
+    return "\n".join(line for line in out if not line.lstrip().startswith("#"))
 
 
 def runs_full_gate(command: str, dirs: tuple[Path, ...], depth: int = 0, hook: bool = False) -> bool:

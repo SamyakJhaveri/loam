@@ -331,9 +331,10 @@ def test_full_gate_a_script_file_that_runs_bin_check_is_blocked(tmp_path):
     (tmp_path / "scripts" / "launch.sh").write_text("bash dc.sh\n", encoding="utf-8")  # bash keeps the caller's cwd
     (tmp_path / "scripts" / "own-dir.sh").write_text('cd "$(dirname "$0")"\nbash inner.sh\n', encoding="utf-8")
     (tmp_path / "scripts" / "inner.sh").write_text("bin/check\n", encoding="utf-8")
+    (tmp_path / "noted.sh").write_text("# the gate's run\nbin/check\n# it's done\n", encoding="utf-8")
     for command in (f"bash {tmp_path}/dc.sh", f"nohup bash {tmp_path}/dc.sh > /tmp/out.txt 2>&1 &", "sh ./dc.sh",
                     f'bash "{tmp_path}/dc.sh"', "bash scripts/launch.sh", "bash scripts/own-dir.sh",
-                    "bash -euo pipefail dc.sh"):
+                    "bash -euo pipefail dc.sh", "bash noted.sh"):
         r = bash(command, "supervisor", cwd=tmp_path)
         assert r.returncode == 2 and r.stderr.strip() == FULL_GATE, (command, r.stderr)
     r = bash(f"bash {tmp_path}/ok.sh", "supervisor")
