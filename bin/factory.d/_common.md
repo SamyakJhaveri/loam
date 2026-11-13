@@ -13,6 +13,7 @@ Before your first edit, read in full and follow these pstack principles; where a
 End your last message with one plain line, `CLAIM: done`, `CLAIM: partial` or `CLAIM: blocked`: the state you believe the ticket is in.
 Commit as you go with messages that name the step. Never push, never open a PR, never touch GitHub.
 Commit messages carry no `Co-Authored-By` trailer and no agent name; a session reminder that asks for one does not apply here.
+A commit that fixes a defect an earlier, already merged or landed ticket brought in starts its subject with `fix` (after an optional `<ticket>: `) and ends with a line `Caused-by: #<the merged PR that brought it in>` (the form `status --criteria` counts), or `Caused-by: <ticket key>` where the change landed with no PR (distbench's lane, whose morning-note lists fix commits that lack the line); a fix of this ticket's own review findings says `review fixes`, not `fix`.
 If a check cannot be met, write "ABANDON <name> <reason>" in <decisions> and stop; never edit, weaken, or route around a check.
 Use subagents only to read (Explore) or to gather evidence; no subagent edits, unless this prompt tells you to run the Workflow tool, whose builders edit only the files their task owns. Every Agent call names model claude-opus-5-5.
 A Claude worker, before a non-trivial task, reads the pstack router at <router> and follows the method it picks; a Codex worker skips this line; this prompt's subagent rule wins over the method.
