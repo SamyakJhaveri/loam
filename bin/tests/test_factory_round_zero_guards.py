@@ -160,8 +160,7 @@ class RoundZeroGuardTests(unittest.TestCase):
                       "guard true && pass check-green || fail 'check-green' \"gate failed (pass note before retrying)\"",
                       'guard true && pass check-green || fail check-green "must pass note"',
                       'guard true && pass check-green || fail check-green "got $(printf "%s" "x; (pass note)")"',
-                      "guard true && pass check-green || fail check-green $'it\\'s; (pass note)'",
-                      'guard grep -q "PASS note" <(pass note) && pass check-green || fail check-green "x"'):
+                      "guard true && pass check-green || fail check-green $'it\\'s; (pass note)'"):
             with self.subTest(guard=guard):
                 out = self.round_zero(f'{guard}\ntest -e NEW.md && pass note || fail note "NEW.md is missing"')
                 self.assertEqual(out.strip(), "ROUND0-OK")

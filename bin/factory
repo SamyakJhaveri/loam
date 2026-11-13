@@ -160,82 +160,89 @@ predict_split() {
 }
 
 # The literal NAME after each command-word `pass` (at the start, or after an operator or { ! then do else) in the check
-# lines on stdin, one per line. A small reader of bash words keeps quotes, $(...) and backticks whole, nested quotes
+# lines on stdin, one per line. A small reader of bash words keeps quotes, $(...), ${...} and <(...) whole, nested quotes
 # included, so a fail reason such as "x; (pass note)" names no check and `pass 'note'` names note; a # starts a comment
-# only at a word's start. check_predicts and round 0 read it.
+# only at a word's start. It fails closed: a line holding what it does not model (a backtick, a bare ( inside ${...},
+# a pass inside <(...) or >(...), an unclosed quote or paren) gives no names, and -u prints such lines instead.
+# check_predicts, check_guard_names and round 0 read it.
 pass_cmd_names() {
   python3 -I -c '
 import re, sys
 Q, OPS, AFTER = chr(39), ("&&", "||", ";;", ";", "&", "|", "(", ")"), {"{", "!", "then", "do", "else"}
 
-def skip(s, i, close):  # the index after the close that ends the quote or substitution opened before i
+class Unread(Exception):
+    pass
+
+def quote_end(s, i):  # the index after the quote that closes the one at i; $-quotes take backslash escapes
+    j = i + 1
+    while j < len(s) and s[j] != Q:
+        j += 2 if s[i - 1:i] == "$" and s[j] == "\\" else 1
+    if j >= len(s):
+        raise Unread
+    return j + 1
+
+def skip(s, i, close):  # the index after the close of the double quote or substitution opened before i
     while i < len(s):
         c = s[i]
+        if c == close:
+            return i + 1
+        if c == "`" or (c == "(" and close == "}"):
+            raise Unread
         if c == "\\":
             i += 2
-        elif c == close:
-            return i + 1
         elif c == Q and close != "\"":
-            i = s.find(Q, i + 1) + 1 or len(s)
+            i = quote_end(s, i)
         elif c == "\"":
             i = skip(s, i + 1, "\"")
-        elif s.startswith("$(", i):
-            i = skip(s, i + 2, ")")
-        elif c == "`":
-            i = skip(s, i + 1, "`")
+        elif s.startswith(("$(", "${"), i):
+            i = skip(s, i + 2, ")" if s[i + 1] == "(" else "}")
         elif c == "(" and close == ")":
             i = skip(s, i + 1, ")")
         else:
             i += 1
-    return len(s)
+    raise Unread
 
 def tokens(s):  # words as their literal text ("$" for any expansion), operators as 1-tuples, redirections as "<"
     t, w, i = [], None, 0
     while i < len(s):
         c, op = s[i], next((o for o in OPS if s.startswith(o, i)), None)
-        redir = c in "<>" and s[i + 1:i + 2] != "("
-        if redir:
-            if w is not None:
-                t.append(w)
-            t.append("<")
-            w, i = None, i + len(re.match("[<>]+[&|]?", s[i:]).group())
-            continue
-        if op or c.isspace() or (c == "#" and w is None):
-            if w is not None:
-                t.append(w)
-                w = None
-            if not op and c == "#":
+        if s.startswith(("<(", ">("), i):
+            j = skip(s, i + 2, ")")
+            if re.search("(^|[^A-Za-z0-9_.-])pass($|[^A-Za-z0-9_.-])", s[i + 2:j - 1]):
+                raise Unread
+            w, i = (w or "") + "$", j
+        elif c in "<>" or op or c.isspace() or (c == "#" and w is None):
+            t += ([w] if w is not None else []) + (["<"] if c in "<>" else [(op,)] if op else [])
+            if c == "#":
                 break
-            t += [(op,)] if op else []
-            i += len(op) if op else 1
-            continue
-        w = w or ""
-        if c == "\\":
-            w, i = w + s[i + 1:i + 2], i + 2
+            w, i = None, i + (len(re.match("[<>]+[&|]?", s[i:]).group()) if c in "<>" else len(op) if op else 1)
+        elif c == "`":
+            raise Unread
+        elif c == "\\":
+            w, i = (w or "") + s[i + 1:i + 2], i + 2
         elif c == Q:
-            j = s.find(Q, i + 1) + 1 or len(s)
-            w, i = w + s[i + 1:j - 1], j
+            j = quote_end(s, i)
+            w, i = (w or "") + s[i + 1:j - 1], j
         elif c == "\"":
             j = skip(s, i + 1, "\"")
-            w, i = w + (s[i + 1:j - 1] if not re.search("[$`]", s[i + 1:j - 1]) else "$"), j
-        elif s.startswith("$" + Q, i):  # dollar-quote: backslash escapes the quote char too
-            j = i + 2
-            while j < len(s) and s[j] != Q:
-                j += 2 if s[j] == "\\" else 1
-            w, i = w + "$", j + 1
-        elif s.startswith(("$(", "<(", ">("), i) or c == "`":
-            w, i = w + "$", skip(s, i + 2, ")") if c != "`" else skip(s, i + 1, "`")
+            w, i = (w or "") + (s[i + 1:j - 1] if not re.search("[$`\\\\]", s[i + 1:j - 1]) else "$"), j
+        elif s.startswith(("$(", "${"), i):
+            w, i = (w or "") + "$", skip(s, i + 2, ")" if s[i + 1] == "(" else "}")
         else:
-            w, i = w + c, i + 1
+            w, i = (w or "") + c, i + 1
     return t + ([w] if w is not None else [])
 
 for line in sys.stdin:
-    t = tokens(line)
+    try:
+        t = tokens(line)
+    except Unread:
+        print(line, end="") if sys.argv[1:] == ["-u"] else None
+        continue
     for i in range(len(t) - 1):
-        if t[i] == "pass" and (i == 0 or isinstance(t[i - 1], tuple) or t[i - 1] in AFTER) \
+        if sys.argv[1:] != ["-u"] and t[i] == "pass" and (i == 0 or isinstance(t[i - 1], tuple) or t[i - 1] in AFTER) \
                 and isinstance(t[i + 1], str) and re.fullmatch("[A-Za-z0-9_.-]+", t[i + 1]):
             print(t[i + 1])
-' | sort -u
+' "$@" | sort -u
 }
 
 # A check that calls `guard` is a regression guard allowed to pass on base (CONTRACT.md, Done checks): `guard` as the
@@ -707,6 +714,14 @@ check_except_paths() {
   return 0
 }
 
+# A guard line pass_cmd_names cannot read has no guard name round 0 could trust (Loam issue 726): refused, not guessed.
+GUARD_FORM='write this guard line as: guard <cmd> && pass <name> || fail <name> "<reason>"'
+check_guard_names() {
+  local line
+  while IFS= read -r line; do err "$GUARD_FORM; the pass-name reader does not model it: $line"; done < <(guard_checks | pass_cmd_names -u)
+  return 0
+}
+
 check_edit_fenced() { local msg; msg=$(edit_fenced); [ -z "$msg" ] || err "$msg"; }
 
 # ---- eval ----
@@ -1167,6 +1182,7 @@ lint_body() {
   check_distbench_lines
   # Fixture bodies are historical tickets that name paths later tickets removed, and predate predict lines.
   case "$SRC" in *bin/factory.d/fixtures/*) ;; *) check_paths; check_except_paths; check_edit_fenced; check_predicts ;; esac
+  check_guard_names
 
   [ "$ERRS" -eq 0 ] || return 1
   echo "lint: OK $SRC"
@@ -2243,6 +2259,8 @@ round_zero() {
   # A line continuation would split one line across the readers (dc_continued); lint rejects it, and a run never linted
   # (bin/factory run) stops here, before any of the block runs.
   [ -z "$(dc_continued)" ] || finish ticket-defect "a done-checks line ends in a backslash; the block takes no line continuations"
+  line=$(guard_checks | pass_cmd_names -u | head -n 1)
+  [ -z "$line" ] || finish ticket-defect "$GUARD_FORM; the pass-name reader does not model it: $line"
   # Round 0 belongs to base only: run the frozen checks at base.sha in a detached temporary
   # worktree, never in the ticket worktree, which a relaunch may leave ahead of base with the
   # checks already passing. Remove and prune clear a leftover from a killed round 0 before the
