@@ -681,14 +681,16 @@ def router_index(t: Transcript, before: int) -> int | None:
 
 
 def without_common(run: Run, brief: str) -> str:
-    """brief less each line of the run's frozen/_common.md (its <placeholders> filled), which every round's prompt
-    holds, so a method only _common.md names is no brief's own."""
+    """brief less each line of the run's frozen/_common.md (a <placeholder> filled with no quote or newline), which
+    every round's prompt holds, also as a string in a large round's Workflow args, so a method only _common.md names
+    is no brief's own."""
     f = Path(run.path) / "frozen" / "_common.md"
     if not f.is_file():
         return brief
-    lines = [re.compile(".*".join(map(re.escape, re.split(r"<[a-z]+>", x.strip()))))
-             for x in f.read_text(encoding="utf-8", errors="replace").splitlines() if x.strip()]
-    return "\n".join(x for x in brief.splitlines() if not any(p.fullmatch(x.strip()) for p in lines))
+    for x in f.read_text(encoding="utf-8", errors="replace").splitlines():
+        if x.strip():
+            brief = re.sub('[^"\n]*?'.join(map(re.escape, re.split(r"<[a-z]+>", x.strip()))), "", brief)
+    return brief
 
 
 def brief_read(run: Run, t: Transcript, before: int) -> tuple[int, list[str]] | None:
