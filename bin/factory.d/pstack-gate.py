@@ -8,9 +8,9 @@ so far with this call as its next one. Any other call, and any change once they 
 
 The calling transcript is the payload's transcript_path, or for a subagent (agent_id set)
 `<transcript_path without .jsonl>/subagents/**/agent-<agent_id>.jsonl` (a Workflow agent's is under
-workflows/<run>/), read beside the main one (whose skill listing names the pstack methods). The main transcript
-adds only its reads: its own changes are its own (an attended lead's, made before this hook was installed, would
-otherwise block every subagent it starts). A call an earlier run of this hook blocked never ran, so it is left out: its tool result
+workflows/<run>/), read beside the main one (whose skill listing names the pstack methods). Outside a run (an
+attended session) the main transcript adds only its reads: a lead's own change, made before this hook was
+installed, would otherwise block every subagent it starts. In a run its changes count, as parity grades the round. A call an earlier run of this hook blocked never ran, so it is left out: its tool result
 holds BLOCKED. The rules (what a change is, what a router or method read is, decisions.md) are parity's alone:
 factory-parity is loaded from this file's folder (a run's frozen/) or its parent (bin/ in a checkout).
 In a run's frozen/ folder the run is the parent folder: P3 reads its worker/decisions.md, and the calling round is one
@@ -110,7 +110,7 @@ def verdict(payload: dict, fp, run: Path | None) -> str | None:
         sub = main.with_suffix("") / "subagents" / f"agent-{agent}.jsonl"
         sub = next(main.with_suffix("").glob(f"subagents/**/agent-{agent}.jsonl"), sub)  # a Workflow's: workflows/<run>/
         caller = so_far(fp, sub, sub.name, False, projects, pending)
-        top = so_far(fp, main, main.name, True, projects, reads_only=True)
+        top = so_far(fp, main, main.name, True, projects, reads_only=run is None)
         transcripts = [caller, top]
     else:
         caller = top = so_far(fp, main, main.name, True, projects, pending)
