@@ -37,6 +37,13 @@ guard() {
     guard_check="check: PASSED"
     return 0
   fi
+  # FACTORY_GATE_REUSED (round 0 at a base the launcher's own full gate already passed): bin/check does not run again.
+  if [ -n "${FACTORY_GATE_REUSED:-}" ] && [ "${1:-}" = bin/check ]; then
+    printf '\nREUSED: bin/check passed already (%s)\ncheck: PASSED\n' "$FACTORY_GATE_REUSED"
+    [ /dev/fd/1 -ef /dev/fd/9 ] || printf '\nREUSED: bin/check passed already (%s)\ncheck: PASSED\n' "$FACTORY_GATE_REUSED" >&9
+    guard_check="check: PASSED"
+    return 0
+  fi
   out=$(mktemp 2> /dev/null) || { "$@"; return; }
   if [ /dev/fd/1 -ef /dev/fd/9 ]; then
     "$@" | tee "$out"
