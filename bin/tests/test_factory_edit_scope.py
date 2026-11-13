@@ -250,6 +250,11 @@ class EditLineLintAndFreezeTests(unittest.TestCase):
                           ("Edit: ``", "the Edit: line lists no path"),
                           ("Edit: `src/a.py`, tests/ (new)",
                            "the Edit: line holds tests/ outside backticks, where the fence reads no path"),
+                          # a slash-free list entry beside a backticked one (PR 732 Codex Medium at b5e4b0a9)
+                          ("Edit: `bin/factory`, README.md",
+                           "the Edit: line holds README.md outside backticks, where the fence reads no path"),
+                          ("Edit: VERSION, `bin/factory`",
+                           "the Edit: line holds VERSION outside backticks, where the fence reads no path"),
                           ("Edit: bin/*.sh, docs/", "the Edit: line holds bin/*.sh, which is not a path"),
                           ("Edit: bin/factory, docs/..", "the Edit: line holds docs/.., whose .. segment climbs a directory")):
             with self.subTest(line):
@@ -258,7 +263,8 @@ class EditLineLintAndFreezeTests(unittest.TestCase):
                 self.assertIn(f": {why}", out)
 
     def test_lint_accepts_paths_split_by_commas_and_spaces(self) -> None:
-        for line in ("", "Edit: bin/factory,docs/factory/ ./NOTES.md", "Edit: bin/factory, bin/tests/.", REAL_LINE):
+        for line in ("", "Edit: bin/factory,docs/factory/ ./NOTES.md", "Edit: bin/factory, bin/tests/.", REAL_LINE,
+                     "Edit: Loam `bin/factory`, `bin/tests/x.py` (both fences)"):
             with self.subTest(line):
                 rc, out = self.lint(line)
                 self.assertEqual(rc, 0, out)

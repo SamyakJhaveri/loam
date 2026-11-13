@@ -264,11 +264,15 @@ edit_raw_words() { # the words before the trailing-mark and ./ strip, which woul
   case $line in *'`'*) line=$(grep -o '`[^`]*`' <<< "$line" || :) ;; esac
   printf '%s\n' "$line" | tr ',' ' ' | tr -s ' \t' '\n\n' | tr -d '`"'
 }
-edit_bare_paths() { # words with a slash outside the backticks of a line that has them, which the fence would drop
+edit_bare_paths() { # words outside the backticks of a line that has them, which the fence would drop: a word with a
+  # slash, and a comma-separated entry that is one word with no backticked span (`a`, README.md)
   local line
   line=$(grep -m1 '^Edit:' <<< "$(header)") || return 0
   case $line in *'`'*) ;; *) return 0 ;; esac
-  sed 's/`[^`]*`/ /g' <<< "${line#Edit:}" | tr ',' ' ' | tr -s ' \t' '\n\n' | { grep '/' || :; } | paste -sd' ' -
+  line=${line#Edit:}
+  { sed 's/`[^`]*`/ /g' <<< "$line" | tr ',' ' ' | tr -s ' \t' '\n\n' | { grep '/' || :; }
+    tr ',' '\n' <<< "$line" | { grep -v '`' || :; } | awk 'NF == 1 { print $1 }'
+  } | awk '!seen[$0]++' | paste -sd' ' -
 }
 
 # Why the header's `Edit:` line cannot fence a run, or nothing when it has none or lists only paths. Lint rejects such
