@@ -33,10 +33,12 @@ def judge(rows: dict[str, str], fixes: list[tuple[str, str]]) -> dict[str, objec
 
 
 class JudgeShadowTests(unittest.TestCase):
-    def graders(self, judge_reply: dict[str, object] | str, stale_shadow: bool = False) -> tuple[int, pathlib.Path, str]:
+    def graders(self, judge_reply: dict[str, object] | str, stale_shadow: bool = False,
+                root_decisions: bool = False) -> tuple[int, pathlib.Path, str]:
         """(graders' exit, the run dir, the log) for one round whose judge returns judge_reply.
 
         With stale_shadow, the round already holds a round-1.judge-shadow, as an earlier grading of it leaves.
+        With root_decisions, the repository commits a decisions.md at its root.
         """
         tmp = tempfile.TemporaryDirectory()
         self.addCleanup(tmp.cleanup)
@@ -44,6 +46,9 @@ class JudgeShadowTests(unittest.TestCase):
         wt, run = top / "wt", top / "run"
         wt.mkdir()
         subprocess.run(["git", "init", "-q", "-b", "main"], cwd=wt, check=True)
+        if root_decisions:
+            (wt / "decisions.md").write_text("# design decisions\n")
+            subprocess.run(["git", "add", "decisions.md"], cwd=wt, check=True)
         subprocess.run(["git", "-c", "user.name=t", "-c", "user.email=t@t", "commit", "-q", "--allow-empty", "-m", "b"],
                        cwd=wt, check=True)
         (run / "frozen").mkdir(parents=True)
@@ -92,6 +97,25 @@ class JudgeShadowTests(unittest.TestCase):
                 self.assertEqual(rc, 1, log)
                 self.assertNotIn("judge-shadow", log)
                 self.assertEqual((run / "round-1.fixes").read_text(), "".join(f"- {t}: {f}\n" for t, f in fixes))
+                self.assertFalse((run / "round-1.judge-shadow").exists())
+
+    def test_decisions_md_target_blocks_when_the_repository_has_its_own(self) -> None:
+        # A repository-root decisions.md is a file of the change with the same target name, so the target is ambiguous.
+        rc, run, log = self.graders(judge({**ROWS_PASS, "honest": "fail"}, [LABEL]), root_decisions=True)
+        self.assertEqual(rc, 1, log)
+        self.assertNotIn("judge-shadow", log)
+        self.assertEqual((run / "round-1.fixes").read_text(), "- decisions.md: label the SKIP step unverified\n")
+
+    def test_malformed_fixes_still_fail(self) -> None:
+        # call_json checks only verdict consistency, not the schema, so a fix with no usable text never shadow-passes.
+        for name, fixes in (("no fix text", [{"target": "decisions.md"}]),
+                            ("empty fix text", [{"target": "decisions.md", "fix": " "}]),
+                            ("fix text not a string", [{"target": "decisions.md", "fix": ["label it"]}]),
+                            ("an object, not a list", {"target": "decisions.md", "fix": "label it"})):
+            with self.subTest(name):
+                rc, run, log = self.graders({**judge({**ROWS_PASS, "honest": "fail"}, []), "fixes": fixes})
+                self.assertEqual(rc, 1, log)
+                self.assertNotIn("judge-shadow", log)
                 self.assertFalse((run / "round-1.judge-shadow").exists())
 
     def test_bookkeeping_row_fail_with_no_fix_still_fails(self) -> None:

@@ -2588,11 +2588,16 @@ run_judge() { # round -> 0 on a pass verdict, or a fail on only JUDGE_SHADOW_ROW
   # a correction that needs a Do-not-touch path there), when every failing row is a shadow row and the judge lists at
   # least one fix and every fix targets decisions.md. A fix's target is the one file it edits (judge.schema.json), read
   # from that field and never from the fix's text; only the bare name decisions.md matches, since the worker's own file
-  # sits outside the worktree and a path such as docs/decisions.md is a file of the change. A fail may carry a fix for
-  # the change itself with every other row pass, and that blocks.
-  shadow=$(jq -rs --slurpfile s "$RUN/frozen/judge.schema.json" --arg sh "$JUDGE_SHADOW_ROWS" '
+  # sits outside the worktree and a path such as docs/decisions.md is a file of the change. A repository whose root holds,
+  # or ever held, a decisions.md makes that target ambiguous, so it never shadow-passes. Each fix must carry non-blank
+  # text: call_json checks a reply's verdict against its lists, not the schema. A fail may carry a fix for the change
+  # itself with every other row pass, and that blocks.
+  shadow=""
+  [ -e "$WORKTREE/decisions.md" ] || [ -n "$(git -C "$WORKTREE" log -1 --format=%h -- decisions.md 2> /dev/null)" ] \
+    || shadow=$(jq -rs --slurpfile s "$RUN/frozen/judge.schema.json" --arg sh "$JUDGE_SHADOW_ROWS" '
     select(length == 1) | .[0] | select(.verdict == "fail" and (.unparseable // false | not) and (.backlog // []) == [])
-    | select((.fixes // []) as $x | ($x | length) > 0 and all($x[]; type == "object" and .target == "decisions.md"))
+    | select((.fixes // []) as $x | ($x | type) == "array" and ($x | length) > 0
+        and all($x[]; type == "object" and .target == "decisions.md" and (.fix | type) == "string" and (.fix | test("\\S"))))
     | (.rows // {}) as $r
     | [([$s[0].properties.rows.required[]?] + ($r | keys)) | unique[] | select($r[.] != "pass")] as $failed
     | select(($failed | length) > 0 and ($failed - ($sh | split(" "))) == []) | $failed | join(" ")' "$f" 2> /dev/null)
