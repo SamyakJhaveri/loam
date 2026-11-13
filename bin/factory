@@ -278,7 +278,8 @@ edit_line_defect() {
   grep -q '^Edit:' <<< "$(header)" || return 0
   bare=$(edit_bare_paths)
   bad=$(edit_words | { grep -vE "$EDIT_PATH_RE" || :; } | paste -sd' ' -)
-  up=$(edit_raw_words | { grep -E '(^|/)\.\.(/|$)' || :; } | paste -sd' ' -)
+  # A sentence mark after a `..` (`src/..;`) is stripped first, so the `.` strip in edit_words cannot hide the segment.
+  up=$(edit_raw_words | sed 's/[;:)]*$//' | { grep -E '(^|/)\.\.+(/|$)' || :; } | paste -sd' ' -)
   if [ -n "$bare" ]; then
     echo "the Edit: line holds $bare outside backticks, where the fence reads no path; backtick every path"
   elif [ -n "$bad" ]; then
@@ -1696,6 +1697,8 @@ freeze_edit_line() {
     own=$(basename -- "$e"); [ "$dir" = . ] || own="$dir/$own"
     list+="$own$slash"$'\n'
     real=$(realpath -m --relative-to="$top" -- "$top/$own") || continue
+    # edit.txt is one path a line, so a link whose target holds a newline would list paths the ticket never named.
+    case $own$real in *$'\n'*) edit_line_unusable "the Edit: line names $e, which resolves through a path holding a newline"; return 0 ;; esac
     [ "$real" = "$own" ] || [ "$real" = . ] || [ "$real" = .. ] || [ "${real#../}" != "$real" ] || list+="$real$slash"$'\n'
   done
   printf '%s' "$list" | sort -u > "$RUN/frozen/edit.txt"
@@ -2688,7 +2691,7 @@ edit_scope_hits() { # -> the changed paths, deleted and renamed ones included, t
   local f allowed
   [ -f "$RUN/frozen/edit.txt" ] || return 0
   allowed=$(cat "$RUN/frozen/edit.txt")
-  git -C "$WORKTREE" diff --no-renames --name-only -z "$(cat "$RUN/base.sha")...HEAD" | while IFS= read -r -d '' f; do
+  git -C "$WORKTREE" diff --no-renames --ignore-submodules=none --name-only -z "$(cat "$RUN/base.sha")...HEAD" | while IFS= read -r -d '' f; do
     under "$f" "$allowed" || printf '%s ' "$f"
   done
   return "${PIPESTATUS[0]}"

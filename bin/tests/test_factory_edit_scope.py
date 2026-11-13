@@ -46,6 +46,7 @@ class EditScopeTests(unittest.TestCase):
         (self.wt / "seed/.claude/skills/y").symlink_to("x")   # a tracked link to a directory, as seed/.claude/skills has
         (self.top / "outside").mkdir()
         (self.wt / "ext").symlink_to(self.top / "outside")   # a link out of the repository
+        (self.wt / "alias").symlink_to("src/a\nREADME.md")   # a target holding a newline
         git("init", "-q", "-b", "factory/7", cwd=self.wt)
         git("add", "-A", cwd=self.wt)
         git("commit", "-q", "-m", "base", cwd=self.wt)
@@ -138,8 +139,9 @@ class EditScopeTests(unittest.TestCase):
 
     def test_a_name_git_would_quote_is_read_as_written(self) -> None:
         # With core.quotePath (git's default) a plain --name-only prints "tests/na\303\257ve.py", quotes included.
-        checks = self.round_checks("Edit: src/a.py, tests/", "echo x > tests/naïve.py && echo x > 'tests/a\"b.py'")
+        checks = self.round_checks("Edit: src/a.py, tests/" + GATE, "echo x > tests/naïve.py && echo x > 'tests/a\"b.py'")
         self.assertEqual(checks, "PASS x\n\nCHECKS-END\n")
+        self.assertFalse((self.run_dir / "round-1.edit-scope").exists())
         git("reset", "-q", "--hard", (self.run_dir / "base.sha").read_text().strip(), cwd=self.wt)
         (self.run_dir / "frozen" / "edit.txt").unlink()
         checks = self.round_checks("", "echo x > tests/naïve.py",
@@ -159,6 +161,9 @@ class EditScopeTests(unittest.TestCase):
                           ("Edit: src/*.py", "the Edit: line holds src/*.py, which is not a path"),
                           ("Edit: src/a.py, ../x.py", "the Edit: line holds ../x.py, whose .. segment climbs a directory"),
                           ("Edit: src/..", "the Edit: line holds src/.., whose .. segment climbs a directory"),
+                          ("Edit: src/..;", "the Edit: line holds src/.., whose .. segment climbs a directory"),
+                          ("Edit: src/a.py, ..;", "the Edit: line holds .., whose .. segment climbs a directory"),
+                          ("Edit: alias", "the Edit: line names alias, which resolves through a path holding a newline"),
                           ("Edit: ext/a.py", "the Edit: line names ext/a.py, which is not a path inside the repository")):
             with self.subTest(line):
                 out = self.round_checks(line + GATE, "echo x >> src/a.py")
@@ -177,6 +182,19 @@ class EditScopeTests(unittest.TestCase):
                 self.assertEqual(checks.splitlines(), [
                     "FAIL edit-scope: the round changed src/b.py but the ticket's Edit: line lists only src/a.py, tests/; "
                     "revert those paths"])
+
+    def test_a_submodule_pointer_off_the_line_fails_under_an_ignore_config(self) -> None:
+        # diff.ignoreSubmodules=all hides a gitlink change from a plain `git diff`; the fence must still see it.
+        head = git("rev-parse", "HEAD", cwd=self.wt)
+        git("update-index", "--add", "--cacheinfo", f"160000,{head},vendor/sub", cwd=self.wt)
+        git("commit", "-q", "-m", "gitlink", cwd=self.wt)
+        (self.run_dir / "base.sha").write_text(git("rev-parse", "HEAD", cwd=self.wt) + "\n")
+        git("config", "diff.ignoreSubmodules", "all", cwd=self.wt)
+        checks = self.round_checks("Edit: src/a.py" + GATE,
+                                   f"echo x >> src/a.py && git update-index --cacheinfo 160000,{'1' * 40},vendor/sub")
+        self.assertEqual(checks.splitlines(), [
+            "FAIL edit-scope: the round changed vendor/sub but the ticket's Edit: line lists only src/a.py; "
+            "revert those paths"])
 
     def test_a_new_top_level_file_on_the_edit_line_counts(self) -> None:
         checks = self.round_checks("Edit: NOTES.md", "echo x > NOTES.md")
