@@ -36,8 +36,10 @@ actors. Three cases, and the setup output says which one you got:
 | Ruleset call failed, or posted but did not read back as active (token scope, plan, or permissions) | None. Add it by hand in repo Settings, Rules. |
 | No GitHub repo, or `gh` missing or unauthenticated | None. The branch is directly pushable. |
 
-There is no `ask` rule on `git push`, on purpose: an unattended run must not stop
-on a prompt.
+Push rule for agents: push feature branches freely; merge to the default branch
+only on the owner's word or under a standing yes the project records, and push
+directly to it only on the owner's word. So there is no `ask` rule on `git push`:
+an unattended run must not stop on a prompt.
 
 ## The hooks
 
