@@ -2384,7 +2384,8 @@ build_worker_prompt() { # round -> prompt path (pending until the call returns a
     # was told to (#523); jq escapes the paths. A jq older than 1.6 has no --args: return 4 rather than hand the lead
     # empty args.
     local -a pl=()
-    mapfile -t pl < <(awk '/these pstack principles/ { on = 1; print; next } on && /^- / { print; next } { on = 0 }' <<<"$common")
+    local pline
+    while IFS= read -r pline; do pl+=("$pline"); done < <(awk '/these pstack principles/ { on = 1; print; next } on && /^- / { print; next } { on = 0 }' <<<"$common")  # bash 3.2 (macOS) has no mapfile
     # supervisorGate: another target's integrator leaves bin/check to the supervisor, as the line above tells the lead.
     local wa sg=true
     target_is_loam && sg=false
