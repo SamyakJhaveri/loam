@@ -285,3 +285,84 @@ def test_a_host_without_pstack_lets_the_change_run_and_says_so(tmp_path, host, g
     r = replay(tmp_path, "w34-r1-router-only", 153)
     assert r.returncode == 0, r.stderr
     assert r.stderr.startswith("pstack-gate: not gating this call") and len(r.stderr.strip().splitlines()) == 1, r.stderr
+
+
+FULL_GATE = "BLOCKED: the supervisor runs bin/check once after the graders pass; prove the change with focused pytest"
+
+
+def bash(command: str, gate_env: str | None, cwd: Path | None = None) -> subprocess.CompletedProcess[str]:
+    """The hook on a Bash call with no transcript, LOAM_WORKER_GATE set to gate_env (unset with None)."""
+    env = {k: v for k, v in os.environ.items() if k != "LOAM_WORKER_GATE"}
+    if gate_env is not None:
+        env["LOAM_WORKER_GATE"] = gate_env
+    body = {"hook_event_name": "PreToolUse", "tool_name": "Bash", "tool_input": {"command": command},
+            **({"cwd": str(cwd)} if cwd else {})}
+    return subprocess.run([sys.executable, str(GATE)], input=json.dumps(body), capture_output=True, text=True,
+                          timeout=60, env=env)
+
+
+@pytest.mark.parametrize("command", [
+    "bin/check",
+    "./bin/check > /tmp/x 2>&1",
+    "timeout 590 bin/check",
+    "cd wt && bin/check",
+    "nohup bin/check &",
+    'bash -lc "bin/check"',
+    'cd /home/samyak/distbench-isc-l01-locks-folder && bin/check > /tmp/l01-dc/check2.log 2>&1; echo "rc=$?"',
+    'out=$(guard bin/check 2>&1); rc=$?',
+    "env DISTBENCH_GATE_CLASS=factory bin/check --parallel",
+    "bash <<'EOS'\nbin/check\nEOS",
+    "bash bin/check --parallel",
+    'echo "rc=$(bin/check > /tmp/c.log 2>&1; echo $?)"',
+])
+def test_full_gate_a_worker_call_that_runs_bin_check_is_blocked(command):
+    """L01 run 2 round 1 lost 73 min to two direct bin/check calls; with LOAM_WORKER_GATE=supervisor (the native
+    worker shell) the hook stops any call that runs it."""
+    r = bash(command, "supervisor")
+    assert r.returncode == 2, r.stderr
+    assert r.stderr.strip() == FULL_GATE
+
+
+def test_full_gate_a_script_file_that_runs_bin_check_is_blocked(tmp_path):
+    """L01 run 2 also lost 36 min polling `nohup bash /tmp/l01-dc/run.sh`, whose done-check ran `guard bin/check`."""
+    (tmp_path / "dc.sh").write_text("guard(){ \"$@\"; }\nout=$(guard bin/check 2>&1); rc=$?\n", encoding="utf-8")
+    (tmp_path / "ok.sh").write_text("python3 -m pytest -q tests/test_gate.py\n", encoding="utf-8")
+    for command in (f"bash {tmp_path}/dc.sh", f"nohup bash {tmp_path}/dc.sh > /tmp/out.txt 2>&1 &", "sh ./dc.sh"):
+        r = bash(command, "supervisor", cwd=tmp_path)
+        assert r.returncode == 2 and r.stderr.strip() == FULL_GATE, (command, r.stderr)
+    r = bash(f"bash {tmp_path}/ok.sh", "supervisor")
+    assert r.returncode == 0 and not r.stderr, r.stderr
+
+
+@pytest.mark.parametrize("command", [
+    "git show HEAD:bin/check",
+    "cat bin/check",
+    "grep -n parallel bin/check",
+    "sed -n 1,30p bin/check; sed -n 125,160p bin/check",
+    "python3 -m pytest -q tests/test_gate.py -k gate_class",
+    "git ls-files bin/check bin/check_rules.py && bin/check_rules.py --help",
+    "cat > /tmp/dc.sh <<'EOS'\nbin/check\nEOS",
+    'git commit -qm "bin/check: run the gate once"',
+    'pgrep -af "pytest|bin/check" | head',
+    "bash -n bin/check && echo syntax ok",
+    "sed 's|^guard bin/check >/dev/null 2>&1|guard bin/check >/tmp/c.log 2>\\&1|' /tmp/done.sh > /tmp/done2.sh",
+    'echo "- Round 2: done-checks 16 PASS (bin/check green)." >> decisions.md',
+])
+def test_full_gate_a_call_that_only_reads_or_names_bin_check_runs(command):
+    """(A commit is a change, so the pstack check behind this one then fails open on the missing transcript.)"""
+    r = bash(command, "supervisor")
+    assert r.returncode == 0 and FULL_GATE not in r.stderr, r.stderr
+
+
+def test_full_gate_bin_check_runs_without_the_variable():
+    """A Loam target's sandboxed worker, and any session outside the factory, has no LOAM_WORKER_GATE."""
+    r = bash("bin/check", None)
+    assert r.returncode == 0 and not r.stderr, r.stderr
+
+
+def test_full_gate_only_the_native_worker_shell_sets_the_variable():
+    settings = ROOT / "bin" / "factory.d"
+    native = json.loads((settings / "worker-settings-native.json").read_text(encoding="utf-8"))
+    loam = json.loads((settings / "worker-settings.json").read_text(encoding="utf-8"))
+    assert native["env"]["LOAM_WORKER_GATE"] == "supervisor"
+    assert "LOAM_WORKER_GATE" not in (loam.get("env") or {})

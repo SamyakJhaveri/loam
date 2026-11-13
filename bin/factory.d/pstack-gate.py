@@ -17,6 +17,21 @@ more than its highest finished round-N.jsonl. Elsewhere there is no run and no d
 Fails open: when the transcript or parity cannot be read, or this host has no pstack method file or no router (no
 change could ever pass), one stderr line says so and the call goes ahead (exit 0), so a hook bug or a host without
 pstack never wedges a run; parity grades the round afterwards either way.
+
+First, and before any of that: with LOAM_WORKER_GATE=supervisor (worker-settings-native.json sets it, so only a
+non-Loam target's native worker has it) a Bash call that runs bin/check is blocked (exit 2, one stderr line): the
+supervisor runs the full gate once after the graders pass, and a worker that runs it itself loses its 36 minutes and a
+gate slot (L01 run 2 round 1, 13 Nov: 73 min in two direct calls and 36 more polling a done-check script that ran it).
+A call runs bin/check when bin/check (any path ending in it) is a command word: at the start of a line, after `;` `&`
+`|` `(` `$(` or a backtick, after `timeout N`, `nohup`, `env X=Y`, `X=Y`, `guard` (a done-check's wrapper), `time`,
+`exec`, `command`, `nice`, `then`, `do`, `else`, `if`, `!` or `{`, outside quotes (a double-quoted `$( )` or backtick
+part counts); or inside `bash -c`/`sh -c` text; or in a heredoc fed to a shell; or in a shell script file the call
+runs (`bash f` but not `bash -n f`, `sh f`, `source f`, `. f`, `./f.sh`), read relative to the payload's cwd, three
+files deep. A heredoc fed to anything else is a file's text, not commands, so
+writing such a script runs; running it is blocked. Reading bin/check (cat, sed, grep, git show) runs, as does every
+call when the variable is unset (a Loam target's worker, any session outside the factory), and so does a quoted
+mention (`pgrep -af "pytest|bin/check"`, a commit message). It is a pattern check on the command text, not a shell
+parser.
 """
 from __future__ import annotations
 
@@ -34,6 +49,85 @@ BLOCKED = "pstack-gate: blocked"
 FIX = ("call the sam-cc-setup:pstack router and read the chosen SKILL.md in full before your first change; "
        "log it as `pstack: ...` in decisions.md (a read counts when it is the Read tool, or a Bash call that is only "
        "`cat <file>`, and its result shows the file)")
+
+
+FULL_GATE = "BLOCKED: the supervisor runs bin/check once after the graders pass; prove the change with focused pytest"
+_WRAP = (r"(?:(?:timeout|nohup|guard|time|exec|command|nice|env|then|do|else|if|!|\{)(?:\s+(?:-\S+|\d[\d.]*[smhd]?))*"
+         r"|[A-Za-z_]\w*=[^\s()`;&|]*)\s+")
+_START = r"(?:^|[;&|(`])[ \t]*(?:" + _WRAP + r")*"
+RUNS_GATE = re.compile(_START + r"(?:[\w.~${}/-]*/)?bin/check(?![\w.-])", re.M)
+SHELL = r"(?:[\w./-]*/)?(?:ba|da|k|z)?sh"
+SHELL_C = re.compile(r"(?<![\w.-])" + SHELL + r"(?:\s+-\w+)*\s+-\w*c\w*\s+"
+                     r"(?:'([^']*)'|\"((?:[^\"\\]|\\.)*)\"|([^\s;&|]+))")
+SCRIPT = re.compile(_START + r"(?:(?:" + SHELL + r"((?:\s+-[\w-]+)*)|source|\.)\s+([^\s;&|<>()`]+)"
+                    r"|((?:[\w.~/-]*/)?[\w.-]+\.sh)(?![\w.-]))", re.M)
+HEREDOC_OPEN = re.compile(r"(?<!<)<<(?!<)-?\s*(['\"]?)([A-Za-z_]\w*)\1")
+FED_TO_SHELL = re.compile(r"(?<![\w.-])" + SHELL + r"(?:\s+-[\w-]+)*\s*$")
+QUOTED = re.compile(r"'[^']*'|\"(?:[^\"\\]|\\.)*\"")
+
+
+def unquoted(text: str) -> str:
+    """text with quoted strings blanked to x's, keeping a double-quoted one's $( ) and backtick parts, which run."""
+    def blank(q: re.Match[str]) -> str:
+        s = q.group(0)
+        if s[0] == "'":
+            return "'" + "x" * (len(s) - 2) + "'"
+        keep = [m.span() for m in re.finditer(r"\$\([^()]*\)|`[^`]*`", s)]
+        return "".join(c if any(a <= i < b for a, b in keep) or i in (0, len(s) - 1) else "x" for i, c in enumerate(s))
+    return QUOTED.sub(blank, text)
+
+
+def commands(text: str) -> str:
+    """text without the bodies of heredocs fed to anything but a shell: those are a file's text, not commands."""
+    lines, out, i = text.split("\n"), [], 0
+    while i < len(lines):
+        line = lines[i]
+        out.append(line)
+        i += 1
+        for m in HEREDOC_OPEN.finditer(line):
+            body = []
+            while i < len(lines) and lines[i].strip() != m.group(2):
+                body.append(lines[i])
+                i += 1
+            i += 1
+            if FED_TO_SHELL.search(line[:m.start()]):
+                out.extend(body)
+    return "\n".join(out)
+
+
+def runs_full_gate(command: str, cwd: Path, depth: int = 0) -> bool:
+    """True when command (Bash text, or a script file's text) runs bin/check; see the module docstring."""
+    if depth > 3:
+        return False
+    text = commands(command)
+    if RUNS_GATE.search(unquoted(text)):
+        return True
+    for m in SHELL_C.finditer(text):
+        body = m.group(1) if m.group(1) is not None else m.group(2) if m.group(2) is not None else m.group(3)
+        if runs_full_gate(re.sub(r"\\(.)", r"\1", body) if m.group(2) is not None else body, cwd, depth + 1):
+            return True
+    for m in SCRIPT.finditer(text):
+        if re.search(r"(?<![\w-])-[a-mo-z]*n", m.group(1) or ""):
+            continue  # `bash -n f` only parses f
+        path = Path(os.path.expanduser(m.group(2) or m.group(3)))
+        path = path if path.is_absolute() else cwd / path
+        if re.search(r"(?:^|/)bin/check$", path.as_posix()):
+            return True
+        try:
+            if path.is_file() and path.stat().st_size < 1 << 20 and runs_full_gate(
+                    path.read_text(encoding="utf-8", errors="replace"), path.parent, depth + 1):
+                return True
+        except OSError:
+            continue
+    return False
+
+
+def full_gate(payload: dict) -> str | None:
+    """The block message when this worker may not run bin/check and the call runs it, else None."""
+    if os.environ.get("LOAM_WORKER_GATE") != "supervisor" or payload.get("tool_name") != "Bash":
+        return None
+    command = str((payload.get("tool_input") or {}).get("command", ""))
+    return FULL_GATE if runs_full_gate(command, Path(payload.get("cwd") or os.getcwd())) else None
 
 
 def load_parity():
@@ -131,8 +225,7 @@ def verdict(payload: dict, fp, run: Path | None) -> str | None:
 def main() -> int:
     try:
         payload = json.loads(sys.stdin.read())
-        fp = load_parity()
-        message = verdict(payload, fp, HERE.parent if HERE.name == "frozen" else None)
+        message = full_gate(payload) or verdict(payload, load_parity(), HERE.parent if HERE.name == "frozen" else None)
     except Exception as e:  # fail open: a hook bug or an unreadable transcript never stops the call
         print(f"pstack-gate: not gating this call, could not read the transcript or parity ({type(e).__name__}: {e})",
               file=sys.stderr)
