@@ -471,7 +471,9 @@ class CappedReviewTests(unittest.TestCase):
         env = {"FACTORY_RESULTS_RE": DISTBENCH_RESULTS_RE, "FACTORY_RESULTS_PATHS": "src/distbench tasks"}
         for path, want in (("tests/x.py", "results"), ("bin/check", "results"), ("docs/tickets/checks/f.md", "results"),
                            ("agent/a.py", "results"), ("bin/grade-session", "results"), ("bin/calibrate", "results"),
-                           ("conftest.py", "results"), ("src/distbench/x.py", "results"), ("bin/README.md", "harness")):
+                           ("conftest.py", "results"), ("src/distbench/x.py", "results"), ("bin/README.md", "harness"),
+                           # names git quotes in its plain output (PR 730 Codex High)
+                           ("tests/test_caf\u00e9.py", "results"), ('tests/a"b.py', "results")):
             with self.subTest(path):
                 self.new_run()
                 (self.wt / path).parent.mkdir(parents=True, exist_ok=True)

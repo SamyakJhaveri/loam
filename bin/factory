@@ -2981,19 +2981,17 @@ run_mutation_sweep() { # round -> 0 unless a survivor blocks
 
 # A harness ticket changes no path matching FACTORY_RESULTS_RE, an ERE for the target's results code and gate inputs
 # (for distbench, the launcher's RESULTS_RE); with it unset, every ticket counts as results code. Renames count both
-# paths. A regex bash cannot compile counts as a match, and the loop has no pipe or here-string, so neither fails open.
+# paths, read NUL-separated so git quotes no name. A regex bash cannot compile, an unreadable base or a failed diff
+# counts as results.
 REVIEWER_SKIPPED="not run: a harness ticket, the Codex review has no critical or high finding, and the last graded round left no reviewer finding open"
 harness_ticket() {
-  local files f rc IFS=$'\n'
+  local base hit
   [ -n "${FACTORY_RESULTS_RE:-}" ] || return 1
-  files=$(git -C "$WORKTREE" diff --no-renames --name-only "$(cat "$RUN/base.sha")...HEAD") || return 1
-  set -f
-  for f in $files; do
-    rc=0; [[ $f =~ $FACTORY_RESULTS_RE ]] || rc=$?
-    [ "$rc" = 1 ] || { set +f; return 1; }
-  done
-  set +f
-  return 0
+  base=$(cat "$RUN/base.sha") && [ -n "$base" ] || return 1
+  hit=$(git -C "$WORKTREE" diff --no-renames --name-only -z "$base...HEAD" | while IFS= read -r -d '' f; do
+    [[ $f =~ $FACTORY_RESULTS_RE ]]; [ $? = 1 ] || { echo results; break; }
+  done; exit "${PIPESTATUS[0]}") || return 1
+  [ -z "$hit" ]
 }
 
 # 0 when the last earlier graded round's reviewer left a high or medium finding its verifier did not reject: only the

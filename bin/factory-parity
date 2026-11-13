@@ -1010,6 +1010,30 @@ def p7(run: Run) -> tuple[str, str]:
                                else "; no classifier permission_denied event")
 
 
+def blocking_ids(kind: str, data: dict) -> set[str]:
+    findings = data.get("findings") if isinstance(data.get("findings"), list) else []
+    return {f"{kind}-{i}" for i, f in enumerate(findings)
+            if isinstance(f, dict) and str(f.get("severity", "")).lower() in BLOCKING[kind]}
+
+
+def skip_refused(run: Run, n: int, earlier: list[int]) -> str:
+    """Why bin/factory's graders could not have skipped round n's reviewer, or "": the Codex review parsed with no
+    critical or high finding, and the last earlier graded round's reviewer left no finding its verifier did not reject."""
+    codex = read_json(run.path / f"round-{n}.codex-review.json")
+    if not isinstance(codex, dict) or codex.get("unparseable") is True:
+        return f"round-{n}.codex-review.json is no parsed Codex review"
+    if blocking_ids("codex", codex):
+        return f"round-{n}.codex-review.json has a critical or high finding"
+    if earlier:
+        k = earlier[-1]
+        review, verify = read_json(run.path / f"round-{k}.review.json"), read_json(run.path / f"round-{k}.verify.json")
+        found = verify.get("findings") if isinstance(verify, dict) and isinstance(verify.get("findings"), list) else []
+        rejected = {f.get("id") for f in found if isinstance(f, dict) and f.get("verdict") == "REJECTED"}
+        if isinstance(review, dict) and review.get("unparseable") is not True and blocking_ids("reviewer", review) - rejected:
+            return f"round-{k}'s reviewer left a finding open, which only the reviewer rechecks"
+    return ""
+
+
 def p8(run: Run) -> tuple[str, str]:
     graded = [r.n for r in run.rounds if (run.path / f"round-{r.n}.graded.sha").is_file()]
     if not graded:
@@ -1032,7 +1056,10 @@ def p8(run: Run) -> tuple[str, str]:
         off = [f"ledger.jsonl:{k} reviewer served_models {json.dumps(e.get('served_models'))}"
                for k, e in reviewers if e.get("served_models") != [FABLE]]
         skipped = run.path / f"round-{n}.review.skipped"
-        if skipped.is_file():  # a harness round whose Codex review cleared it (bin/factory, graders)
+        refused = skip_refused(run, n, [k for k in graded if k < n]) if skipped.is_file() else ""
+        if refused:
+            bad.append(f"{skipped.name}, but {refused}")
+        elif skipped.is_file():  # a harness round whose Codex review cleared it (bin/factory, graders)
             good.append(f"{skipped.name}: {skipped.read_text(encoding='utf-8', errors='replace').strip()}")
         elif not reviewers:
             bad.append(f"ledger.jsonl has no reviewer row for round {n}")
@@ -1051,9 +1078,7 @@ def p8(run: Run) -> tuple[str, str]:
             if data.get("unparseable") is True:  # its fallback finding is no defect, and verify_round drops it
                 bad.append(f"{name} is the supervisor's unparseable fallback: no review")
                 continue
-            findings = data.get("findings") if isinstance(data.get("findings"), list) else []
-            blocking |= {f"{kind}-{i}" for i, f in enumerate(findings)
-                         if isinstance(f, dict) and str(f.get("severity", "")).lower() in BLOCKING[kind]}
+            blocking |= blocking_ids(kind, data)
         vpath = run.path / f"round-{n}.verify.json"
         verify = read_json(vpath)
         found = verify.get("findings") if isinstance(verify, dict) else None
