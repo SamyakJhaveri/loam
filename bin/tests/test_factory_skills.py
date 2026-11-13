@@ -157,10 +157,10 @@ class FactorySkillsTests(unittest.TestCase):
         if not f.exists():
             f.write_text((self.home / ".claude/settings.json").read_text())
 
-    def prompt(self, skill: str = "pstack:tdd", size: str = "small") -> str:
+    def prompt(self, skill: str = "pstack:tdd", size: str = "small", common: str = "") -> str:
         run = self.tmp / "run"
         (run / "frozen").mkdir(parents=True, exist_ok=True)
-        (run / "frozen/_common.md").write_text("")
+        (run / "frozen/_common.md").write_text(common)
         self.freeze_settings(run)
         script = ('. bin/factory; RUN=$1; WORKER_KIND=claude; DECISIONS=$1/worker/decisions.md; BODY=$(cat "$2"); '
                   'round=1; build_worker_prompt 1')
@@ -253,6 +253,22 @@ console.log(JSON.stringify(seen));"""
         for p in builders:
             self.assertEqual(p.count(str(router)), 1, p)
             self.assertIn(f"read the pstack router at {router} and follow the method it picks", p)
+
+    def test_worker_and_each_builder_get_the_principle_paths_in_the_installed_pstack(self) -> None:
+        # _common.md's <pstack> resolves by skill_file's rule to the installed pstack's skills/ folder, in the worker
+        # prompt and in every fan-out builder's; with no principle installed it reads "missing".
+        common = (ROOT / "bin/factory.d/_common.md").read_text()
+        names = re.findall(r"<pstack>/([a-z-]+)/SKILL\.md", common)
+        self.assertEqual(len(names), 3, common)
+        self.assertIn("missing/principle-minimize-reader-load/SKILL.md", self.prompt(common=common))
+        for name in names:
+            self.skill(self.pstack, name)
+        text = self.prompt(size="large", common=common)
+        self.assertNotIn("<pstack>", text)
+        (args,) = re.findall(r"and args `(\{.*\})`\.", text)
+        for p in [text, *self.builder_prompts(args)]:
+            for name in names:
+                self.assertIn(f"\n- {self.pstack}/skills/{name}/SKILL.md: ", p)
 
     def test_fan_out_args_jq_cannot_build_stops_the_prompt(self) -> None:
         # A jq older than 1.6 rejects --args; the lead must not get an empty args sentence.

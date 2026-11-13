@@ -173,6 +173,14 @@ class FactoryAlertTests(unittest.TestCase):
         self.assertEqual(calls[-1][-1], "issue 7 (Widget works) opened a pull request; it waits for your review "
                                         "and merge. https://github.com/acme/widget/pull/9")
 
+    def test_a_file_ticket_pr_opened_alert_is_left_to_a_launcher_that_asks_for_it(self) -> None:
+        # distbench's factory-isc may land the branch itself, so it, not bin/factory, names the next step.
+        script = "TARGET_IS_LOAM=0; IS_FILE=1; KEY=W1-x; finish pr-opened 'pr-body.md'"
+        self.assertEqual([c[:2] for c in self.factory(script)], [["--level", "needs-you"]])
+        self.alert_log.unlink()
+        self.assertEqual(self.factory(script, FACTORY_PR_ALERT="launcher"), [])
+        self.assertIn("its launcher alerts the next step", (self.run_dir / "factory.log").read_text())
+
     def test_an_issue_is_named_by_its_frozen_github_title(self) -> None:
         # An issue's frozen body has no '# ' line; freeze writes frozen/title from GitHub.
         (self.run_dir / "frozen" / "issue.md").write_text("Brief:\nbody\n")
