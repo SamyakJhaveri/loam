@@ -47,6 +47,7 @@ import importlib.util
 import json
 import os
 import re
+import shlex
 import sys
 from pathlib import Path
 from types import SimpleNamespace
@@ -64,6 +65,13 @@ _WRAP = (r"(?:(?:timeout|nohup|guard|time|exec|command|nice|env|then|do|else|if|
 _START = r"(?:^|[;&|(`])[ \t]*(?:" + _WRAP + r")*"
 RUNS_GATE = re.compile(_START + r"(?:[\w.~${}/-]*/)?bin/check(?![\w.-])", re.M)
 PYTEST = re.compile(_START + r"(?:[\w.~/-]*/)?(?:python[\d.]*\s+(?:-\w+\s+)*-m\s+)?pytest(?![\w.-])([^;&|)\n]*)", re.M)
+# pytest options whose next word is their value, never a test target (from `pytest --help` with xdist), and the
+# selections that make a run focused whatever its targets
+PYTEST_VALUE = {"-k", "-m", "-r", "-W", "-c", "-p", "-o", "-n", "--maxfail", "--durations", "--tb", "--capture",
+                "--junitxml", "--junit-xml", "--junit-prefix", "--pythonwarnings", "--ignore", "--ignore-glob",
+                "--deselect", "--confcutdir", "--config-file", "--rootdir", "--basetemp", "--override-ini",
+                "--log-level", "--log-file", "--log-cli-level", "--maxprocesses", "--dist", "--import-mode"}
+PYTEST_FOCUS = {"-k", "-m", "--lf", "--last-failed", "--deselect"}
 SHELL = r"(?:[\w./-]*/)?(?:ba|da|k|z)?sh"
 OPTS = r"((?:\s+(?:[-+]\w*[oO]\s+\w+|-[\w-]+))*)"  # shell options, `-o pipefail` with its argument
 SHELL_C = re.compile(r"(?<![\w.-])" + SHELL + r"(?:\s+(?:[-+]\w*[oO]\s+\w+|-\w+))*?\s+-\w*c\w*\s+"
@@ -128,6 +136,13 @@ def expand(word: str, before: str) -> str:
     return re.sub(r"\$(?:\{(\w+)\}|(\w+))", lambda v: env.get(v[1] or v[2], v[0]), word)
 
 
+def hooked(before: str, hook: bool) -> bool:
+    """True when the command that starts at the end of before runs with a non-empty LOAM_HOOK: inherited (hook), set
+    on that command (`LOAM_HOOK=1 bash ..`), or exported earlier."""
+    return hook or bool(re.search(r"(?<![\w-])" + HOOK_ON + r"[^;&|\n]*$", before)
+                        or re.search(r"(?<![\w-])export\s+" + HOOK_ON, before))
+
+
 def runs_full_gate(command: str, dirs: tuple[Path, ...], depth: int = 0, hook: bool = False) -> bool:
     """True when command (Bash text, or a script file's text, run with LOAM_HOOK set when hook) runs bin/check or
     the full suite; a
@@ -142,24 +157,31 @@ def runs_full_gate(command: str, dirs: tuple[Path, ...], depth: int = 0, hook: b
     for m in PYTEST.finditer(scan):  # naming no test path but tests/, pytest runs the full suite, as long as the gate
         if re.search(r"\bcommand\s+-[vV]\b|\s--co(?:llect-only)?(?!\S)", m.group(0)):
             continue  # `command -v pytest` only looks it up; --co only lists the tests
-        words = [w.strip("'\"") for w in re.sub(r"\d*[<>]+&?\s*\S*", " ", text[m.start(1):m.end(1)]).split()]
-        targets = [re.sub(r"^(?:\./)+|^/.*/(?=tests/*$)|/+$", "", w) for w in words if not w.startswith("-") and (
-            re.search(r"\.py|::|\$|(?:^|/)tests(?:/|$)", w) or "/" in w and not w.startswith("/") and "=" not in w)]
-        # a test file, node or folder; not an option's value such as /tmp/r.xml or cache_dir=/tmp/c
-        if all(t == "tests" for t in targets):
+        args = re.sub(r"\d*[<>]+&?\s*\S*", " ", text[m.start(1):m.end(1)])  # scan ends the call; text spells it
+        try:
+            words = shlex.split(args)
+        except ValueError:
+            words = args.split()
+        targets, focused = [], False
+        for prev, w in zip([""] + words, words):
+            if w.startswith("-") or prev in PYTEST_VALUE:
+                focused |= w.split("=")[0] in PYTEST_FOCUS
+            else:
+                focused |= "::" in w
+                targets.append(re.sub(r"^(?:\./)+|^/.*/(?=tests/*$)|/+$", "", w))
+        if not focused and all(t == "tests" for t in targets):
             return True
     for m in SHELL_C.finditer(text):
         body = m.group(1) if m.group(1) is not None else m.group(2) if m.group(2) is not None else m.group(3)
         if m.group(2) is not None:  # the calling shell fills in a double-quoted body's variables
             body = expand(re.sub(r"\\(.)", r"\1", body), text[:m.start()])
-        if runs_full_gate(body, dirs, depth + 1, hook):
+        if runs_full_gate(body, dirs, depth + 1, hooked(text[:m.start()], hook)):
             return True
     for m in SCRIPT.finditer(text):
         if re.search(r"(?<![\w-])-[a-z]*[cn]", m.group(1) or ""):
             continue  # `bash -n f` only parses f; `bash -c` runs text, read above
-        hooked = hook or bool(re.search(r"(?<![\w-])" + HOOK_ON, m.group(0))
-                              or re.search(r"(?<![\w-])export\s+" + HOOK_ON, text[:m.start()]))
-        before = text[:m.start()]
+        before = text[:m.start(2) if m.group(2) else m.start(3)]
+        on = hooked(before, hook)
         name = expand(m.group(2) or m.group(3), before)
         if "$" in name:
             return True  # a script path the hook cannot resolve: fail closed
@@ -167,11 +189,11 @@ def runs_full_gate(command: str, dirs: tuple[Path, ...], depth: int = 0, hook: b
         for cd in (expand(cd, before) for cd in CD.findall(before)):
             here += tuple(d / cd for d in here) if "$" not in cd else ()  # each cd from every folder reached so far
         for path in [Path(name)] if name.startswith("/") else [d / name for d in here]:
-            if re.search(r"(?:^|/)bin/check$", path.as_posix()) or not hooked and name.endswith("/frozen/checks.sh"):
+            if re.search(r"(?:^|/)bin/check$", path.as_posix()) or not on and name.endswith("/frozen/checks.sh"):
                 return True
             try:
                 if path.is_file() and path.stat().st_size < 1 << 20 and runs_full_gate(
-                        path.read_text(encoding="utf-8", errors="replace"), (*dirs, path.parent), depth + 1, hooked):
+                        path.read_text(encoding="utf-8", errors="replace"), (*dirs, path.parent), depth + 1, on):
                     return True
             except OSError:
                 continue

@@ -319,6 +319,7 @@ def bash(command: str, gate_env: str | None, cwd: Path | None = None) -> subproc
     "pytest tests/ -q 2>&1 | tail -5",
     "python3 -m pytest tests --junitxml /tmp/results.xml -o cache_dir=/tmp/pc",
     "python3 -m pytest ./tests -q",
+    "python3 -m pytest tests --junitxml worker/results.xml -p no:cacheprovider",
     "bash -euo pipefail -c 'echo start; bin/check'",
     "echo start # don't run this twice\nbin/check\necho 'done'",
     "cat <<EOF\n$(bin/check)\nEOF",
@@ -372,6 +373,7 @@ def test_full_gate_a_script_file_that_runs_bin_check_is_blocked(tmp_path):
     "command -v pytest",
     "python3 -m pytest \\\n  -q tests/test_overlap.py",
     "python3 -m pytest /worktree/tests/unit -q",
+    "python3 -m pytest -q -k test_host_locks_live_in_the_locks_folder_and_none_beside_it",
     "git ls-files bin/check bin/check_rules.py && bin/check_rules.py --help",
     "cat > /tmp/dc.sh <<'EOS'\nbin/check\nEOS",
     "cat > /tmp/dc.sh <<EOS\nbin/check > /tmp/c-$(date +%s).log\nEOS",
@@ -415,7 +417,8 @@ def test_full_gate_the_done_checks_block_runs_under_loam_hook(tmp_path, monkeypa
     lib = (ROOT / "bin" / "factory.d" / "lib.sh").read_text(encoding="utf-8")
     checks.write_text(lib + "\n" + block + "printf '\\nCHECKS-END\\n'\nexit $((n_fail > 0))\n", encoding="utf-8")
     for command in (f"LOAM_HOOK=1 bash {checks}", f"cd {tmp_path} && LOAM_HOOK=1 bash {checks} 2>&1 | tail -n 20",
-                    f"export LOAM_HOOK=1; bash {checks}", 'LOAM_HOOK=1 bash "$LOAM_CHECKS"'):
+                    f"export LOAM_HOOK=1; bash {checks}", 'LOAM_HOOK=1 bash "$LOAM_CHECKS"',
+                    "LOAM_HOOK=1 bash -c 'bash \"$LOAM_CHECKS\"'"):
         monkeypatch.setenv("LOAM_CHECKS", str(checks))  # the worker's env names the run's checks.sh
         r = bash(command, "supervisor", cwd=tmp_path)
         assert r.returncode == 0 and FULL_GATE not in r.stderr, (command, r.stderr)
