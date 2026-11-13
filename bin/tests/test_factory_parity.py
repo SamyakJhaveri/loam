@@ -302,6 +302,12 @@ HIDDEN_WRITES = [
     ("cd-back", "cd /tmp/; cd -; sed -i 's/a/b/' src/distbench/grader.py"),
     ("cd-up", "cd /tmp/x; cd ../..; sed -i 's/a/b/' work/db/src/distbench/grader.py"),
     ("cd-in-substitution", "x=$(cd /tmp/ && pwd); sed -i 's/a/b/' src/distbench/grader.py"),
+    # PR 713 Codex delta D1: a $TMPDIR set in the call that parity cannot place is no scratch path
+    ("tmpdir-reassigned", "TMPDIR=/tmp/s; TMPDIR=/work/db; sed -i 's/a/b/' \"$TMPDIR/src/distbench/grader.py\""),
+    ("tmpdir-conditional", "if true; then TMPDIR=/work/db; fi; sed -i 's/a/b/' \"$TMPDIR/src/distbench/grader.py\""),
+    # D2: eval, source or . can run a cd parity cannot see, so it ends the scratch exemption
+    ("cd-in-eval", "cd /tmp/; eval 'cd /work/db'; sed -i 's/a/b/' src/distbench/grader.py"),
+    ("cd-in-source", "cd /tmp/; . ./back.sh; sed -i 's/a/b/' src/distbench/grader.py"),
 ]
 
 

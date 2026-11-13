@@ -133,6 +133,10 @@ HIDDEN = {"type": "tool_use", "id": "toolu_hidden", "name": "Bash"}
     "cd /tmp/; cd -; sed -i 's/a/b/' src/distbench/grader.py",  # PR 713 Codex 4: back from scratch
     "cd /tmp/x; cd ../..; sed -i 's/a/b/' work/src/distbench/grader.py",
     "x=$(cd /tmp/ && pwd); sed -i 's/a/b/' src/distbench/grader.py",  # a cd in a substitution moves nothing
+    "TMPDIR=/tmp/s; TMPDIR=/work/db; sed -i 's/a/b/' \"$TMPDIR/src/distbench/grader.py\"",  # Codex delta D1
+    "if true; then TMPDIR=/work/db; fi; sed -i 's/a/b/' \"$TMPDIR/src/distbench/grader.py\"",
+    "cd /tmp/; eval 'cd /work/db'; sed -i 's/a/b/' src/distbench/grader.py",  # D2: a cd parity cannot see
+    "cd /tmp/; source ./back.sh; sed -i 's/a/b/' src/distbench/grader.py",
 ])
 def test_a_source_write_behind_a_scratch_path_or_dir_is_blocked(tmp_path, command):
     assert_blocked(hook(payload(session(tmp_path, "w34-r1", calls("w34-r1")[0][0]), {**HIDDEN, "input": {"command": command}})))
