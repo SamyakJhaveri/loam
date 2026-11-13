@@ -178,14 +178,14 @@ def build(runs: Path, projects: Path, distbench: Path, exp: Path, pstack: Path) 
     out["p1-view"] = {**out["p1-pass"], "run/round-1.prompt.md": "\n".join(
         (runs / W35 / "round-1.prompt.md").read_text().splitlines()[:3]) + "\n"}
     # P2: W35 round-1.jsonl:3,34,35, a python open(..., "w") edit with no router read (fail); W34 round-1.jsonl:3,45,46,
-    # 77,78, the router read only as `sed -n 1,60p` before the first Write (partial: fail); pass EDITs that read to `cat`.
+    # 77,78, the router read as `sed -n 1,60p` before the first Write (its 57 lines: a full read); pass EDITs it to `cat`.
     w35_1 = runs / W35 / "round-1.jsonl"
     out["p2-fail"] = {"run/round-1.jsonl": dump([w35_init, use(event(w35_1, 34)), res(event(w35_1, 35))])}
-    w34_head = [init(event(w34, 3)), use(event(w34, 45)), res(event(w34, 46), keep=r"^name: ")]
+    w34_head = [init(event(w34, 3)), use(event(w34, 45)), res(event(w34, 46), keep=r"^")]  # all 60 lines: a cap cut
     w34_write = [use(event(w34, 77)), res(event(w34, 78))]
     out["p2-partial"] = {"run/round-1.jsonl": dump(w34_head + w34_write)}
     router = use(event(w34, 45), command=event(w34, 45)["message"]["content"][-1]["input"]["command"].replace("sed -n 1,60p", "cat"))
-    w34_full = [init(event(w34, 3)), router, res(event(w34, 46), keep=r"^name: ")]
+    w34_full = [init(event(w34, 3)), router, res(event(w34, 46), keep=r"^")]
     out["p2-pass"] = {"run/round-1.jsonl": dump(w34_full + w34_write)}
     # Notes: W35 round-1.jsonl:31,32 appends to the run's worker/decisions.md, which is no change (N/A); EDIT the same
     # append into the worktree and it is a change with no router read (fail).
@@ -230,19 +230,27 @@ def build(runs: Path, projects: Path, distbench: Path, exp: Path, pstack: Path) 
                "principle-prove-it-works")
     logged = decisions + "".join(pstack_line(m, "orders the work and its tests", pstack) for m in methods)
     real_loop = event(w34, 51)
-    cmd = real_loop["message"]["content"][-1]["input"]["command"]
-    full_cmd = cmd.replace("sed -n '1,40p' $P/skills/$s/SKILL.md | head -30", "cat $P/skills/$s/SKILL.md")
-    assert full_cmd != cmd
-    loop = [use(real_loop, command=full_cmd), res(event(w34, 52), keep=r"^name: ")]
+    assert "sed -n '1,40p' $P/skills/$s/SKILL.md | head -30" in real_loop["message"]["content"][-1]["input"]["command"]
+
+    def reads(names: tuple[str, ...], form: str = "cat {f}", lines: int | None = None) -> list[dict]:
+        """EDIT: the loop as one simple read per method (only a call that is one simple read counts), each result the
+        real file's lines up to its name: line, or its first `lines` lines."""
+        out_calls = []
+        for k, m in enumerate(names):
+            f = pstack / "skills" / m / "SKILL.md"
+            text = f.read_text(encoding="utf-8").splitlines()
+            shown = text[:lines] if lines else text[:next(i for i, x in enumerate(text) if x.startswith("name:")) + 1]
+            out_calls += call(f"toolu_m{k}", "Bash", {"command": form.format(f=f)}, "\n".join(shown))
+        return out_calls
+    loop = reads(methods)
     out["p3-pass"] = {"run/round-1.jsonl": dump(w34_full + loop + w34_write), "run/worker/decisions.md": logged}
-    # Partial: the real loop (`sed -n | head`), so no method is read in full.
-    out["p3-partial"] = {"run/round-1.jsonl": dump(w34_full + [use(real_loop), loop[1]] + w34_write),
+    # Partial: each method by `sed -n 1,3p` (as W34 read them, by sed -n), whose 3-line results are cut.
+    out["p3-partial"] = {"run/round-1.jsonl": dump(w34_full + reads(methods, "sed -n 1,3p {f}", 3) + w34_write),
                          "run/worker/decisions.md": logged}
     out["p3-fail"] = {"run/round-1.jsonl": dump(w34_full + w34_write), "run/worker/decisions.md": logged}
     # Claim: EDIT the loop to read two of the three, so one `pstack:` line names a method nobody read (only the
     # `pstack:` lines kept, so that line alone fails the round).
-    two = use(real_loop, command=full_cmd.replace(" principle-prove-it-works", ""))
-    out["p3-claim"] = {"run/round-1.jsonl": dump(w34_full + [two, loop[1]] + w34_write),
+    out["p3-claim"] = {"run/round-1.jsonl": dump(w34_full + reads(methods[:2]) + w34_write),
                        "run/worker/decisions.md": logged[len(decisions):]}
     # No line: the real decisions.md line alone, no `pstack:` line (audit finding F3).
     out["p3-no-line"] = {"run/round-1.jsonl": dump(w34_full + loop + w34_write), "run/worker/decisions.md": decisions}
@@ -251,26 +259,20 @@ def build(runs: Path, projects: Path, distbench: Path, exp: Path, pstack: Path) 
                        "run/worker/decisions.md": logged}
     out["p3-order"] = {"run/round-1.jsonl": dump([w34_full[0], *loop, *w34_full[1:], *w34_write]),
                        "run/worker/decisions.md": logged}
-    # P4: W34 round-1.jsonl:3,130,150, `timeout 580 bin/check` that timed out (rc=124, no check: line).
-    gate = use(event(w34, 130))
-    out["p4-fail"] = {"run/round-1.jsonl": dump([init(event(w34, 3)), gate, res(event(w34, 150), keep=r"^rc=")])}
-    # Pass: EDIT the result to bin/check's own last lines (distbench bin/check:162-166).
-    passed = res(event(w34, 150), text="rc=0\nSKIPPED: none\ncheck: PASSED")
-    out["p4-pass"] = {"run/round-1.jsonl": dump([init(event(w34, 3)), gate, passed])}
-    # Refusal: the passing gate plus W34 round-1.jsonl:192,193, a test log quoting the sandbox refusal.
+    # P4: the supervisor's record, W34 round-1.checks: its PASS/FAIL lines (the check-green line among them), with
+    # W34 round-1.jsonl:3,130,150 (`timeout 580 bin/check` that timed out in-round; parity reads no gate from it).
+    gate = [init(event(w34, 3)), use(event(w34, 130)), res(event(w34, 150), keep=r"^rc=")]
+    checks = [x for x in (runs / W34 / "round-1.checks").read_text().splitlines() if re.match(r"(?:PASS|FAIL) ", x)]
+    assert any(x.startswith("PASS check-green") for x in checks)
+    out["p4-pass"] = {"run/round-1.jsonl": dump(gate), "run/round-1.checks": "\n".join(checks) + "\n"}
+    # Fail: EDIT that record without its check-green line (the supervisor's checks ran no gate).
+    out["p4-fail"] = {"run/round-1.jsonl": dump(gate), "run/round-1.checks": "\n".join(
+        x for x in checks if "check-green" not in x) + "\n"}
+    # Unsure: no record, though the transcript prints check: PASSED (EDIT), which parity does not take.
+    out["p4-unsure"] = {"run/round-1.jsonl": dump(gate[:2] + [res(event(w34, 150), text="check: PASSED")])}
+    # Refusal: the record plus W34 round-1.jsonl:192,193, a test log quoting the sandbox refusal.
     refusal = [use(event(w34, 192)), res(event(w34, 193), keep=r"AF_UNIX")]
-    out["p4-refusal"] = {"run/round-1.jsonl": dump([init(event(w34, 3)), gate, passed, *refusal])}
-    # Background: EDIT the W34 gate to run in the background, with the harness reply of run 288 round-2.jsonl:49,
-    # then an EDIT Read of that output file showing check: PASSED.
-    bg = res(event(runs / "288/27f76148/round-2.jsonl", 49))
-    bg["message"]["content"][0]["tool_use_id"] = gate["message"]["content"][0]["id"]
-    bg_path = re.search(r"written to: (\S+?)\.?(?=\s|$)", bg["message"]["content"][0]["content"]).group(1)
-    bg_head = [init(event(w34, 3)), use(event(w34, 130), command="bin/check", run_in_background=True), bg]
-    out["p4-background"] = {"run/round-1.jsonl": dump(
-        bg_head + call("toolu_read_bg", "Read", {"file_path": bg_path}, "SKIPPED: none\ncheck: PASSED"))}
-    # Fail: the same background gate, but the later check: PASSED is read from another file, not its output.
-    out["p4-background-other"] = {"run/round-1.jsonl": dump(
-        bg_head + call("toolu_read_old", "Read", {"file_path": "/tmp/old-check.log"}, "SKIPPED: none\ncheck: PASSED"))}
+    out["p4-refusal"] = {**out["p4-pass"], "run/round-1.jsonl": dump(gate + refusal)}
     # P5: W24 round-1.jsonl:3 init, W35 factory.log:9 (worker effort medium), W24 round-1.result.json model names,
     # the W24 builder a25ee328 at claude-opus-5-5 xhigh (lines 6, 14 and its meta.json).
     usage = {"modelUsage": {m: {} for m in json.loads((runs / W24 / "round-1.result.json").read_text())["modelUsage"]}}

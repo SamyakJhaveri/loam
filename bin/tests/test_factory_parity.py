@@ -26,7 +26,7 @@ CASES = [
     ("p1-plugin", "P1", "FAIL"),  # W35: init loads ~/loam's sam-cc-setup, not frozen/plugin-dir's
     ("p1-view", "P1", "FAIL"),  # W35: round-1.prompt.md without the memory view
     ("p2-pass", "P2", "PASS"),  # W34: router read in full (cat), then the first Write
-    ("p2-partial", "P2", "FAIL"),  # W34: router read only by sed -n 1,60p
+    ("p2-partial", "P2", "PASS"),  # W34: the router by sed -n 1,60p, whose result shows all 57 lines: nothing cut
     ("p2-fail", "P2", "FAIL"),  # W35: open(..., "w") with no router read
     ("p2-notes", "P2", "N/A"),  # W35: an append to the run's worker/decisions.md is no change
     ("p2-notes-tree", "P2", "FAIL"),  # W35: the same append into the worktree is a change
@@ -45,11 +45,10 @@ CASES = [
     ("p3-claim", "P3", "FAIL"),  # a pstack: line names a method no transcript read
     ("p3-no-line", "P3", "FAIL"),  # W34's real decisions.md: a change but no pstack: line
     ("p3-order", "P3", "PASS"),  # the method read before the router read still counts
-    ("p4-pass", "P4", "PASS"),  # bin/check result ends check: PASSED
-    ("p4-fail", "P4", "FAIL"),  # W34: bin/check timed out, no check: line
-    ("p4-refusal", "P4", "FAIL"),  # check: PASSED, but a result shows the sandbox refusal
-    ("p4-background", "P4", "PASS"),  # background bin/check, its output file read later
-    ("p4-background-other", "P4", "FAIL"),  # background bin/check, check: PASSED read from another file
+    ("p4-pass", "P4", "PASS"),  # W34 round-1.checks, the supervisor's record, holds PASS check-green
+    ("p4-fail", "P4", "FAIL"),  # that record without its check-green line: no gate ran
+    ("p4-unsure", "P4", "UNSURE"),  # no record; the transcript's printed check: PASSED is not taken
+    ("p4-refusal", "P4", "FAIL"),  # the record, but a result shows the sandbox refusal
     ("p5-pass", "P5", "PASS"),  # worker Opus medium, builder Opus xhigh, reviewer Fable high
     ("p5-max", "P5", "FAIL"),  # worker effort max
     ("p5-advisor", "P5", "FAIL"),  # worker advisor on Haiku
@@ -82,15 +81,15 @@ CASES = [
 # --attended cases: (case, behaviour id, expected status), each a session.jsonl with optional session/subagents/.
 ATTENDED_CASES = [
     ("attended-pass", "P2", "PASS"),  # 4114e7c2 worker: router Skill call, then its first Edit
-    ("attended-pass", "P3", "PASS"),  # ... with a full method read before it
+    ("attended-pass", "P3", "UNSURE"),  # ... its method read is `P=...; cat a b`, compound: not seen as a read
     ("attended-fail", "P2", "FAIL"),  # fb454b64 lead: sed -i with no router read
     ("attended-fail", "P3", "FAIL"),
     ("attended-sub", "P2", "FAIL"),  # a subagent under session/subagents/ edits with no router read
     ("attended-sub", "P6", "FAIL"),  # ... src/distbench/runner.py, with no verify-distbench proof
     ("attended-sub-proof", "P6", "PASS"),  # ... with the skill read and the launch-and-drive chain
     ("attended-scratch", "P2", "N/A"),
-    ("attended-head", "P3", "PASS"),  # cat of two SKILL.md files | head -120, result 41 lines: nothing cut
-    ("attended-head-cut", "P3", "FAIL"),  # the same read by head -20, which cut it  # four writes to scratch or notes (via >>, cd $S, a cat heredoc, sed -i $F)
+    ("attended-head", "P3", "UNSURE"),  # cat of two SKILL.md files | head -120: compound, not seen as a read
+    ("attended-head-cut", "P3", "UNSURE"),  # the same by head -20  # four writes to scratch or notes (via >>, cd $S, a cat heredoc, sed -i $F)
 ]
 
 
@@ -190,32 +189,12 @@ def reads_then_a_failing_command(run: Path, drop: str = "") -> None:
     edit_events(run / "round-1.jsonl", mark)
 
 
-def guarded_gate(run: Path) -> None:
-    """The gate spelled as a done-checks line spells it, after sourcing lib.sh; its result still shows check: PASSED."""
-    def edit(item: dict) -> None:
-        if item["type"] == "tool_use" and item["name"] == "Bash":
-            item["input"]["command"] = "source /r/abcdef12/frozen/lib.sh && guard bin/check"
-    edit_events(run / "round-1.jsonl", edit)
-
-
 def failed_launch(run: Path) -> None:
     """The proof chain failed at its launch, so the drive never ran."""
     def edit(item: dict) -> None:
         if item["type"] == "tool_result" and item["tool_use_id"] == "toolu_proof":
             item.update(is_error=True, content="Exit code 1\nError: runner failed to launch; drive never executed")
     edit_events(run / "round-2.jsonl", edit)
-
-
-def gate_through_grep(result: str) -> Callable[[Path], None]:
-    """audit4 (Fable 1): the worker filters the block through grep -E '^(PASS|FAIL)', so only PASS/FAIL lines show."""
-    def edit(run: Path) -> None:
-        def item_edit(item: dict) -> None:
-            if item["type"] == "tool_use" and item["name"] == "Bash":
-                item["input"]["command"] = """bash "$LOAM_CHECKS" 2>&1 | grep -E '^(PASS|FAIL)'"""
-            elif item["type"] == "tool_result":
-                item["content"] = result
-        edit_events(run / "round-1.jsonl", item_edit)
-    return edit
 
 
 def retried_reviewer(served: bool) -> Callable[[Path], None]:
@@ -276,16 +255,6 @@ def redirected_skill_reads(run: Path) -> None:
     edit_events(run / "round-1.jsonl", mark)
 
 
-def gate_command(command: str) -> Callable[[Path], None]:
-    """The gate call's command replaced; its result still ends check: PASSED."""
-    def edit(run: Path) -> None:
-        def item_edit(item: dict) -> None:
-            if item["type"] == "tool_use" and item["name"] == "Bash":
-                item["input"]["command"] = command
-        edit_events(run / "round-1.jsonl", item_edit)
-    return edit
-
-
 def skill_commands(change: Callable[[str], str], result: str | None = None) -> Callable[[Path], None]:
     """Each SKILL.md Bash command rewritten by change; with result, each such call's result replaced by it."""
     def edit(run: Path) -> None:
@@ -327,6 +296,18 @@ UNMODELLED: dict[str, Callable[[str], str]] = {
 }
 
 
+def errored_skill_reads(run: Path) -> None:
+    """Each SKILL.md call's result marked is_error (killed mid-output, say), its text, name: line included, kept."""
+    ids: set[str] = set()
+
+    def mark(item: dict) -> None:
+        if item["type"] == "tool_use" and "SKILL.md" in json.dumps(item["input"]):
+            ids.add(item["id"])
+        elif item["type"] == "tool_result" and item["tool_use_id"] in ids:
+            item["is_error"] = True
+    edit_events(run / "round-1.jsonl", mark)
+
+
 def read_result(text: str) -> Callable[[Path], None]:
     """Every Read call's result replaced by text."""
     def edit(run: Path) -> None:
@@ -357,11 +338,8 @@ def no_checkout_digest(run: Path) -> None:
 
 # Audit 3 repros (the verifier's audit3-verify.md): (name, committed case, edit of its run folder, id, expected).
 VARIANTS = [
-    ("r-redirected-reads", "p3-pass", redirected_skill_reads, "P2", "FAIL"),  # a cat to /dev/null read nothing
-    ("r-redirected-reads", "p3-pass", redirected_skill_reads, "P3", "FAIL"),
-    ("r-gate-timeout-k", "p4-pass", gate_command("timeout -k 5 5400 bin/check"), "P4", "PASS"),  # -k takes an argument
-    ("r-gate-hook-earlier", "p4-pass", gate_command("LOAM_HOOK=1 true; bin/check"), "P4", "PASS"),  # not bin/check's env
-    ("r-gate-hook-export", "p4-pass", gate_command("export LOAM_HOOK=1; bin/check"), "P4", "UNSURE"),  # not modelled
+    ("r-redirected-reads", "p3-pass", redirected_skill_reads, "P2", "UNSURE"),  # cat > /dev/null is compound
+    ("r-redirected-reads", "p3-pass", redirected_skill_reads, "P3", "UNSURE"),
     ("r-no-checkout-digest", "p7-pass", no_checkout_digest, "P7", "FAIL"),
     # PR 713 Codex re-check: a group or an fd redirect is not modelled, so the read is UNSURE; a comment holding `>`
     # is modelled and stays a read
@@ -371,38 +349,35 @@ VARIANTS = [
      "P2", "UNSURE"),
     ("r2-comment", "p3-pass", skill_commands(lambda c: f"{c} # stdout > terminal"), "P2", "PASS"),
     ("r2-comment", "p3-pass", skill_commands(lambda c: f"{c} # stdout > terminal"), "P3", "PASS"),
-    # ... and a LOAM_HOOK set other than as the gate's own prefix is not modelled
-    ("r2-hook-emptied", "p4-pass", gate_command("export LOAM_HOOK=1; LOAM_HOOK= bin/check"), "P4", "UNSURE"),
-    ("r2-hook-export-later", "p4-pass", gate_command("LOAM_HOOK=1; export LOAM_HOOK; bin/check"), "P4", "UNSURE"),
-    ("r2-hook-subshell", "p4-pass", gate_command("(export LOAM_HOOK=1); bin/check"), "P4", "UNSURE"),
-    ("r2-hook-unset", "p4-pass", gate_command("export LOAM_HOOK=1; unset LOAM_HOOK; bin/check"), "P4", "UNSURE"),
-    ("r3-hook-own-prefix", "p4-pass", gate_command("LOAM_HOOK=1 bin/check"), "P4", "FAIL"),  # modelled: skipped
     # ... and P7 needs every checkout shell_digest names, not only the ones whose lines survived
     ("r2-checkout-lines", "p7-pass", checkout_lines(), "P7", "PASS"),
     ("r2-checkout-missing", "p7-pass", checkout_lines("/home/samyak/distbench"), "P7", "FAIL"),
     ("r3-advisor-off", "p5-pass", advisor_off, "P5", "PASS"),  # no advisor is no off-model advisor
     # PR 713 lead ruling: each construct parity does not model makes the check UNSURE, never PASS
     *[(f"r3-{name}", "p3-pass", skill_commands(change, ""), "P2", "UNSURE") for name, change in UNMODELLED.items()],
-    ("r3-group-hook", "p4-pass", gate_command("{ export LOAM_HOOK=1; }; guard bin/check"), "P4", "UNSURE"),
-    ("r3-pipe-hook", "p4-pass", gate_command("export LOAM_HOOK=1 | cat; guard bin/check"), "P4", "UNSURE"),
-    ("r3-set-a", "p4-pass", gate_command("set -a; LOAM_HOOK=1; bin/check"), "P4", "UNSURE"),
     # PR 713 lead ruling: a read counts only when its own result shows the file's name: line
-    ("r4-untaken-branch", "p3-pass", skill_commands(lambda c: f"if false; then {c}; fi", ""), "P2", "FAIL"),
-    ("r4-untaken-branch", "p3-pass", skill_commands(lambda c: f"if false; then {c}; fi", ""), "P3", "FAIL"),
-    ("r4-exec-redirect", "p3-pass", skill_commands(lambda c: f"exec > /dev/null; {c}", ""), "P2", "FAIL"),
-    ("r4-loop-pipe", "p3-pass", skill_commands(lambda c: f"{c} | head -3" if c.endswith("done") else c), "P3",
-     "UNSURE"),  # a cut after the name: line shows nothing, so a pipe on a loop is not modelled
+    ("r4-untaken-branch", "p3-pass", skill_commands(lambda c: f"if false; then {c}; fi", ""), "P2", "UNSURE"),
+    ("r4-untaken-branch", "p3-pass", skill_commands(lambda c: f"if false; then {c}; fi", ""), "P3", "UNSURE"),
+    ("r4-exec-redirect", "p3-pass", skill_commands(lambda c: f"exec > /dev/null; {c}", ""), "P2", "UNSURE"),
+    ("r4-loop-pipe", "p3-pass", skill_commands(lambda c: f"for x in 1; do {c}; done | head -3"), "P3", "UNSURE"),
+    # PR 713 lead ruling: only a call that is one simple read counts, and compound reads are UNSURE (the reviewer's
+    # and Codex's examples: the name: line printed by another command of the same call)
+    ("r5-copy-then-head", "p3-pass", skill_commands(lambda c: f"{c} > /tmp/s.md && head -3 /tmp/s.md"), "P2", "UNSURE"),
+    ("r5-grep-name", "p3-pass", skill_commands(lambda c: f"false && {c}; grep -m1 name: {c.split()[-1]}"), "P3",
+     "UNSURE"),
+    ("r5-null-then-sed", "p3-pass", skill_commands(lambda c: f"{c} > /dev/null; sed -n 2p {c.split()[-1]}"), "P3",
+     "UNSURE"),
+    ("r5-errored-read", "p3-pass", errored_skill_reads, "P3", "FAIL"),  # an errored call reads nothing, shown or not
+    ("r5-cat-not-shown", "p3-pass", skill_commands(lambda c: c, ""), "P3", "FAIL"),  # a plain cat that showed nothing
+    ("r5-head-uncut", "p3-pass", skill_commands(lambda c: c.replace("cat ", "head -n 500 ", 1)), "P3", "PASS"),
+    ("r5-head-cut", "p3-pass", skill_commands(lambda c: c.replace("cat ", "head -n 2 ", 1)), "P3", "FAIL"),
     ("r4-read-not-shown", "p6-pass", read_result("# Verify distbench"), "P6", "FAIL"),
     ("c2-failed-reads", "p3-pass", failed_skill_reads, "P2", "FAIL"),  # a read whose result is an error read nothing
     ("c2-failed-reads", "p3-pass", failed_skill_reads, "P3", "FAIL"),
-    ("a4-read-then-false", "p3-pass", reads_then_a_failing_command, "P2", "PASS"),  # the call failed after the cat
-    ("a4-read-then-false", "p3-pass", reads_then_a_failing_command, "P3", "PASS"),
+    ("a4-read-then-false", "p3-pass", reads_then_a_failing_command, "P2", "UNSURE"),  # cat; false is compound
+    ("a4-read-then-false", "p3-pass", reads_then_a_failing_command, "P3", "UNSURE"),
     ("a4-name-missing", "p3-pass", lambda run: reads_then_a_failing_command(run, "principle-sequence-verifiable-units"),
-     "P3", "FAIL"),  # an is_error result without that file's name: line read none of it
-    ("c3-guard", "p4-pass", guarded_gate, "P4", "PASS"),  # `guard bin/check` runs the gate
-    ("a4-gate-grep", "p4-pass", gate_through_grep("PASS class-route\nPASS check-green (check: PASSED)"), "P4", "PASS"),
-    ("a4-gate-grep-fail", "p4-pass", gate_through_grep("FAIL check-green: bin/check failed (check: FAILED)"), "P4", "PASS"),
-    ("a4-gate-grep-none", "p4-pass", gate_through_grep("PASS class-route\nPASS check-green"), "P4", "FAIL"),
+     "P3", "UNSURE"),  # compound, so not seen as a read
     ("c4-failed-launch", "p6-pass", failed_launch, "P6", "FAIL"),  # a proof call that failed proves nothing
     ("c6-stale-verify", "pass", stale_verify, "P8", "FAIL"),
     ("a4-retried-reviewer", "pass", retried_reviewer(True), "P8", "PASS"),  # the killed attempt's row is no review

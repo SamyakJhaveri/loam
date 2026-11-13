@@ -32,8 +32,8 @@ from types import SimpleNamespace
 HERE = Path(__file__).resolve().parent
 BLOCKED = "pstack-gate: blocked"
 FIX = ("call the sam-cc-setup:pstack router and read the chosen SKILL.md in full before your first change; "
-       "log it as `pstack: ...` in decisions.md (a read counts when its own result shows the file: the Read tool, "
-       "or a plain `cat` whose output is not cut or redirected)")
+       "log it as `pstack: ...` in decisions.md (a read counts when it is the Read tool, or a Bash call that is only "
+       "`cat <file>`, and its result shows the file)")
 
 
 def load_parity():

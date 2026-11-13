@@ -24,9 +24,9 @@ HEADLESS = ("-tmp-claude-1000--home-samyak-distbench-8ac7c511-0dcf-4476-8336-664
 ROUTER = "/home/samyak/loam/cultivation/marketplace/sam-cc-setup/skills/pstack/SKILL.md"
 METHODS = "/home/samyak/.claude/plugins/cache/cursor-plugins/pstack/0.15.36/skills"
 W34_R1_METHODS = "principle-sequence-verifiable-units principle-test-behavior-not-implementation principle-prove-it-works"
-FULL_READS = {  # EDIT: W34 round 1 read the router and its methods with sed -n and head; here with cat
-    114: {"command": f"cat {ROUTER}"},
-    122: {"command": f"for s in {W34_R1_METHODS}; do cat {METHODS}/$s/SKILL.md; done"},
+FULL_READS = {  # EDIT: W34 round 1 read the router and its methods with sed -n and head; here each with one plain
+    114: {"command": f"cat {ROUTER}"},  # `cat` (only a call that is one simple read counts), the first method kept
+    122: {"command": f"cat {METHODS}/{W34_R1_METHODS.split()[0]}/SKILL.md"},
 }
 # case: (source transcript, last source line kept, {source line: replacement input, or None to drop the call})
 CASES = {

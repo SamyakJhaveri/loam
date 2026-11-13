@@ -47,12 +47,9 @@ a `skills/<name>/SKILL.md` path or a hyphenated pstack name.
                       fully read in that round; and every other pstack method decisions.md names for a round was
                       fully read in that round. A decisions.md line starting "Round N" (the supervisor writes
                       one before each round) and the lines after it belong to round N; earlier lines to round 1. With --attended there is no decisions.md part.
-  P4 gate-in-round    some transcript of each round ran DistBench's bin/check (directly, through lib.sh's
-                      guard or through checks.sh, not under LOAM_HOOK=1) and its result shows `check: PASSED` or
-                      `check: FAILED` (or a PASS or FAIL line ending `(check: PASSED)`, guard's copy for a
-                      reader that keeps only those lines), or a later call that reads its output (a background task's output file
-                      or id, or the file it redirected to) shows it; and no tool result, nor a log in worker/,
-                      shows the sandbox refusal.
+  P4 gate-in-round    the supervisor's round-N.checks of each round holds a `PASS check-green` or `FAIL
+                      check-green` line (the gate ran for the round; no round-N.checks is UNSURE); and no tool
+                      result, nor a log in worker/, shows the sandbox refusal.
   P5 models           every model and effort the round used is one Samyak allows (ALLOWED below): Opus 5.5 at
                       medium, high or xhigh in any role; Fable 5.2 at high in a reviewer subagent only (its
                       meta.json agentType or workflowPhase names review, critic or judge, or its description
@@ -144,13 +141,8 @@ BASH_WRITE = re.compile("|".join([
 ]))
 SKILL_FILE = re.compile(r"([^\s\"';|&()]*?)skills/([^/\s\"';|&()]+)/SKILL\.md")
 LOOP = re.compile(r"\bfor\s+(\w+)\s+in\s+([^;\n]+?)\s*;?\s*(?:\n\s*)?do\b")
-GATE = re.compile(r"\bbin/check(?![\w.-])|[^\s;&|]*(?<![\w.-])checks\.sh\b|\$\{?LOAM_CHECKS\b\}?")
-WRAPPERS = {"nohup", "bash", "sh", "env", "time", "exec", "command", "source", ".", "guard"}  # guard: lib.sh
 HEREDOC = re.compile(r"<<-?\s*(['\"]?)(\w+)\1([^\n]*)\n.*?(?:\n[ \t]*\2[ \t]*(?=\n|$)|\Z)", re.S)
-# bin/check's own result line, or lib.sh's copy of it on the guarded check's line: `PASS check-green (check: PASSED)`.
-GATE_LINE = re.compile(r"(?m)^check: (?:PASSED|FAILED)\b.*$|^(?:PASS|FAIL) .*\((check: (?:PASSED|FAILED))\)$")
 REFUSAL = re.compile(r"(?m)^[^\"'\n]*?(bin/check: AF_UNIX bind denied[^\n]*|bwrap: No permissions to create new namespace[^\n]*)")
-BACKGROUND = re.compile(r"running in background with ID: (\w+)\. Output is being written to: (\S+?)\.?(?=\s|$)")
 SAVED = re.compile(r"Full output saved to: (\S+)")
 ROUND_FILE = re.compile(r"round-(\d+)\.jsonl")
 WORKER_CALL = re.compile(r"worker call: round (\d+) model=(\S+) effort=(\S+)(?: advisor=(\S+))?")
@@ -350,22 +342,22 @@ def no_comments(cmd: str) -> str:
     return "".join(out)
 
 
-ENV_BUILTINS = {"export", "unset", "declare", "typeset", "readonly", "local"}
+READ_DOUBT = "a SKILL.md read inside a compound command"  # unsure(): it reads nothing here, but may have shown it
 KEYWORDS = {"!", "do", "then", "else", "elif", "if", "while", "until", "time", "command", "builtin", "nohup"}
 
 
-def unsure(cmd: str, env: bool = False) -> str | None:
+def unsure(cmd: str) -> str | None:
     """The first construct in a Bash command that parity does not model, or None. Modelled: simple commands joined by
-    ;, &&, ||, | and newlines, for and while loops, if and case with no redirect on them, $( ) substitution, a here-doc
-    fed to cat or tee, comments, and the redirects > f, >> f, 1> f, 2> f, &> f, 2>&1 and < f. Anything else (a { } or
-    ( ) group, another redirect, another here-doc or a here-string, eval, source of a file other than the factory's
-    lib.sh, process substitution) can hide a change, a read or where output went. With env, so can a LOAM_HOOK set
-    other than as a prefix of the command it applies to (export, unset, declare, a bare assignment, set -a)."""
+    ;, &&, ||, | and newlines, for and while loops, if and case with no pipe or redirect on them, $( ) substitution, a
+    here-doc fed to cat or tee, comments, and the redirects > f, >> f, 1> f, 2> f, &> f, 2>&1 and < f. Anything else
+    (a { } or ( ) group, another redirect, another here-doc or a here-string, eval, source of a file other than the
+    factory's lib.sh, process substitution) can hide a change. A command naming a SKILL.md that is not one simple read
+    (simple_read) is unmodelled too: what it showed of the file cannot be told from its result."""
     for m in HEREDOC.finditer(cmd):
         if not re.search(r"\b(?:cat|tee)\b[^\n]*$", cmd[:m.start()]):
             return "a here-doc"
-    code = HEREDOC.sub(lambda m: m.group(3), cmd)
-    code = no_comments(re.sub(r"'[^']*'|\"(?:[^\"\\]|\\.)*\"", lambda q: "x" * len(q.group(0)), code))
+    code = bare = no_comments(HEREDOC.sub(lambda m: m.group(3), cmd))
+    code = re.sub(r"'[^']*'|\"(?:[^\"\\]|\\.)*\"", lambda q: "x" * len(q.group(0)), code)
     if "<<<" in code:
         return "a here-string"
     if re.search(r"[<>]\(", code):
@@ -389,16 +381,7 @@ def unsure(cmd: str, env: bool = False) -> str | None:
             return "eval"
         if words[0] in ("source", ".") and not re.search(r"/(?:frozen|factory\.d)/lib\.sh$", words[1] if len(words) > 1 else ""):
             return "source"
-        if not env:
-            continue
-        hook = any(w.split("=", 1)[0] == "LOAM_HOOK" or w.startswith("$") for w in words[1:])
-        if words[0] in ENV_BUILTINS and hook:
-            return f"{words[0]} of LOAM_HOOK"
-        if words[0] == "set" and any(re.fullmatch(r"[-+][a-zA-Z]*a[a-zA-Z]*|allexport", w) for w in words[1:]):
-            return "set -a"
-        if all(re.fullmatch(r"\w+=\S*", w) for w in words) and any(w.startswith("LOAM_HOOK=") for w in words):
-            return "a bare LOAM_HOOK assignment"
-    return None
+    return READ_DOUBT if "SKILL.md" in bare and compound(cmd) else None
 
 
 def unsure_calls(t: Transcript, upto: int | None = None, about: str = "") -> list[str]:
@@ -417,37 +400,47 @@ def shows(text: str, skill: str) -> bool:
     return bool(re.search(rf"(?m)^(?:\s*\d+[\u2192\t])?name:\s*{re.escape(skill)}\s*$", text))
 
 
+def compound(cmd: str) -> bool:
+    """Whether a Bash command is more than one simple command: it holds ;, &, |, a redirect, a group, a substitution
+    or a second line, outside quotes and comments."""
+    code = no_comments(re.sub(r"'[^']*'|\"(?:[^\"\\]|\\.)*\"", lambda q: "x" * len(q.group(0)), cmd)).strip()
+    return bool(re.search(r"[;&|<>(){}`\n]|\$\(", code))
+
+
+def simple_read(cmd: str) -> tuple[str, int | None] | None:
+    """(file, line cap) when the whole Bash command is one simple read of one file and nothing else: `cat F`
+    (no cap), `head -n N F` or `head -N F` (cap N), `sed -n 1,Np F` (cap N). None for anything else, a compound
+    command included (compound)."""
+    if compound(cmd):
+        return None
+    words = [w.strip("'\"") for w in no_comments(cmd).split()]
+    if len(words) == 2 and words[0] == "cat" and not words[1].startswith("-"):
+        return words[1], None
+    m = re.fullmatch(r"head (?:-n ?(\d+)|-(\d+)) (\S+)", " ".join(words))
+    if m:
+        return m.group(3), int(m.group(1) or m.group(2))
+    m = re.fullmatch(r"sed -n 1,(\d+)p (\S+)", " ".join(words))
+    return (m.group(2), int(m.group(1))) if m else None
+
+
 def full_reads(t: Transcript, j: int) -> set[tuple[str, str]]:
-    """(prefix, name) for each SKILL.md call j of t reads in full: a Read with no offset or limit, or a Bash `cat`
-    naming it that is the last stage of its pipeline or is piped only into `head -N` while the call's whole result is
-    under N lines (so nothing was cut); sed -n, tail, git cat-file and a head that cut never count. Either way it
-    counts only when the call's own result shows that file's `name: <skill>` line: what the tool showed, not what the
-    command says, so a read that never ran (an untaken branch, a `false &&`), or whose output went elsewhere (a
-    redirect, `exec > f`), is no read. A Bash call holding a construct parity does not model (unsure) counts none."""
+    """(prefix, name) of the SKILL.md call j of t reads in full: a Read with no offset or limit, or a Bash call whose
+    whole command is one simple read of that file (simple_read) and, for head or sed, whose result is shorter than its
+    cap (nothing cut). Either way only when the call succeeded and its own result shows the file's `name: <skill>`
+    line: judged by what the tool showed, so a compound command (a redirect, a second command, an if) reads nothing
+    here, and unsure() makes a check it could change say UNSURE."""
     _, name, inp = t.calls[j]
     res = t.result(j)
-    if not res or not (t.ok(j) or (name == "Bash" and t.ran(j))):
+    if not res or not t.ok(j):
         return set()
     if name == "Read":
         if inp.get("offset") is not None or inp.get("limit") is not None:
             return set()
         return {f for f in skill_reads(name, inp) if shows(res[1], f[1])}
-    cmd = assigned(str(inp.get("command", ""))) if name == "Bash" else ""
-    if "SKILL.md" not in cmd or unsure(cmd):
+    read = simple_read(str(inp.get("command", ""))) if name == "Bash" else None
+    if read is None or (read[1] is not None and len(res[1].splitlines()) >= read[1]):
         return set()
-    shown = len(res[1].splitlines())
-    loops, found = loops_of(cmd), set()
-    for seg in re.split(r"&&|\|\||[;\n]", no_comments(cmd)):
-        first, *rest = seg.split("|")
-        caps = [re.fullmatch(r"\s*head\s+(?:-n\s*)?-?(\d+)\s*", r) for r in rest]
-        if not all(caps) or (caps and shown >= min(int(c.group(1)) for c in caps)):
-            continue
-        words = first.split()
-        while words and words[0].lstrip("(") in READ_LEAD | {""}:
-            words = words[1:]
-        if words and words[0].lstrip("(") == "cat":
-            found |= skill_paths(" ".join(words), loops)
-    return {f for f in found if shows(res[1], f[1])}
+    return {f for f in skill_paths(read[0], {}) if shows(res[1], f[1])}
 
 
 def is_router(prefix: str, skill: str) -> bool:
@@ -469,31 +462,6 @@ def named_skills(text: str, pstack: set[str]) -> set[str]:
     """The pstack methods a text names: pstack:<name>, a pstack skills/<name>/SKILL.md, or a hyphenated name."""
     names = set(re.findall(r"\bpstack:([a-z0-9-]+)", text)) | pstack_methods(set(SKILL_FILE.findall(text)), pstack)
     return names | {s for s in pstack if "-" in s and re.search(rf"(?<![\w-]){re.escape(s)}(?![\w-])", text)}
-
-
-def gate_runs(cmd: str) -> list[bool]:
-    """For each bin/check or checks.sh invocation in a Bash command: True when it runs, False when its own command
-    sets LOAM_HOOK non-empty (`LOAM_HOOK=1 bin/check`, `env LOAM_HOOK=1 guard bin/check`; guard skips bin/check). A
-    LOAM_HOOK set any other way is unsure(cmd, env=True), which p4 checks first. A file merely read (cat bin/check,
-    grep x bin/check) is no invocation."""
-    # Heredoc bodies and quoted text are data, not commands; a quoted lone variable ("$LOAM_CHECKS") stays.
-    cmd = no_comments(HEREDOC.sub(lambda m: m.group(3), cmd))
-    cmd = re.sub(r"\"(\$\{?\w+\}?[^\"\s]*)\"", r"\1", cmd)
-    cmd = re.sub(r"'[^']*'|\"(?:[^\"\\]|\\.)*\"", lambda q: "''" if len(q.group(0)) == 2 else "'q'", cmd)
-    out = []
-    for m in GATE.finditer(cmd):
-        text = re.split(r"&&|\|\||[;&|(\n]|\$\(", cmd[:m.start()])[-1]
-        words = [w for w in text.split() if not re.fullmatch(r"\w+=\S*", w)]
-        while words and words[0] in WRAPPERS | {"timeout"}:
-            wrapper, words = words[0], words[1:]
-            while words and words[0].startswith("-") and words[0] not in WRAPPERS:
-                words = words[2:] if wrapper == "timeout" and words[0] in ("-k", "-s") else words[1:]
-            if wrapper == "timeout":
-                words = words[1:]  # its duration
-        if not words:
-            hook = [w.partition("=")[2] for w in text.split() if w.startswith("LOAM_HOOK=")]
-            out.append(not hook or hook[-1] in ("", "''"))
-    return out
 
 
 class Round:
@@ -598,15 +566,16 @@ def row(n: int, bad: list[str], good: list[str], none: str = "", doubt: list[str
 
 def window_doubt(run: Run, t: Transcript, change: tuple[int, str], failed: bool) -> list[str]:
     """For P2 and P3: the unmodelled Bash calls (unsure_calls) that could change t's verdict. One before the first
-    change could hide an earlier change; the change call itself, when it names a SKILL.md, could hide a read, which
-    matters only to a FAIL (a PASS rests on earlier calls alone). The pstack gate (run.gate) asks only whether the
-    pending change may run, so for it nothing is in doubt: an unmodelled call just counts no read."""
+    change that could hide a change (any but a compound SKILL.md read, READ_DOUBT) could hide an earlier change. When
+    the verdict is a FAIL, any one at or before the change that names a SKILL.md could hide the missing read. A PASS
+    rests on modelled reads before the change, so a compound read cannot undo it. The pstack gate (run.gate) asks only
+    whether the pending change may run, so for it nothing is in doubt: an unmodelled call just counts no read."""
     if getattr(run, "gate", False):
         return []
-    before = unsure_calls(t, change[0] - 1)
-    if before or not failed:
-        return [f"{x}, before the first change" for x in before]
-    return [f"{x}, the first change (a read in it is not seen)" for x in unsure_calls(t, change[0], "SKILL.md")]
+    hides = [x for x in unsure_calls(t, change[0] - 1) if READ_DOUBT not in x]
+    if hides or not failed:
+        return [f"{x}, before the first change" for x in hides]
+    return [f"{x}, at or before the first change (a read in it is not seen)" for x in unsure_calls(t, change[0], "SKILL.md")]
 
 
 def p1(run: Run) -> tuple[str, str]:
@@ -671,7 +640,8 @@ def p2(run: Run) -> tuple[str, str]:
         for t in r.transcripts:
             change = first_change(t)
             if change is None:
-                doubt += [] if getattr(run, "gate", False) else [f"{x} (it may hide a change)" for x in unsure_calls(t)]
+                doubt += [] if getattr(run, "gate", False) else [
+                    f"{x} (it may hide a change)" for x in unsure_calls(t) if READ_DOUBT not in x]
                 continue
             i, what = change
             ri, bi = router_index(t, i), None
@@ -719,7 +689,8 @@ def p3(run: Run) -> tuple[str, str]:
                 read |= pstack_methods(full_reads(t, j), pstack)
             change = first_change(t)
             if change is None:
-                doubt += [] if getattr(run, "gate", False) else [f"{x} (it may hide a change)" for x in unsure_calls(t)]
+                doubt += [] if getattr(run, "gate", False) else [
+                    f"{x} (it may hide a change)" for x in unsure_calls(t) if READ_DOUBT not in x]
                 continue
             changed = True
             i, _ = change
@@ -770,62 +741,27 @@ def p3(run: Run) -> tuple[str, str]:
     return combine(rows)
 
 
-def last_line(text: str) -> str:
-    lines = [x.strip() for x in text.splitlines() if x.strip()]
-    return (lines[-1] if lines else "(empty)")[:100]
-
-
-def gate_result(t: Transcript, i: int) -> tuple[int, str] | None:
-    """(result line, last check: line) for the gate run by call i: in its own result, or in the result of a later
-    call that reads where its output went (a background task's output file or id, or a file it redirected to)."""
-    res = t.result(i)
-    keys = {k for k in re.findall(r"(?<![0-9&>])>{1,2}\s*([^\s;&|()]+)", str(t.calls[i][2].get("command", "")))
-            if not k.startswith(("/dev/", "&"))}
-    if res and (m := BACKGROUND.search(res[1])):
-        keys |= {m.group(1), m.group(2)}
-    for j in range(i, len(t.calls)):
-        later = t.result(j)
-        shown = [m.group(1) or m.group(0) for m in GATE_LINE.finditer(later[1])] if later else []
-        if shown and (j == i or any(k in json.dumps(t.calls[j][2]) for k in keys)):
-            return later[0], shown[-1]
-        if j == i and not keys:
-            break
-    return None
-
-
 def p4(run: Run) -> tuple[str, str]:
+    """The gate ran for the round by the supervisor's own record, round-N.checks (its check-green line, PASS or
+    FAIL), never by text in a transcript, which a command can print; no record is UNSURE. A sandbox refusal a
+    tool result shows fails the round."""
     rows = []
     for r in run.rounds:
-        refusals, gate, ran, skipped, doubt = [], None, [], 0, []
+        refusals = []
         for t in r.transcripts:
             for line, text in t.results.values():
                 refusals += [f"{at(t, line)} shows the sandbox refusal '{m[:120]}'" for m in REFUSAL.findall(text)]
-            for i, (line, name, inp) in enumerate(t.calls):
-                runs = gate_runs(str(inp.get("command", ""))) if name == "Bash" else []
-                if runs and (what := unsure(str(inp.get("command", "")), env=True)):
-                    doubt.append(f"{at(t, line)} invokes the gate but holds {what}")
-                    continue
-                skipped += runs.count(False)
-                if not any(runs):
-                    continue
-                shown = gate_result(t, i)
-                if shown and gate is None:
-                    gate = f"{at(t, shown[0])} bin/check result '{shown[1].strip()}'"
-                elif not shown:
-                    res = t.result(i)
-                    first = next((x.strip() for x in (res[1] if res else "").splitlines() if x.strip()), "no result")
-                    ran.append(f"{at(t, line)} ran bin/check, result has no check: line ('{first[:80]}')")
+        checks = run.path / f"round-{r.n}.checks"
+        lines = checks.read_text(encoding="utf-8", errors="replace").splitlines() if checks.is_file() else []
+        green = next(((k, x) for k, x in enumerate(lines, 1) if re.match(r"(?:PASS|FAIL) check-green\b", x)), None)
         if refusals:
             rows.append(("FAIL", f"round {r.n}: " + "; ".join(sorted(set(refusals)))))
-        elif gate:
-            rows.append(("PASS", f"round {r.n}: {gate}"))
-        elif doubt:
-            rows.append(("UNSURE", f"round {r.n}: " + "; ".join(doubt)))
-        elif ran:
-            rows.append(("FAIL", f"round {r.n}: " + "; ".join(ran)))
+        elif not checks.is_file():
+            rows.append(("UNSURE", f"round {r.n}: no {checks.name}, the supervisor's record of the round's gate"))
+        elif green:
+            rows.append(("PASS", f"round {r.n}: {checks.name}:{green[0]} {green[1][:100]}"))
         else:
-            hook = f" ({skipped} run(s) under LOAM_HOOK=1 skip it)" if skipped else ""
-            rows.append(("FAIL", f"round {r.n}: no transcript ran bin/check{hook}"))
+            rows.append(("FAIL", f"round {r.n}: {checks.name} has no check-green line: the gate did not run"))
     status, evidence = combine(rows)
     logs = []
     for log in sorted((run.path / "worker").glob("*.log")) if (run.path / "worker").is_dir() else []:
