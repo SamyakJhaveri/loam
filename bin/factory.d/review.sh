@@ -266,7 +266,7 @@ learn_run() { # [status message] -> 0; drafts at most one ticket per run directo
   printf '%s\n' "$prompt" > "$d/review.prompt.md"
   review_claude "$ROUND" learn-review "$model" "$effort" "$rdir" "$d/review.prompt.md" "$(cat "$RUN/frozen/reviewer.schema.json")" \
     "$d/review-fable.json" "$d" "$ROOT" || log "learn: no reply from the $model review"
-  stop_requested || learn_codex "$rdir" "$prompt
+  ! learn_room learn-codex || learn_codex "$rdir" "$prompt
 Reply in Markdown. Put each finding on one line of exactly this form, and nothing else on a line that starts with '- [':
 - [critical|high|medium|low] <file>:<line> <the failure it causes, and the check that reproduces it>" "$d/review-codex.md" || log "learn: no Codex review"
   { jq -c '[(.findings // []) | to_entries[] | {id: "reviewer-\(.key)", source: "reviewer", severity: .value.severity,

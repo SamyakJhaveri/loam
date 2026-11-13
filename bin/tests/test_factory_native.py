@@ -15,6 +15,7 @@ import hashlib
 import json
 import os
 import pathlib
+import pty
 import re
 import shutil
 import subprocess
@@ -145,10 +146,10 @@ class Home:
                    **extra)
         return env
 
-    def sourced(self, factory: pathlib.Path, script: str, loam: bool, skills: str = "",
+    def sourced(self, factory: pathlib.Path, script: str, loam: bool, skills: str = "", tty: bool = False,
                 **extra: str) -> subprocess.CompletedProcess[str]:
         """Source factory's bin/factory, point it at the target (another target unless loam), set up the run, then
-        run script."""
+        run script; with tty, as the session leader of a new terminal, whose exit hangs up its foreground group."""
         if self.run.exists():
             subprocess.run(["chmod", "-R", "u+w", str(self.run)], check=True)
             shutil.rmtree(self.run)
@@ -160,9 +161,22 @@ class Home:
                  'date -u +%s > "$RUN/launched"; date -u +%s > "$RUN/started"\n'
                  f"printf '%s\\n' '{self.base}' > \"$RUN/base.sha\"; : > \"$RUN/round-1.checks\"\n"
                  'IS_FILE=1; KEY=t; BODY="$TICKET_BODY"; TIMEOUT_G=(); ROUND=1\n')
-        return subprocess.run(["bash", "-c", f". bin/factory\n{setup}{script}", "bin/factory"], cwd=factory,
-                              env=self.env(factory, FACTORY_SOURCED="1", TICKET_BODY=TICKET.format(skills=skills), **extra),
-                              capture_output=True, text=True, check=False)
+        args = ["bash", "-c", f". bin/factory\n{setup}{script}", "bin/factory"]
+        env = self.env(factory, FACTORY_SOURCED="1", TICKET_BODY=TICKET.format(skills=skills), **extra)
+        if not tty:
+            return subprocess.run(args, cwd=factory, env=env, capture_output=True, text=True, check=False)
+        pid, fd = pty.fork()
+        if pid == 0:
+            os.chdir(factory)
+            os.execvpe("bash", args, env)
+        out = b""
+        try:
+            while chunk := os.read(fd, 4096):
+                out += chunk
+        except OSError:   # EIO once the terminal's last writer exits
+            pass
+        os.close(fd)
+        return subprocess.CompletedProcess(args, os.waitstatus_to_exitcode(os.waitpid(pid, 0)[1]), out.decode(), "")
 
     def calls(self) -> list[dict]:
         return [json.loads(p.read_text()) for p in sorted(self.cap.glob("*.json"))]
@@ -411,7 +425,7 @@ class ReviewHookTests(unittest.TestCase):
         rc, hooks = self.graders(verify_rc=0)
         self.assertEqual((rc, hooks), ("0", "verify_round 1 review=planted defect fixes=\n"))
 
-    def finish_run(self, script: str, is_file: int = 1) -> tuple[subprocess.CompletedProcess[str], str]:
+    def finish_run(self, script: str, is_file: int = 1, tty: bool = False) -> tuple[subprocess.CompletedProcess[str], str]:
         # The learn stub records what a reader sees when it starts, holds until the test writes go, then fails.
         stub = ('verify_round() { return 0; }\n'
                 'learn_run() { printf "learn_run %s|%s status=%s exit-lines=%s\\n" "$1" "$2" "$(cat "$RUN/status")" '
@@ -419,7 +433,7 @@ class ReviewHookTests(unittest.TestCase):
                 'do sleep 0.05; i=$((i + 1)); done; : > "$RUN/learn-ended"; return 1; }\n')
         script = (f"freeze || exit 9; chmod u+w \"$RUN/frozen/review.sh\"; printf '%s' '{stub}' > \"$RUN/frozen/review.sh\"\n"
                   f"IS_FILE={is_file}; set_status running; FACTORY_FROZEN=\"$RUN/frozen/factory\" exec_frozen\n{script}")
-        proc = self.h.sourced(self.new, script, loam=False)
+        proc = self.h.sourced(self.new, script, loam=False, tty=tty)
         hooks = self.h.run / "hooks"
         return proc, hooks.read_text() if hooks.exists() else ""
 
@@ -450,6 +464,12 @@ class ReviewHookTests(unittest.TestCase):
                 self.assertEqual((self.h.run / "status").read_text().strip(), status)
                 log = (self.h.run / "factory.log").read_text()
                 self.assertEqual(log.count(" EXIT "), 1, log)
+
+    def test_learn_outlives_the_terminal_the_run_exits_from(self) -> None:
+        # A launcher run in a tmux pane is that terminal's session leader; its exit hangs up the foreground group.
+        proc, _ = self.finish_run('finish stuck "why it stopped"', tty=True)
+        self.assertEqual(proc.returncode, 2, proc.stdout)
+        self.assertEqual(self.learn(), "learn_run stuck|why it stopped status=stuck exit-lines=1\n")
 
     def test_a_file_ticket_pr_calls_learn_run_once_after_the_pr_opened_exit(self) -> None:
         proc, _ = self.finish_run('GRADED_SHA=$(git -C "$WORKTREE" rev-parse HEAD); open_pr')

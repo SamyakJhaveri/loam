@@ -1389,7 +1389,9 @@ finish() { # status message
   notify "${words%% *}" "$(ticket_name) ${words#* }" "$2" "$1"
   log "EXIT $1 ($code): $2"
   if [ "$IS_FILE" = 1 ] && [ "$REVIEW_LOADED" = 1 ]; then
-    exit_trap=$(trap -p EXIT); trap - EXIT
+    # set -m gives learn its own process group, so the hangup a tty sends its foreground group when the launcher
+    # (the session leader) exits does not reach it.
+    exit_trap=$(trap -p EXIT); trap - EXIT; set -m
     ( eval "$exit_trap"
       learn_run "$1" "$2"
       [ ! -f "$RUN/shell-digest.start" ] || shell_digest > "$RUN/shell-digest.end" ) < /dev/null > /dev/null 2>&1 &
@@ -2133,12 +2135,12 @@ limit_wait() { # result.json -> 0 after waiting, 1 when the reply is not a usage
   fi
   left=$(( MAX_HOURS * 3600 - ( $(date +%s) - $(cat "$RUN/launched") ) ))
   if [ "$secs" -gt "$left" ]; then
-    # learn_run (REVIEW_NO_FINISH) runs inside finish, so it gives up its call instead of replacing the exit.
+    # learn_run (REVIEW_NO_FINISH) runs after the run's exit, so it gives up its call instead of replacing the exit.
     [ -z "${REVIEW_NO_FINISH:-}" ] || { log "usage limit: $e; the reset is ${secs}s away, past MAX_HOURS; this call gives up"; return 1; }
     finish stopped-environment "usage limit: $e; the reset is ${secs}s away, past MAX_HOURS=$MAX_HOURS"
   fi
   log "usage limit, not a round: $e; waiting ${secs}s"
-  set_status waiting-limit
+  [ -n "${REVIEW_NO_FINISH:-}" ] || set_status waiting-limit   # learn waits without touching the exited run's status
   sleep "$secs"
   return 0
 }
@@ -3385,7 +3387,19 @@ cmd_run() {
     # below; so does an intent with no round field, written before #529.
     local intent_sha="" intent_round="" intent_draft=""
     [ -f "$RUN/publish.intent" ] && read -r intent_sha intent_round intent_draft < "$RUN/publish.intent"
-    if [ -n "$intent_sha" ] && [ "$intent_round" = "$ROUND" ] \
+    # A worker round whose call finished but whose checks never started (a cap stop at round_checks) runs its checks
+    # now and is graded on a pass, so the relaunch does not pay for its worker call again.
+    if [ -e "$RUN/round-$((ROUND + 1)).result.json" ] && [ ! -e "$RUN/round-$((ROUND + 1)).checks" ]; then
+      ROUND=$((ROUND + 1))
+      check_frozen
+      round_checks "$RUN/round-$ROUND.checks"
+      if grep -q '^FAIL' "$RUN/round-$ROUND.checks"; then
+        log "round $ROUND's checks never ran before the stop, and they fail at HEAD; resuming into the loop"
+      else
+        log "round $ROUND's checks never ran before the stop, and they pass at HEAD; grading it with no worker round"
+        grade_round
+      fi
+    elif [ -n "$intent_sha" ] && [ "$intent_round" = "$ROUND" ] \
       && [ "$intent_sha" = "$(git -C "$WORKTREE" rev-parse HEAD)" ] \
       && [ "$(cat "$RUN/round-$ROUND.graded.sha" 2> /dev/null)" = "$intent_sha" ]; then
       check_frozen   # freeze returns early on a resume, so re-hash here as main_loop does before each round

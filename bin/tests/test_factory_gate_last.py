@@ -172,6 +172,19 @@ class GateLastTests(unittest.TestCase):
         self.assertIn("full gate failing: check-green,", log)
         self.assertEqual((self.top / "rounds").read_text().strip(), "2")
 
+    def test_a_relaunch_after_a_cap_stop_before_the_checks_grades_that_round_with_no_new_worker_call(self) -> None:
+        # Round 1's worker call ends past the 4 h cap, so the run stops before its checks; the relaunch runs them and
+        # grades the round instead of paying for its worker call again.
+        self.worker_round(1, {"note.txt": "1\n"}, 'for f in "$HOME"/.local/state/loam-factory/runs/o__r/gprobe/*/launched; do '
+                          'echo $(( $(date -u +%s) - 5 * 3600 )) > "$f"; done\n')
+        self.env["FACTORY_MAX_HOURS"] = "4"
+        self.launch(ok=False)
+        self.assertEqual((self.run / "status").read_text().strip(), "stopped-cap")
+        self.assertFalse((self.run / "round-1.checks").exists())
+        self.launch()
+        self.assertEqual((self.top / "rounds").read_text().strip(), "1")
+        self.assertEqual((self.run / "status").read_text().strip(), "pr-opened")
+
     def test_round_zero_still_ends_on_a_non_guard_check_that_passes_on_base(self) -> None:
         (self.co / "note.txt").write_text("base\n")
         git(self.co, self.env, "add", "note.txt")
