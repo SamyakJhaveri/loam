@@ -173,7 +173,10 @@ def runs_full_gate(command: str, dirs: tuple[Path, ...], depth: int = 0, hook: b
             else:
                 focused |= "::" in w
                 targets.append(re.sub(r"^(?:\./)+|^/.*/(?=tests/*$)|/+$", "", w))
-        if not focused and all(t == "tests" for t in targets):
+        last_failed_only = {"--lf", "--last-failed"} & set(words) and any(  # --lfnf=none: no fallback to the full suite
+            re.fullmatch(r"--(?:lfnf|last-failed-no-failures)=none", w) or (p in ("--lfnf", "--last-failed-no-failures") and w == "none")
+            for p, w in zip([""] + words, words))
+        if not (focused or last_failed_only) and all(t == "tests" for t in targets):
             return True
     for m in SHELL_C.finditer(text):
         body = m.group(1) if m.group(1) is not None else m.group(2) if m.group(2) is not None else m.group(3)

@@ -376,6 +376,8 @@ def test_full_gate_a_script_file_that_runs_bin_check_is_blocked(tmp_path):
     "python3 -m pytest /worktree/tests/unit -q",
     "python3 -m pytest -q -k test_host_locks_live_in_the_locks_folder_and_none_beside_it",
     "python3 -m pytest -q -ktest_host_locks_live_in_the_locks_folder_and_none_beside_it",
+    "python3 -m pytest tests --lf --lfnf=none",
+    "python3 -m pytest tests --last-failed --last-failed-no-failures none",
     "git ls-files bin/check bin/check_rules.py && bin/check_rules.py --help",
     "cat > /tmp/dc.sh <<'EOS'\nbin/check\nEOS",
     "cat > /tmp/dc.sh <<EOS\nbin/check > /tmp/c-$(date +%s).log\nEOS",
