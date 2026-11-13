@@ -3,12 +3,20 @@
 This file records why a promoted plugin change traveled. It is also the upgrade
 entry point for projects that consume the Loam marketplace.
 
-## sam-cc-setup v0.9.28 pstack log line, Fable 5.2
+## sam-cc-setup v0.9.29 pstack log line, Fable 5.2
 
 The `pstack` router asks for one decision-log line per method followed (decisions.md in a factory run): `pstack: <skill> | <SKILL.md path read> | <sha256 of that file> | <one line quoted from it> | <the decision it changed>`, the line `bin/factory-parity` reads.
 `plan-reviewer` and the `research-gap` Fable seat move from `claude-fable-5-1` to `claude-fable-5-2`, the owner's Fable 5.2 ruling.
 No grader prompt changed, so no grader replay is owed.
 Upgrade step: `claude plugin update sam-cc-setup@seed-skills`.
+
+## sam-cc-setup v0.9.28 pstack router reaches more skills
+
+The `pstack` router's table gains rows for `reflect`, `correct`, `automate-me` and `architect`, and for the owner skills `audit` and `surprise-me`, which it names as `<S>/<name>`: `<S>` is the folder above the router's own, so they are read by path from the same sam-cc-setup copy and never through the Skill tool.
+`bin/tests/test_pstack_router.py` now also fails when a `<S>/<name>` row has no `SKILL.md` beside the router.
+The pstack rule line in `seed/docs/WORKERS.md.jinja`, `docs/PSTACK.md` and `docs/RULES.md` now says to read the skill file by path through the router instead of reading as a ban on any other route; projects get the seed change through `bin/sync-project`.
+No grader prompt changed, so no grader replay is owed.
+Upgrade step: `claude plugin update sam-cc-setup@seed-skills`; the global CLAUDE.md under `~/.claude/` is edited by hand to the same rule line.
 
 ## sam-cc-setup v0.9.27 pstack router
 

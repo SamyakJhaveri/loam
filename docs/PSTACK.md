@@ -21,7 +21,7 @@ There are no copies in `~/.claude/skills/`, so a pstack update reaches every age
 ## Who runs what
 
 The rule line, in `seed/CLAUDE.md.jinja` and `seed/docs/WORKERS.md.jinja`:
-"pstack: in the main session and in `worker` agents, call the `sam-cc-setup:pstack` skill before a non-trivial task (a bug or failing test, code you have not read, a multi-file or batch change, writing or changing tests, an API or shared-state change, a measured number, a review, a hard multi-part job, or calling work done) and follow the method it picks. Scouts, reviewers and agents started by a pstack skill follow their brief. Never call the Skill tool on a `pstack:` skill: they are manual-only, and the refusal forbids reading them another way."
+"pstack: in the main session and in `worker` agents, call the `sam-cc-setup:pstack` skill before a non-trivial task (a bug or failing test, code you have not read, a multi-file or batch change, writing or changing tests, an API or shared-state change, a measured number, a review, a hard multi-part job, or calling work done) and follow the method it picks. Scouts, reviewers and agents started by a pstack skill follow their brief. Never call the Skill tool on a `pstack:` skill (they are manual-only, and its refusal bars running the skill another way); read the skill file by path through the router instead."
 
 | Who | How | Which skills |
 |-----|-----|--------------|
@@ -50,6 +50,7 @@ An agent without it does the delegated role itself in one context, `interrogate`
 - `/pstack:interrogate`: a multi-model review of a diff you do not trust; use it on a diff, not an abstract plan.
 - `/pstack:unslop`, `/pstack:technical-writing`, `/pstack:no-comments`: clean prose or comments.
 - `/pstack:reflect`, `/pstack:correct`: after a session, turn repeated mistakes into structure (architecture, then types or lint, then tests, docs last).
+  The router also gives agents `reflect`, `correct`, `automate-me` (output drafted in the repo, never under `~/`) and `architect`, and the owner skills `audit` and `surprise-me` by path beside it.
 - `/pstack:ketchup`, `/pstack:ketchup-video`, `/pstack:bro`: catch up (the video version adds subtitled slides), or say the last message plainly.
 - `/pstack:statechart`: check a TLA+ model of a flow and draw it as a statechart, or show a bug as a path through states.
 - `/pstack:create-verification-skill`, `/pstack:create-formal-verification-skill`, `/pstack:maintain-verification-skill`: a project's proof skills.
@@ -57,7 +58,6 @@ An agent without it does the delegated role itself in one context, `interrogate`
 ## Not used
 
 - `recall`: parked by the owner (2026-10-27); `catchup` and `ketchup` cover it.
-- `automate-me`: its authoring step is Cursor's built-in `create-skill`, which the adapter does not map.
 - `make-bot-ui`: built on Cursor Automations and Grok bot webhooks, which Claude Code lacks.
 They stay in the plugin, user-only and out of the router's table, so Claude never starts them; the router also names `poteto-help`, `sharpen`, `in-your-own-words` and `make-bot-ui` as skills it never uses.
 Deleting them from the plugin cache would come back with the next pstack update.

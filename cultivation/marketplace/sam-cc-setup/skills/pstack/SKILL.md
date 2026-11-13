@@ -5,6 +5,7 @@ allowed-tools: Bash(bash *pstack-path.sh)
 ---
 pstack folder `<P>`: !`bash ${CLAUDE_SKILL_DIR}/pstack-path.sh`
 If the folder line above is empty or not an absolute path (you read this file directly, not through the Skill tool), run: jq -r '.plugins["pstack@cursor-plugins"][0].installPath' ~/.claude/plugins/installed_plugins.json
+`<S>`: the folder above this file's folder (`${CLAUDE_SKILL_DIR}/..`), holding owner skills; read `<S>/<name>/SKILL.md` by path, never through the Skill tool.
 
 - Skip this skill when your brief came from a pstack skill or already names the method.
 - Read each chosen `<P>/skills/<name>/SKILL.md` in full and follow it. Read `<P>/docs/harness/claude-code.md` only when that skill says to.
@@ -19,6 +20,8 @@ If the folder line above is empty or not an absolute path (you read this file di
 | A hard multi-part job or large migration | figure-it-out (spawns) |
 | A contested design, concurrency or a cross-cutting change | poteto-mode (spawns) |
 | Several competing designs | principle-exhaust-the-design-space; arena (spawns) |
+| A better approach or a missed problem, before or after a design is settled | `<S>/surprise-me` |
+| Caller usage, types and module shape before a new module | architect (spawns) |
 | Explaining a change or subsystem to the owner | teach |
 | Many similar units | principle-build-the-lever; swarm (spawns) |
 | A bug or failing test | principle-fix-root-causes; tdd for a cheap local test; principle-attack-the-premise after two failed fixes |
@@ -27,8 +30,12 @@ If the folder line above is empty or not an absolute path (you read this file di
 | A measured number | principle-explain-the-number; benchmark-checklist for a timing |
 | Shared, retried or concurrent code | blast-radius; principle-make-operations-idempotent; principle-separate-before-serializing-shared-state |
 | Merged code changed what a formal-verification skill models | maintain-formal-verification-skill |
+| Review of finished non-trivial work | `<S>/audit` (spawns; its size scales with the work) |
 | A diff you do not trust | interrogate (spawns) |
 | A long or unattended run | show-me-your-work (spawns 1) |
+| A long task or a batch of runs landed: capture what worked as a skill or rule edit | reflect (spawns; unattended, its input is the run transcripts and ledgers it is given, not its own chat) |
+| The same mistake corrected twice, or a batch of runs showing a repeated mistake class | correct (fix at the highest level that works: structure, then a check, then a test, docs last); principle-encode-lessons-in-structure |
+| Repeated manual steps or owner corrections to mine | automate-me (spawns; in an agent run, draft its output in the repo, never under `~/`) |
 | Before saying done | principle-prove-it-works |
 
 Principles:
