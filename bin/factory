@@ -628,6 +628,17 @@ check_paths() {
   done < <( { { header | grep -E '^Where:'; } | paths; { section "Do not touch"; section Approach; } | promised_paths; } | sort -u)
 }
 
+# freeze reads each Except: tail into exempt.txt with ticket_paths, so a tail it reads no path from excepts nothing
+# and the do-not-touch check then fails every edit to a fenced path (distbench L01 run 1, 2026-11-13).
+check_except_paths() {
+  local line
+  while IFS= read -r line; do
+    [ -n "$(grep -o '[Ee]xcept:.*' <<<"$line" | ticket_paths)" ] \
+      || err "a Do not touch Except: line names no path in the tree, so it excepts nothing; list each path: $line"
+  done < <(section "Do not touch" | grep '[Ee]xcept:')
+  return 0
+}
+
 # ---- eval ----
 # Replays evals/<grader>/<case>/prompt.md through the grader call in docs/factory/LOOP.md and
 # compares the verdict with expected.json. The rubric comes from the live grader file, so a
@@ -998,6 +1009,7 @@ cmd_eval_freeze() { # run-dir...
     fi
     if [ -z "$jv" ]; then why="no judge verdict"
     elif [ "$jv" != pass ]; then why="round-$k judge verdict $jv"
+    elif jq -e '.off == true' "$d/round-$k.judge.json" > /dev/null 2>&1; then why="round-$k judge was off"
     elif [ -z "$rv" ]; then why="no reviewer verdict"
     elif [ "$rv" != merge ]; then why="round-$k reviewer has a high or medium finding"
     elif [ -e "$EVALS_DIR/clean/judge/$name" ] || [ -e "$EVALS_DIR/clean/reviewer/$name" ]; then why="exists"
@@ -1084,7 +1096,7 @@ lint_body() {
   check_not_grep_only
   check_distbench_lines
   # Fixture bodies are historical tickets that name paths later tickets removed, and predate predict lines.
-  case "$SRC" in *bin/factory.d/fixtures/*) ;; *) check_paths; check_predicts ;; esac
+  case "$SRC" in *bin/factory.d/fixtures/*) ;; *) check_paths; check_except_paths; check_predicts ;; esac
 
   [ "$ERRS" -eq 0 ] || return 1
   echo "lint: OK $SRC"
@@ -1098,8 +1110,9 @@ CAP_NAMES="MAX_ROUNDS ROUND_BUDGET_USD GRADER_BUDGET_USD TICKET_BUDGET_USD DAILY
 MAX_HOURS MAX_TURNS CALL_TIMEOUT_SEC NET_TIMEOUT_SEC MAX_PARALLEL"
 # Defaults, then the ticket's Worker section, then FACTORY_<NAME> in the environment. The bare names
 # are never read: a Claude Code session already exports WORKER_MODEL and CALL_TIMEOUT_SEC of its own.
-MAX_ROUNDS=100; ROUND_BUDGET_USD=15; GRADER_BUDGET_USD=5; TICKET_BUDGET_USD=1000000
+MAX_ROUNDS=3; ROUND_BUDGET_USD=15; GRADER_BUDGET_USD=5; TICKET_BUDGET_USD=1000000
 DAILY_BUDGET_USD=1000000; MAX_HOURS=1000; MAX_TURNS=200; CALL_TIMEOUT_SEC=5400; MAX_PARALLEL=1
+JUDGE=on   # cmd_run sets it from FACTORY_JUDGE (on or off)
 # Decision 6 (Samyak, 2026-11-12): subscription building work has no dollar cap. USD_CAPS is 1 when the run's calls bill
 # an API key, which Claude Code prefers over CLAUDE_CODE_OAUTH_TOKEN and a stored login: ANTHROPIC_API_KEY or
 # ANTHROPIC_AUTH_TOKEN in the launch environment, or either (or an apiKeyHelper) in the user settings, which a native
@@ -2124,9 +2137,9 @@ limit_wait() { # result.json -> 0 after waiting, 1 when the reply is not a usage
 # match. The added line starts a fresh line as lib.sh's results do, so output with no trailing newline cannot
 # hide it from the ^FAIL reads. Check names are not read from the block, because a check can quote a ticket
 # body or a script whose pass and fail words are not top-level checks.
-run_checks() { # dir out
+run_checks() { # dir out [NAME=value, set for checks.sh]
   local rc
-  ( cd "$1" && "$RUN/frozen/checks.sh" ) > "$2" 2>&1
+  ( cd "$1" && env ${3:+"$3"} "$RUN/frozen/checks.sh" ) > "$2" 2>&1
   rc=$?
   [ "$(tail -n 1 "$2")" = CHECKS-END ] && return 0
   log "checks.sh exited $rc before its end line"
@@ -2167,7 +2180,14 @@ round_zero() {
     fi
     [ -n "$why" ] && break
   done < <(dc_predicts)
-  run_checks "$wt" "$out"
+  # The launcher may name a sha whose full gate already passed (FACTORY_GATE_PASSED_SHA, ASK-KARPATHY item C: distbench's
+  # factory-isc reads it from bin/integrate's merge-log.tsv); at that base, round 0's guard bin/check reuses it.
+  if [ -n "${FACTORY_GATE_PASSED_SHA:-}" ] && [ "$FACTORY_GATE_PASSED_SHA" = "$base" ]; then
+    log "round 0: bin/check at $(cut -c1-8 "$RUN/base.sha") reused from the gate the launcher names (FACTORY_GATE_PASSED_SHA), not run"
+    run_checks "$wt" "$out" "FACTORY_GATE_REUSED=the launcher's gate passed at ${base:0:8}"
+  else
+    run_checks "$wt" "$out"
+  fi
   git -C "$MAIN_CHECKOUT" worktree remove --force "$wt" > /dev/null 2>&1
   grep -q '^FAIL checks-aborted' "$out" \
     && finish ticket-defect "checks.sh aborted on $(cut -c1-8 "$RUN/base.sha") before the block ended; see $out"
@@ -2629,7 +2649,7 @@ median_range() { # numbers on stdin, one per line -> "median min max"; non-zero 
 }
 
 measure_rows() { # round; Rows measured is `[runs=N] [<row>:] <command> | <baseline>` per line (CONTRACT.md)
-  local out="$RUN/round-$1.measure" line row rest cmd note n i v lo hi vals dirty
+  local out="$RUN/round-$1.measure" line row rest cmd note n i v lo hi vals
   local at="$(git -C "$WORKTREE" rev-parse HEAD) $(git -C "$WORKTREE" symbolic-ref -q HEAD)"
   # The row's command runs with the run's ledger, daily ledger, ticket key, and round in its environment
   # only, so a `bin/factory eval` row books its cost to this run (#76) and no later child of the
@@ -2670,11 +2690,16 @@ measure_rows() { # round; Rows measured is `[runs=N] [<row>:] <command> | <basel
   # checks, so this removes only what the checks and rows wrote. clean has no -x, and one -f: ignored files and
   # a nested repository a row made stay (#608). A row that moved HEAD or the branch, a failed git step (a stale
   # index.lock) or a tree still dirty stops the run here rather than reset the worker's work or grade it dirty.
-  [ "$(git -C "$WORKTREE" rev-parse HEAD) $(git -C "$WORKTREE" symbolic-ref -q HEAD)" = "$at" ] \
-    || finish stopped-environment "a Rows measured row moved HEAD or the branch in $WORKTREE (was $at)"
+  restore_tree "$at" "Rows measured" "a Rows measured row"
+}
+
+restore_tree() { # "<HEAD> <branch ref>" before, what ran, who would have moved HEAD
+  local dirty
+  [ "$(git -C "$WORKTREE" rev-parse HEAD) $(git -C "$WORKTREE" symbolic-ref -q HEAD)" = "$1" ] \
+    || finish stopped-environment "$3 moved HEAD or the branch in $WORKTREE (was $1)"
   dirty=$(git -C "$WORKTREE" reset -q --hard 2>&1 && git -C "$WORKTREE" clean -qfd 2>&1 \
     && git -C "$WORKTREE" status --porcelain 2>&1) && [ -z "$dirty" ] \
-    || finish stopped-environment "could not restore $WORKTREE to HEAD after Rows measured: $(printf '%s' "$dirty" | tr '\n' ' ')"
+    || finish stopped-environment "could not restore $WORKTREE to HEAD after $2: $(printf '%s' "$dirty" | tr '\n' ' ')"
 }
 
 # ---- step 7: the graders ----------------------------------------------------
@@ -2691,7 +2716,10 @@ build_evidence() { # rubric_file diff_cap -> stdout
   base=$(cat "$RUN/base.sha")
   cat "$rubric"
   printf '\n\n## Ticket\n\n%s\n' "$FENCE"; cat "$RUN/frozen/issue.md"; printf '\n%s\n' "$FENCE"
-  printf '\n## Checks output\n\n%s\n' "$FENCE"; cat "$RUN/round-$ROUND.checks"; printf '\n%s\n' "$FENCE"
+  printf '\n## Checks output\n\n'
+  grep -q '^DEFERRED: bin/check' "$RUN/round-$ROUND.checks" 2> /dev/null \
+    && printf 'Supervisor note: this round deferred the full gate. The `check: PASSED` after the DEFERRED line is a stand-in, not a result: the supervisor runs the whole block with bin/check once the graders pass, and a red gate fails the round before any PR. Grade the other checks as usual; do not fail a row for the deferred gate alone.\n\n'
+  printf '%s\n' "$FENCE"; cat "$RUN/round-$ROUND.checks"; printf '\n%s\n' "$FENCE"
   printf '\n## Rows measured\n\n%s\n' "$FENCE"; cat "$RUN/round-$ROUND.measure" 2> /dev/null; printf '\n%s\n' "$FENCE"
   printf '\n## decisions.md (worker-authored)\n\n%s\n' "$FENCE"; cat "$DECISIONS"; printf '\n%s\n' "$FENCE"
   # Data files pass as stat only: evals/**/prompt.md and any added file over 400 lines (LOOP.md, Grader calls),
@@ -2792,6 +2820,13 @@ call_json() { # round stem role prompt_file schema_file
 
 run_judge() { # round -> 0 on a pass verdict
   local round="$1" pf="$RUN/round-$1.judge.prompt.md" f="$RUN/round-$1.judge.json"
+  # Judge off: no call; a stand-in pass marked off, so every reader of judge.json (resume, the grader-fail count, the
+  # PR body) sees a pass, and eval-freeze never takes it for a graded case. The fixes file starts empty, as a pass leaves it.
+  if [ "$JUDGE" = off ]; then
+    jq -n '{verdict: "pass", off: true, rows: {}, evidence: {}, fixes: [], backlog: []}' > "$f"
+    : > "$RUN/round-$round.fixes"
+    return 0
+  fi
   build_evidence "$RUN/frozen/judge.md" 4000 > "$pf"
   call_json "$round" judge judge "$pf" "$RUN/frozen/judge.schema.json"
   jq -r '.fixes[]? | "- " + .' "$f" > "$RUN/round-$round.fixes"
@@ -2992,7 +3027,10 @@ checks_section() { # heading checks-file
       if ($1 == "MEASURE" && NF == 3 && $3 ~ /^-?[0-9]+(\.[0-9]+)?$/) line = line " " $3
       print substr(line, 1, 300)}
     END {if (n > max) printf "... %d more lines in %s\n", n - max, f}' "$2"
-  printf '```\n\nReasons and full output: %s\n\n' "$2"
+  printf '```\n\n'
+  grep -q '^DEFERRED: bin/check' "$2" 2> /dev/null \
+    && printf 'bin/check did not run in this round: it was deferred until the graders pass (the DEFERRED line in the file below).\n\n'
+  printf 'Reasons and full output: %s\n\n' "$2"
 }
 
 # Each ^FAIL line's check name, once, in order; a name outside lib.sh's [A-Za-z0-9_.-] prints as ?. notify posts
@@ -3035,8 +3073,12 @@ open_pr() { # [draft]: opened at the grader-round cap
     printf '## Decisions\n\n```\n'; cat "$DECISIONS"; printf '```\n\n'
     checks_section "Checks at base ${base:0:8} (round 0)" "$RUN/round-0.checks"
     checks_section "Checks at the graded sha (round $ROUND)" "$RUN/round-$ROUND.checks"
-    printf '## Judge\n\ngraded at %s\n\n```json\n%s\n```\n\n' "$GRADED_SHA" \
-      "$(jq -c '{verdict, rows: (.rows // {}), evidence: (.evidence // {})}' "$RUN/round-$ROUND.judge.json")"
+    if jq -e '.off == true' "$RUN/round-$ROUND.judge.json" > /dev/null 2>&1; then
+      printf '## Judge\n\noff (FACTORY_JUDGE=off): no judge graded this run.\n\n'
+    else
+      printf '## Judge\n\ngraded at %s\n\n```json\n%s\n```\n\n' "$GRADED_SHA" \
+        "$(jq -c '{verdict, rows: (.rows // {}), evidence: (.evidence // {})}' "$RUN/round-$ROUND.judge.json")"
+    fi
     printf '## Reviewer\n\n'
     jq -r '.findings[]? | "- [" + .severity + "] " + (.file // "?") + ":" + ((.line // 0) | tostring) + " " + .defect + " Fix: " + .fix' "$RUN/round-$ROUND.review.json"
     jq -r '.unverified[]? | "- unverified: " + .' "$RUN/round-$ROUND.review.json"
@@ -3097,13 +3139,49 @@ open_pr() { # [draft]: opened at the grader-round cap
 # Step 7 on a round whose checks passed: a pass opens the PR, and the GRADER_FAIL_ROUNDS-th fail drafts it.
 grade_round() {
   measure_rows "$ROUND"
-  graders "$ROUND" && open_pr
+  if graders "$ROUND"; then
+    gate_last && open_pr
+    return 0   # the full gate failed: not a grader fail; the next worker round gets its FAIL lines
+  fi
+  PREV_FAILS=""   # a grader-fail round failed no check
   GRADER_FAILS=$((GRADER_FAILS + 1))
   [ "$GRADER_FAILS" -lt "$GRADER_FAIL_ROUNDS" ] \
     || { log "grader-round cap: $GRADER_FAIL_ROUNDS grader-fail rounds; the rest goes to the PR backlog"; open_pr draft; }
 }
 
-round_checks() { # out: a dirty tree or a do-not-touch hit fails the round without running the checks
+# The full gate runs once, last (ASK-KARPATHY item B): a round's checks run with the block's `guard bin/check` deferred
+# (lib.sh prints DEFERRED: and a stand-in check: PASSED), and gate_last runs the whole block once the graders pass,
+# before any PR. Its output replaces round-N.checks (the cheap pass stays as round-N.cheap.checks), so the PR body,
+# the next worker round and a relaunch read the full result. A red gate is not a grader fail: the next worker round
+# takes its FAIL lines, and the same failing set in two rounds in a row, from either pass, ends the run stuck. The tree
+# goes back to HEAD after it; a tree already dirty before it is left alone. A draft PR (grader-round cap or an
+# unparseable judge) opens on the cheap pass, and its Checks section says bin/check was deferred.
+GATE_DEFER="FACTORY_GATE_DEFER=1"
+PREV_FAILS=""   # the last round's failing check names, cheap pass or full gate, for the stuck exit
+gate_last() { # -> 0 when the round's checks deferred nothing, or the full block passed at HEAD
+  local f="$RUN/round-$ROUND.checks" at fails
+  grep -q '^DEFERRED: bin/check' "$f" || return 0
+  # A tree dirty before the gate (an edit while a relaunch waited) is never reset here: the round goes back to the loop,
+  # whose round_checks fails it as worktree-dirty.
+  [ -z "$(git -C "$WORKTREE" status --porcelain)" ] || { log "full gate: the worktree is dirty at HEAD, so it does not run; resuming into the loop"; return 1; }
+  at="$(git -C "$WORKTREE" rev-parse HEAD) $(git -C "$WORKTREE" symbolic-ref -q HEAD)"
+  log "full gate at $(git -C "$WORKTREE" rev-parse --short=8 HEAD): the graders passed; running the done-checks block with bin/check"
+  round_checks "$RUN/round-$ROUND.gate.out" full
+  restore_tree "$at" "the full gate" "the full gate"
+  cp "$f" "$RUN/round-$ROUND.cheap.checks" && mv -f "$RUN/round-$ROUND.gate.out" "$f" \
+    || finish stopped-environment "could not move the full gate's output into $f"
+  if grep -q '^FAIL' "$f"; then
+    fails=$(grep '^FAIL' "$f" | awk '{print $2}' | tr -d ':' | sort -u | tr '\n' ',')
+    log "full gate failing: $fails"
+    [ "$fails" = "$PREV_FAILS" ] && finish stuck "the same checks failed twice: $(fail_names "$f" | paste -sd, -)"
+    PREV_FAILS=$fails
+    return 1
+  fi
+  log "full gate: all pass"
+}
+
+round_checks() { # out [full]: a dirty tree or a do-not-touch hit fails the round without running the checks; the
+  # guarded bin/check is deferred to gate_last unless the second argument is full
   local dirty touched
   dirty=$(git -C "$WORKTREE" status --porcelain)
   touched=$(do_not_touch_hits)
@@ -3112,12 +3190,12 @@ round_checks() { # out: a dirty tree or a do-not-touch hit fails the round witho
   elif [ -n "$touched" ]; then
     printf 'FAIL do-not-touch %s\n' "$touched" > "$1"
   else
-    run_checks "$WORKTREE" "$1"
+    run_checks "$WORKTREE" "$1" "$([ "${2:-}" = full ] || printf '%s' "$GATE_DEFER")"
   fi
 }
 
 main_loop() {
-  local prev_fails="" prev_sig="" fails checks sig_now
+  local prev_sig="" fails checks sig_now
   notify info "$(ticket_name) started" \
     "Branch $BRANCH in $WORKTREE; it stops at $MAX_ROUNDS rounds${USD_CAPS:+, $TICKET_BUDGET_USD USD} or $MAX_HOURS hours"
   while :; do
@@ -3145,14 +3223,14 @@ main_loop() {
     if grep -q '^FAIL' "$checks"; then
       fails=$(grep '^FAIL' "$checks" | awk '{print $2}' | tr -d ':' | sort -u | tr '\n' ',')
       log "checks failing: $fails"
-      [ "$fails" = "$prev_fails" ] && finish stuck "the same checks failed twice: $(fail_names "$checks" | paste -sd, -)"
-      prev_fails="$fails"
+      [ "$fails" = "$PREV_FAILS" ] && finish stuck "the same checks failed twice: $(fail_names "$checks" | paste -sd, -)"
+      PREV_FAILS="$fails"
       [ $((ROUND % 2)) -eq 0 ] && notify info "$(ticket_name): checks still fail after round $ROUND; it keeps working" \
         "$(fail_names "$checks" | head -10 | sed 's/^/FAIL /'; printf 'Reasons and full output: %s\n' "$checks")"
       continue
     fi
-    prev_fails=""
-    log "checks: all pass"
+    if grep -q '^DEFERRED: bin/check' "$checks"; then log "checks: all pass, bin/check deferred until the graders pass"
+    else log "checks: all pass"; fi
     grade_round
   done
 }
@@ -3166,6 +3244,10 @@ cmd_run() {
   cv=$(claude_version_ok) || { echo "factory run: claude --version reports '$cv'; the factory needs Claude Code $CLAUDE_MIN_VERSION+ (#379)" >&2; exit 4; }
   load_ticket "$1"
   apply_caps
+  # FACTORY_JUDGE=off leaves the judge out of every round (run_judge); the launcher sets it per target. Unset or empty
+  # is on, as an empty cap counts as unset (next forwards it empty).
+  JUDGE=${FACTORY_JUDGE:-on}
+  case "$JUDGE" in on | off) ;; *) echo "factory run: FACTORY_JUDGE=$JUDGE: it must be on or off" >&2; exit 2 ;; esac
   local effort
   effort=$(section Worker | sed -n 's/^effort: *//p' | head -1)
   WORKER_EFFORT="${effort:-$WORKER_EFFORT}"
@@ -3246,6 +3328,7 @@ cmd_run() {
   freeze
   exec_frozen
   BODY=$(cat "$RUN/frozen/issue.md")   # from here on the frozen body is the ticket
+  [ "$JUDGE" = on ] || log "judge: off (FACTORY_JUDGE=off); each round's judge.json is a stand-in pass, and the reviewer, Codex review, mutation sweep and verifier still grade"
   [ "$IS_FILE" = 1 ] && trap 'git -C "$MAIN_CHECKOUT" worktree remove --force "$WORKTREE" > /dev/null 2>&1' EXIT
   TIMEOUT_G=(timeout -k 5 "$CALL_TIMEOUT_SEC")
   # The advisor attaches through a feature flag claude fetches; two env vars turn it silently off.
@@ -3292,12 +3375,14 @@ cmd_run() {
       open_pr ${intent_draft:+"$intent_draft"}
     # A round whose graders passed at HEAD with nothing blocking but crashed before open_pr wrote publish.intent: publish
     # it, with no new worker round. A judge fail, a blocking finding, or a moved HEAD resumes into the loop.
+    # A full gate that went red (a FAIL line in round-N.checks) resumes into the loop; one that never ran runs first.
     elif [ "$(jq -r .verdict "$RUN/round-$ROUND.judge.json" 2> /dev/null)" = pass ] && [ -z "$(blocking_findings)" ] \
-      && [ -s "$RUN/round-$ROUND.graded.sha" ] && [ "$(cat "$RUN/round-$ROUND.graded.sha")" = "$(git -C "$WORKTREE" rev-parse HEAD)" ]; then
+      && [ -s "$RUN/round-$ROUND.graded.sha" ] && [ "$(cat "$RUN/round-$ROUND.graded.sha")" = "$(git -C "$WORKTREE" rev-parse HEAD)" ] \
+      && ! grep -q '^FAIL' "$RUN/round-$ROUND.checks"; then
       GRADED_SHA=$(cat "$RUN/round-$ROUND.graded.sha")
       log "round $ROUND passed the graders at HEAD $GRADED_SHA; opening the PR with no worker round"
       check_frozen   # freeze returns early on a resume, so re-hash here as main_loop does before each round
-      open_pr
+      gate_last && open_pr
     # A round whose checks passed on a clean tree but whose graders never finished (a cap or FACTORY_STOP before
     # a grader call) is graded now, so the relaunch does not pay for, or cap out on, a new worker round. HEAD may
     # have moved while the run was stopped, so its checks run again at HEAD first, and only a pass is graded.
@@ -3947,6 +4032,7 @@ next_tick() { # [--dry-run|--install|--frontier]
   # the server's environment never reaches the run.
   local cap v
   for cap in $CAP_NAMES; do v="FACTORY_$cap"; envs+=(-e "$v=${!v:-}"); done
+  envs+=(-e "FACTORY_JUDGE=${FACTORY_JUDGE:-}")   # the judge switch travels the same way; empty is on
   # Existing runs keep their frozen supervisor, which may still read Loam's older launch exports.
   # Forward the exported namespace without requiring any of it for a new run.
   if target_is_loam; then
@@ -3970,7 +4056,7 @@ cmd_status() {
     [ -f "$d/status" ] || continue
     led="$d/ledger.jsonl"
     st=$(cat "$d/status")
-    rounds=$(find "$d" -maxdepth 1 -name 'round-*.checks' 2> /dev/null | grep -vc 'round-0' || true)
+    rounds=$(find "$d" -maxdepth 1 -name 'round-*.checks' 2> /dev/null | grep -E '/round-[0-9]+\.checks$' | grep -vc '/round-0\.' || true)
     spend=$(jq -s '[.[].cost_usd // 0] | add // 0 | . * 100 | round / 100' "$led" 2> /dev/null || echo 0)
     wall=$(( ( $(date -u +%s) - $(cat "$d/started" 2> /dev/null || date -u +%s) ) / 60 ))
     den=$(jq -s '[.[].denials // 0] | add // 0' "$led" 2> /dev/null || echo 0)
@@ -4283,6 +4369,8 @@ done
 # only in a sourced script; 2> /dev/null hides the error if the guard is ever hit while the file runs as
 # a program.
 [ "${FACTORY_SOURCED:-}" = 1 ] && { set_usd_caps; return 0 2> /dev/null; }
+# Past the guard this file runs as a program: a live run never passes the test marker on (bin/alert stays silent under it).
+unset FACTORY_SOURCED
 C_DIR=""
 [ "${1:-}" = -C ] && { [ $# -ge 2 ] || usage; C_DIR="$2"; shift 2; }
 CMD="${1:-}"
