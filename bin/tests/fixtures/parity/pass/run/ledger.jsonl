@@ -1,0 +1,3 @@
+{"round": 1, "role": "worker", "model": "claude-opus-5-5", "served_models": ["claude-opus-5-5"]}
+{"round": 1, "role": "reviewer", "model": "claude-fable-5-2", "served_models": ["claude-fable-5-2"]}
+{"round": 1, "role": "codex-review", "model": "gpt-6.1-sol", "served_models": []}

@@ -300,8 +300,9 @@ class EndToEndTests(unittest.TestCase):
         self.assertEqual(self.calls("unknown"), [])
 
     def test_no_result_stops_on_the_environment(self) -> None:
+        # An API-billed run, the only kind whose calls carry a dollar ceiling (Decision 6).
         self.seed((1, ticket("no-result", "ROUND_BUDGET_USD=3")))
-        t = self.tick()
+        t = self.tick(ANTHROPIC_API_KEY="sk-ant-test")
         self.assertEqual(t.stdout, "launched #1\n", t.stderr)
         self.assertEqual(self.wait_run(1), "stopped-environment", self.diag(1))
         run = self.run_dir(1)

@@ -416,6 +416,26 @@ class StatusCriteriaTests(unittest.TestCase):
             cwd=ROOT, capture_output=True, text=True, check=False)
         self.assertEqual(proc.stdout, "SKIPPED: gpu\nrc=3\nSKIPPED: once\n", proc.stderr)
 
+    def test_guard_copies_the_gate_result_past_a_capture(self) -> None:
+        # audit3 F1: a done-checks line that captures bin/check (out=$(guard bin/check)) still shows the gate's own
+        # result line in the checks file, which is what parity P4 reads in the worker's transcript.
+        proc = subprocess.run(
+            ["bash", "-c", '. bin/factory.d/lib.sh; out=$(guard sh -c "echo SKIPPED: none; echo noise; '
+             'echo check: PASSED" 2>&1); echo "captured=$(printf %s "$out" | wc -l)"'],
+            cwd=ROOT, capture_output=True, text=True, check=False)
+        self.assertEqual(proc.stdout, "SKIPPED: none\ncheck: PASSED\ncaptured=2\n", proc.stderr)
+
+    def test_the_gate_result_rides_on_its_checks_own_line_past_a_grep(self) -> None:
+        # audit4 (Fable 1): a worker that filters the block through grep -E '^(PASS|FAIL)' drops the bare check: line,
+        # so the guarded check's own PASS or FAIL line carries the gate's result; a check with no gate line gets none.
+        proc = subprocess.run(
+            ["bash", "-c", '{ . bin/factory.d/lib.sh; guard sh -c "echo noise; echo check: PASSED" && pass g || fail g x; '
+             'guard sh -c "echo check: FAILED; exit 1" && pass h || fail h "bin/check failed"; guard true && pass i; } '
+             '| grep -E "^(PASS|FAIL)"'],
+            cwd=ROOT, capture_output=True, text=True, check=False)
+        self.assertEqual(proc.stdout, "PASS g (check: PASSED)\nFAIL h: bin/check failed (check: FAILED)\nPASS i\n",
+                         proc.stderr)
+
     def test_dash_C_reports_only_the_other_targets_runs(self) -> None:
         repo = pathlib.Path(self.tmp.name) / "r"
         repo.mkdir()
