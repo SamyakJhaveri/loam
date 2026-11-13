@@ -30,14 +30,20 @@ FENCE = re.search(r"^FENCE='([^']*)'", (ROOT / "bin/factory").read_text(), re.M)
 PR_URL = "https://github.com/acme/widget/pull/9"
 FROZEN_BRIEF_MARKER = "This line is only in the frozen brief."
 
+# A reply holding "slow" takes 2 s and records when it started and ended, next to the worktree (claude runs in it) or
+# the -o file (codex), so a test can tell whether the reviewer and the Codex review ran at the same time.
 FAKE_CLAUDE = """#!/usr/bin/env python3
-import json, sys
+import json, pathlib, sys, time
 reply = sys.stdin.read().rsplit("REPLY ", 1)[1].splitlines()[0]
+if "slow" in reply:
+    start = time.time()
+    time.sleep(2)
+    (pathlib.Path.cwd().parent / "times.reviewer").write_text(f"{start} {time.time()}")
 print(json.dumps({"type": "result", "subtype": "success", "is_error": False, "total_cost_usd": 0, "result": reply}))
 """
 
 FAKE_CODEX = """#!/usr/bin/env python3
-import pathlib, sys
+import pathlib, sys, time
 if "mcp" in sys.argv:
     print("[]")
     sys.exit(0)
@@ -48,6 +54,10 @@ with calls.open("a") as f:
     f.write(out.name + "\\n")
 reply = out.parent / ("codex-reply.%d" % len(calls.read_text().splitlines()))
 if reply.exists():
+    if "slow" in reply.read_text():
+        start = time.time()
+        time.sleep(2)
+        (out.parent.parent / "times.codex").write_text(f"{start} {time.time()}")
     out.write_text(reply.read_text())
 """
 
@@ -195,6 +205,20 @@ class CappedReviewTests(unittest.TestCase):
                 stderr, calls = self.run_loop([{"verdict": "fix", "findings": [first_block]}, second])
                 self.assertIn("first defect", (self.run_dir / "round-1.fixes").read_text())
                 self.assert_draft_with_filed_finding(stderr, calls, finding)
+
+    def test_the_reviewer_and_the_codex_review_run_at_the_same_time(self) -> None:
+        self.new_run()
+        review = {"verdict": "merge", "findings": [review_finding("low", "slow reviewer note")]}
+        codex = {**CLEAN_CODEX, "findings": [{"severity": "low", "file": "bin/x", "line_start": 3, "line_end": 3,
+                                             "confidence": 0.9, "title": "t", "body": "slow codex note"}]}
+        stderr, calls = self.run_loop([review], codex=[json.dumps(codex)])
+        (r_start, r_end), (c_start, c_end) = ([float(x) for x in (self.top / f"times.{who}").read_text().split()]
+                                              for who in ("reviewer", "codex"))
+        self.assertLess(max(r_start, c_start), min(r_end, c_end), "the two 2 s reviews did not overlap")
+        # Both replies were read: each one's finding reaches the PR body.
+        body = self.pr_create(calls)["body"]
+        self.assertIn("slow reviewer note", body)
+        self.assertIn("slow codex note", body)
 
     def codex_fixes(self) -> list[str]:
         fixes = self.run_dir / "round-1.fixes"
