@@ -22,6 +22,9 @@ GRADERS = ROOT / "cultivation/marketplace/sam-cc-setup/agents"
 GREET = 'test -f g.txt && grep -q hello g.txt && pass greet || fail greet "g.txt lacks hello"'
 STUBS = ("assert_target_ready() { :; }; claude_version_ok() { :; }; exec_frozen() { :; }; "
          'main_loop() { finish stopped-environment "stub worker round"; }')
+# A real ticket's line (distbench lean plan, tickets/factory-weekly-reset.md): prose around one backticked path.
+REAL_LINE = "Edit: Loam `bin/factory` (limit_wait and its reset parser)."
+GATE = "\nEdit-scope: gate"   # the header line a ticket opts in with; without it the fence only reports
 HEADER = "# F41: a ticket\n\nBrief: x\nBlocked by: none\n{edit}\n## Goal and why\n\nEdit: not/this/one.py\n"
 
 
@@ -73,8 +76,34 @@ class EditScopeTests(unittest.TestCase):
 
     def test_a_round_inside_the_edit_line_runs_the_checks(self) -> None:
         # Backticks and commas as a ticket writes them; a directory covers what sits under it.
-        checks = self.round_checks("Edit: `src/a.py`, tests/", "echo x >> src/a.py && echo x > tests/test_new.py")
+        checks = self.round_checks("Edit: `src/a.py`, `tests/`", "echo x >> src/a.py && echo x > tests/test_new.py")
         self.assertEqual(checks, "PASS x\n\nCHECKS-END\n")
+
+    def test_a_real_ticket_line_fences_its_backticked_paths_only(self) -> None:
+        checks = self.round_checks(REAL_LINE + GATE, "mkdir -p bin && echo x > bin/factory")
+        self.assertEqual(checks, "PASS x\n\nCHECKS-END\n")
+        self.assertEqual((self.run_dir / "frozen" / "edit.txt").read_text(), "bin/factory\n")
+
+    def test_in_shadow_a_path_off_the_line_is_reported_and_the_checks_run(self) -> None:
+        checks = self.round_checks(REAL_LINE, "mkdir -p bin && echo x > bin/factory && echo x >> src/b.py")
+        self.assertEqual(checks, "PASS x\n\nCHECKS-END\n")
+        self.assertEqual((self.run_dir / "round-1.edit-scope").read_text().splitlines(), [
+            "SHADOW edit-scope: the round changed src/b.py but the ticket's Edit: line lists only bin/factory; "
+            "revert those paths"])
+        self.assertIn("SHADOW edit-scope: the round changed src/b.py", (self.run_dir / "factory.log").read_text())
+
+    def test_a_ticket_that_opts_in_fails_the_round_off_its_real_line(self) -> None:
+        checks = self.round_checks(REAL_LINE + GATE, "mkdir -p bin && echo x > bin/factory && echo x >> src/b.py")
+        self.assertEqual(checks.splitlines(), [
+            "FAIL edit-scope: the round changed src/b.py but the ticket's Edit: line lists only bin/factory; "
+            "revert those paths"])
+        self.assertFalse((self.run_dir / "round-1.edit-scope").exists())
+
+    def test_in_shadow_a_line_the_fence_cannot_read_sets_no_fence(self) -> None:
+        checks = self.round_checks("Edit: src/*.py", "echo x >> src/b.py")
+        self.assertEqual(checks, "PASS x\n\nCHECKS-END\n")
+        self.assertFalse((self.run_dir / "frozen" / "edit.txt").exists())
+        self.assertIn("SHADOW edit-scope: the Edit: line holds src/*.py", (self.run_dir / "factory.log").read_text())
 
     def test_adjacent_entries_and_a_leading_dot_slash_are_paths(self) -> None:
         # `src/a.py,tests/` is two entries, not `src/a.pytests/`; `./src/a.py` is git's `src/a.py`.
@@ -132,7 +161,7 @@ class EditScopeTests(unittest.TestCase):
                           ("Edit: src/..", "the Edit: line holds src/.., whose .. segment climbs a directory"),
                           ("Edit: ext/a.py", "the Edit: line names ext/a.py, which is not a path inside the repository")):
             with self.subTest(line):
-                out = self.round_checks(line, "echo x >> src/a.py")
+                out = self.round_checks(line + GATE, "echo x >> src/a.py")
                 self.assertTrue(out.startswith(f"FINISH ticket-defect: {why}"), out)
                 self.assertFalse((self.run_dir / "round-1.checks").exists())
 
@@ -144,7 +173,7 @@ class EditScopeTests(unittest.TestCase):
             with self.subTest(why):
                 git("reset", "-q", "--hard", (self.run_dir / "base.sha").read_text().strip(), cwd=self.wt)
                 (self.run_dir / "frozen" / "edit.txt").unlink(missing_ok=True)
-                checks = self.round_checks("Edit: src/a.py, tests/", change)
+                checks = self.round_checks("Edit: src/a.py, tests/" + GATE, change)
                 self.assertEqual(checks.splitlines(), [
                     "FAIL edit-scope: the round changed src/b.py but the ticket's Edit: line lists only src/a.py, tests/; "
                     "revert those paths"])
@@ -171,9 +200,9 @@ class EditLineLintAndFreezeTests(unittest.TestCase):
         for args in (["init", "-q"], ["add", "g.txt"], ["commit", "-qm", "base"]):
             git(*args, cwd=repo)
 
-    def lint(self, edit_line: str) -> tuple[int, str]:
+    def lint(self, edit_line: str, gate: str = GATE) -> tuple[int, str]:
         """Exit code and output of `bin/factory lint` over a whole body whose header holds edit_line."""
-        body = (f"# Lint fixture\nBrief:\nfixture\nBlocked by: none\n{edit_line}\n\n## Goal and why\nfixture\n\n"
+        body = (f"# Lint fixture\nBrief:\nfixture\nBlocked by: none\n{edit_line}{gate}\n\n## Goal and why\nfixture\n\n"
                 "## Do not touch\nThe standing list.\n\n## Out of scope\nnothing\n\n"
                 f"## Done checks\n```done-checks\npredict greet test -f g.txt\n{GREET}\nguard true && pass g || fail g \"guard\"\n```\n\n"
                 "## Worker\nworker: claude\ncodex-review: no\neffort: high\ncontract: 2\n"
@@ -201,8 +230,8 @@ class EditLineLintAndFreezeTests(unittest.TestCase):
     def test_lint_rejects_an_edit_line_with_no_path_or_a_word_the_fence_drops(self) -> None:
         for line, why in (("Edit:", "the Edit: line lists no path"),
                           ("Edit: ``", "the Edit: line lists no path"),
-                          ("Edit: Loam `bin/factory` (limit_wait and its reset parser).",
-                           "the Edit: line holds (limit_wait, which is not a path"),
+                          ("Edit: `src/a.py`, tests/ (new)",
+                           "the Edit: line holds tests/ outside backticks, where the fence reads no path"),
                           ("Edit: bin/*.sh, docs/", "the Edit: line holds bin/*.sh, which is not a path"),
                           ("Edit: bin/factory, docs/..", "the Edit: line holds docs/.., whose .. segment climbs a directory")):
             with self.subTest(line):
@@ -211,10 +240,15 @@ class EditLineLintAndFreezeTests(unittest.TestCase):
                 self.assertIn(f": {why}", out)
 
     def test_lint_accepts_paths_split_by_commas_and_spaces(self) -> None:
-        for line in ("", "Edit: `bin/factory`,docs/factory/ ./NOTES.md", "Edit: bin/factory, bin/tests/."):
+        for line in ("", "Edit: bin/factory,docs/factory/ ./NOTES.md", "Edit: bin/factory, bin/tests/.", REAL_LINE):
             with self.subTest(line):
                 rc, out = self.lint(line)
                 self.assertEqual(rc, 0, out)
+
+    def test_lint_in_shadow_reports_an_unreadable_line_without_failing(self) -> None:
+        rc, out = self.lint("Edit: bin/*.sh, docs/", gate="")
+        self.assertEqual(rc, 0, out)
+        self.assertIn("SHADOW edit-scope (not an error until the fence leaves shadow): the Edit: line holds bin/*.sh", out)
 
     def test_freeze_writes_edit_txt_into_the_hashed_frozen_set(self) -> None:
         run = self.cmd_run("scoped", "Edit: g.txt, docs/", "stopped-environment")
@@ -223,7 +257,7 @@ class EditLineLintAndFreezeTests(unittest.TestCase):
         self.assertIn("edit.txt", hashed)
 
     def test_freeze_ends_a_run_whose_edit_line_lint_rejects(self) -> None:
-        run = self.cmd_run("bad", "Edit: (none)", "ticket-defect")
+        run = self.cmd_run("bad", "Edit: (none)" + GATE, "ticket-defect")
         self.assertFalse((run / "frozen/edit.txt").exists())
         self.assertFalse((run / "round-0.checks").exists())
         # The worktree is removed as at any other exit, so the corrected body's run gets its own branch.

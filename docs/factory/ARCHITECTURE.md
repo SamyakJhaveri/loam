@@ -73,7 +73,7 @@ The supervisor execs its frozen copy of `bin/factory`, so a ticket that edits th
 - `evals/scores.jsonl`
 - `.codex` - a Codex round swaps this symlink for a real directory and restores it; a commit that changes it is a hit
 
-A path off a ticket's explicit `Edit:` line fails the round before grading (`FAIL edit-scope`, `CONTRACT.md` item 1); other scope beyond the ticket goal outside this list is a judge finding, not a stall.
+A path off a ticket's explicit `Edit:` line fails the round before grading (`FAIL edit-scope`, `CONTRACT.md` item 1) once the ticket sets `Edit-scope: gate`, and is reported in shadow until then; other scope beyond the ticket goal outside this list is a judge finding, not a stall.
 
 ## Models and roles
 
