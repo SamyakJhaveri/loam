@@ -159,15 +159,101 @@ predict_split() {
   name=${cmd%%[[:space:]]*}; cmd=${cmd#"$name"}; cmd=${cmd#"${cmd%%[![:space:]]*}"}
 }
 
-# The NAME after each `pass` in the check lines on stdin, quotes stripped, one per line.
-pass_names() { grep -oE '(^|[[:space:]])pass[[:space:]]+"?[A-Za-z0-9_.-]+' | awk '{print $NF}' | tr -d '"' | sort -u; }
-
-# Like pass_names, but only where pass is the command word (after && || ; { ( ) then do else, or at the start), so a
-# fail reason such as "lint does not pass greeting" names no check; ) ends a case pattern. check_predicts reads it: a
-# name too many there would demand a predict line, while round 0's guard names only exempt, so they keep pass_names.
+# The literal NAME after each command-word `pass` (at the start, or after an operator or { ! then do else) in the check
+# lines on stdin, one per line. A small reader of bash words keeps quotes, $(...), ${...} and <(...) whole, nested quotes
+# included, so a fail reason such as "x; (pass note)" names no check and `pass 'note'` names note; a # starts a comment
+# only at a word's start. It fails closed: a line holding what it does not model (a backtick, a bare ( inside ${...},
+# a pass inside <(...) or >(...), an unclosed quote or paren) gives no names, and -u prints such lines instead.
+# check_predicts, check_guard_names and round 0 read it.
 pass_cmd_names() {
-  grep -oE '(^|&&|\|\||[;{()]|(then|do|else)[[:space:]])[[:space:]]*pass[[:space:]]+"?[A-Za-z0-9_.-]+' \
-    | awk '{print $NF}' | tr -d '"' | sort -u
+  python3 -I -c '
+import re, sys
+Q, OPS, AFTER = chr(39), ("&&", "||", ";;", ";", "&", "|", "(", ")"), {"{", "!", "then", "do", "else"}
+
+class Unread(Exception):
+    pass
+
+def quote_end(s, i):  # the index after the quote that closes the one at i; $-quotes take backslash escapes
+    j, ansi = i + 1, s[i - 1:i] == "$" and (i - 1 - len(s[:i - 1].rstrip("\\"))) % 2 == 0
+    while j < len(s) and s[j] != Q:
+        j += 2 if ansi and s[j] == "\\" else 1
+    if j >= len(s):
+        raise Unread
+    return j + 1
+
+def procsub(s, i):  # the index after the <(...) or >(...) at i; one that runs pass may print its PASS line
+    j = skip(s, i + 2, ")")
+    if re.search("(^|[^A-Za-z0-9_.-])pass($|[^A-Za-z0-9_.-])", s[i + 2:j - 1]):
+        raise Unread
+    return j
+
+def skip(s, i, close):  # the index after the close of the double quote or substitution opened before i
+    while i < len(s):
+        c = s[i]
+        if c == close:
+            return i + 1
+        # a case arm ends in ), which this reader would take for the close of $(...)
+        if c == "`" or (c == "(" and close == "}") or (close == ")" and re.compile("(?<![A-Za-z0-9_.-])case[ \t]").match(s, i)):
+            raise Unread
+        if s.startswith(("<(", ">("), i) and close != "\"":
+            i = procsub(s, i)
+        elif c == "\\":
+            i += 2
+        elif c == Q and close != "\"":
+            i = quote_end(s, i)
+        elif c == "\"":
+            i = skip(s, i + 1, "\"")
+        elif s.startswith(("$(", "${"), i):
+            i = skip(s, i + 2, ")" if s[i + 1] == "(" else "}")
+        elif c == "(" and close == ")":
+            i = skip(s, i + 1, ")")
+        else:
+            i += 1
+    raise Unread
+
+def tokens(s):  # words as their literal text ("$" for any expansion), operators as 1-tuples, redirections as "<"
+    t, w, i = [], None, 0
+    while i < len(s):
+        c, op = s[i], next((o for o in OPS if s.startswith(o, i)), None)
+        if s.startswith(("<(", ">("), i):
+            w, i = (w or "") + "$", procsub(s, i)
+        elif c in "<>" or op or c.isspace() or (c == "#" and w is None):
+            t += ([w] if w is not None else []) + (["<"] if c in "<>" else [(op,)] if op else [])
+            if c == "#":
+                break
+            w, i = None, i + (len(re.match("[<>]+[&|]?", s[i:]).group()) if c in "<>" else len(op) if op else 1)
+        elif c == "`":
+            raise Unread
+        elif c == "\\":
+            w, i = (w or "") + s[i + 1:i + 2], i + 2
+        elif c == Q:
+            j = quote_end(s, i)
+            w, i = (w or "") + s[i + 1:j - 1], j
+        elif c == "\"":
+            j = skip(s, i + 1, "\"")
+            w, i = (w or "") + (s[i + 1:j - 1] if not re.search("[$`\\\\]", s[i + 1:j - 1]) else "$"), j
+        elif s.startswith(("$(", "${"), i):
+            w, i = (w or "") + "$", skip(s, i + 2, ")" if s[i + 1] == "(" else "}")
+        else:
+            w, i = (w or "") + c, i + 1
+    return t + ([w] if w is not None else [])
+
+def names(t):  # the word after each command-word pass (not a pass() definition), which must be a literal name
+    for i, w in enumerate(t[:-1]):
+        if w == "pass" and (i == 0 or isinstance(t[i - 1], tuple) or t[i - 1] in AFTER) and isinstance(t[i + 1], str):
+            if not re.fullmatch("[A-Za-z0-9_.-]+", t[i + 1]):
+                raise Unread
+            yield t[i + 1]
+
+for line in sys.stdin:
+    try:
+        found = list(names(tokens(line)))
+    except Unread:
+        found = [line.rstrip("\n")] if sys.argv[1:] == ["-u"] else []
+    else:
+        found = [] if sys.argv[1:] == ["-u"] else found
+    print(*found, sep="\n") if found else None
+' "$@" | sort -u
 }
 
 # A check that calls `guard` is a regression guard allowed to pass on base (CONTRACT.md, Done checks): `guard` as the
@@ -696,6 +782,16 @@ check_except_paths() {
   return 0
 }
 
+# A guard line pass_cmd_names cannot read has no guard name round 0 could trust (Loam issue 726): refused, not guessed.
+GUARD_FORM='write this guard line as: guard <cmd> && pass <name> || fail <name> "<reason>"'
+check_guard_names() {
+  local line
+  while IFS= read -r line; do err "$GUARD_FORM; the pass-name reader does not model it: $line"; done < <(guard_checks | pass_cmd_names -u)
+  return 0
+}
+
+check_edit_fenced() { local msg; msg=$(edit_fenced); [ -z "$msg" ] || err "$msg"; }
+
 # ---- eval ----
 # Replays evals/<grader>/<case>/prompt.md through the grader call in docs/factory/LOOP.md and
 # compares the verdict with expected.json. The rubric comes from the live grader file, so a
@@ -813,7 +909,7 @@ eval_tree() { # work [evals_dir, default EVALS_DIR]: exports into work/tree
 # expected.json's tree_base (eval-freeze records the merge base of the run's base and graded commits, which a
 # three-dot diff starts from), else the commit the `## Diff (<base>...HEAD)` heading names. The case fails instead of
 # grading a tree the round never had when the Diff is not the whole change (build_evidence caps it, passes a large
-# added file as stat only, and leaves deleted files out) or a file does not apply; a failure that names the Diff is
+# added file as stat only, and once left deleted files out) or a file does not apply; a failure that names the Diff is
 # a property of the case (model-eval caches it), any other is the environment. A recorded tree_base this checkout
 # lacks fails too; only a case without one whose heading's commit is missing (run-only, lean-v3) reads the HEAD
 # export. Graded in HEAD, a case drifts as main moves: a reviewer flagged a gh call for skipping a wrapper main
@@ -835,7 +931,7 @@ case_tree() { # case-dir work -> the tree to grade in on stdout; non-zero, with 
   omit=$(sed -n 's/^\[stat only, content omitted as data: \(.*\)\]$/\1/p' "$2/patch/diff" | tr ' ' '\n' | grep -v '^evals/' | grep .)
   [ -z "$omit" ] || { echo "the Diff omits the content of:" $omit >&2; return 1; }
   awk -v out="$2/patch/" '/^diff --git / {n++} n {print > (out n)}' "$2/patch/diff"
-  # Every changed file is a patch or a stat-only name; build_evidence gives a deleted file neither.
+  # Every changed file is a patch or a stat-only name (a case frozen before 13 Nov has no patch for a deleted file).
   total=$(sed -n 's/^ \([0-9][0-9]*\) files\{0,1\} changed.*/\1/p' "$2/patch/diff" | head -1)
   held=$(( $(find "$2/patch" -name '[0-9]*' | wc -l) + \
     $(sed -n 's/^\[stat only, content omitted as data: \(.*\)\]$/\1/p' "$2/patch/diff" | wc -w) ))
@@ -1153,7 +1249,8 @@ lint_body() {
   check_not_grep_only
   check_distbench_lines
   # Fixture bodies are historical tickets that name paths later tickets removed, and predate predict lines.
-  case "$SRC" in *bin/factory.d/fixtures/*) ;; *) check_paths; check_except_paths; check_predicts ;; esac
+  case "$SRC" in *bin/factory.d/fixtures/*) ;; *) check_paths; check_except_paths; check_edit_fenced; check_predicts ;; esac
+  check_guard_names
 
   [ "$ERRS" -eq 0 ] || return 1
   echo "lint: OK $SRC"
@@ -1549,6 +1646,25 @@ standing_list() {
   awk '/^## Standing do-not-touch list$/ {inb = 1; next} /^## / {inb = 0} inb && /^- /' "$f" | ticket_paths
 }
 
+# What Do not touch fences off (the standing list and its own paths), and what its Except: tails free again.
+protected_paths() { { standing_list; section "Do not touch" | sed 's/[Ee]xcept:.*//' | ticket_paths; } | sort -u; }
+exempt_paths() { section "Do not touch" | grep -o '[Ee]xcept:.*' | ticket_paths; }
+
+fenced() { # protected exempt; NUL-separated paths on stdin -> those under a protected entry and under no exempt one
+  local f
+  while IFS= read -r -d '' f; do
+    under "$f" "$1" && ! under "$f" "$2" && printf '%s ' "$f"
+  done
+}
+
+# A path on the header's Edit: line that Do not touch fences off is one the worker must edit and every round's
+# do-not-touch check fails (distbench L01 run 1, 2026-11-13: 83 min). Prints the defect, or nothing.
+edit_fenced() {
+  local hits
+  hits=$(edit_words | tr '\n' '\0' | fenced "$(protected_paths)" "$(exempt_paths)")
+  [ -z "$hits" ] || printf 'the Edit line names %s, which Do not touch fences off and no Except: line frees, so every round would fail the do-not-touch check\n' "${hits% }"
+}
+
 under() { # path list -> 0 when path equals or sits under a list entry
   local p="$1" e
   while IFS= read -r e; do
@@ -1712,8 +1828,8 @@ freeze() {
       "$(now)" "$g" "$src" "$(sha256_of < "$RUN/frozen/$g.src.md" | cut -d' ' -f1)" >> "$LEDGER"
   done
   { cat "$RUN/frozen/lib.sh"; echo; dc_script; echo; echo "$CHECKS_END"; echo 'exit $((n_fail > 0))'; } > "$RUN/frozen/checks.sh"
-  { standing_list; section "Do not touch" | sed 's/[Ee]xcept:.*//' | ticket_paths; } | sort -u > "$RUN/frozen/protected.txt"
-  section "Do not touch" | grep -o '[Ee]xcept:.*' | ticket_paths > "$RUN/frozen/exempt.txt"
+  protected_paths > "$RUN/frozen/protected.txt"
+  exempt_paths > "$RUN/frozen/exempt.txt"
   freeze_edit_line
   chmod +x "$RUN/frozen/checks.sh" "$RUN/frozen/factory" "$RUN/frozen/alert"
   # shellcheck disable=SC2086
@@ -2265,6 +2381,8 @@ round_zero() {
   # A line continuation would split one line across the readers (dc_continued); lint rejects it, and a run never linted
   # (bin/factory run) stops here, before any of the block runs.
   [ -z "$(dc_continued)" ] || finish ticket-defect "a done-checks line ends in a backslash; the block takes no line continuations"
+  line=$(guard_checks | pass_cmd_names -u | head -n 1)
+  [ -z "$line" ] || finish ticket-defect "$GUARD_FORM; the pass-name reader does not model it: $line"
   # Round 0 belongs to base only: run the frozen checks at base.sha in a detached temporary
   # worktree, never in the ticket worktree, which a relaunch may leave ahead of base with the
   # checks already passing. Remove and prune clear a leftover from a killed round 0 before the
@@ -2300,7 +2418,14 @@ round_zero() {
   # A predict line whose command exits non-zero, or that has none: the check fails on base, but not for the reason
   # its author predicted.
   [ -z "$why" ] || finish ticket-defect "the predict line for check $name $why on $(cut -c1-8 "$RUN/base.sha"), so base does not show the predicted failure"
-  guards=$(guard_checks | pass_names)
+  guards=$(guard_checks | pass_cmd_names)
+  # A guard may pass on base, but one that FAILs there fails in every round (Loam issue 726). A deferred bin/check
+  # prints its DEFERRED line and a stand-in pass, never a FAIL.
+  while IFS= read -r line; do
+    name=${line#FAIL }; name=${name%%:*}
+    grep -qxF "$name" <<<"$guards" \
+      && finish ticket-defect "guard check $name fails on $(cut -c1-8 "$RUN/base.sha"), so no round can pass it: ${line#FAIL }; see $out"
+  done < <(grep '^FAIL ' "$out")
   while read -r _ name _; do
     grep -qxF "$name" <<<"$guards" && continue
     finish ticket-defect "check $name passes on $(cut -c1-8 "$RUN/base.sha"), so it cannot prove the ticket; see $out"
@@ -2349,7 +2474,7 @@ nav_c_append() { [ "${FACTORY_NAV_ARM:-}" = C ] && cat "$ROOT/bin/factory.d/_nav
 nav_arm_resolve() { [ -n "${FACTORY_NAV_ARM+x}" ] && return 0; local f="$RUNS_ROOT/nav-order" a; [ -s "$f" ] || return 0; a=$(head -n 1 "$f"); [ -n "$a" ] || return 0; export FACTORY_NAV_ARM="$a"; tail -n +2 "$f" > "$f.tmp" && mv "$f.tmp" "$f"; return 0; }
 
 build_worker_prompt() { # round -> prompt path (pending until the call returns a result); 3 when a skills: name resolves to no SKILL.md, 4 when jq cannot build the fan-out args
-  local round="$1" pf="$RUN/pending.prompt.md" prev=$((round - 1)) s sf ad= router common
+  local round="$1" pf="$RUN/pending.prompt.md" prev=$((round - 1)) s sf ad= router pstack common
   local -a sl=()   # a Claude worker's skill lines, also handed to each fan-out builder in the Workflow args
   # The router's path fills <router> in the frozen _common.md and goes to each fan-out builder; a missing router
   # is a FAIL line in the log, and the prompt then tells the worker to skip that line.
@@ -2358,6 +2483,10 @@ build_worker_prompt() { # round -> prompt path (pending until the call returns a
   # Prefix and suffix cuts, not ${common//...}: bash 5.2 reads & in a replacement as the match.
   [[ $common != *"<router>"* ]] \
     || common="${common%%<router>*}${router:-(missing on this host, so skip this line)}${common#*<router>}"
+  # The pstack skills folder fills each <pstack> (the principle lines), by skill_file's rule; none resolved reads "missing".
+  pstack=$(SKILL_SETTINGS="$(worker_skill_settings)" skill_file pstack:principle-minimize-reader-load) \
+    && pstack=${pstack%/*/SKILL.md} || { pstack=missing; log "FAIL pstack: pstack:principle-minimize-reader-load resolves to no SKILL.md"; }
+  while [[ $common == *"<pstack>"* ]]; do common="${common%%<pstack>*}${pstack}${common#*<pstack>}"; done
   { printf '%s\n\n' "$BODY"; printf '%s\n' "$common"; } > "$pf"
   # Another target's bin/check is its full gate, which the supervisor's checks run once after the round; a distbench
   # worker that ran it itself spent 109 of 117 minutes on it (L01, 13 Nov). Under LOAM_HOOK, guard bin/check passes
@@ -2393,12 +2522,16 @@ build_worker_prompt() { # round -> prompt path (pending until the call returns a
   # A large claude ticket runs round 1 as the fan-out workflow; a Codex worker gets the ordinary round-1
   # prompt (runs_workflow is false for it). The F11 advisor is the second check on the split (F12).
   if runs_workflow "$round"; then
-    # skills: the lines above, verbatim, so each builder reads what the lead was told to (#523); jq escapes the
-    # paths. A jq older than 1.6 has no --args: return 4 rather than hand the lead empty args.
+    # skills: the lines above and _common.md's pstack principle lines, verbatim, so each builder reads what the lead
+    # was told to (#523); jq escapes the paths. A jq older than 1.6 has no --args: return 4 rather than hand the lead
+    # empty args.
+    local -a pl=()
+    local pline
+    while IFS= read -r pline; do pl+=("$pline"); done < <(awk '/these pstack principles/ { on = 1; print; next } on && /^- / { print; next } { on = 0 }' <<<"$common")  # bash 3.2 (macOS) has no mapfile
     # supervisorGate: another target's integrator leaves bin/check to the supervisor, as the line above tells the lead.
     local wa sg=true
     target_is_loam && sg=false
-    wa=$(jq -cn --arg ticket "$RUN/frozen/issue.md" --arg run "$RUN" --arg router "$router" --argjson sg "$sg" '{ticket: $ticket, run: $run, router: $router, supervisorGate: $sg, skills: $ARGS.positional}' --args ${sl[@]+"${sl[@]}"}) \
+    wa=$(jq -cn --arg ticket "$RUN/frozen/issue.md" --arg run "$RUN" --arg router "$router" --argjson sg "$sg" '{ticket: $ticket, run: $run, router: $router, supervisorGate: $sg, skills: $ARGS.positional}' --args ${sl[@]+"${sl[@]}"} ${pl[@]+"${pl[@]}"}) \
       || { log "jq could not build the fan-out Workflow args (needs jq 1.6 or newer)"; return 4; }
     {
       printf '\n\n## Large ticket, round 1: run the fan-out workflow\n\n'
@@ -2743,12 +2876,8 @@ worker_round() { # round; leaves round-N.* only once the call produced a result
 }
 
 do_not_touch_hits() { # -> the changed paths the ticket fenced off; -z, since git quotes a name with a non-ASCII byte
-  local f
-  git -C "$WORKTREE" diff --name-only -z "$(cat "$RUN/base.sha")...HEAD" | while IFS= read -r -d '' f; do
-    under "$f" "$(cat "$RUN/frozen/protected.txt")" || continue
-    under "$f" "$(cat "$RUN/frozen/exempt.txt")" && continue
-    printf '%s ' "$f"
-  done
+  git -C "$WORKTREE" diff --name-only -z "$(cat "$RUN/base.sha")...HEAD" \
+    | fenced "$(cat "$RUN/frozen/protected.txt")" "$(cat "$RUN/frozen/exempt.txt")"
 }
 
 # -z: git quotes a name holding a non-ASCII byte, a tab, a quote or a backslash, and a quoted name is under no entry.
@@ -2850,7 +2979,7 @@ build_evidence() { # rubric_file diff_cap -> stdout
   printf '\n## decisions.md (worker-authored)\n\n%s\n' "$FENCE"; cat "$DECISIONS"; printf '\n%s\n' "$FENCE"
   # Data files pass as stat only: evals/**/prompt.md and any added file over 400 lines (LOOP.md, Grader calls),
   # so a frozen grader prompt or a large fixture never floods the diff a grader reads.
-  names=$( cd "$WORKTREE" && git diff -M --name-only --diff-filter=AMR "$base...HEAD" )
+  names=$( cd "$WORKTREE" && git diff -M --name-only --diff-filter=AMRD "$base...HEAD" )
   stat_only=$( { grep -E '^evals/.*/prompt\.md$' <<< "$names" || true
                  ( cd "$WORKTREE" && git diff --numstat --diff-filter=A "$base...HEAD" ) \
                    | awk -F'\t' '$1 + 0 > 400 {print $3}'; } | sort -u )
@@ -2860,7 +2989,9 @@ build_evidence() { # rubric_file diff_cap -> stdout
   [ -z "$stat_only" ] || printf '[stat only, content omitted as data: %s]\n\n' "$(printf '%s' "$stat_only" | tr '\n' ' ')"
   if [ -n "$content" ]; then
     while IFS= read -r path; do paths+=("$path"); done <<< "$content"  # bash 3.2 (macOS) has no mapfile
-    ( cd "$WORKTREE" && git diff -M --diff-filter=AMR "$base...HEAD" -- "${paths[@]}" ) > "$diff"
+    # Deleted files come last, so a mass deletion never pushes an added or changed file past the cap.
+    ( cd "$WORKTREE" && git diff -M --diff-filter=AMR "$base...HEAD" -- "${paths[@]}"
+      git diff -M --diff-filter=D "$base...HEAD" -- "${paths[@]}" ) > "$diff"
     head -"$cap" "$diff"
     [ "$(wc -l < "$diff")" -le "$cap" ] || printf '\n[content diff capped at %s lines; the stat above is complete]\n' "$cap"
   fi
@@ -3550,6 +3681,11 @@ cmd_run() {
   assert_parallel
   target_is_loam || user_token_free \
     || finish stopped-environment "$(user_settings) has CLAUDE_CODE_OAUTH_TOKEN in its env, which the native worker loads and which would replace the account bin/claude-account gives it; remove the key (bin/claude-account use <name> drops it)"
+  # Before the worktree, so a refused file ticket leaves none behind for its corrected body to reuse; a resume keeps
+  # the fence it froze.
+  local fenced_msg
+  [ -f "$RUN/frozen/sha256" ] || fenced_msg=$(edit_fenced)
+  [ -z "${fenced_msg:-}" ] || finish ticket-defect "$fenced_msg"
   prepare_worktree
   # Armed before freeze, whose finish (a malformed Edit: line) would otherwise leave a file ticket's worktree on its
   # branch, so a corrected body's relaunch would reuse that branch; exec_frozen's exec runs no EXIT trap, and the

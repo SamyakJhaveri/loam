@@ -76,6 +76,13 @@ def verdict(id_: str, v: str, cmd: str = "", output: str = "", note: str = "n") 
     return {"id": id_, "verdict": v, "cmd": cmd, "output": output, "note": note}
 
 
+class AuditAnchorTest(unittest.TestCase):
+    def test_the_verifier_finds_the_section_it_is_sent_to(self) -> None:
+        # verify.md sends the verifier to a heading in the audit skill; a rewrite that renames it leaves the verifier lost.
+        self.assertIn("`## Verify findings`", (ROOT / "bin/factory.d/verify.md").read_text())
+        self.assertIn("\n## Verify findings\n", (AUDIT / "SKILL.md").read_text())
+
+
 class ReviewTests(unittest.TestCase):
     def setUp(self) -> None:
         tmp = tempfile.TemporaryDirectory()

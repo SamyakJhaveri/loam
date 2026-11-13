@@ -39,8 +39,9 @@ MUTATIONS = [  # (rule, old, new): each old must occur exactly once
     ("audit4 F2 P8 a no-result row is no review", ' and e.get("subtype") != "no-result"]', ']'),
     ("audit3 C4 a failed proof call proves nothing", 'in text and t.ok(j):', 'in text and t.ran(j):'),
     ("audit3 F2 a Round N: prefix", r"(?:Round \d+:\s*)?pstack:", "pstack:"),
-    ("C4 brief-named read", "    names = named_skills(f\"{t.brief}\\n{run.ticket}\", run.pstack)\n",
+    ("C4 brief-named read", "    names = named_skills(f\"{without_common(run, t.brief)}\\n{run.ticket}\", run.pstack)\n",
      "    names = set()\n"),
+    ("742 a _common.md line names no brief method", "    if not f.is_file():\n        return brief", "    if True:\n        return brief"),
     ("F5 notes are no change", 'NOTES = re.compile(r"/[0-9a-f]{8}/worker/|', 'NOTES = re.compile(r"(?!x)x/[0-9a-f]{8}/worker/|'),
     ("cd into scratch", "            where = bool(NOTES.search(target))", "            where = False"),
     ("VAR=value expansion", "    return expand(text, 0) if values or (unplaced and sets) else text", "    return text"),
@@ -83,6 +84,8 @@ for rule, old, new in MUTATIONS:
         tests = Path(d) / "bin/tests"
         shutil.copytree(ROOT / "bin/tests/fixtures/parity", tests / "fixtures/parity")
         shutil.copy(ROOT / "bin/tests/test_factory_parity.py", tests)
+        (Path(d) / "bin/factory.d").mkdir()
+        shutil.copy(ROOT / "bin/factory.d/_common.md", Path(d) / "bin/factory.d")  # the test's frozen _common.md
         (Path(d) / "bin/factory-parity").write_text(src.replace(old, new))
         r = subprocess.run([sys.executable, "-m", "pytest", "-q", "-p", "no:cacheprovider", str(tests / "test_factory_parity.py")],
                            capture_output=True, text=True, cwd=d)
