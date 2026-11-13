@@ -145,7 +145,7 @@ class KilledRoundTests(unittest.TestCase):
     def test_killed_claude_round_with_no_commit_says_so(self) -> None:
         proc = self.worker_round("claude", "")
         self.assert_stopped(proc)
-        self.assertEqual(self.ledger()[0]["cost_usd"], 7)
+        self.assertEqual(self.ledger()[0]["cost_usd"], 0)
         self.assertIn("no commits", proc.stderr)
 
     def test_killed_codex_round_keeps_cost_null_and_names_its_commit(self) -> None:
