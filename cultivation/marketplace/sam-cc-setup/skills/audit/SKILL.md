@@ -3,7 +3,7 @@ name: audit
 disable-model-invocation: true
 effort: xhigh
 description: "The owner's end-of-work audit prompt, lightly edited: audit what you just proposed or did with blind Fable and Codex reviewers, a fresh design, a surprise-me agent, and Opus verifiers and fixers; report confidence, weakest point, what he is missing, blind spots, claims made without reading the source, and a simpler approach; then hand back the fixed work. Manual-only; an agent told to run it reads this file by path."
-argument-hint: [what to audit, or added instructions; default is what you just proposed or did]
+argument-hint: "[what to audit, or added instructions; default is what you just proposed or did]"
 ---
 
 # Audit
@@ -100,14 +100,14 @@ The brief asks the reviewer to:
 
 | Role | Claude Code | Codex |
 |---|---|---|
-| Fable reviewer | the host's Fable 5.2 agent at high (`escalate` where it exists); brief it by the project's `fable-prompting` skill where there is one | `claude -p --model claude-fable-5-2 --effort high --permission-mode plan "Read <brief file> and follow it."` if `claude -p "ok"` answers within a minute; otherwise a fresh native agent, and the report says Fable did not review |
+| Fable reviewer | the host's Fable 5.2 agent at high (`escalate` where it exists); brief it by the project's `fable-prompting` skill where there is one | `claude -p --model claude-fable-5-2 --effort high --permission-mode auto --tools Read,Grep,Glob,Bash,WebFetch --add-dir <evidence folder> "Read <brief file> and follow it."` if `claude -p "ok"` answers within a minute; otherwise a fresh native agent, and the report says Fable did not review |
 | Codex reviewer | one bare `codex exec -s read-only -c model_reasoning_effort=xhigh -o <review file> "Read <brief file> and follow it."` in the background, adding `--skip-git-repo-check` outside a repo; no pipe, redirect, `;` or `<` anywhere in the command | a fresh native agent that does not inherit this conversation |
-| Fresh design, surprise-me, verifiers | Opus agents at xhigh; they edit nothing | `claude -p --model claude-opus-5-5 --effort xhigh --permission-mode auto "Read <brief file> and follow it."`, else fresh native agents |
+| Fresh design, surprise-me, verifiers | Opus agents at xhigh; they edit nothing | `claude -p --model claude-opus-5-5 --effort xhigh --permission-mode auto --add-dir <evidence folder> "Read <brief file> and follow it."`, else fresh native agents |
 | Fixers | Opus agents at high | the same command with `--effort high`, else fresh native agents |
 
 On Codex, the report names every role that did not run on the model this table gives it.
 A read-only Codex sandbox cannot run code or write temporary files; that is why running code belongs to the verifiers.
-A minute after starting `codex exec`, check its output: if it shows "Reading additional input from stdin", stop it and start it again with no `<` in the command.
+A minute after starting `codex exec`, check its output: if it shows "Reading additional input from stdin", stop it and start it again with no `<` in the command; if it hangs again, it counts as failed under the next line.
 A reviewer that fails, runs out of usage, or has not finished after 60 minutes is stopped, then replaced once by a fresh Opus reviewer with the same brief; if that fails too, the report names the review that is missing.
 A stopped agent or command is not one you wait for.
 
@@ -141,7 +141,7 @@ The verifier tries to reproduce each finding against the source and cites file:l
 - **unresolved:** the access, data or hardware to settle it is missing; say what is missing.
 
 A finding is never rejected on a defense nobody located and read.
-The verifier also gives each confirmed or partly finding a severity, and says whether it bears on the owner's goal, quoting the words of his it bears on; a finding that does not is listed under other findings, not fixed.
+The verifier also gives each confirmed or partly finding a severity, and says whether it bears on the owner's goal, quoting the words of his it bears on; a finding that does not is not fixed; it stays in the verdict file and part 3 names it.
 
 ## Fix and review again
 

@@ -14,8 +14,9 @@ The verifier method sits under the heading `## Verify findings`; `bin/factory.d/
 `seed/docs/WORKERS.md.jinja` no longer points at the audit skill's old step 3 for a dry run, and says where Codex finds the skills; projects get it through `bin/sync-project`.
 Sources: the owner's prompt and complaints, a read-only Codex reading of their intent, a blind Fable and Codex review of this change with every finding verified, and Anthropic's Opus 5.5 prompting, prompting best-practices, skill-authoring and Claude Code skills pages, read 13 Nov 2026 (`~/.local/state/distbench/evidence/2026-11-13-audit-skill/`).
 No grader prompt changed, so no grader replay is owed.
-Upgrade step: `claude plugin update sam-cc-setup@seed-skills`, then restart Claude Code.
+Upgrade step: pull the Loam checkout the marketplace points at, run `claude plugin update sam-cc-setup@seed-skills`, then restart Claude Code.
 For Codex on each host, link the two skills into the user skill folder Codex reads, refusing to touch a real folder already there: `mkdir -p ~/.agents/skills && for s in audit surprise-me; do t=~/.agents/skills/$s; if [ -e "$t" ] && [ ! -L "$t" ]; then echo "$t is a real folder; move it first"; else ln -sfn <loam>/cultivation/marketplace/sam-cc-setup/skills/$s "$t"; fi; done`.
+Then check that Codex loads them: `codex debug prompt-input "hi"` lists `audit` and `surprise-me`; if it does not (an older Codex skipped symlinked user skills), copy the folders with `cp -R` instead of linking.
 
 ## sam-cc-setup v0.9.29 pstack log line, Fable 5.2
 
