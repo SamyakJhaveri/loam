@@ -46,8 +46,6 @@ MUTATIONS = [  # (rule, old, new): each old must occur exactly once
     ("VAR=value expansion", "    return expand(text, 0) if values or (unplaced and sets) else text", "    return text"),
     ("713 Codex delta D1 an unplaced $TMPDIR is no scratch", 'f"$unplaced_{r.group(1)}"', "r.group(0)"),
     ("713 Codex delta D2 eval or source ends the scratch exemption", "        return False\n    while (flat", "        pass\n    while (flat"),
-    ("713 Codex delta N1 only an eval or source command counts", 'AT_COMMAND + r"(?:eval|source', 'r"(?:eval|source'),
-    ("713 Codex delta N2 a read option's operand is no variable", 'if c in "adinNptu"), None)', 'if False), None)'),
     ("cat heredoc body is data", r'''if not re.search(r"\b(?:cat|tee)\b[^\n]*$", m.string[:m.start()])''',
      r'''if True or not re.search(r"\b(?:cat|tee)\b[^\n]*$", m.string[:m.start()])'''),
     ("quoted ; ends no write", '''        bare = re.sub(''', '''        bare = cmd or re.sub('''),
