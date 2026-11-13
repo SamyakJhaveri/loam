@@ -681,15 +681,17 @@ def router_index(t: Transcript, before: int) -> int | None:
 
 
 def without_common(run: Run, brief: str) -> str:
-    """brief less each line of the run's frozen/_common.md (a <placeholder> filled with no quote or newline), which
-    every round's prompt holds, also as a string in a large round's Workflow args, so a method only _common.md names
-    is no brief's own."""
+    """brief less each piece, between <placeholders>, of a frozen/_common.md line that names a SKILL.md or a pstack
+    method, as text and as a JSON string (a large round's Workflow args): every round's prompt holds those, so a
+    method only _common.md names is no brief's own. A newline takes each piece's place, so no two words join."""
     f = Path(run.path) / "frozen" / "_common.md"
     if not f.is_file():
         return brief
     for x in f.read_text(encoding="utf-8", errors="replace").splitlines():
-        if x.strip():
-            brief = re.sub('[^"\n]*?'.join(map(re.escape, re.split(r"<[a-z]+>", x.strip()))), "", brief)
+        for piece in re.split(r"<[a-z]+>", x):
+            if "SKILL.md" in piece or named_skills(piece, run.pstack):
+                for form in (piece, json.dumps(piece, ensure_ascii=False)[1:-1]):
+                    brief = brief.replace(form, "\n")
     return brief
 
 
