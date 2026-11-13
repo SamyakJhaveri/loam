@@ -1781,8 +1781,8 @@ cap_hit() { # [next call's usd ceiling] -> 0 and "<status> <why>" on stdout when
   return 1
 }
 
-# Before every model call and every long step that makes none: the round's checks, the full gate, the mutation sweep
-# (L01 ran 73.7 min past its 4 h cap in round checks that no cap check preceded, 13 Nov 2026).
+# Before every model call and every long step that makes none: the round's checks, the full gate, the Rows measured
+# commands and the mutation sweep (L01 ran 73.7 min past its 4 h cap in round checks no cap check preceded, 13 Nov 2026).
 assert_caps() {
   local hit
   if hit=$(cap_hit); then finish "${hit%% *}" "${hit#* }"; fi
@@ -2675,6 +2675,7 @@ measure_rows() { # round; Rows measured is `[runs=N] [<row>:] <command> | <basel
   # only, so a `bin/factory eval` row books its cost to this run (#76) and no later child of the
   # supervisor inherits a stale round; run_eval reads these four names, mirroring apply_caps's FACTORY_<NAME>.
   local env=(FACTORY_LEDGER="$LEDGER" FACTORY_DAILY="$DAILY" FACTORY_KEY="$KEY" FACTORY_ROUND="$1")
+  assert_caps
   : > "$out"
   while IFS= read -r line; do
     line=${line#- }

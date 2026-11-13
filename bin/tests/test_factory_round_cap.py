@@ -1,6 +1,6 @@
 """The run's caps: the default round cap is three, so after round 3 the run stops stopped-cap before a fourth worker
 call (owner, 12 Nov 2026); and MAX_HOURS stops the run before each long step that makes no model call: the round's
-checks, the full gate and the mutation sweep (L01 ran 73.7 min past its 4 h cap in round checks and learn, 13 Nov 2026).
+checks, the full gate, the mutation sweep and the Rows measured commands (L01 ran 73.7 min past its 4 h cap in round checks and learn, 13 Nov 2026).
 
 `bin/factory` is sourced (FACTORY_SOURCED=1) with no FACTORY_ cap in the environment and an empty Worker section,
 so apply_caps leaves the default. The real main_loop runs; the worker call is stubbed to record its round and stop.
@@ -48,8 +48,8 @@ class RoundCapTests(unittest.TestCase):
 
 
 class HourCapTests(unittest.TestCase):
-    """The launch is 5 h old against a 4 h cap when each step starts; the frozen checks.sh and mutation_sweep.py the
-    steps would run record that they ran."""
+    """The launch is 5 h old against a 4 h cap when each step starts; the frozen checks.sh and mutation_sweep.py and the
+    ticket's Rows measured command the steps would run record that they ran."""
 
     def step(self, call: str) -> tuple[subprocess.CompletedProcess, pathlib.Path]:
         tmp = tempfile.TemporaryDirectory()
@@ -75,7 +75,7 @@ class HourCapTests(unittest.TestCase):
         env.update(FACTORY_SOURCED="1", FACTORY_RUNS_ROOT=str(run / "runs"), FACTORY_MAX_HOURS="4")
         script = (". bin/factory\n"
                   f"RUN='{run}'; WORKTREE='{wt}'; LOG=\"$RUN/log\"; DECISIONS=\"$RUN/decisions.md\"; KEY=t; IS_FILE=1\n"
-                  'BRANCH=t; BODY=""; apply_caps; touch "$DECISIONS"; GRADED_SHA=$(cat "$RUN/base.sha")\n'
+                  f'BRANCH=t; BODY=$\'## Rows measured\\n\\n- speed: touch {run}/rows-ran; echo 1 | 1\\n\'; apply_caps; touch "$DECISIONS"; GRADED_SHA=$(cat "$RUN/base.sha")\n'
                   "notify() { :; }; check_frozen() { :; }\n"
                   'stale() { echo $(( $(date -u +%s) - 5 * 3600 )) > "$RUN/launched"; }\n'
                   'date -u +%s > "$RUN/launched"\n'
@@ -90,6 +90,7 @@ class HourCapTests(unittest.TestCase):
         self.assertIn("EXIT stopped-cap (2): wall clock: 5h of 4h", proc.stderr)
         self.assertFalse((run / "checks-ran").exists(), "the checks ran past the cap")
         self.assertFalse((run / "sweep-ran").exists(), "the mutation sweep ran past the cap")
+        self.assertFalse((run / "rows-ran").exists(), "the Rows measured command ran past the cap")
 
     def test_a_worker_call_that_ends_past_the_cap_stops_before_the_round_checks(self) -> None:
         # The worker call starts in time (its own cap check passes) and ends past the cap.
@@ -101,10 +102,14 @@ class HourCapTests(unittest.TestCase):
     def test_the_mutation_sweep_does_not_start_past_the_cap(self) -> None:
         self.assert_capped(*self.step("stale; ROUND=1; run_mutation_sweep 1"))
 
+    def test_the_rows_measured_commands_do_not_start_past_the_cap(self) -> None:
+        self.assert_capped(*self.step("stale; ROUND=1; measure_rows 1"))
+
     def test_in_time_the_steps_run(self) -> None:
         # The same calls inside the cap reach the checks and the sweep, so the tests above can see them run.
-        proc, run = self.step("ROUND=1; run_mutation_sweep 1; gate_last; echo gate=$?")
+        proc, run = self.step("ROUND=1; measure_rows 1; run_mutation_sweep 1; gate_last; echo gate=$?")
         self.assertIn("gate=0", proc.stdout, proc.stderr)
+        self.assertTrue((run / "rows-ran").exists())
         self.assertTrue((run / "checks-ran").exists())
         self.assertTrue((run / "sweep-ran").exists())
 
