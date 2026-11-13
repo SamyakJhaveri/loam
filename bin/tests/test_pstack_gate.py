@@ -317,6 +317,8 @@ def bash(command: str, gate_env: str | None, cwd: Path | None = None) -> subproc
     "python3 -m pytest -q tests",  # the full suite takes as long as the gate (W46, 13 Nov)
     "cd wt && PYTHONPATH=src timeout 3000 .venv/bin/python -m pytest -x -n 8",
     "pytest tests/ -q 2>&1 | tail -5",
+    "uv run pytest tests -q",  # a runner prefix hid the full suite from the gate (Codex on 740, 13 Nov)
+    "uv run python -m pytest tests -q",
     "python3 -m pytest tests --junitxml /tmp/results.xml -o cache_dir=/tmp/pc",
     "python3 -m pytest ./tests -q",
     "python3 -m pytest tests --junitxml worker/results.xml -p no:cacheprovider",

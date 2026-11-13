@@ -60,7 +60,7 @@ FIX = ("call the sam-cc-setup:pstack router and read the chosen SKILL.md in full
 
 
 FULL_GATE = "BLOCKED: the supervisor runs bin/check once after the graders pass; prove the change with focused pytest"
-_WRAP = (r"(?:(?:timeout|nohup|guard|time|exec|command|nice|env|then|do|else|if|!|\{)(?:\s+(?:-\S+|\d[\d.]*[smhd]?))*"
+_WRAP = (r"(?:(?:uv\s+run|timeout|nohup|guard|time|exec|command|nice|env|then|do|else|if|!|\{)(?:\s+(?:-\S+|\d[\d.]*[smhd]?))*"
          r"|[A-Za-z_]\w*=[^\s()`;&|]*)\s+")
 _START = r"(?:^|[;&|(`])[ \t]*(?:" + _WRAP + r")*"
 RUNS_GATE = re.compile(_START + r"(?:[\w.~${}/-]*/)?bin/check(?![\w.-])", re.M)
