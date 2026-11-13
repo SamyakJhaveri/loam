@@ -639,6 +639,8 @@ check_except_paths() {
   return 0
 }
 
+check_edit_fenced() { local msg; msg=$(edit_fenced); [ -z "$msg" ] || err "$msg"; }
+
 # ---- eval ----
 # Replays evals/<grader>/<case>/prompt.md through the grader call in docs/factory/LOOP.md and
 # compares the verdict with expected.json. The rubric comes from the live grader file, so a
@@ -1096,7 +1098,7 @@ lint_body() {
   check_not_grep_only
   check_distbench_lines
   # Fixture bodies are historical tickets that name paths later tickets removed, and predate predict lines.
-  case "$SRC" in *bin/factory.d/fixtures/*) ;; *) check_paths; check_except_paths; check_predicts ;; esac
+  case "$SRC" in *bin/factory.d/fixtures/*) ;; *) check_paths; check_except_paths; check_edit_fenced; check_predicts ;; esac
 
   [ "$ERRS" -eq 0 ] || return 1
   echo "lint: OK $SRC"
@@ -1484,6 +1486,25 @@ standing_list() {
   awk '/^## Standing do-not-touch list$/ {inb = 1; next} /^## / {inb = 0} inb && /^- /' "$f" | ticket_paths
 }
 
+# What Do not touch fences off (the standing list and its own paths), and what its Except: tails free again.
+protected_paths() { { standing_list; section "Do not touch" | sed 's/[Ee]xcept:.*//' | ticket_paths; } | sort -u; }
+exempt_paths() { section "Do not touch" | grep -o '[Ee]xcept:.*' | ticket_paths; }
+
+fenced() { # protected exempt; paths on stdin -> those under a protected entry and under no exempt one
+  local f
+  while IFS= read -r f; do
+    under "$f" "$1" && ! under "$f" "$2" && printf '%s ' "$f"
+  done
+}
+
+# A path on the header's Edit: line that Do not touch fences off is one the worker must edit and every round's
+# do-not-touch check fails (distbench L01 run 1, 2026-11-13: 83 min). Prints the defect, or nothing.
+edit_fenced() {
+  local hits
+  hits=$(header | grep -E '^Edit:' | ticket_paths | fenced "$(protected_paths)" "$(exempt_paths)")
+  [ -z "$hits" ] || printf 'the Edit line names %s, which Do not touch fences off and no Except: line frees, so every round would fail the do-not-touch check\n' "${hits% }"
+}
+
 under() { # path list -> 0 when path equals or sits under a list entry
   local p="$1" e
   while IFS= read -r e; do
@@ -1611,7 +1632,7 @@ freeze_memory_view() {
 }
 
 freeze() {
-  local g src f
+  local g src f msg
   [ -f "$RUN/frozen/sha256" ] && return 0
   printf '%s\n' "$BODY" > "$RUN/frozen/issue.md"
   [ -n "$ISSUE" ] && { net gh issue view "$ISSUE" -R "$REPO" --json title -q .title > "$RUN/frozen/title" 2> /dev/null || rm -f "$RUN/frozen/title"; }
@@ -1646,8 +1667,10 @@ freeze() {
       "$(now)" "$g" "$src" "$(sha256_of < "$RUN/frozen/$g.src.md" | cut -d' ' -f1)" >> "$LEDGER"
   done
   { cat "$RUN/frozen/lib.sh"; echo; dc_script; echo; echo "$CHECKS_END"; echo 'exit $((n_fail > 0))'; } > "$RUN/frozen/checks.sh"
-  { standing_list; section "Do not touch" | sed 's/[Ee]xcept:.*//' | ticket_paths; } | sort -u > "$RUN/frozen/protected.txt"
-  section "Do not touch" | grep -o '[Ee]xcept:.*' | ticket_paths > "$RUN/frozen/exempt.txt"
+  protected_paths > "$RUN/frozen/protected.txt"
+  exempt_paths > "$RUN/frozen/exempt.txt"
+  # Before the hash, so a relaunch of the same body runs freeze, and this check, again.
+  msg=$(edit_fenced); [ -z "$msg" ] || finish ticket-defect "$msg"
   chmod +x "$RUN/frozen/checks.sh" "$RUN/frozen/factory" "$RUN/frozen/alert"
   # shellcheck disable=SC2086
   ( cd "$RUN/frozen" && sha256_of $FROZEN_SET $([ -f memory-view.md ] && echo memory-view.md) > sha256 )
@@ -2190,6 +2213,13 @@ round_zero() {
   # its author predicted.
   [ -z "$why" ] || finish ticket-defect "the predict line for check $name $why on $(cut -c1-8 "$RUN/base.sha"), so base does not show the predicted failure"
   guards=$(guard_checks | pass_names)
+  # A guard may pass on base, but one that FAILs there fails in every round (Loam issue 726). A deferred bin/check
+  # prints its DEFERRED line and a stand-in pass, never a FAIL.
+  while IFS= read -r line; do
+    name=${line#FAIL }; name=${name%%:*}
+    grep -qxF "$name" <<<"$guards" \
+      && finish ticket-defect "guard check $name fails on $(cut -c1-8 "$RUN/base.sha"), so no round can pass it: ${line#FAIL }; see $out"
+  done < <(grep '^FAIL ' "$out")
   while read -r _ name _; do
     grep -qxF "$name" <<<"$guards" && continue
     finish ticket-defect "check $name passes on $(cut -c1-8 "$RUN/base.sha"), so it cannot prove the ticket; see $out"
@@ -2632,12 +2662,8 @@ worker_round() { # round; leaves round-N.* only once the call produced a result
 }
 
 do_not_touch_hits() { # -> the changed paths the ticket fenced off
-  local f
-  git -C "$WORKTREE" diff --name-only "$(cat "$RUN/base.sha")...HEAD" | while IFS= read -r f; do
-    under "$f" "$(cat "$RUN/frozen/protected.txt")" || continue
-    under "$f" "$(cat "$RUN/frozen/exempt.txt")" && continue
-    printf '%s ' "$f"
-  done
+  git -C "$WORKTREE" diff --name-only "$(cat "$RUN/base.sha")...HEAD" \
+    | fenced "$(cat "$RUN/frozen/protected.txt")" "$(cat "$RUN/frozen/exempt.txt")"
 }
 
 # A row whose label or command names one of these words measures time, tokens, or cost, so one run is one
