@@ -8,7 +8,9 @@ so far with this call as its next one. Any other call, and any change once they 
 
 The calling transcript is the payload's transcript_path, or for a subagent (agent_id set)
 `<transcript_path without .jsonl>/subagents/**/agent-<agent_id>.jsonl` (a Workflow agent's is under
-workflows/<run>/), read beside the main one (whose skill listing names the pstack methods). A call an earlier run of this hook blocked never ran, so it is left out: its tool result
+workflows/<run>/), read beside the main one (whose skill listing names the pstack methods). Outside a run (an
+attended session) the main transcript adds only its reads: a lead's own change, made before this hook was
+installed, would otherwise block every subagent it starts. In a run its changes count, as parity grades the round. A call an earlier run of this hook blocked never ran, so it is left out: its tool result
 holds BLOCKED. The rules (what a change is, what a router or method read is, decisions.md) are parity's alone:
 factory-parity is loaded from this file's folder (a run's frozen/) or its parent (bin/ in a checkout).
 In a run's frozen/ folder the run is the parent folder: P3 reads its worker/decisions.md, and the calling round is one
@@ -252,11 +254,14 @@ def missing_pstack(run: Path | None) -> str | None:
     return None
 
 
-def so_far(fp, path: Path, label: str, top: bool, projects: Path, pending: tuple[str, str, dict] | None = None):
-    """Parity's Transcript of path without the calls this hook blocked, ending in pending (id, name, input) when
-    given: at PreToolUse the file does not hold the pending call yet (Claude Code 2.1.322)."""
+def so_far(fp, path: Path, label: str, top: bool, projects: Path, pending: tuple[str, str, dict] | None = None,
+           reads_only: bool = False):
+    """Parity's Transcript of path without the calls this hook blocked (and with reads_only, without its changes),
+    ending in pending (id, name, input) when given: at PreToolUse the file does not hold the pending call yet (Claude
+    Code 2.1.322)."""
     t = fp.Transcript(path, label, top, projects)
-    keep = [i for i, tid in enumerate(t.ids) if BLOCKED not in (t.results.get(tid) or (0, ""))[1]]
+    keep = [i for i, tid in enumerate(t.ids) if BLOCKED not in (t.results.get(tid) or (0, ""))[1]
+            and not (reads_only and fp.changes(*t.calls[i][1:]))]
     t.calls, t.ids = [t.calls[i] for i in keep], [t.ids[i] for i in keep]
     if pending:
         t.calls.append((0, pending[1], pending[2]))
@@ -282,7 +287,7 @@ def verdict(payload: dict, fp, run: Path | None) -> str | None:
         sub = main.with_suffix("") / "subagents" / f"agent-{agent}.jsonl"
         sub = next(main.with_suffix("").glob(f"subagents/**/agent-{agent}.jsonl"), sub)  # a Workflow's: workflows/<run>/
         caller = so_far(fp, sub, sub.name, False, projects, pending)
-        top = so_far(fp, main, main.name, True, projects)
+        top = so_far(fp, main, main.name, True, projects, reads_only=run is None)
         transcripts = [caller, top]
     else:
         caller = top = so_far(fp, main, main.name, True, projects, pending)

@@ -187,6 +187,21 @@ def test_a_subagent_payload_is_judged_on_its_own_transcript(tmp_path):
     write(main.with_suffix("") / "subagents" / "agent-x2.jsonl", [e for e in events("headless") if e["src"] < 77])
     r = hook(payload(main, use, agent_id="x2"))
     assert r.returncode == 0 and not r.stderr
+    # The same subagent under a main session that itself changed a file with no reads (an attended lead before the
+    # gate was installed): the lead's change is not the subagent's, so the subagent's change runs.
+    main = session(tmp_path / "c", "w34-r2")
+    write(main.with_suffix("") / "subagents" / "agent-x4.jsonl", [e for e in events("headless") if e["src"] < 77])
+    r = hook(payload(main, use, agent_id="x4"))
+    assert r.returncode == 0 and not r.stderr
+
+
+def test_in_a_run_a_main_session_change_with_no_reads_still_blocks_its_subagents(tmp_path):
+    """Only an attended session drops the main transcript's changes; a factory round grades them, as parity does."""
+    gate = frozen_run(tmp_path, f"Round 1\n{LOGGED}", finished_rounds=0)
+    main = session(tmp_path, "w34-r2")
+    use = next(u for s, u in calls("headless") if s == 77)
+    write(main.with_suffix("") / "subagents" / "agent-x5.jsonl", [e for e in events("headless") if e["src"] < 77])
+    assert_blocked(hook(payload(main, use, agent_id="x5"), gate))
 
 
 def test_a_workflow_builder_payload_is_judged_on_its_own_transcript(tmp_path):
