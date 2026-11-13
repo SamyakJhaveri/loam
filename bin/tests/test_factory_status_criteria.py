@@ -209,7 +209,8 @@ class StatusCriteriaTests(unittest.TestCase):
             "printf 'guard bin/check && pass quoted' > f && pass fixture || fail fixture\n"
             '[ -n "${LOAM_HOOK:-}" ] && pass check-green || { guard bin/check >/dev/null && pass check-green; }\n')
         rounds = {  # round: (checks, last message)
-            1: ("FAIL do-not-touch seed/x\nFAIL worktree-dirty: a\n", "I could not finish.\n\nCLAIM: done\n"),
+            1: ("FAIL do-not-touch seed/x\nFAIL edit-scope: the round changed b but\nFAIL worktree-dirty: a\n",
+                "I could not finish.\n\nCLAIM: done\n"),
             2: ("FAIL check-green: bin/check\n", "All done-checks pass.\nCLAIM: partial\n"),
             3: ("FAIL check-green: bin/check\n", "CLAIM: blocked\nAll checks pass.\n**CLAIM: Done**\n"),
             4: ("FAIL fixture: x\n", "CLAIM: done"),
@@ -306,7 +307,9 @@ class StatusCriteriaTests(unittest.TestCase):
         (runs / "8/aaaa0008/round-2.checks").write_text("FAIL a: b\nFAIL do-not-touch seed/x\n")
         (runs / "9/aaaa0009/round-1.checks").write_text("FAIL do-not-touch seed/x\n")
         (runs / "9/aaaa0009/round-2.checks").write_text("FAIL a: b\n")
-        (runs / "10/aaaa0010/round-2.checks").write_text("FAIL do-not-touch seed/x\n")
+        # An edit-scope FAIL is a scope stall too.
+        (runs / "10/aaaa0010/round-2.checks").write_text(
+            "FAIL edit-scope: the round changed seed/x but the ticket's Edit: line lists only a/; revert those paths\n")
         proc = factory("status", "--criteria", runs=runs)
         self.assertEqual(proc.returncode, 0, proc.stderr)
         # The FAIL names the date of its latest offending run, 6's.
