@@ -1026,11 +1026,15 @@ def skip_refused(run: Run, n: int, earlier: list[int]) -> str:
     paths = run.path / f"round-{n}.paths"
     if not rx or not paths.is_file():
         return f"no results regex in its marker or no {paths.name}, so nothing shows the round is harness"
-    # bin/factory's harness_ticket loop, so the same bash =~ decides; a regex bash cannot compile prints the path too.
+    # bin/factory's harness_ticket loop, so the same bash =~ decides; a regex bash cannot compile or a bash that fails
+    # exits nonzero, which refuses the skip.
     with paths.open("rb") as f:
-        out = subprocess.run(["bash", "-c", 'while IFS= read -r -d "" p; do [[ $p =~ $1 ]]; [ $? = 1 ] || printf "%s\\0" "$p"; done',
-                              "p8", rx], stdin=f, capture_output=True, check=False).stdout
-    hits = [p for p in out.decode("utf-8", "surrogateescape").split("\0") if p]
+        proc = subprocess.run(["bash", "-c", '[[ "" =~ $1 ]]; [ $? != 2 ] || exit 2\n'
+                               'while IFS= read -r -d "" p; do [[ $p =~ $1 ]]; [ $? = 1 ] || printf "%s\\0" "$p"; done',
+                               "p8", rx], stdin=f, capture_output=True, check=False)
+    if proc.returncode:
+        return f"bash could not match {paths.name} against its results regex {rx} (exit {proc.returncode})"
+    hits = [p for p in proc.stdout.decode("utf-8", "surrogateescape").split("\0") if p]
     if hits:
         return f"{paths.name} has results paths {', '.join(hits[:3])}"
     codex = read_json(run.path / f"round-{n}.codex-review.json")

@@ -2984,6 +2984,7 @@ harness_ticket() { # round
   [ -n "${FACTORY_RESULTS_RE:-}" ] || return 1
   base=$(cat "$RUN/base.sha") && [ -n "$base" ] || return 1
   git -C "$WORKTREE" diff --no-renames --name-only -z "$base...HEAD" > "$RUN/round-$1.paths" || return 1
+  [[ "" =~ $FACTORY_RESULTS_RE ]]; [ $? != 2 ] || return 1   # a regex bash cannot compile, even with no path
   while IFS= read -r -d '' f; do
     [[ $f =~ $FACTORY_RESULTS_RE ]]; [ $? = 1 ] || return 1
   done < "$RUN/round-$1.paths"

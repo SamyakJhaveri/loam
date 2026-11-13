@@ -7,6 +7,7 @@ fixtures/parity/cut.py (lines it edits say so there); `pass` is a hand-written r
 from __future__ import annotations
 
 import json
+import os
 import shutil
 import subprocess
 import sys
@@ -529,6 +530,21 @@ def test_an_unparseable_review_is_named_as_no_review(tmp_path: Path) -> None:
     p8 = next(x for x in proc.stdout.splitlines() if " P8 " in x)
     assert p8.startswith("FAIL P8 ") and "round-1.review.json is the supervisor's unparseable fallback: no review" in p8, p8
     assert "not the blocking ids" not in p8, p8
+
+
+def test_p8_refuses_a_skip_its_matcher_could_not_check(tmp_path: Path) -> None:
+    """PR 730 Codex at ea9b6aac: a bash that exits early or a regex bash cannot compile is no harness class."""
+    exits = tmp_path / "exit.sh"
+    exits.write_text("exit 42\n")
+    for name, paths, rx, env in (("bash-fails", ["src/a.py"], RESULTS_RE, {"BASH_ENV": str(exits)}),
+                                 ("bad-regex-no-paths", [], "[", {})):
+        shutil.copytree(FIXTURES / "pass", tmp_path / name)
+        run = tmp_path / name / "run"
+        skipped_reviewer(True, paths=tuple(paths))(run)
+        (run / "round-1.review.skipped").write_text(f"not run: a harness ticket\nresults-re: {rx}\n")
+        proc = subprocess.run([sys.executable, str(SCRIPT), str(run), "--projects-root", str(tmp_path / name / "projects")],
+                              capture_output=True, text=True, timeout=60, env={**os.environ, **env})
+        assert statuses(proc.stdout)["P8"] == "FAIL", (name, proc.stdout)
 
 
 @pytest.mark.parametrize(("name", "case", "edit", "pid", "expected"), VARIANTS, ids=[f"{v[0]}-{v[3]}" for v in VARIANTS])
