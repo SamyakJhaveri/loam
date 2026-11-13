@@ -11,7 +11,7 @@ n_fail=0
 # A result starts on a fresh line: after a command's output with no trailing newline it would land
 # mid-line, where the supervisor's ^PASS and ^FAIL reads miss it (#180).
 # A result right after a guard ends with the gate result CMD printed, `(check: PASSED)`, so a reader that keeps
-# only ^PASS and ^FAIL lines still sees it (parity P4).
+# only ^PASS and ^FAIL lines still sees it.
 pass() { printf '\nPASS %s%s\n' "$1" "${guard_check:+ ($guard_check)}"; guard_check=""; n_pass=$((n_pass + 1)); }
 fail() { printf '\nFAIL %s: %s%s\n' "$1" "${2:-}" "${guard_check:+ ($guard_check)}"; guard_check=""; n_fail=$((n_fail + 1)); }
 # guard: a regression guard; runs CMD and returns its status; allowed to pass on main.
@@ -20,7 +20,7 @@ fail() { printf '\nFAIL %s: %s%s\n' "$1" "${2:-}" "${guard_check:+ ($guard_check
 # Each pass-over marker line CMD prints (bin/check's `SKIPPED: <step>`) and its result line (`check: PASSED` or
 # `check: FAILED`) is also copied to fd 9, the block's own stdout (the checks file), so `guard bin/check >/dev/null`
 # cannot hide a step that did not run from status --criteria, and a block that captures bin/check still shows the
-# gate's result where parity P4 reads it. CMD's output goes through a temp file, so the copy lands before the next
+# gate's result in the checks file. CMD's output goes through a temp file, so the copy lands before the next
 # line the block prints; printed to the block's stdout itself, it streams through tee. Its last result line is kept
 # in guard_check for the next pass or fail.
 exec 9>&1

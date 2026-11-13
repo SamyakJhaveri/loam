@@ -100,18 +100,48 @@ def frozen_run(tmp: Path, decisions: str, finished_rounds: int) -> Path:
     return run / "frozen" / "pstack-gate.py"
 
 
-@pytest.mark.parametrize("case", ["w34-r1", "w34-r2", "w35-r1", "w35-r2"])
+@pytest.mark.parametrize("case", ["w34-r1", "w34-r2", "w35-r1"])
 def test_a_real_round_without_a_full_router_and_method_read_is_blocked_at_its_first_change(tmp_path, case):
-    """W34 and W35, rounds 1 and 2: every call before the first change runs; the first change is blocked."""
+    """W34 and W35 round 1, W34 round 2: every call before the first change runs; the first change is blocked."""
     first = next((s for s, u in calls(case) if fp.changes(u["name"], u["input"])), None)
+    assert first is not None
     for src, _ in calls(case):
-        if first is not None and src > first:
+        if src > first:
             break
         r = replay(tmp_path / str(src), case, src)
         if src == first:
             assert_blocked(r)
         else:
             assert r.returncode == 0 and not r.stderr, (src, r.stderr)
+
+
+def test_a_round_that_writes_only_notes_runs_every_call(tmp_path):
+    """W35 round 2 writes only to the run's notes: none of its calls is a change, and the gate lets each run."""
+    assert not [s for s, u in calls("w35-r2") if fp.changes(u["name"], u["input"])]
+    for src, _ in calls("w35-r2"):
+        r = replay(tmp_path / str(src), "w35-r2", src)
+        assert r.returncode == 0 and not r.stderr, (src, r.stderr)
+
+
+HIDDEN = {"type": "tool_use", "id": "toolu_hidden", "name": "Bash"}
+
+
+@pytest.mark.parametrize("command", [
+    "F=src/distbench/grader.py; sed -i 's/a/b/' $F; F=/tmp/scratch.py",  # PR 713 Codex 3: reassigned after the write
+    "false && F=/tmp/s.py; sed -i 's/a/b/' $F",  # an assignment that may not run
+    "sed -i 's/a/b/' $F; F=/tmp/s.py",  # set only after the write
+    "cd /tmp/; cd -; sed -i 's/a/b/' src/distbench/grader.py",  # PR 713 Codex 4: back from scratch
+    "cd /tmp/x; cd ../..; sed -i 's/a/b/' work/src/distbench/grader.py",
+    "x=$(cd /tmp/ && pwd); sed -i 's/a/b/' src/distbench/grader.py",  # a cd in a substitution moves nothing
+])
+def test_a_source_write_behind_a_scratch_path_or_dir_is_blocked(tmp_path, command):
+    assert_blocked(hook(payload(session(tmp_path, "w34-r1", calls("w34-r1")[0][0]), {**HIDDEN, "input": {"command": command}})))
+
+
+@pytest.mark.parametrize("command", ["F=/tmp/s.py; sed -i 's/a/b/' $F", "cd /tmp/x && cd sub && sed -i 's/a/b/' f.py"])
+def test_a_write_that_stays_in_scratch_runs(tmp_path, command):
+    r = hook(payload(session(tmp_path, "w34-r1", calls("w34-r1")[0][0]), {**HIDDEN, "input": {"command": command}}))
+    assert r.returncode == 0 and not r.stderr
 
 
 @pytest.mark.parametrize(("case", "src"), [("w34-r2", 39), ("w35-r1", 63)])

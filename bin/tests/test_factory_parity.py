@@ -26,7 +26,7 @@ CASES = [
     ("p1-plugin", "P1", "FAIL"),  # W35: init loads ~/loam's sam-cc-setup, not frozen/plugin-dir's
     ("p1-view", "P1", "FAIL"),  # W35: round-1.prompt.md without the memory view
     ("p2-pass", "P2", "PASS"),  # W34: router read in full (cat), then the first Write
-    ("p2-partial", "P2", "PASS"),  # W34: the router by sed -n 1,60p, whose result shows all 57 lines: nothing cut
+    ("p2-partial", "P2", "FAIL"),  # W34: the router by sed -n 1,60p: only a plain cat or Read is a full read
     ("p2-fail", "P2", "FAIL"),  # W35: open(..., "w") with no router read
     ("p2-notes", "P2", "N/A"),  # W35: an append to the run's worker/decisions.md is no change
     ("p2-notes-tree", "P2", "FAIL"),  # W35: the same append into the worktree is a change
@@ -270,6 +270,49 @@ def skill_commands(change: Callable[[str], str], result: str | None = None) -> C
     return edit
 
 
+def no_result(tool_id: str) -> Callable[[Path], None]:
+    """The tool_result of call tool_id is gone from every round, as when a run is cut off mid-call."""
+    def edit(run: Path) -> None:
+        for f in run.glob("round-*.jsonl"):
+            keep = [x for x in f.read_text().splitlines() if not any(
+                isinstance(c, dict) and c.get("tool_use_id") == tool_id
+                for c in (json.loads(x).get("message") or {}).get("content") or [] if not isinstance(c, str))]
+            f.write_text("".join(x + "\n" for x in keep))
+    return edit
+
+
+def first_call(command: str) -> Callable[[Path], None]:
+    """A Bash call of command, with an empty result, before every other call of round 1."""
+    def edit(run: Path) -> None:
+        f = run / "round-1.jsonl"
+        lines = f.read_text().splitlines()
+        new = [{"type": "assistant", "message": {"content": [
+                   {"type": "tool_use", "id": "t0", "name": "Bash", "input": {"command": command}}]}},
+               {"type": "user", "message": {"content": [{"type": "tool_result", "tool_use_id": "t0", "content": ""}]}}]
+        f.write_text("".join(x + "\n" for x in [lines[0], *map(json.dumps, new), *lines[1:]]))
+    return edit
+
+
+# PR 713 Codex 3 and 4: a write to the source tree that a scratch path or directory seemed to cover. Each fails
+# closed: an assignment parity cannot place in the call, or a cd it cannot resolve, leaves the write a change.
+HIDDEN_WRITES = [
+    ("reassigned", "F=src/distbench/grader.py; sed -i 's/a/b/' $F; F=/tmp/scratch.py"),
+    ("used-before-set", "sed -i 's/a/b/' $F; F=/tmp/scratch.py"),
+    ("conditional-assign", "false && F=/tmp/s.py; sed -i 's/a/b/' $F"),
+    ("cd-back", "cd /tmp/; cd -; sed -i 's/a/b/' src/distbench/grader.py"),
+    ("cd-up", "cd /tmp/x; cd ../..; sed -i 's/a/b/' work/db/src/distbench/grader.py"),
+    ("cd-in-substitution", "x=$(cd /tmp/ && pwd); sed -i 's/a/b/' src/distbench/grader.py"),
+]
+
+
+def logged_paths(old: str, new: str) -> Callable[[Path], None]:
+    """Each decisions.md path with old replaced by new: the method name stays, the file read is another."""
+    def edit(run: Path) -> None:
+        f = run / "worker" / "decisions.md"
+        f.write_text(f.read_text().replace(old, new))
+    return edit
+
+
 def checkout_lines(drop: str = "") -> Callable[[Path], None]:
     """Both digests get the checkout:<dir> lines shell_digest now writes; drop removes that checkout's git-* lines."""
     def edit(run: Path) -> None:
@@ -369,7 +412,11 @@ VARIANTS = [
      "UNSURE"),
     ("r5-errored-read", "p3-pass", errored_skill_reads, "P3", "FAIL"),  # an errored call reads nothing, shown or not
     ("r5-cat-not-shown", "p3-pass", skill_commands(lambda c: c, ""), "P3", "FAIL"),  # a plain cat that showed nothing
-    ("r5-head-uncut", "p3-pass", skill_commands(lambda c: c.replace("cat ", "head -n 500 ", 1)), "P3", "PASS"),
+    # PR 713 reviewer High: Claude Code trims a Bash result's trailing blank lines, so a head or sed that cut the file
+    # on a blank line looks uncut; neither is ever a full read, whatever its result shows
+    ("r5-head-uncut", "p3-pass", skill_commands(lambda c: c.replace("cat ", "head -n 500 ", 1)), "P3", "FAIL"),
+    ("r6-sed-uncut", "p3-pass", skill_commands(lambda c: c.replace("cat ", "sed -n 1,500p ", 1)), "P3", "FAIL"),
+    ("r6-sed-uncut", "p3-pass", skill_commands(lambda c: c.replace("cat ", "sed -n 1,500p ", 1)), "P2", "FAIL"),
     ("r5-head-cut", "p3-pass", skill_commands(lambda c: c.replace("cat ", "head -n 2 ", 1)), "P3", "FAIL"),
     ("r4-read-not-shown", "p6-pass", read_result("# Verify distbench"), "P6", "FAIL"),
     ("c2-failed-reads", "p3-pass", failed_skill_reads, "P2", "FAIL"),  # a read whose result is an error read nothing
@@ -383,7 +430,34 @@ VARIANTS = [
     ("a4-retried-reviewer", "pass", retried_reviewer(True), "P8", "PASS"),  # the killed attempt's row is no review
     ("a4-killed-reviewer", "pass", retried_reviewer(False), "P8", "FAIL"),  # ... but some reviewer row must serve  # verify.json is for another commit
     ("f2-round-line", "p3-pass", round_two_on_its_round_line, "P3", "PASS"),  # `Round 2: pstack: ...` is round 2's
+    # PR 713 Codex at ffef0f02
+    ("r6-proof-no-result", "pass", no_result("t5"), "P6", "FAIL"),  # 1: a proof call with no result proved nothing
+    *[(f"r6-{name}", "pass", first_call(cmd), pid, "FAIL") for name, cmd in HIDDEN_WRITES for pid in ("P2", "P3")],
+    ("r6-scratch-write", "pass", first_call("F=/tmp/s.py; sed -i 's/a/b/' $F; cd /tmp/x && cd sub && sed -i 's/a/b/' f.py"),
+     "P2", "PASS"),  # ... while a write that stays in scratch is still no change
+    ("r6-logged-path", "pass", logged_paths("/pstack/0.15.36/", "/pstack/0.99.0/"), "P3", "FAIL"),  # 5
 ]
+
+
+def spawned(agent: str) -> Callable[[Path], None]:
+    """A second Agent call whose stream-json result names agentId `agent`, as Claude Code's tool_use_result does."""
+    def edit(run: Path) -> None:
+        with (run / "round-1.jsonl").open("a") as f:
+            f.write(json.dumps({"type": "assistant", "message": {"content": [
+                {"type": "tool_use", "id": "t8", "name": "Agent", "input": {"description": "d", "prompt": "p"}}]}}) + "\n")
+            f.write(json.dumps({"type": "user", "message": {"content": [{"type": "tool_result", "tool_use_id": "t8",
+                                "content": "done"}]}, "tool_use_result": {"status": "completed", "agentId": agent}}) + "\n")
+    return edit
+
+
+@pytest.mark.parametrize(("agent", "code"), [("a2", 2), ("a1", 0)])
+def test_a_spawned_agent_without_its_transcript_is_unusable(tmp_path: Path, agent: str, code: int) -> None:
+    """PR 713 Codex 2: agent a1's transcript is there, a2's is not; a count of loaded transcripts would hide it."""
+    shutil.copytree(FIXTURES / "pass", tmp_path / "s")
+    spawned(agent)(tmp_path / "s" / "run")
+    proc = parity(tmp_path / "s" / "run", tmp_path / "s" / "projects")
+    assert proc.returncode == code, proc.stdout + proc.stderr
+    assert code == 0 or ("agent-a2.jsonl" in proc.stderr and proc.stdout == ""), proc.stderr
 
 
 def test_an_unsure_check_makes_parity_unsure_not_pass(tmp_path: Path) -> None:

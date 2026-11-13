@@ -178,7 +178,8 @@ def build(runs: Path, projects: Path, distbench: Path, exp: Path, pstack: Path) 
     out["p1-view"] = {**out["p1-pass"], "run/round-1.prompt.md": "\n".join(
         (runs / W35 / "round-1.prompt.md").read_text().splitlines()[:3]) + "\n"}
     # P2: W35 round-1.jsonl:3,34,35, a python open(..., "w") edit with no router read (fail); W34 round-1.jsonl:3,45,46,
-    # 77,78, the router read as `sed -n 1,60p` before the first Write (its 57 lines: a full read); pass EDITs it to `cat`.
+    # 77,78, the router read as `sed -n 1,60p` before the first Write (no full read: only `cat` or Read is one, as a
+    # trimmed result hides a cut); pass EDITs it to `cat`.
     w35_1 = runs / W35 / "round-1.jsonl"
     out["p2-fail"] = {"run/round-1.jsonl": dump([w35_init, use(event(w35_1, 34)), res(event(w35_1, 35))])}
     w34_head = [init(event(w34, 3)), use(event(w34, 45)), res(event(w34, 46), keep=r"^")]  # all 60 lines: a cap cut
@@ -388,8 +389,8 @@ def build(runs: Path, projects: Path, distbench: Path, exp: Path, pstack: Path) 
     out["p8-extra"] = {**p8, "run/round-1.verify.json": verify(*good, ("codex-2", "CONFIRMED", "", ""))}
     out["p8-rejected"] = {**p8, "run/round-1.verify.json": verify(rejected[:2] + ("", ""), *good[1:])}
     out["p8-unverified"] = {**p8, "run/round-1.verify.json": verify(rejected, ("codex-0", "UNVERIFIED", "", ""), good[2])}
-    # Attended (--attended): a 4114e7c2 worker (agent a9868070, lines 1, 24, 30, 142): the router Skill call, a full
-    # method read, then its first Edit (pass); the fb454b64 lead's first change (line 204, a sed -i with no router read;
+    # Attended (--attended): a 4114e7c2 worker (agent a9868070, lines 1, 24, 25, 30, 142): the router Skill call and its
+    # result (a call with no result proves nothing), a method read, then its first Edit (pass); the fb454b64 lead's first change (line 204, a sed -i with no router read;
     # EDIT its brief left out) (fail); the fb454b64 runner subagent a564fcc5 (line 92 edits src/distbench/runner.py,
     # no proof; EDIT brief left out) under an otherwise empty session (sub), and EDIT with the verify-distbench read and
     # chain above added (sub-proof).
@@ -419,7 +420,8 @@ def build(runs: Path, projects: Path, distbench: Path, exp: Path, pstack: Path) 
                                                        use(event(h, 28), command=head_cmd.replace("| head -120", "| head -20")),
                                                        head_20, use(event(h, 96))])}
     w = projects / ATTENDED_PASS
-    out["attended-pass"] = {"session.jsonl": dump([first_user(w), use(event(w, 24)), use(event(w, 30)),
+    out["attended-pass"] = {"session.jsonl": dump([first_user(w), use(event(w, 24)), res_for(w, 24, r"^Launching skill"),
+                                                   use(event(w, 30)),
                                                    res_for(w, 30, r"^name: "), use(event(w, 142))])}
     lead_t = projects / ATTENDED_LEAD
     left_out = brief("EDIT: brief left out")
