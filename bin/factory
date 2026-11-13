@@ -237,6 +237,63 @@ check_header() {
   head=$(header)
   grep -qE '^(Brief:|Part of )' <<<"$head" || err "header has no 'Brief:' or 'Part of' line"
   grep -qE '^Blocked by:' <<<"$head" || err "header has no 'Blocked by:' line"
+  local why
+  why=$(edit_line_defect)
+  if [ -z "$why" ]; then :
+  elif edit_scope_gated; then err "$why"
+  else echo "LINT $SRC: SHADOW edit-scope (not an error until the fence leaves shadow): $why" >&2
+  fi
+}
+
+# The Edit: fence starts in shadow (a new blocking check does): a path off the line, or a line it cannot read, is
+# reported and never fails the round or the ticket. A ticket opts in with an `Edit-scope: gate` header line; the fence
+# leaves shadow for every ticket when EDIT_SCOPE_DEFAULT here reads gate (LOOP.md step 6).
+EDIT_SCOPE_DEFAULT=shadow
+edit_scope_gated() { [ "$EDIT_SCOPE_DEFAULT" = gate ] || grep -qE '^Edit-scope:[[:space:]]*gate[[:space:]]*$' <<< "$(header)"; }
+
+# The words of the header's `Edit:` line (CONTRACT.md, item 1): when the line holds a backtick, only its backticked
+# spans, so prose around them (`Edit: Loam \`bin/factory\` (its reset parser).`) is no path; split on commas and
+# blanks, backticks and quotes stripped, then a trailing sentence mark and a leading ./, which git never prints.
+# Each must be a path.
+EDIT_PATH_RE='^[A-Za-z0-9_.][A-Za-z0-9_./-]*$'
+edit_words() { edit_raw_words | sed -e 's/[.;:)]*$//' -e 's#^\(\./\)*##' | { grep -v '^$' || :; }; }
+edit_raw_words() { # the words before the trailing-mark and ./ strip, which would hide a `..` at the end of one
+  local line
+  line=$(grep -m1 '^Edit:' <<< "$(header)") || return 0
+  line=${line#Edit:}
+  case $line in *'`'*) line=$(grep -o '`[^`]*`' <<< "$line" || :) ;; esac
+  printf '%s\n' "$line" | tr ',' ' ' | tr -s ' \t' '\n\n' | tr -d '`"'
+}
+edit_bare_paths() { # words outside the backticks of a line that has them, which the fence would drop: a word with a
+  # slash, and a comma-separated entry that is one word with no backticked span (`a`, README.md); a comma inside a span
+  # or inside parentheses, nested ones included (innermost first; a group holding a span keeps its mark), splits no entry
+  local line
+  line=$(grep -m1 '^Edit:' <<< "$(header)") || return 0
+  case $line in *'`'*) ;; *) return 0 ;; esac
+  line=${line#Edit:}
+  { sed 's/`[^`]*`/ /g' <<< "$line" | tr ',' ' ' | tr -s ' \t' '\n\n' | { grep '/' || :; }
+    sed -e 's/`[^`]*`/`/g' -e ':a' -e 's/([^()`]*`[^()]*)/`/g' -e 's/([^()`]*)//g' -e 'ta' <<< "$line" | tr ',' '\n' | { grep -v '`' || :; } | awk 'NF == 1 { print $1 }'
+  } | awk '!seen[$0]++' | paste -sd' ' -
+}
+
+# Why the header's `Edit:` line cannot fence a run, or nothing when it has none or lists only paths. Lint rejects such
+# a line and freeze stops on it, so a word the fence would drop never fails every round with nothing the worker can fix.
+edit_line_defect() {
+  local bad up bare
+  grep -q '^Edit:' <<< "$(header)" || return 0
+  bare=$(edit_bare_paths)
+  bad=$(edit_words | { grep -vE "$EDIT_PATH_RE" || :; } | paste -sd' ' -)
+  # A sentence mark after a `..` (`src/..;`) is stripped first, so the `.` strip in edit_words cannot hide the segment.
+  up=$(edit_raw_words | sed 's/[;:)]*$//' | { grep -E '(^|/)\.\.+(/|$)' || :; } | paste -sd' ' -)
+  if [ -n "$bare" ]; then
+    echo "the Edit: line holds $bare outside backticks, where the fence reads no path; backtick every path"
+  elif [ -n "$bad" ]; then
+    echo "the Edit: line holds $bad, which is not a path; list only paths, separated by commas or spaces"
+  elif [ -n "$up" ]; then
+    echo "the Edit: line holds $up, whose .. segment climbs a directory; list the path it means"
+  elif [ -z "$(edit_words)" ]; then
+    echo "the Edit: line lists no path"
+  fi
 }
 
 check_no_skip() {
@@ -1521,7 +1578,7 @@ prepare_worktree() {
 REVIEW_SET="review.sh verify.md verify.schema.json learn.md learn.schema.json"
 FROZEN_SET="factory lib.sh _common.md role-settings.json worker-settings.json checks.sh \
 judge.md reviewer.md judge.schema.json reviewer.schema.json issue.md protected.txt exempt.txt \
-factory-round.js review-output.schema.json codex-review.prompt.md unattended.md alert mutation_sweep.py \
+factory-round.js review-output.schema.json codex-review.prompt.md codex-rereview.prompt.md unattended.md alert mutation_sweep.py \
 plugin-dir pstack-gate.py factory-parity $REVIEW_SET"
 # The line freeze writes after the block, before checks.sh exits; run_checks reads output that does not end
 # on CHECKS-END as an abort (#277).
@@ -1619,6 +1676,7 @@ freeze() {
   cp "$ROOT/bin/factory.d/factory-round.js" "$RUN/frozen/factory-round.js"  # the worker runs its frozen copy, so it cannot edit the script (F12)
   cp "$ROOT/bin/factory.d/review-output.schema.json" "$RUN/frozen/review-output.schema.json"  # the Codex review reads the frozen copy, so a mid-run edit of it cannot change the review (#38, F4)
   cp "$ROOT/bin/factory.d/codex-review.prompt.md" "$RUN/frozen/codex-review.prompt.md"  # the Codex review reads the frozen prompt, so a mid-run edit of it cannot change the review (#38, F4)
+  cp "$ROOT/bin/factory.d/codex-rereview.prompt.md" "$RUN/frozen/codex-rereview.prompt.md"  # the first lines of a re-review's prompt (codex_reviewed)
   cp "$ROOT/bin/factory.d/unattended.md" "$RUN/frozen/unattended.md"  # the Opus 5.5 guide's "Unattended agentic runs" paragraph, appended to every Claude worker call (#210)
   cp "$ROOT/bin/factory.d/lib.sh" "$RUN/frozen/lib.sh"
   cp "$ROOT/bin/factory.d/mutation_sweep.py" "$RUN/frozen/mutation_sweep.py"   # the sweep runs its frozen copy, so a mid-run edit cannot change it (#38)
@@ -1648,10 +1706,46 @@ freeze() {
   { cat "$RUN/frozen/lib.sh"; echo; dc_script; echo; echo "$CHECKS_END"; echo 'exit $((n_fail > 0))'; } > "$RUN/frozen/checks.sh"
   { standing_list; section "Do not touch" | sed 's/[Ee]xcept:.*//' | ticket_paths; } | sort -u > "$RUN/frozen/protected.txt"
   section "Do not touch" | grep -o '[Ee]xcept:.*' | ticket_paths > "$RUN/frozen/exempt.txt"
+  freeze_edit_line
   chmod +x "$RUN/frozen/checks.sh" "$RUN/frozen/factory" "$RUN/frozen/alert"
   # shellcheck disable=SC2086
-  ( cd "$RUN/frozen" && sha256_of $FROZEN_SET $([ -f memory-view.md ] && echo memory-view.md) > sha256 )
+  ( cd "$RUN/frozen" && sha256_of $FROZEN_SET $(for f in memory-view.md edit.txt; do [ ! -f "$f" ] || echo "$f"; done) > sha256 )
   chmod a-w "$RUN/frozen"/*
+}
+
+# A ticket whose header has an `Edit:` line (the four-part form) may change only the paths it lists (edit_words), a
+# directory covering what sits under it (CONTRACT.md, item 1). They are frozen to edit.txt as git spells them: each
+# entry's parent directories are resolved in the worktree, so a path through a symlinked directory (Loam's .claude, a
+# link to seed/.claude) reads as git's and a `.` segment collapses; an entry that is itself a symlink is listed both as
+# the link, so deleting or retargeting it stays in scope, and as its target inside the repository, so a change made
+# through it does too. A path the ticket creates need not exist yet. They are not filtered to tracked tops as Do not
+# touch is, so a new top-level file still counts; round_checks fails a round that changes any other path. A ticket
+# with no `Edit:` line gets no edit.txt and no such fence; one whose line lint would reject, or whose path resolves
+# outside the worktree, ends ticket-defect here, before round 0, when the fence gates it, and in shadow runs unfenced.
+freeze_edit_line() {
+  local why top e dir own real slash list=""
+  grep -q '^Edit:' <<< "$(header)" || return 0
+  why=$(edit_line_defect)
+  [ -z "$why" ] || { edit_line_unusable "$why"; return 0; }
+  top=$(realpath "$WORKTREE") || finish stopped-environment "could not resolve the worktree $WORKTREE"
+  for e in $(edit_words); do   # a word is a path (EDIT_PATH_RE) with no .. segment, so no blank, glob, . or .. ends it
+    slash=""; [ "${e%/}" = "$e" ] || slash=/   # kept, since it tells the worker the entry is a directory
+    e=${e%/}
+    dir=$(realpath -m --relative-to="$top" -- "$top/$(dirname -- "$e")") && [ "$dir" != .. ] && [ "${dir#../}" = "$dir" ] \
+      || { edit_line_unusable "the Edit: line names $e, which is not a path inside the repository"; return 0; }
+    own=$(basename -- "$e"); [ "$dir" = . ] || own="$dir/$own"
+    list+="$own$slash"$'\n'
+    real=$(realpath -m --relative-to="$top" -- "$top/$own") || continue
+    # edit.txt is one path a line, so a link whose target holds a newline would list paths the ticket never named.
+    case $own$real in *$'\n'*) edit_line_unusable "the Edit: line names $e, which resolves through a path holding a newline"; return 0 ;; esac
+    [ "$real" = "$own" ] || [ "$real" = . ] || [ "$real" = .. ] || [ "${real#../}" != "$real" ] || list+="$real$slash"$'\n'
+  done
+  printf '%s' "$list" | sort -u > "$RUN/frozen/edit.txt"
+}
+
+edit_line_unusable() { # why; a gated ticket ends ticket-defect, one in shadow runs with no Edit: fence
+  edit_scope_gated && finish ticket-defect "$1; fix the ticket (bin/factory lint rejects it)"
+  log "SHADOW edit-scope: $1; this run has no Edit: fence"
 }
 
 check_frozen() {
@@ -2180,14 +2274,9 @@ round_zero() {
     fi
     [ -n "$why" ] && break
   done < <(dc_predicts)
-  # The launcher may name a sha whose full gate already passed (FACTORY_GATE_PASSED_SHA, ASK-KARPATHY item C: distbench's
-  # factory-isc reads it from bin/integrate's merge-log.tsv); at that base, round 0's guard bin/check reuses it.
-  if [ -n "${FACTORY_GATE_PASSED_SHA:-}" ] && [ "$FACTORY_GATE_PASSED_SHA" = "$base" ]; then
-    log "round 0: bin/check at $(cut -c1-8 "$RUN/base.sha") reused from the gate the launcher names (FACTORY_GATE_PASSED_SHA), not run"
-    run_checks "$wt" "$out" "FACTORY_GATE_REUSED=the launcher's gate passed at ${base:0:8}"
-  else
-    run_checks "$wt" "$out"
-  fi
+  # Round 0 reads only the non-guard PASS lines, so the guarded bin/check could never change its verdict: it is deferred
+  # (lib.sh prints DEFERRED:), and round 0 costs seconds, not a full gate. gate_last runs bin/check, at the graded HEAD.
+  run_checks "$wt" "$out" "$GATE_DEFER"
   git -C "$MAIN_CHECKOUT" worktree remove --force "$wt" > /dev/null 2>&1
   grep -q '^FAIL checks-aborted' "$out" \
     && finish ticket-defect "checks.sh aborted on $(cut -c1-8 "$RUN/base.sha") before the block ended; see $out"
@@ -2643,13 +2732,24 @@ worker_round() { # round; leaves round-N.* only once the call produced a result
     || { rm -f "$RUN/round-$round.stale-paths"; log "could not scan round $round for stale paths; continuing"; }
 }
 
-do_not_touch_hits() { # -> the changed paths the ticket fenced off
+do_not_touch_hits() { # -> the changed paths the ticket fenced off; -z, since git quotes a name with a non-ASCII byte
   local f
-  git -C "$WORKTREE" diff --name-only "$(cat "$RUN/base.sha")...HEAD" | while IFS= read -r f; do
+  git -C "$WORKTREE" diff --name-only -z "$(cat "$RUN/base.sha")...HEAD" | while IFS= read -r -d '' f; do
     under "$f" "$(cat "$RUN/frozen/protected.txt")" || continue
     under "$f" "$(cat "$RUN/frozen/exempt.txt")" && continue
     printf '%s ' "$f"
   done
+}
+
+# -z: git quotes a name holding a non-ASCII byte, a tab, a quote or a backslash, and a quoted name is under no entry.
+edit_scope_hits() { # -> the changed paths, deleted and renamed ones included, that the ticket's Edit: line does not list; git's status when it cannot list them
+  local f allowed
+  [ -f "$RUN/frozen/edit.txt" ] || return 0
+  allowed=$(cat "$RUN/frozen/edit.txt")
+  git -C "$WORKTREE" diff --no-renames --ignore-submodules=none --name-only -z "$(cat "$RUN/base.sha")...HEAD" | while IFS= read -r -d '' f; do
+    under "$f" "$allowed" || printf '%s ' "$f"
+  done
+  return "${PIPESTATUS[0]}"
 }
 
 # A row whose label or command names one of these words measures time, tokens, or cost, so one run is one
@@ -2861,17 +2961,47 @@ run_review() { # round -> 0 when nothing blocks
   [ "$blocking" -eq 0 ] || jq -e '.unparseable == true' "$f" > /dev/null 2>&1
 }
 
+# The last earlier round whose Codex review parsed and whose graders finished, as "<round> <graded sha>", when that sha
+# is an ancestor of HEAD other than HEAD: a re-review then reads only the fix since it. None after a rebase or a round
+# with no new commit, so that review reads the whole change again.
+codex_reviewed() { # round -> "<round> <sha>" or nothing
+  local k sha
+  for ((k = $1 - 1; k >= 1; k--)); do
+    [ -s "$RUN/round-$k.graded.sha" ] && jq -e '.unparseable != true and (.verdict | type) == "string"' \
+      "$RUN/round-$k.codex-review.json" > /dev/null 2>&1 || continue
+    sha=$(cat "$RUN/round-$k.graded.sha")
+    [ "$sha" != "$(git -C "$WORKTREE" rev-parse HEAD)" ] && git -C "$WORKTREE" merge-base --is-ancestor "$sha" HEAD 2> /dev/null \
+      && printf '%s %s\n' "$k" "$sha"
+    return 0
+  done
+}
+
 run_codex_review() { # round -> 0 when nothing blocks; a critical or high finding blocks (LOOP.md)
-  local round="$1" f="$RUN/round-$1.codex-review.json" jsonl res="$RUN/round-$1.codex-review.result.json" base prompt blocking rc start call parsed=0 ch trust skills_off mcp_off
+  local round="$1" f="$RUN/round-$1.codex-review.json" jsonl res="$RUN/round-$1.codex-review.result.json" base prompt blocking rc start call parsed=0 ch trust skills_off mcp_off prev rej
   base=$(cat "$RUN/base.sha")
+  prev=$(codex_reviewed "$round")
   ch=$(codex_home) || finish stopped-environment "$CODEX_LOGIN_HINT"
   trust=$(codex_trust "$WORKTREE") || finish stopped-environment "could not resolve $WORKTREE for the Codex trust entry"
   skills_off=$(codex_skills_off) || finish stopped-environment "could not list ~/.agents/skills for the Codex skill rules"
   mcp_off=$(codex_mcp_off "$WORKTREE" "$ch" -c "$trust") || finish stopped-environment "could not list Codex MCP servers to disable them"
   # The prompt is the frozen brief with every <base> filled in, then the frozen ticket between fence lines as
   # build_evidence prints it; only the brief is filled, so a <base> in the ticket text reaches Codex as written.
-  prompt=$(sed "s/<base>/$base/g" "$RUN/frozen/codex-review.prompt.md"
-           printf '\n## Ticket\n\n%s\n' "$FENCE"; cat "$RUN/frozen/issue.md"; printf '\n%s\n' "$FENCE")
+  # A re-review (codex_reviewed) swaps the brief's first line for the re-review lines and adds the previous findings.
+  if [ -n "$prev" ]; then
+    # A finding that round's verifier rejected is left out, as blocking_findings leaves it out, so it is not raised again.
+    rej=$(jq -c '[.findings[]? | select(.verdict == "REJECTED") | .id]' "$RUN/round-${prev%% *}.verify.json" 2> /dev/null) || rej=""
+    [ -n "$rej" ] || rej='[]'
+    log "codex review reads the fix ${prev#* }...HEAD and round ${prev%% *}'s findings"
+    prompt=$(sed -e "s/<reviewed>/${prev#* }/g" -e "s/<base>/$base/g" "$RUN/frozen/codex-rereview.prompt.md"
+             sed -e '1d' -e "s/<base>/$base/g" "$RUN/frozen/codex-review.prompt.md"
+             printf '\n## Previous findings\n\n'
+             jq -c --argjson rej "$rej" '[(.findings // []) | to_entries[] | select("codex-\(.key)" | IN($rej[]) | not) | .value]' \
+               "$RUN/round-${prev%% *}.codex-review.json"
+             printf '\n## Ticket\n\n%s\n' "$FENCE"; cat "$RUN/frozen/issue.md"; printf '\n%s\n' "$FENCE")
+  else
+    prompt=$(sed "s/<base>/$base/g" "$RUN/frozen/codex-review.prompt.md"
+             printf '\n## Ticket\n\n%s\n' "$FENCE"; cat "$RUN/frozen/issue.md"; printf '\n%s\n' "$FENCE")
+  fi
   for call in 1 2; do
     jsonl="$RUN/round-$round.codex-review.$call.jsonl"   # one stream per call, so each log line points at its own call
     assert_caps
@@ -2955,6 +3085,38 @@ run_mutation_sweep() { # round -> 0 unless a survivor blocks
   return 1
 }
 
+# A harness ticket changes no path matching FACTORY_RESULTS_RE, an ERE for the target's results code and gate inputs
+# (for distbench, the launcher's RESULTS_RE); with it unset, every ticket counts as results code. The round's changed
+# paths, both sides of a rename, go NUL-separated to round-N.paths, so git quotes no name and bin/factory-parity's P8
+# can check the class. A regex bash cannot compile, an unreadable base or a failed diff counts as results.
+REVIEWER_SKIPPED="not run: a harness ticket, the Codex review has no critical or high finding, and the last graded round left no reviewer finding open"
+harness_ticket() { # round
+  local base f
+  [ -n "${FACTORY_RESULTS_RE:-}" ] || return 1
+  base=$(cat "$RUN/base.sha") && [ -n "$base" ] || return 1
+  git -C "$WORKTREE" diff --no-renames --name-only -z "$base...HEAD" > "$RUN/round-$1.paths" || return 1
+  [[ "" =~ $FACTORY_RESULTS_RE ]]; [ $? != 2 ] || return 1   # a regex bash cannot compile, even with no path
+  while IFS= read -r -d '' f; do
+    [[ $f =~ $FACTORY_RESULTS_RE ]]; [ $? = 1 ] || return 1
+  done < "$RUN/round-$1.paths"
+}
+
+# 0 when the last earlier graded round's reviewer left a high or medium finding its verifier did not reject, or replied
+# with nothing parseable, so no recheck cleared what it found before: only the reviewer checks its own finding was
+# fixed, since a Codex re-review reads only Codex's previous findings.
+reviewer_open() { # round
+  local k rej
+  for ((k = $1 - 1; k >= 1; k--)); do
+    [ -s "$RUN/round-$k.graded.sha" ] || continue
+    rej=$(jq -c '[.findings[]? | select(.verdict == "REJECTED") | .id]' "$RUN/round-$k.verify.json" 2> /dev/null) || rej=""
+    [ -n "$rej" ] || rej='[]'
+    jq -e --argjson rej "$rej" '.unparseable == true or ([(.findings // []) | to_entries[] | select("reviewer-\(.key)" | IN($rej[]) | not) | .value]
+      | {findings: .} | '"$REVIEW_BLOCKING"' | length > 0)' "$RUN/round-$k.review.json" > /dev/null 2>&1
+    return
+  done
+  return 1
+}
+
 graders() { # round -> 0 when the judge passes and nothing blocks
   local ok=0 sig
   rm -f "$RUN/round-$1.mutation.json" "$RUN/round-$1.mutation-blocked"   # a regraded round never reads an older sweep
@@ -2962,8 +3124,23 @@ graders() { # round -> 0 when the judge passes and nothing blocks
   GRADED_SHA=$(git -C "$WORKTREE" rev-parse HEAD)   # open_pr prints it, so a later push shows the verdict is stale
   # The sweep's minutes go only to a round that could open a PR: a judge fail ends the round anyway.
   if run_judge "$1"; then run_mutation_sweep "$1" || ok=1; else ok=1; fi
-  run_review "$1"
-  [ "$CODEX_REVIEW" = yes ] && run_codex_review "$1"
+  # On a harness ticket the Codex review goes first and the Opus reviewer runs only on its critical or high finding,
+  # an unparseable reply's fallback included, or to recheck its own open finding (ASK-KARPATHY item E); results code
+  # always gets both. A skip writes round-N.review.skipped, which bin/factory-parity's P8 reads as a reviewed round.
+  rm -f "$RUN/round-$1.review.skipped"
+  if [ "$CODEX_REVIEW" = yes ] && harness_ticket "$1"; then
+    run_codex_review "$1"
+    if [ "$(jq "$CODEX_BLOCKING | length" "$RUN/round-$1.codex-review.json")" -gt 0 ] || reviewer_open "$1"; then
+      run_review "$1"
+    else
+      rm -f "$RUN/round-$1.review.json" "$RUN/round-$1.review.prompt.md"   # a regraded round never reads an older reply
+      printf '%s\nresults-re: %s\n' "$REVIEWER_SKIPPED" "$FACTORY_RESULTS_RE" > "$RUN/round-$1.review.skipped"
+      log "reviewer $REVIEWER_SKIPPED"
+    fi
+  else
+    run_review "$1"
+    [ "$CODEX_REVIEW" = yes ] && run_codex_review "$1"
+  fi
   verify_round "$1" || ok=1   # 1 when it queued a fix (review.sh); the reviews' own blocking count decides nothing here
   [ "$(tree_signature "$WORKTREE")" = "$sig" ] || finish stopped-environment "grader changed the tree"
   # After every grader ran on an unchanged tree, so a relaunch can tell this round graded HEAD (cmd_run).
@@ -3043,7 +3220,7 @@ checks_section() { # heading checks-file
     END {if (n > max) printf "... %d more lines in %s\n", n - max, f}' "$2"
   printf '```\n\n'
   grep -q '^DEFERRED: bin/check' "$2" 2> /dev/null \
-    && printf 'bin/check did not run in this round: it was deferred until the graders pass (the DEFERRED line in the file below).\n\n'
+    && printf 'bin/check did not run for these checks (the DEFERRED line in the file below): round 0 at base never runs it, and a round runs it only once its graders pass.\n\n'
   printf 'Reasons and full output: %s\n\n' "$2"
 }
 
@@ -3094,8 +3271,12 @@ open_pr() { # [draft]: opened at the grader-round cap
         "$(jq -c '{verdict, rows: (.rows // {}), evidence: (.evidence // {})}' "$RUN/round-$ROUND.judge.json")"
     fi
     printf '## Reviewer\n\n'
-    jq -r '.findings[]? | "- [" + .severity + "] " + (.file // "?") + ":" + ((.line // 0) | tostring) + " " + .defect + " Fix: " + .fix' "$RUN/round-$ROUND.review.json"
-    jq -r '.unverified[]? | "- unverified: " + .' "$RUN/round-$ROUND.review.json"
+    if [ -e "$RUN/round-$ROUND.review.json" ]; then
+      jq -r '.findings[]? | "- [" + .severity + "] " + (.file // "?") + ":" + ((.line // 0) | tostring) + " " + .defect + " Fix: " + .fix' "$RUN/round-$ROUND.review.json"
+      jq -r '.unverified[]? | "- unverified: " + .' "$RUN/round-$ROUND.review.json"
+    else
+      printf '(%s)\n' "$REVIEWER_SKIPPED"
+    fi
     if [ "$CODEX_REVIEW" = yes ]; then
       printf '\n## Codex review\n\n'
       if [ -s "$RUN/round-$ROUND.codex-review.json" ] && jq -e . "$RUN/round-$ROUND.codex-review.json" > /dev/null 2>&1; then
@@ -3194,16 +3375,28 @@ gate_last() { # -> 0 when the round's checks deferred nothing, or the full block
   log "full gate: all pass"
 }
 
-round_checks() { # out [full]: a dirty tree or a do-not-touch hit fails the round without running the checks; the
-  # guarded bin/check is deferred to gate_last unless the second argument is full
-  local dirty touched
+edit_scope_line() { # off-line paths -> the one line naming them and the Edit: line
+  local allowed
+  allowed=$(paste -sd, "$RUN/frozen/edit.txt" | sed 's/,/, /g')
+  printf "edit-scope: the round changed %sbut the ticket's Edit: line lists only %s; revert those paths\n" "$1" "${allowed:-no path}"
+}
+
+round_checks() { # out [full]: a dirty tree, a do-not-touch hit or a path off the Edit: line fails the round without
+  # running the checks; the guarded bin/check is deferred to gate_last unless the second argument is full
+  local dirty touched off
   dirty=$(git -C "$WORKTREE" status --porcelain)
   touched=$(do_not_touch_hits)
+  off=$(edit_scope_hits) \
+    || finish stopped-environment "could not list the paths round $ROUND changed in $WORKTREE since $(cut -c1-8 "$RUN/base.sha") for the Edit: line"
   if [ -n "$dirty" ]; then
     printf 'FAIL worktree-dirty: %s\n' "$(printf '%s' "$dirty" | tr '\n' ' ')" > "$1"
   elif [ -n "$touched" ]; then
     printf 'FAIL do-not-touch %s\n' "$touched" > "$1"
+  elif [ -n "$off" ] && edit_scope_gated; then
+    printf 'FAIL %s\n' "$(edit_scope_line "$off")" > "$1"
   else
+    # Shadow: the line goes to factory.log and round-N.edit-scope, and the checks run as if the fence were absent.
+    [ -z "$off" ] || { edit_scope_line "$off" | sed 's/^/SHADOW /' > "$RUN/round-$ROUND.edit-scope"; log "$(cat "$RUN/round-$ROUND.edit-scope")"; }
     run_checks "$WORKTREE" "$1" "$([ "${2:-}" = full ] || printf '%s' "$GATE_DEFER")"
   fi
 }
@@ -3221,7 +3414,7 @@ main_loop() {
     assert_caps
     stop_requested && finish stopped "FACTORY_STOP before the round-$ROUND call"
     worker_round "$ROUND"
-    # Step 6, in order: abandon, the frozen set, a clean tree, do-not-touch, then the checks.
+    # Step 6, in order: abandon, the frozen set, a clean tree, do-not-touch, the Edit: line, then the checks.
     # A worker sometimes writes the line as a markdown bullet (#158); accept `- ` or `* ` and strip it.
     abandon=$(grep -m1 -E '^(- |\* )?ABANDON ' "$DECISIONS" | sed -E 's/^(- |\* )//')
     [ -n "$abandon" ] && finish abandon "$abandon"
@@ -3339,11 +3532,14 @@ cmd_run() {
   target_is_loam || user_token_free \
     || finish stopped-environment "$(user_settings) has CLAUDE_CODE_OAUTH_TOKEN in its env, which the native worker loads and which would replace the account bin/claude-account gives it; remove the key (bin/claude-account use <name> drops it)"
   prepare_worktree
+  # Armed before freeze, whose finish (a malformed Edit: line) would otherwise leave a file ticket's worktree on its
+  # branch, so a corrected body's relaunch would reuse that branch; exec_frozen's exec runs no EXIT trap, and the
+  # frozen pass arms it again.
+  [ "$IS_FILE" = 1 ] && trap 'git -C "$MAIN_CHECKOUT" worktree remove --force "$WORKTREE" > /dev/null 2>&1' EXIT
   freeze
   exec_frozen
   BODY=$(cat "$RUN/frozen/issue.md")   # from here on the frozen body is the ticket
   [ "$JUDGE" = on ] || log "judge: off (FACTORY_JUDGE=off); each round's judge.json is a stand-in pass, and the reviewer, Codex review, mutation sweep and verifier still grade"
-  [ "$IS_FILE" = 1 ] && trap 'git -C "$MAIN_CHECKOUT" worktree remove --force "$WORKTREE" > /dev/null 2>&1' EXIT
   TIMEOUT_G=(timeout -k 5 "$CALL_TIMEOUT_SEC")
   # The advisor attaches through a feature flag claude fetches; two env vars turn it silently off.
   # Refuse to launch rather than run a worker that thinks it has an advisor and does not (F11).

@@ -22,13 +22,18 @@ import tempfile
 import unittest
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
-INHERITED = ("FACTORY_ROOT", "FACTORY_GH", "REPO", "RUN", "LOG")
+INHERITED = ("FACTORY_ROOT", "FACTORY_GH", "FACTORY_RESULTS_RE", "REPO", "RUN", "LOG")
 TICKET = "## Goal and why\n\nMake the widget work.\n\n## Merge checklist\n\n- read the diff\n"
 # The frozen ticket differs from TICKET and BODY, and keeps a literal <base> that the Codex prompt must not fill.
 FROZEN_TICKET = "# Widget works\n\nKeep the literal <base> in this line.\n"
 FENCE = re.search(r"^FENCE='([^']*)'", (ROOT / "bin/factory").read_text(), re.M).group(1)
 PR_URL = "https://github.com/acme/widget/pull/9"
 FROZEN_BRIEF_MARKER = "This line is only in the frozen brief."
+# distbench's results set, RESULTS_RE in ~/.local/bin/factory-isc (13 Nov 2026), which the launcher exports as
+# FACTORY_RESULTS_RE.
+DISTBENCH_RESULTS_RE = (
+    r'^(src/|tasks/|agent/|tests?/|docs/tickets/checks/|docs/tickets/integration\.tsv$|experiments/run-ledger\.jsonl$|\.github/|\.claude/|\.codex/|\.loam/|requirements|[^/]+\.(py|pyc|so)$|[^/]+/__init__\.|bin/([^/]+\.(py|pyc|so)$|[^/]+/)|bin/(check|integrate|gate\.py|grade-session|calibrate|rehearse|done-checks|audit-agent-readable|cheat_drill|build-slice))|(^|/)(conftest\.py|sitecustomize\.py|usercustomize\.py|pyproject\.toml|pytest\.ini|setup\.cfg|tox\.ini|\.?ruff\.toml)$|(^|/)\.venv(/|$)|\.pth$|PREREG'
+)
 
 FAKE_CLAUDE = """#!/usr/bin/env python3
 import json, sys
@@ -106,6 +111,10 @@ class CappedReviewTests(unittest.TestCase):
         frozen.mkdir(parents=True)
         (frozen / "issue.md").write_text(FROZEN_TICKET)
         shutil.copy(ROOT / "bin/factory.d/codex-review.prompt.md", frozen / "codex-review.prompt.md")
+        if (ROOT / "bin/factory.d/codex-rereview.prompt.md").exists():
+            shutil.copy(ROOT / "bin/factory.d/codex-rereview.prompt.md", frozen / "codex-rereview.prompt.md")
+            with (frozen / "codex-rereview.prompt.md").open("a") as f:
+                f.write(FROZEN_BRIEF_MARKER + " (re-review)\n")
         shutil.copy(ROOT / "bin/factory.d/mutation_sweep.py", frozen / "mutation_sweep.py")  # runs after a judge pass
         # The frozen brief alone carries a marker line, so a Codex prompt built from the live brief lacks it (#583).
         with (frozen / "codex-review.prompt.md").open("a") as f:
@@ -125,13 +134,17 @@ class CappedReviewTests(unittest.TestCase):
             (self.bin / name).chmod(0o755)
 
     def run_loop(self, reviews: list[object], codex: list[str | None] | None = None,
-                 judges: list[object] | None = None) -> tuple[str, list[dict]]:
+                 judges: list[object] | None = None, commits: dict[int, str] | None = None,
+                 env_extra: dict[str, str] | None = None) -> tuple[str, list[dict]]:
         """Run one round per reply of `graders "$ROUND" && open_pr`; return the loop's stderr and the gh calls.
 
         reviews[k] is the reviewer's reply in round k+1 (a string goes verbatim, anything else as JSON).
         judges[k], when given, is the judge's reply in round k+1 the same way; the judge passes otherwise.
         codex, when given, turns the Codex review on: codex[k] is the -o file text of Codex call k+1, None for no file.
+        commits[k], when given, is a path the worker commits before round k is graded.
         """
+        for k, path in (commits or {}).items():
+            (self.run_dir / f"commit.{k}").write_text(path)
         for k, reply in enumerate(reviews, start=1):
             judge = judges[k - 1] if judges else JUDGE_PASS
             (self.run_dir / f"reply.judge.{k}").write_text(judge if isinstance(judge, str) else json.dumps(judge))
@@ -146,7 +159,10 @@ class CappedReviewTests(unittest.TestCase):
             f"BODY=\"$TICKET\"; CODEX_REVIEW={'yes' if codex is not None else 'no'}; CODEX_PATH='{self.bin}'\n"
             "notify() { :; }\n"
             'build_evidence() { printf \'REPLY %s\\n\' "$(cat "$RUN/reply.$(basename "$1" .md).$ROUND")"; }\n'
-            f'for ROUND in $(seq 1 {len(reviews)}); do graders "$ROUND" && open_pr; done\n'
+            'commit_for() { local p; p=$(cat "$RUN/commit.$1" 2> /dev/null) || return 0; mkdir -p "$WORKTREE/${p%/*}"\n'
+            '  echo "round $1" >> "$WORKTREE/$p"; git -C "$WORKTREE" add -A\n'
+            '  git -C "$WORKTREE" -c user.name=t -c user.email=t@t commit -qm "round $1 work"; }\n'
+            f'for ROUND in $(seq 1 {len(reviews)}); do commit_for "$ROUND"; graders "$ROUND" && open_pr; done\n'
             "echo 'no PR opened' >&2; exit 9\n"
         )
         env = {k: v for k, v in os.environ.items() if k not in INHERITED}
@@ -154,7 +170,7 @@ class CappedReviewTests(unittest.TestCase):
                               env={**env, "FACTORY_SOURCED": "1", "FACTORY_ROOT": str(ROOT),
                                    "FACTORY_CODEX_HOME": str(self.top / "codex-home"),
                                    "FACTORY_RUNS_ROOT": str(self.top / "runs"), "REPO": "acme/widget",
-                                   "TICKET": TICKET, "PATH": f"{self.bin}:{env['PATH']}"},
+                                   "TICKET": TICKET, "PATH": f"{self.bin}:{env['PATH']}", **(env_extra or {})},
                               capture_output=True, text=True, check=False)
         self.assertEqual(proc.returncode, 0, proc.stderr)
         calls = [json.loads(x) for x in self.gh_log.read_text().splitlines()] if self.gh_log.exists() else []
@@ -385,6 +401,103 @@ class CappedReviewTests(unittest.TestCase):
                 self.assertNotIn("--draft", pr["args"])
                 self.assertNotIn("Draft:", pr["body"])
                 self.assertEqual(self.issues(calls), [])
+
+
+    def codex_high(self, title: str) -> str:
+        return json.dumps({"verdict": "needs-attention", "summary": "s", "next_steps": [], "findings": [
+            {"severity": "high", "file": "bin/x", "line_start": 3, "line_end": 3, "confidence": 0.9, "title": title,
+             "body": "b", "recommendation": "r"}]})
+
+    def test_a_codex_re_review_reads_the_fix_delta_and_the_previous_findings(self) -> None:
+        self.new_run()
+        self.run_loop([CLEAN_REVIEW, CLEAN_REVIEW], codex=[self.codex_high("the earlier defect"), json.dumps(CLEAN_CODEX)],
+                      commits={1: "bin/x", 2: "bin/x"})
+        reviewed = (self.run_dir / "round-1.graded.sha").read_text().strip()
+        head = git("rev-parse", "HEAD", cwd=self.wt)
+        self.assertNotEqual(reviewed, head)
+        prompt = (self.run_dir / "codex-prompt.txt").read_text()   # the last call's: round 2
+        brief = " ".join(prompt.split("\n## Previous findings\n", 1)[0].split())
+        self.assertIn(f"the commits {reviewed}...HEAD", brief)
+        self.assertNotIn(f"the commits {self.base}...HEAD", brief)
+        # The rest of the brief, its calibration against the base included, is the full review's.
+        self.assertIn(f"the same failure on the base commit {self.base};", brief)
+        self.assertIn(FROZEN_BRIEF_MARKER + " (re-review)", brief)   # the frozen re-review lines, not the live ones
+        previous = prompt.split("\n## Previous findings\n", 1)[1].split("\n## Ticket\n", 1)[0]
+        self.assertIn("the earlier defect", previous)
+        self.assertIn(f"{FENCE}\n{FROZEN_TICKET}\n{FENCE}", prompt)
+
+    def test_a_codex_review_after_a_rebase_or_no_fix_reads_the_whole_change(self) -> None:
+        self.new_run()
+        self.run_loop([CLEAN_REVIEW, CLEAN_REVIEW], codex=[self.codex_high("the earlier defect"), json.dumps(CLEAN_CODEX)],
+                      commits={1: "bin/x"})
+        prompt = (self.run_dir / "codex-prompt.txt").read_text()
+        self.assertIn(f"the commits {self.base}...HEAD in this repository", prompt)
+        self.assertNotIn("## Previous findings", prompt)
+
+    def test_on_a_harness_ticket_the_reviewer_runs_only_on_a_codex_high(self) -> None:
+        results = {"FACTORY_RESULTS_RE": "^(src/distbench/|tasks/)"}
+        for name, path, env, codex, reviewer_runs in (
+            ("harness, Codex clean", "bin/x", results, json.dumps(CLEAN_CODEX), False),
+            ("harness, Codex high", "bin/x", results, self.codex_high("a defect"), True),
+            ("harness, Codex unparseable", "bin/x", results, "not json", True),
+            ("results code, Codex clean", "src/distbench/run.py", results, json.dumps(CLEAN_CODEX), True),
+            ("no results paths set", "bin/x", {}, json.dumps(CLEAN_CODEX), True),
+        ):
+            with self.subTest(name):
+                self.new_run()
+                stderr, calls = self.run_loop([CLEAN_REVIEW, CLEAN_REVIEW], codex=[codex] * 4, commits={1: path},
+                                              env_extra=env)
+                self.assertEqual((self.run_dir / "round-1.review.json").exists(), reviewer_runs, stderr)
+                self.assertEqual((self.run_dir / "round-1.review.prompt.md").exists(), reviewer_runs)
+                self.assertEqual((self.run_dir / "round-1.review.skipped").exists(), not reviewer_runs)
+                if not reviewer_runs:
+                    self.assertIn(f"EXIT pr-opened (0): {PR_URL} after 1 rounds", stderr)
+                    body = self.pr_create(calls)["body"]
+                    self.assertIn("not run: a harness ticket", body)
+                    self.assertNotIn("--draft", self.pr_create(calls)["args"])
+    def test_on_a_harness_ticket_the_reviewer_rechecks_its_own_open_finding(self) -> None:
+        # Codex flags A and the reviewer B in round 1; round 2's Codex re-review, which reads only A, is clean, so
+        # only the reviewer can tell whether B was fixed (PR 730 Codex High 1).
+        self.new_run()
+        self.run_loop([{"verdict": "fix", "findings": [review_finding("high", "defect B")]}, CLEAN_REVIEW],
+                      codex=[self.codex_high("defect A"), json.dumps(CLEAN_CODEX)], commits={1: "bin/x", 2: "bin/x"},
+                      env_extra={"FACTORY_RESULTS_RE": "^(src/distbench/|tasks/)"})
+        self.assertTrue((self.run_dir / "round-2.review.json").exists())
+        self.assertFalse((self.run_dir / "round-2.review.skipped").exists())
+
+    def test_an_unparseable_recheck_keeps_the_reviewers_finding_open(self) -> None:
+        # Round 1's reviewer finds B; round 2's recheck is unparseable and the judge fails; round 3's Codex review is
+        # clean, but no parsed recheck cleared B, so the reviewer runs again (PR 730 Codex High at f263f2bd).
+        self.new_run()
+        self.run_loop([{"verdict": "fix", "findings": [review_finding("high", "defect B")]}, "not json", CLEAN_REVIEW],
+                      codex=[self.codex_high("defect A")] + [json.dumps(CLEAN_CODEX)] * 3,
+                      judges=[JUDGE_PASS, JUDGE_FAIL, JUDGE_PASS], commits={1: "bin/x", 2: "bin/x", 3: "bin/x"},
+                      env_extra={"FACTORY_RESULTS_RE": "^(src/distbench/|tasks/)"})
+        self.assertTrue((self.run_dir / "round-3.review.json").exists())
+        self.assertFalse((self.run_dir / "round-3.review.skipped").exists())
+
+    def test_the_launchers_results_regex_decides_which_tickets_are_harness(self) -> None:
+        # Audit item 6: the prefix list "src/distbench tasks" let gate inputs and frozen checks skip the reviewer.
+        # factory-isc still exported that list on 13 Nov; it must not narrow the regex.
+        env = {"FACTORY_RESULTS_RE": DISTBENCH_RESULTS_RE, "FACTORY_RESULTS_PATHS": "src/distbench tasks"}
+        for path, want in (("tests/x.py", "results"), ("bin/check", "results"), ("docs/tickets/checks/f.md", "results"),
+                           ("agent/a.py", "results"), ("bin/grade-session", "results"), ("bin/calibrate", "results"),
+                           ("conftest.py", "results"), ("src/distbench/x.py", "results"), ("bin/README.md", "harness"),
+                           # names git quotes in its plain output (PR 730 Codex High)
+                           ("tests/test_caf\u00e9.py", "results"), ('tests/a"b.py', "results")):
+            with self.subTest(path):
+                self.new_run()
+                (self.wt / path).parent.mkdir(parents=True, exist_ok=True)
+                (self.wt / path).write_text("x\n")
+                git("add", "-A", cwd=self.wt)
+                git("commit", "-qm", "the change", cwd=self.wt)
+                env_base = {k: v for k, v in os.environ.items() if k not in INHERITED}
+                proc = subprocess.run(
+                    ["bash", "-c", f". bin/factory\nRUN='{self.run_dir}'; WORKTREE='{self.wt}'\n"
+                                   "if harness_ticket 1; then echo harness; else echo results; fi"],
+                    cwd=ROOT, env={**env_base, "FACTORY_SOURCED": "1", "FACTORY_ROOT": str(ROOT), **env},
+                    capture_output=True, text=True, check=False)
+                self.assertEqual(proc.stdout.strip(), want, proc.stderr)
 
 
 if __name__ == "__main__":
