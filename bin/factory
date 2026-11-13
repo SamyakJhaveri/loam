@@ -237,6 +237,63 @@ check_header() {
   head=$(header)
   grep -qE '^(Brief:|Part of )' <<<"$head" || err "header has no 'Brief:' or 'Part of' line"
   grep -qE '^Blocked by:' <<<"$head" || err "header has no 'Blocked by:' line"
+  local why
+  why=$(edit_line_defect)
+  if [ -z "$why" ]; then :
+  elif edit_scope_gated; then err "$why"
+  else echo "LINT $SRC: SHADOW edit-scope (not an error until the fence leaves shadow): $why" >&2
+  fi
+}
+
+# The Edit: fence starts in shadow (a new blocking check does): a path off the line, or a line it cannot read, is
+# reported and never fails the round or the ticket. A ticket opts in with an `Edit-scope: gate` header line; the fence
+# leaves shadow for every ticket when EDIT_SCOPE_DEFAULT here reads gate (LOOP.md step 6).
+EDIT_SCOPE_DEFAULT=shadow
+edit_scope_gated() { [ "$EDIT_SCOPE_DEFAULT" = gate ] || grep -qE '^Edit-scope:[[:space:]]*gate[[:space:]]*$' <<< "$(header)"; }
+
+# The words of the header's `Edit:` line (CONTRACT.md, item 1): when the line holds a backtick, only its backticked
+# spans, so prose around them (`Edit: Loam \`bin/factory\` (its reset parser).`) is no path; split on commas and
+# blanks, backticks and quotes stripped, then a trailing sentence mark and a leading ./, which git never prints.
+# Each must be a path.
+EDIT_PATH_RE='^[A-Za-z0-9_.][A-Za-z0-9_./-]*$'
+edit_words() { edit_raw_words | sed -e 's/[.;:)]*$//' -e 's#^\(\./\)*##' | { grep -v '^$' || :; }; }
+edit_raw_words() { # the words before the trailing-mark and ./ strip, which would hide a `..` at the end of one
+  local line
+  line=$(grep -m1 '^Edit:' <<< "$(header)") || return 0
+  line=${line#Edit:}
+  case $line in *'`'*) line=$(grep -o '`[^`]*`' <<< "$line" || :) ;; esac
+  printf '%s\n' "$line" | tr ',' ' ' | tr -s ' \t' '\n\n' | tr -d '`"'
+}
+edit_bare_paths() { # words outside the backticks of a line that has them, which the fence would drop: a word with a
+  # slash, and a comma-separated entry that is one word with no backticked span (`a`, README.md); a comma inside a span
+  # or inside parentheses, nested ones included (innermost first; a group holding a span keeps its mark), splits no entry
+  local line
+  line=$(grep -m1 '^Edit:' <<< "$(header)") || return 0
+  case $line in *'`'*) ;; *) return 0 ;; esac
+  line=${line#Edit:}
+  { sed 's/`[^`]*`/ /g' <<< "$line" | tr ',' ' ' | tr -s ' \t' '\n\n' | { grep '/' || :; }
+    sed -e 's/`[^`]*`/`/g' -e ':a' -e 's/([^()`]*`[^()]*)/`/g' -e 's/([^()`]*)//g' -e 'ta' <<< "$line" | tr ',' '\n' | { grep -v '`' || :; } | awk 'NF == 1 { print $1 }'
+  } | awk '!seen[$0]++' | paste -sd' ' -
+}
+
+# Why the header's `Edit:` line cannot fence a run, or nothing when it has none or lists only paths. Lint rejects such
+# a line and freeze stops on it, so a word the fence would drop never fails every round with nothing the worker can fix.
+edit_line_defect() {
+  local bad up bare
+  grep -q '^Edit:' <<< "$(header)" || return 0
+  bare=$(edit_bare_paths)
+  bad=$(edit_words | { grep -vE "$EDIT_PATH_RE" || :; } | paste -sd' ' -)
+  # A sentence mark after a `..` (`src/..;`) is stripped first, so the `.` strip in edit_words cannot hide the segment.
+  up=$(edit_raw_words | sed 's/[;:)]*$//' | { grep -E '(^|/)\.\.+(/|$)' || :; } | paste -sd' ' -)
+  if [ -n "$bare" ]; then
+    echo "the Edit: line holds $bare outside backticks, where the fence reads no path; backtick every path"
+  elif [ -n "$bad" ]; then
+    echo "the Edit: line holds $bad, which is not a path; list only paths, separated by commas or spaces"
+  elif [ -n "$up" ]; then
+    echo "the Edit: line holds $up, whose .. segment climbs a directory; list the path it means"
+  elif [ -z "$(edit_words)" ]; then
+    echo "the Edit: line lists no path"
+  fi
 }
 
 check_no_skip() {
@@ -1649,10 +1706,46 @@ freeze() {
   { cat "$RUN/frozen/lib.sh"; echo; dc_script; echo; echo "$CHECKS_END"; echo 'exit $((n_fail > 0))'; } > "$RUN/frozen/checks.sh"
   { standing_list; section "Do not touch" | sed 's/[Ee]xcept:.*//' | ticket_paths; } | sort -u > "$RUN/frozen/protected.txt"
   section "Do not touch" | grep -o '[Ee]xcept:.*' | ticket_paths > "$RUN/frozen/exempt.txt"
+  freeze_edit_line
   chmod +x "$RUN/frozen/checks.sh" "$RUN/frozen/factory" "$RUN/frozen/alert"
   # shellcheck disable=SC2086
-  ( cd "$RUN/frozen" && sha256_of $FROZEN_SET $([ -f memory-view.md ] && echo memory-view.md) > sha256 )
+  ( cd "$RUN/frozen" && sha256_of $FROZEN_SET $(for f in memory-view.md edit.txt; do [ ! -f "$f" ] || echo "$f"; done) > sha256 )
   chmod a-w "$RUN/frozen"/*
+}
+
+# A ticket whose header has an `Edit:` line (the four-part form) may change only the paths it lists (edit_words), a
+# directory covering what sits under it (CONTRACT.md, item 1). They are frozen to edit.txt as git spells them: each
+# entry's parent directories are resolved in the worktree, so a path through a symlinked directory (Loam's .claude, a
+# link to seed/.claude) reads as git's and a `.` segment collapses; an entry that is itself a symlink is listed both as
+# the link, so deleting or retargeting it stays in scope, and as its target inside the repository, so a change made
+# through it does too. A path the ticket creates need not exist yet. They are not filtered to tracked tops as Do not
+# touch is, so a new top-level file still counts; round_checks fails a round that changes any other path. A ticket
+# with no `Edit:` line gets no edit.txt and no such fence; one whose line lint would reject, or whose path resolves
+# outside the worktree, ends ticket-defect here, before round 0, when the fence gates it, and in shadow runs unfenced.
+freeze_edit_line() {
+  local why top e dir own real slash list=""
+  grep -q '^Edit:' <<< "$(header)" || return 0
+  why=$(edit_line_defect)
+  [ -z "$why" ] || { edit_line_unusable "$why"; return 0; }
+  top=$(realpath "$WORKTREE") || finish stopped-environment "could not resolve the worktree $WORKTREE"
+  for e in $(edit_words); do   # a word is a path (EDIT_PATH_RE) with no .. segment, so no blank, glob, . or .. ends it
+    slash=""; [ "${e%/}" = "$e" ] || slash=/   # kept, since it tells the worker the entry is a directory
+    e=${e%/}
+    dir=$(realpath -m --relative-to="$top" -- "$top/$(dirname -- "$e")") && [ "$dir" != .. ] && [ "${dir#../}" = "$dir" ] \
+      || { edit_line_unusable "the Edit: line names $e, which is not a path inside the repository"; return 0; }
+    own=$(basename -- "$e"); [ "$dir" = . ] || own="$dir/$own"
+    list+="$own$slash"$'\n'
+    real=$(realpath -m --relative-to="$top" -- "$top/$own") || continue
+    # edit.txt is one path a line, so a link whose target holds a newline would list paths the ticket never named.
+    case $own$real in *$'\n'*) edit_line_unusable "the Edit: line names $e, which resolves through a path holding a newline"; return 0 ;; esac
+    [ "$real" = "$own" ] || [ "$real" = . ] || [ "$real" = .. ] || [ "${real#../}" != "$real" ] || list+="$real$slash"$'\n'
+  done
+  printf '%s' "$list" | sort -u > "$RUN/frozen/edit.txt"
+}
+
+edit_line_unusable() { # why; a gated ticket ends ticket-defect, one in shadow runs with no Edit: fence
+  edit_scope_gated && finish ticket-defect "$1; fix the ticket (bin/factory lint rejects it)"
+  log "SHADOW edit-scope: $1; this run has no Edit: fence"
 }
 
 check_frozen() {
@@ -2632,13 +2725,24 @@ worker_round() { # round; leaves round-N.* only once the call produced a result
     || { rm -f "$RUN/round-$round.stale-paths"; log "could not scan round $round for stale paths; continuing"; }
 }
 
-do_not_touch_hits() { # -> the changed paths the ticket fenced off
+do_not_touch_hits() { # -> the changed paths the ticket fenced off; -z, since git quotes a name with a non-ASCII byte
   local f
-  git -C "$WORKTREE" diff --name-only "$(cat "$RUN/base.sha")...HEAD" | while IFS= read -r f; do
+  git -C "$WORKTREE" diff --name-only -z "$(cat "$RUN/base.sha")...HEAD" | while IFS= read -r -d '' f; do
     under "$f" "$(cat "$RUN/frozen/protected.txt")" || continue
     under "$f" "$(cat "$RUN/frozen/exempt.txt")" && continue
     printf '%s ' "$f"
   done
+}
+
+# -z: git quotes a name holding a non-ASCII byte, a tab, a quote or a backslash, and a quoted name is under no entry.
+edit_scope_hits() { # -> the changed paths, deleted and renamed ones included, that the ticket's Edit: line does not list; git's status when it cannot list them
+  local f allowed
+  [ -f "$RUN/frozen/edit.txt" ] || return 0
+  allowed=$(cat "$RUN/frozen/edit.txt")
+  git -C "$WORKTREE" diff --no-renames --ignore-submodules=none --name-only -z "$(cat "$RUN/base.sha")...HEAD" | while IFS= read -r -d '' f; do
+    under "$f" "$allowed" || printf '%s ' "$f"
+  done
+  return "${PIPESTATUS[0]}"
 }
 
 # A row whose label or command names one of these words measures time, tokens, or cost, so one run is one
@@ -3264,16 +3368,28 @@ gate_last() { # -> 0 when the round's checks deferred nothing, or the full block
   log "full gate: all pass"
 }
 
-round_checks() { # out [full]: a dirty tree or a do-not-touch hit fails the round without running the checks; the
-  # guarded bin/check is deferred to gate_last unless the second argument is full
-  local dirty touched
+edit_scope_line() { # off-line paths -> the one line naming them and the Edit: line
+  local allowed
+  allowed=$(paste -sd, "$RUN/frozen/edit.txt" | sed 's/,/, /g')
+  printf "edit-scope: the round changed %sbut the ticket's Edit: line lists only %s; revert those paths\n" "$1" "${allowed:-no path}"
+}
+
+round_checks() { # out [full]: a dirty tree, a do-not-touch hit or a path off the Edit: line fails the round without
+  # running the checks; the guarded bin/check is deferred to gate_last unless the second argument is full
+  local dirty touched off
   dirty=$(git -C "$WORKTREE" status --porcelain)
   touched=$(do_not_touch_hits)
+  off=$(edit_scope_hits) \
+    || finish stopped-environment "could not list the paths round $ROUND changed in $WORKTREE since $(cut -c1-8 "$RUN/base.sha") for the Edit: line"
   if [ -n "$dirty" ]; then
     printf 'FAIL worktree-dirty: %s\n' "$(printf '%s' "$dirty" | tr '\n' ' ')" > "$1"
   elif [ -n "$touched" ]; then
     printf 'FAIL do-not-touch %s\n' "$touched" > "$1"
+  elif [ -n "$off" ] && edit_scope_gated; then
+    printf 'FAIL %s\n' "$(edit_scope_line "$off")" > "$1"
   else
+    # Shadow: the line goes to factory.log and round-N.edit-scope, and the checks run as if the fence were absent.
+    [ -z "$off" ] || { edit_scope_line "$off" | sed 's/^/SHADOW /' > "$RUN/round-$ROUND.edit-scope"; log "$(cat "$RUN/round-$ROUND.edit-scope")"; }
     run_checks "$WORKTREE" "$1" "$([ "${2:-}" = full ] || printf '%s' "$GATE_DEFER")"
   fi
 }
@@ -3291,7 +3407,7 @@ main_loop() {
     assert_caps
     stop_requested && finish stopped "FACTORY_STOP before the round-$ROUND call"
     worker_round "$ROUND"
-    # Step 6, in order: abandon, the frozen set, a clean tree, do-not-touch, then the checks.
+    # Step 6, in order: abandon, the frozen set, a clean tree, do-not-touch, the Edit: line, then the checks.
     # A worker sometimes writes the line as a markdown bullet (#158); accept `- ` or `* ` and strip it.
     abandon=$(grep -m1 -E '^(- |\* )?ABANDON ' "$DECISIONS" | sed -E 's/^(- |\* )//')
     [ -n "$abandon" ] && finish abandon "$abandon"
@@ -3409,11 +3525,14 @@ cmd_run() {
   target_is_loam || user_token_free \
     || finish stopped-environment "$(user_settings) has CLAUDE_CODE_OAUTH_TOKEN in its env, which the native worker loads and which would replace the account bin/claude-account gives it; remove the key (bin/claude-account use <name> drops it)"
   prepare_worktree
+  # Armed before freeze, whose finish (a malformed Edit: line) would otherwise leave a file ticket's worktree on its
+  # branch, so a corrected body's relaunch would reuse that branch; exec_frozen's exec runs no EXIT trap, and the
+  # frozen pass arms it again.
+  [ "$IS_FILE" = 1 ] && trap 'git -C "$MAIN_CHECKOUT" worktree remove --force "$WORKTREE" > /dev/null 2>&1' EXIT
   freeze
   exec_frozen
   BODY=$(cat "$RUN/frozen/issue.md")   # from here on the frozen body is the ticket
   [ "$JUDGE" = on ] || log "judge: off (FACTORY_JUDGE=off); each round's judge.json is a stand-in pass, and the reviewer, Codex review, mutation sweep and verifier still grade"
-  [ "$IS_FILE" = 1 ] && trap 'git -C "$MAIN_CHECKOUT" worktree remove --force "$WORKTREE" > /dev/null 2>&1' EXIT
   TIMEOUT_G=(timeout -k 5 "$CALL_TIMEOUT_SEC")
   # The advisor attaches through a feature flag claude fetches; two env vars turn it silently off.
   # Refuse to launch rather than run a worker that thinks it has an advisor and does not (F11).
