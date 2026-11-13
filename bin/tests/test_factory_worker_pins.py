@@ -105,8 +105,10 @@ class WorkerPinTests(unittest.TestCase):
         # and allowedDomains widen it; uv writes a cache of the run's own, never the operator's shared one.
         self.assertNotIn("excludedCommands", sandbox)
         self.assertEqual(sandbox["network"]["allowedDomains"], ["pypi.org", "files.pythonhosted.org"])
+        # The DistBench lock folder (gate, MPI and GPU locks, owner N20.3, 12 Nov 2026) comes from worker-settings.json.
+        # A whole folder, not ~/.local/state/distbench/*.lock: on Linux a glob grant let no new lock file be made.
         self.assertEqual(sandbox["filesystem"]["allowWrite"], [
-            str(common / "worktrees/wt"), str(common / "objects"), str(common / "refs"), str(common / "logs"),
+            "~/.local/state/distbench", str(common / "worktrees/wt"), str(common / "objects"), str(common / "refs"), str(common / "logs"),
             str(self.tmp / "run/worker"), str(self.tmp / "run/tasks"), str(self.tmp / "run/uv/cache"),
             str(self.tmp / "run/uv/tools")])
 

@@ -21,7 +21,8 @@
   },
   "sandbox": {
     "enabled": true, "failIfUnavailable": true, "allowUnsandboxedCommands": false, "autoAllowBashIfSandboxed": true,
-    "network": {"allowedDomains": ["pypi.org", "files.pythonhosted.org"], "strictAllowlist": true}
+    "network": {"allowedDomains": ["pypi.org", "files.pythonhosted.org"], "strictAllowlist": true},
+    "filesystem": {"allowWrite": ["~/.local/state/distbench"]}
   },
   "hooks": {
     "Stop": [{"hooks": [{"type": "command", "timeout": 900,
