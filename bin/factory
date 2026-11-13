@@ -979,6 +979,7 @@ cmd_eval_freeze() { # run-dir...
     fi
     if [ -z "$jv" ]; then why="no judge verdict"
     elif [ "$jv" != pass ]; then why="round-$k judge verdict $jv"
+    elif jq -e '.off == true' "$d/round-$k.judge.json" > /dev/null 2>&1; then why="round-$k judge was off"
     elif [ -z "$rv" ]; then why="no reviewer verdict"
     elif [ "$rv" != merge ]; then why="round-$k reviewer has a high or medium finding"
     elif [ -e "$EVALS_DIR/clean/judge/$name" ] || [ -e "$EVALS_DIR/clean/reviewer/$name" ]; then why="exists"
@@ -1080,6 +1081,7 @@ MAX_HOURS MAX_TURNS CALL_TIMEOUT_SEC NET_TIMEOUT_SEC MAX_PARALLEL"
 # are never read: a Claude Code session already exports WORKER_MODEL and CALL_TIMEOUT_SEC of its own.
 MAX_ROUNDS=100; ROUND_BUDGET_USD=15; GRADER_BUDGET_USD=5; TICKET_BUDGET_USD=1000000
 DAILY_BUDGET_USD=1000000; MAX_HOURS=1000; MAX_TURNS=200; CALL_TIMEOUT_SEC=5400; MAX_PARALLEL=1
+JUDGE=on   # cmd_run sets it from FACTORY_JUDGE (on or off)
 # Decision 6 (Samyak, 2026-11-12): subscription building work has no dollar cap. USD_CAPS is 1 when the run's calls bill
 # an API key, which Claude Code prefers over CLAUDE_CODE_OAUTH_TOKEN and a stored login: ANTHROPIC_API_KEY or
 # ANTHROPIC_AUTH_TOKEN in the launch environment, or either (or an apiKeyHelper) in the user settings, which a native
@@ -2787,6 +2789,13 @@ call_json() { # round stem role prompt_file schema_file
 
 run_judge() { # round -> 0 on a pass verdict
   local round="$1" pf="$RUN/round-$1.judge.prompt.md" f="$RUN/round-$1.judge.json"
+  # Judge off: no call; a stand-in pass marked off, so every reader of judge.json (resume, the grader-fail count, the
+  # PR body) sees a pass, and eval-freeze never takes it for a graded case. The fixes file starts empty, as a pass leaves it.
+  if [ "$JUDGE" = off ]; then
+    jq -n '{verdict: "pass", off: true, rows: {}, evidence: {}, fixes: [], backlog: []}' > "$f"
+    : > "$RUN/round-$round.fixes"
+    return 0
+  fi
   build_evidence "$RUN/frozen/judge.md" 4000 > "$pf"
   call_json "$round" judge judge "$pf" "$RUN/frozen/judge.schema.json"
   jq -r '.fixes[]? | "- " + .' "$f" > "$RUN/round-$round.fixes"
@@ -3033,8 +3042,12 @@ open_pr() { # [draft]: opened at the grader-round cap
     printf '## Decisions\n\n```\n'; cat "$DECISIONS"; printf '```\n\n'
     checks_section "Checks at base ${base:0:8} (round 0)" "$RUN/round-0.checks"
     checks_section "Checks at the graded sha (round $ROUND)" "$RUN/round-$ROUND.checks"
-    printf '## Judge\n\ngraded at %s\n\n```json\n%s\n```\n\n' "$GRADED_SHA" \
-      "$(jq -c '{verdict, rows: (.rows // {}), evidence: (.evidence // {})}' "$RUN/round-$ROUND.judge.json")"
+    if jq -e '.off == true' "$RUN/round-$ROUND.judge.json" > /dev/null 2>&1; then
+      printf '## Judge\n\noff (FACTORY_JUDGE=off): no judge graded this run.\n\n'
+    else
+      printf '## Judge\n\ngraded at %s\n\n```json\n%s\n```\n\n' "$GRADED_SHA" \
+        "$(jq -c '{verdict, rows: (.rows // {}), evidence: (.evidence // {})}' "$RUN/round-$ROUND.judge.json")"
+    fi
     printf '## Reviewer\n\n'
     jq -r '.findings[]? | "- [" + .severity + "] " + (.file // "?") + ":" + ((.line // 0) | tostring) + " " + .defect + " Fix: " + .fix' "$RUN/round-$ROUND.review.json"
     jq -r '.unverified[]? | "- unverified: " + .' "$RUN/round-$ROUND.review.json"
@@ -3200,6 +3213,10 @@ cmd_run() {
   cv=$(claude_version_ok) || { echo "factory run: claude --version reports '$cv'; the factory needs Claude Code $CLAUDE_MIN_VERSION+ (#379)" >&2; exit 4; }
   load_ticket "$1"
   apply_caps
+  # FACTORY_JUDGE=off leaves the judge out of every round (run_judge); the launcher sets it per target. Unset or empty
+  # is on, as an empty cap counts as unset (next forwards it empty).
+  JUDGE=${FACTORY_JUDGE:-on}
+  case "$JUDGE" in on | off) ;; *) echo "factory run: FACTORY_JUDGE=$JUDGE: it must be on or off" >&2; exit 2 ;; esac
   local effort
   effort=$(section Worker | sed -n 's/^effort: *//p' | head -1)
   WORKER_EFFORT="${effort:-$WORKER_EFFORT}"
@@ -3280,6 +3297,7 @@ cmd_run() {
   freeze
   exec_frozen
   BODY=$(cat "$RUN/frozen/issue.md")   # from here on the frozen body is the ticket
+  [ "$JUDGE" = on ] || log "judge: off (FACTORY_JUDGE=off); each round's judge.json is a stand-in pass, and the reviewer, Codex review, mutation sweep and verifier still grade"
   [ "$IS_FILE" = 1 ] && trap 'git -C "$MAIN_CHECKOUT" worktree remove --force "$WORKTREE" > /dev/null 2>&1' EXIT
   TIMEOUT_G=(timeout -k 5 "$CALL_TIMEOUT_SEC")
   # The advisor attaches through a feature flag claude fetches; two env vars turn it silently off.
@@ -3983,6 +4001,7 @@ next_tick() { # [--dry-run|--install|--frontier]
   # the server's environment never reaches the run.
   local cap v
   for cap in $CAP_NAMES; do v="FACTORY_$cap"; envs+=(-e "$v=${!v:-}"); done
+  envs+=(-e "FACTORY_JUDGE=${FACTORY_JUDGE:-}")   # the judge switch travels the same way; empty is on
   # Existing runs keep their frozen supervisor, which may still read Loam's older launch exports.
   # Forward the exported namespace without requiring any of it for a new run.
   if target_is_loam; then
@@ -4319,6 +4338,8 @@ done
 # only in a sourced script; 2> /dev/null hides the error if the guard is ever hit while the file runs as
 # a program.
 [ "${FACTORY_SOURCED:-}" = 1 ] && { set_usd_caps; return 0 2> /dev/null; }
+# Past the guard this file runs as a program: a live run never passes the test marker on (bin/alert stays silent under it).
+unset FACTORY_SOURCED
 C_DIR=""
 [ "${1:-}" = -C ] && { [ $# -ge 2 ] || usage; C_DIR="$2"; shift 2; }
 CMD="${1:-}"
