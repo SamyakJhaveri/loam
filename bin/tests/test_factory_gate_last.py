@@ -15,7 +15,7 @@ import subprocess
 import tempfile
 import unittest
 
-from test_factory_mutation_sweep import ENVELOPE, git, scratch_env
+from test_factory_mutation_sweep import ENVELOPE, git, learn_done, scratch_env
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
 # The scripted claude: a worker that copies $d/round-<n>/ into its worktree, runs $d/round-<n>.sh there, and commits;
@@ -118,6 +118,7 @@ class GateLastTests(unittest.TestCase):
     def launch(self, **extra: str) -> str:
         r = subprocess.run([str(ROOT / "bin/factory"), "-C", str(self.co), "run", str(self.top / "gprobe.md")],
                            cwd=ROOT, env={**self.env, **extra}, capture_output=True, text=True, timeout=300, check=False)
+        learn_done(self.top)
         self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
         (run,) = (self.top / "h/.local/state/loam-factory/runs/o__r/gprobe").glob("*/")
         self.run = run
