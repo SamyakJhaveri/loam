@@ -597,6 +597,25 @@ check_merge_checklist() {
   [ "$n" -le 3 ] || err "a Track B ticket allows at most three merge-checklist lines, found $n"
 }
 
+# A distbench ticket keeps its FREEZE line and its "For this ticket: pstack" line (rulings-log RULING 2026-11-11
+# 21:55 PT): a factory worker reads only its ticket, never the build plan that states them, and a recut that
+# dropped both from seven tickets passed lint (distbench PR 514, restored by PR 517). The FREEZE line may be a
+# quoted bullet ("> - FREEZE: ...", the pasted standing block) and must name every frozen file.
+DISTBENCH_FROZEN="runs.jsonl regrade.jsonl runs-known.md surprise-isc.md failure-analysis.md"
+check_distbench_lines() {
+  local freeze f
+  case "$(target_repo | tr '[:upper:]' '[:lower:]')" in */distbench) ;; *) return 0 ;; esac
+  freeze=$(grep -E '^(> )?(- )?FREEZE: ' <<<"$BODY")
+  if [ -z "$freeze" ]; then
+    err "a distbench ticket needs its FREEZE line (FREEZE: never open, grep or print ...), as the build plan states it"
+  else
+    for f in $DISTBENCH_FROZEN; do grep -qF "$f" <<<"$freeze" || err "the FREEZE line must name $f"; done
+  fi
+  grep -qE '^For this ticket: pstack ' <<<"$BODY" \
+    || err "a distbench ticket needs its 'For this ticket: pstack <method>' line (rulings-log RULING 2026-11-11 21:55 PT)"
+  return 0
+}
+
 # Every path the ticket names must already be in the tree, or be one the ticket says it creates.
 check_paths() {
   local p created
@@ -1063,6 +1082,7 @@ lint_body() {
   check_worker
   check_merge_checklist
   check_not_grep_only
+  check_distbench_lines
   # Fixture bodies are historical tickets that name paths later tickets removed, and predate predict lines.
   case "$SRC" in *bin/factory.d/fixtures/*) ;; *) check_paths; check_predicts ;; esac
 
