@@ -170,7 +170,9 @@ class RoundZeroGuardTests(unittest.TestCase):
                       "guard true&&( pass g ) || fail g broken",
                       "guard true C# && pass g || fail g broken",
                       "guard true && pass g>&2 || fail g broken",
-                      "guard true && pass g || fail g \\$'C:\\'"):
+                      "guard true && pass g || fail g \\$'C:\\'",
+                      "guard true && pass g || fail g \\\\$'it\\'s'",
+                      'guard true && pass g || fail g "$(printf %s testcase details)"'):
             with self.subTest(guard=guard):
                 out = self.round_zero(f'{guard}\ntest -e NEW.md && pass new-file || fail new-file "NEW.md is missing"')
                 self.assertEqual(out.strip(), "ROUND0-OK")
