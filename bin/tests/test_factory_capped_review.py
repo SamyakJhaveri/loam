@@ -248,6 +248,40 @@ class CappedReviewTests(unittest.TestCase):
         self.assertEqual((self.run_dir / "status").read_text(), "stopped-environment\n")
         self.assertEqual(calls, [])
 
+    def review_both(self, reviewer: str, codex: str) -> subprocess.CompletedProcess[str]:
+        """Run review_both on round 1 with run_review and run_codex_review replaced by the given bash bodies."""
+        run = self.top / "run"
+        run.mkdir()
+        script = (f"RUN='{run}'; RUNS_ROOT='{self.top}'; LOG=\"$RUN/factory.log\"; IS_FILE=0; KEY=7\n"
+                  'date -u +%s > "$RUN/launched"; notify() { :; }\n'
+                  f"run_review() {{ {reviewer}; }}\nrun_codex_review() {{ {codex}; }}\nreview_both 1\n")
+        env = {k: v for k, v in os.environ.items() if k not in INHERITED}
+        return subprocess.run(["bash", "-c", f". bin/factory\n{script}"], cwd=ROOT, env={**env, "FACTORY_SOURCED": "1"},
+                              capture_output=True, text=True, check=False, timeout=60)
+
+    def test_a_review_killed_before_its_verdict_stops_the_run(self) -> None:
+        self.top = pathlib.Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, self.top)
+        proc = self.review_both('kill -KILL "$BASHPID"', "return 0")
+        self.assertEqual(proc.returncode, 4, proc.stderr)
+        self.assertEqual((self.top / "run" / "status").read_text(), "stopped-environment\n")
+
+    def test_a_halted_review_leaves_no_process_behind(self) -> None:
+        self.top = pathlib.Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, self.top)
+        # The reviewer waits in a nested command substitution, as setup helpers do; Codex then stops the run.
+        reviewer = ': "$( ( sh -c \'echo $$ > "$1"; exec sleep 30\' _ "$RUN/helper.pid" ) )"'
+        codex = 'until [ -s "$RUN/helper.pid" ]; do sleep 0.1; done; finish stopped-environment "no login"'
+        proc = self.review_both(reviewer, codex)
+        self.assertEqual(proc.returncode, 4, proc.stderr)
+        pid = int((self.top / "run" / "helper.pid").read_text())
+        try:
+            os.kill(pid, 0)
+        except ProcessLookupError:
+            return
+        os.kill(pid, 9)
+        self.fail("the reviewer's nested helper outlived review_both")
+
     def codex_fixes(self) -> list[str]:
         fixes = self.run_dir / "round-1.fixes"
         return [x for x in fixes.read_text().splitlines() if "codex" in x.lower()] if fixes.exists() else []
