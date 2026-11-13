@@ -76,7 +76,8 @@ FED_TO_SHELL = re.compile(r"(?<![\w.-])" + SHELL + OPTS + r"\s*$")
 HOOK_ON = r"LOAM_HOOK=(?!''|\"\"|[\s;&|)]|$)"  # a non-empty LOAM_HOOK
 GUARDED_GATE = re.compile(r"(?<![\w.-])guard[ \t]+bin/check(?![\w./-])")  # the one form lib.sh's guard skips under it
 LIB_GUARD = re.compile(r'LOAM_HOOK.*"\$\{1:-\}" = bin/check \] && return 0')  # lib.sh's skip, as criteria.py reads it
-ASSIGN = re.compile(r"(?:^|[\s;&|])([A-Za-z_]\w*)=([^\s;&|]*)")  # each NAME=value, `X=1 W=..` and `export W=..` too
+# the NAME=value list a command starts with (`X=1 W=..`, `export W=..`), not `echo W=$W`
+ASSIGNS = re.compile(r"(?:^|[;&|\n])\s*(?:export\s+)?((?:[A-Za-z_]\w*=[^\s;&|]*(?:[ \t]+|(?=[;&|\n])|$))+)", re.M)
 QUOTED = re.compile(r"'[^']*'|\"(?:[^\"\\]|\\.)*\"")
 COMMENT = re.compile(QUOTED.pattern + r"|(?<![^\s;&|(])#[^\n]*")  # a quote, or a comment outside quotes
 SUBST = r"\$\([^()]*\)|`[^`]*`"  # a command substitution, which runs inside double quotes and expanding heredocs
@@ -120,7 +121,8 @@ def commands(text: str) -> str:
 def expand(word: str, before: str) -> str:
     """word unquoted, with ~ and each $NAME or ${NAME} set in the environment or assigned in the text before it filled
     in; a name set nowhere keeps its $."""
-    env = {**os.environ, **{k: v.strip("'\"") for k, v in ASSIGN.findall(before)}}
+    pairs = (pair for line in ASSIGNS.findall(before) for pair in re.findall(r"(\w+)=(\S*)", line))
+    env = {**os.environ, **{k: v.strip("'\"") for k, v in pairs}}
     word = os.path.expanduser(word.strip("'\""))
     return re.sub(r"\$(?:\{(\w+)\}|(\w+))", lambda v: env.get(v[1] or v[2], v[0]), word)
 
@@ -140,8 +142,9 @@ def runs_full_gate(command: str, dirs: tuple[Path, ...], depth: int = 0, hook: b
         if re.search(r"\bcommand\s+-[vV]\b|\s--co(?:llect-only)?(?!\S)", m.group(0)):
             continue  # `command -v pytest` only looks it up; --co only lists the tests
         words = [w.strip("'\"") for w in re.sub(r"\d*[<>]+&?\s*\S*", " ", text[m.start(1):m.end(1)]).split()]
-        targets = [re.sub(r"^(?:\./)+|/+$", "", w) for w in words if not w.startswith("-") and (  # not /tmp/x.xml, a=b
-            re.search(r"\.py|::|\$", w) or "/" in w and not w.startswith("/") and "=" not in w or w == "tests")]
+        targets = [re.sub(r"^(?:\./)+|^/.*/(?=tests/*$)|/+$", "", w) for w in words if not w.startswith("-") and (
+            re.search(r"\.py|::|\$|(?:^|/)tests(?:/|$)", w) or "/" in w and not w.startswith("/") and "=" not in w)]
+        # a test file, node or folder; not an option's value such as /tmp/r.xml or cache_dir=/tmp/c
         if all(t == "tests" for t in targets):
             return True
     for m in SHELL_C.finditer(text):
