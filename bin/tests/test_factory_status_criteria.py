@@ -589,10 +589,10 @@ class StatusCriteriaTests(unittest.TestCase):
         repo.mkdir()
         git("init", "-q", "-b", "main")
         git("commit", "-q", "--allow-empty", "-m", "base")
-        land("build/f-w46", "integrate: build/f-w46 @ {} (group 46, W46)")
-        # The control ticket lands twice, the second time from a suffixed branch: one ticket, no Caused-by.
+        land("build/f-w46-capped", "integrate: build/f-w46-capped @ {} (group 46, W46)")
+        # The control ticket lands twice, its ID in either case: one ticket, no Caused-by.
         land("build/f-l01", "integrate: build/f-l01 @ {} (group 44, L01)")
-        land("build/f-l01-capped", "integrate: build/f-l01-capped @ {} (group 47, L01)")
+        land("build/f-L01", "integrate: build/f-L01 @ {} (group 47, L01)")
         land("factory/7", "Merge pull request #7 from o/factory/7")
         git("commit", "-q", "--allow-empty", "-m", "fix the w46 lock\n\nCaused-by: W46")
         git("commit", "-q", "--allow-empty", "-m", "fix the seven\n\nCaused-by: #7")
