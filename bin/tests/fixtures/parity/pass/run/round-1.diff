@@ -1,0 +1,13 @@
+diff --git a/src/distbench/grader.py b/src/distbench/grader.py
+--- a/src/distbench/grader.py
++++ b/src/distbench/grader.py
+@@ -1 +1 @@
+-a
++b
+diff --git a/tests/test_grader.py b/tests/test_grader.py
+new file mode 100644
+--- /dev/null
++++ b/tests/test_grader.py
+@@ -0,0 +1,2 @@
++def test_x():
++    pass

@@ -206,6 +206,52 @@ class FactoryAlertTests(unittest.TestCase):
         self.assertNotIn(key[14:], calls[-1][-1])
         self.assertIn("[redacted]", calls[-1][-1])
 
+    def test_a_file_ticket_alerts_on_needs_you_fail_and_every_stop_never_on_github(self) -> None:
+        # A file ticket (every distbench factory run) has no issue: needs-you, fail and every stopped* exit reach
+        # bin/alert as `ticket <name>` under the target's project; its quiet non-stop events stay in the log, and a
+        # failed post never falls back to a GitHub comment.
+        file_ticket = "ISSUE=; KEY=F9-widget; IS_FILE=1; "
+        distbench = {"REPO": "SamyakJhaveri/distbench"}
+        alerted = {"ticket-defect": "needs-you", "abandon": "needs-you", "stopped": "info", "stopped-cap": "fail",
+                   "stopped-daily": "info", "stuck": "fail", "no-change": "fail", "stopped-environment": "fail",
+                   "stopped-other": "fail"}
+        for status, level in alerted.items():
+            with self.subTest(status=status):
+                self.alert_log.unlink(missing_ok=True)
+                (call,) = self.factory(f"{file_ticket}finish {status} 'the detail'", **distbench)
+                self.assertEqual(call[:2], ["--level", level])
+                self.assertEqual(call[call.index("--project") + 1], "distbench")
+                self.assertEqual(call[call.index("--run") + 1], "ticket F9-widget")
+                self.assertTrue(call[-1].endswith(". the detail"), call[-1])
+        with self.subTest(status="pr-opened on distbench"):
+            self.alert_log.unlink(missing_ok=True)
+            (call,) = self.factory(f"{file_ticket}TARGET_IS_LOAM=0; finish pr-opened x", **distbench)
+            self.assertEqual((call[:2], call[call.index("--run") + 1]), (["--level", "needs-you"], "ticket F9-widget"))
+        quiet = {"finish pr-opened x": "opened a pull request", "notify info 'F9 started' 'Branch b'": "F9 started",
+                 "notify info 'F9: checks still fail after round 2' 'FAIL lint'": "checks still fail after round 2"}
+        for script, logged in quiet.items():
+            with self.subTest(info=script):
+                self.alert_log.unlink(missing_ok=True)
+                self.assertEqual(self.factory(file_ticket + script, **distbench), [])
+                last = [x for x in (self.run_dir / "factory.log").read_text().splitlines() if "[notify] " in x][-1]
+                self.assertIn(logged, last)
+        with self.subTest("an empty REPO resolves from the target's origin"):
+            target = self.run_dir.parent / "target"
+            subprocess.run(["git", "init", "-q", str(target)], check=True)
+            subprocess.run(["git", "-C", str(target), "remote", "add", "origin",
+                            "git@github.com:SamyakJhaveri/distbench.git"], check=True)
+            self.alert_log.unlink(missing_ok=True)
+            (call,) = self.factory(f"{file_ticket}TARGET='{target}'; notify fail 'F9 stopped' x", REPO="")
+            self.assertEqual(call[call.index("--project") + 1], "distbench")
+        with self.subTest("a failed post writes notify.failed, never a comment"):
+            self.factory(f"{file_ticket}notify fail 'F9 stopped' 'detail'", FAKE_ALERT_EXIT="1", **distbench)
+            self.assertFalse((self.run_dir / "gh-called").exists())
+            self.assertIn("F9 stopped: detail", (self.run_dir / "notify.failed").read_text())
+        with self.subTest("an issue ticket still alerts on info, as `issue <n>`"):
+            self.alert_log.unlink(missing_ok=True)
+            (call,) = self.factory("notify info 'issue 7 started' 'Branch b'")
+            self.assertEqual((call[:2], call[call.index("--run") + 1]), (["--level", "info"], "issue 7"))
+
     def test_a_run_end_never_pauses_the_check(self) -> None:
         # The next timer's ticks are the check's only beats (cmd_next); a pause at a run's end would outlive a timer
         # that then refuses every tick, so the check could never go red.

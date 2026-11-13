@@ -32,10 +32,11 @@ FLAGS = {"-p": False, "--model": True, "--effort": True, "--advisor": True, "--p
          "--strict-mcp-config": False, "--setting-sources": True, "--settings": True, "--max-turns": True,
          "--append-system-prompt": True, "--max-budget-usd": True, "--output-format": True, "--verbose": False,
          "--include-hook-events": False, "--tools": True, "--disable-slash-commands": False,
-         "--no-session-persistence": False, "--json-schema": True}
+         "--no-session-persistence": False, "--json-schema": True, "--plugin-dir": True}
 # kind -> flag -> the value bin/factory's call passes (True: a flag with no value): the grader's read-only tools (#40),
-# no settings tier for either call (#512, #505), the worker's bypass mode, and no MCP server for either.
-REQUIRED = {"worker": {"--permission-mode": "bypassPermissions", "--setting-sources": "", "--strict-mcp-config": True},
+# no settings tier for the grader (#512, #505), and no MCP server for either. The e2e target is not Loam, so the worker
+# is a native session: auto mode over the user, project and local tiers (design-pick.md (a)).
+REQUIRED = {"worker": {"--permission-mode": "auto", "--setting-sources": "user,project,local", "--strict-mcp-config": True},
             "grader": {"--tools": "Read,Grep,Glob", "--setting-sources": "", "--strict-mcp-config": True}}
 RELEASE_WAIT_SEC = 120
 
