@@ -52,7 +52,7 @@ class PrBodyChecksTests(unittest.TestCase):
         (self.run_dir / "round-2.review.json").write_text('{"verdict": "merge", "findings": []}\n')
         self.sent = top / "sent-body.md"
 
-    def open_pr(self, existing: bool = False, ticket: str = TICKET) -> str:
+    def open_pr(self, existing: bool = False, ticket: str = TICKET, draft: str = "") -> str:
         """Run the real open_pr for issue 7 at round 2 and return the body handed to GitHub.
 
         With existing, PR 9 is already open, so the body goes through the REST PATCH; else through `gh pr create`.
@@ -68,7 +68,7 @@ class PrBodyChecksTests(unittest.TestCase):
             "    echo https://github.com/acme/widget/pull/9 ;;\n"
             f'  "api -X") while [ $# -gt 0 ]; do [ "$1" = -f ] && printf %s "${{2#body=}}" > "{self.sent}"; shift; done ;;\n'
             "esac; }\n"
-            "open_pr\n"
+            f"open_pr {draft}\n"
         )
         env = {k: v for k, v in os.environ.items() if k not in INHERITED}
         proc = subprocess.run(["bash", "-c", f". bin/factory\n{script}"], cwd=ROOT,
@@ -150,6 +150,29 @@ class PrBodyChecksTests(unittest.TestCase):
                       "its line.\n- [ ] tag the release\n  - after the eval\n- [ ] push the tag\n\n## Decisions",
                       self.open_pr(ticket=ticket))
 
+
+    def test_judge_section_lists_the_fixes_of_a_shadow_pass(self) -> None:
+        # A judge fail on only honest that shadow-passed: its fixes went to no worker, so the body is where they show.
+        (self.run_dir / "round-0.checks").write_text("FAIL widget\n")
+        (self.run_dir / "round-2.judge.json").write_text(
+            '{"verdict": "fail", "rows": {"correct": "pass", "verified": "pass", "honest": "fail"},'
+            ' "fixes": [{"target": "decisions.md", "fix": "label the SKIP step\\n  unverified"},'
+            ' {"target": "decisions.md", "fix": "drop the speed claim"}]}\n')
+        (self.run_dir / "round-2.judge-shadow").write_text("honest\n")
+        body = self.open_pr()
+        self.assertIn("judge-shadow: the judge failed only bookkeeping row(s) honest, which log and do not block. Its "
+                      "fixes, not sent to the worker:\n\n- decisions.md: label the SKIP step unverified\n"
+                      "- decisions.md: drop the speed claim\n\n## Reviewer", body)
+        self.assertLess(body.index("## Judge"), body.index("judge-shadow:"))
+        # With a blocking review the PR is a draft, and its first line says the judge pass was a shadow pass.
+        (self.run_dir / "round-2.review.json").write_text(
+            '{"verdict": "fix", "findings": [{"severity": "high", "file": "bin/y", "line": 1, "defect": "d", "fix": "f"}]}\n')
+        self.assertTrue(self.open_pr().startswith("Draft: the judge passed (a shadow pass: it failed only the bookkeeping "
+                                                  "row(s) honest), but 1 blocking"))
+        # At the grader-round cap, the draft's first line says the judge's only failed rows do not block.
+        self.assertTrue(self.open_pr(draft="draft").startswith(
+            "Draft: opened at the grader-round cap; the judge failed only the bookkeeping row(s) honest, which do not "
+            "block; a reviewer, Codex review or mutation sweep finding blocked."))
 
 if __name__ == "__main__":
     unittest.main()

@@ -47,7 +47,7 @@ if args[:2] == ["issue", "create"]:
 """
 
 JUDGE_PASS = {"verdict": "pass", "rows": {"widget": "pass"}, "evidence": {"widget": "ok"}, "fixes": [], "backlog": []}
-JUDGE_FAIL = {"verdict": "fail", "rows": {"widget": "fail"}, "evidence": {}, "fixes": ["make the widget work"], "backlog": []}
+JUDGE_FAIL = {"verdict": "fail", "rows": {"widget": "fail"}, "evidence": {}, "fixes": [{"target": "widget.txt", "fix": "make the widget work"}], "backlog": []}
 
 LOOP = """notify() { :; }
 alert() { :; }
@@ -136,7 +136,7 @@ class VerifierFixtureTests(unittest.TestCase):
         self.assertIn(f"EXIT pr-opened (0): {PR_URL} after 2 rounds", stderr)
         self.assertEqual((self.run_dir / "status").read_text(), "pr-opened\n")
         self.assertEqual(self.counts(), (2, 2))
-        self.assertEqual((self.run_dir / "round-1.fixes").read_text(), "- make the widget work\n")
+        self.assertEqual((self.run_dir / "round-1.fixes").read_text(), "- widget.txt: make the widget work\n")
         creates = self.pr_creates()
         self.assertEqual(len(creates), 1, creates)
         self.assertNotIn("--draft", creates[0])

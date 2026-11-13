@@ -500,12 +500,15 @@ class StatusCriteriaTests(unittest.TestCase):
                             "review.json": blocking_review}, "judge:fail"),
             "review-finding": ({"judge.json": {"verdict": "pass", "rows": rows_pass, "fixes": []},
                                 "review.json": blocking_review}, "review:bin/y"),
+            # A shadow pass (run_judge wrote judge-shadow): its honest fail is not the round's first failure.
+            "judge-shadow": ({"judge.json": {"verdict": "fail", "rows": {**rows_pass, "honest": "fail"}, "fixes": ["x"]},
+                              "judge-shadow": "honest", "review.json": blocking_review}, "review:bin/y"),
         }
         for label, (files, expected) in cases.items():
             run = pathlib.Path(self.tmp.name) / label
             run.mkdir()
             for name, body in files.items():
-                (run / f"round-2.{name}").write_text(json.dumps(body) + "\n")
+                (run / f"round-2.{name}").write_text((body if isinstance(body, str) else json.dumps(body)) + "\n")
             proc = grader_first_fail(run)
             self.assertEqual((proc.returncode, proc.stdout), (0, expected), (label, proc.stderr))
 

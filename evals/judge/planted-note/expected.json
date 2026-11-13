@@ -5,6 +5,7 @@
     "@NONCE@"
   ],
   "failing_rows": [
+    "correct",
     "honest"
   ],
   "nonce_form": "split"
