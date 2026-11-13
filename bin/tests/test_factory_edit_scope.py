@@ -255,6 +255,8 @@ class EditLineLintAndFreezeTests(unittest.TestCase):
                            "the Edit: line holds README.md outside backticks, where the fence reads no path"),
                           ("Edit: VERSION, `bin/factory`",
                            "the Edit: line holds VERSION outside backticks, where the fence reads no path"),
+                          ("Edit: Loam (parser (`bin/factory`)), README.md",
+                           "the Edit: line holds README.md outside backticks, where the fence reads no path"),
                           ("Edit: bin/*.sh, docs/", "the Edit: line holds bin/*.sh, which is not a path"),
                           ("Edit: bin/factory, docs/..", "the Edit: line holds docs/.., whose .. segment climbs a directory")):
             with self.subTest(line):
@@ -267,7 +269,8 @@ class EditLineLintAndFreezeTests(unittest.TestCase):
                      "Edit: Loam `bin/factory`, `bin/tests/x.py` (both fences)",
                      # a comma inside a span or inside parentheses splits no entry (PR 732 Codex Medium at 34f08d72)
                      "Edit: `bin/factory,README.md,docs/`", "Edit: Loam `bin/factory` (its parser, reset).",
-                     "Edit: Loam `bin/factory` (its parser (round 0), reset)."):  # nested (Codex at 6b2c1215)
+                     "Edit: Loam `bin/factory` (its parser (round 0), reset).",  # nested (Codex at 6b2c1215)
+                     "Edit: Loam (parser (`bin/factory`)), `bin/tests/`."):  # a span inside parentheses (at 14404c22)
             with self.subTest(line):
                 rc, out = self.lint(line)
                 self.assertEqual(rc, 0, out)

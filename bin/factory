@@ -266,13 +266,13 @@ edit_raw_words() { # the words before the trailing-mark and ./ strip, which woul
 }
 edit_bare_paths() { # words outside the backticks of a line that has them, which the fence would drop: a word with a
   # slash, and a comma-separated entry that is one word with no backticked span (`a`, README.md); a comma inside a span
-  # or inside parentheses, nested ones included (innermost first), splits no entry
+  # or inside parentheses, nested ones included (innermost first; a group holding a span keeps its mark), splits no entry
   local line
   line=$(grep -m1 '^Edit:' <<< "$(header)") || return 0
   case $line in *'`'*) ;; *) return 0 ;; esac
   line=${line#Edit:}
   { sed 's/`[^`]*`/ /g' <<< "$line" | tr ',' ' ' | tr -s ' \t' '\n\n' | { grep '/' || :; }
-    sed -e 's/`[^`]*`/`/g' -e ':a' -e 's/([^()]*)//g' -e 'ta' <<< "$line" | tr ',' '\n' | { grep -v '`' || :; } | awk 'NF == 1 { print $1 }'
+    sed -e 's/`[^`]*`/`/g' -e ':a' -e 's/([^()`]*`[^()]*)/`/g' -e 's/([^()`]*)//g' -e 'ta' <<< "$line" | tr ',' '\n' | { grep -v '`' || :; } | awk 'NF == 1 { print $1 }'
   } | awk '!seen[$0]++' | paste -sd' ' -
 }
 
