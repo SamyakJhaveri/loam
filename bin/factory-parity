@@ -337,8 +337,9 @@ def skill_reads(name: str, inp: dict) -> set[tuple[str, str]]:
 def full_reads(t: Transcript, j: int) -> set[tuple[str, str]]:
     """(prefix, name) for each SKILL.md call j of t reads in full: a Read with no offset or limit, or a `cat` that is
     the last stage of its pipeline or is piped only into `head -N` while the call's whole result is under N lines (so
-    nothing was cut). sed -n, tail, git cat-file and a head that cut read part of a file and never count. A Bash call
-    whose result is an error (a later command can fail) still reads each such file whose name: line its result shows."""
+    nothing was cut). sed -n, tail, git cat-file, a head that cut, and a `cat` whose stdout is redirected (`> /dev/null`)
+    read part or none of a file and never count. A Bash call whose result is an error (a later command can fail) still
+    reads each such file whose name: line its result shows."""
     _, name, inp = t.calls[j]
     if not t.ok(j) and not (name == "Bash" and t.ran(j)):
         return set()
@@ -355,6 +356,8 @@ def full_reads(t: Transcript, j: int) -> set[tuple[str, str]]:
         caps = [re.fullmatch(r"\s*head\s+(?:-n\s*)?-?(\d+)\s*", r) for r in rest]
         if not all(caps) or (caps and (shown is None or shown >= min(int(c.group(1)) for c in caps))):
             continue
+        if any(fd in ("", "1", "&") and not dup for fd, dup in re.findall(r"(\d*|&)>>?(&?)", first)):
+            continue  # stdout went to a file, not to the result
         words = first.split()
         while words and words[0].lstrip("(") in READ_LEAD | {""}:
             words = words[1:]
@@ -388,21 +391,25 @@ def named_skills(text: str, pstack: set[str]) -> set[str]:
 
 def gate_runs(cmd: str) -> list[bool]:
     """For each bin/check or checks.sh invocation in a Bash command: True when it runs, False when LOAM_HOOK
-    is set (guard skips bin/check). A file merely read (cat bin/check, grep x bin/check) is no invocation."""
+    is set for it (guard skips bin/check): on its own command, or by an earlier export. A file merely read
+    (cat bin/check, grep x bin/check) is no invocation."""
     # Heredoc bodies and quoted text are data, not commands; a quoted lone variable ("$LOAM_CHECKS") stays.
     cmd = HEREDOC.sub(lambda m: m.group(3), cmd)
     cmd = re.sub(r"\"(\$\{?\w+\}?[^\"\s]*)\"", r"\1", cmd)
     cmd = re.sub(r"'[^']*'|\"(?:[^\"\\]|\\.)*\"", "''", cmd)
     out = []
     for m in GATE.finditer(cmd):
-        seg = re.split(r"&&|\|\||[;&|(\n]|\$\(", cmd[:m.start()])[-1].split()
-        words = [w for w in seg if not re.fullmatch(r"\w+=\S*", w)]
+        before = cmd[:m.start()]
+        text = re.split(r"&&|\|\||[;&|(\n]|\$\(", before)[-1]
+        words = [w for w in text.split() if not re.fullmatch(r"\w+=\S*", w)]
         while words and words[0] in WRAPPERS | {"timeout"}:
-            words = words[2:] if words[0] == "timeout" and len(words) > 1 else words[1:]
+            wrapper, words = words[0], words[1:]
             while words and words[0].startswith("-") and words[0] not in WRAPPERS:
-                words = words[1:]
+                words = words[2:] if wrapper == "timeout" and words[0] in ("-k", "-s") else words[1:]
+            if wrapper == "timeout":
+                words = words[1:]  # its duration
         if not words:
-            out.append(not HOOK_SET.search(cmd[:m.start()]))
+            out.append(not (HOOK_SET.search(text) or re.search(r"\bexport\b[^;&|\n]*" + HOOK_SET.pattern, before)))
     return out
 
 
@@ -846,6 +853,8 @@ def p7(run: Run) -> tuple[str, str]:
         differ = sorted(k for k in a.keys() | b.keys() if a.get(k) != b.get(k))
         if not a:
             rows.append(("FAIL", f"{start.name} has no digest line"))
+        elif not dirs:
+            rows.append(("FAIL", f"{start.name} has no checkout digest (git-status:<dir>)"))
         elif lacking:
             rows.append(("FAIL", f"{start.name} lacks {', '.join(lacking)}"))
         elif differ:

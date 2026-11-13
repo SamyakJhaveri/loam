@@ -262,8 +262,44 @@ def round_two_on_its_round_line(run: Path) -> None:
         f.write(f"Round 2: pstack: tdd | {tdd} | {'0' * 64} | \"TDD Bug Fix\" | red first\n")
 
 
+def redirected_skill_reads(run: Path) -> None:
+    """PR 713 Codex 3: every SKILL.md `cat` sends its output to /dev/null, so the results show none of the files."""
+    ids: set[str] = set()
+
+    def mark(item: dict) -> None:
+        if item["type"] == "tool_use" and "SKILL.md" in json.dumps(item["input"]):
+            item["input"]["command"] = item["input"]["command"].replace("SKILL.md", "SKILL.md > /dev/null")
+            ids.add(item["id"])
+        elif item["type"] == "tool_result" and item["tool_use_id"] in ids:
+            item["content"] = ""
+    edit_events(run / "round-1.jsonl", mark)
+
+
+def gate_command(command: str) -> Callable[[Path], None]:
+    """The gate call's command replaced; its result still ends check: PASSED."""
+    def edit(run: Path) -> None:
+        def item_edit(item: dict) -> None:
+            if item["type"] == "tool_use" and item["name"] == "Bash":
+                item["input"]["command"] = command
+        edit_events(run / "round-1.jsonl", item_edit)
+    return edit
+
+
+def no_checkout_digest(run: Path) -> None:
+    """PR 713 Codex 7: both digests lose every git-* line; only the ~/.claude file digests are left, and equal."""
+    for name in ("shell-digest.start", "shell-digest.end"):
+        f = run / name
+        f.write_text("".join(x + "\n" for x in f.read_text().splitlines() if "  git-" not in x))
+
+
 # Audit 3 repros (the verifier's audit3-verify.md): (name, committed case, edit of its run folder, id, expected).
 VARIANTS = [
+    ("r-redirected-reads", "p3-pass", redirected_skill_reads, "P2", "FAIL"),  # a cat to /dev/null read nothing
+    ("r-redirected-reads", "p3-pass", redirected_skill_reads, "P3", "FAIL"),
+    ("r-gate-timeout-k", "p4-pass", gate_command("timeout -k 5 5400 bin/check"), "P4", "PASS"),  # -k takes an argument
+    ("r-gate-hook-earlier", "p4-pass", gate_command("LOAM_HOOK=1 true; bin/check"), "P4", "PASS"),  # not bin/check's env
+    ("r-gate-hook-export", "p4-pass", gate_command("export LOAM_HOOK=1; bin/check"), "P4", "FAIL"),  # guard skips it
+    ("r-no-checkout-digest", "p7-pass", no_checkout_digest, "P7", "FAIL"),
     ("c2-failed-reads", "p3-pass", failed_skill_reads, "P2", "FAIL"),  # a read whose result is an error read nothing
     ("c2-failed-reads", "p3-pass", failed_skill_reads, "P3", "FAIL"),
     ("a4-read-then-false", "p3-pass", reads_then_a_failing_command, "P2", "PASS"),  # the call failed after the cat

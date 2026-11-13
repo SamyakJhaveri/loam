@@ -24,6 +24,7 @@ import importlib.machinery
 import importlib.util
 import json
 import os
+import re
 import sys
 from pathlib import Path
 from types import SimpleNamespace
@@ -108,8 +109,14 @@ def verdict(payload: dict, fp, run: Path | None) -> str | None:
     else:
         caller = top = so_far(fp, main, main.name, True, projects, pending)
         transcripts = [caller]
+    # The round being run: worker_round's last `Round N` header in decisions.md, written before each call. A relaunch
+    # reruns a round whose round-N.jsonl already exists, so the highest round file + 1 is only the fallback.
+    decisions = run / "worker" / "decisions.md" if run else None
+    headers = re.findall(r"(?m)^Round (\d+)$", decisions.read_text(encoding="utf-8", errors="replace")) \
+        if decisions and decisions.is_file() else []
     finished = [int(m.group(1)) for p in run.glob("round-*.jsonl") if (m := fp.ROUND_FILE.fullmatch(p.name))] if run else []
-    rnd = SimpleNamespace(n=max(finished, default=0) + 1, top=top, subs=transcripts[1:], transcripts=transcripts)
+    n = int(headers[-1]) if headers else max(finished, default=0) + 1
+    rnd = SimpleNamespace(n=n, top=top, subs=transcripts[1:], transcripts=transcripts)
     names = top.skills[1] if top.skills else []
     view = SimpleNamespace(rounds=[rnd], path=run or HERE / "no-run", attended=run is None, ticket="",
                            pstack={s.split(":", 1)[1] for s in names if s.startswith("pstack:")})

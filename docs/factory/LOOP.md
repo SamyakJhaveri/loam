@@ -100,7 +100,7 @@ A run, an eval and a `model-eval` grid each copy the file once and take the rubr
 Exit code, `status`, and the final log line are decided together and cannot disagree.
 The one `status` written outside its run is `stopped-environment`, by `holds_slot` for a run with no process left (Parallel runs); that run has no exit code or final log line.
 A launch refused its run's lease, or refused while its last model call lives (Parallel runs), exits 4 with one stderr line and writes no status or log line, as a launch that stops before it records the run does, since the run directory belongs to the launch that holds the lease.
-These read loop-control files to decide exit, never safety; safety stays with the deny rules, the Claude worker's Bash sandbox and the Codex worker's workspace-write sandbox (Worker calls), git, and CI.
+These read loop-control files to decide exit, never safety; safety stays with the deny rules, the Claude worker's Bash sandbox on a Loam target or the auto-mode classifier on another, and the Codex worker's workspace-write sandbox (Worker calls), git, and CI.
 A usage-limit reply (`hit your session limit`, `reached your Fable limit`) is neither an exit nor a round.
 Usage limits are per account, so the supervisor first switches to the next stored account through `bin/claude-account` (round robin in name order) and retries the same call at once.
 A third account is not reached at once: a limit within five minutes of the last switch sleeps to the reset (below), and only a limit after those five minutes switches on to it.
@@ -223,6 +223,13 @@ claude -p --model claude-opus-5-5 --effort high --advisor claude-opus-5-5 --perm
   --append-system-prompt "$(cat frozen/unattended.md)" \
   --max-budget-usd "$ROUND_BUDGET_USD" --output-format stream-json --verbose --include-hook-events < round-<k>.prompt.md
 ```
+
+That is the Loam target's worker, and the rest of this section describes it.
+Another target gets the native shell instead (`worker_cmd`; `docs/research/2026-11-12-distbench-priming/design-pick.md`, requirement (a)): `--permission-mode auto --setting-sources user,project,local` in place of `bypassPermissions` and `--setting-sources ''`, so its user, project and local settings, `CLAUDE.md` files, rules and agents load as in an attended session, under a frozen copy built on `bin/factory.d/worker-settings-native.json`.
+That file turns the sandbox off, sets both Bash timeouts to 90 minutes and `DISTBENCH_GATE_CLASS=factory`, denies `git push`, `pkill`, `killall`, `ssh`, `scp`, `crontab` and `WebFetch`, and sets `GIT_SSH_COMMAND=false` and `GH_CONFIG_DIR=/nonexistent`; the auto-mode classifier reviews each action no rule decides.
+The deny rules match a command by its prefix (#409), so on the native shell the classifier, not the rules, stops a disguised push, and the worker can write outside its worktree, the run directory and its `frozen/` included; parity P7 (`bin/factory-parity`) detects, but does not prevent, a change to `~/.claude` or the checkouts.
+Every worker also runs a PreToolUse hook, `pstack-gate.py` frozen beside `checks.sh`, that blocks its first file change of a round until it has read the pstack router and a method in full, as parity P2 and P3 read them; `worker_round` writes a `Round N` header to the run's `decisions.md` before each call, and the lines after it are that round's.
+After the graders, `verify_round` (`bin/factory.d/review.sh`) has an Opus verifier reproduce each blocking finding before it reaches `round-<k>.fixes`, and every exit of a file-ticket run first runs `learn_run`, which drafts one follow-up ticket from the run and reviews it.
 
 The call sets `CLAUDE_CODE_SUBAGENT_MODEL`, `ANTHROPIC_DEFAULT_SONNET_MODEL` and `ANTHROPIC_DEFAULT_HAIKU_MODEL` to the worker model and `CLAUDE_CODE_SUBAGENT_MODEL_FORCE=1`, both inline on its command line and in the `env` of `frozen/worker-settings.json`, which freeze writes into the copy, so no subagent, workflow agent or `sonnet`/`haiku` alias runs on another model (#379).
 Claude Code copies settings `env` over the launch environment, so the inline values alone lose to a `~/.claude/settings.json` env entry, which the frozen copy carries (below), and the pins come after it in that copy and win; the force exists from Claude Code 2.1.257, and `run` and `next` refuse an older or unreadable `claude --version` and `status` prints a FAIL line for it.

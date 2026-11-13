@@ -337,6 +337,33 @@ class ReviewTests(unittest.TestCase):
         self.assertEqual((review_call[review_call.index("--model") + 1], review_call[review_call.index("--effort") + 1]),
                          ("claude-fable-5-2", "high"))
 
+    def test_a_file_tickets_alert_and_learn_brief_name_the_target(self) -> None:
+        # A file ticket has no REPO and no issue (the F103 proof's alert went out with project "" and run "F103-...").
+        target = self.top / "target"
+        target.mkdir()
+        git("init", "-q", cwd=target)
+        git("remote", "add", "origin", "git@github.com:Acme/Widget.git", cwd=target)
+        proc = self.bash(f"TARGET='{target}'\n"
+                         'alert() { printf "%s\\n" "$@" > "$RUN/alert-args"; }\n'
+                         'review_alert "the draft waits"; learn_brief Writer "$TARGET" "$RUN/learn"', REPO="")
+        args = self.read("alert-args").splitlines()
+        self.assertEqual(args[args.index("--project") + 1], "widget", proc.stderr)
+        self.assertEqual(args[args.index("--run") + 1], "ticket W1")
+        self.assertIn("`widget`", proc.stdout)
+        self.assertNotIn("<target-name>", proc.stdout)
+
+    def test_a_usage_limit_past_max_hours_in_learn_gives_up_the_call_not_the_exit(self) -> None:
+        # learn_run runs inside finish; a limit_wait finish there would replace the run's exit (pr-opened) with
+        # stopped-environment.
+        self.put("limit.json", {"type": "result", "is_error": True, "result": "You hit your limit · resets 3am (UTC)"})
+        body = ('limit_switch() { return 1; }; finish() { echo "FINISH $1"; exit 9; }; echo 0 > "$RUN/launched"\n'
+                'MAX_HOURS=1 REVIEW_NO_FINISH={} limit_wait "$RUN/limit.json"; echo "rc=$?"')
+        learn = self.bash(body.replace("{}", "1"))
+        self.assertIn("rc=1", learn.stdout, learn.stderr)
+        self.assertNotIn("FINISH", learn.stdout)
+        loop = self.bash(body.replace("{}", ""))
+        self.assertIn("FINISH stopped-environment", loop.stdout, loop.stderr)
+
 
 if __name__ == "__main__":
     unittest.main()

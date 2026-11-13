@@ -186,6 +186,14 @@ def test_decisions_md_is_read_for_the_round_being_run(tmp_path, decisions, block
         assert r.returncode == 0 and not r.stderr
 
 
+def test_a_relaunched_round_is_the_one_its_header_names(tmp_path):
+    """A stop after round-1.jsonl is written but before round-1.checks reruns round 1 on relaunch: worker_round adds
+    no second header, so the round is the last `Round N` header, not the highest round-N.jsonl + 1."""
+    gate = frozen_run(tmp_path, f"Round 1\n{LOGGED}", finished_rounds=1)
+    r = replay(tmp_path, "headless", 77, gate)
+    assert r.returncode == 0 and not r.stderr
+
+
 def test_a_call_that_changes_nothing_runs_while_p3_fails(tmp_path):
     """The Read that would fix a failing P3 (headless src 64, the method's SKILL.md) is never blocked."""
     gate = frozen_run(tmp_path, f"Round 2: the README line.\n{LOGGED}{UNREAD}", finished_rounds=1)

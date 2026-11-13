@@ -2079,7 +2079,11 @@ limit_wait() { # result.json -> 0 after waiting, 1 when the reply is not a usage
     secs=$((at - $(date +%s) + 60))
   fi
   left=$(( MAX_HOURS * 3600 - ( $(date +%s) - $(cat "$RUN/launched") ) ))
-  [ "$secs" -le "$left" ] || finish stopped-environment "usage limit: $e; the reset is ${secs}s away, past MAX_HOURS=$MAX_HOURS"
+  if [ "$secs" -gt "$left" ]; then
+    # learn_run (REVIEW_NO_FINISH) runs inside finish, so it gives up its call instead of replacing the exit.
+    [ -z "${REVIEW_NO_FINISH:-}" ] || { log "usage limit: $e; the reset is ${secs}s away, past MAX_HOURS; this call gives up"; return 1; }
+    finish stopped-environment "usage limit: $e; the reset is ${secs}s away, past MAX_HOURS=$MAX_HOURS"
+  fi
   log "usage limit, not a round: $e; waiting ${secs}s"
   set_status waiting-limit
   sleep "$secs"

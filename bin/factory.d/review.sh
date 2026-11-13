@@ -75,11 +75,14 @@ review_claude() { # round role model effort dir prompt schema-text out [add-dir.
   return 1
 }
 
-# A needs-you alert that also reaches a file ticket, which notify skips; the text passes scrub first.
+# A needs-you alert that also reaches a file ticket, which notify skips; the text passes scrub first. A file ticket
+# has no REPO and no issue, so it is named as notify names it: the target's repo and "ticket <name>".
 review_alert() { # message
   log "[needs-you] $1"
-  printf '%s' "$1" | scrub | { alert --level needs-you --source factory --project "$(printf '%s' "${REPO#*/}" | tr 'A-Z' 'a-z')" \
-    --run "${ISSUE:+issue $ISSUE}${ISSUE:-$KEY}" "$(cat)"; } >> "$LOG" 2>&1 || log "the needs-you alert failed; see bin/alert's line above"
+  local repo="$REPO" run="issue $ISSUE"
+  [ "$IS_FILE" != 1 ] || { repo=${REPO:-$(target_repo)}; run="ticket $KEY"; }
+  printf '%s' "$1" | scrub | { alert --level needs-you --source factory --project "$(printf '%s' "${repo#*/}" | tr 'A-Z' 'a-z')" \
+    --run "$run" "$(cat)"; } >> "$LOG" 2>&1 || log "the needs-you alert failed; see bin/alert's line above"
 }
 
 # The verifier on the blocking findings of a findings file, in a detached worktree of repo at sha. Writes out as
@@ -204,8 +207,10 @@ learn_room() { # role
 }
 
 learn_brief() { # section target-dir draft-dir -> the filled learn.md section on stdout
+  local name  # the target repo's name; a file ticket has no REPO
+  name=$(printf '%s' "${REPO:-$(target_repo)}" | tr 'A-Z' 'a-z'); name=${name#*/}
   awk -v want="## $1" '$0 == want {inb=1; next} /^## /{inb=0} inb {print}' "$REVIEW_D/learn.md" \
-    | sed -e "s|<target>|$2|g" -e "s|<target-name>|$(printf '%s' "${REPO#*/}" | tr 'A-Z' 'a-z')|g" \
+    | sed -e "s|<target>|$2|g" -e "s|<target-name>|$name|g" \
           -e "s|<root>|$ROOT|g" -e "s|<draft>|$3/draft.md|g" -e "s|<draft-json>|$3/draft.json|g"
 }
 
