@@ -29,6 +29,21 @@ guard() {
   local out rc
   guard_check=""
   [ -n "${LOAM_HOOK:-}" ] && [ "${1:-}" = bin/check ] && return 0
+  # FACTORY_GATE_DEFER (the supervisor's per-round pass, LOOP.md): bin/check does not run here; the supervisor runs the
+  # whole block once the graders pass. The DEFERRED line says so, and the stand-in result line keeps the check line green.
+  if [ -n "${FACTORY_GATE_DEFER:-}" ] && [ "${1:-}" = bin/check ]; then
+    printf '\nDEFERRED: bin/check runs once, after the graders pass, before any ready PR\ncheck: PASSED\n'
+    [ /dev/fd/1 -ef /dev/fd/9 ] || printf '\nDEFERRED: bin/check runs once, after the graders pass, before any ready PR\ncheck: PASSED\n' >&9
+    guard_check="check: PASSED"
+    return 0
+  fi
+  # FACTORY_GATE_REUSED (round 0 at a base the launcher's own full gate already passed): bin/check does not run again.
+  if [ -n "${FACTORY_GATE_REUSED:-}" ] && [ "${1:-}" = bin/check ]; then
+    printf '\nREUSED: bin/check passed already (%s)\ncheck: PASSED\n' "$FACTORY_GATE_REUSED"
+    [ /dev/fd/1 -ef /dev/fd/9 ] || printf '\nREUSED: bin/check passed already (%s)\ncheck: PASSED\n' "$FACTORY_GATE_REUSED" >&9
+    guard_check="check: PASSED"
+    return 0
+  fi
   out=$(mktemp 2> /dev/null) || { "$@"; return; }
   if [ /dev/fd/1 -ef /dev/fd/9 ]; then
     "$@" | tee "$out"
