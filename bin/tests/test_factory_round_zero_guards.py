@@ -152,6 +152,29 @@ class RoundZeroGuardTests(unittest.TestCase):
             'grep -q safeguard <<<"$(cat README.md)" && pass readme || fail readme "x; guard y"')
         self.assertIn("FINISH ticket-defect: check readme passes on", out)
 
+    def test_fail_reason_naming_a_check_names_no_guard(self) -> None:
+        # A guard's FAIL on base is a ticket defect (Loam issue 726), so a name read out of a reason would refuse a
+        # ticket whose feature check fails on base as it should.
+        for guard in ('guard true && pass check-green || fail check-green '
+                      '"gate failed: $(printf "%s" "error"); (pass note before retrying)"',
+                      "guard true && pass check-green || fail 'check-green' \"gate failed (pass note before retrying)\"",
+                      'guard true && pass check-green || fail check-green "must pass note"'):
+            with self.subTest(guard=guard):
+                out = self.round_zero(f'{guard}\ntest -e NEW.md && pass note || fail note "NEW.md is missing"')
+                self.assertEqual(out.strip(), "ROUND0-OK")
+
+    def test_fail_reason_naming_a_check_exempts_nothing(self) -> None:
+        out = self.round_zero('guard true && pass check || fail check "must pass readme"\n'
+                              'grep -q safeguard README.md && pass readme || fail readme "no safeguard"')
+        self.assertIn("FINISH ticket-defect: check readme passes on", out)
+
+    def test_guard_failing_on_base_is_a_ticket_defect(self) -> None:
+        for guard in ('guard false && pass base-file || fail base-file "broken prerequisite"',
+                      "guard false && pass 'base-file' || fail 'base-file' \"broken prerequisite\""):
+            with self.subTest(guard=guard):
+                out = self.round_zero(f'{guard}\ntest -e NEW.md && pass new-file || fail new-file "NEW.md is missing"')
+                self.assertIn("FINISH ticket-defect: guard check base-file fails on", out)
+
     def test_lint_reads_guards_as_round_zero_does(self) -> None:
         for checks in ('guard bin/check >/dev/null && pass g || fail g "x"\n'
                        'grep -q a README.md && pass a || fail a "README lacks the word; guard the docs"',

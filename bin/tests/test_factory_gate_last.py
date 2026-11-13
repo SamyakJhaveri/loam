@@ -194,13 +194,6 @@ class GateLastTests(unittest.TestCase):
         self.assertIn("guard check base-file fails on", log)
         self.assertFalse((self.top / "rounds").exists(), "a worker ran")
 
-    def test_a_guard_reason_naming_a_check_does_not_make_it_a_guard(self) -> None:
-        # check-green's reason says "pass note"; note still fails on base as a feature check should, and the run goes on.
-        (self.top / "gprobe.md").write_text(TICKET.replace('fail check-green "rc', 'fail check-green "must pass note; (pass note first) rc'))
-        self.worker_round(1, {"note.txt": "1\n"})
-        self.launch()
-        self.assertEqual((self.top / "rounds").read_text().strip(), "1")
-
     def edit_ticket(self, do_not_touch: str) -> None:
         (self.top / "gprobe.md").write_text(TICKET.replace("Blocked by: none", "Blocked by: none\nEdit: `bin/check`.")
                                             .replace("The standing list.", do_not_touch))
