@@ -30,7 +30,7 @@ Loam fixes both:
 - `AGENTS.md` and `CLAUDE.md` with fill-in project guidance.
 - `.claude/` settings, deny rules, and lifecycle hooks.
 - A shared `/catchup` skill under `.agents/skills/`.
-- A shared `/fable-prompting` skill under `.agents/skills/`: which Fable 5.1 guide sections a prompt can act on.
+- A shared `/fable-prompting` skill under `.agents/skills/`: which Fable 5.2 guide sections a prompt can act on.
 - A shared `/hypothesis-tree` skill under `.agents/skills/`: a persistent hypothesis tree for an investigation that spans sessions.
 - `.codex/` configuration and execution rules.
 - `bin/check` and a CI workflow that runs it.
