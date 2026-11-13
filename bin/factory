@@ -3215,6 +3215,13 @@ round_checks() { # out [full]: a dirty tree or a do-not-touch hit fails the roun
   fi
 }
 
+abandon_check() { # an ABANDON line in decisions.md ends the run; a worker sometimes writes it as a markdown bullet
+  # (#158), so `- ` or `* ` is accepted and stripped
+  local abandon
+  abandon=$(grep -m1 -E '^(- |\* )?ABANDON ' "$DECISIONS" | sed -E 's/^(- |\* )//')
+  [ -z "$abandon" ] || finish abandon "$abandon"
+}
+
 main_loop() {
   local prev_sig="" fails checks sig_now
   notify info "$(ticket_name) started" \
@@ -3229,9 +3236,7 @@ main_loop() {
     stop_requested && finish stopped "FACTORY_STOP before the round-$ROUND call"
     worker_round "$ROUND"
     # Step 6, in order: abandon, the frozen set, a clean tree, do-not-touch, then the checks.
-    # A worker sometimes writes the line as a markdown bullet (#158); accept `- ` or `* ` and strip it.
-    abandon=$(grep -m1 -E '^(- |\* )?ABANDON ' "$DECISIONS" | sed -E 's/^(- |\* )//')
-    [ -n "$abandon" ] && finish abandon "$abandon"
+    abandon_check
     check_frozen
     # The round signature is HEAD plus the digest of decisions.md, so a round that only relabels
     # decisions.md after a grader-only fail (#78) proceeds to the checks and graders; no-change fires
@@ -3391,6 +3396,7 @@ cmd_run() {
     # now and is graded on a pass, so the relaunch does not pay for its worker call again.
     if [ -e "$RUN/round-$((ROUND + 1)).result.json" ] && [ ! -e "$RUN/round-$((ROUND + 1)).checks" ]; then
       ROUND=$((ROUND + 1))
+      abandon_check   # the worker's ABANDON exit leaves the same files
       check_frozen
       round_checks "$RUN/round-$ROUND.checks"
       if grep -q '^FAIL' "$RUN/round-$ROUND.checks"; then

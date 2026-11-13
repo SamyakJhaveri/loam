@@ -185,6 +185,15 @@ class GateLastTests(unittest.TestCase):
         self.assertEqual((self.top / "rounds").read_text().strip(), "1")
         self.assertEqual((self.run / "status").read_text().strip(), "pr-opened")
 
+    def test_a_relaunch_of_an_abandoned_round_abandons_again_without_grading(self) -> None:
+        self.worker_round(1, {"note.txt": "1\n"}, 'for f in "$HOME"/.local/state/loam-factory/runs/o__r/gprobe/*/worker/decisions.md; do '
+                          'echo "ABANDON note owner must rewrite this ticket" >> "$f"; done\n')
+        for _ in range(2):
+            self.launch(ok=False)
+            self.assertEqual((self.run / "status").read_text().strip(), "abandon")
+        self.assertEqual((self.top / "rounds").read_text().strip(), "1")
+        self.assertFalse((self.top / "judge-calls").exists())
+
     def test_round_zero_still_ends_on_a_non_guard_check_that_passes_on_base(self) -> None:
         (self.co / "note.txt").write_text("base\n")
         git(self.co, self.env, "add", "note.txt")

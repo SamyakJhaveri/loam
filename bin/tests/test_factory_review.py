@@ -284,6 +284,16 @@ class ReviewTests(unittest.TestCase):
         self.assertEqual(len(self.claude_calls()), 2)
         self.assertFalse((self.fake / "codex-calls").exists())
 
+    def test_a_cap_reached_during_a_usage_limit_wait_stops_the_learn_retry(self) -> None:
+        # The writer's first reply is a usage limit; the account switch returns at once, but the clock is now past
+        # the cap, so learn makes no second call.
+        self.put("round-1.judge.json", {"verdict": "pass", "backlog": ["the gate ran serially"]})
+        self.replies({"repo": "distbench", "title": "t", "source_line": "x", "body": "# F00: t\n"})
+        self.learn(preset='ROUND=1; MAX_HOURS=4\nlimit_wait() { [ ! -e "$RUN/limited" ] || return 1; : > "$RUN/limited"; '
+                          'echo $(( $(date -u +%s) - 5 * 3600 )) > "$RUN/launched"; }')
+        self.assertEqual(len(self.claude_calls()), 1)
+        self.assertFalse((self.run_dir / "learn" / "draft.md").exists())
+
     def test_a_killed_learn_call_is_charged_its_ceiling(self) -> None:
         # audit3 C1: the writer's claude exits with no envelope, as a CALL_TIMEOUT_SEC kill leaves it; it may have
         # spent up to its --max-budget-usd, so the ledger and the daily file book GRADER_BUDGET_USD (1 here).

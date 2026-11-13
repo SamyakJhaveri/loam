@@ -61,7 +61,10 @@ review_claude() { # round role model effort dir prompt schema-text out [add-dir.
         ${USD_CAPS:+--max-budget-usd "$GRADER_BUDGET_USD"} --setting-sources '' --settings "$RUN/frozen/role-settings.json" \
         --output-format json < "$pf" > "$raw" 2>> "$LOG"
     call_end "$role" || log "$role exited non-zero"
-    if [ -z "$CALL_STUCK" ] && limit_wait "$raw"; then continue; fi
+    if [ -z "$CALL_STUCK" ] && limit_wait "$raw"; then
+      [ -z "${REVIEW_NO_FINISH:-}" ] || learn_room "$role" || return 1   # a learn retry checks the caps again
+      continue
+    fi
     break
   done
   record "$round" "$role" "$model" "$(charged "$raw" "$GRADER_BUDGET_USD")"
