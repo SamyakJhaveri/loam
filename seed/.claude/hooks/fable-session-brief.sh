@@ -16,6 +16,7 @@ PAYLOAD="$(cat)"
 
 printf '%s' "$PAYLOAD" | python3 -c '
 import json
+import re
 import sys
 
 try:
@@ -35,22 +36,38 @@ for field in ("to_model", "model"):
 if model is None or "fable" not in model.lower():
     sys.exit(0)
 
+# What Claude Code injects was measured for Fable 5.2 only (the fable-prompting skill, "Never paste these").
+if re.search(r"fable-5[-.]2", model.lower()):
+    injected = (
+        "Do not paste the finishing block or the batching line (both in the first "
+        "claude -p request) or the silent-turn reminder (in the Claude Code bundle); "
+        "Claude Code sends Fable 5.2 all three. Interactive sessions were not "
+        "captured. The first request had no Signal-intent or one-line-update "
+        "text; quote it from the guide if needed. "
+    )
+else:
+    injected = (
+        "What Claude Code injects for this Fable version was not measured; check "
+        "the request before pasting guide text. "
+    )
+
 print(
     "Fable session. Ask one question before acting only if a reading of the "
     "request would change the architecture; otherwise act.\n"
     "Judgment rules this harness does not inject:\n"
     "- Prefer a targeted edit over a whole-file rewrite.\n"
     "- Keep the diff to what the task asks. Report a nearby bug or cleanup as a "
-    "follow-up line, not as a change in this diff.\n"
+    "follow-up line, not as a change in this diff, unless the prompt says you "
+    "own the code.\n"
     "- Keep prose plain and short.\n"
     "- Mark reused wording as a quote; do not restate it as your own.\n"
     "- A benign request stays benign. Do not refuse work that only sounds "
     "sensitive.\n"
-    "In a plan for another session use five headings: Goal and why; "
+    "In a session prompt for another session use five headings: Goal and why; "
     "Constraints; Done check per task; Session conduct; Target model and effort. "
-    "A handoff note uses the seven headings in docs/WORKERS.md instead. "
-    "Do not paste the autonomy block, the Delivering work block, the "
-    "progress-updates line, or the batching nudge; Claude Code injects all four. "
-    "The `fable-prompting` skill is the long form."
+    "A worker brief, its report and a handoff note use the seven headings in "
+    "docs/WORKERS.md instead. "
+    + injected
+    + "The `fable-prompting` skill is the long form."
 )
 ' 2>/dev/null || exit 0
