@@ -54,7 +54,7 @@ The body starts at `Brief:` or `Part of`; in a file the first `#` line is the ti
 
 Every path under Where, Do not touch, and Approach is verified with `git ls-files` when the ticket is written, or is a path the Goal creates; a guessed path is the commonest small defect and lint rejects it.
 
-`lib.sh` (`bin/factory.d/lib.sh`): F2 ships `pass`, `fail`, and `guard CMD...` (runs CMD and returns its status, and copies each `SKIPPED:` line CMD prints to the checks file even when the guard line sends its output to `/dev/null`); F1 adds `MEASURE`, `render_into`, `check_clean`; #388 adds `predict NAME CMD...`, a no-op for a block that sources `lib.sh`; round 0 runs CMD itself (#447).
+`lib.sh` (`bin/factory.d/lib.sh`): F2 ships `pass`, `fail`, and `guard CMD...` (runs CMD and returns its status, except `guard bin/check` under `LOAM_HOOK`, the supervisor's `FACTORY_GATE_DEFER` (LOOP.md, step 6) or round 0's `FACTORY_GATE_REUSED` (step 4), and copies each `SKIPPED:` line CMD prints to the checks file even when the guard line sends its output to `/dev/null`); F1 adds `MEASURE`, `render_into`, `check_clean`; #388 adds `predict NAME CMD...`, a no-op for a block that sources `lib.sh`; round 0 runs CMD itself (#447).
 
 ### Done checks for a rendered-project change
 

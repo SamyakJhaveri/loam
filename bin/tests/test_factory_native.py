@@ -15,6 +15,7 @@ import hashlib
 import json
 import os
 import pathlib
+import re
 import shutil
 import subprocess
 import tempfile
@@ -283,6 +284,24 @@ class NativeShellTests(unittest.TestCase):
         self.assertIn("- [Site](https://example.com/a.md) - y", view)
         self.assertTrue(r["worker"]["stdin"].rstrip("\n").endswith("\n".join(view).rstrip("\n")))
         self.assertIn("memory-view.md", (self.h.run / "frozen/sha256").read_text())
+
+    def test_another_target_worker_leaves_the_full_gate_to_the_supervisor(self) -> None:
+        # L01 (distbench, 13 Nov): a worker spent 109 of 117 min running the full bin/check the supervisor runs anyway.
+        prompt = self.h.round_one(self.new, loam=False)["worker"]["stdin"]
+        (line,) = [line for line in prompt.splitlines() if "full gate" in line]
+        self.assertRegex(line, r"never run `bin/check` yourself")
+        self.assertIn(f"`LOAM_HOOK=1 bash {self.h.run}/frozen/checks.sh`", line)
+        self.assertIn("focused tests", line)
+        # It overrides _common.md's "exactly as the supervisor will", and covers a gate call guard does not skip.
+        self.assertIn("this replaces running the done-checks block exactly as the supervisor will", line)
+        self.assertIn("calls `bin/check` in any other form, run its other check lines by hand", line)
+        self.assertNotIn("full gate", self.h.round_one(self.new, loam=True)["worker"]["stdin"])
+        # A large ticket's fan-out integrator gets the same rule through the Workflow args.
+        for loam, want in ((False, True), (True, False)):
+            proc = self.h.sourced(self.new, 'freeze && WORKER_KIND=claude round=1 && cat "$(build_worker_prompt 1)"', loam,
+                                  WORKER_SIZE="large")
+            (args,) = re.findall(r"and args `(\{.*\})`\.", proc.stdout)
+            self.assertIs(json.loads(args).get("supervisorGate", False), want, proc.stderr)
 
 
 class LaunchTests(unittest.TestCase):
