@@ -2721,7 +2721,7 @@ build_evidence() { # rubric_file diff_cap -> stdout
   printf '\n\n## Ticket\n\n%s\n' "$FENCE"; cat "$RUN/frozen/issue.md"; printf '\n%s\n' "$FENCE"
   printf '\n## Checks output\n\n'
   grep -q '^DEFERRED: bin/check' "$RUN/round-$ROUND.checks" 2> /dev/null \
-    && printf 'Supervisor note: this round deferred the full gate. The `check: PASSED` after the DEFERRED line is a stand-in, not a result: the supervisor runs the whole block with bin/check once the graders pass, and a red gate fails the round before any PR. Grade the other checks as usual; do not fail a row for the deferred gate alone.\n\n'
+    && printf 'Supervisor note: this round deferred the full gate. The bin/check result after the DEFERRED line covers only the tests the target selected for this change: the supervisor runs the whole block with the full bin/check once the graders pass, and a red gate fails the round before any PR. Grade the other checks as usual; do not fail a row for the deferred full gate alone.\n\n'
   printf '%s\n' "$FENCE"; cat "$RUN/round-$ROUND.checks"; printf '\n%s\n' "$FENCE"
   printf '\n## Rows measured\n\n%s\n' "$FENCE"; cat "$RUN/round-$ROUND.measure" 2> /dev/null; printf '\n%s\n' "$FENCE"
   printf '\n## decisions.md (worker-authored)\n\n%s\n' "$FENCE"; cat "$DECISIONS"; printf '\n%s\n' "$FENCE"
@@ -3109,7 +3109,7 @@ checks_section() { # heading checks-file
     END {if (n > max) printf "... %d more lines in %s\n", n - max, f}' "$2"
   printf '```\n\n'
   grep -q '^DEFERRED: bin/check' "$2" 2> /dev/null \
-    && printf 'bin/check did not run for these checks (the DEFERRED line in the file below): round 0 at base never runs it, and a round runs it only once its graders pass.\n\n'
+    && printf 'bin/check did not run in full for these checks (the DEFERRED line in the file below): round 0 at base never runs it, and a round runs only the tests its change selects until its graders pass.\n\n'
   printf 'Reasons and full output: %s\n\n' "$2"
 }
 
@@ -3233,14 +3233,16 @@ grade_round() {
     || { log "grader-round cap: $GRADER_FAIL_ROUNDS grader-fail rounds; the rest goes to the PR backlog"; open_pr draft; }
 }
 
-# The full gate runs once, last (ASK-KARPATHY item B): a round's checks run with the block's `guard bin/check` deferred
-# (lib.sh prints DEFERRED: and a stand-in check: PASSED), and gate_last runs the whole block once the graders pass,
+# The full gate runs once, last (ASK-KARPATHY item B): a round's checks run the block's `guard bin/check` deferred
+# (lib.sh prints DEFERRED:, then runs bin/check under FACTORY_GATE_DEFER=changed, which a target may read to run only
+# the tests the change needs; Samyak's decision B, 13 Nov 2026), and gate_last runs the whole block once the graders pass,
 # before any PR. Its output replaces round-N.checks (the cheap pass stays as round-N.cheap.checks), so the PR body,
 # the next worker round and a relaunch read the full result. A red gate is not a grader fail: the next worker round
 # takes its FAIL lines, and the same failing set in two rounds in a row, from either pass, ends the run stuck. The tree
 # goes back to HEAD after it; a tree already dirty before it is left alone. A draft PR (grader-round cap or an
 # unparseable judge) opens on the cheap pass, and its Checks section says bin/check was deferred.
-GATE_DEFER="FACTORY_GATE_DEFER=1"
+GATE_DEFER="FACTORY_GATE_DEFER=1"       # round 0: no bin/check
+ROUND_DEFER="FACTORY_GATE_DEFER=changed"  # a round's pass: bin/check on the tests its change needs
 PREV_FAILS=""   # the last round's failing check names, cheap pass or full gate, for the stuck exit
 gate_last() { # -> 0 when the round's checks deferred nothing, or the full block passed at HEAD
   local f="$RUN/round-$ROUND.checks" at fails
@@ -3274,7 +3276,7 @@ round_checks() { # out [full]: a dirty tree or a do-not-touch hit fails the roun
   elif [ -n "$touched" ]; then
     printf 'FAIL do-not-touch %s\n' "$touched" > "$1"
   else
-    run_checks "$WORKTREE" "$1" "$([ "${2:-}" = full ] || printf '%s' "$GATE_DEFER")"
+    run_checks "$WORKTREE" "$1" "$([ "${2:-}" = full ] || printf '%s' "$ROUND_DEFER")"
   fi
 }
 
@@ -3313,7 +3315,7 @@ main_loop() {
         "$(fail_names "$checks" | head -10 | sed 's/^/FAIL /'; printf 'Reasons and full output: %s\n' "$checks")"
       continue
     fi
-    if grep -q '^DEFERRED: bin/check' "$checks"; then log "checks: all pass, bin/check deferred until the graders pass"
+    if grep -q '^DEFERRED: bin/check' "$checks"; then log "checks: all pass, full bin/check deferred until the graders pass"
     else log "checks: all pass"; fi
     grade_round
   done
