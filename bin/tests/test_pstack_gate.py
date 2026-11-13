@@ -322,6 +322,7 @@ def bash(command: str, gate_env: str | None, cwd: Path | None = None) -> subproc
     "uv run --project . pytest tests -q",  # an option value hid the program (Codex on 740, 13 Nov)
     "pytest . -q",  # the project root holds the whole suite
     "python3 -m pytest tests . -q",
+    "pytest tests/test_a.py::test_x tests -q",  # one node target does not focus a run that also names tests/
     "python3 -m pytest tests --junitxml /tmp/results.xml -o cache_dir=/tmp/pc",
     "python3 -m pytest ./tests -q",
     "python3 -m pytest tests --junitxml worker/results.xml -p no:cacheprovider",

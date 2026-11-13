@@ -173,7 +173,6 @@ def runs_full_gate(command: str, dirs: tuple[Path, ...], depth: int = 0, hook: b
             if w.startswith("-") or prev in PYTEST_VALUE:
                 focused |= bool(re.match(r"-[km]|--deselect(?:=|$)", w))  # -k x, -kx, -k=x, --deselect x
             else:
-                focused |= "::" in w
                 targets.append(re.sub(r"^(?:\./)+|^/.*/(?=tests/*$)|/+$", "", w))
         if not focused and (not targets or any(t in ("tests", ".", "") for t in targets)):  # any target holding the whole suite
             return True
