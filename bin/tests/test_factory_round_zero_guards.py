@@ -44,10 +44,10 @@ class RoundZeroGuardTests(unittest.TestCase):
         self.assertEqual(proc.returncode, 0, proc.stderr)
         return proc.stdout
 
-    def lint_errors(self, checks: str) -> str:
-        """stderr of the real check_not_grep_only, the lint rule that drops guards, over a done-checks block."""
+    def lint_errors(self, checks: str, rule: str = "check_not_grep_only") -> str:
+        """stderr of a real lint rule (by default check_not_grep_only, the one that drops guards) over a block."""
         body = f"## Done checks\n\n```done-checks\n{checks}\n```\n"
-        proc = subprocess.run(["bash", "-c", '. bin/factory; SRC=t; BODY=$1; check_not_grep_only', "_", body],
+        proc = subprocess.run(["bash", "-c", f'. bin/factory; SRC=t; BODY=$1; {rule}', "_", body],
                               cwd=ROOT, env={**os.environ, "FACTORY_SOURCED": "1"}, capture_output=True, text=True,
                               check=False)
         self.assertEqual(proc.returncode, 0, proc.stderr)
@@ -189,6 +189,17 @@ class RoundZeroGuardTests(unittest.TestCase):
         out = self.round_zero('guard false && pass base-file<&0 || fail base-file "broken"\n'
                               'test -e NEW.md && pass new-file || fail new-file "NEW.md is missing"')
         self.assertIn("FINISH ticket-defect: guard check base-file fails on", out)
+
+    def test_guard_line_the_name_reader_does_not_model_is_refused(self) -> None:
+        # Fail closed: a ( inside ${...} or a pass inside a process substitution is not read, so lint and round 0
+        # refuse the line rather than guess its guard name.
+        for guard in ("guard true <(printf %s ${x:-(}) && pass g || fail g broken",
+                      "guard true > >(pass note) && wait && pass g || fail g broken"):
+            with self.subTest(guard=guard):
+                want = 'write this guard line as: guard <cmd> && pass <name> || fail <name> "<reason>"'
+                self.assertIn(want, self.lint_errors(guard, "check_guard_names"))
+                out = self.round_zero(f'{guard}\ntest -e NEW.md && pass new-file || fail new-file "NEW.md is missing"')
+                self.assertIn(f"FINISH ticket-defect: {want}", out)
 
     def test_lint_reads_guards_as_round_zero_does(self) -> None:
         for checks in ('guard bin/check >/dev/null && pass g || fail g "x"\n'
