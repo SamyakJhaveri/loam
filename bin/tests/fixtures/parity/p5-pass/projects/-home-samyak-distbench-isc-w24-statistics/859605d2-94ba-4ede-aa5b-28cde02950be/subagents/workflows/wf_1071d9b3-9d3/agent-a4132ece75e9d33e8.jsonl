@@ -1,0 +1,2 @@
+{"type":"attachment","attachment":{"type":"model","identity":{"modelId":"claude-fable-5-2"}}}
+{"type":"api-request","params":{"model":"claude-fable-5-2","output_config":{"effort":"high"}}}

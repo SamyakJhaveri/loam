@@ -74,12 +74,16 @@ class IdleAlertTests(unittest.TestCase):
         self.runs.mkdir()
 
     def tick(self, now: int, *flags: str, store: dict | None = None, maxp: int = 1,
-             other: bool = False) -> subprocess.CompletedProcess[str]:
+             other: bool = False, billed: bool = False) -> subprocess.CompletedProcess[str]:
+        """One tick; billed puts an API key in its environment, since only an API-billed runner has a daily budget."""
         (self.t / "store.json").write_text(json.dumps(BLOCKED if store is None else store))
         env = {**RUNNER_FREE_ENV, "PATH": f"{self.t}:{os.environ['PATH']}", "T": str(self.t),
                "STORE": str(self.t / "store.json"), "NOW": str(now), "OTHER": "1" if other else "",
                "FACTORY_SOURCED": "1",
                "FACTORY_ROOT": str(ROOT), "FACTORY_RUNS_ROOT": str(self.runs), "FACTORY_MAX_PARALLEL": str(maxp)}
+        env.pop("ANTHROPIC_API_KEY", None)
+        if billed:
+            env["ANTHROPIC_API_KEY"] = "sk-ant-test"
         return subprocess.run(["bash", "-c", TICK, "tick", *flags], cwd=ROOT, env=env,
                               capture_output=True, text=True, check=False)
 
@@ -174,7 +178,7 @@ class IdleAlertTests(unittest.TestCase):
         d = self.runs / "99044" / "k"
         d.mkdir(parents=True)
         (d / "status").write_text("stopped-daily\n")
-        proc = self.tick(T0 + 3700, store=LAUNCHABLE)
+        proc = self.tick(T0 + 3700, store=LAUNCHABLE, billed=True)
         self.assertEqual(proc.stdout.strip(), "nothing to launch", proc.stderr)
         self.assertIn("today's daily budget", proc.stderr)
         self.assertFalse((self.runs / "idle-since").exists())
@@ -188,7 +192,7 @@ class IdleAlertTests(unittest.TestCase):
         d = self.runs / "99042" / key
         d.mkdir(parents=True)
         (d / "status").write_text("stopped-daily\n")
-        proc = self.tick(T0 + 3660, store=LAUNCHABLE)
+        proc = self.tick(T0 + 3660, store=LAUNCHABLE, billed=True)
         self.assertIn("waiting #99042: daily budget spent", proc.stderr)
         self.assertEqual(self.alerts(), [])
         self.assertFalse((self.runs / "idle-since").exists())
