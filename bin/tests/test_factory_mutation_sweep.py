@@ -76,6 +76,12 @@ def scratch_env(top: pathlib.Path) -> dict[str, str]:
             "GIT_AUTHOR_EMAIL": "t@t", "GIT_COMMITTER_NAME": "t", "GIT_COMMITTER_EMAIL": "t@t"}
 
 
+def learn_done(top: pathlib.Path) -> None:
+    """Wait until no process holds a run's lease: a file ticket's learn runs detached after the run exits."""
+    for lease in (top / "h/.local/state/loam-factory/runs").glob("*/*/*/lease"):
+        subprocess.run(["flock", "-w", "120", str(lease), "true"], check=True)
+
+
 def git(cwd: pathlib.Path, env: dict[str, str], *args: str) -> str:
     return subprocess.run(["git", *args], cwd=cwd, env=env, capture_output=True, text=True, check=True).stdout.strip()
 
@@ -470,6 +476,7 @@ class FactoryRunTests(unittest.TestCase):
     def launch(self) -> int:
         r = subprocess.run([str(ROOT / "bin/factory"), "-C", str(self.co), "run", str(self.ticket)], cwd=ROOT,
                            env=self.env, capture_output=True, text=True, timeout=300, check=False)
+        learn_done(self.top)
         with (self.top / "run.out").open("a") as f:
             f.write(r.stdout + r.stderr)
         return r.returncode
