@@ -187,6 +187,12 @@ def test_a_subagent_payload_is_judged_on_its_own_transcript(tmp_path):
     write(main.with_suffix("") / "subagents" / "agent-x2.jsonl", [e for e in events("headless") if e["src"] < 77])
     r = hook(payload(main, use, agent_id="x2"))
     assert r.returncode == 0 and not r.stderr
+    # The same subagent under a main session that itself changed a file with no reads (an attended lead before the
+    # gate was installed): the lead's change is not the subagent's, so the subagent's change runs.
+    main = session(tmp_path / "c", "w34-r2")
+    write(main.with_suffix("") / "subagents" / "agent-x4.jsonl", [e for e in events("headless") if e["src"] < 77])
+    r = hook(payload(main, use, agent_id="x4"))
+    assert r.returncode == 0 and not r.stderr
 
 
 def test_a_workflow_builder_payload_is_judged_on_its_own_transcript(tmp_path):
