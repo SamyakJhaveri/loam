@@ -135,12 +135,13 @@ class CappedReviewTests(unittest.TestCase):
             (self.bin / name).chmod(0o755)
 
     def run_loop(self, reviews: list[object], codex: list[str | None] | None = None,
-                 judges: list[object] | None = None) -> tuple[str, list[dict]]:
+                 judges: list[object] | None = None, rc: int = 0) -> tuple[str, list[dict]]:
         """Run one round per reply of `graders "$ROUND" && open_pr`; return the loop's stderr and the gh calls.
 
         reviews[k] is the reviewer's reply in round k+1 (a string goes verbatim, anything else as JSON).
         judges[k], when given, is the judge's reply in round k+1 the same way; the judge passes otherwise.
         codex, when given, turns the Codex review on: codex[k] is the -o file text of Codex call k+1, None for no file.
+        rc is the exit status the loop must end with.
         """
         for k, reply in enumerate(reviews, start=1):
             judge = judges[k - 1] if judges else JUDGE_PASS
@@ -166,7 +167,7 @@ class CappedReviewTests(unittest.TestCase):
                                    "FACTORY_RUNS_ROOT": str(self.top / "runs"), "REPO": "acme/widget",
                                    "TICKET": TICKET, "PATH": f"{self.bin}:{env['PATH']}"},
                               capture_output=True, text=True, check=False)
-        self.assertEqual(proc.returncode, 0, proc.stderr)
+        self.assertEqual(proc.returncode, rc, proc.stderr)
         calls = [json.loads(x) for x in self.gh_log.read_text().splitlines()] if self.gh_log.exists() else []
         return proc.stderr, calls
 
@@ -219,6 +220,17 @@ class CappedReviewTests(unittest.TestCase):
         body = self.pr_create(calls)["body"]
         self.assertIn("slow reviewer note", body)
         self.assertIn("slow codex note", body)
+
+    def test_a_review_that_stops_the_run_ends_the_other_review_and_the_run_once(self) -> None:
+        self.new_run()
+        (self.top / "codex-home" / "auth.json").unlink()  # the Codex review stops the run before its call
+        review = {"verdict": "merge", "findings": [review_finding("low", "slow reviewer note")]}
+        stderr, calls = self.run_loop([review], codex=[json.dumps(CLEAN_CODEX)], rc=4)
+        self.assertFalse((self.top / "times.reviewer").exists(), "the reviewer's 2 s call ran to its end")
+        self.assertEqual(stderr.count(" EXIT "), 1, stderr)
+        self.assertIn("EXIT stopped-environment (4)", stderr)
+        self.assertEqual((self.run_dir / "status").read_text(), "stopped-environment\n")
+        self.assertEqual(calls, [])
 
     def codex_fixes(self) -> list[str]:
         fixes = self.run_dir / "round-1.fixes"
