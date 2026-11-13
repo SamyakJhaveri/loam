@@ -2778,8 +2778,7 @@ measure_rows() { # round; Rows measured is `[runs=N] [<row>:] <command> | <basel
   # The row's command runs with the run's ledger, daily ledger, ticket key, and round in its environment
   # only, so a `bin/factory eval` row books its cost to this run (#76) and no later child of the
   # supervisor inherits a stale round; run_eval reads these four names, mirroring apply_caps's FACTORY_<NAME>.
-  local env=(FACTORY_LEDGER="$LEDGER" FACTORY_DAILY="$DAILY" FACTORY_KEY="$KEY" FACTORY_ROUND="$1")
-  assert_caps
+  local env=(FACTORY_LEDGER="$LEDGER" FACTORY_DAILY="$DAILY" FACTORY_KEY="$KEY" FACTORY_ROUND="$1") hit
   : > "$out"
   while IFS= read -r line; do
     line=${line#- }
@@ -2796,6 +2795,8 @@ measure_rows() { # round; Rows measured is `[runs=N] [<row>:] <command> | <basel
     fi
     vals=()
     for ((i = 0; i < n; i++)); do
+      # assert_caps before each sample, with the tree first restored from the samples before it
+      hit=$(cap_hit) && { restore_tree "$at" "Rows measured" "a Rows measured row"; finish "${hit%% *}" "${hit#* }"; }
       vals+=("$( cd "$WORKTREE" && export "${env[@]}" && eval "$cmd" 2>&1 | tail -1 )")
     done
     v=${vals[0]}

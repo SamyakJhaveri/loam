@@ -105,6 +105,13 @@ class HourCapTests(unittest.TestCase):
     def test_the_rows_measured_commands_do_not_start_past_the_cap(self) -> None:
         self.assert_capped(*self.step("stale; ROUND=1; measure_rows 1"))
 
+    def test_a_measured_sample_that_ends_past_the_cap_stops_the_next_sample(self) -> None:
+        proc, run = self.step('BODY=$\'## Rows measured\\n\\n- runs=2 speed: echo x >> "$RUN/samples"; stale; echo 1 | 1\\n\'\n'
+                              "ROUND=1; measure_rows 1")
+        self.assertEqual(proc.returncode, 2, proc.stderr)
+        self.assertEqual((run / "status").read_text().strip(), "stopped-cap")
+        self.assertEqual((run / "samples").read_text(), "x\n")
+
     def test_in_time_the_steps_run(self) -> None:
         # The same calls inside the cap reach the checks and the sweep, so the tests above can see them run.
         proc, run = self.step("ROUND=1; measure_rows 1; run_mutation_sweep 1; gate_last; echo gate=$?")
