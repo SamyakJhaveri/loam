@@ -16,6 +16,14 @@ The body starts at `Brief:` or `Part of`; in a file the first `#` line is the ti
 
 1. Title, then `Part of <design issue>` for Track C or `Brief:` followed by the four brief lines for Track B, then `Blocked by:` with issue links or `none` (display only; native blocking edges are what the loop reads).
    The `Brief:` lines are display only; lint and the loop read the sections below.
+   An optional `Edit:` line in the header lists every path a round may change, a directory covering what sits under it; the supervisor fails a round that changes any other path (`FAIL edit-scope`, LOOP.md step 6).
+   The fence starts in shadow: it reports and fails nothing until the ticket opts in with an `Edit-scope: gate` header line, or `EDIT_SCOPE_DEFAULT` in `bin/factory` reads `gate`.
+   A line that holds a backtick reads only its backticked spans, so `Edit: Loam \`bin/factory\` (its reset parser).` lists `bin/factory`; a word with a `/` outside the backticks of such a line, or a comma-separated entry there that is one word with no backticks (`Edit: \`bin/factory\`, README.md`; a comma inside a span or parentheses splits nothing), is a lint error, since the fence would drop it.
+   The line after `Edit:` (or its backticked spans) is split on commas, spaces and tabs; backticks and double quotes are dropped, then a trailing `.`, `;`, `:` or `)` and a leading `./`.
+   Each word left must be a path (letters, digits, `_`, `.`, `/` and `-`, not starting with `-` or `/`) with no `..` segment, so lint rejects a line with unbackticked prose in parentheses, a glob, a `..` or no path at all, and a run of such a ticket ends `ticket-defect` before round 0; in shadow lint prints the reason as a `SHADOW edit-scope` note without failing, and the run logs it and goes on with no fence.
+   The run resolves each path's parent directories in the worktree as git spells them: a path under Loam's `.claude`, a symlink, reads as the same path under `seed/.claude`, and a `.` segment collapses; a path that resolves outside the repository also ends the run `ticket-defect` (in shadow, an unfenced run).
+   An entry that is itself a symlink, such as `seed/.claude/skills/fable-prompting`, covers both the link (deleting or retargeting it) and its target inside the repository.
+   Without one, only Do not touch fences paths.
 2. `## Goal and why`: two to four lines, linking the decision, ADR, or design doc.
 3. `## Do not touch`: the standing list from `ARCHITECTURE.md` (another target's `docs/factory/STANDING.md`), ticket-specific paths, and any `Except:` line.
 4. `## Out of scope`: one line each.
@@ -109,6 +117,8 @@ This contract owns the issue body: each issue carries the sections above, and th
 - `worker`, `codex-review`, `effort`, `goal`, and caps take valid values; every `skills:` name is a line of `bin/factory.d/skills.txt`, matched byte for byte (#37), or a `pstack:<name>` of letters, digits, `-` or `_` naming any installed pstack skill (#385; owner ruling 2026-10-30), and resolves through `skill_file` to a SKILL.md under `$HOME`, so a skill missing on the host fails lint there. Lint prints an advisory `warning:` line, never a refusal, for each named pstack skill on its short list of skills that write under `~/` (`setup-pstack`, `reflect`, `automate-me`), since the step fails: the worker's file tools are denied there and its sandboxed shell cannot write there (#409).
 - Every path named under Where, Do not touch, and Approach exists in the tree or is named by the Goal as created.
   The path rule is skipped under `bin/factory.d/fixtures/`, whose bodies are historical tickets and name paths that later tickets removed.
+- A guard line whose pass name the factory's reader of bash words does not model (a backtick, a bare `(` inside `${...}`, a `pass` inside `<(...)` or `>(...)`, an unclosed quote or paren) is an error, `write this guard line as: guard <cmd> && pass <name> || fail <name> "<reason>"`; round 0 refuses the same line, so it never guesses which checks are guards.
+- A path on a header `Edit:` line that the Do not touch section fences off (the standing list or its own paths) and no `Except:` line frees is an error that names it: the worker must edit it and every round's do-not-touch check would fail it; freeze refuses the same body (`LOOP.md`, step 3). Skipped under fixtures, as the path rule is.
 - At most three merge-checklist lines on a Track B ticket.
 - At least one non-guard check line does not start with `grep`: checks that only grep source text prove the text, not the behavior.
 - Lint is static; it never executes a check, though the `skills:` rule reads the installed skills and plugin cache.

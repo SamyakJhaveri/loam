@@ -44,10 +44,10 @@ class RoundZeroGuardTests(unittest.TestCase):
         self.assertEqual(proc.returncode, 0, proc.stderr)
         return proc.stdout
 
-    def lint_errors(self, checks: str) -> str:
-        """stderr of the real check_not_grep_only, the lint rule that drops guards, over a done-checks block."""
+    def lint_errors(self, checks: str, rule: str = "check_not_grep_only") -> str:
+        """stderr of a real lint rule (by default check_not_grep_only, the one that drops guards) over a block."""
         body = f"## Done checks\n\n```done-checks\n{checks}\n```\n"
-        proc = subprocess.run(["bash", "-c", '. bin/factory; SRC=t; BODY=$1; check_not_grep_only', "_", body],
+        proc = subprocess.run(["bash", "-c", f'. bin/factory; SRC=t; BODY=$1; {rule}', "_", body],
                               cwd=ROOT, env={**os.environ, "FACTORY_SOURCED": "1"}, capture_output=True, text=True,
                               check=False)
         self.assertEqual(proc.returncode, 0, proc.stderr)
@@ -151,6 +151,61 @@ class RoundZeroGuardTests(unittest.TestCase):
             'guard true && pass check || fail check "base is broken"\n'
             'grep -q safeguard <<<"$(cat README.md)" && pass readme || fail readme "x; guard y"')
         self.assertIn("FINISH ticket-defect: check readme passes on", out)
+
+    def test_fail_reason_naming_a_check_names_no_guard(self) -> None:
+        # A guard's FAIL on base is a ticket defect (Loam issue 726), so a name read out of a reason would refuse a
+        # ticket whose feature check fails on base as it should.
+        for guard in ('guard true && pass check-green || fail check-green '
+                      '"gate failed: $(printf "%s" "error"); (pass note before retrying)"',
+                      "guard true && pass check-green || fail 'check-green' \"gate failed (pass note before retrying)\"",
+                      'guard true && pass check-green || fail check-green "must pass note"',
+                      'guard true && pass check-green || fail check-green "got $(printf "%s" "x; (pass note)")"',
+                      "guard true && pass check-green || fail check-green $'it\\'s; (pass note)'"):
+            with self.subTest(guard=guard):
+                out = self.round_zero(f'{guard}\ntest -e NEW.md && pass note || fail note "NEW.md is missing"')
+                self.assertEqual(out.strip(), "ROUND0-OK")
+
+    def test_guard_name_survives_nested_quotes_tight_operators_and_hash_in_a_word(self) -> None:
+        for guard in ('guard true && pass g || fail g "got $(printf "%s" "it\'s")"',
+                      "guard true&&( pass g ) || fail g broken",
+                      "guard true C# && pass g || fail g broken",
+                      "guard true && pass g>&2 || fail g broken",
+                      "guard true && pass g || fail g \\$'C:\\'",
+                      "guard true && pass g || fail g \\\\$'it\\'s'",
+                      'guard true && pass g || fail g "$(printf %s testcase details)"'):
+            with self.subTest(guard=guard):
+                out = self.round_zero(f'{guard}\ntest -e NEW.md && pass new-file || fail new-file "NEW.md is missing"')
+                self.assertEqual(out.strip(), "ROUND0-OK")
+
+    def test_fail_reason_naming_a_check_exempts_nothing(self) -> None:
+        out = self.round_zero('guard true && pass check || fail check "must pass readme"\n'
+                              'grep -q safeguard README.md && pass readme || fail readme "no safeguard"')
+        self.assertIn("FINISH ticket-defect: check readme passes on", out)
+
+    def test_guard_failing_on_base_is_a_ticket_defect(self) -> None:
+        for guard in ('guard false && pass base-file || fail base-file "broken prerequisite"',
+                      "guard false && pass 'base-file' || fail 'base-file' \"broken prerequisite\""):
+            with self.subTest(guard=guard):
+                out = self.round_zero(f'{guard}\ntest -e NEW.md && pass new-file || fail new-file "NEW.md is missing"')
+                self.assertIn("FINISH ticket-defect: guard check base-file fails on", out)
+        out = self.round_zero('guard false && pass base-file<&0 || fail base-file "broken"\n'
+                              'test -e NEW.md && pass new-file || fail new-file "NEW.md is missing"')
+        self.assertIn("FINISH ticket-defect: guard check base-file fails on", out)
+
+    def test_guard_line_the_name_reader_does_not_model_is_refused(self) -> None:
+        # Fail closed: a ( inside ${...} or a pass inside a process substitution is not read, so lint and round 0
+        # refuse the line rather than guess its guard name.
+        for guard in ("guard true <(printf %s ${x:-(}) && pass g || fail g broken",
+                      "guard true > >(pass note) && wait && pass g || fail g broken",
+                      'guard true && pass g || fail g "$(cat <(pass note))"',
+                      'guard true && pass g || fail g "$(case x in x) printf "%s" "; (pass note)";; esac)"',
+                      "guard false && pass $'g' || fail g broken",
+                      'n=g; guard false && pass "$n" || fail "$n" broken'):
+            with self.subTest(guard=guard):
+                want = 'write this guard line as: guard <cmd> && pass <name> || fail <name> "<reason>"'
+                self.assertIn(want, self.lint_errors(guard, "check_guard_names"))
+                out = self.round_zero(f'{guard}\ntest -e NEW.md && pass new-file || fail new-file "NEW.md is missing"')
+                self.assertIn(f"FINISH ticket-defect: {want}", out)
 
     def test_lint_reads_guards_as_round_zero_does(self) -> None:
         for checks in ('guard bin/check >/dev/null && pass g || fail g "x"\n'

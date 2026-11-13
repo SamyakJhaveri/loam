@@ -681,9 +681,25 @@ def router_index(t: Transcript, before: int) -> int | None:
     return next((j for j in range(min(before + 1, len(t.calls))) if reads_router(t, j)), None)
 
 
+def without_common(run: Run, brief: str) -> str:
+    """brief less each piece, between <placeholders>, of a frozen/_common.md line that names a SKILL.md or a pstack
+    method, as text and as a JSON string (a large round's Workflow args): every round's prompt holds those, so a
+    method only _common.md names is no brief's own. A newline takes each piece's place, so no two words join."""
+    f = Path(run.path) / "frozen" / "_common.md"
+    if not f.is_file():
+        return brief
+    for x in f.read_text(encoding="utf-8", errors="replace").splitlines():
+        for piece in re.split(r"<[a-z]+>", x):
+            if "SKILL.md" in piece or named_skills(piece, run.pstack):
+                for form in (piece, json.dumps(piece, ensure_ascii=False)[1:-1]):
+                    brief = brief.replace(form, "\n")
+    return brief
+
+
 def brief_read(run: Run, t: Transcript, before: int) -> tuple[int, list[str]] | None:
-    """(call index, names) of the first full read, up to call `before`, of a pstack SKILL.md t's brief names."""
-    names = named_skills(f"{t.brief}\n{run.ticket}", run.pstack)
+    """(call index, names) of the first full read, up to call `before`, of a pstack SKILL.md t's brief (less
+    _common.md) or ticket names."""
+    names = named_skills(f"{without_common(run, t.brief)}\n{run.ticket}", run.pstack)
     for j in range(before + 1):
         hit = pstack_methods(full_reads(t, j), run.pstack) & names
         if hit:
