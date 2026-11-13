@@ -6,7 +6,7 @@ If an advisor tool is available, it is a more capable model that reads your conv
 Implement the Goal. Touch nothing listed under Do not touch. Add nothing listed under Out of scope.
 Before you finish, run the done-checks block from the worktree root exactly as the supervisor will, and fix every FAIL line you can; repeat until it prints no FAIL line or you cannot proceed. The supervisor reruns it; a claim without a PASS line is worth nothing.
 When the Goal changes behavior, carry each done check that tests that behavior into the target's committed test suite (in Loam, `bin/tests/`), so it fails if the behavior regresses after merge; a done check alone guards nothing once the round ends.
-Read in full and follow three pstack principles, each at `$P/skills/<name>/SKILL.md` where P is `jq -r '.plugins["pstack@cursor-plugins"][0].installPath' ~/.claude/plugins/installed_plugins.json`:
+Read in full and follow three pstack principles, each at `$P/skills/<name>/SKILL.md` where P is `jq -r '.plugins["pstack@cursor-plugins"][0].installPath' ~/.claude/plugins/installed_plugins.json`; where a file is missing, follow its line here:
 - principle-test-behavior-not-implementation: a test asserts what a user can observe; no test restating a constant, prompt string or computed value; add one only where it guards real behavior.
 - principle-subtract-before-you-add: before adding a stage, check, rule, file or test, look for a dead or redundant one beside it and remove it when your scope allows.
 - principle-minimize-reader-load: short, flat, one place per fact, no one-caller wrappers.
