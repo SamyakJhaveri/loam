@@ -1777,11 +1777,7 @@ assert_caps() { # before every model call; the daily cap is "the next call could
   return 0
 }
 
-stop_requested() {
-  local me=$BASHPID
-  [ -f "$RUN/FACTORY_STOP" ] || [ -f "$RUNS_ROOT/FACTORY_STOP" ] \
-    || { [ -n "${REVIEW_FINISH-}" ] && [ "$(( $(ps -o ppid= -p "$me") ))" != "$$" ]; }   # review_child
-}
+stop_requested() { [ -f "$RUN/FACTORY_STOP" ] || [ -f "$RUNS_ROOT/FACTORY_STOP" ]; }
 
 # owner.flock orders a launch's owner write against a reaper's recheck (a relaunch reuses the run dir): an flock on that
 # file, which the kernel frees when its holder exits, so a killed holder never leaves it taken and no age rule applies.
@@ -2394,7 +2390,9 @@ codex_result() { # jsonl exit_code [duration_ms] -> result JSON on stdout; durat
 # around it or not. The wrapper keeps the dispositions it started with, so a QUIT ignored there cannot end it before
 # it has cleaned up the call (#468).
 call_start() { # dir cmd... -> CALL_PID, CALL_TAG
-  local dir="$1" start c="$RUN/$CALL_STEM"; shift
+  local dir="$1" start c="$RUN/$CALL_STEM" me=$BASHPID; shift
+  [ -z "${REVIEW_FINISH-}" ] || [ "$(( $(ps -o ppid= -p "$me") ))" = "$$" ] \
+    || finish stopped "the supervisor is gone, so this review starts no call"   # review_child
   CALL_TAG="$BASHPID.$SECONDS.$RANDOM"; CALL_PID=; CALL_STUCK=   # BASHPID, not $$: review_both runs two calls at once
   rm -f "$c.reap" "$c.group" "$c.group.tmp"
   trap 'call_abort INT 130' INT; trap 'call_abort TERM 143' TERM; trap 'call_abort HUP 129' HUP
@@ -2992,8 +2990,8 @@ run_mutation_sweep() { # round -> 0 unless a survivor blocks
 # The reviewer and the Codex review grade the same tree and write their own files, so they run at once, each in a
 # subshell (review_child); the Codex call's files are call-codex (CALL_STEM), so call_live and the reapers see both
 # calls. The signal handlers go in before either child starts; a signal TERMs every child still running (review_halt),
-# which ends its call through call_abort. A child never ends the run itself: once one has finished, the supervisor
-# TERMs the other at once and then finishes the run, once, with the first child's status.
+# which ends its call through call_abort. A child never ends the run itself: the supervisor polls for a child's finish
+# file (wait -n can pass over a child that exited first), TERMs the other at once and finishes the run, once.
 review_both() { # round
   local f
   assert_caps
@@ -3002,8 +3000,10 @@ review_both() { # round
   trap 'review_halt; exit 130' INT; trap 'review_halt; exit 143' TERM; trap 'review_halt; exit 129' HUP
   ( review_child "$RUN/round-$1.review.finish"; run_review "$1" ) &
   ( CALL_STEM=call-codex; review_child "$RUN/round-$1.codex-review.finish"; run_codex_review "$1" ) &
-  wait -n
-  [ ! -s "$RUN/round-$1.review.finish" ] && [ ! -s "$RUN/round-$1.codex-review.finish" ] || review_halt
+  while [ -n "$(jobs -rp)" ]; do
+    [ ! -s "$RUN/round-$1.review.finish" ] && [ ! -s "$RUN/round-$1.codex-review.finish" ] || { review_halt; break; }
+    sleep 0.2
+  done
   wait
   trap - INT TERM HUP
   for f in "$RUN/round-$1.review.finish" "$RUN/round-$1.codex-review.finish"; do
@@ -3011,15 +3011,16 @@ review_both() { # round
   done
   return 0
 }
-# jobs -p, not saved pids: it also lists a child whose pid was not saved yet, and never one already reaped.
+# jobs -p, not saved pids: it also lists a child whose pid was not saved yet, and never one already reaped. Each child's
+# own children get TERM too: a call's wrapper ends its call, and a limit_wait sleep would otherwise hold the lease.
 review_halt() {
   local p
   p=$(jobs -p)
-  [ -z "$p" ] || { kill -TERM $p 2> /dev/null; wait $p 2> /dev/null; }
+  [ -z "$p" ] || { kill -TERM $p $(pgrep -P "$(echo $p | tr ' ' ,)") 2> /dev/null; wait $p 2> /dev/null; }
 }
 # In a review_both child, finish writes the status and message to the child's file for the supervisor and exits, and
-# stop_requested also reads true once the supervisor is gone (the child's parent is no longer $$), so an orphaned
-# child whose call the reaper killed starts no other call.
+# call_start refuses a call once the supervisor is gone (the child's parent is no longer $$), so an orphaned child
+# whose call the reaper killed starts no other call.
 review_child() { # finish file
   REVIEW_FINISH=$1
   finish() { printf '%s\n%s\n' "$1" "$2" > "$REVIEW_FINISH"; exit 2; }
