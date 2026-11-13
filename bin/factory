@@ -174,7 +174,7 @@ class Unread(Exception):
     pass
 
 def quote_end(s, i):  # the index after the quote that closes the one at i; $-quotes take backslash escapes
-    j, ansi = i + 1, s[i - 1:i] == "$" and s[i - 2:i - 1] != "\\"
+    j, ansi = i + 1, s[i - 1:i] == "$" and (i - 1 - len(s[:i - 1].rstrip("\\"))) % 2 == 0
     while j < len(s) and s[j] != Q:
         j += 2 if ansi and s[j] == "\\" else 1
     if j >= len(s):
@@ -193,7 +193,7 @@ def skip(s, i, close):  # the index after the close of the double quote or subst
         if c == close:
             return i + 1
         # a case arm ends in ), which this reader would take for the close of $(...)
-        if c == "`" or (c == "(" and close == "}") or (close == ")" and re.match("case[ \t]", s[i:])):
+        if c == "`" or (c == "(" and close == "}") or (close == ")" and re.compile("(?<![A-Za-z0-9_.-])case[ \t]").match(s, i)):
             raise Unread
         if s.startswith(("<(", ">("), i) and close != "\"":
             i = procsub(s, i)
@@ -1642,9 +1642,9 @@ standing_list() {
 protected_paths() { { standing_list; section "Do not touch" | sed 's/[Ee]xcept:.*//' | ticket_paths; } | sort -u; }
 exempt_paths() { section "Do not touch" | grep -o '[Ee]xcept:.*' | ticket_paths; }
 
-fenced() { # protected exempt; paths on stdin -> those under a protected entry and under no exempt one
+fenced() { # protected exempt; NUL-separated paths on stdin -> those under a protected entry and under no exempt one
   local f
-  while IFS= read -r f; do
+  while IFS= read -r -d '' f; do
     under "$f" "$1" && ! under "$f" "$2" && printf '%s ' "$f"
   done
 }
@@ -1653,7 +1653,7 @@ fenced() { # protected exempt; paths on stdin -> those under a protected entry a
 # do-not-touch check fails (distbench L01 run 1, 2026-11-13: 83 min). Prints the defect, or nothing.
 edit_fenced() {
   local hits
-  hits=$(edit_words | fenced "$(protected_paths)" "$(exempt_paths)")
+  hits=$(edit_words | tr '\n' '\0' | fenced "$(protected_paths)" "$(exempt_paths)")
   [ -z "$hits" ] || printf 'the Edit line names %s, which Do not touch fences off and no Except: line frees, so every round would fail the do-not-touch check\n' "${hits% }"
 }
 
@@ -2851,7 +2851,7 @@ worker_round() { # round; leaves round-N.* only once the call produced a result
 }
 
 do_not_touch_hits() { # -> the changed paths the ticket fenced off; -z, since git quotes a name with a non-ASCII byte
-  git -C "$WORKTREE" diff --name-only -z "$(cat "$RUN/base.sha")...HEAD" | tr '\0' '\n' \
+  git -C "$WORKTREE" diff --name-only -z "$(cat "$RUN/base.sha")...HEAD" \
     | fenced "$(cat "$RUN/frozen/protected.txt")" "$(cat "$RUN/frozen/exempt.txt")"
 }
 
