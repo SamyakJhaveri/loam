@@ -7,7 +7,7 @@ entry point for projects that consume the Loam marketplace.
 
 The owner said on 13 Nov 2026 that the v0.9.26 `audit` skill was "nowhere near" the prompt he typed by hand and ran far less aggressively, so the skill now opens with that prompt, lightly edited (spelling, grammar, numbering), as his instruction to the agent that did the work; the rest only says how to carry it out.
 Removed: sizing by stakes when the owner asked for the audit, evidence tags in place of scores, the one-artifact target, "leave out anything that existed before this work", fixing only unmerged work, the single re-review, and the `codex-review` branch for diffs (its lead-written intent, 60-line cap and lead triage contradicted the audit).
-Added: a confidence score out of 10 with what would change the agent's mind, a blind-spots part, re-reading every claim made from memory, a fresh design and a surprise-me agent started after that re-reading, severities and an `unresolved` verdict, fix-and-review rounds while a high or medium finding is open (INCOMPLETE after three), a 30-minute replacement rule for a stuck reviewer, a Codex-host column, and `effort: xhigh`.
+Added: a confidence score out of 10 with what would change the agent's mind, a blind-spots part, re-reading every claim made from memory, a fresh design and a surprise-me agent started after that re-reading, severities and an `unresolved` verdict, fix-and-review rounds while a high finding is open, as DistBench's 24 Oct usage ruling allows (INCOMPLETE after three), a rule to stop and replace a stuck reviewer, a Codex-host column, and `effort: xhigh`.
 Reached through the pstack router or a brief without the owner asking, the audit follows the project's recorded review rules for which roles and rounds run; the router row says so and says the agent that did the work runs it.
 The verifier method sits under the heading `## Verify findings`; `bin/factory.d/verify.md` reads that heading instead of "step 4", and `bin/tests/test_factory_review.py` checks the heading exists.
 `audit` and `surprise-me` ship `agents/openai.yaml` with `allow_implicit_invocation: false`, so Codex runs them only when asked.
@@ -15,7 +15,7 @@ The verifier method sits under the heading `## Verify findings`; `bin/factory.d/
 Sources: the owner's prompt and complaints, a read-only Codex reading of their intent, a blind Fable and Codex review of this change with every finding verified, and Anthropic's Opus 5.5 prompting, prompting best-practices, skill-authoring and Claude Code skills pages, read 13 Nov 2026 (`~/.local/state/distbench/evidence/2026-11-13-audit-skill/`).
 No grader prompt changed, so no grader replay is owed.
 Upgrade step: `claude plugin update sam-cc-setup@seed-skills`, then restart Claude Code.
-For Codex on each host, link the two skills into the user skill folder Codex reads, refusing to touch a real folder already there: `for s in audit surprise-me; do t=~/.agents/skills/$s; if [ -e "$t" ] && [ ! -L "$t" ]; then echo "$t is a real folder; move it first"; else ln -sfn <loam>/cultivation/marketplace/sam-cc-setup/skills/$s "$t"; fi; done`.
+For Codex on each host, link the two skills into the user skill folder Codex reads, refusing to touch a real folder already there: `mkdir -p ~/.agents/skills && for s in audit surprise-me; do t=~/.agents/skills/$s; if [ -e "$t" ] && [ ! -L "$t" ]; then echo "$t is a real folder; move it first"; else ln -sfn <loam>/cultivation/marketplace/sam-cc-setup/skills/$s "$t"; fi; done`.
 
 ## sam-cc-setup v0.9.29 pstack log line, Fable 5.2
 

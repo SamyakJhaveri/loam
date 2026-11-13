@@ -73,7 +73,7 @@ It picks a method from a table of situations and a list of the principle cards, 
 `<pstack>` is the enabled plugin folder, the pstack `installPath` in `~/.claude/plugins/installed_plugins.json`, so a pstack update moves every reader to the new version with nothing to re-run.
 A scout or a factory worker whose brief points it at the router reads it by path: `$(jq -r '.["seed-skills"].installLocation' ~/.claude/plugins/known_marketplaces.json)/sam-cc-setup/skills/pstack/SKILL.md`.
 Keep no copies in `~/.claude/skills/`: a copy goes stale after a pstack update and doubles the skill in the lead's list.
-A skill the router marks as spawning starts agents: the main session states the agent count first and hands the task to one `worker`, which stays within about a dozen agents.
+A skill the router marks as spawning starts agents: the main session states the agent count first and hands the task to one `worker`, which stays within about a dozen agents; `audit` is the exception, run by the agent that did the work.
 An agent without the Agent tool does the delegated role itself in one context, `interrogate`'s adversary work included, and never skips it.
 The router keeps `poteto-mode` to the ruling above, and an agent stops before any push or PR that a playbook asks for.
 Only `setup-pstack` stays manual, since a re-run can overwrite the pstack rule file; the router also leaves out `poteto-help`, `sharpen`, `in-your-own-words` and `make-bot-ui`, which run only when the owner types them.

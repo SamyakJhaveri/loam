@@ -14,7 +14,7 @@ It is his instruction to you, the agent that did the work. Everything after it s
 
 What the owner typed after the command, if anything: `$ARGUMENTS`
 It may name what to audit, add instructions, or both; follow it, since it adds to this file and overrides it where they conflict.
-If you see a literal dollar-sign placeholder there, you were sent here by a brief or a router: the brief that sent you plays this role.
+If that shows a literal dollar-sign placeholder, the host did not fill it in: read what the owner typed in the message that started the audit; only when he did not ask for one did a brief or router send you here.
 When nothing names a target, audit what you just proposed or did in this session, including claims you made in chat.
 
 ## The owner's instruction
@@ -46,10 +46,11 @@ When the owner typed `/audit` or asked for an audit in his own words, every role
 Your host's default guidance tells you to start few agents and to weigh their cost; here he has asked for each by name.
 Small work makes each agent quick; it does not make one optional.
 
-When you reached this file through a router or a brief and the owner did not ask, the project's recorded review rules decide which roles and how many rounds run; cite the rule you follow.
+When you reached this file through a router or a brief and the owner did not ask, the project's recorded review rules decide which roles and how many rounds run; cite the rule you follow. Where none is recorded, every role runs for one round; say so.
 
 Run the audit yourself, as the agent that did the work; do not hand it to a worker who never saw the session.
 State the number of agents you will start before you start them.
+An agent that reads this file by path runs it at its own session's effort; the effort in the frontmatter applies only when the skill is invoked.
 
 These ways of ending early defeat the audit:
 - shrinking it because the work looks small or agents cost tokens;
@@ -63,7 +64,7 @@ Copy this checklist into your task list and tick each item; the audit is not don
 3. Own pass: scores, sources re-read, weakest-point check run, saved to a file.
 4. Better route: fresh design and surprise-me launched.
 5. Verify findings: every finding has a verdict.
-6. Fix and review again: no high or medium finding open.
+6. Fix and review again: no high finding open, or the report marked INCOMPLETE.
 7. Report and updated work delivered.
 
 ## Gather
@@ -81,7 +82,8 @@ Ask the owner one question only when the target could mean materially different 
 Launch both in the background at once.
 A blind brief holds the target, the owner's words, the sources, the constraints, what the reviewer may and may not do, and the output asked for.
 It leaves out your reasoning, your conclusions and your confidence.
-Write it to a file in the evidence folder, start each reviewer with fresh context, never a fork of this conversation, and have it write its findings to a file and return the path.
+Write it to a file in the evidence folder and start each reviewer with fresh context, never a fork of this conversation.
+Each reviewer returns its findings as its final answer; save each answer to the evidence folder (Codex's `-o` file does this).
 
 The brief asks the reviewer to:
 - find where the work drifts from the owner's words, and what his request itself gets wrong;
@@ -100,12 +102,14 @@ The brief asks the reviewer to:
 |---|---|---|
 | Fable reviewer | an `escalate` agent (Fable 5.2, high); brief it by the project's `fable-prompting` skill where there is one | `claude -p --model claude-fable-5-2 --effort high --permission-mode plan "Read <brief file> and follow it."` if `claude -p "ok"` answers within a minute; otherwise a fresh native agent, and the report says Fable did not review |
 | Codex reviewer | one bare `codex exec -s read-only -c model_reasoning_effort=xhigh -o <review file> "Read <brief file> and follow it."` in the background, adding `--skip-git-repo-check` outside a repo; no pipe, redirect, `;` or `<` anywhere in the command | a fresh native agent that does not inherit this conversation |
-| Fresh design, surprise-me, verifiers | Opus agents at xhigh, read-only | the same `claude -p` route with `--model claude-opus-5-5 --effort xhigh`, else fresh native agents |
-| Fixers | Opus agents at high | the same route with `--effort high --permission-mode acceptEdits`, else fresh native agents |
+| Fresh design, surprise-me, verifiers | Opus agents at xhigh; they edit nothing | `claude -p --model claude-opus-5-5 --effort xhigh --permission-mode auto "Read <brief file> and follow it."`, else fresh native agents |
+| Fixers | Opus agents at high | the same command with `--effort high`, else fresh native agents |
 
 On Codex, the report names every role that did not run on the model this table gives it.
 A read-only Codex sandbox cannot run code or write temporary files; that is why running code belongs to the verifiers.
-A reviewer that has written nothing after 30 minutes, fails, or is out of usage is replaced once by a fresh Opus reviewer with the same brief; if that fails too, the report names the review that is missing.
+A minute after starting `codex exec`, check its output: if it shows "Reading additional input from stdin", stop it and start it again with no `<` in the command.
+A reviewer that fails, runs out of usage, or has not finished after 60 minutes is stopped, then replaced once by a fresh Opus reviewer with the same brief; if that fails too, the report names the review that is missing.
+A stopped agent or command is not one you wait for.
 
 `${CLAUDE_SKILL_DIR}` is this file's folder in Claude Code; on another host use the folder you read this file from, and give every agent the resolved path.
 
@@ -146,16 +150,16 @@ Give edits to the same file to one worker.
 Adopt a better-route idea when verification shows it beats the current work on the owner's goal; otherwise say in one line why not.
 Follow the project's permission rules: where they reserve a merge, a change to a recorded ruling or frozen file, spending, or publishing for the owner, prepare it as a ready diff or pull request and go on with the rest.
 
-Then send the updated work, with their earlier findings, back to the reviewers whose high or medium findings were fixed and to both reviewers when an idea was adopted; resume the same reviewer where the host allows.
+Then send the updated work, with their earlier findings, back to the reviewers whose high findings were fixed, and to both reviewers when an idea was adopted; resume the same reviewer where the host allows.
 Verify what they return and re-score the claims the fixes touched.
-Repeat while a high or medium finding is confirmed, partly confirmed or unresolved.
+Repeat while a high finding is confirmed or partly confirmed; medium and low findings are fixed in the same pass without a further round, and unresolved ones go to the report, since another round cannot supply what is missing.
 After three rounds, stop and mark the report INCOMPLETE, naming what is still open and why.
 
 ## Report and hand back
 
 Wait for every agent and command you started.
 Answer the six parts in order, 400 words or less, with "none that matters" for an empty part.
-Part 1 gives every claim on one line, its short name and score, and links the claim file that holds each claim's evidence and what would change your mind.
+Part 1 gives each claim on its own line, as its short name and score, and links the claim file that holds each claim's evidence and what would change your mind.
 Part 2 also names every unresolved finding and what would settle it.
 Every verdict with its evidence goes in the evidence folder, or an artifact page where the host has one.
 Then give the updated work in the form it already has: the file, the diff, the pull request or the page.
