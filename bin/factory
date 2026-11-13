@@ -189,10 +189,17 @@ def skip(s, i, close):  # the index after the close that ends the quote or subst
             i += 1
     return len(s)
 
-def tokens(s):  # words as their literal text ("$" for any expansion), operators as 1-tuples
+def tokens(s):  # words as their literal text ("$" for any expansion), operators as 1-tuples, redirections as "<"
     t, w, i = [], None, 0
     while i < len(s):
         c, op = s[i], next((o for o in OPS if s.startswith(o, i)), None)
+        redir = c in "<>" and s[i + 1:i + 2] != "("
+        if redir:
+            if w is not None:
+                t.append(w)
+            t.append("<")
+            w, i = None, i + len(re.match("[<>]+[&|]?", s[i:]).group())
+            continue
         if op or c.isspace() or (c == "#" and w is None):
             if w is not None:
                 t.append(w)
@@ -211,8 +218,13 @@ def tokens(s):  # words as their literal text ("$" for any expansion), operators
         elif c == "\"":
             j = skip(s, i + 1, "\"")
             w, i = w + (s[i + 1:j - 1] if not re.search("[$`]", s[i + 1:j - 1]) else "$"), j
-        elif s.startswith("$(", i) or c == "`":
-            w, i = w + "$", skip(s, i + 2, ")") if c == "$" else skip(s, i + 1, "`")
+        elif s.startswith("$" + Q, i):  # dollar-quote: backslash escapes the quote char too
+            j = i + 2
+            while j < len(s) and s[j] != Q:
+                j += 2 if s[j] == "\\" else 1
+            w, i = w + "$", j + 1
+        elif s.startswith(("$(", "<(", ">("), i) or c == "`":
+            w, i = w + "$", skip(s, i + 2, ")") if c != "`" else skip(s, i + 1, "`")
         else:
             w, i = w + c, i + 1
     return t + ([w] if w is not None else [])
