@@ -609,6 +609,17 @@ check_paths() {
   done < <( { { header | grep -E '^Where:'; } | paths; { section "Do not touch"; section Approach; } | promised_paths; } | sort -u)
 }
 
+# freeze reads each Except: tail into exempt.txt with ticket_paths, so a tail it reads no path from excepts nothing
+# and the do-not-touch check then fails every edit to a fenced path (distbench L01 run 1, 2026-11-13).
+check_except_paths() {
+  local line
+  while IFS= read -r line; do
+    [ -n "$(grep -o '[Ee]xcept:.*' <<<"$line" | ticket_paths)" ] \
+      || err "a Do not touch Except: line names no path in the tree, so it excepts nothing; list each path: $line"
+  done < <(section "Do not touch" | grep '[Ee]xcept:')
+  return 0
+}
+
 # ---- eval ----
 # Replays evals/<grader>/<case>/prompt.md through the grader call in docs/factory/LOOP.md and
 # compares the verdict with expected.json. The rubric comes from the live grader file, so a
@@ -1065,7 +1076,7 @@ lint_body() {
   check_merge_checklist
   check_not_grep_only
   # Fixture bodies are historical tickets that name paths later tickets removed, and predate predict lines.
-  case "$SRC" in *bin/factory.d/fixtures/*) ;; *) check_paths; check_predicts ;; esac
+  case "$SRC" in *bin/factory.d/fixtures/*) ;; *) check_paths; check_except_paths; check_predicts ;; esac
 
   [ "$ERRS" -eq 0 ] || return 1
   echo "lint: OK $SRC"
