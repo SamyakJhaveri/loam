@@ -2249,8 +2249,10 @@ build_worker_prompt() { # round -> prompt path (pending until the call returns a
   if runs_workflow "$round"; then
     # skills: the lines above, verbatim, so each builder reads what the lead was told to (#523); jq escapes the
     # paths. A jq older than 1.6 has no --args: return 4 rather than hand the lead empty args.
-    local wa
-    wa=$(jq -cn --arg ticket "$RUN/frozen/issue.md" --arg run "$RUN" --arg router "$router" '{ticket: $ticket, run: $run, router: $router, skills: $ARGS.positional}' --args ${sl[@]+"${sl[@]}"}) \
+    # supervisorGate: another target's integrator leaves bin/check to the supervisor, as the line above tells the lead.
+    local wa sg=true
+    target_is_loam && sg=false
+    wa=$(jq -cn --arg ticket "$RUN/frozen/issue.md" --arg run "$RUN" --arg router "$router" --argjson sg "$sg" '{ticket: $ticket, run: $run, router: $router, supervisorGate: $sg, skills: $ARGS.positional}' --args ${sl[@]+"${sl[@]}"}) \
       || { log "jq could not build the fan-out Workflow args (needs jq 1.6 or newer)"; return 4; }
     {
       printf '\n\n## Large ticket, round 1: run the fan-out workflow\n\n'

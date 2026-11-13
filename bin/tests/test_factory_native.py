@@ -15,6 +15,7 @@ import hashlib
 import json
 import os
 import pathlib
+import re
 import shutil
 import subprocess
 import tempfile
@@ -294,6 +295,12 @@ class NativeShellTests(unittest.TestCase):
         self.assertIn("this replaces running the done-checks block exactly as the supervisor will", line)
         self.assertIn("calls `bin/check` in any other form, run its other check lines by hand", line)
         self.assertNotIn("full gate", self.h.round_one(self.new, loam=True)["worker"]["stdin"])
+        # A large ticket's fan-out integrator gets the same rule through the Workflow args.
+        for loam, want in ((False, True), (True, False)):
+            proc = self.h.sourced(self.new, 'freeze && WORKER_KIND=claude round=1 && cat "$(build_worker_prompt 1)"', loam,
+                                  WORKER_SIZE="large")
+            (args,) = re.findall(r"and args `(\{.*\})`\.", proc.stdout)
+            self.assertIs(json.loads(args).get("supervisorGate", False), want, proc.stderr)
 
 
 class LaunchTests(unittest.TestCase):
