@@ -2785,7 +2785,7 @@ run_judge() { # round -> 0 on a pass verdict, or a fail on only JUDGE_SHADOW_ROW
   call_json "$round" judge judge "$pf" "$RUN/frozen/judge.schema.json"
   log "judge verdict: $(jq -r .verdict "$f") rows=$(jq -c '.rows // {}' "$f")"
   # The failing rows (a required row that is missing counts), printed only for a file holding one JSON document (call_json
-  # keeps every document it was given) with a fail verdict (a malformed one blocks) and an empty backlog (judge.md puts
+  # keeps every document it was given) with a fail verdict (a malformed one blocks), no findings, and an empty backlog (judge.md puts
   # a correction that needs a Do-not-touch path there), when every failing row is a shadow row and the judge lists at
   # least one fix and every fix targets decisions.md. A fix's target is the one file it edits (judge.schema.json), read
   # from that field and never from the fix's text; only the bare name decisions.md matches, since the worker's own file
@@ -2796,7 +2796,7 @@ run_judge() { # round -> 0 on a pass verdict, or a fail on only JUDGE_SHADOW_ROW
   shadow=""
   [ -e "$WORKTREE/decisions.md" ] || [ -n "$(git -C "$WORKTREE" log -1 --format=%h -- decisions.md 2> /dev/null)" ] \
     || shadow=$(jq -rs --slurpfile s "$RUN/frozen/judge.schema.json" --arg sh "$JUDGE_SHADOW_ROWS" '
-    select(length == 1) | .[0] | select(.verdict == "fail" and (.unparseable // false | not) and (.backlog // []) == [])
+    select(length == 1) | .[0] | select(.verdict == "fail" and (.unparseable // false | not) and (.backlog // []) == [] and (.findings // []) == [])
     | select((.fixes // []) as $x | ($x | type) == "array" and ($x | length) > 0
         and all($x[]; type == "object" and .target == "decisions.md" and (.fix | type) == "string" and (.fix | test("\\S"))))
     | (.rows // {}) as $r

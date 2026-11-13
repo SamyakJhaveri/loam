@@ -164,6 +164,15 @@ class JudgeShadowTests(unittest.TestCase):
         self.assertNotIn("judge-shadow", log)
         self.assertFalse((run / "round-1.judge-shadow").exists())
 
+    def test_judge_finding_still_fails(self) -> None:
+        # A finding names a defect in the change (verdict_consistent counts it); a fail that carries one is not bookkeeping.
+        finding = {"severity": "high", "file": "bin/x", "line": 1, "defect": "crashes on empty input", "fix": "guard it"}
+        reply = {**judge({**ROWS_PASS, "honest": "fail"}, [LABEL]), "findings": [finding]}
+        rc, run, log = self.graders(reply)
+        self.assertEqual(rc, 1, log)
+        self.assertNotIn("judge-shadow", log)
+        self.assertFalse((run / "round-1.judge-shadow").exists())
+
     def test_judge_file_with_two_documents_still_fails(self) -> None:
         # call_json keeps every document a reply holds; the first here fails correct, so the round blocks.
         first = judge({**ROWS_PASS, "correct": "fail"}, [("bin/x", "fix the crash")])
