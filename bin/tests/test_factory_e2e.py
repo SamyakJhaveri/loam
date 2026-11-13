@@ -268,9 +268,10 @@ class EndToEndTests(unittest.TestCase):
         self.assertIn("verdict", review)
         self.assertNotIn("unparseable", review)
         self.assertEqual(self.read(run / f"round-{n}.graded.sha").strip(), head)
-        # The done-checks' guard ran the target's bin/check in round 0 (its base worktree) and in the worker round.
+        # The done-checks' guard ran the target's bin/check once, in the worker round's full gate; round 0 (its base
+        # worktree) defers it.
         wt = self.top / "proj-1"
-        self.assertEqual(self.read(self.state / "check.log").splitlines(), [f"{wt}-base", str(wt)])
+        self.assertEqual(self.read(self.state / "check.log").splitlines(), [str(wt)])
         # The next tick does not relaunch #1; a cap of 2 leaves a free slot, so the frontier is what passes it over.
         before = (self.workers(), self.launches())
         t = self.tick(FACTORY_MAX_PARALLEL="2")
