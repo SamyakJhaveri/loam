@@ -7,9 +7,9 @@
 #                       GRADED_SHA; CONFIRMED and PARTLY go to round-N.fixes (each source blocks once per ticket),
 #                       REJECTED to round-N.rejected. Returns 1 when it queued a fix, else 0.
 #   learn_run [STATUS MESSAGE]
-#                       from any terminal path: writes $RUN/followups.md and, when it has a line, drafts one ticket
-#                       into $RUN/learn/ with two read-only reviews and the verifier on them. Always returns 0, never
-#                       calls finish, and runs once per run directory.
+#                       from finish, detached, after the run's exit: writes $RUN/followups.md and, when it has a
+#                       line, drafts one ticket into $RUN/learn/ with two read-only reviews and the verifier on them.
+#                       Always returns 0, never calls finish, and runs once per run directory.
 #
 # Ledger roles: verifier, learn-writer, learn-review. Files: round-N.findings.json, round-N.verify.json,
 # round-N.rejected, followups.md, learn/ (draft.md, draft.json, review-fable.json, review-codex.md, findings.json,
@@ -61,7 +61,10 @@ review_claude() { # round role model effort dir prompt schema-text out [add-dir.
         ${USD_CAPS:+--max-budget-usd "$GRADER_BUDGET_USD"} --setting-sources '' --settings "$RUN/frozen/role-settings.json" \
         --output-format json < "$pf" > "$raw" 2>> "$LOG"
     call_end "$role" || log "$role exited non-zero"
-    if [ -z "$CALL_STUCK" ] && limit_wait "$raw"; then continue; fi
+    if [ -z "$CALL_STUCK" ] && limit_wait "$raw"; then
+      [ -z "${REVIEW_NO_FINISH:-}" ] || learn_room "$role" || return 1   # a learn retry checks the caps again
+      continue
+    fi
     break
   done
   record "$round" "$role" "$model" "$(charged "$raw" "$GRADER_BUDGET_USD")"
@@ -196,13 +199,11 @@ followups() { # [status message] -> lines on stdout
   } | sed 's/[[:space:]]*$//' | tr -s '\n' | awk 'NF && !seen[$0]++'
 }
 
-# Room for one more learn call under the daily budget, which bin/factory's assert_caps would otherwise enforce by
-# stopping the run; learn only stops itself. A subscription run (no USD_CAPS) has no daily budget.
+# Room for one more learn call under the run's caps (bin/factory's cap_hit), which learn reads after the run's exit,
+# so a cap stops learn, not the run.
 learn_room() { # role
-  if [ -n "$USD_CAPS" ] && jq -en --argjson a "$(daily_spent)" --argjson b "$GRADER_BUDGET_USD" --argjson c "$DAILY_BUDGET_USD" '($a + $b) > $c' > /dev/null; then
-    log "learn: the $1 call could pass the daily budget of $DAILY_BUDGET_USD usd ($(daily_spent) spent today); learn stops here"
-    return 1
-  fi
+  local hit
+  if hit=$(cap_hit "$GRADER_BUDGET_USD"); then log "learn: ${hit#* }; learn stops before the $1 call"; return 1; fi
   if stop_requested; then log "learn: FACTORY_STOP before the $1 call; learn stops here"; return 1; fi
 }
 
@@ -268,7 +269,7 @@ learn_run() { # [status message] -> 0; drafts at most one ticket per run directo
   printf '%s\n' "$prompt" > "$d/review.prompt.md"
   review_claude "$ROUND" learn-review "$model" "$effort" "$rdir" "$d/review.prompt.md" "$(cat "$RUN/frozen/reviewer.schema.json")" \
     "$d/review-fable.json" "$d" "$ROOT" || log "learn: no reply from the $model review"
-  stop_requested || learn_codex "$rdir" "$prompt
+  ! learn_room learn-codex || learn_codex "$rdir" "$prompt
 Reply in Markdown. Put each finding on one line of exactly this form, and nothing else on a line that starts with '- [':
 - [critical|high|medium|low] <file>:<line> <the failure it causes, and the check that reproduces it>" "$d/review-codex.md" || log "learn: no Codex review"
   { jq -c '[(.findings // []) | to_entries[] | {id: "reviewer-\(.key)", source: "reviewer", severity: .value.severity,

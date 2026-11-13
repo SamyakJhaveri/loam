@@ -1315,7 +1315,7 @@ LOG="${LOG:-/dev/null}"; LEDGER=""; DAILY=""; DECISIONS=""; WORKTREE=""; BRANCH=
 # Worker kind and the Codex review stage, read from the ticket in cmd_run (F4). CODEX_REVIEW_BLOCKED is
 # separate from REVIEW_BLOCKED so a Claude-reviewer block never consumes the Codex review's one block.
 WORKER_KIND=claude; CODEX_REVIEW=no; CODEX_REVIEW_BLOCKED=0
-REVIEW_LOADED=0   # 1 once exec_frozen sourced the run's frozen review.sh; only then does finish run learn_run
+REVIEW_LOADED=0   # 1 once exec_frozen sourced the run's frozen review.sh; only then does finish start learn_run
 CODEX_PATH="$HOME/.local/bin"   # Codex is not on the non-interactive PATH (#41); every Codex call prepends this
 
 # The CODEX_HOME of every factory Codex call: the factory's own, logged in once with its own `codex login`, so the
@@ -1528,20 +1528,28 @@ shell_digest() {
   done
 }
 
-# Exit code, status, and the final log line are decided together (LOOP.md, Exits). A file ticket's run first runs
-# learn_run (review.sh) on every exit once its frozen review.sh is loaded; learn_run never calls finish and runs once
-# per run directory. The shell digest closes after it, so it covers the learn calls too.
+# Exit code, status, and the final log line are decided together (LOOP.md, Exits). Then a file ticket's run, once its
+# frozen review.sh is loaded, starts learn_run (review.sh) detached and exits, so a launcher sees the exit and lands
+# without waiting on learn. learn_run never calls finish (REVIEW_NO_FINISH), so it cannot change the exit; its process
+# takes over the EXIT trap (the worktree's removal) and closes the shell digest again after its calls.
 finish() { # status message
-  local code words
+  local code words exit_trap
   case "$1" in
     pr-opened) code=0 ;; ticket-defect) code=3 ;; stopped-environment) code=4 ;; abandon) code=5 ;; *) code=2 ;;
   esac
-  [ "$IS_FILE" = 1 ] && [ "$REVIEW_LOADED" = 1 ] && learn_run "$1" "$2"
   [ ! -f "$RUN/shell-digest.start" ] || shell_digest > "$RUN/shell-digest.end"
   set_status "$1"
   words=$(exit_words "$1")
   notify "${words%% *}" "$(ticket_name) ${words#* }" "$2" "$1"
   log "EXIT $1 ($code): $2"
+  if [ "$IS_FILE" = 1 ] && [ "$REVIEW_LOADED" = 1 ]; then
+    # set -m gives learn its own process group, so the hangup a tty sends its foreground group when the launcher
+    # (the session leader) exits does not reach it.
+    exit_trap=$(trap -p EXIT); trap - EXIT; set -m
+    ( eval "$exit_trap"
+      learn_run "$1" "$2"
+      [ ! -f "$RUN/shell-digest.start" ] || shell_digest > "$RUN/shell-digest.end" ) < /dev/null > /dev/null 2>&1 &
+  fi
   exit "$code"
 }
 
@@ -1964,20 +1972,29 @@ nav_arm:\$nav, ts:\$ts}" "$4" 2> /dev/null) \
 }
 
 # The daily cap says nothing about the ticket, so it has its own status, which next relaunches on a later UTC day.
-assert_caps() { # before every model call; the daily cap is "the next call could exceed it"; the dollar caps need USD_CAPS
+# The daily cap is "the next call could exceed it"; the dollar caps need USD_CAPS. learn_run (review.sh) reads the
+# same caps after the exit, and stops itself instead of the run.
+cap_hit() { # [next call's usd ceiling] -> 0 and "<status> <why>" on stdout when a cap stops the next step
   local spent daily hours
   if [ -n "$USD_CAPS" ]; then
     spent=$(ticket_spent)
     jq -en --argjson a "$spent" --argjson b "$TICKET_BUDGET_USD" '$a >= $b' > /dev/null \
-      && finish stopped-cap "ticket budget: spent $spent of $TICKET_BUDGET_USD usd"
+      && { echo "stopped-cap ticket budget: spent $spent of $TICKET_BUDGET_USD usd"; return 0; }
   fi
   hours=$(( ( $(date -u +%s) - $(cat "$RUN/launched") ) / 3600 ))
-  [ "$hours" -lt "$MAX_HOURS" ] || finish stopped-cap "wall clock: ${hours}h of ${MAX_HOURS}h since this launch"
-  [ -n "$USD_CAPS" ] || return 0
+  [ "$hours" -lt "$MAX_HOURS" ] || { echo "stopped-cap wall clock: ${hours}h of ${MAX_HOURS}h since this launch"; return 0; }
+  [ -n "$USD_CAPS" ] || return 1
   daily=$(daily_spent)
-  jq -en --argjson a "$daily" --argjson b "$ROUND_BUDGET_USD" --argjson c "$DAILY_BUDGET_USD" '($a + $b) > $c' > /dev/null \
-    && finish stopped-daily "daily budget: $daily spent today, the next call could exceed $DAILY_BUDGET_USD usd"
-  return 0
+  jq -en --argjson a "$daily" --argjson b "${1:-$ROUND_BUDGET_USD}" --argjson c "$DAILY_BUDGET_USD" '($a + $b) > $c' > /dev/null \
+    && { echo "stopped-daily daily budget: $daily spent today, the next call could exceed $DAILY_BUDGET_USD usd"; return 0; }
+  return 1
+}
+
+# Before every model call and every long step that makes none: the round's checks, the full gate, the Rows measured
+# commands and the mutation sweep (L01 ran 73.7 min past its 4 h cap in round checks no cap check preceded, 13 Nov 2026).
+assert_caps() {
+  local hit
+  if hit=$(cap_hit); then finish "${hit%% *}" "${hit#* }"; fi
 }
 
 stop_requested() { [ -f "$RUN/FACTORY_STOP" ] || [ -f "$RUNS_ROOT/FACTORY_STOP" ]; }
@@ -2328,12 +2345,12 @@ limit_wait() { # result.json -> 0 after waiting, 1 when the reply is not a usage
   fi
   left=$(( MAX_HOURS * 3600 - ( $(date +%s) - $(cat "$RUN/launched") ) ))
   if [ "$secs" -gt "$left" ]; then
-    # learn_run (REVIEW_NO_FINISH) runs inside finish, so it gives up its call instead of replacing the exit.
+    # learn_run (REVIEW_NO_FINISH) runs after the run's exit, so it gives up its call instead of replacing the exit.
     [ -z "${REVIEW_NO_FINISH:-}" ] || { log "usage limit: $e; the reset is ${secs}s away, past MAX_HOURS; this call gives up"; return 1; }
     finish stopped-environment "usage limit: $e; the reset is ${secs}s away, past MAX_HOURS=$MAX_HOURS"
   fi
   log "usage limit, not a round: $e; waiting ${secs}s"
-  set_status waiting-limit
+  [ -n "${REVIEW_NO_FINISH:-}" ] || set_status waiting-limit   # learn waits without touching the exited run's status
   sleep "$secs"
   return 0
 }
@@ -2890,7 +2907,7 @@ measure_rows() { # round; Rows measured is `[runs=N] [<row>:] <command> | <basel
   # The row's command runs with the run's ledger, daily ledger, ticket key, and round in its environment
   # only, so a `bin/factory eval` row books its cost to this run (#76) and no later child of the
   # supervisor inherits a stale round; run_eval reads these four names, mirroring apply_caps's FACTORY_<NAME>.
-  local env=(FACTORY_LEDGER="$LEDGER" FACTORY_DAILY="$DAILY" FACTORY_KEY="$KEY" FACTORY_ROUND="$1")
+  local env=(FACTORY_LEDGER="$LEDGER" FACTORY_DAILY="$DAILY" FACTORY_KEY="$KEY" FACTORY_ROUND="$1") hit
   : > "$out"
   while IFS= read -r line; do
     line=${line#- }
@@ -2907,6 +2924,8 @@ measure_rows() { # round; Rows measured is `[runs=N] [<row>:] <command> | <basel
     fi
     vals=()
     for ((i = 0; i < n; i++)); do
+      # assert_caps before each sample, with the tree first restored from the samples before it
+      hit=$(cap_hit) && { restore_tree "$at" "Rows measured" "a Rows measured row"; finish "${hit%% *}" "${hit#* }"; }
       vals+=("$( cd "$WORKTREE" && export "${env[@]}" && eval "$cmd" 2>&1 | tail -1 )")
     done
     v=${vals[0]}
@@ -3184,6 +3203,7 @@ MUTATION_FIX="add or tighten a committed test that fails on this edit (if a test
 # ready PR; a sweep that ran no edit (no committed test, or the tests red unedited) is a result, not a failure.
 run_mutation_sweep() { # round -> 0 unless a survivor blocks
   local round="$1" wt="${WORKTREE}-mutants" f="$RUN/round-$1.mutation.json" msg rc=0
+  assert_caps
   git -C "$WORKTREE" worktree remove --force "$wt" > /dev/null 2>&1
   git -C "$WORKTREE" worktree prune > /dev/null 2>&1
   if ! git -C "$WORKTREE" worktree add --detach "$wt" "$GRADED_SHA" > /dev/null 2>&1; then
@@ -3508,6 +3528,7 @@ edit_scope_line() { # off-line paths -> the one line naming them and the Edit: l
 round_checks() { # out [full]: a dirty tree, a do-not-touch hit or a path off the Edit: line fails the round without
   # running the checks; the guarded bin/check is deferred to gate_last unless the second argument is full
   local dirty touched off
+  assert_caps
   dirty=$(git -C "$WORKTREE" status --porcelain)
   touched=$(do_not_touch_hits)
   off=$(edit_scope_hits) \
@@ -3525,6 +3546,13 @@ round_checks() { # out [full]: a dirty tree, a do-not-touch hit or a path off th
   fi
 }
 
+abandon_check() { # an ABANDON line in decisions.md ends the run; a worker sometimes writes it as a markdown bullet
+  # (#158), so `- ` or `* ` is accepted and stripped
+  local abandon
+  abandon=$(grep -m1 -E '^(- |\* )?ABANDON ' "$DECISIONS" | sed -E 's/^(- |\* )//')
+  [ -z "$abandon" ] || finish abandon "$abandon"
+}
+
 main_loop() {
   local prev_sig="" fails checks sig_now
   notify info "$(ticket_name) started" \
@@ -3539,9 +3567,7 @@ main_loop() {
     stop_requested && finish stopped "FACTORY_STOP before the round-$ROUND call"
     worker_round "$ROUND"
     # Step 6, in order: abandon, the frozen set, a clean tree, do-not-touch, the Edit: line, then the checks.
-    # A worker sometimes writes the line as a markdown bullet (#158); accept `- ` or `* ` and strip it.
-    abandon=$(grep -m1 -E '^(- |\* )?ABANDON ' "$DECISIONS" | sed -E 's/^(- |\* )//')
-    [ -n "$abandon" ] && finish abandon "$abandon"
+    abandon_check
     check_frozen
     # The round signature is HEAD plus the digest of decisions.md, so a round that only relabels
     # decisions.md after a grader-only fail (#78) proceeds to the checks and graders; no-change fires
@@ -3705,7 +3731,20 @@ cmd_run() {
     # below; so does an intent with no round field, written before #529.
     local intent_sha="" intent_round="" intent_draft=""
     [ -f "$RUN/publish.intent" ] && read -r intent_sha intent_round intent_draft < "$RUN/publish.intent"
-    if [ -n "$intent_sha" ] && [ "$intent_round" = "$ROUND" ] \
+    # A worker round whose call finished but whose checks never started (a cap stop at round_checks) runs its checks
+    # now and is graded on a pass, so the relaunch does not pay for its worker call again.
+    if [ -e "$RUN/round-$((ROUND + 1)).result.json" ] && [ ! -e "$RUN/round-$((ROUND + 1)).checks" ]; then
+      ROUND=$((ROUND + 1))
+      abandon_check   # the worker's ABANDON exit leaves the same files
+      check_frozen
+      round_checks "$RUN/round-$ROUND.checks"
+      if grep -q '^FAIL' "$RUN/round-$ROUND.checks"; then
+        log "round $ROUND's checks never ran before the stop, and they fail at HEAD; resuming into the loop"
+      else
+        log "round $ROUND's checks never ran before the stop, and they pass at HEAD; grading it with no worker round"
+        grade_round
+      fi
+    elif [ -n "$intent_sha" ] && [ "$intent_round" = "$ROUND" ] \
       && [ "$intent_sha" = "$(git -C "$WORKTREE" rev-parse HEAD)" ] \
       && [ "$(cat "$RUN/round-$ROUND.graded.sha" 2> /dev/null)" = "$intent_sha" ]; then
       check_frozen   # freeze returns early on a resume, so re-hash here as main_loop does before each round

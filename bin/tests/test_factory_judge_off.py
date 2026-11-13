@@ -13,7 +13,7 @@ import subprocess
 import tempfile
 import unittest
 
-from test_factory_mutation_sweep import CLAUDE, ENVELOPE, TICKET, git, scratch_env
+from test_factory_mutation_sweep import CLAUDE, ENVELOPE, TICKET, git, learn_done, scratch_env
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
 JUDGE_FAIL = {"verdict": "fail", "rows": {"correct": "fail", "verified": "pass", "honest": "pass"},
@@ -59,6 +59,7 @@ class JudgeOffTests(unittest.TestCase):
         r = subprocess.run([str(ROOT / "bin/factory"), "-C", str(self.co), "run", str(self.top / "mprobe.md")],
                            cwd=ROOT, env={**self.env, "FACTORY_JUDGE": judge}, capture_output=True, text=True,
                            timeout=300, check=False)
+        learn_done(self.top)
         self.out = r.stdout + r.stderr
         return r.returncode
 
