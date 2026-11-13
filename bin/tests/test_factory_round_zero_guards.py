@@ -169,7 +169,8 @@ class RoundZeroGuardTests(unittest.TestCase):
         for guard in ('guard true && pass g || fail g "got $(printf "%s" "it\'s")"',
                       "guard true&&( pass g ) || fail g broken",
                       "guard true C# && pass g || fail g broken",
-                      "guard true && pass g>&2 || fail g broken"):
+                      "guard true && pass g>&2 || fail g broken",
+                      "guard true && pass g || fail g \\$'C:\\'"):
             with self.subTest(guard=guard):
                 out = self.round_zero(f'{guard}\ntest -e NEW.md && pass new-file || fail new-file "NEW.md is missing"')
                 self.assertEqual(out.strip(), "ROUND0-OK")
@@ -193,7 +194,11 @@ class RoundZeroGuardTests(unittest.TestCase):
         # Fail closed: a ( inside ${...} or a pass inside a process substitution is not read, so lint and round 0
         # refuse the line rather than guess its guard name.
         for guard in ("guard true <(printf %s ${x:-(}) && pass g || fail g broken",
-                      "guard true > >(pass note) && wait && pass g || fail g broken"):
+                      "guard true > >(pass note) && wait && pass g || fail g broken",
+                      'guard true && pass g || fail g "$(cat <(pass note))"',
+                      'guard true && pass g || fail g "$(case x in x) printf "%s" "; (pass note)";; esac)"',
+                      "guard false && pass $'g' || fail g broken",
+                      'n=g; guard false && pass "$n" || fail "$n" broken'):
             with self.subTest(guard=guard):
                 want = 'write this guard line as: guard <cmd> && pass <name> || fail <name> "<reason>"'
                 self.assertIn(want, self.lint_errors(guard, "check_guard_names"))
