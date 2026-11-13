@@ -7,6 +7,7 @@ fixtures/parity/cut.py (lines it edits say so there); `pass` is a hand-written r
 from __future__ import annotations
 
 import json
+import os
 import shutil
 import subprocess
 import sys
@@ -208,6 +209,46 @@ def retried_reviewer(served: bool) -> Callable[[Path], None]:
         rows.insert(1, killed)
         (run / "ledger.jsonl").write_text("".join(json.dumps(r) + "\n" for r in rows))
     return edit
+
+
+RESULTS_RE = r"^(src/|tests?/|bin/check)|(^|/)conftest\.py$"
+
+
+def mark_skip(run: Path, n: int, paths: list[str]) -> None:
+    """graders' record of a harness skip: the marker with the results regex, and the round's changed paths."""
+    (run / f"round-{n}.review.skipped").write_text(f"not run: a harness ticket\nresults-re: {RESULTS_RE}\n")
+    (run / f"round-{n}.paths").write_text("".join(p + "\0" for p in paths))
+
+
+def skipped_reviewer(marked: bool, codex_clean: bool = True, paths: tuple[str, ...] = ("docs/a.md",)) -> Callable[[Path], None]:
+    """PR 730: a harness round whose Codex review cleared it runs no reviewer: no reviewer row, review.json or verdict.
+    With marked True, graders' round-1.review.skipped records the skip; without it the round lost its review. With
+    codex_clean False the Codex high stays, and with a results path among paths the round is no harness round, so
+    graders could not have skipped the reviewer."""
+    def edit(run: Path) -> None:
+        rows = [json.loads(x) for x in (run / "ledger.jsonl").read_text().splitlines()]
+        (run / "ledger.jsonl").write_text("".join(json.dumps(r) + "\n" for r in rows if r["role"] != "reviewer"))
+        (run / "round-1.review.json").unlink()
+        verify = json.loads((run / "round-1.verify.json").read_text())
+        keep = ("codex-",) if not codex_clean else ()
+        verify["findings"] = [f for f in verify["findings"] if f["id"].startswith(keep)]
+        (run / "round-1.verify.json").write_text(json.dumps(verify))
+        if codex_clean:
+            (run / "round-1.codex-review.json").write_text(json.dumps({"verdict": "approve", "findings": []}))
+        if marked:
+            mark_skip(run, 1, list(paths))
+    return edit
+
+
+def skip_after_open_reviewer(run: Path) -> None:
+    """PR 730: round 1's reviewer left a medium finding CONFIRMED, so round 2's harness skip is not allowed: only the
+    reviewer rechecks its own finding."""
+    for name in ("jsonl", "graded.sha"):
+        shutil.copy(run / f"round-1.{name}", run / f"round-2.{name}")
+    sha = (run / "round-1.graded.sha").read_text().strip()
+    (run / "round-2.codex-review.json").write_text(json.dumps({"verdict": "approve", "findings": []}))
+    (run / "round-2.verify.json").write_text(json.dumps({"sha": sha, "findings": []}))
+    mark_skip(run, 2, ["docs/a.md"])
 
 
 def stale_verify(run: Path) -> None:
@@ -434,6 +475,13 @@ VARIANTS = [
     ("c4-failed-launch", "p6-pass", failed_launch, "P6", "FAIL"),  # a proof call that failed proves nothing
     ("c6-stale-verify", "pass", stale_verify, "P8", "FAIL"),
     ("a4-retried-reviewer", "pass", retried_reviewer(True), "P8", "PASS"),  # the killed attempt's row is no review
+    ("e-skipped-reviewer", "pass", skipped_reviewer(True), "P8", "PASS"),  # graders recorded the harness skip
+    ("e-lost-reviewer", "pass", skipped_reviewer(False), "P8", "FAIL"),  # ... and without that record it is no review
+    ("e-skip-on-codex-high", "pass", skipped_reviewer(True, codex_clean=False), "P8", "FAIL"),  # PR 730 Codex Medium
+    ("e-skip-with-reviewer-open", "pass", skip_after_open_reviewer, "P8", "FAIL"),
+    ("e-skip-on-results-path", "pass", skipped_reviewer(True, paths=("docs/a.md", "bin/check")), "P8", "FAIL"),
+    # P8 matches as bin/factory's bash =~ does, where $ never matches before a final newline (Codex at 9ec468c4)
+    ("e-skip-on-newline-name", "pass", skipped_reviewer(True, paths=("notes/conftest.py\n",)), "P8", "PASS"),
     ("a4-killed-reviewer", "pass", retried_reviewer(False), "P8", "FAIL"),  # ... but some reviewer row must serve  # verify.json is for another commit
     ("f2-round-line", "p3-pass", round_two_on_its_round_line, "P3", "PASS"),  # `Round 2: pstack: ...` is round 2's
     # PR 713 Codex at ffef0f02
@@ -482,6 +530,21 @@ def test_an_unparseable_review_is_named_as_no_review(tmp_path: Path) -> None:
     p8 = next(x for x in proc.stdout.splitlines() if " P8 " in x)
     assert p8.startswith("FAIL P8 ") and "round-1.review.json is the supervisor's unparseable fallback: no review" in p8, p8
     assert "not the blocking ids" not in p8, p8
+
+
+def test_p8_refuses_a_skip_its_matcher_could_not_check(tmp_path: Path) -> None:
+    """PR 730 Codex at ea9b6aac: a bash that exits early or a regex bash cannot compile is no harness class."""
+    exits = tmp_path / "exit.sh"
+    exits.write_text("exit 42\n")
+    for name, paths, rx, env in (("bash-fails", ["src/a.py"], RESULTS_RE, {"BASH_ENV": str(exits)}),
+                                 ("bad-regex-no-paths", [], "[", {})):
+        shutil.copytree(FIXTURES / "pass", tmp_path / name)
+        run = tmp_path / name / "run"
+        skipped_reviewer(True, paths=tuple(paths))(run)
+        (run / "round-1.review.skipped").write_text(f"not run: a harness ticket\nresults-re: {rx}\n")
+        proc = subprocess.run([sys.executable, str(SCRIPT), str(run), "--projects-root", str(tmp_path / name / "projects")],
+                              capture_output=True, text=True, timeout=60, env={**os.environ, **env})
+        assert statuses(proc.stdout)["P8"] == "FAIL", (name, proc.stdout)
 
 
 @pytest.mark.parametrize(("name", "case", "edit", "pid", "expected"), VARIANTS, ids=[f"{v[0]}-{v[3]}" for v in VARIANTS])

@@ -1527,7 +1527,7 @@ prepare_worktree() {
 REVIEW_SET="review.sh verify.md verify.schema.json learn.md learn.schema.json"
 FROZEN_SET="factory lib.sh _common.md role-settings.json worker-settings.json checks.sh \
 judge.md reviewer.md judge.schema.json reviewer.schema.json issue.md protected.txt exempt.txt \
-factory-round.js review-output.schema.json codex-review.prompt.md unattended.md alert mutation_sweep.py \
+factory-round.js review-output.schema.json codex-review.prompt.md codex-rereview.prompt.md unattended.md alert mutation_sweep.py \
 plugin-dir pstack-gate.py factory-parity $REVIEW_SET"
 # The line freeze writes after the block, before checks.sh exits; run_checks reads output that does not end
 # on CHECKS-END as an abort (#277).
@@ -1625,6 +1625,7 @@ freeze() {
   cp "$ROOT/bin/factory.d/factory-round.js" "$RUN/frozen/factory-round.js"  # the worker runs its frozen copy, so it cannot edit the script (F12)
   cp "$ROOT/bin/factory.d/review-output.schema.json" "$RUN/frozen/review-output.schema.json"  # the Codex review reads the frozen copy, so a mid-run edit of it cannot change the review (#38, F4)
   cp "$ROOT/bin/factory.d/codex-review.prompt.md" "$RUN/frozen/codex-review.prompt.md"  # the Codex review reads the frozen prompt, so a mid-run edit of it cannot change the review (#38, F4)
+  cp "$ROOT/bin/factory.d/codex-rereview.prompt.md" "$RUN/frozen/codex-rereview.prompt.md"  # the first lines of a re-review's prompt (codex_reviewed)
   cp "$ROOT/bin/factory.d/unattended.md" "$RUN/frozen/unattended.md"  # the Opus 5.5 guide's "Unattended agentic runs" paragraph, appended to every Claude worker call (#210)
   cp "$ROOT/bin/factory.d/lib.sh" "$RUN/frozen/lib.sh"
   cp "$ROOT/bin/factory.d/mutation_sweep.py" "$RUN/frozen/mutation_sweep.py"   # the sweep runs its frozen copy, so a mid-run edit cannot change it (#38)
@@ -2864,17 +2865,47 @@ run_review() { # round -> 0 when nothing blocks
   [ "$blocking" -eq 0 ] || jq -e '.unparseable == true' "$f" > /dev/null 2>&1
 }
 
+# The last earlier round whose Codex review parsed and whose graders finished, as "<round> <graded sha>", when that sha
+# is an ancestor of HEAD other than HEAD: a re-review then reads only the fix since it. None after a rebase or a round
+# with no new commit, so that review reads the whole change again.
+codex_reviewed() { # round -> "<round> <sha>" or nothing
+  local k sha
+  for ((k = $1 - 1; k >= 1; k--)); do
+    [ -s "$RUN/round-$k.graded.sha" ] && jq -e '.unparseable != true and (.verdict | type) == "string"' \
+      "$RUN/round-$k.codex-review.json" > /dev/null 2>&1 || continue
+    sha=$(cat "$RUN/round-$k.graded.sha")
+    [ "$sha" != "$(git -C "$WORKTREE" rev-parse HEAD)" ] && git -C "$WORKTREE" merge-base --is-ancestor "$sha" HEAD 2> /dev/null \
+      && printf '%s %s\n' "$k" "$sha"
+    return 0
+  done
+}
+
 run_codex_review() { # round -> 0 when nothing blocks; a critical or high finding blocks (LOOP.md)
-  local round="$1" f="$RUN/round-$1.codex-review.json" jsonl res="$RUN/round-$1.codex-review.result.json" base prompt blocking rc start call parsed=0 ch trust skills_off mcp_off
+  local round="$1" f="$RUN/round-$1.codex-review.json" jsonl res="$RUN/round-$1.codex-review.result.json" base prompt blocking rc start call parsed=0 ch trust skills_off mcp_off prev rej
   base=$(cat "$RUN/base.sha")
+  prev=$(codex_reviewed "$round")
   ch=$(codex_home) || finish stopped-environment "$CODEX_LOGIN_HINT"
   trust=$(codex_trust "$WORKTREE") || finish stopped-environment "could not resolve $WORKTREE for the Codex trust entry"
   skills_off=$(codex_skills_off) || finish stopped-environment "could not list ~/.agents/skills for the Codex skill rules"
   mcp_off=$(codex_mcp_off "$WORKTREE" "$ch" -c "$trust") || finish stopped-environment "could not list Codex MCP servers to disable them"
   # The prompt is the frozen brief with every <base> filled in, then the frozen ticket between fence lines as
   # build_evidence prints it; only the brief is filled, so a <base> in the ticket text reaches Codex as written.
-  prompt=$(sed "s/<base>/$base/g" "$RUN/frozen/codex-review.prompt.md"
-           printf '\n## Ticket\n\n%s\n' "$FENCE"; cat "$RUN/frozen/issue.md"; printf '\n%s\n' "$FENCE")
+  # A re-review (codex_reviewed) swaps the brief's first line for the re-review lines and adds the previous findings.
+  if [ -n "$prev" ]; then
+    # A finding that round's verifier rejected is left out, as blocking_findings leaves it out, so it is not raised again.
+    rej=$(jq -c '[.findings[]? | select(.verdict == "REJECTED") | .id]' "$RUN/round-${prev%% *}.verify.json" 2> /dev/null) || rej=""
+    [ -n "$rej" ] || rej='[]'
+    log "codex review reads the fix ${prev#* }...HEAD and round ${prev%% *}'s findings"
+    prompt=$(sed -e "s/<reviewed>/${prev#* }/g" -e "s/<base>/$base/g" "$RUN/frozen/codex-rereview.prompt.md"
+             sed -e '1d' -e "s/<base>/$base/g" "$RUN/frozen/codex-review.prompt.md"
+             printf '\n## Previous findings\n\n'
+             jq -c --argjson rej "$rej" '[(.findings // []) | to_entries[] | select("codex-\(.key)" | IN($rej[]) | not) | .value]' \
+               "$RUN/round-${prev%% *}.codex-review.json"
+             printf '\n## Ticket\n\n%s\n' "$FENCE"; cat "$RUN/frozen/issue.md"; printf '\n%s\n' "$FENCE")
+  else
+    prompt=$(sed "s/<base>/$base/g" "$RUN/frozen/codex-review.prompt.md"
+             printf '\n## Ticket\n\n%s\n' "$FENCE"; cat "$RUN/frozen/issue.md"; printf '\n%s\n' "$FENCE")
+  fi
   for call in 1 2; do
     jsonl="$RUN/round-$round.codex-review.$call.jsonl"   # one stream per call, so each log line points at its own call
     assert_caps
@@ -2994,6 +3025,38 @@ review_child() { # finish file
   finish() { printf '%s\n%s\n' "$1" "$2" > "$REVIEW_FINISH"; exit 2; }
 }
 
+# A harness ticket changes no path matching FACTORY_RESULTS_RE, an ERE for the target's results code and gate inputs
+# (for distbench, the launcher's RESULTS_RE); with it unset, every ticket counts as results code. The round's changed
+# paths, both sides of a rename, go NUL-separated to round-N.paths, so git quotes no name and bin/factory-parity's P8
+# can check the class. A regex bash cannot compile, an unreadable base or a failed diff counts as results.
+REVIEWER_SKIPPED="not run: a harness ticket, the Codex review has no critical or high finding, and the last graded round left no reviewer finding open"
+harness_ticket() { # round
+  local base f
+  [ -n "${FACTORY_RESULTS_RE:-}" ] || return 1
+  base=$(cat "$RUN/base.sha") && [ -n "$base" ] || return 1
+  git -C "$WORKTREE" diff --no-renames --name-only -z "$base...HEAD" > "$RUN/round-$1.paths" || return 1
+  [[ "" =~ $FACTORY_RESULTS_RE ]]; [ $? != 2 ] || return 1   # a regex bash cannot compile, even with no path
+  while IFS= read -r -d '' f; do
+    [[ $f =~ $FACTORY_RESULTS_RE ]]; [ $? = 1 ] || return 1
+  done < "$RUN/round-$1.paths"
+}
+
+# 0 when the last earlier graded round's reviewer left a high or medium finding its verifier did not reject, or replied
+# with nothing parseable, so no recheck cleared what it found before: only the reviewer checks its own finding was
+# fixed, since a Codex re-review reads only Codex's previous findings.
+reviewer_open() { # round
+  local k rej
+  for ((k = $1 - 1; k >= 1; k--)); do
+    [ -s "$RUN/round-$k.graded.sha" ] || continue
+    rej=$(jq -c '[.findings[]? | select(.verdict == "REJECTED") | .id]' "$RUN/round-$k.verify.json" 2> /dev/null) || rej=""
+    [ -n "$rej" ] || rej='[]'
+    jq -e --argjson rej "$rej" '.unparseable == true or ([(.findings // []) | to_entries[] | select("reviewer-\(.key)" | IN($rej[]) | not) | .value]
+      | {findings: .} | '"$REVIEW_BLOCKING"' | length > 0)' "$RUN/round-$k.review.json" > /dev/null 2>&1
+    return
+  done
+  return 1
+}
+
 graders() { # round -> 0 when the judge passes and nothing blocks
   local ok=0 sig
   rm -f "$RUN/round-$1.mutation.json" "$RUN/round-$1.mutation-blocked"   # a regraded round never reads an older sweep
@@ -3001,7 +3064,25 @@ graders() { # round -> 0 when the judge passes and nothing blocks
   GRADED_SHA=$(git -C "$WORKTREE" rev-parse HEAD)   # open_pr prints it, so a later push shows the verdict is stale
   # The sweep's minutes go only to a round that could open a PR: a judge fail ends the round anyway.
   if run_judge "$1"; then run_mutation_sweep "$1" || ok=1; else ok=1; fi
-  if [ "$CODEX_REVIEW" = yes ]; then review_both "$1"; else run_review "$1"; fi
+  # On a harness ticket the Codex review goes first and the Opus reviewer runs only on its critical or high finding,
+  # an unparseable reply's fallback included, or to recheck its own open finding (ASK-KARPATHY item E); results code
+  # gets both, at once (review_both). A skip writes round-N.review.skipped, which bin/factory-parity's P8 reads as a
+  # reviewed round.
+  rm -f "$RUN/round-$1.review.skipped"
+  if [ "$CODEX_REVIEW" = yes ] && harness_ticket "$1"; then
+    run_codex_review "$1"
+    if [ "$(jq "$CODEX_BLOCKING | length" "$RUN/round-$1.codex-review.json")" -gt 0 ] || reviewer_open "$1"; then
+      run_review "$1"
+    else
+      rm -f "$RUN/round-$1.review.json" "$RUN/round-$1.review.prompt.md"   # a regraded round never reads an older reply
+      printf '%s\nresults-re: %s\n' "$REVIEWER_SKIPPED" "$FACTORY_RESULTS_RE" > "$RUN/round-$1.review.skipped"
+      log "reviewer $REVIEWER_SKIPPED"
+    fi
+  elif [ "$CODEX_REVIEW" = yes ]; then
+    review_both "$1"
+  else
+    run_review "$1"
+  fi
   verify_round "$1" || ok=1   # 1 when it queued a fix (review.sh); the reviews' own blocking count decides nothing here
   [ "$(tree_signature "$WORKTREE")" = "$sig" ] || finish stopped-environment "grader changed the tree"
   # After every grader ran on an unchanged tree, so a relaunch can tell this round graded HEAD (cmd_run).
@@ -3132,8 +3213,12 @@ open_pr() { # [draft]: opened at the grader-round cap
         "$(jq -c '{verdict, rows: (.rows // {}), evidence: (.evidence // {})}' "$RUN/round-$ROUND.judge.json")"
     fi
     printf '## Reviewer\n\n'
-    jq -r '.findings[]? | "- [" + .severity + "] " + (.file // "?") + ":" + ((.line // 0) | tostring) + " " + .defect + " Fix: " + .fix' "$RUN/round-$ROUND.review.json"
-    jq -r '.unverified[]? | "- unverified: " + .' "$RUN/round-$ROUND.review.json"
+    if [ -e "$RUN/round-$ROUND.review.json" ]; then
+      jq -r '.findings[]? | "- [" + .severity + "] " + (.file // "?") + ":" + ((.line // 0) | tostring) + " " + .defect + " Fix: " + .fix' "$RUN/round-$ROUND.review.json"
+      jq -r '.unverified[]? | "- unverified: " + .' "$RUN/round-$ROUND.review.json"
+    else
+      printf '(%s)\n' "$REVIEWER_SKIPPED"
+    fi
     if [ "$CODEX_REVIEW" = yes ]; then
       printf '\n## Codex review\n\n'
       if [ -s "$RUN/round-$ROUND.codex-review.json" ] && jq -e . "$RUN/round-$ROUND.codex-review.json" > /dev/null 2>&1; then
