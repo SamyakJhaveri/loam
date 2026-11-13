@@ -680,9 +680,21 @@ def router_index(t: Transcript, before: int) -> int | None:
     return next((j for j in range(min(before + 1, len(t.calls))) if reads_router(t, j)), None)
 
 
+def without_common(run: Run, brief: str) -> str:
+    """brief less each line of the run's frozen/_common.md (its <placeholders> filled), which every round's prompt
+    holds, so a method only _common.md names is no brief's own."""
+    f = Path(run.path) / "frozen" / "_common.md"
+    if not f.is_file():
+        return brief
+    lines = [re.compile(".*".join(map(re.escape, re.split(r"<[a-z]+>", x.strip()))))
+             for x in f.read_text(encoding="utf-8", errors="replace").splitlines() if x.strip()]
+    return "\n".join(x for x in brief.splitlines() if not any(p.fullmatch(x.strip()) for p in lines))
+
+
 def brief_read(run: Run, t: Transcript, before: int) -> tuple[int, list[str]] | None:
-    """(call index, names) of the first full read, up to call `before`, of a pstack SKILL.md t's brief names."""
-    names = named_skills(f"{t.brief}\n{run.ticket}", run.pstack)
+    """(call index, names) of the first full read, up to call `before`, of a pstack SKILL.md t's brief (less
+    _common.md) or ticket names."""
+    names = named_skills(f"{without_common(run, t.brief)}\n{run.ticket}", run.pstack)
     for j in range(before + 1):
         hit = pstack_methods(full_reads(t, j), run.pstack) & names
         if hit:
