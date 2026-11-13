@@ -117,6 +117,25 @@ def test_behaviour(case: str, pid: str, expected: str) -> None:
         assert proc.returncode == 1 and last.startswith("parity: FAIL (") and pid in last[len("parity: FAIL ("):-1].split(", ")
 
 
+@pytest.mark.parametrize(("frozen", "expected"), [(True, "FAIL"), (False, "PASS")])
+def test_a_principle_named_only_by_common_md_is_no_brief_named_read(tmp_path: Path, frozen: bool, expected: str) -> None:
+    # p3-order without its router read: the round fully reads principle-test-behavior-not-implementation, then writes.
+    # Its prompt names that principle only in _common.md's line, which every round gets, so the read stands in for no
+    # router read (FAIL); the same line in a prompt with no frozen _common.md is the brief's own (PASS).
+    run = tmp_path / "run"
+    shutil.copytree(FIXTURES / "p3-order" / "run", run)
+    events = (run / "round-1.jsonl").read_text().splitlines()
+    (run / "round-1.jsonl").write_text("\n".join(e for e in events if "toolu_01SgvVXQekBErfzUfb8VmLsB" not in e) + "\n")
+    common = (ROOT / "bin" / "factory.d" / "_common.md").read_text()
+    skills = "/home/samyak/.claude/plugins/cache/cursor-plugins/pstack/0.15.36/skills"  # where p3-order read it
+    (run / "round-1.prompt.md").write_text("# A ticket\n\n" + common.replace("<pstack>", skills))
+    if frozen:
+        (run / "frozen").mkdir()
+        (run / "frozen" / "_common.md").write_text(common)
+    proc = parity(run, tmp_path / "projects")
+    assert statuses(proc.stdout)["P2"] == expected, proc.stdout
+
+
 def test_a_run_where_every_behaviour_passes_exits_zero() -> None:
     proc = parity(FIXTURES / "pass" / "run", FIXTURES / "pass" / "projects")
     assert (proc.returncode, proc.stdout.splitlines()[-1]) == (0, "parity: PASS"), proc.stdout
