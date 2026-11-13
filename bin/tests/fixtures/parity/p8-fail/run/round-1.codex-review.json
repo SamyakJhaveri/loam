@@ -1,0 +1,8 @@
+{
+  "verdict": "approve",
+  "summary": "No critical, high, medium, or low findings. Beyond the named code, this reaches metrics and record-checker cut validation, matched-cut contrasts, research level summaries, orchestrator branch ceilings, and JSON/Markdown readers. Checks passed for 90.33% interval coverage, 200 inversion cases, program families, calibration examples, seven planted effects, null studies, and F21/F32 expected values compared in memory. Six focused pytest cases passed. The full gate and scratch-dependent checks remain unverified in this read-only environment.",
+  "findings": [],
+  "next_steps": [
+    "Run the supervisor’s complete done checks and gate before landing."
+  ]
+}

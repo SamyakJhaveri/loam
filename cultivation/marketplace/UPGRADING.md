@@ -8,7 +8,13 @@ entry point for projects that consume the Loam marketplace.
 The judge's `fixes` entries are objects, `{"target": "<file>", "fix": "<change>"}`, in `agents/judge.md` and `bin/factory.d/judge.schema.json`: `target` is the one file the fix edits, `decisions.md` for the worker's decisions.md, so the factory's judge-shadow pass reads that field instead of scanning the fix's text.
 `agents/judge.md` now fails `correct` as well as `honest` for evidence that tells the judge how to grade or what verdict to return, so such an attempt never fails only a bookkeeping row.
 A grader prompt and schema changed, so the judge replay before and after (`docs/factory/LOOP.md`, Grader change protocol) is owed before merge.
-The version skips 0.9.29, which `fix/factory-distbench` takes.
+Upgrade step: `claude plugin update sam-cc-setup@seed-skills`.
+
+## sam-cc-setup v0.9.29 pstack log line, Fable 5.2
+
+The `pstack` router asks for one decision-log line per method followed (decisions.md in a factory run): `pstack: <skill> | <SKILL.md path read> | <sha256 of that file> | <one line quoted from it> | <the decision it changed>`, the line `bin/factory-parity` reads.
+`plan-reviewer` and the `research-gap` Fable seat move from `claude-fable-5-1` to `claude-fable-5-2`, the owner's Fable 5.2 ruling.
+No grader prompt changed, so no grader replay is owed.
 Upgrade step: `claude plugin update sam-cc-setup@seed-skills`.
 
 ## sam-cc-setup v0.9.28 pstack router reaches more skills

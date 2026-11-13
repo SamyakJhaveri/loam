@@ -138,3 +138,4 @@ bin/harness-smoke.log
 
 # Loam memory: the per-user store symlink mem-capture.sh creates in any checkout (seed/.gitignore.jinja carries the same line for rendered projects)
 /.loam/memory
+!bin/tests/fixtures/parity/**/*.log

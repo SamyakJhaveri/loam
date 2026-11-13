@@ -32,7 +32,8 @@ fixture
 [ -f marker ] && pass has-marker || fail has-marker "no marker"
 ```
 """
-STUBS = "assert_target_ready() { :; }; claude_version_ok() { :; }; exec_frozen() { :; }"
+# The stub reviews never reach a model, so neither does the verifier: with nothing queued it passes the round.
+STUBS = "assert_target_ready() { :; }; claude_version_ok() { :; }; exec_frozen() { :; }; verify_round() { :; }"
 JUDGE_PASS = """run_judge() { echo '{"verdict":"pass","rows":{}}' > "$RUN/round-$1.judge.json"; }"""
 JUDGE_FAIL = """run_judge() { echo '{"verdict":"fail","rows":{"a":"fail"}}' > "$RUN/round-$1.judge.json"; return 1; }"""
 # A judge fail on only the bookkeeping row honest, as run_judge leaves a shadow pass: no fix queued, a judge-shadow file.

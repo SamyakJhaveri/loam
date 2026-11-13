@@ -1,0 +1,7 @@
+FAIL P1 instructions: round 1: round-1.jsonl:3 init lists 86 skills, not verify-distbench; round 2: round-2.jsonl:3 init lists 86 skills, not verify-distbench
+FAIL P2 router: round 2: round-2.jsonl:15 Bash open(p,'w').write(s) with no router read before it
+FAIL P3 method: round 2: round-2.jsonl:15 first change with no router read, so no method read
+FAIL P4 gate-in-round: round 1: round-1.jsonl:193 shows the sandbox refusal 'bin/check: AF_UNIX bind denied - sandbox mode; this run is not the gate (SESSION-PROTOCOL section 6)'; round 2: no transcript ran bin/check (1 run(s) under LOAM_HOOK=1 skip it)
+PASS P5 models: round 1: factory.log:9 worker claude-opus-5-5 effort high; init round-1.jsonl:3 claude-opus-5-5; round 2: factory.log:23 worker claude-opus-5-5 effort high; init round-2.jsonl:3 claude-opus-5-5
+N/A P6 behaviour-proof: round-2.diff touches none of tasks/, src/distbench/runner.py, src/distbench/commands.py, src/distbench/expected.py, src/distbench/orchestrator.py, src/distbench/grader.py
+parity: FAIL (P1, P2, P3, P4)

@@ -1,0 +1,1 @@
+{"sha": "2235446db0f99db56c48e7549c98ec9336d42928", "findings": [{"id": "reviewer-0", "verdict": "REJECTED", "cmd": "python3 -m pytest -q tests/test_calibrate.py -k p90", "output": "1 passed", "note": ""}, {"id": "codex-0", "verdict": "CONFIRMED", "cmd": "", "output": "", "note": ""}, {"id": "codex-1", "verdict": "PARTLY", "cmd": "", "output": "", "note": ""}]}
