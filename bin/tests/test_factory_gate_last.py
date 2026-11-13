@@ -1,10 +1,9 @@
 """The full gate runs once, last (docs/factory/LOOP.md, step 6; ASK-KARPATHY item B).
 
 `bin/factory -C <target> run` on a file ticket whose done-checks block has a `guard bin/check` line, with a scripted
-`claude`: each round's checks defer bin/check, and the supervisor runs the whole block once the graders pass. A round
-the judge fails costs no bin/check run; a gate that goes red after the graders hands its FAIL lines to the next worker
+`claude`: round 0 and each round's checks defer bin/check, and the supervisor runs the whole block once the graders pass.
+Round 0 at base never runs it; a round the judge fails costs no bin/check run; a gate that goes red after the graders hands its FAIL lines to the next worker
 round, and the PR opens only after a green gate. The target's bin/check logs each run to a file.
-Round 0 reuses a gate the launcher names (FACTORY_GATE_PASSED_SHA) at that base only (ASK-KARPATHY item C).
 """
 
 from __future__ import annotations
@@ -115,10 +114,11 @@ class GateLastTests(unittest.TestCase):
         if script:
             (self.top / f"round-{n}.sh").write_text(script)
 
-    def launch(self, **extra: str) -> str:
+    def launch(self, ok: bool = True) -> str:
         r = subprocess.run([str(ROOT / "bin/factory"), "-C", str(self.co), "run", str(self.top / "gprobe.md")],
-                           cwd=ROOT, env={**self.env, **extra}, capture_output=True, text=True, timeout=300, check=False)
-        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+                           cwd=ROOT, env=self.env, capture_output=True, text=True, timeout=300, check=False)
+        if ok:
+            self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
         (run,) = (self.top / "h/.local/state/loam-factory/runs/o__r/gprobe").glob("*/")
         self.run = run
         return (run / "factory.log").read_text()
@@ -132,9 +132,9 @@ class GateLastTests(unittest.TestCase):
         self.worker_round(2, {"more.txt": "2\n"})
         log = self.launch()
         self.assertEqual((self.top / "rounds").read_text().strip(), "2")
-        # round 0 at base, then one run after round 2's graders passed; none in round 1 or round 2's own checks
-        self.assertEqual(len(self.gate_runs()), 2, self.gate_runs())
-        self.assertIn("more.txt", self.gate_runs()[1])
+        # one run, after round 2's graders passed; none in round 0, round 1 or round 2's own checks
+        self.assertEqual(len(self.gate_runs()), 1, self.gate_runs())
+        self.assertIn("more.txt", self.gate_runs()[0])
         self.assertEqual(log.count(" full gate at "), 1, log)
         self.assertEqual(log.count("checks: all pass, bin/check deferred until the graders pass"), 2, log)
         self.assertLess(log.index("judge verdict: pass"), log.index(" full gate at "))
@@ -170,21 +170,27 @@ class GateLastTests(unittest.TestCase):
         self.assertIn("full gate failing: check-green,", log)
         self.assertEqual((self.top / "rounds").read_text().strip(), "2")
 
-    def test_round_zero_reuses_the_gate_the_launcher_names_at_that_base(self) -> None:
-        base = git(self.co, self.env, "rev-parse", "HEAD")
+    def test_round_zero_defers_the_guarded_gate(self) -> None:
+        # Round 0 reads only non-guard PASS lines, so the guarded bin/check could never change its verdict.
         self.worker_round(1, {"note.txt": "1\n"})
-        log = self.launch(FACTORY_GATE_PASSED_SHA=base)
-        self.assertEqual(len(self.gate_runs()), 1, self.gate_runs())   # only the full gate after the graders
-        self.assertIn(f"round 0: bin/check at {base[:8]} reused from the gate the launcher names", log)
-        zero = (self.run / "round-0.checks").read_text()
-        self.assertIn(f"REUSED: bin/check passed already (the launcher's gate passed at {base[:8]})", zero)
-        self.assertIn("FAIL note", zero)
+        log = self.launch()
+        self.assertIn("round 0 at ", log)
+        r0 = (self.run / "round-0.checks").read_text().splitlines()
+        self.assertEqual(sum(line.startswith("DEFERRED: bin/check") for line in r0), 1, r0)
+        # the only bin/check run is the full gate after round 1's graders passed
+        self.assertEqual(len(self.gate_runs()), 1, self.gate_runs())
+        self.assertIn("note.txt", self.gate_runs()[0])
 
-    def test_round_zero_runs_the_gate_at_another_base(self) -> None:
-        self.worker_round(1, {"note.txt": "1\n"})
-        log = self.launch(FACTORY_GATE_PASSED_SHA="0" * 40)
-        self.assertEqual(len(self.gate_runs()), 2, self.gate_runs())
-        self.assertNotIn("reused", log)
+    def test_round_zero_still_ends_on_a_non_guard_check_that_passes_on_base(self) -> None:
+        (self.co / "note.txt").write_text("base\n")
+        git(self.co, self.env, "add", "note.txt")
+        git(self.co, self.env, "commit", "-qm", "note on base")
+        git(self.co, self.env, "push", "-q")
+        log = self.launch(ok=False)
+        self.assertIn("check note passes on", log)
+        self.assertEqual((self.run / "status").read_text().strip(), "ticket-defect")
+        self.assertFalse((self.top / "rounds").exists())
+        self.assertFalse((self.top / "gate-runs").exists(), "round 0 ran bin/check")
 
 
 if __name__ == "__main__":
