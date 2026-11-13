@@ -2181,14 +2181,9 @@ round_zero() {
     fi
     [ -n "$why" ] && break
   done < <(dc_predicts)
-  # The launcher may name a sha whose full gate already passed (FACTORY_GATE_PASSED_SHA, ASK-KARPATHY item C: distbench's
-  # factory-isc reads it from bin/integrate's merge-log.tsv); at that base, round 0's guard bin/check reuses it.
-  if [ -n "${FACTORY_GATE_PASSED_SHA:-}" ] && [ "$FACTORY_GATE_PASSED_SHA" = "$base" ]; then
-    log "round 0: bin/check at $(cut -c1-8 "$RUN/base.sha") reused from the gate the launcher names (FACTORY_GATE_PASSED_SHA), not run"
-    run_checks "$wt" "$out" "FACTORY_GATE_REUSED=the launcher's gate passed at ${base:0:8}"
-  else
-    run_checks "$wt" "$out"
-  fi
+  # Round 0 reads only the non-guard PASS lines, so the guarded bin/check could never change its verdict: it is deferred
+  # (lib.sh prints DEFERRED:), and round 0 costs seconds, not a full gate. gate_last runs bin/check, at the graded HEAD.
+  run_checks "$wt" "$out" "$GATE_DEFER"
   git -C "$MAIN_CHECKOUT" worktree remove --force "$wt" > /dev/null 2>&1
   grep -q '^FAIL checks-aborted' "$out" \
     && finish ticket-defect "checks.sh aborted on $(cut -c1-8 "$RUN/base.sha") before the block ended; see $out"
@@ -3112,7 +3107,7 @@ checks_section() { # heading checks-file
     END {if (n > max) printf "... %d more lines in %s\n", n - max, f}' "$2"
   printf '```\n\n'
   grep -q '^DEFERRED: bin/check' "$2" 2> /dev/null \
-    && printf 'bin/check did not run in this round: it was deferred until the graders pass (the DEFERRED line in the file below).\n\n'
+    && printf 'bin/check did not run for these checks (the DEFERRED line in the file below): round 0 at base never runs it, and a round runs it only once its graders pass.\n\n'
   printf 'Reasons and full output: %s\n\n' "$2"
 }
 
