@@ -174,21 +174,30 @@ class Unread(Exception):
     pass
 
 def quote_end(s, i):  # the index after the quote that closes the one at i; $-quotes take backslash escapes
-    j = i + 1
+    j, ansi = i + 1, s[i - 1:i] == "$" and s[i - 2:i - 1] != "\\"
     while j < len(s) and s[j] != Q:
-        j += 2 if s[i - 1:i] == "$" and s[j] == "\\" else 1
+        j += 2 if ansi and s[j] == "\\" else 1
     if j >= len(s):
         raise Unread
     return j + 1
+
+def procsub(s, i):  # the index after the <(...) or >(...) at i; one that runs pass may print its PASS line
+    j = skip(s, i + 2, ")")
+    if re.search("(^|[^A-Za-z0-9_.-])pass($|[^A-Za-z0-9_.-])", s[i + 2:j - 1]):
+        raise Unread
+    return j
 
 def skip(s, i, close):  # the index after the close of the double quote or substitution opened before i
     while i < len(s):
         c = s[i]
         if c == close:
             return i + 1
-        if c == "`" or (c == "(" and close == "}"):
+        # a case arm ends in ), which this reader would take for the close of $(...)
+        if c == "`" or (c == "(" and close == "}") or (close == ")" and re.match("case[ \t]", s[i:])):
             raise Unread
-        if c == "\\":
+        if s.startswith(("<(", ">("), i) and close != "\"":
+            i = procsub(s, i)
+        elif c == "\\":
             i += 2
         elif c == Q and close != "\"":
             i = quote_end(s, i)
@@ -207,10 +216,7 @@ def tokens(s):  # words as their literal text ("$" for any expansion), operators
     while i < len(s):
         c, op = s[i], next((o for o in OPS if s.startswith(o, i)), None)
         if s.startswith(("<(", ">("), i):
-            j = skip(s, i + 2, ")")
-            if re.search("(^|[^A-Za-z0-9_.-])pass($|[^A-Za-z0-9_.-])", s[i + 2:j - 1]):
-                raise Unread
-            w, i = (w or "") + "$", j
+            w, i = (w or "") + "$", procsub(s, i)
         elif c in "<>" or op or c.isspace() or (c == "#" and w is None):
             t += ([w] if w is not None else []) + (["<"] if c in "<>" else [(op,)] if op else [])
             if c == "#":
@@ -232,16 +238,21 @@ def tokens(s):  # words as their literal text ("$" for any expansion), operators
             w, i = (w or "") + c, i + 1
     return t + ([w] if w is not None else [])
 
+def names(t):  # the word after each command-word pass (not a pass() definition), which must be a literal name
+    for i, w in enumerate(t[:-1]):
+        if w == "pass" and (i == 0 or isinstance(t[i - 1], tuple) or t[i - 1] in AFTER) and isinstance(t[i + 1], str):
+            if not re.fullmatch("[A-Za-z0-9_.-]+", t[i + 1]):
+                raise Unread
+            yield t[i + 1]
+
 for line in sys.stdin:
     try:
-        t = tokens(line)
+        found = list(names(tokens(line)))
     except Unread:
-        print(line, end="") if sys.argv[1:] == ["-u"] else None
-        continue
-    for i in range(len(t) - 1):
-        if sys.argv[1:] != ["-u"] and t[i] == "pass" and (i == 0 or isinstance(t[i - 1], tuple) or t[i - 1] in AFTER) \
-                and isinstance(t[i + 1], str) and re.fullmatch("[A-Za-z0-9_.-]+", t[i + 1]):
-            print(t[i + 1])
+        found = [line.rstrip("\n")] if sys.argv[1:] == ["-u"] else []
+    else:
+        found = [] if sys.argv[1:] == ["-u"] else found
+    print(*found, sep="\n") if found else None
 ' "$@" | sort -u
 }
 
