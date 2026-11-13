@@ -2216,7 +2216,8 @@ build_worker_prompt() { # round -> prompt path (pending until the call returns a
   # Another target's bin/check is its full gate, which the supervisor's checks run once after the round; a distbench
   # worker that ran it itself spent 109 of 117 minutes on it (L01, 13 Nov). Under LOAM_HOOK, guard bin/check passes
   # without running (lib.sh), so the worker still runs every other done check.
-  target_is_loam || printf 'The supervisor runs this target'"'"'s full gate, `bin/check`, once after your round, so never run `bin/check` yourself, by hand or through the done-checks block: run that block as `LOAM_HOOK=1 bash %s/frozen/checks.sh` from the worktree root, under which `guard bin/check` passes without running, and prove your change with the focused tests for the code you touched.\n' "$RUN" >> "$pf"
+  # Only the exact form `guard bin/check` is skipped, so a block calling the gate any other way is run line by line.
+  target_is_loam || printf 'For this target, this replaces running the done-checks block exactly as the supervisor will: the supervisor runs the full gate, `bin/check`, once after your round, so never run `bin/check` yourself; run the block as `LOAM_HOOK=1 bash %s/frozen/checks.sh` from the worktree root, under which `guard bin/check` passes without running (that PASS is not gate evidence, and leaving the gate to the supervisor is not routing around a check); if the block calls `bin/check` in any other form, run its other check lines by hand instead; and prove your change with the focused tests for the code you touched.\n' "$RUN" >> "$pf"
   nav_c_append "$pf"   # arm C appends the Semble instruction; base and arm B append nothing (NAV-01)
   # Skills per role (LOOP.md), each `skills:` name resolved by skill_file: a Claude worker gets one
   # sentence naming the SKILL.md path to read, since every pstack skill refuses the Skill tool

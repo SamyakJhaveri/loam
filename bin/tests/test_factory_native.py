@@ -290,6 +290,9 @@ class NativeShellTests(unittest.TestCase):
         self.assertRegex(line, r"never run `bin/check` yourself")
         self.assertIn(f"`LOAM_HOOK=1 bash {self.h.run}/frozen/checks.sh`", line)
         self.assertIn("focused tests", line)
+        # It overrides _common.md's "exactly as the supervisor will", and covers a gate call guard does not skip.
+        self.assertIn("this replaces running the done-checks block exactly as the supervisor will", line)
+        self.assertIn("calls `bin/check` in any other form, run its other check lines by hand", line)
         self.assertNotIn("full gate", self.h.round_one(self.new, loam=True)["worker"]["stdin"])
 
 
