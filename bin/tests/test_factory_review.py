@@ -121,13 +121,13 @@ class ReviewTests(unittest.TestCase):
         for k, obj in enumerate(objs, start=1):
             (self.fake / f"claude-reply.{k}").write_text(obj if isinstance(obj, str) else json.dumps(obj))
 
-    def bash(self, body: str, daily: str = "1000", codex_review: str = "yes",
+    def bash(self, body: str, codex_review: str = "yes",
              preset: str = "", **extra: str) -> subprocess.CompletedProcess:
         script = (
             f"RUN='{self.run_dir}'; WORKTREE='{self.wt}'; GRADED_SHA='{self.sha}'; ISSUE=''; KEY=W1; IS_FILE=1\n"
             'LEDGER="$RUN/ledger.jsonl"; DAILY="$RUN/daily.jsonl"; DECISIONS="$RUN/decisions.md"; LOG="$RUN/factory.log"\n'
             'touch "$LEDGER" "$DAILY"; date -u +%s > "$RUN/launched"\n'
-            f"CODEX_REVIEW={codex_review}; CODEX_PATH='{self.bin}'; DAILY_BUDGET_USD={daily}; GRADER_BUDGET_USD=1\n"
+            f"CODEX_REVIEW={codex_review}; CODEX_PATH='{self.bin}'\n"
             f"{preset}\n"
             f". '{ROOT}/bin/factory.d/review.sh'\n"
             "ticket_name() { echo W1; }\n"
@@ -266,16 +266,6 @@ class ReviewTests(unittest.TestCase):
         self.assertEqual(self.claude_calls(), [])
         self.assertFalse((self.run_dir / "learn" / "draft.md").exists())
 
-    def test_the_daily_cap_stops_learn_calls(self) -> None:
-        self.put("round-1.judge.json", {"verdict": "pass", "backlog": ["the gate ran serially"]})
-        self.put("daily.jsonl", json.dumps({"date": "x", "cost_usd": 0}) + "\n")
-        # one call's cap (1 usd) alone passes 0.5; only an API-billed run has a daily budget (Decision 6)
-        self.learn(preset="ROUND=1", daily="0.5", ANTHROPIC_API_KEY="sk-ant-test")
-        self.assertEqual(self.read("followups.md"), "- judge-backlog [-] -:0 the gate ran serially\n")
-        self.assertEqual(self.claude_calls(), [])
-        self.assertFalse((self.fake / "codex-calls").exists())
-        self.assertFalse((self.run_dir / "learn" / "draft.md").exists())
-
     def test_the_hour_cap_stops_learn_calls(self) -> None:
         # learn runs after the exit; a run that stopped at MAX_HOURS spends no more time on learn (L01, 13 Nov 2026).
         self.put("round-1.judge.json", {"verdict": "pass", "backlog": ["the gate ran serially"]})
@@ -301,22 +291,21 @@ class ReviewTests(unittest.TestCase):
         self.assertEqual(len(self.claude_calls()), 1)
         self.assertFalse((self.run_dir / "learn" / "draft.md").exists())
 
-    def test_a_killed_learn_call_is_charged_its_ceiling(self) -> None:
-        # audit3 C1: the writer's claude exits with no envelope, as a CALL_TIMEOUT_SEC kill leaves it; it may have
-        # spent up to its --max-budget-usd, so the ledger and the daily file book GRADER_BUDGET_USD (1 here).
+    def test_a_killed_learn_call_books_a_no_result_row(self) -> None:
+        # audit3 C1: the writer's claude exits with no envelope, as a CALL_TIMEOUT_SEC kill leaves it; the ledger and
+        # the daily file book a no-result row with no cost, as none was reported.
         self.put("round-1.judge.json", {"verdict": "pass", "backlog": ["x"]})
         (self.bin / "claude").write_text("#!/bin/sh\ncat > /dev/null; exit 137\n")
         self.learn(preset="ROUND=1")
         rows = [json.loads(x) for x in self.read("ledger.jsonl").splitlines()]
-        self.assertEqual([(r["role"], r["cost_usd"], r["subtype"]) for r in rows], [("learn-writer", 1, "no-result")])
-        self.assertEqual([json.loads(x)["cost_usd"] for x in self.read("daily.jsonl").splitlines()], [1])
+        self.assertEqual([(r["role"], r["cost_usd"], r["subtype"]) for r in rows], [("learn-writer", 0, "no-result")])
+        self.assertEqual([json.loads(x)["cost_usd"] for x in self.read("daily.jsonl").splitlines()], [0])
 
-    def test_a_launch_stopped_at_the_daily_cap_leaves_the_draft_to_the_next(self) -> None:
-        # audit3 F3: launch 1 ends at the daily cap, so learn makes no call; launch 2 in the same run directory, with
-        # room in the budget, still drafts the run's one ticket. An API-billed run: only it has a daily budget.
+    def test_a_launch_stopped_at_a_cap_leaves_the_draft_to_the_next(self) -> None:
+        # audit3 F3: launch 1 ends at its MAX_HOURS cap, so learn makes no call; launch 2 in the same run directory,
+        # launched afresh, still drafts the run's one ticket.
         self.put("round-1.judge.json", {"verdict": "pass", "backlog": ["the gate ran serially"]})
-        self.put("daily.jsonl", json.dumps({"date": "x", "cost_usd": 0}) + "\n")
-        self.learn(preset="ROUND=1", daily="0.5", ANTHROPIC_API_KEY="sk-ant-test")
+        self.learn(preset='ROUND=1; MAX_HOURS=4; echo $(( $(date -u +%s) - 5 * 3600 )) > "$RUN/launched"')
         self.assertEqual(self.claude_calls(), [])
         self.replies({"repo": "distbench", "title": "t", "source_line": "x", "body": "# F00: t\n"})
         self.learn(preset="ROUND=1")

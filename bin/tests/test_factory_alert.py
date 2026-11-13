@@ -144,7 +144,7 @@ class FactoryAlertTests(unittest.TestCase):
     def test_each_exit_reads_as_plain_words_at_its_level(self) -> None:
         # Every status finish can write: no raw status token reaches Samyak, and the level sets the @channel.
         want = {"pr-opened": "info", "ticket-defect": "needs-you", "abandon": "needs-you", "stopped": "info",
-                "stopped-cap": "fail", "stopped-daily": "info", "stuck": "fail", "no-change": "fail", "stopped-environment": "fail"}
+                "stopped-cap": "fail", "stuck": "fail", "no-change": "fail", "stopped-environment": "fail"}
         for status, level in want.items():
             with self.subTest(status=status):
                 self.alert_log.unlink(missing_ok=True)
@@ -221,7 +221,7 @@ class FactoryAlertTests(unittest.TestCase):
         file_ticket = "ISSUE=; KEY=F9-widget; IS_FILE=1; "
         distbench = {"REPO": "SamyakJhaveri/distbench"}
         alerted = {"ticket-defect": "needs-you", "abandon": "needs-you", "stopped": "info", "stopped-cap": "fail",
-                   "stopped-daily": "info", "stuck": "fail", "no-change": "fail", "stopped-environment": "fail",
+                   "stuck": "fail", "no-change": "fail", "stopped-environment": "fail",
                    "stopped-other": "fail"}
         for status, level in alerted.items():
             with self.subTest(status=status):

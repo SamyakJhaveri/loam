@@ -301,7 +301,8 @@ class EndToEndTests(unittest.TestCase):
         self.assertEqual(self.calls("unknown"), [])
 
     def test_no_result_stops_on_the_environment(self) -> None:
-        # An API-billed run, the only kind whose calls carry a dollar ceiling (Decision 6).
+        # An API-billed run whose ticket still names a dollar cap: no call carries a dollar ceiling (13 Nov 2026), and
+        # the old Worker line is accepted and ignored.
         self.seed((1, ticket("no-result", "ROUND_BUDGET_USD=3")))
         t = self.tick(ANTHROPIC_API_KEY="sk-ant-test")
         self.assertEqual(t.stdout, "launched #1\n", t.stderr)
@@ -309,10 +310,10 @@ class EndToEndTests(unittest.TestCase):
         run = self.run_dir(1)
         worker = [c for c in self.calls("claude") if c["kind"] == "worker"]
         self.assertEqual(len(worker), 1)
-        self.assertEqual(worker[0]["argv"][worker[0]["argv"].index("--max-budget-usd") + 1], "3")
-        # No result event: the row charges the call's ceiling, the ticket's ROUND_BUDGET_USD, and no round follows.
+        self.assertNotIn("--max-budget-usd", worker[0]["argv"])
+        # No result event: the row books no cost, as none was reported, and no round follows.
         self.assertEqual([(r["role"], r["subtype"], r["cost_usd"]) for r in self.ledger(run)],
-                         [("worker", "no-result", 3)])
+                         [("worker", "no-result", 0)])
         self.assertTrue((run / "round-0.checks").exists())
         self.assertFalse((run / "round-1.checks").exists())
         self.assertEqual(self.store()["prs"], {})

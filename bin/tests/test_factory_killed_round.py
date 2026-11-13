@@ -1,4 +1,4 @@
-"""A worker call killed by CALL_TIMEOUT_SEC is charged its ceiling and the stop names its commits (#319).
+"""A worker call killed by CALL_TIMEOUT_SEC books a no-result row and the stop names its commits (#319).
 
 `bin/factory` is sourced (FACTORY_SOURCED=1) and the real worker_round runs with a fake `claude` or `codex` on PATH
 that commits once in the worktree and then exits with no result event, as a call that `timeout` killed does. The
@@ -67,7 +67,7 @@ class KilledRoundTests(unittest.TestCase):
             (self.bin / name).chmod(0o755)
 
     def worker_round(self, kind: str, subject: str, stubs: str = "") -> subprocess.CompletedProcess[str]:
-        """Round 1 of a `kind` worker whose ticket sets ROUND_BUDGET_USD=7; the fake commits `subject` if non-empty."""
+        """Round 1 of a `kind` worker whose old ticket names ROUND_BUDGET_USD=7, which is ignored; the fake commits `subject` if non-empty."""
         script = (
             f"RUN='{self.run_dir}'; WORKTREE='{self.wt}'; LOG=\"$RUN/factory.log\"; KEY=7; IS_FILE=1\n"
             'LEDGER="$RUN/ledger.jsonl"; DAILY="$RUN/daily.jsonl"; DECISIONS="$RUN/decisions.md"\n'
@@ -97,35 +97,26 @@ class KilledRoundTests(unittest.TestCase):
         self.assertEqual((self.run_dir / "status").read_text().strip(), "stopped-environment")
         self.assertIn("no result event", proc.stderr)
 
-    def test_killed_claude_round_is_charged_its_ceiling_and_the_stop_names_its_commit(self) -> None:
+    def test_killed_claude_round_books_a_no_result_row_and_the_stop_names_its_commit(self) -> None:
         proc = self.worker_round("claude", SUBJECT)
         self.assertEqual(git("log", "-1", "--format=%s", cwd=self.wt), SUBJECT)  # the fake did commit
         self.assert_stopped(proc)
         rows = self.ledger()
-        self.assertEqual([(r["round"], r["role"]) for r in rows], [(1, "worker")])
-        self.assertEqual(rows[0]["cost_usd"], 7, rows[0])  # the ticket's ROUND_BUDGET_USD, not the default 15
-        self.assertEqual([r["cost_usd"] for r in self.daily()], [7])
+        # No cost was reported, so none is booked: no dollar ceiling exists to charge (13 Nov 2026).
+        self.assertEqual([(r["round"], r["role"], r["subtype"], r["cost_usd"]) for r in rows], [(1, "worker", "no-result", 0)])
+        self.assertEqual([r["cost_usd"] for r in self.daily()], [0])
         self.assertIn(SUBJECT, proc.stderr)
         self.assertNotIn("failed before doing work", proc.stderr)
-        # The caps read the same number.
-        spent = subprocess.run(["bash", "-c", f". bin/factory\nLEDGER='{self.run_dir}/ledger.jsonl'; ticket_spent"],
-                               cwd=ROOT, env={**os.environ, "FACTORY_SOURCED": "1"},
-                               capture_output=True, text=True, check=True).stdout.strip()
-        self.assertEqual(spent, "7")
 
-    def test_killed_grader_call_is_charged_its_ceiling_once(self) -> None:
-        # audit3 C1: a judge or reviewer call with no result (killed, or crashed) may have spent up to its
-        # --max-budget-usd ceiling, so call_json books GRADER_BUDGET_USD, as the worker does. audit4 (Fable 4): once
-        # per call_json, not per attempt: three dead attempts at 1.5 booked 4.5 of a 6 USD ticket cap. The later
-        # no-result attempts still get a row, at 0.
+    def test_each_killed_grader_attempt_books_a_no_result_row(self) -> None:
+        # audit3 C1: a judge or reviewer call with no result (killed, or crashed) still gets a ledger row per attempt.
         (self.run_dir / "judge.schema.json").write_text("{}")
         (self.run_dir / "judge.prompt.md").write_text("grade it\n")
-        proc = self.worker_round("claude", "", "BODY=$'## Worker\\n\\nGRADER_BUDGET_USD=2\\n'; apply_caps\n"
-                                 'call_json 1 judge judge "$RUN/judge.prompt.md" "$RUN/judge.schema.json"; exit 0')
+        proc = self.worker_round("claude", "", 'call_json 1 judge judge "$RUN/judge.prompt.md" "$RUN/judge.schema.json"; exit 0')
         self.assertEqual(proc.returncode, 0, proc.stderr)
         self.assertEqual([(r["role"], r["cost_usd"], r["subtype"]) for r in self.ledger()],
-                         [("judge", 2, "no-result"), ("judge", 0, "no-result"), ("judge", 0, "no-result")])
-        self.assertEqual([r["cost_usd"] for r in self.daily()], [2, 0, 0])
+                         [("judge", 0, "no-result"), ("judge", 0, "no-result"), ("judge", 0, "no-result")])
+        self.assertEqual([r["cost_usd"] for r in self.daily()], [0, 0, 0])
 
     def test_each_round_starts_with_its_header_in_decisions_md_once(self) -> None:
         # audit3 F2: parity P3 and the pstack gate give decisions.md lines after `Round N` to round N, so the

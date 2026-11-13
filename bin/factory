@@ -95,18 +95,12 @@ use_target "$ROOT" || { TARGET="$ROOT"; MAIN_CHECKOUT=$(dirname "$ROOT"); TARGET
 CANON=("Goal and why" "Do not touch" "Out of scope" "Approach" "Done checks" \
        "Merge checklist" "Rows measured" "Worker" "Decisions" "Comments")
 REQUIRED=("Goal and why" "Do not touch" "Out of scope" "Done checks" "Worker" "Decisions")
-CAPS=" MAX_ROUNDS ROUND_BUDGET_USD GRADER_BUDGET_USD TICKET_BUDGET_USD DAILY_BUDGET_USD \
-MAX_HOURS MAX_TURNS CALL_TIMEOUT_SEC NET_TIMEOUT_SEC MAX_PARALLEL "
-# A cap is a positive whole number, or for a *_USD cap a positive decimal in JSON's form, since jq --argjson reads
-# the budgets. Nothing else: GNU timeout reads 0 as no limit while net_watch kills at once, and text fails each
-# path its own way (#427). cap_value_ok <name> <value> only answers; its callers report, with cap_form's words.
-cap_value_ok() {
-  case "$1" in
-    *_USD) [[ "$2" =~ ^(0|[1-9][0-9]*)(\.[0-9]+)?$ && "$2" =~ [1-9] ]] ;;
-    *)     [[ "$2" =~ ^[1-9][0-9]*$ ]] ;;
-  esac
-}
-cap_form() { case "$1" in *_USD) echo "a positive decimal such as 2.5" ;; *) echo "a positive whole number" ;; esac; }
+CAP_NAMES="MAX_ROUNDS MAX_HOURS MAX_TURNS CALL_TIMEOUT_SEC NET_TIMEOUT_SEC MAX_PARALLEL"
+# No cap is in dollars (Samyak, 13 Nov 2026: "there should be no spending cap at all"). A Worker line naming a
+# *_BUDGET_USD, which tickets written before then carry, is read as nothing: lint accepts it, apply_caps skips it.
+# A cap is a positive whole number. Nothing else: GNU timeout reads 0 as no limit while net_watch kills at once,
+# and text fails each path its own way (#427). cap_value_ok <name> <value> only answers; its callers report.
+cap_value_ok() { [[ "$2" =~ ^[1-9][0-9]*$ ]]; }
 
 # `claude --output-format json` prints one object, or an array whose last result element is it.
 RESULT_OBJ='if type == "array" then ((last(.[] | select(.type == "result")) // .[-1]) // {}) else . end'
@@ -671,12 +665,12 @@ check_worker() {
   ;; esac
   while IFS= read -r line; do
     [ -n "${line//[[:space:]]/}" ] || continue
-    case "$line" in worker:*|codex-review:*|effort:*|goal:*|skills:*|size:*|contract:*) continue ;; esac
+    case "$line" in worker:*|codex-review:*|effort:*|goal:*|skills:*|size:*|contract:*|*_BUDGET_USD=*) continue ;; esac
     name=${line%%=*}
-    if [ "$name" = "$line" ] || [ "${CAPS/ $name /}" = "$CAPS" ]; then
+    if [ "$name" = "$line" ] || [[ " $CAP_NAMES " != *" $name "* ]]; then
       err "unrecognized Worker line: $line"
     elif ! cap_value_ok "$name" "${line#*=}"; then
-      err "Worker cap $line: $name must be $(cap_form "$name")"
+      err "Worker cap $line: $name must be a positive whole number"
     fi
   done <<<"$w"
 }
@@ -992,7 +986,7 @@ grader_settings() { # role_settings out [model...]
 }
 
 run_eval_cases() { # grader work
-  local grader="$1" tree="$2/tree" rubric="$2/rubric" budget="${EVAL_BUDGET_USD:-10}" gf schema settings dir name out res exp got erows grows
+  local grader="$1" tree="$2/tree" rubric="$2/rubric" gf schema settings dir name out res exp got erows grows
   local spent=0 cases=0 mism=0 clean=0 ok attempt eline nonce shown raw a copied
   gf=$(grader_file "$grader") || return 2
   # The checkout can move under a replay (`next` fast-forwards it), so the rubric and the sha256 below come from
@@ -1020,10 +1014,6 @@ run_eval_cases() { # grader work
       [ -z "${EVAL_OUT:-}" ] || { mkdir -p "$EVAL_OUT"; jq -nc --arg r "TREE $(cat "$2/tree.err")" \
         '{type: "result", is_error: true, total_cost_usd: 0, result: $r}' > "$EVAL_OUT/$grader-$(basename "$dir").json"; }
       continue; }
-    if [ -n "$USD_CAPS" ] && awk -v s="$spent" -v b="$budget" 'BEGIN {exit !(s >= b)}'; then
-      echo "eval $grader: EVAL_BUDGET_USD $budget reached after \$$spent and $cases cases" >&2
-      return 2
-    fi
     name=$(basename "$dir")
     if ! jq -e '(has("absent") | not) or (.absent | type == "array" and all(type == "string"))' "$dir/expected.json" > /dev/null 2>&1; then
       echo "eval $grader/$name: expected.json's absent is not an array of strings" >&2
@@ -1050,8 +1040,7 @@ run_eval_cases() { # grader work
       # The same flags as the production grader call (LOOP.md, Grader calls), so the replay grades the
       # way the loop does: --json-schema routes the reply through the schema, --strict-mcp-config and
       # --disable-slash-commands drop the prefix the grader never uses. Two things differ: the call runs
-      # in the eval_tree export, not a ticket worktree, and each call gets the remaining headroom, so
-      # EVAL_BUDGET_USD caps the sum over cases (only with USD_CAPS: a subscription eval has no dollar cap). The
+      # in the eval_tree export, not a ticket worktree, and no call carries a dollar ceiling. The
       # settings copy, the private config dir and the token route are call_json's: the subshell exports the config
       # dir, and bin/claude-account exec hands this claude alone the active account's token.
       out=$({ cat "$rubric"; sed "s/@NONCE@/$shown/g" "$dir/prompt.md"; } | ( cd "$tree" \
@@ -1059,12 +1048,11 @@ run_eval_cases() { # grader work
         && "$ROOT/bin/claude-account" exec claude -p --model "$EVAL_MODEL" --effort "${EVAL_EFFORT:-$(grader_effort "$grader")}" \
         --tools Read,Grep,Glob --strict-mcp-config --disable-slash-commands --no-session-persistence \
         --json-schema "$schema" \
-        ${USD_CAPS:+--max-budget-usd "$(awk -v b="$budget" -v s="$spent" 'BEGIN {printf "%.4f", b - s}')"} \
         --setting-sources '' --settings "$settings" --plugin-dir "$PLUGIN_SRC" --output-format json 2>/dev/null ))
       spent=$(awk -v a="$spent" -v b="$(jq -r "$RESULT_OBJ | .total_cost_usd // 0" <<<"$out" 2>/dev/null)" \
         'BEGIN {printf "%.4f", a + (b + 0)}')
       # When a run's measure step drives this eval (FACTORY_LEDGER is set), book each reply's cost to
-      # that run's ledger and daily ledger, so the ticket and daily caps see it (#76). A stand-alone
+      # that run's ledger and daily ledger, so the run's recorded spend includes it (#76). A stand-alone
       # eval has no FACTORY_LEDGER and books nothing. run_eval is a child process with its own globals,
       # so it cannot call record; it writes the two line shapes record writes, itself.
       if [ -n "${FACTORY_LEDGER:-}" ]; then
@@ -1260,28 +1248,13 @@ lint_body() {
 # The supervisor: one ticket to a pull request, in the steps docs/factory/LOOP.md sets out.
 # Run state lives under RUNS_ROOT, outside every checkout; use_target sets it from FACTORY_RUNS_ROOT.
 
-CAP_NAMES="MAX_ROUNDS ROUND_BUDGET_USD GRADER_BUDGET_USD TICKET_BUDGET_USD DAILY_BUDGET_USD \
-MAX_HOURS MAX_TURNS CALL_TIMEOUT_SEC NET_TIMEOUT_SEC MAX_PARALLEL"
-# Defaults, then the ticket's Worker section, then FACTORY_<NAME> in the environment. The bare names
+# Each cap in CAP_NAMES: the default here, then the ticket's Worker section, then FACTORY_<NAME> in the environment. The bare names
 # are never read: a Claude Code session already exports WORKER_MODEL and CALL_TIMEOUT_SEC of its own.
-MAX_ROUNDS=3; ROUND_BUDGET_USD=15; GRADER_BUDGET_USD=5; TICKET_BUDGET_USD=1000000
-DAILY_BUDGET_USD=1000000; MAX_HOURS=1000; MAX_TURNS=200; CALL_TIMEOUT_SEC=5400; MAX_PARALLEL=1
+MAX_ROUNDS=3; MAX_HOURS=1000; MAX_TURNS=200; CALL_TIMEOUT_SEC=5400; MAX_PARALLEL=1
 JUDGE=on   # cmd_run sets it from FACTORY_JUDGE (on or off)
-# Decision 6 (Samyak, 2026-11-12): subscription building work has no dollar cap. USD_CAPS is 1 when the run's calls bill
-# an API key, which Claude Code prefers over CLAUDE_CODE_OAUTH_TOKEN and a stored login: ANTHROPIC_API_KEY or
-# ANTHROPIC_AUTH_TOKEN in the launch environment, or either (or an apiKeyHelper) in the user settings, which a native
-# worker loads and the frozen worker and grader settings copy. Then every *_USD cap binds as before. Empty, on a
-# subscription, no TICKET, DAILY, ROUND, GRADER or EVAL budget stops, caps or cuts a call or a run; MAX_ROUNDS,
-# MAX_HOURS, MAX_TURNS and CALL_TIMEOUT_SEC still bound it, and the ledger still records each call's reported cost.
-# The dispatcher sets it after the Linux gate, which must call nothing first (#577); a sourced test sets it at load.
-USD_CAPS=""
-set_usd_caps() {
-  USD_CAPS=""
-  { [ -n "${ANTHROPIC_API_KEY:-}${ANTHROPIC_AUTH_TOKEN:-}" ] \
-    || jq -e '[.env.ANTHROPIC_API_KEY?, .env.ANTHROPIC_AUTH_TOKEN?, .apiKeyHelper?] | any(type == "string" and . != "")' \
-         "$(user_settings)" > /dev/null 2>&1; } && USD_CAPS=1
-  return 0
-}
+# No dollar figure stops, caps or cuts a call or a run, on any billing route (Samyak, 13 Nov 2026, widening Decision 6
+# of 12 Nov to API-key runs): MAX_ROUNDS, MAX_HOURS, MAX_TURNS and CALL_TIMEOUT_SEC bound it, and the ledger records
+# each call's reported cost.
 # Seeded from the environment here too, since lint, next and status call gh without apply_caps; env_caps_ok
 # checks the value before any subcommand runs.
 NET_TIMEOUT_SEC="${FACTORY_NET_TIMEOUT_SEC:-120}"
@@ -1498,8 +1471,7 @@ exit_words() { # status -> "<level> <words>"
     ticket-defect) echo "needs-you cannot run as the ticket is written; fix the ticket" ;;
     abandon) echo "needs-you gave up: the worker says the ticket cannot be done as written" ;;
     stopped) echo "info stopped, as FACTORY_STOP asked" ;;
-    stopped-cap) echo "fail stopped at a limit on rounds, money or hours" ;;
-    stopped-daily) echo "info stopped at today's daily budget; the timer relaunches it tomorrow" ;;
+    stopped-cap) echo "fail stopped at a limit on rounds or hours" ;;
     stuck) echo "fail stopped: the same checks failed twice in a row" ;;
     no-change) echo "fail stopped: a round changed nothing" ;;
     stopped-environment) echo "fail stopped on a machine or tool problem, not on the ticket" ;;
@@ -1611,7 +1583,7 @@ apply_caps() { # the ticket's Worker section, then any FACTORY_<NAME> override
     case "$line" in *=*) name=${line%%=*} ;; *) continue ;; esac
     case " $CAP_NAMES " in *" $name "*) ;; *) continue ;; esac
     cap_value_ok "$name" "${line#*=}" \
-      || { echo "factory: Worker cap $line: $name must be $(cap_form "$name")" >&2; exit 2; }
+      || { echo "factory: Worker cap $line: $name must be a positive whole number" >&2; exit 2; }
     eval "$name=\${line#*=}"
   done <<< "$(section Worker)"
   env_caps_ok || exit 2
@@ -1628,7 +1600,7 @@ env_caps_ok() {
   for name in $CAP_NAMES; do
     v="FACTORY_$name"
     [ -z "${!v:-}" ] || cap_value_ok "$name" "${!v}" \
-      || { echo "factory: $v=${!v}: $name must be $(cap_form "$name")" >&2; return 1; }
+      || { echo "factory: $v=${!v}: $name must be a positive whole number" >&2; return 1; }
   done
 }
 
@@ -1898,7 +1870,6 @@ exec_frozen() {
 # ---- ledger and caps --------------------------------------------------------
 
 ticket_spent() { jq -s '[.[].cost_usd // 0] | add // 0' "$LEDGER"; }
-daily_spent()  { jq -s --arg d "$(today)" '[.[] | select(.date == $d) | .cost_usd // 0] | add // 0' "$DAILY"; }
 
 # Advisor usd for a worker round's result.json, or null with no transcript. Splits each advisor model's
 # modelUsage cost by its transcript advisor_message tokens (weights 1/5/0.05/2): exact for a distinct model, an estimate when shared.
@@ -1931,19 +1902,18 @@ off_models() {
 }
 
 # The file record books for a claude -p call's raw output: the output itself when its result object gives
-# total_cost_usd, else (killed by CALL_TIMEOUT_SEC, or crashed) a no-result row charged the call's --max-budget-usd
-# ceiling, which it may have spent, as worker_round charges a worker (#319).
-charged() { # raw.json ceiling_usd -> path on stdout
+# total_cost_usd, else (killed by CALL_TIMEOUT_SEC, or crashed) a no-result row with no cost to read, as
+# worker_round books a worker (#319).
+charged() { # raw.json -> path on stdout
   if jq -e "$RESULT_OBJ | .total_cost_usd | numbers" "$1" > /dev/null 2>&1; then printf '%s\n' "$1"; return; fi
-  jq -nc --argjson usd "$2" '{subtype:"no-result", total_cost_usd:$usd}' > "${1%.json}.charged.json"
+  jq -nc '{subtype:"no-result"}' > "${1%.json}.charged.json"
   printf '%s\n' "${1%.json}.charged.json"
 }
 
 record() { # round role model result.json [advisor_calls] [advisor_usd] [workflow_agents] [workflow_usd] [codex]
   # workflow_agents and workflow_usd come from workflow_ledger (0 0 on every round but a claude worker's
-  # round 1, and on every Codex round). codex is 1 for a Codex call: cost_usd is null (the dollar caps do
-  # not bound Codex, #41) and `usage` carries its verbatim token counters; ticket_spent, daily_spent, and
-  # cmd_status all read cost_usd // 0, so null is safe.
+  # round 1, and on every Codex round). codex is 1 for a Codex call: cost_usd is null (#41) and `usage`
+  # carries its verbatim token counters; ticket_spent and cmd_status read cost_usd // 0, so null is safe.
   # served_models is the sorted modelUsage keys of the result, the models that answered (not the one asked
   # for); [] when the result has none, as a Codex round's does. cmd_status warns on one it does not expect.
   local line acalls="${5:-0}" ausd="${6:-0}" wagents="${7:-0}" wusd="${8:-0}" codex="${9:-0}"
@@ -1973,22 +1943,11 @@ nav_arm:\$nav, ts:\$ts}" "$4" 2> /dev/null) \
     "$off. The run goes on unless you stop it"
 }
 
-# The daily cap says nothing about the ticket, so it has its own status, which next relaunches on a later UTC day.
-# The daily cap is "the next call could exceed it"; the dollar caps need USD_CAPS. learn_run (review.sh) reads the
-# same caps after the exit, and stops itself instead of the run.
-cap_hit() { # [next call's usd ceiling] -> 0 and "<status> <why>" on stdout when a cap stops the next step
-  local spent daily hours
-  if [ -n "$USD_CAPS" ]; then
-    spent=$(ticket_spent)
-    jq -en --argjson a "$spent" --argjson b "$TICKET_BUDGET_USD" '$a >= $b' > /dev/null \
-      && { echo "stopped-cap ticket budget: spent $spent of $TICKET_BUDGET_USD usd"; return 0; }
-  fi
+# learn_run (review.sh) reads the same cap after the exit, and stops itself instead of the run.
+cap_hit() { # -> 0 and "<status> <why>" on stdout when a cap stops the next step
+  local hours
   hours=$(( ( $(date -u +%s) - $(cat "$RUN/launched") ) / 3600 ))
   [ "$hours" -lt "$MAX_HOURS" ] || { echo "stopped-cap wall clock: ${hours}h of ${MAX_HOURS}h since this launch"; return 0; }
-  [ -n "$USD_CAPS" ] || return 1
-  daily=$(daily_spent)
-  jq -en --argjson a "$daily" --argjson b "${1:-$ROUND_BUDGET_USD}" --argjson c "$DAILY_BUDGET_USD" '($a + $b) > $c' > /dev/null \
-    && { echo "stopped-daily daily budget: $daily spent today, the next call could exceed $DAILY_BUDGET_USD usd"; return 0; }
   return 1
 }
 
@@ -2248,11 +2207,10 @@ assert_target_ready() {
   return 1
 }
 
-# The result subtypes that mean the worker stopped on a cap this supervisor gave its call: --max-budget-usd
-# (ROUND_BUDGET_USD) and --max-turns (MAX_TURNS). The CLI reports them with is_error true, but the round
-# ran and may have committed, so it is a finished round and Step 6 decides (LOOP.md, Exits). Every other
-# is_error subtype is the environment; the list names caps, never failure names.
-CAPPED_SUBTYPES=" error_max_budget_usd error_max_turns "
+# The result subtypes that mean the worker stopped on a cap this supervisor gave its call: --max-turns (MAX_TURNS).
+# The CLI reports it with is_error true, but the round ran and may have committed, so it is a finished round and
+# Step 6 decides (LOOP.md, Exits). Every other is_error subtype is the environment; the list names caps, never failure names.
+CAPPED_SUBTYPES=" error_max_turns "
 
 # result.json -> completed | environment | no-result. A missing file, or no result event (killed by
 # CALL_TIMEOUT_SEC, or crashed), is no-result; is_error true outside CAPPED_SUBTYPES is environment.
@@ -2269,9 +2227,9 @@ classify_result() { # result.json
 
 # no-result and environment stop the run; a capped round returns so the caller keeps its artifacts. A killed
 # call may have committed (#319): with the round's start sha the stop message lists the commits since it, or
-# says "no commits", and names the charge the result object carries.
+# says "no commits".
 assert_call_ok() { # role result.json [round-start-sha]
-  local e c l
+  local e l
   case "$(classify_result "$2")" in
     completed)
       e=$(jq -r "$RESULT_OBJ | if .is_error == true then \"\\(.subtype) after \\(.num_turns // 0) turns\" else empty end" "$2" 2> /dev/null) || e=""
@@ -2279,8 +2237,6 @@ assert_call_ok() { # role result.json [round-start-sha]
       return 0 ;;
     no-result)
       e="no result event (killed by CALL_TIMEOUT_SEC=$CALL_TIMEOUT_SEC, or crashed)"
-      c=$(jq -r "$RESULT_OBJ | .total_cost_usd // empty" "$2" 2> /dev/null) || c=""
-      [ -z "$c" ] || e="$e; charged $c usd, the call's ROUND_BUDGET_USD ceiling"
       if [ -n "${3:-}" ]; then
         l=$(git -C "$WORKTREE" log --oneline "$3..HEAD" 2> /dev/null | paste -sd ';' - | sed 's/;/; /g')
         e="$e; commits since the round began: ${l:-no commits}"
@@ -2574,7 +2530,7 @@ worker_cmd() {
     ANTHROPIC_DEFAULT_SONNET_MODEL="$WORKER_MODEL" ANTHROPIC_DEFAULT_HAIKU_MODEL="$WORKER_MODEL" claude -p
     --model "$WORKER_MODEL" --effort "$WORKER_EFFORT" ${WORKER_ADVISOR:+--advisor "$WORKER_ADVISOR"} "${shell[@]}" --max-turns "$MAX_TURNS"
     --append-system-prompt "$(cat "$RUN/frozen/unattended.md")"
-    ${USD_CAPS:+--max-budget-usd "$ROUND_BUDGET_USD"} --output-format stream-json --verbose --include-hook-events)
+    --output-format stream-json --verbose --include-hook-events)
 }
 
 # A native worker loads the user tier, whose env beats the launch env, so a CLAUDE_CODE_OAUTH_TOKEN key there would
@@ -2826,7 +2782,7 @@ worker_round() { # round; leaves round-N.* only once the call produced a result
     return 0
   fi
   while :; do
-    log "worker call: round $round model=$WORKER_MODEL effort=$WORKER_EFFORT advisor=${WORKER_ADVISOR:-off} budget=$([ -n "$USD_CAPS" ] && echo "$ROUND_BUDGET_USD usd" || echo none), prompt=$(wc -c < "$pf") bytes"
+    log "worker call: round $round model=$WORKER_MODEL effort=$WORKER_EFFORT advisor=${WORKER_ADVISOR:-off}, prompt=$(wc -c < "$pf") bytes"
     rm -f "$out" "${DECISIONS%/*}/mechanism.md"   # also on a retried call, as for the Codex call above (#330)
     # bin/claude-account exec reads the active account's token file after any switch and puts it in this call's
     # environment only, never on a command line or in a settings file; the supervisor's own environment is untouched,
@@ -2837,11 +2793,9 @@ worker_round() { # round; leaves round-N.* only once the call produced a result
     call_start "$WORKTREE" ${t[@]+"${t[@]}"} "${WORKER_CMD[@]}" < "$pf" > "$out" 2>> "$LOG"
     call_end worker || log "worker exited non-zero (the result event decides)"
     jq -c 'select(.type == "result")' "$out" 2> /dev/null | tail -1 > "$res"
-    # No result event (killed by CALL_TIMEOUT_SEC, or crashed) leaves no cost to read, yet the call may have
-    # spent up to its --max-budget-usd ceiling. Charge that ceiling here, so record, ticket_spent, daily_spent
-    # and cmd_status book one number and the ticket and daily caps stay bounds (#319). The ledger row keeps
-    # subtype no-result, which tells a charge from a measured cost.
-    [ -s "$res" ] || jq -nc --argjson usd "$ROUND_BUDGET_USD" '{subtype:"no-result", total_cost_usd:$usd}' > "$res"
+    # No result event (killed by CALL_TIMEOUT_SEC, or crashed) leaves no cost to read; the ledger row keeps
+    # subtype no-result, which tells it from a measured cost (#319).
+    [ -s "$res" ] || jq -nc '{subtype:"no-result"}' > "$res"
     [ -z "$CALL_STUCK" ] || break   # recorded below, then the run stops
     # An `OAuth session expired` on the first call of a launch is a stale login, not a round: wait
     # once and relaunch the call. A second failure, or the same on a later round, stops as today.
@@ -3021,7 +2975,6 @@ grader_reply() { # raw claude -p envelope -> the grader's reply text, fences str
 
 call_json() { # round stem role prompt_file schema_file
   local round="$1" stem="$2" role="$3" pf="$4" schema="$5" final="$RUN/round-$1.$2.json" out res attempt=0 effort model pd
-  local ceiling="$GRADER_BUDGET_USD" booked
   effort=$(grader_effort "$role"); model=$(grader_model "$role"); pd=$(run_plugin_dir)
   # The run's private config dir holds no login, memory, rules, skills, plugins, agents or commands. The read fence
   # allows those paths in the config dir, so it must not be the operator's (LOOP.md, Grader calls).
@@ -3044,15 +2997,11 @@ call_json() { # round stem role prompt_file schema_file
         claude -p --model "$model" --effort "$effort" \
         --tools Read,Grep,Glob --strict-mcp-config --disable-slash-commands --no-session-persistence \
         --json-schema "$(cat "$schema")" \
-        ${USD_CAPS:+--max-budget-usd "$GRADER_BUDGET_USD"} --setting-sources '' --settings "$RUN/frozen/role-settings.json" \
+        --setting-sources '' --settings "$RUN/frozen/role-settings.json" \
         ${pd:+--plugin-dir "$pd"} --output-format json < "$pf" > "$out" 2>> "$LOG"
     call_end "$role" || log "$role exited non-zero"
     if [ -z "$CALL_STUCK" ] && limit_wait "$out"; then attempt=$((attempt - 1)); continue; fi
-    # The ceiling is booked once per call_json: a later no-result attempt gets a row at 0, so three attempts of a CLI
-    # that dies at startup do not book three ceilings against the ticket cap.
-    booked=$(charged "$out" "$ceiling")
-    record "$round" "$role" "$model" "$booked"
-    [ "$booked" = "$out" ] || ceiling=0
+    record "$round" "$role" "$model" "$(charged "$out")"
     [ -z "$CALL_STUCK" ] || finish stopped-environment "$CALL_STUCK"
     res=$(grader_reply "$out") || res=""
     if printf '%s' "$res" | jq -e '.verdict' > /dev/null 2>&1; then
@@ -3441,7 +3390,7 @@ open_pr() { # [draft]: opened at the grader-round cap
     fi
     if [ "$WORKER_KIND" = codex ]; then
       printf '\n## Codex worker notes\n\n'
-      printf -- '- Cost: the Codex worker rounds carry `cost_usd: null` in the ledger; the dollar caps (ROUND_BUDGET_USD, TICKET_BUDGET_USD, DAILY_BUDGET_USD) do not bound a Codex worker. Only token counts are recorded.\n'
+      printf -- '- Cost: the Codex worker rounds carry `cost_usd: null` in the ledger. Only token counts are recorded.\n'
       printf -- '- `.env` is readable by the Codex worker (D8, #41). No deny is configured; recorded risk.\n'
     fi
     printf '\n## Backlog\n\n'; jq -r '.backlog[]? | "- " + .' "$RUN/round-$ROUND.judge.json"
@@ -3558,7 +3507,7 @@ abandon_check() { # an ABANDON line in decisions.md ends the run; a worker somet
 main_loop() {
   local prev_sig="" fails checks sig_now
   notify info "$(ticket_name) started" \
-    "Branch $BRANCH in $WORKTREE; it stops at $MAX_ROUNDS rounds${USD_CAPS:+, $TICKET_BUDGET_USD USD} or $MAX_HOURS hours"
+    "Branch $BRANCH in $WORKTREE; it stops at $MAX_ROUNDS rounds or $MAX_HOURS hours"
   while :; do
     ROUND=$((ROUND + 1))
     [ "$ROUND" -le "$MAX_ROUNDS" ] || finish stopped-cap "round cap: $MAX_ROUNDS rounds"
@@ -3620,7 +3569,7 @@ cmd_run() {
   sha8=$(printf '%s' "$BODY" | sha256_of | cut -c1-8)
   RUN="$RUNS_ROOT/$KEY/$sha8"
   mkdir -p "$RUN/frozen" "$RUN/worker" "$RUN/tasks" || { echo "factory run: cannot create $RUN" >&2; exit 4; }
-  # The daily ledger stays in RUNS_BASE for every target, so DAILY_BUDGET_USD bounds the runner's whole day.
+  # The daily ledger stays in RUNS_BASE for every target, so it records the runner's whole day.
   LOG="$RUN/factory.log"; LEDGER="$RUN/ledger.jsonl"; DAILY="$RUNS_BASE/ledger-daily.jsonl"
   DECISIONS="$RUN/worker/decisions.md"
   touch "$LOG" "$LEDGER" "$DAILY" "$DECISIONS"
@@ -3705,7 +3654,6 @@ cmd_run() {
       && finish stopped-environment "the advisor would be silently off: DISABLE_TELEMETRY or CLAUDE_CODE_DISABLE_ADVISOR_TOOL is set"
     log "advisor: $WORKER_ADVISOR (the first worker call proves it attaches)"
   fi
-  [ -n "$USD_CAPS" ] || log "dollar caps: off, no API key in the environment or $(user_settings) (Decision 6, subscription)"
   # A relaunch with an edited body is a new run over a ticket worktree the last run left ahead of
   # base, where the checks may already pass; round 0 runs at base in its own detached worktree, so
   # base is what it proves. A resume (round-0.checks present, written only by a clean round 0) leaves
@@ -3909,10 +3857,6 @@ park_status() { # <issue> <body> -> the status of the run for this body, or none
   cat "$(run_dir_of "$1" "$2")/status" 2> /dev/null || echo none
 }
 
-stopped_daily_today() { # <run dir> -> 0 when its run stopped at the daily budget on today's UTC date
-  [ "$(cat "$1/status" 2> /dev/null)" = stopped-daily ] && [ "$(date -u -r "$1/status" +%Y-%m-%d)" = "$(today)" ]
-}
-
 # stopped-environment pages at once, so a lasting machine fault relaunched every ten-minute tick would page every tick.
 ENV_BACKOFF_SEC=3600
 stopped_environment_recent() { # <run dir> -> 0 when its run stopped on the environment under ENV_BACKOFF_SEC ago
@@ -3948,11 +3892,11 @@ idle_note() { # <ready issues read>
   fi
 }
 
-# A worker call with no result event is charged ROUND_BUDGET_USD and stops stopped-environment before its round-N.checks
+# A worker call with no result event stops stopped-environment before its round-N.checks
 # is written, and a relaunch rebuilds ROUND from round-*.checks, so the same round reruns and MAX_ROUNDS never trips (#547).
 # So each launch, with its first status write and in the live checkout (a run frozen before this counts too), writes
 # env-stops, `<last round> <stops> <launches>` (record_env_stops): the stopped-environment stops since the highest
-# round-N.checks last moved. A new round or a pr-opened clears them; any other status, such as a stopped-daily or stopped
+# round-N.checks last moved. A new round or a pr-opened clears them; any other status, such as a stopped
 # that made no worker call, keeps them, so it does not reset the count. next parks the issue at ENV_PARK_STOPS.
 # The launch number makes each line unique, so env_park_alert can name the stop it alerted for.
 ENV_PARK_STOPS=3
@@ -4037,18 +3981,10 @@ ran_before() { # <key>
   return 1
 }
 
-# A ticket's Worker section can lower its own caps, so its daily stop alone does not show the shared ledger is spent.
-daily_spent_at_runner_caps() { # -> 0 when the shared daily ledger has no room for one round at the runner's own caps
-  [ -n "$USD_CAPS" ] || return 1   # a subscription runner has no daily budget (Decision 6)
-  ( BODY=""; apply_caps; DAILY="$RUNS_BASE/ledger-daily.jsonl"; [ -f "$DAILY" ] || exit 1
-    jq -en --argjson a "$(daily_spent)" --argjson b "$ROUND_BUDGET_USD" --argjson c "$DAILY_BUDGET_USD" '($a + $b) > $c' > /dev/null )
-}
-
 # The F9 frontier timer's one step: launch the next unblocked ready-for-agent ticket, or say why not.
 # --dry-run reports without launching or pulling, so a check can run it from inside a worktree.
 # --frontier is --dry-run that ignores FACTORY_STOP and the slot count and prints, one #N per line in launch order,
-# every candidate it would pick rather than the first; it exits 0 after the loop, before the daily-budget wait,
-# with no line when none would launch.
+# every candidate it would pick rather than the first; it exits 0 after the loop, with no line when none would launch.
 # --install writes the ten-minute runner timer from bin/factory.d/next.crontab.
 # A real tick (no flag) that returns 0 beats the host's healthchecks check, its only beat, which also resumes a paused
 # check; a tick that refuses sends nothing, so refusals that outlast the check's period and grace turn it red, and so
@@ -4190,7 +4126,7 @@ next_tick() { # [--dry-run|--install|--frontier]
   fi
 
   # 4. The frontier: open, ready-for-agent, unassigned issues with no open native blocker, lowest
-  #    number first, plus the runner's own such issues whose current body has no run yet or whose run ended stopped-daily,
+  #    number first, plus the runner's own such issues whose current body has no run yet or whose run ended
   #    stopped-environment or stopped. Every other open ready-for-agent issue is read too, so the loop prints one stderr
   #    line naming why it does not launch: each line carries the body (`-` for an empty one, so it cannot shift the
   #    fields), the open native blocker count (`?` when the listing omits it, so the issue waits rather than launching
@@ -4215,8 +4151,7 @@ next_tick() { # [--dry-run|--install|--frontier]
   # the runner's own ready-for-agent issues in this repository (/issues is the authenticated user's, so no login
   # lookup, and every page, since it spans all the runner's repositories and gh applies --jq per page); the loop takes
   # one of those only at none with a run of an earlier body (an edited body is a new ticket; with no run at all the
-  # owner assigned it by hand to hold it), stopped-daily,
-  # stopped-environment or stopped, since any other is in flight, awaits merge, or parks, each with its line.
+  # owner assigned it by hand to hold it), stopped-environment or stopped, since any other is in flight, awaits merge, or parks, each with its line.
   local mine lrepo
   lrepo=$(printf '%s' "$repo" | tr '[:upper:]' '[:lower:]')
   if ! mine=$(net gh api "/issues?filter=assigned&labels=ready-for-agent&state=open&per_page=100" --paginate \
@@ -4232,8 +4167,7 @@ next_tick() { # [--dry-run|--install|--frontier]
   # and stopped relaunch (the environment, not the ticket, ended them), stopped-environment only ENV_BACKOFF_SEC after
   # the mtime of its status file, since it pages at once; every other exit parks the issue
   # until a human edits the body or removes the label, since the same body would fail the same way.
-  # stopped-daily relaunches once the UTC date of its status file has passed, and until then waits without
-  # launching, so the timer does not spin the issue against the spent budget every tick.
+  # stopped-daily, which only a run from before the dollar caps went (13 Nov 2026) can carry, relaunches as stopped does.
   # A run of an earlier body no longer parks the issue, so an edited body launches on the next tick.
   # The body travels as base64 so its newlines stay on one line; $(...) strips its trailing newlines
   # the way load_ticket's $(jq -r .body) of its gh api graphql read does, so the key matches the one cmd_run computes.
@@ -4268,7 +4202,7 @@ next_tick() { # [--dry-run|--install|--frontier]
   # Each issue the loop passes over gets one stderr line with its reason: an open native blocker (either list), an assignee
   # other than the runner (the repository listing, once the runner's own are dropped above), the runner's issue with
   # no run of any body, FACTORY_STOP, then the waits and parks below, which apply to the runner's issues as to the rest.
-  local pick="" read_failed="" daily_wait="" st_last lint_err lint_line author editor run blocked assignees
+  local pick="" read_failed="" st_last lint_err lint_line author editor run blocked assignees
   while read -r who num author b64 blocked assignees; do
     [ -n "$num" ] || continue
     [ "$b64" = - ] && b64=""
@@ -4300,11 +4234,6 @@ next_tick() { # [--dry-run|--install|--frontier]
     if env_parked "$run"; then
       echo "parked #$num: stopped on the environment $ENV_PARK_STOPS times in a row with no new round since; fix the cause, then relaunch it by hand or edit the body" >&2
       [ "$dry" = 1 ] || env_park_alert "$run" "$num"
-      continue
-    fi
-    if [ -n "$USD_CAPS" ] && stopped_daily_today "$run"; then
-      echo "waiting #$num: daily budget spent; relaunches after 00:00 UTC" >&2
-      daily_wait=1
       continue
     fi
     if stopped_environment_recent "$run"; then
@@ -4367,22 +4296,11 @@ next_tick() { # [--dry-run|--install|--frontier]
     return 1
   fi
 
-  # A run stopped at today's daily budget, with the shared ledger (RUNS_BASE, every target's) also spent at the
-  # runner's own caps, means a new launch would only assign, build, run round 0 and stop at its first cap check;
-  # nothing launches today. The stop alone is not enough: that run's ticket may have set a lower DAILY_BUDGET_USD.
-  if [ -n "$pick" ] && daily_spent_at_runner_caps; then
-    for d in "$RUNS_BASE"/*/*/ "$RUNS_BASE"/*/*/*/; do
-      stopped_daily_today "$d" || continue
-      echo "waiting: a run stopped at today's daily budget; nothing launches before 00:00 UTC" >&2
-      pick=""; daily_wait=1; break
-    done
-  fi
-
   # An idle tick: no pick, at least one ready issue read and no slot held. A slot held (the factory works or waits on a
-  # PR), no issue read, or a daily-budget wait (it ends by itself at 00:00 UTC) ends the spell instead.
+  # PR) or no issue read ends the spell instead.
   if [ -z "$pick" ]; then
     if [ "$dry" = 0 ]; then
-      if [ -z "$daily_wait" ] && [ "$n" = 0 ] && [ -n "$nums" ]; then idle_note "$(( $(wc -w <<< "$nums") ))"
+      if [ "$n" = 0 ] && [ -n "$nums" ]; then idle_note "$(( $(wc -w <<< "$nums") ))"
       else idle_end
       fi
     fi
@@ -4748,7 +4666,7 @@ done
 # caller's positional parameters, which a `shift` here would strip from a no-arg source. `return` works
 # only in a sourced script; 2> /dev/null hides the error if the guard is ever hit while the file runs as
 # a program.
-[ "${FACTORY_SOURCED:-}" = 1 ] && { set_usd_caps; return 0 2> /dev/null; }
+[ "${FACTORY_SOURCED:-}" = 1 ] && return 0 2> /dev/null
 # Past the guard this file runs as a program: a live run never passes the test marker on (bin/alert stays silent under it).
 unset FACTORY_SOURCED
 C_DIR=""
@@ -4761,7 +4679,6 @@ case "$CMD" in
   run|next) linux_only "$CMD" ;;
   status) if [ "${1:-}" = --criteria ]; then linux_only "status --criteria"; else linux_only status; fi ;;
 esac
-set_usd_caps
 # lint, next and status read FACTORY_NET_TIMEOUT_SEC, and next FACTORY_MAX_PARALLEL, without apply_caps, so every
 # FACTORY_<NAME> cap is checked here once, before any subcommand runs (#427).
 env_caps_ok || exit 2

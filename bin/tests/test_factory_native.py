@@ -201,7 +201,7 @@ class NativeShellTests(unittest.TestCase):
     def test_loam_target_settings_and_argv_match_the_pre_u3_factory(self) -> None:
         if subprocess.run(["git", "-C", str(ROOT), "cat-file", "-e", BASE], capture_output=True).returncode:
             self.skipTest(f"{BASE} is not in this clone (shallow)")
-        # Both API-billed: the reference's calls always carried --max-budget-usd, which a subscription run drops (Decision 6).
+        # Both API-billed: the reference's calls always carried --max-budget-usd, which no call carries since 13 Nov 2026.
         old = self.h.round_one(self.h.factory("loam-old", BASE), loam=True, ANTHROPIC_API_KEY="sk-ant-test")
         new = self.h.round_one(self.new, loam=True, ANTHROPIC_API_KEY="sk-ant-test")
         # Every target's worker settings gain the pstack gate (U5), the sandboxed shell the DistBench locks grant (owner
@@ -216,7 +216,10 @@ class NativeShellTests(unittest.TestCase):
         # Every target's calls load the factory home's sam-cc-setup; nothing else in either argv or env moved.
         for call in ("worker", "grader"):
             argv, dirs = without_plugin_dir(new[call]["argv"])
-            self.assertEqual(argv, old[call]["argv"], call)
+            self.assertNotIn("--max-budget-usd", argv, call)
+            ref = old[call]["argv"]
+            i = ref.index("--max-budget-usd")
+            self.assertEqual(argv, ref[:i] + ref[i + 2:], call)
             self.assertEqual(dirs, [str(self.new / PLUGIN)], call)
             self.assertEqual(new[call]["env"], old[call]["env"], call)
         # The reviewer reads the same evidence, but for the supervisor's `Round 1` header in decisions.md (audit3 F2).
