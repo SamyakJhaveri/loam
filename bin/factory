@@ -2980,7 +2980,10 @@ checks_section() { # heading checks-file
       if ($1 == "MEASURE" && NF == 3 && $3 ~ /^-?[0-9]+(\.[0-9]+)?$/) line = line " " $3
       print substr(line, 1, 300)}
     END {if (n > max) printf "... %d more lines in %s\n", n - max, f}' "$2"
-  printf '```\n\nReasons and full output: %s\n\n' "$2"
+  printf '```\n\n'
+  grep -q '^DEFERRED: bin/check' "$2" 2> /dev/null \
+    && printf 'bin/check did not run in this round: it was deferred until the graders pass (the DEFERRED line in the file below).\n\n'
+  printf 'Reasons and full output: %s\n\n' "$2"
 }
 
 # Each ^FAIL line's check name, once, in order; a name outside lib.sh's [A-Za-z0-9_.-] prints as ?. notify posts
@@ -3089,6 +3092,7 @@ grade_round() {
     gate_last && open_pr
     return 0   # the full gate failed: not a grader fail; the next worker round gets its FAIL lines
   fi
+  PREV_FAILS=""   # a grader-fail round failed no check
   GRADER_FAILS=$((GRADER_FAILS + 1))
   [ "$GRADER_FAILS" -lt "$GRADER_FAIL_ROUNDS" ] \
     || { log "grader-round cap: $GRADER_FAIL_ROUNDS grader-fail rounds; the rest goes to the PR backlog"; open_pr draft; }
@@ -3098,11 +3102,17 @@ grade_round() {
 # (lib.sh prints DEFERRED: and a stand-in check: PASSED), and gate_last runs the whole block once the graders pass,
 # before any PR. Its output replaces round-N.checks (the cheap pass stays as round-N.cheap.checks), so the PR body,
 # the next worker round and a relaunch read the full result. A red gate is not a grader fail: the next worker round
-# takes its FAIL lines, and the same failures twice end the run stuck. The tree goes back to HEAD after it.
+# takes its FAIL lines, and the same failing set in two rounds in a row, from either pass, ends the run stuck. The tree
+# goes back to HEAD after it; a tree already dirty before it is left alone. A draft PR (grader-round cap or an
+# unparseable judge) opens on the cheap pass, and its Checks section says bin/check was deferred.
 GATE_DEFER="FACTORY_GATE_DEFER=1"
+PREV_FAILS=""   # the last round's failing check names, cheap pass or full gate, for the stuck exit
 gate_last() { # -> 0 when the round's checks deferred nothing, or the full block passed at HEAD
   local f="$RUN/round-$ROUND.checks" at fails
   grep -q '^DEFERRED: bin/check' "$f" || return 0
+  # A tree dirty before the gate (an edit while a relaunch waited) is never reset here: the round goes back to the loop,
+  # whose round_checks fails it as worktree-dirty.
+  [ -z "$(git -C "$WORKTREE" status --porcelain)" ] || { log "full gate: the worktree is dirty at HEAD, so it does not run; resuming into the loop"; return 1; }
   at="$(git -C "$WORKTREE" rev-parse HEAD) $(git -C "$WORKTREE" symbolic-ref -q HEAD)"
   log "full gate at $(git -C "$WORKTREE" rev-parse --short=8 HEAD): the graders passed; running the done-checks block with bin/check"
   round_checks "$RUN/round-$ROUND.gate.out" full
@@ -3112,8 +3122,8 @@ gate_last() { # -> 0 when the round's checks deferred nothing, or the full block
   if grep -q '^FAIL' "$f"; then
     fails=$(grep '^FAIL' "$f" | awk '{print $2}' | tr -d ':' | sort -u | tr '\n' ',')
     log "full gate failing: $fails"
-    [ "$fails" = "${GATE_FAILS_PREV:-}" ] && finish stuck "the same checks failed the full gate twice: $(fail_names "$f" | paste -sd, -)"
-    GATE_FAILS_PREV=$fails
+    [ "$fails" = "$PREV_FAILS" ] && finish stuck "the same checks failed twice: $(fail_names "$f" | paste -sd, -)"
+    PREV_FAILS=$fails
     return 1
   fi
   log "full gate: all pass"
@@ -3134,7 +3144,7 @@ round_checks() { # out [full]: a dirty tree or a do-not-touch hit fails the roun
 }
 
 main_loop() {
-  local prev_fails="" prev_sig="" fails checks sig_now
+  local prev_sig="" fails checks sig_now
   notify info "$(ticket_name) started" \
     "Branch $BRANCH in $WORKTREE; it stops at $MAX_ROUNDS rounds${USD_CAPS:+, $TICKET_BUDGET_USD USD} or $MAX_HOURS hours"
   while :; do
@@ -3162,13 +3172,12 @@ main_loop() {
     if grep -q '^FAIL' "$checks"; then
       fails=$(grep '^FAIL' "$checks" | awk '{print $2}' | tr -d ':' | sort -u | tr '\n' ',')
       log "checks failing: $fails"
-      [ "$fails" = "$prev_fails" ] && finish stuck "the same checks failed twice: $(fail_names "$checks" | paste -sd, -)"
-      prev_fails="$fails"
+      [ "$fails" = "$PREV_FAILS" ] && finish stuck "the same checks failed twice: $(fail_names "$checks" | paste -sd, -)"
+      PREV_FAILS="$fails"
       [ $((ROUND % 2)) -eq 0 ] && notify info "$(ticket_name): checks still fail after round $ROUND; it keeps working" \
         "$(fail_names "$checks" | head -10 | sed 's/^/FAIL /'; printf 'Reasons and full output: %s\n' "$checks")"
       continue
     fi
-    prev_fails=""
     if grep -q '^DEFERRED: bin/check' "$checks"; then log "checks: all pass, bin/check deferred until the graders pass"
     else log "checks: all pass"; fi
     grade_round
@@ -3990,7 +3999,7 @@ cmd_status() {
     [ -f "$d/status" ] || continue
     led="$d/ledger.jsonl"
     st=$(cat "$d/status")
-    rounds=$(find "$d" -maxdepth 1 -name 'round-*.checks' 2> /dev/null | grep -vc 'round-0' || true)
+    rounds=$(find "$d" -maxdepth 1 -name 'round-*.checks' 2> /dev/null | grep -E '/round-[0-9]+\.checks$' | grep -vc '/round-0\.' || true)
     spend=$(jq -s '[.[].cost_usd // 0] | add // 0 | . * 100 | round / 100' "$led" 2> /dev/null || echo 0)
     wall=$(( ( $(date -u +%s) - $(cat "$d/started" 2> /dev/null || date -u +%s) ) / 60 ))
     den=$(jq -s '[.[].denials // 0] | add // 0' "$led" 2> /dev/null || echo 0)

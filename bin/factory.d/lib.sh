@@ -32,8 +32,8 @@ guard() {
   # FACTORY_GATE_DEFER (the supervisor's per-round pass, LOOP.md): bin/check does not run here; the supervisor runs the
   # whole block once the graders pass. The DEFERRED line says so, and the stand-in result line keeps the check line green.
   if [ -n "${FACTORY_GATE_DEFER:-}" ] && [ "${1:-}" = bin/check ]; then
-    printf 'DEFERRED: bin/check runs once, after the graders pass, before any PR\ncheck: PASSED\n'
-    [ /dev/fd/1 -ef /dev/fd/9 ] || printf 'DEFERRED: bin/check runs once, after the graders pass, before any PR\ncheck: PASSED\n' >&9
+    printf '\nDEFERRED: bin/check runs once, after the graders pass, before any ready PR\ncheck: PASSED\n'
+    [ /dev/fd/1 -ef /dev/fd/9 ] || printf '\nDEFERRED: bin/check runs once, after the graders pass, before any ready PR\ncheck: PASSED\n' >&9
     guard_check="check: PASSED"
     return 0
   fi

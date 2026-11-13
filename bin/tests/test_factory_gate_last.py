@@ -158,6 +158,17 @@ class GateLastTests(unittest.TestCase):
         self.assertEqual(subprocess.run(["git", "-C", str(self.co), "worktree", "list"], capture_output=True,
                                         text=True, env=self.env, check=True).stdout.count("\n"), 1)
 
+    def test_a_guard_line_after_unterminated_output_still_gets_the_full_gate(self) -> None:
+        # The DEFERRED marker starts a fresh line, so text the block printed before it cannot hide it from gate_last.
+        (self.top / "gprobe.md").write_text(TICKET.replace(
+            'out=$(guard bin/check 2>&1); rc=$?; last=$(tail -n 1 <<<"$out"); [ "$rc" = 0 ] && [ "$last" = "check: PASSED" ]',
+            "rc=; last=; printf 'checking gate...'; guard bin/check > /dev/null"))
+        self.worker_round(1, {"note.txt": "1\n", "red.txt": "red\n"})
+        self.worker_round(2, {}, "git rm -q red.txt\n")
+        log = self.launch()
+        self.assertIn("full gate failing: check-green,", log)
+        self.assertEqual((self.top / "rounds").read_text().strip(), "2")
+
 
 if __name__ == "__main__":
     unittest.main()
