@@ -1083,10 +1083,15 @@ DAILY_BUDGET_USD=1000000; MAX_HOURS=1000; MAX_TURNS=200; CALL_TIMEOUT_SEC=5400; 
 # worker loads and the frozen worker and grader settings copy. Then every *_USD cap binds as before. Empty, on a
 # subscription, no TICKET, DAILY, ROUND, GRADER or EVAL budget stops, caps or cuts a call or a run; MAX_ROUNDS,
 # MAX_HOURS, MAX_TURNS and CALL_TIMEOUT_SEC still bound it, and the ledger still records each call's reported cost.
+# The dispatcher sets it after the Linux gate, which must call nothing first (#577); a sourced test sets it at load.
 USD_CAPS=""
-{ [ -n "${ANTHROPIC_API_KEY:-}${ANTHROPIC_AUTH_TOKEN:-}" ] \
-  || jq -e '[.env.ANTHROPIC_API_KEY?, .env.ANTHROPIC_AUTH_TOKEN?, .apiKeyHelper?] | any(type == "string" and . != "")' \
-       "$(user_settings)" > /dev/null 2>&1; } && USD_CAPS=1
+set_usd_caps() {
+  USD_CAPS=""
+  { [ -n "${ANTHROPIC_API_KEY:-}${ANTHROPIC_AUTH_TOKEN:-}" ] \
+    || jq -e '[.env.ANTHROPIC_API_KEY?, .env.ANTHROPIC_AUTH_TOKEN?, .apiKeyHelper?] | any(type == "string" and . != "")' \
+         "$(user_settings)" > /dev/null 2>&1; } && USD_CAPS=1
+  return 0
+}
 # Seeded from the environment here too, since lint, next and status call gh without apply_caps; env_caps_ok
 # checks the value before any subcommand runs.
 NET_TIMEOUT_SEC="${FACTORY_NET_TIMEOUT_SEC:-120}"
@@ -4248,7 +4253,7 @@ done
 # caller's positional parameters, which a `shift` here would strip from a no-arg source. `return` works
 # only in a sourced script; 2> /dev/null hides the error if the guard is ever hit while the file runs as
 # a program.
-[ "${FACTORY_SOURCED:-}" = 1 ] && return 0 2> /dev/null
+[ "${FACTORY_SOURCED:-}" = 1 ] && { set_usd_caps; return 0 2> /dev/null; }
 C_DIR=""
 [ "${1:-}" = -C ] && { [ $# -ge 2 ] || usage; C_DIR="$2"; shift 2; }
 CMD="${1:-}"
@@ -4259,6 +4264,7 @@ case "$CMD" in
   run|next) linux_only "$CMD" ;;
   status) if [ "${1:-}" = --criteria ]; then linux_only "status --criteria"; else linux_only status; fi ;;
 esac
+set_usd_caps
 # lint, next and status read FACTORY_NET_TIMEOUT_SEC, and next FACTORY_MAX_PARALLEL, without apply_caps, so every
 # FACTORY_<NAME> cap is checked here once, before any subcommand runs (#427).
 env_caps_ok || exit 2
