@@ -366,3 +366,33 @@ def test_full_gate_only_the_native_worker_shell_sets_the_variable():
     loam = json.loads((settings / "worker-settings.json").read_text(encoding="utf-8"))
     assert native["env"]["LOAM_WORKER_GATE"] == "supervisor"
     assert "LOAM_WORKER_GATE" not in (loam.get("env") or {})
+
+
+def test_full_gate_the_done_checks_block_runs_under_loam_hook(tmp_path):
+    """PR 738 tells a native worker to run the block as `LOAM_HOOK=1 bash $RUN/frozen/checks.sh`: under LOAM_HOOK,
+    lib.sh's guard skips `guard bin/check`, so the call runs every other check and never the gate. A gate call guard
+    does not skip, or the block without LOAM_HOOK, is still blocked."""
+    (tmp_path / "bin").mkdir()
+    (tmp_path / "bin" / "check").write_text("#!/bin/sh\necho ran >> gate.log\n", encoding="utf-8")
+    (tmp_path / "bin" / "check").chmod(0o755)
+    (tmp_path / "frozen").mkdir()
+    checks = tmp_path / "frozen" / "checks.sh"  # built as bin/factory's freeze builds it
+    block = ('[ -f note.txt ] && pass note || fail note "no note.txt"\n'
+             'guard bin/check > /dev/null && pass gate || fail gate "red"\n')
+    checks.write_text((ROOT / "bin" / "factory.d" / "lib.sh").read_text(encoding="utf-8") + "\n" + block
+                      + "printf '\\nCHECKS-END\\n'\nexit $((n_fail > 0))\n", encoding="utf-8")
+    for command in (f"LOAM_HOOK=1 bash {checks}", f"cd {tmp_path} && LOAM_HOOK=1 bash {checks} 2>&1 | tail -n 20",
+                    f"export LOAM_HOOK=1; bash {checks}"):
+        r = bash(command, "supervisor", cwd=tmp_path)
+        assert r.returncode == 0 and FULL_GATE not in r.stderr, (command, r.stderr)
+    (tmp_path / "other.sh").write_text("guard timeout 590 bin/check\n", encoding="utf-8")  # guard runs this form
+    for command in (f"bash {checks}", f"LOAM_HOOK= bash {checks}", f"LOAM_HOOK=1 bash {tmp_path}/other.sh"):
+        r = bash(command, "supervisor", cwd=tmp_path)
+        assert r.returncode == 2 and r.stderr.strip() == FULL_GATE, (command, r.stderr)
+    run = subprocess.run(["bash", str(checks)], cwd=tmp_path, capture_output=True, text=True, timeout=60,
+                         env={**os.environ, "LOAM_HOOK": "1"})
+    assert "FAIL note: no note.txt" in run.stdout and "PASS gate" in run.stdout, run.stdout
+    assert not (tmp_path / "gate.log").exists()
+    subprocess.run(["bash", str(checks)], cwd=tmp_path, capture_output=True, timeout=60,
+                   env={k: v for k, v in os.environ.items() if k != "LOAM_HOOK"})
+    assert (tmp_path / "gate.log").read_text() == "ran\n"  # the stub logs a run, so zero lines above means zero runs
