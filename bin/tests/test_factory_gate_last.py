@@ -4,6 +4,7 @@
 `claude`: each round's checks defer bin/check, and the supervisor runs the whole block once the graders pass. A round
 the judge fails costs no bin/check run; a gate that goes red after the graders hands its FAIL lines to the next worker
 round, and the PR opens only after a green gate. The target's bin/check logs each run to a file.
+Round 0 reuses a gate the launcher names (FACTORY_GATE_PASSED_SHA) at that base only (ASK-KARPATHY item C).
 """
 
 from __future__ import annotations
@@ -114,9 +115,9 @@ class GateLastTests(unittest.TestCase):
         if script:
             (self.top / f"round-{n}.sh").write_text(script)
 
-    def launch(self) -> str:
+    def launch(self, **extra: str) -> str:
         r = subprocess.run([str(ROOT / "bin/factory"), "-C", str(self.co), "run", str(self.top / "gprobe.md")],
-                           cwd=ROOT, env=self.env, capture_output=True, text=True, timeout=300, check=False)
+                           cwd=ROOT, env={**self.env, **extra}, capture_output=True, text=True, timeout=300, check=False)
         self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
         (run,) = (self.top / "h/.local/state/loam-factory/runs/o__r/gprobe").glob("*/")
         self.run = run
@@ -168,6 +169,22 @@ class GateLastTests(unittest.TestCase):
         log = self.launch()
         self.assertIn("full gate failing: check-green,", log)
         self.assertEqual((self.top / "rounds").read_text().strip(), "2")
+
+    def test_round_zero_reuses_the_gate_the_launcher_names_at_that_base(self) -> None:
+        base = git(self.co, self.env, "rev-parse", "HEAD")
+        self.worker_round(1, {"note.txt": "1\n"})
+        log = self.launch(FACTORY_GATE_PASSED_SHA=base)
+        self.assertEqual(len(self.gate_runs()), 1, self.gate_runs())   # only the full gate after the graders
+        self.assertIn(f"round 0: bin/check at {base[:8]} reused from the gate the launcher names", log)
+        zero = (self.run / "round-0.checks").read_text()
+        self.assertIn(f"REUSED: bin/check passed already (the launcher's gate passed at {base[:8]})", zero)
+        self.assertIn("FAIL note", zero)
+
+    def test_round_zero_runs_the_gate_at_another_base(self) -> None:
+        self.worker_round(1, {"note.txt": "1\n"})
+        log = self.launch(FACTORY_GATE_PASSED_SHA="0" * 40)
+        self.assertEqual(len(self.gate_runs()), 2, self.gate_runs())
+        self.assertNotIn("reused", log)
 
 
 if __name__ == "__main__":
