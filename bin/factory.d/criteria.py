@@ -7,11 +7,12 @@ Usage:
 Reads one target's run directories, <runs-root>/<issue>/<sha8>/ with a `status` file (LOOP.md), and
 calls no model and no gh. Another target's runs sit one level deeper, under <runs-root>/<owner>__<repo>/, so
 they never count here. Its git calls are a `git log` of the target's default branch (origin/HEAD, else
-origin/main, else main; as of the last fetch) for the escaped defects line: merged factory PRs that a later
-commit reverts or names in a `Caused-by: #<pr>` line. Only merge-commit PRs count; a squash or rebase merge
-leaves no `Merge pull request` commit, so it is in neither number. The criteria and their thresholds are read
-from ARCHITECTURE.md, their one home; a line this file cannot measure prints `UNMEASURED: <why>`, and a
-lower bound within its threshold prints `INCONCLUSIVE`, since what it omits could pass the threshold.
+origin/main, else main; as of the last fetch) for the escaped defects line: merged factory PRs, and file tickets
+landed by an `integrate: build/f-<id> @` merge, that a later commit reverts or names in a `Caused-by: #<pr>` or
+`Caused-by: <id>` line. Only merge commits count; a squash or rebase merge leaves no merge commit, so it is in
+neither number. The criteria and their thresholds are read from ARCHITECTURE.md, their one home; a line this file
+cannot measure prints `UNMEASURED: <why>`, and a lower bound within its threshold prints `INCONCLUSIVE`, since what
+it omits could pass the threshold.
 python3 stdlib only.
 """
 from __future__ import annotations
@@ -58,10 +59,11 @@ NEGATED = re.compile(r"\b(?:not|never|no|nowhere|nothing|none)\b|n't", re.I)
 REQUIRED = re.compile(r"\b(?:requires?|required|must|needs?|should|would)\b", re.I)
 HYPOTHETICAL = re.compile(r"\b(?:if|unless|once)\b", re.I)
 CLAUSE = re.compile(r"[;,]|\b(?:but|because|and|so|while|although|since|which)\b", re.I)
-# A factory PR's merge commit, its PR number, and what a later commit says to name it as the cause of a defect.
-FACTORY_PR = re.compile(r"Merge pull request #(\d+) from [^/\s]+/factory/\S")
+# A factory merge commit and its ticket: a PR's `#<n>`, or the ID of a file ticket that distbench's bin/integrate
+# landed from build/f-<id>[-<more>]; and what a later commit says to name one as the cause of a defect.
+FACTORY_MERGE = re.compile(r"Merge pull request (#\d+) from [^/\s]+/factory/\S|integrate: build/f-([A-Za-z0-9]+)(?:-\S+)? @ ")
 REVERTS = re.compile(r"\bThis reverts commit ([0-9a-f]{7,40})\b")
-CAUSED_BY = re.compile(r"^Caused-by: #(\d+)\b", re.M | re.I)
+CAUSED_BY = re.compile(r"^Caused-by: (#\d+|[A-Za-z0-9]+)\b", re.M | re.I)
 SIGNAL = {("claim", False): True, ("claim", True): False, ("fail", False): False, ("pass", True): False}
 
 
@@ -353,9 +355,9 @@ def history(target):
 
 
 def escaped_defects(target):
-    """The escaped defects line: merged factory PRs that a later commit reverts (the merge or one of its commits) or
-    names in a Caused-by line. A commit of the PR's own branch is not later, so a worker's revert of its own commit
-    inside the PR does not count."""
+    """The escaped defects line: merged factory tickets (PRs, and file tickets landed by bin/integrate) that a later
+    commit reverts (a merge or one of its commits) or names in a Caused-by line. A commit of the ticket's own branch is
+    not later, so a worker's revert of its own commit inside the PR does not count."""
     commits, why = history(target)
     if commits is None:
         return f"escaped defects: UNMEASURED: {why}"
@@ -373,22 +375,27 @@ def escaped_defects(target):
                     todo.append(c)
         return seen
 
-    prs = {sha: m.group(1) for sha, (parents, message) in commits.items()
-           if len(parents) > 1 and (m := FACTORY_PR.match(message))}
+    # {merge sha: ticket}; a ticket landed twice is one ticket.
+    tickets = {sha: m.group(1) or m.group(2).capitalize() for sha, (parents, message) in commits.items()
+               if len(parents) > 1 and (m := FACTORY_MERGE.match(message))}
     escaped = {}
     for sha, (_, message) in commits.items():
         later = descendants(sha) if REVERTS.search(message) or CAUSED_BY.search(message) else None
-        hits = {m for m, pr in prs.items() if pr in CAUSED_BY.findall(message)}
+        named = {c.lower() for c in CAUSED_BY.findall(message)}
+        hits = {m for m, ticket in tickets.items() if ticket.lower() in named}
         for prefix in REVERTS.findall(message):
             for target_sha in (c for c in commits if c.startswith(prefix)):
                 # A merge introduces a commit when its second parent descends from it and its first does not.
                 below = descendants(target_sha)
-                hits |= {m for m in prs if m == target_sha or (commits[m][0][1] in below and commits[m][0][0] not in below)}
+                hits |= {m for m in tickets if m == target_sha or (commits[m][0][1] in below and commits[m][0][0] not in below)}
         for m in hits:
             if m not in later:
-                escaped.setdefault(m, sha)
-    listed = ", ".join(f"#{prs[m]} ({escaped[m][:8]})" for m in sorted(escaped, key=lambda m: int(prs[m])))
-    return f"escaped defects: {len(escaped)} of {count(len(prs), 'merged factory PR')}" + (f": {listed}" if listed else "")
+                escaped.setdefault(tickets[m], sha)
+    # PRs by number, then file tickets by ID.
+    order = sorted(escaped, key=lambda t: (0, int(t[1:]), "") if t.startswith("#") else (1, 0, t))
+    listed = ", ".join(f"{t} ({escaped[t][:8]})" for t in order)
+    return (f"escaped defects: {len(escaped)} of {count(len(set(tickets.values())), 'merged factory ticket')}"
+            + (f": {listed}" if listed else ""))
 
 
 # A measure returns (value, detail), (value, detail, shown), where shown replaces the value in the verdict line, or
