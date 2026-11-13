@@ -266,7 +266,8 @@ class EditLineLintAndFreezeTests(unittest.TestCase):
         for line in ("", "Edit: bin/factory,docs/factory/ ./NOTES.md", "Edit: bin/factory, bin/tests/.", REAL_LINE,
                      "Edit: Loam `bin/factory`, `bin/tests/x.py` (both fences)",
                      # a comma inside a span or inside parentheses splits no entry (PR 732 Codex Medium at 34f08d72)
-                     "Edit: `bin/factory,README.md,docs/`", "Edit: Loam `bin/factory` (its parser, reset)."):
+                     "Edit: `bin/factory,README.md,docs/`", "Edit: Loam `bin/factory` (its parser, reset).",
+                     "Edit: Loam `bin/factory` (its parser (round 0), reset)."):  # nested (Codex at 6b2c1215)
             with self.subTest(line):
                 rc, out = self.lint(line)
                 self.assertEqual(rc, 0, out)
