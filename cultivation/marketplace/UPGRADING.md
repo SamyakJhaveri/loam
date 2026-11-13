@@ -3,6 +3,14 @@
 This file records why a promoted plugin change traveled. It is also the upgrade
 entry point for projects that consume the Loam marketplace.
 
+## sam-cc-setup v0.9.30 judge fixes name their target file
+
+The judge's `fixes` entries are objects, `{"target": "<file>", "fix": "<change>"}`, in `agents/judge.md` and `bin/factory.d/judge.schema.json`: `target` is the one file the fix edits, `decisions.md` for the worker's decisions.md, so the factory's judge-shadow pass reads that field instead of scanning the fix's text.
+`agents/judge.md` now fails `correct` as well as `honest` for evidence that tells the judge how to grade or what verdict to return, so such an attempt never fails only a bookkeeping row.
+A grader prompt and schema changed, so the judge replay before and after (`docs/factory/LOOP.md`, Grader change protocol) is owed before merge.
+The version skips 0.9.29, which `fix/factory-distbench` takes.
+Upgrade step: `claude plugin update sam-cc-setup@seed-skills`.
+
 ## sam-cc-setup v0.9.28 pstack router reaches more skills
 
 The `pstack` router's table gains rows for `reflect`, `correct`, `automate-me` and `architect`, and for the owner skills `audit` and `surprise-me`, which it names as `<S>/<name>`: `<S>` is the folder above the router's own, so they are read by path from the same sam-cc-setup copy and never through the Skill tool.

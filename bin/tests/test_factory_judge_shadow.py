@@ -1,6 +1,7 @@
-"""A judge fail on only bookkeeping rows (JUDGE_SHADOW_ROWS, `honest`) whose fixes name no file but decisions.md logs
-judge-shadow and does not block (owner, 12 Nov 2026); a fail on a substantive row (`correct`, `verified`), or with a fix
-that names a file of the change, still fails the graders.
+"""A judge fail on only bookkeeping rows (JUDGE_SHADOW_ROWS, `honest`) whose fixes all target decisions.md logs
+judge-shadow and does not block (owner, 12 Nov 2026); a fail on a substantive row (`correct`, `verified`), with a fix that
+targets a file of the change, or with no fix at all, still fails the graders. Each judge fix is an object whose `target`
+names the one file it edits (judge.schema.json), so the shadow pass reads that field, never the fix's text.
 
 `bin/factory` is sourced (FACTORY_SOURCED=1) and the real graders, run_judge and run_review run over a throwaway git
 worktree. Only the model call (call_json) is stubbed: it writes the reply named for its role and records the role, so
@@ -12,6 +13,7 @@ from __future__ import annotations
 import json
 import os
 import pathlib
+import re
 import shutil
 import subprocess
 import tempfile
@@ -22,8 +24,12 @@ ROWS_PASS = {"correct": "pass", "verified": "pass", "honest": "pass"}
 CLEAN_REVIEW = {"verdict": "merge", "findings": []}
 
 
-def judge(rows: dict[str, str], fixes: list[str]) -> dict[str, object]:
-    return {"verdict": "fail", "rows": rows, "evidence": {}, "fixes": fixes, "backlog": []}
+LABEL = ("decisions.md", "label the SKIP step unverified")
+
+
+def judge(rows: dict[str, str], fixes: list[tuple[str, str]]) -> dict[str, object]:
+    return {"verdict": "fail", "rows": rows, "evidence": {}, "backlog": [],
+            "fixes": [{"target": target, "fix": fix} for target, fix in fixes]}
 
 
 class JudgeShadowTests(unittest.TestCase):
@@ -59,64 +65,68 @@ class JudgeShadowTests(unittest.TestCase):
         return int(proc.stdout.split("graders=")[1].split()[0]), run, (run / "log").read_text()
 
     def test_bookkeeping_row_fail_reaches_the_reviewer_and_logs_judge_shadow(self) -> None:
-        rc, run, log = self.graders(judge({**ROWS_PASS, "honest": "fail"}, ["label the SKIP step unverified in decisions.md"]))
+        rc, run, log = self.graders(judge({**ROWS_PASS, "honest": "fail"}, [LABEL]))
         self.assertEqual(rc, 0, log)
         self.assertIn("judge-shadow", log)
         self.assertEqual((run / "calls").read_text().split(), ["judge", "sweep", "reviewer"])
         self.assertEqual((run / "round-1.fixes").read_text(), "")
         self.assertEqual((run / "round-1.judge-shadow").read_text().strip(), "honest")
 
-    def test_substantive_fix_beside_a_bookkeeping_row_fail_still_fails(self) -> None:
-        # Every row but honest passes, yet one fix is for the change itself: the fail blocks on it, as with no honest fail.
-        crash, label = "fix the crash in bin/x when the input is empty", "label the SKIP step unverified in decisions.md"
-        rc, run, log = self.graders(judge({**ROWS_PASS, "honest": "fail"}, [crash, label]))
+    def test_label_fix_whose_text_names_another_file_shadow_passes(self) -> None:
+        # The target decides, not the text: a decisions.md label about a bin/check run or a 1.2 s claim is bookkeeping.
+        for fix in ("label the bin/check run unverified", "mark the claimed 1.2 second runtime of lib.sh unverified"):
+            with self.subTest(fix):
+                rc, run, log = self.graders(judge({**ROWS_PASS, "honest": "fail"}, [("decisions.md", fix)]))
+                self.assertEqual(rc, 0, log)
+                self.assertEqual((run / "round-1.judge-shadow").read_text().strip(), "honest")
+
+    def test_fix_targeting_a_file_of_the_change_still_fails(self) -> None:
+        # Every row but honest passes, yet a fix targets a file of the change: it blocks, as with no honest fail.
+        crash = ("bin/x", "fix the crash when the input is empty")
+        for name, fixes in (("beside a label", [crash, LABEL]), ("alone", [crash]),
+                            ("a decisions.md in the repo", [("docs/decisions.md", "label the claim unverified")]),
+                            ("a suffixed name", [("decisions.md.jinja", "fix the renderer")]),
+                            ("a folder", [("tests/", "add a regression test")])):
+            with self.subTest(name):
+                rc, run, log = self.graders(judge({**ROWS_PASS, "honest": "fail"}, fixes))
+                self.assertEqual(rc, 1, log)
+                self.assertNotIn("judge-shadow", log)
+                self.assertEqual((run / "round-1.fixes").read_text(), "".join(f"- {t}: {f}\n" for t, f in fixes))
+                self.assertFalse((run / "round-1.judge-shadow").exists())
+
+    def test_bookkeeping_row_fail_with_no_fix_still_fails(self) -> None:
+        # A fail must point at something; an honest fail with no fix and no backlog entry is not a shadow pass.
+        rc, run, log = self.graders(judge({**ROWS_PASS, "honest": "fail"}, []))
         self.assertEqual(rc, 1, log)
         self.assertNotIn("judge-shadow", log)
-        self.assertEqual((run / "round-1.fixes").read_text(), f"- {crash}\n- {label}\n")
         self.assertFalse((run / "round-1.judge-shadow").exists())
 
     def test_substantive_row_fail_still_fails(self) -> None:
         # Each fix is bookkeeping, so only the row guard (or the required-row guard) can block these.
-        label = "label the run unverified in decisions.md"
         for name, rows in (("correct", {**ROWS_PASS, "correct": "fail"}),
                            ("verified", {**ROWS_PASS, "verified": "fail"}),
                            ("verified and honest", {**ROWS_PASS, "verified": "fail", "honest": "fail"}),
                            ("correct missing", {"verified": "pass", "honest": "fail"})):
             with self.subTest(name):
-                rc, run, log = self.graders(judge(rows, [label]))
+                rc, run, log = self.graders(judge(rows, [LABEL]))
                 self.assertEqual(rc, 1, log)
                 self.assertNotIn("judge-shadow", log)
-                self.assertEqual((run / "round-1.fixes").read_text(), f"- {label}\n")
+                self.assertEqual((run / "round-1.fixes").read_text(), "- decisions.md: label the SKIP step unverified\n")
                 self.assertFalse((run / "round-1.judge-shadow").exists())
 
-    def test_fix_naming_another_file_beside_decisions_md_still_fails(self) -> None:
-        # The fix names decisions.md, but also a file of the change (a dot-led name too): it is not bookkeeping.
-        for mixed in ("fix the crash in bin/x when input is empty, and drop the decisions.md line that says it is handled",
-                      "fix the .env leak and drop its decisions.md line",
-                      "remove the .gitignore entry and the decisions.md bullet",
-                      "fix the renderer in decisions.md.jinja",
-                      "Fix the broken instructions in decisions.md-old.",
-                      "drop the decisions.md_backup line",
-                      "add a regression test under tests/ and note it in decisions.md",
-                      "label the claim in docs/decisions.md unverified"):
-            with self.subTest(mixed):
-                rc, run, log = self.graders(judge({**ROWS_PASS, "honest": "fail"}, [mixed]))
-                self.assertEqual(rc, 1, log)
-                self.assertNotIn("judge-shadow", log)
-                self.assertEqual((run / "round-1.fixes").read_text(), f"- {mixed}\n")
-                self.assertFalse((run / "round-1.judge-shadow").exists())
-
-    def test_number_in_a_decisions_md_fix_is_not_a_file(self) -> None:
-        for fix in ("In decisions.md, mark the claimed 1.2 second runtime as unverified.",
-                    "label the git 2.43 claim in decisions.md unverified"):
-            with self.subTest(fix):
-                rc, run, log = self.graders(judge({**ROWS_PASS, "honest": "fail"}, [fix]))
-                self.assertEqual(rc, 0, log)
-                self.assertEqual((run / "round-1.judge-shadow").read_text().strip(), "honest")
+    def test_grader_steering_fails_a_row_that_blocks(self) -> None:
+        # judge.md's rule for evidence that tells the grader how to grade must fail a row outside JUDGE_SHADOW_ROWS,
+        # or an attempt confined to decisions.md would shadow-pass.
+        rule = next(line for line in (ROOT / "cultivation/marketplace/sam-cc-setup/agents/judge.md").read_text().splitlines()
+                    if "how to grade" in line)
+        failed = set(re.findall(r"\b(correct|verified|honest)\b", rule.split("how to grade", 1)[1].split(". ")[0]))
+        shadow = subprocess.run(["bash", "-c", '. bin/factory; printf %s "$JUDGE_SHADOW_ROWS"'], cwd=ROOT,
+                                env={**os.environ, "FACTORY_SOURCED": "1"}, capture_output=True, text=True, check=True)
+        self.assertTrue(failed - set(shadow.stdout.split()), rule)
 
     def test_malformed_verdict_still_fails(self) -> None:
         # Only a fail verdict can shadow-pass; any other word blocks, as before the shadow pass existed.
-        reply = {**judge({**ROWS_PASS, "honest": "fail"}, ["label the run unverified in decisions.md"]), "verdict": "unknown"}
+        reply = {**judge({**ROWS_PASS, "honest": "fail"}, [LABEL]), "verdict": "unknown"}
         rc, run, log = self.graders(reply)
         self.assertEqual(rc, 1, log)
         self.assertNotIn("judge-shadow", log)
@@ -124,7 +134,7 @@ class JudgeShadowTests(unittest.TestCase):
 
     def test_backlog_entry_still_fails(self) -> None:
         # A correction the worker may not make goes to the backlog (judge.md); a fail that carries one is not bookkeeping.
-        reply = {**judge({**ROWS_PASS, "honest": "fail"}, []), "backlog": ["Fix the timeout bug in bin/factory."]}
+        reply = {**judge({**ROWS_PASS, "honest": "fail"}, [LABEL]), "backlog": ["Fix the timeout bug in bin/factory."]}
         rc, run, log = self.graders(reply)
         self.assertEqual(rc, 1, log)
         self.assertNotIn("judge-shadow", log)
@@ -132,20 +142,20 @@ class JudgeShadowTests(unittest.TestCase):
 
     def test_judge_file_with_two_documents_still_fails(self) -> None:
         # call_json keeps every document a reply holds; the first here fails correct, so the round blocks.
-        first = judge({**ROWS_PASS, "correct": "fail"}, ["fix the crash in bin/x"])
-        second = judge({**ROWS_PASS, "honest": "fail"}, ["label it in decisions.md"])
+        first = judge({**ROWS_PASS, "correct": "fail"}, [("bin/x", "fix the crash")])
+        second = judge({**ROWS_PASS, "honest": "fail"}, [LABEL])
         rc, run, log = self.graders(json.dumps(first) + "\n" + json.dumps(second))
         self.assertEqual(rc, 1, log)
         self.assertNotIn("judge-shadow", log)
-        self.assertIn("fix the crash in bin/x", (run / "round-1.fixes").read_text())
+        self.assertIn("bin/x: fix the crash", (run / "round-1.fixes").read_text())
         self.assertFalse((run / "round-1.judge-shadow").exists())
 
     def test_regraded_round_drops_an_older_shadow_pass(self) -> None:
         # A round graded again after a shadow pass, whose judge now fails verified, blocks and keeps no judge-shadow.
-        rc, run, log = self.graders(judge({**ROWS_PASS, "verified": "fail"}, ["label the run unverified in decisions.md"]),
-                                    stale_shadow=True)
+        rc, run, log = self.graders(judge({**ROWS_PASS, "verified": "fail"}, [LABEL]), stale_shadow=True)
         self.assertEqual(rc, 1, log)
         self.assertFalse((run / "round-1.judge-shadow").exists())
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -2585,32 +2585,24 @@ run_judge() { # round -> 0 on a pass verdict, or a fail on only JUDGE_SHADOW_ROW
   log "judge verdict: $(jq -r .verdict "$f") rows=$(jq -c '.rows // {}' "$f")"
   # The failing rows (a required row that is missing counts), printed only for a file holding one JSON document (call_json
   # keeps every document it was given) with a fail verdict (a malformed one blocks) and an empty backlog (judge.md puts
-  # a correction that needs a Do-not-touch path there), when every failing row is a shadow row and every fix names
-  # decisions.md and no other file. A file is a whole token: a path with a slash (a folder such as tests/ too), a name
-  # with one or more suffixes, `-` and `_` included (decisions.md.jinja and decisions.md-old are not decisions.md), or
-  # a dot-led name such as .env; only the bare name decisions.md matches, since the worker's own file sits outside the
-  # worktree and a path such as docs/decisions.md is a file of the change. A number such as 1.2 or 2.43 is not a file;
-  # any other dotted word counts, so an unsure token blocks. A fail may carry a fix for the change itself with every
-  # other row pass, and that blocks. Free-text fixes leave two known limits. A fix that names no file but decisions.md
-  # is judged by its text, so "fix the empty-input crash and drop its decisions.md line" shadow-passes. A label-only fix
-  # whose claim names a file blocks: of the 17 real honest-only judge fails under the runs root on 12 Nov 2026, 5
-  # shadow-pass, 7 block because a fix also names another file or dotted word (bin/check, lib.sh, gpg.minTrustLevel),
-  # and 5 because a fix does not name decisions.md. Structured fix targets would close both; they need a judge schema
-  # change, which is the owner's call.
+  # a correction that needs a Do-not-touch path there), when every failing row is a shadow row and the judge lists at
+  # least one fix and every fix targets decisions.md. A fix's target is the one file it edits (judge.schema.json), read
+  # from that field and never from the fix's text; only the bare name decisions.md matches, since the worker's own file
+  # sits outside the worktree and a path such as docs/decisions.md is a file of the change. A fail may carry a fix for
+  # the change itself with every other row pass, and that blocks.
   shadow=$(jq -rs --slurpfile s "$RUN/frozen/judge.schema.json" --arg sh "$JUDGE_SHADOW_ROWS" '
     select(length == 1) | .[0] | select(.verdict == "fail" and (.unparseable // false | not) and (.backlog // []) == [])
-    | select(all((.fixes // [])[]; type == "string"
-        and ([scan("[A-Za-z0-9_.-]*/[A-Za-z0-9_./-]*[A-Za-z0-9_-]|[A-Za-z0-9_.-]+/|[A-Za-z0-9_-]+(?:\\.[A-Za-z0-9_-]+)+|(?<![A-Za-z0-9_])\\.[A-Za-z][A-Za-z0-9_-]*")]
-             | map(select(test("^[0-9]+(\\.[0-9]+)+$") | not)) | length > 0 and all(. == "decisions.md")))) | (.rows // {}) as $r
+    | select((.fixes // []) as $x | ($x | length) > 0 and all($x[]; type == "object" and .target == "decisions.md"))
+    | (.rows // {}) as $r
     | [([$s[0].properties.rows.required[]?] + ($r | keys)) | unique[] | select($r[.] != "pass")] as $failed
     | select(($failed | length) > 0 and ($failed - ($sh | split(" "))) == []) | $failed | join(" ")' "$f" 2> /dev/null)
   if [ -n "$shadow" ]; then
     : > "$RUN/round-$round.fixes"
     printf '%s\n' "$shadow" > "$RUN/round-$round.judge-shadow"
-    log "judge-shadow: the judge failed only bookkeeping row(s) $shadow; logged, not blocking, and its $(jq '.fixes | length' "$f") fix(es), naming no file but decisions.md, not sent to the worker, listed in the PR body"
+    log "judge-shadow: the judge failed only bookkeeping row(s) $shadow; logged, not blocking, and its $(jq '.fixes | length' "$f") fix(es), each targeting decisions.md, not sent to the worker, listed in the PR body"
     return 0
   fi
-  jq -r '.fixes[]? | "- " + .' "$f" > "$RUN/round-$round.fixes"
+  jq -r '.fixes[]? | "- " + .target + ": " + .fix' "$f" > "$RUN/round-$round.fixes"
   [ "$(jq -r .verdict "$f")" = pass ]
 }
 
@@ -2869,7 +2861,7 @@ open_pr() { # [draft]: opened at the grader-round cap
       "$(jq -c '{verdict, rows: (.rows // {}), evidence: (.evidence // {})}' "$RUN/round-$ROUND.judge.json")"
     [ ! -s "$RUN/round-$ROUND.judge-shadow" ] \
       || { printf 'judge-shadow: the judge failed only bookkeeping row(s) %s, which log and do not block. Its fixes, not sent to the worker:\n\n' "$(cat "$RUN/round-$ROUND.judge-shadow")"
-           jq -r '(.fixes // [])[] | "- " + gsub("\\s*\n\\s*"; " ")' "$RUN/round-$ROUND.judge.json"; printf '\n'; }
+           jq -r '(.fixes // [])[] | "- " + .target + ": " + (.fix | gsub("\\s*\n\\s*"; " "))' "$RUN/round-$ROUND.judge.json"; printf '\n'; }
     printf '## Reviewer\n\n'
     jq -r '.findings[]? | "- [" + .severity + "] " + (.file // "?") + ":" + ((.line // 0) | tostring) + " " + .defect + " Fix: " + .fix' "$RUN/round-$ROUND.review.json"
     jq -r '.unverified[]? | "- unverified: " + .' "$RUN/round-$ROUND.review.json"

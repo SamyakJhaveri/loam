@@ -156,12 +156,13 @@ class PrBodyChecksTests(unittest.TestCase):
         (self.run_dir / "round-0.checks").write_text("FAIL widget\n")
         (self.run_dir / "round-2.judge.json").write_text(
             '{"verdict": "fail", "rows": {"correct": "pass", "verified": "pass", "honest": "fail"},'
-            ' "fixes": ["label the SKIP step\\n  unverified in decisions.md", "drop the speed claim from decisions.md"]}\n')
+            ' "fixes": [{"target": "decisions.md", "fix": "label the SKIP step\\n  unverified"},'
+            ' {"target": "decisions.md", "fix": "drop the speed claim"}]}\n')
         (self.run_dir / "round-2.judge-shadow").write_text("honest\n")
         body = self.open_pr()
         self.assertIn("judge-shadow: the judge failed only bookkeeping row(s) honest, which log and do not block. Its "
-                      "fixes, not sent to the worker:\n\n- label the SKIP step unverified in decisions.md\n"
-                      "- drop the speed claim from decisions.md\n\n## Reviewer", body)
+                      "fixes, not sent to the worker:\n\n- decisions.md: label the SKIP step unverified\n"
+                      "- decisions.md: drop the speed claim\n\n## Reviewer", body)
         self.assertLess(body.index("## Judge"), body.index("judge-shadow:"))
         # With a blocking review the PR is a draft, and its first line says the judge pass was a shadow pass.
         (self.run_dir / "round-2.review.json").write_text(

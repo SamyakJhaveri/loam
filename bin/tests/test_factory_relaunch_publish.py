@@ -36,7 +36,7 @@ STUBS = "assert_target_ready() { :; }; claude_version_ok() { :; }; exec_frozen()
 JUDGE_PASS = """run_judge() { echo '{"verdict":"pass","rows":{}}' > "$RUN/round-$1.judge.json"; }"""
 JUDGE_FAIL = """run_judge() { echo '{"verdict":"fail","rows":{"a":"fail"}}' > "$RUN/round-$1.judge.json"; return 1; }"""
 # A judge fail on only the bookkeeping row honest, as run_judge leaves a shadow pass: no fix queued, a judge-shadow file.
-JUDGE_SHADOW = ("""run_judge() { echo '{"verdict":"fail","rows":{"honest":"fail"},"fixes":["label it in decisions.md"]}' """
+JUDGE_SHADOW = ("""run_judge() { echo '{"verdict":"fail","rows":{"honest":"fail"},"fixes":[{"target":"decisions.md","fix":"label it"}]}' """
                 """> "$RUN/round-$1.judge.json"; : > "$RUN/round-$1.fixes"; echo honest > "$RUN/round-$1.judge-shadow"; }""")
 REVIEW_CLEAN = """run_review() { echo '{"findings":[]}' > "$RUN/round-$1.review.json"; }"""
 # A high finding past the reviewer's one block: the graders pass and the PR would open as a draft.

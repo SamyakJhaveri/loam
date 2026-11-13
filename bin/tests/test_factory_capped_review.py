@@ -69,7 +69,7 @@ if args[:2] == ["issue", "create"]:
 """
 
 JUDGE_PASS = {"verdict": "pass", "rows": {"widget": "pass"}, "evidence": {"widget": "ok"}, "fixes": [], "backlog": []}
-JUDGE_FAIL = {"verdict": "fail", "rows": {"widget": "fail"}, "evidence": {}, "fixes": ["make the widget work"], "backlog": []}
+JUDGE_FAIL = {"verdict": "fail", "rows": {"widget": "fail"}, "evidence": {}, "fixes": [{"target": "widget.txt", "fix": "make the widget work"}], "backlog": []}
 # An empty result is what a reply with no text looks like to call_json; the other is text that is not JSON.
 UNPARSEABLE = (("missing", ""), ("not-json", "this is not json"))
 CLEAN_REVIEW = {"verdict": "merge", "findings": []}
@@ -263,7 +263,7 @@ class CappedReviewTests(unittest.TestCase):
                 stderr, calls = self.run_loop(
                     [text, {"verdict": "fix", "findings": [review_finding("high", "real defect")]}, CLEAN_REVIEW],
                     judges=[JUDGE_FAIL, JUDGE_PASS, JUDGE_PASS])
-                self.assertEqual(self.fixes(1), "- make the widget work\n")
+                self.assertEqual(self.fixes(1), "- widget.txt: make the widget work\n")
                 self.assertIn("real defect", self.fixes(2))
                 self.assertIn(f"EXIT pr-opened (0): {PR_URL} after 3 rounds", stderr)
                 self.assertNotIn("--draft", self.pr_create(calls)["args"])
@@ -309,7 +309,7 @@ class CappedReviewTests(unittest.TestCase):
     def test_a_parseable_judge_fail_still_sends_its_fixes_to_the_worker(self) -> None:
         self.new_run()
         stderr, calls = self.run_loop([CLEAN_REVIEW, CLEAN_REVIEW], judges=[JUDGE_FAIL, JUDGE_PASS])
-        self.assertEqual(self.fixes(1), "- make the widget work\n")
+        self.assertEqual(self.fixes(1), "- widget.txt: make the widget work\n")
         self.assertIn(f"EXIT pr-opened (0): {PR_URL} after 2 rounds", stderr)
         self.assertNotIn("--draft", self.pr_create(calls)["args"])
         self.assertEqual(self.issues(calls), [])

@@ -26,14 +26,14 @@ print(json.dumps({"type": "result", "subtype": "success", "is_error": False, "to
 """
 
 
-def reply(verdict: str, verified: str, fixes: list[str]) -> dict[str, object]:
+def reply(verdict: str, verified: str, fixes: list[dict[str, str]]) -> dict[str, object]:
     return {"rows": {"correct": "pass", "verified": verified, "honest": "pass"}, "evidence": {},
             "fixes": fixes, "backlog": [], "verdict": verdict}
 
 
 ROW_FAILS_VERDICT_PASSES = reply("pass", "fail", [])
 ALL_ROWS_PASS = reply("pass", "pass", [])
-FAIL_WITH_FIX = reply("fail", "fail", ["add the missing test to bin/x"])
+FAIL_WITH_FIX = reply("fail", "fail", [{"target": "bin/x", "fix": "add the missing test"}])
 EMPTY_ROWS_PASS = {**ALL_ROWS_PASS, "rows": {}}
 PARTIAL_ROWS_PASS = {**ALL_ROWS_PASS, "rows": {"correct": "pass", "honest": "pass"}}
 

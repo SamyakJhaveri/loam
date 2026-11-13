@@ -3,7 +3,8 @@
   "properties": {
     "rows": { "type": "object", "required": ["correct", "verified", "honest"] },
     "evidence": { "type": "object" },
-    "fixes": { "type": "array", "items": { "type": "string" } },
+    "fixes": { "type": "array", "items": { "type": "object",
+      "properties": { "target": { "type": "string" }, "fix": { "type": "string" } }, "required": ["target", "fix"] } },
     "backlog": { "type": "array", "items": { "type": "string" } },
     "verdict": { "enum": ["pass", "fail"] }
   },
