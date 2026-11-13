@@ -204,6 +204,13 @@ class GateLastTests(unittest.TestCase):
         self.assertIn("guard check base-file fails on", log)
         self.assertFalse((self.top / "rounds").exists(), "a worker ran")
 
+    def test_a_guard_reason_naming_a_check_does_not_make_it_a_guard(self) -> None:
+        # check-green's reason says "pass note"; note still fails on base as a feature check should, and the run goes on.
+        (self.top / "gprobe.md").write_text(TICKET.replace('fail check-green "rc', 'fail check-green "must pass note; rc'))
+        self.worker_round(1, {"note.txt": "1\n"})
+        self.launch()
+        self.assertEqual((self.top / "rounds").read_text().strip(), "1")
+
     def edit_ticket(self, do_not_touch: str) -> None:
         (self.top / "gprobe.md").write_text(TICKET.replace("Blocked by: none", "Blocked by: none\nEdit: `bin/check`.")
                                             .replace("The standing list.", do_not_touch))
@@ -216,6 +223,9 @@ class GateLastTests(unittest.TestCase):
         self.assertIn("the Edit line names bin/check, which Do not touch fences off", log)
         self.assertFalse((self.run / "round-0.out").exists(), "round 0 ran")
         self.assertFalse((self.top / "rounds").exists(), "a worker ran")
+        # no ticket worktree left for the corrected body to reuse
+        self.assertEqual(subprocess.run(["git", "-C", str(self.co), "worktree", "list"], capture_output=True,
+                                        text=True, env=self.env, check=True).stdout.count("\n"), 1)
 
     def test_an_edit_path_an_except_line_frees_proceeds(self) -> None:
         self.edit_ticket("The standing list.\nExcept: `bin/check`.")

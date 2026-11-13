@@ -1632,7 +1632,7 @@ freeze_memory_view() {
 }
 
 freeze() {
-  local g src f msg
+  local g src f
   [ -f "$RUN/frozen/sha256" ] && return 0
   printf '%s\n' "$BODY" > "$RUN/frozen/issue.md"
   [ -n "$ISSUE" ] && { net gh issue view "$ISSUE" -R "$REPO" --json title -q .title > "$RUN/frozen/title" 2> /dev/null || rm -f "$RUN/frozen/title"; }
@@ -1669,8 +1669,6 @@ freeze() {
   { cat "$RUN/frozen/lib.sh"; echo; dc_script; echo; echo "$CHECKS_END"; echo 'exit $((n_fail > 0))'; } > "$RUN/frozen/checks.sh"
   protected_paths > "$RUN/frozen/protected.txt"
   exempt_paths > "$RUN/frozen/exempt.txt"
-  # Before the hash, so a relaunch of the same body runs freeze, and this check, again.
-  msg=$(edit_fenced); [ -z "$msg" ] || finish ticket-defect "$msg"
   chmod +x "$RUN/frozen/checks.sh" "$RUN/frozen/factory" "$RUN/frozen/alert"
   # shellcheck disable=SC2086
   ( cd "$RUN/frozen" && sha256_of $FROZEN_SET $([ -f memory-view.md ] && echo memory-view.md) > sha256 )
@@ -2214,10 +2212,11 @@ round_zero() {
   [ -z "$why" ] || finish ticket-defect "the predict line for check $name $why on $(cut -c1-8 "$RUN/base.sha"), so base does not show the predicted failure"
   guards=$(guard_checks | pass_names)
   # A guard may pass on base, but one that FAILs there fails in every round (Loam issue 726). A deferred bin/check
-  # prints its DEFERRED line and a stand-in pass, never a FAIL.
+  # prints its DEFERRED line and a stand-in pass, never a FAIL. Command-word names only: a fail reason that says
+  # "pass feature" names no guard.
   while IFS= read -r line; do
     name=${line#FAIL }; name=${name%%:*}
-    grep -qxF "$name" <<<"$guards" \
+    guard_checks | pass_cmd_names | grep -qxF "$name" \
       && finish ticket-defect "guard check $name fails on $(cut -c1-8 "$RUN/base.sha"), so no round can pass it: ${line#FAIL }; see $out"
   done < <(grep '^FAIL ' "$out")
   while read -r _ name _; do
@@ -3352,6 +3351,8 @@ cmd_run() {
   assert_parallel
   target_is_loam || user_token_free \
     || finish stopped-environment "$(user_settings) has CLAUDE_CODE_OAUTH_TOKEN in its env, which the native worker loads and which would replace the account bin/claude-account gives it; remove the key (bin/claude-account use <name> drops it)"
+  # Before the worktree, so a refused file ticket leaves none behind for its corrected body to reuse.
+  local fenced_msg; fenced_msg=$(edit_fenced); [ -z "$fenced_msg" ] || finish ticket-defect "$fenced_msg"
   prepare_worktree
   freeze
   exec_frozen
