@@ -5,6 +5,8 @@
 pass. Round 0 at base never runs it; a round the judge fails costs no bin/check run; a gate that goes red after the
 graders hands its FAIL lines to the next worker round, and the PR opens only after a green gate. The target's bin/check
 logs each run to a file.
+A ticket no round could pass ends ticket-defect before any worker call: a guard that FAILs on base (Loam issue 726),
+or an Edit: path the Do not touch section fences off and no Except: frees (distbench L01 run 1).
 """
 
 from __future__ import annotations
@@ -181,6 +183,39 @@ class GateLastTests(unittest.TestCase):
         self.assertEqual((self.run / "status").read_text().strip(), "ticket-defect")
         self.assertFalse((self.top / "rounds").exists())
         self.assertFalse((self.top / "gate-runs").exists(), "round 0 ran bin/check")
+
+    def test_round_zero_ends_on_a_guard_that_fails_on_base(self) -> None:
+        # A guard may pass on base, but one that FAILs there fails in every round (W44a run 319b2cfc paid a round for it).
+        (self.top / "gprobe.md").write_text(TICKET.replace(
+            "```\n\n## Worker", 'guard test -f base.txt && pass base-file || fail base-file "no base.txt"\n```\n\n## Worker'))
+        self.worker_round(1, {"note.txt": "1\n", "base.txt": "1\n"})
+        log = self.launch(ok=False)
+        self.assertEqual((self.run / "status").read_text().strip(), "ticket-defect")
+        self.assertIn("guard check base-file fails on", log)
+        self.assertFalse((self.top / "rounds").exists(), "a worker ran")
+
+    def edit_ticket(self, do_not_touch: str) -> None:
+        (self.top / "gprobe.md").write_text(TICKET.replace("Blocked by: none", "Blocked by: none\nEdit: `bin/check`.")
+                                            .replace("The standing list.", do_not_touch))
+
+    def test_freeze_ends_on_an_edit_path_do_not_touch_fences_off(self) -> None:
+        # The worker must edit bin/check, and every round's do-not-touch check would fail it (L01 run 1 lost 83 min).
+        self.edit_ticket("The standing list.\nExcept: the files on the header's Edit line.")
+        log = self.launch(ok=False)
+        self.assertEqual((self.run / "status").read_text().strip(), "ticket-defect")
+        self.assertIn("the Edit line names bin/check, which Do not touch fences off", log)
+        self.assertFalse((self.run / "round-0.out").exists(), "round 0 ran")
+        self.assertFalse((self.top / "rounds").exists(), "a worker ran")
+        # no ticket worktree left for the corrected body to reuse
+        self.assertEqual(subprocess.run(["git", "-C", str(self.co), "worktree", "list"], capture_output=True,
+                                        text=True, env=self.env, check=True).stdout.count("\n"), 1)
+
+    def test_an_edit_path_an_except_line_frees_proceeds(self) -> None:
+        self.edit_ticket("The standing list.\nExcept: `bin/check`.")
+        self.worker_round(1, {"note.txt": "1\n"})
+        self.launch()
+        self.assertEqual((self.top / "rounds").read_text().strip(), "1")
+        self.assertEqual((self.run / "status").read_text().strip(), "pr-opened")
 
 
 if __name__ == "__main__":
