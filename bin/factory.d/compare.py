@@ -32,7 +32,7 @@ import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
-FILE_TICKET = re.compile(r"W\d+[a-z]?(-|$)")
+FILE_TICKET = re.compile(r"[WF]\d+[a-z]?(-|$)")  # W: batch-1 tickets; F: factory tickets (F103)
 SERIOUS_SEVERITY = {"high", "critical"}
 ATTENDED_SERIOUS = re.compile(r"^(High|Critical)\b|\bCONFIRMED\b")
 NOT_A_UNIT = {"owner", "lead", "no unit", "-", ""}

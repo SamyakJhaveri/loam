@@ -5,8 +5,8 @@
 
 Each case folder `<case>/run` (plus `<case>/projects` when it has subagents) holds a few lines cut from the files
 named in its comment, trimmed to the fields bin/factory-parity reads. A line marked EDIT differs from its source
-as the comment says, so a behaviour has a passing case where no real run passes yet. Re-running it on jhaveris
-rewrites the same bytes. The `pass` folder is hand-written (every behaviour passing at once) and not cut here.
+as the comment says, so a behaviour has a passing case where no real run passes yet. A skill read keeps the result
+lines that show its `name:` line, the evidence parity reads. Re-running it on jhaveris rewrites the same bytes. The `pass` folder is hand-written (every behaviour passing at once) and not cut here.
 `--exp` is the auto-mode probe transcript of the 12 Nov design experiments (design-pick.md, "Doubts settled by
 experiment" 1), kept in the lead session's scratchpad: the only real transcript with a classifier denial.
 `<case>/session.jsonl` cases (with `<case>/session/subagents/`) are attended sessions for --attended.
@@ -89,6 +89,25 @@ def res(ev: dict, keep: str | None = None, text: str | None = None) -> dict:
     return {"type": "user", "message": {"content": items}}
 
 
+def res_for(path: Path, n: int, keep: str) -> dict:
+    """The result of line n's tool call, wherever it lands, trimmed to the lines matching keep."""
+    tid = event(path, n)["message"]["content"][-1]["id"]
+    for x in path.read_text(encoding="utf-8").splitlines():
+        for it in (json.loads(x).get("message") or {}).get("content") or []:
+            if isinstance(it, dict) and it.get("tool_use_id") == tid:
+                body = "\n".join(y for y in text_of(it["content"]).splitlines() if re.search(keep, y))
+                return {"type": "user", "message": {"content": [{"type": "tool_result", "tool_use_id": tid, "content": body}]}}
+    raise KeyError(f"{path}:{n} has no result")
+
+
+def read_shown(path: Path) -> str:
+    """What a Read of the file shows, cut to its lines up to its frontmatter `name:` line, numbered as Read numbers
+    them (an EDIT for a Read whose real result is not cut here)."""
+    lines = path.read_text(encoding="utf-8").splitlines()
+    end = next(i for i, x in enumerate(lines) if x.startswith("name:"))
+    return "\n".join(f"{i + 1:>6}\u2192{x}" for i, x in enumerate(lines[:end + 1]))
+
+
 def call(tid: str, name: str, inp: dict, out: str) -> list[dict]:
     """A tool call and its result written here, not cut (an EDIT)."""
     return [{"type": "assistant", "message": {"model": "claude-opus-5-5", "content": [
@@ -162,11 +181,11 @@ def build(runs: Path, projects: Path, distbench: Path, exp: Path, pstack: Path) 
     # 77,78, the router read only as `sed -n 1,60p` before the first Write (partial: fail); pass EDITs that read to `cat`.
     w35_1 = runs / W35 / "round-1.jsonl"
     out["p2-fail"] = {"run/round-1.jsonl": dump([w35_init, use(event(w35_1, 34)), res(event(w35_1, 35))])}
-    w34_head = [init(event(w34, 3)), use(event(w34, 45)), res(event(w34, 46))]
+    w34_head = [init(event(w34, 3)), use(event(w34, 45)), res(event(w34, 46), keep=r"^name: ")]
     w34_write = [use(event(w34, 77)), res(event(w34, 78))]
     out["p2-partial"] = {"run/round-1.jsonl": dump(w34_head + w34_write)}
     router = use(event(w34, 45), command=event(w34, 45)["message"]["content"][-1]["input"]["command"].replace("sed -n 1,60p", "cat"))
-    w34_full = [init(event(w34, 3)), router, res(event(w34, 46))]
+    w34_full = [init(event(w34, 3)), router, res(event(w34, 46), keep=r"^name: ")]
     out["p2-pass"] = {"run/round-1.jsonl": dump(w34_full + w34_write)}
     # Notes: W35 round-1.jsonl:31,32 appends to the run's worker/decisions.md, which is no change (N/A); EDIT the same
     # append into the worktree and it is a change with no router read (fail).
@@ -283,7 +302,8 @@ def build(runs: Path, projects: Path, distbench: Path, exp: Path, pstack: Path) 
     diff = "\n".join((runs / W13A / "round-2.diff").read_text().splitlines()[13:26]) + "\n"
     w13a_init = init(event(w13a, 3))
     skill = f"{w13a_init['cwd']}/.claude/skills/verify-distbench/SKILL.md"
-    read_skill = call("toolu_read_skill", "Read", {"file_path": skill}, "# Verify distbench")
+    read_skill = call("toolu_read_skill", "Read", {"file_path": skill},
+                      read_shown(distbench / ".claude/skills/verify-distbench/SKILL.md"))
     # Pass: EDIT a Read of the skill and the chain its SKILL.md gives for the sandbox (the line naming `$C launch r1`).
     chain = re.search(r"\(`(\$C launch r1 && [^`]+)`\)", (distbench / ".claude/skills/verify-distbench/SKILL.md").read_text()).group(1)
     proof = call("toolu_proof", "Bash", {"command": f"C=.claude/skills/verify-distbench/control-distbench; {chain}"},
@@ -397,7 +417,8 @@ def build(runs: Path, projects: Path, distbench: Path, exp: Path, pstack: Path) 
                                                        use(event(h, 28), command=head_cmd.replace("| head -120", "| head -20")),
                                                        head_20, use(event(h, 96))])}
     w = projects / ATTENDED_PASS
-    out["attended-pass"] = {"session.jsonl": dump([first_user(w), use(event(w, 24)), use(event(w, 30)), use(event(w, 142))])}
+    out["attended-pass"] = {"session.jsonl": dump([first_user(w), use(event(w, 24)), use(event(w, 30)),
+                                                   res_for(w, 30, r"^name: "), use(event(w, 142))])}
     lead_t = projects / ATTENDED_LEAD
     left_out = brief("EDIT: brief left out")
     out["attended-fail"] = {"session.jsonl": dump([left_out, use(event(lead_t, 204))])}

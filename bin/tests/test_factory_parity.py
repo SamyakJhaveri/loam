@@ -252,11 +252,12 @@ def round_two_on_its_round_line(run: Path) -> None:
     r1 = (run / "round-1.jsonl").read_text().splitlines()
     tdd = "/home/samyak/.claude/plugins/cache/cursor-plugins/pstack/0.15.36/skills/tdd/SKILL.md"
     write = next(json.loads(x) for x in r1 if '"Write"' in x)["message"]["content"][0]["input"]
-    calls = [("r2a", "Bash", {"command": "cat /home/samyak/loam/cultivation/marketplace/sam-cc-setup/skills/pstack/SKILL.md"}),
-             ("r2b", "Read", {"file_path": tdd}), ("r2c", "Write", write)]
-    events = [json.loads(r1[0])] + [e for i, name, inp in calls for e in (
+    calls = [("r2a", "Bash", {"command": "cat /home/samyak/loam/cultivation/marketplace/sam-cc-setup/skills/pstack/SKILL.md"},
+              "---\nname: pstack"), ("r2b", "Read", {"file_path": tdd}, "     1\u2192---\n     2\u2192name: tdd"),
+             ("r2c", "Write", write, "ok")]
+    events = [json.loads(r1[0])] + [e for i, name, inp, out in calls for e in (
         {"type": "assistant", "message": {"content": [{"type": "tool_use", "id": i, "name": name, "input": inp}]}},
-        {"type": "user", "message": {"content": [{"type": "tool_result", "tool_use_id": i, "content": "ok"}]}})]
+        {"type": "user", "message": {"content": [{"type": "tool_result", "tool_use_id": i, "content": out}]}})]
     (run / "round-2.jsonl").write_text("".join(json.dumps(e) + "\n" for e in events))
     with (run / "worker" / "decisions.md").open("a") as f:
         f.write(f"Round 2: pstack: tdd | {tdd} | {'0' * 64} | \"TDD Bug Fix\" | red first\n")
@@ -326,6 +327,21 @@ UNMODELLED: dict[str, Callable[[str], str]] = {
 }
 
 
+def read_result(text: str) -> Callable[[Path], None]:
+    """Every Read call's result replaced by text."""
+    def edit(run: Path) -> None:
+        ids: set[str] = set()
+
+        def mark(item: dict) -> None:
+            if item["type"] == "tool_use" and item["name"] == "Read":
+                ids.add(item["id"])
+            elif item["type"] == "tool_result" and item["tool_use_id"] in ids:
+                item["content"] = text
+        for f in run.glob("round-*.jsonl"):
+            edit_events(f, mark)
+    return edit
+
+
 def advisor_off(run: Path) -> None:
     """The worker ran with FACTORY_WORKER_ADVISOR= (no advisor), which worker_round logs as advisor=off."""
     log = run / "factory.log"
@@ -370,6 +386,13 @@ VARIANTS = [
     ("r3-group-hook", "p4-pass", gate_command("{ export LOAM_HOOK=1; }; guard bin/check"), "P4", "UNSURE"),
     ("r3-pipe-hook", "p4-pass", gate_command("export LOAM_HOOK=1 | cat; guard bin/check"), "P4", "UNSURE"),
     ("r3-set-a", "p4-pass", gate_command("set -a; LOAM_HOOK=1; bin/check"), "P4", "UNSURE"),
+    # PR 713 lead ruling: a read counts only when its own result shows the file's name: line
+    ("r4-untaken-branch", "p3-pass", skill_commands(lambda c: f"if false; then {c}; fi", ""), "P2", "FAIL"),
+    ("r4-untaken-branch", "p3-pass", skill_commands(lambda c: f"if false; then {c}; fi", ""), "P3", "FAIL"),
+    ("r4-exec-redirect", "p3-pass", skill_commands(lambda c: f"exec > /dev/null; {c}", ""), "P2", "FAIL"),
+    ("r4-loop-pipe", "p3-pass", skill_commands(lambda c: f"{c} | head -3" if c.endswith("done") else c), "P3",
+     "UNSURE"),  # a cut after the name: line shows nothing, so a pipe on a loop is not modelled
+    ("r4-read-not-shown", "p6-pass", read_result("# Verify distbench"), "P6", "FAIL"),
     ("c2-failed-reads", "p3-pass", failed_skill_reads, "P2", "FAIL"),  # a read whose result is an error read nothing
     ("c2-failed-reads", "p3-pass", failed_skill_reads, "P3", "FAIL"),
     ("a4-read-then-false", "p3-pass", reads_then_a_failing_command, "P2", "PASS"),  # the call failed after the cat

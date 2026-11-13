@@ -25,6 +25,7 @@ step, and a check whose verdict it could change says UNSURE, citing the call, ne
 A full read of a SKILL.md is a Read with no offset or limit, or a Bash `cat` naming it whose output goes to no
 further pipe stage, or only to `head -N` when the call's whole result is under N lines (nothing cut); loop variables
 and brace lists are expanded. `sed -n`, `tail`, `git cat-file` and a head that cut are partial reads and never count.
+Either way the call's own result must show the file's `name: <skill>` frontmatter line, or it is no read.
 A call a permission denial or the pstack-gate hook answered never ran: it is no change and no read. A call whose
 result is an error (is_error: a missing file, a nonzero exit) is no read and no proof step.
 A change is an Edit, Write, NotebookEdit or MultiEdit call, or a Bash call that writes in place (sed -i, ruff
@@ -349,12 +350,6 @@ def no_comments(cmd: str) -> str:
     return "".join(out)
 
 
-def stdout_away(text: str) -> bool:
-    """Whether a modelled redirection in text sends stdout to a file: `> f`, `>> f`, `1> f`, `&> f`. `2> f` and
-    `2>&1` leave it in the result; every other redirect is UNSURE (unmodelled)."""
-    return any(fd in ("", "1", "&") for fd, _ in re.findall(r"(?<![\w$>&<])(\d+|&)?(>>|>)(?![&|])", text))
-
-
 ENV_BUILTINS = {"export", "unset", "declare", "typeset", "readonly", "local"}
 KEYWORDS = {"!", "do", "then", "else", "elif", "if", "while", "until", "time", "command", "builtin", "nohup"}
 
@@ -377,8 +372,8 @@ def unsure(cmd: str, env: bool = False) -> str | None:
         return "process substitution"
     if re.search(r"(?:^|(?<=[\s;&|(]))\{(?=\s|$)", code) or "(" in code.replace("$(", ""):
         return "a { } or ( ) group"
-    if re.search(r"(?:^|(?<=[\s;&|]))(?:done|fi|esac)\s*(?:\d+|&)?[<>]", code):
-        return "a redirect on a loop, if or case"
+    if re.search(r"(?:^|(?<=[\s;&|]))(?:done|fi|esac)\s*(?:(?:\d+|&)?[<>]|\|)", code):
+        return "a pipe or redirect on a loop, if or case"
     for m in re.finditer(r"(?<![\w$>&<])(\d+|&)?(>>|>&|>\||<&|<>|>|<)(\d+|-)?", code):
         fd, op, target = m.groups()
         if not ((op in (">", ">>") and fd in (None, "1", "2", "&")) or (op == ">&" and fd == "2" and target == "1")
@@ -417,41 +412,42 @@ def unsure_calls(t: Transcript, upto: int | None = None, about: str = "") -> lis
     return out
 
 
+def shows(text: str, skill: str) -> bool:
+    """Whether a tool result shows SKILL.md `skill`'s own frontmatter line `name: <skill>` (a Read result numbers it)."""
+    return bool(re.search(rf"(?m)^(?:\s*\d+[\u2192\t])?name:\s*{re.escape(skill)}\s*$", text))
+
+
 def full_reads(t: Transcript, j: int) -> set[tuple[str, str]]:
-    """(prefix, name) for each SKILL.md call j of t reads in full: a Read with no offset or limit, or a `cat` that is
-    the last stage of its pipeline or is piped only into `head -N` while the call's whole result is under N lines (so
-    nothing was cut). sed -n, tail, git cat-file, a head that cut, and a `cat` whose stdout goes to a file read part or
-    none of a file and never count; a Bash call holding a construct parity does not model (unsure) counts no read.
-    A Bash call whose result is an error (a later command can fail) still reads each such file whose name: line its
-    result shows."""
+    """(prefix, name) for each SKILL.md call j of t reads in full: a Read with no offset or limit, or a Bash `cat`
+    naming it that is the last stage of its pipeline or is piped only into `head -N` while the call's whole result is
+    under N lines (so nothing was cut); sed -n, tail, git cat-file and a head that cut never count. Either way it
+    counts only when the call's own result shows that file's `name: <skill>` line: what the tool showed, not what the
+    command says, so a read that never ran (an untaken branch, a `false &&`), or whose output went elsewhere (a
+    redirect, `exec > f`), is no read. A Bash call holding a construct parity does not model (unsure) counts none."""
     _, name, inp = t.calls[j]
-    if not t.ok(j) and not (name == "Bash" and t.ran(j)):
+    res = t.result(j)
+    if not res or not (t.ok(j) or (name == "Bash" and t.ran(j))):
         return set()
     if name == "Read":
-        return set() if inp.get("offset") is not None or inp.get("limit") is not None else skill_reads(name, inp)
+        if inp.get("offset") is not None or inp.get("limit") is not None:
+            return set()
+        return {f for f in skill_reads(name, inp) if shows(res[1], f[1])}
     cmd = assigned(str(inp.get("command", ""))) if name == "Bash" else ""
     if "SKILL.md" not in cmd or unsure(cmd):
         return set()
-    res = t.result(j)
-    shown = len(res[1].splitlines()) if res else None
+    shown = len(res[1].splitlines())
     loops, found = loops_of(cmd), set()
-    code = no_comments(cmd)
-    cuts = [0] + [x for m in re.finditer(r"&&|\|\||[;\n]", code) for x in m.span()] + [len(code)]
-    for at, end in zip(cuts[::2], cuts[1::2]):
-        first, *rest = code[at:end].split("|")
+    for seg in re.split(r"&&|\|\||[;\n]", no_comments(cmd)):
+        first, *rest = seg.split("|")
         caps = [re.fullmatch(r"\s*head\s+(?:-n\s*)?-?(\d+)\s*", r) for r in rest]
-        if not all(caps) or (caps and (shown is None or shown >= min(int(c.group(1)) for c in caps))):
+        if not all(caps) or (caps and shown >= min(int(c.group(1)) for c in caps)):
             continue
-        if stdout_away(first):
-            continue  # stdout went to a file, not to the result
         words = first.split()
         while words and words[0].lstrip("(") in READ_LEAD | {""}:
             words = words[1:]
         if words and words[0].lstrip("(") == "cat":
             found |= skill_paths(" ".join(words), loops)
-    if not t.ok(j):
-        found = {f for f in found if res and re.search(rf"(?m)^name:\s*{re.escape(f[1])}\s*$", res[1])}
-    return found
+    return {f for f in found if shows(res[1], f[1])}
 
 
 def is_router(prefix: str, skill: str) -> bool:
