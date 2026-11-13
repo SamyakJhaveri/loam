@@ -3121,10 +3121,11 @@ review_both() { # round
   [ "$rr" -le 1 ] || finish stopped-environment "the reviewer's process ended with status $rr before its verdict"
   [ "$rc" -le 1 ] || finish stopped-environment "the Codex review's process ended with status $rc before its verdict"
 }
-# Each child is the leader of its group, so jobs -p names the groups, a child whose pid was not saved yet included.
+# Each child is the leader of its group: jobs -p names a child whose pid review_both has not saved yet, and the saved
+# r and c name a group whose leader exited while a helper it started lives on.
 review_halt() {
   local p g=()
-  for p in $(jobs -p); do g+=("-$p"); done
+  for p in $(jobs -p) ${r-} ${c-}; do g+=("-$p"); done
   [ "${#g[@]}" = 0 ] || kill -TERM -- "${g[@]}" 2> /dev/null
   wait $(jobs -p) 2> /dev/null
 }
@@ -3132,10 +3133,10 @@ review_halt() {
 # child records its group and start time in <CALL_STEM>.review, so once the supervisor is gone orphan_call_kill ends
 # the review itself, not only its call, and an orphaned review starts no further call.
 review_child() { # finish file
-  local s
+  local s me=$BASHPID
   REVIEW_FINISH=$1
-  s=$(TZ=UTC LC_ALL=C ps -o lstart= -p "$BASHPID")
-  printf '%s %s\n' "$BASHPID" "${s%"${s##*[![:space:]]}"}" > "$RUN/$CALL_STEM.review"
+  s=$(TZ=UTC LC_ALL=C ps -o lstart= -p "$me")
+  printf '%s %s\n' "$me" "${s%"${s##*[![:space:]]}"}" > "$RUN/$CALL_STEM.review"
   finish() { printf '%s\n%s\n' "$1" "$2" > "$REVIEW_FINISH"; exit 2; }
 }
 
