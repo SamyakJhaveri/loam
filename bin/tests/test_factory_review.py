@@ -267,6 +267,14 @@ class ReviewTests(unittest.TestCase):
         self.assertFalse((self.fake / "codex-calls").exists())
         self.assertFalse((self.run_dir / "learn" / "draft.md").exists())
 
+    def test_the_hour_cap_stops_learn_calls(self) -> None:
+        # learn runs after the exit; a run that stopped at MAX_HOURS spends no more time on learn (L01, 13 Nov 2026).
+        self.put("round-1.judge.json", {"verdict": "pass", "backlog": ["the gate ran serially"]})
+        self.learn(preset='ROUND=1; MAX_HOURS=4; echo $(( $(date -u +%s) - 5 * 3600 )) > "$RUN/launched"')
+        self.assertEqual(self.claude_calls(), [])
+        self.assertFalse((self.fake / "codex-calls").exists())
+        self.assertFalse((self.run_dir / "learn" / "draft.md").exists())
+
     def test_a_killed_learn_call_is_charged_its_ceiling(self) -> None:
         # audit3 C1: the writer's claude exits with no envelope, as a CALL_TIMEOUT_SEC kill leaves it; it may have
         # spent up to its --max-budget-usd, so the ledger and the daily file book GRADER_BUDGET_USD (1 here).
