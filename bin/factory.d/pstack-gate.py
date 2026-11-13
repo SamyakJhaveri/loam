@@ -19,22 +19,26 @@ change could ever pass), one stderr line says so and the call goes ahead (exit 0
 pstack never wedges a run; parity grades the round afterwards either way.
 
 First, and before any of that: with LOAM_WORKER_GATE=supervisor (worker-settings-native.json sets it, so only a non-Loam
-target's native worker has it) a Bash call that runs bin/check is blocked (exit 2, one stderr line): the supervisor runs
-the full gate once after the graders pass, and a worker that runs it itself loses its 36 minutes and a gate slot (L01
-run 2 round 1, 13 Nov: 73 min in two direct calls and 36 more polling a done-check script that ran it). A call runs
-bin/check when bin/check (any path ending in it) is a command word: at the start of a line, after `;` `&` `|` `(` `$(`
-or a backtick, after `timeout N`, `nohup`, `env X=Y`, `X=Y`, `guard` (a done-check's wrapper), `time`, `exec`,
-`command`, `nice`, `then`, `do`, `else`, `if`, `!` or `{`, outside quotes (a double-quoted `$( )` or backtick part
-counts); or inside `bash -c`/`sh -c` text; or in a heredoc fed to a shell; or in a shell script file the call runs
-(`bash f` but not `bash -n f`, `bash -o pipefail f`, `sh f`, `source f`, `. f`, `./f.sh`, f quoted or not, with
-environment variables such as $LOAM_CHECKS expanded), a relative f read against the payload's cwd and the folder of each
-script it runs inside, three files deep. A script run with a non-empty LOAM_HOOK (`LOAM_HOOK=1 bash f`, or after `export
-LOAM_HOOK=1`) does not run its `guard bin/check` lines when it holds lib.sh's guard, which skips exactly that form under
-LOAM_HOOK, so a worker may run the frozen done-checks block that way (PR 738); a gate call in any other form there still
-counts. A heredoc fed to anything else is a file's text, not commands, so writing such a script runs; running it is
-blocked. Reading bin/check (cat, sed, grep, git show) runs, as does every call when the variable is unset (a Loam
-target's worker, any session outside the factory), and so does a quoted mention (`pgrep -af "pytest|bin/check"`, a
-commit message). It is a pattern check on the command text, not a shell parser.
+target's native worker has it) a Bash call that runs bin/check or the full test suite is blocked (exit 2, one stderr
+line): the supervisor runs the full gate once after the graders pass, and a worker that runs it itself loses its 36
+minutes and a gate slot (L01 run 2 round 1, 13 Nov: 73 min in two direct calls and 36 more polling a done-check script
+that ran it). A call runs bin/check when bin/check (any path ending in it) is a command word: at the start of a line,
+after `;` `&` `|` `(` `$(` or a backtick, after `timeout N`, `nohup`, `env X=Y`, `X=Y`, `guard` (a done-check's
+wrapper), `time`, `exec`, `command`, `nice`, `then`, `do`, `else`, `if`, `!` or `{`, outside quotes and comments (a
+double-quoted `$( )` or backtick part counts, and so does one in a heredoc with an unquoted delimiter); or inside `bash
+-c`/`sh -c` text; or in a heredoc fed to a shell; or in a shell script file the call runs (`bash f`, `bash -o pipefail
+f`, `sh f`, `source f`, `. f`, `./f.sh`; not `bash -n f`). The script path has its quotes dropped and its variables
+filled in from the hook's environment and the call's own earlier `NAME=value` assignments (`W=...; bash
+$W/done-checks.sh`); a path still holding a `$` counts as a run (fail closed), and so does any `.../frozen/checks.sh`
+run without LOAM_HOOK. A relative path is read against the payload's cwd, each folder an earlier `cd` names, and the
+folder of each script it runs inside, three files deep. A script run with a non-empty LOAM_HOOK (`LOAM_HOOK=1 bash f`,
+or after `export LOAM_HOOK=1`) does not run its `guard bin/check` lines when it holds lib.sh's guard, which skips
+exactly that form under LOAM_HOOK, so a worker may run the frozen done-checks block that way (PR 738); a gate call in
+any other form there still counts. The full suite is pytest (`pytest`, `python -m pytest`) naming no test path but
+`tests`, except `--co`. A heredoc fed to anything else is a file's text, not commands, so writing such a script runs;
+running it is blocked. Reading bin/check (cat, sed, grep, git show) runs, as does every call when the variable is unset
+(a Loam target's worker, any session outside the factory), and so does a quoted mention (`pgrep -af "pytest|bin/check"`,
+a commit message). It is a pattern check on the command text, not a shell parser.
 """
 from __future__ import annotations
 
@@ -59,18 +63,24 @@ _WRAP = (r"(?:(?:timeout|nohup|guard|time|exec|command|nice|env|then|do|else|if|
          r"|[A-Za-z_]\w*=[^\s()`;&|]*)\s+")
 _START = r"(?:^|[;&|(`])[ \t]*(?:" + _WRAP + r")*"
 RUNS_GATE = re.compile(_START + r"(?:[\w.~${}/-]*/)?bin/check(?![\w.-])", re.M)
+PYTEST = re.compile(_START + r"(?:[\w.~/-]*/)?(?:python[\d.]*\s+(?:-\w+\s+)*-m\s+)?pytest(?![\w.-])([^;&|)\n]*)", re.M)
 SHELL = r"(?:[\w./-]*/)?(?:ba|da|k|z)?sh"
-SHELL_C = re.compile(r"(?<![\w.-])" + SHELL + r"(?:\s+-\w+)*\s+-\w*c\w*\s+"
+OPTS = r"((?:\s+(?:[-+]\w*[oO]\s+\w+|-[\w-]+))*)"  # shell options, `-o pipefail` with its argument
+SHELL_C = re.compile(r"(?<![\w.-])" + SHELL + r"(?:\s+(?:[-+]\w*[oO]\s+\w+|-\w+))*?\s+-\w*c\w*\s+"
                      r"(?:'([^']*)'|\"((?:[^\"\\]|\\.)*)\"|([^\s;&|]+))")
-SCRIPT = re.compile(_START + r"(?:(?:" + SHELL + r"((?:\s+(?:[-+]\w*[oO]\s+\w+|-[\w-]+))*)|source|\.)"
+SCRIPT = re.compile(_START + r"(?:(?:" + SHELL + OPTS + r"|source|\.)"
                     r"\s+([^\s;&|<>()`]+)"
                     r"|((?:[\w.~/-]*/)?[\w.-]+\.sh)(?![\w.-]))", re.M)
 HEREDOC_OPEN = re.compile(r"(?<!<)<<(?!<)-?\s*(['\"]?)([A-Za-z_]\w*)\1")
-FED_TO_SHELL = re.compile(r"(?<![\w.-])" + SHELL + r"(?:\s+-[\w-]+)*\s*$")
+FED_TO_SHELL = re.compile(r"(?<![\w.-])" + SHELL + OPTS + r"\s*$")
 HOOK_ON = r"LOAM_HOOK=(?!''|\"\"|[\s;&|)]|$)"  # a non-empty LOAM_HOOK
 GUARDED_GATE = re.compile(r"(?<![\w.-])guard[ \t]+bin/check(?![\w./-])")  # the one form lib.sh's guard skips under it
 LIB_GUARD = re.compile(r'LOAM_HOOK.*"\$\{1:-\}" = bin/check \] && return 0')  # lib.sh's skip, as criteria.py reads it
+ASSIGN = re.compile(r"(?:^|[;&|\n])\s*(?:export\s+)?([A-Za-z_]\w*)=([^\s;&|]*)")
 QUOTED = re.compile(r"'[^']*'|\"(?:[^\"\\]|\\.)*\"")
+COMMENT = re.compile(QUOTED.pattern + r"|(?<![^\s;&|(])#[^\n]*")  # a quote, or a comment outside quotes
+SUBST = r"\$\([^()]*\)|`[^`]*`"  # a command substitution, which runs inside double quotes and expanding heredocs
+CD = re.compile(r"(?:^|[;&|(\n])\s*cd\s+([^\s;&|)]+)")
 
 
 def unquoted(text: str) -> str:
@@ -79,14 +89,15 @@ def unquoted(text: str) -> str:
         s = q.group(0)
         if s[0] == "'":
             return "'" + "x" * (len(s) - 2) + "'"
-        keep = [m.span() for m in re.finditer(r"\$\([^()]*\)|`[^`]*`", s)]
+        keep = [m.span() for m in re.finditer(SUBST, s)]
         return "".join(c if any(a <= i < b for a, b in keep) or i in (0, len(s) - 1) else "x" for i, c in enumerate(s))
     return QUOTED.sub(blank, text)
 
 
 def commands(text: str) -> str:
-    """text without comment lines (an apostrophe there would pair with a later quote) and the bodies of heredocs fed
-    to anything but a shell: those are a file's text, not commands."""
+    """text without comments (an apostrophe there would pair with a later quote) and the bodies of heredocs fed to
+    anything but a shell, which are a file's text, not commands, except an expanding one's command substitutions."""
+    text = COMMENT.sub(lambda q: q.group(0) if q.group(0)[0] in "'\"" else "", text)
     lines, out, i = text.split("\n"), [], 0
     while i < len(lines):
         line = lines[i]
@@ -100,11 +111,22 @@ def commands(text: str) -> str:
             i += 1
             if FED_TO_SHELL.search(line[:m.start()]):
                 out.extend(body)
-    return "\n".join(line for line in out if not line.lstrip().startswith("#"))
+            elif not m.group(1):
+                out.extend(re.findall(SUBST, "\n".join(body)))
+    return "\n".join(out)
+
+
+def expand(word: str, before: str) -> str:
+    """word unquoted, with ~ and each $NAME or ${NAME} set in the environment or assigned in the text before it filled
+    in; a name set nowhere keeps its $."""
+    env = {**os.environ, **{k: v.strip("'\"") for k, v in ASSIGN.findall(before)}}
+    word = os.path.expanduser(word.strip("'\""))
+    return re.sub(r"\$(?:\{(\w+)\}|(\w+))", lambda v: env.get(v[1] or v[2], v[0]), word)
 
 
 def runs_full_gate(command: str, dirs: tuple[Path, ...], depth: int = 0, hook: bool = False) -> bool:
-    """True when command (Bash text, or a script file's text, run with LOAM_HOOK set when hook) runs bin/check; a
+    """True when command (Bash text, or a script file's text, run with LOAM_HOOK set when hook) runs bin/check or
+    the full suite; a
     relative script path is read against each of dirs (the call's cwd, then each enclosing script's folder, which a
     script may cd to); see the module docstring."""
     if depth > 3:
@@ -113,18 +135,32 @@ def runs_full_gate(command: str, dirs: tuple[Path, ...], depth: int = 0, hook: b
     scan = unquoted(text)
     if RUNS_GATE.search(GUARDED_GATE.sub("guard x", scan) if hook and LIB_GUARD.search(text) else scan):
         return True
+    for m in PYTEST.finditer(scan):  # naming no test path but tests/, pytest runs the full suite, as long as the gate
+        if re.search(r"\bcommand\s+-[vV]\b|\s--co(?:llect-only)?(?!\S)", m.group(0)):
+            continue  # `command -v pytest` only looks it up; --co only lists the tests
+        words = re.sub(r"\d*[<>]+&?\s*\S*", " ", text[m.start(1):m.end(1)]).split()  # scan ends it; text spells it
+        if all(w.strip("'\"").rstrip("/") == "tests" for w in words
+               if not w.startswith("-") and re.search(r"[/$]|\.py|::|^['\"]?tests\b", w)):
+            return True
     for m in SHELL_C.finditer(text):
         body = m.group(1) if m.group(1) is not None else m.group(2) if m.group(2) is not None else m.group(3)
-        if runs_full_gate(re.sub(r"\\(.)", r"\1", body) if m.group(2) is not None else body, dirs, depth + 1, hook):
+        if m.group(2) is not None:  # the calling shell fills in a double-quoted body's variables
+            body = expand(re.sub(r"\\(.)", r"\1", body), text[:m.start()])
+        if runs_full_gate(body, dirs, depth + 1, hook):
             return True
     for m in SCRIPT.finditer(text):
-        if re.search(r"(?<![\w-])-[a-mo-z]*n", m.group(1) or ""):
-            continue  # `bash -n f` only parses f
+        if re.search(r"(?<![\w-])-[a-z]*[cn]", m.group(1) or ""):
+            continue  # `bash -n f` only parses f; `bash -c` runs text, read above
         hooked = hook or bool(re.search(r"(?<![\w-])" + HOOK_ON, m.group(0))
                               or re.search(r"(?<![\w-])export\s+" + HOOK_ON, text[:m.start()]))
-        name = Path(os.path.expandvars(os.path.expanduser((m.group(2) or m.group(3)).strip("'\""))))
-        for path in [name] if name.is_absolute() else [d / name for d in dirs]:
-            if re.search(r"(?:^|/)bin/check$", path.as_posix()):
+        before = text[:m.start()]
+        name = expand(m.group(2) or m.group(3), before)
+        if "$" in name:
+            return True  # a script path the hook cannot resolve: fail closed
+        cds = [expand(cd, before) for cd in CD.findall(before)]
+        here = dirs + tuple(d / cd for cd in cds if "$" not in cd for d in dirs)
+        for path in [Path(name)] if name.startswith("/") else [d / name for d in here]:
+            if re.search(r"(?:^|/)bin/check$", path.as_posix()) or not hooked and name.endswith("/frozen/checks.sh"):
                 return True
             try:
                 if path.is_file() and path.stat().st_size < 1 << 20 and runs_full_gate(

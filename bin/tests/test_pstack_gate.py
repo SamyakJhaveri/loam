@@ -314,6 +314,13 @@ def bash(command: str, gate_env: str | None, cwd: Path | None = None) -> subproc
     "bash <<'EOS'\nbin/check\nEOS",
     "bash bin/check --parallel",
     'echo "rc=$(bin/check > /tmp/c.log 2>&1; echo $?)"',
+    "python3 -m pytest -q tests",  # the full suite takes as long as the gate (W46, 13 Nov)
+    "cd wt && PYTHONPATH=src timeout 3000 .venv/bin/python -m pytest -x -n 8",
+    "pytest tests/ -q 2>&1 | tail -5",
+    "bash -euo pipefail -c 'echo start; bin/check'",
+    "echo start # don't run this twice\nbin/check\necho 'done'",
+    "cat <<EOF\n$(bin/check)\nEOF",
+    "# Example uses <<EOF\nbin/check",
 ])
 def test_full_gate_a_worker_call_that_runs_bin_check_is_blocked(command):
     """L01 run 2 round 1 lost 73 min to two direct bin/check calls; with LOAM_WORKER_GATE=supervisor (the native
@@ -331,10 +338,16 @@ def test_full_gate_a_script_file_that_runs_bin_check_is_blocked(tmp_path):
     (tmp_path / "scripts" / "launch.sh").write_text("bash dc.sh\n", encoding="utf-8")  # bash keeps the caller's cwd
     (tmp_path / "scripts" / "own-dir.sh").write_text('cd "$(dirname "$0")"\nbash inner.sh\n', encoding="utf-8")
     (tmp_path / "scripts" / "inner.sh").write_text("bin/check\n", encoding="utf-8")
+    (tmp_path / "checks").mkdir()
+    (tmp_path / "checks" / "gate-checks.sh").write_text("bin/check\n", encoding="utf-8")
+    (tmp_path / "scripts" / "enter.sh").write_text("cd checks\nbash gate-checks.sh\n", encoding="utf-8")
     (tmp_path / "noted.sh").write_text("# the gate's run\nbin/check\n# it's done\n", encoding="utf-8")
     for command in (f"bash {tmp_path}/dc.sh", f"nohup bash {tmp_path}/dc.sh > /tmp/out.txt 2>&1 &", "sh ./dc.sh",
                     f'bash "{tmp_path}/dc.sh"', "bash scripts/launch.sh", "bash scripts/own-dir.sh",
-                    "bash -euo pipefail dc.sh", "bash noted.sh"):
+                    "bash -euo pipefail dc.sh", "bash noted.sh",
+                    f"W={tmp_path}; bash $W/dc.sh", f"R={tmp_path}; time bash $R/dc.sh 2>&1 | grep -E x",  # W46's form
+                    "bash $NOT_SET_HERE/run.sh", "bash /gone/run/frozen/checks.sh",
+                    "cd checks && bash gate-checks.sh", "bash scripts/enter.sh"):
         r = bash(command, "supervisor", cwd=tmp_path)
         assert r.returncode == 2 and r.stderr.strip() == FULL_GATE, (command, r.stderr)
     r = bash(f"bash {tmp_path}/ok.sh", "supervisor")
@@ -347,8 +360,13 @@ def test_full_gate_a_script_file_that_runs_bin_check_is_blocked(tmp_path):
     "grep -n parallel bin/check",
     "sed -n 1,30p bin/check; sed -n 125,160p bin/check",
     "python3 -m pytest -q tests/test_gate.py -k gate_class",
+    "PYTHONPATH=src python3 -m pytest tests/test_overlap.py::test_shares tests/test_failure_segment.py -q",
+    'timeout 550 python3 -m pytest -q -p no:cacheprovider "$f" $files',
+    "timeout 300 python3 -m pytest -q --co -p no:cacheprovider | grep '::'",
+    "command -v pytest",
     "git ls-files bin/check bin/check_rules.py && bin/check_rules.py --help",
     "cat > /tmp/dc.sh <<'EOS'\nbin/check\nEOS",
+    "cat > /tmp/dc.sh <<EOS\nbin/check > /tmp/c-$(date +%s).log\nEOS",
     'git commit -qm "bin/check: run the gate once"',
     'pgrep -af "pytest|bin/check" | head',
     "bash -n bin/check && echo syntax ok",
