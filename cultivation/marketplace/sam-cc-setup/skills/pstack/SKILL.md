@@ -11,7 +11,7 @@ If the folder line above is empty or not an absolute path (you read this file di
 - Read each chosen `<P>/skills/<name>/SKILL.md` in full and follow it. Read `<P>/docs/harness/claude-code.md` only when that skill says to.
 - Log each method you follow in your decision log (decisions.md in a factory run): `pstack: <skill> | <SKILL.md path read> | <sha256 of that file> | <one line quoted from it> | <the decision it changed>`.
 - Never call the Skill tool on a `pstack:` skill. Never use setup-pstack, poteto-help, sharpen, in-your-own-words or make-bot-ui.
-- A skill marked (spawns) starts agents. In the main session, state the agent count first, then hand the task and the skill path to one `worker`. A worker runs it within about a dozen agents. Without the Agent tool, use the skill's one-context prompt in its `references/`, or do the delegated role yourself in one context: interrogate's adversary work too, never skipped.
+- A skill marked (spawns) starts agents. In the main session, state the agent count first, then hand the task and the skill path to one `worker`; `audit` is the exception, run by the agent that did the work. A worker runs it within about a dozen agents. Without the Agent tool, use the skill's one-context prompt in its `references/`, or do the delegated role yourself in one context: interrogate's adversary work too, never skipped.
 - poteto-mode only for a contested design, concurrency or a cross-cutting change (standing ruling: 1.9x cost, no quality gain in the pilot). Stop before any push or PR that a playbook asks for.
 - When two rows fit, take the higher row, and also read every principle whose line fits.
 
@@ -30,7 +30,7 @@ If the folder line above is empty or not an absolute path (you read this file di
 | A measured number | principle-explain-the-number; benchmark-checklist for a timing |
 | Shared, retried or concurrent code | blast-radius; principle-make-operations-idempotent; principle-separate-before-serializing-shared-state |
 | Merged code changed what a formal-verification skill models | maintain-formal-verification-skill |
-| Review of finished non-trivial work | `<S>/audit` (spawns; its size scales with the work) |
+| Review of finished non-trivial work | `<S>/audit` (spawns; run it yourself, never through a worker; every role only when the owner asked, else the project's review rules size it) |
 | A diff you do not trust | interrogate (spawns) |
 | A long or unattended run | show-me-your-work (spawns 1) |
 | A long task or a batch of runs landed: capture what worked as a skill or rule edit | reflect (spawns; unattended, its input is the run transcripts and ledgers it is given, not its own chat) |
