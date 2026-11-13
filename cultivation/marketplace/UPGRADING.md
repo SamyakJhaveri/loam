@@ -3,6 +3,12 @@
 This file records why a promoted plugin change traveled. It is also the upgrade
 entry point for projects that consume the Loam marketplace.
 
+## sam-cc-setup v0.9.31 research-gap seats have no dollar cap
+
+The owner ruled on 13 Nov 2026 that there is no spending cap at all, so `research-gap` Claude seats no longer pass `--max-budget-usd 10`, and the skill drops its `no: budget` seat outcome.
+No grader prompt changed, so no grader replay is owed.
+Upgrade step: `claude plugin update sam-cc-setup@seed-skills`.
+
 ## sam-cc-setup v0.9.30 audit is the owner's prompt again
 
 The owner said on 13 Nov 2026 that the v0.9.26 `audit` skill was "nowhere near" the prompt he typed by hand and ran far less aggressively, so the skill now opens with that prompt, lightly edited (spelling, grammar, numbering), as his instruction to the agent that did the work; the rest only says how to carry it out.
@@ -113,7 +119,7 @@ Upgrade step: `claude plugin update sam-cc-setup`.
 
 ## sam-cc-setup v0.9.21 research-gap runs that can fail and stay within a run bound
 
-From the audit of the first packaged run (surprise-me, 28 Oct 2026): step 6 names what earlier steps already report and aims its check at the idea's strongest threat, so it can fail; `gap.md` names read-list papers only a seed or citation crawl found; each mode bounds its runs (Claude runs at most seats + 2 + G + ceil(P/3)), predicted in `cost.md` before readers launch, and Claude seats run with `--max-budget-usd 10`; after step 4 a read-only Codex review hunts for a paper that closes each open or narrowed gap and checks each closed verdict against its PDF (`review.md`); and gap workers log and pool searches with the new `scripts/searchlog.py` instead of their own helpers.
+From the audit of the first packaged run (surprise-me, 28 Oct 2026): step 6 names what earlier steps already report and aims its check at the idea's strongest threat, so it can fail; `gap.md` names read-list papers only a seed or citation crawl found; each mode bounds its runs (Claude runs at most seats + 2 + G + ceil(P/3)), predicted in `cost.md` before readers launch; after step 4 a read-only Codex review hunts for a paper that closes each open or narrowed gap and checks each closed verdict against its PDF (`review.md`); and gap workers log and pool searches with the new `scripts/searchlog.py` instead of their own helpers.
 No grader prompt changed, so no grader replay is owed.
 Upgrade step: `claude plugin update sam-cc-setup`.
 
