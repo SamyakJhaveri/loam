@@ -1,0 +1,10 @@
+{"round": null, "role": "judge", "model": null, "served_models": null}
+{"round": null, "role": "reviewer", "model": null, "served_models": ["claude-fable-5-2"]}
+{"round": 1, "role": "worker", "model": "claude-opus-5-5", "served_models": ["claude-opus-5-5"]}
+{"round": 1, "role": "judge", "model": "claude-opus-5-5", "served_models": ["claude-opus-5-5"]}
+{"round": 1, "role": "reviewer", "model": "claude-opus-5-5", "served_models": ["claude-fable-5-2"]}
+{"round": 1, "role": "codex-review", "model": "gpt-6.1-sol", "served_models": []}
+{"round": 2, "role": "worker", "model": "claude-opus-5-5", "served_models": ["claude-opus-5-5"]}
+{"round": 2, "role": "judge", "model": "claude-opus-5-5", "served_models": ["claude-opus-5-5"]}
+{"round": 2, "role": "reviewer", "model": "claude-opus-5-5", "served_models": ["claude-fable-5-2"]}
+{"round": 2, "role": "codex-review", "model": "gpt-6.1-sol", "served_models": []}

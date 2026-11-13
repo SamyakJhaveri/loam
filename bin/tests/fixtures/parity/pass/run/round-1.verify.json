@@ -1,0 +1,1 @@
+{"sha": "0123456789abcdef0123456789abcdef01234567", "findings": [{"id": "reviewer-1", "verdict": "CONFIRMED", "cmd": "", "output": "", "note": ""}, {"id": "codex-0", "verdict": "REJECTED", "cmd": "python3 -m pytest -q tests/test_grader.py", "output": "1 passed", "note": "the test fails when the verdict line moves"}]}

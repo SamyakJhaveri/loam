@@ -60,7 +60,8 @@ LAUNCHABLE = {**BLOCKED, "99042": {"as": [], "bl": 0, "body": str(CLEAN)}}
 # The runner exports FACTORY_<CAP> overrides (FACTORY_DAILY_BUDGET_USD=1000000000 on jhaveris), and
 # apply_caps lets them beat the defaults these tests rely on, so the ticks start without them (#676).
 CAP_NAMES = re.search(r'^CAP_NAMES="([^"]*)"', (ROOT / "bin/factory").read_text(), re.MULTILINE).group(1).replace("\\", " ").split()
-RUNNER_FREE_ENV = {k: v for k, v in os.environ.items() if not (k.startswith("FACTORY_") and k[8:] in CAP_NAMES)}
+RUNNER_FREE_ENV = {k: v for k, v in os.environ.items()
+                   if not (k.startswith("FACTORY_") and k[8:] in CAP_NAMES) and k != "FACTORY_JUDGE"}
 
 
 class IdleAlertTests(unittest.TestCase):
@@ -74,12 +75,18 @@ class IdleAlertTests(unittest.TestCase):
         self.runs.mkdir()
 
     def tick(self, now: int, *flags: str, store: dict | None = None, maxp: int = 1,
-             other: bool = False) -> subprocess.CompletedProcess[str]:
+             other: bool = False, billed: bool = False, judge: str | None = None) -> subprocess.CompletedProcess[str]:
+        """One tick; billed puts an API key in its environment, since only an API-billed runner has a daily budget."""
         (self.t / "store.json").write_text(json.dumps(BLOCKED if store is None else store))
         env = {**RUNNER_FREE_ENV, "PATH": f"{self.t}:{os.environ['PATH']}", "T": str(self.t),
                "STORE": str(self.t / "store.json"), "NOW": str(now), "OTHER": "1" if other else "",
                "FACTORY_SOURCED": "1",
                "FACTORY_ROOT": str(ROOT), "FACTORY_RUNS_ROOT": str(self.runs), "FACTORY_MAX_PARALLEL": str(maxp)}
+        env.pop("ANTHROPIC_API_KEY", None)
+        if billed:
+            env["ANTHROPIC_API_KEY"] = "sk-ant-test"
+        if judge is not None:
+            env["FACTORY_JUDGE"] = judge
         return subprocess.run(["bash", "-c", TICK, "tick", *flags], cwd=ROOT, env=env,
                               capture_output=True, text=True, check=False)
 
@@ -150,6 +157,14 @@ class IdleAlertTests(unittest.TestCase):
         self.assertEqual(proc.stdout.strip(), "launched #99042", proc.stderr)
         self.assertEqual(self.spell_alerts_after(T0 + 3800), [1, 2])
 
+    def test_a_launch_forwards_the_judge_switch_even_unset(self) -> None:
+        # tmux runs the session in its server's environment, so next passes FACTORY_JUDGE with -e, empty when unset.
+        self.assertEqual(self.tick(T0, store=LAUNCHABLE, judge="off").stdout.strip(), "launched #99042")
+        self.assertEqual(self.tick(T0 + 60, store=LAUNCHABLE).stdout.strip(), "launched #99042")
+        first, second = (self.t / "tmux").read_text().splitlines()
+        self.assertIn(" -e FACTORY_JUDGE=off ", first)
+        self.assertIn(" -e FACTORY_JUDGE= ", second)
+
     def test_a_paused_tick_ends_the_spell(self) -> None:
         self.tick(T0)
         self.tick(T0 + 3660)
@@ -174,7 +189,7 @@ class IdleAlertTests(unittest.TestCase):
         d = self.runs / "99044" / "k"
         d.mkdir(parents=True)
         (d / "status").write_text("stopped-daily\n")
-        proc = self.tick(T0 + 3700, store=LAUNCHABLE)
+        proc = self.tick(T0 + 3700, store=LAUNCHABLE, billed=True)
         self.assertEqual(proc.stdout.strip(), "nothing to launch", proc.stderr)
         self.assertIn("today's daily budget", proc.stderr)
         self.assertFalse((self.runs / "idle-since").exists())
@@ -188,7 +203,7 @@ class IdleAlertTests(unittest.TestCase):
         d = self.runs / "99042" / key
         d.mkdir(parents=True)
         (d / "status").write_text("stopped-daily\n")
-        proc = self.tick(T0 + 3660, store=LAUNCHABLE)
+        proc = self.tick(T0 + 3660, store=LAUNCHABLE, billed=True)
         self.assertIn("waiting #99042: daily budget spent", proc.stderr)
         self.assertEqual(self.alerts(), [])
         self.assertFalse((self.runs / "idle-since").exists())

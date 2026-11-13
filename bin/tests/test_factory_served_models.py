@@ -57,7 +57,7 @@ class ServedModelsTests(unittest.TestCase):
         line = self.record({"type": "result", "total_cost_usd": 2, "modelUsage": "x"})
         self.assertEqual((line["served_models"], line["cost_usd"]), ([], 2))
 
-    def record_alerts(self, usage: dict, role: str = "worker") -> tuple[list[list[str]], str]:
+    def record_alerts(self, usage: dict, role: str = "worker", model: str = OPUS) -> tuple[list[list[str]], str]:
         """The bin/alert calls and the factory.log text after record books one call with this `modelUsage`."""
         frozen = self.top / "frozen"
         frozen.mkdir(exist_ok=True)
@@ -72,7 +72,7 @@ class ServedModelsTests(unittest.TestCase):
         res.write_text(json.dumps({"type": "result", "total_cost_usd": 9.6, "modelUsage": usage}))
         log.unlink(missing_ok=True)
         proc = sourced(f"RUN='{self.top}'; LOG='{log}'; LEDGER='{self.top}/ledger.jsonl'; DAILY='{self.top}/daily.jsonl'\n"
-                       f"REPO=SamyakJhaveri/distbench; ISSUE=7; KEY=7\nrecord 3 {role} {OPUS} '{res}'")
+                       f"REPO=SamyakJhaveri/distbench; ISSUE=7; KEY=7\nrecord 3 {role} {model} '{res}'")
         self.assertEqual(proc.returncode, 0, proc.stderr)
         sent = [json.loads(x) for x in calls.read_text().splitlines()] if calls.exists() else []
         return sent, log.read_text()
@@ -93,6 +93,14 @@ class ServedModelsTests(unittest.TestCase):
         sent, _ = self.record_alerts(usage, role="judge")
         self.assertEqual(len(sent), 1, sent)
         self.assertIn("judge call in round 3", sent[0][-1])
+
+    def test_record_alerts_when_the_requested_model_did_not_serve(self) -> None:
+        # audit3 F7: a reviewer asked for Fable 5.2 that Claude Code answered with Opus 5.5 (a model missing from
+        # availableModels falls back silently) alerts, though Opus is configured for the worker.
+        sent, log = self.record_alerts({OPUS: {"costUSD": 0.5}}, role="reviewer", model="claude-fable-5-2")
+        self.assertEqual(len(sent), 1, sent)
+        self.assertIn("reviewer call in round 3", sent[0][-1])
+        self.assertIn(f"off-model reviewer round 3: {OPUS} (0.5 usd)", log)
 
     def test_record_sends_no_alert_for_configured_models(self) -> None:
         sent, log = self.record_alerts({OPUS: {"costUSD": 1}, f"{OPUS}[1m]": {"costUSD": 1}})

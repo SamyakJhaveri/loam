@@ -1,0 +1,1131 @@
+#!/usr/bin/env python3
+"""bin/factory-parity - did a factory run on DistBench work the way an attended DistBench session works?
+
+  bin/factory-parity [--projects-root DIR] <run-folder>
+  bin/factory-parity --attended [--projects-root DIR] <session.jsonl>...
+
+<run-folder> is one factory run, `~/.local/state/loam-factory/runs/<owner>__<repo>/<key>/<sha8>/`, or its
+`<key>/` folder when that holds exactly one run.
+Each round's top-level transcript is its `round-N.jsonl` (the worker's stream-json). The round's subagent
+transcripts (Agent and Workflow) are `<projects-root>/<cwd slug>/<session id>/subagents/**/agent-*.jsonl`,
+found from the init line's `cwd` and `session_id`; <projects-root> defaults to ~/.claude/projects.
+A round that spawned subagents whose transcripts are not there, or whose events (an Agent result's agentId, a
+Workflow's progress) name an agent with no agent-<id>.jsonl there, is unusable input: pass --projects-root.
+With --attended, each <session.jsonl> is an interactive session (one round; subagents in <session>/subagents/)
+and only P2, P3 and P6 run.
+
+Prints one line per behaviour, `PASS|FAIL|UNSURE|N/A <id> <name>: <evidence file:line or reason>`, then
+`parity: PASS`, `parity: FAIL (<ids>)` or `parity: UNSURE (<ids>)` (with --attended, a `== <file>` header and these
+lines per session). Exit 0 on PASS, 1 on FAIL or UNSURE, 2 on unusable input.
+
+Shell commands are read fail-closed: a Bash call holding a construct parity does not model (`unsure`: a { } or ( )
+group, a redirect other than > f, >> f, 2> f, &> f, 2>&1 and < f, a here-doc not fed to cat or tee, eval, source,
+process substitution, a SKILL.md read inside a compound command) counts as no read and no proof step, and a check
+whose verdict it could change says UNSURE, citing the call, never PASS.
+
+A full read of a SKILL.md is a Read with no offset or limit, or a Bash call that is only `cat <file>`. A head, sed,
+tail or any other capped read never counts: Claude Code trims trailing whitespace from a Bash result, so a read that
+cut the file on a blank line looks uncut. Either way the call's own result must show the file's `name: <skill>`
+frontmatter line, or it is no read.
+A call a permission denial or the pstack-gate hook answered never ran: it is no change and no read. A call with no
+result, or whose result is an error (is_error: a missing file, a nonzero exit), is no read and no proof step.
+A change is an Edit, Write, NotebookEdit or MultiEdit call, or a Bash call that writes in place (sed -i, ruff
+format, write_text, open(..., 'w'), git commit, cat/echo > file, tee). A write to notes or scratch is no change: the
+run's worker/ folder (`.../<key>/<sha8>/worker/`), /tmp, $TMPDIR, a scratchpad, ~/.claude/projects and DistBench's
+evidence folder (also a Bash write after a `cd` there, while no later `cd` parity cannot resolve, such as `cd -` or
+`cd ..`, has left it: in_notes). A $VAR in a Bash call is expanded only where parity can place its value (assigned:
+set once, by a top-level VAR=value statement before it); elsewhere it stays as written, so a write through it is a
+change. A transcript's brief is its first user message (a top-level round's: round-N.prompt.md) plus the ticket's
+`skills:` line (frozen/issue.md); a SKILL.md it names is a `pstack:<name>`, a `skills/<name>/SKILL.md` path or a
+hyphenated pstack name.
+
+  P1 instructions     each round's init lists DistBench's own project skill verify-distbench and loads
+                      sam-cc-setup from exactly the path in frozen/plugin-dir, and each round-N.prompt.md holds
+                      the memory view's first line `# Memory view (written for the lead)`.
+  P2 router           every transcript that changes a file fully read, before its first change, the pstack router
+                      (also the Skill call on sam-cc-setup:pstack) or a pstack SKILL.md its brief names.
+  P3 method           every transcript that changes a file fully read a pstack skills/<name>/SKILL.md before its
+                      first change; a round with a change has a worker/decisions.md line
+                      `pstack: <skill> | <SKILL.md path> | ...` or a transcript that fully read a pstack SKILL.md
+                      its brief names before its first change; each such line's path ends <skill>/SKILL.md and that
+                      same file (same_path) was fully read in that round; and every other pstack method
+                      decisions.md names for a round was fully read in that round. A decisions.md line starting "Round N" (the supervisor writes
+                      one before each round) and the lines after it belong to round N; earlier lines to round 1. With --attended there is no decisions.md part.
+  P4 gate-in-round    the supervisor's round-N.checks of each round holds a `PASS check-green` or `FAIL
+                      check-green` line (the gate ran for the round; no round-N.checks is UNSURE); and no tool
+                      result, nor a log in worker/, shows the sandbox refusal.
+  P5 models           every model and effort the round used is one Samyak allows (ALLOWED below): Opus 5.5 at
+                      medium, high or xhigh in any role; Fable 5.2 at high in a reviewer subagent only (its
+                      meta.json agentType or workflowPhase names review, critic or judge, or its description
+                      starts with one). Haiku, effort max, low, or any other model fails. Sources: init and
+                      message models, factory.log's worker call line (model, effort, advisor),
+                      round-N.result.json modelUsage, and api-request params (model with its effort).
+  P6 behaviour-proof  when the last round-N.diff (with --attended: the session's Edit and Write paths) touches
+                      what verify-distbench covers (its SKILL.md: "a runner, command, task package, oracle,
+                      orchestrator or grader change"), some transcript fully read verify-distbench/SKILL.md (or
+                      made its Skill call) and ran its proof commands: control-distbench launch <run> and at least
+                      one drive (agent or exec <run>), each in a call whose result is no error; `--help` is no
+                      run. Else N/A.
+  P7 native-shell     each round's init permissionMode is auto; frozen/worker-settings.json has sandbox.enabled
+                      false; shell-digest.start equals shell-digest.end (U3's `<hash>  <label>` lines at launch and
+                      finish: ~/.claude files, and per checkout git-status, git-head, git-diff and git-untracked;
+                      ~/.claude/skills/synced/ is ignored, as any session start changes it). Lists each classifier permission_denied event (tool input
+                      and reason) as evidence; a denial alone does not fail.
+  P8 reviews          per graded round (round-N.graded.sha): ledger.jsonl has a reviewer row, and every one but
+                      a no-result row (a killed attempt's charge) has served_models
+                      exactly ["claude-fable-5-2"]; round-N.codex-review.json is a JSON object; the ids in
+                      round-N.verify.json equal the blocking ids recomputed from round-N.review.json
+                      (`reviewer-<i>`, severity high or medium) and round-N.codex-review.json (`codex-<i>`,
+                      critical or high), <i> the 0-based index in that file's .findings (a review file that is the
+                      supervisor's unparseable fallback fails as no review), and its sha is round-N.graded.sha's;
+                      each verdict is CONFIRMED, PARTLY or REJECTED (UNVERIFIED, the supervisor's mark for a failed
+                      verifier call, fails), and a REJECTED one has a non-empty cmd and output. A round with no
+                      blocking finding may have no verify.json. No graded round: N/A.
+
+Adding a behaviour: write `def pN(run: Run) -> tuple[str, str]` that returns (PASS|FAIL|N/A, evidence), using
+combine() for per-round rows, add one row to BEHAVIOURS, add a pass and a fail case to
+bin/tests/test_factory_parity.py (fixtures cut by bin/tests/fixtures/parity/cut.py), and add the rule's mutation to
+bin/tests/fixtures/parity/mutate.py.
+
+Standard library only; reads files, runs nothing.
+"""
+from __future__ import annotations
+
+import argparse
+import json
+import os
+import re
+import sys
+from pathlib import Path
+
+# Samyak's model rules. ~/.claude/rules/pstack-models.md:3 "every pstack role runs on Opus 5.5; never Haiku";
+# :5 "never use max for any model unless Samyak says so. Opus runs at medium, high or xhigh; Fable always at high";
+# ~/.claude/CLAUDE.md:52-53 `escalate` (Fable 5.2, high) for "a blind second opinion"; "Never Haiku". The factory
+# brief of 12 Nov 2026 allows Fable for reviewers only.
+ALLOWED = {"claude-opus-5-5": {"medium", "high", "xhigh"}}
+REVIEWER_ALLOWED = {**ALLOWED, "claude-fable-5-2": {"high"}}
+REVIEWER = re.compile(r"review|critic|judge", re.I)
+PROJECT_SKILLS = ("verify-distbench",)
+ROUTER_PATH = "sam-cc-setup/skills/pstack/SKILL.md"
+ROUTER_SKILL = "sam-cc-setup:pstack"
+EDIT_TOOLS = {"Edit", "Write", "NotebookEdit", "MultiEdit"}
+SPAWN_TOOLS = {"Agent", "Task", "Workflow"}
+# verify-distbench/SKILL.md: runner, the four agent commands, task packages, oracle and F28 guard
+# (distbench.expected), orchestrator, grader.
+COVERED = ("tasks/", "src/distbench/runner.py", "src/distbench/commands.py", "src/distbench/expected.py",
+           "src/distbench/orchestrator.py", "src/distbench/grader.py")
+COVERED_PATH = re.compile(r"(?:^|/)(?:" + "|".join(re.escape(c) + ("" if c.endswith("/") else "$") for c in COVERED) + ")")
+PLUGIN = "sam-cc-setup"
+MEMORY_VIEW = "# Memory view (written for the lead)"
+FABLE = "claude-fable-5-2"
+BLOCKING = {"reviewer": {"high", "medium"}, "codex": {"critical", "high"}}
+VERDICTS = {"CONFIRMED", "PARTLY", "REJECTED"}
+GIT_DIGESTS = ("git-head", "git-diff", "git-untracked")  # each `git-status:<dir>` digest line needs these too
+# A decisions.md method line from the router: `pstack: <skill> | <SKILL.md path> | <sha256> | <quote> | <decision>`,
+# also after a `Round N: ` prefix (decision_lines gives it to round N).
+PSTACK_LINE = re.compile(r"^\s*(?:[-*]\s+)?(?:Round \d+:\s*)?pstack:\s*([^|\s][^|]*?)\s*\|\s*([^|]+?)\s*\|")
+# Writes here are notes or scratch, not changes: a run's <key>/<sha8>/worker/, /tmp and $TMPDIR, a session
+# scratchpad, ~/.claude/projects (sessions, memory) and DistBench's evidence folder (attended agents' reports).
+NOTES = re.compile(r"/[0-9a-f]{8}/worker/|(?<![\w.])/tmp/|/scratchpad/|\$\{?TMPDIR\b|/\.claude/projects/"
+                   r"|/\.local/state/distbench/evidence/")
+ASSIGN = re.compile(r"(?<![\w$-])(\w+)=(?:(\$\(mktemp\b[^()]*\))|(['\"]?)([^\s'\";&|()`]+)\3)")
+QUOTED = re.compile(r"'[^']*'|\"(?:[^\"\\]|\\.)*\"")
+NOT_RUN = re.compile(r"pstack-gate: blocked|\APermission to use .* has been denied|\APermission for this action was denied")
+READ_LEAD = {"do", "then", "else", "{", "(", "!", "command", "exec", "time", "nohup"}
+
+NOT_SCRATCH = r"(?!&|/dev/|/tmp/|\"?\$\{?TMPDIR)"
+BASH_WRITE = re.compile("|".join([
+    r"\bsed\s+(?:-[a-zA-Z]+\s+)*-[a-zA-Z]*i",
+    r"\bperl\s+-[a-zA-Z]*i",
+    r"\bruff\s+format\b(?![^|;&\n]*--check)",
+    r"\bruff\s+check\b[^|;&\n]*--fix",
+    r"\.write_(?:text|bytes)\(",
+    r"\bopen\([^)\n]*,\s*['\"][wax]",
+    r"\bgit\s+(?:-C\s+\S+\s+)?(?:commit|apply|am|mv|rm)\b",
+    r"\b(?:cat|echo|printf)\b[^|;&\n]*?(?<![0-9&>])>{1,2}\s*" + NOT_SCRATCH + r"\S",
+    r"\btee\s+(?:-a\s+)?" + NOT_SCRATCH + r"\S",
+]))
+SKILL_FILE = re.compile(r"([^\s\"';|&()]*?)skills/([^/\s\"';|&()]+)/SKILL\.md")
+LOOP = re.compile(r"\bfor\s+(\w+)\s+in\s+([^;\n]+?)\s*;?\s*(?:\n\s*)?do\b")
+HEREDOC = re.compile(r"<<-?\s*(['\"]?)(\w+)\1([^\n]*)\n.*?(?:\n[ \t]*\2[ \t]*(?=\n|$)|\Z)", re.S)
+REFUSAL = re.compile(r"(?m)^[^\"'\n]*?(bin/check: AF_UNIX bind denied[^\n]*|bwrap: No permissions to create new namespace[^\n]*)")
+SAVED = re.compile(r"Full output saved to: (\S+)")
+ROUND_FILE = re.compile(r"round-(\d+)\.jsonl")
+WORKER_CALL = re.compile(r"worker call: round (\d+) model=(\S+) effort=(\S+)(?: advisor=(\S+))?")
+LAUNCH = re.compile(r"\blaunch\s+(?!-)\S")
+DRIVE = re.compile(r"\b(?:agent|exec)\s+(?!-)\S")
+
+
+class Unusable(Exception):
+    pass
+
+
+class Transcript:
+    """One transcript's tool calls, results, skills, models and efforts, each with its 1-based line."""
+
+    def __init__(self, path: Path, label: str, top: bool, projects: Path):
+        self.label = label
+        self.calls: list[tuple[int, str, dict]] = []  # (line, tool name, input)
+        self.results: dict[str, tuple[int, str]] = {}  # tool_use id -> (line, text)
+        self.ids: list[str] = []  # tool_use id per call
+        self.inits: list[tuple[int, dict]] = []
+        self.skills: tuple[int, list[str]] | None = None
+        self.models: list[tuple[int, str]] = []
+        self.requests: list[tuple[int, str, str]] = []  # api-request (line, model, effort)
+        self.brief = ""  # the first user message's text
+        self.denials: list[tuple[int, str, str]] = []  # classifier permission_denied (line, tool_use id, reason)
+        self.denied: set[str] = set()  # tool_use ids of every permission_denied event
+        self.errors: set[str] = set()  # tool_use ids whose tool_result is is_error (a failed cat, a nonzero exit)
+        self.agents: dict[str, int] = {}  # top only: id -> first line of each subagent the events name
+        meta_path = path.with_name(path.stem + ".meta.json")
+        try:
+            meta = json.loads(meta_path.read_text(encoding="utf-8")) if meta_path.is_file() else {}
+        except ValueError:
+            meta = {}
+        meta = meta if isinstance(meta, dict) else {}
+        self.reviewer = bool(REVIEWER.search(f"{meta.get('agentType', '')} {meta.get('workflowPhase', '')}")
+                             or re.match(r"\s*(?:blind\s+)?(?:review|critic|judge)", str(meta.get("description", "")), re.I))
+        lines = path.read_text(encoding="utf-8", errors="replace").splitlines()
+        parsed = 0
+        for n, raw in enumerate(lines, 1):
+            try:
+                ev = json.loads(raw)
+            except ValueError:
+                continue
+            if not isinstance(ev, dict):
+                continue
+            parsed += 1
+            if top:
+                self.note_agents(n, ev)
+            if top and ev.get("parent_tool_use_id"):
+                continue  # a subagent's event; its own transcript has it
+            kind = ev.get("type")
+            if kind == "system" and ev.get("subtype") == "init":
+                self.inits.append((n, ev))
+                if isinstance(ev.get("skills"), list):
+                    self.skills = (n, ev["skills"])
+                if ev.get("model"):
+                    self.models.append((n, ev["model"]))
+            elif kind == "system" and ev.get("subtype") == "permission_denied":
+                self.denied.add(str(ev.get("tool_use_id", "")))
+                if ev.get("decision_reason_type") == "classifier":
+                    self.denials.append((n, str(ev.get("tool_use_id", "")), str(ev.get("decision_reason", ""))))
+            elif kind == "attachment":
+                att = ev.get("attachment") or {}
+                if att.get("type") == "skill_listing" and isinstance(att.get("names"), list):
+                    self.skills = (n, att["names"])
+                elif att.get("type") == "model" and (att.get("identity") or {}).get("modelId"):
+                    self.models.append((n, att["identity"]["modelId"]))
+            elif kind == "api-request":
+                params = ev.get("params") or {}
+                if params.get("model"):
+                    self.models.append((n, params["model"]))
+                    self.requests.append((n, params["model"], str((params.get("output_config") or {}).get("effort", ""))))
+            elif kind in ("assistant", "user"):
+                msg = ev.get("message") or {}
+                if kind == "assistant" and msg.get("model") and msg["model"] != "<synthetic>":
+                    self.models.append((n, msg["model"]))
+                content = msg.get("content")
+                if kind == "user" and not self.brief:
+                    self.brief = content if isinstance(content, str) else "\n".join(
+                        c.get("text", "") for c in content if isinstance(c, dict) and c.get("type") == "text") \
+                        if isinstance(content, list) else ""
+                for item in content if isinstance(content, list) else []:
+                    if not isinstance(item, dict):
+                        continue
+                    if item.get("type") == "tool_use":
+                        inp = item.get("input") if isinstance(item.get("input"), dict) else {}
+                        self.calls.append((n, item.get("name", ""), inp))
+                        self.ids.append(item.get("id", ""))
+                    elif item.get("type") == "tool_result":
+                        self.results[item.get("tool_use_id", "")] = (n, result_text(item.get("content"), projects))
+                        if item.get("is_error") is True:
+                            self.errors.add(item.get("tool_use_id", ""))
+        if not parsed:
+            raise Unusable(f"{path}: no JSON lines")
+
+    def note_agents(self, n: int, ev: dict) -> None:
+        """Record the subagent ids an event names: a relayed subagent event's agent_id, an Agent result's
+        tool_use_result (toolUseResult in a session file) agentId, and a Workflow's task_progress agents."""
+        ids = [ev.get("agent_id")]
+        for key in ("tool_use_result", "toolUseResult"):
+            if isinstance(ev.get(key), dict):
+                ids.append(ev[key].get("agentId"))
+        progress = ev.get("workflow_progress")
+        ids += [w.get("agentId") for w in progress if isinstance(w, dict)] if isinstance(progress, list) else []
+        for a in ids:
+            if isinstance(a, str) and a:
+                self.agents.setdefault(a, n)
+
+    def result(self, i: int) -> tuple[int, str] | None:
+        return self.results.get(self.ids[i])
+
+    def ran(self, i: int) -> bool:
+        """False when call i never ran: a permission denial or a pstack-gate block answered it."""
+        res = self.result(i)
+        return self.ids[i] not in self.denied and not (res and NOT_RUN.search(res[1]))
+
+    def ok(self, i: int) -> bool:
+        """True when call i has a result, ran and its result is no error: what a read or a proof step needs."""
+        return self.result(i) is not None and self.ran(i) and self.ids[i] not in self.errors
+
+
+def result_text(content: object, projects: Path) -> str:
+    if isinstance(content, list):
+        text = "\n".join(c.get("text", "") for c in content if isinstance(c, dict))
+    else:
+        text = content if isinstance(content, str) else ""
+    # A large result is saved beside the session; read the copy under the projects root.
+    for saved in SAVED.findall(text):
+        rel = saved.split("/.claude/projects/", 1)[-1]
+        copy = projects / rel
+        if "/.claude/projects/" in saved and copy.is_file():
+            text += "\n" + copy.read_text(encoding="utf-8", errors="replace")
+    return text
+
+
+def call_text(name: str, inp: dict) -> str:
+    if name == "Bash":
+        return str(inp.get("command", ""))
+    if name == "Read":
+        return str(inp.get("file_path", ""))
+    return ""
+
+
+def changes(name: str, inp: dict) -> str | None:
+    """A short description of the file change this call makes, or None. A write under a run's worker/ is none."""
+    if name in EDIT_TOOLS:
+        path = str(inp.get("file_path") or inp.get("notebook_path") or "")
+        return None if NOTES.search(path) else f"{name} {path}".strip()
+    if name == "Bash":
+        # A heredoc fed to cat or tee is the file's text, not commands: blank its body.
+        cmd = HEREDOC.sub(lambda m: m.group(0) if not re.search(r"\b(?:cat|tee)\b[^\n]*$", m.string[:m.start()])
+                          else m.group(0)[:m.start(3) - m.start() + len(m.group(3))], assigned(str(inp.get("command", "")), True))
+        cmd = no_comments(cmd)  # a `>` in a comment writes nothing
+        # Quoted text keeps its length but never ends a command, so a sed script's `;` does not cut off its file.
+        bare = re.sub(r"'[^']*'|\"(?:[^\"\\]|\\.)*\"", lambda q: q.group(0)[0] + "x" * (len(q.group(0)) - 2) + q.group(0)[-1], cmd)
+        for m in BASH_WRITE.finditer(cmd):
+            end = m.end() + len(re.match(r"[^|;&\n]*", bare[m.end():]).group(0))
+            if not (NOTES.search(cmd[m.start():end]) or in_notes(cmd[:m.start()])):
+                return "Bash " + " ".join(cmd[m.start():m.start() + 60].splitlines()[0].split())
+    return None
+
+
+def in_notes(before: str) -> bool:
+    """True when the text of a command before a write leaves it in a notes or scratch place: its last absolute `cd`
+    went there and every later `cd` went down into a relative subfolder (no `..`). A `cd` parity cannot resolve
+    (`cd -`, a bare cd, a `..`, an unexpanded $VAR, pushd or popd) ends the exemption, and a ( ), { } or backtick
+    group outside $( ) ends it too (a cd in it may not hold); a cd inside $( ) moves nothing. An eval, source, `.` or
+    sh -c can run a cd parity cannot see, so any of them ends the exemption (fail closed)."""
+    code = no_comments(QUOTED.sub(lambda q: q.group(0)[0] + "x" * (len(q.group(0)) - 2) + q.group(0)[-1], before))
+    if re.search(r"(?<![\w.-])(?:eval|source)(?![\w.-])|(?:\A|[;&|\n!]|\b(?:then|do|else))[ \t]*\.(?=\s|\Z)"
+                 r"|(?<![\w-])(?:ba|da|k|z)?sh\s+(?:-\w+\s+)*-\w*c\b", code):
+        return False
+    while (flat := re.sub(r"\$\([^()]*\)", lambda m: " " * len(m.group(0)), code)) != code:
+        code = flat
+    if re.search(r"[`(){}]", re.sub(r"\$\{[^{}]*\}", lambda m: "x" * len(m.group(0)), code)):
+        return False
+    where = False
+    for m in re.finditer(r"(?<![\w-])(cd|pushd|popd)(?:[ \t]+(\S+))?", code):
+        target = before[m.start(2):m.end(2)].rstrip(";&|") if m.group(2) else ""
+        if m.group(1) == "cd" and target[:1] in ("/", "~", "$", '"', "'"):
+            where = bool(NOTES.search(target))
+        elif not (m.group(1) == "cd" and target and target[0] not in "-;&|" and ".." not in target.split("/")):
+            where = False
+    return where
+
+
+def loops_of(text: str) -> dict[str, list[str]]:
+    return {var: [v.strip("'\"") for v in vals.split()] for var, vals in LOOP.findall(text)}
+
+
+def assigned(text: str, unplaced: bool = False) -> str:
+    """text with each $VAR whose value parity can place replaced by it, the value expanded the same way: VAR is set
+    exactly once in the call, by a statement that is only `VAR=value` (no command substitution in the value; one
+    from $(mktemp ...) is /tmp/), starts the call or follows ; or a newline, has no if, loop, case, ( ) or { } group
+    or backtick before it, and ends at ;, &&, a newline or the end; and the $VAR comes after it. Any other $VAR stays
+    as written, so a write through it is a change (fail closed). With unplaced, a $VAR the call sets but parity cannot
+    place becomes $unplaced_VAR, so it never reads as scratch the way an inherited $TMPDIR does."""
+    code = no_comments(QUOTED.sub(lambda q: q.group(0)[0] + "x" * (len(q.group(0)) - 2) + q.group(0)[-1], text))
+    sets: dict[str, int] = {}  # var -> times set: VAR= at a command's start (after other VAR=value words, a
+    for m in re.finditer(r"(?<![\w$-])(\w+)=", code):  # keyword or export/local/declare) counts, an argument not
+        lead = re.sub(r"(?:(?<=\s)|\A)(?:\w+=[^\s;&|]*\s*)+\Z", "", code[:m.start()]).rstrip()
+        if re.search(r"(?:\A|[;&|\n({`!]|\b(?:then|do|else|elif|if|while|until|time|export|local|declare|readonly|typeset))\Z", lead):
+            sets[m.group(1)] = sets.get(m.group(1), 0) + 1
+    for m in re.finditer(r"\b(?:for|select)\s+(\w+)|\bread\b([^;&|\n]*)", code):
+        for var in [m.group(1)] if m.group(1) else re.findall(r"(?<![-\w])[A-Za-z_]\w*", m.group(2)):
+            sets[var] = sets.get(var, 0) + 2
+    values: dict[str, tuple[int, str]] = {}  # var -> (end of its statement, value)
+
+    def expand(s: str, at: int) -> str:
+        return re.sub(r"\$\{?(\w+)\}?(?!\w)", lambda r: values[r.group(1)][1] if r.group(1) in values and
+                      values[r.group(1)][0] <= at + r.start() else f"$unplaced_{r.group(1)}"
+                      if unplaced and r.group(1) in sets else r.group(0), s)
+
+    for m in ASSIGN.finditer(text):
+        var, before = m.group(1), code[:m.start()]
+        if (sets.get(var) == 1 and code[m.start()] == text[m.start()] and re.search(r"(?:\A|[;\n])[ \t]*\Z", before)
+                and not re.search(r"(?<!\$)[({]|`|\b(?:if|then|else|elif|while|until|for|do|case|select|function)\b", before)
+                and re.match(r"[ \t]*(?:\Z|[;\n]|&&)", code[m.end():])):
+            values[var] = (m.end(), "/tmp/" if m.group(2) else expand(m.group(4), m.start(4)))
+    return expand(text, 0) if values or (unplaced and sets) else text
+
+
+def skill_paths(text: str, loops: dict[str, list[str]]) -> set[tuple[str, str]]:
+    """(prefix, name) for each skills/<name>/SKILL.md in text, a loop variable in it expanded to each value and
+    a brace list ({a,b}) to each name."""
+    for var, values in loops.items():
+        ref = re.compile(rf"\$\{{?{var}\}}?(?!\w)")
+        if ref.search(text):
+            return {f for v in values for f in skill_paths(ref.sub(lambda _, v=v: v, text), {})}
+    return {(prefix, n) for prefix, names in SKILL_FILE.findall(text)
+            for n in (names[1:-1].split(",") if names.startswith("{") and names.endswith("}") else [names])}
+
+
+def skill_reads(name: str, inp: dict) -> set[tuple[str, str]]:
+    """(prefix, name) for each skills/<name>/SKILL.md a Read or Bash call names, read in full or not."""
+    text = assigned(call_text(name, inp))
+    return skill_paths(text, loops_of(text)) if "SKILL.md" in text else set()
+
+
+def no_comments(cmd: str) -> str:
+    """cmd with each shell comment (a # that starts a word outside quotes, to the end of its line) blanked, offsets
+    kept."""
+    bare = re.sub(r"'[^']*'|\"(?:[^\"\\]|\\.)*\"", lambda q: "x" * len(q.group(0)), cmd)
+    out = list(cmd)
+    for m in re.finditer(r"(?m)(?:^|(?<=\s))#.*$", bare):
+        out[m.start():m.end()] = " " * (m.end() - m.start())
+    return "".join(out)
+
+
+READ_DOUBT = "a SKILL.md read inside a compound command"  # unsure(): it reads nothing here, but may have shown it
+KEYWORDS = {"!", "do", "then", "else", "elif", "if", "while", "until", "time", "command", "builtin", "nohup"}
+
+
+def unsure(cmd: str) -> str | None:
+    """The first construct in a Bash command that parity does not model, or None. Modelled: simple commands joined by
+    ;, &&, ||, | and newlines, for and while loops, if and case with no pipe or redirect on them, $( ) substitution, a
+    here-doc fed to cat or tee, comments, and the redirects > f, >> f, 1> f, 2> f, &> f, 2>&1 and < f. Anything else
+    (a { } or ( ) group, another redirect, another here-doc or a here-string, eval, source of a file other than the
+    factory's lib.sh, process substitution) can hide a change. A compound command (compound) naming a SKILL.md is
+    unmodelled too: what it showed of the file cannot be told from its result. A simple command that is no full read
+    (a head, a sed, a cat of two files) is no read, and is not in doubt."""
+    for m in HEREDOC.finditer(cmd):
+        if not re.search(r"\b(?:cat|tee)\b[^\n]*$", cmd[:m.start()]):
+            return "a here-doc"
+    code = bare = no_comments(HEREDOC.sub(lambda m: m.group(3), cmd))
+    code = re.sub(r"'[^']*'|\"(?:[^\"\\]|\\.)*\"", lambda q: "x" * len(q.group(0)), code)
+    if "<<<" in code:
+        return "a here-string"
+    if re.search(r"[<>]\(", code):
+        return "process substitution"
+    if re.search(r"(?:^|(?<=[\s;&|(]))\{(?=\s|$)", code) or "(" in code.replace("$(", ""):
+        return "a { } or ( ) group"
+    if re.search(r"(?:^|(?<=[\s;&|]))(?:done|fi|esac)\s*(?:(?:\d+|&)?[<>]|\|)", code):
+        return "a pipe or redirect on a loop, if or case"
+    for m in re.finditer(r"(?<![\w$>&<])(\d+|&)?(>>|>&|>\||<&|<>|>|<)(\d+|-)?", code):
+        fd, op, target = m.groups()
+        if not ((op in (">", ">>") and fd in (None, "1", "2", "&")) or (op == ">&" and fd == "2" and target == "1")
+                or (op == "<" and fd in (None, "0"))):
+            return f"the redirect {m.group(0).strip()}"
+    for seg in re.split(r"&&|\|\||[;&|\n]", code):
+        words = seg.split()
+        while words and words[0] in KEYWORDS:
+            words = words[1:]
+        if not words:
+            continue
+        if words[0] == "eval":
+            return "eval"
+        if words[0] in ("source", ".") and not re.search(r"/(?:frozen|factory\.d)/lib\.sh$", words[1] if len(words) > 1 else ""):
+            return "source"
+    return READ_DOUBT if "SKILL.md" in bare and compound(cmd) else None
+
+
+def unsure_calls(t: Transcript, upto: int | None = None, about: str = "") -> list[str]:
+    """`<label:line> holds <construct>` for each Bash call of t up to call `upto` (all calls with None) that ran and
+    holds a construct parity does not model; with about, only calls whose command names it."""
+    out = []
+    for j, (line, name, inp) in enumerate(t.calls[:None if upto is None else upto + 1]):
+        cmd = str(inp.get("command", "")) if name == "Bash" else ""
+        if cmd and about in cmd and t.ran(j) and (what := unsure(cmd)):
+            out.append(f"{at(t, line)} holds {what}")
+    return out
+
+
+def shows(text: str, skill: str) -> bool:
+    """Whether a tool result shows SKILL.md `skill`'s own frontmatter line `name: <skill>` (a Read result numbers it)."""
+    return bool(re.search(rf"(?m)^(?:\s*\d+[\u2192\t])?name:\s*{re.escape(skill)}\s*$", text))
+
+
+def compound(cmd: str) -> bool:
+    """Whether a Bash command is more than one simple command: it holds ;, &, |, a redirect, a group, a substitution
+    or a second line, outside quotes and comments."""
+    code = no_comments(re.sub(r"'[^']*'|\"(?:[^\"\\]|\\.)*\"", lambda q: "x" * len(q.group(0)), cmd)).strip()
+    return bool(re.search(r"[;&|<>(){}`\n]|\$\(", code))
+
+
+def simple_read(cmd: str) -> str | None:
+    """The file F when the whole Bash command is `cat F` and nothing else; None for anything else, a compound command
+    (compound), a head or a sed included: Claude Code trims a Bash result's trailing blank lines, so a capped read
+    that cut the file on a blank line looks uncut."""
+    if compound(cmd):
+        return None
+    words = [w.strip("'\"") for w in no_comments(cmd).split()]
+    return words[1] if len(words) == 2 and words[0] == "cat" and not words[1].startswith("-") else None
+
+
+def full_reads(t: Transcript, j: int) -> set[tuple[str, str]]:
+    """(prefix, name) of the SKILL.md call j of t reads in full: a Read with no offset or limit, or a Bash call whose
+    whole command is `cat` of that file (simple_read). Either way only when the call succeeded and its own result
+    shows the file's `name: <skill>` line: judged by what the tool showed, so a compound command (a redirect, a second
+    command, an if) reads nothing here, and unsure() makes a check it could change say UNSURE."""
+    _, name, inp = t.calls[j]
+    res = t.result(j)
+    if not res or not t.ok(j):
+        return set()
+    if name == "Read":
+        if inp.get("offset") is not None or inp.get("limit") is not None:
+            return set()
+        return {f for f in skill_reads(name, inp) if shows(res[1], f[1])}
+    read = simple_read(str(inp.get("command", ""))) if name == "Bash" else None
+    if read is None:
+        return set()
+    return {f for f in skill_paths(read, {}) if shows(res[1], f[1])}
+
+
+def is_router(prefix: str, skill: str) -> bool:
+    return skill == "pstack" and prefix.endswith(PLUGIN + "/")
+
+
+def reads_router(t: Transcript, j: int) -> bool:
+    if t.calls[j][1] == "Skill":
+        return t.calls[j][2].get("skill") == ROUTER_SKILL and t.ok(j)
+    return any(is_router(*f) for f in full_reads(t, j))
+
+
+def pstack_methods(reads: set[tuple[str, str]], pstack: set[str]) -> set[str]:
+    """The pstack method names among skill reads; the router itself (sam-cc-setup's skills/pstack) is not one."""
+    return {s for prefix, s in reads if not is_router(prefix, s) and (s in pstack or "/pstack/" in prefix)}
+
+
+def named_skills(text: str, pstack: set[str]) -> set[str]:
+    """The pstack methods a text names: pstack:<name>, a pstack skills/<name>/SKILL.md, or a hyphenated name."""
+    names = set(re.findall(r"\bpstack:([a-z0-9-]+)", text)) | pstack_methods(set(SKILL_FILE.findall(text)), pstack)
+    return names | {s for s in pstack if "-" in s and re.search(rf"(?<![\w-]){re.escape(s)}(?![\w-])", text)}
+
+
+class Round:
+    """One round: its top-level transcript, its subagent transcripts, and the top transcript's brief."""
+
+    def __init__(self, n: int, top: Transcript, subs: list[Transcript], prompt: str = ""):
+        self.n, self.top, self.subs = n, top, subs
+        self.top.brief = prompt or self.top.brief
+
+    @property
+    def transcripts(self) -> list[Transcript]:
+        return [self.top, *self.subs]
+
+
+def subagents(top: Transcript, label: str, dirs: list[Path], projects: Path) -> list[Transcript]:
+    """The agent-*.jsonl transcripts under dirs; unusable when top spawned subagents and none is there, or when an
+    event of top names an agent id (Transcript.note_agents) whose agent-<id>.jsonl is not there."""
+    subs: list[Transcript] = []
+    files = sorted({f for d in dirs for f in d.glob("**/agent-*.jsonl")})
+    for f in files:
+        subs.append(Transcript(f, str(f.relative_to(projects)) if f.is_relative_to(projects) else str(f), False, projects))
+    where = ' or '.join(str(d) for d in dirs) or 'its subagents folder'
+    spawned = [(n, name) for n, name, _ in top.calls if name in SPAWN_TOOLS]
+    if spawned and not subs:
+        raise Unusable(f"{label}:{spawned[0][0]} spawned subagents ({spawned[0][1]}) but "
+                       f"{where} has no agent-*.jsonl; pass --projects-root")
+    missing = sorted((n, a) for a, n in top.agents.items() if f"agent-{a}" not in {f.stem for f in files})
+    if missing:
+        raise Unusable(f"{label}:{missing[0][0]} names agent {missing[0][1]} but {where} has no "
+                       f"agent-{missing[0][1]}.jsonl ({len(missing)} missing); pass --projects-root")
+    return subs
+
+
+def run_round(n: int, run: Path, projects: Path) -> Round:
+    top = Transcript(run / f"round-{n}.jsonl", f"round-{n}.jsonl", True, projects)
+    if not top.inits:
+        raise Unusable(f"{run}/round-{n}.jsonl: no init line")
+    dirs = []
+    for _, init in top.inits:
+        cwd, sid = str(init.get("cwd", "")), str(init.get("session_id", ""))
+        dirs += [projects / slug / sid / "subagents" for slug in sorted({re.sub(r"[^A-Za-z0-9]", "-", cwd),
+                                                                          re.sub(r"[/.]", "-", cwd)}) if sid]
+    prompt = run / f"round-{n}.prompt.md"
+    return Round(n, top, subagents(top, f"round-{n}.jsonl", dirs, projects),
+                 prompt.read_text(encoding="utf-8", errors="replace") if prompt.is_file() else "")
+
+
+def pstack_names(rounds: list[Round]) -> set[str]:
+    return {s.split(":", 1)[1] for r in rounds if r.top.skills for s in r.top.skills[1] if s.startswith("pstack:")}
+
+
+class Run:
+    """One factory run folder: its rounds, the folder, the pstack method names the worker could load and the
+    ticket's `skills:` lines."""
+    attended = False
+
+    def __init__(self, path: Path, projects: Path):
+        if not path.is_dir():
+            raise Unusable(f"{path}: not a folder")
+        if not any(ROUND_FILE.fullmatch(p.name) for p in path.iterdir()):
+            runs = sorted(d for d in path.iterdir() if d.is_dir() and any(ROUND_FILE.fullmatch(p.name) for p in d.iterdir()))
+            if len(runs) != 1:
+                raise Unusable(f"{path}: no round-N.jsonl worker transcript" +
+                               (f"; it holds {len(runs)} runs ({', '.join(d.name for d in runs)}), pass one" if runs else ""))
+            path = runs[0]
+        numbers = sorted(n for p in path.iterdir() if (m := ROUND_FILE.fullmatch(p.name)) and (n := int(m.group(1))) >= 1)
+        if not numbers:
+            raise Unusable(f"{path}: no round-N.jsonl worker transcript")
+        self.path = path
+        self.rounds = [run_round(n, path, projects) for n in numbers]
+        self.pstack = pstack_names(self.rounds)
+        issue = path / "frozen" / "issue.md"
+        self.ticket = "\n".join(x for x in issue.read_text(encoding="utf-8", errors="replace").splitlines()
+                                if re.match(r"\s*skills:", x)) if issue.is_file() else ""
+
+
+class Session:
+    """One attended interactive session transcript, read as a single round (P2, P3, P6 only)."""
+    attended = True
+
+    def __init__(self, path: Path, projects: Path):
+        if not path.is_file():
+            raise Unusable(f"{path}: not a file")
+        top = Transcript(path, path.name, True, projects)
+        self.path, self.ticket = path, ""
+        self.rounds = [Round(1, top, subagents(top, path.name, [path.with_suffix("") / "subagents"], projects))]
+        self.pstack = pstack_names(self.rounds)
+
+
+def at(t: Transcript, line: int) -> str:
+    return f"{t.label}:{line}"
+
+
+def combine(rows: list[tuple[str, str]]) -> tuple[str, str]:
+    for status in ("FAIL", "UNSURE", "PASS", "N/A"):
+        picked = [msg for s, msg in rows if s == status]
+        if picked:
+            return status, "; ".join(picked)
+    return "N/A", "no rounds"
+
+
+def row(n: int, bad: list[str], good: list[str], none: str = "", doubt: list[str] | None = None) -> tuple[str, str]:
+    if bad:
+        return "FAIL", f"round {n}: " + "; ".join(bad)
+    if doubt:
+        return "UNSURE", f"round {n}: " + "; ".join(doubt)
+    return ("PASS", f"round {n}: " + "; ".join(good)) if good else ("N/A", f"round {n}: {none}")
+
+
+def window_doubt(run: Run, t: Transcript, change: tuple[int, str], failed: bool) -> list[str]:
+    """For P2 and P3: the unmodelled Bash calls (unsure_calls) that could change t's verdict. One before the first
+    change that could hide a change (any but a compound SKILL.md read, READ_DOUBT) could hide an earlier change. When
+    the verdict is a FAIL, any one at or before the change that names a SKILL.md could hide the missing read. A PASS
+    rests on modelled reads before the change, so a compound read cannot undo it. The pstack gate (run.gate) asks only
+    whether the pending change may run, so for it nothing is in doubt: an unmodelled call just counts no read."""
+    if getattr(run, "gate", False):
+        return []
+    hides = [x for x in unsure_calls(t, change[0] - 1) if READ_DOUBT not in x]
+    if hides or not failed:
+        return [f"{x}, before the first change" for x in hides]
+    return [f"{x}, at or before the first change (a read in it is not seen)" for x in unsure_calls(t, change[0], "SKILL.md")]
+
+
+def p1(run: Run) -> tuple[str, str]:
+    pd = run.path / "frozen" / "plugin-dir"
+    want = pd.read_text(encoding="utf-8").strip().rstrip("/") if pd.is_file() else ""
+    rows = []
+    for r in run.rounds:
+        bad, good = [], []
+        if r.top.skills is None:
+            bad.append(f"{r.top.label} lists no skills in its init")
+        else:
+            line, names = r.top.skills
+            missing = [s for s in PROJECT_SKILLS if s not in names]
+            (bad if missing else good).append(f"{at(r.top, line)} init lists " + (
+                f"{len(names)} skills, not {', '.join(missing)}" if missing else ", ".join(PROJECT_SKILLS)))
+        line, init = r.top.inits[0]
+        paths = [str(p.get("path", "")).rstrip("/") for p in init.get("plugins") or []
+                 if isinstance(p, dict) and p.get("name") == PLUGIN]
+        if not want:
+            bad.append("no frozen/plugin-dir")
+        elif paths != [want]:
+            bad.append(f"{at(r.top, line)} init loads {PLUGIN} from {', '.join(paths) or 'nowhere'}, not frozen/plugin-dir {want}")
+        else:
+            good.append(f"{at(r.top, line)} init loads {PLUGIN} from frozen/plugin-dir")
+        prompt = run.path / f"round-{r.n}.prompt.md"
+        lines = [x.rstrip() for x in prompt.read_text(encoding="utf-8", errors="replace").splitlines()] if prompt.is_file() else []
+        if MEMORY_VIEW in lines:
+            good.append(f"{prompt.name}:{lines.index(MEMORY_VIEW) + 1} holds the memory view")
+        else:
+            bad.append(f"{prompt.name} has no line '{MEMORY_VIEW}'")
+        rows.append(row(r.n, bad, good))
+    return combine(rows)
+
+
+def first_change(t: Transcript) -> tuple[int, str] | None:
+    """(index, description) of t's first call that changes a file and ran (a blocked or denied call changed nothing)."""
+    for i, (_, name, inp) in enumerate(t.calls):
+        what = changes(name, inp)
+        if what and t.ran(i):
+            return i, what
+    return None
+
+
+def router_index(t: Transcript, before: int) -> int | None:
+    return next((j for j in range(min(before + 1, len(t.calls))) if reads_router(t, j)), None)
+
+
+def brief_read(run: Run, t: Transcript, before: int) -> tuple[int, list[str]] | None:
+    """(call index, names) of the first full read, up to call `before`, of a pstack SKILL.md t's brief names."""
+    names = named_skills(f"{t.brief}\n{run.ticket}", run.pstack)
+    for j in range(before + 1):
+        hit = pstack_methods(full_reads(t, j), run.pstack) & names
+        if hit:
+            return j, sorted(hit)
+    return None
+
+
+def p2(run: Run) -> tuple[str, str]:
+    rows = []
+    for r in run.rounds:
+        fails, passes, doubt = [], [], []
+        for t in r.transcripts:
+            change = first_change(t)
+            if change is None:
+                doubt += [] if getattr(run, "gate", False) else [
+                    f"{x} (it may hide a change)" for x in unsure_calls(t) if READ_DOUBT not in x]
+                continue
+            i, what = change
+            ri, bi = router_index(t, i), None
+            if ri is None:
+                bi = brief_read(run, t, i)
+            unsure_here = window_doubt(run, t, change, ri is None and bi is None)
+            if unsure_here:
+                doubt += unsure_here
+            elif ri is not None:
+                passes.append(f"{at(t, t.calls[ri][0])} router read before {at(t, t.calls[i][0])}")
+            elif bi is not None:
+                passes.append(f"{at(t, t.calls[bi[0]][0])} read {', '.join(bi[1])}, which its brief names, before "
+                              f"{at(t, t.calls[i][0])}")
+            else:
+                part = next((j for j in range(i + 1) if ROUTER_PATH in call_text(*t.calls[j][1:])), None)
+                note = f" (router only partly read at {at(t, t.calls[part][0])})" if part is not None else ""
+                fails.append(f"{at(t, t.calls[i][0])} {what} with no full read of the router or of a SKILL.md its "
+                             f"brief names before it{note}")
+        rows.append(row(r.n, fails, passes, "no file change", doubt))
+    return combine(rows)
+
+
+def decision_lines(run: Run) -> list[tuple[int, int, str]]:
+    """(line, round, text) for each worker/decisions.md line; "Round N" starts round N, earlier lines are round 1."""
+    path = run.path / "worker" / "decisions.md"
+    if run.attended or not path.is_file():
+        return []
+    out, rnd = [], 1
+    for n, text in enumerate(path.read_text(encoding="utf-8", errors="replace").splitlines(), 1):
+        m = re.match(r"\s*Round (\d+)\b", text)
+        rnd = int(m.group(1)) if m else rnd
+        out.append((n, rnd, text))
+    return out
+
+
+def same_path(logged: str, read: str) -> bool:
+    """Whether a decisions.md path names the file a read named: equal after os.path.normpath, with $HOME/ read as ~/,
+    and a ~/ path equal to the same path under any /home/<user>/ or /Users/<user>/."""
+    a, b = (os.path.normpath(re.sub(r"^(?:\$HOME|\$\{HOME\})/", "~/", p)) for p in (logged, read))
+    if a.startswith("~/") != b.startswith("~/"):
+        home, full = (a, b) if a.startswith("~/") else (b, a)
+        return bool(re.fullmatch(r"/(?:home|Users)/[^/]+/" + re.escape(home[2:]), full))
+    return a == b
+
+
+def p3(run: Run) -> tuple[str, str]:
+    pstack, lines = run.pstack, decision_lines(run)
+    rows = []
+    for r in run.rounds:
+        fails, passes, doubt = [], [], []
+        read: set[str] = set()
+        read_paths: set[str] = set()  # each fully read pstack method's path, as the call named it
+        changed, brief_hit = False, None
+        for t in r.transcripts:
+            for j in range(len(t.calls)):
+                full = full_reads(t, j)
+                read |= pstack_methods(full, pstack)
+                read_paths |= {f"{prefix}skills/{s}/SKILL.md" for prefix, s in full if pstack_methods({(prefix, s)}, pstack)}
+            change = first_change(t)
+            if change is None:
+                doubt += [] if getattr(run, "gate", False) else [
+                    f"{x} (it may hide a change)" for x in unsure_calls(t) if READ_DOUBT not in x]
+                continue
+            changed = True
+            i, _ = change
+            hit = next(((j, sorted(m)) for j in range(i + 1) if (m := pstack_methods(full_reads(t, j), pstack))), None)
+            unsure_here = window_doubt(run, t, change, hit is None)
+            if unsure_here:
+                doubt += unsure_here
+                continue
+            if hit is None:
+                fails.append(f"{at(t, t.calls[i][0])} first change with no full read of a pstack "
+                             f"skills/<name>/SKILL.md before it")
+                continue
+            passes.append(f"{at(t, t.calls[hit[0]][0])} read {', '.join(hit[1])} before {at(t, t.calls[i][0])}")
+            bi = brief_read(run, t, i)
+            brief_hit = brief_hit or (bi and f"{at(t, t.calls[bi[0]][0])} read {', '.join(bi[1])}, which its brief names")
+        logged = [(n, m.group(1).split(":")[-1].strip(), m.group(2)) for n, rnd, text in lines
+                  if rnd == r.n and (m := PSTACK_LINE.match(text))]
+        for n, name, path in logged:
+            if not path.endswith(f"/{name}/SKILL.md"):
+                fails.append(f"worker/decisions.md:{n} pstack: {name} gives the path {path}, not .../{name}/SKILL.md")
+            elif any(same_path(path, p) for p in read_paths):
+                passes.append(f"worker/decisions.md:{n} pstack: {name}, fully read")
+            elif not getattr(run, "gate", False) and (
+                    hidden := [x for t in r.transcripts for x in unsure_calls(t, about=name)]):
+                doubt += [f"worker/decisions.md:{n} pstack: {name}, maybe read by {x}" for x in hidden]
+            else:
+                fails.append(f"worker/decisions.md:{n} pstack: {name} but no round-{r.n} transcript fully read {path}")
+        if changed and not run.attended and not logged:
+            if brief_hit:
+                passes.append(f"no pstack: line, but {brief_hit}")
+            else:
+                fails.append("files changed but worker/decisions.md has no `pstack: <skill> | <SKILL.md path> | ...` "
+                             "line for the round and no transcript fully read a SKILL.md its brief names")
+        for n, rnd, text in lines:  # older free-text method names
+            if rnd != r.n or PSTACK_LINE.match(text):
+                continue
+            for method in sorted(named_skills(text, pstack)):
+                if method in read:
+                    passes.append(f"worker/decisions.md:{n} names {method}, read")
+                elif not getattr(run, "gate", False) and (
+                        hidden := [x for t in r.transcripts for x in unsure_calls(t, about=method)]):
+                    doubt += [f"worker/decisions.md:{n} names {method}, maybe read by {x}" for x in hidden]
+                else:
+                    fails.append(f"worker/decisions.md:{n} names {method} but no round-{r.n} transcript fully read "
+                                 f"skills/{method}/SKILL.md")
+        rows.append(row(r.n, fails, passes, "no file change and no method named", doubt))
+    return combine(rows)
+
+
+def p4(run: Run) -> tuple[str, str]:
+    """The gate ran for the round by the supervisor's own record, round-N.checks (its check-green line, PASS or
+    FAIL), never by text in a transcript, which a command can print; no record is UNSURE. A sandbox refusal a
+    tool result shows fails the round."""
+    rows = []
+    for r in run.rounds:
+        refusals = []
+        for t in r.transcripts:
+            for line, text in t.results.values():
+                refusals += [f"{at(t, line)} shows the sandbox refusal '{m[:120]}'" for m in REFUSAL.findall(text)]
+        checks = run.path / f"round-{r.n}.checks"
+        lines = checks.read_text(encoding="utf-8", errors="replace").splitlines() if checks.is_file() else []
+        green = next(((k, x) for k, x in enumerate(lines, 1) if re.match(r"(?:PASS|FAIL) check-green\b", x)), None)
+        if refusals:
+            rows.append(("FAIL", f"round {r.n}: " + "; ".join(sorted(set(refusals)))))
+        elif not checks.is_file():
+            rows.append(("UNSURE", f"round {r.n}: no {checks.name}, the supervisor's record of the round's gate"))
+        elif green:
+            rows.append(("PASS", f"round {r.n}: {checks.name}:{green[0]} {green[1][:100]}"))
+        else:
+            rows.append(("FAIL", f"round {r.n}: {checks.name} has no check-green line: the gate did not run"))
+    status, evidence = combine(rows)
+    logs = []
+    for log in sorted((run.path / "worker").glob("*.log")) if (run.path / "worker").is_dir() else []:
+        for n, line in enumerate(log.read_text(encoding="utf-8", errors="replace").splitlines(), 1):
+            m = REFUSAL.match(line)
+            if m:
+                logs.append(f"{log.relative_to(run.path)}:{n} '{m.group(1)[:120]}'")
+                break
+    if logs:
+        status, evidence = "FAIL", "; ".join([*([evidence] if status == "FAIL" else []), *logs])
+    return status, evidence
+
+
+def allowed(model: str, effort: str | None, table: dict[str, set[str]]) -> bool:
+    """True when the model is in the table and the effort (None: not recorded) is one it allows."""
+    return model in table and (not effort or effort in table[model])
+
+
+def p5(run: Run) -> tuple[str, str]:
+    log = run.path / "factory.log"
+    calls = {}
+    if log.is_file():
+        for n, line in enumerate(log.read_text(encoding="utf-8", errors="replace").splitlines(), 1):
+            m = WORKER_CALL.search(line)
+            if m:
+                calls[int(m.group(1))] = (n, m.group(2), m.group(3), m.group(4))
+    rows = []
+    for r in run.rounds:
+        bad, good = [], []
+        call = calls.get(r.n)
+        if call is None:
+            bad.append(f"factory.log has no 'worker call: round {r.n}' line")
+        else:
+            n, model, effort, advisor = call
+            if not allowed(model, effort, ALLOWED):
+                bad.append(f"factory.log:{n} worker model={model} effort={effort}")
+            elif advisor and advisor != "off" and not allowed(advisor, None, ALLOWED):  # off: worker_round's no-advisor
+                bad.append(f"factory.log:{n} advisor={advisor}")
+            else:
+                good.append(f"factory.log:{n} worker {model} effort {effort}")
+        res = run.path / f"round-{r.n}.result.json"
+        try:
+            usage = json.loads(res.read_text(encoding="utf-8")).get("modelUsage") if res.is_file() else None
+        except ValueError:
+            usage = None
+        if isinstance(usage, dict):
+            bad += [f"{res.name} modelUsage {m}" for m in sorted(usage) if m not in REVIEWER_ALLOWED]
+        for t in r.transcripts:
+            table = REVIEWER_ALLOWED if t.reviewer and t is not r.top else ALLOWED
+            seen: dict[tuple[str, str | None], int] = {}
+            for line, m in t.models:
+                seen.setdefault((m, None), line)
+            for line, m, e in t.requests:
+                seen.setdefault((m, e or None), line)
+            bad += [f"{at(t, line)} model {m}" + (f" effort {e}" if e else "") + (" (reviewer)" if table is REVIEWER_ALLOWED else "")
+                    for (m, e), line in seen.items() if not allowed(m, e, table)]
+        if not bad:
+            used = sorted({f"{m} {e}" for t in r.subs for _, m, e in t.requests if e})
+            good.append(f"init {at(r.top, r.top.inits[0][0])} {r.top.models[0][1] if r.top.models else 'no model'}"
+                        + (f"; {len(r.subs)} subagent(s) at {', '.join(used) or 'no recorded effort'}" if r.subs else ""))
+            rows.append(("PASS", f"round {r.n}: " + "; ".join(good)))
+        else:
+            rows.append(("FAIL", f"round {r.n}: " + "; ".join(bad)))
+    return combine(rows)
+
+
+def p6(run: Run) -> tuple[str, str]:
+    if run.attended:
+        touched = sorted({p for r in run.rounds for t in r.transcripts for _, name, inp in t.calls if name in EDIT_TOOLS
+                          and "/.claude/" not in (p := str(inp.get("file_path") or "")) and COVERED_PATH.search(p)})
+        if not touched:
+            return "N/A", f"{run.path.name} edits none of {', '.join(COVERED)}"
+        what = f"{run.path.name} edits {', '.join(touched[:3])}{' ...' if len(touched) > 3 else ''}"
+    else:
+        diffs = sorted(run.path.glob("round-*.diff"), key=lambda p: int(re.sub(r"\D", "", p.name) or 0))
+        if not diffs:
+            return "N/A", "no round-N.diff in the run"
+        final = diffs[-1]
+        touched = sorted({m for m in re.findall(r"(?m)^diff --git a/(\S+) b/", final.read_text(errors="replace"))
+                          if any(m == c or (c.endswith("/") and m.startswith(c)) for c in COVERED)})
+        if not touched:
+            return "N/A", f"{final.name} touches none of {', '.join(COVERED)}"
+        what = f"{final.name} touches {', '.join(touched[:3])}{' ...' if len(touched) > 3 else ''}"
+    read = launch = drive = None
+    doubt = []
+    for r in run.rounds:
+        for t in r.transcripts:
+            doubt += unsure_calls(t, about="control-distbench") + unsure_calls(t, about="verify-distbench/SKILL.md")
+            for j, (line, name, inp) in enumerate(t.calls):
+                text = call_text(name, inp)
+                if name == "Bash" and unsure(text):
+                    continue
+                if read is None and (any(s == "verify-distbench" for _, s in full_reads(t, j))
+                                     or (name == "Skill" and inp.get("skill") == "verify-distbench" and t.ok(j))):
+                    read = at(t, line)
+                if name == "Bash" and "control-distbench" in text and t.ok(j):
+                    launch = launch or (at(t, line) if LAUNCH.search(text) else None)
+                    drive = drive or (at(t, line) if DRIVE.search(text) else None)
+    if read and launch and drive:
+        return "PASS", (f"{what}; {read} read verify-distbench/SKILL.md; {launch} ran control-distbench launch; "
+                        f"{drive} drove it")
+    missing = [x for x, ok in (("no transcript fully read verify-distbench/SKILL.md", read),
+                               ("no transcript ran control-distbench launch <run>", launch),
+                               ("no transcript drove the runner (control-distbench agent or exec <run>)", drive)) if not ok]
+    if doubt:
+        return "UNSURE", f"{what}; " + "; ".join(missing) + "; but " + "; ".join(doubt)
+    return "FAIL", f"{what}; " + "; ".join(missing)
+
+
+def read_json(path: Path) -> object:
+    try:
+        return json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return None
+
+
+def digest(path: Path) -> dict[str, str]:
+    """label -> hash for each `<hash>  <label>` line of a shell-digest file."""
+    out = {}
+    for x in path.read_text(encoding="utf-8", errors="replace").splitlines():
+        h, _, label = x.strip().partition("  ")
+        if label:
+            out[label] = h
+    return out
+
+
+def p7(run: Run) -> tuple[str, str]:
+    rows = []
+    for r in run.rounds:
+        line, init = r.top.inits[0]
+        mode = init.get("permissionMode")
+        rows.append(("PASS" if mode == "auto" else "FAIL", f"round {r.n}: {at(r.top, line)} init permissionMode {mode}"))
+    ws = run.path / "frozen" / "worker-settings.json"
+    settings = read_json(ws)
+    sandbox = settings.get("sandbox") if isinstance(settings, dict) else None
+    enabled = sandbox.get("enabled") if isinstance(sandbox, dict) else None
+    if not isinstance(settings, dict):
+        rows.append(("FAIL", "no readable frozen/worker-settings.json"))
+    else:
+        rows.append(("PASS" if enabled is False else "FAIL", f"frozen/worker-settings.json sandbox.enabled {json.dumps(enabled)}"))
+    start, end = run.path / "shell-digest.start", run.path / "shell-digest.end"
+    if not (start.is_file() and end.is_file()):
+        rows.append(("FAIL", f"no {start.name if not start.is_file() else end.name}"))
+    else:
+        a, b = digest(start), digest(end)
+        a, b = ({k: v for k, v in d.items() if "/.claude/skills/synced/" not in k} for d in (a, b))
+        # shell_digest names each checkout it must cover on a checkout:<dir> line, apart from that checkout's own
+        # four lines; a digest from before those lines has only its git-status lines to say which (legacy).
+        dirs = [label.split(":", 1)[1] for label in a if label.startswith("checkout:")]
+        legacy = not dirs
+        dirs = dirs or [label.split(":", 1)[1] for label in a if label.startswith("git-status:")]
+        lacking = sorted({f"{k}:{d}" for d in dirs for k in ("git-status", *GIT_DIGESTS) for m in (a, b)
+                          if f"{k}:{d}" not in m})
+        differ = sorted(k for k in a.keys() | b.keys() if a.get(k) != b.get(k))
+        if not a:
+            rows.append(("FAIL", f"{start.name} has no digest line"))
+        elif not dirs:
+            rows.append(("FAIL", f"{start.name} has no checkout digest (git-status:<dir>)"))
+        elif lacking:
+            rows.append(("FAIL", f"{start.name} lacks {', '.join(lacking)}"))
+        elif differ:
+            rows.append(("FAIL", f"{start.name} and {end.name} differ at {', '.join(differ[:5])}"
+                         + (f" and {len(differ) - 5} more" if len(differ) > 5 else "")))
+        else:
+            rows.append(("PASS", f"{start.name} equals {end.name} ({len(a)} digests"
+                         + (", no checkout: lines, so the checkouts its git-status lines name)" if legacy else ")")))
+    status, evidence = combine(rows)
+    denied = []
+    for r in run.rounds:
+        for t in r.transcripts:
+            for line, tid, reason in t.denials:
+                i = t.ids.index(tid) if tid in t.ids else None
+                name, inp = (t.calls[i][1], t.calls[i][2]) if i is not None else ("?", {})
+                what = " ".join(str(inp.get("command") or inp.get("file_path") or inp.get("url") or "").split())[:160]
+                denied.append(f"{at(t, line)} {name} `{what}` {reason}")
+    return status, evidence + ("; classifier denials: " + "; ".join(denied) if denied
+                               else "; no classifier permission_denied event")
+
+
+def p8(run: Run) -> tuple[str, str]:
+    graded = [r.n for r in run.rounds if (run.path / f"round-{r.n}.graded.sha").is_file()]
+    if not graded:
+        return "N/A", "no round-N.graded.sha: no round was graded"
+    ledger = run.path / "ledger.jsonl"
+    entries = []
+    for k, x in enumerate(ledger.read_text(encoding="utf-8", errors="replace").splitlines() if ledger.is_file() else [], 1):
+        try:
+            e = json.loads(x)
+        except ValueError:
+            continue
+        if isinstance(e, dict):
+            entries.append((k, e))
+    rows = []
+    for n in graded:
+        bad, good = [], []
+        # A no-result row books a killed or crashed attempt's ceiling; it served nothing and is no review.
+        reviewers = [(k, e) for k, e in entries
+                     if e.get("role") == "reviewer" and e.get("round") == n and e.get("subtype") != "no-result"]
+        off = [f"ledger.jsonl:{k} reviewer served_models {json.dumps(e.get('served_models'))}"
+               for k, e in reviewers if e.get("served_models") != [FABLE]]
+        if not reviewers:
+            bad.append(f"ledger.jsonl has no reviewer row for round {n}")
+        elif off:
+            bad += off
+        else:
+            good.append(f"ledger.jsonl:{reviewers[-1][0]} reviewer served {FABLE}")
+        blocking: set[str] = set()
+        for kind, name in (("reviewer", f"round-{n}.review.json"), ("codex", f"round-{n}.codex-review.json")):
+            data = read_json(run.path / name)
+            if not isinstance(data, dict):
+                bad.append(f"no readable {name}")
+                continue
+            if data.get("unparseable") is True:  # its fallback finding is no defect, and verify_round drops it
+                bad.append(f"{name} is the supervisor's unparseable fallback: no review")
+                continue
+            findings = data.get("findings") if isinstance(data.get("findings"), list) else []
+            blocking |= {f"{kind}-{i}" for i, f in enumerate(findings)
+                         if isinstance(f, dict) and str(f.get("severity", "")).lower() in BLOCKING[kind]}
+        vpath = run.path / f"round-{n}.verify.json"
+        verify = read_json(vpath)
+        found = verify.get("findings") if isinstance(verify, dict) else None
+        if not vpath.is_file():
+            (bad if blocking else good).append(f"no {vpath.name}" + (f" for blocking {', '.join(sorted(blocking))}"
+                                                                     if blocking else " and no blocking finding"))
+        elif not isinstance(found, list) or not all(isinstance(f, dict) for f in found):
+            bad.append(f"{vpath.name} has no findings list")
+        else:
+            graded_sha = (run.path / f"round-{n}.graded.sha").read_text(encoding="utf-8").strip()
+            if verify.get("sha") != graded_sha:
+                bad.append(f"{vpath.name} sha {verify.get('sha')} is not round-{n}.graded.sha {graded_sha}")
+            ids = [str(f.get("id")) for f in found]
+            if sorted(ids) != sorted(blocking):
+                bad.append(f"{vpath.name} ids [{', '.join(sorted(ids))}] are not the blocking ids "
+                           f"[{', '.join(sorted(blocking))}]")
+            for f in found:
+                verdict = f.get("verdict")
+                if verdict not in VERDICTS:  # UNVERIFIED included: the verifier never reproduced it
+                    bad.append(f"{vpath.name} {f.get('id')} verdict {json.dumps(verdict)}, not reproduced")
+                elif verdict == "REJECTED" and not all(isinstance(f.get(k), str) and f[k].strip() for k in ("cmd", "output")):
+                    bad.append(f"{vpath.name} {f.get('id')} REJECTED without cmd and output")
+            if not bad:
+                given = ", ".join(f"{f.get('id')} {f.get('verdict')}" for f in found)
+                good.append(f"{vpath.name} gives {given or 'no verdict'} for the blocking ids")
+        rows.append(row(n, bad, good))
+    return combine(rows)
+
+
+# One row per behaviour, printed in this order. See "Adding a behaviour" in the docstring.
+BEHAVIOURS = [
+    ("P1", "instructions", p1),
+    ("P2", "router", p2),
+    ("P3", "method", p3),
+    ("P4", "gate-in-round", p4),
+    ("P5", "models", p5),
+    ("P6", "behaviour-proof", p6),
+    ("P7", "native-shell", p7),
+    ("P8", "reviews", p8),
+]
+ATTENDED = ("P2", "P3", "P6")
+
+
+def report(run: Run | Session, ids: tuple[str, ...] | None = None) -> int:
+    checks = [(pid, name, check(run)) for pid, name, check in BEHAVIOURS if ids is None or pid in ids]
+    for pid, name, (status, evidence) in checks:
+        print(f"{status} {pid} {name}: {evidence}")
+    failed = [pid for pid, _, (status, _) in checks if status == "FAIL"]
+    doubted = [pid for pid, _, (status, _) in checks if status == "UNSURE"]
+    print(f"parity: FAIL ({', '.join(failed)})" if failed else f"parity: UNSURE ({', '.join(doubted)})" if doubted
+          else "parity: PASS")
+    return 1 if failed or doubted else 0
+
+
+def main(argv: list[str]) -> int:
+    ap = argparse.ArgumentParser(prog="factory-parity", description=__doc__.split("\n\n")[0])
+    ap.add_argument("paths", nargs="+", type=Path,
+                    help="one factory run folder (holds round-N.jsonl); with --attended, session transcripts")
+    ap.add_argument("--attended", action="store_true", help="check P2, P3 and P6 on interactive session transcripts")
+    ap.add_argument("--projects-root", type=Path, default=Path.home() / ".claude" / "projects",
+                    help="the ~/.claude/projects tree holding the run's subagent transcripts")
+    args = ap.parse_args(argv)
+    if not args.attended and len(args.paths) != 1:
+        ap.error("pass one run folder")
+    rc = 0
+    for path in args.paths:
+        try:
+            run = Session(path, args.projects_root) if args.attended else Run(path, args.projects_root)
+        except (Unusable, OSError) as e:
+            print(f"factory-parity: unusable input: {e}", file=sys.stderr)
+            rc = 2
+            continue
+        if args.attended:
+            print(f"== {path}")
+        rc = max(rc, report(run, ATTENDED if args.attended else None))
+    return rc
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv[1:]))

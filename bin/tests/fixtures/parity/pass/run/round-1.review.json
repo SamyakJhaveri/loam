@@ -1,0 +1,1 @@
+{"verdict": "fix", "findings": [{"severity": "low", "file": "src/distbench/grader.py", "line": 1, "defect": "a name"}, {"severity": "medium", "file": "src/distbench/grader.py", "line": 1, "defect": "the verdict line moves"}]}
