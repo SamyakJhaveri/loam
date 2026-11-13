@@ -1,9 +1,10 @@
 """The full gate runs once, last (docs/factory/LOOP.md, step 6; ASK-KARPATHY item B).
 
 `bin/factory -C <target> run` on a file ticket whose done-checks block has a `guard bin/check` line, with a scripted
-`claude`: round 0 and each round's checks defer bin/check, and the supervisor runs the whole block once the graders pass.
-Round 0 at base never runs it; a round the judge fails costs no bin/check run; a gate that goes red after the graders hands its FAIL lines to the next worker
-round, and the PR opens only after a green gate. The target's bin/check logs each run to a file.
+`claude`: round 0 and each round's checks defer bin/check, and the supervisor runs the whole block once the graders
+pass. Round 0 at base never runs it; a round the judge fails costs no bin/check run; a gate that goes red after the
+graders hands its FAIL lines to the next worker round, and the PR opens only after a green gate. The target's bin/check
+logs each run to a file.
 """
 
 from __future__ import annotations
