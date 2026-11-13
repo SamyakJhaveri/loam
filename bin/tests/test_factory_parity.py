@@ -210,7 +210,7 @@ def retried_reviewer(served: bool) -> Callable[[Path], None]:
     return edit
 
 
-RESULTS_RE = r"^(src/|tests?/|bin/check)"
+RESULTS_RE = r"^(src/|tests?/|bin/check)|(^|/)conftest\.py$"
 
 
 def mark_skip(run: Path, n: int, paths: list[str]) -> None:
@@ -479,6 +479,8 @@ VARIANTS = [
     ("e-skip-on-codex-high", "pass", skipped_reviewer(True, codex_clean=False), "P8", "FAIL"),  # PR 730 Codex Medium
     ("e-skip-with-reviewer-open", "pass", skip_after_open_reviewer, "P8", "FAIL"),
     ("e-skip-on-results-path", "pass", skipped_reviewer(True, paths=("docs/a.md", "bin/check")), "P8", "FAIL"),
+    # P8 matches as bin/factory's bash =~ does, where $ never matches before a final newline (Codex at 9ec468c4)
+    ("e-skip-on-newline-name", "pass", skipped_reviewer(True, paths=("notes/conftest.py\n",)), "P8", "PASS"),
     ("a4-killed-reviewer", "pass", retried_reviewer(False), "P8", "FAIL"),  # ... but some reviewer row must serve  # verify.json is for another commit
     ("f2-round-line", "p3-pass", round_two_on_its_round_line, "P3", "PASS"),  # `Round 2: pstack: ...` is round 2's
     # PR 713 Codex at ffef0f02
