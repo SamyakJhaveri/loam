@@ -149,7 +149,7 @@ def test_attended(case: str, pid: str, expected: str) -> None:
     lines = proc.stdout.splitlines()
     assert lines[0] == f"== {FIXTURES / case / 'session.jsonl'}" and {x.split(" ", 2)[1] for x in lines[1:-1]} == {"P2", "P3", "P6"}
     assert statuses("\n".join(lines[1:]))[pid] == expected, proc.stdout
-    assert proc.returncode == (1 if lines[-1].startswith("parity: FAIL") else 0)
+    assert proc.returncode == (0 if lines[-1] == "parity: PASS" else 1)
 
 
 def edit_events(path: Path, fn: Callable[[dict], None]) -> None:
@@ -291,7 +291,7 @@ def skill_commands(change: Callable[[str], str], result: str | None = None) -> C
         ids: set[str] = set()
 
         def mark(item: dict) -> None:
-            if item["type"] == "tool_use" and "SKILL.md" in json.dumps(item["input"]):
+            if item["type"] == "tool_use" and item["name"] == "Bash" and "SKILL.md" in item["input"]["command"]:
                 item["input"]["command"] = change(item["input"]["command"])
                 ids.add(item["id"])
             elif item["type"] == "tool_result" and item["tool_use_id"] in ids and result is not None:
@@ -312,6 +312,26 @@ def checkout_lines(drop: str = "") -> Callable[[Path], None]:
     return edit
 
 
+# One rewrite of each SKILL.md read per construct class parity does not model (factory-parity `unsure`).
+UNMODELLED: dict[str, Callable[[str], str]] = {
+    "group-after-command": lambda c: f"true && {{ {c}; }} > /dev/null",  # PR 713 reviewer
+    "subshell": lambda c: f"( {c} )",
+    "loop-redirect": lambda c: f"{c} > /dev/null" if c.endswith("done") else f"for x in 1; do {c}; done > /dev/null",
+    "fd-to-stderr": lambda c: c.replace("SKILL.md", "SKILL.md 2>/dev/null 1>&2"),  # PR 713 Codex
+    "here-doc": lambda c: f"python3 - <<'EOF'\nprint(1)\nEOF\n{c}",
+    "here-string": lambda c: f"cat <<< x; {c}",
+    "eval": lambda c: f"eval {c}",
+    "source": lambda c: f"source ~/env.sh; {c}",
+    "process-substitution": lambda c: f"diff <(true) /dev/null; {c}",
+}
+
+
+def advisor_off(run: Path) -> None:
+    """The worker ran with FACTORY_WORKER_ADVISOR= (no advisor), which worker_round logs as advisor=off."""
+    log = run / "factory.log"
+    log.write_text(log.read_text().replace("advisor=claude-opus-5-5", "advisor=off"))
+
+
 def no_checkout_digest(run: Path) -> None:
     """PR 713 Codex 7: both digests lose every git-* line; only the ~/.claude file digests are left, and equal."""
     for name in ("shell-digest.start", "shell-digest.end"):
@@ -325,23 +345,31 @@ VARIANTS = [
     ("r-redirected-reads", "p3-pass", redirected_skill_reads, "P3", "FAIL"),
     ("r-gate-timeout-k", "p4-pass", gate_command("timeout -k 5 5400 bin/check"), "P4", "PASS"),  # -k takes an argument
     ("r-gate-hook-earlier", "p4-pass", gate_command("LOAM_HOOK=1 true; bin/check"), "P4", "PASS"),  # not bin/check's env
-    ("r-gate-hook-export", "p4-pass", gate_command("export LOAM_HOOK=1; bin/check"), "P4", "FAIL"),  # guard skips it
+    ("r-gate-hook-export", "p4-pass", gate_command("export LOAM_HOOK=1; bin/check"), "P4", "UNSURE"),  # not modelled
     ("r-no-checkout-digest", "p7-pass", no_checkout_digest, "P7", "FAIL"),
-    # PR 713 Codex re-check: a group's or a descriptor's redirect hides the read; a comment holding `>` does not
-    ("r2-group-redirect", "p3-pass", skill_commands(lambda c: f"{{ {c}; }} > /dev/null", ""), "P2", "FAIL"),
-    ("r2-group-redirect", "p3-pass", skill_commands(lambda c: f"{{ {c}; }} > /dev/null", ""), "P3", "FAIL"),
+    # PR 713 Codex re-check: a group or an fd redirect is not modelled, so the read is UNSURE; a comment holding `>`
+    # is modelled and stays a read
+    ("r2-group-redirect", "p3-pass", skill_commands(lambda c: f"{{ {c}; }} > /dev/null", ""), "P2", "UNSURE"),
+    ("r2-group-redirect", "p3-pass", skill_commands(lambda c: f"{{ {c}; }} > /dev/null", ""), "P3", "UNSURE"),
     ("r2-fd-redirect", "p3-pass", skill_commands(lambda c: c.replace("SKILL.md", "SKILL.md 3>/dev/null 1>&3"), ""),
-     "P2", "FAIL"),
+     "P2", "UNSURE"),
     ("r2-comment", "p3-pass", skill_commands(lambda c: f"{c} # stdout > terminal"), "P2", "PASS"),
     ("r2-comment", "p3-pass", skill_commands(lambda c: f"{c} # stdout > terminal"), "P3", "PASS"),
-    # ... LOAM_HOOK is what the gate's environment holds when it starts
-    ("r2-hook-emptied", "p4-pass", gate_command("export LOAM_HOOK=1; LOAM_HOOK= bin/check"), "P4", "PASS"),
-    ("r2-hook-export-later", "p4-pass", gate_command("LOAM_HOOK=1; export LOAM_HOOK; bin/check"), "P4", "FAIL"),
-    ("r2-hook-subshell", "p4-pass", gate_command("(export LOAM_HOOK=1); bin/check"), "P4", "PASS"),
-    ("r2-hook-unset", "p4-pass", gate_command("export LOAM_HOOK=1; unset LOAM_HOOK; bin/check"), "P4", "PASS"),
+    # ... and a LOAM_HOOK set other than as the gate's own prefix is not modelled
+    ("r2-hook-emptied", "p4-pass", gate_command("export LOAM_HOOK=1; LOAM_HOOK= bin/check"), "P4", "UNSURE"),
+    ("r2-hook-export-later", "p4-pass", gate_command("LOAM_HOOK=1; export LOAM_HOOK; bin/check"), "P4", "UNSURE"),
+    ("r2-hook-subshell", "p4-pass", gate_command("(export LOAM_HOOK=1); bin/check"), "P4", "UNSURE"),
+    ("r2-hook-unset", "p4-pass", gate_command("export LOAM_HOOK=1; unset LOAM_HOOK; bin/check"), "P4", "UNSURE"),
+    ("r3-hook-own-prefix", "p4-pass", gate_command("LOAM_HOOK=1 bin/check"), "P4", "FAIL"),  # modelled: skipped
     # ... and P7 needs every checkout shell_digest names, not only the ones whose lines survived
     ("r2-checkout-lines", "p7-pass", checkout_lines(), "P7", "PASS"),
     ("r2-checkout-missing", "p7-pass", checkout_lines("/home/samyak/distbench"), "P7", "FAIL"),
+    ("r3-advisor-off", "p5-pass", advisor_off, "P5", "PASS"),  # no advisor is no off-model advisor
+    # PR 713 lead ruling: each construct parity does not model makes the check UNSURE, never PASS
+    *[(f"r3-{name}", "p3-pass", skill_commands(change, ""), "P2", "UNSURE") for name, change in UNMODELLED.items()],
+    ("r3-group-hook", "p4-pass", gate_command("{ export LOAM_HOOK=1; }; guard bin/check"), "P4", "UNSURE"),
+    ("r3-pipe-hook", "p4-pass", gate_command("export LOAM_HOOK=1 | cat; guard bin/check"), "P4", "UNSURE"),
+    ("r3-set-a", "p4-pass", gate_command("set -a; LOAM_HOOK=1; bin/check"), "P4", "UNSURE"),
     ("c2-failed-reads", "p3-pass", failed_skill_reads, "P2", "FAIL"),  # a read whose result is an error read nothing
     ("c2-failed-reads", "p3-pass", failed_skill_reads, "P3", "FAIL"),
     ("a4-read-then-false", "p3-pass", reads_then_a_failing_command, "P2", "PASS"),  # the call failed after the cat
@@ -358,6 +386,14 @@ VARIANTS = [
     ("a4-killed-reviewer", "pass", retried_reviewer(False), "P8", "FAIL"),  # ... but some reviewer row must serve  # verify.json is for another commit
     ("f2-round-line", "p3-pass", round_two_on_its_round_line, "P3", "PASS"),  # `Round 2: pstack: ...` is round 2's
 ]
+
+
+def test_an_unsure_check_makes_parity_unsure_not_pass(tmp_path: Path) -> None:
+    shutil.copytree(FIXTURES / "pass", tmp_path / "u")
+    skill_commands(lambda c: f"true && {{ {c}; }}")(tmp_path / "u" / "run")
+    proc = parity(tmp_path / "u" / "run", tmp_path / "u" / "projects")
+    assert statuses(proc.stdout)["P2"] == "UNSURE" and "holds a { } or ( ) group" in proc.stdout, proc.stdout
+    assert (proc.returncode, proc.stdout.splitlines()[-1]) == (1, "parity: UNSURE (P2, P3)"), proc.stdout
 
 
 def test_an_unparseable_review_is_named_as_no_review(tmp_path: Path) -> None:

@@ -799,10 +799,13 @@ user_settings() { printf '%s\n' "${CLAUDE_SETTINGS_FILE:-${CLAUDE_CONFIG_DIR:-$H
 # the active account's token from bin/claude-account exec and its own config dir at launch. It disables user, project and local settings: user hooks and
 # allow rules (Read(*)) stay out, and a grader has no Bash, Agent or Skill tool a plugin could serve. Managed policy
 # and flag settings still apply. The user env may hold secrets, so the copy is private to the operator.
-grader_settings() { # role_settings out
+# availableModels gains each model the calls reading the copy ask for (a model outside the list is not served).
+grader_settings() { # role_settings out [model...]
   local user; user=$(user_settings)
   [ -f "$user" ] || user=/dev/null
-  ( umask 077; jq --slurpfile u "$user" '.env = (($u[0].env // {}) | del(.CLAUDE_CODE_OAUTH_TOKEN, .CLAUDE_CONFIG_DIR)) + (.env // {})' "$1" > "$2" )
+  ( umask 077; jq --slurpfile u "$user" '.env = (($u[0].env // {}) | del(.CLAUDE_CODE_OAUTH_TOKEN, .CLAUDE_CONFIG_DIR)) + (.env // {})
+      | .availableModels = reduce $ARGS.positional[] as $m (.availableModels // []; if any(.[]; . == $m) then . else . + [$m] end)' \
+      "$1" --args "${@:3}" > "$2" )
 }
 
 run_eval_cases() { # grader work
@@ -818,7 +821,7 @@ run_eval_cases() { # grader work
   # role-settings.json is read beside the schema, for the reason schema_for gives. The copy and the private config dir
   # sit in the work dir, outside the tree the grader reads.
   settings="$2/grader-settings.json"
-  grader_settings "$(cd "$(dirname "$0")" && pwd)/factory.d/role-settings.json" "$settings" \
+  grader_settings "$(cd "$(dirname "$0")" && pwd)/factory.d/role-settings.json" "$settings" "$EVAL_MODEL" \
     || { echo "eval: could not write the grader settings from $(user_settings)" >&2; return 2; }
   mkdir -p -m 700 "$2/grader-config" || return 2
   chmod 700 "$2/grader-config" || return 2
@@ -1590,7 +1593,7 @@ freeze() {
   # The worker's pstack gate (U5) and the parity rules it imports run from the frozen set, beyond the worker's edits.
   cp "$ROOT/bin/factory.d/pstack-gate.py" "$RUN/frozen/pstack-gate.py" || finish stopped-environment "could not freeze pstack-gate.py"
   cp "$ROOT/bin/factory-parity" "$RUN/frozen/factory-parity" || finish stopped-environment "could not freeze bin/factory-parity"
-  grader_settings "$ROOT/bin/factory.d/role-settings.json" "$RUN/frozen/role-settings.json" 2>> "$LOG" \
+  grader_settings "$ROOT/bin/factory.d/role-settings.json" "$RUN/frozen/role-settings.json" "$GRADER_MODEL" "$REVIEWER_MODEL" 2>> "$LOG" \
     || finish stopped-environment "could not write $(user_settings)'s env into the frozen grader settings"
   freeze_shell
   freeze_memory_view
