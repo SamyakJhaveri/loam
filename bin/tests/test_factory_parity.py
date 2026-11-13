@@ -117,23 +117,31 @@ def test_behaviour(case: str, pid: str, expected: str) -> None:
         assert proc.returncode == 1 and last.startswith("parity: FAIL (") and pid in last[len("parity: FAIL ("):-1].split(", ")
 
 
-@pytest.mark.parametrize(("frozen", "expected"), [(True, "FAIL"), (False, "PASS")])
-def test_a_principle_named_only_by_common_md_is_no_brief_named_read(tmp_path: Path, frozen: bool, expected: str) -> None:
-    # p3-order without its router read: the round fully reads principle-test-behavior-not-implementation, then writes.
-    # Its prompt names that principle only in _common.md's line, which every round gets, so the read stands in for no
-    # router read (FAIL); the same line in a prompt with no frozen _common.md is the brief's own (PASS).
+@pytest.mark.parametrize(("frozen", "args", "expected"),
+                         [(True, False, "FAIL"), (True, True, "FAIL"), (False, False, "PASS")])
+def test_a_principle_named_only_by_common_md_is_no_brief_named_read(tmp_path: Path, frozen: bool, args: bool,
+                                                                     expected: str) -> None:
+    # p3-order without its router read or decisions.md: the round fully reads principle-test-behavior-not-implementation,
+    # then writes. Its prompt names that principle only in _common.md's lines, which every round gets, also inside a
+    # large round's Workflow args, so the read stands in for no router read (FAIL); the same lines in a prompt with no
+    # frozen _common.md are the brief's own (PASS).
     run = tmp_path / "run"
     shutil.copytree(FIXTURES / "p3-order" / "run", run)
+    (run / "worker" / "decisions.md").unlink()
     events = (run / "round-1.jsonl").read_text().splitlines()
     (run / "round-1.jsonl").write_text("\n".join(e for e in events if "toolu_01SgvVXQekBErfzUfb8VmLsB" not in e) + "\n")
     common = (ROOT / "bin" / "factory.d" / "_common.md").read_text()
     skills = "/home/samyak/.claude/plugins/cache/cursor-plugins/pstack/0.15.36/skills"  # where p3-order read it
-    (run / "round-1.prompt.md").write_text("# A ticket\n\n" + common.replace("<pstack>", skills))
+    prompt = "# A ticket\n\n" + common.replace("<pstack>", skills)
+    if args:  # as bin/factory writes a large round's args, the principle lines in skills
+        lines = [x for x in prompt.splitlines() if x.startswith(f"- {skills}/")]
+        prompt += f"\nRun the Workflow tool with args `{json.dumps({'skills': lines}, separators=(',', ':'))}`.\n"
+    (run / "round-1.prompt.md").write_text(prompt)
     if frozen:
         (run / "frozen").mkdir()
         (run / "frozen" / "_common.md").write_text(common)
     proc = parity(run, tmp_path / "projects")
-    assert statuses(proc.stdout)["P2"] == expected, proc.stdout
+    assert (statuses(proc.stdout)["P2"], statuses(proc.stdout)["P3"]) == (expected, expected), proc.stdout
 
 
 def test_a_run_where_every_behaviour_passes_exits_zero() -> None:
