@@ -327,7 +327,10 @@ def test_full_gate_a_script_file_that_runs_bin_check_is_blocked(tmp_path):
     """L01 run 2 also lost 36 min polling `nohup bash /tmp/l01-dc/run.sh`, whose done-check ran `guard bin/check`."""
     (tmp_path / "dc.sh").write_text("guard(){ \"$@\"; }\nout=$(guard bin/check 2>&1); rc=$?\n", encoding="utf-8")
     (tmp_path / "ok.sh").write_text("python3 -m pytest -q tests/test_gate.py\n", encoding="utf-8")
-    for command in (f"bash {tmp_path}/dc.sh", f"nohup bash {tmp_path}/dc.sh > /tmp/out.txt 2>&1 &", "sh ./dc.sh"):
+    (tmp_path / "scripts").mkdir()
+    (tmp_path / "scripts" / "launch.sh").write_text("bash dc.sh\n", encoding="utf-8")  # bash keeps the caller's cwd
+    for command in (f"bash {tmp_path}/dc.sh", f"nohup bash {tmp_path}/dc.sh > /tmp/out.txt 2>&1 &", "sh ./dc.sh",
+                    f'bash "{tmp_path}/dc.sh"', "bash scripts/launch.sh"):
         r = bash(command, "supervisor", cwd=tmp_path)
         assert r.returncode == 2 and r.stderr.strip() == FULL_GATE, (command, r.stderr)
     r = bash(f"bash {tmp_path}/ok.sh", "supervisor")
@@ -379,14 +382,16 @@ def test_full_gate_the_done_checks_block_runs_under_loam_hook(tmp_path):
     checks = tmp_path / "frozen" / "checks.sh"  # built as bin/factory's freeze builds it
     block = ('[ -f note.txt ] && pass note || fail note "no note.txt"\n'
              'guard bin/check > /dev/null && pass gate || fail gate "red"\n')
-    checks.write_text((ROOT / "bin" / "factory.d" / "lib.sh").read_text(encoding="utf-8") + "\n" + block
-                      + "printf '\\nCHECKS-END\\n'\nexit $((n_fail > 0))\n", encoding="utf-8")
+    lib = (ROOT / "bin" / "factory.d" / "lib.sh").read_text(encoding="utf-8")
+    checks.write_text(lib + "\n" + block + "printf '\\nCHECKS-END\\n'\nexit $((n_fail > 0))\n", encoding="utf-8")
     for command in (f"LOAM_HOOK=1 bash {checks}", f"cd {tmp_path} && LOAM_HOOK=1 bash {checks} 2>&1 | tail -n 20",
                     f"export LOAM_HOOK=1; bash {checks}"):
         r = bash(command, "supervisor", cwd=tmp_path)
         assert r.returncode == 0 and FULL_GATE not in r.stderr, (command, r.stderr)
-    (tmp_path / "other.sh").write_text("guard timeout 590 bin/check\n", encoding="utf-8")  # guard runs this form
-    for command in (f"bash {checks}", f"LOAM_HOOK= bash {checks}", f"LOAM_HOOK=1 bash {tmp_path}/other.sh"):
+    (tmp_path / "form.sh").write_text(lib + "guard timeout 590 bin/check\n", encoding="utf-8")  # lib.sh runs this form
+    (tmp_path / "own.sh").write_text('guard() { "$@"; }\nguard bin/check\n', encoding="utf-8")  # not lib.sh's guard
+    for command in (f"bash {checks}", f"LOAM_HOOK= bash {checks}", f"LOAM_HOOK=1 bash {tmp_path}/form.sh",
+                    f"LOAM_HOOK=1 bash {tmp_path}/own.sh"):
         r = bash(command, "supervisor", cwd=tmp_path)
         assert r.returncode == 2 and r.stderr.strip() == FULL_GATE, (command, r.stderr)
     run = subprocess.run(["bash", str(checks)], cwd=tmp_path, capture_output=True, text=True, timeout=60,

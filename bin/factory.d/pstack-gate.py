@@ -18,22 +18,22 @@ Fails open: when the transcript or parity cannot be read, or this host has no ps
 change could ever pass), one stderr line says so and the call goes ahead (exit 0), so a hook bug or a host without
 pstack never wedges a run; parity grades the round afterwards either way.
 
-First, and before any of that: with LOAM_WORKER_GATE=supervisor (worker-settings-native.json sets it, so only a
-non-Loam target's native worker has it) a Bash call that runs bin/check is blocked (exit 2, one stderr line): the
-supervisor runs the full gate once after the graders pass, and a worker that runs it itself loses its 36 minutes and a
-gate slot (L01 run 2 round 1, 13 Nov: 73 min in two direct calls and 36 more polling a done-check script that ran it).
-A call runs bin/check when bin/check (any path ending in it) is a command word: at the start of a line, after `;` `&`
-`|` `(` `$(` or a backtick, after `timeout N`, `nohup`, `env X=Y`, `X=Y`, `guard` (a done-check's wrapper), `time`,
-`exec`, `command`, `nice`, `then`, `do`, `else`, `if`, `!` or `{`, outside quotes (a double-quoted `$( )` or backtick
-part counts); or inside `bash -c`/`sh -c` text; or in a heredoc fed to a shell; or in a shell script file the call
-runs (`bash f` but not `bash -n f`, `sh f`, `source f`, `. f`, `./f.sh`), read relative to the payload's cwd, three
-files deep. A script run with a non-empty LOAM_HOOK (`LOAM_HOOK=1 bash f`, or after `export LOAM_HOOK=1`) does not
-run its `guard bin/check` lines: lib.sh's guard skips exactly that form under LOAM_HOOK, so a worker may run the
-frozen done-checks block that way (PR 738); a gate call in any other form there still counts. A heredoc fed to
-anything else is a file's text, not commands, so writing such a script runs; running it is blocked. Reading bin/check
-(cat, sed, grep, git show) runs, as does every call when the variable is unset (a Loam target's worker, any session
-outside the factory), and so does a quoted mention (`pgrep -af "pytest|bin/check"`, a commit message). It is a pattern check on the command text, not a shell
-parser.
+First, and before any of that: with LOAM_WORKER_GATE=supervisor (worker-settings-native.json sets it, so only a non-Loam
+target's native worker has it) a Bash call that runs bin/check is blocked (exit 2, one stderr line): the supervisor runs
+the full gate once after the graders pass, and a worker that runs it itself loses its 36 minutes and a gate slot (L01
+run 2 round 1, 13 Nov: 73 min in two direct calls and 36 more polling a done-check script that ran it). A call runs
+bin/check when bin/check (any path ending in it) is a command word: at the start of a line, after `;` `&` `|` `(` `$(`
+or a backtick, after `timeout N`, `nohup`, `env X=Y`, `X=Y`, `guard` (a done-check's wrapper), `time`, `exec`,
+`command`, `nice`, `then`, `do`, `else`, `if`, `!` or `{`, outside quotes (a double-quoted `$( )` or backtick part
+counts); or inside `bash -c`/`sh -c` text; or in a heredoc fed to a shell; or in a shell script file the call runs
+(`bash f` but not `bash -n f`, `sh f`, `source f`, `. f`, `./f.sh`, f quoted or not), read relative to the payload's cwd
+(a script run inside a script keeps it, as bash does), three files deep. A script run with a non-empty LOAM_HOOK
+(`LOAM_HOOK=1 bash f`, or after `export LOAM_HOOK=1`) does not run its `guard bin/check` lines when it holds lib.sh's
+guard, which skips exactly that form under LOAM_HOOK, so a worker may run the frozen done-checks block that way (PR
+738); a gate call in any other form there still counts. A heredoc fed to anything else is a file's text, not commands,
+so writing such a script runs; running it is blocked. Reading bin/check (cat, sed, grep, git show) runs, as does every
+call when the variable is unset (a Loam target's worker, any session outside the factory), and so does a quoted mention
+(`pgrep -af "pytest|bin/check"`, a commit message). It is a pattern check on the command text, not a shell parser.
 """
 from __future__ import annotations
 
@@ -67,6 +67,7 @@ HEREDOC_OPEN = re.compile(r"(?<!<)<<(?!<)-?\s*(['\"]?)([A-Za-z_]\w*)\1")
 FED_TO_SHELL = re.compile(r"(?<![\w.-])" + SHELL + r"(?:\s+-[\w-]+)*\s*$")
 HOOK_ON = r"LOAM_HOOK=(?!''|\"\"|[\s;&|)]|$)"  # a non-empty LOAM_HOOK
 GUARDED_GATE = re.compile(r"(?<![\w.-])guard[ \t]+bin/check(?![\w./-])")  # the one form lib.sh's guard skips under it
+LIB_GUARD = re.compile(r'LOAM_HOOK.*"\$\{1:-\}" = bin/check \] && return 0')  # lib.sh's skip, as criteria.py reads it
 QUOTED = re.compile(r"'[^']*'|\"(?:[^\"\\]|\\.)*\"")
 
 
@@ -106,7 +107,7 @@ def runs_full_gate(command: str, cwd: Path, depth: int = 0, hook: bool = False) 
         return False
     text = commands(command)
     scan = unquoted(text)
-    if RUNS_GATE.search(GUARDED_GATE.sub("guard x", scan) if hook else scan):
+    if RUNS_GATE.search(GUARDED_GATE.sub("guard x", scan) if hook and LIB_GUARD.search(text) else scan):
         return True
     for m in SHELL_C.finditer(text):
         body = m.group(1) if m.group(1) is not None else m.group(2) if m.group(2) is not None else m.group(3)
@@ -117,13 +118,13 @@ def runs_full_gate(command: str, cwd: Path, depth: int = 0, hook: bool = False) 
             continue  # `bash -n f` only parses f
         hooked = hook or bool(re.search(r"(?<![\w-])" + HOOK_ON, m.group(0))
                               or re.search(r"(?<![\w-])export\s+" + HOOK_ON, text[:m.start()]))
-        path = Path(os.path.expanduser(m.group(2) or m.group(3)))
+        path = Path(os.path.expanduser((m.group(2) or m.group(3)).strip("'\"")))
         path = path if path.is_absolute() else cwd / path
         if re.search(r"(?:^|/)bin/check$", path.as_posix()):
             return True
         try:
             if path.is_file() and path.stat().st_size < 1 << 20 and runs_full_gate(
-                    path.read_text(encoding="utf-8", errors="replace"), path.parent, depth + 1, hooked):
+                    path.read_text(encoding="utf-8", errors="replace"), cwd, depth + 1, hooked):
                 return True
         except OSError:
             continue
