@@ -4,7 +4,7 @@
 `claude`: round 0 and each round's checks defer bin/check, and the supervisor runs the whole block once the graders
 pass. Round 0 at base never runs it; a round the judge fails costs no bin/check run; a gate that goes red after the
 graders hands its FAIL lines to the next worker round, and the PR opens only after a green gate. The target's bin/check
-logs each run to a file.
+logs each run, with the FACTORY_GATE_DEFER it ran under, to a file.
 """
 
 from __future__ import annotations
@@ -85,9 +85,13 @@ class GateLastTests(unittest.TestCase):
         git(origin, env, "init", "-q", "--bare")
         (co / "bin").mkdir(parents=True)
         (co / "docs/factory").mkdir(parents=True)
-        # bin/check logs each run with the tree it ran on; red.txt in the tree makes it red.
-        (co / "bin/check").write_text(f'#!/bin/sh\necho "$(ls | tr "\\n" " ")" >> {self.top}/gate-runs\n'
-                                      '[ -f red.txt ] && { echo "check: FAILED"; exit 1; }\necho "check: PASSED"\n')
+        # bin/check logs each run with FACTORY_GATE_DEFER and the tree it ran on; red.txt in the tree makes it red,
+        # and full-red.txt only a full run (a test outside a round's selection fails).
+        (co / "bin/check").write_text(
+            f'#!/bin/sh\necho "defer=$FACTORY_GATE_DEFER $(ls | tr "\\n" " ")" >> {self.top}/gate-runs\n'
+            '[ -f red.txt ] && { echo "check: FAILED"; exit 1; }\n'
+            '[ -f full-red.txt ] && [ -z "$FACTORY_GATE_DEFER" ] && { echo "check: FAILED"; exit 1; }\n'
+            'echo "check: PASSED"\n')
         (co / "bin/check").chmod(0o755)
         (co / "docs/factory/STANDING.md").write_text("## Standing do-not-touch list\n\n- bin/check\n")
         git(co, env, "init", "-q", "-b", "main")
@@ -124,8 +128,9 @@ class GateLastTests(unittest.TestCase):
         self.run = run
         return (run / "factory.log").read_text()
 
-    def gate_runs(self) -> list[str]:
-        return (self.top / "gate-runs").read_text().splitlines()
+    def gate_runs(self, full: bool = True) -> list[str]:
+        runs = (self.top / "gate-runs").read_text().splitlines()
+        return [r for r in runs if r.startswith("defer= ") == full]
 
     def test_a_judge_fail_round_costs_no_gate_run(self) -> None:
         (self.top / "judge-1.json").write_text(json.dumps({**ENVELOPE, "result": json.dumps(FAIL)}) + "\n")
@@ -133,11 +138,13 @@ class GateLastTests(unittest.TestCase):
         self.worker_round(2, {"more.txt": "2\n"})
         log = self.launch()
         self.assertEqual((self.top / "rounds").read_text().strip(), "2")
-        # one run, after round 2's graders passed; none in round 0, round 1 or round 2's own checks
+        # one full run, after round 2's graders passed; round 1's and round 2's own checks each run bin/check on the
+        # change's tests only (FACTORY_GATE_DEFER=changed), and round 0 runs none
         self.assertEqual(len(self.gate_runs()), 1, self.gate_runs())
         self.assertIn("more.txt", self.gate_runs()[0])
+        self.assertEqual([r.split()[0] for r in self.gate_runs(full=False)], ["defer=changed"] * 2)
         self.assertEqual(log.count(" full gate at "), 1, log)
-        self.assertEqual(log.count("checks: all pass, bin/check deferred until the graders pass"), 2, log)
+        self.assertEqual(log.count("checks: all pass, full bin/check deferred until the graders pass"), 2, log)
         self.assertLess(log.index("judge verdict: pass"), log.index(" full gate at "))
         self.assertIn("Supervisor note: this round deferred the full gate.",
                       (self.top / "judge-prompt-last.txt").read_text())
@@ -148,8 +155,8 @@ class GateLastTests(unittest.TestCase):
         self.assertFalse((self.run / "pr-body.md").read_text().startswith("Draft:"))
 
     def test_a_red_gate_after_the_graders_goes_to_the_next_worker_round(self) -> None:
-        self.worker_round(1, {"note.txt": "1\n", "red.txt": "red\n"})
-        self.worker_round(2, {}, "git rm -q red.txt\n")
+        self.worker_round(1, {"note.txt": "1\n", "full-red.txt": "red\n"})
+        self.worker_round(2, {}, "git rm -q full-red.txt\n")
         log = self.launch()
         self.assertEqual((self.top / "rounds").read_text().strip(), "2")
         self.assertEqual(log.count(" full gate at "), 2, log)
@@ -165,11 +172,21 @@ class GateLastTests(unittest.TestCase):
         (self.top / "gprobe.md").write_text(TICKET.replace(
             'out=$(guard bin/check 2>&1); rc=$?; last=$(tail -n 1 <<<"$out"); [ "$rc" = 0 ] && [ "$last" = "check: PASSED" ]',
             "rc=; last=; printf 'checking gate...'; guard bin/check > /dev/null"))
-        self.worker_round(1, {"note.txt": "1\n", "red.txt": "red\n"})
-        self.worker_round(2, {}, "git rm -q red.txt\n")
+        self.worker_round(1, {"note.txt": "1\n", "full-red.txt": "red\n"})
+        self.worker_round(2, {}, "git rm -q full-red.txt\n")
         log = self.launch()
         self.assertIn("full gate failing: check-green,", log)
         self.assertEqual((self.top / "rounds").read_text().strip(), "2")
+
+    def test_a_round_whose_selected_tests_fail_goes_back_before_the_graders_and_the_full_gate(self) -> None:
+        self.worker_round(1, {"note.txt": "1\n", "red.txt": "red\n"})
+        self.worker_round(2, {}, "git rm -q red.txt\n")
+        log = self.launch()
+        self.assertEqual((self.top / "rounds").read_text().strip(), "2")
+        self.assertEqual((self.top / "judge-calls").read_text().strip(), "1", log)  # graders only after round 2
+        self.assertEqual(log.count(" full gate at "), 1, log)
+        self.assertNotIn("full gate failing", log)
+        self.assertIn("FAIL check-green: rc 1, last line: check: FAILED", (self.top / "prompt-2.txt").read_text())
 
     def test_round_zero_still_ends_on_a_non_guard_check_that_passes_on_base(self) -> None:
         (self.co / "note.txt").write_text("base\n")

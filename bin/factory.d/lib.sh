@@ -29,13 +29,19 @@ guard() {
   local out rc
   guard_check=""
   [ -n "${LOAM_HOOK:-}" ] && [ "${1:-}" = bin/check ] && return 0
-  # FACTORY_GATE_DEFER (round 0 and the supervisor's per-round pass, LOOP.md): bin/check does not run here; the
-  # supervisor runs the whole block once the graders pass. The DEFERRED line says so, and the stand-in result line keeps the check line green.
+  # FACTORY_GATE_DEFER (LOOP.md, steps 4 and 6): the full bin/check runs once, when the supervisor runs the whole block
+  # after the graders pass; the DEFERRED line says so. Round 0 (=1) runs no bin/check, and the stand-in result line
+  # keeps the check line green. A round's pass (=changed) runs bin/check with the variable set, so a target's bin/check
+  # may run only the tests the round's change needs (distbench's bin/select_tests.py); one that ignores it runs in full.
   if [ -n "${FACTORY_GATE_DEFER:-}" ] && [ "${1:-}" = bin/check ]; then
-    printf '\nDEFERRED: bin/check runs once, after the graders pass, before any ready PR\ncheck: PASSED\n'
-    [ /dev/fd/1 -ef /dev/fd/9 ] || printf '\nDEFERRED: bin/check runs once, after the graders pass, before any ready PR\ncheck: PASSED\n' >&9
-    guard_check="check: PASSED"
-    return 0
+    printf '\nDEFERRED: bin/check runs in full once, after the graders pass, before any ready PR\n'
+    [ /dev/fd/1 -ef /dev/fd/9 ] || printf '\nDEFERRED: bin/check runs in full once, after the graders pass, before any ready PR\n' >&9
+    if [ "$FACTORY_GATE_DEFER" != changed ]; then
+      printf 'check: PASSED\n'
+      [ /dev/fd/1 -ef /dev/fd/9 ] || printf 'check: PASSED\n' >&9
+      guard_check="check: PASSED"
+      return 0
+    fi
   fi
   out=$(mktemp 2> /dev/null) || { "$@"; return; }
   if [ /dev/fd/1 -ef /dev/fd/9 ]; then
