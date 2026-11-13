@@ -65,13 +65,17 @@ _WRAP = (r"(?:(?:timeout|nohup|guard|time|exec|command|nice|env|then|do|else|if|
 _START = r"(?:^|[;&|(`])[ \t]*(?:" + _WRAP + r")*"
 RUNS_GATE = re.compile(_START + r"(?:[\w.~${}/-]*/)?bin/check(?![\w.-])", re.M)
 PYTEST = re.compile(_START + r"(?:[\w.~/-]*/)?(?:python[\d.]*\s+(?:-\w+\s+)*-m\s+)?pytest(?![\w.-])([^;&|)\n]*)", re.M)
-# pytest options whose next word is their value, never a test target (from `pytest --help` with xdist), and the
-# selections that make a run focused whatever its targets
-PYTEST_VALUE = {"-k", "-m", "-r", "-W", "-c", "-p", "-o", "-n", "--maxfail", "--durations", "--tb", "--capture",
-                "--junitxml", "--junit-xml", "--junit-prefix", "--pythonwarnings", "--ignore", "--ignore-glob",
-                "--deselect", "--confcutdir", "--config-file", "--rootdir", "--basetemp", "--override-ini",
-                "--log-level", "--log-file", "--log-cli-level", "--maxprocesses", "--dist", "--import-mode"}
-PYTEST_FOCUS = {"-k", "-m", "--lf", "--last-failed", "--deselect"}
+# pytest options whose next word is their value, never a test target: every one `pytest --help` (with xdist) lists
+# with a value. A run that selects with -k, -m or --deselect is focused whatever its targets.
+PYTEST_VALUE = set("""
+--anyio-mode --assert --basetemp --capture --code-highlight --color --confcutdir --config-file --deselect --dist
+--doctest-glob --doctest-report --durations --durations-min --ignore --ignore-glob --import-mode --junit-prefix
+--junit-xml --junitxml --last-failed-no-failures --lfnf --log-auto-indent --log-cli-date-format --log-cli-format
+--log-cli-level --log-date-format --log-disable --log-file --log-file-date-format --log-file-format --log-file-level
+--log-file-mode --log-format --log-level --max-warnings --max-worker-restart --maxfail --maxprocesses
+--maxschedchunk --numprocesses --override-ini --pastebin --pdbcls --px --pythonwarnings --report-chars --rootdir
+--rsyncdir --rsyncignore --show-capture --tb --testrunuid --tx --verbosity -W -c -k -m -n -o -p -r
+""".split())
 SHELL = r"(?:[\w./-]*/)?(?:ba|da|k|z)?sh"
 OPTS = r"((?:\s+(?:[-+]\w*[oO]\s+\w+|-[\w-]+))*)"  # shell options, `-o pipefail` with its argument
 SHELL_C = re.compile(r"(?<![\w.-])" + SHELL + r"(?:\s+(?:[-+]\w*[oO]\s+\w+|-\w+))*?\s+-\w*c\w*\s+"
@@ -165,7 +169,7 @@ def runs_full_gate(command: str, dirs: tuple[Path, ...], depth: int = 0, hook: b
         targets, focused = [], False
         for prev, w in zip([""] + words, words):
             if w.startswith("-") or prev in PYTEST_VALUE:
-                focused |= w.split("=")[0] in PYTEST_FOCUS
+                focused |= bool(re.match(r"-[km]|--deselect(?:=|$)", w))  # -k x, -kx, -k=x, --deselect x
             else:
                 focused |= "::" in w
                 targets.append(re.sub(r"^(?:\./)+|^/.*/(?=tests/*$)|/+$", "", w))
