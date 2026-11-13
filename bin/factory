@@ -909,7 +909,7 @@ eval_tree() { # work [evals_dir, default EVALS_DIR]: exports into work/tree
 # expected.json's tree_base (eval-freeze records the merge base of the run's base and graded commits, which a
 # three-dot diff starts from), else the commit the `## Diff (<base>...HEAD)` heading names. The case fails instead of
 # grading a tree the round never had when the Diff is not the whole change (build_evidence caps it, passes a large
-# added file as stat only, and leaves deleted files out) or a file does not apply; a failure that names the Diff is
+# added file as stat only, and once left deleted files out) or a file does not apply; a failure that names the Diff is
 # a property of the case (model-eval caches it), any other is the environment. A recorded tree_base this checkout
 # lacks fails too; only a case without one whose heading's commit is missing (run-only, lean-v3) reads the HEAD
 # export. Graded in HEAD, a case drifts as main moves: a reviewer flagged a gh call for skipping a wrapper main
@@ -931,7 +931,7 @@ case_tree() { # case-dir work -> the tree to grade in on stdout; non-zero, with 
   omit=$(sed -n 's/^\[stat only, content omitted as data: \(.*\)\]$/\1/p' "$2/patch/diff" | tr ' ' '\n' | grep -v '^evals/' | grep .)
   [ -z "$omit" ] || { echo "the Diff omits the content of:" $omit >&2; return 1; }
   awk -v out="$2/patch/" '/^diff --git / {n++} n {print > (out n)}' "$2/patch/diff"
-  # Every changed file is a patch or a stat-only name; build_evidence gives a deleted file neither.
+  # Every changed file is a patch or a stat-only name (a case frozen before 13 Nov has no patch for a deleted file).
   total=$(sed -n 's/^ \([0-9][0-9]*\) files\{0,1\} changed.*/\1/p' "$2/patch/diff" | head -1)
   held=$(( $(find "$2/patch" -name '[0-9]*' | wc -l) + \
     $(sed -n 's/^\[stat only, content omitted as data: \(.*\)\]$/\1/p' "$2/patch/diff" | wc -w) ))
@@ -2960,7 +2960,7 @@ build_evidence() { # rubric_file diff_cap -> stdout
   printf '\n## decisions.md (worker-authored)\n\n%s\n' "$FENCE"; cat "$DECISIONS"; printf '\n%s\n' "$FENCE"
   # Data files pass as stat only: evals/**/prompt.md and any added file over 400 lines (LOOP.md, Grader calls),
   # so a frozen grader prompt or a large fixture never floods the diff a grader reads.
-  names=$( cd "$WORKTREE" && git diff -M --name-only --diff-filter=AMR "$base...HEAD" )
+  names=$( cd "$WORKTREE" && git diff -M --name-only --diff-filter=AMRD "$base...HEAD" )
   stat_only=$( { grep -E '^evals/.*/prompt\.md$' <<< "$names" || true
                  ( cd "$WORKTREE" && git diff --numstat --diff-filter=A "$base...HEAD" ) \
                    | awk -F'\t' '$1 + 0 > 400 {print $3}'; } | sort -u )
@@ -2970,7 +2970,9 @@ build_evidence() { # rubric_file diff_cap -> stdout
   [ -z "$stat_only" ] || printf '[stat only, content omitted as data: %s]\n\n' "$(printf '%s' "$stat_only" | tr '\n' ' ')"
   if [ -n "$content" ]; then
     while IFS= read -r path; do paths+=("$path"); done <<< "$content"  # bash 3.2 (macOS) has no mapfile
-    ( cd "$WORKTREE" && git diff -M --diff-filter=AMR "$base...HEAD" -- "${paths[@]}" ) > "$diff"
+    # Deleted files come last, so a mass deletion never pushes an added or changed file past the cap.
+    ( cd "$WORKTREE" && git diff -M --diff-filter=AMR "$base...HEAD" -- "${paths[@]}"
+      git diff -M --diff-filter=D "$base...HEAD" -- "${paths[@]}" ) > "$diff"
     head -"$cap" "$diff"
     [ "$(wc -l < "$diff")" -le "$cap" ] || printf '\n[content diff capped at %s lines; the stat above is complete]\n' "$cap"
   fi
