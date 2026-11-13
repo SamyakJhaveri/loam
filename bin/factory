@@ -159,15 +159,22 @@ predict_split() {
   name=${cmd%%[[:space:]]*}; cmd=${cmd#"$name"}; cmd=${cmd#"${cmd%%[![:space:]]*}"}
 }
 
-# The NAME after each `pass` in the check lines on stdin, quotes stripped, one per line.
-pass_names() { grep -oE '(^|[[:space:]])pass[[:space:]]+"?[A-Za-z0-9_.-]+' | awk '{print $NF}' | tr -d '"' | sort -u; }
-
-# Like pass_names, but only where pass is the command word (after && || ; { ( ) then do else, or at the start), so a
-# fail reason such as "lint does not pass greeting" names no check; ) ends a case pattern. check_predicts reads it: a
-# name too many there would demand a predict line, while round 0's guard names only exempt, so they keep pass_names.
+# The literal NAME after each command-word `pass` (at the start, or after && || ; ;; & ( ) { ! then do else) in the check
+# lines on stdin, one per line. Python's shell lexer reads the line, so a quoted fail reason such as "must pass note" or
+# "x; (pass note)" names no check and `pass 'note'` names note; ) ends a case pattern. check_predicts and round 0 read it.
 pass_cmd_names() {
-  grep -oE '(^|&&|\|\||[;{()]|(then|do|else)[[:space:]])[[:space:]]*pass[[:space:]]+"?[A-Za-z0-9_.-]+' \
-    | awk '{print $NF}' | tr -d '"' | sort -u
+  python3 -I -c '
+import re, shlex, sys
+after = {"&&", "||", ";", ";;", "&", "(", ")", "{", "!", "then", "do", "else"}
+for line in sys.stdin:
+    try:
+        t = list(shlex.shlex(line, posix=True, punctuation_chars=True))
+    except ValueError:
+        continue
+    for i in range(len(t) - 1):
+        if t[i] == "pass" and (i == 0 or t[i - 1] in after) and re.fullmatch(r"[A-Za-z0-9_.-]+", t[i + 1]):
+            print(t[i + 1])
+' | sort -u
 }
 
 # A check that calls `guard` is a regression guard allowed to pass on base (CONTRACT.md, Done checks): `guard` as the
@@ -2170,7 +2177,7 @@ run_checks() { # dir out [NAME=value, set for checks.sh]
 round_zero() {
   # The block writes round-0.out; only a clean verdict renames it to round-0.checks, the file cmd_run
   # resumes on, so a relaunch after a defect, or after a kill mid-block, runs round 0 again.
-  local out="$RUN/round-0.out" why="" guards fail_guards line name cmd rc base wt msg
+  local out="$RUN/round-0.out" why="" guards line name cmd rc base wt msg
   base=$(cat "$RUN/base.sha"); wt="${WORKTREE}-base"
   # A line continuation would split one line across the readers (dc_continued); lint rejects it, and a run never linted
   # (bin/factory run) stops here, before any of the block runs.
@@ -2210,14 +2217,12 @@ round_zero() {
   # A predict line whose command exits non-zero, or that has none: the check fails on base, but not for the reason
   # its author predicted.
   [ -z "$why" ] || finish ticket-defect "the predict line for check $name $why on $(cut -c1-8 "$RUN/base.sha"), so base does not show the predicted failure"
-  guards=$(guard_checks | pass_names)
+  guards=$(guard_checks | pass_cmd_names)
   # A guard may pass on base, but one that FAILs there fails in every round (Loam issue 726). A deferred bin/check
-  # prints its DEFERRED line and a stand-in pass, never a FAIL. Guard names here are command-word pass names read with
-  # each fail reason dropped, so a reason such as "(pass note first)" names no guard.
-  fail_guards=$(guard_checks | sed -E 's/(fail[[:space:]]+"?[A-Za-z0-9_.-]+"?[[:space:]]+)("([^"\\]|\\.)*"|'\''[^'\'']*'\'')/\1/g' | pass_cmd_names)
+  # prints its DEFERRED line and a stand-in pass, never a FAIL.
   while IFS= read -r line; do
     name=${line#FAIL }; name=${name%%:*}
-    grep -qxF "$name" <<<"$fail_guards" \
+    grep -qxF "$name" <<<"$guards" \
       && finish ticket-defect "guard check $name fails on $(cut -c1-8 "$RUN/base.sha"), so no round can pass it: ${line#FAIL }; see $out"
   done < <(grep '^FAIL ' "$out")
   while read -r _ name _; do
