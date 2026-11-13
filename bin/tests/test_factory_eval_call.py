@@ -137,7 +137,7 @@ class EvalCallTests(unittest.TestCase):
             self.assertNotIn("fixture-token", arg)
             self.assertNotIn("launch-token", arg)
 
-    def production(self, switch: bool, config_mode: int | None = None, role: str = "judge"
+    def production(self, switch: bool, config_mode: int | None = None, role: str = "judge", **extra: str
                    ) -> tuple[subprocess.CompletedProcess[str], list[tuple[dict, str]], pathlib.Path]:
         """A real freeze and call_json for role on a fixture worktree; returns the calls and the run dir."""
         tmp = self.tmp / role
@@ -159,7 +159,7 @@ class EvalCallTests(unittest.TestCase):
                   'freeze || exit 1\n'
                   f'call_json 1 {ROLES[role][0]} {role} "$RUN/prompt.md" "$RUN/frozen/{role}.schema.json" || exit 1\n'
                   f'echo "after:${{{TOKEN}-unset}}"; echo "grader_effort:$(grader_effort {role})"')
-        env = {**self.env, "ARGS_DIR": str(args), "FACTORY_SOURCED": "1", TOKEN: "launch-token"}
+        env = {**self.env, "ARGS_DIR": str(args), "FACTORY_SOURCED": "1", TOKEN: "launch-token", **extra}
         if switch:
             env["FAKE_SWITCH"] = str(self.acc)
         # $0 is bin/factory, as for `bin/factory eval`, so schema_for and the settings path resolve from bin/.
@@ -168,14 +168,15 @@ class EvalCallTests(unittest.TestCase):
         self.assertIn("grader_effort:", proc.stdout, proc.stderr)
         return proc, self.calls(args), run
 
-    def replay(self, switch: bool = False, version: str = "2.1.312", role: str = "judge"
+    def replay(self, switch: bool = False, version: str = "2.1.312", role: str = "judge", model: str = ""
                ) -> tuple[subprocess.CompletedProcess[str], list[tuple[dict, str]]]:
         args = self.tmp / f"eargs-{role}"
         args.mkdir()
         env = {**self.env, "ARGS_DIR": str(args), "FAKE_VERSION": version}
         if switch:
             env["FAKE_SWITCH"] = str(self.acc)
-        proc = subprocess.run(["bin/factory", "eval", role, "--evals-dir", str(self.tmp / "evals")],
+        proc = subprocess.run(["bin/factory", "eval", role, "--evals-dir", str(self.tmp / "evals"),
+                               *(["--model", model] if model else [])],
                               cwd=ROOT, env=env, capture_output=True, text=True, check=False)
         return proc, self.calls(args)
 
@@ -219,6 +220,15 @@ class EvalCallTests(unittest.TestCase):
                 differ = sorted(k for k in prod.keys() | rep.keys() if rep.get(k) != prod.get(k))
                 self.assertEqual(differ, [], f"run_eval's flags that differ from call_json's for the {role}; effort "
                                              f"{rep.get('--effort')} against {prod.get('--effort')}")
+
+    def test_a_grader_or_eval_model_outside_the_list_is_allowed_where_it_is_asked_for(self) -> None:
+        # role-settings.json lists Opus 5.5 and Fable 5.2; a model outside availableModels is not served (PR 713).
+        proc, production, _ = self.production(switch=False, FACTORY_GRADER_MODEL="claude-sonnet-5-5")
+        self.assertIn("claude-sonnet-5-5", json.loads(production[0][1])["availableModels"], proc.stderr)
+        replay_proc, replay = self.replay(model="claude-sonnet-5-5")
+        self.assertEqual(replay[0][0]["argv"][replay[0][0]["argv"].index("--model") + 1], "claude-sonnet-5-5",
+                         replay_proc.stderr)
+        self.assertIn("claude-sonnet-5-5", json.loads(replay[0][1])["availableModels"])
 
     def test_a_retry_gets_the_token_switched_in_after_the_first_attempt(self) -> None:
         proc, production, run = self.production(switch=True)

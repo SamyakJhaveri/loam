@@ -97,7 +97,7 @@ The small mode runs assets and codex only.
 
 Each seat runs headless in the lead's background from its own empty folder outside any repository (below, `<dir>`), for example `~/.local/state/research-gap/<date>-<slug>/<seat>/`, with absolute paths throughout.
 Make it and copy the seat's seeds in, if it has any: `mkdir -p <dir> && cp <run>/seeds/<seat>/* <dir>/`; `git -C <dir> rev-parse` must fail there.
-A Claude seat, Opus here; the Fable seat takes `--model claude-fable-5-1 --effort high`, and the assets seat adds one `--add-dir <path>` per data folder:
+A Claude seat, Opus here; the Fable seat takes `--model claude-fable-5-2 --effort high`, and the assets seat adds one `--add-dir <path>` per data folder:
 
 ```bash
 env -C <dir> claude -p --safe-mode --model opus --effort xhigh --max-budget-usd 10 --tools "Read,Grep,Glob,Bash,WebSearch,WebFetch" --allowedTools "Read,Grep,Glob,WebSearch,WebFetch,Bash(pdftotext *)" --output-format json < <run>/brief-<seat>.md > <run>/proposals/<seat>.json
