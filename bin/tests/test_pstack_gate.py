@@ -317,6 +317,8 @@ def bash(command: str, gate_env: str | None, cwd: Path | None = None) -> subproc
     "python3 -m pytest -q tests",  # the full suite takes as long as the gate (W46, 13 Nov)
     "cd wt && PYTHONPATH=src timeout 3000 .venv/bin/python -m pytest -x -n 8",
     "pytest tests/ -q 2>&1 | tail -5",
+    "python3 -m pytest tests --junitxml /tmp/results.xml -o cache_dir=/tmp/pc",
+    "python3 -m pytest ./tests -q",
     "bash -euo pipefail -c 'echo start; bin/check'",
     "echo start # don't run this twice\nbin/check\necho 'done'",
     "cat <<EOF\n$(bin/check)\nEOF",
@@ -347,7 +349,9 @@ def test_full_gate_a_script_file_that_runs_bin_check_is_blocked(tmp_path):
                     "bash -euo pipefail dc.sh", "bash noted.sh",
                     f"W={tmp_path}; bash $W/dc.sh", f"R={tmp_path}; time bash $R/dc.sh 2>&1 | grep -E x",  # W46's form
                     "bash $NOT_SET_HERE/run.sh", "bash /gone/run/frozen/checks.sh",
-                    "cd checks && bash gate-checks.sh", "bash scripts/enter.sh"):
+                    "cd checks && bash gate-checks.sh", "bash scripts/enter.sh",
+                    "cd scripts && cd ../checks && bash gate-checks.sh",
+                    f"W={tmp_path}/scripts; X=1 W={tmp_path}; bash $W/dc.sh"):
         r = bash(command, "supervisor", cwd=tmp_path)
         assert r.returncode == 2 and r.stderr.strip() == FULL_GATE, (command, r.stderr)
     r = bash(f"bash {tmp_path}/ok.sh", "supervisor")
@@ -364,6 +368,7 @@ def test_full_gate_a_script_file_that_runs_bin_check_is_blocked(tmp_path):
     'timeout 550 python3 -m pytest -q -p no:cacheprovider "$f" $files',
     "timeout 300 python3 -m pytest -q --co -p no:cacheprovider | grep '::'",
     "command -v pytest",
+    "python3 -m pytest \\\n  -q tests/test_overlap.py",
     "git ls-files bin/check bin/check_rules.py && bin/check_rules.py --help",
     "cat > /tmp/dc.sh <<'EOS'\nbin/check\nEOS",
     "cat > /tmp/dc.sh <<EOS\nbin/check > /tmp/c-$(date +%s).log\nEOS",

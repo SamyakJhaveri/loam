@@ -76,7 +76,7 @@ FED_TO_SHELL = re.compile(r"(?<![\w.-])" + SHELL + OPTS + r"\s*$")
 HOOK_ON = r"LOAM_HOOK=(?!''|\"\"|[\s;&|)]|$)"  # a non-empty LOAM_HOOK
 GUARDED_GATE = re.compile(r"(?<![\w.-])guard[ \t]+bin/check(?![\w./-])")  # the one form lib.sh's guard skips under it
 LIB_GUARD = re.compile(r'LOAM_HOOK.*"\$\{1:-\}" = bin/check \] && return 0')  # lib.sh's skip, as criteria.py reads it
-ASSIGN = re.compile(r"(?:^|[;&|\n])\s*(?:export\s+)?([A-Za-z_]\w*)=([^\s;&|]*)")
+ASSIGN = re.compile(r"(?:^|[\s;&|])([A-Za-z_]\w*)=([^\s;&|]*)")  # each NAME=value, `X=1 W=..` and `export W=..` too
 QUOTED = re.compile(r"'[^']*'|\"(?:[^\"\\]|\\.)*\"")
 COMMENT = re.compile(QUOTED.pattern + r"|(?<![^\s;&|(])#[^\n]*")  # a quote, or a comment outside quotes
 SUBST = r"\$\([^()]*\)|`[^`]*`"  # a command substitution, which runs inside double quotes and expanding heredocs
@@ -97,6 +97,7 @@ def unquoted(text: str) -> str:
 def commands(text: str) -> str:
     """text without comments (an apostrophe there would pair with a later quote) and the bodies of heredocs fed to
     anything but a shell, which are a file's text, not commands, except an expanding one's command substitutions."""
+    text = text.replace("\\\n", " ")  # a continued line is one command
     text = COMMENT.sub(lambda q: q.group(0) if q.group(0)[0] in "'\"" else "", text)
     lines, out, i = text.split("\n"), [], 0
     while i < len(lines):
@@ -138,9 +139,10 @@ def runs_full_gate(command: str, dirs: tuple[Path, ...], depth: int = 0, hook: b
     for m in PYTEST.finditer(scan):  # naming no test path but tests/, pytest runs the full suite, as long as the gate
         if re.search(r"\bcommand\s+-[vV]\b|\s--co(?:llect-only)?(?!\S)", m.group(0)):
             continue  # `command -v pytest` only looks it up; --co only lists the tests
-        words = re.sub(r"\d*[<>]+&?\s*\S*", " ", text[m.start(1):m.end(1)]).split()  # scan ends it; text spells it
-        if all(w.strip("'\"").rstrip("/") == "tests" for w in words
-               if not w.startswith("-") and re.search(r"[/$]|\.py|::|^['\"]?tests\b", w)):
+        words = [w.strip("'\"") for w in re.sub(r"\d*[<>]+&?\s*\S*", " ", text[m.start(1):m.end(1)]).split()]
+        targets = [re.sub(r"^(?:\./)+|/+$", "", w) for w in words if not w.startswith("-") and (  # not /tmp/x.xml, a=b
+            re.search(r"\.py|::|\$", w) or "/" in w and not w.startswith("/") and "=" not in w or w == "tests")]
+        if all(t == "tests" for t in targets):
             return True
     for m in SHELL_C.finditer(text):
         body = m.group(1) if m.group(1) is not None else m.group(2) if m.group(2) is not None else m.group(3)
@@ -157,8 +159,9 @@ def runs_full_gate(command: str, dirs: tuple[Path, ...], depth: int = 0, hook: b
         name = expand(m.group(2) or m.group(3), before)
         if "$" in name:
             return True  # a script path the hook cannot resolve: fail closed
-        cds = [expand(cd, before) for cd in CD.findall(before)]
-        here = dirs + tuple(d / cd for cd in cds if "$" not in cd for d in dirs)
+        here = dirs
+        for cd in (expand(cd, before) for cd in CD.findall(before)):
+            here += tuple(d / cd for d in here) if "$" not in cd else ()  # each cd from every folder reached so far
         for path in [Path(name)] if name.startswith("/") else [d / name for d in here]:
             if re.search(r"(?:^|/)bin/check$", path.as_posix()) or not hooked and name.endswith("/frozen/checks.sh"):
                 return True
