@@ -432,7 +432,9 @@ end_call() { echo "ended $polls_seen $reads"; }
         self.start_driver()
         self.assertTrue(self.wait_for(lambda: self.calls(tool)), "the call started no tool child")
         child = self.calls(tool)[0]
-        self.assertNotEqual(os.getsid(child), os.getsid(self.calls(calls)[0]))
+        # setsid runs in the child after $! is known, so wait for it rather than read the session once (CI race, PR 742).
+        call = self.calls(calls)[0]
+        self.assertTrue(self.wait_for(lambda: os.getsid(child) != os.getsid(call)), "the tool child shares the call's session")
         with (self.state / "log.md").open("a") as f:
             f.write("outcome issue 8: merged\n")
         self.assertTrue(self.wait_for(lambda: not self.alive(self.calls(calls)[0]), 20), "the call was not ended")
