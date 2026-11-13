@@ -30,7 +30,7 @@ If the folder line above is empty or not an absolute path (you read this file di
 | A measured number | principle-explain-the-number; benchmark-checklist for a timing |
 | Shared, retried or concurrent code | blast-radius; principle-make-operations-idempotent; principle-separate-before-serializing-shared-state |
 | Merged code changed what a formal-verification skill models | maintain-formal-verification-skill |
-| Review of finished non-trivial work | `<S>/audit` (spawns; its size scales with the work) |
+| Review of finished non-trivial work | `<S>/audit` (spawns: Fable and Codex review, Opus verify and fix, surprise-me) |
 | A diff you do not trust | interrogate (spawns) |
 | A long or unattended run | show-me-your-work (spawns 1) |
 | A long task or a batch of runs landed: capture what worked as a skill or rule edit | reflect (spawns; unattended, its input is the run transcripts and ledgers it is given, not its own chat) |

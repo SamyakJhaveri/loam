@@ -36,6 +36,7 @@ For the second step, give fresh agents the same goal with different briefs and c
 The `surprise-me` skill's Panel mode does that, and the `audit` skill does the audit, on a plan as well as on finished work.
 A project protocol that fixes its own audit form (a pre-registered study audit, for example) keeps that form.
 Both skills are in the `sam-cc-setup` plugin and manual-only: the owner types them, and an agent told to run one reads `<plugin>/skills/<name>/SKILL.md`, `<plugin>` being the sam-cc-setup `installPath` in `~/.claude/plugins/installed_plugins.json`.
+Codex reads the same files at `~/.agents/skills/<name>/SKILL.md` once they are linked there (`cultivation/marketplace/UPGRADING.md`, v0.9.30 in Loam).
 
 These rules cover anything one session writes for another agent to carry out: a ticket, an experiment plan, a research brief, a subagent prompt.
 They add to the ticket formats and the brief headings and replace none of them.
@@ -52,7 +53,7 @@ They add to the ticket formats and the brief headings and replace none of them.
 A read-only search needs less: the objective, the output format, where to look and where to stop.
 Leave out step lists for work the worker can plan, emphasis words, "think carefully" lines and requests to write out reasoning; more thinking comes from the effort level, not from words in the prompt.
 In a hand-off, leave out a caution whose reason has passed, and write each exception into the rule it qualifies.
-Before a hand-off that starts long or costly work, dry-run it (the `audit` skill's step 3: a fresh worker that builds nothing lists every question it would have to guess) and close each question.
+Before a hand-off that starts long or costly work, dry-run it (a fresh worker that builds nothing lists every question it would have to guess) and close each question.
 
 ## pstack
 

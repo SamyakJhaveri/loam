@@ -3,6 +3,18 @@
 This file records why a promoted plugin change traveled. It is also the upgrade
 entry point for projects that consume the Loam marketplace.
 
+## sam-cc-setup v0.9.30 audit is the owner's prompt again
+
+The owner said on 13 Nov 2026 that the v0.9.26 `audit` skill was "nowhere near" the prompt he typed by hand and ran far less aggressively, so the skill now opens with that prompt verbatim (spelling and numbering fixed) as his instruction to the agent that did the work, and the rest only says how to carry it out.
+Removed: sizing by stakes, evidence tags in place of scores, the one-artifact target, "leave out anything that existed before this work", fixing only unmerged work, and the single re-review.
+Added: a confidence score out of 10 with what would change the agent's mind, a blind-spots part, re-reading every claim made from memory, a surprise-me agent started after that re-reading, an `unresolved` verdict for findings nobody could check, fix-and-review rounds until no confirmed finding is open (INCOMPLETE after three), a Codex-host column, and `effort: xhigh`.
+The verifier method now sits under the heading `## Verify findings`; `bin/factory.d/verify.md` reads that heading instead of "step 4".
+`seed/docs/WORKERS.md.jinja` no longer points at the audit skill's old step 3 for a dry run, and says where Codex finds the skills; projects get it through `bin/sync-project`.
+Sources: the owner's prompt and complaints, a read-only Codex reading of their intent, and Anthropic's Opus 5.5 prompting, prompting best-practices, skill-authoring and Claude Code skills pages, read 13 Nov 2026 (`~/.local/state/distbench/evidence/2026-11-13-audit-skill/`).
+No grader prompt changed, so no grader replay is owed.
+Upgrade step: `claude plugin update sam-cc-setup@seed-skills`.
+For Codex on each host, link the three skills it uses into the user skill folder Codex reads: `mkdir -p ~/.agents/skills && ln -sfn <loam>/cultivation/marketplace/sam-cc-setup/skills/audit ~/.agents/skills/audit`, and the same for `surprise-me` and `codex-review`.
+
 ## sam-cc-setup v0.9.29 pstack log line, Fable 5.2
 
 The `pstack` router asks for one decision-log line per method followed (decisions.md in a factory run): `pstack: <skill> | <SKILL.md path read> | <sha256 of that file> | <one line quoted from it> | <the decision it changed>`, the line `bin/factory-parity` reads.
