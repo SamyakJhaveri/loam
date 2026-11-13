@@ -329,8 +329,11 @@ def test_full_gate_a_script_file_that_runs_bin_check_is_blocked(tmp_path):
     (tmp_path / "ok.sh").write_text("python3 -m pytest -q tests/test_gate.py\n", encoding="utf-8")
     (tmp_path / "scripts").mkdir()
     (tmp_path / "scripts" / "launch.sh").write_text("bash dc.sh\n", encoding="utf-8")  # bash keeps the caller's cwd
+    (tmp_path / "scripts" / "own-dir.sh").write_text('cd "$(dirname "$0")"\nbash inner.sh\n', encoding="utf-8")
+    (tmp_path / "scripts" / "inner.sh").write_text("bin/check\n", encoding="utf-8")
     for command in (f"bash {tmp_path}/dc.sh", f"nohup bash {tmp_path}/dc.sh > /tmp/out.txt 2>&1 &", "sh ./dc.sh",
-                    f'bash "{tmp_path}/dc.sh"', "bash scripts/launch.sh"):
+                    f'bash "{tmp_path}/dc.sh"', "bash scripts/launch.sh", "bash scripts/own-dir.sh",
+                    "bash -euo pipefail dc.sh"):
         r = bash(command, "supervisor", cwd=tmp_path)
         assert r.returncode == 2 and r.stderr.strip() == FULL_GATE, (command, r.stderr)
     r = bash(f"bash {tmp_path}/ok.sh", "supervisor")
@@ -371,7 +374,7 @@ def test_full_gate_only_the_native_worker_shell_sets_the_variable():
     assert "LOAM_WORKER_GATE" not in (loam.get("env") or {})
 
 
-def test_full_gate_the_done_checks_block_runs_under_loam_hook(tmp_path):
+def test_full_gate_the_done_checks_block_runs_under_loam_hook(tmp_path, monkeypatch):
     """PR 738 tells a native worker to run the block as `LOAM_HOOK=1 bash $RUN/frozen/checks.sh`: under LOAM_HOOK,
     lib.sh's guard skips `guard bin/check`, so the call runs every other check and never the gate. A gate call guard
     does not skip, or the block without LOAM_HOOK, is still blocked."""
@@ -385,13 +388,15 @@ def test_full_gate_the_done_checks_block_runs_under_loam_hook(tmp_path):
     lib = (ROOT / "bin" / "factory.d" / "lib.sh").read_text(encoding="utf-8")
     checks.write_text(lib + "\n" + block + "printf '\\nCHECKS-END\\n'\nexit $((n_fail > 0))\n", encoding="utf-8")
     for command in (f"LOAM_HOOK=1 bash {checks}", f"cd {tmp_path} && LOAM_HOOK=1 bash {checks} 2>&1 | tail -n 20",
-                    f"export LOAM_HOOK=1; bash {checks}"):
+                    f"export LOAM_HOOK=1; bash {checks}", 'LOAM_HOOK=1 bash "$LOAM_CHECKS"'):
+        monkeypatch.setenv("LOAM_CHECKS", str(checks))  # the worker's env names the run's checks.sh
         r = bash(command, "supervisor", cwd=tmp_path)
         assert r.returncode == 0 and FULL_GATE not in r.stderr, (command, r.stderr)
     (tmp_path / "form.sh").write_text(lib + "guard timeout 590 bin/check\n", encoding="utf-8")  # lib.sh runs this form
     (tmp_path / "own.sh").write_text('guard() { "$@"; }\nguard bin/check\n', encoding="utf-8")  # not lib.sh's guard
     for command in (f"bash {checks}", f"LOAM_HOOK= bash {checks}", f"LOAM_HOOK=1 bash {tmp_path}/form.sh",
-                    f"LOAM_HOOK=1 bash {tmp_path}/own.sh"):
+                    f"LOAM_HOOK=1 bash {tmp_path}/own.sh", 'LOAM_HOOK=1 bash "$LOAM_CHECKS"'):
+        monkeypatch.setenv("LOAM_CHECKS", str(tmp_path / "form.sh"))
         r = bash(command, "supervisor", cwd=tmp_path)
         assert r.returncode == 2 and r.stderr.strip() == FULL_GATE, (command, r.stderr)
     run = subprocess.run(["bash", str(checks)], cwd=tmp_path, capture_output=True, text=True, timeout=60,

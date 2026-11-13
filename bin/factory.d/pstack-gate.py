@@ -26,14 +26,15 @@ bin/check when bin/check (any path ending in it) is a command word: at the start
 or a backtick, after `timeout N`, `nohup`, `env X=Y`, `X=Y`, `guard` (a done-check's wrapper), `time`, `exec`,
 `command`, `nice`, `then`, `do`, `else`, `if`, `!` or `{`, outside quotes (a double-quoted `$( )` or backtick part
 counts); or inside `bash -c`/`sh -c` text; or in a heredoc fed to a shell; or in a shell script file the call runs
-(`bash f` but not `bash -n f`, `sh f`, `source f`, `. f`, `./f.sh`, f quoted or not), read relative to the payload's cwd
-(a script run inside a script keeps it, as bash does), three files deep. A script run with a non-empty LOAM_HOOK
-(`LOAM_HOOK=1 bash f`, or after `export LOAM_HOOK=1`) does not run its `guard bin/check` lines when it holds lib.sh's
-guard, which skips exactly that form under LOAM_HOOK, so a worker may run the frozen done-checks block that way (PR
-738); a gate call in any other form there still counts. A heredoc fed to anything else is a file's text, not commands,
-so writing such a script runs; running it is blocked. Reading bin/check (cat, sed, grep, git show) runs, as does every
-call when the variable is unset (a Loam target's worker, any session outside the factory), and so does a quoted mention
-(`pgrep -af "pytest|bin/check"`, a commit message). It is a pattern check on the command text, not a shell parser.
+(`bash f` but not `bash -n f`, `bash -o pipefail f`, `sh f`, `source f`, `. f`, `./f.sh`, f quoted or not, with
+environment variables such as $LOAM_CHECKS expanded), a relative f read against the payload's cwd and the folder of each
+script it runs inside, three files deep. A script run with a non-empty LOAM_HOOK (`LOAM_HOOK=1 bash f`, or after `export
+LOAM_HOOK=1`) does not run its `guard bin/check` lines when it holds lib.sh's guard, which skips exactly that form under
+LOAM_HOOK, so a worker may run the frozen done-checks block that way (PR 738); a gate call in any other form there still
+counts. A heredoc fed to anything else is a file's text, not commands, so writing such a script runs; running it is
+blocked. Reading bin/check (cat, sed, grep, git show) runs, as does every call when the variable is unset (a Loam
+target's worker, any session outside the factory), and so does a quoted mention (`pgrep -af "pytest|bin/check"`, a
+commit message). It is a pattern check on the command text, not a shell parser.
 """
 from __future__ import annotations
 
@@ -61,7 +62,8 @@ RUNS_GATE = re.compile(_START + r"(?:[\w.~${}/-]*/)?bin/check(?![\w.-])", re.M)
 SHELL = r"(?:[\w./-]*/)?(?:ba|da|k|z)?sh"
 SHELL_C = re.compile(r"(?<![\w.-])" + SHELL + r"(?:\s+-\w+)*\s+-\w*c\w*\s+"
                      r"(?:'([^']*)'|\"((?:[^\"\\]|\\.)*)\"|([^\s;&|]+))")
-SCRIPT = re.compile(_START + r"(?:(?:" + SHELL + r"((?:\s+-[\w-]+)*)|source|\.)\s+([^\s;&|<>()`]+)"
+SCRIPT = re.compile(_START + r"(?:(?:" + SHELL + r"((?:\s+(?:[-+]\w*[oO]\s+\w+|-[\w-]+))*)|source|\.)"
+                    r"\s+([^\s;&|<>()`]+)"
                     r"|((?:[\w.~/-]*/)?[\w.-]+\.sh)(?![\w.-]))", re.M)
 HEREDOC_OPEN = re.compile(r"(?<!<)<<(?!<)-?\s*(['\"]?)([A-Za-z_]\w*)\1")
 FED_TO_SHELL = re.compile(r"(?<![\w.-])" + SHELL + r"(?:\s+-[\w-]+)*\s*$")
@@ -100,9 +102,10 @@ def commands(text: str) -> str:
     return "\n".join(out)
 
 
-def runs_full_gate(command: str, cwd: Path, depth: int = 0, hook: bool = False) -> bool:
-    """True when command (Bash text, or a script file's text, run with LOAM_HOOK set when hook) runs bin/check; see
-    the module docstring."""
+def runs_full_gate(command: str, dirs: tuple[Path, ...], depth: int = 0, hook: bool = False) -> bool:
+    """True when command (Bash text, or a script file's text, run with LOAM_HOOK set when hook) runs bin/check; a
+    relative script path is read against each of dirs (the call's cwd, then each enclosing script's folder, which a
+    script may cd to); see the module docstring."""
     if depth > 3:
         return False
     text = commands(command)
@@ -111,23 +114,23 @@ def runs_full_gate(command: str, cwd: Path, depth: int = 0, hook: bool = False) 
         return True
     for m in SHELL_C.finditer(text):
         body = m.group(1) if m.group(1) is not None else m.group(2) if m.group(2) is not None else m.group(3)
-        if runs_full_gate(re.sub(r"\\(.)", r"\1", body) if m.group(2) is not None else body, cwd, depth + 1, hook):
+        if runs_full_gate(re.sub(r"\\(.)", r"\1", body) if m.group(2) is not None else body, dirs, depth + 1, hook):
             return True
     for m in SCRIPT.finditer(text):
         if re.search(r"(?<![\w-])-[a-mo-z]*n", m.group(1) or ""):
             continue  # `bash -n f` only parses f
         hooked = hook or bool(re.search(r"(?<![\w-])" + HOOK_ON, m.group(0))
                               or re.search(r"(?<![\w-])export\s+" + HOOK_ON, text[:m.start()]))
-        path = Path(os.path.expanduser((m.group(2) or m.group(3)).strip("'\"")))
-        path = path if path.is_absolute() else cwd / path
-        if re.search(r"(?:^|/)bin/check$", path.as_posix()):
-            return True
-        try:
-            if path.is_file() and path.stat().st_size < 1 << 20 and runs_full_gate(
-                    path.read_text(encoding="utf-8", errors="replace"), cwd, depth + 1, hooked):
+        name = Path(os.path.expandvars(os.path.expanduser((m.group(2) or m.group(3)).strip("'\""))))
+        for path in [name] if name.is_absolute() else [d / name for d in dirs]:
+            if re.search(r"(?:^|/)bin/check$", path.as_posix()):
                 return True
-        except OSError:
-            continue
+            try:
+                if path.is_file() and path.stat().st_size < 1 << 20 and runs_full_gate(
+                        path.read_text(encoding="utf-8", errors="replace"), (*dirs, path.parent), depth + 1, hooked):
+                    return True
+            except OSError:
+                continue
     return False
 
 
@@ -136,7 +139,7 @@ def full_gate(payload: dict) -> str | None:
     if os.environ.get("LOAM_WORKER_GATE") != "supervisor" or payload.get("tool_name") != "Bash":
         return None
     command = str((payload.get("tool_input") or {}).get("command", ""))
-    return FULL_GATE if runs_full_gate(command, Path(payload.get("cwd") or os.getcwd())) else None
+    return FULL_GATE if runs_full_gate(command, (Path(payload.get("cwd") or os.getcwd()),)) else None
 
 
 def load_parity():
