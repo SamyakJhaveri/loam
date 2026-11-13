@@ -72,7 +72,7 @@ hyphenated pstack name.
                       ~/.claude/skills/synced/ is ignored, as any session start changes it). Lists each classifier permission_denied event (tool input
                       and reason) as evidence; a denial alone does not fail.
   P8 reviews          per graded round (round-N.graded.sha): ledger.jsonl has a reviewer row, and every one but
-                      a no-result row (a killed attempt's charge) has served_models
+                      a no-result row (a killed attempt) has served_models
                       exactly ["claude-fable-5-2"]; round-N.codex-review.json is a JSON object; the ids in
                       round-N.verify.json equal the blocking ids recomputed from round-N.review.json
                       (`reviewer-<i>`, severity high or medium) and round-N.codex-review.json (`codex-<i>`,
@@ -1085,7 +1085,7 @@ def p8(run: Run) -> tuple[str, str]:
     rows = []
     for n in graded:
         bad, good = [], []
-        # A no-result row books a killed or crashed attempt's ceiling; it served nothing and is no review.
+        # A no-result row books a killed or crashed attempt; it served nothing and is no review.
         reviewers = [(k, e) for k, e in entries
                      if e.get("role") == "reviewer" and e.get("round") == n and e.get("subtype") != "no-result"]
         off = [f"ledger.jsonl:{k} reviewer served_models {json.dumps(e.get('served_models'))}"

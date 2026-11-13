@@ -58,7 +58,7 @@ review_claude() { # round role model effort dir prompt schema-text out [add-dir.
     call_start "$dir" ${TIMEOUT_G[@]+"${TIMEOUT_G[@]}"} "$ROOT/bin/claude-account" exec env CLAUDE_CONFIG_DIR="$RUN/grader-config" \
         claude -p --model "$model" --effort "$effort" --tools "$tools" ${mode[@]+"${mode[@]}"} ${adds[@]+"${adds[@]}"} \
         --strict-mcp-config --disable-slash-commands --no-session-persistence --json-schema "$schema" \
-        ${USD_CAPS:+--max-budget-usd "$GRADER_BUDGET_USD"} --setting-sources '' --settings "$RUN/frozen/role-settings.json" \
+        --setting-sources '' --settings "$RUN/frozen/role-settings.json" \
         --output-format json < "$pf" > "$raw" 2>> "$LOG"
     call_end "$role" || log "$role exited non-zero"
     if [ -z "$CALL_STUCK" ] && limit_wait "$raw"; then
@@ -67,7 +67,7 @@ review_claude() { # round role model effort dir prompt schema-text out [add-dir.
     fi
     break
   done
-  record "$round" "$role" "$model" "$(charged "$raw" "$GRADER_BUDGET_USD")"
+  record "$round" "$role" "$model" "$(charged "$raw")"
   if [ -n "$CALL_STUCK" ]; then
     [ -n "${REVIEW_NO_FINISH:-}" ] || finish stopped-environment "$CALL_STUCK"
     return 1
@@ -203,7 +203,7 @@ followups() { # [status message] -> lines on stdout
 # so a cap stops learn, not the run.
 learn_room() { # role
   local hit
-  if hit=$(cap_hit "$GRADER_BUDGET_USD"); then log "learn: ${hit#* }; learn stops before the $1 call"; return 1; fi
+  if hit=$(cap_hit); then log "learn: ${hit#* }; learn stops before the $1 call"; return 1; fi
   if stop_requested; then log "learn: FACTORY_STOP before the $1 call; learn stops here"; return 1; fi
 }
 
@@ -251,7 +251,7 @@ learn_run() { # [status message] -> 0; drafts at most one ticket per run directo
   if ! grep -q . "$f"; then log "learn: no follow-ups; no draft"; return 0; fi
   log "learn: $(grep -c . "$f") follow-up(s) in $f"
   dir=${WORKTREE:-}; [ -d "$dir" ] || dir=$TARGET
-  # Marked only once the writer may run, so a launch stopped at the daily cap leaves the draft to the next launch.
+  # Marked only once the writer may run, so a launch stopped at a cap leaves the draft to the next launch.
   learn_room learn-writer && : > "$d/ran" || return 0
   { learn_brief Writer "$dir" "$d"; printf '\n## Follow-ups\n\n%s\n' "$FENCE"; cat "$f"; printf '%s\n' "$FENCE"
     printf '\n## Ticket\n\n%s\n' "$FENCE"; cat "$RUN/frozen/issue.md" 2> /dev/null; printf '\n%s\n' "$FENCE"; } > "$d/writer.prompt.md"

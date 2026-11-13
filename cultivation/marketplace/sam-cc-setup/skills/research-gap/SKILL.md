@@ -100,15 +100,12 @@ Make it and copy the seat's seeds in, if it has any: `mkdir -p <dir> && cp <run>
 A Claude seat, Opus here; the Fable seat takes `--model claude-fable-5-2 --effort high`, and the assets seat adds one `--add-dir <path>` per data folder:
 
 ```bash
-env -C <dir> claude -p --safe-mode --model opus --effort xhigh --max-budget-usd 10 --tools "Read,Grep,Glob,Bash,WebSearch,WebFetch" --allowedTools "Read,Grep,Glob,WebSearch,WebFetch,Bash(pdftotext *)" --output-format json < <run>/brief-<seat>.md > <run>/proposals/<seat>.json
+env -C <dir> claude -p --safe-mode --model opus --effort xhigh --tools "Read,Grep,Glob,Bash,WebSearch,WebFetch" --allowedTools "Read,Grep,Glob,WebSearch,WebFetch,Bash(pdftotext *)" --output-format json < <run>/brief-<seat>.md > <run>/proposals/<seat>.json
 jq -r .result <run>/proposals/<seat>.json > <run>/proposals/<seat>.md
 ```
 
 `--safe-mode` loads no CLAUDE.md, rules, auto-memory, hooks, MCP servers, plugin or user skills, or custom agents, and the brief arrives on stdin and the proposal leaves on stdout, so the seat never opens the run folder.
 Probed on Claude Code 2.1.312 for Opus 5.5 and Fable 5.1, 28 Oct 2026: a context canary, the session's own init list and a tool run.
-`--max-budget-usd 10` stops a seat after the turn that crosses $10 at list price (the first run's assets seat cost $5.78).
-A stopped seat exits 1 with `.subtype` `error_max_budget_usd` and `.result` null (probed on Claude Code 2.1.312, 28 Oct 2026: a $0.005 cap stopped at $0.0072).
-Give it `no: budget` in `seats.tsv` with its `.total_cost_usd`, and do not run its `jq -r .result` line, which would write "null".
 `--bare` is blind too but cannot sign in with a subscription, and a worker or escalate subagent inherits the lead's CLAUDE.md and memory, so neither serves as a seat.
 
 The Codex seat reads its brief from its own folder, so its prompt names no path in the run folder: first `cp <run>/brief-codex.md <dir>/`.

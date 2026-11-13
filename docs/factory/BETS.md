@@ -29,14 +29,14 @@ A grader replay follows `LOOP.md`, Grader change protocol, from a scratch worktr
 Each runs in bash from the scratch worktree of `evals/planted/CASES.md`, with `$s/clean` a copy of `evals/clean` and `<model>` the new model.
 `bin/factory eval` saves the raw `claude -p` output, where the reply is a string inside `.result`, so each replay reads the reply out of it before scoring.
 
-Grader recall, for the Reviewer and Lean-critic rows (`eval_score.py` reads `<replies>/<model>/r<k>/`, and a reply the budget never reached scores as a miss, so the count check comes first):
+Grader recall, for the Reviewer and Lean-critic rows (`eval_score.py` reads `<replies>/<model>/r<k>/`, and a case with no reply scores as a miss, so the count check comes first):
 
 ```sh
 python3 bin/factory.d/mutate.py "$s/clean" "$s/cases"
 for g in judge reviewer lean-critic; do
-  EVAL_OUT="$s/replies/<model>/r1" EVAL_BUDGET_USD=<usd> bin/factory eval "$g" --evals-dir "$s/cases" --model <model>
+  EVAL_OUT="$s/replies/<model>/r1" bin/factory eval "$g" --evals-dir "$s/cases" --model <model>
 done
-[ "$(ls "$s/replies/<model>/r1" | wc -l)" -eq "$(ls -d "$s"/cases/*/*/ | wc -l)" ] || echo "INCOMPLETE: a case has no reply; raise EVAL_BUDGET_USD and rerun"
+[ "$(ls "$s/replies/<model>/r1" | wc -l)" -eq "$(ls -d "$s"/cases/*/*/ | wc -l)" ] || echo "INCOMPLETE: a case has no reply; rerun"
 python3 bin/factory.d/eval_score.py "$s/cases" "$s/replies"
 ```
 

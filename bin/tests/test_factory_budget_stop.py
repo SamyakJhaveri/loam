@@ -35,9 +35,10 @@ class ClassifyResultTests(unittest.TestCase):
         self.assertEqual(proc.returncode, 0, proc.stderr)
         return proc.stdout.strip()
 
-    def test_round_budget_hit_is_a_completed_round(self) -> None:
-        # The Session D result: subtype error_max_budget_usd, is_error true, 86 turns, cost past the cap.
-        self.assertEqual(self.classify(str(FIXTURES / "budget-stop.result.json")), "completed")
+    def test_max_turns_hit_is_a_completed_round(self) -> None:
+        # The Session D result, which stopped on a dollar ceiling no call carries since 13 Nov 2026, with its subtype
+        # set to error_max_turns: is_error true, 86 turns.
+        self.assertEqual(self.classify(str(FIXTURES / "turns-stop.result.json")), "completed")
 
     def test_unknown_error_subtype_is_the_environment(self) -> None:
         # error_zzz is no real subtype: the classifier must not depend on knowing any failure name.
@@ -47,9 +48,9 @@ class ClassifyResultTests(unittest.TestCase):
         self.assertEqual(self.classify("/nonexistent/result.json"), "no-result")
 
     def test_assert_call_ok_returns_for_a_completed_round(self) -> None:
-        proc = sourced(f"ROUND=1; assert_call_ok worker '{FIXTURES / 'budget-stop.result.json'}'; echo returned:$?")
+        proc = sourced(f"ROUND=1; assert_call_ok worker '{FIXTURES / 'turns-stop.result.json'}'; echo returned:$?")
         self.assertIn("returned:0", proc.stdout, proc.stderr)
-        self.assertIn("hit its own cap (error_max_budget_usd after 86 turns)", proc.stderr)
+        self.assertIn("hit its own cap (error_max_turns after 86 turns)", proc.stderr)
 
     def test_assert_call_ok_stops_for_the_environment(self) -> None:
         with tempfile.TemporaryDirectory() as run:
