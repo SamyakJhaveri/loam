@@ -319,6 +319,9 @@ def bash(command: str, gate_env: str | None, cwd: Path | None = None) -> subproc
     "pytest tests/ -q 2>&1 | tail -5",
     "uv run pytest tests -q",  # a runner prefix hid the full suite from the gate (Codex on 740, 13 Nov)
     "uv run python -m pytest tests -q",
+    "uv run --project . pytest tests -q",  # an option value hid the program (Codex on 740, 13 Nov)
+    "pytest . -q",  # the project root holds the whole suite
+    "python3 -m pytest tests . -q",
     "python3 -m pytest tests --junitxml /tmp/results.xml -o cache_dir=/tmp/pc",
     "python3 -m pytest ./tests -q",
     "python3 -m pytest tests --junitxml worker/results.xml -p no:cacheprovider",

@@ -60,7 +60,9 @@ FIX = ("call the sam-cc-setup:pstack router and read the chosen SKILL.md in full
 
 
 FULL_GATE = "BLOCKED: the supervisor runs bin/check once after the graders pass; prove the change with focused pytest"
-_WRAP = (r"(?:(?:uv\s+run|timeout|nohup|guard|time|exec|command|nice|env|then|do|else|if|!|\{)(?:\s+(?:-\S+|\d[\d.]*[smhd]?))*"
+_WRAP = (r"(?:(?:timeout|nohup|guard|time|exec|command|nice|env|then|do|else|if|!|\{)(?:\s+(?:-\S+|\d[\d.]*[smhd]?))*"
+         # uv run and its options, each with an optional value word that is not the program itself (--project .)
+         r"|uv\s+run(?:\s+-\S+(?:\s+(?!(?:python[\d.]*|pytest)(?![\w.-]))[^\s;&|()`-]\S*)?)*"
          r"|[A-Za-z_]\w*=[^\s()`;&|]*)\s+")
 _START = r"(?:^|[;&|(`])[ \t]*(?:" + _WRAP + r")*"
 RUNS_GATE = re.compile(_START + r"(?:[\w.~${}/-]*/)?bin/check(?![\w.-])", re.M)
@@ -173,7 +175,7 @@ def runs_full_gate(command: str, dirs: tuple[Path, ...], depth: int = 0, hook: b
             else:
                 focused |= "::" in w
                 targets.append(re.sub(r"^(?:\./)+|^/.*/(?=tests/*$)|/+$", "", w))
-        if not focused and all(t == "tests" for t in targets):
+        if not focused and (not targets or any(t in ("tests", ".", "") for t in targets)):  # any target holding the whole suite
             return True
     for m in SHELL_C.finditer(text):
         body = m.group(1) if m.group(1) is not None else m.group(2) if m.group(2) is not None else m.group(3)
