@@ -260,7 +260,8 @@ class ReviewTests(unittest.TestCase):
     def test_the_daily_cap_stops_learn_calls(self) -> None:
         self.put("round-1.judge.json", {"verdict": "pass", "backlog": ["the gate ran serially"]})
         self.put("daily.jsonl", json.dumps({"date": "x", "cost_usd": 0}) + "\n")
-        self.learn(preset="ROUND=1", daily="0.5")   # one call's cap (1 usd) alone passes 0.5
+        # one call's cap (1 usd) alone passes 0.5; only an API-billed run has a daily budget (Decision 6)
+        self.learn(preset="ROUND=1", daily="0.5", ANTHROPIC_API_KEY="sk-ant-test")
         self.assertEqual(self.read("followups.md"), "- judge-backlog [-] -:0 the gate ran serially\n")
         self.assertEqual(self.claude_calls(), [])
         self.assertFalse((self.fake / "codex-calls").exists())
@@ -278,10 +279,10 @@ class ReviewTests(unittest.TestCase):
 
     def test_a_launch_stopped_at_the_daily_cap_leaves_the_draft_to_the_next(self) -> None:
         # audit3 F3: launch 1 ends at the daily cap, so learn makes no call; launch 2 in the same run directory, with
-        # room in the budget, still drafts the run's one ticket.
+        # room in the budget, still drafts the run's one ticket. An API-billed run: only it has a daily budget.
         self.put("round-1.judge.json", {"verdict": "pass", "backlog": ["the gate ran serially"]})
         self.put("daily.jsonl", json.dumps({"date": "x", "cost_usd": 0}) + "\n")
-        self.learn(preset="ROUND=1", daily="0.5")
+        self.learn(preset="ROUND=1", daily="0.5", ANTHROPIC_API_KEY="sk-ant-test")
         self.assertEqual(self.claude_calls(), [])
         self.replies({"repo": "distbench", "title": "t", "source_line": "x", "body": "# F00: t\n"})
         self.learn(preset="ROUND=1")

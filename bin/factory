@@ -834,7 +834,7 @@ run_eval_cases() { # grader work
       [ -z "${EVAL_OUT:-}" ] || { mkdir -p "$EVAL_OUT"; jq -nc --arg r "TREE $(cat "$2/tree.err")" \
         '{type: "result", is_error: true, total_cost_usd: 0, result: $r}' > "$EVAL_OUT/$grader-$(basename "$dir").json"; }
       continue; }
-    if awk -v s="$spent" -v b="$budget" 'BEGIN {exit !(s >= b)}'; then
+    if [ -n "$USD_CAPS" ] && awk -v s="$spent" -v b="$budget" 'BEGIN {exit !(s >= b)}'; then
       echo "eval $grader: EVAL_BUDGET_USD $budget reached after \$$spent and $cases cases" >&2
       return 2
     fi
@@ -865,15 +865,15 @@ run_eval_cases() { # grader work
       # way the loop does: --json-schema routes the reply through the schema, --strict-mcp-config and
       # --disable-slash-commands drop the prefix the grader never uses. Two things differ: the call runs
       # in the eval_tree export, not a ticket worktree, and each call gets the remaining headroom, so
-      # EVAL_BUDGET_USD caps the sum over cases. The settings copy, the private config dir and the token
-      # route are call_json's: the subshell exports the config dir, and bin/claude-account exec hands this claude
-      # alone the active account's token.
+      # EVAL_BUDGET_USD caps the sum over cases (only with USD_CAPS: a subscription eval has no dollar cap). The
+      # settings copy, the private config dir and the token route are call_json's: the subshell exports the config
+      # dir, and bin/claude-account exec hands this claude alone the active account's token.
       out=$({ cat "$rubric"; sed "s/@NONCE@/$shown/g" "$dir/prompt.md"; } | ( cd "$tree" \
         && export CLAUDE_CONFIG_DIR="$2/grader-config" \
         && "$ROOT/bin/claude-account" exec claude -p --model "$EVAL_MODEL" --effort "${EVAL_EFFORT:-$(grader_effort "$grader")}" \
         --tools Read,Grep,Glob --strict-mcp-config --disable-slash-commands --no-session-persistence \
         --json-schema "$schema" \
-        --max-budget-usd "$(awk -v b="$budget" -v s="$spent" 'BEGIN {printf "%.4f", b - s}')" \
+        ${USD_CAPS:+--max-budget-usd "$(awk -v b="$budget" -v s="$spent" 'BEGIN {printf "%.4f", b - s}')"} \
         --setting-sources '' --settings "$settings" --plugin-dir "$PLUGIN_SRC" --output-format json 2>/dev/null ))
       spent=$(awk -v a="$spent" -v b="$(jq -r "$RESULT_OBJ | .total_cost_usd // 0" <<<"$out" 2>/dev/null)" \
         'BEGIN {printf "%.4f", a + (b + 0)}')
@@ -1077,6 +1077,16 @@ MAX_HOURS MAX_TURNS CALL_TIMEOUT_SEC NET_TIMEOUT_SEC MAX_PARALLEL"
 # are never read: a Claude Code session already exports WORKER_MODEL and CALL_TIMEOUT_SEC of its own.
 MAX_ROUNDS=100; ROUND_BUDGET_USD=15; GRADER_BUDGET_USD=5; TICKET_BUDGET_USD=1000000
 DAILY_BUDGET_USD=1000000; MAX_HOURS=1000; MAX_TURNS=200; CALL_TIMEOUT_SEC=5400; MAX_PARALLEL=1
+# Decision 6 (Samyak, 2026-11-12): subscription building work has no dollar cap. USD_CAPS is 1 when the run's calls bill
+# an API key, which Claude Code prefers over CLAUDE_CODE_OAUTH_TOKEN and a stored login: ANTHROPIC_API_KEY or
+# ANTHROPIC_AUTH_TOKEN in the launch environment, or either (or an apiKeyHelper) in the user settings, which a native
+# worker loads and the frozen worker and grader settings copy. Then every *_USD cap binds as before. Empty, on a
+# subscription, no TICKET, DAILY, ROUND, GRADER or EVAL budget stops, caps or cuts a call or a run; MAX_ROUNDS,
+# MAX_HOURS, MAX_TURNS and CALL_TIMEOUT_SEC still bound it, and the ledger still records each call's reported cost.
+USD_CAPS=""
+{ [ -n "${ANTHROPIC_API_KEY:-}${ANTHROPIC_AUTH_TOKEN:-}" ] \
+  || jq -e '[.env.ANTHROPIC_API_KEY?, .env.ANTHROPIC_AUTH_TOKEN?, .apiKeyHelper?] | any(type == "string" and . != "")' \
+       "$(user_settings)" > /dev/null 2>&1; } && USD_CAPS=1
 # Seeded from the environment here too, since lint, next and status call gh without apply_caps; env_caps_ok
 # checks the value before any subcommand runs.
 NET_TIMEOUT_SEC="${FACTORY_NET_TIMEOUT_SEC:-120}"
@@ -1701,13 +1711,17 @@ nav_arm:\$nav, ts:\$ts}" "$4" 2> /dev/null) \
 }
 
 # The daily cap says nothing about the ticket, so it has its own status, which next relaunches on a later UTC day.
-assert_caps() { # before every model call; the daily cap is "the next call could exceed it"
+assert_caps() { # before every model call; the daily cap is "the next call could exceed it"; the dollar caps need USD_CAPS
   local spent daily hours
-  spent=$(ticket_spent); daily=$(daily_spent)
-  jq -en --argjson a "$spent" --argjson b "$TICKET_BUDGET_USD" '$a >= $b' > /dev/null \
-    && finish stopped-cap "ticket budget: spent $spent of $TICKET_BUDGET_USD usd"
+  if [ -n "$USD_CAPS" ]; then
+    spent=$(ticket_spent)
+    jq -en --argjson a "$spent" --argjson b "$TICKET_BUDGET_USD" '$a >= $b' > /dev/null \
+      && finish stopped-cap "ticket budget: spent $spent of $TICKET_BUDGET_USD usd"
+  fi
   hours=$(( ( $(date -u +%s) - $(cat "$RUN/launched") ) / 3600 ))
   [ "$hours" -lt "$MAX_HOURS" ] || finish stopped-cap "wall clock: ${hours}h of ${MAX_HOURS}h since this launch"
+  [ -n "$USD_CAPS" ] || return 0
+  daily=$(daily_spent)
   jq -en --argjson a "$daily" --argjson b "$ROUND_BUDGET_USD" --argjson c "$DAILY_BUDGET_USD" '($a + $b) > $c' > /dev/null \
     && finish stopped-daily "daily budget: $daily spent today, the next call could exceed $DAILY_BUDGET_USD usd"
   return 0
@@ -2258,7 +2272,7 @@ worker_cmd() {
     ANTHROPIC_DEFAULT_SONNET_MODEL="$WORKER_MODEL" ANTHROPIC_DEFAULT_HAIKU_MODEL="$WORKER_MODEL" claude -p
     --model "$WORKER_MODEL" --effort "$WORKER_EFFORT" ${WORKER_ADVISOR:+--advisor "$WORKER_ADVISOR"} "${shell[@]}" --max-turns "$MAX_TURNS"
     --append-system-prompt "$(cat "$RUN/frozen/unattended.md")"
-    --max-budget-usd "$ROUND_BUDGET_USD" --output-format stream-json --verbose --include-hook-events)
+    ${USD_CAPS:+--max-budget-usd "$ROUND_BUDGET_USD"} --output-format stream-json --verbose --include-hook-events)
 }
 
 # A native worker loads the user tier, whose env beats the launch env, so a CLAUDE_CODE_OAUTH_TOKEN key there would
@@ -2510,7 +2524,7 @@ worker_round() { # round; leaves round-N.* only once the call produced a result
     return 0
   fi
   while :; do
-    log "worker call: round $round model=$WORKER_MODEL effort=$WORKER_EFFORT advisor=${WORKER_ADVISOR:-off} budget=$ROUND_BUDGET_USD usd, prompt=$(wc -c < "$pf") bytes"
+    log "worker call: round $round model=$WORKER_MODEL effort=$WORKER_EFFORT advisor=${WORKER_ADVISOR:-off} budget=$([ -n "$USD_CAPS" ] && echo "$ROUND_BUDGET_USD usd" || echo none), prompt=$(wc -c < "$pf") bytes"
     rm -f "$out" "${DECISIONS%/*}/mechanism.md"   # also on a retried call, as for the Codex call above (#330)
     # bin/claude-account exec reads the active account's token file after any switch and puts it in this call's
     # environment only, never on a command line or in a settings file; the supervisor's own environment is untouched,
@@ -2709,7 +2723,7 @@ call_json() { # round stem role prompt_file schema_file
         claude -p --model "$model" --effort "$effort" \
         --tools Read,Grep,Glob --strict-mcp-config --disable-slash-commands --no-session-persistence \
         --json-schema "$(cat "$schema")" \
-        --max-budget-usd "$GRADER_BUDGET_USD" --setting-sources '' --settings "$RUN/frozen/role-settings.json" \
+        ${USD_CAPS:+--max-budget-usd "$GRADER_BUDGET_USD"} --setting-sources '' --settings "$RUN/frozen/role-settings.json" \
         ${pd:+--plugin-dir "$pd"} --output-format json < "$pf" > "$out" 2>> "$LOG"
     call_end "$role" || log "$role exited non-zero"
     if [ -z "$CALL_STUCK" ] && limit_wait "$out"; then attempt=$((attempt - 1)); continue; fi
@@ -3071,7 +3085,7 @@ round_checks() { # out: a dirty tree or a do-not-touch hit fails the round witho
 main_loop() {
   local prev_fails="" prev_sig="" fails checks sig_now
   notify info "$(ticket_name) started" \
-    "Branch $BRANCH in $WORKTREE; it stops at $MAX_ROUNDS rounds, $TICKET_BUDGET_USD USD or $MAX_HOURS hours"
+    "Branch $BRANCH in $WORKTREE; it stops at $MAX_ROUNDS rounds${USD_CAPS:+, $TICKET_BUDGET_USD USD} or $MAX_HOURS hours"
   while :; do
     ROUND=$((ROUND + 1))
     [ "$ROUND" -le "$MAX_ROUNDS" ] || finish stopped-cap "round cap: $MAX_ROUNDS rounds"
@@ -3207,6 +3221,7 @@ cmd_run() {
       && finish stopped-environment "the advisor would be silently off: DISABLE_TELEMETRY or CLAUDE_CODE_DISABLE_ADVISOR_TOOL is set"
     log "advisor: $WORKER_ADVISOR (the first worker call proves it attaches)"
   fi
+  [ -n "$USD_CAPS" ] || log "dollar caps: off, no API key in the environment or $(user_settings) (Decision 6, subscription)"
   # A relaunch with an edited body is a new run over a ticket worktree the last run left ahead of
   # base, where the checks may already pass; round 0 runs at base in its own detached worktree, so
   # base is what it proves. A resume (round-0.checks present, written only by a clean round 0) leaves
@@ -3525,6 +3540,7 @@ ran_before() { # <key>
 
 # A ticket's Worker section can lower its own caps, so its daily stop alone does not show the shared ledger is spent.
 daily_spent_at_runner_caps() { # -> 0 when the shared daily ledger has no room for one round at the runner's own caps
+  [ -n "$USD_CAPS" ] || return 1   # a subscription runner has no daily budget (Decision 6)
   ( BODY=""; apply_caps; DAILY="$RUNS_BASE/ledger-daily.jsonl"; [ -f "$DAILY" ] || exit 1
     jq -en --argjson a "$(daily_spent)" --argjson b "$ROUND_BUDGET_USD" --argjson c "$DAILY_BUDGET_USD" '($a + $b) > $c' > /dev/null )
 }
@@ -3787,7 +3803,7 @@ next_tick() { # [--dry-run|--install|--frontier]
       [ "$dry" = 1 ] || env_park_alert "$run" "$num"
       continue
     fi
-    if stopped_daily_today "$run"; then
+    if [ -n "$USD_CAPS" ] && stopped_daily_today "$run"; then
       echo "waiting #$num: daily budget spent; relaunches after 00:00 UTC" >&2
       daily_wait=1
       continue

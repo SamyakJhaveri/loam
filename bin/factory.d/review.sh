@@ -58,7 +58,7 @@ review_claude() { # round role model effort dir prompt schema-text out [add-dir.
     call_start "$dir" ${TIMEOUT_G[@]+"${TIMEOUT_G[@]}"} "$ROOT/bin/claude-account" exec env CLAUDE_CONFIG_DIR="$RUN/grader-config" \
         claude -p --model "$model" --effort "$effort" --tools "$tools" ${mode[@]+"${mode[@]}"} ${adds[@]+"${adds[@]}"} \
         --strict-mcp-config --disable-slash-commands --no-session-persistence --json-schema "$schema" \
-        --max-budget-usd "$GRADER_BUDGET_USD" --setting-sources '' --settings "$RUN/frozen/role-settings.json" \
+        ${USD_CAPS:+--max-budget-usd "$GRADER_BUDGET_USD"} --setting-sources '' --settings "$RUN/frozen/role-settings.json" \
         --output-format json < "$pf" > "$raw" 2>> "$LOG"
     call_end "$role" || log "$role exited non-zero"
     if [ -z "$CALL_STUCK" ] && limit_wait "$raw"; then continue; fi
@@ -194,9 +194,9 @@ followups() { # [status message] -> lines on stdout
 }
 
 # Room for one more learn call under the daily budget, which bin/factory's assert_caps would otherwise enforce by
-# stopping the run; learn only stops itself.
+# stopping the run; learn only stops itself. A subscription run (no USD_CAPS) has no daily budget.
 learn_room() { # role
-  if jq -en --argjson a "$(daily_spent)" --argjson b "$GRADER_BUDGET_USD" --argjson c "$DAILY_BUDGET_USD" '($a + $b) > $c' > /dev/null; then
+  if [ -n "$USD_CAPS" ] && jq -en --argjson a "$(daily_spent)" --argjson b "$GRADER_BUDGET_USD" --argjson c "$DAILY_BUDGET_USD" '($a + $b) > $c' > /dev/null; then
     log "learn: the $1 call could pass the daily budget of $DAILY_BUDGET_USD usd ($(daily_spent) spent today); learn stops here"
     return 1
   fi

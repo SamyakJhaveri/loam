@@ -185,8 +185,9 @@ class NativeShellTests(unittest.TestCase):
     def test_loam_target_settings_and_argv_match_the_pre_u3_factory(self) -> None:
         if subprocess.run(["git", "-C", str(ROOT), "cat-file", "-e", BASE], capture_output=True).returncode:
             self.skipTest(f"{BASE} is not in this clone (shallow)")
-        old = self.h.round_one(self.h.factory("loam-old", BASE), loam=True)
-        new = self.h.round_one(self.new, loam=True)
+        # Both API-billed: the reference's calls always carried --max-budget-usd, which a subscription run drops (Decision 6).
+        old = self.h.round_one(self.h.factory("loam-old", BASE), loam=True, ANTHROPIC_API_KEY="sk-ant-test")
+        new = self.h.round_one(self.new, loam=True, ANTHROPIC_API_KEY="sk-ant-test")
         # Every target's worker settings gain the pstack gate (U5) and nothing else; the rest is the same bytes as jq
         # writes them.
         settings = json.loads(new["settings"])

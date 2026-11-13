@@ -32,6 +32,11 @@ NOT_A_TICKET = "A note that someone labelled ready-for-agent.\n\nNo done-checks 
 # An editor GraphQL returns as null with a lastEditedAt: the body was edited by an account GitHub no longer names.
 UNNAMED = "<unnamed>"
 
+# Only a runner whose calls bill an API key has a daily budget (Decision 6), so the daily-stop tests run as one; a
+# subscription runner (no key in the environment or the user settings) relaunches a stopped-daily run at once.
+BILLED = {"ANTHROPIC_API_KEY": "sk-ant-test"}
+SUBSCRIPTION = {"ANTHROPIC_API_KEY": "", "ANTHROPIC_AUTH_TOKEN": "", "CLAUDE_SETTINGS_FILE": os.devnull}
+
 
 def sourced(script: str, env: dict[str, str] | None = None) -> subprocess.CompletedProcess[str]:
     """Run `script` in a bash that has sourced bin/factory from the repo root."""
@@ -204,12 +209,14 @@ tmux() {
     def test_same_body_stopped_daily_waits_today_and_relaunches_on_a_later_day(self) -> None:
         # A daily-budget stop says nothing about the ticket (#386): the UTC date of its status file decides.
         self.run_dir(7, CLEAN, "stopped-daily")
-        proc = self.next_dry_run((7, CLEAN))
+        proc = self.next_dry_run((7, CLEAN), **BILLED)
         self.assertEqual(proc.stdout.strip(), "nothing to launch", proc.stderr)
         self.assertIn("waiting #7: daily budget spent", proc.stderr)
         self.assertNotIn("parked", proc.stderr)
+        proc = self.next_dry_run((7, CLEAN), **SUBSCRIPTION)
+        self.assertEqual(proc.stdout.strip(), "would launch #7", proc.stderr)
         os.utime(self.runs / "7" / key(CLEAN) / "status", (86400, 86400))
-        proc = self.next_dry_run((7, CLEAN))
+        proc = self.next_dry_run((7, CLEAN), **BILLED)
         self.assertEqual(proc.stdout.strip(), "would launch #7", proc.stderr)
 
     def test_runner_assigned_issue_relaunches_only_after_a_relaunchable_stop(self) -> None:
@@ -412,14 +419,14 @@ tmux() {
         self.launch(7, CLEAN)
         self.launch(7, CLEAN)
         self.launch(7, CLEAN, 'finish stopped-daily "the daily budget is spent"', age=int(time.time()))
-        proc = self.next_dry_run(mine=mine)
+        proc = self.next_dry_run(mine=mine, **BILLED)
         self.assertIn("waiting #7: daily budget spent", proc.stderr)
         self.assertNotIn("parked", proc.stderr)
         os.utime(self.runs / "7" / key(CLEAN) / "status", (86400, 86400))
-        proc = self.next_dry_run(mine=mine)
+        proc = self.next_dry_run(mine=mine, **BILLED)
         self.assertEqual(proc.stdout.strip(), "would launch #7", proc.stderr)
         self.launch(7, CLEAN)
-        proc = self.next_dry_run(mine=mine)
+        proc = self.next_dry_run(mine=mine, **BILLED)
         self.assertIn("parked #7", proc.stderr)
 
     def test_a_reaped_run_counts_as_an_environment_stop(self) -> None:
@@ -523,16 +530,16 @@ tmux() {
         self.run_dir(7, CLEAN, "stopped-daily")
         self.spend_today(140)
         caps = {"FACTORY_DAILY_BUDGET_USD": "150", "FACTORY_ROUND_BUDGET_USD": "15"}   # not the shell's
-        proc = self.next_dry_run((8, CLEAN), mine=((7, CLEAN),), **caps)
+        proc = self.next_dry_run((8, CLEAN), mine=((7, CLEAN),), **caps, **BILLED)
         self.assertEqual(proc.stdout.strip(), "nothing to launch", proc.stderr)
         self.assertIn("waiting: a run stopped at today's daily budget; nothing launches before 00:00 UTC", proc.stderr)
         os.utime(self.runs / "7" / key(CLEAN) / "status", (86400, 86400))
-        proc = self.next_dry_run((8, CLEAN), mine=((7, CLEAN),), **caps)
+        proc = self.next_dry_run((8, CLEAN), mine=((7, CLEAN),), **caps, **BILLED)
         self.assertEqual(proc.stdout.strip(), "would launch #7", proc.stderr)
         other = self.runs / "acme_widget" / "9" / key(CLEAN)
         other.mkdir(parents=True)
         (other / "status").write_text("stopped-daily\n")
-        proc = self.next_dry_run((8, CLEAN), **caps)
+        proc = self.next_dry_run((8, CLEAN), **caps, **BILLED)
         self.assertEqual(proc.stdout.strip(), "nothing to launch", proc.stderr)
 
     def test_a_daily_stop_under_a_lower_ticket_cap_does_not_block_the_runner(self) -> None:
@@ -540,10 +547,10 @@ tmux() {
         # (here FACTORY_DAILY_BUDGET_USD=100 with the default 15 usd round), so the fresh #8 launches.
         self.run_dir(7, CLEAN, "stopped-daily")
         self.spend_today(80)
-        proc = self.next_dry_run((8, CLEAN), FACTORY_DAILY_BUDGET_USD="100", FACTORY_ROUND_BUDGET_USD="15")
+        proc = self.next_dry_run((8, CLEAN), FACTORY_DAILY_BUDGET_USD="100", FACTORY_ROUND_BUDGET_USD="15", **BILLED)
         self.assertEqual(proc.stdout.strip(), "would launch #8", proc.stderr)
         self.spend_today(90)
-        proc = self.next_dry_run((8, CLEAN), FACTORY_DAILY_BUDGET_USD="100", FACTORY_ROUND_BUDGET_USD="15")
+        proc = self.next_dry_run((8, CLEAN), FACTORY_DAILY_BUDGET_USD="100", FACTORY_ROUND_BUDGET_USD="15", **BILLED)
         self.assertEqual(proc.stdout.strip(), "nothing to launch", proc.stderr)
         self.assertIn("waiting: a run stopped at today's daily budget", proc.stderr)
 
