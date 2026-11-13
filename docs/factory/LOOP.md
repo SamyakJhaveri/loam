@@ -126,7 +126,7 @@ The stop message lists the commits made since the round began, or says `no commi
 
 ## Caps
 
-Defaults from lean-v3, overridable per ticket in its Worker section and then by `FACTORY_<NAME>` in the environment, never by the bare name, which a Claude Code session already exports for `WORKER_MODEL` and `CALL_TIMEOUT_SEC`: `MAX_ROUNDS=100`, `ROUND_BUDGET_USD=15`, `GRADER_BUDGET_USD=5`, `TICKET_BUDGET_USD=1000000`, `DAILY_BUDGET_USD=1000000`, `MAX_HOURS=1000`, `MAX_TURNS=200`, `CALL_TIMEOUT_SEC=5400`, `NET_TIMEOUT_SEC=120`, `MAX_PARALLEL=1`.
+Defaults from lean-v3, overridable per ticket in its Worker section and then by `FACTORY_<NAME>` in the environment, never by the bare name, which a Claude Code session already exports for `WORKER_MODEL` and `CALL_TIMEOUT_SEC`: `MAX_ROUNDS=3` (owner, 12 Nov 2026), `ROUND_BUDGET_USD=15`, `GRADER_BUDGET_USD=5`, `TICKET_BUDGET_USD=1000000`, `DAILY_BUDGET_USD=1000000`, `MAX_HOURS=1000`, `MAX_TURNS=200`, `CALL_TIMEOUT_SEC=5400`, `NET_TIMEOUT_SEC=120`, `MAX_PARALLEL=1`.
 The dollar caps (`ROUND_BUDGET_USD`, `GRADER_BUDGET_USD`, `TICKET_BUDGET_USD`, `DAILY_BUDGET_USD`, and `EVAL_BUDGET_USD` for `eval`) bind only a runner whose calls bill an API key: `ANTHROPIC_API_KEY` or `ANTHROPIC_AUTH_TOKEN` in the environment, or either or an `apiKeyHelper` in the user settings (`USD_CAPS` in `bin/factory`).
 On a subscription (`CLAUDE_CODE_OAUTH_TOKEN` from `bin/claude-account`, or a stored login) no dollar figure stops, caps or cuts a call or a run: no `stopped-cap` on spend, no `stopped-daily`, no `--max-budget-usd`, no daily-budget wait in `next` or `learn_run`; the round, hour, turn and call-time caps still bind, and the ledger still records each call's reported cost (Samyak, Decision 6, 12 Nov 2026).
 Each value is a positive whole number, or for a `*_USD` cap a positive decimal such as `2.5`; 0, a negative number or text is refused, never read as no limit (GNU `timeout` reads 0 as no limit).
@@ -149,6 +149,7 @@ The reviewer blocks only on a `high` or `medium` finding (`REVIEW_BLOCKING` in `
 The mutation sweep, which runs only after a judge pass, blocks on any surviving edit, at most once per ticket, counted across relaunches (Mutation sweep).
 A grader whose output is absent or unparseable is a fail with one high finding "<role> output unparseable", never a pass, and that finding is never sent to the worker, who cannot rerun a grader (#306, #312); the judge and reviewer are called three times and the Codex review twice, after which the reviewer's or Codex finding drafts the PR without blocking and the judge's opens the draft at once unless reviewer or Codex fixes are queued, in which case the next worker round takes them and the judge runs again (Grader calls).
 `verdict_consistent` runs on every judge JSON: a pass with non-empty fixes or a failing row, or without a row `judge.schema.json` requires, or a fail with empty fixes and empty backlog, is refuted, and the judge is called once more, fresh, with the refutation appended to its prompt.
+`MAX_ROUNDS` (3 by default) can end the run before the grader-round cap: when the checks first pass in round 3 and its graders fail, that is one grader-fail round, so the next round trips the round cap and the run ends `stopped-cap` with no draft PR.
 
 ## Grader calls
 
