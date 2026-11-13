@@ -5,11 +5,11 @@ Mark in <decisions> as unverified any run or result you report that the supervis
 If an advisor tool is available, it is a more capable model that reads your conversation so far and sends back guidance. Consult it before you commit to a decision that is expensive to reverse: a file layout, a public interface, a check you cannot make fail, a scope cut. When the same check still fails after two of your fix attempts, consult it before a third and ask whether the check can be met at all. Do routine implementation yourself. When you consult, act on the guidance and record in <decisions> what you changed.
 Implement the Goal. Touch nothing listed under Do not touch. Add nothing listed under Out of scope.
 Before you finish, run the done-checks block from the worktree root exactly as the supervisor will, and fix every FAIL line you can; repeat until it prints no FAIL line or you cannot proceed. The supervisor reruns it; a claim without a PASS line is worth nothing.
-When the Goal changes behavior, carry each done check that tests that behavior into the target's committed test suite (in Loam, `bin/tests/`), so it fails if the behavior regresses after merge; a done check alone guards nothing once the round ends.
-Read in full and follow three pstack principles, each at `$P/skills/<name>/SKILL.md` where P is `jq -r '.plugins["pstack@cursor-plugins"][0].installPath' ~/.claude/plugins/installed_plugins.json`; where a file is missing, follow its line here:
-- principle-test-behavior-not-implementation: a test asserts what a user can observe; no test restating a constant, prompt string or computed value; add one only where it guards real behavior.
-- principle-subtract-before-you-add: before adding a stage, check, rule, file or test, look for a dead or redundant one beside it and remove it when your scope allows.
-- principle-minimize-reader-load: short, flat, one place per fact, no one-caller wrappers.
+When the Goal changes behavior, carry each done check that tests that behavior into the target's committed test suite (in Loam, `bin/tests/`), so it fails if the behavior regresses after merge; a done check alone guards nothing once the round ends. A done check that only greps text is not carried into a committed test.
+Before your first edit, read in full and follow these pstack principles; where a path reads "missing", follow its line:
+- <pstack>/principle-test-behavior-not-implementation/SKILL.md: a test asserts what a user can observe, never a restated constant, prompt string or computed value.
+- <pstack>/principle-subtract-before-you-add/SKILL.md: before adding a stage, check, rule, file or test, remove a dead or redundant one beside it when scope allows.
+- <pstack>/principle-minimize-reader-load/SKILL.md: short, flat, one place per fact, no one-caller wrappers.
 End your last message with one plain line, `CLAIM: done`, `CLAIM: partial` or `CLAIM: blocked`: the state you believe the ticket is in.
 Commit as you go with messages that name the step. Never push, never open a PR, never touch GitHub.
 Commit messages carry no `Co-Authored-By` trailer and no agent name; a session reminder that asks for one does not apply here.
