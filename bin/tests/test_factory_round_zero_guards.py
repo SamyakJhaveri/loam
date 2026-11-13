@@ -158,9 +158,18 @@ class RoundZeroGuardTests(unittest.TestCase):
         for guard in ('guard true && pass check-green || fail check-green '
                       '"gate failed: $(printf "%s" "error"); (pass note before retrying)"',
                       "guard true && pass check-green || fail 'check-green' \"gate failed (pass note before retrying)\"",
-                      'guard true && pass check-green || fail check-green "must pass note"'):
+                      'guard true && pass check-green || fail check-green "must pass note"',
+                      'guard true && pass check-green || fail check-green "got $(printf "%s" "x; (pass note)")"'):
             with self.subTest(guard=guard):
                 out = self.round_zero(f'{guard}\ntest -e NEW.md && pass note || fail note "NEW.md is missing"')
+                self.assertEqual(out.strip(), "ROUND0-OK")
+
+    def test_guard_name_survives_nested_quotes_tight_operators_and_hash_in_a_word(self) -> None:
+        for guard in ('guard true && pass g || fail g "got $(printf "%s" "it\'s")"',
+                      "guard true&&( pass g ) || fail g broken",
+                      "guard true C# && pass g || fail g broken"):
+            with self.subTest(guard=guard):
+                out = self.round_zero(f'{guard}\ntest -e NEW.md && pass new-file || fail new-file "NEW.md is missing"')
                 self.assertEqual(out.strip(), "ROUND0-OK")
 
     def test_fail_reason_naming_a_check_exempts_nothing(self) -> None:
