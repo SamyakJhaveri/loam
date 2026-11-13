@@ -16,7 +16,8 @@ pass() { printf '\nPASS %s%s\n' "$1" "${guard_check:+ ($guard_check)}"; guard_ch
 fail() { printf '\nFAIL %s: %s%s\n' "$1" "${2:-}" "${guard_check:+ ($guard_check)}"; guard_check=""; n_fail=$((n_fail + 1)); }
 # guard: a regression guard; runs CMD and returns its status; allowed to pass on main.
 # Under LOAM_HOOK (the worker's Stop hook) a guarded bin/check passes without running:
-# it takes minutes per stop, and the supervisor's own check run is the one run per round (LOOP.md).
+# it takes minutes per stop, and the supervisor's own check runs run it: per round on the selected tests, then in
+# full once the graders pass (LOOP.md).
 # Each pass-over marker line CMD prints (bin/check's `SKIPPED: <step>`) and its result line (`check: PASSED` or
 # `check: FAILED`) is also copied to fd 9, the block's own stdout (the checks file), so `guard bin/check >/dev/null`
 # cannot hide a step that did not run from status --criteria, and a block that captures bin/check still shows the
