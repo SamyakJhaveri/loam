@@ -264,7 +264,9 @@ class EditLineLintAndFreezeTests(unittest.TestCase):
 
     def test_lint_accepts_paths_split_by_commas_and_spaces(self) -> None:
         for line in ("", "Edit: bin/factory,docs/factory/ ./NOTES.md", "Edit: bin/factory, bin/tests/.", REAL_LINE,
-                     "Edit: Loam `bin/factory`, `bin/tests/x.py` (both fences)"):
+                     "Edit: Loam `bin/factory`, `bin/tests/x.py` (both fences)",
+                     # a comma inside a span or inside parentheses splits no entry (PR 732 Codex Medium at 34f08d72)
+                     "Edit: `bin/factory,README.md,docs/`", "Edit: Loam `bin/factory` (its parser, reset)."):
             with self.subTest(line):
                 rc, out = self.lint(line)
                 self.assertEqual(rc, 0, out)
