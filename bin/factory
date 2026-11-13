@@ -1393,8 +1393,10 @@ notify() { # level title message [status]
 exit_words() { # status -> "<level> <words>"
   case "$1" in
     # Loam's own PRs go to the overnight driver, which reviews, fixes and merges them and alerts on one it
-    # leaves open; another target's PR waits for its owner.
+    # leaves open; a launcher that sets FACTORY_PR_ALERT=launcher (distbench's factory-isc, which may land the
+    # branch itself) sends the alert naming the next step; another target's PR waits for its owner.
     pr-opened) if target_is_loam; then echo "info opened a pull request; the overnight driver reviews, fixes and merges it, and alerts you if it leaves it open"
+               elif [ "${FACTORY_PR_ALERT:-}" = launcher ]; then echo "info opened a pull request; its launcher alerts the next step"
                else echo "needs-you opened a pull request; it waits for your review and merge"; fi ;;
     ticket-defect) echo "needs-you cannot run as the ticket is written; fix the ticket" ;;
     abandon) echo "needs-you gave up: the worker says the ticket cannot be done as written" ;;
