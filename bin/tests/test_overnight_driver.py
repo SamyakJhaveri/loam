@@ -396,6 +396,83 @@ end_call() { echo "ended $polls_seen $reads"; }
         self.assert_a_read_after_every_poll(3)
 
     @LINUX_ONLY
+    def test_killing_the_drivers_group_ends_its_grader_read(self) -> None:
+        # Every test's cleanup, and an operator, stop the driver by killing its process group; a grader-window read
+        # outside that group outlived it and wrote into the removed temp home (ENOTEMPTY on CI, 13 Nov).
+        calls = self.start_call_fakes()
+        self.addCleanup(lambda: [self.kill_group(c) for c in self.calls(calls)])
+        real_sleep = shutil.which("sleep")
+        write_exec(self.fake / "gh", '#!/bin/sh\ncase "$*" in *SamyakJhaveri/distbench*) '
+                   f'echo start >> "$HOME/reads"; {real_sleep} 1; echo late >> "$HOME/reads" ;; *"pr list"*) echo 7 ;; esac\nexit 0\n')
+        driver = self.start_driver()
+        reads = self.home / "reads"
+        self.assertTrue(self.wait_for(lambda: reads.exists()), "the driver started no grader read")
+        self.kill_group(driver.pid)
+        driver.wait()
+        time.sleep(2)
+        self.assertNotIn("late", reads.read_text().split(), "a grader read outlived the driver's process group")
+
+    @LINUX_ONLY
+    def test_a_child_left_by_the_grader_read_does_not_hold_the_driver(self) -> None:
+        # A child gh leaves holding its stdout must neither keep the driver from writing the window nor write into it
+        # later (Codex review, 13 Nov): REAP ends it, and the read it outlived fails.
+        calls = self.start_call_fakes()
+        self.addCleanup(lambda: [self.kill_group(c) for c in self.calls(calls)])
+        real_sleep = shutil.which("sleep")
+        write_exec(self.fake / "gh", '#!/bin/sh\ncase "$*" in *SamyakJhaveri/distbench*) '
+                   f'({real_sleep} 3; echo 99) & echo 9 ;; *"pr list"*) echo 7 ;; esac\nexit 0\n')
+        self.start_driver()
+        window = self.state / "grader-window.txt"
+        self.assertTrue(self.wait_for(lambda: window.exists(), 2.5), "the driver waited on the read's child")
+        time.sleep(3)  # past the child's write
+        self.assertEqual(window.read_text().splitlines()[1:], ["exit 120"])
+
+    @LINUX_ONLY
+    def test_a_child_writing_after_gh_exits_fails_the_read(self) -> None:
+        # gh's stdout is shared with every process gh starts, so bytes a child writes once gh has exited are not gh's
+        # answer; a read that gh outlived by any process is a failed read, never a window (Codex round 2, 14 Nov).
+        calls = self.start_call_fakes()
+        self.addCleanup(lambda: [self.kill_group(c) for c in self.calls(calls)])
+        write_exec(self.fake / "gh", f"""#!{sys.executable}
+import os, sys, time
+if "SamyakJhaveri/distbench" not in sys.argv:
+    print(7 if "list" in sys.argv else "")
+    sys.exit(0)
+gh = os.getpid()
+if os.fork() == 0:  # waits for gh to exit, then writes 99 for 2 s
+    while os.getppid() == gh:
+        pass
+    end = time.monotonic() + 2
+    while time.monotonic() < end:
+        os.write(1, b"99\\n")
+        time.sleep(0.001)
+    os._exit(0)
+print(9)
+""")
+        self.start_driver()
+        window = self.state / "grader-window.txt"
+        self.assertTrue(self.wait_for(lambda: window.exists(), 10), "the driver wrote no window")
+        self.assertEqual(window.read_text().splitlines()[1:], ["exit 120"])
+        # The call starts after this window; wait for its pid, so cleanup ends it before removing the home.
+        self.assertTrue(self.wait_for(lambda: self.calls(calls)), "the driver started no call")
+
+    @LINUX_ONLY
+    def test_files_the_call_changes_in_its_state_dir_during_the_read_do_not_change_the_answer(self) -> None:
+        # The call can write the state dir while the read runs; whatever it removes or puts there, the window holds
+        # gh's answer (Codex, 14 Nov: an emptied capture file there read as a clear window).
+        calls = self.start_call_fakes()
+        self.addCleanup(lambda: [self.kill_group(c) for c in self.calls(calls)])
+        write_exec(self.fake / "gh", '#!/bin/sh\ncase "$*" in *SamyakJhaveri/distbench*) echo 9; '
+                   f'for f in "{self.state}"/*; do [ -f "$f" ] || continue; case $f in *.md|*.txt) ;; *) rm -f "$f"; : > "$f" ;; esac; done ;; '
+                   '*"pr list"*) echo 7 ;; esac\nexit 0\n')
+        self.start_driver()
+        window = self.state / "grader-window.txt"
+        self.assertTrue(self.wait_for(lambda: window.exists(), 10), "the driver wrote no window")
+        self.assertEqual(window.read_text().splitlines()[1:], ["exit 0", "9"])
+        # The call starts after this window; wait for its pid, so cleanup ends it before removing the home.
+        self.assertTrue(self.wait_for(lambda: self.calls(calls)), "the driver started no call")
+
+    @LINUX_ONLY
     def test_a_planted_link_does_not_redirect_the_grader_window_write(self) -> None:
         # The call can write the state dir; links planted at the old temp name and at the window itself must not
         # make the unsandboxed driver write through them (Codex review of PR #660).
@@ -411,6 +488,36 @@ end_call() { echo "ended $polls_seen $reads"; }
         self.assertTrue(self.wait_for(lambda: not window.is_symlink(), 10), "the window is still the planted link")
         self.assertEqual(window.read_text().splitlines()[1:], ["exit 0", "9"])
         self.assertEqual(victim.read_text(), "keep\n", "the driver wrote through a planted link")
+
+    @LINUX_ONLY
+    def test_a_window_file_the_call_swaps_at_publication_is_not_published(self) -> None:
+        # The call can write all of ~/.local/state/loam. At the moment the driver renames its new window into place,
+        # the call replaces every grader-window file there with a forged clear window; the window must still hold gh's
+        # answer (Codex loam-775 at d4bcaca2: the temp file was renamed by a name the call could swap).
+        hook = self.home / "hook"
+        hook.mkdir()
+        (hook / "SwapAtRename.pm").write_text(r"""package SwapAtRename;
+*CORE::GLOBAL::rename = sub {
+  if ($_[1] =~ m{/grader-window\.txt\z}) {
+    require File::Find; require POSIX;
+    open(my $m, ">>", "$ENV{HOME}/swaps") or die; print $m "$_[0]\n"; close $m;
+    File::Find::find({no_chdir => 1, wanted => sub {
+      return unless m{/grader-window[^/]*\z} && -f;
+      unlink $_; open(my $f, ">", $_) or die; print $f POSIX::strftime("read_at %FT%TZ\nexit 0\n", gmtime); close $f }},
+      "$ENV{HOME}/.local/state/loam") }
+  CORE::rename($_[0], $_[1]) };
+1;
+""")
+        calls = self.start_call_fakes()
+        self.addCleanup(lambda: [self.kill_group(c) for c in self.calls(calls)])
+        p = subprocess.Popen(["bash", str(OVERNIGHT / "driver.sh")], cwd=ROOT, start_new_session=True,
+                             env={**self.env(), "PERL5LIB": str(hook), "PERL5OPT": "-MSwapAtRename"},
+                             stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        self.addCleanup(lambda: (self.kill_group(p.pid), p.wait()))
+        self.assertTrue(self.wait_for(lambda: self.calls(calls)), "the driver started no call")
+        self.assertTrue((self.home / "swaps").exists(), "no window publication reached the swap")
+        self.assertEqual((self.state / "grader-window.txt").read_text().splitlines()[1:], ["exit 0", "9"],
+                         f"the driver published a window file the call swapped: {(self.home / 'swaps').read_text()}")
 
     @LINUX_ONLY
     def test_driver_leaves_a_reused_pid_alone(self) -> None:
