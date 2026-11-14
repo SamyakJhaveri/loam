@@ -417,7 +417,7 @@ On a usage-limit reply the driver switches the host's account only through `bin/
 It also shows a `clean` column (D09 Option A): `yes` when the run reached `pr-opened` with zero grader-fail rounds and no other exit on the way, `no` when it reached `pr-opened` some other way (an earlier exit, or a round that queued fixes), and `-` for a run not yet at `pr-opened`.
 It also prints one `WARN <ticket>/<sha8> served by <models>` line under the table for each run whose ledger names, in a line's `served_models` (the sorted `modelUsage` keys of the call's result, `[]` for a Codex round or an unreadable result), a model that starts with none of `WORKER_MODEL`, `GRADER_MODEL`, the worker's advisor and that line's own requested `model`, so a `[1m]` or dated suffix still counts as the configured model and a run launched with a model override does not warn; the warning stops nothing.
 Each line is matched on its own, and a malformed line is skipped.
-Set the model variables as full ids: an alias such as `fable` never prefix-matches `claude-fable-5-1`, so it warns.
+Set the model variables as full ids: an alias such as `fable` never prefix-matches `claude-fable-5-2`, so it warns.
 The advisor is not in the ledger, so a run launched with a different advisor than the shell running `status` warns.
 It also checks the preconditions below.
 The manager is a Fable session that runs `status`, merges, and writes one learn line when the same first-failing grader appears in two consecutive runs.
