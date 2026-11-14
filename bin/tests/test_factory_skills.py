@@ -269,9 +269,15 @@ console.log(JSON.stringify(seen));"""
         # The integrator fixes unmet tasks' code, so it gets the same lines as the builders.
         integrator = self.builder_prompts(args, phase="Integrate")
         self.assertEqual(len(integrator), 1)
-        for p in [text, *self.builder_prompts(args), *integrator]:
+        builders = self.builder_prompts(args)
+        for p in [text, *builders, *integrator]:
             for name in names:
                 self.assertIn(f"\n- {self.pstack}/skills/{name}/SKILL.md: ", p)
+        # A builder may edit only its owned globs, so no line it gets may send it to the run's decision log (the frozen
+        # _common.md fills <decisions> with its path, decisions.md); its reasons go in its artifact for the integrator.
+        for p in builders:
+            self.assertNotIn("<decisions>", p)
+            self.assertNotIn("decisions.md", p)
 
     def test_fan_out_args_jq_cannot_build_stops_the_prompt(self) -> None:
         # A jq older than 1.6 rejects --args; the lead must not get an empty args sentence.

@@ -107,7 +107,7 @@ ${JSON.stringify(task, null, 2)}
 ${router ? `Before a non-trivial task, read the pstack router at ${router} and follow the method it picks; the rules in this prompt win over it.\n\n` : ''}${skills.length ? skills.join('\n') + '\n\n' : ''}Do:
 1. Implement the objective by editing only files matching your owned globs: ${(task.owns || []).join(', ')}.
 2. From the worktree root, source ${run}/frozen/lib.sh, then run your check line: ${task.check}
-3. Write your artifact to ${task.artifact}: what you changed, the files you touched, and the exact output your check line printed.
+3. Write your artifact to ${task.artifact}: what you changed, the files you touched, the exact output your check line printed, and one line per reversible decision you made, with its reason.
 
 Edit nothing outside your owned globs. Do not commit. Your final text is ignored; the artifact at ${task.artifact} is your hand-back.`
 
@@ -117,7 +117,7 @@ Tasks, each with its owned globs, its check line, and its artifact path:
 ${JSON.stringify(tasks, null, 2)}
 
 ${skills.length ? skills.join('\n') + '\n\n' : ''}Do, from the worktree root, sourcing ${run}/frozen/lib.sh first:
-1. For each task: read its artifact. If the artifact file is missing, the task is unmet. Otherwise rerun the task's check line yourself; if it prints FAIL, the task is unmet - do not trust the builder's reported output.
+1. For each task: read its artifact and append its decision lines, each prefixed with the task's objective, to ${run}/worker/decisions.md; record each reversible decision of your own there too, with its reason. If the artifact file is missing, the task is unmet. Otherwise rerun the task's check line yourself; if it prints FAIL, the task is unmet - do not trust the builder's reported output.
 2. For an unmet task you can fix by editing only that task's owned globs, fix it and rerun the check. If you cannot make it pass, append a line "ABANDON <objective> <reason>" to ${run}/worker/decisions.md, restore that task's owned files to HEAD so no partial edit is left, and count the task abandoned.
 3. ${supervisorGate
     ? `The supervisor runs this target's full gate, \`bin/check\`, once after the round, so never run \`bin/check\` yourself: run the ticket's done-checks block as \`LOAM_HOOK=1 bash ${run}/frozen/checks.sh\` from the worktree root, under which \`guard bin/check\` passes without running (that PASS is not gate evidence); if the block calls \`bin/check\` in any other form, run its other check lines by hand instead. Capture its output.`
