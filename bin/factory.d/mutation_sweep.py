@@ -14,17 +14,19 @@ its every call is the argument of sys.exit or SystemExit, a file's last exit 0).
 after which its file no longer parses is discarded; the rest are ordered by the sha256 of path NUL operator NUL
 stripped line, so an unchanged line gets the same edits every round, and the first 8 run.
 The tests run unedited first, under <first-run timeout> s, then once per edit under twice that run plus 10 s; exit 0
-is survived, any other exit or a timeout killed. Each run has a session of its own, whose whole process group gets
-KILL when it ends, and on Linux, where the helper is the child subreaper, every process orphaned to it gets KILL too, so a
-loop an edit made endless never outlives the sweep.
-With FACTORY_SWEEP_IMAGE unset or empty no test runs (#768: a mutant run on the host SIGKILLed every process of its
-user on 13 Nov 2026).
+is survived, any other exit or a timeout killed. Each run is a fresh container of the image FACTORY_SWEEP_IMAGE names,
+with a PID namespace, filesystem, /tmp and HOME of its own and no network, into which docker cp copies <worktree>; no
+host path is mounted, so a test signals or deletes only what is in its container, and removing the container ends every
+process the run started. With FACTORY_SWEEP_IMAGE unset or empty no test runs (#768: a mutant run on the host
+SIGKILLed every process of its user on 13 Nov 2026); set, a docker create or cp that fails, or no docker, exits 1 and
+writes nothing, so the tests never run on the host.
 Writes {"tests", "baseline_sec", "timeout_sec", "mutants", "reason"} to <out json> and exits 0; reason names why no
 edit ran, else null. A git failure exits 2 and writes nothing. python3 stdlib only.
 """
 from __future__ import annotations
 
 import ast
+import contextlib
 import hashlib
 import io
 import json
@@ -58,9 +60,6 @@ SH_TEST = re.compile(r"\s*(\[\[?)\s")
 SH_DROP = re.compile(r"\s*(return|exit|continue|break)(?=[\s;&|]|$)")
 SH_DROP_END = re.compile(r";|(?<![<>])&(?!>)|(?<!>)\|")  # not the & or | of >&, <&, &> or >|
 SH_REDIR = re.compile(r"(?<=\s)(\d*[<>]|&>)")  # a redirection's start: [n]< [n]> &>
-
-CURRENT: subprocess.Popen | None = None  # the pytest run in progress, for the signal handler
-SUBREAPER = False  # set at start on Linux: kill_orphans then reaches a run's children that left its group
 
 
 def git(wt: Path, *args: str) -> str:
@@ -399,80 +398,54 @@ def write(path: Path, text: str) -> None:
     path.write_bytes(text.encode("utf-8"))
 
 
-def kill_group(pid: int) -> None:
+def remove(name: str) -> None:
+    """Remove the container, killing every process in it; its exit is ignored, as for no such container, and no docker
+    is left for the docker create after it to report."""
+    with contextlib.suppress(OSError):
+        subprocess.run(["docker", "rm", "-f", name], stdin=subprocess.DEVNULL, capture_output=True, check=False)
+
+
+def docker(*args: str, timeout: float) -> None:
     try:
-        os.killpg(pid, signal.SIGKILL)
-    except (ProcessLookupError, PermissionError):
-        pass
+        r = subprocess.run(["docker", *args], stdin=subprocess.DEVNULL, capture_output=True, text=True,
+                           timeout=timeout, check=False)
+    except (OSError, subprocess.TimeoutExpired) as e:
+        raise SystemExit(f"mutation_sweep: docker {args[0]} failed: {e}") from None
+    if r.returncode:
+        raise SystemExit(f"mutation_sweep: docker {args[0]} exited {r.returncode}: {r.stderr.strip()}")
 
 
-def subreaper() -> bool:
-    """On Linux, make this process the child subreaper of its descendants (prctl PR_SET_CHILD_SUBREAPER), so a test's
-    child that starts a session of its own, out of the run's process group, is orphaned to the sweep, not to init."""
-    if not sys.platform.startswith("linux"):
-        return False
-    import ctypes
-    return ctypes.CDLL(None, use_errno=True).prctl(36, 1, 0, 0, 0) == 0
+def run(image: str, tests: list[str], wt: Path, timeout: float) -> tuple[int | None, float, str]:
+    """(exit code, or None on a timeout; seconds; the output's last lines) of one pytest run in a fresh container.
 
-
-def kill_orphans() -> None:
-    """KILL every descendant of this process left after a run's group KILL, which as subreaper are the run's orphans
-    and theirs, and reap the children; each one killed orphans its own children to this process, so repeat until
-    none is left, for 5 s at most."""
-    end = time.monotonic() + 5
-    while time.monotonic() < end:
-        kids: dict[int, list[int]] = {}  # ppid -> its children's pids, from one read of /proc
-        for stat in Path("/proc").glob("[0-9]*/stat"):
-            try:
-                s = stat.read_bytes()  # bytes: a process's name may be any bytes, not UTF-8
-            except OSError:
-                continue
-            kids.setdefault(int(s[s.rindex(b")") + 2:].split()[1]), []).append(int(stat.parent.name))
-        mine, todo = [], list(kids.get(os.getpid(), []))
-        while todo:
-            pid = todo.pop()
-            mine.append(pid)
-            todo.extend(kids.get(pid, []))
-        if not mine:
-            return
-        for pid in mine:
-            try:
-                os.kill(pid, signal.SIGKILL)
-            except ProcessLookupError:
-                pass
-        for pid in kids.get(os.getpid(), []):
-            try:
-                os.waitpid(pid, os.WNOHANG)
-            except ChildProcessError:
-                pass
-        time.sleep(0.05)
-
-
-def run(cmd: list[str], wt: Path, env: dict[str, str], timeout: float) -> tuple[int | None, float, str]:
-    """(exit code, or None on a timeout; seconds; the output's last lines) of one pytest run.
-
-    In a session of its own, whose group gets KILL however the run ends: subprocess.run's timeout kills pytest
-    alone, and a child stuck in a loop an edit made endless would keep spinning after the sweep.
+    The tree is copied to /sweep, absent until then, with -a, so the directory and its files keep the uid that --user
+    runs as and a test can write them. --init reaps the orphans a test leaves, as init does on the host. The name is fixed
+    per worktree, so a sweep killed mid-run leaves a container the next one removes, and only by that name, never by a
+    filter an edit of this file could widen.
     """
-    global CURRENT
+    name = "loam-sweep-" + hashlib.sha256(str(wt.resolve()).encode()).hexdigest()[:12]
     start = time.monotonic()
-    with open(os.devnull, "rb") as stdin, tempfile.TemporaryFile() as log:
-        p = subprocess.Popen(cmd, cwd=wt, env=env, stdin=stdin, stdout=log, stderr=subprocess.STDOUT,
-                             start_new_session=True)
-        CURRENT = p
-        try:
-            rc: int | None = p.wait(timeout=timeout)
-        except subprocess.TimeoutExpired:
-            rc = None
-        finally:
-            kill_group(p.pid)
-            p.wait()
-            if SUBREAPER:
-                kill_orphans()
-            CURRENT = None
-        secs = time.monotonic() - start
-        log.seek(0)
-        tail = "\n".join(log.read().decode("utf-8", "replace").splitlines()[-20:])
+    remove(name)
+    try:
+        docker("create", "--name", name, "--init", "--network", "none", "--user", f"{os.getuid()}:{os.getgid()}",
+               "--pids-limit", "4096", "--memory", "8g", "--memory-swap", "8g",
+               # No bytecode: an edit of the same size written in the same second as its source would import the
+               # source's cached bytecode, and the edit would survive untested.
+               "-e", "HOME=/tmp", "-e", "PYTHONDONTWRITEBYTECODE=1", image, "sh", "-c", 'cd /sweep && exec "$@"', "sh",
+               "python3", "-m", "pytest", "-q", "-x", "-p", "no:cacheprovider", *tests, timeout=timeout)
+        docker("cp", "-a", str(wt.resolve()), f"{name}:/sweep", timeout=timeout)
+        with tempfile.TemporaryFile() as log:
+            try:
+                rc: int | None = subprocess.run(["docker", "start", "-a", name], stdin=subprocess.DEVNULL,
+                                                stdout=log, stderr=subprocess.STDOUT, check=False,
+                                                timeout=max(start + timeout - time.monotonic(), 0)).returncode
+            except subprocess.TimeoutExpired:
+                rc = None
+            secs = time.monotonic() - start
+            log.seek(0)
+            tail = "\n".join(log.read().decode("utf-8", "replace").splitlines()[-20:])
+    finally:
+        remove(name)
     return rc, secs, tail
 
 
@@ -514,19 +487,15 @@ def main(argv: list[str]) -> int:
         new = edited(text, change)
         if parses(lang, p, new):
             chosen.append((p, n, op, text, new))
-    cmd = ["python3", "-m", "pytest", "-q", "-x", "-p", "no:cacheprovider", *tests]
-    # No bytecode: an edit of the same size written in the same second as its source would import the source's
-    # cached bytecode, and the edit would survive untested.
-    env = {k: v for k, v in os.environ.items() if k != "PYTEST_ADDOPTS"}
-    env["PYTHONDONTWRITEBYTECODE"] = "1"
-    if not os.environ.get("FACTORY_SWEEP_IMAGE"):
+    image = os.environ.get("FACTORY_SWEEP_IMAGE", "")
+    if not image:
         result["reason"] = "FACTORY_SWEEP_IMAGE is unset; the sweep never runs tests on the host"
     elif not tests:
         result["reason"] = "no committed test in the diff"
     elif not chosen:
         result["reason"] = "no added bash or Python code line outside tests and fixtures gives an edit"
     else:
-        rc, secs, tail = run(cmd, wt, env, first)
+        rc, secs, tail = run(image, tests, wt, first)
         result["baseline_sec"] = round(secs, 2)
         if rc is None:
             result["reason"] = f"the committed tests did not finish unedited within {argv[3]} s"
@@ -539,7 +508,7 @@ def main(argv: list[str]) -> int:
             for p, n, op, text, new in chosen:
                 write(wt / p, new)
                 try:
-                    rc, secs, _ = run(cmd, wt, env, limit)
+                    rc, secs, _ = run(image, tests, wt, limit)
                 finally:
                     write(wt / p, text)
                 result["mutants"].append({
@@ -551,14 +520,12 @@ def main(argv: list[str]) -> int:
 
 
 def stop(signum: int, _frame: object) -> None:
-    """A TERM, INT or HUP kills the pytest run in progress; the edited file is restored on the way out."""
-    if CURRENT is not None:
-        kill_group(CURRENT.pid)
+    """A TERM, INT or HUP exits through run's finally, which removes the container, and main's, which restores the
+    edited file."""
     raise SystemExit(128 + signum)
 
 
 if __name__ == "__main__":
     for sig in (signal.SIGTERM, signal.SIGINT, signal.SIGHUP):
         signal.signal(sig, stop)
-    SUBREAPER = subreaper()
     sys.exit(main(sys.argv[1:]))
