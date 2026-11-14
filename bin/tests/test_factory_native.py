@@ -229,9 +229,8 @@ class NativeShellTests(unittest.TestCase):
         role_old, role_new = json.loads(old["role"]), json.loads(new["role"])
         self.assertEqual(role_new.pop("availableModels"), ["claude-opus-5-5", "claude-fable-5-2"])
         self.assertEqual(role_new, role_old)
-        # No FACTORY_MEMORY_DIR, no memory view.
-        self.assertFalse((self.h.run / "frozen/memory-view.md").exists())
-        self.assertNotIn("Memory view", (self.h.run / "round-1.prompt.md").read_text())
+        # No FACTORY_LESSONS, no lessons view.
+        self.assertFalse((self.h.run / "frozen/lessons.md").exists())
 
     def test_another_target_gets_the_native_shell(self) -> None:
         r = self.h.round_one(self.new, loam=False, skills="skills: pstack:tdd")
@@ -292,18 +291,42 @@ class NativeShellTests(unittest.TestCase):
         # A reviewer served the model it asked for raises no off-model alert.
         self.assertNotIn("off-model", (self.h.run / "factory.log").read_text())
 
-    def test_memory_view_is_frozen_and_appended_to_each_prompt(self) -> None:
-        mem = self.h.top / "memory"
-        mem.mkdir()
-        (mem / "MEMORY.md").write_text("# MEMORY\n- [Traps](traps.md) - x\n- [Site](https://example.com/a.md) - y\n")
-        r = self.h.round_one(self.new, loam=False, FACTORY_MEMORY_DIR=str(mem))
-        view = (self.h.run / "frozen/memory-view.md").read_text().splitlines()
-        self.assertEqual(view[0], "# Memory view (written for the lead)")
-        self.assertRegex(view[1], r"push, merge, rent .* `!` command do not apply")
-        self.assertIn(f"- [Traps]({mem}/traps.md) - x", view)
-        self.assertIn("- [Site](https://example.com/a.md) - y", view)
-        self.assertTrue(r["worker"]["stdin"].rstrip("\n").endswith("\n".join(view).rstrip("\n")))
-        self.assertIn("memory-view.md", (self.h.run / "frozen/sha256").read_text())
+    def test_lessons_file_is_frozen_and_ends_each_round_prompt(self) -> None:
+        lessons = self.h.top / "LESSONS.md"
+        text = "# Factory lessons\n\nPurpose line.\n\n- 2026-11-13 W24 (isc-build c471cda0): first lesson\n"
+        lessons.write_text(text)
+        r = self.h.round_one(self.new, loam=False, FACTORY_LESSONS=str(lessons))
+        self.assertEqual((self.h.run / "frozen/lessons.md").read_text(), text)
+        self.assertIn("  lessons.md\n", (self.h.run / "frozen/sha256").read_text())
+        self.assertTrue(r["worker"]["stdin"].endswith("\n\n" + text))
+        # A later round's prompt, after its "Previous round" block, still ends with the lessons.
+        proc = self.h.sourced(self.new, 'echo "FAIL check-green" > "$RUN/round-1.checks"; freeze && WORKER_KIND=claude round=2 && cat "$(build_worker_prompt 2)"',
+                              loam=False, FACTORY_LESSONS=str(lessons))
+        self.assertIn("## Previous round (1)", proc.stdout, proc.stderr)
+        self.assertTrue(proc.stdout.endswith("\n\n" + text), proc.stdout[-400:])
+
+    def test_lessons_file_over_8000_bytes_keeps_its_head_and_newest_lines(self) -> None:
+        lessons = self.h.top / "LESSONS.md"
+        head = ["# Factory lessons", "", "Purpose line.", "Format line."]
+        body = [f"- 2026-11-13 K{i:03d} (isc-build 00000000): lesson number {i:03d} with enough words to fill out the line"
+                for i in range(1, 401)]
+        lessons.write_text("\n".join(head + body) + "\n")
+        self.h.sourced(self.new, "freeze", loam=False, FACTORY_LESSONS=str(lessons))
+        view = (self.h.run / "frozen/lessons.md").read_bytes()
+        self.assertLessEqual(len(view), 8000)
+        lines = view.decode().splitlines()
+        self.assertEqual(lines[:4], head)
+        self.assertEqual(lines[4], f"[older lessons cut here; the whole file is {lessons}]")
+        kept = lines[5:]
+        self.assertEqual(kept, body[len(body) - len(kept):])  # the newest lines, whole and in order
+        self.assertGreater(len(view) + len(body[-len(kept) - 1]) + 1, 8000)  # as many as fit
+
+    def test_unreadable_lessons_file_stops_the_run(self) -> None:
+        missing = self.h.top / "no-such-LESSONS.md"
+        proc = self.h.sourced(self.new, "freeze; echo after", loam=False, FACTORY_LESSONS=str(missing))
+        self.assertNotIn("after", proc.stdout)
+        self.assertIn("stopped-environment", (self.h.run / "status").read_text())
+        self.assertIn(str(missing), (self.h.run / "factory.log").read_text())
 
     def test_another_target_worker_leaves_the_full_gate_to_the_supervisor(self) -> None:
         # L01 (distbench, 13 Nov): a worker spent 109 of 117 min running the full bin/check the supervisor runs anyway.

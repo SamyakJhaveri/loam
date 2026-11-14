@@ -1748,21 +1748,25 @@ freeze_shell() {
   fi
 }
 
-# The distbench memory, read-only, for every worker prompt (design-pick.md, memory view): MEMORY.md under
-# FACTORY_MEMORY_DIR with its relative links made absolute, below a header that says who it was written for.
-# FACTORY_MEMORY_DIR unset writes no view.
-MEMORY_VIEW_HEAD='# Memory view (written for the lead)'
-MEMORY_VIEW_NOTE='Lines below that tell the lead to push, merge, rent machines or hand Samyak a `!` command do not apply to you.'
-freeze_memory_view() {
-  local d esc
-  [ -n "${FACTORY_MEMORY_DIR:-}" ] || return 0
-  d=$(cd "$FACTORY_MEMORY_DIR" 2> /dev/null && pwd) && [ -f "$d/MEMORY.md" ] \
-    || finish stopped-environment "FACTORY_MEMORY_DIR=$FACTORY_MEMORY_DIR holds no MEMORY.md"
-  esc=$(printf '%s' "$d" | sed 's/[&|\\]/\\&/g')
-  # A link target with no scheme, no leading / and no # is relative to the memory folder.
-  { printf '%s\n%s\n\n' "$MEMORY_VIEW_HEAD" "$MEMORY_VIEW_NOTE"
-    sed -E "s|\]\(([^)/:#][^):]*)\)|](${esc}/\1)|g" "$d/MEMORY.md"; } > "$RUN/frozen/memory-view.md" \
-    || finish stopped-environment "could not write $RUN/frozen/memory-view.md"
+# The lessons file distbench's after-landing writes, one line per landing or ruling (card 7 of the 13 Nov memory
+# plan), frozen for every worker prompt. FACTORY_LESSONS unset or empty writes none. Over 8000 bytes it keeps the
+# file's first 4 lines (title, purpose, format), a cut line naming the whole file, and as many of its newest whole
+# lines as fit in 8000 bytes.
+freeze_lessons_view() {
+  local f=${FACTORY_LESSONS:-} out="$RUN/frozen/lessons.md"
+  [ -n "$f" ] || return 0
+  [ -f "$f" ] && [ -r "$f" ] || finish stopped-environment "FACTORY_LESSONS=$f is not a readable file"
+  if [ "$(wc -c < "$f")" -le 8000 ]; then
+    cp "$f" "$out"
+  else
+    LESSONS="$f" LC_ALL=C awk '{ l[NR] = $0 } END {
+      cut = "[older lessons cut here; the whole file is " ENVIRON["LESSONS"] "]"
+      n = length(cut) + 1
+      for (i = 1; i <= 4 && i <= NR; i++) { print l[i]; n += length(l[i]) + 1 }
+      print cut
+      for (i = NR; i > 4 && n + length(l[i]) + 1 <= 8000; i--) n += length(l[i]) + 1
+      for (i++; i <= NR; i++) print l[i] }' "$f" > "$out"
+  fi || finish stopped-environment "could not write $out"
 }
 
 freeze() {
@@ -1785,7 +1789,7 @@ freeze() {
   grader_settings "$ROOT/bin/factory.d/role-settings.json" "$RUN/frozen/role-settings.json" "$GRADER_MODEL" "$REVIEWER_MODEL" 2>> "$LOG" \
     || finish stopped-environment "could not write $(user_settings)'s env into the frozen grader settings"
   freeze_shell
-  freeze_memory_view
+  freeze_lessons_view
   for f in $REVIEW_SET; do
     cp "$ROOT/bin/factory.d/$f" "$RUN/frozen/$f" || finish stopped-environment "could not freeze bin/factory.d/$f"
   done
@@ -1807,7 +1811,7 @@ freeze() {
   freeze_edit_line
   chmod +x "$RUN/frozen/checks.sh" "$RUN/frozen/factory" "$RUN/frozen/alert"
   # shellcheck disable=SC2086
-  ( cd "$RUN/frozen" && sha256_of $FROZEN_SET $(for f in memory-view.md edit.txt; do [ ! -f "$f" ] || echo "$f"; done) > sha256 )
+  ( cd "$RUN/frozen" && sha256_of $FROZEN_SET $(for f in lessons.md edit.txt; do [ ! -f "$f" ] || echo "$f"; done) > sha256 )
   chmod a-w "$RUN/frozen"/*
 }
 
@@ -2507,7 +2511,7 @@ build_worker_prompt() { # round -> prompt path (pending until the call returns a
       [ -s "$RUN/round-$prev.fixes" ] && { printf 'Blocking findings, verbatim:\n\n'; cat "$RUN/round-$prev.fixes"; printf '\n'; }
     } >> "$pf"
   fi
-  [ ! -f "$RUN/frozen/memory-view.md" ] || { printf '\n'; cat "$RUN/frozen/memory-view.md"; } >> "$pf"
+  [ ! -f "$RUN/frozen/lessons.md" ] || { printf '\n'; cat "$RUN/frozen/lessons.md"; } >> "$pf"
   printf '%s\n' "$pf"
 }
 
