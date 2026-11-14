@@ -17,14 +17,18 @@
       "ScheduleWakeup",
       "CronCreate",
       "Edit(~/loam/bin/overnight/**)",
-      "Write(~/loam/bin/overnight/**)"
+      "Write(~/loam/bin/overnight/**)",
+      "Edit(~/.local/state/loam-driver/**)",
+      "Write(~/.local/state/loam-driver/**)"
     ]
   },
   "autoMemoryEnabled": false,
   "sandbox": {
     "filesystem": {
       "allowWrite": [
-        "~/.local/state/loam"
+        "~/.local/state/loam/overnight",
+        "~/.local/state/loam/worktrees",
+        "~/.local/state/loam/alerts.jsonl"
       ],
       "denyWrite": [
         "~/loam/bin/overnight"
