@@ -12,6 +12,7 @@ Every subprocess gets an explicit environment: a scratch HOME and TMPDIR and a g
 
 from __future__ import annotations
 
+import hashlib
 import importlib.util
 import json
 import os
@@ -601,4 +602,20 @@ class FactoryRunTests(unittest.TestCase):
         self.assertIn(f"mutation sweep: {why}", (self.run_dir() / "factory.log").read_text())
         self.assertIn(f"\n## Mutation sweep\n\n{why}\n", self.body())
         self.assertFalse(self.body().startswith("Draft:"))
+
+    def test_a_relaunch_whose_frozen_helper_predates_the_image_check_stops(self) -> None:
+        self.stopped_after_the_block()
+        # A helper frozen before the image check, with a matching frozen/sha256, as an older run holds it.
+        frozen = self.run_dir() / "frozen"
+        old = "import sys\nopen(sys.argv[3], 'w').write('{\"mutants\": []}')\n"
+        sums = [ln for ln in (frozen / "sha256").read_text().splitlines() if not ln.endswith("  mutation_sweep.py")]
+        sums.append(f"{hashlib.sha256(old.encode()).hexdigest()}  mutation_sweep.py")
+        for name, text in (("mutation_sweep.py", old), ("sha256", "\n".join(sums) + "\n")):
+            (frozen / name).chmod(0o644)
+            (frozen / name).write_text(text)
+        self.launch()
+        self.assertEqual((self.run_dir() / "status").read_text().strip(), "stopped-environment")
+        self.assertIn("EXIT stopped-environment (4): the frozen mutation_sweep.py predates #768 step 4",
+                      (self.run_dir() / "factory.log").read_text())
+        self.assertEqual(self.worker_rounds(), 1)
 

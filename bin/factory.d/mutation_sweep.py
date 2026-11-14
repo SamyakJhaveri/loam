@@ -18,7 +18,7 @@ is survived, any other exit or a timeout killed. Each run has a session of its o
 KILL when it ends, and on Linux, where the helper is the child subreaper, every process orphaned to it gets KILL too, so a
 loop an edit made endless never outlives the sweep.
 With FACTORY_SWEEP_IMAGE unset or empty no test runs (#768: a mutant run on the host SIGKILLed every process of its
-user on 13 Nov 2026; the rest of #768 moves each run into a container of that image).
+user on 13 Nov 2026).
 Writes {"tests", "baseline_sec", "timeout_sec", "mutants", "reason"} to <out json> and exits 0; reason names why no
 edit ran, else null. A git failure exits 2 and writes nothing. python3 stdlib only.
 """
