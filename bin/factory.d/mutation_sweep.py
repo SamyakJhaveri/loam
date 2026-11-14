@@ -17,6 +17,8 @@ The tests run unedited first, under <first-run timeout> s, then once per edit un
 is survived, any other exit or a timeout killed. Each run has a session of its own, whose whole process group gets
 KILL when it ends, and on Linux, where the helper is the child subreaper, every process orphaned to it gets KILL too, so a
 loop an edit made endless never outlives the sweep.
+With FACTORY_SWEEP_IMAGE unset or empty no test runs (#768: a mutant run on the host SIGKILLed every process of its
+user on 13 Nov 2026; the rest of #768 moves each run into a container of that image).
 Writes {"tests", "baseline_sec", "timeout_sec", "mutants", "reason"} to <out json> and exits 0; reason names why no
 edit ran, else null. A git failure exits 2 and writes nothing. python3 stdlib only.
 """
@@ -517,7 +519,9 @@ def main(argv: list[str]) -> int:
     # cached bytecode, and the edit would survive untested.
     env = {k: v for k, v in os.environ.items() if k != "PYTEST_ADDOPTS"}
     env["PYTHONDONTWRITEBYTECODE"] = "1"
-    if not tests:
+    if not os.environ.get("FACTORY_SWEEP_IMAGE"):
+        result["reason"] = "FACTORY_SWEEP_IMAGE is unset; the sweep never runs tests on the host"
+    elif not tests:
         result["reason"] = "no committed test in the diff"
     elif not chosen:
         result["reason"] = "no added bash or Python code line outside tests and fixtures gives an edit"

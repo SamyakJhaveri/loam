@@ -3151,7 +3151,8 @@ MUTATION_FIX="add or tighten a committed test that fails on this edit (if a test
 # whose repository holds the sha, so the ticket worktree and its tree signature are untouched. Each edit those tests still pass is a blocking finding, sent to the worker at most once per
 # ticket (MUTATION_BLOCKED, which a relaunch restores from round-N.mutation-blocked); past that, blocking_findings
 # drafts the PR with them. A helper that fails, or leaves no result, stops the run, so a sweep that did not run never opens a
-# ready PR; a sweep that ran no edit (no committed test, or the tests red unedited) is a result, not a failure.
+# ready PR; a sweep that ran no edit (FACTORY_SWEEP_IMAGE unset, no committed test, or the tests red unedited) is a
+# result, not a failure: the helper runs no test without an image (#768).
 run_mutation_sweep() { # round -> 0 unless a survivor blocks
   local round="$1" wt="${WORKTREE}-mutants" f="$RUN/round-$1.mutation.json" msg rc=0
   assert_caps
