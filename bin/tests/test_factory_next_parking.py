@@ -108,6 +108,13 @@ class ParkingTests(unittest.TestCase):
         return sourced(stubs, {"FACTORY_MAX_PARALLEL": "1", "FACTORY_RUNS_ROOT": str(self.runs), "GQL_LOG": str(self.gql_log),
                                "GH_LOG": str(self.gh_log), **env})
 
+    def test_next_still_launches_when_its_stderr_reader_died(self) -> None:
+        # `bin/factory next 2>&1 | head -1`, or a timer's logger that died: the parked line's write fails, and the tick
+        # still reaches the next issue rather than ending by SIGPIPE.
+        self.run_dir(7, CLEAN, "abandon")
+        proc = self.next_dry_run((7, CLEAN), (8, CLEAN + "\nanother"), pre="exec 2> >(:); sleep 0.5; ")
+        self.assertEqual((proc.returncode, proc.stdout.strip()), (0, "would launch #8"))
+
     def test_old_body_abandon_does_not_park_a_new_body(self) -> None:
         self.run_dir(7, CLEAN + "\nthe old body", "abandon")
         self.assertEqual(self.park_status(7, CLEAN + "\nthe new body"), "none")
@@ -392,7 +399,7 @@ tmux() {
             self.launch(7, CLEAN)
         proc = self.next_dry_run((8, CLEAN), mine=mine)
         self.assertEqual(proc.stdout.strip(), "would launch #8", proc.stderr)
-        self.assertIn("parked #7: stopped on the environment 3 times in a row with no new round since", proc.stderr)
+        self.assertIn("parked #7: stopped on the environment or was killed 3 times in a row with no new round since", proc.stderr)
 
     def test_a_killed_run_resumes_as_an_environment_stop_does(self) -> None:
         # A host shutdown or `tmux kill-session` TERMs or HUPs every live supervisor, which ends stopped-killed. Its
@@ -413,7 +420,7 @@ tmux() {
             self.launch(7, CLEAN, killed)
         proc = self.next_dry_run((8, CLEAN), mine=mine)
         self.assertEqual(proc.stdout.strip(), "would launch #8", proc.stderr)
-        self.assertIn("parked #7: stopped on the environment 3 times in a row with no new round since", proc.stderr)
+        self.assertIn("parked #7: stopped on the environment or was killed 3 times in a row with no new round since", proc.stderr)
 
     def test_a_round_between_environment_stops_resets_the_count(self) -> None:
         mine = ((7, CLEAN),)

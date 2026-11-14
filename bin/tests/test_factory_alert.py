@@ -336,6 +336,15 @@ class FactoryAlertTests(unittest.TestCase):
                 self.assertEqual((self.run_dir / "status").read_text().strip(), "pr-opened")
                 self.assertNotIn("stopped-killed", (self.run_dir / "factory.log").read_text())
 
+    def test_a_dead_stderr_reader_before_run_traps_still_records_the_stop_and_alerts(self) -> None:
+        # The launcher's `| tee` can die alone before cmd_run arms run_traps; the first stderr write must fail, not end
+        # the run by SIGPIPE with its status left `running` and no alert.
+        calls = self.factory("exec 2> >(:); sleep 0.5; finish stopped-environment 'the worker call returned no result event'")
+        self.assertEqual(self.proc.returncode, 4)
+        self.assertEqual([c[:2] for c in calls], [["--level", "fail"]])
+        self.assertEqual((self.run_dir / "status").read_text().strip(), "stopped-environment")
+        self.assertIn("EXIT stopped-environment (4)", (self.run_dir / "factory.log").read_text())
+
     def test_a_run_end_never_pauses_the_check(self) -> None:
         # The next timer's ticks are the check's only beats (cmd_next); a pause at a run's end would outlive a timer
         # that then refuses every tick, so the check could never go red.
