@@ -3,6 +3,14 @@
 This file records why a promoted plugin change traveled. It is also the upgrade
 entry point for projects that consume the Loam marketplace.
 
+## sam-cc-setup v0.9.33 pstack router sends ticket-shaped build work to the factory lane
+
+The router told a lead to hand spawning work to "one `worker`" and had no factory line, so a lead that obeyed it was pointed away from the factory the owner made the default builder (DistBench audit, 13 Nov 2026: 9 of 83 landed branches came from the factory).
+A new line sends build work that fits a ticket to the project's factory lane when it has one, attended only for what the lane cannot run, with the reason in the brief; the spawning-skill line names the lane first.
+It is a line, not a table row, because the table's second column names only pstack or owner skills (`bin/tests/test_pstack_router.py`).
+No grader prompt changed, so no grader replay is owed.
+Upgrade step: `claude plugin update sam-cc-setup@seed-skills`.
+
 ## sam-cc-setup v0.9.32 the reviewer checks the owner's eight principles
 
 The owner asked on 13 Nov 2026 that every worker follow eight pstack principles and that reviewers check the work against them. `reviewer.md` gains a sixth item: a change that breaks one of the eight is a finding, rated by its impact. The factory worker prompt (`bin/factory.d/_common.md`) names the eight in its one principle list, and the Codex review prompt asks the same of Codex.
