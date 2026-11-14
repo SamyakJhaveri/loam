@@ -423,7 +423,34 @@ end_call() { echo "ended $polls_seen $reads"; }
         window = self.state / "grader-window.txt"
         self.assertTrue(self.wait_for(lambda: window.exists(), 2.5), "the driver waited on the read's child")
         time.sleep(3)  # past the child's write
-        self.assertEqual(window.read_text().splitlines()[1:], ["exit 0", "9"])
+        self.assertEqual(window.read_text().splitlines()[1:], ["exit 120"])
+
+    @LINUX_ONLY
+    def test_a_child_writing_after_gh_exits_fails_the_read(self) -> None:
+        # gh's stdout is shared with every process gh starts, so bytes a child writes once gh has exited are not gh's
+        # answer; a read that gh outlived by any process is a failed read, never a window (Codex round 2, 14 Nov).
+        calls = self.start_call_fakes()
+        self.addCleanup(lambda: [self.kill_group(c) for c in self.calls(calls)])
+        write_exec(self.fake / "gh", f"""#!{sys.executable}
+import os, sys, time
+if "SamyakJhaveri/distbench" not in sys.argv:
+    print(7 if "list" in sys.argv else "")
+    sys.exit(0)
+gh = os.getpid()
+if os.fork() == 0:  # waits for gh to exit, then writes 99 for 2 s
+    while os.getppid() == gh:
+        pass
+    end = time.monotonic() + 2
+    while time.monotonic() < end:
+        os.write(1, b"99\\n")
+        time.sleep(0.001)
+    os._exit(0)
+print(9)
+""")
+        self.start_driver()
+        window = self.state / "grader-window.txt"
+        self.assertTrue(self.wait_for(lambda: window.exists(), 10), "the driver wrote no window")
+        self.assertEqual(window.read_text().splitlines()[1:], ["exit 120"])
 
     def test_a_lost_grader_read_never_clears_the_window(self) -> None:
         # The call can write the state dir; a read whose output file is gone before the driver reads it is a failed

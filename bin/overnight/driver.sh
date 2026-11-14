@@ -15,13 +15,12 @@ LOCK=~/.local/state/loam-factory/next.lock
 cd ~/loam || exit 1
 mkdir -p "$O" && touch "$O/log.md" "$O/followups.md"
 stamp() { date -u +%FT%TZ; }
-# Each call runs under WRAP, a perl process in a session of its own (its pid leads the group end_call signals), so a
-# closed terminal does not reach it. As in bin/factory call_start, it is a child subreaper (prctl PR_SET_CHILD_SUBREAPER,
-# 36, by syscall number: 157 on x86_64, 167 on aarch64), so a tool shell in a session of its own (#434) is reparented
-# to it once claude exits. It execs claude with its argv unchanged; when claude exits or the wrapper gets TERM, INT or
-# HUP, it TERMs claude's group and every child, KILLs them 5 s later, and exits with claude's status.
-WRAP='POSIX::setsid() == $$ or die "setsid: $!\n";
-  $nr = {x86_64 => 157, aarch64 => 167}->{(POSIX::uname())[4]} or die "no prctl number for this CPU\n";
+# REAP runs its argv as its one child. It is a child subreaper (prctl PR_SET_CHILD_SUBREAPER, 36, by syscall number:
+# 157 on x86_64, 167 on aarch64), as in bin/factory call_start, so every process the child leaves, in any session, is
+# reparented to it. When the child exits or REAP gets TERM, INT or HUP, it TERMs every process left (and its own group,
+# under WRAP), KILLs them 5 s later, and exits with the child's status; with $sole set, 120 instead when any process the
+# child started was still there when the child exited.
+REAP='$nr = {x86_64 => 157, aarch64 => 167}->{(POSIX::uname())[4]} or die "no prctl number for this CPU\n";
   syscall($nr, 36, 1, 0, 0, 0) == 0 or die "prctl PR_SET_CHILD_SUBREAPER: $!\n";
   defined($kid = fork) or die "fork: $!\n";
   unless ($kid) { exec { $ARGV[0] } @ARGV; print STDERR "exec $ARGV[0]: $!\n"; POSIX::_exit(127) }
@@ -30,11 +29,15 @@ WRAP='POSIX::setsid() == $$ or die "setsid: $!\n";
       my ($p, $z, $pp, $pg) = $s =~ /^(\d+) .*\) (\S) (\d+) (\d+)/s or next;
       push @k, $p if $p != $$ && $z ne "Z" && ($pp == $$ || $pg == $$) } @k }
   for (;;) {
-    while (($p = waitpid(-1, WNOHANG)) > 0) { $st = $? if $p == $kid }
-    if (defined $st || $sig) { $end //= time + 5; @p = kids(); last unless @p;
+    $o = 0; while (($p = waitpid(-1, WNOHANG)) > 0) { if ($p == $kid) { $st = $? } else { $o = 1 } }
+    if (defined $st || $sig) { $end //= time + 5; @p = kids(); $left ||= $o || @p; last unless @p;
       if (time < $end) { kill "TERM", grep { !$seen{$_}++ } @p } elsif (time < $end + 5) { kill "KILL", @p } else { last } }
     sleep 0.1 }
-  exit(!defined $st ? 137 : $st & 127 ? 128 + ($st & 127) : $st >> 8)'
+  $left ||= waitpid(-1, WNOHANG) > 0;
+  exit($sole && $left && !$sig ? 120 : !defined $st ? 137 : $st & 127 ? 128 + ($st & 127) : $st >> 8)'
+# Each call runs under WRAP: REAP in a session of its own (its pid leads the group end_call signals), so a closed
+# terminal does not reach it, and a tool shell in a session of its own (#434) is reparented to it once claude exits.
+WRAP='POSIX::setsid() == $$ or die "setsid: $!\n";'"$REAP"
 # end_call TERMs the wrapper's group, then KILLs it 10 s later.
 end_call() { local c=$1 i
   case $c in '' | *[!0-9]* | 0 | 1) return 0 ;; esac
@@ -43,23 +46,26 @@ end_call() { local c=$1 i
   kill -KILL -- -"$c" 2> /dev/null || kill -KILL "$c" 2> /dev/null
 }
 # The protocol's one read of DistBench (Grader window), run here because the call's settings deny it gh on DistBench:
-# grader-window.txt holds the read's UTC time, gh's exit status (124 on a timeout, 137 if gh then ignored TERM for
-# 5 s, 1 if its output file was gone before it was read) and one open DistBench grader-fix
-# PR number per line. Written through a fresh mktemp file (never a fixed name the call could link elsewhere) and
-# moved with mv -T over the name itself, so a call never reads half of it and no planted link redirects the write.
-# --foreground keeps gh in the driver's process group (plain timeout makes a group of its own), so killing the
-# driver's group ends the read too. --foreground does not time out gh's children, so gh writes to a file of its own,
-# removed once read, not a pipe: a child left holding its stdout cannot keep the driver waiting past the timeout, and
-# what it writes after the read is taken never reaches the window.
-to=(); command -v timeout > /dev/null && to=(timeout --foreground -k 5 60)
+# grader-window.txt holds the read's UTC time, gh's exit status (124 on a timeout, 120 if a process gh started was
+# still there when gh exited, 1 if its output file was gone before it was read) and, only after exit 0, one open
+# DistBench grader-fix PR number per line. Written through a fresh mktemp file (never a fixed name the call could link
+# elsewhere) and moved with mv -T over the name itself, so a call never reads half of it and no planted link redirects
+# the write.
+# gh runs under REAP with $sole set, which stays in the driver's process group, as timeout --foreground does (plain
+# timeout makes a group of its own), so killing the driver's group ends the read too. gh's stdout is shared with every
+# process gh starts, so what one writes after gh exits is not gh's answer: REAP ends them all, and a read gh outlived
+# by any of them fails (120). REAP ends the whole read before timeout's KILL (-k 15) could leave any of it behind.
+# gh writes to a file of its own, removed once read, not a pipe, so nothing left holding its stdout can keep the
+# driver waiting.
+to=(); command -v timeout > /dev/null && to=(timeout --foreground -k 15 60)
 grader_window() { local at out rc tmp
   at=$(stamp)
   tmp=$(mktemp "$O/grader-read.XXXXXX") || { rm -f "$O/grader-window.txt"; return; }   # no stale clear window
-  ${to[@]+"${to[@]}"} gh pr list -R SamyakJhaveri/distbench --state open --limit 100 --json number,title,files --jq '.[] | select((.title | test("grader|regrade"; "i")) or any(.files[].path; test("(^|/)grader\\.py$|regrade"; "i"))) | .number' > "$tmp" 2>> "$O/driver.log"
+  ${to[@]+"${to[@]}"} perl -MPOSIX -MTime::HiRes=time,sleep -e '$sole = 1;' -e "$REAP" gh pr list -R SamyakJhaveri/distbench --state open --limit 100 --json number,title,files --jq '.[] | select((.title | test("grader|regrade"; "i")) or any(.files[].path; test("(^|/)grader\\.py$|regrade"; "i"))) | .number' > "$tmp" 2>> "$O/driver.log"
   rc=$?
   out=$(cat -- "$tmp") || { [ "$rc" -ne 0 ] || rc=1; }
   rm -f "$tmp"
-  [ "$rc" -eq 0 ] || echo "$(stamp) grader-window read failed: exit $rc" >> "$O/driver.log"
+  [ "$rc" -eq 0 ] || { echo "$(stamp) grader-window read failed: exit $rc" >> "$O/driver.log"; out=; }   # not an answer
   tmp=$(mktemp "$O/grader-window.XXXXXX") || { rm -f "$O/grader-window.txt"; return; }   # no stale clear window
   { echo "read_at $at"; echo "exit $rc"; [ -z "$out" ] || printf '%s\n' "$out"; } > "$tmp" \
     && mv -fT "$tmp" "$O/grader-window.txt"
