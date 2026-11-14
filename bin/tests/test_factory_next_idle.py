@@ -60,7 +60,8 @@ LAUNCHABLE = {**BLOCKED, "99042": {"as": [], "bl": 0, "body": str(CLEAN)}}
 # apply_caps lets them beat the defaults these tests rely on, so the ticks start without them (#676).
 CAP_NAMES = re.search(r'^CAP_NAMES="([^"]*)"', (ROOT / "bin/factory").read_text(), re.MULTILINE).group(1).replace("\\", " ").split()
 RUNNER_FREE_ENV = {k: v for k, v in os.environ.items()
-                   if not (k.startswith("FACTORY_") and k[8:] in CAP_NAMES) and k != "FACTORY_JUDGE"}
+                   if not (k.startswith("FACTORY_") and k[8:] in CAP_NAMES)
+                   and k not in ("FACTORY_JUDGE", "FACTORY_SWEEP_IMAGE")}
 
 
 class IdleAlertTests(unittest.TestCase):
@@ -74,7 +75,8 @@ class IdleAlertTests(unittest.TestCase):
         self.runs.mkdir()
 
     def tick(self, now: int, *flags: str, store: dict | None = None, maxp: int = 1,
-             other: bool = False, judge: str | None = None) -> subprocess.CompletedProcess[str]:
+             other: bool = False, judge: str | None = None,
+             image: str | None = None) -> subprocess.CompletedProcess[str]:
         """One tick."""
         (self.t / "store.json").write_text(json.dumps(BLOCKED if store is None else store))
         env = {**RUNNER_FREE_ENV, "PATH": f"{self.t}:{os.environ['PATH']}", "T": str(self.t),
@@ -83,6 +85,8 @@ class IdleAlertTests(unittest.TestCase):
                "FACTORY_ROOT": str(ROOT), "FACTORY_RUNS_ROOT": str(self.runs), "FACTORY_MAX_PARALLEL": str(maxp)}
         if judge is not None:
             env["FACTORY_JUDGE"] = judge
+        if image is not None:
+            env["FACTORY_SWEEP_IMAGE"] = image
         return subprocess.run(["bash", "-c", TICK, "tick", *flags], cwd=ROOT, env=env,
                               capture_output=True, text=True, check=False)
 
@@ -160,6 +164,15 @@ class IdleAlertTests(unittest.TestCase):
         first, second = (self.t / "tmux").read_text().splitlines()
         self.assertIn(" -e FACTORY_JUDGE=off ", first)
         self.assertIn(" -e FACTORY_JUDGE= ", second)
+
+    def test_a_launch_forwards_the_sweep_image_even_unset(self) -> None:
+        # The same for FACTORY_SWEEP_IMAGE: a value in the tmux server's environment must not sweep a launch whose
+        # next has none.
+        self.assertEqual(self.tick(T0, store=LAUNCHABLE, image="loam-sweep").stdout.strip(), "launched #99042")
+        self.assertEqual(self.tick(T0 + 60, store=LAUNCHABLE).stdout.strip(), "launched #99042")
+        first, second = (self.t / "tmux").read_text().splitlines()
+        self.assertIn(" -e FACTORY_SWEEP_IMAGE=loam-sweep ", first)
+        self.assertIn(" -e FACTORY_SWEEP_IMAGE= ", second)
 
     def test_a_paused_tick_ends_the_spell(self) -> None:
         self.tick(T0)
