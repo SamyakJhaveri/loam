@@ -425,6 +425,18 @@ end_call() { echo "ended $polls_seen $reads"; }
         time.sleep(3)  # past the child's write
         self.assertEqual(window.read_text().splitlines()[1:], ["exit 0", "9"])
 
+    def test_a_lost_grader_read_never_clears_the_window(self) -> None:
+        # The call can write the state dir; a read whose output file is gone before the driver reads it is a failed
+        # read, never an "exit 0" window with no grader-fix PR open.
+        calls = self.start_call_fakes()
+        self.addCleanup(lambda: [self.kill_group(c) for c in self.calls(calls)])
+        write_exec(self.fake / "gh", '#!/bin/sh\ncase "$*" in *SamyakJhaveri/distbench*) '
+                   f'echo 9; rm -f "{self.state}"/grader-read.* ;; *"pr list"*) echo 7 ;; esac\nexit 0\n')
+        self.start_driver()
+        window = self.state / "grader-window.txt"
+        self.assertTrue(self.wait_for(lambda: window.exists(), 10), "the driver wrote no window")
+        self.assertEqual(window.read_text().splitlines()[1:], ["exit 1"])
+
     @LINUX_ONLY
     def test_a_planted_link_does_not_redirect_the_grader_window_write(self) -> None:
         # The call can write the state dir; links planted at the old temp name and at the window itself must not

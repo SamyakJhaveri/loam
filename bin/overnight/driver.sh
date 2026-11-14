@@ -43,20 +43,22 @@ end_call() { local c=$1 i
   kill -KILL -- -"$c" 2> /dev/null || kill -KILL "$c" 2> /dev/null
 }
 # The protocol's one read of DistBench (Grader window), run here because the call's settings deny it gh on DistBench:
-# grader-window.txt holds the read's UTC time, gh's exit status (124 on a timeout) and one open DistBench grader-fix
+# grader-window.txt holds the read's UTC time, gh's exit status (124 on a timeout, 137 if gh then ignored TERM for
+# 5 s, 1 if its output file was gone before it was read) and one open DistBench grader-fix
 # PR number per line. Written through a fresh mktemp file (never a fixed name the call could link elsewhere) and
 # moved with mv -T over the name itself, so a call never reads half of it and no planted link redirects the write.
 # --foreground keeps gh in the driver's process group (plain timeout makes a group of its own), so killing the
 # driver's group ends the read too. --foreground does not time out gh's children, so gh writes to a file of its own,
-# removed once read, not a pipe: a child left holding its stdout can neither keep the driver waiting past the timeout
-# nor write into the window.
+# removed once read, not a pipe: a child left holding its stdout cannot keep the driver waiting past the timeout, and
+# what it writes after the read is taken never reaches the window.
 to=(); command -v timeout > /dev/null && to=(timeout --foreground -k 5 60)
 grader_window() { local at out rc tmp
   at=$(stamp)
   tmp=$(mktemp "$O/grader-read.XXXXXX") || { rm -f "$O/grader-window.txt"; return; }   # no stale clear window
   ${to[@]+"${to[@]}"} gh pr list -R SamyakJhaveri/distbench --state open --limit 100 --json number,title,files --jq '.[] | select((.title | test("grader|regrade"; "i")) or any(.files[].path; test("(^|/)grader\\.py$|regrade"; "i"))) | .number' > "$tmp" 2>> "$O/driver.log"
   rc=$?
-  out=$(cat "$tmp"); rm -f "$tmp"
+  out=$(cat -- "$tmp") || { [ "$rc" -ne 0 ] || rc=1; }
+  rm -f "$tmp"
   [ "$rc" -eq 0 ] || echo "$(stamp) grader-window read failed: exit $rc" >> "$O/driver.log"
   tmp=$(mktemp "$O/grader-window.XXXXXX") || { rm -f "$O/grader-window.txt"; return; }   # no stale clear window
   { echo "read_at $at"; echo "exit $rc"; [ -z "$out" ] || printf '%s\n' "$out"; } > "$tmp" \
