@@ -618,4 +618,3 @@ class FactoryRunTests(unittest.TestCase):
         self.assertIn("EXIT stopped-environment (4): the frozen mutation_sweep.py predates #768 step 4",
                       (self.run_dir() / "factory.log").read_text())
         self.assertEqual(self.worker_rounds(), 1)
-
