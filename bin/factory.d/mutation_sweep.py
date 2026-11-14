@@ -419,7 +419,8 @@ def run(image: str, tests: list[str], wt: Path, timeout: float) -> tuple[int | N
     """(exit code, or None on a timeout; seconds; the output's last lines) of one pytest run in a fresh container.
 
     The tree is copied to /sweep, absent until then, with -a, so the directory and its files keep the uid that --user
-    runs as and a test can write them. --init reaps the orphans a test leaves, as init does on the host. The name is
+    runs as and a test can write them; as each run starts from a fresh copy, no edit can import bytecode an earlier run
+    cached, even an edit of the same size written in the same second as its source. --init reaps the orphans a test leaves, as init does on the host. The name is
     fixed per worktree, so a sweep killed mid-run leaves a container the next one removes, and only by that name, never
     by a filter an edit of this file could widen.
     """
@@ -428,10 +429,8 @@ def run(image: str, tests: list[str], wt: Path, timeout: float) -> tuple[int | N
     remove(name)
     try:
         docker("create", "--name", name, "--init", "--network", "none", "--user", f"{os.getuid()}:{os.getgid()}",
-               "--pids-limit", "4096", "--memory", "8g", "--memory-swap", "8g",
-               # No bytecode: an edit of the same size written in the same second as its source would import the
-               # source's cached bytecode, and the edit would survive untested.
-               "-e", "HOME=/tmp", "-e", "PYTHONDONTWRITEBYTECODE=1", image, "sh", "-c", 'cd /sweep && exec "$@"', "sh",
+               "--pids-limit", "4096", "--memory", "8g", "--memory-swap", "8g", "-e", "HOME=/tmp",
+               "--entrypoint", "sh", image, "-c", 'cd /sweep && exec "$@"', "sh",
                "python3", "-m", "pytest", "-q", "-x", "-p", "no:cacheprovider", *tests, timeout=timeout)
         docker("cp", "-a", str(wt.resolve()), f"{name}:/sweep", timeout=timeout)
         with tempfile.TemporaryFile() as log:
