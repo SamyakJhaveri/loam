@@ -111,12 +111,12 @@ ${router ? `Before a non-trivial task, read the pstack router at ${router} and f
 
 Edit nothing outside your owned globs. Do not commit. Your final text is ignored; the artifact at ${task.artifact} is your hand-back.`
 
-const INTEGRATE_PROMPT = (tasks, run, supervisorGate) => `You are the integrator for one factory ticket. The builders have edited the shared working tree and each wrote an artifact. Accept work only when its check passes, then commit; the working tree must be clean when you finish.
+const INTEGRATE_PROMPT = (tasks, run, supervisorGate, skills) => `You are the integrator for one factory ticket. The builders have edited the shared working tree and each wrote an artifact. Accept work only when its check passes, then commit; the working tree must be clean when you finish.
 
 Tasks, each with its owned globs, its check line, and its artifact path:
 ${JSON.stringify(tasks, null, 2)}
 
-Do, from the worktree root, sourcing ${run}/frozen/lib.sh first:
+${skills.length ? skills.join('\n') + '\n\n' : ''}Do, from the worktree root, sourcing ${run}/frozen/lib.sh first:
 1. For each task: read its artifact. If the artifact file is missing, the task is unmet. Otherwise rerun the task's check line yourself; if it prints FAIL, the task is unmet - do not trust the builder's reported output.
 2. For an unmet task you can fix by editing only that task's owned globs, fix it and rerun the check. If you cannot make it pass, append a line "ABANDON <objective> <reason>" to ${run}/worker/decisions.md, restore that task's owned files to HEAD so no partial edit is left, and count the task abandoned.
 3. ${supervisorGate
@@ -220,7 +220,7 @@ async function main() {
   phase('Integrate')
   // True for a target other than Loam (build_worker_prompt in bin/factory): bin/check is the supervisor's.
   const supervisorGate = args.supervisorGate === true
-  await agent(INTEGRATE_PROMPT(tasks, run, supervisorGate), { effort: 'xhigh', schema: RESULT, label: 'Integrate', phase: 'Integrate' })
+  await agent(INTEGRATE_PROMPT(tasks, run, supervisorGate, skills), { effort: 'xhigh', schema: RESULT, label: 'Integrate', phase: 'Integrate' })
 }
 
 await main()
