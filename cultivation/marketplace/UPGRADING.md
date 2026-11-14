@@ -73,7 +73,7 @@ Upgrade step: `claude plugin update sam-cc-setup@seed-skills`; the global CLAUDE
 
 ## sam-cc-setup v0.9.27 pstack router
 
-New skill `pstack`, the plugin's first model-invocable one (owner rulings of 10 and 11 Nov 2026): before a non-trivial task the main session or a `worker` calls `sam-cc-setup:pstack`, which resolves the pstack folder and picks a method from a broad-to-narrow table and the list of all principle cards; the agent then reads that pstack `SKILL.md` by path.
+New skill `pstack`, the plugin's first model-invocable one (owner rulings of 10 and 11 Nov 2026): before a task the main session or a `worker` calls `sam-cc-setup:pstack`, which resolves the pstack folder and picks a method from a broad-to-narrow table and the list of all principle cards; the agent then reads that pstack `SKILL.md` by path.
 Only `setup-pstack` stays manual; `poteto-mode` keeps its standing limit (a contested design, concurrency or a cross-cutting change), and an agent stops before any push or PR a playbook asks for.
 Its listing line raises the sam-cc-setup listing weight from 365 to 431 tokens (`bin/check`, skill-listing step).
 The factory puts the router's path, from the seed-skills `installLocation` in `~/.claude/plugins/known_marketplaces.json`, into the worker prompt (`bin/factory.d/_common.md`) and every fan-out builder prompt; `bin/factory status` prints FAIL when the file is missing.
