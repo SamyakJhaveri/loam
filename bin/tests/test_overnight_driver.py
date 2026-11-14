@@ -30,6 +30,11 @@ ROOT = pathlib.Path(__file__).resolve().parents[2]
 OVERNIGHT = ROOT / "bin" / "overnight"
 # driver.sh starts each call under a Linux-only wrapper (prctl PR_SET_CHILD_SUBREAPER, /proc); it runs only on jhaveris.
 LINUX_ONLY = unittest.skipUnless(sys.platform.startswith("linux"), "the driver's call wrapper needs Linux prctl and /proc")
+# srt (Claude Code's sandbox runtime), when installed, must also run here: inside another sandbox (an overnight call's
+# own bin/check) bwrap cannot make its namespaces.
+SRT = bool(shutil.which("srt")) and subprocess.run(
+    ["srt", "-s", "/dev/stdin", "-c", "true"], capture_output=True, input=b'{"filesystem": {"allowWrite": [], '
+    b'"denyWrite": [], "denyRead": []}, "network": {"allowedDomains": [], "deniedDomains": []}}').returncode == 0
 
 
 # The protocol's read of DistBench (Grader window), which the driver runs for the call into grader-window.txt.
@@ -518,6 +523,42 @@ print(9)
         self.assertTrue((self.home / "swaps").exists(), "no window publication reached the swap")
         self.assertEqual((self.state / "grader-window.txt").read_text().splitlines()[1:], ["exit 0", "9"],
                          f"the driver published a window file the call swapped: {(self.home / 'swaps').read_text()}")
+
+    @LINUX_ONLY
+    @unittest.skipUnless(SRT, "needs a working srt, Claude Code's sandbox runtime")
+    def test_the_calls_sandbox_writes_its_run_state_but_not_the_grader_window(self) -> None:
+        # The call's Bash runs in Claude Code's sandbox, built from the settings file the driver passes it; srt is that
+        # sandbox's runtime. The fake call tries, in it, each grader-window.txt the driver wrote before the call, its
+        # run state, a scratch run folder, its worktree, the alert log, and other Loam state.
+        (self.home / "probe.py").write_text(r"""import json, os, pathlib, shlex, subprocess, sys
+home = pathlib.Path(os.environ["HOME"])
+sandbox = json.loads(pathlib.Path(sys.argv[sys.argv.index("--settings") + 1]).read_text())["sandbox"]
+cfg = home / "srt.json"
+cfg.write_text(json.dumps({"filesystem": {"denyRead": [], **sandbox["filesystem"]},
+                           "network": {"deniedDomains": [], **sandbox["network"]}}))
+state = home / ".local/state"
+targets = [*state.rglob("grader-window.txt"), state / "loam/overnight/log.md", state / "loam/overnight/run-1/out",
+           state / "loam/worktrees/overnight-1/f", state / "loam/alerts.jsonl", state / "loam/toolchains/f"]
+with open(home / "writes", "w") as out:
+    for t in targets:
+        r = subprocess.run(["srt", "-s", str(cfg), "-c", f"mkdir -p {shlex.quote(str(t.parent))} && echo forged >> {shlex.quote(str(t))}"],
+                           capture_output=True)
+        out.write(f"{t.relative_to(state)} {'written' if r.returncode == 0 else 'refused'}\n")
+""")
+        calls = self.start_call_fakes('python3 "$HOME/probe.py" "$@"; echo done >> "$HOME/writes"')
+        self.addCleanup(lambda: [self.kill_group(c) for c in self.calls(calls)])
+        self.start_driver()
+        writes = self.home / "writes"
+        self.assertTrue(self.wait_for(lambda: writes.exists() and writes.read_text().endswith("done\n")),
+                        "the call's probe did not finish")
+        got = dict(line.split() for line in writes.read_text().splitlines()[:-1])
+        windows = [t for t in got if t.endswith("/grader-window.txt")]
+        self.assertTrue(windows, "the driver wrote no grader window before the call")
+        self.assertEqual({t: got[t] for t in windows}, dict.fromkeys(windows, "refused"),
+                         "the call can write the grader window its merge gate reads")
+        self.assertEqual(got, {**dict.fromkeys(windows, "refused"), "loam/overnight/log.md": "written",
+                               "loam/overnight/run-1/out": "written", "loam/worktrees/overnight-1/f": "written",
+                               "loam/alerts.jsonl": "written", "loam/toolchains/f": "refused"})
 
     @LINUX_ONLY
     def test_driver_leaves_a_reused_pid_alone(self) -> None:
