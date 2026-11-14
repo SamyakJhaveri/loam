@@ -154,6 +154,24 @@ class ExecTests(Scratch):
         self.assertEqual(self.helper("exec", "--as", "", *show).stdout, "sk-ant-oat01-fake-b")
         self.assertEqual(self.helper("exec", "--as").returncode, 2)
 
+    def test_exec_as_a_name_with_no_stored_token_runs_nothing(self) -> None:
+        proc = self.helper("exec", "--as", "ghost", *PRINT_TOKEN, **{TOKEN: "launch-x"})
+        self.assertEqual((proc.returncode, proc.stdout), (1, ""))
+        self.assertIn("could not read the token of 'ghost'", proc.stderr)
+
+    @LINUX_ONLY
+    def test_exec_as_reads_the_named_token_with_no_file_test_first(self) -> None:
+        # A FIFO holding the token is no regular file, so a read gated on `[ -f ]` (where a token removed between a
+        # caller's check and the read slips past to the launch value or the host /login) would skip it or refuse. Linux
+        # opens a FIFO read-write without blocking, so the token waits in it for exec's read.
+        fifo = self.acc / "piped.token"
+        os.mkfifo(fifo)
+        fd = os.open(fifo, os.O_RDWR)
+        self.addCleanup(os.close, fd)
+        os.write(fd, b"sk-ant-oat01-fake-piped\n")
+        proc = self.helper("exec", "--as", "piped", *PRINT_TOKEN, **{TOKEN: "launch-x"})
+        self.assertEqual((proc.returncode, proc.stdout), (0, "sk-ant-oat01-fake-piped"), proc.stderr)
+
     @LINUX_ONLY
     def test_exec_puts_no_token_on_a_command_line(self) -> None:
         # An `env` shim first on PATH logs its argv, which `exec env TOKEN=... cmd` would hold and /proc no longer shows.

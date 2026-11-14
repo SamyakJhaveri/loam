@@ -45,11 +45,11 @@ hyphenated pstack name.
   P2 router           every transcript that changes a file fully read, before its first change, the pstack router
                       (also the Skill call on sam-cc-setup:pstack) or a pstack SKILL.md its brief names.
   P3 method           every transcript that changes a file fully read a pstack skills/<name>/SKILL.md before its
-                      first change; a round with a change has a worker/decisions.md line
-                      `pstack: <skill> | <SKILL.md path> | ...` or a transcript that fully read a pstack SKILL.md
-                      its brief names before its first change; each such line's path ends <skill>/SKILL.md and that
-                      same file (same_path) was fully read in that round; and every other pstack method
-                      decisions.md names for a round was fully read in that round. A decisions.md line starting "Round N" (the supervisor writes
+                      first change; each worker/decisions.md line `pstack: <skill> | <SKILL.md path> | ...`
+                      (runs before 12 Nov 2026; later runs declare `method:` lines, which method_evidence.py
+                      grades) has a path ending <skill>/SKILL.md and that same file (same_path) was fully read in
+                      that round; and every other pstack method decisions.md names for a round was
+                      fully read in that round. A decisions.md line starting "Round N" (the supervisor writes
                       one before each round) and the lines after it belong to round N; earlier lines to round 1. With --attended there is no decisions.md part.
   P4 gate-in-round    the supervisor's round-N.checks of each round holds a `PASS check-green` or `FAIL
                       check-green` line (the gate ran for the round; no round-N.checks is UNSURE); and no tool
@@ -768,7 +768,6 @@ def p3(run: Run) -> tuple[str, str]:
         fails, passes, doubt = [], [], []
         read: set[str] = set()
         read_paths: set[str] = set()  # each fully read pstack method's path, as the call named it
-        changed, brief_hit = False, None
         for t in r.transcripts:
             for j in range(len(t.calls)):
                 full = full_reads(t, j)
@@ -779,7 +778,6 @@ def p3(run: Run) -> tuple[str, str]:
                 doubt += [] if getattr(run, "gate", False) else [
                     f"{x} (it may hide a change)" for x in unsure_calls(t) if READ_DOUBT not in x]
                 continue
-            changed = True
             i, _ = change
             hit = next(((j, sorted(m)) for j in range(i + 1) if (m := pstack_methods(full_reads(t, j), pstack))), None)
             unsure_here = window_doubt(run, t, change, hit is None)
@@ -791,8 +789,6 @@ def p3(run: Run) -> tuple[str, str]:
                              f"skills/<name>/SKILL.md before it")
                 continue
             passes.append(f"{at(t, t.calls[hit[0]][0])} read {', '.join(hit[1])} before {at(t, t.calls[i][0])}")
-            bi = brief_read(run, t, i)
-            brief_hit = brief_hit or (bi and f"{at(t, t.calls[bi[0]][0])} read {', '.join(bi[1])}, which its brief names")
         logged = [(n, m.group(1).split(":")[-1].strip(), m.group(2)) for n, rnd, text in lines
                   if rnd == r.n and (m := PSTACK_LINE.match(text))]
         for n, name, path in logged:
@@ -805,14 +801,8 @@ def p3(run: Run) -> tuple[str, str]:
                 doubt += [f"worker/decisions.md:{n} pstack: {name}, maybe read by {x}" for x in hidden]
             else:
                 fails.append(f"worker/decisions.md:{n} pstack: {name} but no round-{r.n} transcript fully read {path}")
-        if changed and not run.attended and not logged:
-            if brief_hit:
-                passes.append(f"no pstack: line, but {brief_hit}")
-            else:
-                fails.append("files changed but worker/decisions.md has no `pstack: <skill> | <SKILL.md path> | ...` "
-                             "line for the round and no transcript fully read a SKILL.md its brief names")
-        for n, rnd, text in lines:  # older free-text method names
-            if rnd != r.n or PSTACK_LINE.match(text):
+        for n, rnd, text in lines:  # older free-text method names; a `method:` line is method_evidence.py's
+            if rnd != r.n or PSTACK_LINE.match(text) or "method:" in text:
                 continue
             for method in sorted(named_skills(text, pstack)):
                 if method in read:

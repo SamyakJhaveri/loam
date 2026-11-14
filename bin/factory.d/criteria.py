@@ -35,10 +35,10 @@ LOWER = "lower bound"  # a measure's fourth element: the value may undercount, s
 # (_common.md); only a whole value of done, in any case and markdown, with an optional final period, claims done.
 CLAIM_LINE = re.compile(r"^[ \t*`>_-]*CLAIM:(.*)$", re.M)
 DONE = re.compile(r"[\s*_`]*done[\s*_`]*\.?[\s*_`]*", re.I)
-# FAIL names round_checks writes in place of running the block (a checks file with no CHECKS-END line), which the
-# worker's Stop hook does not do; a guard that returns early under LOAM_HOOK (lib.sh) or a line that passes first under
+# FAIL names round_checks writes in place of running the block (a checks file with no CHECKS-END line), or after it
+# (method-evidence), which the worker's Stop hook does not do; a guard that returns early under LOAM_HOOK (lib.sh) or a line that passes first under
 # it passes a `guard bin/check` line unrun, so that line's names join them per run.
-HOOK_BLIND = {"do-not-touch", "edit-scope", "worktree-dirty"}
+HOOK_BLIND = {"do-not-touch", "edit-scope", "worktree-dirty", "method-evidence"}
 SCOPE_FAILS = {"do-not-touch", "edit-scope"}  # round_checks' fences: a stall on one is a scope stall
 HOOK_GUARD = re.compile(r'LOAM_HOOK.*"\$\{1:-\}" = bin/check \] && return 0')
 HOOK_PASS = ["[", "-n", "${LOAM_HOOK:-}", "]", "&&", "pass"]

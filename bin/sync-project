@@ -269,8 +269,18 @@ git commit -q -F "$WORK/copier-commit.txt"
 C1="$(git rev-parse --short HEAD)"
 ok "committed copier's result as $C1 ($N conflicted files)"
 
-# Without LOAM_MEMSTORE_REMOTE the memory hooks cannot push the scratch store's traces anywhere.
-claude_env() { env -u LOAM_MEMSTORE_REMOTE LOAM_MEMSTORE="$WORK/memstore" TMPDIR="$WORK/claude-tmp" "$@"; }
+# Without LOAM_MEMSTORE_REMOTE the memory hooks cannot push the scratch store's traces anywhere. Each claude call runs
+# through bin/claude-account exec on the active account, whose token file must exist: exec leaves the host's /login in
+# place when no stored account is active, so the call refuses instead, on the script's stderr (fd ERR), not the call's.
+exec {ERR}>&2
+claude_env() {
+  local acc a
+  acc=${CLAUDE_ACCOUNTS_DIR:-$HOME/.config/claude-accounts}   # bin/claude-account's account directory
+  a=$(cat "$acc/active" 2> /dev/null) || a=""
+  [ -n "$a" ] && [ -f "$acc/$a.token" ] \
+    || die "no stored Claude account is active (active: ${a:-none}), so claude would run on the host's /login; run $ROOT/bin/claude-account use <name>" 2>&"$ERR"
+  env -u LOAM_MEMSTORE_REMOTE LOAM_MEMSTORE="$WORK/memstore" TMPDIR="$WORK/claude-tmp" "$ROOT/bin/claude-account" exec --as "$a" "$@"
+}
 mkdir -p "$WORK/memstore" "$WORK/claude-tmp"
 
 # In its own dir, so a file named old, new or template.diff cannot overwrite those.

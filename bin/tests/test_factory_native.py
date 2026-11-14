@@ -256,7 +256,8 @@ class NativeShellTests(unittest.TestCase):
         self.assertEqual(len(settings["hooks"]["Stop"]), 1)  # worker-settings.json's own gate hook
         self.assertEqual(settings["hooks"]["PreToolUse"], GATE)  # the pstack gate (U5), which finds its script by
         self.assertEqual(r["worker"]["env"]["LOAM_CHECKS"], str(self.h.run / "frozen/checks.sh"))  # LOAM_CHECKS
-        for name in ("pstack-gate.py", "factory-parity"):
+        # The gate and the parity rules it imports, and round_checks' method-evidence checker, run frozen.
+        for name in ("pstack-gate.py", "factory-parity", "method_evidence.py"):
             self.assertTrue((self.h.run / "frozen" / name).is_file(), name)
             self.assertIn(f"  {name}\n", (self.h.run / "frozen/sha256").read_text())
         self.assertEqual(settings["autoCompactWindow"], 450000)

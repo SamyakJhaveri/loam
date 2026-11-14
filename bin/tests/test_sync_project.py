@@ -44,7 +44,8 @@ prompt = sys.stdin.read()
 with open(os.environ["SYNC_STUB_LOG"], "a") as log:
     log.write(json.dumps({"argv": sys.argv[1:], "LOAM_MEMSTORE": os.environ.get("LOAM_MEMSTORE"),
                           "LOAM_MEMSTORE_REMOTE": os.environ.get("LOAM_MEMSTORE_REMOTE"),
-                          "TMPDIR": os.environ.get("TMPDIR"), "prompt": prompt}) + "\n")
+                          "TMPDIR": os.environ.get("TMPDIR"), "token": os.environ.get("CLAUDE_CODE_OAUTH_TOKEN"),
+                          "prompt": prompt}) + "\n")
 files = re.findall(r"`([^`\n]+)`[^`\n]* is at `([^`\n]+)`", prompt)
 if not files:
     if os.environ.get("SYNC_STUB_MODE") in ("commit", "detach"):
@@ -189,6 +190,11 @@ class SyncProjectTests(unittest.TestCase):
         self.work = self.base / "work"
         self.claude_log = self.base / "claude.log"
         self.gh_log = self.base / "gh.log"
+        # bin/claude-account's account directory, with one active stored account, never the host's.
+        self.accounts = self.base / "accounts"
+        self.accounts.mkdir()
+        (self.accounts / "a.token").write_text("sk-ant-oat01-fake-a\n")
+        (self.accounts / "active").write_text("a\n")
 
     def sync(self, *flags: str, project: str | None = None, mode: str = "",
              loam: pathlib.Path | None = None, sha: str | None = None,
@@ -209,7 +215,7 @@ class SyncProjectTests(unittest.TestCase):
                "GIT_CONFIG_KEY_3": f"url.{self.remote}.insteadOf",
                "GIT_CONFIG_VALUE_3": "https://github.com/example/renamed.git",
                "SYNC_STUB_LOG": str(self.claude_log), "SYNC_GH_LOG": str(self.gh_log),
-               "SYNC_STUB_MODE": mode, **(env or {})}
+               "SYNC_STUB_MODE": mode, "CLAUDE_ACCOUNTS_DIR": str(self.accounts), **(env or {})}
         return run(["bash", str(SYNC), "--loam", str(loam or self.tpl), "--work", str(self.work), *flags,
                     project or "example/demo", sha or self.sha], env=env, check=False)
 
@@ -249,6 +255,13 @@ class SyncProjectTests(unittest.TestCase):
             return []
         return [json.loads(line) for line in self.claude_log.read_text().splitlines()]
 
+    def test_refuses_a_model_call_with_no_stored_account_active(self) -> None:
+        (self.accounts / "active").unlink()
+        r = self.sync("--draft")
+        self.assertNotEqual(0, r.returncode, r.stdout + r.stderr)
+        self.assertIn("no stored Claude account is active", r.stderr)
+        self.assertEqual([], self.claude_calls())
+
     def remote_branches(self) -> str:
         return git("branch", "--list", "loam-sync/*", cwd=self.remote)
 
@@ -279,6 +292,7 @@ class SyncProjectTests(unittest.TestCase):
             self.assertTrue(call["LOAM_MEMSTORE"].startswith(str(self.work)), call)
             self.assertIsNone(call["LOAM_MEMSTORE_REMOTE"], call)  # the scratch store must not push
             self.assertTrue(call["TMPDIR"].startswith(str(self.work)), call)
+            self.assertEqual(call["token"], "sk-ant-oat01-fake-a")  # the active stored account's, never the host login
         gh = self.gh_log.read_text()
         self.assertIn("pr create", gh)
         self.assertIn("--draft", gh)

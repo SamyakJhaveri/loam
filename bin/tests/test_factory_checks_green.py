@@ -86,7 +86,7 @@ class ChecksGreenTests(unittest.TestCase):
     def main_loop(self, name: str, block: list[str]) -> tuple[bool, str]:
         """(green, round-1 checks output): one round, then the round cap stops a failing round."""
         script = (f"WORKTREE='{self.repo}'; DECISIONS=\"$RUN/decisions.md\"; BRANCH=t; MAX_ROUNDS=1\n"
-                  'touch "$DECISIONS"\n'
+                  'touch "$DECISIONS"; git -C "$WORKTREE" rev-parse HEAD > "$RUN/base.sha"\n'
                   "worker_round() { :; }; check_frozen() { :; }; assert_caps() { :; }; do_not_touch_hits() { :; }\n"
                   "measure_rows() { echo GREEN; exit 0; }\n"
                   "main_loop")

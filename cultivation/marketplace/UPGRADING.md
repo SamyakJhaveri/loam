@@ -3,6 +3,13 @@
 This file records why a promoted plugin change traveled. It is also the upgrade
 entry point for projects that consume the Loam marketplace.
 
+## sam-cc-setup v0.9.32 pstack method declaration
+
+The `pstack` router asks for one decision-log line per method followed (decisions.md in a factory run), a declaration `method: <skill> | test: <command>` or `method: <skill> | proof: <command> | exit <code>`, in place of the v0.9.29 `pstack:` log line.
+`bin/factory.d/method_evidence.py` grades it by rerunning the command each round, in shadow until one batch is reviewed (the owner's 12 Nov 2026 ruling); `bin/factory-parity` P3 no longer fails a round for having no `pstack:` line, so the factory's pstack gate hook, which imports P3, still needs the router and a method read before a first change but no log line.
+No grader prompt changed, so no grader replay is owed.
+Upgrade step: `claude plugin update sam-cc-setup@seed-skills`.
+
 ## sam-cc-setup v0.9.31 research-gap seats have no dollar cap
 
 The owner ruled on 13 Nov 2026 that there is no spending cap at all, so `research-gap` Claude seats no longer pass `--max-budget-usd 10`, and the skill drops its `no: budget` seat outcome.

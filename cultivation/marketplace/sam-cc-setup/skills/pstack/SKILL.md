@@ -9,7 +9,7 @@ If the folder line above is empty or not an absolute path (you read this file di
 
 - Skip this skill when your brief came from a pstack skill or already names the method.
 - Read each chosen `<P>/skills/<name>/SKILL.md` in full and follow it. Read `<P>/docs/harness/claude-code.md` only when that skill says to.
-- Log each method you follow in your decision log (decisions.md in a factory run): `pstack: <skill> | <SKILL.md path read> | <sha256 of that file> | <one line quoted from it> | <the decision it changed>`.
+- Declare each method you follow in your decision log (decisions.md in a factory run), one line: `method: <skill> | test: <command>` or `method: <skill> | proof: <command> | exit <code>`.
 - Never call the Skill tool on a `pstack:` skill. Never use setup-pstack, poteto-help, sharpen, in-your-own-words or make-bot-ui.
 - A skill marked (spawns) starts agents. In the main session, state the agent count first, then hand the task and the skill path to one `worker`; `audit` is the exception, run by the agent that did the work. A worker runs it within about a dozen agents. Without the Agent tool, use the skill's one-context prompt in its `references/`, or do the delegated role yourself in one context: interrogate's adversary work too, never skipped.
 - poteto-mode only for a contested design, concurrency or a cross-cutting change (standing ruling: 1.9x cost, no quality gain in the pilot). Stop before any push or PR that a playbook asks for.

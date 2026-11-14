@@ -4,7 +4,13 @@ Read on demand. None of this is loaded in a normal session.
 
 ## Worktrees
 
-Give each parallel worker its own worktree (`claude --worktree <name>`). One
+Give each parallel worker its own worktree (`git worktree add <path> -b <branch>`).
+On a host with a Loam checkout and stored Claude accounts, start it with
+`"${LOAM_HOME:-$HOME/loam}/bin/agent-session" --dir <path> <name> "<goal>" ["<task>"]`:
+a named tmux session running `claude` on a stored account's token, never the
+host's `/login` (a plain `claude --worktree <name>` uses the login unless Loam's
+`claude` wrapper is first on PATH). Elsewhere, use `claude --worktree <name>`
+instead of both steps. One
 checkout is safe only for disjoint files. For a shared GPU or database, wrap the
 command in `flock "$HOME/.local/state/<project>/locks/<resource>.lock" <cmd>`, where
 `<project>` is `{{ project_name }}` (util-linux; absent on stock macOS). Create the
