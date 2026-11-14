@@ -3,6 +3,12 @@
 This file records why a promoted plugin change traveled. It is also the upgrade
 entry point for projects that consume the Loam marketplace.
 
+## sam-cc-setup v0.9.32 the reviewer checks the owner's eight principles
+
+The owner asked on 13 Nov 2026 that every worker follow eight pstack principles and that reviewers check the work against them. `reviewer.md` gains a sixth item: a change that breaks one of the eight is a finding, rated by its impact. The factory worker prompt (`bin/factory.d/_common.md`) names the eight in its one principle list, and the Codex review prompt asks the same of Codex.
+A grader prompt changed, so a grader replay is owed before merge (docs/factory/LOOP.md, Grader change protocol).
+Upgrade step: `claude plugin update sam-cc-setup@seed-skills`, for a by-hand reviewer Agent call; the factory reads the checkout's reviewer.md.
+
 ## sam-cc-setup v0.9.31 research-gap seats have no dollar cap
 
 The owner ruled on 13 Nov 2026 that there is no spending cap at all, so `research-gap` Claude seats no longer pass `--max-budget-usd 10`, and the skill drops its `no: budget` seat outcome.
