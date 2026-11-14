@@ -35,14 +35,20 @@ DISTBENCH_RESULTS_RE = (
     r'^(src/|tasks/|agent/|tests?/|docs/tickets/checks/|docs/tickets/integration\.tsv$|experiments/run-ledger\.jsonl$|\.github/|\.claude/|\.codex/|\.loam/|requirements|[^/]+\.(py|pyc|so)$|[^/]+/__init__\.|bin/([^/]+\.(py|pyc|so)$|[^/]+/)|bin/(check|integrate|gate\.py|grade-session|calibrate|rehearse|done-checks|audit-agent-readable|cheat_drill|build-slice))|(^|/)(conftest\.py|sitecustomize\.py|usercustomize\.py|pyproject\.toml|pytest\.ini|setup\.cfg|tox\.ini|\.?ruff\.toml)$|(^|/)\.venv(/|$)|\.pth$|PREREG'
 )
 
+# A reply holding "slow" takes 2 s and records when it started and ended, next to the worktree (claude runs in it) or
+# the -o file (codex), so a test can tell whether the reviewer and the Codex review ran at the same time.
 FAKE_CLAUDE = """#!/usr/bin/env python3
-import json, sys
+import json, pathlib, sys, time
 reply = sys.stdin.read().rsplit("REPLY ", 1)[1].splitlines()[0]
+if "slow" in reply:
+    start = time.time()
+    time.sleep(2)
+    (pathlib.Path.cwd().parent / "times.reviewer").write_text(f"{start} {time.time()}")
 print(json.dumps({"type": "result", "subtype": "success", "is_error": False, "total_cost_usd": 0, "result": reply}))
 """
 
 FAKE_CODEX = """#!/usr/bin/env python3
-import pathlib, sys
+import pathlib, sys, time
 if "mcp" in sys.argv:
     print("[]")
     sys.exit(0)
@@ -53,6 +59,10 @@ with calls.open("a") as f:
     f.write(out.name + "\\n")
 reply = out.parent / ("codex-reply.%d" % len(calls.read_text().splitlines()))
 if reply.exists():
+    if "slow" in reply.read_text():
+        start = time.time()
+        time.sleep(2)
+        (out.parent.parent / "times.codex").write_text(f"{start} {time.time()}")
     out.write_text(reply.read_text())
 """
 
@@ -135,13 +145,14 @@ class CappedReviewTests(unittest.TestCase):
 
     def run_loop(self, reviews: list[object], codex: list[str | None] | None = None,
                  judges: list[object] | None = None, commits: dict[int, str] | None = None,
-                 env_extra: dict[str, str] | None = None) -> tuple[str, list[dict]]:
+                 env_extra: dict[str, str] | None = None, rc: int = 0) -> tuple[str, list[dict]]:
         """Run one round per reply of `graders "$ROUND" && open_pr`; return the loop's stderr and the gh calls.
 
         reviews[k] is the reviewer's reply in round k+1 (a string goes verbatim, anything else as JSON).
         judges[k], when given, is the judge's reply in round k+1 the same way; the judge passes otherwise.
         codex, when given, turns the Codex review on: codex[k] is the -o file text of Codex call k+1, None for no file.
         commits[k], when given, is a path the worker commits before round k is graded.
+        rc is the exit status the loop must end with.
         """
         for k, path in (commits or {}).items():
             (self.run_dir / f"commit.{k}").write_text(path)
@@ -172,7 +183,7 @@ class CappedReviewTests(unittest.TestCase):
                                    "FACTORY_RUNS_ROOT": str(self.top / "runs"), "REPO": "acme/widget",
                                    "TICKET": TICKET, "PATH": f"{self.bin}:{env['PATH']}", **(env_extra or {})},
                               capture_output=True, text=True, check=False)
-        self.assertEqual(proc.returncode, 0, proc.stderr)
+        self.assertEqual(proc.returncode, rc, proc.stderr)
         calls = [json.loads(x) for x in self.gh_log.read_text().splitlines()] if self.gh_log.exists() else []
         return proc.stderr, calls
 
@@ -211,6 +222,71 @@ class CappedReviewTests(unittest.TestCase):
                 stderr, calls = self.run_loop([{"verdict": "fix", "findings": [first_block]}, second])
                 self.assertIn("first defect", (self.run_dir / "round-1.fixes").read_text())
                 self.assert_draft_with_filed_finding(stderr, calls, finding)
+
+    def test_the_reviewer_and_the_codex_review_run_at_the_same_time(self) -> None:
+        self.new_run()
+        review = {"verdict": "merge", "findings": [review_finding("low", "slow reviewer note")]}
+        codex = {**CLEAN_CODEX, "findings": [{"severity": "low", "file": "bin/x", "line_start": 3, "line_end": 3,
+                                             "confidence": 0.9, "title": "t", "body": "slow codex note"}]}
+        stderr, calls = self.run_loop([review], codex=[json.dumps(codex)])
+        (r_start, r_end), (c_start, c_end) = ([float(x) for x in (self.top / f"times.{who}").read_text().split()]
+                                              for who in ("reviewer", "codex"))
+        self.assertLess(max(r_start, c_start), min(r_end, c_end), "the two 2 s reviews did not overlap")
+        # Both replies were read: each one's finding reaches the PR body.
+        body = self.pr_create(calls)["body"]
+        self.assertIn("slow reviewer note", body)
+        self.assertIn("slow codex note", body)
+
+    def test_a_review_that_stops_the_run_ends_the_other_review_and_the_run_once(self) -> None:
+        self.new_run()
+        (self.top / "codex-home" / "auth.json").unlink()  # the Codex review stops the run before its call
+        review = {"verdict": "merge", "findings": [review_finding("low", "slow reviewer note")]}
+        stderr, calls = self.run_loop([review], codex=[json.dumps(CLEAN_CODEX)], rc=4)
+        self.assertFalse((self.top / "times.reviewer").exists(), "the reviewer's 2 s call ran to its end")
+        self.assertEqual(stderr.count(" EXIT "), 1, stderr)
+        self.assertIn("EXIT stopped-environment (4)", stderr)
+        self.assertEqual((self.run_dir / "status").read_text(), "stopped-environment\n")
+        self.assertEqual(calls, [])
+
+    def review_both(self, reviewer: str, codex: str) -> subprocess.CompletedProcess[str]:
+        """Run review_both on round 1 with run_review and run_codex_review replaced by the given bash bodies."""
+        run = self.top / "run"
+        run.mkdir()
+        script = (f"RUN='{run}'; RUNS_ROOT='{self.top}'; LOG=\"$RUN/factory.log\"; IS_FILE=0; KEY=7\n"
+                  'date -u +%s > "$RUN/launched"; notify() { :; }\n'
+                  f"run_review() {{ {reviewer}; }}\nrun_codex_review() {{ {codex}; }}\nreview_both 1\n")
+        env = {k: v for k, v in os.environ.items() if k not in INHERITED}
+        return subprocess.run(["bash", "-c", f". bin/factory\n{script}"], cwd=ROOT, env={**env, "FACTORY_SOURCED": "1"},
+                              capture_output=True, text=True, check=False, timeout=60)
+
+    def test_a_review_killed_before_its_verdict_stops_the_run(self) -> None:
+        self.top = pathlib.Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, self.top)
+        proc = self.review_both('kill -KILL "$BASHPID"', "return 0")
+        self.assertEqual(proc.returncode, 4, proc.stderr)
+        self.assertEqual((self.top / "run" / "status").read_text(), "stopped-environment\n")
+
+    def test_a_review_leaves_no_process_behind(self) -> None:
+        helper = 'sh -c \'echo $$ > "$1"; exec sleep 30\' _ "$RUN/helper.pid"'
+        wait_helper = 'until [ -s "$RUN/helper.pid" ]; do sleep 0.1; done'
+        for name, reviewer, codex in (
+            # The reviewer waits in a nested command substitution, as setup helpers do; Codex then stops the run.
+            ("halted", f': "$( ( {helper} ) )"', f'{wait_helper}; finish stopped-environment "no login"'),
+            # The reviewer starts a helper and is killed; its group outlives it.
+            ("killed", f'{helper} & {wait_helper}; kill -KILL "$BASHPID"', "sleep 0.5"),
+        ):
+            with self.subTest(name):
+                self.top = pathlib.Path(tempfile.mkdtemp())
+                self.addCleanup(shutil.rmtree, self.top)
+                proc = self.review_both(reviewer, codex)
+                self.assertEqual(proc.returncode, 4, proc.stderr)
+                pid = int((self.top / "run" / "helper.pid").read_text())
+                try:
+                    os.kill(pid, 0)
+                except ProcessLookupError:
+                    continue
+                os.kill(pid, 9)
+                self.fail("a helper the reviewer started outlived review_both")
 
     def codex_fixes(self) -> list[str]:
         fixes = self.run_dir / "round-1.fixes"

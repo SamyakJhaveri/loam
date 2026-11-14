@@ -113,6 +113,12 @@ REVIEW_OUTCOME="if ($REVIEW_BLOCKING | length) > 0 then \"fix\" else \"merge\" e
 # The Codex review's rule: a critical or high finding blocks; its verdict word is not read either.
 CODEX_BLOCKING='[.findings[]? | select(.severity == "critical" or .severity == "high")]'
 
+# A model call's files in the run dir are named after CALL_STEM (call_start): `call` for every call but the Codex
+# review run beside the reviewer (review_both), whose are `call-codex`. call_live, holds_slot and orphan_call_kill
+# read every name in CALL_STEMS.
+CALL_STEM=call
+CALL_STEMS="call call-codex"
+
 SRC=""
 BODY=""
 ERRS=0
@@ -2061,19 +2067,23 @@ group_same() { # <pgid> [ps lstart]
 # process carries its FACTORY_CALL_TAG. `call` reads `<wrapper pid> <tag> [<wrapper lstart>]`; an old two-field line
 # has no start time. A stuck call's `call` and `call.group` stay on its stopped run for good (call_end), so without the
 # start time a pid reused later as a group leader would hold that run's slot again. One predicate for holds_slot,
-# run_busy and cmd_run's relaunch refusal.
+# run_busy and cmd_run's relaunch refusal; it reads each of CALL_STEMS, since the reviews run two calls at once.
 call_live() { # <run dir>
-  local c p t s g= gs=
-  c=$(cat "$1/call" 2> /dev/null) || return 1
-  read -r p t s <<< "$c"
-  { read -r g gs < "$1/call.group"; } 2> /dev/null
-  group_same "$p" "$s" || { [ -n "$g" ] && group_same "$g" "$gs"; } || call_tagged 0 "$t"
+  local c p t s g gs stem
+  for stem in $CALL_STEMS; do
+    c=$(cat "$1/$stem" 2> /dev/null) || continue
+    read -r p t s <<< "$c"
+    g= gs=
+    { read -r g gs < "$1/$stem.group"; } 2> /dev/null
+    group_same "$p" "$s" || { [ -n "$g" ] && group_same "$g" "$gs"; } || call_tagged 0 "$t" && return 0
+  done
+  return 1
 }
 
-# The call's own process group id, the first field of the run's `call.group` (call_start), or nothing.
-call_group() { # <run dir>
+# The current call's own process group id, the first field of its `.group` file (call_start), or nothing.
+call_group() {
   local g= _
-  { read -r g _ < "$1/call.group"; } 2> /dev/null
+  { read -r g _ < "$RUN/$CALL_STEM.group"; } 2> /dev/null
   echo "$g"
 }
 
@@ -2108,7 +2118,7 @@ run_project() { # <run dir>
 # With `peek` (cmd_next --dry-run) it only looks: a run the reap above would free reads free, and it takes no
 # owner.flock, kills nothing, writes no status and sends no alert.
 holds_slot() { # <run dir> [peek]
-  local st o fd peek=${2-}
+  local st o fd f peek=${2-}
   # Read-only, so a run dir with no lease never gets one here.
   [ -f "$1/lease" ] || return 1
   if [ -f "$1/status" ]; then
@@ -2132,7 +2142,7 @@ holds_slot() { # <run dir> [peek]
     # a relaunch waits on this lease, so no `call` of its own is written meanwhile.
     if [ "$st" = running ] || [ "$st" = waiting-limit ]; then
       printf 'stopped-environment\n' > "$1/status"
-      rm -f "$1/call" "$1/call.tmp" "$1/call.group" "$1/call.group.tmp"
+      for f in $CALL_STEMS; do rm -f "$1/$f" "$1/$f.tmp" "$1/$f.group" "$1/$f.group.tmp" "$1/$f.review"; done
     fi
     exec {fd}>&-   # before the alert, whose children would otherwise inherit this run's lease
     [ "$st" = running ] || [ "$st" = waiting-limit ] || return 1
@@ -2162,15 +2172,15 @@ holds_slot() { # <run dir> [peek]
 # `owner` is re-read just before TERM, since a relaunch of a run frozen before owner.flock writes `owner` under its own
 # copy's owner.lock, which does not exclude this caller; a changed line kills nothing, return 1.
 orphan_call_kill() { # <run dir> <owner line judged>
-  local f g s now gs=() ss=() ks=() i
-  for f in "$1/call" "$1/call.group"; do
+  local stem f g s now gs=() ss=() ks=() i
+  for stem in $CALL_STEMS; do for f in "$1/$stem" "$1/$stem.group" "$1/$stem.review"; do
     g= s=
     { read -r g s < "$f"; } 2> /dev/null
     [[ "$g" =~ ^[1-9][0-9]*$ ]] && [ "$g" != 1 ] && [ -n "$s" ] || continue
     s=${s%"${s##*[![:space:]]}"}
     now=$(TZ=UTC LC_ALL=C ps -o lstart= -p "$g" 2> /dev/null) || continue
     [ "${now%"${now##*[![:space:]]}"}" = "$s" ] && gs+=("$g") && ss+=("$s")
-  done
+  done; done
   [ "$(cat "$1/owner" 2> /dev/null)" = "$2" ] || return 1
   [ "${#gs[@]}" -gt 0 ] || return 0
   log "the supervisor of ${1%/} is gone and its model call still runs; sending TERM to process group(s) ${gs[*]}"
@@ -2589,9 +2599,9 @@ codex_result() { # jsonl exit_code [duration_ms] -> result JSON on stdout; durat
 # around it or not. The wrapper keeps the dispositions it started with, so a QUIT ignored there cannot end it before
 # it has cleaned up the call (#468).
 call_start() { # dir cmd... -> CALL_PID, CALL_TAG
-  local dir="$1" start; shift
-  CALL_TAG="$$.$SECONDS.$RANDOM"; CALL_PID=; CALL_STUCK=
-  rm -f "$RUN/call.reap" "$RUN/call.group" "$RUN/call.group.tmp"
+  local dir="$1" start c="$RUN/$CALL_STEM"; shift
+  CALL_TAG="$BASHPID.$SECONDS.$RANDOM"; CALL_PID=; CALL_STUCK=   # BASHPID, not $$: review_both runs two calls at once
+  rm -f "$c.reap" "$c.group" "$c.group.tmp"
   trap 'call_abort INT 130' INT; trap 'call_abort TERM 143' TERM; trap 'call_abort HUP 129' HUP
   ( cd "$dir" && export FACTORY_CALL_TAG="$CALL_TAG" && exec perl -MPOSIX -MTime::HiRes=time,sleep -e '
       POSIX::setsid() == $$ or die "setsid: $!\n";
@@ -2622,15 +2632,15 @@ call_start() { # dir cmd... -> CALL_PID, CALL_TAG
           else { $r{STUCK} = [@p]; last } }
         sleep 0.1 }
       if (%r && open my $h, ">", $rep) { print $h "$_ @{$r{$_}}\n" for grep { $r{$_} } qw(TERM KILL STUCK) }
-      exit(!defined $st ? 137 : $st & 127 ? 128 + ($st & 127) : $st >> 8)' "$RUN/call.reap" "$RUN/call.group" "$@" ) <&0 &
+      exit(!defined $st ? 137 : $st & 127 ? 128 + ($st & 127) : $st >> 8)' "$c.reap" "$c.group" "$@" ) <&0 &
   CALL_PID=$!
-  printf '%s %s\n' "$CALL_PID" "$CALL_TAG" > "$RUN/call.tmp" && mv -f "$RUN/call.tmp" "$RUN/call" \
-    || log "could not write $RUN/call; a SIGKILL now would free the slot while the call runs"
+  printf '%s %s\n' "$CALL_PID" "$CALL_TAG" > "$c.tmp" && mv -f "$c.tmp" "$c" \
+    || log "could not write $c; a SIGKILL now would free the slot while the call runs"
   # The wrapper's start time follows the first write, so a ps does not delay it; the wrapper is this shell's unreaped
   # child, so its pid cannot have been reused yet.
   start=$(TZ=UTC LC_ALL=C ps -o lstart= -p "$CALL_PID" 2> /dev/null) && start=${start%"${start##*[![:space:]]}"} \
-    && [ -n "$start" ] && printf '%s %s %s\n' "$CALL_PID" "$CALL_TAG" "$start" > "$RUN/call.tmp" \
-    && mv -f "$RUN/call.tmp" "$RUN/call" || :
+    && [ -n "$start" ] && printf '%s %s %s\n' "$CALL_PID" "$CALL_TAG" "$start" > "$c.tmp" \
+    && mv -f "$c.tmp" "$c" || :
 }
 # However the call ends, by exit or by its limit, whatever it left behind, reparented to the wrapper, in its group or
 # carrying its tag, gets TERM, then KILL after a 5 s grace, and must be gone 5 s later, or the run stops: a child left
@@ -2639,29 +2649,29 @@ call_start() { # dir cmd... -> CALL_PID, CALL_TAG
 # its tag. The leader is reaped first, since a zombie leader keeps its group alive. A survivor sets CALL_STUCK, and the
 # caller stops the run once its ledger row for the call is written.
 call_end() { # role -> the call's own exit status
-  local rc=0 s p
+  local rc=0 s p c="$RUN/$CALL_STEM"
   wait "$CALL_PID" || rc=$?
-  [ -f "$RUN/call.reap" ] && while read -r s p; do
+  [ -f "$c.reap" ] && while read -r s p; do
     case $s in
       TERM) log "the $1 call left processes behind ($p, reparented to its wrapper or in its group); sending TERM" ;;
       KILL) log "the $1 call's processes outlived TERM by 5 s; sending KILL to $p" ;;
       STUCK) CALL_STUCK="the $1 call's processes ($p) are still alive 5 s after KILL"; log "$CALL_STUCK" ;;
     esac
-  done < "$RUN/call.reap"
-  rm -f "$RUN/call.reap"
-  call_reap "$1" && [ -z "$CALL_STUCK" ] && rm -f "$RUN/call" "$RUN/call.tmp" "$RUN/call.group" "$RUN/call.group.tmp"
+  done < "$c.reap"
+  rm -f "$c.reap"
+  call_reap "$1" && [ -z "$CALL_STUCK" ] && rm -f "$c" "$c.tmp" "$c.group" "$c.group.tmp"
   trap - INT TERM HUP
   return "$rc"
 }
 call_reap() { # role
   call_gone 0 && return
-  log "the $1 call left processes behind (groups $CALL_PID $(call_group "$RUN") or tag $CALL_TAG); sending TERM"
+  log "the $1 call left processes behind (groups $CALL_PID $(call_group) or tag $CALL_TAG); sending TERM"
   call_signal TERM; call_signal CONT
   call_gone 50 && return
   log "the $1 call's processes outlived TERM by 5 s; sending KILL"
   call_signal KILL
   call_gone 50 && return
-  CALL_STUCK="the $1 call's processes (groups $CALL_PID $(call_group "$RUN") or tag $CALL_TAG) are still alive 5 s after KILL"
+  CALL_STUCK="the $1 call's processes (groups $CALL_PID $(call_group) or tag $CALL_TAG) are still alive 5 s after KILL"
   log "$CALL_STUCK"
   return 1
 }
@@ -2678,14 +2688,15 @@ call_abort() { # signal status
   ( sleep 10; call_signal KILL ) & killer=$!
   wait "$CALL_PID" 2> /dev/null
   kill -KILL "$killer" 2> /dev/null   # it inherits the ignored TERM
-  call_gone 50 || { call_signal KILL; call_gone 50; } && rm -f "$RUN/call" "$RUN/call.tmp" "$RUN/call.group" "$RUN/call.group.tmp"
+  local c="$RUN/$CALL_STEM"
+  call_gone 50 || { call_signal KILL; call_gone 50; } && rm -f "$c" "$c.tmp" "$c.group" "$c.group.tmp"
   exit "$2"
 }
 call_signal() { call_grouped "$1"; call_tagged "$1"; }
 # The wrapper's group and, once the wrapper has written call.group, the call's own (call_start).
 call_grouped() { # signal, or 0 to look -> 0 when a process in either group took it
   local g r=1
-  for g in "$CALL_PID" $(call_group "$RUN"); do kill -"$1" -- "-$g" 2> /dev/null && r=0; done
+  for g in "$CALL_PID" $(call_group); do kill -"$1" -- "-$g" 2> /dev/null && r=0; done
   return "$r"
 }
 # Linux only: a host with no /proc (a Mac) finds no tagged process, and the group kill alone stands. A zombie's
@@ -3189,6 +3200,57 @@ run_mutation_sweep() { # round -> 0 unless a survivor blocks
   return 1
 }
 
+# The reviewer and the Codex review grade the same tree and write their own files, so they run at once, each in a
+# subshell (review_child) that is a process group of its own (set -m); the Codex call's files are call-codex
+# (CALL_STEM), so call_live and the reapers see both calls. The supervisor owns every stop: a signal TERMs both groups
+# (review_halt), which ends a call through its call_abort and every helper the review started; a child's finish only
+# writes its finish file, which the supervisor polls for (wait -n can pass over a child that exited first), then halts
+# the other review and finishes the run, once. A review that ended with neither a verdict nor a finish file, such as
+# one killed, stops the run, since a missing reply would read as a clean review.
+review_both() { # round
+  local f r c rr rc
+  assert_caps
+  stop_requested && finish stopped "FACTORY_STOP before the reviewer and Codex review calls"
+  rm -f "$RUN/round-$1.review.finish" "$RUN/round-$1.codex-review.finish"
+  trap 'review_halt; exit 130' INT; trap 'review_halt; exit 143' TERM; trap 'review_halt; exit 129' HUP
+  set -m
+  ( review_child "$RUN/round-$1.review.finish"; run_review "$1" ) & r=$!
+  ( CALL_STEM=call-codex; review_child "$RUN/round-$1.codex-review.finish"; run_codex_review "$1" ) & c=$!
+  set +m
+  while [ -n "$(jobs -rp)" ]; do
+    [ ! -s "$RUN/round-$1.review.finish" ] && [ ! -s "$RUN/round-$1.codex-review.finish" ] || { review_halt; break; }
+    sleep 0.2
+  done
+  wait "$r"; rr=$?
+  wait "$c"; rc=$?
+  review_halt   # a helper left in either group
+  trap - INT TERM HUP
+  rm -f "$RUN/call.review" "$RUN/call-codex.review"
+  for f in "$RUN/round-$1.review.finish" "$RUN/round-$1.codex-review.finish"; do
+    [ -s "$f" ] && finish "$(head -n 1 "$f")" "$(tail -n +2 "$f")"
+  done
+  [ "$rr" -le 1 ] || finish stopped-environment "the reviewer's process ended with status $rr before its verdict"
+  [ "$rc" -le 1 ] || finish stopped-environment "the Codex review's process ended with status $rc before its verdict"
+}
+# Each child is the leader of its group: jobs -p names a child whose pid review_both has not saved yet, and the saved
+# r and c name a group whose leader exited while a helper it started lives on.
+review_halt() {
+  local p g=()
+  for p in $(jobs -p) ${r-} ${c-}; do g+=("-$p"); done
+  [ "${#g[@]}" = 0 ] || kill -TERM -- "${g[@]}" 2> /dev/null
+  wait $(jobs -p) 2> /dev/null
+}
+# In a review_both child, finish writes the status and message to the child's file for the supervisor and exits. The
+# child records its group and start time in <CALL_STEM>.review, so once the supervisor is gone orphan_call_kill ends
+# the review itself, not only its call, and an orphaned review starts no further call.
+review_child() { # finish file
+  local s me=$BASHPID
+  REVIEW_FINISH=$1
+  s=$(TZ=UTC LC_ALL=C ps -o lstart= -p "$me")
+  printf '%s %s\n' "$me" "${s%"${s##*[![:space:]]}"}" > "$RUN/$CALL_STEM.review"
+  finish() { printf '%s\n%s\n' "$1" "$2" > "$REVIEW_FINISH"; exit 2; }
+}
+
 # A harness ticket changes no path matching FACTORY_RESULTS_RE, an ERE for the target's results code and gate inputs
 # (for distbench, the launcher's RESULTS_RE); with it unset, every ticket counts as results code. The round's changed
 # paths, both sides of a rename, go NUL-separated to round-N.paths, so git quotes no name and bin/factory-parity's P8
@@ -3230,7 +3292,8 @@ graders() { # round -> 0 when the judge passes and nothing blocks
   if run_judge "$1"; then run_mutation_sweep "$1" || ok=1; else ok=1; fi
   # On a harness ticket the Codex review goes first and the Opus reviewer runs only on its critical or high finding,
   # an unparseable reply's fallback included, or to recheck its own open finding (ASK-KARPATHY item E); results code
-  # always gets both. A skip writes round-N.review.skipped, which bin/factory-parity's P8 reads as a reviewed round.
+  # gets both, at once (review_both). A skip writes round-N.review.skipped, which bin/factory-parity's P8 reads as a
+  # reviewed round.
   rm -f "$RUN/round-$1.review.skipped"
   if [ "$CODEX_REVIEW" = yes ] && harness_ticket "$1"; then
     run_codex_review "$1"
@@ -3241,9 +3304,10 @@ graders() { # round -> 0 when the judge passes and nothing blocks
       printf '%s\nresults-re: %s\n' "$REVIEWER_SKIPPED" "$FACTORY_RESULTS_RE" > "$RUN/round-$1.review.skipped"
       log "reviewer $REVIEWER_SKIPPED"
     fi
+  elif [ "$CODEX_REVIEW" = yes ]; then
+    review_both "$1"
   else
     run_review "$1"
-    [ "$CODEX_REVIEW" = yes ] && run_codex_review "$1"
   fi
   verify_round "$1" || ok=1   # 1 when it queued a fix (review.sh); the reviews' own blocking count decides nothing here
   [ "$(tree_signature "$WORKTREE")" = "$sig" ] || finish stopped-environment "grader changed the tree"
