@@ -3,6 +3,13 @@
 This file records why a promoted plugin change traveled. It is also the upgrade
 entry point for projects that consume the Loam marketplace.
 
+## sam-cc-setup v0.9.34 research-gap's brief template names Fable 5.2
+
+The brief template's model example still said "Fable 5.1 at high", the retired model, so a brief copied from it asked for a model the owner no longer uses.
+It now says Fable 5.2; the same change fixes the 5.1 names in the factory docs and the overnight protocol outside the plugin.
+No grader prompt changed, so no grader replay is owed.
+Upgrade step: `claude plugin update sam-cc-setup@seed-skills`.
+
 ## sam-cc-setup v0.9.33 pstack router sends ticket-shaped build work to the factory lane
 
 The router told a lead to hand spawning work to "one `worker`" and had no factory line, so a lead that obeyed it was pointed away from the factory the owner made the default builder (DistBench audit, 13 Nov 2026: 9 of 83 landed branches came from the factory).

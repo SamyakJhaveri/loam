@@ -23,7 +23,7 @@ So no reviewer, verifier or grader you start gets a cost, turn or time limit. Ev
 
 - Loam repo `SamyakJhaveri/loam` only. Never write to DistBench (no commit, issue, label, PR or file).
 - Never force push, never push to `main` directly, never tag, never change settings, hooks or deny lists outside a PR's own diff, never edit a ticket labelled `ready-for-human`, never relabel anything to `ready-for-agent`.
-- Models: Opus 5.5 at high for every Claude agent; `escalate` (Fable 5.1, high) for the blind review; Codex through a bare `codex exec -s read-only --skip-git-repo-check -c model_reasoning_effort=high -o <file> "<prompt>"` (no pipe, redirect, `cd` or `;` in that command). Never Haiku, Sonnet or max.
+- Models: Opus 5.5 at high for every Claude agent; `escalate` (Fable 5.2, high) for the blind review; Codex through a bare `codex exec -s read-only --skip-git-repo-check -c model_reasoning_effort=high -o <file> "<prompt>"` (no pipe, redirect, `cd` or `;` in that command). Never Haiku, Sonnet or max.
 - A `codex exec` `-o` file is always under `O`, and its `-C` always a detached worktree, never `~/loam` or `~/loam/bin/overnight`: Codex runs outside the Claude sandbox, so the sandbox's deny does not bind it.
 - Commits are Samyak's: plain messages, no co-author or agent lines.
 - No em dashes in anything you write.

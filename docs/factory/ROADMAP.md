@@ -21,7 +21,7 @@ Items marked Track A need no ticket and no loop.
 
 ## F0 Track A fixes (now, any session)
 
-- Set `cultivation/marketplace/sam-cc-setup/agents/plan-reviewer.md` model to `claude-fable-5-1`, effort stays high; bump the plugin; check the listing weight.
+- Set `cultivation/marketplace/sam-cc-setup/agents/plan-reviewer.md` model to `claude-fable-5-2`, effort stays high; bump the plugin; check the listing weight.
 - Fix `gh` on the Mac: re-login the keyring and trust the proxy CA, or install a three-line shim over `ssh jhaveris gh "$@"` that rewrites `--body-file X` to stdin; prove it with `gh api rate_limit`.
 - Add `bin/runner` (`LOOP.md` Commands) and use it for every remote command from then on.
 - Commit `bin/factory.d/fixtures/`: `S1.before.md`, `S4.before.md`, `S5.before.md` (the pre-addendum bodies from the lean-v3 tickets directory) and `S1.md` to `S5.md`, the lean-v3 tickets rewritten into the contract form (`CONTRACT.md`).
