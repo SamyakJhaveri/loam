@@ -32,6 +32,9 @@ NOT_A_TICKET = "A note that someone labelled ready-for-agent.\n\nNo done-checks 
 # An editor GraphQL returns as null with a lastEditedAt: the body was edited by an account GitHub no longer names.
 UNNAMED = "<unnamed>"
 
+# A runner whose calls bill an API key: since 13 Nov 2026 no runner has a daily budget, on any billing route.
+BILLED = {"ANTHROPIC_API_KEY": "sk-ant-test"}
+
 
 def sourced(script: str, env: dict[str, str] | None = None) -> subprocess.CompletedProcess[str]:
     """Run `script` in a bash that has sourced bin/factory from the repo root."""
@@ -201,16 +204,15 @@ tmux() {
                 proc = self.next_dry_run((7, body), now=now)
                 self.assertEqual(proc.stdout.strip(), out, proc.stderr)
 
-    def test_same_body_stopped_daily_waits_today_and_relaunches_on_a_later_day(self) -> None:
-        # A daily-budget stop says nothing about the ticket (#386): the UTC date of its status file decides.
+    def test_a_stopped_daily_run_from_before_the_caps_went_relaunches_at_once(self) -> None:
+        # A run that stopped at a daily budget before 13 Nov 2026 relaunches as stopped does, the same UTC day and on
+        # an API key, and even with the shared daily ledger past any old budget.
         self.run_dir(7, CLEAN, "stopped-daily")
-        proc = self.next_dry_run((7, CLEAN))
-        self.assertEqual(proc.stdout.strip(), "nothing to launch", proc.stderr)
-        self.assertIn("waiting #7: daily budget spent", proc.stderr)
-        self.assertNotIn("parked", proc.stderr)
-        os.utime(self.runs / "7" / key(CLEAN) / "status", (86400, 86400))
-        proc = self.next_dry_run((7, CLEAN))
+        (self.runs / "ledger-daily.jsonl").write_text(
+            json.dumps({"date": time.strftime("%Y-%m-%d", time.gmtime()), "ticket": "7", "role": "worker", "cost_usd": 1e9}) + "\n")
+        proc = self.next_dry_run((7, CLEAN), FACTORY_DAILY_BUDGET_USD="150", **BILLED)
         self.assertEqual(proc.stdout.strip(), "would launch #7", proc.stderr)
+        self.assertNotIn("daily budget", proc.stderr)
 
     def test_runner_assigned_issue_relaunches_only_after_a_relaunchable_stop(self) -> None:
         # The launch assigned the issue to the runner and nothing unassigns it (#386, #440): of the runner's own,
@@ -381,7 +383,7 @@ tmux() {
 
     def test_three_environment_stops_with_no_round_progress_park(self) -> None:
         # A worker call with no result event stops before its round's checks, so a relaunch reruns the same round and
-        # MAX_ROUNDS never trips; every relaunch costs ROUND_BUDGET_USD and a page (#547). The third such stop in a row parks.
+        # MAX_ROUNDS never trips; every relaunch costs a call and a page (#547). The third such stop in a row parks.
         mine = ((7, CLEAN),)
         self.launch(7, CLEAN, 'echo CHECKS-END > "$RUN/round-0.checks"; ' + self.ENV_STOP)
         for _ in range(2):
@@ -403,23 +405,6 @@ tmux() {
         self.launch(7, CLEAN)
         proc = self.next_dry_run(mine=mine)
         self.assertEqual(proc.stdout.strip(), "nothing to launch", proc.stderr)
-        self.assertIn("parked #7", proc.stderr)
-
-    def test_a_daily_stop_between_environment_stops_keeps_the_count(self) -> None:
-        # A stopped-daily makes no worker call and writes no round, so it must not clear the count, or env, env, daily
-        # would loop for good; while it waits for its UTC day it is not parked.
-        mine = ((7, CLEAN),)
-        self.launch(7, CLEAN)
-        self.launch(7, CLEAN)
-        self.launch(7, CLEAN, 'finish stopped-daily "the daily budget is spent"', age=int(time.time()))
-        proc = self.next_dry_run(mine=mine)
-        self.assertIn("waiting #7: daily budget spent", proc.stderr)
-        self.assertNotIn("parked", proc.stderr)
-        os.utime(self.runs / "7" / key(CLEAN) / "status", (86400, 86400))
-        proc = self.next_dry_run(mine=mine)
-        self.assertEqual(proc.stdout.strip(), "would launch #7", proc.stderr)
-        self.launch(7, CLEAN)
-        proc = self.next_dry_run(mine=mine)
         self.assertIn("parked #7", proc.stderr)
 
     def test_a_reaped_run_counts_as_an_environment_stop(self) -> None:
@@ -512,40 +497,6 @@ tmux() {
         self.assertEqual(len(sent.read_text().splitlines()), 1)   # nothing went out inside the launch
         self.assertEqual(sourced(page + f"env_park_alert '{d}' 7", {"FACTORY_RUNS_ROOT": str(self.runs)}).returncode, 0)
         self.assertEqual(len(sent.read_text().splitlines()), 2)   # the stop it made pages once
-
-    def spend_today(self, usd: float) -> None:
-        (self.runs / "ledger-daily.jsonl").write_text(
-            json.dumps({"date": time.strftime("%Y-%m-%d", time.gmtime()), "ticket": "7", "role": "worker", "cost_usd": usd}) + "\n")
-
-    def test_a_daily_stop_today_launches_no_other_ticket(self) -> None:
-        # The daily ledger is the runner's, across targets: after a daily stop with that ledger spent, a fresh ticket
-        # would only assign, build and stop at its first cap check, so nothing launches until the UTC date moves on (#386).
-        self.run_dir(7, CLEAN, "stopped-daily")
-        self.spend_today(140)
-        caps = {"FACTORY_DAILY_BUDGET_USD": "150", "FACTORY_ROUND_BUDGET_USD": "15"}   # not the shell's
-        proc = self.next_dry_run((8, CLEAN), mine=((7, CLEAN),), **caps)
-        self.assertEqual(proc.stdout.strip(), "nothing to launch", proc.stderr)
-        self.assertIn("waiting: a run stopped at today's daily budget; nothing launches before 00:00 UTC", proc.stderr)
-        os.utime(self.runs / "7" / key(CLEAN) / "status", (86400, 86400))
-        proc = self.next_dry_run((8, CLEAN), mine=((7, CLEAN),), **caps)
-        self.assertEqual(proc.stdout.strip(), "would launch #7", proc.stderr)
-        other = self.runs / "acme_widget" / "9" / key(CLEAN)
-        other.mkdir(parents=True)
-        (other / "status").write_text("stopped-daily\n")
-        proc = self.next_dry_run((8, CLEAN), **caps)
-        self.assertEqual(proc.stdout.strip(), "nothing to launch", proc.stderr)
-
-    def test_a_daily_stop_under_a_lower_ticket_cap_does_not_block_the_runner(self) -> None:
-        # #7's Worker section set a lower DAILY_BUDGET_USD; the shared ledger still has room at the runner's caps
-        # (here FACTORY_DAILY_BUDGET_USD=100 with the default 15 usd round), so the fresh #8 launches.
-        self.run_dir(7, CLEAN, "stopped-daily")
-        self.spend_today(80)
-        proc = self.next_dry_run((8, CLEAN), FACTORY_DAILY_BUDGET_USD="100", FACTORY_ROUND_BUDGET_USD="15")
-        self.assertEqual(proc.stdout.strip(), "would launch #8", proc.stderr)
-        self.spend_today(90)
-        proc = self.next_dry_run((8, CLEAN), FACTORY_DAILY_BUDGET_USD="100", FACTORY_ROUND_BUDGET_USD="15")
-        self.assertEqual(proc.stdout.strip(), "nothing to launch", proc.stderr)
-        self.assertIn("waiting: a run stopped at today's daily budget", proc.stderr)
 
     def test_trailing_newlines_strip_as_load_ticket_does(self) -> None:
         # gh returns the body raw; load_ticket's $(...) strips its trailing newlines before cmd_run keys it.

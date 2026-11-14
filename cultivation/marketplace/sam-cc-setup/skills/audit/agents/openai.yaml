@@ -1,0 +1,6 @@
+interface:
+  display_name: "Audit"
+  short_description: "The owner's end-of-work audit: blind review, verified fixes, the fixed work"
+  default_prompt: "Use $audit on what you just proposed or did."
+policy:
+  allow_implicit_invocation: false

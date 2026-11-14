@@ -93,6 +93,12 @@ class Compare(unittest.TestCase):
         self.assertEqual(row["reruns"], ">=2")  # u13 reached round 3
         self.assertEqual(row["cost_usd"], "unknown")
 
+    def test_an_f_ticket_run_counts(self) -> None:
+        # The PR 713 proof run F103-factory-gate-class was skipped as "not named for" a file ticket.
+        plant_run(self.root / "F103-gate/dddd3333", [(1, "worker", 1.0)], "2026-11-12T03:09:33Z", {})
+        row = self.run_compare()[0]["factory"]
+        self.assertEqual((row["n"], row["cost_usd"]), ("3", "9.75"))
+
     def test_metrics_mismatch_warns_and_skip_is_counted(self) -> None:
         rest = self.run_compare()[1]
         warns = [line for line in rest if line.startswith("warn:")]

@@ -157,10 +157,10 @@ class FactorySkillsTests(unittest.TestCase):
         if not f.exists():
             f.write_text((self.home / ".claude/settings.json").read_text())
 
-    def prompt(self, skill: str = "pstack:tdd", size: str = "small") -> str:
+    def prompt(self, skill: str = "pstack:tdd", size: str = "small", common: str = "") -> str:
         run = self.tmp / "run"
         (run / "frozen").mkdir(parents=True, exist_ok=True)
-        (run / "frozen/_common.md").write_text("")
+        (run / "frozen/_common.md").write_text(common)
         self.freeze_settings(run)
         script = ('. bin/factory; RUN=$1; WORKER_KIND=claude; DECISIONS=$1/worker/decisions.md; BODY=$(cat "$2"); '
                   'round=1; build_worker_prompt 1')
@@ -191,22 +191,22 @@ class FactorySkillsTests(unittest.TestCase):
         self.assertEqual(text.count(str(adapter)), 1)
         self.assertLess(text.index(str(adapter)), text.index(str(self.tdd)))
 
-    def builder_prompts(self, args: str) -> list[str]:
+    def builder_prompts(self, args: str, phase: str = "Build") -> list[str]:
         # factory-round.js under node, its workflow globals stubbed: the planner splits two tasks, every other agent
-        # returns at once, and each Build agent's prompt is collected.
+        # returns at once, and each agent prompt of the phase (Build by default) is collected.
         script = """
-const [f, a] = process.argv.slice(1); const seen = [];
+const [f, a, ph] = process.argv.slice(1); const seen = [];
 Object.assign(globalThis, {args: JSON.parse(a), phase() {}, log() {}, parallel: (fs) => Promise.all(fs.map((g) => g())),
   agent: async (p, o) => {
     if (o.phase === "Plan") return {solo: false, goal: "g", tasks: [
       {objective: "a", owns: ["a/**"], check: "true"}, {objective: "b", owns: ["b/**"], check: "true"}]};
-    if (o.phase === "Build") seen.push(p);
+    if (o.phase === ph) seen.push(p);
     return {solo: false, checks: ""};
   }});
 await import("file://" + f);
 console.log(JSON.stringify(seen));"""
         proc = subprocess.run(["node", "--no-warnings", "--input-type=module", "-e", script,
-                               str(ROOT / "bin/factory.d/factory-round.js"), args],
+                               str(ROOT / "bin/factory.d/factory-round.js"), args, phase],
                               capture_output=True, text=True, check=False)
         self.assertEqual(proc.returncode, 0, proc.stderr)
         return json.loads(proc.stdout)
@@ -254,6 +254,22 @@ console.log(JSON.stringify(seen));"""
             self.assertEqual(p.count(str(router)), 1, p)
             self.assertIn(f"read the pstack router at {router} and follow the method it picks", p)
 
+    def test_worker_and_each_builder_get_the_principle_paths_in_the_installed_pstack(self) -> None:
+        # _common.md's <pstack> resolves by skill_file's rule to the installed pstack's skills/ folder, in the worker
+        # prompt and in every fan-out builder's; with no principle installed it reads "missing".
+        common = (ROOT / "bin/factory.d/_common.md").read_text()
+        names = re.findall(r"<pstack>/([a-z-]+)/SKILL\.md", common)
+        self.assertEqual(len(names), 3, common)
+        self.assertIn("missing/principle-minimize-reader-load/SKILL.md", self.prompt(common=common))
+        for name in names:
+            self.skill(self.pstack, name)
+        text = self.prompt(size="large", common=common)
+        self.assertNotIn("<pstack>", text)
+        (args,) = re.findall(r"and args `(\{.*\})`\.", text)
+        for p in [text, *self.builder_prompts(args)]:
+            for name in names:
+                self.assertIn(f"\n- {self.pstack}/skills/{name}/SKILL.md: ", p)
+
     def test_fan_out_args_jq_cannot_build_stops_the_prompt(self) -> None:
         # A jq older than 1.6 rejects --args; the lead must not get an empty args sentence.
         stub = self.tmp / "stub"
@@ -272,6 +288,16 @@ console.log(JSON.stringify(seen));"""
                               capture_output=True, text=True, check=False)
         self.assertEqual(proc.returncode, 4, proc.stdout + proc.stderr)
         self.assertNotIn("and args ``", (run / "pending.prompt.md").read_text())
+
+    def test_integrator_leaves_the_full_gate_to_the_supervisor_when_args_say_so(self) -> None:
+        # Another target's bin/check is the supervisor's (PR 738): the integrator runs the block under LOAM_HOOK=1,
+        # where guard bin/check passes without running; a Loam round's integrator runs the block unchanged.
+        (other,) = self.builder_prompts(json.dumps({"ticket": "t", "run": "r", "supervisorGate": True}), "Integrate")
+        self.assertIn("run the ticket's done-checks block as `LOAM_HOOK=1 bash r/frozen/checks.sh`", other)
+        self.assertIn("never run `bin/check` yourself", other)
+        (loam,) = self.builder_prompts(json.dumps({"ticket": "t", "run": "r"}), "Integrate")
+        self.assertIn("Run the ticket's full done-checks block: r/frozen/checks.sh from the worktree root.", loam)
+        self.assertNotIn("LOAM_HOOK", loam)
 
     def test_builder_prompt_with_no_skill_lines_adds_nothing(self) -> None:
         args = json.dumps({"ticket": "t", "run": "r"})

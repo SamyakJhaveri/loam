@@ -268,9 +268,10 @@ class EndToEndTests(unittest.TestCase):
         self.assertIn("verdict", review)
         self.assertNotIn("unparseable", review)
         self.assertEqual(self.read(run / f"round-{n}.graded.sha").strip(), head)
-        # The done-checks' guard ran the target's bin/check in round 0 (its base worktree) and in the worker round.
+        # The done-checks' guard ran the target's bin/check once, in the worker round's full gate; round 0 (its base
+        # worktree) defers it.
         wt = self.top / "proj-1"
-        self.assertEqual(self.read(self.state / "check.log").splitlines(), [f"{wt}-base", str(wt)])
+        self.assertEqual(self.read(self.state / "check.log").splitlines(), [str(wt)])
         # The next tick does not relaunch #1; a cap of 2 leaves a free slot, so the frontier is what passes it over.
         before = (self.workers(), self.launches())
         t = self.tick(FACTORY_MAX_PARALLEL="2")
@@ -300,17 +301,19 @@ class EndToEndTests(unittest.TestCase):
         self.assertEqual(self.calls("unknown"), [])
 
     def test_no_result_stops_on_the_environment(self) -> None:
+        # An API-billed run whose ticket still names a dollar cap: no call carries a dollar ceiling (13 Nov 2026), and
+        # the old Worker line is accepted and ignored.
         self.seed((1, ticket("no-result", "ROUND_BUDGET_USD=3")))
-        t = self.tick()
+        t = self.tick(ANTHROPIC_API_KEY="sk-ant-test")
         self.assertEqual(t.stdout, "launched #1\n", t.stderr)
         self.assertEqual(self.wait_run(1), "stopped-environment", self.diag(1))
         run = self.run_dir(1)
         worker = [c for c in self.calls("claude") if c["kind"] == "worker"]
         self.assertEqual(len(worker), 1)
-        self.assertEqual(worker[0]["argv"][worker[0]["argv"].index("--max-budget-usd") + 1], "3")
-        # No result event: the row charges the call's ceiling, the ticket's ROUND_BUDGET_USD, and no round follows.
+        self.assertNotIn("--max-budget-usd", worker[0]["argv"])
+        # No result event: the row books no cost, as none was reported, and no round follows.
         self.assertEqual([(r["role"], r["subtype"], r["cost_usd"]) for r in self.ledger(run)],
-                         [("worker", "no-result", 3)])
+                         [("worker", "no-result", 0)])
         self.assertTrue((run / "round-0.checks").exists())
         self.assertFalse((run / "round-1.checks").exists())
         self.assertEqual(self.store()["prs"], {})
