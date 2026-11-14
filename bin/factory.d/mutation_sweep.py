@@ -422,13 +422,13 @@ def run(image: str, tests: list[str], wt: Path, timeout: float) -> tuple[int | N
 
     The tree is copied to /sweep, absent until then, with -a, so the directory and its files keep the uid that --user
     runs as and a test can write them; as each run starts from a fresh copy, no edit can import bytecode an earlier run
-    cached, even an edit of the same size written in the same second as its source. A worktree's .git is a file naming
-    a host gitdir: its repository is copied to /sweep.git and the copy's .git names its gitdir there, so a test that runs
+    cached, even an edit of the same size written in the same second as its source. A worktree's .git is a file naming a
+    host gitdir: its repository is copied to /sweep.git and the copy's .git names its gitdir there, so a test that runs
     git on its own repository works with no host path mounted. --init reaps the orphans a test leaves, as init does on
-    the host. A container that never started, or that docker reports an error for, exits non-zero as a failed create or
-    cp does, so a docker failure is never read as a test result. The name is fixed per worktree, so a sweep killed
-    mid-run leaves a container the next one removes, and only by that name, never by a filter an edit of this file
-    could widen.
+    the host. A container that never started, that docker reports an error for, or whose exit is not docker start's,
+    exits non-zero as a failed create or cp does, so a docker failure is never read as a test result. The name is fixed
+    per worktree, so a sweep killed mid-run leaves a container the next one removes, and only by that name, never by a
+    filter an edit of this file could widen.
     """
     root = wt.resolve()
     name = "loam-sweep-" + hashlib.sha256(str(root).encode()).hexdigest()[:12]
@@ -458,10 +458,11 @@ def run(image: str, tests: list[str], wt: Path, timeout: float) -> tuple[int | N
             secs = time.monotonic() - start
             log.seek(0)
             tail = "\n".join(log.read().decode("utf-8", "replace").splitlines()[-20:])
-        started, _, error = docker("inspect", "-f", "{{.State.StartedAt}} {{.State.Error}}", name,
-                                   timeout=60).strip().partition(" ")
-        if started.startswith("0001-") or error:
-            raise SystemExit(f"mutation_sweep: docker start failed: {error or 'the container never started'}\n{tail}")
+        state = docker("inspect", "-f", "{{.State.StartedAt}}|{{.State.ExitCode}}|{{.State.Error}}", name, timeout=60)
+        started, code, error = state.strip().split("|", 2)
+        if started.startswith("0001-") or error or (rc is not None and rc != int(code)):
+            raise SystemExit(f"mutation_sweep: docker start exited {rc}, the container {code} (started {started}):"
+                             f" {error}\n{tail}")
     finally:
         remove(name)
     return rc, secs, tail

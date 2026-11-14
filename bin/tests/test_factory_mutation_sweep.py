@@ -1,15 +1,16 @@
 """The mutation sweep after a judge pass (#618; docs/factory/LOOP.md, Mutation sweep).
 
-SweepTests drives bin/factory.d/mutation_sweep.py on scratch repositories whose one commit after an empty base adds
-the files under test: each operator in both languages, the lines that give no edit (comments, strings, here-documents,
-test files, tests and fixtures directories), an edit that does not parse, an edit that never ends, a same-size edit, a
-red unedited run, the order, a worktree checkout whose test runs git, and a bad base. ContainmentTests plants a host process and a host file that a mutant
-targets: in the container neither is reached, and a docker that fails at create, or at the start of the baseline's or a
-mutant's container, exits non-zero with no result and the tree as committed (#768).
-The tests that run pytest need a docker daemon (`docker info`) and skip without one. FactoryRunTests runs `bin/factory -C <target> run` on a file ticket with
-a scripted `claude` whose worker copies the files of its round into the worktree and whose graders pass, so only the
-sweep can fail a round: survivors reach the next worker round once, a relaunch keeps that one block, and a failed
-helper stops the run; without FACTORY_SWEEP_IMAGE the sweep runs no test and the log and PR body say why (#768).
+SweepTests drives bin/factory.d/mutation_sweep.py on scratch repositories whose one commit after an empty base adds the
+files under test: each operator in both languages, the lines that give no edit (comments, strings, here-documents, test
+files, tests and fixtures directories), an edit that does not parse, an edit that never ends, a same-size edit, a red
+unedited run, the order, a worktree checkout whose test runs git, and a bad base. ContainmentTests plants a host process
+and a host file that a mutant targets: in the container neither is reached, and a docker that fails at create, or at the
+start of the baseline's or a mutant's container, exits non-zero with no result and the tree as committed (#768). The
+tests that run pytest need a docker daemon (`docker info`) and skip without one. FactoryRunTests runs `bin/factory -C
+<target> run` on a file ticket with a scripted `claude` whose worker copies the files of its round into the worktree and
+whose graders pass, so only the sweep can fail a round: survivors reach the next worker round once, a relaunch keeps
+that one block, and a failed helper stops the run; without FACTORY_SWEEP_IMAGE the sweep runs no test and the log and PR
+body say why (#768).
 Every subprocess gets an explicit environment: a scratch HOME and TMPDIR and a git identity.
 """
 
@@ -49,8 +50,8 @@ def setUpModule() -> None:
         subprocess.run(["docker", "build", "-q", "-t", SWEEP_IMAGE, "-"], capture_output=True, text=True, check=True,
                        input="FROM python:3.12-slim\nRUN pip install -q pytest\n")
         subprocess.run(["docker", "build", "-q", "-t", GIT_IMAGE, "-"], capture_output=True, text=True, check=True,
-                       input=f"FROM {SWEEP_IMAGE}\nRUN apt-get update -q && apt-get install -y -q --no-install-recommends"
-                             " git && rm -rf /var/lib/apt/lists/*\n")
+                       input=f"FROM {SWEEP_IMAGE}\nRUN apt-get update -q && apt-get install -y -q"
+                             " --no-install-recommends git && rm -rf /var/lib/apt/lists/*\n")
 
 CALC = """def over(n, limit):
     # n > limit means over
@@ -482,7 +483,8 @@ case $1 in
     [ "$n" -lt {n} ] && exit 0
     : > "$d/failed"; echo 'Error response from daemon: failed to create task' >&2; exit 1 ;;
   inspect)
-    if [ -e "$d/failed" ]; then echo '0001-01-01T00:00:00Z failed to create task'; else echo '2026-11-13T00:00:00Z '; fi ;;
+    if [ -e "$d/failed" ]; then echo '0001-01-01T00:00:00Z|128|failed to create task'
+    else echo '2026-11-13T00:00:00Z|0|'; fi ;;
 esac
 """)
 
