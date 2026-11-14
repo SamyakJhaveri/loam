@@ -86,6 +86,9 @@ class WorkerPinTests(unittest.TestCase):
         source["attribution"] = USER["attribution"]
         source["permissions"]["deny"] = USER["permissions"]["deny"] + source["permissions"]["deny"]
         source["hooks"]["Stop"] = USER["hooks"]["Stop"] + source["hooks"]["Stop"]
+        # freeze adds the pstack gate's PreToolUse hook (U5) after the merge.
+        source["hooks"]["PreToolUse"] = json.loads(
+            (ROOT / "bin/factory.d/pstack-gate.hooks.json").read_text())["hooks"]["PreToolUse"]
         source["sandbox"]["filesystem"] = {}
         self.assertEqual({k: v for k, v in settings.items() if k != "env"}, source)  # deny list and hook kept
         return settings["env"], source_env
@@ -105,8 +108,10 @@ class WorkerPinTests(unittest.TestCase):
         # and allowedDomains widen it; uv writes a cache of the run's own, never the operator's shared one.
         self.assertNotIn("excludedCommands", sandbox)
         self.assertEqual(sandbox["network"]["allowedDomains"], ["pypi.org", "files.pythonhosted.org"])
+        # The DistBench lock folder (gate, MPI and GPU locks, owner N20.3 and N25, 12 Nov 2026) comes from worker-settings.json:
+        # only locks/, never the rest of ~/.local/state/distbench; a folder, since on Linux a *.lock glob let no new lock be made.
         self.assertEqual(sandbox["filesystem"]["allowWrite"], [
-            str(common / "worktrees/wt"), str(common / "objects"), str(common / "refs"), str(common / "logs"),
+            "~/.local/state/distbench/locks", str(common / "worktrees/wt"), str(common / "objects"), str(common / "refs"), str(common / "logs"),
             str(self.tmp / "run/worker"), str(self.tmp / "run/tasks"), str(self.tmp / "run/uv/cache"),
             str(self.tmp / "run/uv/tools")])
 

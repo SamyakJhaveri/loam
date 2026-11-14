@@ -3,7 +3,8 @@
 GNU timeout reads a duration of 0 as no limit, so NET_TIMEOUT_SEC=0 or CALL_TIMEOUT_SEC=0 would drop the bound
 the cap exists for. Each test plants 0, -5 and abc: through a Worker line (check_worker, apply_caps), through
 FACTORY_<NAME> (apply_caps), and through FACTORY_NET_TIMEOUT_SEC, which lint, next and status read at load
-without apply_caps. A good whole number and a good decimal still pass.
+without apply_caps. A good whole number still passes. A *_BUDGET_USD line, from a ticket written before the dollar
+caps went (13 Nov 2026), is accepted and ignored, whatever its value.
 """
 
 from __future__ import annotations
@@ -16,8 +17,8 @@ import unittest
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
 BAD = ("0", "-5", "abc")
-CAPS = ("MAX_ROUNDS", "ROUND_BUDGET_USD", "GRADER_BUDGET_USD", "TICKET_BUDGET_USD", "DAILY_BUDGET_USD",
-        "MAX_HOURS", "MAX_TURNS", "CALL_TIMEOUT_SEC", "NET_TIMEOUT_SEC", "MAX_PARALLEL")
+CAPS = ("MAX_ROUNDS", "MAX_HOURS", "MAX_TURNS", "CALL_TIMEOUT_SEC", "NET_TIMEOUT_SEC", "MAX_PARALLEL")
+OLD_USD = ("ROUND_BUDGET_USD", "GRADER_BUDGET_USD", "TICKET_BUDGET_USD", "DAILY_BUDGET_USD")
 WORKER = "## Worker\nworker: claude\ncodex-review: no\neffort: high\ngoal: x, or stop after 5 turns\n"
 
 
@@ -36,7 +37,7 @@ class CheckWorkerTests(unittest.TestCase):
         return sourced('SRC=t; ERRS=0; BODY="$CAP_BODY"; check_worker; echo "errs=$ERRS"', CAP_BODY=WORKER + line + "\n")
 
     def test_bad_values_are_one_error_naming_the_cap(self) -> None:
-        for name in ("NET_TIMEOUT_SEC", "CALL_TIMEOUT_SEC", "MAX_PARALLEL", "ROUND_BUDGET_USD"):
+        for name in ("NET_TIMEOUT_SEC", "CALL_TIMEOUT_SEC", "MAX_PARALLEL"):
             for v in BAD:
                 with self.subTest(name=name, v=v):
                     proc = self.errs(f"{name}={v}")
@@ -48,10 +49,22 @@ class CheckWorkerTests(unittest.TestCase):
         self.assertIn("errs=1", proc.stdout, proc.stderr)
 
     def test_good_values_pass(self) -> None:
-        for line in ("NET_TIMEOUT_SEC=30", "ROUND_BUDGET_USD=2.5", "DAILY_BUDGET_USD=100", "MAX_PARALLEL=1"):
+        for line in ("NET_TIMEOUT_SEC=30", "MAX_PARALLEL=1"):
             with self.subTest(line=line):
                 proc = self.errs(line)
                 self.assertIn("errs=0", proc.stdout, proc.stderr)
+
+    def test_an_old_dollar_cap_line_is_accepted(self) -> None:
+        for name in OLD_USD:
+            for v in ("2.5", "abc"):
+                with self.subTest(name=name, v=v):
+                    proc = self.errs(f"{name}={v}")
+                    self.assertIn("errs=0", proc.stdout, proc.stderr)
+                    self.assertNotIn(name, proc.stderr)
+
+    def test_an_unknown_cap_name_is_still_an_error(self) -> None:
+        proc = self.errs("MAX_ROUNDZ=3")
+        self.assertIn("errs=1", proc.stdout, proc.stderr)
 
 
 class ApplyCapsTests(unittest.TestCase):
@@ -71,10 +84,11 @@ class ApplyCapsTests(unittest.TestCase):
                 self.assertEqual(proc.returncode, 2, proc.stdout)
                 self.assertIn("CALL_TIMEOUT_SEC", proc.stderr)
 
-    def test_good_values_are_set(self) -> None:
-        proc = sourced('BODY=$(printf "## Worker\\nNET_TIMEOUT_SEC=30\\nROUND_BUDGET_USD=2.5\\n"); apply_caps '
-                       '&& echo "ok $NET_TIMEOUT_SEC $ROUND_BUDGET_USD $MAX_TURNS"', FACTORY_MAX_TURNS="40")
-        self.assertIn("ok 30 2.5 40", proc.stdout, proc.stderr)
+    def test_good_values_are_set_and_old_dollar_caps_ignored(self) -> None:
+        proc = sourced('BODY=$(printf "## Worker\\nNET_TIMEOUT_SEC=30\\nROUND_BUDGET_USD=abc\\n"); apply_caps '
+                       '&& echo "ok $NET_TIMEOUT_SEC ${ROUND_BUDGET_USD-unset} $MAX_TURNS"',
+                       FACTORY_MAX_TURNS="40", FACTORY_DAILY_BUDGET_USD="1000000")
+        self.assertIn("ok 30 unset 40", proc.stdout, proc.stderr)
 
 
 class LoadTimeTests(unittest.TestCase):

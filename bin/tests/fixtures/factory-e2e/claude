@@ -33,7 +33,7 @@ VERSION = "2.1.300 (Claude Code)"
 # flag -> takes a value; every flag bin/factory's worker and grader calls pass.
 FLAGS = {"-p": False, "--model": True, "--effort": True, "--advisor": True, "--permission-mode": True,
          "--strict-mcp-config": False, "--setting-sources": True, "--settings": True, "--max-turns": True,
-         "--append-system-prompt": True, "--max-budget-usd": True, "--output-format": True, "--verbose": False,
+         "--append-system-prompt": True, "--output-format": True, "--verbose": False,
          "--include-hook-events": False, "--tools": True, "--disable-slash-commands": False,
          "--no-session-persistence": False, "--json-schema": True, "--plugin-dir": True}
 # kind -> flag -> the value bin/factory's call passes (True: a flag with no value): the grader's read-only tools (#40),

@@ -8,7 +8,8 @@
 # events, the cost, and last
 #   permissionMode=auto plugin=<this checkout>/cultivation/marketplace/sam-cc-setup verify-distbench=yes BIND_OK
 # exiting 0 only when all of those hold and no call was denied. The clone needs a GitHub origin URL (use_target reads
-# the target from it; nothing is fetched) and is changed by one empty commit. PROBE_BUDGET_USD caps the call (0.3).
+# the target from it; nothing is fetched) and is changed by one empty commit. MAX_TURNS (8) bounds the call.
+# The pstack gate fails open here, since the probe freezes no pstack-gate.py (the hook says so on stderr).
 set -uo pipefail
 [ $# -eq 1 ] && [ -d "$1" ] || { echo "usage: $0 <scratch clone of the target>" >&2; exit 2; }
 clone=$(cd "$1" && pwd)
@@ -26,7 +27,7 @@ mkdir -p "$RUN/frozen" "$RUN/worker" "$RUN/tasks" && touch "$LOG"
 freeze_shell
 cp "$root/bin/factory.d/unattended.md" "$RUN/frozen/unattended.md"
 printf 'exit 0\n' > "$RUN/frozen/checks.sh"   # the Stop hook's checks: nothing to gate in a probe
-MAX_TURNS=8; ROUND_BUDGET_USD="${PROBE_BUDGET_USD:-0.3}"
+MAX_TURNS=8
 worker_cmd
 
 cat > "$work/prompt.md" <<EOF
@@ -54,7 +55,7 @@ git -C $clone -c user.name=probe -c user.email=probe@example.invalid commit -q -
 EOF
 
 out="$work/out.jsonl"
-echo "probe-native: running the worker command in $clone (budget $ROUND_BUDGET_USD usd); stream in $out" >&2
+echo "probe-native: running the worker command in $clone; stream in $out" >&2
 ( cd "$clone" && "${WORKER_CMD[@]}" < "$work/prompt.md" > "$out" 2> "$work/stderr" ) \
   || echo "probe-native: the call exited non-zero; see $work/stderr" >&2
 
