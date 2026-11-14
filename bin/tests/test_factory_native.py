@@ -201,8 +201,12 @@ class NativeShellTests(unittest.TestCase):
     def test_loam_target_settings_and_argv_match_the_pre_u3_factory(self) -> None:
         if subprocess.run(["git", "-C", str(ROOT), "cat-file", "-e", BASE], capture_output=True).returncode:
             self.skipTest(f"{BASE} is not in this clone (shallow)")
+        # The reviewer prompt is data the factory reads, not factory code, so the reference reads this checkout's copy and
+        # the grader stdin below compares the evidence alone.
+        reference = self.h.factory("loam-old", BASE)
+        shutil.copy(ROOT / PLUGIN / "agents/reviewer.md", reference / PLUGIN / "agents/reviewer.md")
         # Both API-billed: the reference's calls always carried --max-budget-usd, which no call carries since 13 Nov 2026.
-        old = self.h.round_one(self.h.factory("loam-old", BASE), loam=True, ANTHROPIC_API_KEY="sk-ant-test")
+        old = self.h.round_one(reference, loam=True, ANTHROPIC_API_KEY="sk-ant-test")
         new = self.h.round_one(self.new, loam=True, ANTHROPIC_API_KEY="sk-ant-test")
         # Every target's worker settings gain the pstack gate (U5), the sandboxed shell the DistBench locks grant (owner
         # N25) and the Bash output cap (test_factory_output_cap.py), and nothing else; the rest is the same bytes as jq
@@ -259,6 +263,8 @@ class NativeShellTests(unittest.TestCase):
             self.assertTrue((self.h.run / "frozen" / name).is_file(), name)
             self.assertIn(f"  {name}\n", (self.h.run / "frozen/sha256").read_text())
         self.assertEqual(settings["autoCompactWindow"], 450000)
+        # The owner's user CLAUDE.md (his attended lead's rules) stays out, at the path Claude Code reads it from.
+        self.assertEqual(settings["claudeMdExcludes"], [str(self.h.home / ".claude/CLAUDE.md")])
         argv = r["worker"]["argv"]
         pairs = dict(zip(argv, argv[1:]))
         self.assertEqual(pairs["--permission-mode"], "auto")
