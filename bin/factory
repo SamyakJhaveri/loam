@@ -1507,8 +1507,11 @@ shell_digest() {
 # frozen review.sh is loaded, starts learn_run (review.sh) detached and exits, so a launcher sees the exit and lands
 # without waiting on learn. learn_run never calls finish (REVIEW_NO_FINISH), so it cannot change the exit; its process
 # takes over the EXIT trap (the worktree's removal) and closes the shell digest again after its calls.
+# The exit is decided on entry, so the run's kill traps go first: a signal during the alert, or one reaching the learn
+# step after a call_end, would otherwise rewrite it to stopped-killed. Learn takes the signals' defaults back.
 finish() { # status message
   local code words exit_trap
+  RUN_TRAPS=; trap '' INT TERM HUP
   case "$1" in
     pr-opened) code=0 ;; ticket-defect) code=3 ;; stopped-environment) code=4 ;; abandon) code=5 ;; *) code=2 ;;
   esac
@@ -1521,7 +1524,7 @@ finish() { # status message
     # set -m gives learn its own process group, so the hangup a tty sends its foreground group when the launcher
     # (the session leader) exits does not reach it.
     exit_trap=$(trap -p EXIT); trap - EXIT; set -m
-    ( eval "$exit_trap"
+    ( trap - INT TERM HUP; eval "$exit_trap"
       learn_run "$1" "$2"
       [ ! -f "$RUN/shell-digest.start" ] || shell_digest > "$RUN/shell-digest.end" ) < /dev/null > /dev/null 2>&1 &
   fi
@@ -3929,10 +3932,15 @@ park_status() { # <issue> <body> -> the status of the run for this body, or none
 }
 
 # stopped-environment pages at once, so a lasting machine fault relaunched every ten-minute tick would page every tick.
+# A killed supervisor (a host shutdown, `tmux kill-session`) resumes the same way: before stopped-killed it stayed
+# running and holds_slot reaped it to stopped-environment. `bin/factory stop` is the stop that sticks.
 ENV_BACKOFF_SEC=3600
-stopped_environment_recent() { # <run dir> -> 0 when its run stopped on the environment under ENV_BACKOFF_SEC ago
+env_stopped() { # <run dir> -> 0 when its run stopped on the environment or was killed
+  case "$(cat "$1/status" 2> /dev/null)" in stopped-environment|stopped-killed) ;; *) return 1 ;; esac
+}
+stopped_environment_recent() { # <run dir> -> 0 when its run stopped on the environment, or was killed, under ENV_BACKOFF_SEC ago
   local t
-  [ "$(cat "$1/status" 2> /dev/null)" = stopped-environment ] || return 1
+  env_stopped "$1" || return 1
   # A status file removed since the cat leaves no mtime: not recent, rather than an arithmetic error ending the tick.
   t=$(date -u -r "$1/status" +%s 2> /dev/null)
   [[ "$t" =~ ^[0-9]+$ ]] || return 1
@@ -3966,7 +3974,7 @@ idle_note() { # <ready issues read>
 # A worker call with no result event stops stopped-environment before its round-N.checks
 # is written, and a relaunch rebuilds ROUND from round-*.checks, so the same round reruns and MAX_ROUNDS never trips (#547).
 # So each launch, with its first status write and in the live checkout (a run frozen before this counts too), writes
-# env-stops, `<last round> <stops> <launches>` (record_env_stops): the stopped-environment stops since the highest
+# env-stops, `<last round> <stops> <launches>` (record_env_stops): the stopped-environment and stopped-killed stops since the highest
 # round-N.checks last moved. A new round or a pr-opened clears them; any other status, such as a stopped
 # that made no worker call, keeps them, so it does not reset the count. next parks the issue at ENV_PARK_STOPS.
 # The launch number makes each line unique, so env_park_alert can name the stop it alerted for.
@@ -3981,7 +3989,7 @@ env_stops() { # <run dir> -> its stopped-environment stops with no new round-N.c
   read -r r0 c0 _ 2> /dev/null < "$1/env-stops" || true
   { [[ "$c0" =~ ^[0-9]+$ ]] && [ "$r0" = "$(last_round "$1")" ]; } || c0=0
   case "$(cat "$1/status" 2> /dev/null)" in
-    stopped-environment) echo $((c0 + 1)) ;;
+    stopped-environment|stopped-killed) echo $((c0 + 1)) ;;
     pr-opened) echo 0 ;;
     *) echo "$c0" ;;
   esac
@@ -3994,7 +4002,7 @@ record_env_stops() { # <run dir>, at launch while its status is still the last r
     && mv -f "$1/env-stops.tmp" "$1/env-stops"
 }
 env_parked() { # <run dir> -> 0 when its run stopped on the environment for the ENV_PARK_STOPS-th time with no new round since
-  [ "$(cat "$1/status" 2> /dev/null)" = stopped-environment ] && [ "$(env_stops "$1")" -ge "$ENV_PARK_STOPS" ]
+  env_stopped "$1" && [ "$(env_stops "$1")" -ge "$ENV_PARK_STOPS" ]
 }
 # One needs-you alert per parked stop, not one per tick: env-parked keeps the env-stops line the alert went out for. The
 # line is read once, and that same line is written after the alert, so a launch that rewrites env-stops meanwhile keeps
@@ -4308,11 +4316,11 @@ next_tick() { # [--dry-run|--install|--frontier]
       continue
     fi
     if stopped_environment_recent "$run"; then
-      echo "waiting #$num: last run stopped on the environment; relaunches ${ENV_BACKOFF_SEC}s after its stop" >&2
+      echo "waiting #$num: last run stopped on the environment or was killed; relaunches ${ENV_BACKOFF_SEC}s after its stop" >&2
       continue
     fi
     case "$st_last" in
-      none|stopped-environment|stopped|stopped-daily)
+      none|stopped-environment|stopped-killed|stopped|stopped-daily)
         if run_busy "$run"; then
           echo "waiting #$num: a process of its last run still runs; kill it or wait for it to exit" >&2
           continue

@@ -61,6 +61,8 @@ class AgentSessionTests(unittest.TestCase):
 
     def test_refuses_an_account_with_no_stored_token(self):
         self.assertEqual(self.run_it("--as", "ghost", "free", "g").returncode, 1)
+        (self.tmp / "accounts" / "b.token").write_text("x\n")
+        self.assertEqual(self.run_it("--as", "b uci", "free", "g").returncode, 1)   # two stored names are not one
         (self.tmp / "accounts" / "active").unlink()
         self.assertEqual(self.run_it("free", "g").returncode, 1)   # status prints `active: none`
         self.assertFalse(self.log.exists())

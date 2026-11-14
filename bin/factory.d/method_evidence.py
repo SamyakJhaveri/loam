@@ -221,7 +221,7 @@ def grade(run_dir: Path, n: int, repo: str, base: str, head: str) -> tuple[bool,
     tests = [r[1] for r in rows if TEST_FILE.fullmatch(Path(r[1]).name) and r[0] != "D"]
     named = [cmd for _, kind, cmd, _ in decs if kind == "test"]
     fallback = named[0] if named else (
-        "python3 -m pytest -q -p no:cacheprovider " + " ".join(tests) if tests else None)
+        shlex.join(["python3", "-m", "pytest", "-q", "-p", "no:cacheprovider", *tests]) if tests else None)
     jobs: dict[tuple, str] = {}  # (route, command, declared exit) -> the skills that declared it
     for skill, kind, cmd, want in decs:
         if kind == "test" or skill in TEST_METHODS or (source and not (kind == "proof" and skill in PROOF_METHODS)):

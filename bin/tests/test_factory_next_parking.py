@@ -394,6 +394,27 @@ tmux() {
         self.assertEqual(proc.stdout.strip(), "would launch #8", proc.stderr)
         self.assertIn("parked #7: stopped on the environment 3 times in a row with no new round since", proc.stderr)
 
+    def test_a_killed_run_resumes_as_an_environment_stop_does(self) -> None:
+        # A host shutdown or `tmux kill-session` TERMs or HUPs every live supervisor, which ends stopped-killed. Its
+        # run resumes after the hour's backoff, with its rounds, rather than waiting for a body edit that would abandon
+        # them; the third kill with no new round since parks it, as three environment stops do.
+        mine = ((7, CLEAN),)
+        d = self.runs / "7" / key(CLEAN)
+        killed = "run_traps; kill -TERM $$"
+        self.launch(7, CLEAN, 'echo CHECKS-END > "$RUN/round-0.checks"; ' + killed, age=int(time.time()))
+        self.assertEqual((d / "status").read_text().strip(), "stopped-killed")
+        proc = self.next_dry_run(mine=mine)
+        self.assertEqual(proc.stdout.strip(), "nothing to launch", proc.stderr)
+        self.assertIn("waiting #7: last run stopped on the environment or was killed; relaunches", proc.stderr)
+        os.utime(d / "status", (86400, 86400))
+        proc = self.next_dry_run(mine=mine)
+        self.assertEqual(proc.stdout.strip(), "would launch #7", proc.stderr)
+        for _ in range(2):
+            self.launch(7, CLEAN, killed)
+        proc = self.next_dry_run((8, CLEAN), mine=mine)
+        self.assertEqual(proc.stdout.strip(), "would launch #8", proc.stderr)
+        self.assertIn("parked #7: stopped on the environment 3 times in a row with no new round since", proc.stderr)
+
     def test_a_round_between_environment_stops_resets_the_count(self) -> None:
         mine = ((7, CLEAN),)
         self.launch(7, CLEAN)

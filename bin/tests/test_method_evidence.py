@@ -99,6 +99,13 @@ def test_old_pstack_line_derives_the_test_from_the_changed_test_files(tmp_path):
     assert rc == 0 and "-m pytest -q -p no:cacheprovider test_calc.py` exit 0 at head, exit 1" in out, out
 
 
+def test_a_derived_test_path_with_a_space_runs_as_one_path(tmp_path):
+    repo, run = setup(tmp_path, {"calc.py": FIXED, "tests dir/test_calc.py": TEST_ADD},
+                      "- pstack: tdd | /x/tdd/SKILL.md | abc | write the failing test first | test first\n")
+    rc, out = check(repo, run)
+    assert rc == 0 and "exit 0 at head, exit 1" in out, out
+
+
 def test_a_test_that_passes_at_base_too_fails(tmp_path):
     passing = "from calc import add\n\n\ndef test_add():\n    assert add(3, 0) == 3\n"
     repo, run = setup(tmp_path, {"calc.py": FEATURE, "test_calc.py": passing}, f"Round 1\nmethod: tdd | test: {PYTEST}\n")

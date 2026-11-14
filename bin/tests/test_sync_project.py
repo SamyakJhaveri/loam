@@ -256,11 +256,16 @@ class SyncProjectTests(unittest.TestCase):
         return [json.loads(line) for line in self.claude_log.read_text().splitlines()]
 
     def test_refuses_a_model_call_with_no_stored_account_active(self) -> None:
-        (self.accounts / "active").unlink()
-        r = self.sync("--draft")
-        self.assertNotEqual(0, r.returncode, r.stdout + r.stderr)
-        self.assertIn("no stored Claude account is active", r.stderr)
-        self.assertEqual([], self.claude_calls())
+        # An `active` naming an account whose token is gone, then no `active` at all: claude-account exec would keep
+        # the host's /login either way.
+        for gone in ("a.token", "active"):
+            with self.subTest(gone=gone):
+                (self.accounts / gone).unlink()
+                self.work = self.base / f"work-{gone}"
+                r = self.sync("--draft")
+                self.assertNotEqual(0, r.returncode, r.stdout + r.stderr)
+                self.assertIn("no stored Claude account is active", r.stderr)
+                self.assertEqual([], self.claude_calls())
 
     def remote_branches(self) -> str:
         return git("branch", "--list", "loam-sync/*", cwd=self.remote)
