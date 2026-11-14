@@ -13,7 +13,7 @@ Before your first edit, read in full and follow these pstack principles (the own
 - <pstack>/principle-outcome-oriented-execution/SKILL.md: converge on the target design; no throwaway compatibility code for in-between states.
 - <pstack>/principle-encode-lessons-in-structure/SKILL.md: turn a repeated correction into a check, script or type, not more prose.
 - <pstack>/principle-make-operations-idempotent/SKILL.md: a step re-run after a crash or retry reaches the same end state.
-- <pstack>/principle-never-block-on-the-human/SKILL.md: decide reversible work yourself and record why.
+- <pstack>/principle-never-block-on-the-human/SKILL.md: decide reversible work yourself and record why in <decisions>.
 - <pstack>/principle-foundational-thinking/SKILL.md: get the core data structures and shared state right before the logic.
 End your last message with one plain line, `CLAIM: done`, `CLAIM: partial` or `CLAIM: blocked`: the state you believe the ticket is in.
 Commit as you go with messages that name the step. Never push, never open a PR, never touch GitHub.
