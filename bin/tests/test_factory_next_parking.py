@@ -112,7 +112,7 @@ class ParkingTests(unittest.TestCase):
         # `bin/factory next 2>&1 | head -1`, or a timer's logger that died: the parked line's write fails, and the tick
         # still reaches the next issue rather than ending by SIGPIPE.
         self.run_dir(7, CLEAN, "abandon")
-        proc = self.next_dry_run((7, CLEAN), (8, CLEAN + "\nanother"), pre="exec 2> >(:); sleep 0.5; ")
+        proc = self.next_dry_run((7, CLEAN), (8, CLEAN + "\nanother"), pre="exec 2> >(:); wait $!; ")
         self.assertEqual((proc.returncode, proc.stdout.strip()), (0, "would launch #8"))
 
     def test_old_body_abandon_does_not_park_a_new_body(self) -> None:
