@@ -41,7 +41,7 @@ hyphenated pstack name.
 
   P1 instructions     each round's init lists DistBench's own project skill verify-distbench and loads
                       sam-cc-setup from exactly the path in frozen/plugin-dir, and each round-N.prompt.md holds
-                      the memory view's first line `# Memory view (written for the lead)`.
+                      the lessons view's first line `# Factory lessons`.
   P2 router           every transcript that changes a file fully read, before its first change, the pstack router
                       (also the Skill call on sam-cc-setup:pstack) or a pstack SKILL.md its brief names.
   P3 method           every transcript that changes a file fully read a pstack skills/<name>/SKILL.md before its
@@ -117,7 +117,7 @@ COVERED = ("tasks/", "src/distbench/runner.py", "src/distbench/commands.py", "sr
            "src/distbench/orchestrator.py", "src/distbench/grader.py")
 COVERED_PATH = re.compile(r"(?:^|/)(?:" + "|".join(re.escape(c) + ("" if c.endswith("/") else "$") for c in COVERED) + ")")
 PLUGIN = "sam-cc-setup"
-MEMORY_VIEW = "# Memory view (written for the lead)"
+LESSONS_VIEW = "# Factory lessons"
 FABLE = "claude-fable-5-2"
 BLOCKING = {"reviewer": {"high", "medium"}, "codex": {"critical", "high"}}
 VERDICTS = {"CONFIRMED", "PARTLY", "REJECTED"}
@@ -660,10 +660,10 @@ def p1(run: Run) -> tuple[str, str]:
             good.append(f"{at(r.top, line)} init loads {PLUGIN} from frozen/plugin-dir")
         prompt = run.path / f"round-{r.n}.prompt.md"
         lines = [x.rstrip() for x in prompt.read_text(encoding="utf-8", errors="replace").splitlines()] if prompt.is_file() else []
-        if MEMORY_VIEW in lines:
-            good.append(f"{prompt.name}:{lines.index(MEMORY_VIEW) + 1} holds the memory view")
+        if LESSONS_VIEW in lines:
+            good.append(f"{prompt.name}:{lines.index(LESSONS_VIEW) + 1} holds the lessons view")
         else:
-            bad.append(f"{prompt.name} has no line '{MEMORY_VIEW}'")
+            bad.append(f"{prompt.name} has no line '{LESSONS_VIEW}'")
         rows.append(row(r.n, bad, good))
     return combine(rows)
 
