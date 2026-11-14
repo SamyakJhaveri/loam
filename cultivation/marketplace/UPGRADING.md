@@ -3,6 +3,14 @@
 This file records why a promoted plugin change traveled. It is also the upgrade
 entry point for projects that consume the Loam marketplace.
 
+## sam-cc-setup v0.9.32 pstack router sends ticket-shaped build work to the factory lane
+
+The router told a lead to hand spawning work to "one `worker`" and had no factory line, so a lead that obeyed it was pointed away from the factory the owner made the default builder (DistBench audit, 13 Nov 2026: 9 of 83 landed branches came from the factory).
+A new line sends build work that fits a ticket to the project's factory lane when it has one, attended only for what the lane cannot run, with the reason in the brief; the spawning-skill line names the lane first.
+It is a line, not a table row, because the table's second column names only pstack or owner skills (`bin/tests/test_pstack_router.py`).
+No grader prompt changed, so no grader replay is owed.
+Upgrade step: `claude plugin update sam-cc-setup@seed-skills`.
+
 ## sam-cc-setup v0.9.31 research-gap seats have no dollar cap
 
 The owner ruled on 13 Nov 2026 that there is no spending cap at all, so `research-gap` Claude seats no longer pass `--max-budget-usd 10`, and the skill drops its `no: budget` seat outcome.
