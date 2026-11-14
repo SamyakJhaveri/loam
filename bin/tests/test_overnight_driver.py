@@ -411,6 +411,20 @@ end_call() { echo "ended $polls_seen $reads"; }
         time.sleep(2)
         self.assertNotIn("late", reads.read_text().split(), "a grader read outlived the driver's process group")
 
+    def test_a_child_left_by_the_grader_read_does_not_hold_the_driver(self) -> None:
+        # The read's timeout does not reach gh's children (timeout --foreground); one left holding gh's stdout must
+        # neither keep the driver from writing the window nor write into it later (Codex review, 13 Nov).
+        calls = self.start_call_fakes()
+        self.addCleanup(lambda: [self.kill_group(c) for c in self.calls(calls)])
+        real_sleep = shutil.which("sleep")
+        write_exec(self.fake / "gh", '#!/bin/sh\ncase "$*" in *SamyakJhaveri/distbench*) '
+                   f'({real_sleep} 3; echo 99) & echo 9 ;; *"pr list"*) echo 7 ;; esac\nexit 0\n')
+        self.start_driver()
+        window = self.state / "grader-window.txt"
+        self.assertTrue(self.wait_for(lambda: window.exists(), 2.5), "the driver waited on the read's child")
+        time.sleep(3)  # past the child's write
+        self.assertEqual(window.read_text().splitlines()[1:], ["exit 0", "9"])
+
     @LINUX_ONLY
     def test_a_planted_link_does_not_redirect_the_grader_window_write(self) -> None:
         # The call can write the state dir; links planted at the old temp name and at the window itself must not
