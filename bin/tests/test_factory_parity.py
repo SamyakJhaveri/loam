@@ -25,7 +25,7 @@ CASES = [
     ("p1-pass", "P1", "PASS"),  # init lists verify-distbench, loads sam-cc-setup from frozen/plugin-dir, view in prompt
     ("p1-fail", "P1", "FAIL"),  # W35: init without verify-distbench
     ("p1-plugin", "P1", "FAIL"),  # W35: init loads ~/loam's sam-cc-setup, not frozen/plugin-dir's
-    ("p1-view", "P1", "FAIL"),  # W35: round-1.prompt.md without the memory view
+    ("p1-view", "P1", "FAIL"),  # W35: round-1.prompt.md without the lessons view
     ("p2-pass", "P2", "PASS"),  # W34: router read in full (cat), then the first Write
     ("p2-partial", "P2", "FAIL"),  # W34: the router by sed -n 1,60p: only a plain cat or Read is a full read
     ("p2-fail", "P2", "FAIL"),  # W35: open(..., "w") with no router read

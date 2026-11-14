@@ -56,7 +56,7 @@ MUTATIONS = [  # (rule, old, new): each old must occur exactly once
     ("P3 pstack: line read (713 Codex 5: that same file)", "            elif any(same_path(path, p) for p in read_paths):",
      "            elif name in read:"),
     ("P1 plugin-dir", "        elif paths != [want]:", "        elif False:"),
-    ("P1 memory view", "        if MEMORY_VIEW in lines:", "        if True:"),
+    ("P1 lessons view", "        if LESSONS_VIEW in lines:", "        if True:"),
     ("P7 init auto", 'rows.append(("PASS" if mode == "auto"', 'rows.append(("PASS" if True'),
     ("P7 sandbox off", '("PASS" if enabled is False else "FAIL"', '("PASS" if True else "FAIL"'),
     ("P7 digests equal", "        elif differ:", "        elif False:"),
