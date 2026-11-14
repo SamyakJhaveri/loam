@@ -9,7 +9,8 @@ the drafts and rulings-pending.md are on disk before the cursor moves, so a fail
 the next tick reads the same messages again.
 tick: runs rulings when its last run is 24 h old, or once in the 01:00-05:00 Los Angeles night. dream: not built.
 Every subcommand holds <state>/health.lock; a second one prints `busy` and exits 0.
-HEALTH_CLAUDE, when set, replaces `claude-account exec ... claude -p` (the tests' stub).
+HEALTH_CLAUDE, when set, replaces `claude-account exec ... claude -p` (the tests' stub). A call still running after
+HEALTH_CALL_TIMEOUT_SEC (default 5400, bin/factory's CALL_TIMEOUT_SEC) is killed and fails, so it cannot hold the lock.
 """
 import argparse
 import datetime as dt
@@ -19,6 +20,7 @@ import json
 import os
 import re
 import shutil
+import signal
 import subprocess
 import sys
 import tempfile
@@ -29,6 +31,7 @@ HEALTH_D = os.path.join(os.path.dirname(os.path.abspath(__file__)), "health.d")
 FENCE = "~~~~~~~~~~~~ evidence"  # bin/factory's FENCE
 YES = re.compile(r"yes(?:[\s,]+r\d{4}-\d+)+", re.I)
 REF_KEYS = ("id", "host", "session", "record", "file", "line", "ts")
+CALL_TIMEOUT = int(os.environ.get("HEALTH_CALL_TIMEOUT_SEC", "5400"))
 INTRO = ("Each is a ruling the health check found in your messages that APPROVALS does not record yet. "
          "Reply `yes <id>` (or several ids) to record one; anything else leaves it waiting.")
 
@@ -135,7 +138,14 @@ def ask(cfg, state, d, role, effort, schema, prompt, keys, add_dirs=()):
         cmd = [os.path.join(loam, "bin", "claude-account"), "exec", "env", f"CLAUDE_CONFIG_DIR={conf}", "claude", "-p"]
     raw = os.path.join(d, "reply.json")
     with open(os.path.join(d, "prompt.md")) as stdin, open(raw, "w") as out:
-        rc = subprocess.run(cmd + args, stdin=stdin, stdout=out, cwd=d, env={**os.environ, "HEALTH_ROLE": role}).returncode
+        p = subprocess.Popen(cmd + args, stdin=stdin, stdout=out, cwd=d, env={**os.environ, "HEALTH_ROLE": role},
+                             start_new_session=True)
+        try:
+            rc = p.wait(timeout=CALL_TIMEOUT)
+        except subprocess.TimeoutExpired:  # kill the whole group: under claude-account exec, claude is a grandchild
+            os.killpg(p.pid, signal.SIGKILL)
+            p.wait()
+            raise Failed(f"the {role} call ran past {CALL_TIMEOUT} s; see {raw}")
     with open(raw) as fh:
         reply = reply_object(fh.read(), keys)
     if rc or reply is None:
@@ -220,7 +230,7 @@ def rulings(cfg, state):
                       f"The pending file: {d}/pending.jsonl (empty means none pending)\n")
         reply = ask(cfg, state, d, "rulings", "xhigh", os.path.join(HEALTH_D, "rulings.schema.json"), prompt,
                     ("drafts", "repeats"))
-        msg, today, dropped, repeats = {m["id"]: m for m in asked}, started.astimezone(LA).strftime("%m%d"), [], []
+        msg, today, dropped = {m["id"]: m for m in asked}, started.astimezone(LA).strftime("%m%d"), []
         for repeat, items in ((False, reply["drafts"]), (True, reply["repeats"])):
             for x in items:
                 m, q = msg.get(x.get("ref")), x.get("quote") or ""
@@ -241,15 +251,19 @@ def rulings(cfg, state):
                        "repeat_of": x["recorded_in"] if repeat else "none",
                        "why_ruling": None if repeat else x["why_ruling"]}
                 store.append(rec)
-                (repeats if repeat else drafted).append(rec)
+                if not repeat:
+                    drafted.append(rec)
         write(os.path.join(d, "dropped.json"), json.dumps(dropped, indent=1, ensure_ascii=False) + "\n")
-        for rec in repeats:
-            line = (f'- ruling-repeat [-] {rec["ref"]["file"]}:{rec["ref"]["line"]} Samyak restated "{rec["quote"]}", '
-                    f'already recorded in {rec["repeat_of"]}: {rec["rule"]}')
-            prompt = writer_brief(loam, rules_repo) + f"\n## Follow-ups\n\n{FENCE}\n{line}\n{FENCE}\n"
-            learned[rec["id"]] = ask(cfg, state, call_dir(state, "learn"), "learn", "high",
-                                     os.path.join(loam, "bin", "factory.d", "learn.schema.json"), prompt,
-                                     ("repo", "title", "source_line", "body"), (rules_repo, loam))
+    # Every repeat without its ticket draft on disk, this batch's or one an earlier run saved before its draft failed.
+    for rec in store:
+        if rec["repeat_of"] == "none" or os.path.exists(os.path.join(state, "drafts", rec["id"], "learn", "draft.md")):
+            continue
+        line = (f'- ruling-repeat [-] {rec["ref"]["file"]}:{rec["ref"]["line"]} Samyak restated "{rec["quote"]}", '
+                f'already recorded in {rec["repeat_of"]}: {rec["rule"]}')
+        prompt = writer_brief(loam, rules_repo) + f"\n## Follow-ups\n\n{FENCE}\n{line}\n{FENCE}\n"
+        learned[rec["id"]] = ask(cfg, state, call_dir(state, "learn"), "learn", "high",
+                                 os.path.join(loam, "bin", "factory.d", "learn.schema.json"), prompt,
+                                 ("repo", "title", "source_line", "body"), (rules_repo, loam))
 
     # Every call has answered: write the outputs, then the cursor.
     write(store_p, jsonl(store))
@@ -259,7 +273,7 @@ def rulings(cfg, state):
         d = os.path.join(state, "drafts", rid, "learn")
         os.makedirs(d, exist_ok=True)
         write(os.path.join(d, "draft.json"), json.dumps({k: x[k] for k in ("repo", "title", "source_line")}) + "\n")
-        write(os.path.join(d, "draft.md"), x["body"] + "\n")
+        write(os.path.join(d, "draft.md"), x["body"] + "\n")  # last: its presence marks the draft whole
     write(os.path.join(state, "rulings-pending.md"), pending_md(store))
     cursor.setdefault("rulings", {}).update(last)
     cursor.setdefault("runs", {})["rulings"] = started.strftime("%Y-%m-%dT%H:%M:%SZ")

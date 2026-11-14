@@ -31,13 +31,16 @@ def fixture(tmp: Path) -> Path:
          "message": {"role": "assistant", "content": [{"type": "text", "text": "Should GPU tickets say so?"}]}},
         {"type": "user", "sessionId": "s1", "uuid": "u1", "parentUuid": "a1", "timestamp": "2026-11-14T01:00:00.000Z",
          "message": {"role": "user", "content": f"From now on {GPU}. {CAP}, as before."}},
+        {"type": "assistant", "sessionId": "s1", "uuid": "a2", "timestamp": "2026-11-14T01:01:00.000Z",
+         "message": {"role": "assistant"}},  # a record with no content, which the extractor must pass over
     ]
     (tmp / "p" / "proj" / "s1.jsonl").write_text("".join(json.dumps(r) + "\n" for r in records))
     stub = tmp / "stub"
-    stub.write_text('#!/bin/sh\necho "$HEALTH_ROLE" >> "$T/calls"\ncat "$T/$HEALTH_ROLE.json"\n')
+    stub.write_text('#!/bin/sh\necho "$HEALTH_ROLE" >> "$T/calls"\n[ -e "$T/hang" ] && sleep 30\ncat "$T/$HEALTH_ROLE.json"\n')
     stub.chmod(0o755)
     cfg = tmp / "c.json"
-    cfg.write_text(json.dumps({"state": str(tmp / "st"), "loam": str(ROOT), "hosts": {"mac": {"transcripts": [f"{tmp}/p/*"]}},
+    cfg.write_text(json.dumps({"state": str(tmp / "st"), "loam": str(ROOT), "hosts": {"mac": {"transcripts": [f"{tmp}/p/*"]},
+                                                                                   "pc": {"messages": str(tmp / "pc.jsonl")}},
                                "rules": {"repo": str(repo), "ref": "HEAD", "path": "APPROVALS.md"}}))
     return cfg
 
@@ -52,10 +55,15 @@ def draft(quote: str, audience: str = "worker") -> dict:
             "supersedes": "none", "why_ruling": "w"}
 
 
-def run(tmp: Path, cfg: Path, command: str = "rulings") -> subprocess.CompletedProcess:
-    env = {**os.environ, "T": str(tmp), "HEALTH_CLAUDE": str(tmp / "stub")}
+def run(tmp: Path, cfg: Path, command: str = "rulings", **env) -> subprocess.CompletedProcess:
+    env = {**os.environ, "T": str(tmp), "HEALTH_CLAUDE": str(tmp / "stub"), **env}
     return subprocess.run([str(ROOT / "bin" / "health-check"), "--config", str(cfg), command], env=env,
                           capture_output=True, text=True)
+
+
+def append(tmp: Path, record: dict) -> None:
+    with open(tmp / "p" / "proj" / "s1.jsonl", "a") as fh:
+        fh.write(json.dumps(record) + "\n")
 
 
 def store(tmp: Path) -> list:
@@ -73,9 +81,15 @@ def test_only_his_exact_unrecorded_words_become_a_draft_and_a_restated_rule_a_ti
               "repeat_of": "none", "why_ruling": "w"}
     (tmp_path / "st" / "rulings.jsonl").write_text(json.dumps(seeded) + "\n")
 
-    # A limit line returned as a success is a failed call: no record, and the message is read again next run.
+    # A limit line returned as a success is a failed call, and so is a call that hangs past its timeout: no record,
+    # and the message is read again next run.
     reply(tmp_path, "You've hit your 5-hour limit, resets 9:20pm (America/Los_Angeles)")
     assert run(tmp_path, cfg).returncode != 0
+    (tmp_path / "hang").touch()
+    started = dt.datetime.now()
+    assert run(tmp_path, cfg, HEALTH_CALL_TIMEOUT_SEC="1").returncode != 0
+    assert dt.datetime.now() - started < dt.timedelta(seconds=20)
+    (tmp_path / "hang").unlink()
     assert store(tmp_path) == [seeded]
 
     # CAP is already in the rules file: dropped as a draft, kept as a restated rule.
@@ -96,16 +110,25 @@ def test_only_his_exact_unrecorded_words_become_a_draft_and_a_restated_rule_a_ti
     replies = [line for line in listing if line.startswith("  - Reply: yes ")]
     assert replies == [f"  - Reply: yes R{mmdd}-3", f"  - Reply: yes R{mmdd}-4"]
 
+    # The ticket draft was lost after the store was saved: the next run drafts it again from the store.
+    (learn / "draft.md").unlink()
+    assert run(tmp_path, cfg).returncode == 0
+    assert (learn / "draft.md").read_text() == "# Check that no spending cap returns\nBody.\n"
+    assert (tmp_path / "calls").read_text().split()[-2:] == ["learn", "learn"]
+
 
 def test_yes_accepts_a_draft_without_a_model_call_and_tick_runs_only_when_due_and_unlocked(tmp_path):
     cfg = fixture(tmp_path)
     reply(tmp_path, json.dumps({"drafts": [draft(GPU)], "repeats": []}))
     assert run(tmp_path, cfg).returncode == 0
     [rec] = store(tmp_path)
-    yes = {"type": "user", "sessionId": "s1", "uuid": "u2", "parentUuid": "u1", "timestamp": "2026-11-14T02:00:00.000Z",
-           "message": {"role": "user", "content": f"YES {rec['id'].lower()}"}}
-    with open(tmp_path / "p" / "proj" / "s1.jsonl", "a") as fh:
-        fh.write(json.dumps(yes) + "\n")
+    # The yes comes from the other host's extracted messages; a bare /exit in the transcript says nothing.
+    yes = {"id": "pc:s2:u2", "host": "pc", "session": "s2", "record": "u2", "parent": None, "file": "/pc/s2.jsonl",
+           "line": 4, "ts": "2026-11-14T02:00:00.000Z", "kind": "typed", "text": f"YES {rec['id'].lower()}", "before": ""}
+    (tmp_path / "pc.jsonl").write_text(json.dumps(yes) + "\n")
+    append(tmp_path, {"type": "user", "sessionId": "s1", "uuid": "u3", "parentUuid": "u1",
+                      "timestamp": "2026-11-14T02:01:00.000Z", "message": {"role": "user", "content":
+                      "<command-name>/exit</command-name>\n<command-message>exit</command-message>\n<command-args></command-args>"}})
 
     # Another run holds the lock: tick steps aside without reading anything.
     with open(tmp_path / "st" / "health.lock", "a") as lock:
@@ -119,8 +142,14 @@ def test_yes_accepts_a_draft_without_a_model_call_and_tick_runs_only_when_due_an
     cursor_p = tmp_path / "st" / "cursor.json"
     old = (dt.datetime.now(dt.timezone.utc) - dt.timedelta(hours=25)).strftime("%Y-%m-%dT%H:%M:%SZ")
     cursor_p.write_text(json.dumps({**json.loads(cursor_p.read_text()), "runs": {"rulings": old}}))
+    assert run(tmp_path, cfg, "dream").returncode == 1  # not built: it fails and runs nothing in its place
+    assert json.loads(cursor_p.read_text())["runs"]["rulings"] == old
     assert run(tmp_path, cfg, "tick").returncode == 0
     assert json.loads(cursor_p.read_text())["runs"]["rulings"] > old
+    # Just after a run, tick is not due: a new message waits for the next due tick.
+    append(tmp_path, {"type": "user", "sessionId": "s1", "uuid": "u4", "parentUuid": "u3",
+                      "timestamp": "2026-11-14T03:00:00.000Z", "message": {"role": "user", "content": "Later words."}})
+    assert run(tmp_path, cfg, "tick").returncode == 0
     assert (tmp_path / "calls").read_text().split() == ["rulings"]
     assert [r["status"] for r in store(tmp_path)] == ["accepted"]
     queue = [json.loads(line) for line in (tmp_path / "st" / "lessons-queue.jsonl").read_text().splitlines()]
