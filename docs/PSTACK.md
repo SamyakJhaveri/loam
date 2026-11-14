@@ -21,11 +21,11 @@ There are no copies in `~/.claude/skills/`, so a pstack update reaches every age
 ## Who runs what
 
 The rule line, in `seed/docs/WORKERS.md.jinja` and `docs/RULES.md`:
-"pstack: in the main session and in `worker` agents, call the `sam-cc-setup:pstack` skill before a non-trivial task (a bug or failing test, code you have not read, a multi-file or batch change, writing or changing tests, an API or shared-state change, a measured number, a review, a hard multi-part job, or calling work done) and follow the method it picks. Scouts, reviewers and agents started by a pstack skill follow their brief. Never call the Skill tool on a `pstack:` skill (they are manual-only, and its refusal bars running the skill another way); read the skill file by path through the router instead."
+"pstack: in the main session and in `worker` agents, call the `sam-cc-setup:pstack` skill before a task (a bug or failing test, code you have not read, a multi-file or batch change, writing or changing tests, an API or shared-state change, a measured number, a review, a hard multi-part job, or calling work done) and follow the method it picks. Scouts, reviewers and agents started by a pstack skill follow their brief."
 
 | Who | How | Which skills |
 |-----|-----|--------------|
-| Main session and `worker` agent | call `sam-cc-setup:pstack` before a non-trivial task and follow the method it picks; the main session hands a skill marked (spawns) to one `worker`, stating the agent count first | every skill in the router's table and principle list |
+| Main session and `worker` agent | call `sam-cc-setup:pstack` before a task and follow the method it picks; the main session hands a skill marked (spawns) to one `worker`, stating the agent count first | every skill in the router's table and principle list |
 | `scout` agent | follows its brief; one that points it at the router reads it by path (below); never edits | what the brief or the router picks |
 | Factory worker | reads the router at the path `bin/factory` puts in its prompt (`bin/factory.d/_common.md`; fan-out builders get it too), and by path each skill the ticket's `skills:` line names (`docs/factory/LOOP.md`) | any installed pstack skill, human-only ones included (owner ruling 2026-10-30) |
 | Agents a pstack skill starts, reviewers | follow their brief | what the brief names |

@@ -8,7 +8,7 @@ Evidence and per-skill decisions: `~/.local/state/loam/evidence/2026-10-25-conso
 ## Three layers
 
 - **Claude picks**: the lead sees the skill in its skill list and may load it unprompted.
-- **Workers read**: before a non-trivial task the main session or a `worker` calls the `sam-cc-setup:pstack` router, which picks a pstack method; the agent reads that `SKILL.md` from the enabled plugin folder by path (pstack's own Claude Code method, `docs/PSTACK.md`). Scouts and agents a pstack skill starts follow their brief.
+- **Workers read**: before a task the main session or a `worker` calls the `sam-cc-setup:pstack` router, which picks a pstack method; the agent reads that `SKILL.md` from the enabled plugin folder by path (pstack's own Claude Code method, `docs/PSTACK.md`). Scouts and agents a pstack skill starts follow their brief.
 - **You type**: a user-only slash command. Claude starts a pstack one only through the router, and never `setup-pstack`.
 
 A skill stays in the lead's list only if Claude should pick it unprompted and no other listed skill fires on the same words.
