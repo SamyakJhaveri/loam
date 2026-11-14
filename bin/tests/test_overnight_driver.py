@@ -490,22 +490,34 @@ print(9)
         self.assertEqual(victim.read_text(), "keep\n", "the driver wrote through a planted link")
 
     @LINUX_ONLY
-    def test_a_link_swapped_in_for_the_new_window_file_does_not_redirect_the_write(self) -> None:
-        # The call can write the state dir, so it can replace the window's fresh temp file with a link between its
-        # creation and the write; the driver must still write only a file of its own (Codex loam-775 round 2).
-        victim = self.home / "victim"
-        victim.write_text("keep\n")
-        write_exec(self.fake / "mktemp", f'#!/bin/sh\nt=$({shutil.which("mktemp")} "$@") || exit 1\n'
-                   f'case $t in */grader-window.*) rm -f "$t"; ln -s "{victim}" "$t" ;; esac\necho "$t"\n')
+    def test_a_window_file_the_call_swaps_at_publication_is_not_published(self) -> None:
+        # The call can write all of ~/.local/state/loam. At the moment the driver renames its new window into place,
+        # the call replaces every grader-window file there with a forged clear window; the window must still hold gh's
+        # answer (Codex loam-775 at d4bcaca2: the temp file was renamed by a name the call could swap).
+        hook = self.home / "hook"
+        hook.mkdir()
+        (hook / "SwapAtRename.pm").write_text(r"""package SwapAtRename;
+*CORE::GLOBAL::rename = sub {
+  if ($_[1] =~ m{/grader-window\.txt\z}) {
+    require File::Find; require POSIX;
+    open(my $m, ">>", "$ENV{HOME}/swaps") or die; print $m "$_[0]\n"; close $m;
+    File::Find::find({no_chdir => 1, wanted => sub {
+      return unless m{/grader-window[^/]*\z} && -f;
+      unlink $_; open(my $f, ">", $_) or die; print $f POSIX::strftime("read_at %FT%TZ\nexit 0\n", gmtime); close $f }},
+      "$ENV{HOME}/.local/state/loam") }
+  CORE::rename($_[0], $_[1]) };
+1;
+""")
         calls = self.start_call_fakes()
         self.addCleanup(lambda: [self.kill_group(c) for c in self.calls(calls)])
-        self.start_driver()
+        p = subprocess.Popen(["bash", str(OVERNIGHT / "driver.sh")], cwd=ROOT, start_new_session=True,
+                             env={**self.env(), "PERL5LIB": str(hook), "PERL5OPT": "-MSwapAtRename"},
+                             stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        self.addCleanup(lambda: (self.kill_group(p.pid), p.wait()))
         self.assertTrue(self.wait_for(lambda: self.calls(calls)), "the driver started no call")
-        window = self.state / "grader-window.txt"
-        self.assertTrue(self.wait_for(lambda: window.exists(), 10), "the driver wrote no window")
-        self.assertEqual(victim.read_text(), "keep\n", "the driver wrote through a link swapped in for its temp file")
-        self.assertFalse(window.is_symlink(), "the window is a link")
-        self.assertEqual(window.read_text().splitlines()[1:], ["exit 0", "9"])
+        self.assertTrue((self.home / "swaps").exists(), "no window publication reached the swap")
+        self.assertEqual((self.state / "grader-window.txt").read_text().splitlines()[1:], ["exit 0", "9"],
+                         f"the driver published a window file the call swapped: {(self.home / 'swaps').read_text()}")
 
     @LINUX_ONLY
     def test_driver_leaves_a_reused_pid_alone(self) -> None:

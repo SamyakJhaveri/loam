@@ -11,9 +11,10 @@
 set -u
 D=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd) || exit 1
 O=~/.local/state/loam/overnight
+P=~/.local/state/loam-driver   # the driver's own, outside the call's sandbox (allowWrite ~/.local/state/loam)
 LOCK=~/.local/state/loam-factory/next.lock
 cd ~/loam || exit 1
-mkdir -p "$O" && touch "$O/log.md" "$O/followups.md"
+mkdir -p "$O" && mkdir -p -m 700 "$P" && touch "$O/log.md" "$O/followups.md"
 stamp() { date -u +%FT%TZ; }
 # REAP runs its argv as its one child. It is a child subreaper (prctl PR_SET_CHILD_SUBREAPER, 36, by syscall number:
 # 157 on x86_64, 167 on aarch64), as in bin/factory call_start, so every process the child leaves, in any session, is
@@ -48,9 +49,8 @@ end_call() { local c=$1 i
 # The protocol's one read of DistBench (Grader window), run here because the call's settings deny it gh on DistBench:
 # grader-window.txt holds the read's UTC time, gh's exit status (124 on a timeout, 120 if a process gh started was
 # still there when gh exited) and, only after exit 0, one open DistBench grader-fix PR number per line. Written to a
-# fresh temp file that File::Temp creates and opens in one step (O_EXCL, O_NOFOLLOW) and writes through that one
-# handle, never reopening a name the call can swap for a link, then renamed over the name itself, so a call never
-# reads half of it and no planted link redirects the write.
+# temp file in P, which the call cannot write, then renamed over the name in O, so a call never reads half of it and
+# cannot swap the file between the write and the rename (P and O share a filesystem; a failed rename removes the window).
 # gh runs under REAP with $sole set. REAP stays in the driver's process group, as timeout --foreground does (plain
 # timeout makes a group of its own), so killing the driver's group ends the read too. gh's stdout is shared with every
 # process gh starts, so what one writes after gh exits is not gh's answer: REAP ends them all, and a read gh may have
@@ -65,7 +65,7 @@ grader_window() { local at out rc
   [ "$rc" -eq 0 ] || { echo "$(stamp) grader-window read failed: exit $rc" >> "$O/driver.log"; out=; }   # not an answer
   { echo "read_at $at"; echo "exit $rc"; [ -z "$out" ] || printf '%s\n' "$out"; } | perl -MFile::Temp=tempfile -e '
     ($h, $t) = tempfile("grader-window.XXXXXX", DIR => $ARGV[0]); print $h <STDIN>; close $h or die "close: $!\n";
-    rename($t, "$ARGV[0]/grader-window.txt") or do { unlink $t; die "rename: $!\n" }' "$O" 2>> "$O/driver.log" \
+    rename($t, "$ARGV[1]/grader-window.txt") or do { unlink $t; die "rename: $!\n" }' "$P" "$O" 2>> "$O/driver.log" \
     || rm -f "$O/grader-window.txt"   # no stale clear window
 }
 # Watch a call with kill -0, since an adopted call is not our child; a zombie has ended (kill -0 still finds it while
