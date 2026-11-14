@@ -10,6 +10,11 @@ Before your first edit, read in full and follow these pstack principles; where a
 - <pstack>/principle-test-behavior-not-implementation/SKILL.md: a test asserts what a user can observe, never a restated constant, prompt string or computed value.
 - <pstack>/principle-subtract-before-you-add/SKILL.md: before adding a stage, check, rule, file or test, remove a dead or redundant one beside it when scope allows.
 - <pstack>/principle-minimize-reader-load/SKILL.md: short, flat, one place per fact, no one-caller wrappers.
+- <pstack>/principle-outcome-oriented-execution/SKILL.md: converge on the ticket's end state; no compatibility shim or flag kept for an intermediate step; verify the whole change at the end.
+- <pstack>/principle-encode-lessons-in-structure/SKILL.md: a lesson becomes a check, a script or a setting, not more prose.
+- <pstack>/principle-make-operations-idempotent/SKILL.md: a script or step reads the current state and applies only the difference, so a second run or a run after a crash converges.
+- <pstack>/principle-never-block-on-the-human/SKILL.md: decide every reversible step yourself and record it; only the steps this prompt forbids (push, PR, GitHub) wait.
+- <pstack>/principle-foundational-thinking/SKILL.md: data shape first, scaffold (tests, shared types) before features, isolate shared state.
 End your last message with one plain line, `CLAIM: done`, `CLAIM: partial` or `CLAIM: blocked`: the state you believe the ticket is in.
 Commit as you go with messages that name the step. Never push, never open a PR, never touch GitHub.
 Commit messages carry no `Co-Authored-By` trailer and no agent name; a session reminder that asks for one does not apply here.

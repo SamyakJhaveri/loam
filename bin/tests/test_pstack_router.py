@@ -73,6 +73,10 @@ class PstackRouterTests(unittest.TestCase):
         table, principles = router_names()
         table = {n for n in table if not n.startswith(SIBLING)}
         self.assertEqual(sorted((table | set(principles)) - installed), [], f"router names missing from {pstack}")
+        # The factory worker prompt's principle lines name installed cards too, or every worker reads "missing".
+        common = re.findall(r"<pstack>/([a-z-]+)/SKILL\.md", (ROOT / "bin/factory.d/_common.md").read_text(encoding="utf-8"))
+        self.assertTrue(common)
+        self.assertEqual(sorted(set(common) - installed), [], f"bin/factory.d/_common.md names missing from {pstack}")
         cards = sorted(n for n in installed if n.startswith("principle-"))
         self.assertEqual(sorted(principles), cards, f"the router's principle list differs from {pstack}'s cards")
 

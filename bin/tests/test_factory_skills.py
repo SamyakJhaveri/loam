@@ -259,7 +259,7 @@ console.log(JSON.stringify(seen));"""
         # prompt and in every fan-out builder's; with no principle installed it reads "missing".
         common = (ROOT / "bin/factory.d/_common.md").read_text()
         names = re.findall(r"<pstack>/([a-z-]+)/SKILL\.md", common)
-        self.assertEqual(len(names), 3, common)
+        self.assertEqual(len(names), 8, common)
         self.assertIn("missing/principle-minimize-reader-load/SKILL.md", self.prompt(common=common))
         for name in names:
             self.skill(self.pstack, name)
