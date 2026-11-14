@@ -52,7 +52,6 @@ env/
 *.so
 *.d
 !bin/factory.d/
-!bin/health.d/
 
 # ANL credentials - never commit
 *.pem
