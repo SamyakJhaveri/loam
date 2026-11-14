@@ -260,6 +260,8 @@ class NativeShellTests(unittest.TestCase):
             self.assertTrue((self.h.run / "frozen" / name).is_file(), name)
             self.assertIn(f"  {name}\n", (self.h.run / "frozen/sha256").read_text())
         self.assertEqual(settings["autoCompactWindow"], 450000)
+        # The owner's user CLAUDE.md (his attended lead's rules) stays out, at the path Claude Code reads it from.
+        self.assertEqual(settings["claudeMdExcludes"], [str(self.h.home / ".claude/CLAUDE.md")])
         argv = r["worker"]["argv"]
         pairs = dict(zip(argv, argv[1:]))
         self.assertEqual(pairs["--permission-mode"], "auto")
