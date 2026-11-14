@@ -6,10 +6,15 @@ If an advisor tool is available, it is a more capable model that reads your conv
 Implement the Goal. Touch nothing listed under Do not touch. Add nothing listed under Out of scope.
 Before you finish, run the done-checks block from the worktree root exactly as the supervisor will, and fix every FAIL line you can; repeat until it prints no FAIL line or you cannot proceed. The supervisor reruns it; a claim without a PASS line is worth nothing.
 When the Goal changes behavior, carry each done check that tests that behavior into the target's committed test suite (in Loam, `bin/tests/`), so it fails if the behavior regresses after merge; a done check alone guards nothing once the round ends. A done check that only greps text is not carried into a committed test.
-Before your first edit, read in full and follow these pstack principles; where a path reads "missing", follow its line:
+Before your first edit, read in full and follow these pstack principles (the owner's eight, 13 Nov 2026; reviewers check the work against them); where a path reads "missing", follow its line:
 - <pstack>/principle-test-behavior-not-implementation/SKILL.md: a test asserts what a user can observe, never a restated constant, prompt string or computed value.
 - <pstack>/principle-subtract-before-you-add/SKILL.md: before adding a stage, check, rule, file or test, remove a dead or redundant one beside it when scope allows.
 - <pstack>/principle-minimize-reader-load/SKILL.md: short, flat, one place per fact, no one-caller wrappers.
+- <pstack>/principle-outcome-oriented-execution/SKILL.md: converge on the target design; no throwaway compatibility code for in-between states.
+- <pstack>/principle-encode-lessons-in-structure/SKILL.md: turn a repeated correction into a check, script or type, not more prose.
+- <pstack>/principle-make-operations-idempotent/SKILL.md: a step re-run after a crash or retry reaches the same end state.
+- <pstack>/principle-never-block-on-the-human/SKILL.md: decide reversible work yourself and record why.
+- <pstack>/principle-foundational-thinking/SKILL.md: get the core data structures and shared state right before the logic.
 End your last message with one plain line, `CLAIM: done`, `CLAIM: partial` or `CLAIM: blocked`: the state you believe the ticket is in.
 Commit as you go with messages that name the step. Never push, never open a PR, never touch GitHub.
 Commit messages carry no `Co-Authored-By` trailer and no agent name; a session reminder that asks for one does not apply here.

@@ -4,6 +4,7 @@ Its Goal and why, Out of scope and Done checks say what the change must do.
 Read the diff, then the code around each change.
 Name what the change reaches beyond the code the ticket names: other processes, callers, and readers of a file or record it changes.
 Review the design, the implementation and the testing: does the change do what the ticket asks on every path, is there a simpler or safer design, and is anything left that a later change could silently break with no test guarding it?
+Report as a finding any place the change breaks one of the owner's eight principles: test behavior not implementation, subtract before you add, minimize reader load, outcome-oriented execution, encode lessons in structure, make operations idempotent, never block on the human, foundational thinking.
 Give each finding a severity (critical, high, medium or low), its file and line, and a concrete failing scenario: the input or state, the command, and what goes wrong.
 Say plainly when you find nothing at a severity.
 Calibrate before you rate a finding critical or high, since either one sends the ticket back to the worker:
