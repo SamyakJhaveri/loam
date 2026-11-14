@@ -6,11 +6,13 @@ test files, tests and fixtures directories), an edit that does not parse, an edi
 red unedited run, the order, and a bad base. FactoryRunTests runs `bin/factory -C <target> run` on a file ticket with
 a scripted `claude` whose worker copies the files of its round into the worktree and whose graders pass, so only the
 sweep can fail a round: survivors reach the next worker round once, a relaunch keeps that one block, and a failed
-helper stops the run. Every subprocess gets an explicit environment: a scratch HOME and TMPDIR and a git identity.
+helper stops the run; without FACTORY_SWEEP_IMAGE the sweep runs no test and the log and PR body say why (#768).
+Every subprocess gets an explicit environment: a scratch HOME and TMPDIR and a git identity.
 """
 
 from __future__ import annotations
 
+import hashlib
 import importlib.util
 import json
 import os
@@ -26,6 +28,8 @@ from unittest import mock
 ROOT = pathlib.Path(__file__).resolve().parents[2]
 HELPER = ROOT / "bin/factory.d/mutation_sweep.py"
 PASSING = "def test_nothing():\n    pass\n"
+# Until #768 runs each pytest run in a container of this image, any non-empty value lets the helper run on the host.
+SWEEP_IMAGE = "loam-sweep-check"
 
 CALC = """def over(n, limit):
     # n > limit means over
@@ -95,7 +99,7 @@ class SweepTests(unittest.TestCase):
         tmp = tempfile.TemporaryDirectory()
         self.addCleanup(tmp.cleanup)
         self.top = pathlib.Path(tmp.name)
-        self.env = scratch_env(self.top)
+        self.env = {**scratch_env(self.top), "FACTORY_SWEEP_IMAGE": SWEEP_IMAGE}
         self.wt = self.top / "r"
 
     def commit(self, files: dict[str, str]) -> str:
@@ -466,6 +470,7 @@ class FactoryRunTests(unittest.TestCase):
         self.ticket.write_text(TICKET)
         # bin/tests/fixtures/systemd holds #578's stand-ins once it lands, as the ticket's done checks put it on PATH.
         env["PATH"] = f"{stubs}:{ROOT / 'bin/tests/fixtures/systemd'}:{env['PATH']}"
+        env["FACTORY_SWEEP_IMAGE"] = SWEEP_IMAGE
         self.env = env
 
     def round_files(self, n: int, test: str | None) -> None:
@@ -588,3 +593,31 @@ class FactoryRunTests(unittest.TestCase):
         self.assertFalse(self.body().startswith("Draft:"))
         self.assertIn("mutation sweep: not run: no committed test in the diff",
                       (self.run_dir() / "factory.log").read_text())
+
+    def test_without_an_image_the_sweep_runs_no_test_and_the_log_and_pr_say_why(self) -> None:
+        del self.env["FACTORY_SWEEP_IMAGE"]
+        ran = self.top / "test-ran"
+        self.round_files(1, f"import pathlib\n\n\ndef test_mark():\n    pathlib.Path({str(ran)!r}).touch()\n")
+        self.assertEqual(self.launch(), 0)
+        self.assertEqual(self.worker_rounds(), 1)
+        self.assertFalse(ran.exists(), "a test of the diff ran on the host without FACTORY_SWEEP_IMAGE")
+        why = "not run: FACTORY_SWEEP_IMAGE is unset; the sweep never runs tests on the host"
+        self.assertIn(f"mutation sweep: {why}", (self.run_dir() / "factory.log").read_text())
+        self.assertIn(f"\n## Mutation sweep\n\n{why}\n", self.body())
+        self.assertFalse(self.body().startswith("Draft:"))
+
+    def test_a_relaunch_whose_frozen_helper_predates_the_image_check_stops(self) -> None:
+        self.stopped_after_the_block()
+        # A helper frozen before the image check, with a matching frozen/sha256, as an older run holds it.
+        frozen = self.run_dir() / "frozen"
+        old = "import sys\nopen(sys.argv[3], 'w').write('{\"mutants\": []}')\n"
+        sums = [ln for ln in (frozen / "sha256").read_text().splitlines() if not ln.endswith("  mutation_sweep.py")]
+        sums.append(f"{hashlib.sha256(old.encode()).hexdigest()}  mutation_sweep.py")
+        for name, text in (("mutation_sweep.py", old), ("sha256", "\n".join(sums) + "\n")):
+            (frozen / name).chmod(0o644)
+            (frozen / name).write_text(text)
+        self.launch()
+        self.assertEqual((self.run_dir() / "status").read_text().strip(), "stopped-environment")
+        self.assertIn("EXIT stopped-environment (4): the frozen mutation_sweep.py predates #768 step 4",
+                      (self.run_dir() / "factory.log").read_text())
+        self.assertEqual(self.worker_rounds(), 1)
