@@ -12,6 +12,7 @@ Before your first edit, read in full and follow these pstack principles; where a
 - <pstack>/principle-minimize-reader-load/SKILL.md: short, flat, one place per fact, no one-caller wrappers.
 End your last message with one plain line, `CLAIM: done`, `CLAIM: partial` or `CLAIM: blocked`: the state you believe the ticket is in.
 Commit as you go with messages that name the step. Never push, never open a PR, never touch GitHub.
+Put scratch in a fresh `mktemp -d` and leave it there: a command that contains `rm -rf` is refused whole by the deny list.
 Commit messages carry no `Co-Authored-By` trailer and no agent name; a session reminder that asks for one does not apply here.
 A commit that fixes a defect an earlier, already merged or landed ticket brought in starts its subject with `fix` (after an optional `<ticket>: `) and ends with a line `Caused-by: #<the merged PR that brought it in>` (the form `status --criteria` counts), or `Caused-by: <ticket key>` where the change landed with no PR (distbench's lane, whose morning-note lists fix commits that lack the line); a fix of this ticket's own review findings says `review fixes`, not `fix`.
 If a check cannot be met, write "ABANDON <name> <reason>" in <decisions> and stop; never edit, weaken, or route around a check.
