@@ -395,6 +395,7 @@ end_call() { echo "ended $polls_seen $reads"; }
                         "the driver did not reach three watch polls")
         self.assert_a_read_after_every_poll(3)
 
+    @LINUX_ONLY
     def test_killing_the_drivers_group_ends_its_grader_read(self) -> None:
         # Every test's cleanup, and an operator, stop the driver by killing its process group; a grader-window read
         # outside that group outlived it and wrote into the removed temp home (ENOTEMPTY on CI, 13 Nov).
@@ -411,9 +412,10 @@ end_call() { echo "ended $polls_seen $reads"; }
         time.sleep(2)
         self.assertNotIn("late", reads.read_text().split(), "a grader read outlived the driver's process group")
 
+    @LINUX_ONLY
     def test_a_child_left_by_the_grader_read_does_not_hold_the_driver(self) -> None:
-        # The read's timeout does not reach gh's children (timeout --foreground); one left holding gh's stdout must
-        # neither keep the driver from writing the window nor write into it later (Codex review, 13 Nov).
+        # A child gh leaves holding its stdout must neither keep the driver from writing the window nor write into it
+        # later (Codex review, 13 Nov): REAP ends it, and the read it outlived fails.
         calls = self.start_call_fakes()
         self.addCleanup(lambda: [self.kill_group(c) for c in self.calls(calls)])
         real_sleep = shutil.which("sleep")
@@ -451,18 +453,24 @@ print(9)
         window = self.state / "grader-window.txt"
         self.assertTrue(self.wait_for(lambda: window.exists(), 10), "the driver wrote no window")
         self.assertEqual(window.read_text().splitlines()[1:], ["exit 120"])
+        # The call starts after this window; wait for its pid, so cleanup ends it before removing the home.
+        self.assertTrue(self.wait_for(lambda: self.calls(calls)), "the driver started no call")
 
-    def test_a_lost_grader_read_never_clears_the_window(self) -> None:
-        # The call can write the state dir; a read whose output file is gone before the driver reads it is a failed
-        # read, never an "exit 0" window with no grader-fix PR open.
+    @LINUX_ONLY
+    def test_files_the_call_changes_in_its_state_dir_during_the_read_do_not_change_the_answer(self) -> None:
+        # The call can write the state dir while the read runs; whatever it removes or puts there, the window holds
+        # gh's answer (Codex, 14 Nov: an emptied capture file there read as a clear window).
         calls = self.start_call_fakes()
         self.addCleanup(lambda: [self.kill_group(c) for c in self.calls(calls)])
-        write_exec(self.fake / "gh", '#!/bin/sh\ncase "$*" in *SamyakJhaveri/distbench*) '
-                   f'echo 9; rm -f "{self.state}"/grader-read.* ;; *"pr list"*) echo 7 ;; esac\nexit 0\n')
+        write_exec(self.fake / "gh", '#!/bin/sh\ncase "$*" in *SamyakJhaveri/distbench*) echo 9; '
+                   f'for f in "{self.state}"/*; do [ -f "$f" ] || continue; case $f in *.md|*.txt) ;; *) rm -f "$f"; : > "$f" ;; esac; done ;; '
+                   '*"pr list"*) echo 7 ;; esac\nexit 0\n')
         self.start_driver()
         window = self.state / "grader-window.txt"
         self.assertTrue(self.wait_for(lambda: window.exists(), 10), "the driver wrote no window")
-        self.assertEqual(window.read_text().splitlines()[1:], ["exit 1"])
+        self.assertEqual(window.read_text().splitlines()[1:], ["exit 0", "9"])
+        # The call starts after this window; wait for its pid, so cleanup ends it before removing the home.
+        self.assertTrue(self.wait_for(lambda: self.calls(calls)), "the driver started no call")
 
     @LINUX_ONLY
     def test_a_planted_link_does_not_redirect_the_grader_window_write(self) -> None:

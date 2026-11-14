@@ -19,7 +19,7 @@ stamp() { date -u +%FT%TZ; }
 # 157 on x86_64, 167 on aarch64), as in bin/factory call_start, so every process the child leaves, in any session, is
 # reparented to it. When the child exits or REAP gets TERM, INT or HUP, it TERMs every process left (and its own group,
 # under WRAP), KILLs them 5 s later, and exits with the child's status; with $sole set, 120 instead when any process the
-# child started was still there when the child exited.
+# child started was still there, or ended within the same 0.1 s poll, when the child exited.
 REAP='$nr = {x86_64 => 157, aarch64 => 167}->{(POSIX::uname())[4]} or die "no prctl number for this CPU\n";
   syscall($nr, 36, 1, 0, 0, 0) == 0 or die "prctl PR_SET_CHILD_SUBREAPER: $!\n";
   defined($kid = fork) or die "fork: $!\n";
@@ -47,24 +47,20 @@ end_call() { local c=$1 i
 }
 # The protocol's one read of DistBench (Grader window), run here because the call's settings deny it gh on DistBench:
 # grader-window.txt holds the read's UTC time, gh's exit status (124 on a timeout, 120 if a process gh started was
-# still there when gh exited, 1 if its output file was gone before it was read) and, only after exit 0, one open
-# DistBench grader-fix PR number per line. Written through a fresh mktemp file (never a fixed name the call could link
-# elsewhere) and moved with mv -T over the name itself, so a call never reads half of it and no planted link redirects
-# the write.
-# gh runs under REAP with $sole set, which stays in the driver's process group, as timeout --foreground does (plain
+# still there when gh exited) and, only after exit 0, one open DistBench grader-fix PR number per line. Written
+# through a fresh mktemp file (never a fixed name the call could link elsewhere) and moved with mv -T over the name
+# itself, so a call never reads half of it and no planted link redirects the write.
+# gh runs under REAP with $sole set. REAP stays in the driver's process group, as timeout --foreground does (plain
 # timeout makes a group of its own), so killing the driver's group ends the read too. gh's stdout is shared with every
-# process gh starts, so what one writes after gh exits is not gh's answer: REAP ends them all, and a read gh outlived
-# by any of them fails (120). REAP ends the whole read before timeout's KILL (-k 15) could leave any of it behind.
-# gh writes to a file of its own, removed once read, not a pipe, so nothing left holding its stdout can keep the
-# driver waiting.
+# process gh starts, so what one writes after gh exits is not gh's answer: REAP ends them all, and a read gh may have
+# been outlived by fails (120; a process that ended within REAP's 0.1 s poll of gh's exit counts too, so it fails
+# safe). With nothing left holding gh's stdout once REAP exits, the read is a plain $(...), with no file the call
+# could replace; timeout's KILL (-k 15) comes after REAP's own TERM and KILL (10 s).
 to=(); command -v timeout > /dev/null && to=(timeout --foreground -k 15 60)
 grader_window() { local at out rc tmp
   at=$(stamp)
-  tmp=$(mktemp "$O/grader-read.XXXXXX") || { rm -f "$O/grader-window.txt"; return; }   # no stale clear window
-  ${to[@]+"${to[@]}"} perl -MPOSIX -MTime::HiRes=time,sleep -e '$sole = 1;' -e "$REAP" gh pr list -R SamyakJhaveri/distbench --state open --limit 100 --json number,title,files --jq '.[] | select((.title | test("grader|regrade"; "i")) or any(.files[].path; test("(^|/)grader\\.py$|regrade"; "i"))) | .number' > "$tmp" 2>> "$O/driver.log"
+  out=$(${to[@]+"${to[@]}"} perl -MPOSIX -MTime::HiRes=time,sleep -e '$sole = 1;' -e "$REAP" gh pr list -R SamyakJhaveri/distbench --state open --limit 100 --json number,title,files --jq '.[] | select((.title | test("grader|regrade"; "i")) or any(.files[].path; test("(^|/)grader\\.py$|regrade"; "i"))) | .number' 2>> "$O/driver.log")
   rc=$?
-  out=$(cat -- "$tmp") || { [ "$rc" -ne 0 ] || rc=1; }
-  rm -f "$tmp"
   [ "$rc" -eq 0 ] || { echo "$(stamp) grader-window read failed: exit $rc" >> "$O/driver.log"; out=; }   # not an answer
   tmp=$(mktemp "$O/grader-window.XXXXXX") || { rm -f "$O/grader-window.txt"; return; }   # no stale clear window
   { echo "read_at $at"; echo "exit $rc"; [ -z "$out" ] || printf '%s\n' "$out"; } > "$tmp" \

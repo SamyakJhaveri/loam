@@ -226,10 +226,11 @@ class LauncherTests(unittest.TestCase):
 
     def test_overnight_driver_call(self) -> None:
         text = (ROOT / "bin/overnight/driver.sh").read_text()
-        wrap = re.search(r"^WRAP='.*?'$", text, re.M | re.S)
+        reap = re.search(r"^REAP='.*?'$", text, re.M | re.S)
+        wrap = re.search(r"^WRAP=.*$", text, re.M)
         run = re.search(r"^run\(\) \{.*?^\}$", text, re.M | re.S)
-        assert wrap and run
-        (self.s / "driver-run.sh").write_text(wrap.group(0) + "\n" + run.group(0) + "\n")
+        assert reap and wrap and run
+        (self.s / "driver-run.sh").write_text(reap.group(0) + "\n" + wrap.group(0) + "\n" + run.group(0) + "\n")
         got = self.tokens("driver", '. "$1/driver-run.sh"; grader_window() { :; }; watch() { :; }; account() { :; }; '
                           'O=$1/o; D=$PWD/bin/overnight; before=0; run "Read $D/protocol.md"', "_", str(self.s))
         self.assert_active("the overnight driver's call", got)
