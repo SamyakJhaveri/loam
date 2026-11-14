@@ -1865,10 +1865,10 @@ exec_frozen() {
     REVIEW_LOADED=1
     return 0
   fi
-  # A run frozen between #618 (the sweep) and #768 step 4 would sweep on the host with no image, as on 13 Nov 2026 (a
-  # mutant SIGKILLed every process of its user): it ends here, so a relaunch cannot rerun its sweep.
-  [ ! -f "$RUN/frozen/mutation_sweep.py" ] || grep -q FACTORY_SWEEP_IMAGE "$RUN/frozen/mutation_sweep.py" \
-    || finish stopped-environment "the frozen mutation_sweep.py predates #768 step 4 and would sweep on the host; start a fresh run"
+  # A helper frozen before #768's container runs its tests on the host (with or without an image), as on 13 Nov 2026
+  # (a mutant SIGKILLed every process of its user): its run ends here, so a relaunch cannot rerun its sweep.
+  [ ! -f "$RUN/frozen/mutation_sweep.py" ] || grep -qF 'docker("create"' "$RUN/frozen/mutation_sweep.py" \
+    || finish stopped-environment "the frozen mutation_sweep.py predates #768's container and would sweep on the host; start a fresh run"
   export FACTORY_FROZEN="$RUN/frozen/factory" FACTORY_ROOT="$ROOT"
   # A Loam run re-execs exactly as before F8, so a resumed run whose frozen copy predates -C still starts.
   if target_is_loam; then exec "$RUN/frozen/factory" run "$SRC"; fi
