@@ -419,9 +419,9 @@ def run(image: str, tests: list[str], wt: Path, timeout: float) -> tuple[int | N
     """(exit code, or None on a timeout; seconds; the output's last lines) of one pytest run in a fresh container.
 
     The tree is copied to /sweep, absent until then, with -a, so the directory and its files keep the uid that --user
-    runs as and a test can write them. --init reaps the orphans a test leaves, as init does on the host. The name is fixed
-    per worktree, so a sweep killed mid-run leaves a container the next one removes, and only by that name, never by a
-    filter an edit of this file could widen.
+    runs as and a test can write them. --init reaps the orphans a test leaves, as init does on the host. The name is
+    fixed per worktree, so a sweep killed mid-run leaves a container the next one removes, and only by that name, never
+    by a filter an edit of this file could widen.
     """
     name = "loam-sweep-" + hashlib.sha256(str(wt.resolve()).encode()).hexdigest()[:12]
     start = time.monotonic()

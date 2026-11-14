@@ -21,7 +21,6 @@ import os
 import pathlib
 import shutil
 import subprocess
-import sys
 import tempfile
 import threading
 import time
@@ -41,8 +40,8 @@ needs_docker = unittest.skipUnless(DOCKER, "the sweep runs its tests in docker c
 
 def setUpModule() -> None:
     if DOCKER:
-        subprocess.run(["docker", "build", "-q", "-t", SWEEP_IMAGE, "-"], input="FROM python:3.12-slim\nRUN pip install -q pytest\n",
-                       capture_output=True, text=True, check=True)
+        subprocess.run(["docker", "build", "-q", "-t", SWEEP_IMAGE, "-"], capture_output=True, text=True, check=True,
+                       input="FROM python:3.12-slim\nRUN pip install -q pytest\n")
 
 CALC = """def over(n, limit):
     # n > limit means over
@@ -323,7 +322,8 @@ class SweepTests(Scratch):
                  '  touch "$(dirname "$0")/leaf"; while :; do sleep 1; done; fi\n')
         test = ("import pathlib, subprocess, time\n\n\ndef test_chain():\n    d = pathlib.Path(__file__).parent\n"
                 "    (d / 'fixtures/leaf').unlink(missing_ok=True)\n"
-                f"    subprocess.Popen(['bash', str(d / 'fixtures/chain.sh'), '200', {token!r}], start_new_session=True)\n"
+                f"    subprocess.Popen(['bash', str(d / 'fixtures/chain.sh'), '200', {token!r}],"
+                " start_new_session=True)\n"
                 "    while not (d / 'fixtures/leaf').exists():\n        time.sleep(0.05)\n")
         result = self.sweep_and_end({"fixtures/chain.sh": chain, "chain_test.py": test, "a.py": "x = 1 == 2\n"}, token)
         self.assertEqual(records(result), ["a.py:1:flip:survived"])
