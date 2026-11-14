@@ -267,7 +267,9 @@ console.log(JSON.stringify(seen));"""
         self.assertNotIn("<pstack>", text)
         (args,) = re.findall(r"and args `(\{.*\})`\.", text)
         # The integrator fixes unmet tasks' code, so it gets the same lines as the builders.
-        for p in [text, *self.builder_prompts(args), *self.builder_prompts(args, phase="Integrate")]:
+        integrator = self.builder_prompts(args, phase="Integrate")
+        self.assertEqual(len(integrator), 1)
+        for p in [text, *self.builder_prompts(args), *integrator]:
             for name in names:
                 self.assertIn(f"\n- {self.pstack}/skills/{name}/SKILL.md: ", p)
 
