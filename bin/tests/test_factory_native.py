@@ -320,6 +320,11 @@ class NativeShellTests(unittest.TestCase):
         kept = lines[5:]
         self.assertEqual(kept, body[len(body) - len(kept):])  # the newest lines, whole and in order
         self.assertGreater(len(view) + len(body[-len(kept) - 1]) + 1, 8000)  # as many as fit
+        # The same lessons through a pipe (factory-isc may pass `<(git show ...)`) are read once and cut the same way.
+        self.h.sourced(self.new, f"FACTORY_LESSONS=<(cat '{lessons}') freeze", loam=False)
+        piped = (self.h.run / "frozen/lessons.md").read_text().splitlines()
+        self.assertRegex(piped[4], r"^\[older lessons cut here; the whole file is /dev/fd/\d+\]$")
+        self.assertEqual(piped[:4] + piped[5:], lines[:4] + kept)
 
     def test_unreadable_lessons_file_stops_the_run(self) -> None:
         missing = self.h.top / "no-such-LESSONS.md"

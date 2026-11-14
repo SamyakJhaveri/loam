@@ -1755,18 +1755,17 @@ freeze_shell() {
 freeze_lessons_view() {
   local f=${FACTORY_LESSONS:-} out="$RUN/frozen/lessons.md"
   [ -n "$f" ] || return 0
-  [ -f "$f" ] && [ -r "$f" ] || finish stopped-environment "FACTORY_LESSONS=$f is not a readable file"
-  if [ "$(wc -c < "$f")" -le 8000 ]; then
-    cp "$f" "$out"
-  else
-    LESSONS="$f" LC_ALL=C awk '{ l[NR] = $0 } END {
-      cut = "[older lessons cut here; the whole file is " ENVIRON["LESSONS"] "]"
-      n = length(cut) + 1
-      for (i = 1; i <= 4 && i <= NR; i++) { print l[i]; n += length(l[i]) + 1 }
-      print cut
-      for (i = NR; i > 4 && n + length(l[i]) + 1 <= 8000; i--) n += length(l[i]) + 1
-      for (i++; i <= NR; i++) print l[i] }' "$f" > "$out"
-  fi || finish stopped-environment "could not write $out"
+  # One read of the value, so a /dev/fd pipe works as well as a file.
+  cat "$f" > "$out" || finish stopped-environment "FACTORY_LESSONS=$f is not a readable file"
+  [ "$(wc -c < "$out")" -gt 8000 ] || return 0
+  LESSONS="$f" LC_ALL=C awk '{ l[NR] = $0 } END {
+    cut = "[older lessons cut here; the whole file is " ENVIRON["LESSONS"] "]"
+    n = length(cut) + 1
+    for (i = 1; i <= 4 && i <= NR; i++) { print l[i]; n += length(l[i]) + 1 }
+    print cut
+    for (i = NR; i > 4 && n + length(l[i]) + 1 <= 8000; i--) n += length(l[i]) + 1
+    for (i++; i <= NR; i++) print l[i] }' "$out" > "$out.cut" && mv "$out.cut" "$out" \
+    || finish stopped-environment "could not cut $out"
 }
 
 freeze() {
