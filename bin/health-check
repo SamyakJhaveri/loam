@@ -1,0 +1,322 @@
+#!/usr/bin/env python3
+"""bin/health-check --config FILE tick|rulings|dream: draft Samyak's unrecorded rulings for his one-word yes.
+
+rulings: reads each host's messages after its cursor. A message that is only `yes <id>...` accepts those drafts; the
+rest go to one model call (bin/health.d/rulings.md). A draft is kept only when its quote is his exact words and not
+already in the rules file; a ruling he restated becomes a recorded record plus a check-ticket draft from the Writer
+section of bin/factory.d/learn.md. Every model call runs before the first write, and the store, the lessons queue,
+the drafts and rulings-pending.md are on disk before the cursor moves, so a failed call (exit 1) writes nothing and
+the next tick reads the same messages again.
+tick: runs rulings when its last run is 24 h old, or once in the 01:00-05:00 Los Angeles night. dream: not built.
+Every subcommand holds <state>/health.lock; a second one prints `busy` and exits 0.
+HEALTH_CLAUDE, when set, replaces `claude-account exec ... claude -p` (the tests' stub). A call still running after
+HEALTH_CALL_TIMEOUT_SEC (default 5400, bin/factory's CALL_TIMEOUT_SEC) is killed and fails, so it cannot hold the lock.
+"""
+import argparse
+import datetime as dt
+import fcntl
+import glob
+import json
+import os
+import re
+import shutil
+import signal
+import subprocess
+import sys
+import tempfile
+from zoneinfo import ZoneInfo
+
+LA = ZoneInfo("America/Los_Angeles")
+HEALTH_D = os.path.join(os.path.dirname(os.path.abspath(__file__)), "health.d")
+FENCE = "~~~~~~~~~~~~ evidence"  # bin/factory's FENCE
+YES = re.compile(r"yes(?:[\s,]+r\d{4}-\d+)+", re.I)
+REF_KEYS = ("id", "host", "session", "record", "file", "line", "ts")
+CALL_TIMEOUT = int(os.environ.get("HEALTH_CALL_TIMEOUT_SEC", "5400"))
+INTRO = ("Each is a ruling the health check found in your messages that APPROVALS does not record yet. "
+         "Reply `yes <id>` (or several ids) to record one; anything else leaves it waiting.")
+
+
+class Failed(Exception):
+    pass
+
+
+def log(msg):
+    print(f"health-check: {msg}", file=sys.stderr)
+
+
+def path(p):
+    return os.path.abspath(os.path.expanduser(p))
+
+
+def read_jsonl(p):
+    try:
+        with open(p) as fh:
+            return [json.loads(line) for line in fh if line.strip()]
+    except FileNotFoundError:
+        return []
+
+
+def jsonl(rows):
+    return "".join(json.dumps(r, ensure_ascii=False) + "\n" for r in rows)
+
+
+def write(p, text):  # by temp file and rename, so a reader never sees half a file
+    with open(p + ".tmp", "w") as fh:
+        fh.write(text)
+    os.replace(p + ".tmp", p)
+
+
+def new_messages(state, host, spec, since):
+    """The host's extracted messages with ts after since, oldest first."""
+    if "messages" in spec:
+        rows = [m for m in read_jsonl(path(spec["messages"])) if m["ts"] > since]
+        return sorted(rows, key=lambda m: (m["ts"], m["id"]))
+    rows = []
+    for folder in sorted({f for g in spec["transcripts"] for f in glob.glob(path(g)) if os.path.isdir(f)}):
+        out = tempfile.mkdtemp(dir=state, prefix="extract-")
+        cmd = [sys.executable, "-I", os.path.join(HEALTH_D, "owner_msgs.py"), folder, out, host]
+        if subprocess.run(cmd + (["--since", since] if since else []), stdout=subprocess.DEVNULL).returncode:
+            raise Failed(f"owner_msgs.py failed on {folder}")
+        rows += read_jsonl(os.path.join(out, f"{host}-messages.jsonl"))
+        shutil.rmtree(out)
+    return sorted(rows, key=lambda m: (m["ts"], m["id"]))
+
+
+def rules_text(rules):
+    repo = path(rules["repo"])
+    try:
+        fetch = subprocess.run(["git", "-C", repo, "fetch", "--quiet"], capture_output=True, text=True, timeout=120)
+        if fetch.returncode:
+            log(f"git fetch in {repo} failed, reading {rules['ref']} as it stands: {fetch.stderr.strip()}")
+    except subprocess.TimeoutExpired:
+        log(f"git fetch in {repo} timed out, reading {rules['ref']} as it stands")
+    show = subprocess.run(["git", "-C", repo, "show", f"{rules['ref']}:{rules['path']}"], capture_output=True, text=True)
+    if show.returncode:
+        raise Failed(f"cannot read the rules file: {show.stderr.strip()}")
+    return show.stdout
+
+
+def reply_object(raw, keys):
+    """The reply in a claude -p envelope (as grader_reply reads it), or None when it is not one object with keys."""
+    try:
+        env = json.loads(raw)
+        if isinstance(env, list):
+            env = next((x for x in reversed(env) if x.get("type") == "result"), env[-1] if env else {})
+        if env.get("is_error"):
+            return None
+        text = "\n".join(re.sub(r"```$", "", re.sub(r"^```(json)?", "", line))
+                         for line in (env.get("result") or "").split("\n"))
+        obj = json.loads(text)
+    except (ValueError, AttributeError, TypeError):
+        return None
+    return obj if isinstance(obj, dict) and all(k in obj for k in keys) else None
+
+
+def call_dir(state, role):  # microseconds: one run makes a learn call per repeat, often within a second
+    d = os.path.join(state, "calls", dt.datetime.now(dt.timezone.utc).strftime("%Y%m%dT%H%M%S.%fZ") + "-" + role)
+    os.makedirs(d)
+    return d
+
+
+def ask(cfg, state, d, role, effort, schema, prompt, keys, add_dirs=()):
+    """One model call in call folder d, which keeps the prompt and the raw reply; returns the reply object."""
+    loam = path(cfg["loam"])
+    write(os.path.join(d, "prompt.md"), prompt)
+    args = ["--model", "claude-opus-5-5", "--effort", effort, "--tools", "Read,Grep,Glob"]
+    for a in add_dirs:
+        args += ["--add-dir", a]
+    with open(schema) as fh:
+        args += ["--strict-mcp-config", "--disable-slash-commands", "--no-session-persistence",
+                 "--json-schema", fh.read(), "--setting-sources", "",
+                 "--settings", os.path.join(loam, "bin", "factory.d", "role-settings.json"), "--output-format", "json"]
+    if os.environ.get("HEALTH_CLAUDE"):
+        cmd = [os.environ["HEALTH_CLAUDE"]]
+    else:  # a private config dir, as call_json in bin/factory: no login, memory, rules or plugins of the operator's
+        conf = os.path.join(state, "claude-config")
+        os.makedirs(conf, mode=0o700, exist_ok=True)
+        os.chmod(conf, 0o700)
+        cmd = [os.path.join(loam, "bin", "claude-account"), "exec", "env", f"CLAUDE_CONFIG_DIR={conf}", "claude", "-p"]
+    raw = os.path.join(d, "reply.json")
+    with open(os.path.join(d, "prompt.md")) as stdin, open(raw, "w") as out:
+        p = subprocess.Popen(cmd + args, stdin=stdin, stdout=out, cwd=d, env={**os.environ, "HEALTH_ROLE": role},
+                             start_new_session=True)
+        try:
+            rc = p.wait(timeout=CALL_TIMEOUT)
+        except subprocess.TimeoutExpired:  # kill the whole group: under claude-account exec, claude is a grandchild
+            os.killpg(p.pid, signal.SIGKILL)
+            raise Failed(f"the {role} call ran past {CALL_TIMEOUT} s; see {raw}")
+    with open(raw) as fh:
+        reply = reply_object(fh.read(), keys)
+    if rc or reply is None:
+        raise Failed(f"the {role} call failed (exit {rc}, or its reply is not one JSON object with {', '.join(keys)}); "
+                     f"see {raw}")
+    return reply
+
+
+def writer_brief(loam, target):
+    """The Writer section of learn.md, filled as learn_brief in bin/factory.d/review.sh fills it."""
+    url = subprocess.run(["git", "-C", target, "remote", "get-url", "origin"], capture_output=True, text=True).stdout
+    m = re.search(r"github\.com[:/][^/]+/([^/\s]+?)(?:\.git)?\s*$", url)
+    name = (m.group(1) if m else os.path.basename(target)).lower()
+    with open(os.path.join(loam, "bin", "factory.d", "learn.md")) as fh:
+        section = re.search(r"^## Writer\n(.*?)(?=^## |\Z)", fh.read(), re.S | re.M).group(1)
+    return section.replace("<target-name>", name).replace("<target>", target).replace("<root>", loam)
+
+
+def id_key(r):
+    mmdd, n = r["id"][1:].split("-")
+    return mmdd, int(n)
+
+
+def pending_md(store):
+    pend = sorted((r for r in store if r["status"] == "pending"), key=id_key)
+    acc = sorted((r for r in store if r["status"] == "accepted"), key=id_key)
+    out = ["## Rulings waiting for your yes", "", INTRO, ""] + (["None waiting.", ""] if not pend else [])
+    for r in pend:
+        ref = r["ref"]
+        t = dt.datetime.fromisoformat(ref["ts"]).astimezone(LA)
+        out.append(f'- **{r["id"]}** ({r["audience"]}): "{r["quote"]}" ({ref["host"]} session {ref["session"][:8]}, '
+                   f'{os.path.basename(ref["file"])} line {ref["line"]}, {t.day} {t:%b %H:%M} PT)')
+        if r["kind"] == "dialog":
+            out.append(f"  - Your answer to: {r['question']}")
+        out += [f"  - Rule: {r['rule']}", f"  - Reply: yes {r['id']}", ""]
+    if acc:
+        out += ["## Accepted: record in APPROVALS", ""]
+        for r in acc:
+            out += [f'- **{r["id"]}** ({r["audience"]}): "{r["quote"]}"', f"  - Rule: {r['rule']}", ""]
+    return "\n".join(out)
+
+
+def rulings(cfg, state):
+    started = dt.datetime.now(dt.timezone.utc)
+    loam, rules_repo = path(cfg["loam"]), path(cfg["rules"]["repo"])
+    cursor_p, store_p, queue_p = (os.path.join(state, f) for f in ("cursor.json", "rulings.jsonl", "lessons-queue.jsonl"))
+    cursor = json.load(open(cursor_p)) if os.path.exists(cursor_p) else {}
+    store, queued = read_jsonl(store_p), {q["key"] for q in read_jsonl(queue_p)}
+    rules = rules_text(cfg["rules"])
+    batch, last = [], {}
+    for host, spec in cfg["hosts"].items():
+        msgs = new_messages(state, host, spec, cursor.get("rulings", {}).get(host, ""))
+        if msgs:
+            last[host] = max(m["ts"] for m in msgs)
+        batch += msgs
+
+    by_id, asked = {r["id"]: r for r in store}, []
+    for m in batch:
+        if not YES.fullmatch(m["text"].strip()):
+            asked.append(m)
+            continue
+        for rid in (x.upper() for x in re.findall(r"r\d{4}-\d+", m["text"], re.I)):
+            if by_id.get(rid, {}).get("status") == "pending":
+                by_id[rid]["status"] = "accepted"
+            else:
+                log(f"{m['id']} says yes to {rid}, which is not a pending draft")
+    lessons = [{"key": r["id"], "provenance": f"ruling, {r['ref']['host']} {r['ref']['session'][:8]} line {r['ref']['line']}",
+                "text": r["rule"]} for r in store
+               if r["status"] == "accepted" and r["audience"] in ("worker", "both") and r["id"] not in queued]
+    for r in store:
+        if r["status"] in ("pending", "accepted") and r["quote"] in rules:
+            r["status"] = "recorded"
+
+    learned, before = {}, len(store)
+    if asked:
+        d = call_dir(state, "rulings")
+        write(os.path.join(d, "messages.jsonl"), jsonl(asked))
+        write(os.path.join(d, "rules.md"), rules)
+        write(os.path.join(d, "pending.jsonl"), jsonl(r for r in store if r["status"] == "pending"))
+        with open(os.path.join(HEALTH_D, "rulings.md")) as fh:
+            prompt = (f"{fh.read()}\nThe messages file: {d}/messages.jsonl\nThe rules file: {d}/rules.md\n"
+                      f"The pending file: {d}/pending.jsonl (empty means none pending)\n")
+        reply = ask(cfg, state, d, "rulings", "xhigh", os.path.join(HEALTH_D, "rulings.schema.json"), prompt,
+                    ("drafts", "repeats"))
+        msg, today, dropped = {m["id"]: m for m in asked}, started.astimezone(LA).strftime("%m%d"), []
+        for repeat, items in ((False, reply["drafts"]), (True, reply["repeats"])):
+            for x in items:
+                m, q = msg.get(x.get("ref")), x.get("quote") or ""
+                why = ("its ref names no message in this batch" if m is None
+                       else "its quote is not his exact words" if not q.strip() or q not in m["text"]
+                       else "its quote is already in the rules file" if not repeat and q in rules
+                       else "a record has the same ref and quote" if any(r["ref"]["id"] == m["id"] and r["quote"] == q
+                                                                         for r in store)
+                       else None)
+                if why:
+                    dropped.append({"repeat" if repeat else "draft": x, "why": why})
+                    continue
+                n = 1 + max((id_key(r)[1] for r in store if id_key(r)[0] == today), default=0)
+                rec = {"id": f"R{today}-{n}", "status": "recorded" if repeat else "pending", "quote": q,
+                       "ref": {k: m[k] for k in REF_KEYS}, "kind": m["kind"], "question": m.get("question"),
+                       "rule": x["rule"], "audience": None if repeat else x["audience"],
+                       "supersedes": None if repeat else x["supersedes"],
+                       "repeat_of": x["recorded_in"] if repeat else "none",
+                       "why_ruling": None if repeat else x["why_ruling"]}
+                store.append(rec)
+        write(os.path.join(d, "dropped.json"), json.dumps(dropped, indent=1, ensure_ascii=False) + "\n")
+    # Every repeat without its ticket draft on disk, this batch's or one an earlier run saved before its draft failed.
+    for rec in store:
+        if rec["repeat_of"] == "none" or os.path.exists(os.path.join(state, "drafts", rec["id"], "learn", "draft.md")):
+            continue
+        line = (f'- ruling-repeat [-] {rec["ref"]["file"]}:{rec["ref"]["line"]} Samyak restated "{rec["quote"]}", '
+                f'already recorded in {rec["repeat_of"]}: {rec["rule"]}')
+        prompt = writer_brief(loam, rules_repo) + f"\n## Follow-ups\n\n{FENCE}\n{line}\n{FENCE}\n"
+        learned[rec["id"]] = ask(cfg, state, call_dir(state, "learn"), "learn", "high",
+                                 os.path.join(loam, "bin", "factory.d", "learn.schema.json"), prompt,
+                                 ("repo", "title", "source_line", "body"), (rules_repo, loam))
+
+    # Every call has answered: write the outputs, then the cursor. The queue goes before the store: a lesson whose
+    # ruling this run also marks recorded could not be derived again from the saved store.
+    with open(queue_p, "a") as fh:
+        fh.write(jsonl(lessons))
+    write(store_p, jsonl(store))
+    for rid, x in learned.items():
+        d = os.path.join(state, "drafts", rid, "learn")
+        os.makedirs(d, exist_ok=True)
+        write(os.path.join(d, "draft.json"), json.dumps({k: x[k] for k in ("repo", "title", "source_line")}) + "\n")
+        write(os.path.join(d, "draft.md"), x["body"] + "\n")  # last: its presence marks the draft whole
+    write(os.path.join(state, "rulings-pending.md"), pending_md(store))
+    cursor.setdefault("rulings", {}).update(last)
+    cursor.setdefault("runs", {})["rulings"] = started.strftime("%Y-%m-%dT%H:%M:%SZ")
+    write(cursor_p, json.dumps(cursor) + "\n")
+    print(f"rulings: {len(batch)} new message(s), {len(batch) - len(asked)} yes, {len(store) - before} record(s) added, "
+          f"{len(learned)} ticket draft(s) written, {len(lessons)} lesson(s) queued")
+
+
+def due(state):
+    """rulings is due when it never ran, ran 24 h ago, or has not run since 01:00 and it is the 01:00-05:00 night."""
+    p = os.path.join(state, "cursor.json")
+    last = (json.load(open(p)) if os.path.exists(p) else {}).get("runs", {}).get("rulings")
+    if not last:
+        return True
+    last, now = dt.datetime.fromisoformat(last), dt.datetime.now(dt.timezone.utc)
+    night = now.astimezone(LA).replace(hour=1, minute=0, second=0, microsecond=0)
+    return now - last >= dt.timedelta(hours=24) or (1 <= now.astimezone(LA).hour < 5 and last < night)
+
+
+def main():
+    ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    ap.add_argument("--config", required=True)
+    ap.add_argument("command", choices=("tick", "rulings", "dream"))
+    a = ap.parse_args()
+    with open(path(a.config)) as fh:
+        cfg = json.load(fh)
+    state = path(cfg["state"])
+    os.makedirs(state, exist_ok=True)
+    lock = open(os.path.join(state, "health.lock"), "a")
+    try:
+        fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except BlockingIOError:
+        print("busy")
+        return 0
+    if a.command == "dream":
+        print("dream: not built (L-C2)")
+        return 1
+    try:
+        if a.command == "rulings" or due(state):
+            rulings(cfg, state)
+    except Failed as e:
+        log(str(e))
+        return 1
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())
