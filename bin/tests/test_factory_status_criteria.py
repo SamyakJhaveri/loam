@@ -81,6 +81,14 @@ def grader_first_fail(run: pathlib.Path) -> subprocess.CompletedProcess[str]:
     )
 
 
+def git_in(repo: pathlib.Path):
+    """A git runner for a scratch repo, free of the host's git config."""
+    def git(*args: str) -> str:
+        return subprocess.run(["git", "-C", str(repo), "-c", "user.name=t", "-c", "user.email=t@t", *args], capture_output=True, text=True,
+                              check=True, env={**os.environ, "GIT_CONFIG_GLOBAL": os.devnull, "GIT_CONFIG_NOSYSTEM": "1"}).stdout.strip()
+    return git
+
+
 class StatusCriteriaTests(unittest.TestCase):
     def setUp(self) -> None:
         self.tmp = tempfile.TemporaryDirectory()
@@ -209,7 +217,8 @@ class StatusCriteriaTests(unittest.TestCase):
             "printf 'guard bin/check && pass quoted' > f && pass fixture || fail fixture\n"
             '[ -n "${LOAM_HOOK:-}" ] && pass check-green || { guard bin/check >/dev/null && pass check-green; }\n')
         rounds = {  # round: (checks, last message)
-            1: ("FAIL do-not-touch seed/x\nFAIL worktree-dirty: a\n", "I could not finish.\n\nCLAIM: done\n"),
+            1: ("FAIL do-not-touch seed/x\nFAIL edit-scope: the round changed b but\nFAIL worktree-dirty: a\n",
+                "I could not finish.\n\nCLAIM: done\n"),
             2: ("FAIL check-green: bin/check\n", "All done-checks pass.\nCLAIM: partial\n"),
             3: ("FAIL check-green: bin/check\n", "CLAIM: blocked\nAll checks pass.\n**CLAIM: Done**\n"),
             4: ("FAIL fixture: x\n", "CLAIM: done"),
@@ -306,7 +315,9 @@ class StatusCriteriaTests(unittest.TestCase):
         (runs / "8/aaaa0008/round-2.checks").write_text("FAIL a: b\nFAIL do-not-touch seed/x\n")
         (runs / "9/aaaa0009/round-1.checks").write_text("FAIL do-not-touch seed/x\n")
         (runs / "9/aaaa0009/round-2.checks").write_text("FAIL a: b\n")
-        (runs / "10/aaaa0010/round-2.checks").write_text("FAIL do-not-touch seed/x\n")
+        # An edit-scope FAIL is a scope stall too.
+        (runs / "10/aaaa0010/round-2.checks").write_text(
+            "FAIL edit-scope: the round changed seed/x but the ticket's Edit: line lists only a/; revert those paths\n")
         proc = factory("status", "--criteria", runs=runs)
         self.assertEqual(proc.returncode, 0, proc.stderr)
         # The FAIL names the date of its latest offending run, 6's.
@@ -512,9 +523,7 @@ class StatusCriteriaTests(unittest.TestCase):
     def test_escaped_defects_are_later_reverts_and_caused_by_lines(self) -> None:
         repo = pathlib.Path(self.tmp.name) / "repo"
 
-        def git(*args: str) -> str:
-            return subprocess.run(["git", "-C", str(repo), "-c", "user.name=t", "-c", "user.email=t@t", *args], capture_output=True, text=True,
-                                  check=True, env={**os.environ, "GIT_CONFIG_GLOBAL": os.devnull, "GIT_CONFIG_NOSYSTEM": "1"}).stdout.strip()
+        git = git_in(repo)
 
         def pr(n: int, *messages: str) -> str:
             """Merge factory/<n>, one commit per message, as PR #<n>; the sha of its first commit."""
@@ -560,7 +569,38 @@ class StatusCriteriaTests(unittest.TestCase):
                                str(repo)], capture_output=True, text=True, check=False)
         self.assertEqual(proc.returncode, 0, proc.stderr)
         self.assertRegex(proc.stdout.splitlines()[-1],
-                         r"^escaped defects: 3 of 4 merged factory PRs: #1 \(\w{8}\), #2 \(\w{8}\), #3 \(\w{8}\)$")
+                         r"^escaped defects: 3 of 4 merged factory tickets: #1 \(\w{8}\), #2 \(\w{8}\), #3 \(\w{8}\)$")
+
+    def test_file_ticket_landings_count_by_ticket_id(self) -> None:
+        # distbench's bin/integrate lands a file ticket's build/f-<id> branch with a two-parent merge, and a fix names
+        # the ticket in a `Caused-by: <ID>` line.
+        repo = pathlib.Path(self.tmp.name) / "repo"
+
+        git = git_in(repo)
+
+        def land(branch: str, subject: str) -> None:
+            git("checkout", "-q", "-b", branch, "main")
+            (repo / branch.replace("/", "-")).write_text(branch)
+            git("add", ".")
+            git("commit", "-q", "-m", "work")
+            git("checkout", "-q", "main")
+            git("merge", "-q", "--no-ff", "-m", subject.format(git("rev-parse", "--short=8", branch)), branch)
+
+        repo.mkdir()
+        git("init", "-q", "-b", "main")
+        git("commit", "-q", "--allow-empty", "-m", "base")
+        land("build/f-w46-capped", "integrate: build/f-w46-capped @ {} (group 46, W46)")
+        # The control ticket lands twice, its ID in either case: one ticket, no Caused-by.
+        land("build/f-l01", "integrate: build/f-l01 @ {} (group 44, L01)")
+        land("build/f-L01", "integrate: build/f-L01 @ {} (group 47, L01)")
+        land("factory/7", "Merge pull request #7 from o/factory/7")
+        git("commit", "-q", "--allow-empty", "-m", "fix the w46 lock\n\nCaused-by: W46")
+        git("commit", "-q", "--allow-empty", "-m", "fix the seven\n\nCaused-by: #7")
+        proc = subprocess.run(["python3", "-I", str(CRITERIA), str(self.runs), str(ROOT / "docs/factory/ARCHITECTURE.md"),
+                               str(repo)], capture_output=True, text=True, check=False)
+        self.assertEqual(proc.returncode, 0, proc.stderr)
+        self.assertRegex(proc.stdout.splitlines()[-1],
+                         r"^escaped defects: 2 of 3 merged factory tickets: #7 \(\w{8}\), W46 \(\w{8}\)$")
 
     def test_thresholds_come_from_the_doc(self) -> None:
         arch = pathlib.Path(self.tmp.name) / "ARCHITECTURE.md"

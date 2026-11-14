@@ -87,6 +87,18 @@ class BuildEvidenceTests(unittest.TestCase):
         self.assertIn("[content diff capped at 3 lines; the stat above is complete]", out)
         self.assertTrue(out.endswith(f"[content diff capped at 3 lines; the stat above is complete]\n{FENCE}\n"))
 
+    def test_deleted_file_shows_its_removed_lines_after_the_changed_files(self) -> None:
+        # A grader reads only the evidence and the graded tree, where a deleted file no longer exists.
+        self.git(self.wt, "rm", "-q", "a b.md")
+        self.git(self.wt, "commit", "-q", "-m", "delete")
+        out = self.evidence(1000)
+        self.assertIn("diff --git a/a b.md b/a b.md\ndeleted file mode", out)
+        self.assertIn("-space old\n", out)
+        # "a b.md" sorts first, yet a cap that fits one file's diff keeps the changed file's.
+        out = self.evidence(7)
+        self.assertIn("-plain old\n+plain new\n", out)
+        self.assertNotIn("-space old", out)
+
 
 if __name__ == "__main__":
     unittest.main()

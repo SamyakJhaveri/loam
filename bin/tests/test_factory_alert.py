@@ -144,7 +144,7 @@ class FactoryAlertTests(unittest.TestCase):
     def test_each_exit_reads_as_plain_words_at_its_level(self) -> None:
         # Every status finish can write: no raw status token reaches Samyak, and the level sets the @channel.
         want = {"pr-opened": "info", "ticket-defect": "needs-you", "abandon": "needs-you", "stopped": "info",
-                "stopped-cap": "fail", "stopped-daily": "info", "stuck": "fail", "no-change": "fail", "stopped-environment": "fail"}
+                "stopped-cap": "fail", "stuck": "fail", "no-change": "fail", "stopped-environment": "fail"}
         for status, level in want.items():
             with self.subTest(status=status):
                 self.alert_log.unlink(missing_ok=True)
@@ -172,6 +172,14 @@ class FactoryAlertTests(unittest.TestCase):
         self.assertEqual(calls[-1][:2], ["--level", "needs-you"])
         self.assertEqual(calls[-1][-1], "issue 7 (Widget works) opened a pull request; it waits for your review "
                                         "and merge. https://github.com/acme/widget/pull/9")
+
+    def test_a_file_ticket_pr_opened_alert_is_left_to_a_launcher_that_asks_for_it(self) -> None:
+        # distbench's factory-isc may land the branch itself, so it, not bin/factory, names the next step.
+        script = "TARGET_IS_LOAM=0; IS_FILE=1; KEY=W1-x; finish pr-opened 'pr-body.md'"
+        self.assertEqual([c[:2] for c in self.factory(script)], [["--level", "needs-you"]])
+        self.alert_log.unlink()
+        self.assertEqual(self.factory(script, FACTORY_PR_ALERT="launcher"), [])
+        self.assertIn("its launcher alerts the next step", (self.run_dir / "factory.log").read_text())
 
     def test_an_issue_is_named_by_its_frozen_github_title(self) -> None:
         # An issue's frozen body has no '# ' line; freeze writes frozen/title from GitHub.
@@ -213,7 +221,7 @@ class FactoryAlertTests(unittest.TestCase):
         file_ticket = "ISSUE=; KEY=F9-widget; IS_FILE=1; "
         distbench = {"REPO": "SamyakJhaveri/distbench"}
         alerted = {"ticket-defect": "needs-you", "abandon": "needs-you", "stopped": "info", "stopped-cap": "fail",
-                   "stopped-daily": "info", "stuck": "fail", "no-change": "fail", "stopped-environment": "fail",
+                   "stuck": "fail", "no-change": "fail", "stopped-environment": "fail",
                    "stopped-other": "fail"}
         for status, level in alerted.items():
             with self.subTest(status=status):
