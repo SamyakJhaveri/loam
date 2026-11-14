@@ -395,6 +395,22 @@ end_call() { echo "ended $polls_seen $reads"; }
                         "the driver did not reach three watch polls")
         self.assert_a_read_after_every_poll(3)
 
+    def test_killing_the_drivers_group_ends_its_grader_read(self) -> None:
+        # Every test's cleanup, and an operator, stop the driver by killing its process group; a grader-window read
+        # outside that group outlived it and wrote into the removed temp home (ENOTEMPTY on CI, 13 Nov).
+        calls = self.start_call_fakes()
+        self.addCleanup(lambda: [self.kill_group(c) for c in self.calls(calls)])
+        real_sleep = shutil.which("sleep")
+        write_exec(self.fake / "gh", '#!/bin/sh\ncase "$*" in *SamyakJhaveri/distbench*) '
+                   f'echo start >> "$HOME/reads"; {real_sleep} 1; echo late >> "$HOME/reads" ;; *"pr list"*) echo 7 ;; esac\nexit 0\n')
+        driver = self.start_driver()
+        reads = self.home / "reads"
+        self.assertTrue(self.wait_for(lambda: reads.exists()), "the driver started no grader read")
+        self.kill_group(driver.pid)
+        driver.wait()
+        time.sleep(2)
+        self.assertNotIn("late", reads.read_text().split(), "a grader read outlived the driver's process group")
+
     @LINUX_ONLY
     def test_a_planted_link_does_not_redirect_the_grader_window_write(self) -> None:
         # The call can write the state dir; links planted at the old temp name and at the window itself must not

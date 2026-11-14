@@ -46,7 +46,9 @@ end_call() { local c=$1 i
 # grader-window.txt holds the read's UTC time, gh's exit status (124 on a timeout) and one open DistBench grader-fix
 # PR number per line. Written through a fresh mktemp file (never a fixed name the call could link elsewhere) and
 # moved with mv -T over the name itself, so a call never reads half of it and no planted link redirects the write.
-to=(); command -v timeout > /dev/null && to=(timeout 60)
+# --foreground keeps gh in the driver's process group (plain timeout makes a group of its own), so killing the
+# driver's group ends the read too.
+to=(); command -v timeout > /dev/null && to=(timeout --foreground 60)
 grader_window() { local at out rc tmp
   at=$(stamp)
   out=$(${to[@]+"${to[@]}"} gh pr list -R SamyakJhaveri/distbench --state open --limit 100 --json number,title,files --jq '.[] | select((.title | test("grader|regrade"; "i")) or any(.files[].path; test("(^|/)grader\\.py$|regrade"; "i"))) | .number' 2>> "$O/driver.log")
