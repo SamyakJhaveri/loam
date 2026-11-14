@@ -51,8 +51,9 @@ end_call() { local c=$1 i
 # The protocol's one read of DistBench (Grader window), run here because the call's settings deny it gh on DistBench:
 # grader-window.txt holds the read's UTC time, gh's exit status (124 on a timeout, 120 if a process gh started was
 # still there when gh exited) and, only after exit 0, one open DistBench grader-fix PR number per line. It lives in P,
-# which the call can read but not write, so the call cannot forge or swap it; written to a temp file there and renamed
-# into place, so a call never reads half of it (a failed rename removes the window).
+# which the call reads but its sandboxed Bash and its Edit and Write tools cannot write (settings.json; commands run
+# outside the sandbox, gh and codex exec, still can); written to a temp file there and renamed into place, so a call
+# never reads half of it (a failed rename removes the window).
 # gh runs under REAP with $sole set. REAP stays in the driver's process group, as timeout --foreground does (plain
 # timeout makes a group of its own), so killing the driver's group ends the read too. gh's stdout is shared with every
 # process gh starts, so what one writes after gh exits is not gh's answer: REAP ends them all, and a read gh may have
