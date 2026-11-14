@@ -262,10 +262,11 @@ def rulings(cfg, state):
                                  os.path.join(loam, "bin", "factory.d", "learn.schema.json"), prompt,
                                  ("repo", "title", "source_line", "body"), (rules_repo, loam))
 
-    # Every call has answered: write the outputs, then the cursor.
-    write(store_p, jsonl(store))
+    # Every call has answered: write the outputs, then the cursor. The queue goes before the store: a lesson whose
+    # ruling this run also marks recorded could not be derived again from the saved store.
     with open(queue_p, "a") as fh:
         fh.write(jsonl(lessons))
+    write(store_p, jsonl(store))
     for rid, x in learned.items():
         d = os.path.join(state, "drafts", rid, "learn")
         os.makedirs(d, exist_ok=True)
