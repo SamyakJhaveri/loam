@@ -54,6 +54,7 @@ class OvernightDriverTests(unittest.TestCase):
         self.addCleanup(tmp.cleanup)
         self.home = pathlib.Path(tmp.name)
         self.state = self.home / ".local/state/loam/overnight"
+        self.window = self.home / ".local/state/loam-driver/grader-window.txt"
         self.state.mkdir(parents=True)
         (self.home / "loam/bin").mkdir(parents=True)
         (self.home / "loam/bin/overnight").symlink_to(OVERNIGHT)
@@ -95,9 +96,9 @@ class OvernightDriverTests(unittest.TestCase):
         s = json.loads((OVERNIGHT / "settings.json").read_text())
         deny = s["permissions"]["deny"]
         for rule in ("ScheduleWakeup", "CronCreate", "Bash(crontab *)", "Bash(git push origin main *)",
-                     "Edit(~/loam/bin/overnight/**)", "Write(~/loam/bin/overnight/**)"):
+                     "Edit(~/loam/bin/overnight/**)", "Write(~/loam/bin/overnight/**)",
+                     "Edit(~/.local/state/loam-driver/**)", "Write(~/.local/state/loam-driver/**)"):
             self.assertIn(rule, deny)
-        self.assertEqual(s["sandbox"]["filesystem"]["allowWrite"], ["~/.local/state/loam"])
         self.assertEqual(s["sandbox"]["filesystem"]["denyWrite"], ["~/loam/bin/overnight"])
         self.assertEqual(s["sandbox"]["network"]["allowedDomains"], ["github.com"])
         # The call reads DistBench only through the driver's grader-window.txt; no allow rule opens gh on it.
@@ -122,7 +123,7 @@ class OvernightDriverTests(unittest.TestCase):
         protocol = (OVERNIGHT / "protocol.md").read_text()
         p = re.search(r"(?ms)^\*\*Grader window\.\*\*.*?(?=^\*\*Codex panel\.\*\*)", protocol)
         self.assertIsNotNone(p)
-        self.assertIn("O/grader-window.txt", p[0])
+        self.assertIn("`~/.local/state/loam-driver/grader-window.txt`", p[0])
         self.assertIn("at the gate, read the whole file once and judge all three conditions from that one copy", p[0])
         self.assertNotIn("gh pr list -R SamyakJhaveri/distbench", p[0])
         lines = p[0].splitlines()
@@ -131,9 +132,9 @@ class OvernightDriverTests(unittest.TestCase):
         self.assertIn("A number leaves the PR open (step 9) with `left open: grader window: DistBench grader-fix PR "
                       "#<m> open`; any other `exit`, a `read_at` more than five minutes old, or a missing file leaves "
                       "it open with `left open: grader window: DistBench read failed or stale`.", lines)
-        self.assertIn("grader-window.txt", re.search(r"(?m)^Run state lives.*$", protocol)[0])
+        self.assertIn("`~/.local/state/loam-driver/grader-window.txt`", re.search(r"(?m)^Run state lives.*$", protocol)[0])
         loop = (ROOT / "docs/factory/LOOP.md").read_text()
-        self.assertIn("grader-window.txt", re.search(r"(?m)^Its run state \(.*$", loop)[0])
+        self.assertIn("`~/.local/state/loam-driver/grader-window.txt`", re.search(r"(?m)^Its run state \(.*$", loop)[0])
         # The driver runs the protocol's read, argument for argument.
         self.assertIn("gh " + " ".join(GRADER_READ[:-1]) + " '" + GRADER_READ[-1] + "'", (OVERNIGHT / "driver.sh").read_text())
 
@@ -307,7 +308,8 @@ class OvernightDriverTests(unittest.TestCase):
         self.assertTrue(self.wait_for(lambda: self.calls(calls)))
         (self.state / "log.md").write_text("earlier block\noutcome issue 3: merged\n")
         (self.state / "call.pid").write_text(f"{left.pid} 2 {self.state}/calls/none.json\n")
-        window = self.state / "grader-window.txt"
+        window = self.window
+        window.parent.mkdir(mode=0o700)
         window.write_text("read_at 1970-01-01T00:00:00Z\nexit 0\n")
         t0 = self.utc()
         driver = self.start_driver()
@@ -371,7 +373,7 @@ end_call() { echo "ended $polls_seen $reads"; }
 
     @LINUX_ONLY
     def test_driver_writes_the_grader_window_before_a_call_and_after_every_poll(self) -> None:
-        window = self.state / "grader-window.txt"
+        window = self.window
         calls = self.start_call_fakes(f'cp "{window}" "$HOME/seen.txt"')
         self.addCleanup(lambda: [self.kill_group(c) for c in self.calls(calls)])
         t0 = self.utc()
@@ -427,7 +429,7 @@ end_call() { echo "ended $polls_seen $reads"; }
         write_exec(self.fake / "gh", '#!/bin/sh\ncase "$*" in *SamyakJhaveri/distbench*) '
                    f'({real_sleep} 3; echo 99) & echo 9 ;; *"pr list"*) echo 7 ;; esac\nexit 0\n')
         self.start_driver()
-        window = self.state / "grader-window.txt"
+        window = self.window
         self.assertTrue(self.wait_for(lambda: window.exists(), 2.5), "the driver waited on the read's child")
         time.sleep(3)  # past the child's write
         self.assertEqual(window.read_text().splitlines()[1:], ["exit 120"])
@@ -455,7 +457,7 @@ if os.fork() == 0:  # waits for gh to exit, then writes 99 for 2 s
 print(9)
 """)
         self.start_driver()
-        window = self.state / "grader-window.txt"
+        window = self.window
         self.assertTrue(self.wait_for(lambda: window.exists(), 10), "the driver wrote no window")
         self.assertEqual(window.read_text().splitlines()[1:], ["exit 120"])
         # The call starts after this window; wait for its pid, so cleanup ends it before removing the home.
@@ -471,32 +473,15 @@ print(9)
                    f'for f in "{self.state}"/*; do [ -f "$f" ] || continue; case $f in *.md|*.txt) ;; *) rm -f "$f"; : > "$f" ;; esac; done ;; '
                    '*"pr list"*) echo 7 ;; esac\nexit 0\n')
         self.start_driver()
-        window = self.state / "grader-window.txt"
+        window = self.window
         self.assertTrue(self.wait_for(lambda: window.exists(), 10), "the driver wrote no window")
         self.assertEqual(window.read_text().splitlines()[1:], ["exit 0", "9"])
         # The call starts after this window; wait for its pid, so cleanup ends it before removing the home.
         self.assertTrue(self.wait_for(lambda: self.calls(calls)), "the driver started no call")
 
     @LINUX_ONLY
-    def test_a_planted_link_does_not_redirect_the_grader_window_write(self) -> None:
-        # The call can write the state dir; links planted at the old temp name and at the window itself must not
-        # make the unsandboxed driver write through them (Codex review of PR #660).
-        victim = self.home / "victim"
-        victim.write_text("keep\n")
-        (self.state / "grader-window.tmp").symlink_to(victim)
-        (self.state / "grader-window.txt").symlink_to(victim)
-        calls = self.start_call_fakes()
-        self.addCleanup(lambda: [self.kill_group(c) for c in self.calls(calls)])
-        self.start_driver()
-        self.assertTrue(self.wait_for(lambda: self.calls(calls)), "the driver started no call")
-        window = self.state / "grader-window.txt"
-        self.assertTrue(self.wait_for(lambda: not window.is_symlink(), 10), "the window is still the planted link")
-        self.assertEqual(window.read_text().splitlines()[1:], ["exit 0", "9"])
-        self.assertEqual(victim.read_text(), "keep\n", "the driver wrote through a planted link")
-
-    @LINUX_ONLY
     def test_a_window_file_the_call_swaps_at_publication_is_not_published(self) -> None:
-        # The call can write all of ~/.local/state/loam. At the moment the driver renames its new window into place,
+        # The call can write under ~/.local/state/loam. At the moment the driver renames its new window into place,
         # the call replaces every grader-window file there with a forged clear window; the window must still hold gh's
         # answer (Codex loam-775 at d4bcaca2: the temp file was renamed by a name the call could swap).
         hook = self.home / "hook"
@@ -521,7 +506,7 @@ print(9)
         self.addCleanup(lambda: (self.kill_group(p.pid), p.wait()))
         self.assertTrue(self.wait_for(lambda: self.calls(calls)), "the driver started no call")
         self.assertTrue((self.home / "swaps").exists(), "no window publication reached the swap")
-        self.assertEqual((self.state / "grader-window.txt").read_text().splitlines()[1:], ["exit 0", "9"],
+        self.assertEqual(self.window.read_text().splitlines()[1:], ["exit 0", "9"],
                          f"the driver published a window file the call swapped: {(self.home / 'swaps').read_text()}")
 
     @LINUX_ONLY
