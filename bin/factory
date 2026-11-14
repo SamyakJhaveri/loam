@@ -18,6 +18,11 @@
 # Run and stop, when the operator runs them, add a line to the run dir's owner-events.jsonl (status --criteria); lint of
 # an issue adds one to <runs>/<issue>/owner-events.jsonl, which the issue's next launch moves into its run dir.
 set -uo pipefail
+# A dead reader of stdout or stderr (a killed `| tee`, `bin/factory next | head`) makes a write fail rather than kill the
+# command by SIGPIPE before it records its status or alerts. A no-op handler, not an ignore, so children keep the
+# default: under a `| tee` launch the signal also kills tee, and a foreground child's `Hangup` job line would otherwise
+# kill the supervisor by SIGPIPE before its HUP trap.
+trap : PIPE
 
 # FACTORY_ROOT is set when a run execs its frozen copy of this file out of the run directory.
 ROOT="${FACTORY_ROOT:-$(cd "$(dirname "$0")/.." && pwd)}"
@@ -1369,7 +1374,9 @@ linux_only() { # <command>
 
 now()   { date -u +%Y-%m-%dT%H:%M:%SZ; }
 today() { date -u +%Y-%m-%d; }
-log()   { printf '%s %s\n' "$(now)" "$*" | tee -a "$LOG" >&2; }
+# The file first: a `| tee` launch whose pipe went with a HUP must not take the line with it. The stderr write runs in
+# its own subshell, so a dead reader cannot kill a caller's subshell, where bash resets the top's PIPE handler.
+log()   { local l; l="$(now) $*"; printf '%s\n' "$l" >> "$LOG"; (printf '%s\n' "$l" >&2) 2> /dev/null || :; }
 sha256_of() { if command -v sha256sum > /dev/null 2>&1; then sha256sum "$@"; else shasum -a 256 "$@"; fi; }
 set_status() { printf '%s\n' "$1" > "$RUN/status"; log "status: $1"; }
 
@@ -1475,6 +1482,7 @@ exit_words() { # status -> "<level> <words>"
     stuck) echo "fail stopped: the same checks failed twice in a row" ;;
     no-change) echo "fail stopped: a round changed nothing" ;;
     stopped-environment) echo "fail stopped on a machine or tool problem, not on the ticket" ;;
+    stopped-killed) echo "fail stopped: its supervisor got a signal (killed, or its tmux session or terminal closed)" ;;
     *) echo "fail stopped ($1)" ;;
   esac
 }
@@ -1506,8 +1514,11 @@ shell_digest() {
 # frozen review.sh is loaded, starts learn_run (review.sh) detached and exits, so a launcher sees the exit and lands
 # without waiting on learn. learn_run never calls finish (REVIEW_NO_FINISH), so it cannot change the exit; its process
 # takes over the EXIT trap (the worktree's removal) and closes the shell digest again after its calls.
+# The exit is decided on entry, so the run's kill traps go first: a signal during the alert, or one reaching the learn
+# step after a call_end, would otherwise rewrite it to stopped-killed. Learn takes the signals' defaults back.
 finish() { # status message
   local code words exit_trap
+  RUN_TRAPS=; trap '' INT TERM HUP
   case "$1" in
     pr-opened) code=0 ;; ticket-defect) code=3 ;; stopped-environment) code=4 ;; abandon) code=5 ;; *) code=2 ;;
   esac
@@ -1520,12 +1531,29 @@ finish() { # status message
     # set -m gives learn its own process group, so the hangup a tty sends its foreground group when the launcher
     # (the session leader) exits does not reach it.
     exit_trap=$(trap -p EXIT); trap - EXIT; set -m
-    ( eval "$exit_trap"
+    ( trap - INT TERM HUP; eval "$exit_trap"
       learn_run "$1" "$2"
       [ ! -f "$RUN/shell-digest.start" ] || shell_digest > "$RUN/shell-digest.end" ) < /dev/null > /dev/null 2>&1 &
   fi
   exit "$code"
 }
+
+# A run's supervisor killed by INT, TERM or HUP (`tmux kill-session` closes the pane's terminal, which sends HUP) ends
+# here, after any call it was in has been ended (call_abort): the status, one fail alert and the EXIT line, as finish
+# writes them, but no learn step, which would start model calls on a run its operator just killed. cmd_run arms it with
+# run_traps once the run directory and the frozen set exist; call_start replaces it for a call and call_end re-arms it.
+killed() { # signal code
+  local words
+  trap '' INT TERM HUP PIPE
+  exec > /dev/null 2>&1   # the terminal or pipe went with the signal; factory.log keeps every line (call_abort)
+  kill $(jobs -p) 2> /dev/null   # limit_wait's sleep, which would hold the run's lease for hours
+  set_status stopped-killed
+  words=$(exit_words stopped-killed)
+  notify "${words%% *}" "$(ticket_name) ${words#* }" "SIG$1 at $(now); the run directory is $RUN" stopped-killed
+  log "EXIT stopped-killed ($2): SIG$1"
+  exit "$2"
+}
+run_traps() { RUN_TRAPS=1; trap 'killed INT 130' INT; trap 'killed TERM 143' TERM; trap 'killed HUP 129' HUP; }
 
 # ---- the ticket -------------------------------------------------------------
 
@@ -1677,7 +1705,7 @@ REVIEW_SET="review.sh verify.md verify.schema.json learn.md learn.schema.json"
 FROZEN_SET="factory lib.sh _common.md role-settings.json worker-settings.json checks.sh \
 judge.md reviewer.md judge.schema.json reviewer.schema.json issue.md protected.txt exempt.txt \
 factory-round.js review-output.schema.json codex-review.prompt.md codex-rereview.prompt.md unattended.md alert mutation_sweep.py \
-plugin-dir pstack-gate.py factory-parity $REVIEW_SET"
+plugin-dir pstack-gate.py factory-parity method_evidence.py $REVIEW_SET"
 # The line freeze writes after the block, before checks.sh exits; run_checks reads output that does not end
 # on CHECKS-END as an abort (#277).
 CHECKS_END="printf '\nCHECKS-END\n'"
@@ -1791,6 +1819,8 @@ freeze() {
   # The worker's pstack gate (U5) and the parity rules it imports run from the frozen set, beyond the worker's edits.
   cp "$ROOT/bin/factory.d/pstack-gate.py" "$RUN/frozen/pstack-gate.py" || finish stopped-environment "could not freeze pstack-gate.py"
   cp "$ROOT/bin/factory-parity" "$RUN/frozen/factory-parity" || finish stopped-environment "could not freeze bin/factory-parity"
+  # round_checks runs the frozen method-evidence checker, so a mid-run edit cannot change how a round is graded.
+  cp "$ROOT/bin/factory.d/method_evidence.py" "$RUN/frozen/method_evidence.py" || finish stopped-environment "could not freeze method_evidence.py"
   grader_settings "$ROOT/bin/factory.d/role-settings.json" "$RUN/frozen/role-settings.json" "$GRADER_MODEL" "$REVIEWER_MODEL" 2>> "$LOG" \
     || finish stopped-environment "could not write $(user_settings)'s env into the frozen grader settings"
   freeze_shell
@@ -2142,9 +2172,11 @@ holds_slot() { # <run dir> [peek]
     exec {fd}>&-   # before the alert, whose children would otherwise inherit this run's lease
     [ "$st" = running ] || [ "$st" = waiting-limit ] || return 1
     log "stopped-environment: ${1%/} was $st, but no process of the run holds its lease"
+    # A file ticket's key is its file stem, an issue's its number.
+    local lbl; lbl=$(basename "$(dirname "$1")"); case $lbl in *[!0-9]*) lbl="ticket $lbl" ;; *) lbl="issue $lbl" ;; esac
     alert --level fail --source factory --project "$(run_project "$1")" \
-      --run "issue $(basename "$(dirname "$1")")" \
-      "issue $(basename "$(dirname "$1")") stopped on a machine or tool problem: no process of the run is left \
+      --run "$lbl" \
+      "$lbl stopped on a machine or tool problem: no process of the run is left \
 (its supervisor and every child exited) while it read $st; ${1%/} is now stopped-environment and its slot is free" \
       >> "$LOG" 2>&1 || log "the alert for ${1%/} failed; see bin/alert's line above"
     return 1
@@ -2322,7 +2354,7 @@ limit_wait() { # result.json -> 0 after waiting, 1 when the reply is not a usage
   fi
   log "usage limit, not a round: $e; waiting ${secs}s"
   [ -n "${REVIEW_NO_FINISH:-}" ] || set_status waiting-limit   # learn waits without touching the exited run's status
-  sleep "$secs"
+  sleep "$secs" & wait "$!"   # in the background, so a signal reaches run_traps now, not when the sleep ends
   return 0
 }
 
@@ -2655,7 +2687,7 @@ call_end() { # role -> the call's own exit status
   done < "$RUN/call.reap"
   rm -f "$RUN/call.reap"
   call_reap "$1" && [ -z "$CALL_STUCK" ] && rm -f "$RUN/call" "$RUN/call.tmp" "$RUN/call.group" "$RUN/call.group.tmp"
-  trap - INT TERM HUP
+  if [ -n "${RUN_TRAPS:-}" ]; then run_traps; else trap - INT TERM HUP; fi
   return "$rc"
 }
 call_reap() { # role
@@ -2678,12 +2710,16 @@ call_reap() { # role
 call_abort() { # signal status
   local killer
   trap '' INT TERM HUP
+  # The signal that reached the supervisor also took its terminal or the pipe it writes to (a `| tee` launch): from
+  # here it writes only factory.log, not to the dead terminal or pipe.
+  [ -z "${RUN_TRAPS:-}" ] || exec > /dev/null 2>&1
   log "the supervisor got $1 during a model call; ending the call's processes"
   call_signal TERM; call_signal CONT
   ( sleep 10; call_signal KILL ) & killer=$!
   wait "$CALL_PID" 2> /dev/null
   kill -KILL "$killer" 2> /dev/null   # it inherits the ignored TERM
   call_gone 50 || { call_signal KILL; call_gone 50; } && rm -f "$RUN/call" "$RUN/call.tmp" "$RUN/call.group" "$RUN/call.group.tmp"
+  [ -z "${RUN_TRAPS:-}" ] || killed "$1" "$2"
   exit "$2"
 }
 call_signal() { call_grouped "$1"; call_tagged "$1"; }
@@ -2718,11 +2754,22 @@ round_sig() {
 }
 
 worker_round() { # round; leaves round-N.* only once the call produced a result
-  local round="$1" pf out="$RUN/pending.jsonl" res="$RUN/pending.result.json" t=(timeout -k 5 "$CALL_TIMEOUT_SEC") login_retried=0 le head0
-  # The round's start, so a stop after a killed call can name the commits the call made (#319).
+  local round="$1" pf out="$RUN/pending.jsonl" res="$RUN/pending.result.json" t=(timeout -k 5 "$CALL_TIMEOUT_SEC") login_retried=0 le head0 last
+  # The round's start, so a stop after a killed call can name the commits the call made (#319). round-N.start.sha
+  # keeps it for the method-evidence checker's base; written once per round, so a relaunched round keeps the start
+  # its killed attempt had, with that attempt's commits inside the round.
   head0=$(git -C "$WORKTREE" rev-parse HEAD 2> /dev/null) || head0=""
-  # The round's header line in decisions.md: parity P3 and the pstack gate (decision_lines) give the lines after
-  # `Round N` to round N, so a worker's pstack: line needs no round label of its own. Once per round, so a retried
+  # A round after one whose method evidence did not pass (a FAIL, or checks that stopped before it ran) keeps that
+  # round's start, so its change is graded again with this round's lines; else a retry round that only writes a
+  # method: line would pass on an empty range.
+  if [ ! -s "$RUN/round-$round.start.sha" ] && [ -n "$head0" ]; then
+    last=$(tail -n 1 "$RUN/round-$((round - 1)).method-evidence" 2> /dev/null) || last=""
+    [ "$round" -gt 1 ] && [ "${last%%: *}" != "PASS method-evidence" ] \
+      && cp "$RUN/round-$((round - 1)).start.sha" "$RUN/round-$round.start.sha" 2> /dev/null \
+      || printf '%s\n' "$head0" > "$RUN/round-$round.start.sha"
+  fi
+  # The round's header line in decisions.md: parity P3 and the method-evidence checker give the lines after
+  # `Round N` to round N, so a worker's method: line needs no round label of its own. Once per round, so a retried
   # or relaunched round adds none. A last line with no newline gets one first, so the header starts its own line.
   if [ "$(grep -E '^Round [0-9]+$' "$DECISIONS" 2> /dev/null | tail -n 1)" != "Round $round" ]; then
     [ ! -s "$DECISIONS" ] || [ -z "$(tail -c 1 "$DECISIONS")" ] || printf '\n' >> "$DECISIONS"
@@ -3508,6 +3555,33 @@ round_checks() { # out [full]: a dirty tree, a do-not-touch hit or a path off th
     # Shadow: the line goes to factory.log and round-N.edit-scope, and the checks run as if the fence were absent.
     [ -z "$off" ] || { edit_scope_line "$off" | sed 's/^/SHADOW /' > "$RUN/round-$ROUND.edit-scope"; log "$(cat "$RUN/round-$ROUND.edit-scope")"; }
     run_checks "$WORKTREE" "$1" "$([ "${2:-}" = full ] || printf '%s' "$GATE_DEFER")"
+    method_evidence "$ROUND"   # shadow; add "$1" to gate (LOOP.md, Method evidence)
+  fi
+}
+
+# The round's method-evidence line after the ticket's checks (LOOP.md, Method evidence): the frozen
+# method_evidence.py grades round-N.start.sha..HEAD, a test that fails before and passes after or a proof command's
+# declared exit. In shadow (the owner's ruling of 12 Nov 2026, until one batch is reviewed) the line goes only to the log
+# and round-N.method-evidence and never blocks. Gating writes it into round-N.checks before checks.sh's CHECKS-END line,
+# so a FAIL sends the worker back as any check does and a relaunch still reads the block as complete, and a checker
+# that cannot grade then ends the run stopped-environment.
+method_evidence() { # round [checks file]: with no checks file the check is in shadow and only records its line
+  local line rc=0
+  line=$(python3 -I "$RUN/frozen/method_evidence.py" --run "$RUN" --round "$1" --repo "$WORKTREE" \
+    --head "$(git -C "$WORKTREE" rev-parse HEAD)" 2>> "$LOG") || rc=$?
+  line=$(printf '%s\n' "$line" | grep -m1 -E '^(PASS|FAIL) method-evidence: ')
+  if [ "$rc" -gt 1 ] || [ -z "$line" ]; then
+    # Exit 2 is input the checker could not use (a git or worktree fault), not the worker's evidence.
+    [ -z "${2:-}" ] || finish stopped-environment "the method-evidence checker could not grade round $1 (exit $rc): ${line:-no verdict}"
+    line="ERROR method-evidence: the checker could not grade round $1 (exit $rc): ${line:-no verdict}"
+  fi
+  log "round $1 $line"
+  printf '%s\n' "$line" >> "$RUN/round-$1.method-evidence"
+  [ -n "${2:-}" ] || return 0
+  if [ "$(tail -n 1 "$2")" = CHECKS-END ]; then
+    { sed '$d' "$2"; printf '%s\n\nCHECKS-END\n' "$line"; } > "$2.tmp" && mv "$2.tmp" "$2"
+  else
+    printf '%s\n' "$line" >> "$2"
   fi
 }
 
@@ -3660,6 +3734,7 @@ cmd_run() {
   exec_frozen
   BODY=$(cat "$RUN/frozen/issue.md")   # from here on the frozen body is the ticket
   [ "$JUDGE" = on ] || log "judge: off (FACTORY_JUDGE=off); each round's judge.json is a stand-in pass, and the reviewer, Codex review, mutation sweep and verifier still grade"
+  run_traps
   TIMEOUT_G=(timeout -k 5 "$CALL_TIMEOUT_SEC")
   # The advisor attaches through a feature flag claude fetches; two env vars turn it silently off.
   # Refuse to launch rather than run a worker that thinks it has an advisor and does not (F11).
@@ -3872,10 +3947,15 @@ park_status() { # <issue> <body> -> the status of the run for this body, or none
 }
 
 # stopped-environment pages at once, so a lasting machine fault relaunched every ten-minute tick would page every tick.
+# A killed supervisor (a host shutdown, `tmux kill-session`) resumes the same way: before stopped-killed it stayed
+# running and holds_slot reaped it to stopped-environment. `bin/factory stop` is the stop that sticks.
 ENV_BACKOFF_SEC=3600
-stopped_environment_recent() { # <run dir> -> 0 when its run stopped on the environment under ENV_BACKOFF_SEC ago
+env_stopped() { # <run dir> -> 0 when its run stopped on the environment or was killed
+  case "$(cat "$1/status" 2> /dev/null)" in stopped-environment|stopped-killed) ;; *) return 1 ;; esac
+}
+stopped_environment_recent() { # <run dir> -> 0 when its run stopped on the environment, or was killed, under ENV_BACKOFF_SEC ago
   local t
-  [ "$(cat "$1/status" 2> /dev/null)" = stopped-environment ] || return 1
+  env_stopped "$1" || return 1
   # A status file removed since the cat leaves no mtime: not recent, rather than an arithmetic error ending the tick.
   t=$(date -u -r "$1/status" +%s 2> /dev/null)
   [[ "$t" =~ ^[0-9]+$ ]] || return 1
@@ -3909,7 +3989,7 @@ idle_note() { # <ready issues read>
 # A worker call with no result event stops stopped-environment before its round-N.checks
 # is written, and a relaunch rebuilds ROUND from round-*.checks, so the same round reruns and MAX_ROUNDS never trips (#547).
 # So each launch, with its first status write and in the live checkout (a run frozen before this counts too), writes
-# env-stops, `<last round> <stops> <launches>` (record_env_stops): the stopped-environment stops since the highest
+# env-stops, `<last round> <stops> <launches>` (record_env_stops): the stopped-environment and stopped-killed stops since the highest
 # round-N.checks last moved. A new round or a pr-opened clears them; any other status, such as a stopped
 # that made no worker call, keeps them, so it does not reset the count. next parks the issue at ENV_PARK_STOPS.
 # The launch number makes each line unique, so env_park_alert can name the stop it alerted for.
@@ -3919,12 +3999,12 @@ last_round() { # <run dir> -> the highest N of its round-N.checks, or -1
   n=$(find "$1" -maxdepth 1 -name 'round-*.checks' | sed -n 's/.*round-\([0-9][0-9]*\)\.checks$/\1/p' | sort -n | tail -1)
   echo "${n:--1}"
 }
-env_stops() { # <run dir> -> its stopped-environment stops with no new round-N.checks since, the last run's own status counted
+env_stops() { # <run dir> -> its stopped-environment and stopped-killed stops with no new round-N.checks since, the last run's own status counted
   local r0="" c0=""
   read -r r0 c0 _ 2> /dev/null < "$1/env-stops" || true
   { [[ "$c0" =~ ^[0-9]+$ ]] && [ "$r0" = "$(last_round "$1")" ]; } || c0=0
   case "$(cat "$1/status" 2> /dev/null)" in
-    stopped-environment) echo $((c0 + 1)) ;;
+    stopped-environment|stopped-killed) echo $((c0 + 1)) ;;
     pr-opened) echo 0 ;;
     *) echo "$c0" ;;
   esac
@@ -3936,8 +4016,8 @@ record_env_stops() { # <run dir>, at launch while its status is still the last r
   printf '%s %s %s\n' "$(last_round "$1")" "$(env_stops "$1")" $((n + 1)) > "$1/env-stops.tmp" \
     && mv -f "$1/env-stops.tmp" "$1/env-stops"
 }
-env_parked() { # <run dir> -> 0 when its run stopped on the environment for the ENV_PARK_STOPS-th time with no new round since
-  [ "$(cat "$1/status" 2> /dev/null)" = stopped-environment ] && [ "$(env_stops "$1")" -ge "$ENV_PARK_STOPS" ]
+env_parked() { # <run dir> -> 0 when its run stopped on the environment or was killed for the ENV_PARK_STOPS-th time with no new round since
+  env_stopped "$1" && [ "$(env_stops "$1")" -ge "$ENV_PARK_STOPS" ]
 }
 # One needs-you alert per parked stop, not one per tick: env-parked keeps the env-stops line the alert went out for. The
 # line is read once, and that same line is written after the alert, so a launch that rewrites env-stops meanwhile keeps
@@ -3952,8 +4032,8 @@ env_park_alert() { # <run dir> <issue>
   owner_unlock "$1"
   [ -n "$token" ] && [ "$token" != "$(cat "$1/env-parked" 2> /dev/null)" ] || return 0
   if alert --level needs-you --source factory --project "$(run_project "$1")" --run "issue $2" \
-    "issue $2 stopped on a machine or tool problem $ENV_PARK_STOPS times in a row with no new round since, so the timer \
-no longer relaunches it; fix the cause, then relaunch it by hand or edit the body (run dir ${1%/})" >> "$LOG" 2>&1; then
+    "issue $2 stopped on a machine or tool problem or was killed $ENV_PARK_STOPS times in a row with no new round since, so \
+the timer no longer relaunches it; fix the cause, then relaunch it by hand to resume its rounds, or edit the body to start it over (run dir ${1%/})" >> "$LOG" 2>&1; then
     printf '%s\n' "$token" > "$1/env-parked"
   else
     log "the alert for ${1%/} failed; see bin/alert's line above"
@@ -4141,7 +4221,7 @@ next_tick() { # [--dry-run|--install|--frontier]
 
   # 4. The frontier: open, ready-for-agent, unassigned issues with no open native blocker, lowest
   #    number first, plus the runner's own such issues whose current body has no run yet or whose run ended
-  #    stopped-environment or stopped. Every other open ready-for-agent issue is read too, so the loop prints one stderr
+  #    stopped-environment, stopped-killed or stopped. Every other open ready-for-agent issue is read too, so the loop prints one stderr
   #    line naming why it does not launch: each line carries the body (`-` for an empty one, so it cannot shift the
   #    fields), the open native blocker count (`?` when the listing omits it, so the issue waits rather than launching
   #    blocked) and the assignee logins (`-` for none); a line without the last two reads as unblocked and unassigned.
@@ -4165,7 +4245,7 @@ next_tick() { # [--dry-run|--install|--frontier]
   # the runner's own ready-for-agent issues in this repository (/issues is the authenticated user's, so no login
   # lookup, and every page, since it spans all the runner's repositories and gh applies --jq per page); the loop takes
   # one of those only at none with a run of an earlier body (an edited body is a new ticket; with no run at all the
-  # owner assigned it by hand to hold it), stopped-environment or stopped, since any other is in flight, awaits merge, or parks, each with its line.
+  # owner assigned it by hand to hold it), stopped-environment, stopped-killed or stopped, since any other is in flight, awaits merge, or parks, each with its line.
   local mine lrepo
   lrepo=$(printf '%s' "$repo" | tr '[:upper:]' '[:lower:]')
   if ! mine=$(net gh api "/issues?filter=assigned&labels=ready-for-agent&state=open&per_page=100" --paginate \
@@ -4177,8 +4257,8 @@ next_tick() { # [--dry-run|--install|--frontier]
   # assignee field (or `-`) stays, so an unassigned issue both lists name still reads as unassigned.
   ready=$(awk 'NR == FNR { m[$1]; next } !($5 != "" && $5 != "-" && ($1 in m))' <(printf '%s\n' "$mine") - <<< "$ready")
 
-  # The run of the issue's current body decides (park_status): no such run launches; stopped-environment
-  # and stopped relaunch (the environment, not the ticket, ended them), stopped-environment only ENV_BACKOFF_SEC after
+  # The run of the issue's current body decides (park_status): no such run launches; stopped-environment,
+  # stopped-killed and stopped relaunch (the environment or a signal, not the ticket, ended them), the first two only ENV_BACKOFF_SEC after
   # the mtime of its status file, since it pages at once; every other exit parks the issue
   # until a human edits the body or removes the label, since the same body would fail the same way.
   # stopped-daily, which only a run from before the dollar caps went (13 Nov 2026) can carry, relaunches as stopped does.
@@ -4246,16 +4326,16 @@ next_tick() { # [--dry-run|--install|--frontier]
       continue
     fi
     if env_parked "$run"; then
-      echo "parked #$num: stopped on the environment $ENV_PARK_STOPS times in a row with no new round since; fix the cause, then relaunch it by hand or edit the body" >&2
+      echo "parked #$num: stopped on the environment or was killed $ENV_PARK_STOPS times in a row with no new round since; fix the cause, then relaunch it by hand to resume its rounds, or edit the body to start it over" >&2
       [ "$dry" = 1 ] || env_park_alert "$run" "$num"
       continue
     fi
     if stopped_environment_recent "$run"; then
-      echo "waiting #$num: last run stopped on the environment; relaunches ${ENV_BACKOFF_SEC}s after its stop" >&2
+      echo "waiting #$num: last run stopped on the environment or was killed; relaunches ${ENV_BACKOFF_SEC}s after its stop" >&2
       continue
     fi
     case "$st_last" in
-      none|stopped-environment|stopped|stopped-daily)
+      none|stopped-environment|stopped-killed|stopped|stopped-daily)
         if run_busy "$run"; then
           echo "waiting #$num: a process of its last run still runs; kill it or wait for it to exit" >&2
           continue
@@ -4360,6 +4440,7 @@ next_tick() { # [--dry-run|--install|--frontier]
 }
 
 cmd_status() {
+  trap - PIPE   # read-only: `status | head` ends when head does
   linux_only status
   local d led st rounds spend wall den grader clean notes off warns=""
   printf '%-14s %-9s %-20s %6s %8s %6s %8s %-22s %-5s %s\n' \
@@ -4394,6 +4475,7 @@ cmd_status() {
 
 # The criteria and thresholds stay in ARCHITECTURE.md; criteria.py reads them there and calls only git log.
 cmd_criteria() {
+  trap - PIPE   # read-only, as cmd_status
   linux_only "status --criteria"
   python3 -I "$ROOT/bin/factory.d/criteria.py" "$RUNS_ROOT" "$ROOT/docs/factory/ARCHITECTURE.md" "$TARGET"
 }

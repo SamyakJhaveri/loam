@@ -9,7 +9,7 @@
     {
       "name": "sam-cc-setup",
       "description": "Loam's optional Claude Code plugin. Skills: pstack (the one model-invocable skill: picks a pstack method before a non-trivial task and names the pstack SKILL.md to read), plan-review (blind plan review), codex-review (read-only Codex second opinion on a diff), surprise-me (ranked ideas plus one executed proof), audit (the owner's end-of-work audit prompt, lightly edited: blind Fable and Codex review, Opus verifiers and fixers, a surprise-me agent, a six-part report under 400 words, then the fixed work), brief (factory ticket intake), run-spec (a spec's ticket graph as one PR, parallel workers in worktrees), research-gap (research questions and literature gap checks, ending in one cheap validation, with a quote-checked reading log), factory-watch (one read of the factory status, reporting stopped runs, opened PRs and failing preconditions). Agents: plan-reviewer, lean-critic (verbosity critic), and the factory graders judge and reviewer.",
-      "version": "0.9.33",
+      "version": "0.9.34",
       "source": "./sam-cc-setup",
       "author": {
         "name": "Samyak Jhaveri",

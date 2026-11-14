@@ -3,6 +3,13 @@
 This file records why a promoted plugin change traveled. It is also the upgrade
 entry point for projects that consume the Loam marketplace.
 
+## sam-cc-setup v0.9.34 pstack method declaration
+
+The `pstack` router asks for one decision-log line per method followed (decisions.md in a factory run), a declaration `method: <skill> | test: <command>` or `method: <skill> | proof: <command> | exit <code>`, in place of the v0.9.29 `pstack:` log line.
+`bin/factory.d/method_evidence.py` grades it by rerunning the command each round, in shadow until one batch is reviewed (the owner's 12 Nov 2026 ruling); `bin/factory-parity` P3 no longer fails a round for having no `pstack:` line, so the factory's pstack gate hook, which imports P3, still needs the router and a method read before a first change but no log line.
+No grader prompt changed, so no grader replay is owed.
+Upgrade step: `claude plugin update sam-cc-setup@seed-skills`.
+
 ## sam-cc-setup v0.9.33 pstack router sends ticket-shaped build work to the factory lane
 
 The router told a lead to hand spawning work to "one `worker`" and had no factory line, so a lead that obeyed it was pointed away from the factory the owner made the default builder (DistBench audit, 13 Nov 2026: 9 of 83 landed branches came from the factory).

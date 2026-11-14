@@ -36,7 +36,7 @@ CASES = [
     ("p2-ticket", "P2", "PASS"),  # the ticket's skills: line names it
     ("p2-ticket", "P3", "PASS"),
     ("p2-unnamed", "P2", "FAIL"),  # neither brief nor ticket names it
-    ("p2-unnamed", "P3", "FAIL"),
+    ("p2-unnamed", "P3", "PASS"),  # its method read comes first; no pstack: line is owed since method: lines replaced it
     ("p2-gated", "P2", "PASS"),  # a Write the pstack-gate hook blocked never ran, so it is not the first change
     ("p2-gated", "P3", "PASS"),
     ("p2-denied", "P2", "FAIL"),  # the router `cat` was denied, so it is no read
@@ -44,7 +44,6 @@ CASES = [
     ("p3-partial", "P3", "FAIL"),  # W34: those reads by sed -n | head
     ("p3-fail", "P3", "FAIL"),  # W34 without those reads
     ("p3-claim", "P3", "FAIL"),  # a pstack: line names a method no transcript read
-    ("p3-no-line", "P3", "FAIL"),  # W34's real decisions.md: a change but no pstack: line
     ("p3-order", "P3", "PASS"),  # the method read before the router read still counts
     ("p4-pass", "P4", "PASS"),  # W34 round-1.checks, the supervisor's record, holds PASS check-green
     ("p4-fail", "P4", "FAIL"),  # that record without its check-green line: no gate ran
@@ -128,8 +127,9 @@ def test_a_principle_named_only_by_common_md_is_no_brief_named_read(tmp_path: Pa
                                                                      skills: str, expected: str) -> None:
     # p3-order without its router read or decisions.md: the round fully reads principle-test-behavior-not-implementation,
     # then writes. Its prompt names that principle only in _common.md's lines, which every round gets, also inside a
-    # large round's Workflow args, so the read stands in for no router read (FAIL); the same lines in a prompt with no
-    # frozen _common.md are the brief's own (PASS).
+    # large round's Workflow args, so the read stands in for no router read (P2 FAIL); the same lines in a prompt with no
+    # frozen _common.md are the brief's own (PASS). P3 passes either way: the method read comes before the write, and no
+    # pstack: line is owed since method: lines replaced it.
     run = tmp_path / "run"
     shutil.copytree(FIXTURES / "p3-order" / "run", run)
     (run / "worker" / "decisions.md").unlink()
@@ -146,7 +146,7 @@ def test_a_principle_named_only_by_common_md_is_no_brief_named_read(tmp_path: Pa
         (run / "frozen").mkdir()
         (run / "frozen" / "_common.md").write_text(common)
     proc = parity(run, tmp_path / "projects")
-    assert (statuses(proc.stdout)["P2"], statuses(proc.stdout)["P3"]) == (expected, expected), proc.stdout
+    assert (statuses(proc.stdout)["P2"], statuses(proc.stdout)["P3"]) == (expected, "PASS"), proc.stdout
 
 
 def test_a_run_where_every_behaviour_passes_exits_zero() -> None:

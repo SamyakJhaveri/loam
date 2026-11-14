@@ -1,0 +1,42 @@
+#!/usr/bin/env bash
+# bin/agent-session - the one way to start a Claude Code session on a host: a named, detached tmux session running
+# claude through bin/claude-account exec (so it gets a stored account's token, never the host's /login), in auto mode,
+# with a first prompt that sets a /goal and names the pstack router.
+#   bin/agent-session [--as <account>] [--dir <dir>] [--model <m>] [--effort <e>] <name> <goal> [<task>]
+# <goal> is the /goal condition: what must hold when the session is done, checkable from the transcript. <task> is the
+# work, often "Read <brief path> and follow it". The first prompt is one line, `/goal <goal> Task: <task> Method: ...`,
+# since a slash command takes only its own line; Claude Code caps a goal at 4000 characters.
+# Defaults: --dir the current directory, --model claude-opus-5-5, --effort high. Refuses a name tmux already has.
+# Prints `started <name> in <dir> on account <name>`; attach with `tmux attach -t <name>`.
+set -euo pipefail
+here=$(cd "$(dirname "$(readlink -f "$0")")" && pwd)
+as="" dir=$PWD model=claude-opus-5-5 effort=high
+usage() { sed -n '5p' "$0" | sed 's/^# *//' >&2; exit 2; }
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --as) as=${2:?}; shift 2 ;;
+    --dir) dir=${2:?}; shift 2 ;;
+    --model) model=${2:?}; shift 2 ;;
+    --effort) effort=${2:?}; shift 2 ;;
+    -h|--help) usage ;;
+    --*) echo "agent-session: unknown option $1" >&2; usage ;;
+    *) break ;;
+  esac
+done
+[ $# -ge 2 ] && [ $# -le 3 ] || usage
+name=$1 goal=$2 task=${3:-}
+case "$name" in *[!A-Za-z0-9_-]*|"") echo "agent-session: the name must be letters, digits, - or _" >&2; exit 2 ;; esac
+case "$effort" in max) echo "agent-session: effort max is not used without the owner's word" >&2; exit 2 ;; esac
+[ -d "$dir" ] || { echo "agent-session: no directory $dir" >&2; exit 2; }
+tmux has-session -t "=$name" 2> /dev/null && { echo "agent-session: tmux already has a session $name" >&2; exit 1; }
+# claude-account exec leaves the host's /login in place for a name with no stored token, so refuse it here.
+acc=${CLAUDE_ACCOUNTS_DIR:-$HOME/.config/claude-accounts}   # bin/claude-account's account directory
+account=${as:-$(cat "$acc/active" 2> /dev/null || :)}
+[ -n "$account" ] && [ -f "$acc/$account.token" ] \
+  || { echo "agent-session: no stored token for account '${account:-none}'; run bin/claude-account use <name> first" >&2; exit 1; }
+# One line: newlines in the goal or task would end the /goal argument early.
+prompt="/goal $(tr '\n' ' ' <<<"$goal")${task:+ Task: $(tr '\n' ' ' <<<"$task")} Method: before a non-trivial task call the sam-cc-setup:pstack skill (the pstack router) and follow the method it picks."
+[ "${#prompt}" -le 4006 ] || { echo "agent-session: the first prompt is ${#prompt} characters; a goal holds at most 4000, so put the task in a brief file and name its path" >&2; exit 2; }
+tmux new-session -d -s "$name" -c "$dir" "$here/claude-account" exec --as "$account" \
+  claude --model "$model" --effort "$effort" --permission-mode auto -n "$name" "$prompt"
+echo "started $name in $dir on account $account"

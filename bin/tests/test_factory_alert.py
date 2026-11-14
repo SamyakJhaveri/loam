@@ -15,6 +15,7 @@ import pathlib
 import subprocess
 import tempfile
 import threading
+import time
 import unittest
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
@@ -22,9 +23,12 @@ ALERT = ROOT / "bin" / "alert"
 INHERITED = ("FACTORY_ROOT", "FACTORY_GH", "REPO", "RUN", "LOG")
 
 FAKE_ALERT = """#!/usr/bin/env python3
-import json, os, sys
+import json, os, signal, sys, time
 with open(os.environ["FAKE_ALERT_LOG"], "a") as f:
     f.write(json.dumps(sys.argv[1:]) + "\\n")
+if os.environ.get("FAKE_ALERT_TERM"):   # the operator's signal lands while the post is in flight
+    os.kill(int(os.environ.pop("FAKE_ALERT_TERM")), signal.SIGTERM)
+    time.sleep(0.3)
 sys.exit(int(os.environ.get("FAKE_ALERT_EXIT", "0")))
 """
 
@@ -259,6 +263,90 @@ class FactoryAlertTests(unittest.TestCase):
             self.alert_log.unlink(missing_ok=True)
             (call,) = self.factory("notify info 'issue 7 started' 'Branch b'")
             self.assertEqual((call[:2], call[call.index("--run") + 1]), (["--level", "info"], "issue 7"))
+
+    def test_a_killed_supervisor_alerts_fail_once_and_records_the_stop(self) -> None:
+        # `tmux kill-session` sends the supervisor HUP; once run_traps armed it, the run ends as stopped-killed with
+        # one fail alert as `ticket <name>`, exit 129, and no learn step. A call's own traps hand back to it.
+        file_ticket = "ISSUE=; KEY=F9-widget; IS_FILE=1; REVIEW_LOADED=1; learn_run() { echo learn >> \"$RUN/learned\"; }; "
+        for sig, code in (("HUP", 129), ("TERM", 143)):
+            with self.subTest(signal=sig):
+                self.alert_log.unlink(missing_ok=True)
+                (call,) = self.factory(f"{file_ticket}run_traps; kill -{sig} $$; echo not-reached",
+                                       REPO="SamyakJhaveri/distbench")
+                self.assertEqual(self.proc.returncode, code)
+                self.assertNotIn("not-reached", self.proc.stdout)
+                self.assertEqual(call[:2], ["--level", "fail"])
+                self.assertEqual(call[call.index("--run") + 1], "ticket F9-widget")
+                self.assertIn(f"SIG{sig}", call[-1])
+                self.assertEqual((self.run_dir / "status").read_text().strip(), "stopped-killed")
+                self.assertFalse((self.run_dir / "learned").exists())
+        with self.subTest("call_end re-arms the run's traps"):
+            self.alert_log.unlink(missing_ok=True)
+            (call,) = self.factory(f"{file_ticket}run_traps; trap - HUP; CALL_PID=; CALL_TAG=t.0.0; CALL_STUCK=; "
+                                   "call_end worker > /dev/null 2>&1; kill -HUP $$", REPO="SamyakJhaveri/distbench")
+            self.assertEqual(self.proc.returncode, 129)
+        with self.subTest("a `| tee` launch whose pipe died: the child's Hangup job line raises no SIGPIPE first"):
+            self.alert_log.unlink(missing_ok=True)
+            (call,) = self.factory(f"{file_ticket}run_traps; exec 2> >(:) 1>&2; sleep 0.5; "
+                                   "bash -c 'kill -HUP $PPID; kill -HUP $$'; echo not-reached",
+                                   REPO="SamyakJhaveri/distbench")
+            self.assertEqual(self.proc.returncode, 129)
+            self.assertEqual((self.run_dir / "status").read_text().strip(), "stopped-killed")
+        with self.subTest("before run_traps a signal is the shell's default"):
+            self.alert_log.unlink(missing_ok=True)
+            self.assertEqual(self.factory(f"{file_ticket}kill -HUP $$"), [])
+
+    def test_a_signal_after_the_exit_is_decided_cannot_replace_it(self) -> None:
+        # distbench's factory-isc lands a run only on `pr-opened`; a TERM during finish's alert, or one reaching the
+        # learn step finish leaves behind, must not turn it into stopped-killed with a false fail alert.
+        file_ticket = "ISSUE=; KEY=F9-widget; IS_FILE=1; REVIEW_LOADED=1; "
+        with self.subTest("a signal while finish posts its alert"):
+            calls = self.factory("run_traps; export FAKE_ALERT_TERM=$$; finish pr-opened 'https://github.com/acme/widget/pull/9'")
+            self.assertEqual(self.proc.returncode, 0, self.proc.stderr)
+            self.assertEqual([c[:2] for c in calls], [["--level", "info"]])
+            self.assertEqual((self.run_dir / "status").read_text().strip(), "pr-opened")
+            self.assertIn("EXIT pr-opened (0)", (self.run_dir / "factory.log").read_text())
+        with self.subTest("the HUP also took the launcher's `| tee`: finish still logs its EXIT line"):
+            (self.run_dir / "factory.log").unlink(missing_ok=True)
+            self.factory("run_traps; exec 2> >(:); sleep 0.5; finish pr-opened 'https://github.com/acme/widget/pull/9'")
+            self.assertEqual(self.proc.returncode, 0)
+            self.assertIn("EXIT pr-opened (0)", (self.run_dir / "factory.log").read_text())
+        # The learn step as review_claude drives it, signalled before its first call and after one (the real call_end).
+        learn = self.run_dir / "learn.pid"
+        for when, before in (("before its first call", ""),
+                             ("after one of its calls", "CALL_PID=; CALL_TAG=t.0.0; CALL_STUCK=; call_end learn-writer; ")):
+            with self.subTest(f"a signal to the learn step {when}"):
+                self.alert_log.unlink(missing_ok=True)
+                learn.unlink(missing_ok=True)
+                (self.run_dir / "learned").unlink(missing_ok=True)
+                (self.run_dir / "status").unlink(missing_ok=True)
+                (self.run_dir / "factory.log").unlink(missing_ok=True)
+                calls = self.factory(file_ticket + f"TARGET_IS_LOAM=0; learn_run() {{ {before}echo $BASHPID > '{learn}'; "
+                                     "kill -TERM $BASHPID; sleep 1; echo survived >> \"$RUN/learned\"; }; "
+                                     "run_traps; finish pr-opened pr-body.md", REPO="SamyakJhaveri/distbench")
+                self.assertEqual(self.proc.returncode, 0, self.proc.stderr)
+                for _ in range(100):
+                    if learn.exists() and not pathlib.Path(f"/proc/{learn.read_text().strip()}").exists():
+                        break
+                    time.sleep(0.05)
+                self.assertTrue(learn.exists(), "finish starts the learn step")
+                self.assertFalse((self.run_dir / "learned").exists(), "the TERM must still end the learn step")
+                calls = [json.loads(x) for x in self.alert_log.read_text().splitlines()] if self.alert_log.exists() else []
+                self.assertEqual([c[:2] for c in calls], [["--level", "needs-you"]])
+                self.assertEqual((self.run_dir / "status").read_text().strip(), "pr-opened")
+                self.assertNotIn("stopped-killed", (self.run_dir / "factory.log").read_text())
+
+    def test_a_dead_stderr_reader_before_run_traps_still_records_the_stop_and_alerts(self) -> None:
+        # The launcher's `| tee` can die alone before cmd_run arms run_traps; the first stderr write must fail, not end
+        # the run by SIGPIPE with its status left `running` and no alert.
+        calls = self.factory("exec 2> >(:); wait $!; finish stopped-environment 'the worker call returned no result event'")
+        self.assertEqual(self.proc.returncode, 4)
+        self.assertEqual([c[:2] for c in calls], [["--level", "fail"]])
+        self.assertEqual((self.run_dir / "status").read_text().strip(), "stopped-environment")
+        self.assertIn("EXIT stopped-environment (4)", (self.run_dir / "factory.log").read_text())
+        # A log in a command substitution or pipeline, where bash resets the PIPE handler, must not end that subshell.
+        self.factory("exec 2> >(:); wait $!; echo \"$(log 'in a substitution'; echo survived)\"")
+        self.assertEqual(self.proc.stdout, "survived\n")
 
     def test_a_run_end_never_pauses_the_check(self) -> None:
         # The next timer's ticks are the check's only beats (cmd_next); a pause at a run's end would outlive a timer

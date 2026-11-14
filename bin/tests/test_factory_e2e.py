@@ -332,7 +332,7 @@ class EndToEndTests(unittest.TestCase):
             os.utime(status, (aged, aged))
         t = self.tick()
         self.assertEqual(t.stdout, "nothing to launch\n", t.stderr)
-        self.assertIn("parked #1: stopped on the environment 3 times in a row", t.stderr)
+        self.assertIn("parked #1: stopped on the environment or was killed 3 times in a row", t.stderr)
         self.assertEqual(self.launches(), ["o__r-1"] * 3)
         self.assertEqual(self.workers(), 3)
         self.assertEqual(self.calls("unknown"), [])

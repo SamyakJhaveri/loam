@@ -108,6 +108,13 @@ class ParkingTests(unittest.TestCase):
         return sourced(stubs, {"FACTORY_MAX_PARALLEL": "1", "FACTORY_RUNS_ROOT": str(self.runs), "GQL_LOG": str(self.gql_log),
                                "GH_LOG": str(self.gh_log), **env})
 
+    def test_next_still_launches_when_its_stderr_reader_died(self) -> None:
+        # `bin/factory next 2>&1 | head -1`, or a timer's logger that died: the parked line's write fails, and the tick
+        # still reaches the next issue rather than ending by SIGPIPE.
+        self.run_dir(7, CLEAN, "abandon")
+        proc = self.next_dry_run((7, CLEAN), (8, CLEAN + "\nanother"), pre="exec 2> >(:); wait $!; ")
+        self.assertEqual((proc.returncode, proc.stdout.strip()), (0, "would launch #8"))
+
     def test_old_body_abandon_does_not_park_a_new_body(self) -> None:
         self.run_dir(7, CLEAN + "\nthe old body", "abandon")
         self.assertEqual(self.park_status(7, CLEAN + "\nthe new body"), "none")
@@ -392,7 +399,28 @@ tmux() {
             self.launch(7, CLEAN)
         proc = self.next_dry_run((8, CLEAN), mine=mine)
         self.assertEqual(proc.stdout.strip(), "would launch #8", proc.stderr)
-        self.assertIn("parked #7: stopped on the environment 3 times in a row with no new round since", proc.stderr)
+        self.assertIn("parked #7: stopped on the environment or was killed 3 times in a row with no new round since", proc.stderr)
+
+    def test_a_killed_run_resumes_as_an_environment_stop_does(self) -> None:
+        # A host shutdown or `tmux kill-session` TERMs or HUPs every live supervisor, which ends stopped-killed. Its
+        # run resumes after the hour's backoff, with its rounds, rather than waiting for a body edit that would abandon
+        # them; the third kill with no new round since parks it, as three environment stops do.
+        mine = ((7, CLEAN),)
+        d = self.runs / "7" / key(CLEAN)
+        killed = "run_traps; kill -TERM $$"
+        self.launch(7, CLEAN, 'echo CHECKS-END > "$RUN/round-0.checks"; ' + killed, age=int(time.time()))
+        self.assertEqual((d / "status").read_text().strip(), "stopped-killed")
+        proc = self.next_dry_run(mine=mine)
+        self.assertEqual(proc.stdout.strip(), "nothing to launch", proc.stderr)
+        self.assertIn("waiting #7: last run stopped on the environment or was killed; relaunches", proc.stderr)
+        os.utime(d / "status", (86400, 86400))
+        proc = self.next_dry_run(mine=mine)
+        self.assertEqual(proc.stdout.strip(), "would launch #7", proc.stderr)
+        for _ in range(2):
+            self.launch(7, CLEAN, killed)
+        proc = self.next_dry_run((8, CLEAN), mine=mine)
+        self.assertEqual(proc.stdout.strip(), "would launch #8", proc.stderr)
+        self.assertIn("parked #7: stopped on the environment or was killed 3 times in a row with no new round since", proc.stderr)
 
     def test_a_round_between_environment_stops_resets_the_count(self) -> None:
         mine = ((7, CLEAN),)
@@ -544,7 +572,7 @@ class ResumeTests(unittest.TestCase):
                  "assert_target_ready() { :; }; claude_version_ok() { :; }; "
                  'load_ticket() { ISSUE=7; KEY=7; REPO=o/r; BODY="$BODY_ARG"; }; '
                  "nav_arm_resolve() { :; }; assert_parallel() { :; }; prepare_worktree() { :; }; freeze() { :; }; "
-                 "exec_frozen() { :; }; check_frozen() { :; }; "
+                 "exec_frozen() { :; }; check_frozen() { :; }; method_evidence() { :; }; "
                  "measure_rows() { :; }; notify() { :; }; worker_round() { echo WORKER $1; }; "
                  'graders() { echo "GRADED $1 $(cat "$RUN/status")"; ' + ("}; " if graders_pass else "false; }; ") +
                  'open_pr() { echo "OPEN_PR ${1:-}"; finish pr-opened "PR at round $ROUND"; }; '
