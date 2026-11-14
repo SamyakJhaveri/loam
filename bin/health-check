@@ -144,7 +144,6 @@ def ask(cfg, state, d, role, effort, schema, prompt, keys, add_dirs=()):
             rc = p.wait(timeout=CALL_TIMEOUT)
         except subprocess.TimeoutExpired:  # kill the whole group: under claude-account exec, claude is a grandchild
             os.killpg(p.pid, signal.SIGKILL)
-            p.wait()
             raise Failed(f"the {role} call ran past {CALL_TIMEOUT} s; see {raw}")
     with open(raw) as fh:
         reply = reply_object(fh.read(), keys)
@@ -219,7 +218,7 @@ def rulings(cfg, state):
         if r["status"] in ("pending", "accepted") and r["quote"] in rules:
             r["status"] = "recorded"
 
-    learned, drafted = {}, []
+    learned, before = {}, len(store)
     if asked:
         d = call_dir(state, "rulings")
         write(os.path.join(d, "messages.jsonl"), jsonl(asked))
@@ -251,8 +250,6 @@ def rulings(cfg, state):
                        "repeat_of": x["recorded_in"] if repeat else "none",
                        "why_ruling": None if repeat else x["why_ruling"]}
                 store.append(rec)
-                if not repeat:
-                    drafted.append(rec)
         write(os.path.join(d, "dropped.json"), json.dumps(dropped, indent=1, ensure_ascii=False) + "\n")
     # Every repeat without its ticket draft on disk, this batch's or one an earlier run saved before its draft failed.
     for rec in store:
@@ -278,8 +275,8 @@ def rulings(cfg, state):
     cursor.setdefault("rulings", {}).update(last)
     cursor.setdefault("runs", {})["rulings"] = started.strftime("%Y-%m-%dT%H:%M:%SZ")
     write(cursor_p, json.dumps(cursor) + "\n")
-    print(f"rulings: {len(batch)} new message(s), {len(batch) - len(asked)} yes, {len(drafted)} draft(s) kept, "
-          f"{len(learned)} repeat(s) drafted as tickets, {len(lessons)} lesson(s) queued")
+    print(f"rulings: {len(batch)} new message(s), {len(batch) - len(asked)} yes, {len(store) - before} record(s) added, "
+          f"{len(learned)} ticket draft(s) written, {len(lessons)} lesson(s) queued")
 
 
 def due(state):
