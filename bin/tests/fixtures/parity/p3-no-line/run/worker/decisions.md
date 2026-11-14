@@ -1,1 +1,0 @@
-pstack: router picked principle-sequence-verifiable-units, principle-test-behavior-not-implementation, principle-prove-it-works; they changed the order (module, segmenter, tests, then a revert control) and made each test drive shares()/main()/episodes() rather than helpers.

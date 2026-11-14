@@ -544,7 +544,7 @@ class ResumeTests(unittest.TestCase):
                  "assert_target_ready() { :; }; claude_version_ok() { :; }; "
                  'load_ticket() { ISSUE=7; KEY=7; REPO=o/r; BODY="$BODY_ARG"; }; '
                  "nav_arm_resolve() { :; }; assert_parallel() { :; }; prepare_worktree() { :; }; freeze() { :; }; "
-                 "exec_frozen() { :; }; check_frozen() { :; }; "
+                 "exec_frozen() { :; }; check_frozen() { :; }; method_evidence() { :; }; "
                  "measure_rows() { :; }; notify() { :; }; worker_round() { echo WORKER $1; }; "
                  'graders() { echo "GRADED $1 $(cat "$RUN/status")"; ' + ("}; " if graders_pass else "false; }; ") +
                  'open_pr() { echo "OPEN_PR ${1:-}"; finish pr-opened "PR at round $ROUND"; }; '

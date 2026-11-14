@@ -9,6 +9,9 @@ ticket body, in its cwd, the ticket worktree:
   fail       commits a different attempt-<n>.txt each round, so the check keeps failing
   no-result  prints only an init event and exits 1, as a call that crashed or was killed does
   parallel   writes $E2E_STATE/started-<issue>, waits for $E2E_STATE/release, then does what pass does
+  hang       the same as parallel, for a test that kills the run while the call waits
+  limit      the first call of the issue answers with the usage-limit reply a real limited call gave (LIMIT_TEXT) and
+             exits 1; every later call does what pass does
 and a worker that ends its turn prints a stream ending in a result event with total_cost_usd. A grader call
 (--json-schema) prints an envelope whose result is a verdict that satisfies the schema it was given: a judge schema
 gets every row it requires passed and no fixes, a reviewer schema no findings; its prompt must carry the ticket's
@@ -39,6 +42,12 @@ FLAGS = {"-p": False, "--model": True, "--effort": True, "--advisor": True, "--p
 REQUIRED = {"worker": {"--permission-mode": "auto", "--setting-sources": "user,project,local", "--strict-mcp-config": True},
             "grader": {"--tools": "Read,Grep,Glob", "--setting-sources": "", "--strict-mcp-config": True}}
 RELEASE_WAIT_SEC = 120
+# The reply verbatim, from the 12 Nov 2026 weekly limit on jhaveris (transcript
+# ~/.claude/projects/-home-samyak-distbench/8ac7c511-0dcf-4476-8336-664057a8c693.jsonl, apiError usage_limit_reached).
+LIMIT_TEXT = "You've hit your weekly limit \u00b7 resets Nov 13, 5am (America/Los_Angeles)"
+# That reply's rate-limit fields, as the stream's rate_limit_event carries them (no account or token data).
+LIMIT_INFO = {"status": "rejected", "resetsAt": 1794574800, "rateLimitType": "seven_day", "overageStatus": "rejected",
+              "overageDisabledReason": "out_of_credits", "isUsingOverage": False}
 
 
 class Unknown(Exception):
@@ -109,12 +118,27 @@ def worker(opts: dict, prompt: str, sid: str) -> int:
           flush=True)
     if scenario == "no-result":
         return 1
+    if scenario == "limit":
+        issue = git("rev-parse", "--abbrev-ref", "HEAD").rpartition("/")[2]
+        marker = os.path.join(STATE, f"limited-{issue}")
+        if not os.path.exists(marker):
+            open(marker, "w").close()
+            print(json.dumps({"type": "rate_limit_event", "rate_limit_info": LIMIT_INFO, "session_id": sid}), flush=True)
+            print(json.dumps({"type": "assistant", "session_id": sid, "error": "rate_limit",
+                              "message": {"id": f"msg_{sid}", "model": "<synthetic>", "role": "assistant",
+                                          "content": [{"type": "text", "text": LIMIT_TEXT}]}}), flush=True)
+            print(json.dumps({"type": "result", "subtype": "success", "is_error": True, "duration_ms": 300,
+                              "num_turns": 1, "result": LIMIT_TEXT, "session_id": sid, "total_cost_usd": 0,
+                              "usage": {"input_tokens": 0, "output_tokens": 0}, "permission_denials": [],
+                              "modelUsage": {}}), flush=True)
+            return 1
+        scenario = "pass"
     cost = 0.25
     if scenario == "fail":
         n = len([f for f in os.listdir(".") if re.fullmatch(r"attempt-[0-9]+\.txt", f)]) + 1
         commit(f"attempt-{n}.txt", f"attempt {n}\n", f"e2e: attempt {n}")
-    elif scenario in ("pass", "parallel"):
-        if scenario == "parallel":
+    elif scenario in ("pass", "parallel", "hang"):
+        if scenario in ("parallel", "hang"):
             issue = git("rev-parse", "--abbrev-ref", "HEAD").rpartition("/")[2]
             open(os.path.join(STATE, f"started-{issue}"), "w").close()
             deadline = time.monotonic() + RELEASE_WAIT_SEC

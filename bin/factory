@@ -1475,6 +1475,7 @@ exit_words() { # status -> "<level> <words>"
     stuck) echo "fail stopped: the same checks failed twice in a row" ;;
     no-change) echo "fail stopped: a round changed nothing" ;;
     stopped-environment) echo "fail stopped on a machine or tool problem, not on the ticket" ;;
+    stopped-killed) echo "fail stopped: its supervisor got a signal (killed, or its tmux session or terminal closed)" ;;
     *) echo "fail stopped ($1)" ;;
   esac
 }
@@ -1526,6 +1527,25 @@ finish() { # status message
   fi
   exit "$code"
 }
+
+# A run's supervisor killed by INT, TERM or HUP (`tmux kill-session` closes the pane's terminal, which sends HUP) ends
+# here, after any call it was in has been ended (call_abort): the status, one fail alert and the EXIT line, as finish
+# writes them, but no learn step, which would start model calls on a run its operator just killed. cmd_run arms it with
+# run_traps once the run directory and the frozen set exist; call_start replaces it for a call and call_end re-arms it.
+killed() { # signal code
+  local words
+  trap '' INT TERM HUP PIPE
+  exec > /dev/null 2>&1   # the terminal or pipe went with the signal; factory.log keeps every line (call_abort)
+  kill $(jobs -p) 2> /dev/null   # limit_wait's sleep, which would hold the run's lease for hours
+  set_status stopped-killed
+  words=$(exit_words stopped-killed)
+  notify "${words%% *}" "$(ticket_name) ${words#* }" "SIG$1 at $(now); the run directory is $RUN" stopped-killed
+  log "EXIT stopped-killed ($2): SIG$1"
+  exit "$2"
+}
+# PIPE gets a no-op handler, not an ignore, so children keep the default: under a `| tee` launch the signal also kills
+# tee, and a foreground child's `Hangup` job line would otherwise kill the supervisor by SIGPIPE before its HUP trap.
+run_traps() { RUN_TRAPS=1; trap 'killed INT 130' INT; trap 'killed TERM 143' TERM; trap 'killed HUP 129' HUP; trap : PIPE; }
 
 # ---- the ticket -------------------------------------------------------------
 
@@ -1677,7 +1697,7 @@ REVIEW_SET="review.sh verify.md verify.schema.json learn.md learn.schema.json"
 FROZEN_SET="factory lib.sh _common.md role-settings.json worker-settings.json checks.sh \
 judge.md reviewer.md judge.schema.json reviewer.schema.json issue.md protected.txt exempt.txt \
 factory-round.js review-output.schema.json codex-review.prompt.md codex-rereview.prompt.md unattended.md alert mutation_sweep.py \
-plugin-dir pstack-gate.py factory-parity $REVIEW_SET"
+plugin-dir pstack-gate.py factory-parity method_evidence.py $REVIEW_SET"
 # The line freeze writes after the block, before checks.sh exits; run_checks reads output that does not end
 # on CHECKS-END as an abort (#277).
 CHECKS_END="printf '\nCHECKS-END\n'"
@@ -1786,6 +1806,8 @@ freeze() {
   # The worker's pstack gate (U5) and the parity rules it imports run from the frozen set, beyond the worker's edits.
   cp "$ROOT/bin/factory.d/pstack-gate.py" "$RUN/frozen/pstack-gate.py" || finish stopped-environment "could not freeze pstack-gate.py"
   cp "$ROOT/bin/factory-parity" "$RUN/frozen/factory-parity" || finish stopped-environment "could not freeze bin/factory-parity"
+  # round_checks runs the frozen method-evidence checker, so a mid-run edit cannot change how a round is graded.
+  cp "$ROOT/bin/factory.d/method_evidence.py" "$RUN/frozen/method_evidence.py" || finish stopped-environment "could not freeze method_evidence.py"
   grader_settings "$ROOT/bin/factory.d/role-settings.json" "$RUN/frozen/role-settings.json" "$GRADER_MODEL" "$REVIEWER_MODEL" 2>> "$LOG" \
     || finish stopped-environment "could not write $(user_settings)'s env into the frozen grader settings"
   freeze_shell
@@ -2133,9 +2155,11 @@ holds_slot() { # <run dir> [peek]
     exec {fd}>&-   # before the alert, whose children would otherwise inherit this run's lease
     [ "$st" = running ] || [ "$st" = waiting-limit ] || return 1
     log "stopped-environment: ${1%/} was $st, but no process of the run holds its lease"
+    # A file ticket's key is its file stem, an issue's its number.
+    local lbl; lbl=$(basename "$(dirname "$1")"); case $lbl in *[!0-9]*) lbl="ticket $lbl" ;; *) lbl="issue $lbl" ;; esac
     alert --level fail --source factory --project "$(run_project "$1")" \
-      --run "issue $(basename "$(dirname "$1")")" \
-      "issue $(basename "$(dirname "$1")") stopped on a machine or tool problem: no process of the run is left \
+      --run "$lbl" \
+      "$lbl stopped on a machine or tool problem: no process of the run is left \
 (its supervisor and every child exited) while it read $st; ${1%/} is now stopped-environment and its slot is free" \
       >> "$LOG" 2>&1 || log "the alert for ${1%/} failed; see bin/alert's line above"
     return 1
@@ -2313,7 +2337,7 @@ limit_wait() { # result.json -> 0 after waiting, 1 when the reply is not a usage
   fi
   log "usage limit, not a round: $e; waiting ${secs}s"
   [ -n "${REVIEW_NO_FINISH:-}" ] || set_status waiting-limit   # learn waits without touching the exited run's status
-  sleep "$secs"
+  sleep "$secs" & wait "$!"   # in the background, so a signal reaches run_traps now, not when the sleep ends
   return 0
 }
 
@@ -2646,7 +2670,7 @@ call_end() { # role -> the call's own exit status
   done < "$RUN/call.reap"
   rm -f "$RUN/call.reap"
   call_reap "$1" && [ -z "$CALL_STUCK" ] && rm -f "$RUN/call" "$RUN/call.tmp" "$RUN/call.group" "$RUN/call.group.tmp"
-  trap - INT TERM HUP
+  if [ -n "${RUN_TRAPS:-}" ]; then run_traps; else trap - INT TERM HUP; fi
   return "$rc"
 }
 call_reap() { # role
@@ -2669,12 +2693,16 @@ call_reap() { # role
 call_abort() { # signal status
   local killer
   trap '' INT TERM HUP
+  # The signal that reached the supervisor also took its terminal or the pipe it writes to (a `| tee` launch): from
+  # here it writes only factory.log, not to the dead terminal or pipe.
+  [ -z "${RUN_TRAPS:-}" ] || exec > /dev/null 2>&1
   log "the supervisor got $1 during a model call; ending the call's processes"
   call_signal TERM; call_signal CONT
   ( sleep 10; call_signal KILL ) & killer=$!
   wait "$CALL_PID" 2> /dev/null
   kill -KILL "$killer" 2> /dev/null   # it inherits the ignored TERM
   call_gone 50 || { call_signal KILL; call_gone 50; } && rm -f "$RUN/call" "$RUN/call.tmp" "$RUN/call.group" "$RUN/call.group.tmp"
+  [ -z "${RUN_TRAPS:-}" ] || killed "$1" "$2"
   exit "$2"
 }
 call_signal() { call_grouped "$1"; call_tagged "$1"; }
@@ -2709,11 +2737,22 @@ round_sig() {
 }
 
 worker_round() { # round; leaves round-N.* only once the call produced a result
-  local round="$1" pf out="$RUN/pending.jsonl" res="$RUN/pending.result.json" t=(timeout -k 5 "$CALL_TIMEOUT_SEC") login_retried=0 le head0
-  # The round's start, so a stop after a killed call can name the commits the call made (#319).
+  local round="$1" pf out="$RUN/pending.jsonl" res="$RUN/pending.result.json" t=(timeout -k 5 "$CALL_TIMEOUT_SEC") login_retried=0 le head0 last
+  # The round's start, so a stop after a killed call can name the commits the call made (#319). round-N.start.sha
+  # keeps it for the method-evidence checker's base; written once per round, so a relaunched round keeps the start
+  # its killed attempt had, with that attempt's commits inside the round.
   head0=$(git -C "$WORKTREE" rev-parse HEAD 2> /dev/null) || head0=""
-  # The round's header line in decisions.md: parity P3 and the pstack gate (decision_lines) give the lines after
-  # `Round N` to round N, so a worker's pstack: line needs no round label of its own. Once per round, so a retried
+  # A round after one whose method evidence did not pass (a FAIL, or checks that stopped before it ran) keeps that
+  # round's start, so its change is graded again with this round's lines; else a retry round that only writes a
+  # method: line would pass on an empty range.
+  if [ ! -s "$RUN/round-$round.start.sha" ] && [ -n "$head0" ]; then
+    last=$(tail -n 1 "$RUN/round-$((round - 1)).method-evidence" 2> /dev/null) || last=""
+    [ "$round" -gt 1 ] && [ "${last%%: *}" != "PASS method-evidence" ] \
+      && cp "$RUN/round-$((round - 1)).start.sha" "$RUN/round-$round.start.sha" 2> /dev/null \
+      || printf '%s\n' "$head0" > "$RUN/round-$round.start.sha"
+  fi
+  # The round's header line in decisions.md: parity P3 and the method-evidence checker give the lines after
+  # `Round N` to round N, so a worker's method: line needs no round label of its own. Once per round, so a retried
   # or relaunched round adds none. A last line with no newline gets one first, so the header starts its own line.
   if [ "$(grep -E '^Round [0-9]+$' "$DECISIONS" 2> /dev/null | tail -n 1)" != "Round $round" ]; then
     [ ! -s "$DECISIONS" ] || [ -z "$(tail -c 1 "$DECISIONS")" ] || printf '\n' >> "$DECISIONS"
@@ -3498,6 +3537,33 @@ round_checks() { # out [full]: a dirty tree, a do-not-touch hit or a path off th
     # Shadow: the line goes to factory.log and round-N.edit-scope, and the checks run as if the fence were absent.
     [ -z "$off" ] || { edit_scope_line "$off" | sed 's/^/SHADOW /' > "$RUN/round-$ROUND.edit-scope"; log "$(cat "$RUN/round-$ROUND.edit-scope")"; }
     run_checks "$WORKTREE" "$1" "$([ "${2:-}" = full ] || printf '%s' "$GATE_DEFER")"
+    method_evidence "$ROUND"   # shadow; add "$1" to gate (LOOP.md, Method evidence)
+  fi
+}
+
+# The round's method-evidence line after the ticket's checks (LOOP.md, Method evidence): the frozen
+# method_evidence.py grades round-N.start.sha..HEAD, a test that fails before and passes after or a proof command's
+# declared exit. In shadow (the owner's ruling of 12 Nov 2026, until one batch is reviewed) the line goes only to the log
+# and round-N.method-evidence and never blocks. Gating writes it into round-N.checks before checks.sh's CHECKS-END line,
+# so a FAIL sends the worker back as any check does and a relaunch still reads the block as complete, and a checker
+# that cannot grade then ends the run stopped-environment.
+method_evidence() { # round [checks file]: with no checks file the check is in shadow and only records its line
+  local line rc=0
+  line=$(python3 -I "$RUN/frozen/method_evidence.py" --run "$RUN" --round "$1" --repo "$WORKTREE" \
+    --head "$(git -C "$WORKTREE" rev-parse HEAD)" 2>> "$LOG") || rc=$?
+  line=$(printf '%s\n' "$line" | grep -m1 -E '^(PASS|FAIL) method-evidence: ')
+  if [ "$rc" -gt 1 ] || [ -z "$line" ]; then
+    # Exit 2 is input the checker could not use (a git or worktree fault), not the worker's evidence.
+    [ -z "${2:-}" ] || finish stopped-environment "the method-evidence checker could not grade round $1 (exit $rc): ${line:-no verdict}"
+    line="ERROR method-evidence: the checker could not grade round $1 (exit $rc): ${line:-no verdict}"
+  fi
+  log "round $1 $line"
+  printf '%s\n' "$line" >> "$RUN/round-$1.method-evidence"
+  [ -n "${2:-}" ] || return 0
+  if [ "$(tail -n 1 "$2")" = CHECKS-END ]; then
+    { sed '$d' "$2"; printf '%s\n\nCHECKS-END\n' "$line"; } > "$2.tmp" && mv "$2.tmp" "$2"
+  else
+    printf '%s\n' "$line" >> "$2"
   fi
 }
 
@@ -3650,6 +3716,7 @@ cmd_run() {
   exec_frozen
   BODY=$(cat "$RUN/frozen/issue.md")   # from here on the frozen body is the ticket
   [ "$JUDGE" = on ] || log "judge: off (FACTORY_JUDGE=off); each round's judge.json is a stand-in pass, and the reviewer, Codex review, mutation sweep and verifier still grade"
+  run_traps
   TIMEOUT_G=(timeout -k 5 "$CALL_TIMEOUT_SEC")
   # The advisor attaches through a feature flag claude fetches; two env vars turn it silently off.
   # Refuse to launch rather than run a worker that thinks it has an advisor and does not (F11).
