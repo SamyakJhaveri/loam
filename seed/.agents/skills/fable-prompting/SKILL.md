@@ -11,9 +11,11 @@ guide wins and this file is wrong.
 
 ## Look it up live
 
-1. `WebFetch` the guide at the URL in Sources. Ask it for the one section you need.
-2. There is no pinned copy on purpose: the guide moves, and a pinned copy with
-   no scheduled refresh ages while still claiming to be current.
+1. Fetch the raw guide with `curl -sSL <URL in Sources>` and read the section
+   you need. WebFetch returns a model's summary, so never quote guide text from it.
+2. This file pins only the two texts a brief pastes word for word ("Texts to
+   paste", below), with the date they were checked. Recheck them against the
+   live guide when you paste them; the guide moves.
 
 ## Symptom index
 
@@ -64,22 +66,48 @@ A session prompt for a fresh Fable 5.2 session carries five headings, in order; 
 
 1. **Goal and why.** What the work is for and what it unblocks.
 2. **Constraints.** Files in scope, what must not be touched, and who owns the
-   code (see above). Name the exact actions that need the owner's approval and the
-   ones that do not. Report a pre-existing bug as a follow-up unless the
-   ownership sentence is present, and commit tests only where the task asks.
+   code: paste the ownership sentence only where the worker may restructure.
+   Name the exact actions that need the owner's approval and the ones that do
+   not. Add no scope rule for nearby problems: without the ownership sentence
+   Fable 5.2 already adds to the existing structure and reports them. With it,
+   expect changes nobody asked for (the guide measured 70 to 80 percent more
+   output tokens, many of them new tests and docs), so review the diff as well
+   as the summary.
 3. **Done check per task.** An artifact and a way to check it, per task. Mark a
    missing one visibly rather than inventing a check.
 4. **Session conduct.** Attended or unattended, and whether the deliverable is
-   prose. If a reader will see only the final report, quote the guide's
-   "Communicating clearly" text.
+   prose. If a reader will see only the final report or handoff, paste the
+   "Communicating clearly" text, after removing style rules the prompt no
+   longer needs.
 5. **Target model and effort.** Name the model and set the effort level
    explicitly (the guide starts Fable 5.2 at `high`; a client's default can be
    lower).
 
+## Texts to paste
+
+Checked word for word against the live guide on 13 Nov 2026.
+
+The ownership sentence ("Say who owns the code"), only where the worker may
+restructure the code:
+
+```text
+You are the owner and long-term maintainer of this codebase, and its design is up to you.
+```
+
+The report text ("Make reports easy to follow"), where a person reads the final
+report or handoff without having seen the work:
+
+```text
+# Communicating clearly
+Write for an intelligent but low-context reader. The person reading has not seen your tool calls, your reasoning or the files you opened, and may be switching in from other work. Messages should generally be self-contained: the reader should understand what you mean without having to dig for other context. Put the key points in the first few sentences. Practice progressive disclosure in your sentence order, and do not use undefined references and ideas in line 1 that won't make sense until the reader reaches line 12.
+
+Use plain words, and write in clear, understandable full sentences. Do not use a term or abbreviation that you made up during the work. Say what the thing is in a way any reader would understand. Write mostly in the style of ASD-STE100 Simplified Technical English: short sentences, one idea per sentence, active voice, and consistently using the same word for the same thing. Use a paragraph of flowing prose where ideas connect, and keep bullets for lists of separate items. Leave out unnecessary details unless the reader asks and practice concision, but do ensure that your messages have the key context. Aim to make your user-facing text as human-readable and clear as possible.
+```
+
 ## Never paste these into a Claude Code prompt
 
 Claude Code sends Fable 5.2 these, so a second copy is paid input tokens for
-no behavior change (the first two measured in `claude -p`, the reminder read
+no behavior change (the first measured in `claude -p`, the reminder read
 from the Claude Code bundle; interactive sessions were not captured):
 
 - An adapted form of the guide's finishing text, as the system-prompt section
@@ -87,22 +115,19 @@ from the Claude Code bundle; interactive sessions were not captured):
   "Ending your turn means your work stops there until asked to continue, and
   you should not stop unless needed. Please avoid stopping while work the user
   asked for is still owed."
-- The tool-batching line: "Independent tool calls can run in parallel in one
-  response."
 - A turn-scoped reminder after several silent tool steps: "The user hasn't
   heard from you in a while."
 
-Quote anything else you need. The first `claude -p` request held no autonomy block ("You
-are operating autonomously"), no `# Delivering work` block, no "Signal intent"
-text and no one-line-update sentence.
+The first `claude -p` request held neither the guide's "Signal intent" text
+nor its one-line-update sentence ("Keep users informed during long turns"):
+paste them where a person watches the session.
 
 Source, Claude Code 2.1.322 on 12 Nov 2026: the first request of
 `claude -p hi --model claude-fable-5-2`, captured on a local
-`ANTHROPIC_BASE_URL`, holds the first two. The reminder is in the installed
+`ANTHROPIC_BASE_URL`, holds the first. The reminder is in the installed
 bundle, switched on by the model's `fable_5_2_prompt_bundle` capability
-(`silent_turn_reminder`); the capture did not reach a silent stretch. A
-`--model claude-fable-5-1` request went out as `claude-opus-5-5`. Recheck after
-a Claude Code update.
+(`silent_turn_reminder`); the capture did not reach a silent stretch. Recheck
+after a Claude Code update.
 
 ## Sources
 

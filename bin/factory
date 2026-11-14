@@ -1734,7 +1734,10 @@ freeze_shell() {
     # worker-settings.json without its sandbox block, plus worker-settings-native.json (sandbox off, the gate's Bash
     # timeouts and class, git and gh cut off from the network, the denies the sandbox stood in for), with the same
     # model pins and uv directories. Deny rules union across tiers, so no project or user tier removes one.
+    # claudeMdExcludes drops the user CLAUDE.md, the owner's rules for his attended lead, at the exact path Claude Code
+    # reads it from (CLAUDE_CONFIG_DIR or ~/.claude), so a relocated config dir is covered (#421); its rules still load.
     ( umask 077; jq --slurpfile n "$ROOT/bin/factory.d/worker-settings-native.json" --arg m "$WORKER_MODEL" --arg uv "$RUN/uv" \
+      --arg um "${CLAUDE_CONFIG_DIR:-$HOME/.claude}/CLAUDE.md" \
       --slurpfile g "$ROOT/bin/factory.d/pstack-gate.hooks.json" '
       def merge($a; $b): if ($a|type) == "object" and ($b|type) == "object"
         then reduce ($b|keys_unsorted[]) as $k ($a; .[$k] = merge($a[$k]; $b[$k]))
@@ -1742,6 +1745,7 @@ freeze_shell() {
       merge(del(.sandbox); $n[0]) | .env = (.env // {}) + {CLAUDE_CODE_SUBAGENT_MODEL: $m, CLAUDE_CODE_SUBAGENT_MODEL_FORCE: "1",
       ANTHROPIC_DEFAULT_SONNET_MODEL: $m, ANTHROPIC_DEFAULT_HAIKU_MODEL: $m,
       UV_CACHE_DIR: "\($uv)/cache", UV_TOOL_DIR: "\($uv)/tools"}
+      | .claudeMdExcludes = [$um]
       | .hooks.PreToolUse = ((.hooks.PreToolUse // []) + $g[0].hooks.PreToolUse)' \
       "$ROOT/bin/factory.d/worker-settings.json" > "$RUN/frozen/worker-settings.json" ) 2>> "$LOG" \
       || finish stopped-environment "could not merge worker-settings-native.json into the frozen worker settings"
@@ -1861,6 +1865,10 @@ exec_frozen() {
     REVIEW_LOADED=1
     return 0
   fi
+  # A run frozen between #618 (the sweep) and #768 step 4 would sweep on the host with no image, as on 13 Nov 2026 (a
+  # mutant SIGKILLed every process of its user): it ends here, so a relaunch cannot rerun its sweep.
+  [ ! -f "$RUN/frozen/mutation_sweep.py" ] || grep -q FACTORY_SWEEP_IMAGE "$RUN/frozen/mutation_sweep.py" \
+    || finish stopped-environment "the frozen mutation_sweep.py predates #768 step 4 and would sweep on the host; start a fresh run"
   export FACTORY_FROZEN="$RUN/frozen/factory" FACTORY_ROOT="$ROOT"
   # A Loam run re-execs exactly as before F8, so a resumed run whose frozen copy predates -C still starts.
   if target_is_loam; then exec "$RUN/frozen/factory" run "$SRC"; fi
@@ -3151,7 +3159,8 @@ MUTATION_FIX="add or tighten a committed test that fails on this edit (if a test
 # whose repository holds the sha, so the ticket worktree and its tree signature are untouched. Each edit those tests still pass is a blocking finding, sent to the worker at most once per
 # ticket (MUTATION_BLOCKED, which a relaunch restores from round-N.mutation-blocked); past that, blocking_findings
 # drafts the PR with them. A helper that fails, or leaves no result, stops the run, so a sweep that did not run never opens a
-# ready PR; a sweep that ran no edit (no committed test, or the tests red unedited) is a result, not a failure.
+# ready PR; a sweep that ran no edit (FACTORY_SWEEP_IMAGE unset, no committed test, or the tests red unedited) is a
+# result, not a failure.
 run_mutation_sweep() { # round -> 0 unless a survivor blocks
   local round="$1" wt="${WORKTREE}-mutants" f="$RUN/round-$1.mutation.json" msg rc=0
   assert_caps
