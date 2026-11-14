@@ -1,12 +1,16 @@
 """The mutation sweep after a judge pass (#618; docs/factory/LOOP.md, Mutation sweep).
 
-SweepTests drives bin/factory.d/mutation_sweep.py on scratch repositories whose one commit after an empty base adds
-the files under test: each operator in both languages, the lines that give no edit (comments, strings, here-documents,
-test files, tests and fixtures directories), an edit that does not parse, an edit that never ends, a same-size edit, a
-red unedited run, the order, and a bad base. FactoryRunTests runs `bin/factory -C <target> run` on a file ticket with
-a scripted `claude` whose worker copies the files of its round into the worktree and whose graders pass, so only the
-sweep can fail a round: survivors reach the next worker round once, a relaunch keeps that one block, and a failed
-helper stops the run; without FACTORY_SWEEP_IMAGE the sweep runs no test and the log and PR body say why (#768).
+SweepTests drives bin/factory.d/mutation_sweep.py on scratch repositories whose one commit after an empty base adds the
+files under test: each operator in both languages, the lines that give no edit (comments, strings, here-documents, test
+files, tests and fixtures directories), an edit that does not parse, an edit that never ends, a same-size edit, a red
+unedited run, the order, a worktree checkout whose test runs git, and a bad base. ContainmentTests plants a host process
+and a host file that a mutant targets: in the container neither is reached, and a docker that fails at create, or at the
+start of the baseline's or a mutant's container, exits non-zero with no result and the tree as committed (#768). The
+tests that run pytest need a docker daemon (`docker info`) and skip without one. FactoryRunTests runs `bin/factory -C
+<target> run` on a file ticket with a scripted `claude` whose worker copies the files of its round into the worktree and
+whose graders pass, so only the sweep can fail a round: survivors reach the next worker round once, a relaunch keeps
+that one block, and a failed helper stops the run; without FACTORY_SWEEP_IMAGE the sweep runs no test and the log and PR
+body say why (#768).
 Every subprocess gets an explicit environment: a scratch HOME and TMPDIR and a git identity.
 """
 
@@ -21,15 +25,33 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import threading
 import time
 import unittest
+import uuid
 from unittest import mock
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
 HELPER = ROOT / "bin/factory.d/mutation_sweep.py"
 PASSING = "def test_nothing():\n    pass\n"
-# Until #768 runs each pytest run in a container of this image, any non-empty value lets the helper run on the host.
+# The image every sweep in this file runs its tests in, built by setUpModule from the done checks' Dockerfile of #768.
 SWEEP_IMAGE = "loam-sweep-check"
+DOCKER = shutil.which("docker") is not None and subprocess.run(
+    ["docker", "info"], stdin=subprocess.DEVNULL, capture_output=True, check=False).returncode == 0
+needs_docker = unittest.skipUnless(DOCKER, "the sweep runs its tests in docker containers; docker info fails here")
+host_sees_containers = unittest.skipUnless(sys.platform.startswith("linux"),
+                                           "the host's ps sees a container's processes only on a native Linux daemon")
+# The image plus git, for a test that runs git on its own repository.
+GIT_IMAGE = "loam-sweep-check-git"
+
+
+def setUpModule() -> None:
+    if DOCKER:
+        subprocess.run(["docker", "build", "-q", "-t", SWEEP_IMAGE, "-"], capture_output=True, text=True, check=True,
+                       input="FROM python:3.12-slim\nRUN pip install -q pytest\n")
+        subprocess.run(["docker", "build", "-q", "-t", GIT_IMAGE, "-"], capture_output=True, text=True, check=True,
+                       input=f"FROM {SWEEP_IMAGE}\nRUN apt-get update -q && apt-get install -y -q"
+                             " --no-install-recommends git && rm -rf /var/lib/apt/lists/*\n")
 
 CALC = """def over(n, limit):
     # n > limit means over
@@ -94,7 +116,9 @@ def records(result: dict) -> list[str]:
     return sorted(f"{m['path']}:{m['line']}:{m['operator']}:{m['result']}" for m in result["mutants"])
 
 
-class SweepTests(unittest.TestCase):
+class Scratch(unittest.TestCase):
+    """A scratch repository r under a temporary directory, and the helper run on it."""
+
     def setUp(self) -> None:
         tmp = tempfile.TemporaryDirectory()
         self.addCleanup(tmp.cleanup)
@@ -124,6 +148,9 @@ class SweepTests(unittest.TestCase):
         self.assertEqual(r.returncode, 0, r.stderr)
         return json.loads(out.read_text())
 
+
+@needs_docker
+class SweepTests(Scratch):
     def edits(self, files: dict[str, str]) -> list[tuple[int, str, str]]:
         """(line, operator, edited line) of each edit, after a sweep whose test passes whatever the code does."""
         result = self.sweep({**files, "test_ok.py": PASSING})
@@ -251,83 +278,76 @@ class SweepTests(unittest.TestCase):
         self.assertEqual((result["mutants"], result["reason"]), ([], "the committed tests fail unedited (pytest exit 1)"))
         self.assertIsNotNone(result["baseline_sec"])
 
-    def loops_left(self, name: str = "loop.sh") -> list[tuple[int, str]]:
-        ps = subprocess.run(["ps", "-eo", "pid=,args="], capture_output=True, text=True, check=True).stdout
-        return [(int(pid), a) for pid, a in (ln.split(None, 1) for ln in ps.splitlines() if " " in ln.strip())
-                if str(self.wt / name) in a]
+    def sweep_and_end(self, files: dict[str, str], token: str) -> dict:
+        """The sweep's result, once the host's ps saw a process whose arguments hold token while it ran and sees none
+        2 s after it: a container's processes show on the host, and removing the container must end them all."""
+        def mine() -> list[int]:
+            ps = subprocess.run(["ps", "-ww", "-eo", "pid=,args="], capture_output=True, text=True, check=True).stdout
+            return [int(ln.split(None, 1)[0]) for ln in ps.splitlines() if token in ln]
+
+        self.addCleanup(lambda: [os.kill(pid, 9) for pid in mine()])  # only this test's processes, by its token
+        seen, done = [], threading.Event()
+
+        def watch() -> None:
+            while not done.is_set() and not seen:
+                seen.extend(mine())
+                time.sleep(0.05)
+
+        watcher = threading.Thread(target=watch)
+        watcher.start()
+        try:
+            result = self.sweep(files)
+        finally:
+            done.set()
+            watcher.join()
+        self.assertTrue(seen, "no process with the test's token was ever seen, so its absence after proves nothing")
+        left = mine()
+        for _ in range(20):  # removal is asynchronous; allow it 2 s
+            if not left:
+                break
+            time.sleep(0.1)
+            left = mine()
+        self.assertEqual(left, [])
+        return result
 
     def hang(self, popen_args: str) -> None:
+        token = uuid.uuid4().hex
         loop = '#!/usr/bin/env bash\ni=0\nwhile [ "$i" -lt "$1" ]; do i=$((i + 1)); done\necho "$i"\n'
         test = ("import pathlib, subprocess\n\n\ndef test_count():\n"
-                "    out = subprocess.run(['bash', str(pathlib.Path(__file__).parent / 'loop.sh'), '3'],"
+                f"    out = subprocess.run(['bash', str(pathlib.Path(__file__).parent / 'loop.sh'), '3', {token!r}],"
                 f" capture_output=True, text=True{popen_args}).stdout\n    assert out == '3\\n'\n")
-        self.addCleanup(lambda: [os.kill(pid, 9) for pid, _ in self.loops_left()])
-        result = self.sweep({"loop.sh": loop, "loop_test.py": test})
+        result = self.sweep_and_end({"loop.sh": loop, "loop_test.py": test}, token)
         self.assertEqual(records(result), ["loop.sh:3:flip:killed", "loop.sh:3:force-true:killed"])
         self.assertEqual(result["timeout_sec"], round(2 * result["baseline_sec"] + 10, 2))
         hung = [m for m in result["mutants"] if m["timed_out"]]
         self.assertEqual([m["operator"] for m in hung], ["force-true"])
         self.assertGreaterEqual(hung[0]["seconds"], result["timeout_sec"])
         self.assertLessEqual(hung[0]["seconds"], result["timeout_sec"] + 5)
-        left = []
-        for _ in range(20):  # KILL is asynchronous; allow it 2 s to land
-            left = self.loops_left()
-            if not left:
-                break
-            time.sleep(0.1)
-        self.assertEqual(left, [])
 
-    @unittest.skipUnless(sys.platform.startswith("linux"), "the sweep reads /proc on Linux only")
-    def test_a_process_whose_name_is_not_utf8_does_not_stop_the_sweep(self) -> None:
-        # The orphan search after each run reads every process's /proc/<pid>/stat, whose name may be any bytes.
-        named = subprocess.Popen(["python3", "-c", "import ctypes, sys, time\n"
-                                  "ctypes.CDLL(None).prctl(15, b'bad-\\xff-name', 0, 0, 0)\nprint(flush=True)\n"
-                                  "time.sleep(300)\n"], stdout=subprocess.PIPE)
-        self.addCleanup(named.wait)
-        self.addCleanup(named.kill)
-        named.stdout.readline()
-        self.assertEqual(pathlib.Path(f"/proc/{named.pid}/comm").read_bytes(), b"bad-\xff-name\n")
-        result = self.sweep({"a.py": "def f(a, b):\n    return a == b\n", "test_ok.py": PASSING})
-        self.assertEqual(records(result), ["a.py:2:drop:survived", "a.py:2:flip:survived"])
-
-    @unittest.skipUnless(sys.platform.startswith("linux"), "the sweep is a child subreaper on Linux only")
-    def test_a_deep_chain_of_orphans_is_killed_whole(self) -> None:
-        # The test leaves a chain of 200 bash processes, each waiting on the next, in a session of its own; killing
-        # one level at a time would outlast the 5 s the sweep allows itself.
-        chain = ('#!/usr/bin/env bash\nif [ "$1" -gt 0 ]; then bash "$0" $(($1 - 1)); echo; else\n'
+    @host_sees_containers
+    def test_a_deep_chain_of_orphans_is_ended(self) -> None:
+        # The test leaves a chain of 200 bash processes, each waiting on the next, in a session of its own, and
+        # returns once the last one runs; none may outlive the run.
+        token = uuid.uuid4().hex
+        chain = ('#!/usr/bin/env bash\nif [ "$1" -gt 0 ]; then bash "$0" $(($1 - 1)) "$2"; echo; else\n'
                  '  touch "$(dirname "$0")/leaf"; while :; do sleep 1; done; fi\n')
         test = ("import pathlib, subprocess, time\n\n\ndef test_chain():\n    d = pathlib.Path(__file__).parent\n"
                 "    (d / 'fixtures/leaf').unlink(missing_ok=True)\n"
-                "    subprocess.Popen(['bash', str(d / 'fixtures/chain.sh'), '200'], start_new_session=True)\n"
+                f"    subprocess.Popen(['bash', str(d / 'fixtures/chain.sh'), '200', {token!r}],"
+                " start_new_session=True)\n"
                 "    while not (d / 'fixtures/leaf').exists():\n        time.sleep(0.05)\n")
-        name = "fixtures/chain.sh"
-
-        def kill_left() -> None:
-            for _ in range(10):
-                for pid, _a in self.loops_left(name):
-                    os.kill(pid, 9)
-                time.sleep(0.1)
-
-        self.addCleanup(kill_left)
-        result = self.sweep({"fixtures/chain.sh": chain, "chain_test.py": test, "a.py": "x = 1 == 2\n"})
+        result = self.sweep_and_end({"fixtures/chain.sh": chain, "chain_test.py": test, "a.py": "x = 1 == 2\n"}, token)
         self.assertEqual(records(result), ["a.py:1:flip:survived"])
-        left = []
-        for _ in range(20):
-            left = self.loops_left(name)
-            if not left:
-                break
-            time.sleep(0.1)
-        self.assertEqual(len(left), 0)
 
-    def test_an_edit_that_hangs_is_killed_with_its_whole_group(self) -> None:
+    @host_sees_containers
+    def test_an_edit_that_hangs_is_killed_with_every_process_it_started(self) -> None:
         # The force-true edit makes the while loop endless in a bash child of the test, which pytest's own death would
-        # leave spinning; the group KILL at twice the unedited run plus 10 s must take it too.
+        # leave spinning; the run's end at twice the unedited run plus 10 s must take it too.
         self.hang("")
 
-    @unittest.skipUnless(sys.platform.startswith("linux"), "the sweep is a child subreaper on Linux only")
+    @host_sees_containers
     def test_an_edit_that_hangs_in_a_session_of_its_own_is_killed(self) -> None:
-        # The bash child starts its own session, out of the group the run's KILL reaches; the sweep, as the child
-        # subreaper, gets it as an orphan when pytest dies and must KILL it too.
+        # The bash child starts its own session, out of pytest's process group.
         self.hang(", start_new_session=True")
 
     def test_a_same_size_edit_reads_no_cached_bytecode(self) -> None:
@@ -373,6 +393,21 @@ class SweepTests(unittest.TestCase):
         self.assertEqual(r.returncode, 0, r.stderr)
         self.assertEqual(sorted({m["line"] for m in json.loads(out.read_text())["mutants"]}), [1, 4])
 
+    def test_a_worktree_checkout_runs_git_on_its_own_repository(self) -> None:
+        # The factory sweeps a `git worktree add` checkout, whose .git is a file naming a gitdir on the host.
+        base = self.commit({"a.py": "x = 1 == 2\n", "test_git.py": "import subprocess\n\n\ndef test_head():\n"
+                            "    subprocess.run(['git', 'rev-parse', 'HEAD'], check=True)\n"})
+        wt = self.top / "w"
+        git(self.wt, self.env, "worktree", "add", "-q", "--detach", str(wt), "HEAD")
+        out = self.top / "out.json"
+        r = subprocess.run(["python3", "-I", str(HELPER), str(wt), base, str(out), "600"],
+                           env={**self.env, "FACTORY_SWEEP_IMAGE": GIT_IMAGE}, capture_output=True, text=True,
+                           timeout=300, check=False)
+        self.assertEqual(r.returncode, 0, r.stderr)
+        result = json.loads(out.read_text())
+        self.assertIsNone(result["reason"])
+        self.assertEqual(records(result), ["a.py:1:flip:survived"])
+
     def test_a_bad_base_exits_non_zero_and_writes_nothing(self) -> None:
         self.commit({"a.py": "x = 1\n"})
         out = self.top / "out.json"
@@ -380,6 +415,84 @@ class SweepTests(unittest.TestCase):
                            capture_output=True, text=True, timeout=60, check=False)
         self.assertEqual((r.returncode, out.exists()), (2, False), r.stderr)
 
+
+
+class ContainmentTests(Scratch):
+    """The done checks' fixture of #768: a host process group and a host file that the code's force-true mutant targets.
+
+    The committed test fails wherever it can see the planted file, so on the host the unedited run fails and no
+    mutant runs; the fixture signals and deletes only what this test made.
+    """
+
+    def setUp(self) -> None:
+        super().setUp()
+        self.sentinel = subprocess.Popen(["sleep", "600"], start_new_session=True)
+        self.addCleanup(self.sentinel.wait)
+        self.addCleanup(self.sentinel.kill)
+        self.planted = self.top / "planted"
+        self.planted.touch()
+        victim = ("import contextlib\nimport os\nfrom pathlib import Path\n\n\ndef act(flag):\n    if flag:\n"
+                  f"        with contextlib.suppress(OSError):\n            os.killpg({self.sentinel.pid}, 9)\n"
+                  f"        with contextlib.suppress(OSError):\n            Path({str(self.planted)!r}).unlink()\n"
+                  "        raise RuntimeError('the mutant ran')\n")
+        # The relative write lands in the tree's root: the run starts there, and the tree is the user's to write.
+        test = ("from pathlib import Path\n\nfrom victim import act\n\n\ndef test_act():\n    act(False)\n"
+                f"    assert not Path({str(self.planted)!r}).exists()\n    Path('written').write_text('x')\n")
+        self.files = {"victim.py": victim, "test_victim.py": test}
+
+    def assert_host_untouched(self) -> None:
+        self.assertIsNone(self.sentinel.poll(), "the host's sentinel process was killed")
+        self.assertTrue(self.planted.exists(), "the host's planted file was deleted")
+
+    @needs_docker
+    def test_a_mutant_reaches_no_host_process_or_file(self) -> None:
+        result = self.sweep(self.files)
+        self.assert_host_untouched()
+        self.assertIsNone(result["reason"])
+        self.assertEqual(records(result), ["victim.py:12:drop:survived", "victim.py:7:force-true:killed"])
+        self.assertFalse((self.wt / "written").exists(), "the run wrote into the host's tree")
+
+    def stubbed(self, docker: str) -> None:
+        """Sweep with docker a stub whose script is docker, and assert the helper stopped with no result, the host
+        untouched and the tree as committed."""
+        stubs = self.top / "stubs"
+        stubs.mkdir()
+        (stubs / "docker").write_text(docker)
+        (stubs / "docker").chmod(0o755)
+        base = self.commit(self.files)
+        out = self.top / "out.json"
+        r = subprocess.run(["python3", "-I", str(HELPER), str(self.wt), base, str(out), "600"],
+                           env={**self.env, "PATH": f"{stubs}:{self.env['PATH']}"}, capture_output=True, text=True,
+                           timeout=300, check=False)
+        self.assertNotEqual(r.returncode, 0, r.stderr)
+        self.assertFalse(out.exists())
+        self.assert_host_untouched()
+        self.assertEqual(git(self.wt, self.env, "status", "--porcelain"), "")
+
+    def test_a_failing_docker_stops_the_sweep_before_any_test_runs(self) -> None:
+        self.stubbed("#!/bin/sh\nexit 125\n")
+
+    def start_fails(self, n: int) -> None:
+        """A docker whose create and cp succeed and whose n-th start fails in the runtime, as docker reports it: start
+        exits 1 and the container's state holds the error, with no start time."""
+        self.stubbed(f"""#!/bin/sh
+d=$(dirname "$0")
+case $1 in
+  start)
+    n=$(( $(cat "$d/starts" 2> /dev/null || echo 0) + 1 )); echo "$n" > "$d/starts"
+    [ "$n" -lt {n} ] && exit 0
+    : > "$d/failed"; echo 'Error response from daemon: failed to create task' >&2; exit 1 ;;
+  inspect)
+    if [ -e "$d/failed" ]; then echo '0001-01-01T00:00:00Z|128|failed to create task'
+    else echo '2026-11-13T00:00:00Z|0|'; fi ;;
+esac
+""")
+
+    def test_a_baseline_whose_container_fails_to_start_stops_the_sweep(self) -> None:
+        self.start_fails(1)
+
+    def test_a_mutant_whose_container_fails_to_start_stops_the_sweep(self) -> None:
+        self.start_fails(2)
 
 # The scripted claude: the version probe; a worker that copies $d/round-<n>/ into its worktree, or writes note.txt
 # when the test gave that round no files, and commits; a judge that passes every row and a reviewer with no finding.
@@ -521,6 +634,7 @@ class FactoryRunTests(unittest.TestCase):
         self.assertIn("The first is mutation [survived] ", first)
         self.assertNotIn("grader-round cap", first)
 
+    @needs_docker
     def test_survivors_reach_the_next_worker_round_then_a_ready_pr(self) -> None:
         self.round_files(1, WEAK)
         self.round_files(2, STRONG)
@@ -533,6 +647,7 @@ class FactoryRunTests(unittest.TestCase):
         self.assertFalse(self.body().startswith("Draft:"))
         self.assertEqual(len(git(self.co, self.env, "worktree", "list").splitlines()), 1)
 
+    @needs_docker
     def test_the_sweep_blocks_once_then_drafts_the_pr_on_its_survivors(self) -> None:
         self.round_files(1, WEAK)
         self.assertEqual(self.launch(), 0)
@@ -549,6 +664,7 @@ class FactoryRunTests(unittest.TestCase):
         self.assertEqual(self.worker_rounds(), 1)
         (self.run_dir() / "FACTORY_STOP").unlink()
 
+    @needs_docker
     def test_a_relaunch_after_the_block_resumes_into_a_worker_round(self) -> None:
         self.stopped_after_the_block()
         self.round_files(2, STRONG)
@@ -558,6 +674,7 @@ class FactoryRunTests(unittest.TestCase):
         self.assertIn("\n8 of 8 mutants killed by test_calc.py; 0 survived\n", self.body())
         self.assertFalse(self.body().startswith("Draft:"))
 
+    @needs_docker
     def test_a_relaunch_after_the_block_does_not_block_again(self) -> None:
         self.stopped_after_the_block()
         self.assertEqual(self.launch(), 0)
@@ -575,6 +692,7 @@ class FactoryRunTests(unittest.TestCase):
         self.assertFalse((self.run_dir() / "pr-body.md").exists())
         self.assertEqual(len(git(self.co, self.env, "worktree", "list").splitlines()), 1)
 
+    @needs_docker
     def test_strong_tests_open_a_ready_pr_after_one_round(self) -> None:
         self.round_files(1, STRONG)
         self.assertEqual(self.launch(), 0)
@@ -588,8 +706,9 @@ class FactoryRunTests(unittest.TestCase):
         self.assertEqual(self.worker_rounds(), 1)
         self.assertIn("\n## Mutation sweep\n\nnot run: no committed test in the diff\n", self.body())
         self.assertFalse(self.body().startswith("Draft:"))
-        self.assertIn("mutation sweep: not run: no committed test in the diff",
-                      (self.run_dir() / "factory.log").read_text())
+        log = (self.run_dir() / "factory.log").read_text()
+        self.assertIn("mutation sweep: not run: no committed test in the diff", log)
+        self.assertIn(f"mutation sweep image: {SWEEP_IMAGE}\n", log)
 
     def test_without_an_image_the_sweep_runs_no_test_and_the_log_and_pr_say_why(self) -> None:
         del self.env["FACTORY_SWEEP_IMAGE"]
@@ -599,15 +718,20 @@ class FactoryRunTests(unittest.TestCase):
         self.assertEqual(self.worker_rounds(), 1)
         self.assertFalse(ran.exists(), "a test of the diff ran on the host without FACTORY_SWEEP_IMAGE")
         why = "not run: FACTORY_SWEEP_IMAGE is unset; the sweep never runs tests on the host"
-        self.assertIn(f"mutation sweep: {why}", (self.run_dir() / "factory.log").read_text())
+        log = (self.run_dir() / "factory.log").read_text()
+        self.assertIn(f"mutation sweep: {why}", log)
+        self.assertIn("mutation sweep image: none", log)
         self.assertIn(f"\n## Mutation sweep\n\n{why}\n", self.body())
         self.assertFalse(self.body().startswith("Draft:"))
 
-    def test_a_relaunch_whose_frozen_helper_predates_the_image_check_stops(self) -> None:
+    @needs_docker
+    def test_a_relaunch_whose_frozen_helper_predates_the_container_stops(self) -> None:
         self.stopped_after_the_block()
-        # A helper frozen before the image check, with a matching frozen/sha256, as an older run holds it.
+        # A helper frozen after the image check but before the container, as a224fc90's, which runs every test on the
+        # host when FACTORY_SWEEP_IMAGE is set, with a matching frozen/sha256, as an older run holds it.
         frozen = self.run_dir() / "frozen"
-        old = "import sys\nopen(sys.argv[3], 'w').write('{\"mutants\": []}')\n"
+        old = ("import os, sys\nif os.environ.get('FACTORY_SWEEP_IMAGE'):\n"
+               "    open(sys.argv[3], 'w').write('{\"mutants\": []}')\n")
         sums = [ln for ln in (frozen / "sha256").read_text().splitlines() if not ln.endswith("  mutation_sweep.py")]
         sums.append(f"{hashlib.sha256(old.encode()).hexdigest()}  mutation_sweep.py")
         for name, text in (("mutation_sweep.py", old), ("sha256", "\n".join(sums) + "\n")):
@@ -615,6 +739,6 @@ class FactoryRunTests(unittest.TestCase):
             (frozen / name).write_text(text)
         self.launch()
         self.assertEqual((self.run_dir() / "status").read_text().strip(), "stopped-environment")
-        self.assertIn("EXIT stopped-environment (4): the frozen mutation_sweep.py predates #768 step 4",
+        self.assertIn("EXIT stopped-environment (4): the frozen mutation_sweep.py predates #768's container",
                       (self.run_dir() / "factory.log").read_text())
         self.assertEqual(self.worker_rounds(), 1)

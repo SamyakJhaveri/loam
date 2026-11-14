@@ -1870,10 +1870,10 @@ exec_frozen() {
     REVIEW_LOADED=1
     return 0
   fi
-  # A run frozen between #618 (the sweep) and #768 step 4 would sweep on the host with no image, as on 13 Nov 2026 (a
-  # mutant SIGKILLed every process of its user): it ends here, so a relaunch cannot rerun its sweep.
-  [ ! -f "$RUN/frozen/mutation_sweep.py" ] || grep -q FACTORY_SWEEP_IMAGE "$RUN/frozen/mutation_sweep.py" \
-    || finish stopped-environment "the frozen mutation_sweep.py predates #768 step 4 and would sweep on the host; start a fresh run"
+  # A helper frozen before #768's container runs its tests on the host (with or without an image), as on 13 Nov 2026
+  # (a mutant SIGKILLed every process of its user): its run ends here, so a relaunch cannot rerun its sweep.
+  [ ! -f "$RUN/frozen/mutation_sweep.py" ] || grep -qF 'docker("create"' "$RUN/frozen/mutation_sweep.py" \
+    || finish stopped-environment "the frozen mutation_sweep.py predates #768's container and would sweep on the host; start a fresh run"
   export FACTORY_FROZEN="$RUN/frozen/factory" FACTORY_ROOT="$ROOT"
   # A Loam run re-execs exactly as before F8, so a resumed run whose frozen copy predates -C still starts.
   if target_is_loam; then exec "$RUN/frozen/factory" run "$SRC"; fi
@@ -3660,6 +3660,7 @@ cmd_run() {
   exec_frozen
   BODY=$(cat "$RUN/frozen/issue.md")   # from here on the frozen body is the ticket
   [ "$JUDGE" = on ] || log "judge: off (FACTORY_JUDGE=off); each round's judge.json is a stand-in pass, and the reviewer, Codex review, mutation sweep and verifier still grade"
+  log "mutation sweep image: ${FACTORY_SWEEP_IMAGE:-none (FACTORY_SWEEP_IMAGE is unset), so the sweep runs no test}"
   TIMEOUT_G=(timeout -k 5 "$CALL_TIMEOUT_SEC")
   # The advisor attaches through a feature flag claude fetches; two env vars turn it silently off.
   # Refuse to launch rather than run a worker that thinks it has an advisor and does not (F11).
@@ -4345,6 +4346,7 @@ next_tick() { # [--dry-run|--install|--frontier]
   local cap v
   for cap in $CAP_NAMES; do v="FACTORY_$cap"; envs+=(-e "$v=${!v:-}"); done
   envs+=(-e "FACTORY_JUDGE=${FACTORY_JUDGE:-}")   # the judge switch travels the same way; empty is on
+  envs+=(-e "FACTORY_SWEEP_IMAGE=${FACTORY_SWEEP_IMAGE:-}")   # and the sweep's image; empty runs no sweep test
   # Existing runs keep their frozen supervisor, which may still read Loam's older launch exports.
   # Forward the exported namespace without requiring any of it for a new run.
   if target_is_loam; then
