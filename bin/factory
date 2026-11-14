@@ -1753,12 +1753,14 @@ freeze_shell() {
 # file's first 4 lines (title, purpose, format), a cut line naming the whole file, and as many of its newest whole
 # lines as fit in 8000 bytes.
 freeze_lessons_view() {
-  local f=${FACTORY_LESSONS:-} out="$RUN/frozen/lessons.md"
+  local f=${FACTORY_LESSONS:-} out="$RUN/frozen/lessons.md" whole=${FACTORY_LESSONS:-}
   [ -n "$f" ] || return 0
-  # One read of the value, so a /dev/fd pipe works as well as a file.
+  # One read of the value, so a /dev/fd pipe works as well as a file; a pipe is spent by then, so the cut line names
+  # a kept copy of the whole read instead.
   cat "$f" > "$out" || finish stopped-environment "FACTORY_LESSONS=$f is not a readable file"
   [ "$(wc -c < "$out")" -gt 8000 ] || return 0
-  LESSONS="$f" LC_ALL=C awk '{ l[NR] = $0 } END {
+  [ -f "$f" ] || { whole="$RUN/lessons-full.md"; cp "$out" "$whole" || finish stopped-environment "could not write $whole"; }
+  LESSONS="$whole" LC_ALL=C awk '{ l[NR] = $0 } END {
     cut = "[older lessons cut here; the whole file is " ENVIRON["LESSONS"] "]"
     n = length(cut) + 1
     for (i = 1; i <= 4 && i <= NR; i++) { print l[i]; n += length(l[i]) + 1 }

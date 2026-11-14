@@ -311,20 +311,24 @@ class NativeShellTests(unittest.TestCase):
         body = [f"- 2026-11-13 K{i:03d} (isc-build 00000000): lesson number {i:03d} with enough words to fill out the line"
                 for i in range(1, 401)]
         lessons.write_text("\n".join(head + body) + "\n")
+
+        def assert_cut(whole: str) -> None:
+            view = (self.h.run / "frozen/lessons.md").read_bytes()
+            self.assertLessEqual(len(view), 8000)
+            lines = view.decode().splitlines()
+            self.assertEqual(lines[:4], head)
+            self.assertEqual(lines[4], f"[older lessons cut here; the whole file is {whole}]")
+            kept = lines[5:]
+            self.assertEqual(kept, body[len(body) - len(kept):])  # the newest lines, whole and in order
+            self.assertGreater(len(view) + len(body[-len(kept) - 1]) + 1, 8000)  # as many as fit
+
         self.h.sourced(self.new, "freeze", loam=False, FACTORY_LESSONS=str(lessons))
-        view = (self.h.run / "frozen/lessons.md").read_bytes()
-        self.assertLessEqual(len(view), 8000)
-        lines = view.decode().splitlines()
-        self.assertEqual(lines[:4], head)
-        self.assertEqual(lines[4], f"[older lessons cut here; the whole file is {lessons}]")
-        kept = lines[5:]
-        self.assertEqual(kept, body[len(body) - len(kept):])  # the newest lines, whole and in order
-        self.assertGreater(len(view) + len(body[-len(kept) - 1]) + 1, 8000)  # as many as fit
-        # The same lessons through a pipe (factory-isc may pass `<(git show ...)`) are read once and cut the same way.
+        assert_cut(str(lessons))
+        # The same lessons through a pipe (factory-isc may pass `<(git show ...)`) are read once and cut the same way;
+        # the spent pipe cannot be reopened, so the cut line names a kept copy of the whole file.
         self.h.sourced(self.new, f"FACTORY_LESSONS=<(cat '{lessons}') freeze", loam=False)
-        piped = (self.h.run / "frozen/lessons.md").read_text().splitlines()
-        self.assertRegex(piped[4], r"^\[older lessons cut here; the whole file is /dev/fd/\d+\]$")
-        self.assertEqual(piped[:4] + piped[5:], lines[:4] + kept)
+        assert_cut(str(self.h.run / "lessons-full.md"))
+        self.assertEqual((self.h.run / "lessons-full.md").read_text(), lessons.read_text())
 
     def test_unreadable_lessons_file_stops_the_run(self) -> None:
         missing = self.h.top / "no-such-LESSONS.md"
