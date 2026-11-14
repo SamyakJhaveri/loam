@@ -47,9 +47,10 @@ end_call() { local c=$1 i
 }
 # The protocol's one read of DistBench (Grader window), run here because the call's settings deny it gh on DistBench:
 # grader-window.txt holds the read's UTC time, gh's exit status (124 on a timeout, 120 if a process gh started was
-# still there when gh exited) and, only after exit 0, one open DistBench grader-fix PR number per line. Written
-# through a fresh mktemp file (never a fixed name the call could link elsewhere) and moved with mv -T over the name
-# itself, so a call never reads half of it and no planted link redirects the write.
+# still there when gh exited) and, only after exit 0, one open DistBench grader-fix PR number per line. Written to a
+# fresh temp file that File::Temp creates and opens in one step (O_EXCL, O_NOFOLLOW) and writes through that one
+# handle, never reopening a name the call can swap for a link, then renamed over the name itself, so a call never
+# reads half of it and no planted link redirects the write.
 # gh runs under REAP with $sole set. REAP stays in the driver's process group, as timeout --foreground does (plain
 # timeout makes a group of its own), so killing the driver's group ends the read too. gh's stdout is shared with every
 # process gh starts, so what one writes after gh exits is not gh's answer: REAP ends them all, and a read gh may have
@@ -57,14 +58,15 @@ end_call() { local c=$1 i
 # safe). With nothing left holding gh's stdout once REAP exits, the read is a plain $(...), with no file the call
 # could replace; timeout's KILL (-k 15) comes after REAP's own TERM and KILL (10 s).
 to=(); command -v timeout > /dev/null && to=(timeout --foreground -k 15 60)
-grader_window() { local at out rc tmp
+grader_window() { local at out rc
   at=$(stamp)
   out=$(${to[@]+"${to[@]}"} perl -MPOSIX -MTime::HiRes=time,sleep -e '$sole = 1;' -e "$REAP" gh pr list -R SamyakJhaveri/distbench --state open --limit 100 --json number,title,files --jq '.[] | select((.title | test("grader|regrade"; "i")) or any(.files[].path; test("(^|/)grader\\.py$|regrade"; "i"))) | .number' 2>> "$O/driver.log")
   rc=$?
   [ "$rc" -eq 0 ] || { echo "$(stamp) grader-window read failed: exit $rc" >> "$O/driver.log"; out=; }   # not an answer
-  tmp=$(mktemp "$O/grader-window.XXXXXX") || { rm -f "$O/grader-window.txt"; return; }   # no stale clear window
-  { echo "read_at $at"; echo "exit $rc"; [ -z "$out" ] || printf '%s\n' "$out"; } > "$tmp" \
-    && mv -fT "$tmp" "$O/grader-window.txt"
+  { echo "read_at $at"; echo "exit $rc"; [ -z "$out" ] || printf '%s\n' "$out"; } | perl -MFile::Temp=tempfile -e '
+    ($h, $t) = tempfile("grader-window.XXXXXX", DIR => $ARGV[0]); print $h <STDIN>; close $h or die "close: $!\n";
+    rename($t, "$ARGV[0]/grader-window.txt") or do { unlink $t; die "rename: $!\n" }' "$O" 2>> "$O/driver.log" \
+    || rm -f "$O/grader-window.txt"   # no stale clear window
 }
 # Watch a call with kill -0, since an adopted call is not our child; a zombie has ended (kill -0 still finds it while
 # an ancestor that took the orphan has not reaped it, as the factory's mutation sweep does). Refresh the grader
