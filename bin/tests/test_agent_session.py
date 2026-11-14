@@ -64,7 +64,9 @@ class AgentSessionTests(unittest.TestCase):
         (self.tmp / "accounts" / "b.token").write_text("x\n")
         self.assertEqual(self.run_it("--as", "b uci", "free", "g").returncode, 1)   # two stored names are not one
         (self.tmp / "accounts" / "active").unlink()
-        self.assertEqual(self.run_it("free", "g").returncode, 1)   # status prints `active: none`
+        r = self.run_it("free", "g")
+        self.assertEqual((r.returncode, r.stderr), (1, "agent-session: no stored token for account 'none'; "
+                                                       "run bin/claude-account use <name> first\n"))
         self.assertFalse(self.log.exists())
 
 

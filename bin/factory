@@ -1369,7 +1369,8 @@ linux_only() { # <command>
 
 now()   { date -u +%Y-%m-%dT%H:%M:%SZ; }
 today() { date -u +%Y-%m-%d; }
-log()   { printf '%s %s\n' "$(now)" "$*" | tee -a "$LOG" >&2; }
+# The file first: a `| tee` launch whose pipe went with a HUP must not take the line with it.
+log()   { local l; l="$(now) $*"; printf '%s\n' "$l" >> "$LOG"; printf '%s\n' "$l" >&2; }
 sha256_of() { if command -v sha256sum > /dev/null 2>&1; then sha256sum "$@"; else shasum -a 256 "$@"; fi; }
 set_status() { printf '%s\n' "$1" > "$RUN/status"; log "status: $1"; }
 
@@ -3984,7 +3985,7 @@ last_round() { # <run dir> -> the highest N of its round-N.checks, or -1
   n=$(find "$1" -maxdepth 1 -name 'round-*.checks' | sed -n 's/.*round-\([0-9][0-9]*\)\.checks$/\1/p' | sort -n | tail -1)
   echo "${n:--1}"
 }
-env_stops() { # <run dir> -> its stopped-environment stops with no new round-N.checks since, the last run's own status counted
+env_stops() { # <run dir> -> its stopped-environment and stopped-killed stops with no new round-N.checks since, the last run's own status counted
   local r0="" c0=""
   read -r r0 c0 _ 2> /dev/null < "$1/env-stops" || true
   { [[ "$c0" =~ ^[0-9]+$ ]] && [ "$r0" = "$(last_round "$1")" ]; } || c0=0
@@ -4206,7 +4207,7 @@ next_tick() { # [--dry-run|--install|--frontier]
 
   # 4. The frontier: open, ready-for-agent, unassigned issues with no open native blocker, lowest
   #    number first, plus the runner's own such issues whose current body has no run yet or whose run ended
-  #    stopped-environment or stopped. Every other open ready-for-agent issue is read too, so the loop prints one stderr
+  #    stopped-environment, stopped-killed or stopped. Every other open ready-for-agent issue is read too, so the loop prints one stderr
   #    line naming why it does not launch: each line carries the body (`-` for an empty one, so it cannot shift the
   #    fields), the open native blocker count (`?` when the listing omits it, so the issue waits rather than launching
   #    blocked) and the assignee logins (`-` for none); a line without the last two reads as unblocked and unassigned.
@@ -4230,7 +4231,7 @@ next_tick() { # [--dry-run|--install|--frontier]
   # the runner's own ready-for-agent issues in this repository (/issues is the authenticated user's, so no login
   # lookup, and every page, since it spans all the runner's repositories and gh applies --jq per page); the loop takes
   # one of those only at none with a run of an earlier body (an edited body is a new ticket; with no run at all the
-  # owner assigned it by hand to hold it), stopped-environment or stopped, since any other is in flight, awaits merge, or parks, each with its line.
+  # owner assigned it by hand to hold it), stopped-environment, stopped-killed or stopped, since any other is in flight, awaits merge, or parks, each with its line.
   local mine lrepo
   lrepo=$(printf '%s' "$repo" | tr '[:upper:]' '[:lower:]')
   if ! mine=$(net gh api "/issues?filter=assigned&labels=ready-for-agent&state=open&per_page=100" --paginate \
@@ -4242,8 +4243,8 @@ next_tick() { # [--dry-run|--install|--frontier]
   # assignee field (or `-`) stays, so an unassigned issue both lists name still reads as unassigned.
   ready=$(awk 'NR == FNR { m[$1]; next } !($5 != "" && $5 != "-" && ($1 in m))' <(printf '%s\n' "$mine") - <<< "$ready")
 
-  # The run of the issue's current body decides (park_status): no such run launches; stopped-environment
-  # and stopped relaunch (the environment, not the ticket, ended them), stopped-environment only ENV_BACKOFF_SEC after
+  # The run of the issue's current body decides (park_status): no such run launches; stopped-environment,
+  # stopped-killed and stopped relaunch (the environment or a signal, not the ticket, ended them), the first two only ENV_BACKOFF_SEC after
   # the mtime of its status file, since it pages at once; every other exit parks the issue
   # until a human edits the body or removes the label, since the same body would fail the same way.
   # stopped-daily, which only a run from before the dollar caps went (13 Nov 2026) can carry, relaunches as stopped does.

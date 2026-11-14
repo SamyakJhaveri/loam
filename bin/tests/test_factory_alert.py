@@ -306,6 +306,11 @@ class FactoryAlertTests(unittest.TestCase):
             self.assertEqual([c[:2] for c in calls], [["--level", "info"]])
             self.assertEqual((self.run_dir / "status").read_text().strip(), "pr-opened")
             self.assertIn("EXIT pr-opened (0)", (self.run_dir / "factory.log").read_text())
+        with self.subTest("the HUP also took the launcher's `| tee`: finish still logs its EXIT line"):
+            (self.run_dir / "factory.log").unlink(missing_ok=True)
+            self.factory("run_traps; exec 2> >(:); sleep 0.5; finish pr-opened 'https://github.com/acme/widget/pull/9'")
+            self.assertEqual(self.proc.returncode, 0)
+            self.assertIn("EXIT pr-opened (0)", (self.run_dir / "factory.log").read_text())
         # The learn step as review_claude drives it, signalled before its first call and after one (the real call_end).
         learn = self.run_dir / "learn.pid"
         for when, before in (("before its first call", ""),
@@ -324,6 +329,7 @@ class FactoryAlertTests(unittest.TestCase):
                     if learn.exists() and not pathlib.Path(f"/proc/{learn.read_text().strip()}").exists():
                         break
                     time.sleep(0.05)
+                self.assertTrue(learn.exists(), "finish starts the learn step")
                 self.assertFalse((self.run_dir / "learned").exists(), "the TERM must still end the learn step")
                 calls = [json.loads(x) for x in self.alert_log.read_text().splitlines()] if self.alert_log.exists() else []
                 self.assertEqual([c[:2] for c in calls], [["--level", "needs-you"]])
