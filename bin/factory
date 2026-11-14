@@ -850,7 +850,7 @@ skill_file() { # skill-name -> SKILL.md path on stdout, non-zero when it resolve
 PLUGIN_SRC="$ROOT/cultivation/marketplace/sam-cc-setup"
 run_plugin_dir() { cat "$RUN/frozen/plugin-dir" 2> /dev/null; }
 
-# The sam-cc-setup pstack router (docs/PSTACK.md), which a Claude worker reads before a non-trivial task. In a run
+# The sam-cc-setup pstack router (docs/PSTACK.md), which a Claude worker reads before a task. In a run
 # frozen with a plugin-dir it is that directory's copy, the one the worker loads; otherwise it is under the seed-skills
 # marketplace's installLocation, a directory source in the host's Loam checkout, so it is that checkout's copy.
 # Prints its path; non-zero when the file is missing, which status and build_worker_prompt print as FAIL.
@@ -4509,7 +4509,7 @@ precondition_lines() { # LOOP.md, Preconditions
     [ -n "$t" ] || continue
     skill_file "$t" > /dev/null 2>&1 && echo "  PASS skill $t resolves" || echo "  INFO skill $t resolves to no SKILL.md (lint refuses a ticket naming it)"
   done < "$ROOT/bin/factory.d/skills.txt"
-  # A Claude worker and each fan-out builder read the pstack router before a non-trivial task (_common.md).
+  # A Claude worker and each fan-out builder read the pstack router before a task (_common.md).
   router_file > /dev/null && echo "  PASS pstack router $(router_file)" \
     || echo "  FAIL pstack router: no sam-cc-setup/skills/pstack/SKILL.md under the seed-skills installLocation in ~/.claude/plugins/known_marketplaces.json; workers run without it"
   # Codex login: Codex is not on the bare PATH (#41), so probe it under CODEX_PATH, in the factory's own CODEX_HOME.

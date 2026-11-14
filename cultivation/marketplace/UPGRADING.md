@@ -3,6 +3,15 @@
 This file records why a promoted plugin change traveled. It is also the upgrade
 entry point for projects that consume the Loam marketplace.
 
+## sam-cc-setup v0.9.35 pstack router and lean-critic lose words that misled
+
+The router's description said "before a non-trivial task", and models cited that word as their reason to skip the router on small fixes; it now says "before a task", as do the factory worker prompt (`bin/factory.d/_common.md`), the Workflow builders' prompt (`bin/factory.d/factory-round.js`) and the seed rule line.
+The seed rule line also drops its "Never call the Skill tool on a `pstack:` skill" sentence: pstack skills already refuse the Skill tool, and the router itself keeps the rule.
+The router's decision-log line drops its sha256 field, which nothing read (`bin/factory-parity` matches only the skill and the path).
+lean-critic's description drops "Run it after every unattended loop or Opus session lands work, before merging.", a standing order to spawn it that conflicts with each project's own review rules.
+No grader prompt changed, so no grader replay is owed.
+Upgrade step: `claude plugin update sam-cc-setup@seed-skills`.
+
 ## sam-cc-setup v0.9.34 research-gap's brief template names Fable 5.2
 
 The brief template's model example still said "Fable 5.1 at high", the retired model, so a brief copied from it asked for a model the owner no longer uses.
@@ -49,7 +58,7 @@ Then check that Codex loads them: `codex debug prompt-input "hi"` lists `audit` 
 
 ## sam-cc-setup v0.9.29 pstack log line, Fable 5.2
 
-The `pstack` router asks for one decision-log line per method followed (decisions.md in a factory run): `pstack: <skill> | <SKILL.md path read> | <sha256 of that file> | <one line quoted from it> | <the decision it changed>`, the line `bin/factory-parity` reads.
+The `pstack` router asks for one decision-log line per method followed (decisions.md in a factory run): `pstack: <skill> | <SKILL.md path read> | <one line quoted from it> | <the decision it changed>`, the line `bin/factory-parity` reads.
 `plan-reviewer` and the `research-gap` Fable seat move from `claude-fable-5-1` to `claude-fable-5-2`, the owner's Fable 5.2 ruling.
 No grader prompt changed, so no grader replay is owed.
 Upgrade step: `claude plugin update sam-cc-setup@seed-skills`.

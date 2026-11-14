@@ -122,7 +122,7 @@ FABLE = "claude-fable-5-2"
 BLOCKING = {"reviewer": {"high", "medium"}, "codex": {"critical", "high"}}
 VERDICTS = {"CONFIRMED", "PARTLY", "REJECTED"}
 GIT_DIGESTS = ("git-head", "git-diff", "git-untracked")  # each `git-status:<dir>` digest line needs these too
-# A decisions.md method line from the router: `pstack: <skill> | <SKILL.md path> | <sha256> | <quote> | <decision>`,
+# A decisions.md method line from the router: `pstack: <skill> | <SKILL.md path> | <quote> | <decision>`,
 # also after a `Round N: ` prefix (decision_lines gives it to round N).
 PSTACK_LINE = re.compile(r"^\s*(?:[-*]\s+)?(?:Round \d+:\s*)?pstack:\s*([^|\s][^|]*?)\s*\|\s*([^|]+?)\s*\|")
 # Writes here are notes or scratch, not changes: a run's <key>/<sha8>/worker/, /tmp and $TMPDIR, a session
