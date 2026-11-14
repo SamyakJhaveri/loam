@@ -399,13 +399,14 @@ def write(path: Path, text: str) -> None:
 
 
 def remove(name: str) -> None:
-    """Remove the container, killing every process in it; its exit is ignored, as for no such container, and no docker
-    is left for the docker create after it to report."""
-    with contextlib.suppress(OSError):
-        subprocess.run(["docker", "rm", "-f", name], stdin=subprocess.DEVNULL, capture_output=True, check=False)
+    """Remove the container, killing every process in it; its exit is ignored, as for no such container, and a container
+    a wedged daemon leaves makes the docker create after it fail on the name."""
+    with contextlib.suppress(OSError, subprocess.TimeoutExpired):
+        subprocess.run(["docker", "rm", "-f", name], stdin=subprocess.DEVNULL, capture_output=True, timeout=60,
+                       check=False)
 
 
-def docker(*args: str, timeout: float) -> None:
+def docker(*args: str, timeout: float) -> str:
     try:
         r = subprocess.run(["docker", *args], stdin=subprocess.DEVNULL, capture_output=True, text=True,
                            timeout=timeout, check=False)
@@ -413,6 +414,7 @@ def docker(*args: str, timeout: float) -> None:
         raise SystemExit(f"mutation_sweep: docker {args[0]} failed: {e}") from None
     if r.returncode:
         raise SystemExit(f"mutation_sweep: docker {args[0]} exited {r.returncode}: {r.stderr.strip()}")
+    return r.stdout
 
 
 def run(image: str, tests: list[str], wt: Path, timeout: float) -> tuple[int | None, float, str]:
@@ -420,19 +422,32 @@ def run(image: str, tests: list[str], wt: Path, timeout: float) -> tuple[int | N
 
     The tree is copied to /sweep, absent until then, with -a, so the directory and its files keep the uid that --user
     runs as and a test can write them; as each run starts from a fresh copy, no edit can import bytecode an earlier run
-    cached, even an edit of the same size written in the same second as its source. --init reaps the orphans a test leaves, as init does on the host. The name is
-    fixed per worktree, so a sweep killed mid-run leaves a container the next one removes, and only by that name, never
-    by a filter an edit of this file could widen.
+    cached, even an edit of the same size written in the same second as its source. A worktree's .git is a file naming
+    a host gitdir: its repository is copied to /sweep.git and the copy's .git names its gitdir there, so a test that runs
+    git on its own repository works with no host path mounted. --init reaps the orphans a test leaves, as init does on
+    the host. A container that never started, or that docker reports an error for, exits non-zero as a failed create or
+    cp does, so a docker failure is never read as a test result. The name is fixed per worktree, so a sweep killed
+    mid-run leaves a container the next one removes, and only by that name, never by a filter an edit of this file
+    could widen.
     """
-    name = "loam-sweep-" + hashlib.sha256(str(wt.resolve()).encode()).hexdigest()[:12]
+    root = wt.resolve()
+    name = "loam-sweep-" + hashlib.sha256(str(root).encode()).hexdigest()[:12]
+    common = gitdir = ""
+    if (root / ".git").is_file():
+        common, own = git(root, "rev-parse", "--path-format=absolute", "--git-common-dir",
+                          "--absolute-git-dir").splitlines()
+        gitdir = f"/sweep.git/{Path(own).relative_to(common)}"
     start = time.monotonic()
     remove(name)
     try:
         docker("create", "--name", name, "--init", "--network", "none", "--user", f"{os.getuid()}:{os.getgid()}",
                "--pids-limit", "4096", "--memory", "8g", "--memory-swap", "8g", "-e", "HOME=/tmp",
-               "--entrypoint", "sh", image, "-c", 'cd /sweep && exec "$@"', "sh",
+               "--entrypoint", "sh", image, "-c",
+               'cd /sweep && { [ -z "$1" ] || echo "gitdir: $1" > .git; } && shift && exec "$@"', "sh", gitdir,
                "python3", "-m", "pytest", "-q", "-x", "-p", "no:cacheprovider", *tests, timeout=timeout)
-        docker("cp", "-a", str(wt.resolve()), f"{name}:/sweep", timeout=timeout)
+        docker("cp", "-a", str(root), f"{name}:/sweep", timeout=timeout)
+        if gitdir:
+            docker("cp", "-a", common, f"{name}:/sweep.git", timeout=timeout)
         with tempfile.TemporaryFile() as log:
             try:
                 rc: int | None = subprocess.run(["docker", "start", "-a", name], stdin=subprocess.DEVNULL,
@@ -443,6 +458,10 @@ def run(image: str, tests: list[str], wt: Path, timeout: float) -> tuple[int | N
             secs = time.monotonic() - start
             log.seek(0)
             tail = "\n".join(log.read().decode("utf-8", "replace").splitlines()[-20:])
+        started, _, error = docker("inspect", "-f", "{{.State.StartedAt}} {{.State.Error}}", name,
+                                   timeout=60).strip().partition(" ")
+        if started.startswith("0001-") or error:
+            raise SystemExit(f"mutation_sweep: docker start failed: {error or 'the container never started'}\n{tail}")
     finally:
         remove(name)
     return rc, secs, tail
