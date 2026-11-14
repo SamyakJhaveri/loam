@@ -114,7 +114,10 @@ def test_only_his_exact_unrecorded_words_become_a_draft_and_a_restated_rule_a_ti
     (learn / "draft.md").unlink()
     assert run(tmp_path, cfg).returncode == 0
     assert (learn / "draft.md").read_text() == "# Check that no spending cap returns\nBody.\n"
-    assert (tmp_path / "calls").read_text().split()[-2:] == ["learn", "learn"]
+    calls = (tmp_path / "calls").read_text().split()
+    assert calls[-2:] == ["learn", "learn"]
+    assert run(tmp_path, cfg).returncode == 0  # a draft on disk is not drafted again
+    assert (tmp_path / "calls").read_text().split() == calls
 
 
 def test_yes_accepts_a_draft_without_a_model_call_and_tick_runs_only_when_due_and_unlocked(tmp_path):
