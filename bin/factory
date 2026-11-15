@@ -3238,11 +3238,12 @@ review_both() { # round
   [ "$rc" -le 1 ] || finish stopped-environment "the Codex review's process ended with status $rc before its verdict"
 }
 # Each child is the leader of its group: jobs -p names a child whose pid review_both has not saved yet, and the saved
-# r and c name a group whose leader exited while a helper it started lives on.
+# r and c name a group whose leader exited while a helper it started lives on. CONT follows TERM, as in call_abort: a
+# stopped review acts on TERM only once continued, and the wait would hold the supervisor and its lease.
 review_halt() {
   local p g=()
   for p in $(jobs -p) ${r-} ${c-}; do g+=("-$p"); done
-  [ "${#g[@]}" = 0 ] || kill -TERM -- "${g[@]}" 2> /dev/null
+  [ "${#g[@]}" = 0 ] || { kill -TERM -- "${g[@]}"; kill -CONT -- "${g[@]}"; } 2> /dev/null
   wait $(jobs -p) 2> /dev/null
 }
 # In a review_both child, finish writes the status and message to the child's file for the supervisor and exits. The

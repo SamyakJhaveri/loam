@@ -19,6 +19,7 @@ import re
 import shutil
 import subprocess
 import tempfile
+import time
 import unittest
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
@@ -248,16 +249,42 @@ class CappedReviewTests(unittest.TestCase):
         self.assertEqual((self.run_dir / "status").read_text(), "stopped-environment\n")
         self.assertEqual(calls, [])
 
-    def review_both(self, reviewer: str, codex: str) -> subprocess.CompletedProcess[str]:
-        """Run review_both on round 1 with run_review and run_codex_review replaced by the given bash bodies."""
+    def start_review_both(self, reviewer: str, codex: str) -> subprocess.Popen[str]:
+        """Start review_both on round 1 with run_review and run_codex_review replaced by the given bash bodies."""
         run = self.top / "run"
         run.mkdir()
         script = (f"RUN='{run}'; RUNS_ROOT='{self.top}'; LOG=\"$RUN/factory.log\"; IS_FILE=0; KEY=7\n"
                   'date -u +%s > "$RUN/launched"; notify() { :; }\n'
                   f"run_review() {{ {reviewer}; }}\nrun_codex_review() {{ {codex}; }}\nreview_both 1\n")
         env = {k: v for k, v in os.environ.items() if k not in INHERITED}
-        return subprocess.run(["bash", "-c", f". bin/factory\n{script}"], cwd=ROOT, env={**env, "FACTORY_SOURCED": "1"},
-                              capture_output=True, text=True, check=False, timeout=60)
+        return subprocess.Popen(["bash", "-c", f". bin/factory\n{script}"], cwd=ROOT, env={**env, "FACTORY_SOURCED": "1"},
+                                stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+
+    def review_both(self, reviewer: str, codex: str) -> subprocess.CompletedProcess[str]:
+        proc = self.start_review_both(reviewer, codex)
+        out, err = proc.communicate(timeout=60)
+        return subprocess.CompletedProcess(proc.args, proc.returncode, out, err)
+
+    def test_a_stopped_review_does_not_keep_the_supervisor_from_ending_on_term(self) -> None:
+        self.top = pathlib.Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, self.top)
+        proc = self.start_review_both('echo "$BASHPID" > "$RUN/stopped.pid"; kill -STOP "$BASHPID"; sleep 30',
+                                      "sleep 30")
+        pid_file = self.top / "run" / "stopped.pid"
+        for _ in range(100):
+            if pid_file.exists() and pid_file.read_text().strip():
+                break
+            time.sleep(0.1)
+        proc.send_signal(15)
+        try:
+            proc.communicate(timeout=10)
+        except subprocess.TimeoutExpired:
+            stopped = int(pid_file.read_text())
+            os.killpg(stopped, 9)
+            proc.kill()
+            proc.communicate()
+            self.fail("the supervisor did not end within 10 s of TERM while a review was stopped")
+        self.assertEqual(proc.returncode, 143)
 
     def test_a_review_killed_before_its_verdict_stops_the_run(self) -> None:
         self.top = pathlib.Path(tempfile.mkdtemp())
