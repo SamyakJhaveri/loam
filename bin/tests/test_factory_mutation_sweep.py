@@ -473,9 +473,9 @@ class ContainmentTests(Scratch):
         self.assertEqual(records(result), ["victim.py:12:drop:survived", "victim.py:7:force-true:killed"])
         self.assertFalse((self.wt / "written").exists(), "the run wrote into the host's tree")
 
-    def stubbed(self, docker: str) -> None:
-        """Sweep with docker a stub whose script is docker, and assert the helper stopped with no result, the host
-        untouched and the tree as committed."""
+    def stubbed(self, docker: str) -> str:
+        """Sweep with docker a stub whose script is docker, assert the helper stopped with no result, the host
+        untouched and the tree as committed, and return its stderr."""
         stubs = self.top / "stubs"
         stubs.mkdir()
         (stubs / "docker").write_text(docker)
@@ -489,6 +489,7 @@ class ContainmentTests(Scratch):
         self.assertFalse(out.exists())
         self.assert_host_untouched()
         self.assertEqual(git(self.wt, self.env, "status", "--porcelain"), "")
+        return r.stderr
 
     def test_a_failing_docker_stops_the_sweep_before_any_test_runs(self) -> None:
         self.stubbed("#!/bin/sh\nexit 125\n")
@@ -496,9 +497,10 @@ class ContainmentTests(Scratch):
     def start_fails(self, n: int) -> None:
         """A docker whose create and cp succeed and whose n-th start fails in the runtime, as docker reports it: start
         exits 1 and the container's state holds the error, with no start time."""
-        self.stubbed(f"""#!/bin/sh
+        err = self.stubbed(f"""#!/bin/sh
 d=$(dirname "$0")
 case $1 in
+  cp) [ "$3" = - ] && exit 1 ;;
   start)
     n=$(( $(cat "$d/starts" 2> /dev/null || echo 0) + 1 )); echo "$n" > "$d/starts"
     [ "$n" -lt {n} ] && exit 0
@@ -507,13 +509,33 @@ case $1 in
     if [ -e "$d/failed" ]; then echo '0001-01-01T00:00:00Z|128|failed to create task'
     else echo '2026-11-13T00:00:00Z|0|'; fi ;;
 esac
+exit 0
 """)
+        self.assertIn("docker start exited 1", err)
 
     def test_a_baseline_whose_container_fails_to_start_stops_the_sweep(self) -> None:
         self.start_fails(1)
 
     def test_a_mutant_whose_container_fails_to_start_stops_the_sweep(self) -> None:
         self.start_fails(2)
+
+    def test_a_container_docker_rm_leaves_stops_the_sweep(self) -> None:
+        """docker rm -f exits 0 and the container stays listed (a wedged daemon): a mutant could keep running."""
+        err = self.stubbed("""#!/bin/sh
+d=$(dirname "$0")
+case $1 in
+  create) : > "$d/present" ;;
+  ps) [ -e "$d/present" ] && echo 6b67edddb72d ;;
+  cp) [ "$3" = - ] && exit 1 ;;
+  inspect) echo '2026-11-13T00:00:00Z|0|' ;;
+esac
+exit 0
+""")
+        self.assertIn("left the container in place", err)
+
+    def test_an_image_that_already_has_the_sweep_directory_stops_the_sweep(self) -> None:
+        """docker cp NAME:/sweep - succeeds: the image has /sweep, so a copy would nest the tree in it."""
+        self.assertIn("already has /sweep,", self.stubbed("#!/bin/sh\nexit 0\n"))
 
 # The scripted claude: the version probe; a worker that copies $d/round-<n>/ into its worktree, or writes note.txt
 # when the test gave that round no files, and commits; a judge that passes every row and a reviewer with no finding.

@@ -18,8 +18,8 @@ is survived, any other exit or a timeout killed. Each run is a fresh container o
 with a PID namespace, filesystem, /tmp and HOME of its own and no network, into which docker cp copies <worktree>; no
 host path is mounted, so a test signals or deletes only what is in its container, and removing the container ends every
 process the run started. With FACTORY_SWEEP_IMAGE unset or empty no test runs (#768: a mutant run on the host
-SIGKILLed every process of its user on 13 Nov 2026); set, a docker create or cp that fails, or no docker, exits 1 and
-writes nothing, so the tests never run on the host.
+SIGKILLed every process of its user on 13 Nov 2026); set, a docker create or cp that fails, no docker, an image that
+already has /sweep, or a container docker rm -f leaves exits 1 and writes nothing, so the tests never run on the host.
 Writes {"tests", "baseline_sec", "timeout_sec", "mutants", "reason"} to <out json> and exits 0; reason names why no
 edit ran, else null. A git failure exits 2 and writes nothing. python3 stdlib only.
 """
@@ -399,11 +399,21 @@ def write(path: Path, text: str) -> None:
 
 
 def remove(name: str) -> None:
-    """Remove the container, killing every process in it; its exit is ignored, as for no such container, and a container
-    a wedged daemon leaves makes the docker create after it fail on the name."""
+    """Remove the container, killing every process in it, then exit 1 unless docker lists no container of that exact
+    name: one left behind could keep a mutant running past the sweep. rm's own exit and timeout are not the test."""
     with contextlib.suppress(OSError, subprocess.TimeoutExpired):
         subprocess.run(["docker", "rm", "-f", name], stdin=subprocess.DEVNULL, capture_output=True, timeout=60,
                        check=False)
+    if docker("ps", "-aq", "--filter", f"name=^{name}$", timeout=60).strip():
+        raise SystemExit(f"mutation_sweep: docker rm -f {name} left the container in place")
+
+
+def absent(image: str, name: str, path: str) -> None:
+    """Exit 1 when the container already has path: docker cp into an existing directory would nest the copy in it."""
+    with contextlib.suppress(OSError, subprocess.TimeoutExpired):
+        if subprocess.run(["docker", "cp", f"{name}:{path}", "-"], stdin=subprocess.DEVNULL,
+                          stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=60, check=False).returncode == 0:
+            raise SystemExit(f"mutation_sweep: the image {image} already has {path}, where the sweep copies the tree")
 
 
 def docker(*args: str, timeout: float) -> str:
@@ -445,6 +455,8 @@ def run(image: str, tests: list[str], wt: Path, timeout: float) -> tuple[int | N
                "--entrypoint", "sh", image, "-c",
                'cd /sweep && { [ -z "$1" ] || echo "gitdir: $1" > .git; } && shift && exec "$@"', "sh", gitdir,
                "python3", "-m", "pytest", "-q", "-x", "-p", "no:cacheprovider", *tests, timeout=timeout)
+        for path in ("/sweep", "/sweep.git") if gitdir else ("/sweep",):
+            absent(image, name, path)
         docker("cp", "-a", str(root), f"{name}:/sweep", timeout=timeout)
         if gitdir:
             docker("cp", "-a", common, f"{name}:/sweep.git", timeout=timeout)
