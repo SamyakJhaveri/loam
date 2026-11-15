@@ -15,10 +15,12 @@ import hashlib
 import json
 import os
 import pathlib
+import pty
 import re
 import shutil
 import subprocess
 import tempfile
+import time
 import unittest
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
@@ -144,10 +146,10 @@ class Home:
                    **extra)
         return env
 
-    def sourced(self, factory: pathlib.Path, script: str, loam: bool, skills: str = "",
+    def sourced(self, factory: pathlib.Path, script: str, loam: bool, skills: str = "", tty: bool = False,
                 **extra: str) -> subprocess.CompletedProcess[str]:
         """Source factory's bin/factory, point it at the target (another target unless loam), set up the run, then
-        run script."""
+        run script; with tty, as the session leader of a new terminal, whose exit hangs up its foreground group."""
         if self.run.exists():
             subprocess.run(["chmod", "-R", "u+w", str(self.run)], check=True)
             shutil.rmtree(self.run)
@@ -159,9 +161,22 @@ class Home:
                  'date -u +%s > "$RUN/launched"; date -u +%s > "$RUN/started"\n'
                  f"printf '%s\\n' '{self.base}' > \"$RUN/base.sha\"; : > \"$RUN/round-1.checks\"\n"
                  'IS_FILE=1; KEY=t; BODY="$TICKET_BODY"; TIMEOUT_G=(); ROUND=1\n')
-        return subprocess.run(["bash", "-c", f". bin/factory\n{setup}{script}", "bin/factory"], cwd=factory,
-                              env=self.env(factory, FACTORY_SOURCED="1", TICKET_BODY=TICKET.format(skills=skills), **extra),
-                              capture_output=True, text=True, check=False)
+        args = ["bash", "-c", f". bin/factory\n{setup}{script}", "bin/factory"]
+        env = self.env(factory, FACTORY_SOURCED="1", TICKET_BODY=TICKET.format(skills=skills), **extra)
+        if not tty:
+            return subprocess.run(args, cwd=factory, env=env, capture_output=True, text=True, check=False)
+        pid, fd = pty.fork()
+        if pid == 0:
+            os.chdir(factory)
+            os.execvpe("bash", args, env)
+        out = b""
+        try:
+            while chunk := os.read(fd, 4096):
+                out += chunk
+        except OSError:   # EIO once the terminal's last writer exits
+            pass
+        os.close(fd)
+        return subprocess.CompletedProcess(args, os.waitstatus_to_exitcode(os.waitpid(pid, 0)[1]), out.decode(), "")
 
     def calls(self) -> list[dict]:
         return [json.loads(p.read_text()) for p in sorted(self.cap.glob("*.json"))]
@@ -186,20 +201,29 @@ class NativeShellTests(unittest.TestCase):
     def test_loam_target_settings_and_argv_match_the_pre_u3_factory(self) -> None:
         if subprocess.run(["git", "-C", str(ROOT), "cat-file", "-e", BASE], capture_output=True).returncode:
             self.skipTest(f"{BASE} is not in this clone (shallow)")
-        # Both API-billed: the reference's calls always carried --max-budget-usd, which a subscription run drops (Decision 6).
-        old = self.h.round_one(self.h.factory("loam-old", BASE), loam=True, ANTHROPIC_API_KEY="sk-ant-test")
+        # The reviewer prompt is data the factory reads, not factory code, so the reference reads this checkout's copy and
+        # the grader stdin below compares the evidence alone.
+        reference = self.h.factory("loam-old", BASE)
+        shutil.copy(ROOT / PLUGIN / "agents/reviewer.md", reference / PLUGIN / "agents/reviewer.md")
+        # Both API-billed: the reference's calls always carried --max-budget-usd, which no call carries since 13 Nov 2026.
+        old = self.h.round_one(reference, loam=True, ANTHROPIC_API_KEY="sk-ant-test")
         new = self.h.round_one(self.new, loam=True, ANTHROPIC_API_KEY="sk-ant-test")
-        # Every target's worker settings gain the pstack gate (U5) and the Bash output cap (test_factory_output_cap.py)
-        # and nothing else; the rest is the same bytes as jq writes them.
+        # Every target's worker settings gain the pstack gate (U5), the sandboxed shell the DistBench locks grant (owner
+        # N25) and the Bash output cap (test_factory_output_cap.py), and nothing else; the rest is the same bytes as jq
+        # writes them.
         settings = json.loads(new["settings"])
         self.assertEqual(settings["hooks"].pop("PreToolUse"), GATE)
+        self.assertEqual(settings["sandbox"]["filesystem"]["allowWrite"].pop(0), "~/.local/state/distbench/locks")
         self.assertEqual(settings.pop("bashOutputMaxChars"), 20000)
         self.assertEqual(json.dumps(settings, indent=2).encode() + b"\n", old["settings"])
         self.assertIn(b'"sandbox"', old["settings"])  # the reference really is the sandboxed shell
         # Every target's calls load the factory home's sam-cc-setup; nothing else in either argv or env moved.
         for call in ("worker", "grader"):
             argv, dirs = without_plugin_dir(new[call]["argv"])
-            self.assertEqual(argv, old[call]["argv"], call)
+            self.assertNotIn("--max-budget-usd", argv, call)
+            ref = old[call]["argv"]
+            i = ref.index("--max-budget-usd")
+            self.assertEqual(argv, ref[:i] + ref[i + 2:], call)
             self.assertEqual(dirs, [str(self.new / PLUGIN)], call)
             self.assertEqual(new[call]["env"], old[call]["env"], call)
         # The reviewer reads the same evidence, but for the supervisor's `Round 1` header in decisions.md (audit3 F2).
@@ -209,9 +233,8 @@ class NativeShellTests(unittest.TestCase):
         role_old, role_new = json.loads(old["role"]), json.loads(new["role"])
         self.assertEqual(role_new.pop("availableModels"), ["claude-opus-5-5", "claude-fable-5-2"])
         self.assertEqual(role_new, role_old)
-        # No FACTORY_MEMORY_DIR, no memory view.
-        self.assertFalse((self.h.run / "frozen/memory-view.md").exists())
-        self.assertNotIn("Memory view", (self.h.run / "round-1.prompt.md").read_text())
+        # No FACTORY_LESSONS, no lessons view.
+        self.assertFalse((self.h.run / "frozen/lessons.md").exists())
 
     def test_another_target_gets_the_native_shell(self) -> None:
         r = self.h.round_one(self.new, loam=False, skills="skills: pstack:tdd")
@@ -240,6 +263,8 @@ class NativeShellTests(unittest.TestCase):
             self.assertTrue((self.h.run / "frozen" / name).is_file(), name)
             self.assertIn(f"  {name}\n", (self.h.run / "frozen/sha256").read_text())
         self.assertEqual(settings["autoCompactWindow"], 450000)
+        # The owner's user CLAUDE.md (his attended lead's rules) stays out, at the path Claude Code reads it from.
+        self.assertEqual(settings["claudeMdExcludes"], [str(self.h.home / ".claude/CLAUDE.md")])
         argv = r["worker"]["argv"]
         pairs = dict(zip(argv, argv[1:]))
         self.assertEqual(pairs["--permission-mode"], "auto")
@@ -272,18 +297,51 @@ class NativeShellTests(unittest.TestCase):
         # A reviewer served the model it asked for raises no off-model alert.
         self.assertNotIn("off-model", (self.h.run / "factory.log").read_text())
 
-    def test_memory_view_is_frozen_and_appended_to_each_prompt(self) -> None:
-        mem = self.h.top / "memory"
-        mem.mkdir()
-        (mem / "MEMORY.md").write_text("# MEMORY\n- [Traps](traps.md) - x\n- [Site](https://example.com/a.md) - y\n")
-        r = self.h.round_one(self.new, loam=False, FACTORY_MEMORY_DIR=str(mem))
-        view = (self.h.run / "frozen/memory-view.md").read_text().splitlines()
-        self.assertEqual(view[0], "# Memory view (written for the lead)")
-        self.assertRegex(view[1], r"push, merge, rent .* `!` command do not apply")
-        self.assertIn(f"- [Traps]({mem}/traps.md) - x", view)
-        self.assertIn("- [Site](https://example.com/a.md) - y", view)
-        self.assertTrue(r["worker"]["stdin"].rstrip("\n").endswith("\n".join(view).rstrip("\n")))
-        self.assertIn("memory-view.md", (self.h.run / "frozen/sha256").read_text())
+    def test_lessons_file_is_frozen_and_ends_each_round_prompt(self) -> None:
+        lessons = self.h.top / "LESSONS.md"
+        text = "# Factory lessons\n\nPurpose line.\n\n- 2026-11-13 W24 (isc-build c471cda0): first lesson\n"
+        lessons.write_text(text)
+        r = self.h.round_one(self.new, loam=False, FACTORY_LESSONS=str(lessons))
+        self.assertEqual((self.h.run / "frozen/lessons.md").read_text(), text)
+        self.assertIn("  lessons.md\n", (self.h.run / "frozen/sha256").read_text())
+        self.assertTrue(r["worker"]["stdin"].endswith("\n\n" + text))
+        # A later round's prompt, after its "Previous round" block, still ends with the lessons.
+        proc = self.h.sourced(self.new, 'echo "FAIL check-green" > "$RUN/round-1.checks"; freeze && WORKER_KIND=claude round=2 && cat "$(build_worker_prompt 2)"',
+                              loam=False, FACTORY_LESSONS=str(lessons))
+        self.assertIn("## Previous round (1)", proc.stdout, proc.stderr)
+        self.assertTrue(proc.stdout.endswith("\n\n" + text), proc.stdout[-400:])
+
+    def test_lessons_file_over_8000_bytes_keeps_its_head_and_newest_lines(self) -> None:
+        lessons = self.h.top / "LESSONS.md"
+        head = ["# Factory lessons", "", "Purpose line.", "Format line."]
+        body = [f"- 2026-11-13 K{i:03d} (isc-build 00000000): lesson number {i:03d} with enough words to fill out the line"
+                for i in range(1, 401)]
+        lessons.write_text("\n".join(head + body) + "\n")
+
+        def assert_cut(whole: str) -> None:
+            view = (self.h.run / "frozen/lessons.md").read_bytes()
+            self.assertLessEqual(len(view), 8000)
+            lines = view.decode().splitlines()
+            self.assertEqual(lines[:4], head)
+            self.assertEqual(lines[4], f"[older lessons cut here; the whole file is {whole}]")
+            kept = lines[5:]
+            self.assertEqual(kept, body[len(body) - len(kept):])  # the newest lines, whole and in order
+            self.assertGreater(len(view) + len(body[-len(kept) - 1]) + 1, 8000)  # as many as fit
+
+        self.h.sourced(self.new, "freeze", loam=False, FACTORY_LESSONS=str(lessons))
+        assert_cut(str(lessons))
+        # The same lessons through a pipe (factory-isc may pass `<(git show ...)`) are read once and cut the same way;
+        # the spent pipe cannot be reopened, so the cut line names a kept copy of the whole file.
+        self.h.sourced(self.new, f"FACTORY_LESSONS=<(cat '{lessons}') freeze", loam=False)
+        assert_cut(str(self.h.run / "lessons-full.md"))
+        self.assertEqual((self.h.run / "lessons-full.md").read_text(), lessons.read_text())
+
+    def test_unreadable_lessons_file_stops_the_run(self) -> None:
+        missing = self.h.top / "no-such-LESSONS.md"
+        proc = self.h.sourced(self.new, "freeze; echo after", loam=False, FACTORY_LESSONS=str(missing))
+        self.assertNotIn("after", proc.stdout)
+        self.assertIn("stopped-environment", (self.h.run / "status").read_text())
+        self.assertIn(str(missing), (self.h.run / "factory.log").read_text())
 
     def test_another_target_worker_leaves_the_full_gate_to_the_supervisor(self) -> None:
         # L01 (distbench, 13 Nov): a worker spent 109 of 117 min running the full bin/check the supervisor runs anyway.
@@ -410,27 +468,61 @@ class ReviewHookTests(unittest.TestCase):
         rc, hooks = self.graders(verify_rc=0)
         self.assertEqual((rc, hooks), ("0", "verify_round 1 review=planted defect fixes=\n"))
 
-    def finish_run(self, script: str, is_file: int = 1) -> tuple[subprocess.CompletedProcess[str], str]:
+    def finish_run(self, script: str, is_file: int = 1, tty: bool = False) -> tuple[subprocess.CompletedProcess[str], str]:
+        # The learn stub records what a reader sees when it starts, holds until the test writes go, then fails.
         stub = ('verify_round() { return 0; }\n'
-                'learn_run() { printf "learn_run %s|%s status=%s\\n" "$1" "$2" "$(cat "$RUN/status" 2> /dev/null)" >> "$RUN/hooks"; }\n')
+                'learn_run() { printf "learn_run %s|%s status=%s exit-lines=%s\\n" "$1" "$2" "$(cat "$RUN/status")" '
+                '"$(grep -c " EXIT $1 " "$LOG")" >> "$RUN/hooks"; local i=0; while [ ! -e "$RUN/go" ] && [ $i -lt 200 ]; '
+                'do sleep 0.05; i=$((i + 1)); done; : > "$RUN/learn-ended"; return 1; }\n')
         script = (f"freeze || exit 9; chmod u+w \"$RUN/frozen/review.sh\"; printf '%s' '{stub}' > \"$RUN/frozen/review.sh\"\n"
                   f"IS_FILE={is_file}; set_status running; FACTORY_FROZEN=\"$RUN/frozen/factory\" exec_frozen\n{script}")
-        proc = self.h.sourced(self.new, script, loam=False)
+        proc = self.h.sourced(self.new, script, loam=False, tty=tty)
         hooks = self.h.run / "hooks"
         return proc, hooks.read_text() if hooks.exists() else ""
 
-    def test_a_file_ticket_run_calls_learn_run_on_every_exit_before_its_status(self) -> None:
-        for status in ("stuck", "no-change", "stopped-cap", "stopped-environment", "abandon"):
-            with self.subTest(status):
-                proc, hooks = self.finish_run(f'finish {status} "why it stopped"')
-                self.assertEqual(hooks, f"learn_run {status}|why it stopped status=running\n")
-                self.assertEqual((self.h.run / "status").read_text().strip(), status)
+    def learn(self) -> str:
+        """Wait for the detached learn to start; check the run already exited without it; release it to fail."""
+        hooks, ended = self.h.run / "hooks", self.h.run / "learn-ended"
+        for _ in range(200):
+            if hooks.exists():
+                break
+            time.sleep(0.05)
+        self.assertFalse(ended.exists(), "the run waited for learn")
+        (self.h.run / "go").touch()
+        for _ in range(200):
+            if ended.exists():
+                break
+            time.sleep(0.05)
+        self.assertTrue(ended.exists(), "learn never finished")
+        return hooks.read_text()
 
-    def test_a_file_ticket_pr_calls_learn_run_once(self) -> None:
-        proc, hooks = self.finish_run('GRADED_SHA=$(git -C "$WORKTREE" rev-parse HEAD); open_pr')
+    def test_a_file_ticket_run_exits_then_learn_runs_and_cannot_change_the_exit(self) -> None:
+        # The launcher sees the exit code, status and EXIT line without waiting on learn, and a learn that fails
+        # changes none of them (L01: 18.6 min of learn before its status, 13 Nov 2026).
+        for status, code in (("stuck", 2), ("stopped-cap", 2), ("stopped-environment", 4), ("abandon", 5)):
+            with self.subTest(status):
+                proc, _ = self.finish_run(f'finish {status} "why it stopped"')
+                self.assertEqual(proc.returncode, code, proc.stderr)
+                self.assertEqual(self.learn(), f"learn_run {status}|why it stopped status={status} exit-lines=1\n")
+                self.assertEqual((self.h.run / "status").read_text().strip(), status)
+                log = (self.h.run / "factory.log").read_text()
+                self.assertEqual(log.count(" EXIT "), 1, log)
+
+    def test_learn_outlives_the_terminal_the_run_exits_from(self) -> None:
+        # A launcher run in a tmux pane is that terminal's session leader; its exit hangs up the foreground group.
+        proc, _ = self.finish_run('finish stuck "why it stopped"', tty=True)
+        self.assertEqual(proc.returncode, 2, proc.stdout)
+        self.assertEqual(self.learn(), "learn_run stuck|why it stopped status=stuck exit-lines=1\n")
+
+    def test_a_file_ticket_pr_calls_learn_run_once_after_the_pr_opened_exit(self) -> None:
+        proc, _ = self.finish_run('GRADED_SHA=$(git -C "$WORKTREE" rev-parse HEAD); open_pr')
         self.assertEqual(proc.returncode, 0, proc.stderr)
+        self.assertTrue((self.h.run / "pr-body.md").exists())
+        hooks = self.learn()
         self.assertEqual(hooks.count("learn_run pr-opened|file ticket"), 1, hooks)
+        self.assertIn("status=pr-opened exit-lines=1", hooks)
         self.assertEqual(hooks.count("learn_run"), 1, hooks)
+        self.assertEqual((self.h.run / "status").read_text().strip(), "pr-opened")
 
     def test_an_issue_run_and_a_run_before_its_frozen_review_sh_call_no_learn_run(self) -> None:
         self.assertEqual(self.finish_run('finish stuck "x"', is_file=0)[1], "")

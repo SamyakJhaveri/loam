@@ -14,7 +14,6 @@ A <model> is a Claude model id, graded by `bin/factory eval`, or codex:<model>, 
   MODEL_EVAL_SEED         default 0
   MODEL_EVAL_GRADERS_DIR  the grader files, as bin/factory's --graders-dir (default the checkout's); each is
                           copied once per grid, and every cell grades and hashes that copy
-EVAL_BUDGET_USD passes through to each `bin/factory eval` call, one per cell.
 
 A cell is one grader, model, effort and repeat; its replies go to <out>/replies/<model>@<effort>/r<k>/,
 the layout eval_score.py reads. Every cell is listed, shuffled with random.Random(seed), written to

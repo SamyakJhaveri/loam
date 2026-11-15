@@ -41,7 +41,7 @@ hyphenated pstack name.
 
   P1 instructions     each round's init lists DistBench's own project skill verify-distbench and loads
                       sam-cc-setup from exactly the path in frozen/plugin-dir, and each round-N.prompt.md holds
-                      the memory view's first line `# Memory view (written for the lead)`.
+                      the lessons view's first line `# Factory lessons`.
   P2 router           every transcript that changes a file fully read, before its first change, the pstack router
                       (also the Skill call on sam-cc-setup:pstack) or a pstack SKILL.md its brief names.
   P3 method           every transcript that changes a file fully read a pstack skills/<name>/SKILL.md before its
@@ -72,7 +72,7 @@ hyphenated pstack name.
                       ~/.claude/skills/synced/ is ignored, as any session start changes it). Lists each classifier permission_denied event (tool input
                       and reason) as evidence; a denial alone does not fail.
   P8 reviews          per graded round (round-N.graded.sha): ledger.jsonl has a reviewer row, and every one but
-                      a no-result row (a killed attempt's charge) has served_models
+                      a no-result row (a killed attempt) has served_models
                       exactly ["claude-fable-5-2"]; round-N.codex-review.json is a JSON object; the ids in
                       round-N.verify.json equal the blocking ids recomputed from round-N.review.json
                       (`reviewer-<i>`, severity high or medium) and round-N.codex-review.json (`codex-<i>`,
@@ -117,12 +117,12 @@ COVERED = ("tasks/", "src/distbench/runner.py", "src/distbench/commands.py", "sr
            "src/distbench/orchestrator.py", "src/distbench/grader.py")
 COVERED_PATH = re.compile(r"(?:^|/)(?:" + "|".join(re.escape(c) + ("" if c.endswith("/") else "$") for c in COVERED) + ")")
 PLUGIN = "sam-cc-setup"
-MEMORY_VIEW = "# Memory view (written for the lead)"
+LESSONS_VIEW = "# Factory lessons"
 FABLE = "claude-fable-5-2"
 BLOCKING = {"reviewer": {"high", "medium"}, "codex": {"critical", "high"}}
 VERDICTS = {"CONFIRMED", "PARTLY", "REJECTED"}
 GIT_DIGESTS = ("git-head", "git-diff", "git-untracked")  # each `git-status:<dir>` digest line needs these too
-# A decisions.md method line from the router: `pstack: <skill> | <SKILL.md path> | <sha256> | <quote> | <decision>`,
+# A decisions.md method line from the router: `pstack: <skill> | <SKILL.md path> | <quote> | <decision>`,
 # also after a `Round N: ` prefix (decision_lines gives it to round N).
 PSTACK_LINE = re.compile(r"^\s*(?:[-*]\s+)?(?:Round \d+:\s*)?pstack:\s*([^|\s][^|]*?)\s*\|\s*([^|]+?)\s*\|")
 # Writes here are notes or scratch, not changes: a run's <key>/<sha8>/worker/, /tmp and $TMPDIR, a session
@@ -660,10 +660,10 @@ def p1(run: Run) -> tuple[str, str]:
             good.append(f"{at(r.top, line)} init loads {PLUGIN} from frozen/plugin-dir")
         prompt = run.path / f"round-{r.n}.prompt.md"
         lines = [x.rstrip() for x in prompt.read_text(encoding="utf-8", errors="replace").splitlines()] if prompt.is_file() else []
-        if MEMORY_VIEW in lines:
-            good.append(f"{prompt.name}:{lines.index(MEMORY_VIEW) + 1} holds the memory view")
+        if LESSONS_VIEW in lines:
+            good.append(f"{prompt.name}:{lines.index(LESSONS_VIEW) + 1} holds the lessons view")
         else:
-            bad.append(f"{prompt.name} has no line '{MEMORY_VIEW}'")
+            bad.append(f"{prompt.name} has no line '{LESSONS_VIEW}'")
         rows.append(row(r.n, bad, good))
     return combine(rows)
 
@@ -681,9 +681,25 @@ def router_index(t: Transcript, before: int) -> int | None:
     return next((j for j in range(min(before + 1, len(t.calls))) if reads_router(t, j)), None)
 
 
+def without_common(run: Run, brief: str) -> str:
+    """brief less each piece, between <placeholders>, of a frozen/_common.md line that names a SKILL.md or a pstack
+    method, as text and as a JSON string (a large round's Workflow args): every round's prompt holds those, so a
+    method only _common.md names is no brief's own. A newline takes each piece's place, so no two words join."""
+    f = Path(run.path) / "frozen" / "_common.md"
+    if not f.is_file():
+        return brief
+    for x in f.read_text(encoding="utf-8", errors="replace").splitlines():
+        for piece in re.split(r"<[a-z]+>", x):
+            if "SKILL.md" in piece or named_skills(piece, run.pstack):
+                for form in (piece, json.dumps(piece, ensure_ascii=False)[1:-1]):
+                    brief = brief.replace(form, "\n")
+    return brief
+
+
 def brief_read(run: Run, t: Transcript, before: int) -> tuple[int, list[str]] | None:
-    """(call index, names) of the first full read, up to call `before`, of a pstack SKILL.md t's brief names."""
-    names = named_skills(f"{t.brief}\n{run.ticket}", run.pstack)
+    """(call index, names) of the first full read, up to call `before`, of a pstack SKILL.md t's brief (less
+    _common.md) or ticket names."""
+    names = named_skills(f"{without_common(run, t.brief)}\n{run.ticket}", run.pstack)
     for j in range(before + 1):
         hit = pstack_methods(full_reads(t, j), run.pstack) & names
         if hit:
@@ -1069,7 +1085,7 @@ def p8(run: Run) -> tuple[str, str]:
     rows = []
     for n in graded:
         bad, good = [], []
-        # A no-result row books a killed or crashed attempt's ceiling; it served nothing and is no review.
+        # A no-result row books a killed or crashed attempt; it served nothing and is no review.
         reviewers = [(k, e) for k, e in entries
                      if e.get("role") == "reviewer" and e.get("round") == n and e.get("subtype") != "no-result"]
         off = [f"ledger.jsonl:{k} reviewer served_models {json.dumps(e.get('served_models'))}"

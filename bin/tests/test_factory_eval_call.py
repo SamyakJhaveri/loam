@@ -64,7 +64,7 @@ USER = {"env": {"FIXTURE_USER_ENV": "u", TOKEN: "fixture-token-stale", "CLAUDE_C
 
 
 def flags(argv: list[str], settings: str) -> dict[str, str | None]:
-    """{flag: value}; --settings maps to the file's text as the call read it, and the budget goes."""
+    """{flag: value}; --settings maps to the file's text as the call read it."""
     out: dict[str, str | None] = {}
     i = 0
     while i < len(argv):
@@ -72,7 +72,6 @@ def flags(argv: list[str], settings: str) -> dict[str, str | None]:
         out[argv[i]] = value
         i += 1 if value is None else 2
     out["--settings"] = settings
-    out.pop("--max-budget-usd", None)
     return out
 
 

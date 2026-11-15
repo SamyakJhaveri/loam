@@ -130,6 +130,16 @@ class TransferCoverage(unittest.TestCase):
         self.assertEqual(self.state("T14", {"bin/check": commented, **helpers}), "absent")
         self.assertEqual(self.state("T14", {"bin/check": CHECK_LINES, **helpers}), "present")
 
+    def test_t28_needs_the_checklist_factory_item_and_the_readme_pointer(self) -> None:
+        readme = {"docs/tickets/README.md": "the lead walks the launch checklist `docs/tickets/NIGHT-LAUNCH.md` (APPROVALS)\n"}
+        item = "12. Factory tickets: each ticket passes lint.\n    The frontier is printed with the free slots.\n"
+        for files, want in (({"docs/tickets/NIGHT-LAUNCH.md": "", **readme}, "absent"),
+                            ({"docs/tickets/NIGHT-LAUNCH.md": "1. Waits named.\n", **readme}, "absent"),
+                            ({"docs/tickets/NIGHT-LAUNCH.md": item}, "absent"),
+                            ({"docs/tickets/NIGHT-LAUNCH.md": item, **readme}, "present")):
+            _, out = self.cover([real_row("T28")], self.target(files))
+            self.assertIn(f"({want})", next(line for line in out if line.startswith("nothing T28 ")), files)
+
     def test_failing_host_row_is_missing_and_never_uncovered(self) -> None:
         rc, out = self.cover(["T1\tplugin\thost\tcap a\t-\t-\tfalse"], self.target({}))
         self.assertEqual(rc, 1, out)

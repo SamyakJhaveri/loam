@@ -3,9 +3,62 @@
 This file records why a promoted plugin change traveled. It is also the upgrade
 entry point for projects that consume the Loam marketplace.
 
+## sam-cc-setup v0.9.35 pstack router and lean-critic lose words that misled
+
+The router's description said "before a non-trivial task", and models cited that word as their reason to skip the router on small fixes; it now says "before a task", as do the factory worker prompt (`bin/factory.d/_common.md`), the Workflow builders' prompt (`bin/factory.d/factory-round.js`) and the seed rule line.
+The seed rule line also drops its "Never call the Skill tool on a `pstack:` skill" sentence: pstack skills already refuse the Skill tool, and the router itself keeps the rule.
+The router's decision-log line drops its sha256 field, which nothing read (`bin/factory-parity` matches only the skill and the path).
+lean-critic's description drops "Run it after every unattended loop or Opus session lands work, before merging.", a standing order to spawn it that conflicts with each project's own review rules.
+No grader prompt changed, so no grader replay is owed.
+Upgrade step: `claude plugin update sam-cc-setup@seed-skills`.
+
+## sam-cc-setup v0.9.34 research-gap's brief template names Fable 5.2
+
+The brief template's model example still said "Fable 5.1 at high", the retired model, so a brief copied from it asked for a model the owner no longer uses.
+It now says Fable 5.2; the same change fixes the 5.1 names in the factory docs and the overnight protocol outside the plugin.
+No grader prompt changed, so no grader replay is owed.
+Upgrade step: `claude plugin update sam-cc-setup@seed-skills`.
+
+## sam-cc-setup v0.9.33 pstack router sends ticket-shaped build work to the factory lane
+
+The router told a lead to hand spawning work to "one `worker`" and had no factory line, so a lead that obeyed it was pointed away from the factory the owner made the default builder (DistBench audit, 13 Nov 2026: 9 of 83 landed branches came from the factory).
+A new line sends build work that fits a ticket to the project's factory lane when it has one, attended only for what the lane cannot run, with the reason in the brief; the spawning-skill line names the lane first.
+It is a line, not a table row, because the table's second column names only pstack or owner skills (`bin/tests/test_pstack_router.py`).
+No grader prompt changed, so no grader replay is owed.
+Upgrade step: `claude plugin update sam-cc-setup@seed-skills`.
+
+## sam-cc-setup v0.9.32 the reviewer checks the owner's eight principles
+
+The owner asked on 13 Nov 2026 that every worker follow eight pstack principles and that reviewers check the work against them. `reviewer.md` gains a sixth item: a change that breaks one of the eight is a finding, rated by its impact. The factory worker prompt (`bin/factory.d/_common.md`) names the eight in its one principle list, and the Codex review prompt asks the same of Codex.
+The reviewer replay (docs/factory/LOOP.md, Grader change protocol) ran on 13 Nov 2026 on the 8 `evals/reviewer` cases, once each, beside main's reviewer.md in the same hour: 3 mismatches against main's 4.
+Both flag the same three clean cases `fix` (175-23888443, s2-round-5, s2-round-8); this version also catches the real defect in 152-8e26403e, which main passed, a one-case gain within the noise of one run.
+judge.md is unchanged: 2 of 9 at both commits, the same two cases.
+Upgrade step: `claude plugin update sam-cc-setup@seed-skills`, for a by-hand reviewer Agent call; the factory reads the checkout's reviewer.md.
+
+## sam-cc-setup v0.9.31 research-gap seats have no dollar cap
+
+The owner ruled on 13 Nov 2026 that there is no spending cap at all, so `research-gap` Claude seats no longer pass `--max-budget-usd 10`, and the skill drops its `no: budget` seat outcome.
+No grader prompt changed, so no grader replay is owed.
+Upgrade step: `claude plugin update sam-cc-setup@seed-skills`.
+
+## sam-cc-setup v0.9.30 audit is the owner's prompt again
+
+The owner said on 13 Nov 2026 that the v0.9.26 `audit` skill was "nowhere near" the prompt he typed by hand and ran far less aggressively, so the skill now opens with that prompt, lightly edited (spelling, grammar, numbering), as his instruction to the agent that did the work; the rest only says how to carry it out.
+Removed: sizing by stakes when the owner asked for the audit, evidence tags in place of scores, the one-artifact target, "leave out anything that existed before this work", fixing only unmerged work, the single re-review, and the `codex-review` branch for diffs (its lead-written intent, 60-line cap and lead triage contradicted the audit).
+Added: a confidence score out of 10 with what would change the agent's mind, a blind-spots part, re-reading every claim made from memory, a fresh design and a surprise-me agent started after that re-reading, severities and an `unresolved` verdict, fix-and-review rounds while a high finding is open, as DistBench's 24 Oct usage ruling allows (INCOMPLETE after three), a rule to stop and replace a stuck reviewer, a Codex-host column, and `effort: xhigh`.
+Reached through the pstack router or a brief without the owner asking, the audit follows the project's recorded review rules for which roles and rounds run; the router row says so and says the agent that did the work runs it.
+The verifier method sits under the heading `## Verify findings`; `bin/factory.d/verify.md` reads that heading instead of "step 4", and `bin/tests/test_factory_review.py` checks the heading exists.
+`audit` and `surprise-me` ship `agents/openai.yaml` with `allow_implicit_invocation: false`, so Codex runs them only when asked.
+`seed/docs/WORKERS.md.jinja` no longer points at the audit skill's old step 3 for a dry run, and says where Codex finds the skills; projects get it through `bin/sync-project`.
+Sources: the owner's prompt and complaints, a read-only Codex reading of their intent, a blind Fable and Codex review of this change with every finding verified, and Anthropic's Opus 5.5 prompting, prompting best-practices, skill-authoring and Claude Code skills pages, read 13 Nov 2026 (`~/.local/state/distbench/evidence/2026-11-13-audit-skill/`).
+No grader prompt changed, so no grader replay is owed.
+Upgrade step: pull the Loam checkout the marketplace points at, run `claude plugin update sam-cc-setup@seed-skills`, then restart Claude Code.
+For Codex on each host, link the two skills into the user skill folder Codex reads, refusing to touch a real folder already there: `mkdir -p ~/.agents/skills && for s in audit surprise-me; do t=~/.agents/skills/$s; if [ -e "$t" ] && [ ! -L "$t" ]; then echo "$t is a real folder; move it first"; else ln -sfn <loam>/cultivation/marketplace/sam-cc-setup/skills/$s "$t"; fi; done`.
+Then check that Codex loads them: `codex debug prompt-input "hi"` lists `audit` and `surprise-me`; if it does not (an older Codex skipped symlinked user skills), copy the folders with `cp -R` instead of linking.
+
 ## sam-cc-setup v0.9.29 pstack log line, Fable 5.2
 
-The `pstack` router asks for one decision-log line per method followed (decisions.md in a factory run): `pstack: <skill> | <SKILL.md path read> | <sha256 of that file> | <one line quoted from it> | <the decision it changed>`, the line `bin/factory-parity` reads.
+The `pstack` router asks for one decision-log line per method followed (decisions.md in a factory run): `pstack: <skill> | <SKILL.md path read> | <one line quoted from it> | <the decision it changed>`, the line `bin/factory-parity` reads.
 `plan-reviewer` and the `research-gap` Fable seat move from `claude-fable-5-1` to `claude-fable-5-2`, the owner's Fable 5.2 ruling.
 No grader prompt changed, so no grader replay is owed.
 Upgrade step: `claude plugin update sam-cc-setup@seed-skills`.
@@ -20,7 +73,7 @@ Upgrade step: `claude plugin update sam-cc-setup@seed-skills`; the global CLAUDE
 
 ## sam-cc-setup v0.9.27 pstack router
 
-New skill `pstack`, the plugin's first model-invocable one (owner rulings of 10 and 11 Nov 2026): before a non-trivial task the main session or a `worker` calls `sam-cc-setup:pstack`, which resolves the pstack folder and picks a method from a broad-to-narrow table and the list of all principle cards; the agent then reads that pstack `SKILL.md` by path.
+New skill `pstack`, the plugin's first model-invocable one (owner rulings of 10 and 11 Nov 2026): before a task the main session or a `worker` calls `sam-cc-setup:pstack`, which resolves the pstack folder and picks a method from a broad-to-narrow table and the list of all principle cards; the agent then reads that pstack `SKILL.md` by path.
 Only `setup-pstack` stays manual; `poteto-mode` keeps its standing limit (a contested design, concurrency or a cross-cutting change), and an agent stops before any push or PR a playbook asks for.
 Its listing line raises the sam-cc-setup listing weight from 365 to 431 tokens (`bin/check`, skill-listing step).
 The factory puts the router's path, from the seed-skills `installLocation` in `~/.claude/plugins/known_marketplaces.json`, into the worker prompt (`bin/factory.d/_common.md`) and every fan-out builder prompt; `bin/factory status` prints FAIL when the file is missing.
@@ -98,7 +151,7 @@ Upgrade step: `claude plugin update sam-cc-setup`.
 
 ## sam-cc-setup v0.9.21 research-gap runs that can fail and stay within a run bound
 
-From the audit of the first packaged run (surprise-me, 28 Oct 2026): step 6 names what earlier steps already report and aims its check at the idea's strongest threat, so it can fail; `gap.md` names read-list papers only a seed or citation crawl found; each mode bounds its runs (Claude runs at most seats + 2 + G + ceil(P/3)), predicted in `cost.md` before readers launch, and Claude seats run with `--max-budget-usd 10`; after step 4 a read-only Codex review hunts for a paper that closes each open or narrowed gap and checks each closed verdict against its PDF (`review.md`); and gap workers log and pool searches with the new `scripts/searchlog.py` instead of their own helpers.
+From the audit of the first packaged run (surprise-me, 28 Oct 2026): step 6 names what earlier steps already report and aims its check at the idea's strongest threat, so it can fail; `gap.md` names read-list papers only a seed or citation crawl found; each mode bounds its runs (Claude runs at most seats + 2 + G + ceil(P/3)), predicted in `cost.md` before readers launch; after step 4 a read-only Codex review hunts for a paper that closes each open or narrowed gap and checks each closed verdict against its PDF (`review.md`); and gap workers log and pool searches with the new `scripts/searchlog.py` instead of their own helpers.
 No grader prompt changed, so no grader replay is owed.
 Upgrade step: `claude plugin update sam-cc-setup`.
 

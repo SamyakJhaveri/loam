@@ -39,8 +39,7 @@ KEEP_SKILLS = {"sam-cc-setup:pstack", "pstack:tdd", "pstack:principle-sequence-v
                "pstack:blast-radius"}
 PLUGIN = "sam-cc-setup"
 PROOF_PLUGIN = "/home/samyak/.local/state/loam/worktrees/factory-distbench-test/cultivation/marketplace/sam-cc-setup"
-VIEW = ("# Memory view (written for the lead)\n"
-        "Lines below that tell the lead to push, merge, rent or hand Samyak a `!` command do not apply to you.\n")
+VIEW = "# Factory lessons\n\nPurpose line.\n"
 
 
 def line(path: Path, n: int) -> str:
@@ -166,7 +165,7 @@ def build(runs: Path, projects: Path, distbench: Path, exp: Path, pstack: Path) 
     out: dict[str, dict[str, str]] = {}
     w35_init = init(event(runs / W35 / "round-1.jsonl", 3))
     # P1: W35 round-1.jsonl:3 init with EDIT verify-distbench added; EDIT frozen/plugin-dir naming the sam-cc-setup
-    # path that init loads; EDIT round-1.prompt.md holding the memory view. Fail: the real init (no verify-distbench).
+    # path that init loads; EDIT round-1.prompt.md holding the lessons view. Fail: the real init (no verify-distbench).
     loaded = next(p["path"] for p in w35_init["plugins"] if p["name"] == PLUGIN)
     p1 = {"run/frozen/plugin-dir": loaded + "\n", "run/round-1.prompt.md": VIEW}
     with_skill = {**w35_init, "skills": [*w35_init["skills"], "verify-distbench"]}
@@ -174,7 +173,7 @@ def build(runs: Path, projects: Path, distbench: Path, exp: Path, pstack: Path) 
     out["p1-fail"] = {**p1, "run/round-1.jsonl": dump([w35_init])}
     # Plugin: frozen/plugin-dir names the proof's Loam checkout, but init loads ~/loam's (audit finding C1).
     out["p1-plugin"] = {**out["p1-pass"], "run/frozen/plugin-dir": PROOF_PLUGIN + "\n"}
-    # View: W35's real round-1.prompt.md head, with no memory view.
+    # View: W35's real round-1.prompt.md head, with no lessons view.
     out["p1-view"] = {**out["p1-pass"], "run/round-1.prompt.md": "\n".join(
         (runs / W35 / "round-1.prompt.md").read_text().splitlines()[:3]) + "\n"}
     # P2: W35 round-1.jsonl:3,34,35, a python open(..., "w") edit with no router read (fail); W34 round-1.jsonl:3,45,46,

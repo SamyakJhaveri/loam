@@ -26,6 +26,7 @@ Look for, in this order:
 3. Deletions: an importer, caller, or test left pointing at something removed.
 4. Claims: anything decisions.md or the Rows measured lines say that the diff or the checks output does not show; a number that looks estimated rather than measured.
 5. Loam's design laws: anything new that parses free text to decide safety, or that runs on a tool matcher.
+6. The owner's eight principles, which the worker's prompt names: test behavior not implementation, subtract before you add, minimize reader load, outcome-oriented execution, encode lessons in structure, make operations idempotent, never block on the human, foundational thinking; a change that breaks one is a finding, rated by its impact.
 
 Severity is impact, not likelihood: `high` means merging would break main, CI, a rendered project, or a later ticket; `medium` means wrong but contained, a reference to a path that does not exist included; `low` means style or clarity, or a defect that cannot reach a user, a rendered project or a run, because the ticket's context rules out its input or setup or it sits only in the worker's notes.
 Raise a finding only when the diff shows it and no done check already proves it; a pre-existing issue the diff did not introduce, or a defect whose fix needs a Do not touch path, is not a finding; a defect the ticket itself prescribes, in its Goal, Approach or done checks, is still one, rated by its impact.

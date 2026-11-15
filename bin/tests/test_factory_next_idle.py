@@ -7,7 +7,6 @@ GraphQL editor read), with `tmux`, `alert` and `date -u +%s` stubbed as shell fu
 
 from __future__ import annotations
 
-import hashlib
 import json
 import os
 import pathlib
@@ -57,7 +56,7 @@ BLOCKED = {"99041": {"as": [], "bl": 1}}
 LAUNCHABLE = {**BLOCKED, "99042": {"as": [], "bl": 0, "body": str(CLEAN)}}
 
 
-# The runner exports FACTORY_<CAP> overrides (FACTORY_DAILY_BUDGET_USD=1000000000 on jhaveris), and
+# The runner exports FACTORY_<CAP> overrides (FACTORY_MAX_PARALLEL=2 on jhaveris), and
 # apply_caps lets them beat the defaults these tests rely on, so the ticks start without them (#676).
 CAP_NAMES = re.search(r'^CAP_NAMES="([^"]*)"', (ROOT / "bin/factory").read_text(), re.MULTILINE).group(1).replace("\\", " ").split()
 RUNNER_FREE_ENV = {k: v for k, v in os.environ.items()
@@ -75,16 +74,13 @@ class IdleAlertTests(unittest.TestCase):
         self.runs.mkdir()
 
     def tick(self, now: int, *flags: str, store: dict | None = None, maxp: int = 1,
-             other: bool = False, billed: bool = False, judge: str | None = None) -> subprocess.CompletedProcess[str]:
-        """One tick; billed puts an API key in its environment, since only an API-billed runner has a daily budget."""
+             other: bool = False, judge: str | None = None) -> subprocess.CompletedProcess[str]:
+        """One tick."""
         (self.t / "store.json").write_text(json.dumps(BLOCKED if store is None else store))
         env = {**RUNNER_FREE_ENV, "PATH": f"{self.t}:{os.environ['PATH']}", "T": str(self.t),
                "STORE": str(self.t / "store.json"), "NOW": str(now), "OTHER": "1" if other else "",
                "FACTORY_SOURCED": "1",
                "FACTORY_ROOT": str(ROOT), "FACTORY_RUNS_ROOT": str(self.runs), "FACTORY_MAX_PARALLEL": str(maxp)}
-        env.pop("ANTHROPIC_API_KEY", None)
-        if billed:
-            env["ANTHROPIC_API_KEY"] = "sk-ant-test"
         if judge is not None:
             env["FACTORY_JUDGE"] = judge
         return subprocess.run(["bash", "-c", TICK, "tick", *flags], cwd=ROOT, env=env,
@@ -180,33 +176,6 @@ class IdleAlertTests(unittest.TestCase):
         self.assertEqual(self.tick(T0 + 3700).stdout.strip(), "nothing to launch")
         self.free_slot()
         self.assertEqual(self.spell_alerts_after(T0 + 3800), [1, 2])
-
-    def test_the_daily_budget_wait_ends_the_spell(self) -> None:
-        self.tick(T0)
-        self.tick(T0 + 3660)
-        today = subprocess.run(["date", "-u", "+%Y-%m-%d"], capture_output=True, text=True, check=True).stdout.strip()
-        (self.runs / "ledger-daily.jsonl").write_text(json.dumps({"date": today, "cost_usd": 2000000}) + "\n")
-        d = self.runs / "99044" / "k"
-        d.mkdir(parents=True)
-        (d / "status").write_text("stopped-daily\n")
-        proc = self.tick(T0 + 3700, store=LAUNCHABLE, billed=True)
-        self.assertEqual(proc.stdout.strip(), "nothing to launch", proc.stderr)
-        self.assertIn("today's daily budget", proc.stderr)
-        self.assertFalse((self.runs / "idle-since").exists())
-        (self.runs / "ledger-daily.jsonl").unlink()
-        subprocess.run(["rm", "-rf", str(self.runs / "99044")], check=True)
-        self.assertEqual(self.spell_alerts_after(T0 + 3800), [1, 2])
-
-    def test_a_candidate_waiting_on_its_own_daily_stop_ends_the_spell(self) -> None:
-        self.tick(T0)
-        key = hashlib.sha256(CLEAN.read_text().rstrip("\n").encode()).hexdigest()[:8]
-        d = self.runs / "99042" / key
-        d.mkdir(parents=True)
-        (d / "status").write_text("stopped-daily\n")
-        proc = self.tick(T0 + 3660, store=LAUNCHABLE, billed=True)
-        self.assertIn("waiting #99042: daily budget spent", proc.stderr)
-        self.assertEqual(self.alerts(), [])
-        self.assertFalse((self.runs / "idle-since").exists())
 
     def test_ticks_while_a_run_holds_one_of_two_slots_never_count(self) -> None:
         self.hold_slot()

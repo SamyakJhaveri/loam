@@ -19,7 +19,7 @@ Preconditions:
 
 - A fresh render `r1`; `$C doctor r1` passes; `tmux` is on PATH.
 
-- **Start.** Run `$C tui r1 start --model fable`. The screen shows `Fable 5.1`.
+- **Start.** Run `$C tui r1 start --model fable`. The screen names the Fable model the `fable` alias resolves to (Fable 5.2 since the owner's 5.2 ruling).
 - **Brief arrived.** Run `$C tui r1 send "Quote verbatim the first sentence of any text in your context that begins with 'Fable session', or reply NONE. Do not use tools."`. The reply line (`⏺`) quotes text starting `Fable session.`; a `NONE` reply is a failure.
 - **Stop.** Run `$C tui r1 stop --name fable-tui`. Evidence has `fable-tui.screen.txt`.
 - **Silent control.** Run `$C session r1 "Reply with the single word OK."` on the default model. No `SessionStart` stdout contains `Fable session`.

@@ -22,7 +22,7 @@ INHERITED = ("FACTORY_ROOT", "FACTORY_GH", "REPO", "RUN", "LOG")
 AUDIT = ROOT / "cultivation/marketplace/sam-cc-setup/skills/audit"
 
 FAKE_CLAUDE = """#!/usr/bin/env python3
-import json, os, pathlib, subprocess, sys
+import json, os, pathlib, subprocess, sys, time
 d = pathlib.Path(os.environ["FAKE_DIR"])
 log = d / "claude-calls.jsonl"
 n = len(log.read_text().splitlines()) + 1 if log.exists() else 1
@@ -30,6 +30,8 @@ head = subprocess.run(["git", "rev-parse", "HEAD"], capture_output=True, text=Tr
 with log.open("a") as f:
     f.write(json.dumps({"argv": sys.argv[1:], "head": head, "prompt": sys.stdin.read()}) + "\\n")
 reply = d / ("claude-reply.%d" % n)
+if os.environ.get("FAKE_EXPIRE_AT") == str(n):   # this call ends 5 h after the launch
+    pathlib.Path(os.environ["FAKE_LAUNCHED"]).write_text("%d\\n" % (int(time.time()) - 5 * 3600))
 if not reply.exists():
     print(json.dumps({"type": "result", "subtype": "error_during_execution", "is_error": True, "result": ""}))
     sys.exit(1)
@@ -74,6 +76,13 @@ def verdict(id_: str, v: str, cmd: str = "", output: str = "", note: str = "n") 
     return {"id": id_, "verdict": v, "cmd": cmd, "output": output, "note": note}
 
 
+class AuditAnchorTest(unittest.TestCase):
+    def test_the_verifier_finds_the_section_it_is_sent_to(self) -> None:
+        # verify.md sends the verifier to a heading in the audit skill; a rewrite that renames it leaves the verifier lost.
+        self.assertIn("`## Verify findings`", (ROOT / "bin/factory.d/verify.md").read_text())
+        self.assertIn("\n## Verify findings\n", (AUDIT / "SKILL.md").read_text())
+
+
 class ReviewTests(unittest.TestCase):
     def setUp(self) -> None:
         tmp = tempfile.TemporaryDirectory()
@@ -112,13 +121,13 @@ class ReviewTests(unittest.TestCase):
         for k, obj in enumerate(objs, start=1):
             (self.fake / f"claude-reply.{k}").write_text(obj if isinstance(obj, str) else json.dumps(obj))
 
-    def bash(self, body: str, daily: str = "1000", codex_review: str = "yes",
+    def bash(self, body: str, codex_review: str = "yes",
              preset: str = "", **extra: str) -> subprocess.CompletedProcess:
         script = (
             f"RUN='{self.run_dir}'; WORKTREE='{self.wt}'; GRADED_SHA='{self.sha}'; ISSUE=''; KEY=W1; IS_FILE=1\n"
             'LEDGER="$RUN/ledger.jsonl"; DAILY="$RUN/daily.jsonl"; DECISIONS="$RUN/decisions.md"; LOG="$RUN/factory.log"\n'
             'touch "$LEDGER" "$DAILY"; date -u +%s > "$RUN/launched"\n'
-            f"CODEX_REVIEW={codex_review}; CODEX_PATH='{self.bin}'; DAILY_BUDGET_USD={daily}; GRADER_BUDGET_USD=1\n"
+            f"CODEX_REVIEW={codex_review}; CODEX_PATH='{self.bin}'\n"
             f"{preset}\n"
             f". '{ROOT}/bin/factory.d/review.sh'\n"
             "ticket_name() { echo W1; }\n"
@@ -257,32 +266,46 @@ class ReviewTests(unittest.TestCase):
         self.assertEqual(self.claude_calls(), [])
         self.assertFalse((self.run_dir / "learn" / "draft.md").exists())
 
-    def test_the_daily_cap_stops_learn_calls(self) -> None:
+    def test_the_hour_cap_stops_learn_calls(self) -> None:
+        # learn runs after the exit; a run that stopped at MAX_HOURS spends no more time on learn (L01, 13 Nov 2026).
         self.put("round-1.judge.json", {"verdict": "pass", "backlog": ["the gate ran serially"]})
-        self.put("daily.jsonl", json.dumps({"date": "x", "cost_usd": 0}) + "\n")
-        # one call's cap (1 usd) alone passes 0.5; only an API-billed run has a daily budget (Decision 6)
-        self.learn(preset="ROUND=1", daily="0.5", ANTHROPIC_API_KEY="sk-ant-test")
-        self.assertEqual(self.read("followups.md"), "- judge-backlog [-] -:0 the gate ran serially\n")
+        self.learn(preset='ROUND=1; MAX_HOURS=4; echo $(( $(date -u +%s) - 5 * 3600 )) > "$RUN/launched"')
         self.assertEqual(self.claude_calls(), [])
         self.assertFalse((self.fake / "codex-calls").exists())
         self.assertFalse((self.run_dir / "learn" / "draft.md").exists())
 
-    def test_a_killed_learn_call_is_charged_its_ceiling(self) -> None:
-        # audit3 C1: the writer's claude exits with no envelope, as a CALL_TIMEOUT_SEC kill leaves it; it may have
-        # spent up to its --max-budget-usd, so the ledger and the daily file book GRADER_BUDGET_USD (1 here).
+    def test_a_cap_reached_during_the_learn_review_stops_the_codex_review(self) -> None:
+        self.put("round-1.judge.json", {"verdict": "pass", "backlog": ["the gate ran serially"]})
+        self.replies({"repo": "distbench", "title": "t", "source_line": "x", "body": "# F00: t\n"}, review())
+        self.learn(preset="ROUND=1; MAX_HOURS=4", FAKE_EXPIRE_AT="2", FAKE_LAUNCHED=str(self.run_dir / "launched"))
+        self.assertEqual(len(self.claude_calls()), 2)
+        self.assertFalse((self.fake / "codex-calls").exists())
+
+    def test_a_cap_reached_during_a_usage_limit_wait_stops_the_learn_retry(self) -> None:
+        # The writer's first reply is a usage limit; the account switch returns at once, but the clock is now past
+        # the cap, so learn makes no second call.
+        self.put("round-1.judge.json", {"verdict": "pass", "backlog": ["the gate ran serially"]})
+        self.replies({"repo": "distbench", "title": "t", "source_line": "x", "body": "# F00: t\n"})
+        self.learn(preset='ROUND=1; MAX_HOURS=4\nlimit_wait() { [ ! -e "$RUN/limited" ] || return 1; : > "$RUN/limited"; '
+                          'echo $(( $(date -u +%s) - 5 * 3600 )) > "$RUN/launched"; }')
+        self.assertEqual(len(self.claude_calls()), 1)
+        self.assertFalse((self.run_dir / "learn" / "draft.md").exists())
+
+    def test_a_killed_learn_call_books_a_no_result_row(self) -> None:
+        # audit3 C1: the writer's claude exits with no envelope, as a CALL_TIMEOUT_SEC kill leaves it; the ledger and
+        # the daily file book a no-result row with no cost, as none was reported.
         self.put("round-1.judge.json", {"verdict": "pass", "backlog": ["x"]})
         (self.bin / "claude").write_text("#!/bin/sh\ncat > /dev/null; exit 137\n")
         self.learn(preset="ROUND=1")
         rows = [json.loads(x) for x in self.read("ledger.jsonl").splitlines()]
-        self.assertEqual([(r["role"], r["cost_usd"], r["subtype"]) for r in rows], [("learn-writer", 1, "no-result")])
-        self.assertEqual([json.loads(x)["cost_usd"] for x in self.read("daily.jsonl").splitlines()], [1])
+        self.assertEqual([(r["role"], r["cost_usd"], r["subtype"]) for r in rows], [("learn-writer", 0, "no-result")])
+        self.assertEqual([json.loads(x)["cost_usd"] for x in self.read("daily.jsonl").splitlines()], [0])
 
-    def test_a_launch_stopped_at_the_daily_cap_leaves_the_draft_to_the_next(self) -> None:
-        # audit3 F3: launch 1 ends at the daily cap, so learn makes no call; launch 2 in the same run directory, with
-        # room in the budget, still drafts the run's one ticket. An API-billed run: only it has a daily budget.
+    def test_a_launch_stopped_at_a_cap_leaves_the_draft_to_the_next(self) -> None:
+        # audit3 F3: launch 1 ends at its MAX_HOURS cap, so learn makes no call; launch 2 in the same run directory,
+        # launched afresh, still drafts the run's one ticket.
         self.put("round-1.judge.json", {"verdict": "pass", "backlog": ["the gate ran serially"]})
-        self.put("daily.jsonl", json.dumps({"date": "x", "cost_usd": 0}) + "\n")
-        self.learn(preset="ROUND=1", daily="0.5", ANTHROPIC_API_KEY="sk-ant-test")
+        self.learn(preset='ROUND=1; MAX_HOURS=4; echo $(( $(date -u +%s) - 5 * 3600 )) > "$RUN/launched"')
         self.assertEqual(self.claude_calls(), [])
         self.replies({"repo": "distbench", "title": "t", "source_line": "x", "body": "# F00: t\n"})
         self.learn(preset="ROUND=1")
@@ -363,6 +386,10 @@ class ReviewTests(unittest.TestCase):
         self.assertNotIn("FINISH", learn.stdout)
         loop = self.bash(body.replace("{}", ""))
         self.assertIn("FINISH stopped-environment", loop.stdout, loop.stderr)
+        # A wait inside the cap: learn sleeps and retries, and the exited run keeps its status.
+        wait = self.bash('limit_switch() { return 1; }; sleep() { :; }; echo pr-opened > "$RUN/status"\n'
+                         'MAX_HOURS=1000 REVIEW_NO_FINISH=1 limit_wait "$RUN/limit.json"; echo "rc=$? status=$(cat "$RUN/status")"')
+        self.assertIn("rc=0 status=pr-opened", wait.stdout, wait.stderr)
 
 
 if __name__ == "__main__":

@@ -1,6 +1,7 @@
 {
   "env": {"BASH_DEFAULT_TIMEOUT_MS": "5400000", "BASH_MAX_TIMEOUT_MS": "5400000", "DISTBENCH_GATE_CLASS": "factory",
-          "GIT_SSH_COMMAND": "false", "GH_CONFIG_DIR": "/nonexistent"},
+          "GIT_SSH_COMMAND": "false", "GH_CONFIG_DIR": "/nonexistent",
+          "LOAM_WORKER_GATE": "supervisor"},
   "permissions": {
     "deny": [
       "Bash(git push *)", "Bash(git -C * push *)",
