@@ -411,8 +411,8 @@ def remove(name: str) -> None:
 def absent(image: str, name: str, path: str) -> None:
     """Exit 1 when the container already has path: docker cp into an existing directory would nest the copy in it."""
     with contextlib.suppress(OSError, subprocess.TimeoutExpired):
-        if subprocess.run(["docker", "cp", f"{name}:{path}", "-"], stdin=subprocess.DEVNULL,
-                          stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=60, check=False).returncode == 0:
+        if subprocess.run(["docker", "cp", f"{name}:{path}", "-"], stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL,
+                          stderr=subprocess.DEVNULL, timeout=60, check=False).returncode == 0:
             raise SystemExit(f"mutation_sweep: the image {image} already has {path}, where the sweep copies the tree")
 
 
