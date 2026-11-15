@@ -11,7 +11,8 @@ tests that run pytest need a docker daemon (`docker info`) and skip without one.
 whose graders pass, so only the sweep can fail a round: survivors reach the next worker round once, a relaunch keeps
 that one block, and a failed helper stops the run; without FACTORY_SWEEP_IMAGE the sweep runs no test and the log and PR
 body say why (#768).
-Every subprocess gets an explicit environment: a scratch HOME and TMPDIR and a git identity.
+Every subprocess gets an explicit environment: a scratch HOME and TMPDIR, a git identity and the probe's docker
+endpoint.
 """
 
 from __future__ import annotations
@@ -96,10 +97,14 @@ SURVIVORS = ["calc.py:3 mutation survived (force-true)", "calc.py:6 mutation sur
 
 
 def scratch_env(top: pathlib.Path) -> dict[str, str]:
+    """A scratch HOME and TMPDIR and a git identity, keeping the docker endpoint the probe above used (its DOCKER_*
+    variables, and the real home's config, which names a context), so a sweep's docker reaches the same daemon."""
     (top / "h").mkdir(exist_ok=True)
+    docker = {k: v for k, v in os.environ.items() if k.startswith("DOCKER_")}
     return {"HOME": str(top / "h"), "TMPDIR": str(top), "PATH": os.environ["PATH"], "LANG": "C.UTF-8",
             "GIT_CONFIG_GLOBAL": "/dev/null", "GIT_CONFIG_NOSYSTEM": "1", "GIT_AUTHOR_NAME": "t",
-            "GIT_AUTHOR_EMAIL": "t@t", "GIT_COMMITTER_NAME": "t", "GIT_COMMITTER_EMAIL": "t@t"}
+            "GIT_AUTHOR_EMAIL": "t@t", "GIT_COMMITTER_NAME": "t", "GIT_COMMITTER_EMAIL": "t@t",
+            "DOCKER_CONFIG": str(pathlib.Path.home() / ".docker"), **docker}
 
 
 def learn_done(top: pathlib.Path) -> None:
@@ -114,6 +119,22 @@ def git(cwd: pathlib.Path, env: dict[str, str], *args: str) -> str:
 
 def records(result: dict) -> list[str]:
     return sorted(f"{m['path']}:{m['line']}:{m['operator']}:{m['result']}" for m in result["mutants"])
+
+
+class ScratchEnvTests(unittest.TestCase):
+    """Every sweep reaches the daemon the probe reached: a host on DOCKER_HOST or a context keeps its endpoint."""
+
+    def test_the_scratch_environment_keeps_the_probes_docker_endpoint(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            top = pathlib.Path(tmp)
+            endpoint = {"DOCKER_HOST": f"unix://{top}/d.sock", "DOCKER_CONTEXT": "c",
+                        "DOCKER_CONFIG": str(top / "cfg"), "DOCKER_TLS_VERIFY": "1",
+                        "DOCKER_CERT_PATH": str(top / "certs")}
+            with mock.patch.dict(os.environ, endpoint):
+                self.assertLessEqual(endpoint.items(), scratch_env(top).items())
+            with mock.patch.dict(os.environ, {"HOME": str(top / "real")}):
+                os.environ.pop("DOCKER_CONFIG", None)
+                self.assertEqual(scratch_env(top)["DOCKER_CONFIG"], str(top / "real/.docker"))
 
 
 class Scratch(unittest.TestCase):
