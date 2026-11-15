@@ -1,0 +1,16 @@
+{
+  "type": "object",
+  "properties": {
+    "drafts": {"type": "array", "items": {"type": "object", "properties": {
+      "quote": {"type": "string"}, "ref": {"type": "string"}, "rule": {"type": "string"},
+      "audience": {"enum": ["worker", "lead", "both"]}, "supersedes": {"type": "string"}, "why_ruling": {"type": "string"}},
+      "required": ["quote", "ref", "rule", "audience", "supersedes", "why_ruling"]}},
+    "repeats": {"type": "array", "items": {"type": "object", "properties": {
+      "ref": {"type": "string"}, "quote": {"type": "string"}, "recorded_in": {"type": "string"}, "rule": {"type": "string"}},
+      "required": ["ref", "quote", "recorded_in", "rule"]}},
+    "set_aside": {"type": "array", "items": {"type": "object", "properties": {
+      "ref": {"type": "string"}, "kind": {"enum": ["quote", "paste", "remark", "question", "recorded", "pending"]}, "why": {"type": "string"}},
+      "required": ["ref", "kind", "why"]}}
+  },
+  "required": ["drafts", "repeats", "set_aside"]
+}
