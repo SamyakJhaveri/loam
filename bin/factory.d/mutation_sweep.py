@@ -444,9 +444,13 @@ def run(image: str, tests: list[str], wt: Path, timeout: float) -> tuple[int | N
     name = "loam-sweep-" + hashlib.sha256(str(root).encode()).hexdigest()[:12]
     common = gitdir = ""
     if (root / ".git").is_file():
-        common, own = git(root, "rev-parse", "--path-format=absolute", "--git-common-dir",
-                          "--absolute-git-dir").splitlines()
-        gitdir = f"/sweep.git/{Path(own).relative_to(common)}"
+        try:
+            common, own = git(root, "rev-parse", "--path-format=absolute", "--git-common-dir",
+                              "--absolute-git-dir").splitlines()
+            gitdir = f"/sweep.git/{Path(own).relative_to(common)}"
+        except (subprocess.CalledProcessError, ValueError) as e:   # a git failure exits 2, as main's does
+            print(f"mutation_sweep: git rev-parse of the worktree's repository failed: {e}", file=sys.stderr)
+            raise SystemExit(2) from None
     start = time.monotonic()
     remove(name)
     try:
