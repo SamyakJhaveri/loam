@@ -67,7 +67,7 @@ def write(p, text):  # by temp file and rename, so a reader never sees half a fi
 
 
 def new_messages(state, host, spec, since):
-    """The host's extracted messages with ts after since, oldest first."""
+    """The host's extracted messages with ts after since, oldest first, one per record (and dialog answer)."""
     if "messages" in spec:
         rows = [m for m in read_jsonl(path(spec["messages"])) if m["ts"] > since]
         return sorted(rows, key=lambda m: (m["ts"], m["id"]))
@@ -79,7 +79,10 @@ def new_messages(state, host, spec, since):
             raise Failed(f"owner_msgs.py failed on {folder}")
         rows += read_jsonl(os.path.join(out, f"{host}-messages.jsonl"))
         shutil.rmtree(out)
-    return sorted(rows, key=lambda m: (m["ts"], m["id"]))
+    once = {}  # a resumed session's copy of a record can sit in another project's folder
+    for m in sorted(rows, key=lambda m: (m["ts"], m["id"])):
+        once.setdefault((m["record"], m["id"].partition("#")[2]), m)
+    return list(once.values())
 
 
 def rules_text(rules):
@@ -156,8 +159,8 @@ def ask(cfg, state, d, role, effort, schema, prompt, keys, add_dirs=()):
 def writer_brief(loam, target):
     """The Writer section of learn.md, filled as learn_brief in bin/factory.d/review.sh fills it."""
     url = subprocess.run(["git", "-C", target, "remote", "get-url", "origin"], capture_output=True, text=True).stdout
-    m = re.search(r"github\.com[:/][^/]+/([^/\s]+?)(?:\.git)?\s*$", url)
-    name = (m.group(1) if m else os.path.basename(target)).lower()
+    name = re.split(r"[/:]", url.strip().rstrip("/"))[-1].removesuffix(".git") or os.path.basename(target)
+    name = name.lower()
     with open(os.path.join(loam, "bin", "factory.d", "learn.md")) as fh:
         section = re.search(r"^## Writer\n(.*?)(?=^## |\Z)", fh.read(), re.S | re.M).group(1)
     return section.replace("<target-name>", name).replace("<target>", target).replace("<root>", loam)
@@ -192,7 +195,8 @@ def rulings(cfg, state):
     loam, rules_repo = path(cfg["loam"]), path(cfg["rules"]["repo"])
     cursor_p, store_p, queue_p = (os.path.join(state, f) for f in ("cursor.json", "rulings.jsonl", "lessons-queue.jsonl"))
     cursor = json.load(open(cursor_p)) if os.path.exists(cursor_p) else {}
-    store, queued = read_jsonl(store_p), {q["key"] for q in read_jsonl(queue_p)}
+    store, queue = read_jsonl(store_p), read_jsonl(queue_p)
+    queued = {q["key"] for q in queue}
     rules = rules_text(cfg["rules"])
     batch, last = [], {}
     for host, spec in cfg["hosts"].items():
@@ -264,8 +268,7 @@ def rulings(cfg, state):
 
     # Every call has answered: write the outputs, then the cursor. The queue goes before the store: a lesson whose
     # ruling this run also marks recorded could not be derived again from the saved store.
-    with open(queue_p, "a") as fh:
-        fh.write(jsonl(lessons))
+    write(queue_p, jsonl(queue + lessons))
     write(store_p, jsonl(store))
     for rid, x in learned.items():
         d = os.path.join(state, "drafts", rid, "learn")

@@ -10,7 +10,8 @@ Writes <out-dir>/<host>-messages.jsonl (one JSON object per message, oldest firs
 Fields: id (<host>:<session uuid>:<record uuid>, plus #<n> for the n-th answer of one dialog), host, session, record,
 parent (the record it replies to; two typed records with one parent are an edit and its original), file, line (1-based
 line of the record in the .jsonl), ts, kind, text (never cut), before (the assistant's last text before it, never cut),
-question (dialog only). A record seen in two files (a resumed session copies its history) is written once.
+question (dialog only). A record seen in two files (a resumed session copies its history, with sessionId rewritten)
+is written once, from the first file in name order.
 --since keeps only messages with a timestamp after ISO-TIME.
 """
 import glob
@@ -64,9 +65,9 @@ for f in sorted(glob.glob(os.path.join(src, "*.jsonl"))):
             if t != "user" or r.get("isMeta") or r.get("isCompactSummary") or r.get("isSidechain"):
                 continue
             sid, uid, ts = r.get("sessionId") or os.path.basename(f)[:-6], r.get("uuid", ""), r.get("timestamp", "")
-            if (sid, uid) in seen or (since and ts <= since):
+            if (uid or (f, n)) in seen or (since and ts <= since):
                 continue
-            seen.add((sid, uid))
+            seen.add(uid or (f, n))
             base = {"host": host, "session": sid, "record": uid, "parent": r.get("parentUuid"), "file": f,
                     "line": n, "ts": ts, "before": last_asst}
             tur = r.get("toolUseResult")

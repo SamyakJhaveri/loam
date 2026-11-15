@@ -9,6 +9,9 @@ import fcntl
 import json
 import os
 import subprocess
+import sys
+import importlib.util
+from importlib.machinery import SourceFileLoader
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
@@ -159,3 +162,55 @@ def test_yes_accepts_a_draft_without_a_model_call_and_tick_runs_only_when_due_an
     assert queue == [{"key": rec["id"], "provenance": "ruling, mac s1 line 2", "text": f"rule for {GPU}"}]
     listing = (tmp_path / "st" / "rulings-pending.md").read_text()
     assert "## Accepted: record in APPROVALS" in listing and f"Reply: yes {rec['id']}" not in listing
+
+
+def test_a_record_copied_into_a_resumed_session_is_read_once(tmp_path):
+    # A resumed session copies earlier records with sessionId rewritten, in its own folder or another project's.
+    cfg = fixture(tmp_path)
+    [_, his, _] = [json.loads(line) for line in (tmp_path / "p" / "proj" / "s1.jsonl").read_text().splitlines()]
+    (tmp_path / "p" / "proj2").mkdir()
+    for f, sid in ((tmp_path / "p" / "proj" / "s9.jsonl", "s9"), (tmp_path / "p" / "proj2" / "s8.jsonl", "s8")):
+        f.write_text(json.dumps({**his, "sessionId": sid}) + "\n")
+    reply(tmp_path, json.dumps({"drafts": [], "repeats": []}))
+    assert run(tmp_path, cfg).returncode == 0
+    [sent] = (tmp_path / "st" / "calls").glob("*-rulings/messages.jsonl")
+    assert [json.loads(line)["record"] for line in sent.read_text().splitlines()] == ["u1"]
+
+
+def test_a_queue_write_cut_short_is_retried_on_the_next_run(tmp_path):
+    cfg = fixture(tmp_path)
+    reply(tmp_path, json.dumps({"drafts": [draft(GPU)], "repeats": []}))
+    assert run(tmp_path, cfg).returncode == 0
+    [rec] = store(tmp_path)
+    yes = {"id": "pc:s2:u2", "host": "pc", "session": "s2", "record": "u2", "parent": None, "file": "/pc/s2.jsonl",
+           "line": 4, "ts": "2026-11-14T02:00:00.000Z", "kind": "typed", "text": f"yes {rec['id']}", "before": ""}
+    (tmp_path / "pc.jsonl").write_text(json.dumps(yes) + "\n")
+    earlier = [{"key": f"R0101-{n}", "provenance": "p", "text": "t" * 80} for n in range(40)]
+    queue_p = tmp_path / "st" / "lessons-queue.jsonl"
+    queue_p.write_text("".join(json.dumps(q) + "\n" for q in earlier))
+    # A file-size limit just past the queue cuts its write short, as a full disk would.
+    limit = queue_p.stat().st_size + 20
+    cut = subprocess.run([sys.executable, "-c", "import os, resource, sys; resource.setrlimit(resource.RLIMIT_FSIZE, "
+                          f"({limit}, {limit})); os.execv(sys.argv[1], sys.argv[1:])", str(ROOT / "bin" / "health-check"),
+                          "--config", str(cfg), "rulings"],
+                         env={**os.environ, "T": str(tmp_path), "HEALTH_CLAUDE": str(tmp_path / "stub")},
+                         capture_output=True, text=True)
+    assert cut.returncode != 0
+    assert run(tmp_path, cfg).returncode == 0
+    queue = [json.loads(line) for line in queue_p.read_text().splitlines()]
+    assert queue == earlier + [{"key": rec["id"], "provenance": "ruling, mac s1 line 2", "text": f"rule for {GPU}"}]
+
+
+def test_the_ticket_writer_is_told_the_origin_repository_name(tmp_path):
+    loader = SourceFileLoader("health_check", str(ROOT / "bin" / "health-check"))
+    hc = importlib.util.module_from_spec(importlib.util.spec_from_loader("health_check", loader))
+    loader.exec_module(hc)
+    target = tmp_path / "current"
+    subprocess.run(["git", "init", "-q", str(target)], check=True)
+    for url in ("/srv/git/distbench.git", "file:///srv/distbench.git", "git@gitlab.example:team/distbench.git",
+                "https://github.com/SamyakJhaveri/Distbench.git", "ssh://git@host/team/distbench/"):
+        subprocess.run(["git", "-C", str(target), "remote", "remove", "origin"], capture_output=True)
+        subprocess.run(["git", "-C", str(target), "remote", "add", "origin", url], check=True)
+        assert "`distbench` when the code" in hc.writer_brief(str(ROOT), str(target)), url
+    subprocess.run(["git", "-C", str(target), "remote", "remove", "origin"], check=True)
+    assert "`current` when the code" in hc.writer_brief(str(ROOT), str(target))
