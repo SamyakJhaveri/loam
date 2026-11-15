@@ -3,11 +3,12 @@
 SweepTests drives bin/factory.d/mutation_sweep.py on scratch repositories whose one commit after an empty base adds the
 files under test: each operator in both languages, the lines that give no edit (comments, strings, here-documents, test
 files, tests and fixtures directories), an edit that does not parse, an edit that never ends, a same-size edit, a red
-unedited run, the order, a worktree checkout whose test runs git, and a bad base. ContainmentTests plants a host process
-and a host file that a mutant targets: in the container neither is reached, and a docker that fails at create, at the
-tree's copy, at the start of the baseline's or a mutant's container, at the /sweep probe or at removal, an image that
-already has /sweep, or steps that outlast the run's timeout exit non-zero with no result and the tree as committed
-(#768). The tests that run pytest need a docker daemon (`docker info`) and skip without one, and run in loam-sweep.
+unedited run, the order, a worktree checkout whose test runs git, a test that looks up its own user and group, and a bad
+base. ContainmentTests plants a host process and a host file that a mutant targets: in the container neither is reached,
+and a docker that fails at create, at the tree's copy, at the start of the baseline's or a mutant's container, at the
+/sweep probe or at removal, an image that already has /sweep, or steps that outlast the run's timeout exit non-zero with
+no result and the tree as committed (#768). The tests that run pytest need a docker daemon (`docker info`) and skip
+without one, and run in loam-sweep.
 FactoryRunTests runs `bin/factory -C <target> run` on a file ticket with a scripted `claude` whose worker copies the
 files of its round into the worktree and whose graders pass, so only the sweep can fail a round: survivors reach the
 next worker round once, a relaunch keeps that one block, and a failed helper stops the run; without FACTORY_SWEEP_IMAGE
@@ -18,11 +19,13 @@ endpoint.
 
 from __future__ import annotations
 
+import grp
 import hashlib
 import importlib.util
 import json
 import os
 import pathlib
+import pwd
 import shutil
 import subprocess
 import sys
@@ -425,6 +428,16 @@ class SweepTests(Scratch):
         self.assertIsNone(result["reason"])
         self.assertEqual(records(result), ["a.py:1:flip:survived"])
 
+    def test_a_test_looks_up_its_own_user_and_group(self) -> None:
+        # The container runs as the helper's uid and gid, which the image's /etc/passwd and /etc/group need not name.
+        me, group = pwd.getpwuid(os.getuid()).pw_name, grp.getgrgid(os.getgid()).gr_name
+        result = self.sweep({"a.py": "x = 1 == 2\n", "test_me.py": "import grp, os, pwd\n\n\ndef test_me():\n"
+                             f"    assert pwd.getpwuid(os.getuid()).pw_name == {me!r}\n"
+                             f"    assert grp.getgrgid(os.getgid()).gr_name == {group!r}\n"
+                             "    assert pwd.getpwnam('root').pw_uid == 0\n"})
+        self.assertIsNone(result["reason"])
+        self.assertEqual(records(result), ["a.py:1:flip:survived"])
+
     def test_a_bad_base_exits_non_zero_and_writes_nothing(self) -> None:
         self.commit({"a.py": "x = 1\n"})
         out = self.top / "out.json"
@@ -435,7 +448,8 @@ class SweepTests(Scratch):
 
 
 # A docker that answers as a working daemon, after the shell lines that replace FIRST: a container exists from create to
-# rm, docker cp of a container path to - finds no such path, and inspect shows a started container that exited 0.
+# rm, docker cp of a container path to - finds no such path, of /etc/<file> to a host directory writes it empty there,
+# and inspect shows a started container that exited 0.
 DOCKER_STUB = """#!/bin/sh
 d=$(dirname "$0")
 FIRST
@@ -446,7 +460,8 @@ fi
 case $1 in
   create) : > "$d/present" ;;
   rm) rm -f "$d/present" ;;
-  cp) [ "$3" = - ] && { echo "Error response from daemon: Could not find the file ${2#*:} in container" >&2; exit 1; } ;;
+  cp) [ "$3" = - ] && { echo "Error response from daemon: Could not find the file ${2#*:} in container" >&2; exit 1; }
+      case $2 in *:/etc/*) : > "$3/${2##*/}" ;; esac ;;
   inspect) echo '2026-11-13T00:00:00Z|0|' ;;
 esac
 exit 0

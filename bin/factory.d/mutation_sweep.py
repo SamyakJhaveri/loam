@@ -27,10 +27,12 @@ from __future__ import annotations
 
 import ast
 import contextlib
+import grp
 import hashlib
 import io
 import json
 import os
+import pwd
 import re
 import signal
 import subprocess
@@ -440,13 +442,15 @@ def run(image: str, tests: list[str], wt: Path, timeout: float) -> tuple[int | N
     runs as and a test can write them; as each run starts from a fresh copy, no edit can import bytecode an earlier run
     cached, even an edit of the same size written in the same second as its source. A worktree's .git is a file naming a
     host gitdir: its repository is copied to /sweep.git and the copy's .git names its gitdir there, so a test that runs
-    git on its own repository works with no host path mounted. --init reaps the orphans a test leaves, as init does on
-    the host. A container that never started, that docker reports an error for, or whose exit is not docker start's,
-    exits non-zero as a failed create or cp does, so a docker failure is never read as a test result. The removal
-    before, create, the /sweep probes, the copies and the run share the one timeout; the inspect after it and each
-    docker call of a removal get 60 s beyond it, so a run takes at most its timeout plus 5 minutes. The name is fixed
-    per worktree, so a sweep killed mid-run leaves a container the next one removes, and only by that name, never by a
-    filter an edit of this file could widen.
+    git on its own repository works with no host path mounted. The image's own /etc/passwd and /etc/group are copied
+    back into the container with the helper's user and group added (home /tmp, as HOME), so a test that looks up the uid
+    it runs as, such as pwd.getpwuid(os.getuid()), finds it whatever users the image has. --init reaps the orphans a
+    test leaves, as init does on the host. A container that never started, that docker reports an error for, or whose
+    exit is not docker start's, exits non-zero as a failed create or cp does, so a docker failure is never read as a
+    test result. The removal before, create, the /sweep probes, the copies and the run share the one timeout; the
+    inspect after it and each docker call of a removal get 60 s beyond it, so a run takes at most its timeout plus 5
+    minutes. The name is fixed per worktree, so a sweep killed mid-run leaves a container the next one removes, and only
+    by that name, never by a filter an edit of this file could widen.
     """
     root = wt.resolve()
     name = "loam-sweep-" + hashlib.sha256(str(root).encode()).hexdigest()[:12]
@@ -474,6 +478,14 @@ def run(image: str, tests: list[str], wt: Path, timeout: float) -> tuple[int | N
         for path in ("/sweep", "/sweep.git") if gitdir else ("/sweep",):   # docker cp would nest the copy in either
             if found(["cp", f"{name}:{path}", "-"], "Could not find the file", left()):
                 raise SystemExit(f"mutation_sweep: the image {image} already has {path}, where the tree goes")
+        uid, gid = os.getuid(), os.getgid()
+        with tempfile.TemporaryDirectory() as etc:
+            for file, line in (("passwd", f"{pwd.getpwuid(uid).pw_name}:x:{uid}:{gid}::/tmp:/bin/sh\n"),
+                               ("group", f"{grp.getgrgid(gid).gr_name}:x:{gid}:\n")):
+                docker("cp", f"{name}:/etc/{file}", etc, timeout=left())
+                copy = Path(etc, file)
+                copy.write_text(copy.read_text().rstrip("\n") + "\n" + line)
+                docker("cp", str(copy), f"{name}:/etc/{file}", timeout=left())
         docker("cp", "-a", str(root), f"{name}:/sweep", timeout=left())
         if gitdir:
             docker("cp", "-a", common, f"{name}:/sweep.git", timeout=left())
