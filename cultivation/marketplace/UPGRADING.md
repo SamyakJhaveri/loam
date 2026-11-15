@@ -3,6 +3,30 @@
 This file records why a promoted plugin change traveled. It is also the upgrade
 entry point for projects that consume the Loam marketplace.
 
+## sam-cc-setup v0.9.35 pstack router and lean-critic lose words that misled
+
+The router's description said "before a non-trivial task", and models cited that word as their reason to skip the router on small fixes; it now says "before a task", as do the factory worker prompt (`bin/factory.d/_common.md`), the Workflow builders' prompt (`bin/factory.d/factory-round.js`) and the seed rule line.
+The seed rule line also drops its "Never call the Skill tool on a `pstack:` skill" sentence: pstack skills already refuse the Skill tool, and the router itself keeps the rule.
+The router's decision-log line drops its sha256 field, which nothing read (`bin/factory-parity` matches only the skill and the path).
+lean-critic's description drops "Run it after every unattended loop or Opus session lands work, before merging.", a standing order to spawn it that conflicts with each project's own review rules.
+No grader prompt changed, so no grader replay is owed.
+Upgrade step: `claude plugin update sam-cc-setup@seed-skills`.
+
+## sam-cc-setup v0.9.34 research-gap's brief template names Fable 5.2
+
+The brief template's model example still said "Fable 5.1 at high", the retired model, so a brief copied from it asked for a model the owner no longer uses.
+It now says Fable 5.2; the same change fixes the 5.1 names in the factory docs and the overnight protocol outside the plugin.
+No grader prompt changed, so no grader replay is owed.
+Upgrade step: `claude plugin update sam-cc-setup@seed-skills`.
+
+## sam-cc-setup v0.9.33 pstack router sends ticket-shaped build work to the factory lane
+
+The router told a lead to hand spawning work to "one `worker`" and had no factory line, so a lead that obeyed it was pointed away from the factory the owner made the default builder (DistBench audit, 13 Nov 2026: 9 of 83 landed branches came from the factory).
+A new line sends build work that fits a ticket to the project's factory lane when it has one, attended only for what the lane cannot run, with the reason in the brief; the spawning-skill line names the lane first.
+It is a line, not a table row, because the table's second column names only pstack or owner skills (`bin/tests/test_pstack_router.py`).
+No grader prompt changed, so no grader replay is owed.
+Upgrade step: `claude plugin update sam-cc-setup@seed-skills`.
+
 ## sam-cc-setup v0.9.32 the reviewer checks the owner's eight principles
 
 The owner asked on 13 Nov 2026 that every worker follow eight pstack principles and that reviewers check the work against them. `reviewer.md` gains a sixth item: a change that breaks one of the eight is a finding, rated by its impact. The factory worker prompt (`bin/factory.d/_common.md`) names the eight in its one principle list, and the Codex review prompt asks the same of Codex.
@@ -34,7 +58,7 @@ Then check that Codex loads them: `codex debug prompt-input "hi"` lists `audit` 
 
 ## sam-cc-setup v0.9.29 pstack log line, Fable 5.2
 
-The `pstack` router asks for one decision-log line per method followed (decisions.md in a factory run): `pstack: <skill> | <SKILL.md path read> | <sha256 of that file> | <one line quoted from it> | <the decision it changed>`, the line `bin/factory-parity` reads.
+The `pstack` router asks for one decision-log line per method followed (decisions.md in a factory run): `pstack: <skill> | <SKILL.md path read> | <one line quoted from it> | <the decision it changed>`, the line `bin/factory-parity` reads.
 `plan-reviewer` and the `research-gap` Fable seat move from `claude-fable-5-1` to `claude-fable-5-2`, the owner's Fable 5.2 ruling.
 No grader prompt changed, so no grader replay is owed.
 Upgrade step: `claude plugin update sam-cc-setup@seed-skills`.
@@ -49,7 +73,7 @@ Upgrade step: `claude plugin update sam-cc-setup@seed-skills`; the global CLAUDE
 
 ## sam-cc-setup v0.9.27 pstack router
 
-New skill `pstack`, the plugin's first model-invocable one (owner rulings of 10 and 11 Nov 2026): before a non-trivial task the main session or a `worker` calls `sam-cc-setup:pstack`, which resolves the pstack folder and picks a method from a broad-to-narrow table and the list of all principle cards; the agent then reads that pstack `SKILL.md` by path.
+New skill `pstack`, the plugin's first model-invocable one (owner rulings of 10 and 11 Nov 2026): before a task the main session or a `worker` calls `sam-cc-setup:pstack`, which resolves the pstack folder and picks a method from a broad-to-narrow table and the list of all principle cards; the agent then reads that pstack `SKILL.md` by path.
 Only `setup-pstack` stays manual; `poteto-mode` keeps its standing limit (a contested design, concurrency or a cross-cutting change), and an agent stops before any push or PR a playbook asks for.
 Its listing line raises the sam-cc-setup listing weight from 365 to 431 tokens (`bin/check`, skill-listing step).
 The factory puts the router's path, from the seed-skills `installLocation` in `~/.claude/plugins/known_marketplaces.json`, into the worker prompt (`bin/factory.d/_common.md`) and every fan-out builder prompt; `bin/factory status` prints FAIL when the file is missing.

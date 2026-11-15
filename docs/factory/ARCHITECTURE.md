@@ -36,7 +36,7 @@ flowchart LR
 
 | Stage | Input | Actor, model, effort | Samyak does | Output | Gate to next |
 |---|---|---|---|---|---|
-| 0 Brief | raw request | Fable 5.1 high, interactive, `/brief` (F5) | corrects the echoed brief, accepts | Track A: nothing. Track B: one ticket. Track C: a design issue whose top section is the brief | A exits; B to stage 2; C to stage 1 |
+| 0 Brief | raw request | Fable 5.2 high, interactive, `/brief` (F5) | corrects the echoed brief, accepts | Track A: nothing. Track B: one ticket. Track C: a design issue whose top section is the brief | A exits; B to stage 2; C to stage 1 |
 | 1 Design (Track C) | design issue | when the brief is `Mode: figure-out`, `surprise-me` in panel mode and a research pass against primary sources first; then Fable plan mode with Opus Explore subagents; `/plan-review` blind on Fable, whose elegance gate writes two competing designs before a verdict; the design session writes ADRs for the decisions Samyak makes; lean-critic on the design issue | reacts to the options, answers the design session's questions, approves | design issue body (brief, destination, deliverables, constraints, proof, no implementation detail), ADRs in `docs/adr/` | review verdict recorded, ADRs committed |
 | 2 Tickets | design issue, or the one Track B ticket | Fable breaks the design into tickets and publishes them (`CONTRACT.md`, Publishing a breakdown); issue bodies use the ticket contract; `bin/factory lint` (F2); `plan-reviewer` by hand and lean-critic once over the breakdown | approves the breakdown | GitHub issues, native blocking edges, label `ready-for-agent` | lint exit 0, `plan-reviewer` pass |
 | 3 Loop | one ticket | `bin/factory run <issue>` on the runner (F1): round 0, then worker rounds on `claude-opus-5-5` at the ticket's effort (default high) or `codex exec` | nothing; may run `bin/factory stop`, or edit the issue body and relaunch | branch, commits, a run directory | checks exit 0, clean tree, do-not-touch clean |
@@ -83,7 +83,7 @@ A path off a ticket's explicit `Edit:` line fails the round before grading (`FAI
 - The plan-reviewer is Fable 5.2 at high, by hand outside the loop (F0 sets its frontmatter).
 - The loop worker, with Explore subagents on the same model, runs at the effort its ticket sets: high by default, xhigh when the ticket needs deeper reasoning (Samyak 2026-09-24); a `size: large` ticket's builders and integrator run at xhigh (`factory-round.js`). Replaced claude-opus-4-8[1m] on 2026-09-22.
 - The loop worker carries an advisor (`--advisor claude-opus-5-5`, F11 2026-09-10): the worker decides when to consult it; `FACTORY_WORKER_ADVISOR=` (explicit empty) turns it off; each worker ledger line records `advisor_calls` and `advisor_usd` (from the session transcript: a token-weighted estimate while the advisor shares the worker's model, null when the transcript is missing). Kept while the ledger shows lower usd per ticket or fewer and less severe grader findings.
-- Brief and design sessions are Fable 5.1 at high, interactive.
+- Brief and design sessions are Fable 5.2 at high, interactive.
 - Never Sonnet or Haiku; any flag that defaults to Haiku is overridden or unused; every `Agent` call names its model.
 - The one named exception: Codex may be the worker (`worker: codex`) or an added reviewer (`codex-review: yes`); the judge and reviewer always run.
 

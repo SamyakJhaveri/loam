@@ -104,7 +104,7 @@ ${goal}
 Your task:
 ${JSON.stringify(task, null, 2)}
 
-${router ? `Before a non-trivial task, read the pstack router at ${router} and follow the method it picks; the rules in this prompt win over it.\n\n` : ''}${skills.length ? skills.join('\n') + '\n\n' : ''}Do:
+${router ? `Before a task, read the pstack router at ${router} and follow the method it picks; the rules in this prompt win over it.\n\n` : ''}${skills.length ? skills.join('\n') + '\n\n' : ''}Do:
 1. Implement the objective by editing only files matching your owned globs: ${(task.owns || []).join(', ')}.
 2. From the worktree root, source ${run}/frozen/lib.sh, then run your check line: ${task.check}
 3. Write your artifact to ${task.artifact}: what you changed, the files you touched, the exact output your check line printed, and one line per reversible decision you made, with its reason.
