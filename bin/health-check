@@ -159,7 +159,8 @@ def ask(cfg, state, d, role, effort, schema, prompt, keys, add_dirs=()):
 def writer_brief(loam, target):
     """The Writer section of learn.md, filled as learn_brief in bin/factory.d/review.sh fills it."""
     url = subprocess.run(["git", "-C", target, "remote", "get-url", "origin"], capture_output=True, text=True).stdout
-    name = re.split(r"[/:]", url.strip().rstrip("/"))[-1].removesuffix(".git") or os.path.basename(target)
+    url = re.sub(r"/\.git$", "", url.strip().rstrip("/"))  # an origin can name a working repository's .git folder
+    name = re.split(r"[/:]", url)[-1].removesuffix(".git") or os.path.basename(target)
     name = name.lower()
     with open(os.path.join(loam, "bin", "factory.d", "learn.md")) as fh:
         section = re.search(r"^## Writer\n(.*?)(?=^## |\Z)", fh.read(), re.S | re.M).group(1)

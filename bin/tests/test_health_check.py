@@ -208,7 +208,9 @@ def test_the_ticket_writer_is_told_the_origin_repository_name(tmp_path):
     target = tmp_path / "current"
     subprocess.run(["git", "init", "-q", str(target)], check=True)
     for url in ("/srv/git/distbench.git", "file:///srv/distbench.git", "git@gitlab.example:team/distbench.git",
-                "https://github.com/SamyakJhaveri/Distbench.git", "ssh://git@host/team/distbench/"):
+                "https://github.com/SamyakJhaveri/Distbench.git", "ssh://git@host/team/distbench/",
+                "/srv/distbench/.git", "file:///srv/distbench/.git", "git@host:/srv/distbench/.git",
+                "ssh://git@host/srv/distbench/.git/"):
         subprocess.run(["git", "-C", str(target), "remote", "remove", "origin"], capture_output=True)
         subprocess.run(["git", "-C", str(target), "remote", "add", "origin", url], check=True)
         assert "`distbench` when the code" in hc.writer_brief(str(ROOT), str(target)), url
