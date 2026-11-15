@@ -4041,7 +4041,9 @@ next_tick() { # [--dry-run|--install|--frontier]
     line=$(grep -v '^#' "$tmpl" | grep -m1 . | sed -e "s|cd ~/loam |cd $ROOT |" -e "s|~/|$HOME/|g" -e "s|bin/factory next|$cmd|")
     if ! target_is_loam; then
       slug=$(target_slug)
-      line=$(printf '%s\n' "$line" | sed -e "s|/next\.lock |/next-$slug.lock |" -e "s|/next\.log |/next-$slug.log |")
+      # Loam's sweep image holds Loam's test tools, not this target's: its line sweeps no test until it sets its own.
+      line=$(printf '%s\n' "$line" | sed -e "s|/next\.lock |/next-$slug.lock |" -e "s|/next\.log |/next-$slug.log |" \
+        -e 's|FACTORY_SWEEP_IMAGE=$(bin/factory.d/sweep-image) ||')
     fi
     ( crontab -l 2> /dev/null | CMD="$cmd" awk 'index($0, ENVIRON["CMD"]) && $0 !~ /^[ \t]*#/ { next } { print }'
       printf '%s\n' "$line" ) | crontab - \
