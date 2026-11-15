@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+# sweep-image: build Loam's mutation-sweep image, loam-sweep, from sweep.Dockerfile beside this script, and print its
+# name for FACTORY_SWEEP_IMAGE (next.crontab and bin/overnight/driver.sh); after the first build it is a cache hit.
+# A failed build prints nothing (docker's error goes to stderr) and exits non-zero, so the launch it feeds sweeps no test.
+set -euo pipefail
+docker build -q -t loam-sweep - < "$(dirname "$0")/sweep.Dockerfile" > /dev/null
+echo loam-sweep

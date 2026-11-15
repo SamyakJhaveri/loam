@@ -115,7 +115,7 @@ pending() { local list n
 # The cron line's command; flock -n skips when cron's next holds the lock, -o keeps the launched run from holding it.
 launch_next() {
   echo "$(stamp) slot freed: next" >> "$O/driver.log"
-  FACTORY_MAX_PARALLEL=2 flock -n -o "$LOCK" bin/factory next \
+  FACTORY_SWEEP_IMAGE=$(bin/factory.d/sweep-image) FACTORY_MAX_PARALLEL=2 flock -n -o "$LOCK" bin/factory next \
     >> ~/.local/state/loam-factory/next.log 2>&1
 }
 # JSON output (31 Oct): the call's reply text still goes to driver.log, its cost to costs.tsv; a call ended after

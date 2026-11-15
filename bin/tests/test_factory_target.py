@@ -284,7 +284,8 @@ class TargetTests(unittest.TestCase):
         """The live line's shape (jhaveris's), for the scratch HOME `install` runs with."""
         state = f"{self.runs.parent}/home/.local/state/loam-factory"
         tag = f"-{slug}" if slug else ""
-        return (f"*/10 * * * * bash -lc 'cd {ROOT} && "
+        image = "" if slug else "FACTORY_SWEEP_IMAGE=$(bin/factory.d/sweep-image) "   # Loam's image, Loam's line only
+        return (f"*/10 * * * * bash -lc 'cd {ROOT} && {image}"
                 f"FACTORY_MAX_PARALLEL=2 flock -n -o {state}/next{tag}.lock {cmd}' >> {state}/next{tag}.log 2>&1")
 
     def test_next_install_keeps_one_cron_line_per_target(self) -> None:
@@ -342,7 +343,7 @@ class TargetTests(unittest.TestCase):
 
     def test_next_crontab_caps_and_lock_match_the_driver(self) -> None:
         driver = (ROOT / "bin/overnight/driver.sh").read_text()
-        caps = re.search(r"(FACTORY_MAX_PARALLEL=\S+) flock -n -o ", driver)
+        caps = re.search(r"(FACTORY_SWEEP_IMAGE=\S+ FACTORY_MAX_PARALLEL=\S+) flock -n -o ", driver)
         lock = re.search(r"^LOCK=(\S+)$", driver, re.M)
         self.assertTrue(caps and lock)
         tmpl = (ROOT / "bin/factory.d/next.crontab").read_text()
