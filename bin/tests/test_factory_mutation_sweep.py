@@ -3,8 +3,9 @@
 SweepTests drives bin/factory.d/mutation_sweep.py on scratch repositories whose one commit after an empty base adds the
 files under test: each operator in both languages, the lines that give no edit (comments, strings, here-documents, test
 files, tests and fixtures directories), an edit that does not parse, an edit that never ends, a same-size edit, a red
-unedited run, the order, a worktree checkout whose test runs git, a test that looks up its own user and group, and a bad
-base. ContainmentTests plants a host process and a host file that a mutant targets: in the container neither is reached,
+unedited run, the order, a worktree checkout whose test runs git, a test that looks up its own user and group (also in
+an image whose account files link to a host path, which stays unchanged, in an image that names that uid otherwise, and
+for a uid the host has no name for), and a bad base. ContainmentTests plants a host process and a host file that a mutant targets: in the container neither is reached,
 and a docker that fails at create, at the tree's copy, at the start of the baseline's or a mutant's container, at the
 /sweep probe or at removal, an image that already has /sweep, or steps that outlast the run's timeout exit non-zero with
 no result and the tree as committed (#768). The tests that run pytest need a docker daemon (`docker info`) and skip
@@ -39,6 +40,9 @@ from unittest import mock
 ROOT = pathlib.Path(__file__).resolve().parents[2]
 HELPER = ROOT / "bin/factory.d/mutation_sweep.py"
 PASSING = "def test_nothing():\n    pass\n"
+# A test that looks up the user and group it runs as.
+LOOKS_UP = {"a.py": "x = 1 == 2\n", "test_me.py": "import grp, os, pwd\n\n\ndef test_me():\n"
+            "    pwd.getpwuid(os.getuid())\n    grp.getgrgid(os.getgid())\n"}
 # The image every sweep in this file runs its tests in: Loam's own, which setUpModule builds as the launch lines do.
 SWEEP_IMAGE = "loam-sweep"
 DOCKER = shutil.which("docker") is not None and subprocess.run(
@@ -438,6 +442,50 @@ class SweepTests(Scratch):
         self.assertIsNone(result["reason"])
         self.assertEqual(records(result), ["a.py:1:flip:survived"])
 
+    def image(self, run: str) -> str:
+        """A scratch image: SWEEP_IMAGE with one RUN line, removed after the test."""
+        tag = f"loam-sweep-test-{uuid.uuid4().hex[:12]}"
+        subprocess.run(["docker", "build", "-q", "-t", tag, "-"], input=f"FROM {SWEEP_IMAGE}\nRUN {run}\n", text=True,
+                       capture_output=True, check=True)
+        self.addCleanup(subprocess.run, ["docker", "rmi", "-f", tag], capture_output=True, check=False)
+        self.env["FACTORY_SWEEP_IMAGE"] = tag
+        return tag
+
+    def test_an_image_whose_account_files_are_links_to_a_host_path_leaves_that_host_file_alone(self) -> None:
+        # The image's /etc/passwd and /etc/group are links to a path that, on the host, is a file of this test's.
+        for f in ("passwd", "group"):
+            (self.top / f"victim-{f}").write_text("host\n")
+        self.image(f"mkdir -p {self.top} && for f in passwd group; do cp /etc/$f {self.top}/victim-$f"
+                   f" && ln -sf {self.top}/victim-$f /etc/$f; done")
+        base = self.commit(LOOKS_UP)
+        out = self.top / "out.json"
+        r = subprocess.run(["python3", "-I", str(HELPER), str(self.wt), base, str(out), "600"], env=self.env,
+                           capture_output=True, text=True, timeout=300, check=False)
+        self.assertEqual([(self.top / f"victim-{f}").read_text() for f in ("passwd", "group")], ["host\n"] * 2)
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertEqual(records(json.loads(out.read_text())), ["a.py:1:flip:survived"])
+
+    def test_an_image_that_names_the_uid_and_gid_otherwise_still_looks_them_up(self) -> None:
+        self.image(f"echo 'other:x:{os.getuid()}:{os.getgid()}::/home/other:/bin/sh' >> /etc/passwd"
+                   f" && echo 'others:x:{os.getgid()}:' >> /etc/group")
+        result = self.sweep(LOOKS_UP)
+        self.assertIsNone(result["reason"])
+        self.assertEqual(records(result), ["a.py:1:flip:survived"])
+
+    def test_a_uid_and_gid_the_host_has_no_name_for_still_sweep(self) -> None:
+        base = self.commit(LOOKS_UP)
+        spec = importlib.util.spec_from_file_location("mutation_sweep", HELPER)
+        sweep = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(sweep)
+        out = self.top / "out.json"
+        unnamed = mock.Mock(side_effect=KeyError("not found"))
+        with mock.patch.object(pwd, "getpwuid", unnamed), mock.patch.object(grp, "getgrgid", unnamed), \
+                mock.patch.dict(os.environ, self.env, clear=True):
+            self.assertEqual(sweep.main([str(self.wt), base, str(out), "600"]), 0)
+        result = json.loads(out.read_text())
+        self.assertIsNone(result["reason"])
+        self.assertEqual(records(result), ["a.py:1:flip:survived"])
+
     def test_a_bad_base_exits_non_zero_and_writes_nothing(self) -> None:
         self.commit({"a.py": "x = 1\n"})
         out = self.top / "out.json"
@@ -448,8 +496,7 @@ class SweepTests(Scratch):
 
 
 # A docker that answers as a working daemon, after the shell lines that replace FIRST: a container exists from create to
-# rm, docker cp of a container path to - finds no such path, of /etc/<file> to a host directory writes it empty there,
-# and inspect shows a started container that exited 0.
+# rm, docker cp of a container path to - finds no such path, and inspect shows a started container that exited 0.
 DOCKER_STUB = """#!/bin/sh
 d=$(dirname "$0")
 FIRST
@@ -460,8 +507,7 @@ fi
 case $1 in
   create) : > "$d/present" ;;
   rm) rm -f "$d/present" ;;
-  cp) [ "$3" = - ] && { echo "Error response from daemon: Could not find the file ${2#*:} in container" >&2; exit 1; }
-      case $2 in *:/etc/*) : > "$3/${2##*/}" ;; esac ;;
+  cp) [ "$3" = - ] && { echo "Error response from daemon: Could not find the file ${2#*:} in container" >&2; exit 1; } ;;
   inspect) echo '2026-11-13T00:00:00Z|0|' ;;
 esac
 exit 0
@@ -527,7 +573,7 @@ class ContainmentTests(Scratch):
         self.assertIn("docker create exited 125", err)
 
     def test_a_failed_copy_of_the_tree_stops_the_sweep(self) -> None:
-        self.assertIn("docker cp exited 1", self.stubbed('[ "$1" = cp ] && [ "$2" = -a ] && exit 1\n'))
+        self.assertIn("docker cp exited 1", self.stubbed('[ "$1" = cp ] && [ "${3#*:}" = /sweep ] && exit 1\n'))
 
     def start_fails(self, n: int) -> None:
         """A docker whose create and cp succeed and whose n-th start fails in the runtime, as docker reports it: start

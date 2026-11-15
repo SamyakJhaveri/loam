@@ -435,17 +435,52 @@ def docker(*args: str, timeout: float) -> str:
     return r.stdout
 
 
+# The container's first process, as root, the only step that is: when the image names neither the helper's uid nor its
+# gid, it adds them to the container's own /etc/passwd and /etc/group; it gives /sweep and /sweep.git, which docker cp
+# made root's, to that uid and gid; then it runs the tests as them in /sweep, the copy's .git naming its gitdir when
+# there is one.
+START = """
+import grp, os, pwd, sys
+uid, gid, user, group, gitdir, *cmd = sys.argv[1:]
+uid, gid = int(uid), int(gid)
+for find, n, path, line in ((pwd.getpwuid, uid, "/etc/passwd", f"{user}:x:{uid}:{gid}::/tmp:/bin/sh"),
+                            (grp.getgrgid, gid, "/etc/group", f"{group}:x:{gid}:")):
+    try:
+        find(n)
+    except KeyError:
+        with open(path, "a+") as f:
+            f.seek(0)
+            text = f.read()
+            f.write(("\\n" if text and not text.endswith("\\n") else "") + line + "\\n")
+for top in ("/sweep", "/sweep.git"):
+    if os.path.lexists(top):
+        os.lchown(top, uid, gid)
+        for d, dirs, files in os.walk(top):
+            for n in dirs + files:
+                os.lchown(os.path.join(d, n), uid, gid)
+os.setgroups([])
+os.setgid(gid)
+os.setuid(uid)
+os.chdir("/sweep")
+if gitdir:
+    with open(".git", "w") as f:
+        f.write(f"gitdir: {gitdir}\\n")
+os.execvp(cmd[0], cmd)
+"""
+
+
 def run(image: str, tests: list[str], wt: Path, timeout: float) -> tuple[int | None, float, str]:
     """(exit code, or None on a timeout; seconds; the output's last lines) of one pytest run in a fresh container.
 
-    The tree is copied to /sweep, absent until then, with -a, so the directory and its files keep the uid that --user
-    runs as and a test can write them; as each run starts from a fresh copy, no edit can import bytecode an earlier run
+    The tree is copied to /sweep, absent until then, and START gives it to the helper's uid, which the tests run as, so a
+    test can write it; as each run starts from a fresh copy, no edit can import bytecode an earlier run
     cached, even an edit of the same size written in the same second as its source. A worktree's .git is a file naming a
     host gitdir: its repository is copied to /sweep.git and the copy's .git names its gitdir there, so a test that runs
-    git on its own repository works with no host path mounted. The image's own /etc/passwd and /etc/group are copied
-    back into the container with the helper's user and group added (home /tmp, as HOME), so a test that looks up the uid
-    it runs as, such as pwd.getpwuid(os.getuid()), finds it whatever users the image has. --init reaps the orphans a
-    test leaves, as init does on the host. A container that never started, that docker reports an error for, or whose
+    git on its own repository works with no host path mounted. The container starts as root only for START, which adds
+    the helper's uid and gid to the container's own /etc/passwd and /etc/group when the image names neither (by the
+    host's names, else sweep; home /tmp, as HOME) and then runs the tests as them, so a test that looks up the uid it
+    runs as, such as pwd.getpwuid(os.getuid()), finds it whatever users the image has, and no host file is read or
+    written for it. --init reaps the orphans a test leaves, as init does on the host. A container that never started, that docker reports an error for, or whose
     exit is not docker start's, exits non-zero as a failed create or cp does, so a docker failure is never read as a
     test result. The removal before, create, the /sweep probes, the copies and the run share the one timeout; the
     inspect after it and each docker call of a removal get 60 s beyond it, so a run takes at most its timeout plus 5
@@ -468,27 +503,27 @@ def run(image: str, tests: list[str], wt: Path, timeout: float) -> tuple[int | N
     def left() -> float:   # every docker step up to the run's own end shares the run's timeout
         return max(start + timeout - time.monotonic(), 0)
 
+    uid, gid = os.getuid(), os.getgid()
+    try:
+        user = pwd.getpwuid(uid).pw_name
+    except KeyError:   # a uid the host has no name for
+        user = "sweep"
+    try:
+        group = grp.getgrgid(gid).gr_name
+    except KeyError:
+        group = "sweep"
     remove(name)
     try:
-        docker("create", "--name", name, "--init", "--network", "none", "--user", f"{os.getuid()}:{os.getgid()}",
+        docker("create", "--name", name, "--init", "--network", "none", "--user", "0:0",
                "--pids-limit", "4096", "--memory", "8g", "--memory-swap", "8g", "-e", "HOME=/tmp",
-               "--entrypoint", "sh", image, "-c",
-               'cd /sweep && { [ -z "$1" ] || echo "gitdir: $1" > .git; } && shift && exec "$@"', "sh", gitdir,
+               "--entrypoint", "python3", image, "-c", START, str(uid), str(gid), user, group, gitdir,
                "python3", "-m", "pytest", "-q", "-x", "-p", "no:cacheprovider", *tests, timeout=left())
         for path in ("/sweep", "/sweep.git") if gitdir else ("/sweep",):   # docker cp would nest the copy in either
             if found(["cp", f"{name}:{path}", "-"], "Could not find the file", left()):
                 raise SystemExit(f"mutation_sweep: the image {image} already has {path}, where the tree goes")
-        uid, gid = os.getuid(), os.getgid()
-        with tempfile.TemporaryDirectory() as etc:
-            for file, line in (("passwd", f"{pwd.getpwuid(uid).pw_name}:x:{uid}:{gid}::/tmp:/bin/sh\n"),
-                               ("group", f"{grp.getgrgid(gid).gr_name}:x:{gid}:\n")):
-                docker("cp", f"{name}:/etc/{file}", etc, timeout=left())
-                copy = Path(etc, file)
-                copy.write_text(copy.read_text().rstrip("\n") + "\n" + line)
-                docker("cp", str(copy), f"{name}:/etc/{file}", timeout=left())
-        docker("cp", "-a", str(root), f"{name}:/sweep", timeout=left())
+        docker("cp", str(root), f"{name}:/sweep", timeout=left())
         if gitdir:
-            docker("cp", "-a", common, f"{name}:/sweep.git", timeout=left())
+            docker("cp", common, f"{name}:/sweep.git", timeout=left())
         with tempfile.TemporaryFile() as log:
             try:
                 rc: int | None = subprocess.run(["docker", "start", "-a", name], stdin=subprocess.DEVNULL,
