@@ -4,13 +4,14 @@ SweepTests drives bin/factory.d/mutation_sweep.py on scratch repositories whose 
 files under test: each operator in both languages, the lines that give no edit (comments, strings, here-documents, test
 files, tests and fixtures directories), an edit that does not parse, an edit that never ends, a same-size edit, a red
 unedited run, the order, a worktree checkout whose test runs git, and a bad base. ContainmentTests plants a host process
-and a host file that a mutant targets: in the container neither is reached, and a docker that fails at create, or at the
-start of the baseline's or a mutant's container, exits non-zero with no result and the tree as committed (#768). The
-tests that run pytest need a docker daemon (`docker info`) and skip without one. FactoryRunTests runs `bin/factory -C
-<target> run` on a file ticket with a scripted `claude` whose worker copies the files of its round into the worktree and
-whose graders pass, so only the sweep can fail a round: survivors reach the next worker round once, a relaunch keeps
-that one block, and a failed helper stops the run; without FACTORY_SWEEP_IMAGE the sweep runs no test and the log and PR
-body say why (#768).
+and a host file that a mutant targets: in the container neither is reached, and a docker that fails at create, at the
+tree's copy, at the start of the baseline's or a mutant's container, at the /sweep probe or at removal, an image that
+already has /sweep, or steps that outlast the run's timeout exit non-zero with no result and the tree as committed
+(#768). The tests that run pytest need a docker daemon (`docker info`) and skip without one, and run in loam-sweep.
+FactoryRunTests runs `bin/factory -C <target> run` on a file ticket with a scripted `claude` whose worker copies the
+files of its round into the worktree and whose graders pass, so only the sweep can fail a round: survivors reach the
+next worker round once, a relaunch keeps that one block, and a failed helper stops the run; without FACTORY_SWEEP_IMAGE
+the sweep runs no test and the log and PR body say why (#768).
 Every subprocess gets an explicit environment: a scratch HOME and TMPDIR, a git identity and the probe's docker
 endpoint.
 """
@@ -35,24 +36,19 @@ from unittest import mock
 ROOT = pathlib.Path(__file__).resolve().parents[2]
 HELPER = ROOT / "bin/factory.d/mutation_sweep.py"
 PASSING = "def test_nothing():\n    pass\n"
-# The image every sweep in this file runs its tests in, built by setUpModule from the done checks' Dockerfile of #768.
-SWEEP_IMAGE = "loam-sweep-check"
+# The image every sweep in this file runs its tests in: Loam's own, which setUpModule builds as the launch lines do.
+SWEEP_IMAGE = "loam-sweep"
 DOCKER = shutil.which("docker") is not None and subprocess.run(
     ["docker", "info"], stdin=subprocess.DEVNULL, capture_output=True, check=False).returncode == 0
 needs_docker = unittest.skipUnless(DOCKER, "the sweep runs its tests in docker containers; docker info fails here")
 host_sees_containers = unittest.skipUnless(sys.platform.startswith("linux"),
                                            "the host's ps sees a container's processes only on a native Linux daemon")
-# The image plus git, for a test that runs git on its own repository.
-GIT_IMAGE = "loam-sweep-check-git"
 
 
 def setUpModule() -> None:
     if DOCKER:
-        subprocess.run(["docker", "build", "-q", "-t", SWEEP_IMAGE, "-"], capture_output=True, text=True, check=True,
-                       input="FROM python:3.12-slim\nRUN pip install -q pytest\n")
-        subprocess.run(["docker", "build", "-q", "-t", GIT_IMAGE, "-"], capture_output=True, text=True, check=True,
-                       input=f"FROM {SWEEP_IMAGE}\nRUN apt-get update -q && apt-get install -y -q"
-                             " --no-install-recommends git && rm -rf /var/lib/apt/lists/*\n")
+        built = subprocess.run([str(ROOT / "bin/factory.d/sweep-image")], capture_output=True, text=True, check=True)
+        assert built.stdout == f"{SWEEP_IMAGE}\n", built
 
 CALC = """def over(n, limit):
     # n > limit means over
@@ -422,7 +418,7 @@ class SweepTests(Scratch):
         git(self.wt, self.env, "worktree", "add", "-q", "--detach", str(wt), "HEAD")
         out = self.top / "out.json"
         r = subprocess.run(["python3", "-I", str(HELPER), str(wt), base, str(out), "600"],
-                           env={**self.env, "FACTORY_SWEEP_IMAGE": GIT_IMAGE}, capture_output=True, text=True,
+                           env=self.env, capture_output=True, text=True,
                            timeout=300, check=False)
         self.assertEqual(r.returncode, 0, r.stderr)
         result = json.loads(out.read_text())
@@ -436,6 +432,25 @@ class SweepTests(Scratch):
                            capture_output=True, text=True, timeout=60, check=False)
         self.assertEqual((r.returncode, out.exists()), (2, False), r.stderr)
 
+
+
+# A docker that answers as a working daemon, after the shell lines that replace FIRST: a container exists from create to
+# rm, docker cp of a container path to - finds no such path, and inspect shows a started container that exited 0.
+DOCKER_STUB = """#!/bin/sh
+d=$(dirname "$0")
+FIRST
+if [ "$1 $2" = "container inspect" ]; then
+  [ -e "$d/present" ] && exit 0
+  echo "Error: No such container: $3" >&2; exit 1
+fi
+case $1 in
+  create) : > "$d/present" ;;
+  rm) rm -f "$d/present" ;;
+  cp) [ "$3" = - ] && { echo "Error response from daemon: Could not find the file ${2#*:} in container" >&2; exit 1; } ;;
+  inspect) echo '2026-11-13T00:00:00Z|0|' ;;
+esac
+exit 0
+"""
 
 
 class ContainmentTests(Scratch):
@@ -473,16 +488,16 @@ class ContainmentTests(Scratch):
         self.assertEqual(records(result), ["victim.py:12:drop:survived", "victim.py:7:force-true:killed"])
         self.assertFalse((self.wt / "written").exists(), "the run wrote into the host's tree")
 
-    def stubbed(self, docker: str) -> str:
-        """Sweep with docker a stub whose script is docker, assert the helper stopped with no result, the host
-        untouched and the tree as committed, and return its stderr."""
+    def stubbed(self, first: str, timeout: str = "600") -> str:
+        """Sweep with docker a stub that runs the shell lines first, then answers as a working daemon (DOCKER_STUB);
+        assert the helper stopped with no result, the host untouched and the tree as committed; return its stderr."""
         stubs = self.top / "stubs"
         stubs.mkdir()
-        (stubs / "docker").write_text(docker)
+        (stubs / "docker").write_text(DOCKER_STUB.replace("FIRST\n", first))
         (stubs / "docker").chmod(0o755)
         base = self.commit(self.files)
         out = self.top / "out.json"
-        r = subprocess.run(["python3", "-I", str(HELPER), str(self.wt), base, str(out), "600"],
+        r = subprocess.run(["python3", "-I", str(HELPER), str(self.wt), base, str(out), timeout],
                            env={**self.env, "PATH": f"{stubs}:{self.env['PATH']}"}, capture_output=True, text=True,
                            timeout=300, check=False)
         self.assertNotEqual(r.returncode, 0, r.stderr)
@@ -492,26 +507,33 @@ class ContainmentTests(Scratch):
         return r.stderr
 
     def test_a_failing_docker_stops_the_sweep_before_any_test_runs(self) -> None:
-        self.stubbed("#!/bin/sh\nexit 125\n")
+        err = self.stubbed("""[ "$1" = create ] && { echo 'Error response from daemon: no such image' >&2; exit 125; }
+""")
+        self.assertIn("docker create exited 125", err)
+
+    def test_a_failed_copy_of_the_tree_stops_the_sweep(self) -> None:
+        self.assertIn("docker cp exited 1", self.stubbed('[ "$1" = cp ] && [ "$2" = -a ] && exit 1\n'))
 
     def start_fails(self, n: int) -> None:
         """A docker whose create and cp succeed and whose n-th start fails in the runtime, as docker reports it: start
         exits 1 and the container's state holds the error, with no start time."""
-        err = self.stubbed(f"""#!/bin/sh
-d=$(dirname "$0")
-case $1 in
-  cp) [ "$3" = - ] && exit 1 ;;
+        err = self.stubbed(f"""case $1 in
   start)
     n=$(( $(cat "$d/starts" 2> /dev/null || echo 0) + 1 )); echo "$n" > "$d/starts"
     [ "$n" -lt {n} ] && exit 0
     : > "$d/failed"; echo 'Error response from daemon: failed to create task' >&2; exit 1 ;;
   inspect)
     if [ -e "$d/failed" ]; then echo '0001-01-01T00:00:00Z|128|failed to create task'
-    else echo '2026-11-13T00:00:00Z|0|'; fi ;;
+    else echo '2026-11-13T00:00:00Z|0|'; fi
+    exit 0 ;;
 esac
-exit 0
 """)
         self.assertIn("docker start exited 1", err)
+
+    def test_the_steps_before_a_run_count_against_its_timeout(self) -> None:
+        """The removal before the baseline takes 4 s of its 3 s: docker create gets nothing left and fails."""
+        err = self.stubbed('[ "$1" = rm ] && [ ! -e "$d/slept" ] && : > "$d/slept" && sleep 4\n', "3")
+        self.assertIn("docker create failed", err)
 
     def test_a_baseline_whose_container_fails_to_start_stops_the_sweep(self) -> None:
         self.start_fails(1)
@@ -520,22 +542,19 @@ exit 0
         self.start_fails(2)
 
     def test_a_container_docker_rm_leaves_stops_the_sweep(self) -> None:
-        """docker rm -f exits 0 and the container stays listed (a wedged daemon): a mutant could keep running."""
-        err = self.stubbed("""#!/bin/sh
-d=$(dirname "$0")
-case $1 in
-  create) : > "$d/present" ;;
-  ps) [ -e "$d/present" ] && echo 6b67edddb72d ;;
-  cp) [ "$3" = - ] && exit 1 ;;
-  inspect) echo '2026-11-13T00:00:00Z|0|' ;;
-esac
-exit 0
-""")
-        self.assertIn("left the container in place", err)
+        """docker rm -f exits 0 and the container is still there (a wedged daemon): a mutant could keep running."""
+        self.assertIn("left the container in place", self.stubbed('[ "$1" = rm ] && exit 0\n'))
 
     def test_an_image_that_already_has_the_sweep_directory_stops_the_sweep(self) -> None:
         """docker cp NAME:/sweep - succeeds: the image has /sweep, so a copy would nest the tree in it."""
-        self.assertIn("already has /sweep,", self.stubbed("#!/bin/sh\nexit 0\n"))
+        self.assertIn("already has /sweep,", self.stubbed('[ "$1" = cp ] && [ "$3" = - ] && exit 0\n'))
+
+    def test_a_failed_probe_of_the_sweep_directory_is_not_read_as_absent(self) -> None:
+        err = self.stubbed("""[ "$1" = cp ] && [ "$3" = - ] && { echo 'Error response from daemon: wedged' >&2; exit 1; }
+""")
+        self.assertIn("wedged", err)
+        self.assertIn(":/sweep - exited 1", err)
+
 
 # The scripted claude: the version probe; a worker that copies $d/round-<n>/ into its worktree, or writes note.txt
 # when the test gave that round no files, and commits; a judge that passes every row and a reviewer with no finding.

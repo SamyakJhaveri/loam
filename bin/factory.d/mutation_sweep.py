@@ -399,21 +399,27 @@ def write(path: Path, text: str) -> None:
 
 
 def remove(name: str) -> None:
-    """Remove the container, killing every process in it, then exit 1 unless docker lists no container of that exact
-    name: one left behind could keep a mutant running past the sweep. rm's own exit and timeout are not the test."""
+    """Remove the container, killing every process in it, then exit 1 unless docker inspect says there is no such
+    container: one left behind could keep a mutant running past the sweep. rm's own exit and timeout are not the test.
+    Each of the two docker calls gets 60 s beyond the run's timeout."""
     with contextlib.suppress(OSError, subprocess.TimeoutExpired):
         subprocess.run(["docker", "rm", "-f", name], stdin=subprocess.DEVNULL, capture_output=True, timeout=60,
                        check=False)
-    if docker("ps", "-aq", "--filter", f"name=^{name}$", timeout=60).strip():
+    if found(["container", "inspect", name], "No such container", 60):
         raise SystemExit(f"mutation_sweep: docker rm -f {name} left the container in place")
 
 
-def absent(image: str, name: str, path: str) -> None:
-    """Exit 1 when the container already has path: docker cp into an existing directory would nest the copy in it."""
-    with contextlib.suppress(OSError, subprocess.TimeoutExpired):
-        if subprocess.run(["docker", "cp", f"{name}:{path}", "-"], stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL,
-                          stderr=subprocess.DEVNULL, timeout=60, check=False).returncode == 0:
-            raise SystemExit(f"mutation_sweep: the image {image} already has {path}, where the sweep copies the tree")
+def found(args: list[str], missing: str, timeout: float) -> bool:
+    """Whether `docker args` finds what it names: exit 0 is found, a non-zero exit whose error says missing is not; any
+    other failure or a timeout exits 1, so a docker error is never read as an answer. Its output is discarded."""
+    try:
+        r = subprocess.run(["docker", *args], stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL,
+                           stderr=subprocess.PIPE, text=True, errors="replace", timeout=timeout, check=False)
+    except (OSError, subprocess.TimeoutExpired) as e:
+        raise SystemExit(f"mutation_sweep: docker {' '.join(args)} failed: {e}") from None
+    if r.returncode and missing not in r.stderr:
+        raise SystemExit(f"mutation_sweep: docker {' '.join(args)} exited {r.returncode}: {r.stderr.strip()}")
+    return r.returncode == 0
 
 
 def docker(*args: str, timeout: float) -> str:
@@ -436,7 +442,9 @@ def run(image: str, tests: list[str], wt: Path, timeout: float) -> tuple[int | N
     host gitdir: its repository is copied to /sweep.git and the copy's .git names its gitdir there, so a test that runs
     git on its own repository works with no host path mounted. --init reaps the orphans a test leaves, as init does on
     the host. A container that never started, that docker reports an error for, or whose exit is not docker start's,
-    exits non-zero as a failed create or cp does, so a docker failure is never read as a test result. The name is fixed
+    exits non-zero as a failed create or cp does, so a docker failure is never read as a test result. The removal
+    before, create, the /sweep probes, the copies and the run share the one timeout; the inspect after it and each
+    docker call of a removal get 60 s beyond it, so a run takes at most its timeout plus 5 minutes. The name is fixed
     per worktree, so a sweep killed mid-run leaves a container the next one removes, and only by that name, never by a
     filter an edit of this file could widen.
     """
@@ -452,23 +460,28 @@ def run(image: str, tests: list[str], wt: Path, timeout: float) -> tuple[int | N
             print(f"mutation_sweep: git rev-parse of the worktree's repository failed: {e}", file=sys.stderr)
             raise SystemExit(2) from None
     start = time.monotonic()
+
+    def left() -> float:   # every docker step up to the run's own end shares the run's timeout
+        return max(start + timeout - time.monotonic(), 0)
+
     remove(name)
     try:
         docker("create", "--name", name, "--init", "--network", "none", "--user", f"{os.getuid()}:{os.getgid()}",
                "--pids-limit", "4096", "--memory", "8g", "--memory-swap", "8g", "-e", "HOME=/tmp",
                "--entrypoint", "sh", image, "-c",
                'cd /sweep && { [ -z "$1" ] || echo "gitdir: $1" > .git; } && shift && exec "$@"', "sh", gitdir,
-               "python3", "-m", "pytest", "-q", "-x", "-p", "no:cacheprovider", *tests, timeout=timeout)
-        for path in ("/sweep", "/sweep.git") if gitdir else ("/sweep",):
-            absent(image, name, path)
-        docker("cp", "-a", str(root), f"{name}:/sweep", timeout=timeout)
+               "python3", "-m", "pytest", "-q", "-x", "-p", "no:cacheprovider", *tests, timeout=left())
+        for path in ("/sweep", "/sweep.git") if gitdir else ("/sweep",):   # docker cp would nest the copy in either
+            if found(["cp", f"{name}:{path}", "-"], "Could not find the file", left()):
+                raise SystemExit(f"mutation_sweep: the image {image} already has {path}, where the tree goes")
+        docker("cp", "-a", str(root), f"{name}:/sweep", timeout=left())
         if gitdir:
-            docker("cp", "-a", common, f"{name}:/sweep.git", timeout=timeout)
+            docker("cp", "-a", common, f"{name}:/sweep.git", timeout=left())
         with tempfile.TemporaryFile() as log:
             try:
                 rc: int | None = subprocess.run(["docker", "start", "-a", name], stdin=subprocess.DEVNULL,
                                                 stdout=log, stderr=subprocess.STDOUT, check=False,
-                                                timeout=max(start + timeout - time.monotonic(), 0)).returncode
+                                                timeout=left()).returncode
             except subprocess.TimeoutExpired:
                 rc = None
             secs = time.monotonic() - start
