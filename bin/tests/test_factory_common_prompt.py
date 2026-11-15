@@ -82,7 +82,7 @@ class CommonPromptTests(unittest.TestCase):
         lines = [line for line in text.splitlines() if str(router) in line]
         self.assertEqual(len(lines), 1, lines)
         line = lines[0]
-        self.assertRegex(line, re.compile(r"Claude worker.*non-trivial task.*follows the method it picks", re.I))
+        self.assertRegex(line, re.compile(r"Claude worker.*before a task.*follows the method it picks", re.I))
         self.assertRegex(line, re.compile(r"Codex worker skips", re.I))
         self.assertRegex(line, re.compile(r"subagent rule wins", re.I))
 

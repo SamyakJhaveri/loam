@@ -25,7 +25,6 @@ class FableSessionBriefTests(unittest.TestCase):
         out = brief({"hook_event_name": "SessionStart", "model": "claude-fable-5-2"})
         self.assertIn("Do not paste the finishing block", out)
         self.assertNotIn("not measured", out)
-        self.assertIn("unless the prompt says you own the code", out)
 
     def test_another_fable_version_gets_the_rules_but_no_injection_claim(self) -> None:
         out = brief({"hook_event_name": "PostModelSwitch", "to_model": "claude-fable-5-1"})

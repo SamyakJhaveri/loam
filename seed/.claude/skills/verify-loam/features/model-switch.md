@@ -20,7 +20,7 @@ Preconditions:
 - A fresh render `r1`; `$C doctor r1` passes.
 - Note `stat -f %Sm ~/.claude/settings.json`.
 
-- **Switch to Fable ($0).** Run `$C session r1 "Reply with the single word OK." --switch-model fable --name sw-fable --stub`. `model` is `claude-fable-5-1`. `hooks` holds `PostModelSwitch:claude-fable-5-1` with exit 0 and stdout starting `Fable session. Ask one question before acting`. The one line in `sw-fable.stub-requests.jsonl` names `claude-fable-5-1`.
+- **Switch to Fable ($0).** Run `$C session r1 "Reply with the single word OK." --switch-model fable --name sw-fable --stub`. `model` is the full id the `fable` alias resolves to, starting `claude-fable-` (`claude-fable-5-2` since the owner's 5.2 ruling). `hooks` holds `PostModelSwitch:<that id>` with exit 0 and stdout starting `Fable session. Ask one question before acting`. The one line in `sw-fable.stub-requests.jsonl` names the same id.
 - **In context.** In `sw-fable.transcript.jsonl`, a `hook_success` and a `hook_additional_context` attachment for `PostModelSwitch` carry the brief, and both come before the `assistant` record.
 - **Silent control.** Run `$C session r1 "Reply with the single word OK." --switch-model sonnet --name sw-sonnet --stub`. `hooks` holds `PostModelSwitch:claude-sonnet-5-5` with exit 0 and empty stdout, and `sw-sonnet.transcript.jsonl` contains no `Fable session`.
 - **Nothing saved.** `stat -f %Sm ~/.claude/settings.json` prints the time noted before.
