@@ -59,7 +59,7 @@ def runs_sleep(script: str) -> bool:
     while i < len(words):
         word = words[i]
         i += 1
-        if set(word) <= SEPARATOR:
+        if word and set(word) <= SEPARATOR:
             at_command = True
             continue
         if not at_command:
@@ -75,7 +75,7 @@ def runs_sleep(script: str) -> bool:
         if name == "sleep":
             return True
         if name in SHELLS:
-            while i < len(words) and not set(words[i]) <= SEPARATOR:
+            while i < len(words) and not (words[i] and set(words[i]) <= SEPARATOR):
                 flag = words[i]
                 i += 1
                 if flag.startswith("-") and not flag.startswith("--") and "c" in flag and i < len(words):
