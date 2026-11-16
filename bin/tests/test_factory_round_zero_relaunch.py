@@ -1,4 +1,5 @@
-"""A relaunch of a body that round 0 stopped runs round 0 again; a run that passed round 0 resumes past it.
+"""A relaunch of a body that round 0 stopped runs round 0 again; a run that passed round 0 resumes past it, and its
+MAX_HOURS clock counts only the model time booked after it.
 
 `bin/factory` is sourced (FACTORY_SOURCED=1) and cmd_run runs a file ticket over a throwaway repository.
 The target gate, the re-exec into the frozen copy, and the worker loop are shell stubs; freeze and round 0
@@ -7,6 +8,7 @@ are the real ones. No network, no `claude`.
 
 from __future__ import annotations
 
+import json
 import os
 import pathlib
 import subprocess
@@ -24,8 +26,9 @@ if [ -f marker ]; then pass has-marker; else fail has-marker "no marker at the r
 ```
 """
 # The worker loop stops the way a lost login does in round 1: before any round-1 file exists.
-STUBS = ("assert_target_ready() { :; }; claude_version_ok() { :; }; exec_frozen() { :; }; "
-         'main_loop() { echo "main_loop from round $ROUND"; finish stopped-environment "stub worker round"; }')
+STUBS = "assert_target_ready() { :; }; claude_version_ok() { :; }; exec_frozen() { :; }"
+STOP = 'main_loop() { echo "main_loop from round $ROUND"; finish stopped-environment "stub worker round"; }'
+HOUR_MS = 3600 * 1000
 
 
 def git(*args: str, cwd: pathlib.Path) -> str:
@@ -49,10 +52,12 @@ class RoundZeroRelaunchTests(unittest.TestCase):
             git("add", "marker", cwd=self.main)
         git("-c", "user.name=t", "-c", "user.email=t@t", "commit", "-q", "--allow-empty", "-m", "base", cwd=self.main)
 
-    def launch(self) -> subprocess.CompletedProcess[str]:
+    def launch(self, main_loop: str = STOP, **env_extra: str) -> subprocess.CompletedProcess[str]:
         env = {k: v for k, v in os.environ.items() if not k.startswith("FACTORY_")}
-        env.update(FACTORY_SOURCED="1", FACTORY_ROOT=str(ROOT), FACTORY_RUNS_ROOT=str(self.runs), FACTORY_WORKER_ADVISOR="")
-        script = f". bin/factory\n{STUBS}\nMAIN_CHECKOUT='{self.main}'; GRADERS_DIR='{GRADERS}'\ncmd_run '{self.ticket}'"
+        env.update(FACTORY_SOURCED="1", FACTORY_ROOT=str(ROOT), FACTORY_RUNS_ROOT=str(self.runs), FACTORY_WORKER_ADVISOR="",
+                   **env_extra)
+        script = (f". bin/factory\n{STUBS}; {main_loop}\nMAIN_CHECKOUT='{self.main}'; GRADERS_DIR='{GRADERS}'\n"
+                  f"cmd_run '{self.ticket}'")
         return subprocess.run(["bash", "-c", script], cwd=ROOT, env=env, capture_output=True, text=True, check=False)
 
     def run_dir(self) -> pathlib.Path:
@@ -106,6 +111,23 @@ class RoundZeroRelaunchTests(unittest.TestCase):
         self.assertIn("main_loop from round 0", again.stdout, again.stderr)
         self.assertIn("resuming after round 0", self.log())
         self.assertEqual(self.log().count("every non-guard check fails on base"), 1)
+
+    def test_relaunch_caps_only_the_model_time_booked_after_it(self) -> None:
+        # The earlier launch booked 10 h of model time; a relaunch under a 2 h cap still calls its worker, and a 3 h
+        # call it books itself stops the next one (Loam PR 787: cmd_run records the ledger's size at each launch).
+        self.base(with_marker=False)
+        self.launch()
+        row = {"round": 1, "role": "worker", "duration_ms": 10 * HOUR_MS}
+        with (self.run_dir() / "ledger.jsonl").open("a") as f:
+            f.write(json.dumps(row) + "\n")
+        book = json.dumps({**row, "duration_ms": 3 * HOUR_MS})
+        again = self.launch(f"main_loop() {{ assert_caps; echo in-cap; echo '{book}' >> \"$LEDGER\"; assert_caps; echo past-cap; }}",
+                            FACTORY_MAX_HOURS="2")
+        self.assertIn("in-cap", again.stdout, again.stderr)
+        self.assertNotIn("past-cap", again.stdout)
+        self.assertEqual(again.returncode, 2, again.stderr)
+        self.assertEqual(self.status(), "stopped-cap")
+        self.assertIn("model time: 3h of 2h since this launch", self.log())
 
 
 if __name__ == "__main__":
