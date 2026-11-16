@@ -8,6 +8,7 @@ entry point for projects that consume the Loam marketplace.
 From the distbench reflects of 16 Nov 2026, applied on Samyak's go-ahead of that morning.
 The router's description adds "leading or taking over a multi-agent operation, ruling on review findings or blockers": in ten hours of rulings a lead never called the router.
 The always-loaded rule line in `seed/docs/WORKERS.md.jinja` names the same two triggers, and `docs/PSTACK.md` and `docs/RULES.md` quote it.
+The seed's hand-off rule 1 adds: among known defect classes, fix first the one whose next occurrence would stop the pipeline and that is live now (a class that froze a factory for nine hours had been named and left out of the top fixes).
 Its `principle-attack-the-premise` line adds "or a review finding returns as a narrower hole in the same check" (four Codex rounds found ever narrower holes in one snapshot check until the mechanism was replaced).
 The sam-cc-setup listing grows from 408 to 430 tokens on the description's new words, and `bin/check`'s budget follows.
 No grader prompt changed, so no grader replay is owed.

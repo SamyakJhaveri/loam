@@ -46,7 +46,7 @@ Codex reads the same files at `~/.agents/skills/<name>/SKILL.md` once they are l
 These rules cover anything one session writes for another agent to carry out: a ticket, an experiment plan, a research brief, a subagent prompt.
 They add to the ticket formats and the brief headings and replace none of them.
 
-1. Resolve the unknowns first. A decision that is the owner's goes to the owner before the hand-off; what stays uncertain is listed as known or assumed.
+1. Resolve the unknowns first. A decision that is the owner's goes to the owner before the hand-off; what stays uncertain is listed as known or assumed. Among known defect classes, fix first the one whose next occurrence would stop the pipeline and that is live now, then the frequent ones.
 2. Write the done check before the approach: a command with its expected output, or a file and what it must contain, such that two readers would reach the same pass or fail.
 3. State the goal, the reason and the limits. Name an exact edit only where one wrong step breaks something (a migration, a protocol value, a frozen file); elsewhere give decisions, interfaces and invariants, each marked fixed or suggested.
 4. Name what to read first, and tell the worker to read the code, tests and design files that could bear on the task, including ones the hand-off does not name, and to stop and report if they contradict it.
