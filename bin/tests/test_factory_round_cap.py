@@ -97,6 +97,7 @@ class HourCapTests(unittest.TestCase):
 
     def launch(self, at: float, round0_end: float | None = None) -> None:
         (self.run / "launched").write_text(f"{int(at)}\n")
+        (self.run / "launch.ledger-bytes").write_text(f"{(self.run / 'ledger.jsonl').stat().st_size}\n")
         if round0_end is not None:
             (self.run / "round-0.checks").write_text("CHECKS-END\n")
             os.utime(self.run / "round-0.checks", (round0_end, round0_end))
@@ -149,8 +150,10 @@ class HourCapTests(unittest.TestCase):
         self.assert_capped(self.step("ROUND=0; main_loop"), "4h of 4h since this launch")
 
     def test_an_earlier_launch_s_round_zero_and_calls_count_nothing(self) -> None:
-        self.launch(time.time(), round0_end=time.time() - 2 * HOUR)
-        self.book(("worker", time.time() - HOUR, 10 * HOUR * 1000))
+        # The earlier launch's call ends in the same second the relaunch starts.
+        now = time.time()
+        self.book(("worker", now, 10 * HOUR * 1000))
+        self.launch(now, round0_end=now - 2 * HOUR)
         proc = self.step("ROUND=0; main_loop")
         self.assertEqual((self.run / "worker-calls").read_text().split(), ["1"], proc.stderr)
 

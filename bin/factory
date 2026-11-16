@@ -1962,15 +1962,16 @@ nav_arm:\$nav, ts:\$ts}" "$4" 2> /dev/null) \
 }
 
 # The MAX_HOURS clock, in seconds since this launch: round 0 (the launch up to round-0.checks; a resume's round 0 ran
-# before the launch, so it adds none) plus each model call's duration_ms the ledger booked since the launch, two calls
-# at once (review_both) both counted. The round checks, the full gate, the Rows measured commands, the mutation sweep
-# and the lock and usage-limit waits inside or between them are not on it.
+# before the launch, so it adds none) plus the duration_ms of each model call the ledger booked after the launch's
+# offset in it (launch.ledger-bytes), two calls at once (review_both) both counted. The round checks, the full gate,
+# the Rows measured commands, the mutation sweep and the lock and usage-limit waits inside or between them are not on it.
 cap_seconds() {
-  local from r0 f="$RUN/round-0.checks"
+  local from r0 f="$RUN/round-0.checks" off
   from=$(cat "$RUN/launched")
   r0=$(stat -c %Y "$f" 2> /dev/null || stat -f %m "$f" 2> /dev/null) && [ "$r0" -gt "$from" ] || r0=$from
-  jq -nR --argjson from "$from" --argjson r0 "$((r0 - from))" '$r0 + ([inputs | fromjson? | objects
-    | select(((.ts | strings | fromdateiso8601?) // 0) >= $from) | .duration_ms | numbers] | add // 0) / 1000 | floor' "$LEDGER"
+  off=$(cat "$RUN/launch.ledger-bytes" 2> /dev/null) || off=0
+  tail -c +$((off + 1)) "$LEDGER" | jq -nR --argjson r0 "$((r0 - from))" \
+    '$r0 + ([inputs | fromjson? | objects | .duration_ms | numbers] | add // 0) / 1000 | floor'
 }
 
 # learn_run (review.sh) reads the same cap after the exit, and stops itself instead of the run.
@@ -2325,7 +2326,7 @@ limit_switch_held() {
 # Waiting for it is loop behavior, not a round: switch accounts and retry at once, or sleep to the reset, or
 # 20 minutes, then repeat the same call.
 limit_wait() { # result.json -> 0 after waiting, 1 when the reply is not a usage limit
-  local e t tz at left secs=1200
+  local e t tz at secs=1200
   e=$(jq -r "$RESULT_OBJ | if .is_error == true then (.result // \"\") else empty end" "$1" 2> /dev/null) || e=""
   grep -qiE '(hit|reached) your .*limit' <<< "$e" || return 1
   limit_switch && return 0
@@ -2334,12 +2335,6 @@ limit_wait() { # result.json -> 0 after waiting, 1 when the reply is not a usage
   if [ -n "$t" ] && at=$(TZ="${tz:-UTC}" date -d "$t" +%s 2> /dev/null); then
     [ "$at" -gt "$(date +%s)" ] || at=$((at + 86400))
     secs=$((at - $(date +%s) + 60))
-  fi
-  left=$((MAX_HOURS * 3600 - $(cap_seconds)))
-  if [ "$secs" -gt "$left" ]; then
-    # learn_run (REVIEW_NO_FINISH) runs after the run's exit, so it gives up its call instead of replacing the exit.
-    [ -z "${REVIEW_NO_FINISH:-}" ] || { log "usage limit: $e; the reset is ${secs}s away, past MAX_HOURS; this call gives up"; return 1; }
-    finish stopped-environment "usage limit: $e; the reset is ${secs}s away, past MAX_HOURS=$MAX_HOURS"
   fi
   log "usage limit, not a round: $e; waiting ${secs}s"
   [ -n "${REVIEW_NO_FINISH:-}" ] || set_status waiting-limit   # learn waits without touching the exited run's status
@@ -3683,6 +3678,7 @@ cmd_run() {
     && { echo "factory run: a run of another body of $KEY still runs or awaits merge in $WORKTREE; wait, or stop or merge it" >&2; exit 4; }
   [ -f "$RUN/started" ] || date -u +%s > "$RUN/started"
   date -u +%s > "$RUN/launched"
+  wc -c < "$LEDGER" > "$RUN/launch.ledger-bytes"
   # One line per launch, before any exit and not again from the frozen re-exec: status --criteria resets the
   # round on it, so a relaunch's early exit is not charged to the round a killed launch left open.
   [ "${FACTORY_FROZEN:-}" = "$RUN/frozen/factory" ] || log "===== launch ====="
