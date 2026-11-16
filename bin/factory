@@ -2363,7 +2363,7 @@ run_checks() { # dir out [NAME=value, set for checks.sh]
 round_zero() {
   # The block writes round-0.out; only a clean verdict renames it to round-0.checks, the file cmd_run
   # resumes on, so a relaunch after a defect, or after a kill mid-block, runs round 0 again.
-  local out="$RUN/round-0.out" why="" guards line name cmd rc base wt msg
+  local out="$RUN/round-0.out" stamps="$RUN/round-0.stamps" why="" guards line name cmd rc base wt msg secs limit slow
   base=$(cat "$RUN/base.sha"); wt="${WORKTREE}-base"
   # A line continuation would split one line across the readers (dc_continued); lint rejects it, and a run never linted
   # (bin/factory run) stops here, before any of the block runs.
@@ -2398,10 +2398,20 @@ round_zero() {
   done < <(dc_predicts)
   # Round 0 reads only the non-guard PASS lines, so the guarded bin/check could never change its verdict: it is deferred
   # (lib.sh prints DEFERRED:), and round 0 costs seconds, not a full gate. gate_last runs bin/check, at the graded HEAD.
-  run_checks "$wt" "$out" "$GATE_DEFER"
+  # It is the block the worker's Stop hook runs, so it is timed against that hook's timeout: a block that outruns the
+  # hook on base is cancelled at every stop. round-0.times holds each check's seconds, for the worker prompt.
+  : > "$stamps"; secs=$SECONDS
+  FACTORY_CHECK_TIMES="$stamps" run_checks "$wt" "$out" "$GATE_DEFER"
+  secs=$((SECONDS - secs))
+  awk '{ print $1 - t, $2; t = $1 }' "$stamps" > "$RUN/round-0.times"; rm -f "$stamps"
   git -C "$MAIN_CHECKOUT" worktree remove --force "$wt" > /dev/null 2>&1
   grep -q '^FAIL checks-aborted' "$out" \
     && finish ticket-defect "checks.sh aborted on $(cut -c1-8 "$RUN/base.sha") before the block ended; see $out"
+  limit=$(jq -r '[.hooks.Stop[]?.hooks[]?.timeout] | max // empty' "$RUN/frozen/worker-settings.json" 2> /dev/null)
+  if [ -n "$limit" ] && [ "$secs" -gt "$limit" ]; then
+    slow=$(awk -v s=$((limit / 3)) '$1 > s { printf "%s%s (%s s)", sep, $2, $1; sep = ", " }' "$RUN/round-0.times")
+    finish ticket-defect "the done-checks block took $secs s on $(cut -c1-8 "$RUN/base.sha"), over the worker Stop hook's $limit s timeout; checks over $((limit / 3)) s: ${slow:-none}; see $RUN/round-0.times"
+  fi
   # A predict line whose command exits non-zero, or that has none: the check fails on base, but not for the reason
   # its author predicted.
   [ -z "$why" ] || finish ticket-defect "the predict line for check $name $why on $(cut -c1-8 "$RUN/base.sha"), so base does not show the predicted failure"
@@ -2476,10 +2486,15 @@ build_worker_prompt() { # round -> prompt path (pending until the call returns a
   while [[ $common == *"<pstack>"* ]]; do common="${common%%<pstack>*}${pstack}${common#*<pstack>}"; done
   { printf '%s\n\n' "$BODY"; printf '%s\n' "$common"; } > "$pf"
   # Another target's bin/check is its full gate, which the supervisor's checks run once after the round; a distbench
-  # worker that ran it itself spent 109 of 117 minutes on it (L01, 13 Nov). Under LOAM_HOOK, guard bin/check passes
-  # without running (lib.sh), so the worker still runs every other done check.
-  # Only the exact form `guard bin/check` is skipped, so a block calling the gate any other way is run line by line.
-  target_is_loam || printf 'For this target, this replaces running the done-checks block exactly as the supervisor will: the supervisor runs the full gate, `bin/check`, once after your round, so never run `bin/check` yourself; run the block as `LOAM_HOOK=1 bash %s/frozen/checks.sh` from the worktree root, under which `guard bin/check` passes without running (that PASS is not gate evidence, and leaving the gate to the supervisor is not routing around a check); if the block calls `bin/check` in any other form, run its other check lines by hand instead; and prove your change with the focused tests for the code you touched.\n' "$RUN" >> "$pf"
+  # worker that ran it itself spent 109 of 117 minutes on it (L01, 13 Nov).
+  target_is_loam || printf 'For this target, the supervisor runs the full gate, `bin/check`, once after your round, so never run `bin/check` yourself; prove your change with the focused tests for the code you touched.\n' >> "$pf"
+  # The Stop hook and the supervisor run the whole block; each check's base seconds show the worker which checks a
+  # focused run should leave out.
+  [ ! -s "$RUN/round-0.times" ] || {
+    printf '\n\n## Done-check seconds on base (round 0)\n\n'
+    printf 'The whole block runs again after your round; while you work, run only the checks and focused tests your change touches. Seconds each check took on base, in block order:\n\n```\n'
+    cat "$RUN/round-0.times"; printf '```\n'
+  } >> "$pf"
   nav_c_append "$pf"   # arm C appends the Semble instruction; base and arm B append nothing (NAV-01)
   # Skills per role (LOOP.md), each `skills:` name resolved by skill_file: a Claude worker gets one
   # sentence naming the SKILL.md path to read, since every pstack skill refuses the Skill tool

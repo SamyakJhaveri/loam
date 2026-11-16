@@ -12,8 +12,11 @@ n_fail=0
 # mid-line, where the supervisor's ^PASS and ^FAIL reads miss it (#180).
 # A result right after a guard ends with the gate result CMD printed, `(check: PASSED)`, so a reader that keeps
 # only ^PASS and ^FAIL lines still sees it.
-pass() { printf '\nPASS %s%s\n' "$1" "${guard_check:+ ($guard_check)}"; guard_check=""; n_pass=$((n_pass + 1)); }
-fail() { printf '\nFAIL %s: %s%s\n' "$1" "${2:-}" "${guard_check:+ ($guard_check)}"; guard_check=""; n_fail=$((n_fail + 1)); }
+pass() { printf '\nPASS %s%s\n' "$1" "${guard_check:+ ($guard_check)}"; guard_check=""; n_pass=$((n_pass + 1)); stamp "$1"; }
+fail() { printf '\nFAIL %s: %s%s\n' "$1" "${2:-}" "${guard_check:+ ($guard_check)}"; guard_check=""; n_fail=$((n_fail + 1)); stamp "$1"; }
+# Under FACTORY_CHECK_TIMES (round 0) each result also appends `<seconds since the block started> <name>` to that file;
+# a check's own time is the gap since the result before it. $SECONDS runs on in a subshell, so a result there counts too.
+stamp() { [ -z "${FACTORY_CHECK_TIMES:-}" ] || printf '%s %s\n' "$SECONDS" "$1" >> "$FACTORY_CHECK_TIMES"; }
 # guard: a regression guard; runs CMD and returns its status; allowed to pass on main.
 # Under LOAM_HOOK (the worker's Stop hook) a guarded bin/check passes without running:
 # it takes minutes per stop, and the supervisor's own check run is the one run per round (LOOP.md).
