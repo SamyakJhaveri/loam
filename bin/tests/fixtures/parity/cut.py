@@ -362,7 +362,7 @@ def build(runs: Path, projects: Path, distbench: Path, exp: Path, pstack: Path) 
                "run/round-1.codex-review.json": (runs / W24 / "round-1.codex-review.json").read_text()}
     out["p8-fail"] = p8_fail
     # Pass: EDIT the reviewer rows to have served claude-fable-5-2; EDIT the Codex review to run 265's round-1
-    # findings (critical, high, medium, medium: codex-0 and codex-1 block); EDIT a verify.json giving each blocking id
+    # findings (critical, high, medium, medium: all four block); EDIT a verify.json giving each blocking id
     # a verdict, the REJECTED one with its command and output.
     fable = "".join(json.dumps({**json.loads(x), "served_models": ["claude-fable-5-2"]} if '"reviewer"' in x else json.loads(x))
                     + "\n" for x in ledger.splitlines())
@@ -377,7 +377,8 @@ def build(runs: Path, projects: Path, distbench: Path, exp: Path, pstack: Path) 
                                                     for i, v, c, o in verdicts]}) + "\n"
 
     rejected = ("reviewer-0", "REJECTED", "python3 -m pytest -q tests/test_calibrate.py -k p90", "1 passed")
-    good = [rejected, ("codex-0", "CONFIRMED", "", ""), ("codex-1", "PARTLY", "", "")]
+    good = [rejected, ("codex-0", "CONFIRMED", "", ""), ("codex-1", "PARTLY", "", ""), ("codex-2", "CONFIRMED", "", ""),
+            ("codex-3", "CONFIRMED", "", "")]
     p8 = {**p8_fail, "run/ledger.jsonl": fable, "run/round-1.codex-review.json": json.dumps(codex) + "\n",
           "run/round-1.verify.json": verify(*good)}
     out["p8-pass"] = p8
@@ -385,9 +386,9 @@ def build(runs: Path, projects: Path, distbench: Path, exp: Path, pstack: Path) 
     out["p8-codex"] = {**{k: v for k, v in p8.items() if k != "run/round-1.codex-review.json"},
                        "run/round-1.verify.json": verify(rejected)}
     out["p8-missing"] = {**p8, "run/round-1.verify.json": verify(*good[:2])}
-    out["p8-extra"] = {**p8, "run/round-1.verify.json": verify(*good, ("codex-2", "CONFIRMED", "", ""))}
+    out["p8-extra"] = {**p8, "run/round-1.verify.json": verify(*good, ("codex-4", "CONFIRMED", "", ""))}
     out["p8-rejected"] = {**p8, "run/round-1.verify.json": verify(rejected[:2] + ("", ""), *good[1:])}
-    out["p8-unverified"] = {**p8, "run/round-1.verify.json": verify(rejected, ("codex-0", "UNVERIFIED", "", ""), good[2])}
+    out["p8-unverified"] = {**p8, "run/round-1.verify.json": verify(rejected, ("codex-0", "UNVERIFIED", "", ""), *good[2:])}
     # Attended (--attended): a 4114e7c2 worker (agent a9868070, lines 1, 24, 25, 30, 142): the router Skill call and its
     # result (a call with no result proves nothing), a method read, then its first Edit (pass); the fb454b64 lead's first change (line 204, a sed -i with no router read;
     # EDIT its brief left out) (fail); the fb454b64 runner subagent a564fcc5 (line 92 edits src/distbench/runner.py,

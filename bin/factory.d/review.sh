@@ -4,8 +4,8 @@
 # helpers (call_start, call_end, charged, record, assert_caps, log, scrub, alert, codex_*), so it runs only sourced into it.
 #
 #   verify_round ROUND  after the reviewer and the Codex review: one Opus call reproduces each blocking finding at
-#                       GRADED_SHA; CONFIRMED and PARTLY go to round-N.fixes (each source blocks once per ticket),
-#                       REJECTED to round-N.rejected. Returns 1 when it queued a fix, else 0.
+#                       GRADED_SHA; CONFIRMED, PARTLY and UNVERIFIED go to round-N.fixes for the next round, every
+#                       round, REJECTED to round-N.rejected. Returns 1 when it queued a fix, else 0.
 #   learn_run [STATUS MESSAGE]
 #                       from finish, detached, after the run's exit: writes $RUN/followups.md and, when it has a
 #                       line, drafts one ticket into $RUN/learn/ with two read-only reviews and the verifier on them.
@@ -19,9 +19,9 @@ REVIEW_D=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 # The audit skill's "## Verify findings" section is the method the verifier follows; it reads the file by path.
 AUDIT_DIR="$ROOT/cultivation/marketplace/sam-cc-setup/skills/audit"
 
-# Blocking: a reviewer high or medium, a Codex critical or high (the rule run_review and run_codex_review apply).
+# Blocking: a reviewer high or medium, a Codex critical, high or medium (the rule run_review and run_codex_review apply).
 FINDING_BLOCKS='(.source == "reviewer" and (.severity == "high" or .severity == "medium"))
-  or (.source == "codex" and (.severity == "critical" or .severity == "high"))'
+  or (.source == "codex" and (.severity == "critical" or .severity == "high" or .severity == "medium"))'
 # The line a finding gets in round-N.fixes: the reviewer's and the Codex review's lines as they were before the verifier.
 FINDING_LINE='def fixline: "- \(.file):\(.line) " + (if .source == "codex" then "[\(.severity)] " else "" end) + .claim;'
 
@@ -161,11 +161,6 @@ verify_round() { # round -> 1 when it queued a fix
             elif .v.verdict == "UNVERIFIED" then " (UNVERIFIED: " + .v.note + ")" else "" end))] | @json' <<< "$lines" \
       | jq -rs 'sort_by(.[0]) | .[][1]')
     [ -n "$n" ] || continue
-    if { [ "$src" = reviewer ] && [ "$REVIEW_BLOCKED" = 1 ]; } || { [ "$src" = codex ] && [ "$CODEX_REVIEW_BLOCKED" = 1 ]; }; then
-      log "the $src already blocked once on this ticket; its verified blocking findings make the PR a draft and are filed as issues"
-      continue
-    fi
-    if [ "$src" = reviewer ]; then REVIEW_BLOCKED=1; else CODEX_REVIEW_BLOCKED=1; fi
     printf '%s\n' "$n" >> "$RUN/round-$round.fixes"
     queued=1
   done

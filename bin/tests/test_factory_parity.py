@@ -74,7 +74,7 @@ CASES = [
     ("p8-served", "P8", "FAIL"),  # W24's reviewer rows: served claude-opus-5-5
     ("p8-codex", "P8", "FAIL"),  # no round-1.codex-review.json (verify.json covers the reviewer's id only)
     ("p8-missing", "P8", "FAIL"),  # verify.json lacks blocking codex-1
-    ("p8-extra", "P8", "FAIL"),  # verify.json adds codex-2, a medium Codex finding, which does not block
+    ("p8-extra", "P8", "FAIL"),  # verify.json adds codex-4, an id no blocking finding has
     ("p8-rejected", "P8", "FAIL"),  # a REJECTED verdict with no cmd or output
     ("p8-unverified", "P8", "FAIL"),  # an UNVERIFIED verdict
 ]
