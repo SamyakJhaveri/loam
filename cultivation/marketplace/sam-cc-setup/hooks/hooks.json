@@ -1,0 +1,19 @@
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Agent",
+        "hooks": [{"type": "command", "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/hooks/agent-route.py\"", "timeout": 5}]
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [{"type": "command", "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/hooks/no-foreground-sleep.py\"", "timeout": 5}]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [{"type": "command", "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/hooks/prompt-context.py\"", "timeout": 5}]
+      }
+    ]
+  }
+}
